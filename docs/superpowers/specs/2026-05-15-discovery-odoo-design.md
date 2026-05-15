@@ -65,8 +65,9 @@ depois, com a lista de modelos confirmada.
   disponível. Faz também um probe HTTP real — uma requisição leve a
   `{ODOO_URL}/json/2/` — para confirmar se o endpoint responde, em vez de
   apenas inferir pela versão.
-- Verifica se o usuário autenticado tem leitura em `ir.model` e
-  `ir.model.fields` — sem isso, o censo não roda; falha cedo com mensagem clara.
+- Verifica se o usuário autenticado tem leitura em `ir.model` — sem isso, o
+  censo não roda; falha cedo com mensagem clara. (Os campos são lidos via
+  `fields_get()` na Etapa B, não via `ir.model.fields`.)
 - **Saída:** `output/handshake.json` (versão, série, uid, protocolos detectados).
 
 ### 4.2 Censo
@@ -169,8 +170,10 @@ discovery/
   derruba o run. O censo marca esses modelos como `sem-acesso`.
 - `search_count`/`search_read` que estoure timeout em modelo muito grande →
   registrado; o modelo entra no censo marcado `contagem-falhou`.
-- **Logging:** todas as etapas registram progresso e erros em
-  `discovery/output/discovery.log` (além da saída no terminal).
+- **Registro de execução:** os scripts imprimem progresso e erros no terminal.
+  Para registro persistente, redirecionar a saída para
+  `discovery/output/discovery.log` (ex.: `... | tee output/discovery.log`) —
+  sem necessidade de um `FileHandler` dedicado nesta ferramenta de uso pontual.
 
 ## 8. Segurança
 
