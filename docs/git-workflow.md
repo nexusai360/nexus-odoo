@@ -70,9 +70,16 @@ A partir de F3, dashboard e MCP evoluem em **branches independentes** — uma fr
 
 ## Proteção da `main`
 
-Configurada no setup inicial:
-- Push direto bloqueado.
-- Merge exige Pull Request.
+O repositório é privado em conta GitHub **Free** — branch protection e rulesets
+server-side exigem **GitHub Pro**. Enquanto não houver Pro, a proteção da `main`
+é **processual**, não técnica:
+
+- Claude nunca faz push direto na `main` — só via feature branch + PR.
+- Este documento é a garantia do fluxo.
+
+Para ativar a proteção server-side (push direto recusado pelo próprio GitHub,
+force-push e deleção bloqueados), basta o upgrade para GitHub Pro — a regra é
+aplicada na hora, sem retrabalho.
 
 ## O que Claude controla
 
