@@ -189,10 +189,10 @@ def client_from_env(env_path=".env.local") -> OdooClient:
     )
 ```
 
-- [ ] **Step 2: Verificar que o arquivo compila**
+- [ ] **Step 2: Verificar que o módulo importa**
 
-Run: `cd discovery && .venv/bin/python -m py_compile odoo_client.py`
-Expected: sem saída (sucesso).
+Run (a partir da raiz): `discovery/.venv/bin/python -c "import discovery.odoo_client"`
+Expected: sem erro — valida sintaxe **e** que as dependências (`dotenv`) importam.
 
 - [ ] **Step 3: Commit**
 
@@ -485,15 +485,20 @@ def main():
     except OdooError:
         ir_model_ok = False
 
-    server_serie = versao.get("server_serie", "")
+    # server_version_info é uma lista [major, minor, ...] — extrair o major
+    # como int é mais robusto que comparar server_serie como string.
+    version_info = versao.get("server_version_info") or []
+    odoo_major = version_info[0] if version_info else 0
     resultado = {
         "server_version": versao.get("server_version"),
-        "server_serie": server_serie,
+        "server_serie": versao.get("server_serie"),
+        "server_version_info": version_info,
+        "odoo_major": odoo_major,
         "protocol_version": versao.get("protocol_version"),
         "uid": uid,
         "xmlrpc": True,
         "json2_endpoint_responde": json2,
-        "json2_por_versao": server_serie >= "19.0",
+        "json2_por_versao": odoo_major >= 19,
         "ir_model_legivel": ir_model_ok,
     }
 
@@ -501,7 +506,7 @@ def main():
     with open(caminho, "w", encoding="utf-8") as f:
         json.dump(resultado, f, indent=2, ensure_ascii=False)
 
-    print(f"Odoo {resultado['server_version']} (série {server_serie}) — uid {uid}")
+    print(f"Odoo {resultado['server_version']} (série {resultado['server_serie']}) — uid {uid}")
     print(f"JSON/2 endpoint responde: {json2} | ir.model legível: {ir_model_ok}")
     print(f"Saída: {caminho}")
 
@@ -516,10 +521,10 @@ if __name__ == "__main__":
     main()
 ```
 
-- [ ] **Step 2: Verificar que compila**
+- [ ] **Step 2: Verificar que o módulo importa**
 
-Run: `cd discovery && .venv/bin/python -m py_compile handshake.py`
-Expected: sem saída.
+Run (a partir da raiz): `discovery/.venv/bin/python -c "import discovery.handshake"`
+Expected: sem erro.
 
 - [ ] **Step 3: Commit**
 
@@ -609,10 +614,10 @@ if __name__ == "__main__":
     main()
 ```
 
-- [ ] **Step 2: Verificar que compila**
+- [ ] **Step 2: Verificar que o módulo importa**
 
-Run: `cd discovery && .venv/bin/python -m py_compile censo.py`
-Expected: sem saída.
+Run (a partir da raiz): `discovery/.venv/bin/python -c "import discovery.censo"`
+Expected: sem erro.
 
 - [ ] **Step 3: Commit**
 
@@ -670,9 +675,11 @@ def mapear_modelo(client, model: str) -> dict:
         for nome, meta in sorted(fields.items())
     ]
 
+    # Exclui campos binary da amostra — evitam inflar o JSON com base64.
+    campos_amostra = [n for n, meta in fields.items() if meta.get("type") != "binary"]
     amostra = client.execute_kw(
         model, "search_read", [[]],
-        {"limit": 8, "order": "id desc"},
+        {"limit": 8, "order": "id desc", "fields": campos_amostra},
     )
 
     ordenacao_ok = False
@@ -728,10 +735,10 @@ if __name__ == "__main__":
     main()
 ```
 
-- [ ] **Step 2: Verificar que compila**
+- [ ] **Step 2: Verificar que o módulo importa**
 
-Run: `cd discovery && .venv/bin/python -m py_compile mapa_profundo.py`
-Expected: sem saída.
+Run (a partir da raiz): `discovery/.venv/bin/python -c "import discovery.mapa_profundo"`
+Expected: sem erro.
 
 - [ ] **Step 3: Rodar a suíte de testes completa**
 
@@ -969,3 +976,23 @@ são placeholders de plano.
 `client_from_env` usados de forma consistente nas Tasks 5–7. Funções de
 `classificacao.py` e `relatorios.py` chamadas com as assinaturas definidas
 nas Tasks 3 e 4.
+
+---
+
+## Review Profunda #2 — 2026-05-15 (plano v2)
+
+Auditoria de granularidade, integração entre tasks e testabilidade. A
+integração foi confirmada sólida (chaves de dict consistentes entre
+`censo.py`/`mapa_profundo.py` e `relatorios.py`; ordem das tasks respeita as
+dependências `odoo_client` → `classificacao`/`relatorios` → scripts de etapa).
+**3 achados materiais corrigidos:**
+
+1. **Detecção de versão frágil (Task 5).** Comparar `server_serie` como string
+   (`"19.0" >= "19.0"`) é incorreto para versões de 1 dígito e é má prática.
+   Corrigido: usa `server_version_info[0]` (major como `int`).
+2. **Verificação fraca (Tasks 2, 5, 6, 7).** `py_compile` valida só sintaxe,
+   não importação. Corrigido: troca para `python -c "import discovery.X"`, que
+   também valida que as dependências importam.
+3. **Amostra inflada (Task 7).** `search_read` sem `fields` traz campos
+   `binary` (imagens, anexos) como base64 — JSON de amostra gigante. Corrigido:
+   a amostra exclui campos do tipo `binary`.
