@@ -1,287 +1,304 @@
-# F3 — Dashboard de Relatórios — Design (SPEC v2)
+# F3 — Dashboard de Relatórios — Design (SPEC v3)
 
 > Spec da Fase 3 do nexus-odoo. Brainstorm com o usuário em 2026-05-16.
-> **v2** — incorpora a Review Profunda #1 (`docs/superpowers/reviews/2026-05-16-dashboard-spec-review-1.md`):
-> 6 Críticos + 9 Importantes + 6 Menores aplicados. Passará pela Review #2 → v3.
+> **v3 — versão final, vai para o plano.** Incorpora a Review #1
+> (`.../reviews/2026-05-16-dashboard-spec-review-1.md`) e a Review #2
+> (`.../reviews/2026-05-16-dashboard-spec-review-2.md`).
 
 ## 1. Objetivo
 
 Entregar a **frente A** do nexus-odoo: o painel visual de relatórios. A F3 entrega
-(a) a **infraestrutura do dashboard** — o padrão reutilizável "um relatório", o
-shell de navegação, o RBAC por domínio, os templates de visualização — e
-(b) um **primeiro lote de 6 relatórios de estoque**. Relatórios futuros entram
-depois repetindo o padrão. Tudo lê do cache Postgres da F2; nada toca o Odoo ao vivo.
+(a) a **infraestrutura do dashboard** — padrão "um relatório", shell de navegação,
+RBAC por domínio, templates de visualização — e (b) um **lote de 6 relatórios de
+estoque**. Relatórios futuros repetem o padrão. Tudo lê do cache da F2.
 
 ## 2. Escopo
 
-**Dentro da F3:** (1) arquitetura "um relatório" de 4 camadas + catálogo
-declarativo; (2) RBAC por domínio com enforcement em 3 camadas; (3) UI de
-concessão de domínios (etapa "Acesso" no modal de usuário); (4) 5 templates de
-visualização (Recharts); (5) shell `/relatorios` + `/relatorios/[id]`; (6) 3
-fatos no worker; (7) 6 relatórios de estoque (§8).
+**Dentro:** (1) arquitetura "um relatório" de 4 camadas + catálogo declarativo;
+(2) RBAC por domínio em 3 camadas; (3) etapa "Acesso" no modal de usuário;
+(4) 5 templates de visualização (Recharts); (5) shell `/relatorios` +
+`/relatorios/[id]`; (6) 3 fatos; (7) 6 relatórios de estoque (§8).
 
-**Fora da F3:** relatórios de outros domínios (lotes futuros); o construtor F6;
-relatórios de faturamento por NF (lote 2 da frente A).
+**Fora:** relatórios de outros domínios; o construtor F6; relatórios de
+faturamento/venda por NF (lote 2). **`natureza` do movimento** (venda vs.
+transferência vs. inventário) **fica fora da F3** — ver §5.2 / decisão 12.
 
-**Correção de ingestão acoplada (ver C2):** a F3 inclui **revisar o modo de sync
-de `estoque.extrato`** — hoje classificado `incremental`, mas o modelo quase não
-tem `write_date` (3 de 13.548 linhas), então o incremental está cego. Passa a
-`snapshot` (full refresh). É um conserto da F2 que a F3 não pode ignorar, pois
-R3/R5 dependem da confiabilidade desse modelo.
+**Conserto de ingestão acoplado:** `estoque.extrato` muda de `incremental` para
+`snapshot` no catálogo de modelos da F2 — o modelo quase não tem `write_date`
+(3 de 13.548 linhas), o incremental está cego. R3/R5 dependem disso.
 
 ## 3. Arquitetura: o padrão "um relatório"
 
-Cada relatório é uma unidade isolada de **4 camadas**:
+### 3.1 As 4 camadas
 
-1. **Fato** (`fato_*`) — tabela Prisma tipada no cache, derivada da camada `raw`
-   por um builder no worker. **Nenhuma query de leitura toca `raw_*`** — toda
-   agregação é pré-computada no builder (regra reafirmada — ver I8).
-2. **Query de leitura** — função server-side que lê o fato e devolve dados já
-   prontos. Revalida o RBAC de domínio (§4). Sinaliza o estado "fato não
-   populado" distinto de "sem dado" (§6.1).
-3. **Componente visual** — instancia um dos 5 templates (§6) com a definição
-   declarativa do relatório.
-4. **Entrada no catálogo** — registro declarativo: `id`, `título`, `domínio`,
-   `descrição`, `fato`, `template`, `ícone`, **`filtros`** (§8). Alimenta nav e RBAC.
+1. **Fato** (`fato_*`) — tabela Prisma tipada, derivada da camada `raw` por um
+   builder no worker. **Nenhuma query de leitura toca `raw_*`** — toda agregação
+   é pré-computada no builder.
+2. **Query de leitura** — função server-side; lê o fato, devolve dado pronto,
+   revalida o RBAC de domínio (§4), sinaliza o estado do fato (§3.4).
+3. **Componente visual** — instancia template(s) (§6) com a definição declarativa.
+4. **Entrada no catálogo** — registro declarativo (§3.3).
 
-**Topologia de dependências (ordem obrigatória — ver I6):** para cada relatório:
-`migration Prisma` → `prisma generate` → `builder do fato no worker` →
-`query de leitura` → `componente visual` → `entrada no catálogo` → `RBAC`. Um
-relatório só é testável de ponta a ponta após o fato estar populado. Os 3 fatos
+### 3.2 Regra geral dos builders — campos relacionais do Odoo (N1)
+
+Todo campo `many2one` do Odoo chega no JSONB `raw` como **array `[id, "rótulo"]`**
+ou, quando nulo, o **booleano `false`** (não `null`). Regra obrigatória de todo
+builder de fato: ao ler um campo relacional, extrair `id` de `data->'campo'->>0`
+e `rótulo` de `data->'campo'->>1`; quando o valor é `false`, normalizar ambos
+para `null`. Cada coluna `*Id`/`*Nome` na §5 nomeia o campo-fonte exato.
+
+### 3.3 Catálogo de relatórios — entrada declarativa (N8)
+
+Uma entrada de catálogo tem: `id`, `título`, `domínio` (§4), `descrição`,
+`ícone`, `modeloFonte` (modelo Odoo cuja sync data o "atualizado em"), e uma
+lista de **`seções`** — cada seção com seu próprio `template` (§6), `fato`,
+`config` e `filtros`. A maioria dos relatórios tem 1 seção; R4 e R6 têm 2. A
+página `/relatorios/[id]` renderiza as seções em sequência. O catálogo alimenta
+nav e RBAC.
+
+### 3.4 Estado de build do fato (N7)
+
+Cada tabela de fato ganha a coluna **`ultimoBuildAt DateTime?`** — escrita pelo
+builder ao fim de cada rebuild. A query de leitura distingue três estados:
+- `ultimoBuildAt` nulo → **"relatório ainda sendo preparado"** (builder nunca rodou);
+- `ultimoBuildAt` preenchido e o fato sem linhas para o filtro → **"sem dado no período"**;
+- exceção na leitura → **"erro"** (com ação de repetir).
+
+### 3.5 Topologia de dependências (ordem obrigatória)
+
+Por relatório: `migration Prisma` → `prisma generate` → `builder do fato` →
+`query de leitura` → `componente` → `entrada no catálogo` → `RBAC`. Os 3 fatos
 são unidades de trabalho separadas das 6 telas.
 
-**Modelo de templates (preparação para a F6):** os 6 relatórios são instâncias
-parametrizadas dos 5 templates, não componentes sob medida. Não se constrói o
-motor no-code completo na F3 — a base declarativa fica pronta para a F6 estender.
+### 3.6 Modelo de templates (preparação para a F6)
+
+Os 6 relatórios são instâncias parametrizadas dos 5 templates, não componentes
+sob medida. Não se constrói o motor no-code da F6 agora — a base declarativa
+(catálogo + seções + templates) fica pronta para a F6 estender.
 
 ## 4. RBAC por domínio
 
-Acesso por **domínio de negócio**. Domínios (enum Prisma `ReportDomain` —
-decisão M2): `estoque`, `financeiro`, `fiscal`, `comercial`. Cada relatório
-declara seu domínio. Regra única: **o usuário vê um relatório se, e somente se,
-tem o domínio dele.**
+Acesso por **domínio** (enum Prisma `ReportDomain`: `estoque`/`financeiro`/
+`fiscal`/`comercial`). Cada relatório declara seu domínio. Regra: o usuário vê
+um relatório **sse, e somente se,** tem o domínio dele.
 
-### 4.1 Os dois eixos de permissão (reconciliação — C6)
+### 4.1 Reconciliação dos dois eixos (hierarquia F1 × domínio F3)
 
-A F1 tem **hierarquia** (`PLATFORM_ROLE_HIERARCHY` — quem gerencia quem). A F3
-acrescenta **domínio** (o que cada um vê). Regras que reconciliam os eixos:
-
-- **Quem vê o quê:** `super_admin` e `admin` veem **todos** os domínios
-  (decisão consciente — ver I7: ao surgir um 5º domínio, eles o veem
-  automaticamente; a etapa "Acesso" do modal é oculta para esses papéis).
-  `manager` e `viewer` veem apenas domínios explicitamente concedidos.
-- **Quem pode conceder domínio:** quem pode editar o usuário-alvo (regra
-  hierárquica da F1, `canEditUser`) pode conceder/revogar domínios **e**:
-  - `super_admin`/`admin` podem conceder **qualquer** domínio;
-  - `manager` (quando gerencia usuários) só pode conceder domínios que **ele
-    próprio possui** — mantém o princípio "só concede o que você tem".
+- **Quem vê:** `super_admin`/`admin` veem **todos** os domínios (decisão
+  consciente — novo domínio futuro é visto automaticamente; a etapa "Acesso" é
+  oculta para esses papéis). `manager`/`viewer` veem só domínios concedidos.
+- **Quem concede:** quem pode editar o usuário-alvo (`canEditUser`, F1) concede/
+  revoga domínios; `super_admin`/`admin` concedem qualquer domínio; `manager`
+  (se gerencia usuários) só concede domínios que **ele próprio possui**.
 
 ### 4.2 Enforcement em 3 camadas
 
-1. **Catálogo/nav** — o shell monta a grade já filtrada pelos domínios do usuário.
-2. **Página do relatório** (`/relatorios/[id]`) — o server component valida o
-   domínio antes de renderizar; URL direta fora do alcance → redirect `/relatorios`.
-3. **Query de leitura** — revalida o domínio antes de devolver dado. Mesmo que
-   1 e 2 falhem, nada vaza.
+1. **Catálogo/nav** — o shell monta a grade filtrada pelos domínios do usuário.
+2. **Página `/relatorios/[id]`** — server component valida o domínio; URL direta
+   fora do alcance → redirect `/relatorios`.
+3. **Query de leitura** — revalida o domínio antes de devolver dado.
 
 ### 4.3 Modelo de dados
 
-- **Enum Prisma `ReportDomain`** (`estoque`/`financeiro`/`fiscal`/`comercial`).
-- **Tabela `UserDomainAccess`** (`id`, `userId`, `domain ReportDomain`,
-  `grantedById`, `createdAt`; única por `(userId, domain)`). `super_admin`/`admin`
-  não têm linhas (veem tudo). `manager`/`viewer` têm uma linha por domínio.
-- **Enum `AuditAction`** ganha o valor **`user_domains_changed`** (C1) — a
-  migration do enum é uma task; o `AuditLog.details Json` carrega o diff de
-  domínios (`{ added: [...], removed: [...] }`).
-- **Backfill (I9):** a migration/seed concede o domínio `estoque` a **todos os
-  `manager`/`viewer` já existentes** — senão eles abririam a F3 com dashboard
-  vazio. Documentado como passo da migration de dados.
+- Enum Prisma **`ReportDomain`**.
+- Tabela **`UserDomainAccess`** (`id`, `userId`, `domain ReportDomain`,
+  `grantedById`, `createdAt`; único por `(userId, domain)`). `super_admin`/
+  `admin` não têm linhas. `manager`/`viewer` têm uma linha por domínio.
+- Enum **`AuditAction`** ganha `user_domains_changed` (migration do enum é task);
+  `AuditLog.details Json` carrega `{ added: [...], removed: [...] }`.
+- **Backfill:** a migration concede o domínio `estoque` a todos os `manager`/
+  `viewer` já existentes.
 
-### 4.4 UI de concessão — etapa "Acesso" no modal de usuário (C5)
+### 4.4 Etapa "Acesso" no modal de usuário (construção nova)
 
-O `user-form-dialog.tsx` hoje tem **2 etapas** (`Step = 1 | 2`: Identidade →
-Confirmação). A F3 **constrói uma 3ª etapa "Acesso"** (`Step = 1 | 2 | 3`:
-Identidade → Acesso → Confirmação). Especificação:
+O `user-form-dialog.tsx` hoje tem 2 etapas (`Step = 1 | 2`). A F3 constrói uma
+3ª etapa "Acesso" → `Step = 1 | 2 | 3` (Identidade → Acesso → Confirmação):
 
-- A etapa "Acesso" **só aparece quando o papel selecionado é `manager` ou
-  `viewer`**. Para `super_admin`/`admin` a etapa é pulada (eles veem tudo).
-- Conteúdo: seleção (checkboxes) dos domínios `ReportDomain` que o usuário pode
-  ver. Para um `manager` concedente, só os domínios que ele possui ficam
-  habilitados.
-- **Modo `create`:** os domínios entram no payload de `createUser`
-  (`src/lib/actions/users.ts`) e são persistidos na **mesma transação** que cria
-  o usuário. Default de usuário novo: **zero domínios**, com aviso visível na
-  etapa de confirmação ("este usuário ainda não verá nenhum relatório até receber
-  acesso a um domínio").
-- **Modo `update`:** alterar os domínios chama a server action de concessão;
-  registra `AuditLog` com `user_domains_changed`.
-- Mudança concreta: `Step` vira `1|2|3`, o `stepperItems` ganha o item "Acesso".
+- A etapa "Acesso" só vale para papel `manager`/`viewer`. **`stepperItems` é
+  computado a partir do role atual**: para `super_admin`/`admin` o stepper tem 2
+  itens (sem "Acesso"); para `manager`/`viewer`, 3.
+- **Troca de role no meio do fluxo (N10):** ao mudar o role para um privilegiado,
+  os domínios selecionados são **zerados**; ao voltar para `manager`/`viewer`, a
+  etapa "Acesso" reaparece vazia.
+- Conteúdo: checkboxes dos `ReportDomain`. Para um `manager` concedente, só os
+  domínios que ele possui ficam habilitados.
+- **Modo `create` (N9):** `createUser` (`src/lib/actions/users.ts`) passa a
+  receber os domínios e é **refatorado** para abrir `prisma.$transaction`
+  envolvendo `user.create` + `userDomainAccess.createMany` + o `AuditLog` de
+  `user_created`. Listar como task de refactor explícita.
+- **Default de usuário novo:** zero domínios, com aviso na etapa de confirmação
+  ("este usuário ainda não verá nenhum relatório até receber acesso a um domínio").
+- **Modo `update`:** alterar domínios chama a server action de concessão;
+  registra `AuditLog` `user_domains_changed`.
 
 ## 5. Fatos a modelar
 
-Regra geral: cada fato é tabela Prisma tipada, com **índices declarados** (I8),
-construída por um builder no worker disparado após o sync dos modelos-fonte.
+Regra geral: cada fato é tabela Prisma tipada, com **`odooId`** (ou chave
+declarada), **`ultimoBuildAt DateTime?`** (§3.4), índices declarados, e um
+builder no worker (`src/worker/fatos/`) que faz **rebuild completo** disparado
+após o sync do modelo-fonte. Extração relacional segue §3.2.
 
-### 5.1 `fato_estoque_saldo` — enriquecer (C4)
+### 5.1 `fato_estoque_saldo` — enriquecer
 
-O `FatoEstoqueSaldo` da F2 tem `produtoId/Nome`, `localId/Nome`, `quantidade`,
-`unidade`. **Falta o valor R$**, que R2 e R6 exigem. A F3 acrescenta:
-- `vrSaldo Decimal` — valor do saldo (de `raw_estoque_saldo_hoje.vr_saldo`;
-  carregar mesmo quando 0 — 1.293 de 3.218 linhas têm valor).
-- `familiaId Int?`, `familiaNome String?`, `marcaId Int?`, `marcaNome String?`
-  — via join com `raw_sped_produto` (a família/marca do produto).
-Remover o comentário "PROVISÓRIO" do modelo — a F3 o promove a definitivo.
+Modelo `FatoEstoqueSaldo` da F2 tem `odooSaldoId`, `produtoId/Nome`,
+`localId/Nome`, `quantidade`, `unidade`. A F3 acrescenta:
+- `vrSaldo Decimal` — de `raw_estoque_saldo_hoje.data->>'vr_saldo'`; carregar
+  mesmo quando 0.
+- `familiaId Int?`, `familiaNome String?` — de `data->'familia_id'` do produto
+  correspondente em `raw_sped_produto` (`familia_id[0]`/`[1]`).
+- `marcaId Int?`, `marcaNome String?` — de `data->'marca_id'` (idem).
+- **Nulos (N4):** o produto vem de `produto_id[0]`; para as ~32 linhas cujo
+  `produtoId` não existe em `raw_sped_produto`, e para produtos com
+  `familia_id`/`marca_id` = `false`, gravar `null`. **Não há join extra** com
+  `raw_sped_produto_familia` — `familia_id[1]` já traz o rótulo (§3.2).
+- Remover o comentário "PROVISÓRIO" do modelo.
+- **Não** incluir `disponivel`/`reservado`/`programado` agora (decisão M1 —
+  re-migrar é barato; entram quando um relatório os usar).
 Índices: `produtoId`, `localId`, `familiaId`, `marcaId`.
 Builder: rebuild após o snapshot de `estoque.saldo.hoje`.
 
 ### 5.2 `fato_estoque_movimento` — novo
 
-Fonte: `raw_estoque_extrato` (13.548 linhas). **Sync incremental cego** —
-`write_date` ausente (C2): o modo de `estoque.extrato` passa a `snapshot`, e o
-**builder faz rebuild completo** a cada ciclo (não incremental), disparado após
-o snapshot de `estoque.extrato`.
-Colunas: `odooId`, `produtoId/Nome`, `localId/Nome`, `data DateTime`,
-`mes String` (YYYY-MM, para agregação), `quantidade Decimal`,
-`sentido String` (`entrada`/`saida`, derivado do sinal de `quantidade`),
-`tipo String?`, `localInversoId Int?`, `natureza String` (classificação:
-`venda`/`transferencia`/`inventario`/`producao`/`outro`, derivada do prefixo de
-`origem` e de `local_inverso_id` — ver I2). **Linhas com `quantidade = 0` são
-excluídas** (≈11% do extrato — ajustes sem efeito).
-Índices: `mes`, `produtoId`, `localId`, `natureza`, `sentido`.
+Fonte: `raw_estoque_extrato` (13.548 linhas). O modelo passa a `snapshot`
+(§2); builder faz rebuild completo após o snapshot de `estoque.extrato`.
+Colunas:
+- `odooId Int @id` — `data->>'id'`.
+- `produtoId Int?`, `produtoNome String?` — de `data->'produto_id'`.
+- `localId Int?`, `localNome String?` — de `data->'local_id'`.
+- `data DateTime` — `data->>'data'`.
+- `mes String` — `YYYY-MM` derivado de `data` (para agregação mensal).
+- `quantidade Decimal` — `data->>'quantidade'`.
+- `sentido String` — `entrada` se `quantidade > 0`, `saida` se `< 0`.
+- `localInversoId Int?` — de `data->'local_inverso_id'` (coluna **crua**, para
+  o lote 2 classificar `natureza` no futuro).
+- `origem String?` — `data->>'origem'` (coluna crua, idem).
+- **Excluir linhas com `quantidade = 0`** (≈11% do extrato — ajustes sem efeito).
+- **`natureza` NÃO entra na F3 (decisão 12):** a classificação venda/
+  transferência/inventário não é derivável de forma confiável dos dados (o
+  prefixo `NF-` cobre entrada e saída; `local_inverso_id=5` diverge de `PV-` em
+  ~640 linhas). Carregamos `localInversoId` e `origem` crus; a classificação
+  fica para o lote 2, quando houver um relatório de venda que a exija e a regra
+  puder ser validada. `tipo` (código cru `00`/`04`/`07`) **não** é carregado —
+  nenhum relatório do lote 1 o usa.
+Índices: `mes`, `produtoId`, `localId`, `sentido`.
 
-### 5.3 `fato_produto_parado` — novo (C3)
+### 5.3 `fato_produto_parado` — novo
 
-Fonte: `raw_estoque_saldo_hoje_duracao_dias` + join com `raw_estoque_saldo_hoje`
-(por par produto×local) para o `vrSaldo`.
-- **Filtro `saldo > 0`** — produto×local com saldo zerado não é capital
-  encalhado; sem o filtro, R4 infla ~2,7×.
-- `dias Int` — **satura em 179** no Odoo. O fato carrega o valor cru; o
-  relatório R4 exibe a faixa "+90 dias" como teto, **sem prometer "+6 meses"**.
-- `vrSaldo Decimal` — vem do join com `raw_estoque_saldo_hoje`.
-Colunas: `produtoId/Nome`, `localId/Nome`, `saldo`, `dias`, `vrSaldo`.
+Fonte: `raw_estoque_saldo_hoje_duracao_dias` + join com `raw_estoque_saldo_hoje`.
+- **Join (N2):** por **FK direta** — `raw_estoque_saldo_hoje_duracao_dias.data->'saldo_hoje_id'->>0`
+  → `raw_estoque_saldo_hoje.data->>'id'` (cobertura 100%; **não** usar "par
+  produto×local", que não é único).
+- **Filtro `saldo > 0`** — sem ele, R4 infla ~2,7×.
+- `dias Int` — `data->>'dias'`; **satura em 179** no Odoo (o fato grava o valor
+  cru; R4 exibe a faixa "+90 dias" como teto, sem prometer mais).
+- `vrSaldo Decimal` — vem da linha de saldo correspondente (via a FK acima).
+- `unidade String?` — incluída (M3 — R4 é `DataTable` de saldo, consistente com R1).
+Colunas: `saldoHojeId Int @id` (a chave única; duração é 1:1 com saldo),
+`produtoId/Nome`, `localId/Nome`, `saldo`, `dias`, `vrSaldo`, `unidade`.
 Índices: `dias`, `produtoId`.
 Builder: rebuild após o snapshot de `estoque.saldo.hoje.duracao.dias`.
 
-### 5.4 Estado de build do fato (I4)
-
-Para distinguir "fato vazio porque ainda não foi construído" de "fato sem dado
-no período", cada builder registra um timestamp de último build. Reusa-se o
-`SyncState` do modelo-fonte (`lastSnapshotAt`) como sinal: se o modelo-fonte
-nunca sincronizou, o fato é "ainda sendo preparado"; se sincronizou e o fato
-está vazio para o filtro, é "sem dado". A query de leitura devolve um dos dois
-estados; o componente mostra mensagens distintas.
-
 ## 6. Templates de visualização
 
-Biblioteca: **Recharts** (decisão M3 — nova dependência de produção; compatível
-com Next 16 / React 19; declarativa). Cinco templates em `src/components/charts/`:
-
+Biblioteca: **Recharts** (dependência de produção nova; compatível Next 16 /
+React 19). Cinco templates em `src/components/charts/`:
 - **`KPICard`** — número único + rótulo.
-- **`DataTable`** — tabela ordenável e pesquisável. **Componente novo genérico**
-  (M4) — não é extensão do `audits-table`; o `audits-table` é específico de
-  auditoria. O `DataTable` recebe colunas declarativas.
-- **`BarChart`** — comparação/ranking.
-- **`LineChart`** — série temporal.
-- **`PieChart`** — proporção; ≤6 fatias (acima disso, top-5 + "Outros").
+- **`DataTable`** — tabela ordenável/pesquisável. **Componente novo genérico**
+  (não é extensão do `audits-table`); recebe colunas declarativas; formata
+  números com sinal e `tabular-nums` (incl. saldos negativos — M5).
+- **`BarChart`**, **`LineChart`**, **`PieChart`** (≤6 fatias; acima → top-5 + "Outros").
 
-### 6.1 Requisitos transversais
-
-`ResponsiveContainer`; **skeleton** no carregamento; **três estados distintos**:
-"fato ainda sendo preparado" (I4), "sem dado no período", e "erro de leitura"
-(com ação de repetir); tooltips no hover; legendas visíveis; gridlines de baixo
-contraste; paleta categórica acessível testada no dark mode; números em **pt-BR**;
-`tabular-nums` em colunas numéricas; tabelas com `aria-sort`. Cada template
-recebe uma definição declarativa (dados + config) — base da F6.
+**Transversais:** `ResponsiveContainer`; **skeleton** no loading; os **3 estados**
+de §3.4 ("preparando", "sem dado", "erro" com repetir); tooltips; legendas;
+gridlines de baixo contraste; paleta categórica acessível testada no dark mode;
+números pt-BR; tabelas com `aria-sort`. Cada template recebe definição
+declarativa (dados + config) — base da F6.
 
 ## 7. Shell do dashboard
 
-- **`/relatorios`** — landing: grade responsiva de **cards de relatório**
-  (`grid gap-4 sm:grid-cols-2 lg:grid-cols-3`), agrupada por domínio com cabeçalho
-  de seção. Card: ícone, título, descrição curta, badge do domínio. Filtrada
-  pelos domínios do usuário. Estado vazio se o usuário não tem domínio nenhum
-  ("você ainda não tem acesso a nenhum domínio de relatórios").
-- **`/relatorios/[id]`** — página do relatório: `PageShell` + `PageHeader`
-  (breadcrumb/voltar para `/relatorios`), barra de **filtros/período** no topo
-  (declarados pelo catálogo — §8), o template cheio dentro de um `Card`, e o
-  indicador **"atualizado em <data/hora>"** (a partir de `last_snapshot_at`/
-  `last_incremental_at` do modelo-fonte — **não** de `record_count`, que é
-  contado ao vivo e não serve de timestamp — ver I1).
-- Item **"Relatórios"** no `NAV_ITEMS`: sem `section` (grupo default, junto de
-  "Dashboard"), sem `visibleTo` (visível a todo autenticado; o conteúdo filtra) — M1.
-- Tudo no design system da F1 (`PageShell`, `PageHeader`, `Card`, tokens, dark
-  mode, ícones lucide, `motion` fade-in).
+- **`/relatorios`** — landing: grade responsiva de cards
+  (`grid gap-4 sm:grid-cols-2 lg:grid-cols-3`), agrupada por domínio com
+  cabeçalho de seção, filtrada pelos domínios do usuário. Card: ícone, título,
+  descrição, badge do domínio. Estado vazio se o usuário não tem domínio.
+- **`/relatorios/[id]`** — `PageShell` + `PageHeader` (breadcrumb para
+  `/relatorios`), barra de filtros/período (declarados pela seção do catálogo),
+  as seções do relatório em sequência, e o indicador **"atualizado em <data/hora>"**.
+  Freshness (N6): o catálogo declara `modeloFonte` por relatório; o indicador usa
+  o `lastSnapshotAt` desse modelo no `SyncState` combinado com o `ultimoBuildAt`
+  do fato (§3.4) — exibe o **menor** dos dois (o dado é tão fresco quanto a etapa
+  mais atrasada). Nunca usa `record_count`.
+- Item **"Relatórios"** no `NAV_ITEMS`: sem `section`, sem `visibleTo`.
+- Design system da F1 (`PageShell`, `PageHeader`, `Card`, tokens, dark mode,
+  ícones lucide, `motion` fade-in).
 
 ## 8. Os 6 relatórios de estoque (lote 1)
 
-Todos no domínio `estoque`. De-para com a research (M5): R5 spec = R6 research;
-R6 spec = R8 research; os demais coincidem.
+Todos no domínio `estoque`. De-para com a research: R5 spec = R6 research;
+R6 spec = R8 research; demais coincidem.
 
-| # | Relatório | Pergunta | Template | Fato | Filtros |
-|---|---|---|---|---|---|
-| R1 | Saldo por produto e armazém | Quanto tenho de cada produto e onde? | `DataTable` | `fato_estoque_saldo` | produto, armazém, família, busca textual |
-| R2 | Valor de estoque por armazém | Onde está o capital imobilizado? | `BarChart` | `fato_estoque_saldo` | — (visão global) |
-| R3 | Entradas vs. saídas por mês | Qual o pulso da movimentação física? | `LineChart` | `fato_estoque_movimento` | período (default últimos 3 meses), armazém |
-| R4 | Produtos parados (saldo > 0) | Que capital está encalhado? | `KPICard` + `DataTable` | `fato_produto_parado` | faixa de dias (30/60/90+), armazém |
-| R5 | Top produtos movimentados | O que mais movimentou? | `BarChart` | `fato_estoque_movimento` | período, sentido (entrada/saída) |
-| R6 | Concentração do estoque | Como é o mix do portfólio? | `PieChart` família + `BarChart` marca | `fato_estoque_saldo` | — |
+| # | Relatório | Seções (template · fato) | Filtros | Query |
+|---|---|---|---|---|
+| R1 | Saldo por produto e armazém | `DataTable` · `fato_estoque_saldo` | produto, armazém, família, busca | exibe todas as linhas; saldos negativos aparecem normalmente |
+| R2 | Valor de estoque por armazém | `BarChart` · `fato_estoque_saldo` | — | agrega `vrSaldo` por local; filtra `vrSaldo > 0` |
+| R3 | Entradas vs. saídas por mês | `LineChart` · `fato_estoque_movimento` | período (default últimos 3 meses), armazém | soma `quantidade` por `mes`×`sentido`; movimento físico total |
+| R4 | Produtos parados | `KPICard` + `DataTable` · `fato_produto_parado` | faixa de dias (30/60/90+), armazém | `saldo > 0`; teto exibido "+90 dias" |
+| R5 | Top produtos movimentados | `BarChart` · `fato_estoque_movimento` | período, sentido | top-N por soma de `quantidade`; movimento físico |
+| R6 | Concentração do estoque | `PieChart` (família) + `BarChart` (marca) · `fato_estoque_saldo` | — | agrega `vrSaldo`; filtra `vrSaldo > 0`; família/marca nulas → fatia **"Não classificado"** |
 
-Notas que vêm da Review #1:
-- **R3/R5** medem **movimento físico total** (todas as naturezas). Excluem
-  `quantidade = 0`. O fato carrega `natureza` para um relatório de venda futuro
-  (lote 2) filtrar — não se mistura venda com transferência no lote 1.
-- **R3:** janela útil de dados é fev–mai/2026 (antes disso o volume é residual);
-  o seletor de período usa default "últimos 3 meses" e exibe aviso se o intervalo
-  cair em meses sem volume.
-- **R4:** "produtos parados" = `saldo > 0 AND dias > limiar`; o teto exibido é
-  "+90 dias" (saturação do dado em 179) — sem prometer faixas maiores.
-- **R6:** "concentração" resolve a ambiguidade "família e marca" — são **dois
-  gráficos** na mesma página: `PieChart` por família (9 famílias → top-5 +
-  "Outros") e `BarChart` por marca (31 marcas → top-N).
+Notas: **R3** — janela útil fev/2026+; o aviso compara o período escolhido com
+essa janela conhecida. **R3/R5** medem movimento físico total (sem `natureza`).
+**R6** — 9 famílias (top-5 + "Outros" no PieChart), 31 marcas (top-N no
+BarChart), categoria "Não classificado" para nulos (§5.1).
 
 ## 9. Componentes e arquivos (visão macro)
 
 ```
 prisma/schema.prisma              +enum ReportDomain; +AuditAction.user_domains_changed;
                                   +UserDomainAccess; +FatoEstoqueMovimento;
-                                  +FatoProdutoParado; FatoEstoqueSaldo enriquecido
-prisma/migrations/                migration F3 + seed/backfill UserDomainAccess
-src/worker/catalog/model-catalog.ts  estoque.extrato: incremental → snapshot (C2)
+                                  +FatoProdutoParado; FatoEstoqueSaldo enriquecido;
+                                  +ultimoBuildAt nas 3 tabelas de fato
+prisma/migrations/                migration F3 + backfill UserDomainAccess (estoque
+                                  p/ manager/viewer existentes)
+src/worker/catalog/model-catalog.ts  estoque.extrato: incremental → snapshot
 src/worker/fatos/                 fato-estoque-saldo (enriquecido), fato-estoque-movimento,
-                                  fato-produto-parado
+                                  fato-produto-parado — todos gravam ultimoBuildAt
 src/lib/reports/domains.ts        ReportDomain + helpers de RBAC por domínio
-src/lib/reports/catalog.ts        catálogo declarativo dos 6 relatórios (com filtros)
-src/lib/actions/report-data.ts    queries de leitura (revalidam RBAC; sinalizam estado de fato)
-src/lib/actions/domain-access.ts  server actions de concessão de domínio (+ auditoria)
+src/lib/reports/catalog.ts        catálogo declarativo (entrada com seções)
+src/lib/actions/report-data.ts    queries de leitura (revalidam RBAC; sinalizam estado)
+src/lib/actions/domain-access.ts  server actions de concessão de domínio + auditoria
 src/components/charts/            KPICard, DataTable, BarChart, LineChart, PieChart
 src/app/(protected)/relatorios/   page.tsx (landing) + [id]/page.tsx (relatório)
-src/components/users/user-form-dialog.tsx  +etapa "Acesso" (Step 1|2|3)
-src/lib/actions/users.ts          createUser aceita domínios (persistência transacional)
+src/components/users/user-form-dialog.tsx  +etapa "Acesso"; stepper dinâmico por role
+src/lib/actions/users.ts          createUser refatorado: $transaction (user + domínios + audit)
 src/lib/constants/nav.ts          +item Relatórios
 ```
 
 ## 10. Testes
 
-- Builders de fato — derivação `raw → fato` (incl. filtro `saldo>0` em parado,
-  exclusão `quantidade=0` em movimento, join de família/marca/vrSaldo).
-- RBAC por domínio — as 3 camadas; foco: `manager`/`viewer` sem o domínio não
-  acessam (nem nav, nem página, nem dados); regra de concessão (§4.1).
-- Templates — render com dado, "sem dado", "fato não preparado", e erro.
-- Queries de leitura — agregação correta + revalidação de RBAC + sinalização de
-  estado de fato.
+- Builders de fato — derivação `raw → fato`: extração `[id,nome]`/`false→null`
+  (§3.2), filtro `saldo>0` (parado), exclusão `quantidade=0` (movimento), join
+  por `saldo_hoje_id` (parado), nulos de família/marca (saldo), `ultimoBuildAt`.
+- RBAC por domínio — 3 camadas; `manager`/`viewer` sem o domínio não acessam
+  (nav, página, dados); regra de concessão (§4.1); transação de `createUser`.
+- Templates — render com dado, "preparando", "sem dado", "erro".
+- Queries de leitura — agregação correta, filtros (`vrSaldo>0` em R2/R6),
+  revalidação de RBAC, sinalização de estado de fato.
 - Verificação: `tsc`, `lint`, `next build`, `jest`; UAT visual dos 6 relatórios.
 
 ## 11. Resumo das decisões
 
 | # | Decisão |
 |---|---|
-| 1 | Relatório = unidade de 4 camadas; nenhuma query lê `raw_*` direto. |
-| 2 | RBAC por domínio, 3 camadas; `super_admin`/`admin` veem tudo (decisão consciente). |
+| 1 | Relatório = 4 camadas; nenhuma query lê `raw_*`; builders extraem `[id,nome]`/`false→null`. |
+| 2 | RBAC por domínio, 3 camadas; `super_admin`/`admin` veem tudo (consciente). |
 | 3 | Concessão: quem edita o usuário concede; `manager` só concede o que possui. |
-| 4 | `UserDomainAccess` (tabela); `ReportDomain` e o novo `AuditAction.user_domains_changed` são enums Prisma (migration). |
-| 5 | Etapa "Acesso" é construção nova no modal (Step 1|2|3); só para `manager`/`viewer`; `create` persiste domínios na mesma transação; novo usuário nasce com zero domínios. |
-| 6 | Backfill: `manager`/`viewer` existentes recebem o domínio `estoque` na migration. |
-| 7 | 3 fatos com colunas/índices/joins definidos em §5; builders fazem rebuild completo. |
-| 8 | `estoque.extrato` muda de `incremental` para `snapshot` (conserto de ingestão da F2). |
-| 9 | 5 templates Recharts (dependência de produção nova); `DataTable` é componente novo genérico. |
-| 10 | 6 relatórios de estoque (lote 1); R6 = pizza família + barra marca; R3/R5 = movimento físico. |
-| 11 | Freshness dos relatórios vem de `last_*At` do `SyncState`, não de `record_count`. |
+| 4 | `UserDomainAccess` (tabela); `ReportDomain` e `AuditAction.user_domains_changed` são enums Prisma. |
+| 5 | Etapa "Acesso" nova no modal (stepper dinâmico por role); `create` persiste domínios em `$transaction`; novo usuário nasce com zero domínios. |
+| 6 | Backfill: `manager`/`viewer` existentes recebem o domínio `estoque`. |
+| 7 | 3 fatos com colunas/índices/joins/`ultimoBuildAt` definidos em §5; rebuild completo. |
+| 8 | `estoque.extrato` muda de `incremental` para `snapshot` (conserto da F2). |
+| 9 | 5 templates Recharts; `DataTable` é componente novo genérico. |
+| 10 | 6 relatórios de estoque (lote 1); R4/R6 multi-seção; R6 = pizza família + barra marca. |
+| 11 | Freshness = menor entre `lastSnapshotAt` (raw) e `ultimoBuildAt` (fato); nunca `record_count`. |
+| 12 | `natureza` do movimento (venda/transferência/inventário) fica fora da F3 — dado não permite classificação confiável; carregam-se `localInversoId` e `origem` crus para o lote 2. |
+| 13 | Catálogo declarativo: entrada com lista de `seções` (template+fato+config+filtros) — comporta relatórios multi-template e prepara a F6. |
