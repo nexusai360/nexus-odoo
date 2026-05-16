@@ -26,7 +26,7 @@ export async function syncSnapshot(
     syncedAt: now,
   }));
   await prisma.$transaction(async (tx) => {
-    const raw = (tx as Record<string, { deleteMany: Function; createMany: Function }>)[rawTableKey];
+    const raw = (tx as Record<string, { deleteMany: (...args: unknown[]) => Promise<unknown>; createMany: (...args: unknown[]) => Promise<unknown> }>)[rawTableKey];
     await raw.deleteMany({});
     if (rows.length) await raw.createMany({ data: rows });
   });
