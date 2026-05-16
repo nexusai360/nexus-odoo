@@ -1,0 +1,14 @@
+node_modules
+.next
+.git
+.gitignore
+.env*
+docker-compose*.yml
+docs
+.context
+CLAUDE.md
+AGENTS.md
+README.md
+.github
+coverage
+*.md
