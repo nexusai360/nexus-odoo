@@ -124,6 +124,22 @@ Cada sub-projeto percorre o fluxo abaixo. Classificar o esforço pela demanda �
 [11] DEPLOY ASSISTIDO ───────────────► requer humano (validação final)
 ```
 
+### Modo autônomo — regra de continuidade (inegociável)
+
+**Modo autônomo é o padrão e significa seguir sozinho do começo ao fim.** Uma
+vez iniciado o trabalho de uma fase, Claude percorre as etapas `[2]→[9]` —
+e encadeia uma fase na seguinte (F2→F3→F4...) — **sem parar para pedir
+permissão de continuar**. Não existe checkpoint de "posso seguir?" entre
+etapas autônomas. Concluiu uma etapa, começa a próxima.
+
+Claude só interrompe e chama o humano nos pontos marcados `requer humano`:
+**[1] Brainstorm** (entrada de requisitos), **[10] `/ultrareview`** (disparo
+manual), **[11] Deploy** (validação final) e o **merge de PR para `main`**.
+Erro/bloqueio real também interrompe. Fora disso: não chamar o humano, não
+perguntar se pode prosseguir — seguir até o fim do escopo combinado.
+
+Ao terminar tudo, aí sim chamar o humano com o resumo final.
+
 **[1] Brainstorm** — `superpowers:brainstorming`. Output: spec em `docs/superpowers/specs/`.
 **[2] Design UI/UX** — `ui-ux-pro-max`. Autoridade de design. Sempre antes de qualquer UI. Alimenta o plano.
 **[3] Plan** — `superpowers:writing-plans`. Plano com tasks bite-sized, sem placeholders. Salvo em `docs/superpowers/plans/`.
