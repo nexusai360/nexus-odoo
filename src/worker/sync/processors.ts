@@ -69,6 +69,15 @@ export async function processSnapshotCycle(
     };
     await runCycle(deps, entry.odooModel);
   }
+
+  // Fato provisório: reconstruir após o snapshot de estoque.saldo.hoje.
+  const { rebuildFatoEstoqueSaldo } = await import("../fatos/fato-estoque-saldo");
+  try {
+    const n = await rebuildFatoEstoqueSaldo(ctx.prisma);
+    console.log(`[worker] fato_estoque_saldo reconstruído: ${n} linhas`);
+  } catch (err) {
+    console.error("[worker] falha ao reconstruir fato_estoque_saldo:", err);
+  }
 }
 
 export async function processReconcileCycle(
