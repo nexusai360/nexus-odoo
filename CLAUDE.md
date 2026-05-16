@@ -15,7 +15,7 @@
 **Domínio:** empresa de movimentação e entrega de equipamentos de academia no Brasil — estoque, financeiro, fiscal, comercial.
 **ERP de origem:** Odoo da comunidade (OCA Brasil), instância Tauga (`grupojht.tauga.online`), implantado por terceiros.
 
-**Não temos acesso ao banco de dados do Odoo.** O único acesso é a **API XML-RPC** (usuário + senha). Toda extração passa por ela.
+**Não temos acesso ao banco de dados do Odoo.** O único acesso é a **API JSON-RPC** (usuário + senha). Toda extração passa por ela.
 
 **O que o projeto entrega — duas frentes sobre uma base comum:**
 - **Frente A — Dashboard de relatórios:** painel visual com gráficos e relatórios pré-definidos, controle de acesso por perfil.
@@ -51,7 +51,7 @@ Ambas leem de um **banco interno (cache)** alimentado por sincronização perió
                                            │  Worker BullMQ  │
                                            │  cron polling   │
                                            └────────▲────────┘
-                                                    │ XML-RPC
+                                                    │ JSON-RPC
                                            ┌────────┴────────┐
                                            │  Odoo Tauga     │
                                            └─────────────────┘
@@ -63,7 +63,7 @@ Ambas leem de um **banco interno (cache)** alimentado por sincronização perió
 nexus-odoo/
 ├── app/      → Next.js — o dashboard            (container "app")
 ├── mcp/      → servidor MCP semântico            (container "mcp")
-├── worker/   → cron de sincronização XML-RPC     (container "worker")
+├── worker/   → cron de sincronização JSON-RPC     (container "worker")
 ├── prisma/   → schema do cache (COMPARTILHADO)
 ├── discovery/→ script(s) Python de mapeamento do Odoo (F0)
 └── docs/     → specs, plans, runbooks, git-workflow
@@ -93,7 +93,7 @@ Ordem: **F0 → F1 → F2 → F3 → F4 → F5**. F3 e F4 podem ser paralelas ap
 ## 5. Decisões canônicas já tomadas (não rediscutir sem motivo)
 
 1. **Cache local é obrigatório.** Dashboard e MCP leem do Postgres interno, nunca do Odoo ao vivo.
-2. **Sem fallback XML-RPC nas tools.** O Odoo é tocado **somente** pelo cron de sincronização. Nenhuma pergunta de usuário dispara chamada ao Odoo. Toda tool retorna o timestamp da última sync (`atualizado há Xs`).
+2. **Sem fallback JSON-RPC nas tools.** O Odoo é tocado **somente** pelo cron de sincronização. Nenhuma pergunta de usuário dispara chamada ao Odoo. Toda tool retorna o timestamp da última sync (`atualizado há Xs`).
 3. **A IA consulta via ferramentas semânticas (MCP próprio), não text-to-SQL livre.** Tools de vocabulário de negócio (`faturamento_no_periodo`, `estoque_modelo`...), cada uma código TS validado/testado/auditado.
 4. **Não usar DuckFly.** MCP próprio em TypeScript com `@modelcontextprotocol/sdk`.
 5. **Caminho 3 — perguntas fora do catálogo:**
@@ -102,6 +102,7 @@ Ordem: **F0 → F1 → F2 → F3 → F4 → F5**. F3 e F4 podem ser paralelas ap
    - **3c** modo BI/avançado → **Postgres MCP** (text-to-SQL controlado, read-only), restrito a perfil admin/analista, resposta com aviso de "consulta dinâmica".
 6. **RBAC estrutural em 7 camadas** (não depende de prompt): catálogo filtrado por usuário, validação no handler, tenant scoping injetado, user Postgres com GRANT mínimo, RLS opcional, validação Zod, audit + rate limit.
 7. **Postgres MCP (Crystal DBA) também em ambiente dev/DBA** — uso de produtividade, separado do MCP semântico de produção.
+8. **Protocolo Odoo: JSON-RPC.** O XML-RPC do Odoo quebra no `fields_get` de modelos com metadados `None` (customização SPED da Tauga). A F0 comprovou JSON-RPC estável. Cliente em `src/worker/odoo/client.ts`.
 
 ---
 
