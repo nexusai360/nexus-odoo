@@ -19,34 +19,23 @@ Executado em **6 blocos**, cada um com plano granular próprio + double-check +
 verificação antes do seguinte. Roteiro: `docs/superpowers/plans/2026-05-16-fundacao.md`.
 Spec: `docs/superpowers/specs/2026-05-15-fundacao-design.md`.
 
-### Bloco 1 — Scaffolding base — 🔄 EM EXECUÇÃO
+### Bloco 1 — Scaffolding base — ✅ CONCLUÍDO
 Plano: `docs/superpowers/plans/2026-05-16-fundacao-bloco1-scaffolding.md`
 
-| Task | Estado |
-|---|---|
-| 1 — `package.json` | ✅ commitado |
-| 2 — configs (tsconfig, next.config, eslint, postcss, components.json, .nvmrc) | ✅ commitado |
-| 3 — `jest.config.ts` | ✅ commitado |
-| 4 — `.env.local` de dev | ✅ feito (arquivo existe, gitignored, não commitado) |
-| 7 (parcial) — `.dockerignore` | ✅ commitado (adiantado) |
-| **5 — `npm install` + `tsc` + `.gitignore`** | ⬜ **PENDENTE — RETOMAR AQUI** |
-| 6 — Prisma esqueleto (`schema.prisma`, `prisma.config.ts`) | ⬜ pendente |
-| 7 (resto) — `docker/Dockerfile`, `docker/entrypoint.sh` | ⬜ pendente |
-| 8 — `docker-compose.yml` | ⬜ pendente |
-| 9 — verificação do Bloco 1 | ⬜ pendente |
+Todas as 9 tasks concluídas. Verificação: `tsc --noEmit` ✅ · `prisma validate` ✅ · `docker compose config` ✅ · git limpo ✅.
 
-### Blocos 2–6 — ⬜ não iniciados
-2: banco + libs · 3: auth/RBAC · 4: UI + telas auth · 5: telas protegidas ·
-6: worker + CI. Cada um recebe plano granular próprio quando chegar a vez.
+### Bloco 2 — Banco + libs — ⬜ **PRÓXIMO**
+Plano ainda não criado. Criar plano granular com double-check antes de executar.
+
+### Blocos 3–6 — ⬜ não iniciados
+3: auth/RBAC · 4: UI + telas auth · 5: telas protegidas · 6: worker + CI.
 
 ## PARA RETOMAR
 
 1. `git checkout feat/fundacao` (se não estiver nela).
-2. Abrir `docs/superpowers/plans/2026-05-16-fundacao-bloco1-scaffolding.md`.
-3. Continuar da **Task 5** (`npm install --legacy-peer-deps`, `tsc --noEmit`,
-   adicionar `src/generated/` ao `.gitignore`).
-4. Seguir Tasks 6→9, depois os Blocos 2→6, em modo autônomo até concluir o F1.
-5. Ao fim do F1: verificação, e PR `feat/fundacao` → `main`.
+2. Criar plano granular para o **Bloco 2** (banco + libs) com double-check.
+3. Executar Blocos 2→6 em modo autônomo até concluir o F1.
+4. Ao fim do F1: verificação, e PR `feat/fundacao` → `main`.
 
 ## Notas
 
