@@ -82,23 +82,28 @@ mock `server-only` ausente, `seed.ts` (`Prisma.JsonNull`), `redis.ts` (lazyConne
 `theme/route.ts` (runtime nodejs, sem `any`), 6 erros de ESLint herdados,
 **auth split-config** (Prisma fora do Edge Runtime — resolve o warning crônico do middleware).
 
-## Estado da Fase 1
+## Estado da Fase 1 — ✅ verificada
 
 `tsc --noEmit` ✅ · `eslint` ✅ · `next build` ✅ (13 rotas, sem warnings) · `jest` ✅ (5 testes).
-Middleware verificado: rotas `(protected)` redirecionam para `/login`; rotas públicas e `/api/health` OK.
+
+**UAT funcional executado** (Docker + Postgres + Redis no ar):
+- Migration `20260516080504_init` aplicada (6 tabelas) e seed (owner + 4 settings) ✅
+- Login completo via fluxo NextAuth (CSRF → credentials → bcrypt → Prisma → Redis rate-limit → JWT → session) ✅
+- Middleware: rotas `(protected)` redirecionam sem auth, liberam autenticadas ✅
+- 4 rotas protegidas renderizam HTTP 200 autenticadas ✅
+- Mutation real (`POST /api/user/theme`) persiste no banco ✅
+
+**Ambiente Docker:** projeto `nexus-odoo` (containers `nexus-odoo-db-1`, `nexus-odoo-redis-1`);
+Postgres na porta 5436 (5433 em uso por outro projeto), Redis na 6380.
+Owner do seed: `nexusai360@gmail.com` (credencial padrão do projeto, em `.env.local`).
 
 ## PARA RETOMAR / PENDÊNCIAS
 
-1. **UAT com banco** — não executado: Docker indisponível nesta máquina/sessão.
-   Subir Postgres e validar o fluxo completo (login → dashboard → CRUD usuários → perfil):
-   ```sh
-   docker compose up -d db
-   DATABASE_URL=$(grep '^DATABASE_URL' .env.local | cut -d= -f2-) npx prisma migrate dev --name init
-   DATABASE_URL=$(grep '^DATABASE_URL' .env.local | cut -d= -f2-) npx prisma db seed
-   npm run dev   # validar telas no browser
-   ```
-2. Após o UAT: abrir PR `feat/fundacao` → `main` (com `/gsd-code-review` + `/gsd-ui-review`).
-3. Migration + seed do Bloco 2 fazem parte do passo 1 (pendentes desde então — Docker).
+1. **Validação visual no browser** (opcional, recomendada antes do merge): `npm run dev`,
+   logar e clicar pelas telas — criar/editar/excluir usuário, os 4 cards de perfil.
+   O fluxo HTTP já foi validado; falta só a inspeção visual humana.
+2. Abrir PR `feat/fundacao` → `main` com `/gsd-code-review` + `/gsd-ui-review`.
+3. Fase 2 (Ingestão/cache) é a próxima — worker já tem o scaffold BullMQ pronto.
 
 ## Notas
 

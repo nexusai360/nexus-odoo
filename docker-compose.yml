@@ -1,6 +1,8 @@
 # Stack genérica para desenvolvimento local.
 # Para produção, ver docker-compose.production.yml (não versionado).
 
+name: nexus-odoo
+
 services:
   app:
     image: nexus-odoo:local
@@ -44,7 +46,7 @@ services:
       - POSTGRES_PASSWORD=${DB_PASSWORD:-nexus}
       - POSTGRES_DB=nexus_odoo
     ports:
-      - "5433:5432"
+      - "5436:5432"
     volumes:
       - nexus_odoo_postgres:/var/lib/postgresql/data
 
