@@ -74,6 +74,12 @@ export async function createUser(
   try {
     const me = await getCurrentUser();
     if (!me) return { success: false, error: "Não autenticado" };
+    // Gate de gestão de usuários: viewer/manager não administram usuários.
+    // `canCreateRole` sozinho deixaria um manager criar viewer/manager —
+    // este check fecha esse furo (consistente com listUsers e /usuarios).
+    if (me.platformRole === "viewer" || me.platformRole === "manager") {
+      return { success: false, error: "Acesso negado" };
+    }
 
     const parsed = CreateUserInput.safeParse(rawInput);
     if (!parsed.success) return { success: false, error: "Dados inválidos" };
@@ -139,6 +145,10 @@ export async function updateUser(rawInput: unknown): Promise<ActionResult> {
     const parsed = UpdateUserInput.safeParse(rawInput);
     if (!parsed.success) return { success: false, error: "Dados inválidos" };
     const input = parsed.data;
+
+    if (input.name === undefined && input.platformRole === undefined) {
+      return { success: true };
+    }
 
     const target = await prisma.user.findUnique({
       where: { id: input.id },

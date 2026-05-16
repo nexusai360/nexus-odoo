@@ -52,8 +52,11 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
             token.mustChangePassword = fresh.mustChangePassword;
             if (!fresh.isActive) return null as any;
           }
-        } catch {
-          // se falhar, manter token anterior — não derrubar auth
+        } catch (err) {
+          // Falha transitória do banco: mantém o token anterior em vez de
+          // derrubar todas as sessões. Logado para não silenciar de vez —
+          // se recorrente, indica problema de conectividade com o Postgres.
+          console.error("[auth.jwt] falha ao revalidar token:", err);
         }
       }
 

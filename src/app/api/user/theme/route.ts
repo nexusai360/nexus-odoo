@@ -16,17 +16,30 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Não autenticado" }, { status: 401 });
   }
 
-  const body = await request.json();
-  const theme = body.theme;
+  let theme: unknown;
+  try {
+    const body = await request.json();
+    theme = body?.theme;
+  } catch {
+    return NextResponse.json({ error: "Corpo inválido" }, { status: 400 });
+  }
 
   if (theme !== "dark" && theme !== "light" && theme !== "system") {
     return NextResponse.json({ error: "Tema inválido" }, { status: 400 });
   }
 
-  await prisma.user.update({
-    where: { id: session.user.id },
-    data: { theme },
-  });
+  try {
+    await prisma.user.update({
+      where: { id: session.user.id },
+      data: { theme },
+    });
+  } catch (err) {
+    console.error("[api/user/theme]", err);
+    return NextResponse.json(
+      { error: "Erro ao salvar tema" },
+      { status: 500 },
+    );
+  }
 
   // Client já gravou cookies via document.cookie; o server só confirma o POST.
   // Não sobrescrevemos via Set-Cookie para não causar nenhuma corrida

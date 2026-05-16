@@ -13,8 +13,22 @@ type ProfileResult = { success?: boolean; error?: string };
 
 const UpdateProfileInput = z.object({
   name: z.string().min(2).max(120).optional(),
-  avatarUrl: z.string().max(262144).nullable().optional(),
+  // Avatar é data-URL de imagem (webp gerado por canvas no client).
+  // Limite de 256 KB e prefixo obrigatório `data:image/` — rejeita
+  // payloads arbitrários numa coluna que é renderizada em <img>.
+  avatarUrl: z
+    .string()
+    .max(262144)
+    .regex(/^data:image\//)
+    .nullable()
+    .optional(),
   theme: z.enum(["dark", "light", "system"]).optional(),
+});
+
+const ChangePasswordInput = z.object({
+  currentPassword: z.string().min(1).max(72),
+  newPassword: z.string().min(8).max(72),
+  confirmPassword: z.string().min(1).max(72),
 });
 
 export async function updateProfile(rawInput: unknown): Promise<ProfileResult> {
@@ -54,18 +68,21 @@ export async function updateProfile(rawInput: unknown): Promise<ProfileResult> {
 
 // --- T19: changePassword ---------------------------------------------------
 
-export async function changePassword(input: {
-  currentPassword: string;
-  newPassword: string;
-  confirmPassword: string;
-}): Promise<ProfileResult> {
+export async function changePassword(
+  rawInput: unknown,
+): Promise<ProfileResult> {
   try {
     const me = await getCurrentUser();
     if (!me) return { error: "Não autenticado" };
 
-    if (input.newPassword.length < 8) {
-      return { error: "A nova senha precisa ter ao menos 8 caracteres." };
+    const parsed = ChangePasswordInput.safeParse(rawInput);
+    if (!parsed.success) {
+      return {
+        error: "A nova senha precisa ter entre 8 e 72 caracteres.",
+      };
     }
+    const input = parsed.data;
+
     if (input.newPassword !== input.confirmPassword) {
       return { error: "As senhas não coincidem." };
     }
