@@ -42,17 +42,20 @@ Ver `discovery/README.md` para pré-requisitos e ordem de execução.
   esta instância não usa o módulo de RH do Odoo, e comissão não aparece como
   modelo próprio. A confirmar com a Tauga se forem requisito de relatório.
 
-### Camada 2 — 37 modelos mapeados
+### Camada 2 — 79 modelos mapeados
 
-Todos os 37 modelos selecionados tiveram a estrutura (campos) capturada.
-**36 aptos a delta** via `write_date`; 1 em "verificar"
-(`sped.produto.variante` — é uma view de banco, sem `write_date` confiável).
+Após review completo dos 106 modelos de negócio com dados, a Camada 2 foi
+expandida de 37 para **79 modelos**. Os 27 periféricos — logs (`auditoria.log`
+com 12M registros, `api.log`), calendário (`finan.dia.*`), templates de
+impressão, módulo de dashboard de terceiro (`ks_dashboard_ninja.*`), chat —
+ficaram de fora, assim como as 145 tabelas de referência fiscal.
 
-**2 modelos com amostra de dados vazia** (estrutura OK, dados não lidos):
-- `pedido.documento` (1094 campos) — um campo armazenado referencia
-  `chamado.mensagem`, modelo restrito ao grupo Chamado/Contratos.
-- `res.users` (344 campos) — campo referencia `res.users.log`, restrito a
-  Administração.
+- **12.542 campos** documentados no total.
+- **76 modelos aptos a delta** via `write_date`; 3 em "verificar" (views de
+  banco sem `write_date` confiável).
+- **3 modelos com amostra de dados vazia** (estrutura OK, dados bloqueados por
+  campos que referenciam modelos restritos): `pedido.documento`,
+  `pedido.documento.historico.tempo`, `res.users`.
 
 ### Implicações para as próximas fases
 
@@ -63,7 +66,7 @@ Todos os 37 modelos selecionados tiveram a estrutura (campos) capturada.
   mais permissão. O mesmo vale para os 118 modelos `sem-acesso` do censo, se
   algum deles vier a ser necessário.
 - **F2 (delta):** `write_date` é utilizável como cursor de sincronização em
-  36 dos 37 modelos — o polling delta é viável.
+  76 dos 79 modelos — o polling delta é viável.
 - Detalhe de campos, relações e amostras por modelo:
   `discovery/output/modelos/<modelo>.json` e `output/mapa-profundo.md`
   (não versionados — contêm dados reais).
