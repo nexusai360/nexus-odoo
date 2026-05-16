@@ -84,8 +84,10 @@ Independência das frentes está **na camada de cima** (app e mcp evoluem sem se
 | **F3** | Dashboard de relatórios | Painel com relatórios lendo do cache; RBAC por relatório |
 | **F4** | MCP semântico | Servidor MCP, catálogo de tools, RBAC 7 camadas, Caminho 3 |
 | **F5** | Integração WhatsApp | Agente conectado ao MCP via WhatsApp |
+| **F6** | Construtor de relatórios | Construtor in-app de relatórios para admin/super_admin: wizard guiado por IA que parametriza templates (sem gerar código). Ver `docs/ideias/2026-05-16-construtor-relatorios.md` |
 
 Ordem: **F0 → F1 → F2 → F3 → F4 → F5**. F3 e F4 podem ser paralelas após F2.
+**F6 vem por último** — depende da camada semântica da F4 e do modelo de templates da F3.
 **Cada sub-projeto tem sua própria spec → plan → execução.** Não se planeja tudo de uma vez.
 
 ---
@@ -111,40 +113,51 @@ Ordem: **F0 → F1 → F2 → F3 → F4 → F5**. F3 e F4 podem ser paralelas ap
 Cada sub-projeto percorre o fluxo abaixo. Classificar o esforço pela demanda — não matar mosca com fuzil.
 
 ```
-[1] BRAINSTORM ──────────────────────► requer humano
-[2] DESIGN UI/UX ────────────────────┐
-[3] PLAN v1 ─────────────────────────│
-[4] REVIEW PROFUNDA #1 ──────────────│ autônomo
-[5] PLAN v2 ─────────────────────────│
-[6] REVIEW PROFUNDA #2 ──────────────│
-[7] EXECUÇÃO (Superpowers) ──────────│
-[8] VERIFICAÇÃO ─────────────────────│
-[9] CODE REVIEW + UI REVIEW ─────────│
+[1]  BRAINSTORM → SPEC v1 ───────────► requer humano
+[2]  DESIGN UI/UX ───────────────────┐
+[3]  REVIEW DA SPEC #1 → SPEC v2 ────│
+[4]  REVIEW DA SPEC #2 → SPEC v3 ────│
+[5]  PLAN v1 (sobre a SPEC v3) ──────│ autônomo
+[6]  REVIEW DO PLANO #1 → PLAN v2 ───│
+[7]  REVIEW DO PLANO #2 → PLAN v3 ───│
+[8]  EXECUÇÃO (Superpowers) ─────────│
+[9]  VERIFICAÇÃO ────────────────────│
+[10] CODE REVIEW + UI REVIEW ────────│
 ────────────────────────────────────
-[10] /ultrareview ───────────────────► requer humano (manual, opcional)
-[11] DEPLOY ASSISTIDO ───────────────► requer humano (validação final)
+[11] /ultrareview ───────────────────► requer humano (manual, opcional)
+[12] DEPLOY ASSISTIDO ───────────────► requer humano (validação final)
 ```
 
 ### Modo autônomo — regra de continuidade (inegociável)
 
 **Modo autônomo é o padrão e significa seguir sozinho do começo ao fim.** Uma
-vez iniciado o trabalho de uma fase, Claude percorre as etapas `[2]→[9]` —
+vez iniciado o trabalho de uma fase, Claude percorre as etapas `[2]→[10]` —
 e encadeia uma fase na seguinte (F2→F3→F4...) — **sem parar para pedir
 permissão de continuar**. Não existe checkpoint de "posso seguir?" entre
 etapas autônomas. Concluiu uma etapa, começa a próxima.
 
 Claude só interrompe e chama o humano nos pontos marcados `requer humano`:
-**[1] Brainstorm** (entrada de requisitos), **[10] `/ultrareview`** (disparo
-manual), **[11] Deploy** (validação final) e o **merge de PR para `main`**.
+**[1] Brainstorm** (entrada de requisitos), **[11] `/ultrareview`** (disparo
+manual), **[12] Deploy** (validação final) e o **merge de PR para `main`**.
 Erro/bloqueio real também interrompe. Fora disso: não chamar o humano, não
 perguntar se pode prosseguir — seguir até o fim do escopo combinado.
 
 Ao terminar tudo, aí sim chamar o humano com o resumo final.
 
-**[1] Brainstorm** — `superpowers:brainstorming`. Output: spec em `docs/superpowers/specs/`.
-**[2] Design UI/UX** — `ui-ux-pro-max`. Autoridade de design. Sempre antes de qualquer UI. Alimenta o plano.
-**[3] Plan** — `superpowers:writing-plans`. Plano com tasks bite-sized, sem placeholders. Salvo em `docs/superpowers/plans/`.
-**[4–6] Double-check do plano — REGRA DE RAIZ, inegociável.**
+**[1] Brainstorm → SPEC v1** — `superpowers:brainstorming`. Output: spec v1 em `docs/superpowers/specs/`.
+**[2] Design UI/UX** — `ui-ux-pro-max`. Autoridade de design. Sempre antes de qualquer UI. Alimenta a spec e o plano.
+**[3–4] Double-check da SPEC — REGRA DE RAIZ, inegociável.**
+> A spec passa por **duas reviews genuinamente críticas** antes de virar plano.
+> - **[3] Review da spec #1 → SPEC v2** — auditoria adversarial: achar erro,
+>   inconsistência, premissa frágil, requisito ambíguo, o que está faltando ou
+>   esquecido. Aplicar os achados gera a **SPEC v2**.
+> - **[4] Review da spec #2 → SPEC v3** — review **ainda mais crítica e
+>   profunda** sobre a v2: caçar todo problema e inconsistência restante,
+>   incrementar e completar. Aplicar gera a **SPEC v3** — a versão que vai
+>   para o plano.
+> Critério de saída: a review não encontra mais achado material.
+**[5] Plan v1** — `superpowers:writing-plans`, sobre a SPEC v3. Tasks bite-sized, sem placeholders. Salvo em `docs/superpowers/plans/`.
+**[6–7] Double-check do plano — REGRA DE RAIZ, inegociável.**
 > Duas reviews **genuinamente críticas**, sem passar pano. A review não é
 > carimbo — é auditoria adversarial do próprio plano. Vale para TODA fase.
 > Critérios de qualidade que o plano precisa cumprir para sair do loop:
@@ -156,24 +169,25 @@ Ao terminar tudo, aí sim chamar o humano com o resumo final.
 > - **Zero ambiguidade.** Cada step diz exatamente o quê, em qual arquivo, com
 >   qual verificação e qual resultado esperado. "Portar e adaptar" não é step —
 >   é placeholder. Porte exige listar o arquivo-fonte e cada adaptação.
-> - **Review #1** — lacunas, ordem, premissas. **Review #2** — granularidade,
->   integração, testabilidade; aqui se mede se cada task é pequena o suficiente.
->   Se não for, o plano volta para [5] e é redecomposto.
+> - **[6] Review do plano #1 → PLAN v2** — lacunas, ordem, premissas.
+>   **[7] Review do plano #2 → PLAN v3** — granularidade, integração,
+>   testabilidade; aqui se mede se cada task é pequena o suficiente. Se não
+>   for, o plano é redecomposto. A v3 é a versão que vai para a execução.
 > Critério de saída: a review não encontra mais achado material **E** nenhuma
 > task esconde mais de uma unidade de trabalho. Objetivo: zerar inconsistência
 > no que for construído.
 
-**[7] Execução — Superpowers (decisão revista em 2026-05-16).**
+**[8] Execução — Superpowers (decisão revista em 2026-05-16).**
 > Avaliação GSD × Superpowers: embora o projeto seja multi-fase, o ciclo Superpowers (brainstorming → writing-plans → execução → verification → code review) cobre o fluxo inteiro e provou-se limpo no F0. Adotar a família `gsd-*` como espinha exigiria reformatar specs/plans para o formato GSD e somar cerimônia (`.planning/`, ROADMAP formal, requirements rastreados) sem ganho proporcional — a estrutura de fases já vive neste documento (§4) e a continuidade entre sessões é garantida por specs/plans versionados + tasks + git. **Decisão: Superpowers de ponta a ponta.**
 > - **Fase enxuta** (ex.: F0): executar **inline**, task a task.
-> - **Fase grande** (ex.: F1): `superpowers:subagent-driven-development` — subagente fresco por task, com revisão entre tasks.
+> - **Fase grande** (ex.: F1): `superpowers:subagent-driven-development` — subagente fresco por task, com revisão entre tasks. Usar subagentes críticos, que já identificam problemas durante a execução, não só no review.
 > - `superpowers:test-driven-development` dentro de cada task com código testável.
-> `/gsd-code-review` e `/gsd-ui-review` permanecem como auditorias pontuais na etapa [9] — é o único uso da família `gsd-*`.
+> `/gsd-code-review` e `/gsd-ui-review` permanecem como auditorias pontuais na etapa [10] — é o único uso da família `gsd-*`.
 
-**[8] Verificação** — `superpowers:verification-before-completion`. Evidência antes de afirmar pronto. Testar feature na UI quando aplicável.
-**[9] Auditoria final** — `/gsd-code-review` (bugs, segurança, qualidade) + `/gsd-ui-review` (6 pilares visuais, sempre que tocar UI).
-**[10] `/ultrareview`** — só quando o humano disparar. Nunca autonomamente.
-**[11] Deploy assistido** — descrever cada passo; validar com humano no fim, sempre.
+**[9] Verificação** — `superpowers:verification-before-completion`. Evidência antes de afirmar pronto. Testar feature na UI quando aplicável.
+**[10] Auditoria final** — `/gsd-code-review` (bugs, segurança, qualidade) + `/gsd-ui-review` (6 pilares visuais, sempre que tocar UI).
+**[11] `/ultrareview`** — só quando o humano disparar. Nunca autonomamente.
+**[12] Deploy assistido** — descrever cada passo; validar com humano no fim, sempre.
 
 ### Quando fazer spec
 Fazer spec antes do plano quando o requisito é ambíguo, tem múltiplas interpretações, ou toca vários sistemas. Pular quando já é objetivo, bug fix diagnosticado, ou ajuste pontual. Em dúvida: fazer spec.
