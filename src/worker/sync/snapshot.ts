@@ -1,6 +1,7 @@
 // src/worker/sync/snapshot.ts
 import type { OdooClient } from "../odoo/client";
 import { parseWriteDate } from "../odoo/datetime";
+import { getModelFields } from "../odoo/field-selection";
 
 /** Tamanho do lote para o createMany — evita estourar limites do Postgres. */
 const CREATE_BATCH = 1000;
@@ -28,7 +29,8 @@ export async function syncSnapshot(
   rawTableKey: string,
   odooModel: string,
 ): Promise<number> {
-  const records = (await client.searchReadPaged(odooModel, [])) as Record<string, unknown>[];
+  const fields = await getModelFields(client, odooModel);
+  const records = (await client.searchReadPaged(odooModel, [], { fields })) as Record<string, unknown>[];
   const now = new Date();
   const rows = records.map((rec) => ({
     odooId: Number(rec.id),

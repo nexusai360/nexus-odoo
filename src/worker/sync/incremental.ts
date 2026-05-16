@@ -1,6 +1,7 @@
 // src/worker/sync/incremental.ts
 import type { OdooClient } from "../odoo/client";
 import { odooDatetime, parseWriteDate } from "../odoo/datetime";
+import { getModelFields } from "../odoo/field-selection";
 
 /** Interface mínima de uma tabela raw Prisma (prisma.rawXxx). */
 export interface RawDelegate {
@@ -41,7 +42,8 @@ export async function syncIncremental(
   // cycleStart, então registros escritos durante o pull entram no próximo ciclo.
   const cycleStart = new Date();
   const domain = since ? [["write_date", ">", odooDatetime(since)]] : [];
-  const records = (await client.searchReadPaged(odooModel, domain)) as Record<string, unknown>[];
+  const fields = await getModelFields(client, odooModel);
+  const records = (await client.searchReadPaged(odooModel, domain, { fields })) as Record<string, unknown>[];
   const now = new Date();
   for (const rec of records) {
     const odooId = Number(rec.id);

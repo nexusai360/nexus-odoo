@@ -1,5 +1,11 @@
 import { syncSnapshot } from "./snapshot";
 
+// Isola field-selection: não queremos um RPC real de fields_get nos testes de
+// snapshot; o comportamento do filtro de campos é coberto em field-selection.test.ts.
+jest.mock("../odoo/field-selection", () => ({
+  getModelFields: jest.fn().mockResolvedValue(["id", "x", "write_date"]),
+}));
+
 function fakeClient(records: unknown[]) {
   return { searchReadPaged: jest.fn().mockResolvedValue(records) } as never;
 }

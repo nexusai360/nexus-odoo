@@ -1,5 +1,11 @@
 import { syncIncremental } from "./incremental";
 
+// Isola field-selection: não queremos um RPC real de fields_get nos testes de
+// incremental; o comportamento do filtro de campos é coberto em field-selection.test.ts.
+jest.mock("../odoo/field-selection", () => ({
+  getModelFields: jest.fn().mockResolvedValue(["id", "name", "write_date"]),
+}));
+
 function fakeClient(records: unknown[]) {
   return { searchReadPaged: jest.fn().mockResolvedValue(records) } as never;
 }
