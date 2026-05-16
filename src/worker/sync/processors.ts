@@ -110,10 +110,12 @@ export async function processReconcileCycle(
   runCycle: RunCycleFn = runModelCycle,
 ): Promise<void> {
   for (const entry of catalog) {
-    // Modelos estáticos não têm registros removidos no Odoo — reconcile é
-    // desperdício e ainda arrisca marcar registros vivos como apagados se a
-    // listagem de ids vier truncada (WR-08).
-    if (entry.mode === "estatico") continue;
+    // Reconcile só faz sentido em modelos incrementais: linhas se acumulam e
+    // exclusões individuais precisam ser detectadas. Modelos snapshot são
+    // recriados por completo a cada ciclo e seus ids no Odoo rotacionam —
+    // comparar ids marcaria a tabela raw inteira como rawDeleted (WR-08).
+    // Modelos estáticos também não têm remoções detectáveis.
+    if (entry.mode !== "incremental") continue;
     await ensureSyncState(ctx.prisma, entry.odooModel, entry.mode);
     const deps: CycleDeps = {
       prisma: ctx.prisma,

@@ -92,7 +92,7 @@ describe("processSnapshotCycle", () => {
 });
 
 describe("processReconcileCycle", () => {
-  it("roda todos os modos exceto estatico", async () => {
+  it("roda apenas modelos incrementais (ignora snapshot e estatico)", async () => {
     const vistos: string[] = [];
     const fakeRun = jest.fn(async (_deps: unknown, model: string) => {
       vistos.push(model);
@@ -104,6 +104,9 @@ describe("processReconcileCycle", () => {
     ];
     const { prisma } = makePrisma();
     await processReconcileCycle({ prisma, client: {} as never }, catalog, fakeRun as never);
-    expect(vistos.sort()).toEqual(["a", "b"]);
+    // snapshot (b) e estatico (c) devem ser ignorados: reconcile em snapshot
+    // marcaria a tabela raw inteira como rawDeleted porque os ids do Odoo
+    // rotacionam a cada full refresh (WR-08).
+    expect(vistos.sort()).toEqual(["a"]);
   });
 });
