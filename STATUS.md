@@ -47,36 +47,30 @@ Plano: `docs/superpowers/plans/2026-05-16-fundacao-bloco3-auth.md`
 - `src/types/next-auth.d.ts`: tipos de sessão ✅
 - `src/app/api/auth/[...nextauth]/route.ts` ✅
 
-### Bloco 4 — UI base e telas auth — ⬜ **PRÓXIMO — RETOMAR AQUI**
-Plano ainda não criado. `framer-motion ^11.18.2` já adicionado ao `package.json` e instalado.
+### Bloco 4 — UI base e telas auth — ✅ CONCLUÍDO
+Plano: `docs/superpowers/plans/2026-05-16-fundacao-bloco4-ui-auth.md`
+- Sistema de tema (theme.ts, theme-provider.tsx) ✅
+- Componentes UI (button, input, label, sonner, password-input) ✅
+- globals.css com variáveis light/dark ✅
+- App shell (layout.tsx, page.tsx) ✅
+- Telas auth: login, forgot-password, reset-password, verify-email ✅
+- APIs: /api/user/theme, /api/health ✅
+- Stubs de server actions (password-reset.ts, profile.ts) ✅
+- `npx next build` limpo, 9 rotas compiladas ✅
+- `npx tsc --noEmit` sem erros ✅
+- Nota: `shadcn` instalado mas não usado via @import (CLI, não CSS lib); variáveis já inline no globals.css
 
-Arquivos a criar (fonte: nexus-insights, com adaptações de branding "Nexus Insights" → "Nexus Odoo"):
-- `src/lib/theme.ts` — copiar verbatim
-- `src/components/providers/theme-provider.tsx` — copiar verbatim
-- `src/app/globals.css` — copiar verbatim (266 linhas)
-- `src/app/layout.tsx` — title/description: "Nexus Odoo | Dados do ERP"
-- `src/app/page.tsx` — copiar verbatim (redirect logic)
-- `src/app/(auth)/layout.tsx` — copiar verbatim
-- `src/app/(auth)/login/page.tsx` + `actions.ts` — adaptar título; actions sem alteração
-- `src/components/login/login-content.tsx` — adaptar: título "Nexus Odoo", subtítulo "Dados do ERP"
-- `src/components/ui/{button,input,label,sonner,password-input}.tsx` — copiar verbatim
-- `src/app/(auth)/forgot-password/` — page.tsx + forgot-password-form.tsx
-- `src/app/(auth)/reset-password/` — page.tsx + reset-password-form.tsx
-- `src/app/(auth)/verify-email/` — page.tsx + verify-email-content.tsx (se necessário para rotas públicas)
-- `src/app/api/user/theme/route.ts` — persistir tema (usa `prisma`)
-- `src/app/api/health/route.ts` — retorna `{ok: true}`
-- `public/` — logo placeholder (pode usar qualquer PNG 88×88 por ora)
+### Bloco 5 — Telas protegidas — ⬜ **PRÓXIMO — RETOMAR AQUI**
+Telas atrás de auth: dashboard placeholder, lista de usuários, perfil de usuário.
 
-Verificação do Bloco 4: `npx next build` passa; login renderiza via `npm run dev`.
-
-### Blocos 5–6 — ⬜ não iniciados
-5: telas protegidas (dashboard placeholder, usuários, perfil) · 6: worker + CI.
+### Bloco 6 — Worker + CI — ⬜ não iniciado
+Worker BullMQ scaffold, Dockerfile do worker, GitHub Actions CI.
 
 ## PARA RETOMAR
 
 1. `git checkout feat/fundacao` (já na branch).
-2. Criar plano granular para o **Bloco 4** com double-check.
-3. Executar Bloco 4, depois Blocos 5→6, em modo autônomo até concluir F1.
+2. Criar plano granular para o **Bloco 5** com double-check.
+3. Executar Bloco 5, depois Bloco 6, em modo autônomo até concluir F1.
 4. Ao fim do F1: verificação, PR `feat/fundacao` → `main`.
 5. Executar migration/seed quando Docker estiver disponível (ver instruções no Bloco 2 acima).
 
