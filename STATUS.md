@@ -60,19 +60,45 @@ Plano: `docs/superpowers/plans/2026-05-16-fundacao-bloco4-ui-auth.md`
 - `npx tsc --noEmit` sem erros ✅
 - Nota: `shadcn` instalado mas não usado via @import (CLI, não CSS lib); variáveis já inline no globals.css
 
-### Bloco 5 — Telas protegidas — ⬜ **PRÓXIMO — RETOMAR AQUI**
-Telas atrás de auth: dashboard placeholder, lista de usuários, perfil de usuário.
+### Bloco 5 — Telas protegidas — ✅ CONCLUÍDO
+Plano: `docs/superpowers/plans/2026-05-16-fundacao-bloco5-telas-protegidas.md`
+(reconstruído após 2 reviews adversariais — Review #2 com agente fresco).
+- Helpers: `src/lib/auth.ts` (getCurrentUser), `constants/nav.ts`, `utils/sidebar-active-path.ts` ✅
+- 8 componentes UI shadcn (base-ui): table, skeleton, card, dialog, alert-dialog, select, badge, separator ✅
+- Layout: `page-shell`, `page-header` (+height-probe), `layout/sidebar` ✅
+- Shell protegido `(protected)/layout.tsx` + `/dashboard` (placeholder) ✅
+- Usuários: `lib/actions/users.ts` (CRUD + RBAC), `user-form-dialog`, `users-content`, `/usuarios` ✅
+- Perfil: `lib/actions/profile.ts` (updateProfile, changePassword, requestEmailChange stub), 5 cards, `/perfil` + `/perfil/trocar-senha` ✅
+- Smoke test: `temp-password.test.ts` (5 testes) ✅
 
-### Bloco 6 — Worker + CI — ⬜ não iniciado
-Worker BullMQ scaffold, Dockerfile do worker, GitHub Actions CI.
+### Bloco 6 — Worker + CI — ✅ CONCLUÍDO
+Plano: `docs/superpowers/plans/2026-05-16-fundacao-bloco6-worker-ci.md`
+- `src/worker/index.ts`: scaffold BullMQ (fila `odoo-sync`, conexão dedicada, shutdown graceful) ✅
+- `.github/workflows/ci.yml`: pipeline validate (install → prisma generate → lint → typecheck → test → build) ✅
 
-## PARA RETOMAR
+### Auditoria dos Blocos 1-4 (pente fino F1)
+Correções aplicadas: Dockerfile/entrypoint (`prisma.config.js`→`.ts`), `version` obsoleto no compose,
+mock `server-only` ausente, `seed.ts` (`Prisma.JsonNull`), `redis.ts` (lazyConnect + handler de erro),
+`theme/route.ts` (runtime nodejs, sem `any`), 6 erros de ESLint herdados,
+**auth split-config** (Prisma fora do Edge Runtime — resolve o warning crônico do middleware).
 
-1. `git checkout feat/fundacao` (já na branch).
-2. Criar plano granular para o **Bloco 5** com double-check.
-3. Executar Bloco 5, depois Bloco 6, em modo autônomo até concluir F1.
-4. Ao fim do F1: verificação, PR `feat/fundacao` → `main`.
-5. Executar migration/seed quando Docker estiver disponível (ver instruções no Bloco 2 acima).
+## Estado da Fase 1
+
+`tsc --noEmit` ✅ · `eslint` ✅ · `next build` ✅ (13 rotas, sem warnings) · `jest` ✅ (5 testes).
+Middleware verificado: rotas `(protected)` redirecionam para `/login`; rotas públicas e `/api/health` OK.
+
+## PARA RETOMAR / PENDÊNCIAS
+
+1. **UAT com banco** — não executado: Docker indisponível nesta máquina/sessão.
+   Subir Postgres e validar o fluxo completo (login → dashboard → CRUD usuários → perfil):
+   ```sh
+   docker compose up -d db
+   DATABASE_URL=$(grep '^DATABASE_URL' .env.local | cut -d= -f2-) npx prisma migrate dev --name init
+   DATABASE_URL=$(grep '^DATABASE_URL' .env.local | cut -d= -f2-) npx prisma db seed
+   npm run dev   # validar telas no browser
+   ```
+2. Após o UAT: abrir PR `feat/fundacao` → `main` (com `/gsd-code-review` + `/gsd-ui-review`).
+3. Migration + seed do Bloco 2 fazem parte do passo 1 (pendentes desde então — Docker).
 
 ## Notas
 
