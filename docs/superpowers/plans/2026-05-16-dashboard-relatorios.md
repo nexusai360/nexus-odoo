@@ -1,76 +1,94 @@
-# F3 — Dashboard de Relatórios — Implementation Plan
+# F3 — Dashboard de Relatórios — Implementation Plan (v2)
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development para implementar este plano task-a-task. Steps usam checkbox (`- [ ]`).
 
 **Goal:** Construir o painel de relatórios do nexus-odoo — infraestrutura "um relatório" (catálogo declarativo, RBAC por domínio, templates de gráfico) + 6 relatórios de estoque lendo do cache da F2.
 
-**Architecture:** Cada relatório = 4 camadas (fato tipado no cache → query de leitura server-side → componente visual → entrada no catálogo). O shell `/relatorios` lê o catálogo filtrado pelos domínios do usuário. RBAC por domínio (`ReportDomain`) com enforcement em 3 camadas. Templates de gráfico em Recharts.
+**Architecture:** Cada relatório = 4 camadas (fato tipado no cache → query de leitura server-side → componente visual → entrada no catálogo). Shell `/relatorios` filtrado pelos domínios do usuário. RBAC por domínio (`ReportDomain`), enforcement em 3 camadas. Gráficos em Recharts.
 
 **Tech Stack:** Next.js 16, TypeScript, Prisma v7, Recharts, Jest. Worker BullMQ (builders de fato).
 
 **Spec:** `docs/superpowers/specs/2026-05-16-dashboard-relatorios-design.md` (v3)
 
-**Versão:** PLAN v1 — passará por 2 reviews profundas (`CLAUDE.md` §6 [6]/[7]) → v2 → v3.
+**Versão:** **PLAN v2** — incorpora a Review #1 do plano
+(`docs/superpowers/reviews/2026-05-16-dashboard-plan-review-1.md`): 5 Críticos +
+9 Importantes + 6 Menores aplicados. A **Review #2** fará a decomposição fina
+em sub-steps TDD com código completo → PLAN v3 → execução.
 
----
+## Correções da Review #1 já aplicadas nesta v2
+
+- **C1:** o `$transaction` de `createUser` cobre **só** `user.create` +
+  `userDomainAccess.createMany`. O `logAudit` (que escreve via `pgPool`, fora do
+  Prisma) **permanece pós-commit, fire-and-forget** — a spec §4.4 dizia
+  "$transaction envolvendo o AuditLog", o que é tecnicamente impossível com o
+  `logAudit` atual; **o plano corrige a spec neste ponto** (atomicidade cobre os
+  dados; o audit é best-effort, como já é hoje em todo o projeto).
+- **C2:** Task 9 não "ajusta teste de contagem" (não existe) — verificação =
+  `tsc` + `jest src/worker/catalog`.
+- **C3:** dependência Task 9→11/13 anotada; estado de primeiro ciclo documentado.
+- **C4:** indicador de freshness vira parte explícita da Task 23 (lê `SyncState`).
+- **C5:** `relNome` trata `[id, false]` → `null`.
+- **I2:** `ultimoBuildAt` deixa de ser coluna por linha do fato e passa a viver
+  numa tabela **`FatoBuildState`** (uma linha por fato) — só assim a query
+  distingue "builder nunca rodou" de "rodou e não produziu linhas".
+- **I5:** o backfill de `UserDomainAccess` vai no **SQL da migration**, não no `seed.ts`.
+- I1/I3/I4/I6/I7/I8/I9 e Menores: aplicados nas tasks correspondentes.
 
 ## File Structure
 
 ```
 prisma/schema.prisma              MODIFICAR — enum ReportDomain; AuditAction.user_domains_changed;
-                                  model UserDomainAccess; FatoEstoqueMovimento; FatoProdutoParado;
-                                  FatoEstoqueSaldo enriquecido; ultimoBuildAt nos 3 fatos
-prisma/seed.ts                    MODIFICAR — backfill domínio estoque p/ manager/viewer
+                                  UserDomainAccess; FatoBuildState; FatoEstoqueMovimento;
+                                  FatoProdutoParado; FatoEstoqueSaldo enriquecido
+prisma/migrations/<ts>_f3_dashboard/migration.sql  CRIAR — inclui o INSERT..SELECT de backfill
 src/worker/catalog/model-catalog.ts  MODIFICAR — estoque.extrato: incremental → snapshot
 src/worker/fatos/
-  fato-estoque-saldo.ts           MODIFICAR — enriquecer (vrSaldo, família, marca, ultimoBuildAt)
-  fato-estoque-movimento.ts       CRIAR — builder do fato de movimento
-  fato-produto-parado.ts          CRIAR — builder do fato de produtos parados
-  odoo-relational.ts              CRIAR — helper de extração [id,nome]/false
-src/worker/sync/processors.ts     MODIFICAR — disparar os 2 builders novos pós-snapshot
+  odoo-relational.ts              CRIAR — helpers relId/relNome (trata [id,false])
+  fato-build-state.ts             CRIAR — upsert do FatoBuildState pós-build
+  fato-estoque-saldo.ts           MODIFICAR — enriquecer (vrSaldo, família, marca)
+  fato-estoque-movimento.ts       CRIAR
+  fato-produto-parado.ts          CRIAR
+src/worker/sync/processors.ts     MODIFICAR — disparar os 2 builders novos
 src/lib/reports/
   domains.ts                      CRIAR — ReportDomain helpers + RBAC por domínio
-  catalog.ts                      CRIAR — catálogo declarativo dos 6 relatórios
-  types.ts                        CRIAR — tipos de relatório/seção/filtro
+  guard.ts                        CRIAR — requireDomainAccess (camada 2)
+  types.ts                        CRIAR — tipos relatório/seção/filtro
+  catalog.ts                      CRIAR — catálogo dos 6 relatórios
+  freshness.ts                    CRIAR — cálculo do "atualizado em"
 src/lib/actions/
-  domain-access.ts                CRIAR — server actions de concessão de domínio
-  report-data.ts                  CRIAR — queries de leitura dos relatórios
-  users.ts                        MODIFICAR — createUser transacional (user+domínios+audit)
-src/components/charts/
-  kpi-card.tsx                    CRIAR
-  data-table.tsx                  CRIAR
-  bar-chart.tsx                   CRIAR
-  line-chart.tsx                  CRIAR
-  pie-chart.tsx                   CRIAR
-  chart-states.tsx                CRIAR — skeleton / "preparando" / "sem dado" / "erro"
+  domain-access.ts                CRIAR — server actions de concessão
+  report-data.ts                  CRIAR — queries de leitura (1 por relatório)
+  users.ts                        MODIFICAR — createUser transacional
+src/components/charts/            kpi-card, data-table, bar-chart, line-chart,
+                                  pie-chart, chart-states (CRIAR)
+src/components/reports/
+  report-filters.tsx              CRIAR — barra de filtros declarativa
+  filter-controls/                CRIAR — seletores: produto, armazém, família,
+                                  período, sentido, faixa-dias, busca
 src/app/(protected)/relatorios/
-  page.tsx                        CRIAR — landing (grade de cards por domínio)
-  relatorios-grid.tsx             CRIAR — client component da grade
-  [id]/page.tsx                   CRIAR — página de relatório
-  [id]/report-view.tsx            CRIAR — client component que renderiza as seções
+  page.tsx, relatorios-grid.tsx   CRIAR — landing
+  [id]/page.tsx, [id]/report-view.tsx  CRIAR — página de relatório
 src/components/users/
-  user-form-dialog.tsx            MODIFICAR — etapa "Acesso" (stepper dinâmico)
-  access-step.tsx                 CRIAR — conteúdo da etapa Acesso
+  user-form-dialog.tsx            MODIFICAR — etapa "Acesso", stepper dinâmico
+  access-step.tsx                 CRIAR
 src/lib/constants/nav.ts          MODIFICAR — +item Relatórios
 package.json                      MODIFICAR — +recharts
 ```
 
 ## Blocos
 
-- **Bloco 1 — Schema & migration** (Tasks 1-4)
-- **Bloco 2 — RBAC por domínio** (Tasks 5-8)
-- **Bloco 3 — Fatos e builders** (Tasks 9-13)
-- **Bloco 4 — Templates de gráfico** (Tasks 14-20)
-- **Bloco 5 — Catálogo e queries de leitura** (Tasks 21-24)
-- **Bloco 6 — Shell e páginas de relatório** (Tasks 25-28)
-- **Bloco 7 — Etapa "Acesso" no modal de usuário** (Tasks 29-31)
+- **Bloco 1 — Schema & migration** (Tasks 1-5)
+- **Bloco 2 — RBAC por domínio** (Tasks 6-9)
+- **Bloco 3 — Fatos e builders** (Tasks 10-15)
+- **Bloco 4 — Templates de gráfico** (Tasks 16-22)
+- **Bloco 5 — Catálogo, freshness e queries** (Tasks 23-27)
+- **Bloco 6 — Filtros, shell e páginas** (Tasks 28-33)
+- **Bloco 7 — Etapa "Acesso" no modal** (Tasks 34-37)
 
-> **Nota de granularidade para as reviews [6]/[7]:** este é o PLAN v1. As tasks
-> abaixo estão em nível de bloco/unidade. As reviews profundas devem (a) verificar
-> cobertura da spec v3 seção a seção, (b) decompor cada task que esconde mais de
-> uma unidade em sub-tasks bite-sized com código completo e TDD, (c) confirmar a
-> ordem da topologia de dependências da §3.5 da spec. O PLAN v3 sai dessa
-> decomposição. Cada task aqui já nomeia arquivos exatos, contrato e verificação.
+> **Para a Review #2 (decomposição fina → PLAN v3):** cada task abaixo nomeia
+> arquivos, contrato, dependências e verificação. A Review #2 deve quebrar em
+> sub-steps TDD com código completo, com atenção às tasks marcadas **[DECOMPOR]**
+> (escondem 3+ unidades). Ordem das tasks = topologia obrigatória da spec §3.5.
 
 ---
 
@@ -78,383 +96,347 @@ package.json                      MODIFICAR — +recharts
 
 ### Task 1: Helper de extração relacional do Odoo
 
-**Files:** Create `src/worker/fatos/odoo-relational.ts`, Test `src/worker/fatos/odoo-relational.test.ts`
-
-Contrato (regra §3.2 da spec): campos `many2one` chegam como `[id, "rótulo"]` ou `false`.
-
-```typescript
-// src/worker/fatos/odoo-relational.ts
-/** Valor de um campo many2one do Odoo no JSONB raw. */
-export type OdooM2O = [number, string] | false | null | undefined;
-
-/** Extrai o id de um campo relacional; `false`/ausente → null. */
-export function relId(v: OdooM2O): number | null {
-  return Array.isArray(v) ? v[0] : null;
-}
-/** Extrai o rótulo de um campo relacional; `false`/ausente → null. */
-export function relNome(v: OdooM2O): string | null {
-  return Array.isArray(v) ? v[1] : null;
-}
-```
-
-TDD: testar `[14410,"X"]→{id:14410,nome:"X"}`, `false→{null,null}`, `undefined→null`.
+**Files:** Create `src/worker/fatos/odoo-relational.ts` + test.
+Contrato: `relId(v)` → `Array.isArray(v) ? v[0] : null`; `relNome(v)` →
+`Array.isArray(v) && typeof v[1] === "string" ? v[1] : null` (**C5** — trata
+`[id, false]`). Tipo `OdooM2O = [number, string | false] | false | null | undefined`.
+TDD: `[14410,"X"]`, `false`, `undefined`, **`[14410, false]` → nome null**.
 Commit: `feat(worker): helper de extração de campos relacionais do Odoo`.
 
 ### Task 2: Schema — enum ReportDomain, AuditAction, UserDomainAccess
 
-**Files:** Modify `prisma/schema.prisma`
-
-Adicionar:
-
-```prisma
-enum ReportDomain {
-  estoque
-  financeiro
-  fiscal
-  comercial
-}
-```
-
-Adicionar `user_domains_changed` ao enum `AuditAction`. Adicionar:
-
-```prisma
-model UserDomainAccess {
-  id           String       @id @default(uuid()) @db.Uuid
-  userId       String       @map("user_id") @db.Uuid
-  domain       ReportDomain
-  grantedById  String?      @map("granted_by_id") @db.Uuid
-  createdAt    DateTime     @default(now()) @map("created_at")
-  user         User         @relation("UserDomainAccess", fields: [userId], references: [id], onDelete: Cascade)
-
-  @@unique([userId, domain])
-  @@index([userId])
-  @@map("user_domain_access")
-}
-```
-
-Adicionar a relação inversa em `model User`: `domainAccess UserDomainAccess[] @relation("UserDomainAccess")`.
-Verificação: `npx prisma format` sem erro.
-Commit: `feat(prisma): enum ReportDomain, AuditAction.user_domains_changed, UserDomainAccess`.
-
-### Task 3: Schema — fatos (enriquecer FatoEstoqueSaldo, criar movimento e parado)
-
-**Files:** Modify `prisma/schema.prisma`
-
-`FatoEstoqueSaldo` — acrescentar `vrSaldo Decimal? @db.Decimal(18,4) @map("vr_saldo")`,
-`familiaId Int? @map("familia_id")`, `familiaNome String? @map("familia_nome")`,
-`marcaId Int? @map("marca_id")`, `marcaNome String? @map("marca_nome")`,
-`ultimoBuildAt DateTime? @map("ultimo_build_at")`; índices `familiaId`, `marcaId`;
-remover o comentário `/// Fato PROVISÓRIO`.
-
-Criar `FatoEstoqueMovimento` (colunas da spec §5.2: `odooId Int @id`, `produtoId Int?`,
-`produtoNome String?`, `localId Int?`, `localNome String?`, `data DateTime`,
-`mes String`, `quantidade Decimal @db.Decimal(18,4)`, `sentido String`,
-`localInversoId Int?`, `origem String?`, `ultimoBuildAt DateTime?`; índices
-`mes`, `produtoId`, `localId`, `sentido`; `@@map("fato_estoque_movimento")`).
-
-Criar `FatoProdutoParado` (spec §5.3: `saldoHojeId Int @id`, `produtoId Int?`,
-`produtoNome String?`, `localId Int?`, `localNome String?`,
-`saldo Decimal @db.Decimal(18,4)`, `dias Int`, `vrSaldo Decimal? @db.Decimal(18,4)`,
-`unidade String?`, `ultimoBuildAt DateTime?`; índices `dias`, `produtoId`;
-`@@map("fato_produto_parado")`).
-
+**Files:** Modify `prisma/schema.prisma`.
+`enum ReportDomain { estoque financeiro fiscal comercial }`; `+user_domains_changed`
+em `AuditAction`; `model UserDomainAccess` (`id uuid`, `userId`, `domain`,
+`grantedById` **coluna crua, sem `@relation` — decisão M1**, registrada),
+`createdAt`, `@@unique([userId, domain])`, `@@index([userId])`, relação
+`user @relation(...)` + inversa `domainAccess UserDomainAccess[]` em `User`.
 Verificação: `npx prisma format`.
-Commit: `feat(prisma): FatoEstoqueSaldo enriquecido, FatoEstoqueMovimento, FatoProdutoParado`.
+Commit: `feat(prisma): ReportDomain, AuditAction.user_domains_changed, UserDomainAccess`.
 
-### Task 4: Migration F3 + backfill
+### Task 3: Schema — FatoBuildState e fatos [DECOMPOR]
 
-**Files:** Create `prisma/migrations/<ts>_f3_dashboard/`, Modify `prisma/seed.ts`
+**Files:** Modify `prisma/schema.prisma`.
+- **`FatoBuildState`** (`fato String @id`, `ultimoBuildAt DateTime`,
+  `@@map("fato_build_state")`) — **I2:** o sinal de "builder rodou" vive aqui,
+  não nas linhas do fato; só assim a query distingue "preparando" de "vazio".
+- `FatoEstoqueSaldo` enriquecido: `+vrSaldo Decimal?`, `+familiaId Int?`,
+  `+familiaNome String?`, `+marcaId Int?`, `+marcaNome String?`; índices
+  `familiaId`, `marcaId`; remover `/// PROVISÓRIO`. **Sem** `ultimoBuildAt` por
+  linha (vai para `FatoBuildState`).
+- `FatoEstoqueMovimento` (colunas spec §5.2; `odooId Int @id` — **M2:** PK só
+  precisa ser única dentro de um snapshot, ok porque o builder faz rebuild
+  completo; sem `ultimoBuildAt` por linha).
+- `FatoProdutoParado` (colunas spec §5.3; `saldoHojeId Int @id`; sem `ultimoBuildAt`).
+A Review #2 quebra em 1 task por modelo. Verificação: `npx prisma format`.
+Commit: um por modelo na v3.
 
-- `npx prisma migrate dev --name f3_dashboard` (DB dev no ar).
-- No `seed.ts`, adicionar: para cada `User` com `platformRole in (manager, viewer)`,
-  `upsert` de `UserDomainAccess` `(userId, domain: "estoque")`.
-- `npx prisma db seed`; `npx prisma generate && npx tsc --noEmit`.
-Commit: `feat(prisma): migration F3 e backfill do domínio estoque`.
+### Task 4: Migration F3 + backfill na migration (I5)
+
+**Files:** Create `prisma/migrations/<ts>_f3_dashboard/`.
+- `npx prisma migrate dev --name f3_dashboard` (pré-condição: DB dev no ar +
+  `DATABASE_URL` no ambiente — **M5**).
+- **Editar o `migration.sql` gerado** para acrescentar o backfill como SQL de
+  dados: `INSERT INTO user_domain_access (id, user_id, domain, created_at)
+  SELECT gen_random_uuid(), id, 'estoque', now() FROM users WHERE platform_role
+  IN ('manager','viewer');`. Reaplicar via `prisma migrate reset` em dev para
+  validar que o backfill roda junto.
+- `npx prisma generate && npx tsc --noEmit`.
+Commit: `feat(prisma): migration F3 com backfill do domínio estoque na migration`.
+
+### Task 5: seed dev (opcional) e verificação do Bloco 1
+
+**Files:** Modify `prisma/seed.ts` (apenas para reproduzir o estado em dev fresco).
+`npx prisma db seed`; `npx tsc --noEmit`. Commit: `chore(prisma): seed dev do F3`.
 
 ---
 
 ## Bloco 2 — RBAC por domínio
 
-### Task 5: `domains.ts` — modelo de domínios e RBAC
+### Task 6: `domains.ts` — modelo de domínios e RBAC
 
-**Files:** Create `src/lib/reports/domains.ts`, Test `src/lib/reports/domains.test.ts`
+**Files:** Create `src/lib/reports/domains.ts` + test.
+`REPORT_DOMAINS`, `ReportDomainId`; `visibleDomains(role, granted)`
+(super_admin/admin → todos; demais → granted); `grantableDomains(role, granted)`
+(super_admin/admin → todos; manager → granted; viewer → []).
+TDD: 4 papéis × 2 funções. Commit: `feat(reports): domínios e regras de RBAC`.
 
-Contrato:
-```typescript
-import type { PlatformRole } from "@/generated/prisma/client";
-export const REPORT_DOMAINS = ["estoque", "financeiro", "fiscal", "comercial"] as const;
-export type ReportDomainId = (typeof REPORT_DOMAINS)[number];
+### Task 7: server actions de concessão de domínio [DECOMPOR]
 
-/** super_admin/admin veem todos os domínios; demais, só os concedidos. */
-export function visibleDomains(role: PlatformRole, granted: ReportDomainId[]): ReportDomainId[] {
-  if (role === "super_admin" || role === "admin") return [...REPORT_DOMAINS];
-  return granted;
-}
-/** Pode conceder: super_admin/admin qualquer; manager só o que possui. */
-export function grantableDomains(role: PlatformRole, granted: ReportDomainId[]): ReportDomainId[] {
-  if (role === "super_admin" || role === "admin") return [...REPORT_DOMAINS];
-  if (role === "manager") return granted;
-  return [];
-}
-```
-TDD: cobrir os 4 papéis para `visibleDomains` e `grantableDomains`.
-Commit: `feat(reports): modelo de domínios e regras de RBAC por domínio`.
-
-### Task 6: server actions de concessão de domínio
-
-**Files:** Create `src/lib/actions/domain-access.ts`, Test idem
-
-`getUserDomains(userId)`, `getMyDomains()`, `updateUserDomains(userId, domains)` —
-todas com guard de auth. `updateUserDomains` valida via `canEditUser` (F1) +
-`grantableDomains`; aplica o diff em `UserDomainAccess`; registra `AuditLog`
-`user_domains_changed` com `{added, removed}`. Verificar assinaturas reais de
-`canEditUser`/`logAudit`.
-TDD: schema Zod dos domínios; teste de que `manager` não concede domínio que não tem.
+**Files:** Create `src/lib/actions/domain-access.ts` + test.
+`getUserDomains(userId)`, `getMyDomains()`, `updateUserDomains(userId, domains)`.
+`updateUserDomains`: guard de auth → valida via `canEditUser` (F1) +
+`grantableDomains` → aplica diff em `UserDomainAccess` → `logAudit`
+`user_domains_changed` com `{added, removed}` **pós-escrita, fire-and-forget**
+(C1 — `logAudit` é `pgPool`, fora de transação). Verificar assinaturas reais de
+`canEditUser`/`logAudit`. Review #2: 1 sub-task por função. Schema Zod dos domínios.
 Commit: `feat(reports): server actions de concessão de domínio`.
 
-### Task 7: helper de enforcement na página
+### Task 8: `guard.ts` — enforcement na página (camada 2)
 
-**Files:** Create helper em `src/lib/reports/domains.ts` (ampliar) ou `src/lib/reports/guard.ts`
+**Files:** Create `src/lib/reports/guard.ts` + test.
+`requireDomainAccess(domain)`: usa `getMyDomains()` (**I9** — declara o uso) +
+`visibleDomains`; `redirect("/relatorios")` se não tiver. Commit:
+`feat(reports): guard de acesso a domínio para páginas`.
 
-`requireDomainAccess(domain)` — server-side: pega o usuário atual, seus domínios,
-e redireciona `/relatorios` se não tiver o domínio. Usado pela página `[id]`.
-TDD: testar allow/deny por papel.
-Commit: `feat(reports): guard de acesso a domínio para páginas de relatório`.
-
-### Task 8: verificação do Bloco 2
+### Task 9: verificação do Bloco 2
 
 `npx tsc --noEmit && npm run lint && npx jest src/lib/reports src/lib/actions/domain-access.test.ts`.
-Commit (se houver ajustes): `chore(reports): verificação do RBAC por domínio`.
 
 ---
 
 ## Bloco 3 — Fatos e builders
 
-### Task 9: `estoque.extrato` → snapshot no catálogo
+### Task 10: `estoque.extrato` → snapshot (C2)
 
-**Files:** Modify `src/worker/catalog/model-catalog.ts`, Test ajustar `model-catalog.test.ts`
-
-Trocar o `mode` de `estoque.extrato` de `incremental` para `snapshot`. Ajustar a
-contagem esperada no teste (snapshot passa de 4 para 5; incremental cai 1).
+**Files:** Modify `src/worker/catalog/model-catalog.ts`.
+Trocar `mode` de `estoque.extrato` para `snapshot`. **Não há teste de contagem
+por modo para ajustar** — verificação: `npx tsc --noEmit && npx jest src/worker/catalog`.
 Commit: `fix(worker): estoque.extrato passa a snapshot (write_date ausente)`.
 
-### Task 10: enriquecer o builder `fato-estoque-saldo`
+### Task 11: `fato-build-state.ts` — registro de build
 
-**Files:** Modify `src/worker/fatos/fato-estoque-saldo.ts`, Test idem
+**Files:** Create `src/worker/fatos/fato-build-state.ts` + test.
+`markFatoBuilt(prisma, fato)`: `upsert` em `FatoBuildState` com `ultimoBuildAt =
+new Date()`. Usado por todos os builders. Commit: `feat(worker): registro de
+estado de build de fato`.
 
-O builder passa a (a) carregar um `Map` de `produtoId → {familiaId,familiaNome,
-marcaId,marcaNome}` lido de `raw_sped_produto` (via `relId`/`relNome` em
-`familia_id`/`marca_id`); (b) por linha de saldo, extrair `vrSaldo` de
-`data.vr_saldo`, e família/marca do Map (null se produto ausente); (c) gravar
-`ultimoBuildAt = new Date()` em todas as linhas.
-TDD: linha com produto sem família → familiaNome null; produto ausente do Map → null.
-Commit: `feat(worker): fato_estoque_saldo enriquecido com valor, família e marca`.
+### Task 12: enriquecer `fato-estoque-saldo` [DECOMPOR]
 
-### Task 11: builder `fato-estoque-movimento`
+**Files:** Modify `src/worker/fatos/fato-estoque-saldo.ts` + test.
+Builder carrega `Map` `produtoId → {familiaId,familiaNome,marcaId,marcaNome}` de
+`raw_sped_produto` (via `relId`/`relNome` em `familia_id`/`marca_id`); por linha
+de saldo extrai `vrSaldo` de `data.vr_saldo`, família/marca do Map; ao fim chama
+`markFatoBuilt(prisma,"fato_estoque_saldo")`. **I8:** anotar dependência de
+`raw_sped_produto` estar populado (ciclo incremental distinto); no 1º ciclo
+família/marca podem vir null — tolerável, auto-corrige.
+TDD: produto sem família → null; produto ausente do Map → null; `vrSaldo` zero
+carregado; `markFatoBuilt` chamado.
+Commit: `feat(worker): fato_estoque_saldo enriquecido`.
 
-**Files:** Create `src/worker/fatos/fato-estoque-movimento.ts`, Test idem
+### Task 13: builder `fato-estoque-movimento` [DECOMPOR]
 
-`rebuildFatoEstoqueMovimento(prisma)`: lê `raw_estoque_extrato` (rawDeleted=false),
-para cada registro extrai os campos da spec §5.2, **descarta `quantidade === 0`**,
-deriva `sentido` (`>0`→entrada, `<0`→saida) e `mes` (YYYY-MM de `data`); transação
-`deleteMany` + `createMany` em lotes; grava `ultimoBuildAt`.
-TDD: exclusão de quantidade 0; sentido por sinal; `mes` formatado.
+**Files:** Create `src/worker/fatos/fato-estoque-movimento.ts` + test.
+**Depende da Task 10** (`estoque.extrato` em snapshot). `rebuildFatoEstoqueMovimento`:
+lê `raw_estoque_extrato` (rawDeleted=false); por registro extrai campos da spec
+§5.2; **descarta `quantidade === 0`**; deriva `sentido` e `mes`; transação
+`deleteMany`+`createMany` em lotes; `markFatoBuilt`.
+TDD: exclusão de quantidade 0; sentido por sinal; `mes` YYYY-MM.
 Commit: `feat(worker): builder do fato_estoque_movimento`.
 
-### Task 12: builder `fato-produto-parado`
+### Task 14: builder `fato-produto-parado` [DECOMPOR]
 
-**Files:** Create `src/worker/fatos/fato-produto-parado.ts`, Test idem
-
-`rebuildFatoProdutoParado(prisma)`: lê `raw_estoque_saldo_hoje_duracao_dias`;
-monta `Map` de `raw_estoque_saldo_hoje` por `data.id` → `{vrSaldo, unidade}`;
-join por `saldo_hoje_id[0]` (FK direta); **filtro `saldo > 0`**; grava colunas da
-§5.3 + `ultimoBuildAt`.
-TDD: filtro saldo>0; join por saldo_hoje_id; dias cru (sem teto).
+**Files:** Create `src/worker/fatos/fato-produto-parado.ts` + test.
+`rebuildFatoProdutoParado`: lê `raw_estoque_saldo_hoje_duracao_dias`; `Map` de
+`raw_estoque_saldo_hoje` por `data.id` → `{vrSaldo,unidade,...}`; join por
+`saldo_hoje_id[0]` (FK direta — spec §5.3); **filtro `saldo > 0`**; grava colunas
+§5.3; `markFatoBuilt`.
+TDD: filtro saldo>0; join por saldo_hoje_id; dias cru.
 Commit: `feat(worker): builder do fato_produto_parado`.
 
-### Task 13: disparar os builders novos no ciclo de snapshot
+### Task 15: disparar builders no ciclo de snapshot (C3)
 
-**Files:** Modify `src/worker/sync/processors.ts`
-
-Em `processSnapshotCycle`, após o rebuild de `fato_estoque_saldo` já existente,
-disparar `rebuildFatoEstoqueMovimento` e `rebuildFatoProdutoParado` (cada um em
-try/catch isolado, com log).
+**Files:** Modify `src/worker/sync/processors.ts`.
+Em `processSnapshotCycle`, após o rebuild de `fato_estoque_saldo`, disparar
+`rebuildFatoEstoqueMovimento` e `rebuildFatoProdutoParado` (try/catch isolado +
+log cada). **Anotar:** dependem do snapshot de `estoque.extrato` /
+`estoque.saldo.hoje.duracao.dias` terem rodado no mesmo loop (ok pela ordem);
+no 1º ciclo pós-deploy os fatos saem vazios → relatórios em estado "preparando"
+(via `FatoBuildState` ainda nulo) — comportamento esperado.
 Verificação: `npx tsc --noEmit && npx jest src/worker/`.
-Commit: `feat(worker): dispara builders de movimento e produto parado pós-snapshot`.
+Commit: `feat(worker): dispara builders de movimento e produto parado`.
 
 ---
 
 ## Bloco 4 — Templates de gráfico
 
-### Task 14: instalar Recharts
+### Task 16: instalar Recharts
 
-**Files:** Modify `package.json`
-
-`npm install recharts`. Verificar `npx next build` ainda passa.
+**Files:** Modify `package.json`. `npm install recharts`; verificação:
+`npm ls recharts && npx tsc --noEmit` (**M3** — sem build completo aqui).
 Commit: `chore: adiciona recharts`.
 
-### Task 15: `chart-states.tsx` — estados de carregamento/vazio/erro
+### Task 17: `chart-states.tsx`
 
-**Files:** Create `src/components/charts/chart-states.tsx`
+**Files:** Create `src/components/charts/chart-states.tsx`.
+`ChartSkeleton`, `ChartPreparing` ("relatório ainda sendo preparado"),
+`ChartEmpty` ("sem dado no período"), `ChartError` (msg + botão repetir). Design
+system F1. Commit: `feat(charts): componentes de estado`.
 
-Componentes `ChartSkeleton`, `ChartPreparing` ("relatório ainda sendo
-preparado"), `ChartEmpty` ("sem dado no período"), `ChartError` (mensagem +
-botão repetir). Design system da F1 (tokens, dark mode).
-Commit: `feat(charts): componentes de estado (skeleton/preparando/vazio/erro)`.
+### Tasks 18-22: templates KPICard, DataTable, BarChart, LineChart, PieChart [DECOMPOR]
 
-### Tasks 16-20: templates `KPICard`, `DataTable`, `BarChart`, `LineChart`, `PieChart`
-
-**Files:** Create `src/components/charts/{kpi-card,data-table,bar-chart,line-chart,pie-chart}.tsx`, Test cada um
-
-Cada template recebe uma definição declarativa (`data` + `config`) e usa os
-estados do Task 15. `DataTable` é componente novo genérico (colunas declarativas,
-ordenável, pesquisável, `aria-sort`, `tabular-nums`, formata negativos).
-`Bar/Line/PieChart` usam Recharts `ResponsiveContainer`, tooltips, legendas,
-gridlines de baixo contraste, paleta categórica acessível no dark, números pt-BR.
-`PieChart` agrupa em "Outros" acima de 6 fatias.
-TDD por template: render com dado, vazio, preparando, erro.
-Commits: um por template (`feat(charts): template <Nome>`).
-
-> Cada uma destas (16-20) é uma task; as reviews [6]/[7] devem decompor em
-> sub-steps TDD com o código completo de cada componente.
+**Files:** Create `src/components/charts/{kpi-card,data-table,bar-chart,line-chart,pie-chart}.tsx` + test cada.
+Cada template recebe definição declarativa (`data` + `config`) e usa os estados
+do Task 17. `DataTable` — componente **novo genérico** (colunas declarativas,
+ordenável com `aria-sort`, pesquisável, `tabular-nums`, formata negativos —
+M5). Charts usam Recharts `ResponsiveContainer`, tooltips, legendas, gridlines
+de baixo contraste, paleta acessível no dark, números pt-BR; `PieChart` agrupa
+"Outros" acima de 6 fatias. Review #2: cada template = 1 task com TDD + código
+completo; `DataTable` provavelmente 2-3 sub-tasks (render, ordenação, busca).
+Commits: um por template.
 
 ---
 
-## Bloco 5 — Catálogo e queries de leitura
+## Bloco 5 — Catálogo, freshness e queries
 
-### Task 21: `types.ts` — tipos de relatório/seção/filtro
+### Task 23: `types.ts` — tipos de relatório/seção/filtro
 
-**Files:** Create `src/lib/reports/types.ts`
+**Files:** Create `src/lib/reports/types.ts`.
+`ReportFilter` (`tipo`: produto/armazém/família/período/sentido/faixaDias/busca,
+`default`); `ReportSection` (`template`, `fato`, `config`, `filtros`);
+`ReportEntry` (`id`, `titulo`, `dominio: ReportDomainId`, `descricao`,
+`icone: LucideIcon` — **M4**, `modeloFonte: string`, `secoes: ReportSection[]`).
+Commit: `feat(reports): tipos do catálogo`.
 
-Tipos: `ReportSection` (`template`, `fato`, `config`, `filtros`), `ReportFilter`
-(`tipo`: produto/armazém/família/período/sentido/faixaDias, `default`),
-`ReportEntry` (`id`, `titulo`, `dominio`, `descricao`, `icone`, `modeloFonte`,
-`secoes: ReportSection[]`). Sem lógica — só tipos.
-Commit: `feat(reports): tipos do catálogo de relatórios`.
+### Task 24: `freshness.ts` — cálculo do "atualizado em" (C4)
 
-### Task 22: `catalog.ts` — catálogo dos 6 relatórios
+**Files:** Create `src/lib/reports/freshness.ts` + test.
+`reportFreshness(prisma, entry)`: lê `SyncState.lastSnapshotAt` do
+`entry.modeloFonte` **e** `FatoBuildState.ultimoBuildAt` de cada fato das seções;
+devolve o **menor** de todos (o dado é tão fresco quanto a etapa mais atrasada).
+TDD: min entre sync e build; relatório multi-fato pega o menor de todos.
+Commit: `feat(reports): cálculo de freshness do relatório`.
 
-**Files:** Create `src/lib/reports/catalog.ts`, Test idem
+### Task 25: `catalog.ts` — catálogo dos 6 relatórios [DECOMPOR]
 
-`REPORT_CATALOG: ReportEntry[]` com as 6 entradas (R1-R6) da spec §8 — cada uma
-com domínio `estoque`, ícone, `modeloFonte`, e as seções (R4/R6 com 2 seções).
-`reportsForUser(role, domains)` filtra o catálogo. `getReport(id)`.
+**Files:** Create `src/lib/reports/catalog.ts` + test.
+`REPORT_CATALOG: ReportEntry[]` — 6 entradas (R1-R6, spec §8), domínio `estoque`,
+ícone, `modeloFonte`, seções (R4/R6 com 2 seções). `reportsForUser(role,domains)`,
+`getReport(id)`. Review #2: cada `ReportEntry` é uma unidade.
 TDD: 6 entradas; filtro por domínio; R4/R6 com 2 seções.
-Commit: `feat(reports): catálogo declarativo dos 6 relatórios de estoque`.
+Commit: `feat(reports): catálogo dos 6 relatórios`.
 
-### Task 23: `report-data.ts` — queries de leitura
+### Task 26: `report-data.ts` — queries de leitura [DECOMPOR]
 
-**Files:** Create `src/lib/actions/report-data.ts`, Test idem
-
-Uma função de leitura por relatório (R1-R6). Cada uma: guard de auth → revalida
-o domínio (RBAC camada 3) → checa `ultimoBuildAt` do fato (estado §3.4) → lê e
-agrega o fato (R2/R6 filtram `vrSaldo>0`; R4 `saldo>0`) → devolve
-`{ estado: "ok"|"preparando"|"vazio"|"erro", dados }`.
-TDD: agregação correta; revalidação de RBAC; sinalização de estado.
+**Files:** Create `src/lib/actions/report-data.ts` + test.
+Uma função por relatório (R1-R6). Cada uma: guard de auth → revalida o domínio
+(camada 3, via `getMyDomains()` — **I9**) → determina o estado (§3.4):
+`FatoBuildState` ausente → `"preparando"`; presente e sem linhas no filtro →
+`"vazio"`; exceção → `"erro"`; senão `"ok"`. **Assinatura explícita (I2):** cada
+função recebe um objeto de filtros tipado (`ReportFilterValues`) e devolve
+`{ estado, dados: <tipo do relatório>, freshness }` — o `dados` tem um tipo
+nomeado por relatório (não `unknown`). R2/R6 filtram `vrSaldo>0`; R4 `saldo>0`.
+Review #2: 1 sub-task por relatório, com o tipo de retorno e a agregação completos.
 Commit: `feat(reports): queries de leitura dos relatórios`.
 
-### Task 24: verificação do Bloco 5
+### Task 27: verificação do Bloco 5
 
 `npx tsc --noEmit && npm run lint && npx jest src/lib/reports src/lib/actions/report-data.test.ts`.
 
 ---
 
-## Bloco 6 — Shell e páginas de relatório
+## Bloco 6 — Filtros, shell e páginas
 
-### Task 25: item de nav "Relatórios"
+### Task 28: componentes de filtro [DECOMPOR] (I1)
 
-**Files:** Modify `src/lib/constants/nav.ts`
+**Files:** Create `src/components/reports/filter-controls/` — seletores: produto
+(busca + select), armazém (select), família (select), período (range de meses),
+sentido (entrada/saída), faixa-dias (30/60/90+), busca textual. Cada um é um
+componente controlado. Review #2: 1 task por controle.
+Commit: um por controle.
 
-Adicionar entrada `Relatórios` (`href: /relatorios`, ícone `BarChart3`), sem
-`section`, sem `visibleTo`.
+### Task 29: `report-filters.tsx` — barra de filtros declarativa (I1)
+
+**Files:** Create `src/components/reports/report-filters.tsx`.
+Recebe a lista de `ReportFilter` da seção e renderiza os controles do Task 28;
+estado dos filtros propagado via **URL `searchParams`** (decisão: searchParams —
+deep-link e voltar funcionam), consumido pela página `[id]` server-side e
+repassado às queries.
+Commit: `feat(reports): barra de filtros declarativa`.
+
+### Task 30: item de nav "Relatórios" (I7)
+
+**Files:** Modify `src/lib/constants/nav.ts`.
+Entrada `Relatórios` (`href:/relatorios`, ícone `BarChart3`), **sem `section`,
+sem `visibleTo`** — **decisão consciente:** o item é sempre visível; o
+enforcement por domínio é nas camadas 2/3. `filterNav` não filtra por domínio.
 Commit: `feat(nav): item Relatórios`.
 
-### Task 26: landing `/relatorios`
+### Task 31: landing `/relatorios` [DECOMPOR]
 
-**Files:** Create `src/app/(protected)/relatorios/page.tsx`, `relatorios-grid.tsx`
+**Files:** Create `src/app/(protected)/relatorios/page.tsx`, `relatorios-grid.tsx`.
+`page.tsx` (server): usuário + `getMyDomains()` (**I9**) → `reportsForUser` →
+`relatorios-grid.tsx` (client) renderiza grade de cards agrupada por domínio
+(`PageShell`, `PageHeader`, `Card`, `motion`); estado vazio se sem domínio.
+Verificação: `npx next build`. Commit: `feat(relatorios): landing`.
 
-`page.tsx` (server): pega usuário + domínios, chama `reportsForUser`, passa para
-`relatorios-grid.tsx` (client) que renderiza a grade de cards agrupada por
-domínio (`PageShell`, `PageHeader`, `Card`, `motion`). Estado vazio se sem domínio.
-Verificação: `npx next build`.
-Commit: `feat(relatorios): landing com grade de cards por domínio`.
+### Task 32: página `/relatorios/[id]` [DECOMPOR]
 
-### Task 27: página `/relatorios/[id]`
+**Files:** Create `src/app/(protected)/relatorios/[id]/page.tsx`, `report-view.tsx`.
+`page.tsx` (server): `requireDomainAccess` (camada 2) → `getReport(id)` → lê
+`searchParams` dos filtros → chama as queries de `report-data.ts` por seção →
+`report-view.tsx` (client) renderiza: a `report-filters` (Task 29), as seções em
+sequência (cada uma com template + estados), e o indicador "atualizado em <data>"
+consumindo o valor pronto de `freshness.ts` (C4 — a página **não calcula**, só exibe).
+Verificação: `npx next build`. Commit: `feat(relatorios): página de relatório`.
 
-**Files:** Create `src/app/(protected)/relatorios/[id]/page.tsx`, `report-view.tsx`
+### Task 33: UAT e verificação do Bloco 6
 
-`page.tsx` (server): `requireDomainAccess` (RBAC camada 2), `getReport(id)`,
-chama as queries de leitura das seções, passa para `report-view.tsx` (client)
-que renderiza as seções em sequência (cada uma com seu template + estados),
-a barra de filtros e o indicador "atualizado em".
-Verificação: `npx next build`.
-Commit: `feat(relatorios): página de relatório com seções e filtros`.
-
-### Task 28: UAT visual e verificação do Bloco 6
-
-Subir dev server, logar, conferir `/relatorios` e os 6 relatórios; RBAC por
-domínio (viewer sem domínio não vê). `tsc`, `lint`, `build`.
+Dev server, login, `/relatorios` + os 6 relatórios; RBAC por domínio (viewer sem
+domínio: vê o item, landing vazia, URL direta bloqueada). `tsc`, `lint`, `build`.
 
 ---
 
 ## Bloco 7 — Etapa "Acesso" no modal de usuário
 
-### Task 29: `createUser` transacional
+### Task 34: `createUser` transacional (C1)
 
-**Files:** Modify `src/lib/actions/users.ts`, Test ajustar
+**Files:** Modify `src/lib/actions/users.ts` + test.
+`createUser` aceita `domains: ReportDomainId[]`; abre `prisma.$transaction`
+envolvendo **`user.create` + `userDomainAccess.createMany`** (não o `AuditLog` —
+C1); o `logAudit` de `user_created` segue pós-commit, fire-and-forget.
+TDD: usuário criado com domínios; rollback do par user+domínios em falha.
+Commit: `refactor(users): createUser transacional com domínios`.
 
-`createUser` passa a aceitar `domains: ReportDomainId[]` e envolve
-`user.create` + `userDomainAccess.createMany` + `AuditLog` num
-`prisma.$transaction`.
-TDD: usuário criado com domínios; rollback em falha.
-Commit: `refactor(users): createUser transacional com concessão de domínios`.
+### Task 35: `access-step.tsx` (I6)
 
-### Task 30: `access-step.tsx` — conteúdo da etapa Acesso
-
-**Files:** Create `src/components/users/access-step.tsx`, Test idem
-
+**Files:** Create `src/components/users/access-step.tsx` + test.
 Checkboxes dos `ReportDomain`; habilita só os `grantableDomains` do concedente;
-aviso quando nenhum selecionado.
-Commit: `feat(users): componente da etapa Acesso`.
+aviso quando nenhum selecionado. Commit: `feat(users): componente da etapa Acesso`.
 
-### Task 31: integrar a etapa "Acesso" no `user-form-dialog`
+### Task 36: integrar etapa "Acesso" no `user-form-dialog` [DECOMPOR] (I3, I4, I6)
 
-**Files:** Modify `src/components/users/user-form-dialog.tsx`
-
-`Step` vira `1|2|3`; `stepperItems` computado pelo role atual (3 itens p/
-manager/viewer, 2 p/ super_admin/admin); trocar para role privilegiado zera os
-domínios selecionados; `create` envia domínios ao `createUser`; `update` chama
-`updateUserDomains`.
+**Files:** Modify `src/components/users/user-form-dialog.tsx` (arquivo de ~1035
+linhas — cuidado).
+Mudanças (a Review #2 quebra em sub-tasks): (a) `Step` → `1|2|3`; (b) navegação
+`goNext/goBack` genérica entre N etapas (hoje hardcoded p/ 2); (c) footer
+`step < últimaEtapa`/`step > 1` (hoje `< 2`/`> 1` literais); (d) `stepperItems`
+computado pelo role atual — 3 itens p/ `manager`/`viewer`, 2 p/ privilegiados;
+ícone da etapa "Acesso" = `ShieldCheck` (**M6**); (e) renderizar `access-step`
+entre Identidade e Confirmação; (f) **N10:** ao trocar para role privilegiado,
+zerar domínios e, se o `step` estiver na etapa Acesso, recuar para etapa válida;
+(g) **StepConfirm (I6):** listar domínios selecionados + aviso "zero domínios";
+(h) **modo edit (I3):** o submit chama `updateUser` (identidade) **e**
+`updateUserDomains` em série; se a 2ª falhar, toast de erro parcial (a identidade
+já foi salva) — sem rollback (escritas separadas).
 Verificação: `tsc`, `lint`, `build`; UAT do modal nos 4 papéis.
 Commit: `feat(users): etapa Acesso no modal com stepper dinâmico`.
+
+### Task 37: verificação final do Bloco 7
+
+`tsc`, `lint`, `build`, `jest`; UAT: criar manager com domínio, editar, trocar role.
 
 ---
 
 ## Verificação final da fase
 
 - [ ] `npx tsc --noEmit`, `npm run lint`, `npx next build`, `npx jest` — verdes
-- [ ] Worker: builders dos 3 fatos rodam; `fato_estoque_movimento` e
-      `fato_produto_parado` populados; `ultimoBuildAt` preenchido
+- [ ] Worker: os 3 builders rodam; `FatoBuildState` com 3 linhas; fatos populados
 - [ ] Os 6 relatórios renderizam com dado real; estados "preparando"/"vazio"/"erro" OK
-- [ ] RBAC por domínio: `viewer`/`manager` sem o domínio não veem (nav, página, dados)
-- [ ] Etapa "Acesso" funciona nos 4 papéis; `create` persiste domínios
+- [ ] RBAC por domínio: `viewer`/`manager` sem o domínio não veem (página, dados)
+- [ ] Etapa "Acesso" nos 4 papéis; `create` persiste domínios; freshness exibido
 - [ ] Etapa [10] do workflow: `/gsd-code-review` + `/gsd-ui-review`
-
----
 
 ## Self-review (autor do plano)
 
-**Cobertura da spec v3:** §3 arquitetura → Bloco 1 (Task 1 helper) + Bloco 5;
-§4 RBAC → Bloco 2 + Bloco 7; §5 fatos → Bloco 1 (schema) + Bloco 3 (builders);
-§6 templates → Bloco 4; §7 shell → Bloco 6; §8 relatórios → Bloco 5 (catálogo) +
-Bloco 6 (telas). Decisões 1-13 da §11 mapeadas. Sem lacuna de seção.
+**Cobertura da spec v3:** §3 → Bloco 1 (Tasks 1,3) + Bloco 5; §3.4 estado de
+fato → `FatoBuildState` (Task 3,11) + Task 26; §4 RBAC → Bloco 2 + Bloco 7; §5
+fatos → Bloco 1 + Bloco 3; §6 templates → Bloco 4; §7 shell + freshness → Bloco 5
+(Task 24) + Bloco 6; §8 relatórios → Task 25 + Bloco 6. Decisões 1-13 mapeadas;
+a decisão 5 (transação) foi corrigida (C1) e a divergência documentada.
 
-**Placeholders:** este PLAN v1 está em nível de bloco/unidade — é deliberado e
-declarado no topo dos Blocos. As Tasks 16-20 e várias outras precisam de
-decomposição em sub-steps TDD com código completo: **esse é o trabalho das
-reviews [6]/[7] → PLAN v2 → v3.** Nenhuma task é vaga quanto a arquivo, contrato
-ou verificação; o que falta é granularidade de step, a ser produzida na review.
+**Premissas verificadas:** C1 (`logAudit` é `pgPool`) e C2 (sem teste de
+contagem) corrigidas contra o código real. Backfill na migration (I5).
 
-**Consistência de tipos:** `ReportDomainId`/`ReportDomain` (Task 5/2),
-`ReportEntry`/`ReportSection` (Task 21) usados em 22-27; `relId`/`relNome`
-(Task 1) usados em 10-12; builders seguem o padrão `rebuildFato*` da F2.
+**Pendente para a Review #2:** decomposição fina das tasks **[DECOMPOR]**
+(3,7,12,13,14,18-22,25,26,28,36) em sub-steps TDD com código completo → PLAN v3.
