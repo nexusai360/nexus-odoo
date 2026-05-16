@@ -1,5 +1,6 @@
 // src/worker/sync/sync-config.ts
 import type { PrismaClient } from "../../generated/prisma/client";
+import { syncIntervalValueSchema } from "../../lib/validations/sync-config";
 
 export interface SyncConfig {
   incrementalIntervalMin: number;
@@ -24,8 +25,16 @@ export async function readSyncConfig(prisma: PrismaClient): Promise<SyncConfig> 
   const cfg = { ...SYNC_CONFIG_DEFAULTS };
   for (const row of rows) {
     const field = KEY_MAP[row.key];
-    if (field && typeof row.value === "number" && row.value > 0) {
-      cfg[field] = row.value;
+    if (!field) continue;
+    const parsed = syncIntervalValueSchema.safeParse(row.value);
+    if (parsed.success) {
+      cfg[field] = parsed.data;
+    } else {
+      // Dado corrompido em AppSetting (string, objeto, NaN…): cai no default
+      // e registra o aviso em vez de propagar valor inválido (WR-09).
+      console.warn(
+        `[sync-config] AppSetting "${row.key}" com valor inválido (${JSON.stringify(row.value)}) — usando default ${SYNC_CONFIG_DEFAULTS[field]}`,
+      );
     }
   }
   return cfg;

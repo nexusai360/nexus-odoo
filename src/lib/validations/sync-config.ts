@@ -7,3 +7,10 @@ export const syncConfigSchema = z.object({
 });
 
 export type SyncConfigInput = z.infer<typeof syncConfigSchema>;
+
+/**
+ * Valida um valor individual lido de `AppSetting.value` (campo Json) como um
+ * intervalo de sync: inteiro positivo. Usado por leitores da config (UI e
+ * worker) para tratar dados corrompidos de forma consistente (WR-09).
+ */
+export const syncIntervalValueSchema = z.number().int().positive();

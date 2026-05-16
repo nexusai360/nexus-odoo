@@ -3,13 +3,33 @@
 import { prisma } from "@/lib/prisma";
 import { getCurrentUser } from "@/lib/auth";
 import { logAudit } from "@/lib/audit";
-import { syncConfigSchema } from "@/lib/validations/sync-config";
+import { syncConfigSchema, syncIntervalValueSchema } from "@/lib/validations/sync-config";
 
 const KEY_OF = {
   incrementalIntervalMin: "sync.incremental_interval_min",
   snapshotIntervalMin: "sync.snapshot_interval_min",
   reconcileIntervalMin: "sync.reconcile_interval_min",
 } as const;
+
+const SYNC_CONFIG_DEFAULTS = {
+  incrementalIntervalMin: 3,
+  snapshotIntervalMin: 1440,
+  reconcileIntervalMin: 1440,
+} as const;
+
+/**
+ * Lê um valor de AppSetting como intervalo de sync. Dado corrompido (string,
+ * objeto, NaN) cai no default com aviso, em vez de devolver NaN para a UI
+ * (WR-09) — alinhado à validação do worker.
+ */
+function readInterval(value: unknown, fallback: number, key: string): number {
+  const parsed = syncIntervalValueSchema.safeParse(value);
+  if (parsed.success) return parsed.data;
+  console.warn(
+    `[sync-config] AppSetting "${key}" com valor inválido (${JSON.stringify(value)}) — usando default ${fallback}`,
+  );
+  return fallback;
+}
 
 export async function getSyncConfig() {
   const me = await getCurrentUser();
@@ -19,9 +39,21 @@ export async function getSyncConfig() {
   const rows = await prisma.appSetting.findMany({ where: { category: "sync" } });
   const byKey = new Map(rows.map((r) => [r.key, r.value]));
   return {
-    incrementalIntervalMin: Number(byKey.get(KEY_OF.incrementalIntervalMin) ?? 3),
-    snapshotIntervalMin: Number(byKey.get(KEY_OF.snapshotIntervalMin) ?? 1440),
-    reconcileIntervalMin: Number(byKey.get(KEY_OF.reconcileIntervalMin) ?? 1440),
+    incrementalIntervalMin: readInterval(
+      byKey.get(KEY_OF.incrementalIntervalMin),
+      SYNC_CONFIG_DEFAULTS.incrementalIntervalMin,
+      KEY_OF.incrementalIntervalMin,
+    ),
+    snapshotIntervalMin: readInterval(
+      byKey.get(KEY_OF.snapshotIntervalMin),
+      SYNC_CONFIG_DEFAULTS.snapshotIntervalMin,
+      KEY_OF.snapshotIntervalMin,
+    ),
+    reconcileIntervalMin: readInterval(
+      byKey.get(KEY_OF.reconcileIntervalMin),
+      SYNC_CONFIG_DEFAULTS.reconcileIntervalMin,
+      KEY_OF.reconcileIntervalMin,
+    ),
   };
 }
 
