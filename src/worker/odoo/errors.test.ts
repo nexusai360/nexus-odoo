@@ -1,4 +1,4 @@
-import { OdooRpcFault, isAccessError, OdooAuthError, OdooError } from "./errors";
+import { OdooRpcFault, isAccessError, OdooAuthError, OdooError, redactSecret } from "./errors";
 
 describe("erros do Odoo", () => {
   it("OdooRpcFault extrai a mensagem de data.message", () => {
@@ -26,5 +26,31 @@ describe("erros do Odoo", () => {
       data: { message: "erro genérico", debug: "Traceback... odoo.exceptions.AccessError: ..." },
     });
     expect(isAccessError(fault)).toBe(true);
+  });
+
+  it("redactSecret substitui todas as ocorrências do segredo", () => {
+    expect(redactSecret("token=s3nh4 user=x token=s3nh4", "s3nh4")).toBe(
+      "token=*** user=x token=***",
+    );
+  });
+
+  it("redactSecret é no-op quando o segredo é vazio/undefined", () => {
+    expect(redactSecret("nada a redigir", "")).toBe("nada a redigir");
+    expect(redactSecret("nada a redigir", undefined)).toBe("nada a redigir");
+  });
+
+  it("CR-03: OdooRpcFault redige a senha da mensagem e do debug do payload", () => {
+    const fault = new OdooRpcFault(
+      {
+        data: {
+          message: "execute_kw falhou com senha s3nh4",
+          debug: 'Traceback: object.execute_kw(["db", 1, "s3nh4", ...])',
+        },
+      },
+      "s3nh4",
+    );
+    expect(fault.message).not.toContain("s3nh4");
+    expect(fault.message).toContain("***");
+    expect(JSON.stringify(fault.payload)).not.toContain("s3nh4");
   });
 });
