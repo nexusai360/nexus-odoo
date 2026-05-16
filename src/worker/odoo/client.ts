@@ -1,5 +1,5 @@
 // src/worker/odoo/client.ts
-import { OdooError, OdooAuthError, OdooRpcFault } from "./errors";
+import { OdooError, OdooAuthError, OdooRpcFault, redactSecret } from "./errors";
 
 export interface OdooClientOptions {
   url: string;
@@ -13,6 +13,9 @@ export interface OdooClientOptions {
 }
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
+
+/** Erro HTTP não-retryável (4xx) — propaga sem novas tentativas. */
+class HttpClientError extends OdooError {}
 
 export class OdooClient {
   private readonly url: string;
@@ -34,6 +37,11 @@ export class OdooClient {
     this.throttleMs = opts.throttleMs ?? 150;
     this.retries = opts.retries ?? 3;
     this.backoffMs = opts.backoffMs ?? 1000;
+  }
+
+  /** Redige a senha de qualquer string antes que ela seja logada/persistida (CR-03). */
+  private redact(s: string): string {
+    return redactSecret(s, this.password);
   }
 
   private async rpc<T>(service: string, method: string, args: unknown[]): Promise<T> {
@@ -59,17 +67,36 @@ export class OdooClient {
         } finally {
           clearTimeout(timer);
         }
+        // 4xx é erro definitivo (credencial/rota inválida) — não adianta
+        // repetir; 5xx e falhas de rede/timeout caem no retry (WR-06).
+        if (resp.status >= 400 && resp.status < 500) {
+          const corpo = await resp.text().catch(() => "");
+          throw new HttpClientError(
+            this.redact(`HTTP ${resp.status} ${resp.statusText} em ${service}.${method}: ${corpo.slice(0, 300)}`),
+          );
+        }
+        if (!resp.ok) {
+          const corpo = await resp.text().catch(() => "");
+          throw new OdooError(
+            this.redact(`HTTP ${resp.status} ${resp.statusText} em ${service}.${method}: ${corpo.slice(0, 300)}`),
+          );
+        }
         const body = (await resp.json()) as { error?: unknown; result?: T };
         await sleep(this.throttleMs);
-        if (body.error) throw new OdooRpcFault(body.error as never);
+        if (body.error) throw new OdooRpcFault(body.error as never, this.password);
         return body.result as T;
       } catch (exc) {
         if (exc instanceof OdooRpcFault) throw exc;
+        // Erros HTTP 4xx não são retryáveis.
+        if (exc instanceof HttpClientError) throw exc;
         lastExc = exc;
         await sleep(this.backoffMs * 2 ** attempt);
       }
     }
-    throw new OdooError(`${service}.${method} falhou após ${this.retries} tentativas: ${lastExc}`);
+    const causa = lastExc instanceof Error ? lastExc.message : String(lastExc);
+    throw new OdooError(
+      this.redact(`${service}.${method} falhou após ${this.retries} tentativas: ${causa}`),
+    );
   }
 
   version(): Promise<unknown> {
@@ -111,9 +138,13 @@ export class OdooClient {
     const out: unknown[] = [];
     let offset = 0;
     for (;;) {
+      // order: "id asc" garante uma ordenação estável entre as páginas —
+      // sem isso, inserts/deletes durante o pull fazem o offset pular ou
+      // duplicar registros (WR-05).
       const result = await this.executeKw<unknown[]>(model, "search_read", [domain], {
         offset,
         limit: pageSize,
+        order: "id asc",
         ...(opts.fields ? { fields: opts.fields } : {}),
       });
       out.push(...result);
@@ -123,9 +154,25 @@ export class OdooClient {
     return out;
   }
 
-  /** Retorna só os ids que casam com o domínio (para reconcile). */
+  /** Retorna só os ids que casam com o domínio, paginado (para reconcile). */
   async searchIds(model: string, domain: unknown[] = []): Promise<number[]> {
-    return this.executeKw<number[]>(model, "search", [domain]);
+    const pageSize = 5000;
+    const out: number[] = [];
+    let offset = 0;
+    for (;;) {
+      // search paginado com order estável: uma resposta truncada por limite
+      // do servidor não pode deixar `vivos` incompleto e marcar registros
+      // vivos como apagados no reconcile (WR-08).
+      const page = await this.executeKw<number[]>(model, "search", [domain], {
+        offset,
+        limit: pageSize,
+        order: "id asc",
+      });
+      out.push(...page);
+      if (page.length < pageSize) break;
+      offset += pageSize;
+    }
+    return out;
   }
 }
 
