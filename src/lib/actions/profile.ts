@@ -123,16 +123,54 @@ export async function changePassword(
   }
 }
 
-// --- T20: requestEmailChange (stub) + confirmEmailChange (stub) ------------
+// --- T20: requestEmailChange + confirmEmailChange (stub) -------------------
 
-export async function requestEmailChange(_input: {
+const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+/**
+ * Valida a solicitação de troca de e-mail. O fluxo de confirmação por token
+ * ainda é F2/F3 — por ora, após as validações, retorna aviso de versão
+ * futura. As checagens de duplicidade e e-mail igual ao atual já valem.
+ */
+export async function requestEmailChange(input: {
   newEmail: string;
   password: string;
 }): Promise<ProfileResult> {
-  return {
-    error:
-      "A troca de e-mail por confirmação será habilitada em versão futura.",
-  };
+  try {
+    const me = await getCurrentUser();
+    if (!me) return { error: "Não autenticado" };
+
+    const normalized = (input.newEmail ?? "").trim().toLowerCase();
+    if (!EMAIL_REGEX.test(normalized)) {
+      return { error: "Digite um e-mail válido." };
+    }
+
+    const current = await prisma.user.findUnique({
+      where: { id: me.id },
+      select: { email: true },
+    });
+    if (!current) return { error: "Usuário não encontrado" };
+
+    if (normalized === current.email.toLowerCase()) {
+      return { error: "O novo e-mail é igual ao seu e-mail atual." };
+    }
+
+    const existing = await prisma.user.findUnique({
+      where: { email: normalized },
+      select: { id: true },
+    });
+    if (existing) {
+      return { error: "Este e-mail já está em uso por outra conta." };
+    }
+
+    return {
+      error:
+        "A troca de e-mail por confirmação será habilitada em versão futura.",
+    };
+  } catch (err) {
+    console.error("[profile.requestEmailChange]", err);
+    return { error: "Erro ao solicitar alteração de e-mail" };
+  }
 }
 
 export async function confirmEmailChange(

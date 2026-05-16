@@ -1,4 +1,4 @@
-import { Home, Users, User } from "lucide-react";
+import { Home, Users } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import type { PlatformRole } from "@/generated/prisma/client";
 
@@ -27,7 +27,6 @@ export const NAV_ITEMS: NavItem[] = [
     section: "admin",
     visibleTo: ["super_admin", "admin"],
   },
-  { label: "Perfil", href: "/perfil", icon: User },
 ];
 
 export function filterNav(

@@ -27,12 +27,6 @@ function writeCookie(name: string, value: string) {
   document.cookie = `${name}=${value}; path=/; max-age=${ONE_YEAR}; samesite=lax`;
 }
 
-function readCookie(name: string): string | null {
-  if (typeof document === "undefined") return null;
-  const match = document.cookie.match(new RegExp("(?:^|; )" + name + "=([^;]*)"));
-  return match ? decodeURIComponent(match[1]) : null;
-}
-
 function applyClass(resolved: ResolvedTheme) {
   const el = document.documentElement;
   el.classList.remove("dark", "light");
@@ -42,30 +36,33 @@ function applyClass(resolved: ResolvedTheme) {
 
 function resolveSystem(): ResolvedTheme {
   if (typeof window === "undefined") return "dark";
-  return window.matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+  return window.matchMedia("(prefers-color-scheme: dark)").matches
+    ? "dark"
+    : "light";
 }
 
 interface ProvidersProps {
   children: ReactNode;
   initialTheme: ResolvedTheme;
+  initialPreference: ThemePreference;
 }
 
 function ThemeProvider({
   children,
   initialTheme,
+  initialPreference,
 }: ProvidersProps) {
-  // Preferência vem do cookie (client), ou fallback para initialTheme (SSR).
-  const [theme, setThemeState] = useState<ThemePreference>(() => {
-    const pref = readCookie("theme-pref");
-    if (pref === "dark" || pref === "light" || pref === "system") return pref;
-    return initialTheme;
-  });
-
-  const [resolvedTheme, setResolvedTheme] = useState<ResolvedTheme>(initialTheme);
+  // O estado inicial vem das props (lidas dos cookies no servidor), não de
+  // `document.cookie` — assim o primeiro render do cliente bate com o SSR e
+  // não há hydration mismatch (ex.: ícone de tema na sidebar).
+  const [theme, setThemeState] = useState<ThemePreference>(initialPreference);
+  const [resolvedTheme, setResolvedTheme] =
+    useState<ResolvedTheme>(initialTheme);
 
   // Aplica mudanças de preferência: calcula resolvido, grava cookies, muta html.
   useEffect(() => {
-    const resolved: ResolvedTheme = theme === "system" ? resolveSystem() : theme;
+    const resolved: ResolvedTheme =
+      theme === "system" ? resolveSystem() : theme;
     setResolvedTheme(resolved);
     writeCookie("theme", resolved);
     writeCookie("theme-pref", theme);
@@ -116,13 +113,20 @@ export function useTheme() {
 export function Providers({
   children,
   initialTheme,
+  initialPreference,
 }: {
   children: ReactNode;
   initialTheme: ResolvedTheme;
+  initialPreference: ThemePreference;
 }) {
   return (
     <SessionProvider>
-      <ThemeProvider initialTheme={initialTheme}>{children}</ThemeProvider>
+      <ThemeProvider
+        initialTheme={initialTheme}
+        initialPreference={initialPreference}
+      >
+        {children}
+      </ThemeProvider>
     </SessionProvider>
   );
 }
