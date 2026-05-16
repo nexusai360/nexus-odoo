@@ -66,11 +66,12 @@ const CreateUserInput = z.object({
   name: z.string().min(2).max(120),
   email: z.string().email(),
   platformRole: z.enum(ROLE_VALUES),
+  password: z.string().min(8).max(72).optional(),
 });
 
 export async function createUser(
   rawInput: unknown,
-): Promise<ActionResult<{ id: string; tempPassword: string }>> {
+): Promise<ActionResult<{ id: string; tempPassword?: string }>> {
   try {
     const me = await getCurrentUser();
     if (!me) return { success: false, error: "Não autenticado" };
@@ -98,8 +99,10 @@ export async function createUser(
     });
     if (existing) return { success: false, error: "E-mail já cadastrado" };
 
-    const tempPassword = generateTempPassword();
-    const hash = await bcrypt.hash(tempPassword, 10);
+    // Senha: se fornecida, usa-a; senão gera temporária e exige troca.
+    const useGenerated = !input.password;
+    const plainPassword = input.password ?? generateTempPassword();
+    const hash = await bcrypt.hash(plainPassword, 10);
 
     const created = await prisma.user.create({
       data: {
@@ -107,7 +110,7 @@ export async function createUser(
         email: input.email,
         password: hash,
         platformRole: input.platformRole,
-        mustChangePassword: true,
+        mustChangePassword: useGenerated,
         isActive: true,
       },
       select: { id: true },
@@ -122,7 +125,13 @@ export async function createUser(
     });
 
     revalidatePath("/usuarios");
-    return { success: true, data: { id: created.id, tempPassword } };
+    return {
+      success: true,
+      data: {
+        id: created.id,
+        ...(useGenerated ? { tempPassword: plainPassword } : {}),
+      },
+    };
   } catch (err) {
     console.error("[users.create]", err);
     return { success: false, error: "Erro ao criar usuário" };
@@ -135,6 +144,8 @@ const UpdateUserInput = z.object({
   id: z.string().uuid(),
   name: z.string().min(2).max(120).optional(),
   platformRole: z.enum(ROLE_VALUES).optional(),
+  password: z.string().min(8).max(72).optional(),
+  isActive: z.boolean().optional(),
 });
 
 export async function updateUser(rawInput: unknown): Promise<ActionResult> {
@@ -146,7 +157,12 @@ export async function updateUser(rawInput: unknown): Promise<ActionResult> {
     if (!parsed.success) return { success: false, error: "Dados inválidos" };
     const input = parsed.data;
 
-    if (input.name === undefined && input.platformRole === undefined) {
+    if (
+      input.name === undefined &&
+      input.platformRole === undefined &&
+      input.password === undefined &&
+      input.isActive === undefined
+    ) {
       return { success: true };
     }
 
@@ -168,11 +184,29 @@ export async function updateUser(rawInput: unknown): Promise<ActionResult> {
       }
     }
 
+    if (input.isActive !== undefined) {
+      const activeCheck = canDeactivateUser(me, target);
+      if (!activeCheck.allowed) {
+        return {
+          success: false,
+          error: activeCheck.reason ?? "Sem permissão",
+        };
+      }
+    }
+
+    const passwordHash = input.password
+      ? await bcrypt.hash(input.password, 10)
+      : undefined;
+
     await prisma.user.update({
       where: { id: input.id },
       data: {
         ...(input.name ? { name: input.name } : {}),
         ...(input.platformRole ? { platformRole: input.platformRole } : {}),
+        ...(input.isActive !== undefined ? { isActive: input.isActive } : {}),
+        ...(passwordHash
+          ? { password: passwordHash, mustChangePassword: false }
+          : {}),
       },
     });
 
@@ -181,7 +215,12 @@ export async function updateUser(rawInput: unknown): Promise<ActionResult> {
       action: "user_updated",
       targetType: "User",
       targetId: input.id,
-      details: { name: input.name, platformRole: input.platformRole },
+      details: {
+        name: input.name,
+        platformRole: input.platformRole,
+        passwordChanged: !!passwordHash,
+        isActive: input.isActive,
+      },
     });
 
     revalidatePath("/usuarios");
