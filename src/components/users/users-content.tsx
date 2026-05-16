@@ -128,7 +128,11 @@ const STATUS_OPTIONS: BadgeOption<StatusValue>[] = [
 ];
 
 const ACTION_BTN =
-  "inline-flex h-8 w-8 items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-accent hover:text-foreground focus:outline-none focus-visible:ring-2 focus-visible:ring-ring cursor-pointer disabled:pointer-events-none disabled:opacity-50";
+  "inline-flex h-8 w-8 items-center justify-center rounded-md text-muted-foreground transition-all duration-200 hover:bg-accent hover:text-foreground focus:outline-none focus-visible:ring-2 focus-visible:ring-ring cursor-pointer disabled:pointer-events-none disabled:opacity-50";
+
+// Variante destrutiva: feedback vermelho no hover (botão de excluir).
+const ACTION_BTN_DANGER =
+  "inline-flex h-8 w-8 items-center justify-center rounded-md text-muted-foreground transition-all duration-200 hover:bg-red-500/10 hover:text-red-400 focus:outline-none focus-visible:ring-2 focus-visible:ring-ring cursor-pointer disabled:pointer-events-none disabled:opacity-50";
 
 interface UsersContentProps {
   currentUser: AuthUser;
@@ -400,7 +404,7 @@ export function UsersContent({ currentUser }: UsersContentProps) {
                             onClick={() => setConfirmDelete(u)}
                             title="Excluir usuário"
                             aria-label={`Excluir ${u.name}`}
-                            className={ACTION_BTN}
+                            className={ACTION_BTN_DANGER}
                           >
                             <Trash2 className="h-4 w-4" aria-hidden="true" />
                           </button>
