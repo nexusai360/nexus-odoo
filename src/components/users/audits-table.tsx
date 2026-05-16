@@ -1,8 +1,6 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { format } from "date-fns";
-import { ptBR } from "date-fns/locale";
 
 import {
   Table,
@@ -56,6 +54,17 @@ function getActionBadgeClasses(action: AuditAction): string {
     return "bg-violet-500/10 text-violet-400 border-violet-500/20";
   }
   return "bg-muted text-muted-foreground border-border";
+}
+
+function formatDateTime(date: Date): string {
+  return new Intl.DateTimeFormat("pt-BR", {
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+  }).format(new Date(date));
 }
 
 function truncate(value: string | null, max = 12): string {
@@ -113,20 +122,24 @@ export function AuditsTable() {
       ) : (
         <Table>
           <TableHeader>
-            <TableRow>
-              <TableHead>Data/hora</TableHead>
-              <TableHead>Usuário</TableHead>
-              <TableHead>Ação</TableHead>
-              <TableHead>Alvo</TableHead>
+            <TableRow className="hover:bg-transparent">
+              <TableHead className="text-xs">Ação</TableHead>
+              <TableHead className="text-xs">Usuário</TableHead>
+              <TableHead className="text-xs">Alvo</TableHead>
+              <TableHead className="text-xs">IP</TableHead>
+              <TableHead className="text-xs">Quando</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {rows.map((r) => (
-              <TableRow key={r.id}>
-                <TableCell className="text-sm text-muted-foreground">
-                  {format(new Date(r.createdAt), "dd/MM/yyyy HH:mm:ss", {
-                    locale: ptBR,
-                  })}
+              <TableRow key={r.id} className="border-border hover:bg-muted/30">
+                <TableCell>
+                  <Badge
+                    variant="outline"
+                    className={`text-xs ${getActionBadgeClasses(r.action)}`}
+                  >
+                    {ACTION_LABELS[r.action] ?? r.action}
+                  </Badge>
                 </TableCell>
                 <TableCell className="text-sm">
                   {r.userName ? (
@@ -141,14 +154,6 @@ export function AuditsTable() {
                   ) : (
                     <span className="text-xs text-muted-foreground">—</span>
                   )}
-                </TableCell>
-                <TableCell>
-                  <Badge
-                    variant="outline"
-                    className={`text-xs ${getActionBadgeClasses(r.action)}`}
-                  >
-                    {ACTION_LABELS[r.action] ?? r.action}
-                  </Badge>
                 </TableCell>
                 <TableCell className="text-xs text-muted-foreground">
                   {r.targetType ? (
@@ -165,6 +170,12 @@ export function AuditsTable() {
                   ) : (
                     "—"
                   )}
+                </TableCell>
+                <TableCell className="text-xs text-muted-foreground font-mono">
+                  {r.ipAddress ?? "—"}
+                </TableCell>
+                <TableCell className="text-xs text-muted-foreground">
+                  {formatDateTime(r.createdAt)}
                 </TableCell>
               </TableRow>
             ))}

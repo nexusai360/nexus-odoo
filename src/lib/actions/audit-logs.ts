@@ -18,13 +18,14 @@ export interface AuditLogRow {
 }
 
 // --- listAuditLogs ---------------------------------------------------------
-// Restrita a super_admin/admin. Lê os ~100 eventos mais recentes.
+// Acessível a super_admin/admin/gerente (mesma regra de listUsers). Lê os
+// ~100 eventos mais recentes.
 
 export async function listAuditLogs(): Promise<ActionResult<AuditLogRow[]>> {
   try {
     const me = await getCurrentUser();
     if (!me) return { success: false, error: "Não autenticado" };
-    if (me.platformRole !== "super_admin" && me.platformRole !== "admin") {
+    if (me.platformRole === "viewer") {
       return { success: false, error: "Acesso negado" };
     }
 

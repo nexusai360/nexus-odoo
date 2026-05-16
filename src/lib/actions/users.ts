@@ -38,7 +38,8 @@ export async function listUsers(): Promise<ActionResult<UserListItem[]>> {
   try {
     const me = await getCurrentUser();
     if (!me) return { success: false, error: "Não autenticado" };
-    if (me.platformRole === "viewer" || me.platformRole === "manager") {
+    // Apenas visualizador não gerencia usuários — gerente/admin/super_admin sim.
+    if (me.platformRole === "viewer") {
       return { success: false, error: "Acesso negado" };
     }
     const rows = await prisma.user.findMany({
@@ -51,7 +52,7 @@ export async function listUsers(): Promise<ActionResult<UserListItem[]>> {
         isActive: true,
         createdAt: true,
       },
-      orderBy: { createdAt: "desc" },
+      orderBy: { createdAt: "asc" },
     });
     return { success: true, data: rows };
   } catch (err) {
@@ -75,10 +76,9 @@ export async function createUser(
   try {
     const me = await getCurrentUser();
     if (!me) return { success: false, error: "Não autenticado" };
-    // Gate de gestão de usuários: viewer/manager não administram usuários.
-    // `canCreateRole` sozinho deixaria um manager criar viewer/manager —
-    // este check fecha esse furo (consistente com listUsers e /usuarios).
-    if (me.platformRole === "viewer" || me.platformRole === "manager") {
+    // Visualizador não cria usuários. Gerente/admin/super_admin podem —
+    // `canCreateRole` (abaixo) restringe quais papéis cada um pode atribuir.
+    if (me.platformRole === "viewer") {
       return { success: false, error: "Acesso negado" };
     }
 

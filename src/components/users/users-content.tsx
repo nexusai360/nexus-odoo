@@ -374,8 +374,8 @@ export function UsersContent({ currentUser }: UsersContentProps) {
                       </div>
                     </TableCell>
 
-                    <TableCell className="text-muted-foreground">
-                      {format(new Date(u.createdAt), "dd/MM/yyyy", {
+                    <TableCell className="text-sm text-muted-foreground">
+                      {format(new Date(u.createdAt), "dd MMM yyyy HH:mm", {
                         locale: ptBR,
                       })}
                     </TableCell>

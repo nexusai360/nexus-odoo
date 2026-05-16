@@ -17,19 +17,18 @@ import {
   ChevronDown,
   Copy,
   Crown,
-  Eye,
   IdCard,
   Loader2,
-  Shield,
-  ShieldHalf,
   UserCheck,
   UserX,
+  X,
 } from "lucide-react";
 import { toast } from "sonner";
 
 import {
   Dialog,
   DialogContent,
+  DialogClose,
   DialogDescription,
   DialogFooter,
   DialogHeader,
@@ -43,6 +42,12 @@ import { PasswordInput } from "@/components/ui/password-input";
 import { createUser, updateUser, type UserListItem } from "@/lib/actions/users";
 import { canCreateRole } from "@/lib/permissions";
 import { cn } from "@/lib/utils";
+import {
+  PLATFORM_ROLE_DESCRIPTIONS,
+  PLATFORM_ROLE_ICONS,
+  PLATFORM_ROLE_LABELS,
+  PLATFORM_ROLE_STYLES,
+} from "@/lib/constants/roles";
 import type { AuthUser } from "@/lib/auth-helpers";
 import type { PlatformRole } from "@/generated/prisma/client";
 
@@ -59,38 +64,36 @@ interface RoleMeta {
 const ROLE_META: Record<RoleValue, RoleMeta> = {
   super_admin: {
     value: "super_admin",
-    label: "Super Admin",
-    description: "Acesso total a toda a plataforma",
-    icon: Crown,
+    label: PLATFORM_ROLE_LABELS.super_admin,
+    description: PLATFORM_ROLE_DESCRIPTIONS.super_admin,
+    icon: PLATFORM_ROLE_ICONS.super_admin,
   },
   admin: {
     value: "admin",
-    label: "Admin",
-    description: "Gerencia contas e usuários",
-    icon: Shield,
+    label: PLATFORM_ROLE_LABELS.admin,
+    description: PLATFORM_ROLE_DESCRIPTIONS.admin,
+    icon: PLATFORM_ROLE_ICONS.admin,
   },
   manager: {
     value: "manager",
-    label: "Gerente",
-    description: "Gerencia departamentos atribuídos",
-    icon: ShieldHalf,
+    label: PLATFORM_ROLE_LABELS.manager,
+    description: PLATFORM_ROLE_DESCRIPTIONS.manager,
+    icon: PLATFORM_ROLE_ICONS.manager,
   },
   viewer: {
     value: "viewer",
-    label: "Visualizador",
-    description: "Apenas visualização",
-    icon: Eye,
+    label: PLATFORM_ROLE_LABELS.viewer,
+    description: PLATFORM_ROLE_DESCRIPTIONS.viewer,
+    icon: PLATFORM_ROLE_ICONS.viewer,
   },
 };
 
+// Fundo dos badges/quadrados de papel — alinhado a PLATFORM_ROLE_STYLES.
 const ROLE_BADGE_BG: Record<RoleValue, string> = {
-  super_admin:
-    "bg-purple-500/10 border-purple-500/30 text-purple-600 dark:text-purple-400",
-  admin: "bg-blue-500/10 border-blue-500/30 text-blue-600 dark:text-blue-400",
-  manager:
-    "bg-amber-500/10 border-amber-500/30 text-amber-600 dark:text-amber-400",
-  viewer:
-    "bg-zinc-200 dark:bg-zinc-800 border-zinc-300 dark:border-zinc-700 text-zinc-600 dark:text-zinc-400",
+  super_admin: PLATFORM_ROLE_STYLES.super_admin.className,
+  admin: PLATFORM_ROLE_STYLES.admin.className,
+  manager: PLATFORM_ROLE_STYLES.manager.className,
+  viewer: PLATFORM_ROLE_STYLES.viewer.className,
 };
 
 interface UserFormDialogProps {
@@ -294,7 +297,21 @@ export function UserFormDialog({
 
   return (
     <Dialog open={open} onOpenChange={close}>
-      <DialogContent className="sm:max-w-xl overflow-visible">
+      <DialogContent
+        className="sm:max-w-xl overflow-visible"
+        showCloseButton={false}
+      >
+        <DialogClose
+          render={
+            <button
+              type="button"
+              aria-label="Fechar"
+              className="absolute top-3 right-3 inline-flex h-10 w-10 items-center justify-center rounded-md text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50 cursor-pointer"
+            />
+          }
+        >
+          <X className="h-4 w-4" aria-hidden="true" />
+        </DialogClose>
         <DialogHeader>
           <DialogTitle>
             {createdPassword

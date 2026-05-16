@@ -11,11 +11,12 @@ export const dynamic = "force-dynamic";
 export default async function UsuariosPage() {
   const user = await getCurrentUser();
   if (!user) redirect("/login");
-  if (user.platformRole === "viewer" || user.platformRole === "manager") {
+  // Visualizador não gerencia usuários; gerente/admin/super_admin acessam.
+  if (user.platformRole === "viewer") {
     redirect("/dashboard");
   }
   return (
-    <PageShell>
+    <PageShell variant="narrow">
       <PageHeader
         icon={Users}
         title="Usuários"
