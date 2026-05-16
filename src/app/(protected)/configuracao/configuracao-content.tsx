@@ -96,11 +96,26 @@ function formatDateTime(date: Date | null): string {
   }).format(new Date(date));
 }
 
+function isFieldValid(value: number): boolean {
+  return Number.isInteger(value) && value >= 1;
+}
+
 export function ConfiguracaoContent({ config, estado }: Props) {
   const [form, setForm] = useState<Config>(config);
   const [pending, startTransition] = useTransition();
 
+  const dirty =
+    form.incrementalIntervalMin !== config.incrementalIntervalMin ||
+    form.snapshotIntervalMin !== config.snapshotIntervalMin ||
+    form.reconcileIntervalMin !== config.reconcileIntervalMin;
+
+  const valid =
+    isFieldValid(form.incrementalIntervalMin) &&
+    isFieldValid(form.snapshotIntervalMin) &&
+    isFieldValid(form.reconcileIntervalMin);
+
   function salvar() {
+    if (!dirty || !valid) return;
     startTransition(async () => {
       try {
         await updateSyncConfig(form);
@@ -140,23 +155,33 @@ export function ConfiguracaoContent({ config, estado }: Props) {
             </CardHeader>
             <CardContent className="space-y-6">
               <div className="grid gap-4 sm:grid-cols-3">
-                {FIELD_LABELS.map(([key, label, helper]) => (
-                  <div key={key} className="flex flex-col gap-1.5">
-                    <Label htmlFor={key}>{label}</Label>
-                    <Input
-                      id={key}
-                      type="number"
-                      min={1}
-                      value={form[key]}
-                      onChange={(e) =>
-                        setForm({ ...form, [key]: Number(e.target.value) })
-                      }
-                    />
-                    <p className="text-xs text-muted-foreground">{helper}</p>
-                  </div>
-                ))}
+                {FIELD_LABELS.map(([key, label, helper]) => {
+                  const fieldInvalid = !isFieldValid(form[key]);
+                  return (
+                    <div key={key} className="flex flex-col gap-1.5">
+                      <Label htmlFor={key}>{label}</Label>
+                      <Input
+                        id={key}
+                        type="number"
+                        min={1}
+                        value={form[key]}
+                        aria-invalid={fieldInvalid}
+                        onChange={(e) =>
+                          setForm({ ...form, [key]: Number(e.target.value) })
+                        }
+                      />
+                      {fieldInvalid ? (
+                        <p className="text-xs text-destructive" role="alert">
+                          Informe um valor inteiro maior ou igual a 1.
+                        </p>
+                      ) : (
+                        <p className="text-xs text-muted-foreground">{helper}</p>
+                      )}
+                    </div>
+                  );
+                })}
               </div>
-              <Button onClick={salvar} disabled={pending}>
+              <Button onClick={salvar} disabled={!dirty || !valid || pending}>
                 {pending ? "Salvando…" : "Salvar"}
               </Button>
             </CardContent>
@@ -170,6 +195,10 @@ export function ConfiguracaoContent({ config, estado }: Props) {
                 className="flex flex-col items-center justify-center py-16 text-muted-foreground"
                 role="status"
               >
+                <Database
+                  className="mb-3 h-12 w-12 text-muted-foreground/60"
+                  aria-hidden="true"
+                />
                 <p className="text-sm">Nenhum modelo sincronizado ainda.</p>
               </div>
             ) : (
