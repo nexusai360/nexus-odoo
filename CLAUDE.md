@@ -123,7 +123,24 @@ Cada sub-projeto percorre o fluxo abaixo. Classificar o esforço pela demanda �
 **[1] Brainstorm** — `superpowers:brainstorming`. Output: spec em `docs/superpowers/specs/`.
 **[2] Design UI/UX** — `ui-ux-pro-max`. Autoridade de design. Sempre antes de qualquer UI. Alimenta o plano.
 **[3] Plan** — `superpowers:writing-plans`. Plano com tasks bite-sized, sem placeholders. Salvo em `docs/superpowers/plans/`.
-**[4–6] Double-check do plano** — duas reviews críticas (v1→v2): #1 captura o óbvio (lacunas, ordem, premissas), #2 captura o sutil (granularidade, integração, testabilidade).
+**[4–6] Double-check do plano — REGRA DE RAIZ, inegociável.**
+> Duas reviews **genuinamente críticas**, sem passar pano. A review não é
+> carimbo — é auditoria adversarial do próprio plano. Vale para TODA fase.
+> Critérios de qualidade que o plano precisa cumprir para sair do loop:
+> - **Decomposição máxima.** Cada task é uma unidade pequena, de escopo único,
+>   verificável isoladamente. Se uma task descreve "portar a tela X" com
+>   lista + forms + actions juntos, ela é um épico — quebrar em uma task por
+>   arquivo ou por ação. Quanto mais granular, menor o espaço para
+>   inconsistência. Em dúvida, quebrar mais.
+> - **Zero ambiguidade.** Cada step diz exatamente o quê, em qual arquivo, com
+>   qual verificação e qual resultado esperado. "Portar e adaptar" não é step —
+>   é placeholder. Porte exige listar o arquivo-fonte e cada adaptação.
+> - **Review #1** — lacunas, ordem, premissas. **Review #2** — granularidade,
+>   integração, testabilidade; aqui se mede se cada task é pequena o suficiente.
+>   Se não for, o plano volta para [5] e é redecomposto.
+> Critério de saída: a review não encontra mais achado material **E** nenhuma
+> task esconde mais de uma unidade de trabalho. Objetivo: zerar inconsistência
+> no que for construído.
 
 **[7] Execução — Superpowers (decisão revista em 2026-05-16).**
 > Avaliação GSD × Superpowers: embora o projeto seja multi-fase, o ciclo Superpowers (brainstorming → writing-plans → execução → verification → code review) cobre o fluxo inteiro e provou-se limpo no F0. Adotar a família `gsd-*` como espinha exigiria reformatar specs/plans para o formato GSD e somar cerimônia (`.planning/`, ROADMAP formal, requirements rastreados) sem ganho proporcional — a estrutura de fases já vive neste documento (§4) e a continuidade entre sessões é garantida por specs/plans versionados + tasks + git. **Decisão: Superpowers de ponta a ponta.**
