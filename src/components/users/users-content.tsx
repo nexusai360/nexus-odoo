@@ -71,14 +71,17 @@ export function UsersContent({ currentUser }: UsersContentProps) {
   const [createOpen, setCreateOpen] = useState(false);
   const [editingUser, setEditingUser] = useState<UserListItem | null>(null);
   const [confirmDelete, setConfirmDelete] = useState<UserListItem | null>(null);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
 
   async function load() {
     setLoading(true);
+    setLoadError(null);
     const result = await listUsers();
     if (result.success) {
       setUsers(result.data ?? []);
     } else {
+      setLoadError(result.error);
       toast.error(result.error);
     }
     setLoading(false);
@@ -130,6 +133,16 @@ export function UsersContent({ currentUser }: UsersContentProps) {
             {Array.from({ length: 5 }).map((_, i) => (
               <Skeleton key={i} className="h-9 w-full" />
             ))}
+          </div>
+        ) : loadError ? (
+          <div
+            className="flex flex-col items-center justify-center gap-3 py-16 text-muted-foreground"
+            role="alert"
+          >
+            <p className="text-sm">{loadError}</p>
+            <Button variant="outline" size="sm" onClick={() => void load()}>
+              Tentar novamente
+            </Button>
           </div>
         ) : users.length === 0 ? (
           <div

@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { usePathname } from "next/navigation";
@@ -43,6 +43,17 @@ export function Sidebar({ user }: SidebarProps) {
   const pathname = usePathname();
   const [mobileOpen, setMobileOpen] = useState(false);
   const { theme, setTheme } = useTheme();
+
+  // Drawer mobile: fecha com Esc (acessibilidade — complementa o overlay
+  // clicável e os atributos role="dialog"/aria-modal do <aside> móvel).
+  useEffect(() => {
+    if (!mobileOpen) return;
+    function onKey(e: KeyboardEvent) {
+      if (e.key === "Escape") setMobileOpen(false);
+    }
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [mobileOpen]);
 
   function cycleTheme() {
     const idx = THEME_CYCLE.indexOf(theme);
@@ -194,6 +205,8 @@ export function Sidebar({ user }: SidebarProps) {
           variant="ghost"
           size="icon"
           onClick={() => setMobileOpen(!mobileOpen)}
+          aria-label={mobileOpen ? "Fechar menu de navegação" : "Abrir menu de navegação"}
+          aria-expanded={mobileOpen}
           className="h-11 w-11 bg-card border border-border text-foreground hover:text-foreground cursor-pointer"
         >
           {mobileOpen ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}
@@ -216,6 +229,9 @@ export function Sidebar({ user }: SidebarProps) {
               animate={{ x: 0 }}
               exit={{ x: -256 }}
               transition={{ type: "spring", damping: 25, stiffness: 200 }}
+              role="dialog"
+              aria-modal="true"
+              aria-label="Menu de navegação"
               className="fixed inset-y-0 left-0 z-50 w-60 lg:hidden"
             >
               {sidebarContent}
