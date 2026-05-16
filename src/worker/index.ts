@@ -18,17 +18,43 @@ connection.on("error", (err: Error) => console.error("[worker] erro Redis:", err
 export const ODOO_SYNC_QUEUE = "odoo-sync";
 export const syncQueue = new Queue(ODOO_SYNC_QUEUE, { connection });
 
-// Guarda de sobreposição: um ciclo em andamento bloqueia outro do mesmo tipo.
-const emAndamento = new Set<string>();
+// Guarda de sobreposição cluster-safe: lock no Redis com TTL (WR-01). Sobrevive
+// a restart e protege contra uma segunda réplica do worker rodando o mesmo
+// ciclo. TTL generoso (2h) cobre ciclos longos; se o worker morrer no meio, o
+// lock expira sozinho e o próximo ciclo destrava.
+const LOCK_TTL_MS = 2 * 60 * 60 * 1000;
+const lockKey = (jobName: string) => `odoo-sync:lock:${jobName}`;
+
+/** Tenta adquirir o lock do ciclo. Retorna true se conseguiu. */
+async function adquirirLock(jobName: string): Promise<boolean> {
+  const res = await connection.set(lockKey(jobName), String(Date.now()), "PX", LOCK_TTL_MS, "NX");
+  return res === "OK";
+}
+
+/** Libera o lock do ciclo. */
+async function liberarLock(jobName: string): Promise<void> {
+  await connection.del(lockKey(jobName));
+}
+
+// Cache da última config aplicada — evita churn de upsertJobScheduler (WR-04).
+let ultimaConfigAplicada: Awaited<ReturnType<typeof readSyncConfig>> | null = null;
 
 /**
  * (Re)agenda os três ciclos de sync com os intervalos atuais da config.
  * upsertJobScheduler é idempotente — chamar de novo com outro `every`
  * reajusta o agendamento. É o que faz a mudança na tela /configuracao
- * valer sem reiniciar o worker.
+ * valer sem reiniciar o worker. Só reagenda quando algum valor mudou.
  */
 async function aplicarAgendamento(): Promise<void> {
   const cfg = await readSyncConfig(prisma);
+  if (
+    ultimaConfigAplicada &&
+    ultimaConfigAplicada.incrementalIntervalMin === cfg.incrementalIntervalMin &&
+    ultimaConfigAplicada.snapshotIntervalMin === cfg.snapshotIntervalMin &&
+    ultimaConfigAplicada.reconcileIntervalMin === cfg.reconcileIntervalMin
+  ) {
+    return; // nada mudou — não reagenda (WR-04)
+  }
   await syncQueue.upsertJobScheduler(
     JOB_INCREMENTAL,
     { every: cfg.incrementalIntervalMin * 60_000 },
@@ -44,6 +70,7 @@ async function aplicarAgendamento(): Promise<void> {
     { every: cfg.reconcileIntervalMin * 60_000 },
     { name: JOB_RECONCILE },
   );
+  ultimaConfigAplicada = cfg;
   console.log(
     `[worker] agendado — incremental ${cfg.incrementalIntervalMin}min, ` +
       `snapshot ${cfg.snapshotIntervalMin}min, reconcile ${cfg.reconcileIntervalMin}min`,
@@ -67,18 +94,18 @@ const worker = new Worker(
       await aplicarAgendamento();
       return { ok: true };
     }
-    if (emAndamento.has(job.name)) {
-      console.log(`[worker] ciclo "${job.name}" ainda rodando — pulado`);
+    // Lock cluster-safe: se outro worker/ciclo já o detém, pula (WR-01).
+    if (!(await adquirirLock(job.name))) {
+      console.log(`[worker] ciclo "${job.name}" ainda rodando (lock) — pulado`);
       return { skipped: true };
     }
-    emAndamento.add(job.name);
     const inicio = Date.now();
     try {
       await rodarCiclo(job.name);
       console.log(`[worker] ciclo "${job.name}" concluído em ${Date.now() - inicio}ms`);
       return { ok: true };
     } finally {
-      emAndamento.delete(job.name);
+      await liberarLock(job.name);
     }
   },
   { connection, concurrency: 1 },
