@@ -1,4 +1,4 @@
-import { OdooRpcFault, isAccessError, OdooAuthError } from "./errors";
+import { OdooRpcFault, isAccessError, OdooAuthError, OdooError } from "./errors";
 
 describe("erros do Odoo", () => {
   it("OdooRpcFault extrai a mensagem de data.message", () => {
@@ -16,6 +16,15 @@ describe("erros do Odoo", () => {
   });
 
   it("OdooAuthError é um OdooError", () => {
-    expect(new OdooAuthError("falhou")).toBeInstanceOf(Error);
+    const err = new OdooAuthError("falhou");
+    expect(err).toBeInstanceOf(Error);
+    expect(err).toBeInstanceOf(OdooError);
+  });
+
+  it("isAccessError detecta AccessError via data.debug", () => {
+    const fault = new OdooRpcFault({
+      data: { message: "erro genérico", debug: "Traceback... odoo.exceptions.AccessError: ..." },
+    });
+    expect(isAccessError(fault)).toBe(true);
   });
 });
