@@ -32,3 +32,22 @@ describe("OdooClient._rpc", () => {
     expect(fetchMock).toHaveBeenCalledTimes(2);
   });
 });
+
+describe("OdooClient.searchReadPaged", () => {
+  const base = { url: "http://odoo", db: "d", username: "u", password: "p" };
+
+  it("pagina até a página vir menor que o limit", async () => {
+    const pag1 = Array.from({ length: 2 }, (_, i) => ({ id: i + 1 }));
+    const pag2 = [{ id: 3 }];
+    const fetchMock = jest
+      .fn()
+      .mockResolvedValueOnce({ ok: true, json: async () => ({ result: 11 }) })
+      .mockResolvedValueOnce({ ok: true, json: async () => ({ result: pag1 }) })
+      .mockResolvedValueOnce({ ok: true, json: async () => ({ result: pag2 }) });
+    global.fetch = fetchMock as never;
+    const c = new OdooClient({ ...base, throttleMs: 0 });
+    await c.authenticate();
+    const todos = await c.searchReadPaged("res.partner", [], { pageSize: 2 });
+    expect(todos.map((r) => (r as { id: number }).id)).toEqual([1, 2, 3]);
+  });
+});

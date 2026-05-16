@@ -100,6 +100,33 @@ export class OdooClient {
       kwargs,
     ]);
   }
+
+  /** search_read paginado: busca tudo que casa com o domínio, em páginas. */
+  async searchReadPaged(
+    model: string,
+    domain: unknown[],
+    opts: { pageSize?: number; fields?: string[] } = {},
+  ): Promise<unknown[]> {
+    const pageSize = opts.pageSize ?? 500;
+    const out: unknown[] = [];
+    let offset = 0;
+    for (;;) {
+      const result = await this.executeKw<unknown[]>(model, "search_read", [domain], {
+        offset,
+        limit: pageSize,
+        ...(opts.fields ? { fields: opts.fields } : {}),
+      });
+      out.push(...result);
+      if (result.length < pageSize) break;
+      offset += pageSize;
+    }
+    return out;
+  }
+
+  /** Retorna só os ids que casam com o domínio (para reconcile). */
+  async searchIds(model: string, domain: unknown[] = []): Promise<number[]> {
+    return this.executeKw<number[]>(model, "search", [domain]);
+  }
 }
 
 export function clientFromEnv(): OdooClient {
