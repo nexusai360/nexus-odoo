@@ -29,13 +29,31 @@ describe("syncIncremental", () => {
       { id: 2, name: "B", write_date: false },
     ]);
     const raw = fakeRawTable();
-    const n = await syncIncremental(client, raw as never, "res.partner", null);
-    expect(n).toBe(2);
+    const res = await syncIncremental(client, raw as never, "res.partner", null);
+    expect(res.count).toBe(2);
     expect(raw.upsert).toHaveBeenCalledTimes(2);
     const primeiro = raw.upsert.mock.calls[0][0];
     expect(primeiro.where).toEqual({ odooId: 1 });
     expect(primeiro.create.odooWriteDate).toBeInstanceOf(Date);
     const segundo = raw.upsert.mock.calls[1][0];
     expect(segundo.create.odooWriteDate).toBeNull();
+  });
+
+  it("CR-01: o watermark é capturado ANTES do fetch, não na conclusão", async () => {
+    // O searchReadPaged demora; qualquer registro escrito durante o pull tem
+    // write_date maior que o watermark e entra no próximo ciclo, sem perda.
+    let fetchStart = 0;
+    const client = {
+      searchReadPaged: jest.fn().mockImplementation(async () => {
+        fetchStart = Date.now();
+        await new Promise((r) => setTimeout(r, 20));
+        return [];
+      }),
+    } as never;
+    const raw = fakeRawTable();
+    const res = await syncIncremental(client, raw as never, "res.partner", null);
+    // watermark <= instante em que o fetch começou (pré-fetch),
+    // estritamente menor que a conclusão.
+    expect(res.watermark.getTime()).toBeLessThanOrEqual(fetchStart);
   });
 });

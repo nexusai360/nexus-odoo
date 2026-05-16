@@ -1,5 +1,6 @@
 // src/worker/sync/incremental.ts
 import type { OdooClient } from "../odoo/client";
+import { odooDatetime, parseWriteDate } from "../odoo/datetime";
 
 /** Interface mínima de uma tabela raw Prisma (prisma.rawXxx). */
 export interface RawDelegate {
@@ -17,15 +18,17 @@ interface RawRow {
   syncedAt: Date;
 }
 
-/** Formata uma Date para o formato de datetime do Odoo: "YYYY-MM-DD HH:MM:SS" (UTC). */
-export function odooDatetime(d: Date): string {
-  return d.toISOString().slice(0, 19).replace("T", " ");
-}
+export { odooDatetime };
 
-function parseWriteDate(v: unknown): Date | null {
-  if (typeof v !== "string" || !v) return null;
-  const d = new Date(v.replace(" ", "T") + "Z");
-  return Number.isNaN(d.getTime()) ? null : d;
+/** Resultado de um ciclo incremental: contagem + watermark a persistir. */
+export interface IncrementalResult {
+  count: number;
+  /**
+   * Marca d'água a gravar como `lastIncrementalAt`. É capturada ANTES do
+   * fetch — qualquer registro modificado no Odoo durante o pull multi-página
+   * será reprocessado no próximo ciclo, sem perda silenciosa (CR-01).
+   */
+  watermark: Date;
 }
 
 export async function syncIncremental(
@@ -33,7 +36,10 @@ export async function syncIncremental(
   raw: RawDelegate,
   odooModel: string,
   since: Date | null,
-): Promise<number> {
+): Promise<IncrementalResult> {
+  // Capturada ANTES do search_read: o próximo ciclo filtra por write_date >
+  // cycleStart, então registros escritos durante o pull entram no próximo ciclo.
+  const cycleStart = new Date();
   const domain = since ? [["write_date", ">", odooDatetime(since)]] : [];
   const records = (await client.searchReadPaged(odooModel, domain)) as Record<string, unknown>[];
   const now = new Date();
@@ -46,5 +52,5 @@ export async function syncIncremental(
       update: { data: rec, odooWriteDate, syncedAt: now },
     });
   }
-  return records.length;
+  return { count: records.length, watermark: cycleStart };
 }
