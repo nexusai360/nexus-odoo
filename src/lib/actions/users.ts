@@ -138,6 +138,37 @@ export async function createUser(
   }
 }
 
+// --- checkEmailAvailable ---------------------------------------------------
+
+const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+/**
+ * Verifica se um e-mail ainda não está cadastrado. Usada para validação
+ * antecipada no modal de criação de usuário (defesa em profundidade — o
+ * `createUser` revalida no submit). Exige autenticação; se não autenticado
+ * ou e-mail malformado, retorna `available: false`.
+ */
+export async function checkEmailAvailable(
+  email: string,
+): Promise<{ available: boolean }> {
+  try {
+    const me = await getCurrentUser();
+    if (!me) return { available: false };
+
+    const normalized = email.trim().toLowerCase();
+    if (!EMAIL_REGEX.test(normalized)) return { available: false };
+
+    const existing = await prisma.user.findUnique({
+      where: { email: normalized },
+      select: { id: true },
+    });
+    return { available: !existing };
+  } catch (err) {
+    console.error("[users.checkEmailAvailable]", err);
+    return { available: false };
+  }
+}
+
 // --- T14a: updateUser ------------------------------------------------------
 
 const UpdateUserInput = z.object({

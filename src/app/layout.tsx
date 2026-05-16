@@ -3,7 +3,10 @@ import { Inter } from "next/font/google";
 import { Geist_Mono } from "next/font/google";
 import { Toaster } from "@/components/ui/sonner";
 import { Providers } from "@/components/providers/theme-provider";
-import { getResolvedThemeFromCookie } from "@/lib/theme";
+import {
+  getResolvedThemeFromCookie,
+  getThemePreferenceFromCookie,
+} from "@/lib/theme";
 import "./globals.css";
 
 const inter = Inter({
@@ -27,6 +30,7 @@ export default async function RootLayout({
   children: React.ReactNode;
 }>) {
   const resolvedTheme = await getResolvedThemeFromCookie();
+  const themePreference = await getThemePreferenceFromCookie();
 
   return (
     <html
@@ -36,7 +40,10 @@ export default async function RootLayout({
       suppressHydrationWarning
     >
       <body className="min-h-full flex flex-col">
-        <Providers initialTheme={resolvedTheme}>
+        <Providers
+          initialTheme={resolvedTheme}
+          initialPreference={themePreference}
+        >
           {children}
           <Toaster />
         </Providers>

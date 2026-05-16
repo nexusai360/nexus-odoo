@@ -258,7 +258,7 @@ export function BadgeSelect<T extends string = string>({
                 {option.label}
               </span>
               {option.description ? (
-                <span className="block text-xs text-muted-foreground">
+                <span className="block whitespace-nowrap text-xs text-muted-foreground">
                   {option.description}
                 </span>
               ) : null}

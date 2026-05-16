@@ -37,7 +37,12 @@ import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
 import { PasswordInput } from "@/components/ui/password-input";
 
-import { createUser, updateUser, type UserListItem } from "@/lib/actions/users";
+import {
+  checkEmailAvailable,
+  createUser,
+  updateUser,
+  type UserListItem,
+} from "@/lib/actions/users";
 import { canCreateRole } from "@/lib/permissions";
 import { cn } from "@/lib/utils";
 import {
@@ -147,6 +152,9 @@ export function UserFormDialog({
 
   const [createdPassword, setCreatedPassword] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
+  const [checkingEmail, setCheckingEmail] = useState(false);
+
+  const emailRef = useRef<HTMLInputElement | null>(null);
 
   const nameId = useId();
   const emailId = useId();
@@ -154,6 +162,7 @@ export function UserFormDialog({
   const confirmId = useId();
   const passwordErrorId = useId();
   const confirmErrorId = useId();
+  const emailErrorId = useId();
 
   // owner e o próprio usuário têm nível/status protegidos.
   const showActiveToggle = isEdit && !isOwner && !isSelf;
@@ -165,6 +174,7 @@ export function UserFormDialog({
     setErrors({});
     setCreatedPassword(null);
     setCopied(false);
+    setCheckingEmail(false);
     if (isEdit && user) {
       setForm({
         ...EMPTY_FORM,
@@ -216,10 +226,33 @@ export function UserFormDialog({
     return Object.keys(next).length === 0;
   }
 
-  function goNext() {
+  async function goNext() {
+    if (checkingEmail) return;
     if (!validateIdentity()) {
       toast.error("Verifique os campos da etapa Identidade.");
       return;
+    }
+    // Modo create: verifica duplicidade de e-mail antes de avançar.
+    if (!isEdit) {
+      setCheckingEmail(true);
+      try {
+        const { available } = await checkEmailAvailable(
+          form.email.trim().toLowerCase(),
+        );
+        if (!available) {
+          setErrors((e) => ({
+            ...e,
+            email: "Este e-mail já está cadastrado.",
+          }));
+          emailRef.current?.focus();
+          return;
+        }
+      } catch {
+        toast.error("Não foi possível verificar o e-mail. Tente novamente.");
+        return;
+      } finally {
+        setCheckingEmail(false);
+      }
     }
     setStep(2);
   }
@@ -336,6 +369,7 @@ export function UserFormDialog({
                 lockRole={lockRole}
                 availableRoles={availableRoles}
                 showActiveToggle={showActiveToggle}
+                emailRef={emailRef}
                 ids={{
                   name: nameId,
                   email: emailId,
@@ -343,6 +377,7 @@ export function UserFormDialog({
                   confirm: confirmId,
                   passwordError: passwordErrorId,
                   confirmError: confirmErrorId,
+                  emailError: emailErrorId,
                 }}
               />
             ) : (
@@ -376,7 +411,17 @@ export function UserFormDialog({
                 </Button>
               ) : null}
               {step < 2 ? (
-                <Button type="button" onClick={goNext} disabled={pending}>
+                <Button
+                  type="button"
+                  onClick={() => void goNext()}
+                  disabled={pending || checkingEmail}
+                >
+                  {checkingEmail ? (
+                    <Loader2
+                      className="mr-1.5 h-4 w-4 animate-spin"
+                      aria-hidden="true"
+                    />
+                  ) : null}
                   Próximo
                 </Button>
               ) : (
@@ -475,6 +520,7 @@ interface StepIdentityProps {
   lockRole: boolean;
   availableRoles: RoleMeta[];
   showActiveToggle: boolean;
+  emailRef: React.RefObject<HTMLInputElement | null>;
   ids: {
     name: string;
     email: string;
@@ -482,6 +528,7 @@ interface StepIdentityProps {
     confirm: string;
     passwordError: string;
     confirmError: string;
+    emailError: string;
   };
 }
 
@@ -494,6 +541,7 @@ function StepIdentity({
   lockRole,
   availableRoles,
   showActiveToggle,
+  emailRef,
   ids,
 }: StepIdentityProps) {
   return (
@@ -534,6 +582,7 @@ function StepIdentity({
           E-mail
         </label>
         <Input
+          ref={emailRef}
           id={ids.email}
           type="email"
           value={form.email}
@@ -543,6 +592,7 @@ function StepIdentity({
           }}
           placeholder="email@exemplo.com"
           aria-invalid={!!errors.email || undefined}
+          aria-describedby={errors.email ? ids.emailError : undefined}
           autoComplete="email"
           disabled={isEdit}
           readOnly={isEdit}
@@ -553,7 +603,12 @@ function StepIdentity({
           </p>
         ) : null}
         {errors.email ? (
-          <p className="text-xs text-red-400" role="alert">
+          <p
+            id={ids.emailError}
+            className="text-xs text-destructive"
+            role="alert"
+            aria-live="polite"
+          >
             {errors.email}
           </p>
         ) : null}

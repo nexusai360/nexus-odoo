@@ -348,7 +348,7 @@ export function UsersContent({ currentUser }: UsersContentProps) {
                         ) : (
                           <BadgeSelect<RoleValue>
                             useFixed
-                            menuClassName="min-w-[300px]"
+                            menuClassName="min-w-[360px]"
                             value={u.platformRole}
                             onChange={(val) =>
                               handleInlineRoleChange(u.id, val)
