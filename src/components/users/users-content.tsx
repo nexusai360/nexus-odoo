@@ -8,7 +8,7 @@ import {
   Pencil,
   Plus,
   Shield,
-  ShieldHalf,
+  ShieldCheck,
   Trash2,
   UserCheck,
   Users as UsersIcon,
@@ -43,6 +43,11 @@ import {
   type BadgeOption,
   type BadgeStyle,
 } from "@/components/ui/badge-select";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 
 import {
   deleteUser,
@@ -77,8 +82,8 @@ const ROLE_BG: Record<RoleValue, string> = {
 
 const ROLE_ICON = {
   super_admin: Crown,
-  admin: Shield,
-  manager: ShieldHalf,
+  admin: ShieldCheck,
+  manager: Shield,
   viewer: Eye,
 } as const;
 
@@ -276,12 +281,20 @@ export function UsersContent({ currentUser }: UsersContentProps) {
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Nome</TableHead>
-                <TableHead>E-mail</TableHead>
-                <TableHead className="text-center">Nível</TableHead>
-                <TableHead className="text-center">Status</TableHead>
-                <TableHead>Criado em</TableHead>
-                <TableHead className="text-right">Ações</TableHead>
+                <TableHead className="text-muted-foreground">Nome</TableHead>
+                <TableHead className="text-muted-foreground">E-mail</TableHead>
+                <TableHead className="text-center text-muted-foreground">
+                  Nível
+                </TableHead>
+                <TableHead className="text-center text-muted-foreground">
+                  Status
+                </TableHead>
+                <TableHead className="text-center text-muted-foreground">
+                  Criado em
+                </TableHead>
+                <TableHead className="text-center text-muted-foreground">
+                  Ações
+                </TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -378,36 +391,54 @@ export function UsersContent({ currentUser }: UsersContentProps) {
                       </div>
                     </TableCell>
 
-                    <TableCell className="text-sm text-muted-foreground">
+                    <TableCell className="text-center text-sm text-muted-foreground">
                       {format(new Date(u.createdAt), "dd MMM yyyy HH:mm", {
                         locale: ptBR,
                       })}
                     </TableCell>
 
                     {/* Ações */}
-                    <TableCell>
-                      <div className="flex items-center justify-end gap-1">
+                    <TableCell className="text-center">
+                      <div className="flex items-center justify-center gap-1">
                         {canEdit ? (
-                          <button
-                            type="button"
-                            onClick={() => setEditingUser(u)}
-                            title="Editar usuário"
-                            aria-label={`Editar ${u.name}`}
-                            className={ACTION_BTN}
-                          >
-                            <Pencil className="h-4 w-4" aria-hidden="true" />
-                          </button>
+                          <Tooltip>
+                            <TooltipTrigger
+                              render={
+                                <button
+                                  type="button"
+                                  onClick={() => setEditingUser(u)}
+                                  aria-label={`Editar ${u.name}`}
+                                  className={ACTION_BTN}
+                                />
+                              }
+                            >
+                              <Pencil
+                                className="h-4 w-4"
+                                aria-hidden="true"
+                              />
+                            </TooltipTrigger>
+                            <TooltipContent>Editar usuário</TooltipContent>
+                          </Tooltip>
                         ) : null}
                         {canDel ? (
-                          <button
-                            type="button"
-                            onClick={() => setConfirmDelete(u)}
-                            title="Excluir usuário"
-                            aria-label={`Excluir ${u.name}`}
-                            className={ACTION_BTN_DANGER}
-                          >
-                            <Trash2 className="h-4 w-4" aria-hidden="true" />
-                          </button>
+                          <Tooltip>
+                            <TooltipTrigger
+                              render={
+                                <button
+                                  type="button"
+                                  onClick={() => setConfirmDelete(u)}
+                                  aria-label={`Excluir ${u.name}`}
+                                  className={ACTION_BTN_DANGER}
+                                />
+                              }
+                            >
+                              <Trash2
+                                className="h-4 w-4"
+                                aria-hidden="true"
+                              />
+                            </TooltipTrigger>
+                            <TooltipContent>Excluir usuário</TooltipContent>
+                          </Tooltip>
                         ) : null}
                       </div>
                     </TableCell>

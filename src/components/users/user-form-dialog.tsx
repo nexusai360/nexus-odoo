@@ -21,14 +21,12 @@ import {
   Loader2,
   UserCheck,
   UserX,
-  X,
 } from "lucide-react";
 import { toast } from "sonner";
 
 import {
   Dialog,
   DialogContent,
-  DialogClose,
   DialogDescription,
   DialogFooter,
   DialogHeader,
@@ -297,21 +295,7 @@ export function UserFormDialog({
 
   return (
     <Dialog open={open} onOpenChange={close}>
-      <DialogContent
-        className="sm:max-w-xl overflow-visible"
-        showCloseButton={false}
-      >
-        <DialogClose
-          render={
-            <button
-              type="button"
-              aria-label="Fechar"
-              className="absolute top-3 right-3 inline-flex h-10 w-10 items-center justify-center rounded-md text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50 cursor-pointer"
-            />
-          }
-        >
-          <X className="h-4 w-4" aria-hidden="true" />
-        </DialogClose>
+      <DialogContent className="sm:max-w-xl overflow-visible">
         <DialogHeader>
           <DialogTitle>
             {createdPassword

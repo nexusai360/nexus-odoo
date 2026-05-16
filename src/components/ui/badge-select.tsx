@@ -210,7 +210,7 @@ export function BadgeSelect<T extends string = string>({
           : { minWidth }
       }
       className={cn(
-        "overflow-hidden rounded-lg border border-border bg-popover text-popover-foreground shadow-xl ring-1 ring-foreground/10",
+        "min-w-[260px] overflow-hidden rounded-lg border border-border bg-popover text-popover-foreground shadow-xl ring-1 ring-foreground/10",
         "origin-top animate-in fade-in-0 zoom-in-95",
         "duration-150 ease-out",
         !useFixed && "absolute left-0 top-full z-[1000] mt-1",

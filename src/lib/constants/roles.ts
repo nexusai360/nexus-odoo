@@ -1,4 +1,4 @@
-import { Crown, Shield, ShieldHalf, Eye } from "lucide-react";
+import { Crown, Shield, ShieldCheck, Eye } from "lucide-react";
 import type { PlatformRole } from "@/generated/prisma/client";
 
 export const PLATFORM_ROLE_LABELS: Record<PlatformRole, string> = {
@@ -50,8 +50,8 @@ export const PLATFORM_ROLE_STYLES: Record<
 
 export const PLATFORM_ROLE_ICONS = {
   super_admin: Crown,
-  admin: Shield,
-  manager: ShieldHalf,
+  admin: ShieldCheck,
+  manager: Shield,
   viewer: Eye,
 } as const;
 
@@ -71,13 +71,13 @@ export const PLATFORM_ROLE_OPTIONS: Array<{
     value: "admin",
     label: "Admin",
     description: "Gerencia contas e usuários",
-    icon: Shield,
+    icon: ShieldCheck,
   },
   {
     value: "manager",
     label: "Gerente",
     description: "Gerencia departamentos atribuídos",
-    icon: ShieldHalf,
+    icon: Shield,
   },
   {
     value: "viewer",
