@@ -7,13 +7,22 @@ describe("model-catalog", () => {
     expect(MODEL_CATALOG).toHaveLength(79);
   });
 
-  it("cobre exatamente os modelos de discovery/output/modelos", () => {
-    const dir = path.join(process.cwd(), "discovery/output/modelos");
-    const arquivos = fs.readdirSync(dir).filter((f) => f.endsWith(".json"));
-    const noDisco = new Set(arquivos.map((f) => f.replace(/\.json$/, "")));
-    const noCatalogo = new Set(MODEL_CATALOG.map((m) => m.odooModel));
-    expect(noCatalogo).toEqual(noDisco);
-  });
+  // discovery/output/ é gitignored (saídas brutas locais — ver .gitignore).
+  // Em dev, com os field-maps presentes, valida-se que o catálogo bate com
+  // o discovery; em CI o diretório não existe e o caso é pulado.
+  const discoveryDir = path.join(process.cwd(), "discovery/output/modelos");
+  const temDiscovery = fs.existsSync(discoveryDir);
+  (temDiscovery ? it : it.skip)(
+    "cobre exatamente os modelos de discovery/output/modelos",
+    () => {
+      const arquivos = fs
+        .readdirSync(discoveryDir)
+        .filter((f) => f.endsWith(".json"));
+      const noDisco = new Set(arquivos.map((f) => f.replace(/\.json$/, "")));
+      const noCatalogo = new Set(MODEL_CATALOG.map((m) => m.odooModel));
+      expect(noCatalogo).toEqual(noDisco);
+    },
+  );
 
   it("todo modo é incremental, snapshot ou estatico", () => {
     for (const m of MODEL_CATALOG) {
