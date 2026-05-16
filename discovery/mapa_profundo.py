@@ -37,21 +37,23 @@ def mapear_modelo(client, model: str) -> dict:
     ]
 
     # Amostra: exclui campos binary (base64 infla o JSON). Tenta todos os
-    # campos não-binary; se um campo computado bugado quebrar a leitura,
-    # refaz só com campos armazenados (store=True), que não exigem cálculo.
+    # campos não-binary; recua para campos armazenados (store) se um campo
+    # computado quebrar; se ainda falhar (campo store que referencia modelo
+    # restrito), segue sem amostra — a estrutura dos campos é o essencial.
     nao_binary = [n for n, meta in fields.items() if meta.get("type") != "binary"]
-    try:
-        amostra = client.execute_kw(
-            model, "search_read", [[]],
-            {"limit": 8, "order": "id desc", "fields": nao_binary},
-        )
-    except OdooRpcFault:
-        store = [n for n, meta in fields.items()
-                 if meta.get("type") != "binary" and meta.get("store")]
-        amostra = client.execute_kw(
-            model, "search_read", [[]],
-            {"limit": 8, "order": "id desc", "fields": store},
-        )
+    store = [n for n, meta in fields.items()
+             if meta.get("type") != "binary" and meta.get("store")]
+    amostra, amostra_erro = [], None
+    for conjunto in (nao_binary, store):
+        try:
+            amostra = client.execute_kw(
+                model, "search_read", [[]],
+                {"limit": 8, "order": "id desc", "fields": conjunto},
+            )
+            amostra_erro = None
+            break
+        except OdooRpcFault as exc:
+            amostra_erro = str(exc)[:200]
 
     ordenacao_ok = False
     if temporais["write_date"]:
@@ -72,6 +74,7 @@ def mapear_modelo(client, model: str) -> dict:
         "veredito_delta": veredito,
         "qtd_amostra": len(amostra),
         "amostra": amostra,
+        "amostra_erro": amostra_erro,
     }
 
 
