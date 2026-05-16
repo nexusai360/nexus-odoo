@@ -19,6 +19,9 @@ Scripts de mapeamento do Odoo. Rodam localmente, sob demanda.
 Sempre rodar a partir da raiz do projeto, como módulo:
 
 ```bash
+# Garante o diretório de saída antes do tee
+mkdir -p discovery/output
+
 # Etapa 0 — handshake
 discovery/.venv/bin/python -m discovery.handshake | tee discovery/output/discovery.log
 
