@@ -40,6 +40,8 @@ export interface BadgeSelectProps<T extends string = string> {
   minWidth?: number;
   placeholder?: string;
   className?: string;
+  /** Classes extras concatenadas no popup do menu (ex.: largura mínima). */
+  menuClassName?: string;
   ariaLabel?: string;
 }
 
@@ -62,6 +64,7 @@ export function BadgeSelect<T extends string = string>({
   minWidth = 240,
   placeholder,
   className,
+  menuClassName,
   ariaLabel,
 }: BadgeSelectProps<T>) {
   const [open, setOpen] = useState(false);
@@ -210,10 +213,11 @@ export function BadgeSelect<T extends string = string>({
           : { minWidth }
       }
       className={cn(
-        "min-w-[260px] overflow-hidden rounded-lg border border-border bg-popover text-popover-foreground shadow-xl ring-1 ring-foreground/10",
+        "overflow-hidden rounded-lg border border-border bg-popover text-popover-foreground shadow-xl ring-1 ring-foreground/10",
         "origin-top animate-in fade-in-0 zoom-in-95",
         "duration-150 ease-out",
         !useFixed && "absolute left-0 top-full z-[1000] mt-1",
+        menuClassName,
       )}
       data-state={open ? "open" : "closed"}
     >
