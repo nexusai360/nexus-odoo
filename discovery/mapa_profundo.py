@@ -36,12 +36,22 @@ def mapear_modelo(client, model: str) -> dict:
         for nome, meta in sorted(fields.items())
     ]
 
-    # Exclui campos binary da amostra — evitam inflar o JSON com base64.
-    campos_amostra = [n for n, meta in fields.items() if meta.get("type") != "binary"]
-    amostra = client.execute_kw(
-        model, "search_read", [[]],
-        {"limit": 8, "order": "id desc", "fields": campos_amostra},
-    )
+    # Amostra: exclui campos binary (base64 infla o JSON). Tenta todos os
+    # campos não-binary; se um campo computado bugado quebrar a leitura,
+    # refaz só com campos armazenados (store=True), que não exigem cálculo.
+    nao_binary = [n for n, meta in fields.items() if meta.get("type") != "binary"]
+    try:
+        amostra = client.execute_kw(
+            model, "search_read", [[]],
+            {"limit": 8, "order": "id desc", "fields": nao_binary},
+        )
+    except OdooRpcFault:
+        store = [n for n, meta in fields.items()
+                 if meta.get("type") != "binary" and meta.get("store")]
+        amostra = client.execute_kw(
+            model, "search_read", [[]],
+            {"limit": 8, "order": "id desc", "fields": store},
+        )
 
     ordenacao_ok = False
     if temporais["write_date"]:
