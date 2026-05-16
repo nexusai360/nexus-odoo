@@ -1,15 +1,9 @@
 "use server";
 
-import { z } from "zod";
 import { prisma } from "@/lib/prisma";
 import { getCurrentUser } from "@/lib/auth";
 import { logAudit } from "@/lib/audit";
-
-export const syncConfigSchema = z.object({
-  incrementalIntervalMin: z.number().int().min(1).max(1440),
-  snapshotIntervalMin: z.number().int().min(1).max(10080),
-  reconcileIntervalMin: z.number().int().min(1).max(10080),
-});
+import { syncConfigSchema } from "@/lib/validations/sync-config";
 
 const KEY_OF = {
   incrementalIntervalMin: "sync.incremental_interval_min",

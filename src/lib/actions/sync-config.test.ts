@@ -2,7 +2,7 @@ jest.mock("@/lib/prisma", () => ({ prisma: {} }));
 jest.mock("@/lib/auth", () => ({ getCurrentUser: jest.fn() }));
 jest.mock("@/lib/audit", () => ({ logAudit: jest.fn() }));
 
-import { syncConfigSchema } from "./sync-config";
+import { syncConfigSchema } from "@/lib/validations/sync-config";
 
 describe("syncConfigSchema", () => {
   it("aceita intervalos inteiros positivos", () => {
