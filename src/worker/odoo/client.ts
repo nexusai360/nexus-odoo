@@ -154,6 +154,25 @@ export class OdooClient {
     return out;
   }
 
+  /**
+   * search_read de uma única página com offset explícito.
+   * Retorna os registros da página e um flag indicando se há mais páginas.
+   */
+  async searchReadPage(
+    model: string,
+    domain: unknown[],
+    opts: { offset: number; pageSize: number; fields?: string[] },
+  ): Promise<{ records: unknown[]; hasMore: boolean }> {
+    const { offset, pageSize, fields } = opts;
+    const records = await this.executeKw<unknown[]>(model, "search_read", [domain], {
+      offset,
+      limit: pageSize,
+      order: "id asc",
+      ...(fields ? { fields } : {}),
+    });
+    return { records, hasMore: records.length >= pageSize };
+  }
+
   /** Retorna só os ids que casam com o domínio, paginado (para reconcile). */
   async searchIds(model: string, domain: unknown[] = []): Promise<number[]> {
     const pageSize = 5000;

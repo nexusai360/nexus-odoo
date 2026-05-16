@@ -104,3 +104,50 @@ describe("OdooClient.searchReadPaged", () => {
     expect(kwargs.order).toBe("id asc");
   });
 });
+
+describe("OdooClient.searchReadPage", () => {
+  const base = { url: "http://odoo", db: "d", username: "u", password: "p" };
+
+  it("retorna records e hasMore=true quando a página está cheia", async () => {
+    const page = [{ id: 1 }, { id: 2 }];
+    const fetchMock = jest
+      .fn()
+      .mockResolvedValueOnce({ ok: true, status: 200, json: async () => ({ result: 11 }) })
+      .mockResolvedValueOnce({ ok: true, status: 200, json: async () => ({ result: page }) });
+    global.fetch = fetchMock as never;
+    const c = new OdooClient({ ...base, throttleMs: 0 });
+    await c.authenticate();
+    const res = await c.searchReadPage("res.partner", [], { offset: 0, pageSize: 2 });
+    expect(res.records).toEqual(page);
+    expect(res.hasMore).toBe(true);
+  });
+
+  it("retorna hasMore=false quando a página é menor que o pageSize", async () => {
+    const page = [{ id: 3 }];
+    const fetchMock = jest
+      .fn()
+      .mockResolvedValueOnce({ ok: true, status: 200, json: async () => ({ result: 11 }) })
+      .mockResolvedValueOnce({ ok: true, status: 200, json: async () => ({ result: page }) });
+    global.fetch = fetchMock as never;
+    const c = new OdooClient({ ...base, throttleMs: 0 });
+    await c.authenticate();
+    const res = await c.searchReadPage("res.partner", [], { offset: 2, pageSize: 2 });
+    expect(res.records).toEqual(page);
+    expect(res.hasMore).toBe(false);
+  });
+
+  it("passa offset e order id asc nos kwargs", async () => {
+    const fetchMock = jest
+      .fn()
+      .mockResolvedValueOnce({ ok: true, status: 200, json: async () => ({ result: 11 }) })
+      .mockResolvedValueOnce({ ok: true, status: 200, json: async () => ({ result: [] }) });
+    global.fetch = fetchMock as never;
+    const c = new OdooClient({ ...base, throttleMs: 0 });
+    await c.authenticate();
+    await c.searchReadPage("res.partner", [], { offset: 500, pageSize: 500 });
+    const body = JSON.parse(fetchMock.mock.calls[1][1].body);
+    const kwargs = body.params.args[6];
+    expect(kwargs.offset).toBe(500);
+    expect(kwargs.order).toBe("id asc");
+  });
+});
