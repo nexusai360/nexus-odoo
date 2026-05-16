@@ -87,7 +87,7 @@ export async function getSyncState() {
       const table = rawTableName(row.model);
       try {
         const result = await prisma.$queryRawUnsafe<[{ count: bigint }]>(
-          `SELECT COUNT(*) AS count FROM "${table}" WHERE "rawDeleted" = false`,
+          `SELECT COUNT(*) AS count FROM "${table}" WHERE "raw_deleted" = false`,
         );
         const liveCount = Number(result[0]?.count ?? 0);
         return { ...row, recordCount: liveCount };
