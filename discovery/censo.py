@@ -1,9 +1,8 @@
 """Etapa A do Discovery — inventário completo dos modelos do Odoo."""
 import json
 import os
-import xmlrpc.client
 
-from discovery.odoo_client import client_from_env, is_access_error
+from discovery.odoo_client import client_from_env, is_access_error, OdooRpcFault
 from discovery.classificacao import classificar_tipo, area_de_negocio
 from discovery.relatorios import render_censo_md
 
@@ -35,7 +34,7 @@ def coletar(client) -> list:
                 item["registros"] = client.execute_kw(
                     r["model"], "search_count", [[]]
                 )
-            except xmlrpc.client.Fault as exc:
+            except OdooRpcFault as exc:
                 item["acesso"] = "sem-acesso" if is_access_error(exc) else "contagem-falhou"
             except Exception:
                 item["acesso"] = "contagem-falhou"

@@ -1,9 +1,8 @@
 """Etapa B do Discovery — mapeamento profundo dos modelos de camada2.json."""
 import json
 import os
-import xmlrpc.client
 
-from discovery.odoo_client import client_from_env, is_access_error
+from discovery.odoo_client import client_from_env, is_access_error, OdooRpcFault
 from discovery.classificacao import campos_temporais, veredito_aptidao_delta
 from discovery.relatorios import render_mapa_profundo_md
 
@@ -77,7 +76,7 @@ def main():
     for model in lista:
         try:
             dados = mapear_modelo(client, model)
-        except xmlrpc.client.Fault as exc:
+        except OdooRpcFault as exc:
             motivo = "sem-acesso" if is_access_error(exc) else "erro"
             print(f"  {model}: {motivo} — pulado")
             continue
