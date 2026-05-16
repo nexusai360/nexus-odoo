@@ -57,12 +57,48 @@ export async function getSyncConfig() {
   };
 }
 
+/**
+ * Deriva o nome da tabela raw a partir do nome do modelo Odoo.
+ * Convenção: pontos viram underscore, prefixo "raw_".
+ * Exemplo: "estoque.saldo.hoje" → "raw_estoque_saldo_hoje".
+ * Mantida em sync com rawTableFor() em worker/catalog/model-catalog.ts.
+ */
+function rawTableName(odooModel: string): string {
+  return "raw_" + odooModel.replace(/\./g, "_");
+}
+
 export async function getSyncState() {
   const me = await getCurrentUser();
   if (!me || me.platformRole !== "super_admin") {
     throw new Error("Acesso negado");
   }
-  return prisma.syncState.findMany({ orderBy: { model: "asc" } });
+
+  const rows = await prisma.syncState.findMany({ orderBy: { model: "asc" } });
+
+  // Conta ao vivo a tabela raw de cada modelo para evitar valores defasados ou
+  // condições de corrida no recordCount armazenado (especialmente em snapshots,
+  // que mostrariam 0 após full refresh antes de o markOk ser gravado).
+  //
+  // Segurança: o nome da tabela é derivado do campo `model` que vem do banco
+  // (populado pelo worker a partir de MODEL_CATALOG, lista fixa de constantes) —
+  // não há superfície de injeção SQL via input do usuário.
+  const rowsWithLiveCount = await Promise.all(
+    rows.map(async (row) => {
+      const table = rawTableName(row.model);
+      try {
+        const result = await prisma.$queryRawUnsafe<[{ count: bigint }]>(
+          `SELECT COUNT(*) AS count FROM "${table}" WHERE "rawDeleted" = false`,
+        );
+        const liveCount = Number(result[0]?.count ?? 0);
+        return { ...row, recordCount: liveCount };
+      } catch {
+        // Tabela raw ainda não existe (modelo nunca sincronizado) → 0 sem quebrar.
+        return { ...row, recordCount: 0 };
+      }
+    }),
+  );
+
+  return rowsWithLiveCount;
 }
 
 export async function updateSyncConfig(input: unknown) {
