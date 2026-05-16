@@ -16,8 +16,18 @@ export interface CycleContext {
 
 type RunCycleFn = typeof runModelCycle;
 
+/** Interface mínima para contar registros numa tabela raw do Prisma. */
+interface RawDelegateWithCount {
+  count(args: { where: { rawDeleted: boolean } }): Promise<number>;
+}
+
 function rawDelegate(prisma: PrismaClient, odooModel: string): Record<string, unknown> {
   return (prisma as unknown as Record<string, Record<string, unknown>>)[rawDelegateKey(odooModel)];
+}
+
+function rawDelegateCount(prisma: PrismaClient, odooModel: string): Promise<number> {
+  const delegate = rawDelegate(prisma, odooModel) as unknown as RawDelegateWithCount;
+  return delegate.count({ where: { rawDeleted: false } });
 }
 
 export async function processIncrementalCycle(
@@ -40,12 +50,14 @@ export async function processIncrementalCycle(
       markNoAccess,
       runner: async (model) => {
         const state = await ctx.prisma.syncState.findUnique({ where: { model } });
-        return syncIncremental(
+        const { watermark } = await syncIncremental(
           ctx.client,
           rawDelegate(ctx.prisma, model) as never,
           model,
           state?.lastIncrementalAt ?? null,
         );
+        const count = await rawDelegateCount(ctx.prisma, model);
+        return { count, watermark };
       },
     };
     await runCycle(deps, entry.odooModel);
@@ -68,14 +80,16 @@ export async function processSnapshotCycle(
       markOk,
       markError,
       markNoAccess,
-      runner: async (model) => ({
-        count: await syncSnapshot(
+      runner: async (model) => {
+        await syncSnapshot(
           ctx.client,
           ctx.prisma as never,
           rawDelegateKey(model),
           model,
-        ),
-      }),
+        );
+        const count = await rawDelegateCount(ctx.prisma, model);
+        return { count };
+      },
     };
     await runCycle(deps, entry.odooModel);
   }
@@ -109,9 +123,11 @@ export async function processReconcileCycle(
       markOk,
       markError,
       markNoAccess,
-      runner: async (model) => ({
-        count: await reconcileModel(ctx.client, rawDelegate(ctx.prisma, model) as never, model),
-      }),
+      runner: async (model) => {
+        await reconcileModel(ctx.client, rawDelegate(ctx.prisma, model) as never, model);
+        const count = await rawDelegateCount(ctx.prisma, model);
+        return { count };
+      },
     };
     await runCycle(deps, entry.odooModel);
   }
