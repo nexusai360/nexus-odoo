@@ -12,9 +12,12 @@ OUTPUT_DIR = "discovery/output"
 
 def coletar(client) -> list:
     """Lê ir.model e, para cada modelo persistente, obtém a contagem."""
+    # Não pedir o campo "modules": é computado e acessa ir.module.module,
+    # que exige permissão de Administração. A classificação por área usa o
+    # prefixo do nome técnico, não o módulo de origem.
     registros = client.execute_kw(
         "ir.model", "search_read", [[]],
-        {"fields": ["model", "name", "modules", "transient"]},
+        {"fields": ["model", "name", "transient"]},
     )
     modelos = []
     for r in registros:
@@ -22,7 +25,6 @@ def coletar(client) -> list:
         item = {
             "model": r["model"],
             "name": r["name"],
-            "modules": r.get("modules") or "",
             "tipo": tipo,
             "area": area_de_negocio(r["model"]),
             "acesso": "ok",
