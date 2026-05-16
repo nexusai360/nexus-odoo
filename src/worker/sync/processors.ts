@@ -3,7 +3,7 @@ import type { PrismaClient } from "../../generated/prisma/client";
 import type { OdooClient } from "../odoo/client";
 import type { CatalogEntry } from "../catalog/model-catalog";
 import { runModelCycle, type CycleDeps } from "./sync-engine";
-import { markRunning, markOk, markError, markNoAccess } from "./sync-state";
+import { markRunning, markOk, markError, markNoAccess, ensureSyncState } from "./sync-state";
 import { syncIncremental } from "./incremental";
 import { syncSnapshot } from "./snapshot";
 import { reconcileModel } from "./reconcile";
@@ -27,6 +27,9 @@ export async function processIncrementalCycle(
 ): Promise<void> {
   for (const entry of catalog) {
     if (entry.mode !== "incremental") continue;
+    // Garante a linha de SyncState antes do ciclo: o runner pode assumir
+    // que ela existe (WR-03).
+    await ensureSyncState(ctx.prisma, entry.odooModel, entry.mode);
     const deps: CycleDeps = {
       prisma: ctx.prisma,
       client: ctx.client,
@@ -36,12 +39,12 @@ export async function processIncrementalCycle(
       markError,
       markNoAccess,
       runner: async (model) => {
-        const state = await ctx.prisma.syncState.findUniqueOrThrow({ where: { model } });
+        const state = await ctx.prisma.syncState.findUnique({ where: { model } });
         return syncIncremental(
           ctx.client,
           rawDelegate(ctx.prisma, model) as never,
           model,
-          state.lastIncrementalAt,
+          state?.lastIncrementalAt ?? null,
         );
       },
     };
@@ -56,6 +59,7 @@ export async function processSnapshotCycle(
 ): Promise<void> {
   for (const entry of catalog) {
     if (entry.mode !== "snapshot" && entry.mode !== "estatico") continue;
+    await ensureSyncState(ctx.prisma, entry.odooModel, entry.mode);
     const deps: CycleDeps = {
       prisma: ctx.prisma,
       client: ctx.client,
@@ -64,8 +68,14 @@ export async function processSnapshotCycle(
       markOk,
       markError,
       markNoAccess,
-      runner: (model) =>
-        syncSnapshot(ctx.client, ctx.prisma as never, rawDelegateKey(model), model),
+      runner: async (model) => ({
+        count: await syncSnapshot(
+          ctx.client,
+          ctx.prisma as never,
+          rawDelegateKey(model),
+          model,
+        ),
+      }),
     };
     await runCycle(deps, entry.odooModel);
   }
@@ -86,6 +96,11 @@ export async function processReconcileCycle(
   runCycle: RunCycleFn = runModelCycle,
 ): Promise<void> {
   for (const entry of catalog) {
+    // Modelos estáticos não têm registros removidos no Odoo — reconcile é
+    // desperdício e ainda arrisca marcar registros vivos como apagados se a
+    // listagem de ids vier truncada (WR-08).
+    if (entry.mode === "estatico") continue;
+    await ensureSyncState(ctx.prisma, entry.odooModel, entry.mode);
     const deps: CycleDeps = {
       prisma: ctx.prisma,
       client: ctx.client,
@@ -94,7 +109,9 @@ export async function processReconcileCycle(
       markOk,
       markError,
       markNoAccess,
-      runner: (model) => reconcileModel(ctx.client, rawDelegate(ctx.prisma, model) as never, model),
+      runner: async (model) => ({
+        count: await reconcileModel(ctx.client, rawDelegate(ctx.prisma, model) as never, model),
+      }),
     };
     await runCycle(deps, entry.odooModel);
   }

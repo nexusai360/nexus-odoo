@@ -11,8 +11,11 @@ describe("processIncrementalCycle", () => {
       { odooModel: "b", mode: "snapshot" as const },
       { odooModel: "c", mode: "incremental" as const },
     ];
+    const prisma = {
+      syncState: { upsert: jest.fn().mockResolvedValue({}) },
+    } as never;
     await processIncrementalCycle(
-      { prisma: {} as never, client: {} as never },
+      { prisma, client: {} as never },
       catalog,
       fakeRun as never,
     );

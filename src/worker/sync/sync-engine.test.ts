@@ -32,7 +32,8 @@ describe("runModelCycle — isolamento de falha", () => {
     expect(deps.markError).not.toHaveBeenCalled();
   });
 
-  it("sucesso vira markOk com a contagem do runner", async () => {
+  it("sucesso vira markOk com a contagem e o watermark do runner", async () => {
+    const watermark = new Date("2026-05-10T08:00:00Z");
     const deps = {
       prisma: {} as never,
       client: {} as never,
@@ -41,9 +42,29 @@ describe("runModelCycle — isolamento de falha", () => {
       markOk: jest.fn(),
       markError: jest.fn(),
       markNoAccess: jest.fn(),
-      runner: jest.fn().mockResolvedValue(7),
+      runner: jest.fn().mockResolvedValue({ count: 7, watermark }),
     };
     await runModelCycle(deps as never, "res.partner");
-    expect(deps.markOk).toHaveBeenCalledWith(expect.anything(), "res.partner", expect.anything(), 7);
+    expect(deps.markOk).toHaveBeenCalledWith(
+      expect.anything(),
+      "res.partner",
+      "incremental",
+      7,
+      watermark,
+    );
+  });
+
+  it("WR-02: um mark* que lança no catch não escapa do ciclo", async () => {
+    const deps = {
+      prisma: {} as never,
+      client: {} as never,
+      cycle: "incremental" as const,
+      markRunning: jest.fn(),
+      markOk: jest.fn(),
+      markError: jest.fn().mockRejectedValue(new Error("P2025")),
+      markNoAccess: jest.fn(),
+      runner: jest.fn().mockRejectedValue(new Error("falha no runner")),
+    };
+    await expect(runModelCycle(deps as never, "res.partner")).resolves.toBeUndefined();
   });
 });
