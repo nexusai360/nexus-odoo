@@ -1,4 +1,4 @@
-import { PrismaClient } from "../src/generated/prisma/client";
+import { PrismaClient, Prisma } from "../src/generated/prisma/client";
 import { PrismaPg } from "@prisma/adapter-pg";
 import bcrypt from "bcryptjs";
 
@@ -35,7 +35,7 @@ const APP_SETTINGS_DEFAULTS: Array<{
   },
   {
     key: "odoo.last_full_sync",
-    value: null,
+    value: Prisma.JsonNull,
     category: "odoo",
     description: "Timestamp da última sincronização completa do Odoo.",
   },

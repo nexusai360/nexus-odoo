@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 import NextAuth from "next-auth";
 import Credentials from "next-auth/providers/credentials";
 import { z } from "zod";
@@ -10,8 +11,55 @@ const loginSchema = z.object({
   password: z.string().min(1, "Senha é obrigatória"),
 });
 
+// auth.ts roda em Node Runtime — aqui mora o callback `jwt`, que consulta o
+// Prisma para manter o token fresco. O middleware (Edge) usa apenas authConfig.
 export const { handlers, auth, signIn, signOut } = NextAuth({
   ...authConfig,
+  callbacks: {
+    ...authConfig.callbacks,
+    async jwt({ token, user }) {
+      if (user) {
+        token.id = (user as any).id;
+        token.platformRole = (user as any).platformRole;
+        token.isOwner = (user as any).isOwner;
+        token.mustChangePassword = (user as any).mustChangePassword;
+        token.avatarUrl = (user as any).avatarUrl;
+        token.theme = (user as any).theme;
+        token.name = (user as any).name;
+      }
+
+      if (token.id) {
+        try {
+          const { prisma } = await import("@/lib/prisma");
+          const fresh = await prisma.user.findUnique({
+            where: { id: token.id as string },
+            select: {
+              isActive: true,
+              isOwner: true,
+              name: true,
+              avatarUrl: true,
+              theme: true,
+              platformRole: true,
+              mustChangePassword: true,
+            },
+          });
+          if (fresh) {
+            token.platformRole = fresh.platformRole;
+            token.isOwner = fresh.isOwner;
+            token.name = fresh.name;
+            token.avatarUrl = fresh.avatarUrl;
+            token.theme = fresh.theme;
+            token.mustChangePassword = fresh.mustChangePassword;
+            if (!fresh.isActive) return null as any;
+          }
+        } catch {
+          // se falhar, manter token anterior — não derrubar auth
+        }
+      }
+
+      return token;
+    },
+  },
   providers: [
     Credentials({
       name: "credentials",

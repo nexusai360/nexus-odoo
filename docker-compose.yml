@@ -1,5 +1,3 @@
-version: "3.8"
-
 # Stack genérica para desenvolvimento local.
 # Para produção, ver docker-compose.production.yml (não versionado).
 

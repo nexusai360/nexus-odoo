@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@/auth";
 import { prisma } from "@/lib/prisma";
 
+export const runtime = "nodejs";
+
 /**
  * POST /api/user/theme
  * Persiste preferência de tema no banco e sincroniza cookies server-side.
@@ -21,9 +23,8 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Tema inválido" }, { status: 400 });
   }
 
-  const userId = (session.user as any).id;
   await prisma.user.update({
-    where: { id: userId },
+    where: { id: session.user.id },
     data: { theme },
   });
 

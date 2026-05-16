@@ -1,6 +1,10 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 import type { NextAuthConfig } from "next-auth";
 
+// Config edge-safe: usado pelo middleware (Edge Runtime). NÃO pode importar
+// Prisma nem nenhum módulo Node. Os callbacks aqui (authorized, session)
+// apenas leem o token/request. O callback `jwt` — que faz query no banco —
+// vive em auth.ts (Node Runtime).
 export const authConfig = {
   trustHost: true,
   pages: {
@@ -19,48 +23,6 @@ export const authConfig = {
       if (isPublic) return true;
       if (isLoggedIn) return true;
       return false;
-    },
-    async jwt({ token, user }) {
-      if (user) {
-        token.id = (user as any).id;
-        token.platformRole = (user as any).platformRole;
-        token.isOwner = (user as any).isOwner;
-        token.mustChangePassword = (user as any).mustChangePassword;
-        token.avatarUrl = (user as any).avatarUrl;
-        token.theme = (user as any).theme;
-        token.name = (user as any).name;
-      }
-
-      if (token.id) {
-        try {
-          const { prisma } = await import("@/lib/prisma");
-          const fresh = await prisma.user.findUnique({
-            where: { id: token.id as string },
-            select: {
-              isActive: true,
-              isOwner: true,
-              name: true,
-              avatarUrl: true,
-              theme: true,
-              platformRole: true,
-              mustChangePassword: true,
-            },
-          });
-          if (fresh) {
-            token.platformRole = fresh.platformRole;
-            token.isOwner = fresh.isOwner;
-            token.name = fresh.name;
-            token.avatarUrl = fresh.avatarUrl;
-            token.theme = fresh.theme;
-            token.mustChangePassword = fresh.mustChangePassword;
-            if (!fresh.isActive) return null as any;
-          }
-        } catch {
-          // se falhar, manter token anterior — não derrubar auth
-        }
-      }
-
-      return token;
     },
     session({ session, token }) {
       if (session.user) {

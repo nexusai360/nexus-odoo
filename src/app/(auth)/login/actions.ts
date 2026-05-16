@@ -56,7 +56,9 @@ export async function loginAction(
           return { error: 'E-mail ou senha incorretos.' };
         case 'CallbackRouteError': {
           // Rate limit error vem como cause
-          const message = (error as any)?.cause?.err?.message;
+          const message = (
+            error as { cause?: { err?: { message?: string } } }
+          )?.cause?.err?.message;
           if (message?.includes('Muitas tentativas')) {
             return { error: message };
           }

@@ -12,7 +12,22 @@ const eslintConfig = defineConfig([
     "out/**",
     "build/**",
     "next-env.d.ts",
+    "src/generated/**",
   ]),
+  {
+    rules: {
+      // Data-fetch no mount e sincronização de formulário ao abrir um dialog
+      // são usos legítimos de setState em effect. A regra (React Compiler)
+      // gera falso-positivo para esses padrões consolidados de React.
+      "react-hooks/set-state-in-effect": "off",
+      // Prefixo `_` marca parâmetros/variáveis intencionalmente não usados
+      // (ex.: stubs de server actions de fases futuras).
+      "@typescript-eslint/no-unused-vars": [
+        "warn",
+        { argsIgnorePattern: "^_", varsIgnorePattern: "^_" },
+      ],
+    },
+  },
 ]);
 
 export default eslintConfig;
