@@ -39,10 +39,18 @@ interface SyncStateRow {
   mode: string;
   lastIncrementalAt: Date | null;
   lastSnapshotAt: Date | null;
+  lastReconcileAt: Date | null;
   lastStatus: string;
   lastError: string | null;
   recordCount: number;
 }
+
+// Mapa de rótulos pt-BR para os tipos de sincronização
+const SYNC_TYPE_LABELS: Record<string, { label: string; description: string }> = {
+  incremental: { label: "Incremental", description: "mudanças recentes" },
+  snapshot: { label: "Completa", description: "espelho completo" },
+  reconcile: { label: "Reconciliação", description: "remoções" },
+};
 
 interface Config {
   incrementalIntervalMin: number;
@@ -55,10 +63,10 @@ interface Props {
   estado: SyncStateRow[];
 }
 
-const FIELD_LABELS: [keyof Config, string, string][] = [
-  ["incrementalIntervalMin", "Incremental", "Frequência da sincronização incremental (write_date)"],
-  ["snapshotIntervalMin", "Snapshot", "Frequência do snapshot completo (full refresh)"],
-  ["reconcileIntervalMin", "Reconcile", "Frequência da reconciliação (marca registros deletados)"],
+const FIELD_LABELS: [keyof Config, string, string, string][] = [
+  ["incrementalIntervalMin", "incremental", "Incremental", "Frequência da sincronização incremental (write_date)"],
+  ["snapshotIntervalMin", "snapshot", "Completa", "Frequência do snapshot completo (full refresh)"],
+  ["reconcileIntervalMin", "reconcile", "Reconciliação", "Frequência da reconciliação (marca registros deletados)"],
 ];
 
 function getStatusBadgeClasses(status: string): string {
@@ -169,7 +177,7 @@ function EstadoModal({ estado, open, onOpenChange }: {
                       )}
                     </TableCell>
                     <TableCell className="text-xs text-muted-foreground">
-                      {s.mode}
+                      {SYNC_TYPE_LABELS[s.mode]?.label ?? s.mode}
                     </TableCell>
                     <TableCell>
                       <Badge
@@ -196,10 +204,28 @@ function EstadoModal({ estado, open, onOpenChange }: {
   );
 }
 
+/** Retorna o maior Date entre todos os modelos para um campo de data, ou null */
+function latestDate(estado: SyncStateRow[], field: keyof Pick<SyncStateRow, "lastIncrementalAt" | "lastSnapshotAt" | "lastReconcileAt">): Date | null {
+  let max: Date | null = null;
+  for (const row of estado) {
+    const val = row[field];
+    if (!val) continue;
+    const d = new Date(val);
+    if (!max || d > max) max = d;
+  }
+  return max;
+}
+
 export function ConfiguracaoContent({ config, estado }: Props) {
   const [form, setForm] = useState<Config>(config);
   const [pending, startTransition] = useTransition();
   const [estadoOpen, setEstadoOpen] = useState(false);
+
+  const ultimasExecucoes: { typeKey: string; label: string; description: string; date: Date | null }[] = [
+    { typeKey: "incremental", ...SYNC_TYPE_LABELS.incremental, date: latestDate(estado, "lastIncrementalAt") },
+    { typeKey: "snapshot",    ...SYNC_TYPE_LABELS.snapshot,    date: latestDate(estado, "lastSnapshotAt") },
+    { typeKey: "reconcile",   ...SYNC_TYPE_LABELS.reconcile,   date: latestDate(estado, "lastReconcileAt") },
+  ];
 
   const dirty =
     form.incrementalIntervalMin !== config.incrementalIntervalMin ||
@@ -253,7 +279,7 @@ export function ConfiguracaoContent({ config, estado }: Props) {
         </CardHeader>
         <CardContent className="space-y-6">
           <div className="grid gap-4 sm:grid-cols-3">
-            {FIELD_LABELS.map(([key, label, helper]) => {
+            {FIELD_LABELS.map(([key, , label, helper]) => {
               const fieldInvalid = !isFieldValid(form[key]);
               const readable = minToReadable(form[key]);
               return (
@@ -291,6 +317,23 @@ export function ConfiguracaoContent({ config, estado }: Props) {
               );
             })}
           </div>
+          <div className="border-t border-border pt-4">
+            <p className="text-xs font-medium text-muted-foreground mb-3">Última execução por tipo</p>
+            <div className="grid gap-3 sm:grid-cols-3">
+              {ultimasExecucoes.map(({ typeKey, label, description, date }) => (
+                <div key={typeKey} className="flex flex-col gap-0.5">
+                  <span className="text-xs font-medium text-foreground">
+                    {label}
+                    <span className="ml-1 font-normal text-muted-foreground">({description})</span>
+                  </span>
+                  <span className="text-xs text-muted-foreground">
+                    {date ? `Última execução: ${formatDateTime(date)}` : "Nunca executada"}
+                  </span>
+                </div>
+              ))}
+            </div>
+          </div>
+
           <Button onClick={salvar} disabled={!dirty || !valid || pending}>
             {pending ? "Salvando…" : "Salvar"}
           </Button>
