@@ -33,7 +33,7 @@ export class OdooClient {
     this.db = opts.db;
     this.username = opts.username;
     this.password = opts.password;
-    this.timeoutMs = opts.timeoutMs ?? 60_000;
+    this.timeoutMs = opts.timeoutMs ?? 120_000;
     this.throttleMs = opts.throttleMs ?? 150;
     this.retries = opts.retries ?? 3;
     this.backoffMs = opts.backoffMs ?? 1000;
