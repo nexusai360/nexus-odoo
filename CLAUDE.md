@@ -3,6 +3,10 @@
 > Carregado automaticamente em toda sessão. Define como conduzir o trabalho.
 > Sobrescreve regras globais quando houver conflito específico.
 
+> **Ao iniciar uma sessão, ler `STATUS.md`** — é o ponto de retomada: o que já
+> foi feito, em que fase/bloco estamos e qual a próxima ação. Trabalho conduzido
+> em **modo autônomo** (ver §5).
+
 ---
 
 ## 1. Sobre o projeto
