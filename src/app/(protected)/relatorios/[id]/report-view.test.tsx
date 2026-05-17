@@ -58,7 +58,7 @@ describe("ReportView", () => {
         periodoMin={null}
       />,
     );
-    expect(screen.getByText(/atualizado em/i)).toBeInTheDocument();
+    expect(screen.getByText(/atualizado h[áa]/i)).toBeInTheDocument();
   });
   it("renderiza cada seção com seu estado", () => {
     render(

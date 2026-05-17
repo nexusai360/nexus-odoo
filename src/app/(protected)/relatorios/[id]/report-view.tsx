@@ -9,6 +9,7 @@ import type { FilterOptions } from "@/components/reports/report-filters";
 import { PresetsPopover } from "@/components/reports/presets-popover";
 import { KPICard } from "@/components/charts/kpi-card";
 import { ChartCard } from "@/components/charts/chart-card";
+import { FreshnessIndicator } from "@/components/charts/freshness-indicator";
 import { DataTable, type ColumnDef } from "@/components/charts/data-table";
 import { BarChartCard } from "@/components/charts/bar-chart";
 import { LineChartCard } from "@/components/charts/line-chart";
@@ -452,11 +453,7 @@ export function ReportView({
             </div>
           ))}
         </div>
-        <p className="text-xs text-muted-foreground">
-          {freshness
-            ? `Atualizado em ${freshness.toLocaleString("pt-BR")}`
-            : "Atualizado em — (relatório ainda sendo preparado)"}
-        </p>
+        <FreshnessIndicator freshness={freshness} />
       </div>
 
       <ShortcutsHelpDialog

@@ -10,7 +10,10 @@ export interface SyncConfig {
 
 export const SYNC_CONFIG_DEFAULTS: SyncConfig = {
   incrementalIntervalMin: 3,
-  snapshotIntervalMin: 1440,
+  // Snapshot a cada 30 min: mantém o "Atualizado em" dos relatórios recente
+  // sem martelar a API do Odoo Tauga a cada poucos minutos. Ajustável na tela
+  // /configuracao (AppSetting `sync.snapshot_interval_min`).
+  snapshotIntervalMin: 30,
   reconcileIntervalMin: 1440,
 };
 
