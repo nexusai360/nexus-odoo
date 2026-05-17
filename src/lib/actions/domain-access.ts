@@ -35,7 +35,7 @@ const DOMAIN_IDS = REPORT_DOMAINS.map((d) => d.id) as [
 ];
 
 const UpdateUserDomainsInput = z.object({
-  userId: z.string().min(1),
+  userId: z.string().uuid(),
   domains: z.array(z.enum(DOMAIN_IDS)),
 });
 

@@ -4,6 +4,11 @@ import { prisma } from "@/lib/prisma";
 import { canEditUser } from "@/lib/permissions";
 import { logAudit } from "@/lib/audit";
 
+// IDs de teste são UUIDs válidos: updateUserDomains valida userId com z.string().uuid().
+const ME_ID = "11111111-1111-4111-8111-111111111111";
+const TARGET_ID = "22222222-2222-4222-8222-222222222222";
+const SOME_ID = "33333333-3333-4333-8333-333333333333";
+
 jest.mock("@/lib/prisma", () => ({
   prisma: {
     userDomainAccess: { findMany: jest.fn(), createMany: jest.fn(), deleteMany: jest.fn() },
@@ -40,7 +45,7 @@ describe("getMyDomains", () => {
     expect(mockPrisma.userDomainAccess.findMany).not.toHaveBeenCalled();
   });
   it("manager recebe só os concedidos", async () => {
-    mockGetCurrentUser.mockResolvedValue({ id: "m1", platformRole: "manager" } as never);
+    mockGetCurrentUser.mockResolvedValue({ id: ME_ID, platformRole: "manager" } as never);
     mockPrisma.userDomainAccess.findMany.mockResolvedValue([{ domain: "estoque" }] as never);
     expect(await getMyDomains()).toEqual(["estoque"]);
   });
@@ -55,20 +60,20 @@ describe("getUserDomains", () => {
     mockPrisma.userDomainAccess.findMany.mockResolvedValue([
       { domain: "estoque" }, { domain: "fiscal" },
     ] as never);
-    expect(await getUserDomains("u1")).toEqual(["estoque", "fiscal"]);
+    expect(await getUserDomains(SOME_ID)).toEqual(["estoque", "fiscal"]);
   });
   it("devolve [] quando o usuário não tem domínios", async () => {
     mockPrisma.userDomainAccess.findMany.mockResolvedValue([] as never);
-    expect(await getUserDomains("u1")).toEqual([]);
+    expect(await getUserDomains(SOME_ID)).toEqual([]);
   });
 });
 
 describe("updateUserDomains", () => {
   beforeEach(() => {
     jest.clearAllMocks();
-    mockGetCurrentUser.mockResolvedValue({ id: "m1", platformRole: "manager" } as never);
+    mockGetCurrentUser.mockResolvedValue({ id: ME_ID, platformRole: "manager" } as never);
     mockPrisma.user.findUnique.mockResolvedValue({
-      id: "u2", platformRole: "viewer", isOwner: false,
+      id: TARGET_ID, platformRole: "viewer", isOwner: false,
     } as never);
     mockCanEditUser.mockReturnValue({ allowed: true } as never);
     mockPrisma.userDomainAccess.findMany.mockResolvedValue([] as never);
@@ -81,7 +86,7 @@ describe("updateUserDomains", () => {
     mockPrisma.userDomainAccess.findMany
       .mockResolvedValueOnce([] as never)
       .mockResolvedValueOnce([{ domain: "estoque" }] as never);
-    const res = await updateUserDomains("u2", ["estoque"]);
+    const res = await updateUserDomains(TARGET_ID, ["estoque"]);
     expect(res.success).toBe(true);
     expect(mockPrisma.userDomainAccess.createMany).toHaveBeenCalled();
     expect(mockLogAudit).toHaveBeenCalledWith(
@@ -93,7 +98,7 @@ describe("updateUserDomains", () => {
     mockPrisma.userDomainAccess.findMany
       .mockResolvedValueOnce([] as never)
       .mockResolvedValueOnce([{ domain: "estoque" }] as never);
-    const res = await updateUserDomains("u2", ["fiscal"]);
+    const res = await updateUserDomains(TARGET_ID, ["fiscal"]);
     expect(res.success).toBe(false);
   });
 });
