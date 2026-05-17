@@ -15,7 +15,7 @@ import { PieChartCard } from "@/components/charts/pie-chart";
 import { PeriodBar } from "@/components/reports/period-bar";
 import { resolveReportIcon } from "@/lib/reports/report-icons";
 import type { PeriodoResolvido } from "@/lib/reports/periodo";
-import type { SaldoProdutoData, SaldoProdutoRow, ValorArmazemData } from "@/lib/actions/report-data";
+import type { SaldoProdutoData, SaldoProdutoRow, ValorArmazemData, EntradasSaidasData } from "@/lib/actions/report-data";
 import { SaldoProdutoDrillDown } from "@/components/charts/saldo-produto-drill-down";
 import { AppliedFiltersChips } from "@/components/reports/applied-filters-chips";
 import { buildChipsFromParams } from "@/lib/reports/build-chips";
@@ -125,7 +125,9 @@ function renderSecao(
         ? d
         : (d != null && typeof d === "object" && "linhas" in d
             ? (d as { linhas?: unknown[] }).linhas
-            : undefined) ?? [];
+            : d != null && typeof d === "object"
+              ? (pickFatia(d, secao.id) as unknown[])
+              : undefined) ?? [];
 
       // expandDetail para o relatório saldo-produto: drill-down por local.
       const isSaldoProduto =
@@ -176,17 +178,25 @@ function renderSecao(
         </ChartCard>
       );
     }
-    case "LineChart":
+    case "LineChart": {
+      // R3 devolve { serie, detalhe } — extraímos apenas a fatia do gráfico.
+      const lineData = Array.isArray(dados)
+        ? (dados as unknown as Record<string, unknown>[])
+        : (() => {
+            const d = dados as EntradasSaidasData | null | undefined;
+            return (d?.serie ?? []) as unknown as Record<string, unknown>[];
+          })();
       return (
         <ChartCard>
           <LineChartCard
-            data={dados as Record<string, unknown>[]}
+            data={lineData}
             config={cfg as never}
             estado={estado}
             onRetry={onRetry}
           />
         </ChartCard>
       );
+    }
     case "PieChart": {
       const data = pickFatia(dados, secao.id);
       return (

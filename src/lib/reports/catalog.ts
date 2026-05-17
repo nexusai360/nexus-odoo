@@ -101,6 +101,21 @@ export const REPORT_CATALOG: ReportEntry[] = [
         },
         filtros: [{ tipo: "armazem" }],
       },
+      {
+        id: "detalhe",
+        template: "DataTable",
+        fato: "fato_estoque_movimento",
+        config: {
+          colunas: [
+            { key: "mes", header: "Mês", tipo: "texto" },
+            { key: "sentido", header: "Sentido", tipo: "texto" },
+            { key: "produto", header: "Produto", tipo: "texto" },
+            { key: "quantidade", header: "Quantidade", tipo: "numero" },
+          ],
+          searchable: true,
+        },
+        filtros: [{ tipo: "armazem" }],
+      },
     ],
   },
   {

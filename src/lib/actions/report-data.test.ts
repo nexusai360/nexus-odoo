@@ -121,15 +121,46 @@ describe("getRelatorioValorPorArmazem (R2)", () => {
 });
 
 describe("getRelatorioEntradasSaidas (R3)", () => {
-  it("soma quantidade por mês e sentido dentro do período", async () => {
+  it("devolve série agregada por mês e detalhe por mês×sentido×produto", async () => {
     mockPrisma.fatoBuildState.findUnique.mockResolvedValue({ ultimoBuildAt: new Date() });
-    mockPrisma.fatoEstoqueMovimento.groupBy.mockResolvedValue([
-      { mes: "2026-03", sentido: "entrada", _sum: { quantidade: 10 } },
-      { mes: "2026-03", sentido: "saida", _sum: { quantidade: 4 } },
-    ]);
+    // Primeira chamada: groupBy mes×sentido (série)
+    mockPrisma.fatoEstoqueMovimento.groupBy
+      .mockResolvedValueOnce([
+        { mes: "2026-03", sentido: "entrada", _sum: { quantidade: 10 } },
+        { mes: "2026-03", sentido: "saida", _sum: { quantidade: 4 } },
+      ])
+      // Segunda chamada: groupBy mes×sentido×produtoNome (detalhe)
+      .mockResolvedValueOnce([
+        { mes: "2026-03", sentido: "entrada", produtoNome: "Esteira", _sum: { quantidade: 6 } },
+        { mes: "2026-03", sentido: "entrada", produtoNome: "Bike", _sum: { quantidade: 4 } },
+        { mes: "2026-03", sentido: "saida", produtoNome: "Esteira", _sum: { quantidade: 4 } },
+      ]);
     const r = await getRelatorioEntradasSaidas({ periodoDe: "2026-01", periodoAte: "2026-03" });
     expect(r.estado).toBe("ok");
-    expect(r.dados).toEqual([{ mes: "2026-03", entrada: 10, saida: 4 }]);
+    expect(r.dados.serie).toEqual([{ mes: "2026-03", entrada: 10, saida: 4 }]);
+    expect(r.dados.detalhe).toHaveLength(3);
+    expect(r.dados.detalhe[0]).toMatchObject({ mes: "2026-03", sentido: "entrada", produto: "Esteira", quantidade: 6 });
+  });
+
+  it("estado 'preparando' quando FatoBuildState ausente", async () => {
+    mockPrisma.fatoBuildState.findUnique.mockResolvedValue(null);
+    const r = await getRelatorioEntradasSaidas({});
+    expect(r.estado).toBe("preparando");
+    expect(r.dados.serie).toEqual([]);
+    expect(r.dados.detalhe).toEqual([]);
+  });
+
+  it("produtoNome null vira 'Sem produto' no detalhe", async () => {
+    mockPrisma.fatoBuildState.findUnique.mockResolvedValue({ ultimoBuildAt: new Date() });
+    mockPrisma.fatoEstoqueMovimento.groupBy
+      .mockResolvedValueOnce([
+        { mes: "2026-03", sentido: "entrada", _sum: { quantidade: 5 } },
+      ])
+      .mockResolvedValueOnce([
+        { mes: "2026-03", sentido: "entrada", produtoNome: null, _sum: { quantidade: 5 } },
+      ]);
+    const r = await getRelatorioEntradasSaidas({});
+    expect(r.dados.detalhe[0]?.produto).toBe("Sem produto");
   });
 });
 

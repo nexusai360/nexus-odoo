@@ -44,13 +44,21 @@ describe("catálogo — R2", () => {
 });
 
 describe("catálogo — R3", () => {
-  it("R3 é um LineChart sobre fato_estoque_movimento, temporal + filtro armazém", () => {
+  it("R3 tem LineChart + DataTable sobre fato_estoque_movimento, temporal + filtro armazém", () => {
     const r3 = REPORT_CATALOG.find((r) => r.id === "entradas-saidas");
-    expect(r3?.secoes[0].template).toBe("LineChart");
-    expect(r3?.secoes[0].fato).toBe("fato_estoque_movimento");
+    expect(r3?.secoes).toHaveLength(2);
+    expect(r3?.secoes.map((s) => s.template)).toEqual(["LineChart", "DataTable"]);
+    expect(r3?.secoes.every((s) => s.fato === "fato_estoque_movimento")).toBe(true);
     expect(r3?.modeloFonte).toBe("estoque.extrato");
     expect(r3?.temporal?.periodoPadrao).toBe("3meses");
     expect(r3?.secoes[0].filtros.map((f) => f.tipo)).toEqual(["armazem"]);
+  });
+  it("R3 DataTable (detalhe) tem colunas mes, sentido, produto, quantidade", () => {
+    const r3 = REPORT_CATALOG.find((r) => r.id === "entradas-saidas");
+    const tabela = r3?.secoes.find((s) => s.id === "detalhe");
+    expect(tabela?.template).toBe("DataTable");
+    const colunas = tabela?.config.colunas as Array<{ key: string }>;
+    expect(colunas.map((c) => c.key)).toEqual(["mes", "sentido", "produto", "quantidade"]);
   });
 });
 

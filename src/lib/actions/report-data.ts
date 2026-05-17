@@ -205,6 +205,21 @@ export interface MovimentoMes {
   entrada: number;
   saida: number;
 }
+
+/** Linha do detalhamento de R3 (por mês × sentido × produto). */
+export interface DetalheMovimento {
+  [k: string]: unknown;
+  mes: string;
+  sentido: string;
+  produto: string;
+  quantidade: number;
+}
+
+/** Retorno completo de R3: série do gráfico + tabela de detalhe. */
+export interface EntradasSaidasData {
+  serie: MovimentoMes[];
+  detalhe: DetalheMovimento[];
+}
 /** Linha de R4. */
 export interface ProdutoParadoRow {
   produtoNome: string | null;
@@ -306,23 +321,28 @@ export async function getRelatorioValorPorArmazem(
 /** R3 — Entradas vs. saídas por mês. */
 export async function getRelatorioEntradasSaidas(
   filtros: ReportFilterValues,
-): Promise<ReportResult<MovimentoMes[]>> {
+): Promise<ReportResult<EntradasSaidasData>> {
+  const vazio: EntradasSaidasData = { serie: [], detalhe: [] };
   try {
     const entry = requireReport("entradas-saidas");
     await guardDominio(entry.dominio);
     const freshness = await reportFreshness(prisma, entry);
     const base = await estadoDoFato("fato_estoque_movimento");
     if (base === "preparando") {
-      return { estado: "preparando", dados: [], freshness };
+      return { estado: "preparando", dados: vazio, freshness };
     }
+
+    const where = {
+      ...(filtros.periodoDe && filtros.periodoAte
+        ? { mes: { gte: filtros.periodoDe, lte: filtros.periodoAte } }
+        : {}),
+      ...(filtros.armazemId ? { localId: filtros.armazemId } : {}),
+    };
+
+    // Série agregada por mês × sentido (para o LineChart).
     const grupos = await prisma.fatoEstoqueMovimento.groupBy({
       by: ["mes", "sentido"],
-      where: {
-        ...(filtros.periodoDe && filtros.periodoAte
-          ? { mes: { gte: filtros.periodoDe, lte: filtros.periodoAte } }
-          : {}),
-        ...(filtros.armazemId ? { localId: filtros.armazemId } : {}),
-      },
+      where,
       _sum: { quantidade: true },
     });
     const porMes = new Map<string, MovimentoMes>();
@@ -333,11 +353,27 @@ export async function getRelatorioEntradasSaidas(
       else item.saida = valor;
       porMes.set(g.mes, item);
     }
-    const dados = [...porMes.values()].sort((a, b) => a.mes.localeCompare(b.mes));
-    const estado: ReportState = dados.length === 0 ? "vazio" : "ok";
+    const serie = [...porMes.values()].sort((a, b) => a.mes.localeCompare(b.mes));
+
+    // Detalhe por mês × sentido × produto (para a DataTable).
+    const detGrupos = await prisma.fatoEstoqueMovimento.groupBy({
+      by: ["mes", "sentido", "produtoNome"],
+      where,
+      _sum: { quantidade: true },
+      orderBy: [{ mes: "asc" }, { sentido: "asc" }],
+    });
+    const detalhe: DetalheMovimento[] = detGrupos.map((g) => ({
+      mes: g.mes,
+      sentido: g.sentido,
+      produto: g.produtoNome ?? "Sem produto",
+      quantidade: g._sum.quantidade ? Math.abs(Number(g._sum.quantidade)) : 0,
+    }));
+
+    const dados: EntradasSaidasData = { serie, detalhe };
+    const estado: ReportState = serie.length === 0 ? "vazio" : "ok";
     return { estado, dados, freshness };
   } catch {
-    return { estado: "erro", dados: [], freshness: null };
+    return { estado: "erro", dados: vazio, freshness: null };
   }
 }
 
