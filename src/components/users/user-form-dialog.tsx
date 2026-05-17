@@ -199,6 +199,10 @@ export function UserFormDialog({
     [currentUser],
   );
 
+  // manager/viewer têm a etapa "Acesso" (3 etapas); privilegiados, 2.
+  const temEtapaAcesso = form.role === "manager" || form.role === "viewer";
+  const ultimaEtapa: Step = temEtapaAcesso ? 3 : 2;
+
   function clearError(key: keyof FieldErrors) {
     setErrors((e) => ({ ...e, [key]: undefined }));
   }
@@ -257,11 +261,11 @@ export function UserFormDialog({
         setCheckingEmail(false);
       }
     }
-    setStep(2);
+    setStep((s) => (s < ultimaEtapa ? ((s + 1) as Step) : s));
   }
 
   function goBack() {
-    setStep(1);
+    setStep((s) => (s > 1 ? ((s - 1) as Step) : s));
   }
 
   function handleSubmit() {
