@@ -1,6 +1,7 @@
 // src/worker/fatos/fato-produto-parado.ts
 import type { PrismaClient } from "../../generated/prisma/client";
 import { relId, relNome, type OdooM2O } from "./odoo-relational";
+import { markFatoBuilt } from "./fato-build-state";
 
 export interface SaldoHojeInfo {
   produtoId: number | null;
@@ -67,6 +68,35 @@ export function mapProdutoParadoRow(
     vrSaldo: info.vrSaldo,
     unidade: info.unidade,
   };
+}
+
+const BATCH = 1000;
+
+/** Reconstrói fato_produto_parado: join duração×saldo, filtro saldo > 0. */
+export async function rebuildFatoProdutoParado(
+  prisma: PrismaClient,
+): Promise<number> {
+  const saldoRows = await prisma.rawEstoqueSaldoHoje.findMany({
+    where: { rawDeleted: false },
+    select: { data: true },
+  });
+  const saldoMap = buildSaldoHojeMap(saldoRows);
+  const duracaoRows = await prisma.rawEstoqueSaldoHojeDuracaoDias.findMany({
+    where: { rawDeleted: false },
+  });
+  const mapped = duracaoRows
+    .map((r) => mapProdutoParadoRow(r, saldoMap))
+    .filter((r): r is FatoProdutoParadoRow => r !== null && r.saldo > 0);
+  await prisma.$transaction(async (tx) => {
+    await tx.fatoProdutoParado.deleteMany({});
+    for (let i = 0; i < mapped.length; i += BATCH) {
+      await tx.fatoProdutoParado.createMany({
+        data: mapped.slice(i, i + BATCH),
+      });
+    }
+  });
+  await markFatoBuilt(prisma, "fato_produto_parado");
+  return mapped.length;
 }
 
 /** Lê raw_estoque_saldo_hoje e devolve o mapa. */

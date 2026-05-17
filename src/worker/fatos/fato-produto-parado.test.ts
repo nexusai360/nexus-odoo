@@ -1,4 +1,7 @@
-import { buildSaldoHojeMap, mapProdutoParadoRow } from "./fato-produto-parado";
+import { buildSaldoHojeMap, mapProdutoParadoRow, rebuildFatoProdutoParado } from "./fato-produto-parado";
+
+jest.mock("./fato-build-state", () => ({ markFatoBuilt: jest.fn() }));
+const { markFatoBuilt } = require("./fato-build-state");
 
 const saldoMap = new Map([
   [100, { produtoId: 12, produtoNome: "X", localId: 3, localNome: "A",
@@ -21,6 +24,35 @@ describe("mapProdutoParadoRow", () => {
     expect(
       mapProdutoParadoRow({ data: { saldo_hoje_id: [999, "?"], dias: 10 } }, saldoMap),
     ).toBeNull();
+  });
+});
+
+describe("rebuildFatoProdutoParado", () => {
+  it("filtra saldo > 0, reconstrói e marca o build", async () => {
+    const tx = {
+      fatoProdutoParado: {
+        deleteMany: jest.fn().mockResolvedValue(undefined),
+        createMany: jest.fn().mockResolvedValue(undefined),
+      },
+    };
+    const prisma = {
+      rawEstoqueSaldoHoje: {
+        findMany: jest.fn().mockResolvedValue([
+          { data: { id: 100, produto_id: [12, "X"], saldo: 8, vr_saldo: 500 } },
+          { data: { id: 101, produto_id: [13, "Y"], saldo: 0, vr_saldo: 0 } },
+        ]),
+      },
+      rawEstoqueSaldoHojeDuracaoDias: {
+        findMany: jest.fn().mockResolvedValue([
+          { data: { saldo_hoje_id: [100, "?"], dias: 50 } },
+          { data: { saldo_hoje_id: [101, "?"], dias: 90 } },
+        ]),
+      },
+      $transaction: jest.fn(async (fn: (t: typeof tx) => unknown) => fn(tx)),
+    } as never;
+    const n = await rebuildFatoProdutoParado(prisma);
+    expect(n).toBe(1); // a linha com saldo 0 foi filtrada
+    expect(markFatoBuilt).toHaveBeenCalledWith(prisma, "fato_produto_parado");
   });
 });
 
