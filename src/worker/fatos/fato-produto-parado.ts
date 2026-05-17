@@ -94,8 +94,9 @@ export async function rebuildFatoProdutoParado(
         data: mapped.slice(i, i + BATCH),
       });
     }
+    // Estado de build commitado atomicamente com os dados (CR-01).
+    await markFatoBuilt(tx, "fato_produto_parado");
   });
-  await markFatoBuilt(prisma, "fato_produto_parado");
   return mapped.length;
 }
 

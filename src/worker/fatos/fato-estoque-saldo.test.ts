@@ -114,6 +114,7 @@ describe("rebuildFatoEstoqueSaldo", () => {
     const n = await rebuildFatoEstoqueSaldo(prisma);
     expect(n).toBe(1);
     expect(tx.fatoEstoqueSaldo.createMany).toHaveBeenCalled();
-    expect(markFatoBuilt).toHaveBeenCalledWith(prisma, "fato_estoque_saldo");
+    // markFatoBuilt agora roda dentro da transação, com o cliente tx (CR-01).
+    expect(markFatoBuilt).toHaveBeenCalledWith(tx, "fato_estoque_saldo");
   });
 });

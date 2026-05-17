@@ -52,7 +52,8 @@ describe("rebuildFatoProdutoParado", () => {
     } as never;
     const n = await rebuildFatoProdutoParado(prisma);
     expect(n).toBe(1); // a linha com saldo 0 foi filtrada
-    expect(markFatoBuilt).toHaveBeenCalledWith(prisma, "fato_produto_parado");
+    // markFatoBuilt agora roda dentro da transação, com o cliente tx (CR-01).
+    expect(markFatoBuilt).toHaveBeenCalledWith(tx, "fato_produto_parado");
   });
 });
 

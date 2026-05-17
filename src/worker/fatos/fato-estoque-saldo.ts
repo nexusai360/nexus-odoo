@@ -95,7 +95,8 @@ export async function rebuildFatoEstoqueSaldo(
         data: mapped.map((m) => ({ ...m, atualizadoEm: new Date() })),
       });
     }
+    // Estado de build commitado atomicamente com os dados (CR-01).
+    await markFatoBuilt(tx, "fato_estoque_saldo");
   });
-  await markFatoBuilt(prisma, "fato_estoque_saldo");
   return mapped.length;
 }
