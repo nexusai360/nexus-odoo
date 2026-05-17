@@ -15,7 +15,7 @@ import { PieChartCard } from "@/components/charts/pie-chart";
 import { PeriodBar } from "@/components/reports/period-bar";
 import { resolveReportIcon } from "@/lib/reports/report-icons";
 import type { PeriodoResolvido } from "@/lib/reports/periodo";
-import type { SaldoProdutoData, SaldoProdutoRow, ValorArmazemData, EntradasSaidasData, ProdutoParadoData, TopMovimentadoData } from "@/lib/actions/report-data";
+import type { SaldoProdutoData, SaldoProdutoRow, ValorArmazemData, EntradasSaidasData, ProdutoParadoData, TopMovimentadoData, ConcentracaoData } from "@/lib/actions/report-data";
 import { SaldoProdutoDrillDown } from "@/components/charts/saldo-produto-drill-down";
 import { AppliedFiltersChips } from "@/components/reports/applied-filters-chips";
 import { buildChipsFromParams } from "@/lib/reports/build-chips";

@@ -257,10 +257,32 @@ export interface TopMovimentadoData {
   barras: TopMovimentadoBar[];
   linhas: TopMovimentadoBar[];
 }
+/** Linha da tabela de famílias de R6. */
+export interface ConcentracaoFamiliaRow {
+  [k: string]: unknown;
+  familia: string;
+  valor: number;
+  percentual: number;
+}
+
+/** Linha da tabela de marcas de R6. */
+export interface ConcentracaoMarcaRow {
+  [k: string]: unknown;
+  marca: string;
+  valor: number;
+  percentual: number;
+}
+
 /** Dados de R6: distribuição por família e por marca. */
 export interface ConcentracaoData {
+  /** Fatia para o PieChart (família). */
   familia: { rotulo: string; valor: number }[];
+  /** Tabela de família com percentual. */
+  tabelaFamilia: ConcentracaoFamiliaRow[];
+  /** Fatia para o BarChart (marca). */
   marca: { rotulo: string; valor: number }[];
+  /** Tabela de marca com percentual. */
+  tabelaMarca: ConcentracaoMarcaRow[];
 }
 
 const TOP_N = 10;
@@ -517,7 +539,12 @@ function agruparTopN(
 export async function getRelatorioConcentracao(
   _filtros: ReportFilterValues,
 ): Promise<ReportResult<ConcentracaoData>> {
-  const vazio: ConcentracaoData = { familia: [], marca: [] };
+  const vazio: ConcentracaoData = {
+    familia: [],
+    tabelaFamilia: [],
+    marca: [],
+    tabelaMarca: [],
+  };
   try {
     const entry = requireReport("concentracao");
     await guardDominio(entry.dominio);
@@ -536,19 +563,42 @@ export async function getRelatorioConcentracao(
       where: { vrSaldo: { gt: 0 } },
       _sum: { vrSaldo: true },
     });
+
+    // Dados brutos ordenados por valor (sem agrupamento "Outras" para a tabela).
+    const familiasBruto = porFamilia
+      .map((g) => ({
+        rotulo: g.familiaNome ?? "Não classificado",
+        valor: g._sum.vrSaldo ? Number(g._sum.vrSaldo) : 0,
+      }))
+      .sort((a, b) => b.valor - a.valor);
+
+    const marcasBruto = porMarca
+      .map((g) => ({
+        rotulo: g.marcaNome ?? "Não classificado",
+        valor: g._sum.vrSaldo ? Number(g._sum.vrSaldo) : 0,
+      }))
+      .sort((a, b) => b.valor - a.valor);
+
+    const totalFamilia = familiasBruto.reduce((acc, r) => acc + r.valor, 0);
+    const totalMarca = marcasBruto.reduce((acc, r) => acc + r.valor, 0);
+
+    const tabelaFamilia: ConcentracaoFamiliaRow[] = familiasBruto.map((r) => ({
+      familia: r.rotulo,
+      valor: r.valor,
+      percentual: totalFamilia > 0 ? (r.valor / totalFamilia) * 100 : 0,
+    }));
+
+    const tabelaMarca: ConcentracaoMarcaRow[] = marcasBruto.map((r) => ({
+      marca: r.rotulo,
+      valor: r.valor,
+      percentual: totalMarca > 0 ? (r.valor / totalMarca) * 100 : 0,
+    }));
+
     const dados: ConcentracaoData = {
-      familia: agruparTopN(
-        porFamilia.map((g) => ({
-          rotulo: g.familiaNome ?? "Não classificado",
-          valor: g._sum.vrSaldo ? Number(g._sum.vrSaldo) : 0,
-        })),
-      ),
-      marca: agruparTopN(
-        porMarca.map((g) => ({
-          rotulo: g.marcaNome ?? "Não classificado",
-          valor: g._sum.vrSaldo ? Number(g._sum.vrSaldo) : 0,
-        })),
-      ),
+      familia: agruparTopN(familiasBruto),
+      tabelaFamilia,
+      marca: agruparTopN(marcasBruto),
+      tabelaMarca,
     };
     const estado: ReportState =
       dados.familia.length === 0 && dados.marca.length === 0 ? "vazio" : "ok";

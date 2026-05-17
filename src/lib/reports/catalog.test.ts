@@ -113,11 +113,30 @@ describe("catálogo — R5", () => {
 });
 
 describe("catálogo — R6", () => {
-  it("R6 tem 2 seções: PieChart (família) + BarChart (marca)", () => {
+  it("R6 tem 4 seções: PieChart + DataTable (família) + BarChart + DataTable (marca)", () => {
     const r6 = REPORT_CATALOG.find((r) => r.id === "concentracao");
-    expect(r6?.secoes).toHaveLength(2);
-    expect(r6?.secoes.map((s) => s.template)).toEqual(["PieChart", "BarChart"]);
+    expect(r6?.secoes).toHaveLength(4);
+    expect(r6?.secoes.map((s) => s.template)).toEqual([
+      "PieChart",
+      "DataTable",
+      "BarChart",
+      "DataTable",
+    ]);
     expect(r6?.secoes.every((s) => s.fato === "fato_estoque_saldo")).toBe(true);
+  });
+  it("R6 DataTable de família tem colunas familia, valor e percentual (id='tabelaFamilia')", () => {
+    const r6 = REPORT_CATALOG.find((r) => r.id === "concentracao");
+    const tabela = r6?.secoes.find((s) => s.id === "tabelaFamilia");
+    expect(tabela?.template).toBe("DataTable");
+    const colunas = tabela?.config.colunas as Array<{ key: string }>;
+    expect(colunas.map((c) => c.key)).toEqual(["familia", "valor", "percentual"]);
+  });
+  it("R6 DataTable de marca tem colunas marca, valor e percentual (id='tabelaMarca')", () => {
+    const r6 = REPORT_CATALOG.find((r) => r.id === "concentracao");
+    const tabela = r6?.secoes.find((s) => s.id === "tabelaMarca");
+    expect(tabela?.template).toBe("DataTable");
+    const colunas = tabela?.config.colunas as Array<{ key: string }>;
+    expect(colunas.map((c) => c.key)).toEqual(["marca", "valor", "percentual"]);
   });
   it("o catálogo tem exatamente 6 relatórios", () => {
     expect(REPORT_CATALOG).toHaveLength(6);

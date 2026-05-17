@@ -232,4 +232,46 @@ describe("getRelatorioConcentracao (R6)", () => {
     expect(r.dados.familia).toContainEqual({ rotulo: "Não classificado", valor: 30 });
     expect(r.dados.marca).toContainEqual({ rotulo: "Matrix", valor: 90 });
   });
+
+  it("devolve tabelaFamilia com valor e percentual corretos", async () => {
+    mockPrisma.fatoBuildState.findUnique.mockResolvedValue({ ultimoBuildAt: new Date() });
+    mockPrisma.fatoEstoqueSaldo.groupBy
+      .mockResolvedValueOnce([
+        { familiaNome: "Cardio", _sum: { vrSaldo: 600 } },
+        { familiaNome: "Musculação", _sum: { vrSaldo: 400 } },
+      ])
+      .mockResolvedValueOnce([
+        { marcaNome: "Matrix", _sum: { vrSaldo: 1000 } },
+      ]);
+    const r = await getRelatorioConcentracao({});
+    expect(r.estado).toBe("ok");
+    // tabelaFamilia deve ter 2 linhas ordenadas por valor desc
+    expect(r.dados.tabelaFamilia).toHaveLength(2);
+    expect(r.dados.tabelaFamilia[0]).toMatchObject({ familia: "Cardio", valor: 600, percentual: 60 });
+    expect(r.dados.tabelaFamilia[1]).toMatchObject({ familia: "Musculação", valor: 400, percentual: 40 });
+  });
+
+  it("devolve tabelaMarca com valor e percentual corretos", async () => {
+    mockPrisma.fatoBuildState.findUnique.mockResolvedValue({ ultimoBuildAt: new Date() });
+    mockPrisma.fatoEstoqueSaldo.groupBy
+      .mockResolvedValueOnce([
+        { familiaNome: "Cardio", _sum: { vrSaldo: 1000 } },
+      ])
+      .mockResolvedValueOnce([
+        { marcaNome: "Matrix", _sum: { vrSaldo: 700 } },
+        { marcaNome: "Life Fitness", _sum: { vrSaldo: 300 } },
+      ]);
+    const r = await getRelatorioConcentracao({});
+    expect(r.dados.tabelaMarca).toHaveLength(2);
+    expect(r.dados.tabelaMarca[0]).toMatchObject({ marca: "Matrix", valor: 700, percentual: 70 });
+    expect(r.dados.tabelaMarca[1]).toMatchObject({ marca: "Life Fitness", valor: 300, percentual: 30 });
+  });
+
+  it("estado 'preparando' quando FatoBuildState ausente", async () => {
+    mockPrisma.fatoBuildState.findUnique.mockResolvedValue(null);
+    const r = await getRelatorioConcentracao({});
+    expect(r.estado).toBe("preparando");
+    expect(r.dados.tabelaFamilia).toEqual([]);
+    expect(r.dados.tabelaMarca).toEqual([]);
+  });
 });

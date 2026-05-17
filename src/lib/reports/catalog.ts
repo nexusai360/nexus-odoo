@@ -205,10 +205,38 @@ export const REPORT_CATALOG: ReportEntry[] = [
         filtros: [],
       },
       {
+        id: "tabelaFamilia",
+        template: "DataTable",
+        fato: "fato_estoque_saldo",
+        config: {
+          colunas: [
+            { key: "familia", header: "Família", tipo: "texto" },
+            { key: "valor", header: "Valor", tipo: "moeda" },
+            { key: "percentual", header: "% do total", tipo: "percentual" },
+          ],
+          searchable: true,
+        },
+        filtros: [],
+      },
+      {
         id: "marca",
         template: "BarChart",
         fato: "fato_estoque_saldo",
-        config: { xKey: "rotulo", yKey: "valor", formato: "moeda" },
+        config: { xKey: "rotulo", yKey: "valor", formato: "moeda", titulo: "Concentração por marca" },
+        filtros: [],
+      },
+      {
+        id: "tabelaMarca",
+        template: "DataTable",
+        fato: "fato_estoque_saldo",
+        config: {
+          colunas: [
+            { key: "marca", header: "Marca", tipo: "texto" },
+            { key: "valor", header: "Valor", tipo: "moeda" },
+            { key: "percentual", header: "% do total", tipo: "percentual" },
+          ],
+          searchable: true,
+        },
         filtros: [],
       },
     ],
