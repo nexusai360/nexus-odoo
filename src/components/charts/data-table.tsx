@@ -25,6 +25,19 @@ interface DataTableProps<T> {
 
 type SortDir = "asc" | "desc";
 
+/**
+ * Chave estável de linha: prefere um id explícito da linha; cai para o
+ * índice apenas quando nenhum id está presente (IM-07). Evita que ordenar
+ * ou pesquisar reassocie o DOM por posição.
+ */
+function rowKey(row: Record<string, unknown>, index: number): string | number {
+  for (const k of ["produtoId", "odooId", "id", "saldoHojeId"]) {
+    const v = row[k];
+    if (typeof v === "number" || typeof v === "string") return `${k}:${v}`;
+  }
+  return index;
+}
+
 /** Tabela genérica ordenável e pesquisável; formata números pt-BR. */
 export function DataTable<T extends Record<string, unknown>>({
   columns, rows, estado = "ok", onRetry, searchable = false,
@@ -129,7 +142,7 @@ export function DataTable<T extends Record<string, unknown>>({
             </TableRow>
           ) : (
             sorted.map((row, i) => (
-              <TableRow key={i}>
+              <TableRow key={rowKey(row, i)}>
                 {columns.map((c) => (
                   <TableCell
                     key={c.key}
