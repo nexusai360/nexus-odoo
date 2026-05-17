@@ -89,7 +89,7 @@ export default async function RelatorioPage({ params, searchParams }: PageProps)
   };
 
   return (
-    <PageShell variant="narrow">
+    <PageShell variant="wide">
       <Link
         href="/relatorios"
         className="flex w-fit items-center gap-1 text-sm text-muted-foreground hover:text-foreground"

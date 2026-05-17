@@ -44,16 +44,19 @@ export function RelatoriosGrid({ reports }: RelatoriosGridProps) {
                     initial={{ opacity: 0, y: 8 }}
                     animate={{ opacity: 1, y: 0 }}
                   >
-                    <Link href={`/relatorios/${r.id}`} className="block">
-                      <Card className="h-full cursor-pointer gap-2 px-4 py-4 transition-colors hover:bg-muted/30">
+                    <Link
+                      href={`/relatorios/${r.id}`}
+                      className="block h-full"
+                    >
+                      <Card className="flex h-full cursor-pointer flex-col gap-2 px-4 py-4 transition-colors hover:bg-muted/30">
                         <div className="flex items-center gap-2">
-                          <Icon className="size-4 text-muted-foreground" />
+                          <Icon className="size-4 shrink-0 text-muted-foreground" />
                           <span className="font-medium">{r.titulo}</span>
                         </div>
                         <p className="text-sm text-muted-foreground">
                           {r.descricao}
                         </p>
-                        <Badge variant="secondary" className="w-fit">
+                        <Badge variant="secondary" className="mt-auto w-fit">
                           {dominio.label}
                         </Badge>
                       </Card>

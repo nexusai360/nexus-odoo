@@ -16,7 +16,7 @@ export default async function RelatoriosPage() {
   const domains = await getMyDomains();
   const reports = reportsForUser(user.platformRole, domains);
   return (
-    <PageShell variant="narrow">
+    <PageShell variant="wide">
       <PageHeader
         icon={BarChart3}
         title="Relatórios"
