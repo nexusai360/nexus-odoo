@@ -417,7 +417,7 @@ export function UserFormDialog({
                   Voltar
                 </Button>
               ) : null}
-              {step < 2 ? (
+              {step < ultimaEtapa ? (
                 <Button
                   type="button"
                   onClick={() => void goNext()}
