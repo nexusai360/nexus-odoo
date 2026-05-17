@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import { Filter } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -25,6 +25,9 @@ export interface FilterOptions {
 interface ReportFiltersProps {
   filtros: ReportFilter[];
   options: FilterOptions;
+  /** Controla a abertura do FiltersDialog externamente (ex.: via atalho de teclado). */
+  externalOpen?: boolean;
+  onExternalOpenChange?: (open: boolean) => void;
 }
 
 /**
@@ -33,11 +36,24 @@ interface ReportFiltersProps {
  *
  * O estado é propagado via searchParams (deep-link + voltar funcionam).
  */
-export function ReportFilters({ filtros, options }: ReportFiltersProps) {
+export function ReportFilters({
+  filtros,
+  options,
+  externalOpen,
+  onExternalOpenChange,
+}: ReportFiltersProps) {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const [dialogOpen, setDialogOpen] = useState(false);
+
+  // Sincroniza abertura externa (atalho de teclado)
+  useEffect(() => {
+    if (externalOpen) {
+      setDialogOpen(true);
+      onExternalOpenChange?.(false);
+    }
+  }, [externalOpen, onExternalOpenChange]);
 
   const setParam = useCallback(
     (updates: Record<string, string>) => {

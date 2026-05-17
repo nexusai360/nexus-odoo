@@ -200,6 +200,7 @@ export function DataTable<T extends Record<string, unknown>>({
             value={query}
             onChange={(e) => handleSearch(e.target.value)}
             className="h-8 max-w-xs text-sm"
+            data-table-search
           />
         )}
 
@@ -270,6 +271,7 @@ export function DataTable<T extends Record<string, unknown>>({
           onClick={handleExport}
           disabled={sorted.length === 0}
           aria-label="Exportar tabela como CSV"
+          data-tour="export-btn"
         >
           <Download className="size-3.5" aria-hidden />
           Exportar

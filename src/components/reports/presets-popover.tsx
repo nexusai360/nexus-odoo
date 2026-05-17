@@ -28,6 +28,9 @@ import type { PresetItem } from "@/lib/actions/report-presets";
 interface Props {
   /** Id do relatório no catálogo (ex.: "saldo-produto"). */
   reportId: string;
+  /** Controla a abertura do popover externamente (ex.: via atalho de teclado). */
+  externalOpen?: boolean;
+  onExternalOpenChange?: (open: boolean) => void;
 }
 
 type OptimisticAction =
@@ -48,12 +51,24 @@ function applyOptimistic(state: PresetItem[], action: OptimisticAction): PresetI
   }
 }
 
-export function PresetsPopover({ reportId }: Props) {
+export function PresetsPopover({
+  reportId,
+  externalOpen,
+  onExternalOpenChange,
+}: Props) {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
 
   const [open, setOpen] = useState(false);
+
+  // Sincroniza abertura externa (atalho de teclado)
+  useEffect(() => {
+    if (externalOpen) {
+      setOpen(true);
+      onExternalOpenChange?.(false);
+    }
+  }, [externalOpen, onExternalOpenChange]);
   const [managerOpen, setManagerOpen] = useState(false);
   const [creating, setCreating] = useState(false);
   const [name, setName] = useState("");

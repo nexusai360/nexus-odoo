@@ -1,8 +1,8 @@
 "use client";
 
-import { useMemo } from "react";
+import { useCallback, useMemo, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { Boxes, TrendingDown, DollarSign, Warehouse, Clock, TrendingUp, Package } from "lucide-react";
+import { Boxes, TrendingDown, DollarSign, Warehouse, Clock, TrendingUp, Package, Keyboard, HelpCircle } from "lucide-react";
 import type { ReportEntry, ReportSection, ReportState } from "@/lib/reports/types";
 import { ReportFilters } from "@/components/reports/report-filters";
 import type { FilterOptions } from "@/components/reports/report-filters";
@@ -20,6 +20,13 @@ import type { SaldoProdutoData, SaldoProdutoRow, ValorArmazemData, EntradasSaida
 import { SaldoProdutoDrillDown } from "@/components/charts/saldo-produto-drill-down";
 import { AppliedFiltersChips } from "@/components/reports/applied-filters-chips";
 import { buildChipsFromParams } from "@/lib/reports/build-chips";
+import { useKeyboardShortcuts } from "@/hooks/use-keyboard-shortcuts";
+import type { KeyboardShortcut } from "@/hooks/use-keyboard-shortcuts";
+import { useTourState } from "@/hooks/use-tour-state";
+import { ShortcutsHelpDialog } from "@/components/reports/shortcuts-help-dialog";
+import { ReportTour } from "@/components/reports/report-tour";
+import type { TourStep } from "@/components/reports/report-tour";
+import { Button } from "@/components/ui/button";
 
 /** Uma seção já resolvida com seu estado e dados. */
 export interface SecaoComDados {
@@ -282,12 +289,55 @@ function pickFatia(dados: unknown, secaoId: string): Record<string, unknown>[] {
   return [];
 }
 
+// ─── Passos do tour global de relatórios ──────────────────────────────────────
+const TOUR_STEPS: TourStep[] = [
+  {
+    target: "[data-tour='period-bar']",
+    title: "Período",
+    description:
+      "Selecione o intervalo de tempo dos dados. Você pode escolher meses pré-definidos ou configurar um período personalizado.",
+  },
+  {
+    target: "[data-tour='report-filters']",
+    title: "Filtros",
+    description:
+      "Filtre os dados por armazém, família de produto, sentido de movimentação e outras dimensões disponíveis no relatório.",
+  },
+  {
+    target: "[data-tour='presets-btn']",
+    title: "Presets",
+    description:
+      "Salve combinações de filtros que você usa com frequência. Acesse rapidamente com um clique — ou use a tecla P.",
+  },
+  {
+    target: "[data-tour='data-table']",
+    title: "Tabela de dados",
+    description:
+      "Explore os dados em detalhe. Use o campo de busca para filtrar linhas (atalho /) e clique nas linhas para expandir detalhes.",
+  },
+  {
+    target: "[data-tour='export-btn']",
+    title: "Exportar",
+    description:
+      "Exporte os dados da tabela em CSV para análise externa. O arquivo incluirá todos os registros filtrados.",
+  },
+];
+
 /** Renderiza um relatório: filtros, seções em sequência e freshness. */
 export function ReportView({
   report, secoes, freshness, options, periodo, periodoMin,
 }: ReportViewProps) {
   const router = useRouter();
   const searchParams = useSearchParams();
+
+  const [shortcutsOpen, setShortcutsOpen] = useState(false);
+  const [filtersOpen, setFiltersOpen] = useState(false);
+  const [presetsOpen, setPresetsOpen] = useState(false);
+  const searchInputRef = useRef<HTMLInputElement | null>(null);
+
+  const { active: tourActive, onClose: onTourClose, openTour } = useTourState(
+    `relatorio:${report.id}`,
+  );
 
   // Várias seções podem declarar o mesmo filtro (ex.: armazém na seção de KPIs
   // e na de tabela). A barra de filtros renderiza um controle por tipo — então
@@ -307,24 +357,121 @@ export function ReportView({
   // re-renderiza com os dados frescos sem recarregar a página inteira.
   const onRetry = () => router.refresh();
 
+  // Foca o input de busca da tabela (primeiro input com data-table-search)
+  const focusSearch = useCallback(() => {
+    const input = document.querySelector<HTMLInputElement>(
+      "[data-table-search]",
+    );
+    input?.focus();
+  }, []);
+
+  // Atalhos registrados nesta tela
+  const shortcuts: KeyboardShortcut[] = useMemo(
+    () => [
+      {
+        key: "/",
+        action: focusSearch,
+        description: "Focar busca da tabela",
+      },
+      {
+        key: "f",
+        action: () => setFiltersOpen(true),
+        description: "Abrir filtros",
+      },
+      {
+        key: "p",
+        action: () => setPresetsOpen(true),
+        description: "Abrir presets",
+      },
+      {
+        key: "?",
+        action: () => setShortcutsOpen(true),
+        description: "Abrir ajuda de atalhos",
+        modifiers: { shift: true },
+      },
+    ],
+    [focusSearch],
+  );
+
+  useKeyboardShortcuts(shortcuts, { enabled: !shortcutsOpen });
+
   return (
-    <div className="flex flex-col gap-6">
-      {periodo ? <PeriodBar periodo={periodo} mesMin={periodoMin} /> : null}
-      <div className="flex flex-wrap items-end gap-2">
-        <div className="flex-1">
-          <ReportFilters filtros={todosFiltros} options={options} />
+    <>
+      <div className="flex flex-col gap-6">
+        {periodo ? (
+          <div data-tour="period-bar">
+            <PeriodBar periodo={periodo} mesMin={periodoMin} />
+          </div>
+        ) : null}
+        <div className="flex flex-wrap items-end gap-2" data-tour="report-filters">
+          <div className="flex-1">
+            <ReportFilters
+              filtros={todosFiltros}
+              options={options}
+              externalOpen={filtersOpen}
+              onExternalOpenChange={setFiltersOpen}
+            />
+          </div>
+          <div data-tour="presets-btn">
+            <PresetsPopover
+              reportId={report.id}
+              externalOpen={presetsOpen}
+              onExternalOpenChange={setPresetsOpen}
+            />
+          </div>
+          {/* Botão de atalhos */}
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon-sm"
+            onClick={() => setShortcutsOpen(true)}
+            aria-label="Atalhos de teclado"
+            title="Atalhos de teclado (?)"
+            className="cursor-pointer text-muted-foreground hover:text-foreground"
+          >
+            <Keyboard className="size-3.5" aria-hidden />
+          </Button>
+          {/* Botão de tour */}
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon-sm"
+            onClick={openTour}
+            aria-label="Iniciar tour de onboarding"
+            title="Tour guiado"
+            className="cursor-pointer text-muted-foreground hover:text-foreground"
+          >
+            <HelpCircle className="size-3.5" aria-hidden />
+          </Button>
         </div>
-        <PresetsPopover reportId={report.id} />
+        <AppliedFiltersChips chips={chips} />
+        <div data-tour="data-table">
+          {secoes.map((sd) => (
+            <div key={sd.secao.id} className="mb-6 last:mb-0">
+              {renderSecao(sd, report, onRetry)}
+            </div>
+          ))}
+        </div>
+        <p className="text-xs text-muted-foreground">
+          {freshness
+            ? `Atualizado em ${freshness.toLocaleString("pt-BR")}`
+            : "Atualizado em — (relatório ainda sendo preparado)"}
+        </p>
       </div>
-      <AppliedFiltersChips chips={chips} />
-      {secoes.map((sd) => (
-        <div key={sd.secao.id}>{renderSecao(sd, report, onRetry)}</div>
-      ))}
-      <p className="text-xs text-muted-foreground">
-        {freshness
-          ? `Atualizado em ${freshness.toLocaleString("pt-BR")}`
-          : "Atualizado em — (relatório ainda sendo preparado)"}
-      </p>
-    </div>
+
+      <ShortcutsHelpDialog
+        open={shortcutsOpen}
+        onOpenChange={setShortcutsOpen}
+        shortcuts={shortcuts}
+      />
+
+      <ReportTour
+        steps={TOUR_STEPS}
+        active={tourActive}
+        onClose={onTourClose}
+      />
+      {/* Ref para input de busca — preenchido pelo DataTable via callback */}
+      <span ref={searchInputRef} aria-hidden className="sr-only" />
+    </>
   );
 }
