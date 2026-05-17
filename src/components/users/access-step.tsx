@@ -1,6 +1,8 @@
 "use client";
 
 import { REPORT_DOMAINS, type ReportDomainId } from "@/lib/reports/domains";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Label } from "@/components/ui/label";
 
 interface AccessStepProps {
   selected: ReportDomainId[];
@@ -29,19 +31,22 @@ export function AccessStep({ selected, onChange, grantable }: AccessStepProps) {
           const disabled = !grantable.includes(d.id);
           return (
             <li key={d.id} className="flex items-center gap-2">
-              <input
-                type="checkbox"
+              <Checkbox
                 id={`dominio-${d.id}`}
                 checked={selected.includes(d.id)}
                 disabled={disabled}
-                onChange={() => toggle(d.id)}
+                onCheckedChange={() => toggle(d.id)}
               />
-              <label
+              <Label
                 htmlFor={`dominio-${d.id}`}
-                className={disabled ? "text-muted-foreground" : ""}
+                className={
+                  disabled
+                    ? "text-muted-foreground"
+                    : "cursor-pointer font-normal"
+                }
               >
                 {d.label}
-              </label>
+              </Label>
             </li>
           );
         })}

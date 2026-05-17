@@ -5,6 +5,13 @@ import "@testing-library/jest-dom";
 import { render, screen, fireEvent } from "@testing-library/react";
 import { AccessStep } from "./access-step";
 
+// jsdom não implementa PointerEvent; o Checkbox do base-ui o dispara no clique.
+if (typeof PointerEvent === "undefined") {
+  class PointerEventPolyfill extends MouseEvent {}
+  // @ts-expect-error polyfill mínimo para o ambiente de teste
+  global.PointerEvent = PointerEventPolyfill;
+}
+
 describe("AccessStep", () => {
   it("renderiza um checkbox por domínio", () => {
     render(
@@ -22,8 +29,8 @@ describe("AccessStep", () => {
     );
     const estoque = screen.getByRole("checkbox", { name: /estoque/i });
     const fiscal = screen.getByRole("checkbox", { name: /fiscal/i });
-    expect(estoque).toBeEnabled();
-    expect(fiscal).toBeDisabled();
+    expect(estoque).not.toHaveAttribute("aria-disabled", "true");
+    expect(fiscal).toHaveAttribute("aria-disabled", "true");
   });
   it("dispara onChange ao marcar um domínio", () => {
     const onChange = jest.fn();
