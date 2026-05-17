@@ -1134,3 +1134,12 @@ model FatoEstoqueSaldo {
   @@index([localId])
   @@map("fato_estoque_saldo")
 }
+
+/// Sinal de "builder de fato rodou" — uma linha por fato. Distingue
+/// "builder nunca rodou" (linha ausente) de "rodou e não produziu linhas".
+model FatoBuildState {
+  fato          String   @id
+  ultimoBuildAt DateTime @map("ultimo_build_at")
+
+  @@map("fato_build_state")
+}
