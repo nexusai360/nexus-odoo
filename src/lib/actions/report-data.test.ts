@@ -9,41 +9,55 @@ jest.mock("@/lib/prisma", () => ({
     syncState: { findUnique: jest.fn() },
   },
 }));
-// eslint-disable-next-line @typescript-eslint/no-require-imports
-const { getCurrentUser } = require("@/lib/auth");
-// eslint-disable-next-line @typescript-eslint/no-require-imports
-const { getMyDomains } = require("@/lib/actions/domain-access");
-// eslint-disable-next-line @typescript-eslint/no-require-imports
-const { prisma } = require("@/lib/prisma");
+import { getCurrentUser } from "@/lib/auth";
+import type { AuthUser } from "@/lib/auth-helpers";
+import { getMyDomains } from "@/lib/actions/domain-access";
+import { prisma } from "@/lib/prisma";
 import {
   getRelatorioSaldoProduto, getRelatorioValorPorArmazem,
   getRelatorioEntradasSaidas, getRelatorioProdutoParado,
   getRelatorioTopMovimentados, getRelatorioConcentracao,
 } from "./report-data";
 
+const mockGetCurrentUser = jest.mocked(getCurrentUser);
+const mockGetMyDomains = jest.mocked(getMyDomains);
+
+/**
+ * O `prisma` importado é tipado como `PrismaClient` (métodos com overloads
+ * genéricos), mas o `jest.mock` acima troca cada método por um `jest.fn()`.
+ * Este cast expõe os métodos usados nos testes como `jest.Mock` simples.
+ */
+const mockPrisma = prisma as unknown as {
+  fatoBuildState: { findUnique: jest.Mock };
+  fatoEstoqueSaldo: { findMany: jest.Mock; groupBy: jest.Mock };
+  fatoEstoqueMovimento: { groupBy: jest.Mock; findMany: jest.Mock };
+  fatoProdutoParado: { findMany: jest.Mock; count: jest.Mock };
+  syncState: { findUnique: jest.Mock };
+};
+
 beforeEach(() => {
-  getCurrentUser.mockResolvedValue({ id: "u1", platformRole: "admin" });
-  getMyDomains.mockResolvedValue(["estoque"]);
-  prisma.syncState.findUnique.mockResolvedValue({ lastSnapshotAt: new Date() });
+  mockGetCurrentUser.mockResolvedValue({ id: "u1", platformRole: "admin" } as AuthUser);
+  mockGetMyDomains.mockResolvedValue(["estoque"]);
+  mockPrisma.syncState.findUnique.mockResolvedValue({ lastSnapshotAt: new Date() });
 });
 
 describe("getRelatorioSaldoProduto (R1)", () => {
   it("estado 'preparando' quando FatoBuildState ausente", async () => {
-    prisma.fatoBuildState.findUnique.mockResolvedValue(null);
+    mockPrisma.fatoBuildState.findUnique.mockResolvedValue(null);
     const r = await getRelatorioSaldoProduto({});
     expect(r.estado).toBe("preparando");
   });
   it("estado 'vazio' quando o builder rodou mas não há linhas", async () => {
-    prisma.fatoBuildState.findUnique.mockResolvedValue({ ultimoBuildAt: new Date() });
-    prisma.fatoEstoqueSaldo.findMany.mockResolvedValue([]);
+    mockPrisma.fatoBuildState.findUnique.mockResolvedValue({ ultimoBuildAt: new Date() });
+    mockPrisma.fatoEstoqueSaldo.findMany.mockResolvedValue([]);
     const r = await getRelatorioSaldoProduto({});
     expect(r.estado).toBe("vazio");
   });
   it("filtra por família quando familiaId é passado", async () => {
-    prisma.fatoBuildState.findUnique.mockResolvedValue({ ultimoBuildAt: new Date() });
-    prisma.fatoEstoqueSaldo.findMany.mockResolvedValue([{ produtoNome: "X" }]);
+    mockPrisma.fatoBuildState.findUnique.mockResolvedValue({ ultimoBuildAt: new Date() });
+    mockPrisma.fatoEstoqueSaldo.findMany.mockResolvedValue([{ produtoNome: "X" }]);
     await getRelatorioSaldoProduto({ familiaId: 7 });
-    expect(prisma.fatoEstoqueSaldo.findMany).toHaveBeenCalledWith(
+    expect(mockPrisma.fatoEstoqueSaldo.findMany).toHaveBeenCalledWith(
       expect.objectContaining({ where: expect.objectContaining({ familiaId: 7 }) }),
     );
   });
@@ -51,14 +65,14 @@ describe("getRelatorioSaldoProduto (R1)", () => {
 
 describe("getRelatorioValorPorArmazem (R2)", () => {
   it("agrega vrSaldo por local com vrSaldo > 0", async () => {
-    prisma.fatoBuildState.findUnique.mockResolvedValue({ ultimoBuildAt: new Date() });
-    prisma.fatoEstoqueSaldo.groupBy.mockResolvedValue([
+    mockPrisma.fatoBuildState.findUnique.mockResolvedValue({ ultimoBuildAt: new Date() });
+    mockPrisma.fatoEstoqueSaldo.groupBy.mockResolvedValue([
       { localNome: "Galpão A", _sum: { vrSaldo: 1000 } },
     ]);
     const r = await getRelatorioValorPorArmazem({});
     expect(r.estado).toBe("ok");
     expect(r.dados).toEqual([{ rotulo: "Galpão A", valor: 1000 }]);
-    expect(prisma.fatoEstoqueSaldo.groupBy).toHaveBeenCalledWith(
+    expect(mockPrisma.fatoEstoqueSaldo.groupBy).toHaveBeenCalledWith(
       expect.objectContaining({ where: { vrSaldo: { gt: 0 } } }),
     );
   });
@@ -66,8 +80,8 @@ describe("getRelatorioValorPorArmazem (R2)", () => {
 
 describe("getRelatorioEntradasSaidas (R3)", () => {
   it("soma quantidade por mês e sentido dentro do período", async () => {
-    prisma.fatoBuildState.findUnique.mockResolvedValue({ ultimoBuildAt: new Date() });
-    prisma.fatoEstoqueMovimento.groupBy.mockResolvedValue([
+    mockPrisma.fatoBuildState.findUnique.mockResolvedValue({ ultimoBuildAt: new Date() });
+    mockPrisma.fatoEstoqueMovimento.groupBy.mockResolvedValue([
       { mes: "2026-03", sentido: "entrada", _sum: { quantidade: 10 } },
       { mes: "2026-03", sentido: "saida", _sum: { quantidade: 4 } },
     ]);
@@ -79,15 +93,15 @@ describe("getRelatorioEntradasSaidas (R3)", () => {
 
 describe("getRelatorioProdutoParado (R4)", () => {
   it("filtra faixa de dias e saldo > 0; devolve KPI + tabela", async () => {
-    prisma.fatoBuildState.findUnique.mockResolvedValue({ ultimoBuildAt: new Date() });
-    prisma.fatoProdutoParado.findMany.mockResolvedValue([
+    mockPrisma.fatoBuildState.findUnique.mockResolvedValue({ ultimoBuildAt: new Date() });
+    mockPrisma.fatoProdutoParado.findMany.mockResolvedValue([
       { produtoNome: "X", localNome: "A", saldo: 3, dias: 95, vrSaldo: 200 },
     ]);
     const r = await getRelatorioProdutoParado({ faixaDias: 90 });
     expect(r.estado).toBe("ok");
     expect(r.dados.total).toBe(1);
     expect(r.dados.linhas).toHaveLength(1);
-    expect(prisma.fatoProdutoParado.findMany).toHaveBeenCalledWith(
+    expect(mockPrisma.fatoProdutoParado.findMany).toHaveBeenCalledWith(
       expect.objectContaining({
         where: expect.objectContaining({ saldo: { gt: 0 }, dias: { gte: 90 } }),
       }),
@@ -97,8 +111,8 @@ describe("getRelatorioProdutoParado (R4)", () => {
 
 describe("getRelatorioTopMovimentados (R5)", () => {
   it("agrega por produto, ordena desc e aplica top-N", async () => {
-    prisma.fatoBuildState.findUnique.mockResolvedValue({ ultimoBuildAt: new Date() });
-    prisma.fatoEstoqueMovimento.groupBy.mockResolvedValue([
+    mockPrisma.fatoBuildState.findUnique.mockResolvedValue({ ultimoBuildAt: new Date() });
+    mockPrisma.fatoEstoqueMovimento.groupBy.mockResolvedValue([
       { produtoNome: "A", _sum: { quantidade: 50 } },
       { produtoNome: "B", _sum: { quantidade: 80 } },
     ]);
@@ -109,8 +123,8 @@ describe("getRelatorioTopMovimentados (R5)", () => {
 
 describe("getRelatorioConcentracao (R6)", () => {
   it("agrega vrSaldo por família e por marca; nulos viram 'Não classificado'", async () => {
-    prisma.fatoBuildState.findUnique.mockResolvedValue({ ultimoBuildAt: new Date() });
-    prisma.fatoEstoqueSaldo.groupBy
+    mockPrisma.fatoBuildState.findUnique.mockResolvedValue({ ultimoBuildAt: new Date() });
+    mockPrisma.fatoEstoqueSaldo.groupBy
       .mockResolvedValueOnce([
         { familiaNome: "Esteiras", _sum: { vrSaldo: 100 } },
         { familiaNome: null, _sum: { vrSaldo: 30 } },
