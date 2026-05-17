@@ -35,4 +35,21 @@ export const REPORT_CATALOG: ReportEntry[] = [
       },
     ],
   },
+  {
+    id: "valor-armazem",
+    titulo: "Valor de estoque por armazém",
+    dominio: "estoque",
+    descricao: "Valor financeiro do estoque agregado por armazém.",
+    icone: Coins,
+    modeloFonte: "estoque.saldo.hoje",
+    secoes: [
+      {
+        id: "barras",
+        template: "BarChart",
+        fato: "fato_estoque_saldo",
+        config: { xKey: "rotulo", yKey: "valor", formato: "moeda" },
+        filtros: [],
+      },
+    ],
+  },
 ];

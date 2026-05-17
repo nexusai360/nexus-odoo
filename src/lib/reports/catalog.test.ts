@@ -11,3 +11,13 @@ describe("catálogo — R1", () => {
     expect(r1?.secoes[0].fato).toBe("fato_estoque_saldo");
   });
 });
+
+describe("catálogo — R2", () => {
+  it("R2 é um BarChart sobre fato_estoque_saldo, sem filtros", () => {
+    const r2 = REPORT_CATALOG.find((r) => r.id === "valor-armazem");
+    expect(r2?.dominio).toBe("estoque");
+    expect(r2?.secoes[0].template).toBe("BarChart");
+    expect(r2?.secoes[0].fato).toBe("fato_estoque_saldo");
+    expect(r2?.secoes[0].filtros).toEqual([]);
+  });
+});
