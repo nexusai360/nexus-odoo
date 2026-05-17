@@ -22,12 +22,17 @@ export function temEfeito(row: FatoMovimentoRow): boolean {
   return row.quantidade !== 0;
 }
 
-/** Deriva uma linha de fato_estoque_movimento de um registro raw. */
+/**
+ * Deriva uma linha de fato_estoque_movimento de um registro raw.
+ * Retorna null quando a data é inválida (IM-02): linha sem `data` parseável
+ * geraria bucket de mês "NaN-NaN" — descartada em vez de poluir as agregações.
+ */
 export function mapMovimentoRow(
   raw: Record<string, unknown>,
-): FatoMovimentoRow {
+): FatoMovimentoRow | null {
   const quantidade = Number(raw.quantidade ?? 0);
   const data = new Date(String(raw.data));
+  if (Number.isNaN(data.getTime())) return null;
   const mes = `${data.getUTCFullYear()}-${String(
     data.getUTCMonth() + 1,
   ).padStart(2, "0")}`;
@@ -40,7 +45,10 @@ export function mapMovimentoRow(
     data,
     mes,
     quantidade,
-    sentido: quantidade > 0 ? "entrada" : "saida",
+    // Classificação explícita: quantidade 0 é "neutro" e descartada por
+    // temEfeito antes de entrar no fato (IM-01).
+    sentido:
+      quantidade > 0 ? "entrada" : quantidade < 0 ? "saida" : "neutro",
     localInversoId: relId(raw.local_inverso_id as OdooM2O),
     origem: typeof raw.origem === "string" ? raw.origem : null,
   };
@@ -57,6 +65,7 @@ export async function rebuildFatoEstoqueMovimento(
   });
   const mapped = rawRows
     .map((r) => mapMovimentoRow(r.data as Record<string, unknown>))
+    .filter((r): r is FatoMovimentoRow => r !== null)
     .filter(temEfeito);
   await prisma.$transaction(async (tx) => {
     await tx.fatoEstoqueMovimento.deleteMany({});
@@ -65,7 +74,8 @@ export async function rebuildFatoEstoqueMovimento(
         data: mapped.slice(i, i + BATCH),
       });
     }
+    // Estado de build commitado atomicamente com os dados (CR-01).
+    await markFatoBuilt(tx, "fato_estoque_movimento");
   });
-  await markFatoBuilt(prisma, "fato_estoque_movimento");
   return mapped.length;
 }
