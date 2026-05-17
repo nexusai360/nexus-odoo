@@ -9,9 +9,18 @@
 - **F1 — Fundação:** ✅ mergeada na `main` (PR #2).
 - **F2 — Ingestão/cache:** ✅ CONCLUÍDA na branch `feat/ingestao`.
 - **F3 — Dashboard de relatórios:** ✅ CONCLUÍDA na mesma branch `feat/ingestao`.
-- **PR #4** (`feat/ingestao` → `main`) carrega **F2 + F3** juntas — a F3 foi
-  construída sobre a F2 antes do merge da F2. Merge para `main` é decisão
-  humana (dispara produção).
+- **F3.5 — Dashboard de relatórios v2** (milestone novo, em `feat/ingestao`):
+  reformulação de sofisticação inspirada no `nexus-insights`, decomposta em
+  sub-fases.
+  - **F3.5a — Charts v2:** ✅ animação, gradient, tooltip rico, `KPICard`,
+    `ChartCard`, fim das casas decimais supérfluas.
+  - **F3.5b — Seletor de período v1:** ✅ `PeriodBar` (pílulas + calendário de
+    meses), estado na URL, nos relatórios temporais (`entradas-saidas`,
+    `top-movimentados`). Spec/plan v1→v3 + 2 reviews cada; code+UI review.
+  - **F3.5c–f:** futuras (filtros simples/avançado, tabela/colunas/export,
+    presets/drill-down, imersão). Ver specs em `docs/superpowers/`.
+- **PR #4** (`feat/ingestao` → `main`) carrega **F2 + F3 + F3.5a/b**. Merge
+  para `main` é decisão humana (dispara produção).
 
 ## F2 — entregue
 
