@@ -1,10 +1,14 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { Columns2, WrapText } from "lucide-react";
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
 import { Input } from "@/components/ui/input";
+import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { ArrowDown, ArrowUp, ArrowUpDown } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { ChartPreparing, ChartEmpty, ChartError } from "./chart-states";
@@ -39,13 +43,36 @@ function rowKey(row: Record<string, unknown>, index: number): string | number {
   return index;
 }
 
-/** Tabela genérica ordenável e pesquisável; formata números pt-BR. */
+/**
+ * Tabela profissional com:
+ * - Cabeçalho fixo (sticky) ao rolar a tabela
+ * - Scroll vertical interno (max-h-[70vh])
+ * - Botão "Colunas" com Popover+Checkbox para mostrar/ocultar colunas
+ * - Toggle "Compacto" para densidade de texto
+ * - Busca interna e ordenação por coluna
+ * - Números e moeda alinhados à direita, tabular-nums
+ */
 export function DataTable<T extends Record<string, unknown>>({
   columns, rows, estado = "ok", onRetry, searchable = false,
 }: DataTableProps<T>) {
   const [sortKey, setSortKey] = useState<string | null>(null);
   const [sortDir, setSortDir] = useState<SortDir>("asc");
   const [query, setQuery] = useState("");
+  const [compacto, setCompacto] = useState(false);
+
+  // Visibilidade de colunas: todas visíveis por default.
+  const [visiveis, setVisiveis] = useState<Record<string, boolean>>(
+    () => Object.fromEntries(columns.map((c) => [c.key, true])),
+  );
+
+  const colunasVisiveis = columns.filter((c) => visiveis[c.key]);
+
+  function toggleColuna(key: string) {
+    // Garante que pelo menos 1 coluna está visível
+    const quantVisiveis = Object.values(visiveis).filter(Boolean).length;
+    if (visiveis[key] && quantVisiveis <= 1) return;
+    setVisiveis((prev) => ({ ...prev, [key]: !prev[key] }));
+  }
 
   const filtered = useMemo(() => {
     if (!query.trim()) return rows;
@@ -53,7 +80,6 @@ export function DataTable<T extends Record<string, unknown>>({
     return rows.filter((r) =>
       columns.some((c) => {
         if (c.tipo === "texto") return String(r[c.key] ?? "").toLowerCase().includes(q);
-        // Números e moeda: busca pelo valor formatado
         return String(r[c.key] ?? "").includes(q);
       }),
     );
@@ -98,87 +124,172 @@ export function DataTable<T extends Record<string, unknown>>({
   if (estado === "vazio" || rows.length === 0) return <ChartEmpty />;
 
   return (
-    <div className="flex flex-col gap-3">
-      {searchable && (
-        <Input
-          placeholder="Pesquisar…"
-          value={query}
-          onChange={(e) => setQuery(e.target.value)}
-          className="max-w-xs"
-        />
-      )}
-      <div className="overflow-x-auto rounded-xl">
-      <Table>
-        <TableHeader>
-          <TableRow>
-            {columns.map((c) => {
-              const active = sortKey === c.key;
-              return (
-                <TableHead
-                  key={c.key}
-                  aria-sort={
-                    active
-                      ? sortDir === "asc"
-                        ? "ascending"
-                        : "descending"
-                      : "none"
-                  }
-                >
-                  <button
-                    type="button"
-                    className="flex items-center gap-1 font-medium"
-                    aria-label={`Ordenar por ${c.header}`}
-                    onClick={() => toggleSort(c.key)}
-                  >
-                    {c.header}
-                    {active ? (
-                      sortDir === "asc" ? (
-                        <ArrowUp className="size-3.5" aria-hidden="true" />
-                      ) : (
-                        <ArrowDown className="size-3.5" aria-hidden="true" />
-                      )
-                    ) : (
-                      <ArrowUpDown
-                        className="size-3.5 text-muted-foreground/50"
-                        aria-hidden="true"
+    <div className="flex flex-col gap-3 w-full">
+      {/* Barra de controles */}
+      <div className="flex flex-wrap items-center gap-2">
+        {searchable && (
+          <Input
+            placeholder="Pesquisar…"
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            className="h-8 max-w-xs text-sm"
+          />
+        )}
+
+        {/* Seletor de colunas */}
+        <Popover>
+          <PopoverTrigger asChild>
+            <Button
+              variant="outline"
+              size="sm"
+              className="h-8 gap-1.5 text-xs"
+              aria-label="Gerenciar colunas visíveis"
+            >
+              <Columns2 className="size-3.5" aria-hidden />
+              Colunas
+            </Button>
+          </PopoverTrigger>
+          <PopoverContent className="w-52 p-2">
+            <p className="mb-2 px-1 text-xs font-medium text-muted-foreground uppercase tracking-wide">
+              Colunas visíveis
+            </p>
+            <ul className="flex flex-col gap-1 max-h-60 overflow-y-auto">
+              {columns.map((c) => {
+                const quantVisiveis = Object.values(visiveis).filter(Boolean).length;
+                const isLast = visiveis[c.key] && quantVisiveis <= 1;
+                return (
+                  <li key={c.key}>
+                    <label
+                      className={cn(
+                        "flex cursor-pointer items-center gap-2 rounded px-1.5 py-1 text-sm hover:bg-muted",
+                        isLast && "cursor-not-allowed opacity-50",
+                      )}
+                    >
+                      <Checkbox
+                        checked={visiveis[c.key]}
+                        onCheckedChange={() => toggleColuna(c.key)}
+                        disabled={isLast}
+                        aria-label={`Mostrar coluna ${c.header}`}
                       />
-                    )}
-                  </button>
-                </TableHead>
-              );
-            })}
-          </TableRow>
-        </TableHeader>
-        <TableBody>
-          {sorted.length === 0 ? (
-            <TableRow>
-              <TableCell colSpan={columns.length}>
-                <ChartEmpty />
-              </TableCell>
-            </TableRow>
-          ) : (
-            sorted.map((row, i) => (
-              <TableRow key={rowKey(row, i)}>
-                {columns.map((c) => (
-                  <TableCell
-                    key={c.key}
-                    className={cn(
-                      (c.tipo === "numero" || c.tipo === "moeda") &&
-                        "tabular-nums text-right",
-                    )}
-                  >
-                    {c.tipo === "numero"
-                      ? formatNumber(Number(row[c.key] ?? 0), "decimal")
-                      : c.tipo === "moeda"
-                        ? formatNumber(Number(row[c.key] ?? 0), "moeda")
-                        : String(row[c.key] ?? "")}
-                  </TableCell>
-                ))}
+                      {c.header}
+                    </label>
+                  </li>
+                );
+              })}
+            </ul>
+          </PopoverContent>
+        </Popover>
+
+        {/* Toggle compacto */}
+        <Button
+          variant={compacto ? "default" : "outline"}
+          size="sm"
+          className="h-8 gap-1.5 text-xs"
+          onClick={() => setCompacto((v) => !v)}
+          aria-pressed={compacto}
+          aria-label="Modo compacto"
+        >
+          <WrapText className="size-3.5" aria-hidden />
+          Compacto
+        </Button>
+
+        {/* Contador de resultados */}
+        <span className="ml-auto text-xs text-muted-foreground tabular-nums">
+          {sorted.length} {sorted.length === 1 ? "linha" : "linhas"}
+        </span>
+      </div>
+
+      {/* Tabela com scroll interno e cabeçalho sticky */}
+      <div className="w-full overflow-x-auto rounded-xl border border-border">
+        <div className="max-h-[70vh] overflow-y-auto">
+          <Table>
+            <TableHeader className="sticky top-0 z-10 bg-muted/80 backdrop-blur-sm">
+              <TableRow>
+                {colunasVisiveis.map((c) => {
+                  const active = sortKey === c.key;
+                  return (
+                    <TableHead
+                      key={c.key}
+                      aria-sort={
+                        active
+                          ? sortDir === "asc"
+                            ? "ascending"
+                            : "descending"
+                          : "none"
+                      }
+                      className={cn(
+                        (c.tipo === "numero" || c.tipo === "moeda") && "text-right",
+                      )}
+                    >
+                      <button
+                        type="button"
+                        className={cn(
+                          "flex items-center gap-1 font-medium text-xs uppercase tracking-wide",
+                          (c.tipo === "numero" || c.tipo === "moeda") && "ml-auto",
+                        )}
+                        aria-label={`Ordenar por ${c.header}`}
+                        onClick={() => toggleSort(c.key)}
+                      >
+                        {c.header}
+                        {active ? (
+                          sortDir === "asc" ? (
+                            <ArrowUp className="size-3.5" aria-hidden="true" />
+                          ) : (
+                            <ArrowDown className="size-3.5" aria-hidden="true" />
+                          )
+                        ) : (
+                          <ArrowUpDown
+                            className="size-3.5 text-muted-foreground/50"
+                            aria-hidden="true"
+                          />
+                        )}
+                      </button>
+                    </TableHead>
+                  );
+                })}
               </TableRow>
-            ))
-          )}
-        </TableBody>
-      </Table>
+            </TableHeader>
+            <TableBody>
+              {sorted.length === 0 ? (
+                <TableRow>
+                  <TableCell colSpan={colunasVisiveis.length}>
+                    <ChartEmpty />
+                  </TableCell>
+                </TableRow>
+              ) : (
+                sorted.map((row, i) => (
+                  <TableRow
+                    key={rowKey(row, i)}
+                    className="transition-colors hover:bg-muted/50"
+                  >
+                    {colunasVisiveis.map((c) => (
+                      <TableCell
+                        key={c.key}
+                        className={cn(
+                          (c.tipo === "numero" || c.tipo === "moeda") &&
+                            "tabular-nums text-right",
+                          compacto && c.tipo === "texto" &&
+                            "max-w-[200px] truncate",
+                        )}
+                        title={
+                          compacto && c.tipo === "texto"
+                            ? String(row[c.key] ?? "")
+                            : undefined
+                        }
+                      >
+                        {c.tipo === "numero"
+                          ? formatNumber(Number(row[c.key] ?? 0), "decimal")
+                          : c.tipo === "moeda"
+                            ? formatNumber(Number(row[c.key] ?? 0), "moeda")
+                            : String(row[c.key] ?? "")}
+                      </TableCell>
+                    ))}
+                  </TableRow>
+                ))
+              )}
+            </TableBody>
+          </Table>
+        </div>
       </div>
     </div>
   );
