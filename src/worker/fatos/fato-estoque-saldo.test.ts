@@ -9,7 +9,7 @@ describe("mapSaldoRow", () => {
       saldo: 7,
       unidade_id: [1, "UN"],
     };
-    expect(mapSaldoRow(raw)).toEqual({
+    expect(mapSaldoRow(raw, new Map())).toEqual({
       odooSaldoId: 99,
       produtoId: 12,
       produtoNome: "Esteira X",
@@ -17,15 +17,57 @@ describe("mapSaldoRow", () => {
       localNome: "Galpão A",
       quantidade: 7,
       unidade: "UN",
+      vrSaldo: 0,
+      familiaId: null,
+      familiaNome: null,
+      marcaId: null,
+      marcaNome: null,
     });
   });
 
   it("tolera campos relacionais ausentes (false)", () => {
     const raw = { id: 1, produto_id: false, local_id: false, saldo: 0, unidade_id: false };
-    const m = mapSaldoRow(raw);
+    const m = mapSaldoRow(raw, new Map());
     expect(m.produtoId).toBeNull();
     expect(m.produtoNome).toBeNull();
     expect(m.quantidade).toBe(0);
+    expect(m.vrSaldo).toBe(0);
+    expect(m.familiaId).toBeNull();
+    expect(m.familiaNome).toBeNull();
+    expect(m.marcaId).toBeNull();
+    expect(m.marcaNome).toBeNull();
+  });
+});
+
+describe("mapSaldoRow enriquecido", () => {
+  const classMap = new Map([
+    [12, { familiaId: 2, familiaNome: "Esteiras", marcaId: 5, marcaNome: "Matrix" }],
+  ]);
+  it("carrega vrSaldo, família e marca do produto", () => {
+    const raw = {
+      id: 99, produto_id: [12, "Esteira X"], local_id: [3, "Galpão A"],
+      saldo: 7, unidade_id: [1, "UN"], vr_saldo: 1500.5,
+    };
+    const m = mapSaldoRow(raw, classMap);
+    expect(m.vrSaldo).toBe(1500.5);
+    expect(m.familiaId).toBe(2);
+    expect(m.familiaNome).toBe("Esteiras");
+    expect(m.marcaId).toBe(5);
+    expect(m.marcaNome).toBe("Matrix");
+  });
+  it("carrega vrSaldo zero", () => {
+    const raw = { id: 1, produto_id: [12, "X"], saldo: 0, vr_saldo: 0 };
+    expect(mapSaldoRow(raw, classMap).vrSaldo).toBe(0);
+  });
+  it("produto ausente do mapa -> família/marca null", () => {
+    const raw = { id: 2, produto_id: [999, "Y"], saldo: 1, vr_saldo: 10 };
+    const m = mapSaldoRow(raw, classMap);
+    expect(m.familiaId).toBeNull();
+    expect(m.marcaId).toBeNull();
+  });
+  it("vr_saldo ausente vira 0", () => {
+    const raw = { id: 3, produto_id: false, saldo: 1 };
+    expect(mapSaldoRow(raw, classMap).vrSaldo).toBe(0);
   });
 });
 

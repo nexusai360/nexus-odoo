@@ -47,24 +47,40 @@ export interface FatoSaldoRow {
   localNome: string | null;
   quantidade: number;
   unidade: string | null;
+  vrSaldo: number;
+  familiaId: number | null;
+  familiaNome: string | null;
+  marcaId: number | null;
+  marcaNome: string | null;
 }
 
-export function mapSaldoRow(raw: Record<string, unknown>): FatoSaldoRow {
+export function mapSaldoRow(
+  raw: Record<string, unknown>,
+  classMap: Map<number, ProdutoClass>,
+): FatoSaldoRow {
+  const produtoId = relId(raw.produto_id as OdooM2O);
+  const cls = produtoId != null ? classMap.get(produtoId) : undefined;
   return {
     odooSaldoId: Number(raw.id),
-    produtoId: relId(raw.produto_id as OdooM2O),
+    produtoId,
     produtoNome: relNome(raw.produto_id as OdooM2O),
     localId: relId(raw.local_id as OdooM2O),
     localNome: relNome(raw.local_id as OdooM2O),
     quantidade: Number(raw.saldo ?? 0),
     unidade: relNome(raw.unidade_id as OdooM2O),
+    vrSaldo: Number(raw.vr_saldo ?? 0),
+    familiaId: cls?.familiaId ?? null,
+    familiaNome: cls?.familiaNome ?? null,
+    marcaId: cls?.marcaId ?? null,
+    marcaNome: cls?.marcaNome ?? null,
   };
 }
 
 /** Reconstrói fato_estoque_saldo a partir de raw_estoque_saldo_hoje. */
 export async function rebuildFatoEstoqueSaldo(prisma: PrismaClient): Promise<number> {
+  const classMap = await loadProdutoClassMap(prisma);
   const rawRows = await prisma.rawEstoqueSaldoHoje.findMany({ where: { rawDeleted: false } });
-  const mapped = rawRows.map((r) => mapSaldoRow(r.data as Record<string, unknown>));
+  const mapped = rawRows.map((r) => mapSaldoRow(r.data as Record<string, unknown>, classMap));
   await prisma.$transaction(async (tx) => {
     await tx.fatoEstoqueSaldo.deleteMany({});
     if (mapped.length) {
