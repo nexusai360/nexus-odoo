@@ -60,6 +60,7 @@ export const REPORT_CATALOG: ReportEntry[] = [
     descricao: "Movimento físico de entrada e saída agregado por mês.",
     icone: "ArrowLeftRight",
     modeloFonte: "estoque.extrato",
+    temporal: { periodoPadrao: "3meses" },
     secoes: [
       {
         id: "linha",
@@ -73,7 +74,7 @@ export const REPORT_CATALOG: ReportEntry[] = [
             { key: "saida", label: "Saídas" },
           ],
         },
-        filtros: [{ tipo: "periodo", default: "3" }, { tipo: "armazem" }],
+        filtros: [{ tipo: "armazem" }],
       },
     ],
   },
@@ -117,16 +118,14 @@ export const REPORT_CATALOG: ReportEntry[] = [
     descricao: "Produtos com maior movimento físico no período.",
     icone: "TrendingUp",
     modeloFonte: "estoque.extrato",
+    temporal: { periodoPadrao: "3meses" },
     secoes: [
       {
         id: "barras",
         template: "BarChart",
         fato: "fato_estoque_movimento",
         config: { xKey: "rotulo", yKey: "valor", formato: "inteiro" },
-        filtros: [
-          { tipo: "periodo", default: "3" },
-          { tipo: "sentido" },
-        ],
+        filtros: [{ tipo: "sentido" }],
       },
     ],
   },

@@ -23,12 +23,13 @@ describe("catálogo — R2", () => {
 });
 
 describe("catálogo — R3", () => {
-  it("R3 é um LineChart sobre fato_estoque_movimento, com filtro de período", () => {
+  it("R3 é um LineChart sobre fato_estoque_movimento, temporal + filtro armazém", () => {
     const r3 = REPORT_CATALOG.find((r) => r.id === "entradas-saidas");
     expect(r3?.secoes[0].template).toBe("LineChart");
     expect(r3?.secoes[0].fato).toBe("fato_estoque_movimento");
     expect(r3?.modeloFonte).toBe("estoque.extrato");
-    expect(r3?.secoes[0].filtros.map((f) => f.tipo)).toEqual(["periodo", "armazem"]);
+    expect(r3?.temporal?.periodoPadrao).toBe("3meses");
+    expect(r3?.secoes[0].filtros.map((f) => f.tipo)).toEqual(["armazem"]);
   });
 });
 
@@ -42,11 +43,12 @@ describe("catálogo — R4", () => {
 });
 
 describe("catálogo — R5", () => {
-  it("R5 é um BarChart sobre fato_estoque_movimento, filtros período+sentido", () => {
+  it("R5 é um BarChart sobre fato_estoque_movimento, temporal + filtro sentido", () => {
     const r5 = REPORT_CATALOG.find((r) => r.id === "top-movimentados");
     expect(r5?.secoes[0].template).toBe("BarChart");
     expect(r5?.secoes[0].fato).toBe("fato_estoque_movimento");
-    expect(r5?.secoes[0].filtros.map((f) => f.tipo)).toEqual(["periodo", "sentido"]);
+    expect(r5?.temporal?.periodoPadrao).toBe("3meses");
+    expect(r5?.secoes[0].filtros.map((f) => f.tipo)).toEqual(["sentido"]);
   });
 });
 

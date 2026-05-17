@@ -6,7 +6,6 @@ import type { ReportFilter } from "@/lib/reports/types";
 import { ProductFilter, type FilterOption } from "./filter-controls/product-filter";
 import { WarehouseFilter } from "./filter-controls/warehouse-filter";
 import { FamilyFilter } from "./filter-controls/family-filter";
-import { PeriodFilter } from "./filter-controls/period-filter";
 import { DirectionFilter } from "./filter-controls/direction-filter";
 import { DaysRangeFilter } from "./filter-controls/days-range-filter";
 import { SearchFilter } from "./filter-controls/search-filter";
@@ -74,17 +73,6 @@ export function ReportFilters({ filtros, options }: ReportFiltersProps) {
                 value={searchParams.get("familiaId") ?? ""}
                 onChange={(v) => setParam({ familiaId: v })}
                 options={options.familias}
-              />
-            );
-          case "periodo":
-            return (
-              <PeriodFilter
-                key="periodo"
-                de={searchParams.get("periodoDe") ?? ""}
-                ate={searchParams.get("periodoAte") ?? ""}
-                onChange={({ de, ate }) =>
-                  setParam({ periodoDe: de, periodoAte: ate })
-                }
               />
             );
           case "sentido":

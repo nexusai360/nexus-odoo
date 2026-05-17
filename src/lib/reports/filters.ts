@@ -8,20 +8,6 @@ function toInt(v: string | undefined): number | undefined {
   return Number.isInteger(n) && n > 0 ? n : undefined;
 }
 
-/** Mês corrente no formato YYYY-MM (UTC). */
-function mesAtual(): string {
-  const d = new Date();
-  return `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, "0")}`;
-}
-
-/** Mês de N meses atrás no formato YYYY-MM (UTC). */
-function mesAtras(n: number): string {
-  const d = new Date();
-  d.setUTCMonth(d.getUTCMonth() - n);
-  return `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, "0")}`;
-}
-
-const MES_REGEX = /^\d{4}-\d{2}$/;
 const FAIXAS = [30, 60, 90] as const;
 
 /**
@@ -52,14 +38,6 @@ export function parseFilters(
   if (tipos.has("sentido")) {
     const s = searchParams.sentido;
     if (s === "entrada" || s === "saida") values.sentido = s;
-  }
-  if (tipos.has("periodo")) {
-    const filtro = section.filtros.find((f) => f.tipo === "periodo");
-    const meses = Number(filtro?.default ?? "3");
-    const de = searchParams.periodoDe;
-    const ate = searchParams.periodoAte;
-    values.periodoDe = de && MES_REGEX.test(de) ? de : mesAtras(meses);
-    values.periodoAte = ate && MES_REGEX.test(ate) ? ate : mesAtual();
   }
   if (tipos.has("faixaDias")) {
     const filtro = section.filtros.find((f) => f.tipo === "faixaDias");

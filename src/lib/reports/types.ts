@@ -1,12 +1,12 @@
 // src/lib/reports/types.ts
 import type { ReportDomainId } from "@/lib/reports/domains";
+import type { PeriodoPresetPadrao } from "@/lib/reports/periodo";
 
 /** Tipo de cada controle de filtro de uma seção. */
 export type ReportFilterTipo =
   | "produto"
   | "armazem"
   | "familia"
-  | "periodo"
   | "sentido"
   | "faixaDias"
   | "busca";
@@ -54,6 +54,10 @@ export interface ReportEntry {
   /** Modelo Odoo cuja sync data o "atualizado em". */
   modeloFonte: string;
   secoes: ReportSection[];
+  /** Declara que o relatório tem dimensão temporal. Ausente = snapshot. */
+  temporal?: {
+    periodoPadrao: PeriodoPresetPadrao;
+  };
 }
 
 /**
