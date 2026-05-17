@@ -128,24 +128,37 @@ Cada sub-projeto percorre o fluxo abaixo. Classificar o esforço pela demanda �
 [12] DEPLOY ASSISTIDO ───────────────► requer humano (validação final)
 ```
 
-### Modo autônomo — regra de continuidade (inegociável)
+### Modo autônomo — padrão automático, inegociável
 
-**Modo autônomo é o padrão e significa seguir sozinho do começo ao fim.** Uma
-vez iniciado o trabalho de uma fase, Claude percorre as etapas `[2]→[10]` —
-e encadeia uma fase na seguinte (F2→F3→F4...) — **sem parar para pedir
-permissão de continuar**. Não existe checkpoint de "posso seguir?" entre
-etapas autônomas. Concluiu uma etapa, começa a próxima.
+**Modo autônomo é o padrão e é automático.** Iniciar a spec de qualquer
+implementação já dispara, por conta própria, a cadeia inteira `[1]→[10]` até
+a entrega — **sem pedir permissão, sem perguntar "posso seguir?", sem
+checkpoint entre etapas**. Claude não aguarda o humano mandar continuar e não
+pergunta se deve prosseguir. Concluiu uma etapa, começa a próxima; concluiu
+uma fase, encadeia a seguinte (F2→F3→F4...). Isso vale **toda vez**, sem
+exceção e sem precisar ser pedido — começou a spec, segue assim até o fim.
 
-Claude só interrompe e chama o humano nos pontos marcados `requer humano`:
-**[1] Brainstorm** (entrada de requisitos), **[11] `/ultrareview`** (disparo
-manual), **[12] Deploy** (validação final) e o **merge de PR para `main`**.
-Erro/bloqueio real também interrompe. Fora disso: não chamar o humano, não
-perguntar se pode prosseguir — seguir até o fim do escopo combinado.
+A sequência é cumprida na íntegra, sem atalho e sem pular etapa:
+**SPEC v1 → review crítica profunda de verdade (não carimbo, não review
+fake) → SPEC v2 → review ainda mais profunda e adversarial (caçar o que
+faltou, o exagero, o conceito quebrado) → SPEC v3 → PLAN v1 → a mesma dupla
+de reviews críticas → PLAN v2 → PLAN v3 → execução em microtarefas →
+verificação → code review + UI review.** Cada review é genuína: se não achou
+nada material, ela falhou em ser crítica o bastante.
 
-Ao terminar tudo, aí sim chamar o humano com o resumo final.
+Claude só chama o humano:
+- na **entrada de requisitos** do brainstorm [1] — e só ali; com os requisitos
+  dados, não volta a perguntar nada nem pede aval para continuar;
+- no **merge de PR para `main`**, no **`/ultrareview` [11]** e no **deploy [12]**;
+- diante de **erro/bloqueio real**.
+
+Fora desses pontos: silêncio e execução. Ao terminar **tudo** — implementação,
+verificação e reviews de código — aí sim chama o humano com o resumo final.
+O humano interrompe quando quiser; enquanto não interromper, Claude segue
+autônomo até o fim.
 
 **[1] Brainstorm → SPEC v1** — `superpowers:brainstorming`. Output: spec v1 em `docs/superpowers/specs/`.
-**[2] Design UI/UX** — `ui-ux-pro-max`. Autoridade de design. Sempre antes de qualquer UI. Alimenta a spec e o plano.
+**[2] Design UI/UX — `ui-ux-pro-max`, OBRIGATÓRIO.** A skill `ui-ux-pro-max` é a autoridade de design e é de uso **obrigatório em tudo que for frontend** — layout, telas, componentes, ícones, gráficos, cores, tipografia, espaçamento, animação e interação. Nenhuma UI é construída ou alterada sem consultá-la primeiro. Alimenta a spec e o plano, e é reaplicada durante a execução de qualquer task com UI.
 **[3–4] Double-check da SPEC — REGRA DE RAIZ, inegociável.**
 > A spec passa por **duas reviews genuinamente críticas** antes de virar plano.
 > - **[3] Review da spec #1 → SPEC v2** — auditoria adversarial: achar erro,
