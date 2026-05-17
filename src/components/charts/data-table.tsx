@@ -3,7 +3,7 @@
 import { useMemo, useState } from "react";
 import { Columns2, WrapText } from "lucide-react";
 import {
-  Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
+  TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -202,10 +202,16 @@ export function DataTable<T extends Record<string, unknown>>({
       </div>
 
       {/* Tabela com scroll interno e cabeçalho sticky */}
-      <div className="w-full overflow-x-auto rounded-xl border border-border">
-        <div className="max-h-[70vh] overflow-y-auto">
-          <Table>
-            <TableHeader className="sticky top-0 z-10 bg-muted/80 backdrop-blur-sm">
+      {/*
+        Container ÚNICO de scroll (x e y). Não usamos o componente `Table`
+        do design system aqui porque ele embrulha a tabela num `<div
+        overflow-x-auto>` próprio — esse wrapper viraria o ancestral de
+        scroll do `sticky` e o cabeçalho deixaria de travar. Com um único
+        container, o `sticky top-0` do `<thead>` funciona de verdade.
+      */}
+      <div className="max-h-[70vh] w-full overflow-auto rounded-xl border border-border">
+        <table className="w-full caption-bottom text-sm">
+            <TableHeader className="sticky top-0 z-20 bg-muted backdrop-blur-sm">
               <TableRow>
                 {colunasVisiveis.map((c) => {
                   const active = sortKey === c.key;
@@ -290,8 +296,7 @@ export function DataTable<T extends Record<string, unknown>>({
                 ))
               )}
             </TableBody>
-          </Table>
-        </div>
+        </table>
       </div>
     </div>
   );

@@ -46,6 +46,7 @@ describe("ReportView", () => {
         freshness={new Date("2026-05-16T09:00:00Z")}
         options={{ armazens: [], familias: [] }}
         periodo={null}
+        periodoMin={null}
       />,
     );
     expect(screen.getByText(/atualizado em/i)).toBeInTheDocument();
@@ -61,6 +62,7 @@ describe("ReportView", () => {
         freshness={null}
         options={{ armazens: [], familias: [] }}
         periodo={null}
+        periodoMin={null}
       />,
     );
     expect(screen.getAllByText(/ainda sendo preparado/i).length).toBeGreaterThan(0);
@@ -76,6 +78,7 @@ describe("ReportView", () => {
         freshness={null}
         options={{ armazens: [], familias: [] }}
         periodo={null}
+        periodoMin={null}
       />,
     );
     expect(screen.getByText("Produtos")).toBeInTheDocument();
@@ -116,6 +119,7 @@ describe("ReportView", () => {
         freshness={null}
         options={{ armazens: [], familias: [] }}
         periodo={null}
+        periodoMin={null}
       />,
     );
     expect(container.querySelector('[data-slot="pie-chart"]')).toBeInTheDocument();

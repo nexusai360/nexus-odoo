@@ -59,6 +59,16 @@ export default async function RelatorioPage({ params, searchParams }: PageProps)
     ? resolverPeriodo(sp, report.temporal.periodoPadrao)
     : null;
 
+  // Mês mais antigo com dado — trava o calendário personalizado para não
+  // permitir escolher um período sem dado nenhum (ex.: 1990).
+  let periodoMin: string | null = null;
+  if (periodo) {
+    const agg = await prisma.fatoEstoqueMovimento.aggregate({
+      _min: { mes: true },
+    });
+    periodoMin = agg._min.mes ?? null;
+  }
+
   // Uma chamada de query por seção; cada seção parseia seus próprios filtros.
   const secoes: SecaoComDados[] = [];
   for (const secao of report.secoes) {
@@ -88,7 +98,7 @@ export default async function RelatorioPage({ params, searchParams }: PageProps)
   };
 
   return (
-    <PageShell variant="wide">
+    <PageShell variant="full">
       <Link
         href="/relatorios"
         className="flex w-fit items-center gap-1 text-sm text-muted-foreground hover:text-foreground"
@@ -106,6 +116,7 @@ export default async function RelatorioPage({ params, searchParams }: PageProps)
         freshness={freshness}
         options={options}
         periodo={periodo}
+        periodoMin={periodoMin}
       />
     </PageShell>
   );

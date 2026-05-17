@@ -20,13 +20,15 @@ const PRESETS: { preset: Exclude<PeriodoPreset, "custom">; label: string }[] = [
 
 interface PeriodBarProps {
   periodo: PeriodoResolvido;
+  /** Mês mais antigo com dado ("YYYY-MM") — limita o calendário personalizado. */
+  mesMin?: string | null;
 }
 
 /**
  * Barra de período: pílulas de preset + "Personalizado". Escreve o estado na
  * URL (`periodo`/`de`/`ate`), preservando os demais searchParams.
  */
-export function PeriodBar({ periodo }: PeriodBarProps) {
+export function PeriodBar({ periodo, mesMin }: PeriodBarProps) {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
@@ -80,6 +82,7 @@ export function PeriodBar({ periodo }: PeriodBarProps) {
         })}
         <CustomRangePopover
           periodo={periodo}
+          mesMin={mesMin}
           onAplicar={(de, ate) => aplicar({ preset: "custom", de, ate })}
         >
           <button

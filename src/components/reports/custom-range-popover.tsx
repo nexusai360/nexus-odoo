@@ -21,6 +21,11 @@ interface CustomRangePopoverProps {
   periodo: PeriodoResolvido;
   /** Chamado ao aplicar um intervalo válido (meses em ordem crescente). */
   onAplicar: (de: string, ate: string) => void;
+  /**
+   * Mês mais antigo com dado disponível ("YYYY-MM"). Meses anteriores ficam
+   * desabilitados — não faz sentido escolher um período sem dado.
+   */
+  mesMin?: string | null;
   /** Elemento gatilho (a pílula "Personalizado" da PeriodBar). */
   children: React.ReactElement;
 }
@@ -37,6 +42,7 @@ function mesStr(ano: number, i: number): string {
 export function CustomRangePopover({
   periodo,
   onAplicar,
+  mesMin,
   children,
 }: CustomRangePopoverProps) {
   const corrente = mesCorrente();
@@ -109,7 +115,8 @@ export function CustomRangePopover({
         <div className="grid grid-cols-3 gap-1.5">
           {MESES.map((label, i) => {
             const m = mesStr(ano, i);
-            const futuro = m > corrente;
+            // Fora de faixa: mês futuro ou anterior ao primeiro dado.
+            const futuro = m > corrente || (mesMin != null && m < mesMin);
             const isDe = m === de;
             const isAte = m === ate;
             const noIntervalo =

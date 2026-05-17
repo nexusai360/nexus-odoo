@@ -30,6 +30,8 @@ interface ReportViewProps {
   options: FilterOptions;
   /** Período resolvido — `null` em relatórios sem dimensão temporal. */
   periodo: PeriodoResolvido | null;
+  /** Mês mais antigo com dado ("YYYY-MM") — limita o calendário personalizado. */
+  periodoMin: string | null;
 }
 
 function renderSecao(
@@ -166,16 +168,22 @@ function pickFatia(dados: unknown, secaoId: string): Record<string, unknown>[] {
 
 /** Renderiza um relatório: filtros, seções em sequência e freshness. */
 export function ReportView({
-  report, secoes, freshness, options, periodo,
+  report, secoes, freshness, options, periodo, periodoMin,
 }: ReportViewProps) {
   const router = useRouter();
-  const todosFiltros = report.secoes.flatMap((s) => s.filtros);
+  // Várias seções podem declarar o mesmo filtro (ex.: armazém na seção de KPIs
+  // e na de tabela). A barra de filtros renderiza um controle por tipo — então
+  // deduplicamos por `tipo` para não gerar chaves React repetidas nem
+  // controles duplicados na tela.
+  const todosFiltros = report.secoes
+    .flatMap((s) => s.filtros)
+    .filter((f, i, arr) => arr.findIndex((x) => x.tipo === f.tipo) === i);
   // Re-busca o relatório no servidor: refaz as queries de seção e
   // re-renderiza com os dados frescos sem recarregar a página inteira.
   const onRetry = () => router.refresh();
   return (
     <div className="flex flex-col gap-6">
-      {periodo ? <PeriodBar periodo={periodo} /> : null}
+      {periodo ? <PeriodBar periodo={periodo} mesMin={periodoMin} /> : null}
       <ReportFilters filtros={todosFiltros} options={options} />
       {secoes.map((sd) => (
         <div key={sd.secao.id}>{renderSecao(sd, report, onRetry)}</div>
