@@ -165,11 +165,13 @@ describe("compilarFiltro — moeda: maior", () => {
 
 describe("compilarFiltro — conector E", () => {
   it("exige que todas as condições sejam verdadeiras", () => {
+    // ativo=sim (Esteira e Haltere) E valor > 1000 (Esteira 5000 e Bike 2500)
+    // Intersecção: apenas Esteira Alpha
     const pred = compilarFiltro(
       grupo(
         "E",
         cond("ativo", "igual", "sim"),
-        cond("qtd", "maior", "9"),
+        cond("valor", "maior", "1000"),
       ),
       COLS,
     );
