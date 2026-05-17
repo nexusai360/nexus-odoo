@@ -17,6 +17,11 @@ export interface FatoMovimentoRow {
   origem: string | null;
 }
 
+/** Movimento de quantidade 0 é ajuste sem efeito físico — descartado do fato. */
+export function temEfeito(row: FatoMovimentoRow): boolean {
+  return row.quantidade !== 0;
+}
+
 /** Deriva uma linha de fato_estoque_movimento de um registro raw. */
 export function mapMovimentoRow(
   raw: Record<string, unknown>,

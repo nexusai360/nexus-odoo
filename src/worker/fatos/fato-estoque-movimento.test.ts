@@ -1,4 +1,4 @@
-import { mapMovimentoRow } from "./fato-estoque-movimento";
+import { mapMovimentoRow, temEfeito } from "./fato-estoque-movimento";
 
 describe("mapMovimentoRow", () => {
   it("deriva sentido entrada para quantidade positiva", () => {
@@ -22,5 +22,17 @@ describe("mapMovimentoRow", () => {
     });
     expect(m.localInversoId).toBe(5);
     expect(m.origem).toBe("NF-123");
+  });
+});
+
+describe("temEfeito", () => {
+  it("descarta movimento de quantidade zero", () => {
+    expect(temEfeito(mapMovimentoRow({ id: 1, data: "2026-01-01", quantidade: 0 }))).toBe(false);
+  });
+  it("mantém movimento de quantidade negativa", () => {
+    expect(temEfeito(mapMovimentoRow({ id: 2, data: "2026-01-01", quantidade: -3 }))).toBe(true);
+  });
+  it("mantém movimento de quantidade positiva", () => {
+    expect(temEfeito(mapMovimentoRow({ id: 3, data: "2026-01-01", quantidade: 4 }))).toBe(true);
   });
 });
