@@ -15,11 +15,23 @@ jest.mock("next/navigation", () => ({
 const entry: ReportEntry = {
   id: "saldo-produto", titulo: "Saldo", dominio: "estoque", descricao: "",
   icone: "Boxes", modeloFonte: "estoque.saldo.hoje",
-  secoes: [{
-    id: "tabela", template: "DataTable", fato: "fato_estoque_saldo",
-    config: { colunas: [{ key: "produtoNome", header: "Produto", tipo: "texto" }] },
-    filtros: [],
-  }],
+  secoes: [
+    {
+      id: "kpis", template: "KPIRow", fato: "fato_estoque_saldo",
+      config: {},
+      filtros: [],
+    },
+    {
+      id: "tabela", template: "DataTable", fato: "fato_estoque_saldo",
+      config: { colunas: [{ key: "produtoNome", header: "Produto", tipo: "texto" }] },
+      filtros: [],
+    },
+  ],
+};
+
+const saldoData = {
+  kpis: { totalProdutos: 100, produtosNegativos: 5, valorTotal: 50000 },
+  linhas: [{ produtoNome: "X", familiaNome: null, marcaNome: null, saldoTotal: 1, valorTotal: 100, numLocais: 1 }],
 };
 
 describe("ReportView", () => {
@@ -27,7 +39,10 @@ describe("ReportView", () => {
     render(
       <ReportView
         report={entry}
-        secoes={[{ secao: entry.secoes[0], estado: "ok", dados: [{ produtoNome: "X" }] }]}
+        secoes={[
+          { secao: entry.secoes[0], estado: "ok", dados: saldoData },
+          { secao: entry.secoes[1], estado: "ok", dados: saldoData },
+        ]}
         freshness={new Date("2026-05-16T09:00:00Z")}
         options={{ produtos: [], armazens: [], familias: [] }}
         periodo={null}
@@ -39,13 +54,33 @@ describe("ReportView", () => {
     render(
       <ReportView
         report={entry}
-        secoes={[{ secao: entry.secoes[0], estado: "preparando", dados: [] }]}
+        secoes={[
+          { secao: entry.secoes[0], estado: "preparando", dados: null },
+          { secao: entry.secoes[1], estado: "preparando", dados: null },
+        ]}
         freshness={null}
         options={{ produtos: [], armazens: [], familias: [] }}
         periodo={null}
       />,
     );
     expect(screen.getAllByText(/ainda sendo preparado/i).length).toBeGreaterThan(0);
+  });
+  it("renderiza KPIRow com os 3 indicadores", () => {
+    render(
+      <ReportView
+        report={entry}
+        secoes={[
+          { secao: entry.secoes[0], estado: "ok", dados: saldoData },
+          { secao: entry.secoes[1], estado: "ok", dados: saldoData },
+        ]}
+        freshness={null}
+        options={{ produtos: [], armazens: [], familias: [] }}
+        periodo={null}
+      />,
+    );
+    expect(screen.getByText("Produtos")).toBeInTheDocument();
+    expect(screen.getByText("Com saldo negativo")).toBeInTheDocument();
+    expect(screen.getByText("Valor total do estoque")).toBeInTheDocument();
   });
 
   it("discrimina seções multi-fato (R6) pelo id da seção (IM-05)", () => {

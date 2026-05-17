@@ -6,13 +6,27 @@ import { reportFreshness } from "@/lib/reports/freshness";
 import { getReport } from "@/lib/reports/catalog";
 import type { ReportEntry, ReportFilterValues, ReportResult, ReportState } from "@/lib/reports/types";
 
-/** Linha de R1. */
+/** Linha agregada de R1 (por produto). */
 export interface SaldoProdutoRow {
-  produtoNome: string | null;
-  localNome: string | null;
+  produtoNome: string;
   familiaNome: string | null;
-  quantidade: number | null;
-  unidade: string | null;
+  marcaNome: string | null;
+  saldoTotal: number;
+  valorTotal: number;
+  numLocais: number;
+}
+
+/** KPIs de topo de R1. */
+export interface SaldoProdutoKpis {
+  totalProdutos: number;
+  produtosNegativos: number;
+  valorTotal: number;
+}
+
+/** Retorno completo de R1. */
+export interface SaldoProdutoData {
+  kpis: SaldoProdutoKpis;
+  linhas: SaldoProdutoRow[];
 }
 /** Barra de R2. */
 export interface ValorArmazemBar {
@@ -40,44 +54,95 @@ function requireReport(id: string): ReportEntry {
   return entry;
 }
 
-/** R1 — Saldo por produto e armazém. */
+/** R1 — Saldo por produto (agregado). */
 export async function getRelatorioSaldoProduto(
   filtros: ReportFilterValues,
-): Promise<ReportResult<SaldoProdutoRow[]>> {
+): Promise<ReportResult<SaldoProdutoData>> {
+  const vazio: SaldoProdutoData = {
+    kpis: { totalProdutos: 0, produtosNegativos: 0, valorTotal: 0 },
+    linhas: [],
+  };
   try {
     const entry = requireReport("saldo-produto");
     await guardDominio(entry.dominio);
     const freshness = await reportFreshness(prisma, entry);
     const base = await estadoDoFato("fato_estoque_saldo");
     if (base === "preparando") {
-      return { estado: "preparando", dados: [], freshness };
+      return { estado: "preparando", dados: vazio, freshness };
     }
+
+    // groupBy não suporta _count(distinct), então buscamos os dados
+    // brutos e agregamos em JS — dataset cabe confortavelmente em memória.
     const rows = await prisma.fatoEstoqueSaldo.findMany({
       where: {
-        ...(filtros.produtoId ? { produtoId: filtros.produtoId } : {}),
         ...(filtros.armazemId ? { localId: filtros.armazemId } : {}),
         ...(filtros.familiaId ? { familiaId: filtros.familiaId } : {}),
-        ...(filtros.busca
-          ? { produtoNome: { contains: filtros.busca, mode: "insensitive" } }
-          : {}),
       },
       select: {
-        produtoNome: true, localNome: true, familiaNome: true,
-        quantidade: true, unidade: true,
+        produtoId: true,
+        produtoNome: true,
+        familiaNome: true,
+        marcaNome: true,
+        localId: true,
+        quantidade: true,
+        vrSaldo: true,
       },
-      orderBy: { produtoNome: "asc" },
     });
-    const dados: SaldoProdutoRow[] = rows.map((r) => ({
-      produtoNome: r.produtoNome,
-      localNome: r.localNome,
-      familiaNome: r.familiaNome,
-      quantidade: r.quantidade ? Number(r.quantidade) : null,
-      unidade: r.unidade,
-    }));
-    const estado: ReportState = dados.length === 0 ? "vazio" : "ok";
+
+    // Agrega por produtoId
+    const mapa = new Map<
+      number,
+      {
+        produtoNome: string;
+        familiaNome: string | null;
+        marcaNome: string | null;
+        saldoTotal: number;
+        valorTotal: number;
+        locais: Set<number>;
+      }
+    >();
+
+    for (const r of rows) {
+      const existing = mapa.get(r.produtoId);
+      if (existing) {
+        existing.saldoTotal += r.quantidade ? Number(r.quantidade) : 0;
+        existing.valorTotal += r.vrSaldo ? Number(r.vrSaldo) : 0;
+        existing.locais.add(r.localId);
+      } else {
+        mapa.set(r.produtoId, {
+          produtoNome: r.produtoNome,
+          familiaNome: r.familiaNome,
+          marcaNome: r.marcaNome,
+          saldoTotal: r.quantidade ? Number(r.quantidade) : 0,
+          valorTotal: r.vrSaldo ? Number(r.vrSaldo) : 0,
+          locais: new Set([r.localId]),
+        });
+      }
+    }
+
+    const linhas: SaldoProdutoRow[] = [...mapa.values()]
+      .map((v) => ({
+        produtoNome: v.produtoNome,
+        familiaNome: v.familiaNome,
+        marcaNome: v.marcaNome,
+        saldoTotal: v.saldoTotal,
+        valorTotal: v.valorTotal,
+        numLocais: v.locais.size,
+      }))
+      .sort((a, b) => b.valorTotal - a.valorTotal);
+
+    const totalProdutos = linhas.length;
+    const produtosNegativos = linhas.filter((l) => l.saldoTotal < 0).length;
+    const valorTotal = linhas.reduce((acc, l) => acc + l.valorTotal, 0);
+
+    const dados: SaldoProdutoData = {
+      kpis: { totalProdutos, produtosNegativos, valorTotal },
+      linhas,
+    };
+    const estado: ReportState = linhas.length === 0 ? "vazio" : "ok";
     return { estado, dados, freshness };
   } catch {
-    return { estado: "erro", dados: [], freshness: null };
+    return { estado: "erro", dados: vazio, freshness: null };
   }
 }
 

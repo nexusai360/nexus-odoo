@@ -6,9 +6,27 @@ describe("catálogo — R1", () => {
     expect(r1).toBeDefined();
     expect(r1?.dominio).toBe("estoque");
     expect(r1?.modeloFonte).toBe("estoque.saldo.hoje");
-    expect(r1?.secoes).toHaveLength(1);
-    expect(r1?.secoes[0].template).toBe("DataTable");
-    expect(r1?.secoes[0].fato).toBe("fato_estoque_saldo");
+    expect(r1?.secoes).toHaveLength(2);
+    expect(r1?.secoes.map((s) => s.template)).toEqual(["KPIRow", "DataTable"]);
+    expect(r1?.secoes.every((s) => s.fato === "fato_estoque_saldo")).toBe(true);
+  });
+  it("R1 tabela tem colunas agregadas (saldoTotal, valorTotal, numLocais)", () => {
+    const r1 = REPORT_CATALOG.find((r) => r.id === "saldo-produto");
+    const tabela = r1?.secoes.find((s) => s.template === "DataTable");
+    const colunas = tabela?.config.colunas as Array<{ key: string }>;
+    const chaves = colunas.map((c) => c.key);
+    expect(chaves).toContain("produtoNome");
+    expect(chaves).toContain("saldoTotal");
+    expect(chaves).toContain("valorTotal");
+    expect(chaves).toContain("numLocais");
+    expect(chaves).not.toContain("localNome");
+    expect(chaves).not.toContain("quantidade");
+  });
+  it("R1 filtros não incluem produto nem busca", () => {
+    const r1 = REPORT_CATALOG.find((r) => r.id === "saldo-produto");
+    const tipos = r1?.secoes.flatMap((s) => s.filtros.map((f) => f.tipo));
+    expect(tipos).not.toContain("produto");
+    expect(tipos).not.toContain("busca");
   });
 });
 

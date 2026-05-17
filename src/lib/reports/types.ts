@@ -21,6 +21,7 @@ export interface ReportFilter {
 /** Templates de visualização disponíveis. */
 export type ReportTemplate =
   | "KPICard"
+  | "KPIRow"
   | "DataTable"
   | "BarChart"
   | "LineChart"

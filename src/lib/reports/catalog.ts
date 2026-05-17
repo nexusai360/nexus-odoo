@@ -7,12 +7,19 @@ import type { ReportEntry } from "./types";
 export const REPORT_CATALOG: ReportEntry[] = [
   {
     id: "saldo-produto",
-    titulo: "Saldo por produto e armazém",
+    titulo: "Saldo por produto",
     dominio: "estoque",
-    descricao: "Saldo de estoque por produto e local, incluindo negativos.",
+    descricao: "Saldo agregado de estoque por produto, incluindo negativos.",
     icone: "Boxes",
     modeloFonte: "estoque.saldo.hoje",
     secoes: [
+      {
+        id: "kpis",
+        template: "KPIRow",
+        fato: "fato_estoque_saldo",
+        config: {},
+        filtros: [{ tipo: "armazem" }, { tipo: "familia" }],
+      },
       {
         id: "tabela",
         template: "DataTable",
@@ -20,19 +27,15 @@ export const REPORT_CATALOG: ReportEntry[] = [
         config: {
           colunas: [
             { key: "produtoNome", header: "Produto", tipo: "texto" },
-            { key: "localNome", header: "Armazém", tipo: "texto" },
             { key: "familiaNome", header: "Família", tipo: "texto" },
-            { key: "quantidade", header: "Saldo", tipo: "numero" },
-            { key: "unidade", header: "Unidade", tipo: "texto" },
+            { key: "marcaNome", header: "Marca", tipo: "texto" },
+            { key: "saldoTotal", header: "Saldo", tipo: "numero" },
+            { key: "valorTotal", header: "Valor", tipo: "moeda" },
+            { key: "numLocais", header: "Locais", tipo: "numero" },
           ],
           searchable: true,
         },
-        filtros: [
-          { tipo: "produto" },
-          { tipo: "armazem" },
-          { tipo: "familia" },
-          { tipo: "busca" },
-        ],
+        filtros: [{ tipo: "armazem" }, { tipo: "familia" }],
       },
     ],
   },

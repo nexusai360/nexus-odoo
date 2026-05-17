@@ -1,6 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
+import { Boxes, TrendingDown, DollarSign } from "lucide-react";
 import type { ReportEntry, ReportSection, ReportState } from "@/lib/reports/types";
 import { ReportFilters, type FilterOptions } from "@/components/reports/report-filters";
 import { KPICard } from "@/components/charts/kpi-card";
@@ -12,6 +13,7 @@ import { PieChartCard } from "@/components/charts/pie-chart";
 import { PeriodBar } from "@/components/reports/period-bar";
 import { resolveReportIcon } from "@/lib/reports/report-icons";
 import type { PeriodoResolvido } from "@/lib/reports/periodo";
+import type { SaldoProdutoData } from "@/lib/actions/report-data";
 
 /** Uma seção já resolvida com seu estado e dados. */
 export interface SecaoComDados {
@@ -49,9 +51,47 @@ function renderSecao(
         />
       );
     }
+    case "KPIRow": {
+      // Row de 3 KPI cards para o relatório saldo-produto.
+      const d = dados as SaldoProdutoData | null | undefined;
+      const kpis = d?.kpis;
+      return (
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+          <KPICard
+            valor={kpis?.totalProdutos ?? 0}
+            rotulo="Produtos"
+            formato="inteiro"
+            estado={estado}
+            icone={Boxes}
+            onRetry={onRetry}
+          />
+          <KPICard
+            valor={kpis?.produtosNegativos ?? 0}
+            rotulo="Com saldo negativo"
+            formato="inteiro"
+            estado={estado}
+            icone={TrendingDown}
+            tone="danger"
+            onRetry={onRetry}
+          />
+          <KPICard
+            valor={kpis?.valorTotal ?? 0}
+            rotulo="Valor total do estoque"
+            formato="moeda"
+            estado={estado}
+            icone={DollarSign}
+            onRetry={onRetry}
+          />
+        </div>
+      );
+    }
     case "DataTable": {
-      const d = dados as { linhas?: unknown[] } | unknown[];
-      const linhas = Array.isArray(d) ? d : (d?.linhas ?? []);
+      const d = dados as SaldoProdutoData | { linhas?: unknown[] } | unknown[] | null | undefined;
+      const linhas = Array.isArray(d)
+        ? d
+        : (d != null && typeof d === "object" && "linhas" in d
+            ? (d as { linhas?: unknown[] }).linhas
+            : undefined) ?? [];
       return (
         <ChartCard>
           <DataTable

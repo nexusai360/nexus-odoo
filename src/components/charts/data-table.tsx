@@ -13,7 +13,7 @@ import { formatNumber, type ChartState } from "./kpi-card";
 export interface ColumnDef<T> {
   key: keyof T & string;
   header: string;
-  tipo: "texto" | "numero";
+  tipo: "texto" | "numero" | "moeda";
 }
 
 interface DataTableProps<T> {
@@ -51,9 +51,11 @@ export function DataTable<T extends Record<string, unknown>>({
     if (!query.trim()) return rows;
     const q = query.trim().toLowerCase();
     return rows.filter((r) =>
-      columns.some((c) =>
-        String(r[c.key] ?? "").toLowerCase().includes(q),
-      ),
+      columns.some((c) => {
+        if (c.tipo === "texto") return String(r[c.key] ?? "").toLowerCase().includes(q);
+        // Números e moeda: busca pelo valor formatado
+        return String(r[c.key] ?? "").includes(q);
+      }),
     );
   }, [rows, query, columns]);
 
@@ -65,7 +67,7 @@ export function DataTable<T extends Record<string, unknown>>({
       const av = a[sortKey];
       const bv = b[sortKey];
       let cmp: number;
-      if (col?.tipo === "numero") {
+      if (col?.tipo === "numero" || col?.tipo === "moeda") {
         cmp = Number(av ?? 0) - Number(bv ?? 0);
       } else {
         cmp = String(av ?? "").localeCompare(String(bv ?? ""), "pt-BR");
@@ -160,11 +162,16 @@ export function DataTable<T extends Record<string, unknown>>({
                 {columns.map((c) => (
                   <TableCell
                     key={c.key}
-                    className={cn(c.tipo === "numero" && "tabular-nums")}
+                    className={cn(
+                      (c.tipo === "numero" || c.tipo === "moeda") &&
+                        "tabular-nums text-right",
+                    )}
                   >
                     {c.tipo === "numero"
                       ? formatNumber(Number(row[c.key] ?? 0), "decimal")
-                      : String(row[c.key] ?? "")}
+                      : c.tipo === "moeda"
+                        ? formatNumber(Number(row[c.key] ?? 0), "moeda")
+                        : String(row[c.key] ?? "")}
                   </TableCell>
                 ))}
               </TableRow>
