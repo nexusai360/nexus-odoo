@@ -177,6 +177,7 @@ export interface ConcentracaoData {
 }
 
 const TOP_N = 10;
+const TOP_CONCENTRACAO = 12;
 
 /** R2 — Valor de estoque por armazém. */
 export async function getRelatorioValorPorArmazem(
@@ -320,6 +321,25 @@ export async function getRelatorioTopMovimentados(
   }
 }
 
+/**
+ * Ordena por valor desc, mantém os TOP_CONCENTRACAO maiores e agrupa o
+ * restante numa entrada "Outras" (ou "Outras marcas"/"Outras famílias").
+ * Garante que o gráfico não exiba barras ínfimas ou escala distorcida.
+ */
+function agruparTopN(
+  itens: { rotulo: string; valor: number }[],
+): { rotulo: string; valor: number }[] {
+  const ordenados = [...itens].sort((a, b) => b.valor - a.valor);
+  if (ordenados.length <= TOP_CONCENTRACAO) return ordenados;
+  const top = ordenados.slice(0, TOP_CONCENTRACAO);
+  const resto = ordenados.slice(TOP_CONCENTRACAO);
+  const somaResto = resto.reduce((acc, r) => acc + r.valor, 0);
+  if (somaResto > 0) {
+    top.push({ rotulo: "Outras", valor: somaResto });
+  }
+  return top;
+}
+
 /** R6 — Concentração do estoque por família e por marca. */
 export async function getRelatorioConcentracao(
   _filtros: ReportFilterValues,
@@ -344,14 +364,18 @@ export async function getRelatorioConcentracao(
       _sum: { vrSaldo: true },
     });
     const dados: ConcentracaoData = {
-      familia: porFamilia.map((g) => ({
-        rotulo: g.familiaNome ?? "Não classificado",
-        valor: g._sum.vrSaldo ? Number(g._sum.vrSaldo) : 0,
-      })),
-      marca: porMarca.map((g) => ({
-        rotulo: g.marcaNome ?? "Não classificado",
-        valor: g._sum.vrSaldo ? Number(g._sum.vrSaldo) : 0,
-      })),
+      familia: agruparTopN(
+        porFamilia.map((g) => ({
+          rotulo: g.familiaNome ?? "Não classificado",
+          valor: g._sum.vrSaldo ? Number(g._sum.vrSaldo) : 0,
+        })),
+      ),
+      marca: agruparTopN(
+        porMarca.map((g) => ({
+          rotulo: g.marcaNome ?? "Não classificado",
+          valor: g._sum.vrSaldo ? Number(g._sum.vrSaldo) : 0,
+        })),
+      ),
     };
     const estado: ReportState =
       dados.familia.length === 0 && dados.marca.length === 0 ? "vazio" : "ok";
