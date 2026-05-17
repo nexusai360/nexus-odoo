@@ -56,9 +56,15 @@ import type { AuthUser } from "@/lib/auth-helpers";
 import type { PlatformRole } from "@/generated/prisma/client";
 import { grantableDomains, type ReportDomainId } from "@/lib/reports/domains";
 import { AccessStep } from "@/components/users/access-step";
+import {
+  handleRoleChange,
+  type FormState,
+  type RoleValue,
+  type Step,
+} from "@/components/users/user-form-dialog.internals";
 
-type RoleValue = PlatformRole;
-type Step = 1 | 2 | 3;
+// RoleValue, Step e FormState são importados de user-form-dialog.internals.
+// Não redefini-los aqui.
 
 interface RoleMeta {
   value: RoleValue;
@@ -111,16 +117,6 @@ interface UserFormDialogProps {
   onSuccess: () => void;
   /** Domínios que o concedente possui; usado para calcular o que pode conceder. */
   granterDomains: ReportDomainId[];
-}
-
-interface FormState {
-  name: string;
-  email: string;
-  password: string;
-  confirmPassword: string;
-  role: RoleValue;
-  isActive: boolean;
-  domains: ReportDomainId[];
 }
 
 const EMPTY_FORM: FormState = {
@@ -210,6 +206,16 @@ export function UserFormDialog({
 
   // Domínios que o concedente pode conceder ao novo usuário.
   const grantable = grantableDomains(currentUser.platformRole, granterDomains);
+
+  // N10: troca de role zera domínios e pode recuar a etapa.
+  function onRoleChange(role: RoleValue) {
+    setForm((f) => {
+      const { form: nextForm } = handleRoleChange(f, role, step);
+      return nextForm;
+    });
+    const { step: nextStep } = handleRoleChange(form, role, step);
+    if (nextStep !== step) setStep(nextStep);
+  }
 
   function clearError(key: keyof FieldErrors) {
     setErrors((e) => ({ ...e, [key]: undefined }));
@@ -388,6 +394,7 @@ export function UserFormDialog({
               <StepIdentity
                 form={form}
                 setForm={setForm}
+                onRoleChange={onRoleChange}
                 errors={errors}
                 clearError={clearError}
                 isEdit={isEdit}
@@ -545,6 +552,7 @@ function Stepper({ step, items }: StepperProps) {
 interface StepIdentityProps {
   form: FormState;
   setForm: React.Dispatch<React.SetStateAction<FormState>>;
+  onRoleChange: (role: RoleValue) => void;
   errors: FieldErrors;
   clearError: (key: keyof FieldErrors) => void;
   isEdit: boolean;
@@ -566,6 +574,7 @@ interface StepIdentityProps {
 function StepIdentity({
   form,
   setForm,
+  onRoleChange,
   errors,
   clearError,
   isEdit,
@@ -738,7 +747,7 @@ function StepIdentity({
           <RoleDropdown
             value={form.role}
             options={availableRoles}
-            onChange={(v) => setForm((f) => ({ ...f, role: v }))}
+            onChange={onRoleChange}
           />
         )}
       </div>
