@@ -1,10 +1,12 @@
+import { requireDomainAccess } from "./guard";
+import { getMyDomains } from "@/lib/actions/domain-access";
+import { redirect } from "next/navigation";
+
 jest.mock("@/lib/actions/domain-access", () => ({ getMyDomains: jest.fn() }));
 jest.mock("next/navigation", () => ({ redirect: jest.fn() }));
 
-const { getMyDomains } = require("@/lib/actions/domain-access");
-const { redirect } = require("next/navigation");
-
-import { requireDomainAccess } from "./guard";
+const mockGetMyDomains = jest.mocked(getMyDomains);
+const mockRedirect = jest.mocked(redirect);
 
 describe("requireDomainAccess", () => {
   beforeEach(() => {
@@ -12,14 +14,14 @@ describe("requireDomainAccess", () => {
   });
 
   it("não redireciona quando o usuário tem o domínio", async () => {
-    getMyDomains.mockResolvedValue(["estoque"]);
+    mockGetMyDomains.mockResolvedValue(["estoque"] as never);
     await requireDomainAccess("estoque");
-    expect(redirect).not.toHaveBeenCalled();
+    expect(mockRedirect).not.toHaveBeenCalled();
   });
 
   it("redireciona para /relatorios quando não tem o domínio", async () => {
-    getMyDomains.mockResolvedValue([]);
+    mockGetMyDomains.mockResolvedValue([] as never);
     await requireDomainAccess("estoque");
-    expect(redirect).toHaveBeenCalledWith("/relatorios");
+    expect(mockRedirect).toHaveBeenCalledWith("/relatorios");
   });
 });

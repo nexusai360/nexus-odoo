@@ -1,4 +1,8 @@
-import { getUserDomains } from "./domain-access";
+import { getUserDomains, getMyDomains, updateUserDomains } from "./domain-access";
+import { getCurrentUser } from "@/lib/auth";
+import { prisma } from "@/lib/prisma";
+import { canEditUser } from "@/lib/permissions";
+import { logAudit } from "@/lib/audit";
 
 jest.mock("@/lib/prisma", () => ({
   prisma: {
@@ -7,48 +11,54 @@ jest.mock("@/lib/prisma", () => ({
     $transaction: jest.fn((ops: unknown[]) => Promise.all(ops)),
   },
 }));
-const { prisma } = require("@/lib/prisma");
 
 jest.mock("@/lib/auth", () => ({ getCurrentUser: jest.fn() }));
-const { getCurrentUser } = require("@/lib/auth");
-
 jest.mock("@/lib/permissions", () => ({ canEditUser: jest.fn() }));
 jest.mock("@/lib/audit", () => ({ logAudit: jest.fn() }));
-const { canEditUser } = require("@/lib/permissions");
-const { logAudit } = require("@/lib/audit");
 
-import { getMyDomains, updateUserDomains } from "./domain-access";
+const mockPrisma = jest.mocked(prisma) as {
+  userDomainAccess: {
+    findMany: jest.Mock;
+    createMany: jest.Mock;
+    deleteMany: jest.Mock;
+  };
+  user: { findUnique: jest.Mock };
+  $transaction: jest.Mock;
+};
+const mockGetCurrentUser = jest.mocked(getCurrentUser);
+const mockCanEditUser = jest.mocked(canEditUser);
+const mockLogAudit = jest.mocked(logAudit);
 
 describe("getMyDomains", () => {
   beforeEach(() => jest.clearAllMocks());
 
   it("super_admin recebe todos sem consultar o banco", async () => {
-    getCurrentUser.mockResolvedValue({ id: "a1", platformRole: "super_admin" });
+    mockGetCurrentUser.mockResolvedValue({ id: "a1", platformRole: "super_admin" } as never);
     expect(await getMyDomains()).toEqual([
       "estoque", "financeiro", "fiscal", "comercial",
     ]);
-    expect(prisma.userDomainAccess.findMany).not.toHaveBeenCalled();
+    expect(mockPrisma.userDomainAccess.findMany).not.toHaveBeenCalled();
   });
   it("manager recebe só os concedidos", async () => {
-    getCurrentUser.mockResolvedValue({ id: "m1", platformRole: "manager" });
-    prisma.userDomainAccess.findMany.mockResolvedValue([{ domain: "estoque" }]);
+    mockGetCurrentUser.mockResolvedValue({ id: "m1", platformRole: "manager" } as never);
+    mockPrisma.userDomainAccess.findMany.mockResolvedValue([{ domain: "estoque" }] as never);
     expect(await getMyDomains()).toEqual(["estoque"]);
   });
   it("sem sessão lança erro", async () => {
-    getCurrentUser.mockResolvedValue(null);
+    mockGetCurrentUser.mockResolvedValue(null);
     await expect(getMyDomains()).rejects.toThrow();
   });
 });
 
 describe("getUserDomains", () => {
   it("devolve os domínios do usuário", async () => {
-    prisma.userDomainAccess.findMany.mockResolvedValue([
+    mockPrisma.userDomainAccess.findMany.mockResolvedValue([
       { domain: "estoque" }, { domain: "fiscal" },
-    ]);
+    ] as never);
     expect(await getUserDomains("u1")).toEqual(["estoque", "fiscal"]);
   });
   it("devolve [] quando o usuário não tem domínios", async () => {
-    prisma.userDomainAccess.findMany.mockResolvedValue([]);
+    mockPrisma.userDomainAccess.findMany.mockResolvedValue([] as never);
     expect(await getUserDomains("u1")).toEqual([]);
   });
 });
@@ -56,34 +66,33 @@ describe("getUserDomains", () => {
 describe("updateUserDomains", () => {
   beforeEach(() => {
     jest.clearAllMocks();
-    getCurrentUser.mockResolvedValue({ id: "m1", platformRole: "manager" });
-    prisma.user.findUnique.mockResolvedValue({
+    mockGetCurrentUser.mockResolvedValue({ id: "m1", platformRole: "manager" } as never);
+    mockPrisma.user.findUnique.mockResolvedValue({
       id: "u2", platformRole: "viewer", isOwner: false,
-    });
-    canEditUser.mockReturnValue({ allowed: true });
-    prisma.userDomainAccess.findMany.mockResolvedValue([]);
-    prisma.userDomainAccess.createMany.mockResolvedValue({ count: 1 });
-    prisma.userDomainAccess.deleteMany.mockResolvedValue({ count: 0 });
-    prisma.$transaction.mockImplementation((ops: unknown[]) => Promise.all(ops));
+    } as never);
+    mockCanEditUser.mockReturnValue({ allowed: true } as never);
+    mockPrisma.userDomainAccess.findMany.mockResolvedValue([] as never);
+    mockPrisma.userDomainAccess.createMany.mockResolvedValue({ count: 1 } as never);
+    mockPrisma.userDomainAccess.deleteMany.mockResolvedValue({ count: 0 } as never);
+    mockPrisma.$transaction.mockImplementation((ops: unknown[]) => Promise.all(ops));
   });
 
   it("concede um domínio novo e registra audit", async () => {
-    // domínios atuais do alvo: nenhum; domínios do concedente: estoque
-    prisma.userDomainAccess.findMany
-      .mockResolvedValueOnce([])                       // domínios atuais do alvo
-      .mockResolvedValueOnce([{ domain: "estoque" }]); // domínios do concedente
+    mockPrisma.userDomainAccess.findMany
+      .mockResolvedValueOnce([] as never)
+      .mockResolvedValueOnce([{ domain: "estoque" }] as never);
     const res = await updateUserDomains("u2", ["estoque"]);
     expect(res.success).toBe(true);
-    expect(prisma.userDomainAccess.createMany).toHaveBeenCalled();
-    expect(logAudit).toHaveBeenCalledWith(
+    expect(mockPrisma.userDomainAccess.createMany).toHaveBeenCalled();
+    expect(mockLogAudit).toHaveBeenCalledWith(
       expect.objectContaining({ action: "user_domains_changed" }),
     );
   });
 
   it("rejeita domínio que o concedente não possui", async () => {
-    prisma.userDomainAccess.findMany
-      .mockResolvedValueOnce([])
-      .mockResolvedValueOnce([{ domain: "estoque" }]);
+    mockPrisma.userDomainAccess.findMany
+      .mockResolvedValueOnce([] as never)
+      .mockResolvedValueOnce([{ domain: "estoque" }] as never);
     const res = await updateUserDomains("u2", ["fiscal"]);
     expect(res.success).toBe(false);
   });
