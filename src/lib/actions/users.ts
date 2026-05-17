@@ -14,7 +14,7 @@ import {
   canCreateRole,
   canChangeRole,
 } from "@/lib/permissions";
-import type { PlatformRole } from "@/generated/prisma/client";
+import type { PlatformRole, ReportDomain } from "@/generated/prisma/client";
 
 export type ActionResult<T = void> =
   | { success: true; data?: T }
@@ -68,6 +68,7 @@ const CreateUserInput = z.object({
   email: z.string().email(),
   platformRole: z.enum(ROLE_VALUES),
   password: z.string().min(8).max(72).optional(),
+  domains: z.array(z.enum(["estoque", "financeiro", "fiscal", "comercial"])).default([]),
 });
 
 export async function createUser(
@@ -104,16 +105,36 @@ export async function createUser(
     const plainPassword = input.password ?? generateTempPassword();
     const hash = await bcrypt.hash(plainPassword, 10);
 
-    const created = await prisma.user.create({
-      data: {
-        name: input.name,
-        email: input.email,
-        password: hash,
-        platformRole: input.platformRole,
-        mustChangePassword: useGenerated,
-        isActive: true,
-      },
-      select: { id: true },
+    // C1: a transação cobre user.create + userDomainAccess.createMany.
+    // O logAudit (pgPool, fora do Prisma) segue pós-commit, fire-and-forget.
+    // Domínios só fazem sentido para manager/viewer (§4.3); privilegiados ignoram.
+    const domains =
+      input.platformRole === "manager" || input.platformRole === "viewer"
+        ? input.domains
+        : [];
+
+    const created = await prisma.$transaction(async (tx) => {
+      const u = await tx.user.create({
+        data: {
+          name: input.name,
+          email: input.email,
+          password: hash,
+          platformRole: input.platformRole,
+          mustChangePassword: useGenerated,
+          isActive: true,
+        },
+        select: { id: true },
+      });
+      if (domains.length) {
+        await tx.userDomainAccess.createMany({
+          data: domains.map((domain) => ({
+            userId: u.id,
+            domain: domain as ReportDomain,
+            grantedById: me.id,
+          })),
+        });
+      }
+      return u;
     });
 
     logAudit({
