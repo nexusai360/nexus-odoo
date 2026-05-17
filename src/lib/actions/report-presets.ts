@@ -17,9 +17,9 @@ export type PresetItem = Pick<
 
 const NomeSchema = z
   .string()
+  .trim()
   .min(1, "Nome obrigatório")
-  .max(80, "Nome muito longo (máx. 80 caracteres)")
-  .trim();
+  .max(80, "Nome muito longo (máx. 80 caracteres)");
 
 // ---------------------------------------------------------------------------
 // listarPresets

@@ -12,6 +12,15 @@ jest.mock("next/navigation", () => ({
   useSearchParams: () => new URLSearchParams(""),
 }));
 
+jest.mock("next/cache", () => ({ revalidatePath: jest.fn() }));
+jest.mock("sonner", () => ({ toast: { success: jest.fn(), error: jest.fn() } }));
+jest.mock("@/lib/actions/report-presets", () => ({
+  listarPresets: jest.fn().mockResolvedValue({ success: true, data: [] }),
+  criarPreset: jest.fn(),
+  excluirPreset: jest.fn(),
+  alternarFavorito: jest.fn(),
+}));
+
 const entry: ReportEntry = {
   id: "saldo-produto", titulo: "Saldo", dominio: "estoque", descricao: "",
   icone: "Boxes", modeloFonte: "estoque.saldo.hoje",

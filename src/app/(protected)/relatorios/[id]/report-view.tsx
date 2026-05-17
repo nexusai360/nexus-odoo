@@ -6,6 +6,7 @@ import { Boxes, TrendingDown, DollarSign, Warehouse, Clock, TrendingUp, Package 
 import type { ReportEntry, ReportSection, ReportState } from "@/lib/reports/types";
 import { ReportFilters } from "@/components/reports/report-filters";
 import type { FilterOptions } from "@/components/reports/report-filters";
+import { PresetsPopover } from "@/components/reports/presets-popover";
 import { KPICard } from "@/components/charts/kpi-card";
 import { ChartCard } from "@/components/charts/chart-card";
 import { DataTable, type ColumnDef } from "@/components/charts/data-table";
@@ -15,7 +16,7 @@ import { PieChartCard } from "@/components/charts/pie-chart";
 import { PeriodBar } from "@/components/reports/period-bar";
 import { resolveReportIcon } from "@/lib/reports/report-icons";
 import type { PeriodoResolvido } from "@/lib/reports/periodo";
-import type { SaldoProdutoData, SaldoProdutoRow, ValorArmazemData, EntradasSaidasData, ProdutoParadoData, TopMovimentadoData, ConcentracaoData } from "@/lib/actions/report-data";
+import type { SaldoProdutoData, SaldoProdutoRow, ValorArmazemData, EntradasSaidasData, ProdutoParadoData, TopMovimentadoData } from "@/lib/actions/report-data";
 import { SaldoProdutoDrillDown } from "@/components/charts/saldo-produto-drill-down";
 import { AppliedFiltersChips } from "@/components/reports/applied-filters-chips";
 import { buildChipsFromParams } from "@/lib/reports/build-chips";
@@ -309,7 +310,12 @@ export function ReportView({
   return (
     <div className="flex flex-col gap-6">
       {periodo ? <PeriodBar periodo={periodo} mesMin={periodoMin} /> : null}
-      <ReportFilters filtros={todosFiltros} options={options} />
+      <div className="flex flex-wrap items-end gap-2">
+        <div className="flex-1">
+          <ReportFilters filtros={todosFiltros} options={options} />
+        </div>
+        <PresetsPopover reportId={report.id} />
+      </div>
       <AppliedFiltersChips chips={chips} />
       {secoes.map((sd) => (
         <div key={sd.secao.id}>{renderSecao(sd, report, onRetry)}</div>
