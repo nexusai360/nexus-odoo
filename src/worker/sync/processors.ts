@@ -102,6 +102,27 @@ export async function processSnapshotCycle(
   } catch (err) {
     console.error("[worker] falha ao reconstruir fato_estoque_saldo:", err);
   }
+
+  // Fatos derivados de estoque.extrato e estoque.saldo.hoje.duracao.dias.
+  const { rebuildFatoEstoqueMovimento } = await import(
+    "../fatos/fato-estoque-movimento"
+  );
+  try {
+    const n = await rebuildFatoEstoqueMovimento(ctx.prisma);
+    console.log(`[worker] fato_estoque_movimento reconstruído: ${n} linhas`);
+  } catch (err) {
+    console.error("[worker] falha ao reconstruir fato_estoque_movimento:", err);
+  }
+
+  const { rebuildFatoProdutoParado } = await import(
+    "../fatos/fato-produto-parado"
+  );
+  try {
+    const n = await rebuildFatoProdutoParado(ctx.prisma);
+    console.log(`[worker] fato_produto_parado reconstruído: ${n} linhas`);
+  } catch (err) {
+    console.error("[worker] falha ao reconstruir fato_produto_parado:", err);
+  }
 }
 
 export async function processReconcileCycle(
