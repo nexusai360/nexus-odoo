@@ -31,12 +31,15 @@ describe("catálogo — R1", () => {
 });
 
 describe("catálogo — R2", () => {
-  it("R2 é um BarChart sobre fato_estoque_saldo, sem filtros", () => {
+  it("R2 tem KPIRow + DataTable + BarChart sobre fato_estoque_saldo", () => {
     const r2 = REPORT_CATALOG.find((r) => r.id === "valor-armazem");
     expect(r2?.dominio).toBe("estoque");
-    expect(r2?.secoes[0].template).toBe("BarChart");
-    expect(r2?.secoes[0].fato).toBe("fato_estoque_saldo");
-    expect(r2?.secoes[0].filtros).toEqual([]);
+    expect(r2?.secoes.map((s) => s.template)).toEqual([
+      "KPIRow",
+      "DataTable",
+      "BarChart",
+    ]);
+    expect(r2?.secoes.every((s) => s.fato === "fato_estoque_saldo")).toBe(true);
   });
 });
 

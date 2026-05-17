@@ -97,15 +97,24 @@ describe("getRelatorioSaldoProduto (R1)", () => {
 });
 
 describe("getRelatorioValorPorArmazem (R2)", () => {
-  it("agrega vrSaldo por local com vrSaldo > 0", async () => {
+  it("agrega valor e nº de produtos por armazém, com KPIs e top8", async () => {
     mockPrisma.fatoBuildState.findUnique.mockResolvedValue({ ultimoBuildAt: new Date() });
-    mockPrisma.fatoEstoqueSaldo.groupBy.mockResolvedValue([
-      { localNome: "Galpão A", _sum: { vrSaldo: 1000 } },
+    mockPrisma.fatoEstoqueSaldo.findMany.mockResolvedValue([
+      { localNome: "Galpão A » Próprio", produtoId: 1, vrSaldo: 1000 },
+      { localNome: "Virtual", produtoId: 2, vrSaldo: 400 },
     ]);
     const r = await getRelatorioValorPorArmazem({});
     expect(r.estado).toBe("ok");
-    expect(r.dados).toEqual([{ rotulo: "Galpão A", valor: 1000 }]);
-    expect(mockPrisma.fatoEstoqueSaldo.groupBy).toHaveBeenCalledWith(
+    const dados = r.dados as {
+      kpis: { valorTotal: number; numArmazens: number };
+      linhas: { armazem: string; valor: number }[];
+      top8: unknown[];
+    };
+    expect(dados.kpis.valorTotal).toBe(1400);
+    expect(dados.kpis.numArmazens).toBe(2);
+    expect(dados.linhas).toHaveLength(2);
+    expect(dados.linhas[0]).toMatchObject({ armazem: "Galpão A", valor: 1000 });
+    expect(mockPrisma.fatoEstoqueSaldo.findMany).toHaveBeenCalledWith(
       expect.objectContaining({ where: { vrSaldo: { gt: 0 } } }),
     );
   });
