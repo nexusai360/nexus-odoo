@@ -1,8 +1,6 @@
 // src/worker/fatos/fato-estoque-saldo.ts
 import type { PrismaClient } from "../../generated/prisma/client";
-
-/** Campo relacional Odoo: [id, "Nome"] ou false. */
-type Many2One = [number, string] | false | undefined;
+import { relId, relNome, type OdooM2O } from "./odoo-relational";
 
 export interface FatoSaldoRow {
   odooSaldoId: number;
@@ -14,22 +12,15 @@ export interface FatoSaldoRow {
   unidade: string | null;
 }
 
-function relId(v: Many2One): number | null {
-  return Array.isArray(v) ? v[0] : null;
-}
-function relNome(v: Many2One): string | null {
-  return Array.isArray(v) ? v[1] : null;
-}
-
 export function mapSaldoRow(raw: Record<string, unknown>): FatoSaldoRow {
   return {
     odooSaldoId: Number(raw.id),
-    produtoId: relId(raw.produto_id as Many2One),
-    produtoNome: relNome(raw.produto_id as Many2One),
-    localId: relId(raw.local_id as Many2One),
-    localNome: relNome(raw.local_id as Many2One),
+    produtoId: relId(raw.produto_id as OdooM2O),
+    produtoNome: relNome(raw.produto_id as OdooM2O),
+    localId: relId(raw.local_id as OdooM2O),
+    localNome: relNome(raw.local_id as OdooM2O),
     quantidade: Number(raw.saldo ?? 0),
-    unidade: relNome(raw.unidade_id as Many2One),
+    unidade: relNome(raw.unidade_id as OdooM2O),
   };
 }
 
