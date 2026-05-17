@@ -11,18 +11,35 @@ interface WarehouseFilterProps {
   options: FilterOption[];
 }
 
-/** Filtro de armazém com nomes limpos via limparNomeLocal. */
+const TIPO_LABEL: Record<string, string> = {
+  proprio: "Armazéns próprios",
+  demonstracao: "Demonstração",
+  virtual: "Virtual",
+  outros: "Outros",
+};
+
+/**
+ * Filtro de armazém com:
+ * - Nomes limpos via `limparNomeLocal`
+ * - Busca interna automática (lista tende a ser longa)
+ * - Agrupamento por tipo de local (próprio / demonstração / virtual / outros)
+ */
 export function WarehouseFilter({ value, onChange, options }: WarehouseFilterProps) {
-  const opcoes = useMemo(
-    () => [
-      { value: "", label: "Todos os armazéns" },
-      ...options.map((o) => ({
+  const opcoes = useMemo(() => {
+    const itens = options.map((o) => {
+      const { rotulo, tipo } = limparNomeLocal(o.nome);
+      return {
         value: String(o.id),
-        label: limparNomeLocal(o.nome).rotulo,
-      })),
-    ],
-    [options],
-  );
+        label: rotulo,
+        group: TIPO_LABEL[tipo] ?? "Outros",
+      };
+    });
+
+    return [
+      { value: "", label: "Todos os armazéns" },
+      ...itens,
+    ];
+  }, [options]);
 
   return (
     <FilterSelect
@@ -31,6 +48,7 @@ export function WarehouseFilter({ value, onChange, options }: WarehouseFilterPro
       value={value}
       options={opcoes}
       onChange={onChange}
+      searchable
     />
   );
 }
