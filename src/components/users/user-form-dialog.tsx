@@ -53,9 +53,10 @@ import {
 } from "@/lib/constants/roles";
 import type { AuthUser } from "@/lib/auth-helpers";
 import type { PlatformRole } from "@/generated/prisma/client";
+import { type ReportDomainId } from "@/lib/reports/domains";
 
 type RoleValue = PlatformRole;
-type Step = 1 | 2;
+type Step = 1 | 2 | 3;
 
 interface RoleMeta {
   value: RoleValue;
@@ -115,6 +116,7 @@ interface FormState {
   confirmPassword: string;
   role: RoleValue;
   isActive: boolean;
+  domains: ReportDomainId[];
 }
 
 const EMPTY_FORM: FormState = {
@@ -124,6 +126,7 @@ const EMPTY_FORM: FormState = {
   confirmPassword: "",
   role: "viewer",
   isActive: true,
+  domains: [],
 };
 
 interface FieldErrors {
