@@ -1,21 +1,27 @@
 "use client";
 
+import { FilterSelect } from "./filter-select";
+
 interface DirectionFilterProps {
   value: string;
   onChange: (value: string) => void;
 }
 
+const OPCOES = [
+  { value: "", label: "Todos os sentidos" },
+  { value: "entrada", label: "Entradas" },
+  { value: "saida", label: "Saídas" },
+];
+
 /** Filtro de sentido do movimento. */
 export function DirectionFilter({ value, onChange }: DirectionFilterProps) {
   return (
-    <select
+    <FilterSelect
+      id="filtro-sentido"
+      label="Sentido"
       value={value}
-      onChange={(e) => onChange(e.target.value)}
-      className="h-9 max-w-xs rounded-md bg-card px-3 text-sm ring-1 ring-foreground/10"
-    >
-      <option value="">Todos os sentidos</option>
-      <option value="entrada">Entradas</option>
-      <option value="saida">Saídas</option>
-    </select>
+      options={OPCOES}
+      onChange={onChange}
+    />
   );
 }

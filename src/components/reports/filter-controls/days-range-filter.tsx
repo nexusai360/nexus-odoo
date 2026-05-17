@@ -1,21 +1,27 @@
 "use client";
 
+import { FilterSelect } from "./filter-select";
+
 interface DaysRangeFilterProps {
   value: string;
   onChange: (value: string) => void;
 }
 
+const OPCOES = [
+  { value: "30", label: "+30 dias" },
+  { value: "60", label: "+60 dias" },
+  { value: "90", label: "+90 dias" },
+];
+
 /** Filtro de faixa de dias parado: +30 / +60 / +90 dias. */
 export function DaysRangeFilter({ value, onChange }: DaysRangeFilterProps) {
   return (
-    <select
+    <FilterSelect
+      id="filtro-faixa-dias"
+      label="Faixa de dias parado"
       value={value}
-      onChange={(e) => onChange(e.target.value)}
-      className="h-9 max-w-xs rounded-md bg-card px-3 text-sm ring-1 ring-foreground/10"
-    >
-      <option value="30">+30 dias</option>
-      <option value="60">+60 dias</option>
-      <option value="90">+90 dias</option>
-    </select>
+      options={OPCOES}
+      onChange={onChange}
+    />
   );
 }

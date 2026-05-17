@@ -1,6 +1,8 @@
 "use client";
 
+import { useMemo } from "react";
 import type { FilterOption } from "./product-filter";
+import { FilterSelect } from "./filter-select";
 
 interface FamilyFilterProps {
   value: string;
@@ -8,20 +10,23 @@ interface FamilyFilterProps {
   options: FilterOption[];
 }
 
-/** Filtro de família: select nativo com opção "Todas". */
+/** Filtro de família, alinhado ao design system da F1. */
 export function FamilyFilter({ value, onChange, options }: FamilyFilterProps) {
+  const opcoes = useMemo(
+    () => [
+      { value: "", label: "Todas as famílias" },
+      ...options.map((o) => ({ value: String(o.id), label: o.nome })),
+    ],
+    [options],
+  );
+
   return (
-    <select
+    <FilterSelect
+      id="filtro-familia"
+      label="Família"
       value={value}
-      onChange={(e) => onChange(e.target.value)}
-      className="h-9 max-w-xs rounded-md bg-card px-3 text-sm ring-1 ring-foreground/10"
-    >
-      <option value="">Todas as famílias</option>
-      {options.map((o) => (
-        <option key={o.id} value={String(o.id)}>
-          {o.nome}
-        </option>
-      ))}
-    </select>
+      options={opcoes}
+      onChange={onChange}
+    />
   );
 }

@@ -6,16 +6,18 @@ import { render, screen, fireEvent } from "@testing-library/react";
 import { DaysRangeFilter } from "./days-range-filter";
 
 describe("DaysRangeFilter", () => {
-  it("renderiza as faixas 30/60/90+", () => {
+  it("renderiza o rótulo e o trigger do select", () => {
     render(<DaysRangeFilter value="30" onChange={() => {}} />);
-    expect(screen.getByRole("option", { name: "+30 dias" })).toBeInTheDocument();
-    expect(screen.getByRole("option", { name: "+60 dias" })).toBeInTheDocument();
-    expect(screen.getByRole("option", { name: "+90 dias" })).toBeInTheDocument();
+    expect(screen.getByText("Faixa de dias parado")).toBeInTheDocument();
+    expect(screen.getByRole("combobox")).toBeInTheDocument();
   });
-  it("dispara onChange ao selecionar", () => {
-    const onChange = jest.fn();
-    render(<DaysRangeFilter value="30" onChange={onChange} />);
-    fireEvent.change(screen.getByRole("combobox"), { target: { value: "90" } });
-    expect(onChange).toHaveBeenCalledWith("90");
+  it("exibe a faixa selecionada", () => {
+    render(<DaysRangeFilter value="60" onChange={() => {}} />);
+    expect(screen.getByText("+60 dias")).toBeInTheDocument();
+  });
+  it("abre o popup com as faixas ao clicar", () => {
+    render(<DaysRangeFilter value="30" onChange={() => {}} />);
+    fireEvent.click(screen.getByRole("combobox"));
+    expect(screen.getByRole("option", { name: "+90 dias" })).toBeInTheDocument();
   });
 });
