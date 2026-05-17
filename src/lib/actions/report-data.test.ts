@@ -4,13 +4,19 @@ jest.mock("@/lib/prisma", () => ({
   prisma: {
     fatoBuildState: { findUnique: jest.fn() },
     fatoEstoqueSaldo: { findMany: jest.fn(), groupBy: jest.fn() },
+    fatoEstoqueMovimento: { groupBy: jest.fn(), findMany: jest.fn() },
+    fatoProdutoParado: { findMany: jest.fn(), count: jest.fn() },
     syncState: { findUnique: jest.fn() },
   },
 }));
 const { getCurrentUser } = require("@/lib/auth");
 const { getMyDomains } = require("@/lib/actions/domain-access");
 const { prisma } = require("@/lib/prisma");
-import { getRelatorioSaldoProduto, getRelatorioValorPorArmazem } from "./report-data";
+import {
+  getRelatorioSaldoProduto, getRelatorioValorPorArmazem,
+  getRelatorioEntradasSaidas, getRelatorioProdutoParado,
+  getRelatorioTopMovimentados, getRelatorioConcentracao,
+} from "./report-data";
 
 beforeEach(() => {
   getCurrentUser.mockResolvedValue({ id: "u1", platformRole: "admin" });
@@ -52,5 +58,65 @@ describe("getRelatorioValorPorArmazem (R2)", () => {
     expect(prisma.fatoEstoqueSaldo.groupBy).toHaveBeenCalledWith(
       expect.objectContaining({ where: { vrSaldo: { gt: 0 } } }),
     );
+  });
+});
+
+describe("getRelatorioEntradasSaidas (R3)", () => {
+  it("soma quantidade por mês e sentido dentro do período", async () => {
+    prisma.fatoBuildState.findUnique.mockResolvedValue({ ultimoBuildAt: new Date() });
+    prisma.fatoEstoqueMovimento.groupBy.mockResolvedValue([
+      { mes: "2026-03", sentido: "entrada", _sum: { quantidade: 10 } },
+      { mes: "2026-03", sentido: "saida", _sum: { quantidade: 4 } },
+    ]);
+    const r = await getRelatorioEntradasSaidas({ periodoDe: "2026-01", periodoAte: "2026-03" });
+    expect(r.estado).toBe("ok");
+    expect(r.dados).toEqual([{ mes: "2026-03", entrada: 10, saida: 4 }]);
+  });
+});
+
+describe("getRelatorioProdutoParado (R4)", () => {
+  it("filtra faixa de dias e saldo > 0; devolve KPI + tabela", async () => {
+    prisma.fatoBuildState.findUnique.mockResolvedValue({ ultimoBuildAt: new Date() });
+    prisma.fatoProdutoParado.findMany.mockResolvedValue([
+      { produtoNome: "X", localNome: "A", saldo: 3, dias: 95, vrSaldo: 200 },
+    ]);
+    const r = await getRelatorioProdutoParado({ faixaDias: 90 });
+    expect(r.estado).toBe("ok");
+    expect(r.dados.total).toBe(1);
+    expect(r.dados.linhas).toHaveLength(1);
+    expect(prisma.fatoProdutoParado.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({ saldo: { gt: 0 }, dias: { gte: 90 } }),
+      }),
+    );
+  });
+});
+
+describe("getRelatorioTopMovimentados (R5)", () => {
+  it("agrega por produto, ordena desc e aplica top-N", async () => {
+    prisma.fatoBuildState.findUnique.mockResolvedValue({ ultimoBuildAt: new Date() });
+    prisma.fatoEstoqueMovimento.groupBy.mockResolvedValue([
+      { produtoNome: "A", _sum: { quantidade: 50 } },
+      { produtoNome: "B", _sum: { quantidade: 80 } },
+    ]);
+    const r = await getRelatorioTopMovimentados({ sentido: "entrada" });
+    expect(r.dados[0]).toEqual({ rotulo: "B", valor: 80 });
+  });
+});
+
+describe("getRelatorioConcentracao (R6)", () => {
+  it("agrega vrSaldo por família e por marca; nulos viram 'Não classificado'", async () => {
+    prisma.fatoBuildState.findUnique.mockResolvedValue({ ultimoBuildAt: new Date() });
+    prisma.fatoEstoqueSaldo.groupBy
+      .mockResolvedValueOnce([
+        { familiaNome: "Esteiras", _sum: { vrSaldo: 100 } },
+        { familiaNome: null, _sum: { vrSaldo: 30 } },
+      ])
+      .mockResolvedValueOnce([
+        { marcaNome: "Matrix", _sum: { vrSaldo: 90 } },
+      ]);
+    const r = await getRelatorioConcentracao({});
+    expect(r.dados.familia).toContainEqual({ rotulo: "Não classificado", valor: 30 });
+    expect(r.dados.marca).toContainEqual({ rotulo: "Matrix", valor: 90 });
   });
 });
