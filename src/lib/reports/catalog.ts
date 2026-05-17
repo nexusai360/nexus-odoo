@@ -76,4 +76,37 @@ export const REPORT_CATALOG: ReportEntry[] = [
       },
     ],
   },
+  {
+    id: "produtos-parados",
+    titulo: "Produtos parados",
+    dominio: "estoque",
+    descricao: "Produtos com saldo imobilizado e tempo sem movimento.",
+    icone: Clock,
+    modeloFonte: "estoque.saldo.hoje.duracao.dias",
+    secoes: [
+      {
+        id: "kpi",
+        template: "KPICard",
+        fato: "fato_produto_parado",
+        config: { rotulo: "Produtos parados", formato: "inteiro" },
+        filtros: [{ tipo: "faixaDias", default: "30" }, { tipo: "armazem" }],
+      },
+      {
+        id: "tabela",
+        template: "DataTable",
+        fato: "fato_produto_parado",
+        config: {
+          colunas: [
+            { key: "produtoNome", header: "Produto", tipo: "texto" },
+            { key: "localNome", header: "Armazém", tipo: "texto" },
+            { key: "saldo", header: "Saldo", tipo: "numero" },
+            { key: "dias", header: "Dias parado", tipo: "numero" },
+            { key: "vrSaldo", header: "Valor", tipo: "numero" },
+          ],
+          searchable: true,
+        },
+        filtros: [{ tipo: "faixaDias", default: "30" }, { tipo: "armazem" }],
+      },
+    ],
+  },
 ];

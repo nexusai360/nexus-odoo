@@ -31,3 +31,12 @@ describe("catálogo — R3", () => {
     expect(r3?.secoes[0].filtros.map((f) => f.tipo)).toEqual(["periodo", "armazem"]);
   });
 });
+
+describe("catálogo — R4", () => {
+  it("R4 tem 2 seções: KPICard + DataTable sobre fato_produto_parado", () => {
+    const r4 = REPORT_CATALOG.find((r) => r.id === "produtos-parados");
+    expect(r4?.secoes).toHaveLength(2);
+    expect(r4?.secoes.map((s) => s.template)).toEqual(["KPICard", "DataTable"]);
+    expect(r4?.secoes.every((s) => s.fato === "fato_produto_parado")).toBe(true);
+  });
+});
