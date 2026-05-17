@@ -19,6 +19,7 @@ import {
   Crown,
   IdCard,
   Loader2,
+  ShieldCheck,
   UserCheck,
   UserX,
 } from "lucide-react";
@@ -328,10 +329,20 @@ export function UserFormDialog({
     onOpenChange(v);
   }
 
-  const stepperItems: Array<{ n: Step; label: string; icon: typeof IdCard }> = [
-    { n: 1, label: "Identidade", icon: IdCard },
-    { n: 2, label: "Confirmação", icon: CheckCircle2 },
-  ];
+  const stepperItems = useMemo<
+    Array<{ n: Step; label: string; icon: typeof IdCard }>
+  >(() => {
+    const items: Array<{ n: Step; label: string; icon: typeof IdCard }> = [
+      { n: 1, label: "Identidade", icon: IdCard },
+    ];
+    if (temEtapaAcesso) {
+      items.push({ n: 2, label: "Acesso", icon: ShieldCheck });
+      items.push({ n: 3, label: "Confirmação", icon: CheckCircle2 });
+    } else {
+      items.push({ n: 2, label: "Confirmação", icon: CheckCircle2 });
+    }
+    return items;
+  }, [temEtapaAcesso]);
 
   return (
     <Dialog open={open} onOpenChange={close}>
