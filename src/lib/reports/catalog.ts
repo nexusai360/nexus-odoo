@@ -127,10 +127,10 @@ export const REPORT_CATALOG: ReportEntry[] = [
     modeloFonte: "estoque.saldo.hoje.duracao.dias",
     secoes: [
       {
-        id: "kpi",
-        template: "KPICard",
+        id: "kpis",
+        template: "KPIRow",
         fato: "fato_produto_parado",
-        config: { rotulo: "Produtos parados", formato: "inteiro" },
+        config: { variante: "produtos-parados" },
         filtros: [{ tipo: "faixaDias", default: "30" }, { tipo: "armazem" }],
       },
       {
@@ -143,7 +143,7 @@ export const REPORT_CATALOG: ReportEntry[] = [
             { key: "localNome", header: "Armazém", tipo: "texto" },
             { key: "saldo", header: "Saldo", tipo: "numero" },
             { key: "dias", header: "Dias parado", tipo: "numero" },
-            { key: "vrSaldo", header: "Valor", tipo: "numero" },
+            { key: "vrSaldo", header: "Valor imobilizado", tipo: "moeda" },
           ],
           searchable: true,
         },
@@ -161,10 +161,30 @@ export const REPORT_CATALOG: ReportEntry[] = [
     temporal: { periodoPadrao: "3meses" },
     secoes: [
       {
+        id: "kpis",
+        template: "KPIRow",
+        fato: "fato_estoque_movimento",
+        config: { variante: "top-movimentados" },
+        filtros: [{ tipo: "sentido" }],
+      },
+      {
         id: "barras",
         template: "BarChart",
         fato: "fato_estoque_movimento",
-        config: { xKey: "rotulo", yKey: "valor", formato: "inteiro" },
+        config: { xKey: "rotulo", yKey: "valor", formato: "inteiro", titulo: "Top 10 produtos" },
+        filtros: [{ tipo: "sentido" }],
+      },
+      {
+        id: "linhas",
+        template: "DataTable",
+        fato: "fato_estoque_movimento",
+        config: {
+          colunas: [
+            { key: "rotulo", header: "Produto", tipo: "texto" },
+            { key: "valor", header: "Unidades movimentadas", tipo: "numero" },
+          ],
+          searchable: true,
+        },
         filtros: [{ tipo: "sentido" }],
       },
     ],

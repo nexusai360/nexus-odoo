@@ -63,21 +63,52 @@ describe("catálogo — R3", () => {
 });
 
 describe("catálogo — R4", () => {
-  it("R4 tem 2 seções: KPICard + DataTable sobre fato_produto_parado", () => {
+  it("R4 tem 2 seções: KPIRow + DataTable sobre fato_produto_parado", () => {
     const r4 = REPORT_CATALOG.find((r) => r.id === "produtos-parados");
     expect(r4?.secoes).toHaveLength(2);
-    expect(r4?.secoes.map((s) => s.template)).toEqual(["KPICard", "DataTable"]);
+    expect(r4?.secoes.map((s) => s.template)).toEqual(["KPIRow", "DataTable"]);
     expect(r4?.secoes.every((s) => s.fato === "fato_produto_parado")).toBe(true);
+  });
+  it("R4 KPIRow usa variante 'produtos-parados'", () => {
+    const r4 = REPORT_CATALOG.find((r) => r.id === "produtos-parados");
+    const kpiRow = r4?.secoes.find((s) => s.template === "KPIRow");
+    expect(kpiRow?.config.variante).toBe("produtos-parados");
+  });
+  it("R4 DataTable tem colunas vrSaldo com header 'Valor imobilizado'", () => {
+    const r4 = REPORT_CATALOG.find((r) => r.id === "produtos-parados");
+    const tabela = r4?.secoes.find((s) => s.template === "DataTable");
+    const colunas = tabela?.config.colunas as Array<{ key: string; header: string; tipo: string }>;
+    const vrSaldo = colunas.find((c) => c.key === "vrSaldo");
+    expect(vrSaldo?.header).toBe("Valor imobilizado");
+    expect(vrSaldo?.tipo).toBe("moeda");
   });
 });
 
 describe("catálogo — R5", () => {
-  it("R5 é um BarChart sobre fato_estoque_movimento, temporal + filtro sentido", () => {
+  it("R5 tem 3 seções: KPIRow + BarChart + DataTable sobre fato_estoque_movimento", () => {
     const r5 = REPORT_CATALOG.find((r) => r.id === "top-movimentados");
-    expect(r5?.secoes[0].template).toBe("BarChart");
-    expect(r5?.secoes[0].fato).toBe("fato_estoque_movimento");
+    expect(r5?.secoes).toHaveLength(3);
+    expect(r5?.secoes.map((s) => s.template)).toEqual(["KPIRow", "BarChart", "DataTable"]);
+    expect(r5?.secoes.every((s) => s.fato === "fato_estoque_movimento")).toBe(true);
     expect(r5?.temporal?.periodoPadrao).toBe("3meses");
-    expect(r5?.secoes[0].filtros.map((f) => f.tipo)).toEqual(["sentido"]);
+  });
+  it("R5 KPIRow usa variante 'top-movimentados'", () => {
+    const r5 = REPORT_CATALOG.find((r) => r.id === "top-movimentados");
+    const kpiRow = r5?.secoes.find((s) => s.template === "KPIRow");
+    expect(kpiRow?.config.variante).toBe("top-movimentados");
+    expect(kpiRow?.filtros.map((f) => f.tipo)).toEqual(["sentido"]);
+  });
+  it("R5 DataTable tem seção id 'linhas' com colunas rotulo e valor", () => {
+    const r5 = REPORT_CATALOG.find((r) => r.id === "top-movimentados");
+    const tabela = r5?.secoes.find((s) => s.id === "linhas");
+    expect(tabela?.template).toBe("DataTable");
+    const colunas = tabela?.config.colunas as Array<{ key: string }>;
+    expect(colunas.map((c) => c.key)).toEqual(["rotulo", "valor"]);
+  });
+  it("R5 BarChart mantém filtro sentido", () => {
+    const r5 = REPORT_CATALOG.find((r) => r.id === "top-movimentados");
+    const bar = r5?.secoes.find((s) => s.template === "BarChart");
+    expect(bar?.filtros.map((f) => f.tipo)).toEqual(["sentido"]);
   });
 });
 

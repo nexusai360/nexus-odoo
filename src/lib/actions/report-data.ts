@@ -222,21 +222,40 @@ export interface EntradasSaidasData {
 }
 /** Linha de R4. */
 export interface ProdutoParadoRow {
+  [k: string]: unknown;
   produtoNome: string | null;
   localNome: string | null;
   saldo: number;
   dias: number;
   vrSaldo: number;
 }
-/** Dados de R4: KPI + tabela. */
+/** KPIs de topo de R4. */
+export interface ProdutoParadoKpis {
+  totalParados: number;
+  valorImobilizado: number;
+}
+/** Dados de R4: KPIs + tabela. */
 export interface ProdutoParadoData {
+  kpis: ProdutoParadoKpis;
   total: number;
   linhas: ProdutoParadoRow[];
 }
 /** Barra de R5. */
 export interface TopMovimentadoBar {
+  [k: string]: unknown;
   rotulo: string;
   valor: number;
+}
+/** KPIs de topo de R5. */
+export interface TopMovimentadoKpis {
+  totalProdutos: number;
+  totalUnidades: number;
+}
+/** Dados de R5: KPIs + barras (top-N) + linhas (tabela completa). */
+export interface TopMovimentadoData {
+  kpis: TopMovimentadoKpis;
+  barras: TopMovimentadoBar[];
+  linhas: TopMovimentadoBar[];
 }
 /** Dados de R6: distribuição por família e por marca. */
 export interface ConcentracaoData {
@@ -381,7 +400,11 @@ export async function getRelatorioEntradasSaidas(
 export async function getRelatorioProdutoParado(
   filtros: ReportFilterValues,
 ): Promise<ReportResult<ProdutoParadoData>> {
-  const vazio: ProdutoParadoData = { total: 0, linhas: [] };
+  const vazio: ProdutoParadoData = {
+    kpis: { totalParados: 0, valorImobilizado: 0 },
+    total: 0,
+    linhas: [],
+  };
   try {
     const entry = requireReport("produtos-parados");
     await guardDominio(entry.dominio);
@@ -409,7 +432,12 @@ export async function getRelatorioProdutoParado(
       dias: r.dias,
       vrSaldo: Number(r.vrSaldo),
     }));
-    const dados: ProdutoParadoData = { total: linhas.length, linhas };
+    const valorImobilizado = linhas.reduce((acc, l) => acc + l.vrSaldo, 0);
+    const dados: ProdutoParadoData = {
+      kpis: { totalParados: linhas.length, valorImobilizado },
+      total: linhas.length,
+      linhas,
+    };
     const estado: ReportState = linhas.length === 0 ? "vazio" : "ok";
     return { estado, dados, freshness };
   } catch {
@@ -420,14 +448,19 @@ export async function getRelatorioProdutoParado(
 /** R5 — Top produtos movimentados. */
 export async function getRelatorioTopMovimentados(
   filtros: ReportFilterValues,
-): Promise<ReportResult<TopMovimentadoBar[]>> {
+): Promise<ReportResult<TopMovimentadoData>> {
+  const vazio: TopMovimentadoData = {
+    kpis: { totalProdutos: 0, totalUnidades: 0 },
+    barras: [],
+    linhas: [],
+  };
   try {
     const entry = requireReport("top-movimentados");
     await guardDominio(entry.dominio);
     const freshness = await reportFreshness(prisma, entry);
     const base = await estadoDoFato("fato_estoque_movimento");
     if (base === "preparando") {
-      return { estado: "preparando", dados: [], freshness };
+      return { estado: "preparando", dados: vazio, freshness };
     }
     const grupos = await prisma.fatoEstoqueMovimento.groupBy({
       by: ["produtoNome"],
@@ -439,17 +472,25 @@ export async function getRelatorioTopMovimentados(
       },
       _sum: { quantidade: true },
     });
-    const dados: TopMovimentadoBar[] = grupos
+    const linhas: TopMovimentadoBar[] = grupos
       .map((g) => ({
         rotulo: g.produtoNome ?? "Sem produto",
         valor: g._sum.quantidade ? Math.abs(Number(g._sum.quantidade)) : 0,
       }))
-      .sort((a, b) => b.valor - a.valor)
-      .slice(0, TOP_N);
-    const estado: ReportState = dados.length === 0 ? "vazio" : "ok";
+      .sort((a, b) => b.valor - a.valor);
+
+    const barras = linhas.slice(0, TOP_N);
+    const totalUnidades = linhas.reduce((acc, l) => acc + l.valor, 0);
+
+    const dados: TopMovimentadoData = {
+      kpis: { totalProdutos: linhas.length, totalUnidades },
+      barras,
+      linhas,
+    };
+    const estado: ReportState = linhas.length === 0 ? "vazio" : "ok";
     return { estado, dados, freshness };
   } catch {
-    return { estado: "erro", dados: [], freshness: null };
+    return { estado: "erro", dados: vazio, freshness: null };
   }
 }
 

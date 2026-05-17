@@ -165,32 +165,55 @@ describe("getRelatorioEntradasSaidas (R3)", () => {
 });
 
 describe("getRelatorioProdutoParado (R4)", () => {
-  it("filtra faixa de dias e saldo > 0; devolve KPI + tabela", async () => {
+  it("filtra faixa de dias e saldo > 0; devolve KPIs + tabela", async () => {
     mockPrisma.fatoBuildState.findUnique.mockResolvedValue({ ultimoBuildAt: new Date() });
     mockPrisma.fatoProdutoParado.findMany.mockResolvedValue([
       { produtoNome: "X", localNome: "A", saldo: 3, dias: 95, vrSaldo: 200 },
+      { produtoNome: "Y", localNome: "B", saldo: 1, dias: 120, vrSaldo: 500 },
     ]);
     const r = await getRelatorioProdutoParado({ faixaDias: 90 });
     expect(r.estado).toBe("ok");
-    expect(r.dados.total).toBe(1);
-    expect(r.dados.linhas).toHaveLength(1);
+    expect(r.dados.total).toBe(2);
+    expect(r.dados.linhas).toHaveLength(2);
+    expect(r.dados.kpis.totalParados).toBe(2);
+    expect(r.dados.kpis.valorImobilizado).toBe(700);
     expect(mockPrisma.fatoProdutoParado.findMany).toHaveBeenCalledWith(
       expect.objectContaining({
         where: expect.objectContaining({ saldo: { gt: 0 }, dias: { gte: 90 } }),
       }),
     );
   });
+  it("estado 'preparando' quando FatoBuildState ausente", async () => {
+    mockPrisma.fatoBuildState.findUnique.mockResolvedValue(null);
+    const r = await getRelatorioProdutoParado({});
+    expect(r.estado).toBe("preparando");
+    expect(r.dados.kpis.totalParados).toBe(0);
+    expect(r.dados.kpis.valorImobilizado).toBe(0);
+  });
 });
 
 describe("getRelatorioTopMovimentados (R5)", () => {
-  it("agrega por produto, ordena desc e aplica top-N", async () => {
+  it("agrega por produto, ordena desc, aplica top-N em barras e devolve KPIs", async () => {
     mockPrisma.fatoBuildState.findUnique.mockResolvedValue({ ultimoBuildAt: new Date() });
     mockPrisma.fatoEstoqueMovimento.groupBy.mockResolvedValue([
       { produtoNome: "A", _sum: { quantidade: 50 } },
       { produtoNome: "B", _sum: { quantidade: 80 } },
+      { produtoNome: "C", _sum: { quantidade: 30 } },
     ]);
     const r = await getRelatorioTopMovimentados({ sentido: "entrada" });
-    expect(r.dados[0]).toEqual({ rotulo: "B", valor: 80 });
+    expect(r.estado).toBe("ok");
+    expect(r.dados.barras[0]).toMatchObject({ rotulo: "B", valor: 80 });
+    expect(r.dados.linhas).toHaveLength(3);
+    expect(r.dados.kpis.totalProdutos).toBe(3);
+    expect(r.dados.kpis.totalUnidades).toBe(160);
+  });
+  it("estado 'preparando' quando FatoBuildState ausente", async () => {
+    mockPrisma.fatoBuildState.findUnique.mockResolvedValue(null);
+    const r = await getRelatorioTopMovimentados({});
+    expect(r.estado).toBe("preparando");
+    expect(r.dados.barras).toEqual([]);
+    expect(r.dados.linhas).toEqual([]);
+    expect(r.dados.kpis.totalProdutos).toBe(0);
   });
 });
 

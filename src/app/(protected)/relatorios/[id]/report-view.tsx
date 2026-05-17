@@ -2,7 +2,7 @@
 
 import { useMemo } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { Boxes, TrendingDown, DollarSign, Warehouse } from "lucide-react";
+import { Boxes, TrendingDown, DollarSign, Warehouse, Clock, TrendingUp, Package } from "lucide-react";
 import type { ReportEntry, ReportSection, ReportState } from "@/lib/reports/types";
 import { ReportFilters } from "@/components/reports/report-filters";
 import type { FilterOptions } from "@/components/reports/report-filters";
@@ -15,7 +15,7 @@ import { PieChartCard } from "@/components/charts/pie-chart";
 import { PeriodBar } from "@/components/reports/period-bar";
 import { resolveReportIcon } from "@/lib/reports/report-icons";
 import type { PeriodoResolvido } from "@/lib/reports/periodo";
-import type { SaldoProdutoData, SaldoProdutoRow, ValorArmazemData, EntradasSaidasData } from "@/lib/actions/report-data";
+import type { SaldoProdutoData, SaldoProdutoRow, ValorArmazemData, EntradasSaidasData, ProdutoParadoData, TopMovimentadoData } from "@/lib/actions/report-data";
 import { SaldoProdutoDrillDown } from "@/components/charts/saldo-produto-drill-down";
 import { AppliedFiltersChips } from "@/components/reports/applied-filters-chips";
 import { buildChipsFromParams } from "@/lib/reports/build-chips";
@@ -80,6 +80,57 @@ function renderSecao(
               formato="inteiro"
               estado={estado}
               icone={Warehouse}
+              onRetry={onRetry}
+            />
+          </div>
+        );
+      }
+
+      if (variante === "top-movimentados") {
+        const d = dados as TopMovimentadoData | null | undefined;
+        const kpis = d?.kpis;
+        return (
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+            <KPICard
+              valor={kpis?.totalProdutos ?? 0}
+              rotulo="Produtos movimentados"
+              formato="inteiro"
+              estado={estado}
+              icone={Package}
+              onRetry={onRetry}
+            />
+            <KPICard
+              valor={kpis?.totalUnidades ?? 0}
+              rotulo="Total de unidades movimentadas"
+              formato="inteiro"
+              estado={estado}
+              icone={TrendingUp}
+              onRetry={onRetry}
+            />
+          </div>
+        );
+      }
+
+      if (variante === "produtos-parados") {
+        const d = dados as ProdutoParadoData | null | undefined;
+        const kpis = d?.kpis;
+        return (
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+            <KPICard
+              valor={kpis?.totalParados ?? 0}
+              rotulo="Produtos parados"
+              formato="inteiro"
+              estado={estado}
+              icone={Clock}
+              tone="danger"
+              onRetry={onRetry}
+            />
+            <KPICard
+              valor={kpis?.valorImobilizado ?? 0}
+              rotulo="Valor imobilizado"
+              formato="moeda"
+              estado={estado}
+              icone={DollarSign}
               onRetry={onRetry}
             />
           </div>
