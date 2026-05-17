@@ -54,7 +54,7 @@ import {
 } from "@/lib/constants/roles";
 import type { AuthUser } from "@/lib/auth-helpers";
 import type { PlatformRole } from "@/generated/prisma/client";
-import { grantableDomains, type ReportDomainId } from "@/lib/reports/domains";
+import { grantableDomains, REPORT_DOMAINS, type ReportDomainId } from "@/lib/reports/domains";
 import { AccessStep } from "@/components/users/access-step";
 import {
   handleRoleChange,
@@ -999,6 +999,22 @@ function StepConfirm({ form, isEdit }: StepConfirmProps) {
           }
         />
       </div>
+      {(form.role === "manager" || form.role === "viewer") && (
+        <div className="flex flex-col gap-1">
+          <span className="text-sm font-medium">Acesso a relatórios</span>
+          {form.domains.length > 0 ? (
+            <span className="text-sm text-muted-foreground">
+              {form.domains
+                .map((d) => REPORT_DOMAINS.find((m) => m.id === d)?.label ?? d)
+                .join(", ")}
+            </span>
+          ) : (
+            <span className="text-xs text-amber-600 dark:text-amber-500">
+              Nenhum domínio selecionado — o usuário não verá nenhum relatório.
+            </span>
+          )}
+        </div>
+      )}
     </div>
   );
 }
