@@ -1,6 +1,7 @@
 "use client";
 
-import { useRouter } from "next/navigation";
+import { useMemo } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import { Boxes, TrendingDown, DollarSign } from "lucide-react";
 import type { ReportEntry, ReportSection, ReportState } from "@/lib/reports/types";
 import { ReportFilters } from "@/components/reports/report-filters";
@@ -16,6 +17,8 @@ import { resolveReportIcon } from "@/lib/reports/report-icons";
 import type { PeriodoResolvido } from "@/lib/reports/periodo";
 import type { SaldoProdutoData, SaldoProdutoRow } from "@/lib/actions/report-data";
 import { SaldoProdutoDrillDown } from "@/components/charts/saldo-produto-drill-down";
+import { AppliedFiltersChips } from "@/components/reports/applied-filters-chips";
+import { buildChipsFromParams } from "@/lib/reports/build-chips";
 
 /** Uma seção já resolvida com seu estado e dados. */
 export interface SecaoComDados {
@@ -195,6 +198,8 @@ export function ReportView({
   report, secoes, freshness, options, periodo, periodoMin,
 }: ReportViewProps) {
   const router = useRouter();
+  const searchParams = useSearchParams();
+
   // Várias seções podem declarar o mesmo filtro (ex.: armazém na seção de KPIs
   // e na de tabela). A barra de filtros renderiza um controle por tipo — então
   // deduplicamos por `tipo` para não gerar chaves React repetidas nem
@@ -202,13 +207,22 @@ export function ReportView({
   const todosFiltros = report.secoes
     .flatMap((s) => s.filtros)
     .filter((f, i, arr) => arr.findIndex((x) => x.tipo === f.tipo) === i);
+
+  // Chips de filtros aplicados — derivados dos searchParams atuais.
+  const chips = useMemo(
+    () => buildChipsFromParams(searchParams, options),
+    [searchParams, options],
+  );
+
   // Re-busca o relatório no servidor: refaz as queries de seção e
   // re-renderiza com os dados frescos sem recarregar a página inteira.
   const onRetry = () => router.refresh();
+
   return (
     <div className="flex flex-col gap-6">
       {periodo ? <PeriodBar periodo={periodo} mesMin={periodoMin} /> : null}
       <ReportFilters filtros={todosFiltros} options={options} />
+      <AppliedFiltersChips chips={chips} />
       {secoes.map((sd) => (
         <div key={sd.secao.id}>{renderSecao(sd, report, onRetry)}</div>
       ))}
