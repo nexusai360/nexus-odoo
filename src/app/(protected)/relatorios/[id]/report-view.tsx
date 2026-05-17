@@ -9,7 +9,9 @@ import { DataTable, type ColumnDef } from "@/components/charts/data-table";
 import { BarChartCard } from "@/components/charts/bar-chart";
 import { LineChartCard } from "@/components/charts/line-chart";
 import { PieChartCard } from "@/components/charts/pie-chart";
+import { PeriodBar } from "@/components/reports/period-bar";
 import { resolveReportIcon } from "@/lib/reports/report-icons";
+import type { PeriodoResolvido } from "@/lib/reports/periodo";
 
 /** Uma seção já resolvida com seu estado e dados. */
 export interface SecaoComDados {
@@ -23,6 +25,8 @@ interface ReportViewProps {
   secoes: SecaoComDados[];
   freshness: Date | null;
   options: FilterOptions;
+  /** Período resolvido — `null` em relatórios sem dimensão temporal. */
+  periodo: PeriodoResolvido | null;
 }
 
 function renderSecao(
@@ -121,7 +125,7 @@ function pickFatia(dados: unknown, secaoId: string): Record<string, unknown>[] {
 
 /** Renderiza um relatório: filtros, seções em sequência e freshness. */
 export function ReportView({
-  report, secoes, freshness, options,
+  report, secoes, freshness, options, periodo,
 }: ReportViewProps) {
   const router = useRouter();
   const todosFiltros = report.secoes.flatMap((s) => s.filtros);
@@ -130,6 +134,7 @@ export function ReportView({
   const onRetry = () => router.refresh();
   return (
     <div className="flex flex-col gap-6">
+      {periodo ? <PeriodBar periodo={periodo} /> : null}
       <ReportFilters filtros={todosFiltros} options={options} />
       {secoes.map((sd) => (
         <div key={sd.secao.id}>{renderSecao(sd, report, onRetry)}</div>

@@ -30,6 +30,7 @@ describe("ReportView", () => {
         secoes={[{ secao: entry.secoes[0], estado: "ok", dados: [{ produtoNome: "X" }] }]}
         freshness={new Date("2026-05-16T09:00:00Z")}
         options={{ produtos: [], armazens: [], familias: [] }}
+        periodo={null}
       />,
     );
     expect(screen.getByText(/atualizado em/i)).toBeInTheDocument();
@@ -41,6 +42,7 @@ describe("ReportView", () => {
         secoes={[{ secao: entry.secoes[0], estado: "preparando", dados: [] }]}
         freshness={null}
         options={{ produtos: [], armazens: [], familias: [] }}
+        periodo={null}
       />,
     );
     expect(screen.getAllByText(/ainda sendo preparado/i).length).toBeGreaterThan(0);
@@ -78,6 +80,7 @@ describe("ReportView", () => {
         ]}
         freshness={null}
         options={{ produtos: [], armazens: [], familias: [] }}
+        periodo={null}
       />,
     );
     expect(container.querySelector('[data-slot="pie-chart"]')).toBeInTheDocument();

@@ -6,6 +6,7 @@ import { requireDomainAccess } from "@/lib/reports/guard";
 import { getReport } from "@/lib/reports/catalog";
 import { resolveReportIcon } from "@/lib/reports/report-icons";
 import { parseFilters } from "@/lib/reports/filters";
+import { resolverPeriodo, type PeriodoResolvido } from "@/lib/reports/periodo";
 import { reportFreshness } from "@/lib/reports/freshness";
 import {
   getRelatorioSaldoProduto, getRelatorioValorPorArmazem,
@@ -53,10 +54,19 @@ export default async function RelatorioPage({ params, searchParams }: PageProps)
 
   const freshness = await reportFreshness(prisma, report);
 
+  // Período resolvido uma vez por relatório (só nos relatórios temporais).
+  const periodo: PeriodoResolvido | null = report.temporal
+    ? resolverPeriodo(sp, report.temporal.periodoPadrao)
+    : null;
+
   // Uma chamada de query por seção; cada seção parseia seus próprios filtros.
   const secoes: SecaoComDados[] = [];
   for (const secao of report.secoes) {
     const filtros = parseFilters(secao, sp);
+    if (periodo) {
+      filtros.periodoDe = periodo.de ?? undefined;
+      filtros.periodoAte = periodo.ate ?? undefined;
+    }
     const resultado = await query(filtros);
     secoes.push({
       secao,
@@ -96,6 +106,7 @@ export default async function RelatorioPage({ params, searchParams }: PageProps)
         secoes={secoes}
         freshness={freshness}
         options={options}
+        periodo={periodo}
       />
     </PageShell>
   );
