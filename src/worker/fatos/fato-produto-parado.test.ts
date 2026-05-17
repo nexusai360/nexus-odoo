@@ -1,7 +1,7 @@
 import { buildSaldoHojeMap, mapProdutoParadoRow, rebuildFatoProdutoParado } from "./fato-produto-parado";
 
 jest.mock("./fato-build-state", () => ({ markFatoBuilt: jest.fn() }));
-const { markFatoBuilt } = require("./fato-build-state");
+import { markFatoBuilt } from "./fato-build-state";
 
 const saldoMap = new Map([
   [100, { produtoId: 12, produtoNome: "X", localId: 3, localNome: "A",
