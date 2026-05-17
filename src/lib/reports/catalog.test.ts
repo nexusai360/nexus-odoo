@@ -49,3 +49,15 @@ describe("catálogo — R5", () => {
     expect(r5?.secoes[0].filtros.map((f) => f.tipo)).toEqual(["periodo", "sentido"]);
   });
 });
+
+describe("catálogo — R6", () => {
+  it("R6 tem 2 seções: PieChart (família) + BarChart (marca)", () => {
+    const r6 = REPORT_CATALOG.find((r) => r.id === "concentracao");
+    expect(r6?.secoes).toHaveLength(2);
+    expect(r6?.secoes.map((s) => s.template)).toEqual(["PieChart", "BarChart"]);
+    expect(r6?.secoes.every((s) => s.fato === "fato_estoque_saldo")).toBe(true);
+  });
+  it("o catálogo tem exatamente 6 relatórios", () => {
+    expect(REPORT_CATALOG).toHaveLength(6);
+  });
+});

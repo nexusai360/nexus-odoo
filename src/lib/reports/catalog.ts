@@ -129,4 +129,28 @@ export const REPORT_CATALOG: ReportEntry[] = [
       },
     ],
   },
+  {
+    id: "concentracao",
+    titulo: "Concentração do estoque",
+    dominio: "estoque",
+    descricao: "Distribuição do valor de estoque por família e por marca.",
+    icone: PieChart,
+    modeloFonte: "estoque.saldo.hoje",
+    secoes: [
+      {
+        id: "familia",
+        template: "PieChart",
+        fato: "fato_estoque_saldo",
+        config: { nameKey: "rotulo", valueKey: "valor", formato: "moeda" },
+        filtros: [],
+      },
+      {
+        id: "marca",
+        template: "BarChart",
+        fato: "fato_estoque_saldo",
+        config: { xKey: "rotulo", yKey: "valor", formato: "moeda" },
+        filtros: [],
+      },
+    ],
+  },
 ];
