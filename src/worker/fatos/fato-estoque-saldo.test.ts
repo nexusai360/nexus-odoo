@@ -1,4 +1,8 @@
-import { mapSaldoRow, buildProdutoClassMap } from "./fato-estoque-saldo";
+import { mapSaldoRow, buildProdutoClassMap, rebuildFatoEstoqueSaldo } from "./fato-estoque-saldo";
+
+jest.mock("./fato-build-state", () => ({ markFatoBuilt: jest.fn() }));
+// eslint-disable-next-line @typescript-eslint/no-require-imports
+const { markFatoBuilt } = require("./fato-build-state");
 
 describe("mapSaldoRow", () => {
   it("extrai os campos do registro raw do Odoo", () => {
@@ -87,5 +91,29 @@ describe("buildProdutoClassMap", () => {
   });
   it("retorna mapa vazio quando não há linhas", () => {
     expect(buildProdutoClassMap([]).size).toBe(0);
+  });
+});
+
+describe("rebuildFatoEstoqueSaldo", () => {
+  it("reconstrói o fato e marca o build", async () => {
+    const tx = {
+      fatoEstoqueSaldo: {
+        deleteMany: jest.fn().mockResolvedValue(undefined),
+        createMany: jest.fn().mockResolvedValue(undefined),
+      },
+    };
+    const prisma = {
+      rawSpedProduto: { findMany: jest.fn().mockResolvedValue([]) },
+      rawEstoqueSaldoHoje: {
+        findMany: jest.fn().mockResolvedValue([
+          { data: { id: 1, produto_id: [12, "X"], saldo: 5, vr_saldo: 100 } },
+        ]),
+      },
+      $transaction: jest.fn(async (fn: (t: typeof tx) => unknown) => fn(tx)),
+    } as never;
+    const n = await rebuildFatoEstoqueSaldo(prisma);
+    expect(n).toBe(1);
+    expect(tx.fatoEstoqueSaldo.createMany).toHaveBeenCalled();
+    expect(markFatoBuilt).toHaveBeenCalledWith(prisma, "fato_estoque_saldo");
   });
 });

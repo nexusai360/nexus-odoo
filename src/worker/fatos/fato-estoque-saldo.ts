@@ -1,6 +1,7 @@
 // src/worker/fatos/fato-estoque-saldo.ts
 import type { PrismaClient } from "../../generated/prisma/client";
 import { relId, relNome, type OdooM2O } from "./odoo-relational";
+import { markFatoBuilt } from "./fato-build-state";
 
 export interface ProdutoClass {
   familiaId: number | null;
@@ -77,10 +78,16 @@ export function mapSaldoRow(
 }
 
 /** Reconstrói fato_estoque_saldo a partir de raw_estoque_saldo_hoje. */
-export async function rebuildFatoEstoqueSaldo(prisma: PrismaClient): Promise<number> {
+export async function rebuildFatoEstoqueSaldo(
+  prisma: PrismaClient,
+): Promise<number> {
   const classMap = await loadProdutoClassMap(prisma);
-  const rawRows = await prisma.rawEstoqueSaldoHoje.findMany({ where: { rawDeleted: false } });
-  const mapped = rawRows.map((r) => mapSaldoRow(r.data as Record<string, unknown>, classMap));
+  const rawRows = await prisma.rawEstoqueSaldoHoje.findMany({
+    where: { rawDeleted: false },
+  });
+  const mapped = rawRows.map((r) =>
+    mapSaldoRow(r.data as Record<string, unknown>, classMap),
+  );
   await prisma.$transaction(async (tx) => {
     await tx.fatoEstoqueSaldo.deleteMany({});
     if (mapped.length) {
@@ -89,5 +96,6 @@ export async function rebuildFatoEstoqueSaldo(prisma: PrismaClient): Promise<num
       });
     }
   });
+  await markFatoBuilt(prisma, "fato_estoque_saldo");
   return mapped.length;
 }
