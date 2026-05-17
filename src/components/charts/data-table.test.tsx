@@ -21,9 +21,9 @@ describe("DataTable render", () => {
     expect(screen.getByText("Produto")).toBeInTheDocument();
     expect(screen.getByText("Esteira")).toBeInTheDocument();
   });
-  it("formata números negativos em pt-BR", () => {
+  it("formata números negativos em pt-BR sem casas decimais supérfluas", () => {
     render(<DataTable columns={cols} rows={rows} />);
-    expect(screen.getByText("-2,00")).toBeInTheDocument();
+    expect(screen.getByText("-2")).toBeInTheDocument();
   });
   it("renderiza o estado de preparo", () => {
     render(<DataTable columns={cols} rows={[]} estado="preparando" />);
@@ -45,7 +45,7 @@ describe("DataTable busca", () => {
     fireEvent.change(screen.getByPlaceholderText("Pesquisar…"), {
       target: { value: "zzz" },
     });
-    expect(screen.getByText(/sem dado no período/i)).toBeInTheDocument();
+    expect(screen.getByText(/sem dados para exibir/i)).toBeInTheDocument();
   });
 });
 
@@ -55,7 +55,7 @@ describe("DataTable ordenação", () => {
     const headerBtn = screen.getByRole("button", { name: /Saldo/ });
     fireEvent.click(headerBtn); // asc
     const cells = screen.getAllByRole("cell").map((c) => c.textContent);
-    expect(cells).toContain("-2,00");
+    expect(cells).toContain("-2");
     const ths = screen.getAllByRole("columnheader");
     expect(ths[1]).toHaveAttribute("aria-sort", "ascending");
     fireEvent.click(headerBtn); // desc

@@ -18,7 +18,7 @@ describe("chart-states", () => {
   });
   it("ChartEmpty exibe a mensagem de sem dado", () => {
     render(<ChartEmpty />);
-    expect(screen.getByText(/sem dado no período/i)).toBeInTheDocument();
+    expect(screen.getByText(/sem dados para exibir/i)).toBeInTheDocument();
   });
   it("ChartError exibe a mensagem e o botão de repetir", () => {
     const onRetry = jest.fn();

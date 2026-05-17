@@ -26,6 +26,6 @@ describe("LineChartCard", () => {
       <LineChartCard data={[]} config={{ xKey: "x", formato: "inteiro", series: [] }}
         estado="vazio" />,
     );
-    expect(screen.getByText(/sem dado no período/i)).toBeInTheDocument();
+    expect(screen.getByText(/sem dados para exibir/i)).toBeInTheDocument();
   });
 });

@@ -4,10 +4,12 @@ import { useRouter } from "next/navigation";
 import type { ReportEntry, ReportSection, ReportState } from "@/lib/reports/types";
 import { ReportFilters, type FilterOptions } from "@/components/reports/report-filters";
 import { KPICard } from "@/components/charts/kpi-card";
+import { ChartCard } from "@/components/charts/chart-card";
 import { DataTable, type ColumnDef } from "@/components/charts/data-table";
 import { BarChartCard } from "@/components/charts/bar-chart";
 import { LineChartCard } from "@/components/charts/line-chart";
 import { PieChartCard } from "@/components/charts/pie-chart";
+import { resolveReportIcon } from "@/lib/reports/report-icons";
 
 /** Uma seção já resolvida com seu estado e dados. */
 export interface SecaoComDados {
@@ -25,18 +27,21 @@ interface ReportViewProps {
 
 function renderSecao(
   { secao, estado, dados }: SecaoComDados,
+  report: ReportEntry,
   onRetry: () => void,
 ) {
   const cfg = secao.config;
   switch (secao.template) {
     case "KPICard": {
       const d = dados as { total?: number };
+      // KPICard já é um cartão — não recebe wrapper ChartCard.
       return (
         <KPICard
           valor={d?.total ?? 0}
           rotulo={String(cfg.rotulo ?? "")}
           formato="inteiro"
           estado={estado}
+          icone={resolveReportIcon(report.icone)}
         />
       );
     }
@@ -44,13 +49,15 @@ function renderSecao(
       const d = dados as { linhas?: unknown[] } | unknown[];
       const linhas = Array.isArray(d) ? d : (d?.linhas ?? []);
       return (
-        <DataTable
-          columns={cfg.colunas as ColumnDef<Record<string, unknown>>[]}
-          rows={linhas as Record<string, unknown>[]}
-          estado={estado}
-          searchable={Boolean(cfg.searchable)}
-          onRetry={onRetry}
-        />
+        <ChartCard>
+          <DataTable
+            columns={cfg.colunas as ColumnDef<Record<string, unknown>>[]}
+            rows={linhas as Record<string, unknown>[]}
+            estado={estado}
+            searchable={Boolean(cfg.searchable)}
+            onRetry={onRetry}
+          />
+        </ChartCard>
       );
     }
     case "BarChart": {
@@ -58,32 +65,38 @@ function renderSecao(
       // presença de uma chave (IM-05).
       const data = pickFatia(dados, secao.id);
       return (
-        <BarChartCard
-          data={data}
-          config={cfg as never}
-          estado={estado}
-          onRetry={onRetry}
-        />
+        <ChartCard>
+          <BarChartCard
+            data={data}
+            config={cfg as never}
+            estado={estado}
+            onRetry={onRetry}
+          />
+        </ChartCard>
       );
     }
     case "LineChart":
       return (
-        <LineChartCard
-          data={dados as Record<string, unknown>[]}
-          config={cfg as never}
-          estado={estado}
-          onRetry={onRetry}
-        />
+        <ChartCard>
+          <LineChartCard
+            data={dados as Record<string, unknown>[]}
+            config={cfg as never}
+            estado={estado}
+            onRetry={onRetry}
+          />
+        </ChartCard>
       );
     case "PieChart": {
       const data = pickFatia(dados, secao.id);
       return (
-        <PieChartCard
-          data={data}
-          config={cfg as never}
-          estado={estado}
-          onRetry={onRetry}
-        />
+        <ChartCard>
+          <PieChartCard
+            data={data}
+            config={cfg as never}
+            estado={estado}
+            onRetry={onRetry}
+          />
+        </ChartCard>
       );
     }
     default:
@@ -119,7 +132,7 @@ export function ReportView({
     <div className="flex flex-col gap-6">
       <ReportFilters filtros={todosFiltros} options={options} />
       {secoes.map((sd) => (
-        <div key={sd.secao.id}>{renderSecao(sd, onRetry)}</div>
+        <div key={sd.secao.id}>{renderSecao(sd, report, onRetry)}</div>
       ))}
       <p className="text-xs text-muted-foreground">
         {freshness
