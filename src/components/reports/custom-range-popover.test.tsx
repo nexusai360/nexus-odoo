@@ -14,7 +14,10 @@ import type { PeriodoResolvido } from "@/lib/reports/periodo";
  */
 jest.mock("@/components/ui/popover", () => {
   const React = jest.requireActual<typeof import("react")>("react");
-  const Ctx = React.createContext({ open: false, onOpenChange: () => {} });
+  const Ctx = React.createContext<{
+    open: boolean;
+    onOpenChange: (v: boolean) => void;
+  }>({ open: false, onOpenChange: () => {} });
   return {
     Popover: ({
       open,
@@ -26,7 +29,11 @@ jest.mock("@/components/ui/popover", () => {
       children: React.ReactNode;
     }) =>
       React.createElement(Ctx.Provider, { value: { open, onOpenChange } }, children),
-    PopoverTrigger: ({ render }: { render: React.ReactElement }) => {
+    PopoverTrigger: ({
+      render,
+    }: {
+      render: React.ReactElement<{ onClick?: () => void }>;
+    }) => {
       const { onOpenChange } = React.useContext(Ctx);
       return React.cloneElement(render, { onClick: () => onOpenChange(true) });
     },
