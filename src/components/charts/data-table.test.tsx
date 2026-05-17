@@ -5,7 +5,7 @@ import "@testing-library/jest-dom";
 import { render, screen, fireEvent } from "@testing-library/react";
 import { DataTable, type ColumnDef } from "./data-table";
 
-interface Row { produto: string; saldo: number; }
+interface Row extends Record<string, unknown> { produto: string; saldo: number; }
 const cols: ColumnDef<Row>[] = [
   { key: "produto", header: "Produto", tipo: "texto" },
   { key: "saldo", header: "Saldo", tipo: "numero" },
@@ -54,7 +54,7 @@ describe("DataTable ordenação", () => {
     render(<DataTable columns={cols} rows={rows} />);
     const headerBtn = screen.getByRole("button", { name: /Saldo/ });
     fireEvent.click(headerBtn); // asc
-    let cells = screen.getAllByRole("cell").map((c) => c.textContent);
+    const cells = screen.getAllByRole("cell").map((c) => c.textContent);
     expect(cells).toContain("-2,00");
     const ths = screen.getAllByRole("columnheader");
     expect(ths[1]).toHaveAttribute("aria-sort", "ascending");
