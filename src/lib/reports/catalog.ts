@@ -52,4 +52,28 @@ export const REPORT_CATALOG: ReportEntry[] = [
       },
     ],
   },
+  {
+    id: "entradas-saidas",
+    titulo: "Entradas vs. saídas por mês",
+    dominio: "estoque",
+    descricao: "Movimento físico de entrada e saída agregado por mês.",
+    icone: ArrowLeftRight,
+    modeloFonte: "estoque.extrato",
+    secoes: [
+      {
+        id: "linha",
+        template: "LineChart",
+        fato: "fato_estoque_movimento",
+        config: {
+          xKey: "mes",
+          formato: "inteiro",
+          series: [
+            { key: "entrada", label: "Entradas" },
+            { key: "saida", label: "Saídas" },
+          ],
+        },
+        filtros: [{ tipo: "periodo", default: "3" }, { tipo: "armazem" }],
+      },
+    ],
+  },
 ];

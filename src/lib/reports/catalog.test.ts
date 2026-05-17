@@ -21,3 +21,13 @@ describe("catálogo — R2", () => {
     expect(r2?.secoes[0].filtros).toEqual([]);
   });
 });
+
+describe("catálogo — R3", () => {
+  it("R3 é um LineChart sobre fato_estoque_movimento, com filtro de período", () => {
+    const r3 = REPORT_CATALOG.find((r) => r.id === "entradas-saidas");
+    expect(r3?.secoes[0].template).toBe("LineChart");
+    expect(r3?.secoes[0].fato).toBe("fato_estoque_movimento");
+    expect(r3?.modeloFonte).toBe("estoque.extrato");
+    expect(r3?.secoes[0].filtros.map((f) => f.tipo)).toEqual(["periodo", "armazem"]);
+  });
+});
