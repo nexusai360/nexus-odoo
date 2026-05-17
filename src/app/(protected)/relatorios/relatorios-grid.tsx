@@ -43,8 +43,8 @@ export function RelatoriosGrid({ reports }: RelatoriosGridProps) {
                     initial={{ opacity: 0, y: 8 }}
                     animate={{ opacity: 1, y: 0 }}
                   >
-                    <Link href={`/relatorios/${r.id}`}>
-                      <Card className="gap-2 px-4 py-4 transition-shadow hover:ring-foreground/20">
+                    <Link href={`/relatorios/${r.id}`} className="block">
+                      <Card className="h-full cursor-pointer gap-2 px-4 py-4 transition-colors hover:bg-muted/30">
                         <div className="flex items-center gap-2">
                           <Icon className="size-4 text-muted-foreground" />
                           <span className="font-medium">{r.titulo}</span>
