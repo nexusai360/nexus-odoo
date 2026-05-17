@@ -362,6 +362,12 @@ export function UserFormDialog({
 
   function close(v: boolean) {
     if (pending) return;
+    // Ao fechar, limpa a senha temporária do estado do cliente para não
+    // deixá-la no heap / React DevTools mais do que o necessário (IM-06).
+    if (!v) {
+      setCreatedPassword(null);
+      setCopied(false);
+    }
     onOpenChange(v);
   }
 
