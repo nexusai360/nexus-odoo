@@ -1,4 +1,7 @@
-import { mapMovimentoRow, temEfeito } from "./fato-estoque-movimento";
+jest.mock("./fato-build-state", () => ({ markFatoBuilt: jest.fn() }));
+// eslint-disable-next-line @typescript-eslint/no-require-imports
+const { markFatoBuilt } = require("./fato-build-state");
+import { mapMovimentoRow, temEfeito, rebuildFatoEstoqueMovimento } from "./fato-estoque-movimento";
 
 describe("mapMovimentoRow", () => {
   it("deriva sentido entrada para quantidade positiva", () => {
@@ -34,5 +37,29 @@ describe("temEfeito", () => {
   });
   it("mantém movimento de quantidade positiva", () => {
     expect(temEfeito(mapMovimentoRow({ id: 3, data: "2026-01-01", quantidade: 4 }))).toBe(true);
+  });
+});
+
+describe("rebuildFatoEstoqueMovimento", () => {
+  it("descarta quantidade zero, reconstrói e marca o build", async () => {
+    const tx = {
+      fatoEstoqueMovimento: {
+        deleteMany: jest.fn().mockResolvedValue(undefined),
+        createMany: jest.fn().mockResolvedValue(undefined),
+      },
+    };
+    const prisma = {
+      rawEstoqueExtrato: {
+        findMany: jest.fn().mockResolvedValue([
+          { data: { id: 1, data: "2026-01-01", quantidade: 5 } },
+          { data: { id: 2, data: "2026-01-01", quantidade: 0 } },
+        ]),
+      },
+      $transaction: jest.fn(async (fn: (t: typeof tx) => unknown) => fn(tx)),
+    } as never;
+    const n = await rebuildFatoEstoqueMovimento(prisma);
+    expect(n).toBe(1); // a linha de quantidade 0 foi descartada
+    expect(tx.fatoEstoqueMovimento.createMany).toHaveBeenCalled();
+    expect(markFatoBuilt).toHaveBeenCalledWith(prisma, "fato_estoque_movimento");
   });
 });

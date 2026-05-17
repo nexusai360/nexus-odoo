@@ -45,3 +45,27 @@ export function mapMovimentoRow(
     origem: typeof raw.origem === "string" ? raw.origem : null,
   };
 }
+
+const BATCH = 1000;
+
+/** Reconstrói fato_estoque_movimento a partir de raw_estoque_extrato. */
+export async function rebuildFatoEstoqueMovimento(
+  prisma: PrismaClient,
+): Promise<number> {
+  const rawRows = await prisma.rawEstoqueExtrato.findMany({
+    where: { rawDeleted: false },
+  });
+  const mapped = rawRows
+    .map((r) => mapMovimentoRow(r.data as Record<string, unknown>))
+    .filter(temEfeito);
+  await prisma.$transaction(async (tx) => {
+    await tx.fatoEstoqueMovimento.deleteMany({});
+    for (let i = 0; i < mapped.length; i += BATCH) {
+      await tx.fatoEstoqueMovimento.createMany({
+        data: mapped.slice(i, i + BATCH),
+      });
+    }
+  });
+  await markFatoBuilt(prisma, "fato_estoque_movimento");
+  return mapped.length;
+}
