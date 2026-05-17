@@ -2,6 +2,43 @@
 import type { PrismaClient } from "../../generated/prisma/client";
 import { relId, relNome, type OdooM2O } from "./odoo-relational";
 
+export interface ProdutoClass {
+  familiaId: number | null;
+  familiaNome: string | null;
+  marcaId: number | null;
+  marcaNome: string | null;
+}
+
+/** Monta o mapa produtoId -> classificação a partir de raw_sped_produto. */
+export function buildProdutoClassMap(
+  rawRows: { data: unknown }[],
+): Map<number, ProdutoClass> {
+  const map = new Map<number, ProdutoClass>();
+  for (const row of rawRows) {
+    const data = row.data as Record<string, unknown>;
+    const id = Number(data.id);
+    if (!Number.isFinite(id)) continue;
+    map.set(id, {
+      familiaId: relId(data.familia_id as OdooM2O),
+      familiaNome: relNome(data.familia_id as OdooM2O),
+      marcaId: relId(data.marca_id as OdooM2O),
+      marcaNome: relNome(data.marca_id as OdooM2O),
+    });
+  }
+  return map;
+}
+
+/** Lê raw_sped_produto e devolve o mapa de classificação. */
+export async function loadProdutoClassMap(
+  prisma: PrismaClient,
+): Promise<Map<number, ProdutoClass>> {
+  const rows = await prisma.rawSpedProduto.findMany({
+    where: { rawDeleted: false },
+    select: { data: true },
+  });
+  return buildProdutoClassMap(rows);
+}
+
 export interface FatoSaldoRow {
   odooSaldoId: number;
   produtoId: number | null;
