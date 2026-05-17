@@ -54,7 +54,6 @@ import {
   PLATFORM_ROLE_STYLES,
 } from "@/lib/constants/roles";
 import type { AuthUser } from "@/lib/auth-helpers";
-import type { PlatformRole } from "@/generated/prisma/client";
 import { grantableDomains, REPORT_DOMAINS, type ReportDomainId } from "@/lib/reports/domains";
 import { AccessStep } from "@/components/users/access-step";
 import {

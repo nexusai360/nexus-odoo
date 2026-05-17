@@ -2,7 +2,6 @@ import { createUser } from "./users";
 import { getCurrentUser } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { canCreateRole } from "@/lib/permissions";
-import { logAudit } from "@/lib/audit";
 
 const ME_ID = "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa";
 const NEW_ID = "bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb";
@@ -24,6 +23,11 @@ jest.mock("@/lib/permissions", () => ({
   canChangeRole: jest.fn(),
 }));
 jest.mock("@/lib/audit", () => ({ logAudit: jest.fn() }));
+jest.mock("@/lib/actions/domain-access", () => ({
+  getUserDomains: jest.fn().mockResolvedValue([]),
+  updateUserDomains: jest.fn(),
+  getMyDomains: jest.fn().mockResolvedValue([]),
+}));
 jest.mock("next/cache", () => ({ revalidatePath: jest.fn() }));
 jest.mock("@/lib/temp-password", () => ({
   generateTempPassword: jest.fn().mockReturnValue("Temp1234!"),

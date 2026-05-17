@@ -7,6 +7,8 @@ import { prisma } from "@/lib/prisma";
 import { getCurrentUser } from "@/lib/auth";
 import { logAudit } from "@/lib/audit";
 import { generateTempPassword } from "@/lib/temp-password";
+import { grantableDomains } from "@/lib/reports/domains";
+import { getUserDomains } from "@/lib/actions/domain-access";
 import {
   canEditUser,
   canDeleteUser,
@@ -112,6 +114,18 @@ export async function createUser(
       input.platformRole === "manager" || input.platformRole === "viewer"
         ? input.domains
         : [];
+
+    // RBAC: o concedente só pode atribuir domínios que ele mesmo pode conceder.
+    if (domains.length > 0) {
+      const myGranted = await getUserDomains(me.id);
+      const grantable = grantableDomains(me.platformRole, myGranted);
+      if (domains.some((d) => !grantable.includes(d))) {
+        return {
+          success: false,
+          error: "Sem permissão para conceder um destes domínios",
+        };
+      }
+    }
 
     const created = await prisma.$transaction(async (tx) => {
       const u = await tx.user.create({
