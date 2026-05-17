@@ -1,5 +1,5 @@
 // Gerado a partir de discovery/output/modelos/ — F2.
-// 73 incremental | 4 snapshot | 2 estatico.
+// 72 incremental | 5 snapshot | 2 estatico.
 export type SyncMode = "incremental" | "snapshot" | "estatico";
 
 export interface CatalogEntry {
@@ -10,7 +10,7 @@ export interface CatalogEntry {
 export const MODEL_CATALOG: readonly CatalogEntry[] = [
   { odooModel: "contabil.conta", mode: "incremental" },
   { odooModel: "contabil.conta.referencial", mode: "incremental" },
-  { odooModel: "estoque.extrato", mode: "incremental" },
+  { odooModel: "estoque.extrato", mode: "snapshot" },
   { odooModel: "estoque.extrato.rastreabilidade", mode: "incremental" },
   { odooModel: "estoque.local", mode: "incremental" },
   { odooModel: "estoque.saldo", mode: "incremental" },
