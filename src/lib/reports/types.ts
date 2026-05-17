@@ -1,5 +1,4 @@
 // src/lib/reports/types.ts
-import type { LucideIcon } from "lucide-react";
 import type { ReportDomainId } from "@/lib/reports/domains";
 
 /** Tipo de cada controle de filtro de uma seção. */
@@ -45,7 +44,13 @@ export interface ReportEntry {
   titulo: string;
   dominio: ReportDomainId;
   descricao: string;
-  icone: LucideIcon;
+  /**
+   * Nome do ícone (string serializável, não componente) — resolvido para
+   * `LucideIcon` pelos client components via `resolveReportIcon`.
+   * Nomes válidos: "Boxes" | "Coins" | "ArrowLeftRight" | "Clock"
+   *               | "TrendingUp" | "PieChart".
+   */
+  icone: string;
   /** Modelo Odoo cuja sync data o "atualizado em". */
   modeloFonte: string;
   secoes: ReportSection[];

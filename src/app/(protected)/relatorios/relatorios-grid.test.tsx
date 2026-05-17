@@ -3,13 +3,12 @@
  */
 import "@testing-library/jest-dom";
 import { render, screen } from "@testing-library/react";
-import { Boxes } from "lucide-react";
 import { RelatoriosGrid } from "./relatorios-grid";
 import type { ReportEntry } from "@/lib/reports/types";
 
 const r1: ReportEntry = {
   id: "saldo-produto", titulo: "Saldo por produto", dominio: "estoque",
-  descricao: "Saldo.", icone: Boxes, modeloFonte: "estoque.saldo.hoje", secoes: [],
+  descricao: "Saldo.", icone: "Boxes", modeloFonte: "estoque.saldo.hoje", secoes: [],
 };
 
 describe("RelatoriosGrid", () => {

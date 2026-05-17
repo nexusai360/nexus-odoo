@@ -1,11 +1,10 @@
 import { reportFreshness } from "./freshness";
 import type { ReportEntry } from "./types";
-import { Home } from "lucide-react";
 
 function entry(modeloFonte: string, fatos: string[]): ReportEntry {
   return {
     id: "r", titulo: "R", dominio: "estoque", descricao: "",
-    icone: Home, modeloFonte,
+    icone: "Boxes", modeloFonte,
     secoes: fatos.map((f, i) => ({
       id: `s${i}`, template: "DataTable", fato: f, config: {}, filtros: [],
     })),

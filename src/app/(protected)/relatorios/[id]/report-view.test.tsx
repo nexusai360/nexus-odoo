@@ -3,7 +3,6 @@
  */
 import "@testing-library/jest-dom";
 import { render, screen } from "@testing-library/react";
-import { Boxes } from "lucide-react";
 import { ReportView } from "./report-view";
 import type { ReportEntry } from "@/lib/reports/types";
 
@@ -15,7 +14,7 @@ jest.mock("next/navigation", () => ({
 
 const entry: ReportEntry = {
   id: "saldo-produto", titulo: "Saldo", dominio: "estoque", descricao: "",
-  icone: Boxes, modeloFonte: "estoque.saldo.hoje",
+  icone: "Boxes", modeloFonte: "estoque.saldo.hoje",
   secoes: [{
     id: "tabela", template: "DataTable", fato: "fato_estoque_saldo",
     config: { colunas: [{ key: "produtoNome", header: "Produto", tipo: "texto" }] },
@@ -50,7 +49,7 @@ describe("ReportView", () => {
   it("discrimina seções multi-fato (R6) pelo id da seção (IM-05)", () => {
     const r6: ReportEntry = {
       id: "concentracao", titulo: "Concentração", dominio: "estoque",
-      descricao: "", icone: Boxes, modeloFonte: "estoque.saldo.hoje",
+      descricao: "", icone: "Boxes", modeloFonte: "estoque.saldo.hoje",
       secoes: [
         {
           id: "familia", template: "PieChart", fato: "fato_estoque_saldo",

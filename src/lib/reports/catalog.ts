@@ -1,5 +1,4 @@
 // src/lib/reports/catalog.ts
-import { Boxes, Coins, ArrowLeftRight, Clock, TrendingUp, PieChart } from "lucide-react";
 import type { PlatformRole } from "@/generated/prisma/client";
 import { visibleDomains, type ReportDomainId } from "@/lib/reports/domains";
 import type { ReportEntry } from "./types";
@@ -11,7 +10,7 @@ export const REPORT_CATALOG: ReportEntry[] = [
     titulo: "Saldo por produto e armazém",
     dominio: "estoque",
     descricao: "Saldo de estoque por produto e local, incluindo negativos.",
-    icone: Boxes,
+    icone: "Boxes",
     modeloFonte: "estoque.saldo.hoje",
     secoes: [
       {
@@ -42,7 +41,7 @@ export const REPORT_CATALOG: ReportEntry[] = [
     titulo: "Valor de estoque por armazém",
     dominio: "estoque",
     descricao: "Valor financeiro do estoque agregado por armazém.",
-    icone: Coins,
+    icone: "Coins",
     modeloFonte: "estoque.saldo.hoje",
     secoes: [
       {
@@ -59,7 +58,7 @@ export const REPORT_CATALOG: ReportEntry[] = [
     titulo: "Entradas vs. saídas por mês",
     dominio: "estoque",
     descricao: "Movimento físico de entrada e saída agregado por mês.",
-    icone: ArrowLeftRight,
+    icone: "ArrowLeftRight",
     modeloFonte: "estoque.extrato",
     secoes: [
       {
@@ -83,7 +82,7 @@ export const REPORT_CATALOG: ReportEntry[] = [
     titulo: "Produtos parados",
     dominio: "estoque",
     descricao: "Produtos com saldo imobilizado e tempo sem movimento.",
-    icone: Clock,
+    icone: "Clock",
     modeloFonte: "estoque.saldo.hoje.duracao.dias",
     secoes: [
       {
@@ -116,7 +115,7 @@ export const REPORT_CATALOG: ReportEntry[] = [
     titulo: "Top produtos movimentados",
     dominio: "estoque",
     descricao: "Produtos com maior movimento físico no período.",
-    icone: TrendingUp,
+    icone: "TrendingUp",
     modeloFonte: "estoque.extrato",
     secoes: [
       {
@@ -136,7 +135,7 @@ export const REPORT_CATALOG: ReportEntry[] = [
     titulo: "Concentração do estoque",
     dominio: "estoque",
     descricao: "Distribuição do valor de estoque por família e por marca.",
-    icone: PieChart,
+    icone: "PieChart",
     modeloFonte: "estoque.saldo.hoje",
     secoes: [
       {

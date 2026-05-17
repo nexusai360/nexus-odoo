@@ -4,6 +4,7 @@ import Link from "next/link";
 import { prisma } from "@/lib/prisma";
 import { requireDomainAccess } from "@/lib/reports/guard";
 import { getReport } from "@/lib/reports/catalog";
+import { resolveReportIcon } from "@/lib/reports/report-icons";
 import { parseFilters } from "@/lib/reports/filters";
 import { reportFreshness } from "@/lib/reports/freshness";
 import {
@@ -86,7 +87,7 @@ export default async function RelatorioPage({ params, searchParams }: PageProps)
         <ArrowLeft className="size-4" /> Relatórios
       </Link>
       <PageHeader
-        icon={report.icone}
+        icon={resolveReportIcon(report.icone)}
         title={report.titulo}
         subtitle={report.descricao}
       />

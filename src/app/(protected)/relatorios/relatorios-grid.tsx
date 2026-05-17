@@ -5,6 +5,7 @@ import { motion } from "framer-motion";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { REPORT_DOMAINS } from "@/lib/reports/domains";
+import { resolveReportIcon } from "@/lib/reports/report-icons";
 import type { ReportEntry } from "@/lib/reports/types";
 
 interface RelatoriosGridProps {
@@ -36,7 +37,7 @@ export function RelatoriosGrid({ reports }: RelatoriosGridProps) {
             {reports
               .filter((r) => r.dominio === dominio.id)
               .map((r) => {
-                const Icon = r.icone;
+                const Icon = resolveReportIcon(r.icone);
                 return (
                   <motion.div
                     key={r.id}
