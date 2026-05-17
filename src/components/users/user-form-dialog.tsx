@@ -54,7 +54,8 @@ import {
 } from "@/lib/constants/roles";
 import type { AuthUser } from "@/lib/auth-helpers";
 import type { PlatformRole } from "@/generated/prisma/client";
-import { type ReportDomainId } from "@/lib/reports/domains";
+import { grantableDomains, type ReportDomainId } from "@/lib/reports/domains";
+import { AccessStep } from "@/components/users/access-step";
 
 type RoleValue = PlatformRole;
 type Step = 1 | 2 | 3;
@@ -108,6 +109,8 @@ interface UserFormDialogProps {
   user?: UserListItem;
   currentUser: AuthUser;
   onSuccess: () => void;
+  /** Domínios que o concedente possui; usado para calcular o que pode conceder. */
+  granterDomains: ReportDomainId[];
 }
 
 interface FormState {
@@ -144,6 +147,7 @@ export function UserFormDialog({
   user,
   currentUser,
   onSuccess,
+  granterDomains,
 }: UserFormDialogProps) {
   const isEdit = mode === "edit";
   const isOwner = !!user?.isOwner;
@@ -203,6 +207,9 @@ export function UserFormDialog({
   // manager/viewer têm a etapa "Acesso" (3 etapas); privilegiados, 2.
   const temEtapaAcesso = form.role === "manager" || form.role === "viewer";
   const ultimaEtapa: Step = temEtapaAcesso ? 3 : 2;
+
+  // Domínios que o concedente pode conceder ao novo usuário.
+  const grantable = grantableDomains(currentUser.platformRole, granterDomains);
 
   function clearError(key: keyof FieldErrors) {
     setErrors((e) => ({ ...e, [key]: undefined }));
@@ -397,6 +404,12 @@ export function UserFormDialog({
                   confirmError: confirmErrorId,
                   emailError: emailErrorId,
                 }}
+              />
+            ) : step === 2 && temEtapaAcesso ? (
+              <AccessStep
+                selected={form.domains}
+                onChange={(domains) => setForm((f) => ({ ...f, domains }))}
+                grantable={grantable}
               />
             ) : (
               <StepConfirm form={form} isEdit={isEdit} />

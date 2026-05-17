@@ -56,6 +56,8 @@ import {
   updateUser,
   type UserListItem,
 } from "@/lib/actions/users";
+import { getMyDomains } from "@/lib/actions/domain-access";
+import type { ReportDomainId } from "@/lib/reports/domains";
 import {
   canChangeRole,
   canDeactivateUser,
@@ -147,6 +149,7 @@ export function UsersContent({ currentUser }: UsersContentProps) {
   const [users, setUsers] = useState<UserListItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
+  const [granterDomains, setGranterDomains] = useState<ReportDomainId[]>([]);
 
   const [createOpen, setCreateOpen] = useState(false);
   const [editingUser, setEditingUser] = useState<UserListItem | null>(null);
@@ -159,13 +162,17 @@ export function UsersContent({ currentUser }: UsersContentProps) {
   async function load() {
     setLoading(true);
     setLoadError(null);
-    const result = await listUsers();
+    const [result, myDomains] = await Promise.all([
+      listUsers(),
+      getMyDomains().catch(() => [] as ReportDomainId[]),
+    ]);
     if (result.success) {
       setUsers(result.data ?? []);
     } else {
       setLoadError(result.error);
       toast.error(result.error);
     }
+    setGranterDomains(myDomains);
     setLoading(false);
   }
 
@@ -457,6 +464,7 @@ export function UsersContent({ currentUser }: UsersContentProps) {
         onOpenChange={setCreateOpen}
         currentUser={currentUser}
         onSuccess={load}
+        granterDomains={granterDomains}
       />
       <UserFormDialog
         mode="edit"
@@ -470,6 +478,7 @@ export function UsersContent({ currentUser }: UsersContentProps) {
           setEditingUser(null);
           void load();
         }}
+        granterDomains={granterDomains}
       />
 
       <AlertDialog
