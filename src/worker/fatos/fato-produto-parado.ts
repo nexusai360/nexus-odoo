@@ -34,6 +34,41 @@ export function buildSaldoHojeMap(
   return map;
 }
 
+export interface FatoProdutoParadoRow {
+  saldoHojeId: number;
+  produtoId: number | null;
+  produtoNome: string | null;
+  localId: number | null;
+  localNome: string | null;
+  saldo: number;
+  dias: number;
+  vrSaldo: number;
+  unidade: string | null;
+}
+
+/** Deriva uma linha de fato_produto_parado; null se o join não casar. */
+export function mapProdutoParadoRow(
+  raw: { data: unknown },
+  saldoMap: Map<number, SaldoHojeInfo>,
+): FatoProdutoParadoRow | null {
+  const data = raw.data as Record<string, unknown>;
+  const saldoHojeId = relId(data.saldo_hoje_id as OdooM2O);
+  if (saldoHojeId == null) return null;
+  const info = saldoMap.get(saldoHojeId);
+  if (!info) return null;
+  return {
+    saldoHojeId,
+    produtoId: info.produtoId,
+    produtoNome: info.produtoNome,
+    localId: info.localId,
+    localNome: info.localNome,
+    saldo: info.saldo,
+    dias: Number(data.dias ?? 0),
+    vrSaldo: info.vrSaldo,
+    unidade: info.unidade,
+  };
+}
+
 /** Lê raw_estoque_saldo_hoje e devolve o mapa. */
 export async function loadSaldoHojeMap(
   prisma: PrismaClient,
