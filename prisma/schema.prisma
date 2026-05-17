@@ -71,10 +71,28 @@ model User {
   passwordResetTokens PasswordResetToken[]
   emailChangeTokens   EmailChangeToken[]
   domainAccess        UserDomainAccess[]   @relation("UserDomainAccess")
+  reportPresets       ReportPreset[]
 
   @@index([platformRole, isActive])
   @@index([email])
   @@map("users")
+}
+
+/// Preset de configuração de visualização de um relatório (período + filtros).
+/// Escopo: um preset pertence a um único usuário e a um único relatório do catálogo.
+model ReportPreset {
+  id           String   @id @default(uuid()) @db.Uuid
+  userId       String   @map("user_id") @db.Uuid
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  reportId     String   @map("report_id")
+  nome         String
+  searchParams String   @map("search_params")
+  favorito     Boolean  @default(false)
+  criadoEm    DateTime @default(now()) @map("criado_em")
+  atualizadoEm DateTime @updatedAt @map("atualizado_em")
+
+  @@index([userId, reportId])
+  @@map("report_presets")
 }
 
 model AppSetting {
