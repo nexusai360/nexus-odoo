@@ -31,6 +31,24 @@ describe("DataTable render", () => {
   });
 });
 
+describe("DataTable busca", () => {
+  it("filtra as linhas pelo texto digitado", () => {
+    render(<DataTable columns={cols} rows={rows} searchable />);
+    fireEvent.change(screen.getByPlaceholderText("Pesquisar…"), {
+      target: { value: "este" },
+    });
+    expect(screen.getByText("Esteira")).toBeInTheDocument();
+    expect(screen.queryByText("Anilha")).not.toBeInTheDocument();
+  });
+  it("exibe estado vazio quando nada casa", () => {
+    render(<DataTable columns={cols} rows={rows} searchable />);
+    fireEvent.change(screen.getByPlaceholderText("Pesquisar…"), {
+      target: { value: "zzz" },
+    });
+    expect(screen.getByText(/sem dado no período/i)).toBeInTheDocument();
+  });
+});
+
 describe("DataTable ordenação", () => {
   it("ordena coluna numérica ascendente e descendente ao clicar no header", () => {
     render(<DataTable columns={cols} rows={rows} />);
