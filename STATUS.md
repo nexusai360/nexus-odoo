@@ -57,11 +57,12 @@ Infraestrutura do dashboard + 6 relatórios de estoque:
 ## PARA RETOMAR (próxima sessão)
 
 1. `feat/ingestao` é a branch ativa (F2 + F3). `git log` recente.
-2. Subir ambiente (`docker compose up -d db redis`) e rodar o worker para popular
-   os fatos novos da F3 (`fato_estoque_movimento`, `fato_produto_parado`) — eles
-   só têm dado após um ciclo do worker.
-3. Validar os 6 relatórios no browser (`/relatorios`) — UAT visual.
-4. **Decisão humana:** merge do PR #4 (`feat/ingestao` → `main`, F2+F3).
+2. ✅ Fatos da F3 populados (ciclo de snapshot rodado em 2026-05-17):
+   `fato_estoque_saldo` 3218, `fato_estoque_movimento` 12031,
+   `fato_produto_parado` 1317. `fato_build_state` registrado.
+3. **UAT visual (requer humano):** logar e validar os 6 relatórios no browser
+   (`/relatorios`). Dev server na porta 3000; rotas respondem (302 → login, RBAC ok).
+4. **Decisão humana:** merge do PR #4 (`feat/ingestao` → `main`, F2+F3 — CI verde).
 5. Próxima fase: **F4 — MCP semântico** — começa por brainstorm (requer o usuário).
 
 ## Notas
