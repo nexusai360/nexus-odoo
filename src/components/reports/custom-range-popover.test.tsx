@@ -13,7 +13,7 @@ import type { PeriodoResolvido } from "@/lib/reports/periodo";
  * toda a lógica do CustomRangePopover sem o posicionamento de terceiros.
  */
 jest.mock("@/components/ui/popover", () => {
-  const React = require("react");
+  const React = jest.requireActual<typeof import("react")>("react");
   const Ctx = React.createContext({ open: false, onOpenChange: () => {} });
   return {
     Popover: ({
