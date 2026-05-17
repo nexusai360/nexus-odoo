@@ -45,7 +45,11 @@ export default async function RelatorioPage({ params, searchParams }: PageProps)
   // Camada 2 do RBAC — redireciona se o usuário não tem o domínio.
   await requireDomainAccess(report.dominio);
 
+  // Id presente no catálogo mas sem query mapeada — 404 explícito em vez de
+  // "query is not a function" em runtime (IM-04).
   const query = QUERIES[id];
+  if (!query) notFound();
+
   const freshness = await reportFreshness(prisma, report);
 
   // Uma chamada de query por seção; cada seção parseia seus próprios filtros.
