@@ -109,4 +109,24 @@ export const REPORT_CATALOG: ReportEntry[] = [
       },
     ],
   },
+  {
+    id: "top-movimentados",
+    titulo: "Top produtos movimentados",
+    dominio: "estoque",
+    descricao: "Produtos com maior movimento físico no período.",
+    icone: TrendingUp,
+    modeloFonte: "estoque.extrato",
+    secoes: [
+      {
+        id: "barras",
+        template: "BarChart",
+        fato: "fato_estoque_movimento",
+        config: { xKey: "rotulo", yKey: "valor", formato: "inteiro" },
+        filtros: [
+          { tipo: "periodo", default: "3" },
+          { tipo: "sentido" },
+        ],
+      },
+    ],
+  },
 ];

@@ -40,3 +40,12 @@ describe("catálogo — R4", () => {
     expect(r4?.secoes.every((s) => s.fato === "fato_produto_parado")).toBe(true);
   });
 });
+
+describe("catálogo — R5", () => {
+  it("R5 é um BarChart sobre fato_estoque_movimento, filtros período+sentido", () => {
+    const r5 = REPORT_CATALOG.find((r) => r.id === "top-movimentados");
+    expect(r5?.secoes[0].template).toBe("BarChart");
+    expect(r5?.secoes[0].fato).toBe("fato_estoque_movimento");
+    expect(r5?.secoes[0].filtros.map((f) => f.tipo)).toEqual(["periodo", "sentido"]);
+  });
+});
