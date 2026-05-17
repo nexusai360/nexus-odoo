@@ -1,9 +1,17 @@
 // src/components/charts/palette.ts
 
-/** Paleta categórica acessível, testada no dark mode. */
+/**
+ * Paleta categórica derivada dos design tokens `--chart-1..5` de `globals.css`.
+ * Usar `var(--chart-*)` garante adaptação automática a light/dark e mantém a
+ * cor de marca (roxo) nos gráficos. As cores são referências CSS, resolvidas
+ * pelo navegador no tema corrente.
+ */
 export const CHART_COLORS = [
-  "#3b82f6", "#10b981", "#f59e0b", "#ef4444",
-  "#8b5cf6", "#ec4899", "#14b8a6", "#f97316",
+  "var(--chart-1)",
+  "var(--chart-2)",
+  "var(--chart-3)",
+  "var(--chart-4)",
+  "var(--chart-5)",
 ] as const;
 
 /** Cor do índice n, ciclando a paleta. */

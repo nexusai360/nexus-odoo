@@ -42,7 +42,14 @@ export function LineChartCard({
   if (estado === "vazio" || data.length === 0) return <ChartEmpty />;
 
   return (
-    <div data-slot="line-chart" className="h-72 w-full">
+    <div
+      data-slot="line-chart"
+      className="h-72 w-full text-muted-foreground"
+      role="img"
+      aria-label={`Gráfico de linhas com ${config.series.length} ${
+        config.series.length === 1 ? "série" : "séries"
+      } ao longo de ${data.length} ${data.length === 1 ? "ponto" : "pontos"}.`}
+    >
       <ResponsiveContainer width="100%" height="100%">
         <LineChart data={data}>
           <CartesianGrid
@@ -50,9 +57,16 @@ export function LineChartCard({
             stroke="currentColor"
             className="text-foreground/10"
           />
-          <XAxis dataKey={config.xKey} fontSize={12} />
+          <XAxis
+            dataKey={config.xKey}
+            fontSize={12}
+            stroke="currentColor"
+            tick={{ fill: "currentColor" }}
+          />
           <YAxis
             fontSize={12}
+            stroke="currentColor"
+            tick={{ fill: "currentColor" }}
             tickFormatter={(v) => formatNumber(Number(v), config.formato)}
           />
           <Tooltip

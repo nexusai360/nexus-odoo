@@ -8,13 +8,15 @@ export function ChartSkeleton({ className }: { className?: string }) {
 }
 
 function StateBox({
-  children, className,
+  children, className, role,
 }: {
   children: React.ReactNode;
   className?: string;
+  role?: "status" | "alert";
 }) {
   return (
     <div
+      role={role}
       className={cn(
         "flex h-64 flex-col items-center justify-center gap-2 rounded-xl",
         "ring-1 ring-foreground/10 text-sm text-muted-foreground",
@@ -28,12 +30,12 @@ function StateBox({
 
 /** Builder do fato ainda não rodou. */
 export function ChartPreparing() {
-  return <StateBox>Relatório ainda sendo preparado.</StateBox>;
+  return <StateBox role="status">Relatório ainda sendo preparado.</StateBox>;
 }
 
 /** Builder rodou, mas não há dado para o filtro atual. */
 export function ChartEmpty() {
-  return <StateBox>Sem dado no período.</StateBox>;
+  return <StateBox role="status">Sem dado no período.</StateBox>;
 }
 
 /** Erro ao carregar o relatório, com ação de repetir. */
@@ -44,7 +46,7 @@ export function ChartError({
   onRetry: () => void;
 }) {
   return (
-    <StateBox className="text-destructive">
+    <StateBox role="alert" className="text-destructive">
       <span>{message}</span>
       <Button variant="outline" size="sm" onClick={onRetry}>
         Repetir

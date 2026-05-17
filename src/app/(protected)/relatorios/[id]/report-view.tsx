@@ -1,5 +1,6 @@
 "use client";
 
+import { useRouter } from "next/navigation";
 import type { ReportEntry, ReportSection, ReportState } from "@/lib/reports/types";
 import { ReportFilters, type FilterOptions } from "@/components/reports/report-filters";
 import { KPICard } from "@/components/charts/kpi-card";
@@ -22,7 +23,10 @@ interface ReportViewProps {
   options: FilterOptions;
 }
 
-function renderSecao({ secao, estado, dados }: SecaoComDados) {
+function renderSecao(
+  { secao, estado, dados }: SecaoComDados,
+  onRetry: () => void,
+) {
   const cfg = secao.config;
   switch (secao.template) {
     case "KPICard": {
@@ -45,6 +49,7 @@ function renderSecao({ secao, estado, dados }: SecaoComDados) {
           rows={linhas as Record<string, unknown>[]}
           estado={estado}
           searchable={Boolean(cfg.searchable)}
+          onRetry={onRetry}
         />
       );
     }
@@ -57,6 +62,7 @@ function renderSecao({ secao, estado, dados }: SecaoComDados) {
           data={data}
           config={cfg as never}
           estado={estado}
+          onRetry={onRetry}
         />
       );
     }
@@ -66,6 +72,7 @@ function renderSecao({ secao, estado, dados }: SecaoComDados) {
           data={dados as Record<string, unknown>[]}
           config={cfg as never}
           estado={estado}
+          onRetry={onRetry}
         />
       );
     case "PieChart": {
@@ -75,6 +82,7 @@ function renderSecao({ secao, estado, dados }: SecaoComDados) {
           data={data}
           config={cfg as never}
           estado={estado}
+          onRetry={onRetry}
         />
       );
     }
@@ -102,12 +110,16 @@ function pickFatia(dados: unknown, secaoId: string): Record<string, unknown>[] {
 export function ReportView({
   report, secoes, freshness, options,
 }: ReportViewProps) {
+  const router = useRouter();
   const todosFiltros = report.secoes.flatMap((s) => s.filtros);
+  // Re-busca o relatório no servidor: refaz as queries de seção e
+  // re-renderiza com os dados frescos sem recarregar a página inteira.
+  const onRetry = () => router.refresh();
   return (
     <div className="flex flex-col gap-6">
       <ReportFilters filtros={todosFiltros} options={options} />
       {secoes.map((sd) => (
-        <div key={sd.secao.id}>{renderSecao(sd)}</div>
+        <div key={sd.secao.id}>{renderSecao(sd, onRetry)}</div>
       ))}
       <p className="text-xs text-muted-foreground">
         {freshness

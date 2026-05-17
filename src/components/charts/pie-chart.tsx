@@ -57,7 +57,14 @@ export function PieChartCard({
   const fatias = agruparOutros(data, config.nameKey, config.valueKey);
 
   return (
-    <div data-slot="pie-chart" className="h-72 w-full">
+    <div
+      data-slot="pie-chart"
+      className="h-72 w-full"
+      role="img"
+      aria-label={`Gráfico de pizza com ${fatias.length} ${
+        fatias.length === 1 ? "fatia" : "fatias"
+      }.`}
+    >
       <ResponsiveContainer width="100%" height="100%">
         <PieChart>
           <Pie

@@ -36,7 +36,14 @@ export function BarChartCard({
   if (estado === "vazio" || data.length === 0) return <ChartEmpty />;
 
   return (
-    <div data-slot="bar-chart" className="h-72 w-full">
+    <div
+      data-slot="bar-chart"
+      className="h-72 w-full text-muted-foreground"
+      role="img"
+      aria-label={`Gráfico de barras com ${data.length} ${
+        data.length === 1 ? "categoria" : "categorias"
+      }.`}
+    >
       <ResponsiveContainer width="100%" height="100%">
         <BarChart data={data}>
           <CartesianGrid
@@ -44,9 +51,16 @@ export function BarChartCard({
             stroke="currentColor"
             className="text-foreground/10"
           />
-          <XAxis dataKey={config.xKey} fontSize={12} />
+          <XAxis
+            dataKey={config.xKey}
+            fontSize={12}
+            stroke="currentColor"
+            tick={{ fill: "currentColor" }}
+          />
           <YAxis
             fontSize={12}
+            stroke="currentColor"
+            tick={{ fill: "currentColor" }}
             tickFormatter={(v) => formatNumber(Number(v), config.formato)}
           />
           <Tooltip
