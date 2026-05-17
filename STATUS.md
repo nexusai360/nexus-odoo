@@ -17,10 +17,23 @@
   - **F3.5b — Seletor de período v1:** ✅ `PeriodBar` (pílulas + calendário de
     meses), estado na URL, nos relatórios temporais (`entradas-saidas`,
     `top-movimentados`). Spec/plan v1→v3 + 2 reviews cada; code+UI review.
-  - **F3.5c–f:** futuras (filtros simples/avançado, tabela/colunas/export,
-    presets/drill-down, imersão). Ver specs em `docs/superpowers/`.
-- **PR #4** (`feat/ingestao` → `main`) carrega **F2 + F3 + F3.5a/b**. Merge
-  para `main` é decisão humana (dispara produção).
+  - **F3.5c — Tabela profissional:** ✅ ordenação multi-coluna com indicador
+    numerado, busca em todas as colunas, linhas expansíveis (drill-down do
+    saldo por armazém), exportar CSV.
+  - **F3.5d — Filtros:** ✅ dropdowns decentes (abrem p/ baixo, busca interna,
+    agrupamento), chips de filtros aplicados, diálogo de filtros simples
+    (facetas) e avançado (construtor E/OU com grupos, modelo `compilarFiltro`).
+  - **F3.5e — Presets, atalhos e tour:** ✅ presets/buscas salvas no banco
+    (model `ReportPreset` + migration + Server Actions), atalhos de teclado
+    (`/ f p ?`), tour de onboarding reutilizável.
+  - **F3.5f — Relatórios repensados:** ✅ `valor-armazem` lista+KPIs+top-8,
+    `entradas-saidas` com tabela de detalhe, `top-movimentados`/`produtos-parados`
+    com KPIRow+DataTable, `concentracao` com tabelas por trás dos gráficos.
+  - **F3.5g — Frescor do dado:** ✅ snapshot do worker 1440→30 min;
+    `FreshnessIndicator` ("Atualizado há X min", auto-refresh).
+  - Roadmap do milestone: `docs/superpowers/plans/2026-05-17-f3.5-roadmap.md`.
+- **PR #4** (`feat/ingestao` → `main`) carrega **F2 + F3 + F3.5 completa**.
+  Merge para `main` é decisão humana (dispara produção).
 
 ## F2 — entregue
 
