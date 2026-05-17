@@ -56,7 +56,7 @@ import {
   updateUser,
   type UserListItem,
 } from "@/lib/actions/users";
-import { getMyDomains } from "@/lib/actions/domain-access";
+import { getMyDomains, getUserDomains } from "@/lib/actions/domain-access";
 import type { ReportDomainId } from "@/lib/reports/domains";
 import {
   canChangeRole,
@@ -153,6 +153,7 @@ export function UsersContent({ currentUser }: UsersContentProps) {
 
   const [createOpen, setCreateOpen] = useState(false);
   const [editingUser, setEditingUser] = useState<UserListItem | null>(null);
+  const [editingUserDomains, setEditingUserDomains] = useState<ReportDomainId[]>([]);
   const [confirmDelete, setConfirmDelete] = useState<UserListItem | null>(null);
 
   const [actionPending, setActionPending] = useState(false);
@@ -414,7 +415,10 @@ export function UsersContent({ currentUser }: UsersContentProps) {
                               render={
                                 <button
                                   type="button"
-                                  onClick={() => setEditingUser(u)}
+                                  onClick={() => {
+                                    setEditingUser(u);
+                                    void getUserDomains(u.id).then(setEditingUserDomains).catch(() => setEditingUserDomains([]));
+                                  }}
                                   aria-label={`Editar ${u.name}`}
                                   className={ACTION_BTN}
                                 />
@@ -479,6 +483,7 @@ export function UsersContent({ currentUser }: UsersContentProps) {
           void load();
         }}
         granterDomains={granterDomains}
+        userDomains={editingUserDomains}
       />
 
       <AlertDialog

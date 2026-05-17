@@ -44,6 +44,7 @@ import {
   updateUser,
   type UserListItem,
 } from "@/lib/actions/users";
+import { updateUserDomains } from "@/lib/actions/domain-access";
 import { canCreateRole } from "@/lib/permissions";
 import { cn } from "@/lib/utils";
 import {
@@ -117,6 +118,8 @@ interface UserFormDialogProps {
   onSuccess: () => void;
   /** Domínios que o concedente possui; usado para calcular o que pode conceder. */
   granterDomains: ReportDomainId[];
+  /** Domínios atuais do usuário sendo editado; pré-carrega a etapa Acesso no modo edit. */
+  userDomains?: ReportDomainId[];
 }
 
 const EMPTY_FORM: FormState = {
@@ -144,6 +147,7 @@ export function UserFormDialog({
   currentUser,
   onSuccess,
   granterDomains,
+  userDomains,
 }: UserFormDialogProps) {
   const isEdit = mode === "edit";
   const isOwner = !!user?.isOwner;
@@ -186,11 +190,12 @@ export function UserFormDialog({
         email: user.email,
         role: user.platformRole,
         isActive: user.isActive,
+        domains: userDomains ?? [],
       });
     } else {
       setForm({ ...EMPTY_FORM });
     }
-  }, [open, isEdit, user]);
+  }, [open, isEdit, user, userDomains]);
 
   const availableRoles = useMemo<RoleMeta[]>(
     () =>
@@ -297,6 +302,7 @@ export function UserFormDialog({
           email: form.email.trim().toLowerCase(),
           platformRole: form.role,
           password: form.password.length > 0 ? form.password : undefined,
+          domains: form.domains,
         });
         if (result.success && result.data) {
           if (result.data.tempPassword) {
@@ -313,6 +319,23 @@ export function UserFormDialog({
       }
 
       if (!user) return;
+
+      // N1: domínios primeiro. updateUserDomains é idempotente; com role
+      // privilegiado, form.domains já é [] (N10) — então a chamada apenas
+      // remove eventuais linhas remanescentes, sem deixar estado órfão.
+      const editavelDominio =
+        form.role === "manager" || form.role === "viewer";
+      if (editavelDominio || true) {
+        const domRes = await updateUserDomains(
+          user.id,
+          editavelDominio ? form.domains : [],
+        );
+        if (!domRes.success) {
+          toast.error(`Falha ao atualizar domínios: ${domRes.error}`);
+          return; // não prossegue para updateUser — nada de identidade foi tocado
+        }
+      }
+
       const result = await updateUser({
         id: user.id,
         name: form.name.trim(),
@@ -325,7 +348,8 @@ export function UserFormDialog({
         onSuccess();
         onOpenChange(false);
       } else {
-        toast.error(result.error);
+        // Domínios já foram salvos; identidade falhou — erro parcial.
+        toast.error(`Domínios salvos, mas a identidade falhou: ${result.error}`);
       }
     });
   }
