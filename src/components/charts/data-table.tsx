@@ -5,6 +5,7 @@ import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
 import { Input } from "@/components/ui/input";
+import { ArrowDown, ArrowUp, ArrowUpDown } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { ChartPreparing, ChartEmpty, ChartError } from "./chart-states";
 import { formatNumber, type ChartState } from "./kpi-card";
@@ -104,6 +105,7 @@ export function DataTable<T extends Record<string, unknown>>({
           className="max-w-xs"
         />
       )}
+      <div className="overflow-x-auto rounded-xl">
       <Table>
         <TableHeader>
           <TableRow>
@@ -122,11 +124,23 @@ export function DataTable<T extends Record<string, unknown>>({
                 >
                   <button
                     type="button"
-                    className="font-medium"
+                    className="flex items-center gap-1 font-medium"
+                    aria-label={`Ordenar por ${c.header}`}
                     onClick={() => toggleSort(c.key)}
                   >
                     {c.header}
-                    {active ? (sortDir === "asc" ? " ▲" : " ▼") : ""}
+                    {active ? (
+                      sortDir === "asc" ? (
+                        <ArrowUp className="size-3.5" aria-hidden="true" />
+                      ) : (
+                        <ArrowDown className="size-3.5" aria-hidden="true" />
+                      )
+                    ) : (
+                      <ArrowUpDown
+                        className="size-3.5 text-muted-foreground/50"
+                        aria-hidden="true"
+                      />
+                    )}
                   </button>
                 </TableHead>
               );
@@ -158,6 +172,7 @@ export function DataTable<T extends Record<string, unknown>>({
           )}
         </TableBody>
       </Table>
+      </div>
     </div>
   );
 }
