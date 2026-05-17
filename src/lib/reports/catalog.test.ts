@@ -1,4 +1,4 @@
-import { REPORT_CATALOG } from "./catalog";
+import { REPORT_CATALOG, reportsForUser, getReport } from "./catalog";
 
 describe("catálogo — R1", () => {
   it("R1 tem os campos obrigatórios e domínio estoque", () => {
@@ -59,5 +59,26 @@ describe("catálogo — R6", () => {
   });
   it("o catálogo tem exatamente 6 relatórios", () => {
     expect(REPORT_CATALOG).toHaveLength(6);
+  });
+});
+
+describe("reportsForUser", () => {
+  it("admin vê os 6 relatórios", () => {
+    expect(reportsForUser("admin", [])).toHaveLength(6);
+  });
+  it("manager com domínio estoque vê os 6", () => {
+    expect(reportsForUser("manager", ["estoque"])).toHaveLength(6);
+  });
+  it("manager sem domínio não vê nenhum", () => {
+    expect(reportsForUser("manager", [])).toHaveLength(0);
+  });
+});
+
+describe("getReport", () => {
+  it("acha um relatório pelo id", () => {
+    expect(getReport("saldo-produto")?.id).toBe("saldo-produto");
+  });
+  it("devolve undefined para id inexistente", () => {
+    expect(getReport("nao-existe")).toBeUndefined();
   });
 });

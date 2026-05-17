@@ -1,5 +1,7 @@
 // src/lib/reports/catalog.ts
 import { Boxes, Coins, ArrowLeftRight, Clock, TrendingUp, PieChart } from "lucide-react";
+import type { PlatformRole } from "@/generated/prisma/client";
+import { visibleDomains, type ReportDomainId } from "@/lib/reports/domains";
 import type { ReportEntry } from "./types";
 
 /** Catálogo declarativo dos 6 relatórios de estoque (lote 1). */
@@ -154,3 +156,17 @@ export const REPORT_CATALOG: ReportEntry[] = [
     ],
   },
 ];
+
+/** Relatórios visíveis ao usuário, filtrados pelo domínio. */
+export function reportsForUser(
+  role: PlatformRole,
+  domains: ReportDomainId[],
+): ReportEntry[] {
+  const visiveis = visibleDomains(role, domains);
+  return REPORT_CATALOG.filter((r) => visiveis.includes(r.dominio));
+}
+
+/** Busca uma entrada de catálogo pelo id. */
+export function getReport(id: string): ReportEntry | undefined {
+  return REPORT_CATALOG.find((r) => r.id === id);
+}
