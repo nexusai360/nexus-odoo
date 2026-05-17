@@ -1,11 +1,10 @@
 "use server";
 
 import { prisma } from "@/lib/prisma";
-import { getCurrentUser } from "@/lib/auth";
-import { getMyDomains } from "@/lib/actions/domain-access";
+import { guardDominio } from "@/lib/reports/guard";
 import { reportFreshness } from "@/lib/reports/freshness";
 import { getReport } from "@/lib/reports/catalog";
-import type { ReportFilterValues, ReportResult, ReportState } from "@/lib/reports/types";
+import type { ReportEntry, ReportFilterValues, ReportResult, ReportState } from "@/lib/reports/types";
 
 /** Linha de R1. */
 export interface SaldoProdutoRow {
@@ -30,21 +29,24 @@ async function estadoDoFato(fato: string): Promise<"preparando" | "ok"> {
   return build ? "ok" : "preparando";
 }
 
-/** Guard comum: exige auth + domínio estoque (camada 3 do RBAC). */
-async function guardEstoque(): Promise<void> {
-  const me = await getCurrentUser();
-  if (!me) throw new Error("Não autenticado");
-  const mine = await getMyDomains();
-  if (!mine.includes("estoque")) throw new Error("Sem acesso ao domínio");
+/**
+ * Resolve a entrada de catálogo de um relatório; lança erro explícito se o
+ * id não existir (em vez de `getReport(id)!` quebrar silenciosamente
+ * adiante). Usado por todas as queries — CR-03.
+ */
+function requireReport(id: string): ReportEntry {
+  const entry = getReport(id);
+  if (!entry) throw new Error(`Relatório desconhecido: ${id}`);
+  return entry;
 }
 
 /** R1 — Saldo por produto e armazém. */
 export async function getRelatorioSaldoProduto(
   filtros: ReportFilterValues,
 ): Promise<ReportResult<SaldoProdutoRow[]>> {
-  const entry = getReport("saldo-produto")!;
   try {
-    await guardEstoque();
+    const entry = requireReport("saldo-produto");
+    await guardDominio(entry.dominio);
     const freshness = await reportFreshness(prisma, entry);
     const base = await estadoDoFato("fato_estoque_saldo");
     if (base === "preparando") {
@@ -115,9 +117,9 @@ const TOP_N = 10;
 export async function getRelatorioValorPorArmazem(
   _filtros: ReportFilterValues,
 ): Promise<ReportResult<ValorArmazemBar[]>> {
-  const entry = getReport("valor-armazem")!;
   try {
-    await guardEstoque();
+    const entry = requireReport("valor-armazem");
+    await guardDominio(entry.dominio);
     const freshness = await reportFreshness(prisma, entry);
     const base = await estadoDoFato("fato_estoque_saldo");
     if (base === "preparando") {
@@ -143,9 +145,9 @@ export async function getRelatorioValorPorArmazem(
 export async function getRelatorioEntradasSaidas(
   filtros: ReportFilterValues,
 ): Promise<ReportResult<MovimentoMes[]>> {
-  const entry = getReport("entradas-saidas")!;
   try {
-    await guardEstoque();
+    const entry = requireReport("entradas-saidas");
+    await guardDominio(entry.dominio);
     const freshness = await reportFreshness(prisma, entry);
     const base = await estadoDoFato("fato_estoque_movimento");
     if (base === "preparando") {
@@ -181,10 +183,10 @@ export async function getRelatorioEntradasSaidas(
 export async function getRelatorioProdutoParado(
   filtros: ReportFilterValues,
 ): Promise<ReportResult<ProdutoParadoData>> {
-  const entry = getReport("produtos-parados")!;
   const vazio: ProdutoParadoData = { total: 0, linhas: [] };
   try {
-    await guardEstoque();
+    const entry = requireReport("produtos-parados");
+    await guardDominio(entry.dominio);
     const freshness = await reportFreshness(prisma, entry);
     const base = await estadoDoFato("fato_produto_parado");
     if (base === "preparando") {
@@ -221,9 +223,9 @@ export async function getRelatorioProdutoParado(
 export async function getRelatorioTopMovimentados(
   filtros: ReportFilterValues,
 ): Promise<ReportResult<TopMovimentadoBar[]>> {
-  const entry = getReport("top-movimentados")!;
   try {
-    await guardEstoque();
+    const entry = requireReport("top-movimentados");
+    await guardDominio(entry.dominio);
     const freshness = await reportFreshness(prisma, entry);
     const base = await estadoDoFato("fato_estoque_movimento");
     if (base === "preparando") {
@@ -257,10 +259,10 @@ export async function getRelatorioTopMovimentados(
 export async function getRelatorioConcentracao(
   _filtros: ReportFilterValues,
 ): Promise<ReportResult<ConcentracaoData>> {
-  const entry = getReport("concentracao")!;
   const vazio: ConcentracaoData = { familia: [], marca: [] };
   try {
-    await guardEstoque();
+    const entry = requireReport("concentracao");
+    await guardDominio(entry.dominio);
     const freshness = await reportFreshness(prisma, entry);
     const base = await estadoDoFato("fato_estoque_saldo");
     if (base === "preparando") {
