@@ -70,6 +70,7 @@ model User {
   audits              AuditLog[]
   passwordResetTokens PasswordResetToken[]
   emailChangeTokens   EmailChangeToken[]
+  domainAccess        UserDomainAccess[]   @relation("UserDomainAccess")
 
   @@index([platformRole, isActive])
   @@index([email])
@@ -102,6 +103,21 @@ model AuditLog {
   @@index([userId, createdAt])
   @@index([action, createdAt])
   @@map("audit_logs")
+}
+
+/// Concessão de domínio de relatório a um usuário. super_admin/admin não têm
+/// linhas (veem tudo); manager/viewer têm uma linha por domínio concedido.
+model UserDomainAccess {
+  id          String       @id @default(uuid()) @db.Uuid
+  userId      String       @map("user_id") @db.Uuid
+  domain      ReportDomain
+  grantedById String?      @map("granted_by_id") @db.Uuid
+  createdAt   DateTime     @default(now()) @map("created_at")
+  user        User         @relation("UserDomainAccess", fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, domain])
+  @@index([userId])
+  @@map("user_domain_access")
 }
 
 model PasswordResetToken {
