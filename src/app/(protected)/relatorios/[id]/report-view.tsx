@@ -14,7 +14,8 @@ import { PieChartCard } from "@/components/charts/pie-chart";
 import { PeriodBar } from "@/components/reports/period-bar";
 import { resolveReportIcon } from "@/lib/reports/report-icons";
 import type { PeriodoResolvido } from "@/lib/reports/periodo";
-import type { SaldoProdutoData } from "@/lib/actions/report-data";
+import type { SaldoProdutoData, SaldoProdutoRow } from "@/lib/actions/report-data";
+import { SaldoProdutoDrillDown } from "@/components/charts/saldo-produto-drill-down";
 
 /** Uma seção já resolvida com seu estado e dados. */
 export interface SecaoComDados {
@@ -95,6 +96,27 @@ function renderSecao(
         : (d != null && typeof d === "object" && "linhas" in d
             ? (d as { linhas?: unknown[] }).linhas
             : undefined) ?? [];
+
+      // expandDetail para o relatório saldo-produto: drill-down por local.
+      const isSaldoProduto =
+        report.id === "saldo-produto" &&
+        d != null &&
+        typeof d === "object" &&
+        "linhas" in d;
+
+      const expandDetail = isSaldoProduto
+        ? (row: Record<string, unknown>) => {
+            const r = row as unknown as SaldoProdutoRow;
+            if (!r.detalhePorLocal || r.detalhePorLocal.length === 0) return null;
+            return (
+              <SaldoProdutoDrillDown
+                detalhes={r.detalhePorLocal}
+                produtoNome={r.produtoNome}
+              />
+            );
+          }
+        : undefined;
+
       return (
         <ChartCard>
           <DataTable
@@ -103,6 +125,8 @@ function renderSecao(
             estado={estado}
             searchable={Boolean(cfg.searchable)}
             onRetry={onRetry}
+            expandDetail={expandDetail}
+            exportFilename={report.id}
           />
         </ChartCard>
       );

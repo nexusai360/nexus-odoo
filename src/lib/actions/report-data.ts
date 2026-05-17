@@ -4,7 +4,15 @@ import { prisma } from "@/lib/prisma";
 import { guardDominio } from "@/lib/reports/guard";
 import { reportFreshness } from "@/lib/reports/freshness";
 import { getReport } from "@/lib/reports/catalog";
+import { limparNomeLocal } from "@/lib/reports/local-nome";
 import type { ReportEntry, ReportFilterValues, ReportResult, ReportState } from "@/lib/reports/types";
+
+/** Item do detalhamento por local de um produto (para o drill-down). */
+export interface DetalhePorLocal {
+  localRotulo: string;
+  saldo: number;
+  valor: number;
+}
 
 /** Linha agregada de R1 (por produto). */
 export interface SaldoProdutoRow {
@@ -14,6 +22,8 @@ export interface SaldoProdutoRow {
   saldoTotal: number;
   valorTotal: number;
   numLocais: number;
+  /** Saldo do produto quebrado por local, com rótulo limpo. */
+  detalhePorLocal: DetalhePorLocal[];
 }
 
 /** KPIs de topo de R1. */
@@ -84,6 +94,7 @@ export async function getRelatorioSaldoProduto(
         familiaNome: true,
         marcaNome: true,
         localId: true,
+        localNome: true,
         quantidade: true,
         vrSaldo: true,
       },
@@ -99,6 +110,7 @@ export async function getRelatorioSaldoProduto(
         saldoTotal: number;
         valorTotal: number;
         locais: Set<number>;
+        detalheMap: Map<string, { saldo: number; valor: number }>;
       }
     >();
 
@@ -106,19 +118,33 @@ export async function getRelatorioSaldoProduto(
       // Ignora linhas sem produtoId (dados incompletos do Odoo)
       if (r.produtoId == null) continue;
       const pid = r.produtoId;
+      const qty = r.quantidade ? Number(r.quantidade) : 0;
+      const vr = r.vrSaldo ? Number(r.vrSaldo) : 0;
+      const rotulo = r.localNome
+        ? limparNomeLocal(r.localNome).rotulo
+        : "Sem local";
+
       const existing = mapa.get(pid);
       if (existing) {
-        existing.saldoTotal += r.quantidade ? Number(r.quantidade) : 0;
-        existing.valorTotal += r.vrSaldo ? Number(r.vrSaldo) : 0;
+        existing.saldoTotal += qty;
+        existing.valorTotal += vr;
         if (r.localId != null) existing.locais.add(r.localId);
+        const prev = existing.detalheMap.get(rotulo) ?? { saldo: 0, valor: 0 };
+        existing.detalheMap.set(rotulo, {
+          saldo: prev.saldo + qty,
+          valor: prev.valor + vr,
+        });
       } else {
+        const detalheMap = new Map<string, { saldo: number; valor: number }>();
+        detalheMap.set(rotulo, { saldo: qty, valor: vr });
         mapa.set(pid, {
           produtoNome: r.produtoNome ?? "",
           familiaNome: r.familiaNome,
           marcaNome: r.marcaNome,
-          saldoTotal: r.quantidade ? Number(r.quantidade) : 0,
-          valorTotal: r.vrSaldo ? Number(r.vrSaldo) : 0,
+          saldoTotal: qty,
+          valorTotal: vr,
           locais: r.localId != null ? new Set([r.localId]) : new Set(),
+          detalheMap,
         });
       }
     }
@@ -131,6 +157,13 @@ export async function getRelatorioSaldoProduto(
         saldoTotal: v.saldoTotal,
         valorTotal: v.valorTotal,
         numLocais: v.locais.size,
+        detalhePorLocal: [...v.detalheMap.entries()]
+          .map(([localRotulo, d]) => ({
+            localRotulo,
+            saldo: d.saldo,
+            valor: d.valor,
+          }))
+          .sort((a, b) => b.valor - a.valor),
       }))
       .sort((a, b) => b.valorTotal - a.valorTotal);
 

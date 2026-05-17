@@ -61,6 +61,39 @@ describe("getRelatorioSaldoProduto (R1)", () => {
       expect.objectContaining({ where: expect.objectContaining({ familiaId: 7 }) }),
     );
   });
+  it("inclui detalhePorLocal com rotulo limpo por limparNomeLocal", async () => {
+    mockPrisma.fatoBuildState.findUnique.mockResolvedValue({ ultimoBuildAt: new Date() });
+    mockPrisma.fatoEstoqueSaldo.findMany.mockResolvedValue([
+      {
+        produtoId: 1,
+        produtoNome: "Esteira",
+        familiaNome: "Cardio",
+        marcaNome: "Matrix",
+        localId: 10,
+        localNome: "Galpão A » Próprio",
+        quantidade: 5,
+        vrSaldo: 1000,
+      },
+      {
+        produtoId: 1,
+        produtoNome: "Esteira",
+        familiaNome: "Cardio",
+        marcaNome: "Matrix",
+        localId: 11,
+        localNome: "Virtual",
+        quantidade: 2,
+        vrSaldo: 400,
+      },
+    ]);
+    const r = await getRelatorioSaldoProduto({});
+    expect(r.estado).toBe("ok");
+    const linha = r.dados.linhas[0]!;
+    expect(linha.saldoTotal).toBe(7);
+    expect(linha.detalhePorLocal).toHaveLength(2);
+    // "Galpão A » Próprio" deve virar "Galpão A" (via limparNomeLocal)
+    expect(linha.detalhePorLocal.some((d) => d.localRotulo === "Galpão A")).toBe(true);
+    expect(linha.detalhePorLocal.some((d) => d.localRotulo === "Virtual")).toBe(true);
+  });
 });
 
 describe("getRelatorioValorPorArmazem (R2)", () => {
