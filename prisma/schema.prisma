@@ -37,6 +37,14 @@ enum AuditAction {
   email_change_completed
   setting_updated
   session_revoked
+  user_domains_changed
+}
+
+enum ReportDomain {
+  estoque
+  financeiro
+  fiscal
+  comercial
 }
 
 model User {
@@ -121,6 +129,7 @@ model EmailChangeToken {
 
   @@map("email_change_tokens")
 }
+
 model RawContabilConta {
   odooId        Int       @id @map("odoo_id")
   data          Json
@@ -1109,4 +1118,3 @@ model FatoEstoqueSaldo {
   @@index([localId])
   @@map("fato_estoque_saldo")
 }
-
