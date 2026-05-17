@@ -49,11 +49,12 @@ function renderSecao({ secao, estado, dados }: SecaoComDados) {
       );
     }
     case "BarChart": {
-      const d = dados as { marca?: unknown[] } | unknown[];
-      const data = Array.isArray(d) ? d : (d?.marca ?? []);
+      // Discrimina a fatia de dados multi-fato pelo id da seção, não pela
+      // presença de uma chave (IM-05).
+      const data = pickFatia(dados, secao.id);
       return (
         <BarChartCard
-          data={data as Record<string, unknown>[]}
+          data={data}
           config={cfg as never}
           estado={estado}
         />
@@ -68,11 +69,10 @@ function renderSecao({ secao, estado, dados }: SecaoComDados) {
         />
       );
     case "PieChart": {
-      const d = dados as { familia?: unknown[] } | unknown[];
-      const data = Array.isArray(d) ? d : (d?.familia ?? []);
+      const data = pickFatia(dados, secao.id);
       return (
         <PieChartCard
-          data={data as Record<string, unknown>[]}
+          data={data}
           config={cfg as never}
           estado={estado}
         />
@@ -81,6 +81,21 @@ function renderSecao({ secao, estado, dados }: SecaoComDados) {
     default:
       return null;
   }
+}
+
+/**
+ * Extrai a fatia de dados de uma seção. Quando `dados` é um array, usa-o
+ * direto; quando é um objeto multi-fato (R6), seleciona a propriedade
+ * homônima ao id da seção (`familia`/`marca`) — discriminação explícita,
+ * não por inspeção de chave (IM-05).
+ */
+function pickFatia(dados: unknown, secaoId: string): Record<string, unknown>[] {
+  if (Array.isArray(dados)) return dados as Record<string, unknown>[];
+  if (dados && typeof dados === "object") {
+    const fatia = (dados as Record<string, unknown>)[secaoId];
+    if (Array.isArray(fatia)) return fatia as Record<string, unknown>[];
+  }
+  return [];
 }
 
 /** Renderiza um relatório: filtros, seções em sequência e freshness. */

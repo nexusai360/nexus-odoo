@@ -46,4 +46,41 @@ describe("ReportView", () => {
     );
     expect(screen.getAllByText(/ainda sendo preparado/i).length).toBeGreaterThan(0);
   });
+
+  it("discrimina seções multi-fato (R6) pelo id da seção (IM-05)", () => {
+    const r6: ReportEntry = {
+      id: "concentracao", titulo: "Concentração", dominio: "estoque",
+      descricao: "", icone: Boxes, modeloFonte: "estoque.saldo.hoje",
+      secoes: [
+        {
+          id: "familia", template: "PieChart", fato: "fato_estoque_saldo",
+          config: { nameKey: "rotulo", valueKey: "valor", formato: "moeda" },
+          filtros: [],
+        },
+        {
+          id: "marca", template: "BarChart", fato: "fato_estoque_saldo",
+          config: { xKey: "rotulo", yKey: "valor", formato: "moeda" },
+          filtros: [],
+        },
+      ],
+    };
+    // Mesmo objeto multi-fato para as duas seções; cada uma deve pegar a
+    // sua fatia pelo id (familia/marca), não por inspeção de chave.
+    const dados = {
+      familia: [{ rotulo: "Esteiras", valor: 100 }],
+      marca: [{ rotulo: "Matrix", valor: 90 }],
+    };
+    const { container } = render(
+      <ReportView
+        report={r6}
+        secoes={[
+          { secao: r6.secoes[0], estado: "ok", dados },
+          { secao: r6.secoes[1], estado: "ok", dados },
+        ]}
+        freshness={null}
+        options={{ produtos: [], armazens: [], familias: [] }}
+      />,
+    );
+    expect(container.querySelector('[data-slot="pie-chart"]')).toBeInTheDocument();
+  });
 });
