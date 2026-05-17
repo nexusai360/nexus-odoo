@@ -1,7 +1,7 @@
 "use client";
 
-import { useMemo, useState } from "react";
-import { Columns2, WrapText } from "lucide-react";
+import { Fragment, useCallback, useMemo, useRef, useState } from "react";
+import { Columns2, WrapText, ChevronRight, Download } from "lucide-react";
 import {
   TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
@@ -13,6 +13,11 @@ import { ArrowDown, ArrowUp, ArrowUpDown } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { ChartPreparing, ChartEmpty, ChartError } from "./chart-states";
 import { formatNumber, type ChartState } from "./kpi-card";
+import {
+  sortRows, filterRows, toggleSortStack, type SortEntry,
+} from "./data-table-utils";
+import { gerarCsv, downloadCsv } from "./export-csv";
+import type { ReactNode } from "react";
 
 export interface ColumnDef<T> {
   key: keyof T & string;
@@ -26,14 +31,23 @@ interface DataTableProps<T> {
   estado?: ChartState;
   onRetry?: () => void;
   searchable?: boolean;
+  /**
+   * Quando fornecida, cada linha exibe um chevron à esquerda; clicar na linha
+   * expande um `<tr>` de detalhe com o conteúdo retornado. Retornar `null`
+   * desabilita a expansão para aquela linha.
+   */
+  expandDetail?: (row: T) => ReactNode | null;
+  /**
+   * Nome base do arquivo CSV exportado (sem extensão).
+   * Default: "relatorio"
+   */
+  exportFilename?: string;
 }
 
-type SortDir = "asc" | "desc";
-
 /**
- * Chave estável de linha: prefere um id explícito da linha; cai para o
- * índice apenas quando nenhum id está presente (IM-07). Evita que ordenar
- * ou pesquisar reassocie o DOM por posição.
+ * Chave estável de linha: prefere um id explícito; cai para índice quando
+ * nenhum id está presente. Evita que ordenar ou pesquisar reassocie o DOM
+ * por posição.
  */
 function rowKey(row: Record<string, unknown>, index: number): string | number {
   for (const k of ["produtoId", "odooId", "id", "saldoHojeId"]) {
@@ -43,75 +57,126 @@ function rowKey(row: Record<string, unknown>, index: number): string | number {
   return index;
 }
 
+// ---------------------------------------------------------------------------
+// Indicador de multi-sort no cabeçalho
+// ---------------------------------------------------------------------------
+
+interface SortIconProps {
+  dir: "asc" | "desc" | null;
+  /** Posição na stack (1-based). Exibida quando há mais de 1 critério. */
+  stackIndex?: number;
+  /** Total de critérios na stack. */
+  total: number;
+}
+
+function SortIcon({ dir, stackIndex, total }: SortIconProps) {
+  const Icon = dir === "asc" ? ArrowUp : dir === "desc" ? ArrowDown : ArrowUpDown;
+  return (
+    <span className="inline-flex items-center gap-0.5">
+      <Icon
+        aria-hidden="true"
+        className={cn(
+          "size-3.5 shrink-0 transition-opacity",
+          dir === null ? "text-muted-foreground/50" : "text-primary",
+        )}
+      />
+      {dir !== null && total > 1 && stackIndex != null ? (
+        <span
+          aria-hidden="true"
+          className="rounded-full bg-primary/15 px-1 text-[9px] font-bold leading-tight text-primary tabular-nums"
+        >
+          {stackIndex}
+        </span>
+      ) : null}
+    </span>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Componente principal
+// ---------------------------------------------------------------------------
+
 /**
  * Tabela profissional com:
- * - Cabeçalho fixo (sticky) ao rolar a tabela
- * - Scroll vertical interno (max-h-[70vh])
- * - Botão "Colunas" com Popover+Checkbox para mostrar/ocultar colunas
- * - Toggle "Compacto" para densidade de texto
- * - Busca interna e ordenação por coluna
- * - Números e moeda alinhados à direita, tabular-nums
+ * - Multi-sort (clique simples = substitui stack; Shift+clique = acumula)
+ * - Busca em todas as colunas com debounce 250 ms
+ * - Linhas expansíveis via prop `expandDetail`
+ * - Exportação CSV (linhas/colunas visíveis com busca+sort aplicados)
+ * - Seletor de colunas (Popover+Checkbox)
+ * - Modo compacto
+ * - Cabeçalho fixo (sticky) no scroll interno
  */
 export function DataTable<T extends Record<string, unknown>>({
-  columns, rows, estado = "ok", onRetry, searchable = false,
+  columns,
+  rows,
+  estado = "ok",
+  onRetry,
+  searchable = false,
+  expandDetail,
+  exportFilename = "relatorio",
 }: DataTableProps<T>) {
-  const [sortKey, setSortKey] = useState<string | null>(null);
-  const [sortDir, setSortDir] = useState<SortDir>("asc");
+  // --- busca (debounced) ---
   const [query, setQuery] = useState("");
-  const [compacto, setCompacto] = useState(false);
+  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [debouncedQuery, setDebouncedQuery] = useState("");
+  const handleSearch = useCallback((value: string) => {
+    setQuery(value);
+    if (debounceRef.current) clearTimeout(debounceRef.current);
+    debounceRef.current = setTimeout(() => setDebouncedQuery(value), 250);
+  }, []);
 
-  // Visibilidade de colunas: todas visíveis por default.
+  // --- multi-sort ---
+  const [sortStack, setSortStack] = useState<SortEntry[]>([]);
+
+  function handleHeaderClick(key: string, shiftKey: boolean) {
+    setSortStack((prev) => toggleSortStack(prev, key, shiftKey));
+  }
+
+  // --- colunas visíveis ---
   const [visiveis, setVisiveis] = useState<Record<string, boolean>>(
     () => Object.fromEntries(columns.map((c) => [c.key, true])),
   );
-
   const colunasVisiveis = columns.filter((c) => visiveis[c.key]);
 
   function toggleColuna(key: string) {
-    // Garante que pelo menos 1 coluna está visível
     const quantVisiveis = Object.values(visiveis).filter(Boolean).length;
     if (visiveis[key] && quantVisiveis <= 1) return;
     setVisiveis((prev) => ({ ...prev, [key]: !prev[key] }));
   }
 
-  const filtered = useMemo(() => {
-    if (!query.trim()) return rows;
-    const q = query.trim().toLowerCase();
-    return rows.filter((r) =>
-      columns.some((c) => {
-        if (c.tipo === "texto") return String(r[c.key] ?? "").toLowerCase().includes(q);
-        return String(r[c.key] ?? "").includes(q);
-      }),
-    );
-  }, [rows, query, columns]);
+  // --- modo compacto ---
+  const [compacto, setCompacto] = useState(false);
 
-  const sorted = useMemo(() => {
-    if (!sortKey) return filtered;
-    const col = columns.find((c) => c.key === sortKey);
-    const arr = [...filtered];
-    arr.sort((a, b) => {
-      const av = a[sortKey];
-      const bv = b[sortKey];
-      let cmp: number;
-      if (col?.tipo === "numero" || col?.tipo === "moeda") {
-        cmp = Number(av ?? 0) - Number(bv ?? 0);
-      } else {
-        cmp = String(av ?? "").localeCompare(String(bv ?? ""), "pt-BR");
-      }
-      return sortDir === "asc" ? cmp : -cmp;
+  // --- linhas expandidas ---
+  const [expandedKeys, setExpandedKeys] = useState<Set<string | number>>(new Set());
+  function toggleExpand(key: string | number) {
+    setExpandedKeys((prev) => {
+      const next = new Set(prev);
+      if (next.has(key)) next.delete(key);
+      else next.add(key);
+      return next;
     });
-    return arr;
-  }, [filtered, sortKey, sortDir, columns]);
-
-  function toggleSort(key: string) {
-    if (sortKey === key) {
-      setSortDir((d) => (d === "asc" ? "desc" : "asc"));
-    } else {
-      setSortKey(key);
-      setSortDir("asc");
-    }
   }
 
+  // --- pipeline: filtro → sort ---
+  const filtered = useMemo(
+    () => filterRows(rows, debouncedQuery),
+    [rows, debouncedQuery],
+  );
+
+  const sorted = useMemo(
+    () => sortRows(filtered, sortStack, columns),
+    [filtered, sortStack, columns],
+  );
+
+  // --- exportação CSV ---
+  function handleExport() {
+    const csv = gerarCsv(colunasVisiveis, sorted);
+    const today = new Date().toISOString().slice(0, 10);
+    downloadCsv(csv, `${exportFilename}-${today}`);
+  }
+
+  // --- estados de carregamento / erro / vazio ---
   if (estado === "preparando") return <ChartPreparing />;
   if (estado === "erro") {
     return (
@@ -123,6 +188,8 @@ export function DataTable<T extends Record<string, unknown>>({
   }
   if (estado === "vazio" || rows.length === 0) return <ChartEmpty />;
 
+  const hasExpand = Boolean(expandDetail);
+
   return (
     <div className="flex flex-col gap-3 w-full">
       {/* Barra de controles */}
@@ -131,7 +198,7 @@ export function DataTable<T extends Record<string, unknown>>({
           <Input
             placeholder="Pesquisar…"
             value={query}
-            onChange={(e) => setQuery(e.target.value)}
+            onChange={(e) => handleSearch(e.target.value)}
             className="h-8 max-w-xs text-sm"
           />
         )}
@@ -195,6 +262,19 @@ export function DataTable<T extends Record<string, unknown>>({
           Compacto
         </Button>
 
+        {/* Exportar CSV */}
+        <Button
+          variant="outline"
+          size="sm"
+          className="h-8 gap-1.5 text-xs cursor-pointer"
+          onClick={handleExport}
+          disabled={sorted.length === 0}
+          aria-label="Exportar tabela como CSV"
+        >
+          <Download className="size-3.5" aria-hidden />
+          Exportar
+        </Button>
+
         {/* Contador de resultados */}
         <span className="ml-auto text-xs text-muted-foreground tabular-nums">
           {sorted.length} {sorted.length === 1 ? "linha" : "linhas"}
@@ -202,100 +282,151 @@ export function DataTable<T extends Record<string, unknown>>({
       </div>
 
       {/* Tabela com scroll interno e cabeçalho sticky */}
-      {/*
-        Container ÚNICO de scroll (x e y). Não usamos o componente `Table`
-        do design system aqui porque ele embrulha a tabela num `<div
-        overflow-x-auto>` próprio — esse wrapper viraria o ancestral de
-        scroll do `sticky` e o cabeçalho deixaria de travar. Com um único
-        container, o `sticky top-0` do `<thead>` funciona de verdade.
-      */}
       <div className="max-h-[70vh] w-full overflow-auto rounded-xl border border-border">
         <table className="w-full caption-bottom text-sm">
-            <TableHeader className="sticky top-0 z-20 bg-muted backdrop-blur-sm">
-              <TableRow>
-                {colunasVisiveis.map((c) => {
-                  const active = sortKey === c.key;
-                  return (
-                    <TableHead
-                      key={c.key}
-                      aria-sort={
-                        active
-                          ? sortDir === "asc"
-                            ? "ascending"
-                            : "descending"
-                          : "none"
-                      }
-                      className={cn(
-                        (c.tipo === "numero" || c.tipo === "moeda") && "text-right",
-                      )}
-                    >
-                      <button
-                        type="button"
-                        className={cn(
-                          "flex items-center gap-1 font-medium text-xs uppercase tracking-wide",
-                          (c.tipo === "numero" || c.tipo === "moeda") && "ml-auto",
-                        )}
-                        aria-label={`Ordenar por ${c.header}`}
-                        onClick={() => toggleSort(c.key)}
-                      >
-                        {c.header}
-                        {active ? (
-                          sortDir === "asc" ? (
-                            <ArrowUp className="size-3.5" aria-hidden="true" />
-                          ) : (
-                            <ArrowDown className="size-3.5" aria-hidden="true" />
-                          )
-                        ) : (
-                          <ArrowUpDown
-                            className="size-3.5 text-muted-foreground/50"
-                            aria-hidden="true"
-                          />
-                        )}
-                      </button>
-                    </TableHead>
-                  );
-                })}
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {sorted.length === 0 ? (
-                <TableRow>
-                  <TableCell colSpan={colunasVisiveis.length}>
-                    <ChartEmpty />
-                  </TableCell>
-                </TableRow>
-              ) : (
-                sorted.map((row, i) => (
-                  <TableRow
-                    key={rowKey(row, i)}
-                    className="transition-colors hover:bg-muted/50"
-                  >
-                    {colunasVisiveis.map((c) => (
-                      <TableCell
-                        key={c.key}
-                        className={cn(
-                          (c.tipo === "numero" || c.tipo === "moeda") &&
-                            "tabular-nums text-right",
-                          compacto && c.tipo === "texto" &&
-                            "max-w-[200px] truncate",
-                        )}
-                        title={
-                          compacto && c.tipo === "texto"
-                            ? String(row[c.key] ?? "")
-                            : undefined
-                        }
-                      >
-                        {c.tipo === "numero"
-                          ? formatNumber(Number(row[c.key] ?? 0), "decimal")
-                          : c.tipo === "moeda"
-                            ? formatNumber(Number(row[c.key] ?? 0), "moeda")
-                            : String(row[c.key] ?? "")}
-                      </TableCell>
-                    ))}
-                  </TableRow>
-                ))
+          <TableHeader className="sticky top-0 z-20 bg-muted backdrop-blur-sm">
+            <TableRow>
+              {/* Coluna do chevron de expansão */}
+              {hasExpand && (
+                <TableHead className="w-8 px-2" aria-label="Expandir" />
               )}
-            </TableBody>
+              {colunasVisiveis.map((c) => {
+                const stackIdx = sortStack.findIndex((e) => e.key === c.key);
+                const entry = stackIdx >= 0 ? sortStack[stackIdx] : null;
+                const dir = entry?.dir ?? null;
+                const ariaSort =
+                  dir === "asc"
+                    ? ("ascending" as const)
+                    : dir === "desc"
+                      ? ("descending" as const)
+                      : ("none" as const);
+                return (
+                  <TableHead
+                    key={c.key}
+                    aria-sort={ariaSort}
+                    className={cn(
+                      (c.tipo === "numero" || c.tipo === "moeda") && "text-right",
+                    )}
+                  >
+                    <button
+                      type="button"
+                      className={cn(
+                        "flex items-center gap-1 font-medium text-xs uppercase tracking-wide cursor-pointer",
+                        "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50 rounded-sm",
+                        (c.tipo === "numero" || c.tipo === "moeda") && "ml-auto",
+                      )}
+                      aria-label={`Ordenar por ${c.header}`}
+                      title="Clique para ordenar · Shift+Clique para multi-sort"
+                      onClick={(e) => handleHeaderClick(c.key, e.shiftKey)}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter" || e.key === " ") {
+                          e.preventDefault();
+                          handleHeaderClick(c.key, e.shiftKey);
+                        }
+                      }}
+                    >
+                      {c.header}
+                      <SortIcon
+                        dir={dir}
+                        stackIndex={stackIdx >= 0 ? stackIdx + 1 : undefined}
+                        total={sortStack.length}
+                      />
+                    </button>
+                  </TableHead>
+                );
+              })}
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {sorted.length === 0 ? (
+              <TableRow>
+                <TableCell colSpan={colunasVisiveis.length + (hasExpand ? 1 : 0)}>
+                  <ChartEmpty />
+                </TableCell>
+              </TableRow>
+            ) : (
+              sorted.map((row, i) => {
+                const key = rowKey(row, i);
+                const expanded = expandedKeys.has(key);
+                const detailNode = expandDetail ? expandDetail(row) : null;
+                const expandable = detailNode !== null;
+
+                return (
+                  <Fragment key={key}>
+                    <TableRow
+                      className={cn(
+                        "transition-colors hover:bg-muted/50",
+                        expandable && "cursor-pointer",
+                        expanded && "bg-muted/40",
+                      )}
+                      onClick={
+                        expandable ? () => toggleExpand(key) : undefined
+                      }
+                      aria-expanded={expandable ? expanded : undefined}
+                    >
+                      {/* Chevron de expansão */}
+                      {hasExpand && (
+                        <TableCell className="w-8 px-2 py-0">
+                          {expandable ? (
+                            <ChevronRight
+                              aria-hidden="true"
+                              className={cn(
+                                "size-4 text-muted-foreground transition-transform duration-150",
+                                expanded && "rotate-90 text-primary",
+                              )}
+                            />
+                          ) : (
+                            <span className="block size-4" aria-hidden="true" />
+                          )}
+                        </TableCell>
+                      )}
+                      {colunasVisiveis.map((c) => (
+                        <TableCell
+                          key={c.key}
+                          className={cn(
+                            (c.tipo === "numero" || c.tipo === "moeda") &&
+                              "tabular-nums text-right",
+                            compacto &&
+                              c.tipo === "texto" &&
+                              "max-w-[200px] truncate",
+                          )}
+                          title={
+                            compacto && c.tipo === "texto"
+                              ? String(row[c.key] ?? "")
+                              : undefined
+                          }
+                        >
+                          {c.tipo === "numero"
+                            ? formatNumber(Number(row[c.key] ?? 0), "decimal")
+                            : c.tipo === "moeda"
+                              ? formatNumber(Number(row[c.key] ?? 0), "moeda")
+                              : String(row[c.key] ?? "")}
+                        </TableCell>
+                      ))}
+                    </TableRow>
+
+                    {/* Linha de detalhe expansível */}
+                    {expanded && expandable && detailNode != null && (
+                      <TableRow className="bg-muted/20 hover:bg-muted/20">
+                        <TableCell
+                          colSpan={colunasVisiveis.length + (hasExpand ? 1 : 0)}
+                          className="p-0"
+                        >
+                          <div
+                            role="region"
+                            aria-label="Detalhes da linha"
+                            className="motion-safe:animate-in motion-safe:fade-in motion-safe:duration-150"
+                          >
+                            {detailNode}
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    )}
+                  </Fragment>
+                );
+              })
+            )}
+          </TableBody>
         </table>
       </div>
     </div>
