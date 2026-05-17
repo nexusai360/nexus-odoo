@@ -38,10 +38,27 @@ export interface SaldoProdutoData {
   kpis: SaldoProdutoKpis;
   linhas: SaldoProdutoRow[];
 }
-/** Barra de R2. */
-export interface ValorArmazemBar {
-  rotulo: string;
+/** Linha da tabela de R2. */
+export interface ValorArmazemRow {
+  [k: string]: unknown;
+  armazem: string;
   valor: number;
+  numProdutos: number;
+  percentual: number;
+}
+
+/** KPIs de R2. */
+export interface ValorArmazemKpis {
+  valorTotal: number;
+  numArmazens: number;
+}
+
+/** Retorno completo de R2. */
+export interface ValorArmazemData {
+  kpis: ValorArmazemKpis;
+  linhas: ValorArmazemRow[];
+  /** Top-8 para o BarChart auxiliar. */
+  top8: { rotulo: string; valor: number }[];
 }
 
 /**
@@ -218,28 +235,71 @@ const TOP_CONCENTRACAO = 12;
 /** R2 — Valor de estoque por armazém. */
 export async function getRelatorioValorPorArmazem(
   _filtros: ReportFilterValues,
-): Promise<ReportResult<ValorArmazemBar[]>> {
+): Promise<ReportResult<ValorArmazemData>> {
+  const vazio: ValorArmazemData = {
+    kpis: { valorTotal: 0, numArmazens: 0 },
+    linhas: [],
+    top8: [],
+  };
   try {
     const entry = requireReport("valor-armazem");
     await guardDominio(entry.dominio);
     const freshness = await reportFreshness(prisma, entry);
     const base = await estadoDoFato("fato_estoque_saldo");
     if (base === "preparando") {
-      return { estado: "preparando", dados: [], freshness };
+      return { estado: "preparando", dados: vazio, freshness };
     }
-    const grupos = await prisma.fatoEstoqueSaldo.groupBy({
-      by: ["localNome"],
+
+    // Agrega por localNome: valor total e número de produtos distintos.
+    const rows = await prisma.fatoEstoqueSaldo.findMany({
       where: { vrSaldo: { gt: 0 } },
-      _sum: { vrSaldo: true },
+      select: { localNome: true, produtoId: true, vrSaldo: true },
     });
-    const dados: ValorArmazemBar[] = grupos.map((g) => ({
-      rotulo: g.localNome ?? "Sem armazém",
-      valor: g._sum.vrSaldo ? Number(g._sum.vrSaldo) : 0,
+
+    const mapa = new Map<
+      string,
+      { valor: number; produtos: Set<number | null> }
+    >();
+    for (const r of rows) {
+      const nomeRaw = r.localNome ?? "Sem armazém";
+      const rotulo = limparNomeLocal(nomeRaw).rotulo;
+      const vr = r.vrSaldo ? Number(r.vrSaldo) : 0;
+      const existing = mapa.get(rotulo);
+      if (existing) {
+        existing.valor += vr;
+        existing.produtos.add(r.produtoId);
+      } else {
+        mapa.set(rotulo, { valor: vr, produtos: new Set([r.produtoId]) });
+      }
+    }
+
+    const valorTotal = [...mapa.values()].reduce((acc, v) => acc + v.valor, 0);
+
+    const linhasBruto = [...mapa.entries()]
+      .map(([armazem, v]) => ({ armazem, valor: v.valor, numProdutos: v.produtos.size }))
+      .sort((a, b) => b.valor - a.valor);
+
+    const linhas: ValorArmazemRow[] = linhasBruto.map((l) => ({
+      armazem: l.armazem,
+      valor: l.valor,
+      numProdutos: l.numProdutos,
+      percentual: valorTotal > 0 ? (l.valor / valorTotal) * 100 : 0,
     }));
-    const estado: ReportState = dados.length === 0 ? "vazio" : "ok";
+
+    const top8 = linhasBruto.slice(0, 8).map((l) => ({
+      rotulo: l.armazem,
+      valor: l.valor,
+    }));
+
+    const dados: ValorArmazemData = {
+      kpis: { valorTotal, numArmazens: mapa.size },
+      linhas,
+      top8,
+    };
+    const estado: ReportState = linhas.length === 0 ? "vazio" : "ok";
     return { estado, dados, freshness };
   } catch {
-    return { estado: "erro", dados: [], freshness: null };
+    return { estado: "erro", dados: vazio, freshness: null };
   }
 }
 

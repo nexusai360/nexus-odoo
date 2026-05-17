@@ -22,7 +22,7 @@ import type { ReactNode } from "react";
 export interface ColumnDef<T> {
   key: keyof T & string;
   header: string;
-  tipo: "texto" | "numero" | "moeda";
+  tipo: "texto" | "numero" | "moeda" | "percentual";
 }
 
 interface DataTableProps<T> {
@@ -305,7 +305,7 @@ export function DataTable<T extends Record<string, unknown>>({
                     key={c.key}
                     aria-sort={ariaSort}
                     className={cn(
-                      (c.tipo === "numero" || c.tipo === "moeda") && "text-right",
+                      (c.tipo === "numero" || c.tipo === "moeda" || c.tipo === "percentual") && "text-right",
                     )}
                   >
                     <button
@@ -313,7 +313,7 @@ export function DataTable<T extends Record<string, unknown>>({
                       className={cn(
                         "flex items-center gap-1 font-medium text-xs uppercase tracking-wide cursor-pointer",
                         "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50 rounded-sm",
-                        (c.tipo === "numero" || c.tipo === "moeda") && "ml-auto",
+                        (c.tipo === "numero" || c.tipo === "moeda" || c.tipo === "percentual") && "ml-auto",
                       )}
                       aria-label={`Ordenar por ${c.header}`}
                       title="Clique para ordenar · Shift+Clique para multi-sort"
@@ -384,7 +384,7 @@ export function DataTable<T extends Record<string, unknown>>({
                         <TableCell
                           key={c.key}
                           className={cn(
-                            (c.tipo === "numero" || c.tipo === "moeda") &&
+                            (c.tipo === "numero" || c.tipo === "moeda" || c.tipo === "percentual") &&
                               "tabular-nums text-right",
                             compacto &&
                               c.tipo === "texto" &&
@@ -400,7 +400,9 @@ export function DataTable<T extends Record<string, unknown>>({
                             ? formatNumber(Number(row[c.key] ?? 0), "decimal")
                             : c.tipo === "moeda"
                               ? formatNumber(Number(row[c.key] ?? 0), "moeda")
-                              : String(row[c.key] ?? "")}
+                              : c.tipo === "percentual"
+                                ? `${Number(row[c.key] ?? 0).toLocaleString("pt-BR", { minimumFractionDigits: 1, maximumFractionDigits: 1 })}%`
+                                : String(row[c.key] ?? "")}
                         </TableCell>
                       ))}
                     </TableRow>

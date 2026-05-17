@@ -28,7 +28,7 @@ export function sortRows<T extends Record<string, unknown>>(
       const av = A.row[entry.key];
       const bv = B.row[entry.key];
       let cmp: number;
-      if (col?.tipo === "numero" || col?.tipo === "moeda") {
+      if (col?.tipo === "numero" || col?.tipo === "moeda" || col?.tipo === "percentual") {
         cmp = Number(av ?? 0) - Number(bv ?? 0);
       } else {
         cmp = String(av ?? "").localeCompare(String(bv ?? ""), "pt-BR");

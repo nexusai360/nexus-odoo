@@ -2,7 +2,7 @@
 
 import { useMemo } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { Boxes, TrendingDown, DollarSign } from "lucide-react";
+import { Boxes, TrendingDown, DollarSign, Warehouse } from "lucide-react";
 import type { ReportEntry, ReportSection, ReportState } from "@/lib/reports/types";
 import { ReportFilters } from "@/components/reports/report-filters";
 import type { FilterOptions } from "@/components/reports/report-filters";
@@ -15,7 +15,7 @@ import { PieChartCard } from "@/components/charts/pie-chart";
 import { PeriodBar } from "@/components/reports/period-bar";
 import { resolveReportIcon } from "@/lib/reports/report-icons";
 import type { PeriodoResolvido } from "@/lib/reports/periodo";
-import type { SaldoProdutoData, SaldoProdutoRow } from "@/lib/actions/report-data";
+import type { SaldoProdutoData, SaldoProdutoRow, ValorArmazemData } from "@/lib/actions/report-data";
 import { SaldoProdutoDrillDown } from "@/components/charts/saldo-produto-drill-down";
 import { AppliedFiltersChips } from "@/components/reports/applied-filters-chips";
 import { buildChipsFromParams } from "@/lib/reports/build-chips";
@@ -59,7 +59,34 @@ function renderSecao(
       );
     }
     case "KPIRow": {
-      // Row de 3 KPI cards para o relatório saldo-produto.
+      const variante = String(cfg.variante ?? "");
+
+      if (variante === "valor-armazem") {
+        const d = dados as ValorArmazemData | null | undefined;
+        const kpis = d?.kpis;
+        return (
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+            <KPICard
+              valor={kpis?.valorTotal ?? 0}
+              rotulo="Valor total do estoque"
+              formato="moeda"
+              estado={estado}
+              icone={DollarSign}
+              onRetry={onRetry}
+            />
+            <KPICard
+              valor={kpis?.numArmazens ?? 0}
+              rotulo="Armazéns com estoque"
+              formato="inteiro"
+              estado={estado}
+              icone={Warehouse}
+              onRetry={onRetry}
+            />
+          </div>
+        );
+      }
+
+      // Variante padrão: saldo-produto (3 KPIs).
       const d = dados as SaldoProdutoData | null | undefined;
       const kpis = d?.kpis;
       return (

@@ -48,10 +48,32 @@ export const REPORT_CATALOG: ReportEntry[] = [
     modeloFonte: "estoque.saldo.hoje",
     secoes: [
       {
-        id: "barras",
+        id: "kpis",
+        template: "KPIRow",
+        fato: "fato_estoque_saldo",
+        config: { variante: "valor-armazem" },
+        filtros: [],
+      },
+      {
+        id: "tabela",
+        template: "DataTable",
+        fato: "fato_estoque_saldo",
+        config: {
+          colunas: [
+            { key: "armazem", header: "Armazém", tipo: "texto" },
+            { key: "valor", header: "Valor", tipo: "moeda" },
+            { key: "numProdutos", header: "Produtos", tipo: "numero" },
+            { key: "percentual", header: "% do total", tipo: "percentual" },
+          ],
+          searchable: true,
+        },
+        filtros: [],
+      },
+      {
+        id: "top8",
         template: "BarChart",
         fato: "fato_estoque_saldo",
-        config: { xKey: "rotulo", yKey: "valor", formato: "moeda" },
+        config: { xKey: "rotulo", yKey: "valor", formato: "moeda", titulo: "Top 8 armazéns" },
         filtros: [],
       },
     ],
