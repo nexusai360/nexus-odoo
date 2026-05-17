@@ -1116,9 +1116,7 @@ model SyncState {
   @@map("sync_state")
 }
 
-/// Fato PROVISÓRIO — saldo de estoque por produto/local. Derivado de
-/// raw_estoque_saldo_hoje. Modelagem definitiva é tarefa da F3/F4
-/// (ver docs/fatos-modelagem.md).
+/// Saldo de estoque por produto/local, enriquecido com valor e classificação.
 model FatoEstoqueSaldo {
   id           String   @id @default(uuid()) @db.Uuid
   odooSaldoId  Int      @unique @map("odoo_saldo_id")
@@ -1128,10 +1126,17 @@ model FatoEstoqueSaldo {
   localNome    String?  @map("local_nome")
   quantidade   Decimal? @db.Decimal(18, 4)
   unidade      String?
+  vrSaldo      Decimal? @map("vr_saldo") @db.Decimal(18, 2)
+  familiaId    Int?     @map("familia_id")
+  familiaNome  String?  @map("familia_nome")
+  marcaId      Int?     @map("marca_id")
+  marcaNome    String?  @map("marca_nome")
   atualizadoEm DateTime @default(now()) @map("atualizado_em")
 
   @@index([produtoId])
   @@index([localId])
+  @@index([familiaId])
+  @@index([marcaId])
   @@map("fato_estoque_saldo")
 }
 
