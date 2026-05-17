@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo } from "react";
-import type { FilterOption } from "./product-filter";
+import type { FilterOption } from "@/components/reports/report-filters";
 import { FilterSelect } from "./filter-select";
 
 interface FamilyFilterProps {

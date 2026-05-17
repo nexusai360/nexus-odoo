@@ -103,19 +103,22 @@ export async function getRelatorioSaldoProduto(
     >();
 
     for (const r of rows) {
-      const existing = mapa.get(r.produtoId);
+      // Ignora linhas sem produtoId (dados incompletos do Odoo)
+      if (r.produtoId == null) continue;
+      const pid = r.produtoId;
+      const existing = mapa.get(pid);
       if (existing) {
         existing.saldoTotal += r.quantidade ? Number(r.quantidade) : 0;
         existing.valorTotal += r.vrSaldo ? Number(r.vrSaldo) : 0;
-        existing.locais.add(r.localId);
+        if (r.localId != null) existing.locais.add(r.localId);
       } else {
-        mapa.set(r.produtoId, {
-          produtoNome: r.produtoNome,
+        mapa.set(pid, {
+          produtoNome: r.produtoNome ?? "",
           familiaNome: r.familiaNome,
           marcaNome: r.marcaNome,
           saldoTotal: r.quantidade ? Number(r.quantidade) : 0,
           valorTotal: r.vrSaldo ? Number(r.vrSaldo) : 0,
-          locais: new Set([r.localId]),
+          locais: r.localId != null ? new Set([r.localId]) : new Set(),
         });
       }
     }

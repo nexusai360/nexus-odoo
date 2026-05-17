@@ -138,17 +138,19 @@ export function DataTable<T extends Record<string, unknown>>({
 
         {/* Seletor de colunas */}
         <Popover>
-          <PopoverTrigger asChild>
-            <Button
-              variant="outline"
-              size="sm"
-              className="h-8 gap-1.5 text-xs"
-              aria-label="Gerenciar colunas visíveis"
-            >
-              <Columns2 className="size-3.5" aria-hidden />
-              Colunas
-            </Button>
-          </PopoverTrigger>
+          <PopoverTrigger
+            render={
+              <Button
+                variant="outline"
+                size="sm"
+                className="h-8 gap-1.5 text-xs"
+                aria-label="Gerenciar colunas visíveis"
+              >
+                <Columns2 className="size-3.5" aria-hidden />
+                Colunas
+              </Button>
+            }
+          />
           <PopoverContent className="w-52 p-2">
             <p className="mb-2 px-1 text-xs font-medium text-muted-foreground uppercase tracking-wide">
               Colunas visíveis
