@@ -9,8 +9,11 @@ jest.mock("@/lib/prisma", () => ({
     syncState: { findUnique: jest.fn() },
   },
 }));
+// eslint-disable-next-line @typescript-eslint/no-require-imports
 const { getCurrentUser } = require("@/lib/auth");
+// eslint-disable-next-line @typescript-eslint/no-require-imports
 const { getMyDomains } = require("@/lib/actions/domain-access");
+// eslint-disable-next-line @typescript-eslint/no-require-imports
 const { prisma } = require("@/lib/prisma");
 import {
   getRelatorioSaldoProduto, getRelatorioValorPorArmazem,
