@@ -3,15 +3,17 @@
 import { useCallback } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import type { ReportFilter } from "@/lib/reports/types";
-import { ProductFilter, type FilterOption } from "./filter-controls/product-filter";
 import { WarehouseFilter } from "./filter-controls/warehouse-filter";
 import { FamilyFilter } from "./filter-controls/family-filter";
 import { DirectionFilter } from "./filter-controls/direction-filter";
 import { DaysRangeFilter } from "./filter-controls/days-range-filter";
-import { SearchFilter } from "./filter-controls/search-filter";
+
+export interface FilterOption {
+  id: number;
+  nome: string;
+}
 
 export interface FilterOptions {
-  produtos: FilterOption[];
   armazens: FilterOption[];
   familias: FilterOption[];
 }
@@ -24,6 +26,7 @@ interface ReportFiltersProps {
 /**
  * Barra de filtros declarativa: renderiza um controle por filtro da seção e
  * propaga o estado para a URL via searchParams (deep-link + voltar funcionam).
+ * A busca textual ficou exclusivamente na DataTable interna.
  */
 export function ReportFilters({ filtros, options }: ReportFiltersProps) {
   const router = useRouter();
@@ -48,15 +51,6 @@ export function ReportFilters({ filtros, options }: ReportFiltersProps) {
     <div className="flex flex-wrap items-end gap-3">
       {filtros.map((f) => {
         switch (f.tipo) {
-          case "produto":
-            return (
-              <ProductFilter
-                key="produto"
-                value={searchParams.get("produtoId") ?? ""}
-                onChange={(v) => setParam({ produtoId: v })}
-                options={options.produtos}
-              />
-            );
           case "armazem":
             return (
               <WarehouseFilter
@@ -89,14 +83,6 @@ export function ReportFilters({ filtros, options }: ReportFiltersProps) {
                 key="faixaDias"
                 value={searchParams.get("faixaDias") ?? f.default ?? "30"}
                 onChange={(v) => setParam({ faixaDias: v })}
-              />
-            );
-          case "busca":
-            return (
-              <SearchFilter
-                key="busca"
-                value={searchParams.get("busca") ?? ""}
-                onChange={(v) => setParam({ busca: v })}
               />
             );
           default:

@@ -44,7 +44,7 @@ describe("ReportView", () => {
           { secao: entry.secoes[1], estado: "ok", dados: saldoData },
         ]}
         freshness={new Date("2026-05-16T09:00:00Z")}
-        options={{ produtos: [], armazens: [], familias: [] }}
+        options={{ armazens: [], familias: [] }}
         periodo={null}
       />,
     );
@@ -59,7 +59,7 @@ describe("ReportView", () => {
           { secao: entry.secoes[1], estado: "preparando", dados: null },
         ]}
         freshness={null}
-        options={{ produtos: [], armazens: [], familias: [] }}
+        options={{ armazens: [], familias: [] }}
         periodo={null}
       />,
     );
@@ -74,7 +74,7 @@ describe("ReportView", () => {
           { secao: entry.secoes[1], estado: "ok", dados: saldoData },
         ]}
         freshness={null}
-        options={{ produtos: [], armazens: [], familias: [] }}
+        options={{ armazens: [], familias: [] }}
         periodo={null}
       />,
     );
@@ -114,7 +114,7 @@ describe("ReportView", () => {
           { secao: r6.secoes[1], estado: "ok", dados },
         ]}
         freshness={null}
-        options={{ produtos: [], armazens: [], familias: [] }}
+        options={{ armazens: [], familias: [] }}
         periodo={null}
       />,
     );

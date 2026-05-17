@@ -4,12 +4,10 @@ import type { PeriodoPresetPadrao } from "@/lib/reports/periodo";
 
 /** Tipo de cada controle de filtro de uma seção. */
 export type ReportFilterTipo =
-  | "produto"
   | "armazem"
   | "familia"
   | "sentido"
-  | "faixaDias"
-  | "busca";
+  | "faixaDias";
 
 /** Declaração de um filtro numa seção do catálogo. */
 export interface ReportFilter {
@@ -66,7 +64,6 @@ export interface ReportEntry {
  * Todos opcionais — quando ausente, a query aplica o seu default.
  */
 export interface ReportFilterValues {
-  produtoId?: number;
   armazemId?: number;
   familiaId?: number;
   /** Mês inicial do período, formato YYYY-MM. */
@@ -76,8 +73,6 @@ export interface ReportFilterValues {
   sentido?: "entrada" | "saida";
   /** Faixa de dias de imobilização: 30, 60 ou 90 (90 = "90+"). */
   faixaDias?: 30 | 60 | 90;
-  /** Texto livre de busca. */
-  busca?: string;
 }
 
 /** Estado de um fato no momento da leitura (spec §3.4). */

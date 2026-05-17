@@ -3,7 +3,8 @@
 import { useRouter } from "next/navigation";
 import { Boxes, TrendingDown, DollarSign } from "lucide-react";
 import type { ReportEntry, ReportSection, ReportState } from "@/lib/reports/types";
-import { ReportFilters, type FilterOptions } from "@/components/reports/report-filters";
+import { ReportFilters } from "@/components/reports/report-filters";
+import type { FilterOptions } from "@/components/reports/report-filters";
 import { KPICard } from "@/components/charts/kpi-card";
 import { ChartCard } from "@/components/charts/chart-card";
 import { DataTable, type ColumnDef } from "@/components/charts/data-table";

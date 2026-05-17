@@ -15,19 +15,18 @@ jest.mock("next/navigation", () => ({
 
 describe("ReportFilters", () => {
   it("renderiza um controle por filtro declarado", () => {
-    const filtros: ReportFilter[] = [{ tipo: "busca" }, { tipo: "armazem" }];
+    const filtros: ReportFilter[] = [{ tipo: "armazem" }];
     render(
       <ReportFilters
         filtros={filtros}
-        options={{ produtos: [], armazens: [], familias: [] }}
+        options={{ armazens: [], familias: [] }}
       />,
     );
-    expect(screen.getByPlaceholderText(/pesquisar/i)).toBeInTheDocument();
     expect(screen.getByRole("combobox")).toBeInTheDocument();
   });
   it("não renderiza nada quando não há filtros", () => {
     const { container } = render(
-      <ReportFilters filtros={[]} options={{ produtos: [], armazens: [], familias: [] }} />,
+      <ReportFilters filtros={[]} options={{ armazens: [], familias: [] }} />,
     );
     expect(container.firstChild).toBeNull();
   });

@@ -6,13 +6,17 @@ const sec = (filtros: ReportSection["filtros"]): ReportSection => ({
 });
 
 describe("parseFilters", () => {
-  it("converte produtoId de string para número", () => {
-    const r = parseFilters(sec([{ tipo: "produto" }]), { produtoId: "12" });
-    expect(r.produtoId).toBe(12);
+  it("parseia armazemId de string para número", () => {
+    const r = parseFilters(sec([{ tipo: "armazem" }]), { armazemId: "5" });
+    expect(r.armazemId).toBe(5);
   });
-  it("ignora produtoId não numérico", () => {
-    const r = parseFilters(sec([{ tipo: "produto" }]), { produtoId: "abc" });
-    expect(r.produtoId).toBeUndefined();
+  it("ignora armazemId não numérico", () => {
+    const r = parseFilters(sec([{ tipo: "armazem" }]), { armazemId: "abc" });
+    expect(r.armazemId).toBeUndefined();
+  });
+  it("parseia familiaId", () => {
+    const r = parseFilters(sec([{ tipo: "familia" }]), { familiaId: "9" });
+    expect(r.familiaId).toBe(9);
   });
   it("parseia sentido válido e ignora inválido", () => {
     expect(parseFilters(sec([{ tipo: "sentido" }]), { sentido: "entrada" }).sentido)
@@ -25,9 +29,5 @@ describe("parseFilters", () => {
       faixaDias: "999",
     });
     expect(r.faixaDias).toBe(30);
-  });
-  it("passa a busca como texto", () => {
-    expect(parseFilters(sec([{ tipo: "busca" }]), { busca: "esteira" }).busca)
-      .toBe("esteira");
   });
 });

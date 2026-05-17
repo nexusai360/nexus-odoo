@@ -1,8 +1,9 @@
 "use client";
 
 import { useMemo } from "react";
-import type { FilterOption } from "./product-filter";
+import { limparNomeLocal } from "@/lib/reports/local-nome";
 import { FilterSelect } from "./filter-select";
+import type { FilterOption } from "@/components/reports/report-filters";
 
 interface WarehouseFilterProps {
   value: string;
@@ -10,12 +11,15 @@ interface WarehouseFilterProps {
   options: FilterOption[];
 }
 
-/** Filtro de armazém, alinhado ao design system da F1. */
+/** Filtro de armazém com nomes limpos via limparNomeLocal. */
 export function WarehouseFilter({ value, onChange, options }: WarehouseFilterProps) {
   const opcoes = useMemo(
     () => [
       { value: "", label: "Todos os armazéns" },
-      ...options.map((o) => ({ value: String(o.id), label: o.nome })),
+      ...options.map((o) => ({
+        value: String(o.id),
+        label: limparNomeLocal(o.nome).rotulo,
+      })),
     ],
     [options],
   );

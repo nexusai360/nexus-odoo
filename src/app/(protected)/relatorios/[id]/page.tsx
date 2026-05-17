@@ -75,15 +75,14 @@ export default async function RelatorioPage({ params, searchParams }: PageProps)
     });
   }
 
-  // Opções dos filtros (produtos/armazéns/famílias) a partir do fato de saldo.
+  // Opções dos filtros (armazéns/famílias) a partir do fato de saldo.
   const saldos = await prisma.fatoEstoqueSaldo.findMany({
     select: {
-      produtoId: true, produtoNome: true, localId: true, localNome: true,
+      localId: true, localNome: true,
       familiaId: true, familiaNome: true,
     },
   });
   const options = {
-    produtos: dedup(saldos, "produtoId", "produtoNome"),
     armazens: dedup(saldos, "localId", "localNome"),
     familias: dedup(saldos, "familiaId", "familiaNome"),
   };

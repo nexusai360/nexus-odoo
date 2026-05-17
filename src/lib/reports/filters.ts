@@ -22,18 +22,11 @@ export function parseFilters(
   const values: ReportFilterValues = {};
   const tipos = new Set(section.filtros.map((f) => f.tipo));
 
-  if (tipos.has("produto")) {
-    values.produtoId = toInt(searchParams.produtoId);
-  }
   if (tipos.has("armazem")) {
     values.armazemId = toInt(searchParams.armazemId);
   }
   if (tipos.has("familia")) {
     values.familiaId = toInt(searchParams.familiaId);
-  }
-  if (tipos.has("busca")) {
-    const b = searchParams.busca?.trim();
-    if (b) values.busca = b;
   }
   if (tipos.has("sentido")) {
     const s = searchParams.sentido;
