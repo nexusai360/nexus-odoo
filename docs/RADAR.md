@@ -94,34 +94,25 @@ produção, ou aguardar dado.
 
 ---
 
-## R4 — GRANTs SQL fora do `prisma migrate` — passo obrigatório no runbook de deploy
+## ~~R4 — GRANTs SQL fora do `prisma migrate`~~ RESOLVIDO
 
 **Aberto desde:** 2026-05-18 (code review final F4 completo — IMP-2).
+**Resolvido em:** 2026-05-18.
 
-Os `GRANT SELECT` das tabelas de fato e os roles `nexus_mcp` / `nexus_mcp_bi`
-**não vivem no `prisma migrate`** — foram aplicados em scripts SQL avulsos:
+### Solução aplicada
 
-- `prisma/sql/2026-05-17-mcp-role.sql` — cria o role `nexus_mcp`, concede
-  `CONNECT` no banco e `SELECT` nas tabelas `fato_*` e de suporte.
-- `prisma/sql/2026-05-17-mcp-bi-role.sql` — cria o role `nexus_mcp_bi` (Caminho
-  3c / modo BI), concede `SELECT` em todas as tabelas do schema `public`.
-
-### Risco
-
-Se o container `mcp` subir após um `prisma migrate deploy` em ambiente limpo
-(novo deploy, novo banco), os GRANTs não existem → o usuário Postgres do MCP
-recebe `permission denied` em qualquer query nas tools novas → todas as tools
-de fato retornam erro em vez de dados.
-
-### Ação no runbook de deploy assistido
-
-Após `prisma migrate deploy`, (re)executar **obrigatoriamente**:
+Os 2 scripts avulsos foram **consolidados** num único script idempotente
+`prisma/sql/provision-mcp.sql` e o deploy virou **um comando**:
 
 ```bash
-psql "$DATABASE_URL" -f prisma/sql/2026-05-17-mcp-role.sql
-psql "$DATABASE_URL" -f prisma/sql/2026-05-17-mcp-bi-role.sql
+npm run db:deploy   # = prisma migrate deploy && npm run db:provision
 ```
 
-Ordem importa: o migrate deve rodar antes (garante que as tabelas existem);
-os scripts de GRANT rodam depois. Em Portainer/CI, adicionar como step
-pós-migrate no script de deploy.
+- **Idempotente** — seguro rodar a cada deploy.
+- **A prova de esquecimento** — o `GRANT SELECT` nos fatos e dinamico (loop
+  sobre `fato_*`); um fato novo e coberto automaticamente, sem editar o script.
+- Senhas via variavel de ambiente (`MCP_DB_PASSWORD`/`MCP_BI_DB_PASSWORD`),
+  nunca no arquivo.
+
+Runbook: `docs/runbooks/deploy-mcp-db.md`. O deploy assistido [12] usa
+`npm run db:deploy` como passo de banco.
