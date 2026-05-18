@@ -42,14 +42,14 @@ describe("financeiro_contas_a_pagar", () => {
         participanteNome: "Fornecedor X",
         numeroDocumento: "BOL-001",
         dataVencimento: new Date("2026-05-15"),
-        vrSaldo: "1000.00",
+        vrTotal: "1000.00",
       },
     ]);
     const result = await financeiroContasAPagar.handler({}, ctx);
     expect(result).toMatchObject({ estado: "ok" });
     if (result.estado !== "preparando") {
       expect(result.dados.titulos[0].dataVencimento).toBe("2026-05-15T00:00:00.000Z");
-      expect(result.dados.titulos[0].vrSaldo).toBe(1000);
+      expect(result.dados.titulos[0].vrTotal).toBe(1000);
       expect(result.dados.totalAPagar).toBe(1000);
     }
   });
@@ -66,7 +66,7 @@ describe("financeiro_contas_a_pagar", () => {
     ]);
     // Mock simula o banco já tendo filtrado por situacaoSimples='aberto'
     (ctx.prisma.fatoFinanceiroTitulo.findMany as jest.Mock).mockResolvedValue([
-      { participanteNome: "Fornecedor X", numeroDocumento: "BOL-001", dataVencimento: new Date("2026-05-15"), vrSaldo: "1000.00" },
+      { participanteNome: "Fornecedor X", numeroDocumento: "BOL-001", dataVencimento: new Date("2026-05-15"), vrTotal: "1000.00" },
     ]);
     const result = await financeiroContasAPagar.handler({}, ctx);
     if (result.estado !== "preparando") {

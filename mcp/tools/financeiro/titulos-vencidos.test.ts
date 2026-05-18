@@ -43,7 +43,7 @@ describe("financeiro_titulos_vencidos", () => {
         participanteNome: "Cliente Z",
         numeroDocumento: "NF-100",
         dataVencimento: new Date("2026-04-01"),
-        vrSaldo: "2000.00",
+        vrTotal: "2000.00",
       },
     ]);
     const result = await financeiroTitulosVencidos.handler({}, ctx);
@@ -51,7 +51,7 @@ describe("financeiro_titulos_vencidos", () => {
     if (result.estado !== "preparando") {
       expect(result.dados.titulos[0].tipo).toBe("a_receber");
       expect(result.dados.titulos[0].dataVencimento).toBe("2026-04-01T00:00:00.000Z");
-      expect(result.dados.titulos[0].vrSaldo).toBe(2000);
+      expect(result.dados.titulos[0].vrTotal).toBe(2000);
       expect(result.dados.totalVencido).toBe(2000);
     }
   });
@@ -82,7 +82,7 @@ describe("financeiro_titulos_vencidos", () => {
     ]);
     // Mock simula banco retornando apenas títulos abertos e vencidos
     (ctx.prisma.fatoFinanceiroTitulo.findMany as jest.Mock).mockResolvedValue([
-      { tipo: "a_receber", participanteNome: "Cliente Z", numeroDocumento: "NF-100", dataVencimento: new Date("2026-04-01"), vrSaldo: "2000.00" },
+      { tipo: "a_receber", participanteNome: "Cliente Z", numeroDocumento: "NF-100", dataVencimento: new Date("2026-04-01"), vrTotal: "2000.00" },
     ]);
     const result = await financeiroTitulosVencidos.handler({}, ctx);
     if (result.estado !== "preparando") {

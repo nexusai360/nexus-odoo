@@ -134,16 +134,18 @@ describe("queryContasAReceber", () => {
     expect(call.where).not.toHaveProperty("dataPagamento");
   });
 
-  it("calcula diasAtraso por linha e totalAReceber", async () => {
+  it("calcula diasAtraso por linha e totalAReceber usando vrTotal", async () => {
     const prisma = makePrisma();
-    // Fixture: título com situacaoSimples='aberto' (critério correto)
+    // Fixture: título com situacaoSimples='aberto'; vrTotal é o valor real do título
+    // (vrSaldo é ~0 na fonte finan.pagamento.divida e foi removido do output)
     (prisma.fatoFinanceiroTitulo.findMany as jest.Mock).mockResolvedValue([
-      { participanteNome: "Empresa A", numeroDocumento: "NF-001", dataVencimento: new Date("2026-05-10"), vrSaldo: "500.00" },
-      { participanteNome: "Empresa B", numeroDocumento: "NF-002", dataVencimento: null, vrSaldo: "300.00" },
+      { participanteNome: "Empresa A", numeroDocumento: "NF-001", dataVencimento: new Date("2026-05-10"), vrTotal: "500.00" },
+      { participanteNome: "Empresa B", numeroDocumento: "NF-002", dataVencimento: null, vrTotal: "300.00" },
     ]);
     const result = await queryContasAReceber(prisma as never, {}, hoje);
     expect(result.titulos[0].diasAtraso).toBe(8); // 18 - 10 = 8 dias
     expect(result.titulos[1].diasAtraso).toBe(0); // null → 0
+    expect(result.titulos[0].vrTotal).toBeCloseTo(500);
     expect(result.totalAReceber).toBeCloseTo(800);
   });
 
@@ -189,14 +191,15 @@ describe("queryContasAPagar", () => {
     expect(call.where).not.toHaveProperty("dataPagamento");
   });
 
-  it("calcula diasAtraso e totalAPagar", async () => {
+  it("calcula diasAtraso e totalAPagar usando vrTotal", async () => {
     const prisma = makePrisma();
-    // Fixture: título com situacaoSimples='aberto' (critério correto)
+    // Fixture: título com situacaoSimples='aberto'; vrTotal é o valor real do título
     (prisma.fatoFinanceiroTitulo.findMany as jest.Mock).mockResolvedValue([
-      { participanteNome: "Fornecedor X", numeroDocumento: "BOL-001", dataVencimento: new Date("2026-05-15"), vrSaldo: "1000.00" },
+      { participanteNome: "Fornecedor X", numeroDocumento: "BOL-001", dataVencimento: new Date("2026-05-15"), vrTotal: "1000.00" },
     ]);
     const result = await queryContasAPagar(prisma as never, {}, hoje);
     expect(result.titulos[0].diasAtraso).toBe(3);
+    expect(result.titulos[0].vrTotal).toBeCloseTo(1000);
     expect(result.totalAPagar).toBeCloseTo(1000);
   });
 
@@ -235,18 +238,20 @@ describe("queryTitulosVencidos", () => {
     expect(call.where).not.toHaveProperty("dataPagamento");
   });
 
-  it("inclui tipo no resultado e calcula diasAtraso e totalVencido", async () => {
+  it("inclui tipo no resultado e calcula diasAtraso e totalVencido usando vrTotal", async () => {
     // Usa hoje fixo meia-noite local para evitar variação de fuso no cálculo de dias.
     const hojeFixo = new Date(hoje.getFullYear(), hoje.getMonth(), hoje.getDate()); // 2026-05-18 local
     const prisma = makePrisma();
+    // vrTotal é o valor real do título; vrSaldo foi removido do output (é ~0 na fonte)
     (prisma.fatoFinanceiroTitulo.findMany as jest.Mock).mockResolvedValue([
-      { tipo: "a_receber", participanteNome: "Cliente Z", numeroDocumento: "NF-100", dataVencimento: new Date(2026, 3, 1), vrSaldo: "2000.00" }, // 2026-04-01 local
-      { tipo: "a_pagar", participanteNome: "Forn Y", numeroDocumento: "BOL-200", dataVencimento: new Date(2026, 4, 1), vrSaldo: "800.00" }, // 2026-05-01 local
+      { tipo: "a_receber", participanteNome: "Cliente Z", numeroDocumento: "NF-100", dataVencimento: new Date(2026, 3, 1), vrTotal: "2000.00" }, // 2026-04-01 local
+      { tipo: "a_pagar", participanteNome: "Forn Y", numeroDocumento: "BOL-200", dataVencimento: new Date(2026, 4, 1), vrTotal: "800.00" }, // 2026-05-01 local
     ]);
     const result = await queryTitulosVencidos(prisma as never, hojeFixo);
     expect(result.titulos).toHaveLength(2);
     expect(result.titulos[0].tipo).toBe("a_receber");
     expect(result.titulos[0].diasAtraso).toBe(47); // 18 mai - 1 abr = 47 dias (ambos em local)
+    expect(result.titulos[0].vrTotal).toBeCloseTo(2000);
     expect(result.totalVencido).toBeCloseTo(2800);
   });
 
@@ -272,7 +277,7 @@ describe("queryTitulosVencidos", () => {
     const prisma = makePrisma();
     const ontem = new Date(hoje.getFullYear(), hoje.getMonth(), hoje.getDate() - 1); // 2026-05-17T00:00:00
     (prisma.fatoFinanceiroTitulo.findMany as jest.Mock).mockResolvedValue([
-      { tipo: "a_pagar", participanteNome: "Forn A", numeroDocumento: "BOL-001", dataVencimento: ontem, vrSaldo: "500.00" },
+      { tipo: "a_pagar", participanteNome: "Forn A", numeroDocumento: "BOL-001", dataVencimento: ontem, vrTotal: "500.00" },
     ]);
     const result = await queryTitulosVencidos(prisma as never, hoje);
     expect(result.titulos).toHaveLength(1);

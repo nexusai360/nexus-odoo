@@ -9,11 +9,14 @@ const inputSchema = z.object({
   participanteId: z.number().int().positive().optional(),
 });
 
+// vrSaldo removido: é ~0 para todos os títulos em aberto na fonte
+// finan.pagamento.divida — incluí-lo seria ruído para o agente de IA.
+// O valor correto do título é vrTotal.
 const tituloSchema = z.object({
   participanteNome: z.string().nullable(),
   numeroDocumento: z.string().nullable(),
   dataVencimento: z.string().nullable(),
-  vrSaldo: z.number(),
+  vrTotal: z.number(),
   diasAtraso: z.number().int(),
 });
 
@@ -46,7 +49,7 @@ function shape(d: Awaited<ReturnType<typeof queryContasAReceber>>) {
       participanteNome: t.participanteNome,
       numeroDocumento: t.numeroDocumento,
       dataVencimento: t.dataVencimento ? t.dataVencimento.toISOString() : null,
-      vrSaldo: t.vrSaldo,
+      vrTotal: t.vrTotal,
       diasAtraso: t.diasAtraso,
     })),
     totalAReceber: d.totalAReceber,
@@ -56,7 +59,7 @@ function shape(d: Awaited<ReturnType<typeof queryContasAReceber>>) {
 export const financeiroContasAReceber: ToolEntry<Input, Output> = {
   id: "financeiro_contas_a_receber",
   dominio: "financeiro",
-  descricao: "Títulos a receber em aberto, com saldo devedor e dias de atraso.",
+  descricao: "Títulos a receber em aberto, com valor total e dias de atraso.",
   inputSchemaShape: inputSchema.shape,
   inputSchema,
   outputSchema,

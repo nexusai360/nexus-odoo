@@ -7,12 +7,15 @@ import { withFreshness } from "../../lib/freshness.js";
 
 const inputSchema = z.object({});
 
+// vrSaldo removido: é ~0 para todos os títulos em aberto na fonte
+// finan.pagamento.divida — incluí-lo seria ruído para o agente de IA.
+// O valor correto do título é vrTotal.
 const tituloSchema = z.object({
   tipo: z.string(),
   participanteNome: z.string().nullable(),
   numeroDocumento: z.string().nullable(),
   dataVencimento: z.string().nullable(),
-  vrSaldo: z.number(),
+  vrTotal: z.number(),
   diasAtraso: z.number().int(),
 });
 
@@ -46,7 +49,7 @@ function shape(d: Awaited<ReturnType<typeof queryTitulosVencidos>>) {
       participanteNome: t.participanteNome,
       numeroDocumento: t.numeroDocumento,
       dataVencimento: t.dataVencimento ? t.dataVencimento.toISOString() : null,
-      vrSaldo: t.vrSaldo,
+      vrTotal: t.vrTotal,
       diasAtraso: t.diasAtraso,
     })),
     totalVencido: d.totalVencido,

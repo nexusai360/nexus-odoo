@@ -97,13 +97,19 @@ export async function queryFluxoCaixa(
 
 // ---------------------------------------------------------------------------
 // Tipo compartilhado de título (a receber / a pagar)
+//
+// vrSaldo removido intencionalmente: na fonte finan.pagamento.divida o campo
+// é ~0 para todos os títulos em aberto — incluí-lo seria ruído puro para o
+// agente de IA. O valor correto de um título em aberto é vrTotal (= vrDocumento
+// ± juros/multa/desconto acumulados). vrSaldo existe no banco e pode ser
+// consultado diretamente se necessário em outro contexto.
 // ---------------------------------------------------------------------------
 
 export interface TituloRow {
   participanteNome: string | null;
   numeroDocumento: string | null;
   dataVencimento: Date | null;
-  vrSaldo: number;
+  vrTotal: number;
   diasAtraso: number;
 }
 
@@ -130,7 +136,7 @@ export async function queryContasAReceber(
       participanteNome: true,
       numeroDocumento: true,
       dataVencimento: true,
-      vrSaldo: true,
+      vrTotal: true,
     },
   });
 
@@ -138,11 +144,11 @@ export async function queryContasAReceber(
     participanteNome: r.participanteNome,
     numeroDocumento: r.numeroDocumento,
     dataVencimento: r.dataVencimento,
-    vrSaldo: Number(r.vrSaldo),
+    vrTotal: Number(r.vrTotal),
     diasAtraso: calcDiasAtraso(r.dataVencimento, hoje),
   }));
 
-  const totalAReceber = titulos.reduce((acc, t) => acc + t.vrSaldo, 0);
+  const totalAReceber = titulos.reduce((acc, t) => acc + t.vrTotal, 0);
   return { titulos, totalAReceber };
 }
 
@@ -168,7 +174,7 @@ export async function queryContasAPagar(
       participanteNome: true,
       numeroDocumento: true,
       dataVencimento: true,
-      vrSaldo: true,
+      vrTotal: true,
     },
   });
 
@@ -176,16 +182,18 @@ export async function queryContasAPagar(
     participanteNome: r.participanteNome,
     numeroDocumento: r.numeroDocumento,
     dataVencimento: r.dataVencimento,
-    vrSaldo: Number(r.vrSaldo),
+    vrTotal: Number(r.vrTotal),
     diasAtraso: calcDiasAtraso(r.dataVencimento, hoje),
   }));
 
-  const totalAPagar = titulos.reduce((acc, t) => acc + t.vrSaldo, 0);
+  const totalAPagar = titulos.reduce((acc, t) => acc + t.vrTotal, 0);
   return { titulos, totalAPagar };
 }
 
 // ---------------------------------------------------------------------------
 // TituloVencidoRow — inclui tipo (task 4d.7-q)
+//
+// vrSaldo removido pelo mesmo motivo de TituloRow — veja comentário acima.
 // ---------------------------------------------------------------------------
 
 export interface TituloVencidoRow {
@@ -193,7 +201,7 @@ export interface TituloVencidoRow {
   participanteNome: string | null;
   numeroDocumento: string | null;
   dataVencimento: Date | null;
-  vrSaldo: number;
+  vrTotal: number;
   diasAtraso: number;
 }
 
@@ -224,7 +232,7 @@ export async function queryTitulosVencidos(
       participanteNome: true,
       numeroDocumento: true,
       dataVencimento: true,
-      vrSaldo: true,
+      vrTotal: true,
     },
   });
 
@@ -233,10 +241,10 @@ export async function queryTitulosVencidos(
     participanteNome: r.participanteNome,
     numeroDocumento: r.numeroDocumento,
     dataVencimento: r.dataVencimento,
-    vrSaldo: Number(r.vrSaldo),
+    vrTotal: Number(r.vrTotal),
     diasAtraso: calcDiasAtraso(r.dataVencimento, hoje),
   }));
 
-  const totalVencido = titulos.reduce((acc, t) => acc + t.vrSaldo, 0);
+  const totalVencido = titulos.reduce((acc, t) => acc + t.vrTotal, 0);
   return { titulos, totalVencido };
 }
