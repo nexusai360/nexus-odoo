@@ -100,15 +100,14 @@ const TODOS_IDS = [
 
 describe("Catálogo completo — rede de proteção N6", () => {
   it("super_admin recebe EXATAMENTE 14 tools", () => {
-    const user = { userId: "u", role: "super_admin" as const, domains: ["estoque", "financeiro"] as const };
-    // cast necessário pois PlatformRole/ReportDomain são enums do Prisma
-    const tools = visibleTools(catalogo, user as Parameters<typeof visibleTools>[1]);
+    const user = { userId: "u", role: "super_admin" as const, domains: ["estoque", "financeiro"] } as unknown as Parameters<typeof visibleTools>[1];
+    const tools = visibleTools(catalogo, user);
     expect(tools).toHaveLength(14);
   });
 
   it("super_admin recebe o conjunto exato de IDs", () => {
-    const user = { userId: "u", role: "super_admin" as const, domains: ["estoque", "financeiro"] as const };
-    const tools = visibleTools(catalogo, user as Parameters<typeof visibleTools>[1]);
+    const user = { userId: "u", role: "super_admin" as const, domains: ["estoque", "financeiro"] } as unknown as Parameters<typeof visibleTools>[1];
+    const tools = visibleTools(catalogo, user);
     const ids = tools.map((t) => t.id).sort();
     expect(ids).toEqual([...TODOS_IDS].sort());
   });

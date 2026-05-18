@@ -6,12 +6,14 @@
 // .incr(key), .expire(key, seconds) e .exec() → Array<[Error|null, number]>.
 // Compatível com ioredis e com o mock de teste.
 
+export interface RateLimitPipeline {
+  incr(key: string): RateLimitPipeline;
+  expire(key: string, seconds: number): RateLimitPipeline;
+  exec(): Promise<Array<[Error | null, number]>>;
+}
+
 export interface RateLimitRedis {
-  pipeline(): {
-    incr(key: string): this;
-    expire(key: string, seconds: number): this;
-    exec(): Promise<Array<[Error | null, number]>>;
-  };
+  pipeline(): RateLimitPipeline;
 }
 
 export interface RateLimitResult {
