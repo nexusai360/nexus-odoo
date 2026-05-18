@@ -6,6 +6,7 @@ import { rebuildFatoProdutoParado } from "./fato-produto-parado";
 import { rebuildFatoFinanceiroSaldo } from "./fato-financeiro-saldo";
 import { rebuildFatoFinanceiroMovimento } from "./fato-financeiro-movimento";
 import { rebuildFatoFinanceiroTitulo } from "./fato-financeiro-titulo";
+import { rebuildFatoPedido } from "./fato-pedido";
 
 export interface FatoBuilderEntry {
   nome: string;
@@ -20,6 +21,7 @@ export const FATO_BUILDERS: FatoBuilderEntry[] = [
   { nome: "fato_financeiro_saldo", cycle: "snapshot", run: rebuildFatoFinanceiroSaldo },
   { nome: "fato_financeiro_movimento", cycle: "incremental", run: rebuildFatoFinanceiroMovimento },
   { nome: "fato_financeiro_titulo", cycle: "incremental", run: rebuildFatoFinanceiroTitulo },
+  { nome: "fato_pedido", cycle: "incremental", run: rebuildFatoPedido },
 ];
 
 /**
