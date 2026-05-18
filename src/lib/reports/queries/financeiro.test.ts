@@ -126,7 +126,7 @@ describe("queryContasAReceber", () => {
     expect(call.where).toMatchObject({ tipo: "a_receber", situacaoSimples: "aberto" });
   });
 
-  it("NÃO usa dataPagamento como critério (campo nunca é null na fonte)", async () => {
+  it("NÃO usa dataPagamento como critério", async () => {
     const prisma = makePrisma();
     (prisma.fatoFinanceiroTitulo.findMany as jest.Mock).mockResolvedValue([]);
     await queryContasAReceber(prisma as never, {}, hoje);
@@ -134,24 +134,31 @@ describe("queryContasAReceber", () => {
     expect(call.where).not.toHaveProperty("dataPagamento");
   });
 
-  it("calcula diasAtraso por linha e totalAReceber usando vrTotal", async () => {
+  it("seleciona vrSaldo no findMany (fonte finan.lancamento — bug R1 corrigido)", async () => {
     const prisma = makePrisma();
-    // Fixture: título com situacaoSimples='aberto'; vrTotal é o valor real do título
-    // (vrSaldo é ~0 na fonte finan.pagamento.divida e foi removido do output)
+    (prisma.fatoFinanceiroTitulo.findMany as jest.Mock).mockResolvedValue([]);
+    await queryContasAReceber(prisma as never, {}, hoje);
+    const call = (prisma.fatoFinanceiroTitulo.findMany as jest.Mock).mock.calls[0][0];
+    expect(call.select).toHaveProperty("vrSaldo", true);
+  });
+
+  it("calcula diasAtraso por linha e totalAReceber usando vrSaldo", async () => {
+    const prisma = makePrisma();
+    // Fixture no formato finan.lancamento: vrSaldo == vrDocumento quando aberto
     (prisma.fatoFinanceiroTitulo.findMany as jest.Mock).mockResolvedValue([
-      { participanteNome: "Empresa A", numeroDocumento: "NF-001", dataVencimento: new Date("2026-05-10"), vrTotal: "500.00" },
-      { participanteNome: "Empresa B", numeroDocumento: "NF-002", dataVencimento: null, vrTotal: "300.00" },
+      { participanteNome: "Empresa A", numeroDocumento: "NF-001", dataVencimento: new Date("2026-05-10"), vrSaldo: "9700.50", vrTotal: "9700.50" },
+      { participanteNome: "Empresa B", numeroDocumento: "NF-002", dataVencimento: null, vrSaldo: "5314.75", vrTotal: "5314.75" },
     ]);
     const result = await queryContasAReceber(prisma as never, {}, hoje);
     expect(result.titulos[0].diasAtraso).toBe(8); // 18 - 10 = 8 dias
     expect(result.titulos[1].diasAtraso).toBe(0); // null → 0
-    expect(result.titulos[0].vrTotal).toBeCloseTo(500);
-    expect(result.totalAReceber).toBeCloseTo(800);
+    expect(result.titulos[0].vrSaldo).toBeCloseTo(9700.50);
+    expect(result.titulos[0].vrTotal).toBeCloseTo(9700.50);
+    // totalAReceber usa vrSaldo
+    expect(result.totalAReceber).toBeCloseTo(15015.25);
   });
 
   it("título quitado não aparece (banco não devolve — filtro situacaoSimples='aberto')", async () => {
-    // O banco filtra antes de devolver; o mock simula banco retornando vazio
-    // para um título quitado, confirmando que o where correto foi passado.
     const prisma = makePrisma();
     (prisma.fatoFinanceiroTitulo.findMany as jest.Mock).mockResolvedValue([]);
     const result = await queryContasAReceber(prisma as never, {}, hoje);
@@ -183,7 +190,7 @@ describe("queryContasAPagar", () => {
     expect(call.where).toMatchObject({ tipo: "a_pagar", situacaoSimples: "aberto" });
   });
 
-  it("NÃO usa dataPagamento como critério (campo nunca é null na fonte)", async () => {
+  it("NÃO usa dataPagamento como critério", async () => {
     const prisma = makePrisma();
     (prisma.fatoFinanceiroTitulo.findMany as jest.Mock).mockResolvedValue([]);
     await queryContasAPagar(prisma as never, {}, hoje);
@@ -191,16 +198,26 @@ describe("queryContasAPagar", () => {
     expect(call.where).not.toHaveProperty("dataPagamento");
   });
 
-  it("calcula diasAtraso e totalAPagar usando vrTotal", async () => {
+  it("seleciona vrSaldo no findMany (fonte finan.lancamento — bug R1 corrigido)", async () => {
     const prisma = makePrisma();
-    // Fixture: título com situacaoSimples='aberto'; vrTotal é o valor real do título
+    (prisma.fatoFinanceiroTitulo.findMany as jest.Mock).mockResolvedValue([]);
+    await queryContasAPagar(prisma as never, {}, hoje);
+    const call = (prisma.fatoFinanceiroTitulo.findMany as jest.Mock).mock.calls[0][0];
+    expect(call.select).toHaveProperty("vrSaldo", true);
+  });
+
+  it("calcula diasAtraso e totalAPagar usando vrSaldo", async () => {
+    const prisma = makePrisma();
+    // Fixture no formato finan.lancamento: vrSaldo == vrDocumento quando aberto
     (prisma.fatoFinanceiroTitulo.findMany as jest.Mock).mockResolvedValue([
-      { participanteNome: "Fornecedor X", numeroDocumento: "BOL-001", dataVencimento: new Date("2026-05-15"), vrTotal: "1000.00" },
+      { participanteNome: "Fornecedor X", numeroDocumento: "BOL-001", dataVencimento: new Date("2026-05-15"), vrSaldo: "5314.75", vrTotal: "5314.75" },
     ]);
     const result = await queryContasAPagar(prisma as never, {}, hoje);
     expect(result.titulos[0].diasAtraso).toBe(3);
-    expect(result.titulos[0].vrTotal).toBeCloseTo(1000);
-    expect(result.totalAPagar).toBeCloseTo(1000);
+    expect(result.titulos[0].vrSaldo).toBeCloseTo(5314.75);
+    expect(result.titulos[0].vrTotal).toBeCloseTo(5314.75);
+    // totalAPagar usa vrSaldo
+    expect(result.totalAPagar).toBeCloseTo(5314.75);
   });
 
   it("título quitado não aparece (banco não devolve — filtro situacaoSimples='aberto')", async () => {
@@ -238,20 +255,22 @@ describe("queryTitulosVencidos", () => {
     expect(call.where).not.toHaveProperty("dataPagamento");
   });
 
-  it("inclui tipo no resultado e calcula diasAtraso e totalVencido usando vrTotal", async () => {
+  it("inclui tipo e vrSaldo no resultado; totalVencido usa vrSaldo (fonte finan.lancamento)", async () => {
     // Usa hoje fixo meia-noite local para evitar variação de fuso no cálculo de dias.
     const hojeFixo = new Date(hoje.getFullYear(), hoje.getMonth(), hoje.getDate()); // 2026-05-18 local
     const prisma = makePrisma();
-    // vrTotal é o valor real do título; vrSaldo foi removido do output (é ~0 na fonte)
+    // Fixture no formato finan.lancamento: vrSaldo == vrTotal quando aberto
     (prisma.fatoFinanceiroTitulo.findMany as jest.Mock).mockResolvedValue([
-      { tipo: "a_receber", participanteNome: "Cliente Z", numeroDocumento: "NF-100", dataVencimento: new Date(2026, 3, 1), vrTotal: "2000.00" }, // 2026-04-01 local
-      { tipo: "a_pagar", participanteNome: "Forn Y", numeroDocumento: "BOL-200", dataVencimento: new Date(2026, 4, 1), vrTotal: "800.00" }, // 2026-05-01 local
+      { tipo: "a_receber", participanteNome: "Cliente Z", numeroDocumento: "NF-100", dataVencimento: new Date(2026, 3, 1), vrSaldo: "2000.00", vrTotal: "2000.00" }, // 2026-04-01 local
+      { tipo: "a_pagar", participanteNome: "Forn Y", numeroDocumento: "BOL-200", dataVencimento: new Date(2026, 4, 1), vrSaldo: "800.00", vrTotal: "800.00" }, // 2026-05-01 local
     ]);
     const result = await queryTitulosVencidos(prisma as never, hojeFixo);
     expect(result.titulos).toHaveLength(2);
     expect(result.titulos[0].tipo).toBe("a_receber");
     expect(result.titulos[0].diasAtraso).toBe(47); // 18 mai - 1 abr = 47 dias (ambos em local)
+    expect(result.titulos[0].vrSaldo).toBeCloseTo(2000);
     expect(result.titulos[0].vrTotal).toBeCloseTo(2000);
+    // totalVencido usa vrSaldo
     expect(result.totalVencido).toBeCloseTo(2800);
   });
 
@@ -277,11 +296,13 @@ describe("queryTitulosVencidos", () => {
     const prisma = makePrisma();
     const ontem = new Date(hoje.getFullYear(), hoje.getMonth(), hoje.getDate() - 1); // 2026-05-17T00:00:00
     (prisma.fatoFinanceiroTitulo.findMany as jest.Mock).mockResolvedValue([
-      { tipo: "a_pagar", participanteNome: "Forn A", numeroDocumento: "BOL-001", dataVencimento: ontem, vrTotal: "500.00" },
+      { tipo: "a_pagar", participanteNome: "Forn A", numeroDocumento: "BOL-001", dataVencimento: ontem, vrSaldo: "500.00", vrTotal: "500.00" },
     ]);
     const result = await queryTitulosVencidos(prisma as never, hoje);
     expect(result.titulos).toHaveLength(1);
     expect(result.titulos[0].diasAtraso).toBe(1);
+    expect(result.titulos[0].vrSaldo).toBeCloseTo(500);
+    // totalVencido usa vrSaldo
     expect(result.totalVencido).toBeCloseTo(500);
   });
 });

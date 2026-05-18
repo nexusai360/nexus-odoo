@@ -37,19 +37,22 @@ describe("financeiro_contas_a_receber", () => {
     (ctx.prisma.syncState.findMany as jest.Mock).mockResolvedValue([
       { model: "finan.pagamento.divida", lastStatus: "ok", lastSnapshotAt: null, lastIncrementalAt: now },
     ]);
+    // Fixture formato finan.lancamento: vrSaldo == vrTotal quando aberto
     (ctx.prisma.fatoFinanceiroTitulo.findMany as jest.Mock).mockResolvedValue([
       {
         participanteNome: "Empresa A",
         numeroDocumento: "NF-001",
         dataVencimento: new Date("2026-05-10"),
-        vrTotal: "500.00",
+        vrSaldo: "9700.50",
+        vrTotal: "9700.50",
       },
     ]);
     const result = await financeiroContasAReceber.handler({}, ctx);
     expect(result).toMatchObject({ estado: "ok" });
     if (result.estado !== "preparando") {
       expect(result.dados.titulos[0].dataVencimento).toBe("2026-05-10T00:00:00.000Z");
-      expect(result.dados.titulos[0].vrTotal).toBe(500);
+      expect(result.dados.titulos[0].vrSaldo).toBe(9700.50);
+      expect(result.dados.titulos[0].vrTotal).toBe(9700.50);
       expect(result.dados.titulos[0].diasAtraso).toBeGreaterThanOrEqual(0);
     }
   });
@@ -64,7 +67,7 @@ describe("financeiro_contas_a_receber", () => {
       { model: "finan.pagamento.divida", lastStatus: "ok", lastSnapshotAt: null, lastIncrementalAt: now },
     ]);
     (ctx.prisma.fatoFinanceiroTitulo.findMany as jest.Mock).mockResolvedValue([
-      { participanteNome: null, numeroDocumento: null, dataVencimento: null, vrTotal: "100.00" },
+      { participanteNome: null, numeroDocumento: null, dataVencimento: null, vrSaldo: "100.00", vrTotal: "100.00" },
     ]);
     const result = await financeiroContasAReceber.handler({}, ctx);
     if (result.estado !== "preparando") {
@@ -84,14 +87,15 @@ describe("financeiro_contas_a_receber", () => {
     (ctx.prisma.syncState.findMany as jest.Mock).mockResolvedValue([
       { model: "finan.pagamento.divida", lastStatus: "ok", lastSnapshotAt: null, lastIncrementalAt: now },
     ]);
-    // Mock simula o banco já tendo filtrado por situacaoSimples='aberto'
+    // Mock simula o banco já tendo filtrado por situacaoSimples='aberto' (finan.lancamento)
     (ctx.prisma.fatoFinanceiroTitulo.findMany as jest.Mock).mockResolvedValue([
-      { participanteNome: "Empresa A", numeroDocumento: "NF-001", dataVencimento: new Date("2026-05-10"), vrTotal: "500.00" },
+      { participanteNome: "Empresa A", numeroDocumento: "NF-001", dataVencimento: new Date("2026-05-10"), vrSaldo: "9700.50", vrTotal: "9700.50" },
     ]);
     const result = await financeiroContasAReceber.handler({}, ctx);
     if (result.estado !== "preparando") {
       expect(result.dados.titulos).toHaveLength(1);
-      expect(result.dados.totalAReceber).toBe(500);
+      // totalAReceber usa vrSaldo
+      expect(result.dados.totalAReceber).toBeCloseTo(9700.50);
     }
   });
 

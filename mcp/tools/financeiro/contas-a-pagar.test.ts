@@ -37,20 +37,24 @@ describe("financeiro_contas_a_pagar", () => {
     (ctx.prisma.syncState.findMany as jest.Mock).mockResolvedValue([
       { model: "finan.pagamento.divida", lastStatus: "ok", lastSnapshotAt: null, lastIncrementalAt: now },
     ]);
+    // Fixture formato finan.lancamento: vrSaldo == vrTotal quando aberto
     (ctx.prisma.fatoFinanceiroTitulo.findMany as jest.Mock).mockResolvedValue([
       {
         participanteNome: "Fornecedor X",
         numeroDocumento: "BOL-001",
         dataVencimento: new Date("2026-05-15"),
-        vrTotal: "1000.00",
+        vrSaldo: "5314.75",
+        vrTotal: "5314.75",
       },
     ]);
     const result = await financeiroContasAPagar.handler({}, ctx);
     expect(result).toMatchObject({ estado: "ok" });
     if (result.estado !== "preparando") {
       expect(result.dados.titulos[0].dataVencimento).toBe("2026-05-15T00:00:00.000Z");
-      expect(result.dados.titulos[0].vrTotal).toBe(1000);
-      expect(result.dados.totalAPagar).toBe(1000);
+      expect(result.dados.titulos[0].vrSaldo).toBeCloseTo(5314.75);
+      expect(result.dados.titulos[0].vrTotal).toBeCloseTo(5314.75);
+      // totalAPagar usa vrSaldo
+      expect(result.dados.totalAPagar).toBeCloseTo(5314.75);
     }
   });
 
@@ -64,14 +68,15 @@ describe("financeiro_contas_a_pagar", () => {
     (ctx.prisma.syncState.findMany as jest.Mock).mockResolvedValue([
       { model: "finan.pagamento.divida", lastStatus: "ok", lastSnapshotAt: null, lastIncrementalAt: now },
     ]);
-    // Mock simula o banco já tendo filtrado por situacaoSimples='aberto'
+    // Mock simula o banco já tendo filtrado por situacaoSimples='aberto' (finan.lancamento)
     (ctx.prisma.fatoFinanceiroTitulo.findMany as jest.Mock).mockResolvedValue([
-      { participanteNome: "Fornecedor X", numeroDocumento: "BOL-001", dataVencimento: new Date("2026-05-15"), vrTotal: "1000.00" },
+      { participanteNome: "Fornecedor X", numeroDocumento: "BOL-001", dataVencimento: new Date("2026-05-15"), vrSaldo: "5314.75", vrTotal: "5314.75" },
     ]);
     const result = await financeiroContasAPagar.handler({}, ctx);
     if (result.estado !== "preparando") {
       expect(result.dados.titulos).toHaveLength(1);
-      expect(result.dados.totalAPagar).toBe(1000);
+      // totalAPagar usa vrSaldo
+      expect(result.dados.totalAPagar).toBeCloseTo(5314.75);
     }
   });
 
