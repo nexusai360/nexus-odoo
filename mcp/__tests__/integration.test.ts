@@ -556,7 +556,10 @@ describe("Servidor HTTP real — protocolo Streamable HTTP end-to-end", () => {
     expect(result?.isError).toBeFalsy();
   });
 
-  it("admin: tools/call bi_consulta_avancada via HTTP retorna stub (disponivel=false)", async () => {
+  it("admin: tools/call bi_consulta_avancada via HTTP — novo contrato { sql } (sem MCP_BI_DATABASE_URL → erro estruturado)", async () => {
+    // O harness de teste não configura MCP_BI_DATABASE_URL, portanto o pool é null
+    // e o handler lança Error("modo BI não configurado") → isError=true, outcome="error".
+    // Este é o comportamento correto em ambiente sem configuração do Caminho 3c.
     const sid = await initializeSession(testServer.baseUrl, "user-admin");
 
     const { status, body } = await mcpRequest(
@@ -567,7 +570,7 @@ describe("Servidor HTTP real — protocolo Streamable HTTP end-to-end", () => {
         method: "tools/call",
         params: {
           name: "bi_consulta_avancada",
-          arguments: { pergunta: "Liste os 10 produtos mais rentáveis" },
+          arguments: { sql: "SELECT 1" },
         },
       },
       "user-admin",
@@ -576,12 +579,12 @@ describe("Servidor HTTP real — protocolo Streamable HTTP end-to-end", () => {
 
     expect(status).toBe(200);
     const result = extractRpcResult(body);
+    // Sem MCP_BI_DATABASE_URL → pool null → handler lança Error → pipeline → isError=true.
+    // O pipeline usa safeErrorMessage que mascara a mensagem interna (nunca vaza detalhes).
+    expect(result?.isError).toBe(true);
     const content = result?.content as Array<{ type: string; text: string }> | undefined;
     expect(content).toBeDefined();
-    // Stub retorna disponivel=false — parse do JSON no text
-    const payload = JSON.parse(content![0]?.text ?? "{}") as Record<string, unknown>;
-    expect(payload.disponivel).toBe(false);
-    expect(result?.isError).toBeFalsy();
+    expect(content!.length).toBeGreaterThan(0);
   });
 
   it("manager: tools/call bi_consulta_avancada via HTTP retorna erro (gate de role ponta a ponta)", async () => {
@@ -597,7 +600,7 @@ describe("Servidor HTTP real — protocolo Streamable HTTP end-to-end", () => {
         method: "tools/call",
         params: {
           name: "bi_consulta_avancada",
-          arguments: { pergunta: "query" },
+          arguments: { sql: "SELECT 1" },
         },
       },
       "user-manager",
@@ -676,21 +679,21 @@ describe("handleToolCall — domínio negado retorna denied", () => {
 // ─── 7. Pipeline handleToolCall — input inválido → erro estruturado ───────────
 
 describe("handleToolCall — input inválido retorna erro estruturado", () => {
-  it("bi_consulta_avancada com pergunta vazia retorna isError=true", async () => {
-    // bi_consulta_avancada exige pergunta: z.string().min(1) — string vazia é inválida
+  it("bi_consulta_avancada com sql vazio retorna isError=true", async () => {
+    // bi_consulta_avancada exige sql: z.string().min(1) — string vazia é inválida
     const tool = catalogo.find((t) => t.id === "bi_consulta_avancada");
     expect(tool).toBeDefined();
 
     const result = await handleToolCall(
       tool!,
-      { pergunta: "" }, // min(1) rejeita string vazia
+      { sql: "" }, // min(1) rejeita string vazia
       "user-super-admin",
     );
 
     expect(result.isError).toBe(true);
   });
 
-  it("bi_consulta_avancada sem campo 'pergunta' retorna isError=true", async () => {
+  it("bi_consulta_avancada sem campo 'sql' retorna isError=true", async () => {
     const tool = catalogo.find((t) => t.id === "bi_consulta_avancada");
     expect(tool).toBeDefined();
 
