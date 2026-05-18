@@ -101,9 +101,9 @@ Ordem: **F0 → F1 → F2 → F3 → F4 → F5**. F3 e F4 podem ser paralelas ap
 5. **Caminho 3 — perguntas fora do catálogo:**
    - **3a** métrica inexistente no escopo → resposta de falta honesta + log de gap (`feature_requests`).
    - **3b** fora do escopo de negócio → recusa educada.
-   - **3c** modo BI/avançado → **Postgres MCP** (text-to-SQL controlado, read-only), restrito a perfil admin/analista, resposta com aviso de "consulta dinâmica".
+   - **3c** modo BI/avançado → **executor de SQL embutido no próprio MCP semântico** (`bi_consulta_avancada` recebe um `sql` pronto do agente e o executa sob o role read-only `nexus_mcp_bi`). O text-to-SQL é responsabilidade do agente da F5 — o MCP apenas executa. Restrito a `admin`/`super_admin`; resposta tabular com aviso de "consulta dinâmica". O **Postgres MCP (Crystal DBA)** ficou restrito a ambiente **dev/DBA** — não é usado em produção no Caminho 3c. Decisão registrada em `docs/superpowers/research/2026-05-17-f4-postgres-mcp-role.md` (revisão em 2026-05-18).
 6. **RBAC estrutural em 7 camadas** (não depende de prompt): catálogo filtrado por usuário, validação no handler, tenant scoping injetado, user Postgres com GRANT mínimo, RLS opcional, validação Zod, audit + rate limit.
-7. **Postgres MCP (Crystal DBA) também em ambiente dev/DBA** — uso de produtividade, separado do MCP semântico de produção.
+7. **Postgres MCP (Crystal DBA) em ambiente dev/DBA apenas** — uso de produtividade para o time, separado do MCP semântico de produção. Não é o mecanismo do Caminho 3c de produção (ver #5 acima).
 8. **Protocolo Odoo: JSON-RPC.** O XML-RPC do Odoo quebra no `fields_get` de modelos com metadados `None` (customização SPED da Tauga). A F0 comprovou JSON-RPC estável. Cliente em `src/worker/odoo/client.ts`.
 9. **F4 cobre TODOS os domínios.** O MCP semântico não se limita a estoque ou a uma lista de 4 domínios — o catálogo de tools cobre **todo domínio de negócio** que o Odoo expõe no cache. Consequência: a F4 inclui construir a camada de **fatos** (`fato_*`) dos domínios que hoje só têm dados `raw` (estoque já tem; financeiro/fiscal/comercial e demais, não). Decisão do usuário em 2026-05-17.
 
