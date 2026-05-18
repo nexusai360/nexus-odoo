@@ -12,6 +12,12 @@ export interface ToolHandlerCtx {
   user: UserContext;
 }
 
+/**
+ * ZodRawShape — o objeto passado a z.object({...}).
+ * É o formato que o McpServer.tool / registerTool do SDK aceita como inputSchema.
+ */
+export type ZodRawShape = Record<string, z.ZodTypeAny>;
+
 /** Entrada de tool no catálogo. */
 export interface ToolEntry<I = unknown, O = unknown> {
   /** Identificador único da tool (snake_case, ex.: "saldo_produto"). */
@@ -20,7 +26,13 @@ export interface ToolEntry<I = unknown, O = unknown> {
   dominio: ReportDomain;
   /** Descrição legível para o agente. */
   descricao: string;
-  /** Schema de validação do input. */
+  /**
+   * Raw shape Zod (objeto passado a z.object({...})) — publicado em tools/list
+   * como inputSchema do protocolo MCP e aceito pelo SDK.
+   * Deve ser consistente com `inputSchema` abaixo.
+   */
+  inputSchemaShape: ZodRawShape;
+  /** Schema de validação do input (derivado de z.object(inputSchemaShape)). */
   inputSchema: z.ZodType<I>;
   /** Schema de validação do output. */
   outputSchema: z.ZodType<O>;

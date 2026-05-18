@@ -16,6 +16,7 @@ function makeTool(
     id,
     dominio,
     descricao: `Tool ${id}`,
+    inputSchemaShape: {},
     inputSchema: schema,
     outputSchema: schema,
     handler: async () => ({}),
