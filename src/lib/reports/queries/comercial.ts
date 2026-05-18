@@ -49,12 +49,38 @@ export async function queryPedidosPorEtapa(
   return { linhas };
 }
 
-// Placeholder — substituído em B.7
 export async function queryPedidosPorVendedor(
-  _prisma: PrismaClient,
-  _filtros: { periodoDe?: string; periodoAte?: string },
+  prisma: PrismaClient,
+  filtros: { periodoDe?: string; periodoAte?: string },
 ): Promise<{ linhas: { vendedorNome: string | null; quantidade: number; valorTotal: number }[] }> {
-  throw new Error("not implemented");
+  const where =
+    filtros.periodoDe && filtros.periodoAte
+      ? {
+          dataOrcamento: {
+            gte: new Date(`${filtros.periodoDe}T00:00:00`),
+            lte: new Date(`${filtros.periodoAte}T00:00:00`),
+          },
+        }
+      : {};
+  const rows = await prisma.fatoPedido.findMany({
+    where,
+    select: { vendedorNome: true, vrNf: true },
+  });
+  const map = new Map<string | null, { quantidade: number; valorTotal: number }>();
+  for (const r of rows) {
+    const key = r.vendedorNome;
+    const existing = map.get(key);
+    if (existing) {
+      existing.quantidade += 1;
+      existing.valorTotal += Number(r.vrNf);
+    } else {
+      map.set(key, { quantidade: 1, valorTotal: Number(r.vrNf) });
+    }
+  }
+  const linhas = [...map.entries()]
+    .map(([vendedorNome, v]) => ({ vendedorNome, ...v }))
+    .sort((a, b) => b.valorTotal - a.valorTotal);
+  return { linhas };
 }
 
 // Placeholder — substituído em B.8

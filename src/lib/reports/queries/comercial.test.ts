@@ -97,7 +97,41 @@ describe("queryPedidosPorEtapa", () => {
 });
 
 describe("queryPedidosPorVendedor", () => {
-  // implementado em B.7
+  it("agrupa por vendedorNome e retorna ordenado por valorTotal desc", async () => {
+    const mockPrisma = {
+      fatoPedido: {
+        findMany: jest.fn().mockResolvedValue([
+          { vendedorNome: "João", vrNf: "1000.00" },
+          { vendedorNome: "Maria", vrNf: "3000.00" },
+          { vendedorNome: "João", vrNf: "500.00" },
+        ]),
+      },
+    } as unknown as import("@/generated/prisma/client").PrismaClient;
+
+    const result = await queryPedidosPorVendedor(mockPrisma, {});
+    expect(result.linhas).toHaveLength(2);
+    expect(result.linhas[0]!.vendedorNome).toBe("Maria");
+    expect(result.linhas[0]!.valorTotal).toBeCloseTo(3000);
+    expect(result.linhas[1]!.vendedorNome).toBe("João");
+    expect(result.linhas[1]!.valorTotal).toBeCloseTo(1500);
+    expect(result.linhas[1]!.quantidade).toBe(2);
+  });
+
+  it("aplica filtro de período", async () => {
+    const mockPrisma = {
+      fatoPedido: {
+        findMany: jest.fn().mockResolvedValue([{ vendedorNome: "Ana", vrNf: "100.00" }]),
+      },
+    } as unknown as import("@/generated/prisma/client").PrismaClient;
+
+    await queryPedidosPorVendedor(mockPrisma, {
+      periodoDe: "2024-01-01",
+      periodoAte: "2024-01-31",
+    });
+
+    const call = (mockPrisma.fatoPedido.findMany as jest.Mock).mock.calls[0][0];
+    expect(call.where?.dataOrcamento?.gte).toEqual(new Date("2024-01-01T00:00:00"));
+  });
 });
 
 describe("queryPedidosAtrasados", () => {
