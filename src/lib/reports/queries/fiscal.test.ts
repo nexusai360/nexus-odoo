@@ -224,8 +224,70 @@ describe("queryFaturamentoPorCliente", () => {
 });
 
 describe("queryProdutosFaturados", () => {
-  // testes adicionados em C.11
-  it.todo("agrupa itens de saída por produtoNome com limite");
+  it("agrupa itens de saída por produtoNome com limite", async () => {
+    const mockPrisma = {
+      fatoNotaFiscalItem: {
+        findMany: jest.fn().mockResolvedValue([
+          { produtoNome: "Esteira Profissional", quantidade: "2", vrProdutos: "4000.00" },
+          { produtoNome: "Bike Ergométrica",     quantidade: "1", vrProdutos: "1500.00" },
+          { produtoNome: "Esteira Profissional", quantidade: "3", vrProdutos: "6000.00" },
+        ]),
+      },
+    } as unknown as Parameters<typeof queryProdutosFaturados>[0];
+
+    const result = await queryProdutosFaturados(mockPrisma, { limite: 5 });
+    expect(result.linhas).toHaveLength(2);
+    // ordenado por valorTotal desc: Esteira (10000) antes de Bike (1500)
+    expect(result.linhas[0]?.produtoNome).toBe("Esteira Profissional");
+    expect(result.linhas[0]?.quantidadeTotal).toBeCloseTo(5);
+    expect(result.linhas[0]?.valorTotal).toBeCloseTo(10000);
+    expect(result.linhas[1]?.produtoNome).toBe("Bike Ergométrica");
+    expect(result.linhas[1]?.quantidadeTotal).toBeCloseTo(1);
+    expect(result.linhas[1]?.valorTotal).toBeCloseTo(1500);
+
+    const call = (mockPrisma.fatoNotaFiscalItem.findMany as jest.Mock).mock.calls[0][0];
+    expect(call.where?.entradaSaida).toBe("1");
+  });
+
+  it("respeita o limite informado", async () => {
+    const mockPrisma = {
+      fatoNotaFiscalItem: {
+        findMany: jest.fn().mockResolvedValue([
+          { produtoNome: "Produto A", quantidade: "1", vrProdutos: "1000.00" },
+          { produtoNome: "Produto B", quantidade: "1", vrProdutos: "900.00" },
+          { produtoNome: "Produto C", quantidade: "1", vrProdutos: "800.00" },
+        ]),
+      },
+    } as unknown as Parameters<typeof queryProdutosFaturados>[0];
+
+    const result = await queryProdutosFaturados(mockPrisma, { limite: 2 });
+    expect(result.linhas).toHaveLength(2);
+    expect(result.linhas[0]?.produtoNome).toBe("Produto A");
+  });
+
+  it("aplica filtro de período na relação com fatoNotaFiscal", async () => {
+    const mockPrisma = {
+      fatoNotaFiscalItem: {
+        findMany: jest.fn().mockResolvedValue([]),
+      },
+    } as unknown as Parameters<typeof queryProdutosFaturados>[0];
+
+    await queryProdutosFaturados(mockPrisma, { periodoDe: "2024-01-01", periodoAte: "2024-01-31" });
+    const call = (mockPrisma.fatoNotaFiscalItem.findMany as jest.Mock).mock.calls[0][0];
+    expect(call.where?.dataEmissao?.gte).toEqual(new Date("2024-01-01T00:00:00"));
+    expect(call.where?.dataEmissao?.lte).toEqual(new Date("2024-01-31T00:00:00"));
+  });
+
+  it("retorna lista vazia quando sem itens", async () => {
+    const mockPrisma = {
+      fatoNotaFiscalItem: {
+        findMany: jest.fn().mockResolvedValue([]),
+      },
+    } as unknown as Parameters<typeof queryProdutosFaturados>[0];
+
+    const result = await queryProdutosFaturados(mockPrisma, {});
+    expect(result.linhas).toHaveLength(0);
+  });
 });
 
 // Silencia o "unused variable" lint — fakePrisma é placeholder para os mocks futuros
