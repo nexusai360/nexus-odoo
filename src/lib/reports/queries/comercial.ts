@@ -7,9 +7,6 @@
 import type { PrismaClient } from "@/generated/prisma/client";
 import { diasAtraso } from "../../../../mcp/lib/dias-atraso";
 
-// Funções implementadas nas tasks B.5–B.9 (sequenciais — mesmo arquivo).
-export type { PrismaClient as _PC }; // evita "no exports" no TS até as funções serem adicionadas
-
 export async function queryPedidosPeriodo(
   prisma: PrismaClient,
   filtros: { periodoDe?: string; periodoAte?: string },
