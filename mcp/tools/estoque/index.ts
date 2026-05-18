@@ -4,8 +4,10 @@
 import type { ToolEntry } from "../../catalog/types.js";
 import { estoqueSaldoProduto } from "./saldo-produto.js";
 import { estoqueValorArmazem } from "./valor-armazem.js";
+import { estoqueEntradasSaidas } from "./entradas-saidas.js";
 
 export const estoqueTools: ToolEntry[] = [
   estoqueSaldoProduto,
   estoqueValorArmazem,
+  estoqueEntradasSaidas,
 ];
