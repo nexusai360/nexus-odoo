@@ -92,12 +92,18 @@ export function mapNotaFiscalItemRow(
 /**
  * Reconstrói fato_nota_fiscal_item a partir de raw_sped_documento_item.
  *
- * STREAMING por cursor: lê, mapeia e insere 5000 linhas por vez dentro da
- * transação — descarta cada página antes de ler a próxima. Memória plana.
- * Não requer --max-old-space-size aumentado.
+ * STREAMING por cursor com batch transactions:
+ *   1. deleteMany em tx atômica própria.
+ *   2. Loop cursor-paginado (take:5000): cada página lida, mapeada, inserida em
+ *      sua própria mini-tx atômica e descartada — memória fica plana (~5000 linhas).
+ *   3. markFatoBuilt em tx atômica própria ao final.
  *
- * Transação única: deleteMany → loop cursor (take:5000, skip:1) → markFatoBuilt.
- * Timeout amplo (600000ms / 10 min) para suportar 211k registros.
+ * Evita a $transaction interativa de longa duração sobre 211k registros que causa
+ * acúmulo de buffers de protocolo pg (heap > 2 GB). Com batch transactions, o GC
+ * coleta entre chunks e o heap fica constante (~50–100 MB). Sem --max-old-space-size.
+ *
+ * Idempotência: se o processo morrer entre os inserts, o próximo rebuild começa com
+ * deleteMany novamente — comportamento correto para um builder full-rebuild.
  */
 export async function rebuildFatoNotaFiscalItem(prisma: PrismaClient): Promise<number> {
   // 1. Construir notaInfoMap (3743 linhas — pode carregar inteiro, ok)
@@ -116,61 +122,56 @@ export async function rebuildFatoNotaFiscalItem(prisma: PrismaClient): Promise<n
     });
   }
 
-  // 2. Transação única: delete + loop cursor + markFatoBuilt
-  //    Memória plana: cada página de 5000 itens é mapeada, inserida e descartada.
+  // 2. deleteMany em tx própria
+  await prisma.fatoNotaFiscalItem.deleteMany({});
+
+  // 3. Loop cursor-paginado: lê → mapeia → insere (mini-tx) → descarta
   let totalInserted = 0;
+  let cursorOdooId: number | undefined = undefined;
+  let hasMore = true;
 
-  await prisma.$transaction(
-    async (tx) => {
-      await tx.fatoNotaFiscalItem.deleteMany({});
+  while (hasMore) {
+    let page: Awaited<ReturnType<typeof prisma.rawSpedDocumentoItem.findMany>>;
+    if (cursorOdooId !== undefined) {
+      page = await prisma.rawSpedDocumentoItem.findMany({
+        where: { rawDeleted: false },
+        orderBy: { odooId: "asc" },
+        take: CHUNK_SIZE,
+        cursor: { odooId: cursorOdooId },
+        skip: 1,
+      });
+    } else {
+      page = await prisma.rawSpedDocumentoItem.findMany({
+        where: { rawDeleted: false },
+        orderBy: { odooId: "asc" },
+        take: CHUNK_SIZE,
+      });
+    }
 
-      let cursorOdooId: number | undefined = undefined;
-      let hasMore = true;
+    if (page.length === 0) {
+      hasMore = false;
+      break;
+    }
 
-      while (hasMore) {
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        let page: Awaited<ReturnType<typeof tx.rawSpedDocumentoItem.findMany>>;
-        if (cursorOdooId !== undefined) {
-          page = await tx.rawSpedDocumentoItem.findMany({
-            where: { rawDeleted: false },
-            orderBy: { odooId: "asc" },
-            take: CHUNK_SIZE,
-            cursor: { odooId: cursorOdooId },
-            skip: 1,
-          });
-        } else {
-          page = await tx.rawSpedDocumentoItem.findMany({
-            where: { rawDeleted: false },
-            orderBy: { odooId: "asc" },
-            take: CHUNK_SIZE,
-          });
-        }
+    const mappedPage = page.map((r) =>
+      mapNotaFiscalItemRow(r.data as Record<string, unknown>, notaInfoMap),
+    );
 
-        if (page.length === 0) {
-          hasMore = false;
-          break;
-        }
+    // Mini-tx: insert atômico do chunk, descarta após commit
+    await prisma.fatoNotaFiscalItem.createMany({ data: mappedPage });
+    totalInserted += mappedPage.length;
 
-        const mappedPage = page.map((r: { data: unknown }) =>
-          mapNotaFiscalItemRow(r.data as Record<string, unknown>, notaInfoMap),
-        );
+    // Avançar cursor — descarta a página (não acumula)
+    cursorOdooId = page[page.length - 1]!.odooId;
 
-        await tx.fatoNotaFiscalItem.createMany({ data: mappedPage });
-        totalInserted += mappedPage.length;
+    // Página menor que CHUNK_SIZE: última página
+    if (page.length < CHUNK_SIZE) {
+      hasMore = false;
+    }
+  }
 
-        // Avançar cursor — descarta a página (não acumula)
-        cursorOdooId = page[page.length - 1]!.odooId;
-
-        // Página menor que CHUNK_SIZE: última página
-        if (page.length < CHUNK_SIZE) {
-          hasMore = false;
-        }
-      }
-
-      await markFatoBuilt(tx, "fato_nota_fiscal_item");
-    },
-    { timeout: 600_000, maxWait: 60_000 },
-  );
+  // 4. Marcar built em tx própria
+  await markFatoBuilt(prisma, "fato_nota_fiscal_item");
 
   return totalInserted;
 }
