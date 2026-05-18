@@ -113,11 +113,34 @@ export async function queryPedidosAtrasados(
   return { linhas, totalAtrasado };
 }
 
-// Placeholder — substituído em B.9
 export async function queryParcelasAVencer(
-  _prisma: PrismaClient,
-  _filtros: { ateDias?: number },
-  _hoje: Date,
+  prisma: PrismaClient,
+  filtros: { ateDias?: number },
+  hoje: Date,
 ): Promise<{ linhas: { pedidoId: number | null; participanteNome: string | null; numero: string | null; dataVencimento: Date | null; valor: number }[]; totalAVencer: number }> {
-  throw new Error("not implemented");
+  const ateDias = filtros.ateDias ?? 30;
+  const limite = new Date(hoje.getTime() + ateDias * 24 * 60 * 60 * 1000);
+  const rows = await prisma.fatoPedidoParcela.findMany({
+    where: {
+      dataVencimento: { gte: hoje, lte: limite },
+      parcelaFaturada: false,
+    },
+    select: {
+      pedidoId: true,
+      participanteNome: true,
+      numero: true,
+      dataVencimento: true,
+      valor: true,
+    },
+    orderBy: { dataVencimento: "asc" },
+  });
+  const linhas = rows.map((r) => ({
+    pedidoId: r.pedidoId,
+    participanteNome: r.participanteNome,
+    numero: r.numero,
+    dataVencimento: r.dataVencimento,
+    valor: Number(r.valor),
+  }));
+  const totalAVencer = linhas.reduce((acc, l) => acc + l.valor, 0);
+  return { linhas, totalAVencer };
 }

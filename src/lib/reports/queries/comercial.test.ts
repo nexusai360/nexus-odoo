@@ -183,5 +183,62 @@ describe("queryPedidosAtrasados", () => {
 });
 
 describe("queryParcelasAVencer", () => {
-  // implementado em B.9
+  it("retorna parcelas a vencer nos próximos N dias com totalAVencer", async () => {
+    const hoje = new Date("2024-03-10T00:00:00");
+    const mockPrisma = {
+      fatoPedidoParcela: {
+        findMany: jest.fn().mockResolvedValue([
+          {
+            pedidoId: 1,
+            participanteNome: "Cliente A",
+            numero: "1/1",
+            dataVencimento: new Date("2024-03-15T00:00:00"),
+            valor: "300.00",
+          },
+          {
+            pedidoId: 2,
+            participanteNome: "Cliente B",
+            numero: "2/1",
+            dataVencimento: new Date("2024-03-20T00:00:00"),
+            valor: "150.00",
+          },
+        ]),
+      },
+    } as unknown as import("@/generated/prisma/client").PrismaClient;
+
+    const result = await queryParcelasAVencer(mockPrisma, { ateDias: 30 }, hoje);
+    expect(result.linhas).toHaveLength(2);
+    expect(result.totalAVencer).toBeCloseTo(450);
+  });
+
+  it("aplica filtro de dataVencimento gte hoje e lte hoje+ateDias", async () => {
+    const hoje = new Date("2024-03-10T00:00:00");
+    const mockPrisma = {
+      fatoPedidoParcela: {
+        findMany: jest.fn().mockResolvedValue([]),
+      },
+    } as unknown as import("@/generated/prisma/client").PrismaClient;
+
+    await queryParcelasAVencer(mockPrisma, { ateDias: 15 }, hoje);
+    const call = (mockPrisma.fatoPedidoParcela.findMany as jest.Mock).mock.calls[0][0];
+    expect(call.where?.dataVencimento?.gte).toEqual(hoje);
+    // 10 março + 15 dias = 25 março
+    expect(call.where?.dataVencimento?.lte).toEqual(new Date("2024-03-25T00:00:00"));
+    expect(call.where?.parcelaFaturada).toBe(false);
+  });
+
+  it("usa ateDias=30 como default", async () => {
+    const hoje = new Date("2024-03-10T00:00:00");
+    const mockPrisma = {
+      fatoPedidoParcela: {
+        findMany: jest.fn().mockResolvedValue([]),
+      },
+    } as unknown as import("@/generated/prisma/client").PrismaClient;
+
+    await queryParcelasAVencer(mockPrisma, {}, hoje);
+    const call = (mockPrisma.fatoPedidoParcela.findMany as jest.Mock).mock.calls[0][0];
+    const lte = call.where?.dataVencimento?.lte as Date;
+    const diff = (lte.getTime() - hoje.getTime()) / (1000 * 60 * 60 * 24);
+    expect(diff).toBe(30);
+  });
 });

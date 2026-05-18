@@ -1,0 +1,67 @@
+// mcp/tools/comercial/parcelas-a-vencer.ts
+// Tool MCP: comercial_parcelas_a_vencer
+import { z } from "zod";
+import type { ToolEntry } from "../../catalog/types.js";
+import { queryParcelasAVencer } from "@/lib/reports/queries/comercial.js";
+import { withFreshness } from "../../lib/freshness.js";
+
+const inputSchema = z.object({
+  ateDias: z.number().int().positive().optional(),
+});
+
+// array "linhas" → ARRAY_KEYS_PRIORITY detecta vazio sem isVazio custom (P-M1)
+const linhaSchema = z.object({
+  pedidoId: z.number().int().nullable(),
+  participanteNome: z.string().nullable(),
+  numero: z.string().nullable(),
+  dataVencimento: z.string().nullable(),
+  valor: z.number(),
+});
+
+const dados = z.object({
+  linhas: z.array(linhaSchema),
+  totalAVencer: z.number(),
+  aviso: z.string(),
+});
+
+const fonteStatus = z.object({
+  status: z.string(),
+  ultimaSyncEm: z.string().nullable(),
+});
+
+const outputSchema = z.union([
+  z.object({ estado: z.literal("preparando") }),
+  z.object({
+    estado: z.enum(["ok", "vazio"]),
+    dados,
+    atualizadoEm: z.string(),
+    fonteStatus,
+  }),
+]);
+
+type Input = z.infer<typeof inputSchema>;
+type Output = z.infer<typeof outputSchema>;
+
+function shape(d: Awaited<ReturnType<typeof queryParcelasAVencer>>) {
+  return {
+    linhas: d.linhas.map((l) => ({
+      ...l,
+      dataVencimento: l.dataVencimento ? l.dataVencimento.toISOString() : null,
+    })),
+    totalAVencer: d.totalAVencer,
+    aviso: "Parcelas de pedidos com vencimento a partir de hoje até N dias (padrão 30), não faturadas, ordenadas por data.",
+  };
+}
+
+export const comercialParcelasAVencer: ToolEntry<Input, Output> = {
+  id: "comercial_parcelas_a_vencer",
+  dominio: "comercial",
+  descricao: "Parcelas de pedidos a vencer nos próximos N dias (padrão 30), com valor total a receber.",
+  inputSchemaShape: inputSchema.shape,
+  inputSchema,
+  outputSchema,
+  handler: (input, ctx) =>
+    withFreshness(ctx.prisma, ["fato_pedido_parcela"], async () =>
+      shape(await queryParcelasAVencer(ctx.prisma, input, new Date())),
+    ),
+};
