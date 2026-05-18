@@ -3,14 +3,15 @@
 // Decomposto nas tasks 4a.14 (service token) / 4a.15 (sessão) / 4a.16 (transport+McpServer)
 // / 4a.17 (pipeline tools/call).
 //
-// NOTA DE ARQUITETURA (SDK-NOTES.md):
-// O McpServer do SDK não permite sobrescrever ListToolsRequestSchema/CallToolRequestSchema
-// após McpServer inicializado (assertRequestHandlerCapability lança). A abordagem adotada:
-// - Registramos cada tool com registerTool passando o handler real (com RBAC completo).
-// - O filtro de tools/list por usuário é implementado via um McpServer por sessão OU via
-//   a abordagem de registrar todas as tools mas devolver erro de acesso negado se não
-//   autorizado — aceitável para F4 (catálogo pequeno, cliente único).
-// - Para F5 (WhatsApp com múltiplos usuários simultâneos), considerar McpServer por sessão.
+// NOTA DE ARQUITETURA (Opção A — McpServer por sessão):
+// Para implementar a camada 1 do RBAC (tools/list filtrado por usuário), criamos
+// um McpServer + StreamableHTTPServerTransport por sessão na requisição `initialize`.
+// Cada McpServer registra apenas as tools visíveis ao usuário (visibleTools), garantindo
+// que o catálogo filtrado é o que o agente recebe em tools/list.
+//
+// SDK confirmado: setRequestHandler(ListToolsRequestSchema, ...) é aceito normalmente
+// desde que a capability tools esteja registrada (o que McpServer.tool já faz).
+// Ver mcp/SDK-NOTES.md para detalhes e teste empírico.
 import * as http from "node:http";
 import { randomUUID } from "node:crypto";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
@@ -97,6 +98,39 @@ function errorResult(message: string): { content: Array<{ type: "text"; text: st
   return { content: [{ type: "text", text: message }], isError: true };
 }
 
+// ─── Registro de McpServer por sessão ────────────────────────────────────────
+
+/**
+ * Cria um McpServer e registra apenas as tools visíveis ao usuário (camada 1 do RBAC).
+ * Cada sessão tem sua própria instância — tools/list devolve só o catálogo filtrado.
+ *
+ * C1: visibleTools é chamado aqui, garantindo que o agente nunca veja tools de
+ * domínios ou roles a que não tem acesso.
+ * C2: cada tool é registrada com inputSchemaShape real — o agente recebe o schema
+ * completo dos parâmetros em tools/list.
+ */
+function createMcpServerForUser(userCtx: UserContext): McpServer {
+  const mcpServer = new McpServer({ name: "nexus-odoo-mcp", version: "1.0.0" });
+
+  // Camada 1 — filtro de visibilidade: só tools autorizadas para este usuário
+  const tools = visibleTools(catalogo, userCtx);
+
+  for (const tool of tools) {
+    // C2: registrar com inputSchemaShape real para que tools/list exiba os parâmetros.
+    // O pipeline handleToolCall faz a validação Zod completa via tool.inputSchema.
+    mcpServer.tool(
+      tool.id,
+      tool.descricao,
+      tool.inputSchemaShape,
+      async (args) => {
+        return handleToolCall(tool, args, userCtx.userId);
+      },
+    );
+  }
+
+  return mcpServer;
+}
+
 // ─── createHttpServer — 4a.14, 4a.15, 4a.16 ────────────────────────────────
 
 /** Servidor http.Server com o handler principal exposto como `_handler` para testes. */
@@ -105,42 +139,18 @@ export type TestableServer = http.Server & {
 };
 
 /**
- * Cria o http.Server com middlewares de auth e o McpServer com Streamable HTTP.
+ * Mapa de sessões ativas: sessionId → { mcpServer, transport }.
+ * Cada sessão tem seu próprio par McpServer+transport, garantindo isolamento de
+ * tools/list por usuário (camada 1 do RBAC).
+ * O sessionStore (session-store.ts) mantém o UserContext; este mapa mantém o par MCP.
+ */
+const sessionMap = new Map<string, { mcpServer: McpServer; transport: StreamableHTTPServerTransport }>();
+
+/**
+ * Cria o http.Server com middlewares de auth e McpServer por sessão (Opção A).
  * O campo `_handler` expõe o handler internamente para testes unitários (4a.14/4a.15).
  */
 export function createHttpServer(): TestableServer {
-  // Um McpServer e um transport por instância de servidor.
-  const mcpServer = new McpServer({ name: "nexus-odoo-mcp", version: "1.0.0" });
-  const transport = new StreamableHTTPServerTransport({
-    sessionIdGenerator: () => randomUUID(),
-  });
-
-  // 4a.16 — Registrar todas as tools com o handler real (RBAC completo).
-  // tools/list reflete o catálogo completo; o handler nega acesso se não autorizado.
-  // (Filtro por usuário em tools/list planejado para F5 — McpServer por sessão.)
-  for (const tool of catalogo) {
-    // Registrar com schema vazio — o input real é validado pelo handleToolCall via Zod.
-    // Sem inputSchema no SDK, o callback recebe só `extra`; com `{}`, recebe (args, extra).
-    mcpServer.tool(
-      tool.id,
-      tool.descricao,
-      {},
-      async (args, sdkExtra) => {
-        // Recuperar o userId da sessão via sessionId do transport
-        const mcpSessionId =
-          (sdkExtra as { sessionId?: string }).sessionId ?? "";
-        const ctx: UserContext | undefined = sessionStore.get(mcpSessionId);
-        if (!ctx) {
-          return errorResult(safeErrorMessage("denied"));
-        }
-        return handleToolCall(tool, args, ctx.userId);
-      },
-    );
-  }
-
-  // Conectar o McpServer ao transport.
-  void mcpServer.connect(transport);
-
   // Handler HTTP principal — 4a.14 (service token) + 4a.15 (sessão) + 4a.16 (transport)
   const handler = async (
     req: http.IncomingMessage,
@@ -169,14 +179,50 @@ export function createHttpServer(): TestableServer {
       return;
     }
 
-    // Gravar no session-store. O transport emite Mcp-Session-Id no response header
-    // da requisição de initialize. Para requests subsequentes, o cliente envia
-    // Mcp-Session-Id no header. Usamos esse ID como chave do session-store.
-    const mcpSessionId = req.headers["mcp-session-id"];
-    const sessionKey = typeof mcpSessionId === "string" ? mcpSessionId : randomUUID();
-    sessionStore.set(sessionKey, userCtx);
+    // 4a.16 — McpServer por sessão (Opção A, C1)
+    // Se a request traz Mcp-Session-Id já conhecido, reusar o par existente.
+    // Se não (initialize ou primeira request), criar novo par McpServer+transport.
+    const incomingSessionId = req.headers["mcp-session-id"];
+    const existingSession =
+      typeof incomingSessionId === "string" ? sessionMap.get(incomingSessionId) : undefined;
 
-    // 4a.16 — Delegar ao transport Streamable HTTP
+    let transport: StreamableHTTPServerTransport;
+
+    if (existingSession) {
+      // Atualizar o UserContext da sessão (pode ter mudado desde a última request)
+      sessionStore.set(incomingSessionId as string, userCtx);
+      transport = existingSession.transport;
+    } else {
+      // Nova sessão: criar McpServer filtrado pelo usuário + transport
+      const newMcpServer = createMcpServerForUser(userCtx);
+      const newTransport = new StreamableHTTPServerTransport({
+        sessionIdGenerator: () => randomUUID(),
+      });
+
+      // I3 — registrar limpeza da sessão no fechamento do transport
+      newTransport.onclose = () => {
+        const sid = newTransport.sessionId;
+        if (sid) {
+          sessionMap.delete(sid);
+          sessionStore.delete(sid);
+        }
+      };
+
+      // I2 — await para não engolir erro de inicialização
+      await newMcpServer.connect(newTransport);
+
+      // Indexar pelo sessionId que o transport vai emitir.
+      // O sessionId é gerado pelo sessionIdGenerator acima — disponível após connect.
+      const newSessionId = newTransport.sessionId;
+      if (newSessionId) {
+        sessionMap.set(newSessionId, { mcpServer: newMcpServer, transport: newTransport });
+        sessionStore.set(newSessionId, userCtx);
+      }
+
+      transport = newTransport;
+    }
+
+    // Delegar ao transport da sessão
     await transport.handleRequest(req, res);
   };
 

@@ -1,7 +1,10 @@
 // mcp/server.test.ts
 import * as http from "node:http";
-import { createHttpServer } from "./server.js";
+import { createHttpServer, visibleTools } from "./server.js";
 import type { PrismaClient } from "@/generated/prisma/client";
+import { z } from "zod";
+import type { ToolEntry } from "./catalog/types.js";
+import type { UserContext } from "./auth/user-context.js";
 
 // Mock do validateServiceToken
 jest.mock("./auth/service-token.js", () => ({
@@ -113,5 +116,74 @@ describe("createHttpServer — middleware de sessão (4a.15)", () => {
     const res = makeResponse();
     await (server as unknown as { _handler: (req: http.IncomingMessage, res: http.ServerResponse) => Promise<void> })._handler(req, res);
     expect(res._statusCode).toBe(403);
+  });
+});
+
+// ─── Camada 1 do RBAC — tools/list filtrado por usuário (C1) ─────────────────
+
+function makeTool(
+  id: string,
+  dominio: ToolEntry["dominio"],
+  opts: Partial<Pick<ToolEntry, "gatedRoles" | "sempreVisivel">> = {},
+): ToolEntry {
+  const schema = z.object({});
+  return {
+    id,
+    dominio,
+    descricao: `Tool ${id}`,
+    inputSchemaShape: {},
+    inputSchema: schema,
+    outputSchema: schema,
+    handler: async () => ({}),
+    ...opts,
+  };
+}
+
+function makeUser(
+  role: UserContext["role"],
+  domains: UserContext["domains"],
+): UserContext {
+  return { userId: "u1", role, domains };
+}
+
+describe("visibleTools — camada 1 do RBAC (C1)", () => {
+  const estoqueToolA = makeTool("saldo_produto", "estoque");
+  const financeiroToolA = makeTool("saldo_contas", "financeiro");
+  const gatedTool = makeTool("bi_consulta_avancada", "estoque", {
+    gatedRoles: ["super_admin", "admin"],
+  });
+  const allTools = [estoqueToolA, financeiroToolA, gatedTool];
+
+  it("viewer de estoque recebe apenas tools de estoque em tools/list", () => {
+    const user = makeUser("viewer", ["estoque"]);
+    const result = visibleTools(allTools, user);
+    const ids = result.map((t) => t.id);
+
+    expect(ids).toContain("saldo_produto");
+    expect(ids).not.toContain("saldo_contas"); // domínio financeiro — não acessível
+  });
+
+  it("viewer de estoque não recebe tool gated (bi_consulta_avancada)", () => {
+    const user = makeUser("viewer", ["estoque"]);
+    const result = visibleTools(allTools, user);
+    const ids = result.map((t) => t.id);
+
+    expect(ids).not.toContain("bi_consulta_avancada");
+  });
+
+  it("admin recebe todas as tools incluindo gated e outros domínios", () => {
+    const user = makeUser("admin", ["estoque", "financeiro"]);
+    const result = visibleTools(allTools, user);
+    const ids = result.map((t) => t.id);
+
+    expect(ids).toContain("saldo_produto");
+    expect(ids).toContain("saldo_contas");
+    expect(ids).toContain("bi_consulta_avancada");
+  });
+
+  it("viewer sem nenhum domínio não recebe nenhuma tool de domínio", () => {
+    const user = makeUser("viewer", []);
+    const result = visibleTools(allTools, user);
+    expect(result).toHaveLength(0);
   });
 });
