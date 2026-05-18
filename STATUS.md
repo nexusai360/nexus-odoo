@@ -76,16 +76,22 @@ Infraestrutura do dashboard + 6 relatórios de estoque:
 - Worker: `npm run worker` (carrega `.env.local`). Dev: `npm run dev` (porta 3000).
 - Verificação: `npx tsc --noEmit`, `npm run lint`, `npx next build`, `npx jest`.
 
-## PARA RETOMAR (próxima sessão)
+## PARA RETOMAR (próxima sessão) — início da F4
 
-1. `feat/ingestao` é a branch ativa (F2 + F3). `git log` recente.
-2. ✅ Fatos da F3 populados (ciclo de snapshot rodado em 2026-05-17):
-   `fato_estoque_saldo` 3218, `fato_estoque_movimento` 12031,
-   `fato_produto_parado` 1317. `fato_build_state` registrado.
-3. **UAT visual (requer humano):** logar e validar os 6 relatórios no browser
-   (`/relatorios`). Dev server na porta 3000; rotas respondem (302 → login, RBAC ok).
-4. **Decisão humana:** merge do PR #4 (`feat/ingestao` → `main`, F2+F3 — CI verde).
-5. Próxima fase: **F4 — MCP semântico** — começa por brainstorm (requer o usuário).
+1. **PR #4 mergeado na `main`** (2026-05-17): F2 + F3 + F3.5 completa estão em
+   produção. Branch ativa agora: **`feat/mcp-semantico`** (criada de `main`).
+2. **Próxima fase: F4 — MCP semântico**, escopo **completo** decidido pelo
+   usuário: todos os domínios, catálogo de tools, RBAC 7 camadas, Caminho 3
+   (3a/3b/3c incl. Postgres BI). Execução multi-agente em paralelo, com a
+   metodologia: spec v1→v3 (2 reviews) + plan v1→v3 (2 reviews) + `/gsd-*`
+   reviews. Decisões canônicas em `CLAUDE.md §5`.
+3. **F4 abre por brainstorm** (`requer humano`) — o objetivo da sessão é a
+   SPEC v1 da F4.
+4. ⚠️ **Achado de escopo a tratar no brainstorm da F4:** o cache tem as 79
+   tabelas `raw` sincronizadas, mas a camada de **fatos** só existe para
+   estoque (`fato_estoque_*`). "Todos os domínios" no MCP exige construir
+   fatos/queries para financeiro/fiscal/comercial — trabalho de ingestão que
+   precisa ser dimensionado na F4.
 
 ## Notas
 
