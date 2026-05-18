@@ -15,7 +15,8 @@
 | **F2 — Ingestão/cache** | Worker BullMQ + cron JSON-RPC + cache Postgres | ✅ mergeado na `main` (PR #4) |
 | **F3 — Dashboard de relatórios** | 6 relatórios de estoque sobre o cache | ✅ mergeado na `main` (PR #4) |
 | **F3.5 — Dashboard de relatórios v2** | Sofisticação no padrão `nexus-insights` | ✅ mergeado na `main` (PR #4) |
-| **F4 — MCP semântico** | Servidor MCP, todos os domínios | ⬜ **PRÓXIMA — começa por brainstorm** |
+| **F4 — MCP semântico (onda 1)** | Servidor MCP + estoque + financeiro | ✅ **implementada na `feat/mcp-semantico` — aguarda merge** |
+| F4 — ondas seguintes | Domínios comercial/fiscal/contábil/produção + 3c funcional | ⬜ futuras (reusam a arquitetura) |
 | F5 — Integração WhatsApp | Agente conectado ao MCP | ⬜ futura |
 | F6 — Construtor de relatórios | Wizard in-app guiado por IA | ⬜ futura (inclui o polimento fino dos relatórios) |
 
@@ -101,37 +102,48 @@ permissão entre etapas):
 
 ---
 
-## 5. PARA RETOMAR — início da F4 (MCP semântico)
+## 5. PARA RETOMAR — F4 onda 1 implementada, aguarda decisão humana
 
-**Diga "vamos para a F4" numa sessão nova.** A F4 abre por **brainstorm**
-(`requer humano`); o objetivo é a SPEC v1.
+A **F4 onda 1 (MCP semântico — estoque + financeiro)** está implementada na
+branch **`feat/mcp-semantico`** (86 commits sobre a `main`). O ciclo autônomo
+`[1]→[10]` foi cumprido na íntegra. **Próximo passo é humano:** revisar e
+decidir o merge para a `main` (e, opcionalmente, rodar `/ultrareview` antes).
 
-### Escopo da F4 — decidido pelo usuário (2026-05-17)
+### O que a F4 onda 1 entregou
 
-- **TODOS os domínios de negócio**, sem lista fixa. O MCP semântico cobre todo
-  domínio que o Odoo expõe no cache — estoque, financeiro, fiscal, comercial e
-  quaisquer outros. Registrado em `CLAUDE.md §4` e `§5.9`.
-- Entregar **100% completo** nesta fase: servidor MCP (`@modelcontextprotocol/sdk`,
-  TypeScript, container `mcp`), catálogo de tools de vocabulário de negócio,
-  **RBAC estrutural de 7 camadas**, **Caminho 3** completo (3a falta honesta +
-  log de gap; 3b recusa educada; 3c modo BI via Postgres MCP).
-- Execução **multi-agente em paralelo**, segmentada; metodologia inteira
-  (specs com 2 reviews, plans com 2 reviews, `/gsd-*` code/UI reviews).
+- **Container `mcp/`** — servidor Node puro com `@modelcontextprotocol/sdk`,
+  transporte Streamable HTTP (porta 3100), service token + `userId` por sessão.
+- **Camada de fatos de financeiro** — `fato_financeiro_saldo/movimento/titulo`
+  + builders no worker via **registry de builders** (os 3 de estoque migrados).
+- **14 tools semânticas** — 6 de estoque (reusam o núcleo de query extraído da
+  F3, sem divergência de números), 6 de financeiro, `registrar_lacuna` (3a),
+  `bi_consulta_avancada` (3c stub gated a admin/super_admin).
+- **RBAC estrutural** — catálogo filtrado por sessão, gate no handler, role
+  Postgres `nexus_mcp` com GRANT mínimo, rate limit, `McpAuditLog`; camadas
+  tenant/RLS preparadas e documentadas (tenant único).
+- **Caminho 3** — 3a e 3b funcionais; 3c como contrato + stub (integração
+  funcional do Postgres MCP é onda futura da F4).
+- Verificação: `tsc` (raiz e mcp), `eslint`, `jest` (634 testes, 89 suites),
+  `next build`, `docker compose build mcp` — todos verdes.
 
-### ⚠️ Achado de escopo crítico para o brainstorm da F4
+### Artefatos da F4
 
-O cache tem as **79 tabelas `raw`** sincronizadas, mas a camada de **fatos**
-(`fato_*` — o dado de negócio consultável) **só existe para estoque**. Cobrir
-"todos os domínios" no MCP exige **construir os fatos de financeiro, fiscal,
-comercial e demais domínios** — isso é trabalho de ingestão (estilo F2) e
-precisa ser dimensionado/decomposto no brainstorm e na spec da F4. A F4, na
-prática, é: camada de fatos de todos os domínios **+** o servidor MCP por cima.
+Specs/plans/reviews em `docs/superpowers/` (`2026-05-17-f4-*`,
+`2026-05-18-f4-*`): SPEC v1→v3 (2 reviews), PLAN v1→v3 (2 reviews), 1 review
+por onda + correções, code review final (`2026-05-18-f4-code-review-final.md`,
+APROVADO COM RESSALVAS — ressalvas corrigidas).
 
-### Decisões canônicas que já valem para a F4 (ver `CLAUDE.md §5`)
+### Escopo restante da F4 (ondas futuras)
 
-Cache obrigatório; sem fallback JSON-RPC nas tools; tools semânticas validadas
-(não text-to-SQL livre, exceto Caminho 3c); MCP próprio em TS; RBAC 7 camadas;
-Postgres MCP (Crystal DBA) em dev/DBA; protocolo Odoo JSON-RPC.
+Domínios comercial, fiscal, contábil, produção (fatos + tools, reusando a
+arquitetura) e a **integração funcional do 3c** (Postgres MCP). Ver
+`CLAUDE.md §5.9/§5.10`.
+
+### Decisões canônicas da F4 (ver `CLAUDE.md §5`)
+
+Cache obrigatório; sem fallback JSON-RPC nas tools; tools semânticas validadas;
+MCP próprio em TS; RBAC 7 camadas; F4 ≠ F5 (WhatsApp/conversas/personalização
+são F5 — decisão #10).
 
 ---
 
