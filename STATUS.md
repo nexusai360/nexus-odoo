@@ -1,100 +1,142 @@
 # STATUS — nexus-odoo
 
-> Ponto de retomada entre sessões. Atualizado em 2026-05-17.
-> Ao iniciar uma sessão: ler este arquivo e o `CLAUDE.md`. Modo autônomo.
+> **Ponto de retomada entre sessões.** Atualizado em 2026-05-17.
+> Ao abrir uma sessão: ler **este arquivo** e o **`CLAUDE.md`**. Modo autônomo
+> é o padrão (ver `CLAUDE.md §6`).
 
-## Onde estamos
+---
 
-- **F0 — Discovery:** ✅ mergeado na `main` (PR #1).
-- **F1 — Fundação:** ✅ mergeada na `main` (PR #2).
-- **F2 — Ingestão/cache:** ✅ CONCLUÍDA na branch `feat/ingestao`.
-- **F3 — Dashboard de relatórios:** ✅ CONCLUÍDA na mesma branch `feat/ingestao`.
-- **F3.5 — Dashboard de relatórios v2** (milestone novo, em `feat/ingestao`):
-  reformulação de sofisticação inspirada no `nexus-insights`, decomposta em
-  sub-fases.
-  - **F3.5a — Charts v2:** ✅ animação, gradient, tooltip rico, `KPICard`,
-    `ChartCard`, fim das casas decimais supérfluas.
-  - **F3.5b — Seletor de período v1:** ✅ `PeriodBar` (pílulas + calendário de
-    meses), estado na URL, nos relatórios temporais (`entradas-saidas`,
-    `top-movimentados`). Spec/plan v1→v3 + 2 reviews cada; code+UI review.
-  - **F3.5c — Tabela profissional:** ✅ ordenação multi-coluna com indicador
-    numerado, busca em todas as colunas, linhas expansíveis (drill-down do
-    saldo por armazém), exportar CSV.
-  - **F3.5d — Filtros:** ✅ dropdowns decentes (abrem p/ baixo, busca interna,
-    agrupamento), chips de filtros aplicados, diálogo de filtros simples
-    (facetas) e avançado (construtor E/OU com grupos, modelo `compilarFiltro`).
-  - **F3.5e — Presets, atalhos e tour:** ✅ presets/buscas salvas no banco
-    (model `ReportPreset` + migration + Server Actions), atalhos de teclado
-    (`/ f p ?`), tour de onboarding reutilizável.
-  - **F3.5f — Relatórios repensados:** ✅ `valor-armazem` lista+KPIs+top-8,
-    `entradas-saidas` com tabela de detalhe, `top-movimentados`/`produtos-parados`
-    com KPIRow+DataTable, `concentracao` com tabelas por trás dos gráficos.
-  - **F3.5g — Frescor do dado:** ✅ snapshot do worker 1440→30 min;
-    `FreshnessIndicator` ("Atualizado há X min", auto-refresh).
-  - Roadmap do milestone: `docs/superpowers/plans/2026-05-17-f3.5-roadmap.md`.
-- **PR #4** (`feat/ingestao` → `main`) carrega **F2 + F3 + F3.5 completa**.
-  Merge para `main` é decisão humana (dispara produção).
+## 1. Onde estamos
 
-## F2 — entregue
+| Fase | Entrega | Status |
+|---|---|---|
+| **F0 — Discovery** | Mapa do Odoo (modelos/campos/relações) | ✅ mergeado na `main` (PR #1) |
+| **F1 — Fundação** | App no ar, login, RBAC | ✅ mergeado na `main` (PR #2) |
+| **F2 — Ingestão/cache** | Worker BullMQ + cron JSON-RPC + cache Postgres | ✅ mergeado na `main` (PR #4) |
+| **F3 — Dashboard de relatórios** | 6 relatórios de estoque sobre o cache | ✅ mergeado na `main` (PR #4) |
+| **F3.5 — Dashboard de relatórios v2** | Sofisticação no padrão `nexus-insights` | ✅ mergeado na `main` (PR #4) |
+| **F4 — MCP semântico** | Servidor MCP, todos os domínios | ⬜ **PRÓXIMA — começa por brainstorm** |
+| F5 — Integração WhatsApp | Agente conectado ao MCP | ⬜ futura |
+| F6 — Construtor de relatórios | Wizard in-app guiado por IA | ⬜ futura (inclui o polimento fino dos relatórios) |
 
+**Branch ativa: `feat/mcp-semantico`** (criada de `main`, já no remoto). A `main`
+tem F0+F1+F2+F3+F3.5 — tudo em produção.
+
+---
+
+## 2. O que já foi entregue
+
+### F2 — Ingestão/cache
 Worker BullMQ + cron JSON-RPC sincronizando o Odoo Tauga para o Postgres cache:
-`OdooClient` JSON-RPC, 79 tabelas `raw` JSONB, `SyncState`, sync engine
-(incremental/snapshot/reconcile com isolamento de falha), `fato_estoque_saldo`,
-tela `/configuracao` (super_admin). 78/79 modelos sincronizam (o restante,
-`pedido.documento.historico.tempo`, é defeito do próprio Odoo).
+`OdooClient` JSON-RPC, **79 tabelas `raw` JSONB**, `SyncState`, sync engine
+(incremental/snapshot/reconcile com isolamento de falha), tela `/configuracao`
+(super_admin). 78/79 modelos sincronizam (`pedido.documento.historico.tempo` é
+defeito do próprio Odoo).
 
-## F3 — entregue (PLAN v3, 80 tasks, 7 blocos)
+### F3 — Dashboard de relatórios
+RBAC por domínio (`ReportDomain`, `UserDomainAccess`); **fatos de estoque**
+(`fato_estoque_saldo`, `fato_estoque_movimento`, `fato_produto_parado`) +
+builders no worker + `FatoBuildState`; motor declarativo (catálogo → render);
+6 relatórios de estoque em `/relatorios`.
 
-Infraestrutura do dashboard + 6 relatórios de estoque:
-- **RBAC por domínio** (`ReportDomain`) em 3 camadas; tabela `UserDomainAccess`;
-  etapa "Acesso" no modal de usuário (concessão de domínios).
-- **3 fatos** novos/enriquecidos: `fato_estoque_saldo` (com valor/família/marca),
-  `fato_estoque_movimento`, `fato_produto_parado`; builders no worker; tabela
-  `FatoBuildState`. `estoque.extrato` migrado para `snapshot`.
-- **5 templates de gráfico** (Recharts): KPICard, DataTable, BarChart, LineChart,
-  PieChart, com estados preparando/vazio/erro.
-- **Shell `/relatorios`** (grade por domínio) + `/relatorios/[id]` (relatório com
-  filtros e freshness). 6 relatórios de estoque: saldo por produto/armazém, valor
-  por armazém, entradas×saídas, produtos parados, top movimentados, concentração.
-- Processo: spec v1→v2→v3 (2 reviews profundas) + plan v1→v2→v3 (2 reviews) +
-  execução 80 tasks (subagentes Sonnet) + review por bloco (Opus) +
-  `/gsd-code-review` e `/gsd-ui-review` finais (Opus) — todos os achados
-  Críticos/Importantes corrigidos. 212 testes verdes; `tsc`/`lint`/`build` ok.
+### F3.5 — Dashboard de relatórios v2 (milestone, sub-fases a–g)
+Roadmap: `docs/superpowers/plans/2026-05-17-f3.5-roadmap.md`.
+- **a — Charts v2:** animação, gradient, tooltip rico, `KPICard`, `ChartCard`.
+- **b — Seletor de período:** `PeriodBar` (pílulas + calendário de meses
+  travado à faixa de dado), estado na URL. Spec/plan v1→v3 em `docs/superpowers/`.
+- **c — Tabela profissional:** ordenação multi-coluna com indicador numerado,
+  busca em todas as colunas, linhas expansíveis (drill-down), exportar CSV.
+- **d — Filtros:** dropdowns decentes (agrupados, com busca), chips de filtros
+  aplicados, diálogo simples (facetas) + avançado (construtor E/OU recursivo,
+  modelo puro `compilarFiltro`).
+- **e — Presets, atalhos e tour:** `ReportPreset` (model + migration + Server
+  Actions), atalhos de teclado, tour de onboarding reutilizável.
+- **f — Relatórios repensados:** `valor-armazem` vira lista+KPIs, `entradas-saidas`
+  ganha tabela de detalhe, `top-movimentados`/`produtos-parados` ganham
+  KPIRow+DataTable, `concentracao` ganha tabelas por trás dos gráficos.
+- **g — Frescor do dado:** snapshot do worker 1440→**30 min**;
+  `FreshnessIndicator` ("Atualizado há X min", auto-refresh).
+- Verificação final: `tsc`/`eslint`/`jest` (381) /`next build` verdes; CI verde.
 
-## Decisões registradas no período
+> Pontos finos de relatório que ficaram para a F6 (decisão do usuário): a F3.5
+> "melhorou bastante" mas não está 100% — o polimento fino é escopo da F6.
 
-- Protocolo Odoo: **JSON-RPC** (XML-RPC quebra). `CLAUDE.md` §5.8.
-- Workflow: spec v1→v3 e plan v1→v3, cada um com 2 reviews profundas. `CLAUDE.md` §6.
-- Subagentes: execução em **Sonnet**, review de bloco e review final em **Opus**.
-- **F6 — Construtor de relatórios** registrada no roadmap (`CLAUDE.md` §4 +
-  `docs/ideias/2026-05-16-construtor-relatorios.md`): config-driven, pós-F4.
+---
 
-## Ambiente
+## 3. Metodologia (resumo — detalhe em `CLAUDE.md §6`)
 
-- Docker: `nexus-odoo` — `db` (Postgres 5436), `redis` (6380). `docker compose up -d db redis`.
-- Banco migrado (última migration `20260517002300_f3_dashboard`) e com seed.
-- Worker: `npm run worker` (carrega `.env.local`). Dev: `npm run dev` (porta 3000).
-- Verificação: `npx tsc --noEmit`, `npm run lint`, `npx next build`, `npx jest`.
+Toda implementação percorre, **em modo autônomo automático** (sem pedir
+permissão entre etapas):
 
-## PARA RETOMAR (próxima sessão) — início da F4
+```
+[1] BRAINSTORM → SPEC v1            ← requer humano (entrada de requisitos)
+[2] DESIGN UI/UX (ui-ux-pro-max)
+[3] REVIEW SPEC #1 → SPEC v2        ← review crítica de verdade
+[4] REVIEW SPEC #2 → SPEC v3        ← review ainda mais profunda
+[5] PLAN v1 (sobre a SPEC v3)
+[6] REVIEW PLANO #1 → PLAN v2
+[7] REVIEW PLANO #2 → PLAN v3       ← tasks em microtarefas, decomposição máxima
+[8] EXECUÇÃO (Superpowers; fase grande → subagentes Sonnet em paralelo)
+[9] VERIFICAÇÃO (tsc/eslint/jest/build verdes; evidência antes de afirmar)
+[10] CODE REVIEW + UI REVIEW (/gsd-code-review, /gsd-ui-review — Opus)
+[11] /ultrareview                  ← requer humano (manual, opcional)
+[12] DEPLOY ASSISTIDO              ← requer humano
+```
 
-1. **PR #4 mergeado na `main`** (2026-05-17): F2 + F3 + F3.5 completa estão em
-   produção. Branch ativa agora: **`feat/mcp-semantico`** (criada de `main`).
-2. **Próxima fase: F4 — MCP semântico**, escopo **completo** decidido pelo
-   usuário: todos os domínios, catálogo de tools, RBAC 7 camadas, Caminho 3
-   (3a/3b/3c incl. Postgres BI). Execução multi-agente em paralelo, com a
-   metodologia: spec v1→v3 (2 reviews) + plan v1→v3 (2 reviews) + `/gsd-*`
-   reviews. Decisões canônicas em `CLAUDE.md §5`.
-3. **F4 abre por brainstorm** (`requer humano`) — o objetivo da sessão é a
-   SPEC v1 da F4.
-4. ⚠️ **Achado de escopo a tratar no brainstorm da F4:** o cache tem as 79
-   tabelas `raw` sincronizadas, mas a camada de **fatos** só existe para
-   estoque (`fato_estoque_*`). "Todos os domínios" no MCP exige construir
-   fatos/queries para financeiro/fiscal/comercial — trabalho de ingestão que
-   precisa ser dimensionado na F4.
+- `ui-ux-pro-max` é **obrigatório** em tudo que for frontend.
+- Subagentes: execução em **Sonnet**, reviews em **Opus**.
+- Artefatos em `docs/superpowers/`: `specs/`, `plans/`, `reviews/`, `research/`.
+- Git: nunca commitar na `main`; feature branch → PR → merge (decisão humana).
 
-## Notas
+---
 
-- `.env.local` (gitignored) tem credenciais do Odoo e do owner.
-- Specs/plans/reviews em `docs/superpowers/`. Pesquisa de relatórios em
-  `docs/superpowers/research/`. Workflow canônico: `CLAUDE.md`.
+## 4. Ambiente
+
+- Docker: `docker compose up -d db redis` — `db` (Postgres 5436), `redis` (6380).
+- Banco migrado (Prisma) e com seed. `.env.local` (gitignored) tem credenciais
+  do Odoo Tauga e do owner.
+- Worker: `npm run worker`. Dev server: `npm run dev` (porta 3000).
+  **Ambos estavam encerrados no fim desta sessão** — reabrir conforme necessário.
+- Verificação: `npx tsc --noEmit`, `npx eslint src/`, `npx jest`, `npx next build`.
+
+---
+
+## 5. PARA RETOMAR — início da F4 (MCP semântico)
+
+**Diga "vamos para a F4" numa sessão nova.** A F4 abre por **brainstorm**
+(`requer humano`); o objetivo é a SPEC v1.
+
+### Escopo da F4 — decidido pelo usuário (2026-05-17)
+
+- **TODOS os domínios de negócio**, sem lista fixa. O MCP semântico cobre todo
+  domínio que o Odoo expõe no cache — estoque, financeiro, fiscal, comercial e
+  quaisquer outros. Registrado em `CLAUDE.md §4` e `§5.9`.
+- Entregar **100% completo** nesta fase: servidor MCP (`@modelcontextprotocol/sdk`,
+  TypeScript, container `mcp`), catálogo de tools de vocabulário de negócio,
+  **RBAC estrutural de 7 camadas**, **Caminho 3** completo (3a falta honesta +
+  log de gap; 3b recusa educada; 3c modo BI via Postgres MCP).
+- Execução **multi-agente em paralelo**, segmentada; metodologia inteira
+  (specs com 2 reviews, plans com 2 reviews, `/gsd-*` code/UI reviews).
+
+### ⚠️ Achado de escopo crítico para o brainstorm da F4
+
+O cache tem as **79 tabelas `raw`** sincronizadas, mas a camada de **fatos**
+(`fato_*` — o dado de negócio consultável) **só existe para estoque**. Cobrir
+"todos os domínios" no MCP exige **construir os fatos de financeiro, fiscal,
+comercial e demais domínios** — isso é trabalho de ingestão (estilo F2) e
+precisa ser dimensionado/decomposto no brainstorm e na spec da F4. A F4, na
+prática, é: camada de fatos de todos os domínios **+** o servidor MCP por cima.
+
+### Decisões canônicas que já valem para a F4 (ver `CLAUDE.md §5`)
+
+Cache obrigatório; sem fallback JSON-RPC nas tools; tools semânticas validadas
+(não text-to-SQL livre, exceto Caminho 3c); MCP próprio em TS; RBAC 7 camadas;
+Postgres MCP (Crystal DBA) em dev/DBA; protocolo Odoo JSON-RPC.
+
+---
+
+## 6. Notas
+
+- Specs/plans/reviews/research em `docs/superpowers/`. Workflow canônico e
+  decisões: `CLAUDE.md`. Ideia da F6: `docs/ideias/2026-05-16-construtor-relatorios.md`.
+- Modelagem de fatos: `docs/fatos-modelagem.md`. Git: `docs/git-workflow.md`.
