@@ -1,13 +1,17 @@
 // mcp/lib/prisma.ts
 // Client Prisma do MCP — lê MCP_DATABASE_URL (role nexus_mcp com GRANT mínimo).
-// Fallback para DATABASE_URL até 4f-1 (provisionamento do role em produção).
+// MCP_DATABASE_URL é sempre obrigatória. O fallback para DATABASE_URL foi
+// removido (MEN-5): em produção ele anularia a camada 4 do RBAC ao conectar
+// com o role completo. Configure MCP_DATABASE_URL em .env.local e Portainer.
 import { PrismaClient } from "@/generated/prisma/client";
 import { PrismaPg } from "@prisma/adapter-pg";
 
-const url = process.env.MCP_DATABASE_URL ?? process.env.DATABASE_URL;
+const url = process.env.MCP_DATABASE_URL;
 if (!url) {
   throw new Error(
-    "MCP_DATABASE_URL ou DATABASE_URL deve estar definida. Configure MCP_DATABASE_URL antes de iniciar o servidor MCP.",
+    "MCP_DATABASE_URL não está definida. O servidor MCP exige o role Postgres " +
+    "nexus_mcp (GRANT mínimo) — configure MCP_DATABASE_URL antes de iniciar. " +
+    "Veja .env.example para instruções.",
   );
 }
 
