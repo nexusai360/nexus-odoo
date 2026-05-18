@@ -91,3 +91,37 @@ contábil/produção **não existe na instância Odoo**, não é só não-sincro
 
 Pendente: aval do usuário sobre cobrir contábil (plano de contas) e omitir
 produção, ou aguardar dado.
+
+---
+
+## R4 — GRANTs SQL fora do `prisma migrate` — passo obrigatório no runbook de deploy
+
+**Aberto desde:** 2026-05-18 (code review final F4 completo — IMP-2).
+
+Os `GRANT SELECT` das tabelas de fato e os roles `nexus_mcp` / `nexus_mcp_bi`
+**não vivem no `prisma migrate`** — foram aplicados em scripts SQL avulsos:
+
+- `prisma/sql/2026-05-17-mcp-role.sql` — cria o role `nexus_mcp`, concede
+  `CONNECT` no banco e `SELECT` nas tabelas `fato_*` e de suporte.
+- `prisma/sql/2026-05-17-mcp-bi-role.sql` — cria o role `nexus_mcp_bi` (Caminho
+  3c / modo BI), concede `SELECT` em todas as tabelas do schema `public`.
+
+### Risco
+
+Se o container `mcp` subir após um `prisma migrate deploy` em ambiente limpo
+(novo deploy, novo banco), os GRANTs não existem → o usuário Postgres do MCP
+recebe `permission denied` em qualquer query nas tools novas → todas as tools
+de fato retornam erro em vez de dados.
+
+### Ação no runbook de deploy assistido
+
+Após `prisma migrate deploy`, (re)executar **obrigatoriamente**:
+
+```bash
+psql "$DATABASE_URL" -f prisma/sql/2026-05-17-mcp-role.sql
+psql "$DATABASE_URL" -f prisma/sql/2026-05-17-mcp-bi-role.sql
+```
+
+Ordem importa: o migrate deve rodar antes (garante que as tabelas existem);
+os scripts de GRANT rodam depois. Em Portainer/CI, adicionar como step
+pós-migrate no script de deploy.
