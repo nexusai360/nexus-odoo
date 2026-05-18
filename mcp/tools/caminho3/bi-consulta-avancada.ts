@@ -36,8 +36,8 @@ export const biConsultaAvancada: ToolEntry<Input, Output> = {
   inputSchema,
   outputSchema,
   handler: async (_input, _ctx): Promise<Output> => {
-    return {
-      disponivel: false,
+    const output = {
+      disponivel: false as const,
       mensagem:
         "O modo BI avançado ainda não está disponível nesta fase. " +
         "Esta funcionalidade (consulta dinâmica via Postgres MCP) será habilitada " +
@@ -46,5 +46,6 @@ export const biConsultaAvancada: ToolEntry<Input, Output> = {
         "Esta tool executará consulta dinâmica não auditada pelo pipeline padrão. " +
         "Quando habilitada, seu uso será registrado com aviso explícito ao usuário.",
     };
+    return outputSchema.parse(output);
   },
 };
