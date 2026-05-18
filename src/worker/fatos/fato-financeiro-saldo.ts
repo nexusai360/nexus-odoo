@@ -18,13 +18,17 @@ export interface FatoFinanceiroSaldoRow {
 export function mapSaldoFinanceiroRow(
   raw: Record<string, unknown>,
 ): FatoFinanceiroSaldoRow {
-  const dataRef = raw.data_referencia;
+  // raw.data é date-only ("2026-05-14"). Sufixo T00:00:00 força parsing como hora
+  // local, evitando desvio UTC→GMT-3 que deslocaria a data em 1 dia (I2).
+  const dataRaw = typeof raw.data === "string" ? raw.data : null;
   return {
-    bancoId: Number(raw.id),
+    // C1: PK lógica é banco_id (many2one), não raw.id (id da linha do snapshot).
+    bancoId: relId(raw.banco_id as OdooM2O) ?? 0,
     bancoNome: relNome(raw.banco_id as OdooM2O),
     tipo: typeof raw.tipo === "string" ? raw.tipo : null,
-    dataReferencia: dataRef ? new Date(dataRef as string) : null,
-    saldoAnterior: Number(raw.saldo_anterior ?? 0),
+    // C2: campo real é "data" (não "data_referencia") e "anterior" (não "saldo_anterior").
+    dataReferencia: dataRaw ? new Date(`${dataRaw}T00:00:00`) : null,
+    saldoAnterior: Number(raw.anterior ?? 0),
     entrada: Number(raw.entrada ?? 0),
     saida: Number(raw.saida ?? 0),
     saldo: Number(raw.saldo ?? 0),
