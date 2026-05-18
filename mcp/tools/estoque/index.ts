@@ -7,6 +7,7 @@ import { estoqueValorArmazem } from "./valor-armazem.js";
 import { estoqueEntradasSaidas } from "./entradas-saidas.js";
 import { estoqueTopMovimentados } from "./top-movimentados.js";
 import { estoqueProdutosParados } from "./produtos-parados.js";
+import { estoqueConcentracao } from "./concentracao.js";
 
 export const estoqueTools: ToolEntry[] = [
   estoqueSaldoProduto,
@@ -14,4 +15,5 @@ export const estoqueTools: ToolEntry[] = [
   estoqueEntradasSaidas,
   estoqueTopMovimentados,
   estoqueProdutosParados,
+  estoqueConcentracao,
 ];
