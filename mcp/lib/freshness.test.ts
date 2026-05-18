@@ -155,4 +155,76 @@ describe("withFreshness", () => {
       fonteStatus: { ultimaSyncEm: now.toISOString() },
     });
   });
+
+  // E-1: isVazio custom — contabil_estrutura_conta (conta === null → vazio)
+  describe("isVazio custom (E-1)", () => {
+    const isVazioConta = (d: { conta: { id: number } | null; filhas: unknown[] }) => d.conta === null;
+
+    it("retorna estado 'vazio' quando predicado isVazio custom retorna true (conta=null)", async () => {
+      const now = new Date("2026-05-01T12:00:00Z");
+      const prisma = makePrisma();
+      (prisma.fatoBuildState.findMany as jest.Mock).mockResolvedValue([
+        { fato: "fato_conta_contabil", ultimoBuildAt: now },
+      ]);
+      (prisma.syncState.findMany as jest.Mock).mockResolvedValue([
+        { model: "contabil.conta", lastStatus: "ok", lastSnapshotAt: null, lastIncrementalAt: now },
+      ]);
+      // conta inexistente → predicado retorna true → estado "vazio"
+      const fn = jest.fn().mockResolvedValue({ conta: null, filhas: [], aviso: "" });
+      const result = await withFreshness(
+        prisma as never,
+        ["fato_conta_contabil"],
+        fn,
+        isVazioConta,
+      );
+      expect(result).toMatchObject({ estado: "vazio" });
+    });
+
+    it("retorna estado 'ok' quando predicado isVazio custom retorna false (conta encontrada)", async () => {
+      const now = new Date("2026-05-01T12:00:00Z");
+      const prisma = makePrisma();
+      (prisma.fatoBuildState.findMany as jest.Mock).mockResolvedValue([
+        { fato: "fato_conta_contabil", ultimoBuildAt: now },
+      ]);
+      (prisma.syncState.findMany as jest.Mock).mockResolvedValue([
+        { model: "contabil.conta", lastStatus: "ok", lastSnapshotAt: null, lastIncrementalAt: now },
+      ]);
+      // conta encontrada, sem filhas (conta-folha) → predicado retorna false → estado "ok" (P-M1)
+      const fn = jest.fn().mockResolvedValue({
+        conta: { odooId: 42, codigo: "1.1.1", nome: "Caixa", tipo: "A", contaPaiNome: "Ativo" },
+        filhas: [],
+        aviso: "",
+      });
+      const result = await withFreshness(
+        prisma as never,
+        ["fato_conta_contabil"],
+        fn,
+        isVazioConta,
+      );
+      expect(result).toMatchObject({ estado: "ok" });
+    });
+
+    it("retorna estado 'ok' quando conta encontrada tem filhas", async () => {
+      const now = new Date("2026-05-01T12:00:00Z");
+      const prisma = makePrisma();
+      (prisma.fatoBuildState.findMany as jest.Mock).mockResolvedValue([
+        { fato: "fato_conta_contabil", ultimoBuildAt: now },
+      ]);
+      (prisma.syncState.findMany as jest.Mock).mockResolvedValue([
+        { model: "contabil.conta", lastStatus: "ok", lastSnapshotAt: null, lastIncrementalAt: now },
+      ]);
+      const fn = jest.fn().mockResolvedValue({
+        conta: { odooId: 10, codigo: "1", nome: "Ativo", tipo: "S", contaPaiNome: null },
+        filhas: [{ odooId: 42, codigo: "1.1", nome: "Ativo Circulante", tipo: "S" }],
+        aviso: "",
+      });
+      const result = await withFreshness(
+        prisma as never,
+        ["fato_conta_contabil"],
+        fn,
+        isVazioConta,
+      );
+      expect(result).toMatchObject({ estado: "ok" });
+    });
+  });
 });
