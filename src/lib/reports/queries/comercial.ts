@@ -27,11 +27,26 @@ export async function queryPedidosPeriodo(
   return { totalPedidos: rows.length, valorTotal };
 }
 
-// Placeholder — substituído em B.6
 export async function queryPedidosPorEtapa(
-  _prisma: PrismaClient,
+  prisma: PrismaClient,
 ): Promise<{ linhas: { etapaNome: string | null; etapaFinaliza: boolean; quantidade: number; valorTotal: number }[] }> {
-  throw new Error("not implemented");
+  const rows = await prisma.fatoPedido.findMany({
+    select: { etapaNome: true, etapaFinaliza: true, vrNf: true },
+  });
+  // Agrupa em memória por etapaNome (não groupBy — precisa carregar etapaFinaliza)
+  const map = new Map<string | null, { etapaFinaliza: boolean; quantidade: number; valorTotal: number }>();
+  for (const r of rows) {
+    const key = r.etapaNome;
+    const existing = map.get(key);
+    if (existing) {
+      existing.quantidade += 1;
+      existing.valorTotal += Number(r.vrNf);
+    } else {
+      map.set(key, { etapaFinaliza: r.etapaFinaliza, quantidade: 1, valorTotal: Number(r.vrNf) });
+    }
+  }
+  const linhas = [...map.entries()].map(([etapaNome, v]) => ({ etapaNome, ...v }));
+  return { linhas };
 }
 
 // Placeholder — substituído em B.7

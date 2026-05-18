@@ -61,7 +61,39 @@ describe("queryPedidosPeriodo", () => {
 });
 
 describe("queryPedidosPorEtapa", () => {
-  // implementado em B.6
+  it("agrupa por etapaNome e retorna linhas com quantidade e valorTotal", async () => {
+    const mockPrisma = {
+      fatoPedido: {
+        findMany: jest.fn().mockResolvedValue([
+          { etapaNome: "Concluído", etapaFinaliza: true, vrNf: "1000.00" },
+          { etapaNome: "Concluído", etapaFinaliza: true, vrNf: "500.00" },
+          { etapaNome: "Em Aberto", etapaFinaliza: false, vrNf: "200.00" },
+        ]),
+      },
+    } as unknown as import("@/generated/prisma/client").PrismaClient;
+
+    const result = await queryPedidosPorEtapa(mockPrisma);
+    expect(result.linhas).toHaveLength(2);
+
+    const concluido = result.linhas.find((l) => l.etapaNome === "Concluído");
+    expect(concluido?.quantidade).toBe(2);
+    expect(concluido?.valorTotal).toBeCloseTo(1500);
+    expect(concluido?.etapaFinaliza).toBe(true);
+
+    const aberto = result.linhas.find((l) => l.etapaNome === "Em Aberto");
+    expect(aberto?.quantidade).toBe(1);
+    expect(aberto?.valorTotal).toBeCloseTo(200);
+    expect(aberto?.etapaFinaliza).toBe(false);
+  });
+
+  it("retorna array vazio quando sem pedidos", async () => {
+    const mockPrisma = {
+      fatoPedido: { findMany: jest.fn().mockResolvedValue([]) },
+    } as unknown as import("@/generated/prisma/client").PrismaClient;
+
+    const result = await queryPedidosPorEtapa(mockPrisma);
+    expect(result.linhas).toHaveLength(0);
+  });
 });
 
 describe("queryPedidosPorVendedor", () => {
