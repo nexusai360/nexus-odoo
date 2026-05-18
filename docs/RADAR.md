@@ -5,40 +5,31 @@
 
 ---
 
-## R1 — Fonte de "contas a receber/pagar" pode ser a tabela errada
+## ~~R1 — Fonte de "contas a receber/pagar" pode ser a tabela errada~~ RESOLVIDO
 
 **Aberto desde:** 2026-05-18 (teste end-to-end da F4 onda 1).
-**Resolver antes de:** F5 (WhatsApp) — quando um gestor vai ler números de
-financeiro para decisão. Idealmente já na próxima onda de financeiro/comercial.
+**Resolvido em:** 2026-05-18 — commit `fix(f4): re-source fato_financeiro_titulo para finan.lancamento`.
 
-### O problema
+### Diagnóstico confirmado
 
-`fato_financeiro_titulo` (que alimenta as tools `financeiro_contas_a_receber`,
-`financeiro_contas_a_pagar`, `financeiro_titulos_vencidos`) é derivado de
-**`finan.pagamento.divida`** — modelo cujo nome no Odoo é *"Pagamento de
-Dívida"*. Cada linha é um **evento de pagamento**, não um título em aberto.
+`fato_financeiro_titulo` era derivado de `raw_finan_pagamento_divida` (eventos
+de pagamento — ~21 registros abertos, `vr_saldo` ≈ 0 nos abertos). A fonte
+correta é **`raw_finan_lancamento`** (`finan.lancamento` — carteira de títulos):
+- `tipo='a_receber' situacao_divida_simples='aberto'`: 120 títulos, R$ 1.164.266,36
+- `tipo='a_pagar'  situacao_divida_simples='aberto'`:  18 títulos, R$    95.694,95
+- Para título aberto: `vr_saldo == vr_documento == vr_total`.
 
-Sintomas no dado real do cache (1.146 registros):
-- Apenas ~21 registros têm `situacao_simples = 'aberto'`.
-- O saldo devedor (`vr_saldo`) vem ~zero para os títulos em aberto — por isso as
-  tools passaram a usar `vr_total` (fix `c814a84`).
-- Total "a receber em aberto" apurado: ~R$ 254 mil — baixo demais para uma
-  operação com R$ 52 mi em estoque. Provável foto incompleta.
+### Correção aplicada
 
-### Hipótese
-
-A carteira real de contas a receber/pagar em aberto provavelmente vive em outro
-modelo do Odoo. Candidatos a investigar (estão no cache `raw`):
-- `finan.lancamento` (208 linhas) — "Base para código de barras de boleto".
-- `finan.lancamento.item` (7.858 linhas).
-- `finan.fluxo.caixa` (591) — já usado por `fato_financeiro_movimento`.
-
-### Ação
-
-Na próxima onda de financeiro/comercial: investigar qual modelo do Odoo é a
-fonte canônica de **títulos em aberto** (duplicatas a receber/pagar), e
-trocar/complementar a fonte de `fato_financeiro_titulo`. As tools e o catálogo
-já estão prontos — muda só o builder e o fato.
+- **Builder** (`src/worker/fatos/fato-financeiro-titulo.ts`): fonte trocada para
+  `rawFinanLancamento`, filtro `tipo IN ('a_receber','a_pagar')`, tipo mapeado
+  direto (não derivado de `sinal`), `vrSaldo` agora é o valor correto.
+- **Queries** (`src/lib/reports/queries/financeiro.ts`): `vrSaldo` re-adicionado
+  ao output; `totalAReceber`/`totalAPagar`/`totalVencido` usam `vrSaldo`.
+- **Handlers MCP** (3 tools de título): `tituloSchema` inclui `vrSaldo`; shape
+  serializa `vrSaldo`.
+- **Testes** (builder + queries + handlers): fixtures atualizados para o formato
+  real de `finan.lancamento`; novos casos cobrem filtro de caixa descartado.
 
 ---
 
