@@ -115,10 +115,27 @@ export async function queryNotasRecebidas(
 }
 
 export async function queryImpostosPeriodo(
-  _prisma: PrismaClient,
-  _filtros: { periodoDe?: string; periodoAte?: string },
+  prisma: PrismaClient,
+  filtros: { periodoDe?: string; periodoAte?: string },
 ): Promise<{ totalNotas: number; somaIbpt: number; somaIcmsProprio: number }> {
-  throw new Error("Not implemented");
+  const periodoWhere =
+    filtros.periodoDe && filtros.periodoAte
+      ? {
+          dataEmissao: {
+            gte: new Date(`${filtros.periodoDe}T00:00:00`),
+            lte: new Date(`${filtros.periodoAte}T00:00:00`),
+          },
+        }
+      : {};
+
+  const rows = await prisma.fatoNotaFiscal.findMany({
+    where: { ...periodoWhere },
+    select: { vrIbpt: true, vrIcmsProprio: true },
+  });
+
+  const somaIbpt = rows.reduce((acc, r) => acc + Number(r.vrIbpt), 0);
+  const somaIcmsProprio = rows.reduce((acc, r) => acc + Number(r.vrIcmsProprio), 0);
+  return { totalNotas: rows.length, somaIbpt, somaIcmsProprio };
 }
 
 export async function queryFaturamentoPorCliente(

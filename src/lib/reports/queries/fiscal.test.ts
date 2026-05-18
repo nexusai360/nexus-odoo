@@ -154,8 +154,33 @@ describe("queryNotasRecebidas", () => {
 });
 
 describe("queryImpostosPeriodo", () => {
-  // testes adicionados em C.9
-  it.todo("agrega somaIbpt e somaIcmsProprio por período");
+  it("agrega totalNotas, somaIbpt e somaIcmsProprio sem filtro", async () => {
+    const mockPrisma = {
+      fatoNotaFiscal: {
+        findMany: jest.fn().mockResolvedValue([
+          { vrIbpt: "200.00", vrIcmsProprio: "120.00" },
+          { vrIbpt: "100.00", vrIcmsProprio: "60.00" },
+        ]),
+      },
+    } as unknown as Parameters<typeof queryImpostosPeriodo>[0];
+
+    const result = await queryImpostosPeriodo(mockPrisma, {});
+    expect(result.totalNotas).toBe(2);
+    expect(result.somaIbpt).toBeCloseTo(300);
+    expect(result.somaIcmsProprio).toBeCloseTo(180);
+  });
+
+  it("aplica filtro de período quando informado", async () => {
+    const mockPrisma = {
+      fatoNotaFiscal: {
+        findMany: jest.fn().mockResolvedValue([]),
+      },
+    } as unknown as Parameters<typeof queryImpostosPeriodo>[0];
+
+    await queryImpostosPeriodo(mockPrisma, { periodoDe: "2024-01-01", periodoAte: "2024-01-31" });
+    const call = (mockPrisma.fatoNotaFiscal.findMany as jest.Mock).mock.calls[0][0];
+    expect(call.where?.dataEmissao?.gte).toEqual(new Date("2024-01-01T00:00:00"));
+  });
 });
 
 describe("queryFaturamentoPorCliente", () => {
