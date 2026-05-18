@@ -23,10 +23,16 @@ if (connectionString) {
   pool = new Pool({ connectionString });
 
   // Reforço de segurança por conexão: read-only + timeout curto.
+  // Usamos uma única query com ponto-e-vírgula para garantir atomicidade dos SETs.
+  // O handler é síncrono (void) para evitar exceções não tratadas em async handlers
+  // que causariam crash do processo Node.js.
   pool.on("connect", (client: PoolClient) => {
-    client.query(
-      "SET default_transaction_read_only = on; SET statement_timeout = '5s'",
-    );
+    void client
+      .query("SET default_transaction_read_only = on; SET statement_timeout = '5s'")
+      .catch((err: unknown) => {
+        const msg = err instanceof Error ? err.message : String(err);
+        console.warn("[bi-pool] falha ao configurar conexão read-only:", msg);
+      });
   });
 }
 
