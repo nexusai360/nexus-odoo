@@ -1282,6 +1282,162 @@ model FatoFinanceiroTitulo {
   @@map("fato_financeiro_titulo")
 }
 
+// ─── F4 completo — Fatos dos novos domínios ──────────────────────────────────
+
+model FatoPedido {
+  odooId           Int       @id @map("odoo_id")
+  numero           String?
+  tipo             String?
+  etapaId          Int?      @map("etapa_id")
+  etapaNome        String?   @map("etapa_nome")
+  etapaFinaliza    Boolean   @default(false) @map("etapa_finaliza")
+  operacaoId       Int?      @map("operacao_id")
+  operacaoNome     String?   @map("operacao_nome")
+  participanteId   Int?      @map("participante_id")
+  participanteNome String?   @map("participante_nome")
+  vendedorId       Int?      @map("vendedor_id")
+  vendedorNome     String?   @map("vendedor_nome")
+  empresaId        Int?      @map("empresa_id")
+  empresaNome      String?   @map("empresa_nome")
+  dataOrcamento    DateTime? @map("data_orcamento")
+  dataAprovacao    DateTime? @map("data_aprovacao")
+  dataValidade     DateTime? @map("data_validade")
+  dataPrevista     DateTime? @map("data_prevista")
+  vrProdutos       Decimal   @default(0) @db.Decimal(18, 2) @map("vr_produtos")
+  vrNf             Decimal   @default(0) @db.Decimal(18, 2) @map("vr_nf")
+  atualizadoEm     DateTime  @default(now()) @map("atualizado_em")
+
+  @@index([dataOrcamento])
+  @@index([etapaId])
+  @@index([vendedorId])
+  @@map("fato_pedido")
+}
+
+model FatoPedidoParcela {
+  odooId             Int       @id @map("odoo_id")
+  pedidoId           Int?      @map("pedido_id")
+  numero             String?
+  participanteId     Int?      @map("participante_id")
+  participanteNome   String?   @map("participante_nome")
+  dataVencimento     DateTime? @map("data_vencimento")
+  valor              Decimal   @default(0) @db.Decimal(18, 2)
+  vrJuros            Decimal   @default(0) @db.Decimal(18, 2) @map("vr_juros")
+  vrMulta            Decimal   @default(0) @db.Decimal(18, 2) @map("vr_multa")
+  vrDesconto         Decimal   @default(0) @db.Decimal(18, 2) @map("vr_desconto")
+  vrDocumento        Decimal   @default(0) @db.Decimal(18, 2) @map("vr_documento")
+  formaPagamentoNome String?   @map("forma_pagamento_nome")
+  parcelaFaturada    Boolean   @default(false) @map("parcela_faturada")
+  finanLancamentoId  Int?      @map("finan_lancamento_id")
+  atualizadoEm       DateTime  @default(now()) @map("atualizado_em")
+
+  @@index([dataVencimento])
+  @@index([pedidoId])
+  @@map("fato_pedido_parcela")
+}
+
+model FatoNotaFiscal {
+  odooId               Int       @id @map("odoo_id")
+  numero               String?
+  serie                String?
+  modelo               String?
+  entradaSaida         String?   @map("entrada_saida")
+  tipoMovimento        String    @default("outro") @map("tipo_movimento")
+  situacaoNfe          String?   @map("situacao_nfe")
+  finalidadeNfe        String?   @map("finalidade_nfe")
+  chave                String?
+  participanteId       Int?      @map("participante_id")
+  participanteNome     String?   @map("participante_nome")
+  naturezaOperacaoId   Int?      @map("natureza_operacao_id")
+  naturezaOperacaoNome String?   @map("natureza_operacao_nome")
+  empresaId            Int?      @map("empresa_id")
+  empresaNome          String?   @map("empresa_nome")
+  dataEmissao          DateTime? @map("data_emissao")
+  dataEntradaSaida     DateTime? @map("data_entrada_saida")
+  dataAutorizacao      DateTime? @map("data_autorizacao")
+  vrNf                 Decimal   @default(0) @db.Decimal(18, 2) @map("vr_nf")
+  vrProdutos           Decimal   @default(0) @db.Decimal(18, 2) @map("vr_produtos")
+  vrFatura             Decimal   @default(0) @db.Decimal(18, 2) @map("vr_fatura")
+  vrIbpt               Decimal   @default(0) @db.Decimal(18, 2) @map("vr_ibpt")
+  vrIcmsProprio        Decimal   @default(0) @db.Decimal(18, 2) @map("vr_icms_proprio")
+  vrDesconto           Decimal   @default(0) @db.Decimal(18, 2) @map("vr_desconto")
+  atualizadoEm         DateTime  @default(now()) @map("atualizado_em")
+
+  @@index([dataEmissao])
+  @@index([entradaSaida])
+  @@index([situacaoNfe])
+  @@map("fato_nota_fiscal")
+}
+
+model FatoNotaFiscalItem {
+  odooId          Int       @id @map("odoo_id")
+  documentoId     Int?      @map("documento_id")
+  produtoId       Int?      @map("produto_id")
+  produtoNome     String?   @map("produto_nome")
+  cfopId          Int?      @map("cfop_id")
+  cfopNome        String?   @map("cfop_nome")
+  quantidade      Decimal   @default(0) @db.Decimal(18, 2)
+  vrUnitario      Decimal   @default(0) @db.Decimal(18, 2) @map("vr_unitario")
+  vrProdutos      Decimal   @default(0) @db.Decimal(18, 2) @map("vr_produtos")
+  vrNf            Decimal   @default(0) @db.Decimal(18, 2) @map("vr_nf")
+  vrIcmsProprio   Decimal   @default(0) @db.Decimal(18, 2) @map("vr_icms_proprio")
+  vrPisProprio    Decimal   @default(0) @db.Decimal(18, 2) @map("vr_pis_proprio")
+  vrCofinsProprio Decimal   @default(0) @db.Decimal(18, 2) @map("vr_cofins_proprio")
+  // Desnormalizados da nota-mãe (achado N8) — filtragem por período sem join.
+  dataEmissao     DateTime? @map("data_emissao")
+  entradaSaida    String?   @map("entrada_saida")
+  atualizadoEm    DateTime  @default(now()) @map("atualizado_em")
+
+  @@index([documentoId])
+  @@index([produtoId])
+  @@index([dataEmissao])
+  @@map("fato_nota_fiscal_item")
+}
+
+model FatoParceiro {
+  odooId       Int      @id @map("odoo_id")
+  nome         String?
+  nomeCompleto String?  @map("nome_completo")
+  documento    String?
+  ehCliente    Boolean  @default(false) @map("eh_cliente")
+  ehFornecedor Boolean  @default(false) @map("eh_fornecedor")
+  ehEmpresa    Boolean  @default(false) @map("eh_empresa")
+  cidade       String?
+  uf           String?
+  pais         String?
+  cep          String?
+  email        String?
+  telefone     String?
+  ativo        Boolean  @default(true)
+  atualizadoEm DateTime @default(now()) @map("atualizado_em")
+
+  @@index([uf])
+  @@index([ehCliente])
+  @@index([ehFornecedor])
+  @@map("fato_parceiro")
+}
+
+// Colunas DEFINITIVAS — fonte de verdade: discovery O.2/O.3
+// (docs/superpowers/research/2026-05-18-f4-discovery-pre-schema.md).
+model FatoContaContabil {
+  odooId              Int      @id @map("odoo_id")
+  codigo              String
+  nome                String
+  tipo                String
+  nivel               Int?
+  natureza            String?
+  contaPaiId          Int?     @map("conta_pai_id")
+  contaPaiNome        String?  @map("conta_pai_nome")
+  parentPath          String?  @map("parent_path")
+  caracteristicaSaldo String?  @map("caracteristica_saldo")
+  ehRedutora          Boolean  @default(false) @map("eh_redutora")
+  atualizadoEm        DateTime @default(now()) @map("atualizado_em")
+
+  @@index([tipo])
+  @@index([natureza])
+  @@index([contaPaiId])
+  @@map("fato_conta_contabil")
+}
+
 // ─── F4 — Logs e feature requests do MCP ─────────────────────────────────────
 
 /// Log de auditoria de chamadas ao MCP semântico.
