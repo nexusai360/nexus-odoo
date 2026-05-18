@@ -15,7 +15,7 @@
 **Domínio:** empresa de movimentação e entrega de equipamentos de academia no Brasil — estoque, financeiro, fiscal, comercial.
 **ERP de origem:** Odoo da comunidade (OCA Brasil), instância Tauga (`grupojht.tauga.online`), implantado por terceiros.
 
-**Não temos acesso ao banco de dados do Odoo.** O único acesso é a **API XML-RPC** (usuário + senha). Toda extração passa por ela.
+**Não temos acesso ao banco de dados do Odoo.** O único acesso é a **API JSON-RPC** (usuário + senha). Toda extração passa por ela.
 
 **O que o projeto entrega — duas frentes sobre uma base comum:**
 - **Frente A — Dashboard de relatórios:** painel visual com gráficos e relatórios pré-definidos, controle de acesso por perfil.
@@ -51,7 +51,7 @@ Ambas leem de um **banco interno (cache)** alimentado por sincronização perió
                                            │  Worker BullMQ  │
                                            │  cron polling   │
                                            └────────▲────────┘
-                                                    │ XML-RPC
+                                                    │ JSON-RPC
                                            ┌────────┴────────┐
                                            │  Odoo Tauga     │
                                            └─────────────────┘
@@ -63,7 +63,7 @@ Ambas leem de um **banco interno (cache)** alimentado por sincronização perió
 nexus-odoo/
 ├── app/      → Next.js — o dashboard            (container "app")
 ├── mcp/      → servidor MCP semântico            (container "mcp")
-├── worker/   → cron de sincronização XML-RPC     (container "worker")
+├── worker/   → cron de sincronização JSON-RPC     (container "worker")
 ├── prisma/   → schema do cache (COMPARTILHADO)
 ├── discovery/→ script(s) Python de mapeamento do Odoo (F0)
 └── docs/     → specs, plans, runbooks, git-workflow
@@ -84,8 +84,10 @@ Independência das frentes está **na camada de cima** (app e mcp evoluem sem se
 | **F3** | Dashboard de relatórios | Painel com relatórios lendo do cache; RBAC por relatório |
 | **F4** | MCP semântico | Servidor MCP, catálogo de tools, RBAC 7 camadas, Caminho 3 |
 | **F5** | Integração WhatsApp | Agente conectado ao MCP via WhatsApp |
+| **F6** | Construtor de relatórios | Construtor in-app de relatórios para admin/super_admin: wizard guiado por IA que parametriza templates (sem gerar código). Ver `docs/ideias/2026-05-16-construtor-relatorios.md` |
 
 Ordem: **F0 → F1 → F2 → F3 → F4 → F5**. F3 e F4 podem ser paralelas após F2.
+**F6 vem por último** — depende da camada semântica da F4 e do modelo de templates da F3.
 **Cada sub-projeto tem sua própria spec → plan → execução.** Não se planeja tudo de uma vez.
 
 ---
@@ -93,7 +95,7 @@ Ordem: **F0 → F1 → F2 → F3 → F4 → F5**. F3 e F4 podem ser paralelas ap
 ## 5. Decisões canônicas já tomadas (não rediscutir sem motivo)
 
 1. **Cache local é obrigatório.** Dashboard e MCP leem do Postgres interno, nunca do Odoo ao vivo.
-2. **Sem fallback XML-RPC nas tools.** O Odoo é tocado **somente** pelo cron de sincronização. Nenhuma pergunta de usuário dispara chamada ao Odoo. Toda tool retorna o timestamp da última sync (`atualizado há Xs`).
+2. **Sem fallback JSON-RPC nas tools.** O Odoo é tocado **somente** pelo cron de sincronização. Nenhuma pergunta de usuário dispara chamada ao Odoo. Toda tool retorna o timestamp da última sync (`atualizado há Xs`).
 3. **A IA consulta via ferramentas semânticas (MCP próprio), não text-to-SQL livre.** Tools de vocabulário de negócio (`faturamento_no_periodo`, `estoque_modelo`...), cada uma código TS validado/testado/auditado.
 4. **Não usar DuckFly.** MCP próprio em TypeScript com `@modelcontextprotocol/sdk`.
 5. **Caminho 3 — perguntas fora do catálogo:**
@@ -102,6 +104,7 @@ Ordem: **F0 → F1 → F2 → F3 → F4 → F5**. F3 e F4 podem ser paralelas ap
    - **3c** modo BI/avançado → **Postgres MCP** (text-to-SQL controlado, read-only), restrito a perfil admin/analista, resposta com aviso de "consulta dinâmica".
 6. **RBAC estrutural em 7 camadas** (não depende de prompt): catálogo filtrado por usuário, validação no handler, tenant scoping injetado, user Postgres com GRANT mínimo, RLS opcional, validação Zod, audit + rate limit.
 7. **Postgres MCP (Crystal DBA) também em ambiente dev/DBA** — uso de produtividade, separado do MCP semântico de produção.
+8. **Protocolo Odoo: JSON-RPC.** O XML-RPC do Odoo quebra no `fields_get` de modelos com metadados `None` (customização SPED da Tauga). A F0 comprovou JSON-RPC estável. Cliente em `src/worker/odoo/client.ts`.
 
 ---
 
@@ -110,24 +113,64 @@ Ordem: **F0 → F1 → F2 → F3 → F4 → F5**. F3 e F4 podem ser paralelas ap
 Cada sub-projeto percorre o fluxo abaixo. Classificar o esforço pela demanda — não matar mosca com fuzil.
 
 ```
-[1] BRAINSTORM ──────────────────────► requer humano
-[2] DESIGN UI/UX ────────────────────┐
-[3] PLAN v1 ─────────────────────────│
-[4] REVIEW PROFUNDA #1 ──────────────│ autônomo
-[5] PLAN v2 ─────────────────────────│
-[6] REVIEW PROFUNDA #2 ──────────────│
-[7] EXECUÇÃO (Superpowers) ──────────│
-[8] VERIFICAÇÃO ─────────────────────│
-[9] CODE REVIEW + UI REVIEW ─────────│
+[1]  BRAINSTORM → SPEC v1 ───────────► requer humano
+[2]  DESIGN UI/UX ───────────────────┐
+[3]  REVIEW DA SPEC #1 → SPEC v2 ────│
+[4]  REVIEW DA SPEC #2 → SPEC v3 ────│
+[5]  PLAN v1 (sobre a SPEC v3) ──────│ autônomo
+[6]  REVIEW DO PLANO #1 → PLAN v2 ───│
+[7]  REVIEW DO PLANO #2 → PLAN v3 ───│
+[8]  EXECUÇÃO (Superpowers) ─────────│
+[9]  VERIFICAÇÃO ────────────────────│
+[10] CODE REVIEW + UI REVIEW ────────│
 ────────────────────────────────────
-[10] /ultrareview ───────────────────► requer humano (manual, opcional)
-[11] DEPLOY ASSISTIDO ───────────────► requer humano (validação final)
+[11] /ultrareview ───────────────────► requer humano (manual, opcional)
+[12] DEPLOY ASSISTIDO ───────────────► requer humano (validação final)
 ```
 
-**[1] Brainstorm** — `superpowers:brainstorming`. Output: spec em `docs/superpowers/specs/`.
-**[2] Design UI/UX** — `ui-ux-pro-max`. Autoridade de design. Sempre antes de qualquer UI. Alimenta o plano.
-**[3] Plan** — `superpowers:writing-plans`. Plano com tasks bite-sized, sem placeholders. Salvo em `docs/superpowers/plans/`.
-**[4–6] Double-check do plano — REGRA DE RAIZ, inegociável.**
+### Modo autônomo — padrão automático, inegociável
+
+**Modo autônomo é o padrão e é automático.** Iniciar a spec de qualquer
+implementação já dispara, por conta própria, a cadeia inteira `[1]→[10]` até
+a entrega — **sem pedir permissão, sem perguntar "posso seguir?", sem
+checkpoint entre etapas**. Claude não aguarda o humano mandar continuar e não
+pergunta se deve prosseguir. Concluiu uma etapa, começa a próxima; concluiu
+uma fase, encadeia a seguinte (F2→F3→F4...). Isso vale **toda vez**, sem
+exceção e sem precisar ser pedido — começou a spec, segue assim até o fim.
+
+A sequência é cumprida na íntegra, sem atalho e sem pular etapa:
+**SPEC v1 → review crítica profunda de verdade (não carimbo, não review
+fake) → SPEC v2 → review ainda mais profunda e adversarial (caçar o que
+faltou, o exagero, o conceito quebrado) → SPEC v3 → PLAN v1 → a mesma dupla
+de reviews críticas → PLAN v2 → PLAN v3 → execução em microtarefas →
+verificação → code review + UI review.** Cada review é genuína: se não achou
+nada material, ela falhou em ser crítica o bastante.
+
+Claude só chama o humano:
+- na **entrada de requisitos** do brainstorm [1] — e só ali; com os requisitos
+  dados, não volta a perguntar nada nem pede aval para continuar;
+- no **merge de PR para `main`**, no **`/ultrareview` [11]** e no **deploy [12]**;
+- diante de **erro/bloqueio real**.
+
+Fora desses pontos: silêncio e execução. Ao terminar **tudo** — implementação,
+verificação e reviews de código — aí sim chama o humano com o resumo final.
+O humano interrompe quando quiser; enquanto não interromper, Claude segue
+autônomo até o fim.
+
+**[1] Brainstorm → SPEC v1** — `superpowers:brainstorming`. Output: spec v1 em `docs/superpowers/specs/`.
+**[2] Design UI/UX — `ui-ux-pro-max`, OBRIGATÓRIO.** A skill `ui-ux-pro-max` é a autoridade de design e é de uso **obrigatório em tudo que for frontend** — layout, telas, componentes, ícones, gráficos, cores, tipografia, espaçamento, animação e interação. Nenhuma UI é construída ou alterada sem consultá-la primeiro. Alimenta a spec e o plano, e é reaplicada durante a execução de qualquer task com UI.
+**[3–4] Double-check da SPEC — REGRA DE RAIZ, inegociável.**
+> A spec passa por **duas reviews genuinamente críticas** antes de virar plano.
+> - **[3] Review da spec #1 → SPEC v2** — auditoria adversarial: achar erro,
+>   inconsistência, premissa frágil, requisito ambíguo, o que está faltando ou
+>   esquecido. Aplicar os achados gera a **SPEC v2**.
+> - **[4] Review da spec #2 → SPEC v3** — review **ainda mais crítica e
+>   profunda** sobre a v2: caçar todo problema e inconsistência restante,
+>   incrementar e completar. Aplicar gera a **SPEC v3** — a versão que vai
+>   para o plano.
+> Critério de saída: a review não encontra mais achado material.
+**[5] Plan v1** — `superpowers:writing-plans`, sobre a SPEC v3. Tasks bite-sized, sem placeholders. Salvo em `docs/superpowers/plans/`.
+**[6–7] Double-check do plano — REGRA DE RAIZ, inegociável.**
 > Duas reviews **genuinamente críticas**, sem passar pano. A review não é
 > carimbo — é auditoria adversarial do próprio plano. Vale para TODA fase.
 > Critérios de qualidade que o plano precisa cumprir para sair do loop:
@@ -139,24 +182,26 @@ Cada sub-projeto percorre o fluxo abaixo. Classificar o esforço pela demanda �
 > - **Zero ambiguidade.** Cada step diz exatamente o quê, em qual arquivo, com
 >   qual verificação e qual resultado esperado. "Portar e adaptar" não é step —
 >   é placeholder. Porte exige listar o arquivo-fonte e cada adaptação.
-> - **Review #1** — lacunas, ordem, premissas. **Review #2** — granularidade,
->   integração, testabilidade; aqui se mede se cada task é pequena o suficiente.
->   Se não for, o plano volta para [5] e é redecomposto.
+> - **[6] Review do plano #1 → PLAN v2** — lacunas, ordem, premissas.
+>   **[7] Review do plano #2 → PLAN v3** — granularidade, integração,
+>   testabilidade; aqui se mede se cada task é pequena o suficiente. Se não
+>   for, o plano é redecomposto. A v3 é a versão que vai para a execução.
 > Critério de saída: a review não encontra mais achado material **E** nenhuma
 > task esconde mais de uma unidade de trabalho. Objetivo: zerar inconsistência
 > no que for construído.
 
-**[7] Execução — Superpowers (decisão revista em 2026-05-16).**
+**[8] Execução — Superpowers (decisão revista em 2026-05-16).**
 > Avaliação GSD × Superpowers: embora o projeto seja multi-fase, o ciclo Superpowers (brainstorming → writing-plans → execução → verification → code review) cobre o fluxo inteiro e provou-se limpo no F0. Adotar a família `gsd-*` como espinha exigiria reformatar specs/plans para o formato GSD e somar cerimônia (`.planning/`, ROADMAP formal, requirements rastreados) sem ganho proporcional — a estrutura de fases já vive neste documento (§4) e a continuidade entre sessões é garantida por specs/plans versionados + tasks + git. **Decisão: Superpowers de ponta a ponta.**
 > - **Fase enxuta** (ex.: F0): executar **inline**, task a task.
-> - **Fase grande** (ex.: F1): `superpowers:subagent-driven-development` — subagente fresco por task, com revisão entre tasks.
+> - **Fase grande** (ex.: F1): `superpowers:subagent-driven-development` — subagente fresco por task, com revisão entre tasks. Usar subagentes críticos, que já identificam problemas durante a execução, não só no review.
+> - **Modelo dos subagentes:** execução de task → **Sonnet** (o plano já é exaustivo, a implementação é mecânica). Review de cada bloco → **Opus**. Review completa da fase [10] → **Opus**. Após o review de bloco (Opus), volta a Sonnet para a execução do bloco seguinte.
 > - `superpowers:test-driven-development` dentro de cada task com código testável.
-> `/gsd-code-review` e `/gsd-ui-review` permanecem como auditorias pontuais na etapa [9] — é o único uso da família `gsd-*`.
+> `/gsd-code-review` e `/gsd-ui-review` permanecem como auditorias pontuais na etapa [10] — é o único uso da família `gsd-*`.
 
-**[8] Verificação** — `superpowers:verification-before-completion`. Evidência antes de afirmar pronto. Testar feature na UI quando aplicável.
-**[9] Auditoria final** — `/gsd-code-review` (bugs, segurança, qualidade) + `/gsd-ui-review` (6 pilares visuais, sempre que tocar UI).
-**[10] `/ultrareview`** — só quando o humano disparar. Nunca autonomamente.
-**[11] Deploy assistido** — descrever cada passo; validar com humano no fim, sempre.
+**[9] Verificação** — `superpowers:verification-before-completion`. Evidência antes de afirmar pronto. Testar feature na UI quando aplicável.
+**[10] Auditoria final** — `/gsd-code-review` (bugs, segurança, qualidade) + `/gsd-ui-review` (6 pilares visuais, sempre que tocar UI).
+**[11] `/ultrareview`** — só quando o humano disparar. Nunca autonomamente.
+**[12] Deploy assistido** — descrever cada passo; validar com humano no fim, sempre.
 
 ### Quando fazer spec
 Fazer spec antes do plano quando o requisito é ambíguo, tem múltiplas interpretações, ou toca vários sistemas. Pular quando já é objetivo, bug fix diagnosticado, ou ajuste pontual. Em dúvida: fazer spec.

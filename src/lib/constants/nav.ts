@@ -1,4 +1,4 @@
-import { Home, Users } from "lucide-react";
+import { BarChart3, Home, Settings, Users } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import type { PlatformRole } from "@/generated/prisma/client";
 
@@ -20,12 +20,20 @@ export const SECTION_LABELS: Record<NavSection, string> = {
 
 export const NAV_ITEMS: NavItem[] = [
   { label: "Dashboard", href: "/dashboard", icon: Home },
+  { label: "Relatórios", href: "/relatorios", icon: BarChart3 },
   {
     label: "Usuários",
     href: "/usuarios",
     icon: Users,
     section: "admin",
     visibleTo: ["super_admin", "admin"],
+  },
+  {
+    label: "Configuração",
+    href: "/configuracao",
+    icon: Settings,
+    section: "admin",
+    visibleTo: ["super_admin"],
   },
 ];
 

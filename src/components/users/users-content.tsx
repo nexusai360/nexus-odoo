@@ -56,6 +56,8 @@ import {
   updateUser,
   type UserListItem,
 } from "@/lib/actions/users";
+import { getMyDomains, getUserDomains } from "@/lib/actions/domain-access";
+import type { ReportDomainId } from "@/lib/reports/domains";
 import {
   canChangeRole,
   canDeactivateUser,
@@ -147,9 +149,11 @@ export function UsersContent({ currentUser }: UsersContentProps) {
   const [users, setUsers] = useState<UserListItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
+  const [granterDomains, setGranterDomains] = useState<ReportDomainId[]>([]);
 
   const [createOpen, setCreateOpen] = useState(false);
   const [editingUser, setEditingUser] = useState<UserListItem | null>(null);
+  const [editingUserDomains, setEditingUserDomains] = useState<ReportDomainId[]>([]);
   const [confirmDelete, setConfirmDelete] = useState<UserListItem | null>(null);
 
   const [actionPending, setActionPending] = useState(false);
@@ -159,13 +163,17 @@ export function UsersContent({ currentUser }: UsersContentProps) {
   async function load() {
     setLoading(true);
     setLoadError(null);
-    const result = await listUsers();
+    const [result, myDomains] = await Promise.all([
+      listUsers(),
+      getMyDomains().catch(() => [] as ReportDomainId[]),
+    ]);
     if (result.success) {
       setUsers(result.data ?? []);
     } else {
       setLoadError(result.error);
       toast.error(result.error);
     }
+    setGranterDomains(myDomains);
     setLoading(false);
   }
 
@@ -407,7 +415,10 @@ export function UsersContent({ currentUser }: UsersContentProps) {
                               render={
                                 <button
                                   type="button"
-                                  onClick={() => setEditingUser(u)}
+                                  onClick={() => {
+                                    setEditingUser(u);
+                                    void getUserDomains(u.id).then(setEditingUserDomains).catch(() => setEditingUserDomains([]));
+                                  }}
                                   aria-label={`Editar ${u.name}`}
                                   className={ACTION_BTN}
                                 />
@@ -457,6 +468,7 @@ export function UsersContent({ currentUser }: UsersContentProps) {
         onOpenChange={setCreateOpen}
         currentUser={currentUser}
         onSuccess={load}
+        granterDomains={granterDomains}
       />
       <UserFormDialog
         mode="edit"
@@ -470,6 +482,8 @@ export function UsersContent({ currentUser }: UsersContentProps) {
           setEditingUser(null);
           void load();
         }}
+        granterDomains={granterDomains}
+        userDomains={editingUserDomains}
       />
 
       <AlertDialog

@@ -33,6 +33,7 @@ const ACTION_LABELS: Record<AuditAction, string> = {
   email_change_completed: "E-mail alterado",
   setting_updated: "Configuração alterada",
   session_revoked: "Sessão revogada",
+  user_domains_changed: "Domínios de acesso alterados",
 };
 
 function getActionBadgeClasses(action: AuditAction): string {

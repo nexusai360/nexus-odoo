@@ -19,6 +19,7 @@ import {
   Crown,
   IdCard,
   Loader2,
+  ShieldCheck,
   UserCheck,
   UserX,
 } from "lucide-react";
@@ -43,6 +44,7 @@ import {
   updateUser,
   type UserListItem,
 } from "@/lib/actions/users";
+import { updateUserDomains } from "@/lib/actions/domain-access";
 import { canCreateRole } from "@/lib/permissions";
 import { cn } from "@/lib/utils";
 import {
@@ -52,10 +54,17 @@ import {
   PLATFORM_ROLE_STYLES,
 } from "@/lib/constants/roles";
 import type { AuthUser } from "@/lib/auth-helpers";
-import type { PlatformRole } from "@/generated/prisma/client";
+import { grantableDomains, REPORT_DOMAINS, type ReportDomainId } from "@/lib/reports/domains";
+import { AccessStep } from "@/components/users/access-step";
+import {
+  handleRoleChange,
+  type FormState,
+  type RoleValue,
+  type Step,
+} from "@/components/users/user-form-dialog.internals";
 
-type RoleValue = PlatformRole;
-type Step = 1 | 2;
+// RoleValue, Step e FormState são importados de user-form-dialog.internals.
+// Não redefini-los aqui.
 
 interface RoleMeta {
   value: RoleValue;
@@ -106,15 +115,10 @@ interface UserFormDialogProps {
   user?: UserListItem;
   currentUser: AuthUser;
   onSuccess: () => void;
-}
-
-interface FormState {
-  name: string;
-  email: string;
-  password: string;
-  confirmPassword: string;
-  role: RoleValue;
-  isActive: boolean;
+  /** Domínios que o concedente possui; usado para calcular o que pode conceder. */
+  granterDomains: ReportDomainId[];
+  /** Domínios atuais do usuário sendo editado; pré-carrega a etapa Acesso no modo edit. */
+  userDomains?: ReportDomainId[];
 }
 
 const EMPTY_FORM: FormState = {
@@ -124,6 +128,7 @@ const EMPTY_FORM: FormState = {
   confirmPassword: "",
   role: "viewer",
   isActive: true,
+  domains: [],
 };
 
 interface FieldErrors {
@@ -140,6 +145,8 @@ export function UserFormDialog({
   user,
   currentUser,
   onSuccess,
+  granterDomains,
+  userDomains,
 }: UserFormDialogProps) {
   const isEdit = mode === "edit";
   const isOwner = !!user?.isOwner;
@@ -182,11 +189,12 @@ export function UserFormDialog({
         email: user.email,
         role: user.platformRole,
         isActive: user.isActive,
+        domains: userDomains ?? [],
       });
     } else {
       setForm({ ...EMPTY_FORM });
     }
-  }, [open, isEdit, user]);
+  }, [open, isEdit, user, userDomains]);
 
   const availableRoles = useMemo<RoleMeta[]>(
     () =>
@@ -195,6 +203,23 @@ export function UserFormDialog({
       ),
     [currentUser],
   );
+
+  // manager/viewer têm a etapa "Acesso" (3 etapas); privilegiados, 2.
+  const temEtapaAcesso = form.role === "manager" || form.role === "viewer";
+  const ultimaEtapa: Step = temEtapaAcesso ? 3 : 2;
+
+  // Domínios que o concedente pode conceder ao novo usuário.
+  const grantable = grantableDomains(currentUser.platformRole, granterDomains);
+
+  // N10: troca de role zera domínios e pode recuar a etapa.
+  function onRoleChange(role: RoleValue) {
+    setForm((f) => {
+      const { form: nextForm } = handleRoleChange(f, role, step);
+      return nextForm;
+    });
+    const { step: nextStep } = handleRoleChange(form, role, step);
+    if (nextStep !== step) setStep(nextStep);
+  }
 
   function clearError(key: keyof FieldErrors) {
     setErrors((e) => ({ ...e, [key]: undefined }));
@@ -254,11 +279,11 @@ export function UserFormDialog({
         setCheckingEmail(false);
       }
     }
-    setStep(2);
+    setStep((s) => (s < ultimaEtapa ? ((s + 1) as Step) : s));
   }
 
   function goBack() {
-    setStep(1);
+    setStep((s) => (s > 1 ? ((s - 1) as Step) : s));
   }
 
   function handleSubmit() {
@@ -276,6 +301,7 @@ export function UserFormDialog({
           email: form.email.trim().toLowerCase(),
           platformRole: form.role,
           password: form.password.length > 0 ? form.password : undefined,
+          domains: form.domains,
         });
         if (result.success && result.data) {
           if (result.data.tempPassword) {
@@ -292,6 +318,23 @@ export function UserFormDialog({
       }
 
       if (!user) return;
+
+      // N1: domínios primeiro. updateUserDomains é idempotente; com role
+      // privilegiado, form.domains já é [] (N10) — então a chamada apenas
+      // remove eventuais linhas remanescentes, sem deixar estado órfão.
+      const editavelDominio =
+        form.role === "manager" || form.role === "viewer";
+      if (editavelDominio || true) {
+        const domRes = await updateUserDomains(
+          user.id,
+          editavelDominio ? form.domains : [],
+        );
+        if (!domRes.success) {
+          toast.error(`Falha ao atualizar domínios: ${domRes.error}`);
+          return; // não prossegue para updateUser — nada de identidade foi tocado
+        }
+      }
+
       const result = await updateUser({
         id: user.id,
         name: form.name.trim(),
@@ -304,7 +347,8 @@ export function UserFormDialog({
         onSuccess();
         onOpenChange(false);
       } else {
-        toast.error(result.error);
+        // Domínios já foram salvos; identidade falhou — erro parcial.
+        toast.error(`Domínios salvos, mas a identidade falhou: ${result.error}`);
       }
     });
   }
@@ -318,13 +362,29 @@ export function UserFormDialog({
 
   function close(v: boolean) {
     if (pending) return;
+    // Ao fechar, limpa a senha temporária do estado do cliente para não
+    // deixá-la no heap / React DevTools mais do que o necessário (IM-06).
+    if (!v) {
+      setCreatedPassword(null);
+      setCopied(false);
+    }
     onOpenChange(v);
   }
 
-  const stepperItems: Array<{ n: Step; label: string; icon: typeof IdCard }> = [
-    { n: 1, label: "Identidade", icon: IdCard },
-    { n: 2, label: "Confirmação", icon: CheckCircle2 },
-  ];
+  const stepperItems = useMemo<
+    Array<{ n: Step; label: string; icon: typeof IdCard }>
+  >(() => {
+    const items: Array<{ n: Step; label: string; icon: typeof IdCard }> = [
+      { n: 1, label: "Identidade", icon: IdCard },
+    ];
+    if (temEtapaAcesso) {
+      items.push({ n: 2, label: "Acesso", icon: ShieldCheck });
+      items.push({ n: 3, label: "Confirmação", icon: CheckCircle2 });
+    } else {
+      items.push({ n: 2, label: "Confirmação", icon: CheckCircle2 });
+    }
+    return items;
+  }, [temEtapaAcesso]);
 
   return (
     <Dialog open={open} onOpenChange={close}>
@@ -363,6 +423,7 @@ export function UserFormDialog({
               <StepIdentity
                 form={form}
                 setForm={setForm}
+                onRoleChange={onRoleChange}
                 errors={errors}
                 clearError={clearError}
                 isEdit={isEdit}
@@ -379,6 +440,12 @@ export function UserFormDialog({
                   confirmError: confirmErrorId,
                   emailError: emailErrorId,
                 }}
+              />
+            ) : step === 2 && temEtapaAcesso ? (
+              <AccessStep
+                selected={form.domains}
+                onChange={(domains) => setForm((f) => ({ ...f, domains }))}
+                grantable={grantable}
               />
             ) : (
               <StepConfirm form={form} isEdit={isEdit} />
@@ -410,7 +477,7 @@ export function UserFormDialog({
                   Voltar
                 </Button>
               ) : null}
-              {step < 2 ? (
+              {step < ultimaEtapa ? (
                 <Button
                   type="button"
                   onClick={() => void goNext()}
@@ -514,6 +581,7 @@ function Stepper({ step, items }: StepperProps) {
 interface StepIdentityProps {
   form: FormState;
   setForm: React.Dispatch<React.SetStateAction<FormState>>;
+  onRoleChange: (role: RoleValue) => void;
   errors: FieldErrors;
   clearError: (key: keyof FieldErrors) => void;
   isEdit: boolean;
@@ -535,6 +603,7 @@ interface StepIdentityProps {
 function StepIdentity({
   form,
   setForm,
+  onRoleChange,
   errors,
   clearError,
   isEdit,
@@ -707,7 +776,7 @@ function StepIdentity({
           <RoleDropdown
             value={form.role}
             options={availableRoles}
-            onChange={(v) => setForm((f) => ({ ...f, role: v }))}
+            onChange={onRoleChange}
           />
         )}
       </div>
@@ -959,6 +1028,22 @@ function StepConfirm({ form, isEdit }: StepConfirmProps) {
           }
         />
       </div>
+      {(form.role === "manager" || form.role === "viewer") && (
+        <div className="flex flex-col gap-1">
+          <span className="text-sm font-medium">Acesso a relatórios</span>
+          {form.domains.length > 0 ? (
+            <span className="text-sm text-muted-foreground">
+              {form.domains
+                .map((d) => REPORT_DOMAINS.find((m) => m.id === d)?.label ?? d)
+                .join(", ")}
+            </span>
+          ) : (
+            <span className="text-xs text-amber-600 dark:text-amber-500">
+              Nenhum domínio selecionado — o usuário não verá nenhum relatório.
+            </span>
+          )}
+        </div>
+      )}
     </div>
   );
 }

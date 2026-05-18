@@ -1,6 +1,7 @@
 import { PrismaClient, Prisma } from "../src/generated/prisma/client";
 import { PrismaPg } from "@prisma/adapter-pg";
 import bcrypt from "bcryptjs";
+import { MODEL_CATALOG } from "../src/worker/catalog/model-catalog";
 
 if (!process.env.DATABASE_URL) {
   throw new Error("[seed] DATABASE_URL não definido no ambiente.");
@@ -93,6 +94,15 @@ async function main() {
   console.log(
     `[seed] owner=${owner.email}, settings=${APP_SETTINGS_DEFAULTS.length}`,
   );
+
+  for (const { odooModel, mode } of MODEL_CATALOG) {
+    await prisma.syncState.upsert({
+      where: { model: odooModel },
+      update: { mode },
+      create: { model: odooModel, mode, lastStatus: "rodando" },
+    });
+  }
+  console.log(`SyncState semeado: ${MODEL_CATALOG.length} modelos`);
 }
 
 main()
