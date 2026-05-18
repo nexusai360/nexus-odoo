@@ -6,7 +6,7 @@ import { queryPlanoDeContas, queryEstruturaConta } from "./contabil";
 // ---------------------------------------------------------------------------
 
 describe("queryPlanoDeContas", () => {
-  it("retorna todas as contas sem termo (até limite padrão)", async () => {
+  it("retorna todas as contas sem termo (até limite padrão) com total/truncado", async () => {
     const mockLinhas = [
       { odooId: 4, codigo: "1", nome: "ATIVO", tipo: "S", contaPaiNome: null },
       { odooId: 5, codigo: "1.1", nome: "ATIVO CIRCULANTE", tipo: "S", contaPaiNome: "1 - ATIVO [D]" },
@@ -14,19 +14,40 @@ describe("queryPlanoDeContas", () => {
     const prisma = {
       fatoContaContabil: {
         findMany: jest.fn().mockResolvedValue(mockLinhas),
+        count: jest.fn().mockResolvedValue(2),
       },
     } as unknown as Parameters<typeof queryPlanoDeContas>[0];
 
     const result = await queryPlanoDeContas(prisma, {});
     expect(result.linhas).toHaveLength(2);
     expect(result.linhas[0].odooId).toBe(4);
-    expect(result.linhas[0].codigo).toBe("1");
+    expect(result.total).toBe(2);
+    expect(result.truncado).toBe(false);
+  });
+
+  it("marca truncado=true quando total > linhas retornadas", async () => {
+    const prisma = {
+      fatoContaContabil: {
+        findMany: jest.fn().mockResolvedValue(
+          Array.from({ length: 250 }, (_, i) => ({
+            odooId: i, codigo: `c${i}`, nome: `Conta ${i}`, tipo: "A", contaPaiNome: null,
+          })),
+        ),
+        count: jest.fn().mockResolvedValue(934),
+      },
+    } as unknown as Parameters<typeof queryPlanoDeContas>[0];
+
+    const result = await queryPlanoDeContas(prisma, {});
+    expect(result.linhas).toHaveLength(250);
+    expect(result.total).toBe(934);
+    expect(result.truncado).toBe(true);
   });
 
   it("aplica filtro por termo (where.OR presente) e limite customizado", async () => {
     const findMany = jest.fn().mockResolvedValue([]);
+    const count = jest.fn().mockResolvedValue(0);
     const prisma = {
-      fatoContaContabil: { findMany },
+      fatoContaContabil: { findMany, count },
     } as unknown as Parameters<typeof queryPlanoDeContas>[0];
 
     await queryPlanoDeContas(prisma, { termo: "1.1", limite: 50 });
@@ -35,15 +56,16 @@ describe("queryPlanoDeContas", () => {
     expect(call.take).toBe(50);
   });
 
-  it("usa limite padrão 100 quando não informado", async () => {
+  it("usa limite padrão 250 quando não informado", async () => {
     const findMany = jest.fn().mockResolvedValue([]);
+    const count = jest.fn().mockResolvedValue(0);
     const prisma = {
-      fatoContaContabil: { findMany },
+      fatoContaContabil: { findMany, count },
     } as unknown as Parameters<typeof queryPlanoDeContas>[0];
 
     await queryPlanoDeContas(prisma, {});
     const call = findMany.mock.calls[0][0];
-    expect(call.take).toBe(100);
+    expect(call.take).toBe(250);
   });
 });
 

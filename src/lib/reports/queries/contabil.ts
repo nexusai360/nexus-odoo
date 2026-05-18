@@ -15,7 +15,9 @@ import type { PrismaClient } from "@/generated/prisma/client";
 // ---------------------------------------------------------------------------
 
 /** Lista contas do plano, opcionalmente filtrando por termo (ILIKE em codigo/nome).
- * Devolve até `limite` (padrão 100) resultados ordenados por codigo. */
+ * Devolve até `limite` (padrão 250) resultados ordenados por codigo, junto com
+ * `total` (contagem completa do filtro) e `truncado` — para a resposta nunca
+ * ocultar silenciosamente que há mais contas do que as retornadas. */
 export async function queryPlanoDeContas(
   prisma: PrismaClient,
   filtros: { termo?: string; limite?: number },
@@ -27,8 +29,10 @@ export async function queryPlanoDeContas(
     tipo: string;
     contaPaiNome: string | null;
   }[];
+  total: number;
+  truncado: boolean;
 }> {
-  const limite = filtros.limite ?? 100;
+  const limite = filtros.limite ?? 250;
   const where = filtros.termo
     ? {
         OR: [
@@ -38,19 +42,22 @@ export async function queryPlanoDeContas(
       }
     : {};
 
-  const linhas = await prisma.fatoContaContabil.findMany({
-    where,
-    select: {
-      odooId: true,
-      codigo: true,
-      nome: true,
-      tipo: true,
-      contaPaiNome: true,
-    },
-    orderBy: { codigo: "asc" },
-    take: limite,
-  });
-  return { linhas };
+  const [linhas, total] = await Promise.all([
+    prisma.fatoContaContabil.findMany({
+      where,
+      select: {
+        odooId: true,
+        codigo: true,
+        nome: true,
+        tipo: true,
+        contaPaiNome: true,
+      },
+      orderBy: { codigo: "asc" },
+      take: limite,
+    }),
+    prisma.fatoContaContabil.count({ where }),
+  ]);
+  return { linhas, total, truncado: total > linhas.length };
 }
 
 // ---------------------------------------------------------------------------
