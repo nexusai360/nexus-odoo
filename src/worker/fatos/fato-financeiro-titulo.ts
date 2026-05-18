@@ -1,6 +1,8 @@
 // src/worker/fatos/fato-financeiro-titulo.ts
 // CRITERIO_NAO_PAGO: dataPagamento == null (Task 4a.2 Step 4 — usado nas tools 4d.5/4d.6/4d.7)
-// tipo derivado de sinal: sinal < 0 → "a_pagar"; sinal >= 0 → "a_receber"
+// tipo mapeado do campo selection real: "pagamento" → "a_pagar"; "recebimento" → "a_receber".
+// Evidência empírica (2026-05-18): 412 pagamento/sinal=-1; 729 recebimento/sinal=1;
+// 5 recebimento/sinal=0 — sinal=0 invalida a regra sinal>=0→a_receber; campo tipo é o oráculo.
 // diasAtraso NÃO é coluna — calculado em runtime nas tools de vencidos
 import type { PrismaClient } from "../../generated/prisma/client";
 import { relId, relNome, type OdooM2O } from "./odoo-relational";
@@ -29,9 +31,13 @@ export interface FatoFinanceiroTituloRow {
   // NÃO inclui diasAtraso — não é coluna do schema
 }
 
+/** I1: mapeia o campo selection real "tipo" da fonte.
+ * "pagamento" → "a_pagar"; qualquer outro valor (incl. "recebimento") → "a_receber".
+ * Fonte empírica: 412 "pagamento" (sinal=-1), 729 "recebimento" (sinal=1),
+ * 5 "recebimento" (sinal=0) — sinal=0 invalida a derivação por sinal; usar tipo. */
 function derivaTipo(raw: Record<string, unknown>): string {
-  const sinal = Number(raw.sinal ?? 0);
-  return sinal < 0 ? "a_pagar" : "a_receber";
+  const tipo = typeof raw.tipo === "string" ? raw.tipo : "";
+  return tipo === "pagamento" ? "a_pagar" : "a_receber";
 }
 
 export function mapTituloRow(raw: Record<string, unknown>): FatoFinanceiroTituloRow {
@@ -42,10 +48,12 @@ export function mapTituloRow(raw: Record<string, unknown>): FatoFinanceiroTitulo
     participanteNome: relNome(raw.participante_id as OdooM2O),
     contaId: relId(raw.conta_id as OdooM2O),
     contaNome: relNome(raw.conta_id as OdooM2O),
-    numeroDocumento: typeof raw.numero_documento === "string" ? raw.numero_documento : null,
-    dataDocumento: raw.data_documento ? new Date(raw.data_documento as string) : null,
-    dataVencimento: raw.data_vencimento ? new Date(raw.data_vencimento as string) : null,
-    dataPagamento: raw.data_pagamento ? new Date(raw.data_pagamento as string) : null,
+    // C3: campo real é "numero" (não "numero_documento" — sempre null na fonte).
+    numeroDocumento: typeof raw.numero === "string" ? raw.numero : null,
+    // I2: sufixo T00:00:00 força parsing como hora local, evitando desvio UTC→GMT-3.
+    dataDocumento: typeof raw.data_documento === "string" ? new Date(`${raw.data_documento}T00:00:00`) : null,
+    dataVencimento: typeof raw.data_vencimento === "string" ? new Date(`${raw.data_vencimento}T00:00:00`) : null,
+    dataPagamento: typeof raw.data_pagamento === "string" ? new Date(`${raw.data_pagamento}T00:00:00`) : null,
     situacao: typeof raw.situacao === "string" ? raw.situacao : null,
     situacaoSimples: typeof raw.situacao_divida_simples === "string" ? raw.situacao_divida_simples : null,
     vrDocumento: Number(raw.vr_documento ?? 0),
