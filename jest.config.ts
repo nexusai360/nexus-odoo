@@ -7,8 +7,9 @@ const config: Config = {
   moduleFileExtensions: ["ts", "tsx", "js", "cjs", "mjs", "json", "node"],
   testMatch: ["**/__tests__/**/*.test.[jt]s?(x)", "**/?(*.)+(spec|test).[jt]s?(x)"],
   moduleNameMapper: {
-    // Resolve imports .js no estilo nodenext para .ts no Jest
+    // Resolve imports .js no estilo nodenext (relativos e @/) para .ts no Jest
     "^(\\.{1,2}/.*)\\.js$": "$1",
+    "^@/(.*)\\.js$": "<rootDir>/src/$1",
     "^@/(.*)$": "<rootDir>/src/$1",
     "^server-only$": "<rootDir>/src/lib/__mocks__/server-only.ts",
   },
