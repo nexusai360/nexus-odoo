@@ -88,9 +88,13 @@ export async function queryPedidosAtrasados(
   prisma: PrismaClient,
   hoje: Date,
 ): Promise<{ linhas: { pedidoId: number | null; participanteNome: string | null; numero: string | null; dataVencimento: Date | null; valor: number; diasAtraso: number }[]; totalAtrasado: number }> {
+  // Normaliza para início do dia local — parcelas gravadas como T00:00:00 não
+  // devem ser contadas como atrasadas se vencem HOJE. Mesmo padrão de
+  // queryTitulosVencidos (financeiro.ts:230).
+  const inicioDoDia = new Date(hoje.getFullYear(), hoje.getMonth(), hoje.getDate());
   const rows = await prisma.fatoPedidoParcela.findMany({
     where: {
-      dataVencimento: { lt: hoje },
+      dataVencimento: { lt: inicioDoDia },
       parcelaFaturada: false,
     },
     select: {
@@ -107,7 +111,7 @@ export async function queryPedidosAtrasados(
     numero: r.numero,
     dataVencimento: r.dataVencimento,
     valor: Number(r.valor),
-    diasAtraso: diasAtraso(r.dataVencimento, hoje),
+    diasAtraso: diasAtraso(r.dataVencimento, inicioDoDia),
   }));
   const totalAtrasado = linhas.reduce((acc, l) => acc + l.valor, 0);
   return { linhas, totalAtrasado };
@@ -118,11 +122,15 @@ export async function queryParcelasAVencer(
   filtros: { ateDias?: number },
   hoje: Date,
 ): Promise<{ linhas: { pedidoId: number | null; participanteNome: string | null; numero: string | null; dataVencimento: Date | null; valor: number }[]; totalAVencer: number }> {
+  // Normaliza para início do dia local — parcelas que vencem HOJE (gravadas como
+  // T00:00:00) devem ser incluídas em "a vencer". Mesmo padrão de
+  // queryTitulosVencidos (financeiro.ts:230).
+  const inicioDoDia = new Date(hoje.getFullYear(), hoje.getMonth(), hoje.getDate());
   const ateDias = filtros.ateDias ?? 30;
-  const limite = new Date(hoje.getTime() + ateDias * 24 * 60 * 60 * 1000);
+  const limite = new Date(inicioDoDia.getTime() + ateDias * 24 * 60 * 60 * 1000);
   const rows = await prisma.fatoPedidoParcela.findMany({
     where: {
-      dataVencimento: { gte: hoje, lte: limite },
+      dataVencimento: { gte: inicioDoDia, lte: limite },
       parcelaFaturada: false,
     },
     select: {
