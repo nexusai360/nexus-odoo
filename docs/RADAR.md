@@ -64,15 +64,30 @@ Levantamento das tabelas `raw` por domínio que falta cobrir no MCP:
 | **Contábil** | `contabil_conta` (934), `contabil_conta_referencial` (2.204) | **só o plano de contas** — não há tabela de lançamentos contábeis no cache |
 | **Produção** | `producao_processo` (1) | **1 único registro** — praticamente inexistente |
 
-### Implicação
+### Implicação — confirmado pelo censo F0 (não é gap de sync)
 
-"MCP cobrir 100% dos domínios" é viável para **comercial** e **fiscal** (dado
-rico). Para **contábil**, o MCP só consegue responder sobre a *estrutura do
-plano de contas* — não há movimento contábil para perguntas de saldo/resultado.
-Para **produção**, não há praticamente nada a expor.
+Verifiquei o censo completo do Odoo (`discovery/output/censo.md`): o dado
+contábil/produção **não existe na instância Odoo**, não é só não-sincronizado.
 
-Isto é realidade do cache/instância Odoo Tauga, não limitação do MCP. Não é
-defeito a corrigir no código — é informação para a decisão de escopo: cobrir
-contábil/produção com as tools possíveis (magras) e registrar o limite, ou
-confirmar com o cliente se há outra fonte de dado contábil/produção no Odoo
-que a F2 (ingestão) não trouxe.
+- **Contábil:** `contabil.lancamento` (Lançamento Contábil) = **0 registros**;
+  `contabil.demonstracao`, `contabil.encerramento`, `contabil.operacao` = 0.
+  Só o **plano de contas** tem dado (`contabil.conta` 934, `…referencial`
+  2.204, `…arvore` 4.955). A Matrix **não opera o módulo de contabilidade** no
+  Odoo.
+- **Produção:** `producao.processo` = 1; todos os demais modelos `producao.*`
+  = 0. A empresa **movimenta/entrega** equipamento de academia — não fabrica.
+
+### Decisão de escopo
+
+"MCP 100% de todos os domínios" se traduz, na realidade do dado, em:
+- **Comercial** (pedidos) e **Fiscal** (notas SPED) — domínios reais, dado rico
+  → tools semânticas completas.
+- **Contábil** — apenas tool(s) de *estrutura do plano de contas* (referência),
+  pois não há movimento. Ou omitir até o cliente operar contabilidade no Odoo.
+- **Produção** — sem dado; nada a expor. Omitir.
+- O **Caminho 3c (modo BI)** cobre a cauda longa: qualquer pergunta fora das
+  tools, inclusive sobre o que houver de contábil/produção, cai no SQL
+  controlado.
+
+Pendente: aval do usuário sobre cobrir contábil (plano de contas) e omitir
+produção, ou aguardar dado.
