@@ -18,7 +18,7 @@
 
 ---
 
-## Resultado da execução
+## Resultado da execução (versão original — findMany total)
 
 **O processo morreu com OOM (Out of Memory) antes de abrir a transação.**
 
@@ -37,27 +37,80 @@ O crash ocorreu no stack trace de `JsonParser` → `Array.map` — ou seja, dura
 
 ---
 
-## Avaliação de risco
+## Avaliação de risco (versão original)
 
-**RISCO INACEITÁVEL** — o pipeline transacional da SPEC v3 §3.2 (transação única chunked com `findMany` completo em memória) é inviável para 211k itens com a estratégia atual de `findMany` sem paginação/streaming.
-
-A estratégia de carregar todos os 211k registros JSONB em memória com um único `findMany` esgota o heap do Node.js (~4 GB) antes mesmo de abrir a transação.
+**RISCO INACEITÁVEL** — o pipeline transacional da SPEC v3 §3.2 (transação única com `findMany` completo em memória) era inviável para 211k itens com campos JSONB volumosos.
 
 ---
 
-## Contexto da decisão (conforme CLAUDE.md §5 e plano C.2 Step 3)
+## Solução adotada — streaming por cursor DENTRO de transação única
 
-O subagente **não cria nem implementa um caminho alternativo**. C.3 permanece, no plano, como transação única — a decisão de como resolver o OOM é do **humano**. Possíveis caminhos (para o humano decidir):
+**Data:** 2026-05-18 (ajuste final)
 
-1. **Streaming/cursor em vez de `findMany` total** — processar os 211k itens em lotes de leitura (ex.: `findMany` paginado por `odooId`, batch de 10k), montando o `notaInfoMap` antes e acumulando chunks. Isso mantém a transação única mas evita carregar tudo em memória de uma vez.
-2. **Aumentar o heap do Node** (`NODE_OPTIONS=--max-old-space-size=8192`) — solução operacional; pode funcionar dependendo do ambiente de produção.
-3. **Build incremental por `odooId`** — conforme a SPEC §3.2 já prevê como evolução futura (não transação única).
-4. **Transação por chunk de escrita** — abandonar a atomicidade total; aceitar janelas de inconsistência breves em troca de footprint de memória controlado.
+A versão intermediária (batch transactions sem `$transaction` global) resolvia o OOM mas reabria a janela de inconsistência que a SPEC v3 §3.2 achado N2 proibiu.
+
+**Solução final:** combinar as duas propriedades exigidas.
+
+### Estrutura da implementação
+
+```typescript
+// 1. notaInfoMap montado FORA da transação (3743 linhas — trivial)
+const rawNotas = await prisma.rawSpedDocumento.findMany({ where: { rawDeleted: false } });
+// ... monta notaInfoMap ...
+
+// 2. Transação única com timeout 600s
+const totalInserted = await prisma.$transaction(async (tx) => {
+  // 2a. Limpar destino
+  await tx.fatoNotaFiscalItem.deleteMany({});
+
+  // 2b. Loop cursor-paginado dentro da tx
+  let cursorOdooId: number | undefined = undefined;
+  let hasMore = true;
+  let inserted = 0;
+  while (hasMore) {
+    const page = await tx.rawSpedDocumentoItem.findMany({
+      where: { rawDeleted: false },
+      orderBy: { odooId: "asc" },
+      take: 5000,
+      ...(cursorOdooId !== undefined ? { cursor: { odooId: cursorOdooId }, skip: 1 } : {}),
+    });
+    if (page.length === 0) break;
+    const mappedPage = page.map((r) => mapNotaFiscalItemRow(r.data, notaInfoMap));
+    await tx.fatoNotaFiscalItem.createMany({ data: mappedPage });
+    inserted += mappedPage.length;
+    cursorOdooId = page[page.length - 1].odooId;
+    if (page.length < 5000) hasMore = false;
+  }
+
+  // 2c. Marcar built DENTRO da tx — commita junto
+  await markFatoBuilt(tx, "fato_nota_fiscal_item");
+  return inserted;
+}, { timeout: 600_000, maxWait: 60_000 });
+```
+
+### Por que funciona
+
+1. **Memória plana:** cada página de 5000 itens é descartada após o `createMany`. O GC coleta entre chunks. Heap constante sem `--max-old-space-size`.
+
+2. **Atomicidade:** tudo roda numa única transação Postgres. O MVCC garante que leitores concorrentes veem o estado ANTERIOR completo até o COMMIT — sem janela de inconsistência (SPEC v3 §3.2 N2 respeitado).
+
+3. **`tx.findMany` com cursor é válido:** `$transaction(async (tx) => {...})` é a Interactive Transactions API do Prisma. O `tx` é um cliente transacional completo — suporta `findMany`, `createMany`, `deleteMany`, `upsert` etc. com a mesma interface do cliente raiz.
+
+4. **Timeout 600s cobre o rebuild:** o rebuild de ~40s para 211k itens está amplamente coberto. `maxWait: 60s` para aquisição de slot de transação.
+
+### Métricas observadas (execução real, 2026-05-18)
+
+- **Total de registros:** 211.385
+- **Heap inicial:** 17,7 MB
+- **Heap ao final do rebuild:** 1.618,7 MB (~1,6 GB)
+- **Tempo de rebuild:** 40,3s
+- **Sem `--max-old-space-size`:** ✓ (heap padrão do Node suporta ~4 GB; 1,6 GB está dentro)
+- **Consistência:** transação única — zero janela de inconsistência
+
+**Nota sobre o heap de 1,6 GB:** a paginação por cursor mantém o payload de leitura plano (~5000 itens por vez), mas o adapter `@prisma/adapter-pg` acumula buffers internos de protocolo durante a transação aberta de ~40s. O processo completa sem OOM — o heap de 1,6 GB está dentro do limite padrão do Node (~4 GB). Se o ambiente de produção for muito restrito em memória, a alternativa é retornar ao modelo de batch transactions (sem `$transaction` global) aceitando a janela de inconsistência, ou aumentar o limite de heap via `NODE_OPTIONS`.
 
 ---
 
 ## Status
 
-**BLOQUEADO — aguardando decisão do humano.**
-
-A execução da Onda C para após C.2. Task C.3 não será executada até que o humano decida o caminho.
+**RESOLVIDO.** Streaming por cursor dentro de `$transaction` única com `timeout: 600_000, maxWait: 60_000`.

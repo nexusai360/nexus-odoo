@@ -101,17 +101,20 @@ describe("mapNotaFiscalItemRow", () => {
 
 // ─── rebuildFatoNotaFiscalItem ─────────────────────────────────────────────────
 //
-// O builder usa batch transactions (sem $transaction interativa global):
-//   deleteMany → loop cursor (prisma.rawSpedDocumentoItem.findMany, take:5000) →
-//   createMany por chunk → markFatoBuilt.
-// Os mocks espelham essa estrutura: rawSpedDocumentoItem e fatoNotaFiscalItem
-// ficam todos no prisma mock flat (sem mockTx separado).
+// O builder usa uma transação única ($transaction, timeout:600s):
+//   notaInfoMap montado fora da tx → tx.deleteMany → loop cursor via tx.findMany
+//   (take:5000) → tx.createMany por chunk → markFatoBuilt(tx, ...).
+//
+// Os mocks refletem essa estrutura:
+//   - prisma.$transaction(callback, opts) captura o callback e o invoca com mockTx.
+//   - mockTx contém rawSpedDocumentoItem, fatoNotaFiscalItem e fatoBuildState.
+//   - prisma.rawSpedDocumento.findMany (fora da tx) retorna rawNotas.
 
 describe("rebuildFatoNotaFiscalItem", () => {
   /**
-   * Cria um mock de PrismaClient para o builder de streaming por cursor.
-   * rawSpedDocumentoItem.findMany simula paginação por cursor (take, cursor, skip:1).
-   * Retorna o mock object (não tipado como PrismaClient) para acesso direto às fns.
+   * Cria mocks para o builder com transação única.
+   * prisma.$transaction recebe o callback e o executa com mockTx.
+   * rawSpedDocumentoItem.findMany dentro de mockTx simula paginação por cursor.
    */
   function makeMocks(
     rawNotas: { data: Record<string, unknown> }[],
@@ -137,8 +140,8 @@ describe("rebuildFatoNotaFiscalItem", () => {
       fatoBuildStateUpsert: jest.fn().mockResolvedValue({}),
     };
 
-    const mockPrisma = {
-      rawSpedDocumento: { findMany: mocks.rawSpedDocumentoFindMany },
+    // mockTx é o cliente transacional passado ao callback de $transaction
+    const mockTx = {
       rawSpedDocumentoItem: { findMany: mocks.rawSpedDocumentoItemFindMany },
       fatoNotaFiscalItem: {
         deleteMany: mocks.fatoNotaFiscalItemDeleteMany,
@@ -147,10 +150,18 @@ describe("rebuildFatoNotaFiscalItem", () => {
       fatoBuildState: { upsert: mocks.fatoBuildStateUpsert },
     };
 
-    return { mocks, mockPrisma };
+    // $transaction captura o callback e o invoca com mockTx
+    const mockPrisma = {
+      rawSpedDocumento: { findMany: mocks.rawSpedDocumentoFindMany },
+      $transaction: jest.fn().mockImplementation(
+        (callback: (tx: typeof mockTx) => Promise<unknown>) => callback(mockTx),
+      ),
+    };
+
+    return { mocks, mockTx, mockPrisma };
   }
 
-  it("streaming: deleteMany, 1 createMany e markFatoBuilt para 12 itens (1 página)", async () => {
+  it("transação única: deleteMany, 1 createMany e markFatoBuilt para 12 itens (1 página)", async () => {
     const { rebuildFatoNotaFiscalItem } = await import("./fato-nota-fiscal-item");
 
     const allItems = Array.from({ length: 12 }, (_, i) => ({
@@ -167,13 +178,19 @@ describe("rebuildFatoNotaFiscalItem", () => {
       mockPrisma as unknown as Parameters<typeof rebuildFatoNotaFiscalItem>[0],
     );
     expect(count).toBe(12);
+    // $transaction foi chamado com timeout:600_000
+    expect(mockPrisma.$transaction).toHaveBeenCalledWith(
+      expect.any(Function),
+      { timeout: 600_000, maxWait: 60_000 },
+    );
+    // Dentro da tx: deleteMany e 1 createMany
     expect(mocks.fatoNotaFiscalItemDeleteMany).toHaveBeenCalledWith({});
-    // 12 itens < CHUNK_SIZE (5000) → 1 página → createMany 1 vez
     expect(mocks.fatoNotaFiscalItemCreateMany).toHaveBeenCalledTimes(1);
+    // markFatoBuilt chamado dentro da tx (via fatoBuildState.upsert)
     expect(mocks.fatoBuildStateUpsert).toHaveBeenCalled();
   });
 
-  it("streaming multi-página: 2*CHUNK_SIZE+7 itens → createMany chamado 3 vezes", async () => {
+  it("transação única multi-página: 2*CHUNK_SIZE+7 itens → createMany chamado 3 vezes", async () => {
     const { rebuildFatoNotaFiscalItem } = await import("./fato-nota-fiscal-item");
 
     const totalItems = CHUNK_SIZE * 2 + 7;
@@ -193,7 +210,7 @@ describe("rebuildFatoNotaFiscalItem", () => {
     expect(mocks.fatoBuildStateUpsert).toHaveBeenCalled();
   });
 
-  it("sem dados → nenhum createMany; deleteMany e markFatoBuilt rodam", async () => {
+  it("sem dados → nenhum createMany; deleteMany e markFatoBuilt rodam dentro da tx", async () => {
     const { rebuildFatoNotaFiscalItem } = await import("./fato-nota-fiscal-item");
 
     const { mocks, mockPrisma } = makeMocks([], []);
@@ -207,16 +224,13 @@ describe("rebuildFatoNotaFiscalItem", () => {
     expect(mocks.fatoBuildStateUpsert).toHaveBeenCalled();
   });
 
-  it("exceção em createMany propaga e markFatoBuilt não roda", async () => {
+  it("exceção em createMany faz rollback — markFatoBuilt não roda", async () => {
     const { rebuildFatoNotaFiscalItem } = await import("./fato-nota-fiscal-item");
 
     let markFatoBuiltCalled = false;
-    const mockPrisma = {
-      rawSpedDocumento: {
-        findMany: jest.fn().mockResolvedValue([
-          { data: { id: 1, data_emissao: "2024-01-15", entrada_saida: "1" } },
-        ]),
-      },
+
+    // $transaction propaga a exceção do callback (sem commit — rollback implícito)
+    const mockTx = {
       rawSpedDocumentoItem: {
         findMany: jest.fn().mockResolvedValue([{ odooId: 1, data: { id: 1 } }]),
       },
@@ -232,11 +246,40 @@ describe("rebuildFatoNotaFiscalItem", () => {
       },
     };
 
+    const mockPrisma = {
+      rawSpedDocumento: {
+        findMany: jest.fn().mockResolvedValue([
+          { data: { id: 1, data_emissao: "2024-01-15", entrada_saida: "1" } },
+        ]),
+      },
+      $transaction: jest.fn().mockImplementation(
+        (callback: (tx: typeof mockTx) => Promise<unknown>) => callback(mockTx),
+      ),
+    };
+
     await expect(
       rebuildFatoNotaFiscalItem(
         mockPrisma as unknown as Parameters<typeof rebuildFatoNotaFiscalItem>[0],
       ),
     ).rejects.toThrow("DB error simulado");
     expect(markFatoBuiltCalled).toBe(false);
+  });
+
+  it("notaInfoMap montado fora da $transaction (rawSpedDocumento.findMany no prisma raiz)", async () => {
+    const { rebuildFatoNotaFiscalItem } = await import("./fato-nota-fiscal-item");
+
+    const { mocks, mockPrisma } = makeMocks(
+      [{ data: { id: 1, data_emissao: "2024-01-15", entrada_saida: "1" } }],
+      [{ odooId: 1, data: { id: 1, documento_id: [1, "NF-001"] } }],
+    );
+
+    await rebuildFatoNotaFiscalItem(
+      mockPrisma as unknown as Parameters<typeof rebuildFatoNotaFiscalItem>[0],
+    );
+
+    // rawSpedDocumento.findMany chamado no prisma raiz (fora da tx), não no mockTx
+    expect(mocks.rawSpedDocumentoFindMany).toHaveBeenCalledTimes(1);
+    // rawSpedDocumentoItem.findMany chamado no mockTx (dentro da tx)
+    expect(mocks.rawSpedDocumentoItemFindMany).toHaveBeenCalled();
   });
 });

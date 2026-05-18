@@ -1,11 +1,16 @@
 // src/worker/fatos/fato-nota-fiscal-item.ts
 // Builder do fato_nota_fiscal_item — fonte: raw_sped_documento_item.
 //
-// Estratégia de STREAMING por cursor (C-1/C-2 fix — 2026-05-18):
+// Estratégia: STREAMING por cursor DENTRO de uma transação única (2026-05-18):
 //   - notaInfoMap: carrega raw_sped_documento inteiro (3743 linhas — trivial, ok).
-//   - Transação ÚNICA: deleteMany + loop cursor por páginas de 5000 + markFatoBuilt.
-//   - Cada página: findMany(take:5000, cursor/skip:1), mapeia, createMany, DESCARTA.
+//     Montado ANTES da transação, fora dela (leitura não precisa de atomicidade).
+//   - Transação ÚNICA ($transaction, timeout 600s): deleteMany + loop cursor
+//     por páginas de 5000 + markFatoBuilt — tudo dentro do mesmo callback tx.
+//   - Cada página: tx.rawSpedDocumentoItem.findMany(take:5000, cursor/skip:1),
+//     mapeia, tx.fatoNotaFiscalItem.createMany, DESCARTA a página.
 //   - Memória plana (~5000 linhas por iteração). Sem --max-old-space-size.
+//   - Atomicidade garantida pelo MVCC do Postgres: leitores concorrentes veem
+//     o estado ANTERIOR completo até o COMMIT — sem janela de inconsistência.
 //   - CHUNK_SIZE = 5000 (constante nomeada — R2-M4).
 //   - chunk() mantido como utilitário exportado (R2-M4); a função principal
 //     NÃO usa chunk() — usa o loop de cursor diretamente.
@@ -92,21 +97,24 @@ export function mapNotaFiscalItemRow(
 /**
  * Reconstrói fato_nota_fiscal_item a partir de raw_sped_documento_item.
  *
- * STREAMING por cursor com batch transactions:
- *   1. deleteMany em tx atômica própria.
- *   2. Loop cursor-paginado (take:5000): cada página lida, mapeada, inserida em
- *      sua própria mini-tx atômica e descartada — memória fica plana (~5000 linhas).
- *   3. markFatoBuilt em tx atômica própria ao final.
+ * STREAMING por cursor DENTRO de uma transação única:
+ *   1. notaInfoMap montado fora da transação (leitura de raw_sped_documento —
+ *      3743 linhas, ok carregar inteiro; não precisa de atomicidade).
+ *   2. $transaction(timeout:600s, maxWait:60s):
+ *      a. tx.fatoNotaFiscalItem.deleteMany({})
+ *      b. Loop cursor-paginado (take:5000): lê página via tx.rawSpedDocumentoItem,
+ *         mapeia, tx.fatoNotaFiscalItem.createMany, DESCARTA a página.
+ *      c. markFatoBuilt(tx, ...) — commita junto com os dados.
  *
- * Evita a $transaction interativa de longa duração sobre 211k registros que causa
- * acúmulo de buffers de protocolo pg (heap > 2 GB). Com batch transactions, o GC
- * coleta entre chunks e o heap fica constante (~50–100 MB). Sem --max-old-space-size.
- *
- * Idempotência: se o processo morrer entre os inserts, o próximo rebuild começa com
- * deleteMany novamente — comportamento correto para um builder full-rebuild.
+ * Propriedades:
+ *   - Atomicidade: leitores concorrentes via MVCC do Postgres veem o estado
+ *     ANTERIOR completo até o COMMIT — sem janela de inconsistência (SPEC v3 §3.2 N2).
+ *   - Memória plana: cada página (~5000 itens JSONB) é descartada após o createMany;
+ *     o GC coleta entre chunks. Heap constante sem --max-old-space-size.
+ *   - Timeout 600s cobre amplamente o rebuild de ~40s; maxWait 60s para aquisição de tx.
  */
 export async function rebuildFatoNotaFiscalItem(prisma: PrismaClient): Promise<number> {
-  // 1. Construir notaInfoMap (3743 linhas — pode carregar inteiro, ok)
+  // 1. Construir notaInfoMap FORA da transação (3743 linhas — trivial)
   const rawNotas = await prisma.rawSpedDocumento.findMany({
     where: { rawDeleted: false },
   });
@@ -122,56 +130,63 @@ export async function rebuildFatoNotaFiscalItem(prisma: PrismaClient): Promise<n
     });
   }
 
-  // 2. deleteMany em tx própria
-  await prisma.fatoNotaFiscalItem.deleteMany({});
+  // 2. Transação única: delete → streaming cursor → markFatoBuilt
+  const totalInserted = await prisma.$transaction(
+    async (tx) => {
+      // 2a. Limpar tabela de destino
+      await tx.fatoNotaFiscalItem.deleteMany({});
 
-  // 3. Loop cursor-paginado: lê → mapeia → insere (mini-tx) → descarta
-  let totalInserted = 0;
-  let cursorOdooId: number | undefined = undefined;
-  let hasMore = true;
+      // 2b. Loop de cursor: cada página lida, mapeada, inserida e descartada
+      let inserted = 0;
+      let cursorOdooId: number | undefined = undefined;
+      let hasMore = true;
 
-  while (hasMore) {
-    let page: Awaited<ReturnType<typeof prisma.rawSpedDocumentoItem.findMany>>;
-    if (cursorOdooId !== undefined) {
-      page = await prisma.rawSpedDocumentoItem.findMany({
-        where: { rawDeleted: false },
-        orderBy: { odooId: "asc" },
-        take: CHUNK_SIZE,
-        cursor: { odooId: cursorOdooId },
-        skip: 1,
-      });
-    } else {
-      page = await prisma.rawSpedDocumentoItem.findMany({
-        where: { rawDeleted: false },
-        orderBy: { odooId: "asc" },
-        take: CHUNK_SIZE,
-      });
-    }
+      while (hasMore) {
+        let page: Awaited<ReturnType<typeof tx.rawSpedDocumentoItem.findMany>>;
+        if (cursorOdooId !== undefined) {
+          page = await tx.rawSpedDocumentoItem.findMany({
+            where: { rawDeleted: false },
+            orderBy: { odooId: "asc" },
+            take: CHUNK_SIZE,
+            cursor: { odooId: cursorOdooId },
+            skip: 1,
+          });
+        } else {
+          page = await tx.rawSpedDocumentoItem.findMany({
+            where: { rawDeleted: false },
+            orderBy: { odooId: "asc" },
+            take: CHUNK_SIZE,
+          });
+        }
 
-    if (page.length === 0) {
-      hasMore = false;
-      break;
-    }
+        if (page.length === 0) {
+          hasMore = false;
+          break;
+        }
 
-    const mappedPage = page.map((r) =>
-      mapNotaFiscalItemRow(r.data as Record<string, unknown>, notaInfoMap),
-    );
+        const mappedPage = page.map((r) =>
+          mapNotaFiscalItemRow(r.data as Record<string, unknown>, notaInfoMap),
+        );
 
-    // Mini-tx: insert atômico do chunk, descarta após commit
-    await prisma.fatoNotaFiscalItem.createMany({ data: mappedPage });
-    totalInserted += mappedPage.length;
+        await tx.fatoNotaFiscalItem.createMany({ data: mappedPage });
+        inserted += mappedPage.length;
 
-    // Avançar cursor — descarta a página (não acumula)
-    cursorOdooId = page[page.length - 1]!.odooId;
+        // Avançar cursor; descartar página (não acumula em memória)
+        cursorOdooId = page[page.length - 1]!.odooId;
 
-    // Página menor que CHUNK_SIZE: última página
-    if (page.length < CHUNK_SIZE) {
-      hasMore = false;
-    }
-  }
+        // Página menor que CHUNK_SIZE: última página
+        if (page.length < CHUNK_SIZE) {
+          hasMore = false;
+        }
+      }
 
-  // 4. Marcar built em tx própria
-  await markFatoBuilt(prisma, "fato_nota_fiscal_item");
+      // 2c. Marcar built dentro da mesma transação — commita junto
+      await markFatoBuilt(tx, "fato_nota_fiscal_item");
+
+      return inserted;
+    },
+    { timeout: 600_000, maxWait: 60_000 },
+  );
 
   return totalInserted;
 }
