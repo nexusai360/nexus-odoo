@@ -104,6 +104,8 @@ export async function queryPedidosAtrasados(
       dataVencimento: true,
       valor: true,
     },
+    orderBy: { dataVencimento: "asc" }, // mais antigo primeiro (maior atraso)
+    take: 200,                           // cap: evita payload gigante; acima de 200 linhas a tool perde utilidade semântica
   });
   const linhas = rows.map((r) => ({
     pedidoId: r.pedidoId,
