@@ -12,10 +12,19 @@ export class DomainDeniedError extends Error {
   }
 }
 
+/** Lançada pelo handler do Caminho 3c quando o guard de SQL recusa a query. */
+export class SqlGuardError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = "SqlGuardError";
+  }
+}
+
 /** Mapeia uma exceção para o outcome de auditoria (nunca retorna "ok"). */
 export function toOutcome(err: unknown): Exclude<AuditOutcome, "ok"> {
   if (err instanceof ZodError) return "invalid_input";
   if (err instanceof DomainDeniedError) return "denied";
+  if (err instanceof SqlGuardError) return "invalid_input";
   return "error";
 }
 
