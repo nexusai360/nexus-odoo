@@ -167,8 +167,9 @@ describe("queryPedidosAtrasados", () => {
     expect(result.totalAtrasado).toBeCloseTo(300);
   });
 
-  it("usa where com dataVencimento < hoje e parcelaFaturada=false", async () => {
-    const hoje = new Date("2024-03-10T00:00:00");
+  it("usa where com dataVencimento < início do dia e parcelaFaturada=false (C1: normaliza hoje)", async () => {
+    // hoje com hora corrente — o where deve usar o início do dia, não a hora corrente
+    const hoje = new Date("2024-03-10T14:35:22.123Z");
     const mockPrisma = {
       fatoPedidoParcela: {
         findMany: jest.fn().mockResolvedValue([]),
@@ -177,8 +178,29 @@ describe("queryPedidosAtrasados", () => {
 
     await queryPedidosAtrasados(mockPrisma, hoje);
     const call = (mockPrisma.fatoPedidoParcela.findMany as jest.Mock).mock.calls[0][0];
-    expect(call.where?.dataVencimento?.lt).toEqual(hoje);
+    const ltUsado = call.where?.dataVencimento?.lt as Date;
+    // deve ser início do dia (hora zerada), não a hora corrente
+    expect(ltUsado.getHours()).toBe(0);
+    expect(ltUsado.getMinutes()).toBe(0);
+    expect(ltUsado.getSeconds()).toBe(0);
+    expect(ltUsado.getMilliseconds()).toBe(0);
     expect(call.where?.parcelaFaturada).toBe(false);
+  });
+
+  it("C1 borda: parcela que vence hoje (T00:00:00) NÃO é considerada atrasada", async () => {
+    // hoje com hora corrente — se a query não normalizar, parcela T00:00:00 aparece como lt=hoje
+    const hojeComHora = new Date("2024-03-10T09:00:00");
+    const mockPrisma = {
+      fatoPedidoParcela: {
+        findMany: jest.fn().mockResolvedValue([]),
+      },
+    } as unknown as import("@/generated/prisma/client").PrismaClient;
+
+    await queryPedidosAtrasados(mockPrisma, hojeComHora);
+    const call = (mockPrisma.fatoPedidoParcela.findMany as jest.Mock).mock.calls[0][0];
+    const ltUsado = call.where?.dataVencimento?.lt as Date;
+    // início do dia de 2024-03-10 → parcela de 10/03 (T00:00:00) >= ltUsado, logo não inclusa
+    expect(ltUsado).toEqual(new Date(2024, 2, 10)); // mês 0-based: 2 = março
   });
 });
 
@@ -211,8 +233,9 @@ describe("queryParcelasAVencer", () => {
     expect(result.totalAVencer).toBeCloseTo(450);
   });
 
-  it("aplica filtro de dataVencimento gte hoje e lte hoje+ateDias", async () => {
-    const hoje = new Date("2024-03-10T00:00:00");
+  it("aplica filtro de dataVencimento gte início do dia e lte início+ateDias (C1: normaliza hoje)", async () => {
+    // hoje com hora corrente — o gte deve ser início do dia para incluir parcelas de hoje
+    const hoje = new Date("2024-03-10T09:00:00");
     const mockPrisma = {
       fatoPedidoParcela: {
         findMany: jest.fn().mockResolvedValue([]),
@@ -221,10 +244,29 @@ describe("queryParcelasAVencer", () => {
 
     await queryParcelasAVencer(mockPrisma, { ateDias: 15 }, hoje);
     const call = (mockPrisma.fatoPedidoParcela.findMany as jest.Mock).mock.calls[0][0];
-    expect(call.where?.dataVencimento?.gte).toEqual(hoje);
+    const gteUsado = call.where?.dataVencimento?.gte as Date;
+    // deve ser início do dia (hora zerada)
+    expect(gteUsado.getHours()).toBe(0);
+    expect(gteUsado.getMinutes()).toBe(0);
+    expect(gteUsado.getSeconds()).toBe(0);
     // 10 março + 15 dias = 25 março
     expect(call.where?.dataVencimento?.lte).toEqual(new Date("2024-03-25T00:00:00"));
     expect(call.where?.parcelaFaturada).toBe(false);
+  });
+
+  it("C1 borda: parcela que vence hoje (T00:00:00) É incluída em a vencer", async () => {
+    const hojeComHora = new Date("2024-03-10T09:00:00");
+    const mockPrisma = {
+      fatoPedidoParcela: {
+        findMany: jest.fn().mockResolvedValue([]),
+      },
+    } as unknown as import("@/generated/prisma/client").PrismaClient;
+
+    await queryParcelasAVencer(mockPrisma, { ateDias: 15 }, hojeComHora);
+    const call = (mockPrisma.fatoPedidoParcela.findMany as jest.Mock).mock.calls[0][0];
+    const gteUsado = call.where?.dataVencimento?.gte as Date;
+    // início do dia de 10/03 → parcela T00:00:00 de 10/03 satisfaz >= gteUsado
+    expect(gteUsado).toEqual(new Date(2024, 2, 10)); // 0-based: 2 = março
   });
 
   it("usa ateDias=30 como default", async () => {
@@ -237,8 +279,9 @@ describe("queryParcelasAVencer", () => {
 
     await queryParcelasAVencer(mockPrisma, {}, hoje);
     const call = (mockPrisma.fatoPedidoParcela.findMany as jest.Mock).mock.calls[0][0];
+    const gte = call.where?.dataVencimento?.gte as Date;
     const lte = call.where?.dataVencimento?.lte as Date;
-    const diff = (lte.getTime() - hoje.getTime()) / (1000 * 60 * 60 * 24);
+    const diff = (lte.getTime() - gte.getTime()) / (1000 * 60 * 60 * 24);
     expect(diff).toBe(30);
   });
 });
