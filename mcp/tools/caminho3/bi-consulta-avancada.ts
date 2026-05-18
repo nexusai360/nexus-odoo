@@ -20,7 +20,7 @@
 import { z } from "zod";
 import type { ToolEntry } from "../../catalog/types.js";
 import { getBiPool } from "./bi-pool.js";
-import { validarSqlSelect } from "./sql-guard.js";
+import { validarSqlSelect, normalizarSql } from "./sql-guard.js";
 import { SqlGuardError } from "../../lib/failure.js";
 // Caminho definitivo (achado R2-M2): de mcp/tools/caminho3/ para mcp/lib/ é ../../lib/failure.js
 
@@ -33,7 +33,10 @@ const inputSchema = z.object({
 const outputSchema = z.object({
   colunas: z.array(z.string()),
   linhas: z.array(z.record(z.string(), z.unknown())),
-  totalLinhas: z.number().int(),
+  // linhasRetornadas: quantidade efetivamente retornada (≤ 1000).
+  // Quando truncado=true, este número NÃO representa o total real da query —
+  // apenas o que foi devolvido após o cap. O agente deve informar o usuário disso.
+  linhasRetornadas: z.number().int(),
   truncado: z.boolean(),
   aviso: z.string(),
 });
@@ -76,8 +79,17 @@ export const biConsultaAvancada: ToolEntry<Input, Output> = {
     //     O pool já tem default_transaction_read_only=on e statement_timeout=5s
     //     configurados no handler de connect (bi-pool.ts).
     //     SQL executado via pg cru (pool.query), não $queryRawUnsafe.
-    const sqlComCap = `SELECT * FROM (${input.sql}) AS _bi_subquery LIMIT ${CAP_LINHAS + 1}`;
-    const result = await pool.query(sqlComCap);
+    //
+    //     Estratégia de cap (I-3):
+    //     - Queries sem CTE: envelopar em subquery com LIMIT — forma canônica.
+    //     - Queries com CTE (WITH ...): o PostgreSQL não aceita CTE dentro de subquery
+    //       aninhada (`SELECT * FROM (WITH ... SELECT ...) AS x`). Nesse caso, executar
+    //       o SQL diretamente e cortar o resultado em memória.
+    const { sql: sqlNormalizado, temCte } = normalizarSql(input.sql);
+    const sqlParaExecutar = temCte
+      ? sqlNormalizado
+      : `SELECT * FROM (${sqlNormalizado}) AS _bi_subquery LIMIT ${CAP_LINHAS + 1}`;
+    const result = await pool.query(sqlParaExecutar);
 
     const truncado = result.rows.length > CAP_LINHAS;
     const linhas = truncado ? result.rows.slice(0, CAP_LINHAS) : result.rows;
@@ -89,11 +101,12 @@ export const biConsultaAvancada: ToolEntry<Input, Output> = {
     return outputSchema.parse({
       colunas,
       linhas,
-      totalLinhas: linhas.length,
+      linhasRetornadas: linhas.length,
       truncado,
       aviso:
         "Consulta dinâmica não auditada como tool semântica. " +
-        "Resultados não são filtrados pelo RBAC de domínio.",
+        "Resultados não são filtrados pelo RBAC de domínio." +
+        (truncado ? " Resultado truncado em 1000 linhas — total real da query não disponível." : ""),
     });
   },
 };

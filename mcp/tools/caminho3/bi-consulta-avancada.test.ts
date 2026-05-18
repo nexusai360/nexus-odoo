@@ -27,6 +27,9 @@ const mockValidarSqlSelect = jest.fn<
 >();
 jest.mock("./sql-guard.js", () => ({
   validarSqlSelect: (...args: [string]) => mockValidarSqlSelect(...args),
+  // normalizarSql: retorna o sql sem alteração e sem CTE (comportamento padrão nos testes).
+  // Testes que precisem do caminho CTE devem substituir este mock.
+  normalizarSql: (sql: string) => ({ sql: sql.replace(/;+$/, "").trimEnd(), temCte: false }),
 }));
 
 // Mock do bi-pool: controle explícito via mockGetBiPool.
@@ -45,7 +48,7 @@ const { biConsultaAvancada } = require("./bi-consulta-avancada") as {
     {
       colunas: string[];
       linhas: Record<string, unknown>[];
-      totalLinhas: number;
+      linhasRetornadas: number;
       truncado: boolean;
       aviso: string;
     }
@@ -129,7 +132,7 @@ describe("biConsultaAvancada — ToolEntry", () => {
     const result = biConsultaAvancada.outputSchema.safeParse({
       colunas: ["id", "valor"],
       linhas: [{ id: 1, valor: 100 }],
-      totalLinhas: 1,
+      linhasRetornadas: 1,
       truncado: false,
       aviso: "consulta dinâmica não auditada como tool",
     });
@@ -168,7 +171,7 @@ describe("biConsultaAvancada — handler: SQL válido", () => {
     );
     expect(result.colunas).toEqual(["count"]);
     expect(result.linhas).toEqual([{ count: "42" }]);
-    expect(result.totalLinhas).toBe(1);
+    expect(result.linhasRetornadas).toBe(1);
     expect(result.truncado).toBe(false);
     expect(typeof result.aviso).toBe("string");
     expect(result.aviso.length).toBeGreaterThan(0);
@@ -263,7 +266,7 @@ describe("biConsultaAvancada — handler: truncamento de linhas", () => {
     );
     expect(result.truncado).toBe(true);
     expect(result.linhas.length).toBeLessThanOrEqual(1000);
-    expect(result.totalLinhas).toBeLessThanOrEqual(1000);
+    expect(result.linhasRetornadas).toBeLessThanOrEqual(1000);
   });
 });
 
