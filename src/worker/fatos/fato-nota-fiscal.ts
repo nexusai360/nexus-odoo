@@ -46,9 +46,7 @@ export function derivarTipoMovimento(entradaSaida: string): string {
   if (entradaSaida === "1") return "saida";
   if (entradaSaida === "0") return "entrada";
   // Ramo "outro" — inclui null, undefined, string desconhecida
-  if (entradaSaida !== "1" && entradaSaida !== "0") {
-    console.warn(`[fato-nota-fiscal] entradaSaida desconhecida: ${JSON.stringify(entradaSaida)} → tipoMovimento="outro"`);
-  }
+  console.warn(`[fato-nota-fiscal] entradaSaida desconhecida: ${JSON.stringify(entradaSaida)} → tipoMovimento="outro"`);
   return "outro";
 }
 
