@@ -6,6 +6,17 @@
 > rigor da metodologia (`CLAUDE.md §6`); fazê-los rushed seria o "carimbo" que a
 > própria metodologia proíbe. Tudo abaixo é entendimento **confirmado pelo
 > usuário** — a próxima sessão começa daqui.
+>
+> **ESCOPO TRAVADO E MODO DE EXECUÇÃO (decisão do usuário, 2026-05-18):** a
+> próxima sessão entrega **TUDO** que está neste documento — nada de recortar.
+> A entrada de requisitos do brainstorm **já está fechada** (é este doc); a
+> próxima sessão **não volta a perguntar requisitos** — entra direto em **modo
+> autônomo desde o início** (`CLAUDE.md §6`) e cumpre a cadeia inteira
+> `[1]→[10]`: SPEC v1→v2→v3 (2 reviews críticas), PLAN v1→v2→v3 (2 reviews),
+> execução de **todas as sub-fases F5a–F5f** (ver §7), verificação e2e contra
+> dado real, code/UI review. O humano só é chamado no fim, ou em erro/bloqueio
+> real, ou no merge. A F5 é **faseada** (sub-fases) mas **entregue por
+> completo** — o faseamento é só organização da execução, não recorte de escopo.
 
 ## 1. Objetivo da F5
 
@@ -110,8 +121,23 @@ Ordem e dependências a fechar na spec.
 5. Rodar o ciclo metodológico completo: SPEC v1→v3 (2 reviews), PLAN v1→v3
    (2 reviews), execução por sub-fase, reviews, e2e contra dado real.
 
-## 9. Como retomar (próxima sessão)
+## 9. Como retomar (próxima sessão) — autônomo, escopo completo, faseado
 
-Dizer "vamos para a F5". A sessão começa: (1) ler este doc + `STATUS.md` +
-`CLAUDE.md`; (2) mapear o "Nex" no `nexus-insights`; (3) escrever a SPEC v1
-formal sobre este brainstorm; (4) seguir o ciclo `[1]→[10]` em modo autônomo.
+Dizer **"vamos para a F5"**. A sessão entra **direto em modo autônomo** (sem
+nova rodada de perguntas de requisito — o brainstorm está fechado neste doc) e:
+
+1. Lê este doc + `STATUS.md` + `CLAUDE.md`.
+2. Mapeia o agente "Nex" no `nexus-insights` (LLMs integradas, tela de consumo,
+   playground, bugs a corrigir) — produz um doc de pesquisa.
+3. Escreve a **SPEC v1→v2→v3** (2 reviews adversariais) cobrindo **todas** as
+   sub-fases F5a–F5f de §7 — uma spec única faseada, como foi a F4 completo.
+4. Escreve o **PLAN v1→v2→v3** (2 reviews) — decomposição máxima por sub-fase.
+5. **Executa todas as sub-fases F5a–F5f** (subagentes Sonnet, review Opus por
+   onda), com verificação **e2e contra dado real** obrigatória por onda.
+6. Code review + UI review finais.
+7. Chama o humano só no fim (resumo), ou em erro/bloqueio, ou no merge.
+
+A F5 é grande — provavelmente vários PRs por sub-fase, como a F4. Mas o
+**escopo é entregue inteiro**: ao fim da F5, o agente responde por WhatsApp e
+in-app, o menu Integrações existe, o MCP é consumível de fora. Não encerrar a
+F5 com sub-fase pendente.

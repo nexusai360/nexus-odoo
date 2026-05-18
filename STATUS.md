@@ -109,14 +109,17 @@ testado end-to-end contra o cache real. Deploy: `npm run db:deploy` + containers
 
 **Próximo trabalho: F5 — Integração WhatsApp + Agente de IA.** O **brainstorm
 já foi feito** com o usuário (2026-05-18) e está capturado em
-`docs/superpowers/specs/2026-05-18-f5-whatsapp-agente-design.md` — esse doc é o
-ponto de partida. Na próxima sessão, dizer **"vamos para a F5"**: a sessão lê
-esse doc, mapeia o agente "Nex" no projeto irmão
-`/Users/joaovitorzanini/Developer/Claude Code/Nexus AI/Projetos Internos/nexus-insights`,
-escreve a SPEC v1 formal e segue o ciclo `[1]→[10]`. Resumo da F5: agente de IA
-por WhatsApp (via n8n) e chat in-app (clone melhorado do "Nex"); menu
-Integrações (superadmin); MCP consumível de fora (n8n); números de WhatsApp no
-cadastro de usuário.
+`docs/superpowers/specs/2026-05-18-f5-whatsapp-agente-design.md` — **esse doc é
+o escopo TRAVADO e o roteiro de execução**. Na próxima sessão, dizer **"vamos
+para a F5"**: a sessão entra **direto em modo autônomo** (o brainstorm está
+fechado — não há nova rodada de perguntas), mapeia o agente "Nex" no projeto
+irmão `/Users/joaovitorzanini/Developer/Claude Code/Nexus AI/Projetos Internos/nexus-insights`,
+escreve SPEC v1→v3 (2 reviews) + PLAN v1→v3 (2 reviews) cobrindo **todas as
+sub-fases F5a–F5f**, e executa **a F5 inteira** com o ciclo `[1]→[10]`. Resumo
+da F5: agente de IA por WhatsApp (via n8n) e chat in-app (clone melhorado do
+"Nex"); menu Integrações (superadmin); MCP consumível de fora (n8n); números de
+WhatsApp no cadastro de usuário. **Escopo entregue por completo — faseado, mas
+sem recorte.** Detalhes e seção "Como retomar" no doc de brainstorm.
 
 ### O que a F4 entregou (33 tools no catálogo do MCP)
 
