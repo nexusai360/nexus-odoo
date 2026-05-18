@@ -15,9 +15,8 @@
 | **F2 — Ingestão/cache** | Worker BullMQ + cron JSON-RPC + cache Postgres | ✅ mergeado na `main` (PR #4) |
 | **F3 — Dashboard de relatórios** | 6 relatórios de estoque sobre o cache | ✅ mergeado na `main` (PR #4) |
 | **F3.5 — Dashboard de relatórios v2** | Sofisticação no padrão `nexus-insights` | ✅ mergeado na `main` (PR #4) |
-| **F4 — MCP semântico (onda 1)** | Servidor MCP + estoque + financeiro | ✅ **mergeada na `main` (PR #5)** — testada e2e contra o cache |
-| F4 — ondas seguintes | Domínios comercial/fiscal/contábil/produção + 3c funcional | ⬜ futuras (reusam a arquitetura) |
-| F5 — Integração WhatsApp | Agente conectado ao MCP | ⬜ futura |
+| **F4 — MCP semântico** | Servidor MCP, **todos os domínios** + Caminho 3c funcional | ✅ **completa — mergeada na `main` (PR #5 + #6 + #7)** |
+| **F5 — Integração WhatsApp** | Agente conectado ao MCP via WhatsApp | ⬜ **PRÓXIMA** |
 | F6 — Construtor de relatórios | Wizard in-app guiado por IA | ⬜ futura (inclui o polimento fino dos relatórios) |
 
 **Branch ativa: `feat/mcp-semantico`** (criada de `main`, já no remoto). A `main`
@@ -102,50 +101,60 @@ permissão entre etapas):
 
 ---
 
-## 5. PARA RETOMAR — F4 onda 1 mergeada; próximo são as ondas seguintes
+## 5. PARA RETOMAR — F4 completa; próximo é a F5
 
-A **F4 onda 1 (MCP semântico — estoque + financeiro)** foi mergeada na `main`
-(PR #5, 2026-05-18), testada end-to-end contra o cache real. **Próximo
-trabalho:** ondas seguintes da F4 — domínios comercial, fiscal, contábil,
-produção e a integração funcional do 3c (Postgres MCP), reusando a arquitetura
-do MCP. **Antes/durante o trabalho de financeiro, resolver o item R1 do
-`docs/RADAR.md`** (fonte de "contas a receber/pagar").
+A **F4 (MCP semântico) está completa e na `main`** — PR #5 (onda 1: estoque +
+financeiro), #6 (correção da fonte de títulos financeiros), #7 (F4 completo:
+comercial, fiscal, cadastros, contábil, RH/CRM/produção + Caminho 3c funcional).
+Tudo testado end-to-end contra o cache real. **Próximo trabalho: F5 — Integração
+WhatsApp.**
 
-### O que a F4 onda 1 entregou
+### O que a F4 entregou (33 tools no catálogo do MCP)
 
-- **Container `mcp/`** — servidor Node puro com `@modelcontextprotocol/sdk`,
-  transporte Streamable HTTP (porta 3100), service token + `userId` por sessão.
-- **Camada de fatos de financeiro** — `fato_financeiro_saldo/movimento/titulo`
-  + builders no worker via **registry de builders** (os 3 de estoque migrados).
-- **14 tools semânticas** — 6 de estoque (reusam o núcleo de query extraído da
-  F3, sem divergência de números), 6 de financeiro, `registrar_lacuna` (3a),
-  `bi_consulta_avancada` (3c stub gated a admin/super_admin).
-- **RBAC estrutural** — catálogo filtrado por sessão, gate no handler, role
-  Postgres `nexus_mcp` com GRANT mínimo, rate limit, `McpAuditLog`; camadas
-  tenant/RLS preparadas e documentadas (tenant único).
-- **Caminho 3** — 3a e 3b funcionais; 3c como contrato + stub (integração
-  funcional do Postgres MCP é onda futura da F4).
-- Verificação: `tsc` (raiz e mcp), `eslint`, `jest` (634 testes, 89 suites),
-  `next build`, `docker compose build mcp` — todos verdes.
+- **Container `mcp/`** — servidor Node puro `@modelcontextprotocol/sdk`,
+  Streamable HTTP (porta 3100), service token + `userId` por sessão, RBAC
+  estrutural (catálogo filtrado, gate no handler, role Postgres `nexus_mcp` com
+  GRANT mínimo, rate limit, `McpAuditLog`).
+- **Fatos** — estoque (3, da F3), financeiro (3), comercial (2: `fato_pedido`,
+  `fato_pedido_parcela`), fiscal (2: `fato_nota_fiscal`, `fato_nota_fiscal_item`
+  211k linhas), cadastros (`fato_parceiro`), contábil (`fato_conta_contabil`) —
+  todos via registry de builders no worker.
+- **33 tools semânticas** — 6 estoque, 6 financeiro, 5 comercial, 6 fiscal,
+  3 cadastros, 2 contábil, 3 de domínio sem dado (RH/CRM/produção, respondem
+  honestamente "domínio não operado"), `registrar_lacuna` (3a),
+  `bi_consulta_avancada` (3c).
+- **Caminho 3 completo** — 3a (log de gap), 3b (recusa), **3c funcional**:
+  executor de SQL read-only embutido (role `nexus_mcp_bi`, guard AST via
+  `pgsql-parser`, `default_transaction_read_only`, `statement_timeout`, LIMIT
+  cap; rejeita DML/DDL/multi-statement; gated a admin/super_admin).
+- Verificação: `tsc` (raiz e mcp), `eslint`, `jest` (837 testes), `next build`,
+  `docker compose build mcp` — verdes.
+
+### Domínios sem dado (informação do mapa de domínios)
+
+RH e CRM existem no Odoo da Matrix mas têm **0 registros** — não são operados;
+produção tem 1 registro; contábil só tem o plano de contas (sem movimento). As
+tools desses domínios existem e respondem honestamente. Ver
+`docs/superpowers/research/2026-05-18-mapa-dominios.md` e `docs/RADAR.md` R3.
+
+### Atenção para o deploy da F4 (`docs/RADAR.md` R4)
+
+O deploy assistido precisa, após `prisma migrate deploy`, (re)executar os
+scripts de GRANT `prisma/sql/2026-05-17-mcp-role.sql` e
+`prisma/sql/2026-05-17-mcp-bi-role.sql` — senão o MCP sobe com `permission
+denied`.
 
 ### Artefatos da F4
 
-Specs/plans/reviews em `docs/superpowers/` (`2026-05-17-f4-*`,
-`2026-05-18-f4-*`): SPEC v1→v3 (2 reviews), PLAN v1→v3 (2 reviews), 1 review
-por onda + correções, code review final (`2026-05-18-f4-code-review-final.md`,
-APROVADO COM RESSALVAS — ressalvas corrigidas).
-
-### Escopo restante da F4 (ondas futuras)
-
-Domínios comercial, fiscal, contábil, produção (fatos + tools, reusando a
-arquitetura) e a **integração funcional do 3c** (Postgres MCP). Ver
-`CLAUDE.md §5.9/§5.10`.
+`docs/superpowers/` — `2026-05-17-f4-*` (onda 1) e `2026-05-18-f4*` (completo):
+specs v1→v3 (2 reviews cada), plans v1→v3 (2 reviews cada), review por onda,
+code reviews finais, e research (`mapa-dominios`, `f4-completo-dominios`).
 
 ### Decisões canônicas da F4 (ver `CLAUDE.md §5`)
 
-Cache obrigatório; sem fallback JSON-RPC nas tools; tools semânticas validadas;
-MCP próprio em TS; RBAC 7 camadas; F4 ≠ F5 (WhatsApp/conversas/personalização
-são F5 — decisão #10).
+Cache obrigatório; sem fallback JSON-RPC; tools semânticas validadas; MCP
+próprio em TS; RBAC 7 camadas; 3c é executor SQL embutido (revisão de §5.5/§5.7
+registrada em 2026-05-18); F4 ≠ F5 (WhatsApp/conversas/personalização são F5).
 
 ---
 
