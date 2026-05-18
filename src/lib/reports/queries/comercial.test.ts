@@ -13,17 +13,11 @@ describe("queryPedidosPeriodo", () => {
     const mockPrisma = {
       fatoPedido: {
         findMany: jest.fn().mockResolvedValue([
-          { vrNf: { toNumber: () => 1000 } },
-          { vrNf: { toNumber: () => 500 } },
+          { vrProdutos: "1000.00" },
+          { vrProdutos: "500.00" },
         ]),
       },
     } as unknown as import("@/generated/prisma/client").PrismaClient;
-
-    // Sobrescrever com mock retornando Decimals como objetos com toNumber
-    (mockPrisma.fatoPedido.findMany as jest.Mock).mockResolvedValue([
-      { vrNf: "1000.00" },
-      { vrNf: "500.00" },
-    ]);
 
     const result = await queryPedidosPeriodo(mockPrisma, {});
     expect(result.totalPedidos).toBe(2);
@@ -33,7 +27,7 @@ describe("queryPedidosPeriodo", () => {
   it("aplica filtro de período quando ambos presentes", async () => {
     const mockPrisma = {
       fatoPedido: {
-        findMany: jest.fn().mockResolvedValue([{ vrNf: "200.00" }]),
+        findMany: jest.fn().mockResolvedValue([{ vrProdutos: "200.00" }]),
       },
     } as unknown as import("@/generated/prisma/client").PrismaClient;
 
@@ -54,7 +48,7 @@ describe("queryPedidosPeriodo", () => {
       fatoPedido: { findMany: jest.fn().mockResolvedValue([]) },
     } as unknown as import("@/generated/prisma/client").PrismaClient;
 
-    const result = await queryPedidosPeriodo(mockPrisma, {});
+    const result = await queryPedidosPeriodo(mockPrisma, {}); // vrProdutos: nenhum registro
     expect(result.totalPedidos).toBe(0);
     expect(result.valorTotal).toBe(0);
   });

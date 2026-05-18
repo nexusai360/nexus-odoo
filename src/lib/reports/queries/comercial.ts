@@ -20,8 +20,11 @@ export async function queryPedidosPeriodo(
           },
         }
       : {};
-  const rows = await prisma.fatoPedido.findMany({ where, select: { vrNf: true } });
-  const valorTotal = rows.reduce((acc, r) => acc + Number(r.vrNf), 0);
+  // Usa vrProdutos (valor do pedido independente de faturamento) — consistente
+  // com queryPedidosPorEtapa e queryPedidosPorVendedor. vrNf ≈ 0 para pedidos
+  // pré-faturamento, o que subnotificaria o valor total do período.
+  const rows = await prisma.fatoPedido.findMany({ where, select: { vrProdutos: true } });
+  const valorTotal = rows.reduce((acc, r) => acc + Number(r.vrProdutos), 0);
   return { totalPedidos: rows.length, valorTotal };
 }
 

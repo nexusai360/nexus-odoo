@@ -42,7 +42,7 @@ function shape(d: Awaited<ReturnType<typeof queryPedidosPeriodo>>) {
     valorTotal: d.valorTotal,
     aviso:
       "Universo pequeno (~71 pedidos de venda/inventário). Não há pedido de compra neste módulo. " +
-      "Valor vem de vrNf (vr_nf) — campo vr_total é zero para todos os pedidos.",
+      "Valor usa vrProdutos (vr_produtos) — valor do pedido independente de faturamento, consistente com pedidos_por_etapa e pedidos_por_vendedor.",
   };
 }
 
