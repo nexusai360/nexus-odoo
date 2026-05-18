@@ -8,10 +8,26 @@
 import type { PrismaClient } from "@/generated/prisma/client";
 
 export async function queryFaturamentoPeriodo(
-  _prisma: PrismaClient,
-  _filtros: { periodoDe?: string; periodoAte?: string },
+  prisma: PrismaClient,
+  filtros: { periodoDe?: string; periodoAte?: string },
 ): Promise<{ totalNotas: number; valorFaturado: number }> {
-  throw new Error("Not implemented");
+  const periodoWhere =
+    filtros.periodoDe && filtros.periodoAte
+      ? {
+          dataEmissao: {
+            gte: new Date(`${filtros.periodoDe}T00:00:00`),
+            lte: new Date(`${filtros.periodoAte}T00:00:00`),
+          },
+        }
+      : {};
+
+  const rows = await prisma.fatoNotaFiscal.findMany({
+    where: { entradaSaida: "1", situacaoNfe: "autorizada", ...periodoWhere },
+    select: { vrNf: true },
+  });
+
+  const valorFaturado = rows.reduce((acc, r) => acc + Number(r.vrNf), 0);
+  return { totalNotas: rows.length, valorFaturado };
 }
 
 export async function queryNotasEmitidas(
