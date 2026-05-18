@@ -42,6 +42,14 @@ GRANT SELECT ON fato_financeiro_saldo     TO nexus_mcp;
 GRANT SELECT ON fato_financeiro_movimento TO nexus_mcp;
 GRANT SELECT ON fato_financeiro_titulo    TO nexus_mcp;
 
+-- 5b. SELECT — tabelas de fatos dos demais domínios (F4 completo)
+GRANT SELECT ON fato_pedido            TO nexus_mcp;
+GRANT SELECT ON fato_pedido_parcela    TO nexus_mcp;
+GRANT SELECT ON fato_nota_fiscal       TO nexus_mcp;
+GRANT SELECT ON fato_nota_fiscal_item  TO nexus_mcp;
+GRANT SELECT ON fato_parceiro          TO nexus_mcp;
+GRANT SELECT ON fato_conta_contabil    TO nexus_mcp;
+
 -- 6. SELECT — tabelas de suporte (auth/RBAC/estado)
 --    Prisma model User             → tabela "users"
 --    Prisma model UserDomainAccess → tabela "user_domain_access"
