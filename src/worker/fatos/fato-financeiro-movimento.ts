@@ -23,10 +23,11 @@ export interface FatoFinanceiroMovimentoRow {
 export function mapMovimentoRow(
   raw: Record<string, unknown>,
 ): FatoFinanceiroMovimentoRow {
-  const dataRaw = raw.data;
+  // I2: raw.data é date-only ("2026-05-14"). T00:00:00 força parsing como hora local.
+  const dataRaw = typeof raw.data === "string" ? raw.data : null;
   return {
     odooId: Number(raw.id),
-    data: dataRaw ? new Date(dataRaw as string) : null,
+    data: dataRaw ? new Date(`${dataRaw}T00:00:00`) : null,
     contaId: relId(raw.conta_id as OdooM2O),
     contaNome: relNome(raw.conta_id as OdooM2O),
     centroResultadoId: relId(raw.centro_resultado_id as OdooM2O),
