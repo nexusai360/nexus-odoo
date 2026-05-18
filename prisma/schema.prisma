@@ -45,6 +45,11 @@ enum ReportDomain {
   financeiro
   fiscal
   comercial
+  cadastros
+  contabil
+  rh
+  crm
+  producao
 }
 
 model User {
