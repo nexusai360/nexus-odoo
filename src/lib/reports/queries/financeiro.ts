@@ -203,9 +203,15 @@ export async function queryTitulosVencidos(
   prisma: PrismaClient,
   hoje: Date,
 ): Promise<{ titulos: TituloVencidoRow[]; totalVencido: number }> {
+  // Normaliza para início do dia local — reutiliza o mesmo padrão de
+  // dias-atraso.ts — para que um título que vence HOJE (gravado como
+  // T00:00:00) não seja incluído como vencido. Só está vencido quem venceu
+  // ANTES de hoje, i.e. diasAtraso > 0.
+  const inicioDoDia = new Date(hoje.getFullYear(), hoje.getMonth(), hoje.getDate());
+
   const rows = await prisma.fatoFinanceiroTitulo.findMany({
     where: {
-      dataVencimento: { lt: hoje },
+      dataVencimento: { lt: inicioDoDia },
       dataPagamento: null,
     },
     select: {

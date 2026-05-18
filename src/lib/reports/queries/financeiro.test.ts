@@ -178,14 +178,22 @@ describe("queryContasAPagar", () => {
 // ---------------------------------------------------------------------------
 
 describe("queryTitulosVencidos", () => {
-  const hoje = new Date("2026-05-18");
+  // Usa timestamp com componente de hora para simular new Date() real (com fuso)
+  // e confirmar que a normalização para início do dia funciona corretamente.
+  const hoje = new Date("2026-05-18T14:30:00-03:00"); // meio do dia, horário de Brasília
 
-  it("filtra dataVencimento < hoje e dataPagamento=null", async () => {
+  it("filtra dataVencimento < início do dia de hoje e dataPagamento=null", async () => {
     const prisma = makePrisma();
     (prisma.fatoFinanceiroTitulo.findMany as jest.Mock).mockResolvedValue([]);
     await queryTitulosVencidos(prisma as never, hoje);
     const call = (prisma.fatoFinanceiroTitulo.findMany as jest.Mock).mock.calls[0][0];
-    expect(call.where).toMatchObject({ dataVencimento: { lt: hoje }, dataPagamento: null });
+    // O where.dataVencimento.lt deve ser o início do dia local (não new Date() diretamente)
+    const ltValue: Date = call.where.dataVencimento.lt;
+    expect(ltValue.getHours()).toBe(0);
+    expect(ltValue.getMinutes()).toBe(0);
+    expect(ltValue.getSeconds()).toBe(0);
+    expect(ltValue.getMilliseconds()).toBe(0);
+    expect(call.where.dataPagamento).toBeNull();
   });
 
   it("inclui tipo no resultado e calcula diasAtraso e totalVencido", async () => {
@@ -199,5 +207,35 @@ describe("queryTitulosVencidos", () => {
     expect(result.titulos[0].tipo).toBe("a_receber");
     expect(result.titulos[0].diasAtraso).toBe(47); // 18 mai - 1 abr = 47 dias
     expect(result.totalVencido).toBeCloseTo(2800);
+  });
+
+  // Caso de borda I-1: título que vence EXATAMENTE hoje NÃO deve aparecer como vencido.
+  // O banco não chega a devolvê-lo (o filtro `lt: inicioDoDia` exclui), mas validamos
+  // que a chamada ao Prisma usa inicioDoDia correto — e que diasAtraso seria 0
+  // (reforço: não há incoerência "listado como vencido com diasAtraso: 0").
+  it("caso de borda: título que vence hoje NÃO é incluído (inicioDoDia normalizado)", async () => {
+    const prisma = makePrisma();
+    // Simula banco retornando vazio (o filtro lt: inicioDoDia excluiu o título de hoje)
+    (prisma.fatoFinanceiroTitulo.findMany as jest.Mock).mockResolvedValue([]);
+    const result = await queryTitulosVencidos(prisma as never, hoje);
+    expect(result.titulos).toHaveLength(0);
+    expect(result.totalVencido).toBe(0);
+    // Confirma que o lt passado é exatamente meia-noite do dia de hoje (local)
+    const call = (prisma.fatoFinanceiroTitulo.findMany as jest.Mock).mock.calls[0][0];
+    const ltValue: Date = call.where.dataVencimento.lt;
+    const inicioDoDia = new Date(hoje.getFullYear(), hoje.getMonth(), hoje.getDate());
+    expect(ltValue.getTime()).toBe(inicioDoDia.getTime());
+  });
+
+  it("caso de borda: título que venceu ontem SIM aparece como vencido (diasAtraso: 1)", async () => {
+    const prisma = makePrisma();
+    const ontem = new Date(hoje.getFullYear(), hoje.getMonth(), hoje.getDate() - 1); // 2026-05-17T00:00:00
+    (prisma.fatoFinanceiroTitulo.findMany as jest.Mock).mockResolvedValue([
+      { tipo: "a_pagar", participanteNome: "Forn A", numeroDocumento: "BOL-001", dataVencimento: ontem, vrSaldo: "500.00" },
+    ]);
+    const result = await queryTitulosVencidos(prisma as never, hoje);
+    expect(result.titulos).toHaveLength(1);
+    expect(result.titulos[0].diasAtraso).toBe(1);
+    expect(result.totalVencido).toBeCloseTo(500);
   });
 });
