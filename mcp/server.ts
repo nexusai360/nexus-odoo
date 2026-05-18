@@ -195,8 +195,15 @@ export function createHttpServer(): TestableServer {
     } else {
       // Nova sessão: criar McpServer filtrado pelo usuário + transport
       const newMcpServer = createMcpServerForUser(userCtx);
+      // C-NOVO: usar onsessioninitialized para registrar a sessão apenas quando
+      // o initialize MCP for processado (sessionId só é atribuído nesse momento,
+      // não imediatamente após connect()).
       const newTransport = new StreamableHTTPServerTransport({
         sessionIdGenerator: () => randomUUID(),
+        onsessioninitialized: (sid) => {
+          sessionMap.set(sid, { mcpServer: newMcpServer, transport: newTransport });
+          sessionStore.set(sid, userCtx);
+        },
       });
 
       // I3 — registrar limpeza da sessão no fechamento do transport
@@ -210,14 +217,6 @@ export function createHttpServer(): TestableServer {
 
       // I2 — await para não engolir erro de inicialização
       await newMcpServer.connect(newTransport);
-
-      // Indexar pelo sessionId que o transport vai emitir.
-      // O sessionId é gerado pelo sessionIdGenerator acima — disponível após connect.
-      const newSessionId = newTransport.sessionId;
-      if (newSessionId) {
-        sessionMap.set(newSessionId, { mcpServer: newMcpServer, transport: newTransport });
-        sessionStore.set(newSessionId, userCtx);
-      }
 
       transport = newTransport;
     }
