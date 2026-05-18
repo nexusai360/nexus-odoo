@@ -9,12 +9,22 @@ import type { PrismaClient } from "@/generated/prisma/client";
 // Funções implementadas nas tasks B.5–B.9 (sequenciais — mesmo arquivo).
 export type { PrismaClient as _PC }; // evita "no exports" no TS até as funções serem adicionadas
 
-// Placeholder — substituído em B.5
 export async function queryPedidosPeriodo(
-  _prisma: PrismaClient,
-  _filtros: { periodoDe?: string; periodoAte?: string },
+  prisma: PrismaClient,
+  filtros: { periodoDe?: string; periodoAte?: string },
 ): Promise<{ totalPedidos: number; valorTotal: number }> {
-  throw new Error("not implemented");
+  const where =
+    filtros.periodoDe && filtros.periodoAte
+      ? {
+          dataOrcamento: {
+            gte: new Date(`${filtros.periodoDe}T00:00:00`),
+            lte: new Date(`${filtros.periodoAte}T00:00:00`),
+          },
+        }
+      : {};
+  const rows = await prisma.fatoPedido.findMany({ where, select: { vrNf: true } });
+  const valorTotal = rows.reduce((acc, r) => acc + Number(r.vrNf), 0);
+  return { totalPedidos: rows.length, valorTotal };
 }
 
 // Placeholder — substituído em B.6
