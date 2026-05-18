@@ -1,6 +1,6 @@
 // mcp/lib/failure.test.ts
 import { ZodError, z } from "zod";
-import { DomainDeniedError, toOutcome, safeErrorMessage } from "./failure.js";
+import { DomainDeniedError, SqlGuardError, toOutcome, safeErrorMessage } from "./failure.js";
 
 describe("DomainDeniedError", () => {
   it("é instância de Error", () => {
@@ -28,6 +28,37 @@ describe("toOutcome", () => {
     expect(toOutcome(new Error("genérico"))).toBe("error");
     expect(toOutcome("string qualquer")).toBe("error");
     expect(toOutcome(null)).toBe("error");
+  });
+});
+
+describe("SqlGuardError", () => {
+  it("é instância de Error", () => {
+    expect(new SqlGuardError("multi-statement")).toBeInstanceOf(Error);
+    expect(new SqlGuardError("multi-statement")).toBeInstanceOf(SqlGuardError);
+  });
+});
+
+describe("toOutcome — SqlGuardError", () => {
+  it("SqlGuardError → invalid_input", () => {
+    expect(toOutcome(new SqlGuardError("multi-statement"))).toBe("invalid_input");
+  });
+
+  it("regressão: ZodError ainda → invalid_input", () => {
+    let zodError: ZodError;
+    try {
+      z.string().parse(123);
+    } catch (e) {
+      zodError = e as ZodError;
+    }
+    expect(toOutcome(zodError!)).toBe("invalid_input");
+  });
+
+  it("regressão: DomainDeniedError ainda → denied", () => {
+    expect(toOutcome(new DomainDeniedError("x"))).toBe("denied");
+  });
+
+  it("regressão: Error genérico ainda → error", () => {
+    expect(toOutcome(new Error("x"))).toBe("error");
   });
 });
 

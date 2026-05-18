@@ -115,6 +115,71 @@ viável, mas a Opção A foi escolhida por isolamento limpo por sessão.
   (`ZodType<I>`): o shape é registrado no SDK (visível em `tools/list`); o
   `ZodType` é usado no pipeline `handleToolCall` para validação completa.
 
+---
+
+## pgsql-parser v17.9.15 (H.4)
+
+Instalado na raiz do monorepo. Consumido por `mcp/tools/caminho3/sql-guard.ts`.
+
+### API
+
+```ts
+import { parse, loadModule } from "pgsql-parser";
+
+// IMPORTANTE: loadModule() inicializa o WASM — chamar UMA VEZ no startup.
+await loadModule();
+
+// parse é assíncrono e retorna Promise<any>.
+const result = await parse(sql);
+```
+
+### Estrutura do resultado
+
+```ts
+result = {
+  version: 170004,
+  stmts: [
+    { stmt: { SelectStmt: { ... } } },  // ou DeleteStmt, InsertStmt, etc.
+  ]
+}
+```
+
+### Como obter número de statements e nó-raiz
+
+```ts
+const stmts: unknown[] = result.stmts ?? [];
+stmts.length;                            // 1 para single-statement
+const rootKey = Object.keys((stmts[0] as any).stmt)[0];
+rootKey === "SelectStmt";               // true para SELECT e WITH...SELECT (CTE)
+```
+
+### Como detectar `intoClause` (SELECT INTO)
+
+```ts
+const selectStmt = (stmts[0] as any).stmt.SelectStmt;
+!!selectStmt.intoClause;               // true para "SELECT * INTO nova_tabela FROM ..."
+```
+
+### Comportamento verificado (confirmado em H.4)
+
+| SQL | `stmts.length` | nó-raiz | Guard aprova? |
+|---|---|---|---|
+| `SELECT * FROM fato_pedido` | 1 | `SelectStmt` | SIM |
+| `WITH x AS (SELECT 1) SELECT * FROM x` | 1 | `SelectStmt` | SIM |
+| `DELETE FROM fato_pedido` | 1 | `DeleteStmt` | NÃO |
+| `SELECT 1; DROP TABLE fato_pedido` | 2 | — | NÃO (multi) |
+| `INSERT INTO x VALUES(1)` | 1 | `InsertStmt` | NÃO |
+| `SELECT * INTO nova_tabela FROM fato_pedido` | 1 | `SelectStmt` (c/ `intoClause`) | NÃO |
+| `SELCT * FRM` | — | — | NÃO (lança) |
+
+### Testes Jest
+
+Chamar `loadModule()` em `beforeAll` nos testes de `sql-guard.test.ts`.
+O `sql-guard.ts` chama `parse` apenas dentro de `validarSqlSelect` (nunca no nível de módulo),
+portanto não requer `loadModule` antes do `import`.
+
+---
+
 ## Impacto em tasks dependentes
 
 - **4a.14/4a.15:** middlewares HTTP (service token + X-Mcp-User-Id) — sem mudança.

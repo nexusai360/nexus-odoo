@@ -35,6 +35,16 @@ export const FATO_FONTE: Record<string, { model: string; mode: "snapshot" | "inc
   fato_financeiro_saldo:     { model: "finan.banco.saldo.hoje",   mode: "snapshot" },
   fato_financeiro_movimento: { model: "finan.fluxo.caixa",        mode: "incremental" },
   fato_financeiro_titulo:    { model: "finan.pagamento.divida",   mode: "incremental" },
+  // Comercial (onda B) — model confirmado via SELECT model FROM sync_state
+  fato_pedido:               { model: "pedido.documento",          mode: "incremental" },
+  fato_pedido_parcela:       { model: "pedido.parcela",            mode: "incremental" },
+  // Fiscal (onda C) — model confirmado via SELECT model FROM sync_state
+  fato_nota_fiscal:          { model: "sped.documento",            mode: "incremental" },
+  fato_nota_fiscal_item:     { model: "sped.documento.item",       mode: "incremental" },
+  // Cadastros (onda D) — model confirmado via SELECT model FROM sync_state
+  fato_parceiro:             { model: "res.partner",               mode: "incremental" },
+  // Contábil (onda E) — model confirmado via SELECT model FROM sync_state
+  fato_conta_contabil:       { model: "contabil.conta",            mode: "incremental" },
 };
 
 // ---------------------------------------------------------------------------

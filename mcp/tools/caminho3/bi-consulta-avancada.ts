@@ -1,21 +1,43 @@
 // mcp/tools/caminho3/bi-consulta-avancada.ts
-// Tool MCP: bi_consulta_avancada (Caminho 3c — stub gated)
+// Tool MCP: bi_consulta_avancada (Caminho 3c — executor SQL read-only)
 //
-// Stub que sinaliza ao agente que o modo BI avançado (text-to-SQL via Postgres MCP)
-// ainda não está disponível nesta fase, mas existe como ponto de extensão.
+// Recebe um SQL pronto do agente e o executa sob o role nexus_mcp_bi (read-only).
+// O text-to-SQL é responsabilidade do agente da F5 — esta tool apenas executa.
 //
 // Gate: só super_admin e admin veem e invocam esta tool.
 // sempreVisivel: true — visibilidade não depende de domínio, apenas de role.
+//
+// Nota de auditoria (achado R2-I4):
+//   O audit de params é automático — o pipeline do server.ts grava o rawInput
+//   ({ sql }) em McpAuditLog.params antes mesmo de chamar o handler. Nenhum
+//   código de audit é necessário aqui.
+//
+// Nota de outputSchema (achado R2-I6):
+//   O outputSchema tem SOMENTE a forma tabular de sucesso — sem variante de erro.
+//   Os caminhos de recusa (guard) e indisponibilidade (pool null) LANÇAM exceções,
+//   que o pipeline do server.ts captura e mapeia para o outcome correto.
+//   Isso é intencional e diferente das tools de freshness (que retornam { estado }).
 import { z } from "zod";
 import type { ToolEntry } from "../../catalog/types.js";
+import { getBiPool } from "./bi-pool.js";
+import { validarSqlSelect, normalizarSql } from "./sql-guard.js";
+import { SqlGuardError } from "../../lib/failure.js";
+// Caminho definitivo (achado R2-M2): de mcp/tools/caminho3/ para mcp/lib/ é ../../lib/failure.js
+
+const CAP_LINHAS = 1000;
 
 const inputSchema = z.object({
-  pergunta: z.string().min(1),
+  sql: z.string().min(1),
 });
 
 const outputSchema = z.object({
-  disponivel: z.literal(false),
-  mensagem: z.string(),
+  colunas: z.array(z.string()),
+  linhas: z.array(z.record(z.string(), z.unknown())),
+  // linhasRetornadas: quantidade efetivamente retornada (≤ 1000).
+  // Quando truncado=true, este número NÃO representa o total real da query —
+  // apenas o que foi devolvido após o cap. O agente deve informar o usuário disso.
+  linhasRetornadas: z.number().int(),
+  truncado: z.boolean(),
   aviso: z.string(),
 });
 
@@ -28,24 +50,63 @@ export const biConsultaAvancada: ToolEntry<Input, Output> = {
   sempreVisivel: true,
   gatedRoles: ["super_admin", "admin"],
   descricao:
-    "Modo BI avançado (Caminho 3c): consulta dinâmica via Postgres MCP para " +
-    "perguntas fora do catálogo de tools semânticas. Restrito a admin/super_admin. " +
-    "AVISO: consulta dinâmica, não auditada pelo pipeline padrão. " +
-    "Disponível em fase futura.",
+    "Modo BI avançado (Caminho 3c): executa um SQL SELECT pronto sob o role " +
+    "read-only nexus_mcp_bi. O SQL deve ser gerado pelo agente (F5); esta tool " +
+    "apenas executa. Restrito a admin/super_admin. AVISO: consulta dinâmica — " +
+    "resultados não são filtrados pelo RBAC semântico das tools de domínio.",
   inputSchemaShape: inputSchema.shape,
   inputSchema,
   outputSchema,
-  handler: async (_input, _ctx): Promise<Output> => {
-    const output = {
-      disponivel: false as const,
-      mensagem:
-        "O modo BI avançado ainda não está disponível nesta fase. " +
-        "Esta funcionalidade (consulta dinâmica via Postgres MCP) será habilitada " +
-        "em uma próxima iteração do sistema.",
+  handler: async (input, _ctx): Promise<Output> => {
+    // (1) Verificação estrutural do SQL via AST (defesa-em-profundidade).
+    //     Falha → lança SqlGuardError → pipeline mapeia para outcome="invalid_input".
+    const guardResult = await validarSqlSelect(input.sql);
+    if (!guardResult.ok) {
+      throw new SqlGuardError(guardResult.motivo);
+    }
+
+    // (2) Obter pool dedicado do Caminho 3c.
+    //     Pool null → MCP_BI_DATABASE_URL não configurada → lança Error comum → outcome="error".
+    const pool = getBiPool();
+    if (!pool) {
+      throw new Error(
+        "Modo BI não configurado: MCP_BI_DATABASE_URL não definida. " +
+          "Configure a variável de ambiente e reinicie o servidor MCP.",
+      );
+    }
+
+    // (3) Executar com cap de 1001 linhas para detectar truncamento.
+    //     O pool já tem default_transaction_read_only=on e statement_timeout=5s
+    //     configurados no handler de connect (bi-pool.ts).
+    //     SQL executado via pg cru (pool.query), não $queryRawUnsafe.
+    //
+    //     Estratégia de cap (I-3):
+    //     - Queries sem CTE: envelopar em subquery com LIMIT — forma canônica.
+    //     - Queries com CTE (WITH ...): o PostgreSQL não aceita CTE dentro de subquery
+    //       aninhada (`SELECT * FROM (WITH ... SELECT ...) AS x`). Nesse caso, executar
+    //       o SQL diretamente e cortar o resultado em memória.
+    const { sql: sqlNormalizado, temCte } = normalizarSql(input.sql);
+    const sqlParaExecutar = temCte
+      ? sqlNormalizado
+      : `SELECT * FROM (${sqlNormalizado}) AS _bi_subquery LIMIT ${CAP_LINHAS + 1}`;
+    const result = await pool.query(sqlParaExecutar);
+
+    const truncado = result.rows.length > CAP_LINHAS;
+    const linhas = truncado ? result.rows.slice(0, CAP_LINHAS) : result.rows;
+    const colunas = (result.fields ?? []).map(
+      (f: { name: string }) => f.name,
+    );
+
+    // (4) Retornar output validado pelo outputSchema (achado R2-I6).
+    return outputSchema.parse({
+      colunas,
+      linhas,
+      linhasRetornadas: linhas.length,
+      truncado,
       aviso:
-        "Esta tool executará consulta dinâmica não auditada pelo pipeline padrão. " +
-        "Quando habilitada, seu uso será registrado com aviso explícito ao usuário.",
-    };
-    return outputSchema.parse(output);
+        "Consulta dinâmica não auditada como tool semântica. " +
+        "Resultados não são filtrados pelo RBAC de domínio." +
+        (truncado ? " Resultado truncado em 1000 linhas — total real da query não disponível." : ""),
+    });
   },
 };

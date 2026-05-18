@@ -102,9 +102,19 @@ async function auditSafe(
 ): Promise<void> {
   try {
     await record(prisma, { userId, tool, params, outcome, rowCount, durationMs });
-  } catch {
-    // Falha de audit não derruba a resposta
-    console.error("[mcp] falha ao gravar audit log");
+  } catch (err: unknown) {
+    // Falha de audit NÃO derruba a resposta — mas deve ser visível em produção.
+    // SEVERIDADE ALTA: falha sistemática de audit invalida a camada 7 do RBAC.
+    // Se este log aparecer com frequência, investigar permissões do role nexus_mcp.
+    const msg = err instanceof Error ? err.message : String(err);
+    console.error("[mcp] AUDIT_FAILURE", {
+      severity: "HIGH",
+      userId,
+      tool,
+      outcome,
+      error: msg,
+      ts: new Date().toISOString(),
+    });
   }
 }
 

@@ -28,12 +28,17 @@ export const registrarLacuna: ToolEntry<Input, Output> = {
   inputSchema,
   outputSchema,
   handler: async (input, ctx) => {
-    await ctx.prisma.featureRequest.create({
-      data: {
-        userId: ctx.user.userId,
-        perguntaResumo: input.perguntaResumo,
-        dominio: input.dominio,
-      },
+    // Usa createMany() para suprimir o RETURNING implícito do create().
+    // O role nexus_mcp tem GRANT INSERT mas não SELECT em feature_requests.
+    // createMany() emite apenas INSERT sem RETURNING — preserva o menor privilégio.
+    await ctx.prisma.featureRequest.createMany({
+      data: [
+        {
+          userId: ctx.user.userId,
+          perguntaResumo: input.perguntaResumo,
+          dominio: input.dominio,
+        },
+      ],
     });
     return { registrado: true };
   },

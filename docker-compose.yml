@@ -30,6 +30,8 @@ services:
       dockerfile: mcp/Dockerfile
     environment:
       - MCP_DATABASE_URL=postgresql://nexus_mcp:${MCP_DB_PASSWORD}@db:5432/nexus_odoo?schema=public
+      # Caminho 3c (modo BI) — role read-only nexus_mcp_bi. Configurar no Portainer antes do redeploy.
+      - MCP_BI_DATABASE_URL=postgresql://nexus_mcp_bi:${MCP_BI_DB_PASSWORD}@db:5432/nexus_odoo?schema=public
       - MCP_SERVICE_TOKEN=${MCP_SERVICE_TOKEN:-dev_service_token_change_in_production}
       - REDIS_URL=redis://redis:6379
       - MCP_PORT=3100

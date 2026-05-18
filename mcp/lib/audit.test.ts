@@ -5,7 +5,7 @@ import type { PrismaClient } from "@/generated/prisma/client";
 function makePrismaMock() {
   return {
     mcpAuditLog: {
-      create: jest.fn().mockResolvedValue({}),
+      createMany: jest.fn().mockResolvedValue({ count: 1 }),
     },
   } as unknown as PrismaClient;
 }
@@ -44,7 +44,7 @@ describe("extractRowCount", () => {
 });
 
 describe("recordAudit", () => {
-  it("chama prisma.mcpAuditLog.create com os campos corretos", async () => {
+  it("chama prisma.mcpAuditLog.createMany com os campos corretos (sem RETURNING)", async () => {
     const prisma = makePrismaMock();
     await recordAudit(prisma, {
       userId: "user-1",
@@ -54,15 +54,17 @@ describe("recordAudit", () => {
       rowCount: 5,
       durationMs: 120,
     });
-    expect(prisma.mcpAuditLog.create).toHaveBeenCalledWith({
-      data: {
-        userId: "user-1",
-        tool: "saldo_produto",
-        params: { familiaId: 1 },
-        outcome: "ok",
-        rowCount: 5,
-        durationMs: 120,
-      },
+    expect(prisma.mcpAuditLog.createMany).toHaveBeenCalledWith({
+      data: [
+        {
+          userId: "user-1",
+          tool: "saldo_produto",
+          params: { familiaId: 1 },
+          outcome: "ok",
+          rowCount: 5,
+          durationMs: 120,
+        },
+      ],
     });
   });
 
@@ -74,13 +76,15 @@ describe("recordAudit", () => {
       params: {},
       outcome: "denied",
     });
-    expect(prisma.mcpAuditLog.create).toHaveBeenCalledWith({
-      data: expect.objectContaining({
-        userId: "user-2",
-        outcome: "denied",
-        rowCount: undefined,
-        durationMs: undefined,
-      }),
+    expect(prisma.mcpAuditLog.createMany).toHaveBeenCalledWith({
+      data: [
+        expect.objectContaining({
+          userId: "user-2",
+          outcome: "denied",
+          rowCount: undefined,
+          durationMs: undefined,
+        }),
+      ],
     });
   });
 });

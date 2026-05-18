@@ -7,7 +7,11 @@ import { prisma } from "@/lib/prisma";
 import { getCurrentUser } from "@/lib/auth";
 import { logAudit } from "@/lib/audit";
 import { generateTempPassword } from "@/lib/temp-password";
-import { grantableDomains } from "@/lib/reports/domains";
+import {
+  grantableDomains,
+  REPORT_DOMAINS,
+  type ReportDomainId,
+} from "@/lib/reports/domains";
 import { getUserDomains } from "@/lib/actions/domain-access";
 import {
   canEditUser,
@@ -65,12 +69,18 @@ export async function listUsers(): Promise<ActionResult<UserListItem[]>> {
 
 // --- T13: createUser -------------------------------------------------------
 
+// Derivado de REPORT_DOMAINS para cobrir todos os domínios (F4 completo: 9).
+const DOMAIN_IDS = REPORT_DOMAINS.map((d) => d.id) as [
+  ReportDomainId,
+  ...ReportDomainId[],
+];
+
 const CreateUserInput = z.object({
   name: z.string().min(2).max(120),
   email: z.string().email(),
   platformRole: z.enum(ROLE_VALUES),
   password: z.string().min(8).max(72).optional(),
-  domains: z.array(z.enum(["estoque", "financeiro", "fiscal", "comercial"])).default([]),
+  domains: z.array(z.enum(DOMAIN_IDS)).default([]),
 });
 
 export async function createUser(
