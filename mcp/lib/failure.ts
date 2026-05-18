@@ -20,7 +20,7 @@ export function toOutcome(err: unknown): AuditOutcome {
 }
 
 /** Devolve mensagem genérica e segura ao agente — sem vazar stack/detalhes internos. */
-export function safeErrorMessage(outcome: AuditOutcome): string {
+export function safeErrorMessage(outcome: Exclude<AuditOutcome, "ok">): string {
   switch (outcome) {
     case "denied":
       return "Acesso negado: você não tem permissão para acessar este domínio ou recurso.";
@@ -28,7 +28,5 @@ export function safeErrorMessage(outcome: AuditOutcome): string {
       return "Parâmetros inválidos: verifique os campos obrigatórios e seus tipos.";
     case "error":
       return "Erro interno ao processar a consulta. Tente novamente em instantes.";
-    case "ok":
-      return "ok";
   }
 }
