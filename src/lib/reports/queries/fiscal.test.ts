@@ -184,8 +184,43 @@ describe("queryImpostosPeriodo", () => {
 });
 
 describe("queryFaturamentoPorCliente", () => {
-  // testes adicionados em C.10
-  it.todo("agrupa por participanteNome ordenado por valorTotal desc");
+  it("agrupa saídas autorizadas por participanteNome ordenado por valorTotal desc", async () => {
+    const mockPrisma = {
+      fatoNotaFiscal: {
+        findMany: jest.fn().mockResolvedValue([
+          { participanteNome: "Cliente A", vrNf: "1000.00" },
+          { participanteNome: "Cliente B", vrNf: "3000.00" },
+          { participanteNome: "Cliente A", vrNf: "500.00" },
+        ]),
+      },
+    } as unknown as Parameters<typeof queryFaturamentoPorCliente>[0];
+
+    const result = await queryFaturamentoPorCliente(mockPrisma, {});
+    expect(result.linhas).toHaveLength(2);
+    // ordenado por valorTotal desc: B primeiro
+    expect(result.linhas[0]?.participanteNome).toBe("Cliente B");
+    expect(result.linhas[0]?.quantidade).toBe(1);
+    expect(result.linhas[0]?.valorTotal).toBeCloseTo(3000);
+    expect(result.linhas[1]?.participanteNome).toBe("Cliente A");
+    expect(result.linhas[1]?.quantidade).toBe(2);
+    expect(result.linhas[1]?.valorTotal).toBeCloseTo(1500);
+
+    const call = (mockPrisma.fatoNotaFiscal.findMany as jest.Mock).mock.calls[0][0];
+    expect(call.where?.entradaSaida).toBe("1");
+    expect(call.where?.situacaoNfe).toBe("autorizada");
+  });
+
+  it("aplica filtro de período quando informado", async () => {
+    const mockPrisma = {
+      fatoNotaFiscal: {
+        findMany: jest.fn().mockResolvedValue([]),
+      },
+    } as unknown as Parameters<typeof queryFaturamentoPorCliente>[0];
+
+    await queryFaturamentoPorCliente(mockPrisma, { periodoDe: "2024-01-01", periodoAte: "2024-01-31" });
+    const call = (mockPrisma.fatoNotaFiscal.findMany as jest.Mock).mock.calls[0][0];
+    expect(call.where?.dataEmissao?.gte).toEqual(new Date("2024-01-01T00:00:00"));
+  });
 });
 
 describe("queryProdutosFaturados", () => {

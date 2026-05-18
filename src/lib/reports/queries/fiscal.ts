@@ -139,12 +139,44 @@ export async function queryImpostosPeriodo(
 }
 
 export async function queryFaturamentoPorCliente(
-  _prisma: PrismaClient,
-  _filtros: { periodoDe?: string; periodoAte?: string },
+  prisma: PrismaClient,
+  filtros: { periodoDe?: string; periodoAte?: string },
 ): Promise<{
   linhas: { participanteNome: string | null; quantidade: number; valorTotal: number }[];
 }> {
-  throw new Error("Not implemented");
+  const periodoWhere =
+    filtros.periodoDe && filtros.periodoAte
+      ? {
+          dataEmissao: {
+            gte: new Date(`${filtros.periodoDe}T00:00:00`),
+            lte: new Date(`${filtros.periodoAte}T00:00:00`),
+          },
+        }
+      : {};
+
+  const rows = await prisma.fatoNotaFiscal.findMany({
+    where: { entradaSaida: "1", situacaoNfe: "autorizada", ...periodoWhere },
+    select: { participanteNome: true, vrNf: true },
+  });
+
+  // Agregação em memória por participanteNome
+  const map = new Map<string | null, { quantidade: number; valorTotal: number }>();
+  for (const r of rows) {
+    const key = r.participanteNome;
+    const existing = map.get(key);
+    if (existing) {
+      existing.quantidade += 1;
+      existing.valorTotal += Number(r.vrNf);
+    } else {
+      map.set(key, { quantidade: 1, valorTotal: Number(r.vrNf) });
+    }
+  }
+
+  const linhas = [...map.entries()]
+    .map(([participanteNome, v]) => ({ participanteNome, ...v }))
+    .sort((a, b) => b.valorTotal - a.valorTotal);
+
+  return { linhas };
 }
 
 export async function queryProdutosFaturados(
