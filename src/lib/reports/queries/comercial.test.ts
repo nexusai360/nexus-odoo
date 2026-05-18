@@ -61,13 +61,13 @@ describe("queryPedidosPeriodo", () => {
 });
 
 describe("queryPedidosPorEtapa", () => {
-  it("agrupa por etapaNome e retorna linhas com quantidade e valorTotal", async () => {
+  it("agrupa por etapaNome e retorna linhas com quantidade e valorTotal (usa vrProdutos)", async () => {
     const mockPrisma = {
       fatoPedido: {
         findMany: jest.fn().mockResolvedValue([
-          { etapaNome: "Concluído", etapaFinaliza: true, vrNf: "1000.00" },
-          { etapaNome: "Concluído", etapaFinaliza: true, vrNf: "500.00" },
-          { etapaNome: "Em Aberto", etapaFinaliza: false, vrNf: "200.00" },
+          { etapaNome: "Concluído", etapaFinaliza: true, vrProdutos: "1000.00" },
+          { etapaNome: "Concluído", etapaFinaliza: true, vrProdutos: "500.00" },
+          { etapaNome: "Em Aberto", etapaFinaliza: false, vrProdutos: "200.00" },
         ]),
       },
     } as unknown as import("@/generated/prisma/client").PrismaClient;
@@ -97,13 +97,13 @@ describe("queryPedidosPorEtapa", () => {
 });
 
 describe("queryPedidosPorVendedor", () => {
-  it("agrupa por vendedorNome e retorna ordenado por valorTotal desc", async () => {
+  it("agrupa por vendedorNome e retorna ordenado por valorTotal desc (usa vrProdutos)", async () => {
     const mockPrisma = {
       fatoPedido: {
         findMany: jest.fn().mockResolvedValue([
-          { vendedorNome: "João", vrNf: "1000.00" },
-          { vendedorNome: "Maria", vrNf: "3000.00" },
-          { vendedorNome: "João", vrNf: "500.00" },
+          { vendedorNome: "João", vrProdutos: "1000.00" },
+          { vendedorNome: "Maria", vrProdutos: "3000.00" },
+          { vendedorNome: "João", vrProdutos: "500.00" },
         ]),
       },
     } as unknown as import("@/generated/prisma/client").PrismaClient;
@@ -120,7 +120,7 @@ describe("queryPedidosPorVendedor", () => {
   it("aplica filtro de período", async () => {
     const mockPrisma = {
       fatoPedido: {
-        findMany: jest.fn().mockResolvedValue([{ vendedorNome: "Ana", vrNf: "100.00" }]),
+        findMany: jest.fn().mockResolvedValue([{ vendedorNome: "Ana", vrProdutos: "100.00" }]),
       },
     } as unknown as import("@/generated/prisma/client").PrismaClient;
 

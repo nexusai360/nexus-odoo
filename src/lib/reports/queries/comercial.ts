@@ -28,8 +28,13 @@ export async function queryPedidosPeriodo(
 export async function queryPedidosPorEtapa(
   prisma: PrismaClient,
 ): Promise<{ linhas: { etapaNome: string | null; etapaFinaliza: boolean; quantidade: number; valorTotal: number }[] }> {
+  // Usa vrProdutos (valor do pedido independente de faturamento) em vez de vrNf.
+  // vrNf é 0 para pedidos ainda não faturados (etapas pré-conclusão), o que
+  // subnotificaria todo o pipeline em aberto — distorcendo a pergunta-alvo
+  // "qual o volume por etapa". vrProdutos reflete o valor comprometido em
+  // qualquer etapa. A mesma decisão se aplica a queryPedidosPorVendedor.
   const rows = await prisma.fatoPedido.findMany({
-    select: { etapaNome: true, etapaFinaliza: true, vrNf: true },
+    select: { etapaNome: true, etapaFinaliza: true, vrProdutos: true },
   });
   // Agrupa em memória por etapaNome (não groupBy — precisa carregar etapaFinaliza)
   const map = new Map<string | null, { etapaFinaliza: boolean; quantidade: number; valorTotal: number }>();
@@ -38,9 +43,9 @@ export async function queryPedidosPorEtapa(
     const existing = map.get(key);
     if (existing) {
       existing.quantidade += 1;
-      existing.valorTotal += Number(r.vrNf);
+      existing.valorTotal += Number(r.vrProdutos);
     } else {
-      map.set(key, { etapaFinaliza: r.etapaFinaliza, quantidade: 1, valorTotal: Number(r.vrNf) });
+      map.set(key, { etapaFinaliza: r.etapaFinaliza, quantidade: 1, valorTotal: Number(r.vrProdutos) });
     }
   }
   const linhas = [...map.entries()].map(([etapaNome, v]) => ({ etapaNome, ...v }));
@@ -60,9 +65,11 @@ export async function queryPedidosPorVendedor(
           },
         }
       : {};
+  // Usa vrProdutos — mesma decisão de queryPedidosPorEtapa: vrNf=0 para
+  // pedidos não faturados, o que subnotificaria vendedores com pedidos em aberto.
   const rows = await prisma.fatoPedido.findMany({
     where,
-    select: { vendedorNome: true, vrNf: true },
+    select: { vendedorNome: true, vrProdutos: true },
   });
   const map = new Map<string | null, { quantidade: number; valorTotal: number }>();
   for (const r of rows) {
@@ -70,9 +77,9 @@ export async function queryPedidosPorVendedor(
     const existing = map.get(key);
     if (existing) {
       existing.quantidade += 1;
-      existing.valorTotal += Number(r.vrNf);
+      existing.valorTotal += Number(r.vrProdutos);
     } else {
-      map.set(key, { quantidade: 1, valorTotal: Number(r.vrNf) });
+      map.set(key, { quantidade: 1, valorTotal: Number(r.vrProdutos) });
     }
   }
   const linhas = [...map.entries()]

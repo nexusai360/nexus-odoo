@@ -43,7 +43,7 @@ type Output = z.infer<typeof outputSchema>;
 function shape(d: Awaited<ReturnType<typeof queryPedidosPorVendedor>>) {
   return {
     linhas: d.linhas,
-    aviso: "Ranking de pedidos por vendedor, ordenado por valor total decrescente.",
+    aviso: "Ranking de pedidos por vendedor, ordenado por valor total decrescente. valorTotal usa vrProdutos (valor do pedido, independente de faturamento).",
   };
 }
 

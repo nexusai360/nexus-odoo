@@ -41,7 +41,7 @@ type Output = z.infer<typeof outputSchema>;
 function shape(d: Awaited<ReturnType<typeof queryPedidosPorEtapa>>) {
   return {
     linhas: d.linhas,
-    aviso: "Distribuição de pedidos por etapa do fluxo comercial. etapaFinaliza=true indica etapa conclusiva.",
+    aviso: "Distribuição de pedidos por etapa do fluxo comercial. valorTotal usa vrProdutos (valor do pedido, independente de faturamento). etapaFinaliza=true indica etapa conclusiva.",
   };
 }
 
