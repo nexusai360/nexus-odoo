@@ -42,7 +42,7 @@ export async function handleToolCall(
   rawInput: unknown,
   userId: string,
   deps: HandleToolCallDeps = { resolveUser: resolveUserContext, record: recordAudit },
-): Promise<{ content: Array<{ type: "text"; text: string }> }> {
+): Promise<{ content: Array<{ type: "text"; text: string }>; isError?: true }> {
   const start = Date.now();
   let outcome: AuditOutcome = "error";
 
@@ -52,7 +52,7 @@ export async function handleToolCall(
     if (!user) {
       outcome = "denied";
       await auditSafe(deps.record, userId, tool.id, rawInput, outcome, undefined, Date.now() - start);
-      return errorResult(safeErrorMessage(outcome));
+      return errorResult(safeErrorMessage("denied"));
     }
 
     // Camada 2: gate de autorização
@@ -69,9 +69,10 @@ export async function handleToolCall(
 
     return { content: [{ type: "text", text: JSON.stringify(output) }] };
   } catch (err: unknown) {
-    outcome = toOutcome(err);
+    const errOutcome = toOutcome(err);
+    outcome = errOutcome;
     await auditSafe(deps.record, userId, tool.id, rawInput, outcome, undefined, Date.now() - start);
-    return errorResult(safeErrorMessage(outcome));
+    return errorResult(safeErrorMessage(errOutcome));
   }
 }
 
@@ -92,8 +93,8 @@ async function auditSafe(
   }
 }
 
-function errorResult(message: string): { content: Array<{ type: "text"; text: string }> } {
-  return { content: [{ type: "text", text: message }] };
+function errorResult(message: string): { content: Array<{ type: "text"; text: string }>; isError: true } {
+  return { content: [{ type: "text", text: message }], isError: true };
 }
 
 // ─── createHttpServer — 4a.14, 4a.15, 4a.16 ────────────────────────────────

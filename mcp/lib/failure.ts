@@ -12,8 +12,8 @@ export class DomainDeniedError extends Error {
   }
 }
 
-/** Mapeia uma exceção para o outcome de auditoria. */
-export function toOutcome(err: unknown): AuditOutcome {
+/** Mapeia uma exceção para o outcome de auditoria (nunca retorna "ok"). */
+export function toOutcome(err: unknown): Exclude<AuditOutcome, "ok"> {
   if (err instanceof ZodError) return "invalid_input";
   if (err instanceof DomainDeniedError) return "denied";
   return "error";
