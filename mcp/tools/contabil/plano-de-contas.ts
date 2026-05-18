@@ -23,6 +23,8 @@ const linhaSchema = z.object({
 
 const dados = z.object({
   linhas: z.array(linhaSchema),
+  total: z.number().int(),
+  truncado: z.boolean(),
   aviso: z.string(),
 });
 
@@ -61,6 +63,14 @@ export const contabilPlanoDeContas: ToolEntry<Input, Output> = {
   handler: (input, ctx) =>
     withFreshness(ctx.prisma, ["fato_conta_contabil"], async () => {
       const result = await queryPlanoDeContas(ctx.prisma, input);
-      return { linhas: result.linhas, aviso: AVISO };
+      const aviso = result.truncado
+        ? `${AVISO} Mostrando ${result.linhas.length} de ${result.total} contas — refine com o parâmetro "termo" ou aumente "limite".`
+        : AVISO;
+      return {
+        linhas: result.linhas,
+        total: result.total,
+        truncado: result.truncado,
+        aviso,
+      };
     }),
 };
