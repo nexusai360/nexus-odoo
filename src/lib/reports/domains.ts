@@ -13,6 +13,11 @@ export const REPORT_DOMAINS: ReportDomainMeta[] = [
   { id: "financeiro", label: "Financeiro" },
   { id: "fiscal", label: "Fiscal" },
   { id: "comercial", label: "Comercial" },
+  { id: "cadastros", label: "Cadastros" },
+  { id: "contabil", label: "Contábil" },
+  { id: "rh", label: "RH" },
+  { id: "crm", label: "CRM" },
+  { id: "producao", label: "Produção" },
 ];
 
 const ALL_DOMAINS: ReportDomainId[] = REPORT_DOMAINS.map((d) => d.id);
