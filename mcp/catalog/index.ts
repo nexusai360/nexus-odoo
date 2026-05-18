@@ -15,6 +15,7 @@ import { financeiroTools } from "../tools/financeiro/index.js"; // 4d.0  — 6 t
 import { caminho3Tools } from "../tools/caminho3/index.js"; // 4c.11 — 2 tools (registrar_lacuna + bi_consulta_avancada)
 import { comercialTools } from "../tools/comercial/index.js"; // onda B — 5 tools
 import { fiscalTools } from "../tools/fiscal/index.js";     // onda C — 6 tools
+import { cadastrosTools } from "../tools/cadastros/index.js"; // onda D — 3 tools
 
 export const catalogo: ToolEntry[] = [
   ...estoqueTools,
@@ -22,4 +23,5 @@ export const catalogo: ToolEntry[] = [
   ...caminho3Tools,
   ...comercialTools,
   ...fiscalTools,
+  ...cadastrosTools,
 ];
