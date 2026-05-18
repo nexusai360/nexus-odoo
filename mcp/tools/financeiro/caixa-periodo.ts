@@ -41,6 +41,13 @@ export const financeiroCaixaPeriodo: ToolEntry<Input, Output> = {
   inputSchemaShape: inputSchema.shape,
   inputSchema,
   outputSchema,
+  // SEM ESTADO "VAZIO" — decisão explícita (no-op intencional):
+  // `dados` é escalar ({ entrada, saida, saldo }), sem array. `withFreshness`
+  // não tem como inferir "vazio" pela heurística padrão (ARRAY_KEYS_PRIORITY),
+  // então sempre emite "ok". Isso é CORRETO para esta tool: caixa zerado num
+  // período é um resultado válido e informativo — "entrada: 0, saida: 0,
+  // saldo: 0" comunica que não houve movimentação, o que é diferente de
+  // "nenhum dado disponível". Não passamos `isVazio` por intenção deliberada.
   handler: (input, ctx) =>
     withFreshness(ctx.prisma, ["fato_financeiro_movimento"], async () =>
       queryCaixaPeriodo(ctx.prisma, input),

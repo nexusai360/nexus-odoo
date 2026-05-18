@@ -197,15 +197,17 @@ describe("queryTitulosVencidos", () => {
   });
 
   it("inclui tipo no resultado e calcula diasAtraso e totalVencido", async () => {
+    // Usa hoje fixo meia-noite local para evitar variação de fuso no cálculo de dias.
+    const hojeFixo = new Date(hoje.getFullYear(), hoje.getMonth(), hoje.getDate()); // 2026-05-18 local
     const prisma = makePrisma();
     (prisma.fatoFinanceiroTitulo.findMany as jest.Mock).mockResolvedValue([
-      { tipo: "a_receber", participanteNome: "Cliente Z", numeroDocumento: "NF-100", dataVencimento: new Date("2026-04-01"), vrSaldo: "2000.00" },
-      { tipo: "a_pagar", participanteNome: "Forn Y", numeroDocumento: "BOL-200", dataVencimento: new Date("2026-05-01"), vrSaldo: "800.00" },
+      { tipo: "a_receber", participanteNome: "Cliente Z", numeroDocumento: "NF-100", dataVencimento: new Date(2026, 3, 1), vrSaldo: "2000.00" }, // 2026-04-01 local
+      { tipo: "a_pagar", participanteNome: "Forn Y", numeroDocumento: "BOL-200", dataVencimento: new Date(2026, 4, 1), vrSaldo: "800.00" }, // 2026-05-01 local
     ]);
-    const result = await queryTitulosVencidos(prisma as never, hoje);
+    const result = await queryTitulosVencidos(prisma as never, hojeFixo);
     expect(result.titulos).toHaveLength(2);
     expect(result.titulos[0].tipo).toBe("a_receber");
-    expect(result.titulos[0].diasAtraso).toBe(47); // 18 mai - 1 abr = 47 dias
+    expect(result.titulos[0].diasAtraso).toBe(47); // 18 mai - 1 abr = 47 dias (ambos em local)
     expect(result.totalVencido).toBeCloseTo(2800);
   });
 
