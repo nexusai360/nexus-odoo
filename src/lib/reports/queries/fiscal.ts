@@ -31,8 +31,8 @@ export async function queryFaturamentoPeriodo(
 }
 
 export async function queryNotasEmitidas(
-  _prisma: PrismaClient,
-  _filtros: { periodoDe?: string; periodoAte?: string; situacaoNfe?: string },
+  prisma: PrismaClient,
+  filtros: { periodoDe?: string; periodoAte?: string; situacaoNfe?: string },
 ): Promise<{
   linhas: {
     numero: string | null;
@@ -45,7 +45,34 @@ export async function queryNotasEmitidas(
   totalNotas: number;
   valorTotal: number;
 }> {
-  throw new Error("Not implemented");
+  const periodoWhere =
+    filtros.periodoDe && filtros.periodoAte
+      ? {
+          dataEmissao: {
+            gte: new Date(`${filtros.periodoDe}T00:00:00`),
+            lte: new Date(`${filtros.periodoAte}T00:00:00`),
+          },
+        }
+      : {};
+
+  const situacaoWhere = filtros.situacaoNfe ? { situacaoNfe: filtros.situacaoNfe } : {};
+
+  const rows = await prisma.fatoNotaFiscal.findMany({
+    where: { entradaSaida: "1", ...situacaoWhere, ...periodoWhere },
+    select: { numero: true, serie: true, dataEmissao: true, situacaoNfe: true, participanteNome: true, vrNf: true },
+  });
+
+  const linhas = rows.map((r) => ({
+    numero: r.numero,
+    serie: r.serie,
+    dataEmissao: r.dataEmissao,
+    situacaoNfe: r.situacaoNfe,
+    participanteNome: r.participanteNome,
+    vrNf: Number(r.vrNf),
+  }));
+
+  const valorTotal = linhas.reduce((acc, r) => acc + r.vrNf, 0);
+  return { linhas, totalNotas: linhas.length, valorTotal };
 }
 
 export async function queryNotasRecebidas(

@@ -63,8 +63,57 @@ describe("queryFaturamentoPeriodo", () => {
 });
 
 describe("queryNotasEmitidas", () => {
-  // testes adicionados em C.7
-  it.todo("retorna notas de saída com filtro de período e situacaoNfe");
+  it("retorna notas de saída (entradaSaida='1') sem filtro", async () => {
+    const mockPrisma = {
+      fatoNotaFiscal: {
+        findMany: jest.fn().mockResolvedValue([
+          {
+            numero: "001",
+            serie: "1",
+            dataEmissao: new Date("2024-01-15T00:00:00"),
+            situacaoNfe: "autorizada",
+            participanteNome: "Cliente A",
+            vrNf: "1000.00",
+          },
+        ]),
+      },
+    } as unknown as Parameters<typeof queryNotasEmitidas>[0];
+
+    const result = await queryNotasEmitidas(mockPrisma, {});
+    expect(result.totalNotas).toBe(1);
+    expect(result.valorTotal).toBeCloseTo(1000);
+    expect(result.linhas).toHaveLength(1);
+    expect(result.linhas[0]?.numero).toBe("001");
+    expect(result.linhas[0]?.participanteNome).toBe("Cliente A");
+
+    const call = (mockPrisma.fatoNotaFiscal.findMany as jest.Mock).mock.calls[0][0];
+    expect(call.where?.entradaSaida).toBe("1");
+  });
+
+  it("aplica filtro de situacaoNfe quando informado", async () => {
+    const mockPrisma = {
+      fatoNotaFiscal: {
+        findMany: jest.fn().mockResolvedValue([]),
+      },
+    } as unknown as Parameters<typeof queryNotasEmitidas>[0];
+
+    await queryNotasEmitidas(mockPrisma, { situacaoNfe: "cancelada" });
+    const call = (mockPrisma.fatoNotaFiscal.findMany as jest.Mock).mock.calls[0][0];
+    expect(call.where?.situacaoNfe).toBe("cancelada");
+  });
+
+  it("aplica filtro de período quando informado", async () => {
+    const mockPrisma = {
+      fatoNotaFiscal: {
+        findMany: jest.fn().mockResolvedValue([]),
+      },
+    } as unknown as Parameters<typeof queryNotasEmitidas>[0];
+
+    await queryNotasEmitidas(mockPrisma, { periodoDe: "2024-01-01", periodoAte: "2024-01-31" });
+    const call = (mockPrisma.fatoNotaFiscal.findMany as jest.Mock).mock.calls[0][0];
+    expect(call.where?.dataEmissao?.gte).toEqual(new Date("2024-01-01T00:00:00"));
+    expect(call.where?.dataEmissao?.lte).toEqual(new Date("2024-01-31T00:00:00"));
+  });
 });
 
 describe("queryNotasRecebidas", () => {
