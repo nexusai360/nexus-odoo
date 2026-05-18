@@ -47,6 +47,7 @@ jest.mock("../auth/session-store.js", () => ({
 jest.mock("../lib/prisma.js", () => ({
   prisma: {
     mcpAuditLog: { create: jest.fn().mockResolvedValue({}) },
+    featureRequest: { create: jest.fn().mockResolvedValue({ id: "fr-1" }) },
   },
 }));
 
@@ -220,9 +221,49 @@ describe("registrar_lacuna — sempreVisivel", () => {
   });
 });
 
-// ─── 5. Servidor HTTP real — initialize + tools/list (Streamable HTTP) ────────
+// ─── 5. Servidor HTTP real — protocolo Streamable HTTP end-to-end ────────────
+//
+// Exercita a cadeia completa: initialize → captura mcp-session-id → tools/list
+// → tools/call, tudo passando pelo StreamableHTTPServerTransport real.
+// Verifica que o catálogo filtrado por perfil e o gate de 3c funcionam ponta a ponta.
 
-describe("Servidor HTTP real — protocolo Streamable HTTP", () => {
+/** Extrai o result de um body JSON-RPC (pode vir como JSON direto ou SSE). */
+function extractRpcResult(body: unknown): Record<string, unknown> | undefined {
+  if (!body || typeof body !== "object") return undefined;
+  const b = body as Record<string, unknown>;
+  return b.result as Record<string, unknown> | undefined;
+}
+
+/**
+ * Faz initialize via HTTP e retorna o mcp-session-id emitido pelo servidor.
+ * Falha o teste se o sessionId não estiver presente no cabeçalho de resposta.
+ */
+async function initializeSession(baseUrl: string, userId: string): Promise<string> {
+  const { status, body, sessionId } = await mcpRequest(
+    baseUrl,
+    {
+      jsonrpc: "2.0",
+      id: nextRpcId(),
+      method: "initialize",
+      params: {
+        protocolVersion: "2024-11-05",
+        clientInfo: { name: "nexus-test-harness", version: "1.0" },
+        capabilities: {},
+      },
+    },
+    userId,
+  );
+
+  expect(status).toBe(200);
+  const result = extractRpcResult(body);
+  expect(result?.serverInfo).toBeDefined();
+
+  // O SDK Streamable HTTP stateful SEMPRE emite mcp-session-id no cabeçalho do initialize.
+  expect(sessionId).toBeDefined();
+  return sessionId!;
+}
+
+describe("Servidor HTTP real — protocolo Streamable HTTP end-to-end", () => {
   let testServer: TestServer;
 
   beforeAll(async () => {
@@ -234,31 +275,10 @@ describe("Servidor HTTP real — protocolo Streamable HTTP", () => {
     await testServer.stop();
   });
 
-  it("initialize retorna serverInfo e sessionId no cabeçalho", async () => {
-    const initBody = {
-      jsonrpc: "2.0",
-      id: nextRpcId(),
-      method: "initialize",
-      params: {
-        protocolVersion: "2024-11-05",
-        clientInfo: { name: "nexus-test-harness", version: "1.0" },
-        capabilities: {},
-      },
-    };
+  // ── 5a. Handshake básico ───────────────────────────────────────────────────
 
-    const { status, body, sessionId } = await mcpRequest(
-      testServer.baseUrl,
-      initBody,
-      "user-super-admin",
-    );
-
-    expect(status).toBe(200);
-    // O body pode vir como SSE (text/event-stream) — o harness parseia o primeiro evento
-    const result = (body as Record<string, unknown>)?.result as Record<string, unknown> | undefined;
-    expect(result?.serverInfo).toBeDefined();
-    // sessionId pode vir no cabeçalho ou dentro do body
-    const hasSid = sessionId !== undefined || (result as Record<string, unknown>)?.sessionId !== undefined;
-    expect(hasSid || status === 200).toBe(true); // flexível: protocolo garante pelo menos 200 OK
+  it("initialize retorna serverInfo e mcp-session-id no cabeçalho", async () => {
+    await initializeSession(testServer.baseUrl, "user-super-admin");
   });
 
   it("token inválido retorna 401", async () => {
@@ -285,6 +305,186 @@ describe("Servidor HTTP real — protocolo Streamable HTTP", () => {
       body: JSON.stringify({ jsonrpc: "2.0", id: 1, method: "initialize", params: { protocolVersion: "2024-11-05", clientInfo: { name: "t", version: "1" }, capabilities: {} } }),
     });
     expect(status).toBe(403);
+  });
+
+  // ── 5b. tools/list via HTTP — catálogo filtrado por perfil ────────────────
+
+  it("super_admin: tools/list via HTTP retorna 14 tools com os IDs corretos", async () => {
+    const sid = await initializeSession(testServer.baseUrl, "user-super-admin");
+
+    const { status, body } = await mcpRequest(
+      testServer.baseUrl,
+      { jsonrpc: "2.0", id: nextRpcId(), method: "tools/list", params: {} },
+      "user-super-admin",
+      sid,
+    );
+
+    expect(status).toBe(200);
+    const result = extractRpcResult(body);
+    const tools = result?.tools as Array<{ name: string }> | undefined;
+    expect(tools).toBeDefined();
+    expect(tools!).toHaveLength(14);
+
+    const names = tools!.map((t) => t.name).sort();
+    expect(names).toEqual([...TODOS_IDS].sort());
+  });
+
+  it("manager: tools/list via HTTP não inclui bi_consulta_avancada", async () => {
+    const sid = await initializeSession(testServer.baseUrl, "user-manager");
+
+    const { status, body } = await mcpRequest(
+      testServer.baseUrl,
+      { jsonrpc: "2.0", id: nextRpcId(), method: "tools/list", params: {} },
+      "user-manager",
+      sid,
+    );
+
+    expect(status).toBe(200);
+    const result = extractRpcResult(body);
+    const tools = result?.tools as Array<{ name: string }> | undefined;
+    expect(tools).toBeDefined();
+    const names = tools!.map((t) => t.name);
+    expect(names).not.toContain("bi_consulta_avancada");
+    expect(names).toContain("registrar_lacuna");
+    // 6 estoque + 6 financeiro + registrar_lacuna = 13
+    expect(names).toHaveLength(13);
+  });
+
+  it("viewer (estoque): tools/list via HTTP retorna só estoque + registrar_lacuna", async () => {
+    const sid = await initializeSession(testServer.baseUrl, "user-viewer");
+
+    const { status, body } = await mcpRequest(
+      testServer.baseUrl,
+      { jsonrpc: "2.0", id: nextRpcId(), method: "tools/list", params: {} },
+      "user-viewer",
+      sid,
+    );
+
+    expect(status).toBe(200);
+    const result = extractRpcResult(body);
+    const tools = result?.tools as Array<{ name: string }> | undefined;
+    expect(tools).toBeDefined();
+    const names = tools!.map((t) => t.name);
+    // 6 estoque + registrar_lacuna = 7; sem bi_consulta_avancada, sem financeiro
+    expect(names).toHaveLength(7);
+    expect(names).toContain("registrar_lacuna");
+    expect(names).not.toContain("bi_consulta_avancada");
+    for (const id of FINANCEIRO_IDS) expect(names).not.toContain(id);
+    for (const id of ESTOQUE_IDS) expect(names).toContain(id);
+  });
+
+  // ── 5c. tools/call via HTTP — um por domínio + gate 3c + registrar_lacuna ──
+
+  it("super_admin: tools/call registrar_lacuna via HTTP retorna resultado sem isError", async () => {
+    const sid = await initializeSession(testServer.baseUrl, "user-super-admin");
+
+    const { status, body } = await mcpRequest(
+      testServer.baseUrl,
+      {
+        jsonrpc: "2.0",
+        id: nextRpcId(),
+        method: "tools/call",
+        params: {
+          name: "registrar_lacuna",
+          arguments: { perguntaResumo: "Qual a margem por produto?", dominio: "financeiro" },
+        },
+      },
+      "user-super-admin",
+      sid,
+    );
+
+    expect(status).toBe(200);
+    const result = extractRpcResult(body);
+    // MCP empacota o resultado em result.content[0].text (JSON stringificado)
+    const content = result?.content as Array<{ type: string; text: string }> | undefined;
+    expect(content).toBeDefined();
+    expect(content![0]?.type).toBe("text");
+    // Sem isError = sucesso
+    expect(result?.isError).toBeFalsy();
+  });
+
+  it("admin: tools/call bi_consulta_avancada via HTTP retorna stub (disponivel=false)", async () => {
+    const sid = await initializeSession(testServer.baseUrl, "user-admin");
+
+    const { status, body } = await mcpRequest(
+      testServer.baseUrl,
+      {
+        jsonrpc: "2.0",
+        id: nextRpcId(),
+        method: "tools/call",
+        params: {
+          name: "bi_consulta_avancada",
+          arguments: { pergunta: "Liste os 10 produtos mais rentáveis" },
+        },
+      },
+      "user-admin",
+      sid,
+    );
+
+    expect(status).toBe(200);
+    const result = extractRpcResult(body);
+    const content = result?.content as Array<{ type: string; text: string }> | undefined;
+    expect(content).toBeDefined();
+    // Stub retorna disponivel=false — parse do JSON no text
+    const payload = JSON.parse(content![0]?.text ?? "{}") as Record<string, unknown>;
+    expect(payload.disponivel).toBe(false);
+    expect(result?.isError).toBeFalsy();
+  });
+
+  it("manager: tools/call bi_consulta_avancada via HTTP retorna erro (gate de role ponta a ponta)", async () => {
+    // manager não vê bi_consulta_avancada no catálogo, mas mesmo que tente chamar via HTTP
+    // diretamente, o pipeline handleToolCall nega via assertToolAllowed (camada 2).
+    const sid = await initializeSession(testServer.baseUrl, "user-manager");
+
+    const { status, body } = await mcpRequest(
+      testServer.baseUrl,
+      {
+        jsonrpc: "2.0",
+        id: nextRpcId(),
+        method: "tools/call",
+        params: {
+          name: "bi_consulta_avancada",
+          arguments: { pergunta: "query" },
+        },
+      },
+      "user-manager",
+      sid,
+    );
+
+    // O SDK responde 200 com isError=true no MCP (erros de tool não são HTTP 4xx)
+    // OU 404 se a tool não estiver registrada nesta sessão (catálogo filtrado).
+    // Ambos são comportamentos corretos — o que importa é que manager não executa a tool.
+    const result = extractRpcResult(body);
+    const isToolError = result?.isError === true;
+    const isHttpNotFound = status === 404;
+    const isJsonRpcError = !!(body as Record<string, unknown>)?.error;
+    expect(isToolError || isHttpNotFound || isJsonRpcError).toBe(true);
+  });
+
+  it("viewer (estoque): tools/call tool financeira via HTTP é negado ponta a ponta", async () => {
+    const sid = await initializeSession(testServer.baseUrl, "user-viewer");
+
+    const { status, body } = await mcpRequest(
+      testServer.baseUrl,
+      {
+        jsonrpc: "2.0",
+        id: nextRpcId(),
+        method: "tools/call",
+        params: {
+          name: "financeiro_saldo_contas",
+          arguments: {},
+        },
+      },
+      "user-viewer",
+      sid,
+    );
+
+    // Tool não registrada na sessão → SDK retorna erro JSON-RPC; ou pipeline nega com isError.
+    const result = extractRpcResult(body);
+    const isToolError = result?.isError === true;
+    const isHttpNotFound = status === 404;
+    const isJsonRpcError = !!(body as Record<string, unknown>)?.error;
+    expect(isToolError || isHttpNotFound || isJsonRpcError).toBe(true);
   });
 });
 
