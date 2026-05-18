@@ -54,6 +54,42 @@ describe("financeiro_contas_a_pagar", () => {
     }
   });
 
+  // Regressão: o critério correto é situacaoSimples='aberto', não dataPagamento=null.
+  it("título aberto (situacaoSimples='aberto') aparece no resultado", async () => {
+    const now = new Date("2026-05-18T10:00:00Z");
+    const ctx = makeCtx();
+    (ctx.prisma.fatoBuildState.findMany as jest.Mock).mockResolvedValue([
+      { fato: "fato_financeiro_titulo", ultimoBuildAt: now },
+    ]);
+    (ctx.prisma.syncState.findMany as jest.Mock).mockResolvedValue([
+      { model: "finan.pagamento.divida", lastStatus: "ok", lastSnapshotAt: null, lastIncrementalAt: now },
+    ]);
+    // Mock simula o banco já tendo filtrado por situacaoSimples='aberto'
+    (ctx.prisma.fatoFinanceiroTitulo.findMany as jest.Mock).mockResolvedValue([
+      { participanteNome: "Fornecedor X", numeroDocumento: "BOL-001", dataVencimento: new Date("2026-05-15"), vrSaldo: "1000.00" },
+    ]);
+    const result = await financeiroContasAPagar.handler({}, ctx);
+    if (result.estado !== "preparando") {
+      expect(result.dados.titulos).toHaveLength(1);
+      expect(result.dados.totalAPagar).toBe(1000);
+    }
+  });
+
+  it("quando banco devolve vazio (todos quitados), resultado é estado:'vazio'", async () => {
+    const now = new Date("2026-05-18T10:00:00Z");
+    const ctx = makeCtx();
+    (ctx.prisma.fatoBuildState.findMany as jest.Mock).mockResolvedValue([
+      { fato: "fato_financeiro_titulo", ultimoBuildAt: now },
+    ]);
+    (ctx.prisma.syncState.findMany as jest.Mock).mockResolvedValue([
+      { model: "finan.pagamento.divida", lastStatus: "ok", lastSnapshotAt: null, lastIncrementalAt: now },
+    ]);
+    // Mock simula banco sem nenhum título aberto
+    (ctx.prisma.fatoFinanceiroTitulo.findMany as jest.Mock).mockResolvedValue([]);
+    const result = await financeiroContasAPagar.handler({}, ctx);
+    expect(result.estado).toBe("vazio");
+  });
+
   it("assertToolAllowed nega viewer sem domínio financeiro", () => {
     const viewer: UserContext = { userId: "u2", role: "viewer", domains: [] } as UserContext;
     expect(() => assertToolAllowed(financeiroContasAPagar as never, viewer)).toThrow();

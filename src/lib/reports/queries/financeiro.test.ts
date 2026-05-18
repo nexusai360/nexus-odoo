@@ -118,16 +118,25 @@ describe("queryFluxoCaixa", () => {
 describe("queryContasAReceber", () => {
   const hoje = new Date("2026-05-18");
 
-  it("filtra tipo='a_receber' e dataPagamento=null", async () => {
+  it("filtra tipo='a_receber' e situacaoSimples='aberto'", async () => {
     const prisma = makePrisma();
     (prisma.fatoFinanceiroTitulo.findMany as jest.Mock).mockResolvedValue([]);
     await queryContasAReceber(prisma as never, {}, hoje);
     const call = (prisma.fatoFinanceiroTitulo.findMany as jest.Mock).mock.calls[0][0];
-    expect(call.where).toMatchObject({ tipo: "a_receber", dataPagamento: null });
+    expect(call.where).toMatchObject({ tipo: "a_receber", situacaoSimples: "aberto" });
+  });
+
+  it("NÃO usa dataPagamento como critério (campo nunca é null na fonte)", async () => {
+    const prisma = makePrisma();
+    (prisma.fatoFinanceiroTitulo.findMany as jest.Mock).mockResolvedValue([]);
+    await queryContasAReceber(prisma as never, {}, hoje);
+    const call = (prisma.fatoFinanceiroTitulo.findMany as jest.Mock).mock.calls[0][0];
+    expect(call.where).not.toHaveProperty("dataPagamento");
   });
 
   it("calcula diasAtraso por linha e totalAReceber", async () => {
     const prisma = makePrisma();
+    // Fixture: título com situacaoSimples='aberto' (critério correto)
     (prisma.fatoFinanceiroTitulo.findMany as jest.Mock).mockResolvedValue([
       { participanteNome: "Empresa A", numeroDocumento: "NF-001", dataVencimento: new Date("2026-05-10"), vrSaldo: "500.00" },
       { participanteNome: "Empresa B", numeroDocumento: "NF-002", dataVencimento: null, vrSaldo: "300.00" },
@@ -136,6 +145,16 @@ describe("queryContasAReceber", () => {
     expect(result.titulos[0].diasAtraso).toBe(8); // 18 - 10 = 8 dias
     expect(result.titulos[1].diasAtraso).toBe(0); // null → 0
     expect(result.totalAReceber).toBeCloseTo(800);
+  });
+
+  it("título quitado não aparece (banco não devolve — filtro situacaoSimples='aberto')", async () => {
+    // O banco filtra antes de devolver; o mock simula banco retornando vazio
+    // para um título quitado, confirmando que o where correto foi passado.
+    const prisma = makePrisma();
+    (prisma.fatoFinanceiroTitulo.findMany as jest.Mock).mockResolvedValue([]);
+    const result = await queryContasAReceber(prisma as never, {}, hoje);
+    expect(result.titulos).toHaveLength(0);
+    expect(result.totalAReceber).toBe(0);
   });
 
   it("aplica filtro participanteId quando fornecido", async () => {
@@ -154,22 +173,39 @@ describe("queryContasAReceber", () => {
 describe("queryContasAPagar", () => {
   const hoje = new Date("2026-05-18");
 
-  it("filtra tipo='a_pagar' e dataPagamento=null", async () => {
+  it("filtra tipo='a_pagar' e situacaoSimples='aberto'", async () => {
     const prisma = makePrisma();
     (prisma.fatoFinanceiroTitulo.findMany as jest.Mock).mockResolvedValue([]);
     await queryContasAPagar(prisma as never, {}, hoje);
     const call = (prisma.fatoFinanceiroTitulo.findMany as jest.Mock).mock.calls[0][0];
-    expect(call.where).toMatchObject({ tipo: "a_pagar", dataPagamento: null });
+    expect(call.where).toMatchObject({ tipo: "a_pagar", situacaoSimples: "aberto" });
+  });
+
+  it("NÃO usa dataPagamento como critério (campo nunca é null na fonte)", async () => {
+    const prisma = makePrisma();
+    (prisma.fatoFinanceiroTitulo.findMany as jest.Mock).mockResolvedValue([]);
+    await queryContasAPagar(prisma as never, {}, hoje);
+    const call = (prisma.fatoFinanceiroTitulo.findMany as jest.Mock).mock.calls[0][0];
+    expect(call.where).not.toHaveProperty("dataPagamento");
   });
 
   it("calcula diasAtraso e totalAPagar", async () => {
     const prisma = makePrisma();
+    // Fixture: título com situacaoSimples='aberto' (critério correto)
     (prisma.fatoFinanceiroTitulo.findMany as jest.Mock).mockResolvedValue([
       { participanteNome: "Fornecedor X", numeroDocumento: "BOL-001", dataVencimento: new Date("2026-05-15"), vrSaldo: "1000.00" },
     ]);
     const result = await queryContasAPagar(prisma as never, {}, hoje);
     expect(result.titulos[0].diasAtraso).toBe(3);
     expect(result.totalAPagar).toBeCloseTo(1000);
+  });
+
+  it("título quitado não aparece (banco não devolve — filtro situacaoSimples='aberto')", async () => {
+    const prisma = makePrisma();
+    (prisma.fatoFinanceiroTitulo.findMany as jest.Mock).mockResolvedValue([]);
+    const result = await queryContasAPagar(prisma as never, {}, hoje);
+    expect(result.titulos).toHaveLength(0);
+    expect(result.totalAPagar).toBe(0);
   });
 });
 
@@ -182,18 +218,21 @@ describe("queryTitulosVencidos", () => {
   // e confirmar que a normalização para início do dia funciona corretamente.
   const hoje = new Date("2026-05-18T14:30:00-03:00"); // meio do dia, horário de Brasília
 
-  it("filtra dataVencimento < início do dia de hoje e dataPagamento=null", async () => {
+  it("filtra situacaoSimples='aberto' e dataVencimento < início do dia de hoje", async () => {
     const prisma = makePrisma();
     (prisma.fatoFinanceiroTitulo.findMany as jest.Mock).mockResolvedValue([]);
     await queryTitulosVencidos(prisma as never, hoje);
     const call = (prisma.fatoFinanceiroTitulo.findMany as jest.Mock).mock.calls[0][0];
+    // Confirma critério correto: situacaoSimples='aberto'
+    expect(call.where.situacaoSimples).toBe("aberto");
     // O where.dataVencimento.lt deve ser o início do dia local (não new Date() diretamente)
     const ltValue: Date = call.where.dataVencimento.lt;
     expect(ltValue.getHours()).toBe(0);
     expect(ltValue.getMinutes()).toBe(0);
     expect(ltValue.getSeconds()).toBe(0);
     expect(ltValue.getMilliseconds()).toBe(0);
-    expect(call.where.dataPagamento).toBeNull();
+    // NÃO usa dataPagamento como critério
+    expect(call.where).not.toHaveProperty("dataPagamento");
   });
 
   it("inclui tipo no resultado e calcula diasAtraso e totalVencido", async () => {

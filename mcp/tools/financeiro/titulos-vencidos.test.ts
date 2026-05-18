@@ -70,6 +70,42 @@ describe("financeiro_titulos_vencidos", () => {
     expect(result).toMatchObject({ estado: "vazio" });
   });
 
+  // Regressão: o critério correto é situacaoSimples='aberto' + dataVencimento < hoje.
+  it("título aberto e vencido aparece no resultado", async () => {
+    const now = new Date("2026-05-18T10:00:00Z");
+    const ctx = makeCtx();
+    (ctx.prisma.fatoBuildState.findMany as jest.Mock).mockResolvedValue([
+      { fato: "fato_financeiro_titulo", ultimoBuildAt: now },
+    ]);
+    (ctx.prisma.syncState.findMany as jest.Mock).mockResolvedValue([
+      { model: "finan.pagamento.divida", lastStatus: "ok", lastSnapshotAt: null, lastIncrementalAt: now },
+    ]);
+    // Mock simula banco retornando apenas títulos abertos e vencidos
+    (ctx.prisma.fatoFinanceiroTitulo.findMany as jest.Mock).mockResolvedValue([
+      { tipo: "a_receber", participanteNome: "Cliente Z", numeroDocumento: "NF-100", dataVencimento: new Date("2026-04-01"), vrSaldo: "2000.00" },
+    ]);
+    const result = await financeiroTitulosVencidos.handler({}, ctx);
+    if (result.estado !== "preparando") {
+      expect(result.dados.titulos).toHaveLength(1);
+      expect(result.dados.totalVencido).toBe(2000);
+    }
+  });
+
+  it("título quitado não aparece (banco filtra por situacaoSimples='aberto')", async () => {
+    const now = new Date("2026-05-18T10:00:00Z");
+    const ctx = makeCtx();
+    (ctx.prisma.fatoBuildState.findMany as jest.Mock).mockResolvedValue([
+      { fato: "fato_financeiro_titulo", ultimoBuildAt: now },
+    ]);
+    (ctx.prisma.syncState.findMany as jest.Mock).mockResolvedValue([
+      { model: "finan.pagamento.divida", lastStatus: "ok", lastSnapshotAt: null, lastIncrementalAt: now },
+    ]);
+    // Mock simula banco com nenhum resultado (quitados foram filtrados antes)
+    (ctx.prisma.fatoFinanceiroTitulo.findMany as jest.Mock).mockResolvedValue([]);
+    const result = await financeiroTitulosVencidos.handler({}, ctx);
+    expect(result.estado).toBe("vazio");
+  });
+
   it("assertToolAllowed nega viewer sem domínio financeiro", () => {
     const viewer: UserContext = { userId: "u2", role: "viewer", domains: [] } as UserContext;
     expect(() => assertToolAllowed(financeiroTitulosVencidos as never, viewer)).toThrow();

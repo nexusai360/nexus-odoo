@@ -109,7 +109,9 @@ export interface TituloRow {
 
 // ---------------------------------------------------------------------------
 // queryContasAReceber — fato_financeiro_titulo (task 4d.5-q)
-// CRITERIO_NAO_PAGO: { dataPagamento: null } — confirmado em 4a.2 Step 4.
+// CRITERIO_ABERTO: { situacaoSimples: 'aberto' } — corrigido 2026-05-18.
+//   dataPagamento nunca é null (finan.pagamento.divida é registro de pagamento).
+//   situacao_divida_simples é o oráculo: aberto|quitado|baixado|provisorio.
 // tipo "a_receber" — derivado do campo raw.tipo === "recebimento" pelo builder.
 // ---------------------------------------------------------------------------
 
@@ -121,7 +123,7 @@ export async function queryContasAReceber(
   const rows = await prisma.fatoFinanceiroTitulo.findMany({
     where: {
       tipo: "a_receber",
-      dataPagamento: null,
+      situacaoSimples: "aberto",
       ...(filtros.participanteId ? { participanteId: filtros.participanteId } : {}),
     },
     select: {
@@ -146,7 +148,8 @@ export async function queryContasAReceber(
 
 // ---------------------------------------------------------------------------
 // queryContasAPagar — fato_financeiro_titulo (task 4d.6-q)
-// CRITERIO_NAO_PAGO: { dataPagamento: null }
+// CRITERIO_ABERTO: { situacaoSimples: 'aberto' } — corrigido 2026-05-18.
+//   dataPagamento nunca é null (finan.pagamento.divida é registro de pagamento).
 // tipo "a_pagar" — derivado do campo raw.tipo === "pagamento" pelo builder.
 // ---------------------------------------------------------------------------
 
@@ -158,7 +161,7 @@ export async function queryContasAPagar(
   const rows = await prisma.fatoFinanceiroTitulo.findMany({
     where: {
       tipo: "a_pagar",
-      dataPagamento: null,
+      situacaoSimples: "aberto",
       ...(filtros.participanteId ? { participanteId: filtros.participanteId } : {}),
     },
     select: {
@@ -196,7 +199,9 @@ export interface TituloVencidoRow {
 
 // ---------------------------------------------------------------------------
 // queryTitulosVencidos — fato_financeiro_titulo (task 4d.7-q)
-// CRITERIO_NAO_PAGO: { dataPagamento: null }
+// CRITERIO_ABERTO: { situacaoSimples: 'aberto' } — corrigido 2026-05-18.
+//   dataPagamento nunca é null (finan.pagamento.divida é registro de pagamento).
+//   Só títulos abertos E com dataVencimento < início do dia de hoje estão vencidos.
 // ---------------------------------------------------------------------------
 
 export async function queryTitulosVencidos(
@@ -211,8 +216,8 @@ export async function queryTitulosVencidos(
 
   const rows = await prisma.fatoFinanceiroTitulo.findMany({
     where: {
+      situacaoSimples: "aberto",
       dataVencimento: { lt: inicioDoDia },
-      dataPagamento: null,
     },
     select: {
       tipo: true,

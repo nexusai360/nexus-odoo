@@ -1,5 +1,8 @@
 // src/worker/fatos/fato-financeiro-titulo.ts
-// CRITERIO_NAO_PAGO: dataPagamento == null (Task 4a.2 Step 4 — usado nas tools 4d.5/4d.6/4d.7)
+// CRITERIO_ABERTO: situacaoSimples == 'aberto' (corrigido 2026-05-18 — dataPagamento nunca é null
+//   pois finan.pagamento.divida é registro de pagamento; campo situacao_divida_simples é o oráculo).
+//   Distribuição real: aberto=21 (20 a_receber + 1 a_pagar), quitado=1120, baixado=1, provisorio=4.
+//   Usado nas queries de contas_a_receber, contas_a_pagar e titulos_vencidos.
 // tipo mapeado do campo selection real: "pagamento" → "a_pagar"; "recebimento" → "a_receber".
 // Evidência empírica (2026-05-18): 412 pagamento/sinal=-1; 729 recebimento/sinal=1;
 // 5 recebimento/sinal=0 — sinal=0 invalida a regra sinal>=0→a_receber; campo tipo é o oráculo.
