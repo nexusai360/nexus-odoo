@@ -38,6 +38,9 @@ export const FATO_FONTE: Record<string, { model: string; mode: "snapshot" | "inc
   // Comercial (onda B) — model confirmado via SELECT model FROM sync_state
   fato_pedido:               { model: "pedido.documento",          mode: "incremental" },
   fato_pedido_parcela:       { model: "pedido.parcela",            mode: "incremental" },
+  // Fiscal (onda C) — model confirmado via SELECT model FROM sync_state
+  fato_nota_fiscal:          { model: "sped.documento",            mode: "incremental" },
+  fato_nota_fiscal_item:     { model: "sped.documento.item",       mode: "incremental" },
 };
 
 // ---------------------------------------------------------------------------
