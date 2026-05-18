@@ -10,12 +10,12 @@
 // em tools/list. O teste de 4f-4 é a rede de proteção.
 import type { ToolEntry } from "./types.js";
 
-// import { estoqueTools } from "../tools/estoque/index.js";   // descomenta em 4c.3
+import { estoqueTools } from "../tools/estoque/index.js";   // 4c.3
 // import { financeiroTools } from "../tools/financeiro/index.js"; // descomenta em 4d.0
-// import { caminho3Tools } from "../tools/caminho3/index.js"; // descomenta em 4e
+// import { caminho3Tools } from "../tools/caminho3/index.js"; // descomenta em 4c.11
 
 export const catalogo: ToolEntry[] = [
-  // ...estoqueTools,
+  ...estoqueTools,
   // ...financeiroTools,
   // ...caminho3Tools,
 ];
