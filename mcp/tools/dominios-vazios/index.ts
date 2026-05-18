@@ -4,8 +4,10 @@
 import type { ToolEntry } from "../../catalog/types.js";
 import { rhStatusDominio } from "./rh-status-dominio.js";
 import { crmStatusDominio } from "./crm-status-dominio.js";
+import { producaoStatusDominio } from "./producao-status-dominio.js";
 
 export const dominiosVaziosTools: ToolEntry[] = [
   rhStatusDominio as ToolEntry,
   crmStatusDominio as ToolEntry,
+  producaoStatusDominio as ToolEntry,
 ];
