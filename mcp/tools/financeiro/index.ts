@@ -5,9 +5,11 @@ import type { ToolEntry } from "../../catalog/types.js";
 import { financeiroSaldoContas } from "./saldo-contas.js";
 import { financeiroCaixaPeriodo } from "./caixa-periodo.js";
 import { financeiroFluxoCaixa } from "./fluxo-caixa.js";
+import { financeiroContasAReceber } from "./contas-a-receber.js";
 
 export const financeiroTools: ToolEntry[] = [
   financeiroSaldoContas as ToolEntry,
   financeiroCaixaPeriodo as ToolEntry,
   financeiroFluxoCaixa as ToolEntry,
+  financeiroContasAReceber as ToolEntry,
 ];
