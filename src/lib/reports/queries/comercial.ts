@@ -5,6 +5,7 @@
 // `withFreshness` vive no handler MCP, não aqui.
 
 import type { PrismaClient } from "@/generated/prisma/client";
+import { diasAtraso } from "../../../../mcp/lib/dias-atraso";
 
 // Funções implementadas nas tasks B.5–B.9 (sequenciais — mesmo arquivo).
 export type { PrismaClient as _PC }; // evita "no exports" no TS até as funções serem adicionadas
@@ -83,12 +84,33 @@ export async function queryPedidosPorVendedor(
   return { linhas };
 }
 
-// Placeholder — substituído em B.8
 export async function queryPedidosAtrasados(
-  _prisma: PrismaClient,
-  _hoje: Date,
+  prisma: PrismaClient,
+  hoje: Date,
 ): Promise<{ linhas: { pedidoId: number | null; participanteNome: string | null; numero: string | null; dataVencimento: Date | null; valor: number; diasAtraso: number }[]; totalAtrasado: number }> {
-  throw new Error("not implemented");
+  const rows = await prisma.fatoPedidoParcela.findMany({
+    where: {
+      dataVencimento: { lt: hoje },
+      parcelaFaturada: false,
+    },
+    select: {
+      pedidoId: true,
+      participanteNome: true,
+      numero: true,
+      dataVencimento: true,
+      valor: true,
+    },
+  });
+  const linhas = rows.map((r) => ({
+    pedidoId: r.pedidoId,
+    participanteNome: r.participanteNome,
+    numero: r.numero,
+    dataVencimento: r.dataVencimento,
+    valor: Number(r.valor),
+    diasAtraso: diasAtraso(r.dataVencimento, hoje),
+  }));
+  const totalAtrasado = linhas.reduce((acc, l) => acc + l.valor, 0);
+  return { linhas, totalAtrasado };
 }
 
 // Placeholder — substituído em B.9

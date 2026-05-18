@@ -135,7 +135,51 @@ describe("queryPedidosPorVendedor", () => {
 });
 
 describe("queryPedidosAtrasados", () => {
-  // implementado em B.8
+  it("retorna parcelas vencidas não faturadas com diasAtraso calculado", async () => {
+    const hoje = new Date("2024-03-10T00:00:00");
+    const mockPrisma = {
+      fatoPedidoParcela: {
+        findMany: jest.fn().mockResolvedValue([
+          {
+            pedidoId: 1,
+            participanteNome: "Cliente A",
+            numero: "1/1",
+            dataVencimento: new Date("2024-03-01T00:00:00"),
+            valor: "200.00",
+            parcelaFaturada: false,
+          },
+          {
+            pedidoId: 2,
+            participanteNome: "Cliente B",
+            numero: "2/1",
+            dataVencimento: new Date("2024-03-05T00:00:00"),
+            valor: "100.00",
+            parcelaFaturada: false,
+          },
+        ]),
+      },
+    } as unknown as import("@/generated/prisma/client").PrismaClient;
+
+    const result = await queryPedidosAtrasados(mockPrisma, hoje);
+    expect(result.linhas).toHaveLength(2);
+    expect(result.linhas[0]!.diasAtraso).toBe(9);  // 10 - 1 março = 9 dias
+    expect(result.linhas[1]!.diasAtraso).toBe(5);  // 10 - 5 março = 5 dias
+    expect(result.totalAtrasado).toBeCloseTo(300);
+  });
+
+  it("usa where com dataVencimento < hoje e parcelaFaturada=false", async () => {
+    const hoje = new Date("2024-03-10T00:00:00");
+    const mockPrisma = {
+      fatoPedidoParcela: {
+        findMany: jest.fn().mockResolvedValue([]),
+      },
+    } as unknown as import("@/generated/prisma/client").PrismaClient;
+
+    await queryPedidosAtrasados(mockPrisma, hoje);
+    const call = (mockPrisma.fatoPedidoParcela.findMany as jest.Mock).mock.calls[0][0];
+    expect(call.where?.dataVencimento?.lt).toEqual(hoje);
+    expect(call.where?.parcelaFaturada).toBe(false);
+  });
 });
 
 describe("queryParcelasAVencer", () => {
