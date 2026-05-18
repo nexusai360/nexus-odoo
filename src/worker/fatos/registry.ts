@@ -11,6 +11,7 @@ import { rebuildFatoPedidoParcela } from "./fato-pedido-parcela";
 import { rebuildFatoNotaFiscal } from "./fato-nota-fiscal";
 import { rebuildFatoNotaFiscalItem } from "./fato-nota-fiscal-item";
 import { rebuildFatoParceiro } from "./fato-parceiro";
+import { rebuildFatoContaContabil } from "./fato-conta-contabil";
 
 export interface FatoBuilderEntry {
   nome: string;
@@ -30,6 +31,7 @@ export const FATO_BUILDERS: FatoBuilderEntry[] = [
   { nome: "fato_nota_fiscal", cycle: "incremental", run: rebuildFatoNotaFiscal },
   { nome: "fato_nota_fiscal_item", cycle: "incremental", run: rebuildFatoNotaFiscalItem },
   { nome: "fato_parceiro", cycle: "incremental", run: rebuildFatoParceiro },
+  { nome: "fato_conta_contabil", cycle: "incremental", run: rebuildFatoContaContabil },
 ];
 
 /**
