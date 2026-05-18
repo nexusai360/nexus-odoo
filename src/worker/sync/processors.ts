@@ -8,6 +8,7 @@ import { syncIncremental } from "./incremental";
 import { syncSnapshot } from "./snapshot";
 import { reconcileModel } from "./reconcile";
 import { rawDelegateKey } from "../jobs";
+import { runBuilders } from "../fatos/registry";
 
 export interface CycleContext {
   prisma: PrismaClient;
@@ -62,6 +63,11 @@ export async function processIncrementalCycle(
     };
     await runCycle(deps, entry.odooModel);
   }
+  try {
+    await runBuilders(ctx.prisma, "incremental");
+  } catch (err) {
+    console.error("[worker] falha ao rodar builders incrementais:", err);
+  }
 }
 
 export async function processSnapshotCycle(
@@ -94,35 +100,7 @@ export async function processSnapshotCycle(
     await runCycle(deps, entry.odooModel);
   }
 
-  // Fato provisório: reconstruir após o snapshot de estoque.saldo.hoje.
-  const { rebuildFatoEstoqueSaldo } = await import("../fatos/fato-estoque-saldo");
-  try {
-    const n = await rebuildFatoEstoqueSaldo(ctx.prisma);
-    console.log(`[worker] fato_estoque_saldo reconstruído: ${n} linhas`);
-  } catch (err) {
-    console.error("[worker] falha ao reconstruir fato_estoque_saldo:", err);
-  }
-
-  // Fatos derivados de estoque.extrato e estoque.saldo.hoje.duracao.dias.
-  const { rebuildFatoEstoqueMovimento } = await import(
-    "../fatos/fato-estoque-movimento"
-  );
-  try {
-    const n = await rebuildFatoEstoqueMovimento(ctx.prisma);
-    console.log(`[worker] fato_estoque_movimento reconstruído: ${n} linhas`);
-  } catch (err) {
-    console.error("[worker] falha ao reconstruir fato_estoque_movimento:", err);
-  }
-
-  const { rebuildFatoProdutoParado } = await import(
-    "../fatos/fato-produto-parado"
-  );
-  try {
-    const n = await rebuildFatoProdutoParado(ctx.prisma);
-    console.log(`[worker] fato_produto_parado reconstruído: ${n} linhas`);
-  } catch (err) {
-    console.error("[worker] falha ao reconstruir fato_produto_parado:", err);
-  }
+  await runBuilders(ctx.prisma, "snapshot");
 }
 
 export async function processReconcileCycle(

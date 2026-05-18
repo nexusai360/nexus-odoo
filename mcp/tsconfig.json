@@ -1,0 +1,24 @@
+{
+  // NOTAS:
+  // (a) `include` cobre APENAS `mcp/` — "**/*.ts" é relativo a este arquivo.
+  // (b) NÃO estende o tsconfig raiz: o raiz usa module:"esnext" + moduleResolution:"bundler",
+  //     incompatíveis com Node puro. O mcp/ usa module:"nodenext".
+  // (c) Sem "jsx" — mcp/ não tem .tsx.
+  // (d) Os tipos de @/... resolvem via "paths" + "baseUrl":"..", sem que src/** seja
+  //     raiz de compilação. Arquivos .tsx de src/ NÃO entram no build do mcp/.
+  "compilerOptions": {
+    "target": "ES2022",
+    "lib": ["ES2022"],
+    "module": "nodenext",
+    "moduleResolution": "nodenext",
+    "strict": true,
+    "esModuleInterop": true,
+    "resolveJsonModule": true,
+    "skipLibCheck": true,
+    "noEmit": true,
+    "baseUrl": "..",
+    "paths": { "@/*": ["src/*"] }
+  },
+  "include": ["**/*.ts"],
+  "exclude": ["node_modules"]
+}
