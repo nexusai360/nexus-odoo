@@ -2,7 +2,7 @@
 // Harness de teste de integração do servidor MCP (4f-4).
 //
 // Sobe o servidor HTTP real numa porta efêmera. O catálogo real (catalogo) é
-// importado diretamente — as tools registradas são as 14 de produção.
+// importado diretamente — as tools registradas são as 30 de produção.
 //
 // Auth é simulada via mocks (validateServiceToken + resolveUserContext) injetados
 // ANTES do createHttpServer ser importado, de forma que o servidor use os mocks
