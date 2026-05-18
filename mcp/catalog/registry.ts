@@ -25,8 +25,10 @@ export function visibleTools(
     }
     // Tool de domínio-neutro: sempre visível (depois do gate de role)
     if (tool.sempreVisivel) return true;
-    // Tool de domínio: visível apenas se o domínio está na lista do usuário
-    return domains.includes(tool.dominio);
+    // Tool de domínio: visível apenas se o domínio está na lista do usuário.
+    // tool.dominio pode ser undefined em tools sempreVisivel (já tratadas acima),
+    // mas tools sem sempreVisivel devem ter domínio — fallback false protege runtime.
+    return tool.dominio !== undefined && domains.includes(tool.dominio);
   });
 }
 
@@ -46,9 +48,9 @@ export function assertToolAllowed(tool: ToolEntry, user: UserContext): void {
   if (tool.sempreVisivel) return;
   // Verificar domínio
   const domains = visibleDomains(user.role, user.domains);
-  if (!domains.includes(tool.dominio)) {
+  if (tool.dominio === undefined || !domains.includes(tool.dominio)) {
     throw new DomainDeniedError(
-      `Usuário não tem acesso ao domínio '${tool.dominio}' (tool '${tool.id}').`,
+      `Usuário não tem acesso ao domínio '${tool.dominio ?? "desconhecido"}' (tool '${tool.id}').`,
     );
   }
 }

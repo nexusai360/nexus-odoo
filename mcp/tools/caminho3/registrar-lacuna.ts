@@ -18,9 +18,8 @@ type Output = z.infer<typeof outputSchema>;
 
 export const registrarLacuna: ToolEntry<Input, Output> = {
   id: "registrar_lacuna",
-  // dominio obrigatório no tipo; "estoque" como valor de campo mas sempreVisivel
-  // garante visibilidade independente de domínio do usuário (achado N9).
-  dominio: "estoque",
+  // dominio ausente intencionalmente — tool de domínio-neutro (sempreVisivel: true).
+  // Nenhum domínio falso: visibilidade é garantida pelo predicado sempreVisivel.
   sempreVisivel: true,
   descricao:
     "Registra uma pergunta que não foi coberta pelo catálogo de tools (Caminho 3a). " +

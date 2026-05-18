@@ -22,8 +22,15 @@ export type ZodRawShape = Record<string, z.ZodTypeAny>;
 export interface ToolEntry<I = unknown, O = unknown> {
   /** Identificador único da tool (snake_case, ex.: "saldo_produto"). */
   id: string;
-  /** Domínio de negócio ao qual a tool pertence. */
-  dominio: ReportDomain;
+  /**
+   * Domínio de negócio ao qual a tool pertence.
+   * Ausente em tools de domínio-neutro (ex.: `registrar_lacuna`,
+   * `bi_consulta_avancada`) que usam `sempreVisivel: true` — nesses casos a
+   * visibilidade não depende de domínio, então forçar um domínio seria falso.
+   * `visibleTools` e `assertToolAllowed` tratam entry sem domínio como
+   * sempre-coerente-de-domínio (o gate de `sempreVisivel` já garante isso).
+   */
+  dominio?: ReportDomain;
   /** Descrição legível para o agente. */
   descricao: string;
   /**
