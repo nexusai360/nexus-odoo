@@ -1,7 +1,7 @@
 // mcp/server.ts
 // Servidor HTTP do MCP — middlewares de auth + sessão + McpServer + pipeline de tools/call.
 // Decomposto nas tasks 4a.14 (service token) / 4a.15 (sessão) / 4a.16 (transport+McpServer)
-// / 4a.17 (pipeline tools/call).
+// / 4a.17 (pipeline tools/call) / 4f-3 (rate limiter).
 //
 // NOTA DE ARQUITETURA (Opção A — McpServer por sessão):
 // Para implementar a camada 1 do RBAC (tools/list filtrado por usuário), criamos
@@ -20,10 +20,12 @@ import { validateServiceToken } from "./auth/service-token.js";
 import { resolveUserContext, type UserContext } from "./auth/user-context.js";
 import { sessionStore } from "./auth/session-store.js";
 import { prisma } from "./lib/prisma.js";
+import { mcpRedis } from "./lib/redis.js";
 import { catalogo } from "./catalog/index.js";
 import { visibleTools, assertToolAllowed } from "./catalog/registry.js";
 import { recordAudit, extractRowCount, type AuditOutcome } from "./lib/audit.js";
 import { toOutcome, safeErrorMessage } from "./lib/failure.js";
+import { checkMcpRateLimit, type RateLimitRedis } from "./lib/rate-limit.js";
 import type { ToolEntry } from "./catalog/types.js";
 
 // ─── handleToolCall — pipeline de tools/call (4a.17) ────────────────────────
@@ -31,23 +33,35 @@ import type { ToolEntry } from "./catalog/types.js";
 export interface HandleToolCallDeps {
   resolveUser: typeof resolveUserContext;
   record: typeof recordAudit;
+  rateLimit: RateLimitRedis;
 }
 
 /**
- * Pipeline de tools/call com RBAC (camadas 2/6/7), validação Zod e audit.
- * Segue a ordem: recarregar UserContext → assertToolAllowed → parse input
+ * Pipeline de tools/call com RBAC (camadas 2/6/7), rate limit (camada 7b), validação Zod e audit.
+ * Segue a ordem: rate limit → recarregar UserContext → assertToolAllowed → parse input
  *   → executar handler → audit em todos os caminhos.
+ *
+ * 4f-3: checkMcpRateLimit é executado ANTES de qualquer processamento. Estouro →
+ *   outcome=denied + recordAudit + resposta de recusa.
  */
 export async function handleToolCall(
   tool: ToolEntry,
   rawInput: unknown,
   userId: string,
-  deps: HandleToolCallDeps = { resolveUser: resolveUserContext, record: recordAudit },
+  deps: HandleToolCallDeps = { resolveUser: resolveUserContext, record: recordAudit, rateLimit: mcpRedis as RateLimitRedis },
 ): Promise<{ content: Array<{ type: "text"; text: string }>; isError?: true }> {
   const start = Date.now();
   let outcome: AuditOutcome = "error";
 
   try {
+    // Camada 7b (4f-3): rate limit por usuário — antes de qualquer processamento
+    const rl = await checkMcpRateLimit(deps.rateLimit, userId);
+    if (!rl.allowed) {
+      outcome = "denied";
+      await auditSafe(deps.record, userId, tool.id, rawInput, outcome, undefined, Date.now() - start);
+      return errorResult("rate_limit_exceeded: muitas requisições. Tente novamente em instantes.");
+    }
+
     // Camada 6: recarregar UserContext (proteção contra sessão expirada/revogada)
     const user = await deps.resolveUser(prisma, userId);
     if (!user) {
