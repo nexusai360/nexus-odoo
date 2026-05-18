@@ -48,3 +48,31 @@ Toda onda de domínio novo (comercial, fiscal, contábil, produção) deve inclu
 na etapa de verificação, um **teste end-to-end contra o cache real** — popular
 os fatos, subir o servidor, exercer as tools e conferir os números — não só
 `tsc`/`eslint`/`jest`/code-review.
+
+---
+
+## R3 — Contábil e Produção quase não têm dado no cache
+
+**Aberto desde:** 2026-05-18 (levantamento dos domínios restantes da F4).
+
+Levantamento das tabelas `raw` por domínio que falta cobrir no MCP:
+
+| Domínio | Tabelas `raw` | Volume |
+|---|---|---|
+| **Comercial** (pedidos) | `pedido_documento` (71), `pedido_parcela` (1.925), `pedido_etapa` (203), `pedido_documento_historico` (8.054), `pedido_operacao` (36) | substancial — domínio real |
+| **Fiscal** (SPED) | `sped_documento` (3.743 notas), `sped_documento_item` (211.385), `sped_documento_pagamento` (36.141), `sped_participante` (6.516)… (40 tabelas) | substancial — domínio real |
+| **Contábil** | `contabil_conta` (934), `contabil_conta_referencial` (2.204) | **só o plano de contas** — não há tabela de lançamentos contábeis no cache |
+| **Produção** | `producao_processo` (1) | **1 único registro** — praticamente inexistente |
+
+### Implicação
+
+"MCP cobrir 100% dos domínios" é viável para **comercial** e **fiscal** (dado
+rico). Para **contábil**, o MCP só consegue responder sobre a *estrutura do
+plano de contas* — não há movimento contábil para perguntas de saldo/resultado.
+Para **produção**, não há praticamente nada a expor.
+
+Isto é realidade do cache/instância Odoo Tauga, não limitação do MCP. Não é
+defeito a corrigir no código — é informação para a decisão de escopo: cobrir
+contábil/produção com as tools possíveis (magras) e registrar o limite, ou
+confirmar com o cliente se há outra fonte de dado contábil/produção no Odoo
+que a F2 (ingestão) não trouxe.
