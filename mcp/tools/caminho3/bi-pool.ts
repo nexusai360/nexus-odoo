@@ -20,7 +20,8 @@ const connectionString = process.env.MCP_BI_DATABASE_URL;
 let pool: Pool | null = null;
 
 if (connectionString) {
-  pool = new Pool({ connectionString });
+  // max conservador: o 3c é gated a admin/super_admin — concorrência baixa esperada.
+  pool = new Pool({ connectionString, max: 5 });
 
   // Reforço de segurança por conexão: read-only + timeout curto.
   // Usamos uma única query com ponto-e-vírgula para garantir atomicidade dos SETs.
@@ -33,6 +34,12 @@ if (connectionString) {
         const msg = err instanceof Error ? err.message : String(err);
         console.warn("[bi-pool] falha ao configurar conexão read-only:", msg);
       });
+  });
+
+  // Handler de erro em clientes idle — sem isso, um erro de conexão ociosa pode
+  // emitir 'error' no pool e derrubar o processo Node.js (comportamento padrão do pg).
+  pool.on("error", (err: Error) => {
+    console.error("[bi-pool] erro em cliente idle do pool BI:", err.message);
   });
 }
 
