@@ -6,7 +6,7 @@ import type { UserContext } from "../../auth/user-context.js";
 
 function makePrisma() {
   return {
-    featureRequest: { create: jest.fn() },
+    featureRequest: { createMany: jest.fn() },
   };
 }
 
@@ -18,20 +18,22 @@ function makeCtx(role = "viewer", domains: string[] = []): ToolHandlerCtx {
 }
 
 describe("registrar_lacuna", () => {
-  it("handler grava featureRequest e retorna { registrado: true }", async () => {
+  it("handler grava featureRequest via createMany (sem RETURNING) e retorna { registrado: true }", async () => {
     const ctx = makeCtx();
-    (ctx.prisma.featureRequest.create as jest.Mock).mockResolvedValue({ id: "r1" });
+    (ctx.prisma.featureRequest.createMany as jest.Mock).mockResolvedValue({ count: 1 });
     const result = await registrarLacuna.handler(
       { perguntaResumo: "Qual o estoque de bicicletas?", dominio: "estoque" },
       ctx,
     );
     expect(result).toEqual({ registrado: true });
-    expect(ctx.prisma.featureRequest.create).toHaveBeenCalledWith({
-      data: expect.objectContaining({
-        userId: "u1",
-        perguntaResumo: "Qual o estoque de bicicletas?",
-        dominio: "estoque",
-      }),
+    expect(ctx.prisma.featureRequest.createMany).toHaveBeenCalledWith({
+      data: [
+        expect.objectContaining({
+          userId: "u1",
+          perguntaResumo: "Qual o estoque de bicicletas?",
+          dominio: "estoque",
+        }),
+      ],
     });
   });
 

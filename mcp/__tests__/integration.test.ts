@@ -48,8 +48,8 @@ jest.mock("../auth/session-store.js", () => ({
 
 jest.mock("../lib/prisma.js", () => ({
   prisma: {
-    mcpAuditLog: { create: jest.fn().mockResolvedValue({}) },
-    featureRequest: { create: jest.fn().mockResolvedValue({ id: "fr-1" }) },
+    mcpAuditLog: { createMany: jest.fn().mockResolvedValue({ count: 1 }) },
+    featureRequest: { createMany: jest.fn().mockResolvedValue({ count: 1 }) },
   },
 }));
 

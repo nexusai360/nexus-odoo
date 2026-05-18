@@ -13,20 +13,29 @@ export interface AuditParams {
   durationMs?: number;
 }
 
-/** Grava uma linha em mcp_audit_log. Nunca lança — envolver em try/catch no pipeline. */
+/**
+ * Grava uma linha em mcp_audit_log. Nunca lança — envolver em try/catch no pipeline.
+ *
+ * IMPORTANTE: usa createMany() em vez de create() para suprimir o RETURNING implícito
+ * que o Prisma/adapter-pg emite no create(). O role nexus_mcp tem GRANT INSERT mas não
+ * SELECT em mcp_audit_log (menor privilégio: o MCP grava mas não lê seu próprio log).
+ * createMany() emite apenas INSERT sem RETURNING, preservando o menor privilégio.
+ */
 export async function recordAudit(
   prisma: PrismaClient,
   p: AuditParams,
 ): Promise<void> {
-  await prisma.mcpAuditLog.create({
-    data: {
-      userId: p.userId,
-      tool: p.tool,
-      params: p.params as object,
-      outcome: p.outcome,
-      rowCount: p.rowCount,
-      durationMs: p.durationMs,
-    },
+  await prisma.mcpAuditLog.createMany({
+    data: [
+      {
+        userId: p.userId,
+        tool: p.tool,
+        params: p.params as object,
+        outcome: p.outcome,
+        rowCount: p.rowCount,
+        durationMs: p.durationMs,
+      },
+    ],
   });
 }
 
