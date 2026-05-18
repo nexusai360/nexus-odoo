@@ -159,3 +159,350 @@ export async function querySaldoProduto(
     linhas,
   };
 }
+
+// ---------------------------------------------------------------------------
+// Tipos de R2 — Valor por armazém
+// ---------------------------------------------------------------------------
+
+/** Linha da tabela de R2 (sem percentual — calculado no wrapper/tool). */
+export interface ValorArmazemRow {
+  [k: string]: unknown;
+  armazem: string;
+  valor: number;
+  numProdutos: number;
+  percentual: number;
+}
+
+/** KPIs de R2. */
+export interface ValorArmazemKpis {
+  valorTotal: number;
+  numArmazens: number;
+}
+
+/** Retorno completo de R2. */
+export interface ValorArmazemData {
+  kpis: ValorArmazemKpis;
+  linhas: ValorArmazemRow[];
+  /** Top-8 para o BarChart auxiliar. */
+  top8: { rotulo: string; valor: number }[];
+}
+
+// ---------------------------------------------------------------------------
+// R2 — queryValorArmazem
+// ---------------------------------------------------------------------------
+
+/**
+ * Agrega valor de estoque por armazém. Devolve linhasBruto (sem percentual —
+ * percentual é shaping e calculado no wrapper F3 e na tool MCP, regra N8).
+ * Fato: fato_estoque_saldo.
+ */
+export async function queryValorArmazem(
+  prisma: PrismaClient,
+): Promise<{ kpis: { valorTotal: number; numArmazens: number }; linhasBruto: { armazem: string; valor: number; numProdutos: number }[] }> {
+  const rows = await prisma.fatoEstoqueSaldo.findMany({
+    where: { vrSaldo: { gt: 0 } },
+    select: { localNome: true, produtoId: true, vrSaldo: true },
+  });
+
+  const mapa = new Map<string, { valor: number; produtos: Set<number | null> }>();
+  for (const r of rows) {
+    const nomeRaw = r.localNome ?? "Sem armazém";
+    const rotulo = limparNomeLocal(nomeRaw).rotulo;
+    const vr = r.vrSaldo ? Number(r.vrSaldo) : 0;
+    const existing = mapa.get(rotulo);
+    if (existing) {
+      existing.valor += vr;
+      existing.produtos.add(r.produtoId);
+    } else {
+      mapa.set(rotulo, { valor: vr, produtos: new Set([r.produtoId]) });
+    }
+  }
+
+  const valorTotal = [...mapa.values()].reduce((acc, v) => acc + v.valor, 0);
+
+  const linhasBruto = [...mapa.entries()]
+    .map(([armazem, v]) => ({ armazem, valor: v.valor, numProdutos: v.produtos.size }))
+    .sort((a, b) => b.valor - a.valor);
+
+  return {
+    kpis: { valorTotal, numArmazens: mapa.size },
+    linhasBruto,
+  };
+}
+
+// ---------------------------------------------------------------------------
+// Tipos de R3 — Entradas e saídas
+// ---------------------------------------------------------------------------
+
+/** Ponto da série de R3. */
+export interface MovimentoMes {
+  mes: string;
+  entrada: number;
+  saida: number;
+}
+
+/** Linha do detalhamento de R3 (por mês × sentido × produto). */
+export interface DetalheMovimento {
+  [k: string]: unknown;
+  mes: string;
+  sentido: string;
+  produto: string;
+  quantidade: number;
+}
+
+/** Retorno completo de R3: série do gráfico + tabela de detalhe. */
+export interface EntradasSaidasData {
+  serie: MovimentoMes[];
+  detalhe: DetalheMovimento[];
+}
+
+// ---------------------------------------------------------------------------
+// R3 — queryEntradasSaidas
+// ---------------------------------------------------------------------------
+
+/**
+ * Agrega entradas e saídas por mês. Fato: fato_estoque_movimento.
+ */
+export async function queryEntradasSaidas(
+  prisma: PrismaClient,
+  filtros: { periodoDe?: string; periodoAte?: string; armazemId?: number },
+): Promise<EntradasSaidasData> {
+  const where = {
+    ...(filtros.periodoDe && filtros.periodoAte
+      ? { mes: { gte: filtros.periodoDe, lte: filtros.periodoAte } }
+      : {}),
+    ...(filtros.armazemId ? { localId: filtros.armazemId } : {}),
+  };
+
+  // Série agregada por mês × sentido (para o LineChart).
+  const grupos = await prisma.fatoEstoqueMovimento.groupBy({
+    by: ["mes", "sentido"],
+    where,
+    _sum: { quantidade: true },
+  });
+  const porMes = new Map<string, MovimentoMes>();
+  for (const g of grupos) {
+    const item = porMes.get(g.mes) ?? { mes: g.mes, entrada: 0, saida: 0 };
+    const valor = g._sum.quantidade ? Math.abs(Number(g._sum.quantidade)) : 0;
+    if (g.sentido === "entrada") item.entrada = valor;
+    else item.saida = valor;
+    porMes.set(g.mes, item);
+  }
+  const serie = [...porMes.values()].sort((a, b) => a.mes.localeCompare(b.mes));
+
+  // Detalhe por mês × sentido × produto (para a DataTable).
+  const detGrupos = await prisma.fatoEstoqueMovimento.groupBy({
+    by: ["mes", "sentido", "produtoNome"],
+    where,
+    _sum: { quantidade: true },
+    orderBy: [{ mes: "asc" }, { sentido: "asc" }],
+  });
+  const detalhe: DetalheMovimento[] = detGrupos.map((g) => ({
+    mes: g.mes,
+    sentido: g.sentido,
+    produto: g.produtoNome ?? "Sem produto",
+    quantidade: g._sum.quantidade ? Math.abs(Number(g._sum.quantidade)) : 0,
+  }));
+
+  return { serie, detalhe };
+}
+
+// ---------------------------------------------------------------------------
+// Tipos de R4 — Produtos parados
+// ---------------------------------------------------------------------------
+
+/** Linha de R4. */
+export interface ProdutoParadoRow {
+  [k: string]: unknown;
+  produtoNome: string | null;
+  localNome: string | null;
+  saldo: number;
+  dias: number;
+  vrSaldo: number;
+}
+/** KPIs de topo de R4. */
+export interface ProdutoParadoKpis {
+  totalParados: number;
+  valorImobilizado: number;
+}
+/** Dados de R4: KPIs + tabela. */
+export interface ProdutoParadoData {
+  kpis: ProdutoParadoKpis;
+  total: number;
+  linhas: ProdutoParadoRow[];
+}
+
+// ---------------------------------------------------------------------------
+// R4 — queryProdutosParados
+// ---------------------------------------------------------------------------
+
+/**
+ * Lista produtos parados com filtros de faixa de dias e armazém.
+ * Fato: fato_produto_parado.
+ */
+export async function queryProdutosParados(
+  prisma: PrismaClient,
+  filtros: { faixaDias?: number; armazemId?: number },
+): Promise<ProdutoParadoData> {
+  const rows = await prisma.fatoProdutoParado.findMany({
+    where: {
+      saldo: { gt: 0 },
+      ...(filtros.faixaDias ? { dias: { gte: filtros.faixaDias } } : {}),
+      ...(filtros.armazemId ? { localId: filtros.armazemId } : {}),
+    },
+    select: {
+      produtoNome: true,
+      localNome: true,
+      saldo: true,
+      dias: true,
+      vrSaldo: true,
+    },
+    orderBy: { dias: "desc" },
+  });
+  const linhas: ProdutoParadoRow[] = rows.map((r) => ({
+    produtoNome: r.produtoNome,
+    localNome: r.localNome,
+    saldo: Number(r.saldo),
+    dias: r.dias,
+    vrSaldo: Number(r.vrSaldo),
+  }));
+  const valorImobilizado = linhas.reduce((acc, l) => acc + l.vrSaldo, 0);
+  return {
+    kpis: { totalParados: linhas.length, valorImobilizado },
+    total: linhas.length,
+    linhas,
+  };
+}
+
+// ---------------------------------------------------------------------------
+// Tipos de R5 — Top movimentados
+// ---------------------------------------------------------------------------
+
+/** Barra de R5. */
+export interface TopMovimentadoBar {
+  [k: string]: unknown;
+  rotulo: string;
+  valor: number;
+}
+/** KPIs de topo de R5. */
+export interface TopMovimentadoKpis {
+  totalProdutos: number;
+  totalUnidades: number;
+}
+/** Dados de R5: KPIs + linhas (lista completa — slice para barras feito no wrapper). */
+export interface TopMovimentadoData {
+  kpis: TopMovimentadoKpis;
+  barras: TopMovimentadoBar[];
+  linhas: TopMovimentadoBar[];
+}
+
+// ---------------------------------------------------------------------------
+// R5 — queryTopMovimentados
+// ---------------------------------------------------------------------------
+
+/**
+ * Agrega movimentações por produto. Devolve a lista completa (sem slice para top-N
+ * — o wrapper F3 e a tool MCP fazem o slice independentemente).
+ * Fato: fato_estoque_movimento.
+ */
+export async function queryTopMovimentados(
+  prisma: PrismaClient,
+  filtros: { periodoDe?: string; periodoAte?: string; sentido?: string },
+): Promise<{ kpis: { totalProdutos: number; totalUnidades: number }; linhas: { rotulo: string; valor: number }[] }> {
+  const grupos = await prisma.fatoEstoqueMovimento.groupBy({
+    by: ["produtoNome"],
+    where: {
+      ...(filtros.periodoDe && filtros.periodoAte
+        ? { mes: { gte: filtros.periodoDe, lte: filtros.periodoAte } }
+        : {}),
+      ...(filtros.sentido ? { sentido: filtros.sentido } : {}),
+    },
+    _sum: { quantidade: true },
+  });
+  const linhas = grupos
+    .map((g) => ({
+      rotulo: g.produtoNome ?? "Sem produto",
+      valor: g._sum.quantidade ? Math.abs(Number(g._sum.quantidade)) : 0,
+    }))
+    .sort((a, b) => b.valor - a.valor);
+
+  const totalUnidades = linhas.reduce((acc, l) => acc + l.valor, 0);
+
+  return {
+    kpis: { totalProdutos: linhas.length, totalUnidades },
+    linhas,
+  };
+}
+
+// ---------------------------------------------------------------------------
+// Tipos de R6 — Concentração
+// ---------------------------------------------------------------------------
+
+/** Linha da tabela de famílias de R6. */
+export interface ConcentracaoFamiliaRow {
+  [k: string]: unknown;
+  familia: string;
+  valor: number;
+  percentual: number;
+}
+
+/** Linha da tabela de marcas de R6. */
+export interface ConcentracaoMarcaRow {
+  [k: string]: unknown;
+  marca: string;
+  valor: number;
+  percentual: number;
+}
+
+/** Dados de R6: distribuição por família e por marca. */
+export interface ConcentracaoData {
+  /** Fatia para o PieChart (família). */
+  familia: { rotulo: string; valor: number }[];
+  /** Tabela de família com percentual. */
+  tabelaFamilia: ConcentracaoFamiliaRow[];
+  /** Fatia para o BarChart (marca). */
+  marca: { rotulo: string; valor: number }[];
+  /** Tabela de marca com percentual. */
+  tabelaMarca: ConcentracaoMarcaRow[];
+}
+
+// ---------------------------------------------------------------------------
+// R6 — queryConcentracao
+// ---------------------------------------------------------------------------
+
+/**
+ * Agrega vrSaldo por família e marca. Devolve dados brutos (sem percentual —
+ * percentual é shaping calculado no wrapper F3 e na tool MCP, regra N8).
+ * Sem agruparTopN — shaping de gráfico fica no wrapper.
+ * Fato: fato_estoque_saldo.
+ */
+export async function queryConcentracao(
+  prisma: PrismaClient,
+): Promise<{ familiasBruto: { rotulo: string; valor: number }[]; marcasBruto: { rotulo: string; valor: number }[] }> {
+  const porFamilia = await prisma.fatoEstoqueSaldo.groupBy({
+    by: ["familiaNome"],
+    where: { vrSaldo: { gt: 0 } },
+    _sum: { vrSaldo: true },
+  });
+  const porMarca = await prisma.fatoEstoqueSaldo.groupBy({
+    by: ["marcaNome"],
+    where: { vrSaldo: { gt: 0 } },
+    _sum: { vrSaldo: true },
+  });
+
+  const familiasBruto = porFamilia
+    .map((g) => ({
+      rotulo: g.familiaNome ?? "Não classificado",
+      valor: g._sum.vrSaldo ? Number(g._sum.vrSaldo) : 0,
+    }))
+    .sort((a, b) => b.valor - a.valor);
+
+  const marcasBruto = porMarca
+    .map((g) => ({
+      rotulo: g.marcaNome ?? "Não classificado",
+      valor: g._sum.vrSaldo ? Number(g._sum.vrSaldo) : 0,
+    }))
+    .sort((a, b) => b.valor - a.valor);
+
+  return { familiasBruto, marcasBruto };
+}

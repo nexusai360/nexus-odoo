@@ -4,62 +4,46 @@ import { prisma } from "@/lib/prisma";
 import { guardDominio } from "@/lib/reports/guard";
 import { reportFreshness } from "@/lib/reports/freshness";
 import { getReport } from "@/lib/reports/catalog";
-import { limparNomeLocal } from "@/lib/reports/local-nome";
 import type { ReportEntry, ReportFilterValues, ReportResult, ReportState } from "@/lib/reports/types";
+import {
+  querySaldoProduto,
+  queryValorArmazem,
+  queryEntradasSaidas,
+  queryProdutosParados,
+  queryTopMovimentados,
+  queryConcentracao,
+  type SaldoProdutoData,
+  type ValorArmazemData,
+  type EntradasSaidasData,
+  type ProdutoParadoData,
+  type TopMovimentadoData,
+  type ConcentracaoData,
+  type ConcentracaoFamiliaRow,
+  type ConcentracaoMarcaRow,
+} from "@/lib/reports/queries/estoque";
 
-/** Item do detalhamento por local de um produto (para o drill-down). */
-export interface DetalhePorLocal {
-  localRotulo: string;
-  saldo: number;
-  valor: number;
-}
-
-/** Linha agregada de R1 (por produto). */
-export interface SaldoProdutoRow {
-  produtoNome: string;
-  familiaNome: string | null;
-  marcaNome: string | null;
-  saldoTotal: number;
-  valorTotal: number;
-  numLocais: number;
-  /** Saldo do produto quebrado por local, com rótulo limpo. */
-  detalhePorLocal: DetalhePorLocal[];
-}
-
-/** KPIs de topo de R1. */
-export interface SaldoProdutoKpis {
-  totalProdutos: number;
-  produtosNegativos: number;
-  valorTotal: number;
-}
-
-/** Retorno completo de R1. */
-export interface SaldoProdutoData {
-  kpis: SaldoProdutoKpis;
-  linhas: SaldoProdutoRow[];
-}
-/** Linha da tabela de R2. */
-export interface ValorArmazemRow {
-  [k: string]: unknown;
-  armazem: string;
-  valor: number;
-  numProdutos: number;
-  percentual: number;
-}
-
-/** KPIs de R2. */
-export interface ValorArmazemKpis {
-  valorTotal: number;
-  numArmazens: number;
-}
-
-/** Retorno completo de R2. */
-export interface ValorArmazemData {
-  kpis: ValorArmazemKpis;
-  linhas: ValorArmazemRow[];
-  /** Top-8 para o BarChart auxiliar. */
-  top8: { rotulo: string; valor: number }[];
-}
+// Reexporta todos os tipos públicos do núcleo de estoque
+export type {
+  DetalhePorLocal,
+  SaldoProdutoRow,
+  SaldoProdutoKpis,
+  SaldoProdutoData,
+  ValorArmazemRow,
+  ValorArmazemKpis,
+  ValorArmazemData,
+  MovimentoMes,
+  DetalheMovimento,
+  EntradasSaidasData,
+  ProdutoParadoRow,
+  ProdutoParadoKpis,
+  ProdutoParadoData,
+  TopMovimentadoBar,
+  TopMovimentadoKpis,
+  TopMovimentadoData,
+  ConcentracaoFamiliaRow,
+  ConcentracaoMarcaRow,
+  ConcentracaoData,
+} from "@/lib/reports/queries/estoque";
 
 /**
  * Resolve o estado do fato: 'preparando' se o builder nunca rodou;
@@ -72,8 +56,7 @@ async function estadoDoFato(fato: string): Promise<"preparando" | "ok"> {
 
 /**
  * Resolve a entrada de catálogo de um relatório; lança erro explícito se o
- * id não existir (em vez de `getReport(id)!` quebrar silenciosamente
- * adiante). Usado por todas as queries — CR-03.
+ * id não existir. Usado por todas as queries — CR-03.
  */
 function requireReport(id: string): ReportEntry {
   const entry = getReport(id);
@@ -81,7 +64,28 @@ function requireReport(id: string): ReportEntry {
   return entry;
 }
 
-/** R1 — Saldo por produto (agregado). */
+const TOP_N = 10;
+const TOP_CONCENTRACAO = 12;
+
+/**
+ * Ordena por valor desc, mantém os TOP_CONCENTRACAO maiores e agrupa o
+ * restante numa entrada "Outras".
+ */
+function agruparTopN(
+  itens: { rotulo: string; valor: number }[],
+): { rotulo: string; valor: number }[] {
+  const ordenados = [...itens].sort((a, b) => b.valor - a.valor);
+  if (ordenados.length <= TOP_CONCENTRACAO) return ordenados;
+  const top = ordenados.slice(0, TOP_CONCENTRACAO);
+  const resto = ordenados.slice(TOP_CONCENTRACAO);
+  const somaResto = resto.reduce((acc, r) => acc + r.valor, 0);
+  if (somaResto > 0) {
+    top.push({ rotulo: "Outras", valor: somaResto });
+  }
+  return top;
+}
+
+/** R1 — Saldo por produto (wrapper). */
 export async function getRelatorioSaldoProduto(
   filtros: ReportFilterValues,
 ): Promise<ReportResult<SaldoProdutoData>> {
@@ -97,198 +101,18 @@ export async function getRelatorioSaldoProduto(
     if (base === "preparando") {
       return { estado: "preparando", dados: vazio, freshness };
     }
-
-    // groupBy não suporta _count(distinct), então buscamos os dados
-    // brutos e agregamos em JS — dataset cabe confortavelmente em memória.
-    const rows = await prisma.fatoEstoqueSaldo.findMany({
-      where: {
-        ...(filtros.armazemId ? { localId: filtros.armazemId } : {}),
-        ...(filtros.familiaId ? { familiaId: filtros.familiaId } : {}),
-      },
-      select: {
-        produtoId: true,
-        produtoNome: true,
-        familiaNome: true,
-        marcaNome: true,
-        localId: true,
-        localNome: true,
-        quantidade: true,
-        vrSaldo: true,
-      },
+    const dados = await querySaldoProduto(prisma, {
+      armazemId: filtros.armazemId,
+      familiaId: filtros.familiaId,
     });
-
-    // Agrega por produtoId
-    const mapa = new Map<
-      number,
-      {
-        produtoNome: string;
-        familiaNome: string | null;
-        marcaNome: string | null;
-        saldoTotal: number;
-        valorTotal: number;
-        locais: Set<number>;
-        detalheMap: Map<string, { saldo: number; valor: number }>;
-      }
-    >();
-
-    for (const r of rows) {
-      // Ignora linhas sem produtoId (dados incompletos do Odoo)
-      if (r.produtoId == null) continue;
-      const pid = r.produtoId;
-      const qty = r.quantidade ? Number(r.quantidade) : 0;
-      const vr = r.vrSaldo ? Number(r.vrSaldo) : 0;
-      const rotulo = r.localNome
-        ? limparNomeLocal(r.localNome).rotulo
-        : "Sem local";
-
-      const existing = mapa.get(pid);
-      if (existing) {
-        existing.saldoTotal += qty;
-        existing.valorTotal += vr;
-        if (r.localId != null) existing.locais.add(r.localId);
-        const prev = existing.detalheMap.get(rotulo) ?? { saldo: 0, valor: 0 };
-        existing.detalheMap.set(rotulo, {
-          saldo: prev.saldo + qty,
-          valor: prev.valor + vr,
-        });
-      } else {
-        const detalheMap = new Map<string, { saldo: number; valor: number }>();
-        detalheMap.set(rotulo, { saldo: qty, valor: vr });
-        mapa.set(pid, {
-          produtoNome: r.produtoNome ?? "",
-          familiaNome: r.familiaNome,
-          marcaNome: r.marcaNome,
-          saldoTotal: qty,
-          valorTotal: vr,
-          locais: r.localId != null ? new Set([r.localId]) : new Set(),
-          detalheMap,
-        });
-      }
-    }
-
-    const linhas: SaldoProdutoRow[] = [...mapa.values()]
-      .map((v) => ({
-        produtoNome: v.produtoNome,
-        familiaNome: v.familiaNome,
-        marcaNome: v.marcaNome,
-        saldoTotal: v.saldoTotal,
-        valorTotal: v.valorTotal,
-        numLocais: v.locais.size,
-        detalhePorLocal: [...v.detalheMap.entries()]
-          .map(([localRotulo, d]) => ({
-            localRotulo,
-            saldo: d.saldo,
-            valor: d.valor,
-          }))
-          .sort((a, b) => b.valor - a.valor),
-      }))
-      .sort((a, b) => b.valorTotal - a.valorTotal);
-
-    const totalProdutos = linhas.length;
-    const produtosNegativos = linhas.filter((l) => l.saldoTotal < 0).length;
-    const valorTotal = linhas.reduce((acc, l) => acc + l.valorTotal, 0);
-
-    const dados: SaldoProdutoData = {
-      kpis: { totalProdutos, produtosNegativos, valorTotal },
-      linhas,
-    };
-    const estado: ReportState = linhas.length === 0 ? "vazio" : "ok";
+    const estado: ReportState = dados.linhas.length === 0 ? "vazio" : "ok";
     return { estado, dados, freshness };
   } catch {
     return { estado: "erro", dados: vazio, freshness: null };
   }
 }
 
-/** Ponto da série de R3. */
-export interface MovimentoMes {
-  mes: string;
-  entrada: number;
-  saida: number;
-}
-
-/** Linha do detalhamento de R3 (por mês × sentido × produto). */
-export interface DetalheMovimento {
-  [k: string]: unknown;
-  mes: string;
-  sentido: string;
-  produto: string;
-  quantidade: number;
-}
-
-/** Retorno completo de R3: série do gráfico + tabela de detalhe. */
-export interface EntradasSaidasData {
-  serie: MovimentoMes[];
-  detalhe: DetalheMovimento[];
-}
-/** Linha de R4. */
-export interface ProdutoParadoRow {
-  [k: string]: unknown;
-  produtoNome: string | null;
-  localNome: string | null;
-  saldo: number;
-  dias: number;
-  vrSaldo: number;
-}
-/** KPIs de topo de R4. */
-export interface ProdutoParadoKpis {
-  totalParados: number;
-  valorImobilizado: number;
-}
-/** Dados de R4: KPIs + tabela. */
-export interface ProdutoParadoData {
-  kpis: ProdutoParadoKpis;
-  total: number;
-  linhas: ProdutoParadoRow[];
-}
-/** Barra de R5. */
-export interface TopMovimentadoBar {
-  [k: string]: unknown;
-  rotulo: string;
-  valor: number;
-}
-/** KPIs de topo de R5. */
-export interface TopMovimentadoKpis {
-  totalProdutos: number;
-  totalUnidades: number;
-}
-/** Dados de R5: KPIs + barras (top-N) + linhas (tabela completa). */
-export interface TopMovimentadoData {
-  kpis: TopMovimentadoKpis;
-  barras: TopMovimentadoBar[];
-  linhas: TopMovimentadoBar[];
-}
-/** Linha da tabela de famílias de R6. */
-export interface ConcentracaoFamiliaRow {
-  [k: string]: unknown;
-  familia: string;
-  valor: number;
-  percentual: number;
-}
-
-/** Linha da tabela de marcas de R6. */
-export interface ConcentracaoMarcaRow {
-  [k: string]: unknown;
-  marca: string;
-  valor: number;
-  percentual: number;
-}
-
-/** Dados de R6: distribuição por família e por marca. */
-export interface ConcentracaoData {
-  /** Fatia para o PieChart (família). */
-  familia: { rotulo: string; valor: number }[];
-  /** Tabela de família com percentual. */
-  tabelaFamilia: ConcentracaoFamiliaRow[];
-  /** Fatia para o BarChart (marca). */
-  marca: { rotulo: string; valor: number }[];
-  /** Tabela de marca com percentual. */
-  tabelaMarca: ConcentracaoMarcaRow[];
-}
-
-const TOP_N = 10;
-const TOP_CONCENTRACAO = 12;
-
-/** R2 — Valor de estoque por armazém. */
+/** R2 — Valor de estoque por armazém (wrapper). */
 export async function getRelatorioValorPorArmazem(
   _filtros: ReportFilterValues,
 ): Promise<ReportResult<ValorArmazemData>> {
@@ -305,53 +129,15 @@ export async function getRelatorioValorPorArmazem(
     if (base === "preparando") {
       return { estado: "preparando", dados: vazio, freshness };
     }
-
-    // Agrega por localNome: valor total e número de produtos distintos.
-    const rows = await prisma.fatoEstoqueSaldo.findMany({
-      where: { vrSaldo: { gt: 0 } },
-      select: { localNome: true, produtoId: true, vrSaldo: true },
-    });
-
-    const mapa = new Map<
-      string,
-      { valor: number; produtos: Set<number | null> }
-    >();
-    for (const r of rows) {
-      const nomeRaw = r.localNome ?? "Sem armazém";
-      const rotulo = limparNomeLocal(nomeRaw).rotulo;
-      const vr = r.vrSaldo ? Number(r.vrSaldo) : 0;
-      const existing = mapa.get(rotulo);
-      if (existing) {
-        existing.valor += vr;
-        existing.produtos.add(r.produtoId);
-      } else {
-        mapa.set(rotulo, { valor: vr, produtos: new Set([r.produtoId]) });
-      }
-    }
-
-    const valorTotal = [...mapa.values()].reduce((acc, v) => acc + v.valor, 0);
-
-    const linhasBruto = [...mapa.entries()]
-      .map(([armazem, v]) => ({ armazem, valor: v.valor, numProdutos: v.produtos.size }))
-      .sort((a, b) => b.valor - a.valor);
-
-    const linhas: ValorArmazemRow[] = linhasBruto.map((l) => ({
+    const { kpis, linhasBruto } = await queryValorArmazem(prisma);
+    const linhas = linhasBruto.map((l) => ({
       armazem: l.armazem,
       valor: l.valor,
       numProdutos: l.numProdutos,
-      percentual: valorTotal > 0 ? (l.valor / valorTotal) * 100 : 0,
+      percentual: kpis.valorTotal > 0 ? (l.valor / kpis.valorTotal) * 100 : 0,
     }));
-
-    const top8 = linhasBruto.slice(0, 8).map((l) => ({
-      rotulo: l.armazem,
-      valor: l.valor,
-    }));
-
-    const dados: ValorArmazemData = {
-      kpis: { valorTotal, numArmazens: mapa.size },
-      linhas,
-      top8,
-    };
+    const top8 = linhasBruto.slice(0, 8).map((l) => ({ rotulo: l.armazem, valor: l.valor }));
+    const dados: ValorArmazemData = { kpis, linhas, top8 };
     const estado: ReportState = linhas.length === 0 ? "vazio" : "ok";
     return { estado, dados, freshness };
   } catch {
@@ -359,7 +145,7 @@ export async function getRelatorioValorPorArmazem(
   }
 }
 
-/** R3 — Entradas vs. saídas por mês. */
+/** R3 — Entradas vs. saídas por mês (wrapper). */
 export async function getRelatorioEntradasSaidas(
   filtros: ReportFilterValues,
 ): Promise<ReportResult<EntradasSaidasData>> {
@@ -372,53 +158,19 @@ export async function getRelatorioEntradasSaidas(
     if (base === "preparando") {
       return { estado: "preparando", dados: vazio, freshness };
     }
-
-    const where = {
-      ...(filtros.periodoDe && filtros.periodoAte
-        ? { mes: { gte: filtros.periodoDe, lte: filtros.periodoAte } }
-        : {}),
-      ...(filtros.armazemId ? { localId: filtros.armazemId } : {}),
-    };
-
-    // Série agregada por mês × sentido (para o LineChart).
-    const grupos = await prisma.fatoEstoqueMovimento.groupBy({
-      by: ["mes", "sentido"],
-      where,
-      _sum: { quantidade: true },
+    const dados = await queryEntradasSaidas(prisma, {
+      periodoDe: filtros.periodoDe,
+      periodoAte: filtros.periodoAte,
+      armazemId: filtros.armazemId,
     });
-    const porMes = new Map<string, MovimentoMes>();
-    for (const g of grupos) {
-      const item = porMes.get(g.mes) ?? { mes: g.mes, entrada: 0, saida: 0 };
-      const valor = g._sum.quantidade ? Math.abs(Number(g._sum.quantidade)) : 0;
-      if (g.sentido === "entrada") item.entrada = valor;
-      else item.saida = valor;
-      porMes.set(g.mes, item);
-    }
-    const serie = [...porMes.values()].sort((a, b) => a.mes.localeCompare(b.mes));
-
-    // Detalhe por mês × sentido × produto (para a DataTable).
-    const detGrupos = await prisma.fatoEstoqueMovimento.groupBy({
-      by: ["mes", "sentido", "produtoNome"],
-      where,
-      _sum: { quantidade: true },
-      orderBy: [{ mes: "asc" }, { sentido: "asc" }],
-    });
-    const detalhe: DetalheMovimento[] = detGrupos.map((g) => ({
-      mes: g.mes,
-      sentido: g.sentido,
-      produto: g.produtoNome ?? "Sem produto",
-      quantidade: g._sum.quantidade ? Math.abs(Number(g._sum.quantidade)) : 0,
-    }));
-
-    const dados: EntradasSaidasData = { serie, detalhe };
-    const estado: ReportState = serie.length === 0 ? "vazio" : "ok";
+    const estado: ReportState = dados.serie.length === 0 ? "vazio" : "ok";
     return { estado, dados, freshness };
   } catch {
     return { estado: "erro", dados: vazio, freshness: null };
   }
 }
 
-/** R4 — Produtos parados. */
+/** R4 — Produtos parados (wrapper). */
 export async function getRelatorioProdutoParado(
   filtros: ReportFilterValues,
 ): Promise<ReportResult<ProdutoParadoData>> {
@@ -435,39 +187,18 @@ export async function getRelatorioProdutoParado(
     if (base === "preparando") {
       return { estado: "preparando", dados: vazio, freshness };
     }
-    const rows = await prisma.fatoProdutoParado.findMany({
-      where: {
-        saldo: { gt: 0 },
-        ...(filtros.faixaDias ? { dias: { gte: filtros.faixaDias } } : {}),
-        ...(filtros.armazemId ? { localId: filtros.armazemId } : {}),
-      },
-      select: {
-        produtoNome: true, localNome: true, saldo: true,
-        dias: true, vrSaldo: true,
-      },
-      orderBy: { dias: "desc" },
+    const dados = await queryProdutosParados(prisma, {
+      faixaDias: filtros.faixaDias,
+      armazemId: filtros.armazemId,
     });
-    const linhas: ProdutoParadoRow[] = rows.map((r) => ({
-      produtoNome: r.produtoNome,
-      localNome: r.localNome,
-      saldo: Number(r.saldo),
-      dias: r.dias,
-      vrSaldo: Number(r.vrSaldo),
-    }));
-    const valorImobilizado = linhas.reduce((acc, l) => acc + l.vrSaldo, 0);
-    const dados: ProdutoParadoData = {
-      kpis: { totalParados: linhas.length, valorImobilizado },
-      total: linhas.length,
-      linhas,
-    };
-    const estado: ReportState = linhas.length === 0 ? "vazio" : "ok";
+    const estado: ReportState = dados.linhas.length === 0 ? "vazio" : "ok";
     return { estado, dados, freshness };
   } catch {
     return { estado: "erro", dados: vazio, freshness: null };
   }
 }
 
-/** R5 — Top produtos movimentados. */
+/** R5 — Top produtos movimentados (wrapper). */
 export async function getRelatorioTopMovimentados(
   filtros: ReportFilterValues,
 ): Promise<ReportResult<TopMovimentadoData>> {
@@ -484,58 +215,20 @@ export async function getRelatorioTopMovimentados(
     if (base === "preparando") {
       return { estado: "preparando", dados: vazio, freshness };
     }
-    const grupos = await prisma.fatoEstoqueMovimento.groupBy({
-      by: ["produtoNome"],
-      where: {
-        ...(filtros.periodoDe && filtros.periodoAte
-          ? { mes: { gte: filtros.periodoDe, lte: filtros.periodoAte } }
-          : {}),
-        ...(filtros.sentido ? { sentido: filtros.sentido } : {}),
-      },
-      _sum: { quantidade: true },
+    const { kpis, linhas } = await queryTopMovimentados(prisma, {
+      periodoDe: filtros.periodoDe,
+      periodoAte: filtros.periodoAte,
+      sentido: filtros.sentido,
     });
-    const linhas: TopMovimentadoBar[] = grupos
-      .map((g) => ({
-        rotulo: g.produtoNome ?? "Sem produto",
-        valor: g._sum.quantidade ? Math.abs(Number(g._sum.quantidade)) : 0,
-      }))
-      .sort((a, b) => b.valor - a.valor);
-
     const barras = linhas.slice(0, TOP_N);
-    const totalUnidades = linhas.reduce((acc, l) => acc + l.valor, 0);
-
-    const dados: TopMovimentadoData = {
-      kpis: { totalProdutos: linhas.length, totalUnidades },
-      barras,
-      linhas,
-    };
     const estado: ReportState = linhas.length === 0 ? "vazio" : "ok";
-    return { estado, dados, freshness };
+    return { estado, dados: { kpis, barras, linhas }, freshness };
   } catch {
     return { estado: "erro", dados: vazio, freshness: null };
   }
 }
 
-/**
- * Ordena por valor desc, mantém os TOP_CONCENTRACAO maiores e agrupa o
- * restante numa entrada "Outras" (ou "Outras marcas"/"Outras famílias").
- * Garante que o gráfico não exiba barras ínfimas ou escala distorcida.
- */
-function agruparTopN(
-  itens: { rotulo: string; valor: number }[],
-): { rotulo: string; valor: number }[] {
-  const ordenados = [...itens].sort((a, b) => b.valor - a.valor);
-  if (ordenados.length <= TOP_CONCENTRACAO) return ordenados;
-  const top = ordenados.slice(0, TOP_CONCENTRACAO);
-  const resto = ordenados.slice(TOP_CONCENTRACAO);
-  const somaResto = resto.reduce((acc, r) => acc + r.valor, 0);
-  if (somaResto > 0) {
-    top.push({ rotulo: "Outras", valor: somaResto });
-  }
-  return top;
-}
-
-/** R6 — Concentração do estoque por família e por marca. */
+/** R6 — Concentração do estoque por família e por marca (wrapper). */
 export async function getRelatorioConcentracao(
   _filtros: ReportFilterValues,
 ): Promise<ReportResult<ConcentracaoData>> {
@@ -553,47 +246,19 @@ export async function getRelatorioConcentracao(
     if (base === "preparando") {
       return { estado: "preparando", dados: vazio, freshness };
     }
-    const porFamilia = await prisma.fatoEstoqueSaldo.groupBy({
-      by: ["familiaNome"],
-      where: { vrSaldo: { gt: 0 } },
-      _sum: { vrSaldo: true },
-    });
-    const porMarca = await prisma.fatoEstoqueSaldo.groupBy({
-      by: ["marcaNome"],
-      where: { vrSaldo: { gt: 0 } },
-      _sum: { vrSaldo: true },
-    });
-
-    // Dados brutos ordenados por valor (sem agrupamento "Outras" para a tabela).
-    const familiasBruto = porFamilia
-      .map((g) => ({
-        rotulo: g.familiaNome ?? "Não classificado",
-        valor: g._sum.vrSaldo ? Number(g._sum.vrSaldo) : 0,
-      }))
-      .sort((a, b) => b.valor - a.valor);
-
-    const marcasBruto = porMarca
-      .map((g) => ({
-        rotulo: g.marcaNome ?? "Não classificado",
-        valor: g._sum.vrSaldo ? Number(g._sum.vrSaldo) : 0,
-      }))
-      .sort((a, b) => b.valor - a.valor);
-
+    const { familiasBruto, marcasBruto } = await queryConcentracao(prisma);
     const totalFamilia = familiasBruto.reduce((acc, r) => acc + r.valor, 0);
     const totalMarca = marcasBruto.reduce((acc, r) => acc + r.valor, 0);
-
     const tabelaFamilia: ConcentracaoFamiliaRow[] = familiasBruto.map((r) => ({
       familia: r.rotulo,
       valor: r.valor,
       percentual: totalFamilia > 0 ? (r.valor / totalFamilia) * 100 : 0,
     }));
-
     const tabelaMarca: ConcentracaoMarcaRow[] = marcasBruto.map((r) => ({
       marca: r.rotulo,
       valor: r.valor,
       percentual: totalMarca > 0 ? (r.valor / totalMarca) * 100 : 0,
     }));
-
     const dados: ConcentracaoData = {
       familia: agruparTopN(familiasBruto),
       tabelaFamilia,

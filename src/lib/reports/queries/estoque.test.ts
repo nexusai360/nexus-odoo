@@ -7,7 +7,14 @@
 // --experimental-vm-modules). jest.spyOn() intercepta corretamente — ver N7.
 
 import { createMockContext } from "@/lib/reports/queries/__mocks__/prisma";
-import { querySaldoProduto } from "./estoque";
+import {
+  querySaldoProduto,
+  queryValorArmazem,
+  queryEntradasSaidas,
+  queryProdutosParados,
+  queryTopMovimentados,
+  queryConcentracao,
+} from "./estoque";
 
 // Tipo auxiliar para o mock do prisma usado neste arquivo
 type MockPrisma = ReturnType<typeof createMockContext>;
@@ -134,21 +141,195 @@ describe("querySaldoProduto", () => {
 });
 
 describe("queryValorArmazem", () => {
-  // preenchido em 4c.1b-extr
+  let mockPrisma: ReturnType<typeof createMockContext>;
+
+  beforeEach(() => {
+    mockPrisma = createMockContext();
+  });
+
+  it("agrega valor e numProdutos por armazém via limparNomeLocal", async () => {
+    mockPrisma.fatoEstoqueSaldo.findMany.mockResolvedValue([
+      { localNome: "Galpão A » Próprio", produtoId: 1, vrSaldo: 1000 },
+      { localNome: "Virtual", produtoId: 2, vrSaldo: 400 },
+    ]);
+    const result = await queryValorArmazem(mockPrisma as never);
+    expect(result.kpis.valorTotal).toBe(1400);
+    expect(result.kpis.numArmazens).toBe(2);
+    expect(result.linhasBruto).toHaveLength(2);
+    expect(result.linhasBruto[0]).toMatchObject({ armazem: "Galpão A", valor: 1000 });
+  });
+
+  it("NÃO inclui percentual no núcleo (shaping fica no wrapper)", async () => {
+    mockPrisma.fatoEstoqueSaldo.findMany.mockResolvedValue([
+      { localNome: "Virtual", produtoId: 1, vrSaldo: 500 },
+    ]);
+    const result = await queryValorArmazem(mockPrisma as never);
+    const linha = result.linhasBruto[0]!;
+    expect(linha).not.toHaveProperty("percentual");
+  });
+
+  it("ordena linhasBruto por valor desc", async () => {
+    mockPrisma.fatoEstoqueSaldo.findMany.mockResolvedValue([
+      { localNome: "Virtual", produtoId: 1, vrSaldo: 300 },
+      { localNome: "Galpão A » Próprio", produtoId: 2, vrSaldo: 700 },
+    ]);
+    const result = await queryValorArmazem(mockPrisma as never);
+    expect(result.linhasBruto[0]!.valor).toBeGreaterThan(result.linhasBruto[1]!.valor);
+  });
 });
 
 describe("queryEntradasSaidas", () => {
-  // preenchido em 4c.1c-extr
+  let mockPrisma: ReturnType<typeof createMockContext>;
+
+  beforeEach(() => {
+    mockPrisma = createMockContext();
+  });
+
+  it("monta série por mês×sentido corretamente", async () => {
+    mockPrisma.fatoEstoqueMovimento.groupBy
+      .mockResolvedValueOnce([
+        { mes: "2026-03", sentido: "entrada", _sum: { quantidade: 10 } },
+        { mes: "2026-03", sentido: "saida", _sum: { quantidade: 4 } },
+      ])
+      .mockResolvedValueOnce([
+        { mes: "2026-03", sentido: "entrada", produtoNome: "Esteira", _sum: { quantidade: 10 } },
+      ]);
+    const result = await queryEntradasSaidas(mockPrisma as never, {});
+    expect(result.serie).toEqual([{ mes: "2026-03", entrada: 10, saida: 4 }]);
+  });
+
+  it("monta detalhe por mês×sentido×produto; produtoNome null → 'Sem produto'", async () => {
+    mockPrisma.fatoEstoqueMovimento.groupBy
+      .mockResolvedValueOnce([{ mes: "2026-03", sentido: "entrada", _sum: { quantidade: 5 } }])
+      .mockResolvedValueOnce([
+        { mes: "2026-03", sentido: "entrada", produtoNome: null, _sum: { quantidade: 5 } },
+      ]);
+    const result = await queryEntradasSaidas(mockPrisma as never, {});
+    expect(result.detalhe[0]?.produto).toBe("Sem produto");
+  });
+
+  it("aplica filtro de período no where", async () => {
+    mockPrisma.fatoEstoqueMovimento.groupBy.mockResolvedValue([]);
+    await queryEntradasSaidas(mockPrisma as never, { periodoDe: "2026-01", periodoAte: "2026-03" });
+    expect(mockPrisma.fatoEstoqueMovimento.groupBy).toHaveBeenCalledWith(
+      expect.objectContaining({ where: expect.objectContaining({ mes: { gte: "2026-01", lte: "2026-03" } }) }),
+    );
+  });
 });
 
 describe("queryProdutosParados", () => {
-  // preenchido em 4c.1d-extr
+  let mockPrisma: ReturnType<typeof createMockContext>;
+
+  beforeEach(() => {
+    mockPrisma = createMockContext();
+  });
+
+  it("retorna linhas com conversão de Decimal para number", async () => {
+    mockPrisma.fatoProdutoParado.findMany.mockResolvedValue([
+      { produtoNome: "X", localNome: "A", saldo: "3", dias: 95, vrSaldo: "200" },
+    ]);
+    const result = await queryProdutosParados(mockPrisma as never, {});
+    expect(result.linhas).toHaveLength(1);
+    expect(result.linhas[0]!.saldo).toBe(3);
+    expect(result.linhas[0]!.vrSaldo).toBe(200);
+    expect(result.kpis.valorImobilizado).toBe(200);
+  });
+
+  it("aplica filtro faixaDias no where", async () => {
+    mockPrisma.fatoProdutoParado.findMany.mockResolvedValue([]);
+    await queryProdutosParados(mockPrisma as never, { faixaDias: 90 });
+    expect(mockPrisma.fatoProdutoParado.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({ where: expect.objectContaining({ dias: { gte: 90 } }) }),
+    );
+  });
+
+  it("ordena por dias desc", async () => {
+    mockPrisma.fatoProdutoParado.findMany.mockResolvedValue([
+      { produtoNome: "A", localNome: "L", saldo: "1", dias: 30, vrSaldo: "100" },
+    ]);
+    await queryProdutosParados(mockPrisma as never, {});
+    expect(mockPrisma.fatoProdutoParado.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({ orderBy: { dias: "desc" } }),
+    );
+  });
 });
 
 describe("queryTopMovimentados", () => {
-  // preenchido em 4c.1e-extr
+  let mockPrisma: ReturnType<typeof createMockContext>;
+
+  beforeEach(() => {
+    mockPrisma = createMockContext();
+  });
+
+  it("agrega por produtoNome, ordena por valor desc", async () => {
+    mockPrisma.fatoEstoqueMovimento.groupBy.mockResolvedValue([
+      { produtoNome: "A", _sum: { quantidade: 50 } },
+      { produtoNome: "B", _sum: { quantidade: 80 } },
+    ]);
+    const result = await queryTopMovimentados(mockPrisma as never, {});
+    expect(result.linhas[0]).toMatchObject({ rotulo: "B", valor: 80 });
+    expect(result.linhas[1]).toMatchObject({ rotulo: "A", valor: 50 });
+  });
+
+  it("calcula KPIs totalProdutos e totalUnidades", async () => {
+    mockPrisma.fatoEstoqueMovimento.groupBy.mockResolvedValue([
+      { produtoNome: "A", _sum: { quantidade: 50 } },
+      { produtoNome: "B", _sum: { quantidade: 80 } },
+    ]);
+    const result = await queryTopMovimentados(mockPrisma as never, {});
+    expect(result.kpis.totalProdutos).toBe(2);
+    expect(result.kpis.totalUnidades).toBe(130);
+  });
+
+  it("NÃO faz slice — devolve lista completa (slice é shaping do wrapper)", async () => {
+    const grupos = Array.from({ length: 15 }, (_, i) => ({
+      produtoNome: `P${i}`,
+      _sum: { quantidade: 100 - i },
+    }));
+    mockPrisma.fatoEstoqueMovimento.groupBy.mockResolvedValue(grupos);
+    const result = await queryTopMovimentados(mockPrisma as never, {});
+    expect(result.linhas).toHaveLength(15);
+  });
 });
 
 describe("queryConcentracao", () => {
-  // preenchido em 4c.1f-extr
+  let mockPrisma: ReturnType<typeof createMockContext>;
+
+  beforeEach(() => {
+    mockPrisma = createMockContext();
+  });
+
+  it("agrega vrSaldo por família e marca; nulos → 'Não classificado'", async () => {
+    mockPrisma.fatoEstoqueSaldo.groupBy
+      .mockResolvedValueOnce([
+        { familiaNome: "Cardio", _sum: { vrSaldo: 600 } },
+        { familiaNome: null, _sum: { vrSaldo: 400 } },
+      ])
+      .mockResolvedValueOnce([
+        { marcaNome: "Matrix", _sum: { vrSaldo: 900 } },
+      ]);
+    const result = await queryConcentracao(mockPrisma as never);
+    expect(result.familiasBruto).toContainEqual(expect.objectContaining({ rotulo: "Não classificado" }));
+    expect(result.marcasBruto).toContainEqual(expect.objectContaining({ rotulo: "Matrix" }));
+  });
+
+  it("NÃO inclui percentual no núcleo (shaping fica no wrapper/tool)", async () => {
+    mockPrisma.fatoEstoqueSaldo.groupBy
+      .mockResolvedValueOnce([{ familiaNome: "Cardio", _sum: { vrSaldo: 100 } }])
+      .mockResolvedValueOnce([{ marcaNome: "Matrix", _sum: { vrSaldo: 100 } }]);
+    const result = await queryConcentracao(mockPrisma as never);
+    expect(result.familiasBruto[0]).not.toHaveProperty("percentual");
+    expect(result.marcasBruto[0]).not.toHaveProperty("percentual");
+  });
+
+  it("ordena familiasBruto e marcasBruto por valor desc", async () => {
+    mockPrisma.fatoEstoqueSaldo.groupBy
+      .mockResolvedValueOnce([
+        { familiaNome: "A", _sum: { vrSaldo: 200 } },
+        { familiaNome: "B", _sum: { vrSaldo: 800 } },
+      ])
+      .mockResolvedValueOnce([{ marcaNome: "M", _sum: { vrSaldo: 500 } }]);
+    const result = await queryConcentracao(mockPrisma as never);
+    expect(result.familiasBruto[0]!.valor).toBeGreaterThan(result.familiasBruto[1]!.valor);
+  });
 });
