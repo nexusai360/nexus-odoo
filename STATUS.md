@@ -101,13 +101,22 @@ permissão entre etapas):
 
 ---
 
-## 5. PARA RETOMAR — F4 completa; próximo é a F5
+## 5. PARA RETOMAR — F4 completa; F5 com brainstorm pronto
 
-A **F4 (MCP semântico) está completa e na `main`** — PR #5 (onda 1: estoque +
-financeiro), #6 (correção da fonte de títulos financeiros), #7 (F4 completo:
-comercial, fiscal, cadastros, contábil, RH/CRM/produção + Caminho 3c funcional).
-Tudo testado end-to-end contra o cache real. **Próximo trabalho: F5 — Integração
-WhatsApp.**
+A **F4 (MCP semântico) está completa e na `main`** — PRs #5, #6, #7, #8. Tudo
+testado end-to-end contra o cache real. Deploy: `npm run db:deploy` + containers
+(ver `docs/runbooks/deploy-mcp-db.md`).
+
+**Próximo trabalho: F5 — Integração WhatsApp + Agente de IA.** O **brainstorm
+já foi feito** com o usuário (2026-05-18) e está capturado em
+`docs/superpowers/specs/2026-05-18-f5-whatsapp-agente-design.md` — esse doc é o
+ponto de partida. Na próxima sessão, dizer **"vamos para a F5"**: a sessão lê
+esse doc, mapeia o agente "Nex" no projeto irmão
+`/Users/joaovitorzanini/Developer/Claude Code/Nexus AI/Projetos Internos/nexus-insights`,
+escreve a SPEC v1 formal e segue o ciclo `[1]→[10]`. Resumo da F5: agente de IA
+por WhatsApp (via n8n) e chat in-app (clone melhorado do "Nex"); menu
+Integrações (superadmin); MCP consumível de fora (n8n); números de WhatsApp no
+cadastro de usuário.
 
 ### O que a F4 entregou (33 tools no catálogo do MCP)
 
