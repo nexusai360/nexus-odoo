@@ -17,6 +17,7 @@ import { comercialTools } from "../tools/comercial/index.js"; // onda B — 5 to
 import { fiscalTools } from "../tools/fiscal/index.js";     // onda C — 6 tools
 import { cadastrosTools } from "../tools/cadastros/index.js"; // onda D — 3 tools
 import { contabilTools } from "../tools/contabil/index.js";   // onda E — 2 tools
+import { dominiosVaziosTools } from "../tools/dominios-vazios/index.js"; // onda F — 3 tools
 
 export const catalogo: ToolEntry[] = [
   ...estoqueTools,
@@ -26,4 +27,5 @@ export const catalogo: ToolEntry[] = [
   ...fiscalTools,
   ...cadastrosTools,
   ...contabilTools,
+  ...dominiosVaziosTools,
 ];

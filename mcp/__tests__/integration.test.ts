@@ -1,21 +1,22 @@
 // mcp/__tests__/integration.test.ts
-// Harness de teste de integração do MCP — 4f-4.
+// Harness de teste de integração do MCP — 4f-4 (Onda F: 33 tools).
 //
 // Cobre:
-//   1. Assertiva de catálogo: super_admin recebe EXATAMENTE 30 tools com os IDs corretos (N6).
+//   1. Assertiva de catálogo: super_admin recebe EXATAMENTE 33 tools com os IDs corretos (N6).
 //   2. Catálogo filtrado por perfil: cada role recebe o subconjunto correto.
 //   3. bi_consulta_avancada só para super_admin e admin.
 //   4. registrar_lacuna sempre visível (sempreVisivel).
 //   5. Servidor HTTP real: initialize + tools/list via protocolo Streamable HTTP.
 //   6. Tool de domínio negado → denied no pipeline (handleToolCall).
 //   7. Input inválido → erro estruturado (Zod).
+//   8. Tools de domínios-vazios (sempreVisivel) — Onda F.
 //
 // Mock strategy:
 //   - validateServiceToken: aceita TEST_SERVICE_TOKEN
 //   - resolveUserContext: retorna UserContext fixo por userId (sem banco)
 //   - prisma: mock mínimo para handleToolCall (resolveUser injeta o contexto)
 //   - mcpRedis: pipeline mock que sempre retorna count=1 (sem Redis real)
-//   - catalogo: REAL (as 30 tools de produção — objetivo da rede N6)
+//   - catalogo: REAL (as 33 tools de produção — objetivo da rede N6)
 
 // ─── Mocks configurados ANTES dos imports de implementação ────────────────────
 
@@ -35,6 +36,7 @@ jest.mock("../auth/user-context.js", () => ({
       "user-viewer":      { userId: "user-viewer",      role: "viewer",      domains: ["estoque"] },
       "user-viewer-fin":  { userId: "user-viewer-fin",  role: "viewer",      domains: ["financeiro"] },
       "user-viewer-none": { userId: "user-viewer-none", role: "viewer",      domains: [] },
+      "user-viewer-comercial": { userId: "user-viewer-comercial", role: "viewer", domains: ["comercial"] },
     };
     return map[userId] ?? null;
   }),
@@ -62,7 +64,7 @@ jest.mock("../lib/redis.js", () => ({
   },
 }));
 
-// NÃO mockar o catálogo — usamos o catálogo REAL (rede de proteção N6 — 30 tools)
+// NÃO mockar o catálogo — usamos o catálogo REAL (rede de proteção N6 — 33 tools)
 
 // ─── Imports pós-mock ─────────────────────────────────────────────────────────
 import { catalogo } from "../catalog/index.js";
@@ -118,6 +120,12 @@ const CONTABIL_IDS = [
   "contabil_estrutura_conta",
 ];
 
+const DOMINIOS_VAZIOS_IDS = [
+  "rh_status_dominio",
+  "crm_status_dominio",
+  "producao_status_dominio",
+];
+
 const TODOS_IDS = [
   ...ESTOQUE_IDS,
   ...FINANCEIRO_IDS,
@@ -125,6 +133,7 @@ const TODOS_IDS = [
   ...FISCAL_IDS,
   ...CADASTROS_IDS,
   ...CONTABIL_IDS,
+  ...DOMINIOS_VAZIOS_IDS,
   "registrar_lacuna",
   "bi_consulta_avancada",
 ];
@@ -132,10 +141,10 @@ const TODOS_IDS = [
 // ─── 1. Assertiva de catálogo completo (achado N6) ────────────────────────────
 
 describe("Catálogo completo — rede de proteção N6", () => {
-  it("super_admin recebe EXATAMENTE 30 tools", () => {
+  it("super_admin recebe EXATAMENTE 33 tools", () => {
     const user = { userId: "u", role: "super_admin" as const, domains: ["estoque", "financeiro"] } as unknown as Parameters<typeof visibleTools>[1];
     const tools = visibleTools(catalogo, user);
-    expect(tools).toHaveLength(30);
+    expect(tools).toHaveLength(33);
   });
 
   it("super_admin recebe o conjunto exato de IDs", () => {
@@ -145,8 +154,8 @@ describe("Catálogo completo — rede de proteção N6", () => {
     expect(ids).toEqual([...TODOS_IDS].sort());
   });
 
-  it("catálogo bruto (antes do filtro) tem exatamente 30 entradas", () => {
-    expect(catalogo).toHaveLength(30);
+  it("catálogo bruto (antes do filtro) tem exatamente 33 entradas", () => {
+    expect(catalogo).toHaveLength(33);
   });
 });
 
@@ -158,51 +167,58 @@ describe("Catálogo filtrado por perfil", () => {
     return visibleTools(catalogo, user).map((t) => t.id);
   }
 
-  it("super_admin vê todas as 30 tools", () => {
+  it("super_admin vê todas as 33 tools", () => {
     const ids = tools("super_admin", ["estoque", "financeiro"]);
-    expect(ids).toHaveLength(30);
+    expect(ids).toHaveLength(33);
     for (const id of TODOS_IDS) {
       expect(ids).toContain(id);
     }
   });
 
-  it("admin vê todas as 30 tools", () => {
+  it("admin vê todas as 33 tools", () => {
     const ids = tools("admin", ["estoque", "financeiro"]);
-    expect(ids).toHaveLength(30);
+    expect(ids).toHaveLength(33);
   });
 
-  it("manager com estoque+financeiro vê estoque+financeiro+registrar_lacuna (sem bi_consulta_avancada)", () => {
+  it("manager com estoque+financeiro vê estoque+financeiro+sempreVisivel (sem bi_consulta_avancada)", () => {
     const ids = tools("manager", ["estoque", "financeiro"]);
     expect(ids).toContain("registrar_lacuna");
     expect(ids).not.toContain("bi_consulta_avancada");
     for (const id of ESTOQUE_IDS) expect(ids).toContain(id);
     for (const id of FINANCEIRO_IDS) expect(ids).toContain(id);
-    // 6 estoque + 6 financeiro + registrar_lacuna = 13
-    expect(ids).toHaveLength(13);
+    for (const id of DOMINIOS_VAZIOS_IDS) expect(ids).toContain(id);
+    // 6 estoque + 6 financeiro + registrar_lacuna + 3 domínios-vazios = 16
+    expect(ids).toHaveLength(16);
   });
 
-  it("viewer com apenas estoque vê só tools de estoque + registrar_lacuna", () => {
+  it("viewer com apenas estoque vê só tools de estoque + sempreVisivel", () => {
     const ids = tools("viewer", ["estoque"]);
     expect(ids).toContain("registrar_lacuna");
     expect(ids).not.toContain("bi_consulta_avancada");
     for (const id of ESTOQUE_IDS) expect(ids).toContain(id);
     for (const id of FINANCEIRO_IDS) expect(ids).not.toContain(id);
-    // 6 estoque + registrar_lacuna = 7
-    expect(ids).toHaveLength(7);
+    for (const id of DOMINIOS_VAZIOS_IDS) expect(ids).toContain(id);
+    // 6 estoque + registrar_lacuna + 3 domínios-vazios = 10
+    expect(ids).toHaveLength(10);
   });
 
-  it("viewer com apenas financeiro vê só tools de financeiro + registrar_lacuna", () => {
+  it("viewer com apenas financeiro vê só tools de financeiro + sempreVisivel", () => {
     const ids = tools("viewer", ["financeiro"]);
     expect(ids).toContain("registrar_lacuna");
     expect(ids).not.toContain("bi_consulta_avancada");
     for (const id of FINANCEIRO_IDS) expect(ids).toContain(id);
     for (const id of ESTOQUE_IDS) expect(ids).not.toContain(id);
-    expect(ids).toHaveLength(7);
+    for (const id of DOMINIOS_VAZIOS_IDS) expect(ids).toContain(id);
+    // 6 financeiro + registrar_lacuna + 3 domínios-vazios = 10
+    expect(ids).toHaveLength(10);
   });
 
-  it("viewer sem domínio vê apenas registrar_lacuna", () => {
+  it("viewer sem domínio vê registrar_lacuna + 3 domínios-vazios (sempreVisivel)", () => {
     const ids = tools("viewer", []);
-    expect(ids).toEqual(["registrar_lacuna"]);
+    for (const id of DOMINIOS_VAZIOS_IDS) expect(ids).toContain(id);
+    expect(ids).toContain("registrar_lacuna");
+    // registrar_lacuna + 3 domínios-vazios = 4
+    expect(ids).toHaveLength(4);
   });
 
   // ─── Onda B: comercial — assertivas de perfil (R2-I1) ────────────────────────
@@ -253,6 +269,58 @@ describe("Catálogo filtrado por perfil", () => {
     const ids = tools("viewer", ["estoque"]);
     for (const id of CONTABIL_IDS) {
       expect(ids).not.toContain(id);
+    }
+  });
+
+  // ─── Onda F: domínios-vazios — sempreVisivel (R2-I1, achado I5) ──────────────
+
+  it("viewer SEM nenhum domínio vê as 3 tools de domínios-vazios (sempreVisivel)", () => {
+    const ids = tools("viewer", []);
+    for (const id of DOMINIOS_VAZIOS_IDS) {
+      expect(ids).toContain(id);
+    }
+  });
+
+  it("manager SEM domínio vê as 3 tools de domínios-vazios (sempreVisivel)", () => {
+    const ids = tools("manager", []);
+    for (const id of DOMINIOS_VAZIOS_IDS) {
+      expect(ids).toContain(id);
+    }
+  });
+
+  // viewer-comercial: vê comercial + domínios-vazios; NÃO vê fiscal/cadastros/contabil
+  it("viewer COM domínio comercial vê as 5 tools de comercial", () => {
+    const ids = tools("viewer", ["comercial"]);
+    for (const id of COMERCIAL_IDS) {
+      expect(ids).toContain(id);
+    }
+  });
+
+  it("viewer COM domínio comercial NÃO vê tools de fiscal", () => {
+    const ids = tools("viewer", ["comercial"]);
+    for (const id of FISCAL_IDS) {
+      expect(ids).not.toContain(id);
+    }
+  });
+
+  it("viewer COM domínio comercial NÃO vê tools de cadastros", () => {
+    const ids = tools("viewer", ["comercial"]);
+    for (const id of CADASTROS_IDS) {
+      expect(ids).not.toContain(id);
+    }
+  });
+
+  it("viewer COM domínio comercial NÃO vê tools de contábil", () => {
+    const ids = tools("viewer", ["comercial"]);
+    for (const id of CONTABIL_IDS) {
+      expect(ids).not.toContain(id);
+    }
+  });
+
+  it("viewer COM domínio comercial vê as 3 tools de domínios-vazios (sempreVisivel)", () => {
+    const ids = tools("viewer", ["comercial"]);
+    for (const id of DOMINIOS_VAZIOS_IDS) {
+      expect(ids).toContain(id);
     }
   });
 });
@@ -392,7 +460,7 @@ describe("Servidor HTTP real — protocolo Streamable HTTP end-to-end", () => {
 
   // ── 5b. tools/list via HTTP — catálogo filtrado por perfil ────────────────
 
-  it("super_admin: tools/list via HTTP retorna 30 tools com os IDs corretos", async () => {
+  it("super_admin: tools/list via HTTP retorna 33 tools com os IDs corretos", async () => {
     const sid = await initializeSession(testServer.baseUrl, "user-super-admin");
 
     const { status, body } = await mcpRequest(
@@ -406,7 +474,7 @@ describe("Servidor HTTP real — protocolo Streamable HTTP end-to-end", () => {
     const result = extractRpcResult(body);
     const tools = result?.tools as Array<{ name: string }> | undefined;
     expect(tools).toBeDefined();
-    expect(tools!).toHaveLength(30);
+    expect(tools!).toHaveLength(33);
 
     const names = tools!.map((t) => t.name).sort();
     expect(names).toEqual([...TODOS_IDS].sort());
@@ -429,8 +497,9 @@ describe("Servidor HTTP real — protocolo Streamable HTTP end-to-end", () => {
     const names = tools!.map((t) => t.name);
     expect(names).not.toContain("bi_consulta_avancada");
     expect(names).toContain("registrar_lacuna");
-    // 6 estoque + 6 financeiro + registrar_lacuna = 13
-    expect(names).toHaveLength(13);
+    for (const id of DOMINIOS_VAZIOS_IDS) expect(names).toContain(id);
+    // 6 estoque + 6 financeiro + registrar_lacuna + 3 domínios-vazios = 16
+    expect(names).toHaveLength(16);
   });
 
   it("viewer (estoque): tools/list via HTTP retorna só estoque + registrar_lacuna", async () => {
@@ -448,12 +517,13 @@ describe("Servidor HTTP real — protocolo Streamable HTTP end-to-end", () => {
     const tools = result?.tools as Array<{ name: string }> | undefined;
     expect(tools).toBeDefined();
     const names = tools!.map((t) => t.name);
-    // 6 estoque + registrar_lacuna = 7; sem bi_consulta_avancada, sem financeiro
-    expect(names).toHaveLength(7);
+    // 6 estoque + registrar_lacuna + 3 domínios-vazios = 10; sem bi_consulta_avancada, sem financeiro
+    expect(names).toHaveLength(10);
     expect(names).toContain("registrar_lacuna");
     expect(names).not.toContain("bi_consulta_avancada");
     for (const id of FINANCEIRO_IDS) expect(names).not.toContain(id);
     for (const id of ESTOQUE_IDS) expect(names).toContain(id);
+    for (const id of DOMINIOS_VAZIOS_IDS) expect(names).toContain(id);
   });
 
   // ── 5c. tools/call via HTTP — um por domínio + gate 3c + registrar_lacuna ──

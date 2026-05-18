@@ -1,8 +1,8 @@
 // mcp/__tests__/harness.ts
-// Harness de teste de integração do servidor MCP (4f-4).
+// Harness de teste de integração do servidor MCP (4f-4 / Onda F: 33 tools).
 //
 // Sobe o servidor HTTP real numa porta efêmera. O catálogo real (catalogo) é
-// importado diretamente — as tools registradas são as 30 de produção.
+// importado diretamente — as tools registradas são as 33 de produção.
 //
 // Auth é simulada via mocks (validateServiceToken + resolveUserContext) injetados
 // ANTES do createHttpServer ser importado, de forma que o servidor use os mocks
@@ -55,6 +55,11 @@ export const PROFILES: Record<string, TestUserProfile> = {
     userId: "user-viewer-none",
     role: "viewer" as PlatformRole,
     domains: [] as ReportDomain[],
+  },
+  viewer_comercial: {
+    userId: "user-viewer-comercial",
+    role: "viewer" as PlatformRole,
+    domains: ["comercial"] as ReportDomain[],
   },
 };
 
