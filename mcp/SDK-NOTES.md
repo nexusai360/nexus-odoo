@@ -73,45 +73,52 @@ testável e explícito.
 
 ```ts
 class McpServer {
-  registerTool<O, I>(
+  tool<S extends ZodRawShape>(
     name: string,
-    config: { description?: string; inputSchema?: I; outputSchema?: O },
-    cb: ToolCallback<I>,
+    description: string,
+    inputSchema: S,
+    cb: ToolCallback<S>,
   ): RegisteredTool;
 }
 ```
 
-Tools são registradas por nome. Para RBAC por sessão, **não registramos tools
-por sessão** (causaria memória crescente). Abordagem:
+Tools são registradas por nome com o `inputSchemaShape` real (objeto passado a
+`z.object(...)`). O SDK usa esse shape para validar o input e para publicar o
+schema em `tools/list`.
 
-- Registramos **todas** as tools no `McpServer` uma única vez na inicialização.
-- O filtro de visibilidade (`visibleTools`) é aplicado em `tools/list` via handler
-  customizado no `server.setRequestHandler(ListToolsRequestSchema, ...)`.
-- O gate de autorização (`assertToolAllowed`) é aplicado no pipeline `tools/call`
-  antes de executar o handler.
+## `tools/list` filtrado por usuário (Camada 1 do RBAC)
 
-## `tools/list` filtrado por usuário
+**Abordagem adotada: McpServer por sessão (Opção A).**
 
-O `McpServer` expõe `server` (instância de `Server`) que permite sobrescrever
-handlers via `server.setRequestHandler(...)`. Assim podemos interceptar
-`tools/list` e filtrar por `UserContext` da sessão.
+Cada sessão (`initialize`) cria um par `McpServer` + `StreamableHTTPServerTransport`
+próprio. No momento da criação, `visibleTools(catalogo, userCtx)` é chamado para
+filtrar o catálogo e registrar **apenas** as tools autorizadas ao usuário. Assim
+`tools/list` devolve naturalmente o catálogo filtrado — sem necessidade de
+sobrescrever handlers.
+
+**Teste empírico realizado (review 2026-05-18):** `setRequestHandler(ListToolsRequestSchema)`
+aceito normalmente após `McpServer.tool(...)`. O erro `assertRequestHandlerCapability`
+ocorre por **capability `tools` ausente**, não por handler duplicado. Registrar ao
+menos uma tool (ou `registerCapabilities({tools:{}})`) habilita a capability e
+permite a sobrescrita. A Opção B (handler global com `setRequestHandler`) é
+viável, mas a Opção A foi escolhida por isolamento limpo por sessão.
+
+**Limpeza de sessão:** `transport.onclose` dispara `sessionMap.delete` e
+`sessionStore.delete` ao fechar o transport, evitando vazamento de memória.
 
 ## Divergências em relação à spec 3.3.1
 
 - A spec presumia que o SDK oferecia um hook de sessão nativo — não há. A
-  abordagem adotada (Map em memória + sessionId no header) é equivalente em
-  segurança e mais simples.
-- O `McpServer.registerTool` não aceita `ZodType` genérico diretamente — aceita
-  `ZodRawShapeCompat | AnySchema`. Para manter nosso `ToolEntry` com `ZodType<I>`,
-  o pipeline de `tools/call` **não usa o handler interno do McpServer** para
-  executar; ele intercepta via `server.setRequestHandler(CallToolRequestSchema)`
-  para ter controle total (RBAC, audit, `handleToolCall`). O `registerTool` é
-  usado apenas para popular `tools/list`.
+  abordagem adotada (McpServer por sessão + sessionId do transport) resolve
+  o isolamento por usuário de forma limpa e sem dependência de `AsyncLocalStorage`.
+- O `ToolEntry` expõe `inputSchemaShape` (raw shape Zod) além de `inputSchema`
+  (`ZodType<I>`): o shape é registrado no SDK (visível em `tools/list`); o
+  `ZodType` é usado no pipeline `handleToolCall` para validação completa.
 
 ## Impacto em tasks dependentes
 
-- **4a.5/4a.14/4a.15/4a.16/4a.17:** seguem o fluxo descrito acima.
-- **4a.16:** `McpServer` registra todas as tools via `registerTool` (somente para
-  `tools/list`); `tools/call` interceptado via `server.setRequestHandler`.
-- **4a.17:** `handleToolCall(tool, rawInput, sessionId, deps)` lê `UserContext`
-  do session-store.
+- **4a.14/4a.15:** middlewares HTTP (service token + X-Mcp-User-Id) — sem mudança.
+- **4a.16:** `createMcpServerForUser(userCtx)` registra `visibleTools` com
+  `inputSchemaShape` real. `createHttpServer` cria par por sessão no `initialize`.
+- **4a.17:** `handleToolCall(tool, rawInput, userId, deps)` pipeline de RBAC
+  camada 2+6+7 e audit — sem mudança estrutural.
