@@ -24,6 +24,10 @@ export interface RateLimitResult {
 const LIMIT = 60;       // requisições por janela
 const WINDOW_SECS = 60; // janela em segundos
 
+/** Mensagem retornada ao cliente quando o rate limit é excedido. */
+export const RATE_LIMIT_EXCEEDED_MESSAGE =
+  "rate_limit_exceeded: muitas requisições. Tente novamente em instantes.";
+
 /**
  * Verifica o rate limit do MCP para um usuário.
  * Chave Redis: `mcp:rate:{userId}` — janela deslizante de 60s, 60 req/min.
@@ -43,6 +47,12 @@ export async function checkMcpRateLimit(
   const results = await pipeline.exec();
 
   // results[0] = [error, count]
+  // Se o INCR falhou (erro parcial de pipeline), logar e permitir a requisição
+  // (fail-open deliberado: Redis degradado não bloqueia usuários legítimos).
+  const incrError = results?.[0]?.[0];
+  if (incrError) {
+    console.error("[mcp] rate-limit: erro no INCR do pipeline Redis:", incrError);
+  }
   const count: number = results?.[0]?.[1] ?? 1;
 
   if (count > LIMIT) {

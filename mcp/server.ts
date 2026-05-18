@@ -25,7 +25,7 @@ import { catalogo } from "./catalog/index.js";
 import { visibleTools, assertToolAllowed } from "./catalog/registry.js";
 import { recordAudit, extractRowCount, type AuditOutcome } from "./lib/audit.js";
 import { toOutcome, safeErrorMessage } from "./lib/failure.js";
-import { checkMcpRateLimit, type RateLimitRedis } from "./lib/rate-limit.js";
+import { checkMcpRateLimit, RATE_LIMIT_EXCEEDED_MESSAGE, type RateLimitRedis } from "./lib/rate-limit.js";
 import type { ToolEntry } from "./catalog/types.js";
 
 // ─── handleToolCall — pipeline de tools/call (4a.17) ────────────────────────
@@ -59,7 +59,7 @@ export async function handleToolCall(
     if (!rl.allowed) {
       outcome = "denied";
       await auditSafe(deps.record, userId, tool.id, rawInput, outcome, undefined, Date.now() - start);
-      return errorResult("rate_limit_exceeded: muitas requisições. Tente novamente em instantes.");
+      return errorResult(RATE_LIMIT_EXCEEDED_MESSAGE);
     }
 
     // Camada 6: recarregar UserContext (proteção contra sessão expirada/revogada)
