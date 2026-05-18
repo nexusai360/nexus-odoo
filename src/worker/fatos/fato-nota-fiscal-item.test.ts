@@ -1,6 +1,6 @@
 // src/worker/fatos/fato-nota-fiscal-item.test.ts
 
-import { chunk, mapNotaFiscalItemRow } from "./fato-nota-fiscal-item";
+import { chunk, mapNotaFiscalItemRow, CHUNK_SIZE } from "./fato-nota-fiscal-item";
 
 // ─── chunk ─────────────────────────────────────────────────────────────────────
 
@@ -102,8 +102,82 @@ describe("mapNotaFiscalItemRow", () => {
 // ─── rebuildFatoNotaFiscalItem ─────────────────────────────────────────────────
 
 describe("rebuildFatoNotaFiscalItem", () => {
-  it("chama deleteMany, createMany (por chunk) e markFatoBuilt na transação", async () => {
+  /**
+   * Cria um mock de PrismaClient para o builder de streaming por cursor.
+   * O tx.rawSpedDocumentoItem.findMany retorna páginas sequenciais de `allItems`
+   * simulando o comportamento cursor-paginated (take, cursor, skip:1).
+   */
+  function makeMockPrisma(
+    rawNotas: { data: Record<string, unknown> }[],
+    allItems: { odooId: number; data: Record<string, unknown> }[],
+  ) {
+    const mockTx = {
+      fatoNotaFiscalItem: {
+        deleteMany: jest.fn().mockResolvedValue({}),
+        createMany: jest.fn().mockResolvedValue({}),
+      },
+      fatoBuildState: {
+        upsert: jest.fn().mockResolvedValue({}),
+      },
+      rawSpedDocumentoItem: {
+        // Simula paginação por cursor: retorna fatia de allItems baseada em
+        // take e cursor (last seen odooId). Sem cursor: começa do início.
+        findMany: jest.fn().mockImplementation(
+          (args: { take?: number; cursor?: { odooId: number }; skip?: number }) => {
+            const take = args.take ?? allItems.length;
+            let startIdx = 0;
+            if (args.cursor) {
+              const cursorIdx = allItems.findIndex((i) => i.odooId === args.cursor!.odooId);
+              startIdx = cursorIdx + (args.skip ?? 0);
+            }
+            return Promise.resolve(allItems.slice(startIdx, startIdx + take));
+          },
+        ),
+      },
+    };
+
+    const mockPrisma = {
+      rawSpedDocumento: {
+        findMany: jest.fn().mockResolvedValue(rawNotas),
+      },
+      $transaction: jest.fn().mockImplementation(
+        async (fn: (tx: typeof mockTx) => Promise<unknown>, _opts?: unknown) => fn(mockTx),
+      ),
+    } as unknown as import("../../generated/prisma/client").PrismaClient;
+
+    return { mockPrisma, mockTx };
+  }
+
+  it("streaming: deleteMany, N createMany e markFatoBuilt para 12 itens (1 página)", async () => {
     const { rebuildFatoNotaFiscalItem } = await import("./fato-nota-fiscal-item");
+
+    const allItems = Array.from({ length: 12 }, (_, i) => ({
+      odooId: i + 1,
+      data: { id: i + 1, documento_id: [1, "NF-001"] as unknown },
+    }));
+
+    const { mockPrisma, mockTx } = makeMockPrisma(
+      [{ data: { id: 1, data_emissao: "2024-01-15", entrada_saida: "1" } }],
+      allItems,
+    );
+
+    const count = await rebuildFatoNotaFiscalItem(mockPrisma);
+    expect(count).toBe(12);
+    expect(mockTx.fatoNotaFiscalItem.deleteMany).toHaveBeenCalledWith({});
+    // 12 itens < CHUNK_SIZE (5000) → 1 página → createMany 1 vez
+    expect(mockTx.fatoNotaFiscalItem.createMany).toHaveBeenCalledTimes(1);
+    expect(mockTx.fatoBuildState.upsert).toHaveBeenCalled();
+  });
+
+  it("streaming multi-página: CHUNK_SIZE itens → createMany chamado N vezes", async () => {
+    const { rebuildFatoNotaFiscalItem } = await import("./fato-nota-fiscal-item");
+
+    // Criar 2 * CHUNK_SIZE + 7 itens para forçar 3 páginas
+    const totalItems = CHUNK_SIZE * 2 + 7;
+    const allItems = Array.from({ length: totalItems }, (_, i) => ({
+      odooId: i + 1,
+      data: { id: i + 1, documento_id: null as unknown },
+    }));
 
     const mockTx = {
       fatoNotaFiscalItem: {
@@ -113,39 +187,36 @@ describe("rebuildFatoNotaFiscalItem", () => {
       fatoBuildState: {
         upsert: jest.fn().mockResolvedValue({}),
       },
+      rawSpedDocumentoItem: {
+        findMany: jest.fn().mockImplementation(
+          (args: { take?: number; cursor?: { odooId: number }; skip?: number }) => {
+            const take = args.take ?? allItems.length;
+            let startIdx = 0;
+            if (args.cursor) {
+              const cursorIdx = allItems.findIndex((i) => i.odooId === args.cursor!.odooId);
+              startIdx = cursorIdx + (args.skip ?? 0);
+            }
+            return Promise.resolve(allItems.slice(startIdx, startIdx + take));
+          },
+        ),
+      },
     };
 
-    // 12 itens → com CHUNK_SIZE=5000 resulta em 1 chunk
-    const rawItems = Array.from({ length: 12 }, (_, i) => ({
-      data: { id: i + 1, documento_id: [1, "NF-001"] },
-    }));
-
     const mockPrisma = {
-      rawSpedDocumento: {
-        findMany: jest.fn().mockResolvedValue([
-          { data: { id: 1, data_emissao: "2024-01-15", entrada_saida: "1" } },
-        ]),
-      },
-      rawSpedDocumentoItem: {
-        findMany: jest.fn().mockResolvedValue(rawItems),
-      },
+      rawSpedDocumento: { findMany: jest.fn().mockResolvedValue([]) },
       $transaction: jest.fn().mockImplementation(
         async (fn: (tx: typeof mockTx) => Promise<unknown>, _opts?: unknown) => fn(mockTx),
       ),
     } as unknown as Parameters<typeof rebuildFatoNotaFiscalItem>[0];
 
     const count = await rebuildFatoNotaFiscalItem(mockPrisma);
-    expect(count).toBe(12);
-    expect(mockTx.fatoNotaFiscalItem.deleteMany).toHaveBeenCalledWith({});
-    // 12 itens em 1 chunk → createMany 1 vez
-    expect(mockTx.fatoNotaFiscalItem.createMany).toHaveBeenCalledTimes(1);
+    expect(count).toBe(totalItems);
+    // 3 páginas: CHUNK_SIZE + CHUNK_SIZE + 7
+    expect(mockTx.fatoNotaFiscalItem.createMany).toHaveBeenCalledTimes(3);
     expect(mockTx.fatoBuildState.upsert).toHaveBeenCalled();
   });
 
-  it("chunks não-vazios cada um resulta em 1 createMany (mock com CHUNK_SIZE pequeno)", async () => {
-    // Este teste verifica o comportamento de chunking com dados reais,
-    // usando o CHUNK_SIZE de produção (5000). Com 12 itens → 1 chunk.
-    // O teste de chunk() acima já valida a fatiagem correta.
+  it("sem dados → nenhum createMany; deleteMany e markFatoBuilt rodam", async () => {
     const { rebuildFatoNotaFiscalItem } = await import("./fato-nota-fiscal-item");
 
     const mockTx = {
@@ -156,24 +227,21 @@ describe("rebuildFatoNotaFiscalItem", () => {
       fatoBuildState: {
         upsert: jest.fn().mockResolvedValue({}),
       },
-    };
-
-    const mockPrisma = {
-      rawSpedDocumento: {
-        findMany: jest.fn().mockResolvedValue([]),
-      },
       rawSpedDocumentoItem: {
         findMany: jest.fn().mockResolvedValue([]),
       },
+    };
+
+    const mockPrisma = {
+      rawSpedDocumento: { findMany: jest.fn().mockResolvedValue([]) },
       $transaction: jest.fn().mockImplementation(
         async (fn: (tx: typeof mockTx) => Promise<unknown>, _opts?: unknown) => fn(mockTx),
       ),
     } as unknown as Parameters<typeof rebuildFatoNotaFiscalItem>[0];
 
-    await rebuildFatoNotaFiscalItem(mockPrisma);
-    // Sem dados → nenhum createMany
+    const count = await rebuildFatoNotaFiscalItem(mockPrisma);
+    expect(count).toBe(0);
     expect(mockTx.fatoNotaFiscalItem.createMany).not.toHaveBeenCalled();
-    // deleteMany e markFatoBuilt ainda rodam
     expect(mockTx.fatoNotaFiscalItem.deleteMany).toHaveBeenCalledWith({});
     expect(mockTx.fatoBuildState.upsert).toHaveBeenCalled();
   });
@@ -193,9 +261,10 @@ describe("rebuildFatoNotaFiscalItem", () => {
           return Promise.resolve({});
         }),
       },
+      rawSpedDocumentoItem: {
+        findMany: jest.fn().mockResolvedValue([{ odooId: 1, data: { id: 1 } }]),
+      },
     };
-
-    const rawItems = [{ data: { id: 1, documento_id: [1, "NF-001"] } }];
 
     const mockPrisma = {
       rawSpedDocumento: {
@@ -203,10 +272,6 @@ describe("rebuildFatoNotaFiscalItem", () => {
           { data: { id: 1, data_emissao: "2024-01-15", entrada_saida: "1" } },
         ]),
       },
-      rawSpedDocumentoItem: {
-        findMany: jest.fn().mockResolvedValue(rawItems),
-      },
-      // $transaction repassa o tx mas DEIXA a exceção subir (não engole)
       $transaction: jest.fn().mockImplementation(
         async (fn: (tx: typeof mockTx) => Promise<unknown>, _opts?: unknown) => fn(mockTx),
       ),

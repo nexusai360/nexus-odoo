@@ -1,12 +1,14 @@
 // src/worker/fatos/fato-nota-fiscal-item.ts
 // Builder do fato_nota_fiscal_item — fonte: raw_sped_documento_item.
 //
-// Estratégia (decisão do orquestrador 2026-05-18):
-//   - Leitura de raw_sped_documento e raw_sped_documento_item ANTES da transação
-//     (fora, para não esgotar heap/timeout da transação no findMany de 211k linhas).
-//   - Transação ÚNICA: deleteMany + loop de createMany em chunks de 5000 + markFatoBuilt.
+// Estratégia de STREAMING por cursor (C-1/C-2 fix — 2026-05-18):
+//   - notaInfoMap: carrega raw_sped_documento inteiro (3743 linhas — trivial, ok).
+//   - Transação ÚNICA: deleteMany + loop cursor por páginas de 5000 + markFatoBuilt.
+//   - Cada página: findMany(take:5000, cursor/skip:1), mapeia, createMany, DESCARTA.
+//   - Memória plana (~5000 linhas por iteração). Sem --max-old-space-size.
 //   - CHUNK_SIZE = 5000 (constante nomeada — R2-M4).
-//   - chunk() é exportado deste arquivo (R2-M4); futuras ondas importam daqui.
+//   - chunk() mantido como utilitário exportado (R2-M4); a função principal
+//     NÃO usa chunk() — usa o loop de cursor diretamente.
 //   - Desnormalização: dataEmissao e entradaSaida vêm da nota-mãe via notaInfoMap.
 //   - Mapper não produz atualizadoEm (@default(now()) no schema).
 //   - Filtra rawDeleted=false em ambas as fontes.
@@ -15,7 +17,7 @@ import type { PrismaClient } from "../../generated/prisma/client";
 import { relId, relNome, type OdooM2O } from "./odoo-relational";
 import { markFatoBuilt } from "./fato-build-state";
 
-/** Tamanho de cada página de createMany dentro da transação. */
+/** Tamanho de cada página de cursor/createMany dentro da transação. */
 export const CHUNK_SIZE = 5000;
 
 export interface FatoNotaFiscalItemRow {
@@ -46,6 +48,7 @@ export interface NotaInfo {
 /**
  * Fatia um array em chunks de `size` elementos.
  * Exportado deste arquivo (R2-M4) — importar daqui em ondas futuras.
+ * Nota: rebuildFatoNotaFiscalItem usa cursor de paginação, não chunk().
  */
 export function chunk<T>(arr: T[], size: number): T[][] {
   const result: T[][] = [];
@@ -89,12 +92,15 @@ export function mapNotaFiscalItemRow(
 /**
  * Reconstrói fato_nota_fiscal_item a partir de raw_sped_documento_item.
  *
- * Leitura das fontes ocorre ANTES da transação (evita OOM / timeout de tx).
- * Transação única: deleteMany + createMany chunked + markFatoBuilt.
+ * STREAMING por cursor: lê, mapeia e insere 5000 linhas por vez dentro da
+ * transação — descarta cada página antes de ler a próxima. Memória plana.
+ * Não requer --max-old-space-size aumentado.
+ *
+ * Transação única: deleteMany → loop cursor (take:5000, skip:1) → markFatoBuilt.
  * Timeout amplo (600000ms / 10 min) para suportar 211k registros.
  */
 export async function rebuildFatoNotaFiscalItem(prisma: PrismaClient): Promise<number> {
-  // 1. Construir notaInfoMap (só 3743 linhas — pode carregar inteiro)
+  // 1. Construir notaInfoMap (3743 linhas — pode carregar inteiro, ok)
   const rawNotas = await prisma.rawSpedDocumento.findMany({
     where: { rawDeleted: false },
   });
@@ -110,30 +116,61 @@ export async function rebuildFatoNotaFiscalItem(prisma: PrismaClient): Promise<n
     });
   }
 
-  // 2. Ler itens fora da transação (211k linhas — evita OOM dentro da tx)
-  const rawItems = await prisma.rawSpedDocumentoItem.findMany({
-    where: { rawDeleted: false },
-  });
-  const mapped = rawItems.map((r) =>
-    mapNotaFiscalItemRow(r.data as Record<string, unknown>, notaInfoMap),
-  );
+  // 2. Transação única: delete + loop cursor + markFatoBuilt
+  //    Memória plana: cada página de 5000 itens é mapeada, inserida e descartada.
+  let totalInserted = 0;
 
-  // 3. Transação única: delete + createMany chunked + markFatoBuilt
   await prisma.$transaction(
     async (tx) => {
       await tx.fatoNotaFiscalItem.deleteMany({});
 
-      const chunks = chunk(mapped, CHUNK_SIZE);
-      for (const chunkArr of chunks) {
-        if (chunkArr.length) {
-          await tx.fatoNotaFiscalItem.createMany({ data: chunkArr });
+      let cursorOdooId: number | undefined = undefined;
+      let hasMore = true;
+
+      while (hasMore) {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        let page: Awaited<ReturnType<typeof tx.rawSpedDocumentoItem.findMany>>;
+        if (cursorOdooId !== undefined) {
+          page = await tx.rawSpedDocumentoItem.findMany({
+            where: { rawDeleted: false },
+            orderBy: { odooId: "asc" },
+            take: CHUNK_SIZE,
+            cursor: { odooId: cursorOdooId },
+            skip: 1,
+          });
+        } else {
+          page = await tx.rawSpedDocumentoItem.findMany({
+            where: { rawDeleted: false },
+            orderBy: { odooId: "asc" },
+            take: CHUNK_SIZE,
+          });
+        }
+
+        if (page.length === 0) {
+          hasMore = false;
+          break;
+        }
+
+        const mappedPage = page.map((r: { data: unknown }) =>
+          mapNotaFiscalItemRow(r.data as Record<string, unknown>, notaInfoMap),
+        );
+
+        await tx.fatoNotaFiscalItem.createMany({ data: mappedPage });
+        totalInserted += mappedPage.length;
+
+        // Avançar cursor — descarta a página (não acumula)
+        cursorOdooId = page[page.length - 1]!.odooId;
+
+        // Página menor que CHUNK_SIZE: última página
+        if (page.length < CHUNK_SIZE) {
+          hasMore = false;
         }
       }
 
       await markFatoBuilt(tx, "fato_nota_fiscal_item");
     },
-    { timeout: 600_000, maxWait: 30_000 },
+    { timeout: 600_000, maxWait: 60_000 },
   );
 
-  return mapped.length;
+  return totalInserted;
 }
