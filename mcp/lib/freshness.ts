@@ -146,9 +146,12 @@ export async function withFreshness<O>(
     select: { model: true, lastStatus: true, lastSnapshotAt: true, lastIncrementalAt: true },
   });
 
-  // Pior fonte: menor ultimaSyncEm
+  // Pior fonte: menor ultimaSyncEm.
+  // REGRA: se qualquer fonte tem syncAt=null (nunca sincronizou), o resultado
+  // é null — independentemente da ordem de iteração. null é o pior caso absoluto
+  // e jamais pode ser sobrescrito por uma data válida de outra fonte.
   let piorStatus = "ok";
-  let piorSyncEm: Date | null = null;
+  let piorSyncEm: Date | null | undefined = undefined; // undefined = "ainda não vimos nenhuma fonte"
 
   for (const fatoNome of fatos) {
     const fonte = FATO_FONTE[fatoNome];
@@ -161,17 +164,25 @@ export async function withFreshness<O>(
     // Atualiza "pior" status
     if (ss.lastStatus !== "ok") piorStatus = ss.lastStatus as string;
 
-    // Atualiza piorSyncEm: queremos a MENOR data (mais antiga)
-    if (piorSyncEm === null || (syncAt !== null && syncAt < piorSyncEm)) {
-      piorSyncEm = syncAt;
-    } else if (syncAt === null) {
-      piorSyncEm = null;
+    // Atualiza piorSyncEm: null (nunca sincronizou) vence qualquer data.
+    // Uma vez que piorSyncEm seja null, não pode ser substituído.
+    if (piorSyncEm === undefined) {
+      piorSyncEm = syncAt; // primeira fonte
+    } else if (piorSyncEm !== null) {
+      // piorSyncEm tem valor; null ou data mais antiga vence
+      if (syncAt === null || syncAt < piorSyncEm) {
+        piorSyncEm = syncAt;
+      }
     }
+    // se piorSyncEm já é null, permanece null
   }
+
+  // Se não encontramos nenhuma fonte no mapa, mantemos null como resultado seguro
+  const piorSyncEmFinal: Date | null = piorSyncEm === undefined ? null : piorSyncEm;
 
   const fonteStatus = {
     status: piorStatus,
-    ultimaSyncEm: piorSyncEm ? piorSyncEm.toISOString() : null,
+    ultimaSyncEm: piorSyncEmFinal ? piorSyncEmFinal.toISOString() : null,
   };
 
   // 5. Decidir estado: vazio × ok

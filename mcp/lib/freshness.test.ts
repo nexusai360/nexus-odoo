@@ -111,6 +111,35 @@ describe("withFreshness", () => {
     });
   });
 
+  it("IMP-1: fonte nula iterada antes de fonte com data resulta em ultimaSyncEm=null", async () => {
+    // Reproduz exatamente o cenário do bug: fato_estoque_movimento (incremental,
+    // lastIncrementalAt=null) é processado antes de fato_estoque_saldo (snapshot,
+    // com data válida). O resultado deve ser null, não a data do segundo fato.
+    const now = new Date("2026-05-01T12:00:00Z");
+    const older = new Date("2026-04-01T12:00:00Z");
+    const prisma = makePrisma();
+    (prisma.fatoBuildState.findMany as jest.Mock).mockResolvedValue([
+      { fato: "fato_estoque_movimento", ultimoBuildAt: now },
+      { fato: "fato_estoque_saldo",     ultimoBuildAt: older },
+    ]);
+    (prisma.syncState.findMany as jest.Mock).mockResolvedValue([
+      // fato_estoque_movimento → estoque.extrato, incremental, nunca sincronizou
+      { model: "estoque.extrato",      lastStatus: "ok", lastSnapshotAt: null, lastIncrementalAt: null },
+      // fato_estoque_saldo → estoque.saldo.hoje, snapshot, com data válida
+      { model: "estoque.saldo.hoje",   lastStatus: "ok", lastSnapshotAt: now,  lastIncrementalAt: null },
+    ]);
+    const fn = jest.fn().mockResolvedValue({ linhas: [{ id: 1 }], serie: [{ mes: "2026-05" }] });
+    // A ordem dos fatos garante que a fonte nula é iterada primeiro
+    const result = await withFreshness(
+      prisma as never,
+      ["fato_estoque_movimento", "fato_estoque_saldo"],
+      fn,
+    );
+    expect(result).toMatchObject({
+      fonteStatus: { ultimaSyncEm: null },
+    });
+  });
+
   it("usa lastSnapshotAt para fonte snapshot (N4)", async () => {
     const now = new Date("2026-05-01T12:00:00Z");
     const prisma = makePrisma();
