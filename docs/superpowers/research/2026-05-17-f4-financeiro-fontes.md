@@ -10,9 +10,13 @@
 |---|---|---|
 | `finan.fluxo.caixa` | `incremental` | `raw_finan_fluxo_caixa` |
 | `finan.pagamento.divida` | `incremental` | `raw_finan_pagamento_divida` |
+| `finan.lancamento` | `incremental` | `raw_finan_lancamento` |
 | `finan.banco.saldo.hoje` | `snapshot` | `raw_finan_banco_saldo_hoje` |
 
 Confirma a tabela 3.4 da spec: `finan.banco.saldo.hoje` é `snapshot`; os demais são `incremental`. ✅
+
+> **Correção R1 (2026-05-18):** `fato_financeiro_titulo` foi re-sourciado para
+> `raw_finan_lancamento`. Veja §Correção R1 abaixo.
 
 ---
 
@@ -124,4 +128,35 @@ Todos presentes com os modos corretos conforme spec. ✅
 1. **`FatoFinanceiroMovimento` sem campo `natureza`** — realizado e previsto
    coexistem na mesma linha.
 2. **`FatoFinanceiroSaldo` com `bancoId Int @id`** — `banco_id` é único por linha.
-3. **`CRITERIO_NAO_PAGO = dataPagamento: null`** — usado nas tools de vencidos.
+3. **`CRITERIO_NAO_PAGO = dataPagamento: null`** — decisão original para
+   `finan.pagamento.divida`; **OBSOLETA** após correção R1.
+
+---
+
+## Correção R1 — Fonte de fato_financeiro_titulo (2026-05-18)
+
+### Diagnóstico
+
+A fonte original `raw_finan_pagamento_divida` é um modelo de **eventos de
+pagamento** (`finan.pagamento.divida`). Ela continha 1.146 registros, dos quais
+apenas 21 tinham `situacao_divida_simples='aberto'` e `vr_saldo ≈ 0` — total
+a receber apurado: ~R$ 254 mil (baixo demais para a operação).
+
+### Fonte correta: `raw_finan_lancamento` (`finan.lancamento`)
+
+| campo | significado |
+|---|---|
+| `tipo` | `'a_receber'` \| `'a_pagar'` \| `'recebimento'` \| `'pagamento'` \| `'entrada'` \| `'saida'` |
+| `situacao_divida_simples` | `'aberto'` \| `'quitado'` \| `'baixado'` \| `'provisorio'` |
+| `vr_saldo` | valor correto a receber/pagar (= `vr_documento` quando aberto; 0 quando quitado) |
+| `data_pagamento` | `false` (não string) quando não pago → `null` no fato |
+
+**Filtro do builder:** `tipo IN ('a_receber', 'a_pagar')` — descarta lançamentos de caixa.
+**CRITERIO_ABERTO:** `situacaoSimples = 'aberto'` (campo `situacao_divida_simples`).
+
+### Dados reais confirmados
+
+- `tipo='a_receber'` + `situacao_divida_simples='aberto'`: **120 títulos**, R$ **1.164.266,36**
+- `tipo='a_pagar'` + `situacao_divida_simples='aberto'`: **18 títulos**, R$ **95.694,95**
+- Total de linhas com tipo título (`a_receber`+`a_pagar`): ~168 (inclui quitados)
+- `vr_saldo` = `vr_documento` = `vr_total` para todos os títulos em aberto.

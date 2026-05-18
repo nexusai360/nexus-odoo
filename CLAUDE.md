@@ -202,6 +202,22 @@ autônomo até o fim.
 > `/gsd-code-review` e `/gsd-ui-review` permanecem como auditorias pontuais na etapa [10] — é o único uso da família `gsd-*`.
 
 **[9] Verificação** — `superpowers:verification-before-completion`. Evidência antes de afirmar pronto. Testar feature na UI quando aplicável.
+> **Teste end-to-end contra dado real é obrigatório (regra de raiz, 2026-05-18).**
+> `tsc`/`eslint`/`jest`/code-review **não bastam** — review de código não pega
+> premissa errada sobre o dado. Toda onda que entrega tool de MCP, relatório ou
+> consulta a dado precisa, na verificação, **subir o serviço, popular os fatos
+> e exercer contra o cache real**, conferindo se os números fazem sentido. Foi
+> assim que os bugs de financeiro da F4 onda 1 apareceram — depois de 12
+> reviews de código. Ver `docs/RADAR.md` R2.
+
+### Investigar até a certeza — autonomia plena (regra de raiz, 2026-05-18)
+Sempre que houver **suspeita de que um dado pode não estar 100% verdadeiro** —
+fonte possivelmente errada, número que não fecha, premissa não comprovada —
+Claude tem autonomia para **investigar a fundo, comprovar contra o dado real e
+corrigir antes de entregar**. Não entregar resultado com ressalva de "talvez";
+não esperar o humano pedir para investigar. Chegar à certeza primeiro, corrigir,
+e só então reportar. Achados e correções vão para `docs/RADAR.md` quando
+ficarem para depois, mas a regra é resolver na hora sempre que possível.
 **[10] Auditoria final** — `/gsd-code-review` (bugs, segurança, qualidade) + `/gsd-ui-review` (6 pilares visuais, sempre que tocar UI).
 **[11] `/ultrareview`** — só quando o humano disparar. Nunca autonomamente.
 **[12] Deploy assistido** — descrever cada passo; validar com humano no fim, sempre.

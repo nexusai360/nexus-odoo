@@ -1,12 +1,17 @@
 // src/worker/fatos/fato-financeiro-titulo.ts
-// CRITERIO_ABERTO: situacaoSimples == 'aberto' (corrigido 2026-05-18 — dataPagamento nunca é null
-//   pois finan.pagamento.divida é registro de pagamento; campo situacao_divida_simples é o oráculo).
-//   Distribuição real: aberto=21 (20 a_receber + 1 a_pagar), quitado=1120, baixado=1, provisorio=4.
-//   Usado nas queries de contas_a_receber, contas_a_pagar e titulos_vencidos.
-// tipo mapeado do campo selection real: "pagamento" → "a_pagar"; "recebimento" → "a_receber".
-// Evidência empírica (2026-05-18): 412 pagamento/sinal=-1; 729 recebimento/sinal=1;
-// 5 recebimento/sinal=0 — sinal=0 invalida a regra sinal>=0→a_receber; campo tipo é o oráculo.
-// diasAtraso NÃO é coluna — calculado em runtime nas tools de vencidos
+// FONTE: raw_finan_lancamento (modelo finan.lancamento — "carteira de títulos").
+//   Corrigido em 2026-05-18 (bug R1): a fonte anterior era raw_finan_pagamento_divida
+//   (finan.pagamento.divida = eventos de pagamento), que continha apenas 21 títulos abertos
+//   com vr_saldo ~zero. A fonte correta é finan.lancamento, com 138 títulos abertos
+//   (120 a_receber / R$ 1.164.266,36 + 18 a_pagar / R$ 95.694,95).
+// FILTRO: tipo IN ('a_receber', 'a_pagar') — descarta tipo='recebimento','pagamento',
+//   'entrada','saida' que são lançamentos de caixa, não títulos da carteira.
+// tipo é campo selection direto da fonte: 'a_receber' | 'a_pagar' (sem derivação).
+// vrSaldo é o valor correto para título em aberto (= vrDocumento = vrTotal quando aberto;
+//   vrSaldo=0 quando quitado). Usado nas tools de totais.
+// CRITERIO_ABERTO: situacaoSimples == 'aberto' — campo situacao_divida_simples é o oráculo.
+// dataPagamento vem false (não string) quando não pago — mapeado para null.
+// diasAtraso NÃO é coluna — calculado em runtime nas tools de vencidos.
 import type { PrismaClient } from "../../generated/prisma/client";
 import { relId, relNome, type OdooM2O } from "./odoo-relational";
 import { markFatoBuilt } from "./fato-build-state";
@@ -34,32 +39,30 @@ export interface FatoFinanceiroTituloRow {
   // NÃO inclui diasAtraso — não é coluna do schema
 }
 
-/** I1: mapeia o campo selection real "tipo" da fonte.
- * "pagamento" → "a_pagar"; qualquer outro valor (incl. "recebimento") → "a_receber".
- * Fonte empírica: 412 "pagamento" (sinal=-1), 729 "recebimento" (sinal=1),
- * 5 "recebimento" (sinal=0) — sinal=0 invalida a derivação por sinal; usar tipo. */
-function derivaTipo(raw: Record<string, unknown>): string {
-  const tipo = typeof raw.tipo === "string" ? raw.tipo : "";
-  return tipo === "pagamento" ? "a_pagar" : "a_receber";
-}
+/** Tipos de finan.lancamento que são títulos da carteira (não lançamentos de caixa). */
+const TIPOS_TITULO = new Set(["a_receber", "a_pagar"]);
 
 export function mapTituloRow(raw: Record<string, unknown>): FatoFinanceiroTituloRow {
   return {
     odooId: Number(raw.id),
-    tipo: derivaTipo(raw),
+    // tipo é campo direto da fonte: 'a_receber' | 'a_pagar'
+    tipo: typeof raw.tipo === "string" ? raw.tipo : "",
     participanteId: relId(raw.participante_id as OdooM2O),
     participanteNome: relNome(raw.participante_id as OdooM2O),
     contaId: relId(raw.conta_id as OdooM2O),
     contaNome: relNome(raw.conta_id as OdooM2O),
-    // C3: campo real é "numero" (não "numero_documento" — sempre null na fonte).
+    // campo real é "numero"
     numeroDocumento: typeof raw.numero === "string" ? raw.numero : null,
     // I2: sufixo T00:00:00 força parsing como hora local, evitando desvio UTC→GMT-3.
     dataDocumento: typeof raw.data_documento === "string" ? new Date(`${raw.data_documento}T00:00:00`) : null,
     dataVencimento: typeof raw.data_vencimento === "string" ? new Date(`${raw.data_vencimento}T00:00:00`) : null,
+    // data_pagamento vem false (não string) quando não pago — mapeado para null
     dataPagamento: typeof raw.data_pagamento === "string" ? new Date(`${raw.data_pagamento}T00:00:00`) : null,
     situacao: typeof raw.situacao === "string" ? raw.situacao : null,
     situacaoSimples: typeof raw.situacao_divida_simples === "string" ? raw.situacao_divida_simples : null,
     vrDocumento: Number(raw.vr_documento ?? 0),
+    // vrSaldo é o valor correto para título em aberto (= vrDocumento = vrTotal);
+    // para quitado vr_saldo=0. Usado como base dos totais nas tools.
     vrSaldo: Number(raw.vr_saldo ?? 0),
     vrTotal: Number(raw.vr_total ?? 0),
     vrJuros: Number(raw.vr_juros ?? 0),
@@ -68,20 +71,27 @@ export function mapTituloRow(raw: Record<string, unknown>): FatoFinanceiroTitulo
   };
 }
 
-/** Reconstrói fato_financeiro_titulo a partir de raw_finan_pagamento_divida. */
+/** Reconstrói fato_financeiro_titulo a partir de raw_finan_lancamento.
+ * Filtra tipo IN ('a_receber','a_pagar') — descarta lançamentos de caixa. */
 export async function rebuildFatoFinanceiroTitulo(
   prisma: PrismaClient,
 ): Promise<number> {
-  const rawRows = await prisma.rawFinanPagamentoDivida.findMany({
+  const rawRows = await prisma.rawFinanLancamento.findMany({
     where: { rawDeleted: false },
   });
-  const mapped = rawRows.map((r) =>
+  // Filtro em memória: tipo deve ser título da carteira
+  const tituloRows = rawRows.filter((r) => {
+    const data = r.data as Record<string, unknown>;
+    const tipo = typeof data.tipo === "string" ? data.tipo : "";
+    return TIPOS_TITULO.has(tipo);
+  });
+  const mapped = tituloRows.map((r) =>
     mapTituloRow(r.data as Record<string, unknown>),
   );
   await prisma.$transaction(async (tx) => {
     await tx.fatoFinanceiroTitulo.deleteMany({});
     if (mapped.length) {
-      // data: mapped — sem injetar atualizadoEm (divergência N5 vs fato-estoque-saldo)
+      // data: mapped — sem injetar atualizadoEm (decisão N5)
       await tx.fatoFinanceiroTitulo.createMany({ data: mapped });
     }
     await markFatoBuilt(tx, "fato_financeiro_titulo");
