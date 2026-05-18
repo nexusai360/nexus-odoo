@@ -11,11 +11,11 @@
 import type { ToolEntry } from "./types.js";
 
 import { estoqueTools } from "../tools/estoque/index.js";   // 4c.3
-// import { financeiroTools } from "../tools/financeiro/index.js"; // descomenta em 4d.0
+import { financeiroTools } from "../tools/financeiro/index.js"; // 4d.0
 import { caminho3Tools } from "../tools/caminho3/index.js"; // 4c.11
 
 export const catalogo: ToolEntry[] = [
   ...estoqueTools,
-  // ...financeiroTools,
+  ...financeiroTools,
   ...caminho3Tools,
 ];
