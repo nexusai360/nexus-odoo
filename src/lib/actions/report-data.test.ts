@@ -30,7 +30,7 @@ import {
 } from "./report-data";
 
 // Referências tipadas aos mocks do núcleo de estoque
-// eslint-disable-next-line @typescript-eslint/no-require-imports
+ 
 const estoqueNucleoMock = jest.requireMock("@/lib/reports/queries/estoque") as {
   querySaldoProduto: jest.Mock;
   queryValorArmazem: jest.Mock;
