@@ -82,8 +82,8 @@ Independência das frentes está **na camada de cima** (app e mcp evoluem sem se
 | **F1** | Fundação | App no ar, login e RBAC funcionando (clona padrão `nexus-insights`) |
 | **F2** | Ingestão / cache | Worker + cron + schema Prisma; cache populado e se atualizando |
 | **F3** | Dashboard de relatórios | Painel com relatórios lendo do cache; RBAC por relatório |
-| **F4** | MCP semântico | Servidor MCP, RBAC 7 camadas, Caminho 3 (3a/3b/3c). **Escopo decidido: TODOS os domínios de negócio** que o Odoo expõe — não uma lista fixa. O catálogo de tools cobre todo domínio presente no cache (estoque, financeiro, fiscal, comercial e quaisquer outros). Exige construir a camada de **fatos** dos domínios que ainda só têm `raw` — hoje só estoque tem `fato_*`. |
-| **F5** | Integração WhatsApp | Agente conectado ao MCP via WhatsApp |
+| **F4** | MCP semântico | Servidor MCP, RBAC 7 camadas, Caminho 3 (3a/3b/3c). **Escopo decidido: TODOS os domínios de negócio** que o Odoo expõe — não uma lista fixa. **Entrega faseada por domínio (decisão #10): a F4 desenha a arquitetura completa e entrega a onda 1 com estoque + financeiro; comercial, fiscal, contábil e produção entram em ondas seguintes reusando a mesma base.** Exige construir a camada de **fatos** dos domínios que ainda só têm `raw` — hoje só estoque tem `fato_*`. |
+| **F5** | Integração WhatsApp | Agente conectado ao MCP via WhatsApp. **Inclui (decisão #10): vínculo número de WhatsApp ↔ `userId` da plataforma (número é atributo do usuário, pode mudar, vários por usuário); pré-filtro de RBAC que classifica a pergunta e nega cedo antes da IA; log de conversas (mensagens trocadas) em Postgres relacional para histórico/auditoria/BI de perguntas; personalização da IA, com `pgvector` no Postgres existente quando houver recurso de RAG sobre o histórico — nunca um banco vetorial separado.** |
 | **F6** | Construtor de relatórios | Construtor in-app de relatórios para admin/super_admin: wizard guiado por IA que parametriza templates (sem gerar código). Ver `docs/ideias/2026-05-16-construtor-relatorios.md` |
 
 Ordem: **F0 → F1 → F2 → F3 → F4 → F5**. F3 e F4 podem ser paralelas após F2.
@@ -106,6 +106,8 @@ Ordem: **F0 → F1 → F2 → F3 → F4 → F5**. F3 e F4 podem ser paralelas ap
 7. **Postgres MCP (Crystal DBA) também em ambiente dev/DBA** — uso de produtividade, separado do MCP semântico de produção.
 8. **Protocolo Odoo: JSON-RPC.** O XML-RPC do Odoo quebra no `fields_get` de modelos com metadados `None` (customização SPED da Tauga). A F0 comprovou JSON-RPC estável. Cliente em `src/worker/odoo/client.ts`.
 9. **F4 cobre TODOS os domínios.** O MCP semântico não se limita a estoque ou a uma lista de 4 domínios — o catálogo de tools cobre **todo domínio de negócio** que o Odoo expõe no cache. Consequência: a F4 inclui construir a camada de **fatos** (`fato_*`) dos domínios que hoje só têm dados `raw` (estoque já tem; financeiro/fiscal/comercial e demais, não). Decisão do usuário em 2026-05-17.
+
+10. **F4 entregue em ondas; F4 ≠ F5.** O escopo "todos os domínios" continua canônico (#9), mas a entrega é faseada: a F4 desenha a arquitetura completa do MCP e entrega a **onda 1 com estoque + financeiro** (arquitetura validada com 2 domínios reais de alto valor); os demais domínios entram em ondas seguintes. Fronteira firme: a **F4 é estritamente o servidor MCP** — servidor `@modelcontextprotocol/sdk` em TS (transporte Streamable HTTP), camada de fatos dos domínios da onda, catálogo de tools semânticas, RBAC 7 camadas, Caminho 3, contrato de identidade (`userId` da plataforma sempre; número de WhatsApp nunca chega ao MCP) e `McpAuditLog` de tool calls. O MCP é **stateless** — não guarda conversa. Tudo que é WhatsApp, log de conversas, personalização e banco vetorial é **F5** (ver §4). Decisão do usuário em 2026-05-17.
 
 ---
 
