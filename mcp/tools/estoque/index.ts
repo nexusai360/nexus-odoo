@@ -10,10 +10,10 @@ import { estoqueProdutosParados } from "./produtos-parados.js";
 import { estoqueConcentracao } from "./concentracao.js";
 
 export const estoqueTools: ToolEntry[] = [
-  estoqueSaldoProduto,
-  estoqueValorArmazem,
-  estoqueEntradasSaidas,
-  estoqueTopMovimentados,
-  estoqueProdutosParados,
-  estoqueConcentracao,
+  estoqueSaldoProduto as ToolEntry,
+  estoqueValorArmazem as ToolEntry,
+  estoqueEntradasSaidas as ToolEntry,
+  estoqueTopMovimentados as ToolEntry,
+  estoqueProdutosParados as ToolEntry,
+  estoqueConcentracao as ToolEntry,
 ];

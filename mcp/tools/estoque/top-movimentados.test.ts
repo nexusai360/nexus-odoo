@@ -52,6 +52,6 @@ describe("estoque_top_movimentados", () => {
 
   it("assertToolAllowed nega viewer sem domínio estoque", () => {
     const viewer: UserContext = { userId: "u2", role: "viewer", domains: [] } as UserContext;
-    expect(() => assertToolAllowed(estoqueTopMovimentados, viewer)).toThrow();
+    expect(() => assertToolAllowed(estoqueTopMovimentados as never, viewer)).toThrow();
   });
 });

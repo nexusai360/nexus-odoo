@@ -51,6 +51,6 @@ describe("estoque_entradas_saidas", () => {
 
   it("assertToolAllowed nega viewer sem domínio estoque", () => {
     const viewer: UserContext = { userId: "u2", role: "viewer", domains: [] } as UserContext;
-    expect(() => assertToolAllowed(estoqueEntradasSaidas, viewer)).toThrow();
+    expect(() => assertToolAllowed(estoqueEntradasSaidas as never, viewer)).toThrow();
   });
 });

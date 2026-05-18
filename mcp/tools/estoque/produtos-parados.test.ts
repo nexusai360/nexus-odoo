@@ -50,6 +50,6 @@ describe("estoque_produtos_parados", () => {
 
   it("assertToolAllowed nega viewer sem domínio estoque", () => {
     const viewer: UserContext = { userId: "u2", role: "viewer", domains: [] } as UserContext;
-    expect(() => assertToolAllowed(estoqueProdutosParados, viewer)).toThrow();
+    expect(() => assertToolAllowed(estoqueProdutosParados as never, viewer)).toThrow();
   });
 });

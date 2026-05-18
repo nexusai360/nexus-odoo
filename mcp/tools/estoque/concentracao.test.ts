@@ -55,6 +55,6 @@ describe("estoque_concentracao", () => {
 
   it("assertToolAllowed nega viewer sem domínio estoque", () => {
     const viewer: UserContext = { userId: "u2", role: "viewer", domains: [] } as UserContext;
-    expect(() => assertToolAllowed(estoqueConcentracao, viewer)).toThrow();
+    expect(() => assertToolAllowed(estoqueConcentracao as never, viewer)).toThrow();
   });
 });
