@@ -15,7 +15,7 @@
 | **F2 — Ingestão/cache** | Worker BullMQ + cron JSON-RPC + cache Postgres | ✅ mergeado na `main` (PR #4) |
 | **F3 — Dashboard de relatórios** | 6 relatórios de estoque sobre o cache | ✅ mergeado na `main` (PR #4) |
 | **F3.5 — Dashboard de relatórios v2** | Sofisticação no padrão `nexus-insights` | ✅ mergeado na `main` (PR #4) |
-| **F4 — MCP semântico (onda 1)** | Servidor MCP + estoque + financeiro | ✅ **implementada na `feat/mcp-semantico` — aguarda merge** |
+| **F4 — MCP semântico (onda 1)** | Servidor MCP + estoque + financeiro | ✅ **mergeada na `main` (PR #5)** — testada e2e contra o cache |
 | F4 — ondas seguintes | Domínios comercial/fiscal/contábil/produção + 3c funcional | ⬜ futuras (reusam a arquitetura) |
 | F5 — Integração WhatsApp | Agente conectado ao MCP | ⬜ futura |
 | F6 — Construtor de relatórios | Wizard in-app guiado por IA | ⬜ futura (inclui o polimento fino dos relatórios) |
@@ -102,12 +102,14 @@ permissão entre etapas):
 
 ---
 
-## 5. PARA RETOMAR — F4 onda 1 implementada, aguarda decisão humana
+## 5. PARA RETOMAR — F4 onda 1 mergeada; próximo são as ondas seguintes
 
-A **F4 onda 1 (MCP semântico — estoque + financeiro)** está implementada na
-branch **`feat/mcp-semantico`** (86 commits sobre a `main`). O ciclo autônomo
-`[1]→[10]` foi cumprido na íntegra. **Próximo passo é humano:** revisar e
-decidir o merge para a `main` (e, opcionalmente, rodar `/ultrareview` antes).
+A **F4 onda 1 (MCP semântico — estoque + financeiro)** foi mergeada na `main`
+(PR #5, 2026-05-18), testada end-to-end contra o cache real. **Próximo
+trabalho:** ondas seguintes da F4 — domínios comercial, fiscal, contábil,
+produção e a integração funcional do 3c (Postgres MCP), reusando a arquitetura
+do MCP. **Antes/durante o trabalho de financeiro, resolver o item R1 do
+`docs/RADAR.md`** (fonte de "contas a receber/pagar").
 
 ### O que a F4 onda 1 entregou
 
