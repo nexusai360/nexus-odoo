@@ -59,7 +59,13 @@ export const estoqueConcentracao: ToolEntry<Input, Output> = {
   inputSchema,
   outputSchema,
   handler: (_input, ctx) =>
-    withFreshness(ctx.prisma, ["fato_estoque_saldo"], async () =>
-      shape(await queryConcentracao(ctx.prisma)),
+    withFreshness(
+      ctx.prisma,
+      ["fato_estoque_saldo"],
+      async () => shape(await queryConcentracao(ctx.prisma)),
+      // Paridade com dashboard F3 (getRelatorioConcentracao): "vazio" apenas
+      // quando AMBOS os arrays estão vazios (regra conjuntiva). Se só famílias
+      // estiverem vazias mas marcas preenchidas (ou vice-versa), o estado é "ok".
+      (dados) => dados.familia.length === 0 && dados.marca.length === 0,
     ),
 };

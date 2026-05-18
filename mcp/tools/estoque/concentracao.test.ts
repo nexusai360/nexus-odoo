@@ -53,6 +53,32 @@ describe("estoque_concentracao", () => {
     }
   });
 
+  it("estado:'ok' quando famílias vazias mas marcas preenchidas (paridade dashboard F3)", async () => {
+    // Cenário: família.length===0, marca.length>0.
+    // Dashboard usa regra conjuntiva (&&): não é "vazio".
+    // MCP deve concordar — predicado customizado garante paridade.
+    const now = new Date("2026-05-01T12:00:00Z");
+    const ctx = makeCtx();
+    (ctx.prisma.fatoBuildState.findMany as jest.Mock).mockResolvedValue([
+      { fato: "fato_estoque_saldo", ultimoBuildAt: now },
+    ]);
+    (ctx.prisma.syncState.findMany as jest.Mock).mockResolvedValue([
+      { model: "estoque.saldo.hoje", lastStatus: "ok", lastSnapshotAt: now, lastIncrementalAt: null },
+    ]);
+    (ctx.prisma.fatoEstoqueSaldo.groupBy as jest.Mock)
+      .mockResolvedValueOnce([]) // famílias: vazio
+      .mockResolvedValueOnce([
+        { marcaNome: "Matrix", _sum: { vrSaldo: 1000 } },
+      ]);
+    const result = await estoqueConcentracao.handler({}, ctx);
+    // Deve ser "ok", não "vazio" — paridade com dashboard
+    expect(result).toMatchObject({ estado: "ok" });
+    if (result.estado !== "preparando") {
+      expect(result.dados.familia).toHaveLength(0);
+      expect(result.dados.marca).toHaveLength(1);
+    }
+  });
+
   it("assertToolAllowed nega viewer sem domínio estoque", () => {
     const viewer: UserContext = { userId: "u2", role: "viewer", domains: [] } as UserContext;
     expect(() => assertToolAllowed(estoqueConcentracao as never, viewer)).toThrow();

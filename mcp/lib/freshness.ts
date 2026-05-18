@@ -98,13 +98,19 @@ function extractFirstArray(dados: unknown): unknown[] | null {
  *   - Caso contrário executa `fn()`, obtém `dados` e devolve:
  *     `{ estado: "ok" | "vazio", dados, atualizadoEm, fonteStatus }`.
  *
- * Decisão "vazio" (N12): inspeciona o primeiro array de `dados` conforme
- * `ARRAY_KEYS_PRIORITY`. Comprimento 0 → "vazio". Sem array → "ok".
+ * Decisão "vazio" (N12): por padrão, inspeciona o primeiro array de `dados`
+ * conforme `ARRAY_KEYS_PRIORITY`. Comprimento 0 → "vazio". Sem array → "ok".
+ *
+ * @param isVazio Predicado opcional de "vazio" customizado. Quando fornecido,
+ * substitui a lógica padrão de `ARRAY_KEYS_PRIORITY`. Use quando a semântica
+ * de "vazio" depende de múltiplos arrays (ex.: concentracao, que exige ambos
+ * `familia` e `marca` vazios para ser "vazio" — paridade com o dashboard F3).
  */
 export async function withFreshness<O>(
   prisma: PrismaClient,
   fatos: string[],
   fn: () => Promise<O>,
+  isVazio?: (dados: O) => boolean,
 ): Promise<FreshnessEnvelope<O>> {
   // 1. Verificar se todos os fatos têm build
   const builds = await prisma.fatoBuildState.findMany({
@@ -169,8 +175,13 @@ export async function withFreshness<O>(
   };
 
   // 5. Decidir estado: vazio × ok
-  const firstArr = extractFirstArray(dados);
-  const estado: "ok" | "vazio" = firstArr !== null && firstArr.length === 0 ? "vazio" : "ok";
+  let estado: "ok" | "vazio";
+  if (isVazio !== undefined) {
+    estado = isVazio(dados) ? "vazio" : "ok";
+  } else {
+    const firstArr = extractFirstArray(dados);
+    estado = firstArr !== null && firstArr.length === 0 ? "vazio" : "ok";
+  }
 
   return { estado, dados, atualizadoEm, fonteStatus };
 }
