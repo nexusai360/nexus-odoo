@@ -19,6 +19,8 @@ import {
   CreditCard,
   CheckCircle2,
   Wallet,
+  Eye,
+  EyeOff,
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -302,7 +304,13 @@ export function CredentialsSection({
                         <AlertDialog
                           open={deletingId === c.id}
                           onOpenChange={(open) => {
-                            if (!open && !pending) setDeletingId(null);
+                            // Bug corrigido: o handler antigo ignorava
+                            // `open === true`, então o diálogo nunca abria.
+                            if (open) {
+                              setDeletingId(c.id);
+                            } else if (!pending) {
+                              setDeletingId(null);
+                            }
                           }}
                         >
                           <AlertDialogTrigger
@@ -313,6 +321,7 @@ export function CredentialsSection({
                                 className="cursor-pointer text-destructive hover:bg-destructive/10 hover:text-destructive"
                                 disabled={pending}
                                 aria-label={`Excluir ${c.label}`}
+                                title={`Excluir a chave ${c.label}`}
                               >
                                 {deletingId === c.id && pending ? (
                                   <Loader2 className="h-3.5 w-3.5 animate-spin" />
@@ -386,6 +395,9 @@ function CredentialDialog({ state, onClose, onSaved }: CredentialDialogProps) {
   const [pending, startTransition] = useTransition();
   const [label, setLabel] = useState("");
   const [apiKey, setApiKey] = useState("");
+  // A chave digitada fica visível por padrão — é a primeira (e única) vez
+  // que o admin a vê para conferir a colagem. O toggle permite ocultá-la.
+  const [showKey, setShowKey] = useState(true);
 
   const dialogKey =
     state.mode === "closed"
@@ -398,6 +410,7 @@ function CredentialDialog({ state, onClose, onSaved }: CredentialDialogProps) {
     if (state.mode === "closed") return;
     setLabel(state.mode === "edit" ? state.cred.label : "");
     setApiKey("");
+    setShowKey(true);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [dialogKey]);
 
@@ -496,18 +509,34 @@ function CredentialDialog({ state, onClose, onSaved }: CredentialDialogProps) {
                 </span>
               ) : null}
             </Label>
-            <Input
-              id="cred-key"
-              type="password"
-              value={apiKey}
-              onChange={(e) => setApiKey(e.currentTarget.value)}
-              placeholder={
-                state.mode === "edit" ? "Nova chave — opcional" : "sk-…"
-              }
-              className="font-mono"
-              disabled={pending}
-              autoComplete="off"
-            />
+            <div className="relative">
+              <Input
+                id="cred-key"
+                type={showKey ? "text" : "password"}
+                value={apiKey}
+                onChange={(e) => setApiKey(e.currentTarget.value)}
+                placeholder={
+                  state.mode === "edit" ? "Nova chave — opcional" : "sk-…"
+                }
+                className="pr-10 font-mono"
+                disabled={pending}
+                autoComplete="off"
+              />
+              <button
+                type="button"
+                onClick={() => setShowKey((v) => !v)}
+                className="absolute right-1 top-1/2 inline-flex h-7 w-7 -translate-y-1/2 cursor-pointer items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                aria-label={showKey ? "Ocultar chave" : "Mostrar chave"}
+                title={showKey ? "Ocultar chave" : "Mostrar chave"}
+                tabIndex={-1}
+              >
+                {showKey ? (
+                  <EyeOff className="h-4 w-4" />
+                ) : (
+                  <Eye className="h-4 w-4" />
+                )}
+              </button>
+            </div>
             {state.mode === "edit" ? (
               <p className="text-xs leading-snug text-muted-foreground">
                 Deixe em branco para manter a chave atual. Cole uma nova chave
