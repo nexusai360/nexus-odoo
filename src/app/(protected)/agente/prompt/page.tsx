@@ -24,10 +24,11 @@ import {
 } from "@/components/ui/card";
 import { PromptConfigForm } from "@/components/agent/prompt-config-form";
 import { IdentityBaseEditor } from "@/components/agent/identity-base-editor";
-import { ResourcesToggles } from "@/components/agent/resources-toggles";
+import { ResourcesToggles, type CredentialOption } from "@/components/agent/resources-toggles";
 import { KbSection } from "@/components/agent/kb-section";
 import { getCurrentUser } from "@/lib/auth";
 import { getAgentSettings } from "@/lib/actions/agent-config";
+import { listCredentials } from "@/lib/agent/llm/credentials";
 import { listKbDocumentsAction } from "@/lib/actions/kb";
 import type { KbDocSummary } from "@/components/agent/kb-section";
 
@@ -41,13 +42,23 @@ export default async function Page() {
   if (!user) redirect("/login");
   if (user.platformRole !== "super_admin") redirect("/dashboard");
 
-  const [settingsResult, kbResult] = await Promise.all([
+  const [settingsResult, kbResult, credentials] = await Promise.all([
     getAgentSettings(),
     listKbDocumentsAction(),
+    listCredentials().catch(
+      () => [] as Awaited<ReturnType<typeof listCredentials>>,
+    ),
   ]);
 
   const settings = settingsResult.success ? settingsResult.data : null;
   const kbDocs: KbDocSummary[] = kbResult.ok ? kbResult.data : [];
+
+  const credentialsByProvider: Record<string, CredentialOption[]> = {};
+  for (const c of credentials) {
+    const list = credentialsByProvider[c.provider] ?? [];
+    list.push({ id: c.id, label: c.label });
+    credentialsByProvider[c.provider] = list;
+  }
 
   const initialSettings = {
     personality: settings?.personality ?? "",
@@ -61,13 +72,16 @@ export default async function Page() {
 
   const initialResources = {
     ...initialSettings,
+    suggestionsCheckpoint: settings?.suggestionsCheckpoint ?? "PRODUCTION",
     audioCheckpoint: settings?.audioCheckpoint ?? "OFF",
     imageCheckpoint: settings?.imageCheckpoint ?? "OFF",
     kbCheckpoint: settings?.kbCheckpoint ?? "PRODUCTION",
     audioProvider: settings?.audioProvider ?? null,
     audioModel: settings?.audioModel ?? null,
+    audioCredentialId: settings?.audioCredentialId ?? null,
     imageProvider: settings?.imageProvider ?? null,
     imageModel: settings?.imageModel ?? null,
+    imageCredentialId: settings?.imageCredentialId ?? null,
   } as const;
 
   return (
@@ -113,7 +127,10 @@ export default async function Page() {
             <CardTitle>Recursos</CardTitle>
           </CardHeader>
           <CardContent className="pb-5">
-            <ResourcesToggles initial={initialResources} />
+            <ResourcesToggles
+              initial={initialResources}
+              credentialsByProvider={credentialsByProvider}
+            />
           </CardContent>
         </Card>
 

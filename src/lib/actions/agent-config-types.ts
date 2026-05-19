@@ -16,15 +16,22 @@ export interface AgentSettingsData {
   guardrails: string[];
   terminology: Record<string, string>;
   advancedOverride: string | null;
+  /** @deprecated use suggestionsCheckpoint */
   suggestionsEnabled: boolean;
+  /** Checkpoint de 3 estados das sugestões clicáveis (G7). */
+  suggestionsCheckpoint: FeatureCheckpoint;
   bubbleEnabled: boolean;
   audioCheckpoint: FeatureCheckpoint;
   imageCheckpoint: FeatureCheckpoint;
   kbCheckpoint: FeatureCheckpoint;
   audioProvider: string | null;
   audioModel: string | null;
+  /** Credencial (chave de API) usada pelo modelo dedicado de áudio (G6). */
+  audioCredentialId: string | null;
   imageProvider: string | null;
   imageModel: string | null;
+  /** Credencial (chave de API) usada pelo modelo dedicado de imagem (G6). */
+  imageCredentialId: string | null;
   updatedAt: Date;
 }
 
@@ -39,6 +46,9 @@ export interface PublicAgentFlags {
   /** true se a base de conhecimento está ativa em produção. */
   kbEnabled: boolean;
   kbInPlayground: boolean;
+  /** true se sugestões clicáveis estão ativas em produção (G7). */
   suggestionsEnabled: boolean;
+  /** true se sugestões clicáveis aparecem ao menos no playground (G7). */
+  suggestionsInPlayground: boolean;
   bubbleEnabled: boolean;
 }

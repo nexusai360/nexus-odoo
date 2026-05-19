@@ -55,10 +55,16 @@ const UpdateResourcesSchema = z.object({
   audioCheckpoint: CheckpointSchema,
   imageCheckpoint: CheckpointSchema,
   kbCheckpoint: CheckpointSchema,
+  /** G7 — checkpoint das sugestões (substitui o boolean suggestionsEnabled). */
+  suggestionsCheckpoint: CheckpointSchema.optional(),
   audioProvider: z.string().nullable().optional(),
   audioModel: z.string().nullable().optional(),
+  /** G6 — chave de API usada pelo modelo dedicado de áudio. */
+  audioCredentialId: z.string().nullable().optional(),
   imageProvider: z.string().nullable().optional(),
   imageModel: z.string().nullable().optional(),
+  /** G6 — chave de API usada pelo modelo dedicado de imagem. */
+  imageCredentialId: z.string().nullable().optional(),
 });
 export type UpdateAgentResourcesInput = z.infer<typeof UpdateResourcesSchema>;
 
@@ -84,14 +90,17 @@ type AgentSettingsRow = {
   terminology: unknown;
   advancedOverride: string | null;
   suggestionsEnabled: boolean;
+  suggestionsCheckpoint: FeatureCheckpoint;
   bubbleEnabled: boolean;
   audioCheckpoint: FeatureCheckpoint;
   imageCheckpoint: FeatureCheckpoint;
   kbCheckpoint: FeatureCheckpoint;
   audioProvider: string | null;
   audioModel: string | null;
+  audioCredentialId: string | null;
   imageProvider: string | null;
   imageModel: string | null;
+  imageCredentialId: string | null;
   updatedAt: Date;
 };
 
@@ -106,14 +115,17 @@ function mapSettings(row: AgentSettingsRow): AgentSettingsData {
     terminology: (row.terminology as Record<string, string>) ?? {},
     advancedOverride: row.advancedOverride,
     suggestionsEnabled: row.suggestionsEnabled,
+    suggestionsCheckpoint: row.suggestionsCheckpoint,
     bubbleEnabled: row.bubbleEnabled,
     audioCheckpoint: row.audioCheckpoint,
     imageCheckpoint: row.imageCheckpoint,
     kbCheckpoint: row.kbCheckpoint,
     audioProvider: row.audioProvider,
     audioModel: row.audioModel,
+    audioCredentialId: row.audioCredentialId,
     imageProvider: row.imageProvider,
     imageModel: row.imageModel,
+    imageCredentialId: row.imageCredentialId,
     updatedAt: row.updatedAt,
   };
 }
@@ -195,6 +207,7 @@ const DEFAULT_FLAGS: PublicAgentFlags = {
   kbEnabled: true,
   kbInPlayground: true,
   suggestionsEnabled: true,
+  suggestionsInPlayground: true,
   bubbleEnabled: true,
 };
 
@@ -210,7 +223,7 @@ export async function getPublicAgentFlags(): Promise<PublicAgentFlags> {
         audioCheckpoint: true,
         imageCheckpoint: true,
         kbCheckpoint: true,
-        suggestionsEnabled: true,
+        suggestionsCheckpoint: true,
         bubbleEnabled: true,
       },
     });
@@ -223,7 +236,8 @@ export async function getPublicAgentFlags(): Promise<PublicAgentFlags> {
       imageInPlayground: settings.imageCheckpoint !== "OFF",
       kbEnabled: settings.kbCheckpoint === "PRODUCTION",
       kbInPlayground: settings.kbCheckpoint !== "OFF",
-      suggestionsEnabled: settings.suggestionsEnabled,
+      suggestionsEnabled: settings.suggestionsCheckpoint === "PRODUCTION",
+      suggestionsInPlayground: settings.suggestionsCheckpoint !== "OFF",
       bubbleEnabled: settings.bubbleEnabled,
     };
   } catch (err) {
@@ -308,15 +322,22 @@ export async function updateAgentResources(
     }
     const d = parsed.data;
 
-    const payload = {
+    const payload: Record<string, unknown> = {
       audioCheckpoint: d.audioCheckpoint,
       imageCheckpoint: d.imageCheckpoint,
       kbCheckpoint: d.kbCheckpoint,
       audioProvider: d.audioProvider ?? null,
       audioModel: d.audioModel ?? null,
+      audioCredentialId: d.audioCredentialId ?? null,
       imageProvider: d.imageProvider ?? null,
       imageModel: d.imageModel ?? null,
+      imageCredentialId: d.imageCredentialId ?? null,
     };
+    if (d.suggestionsCheckpoint) {
+      payload.suggestionsCheckpoint = d.suggestionsCheckpoint;
+      // Mantém o boolean legado em sincronia (compat com leitores antigos).
+      payload.suggestionsEnabled = d.suggestionsCheckpoint === "PRODUCTION";
+    }
 
     await prisma.agentSettings.upsert({
       where: { id: "global" },

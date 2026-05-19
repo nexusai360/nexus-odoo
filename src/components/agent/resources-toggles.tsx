@@ -13,11 +13,11 @@
  * Persiste via updateAgentResources / updateAgentSettings de agent-config.ts.
  */
 
-import { useState, useTransition } from "react";
+import { useMemo, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { Image as ImageIcon, Loader2, MessageSquare, Mic } from "lucide-react";
+import Link from "next/link";
+import { Image as ImageIcon, KeyRound, Loader2, MessageSquare, Mic } from "lucide-react";
 import { toast } from "sonner";
-import { Switch } from "@/components/ui/switch";
 import {
   FeatureCheckpoint,
   checkpointIconClass,
@@ -35,11 +35,13 @@ import {
   modelDescription,
   type ModelEntry,
 } from "@/lib/agent/llm/catalog";
-import {
-  updateAgentResources,
-  updateAgentSettings,
-} from "@/lib/actions/agent-config";
+import { updateAgentResources } from "@/lib/actions/agent-config";
 import type { LlmProvider } from "@/lib/agent/llm/types";
+
+export interface CredentialOption {
+  id: string;
+  label: string;
+}
 
 interface ResourcesTogglesProps {
   initial: {
@@ -48,15 +50,21 @@ interface ResourcesTogglesProps {
     guardrails: string[];
     advancedOverride: string | null;
     terminology: Record<string, string>;
+    /** @deprecated G7 — usa suggestionsCheckpoint. */
     suggestionsEnabled: boolean;
+    suggestionsCheckpoint: CheckpointState;
     audioCheckpoint: CheckpointState;
     imageCheckpoint: CheckpointState;
     kbCheckpoint: CheckpointState;
     audioProvider: string | null;
     audioModel: string | null;
+    audioCredentialId: string | null;
     imageProvider: string | null;
     imageModel: string | null;
+    imageCredentialId: string | null;
   };
+  /** G6 — credenciais cadastradas, agrupadas por provedor. */
+  credentialsByProvider?: Record<string, CredentialOption[]>;
 }
 
 const DEFAULT_AUDIO_MODEL = "gpt-4o-mini-transcribe";
@@ -70,29 +78,59 @@ function modelOptions(models: ModelEntry[]) {
   }));
 }
 
-export function ResourcesToggles({ initial }: ResourcesTogglesProps) {
+export function ResourcesToggles({
+  initial,
+  credentialsByProvider = {},
+}: ResourcesTogglesProps) {
   const router = useRouter();
   const [, startTransition] = useTransition();
 
   const [audioCp, setAudioCp] = useState<CheckpointState>(initial.audioCheckpoint);
   const [imageCp, setImageCp] = useState<CheckpointState>(initial.imageCheckpoint);
-  const [suggestions, setSuggestions] = useState(initial.suggestionsEnabled);
+  const [suggestionsCp, setSuggestionsCp] = useState<CheckpointState>(
+    initial.suggestionsCheckpoint,
+  );
 
-  const [audioProvider, setAudioProvider] = useState<LlmProvider>(
+  // G6: filtra provedores cadastrados para os que entendem áudio/imagem.
+  const audioProviders = useMemo(
+    () =>
+      PROVIDERS_WITH_AUDIO.filter(
+        (p) => (credentialsByProvider[p]?.length ?? 0) > 0,
+      ),
+    [credentialsByProvider],
+  );
+  const imageProviders = useMemo(
+    () =>
+      PROVIDERS_WITH_VISION.filter(
+        (p) => (credentialsByProvider[p]?.length ?? 0) > 0,
+      ),
+    [credentialsByProvider],
+  );
+
+  const [audioProvider, setAudioProvider] = useState<LlmProvider | "">(
     (initial.audioProvider as LlmProvider | null) ??
-      PROVIDERS_WITH_AUDIO[0] ??
-      "openai",
+      audioProviders[0] ??
+      "",
   );
   const [audioModel, setAudioModel] = useState<string>(
-    initial.audioModel ?? DEFAULT_AUDIO_MODEL,
+    initial.audioModel ?? (audioProvider ? listAudioModels(audioProvider as LlmProvider)[0]?.id ?? DEFAULT_AUDIO_MODEL : ""),
   );
-  const [imageProvider, setImageProvider] = useState<LlmProvider>(
+  const [audioCredentialId, setAudioCredentialId] = useState<string>(
+    initial.audioCredentialId ??
+      (audioProvider ? credentialsByProvider[audioProvider]?.[0]?.id ?? "" : ""),
+  );
+
+  const [imageProvider, setImageProvider] = useState<LlmProvider | "">(
     (initial.imageProvider as LlmProvider | null) ??
-      PROVIDERS_WITH_VISION[0] ??
-      "openai",
+      imageProviders[0] ??
+      "",
   );
   const [imageModel, setImageModel] = useState<string>(
-    initial.imageModel ?? listVisionModels(imageProvider)[0]?.id ?? "",
+    initial.imageModel ?? (imageProvider ? listVisionModels(imageProvider as LlmProvider)[0]?.id ?? "" : ""),
+  );
+  const [imageCredentialId, setImageCredentialId] = useState<string>(
+    initial.imageCredentialId ??
+      (imageProvider ? credentialsByProvider[imageProvider]?.[0]?.id ?? "" : ""),
   );
 
   const [pending, setPending] = useState<"audio" | "image" | "suggestions" | null>(
@@ -103,12 +141,15 @@ export function ResourcesToggles({ initial }: ResourcesTogglesProps) {
     next: Partial<{
       audioCheckpoint: CheckpointState;
       imageCheckpoint: CheckpointState;
+      suggestionsCheckpoint: CheckpointState;
       audioProvider: string;
       audioModel: string;
+      audioCredentialId: string | null;
       imageProvider: string;
       imageModel: string;
+      imageCredentialId: string | null;
     }>,
-    label: "audio" | "image",
+    label: "audio" | "image" | "suggestions",
   ) {
     setPending(label);
     startTransition(async () => {
@@ -116,10 +157,19 @@ export function ResourcesToggles({ initial }: ResourcesTogglesProps) {
         audioCheckpoint: next.audioCheckpoint ?? audioCp,
         imageCheckpoint: next.imageCheckpoint ?? imageCp,
         kbCheckpoint: initial.kbCheckpoint,
-        audioProvider: next.audioProvider ?? audioProvider,
-        audioModel: next.audioModel ?? audioModel,
-        imageProvider: next.imageProvider ?? imageProvider,
-        imageModel: next.imageModel ?? imageModel,
+        suggestionsCheckpoint: next.suggestionsCheckpoint ?? suggestionsCp,
+        audioProvider: next.audioProvider ?? audioProvider ?? null,
+        audioModel: next.audioModel ?? audioModel ?? null,
+        audioCredentialId:
+          next.audioCredentialId !== undefined
+            ? next.audioCredentialId
+            : audioCredentialId || null,
+        imageProvider: next.imageProvider ?? imageProvider ?? null,
+        imageModel: next.imageModel ?? imageModel ?? null,
+        imageCredentialId:
+          next.imageCredentialId !== undefined
+            ? next.imageCredentialId
+            : imageCredentialId || null,
       });
       setPending(null);
       if (!result.success) {
@@ -132,30 +182,18 @@ export function ResourcesToggles({ initial }: ResourcesTogglesProps) {
     });
   }
 
-  function persistSuggestions(v: boolean) {
-    setSuggestions(v);
-    setPending("suggestions");
-    startTransition(async () => {
-      const result = await updateAgentSettings({
-        personality: initial.personality,
-        tone: initial.tone,
-        guardrails: initial.guardrails,
-        advancedOverride: initial.advancedOverride ?? undefined,
-        terminology: initial.terminology,
-        suggestionsEnabled: v,
-      });
-      setPending(null);
-      if (!result.success) {
-        setSuggestions((prev) => !prev);
-        toast.error(result.error ?? "Erro ao salvar.");
-        return;
-      }
-      router.refresh();
-    });
-  }
-
-  const audioModels = listAudioModels(audioProvider);
-  const visionModels = listVisionModels(imageProvider);
+  const audioModels = audioProvider
+    ? listAudioModels(audioProvider as LlmProvider)
+    : [];
+  const visionModels = imageProvider
+    ? listVisionModels(imageProvider as LlmProvider)
+    : [];
+  const audioCreds = audioProvider
+    ? credentialsByProvider[audioProvider] ?? []
+    : [];
+  const imageCreds = imageProvider
+    ? credentialsByProvider[imageProvider] ?? []
+    : [];
 
   return (
     <div className="space-y-3">
@@ -173,40 +211,64 @@ export function ResourcesToggles({ initial }: ResourcesTogglesProps) {
         ariaLabel="Estado da entrada de áudio"
       >
         {audioCp !== "OFF" && (
-          <div className="grid gap-3 sm:grid-cols-2">
-            <FieldBlock label="Provedor de áudio">
-              <CustomSelect
-                aria-label="Provedor de áudio"
-                value={audioProvider}
-                onChange={(v) => {
-                  const p = v as LlmProvider;
-                  setAudioProvider(p);
-                  const firstModel = listAudioModels(p)[0]?.id ?? "";
-                  setAudioModel(firstModel);
-                  persistResources(
-                    { audioProvider: p, audioModel: firstModel },
-                    "audio",
-                  );
-                }}
-                options={PROVIDERS_WITH_AUDIO.map((p) => ({
-                  value: p,
-                  label: PROVIDER_META[p].label,
-                }))}
-              />
-            </FieldBlock>
-            <FieldBlock label="Modelo de áudio">
-              <SearchableSelect
-                value={audioModel}
-                onChange={(v) => {
-                  setAudioModel(v);
-                  persistResources({ audioModel: v }, "audio");
-                }}
-                options={modelOptions(audioModels)}
-                placeholder="Selecionar modelo"
-                searchPlaceholder="Buscar modelo de áudio…"
-              />
-            </FieldBlock>
-          </div>
+          audioProviders.length === 0 ? (
+            <NoCredentialsCta provider="áudio" />
+          ) : (
+            <div className="grid gap-3 sm:grid-cols-3">
+              <FieldBlock label="Provedor">
+                <CustomSelect
+                  aria-label="Provedor"
+                  value={audioProvider}
+                  onChange={(v) => {
+                    const p = v as LlmProvider;
+                    setAudioProvider(p);
+                    const firstModel = listAudioModels(p)[0]?.id ?? "";
+                    setAudioModel(firstModel);
+                    const firstCred = credentialsByProvider[p]?.[0]?.id ?? "";
+                    setAudioCredentialId(firstCred);
+                    persistResources(
+                      {
+                        audioProvider: p,
+                        audioModel: firstModel,
+                        audioCredentialId: firstCred || null,
+                      },
+                      "audio",
+                    );
+                  }}
+                  options={audioProviders.map((p) => ({
+                    value: p,
+                    label: PROVIDER_META[p].label,
+                  }))}
+                />
+              </FieldBlock>
+              <FieldBlock label="Modelo">
+                <SearchableSelect
+                  value={audioModel}
+                  onChange={(v) => {
+                    setAudioModel(v);
+                    persistResources({ audioModel: v }, "audio");
+                  }}
+                  options={modelOptions(audioModels)}
+                  placeholder="Selecionar modelo"
+                  searchPlaceholder="Buscar modelo…"
+                />
+              </FieldBlock>
+              <FieldBlock label="Chave de API">
+                <CustomSelect
+                  aria-label="Chave de API de áudio"
+                  value={audioCredentialId}
+                  onChange={(v) => {
+                    setAudioCredentialId(v);
+                    persistResources({ audioCredentialId: v || null }, "audio");
+                  }}
+                  options={audioCreds.map((c) => ({
+                    value: c.id,
+                    label: c.label,
+                  }))}
+                />
+              </FieldBlock>
+            </div>
+          )
         )}
       </ResourceCard>
 
@@ -226,76 +288,104 @@ export function ResourcesToggles({ initial }: ResourcesTogglesProps) {
         ariaLabel="Estado da entrada de imagem"
       >
         {imageCp !== "OFF" && (
-          <div className="grid gap-3 sm:grid-cols-2">
-            <FieldBlock label="Provedor de imagem">
-              <CustomSelect
-                aria-label="Provedor de imagem"
-                value={imageProvider}
-                onChange={(v) => {
-                  const p = v as LlmProvider;
-                  setImageProvider(p);
-                  const firstModel = listVisionModels(p)[0]?.id ?? "";
-                  setImageModel(firstModel);
-                  persistResources(
-                    { imageProvider: p, imageModel: firstModel },
-                    "image",
-                  );
-                }}
-                options={PROVIDERS_WITH_VISION.map((p) => ({
-                  value: p,
-                  label: PROVIDER_META[p].label,
-                }))}
-              />
-            </FieldBlock>
-            <FieldBlock label="Modelo de imagem">
-              <SearchableSelect
-                value={imageModel}
-                onChange={(v) => {
-                  setImageModel(v);
-                  persistResources({ imageModel: v }, "image");
-                }}
-                options={modelOptions(visionModels)}
-                placeholder="Selecionar modelo"
-                searchPlaceholder="Buscar modelo de imagem…"
-              />
-            </FieldBlock>
-          </div>
+          imageProviders.length === 0 ? (
+            <NoCredentialsCta provider="imagem" />
+          ) : (
+            <div className="grid gap-3 sm:grid-cols-3">
+              <FieldBlock label="Provedor">
+                <CustomSelect
+                  aria-label="Provedor"
+                  value={imageProvider}
+                  onChange={(v) => {
+                    const p = v as LlmProvider;
+                    setImageProvider(p);
+                    const firstModel = listVisionModels(p)[0]?.id ?? "";
+                    setImageModel(firstModel);
+                    const firstCred = credentialsByProvider[p]?.[0]?.id ?? "";
+                    setImageCredentialId(firstCred);
+                    persistResources(
+                      {
+                        imageProvider: p,
+                        imageModel: firstModel,
+                        imageCredentialId: firstCred || null,
+                      },
+                      "image",
+                    );
+                  }}
+                  options={imageProviders.map((p) => ({
+                    value: p,
+                    label: PROVIDER_META[p].label,
+                  }))}
+                />
+              </FieldBlock>
+              <FieldBlock label="Modelo">
+                <SearchableSelect
+                  value={imageModel}
+                  onChange={(v) => {
+                    setImageModel(v);
+                    persistResources({ imageModel: v }, "image");
+                  }}
+                  options={modelOptions(visionModels)}
+                  placeholder="Selecionar modelo"
+                  searchPlaceholder="Buscar modelo…"
+                />
+              </FieldBlock>
+              <FieldBlock label="Chave de API">
+                <CustomSelect
+                  aria-label="Chave de API de imagem"
+                  value={imageCredentialId}
+                  onChange={(v) => {
+                    setImageCredentialId(v);
+                    persistResources({ imageCredentialId: v || null }, "image");
+                  }}
+                  options={imageCreds.map((c) => ({
+                    value: c.id,
+                    label: c.label,
+                  }))}
+                />
+              </FieldBlock>
+            </div>
+          )
         )}
       </ResourceCard>
 
-      {/* Sugestões */}
-      <div className="flex items-center justify-between gap-4 rounded-lg border border-border bg-muted/30 px-3 py-2.5">
-        <div className="min-w-0 flex-1">
-          <div
-            id="agent-toggle-suggestions-label"
-            className="flex items-center gap-2 text-sm font-medium text-foreground"
-          >
-            <MessageSquare className="h-4 w-4 text-violet-500" aria-hidden />
-            Sugestões clicáveis
-          </div>
-          <p
-            id="agent-toggle-suggestions-help"
-            className="mt-0.5 text-xs text-muted-foreground"
-          >
-            O Agente Nex oferece perguntas de continuidade no fim das respostas.
-          </p>
-        </div>
-        <span className="relative inline-flex h-11 w-11 shrink-0 items-center justify-center">
-          {pending === "suggestions" && (
-            <Loader2
-              className="absolute -left-6 h-3.5 w-3.5 animate-spin text-muted-foreground"
-              aria-hidden
-            />
-          )}
-          <Switch
-            checked={suggestions}
-            onCheckedChange={persistSuggestions}
-            disabled={pending === "suggestions"}
-            aria-labelledby="agent-toggle-suggestions-label"
-            aria-describedby="agent-toggle-suggestions-help"
+      {/* Sugestões clicáveis (G7) — checkpoint de 3 estados */}
+      <ResourceCard
+        icon={
+          <MessageSquare
+            className={`h-4 w-4 ${checkpointIconClass(suggestionsCp)}`}
+            aria-hidden
           />
-        </span>
-      </div>
+        }
+        title="Sugestões clicáveis"
+        subtitle="O Agente Nex oferece perguntas de continuidade no fim das respostas. Não enviadas no WhatsApp."
+        checkpoint={suggestionsCp}
+        onCheckpointChange={(cp) => {
+          setSuggestionsCp(cp);
+          persistResources({ suggestionsCheckpoint: cp }, "suggestions");
+        }}
+        loading={pending === "suggestions"}
+        ariaLabel="Estado das sugestões clicáveis"
+      />
+    </div>
+  );
+}
+
+/* -------------------------------------------------------------------------- */
+
+function NoCredentialsCta({ provider }: { provider: "áudio" | "imagem" }) {
+  return (
+    <div className="flex flex-col items-start gap-2 rounded-lg border border-dashed border-border/70 bg-muted/20 p-3 text-xs text-muted-foreground sm:flex-row sm:items-center sm:justify-between">
+      <span>
+        Nenhuma chave de API cadastrada para provedores de {provider}.
+      </span>
+      <Link
+        href="/agente/chaves"
+        className="inline-flex h-8 items-center gap-1.5 rounded-lg border border-violet-500/40 bg-violet-500/10 px-3 text-xs font-medium text-violet-700 transition-colors hover:bg-violet-500/20 dark:text-violet-300"
+      >
+        <KeyRound className="h-3.5 w-3.5" aria-hidden />
+        Nova chave
+      </Link>
     </div>
   );
 }
