@@ -13,7 +13,10 @@ export default auth(async (req) => {
     nextUrl.pathname === "/reset-password" ||
     nextUrl.pathname === "/verify-email" ||
     nextUrl.pathname.startsWith("/api/auth/") ||
-    nextUrl.pathname.startsWith("/api/health");
+    nextUrl.pathname.startsWith("/api/health") ||
+    // Webhook receptor do WhatsApp (n8n→plataforma): endpoint público
+    // server-to-server — autentica por HMAC no próprio handler, não por sessão.
+    nextUrl.pathname === "/api/integrations/whatsapp/inbound";
 
   if (isPublic) return NextResponse.next();
 
