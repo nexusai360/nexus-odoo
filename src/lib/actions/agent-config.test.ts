@@ -86,8 +86,8 @@ describe("getAgentSettings", () => {
 
     expect(result.success).toBe(true);
     if (result.success) {
-      expect(result.data.personality).toBe("Profissional e direto");
-      expect(result.data.guardrails).toHaveLength(1);
+      expect(result.data!.personality).toBe("Profissional e direto");
+      expect(result.data!.guardrails).toHaveLength(1);
     }
   });
 

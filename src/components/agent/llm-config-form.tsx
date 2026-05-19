@@ -27,7 +27,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { activateLlmConfig } from "@/lib/actions/agent-config";
+import { activateLlmConfig, createLlmConfig } from "@/lib/actions/agent-config";
 import { PROVIDER_META, MODELS, type ModelEntry } from "@/lib/agent/llm/catalog";
 import type { LlmProvider } from "@/lib/agent/llm/types";
 import type { CredentialSummary } from "@/lib/agent/llm/credentials";
@@ -124,30 +124,26 @@ export function LlmConfigForm({
     });
   }
 
-  async function handleCreate() {
+  function handleCreate() {
     if (!resolvedModel.trim() || !newCredentialId) {
       toast.error("Selecione modelo e credencial.");
       return;
     }
     startTransition(async () => {
-      try {
-        const { prisma } = await import("@/lib/prisma");
-        await (prisma.llmConfig as { create: (args: unknown) => Promise<unknown> }).create({
-          data: {
-            provider: newProvider,
-            model: resolvedModel.trim(),
-            credentialId: newCredentialId || null,
-            isActive: false,
-          },
-        });
+      const result = await createLlmConfig({
+        provider: newProvider,
+        model: resolvedModel.trim(),
+        credentialId: newCredentialId || null,
+      });
+      if (result.success) {
         toast.success("Config criada. Clique em Ativar para usá-la.");
         setShowNewForm(false);
         setNewModel("");
         setNewCustomModel("");
         setNewCredentialId("");
         onConfigsChange?.();
-      } catch (err) {
-        toast.error(err instanceof Error ? err.message : "Erro ao criar configuração.");
+      } else {
+        toast.error(result.error ?? "Erro ao criar configuração.");
       }
     });
   }

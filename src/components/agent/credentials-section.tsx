@@ -37,6 +37,11 @@ import {
 } from "@/components/ui/alert-dialog";
 import type { CredentialSummary } from "@/lib/agent/llm/credentials";
 import type { LlmProvider } from "@/lib/agent/llm/types";
+import {
+  createCredentialAction,
+  deleteCredentialAction,
+  listCredentialsAction,
+} from "@/lib/actions/credentials";
 import { PROVIDER_META } from "@/lib/agent/llm/catalog";
 
 const PROVIDERS: { value: LlmProvider; label: string }[] = [
@@ -70,19 +75,24 @@ export function CredentialsSection({
     }
 
     startTransition(async () => {
-      try {
-        const { createCredential, listCredentials } = await import("@/lib/agent/llm/credentials");
-        await createCredential({ provider, label: label.trim(), apiKey: apiKey.trim() });
-        toast.success("Credencial adicionada com sucesso.");
-        setLabel("");
-        setApiKey("");
-        setShowForm(false);
-        onCredentialsChange?.();
+      const result = await createCredentialAction({
+        provider,
+        label: label.trim(),
+        apiKey: apiKey.trim(),
+      });
+      if (!result.success) {
+        toast.error(result.error ?? "Erro ao adicionar credencial.");
+        return;
+      }
+      toast.success("Credencial adicionada com sucesso.");
+      setLabel("");
+      setApiKey("");
+      setShowForm(false);
+      onCredentialsChange?.();
 
-        const updated = await listCredentials();
-        setCredentials(updated);
-      } catch (err) {
-        toast.error(err instanceof Error ? err.message : "Erro ao adicionar credencial.");
+      const listResult = await listCredentialsAction();
+      if (listResult.success && listResult.data) {
+        setCredentials(listResult.data);
       }
     });
   }
@@ -90,17 +100,15 @@ export function CredentialsSection({
   function handleDelete(id: string) {
     setDeletingId(id);
     startTransition(async () => {
-      try {
-        const { deleteCredential } = await import("@/lib/agent/llm/credentials");
-        await deleteCredential(id);
-        setCredentials((prev) => prev.filter((c) => c.id !== id));
-        toast.success("Credencial removida.");
-        onCredentialsChange?.();
-      } catch (err) {
-        toast.error(err instanceof Error ? err.message : "Erro ao remover credencial.");
-      } finally {
-        setDeletingId(null);
+      const result = await deleteCredentialAction(id);
+      setDeletingId(null);
+      if (!result.success) {
+        toast.error(result.error ?? "Erro ao remover credencial.");
+        return;
       }
+      setCredentials((prev) => prev.filter((c) => c.id !== id));
+      toast.success("Credencial removida.");
+      onCredentialsChange?.();
     });
   }
 

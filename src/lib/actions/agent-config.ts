@@ -28,7 +28,7 @@ const UpdateSettingsSchema = z.object({
   guardrails: z
     .array(z.string().max(300))
     .max(20, "Máximo de 20 guardrails permitidos"),
-  terminology: z.record(z.string()),
+  terminology: z.record(z.string(), z.string()),
   advancedOverride: z.string().max(50_000).optional(),
   audioInputEnabled: z.boolean(),
   kbEnabled: z.boolean(),
@@ -178,8 +178,10 @@ export async function updateAgentSettings(
         id: "global",
         personality: data.personality,
         tone: data.tone,
-        guardrails: data.guardrails,
-        terminology: data.terminology,
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        guardrails: data.guardrails as any,
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        terminology: data.terminology as any,
         advancedOverride: data.advancedOverride ?? null,
         audioInputEnabled: data.audioInputEnabled,
         kbEnabled: data.kbEnabled,
@@ -189,8 +191,10 @@ export async function updateAgentSettings(
       update: {
         personality: data.personality,
         tone: data.tone,
-        guardrails: data.guardrails,
-        terminology: data.terminology,
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        guardrails: data.guardrails as any,
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        terminology: data.terminology as any,
         advancedOverride: data.advancedOverride ?? null,
         audioInputEnabled: data.audioInputEnabled,
         kbEnabled: data.kbEnabled,
@@ -266,6 +270,53 @@ export async function activateLlmConfig(configId: string): Promise<ActionResult>
     return {
       success: false,
       error: err instanceof Error ? err.message : "Erro ao ativar config",
+    };
+  }
+}
+
+/**
+ * Cria uma nova LlmConfig (inativa por padrão).
+ * Gate: super_admin ou admin.
+ */
+export async function createLlmConfig(input: {
+  provider: string;
+  model: string;
+  credentialId: string | null;
+}): Promise<ActionResult<{ id: string }>> {
+  try {
+    const auth = await requireAdminOrAbove();
+    if (!auth.ok) return { success: false, error: auth.error };
+
+    if (!input.model.trim()) {
+      return { success: false, error: "Modelo obrigatório" };
+    }
+
+    const created = await prisma.llmConfig.create({
+      data: {
+        provider: input.provider,
+        model: input.model.trim(),
+        credentialId: input.credentialId || null,
+        isActive: false,
+      },
+      select: { id: true },
+    });
+
+    void logAudit({
+      userId: auth.userId,
+      action: "agent_settings_updated",
+      targetType: "LlmConfig",
+      targetId: created.id,
+      details: { provider: input.provider, model: input.model },
+    });
+
+    revalidatePath("/agente/configuracao");
+
+    return { success: true, data: { id: created.id } };
+  } catch (err) {
+    console.error("[createLlmConfig]", err);
+    return {
+      success: false,
+      error: err instanceof Error ? err.message : "Erro ao criar configuração",
     };
   }
 }
