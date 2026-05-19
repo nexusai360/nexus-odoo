@@ -1629,10 +1629,15 @@ model LlmUsage {
   errorMessage   String?  @map("error_message")
   isPlayground   Boolean  @default(false) @map("is_playground")
   userId         String?  @map("user_id") @db.Uuid
+  // Credencial (chave de API) usada — permite somar o consumo por chave (A4).
+  credentialId   String?  @map("credential_id") @db.Uuid
+  // Tipo da requisição para a tag de Consumo (G11): texto/imagem/audio/arquivo.
+  requestKind    String   @default("texto") @map("request_kind")
   createdAt      DateTime @default(now()) @map("created_at")
 
   @@index([createdAt])
   @@index([provider, model, createdAt])
+  @@index([credentialId])
   @@map("llm_usage")
 }
 
