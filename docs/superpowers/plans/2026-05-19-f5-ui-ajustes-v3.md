@@ -54,12 +54,21 @@ atômicos `fix(f5-ui):`/`feat(f5-ui):`. `tsc`+`build` verdes ao fim de cada bloc
 ### Task A4 — Nova seção de Saldo (acima do Provedor)
 **Files:** `src/components/agent/llm-config-form.tsx`,
 `src/lib/agent/llm/billing.ts` (se precisar ajuste)
-- [ ] Criar uma seção **acima do seletor de Provedor**: ao selecionar uma chave
-  de API, exibe o **saldo/crédito** daquela chave naquele provedor + botão
-  **"Adicionar crédito"** (link para o billing do provedor).
-- [ ] O saldo se mantém atualizado: após cada requisição que consome tokens,
-  disparar a atualização do saldo (consulta de billing ou abatimento do custo
-  retornado). Reusar/consertar `billing.ts`.
+- [ ] Criar uma seção **acima do seletor de Provedor** com botão **"Adicionar
+  crédito"** (link para o billing do provedor).
+- [ ] **Modelo de saldo/consumo (confirmado pelo usuário):**
+  - **OpenRouter** → saldo restante real via `billing.ts` (`/api/v1/credits`).
+  - **OpenAI/Anthropic/Gemini** → não há endpoint de saldo via API key; em vez
+    disso exibir o **consumo acumulado rastreado por nós** a partir de
+    `LlmUsage`: `SUM(costUsd)` das requisições feitas com aquela chave.
+  - **Atribuição por chave:** `LlmUsage` ganha um campo **`credentialId`**
+    (migration aditiva); `logUsage` grava qual credencial foi usada. Consumo
+    da chave = soma das rows daquela `credentialId`.
+  - **Comportamento cumulativo:** cada chave mantém o **seu próprio total
+    persistente**; trocar a chave ativa **nunca zera nem reduz** nada. Há um
+    **total geral** = soma de todas as chaves (ex.: OpenAI $10 + Gemini $5 →
+    total $15). Cada chave exibe o seu; a seção exibe também o total.
+  - Atualiza a cada requisição (o custo já é logado em `LlmUsage`).
 - [ ] `ui-ux-pro-max` no layout da seção. `build` verde. Commit.
 
 ### Task A5 — Mensagem do "Testar conexão" e fonte da verdade no topo
