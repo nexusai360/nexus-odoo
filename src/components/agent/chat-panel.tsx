@@ -376,10 +376,10 @@ export function ChatPanel({
                 id="agent-panel-title"
                 className="text-sm leading-tight font-semibold tracking-tight"
               >
-                Agente
+                Agente Nex
               </h2>
               <p className="text-xs leading-tight text-muted-foreground">
-                Online · pergunte sobre a operação
+                Online · respostas em tempo real
               </p>
             </div>
           </div>
@@ -626,10 +626,10 @@ function WelcomeBlock({
         <Sparkles className="h-6 w-6" strokeWidth={2.25} />
       </div>
       <h3 className="text-base font-semibold tracking-tight">
-        Olá, sou o Agente.
+        Olá, sou o Agente Nex.
       </h3>
       <p className="mt-1 max-w-[18rem] text-sm text-muted-foreground">
-        Pergunte sobre vendas, estoque, finanças e operação. Consulto o banco em tempo real.
+        Respostas em tempo real.
       </p>
       <div className="mt-6 flex w-full flex-col gap-2">
         {suggestions.map((s) => (
