@@ -9,12 +9,13 @@
  *
  * Gate de role: super_admin (aplicado também no layout do grupo /agente).
  */
+import Link from "next/link";
 import { redirect } from "next/navigation";
 import { BookOpen, FlaskConical } from "lucide-react";
 
 import { PageHeader } from "@/components/page-header";
 import { PageShell } from "@/components/layout/page-shell";
-import { Button } from "@/components/ui/button";
+import { buttonVariants } from "@/components/ui/button";
 import {
   Card,
   CardContent,
@@ -69,13 +70,15 @@ export default async function Page() {
         title="Prompt do Agente"
         subtitle="Identidade, comportamento, recursos e base de conhecimento."
         actions={
-          <Button
-            render={<a href="/agente/playground" />}
-            className="cursor-pointer min-h-[44px]"
+          <Link
+            href="/agente/playground"
+            className={buttonVariants({
+              className: "cursor-pointer min-h-[44px]",
+            })}
           >
             <FlaskConical className="h-4 w-4 mr-1.5" />
             Abrir playground
-          </Button>
+          </Link>
         }
       />
 
