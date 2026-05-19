@@ -56,6 +56,7 @@ import {
 import type { AuthUser } from "@/lib/auth-helpers";
 import { grantableDomains, REPORT_DOMAINS, type ReportDomainId } from "@/lib/reports/domains";
 import { AccessStep } from "@/components/users/access-step";
+import { WhatsappNumbersField } from "@/components/users/whatsapp-numbers-field";
 import {
   handleRoleChange,
   type FormState,
@@ -430,6 +431,7 @@ export function UserFormDialog({
                 lockRole={lockRole}
                 availableRoles={availableRoles}
                 showActiveToggle={showActiveToggle}
+                editUserId={isEdit ? user?.id : undefined}
                 emailRef={emailRef}
                 ids={{
                   name: nameId,
@@ -588,6 +590,8 @@ interface StepIdentityProps {
   lockRole: boolean;
   availableRoles: RoleMeta[];
   showActiveToggle: boolean;
+  /** Id do usuário sendo editado; habilita a seção de números de WhatsApp. */
+  editUserId?: string;
   emailRef: React.RefObject<HTMLInputElement | null>;
   ids: {
     name: string;
@@ -610,6 +614,7 @@ function StepIdentity({
   lockRole,
   availableRoles,
   showActiveToggle,
+  editUserId,
   emailRef,
   ids,
 }: StepIdentityProps) {
@@ -804,6 +809,13 @@ function StepIdentity({
             }
             aria-label="Alternar status do usuário"
           />
+        </div>
+      ) : null}
+
+      {/* Números de WhatsApp — só no modo edição (exige usuário persistido) */}
+      {isEdit && editUserId ? (
+        <div className="rounded-lg border border-border bg-muted/20 px-4 py-3">
+          <WhatsappNumbersField userId={editUserId} />
         </div>
       ) : null}
     </>
