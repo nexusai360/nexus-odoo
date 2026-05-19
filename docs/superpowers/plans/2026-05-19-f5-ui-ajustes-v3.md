@@ -236,3 +236,96 @@ atômicos `fix(f5-ui):`/`feat(f5-ui):`. `tsc`+`build` verdes ao fim de cada bloc
 | Playground sem margem padrão | D1 |
 | Redesenho geral do Playground | D1–D9 |
 | Sidebar "Agente" → "Agente Nex" | E1 |
+
+---
+
+## BLOCO G — Feedback adicional (4ª rodada — Prompt, Bubble, recursos)
+
+### Task G1 — Preencher o conteúdo do Prompt
+**Files:** `prisma/seed.ts` (ou seed do `AgentSettings`), conteúdo default
+- [ ] Redigir e preencher de verdade: **texto do prompt (identidade base),
+  personalidade, tom, guardrails** — para o Agente Nex consultar a operação da
+  Matrix Fitness Group (estoque, financeiro, fiscal, comercial). Esse prompt
+  vale para a **bubble in-app E para o WhatsApp**.
+- [ ] Garantir que o seed/escrita popula `AgentSettings` (não deixar em branco).
+
+### Task G2 — Recursos replicam para o WhatsApp (regra de comportamento)
+**Files:** núcleo do agente (`run-agent.ts` / handler WhatsApp)
+- [ ] Sugestões clicáveis: **não** usadas no WhatsApp (só in-app).
+- [ ] Áudio desativado + usuário manda áudio no WhatsApp → o agente responde
+  que **não consegue entender áudio**. Imagem desativada + imagem no WhatsApp →
+  **ignora** silenciosamente. Na bubble in-app os botões são travados (não
+  precisa mensagem). Isso é regra de backend a implementar.
+
+### Task G3 — Bubble: nomenclatura e descrição
+**Files:** `chat-panel.tsx` (welcome block + header)
+- [ ] Header e welcome: "Agente Nex" (hoje "Agente"). Welcome: "Olá, sou o
+  **Agente Nex**." Descrição encurtada para **"Respostas em tempo real."**
+  (em vez da frase de 2 linhas).
+
+### Task G4 — Bubble: input bar redesenhada (áudio à direita + anexo)
+**Files:** `chat-panel.tsx` (input bar)
+- [ ] Botão de **áudio** vai para a **direita**, **antes do botão Enviar** (o
+  Enviar fica na extremidade direita; o gravar-áudio logo antes).
+- [ ] Onde o áudio estava (esquerda), um botão **"+" / anexo**: ao clicar,
+  abre opções para anexar **imagem** e **arquivo** (sem vídeo). Definir os
+  formatos de imagem e de arquivo aceitos; descrição curta ao abrir.
+
+### Task G5 — Permissão de microfone
+**Files:** `audio-recorder.tsx`
+- [ ] Investigar o erro "microfone negado" no ambiente local; tratar o estado
+  de permissão negada com mensagem clara; verificar implicação em produção
+  (HTTPS necessário para `getUserMedia`).
+
+### Task G6 — Recursos de áudio/imagem: seletor correto
+**Files:** `resources-toggles.tsx`
+- [ ] Modelo de **imagem**: filtrar só modelos que **leem imagem**; modelo de
+  **áudio**: só modelos de áudio. Provedor: só provedores **com API key
+  cadastrada**; vazio por padrão; sem chave → botão "Nova chave" (vai p/
+  `/agente/chaves`). Adicionar **seletor de API key** (provedor + modelo +
+  chave). Rótulos: **"Provedor"** e **"Modelo"** (sem "de áudio"/"de imagem").
+- [ ] Alargar os componentes, alinhados às bordas (padrão da tela de Consumo).
+
+### Task G7 — Checkpoint nas Sugestões clicáveis
+**Files:** `resources-toggles.tsx`
+- [ ] Sugestões clicáveis passa a usar o **mesmo controle de 3 estados**
+  (desativado / playground / produção) dos recursos de áudio/imagem — não a
+  chavinha simples. Ajustar backend conforme.
+
+### Task G8 — Base de conhecimento: lixeira no lugar do X + alinhamento
+**Files:** `kb-section.tsx`
+- [ ] Remover o "X" de cada documento; colocar a **lixeira** no lugar do X.
+- [ ] Alinhar à direita todos os controles (checkpoint de áudio/imagem/
+  sugestões e a lixeira da KB) — alinhamento consistente com a seção de KB.
+
+### Task G9 — Feedback de clicável em toda a plataforma
+**Files:** componentes diversos
+- [ ] Tudo que é clicável: `cursor-pointer` + **tooltip** explicando a ação ao
+  passar o mouse. Aplicar de forma consistente (`ui-ux-pro-max`).
+
+### Task G10 — Playground: tela "Prompt da sessão" igual à tela Prompt
+**Files:** `playground-content.tsx` + sub-tela de prompt da sessão
+- [ ] A sub-tela "Prompt da sessão" deve ser **visualmente idêntica** à tela
+  do menu Prompt (identidade base, personalidade, tom, guardrails). Nova
+  sessão carrega o que está em produção; edições ficam na memória da sessão.
+- [ ] Destaque maior para "Aplicar à produção" / "Salvar prompt". Redesenhar.
+
+### Task G11 — Consumo: coluna/tag de tipo de requisição
+**Files:** consumo (tabela + filtros), `LlmUsage` (campo `tipo`)
+- [ ] Acrescentar à tabela de histórico uma **tag de tipo**: texto / imagem /
+  áudio / arquivo. Permitir **filtrar** o consumo por tipo. Campo novo em
+  `LlmUsage` (migration aditiva) preenchido a cada requisição.
+
+| Feedback 4ª rodada | Task |
+|---|---|
+| Preencher conteúdo do prompt | G1 |
+| Recursos replicam no WhatsApp; áudio off → "não entendo" | G2 |
+| Bubble "Agente Nex" + descrição curta | G3 |
+| Áudio à direita + botão de anexo "+" | G4 |
+| Erro de microfone negado | G5 |
+| Seletor de modelo de imagem/áudio + API key + rótulos | G6 |
+| Sugestões clicáveis com checkpoint de 3 estados | G7 |
+| KB: lixeira no lugar do X + alinhamento | G8 |
+| Feedback de clicável (cursor + tooltip) | G9 |
+| Playground: prompt da sessão = tela Prompt | G10 |
+| Consumo: tag de tipo de requisição | G11 |
