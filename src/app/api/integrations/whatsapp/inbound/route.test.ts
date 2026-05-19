@@ -43,6 +43,13 @@ jest.mock("@/lib/prisma", () => ({
   },
 }));
 
+// Mock rate-limit para evitar conexão Redis nos testes
+jest.mock("@/lib/rate-limit", () => ({
+  checkLoginRateLimit: jest.fn().mockResolvedValue({ allowed: true, remaining: 99 }),
+  clearLoginRateLimit: jest.fn().mockResolvedValue(undefined),
+  checkRateLimit: jest.fn().mockResolvedValue({ allowed: true, remaining: 99 }),
+}));
+
 // Mock ioredis para evitar conexão real
 jest.mock("ioredis", () => {
   return jest.fn().mockImplementation(() => ({
@@ -104,8 +111,13 @@ beforeEach(() => {
 
   // Por padrão: HMAC válido
   mockVerifySignature.mockReturnValue(true);
-  // Por padrão: sem webhook configurado (não valida HMAC)
-  mockWebhookFindFirst.mockResolvedValue(null);
+  // Por padrão: webhook inbound habilitado (fail-closed exige um webhook configurado)
+  mockWebhookFindFirst.mockResolvedValue({
+    id: "wh-1",
+    direction: "inbound",
+    secret: "enc:mysecret",
+    enabled: true,
+  });
   // Por padrão: mensagem ainda não processada
   mockProcessedFindUnique.mockResolvedValue(null);
   // Por padrão: create bem-sucedido
@@ -203,8 +215,18 @@ describe("POST /api/integrations/whatsapp/inbound", () => {
     );
   });
 
-  it("retorna 200 quando teto diário é atingido", async () => {
-    mockConversationCount.mockResolvedValue(100); // igual ao default limit
+  it("retorna 503 quando não há webhook inbound configurado (fail-closed)", async () => {
+    mockWebhookFindFirst.mockResolvedValue(null);
+
+    const req = makeRequest(VALID_PAYLOAD);
+    const res = await POST(req as Parameters<typeof POST>[0]);
+    expect(res.status).toBe(503);
+    expect(mockQueueAdd).not.toHaveBeenCalled();
+  });
+
+  it("retorna 200 quando teto diário é atingido (conta ProcessedWhatsappMessage por userId)", async () => {
+    // A contagem agora usa processedWhatsappMessage.count({ where: { userId, processedAt } })
+    mockProcessedCount.mockResolvedValue(100); // igual ao default limit
 
     const req = makeRequest(VALID_PAYLOAD);
     const res = await POST(req as Parameters<typeof POST>[0]);
@@ -221,8 +243,9 @@ describe("POST /api/integrations/whatsapp/inbound", () => {
     expect(res.status).toBe(202);
     const body = await res.json() as { queued?: boolean; jobId?: string };
     expect(body.queued).toBe(true);
+    // processedCreate agora inclui userId
     expect(mockProcessedCreate).toHaveBeenCalledWith(
-      expect.objectContaining({ data: { messageId: VALID_PAYLOAD.messageId } }),
+      expect.objectContaining({ data: expect.objectContaining({ messageId: VALID_PAYLOAD.messageId }) }),
     );
     expect(mockQueueAdd).toHaveBeenCalled();
   });

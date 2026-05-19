@@ -29,8 +29,14 @@ import { decrypt } from "@/lib/encryption";
 import { inboundSchema } from "@/lib/whatsapp/inbound-payload";
 import { resolveWhatsappUser } from "@/lib/whatsapp/resolve";
 import { logAudit } from "@/lib/audit";
+import { checkRateLimit } from "@/lib/rate-limit";
 import { AGENT_QUEUE_NAME } from "@/worker/agent/queue";
 import type { AgentJobData } from "@/worker/agent/processor";
+
+/** Rate limit: 30 requisições por minuto por IP; 10 por minuto por número de origem. */
+const RL_IP_MAX = 30;
+const RL_FROM_MAX = 10;
+const RL_WINDOW_SEC = 60;
 
 /** Teto diário padrão de mensagens por usuário (sobrescrito por AppSetting). */
 const DEFAULT_DAILY_LIMIT = 100;
@@ -48,6 +54,17 @@ function getAgentQueue(): Queue<AgentJobData> {
 }
 
 export async function POST(req: NextRequest): Promise<NextResponse> {
+  // ── Rate limit por IP ─────────────────────────────────────────────────────
+  const ip =
+    req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ??
+    req.headers.get("x-real-ip") ??
+    "unknown";
+
+  const ipRl = await checkRateLimit(`whatsapp_inbound:ip:${ip}`, RL_IP_MAX, RL_WINDOW_SEC).catch(() => ({ allowed: true, remaining: 0 }));
+  if (!ipRl.allowed) {
+    return NextResponse.json({ error: "Rate limit excedido" }, { status: 429 });
+  }
+
   // ── Leitura do corpo cru (necessário antes do parse JSON) ──────────────────
   let bodyText: string;
   try {
@@ -56,26 +73,36 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     return NextResponse.json({ error: "Não foi possível ler o corpo da requisição" }, { status: 400 });
   }
 
-  // ── Autenticação HMAC ──────────────────────────────────────────────────────
-  // Carrega o webhook inbound configurado para obter o secret
+  // ── Limite de tamanho do corpo (ALTO-3 do review 4-6) ─────────────────────
+  if (bodyText.length > 256 * 1024) {
+    return NextResponse.json({ error: "Payload muito grande" }, { status: 413 });
+  }
+
+  // ── Autenticação HMAC (fail-closed) ──────────────────────────────────────
+  // Sem webhook inbound habilitado → rejeita. Nunca aceitar tráfego sem secret.
   const inboundWebhook = await prisma.whatsappWebhook.findFirst({
     where: { direction: "inbound", enabled: true },
   }).catch(() => null);
 
-  if (inboundWebhook) {
-    const signature = req.headers.get("x-signature") ?? "";
-    const timestamp = req.headers.get("x-timestamp") ?? "";
+  if (!inboundWebhook) {
+    return NextResponse.json(
+      { error: "Canal WhatsApp não configurado" },
+      { status: 503 },
+    );
+  }
 
-    let secret: string;
-    try {
-      secret = decrypt(inboundWebhook.secret);
-    } catch {
-      return NextResponse.json({ error: "Configuração de segurança inválida" }, { status: 500 });
-    }
+  const signature = req.headers.get("x-signature") ?? "";
+  const timestamp = req.headers.get("x-timestamp") ?? "";
 
-    if (!verifySignature(bodyText, secret, signature, timestamp)) {
-      return NextResponse.json({ error: "Assinatura inválida" }, { status: 401 });
-    }
+  let secret: string;
+  try {
+    secret = decrypt(inboundWebhook.secret);
+  } catch {
+    return NextResponse.json({ error: "Configuração de segurança inválida" }, { status: 500 });
+  }
+
+  if (!verifySignature(bodyText, secret, signature, timestamp)) {
+    return NextResponse.json({ error: "Assinatura inválida" }, { status: 401 });
   }
 
   // ── Parse e validação do payload ──────────────────────────────────────────
@@ -95,6 +122,12 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
   }
 
   const payload = parsed.data;
+
+  // ── Rate limit por número de origem ──────────────────────────────────────
+  const fromRl = await checkRateLimit(`whatsapp_inbound:from:${payload.from}`, RL_FROM_MAX, RL_WINDOW_SEC).catch(() => ({ allowed: true, remaining: 0 }));
+  if (!fromRl.allowed) {
+    return NextResponse.json({ error: "Rate limit excedido para este número" }, { status: 429 });
+  }
 
   // ── Idempotência — dedup por messageId ────────────────────────────────────
   const existing = await prisma.processedWhatsappMessage.findUnique({
@@ -134,32 +167,18 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
       ? dailyLimitSetting.value
       : DEFAULT_DAILY_LIMIT;
 
-  // Conta mensagens processadas hoje para este usuário usando ProcessedWhatsappMessage
-  // (aproximação via count de jobs do dia — suficiente para o teto)
   const todayStart = new Date();
   todayStart.setHours(0, 0, 0, 0);
 
-  const todayCount = await prisma.processedWhatsappMessage
-    .count({
-      where: { processedAt: { gte: todayStart } },
-    })
-    .catch(() => 0);
-
-  // Aproximação conservadora: conta todos os processados hoje (não só do usuário)
-  // A SPEC diz "por userId" — refinar se necessário com campo userId na tabela
-  // Por ora, o modelo ProcessedWhatsappMessage não tem userId, então usamos
-  // a contagem de conversas WhatsApp do usuário no dia como proxy
-  const userDailyCount = await prisma.conversation
+  // Conta mensagens processadas hoje para este usuário via ProcessedWhatsappMessage.userId
+  const userDailyCount = await prisma.processedWhatsappMessage
     .count({
       where: {
         userId: user.id,
-        channel: "whatsapp",
-        createdAt: { gte: todayStart },
+        processedAt: { gte: todayStart },
       },
     })
     .catch(() => 0);
-
-  void todayCount; // usado futuramente quando o modelo tiver userId
 
   if (userDailyCount >= dailyLimit) {
     return NextResponse.json(
@@ -168,10 +187,9 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     );
   }
 
-  // ── Registrar idempotência ─────────────────────────────────────────────────
-  await prisma.processedWhatsappMessage.create({
-    data: { messageId: payload.messageId },
-  });
+  // ── Registrar idempotência (com userId) ───────────────────────────────────
+  // Enfileira primeiro para evitar perda de mensagem se o create falhar.
+  // O userId é gravado para permitir contagem correta do teto diário.
 
   // ── Carregar config do canal para o job ───────────────────────────────────
   const channel = await prisma.whatsappChannel.findUnique({
@@ -219,6 +237,14 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     backoff: { type: "exponential", delay: 5000 },
     removeOnComplete: { count: 100 },
     removeOnFail: { count: 50 },
+  });
+
+  // ── Registrar idempotência APÓS enfileirar ────────────────────────────────
+  // Ordem: enfileira primeiro → grava idempotência depois.
+  // Se o create falhar, o job pode ser processado 2× (dedup por messageId no job),
+  // que é preferível a perder a mensagem silenciosamente (M4 do review 4-6).
+  await prisma.processedWhatsappMessage.create({
+    data: { messageId: payload.messageId, userId: user.id },
   });
 
   return NextResponse.json({ queued: true, jobId: job.id }, { status: 202 });
