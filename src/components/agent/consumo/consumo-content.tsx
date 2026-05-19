@@ -19,6 +19,7 @@ import { motion, useReducedMotion } from "framer-motion";
 import { Loader2 } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { KpiRow, type KpiRowData } from "./kpi-row";
+import { UsageCharts } from "./usage-charts";
 import {
   fetchUsageStats,
   fetchDistinctProviders,
@@ -258,29 +259,21 @@ export function ConsumoContent({ minDate: minDateIso }: ConsumoContentProps) {
       {/* KPI Row — 6 cartões: conversas, iterações, tokens entrada/saída, custo USD/BRL */}
       <KpiRow data={kpiData} isLoading={isLoading && stats === null} />
 
-      {/* Gráficos (Task 5.2b) e tabela (Task 5.2c) — montados a seguir */}
-      <UsageChartsPlaceholder stats={stats} isLoading={isLoading && stats === null} />
+      {/* Gráficos — Task 5.2b */}
+      <UsageCharts
+        stats={stats}
+        isLoading={isLoading && stats === null}
+        isHourly={pill === "hoje" && !!stats?.byHour}
+      />
+      {/* Tabela (Task 5.2c) — montada a seguir */}
       <UsageTablePlaceholder stats={stats} range={range} globalProvider={globalProvider} isPlayground={isPlaygroundFilter} />
     </motion.div>
   );
 }
 
 // ---------------------------------------------------------------------------
-// Placeholders — substituídos nas tasks 5.2b e 5.2c
+// Placeholder — substituído na task 5.2c
 // ---------------------------------------------------------------------------
-
-function UsageChartsPlaceholder({ stats, isLoading }: { stats: UsageSummaryV2 | null; isLoading: boolean }) {
-  if (isLoading) {
-    return (
-      <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
-        <div className="h-72 animate-pulse rounded-2xl bg-muted/40 lg:col-span-2" />
-        <div className="h-72 animate-pulse rounded-2xl bg-muted/40" />
-      </div>
-    );
-  }
-  if (!stats) return null;
-  return null; // substituído pelo UsageCharts na Task 5.2b
-}
 
 function UsageTablePlaceholder({
   stats,
