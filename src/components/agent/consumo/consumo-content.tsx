@@ -18,6 +18,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { motion, useReducedMotion } from "framer-motion";
 import { Loader2 } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
+import { CustomSelect } from "@/components/ui/custom-select";
 import { KpiRow, type KpiRowData } from "./kpi-row";
 import { UsageCharts } from "./usage-charts";
 import { UsageTable } from "./usage-table";
@@ -213,34 +214,39 @@ export function ConsumoContent({ minDate: minDateIso }: ConsumoContentProps) {
               </button>
             ))}
 
-          {/* Filtro de provider */}
+          {/* Filtro de provedor */}
           {providers.length > 0 && (
-            <select
+            <CustomSelect
+              aria-label="Filtrar por provedor"
               value={globalProvider ?? "__all__"}
-              onChange={(e) => setGlobalProvider(e.target.value === "__all__" ? undefined : e.target.value)}
-              className="h-7 cursor-pointer rounded-full border border-border bg-background px-3 text-xs text-foreground transition-colors focus:border-violet-500/60 focus:outline-none focus:ring-2 focus:ring-violet-500"
-              aria-label="Filtrar por provider"
-            >
-              <option value="__all__">Todos os providers</option>
-              {providers.map((p) => (
-                <option key={p} value={p}>
-                  {p.charAt(0).toUpperCase() + p.slice(1)}
-                </option>
-              ))}
-            </select>
+              onChange={(v) =>
+                setGlobalProvider(v === "__all__" ? undefined : v)
+              }
+              triggerClassName="h-9 min-w-[180px]"
+              options={[
+                { value: "__all__", label: "Todos os provedores" },
+                ...providers.map((p) => ({
+                  value: p,
+                  label: p.charAt(0).toUpperCase() + p.slice(1),
+                })),
+              ]}
+            />
           )}
 
           {/* Filtro de ambiente */}
-          <select
-            value={ambiente}
-            onChange={(e) => setAmbiente(e.target.value as "all" | "chat" | "playground")}
-            className="h-7 cursor-pointer rounded-full border border-border bg-background px-3 text-xs text-foreground transition-colors focus:border-violet-500/60 focus:outline-none focus:ring-2 focus:ring-violet-500"
+          <CustomSelect
             aria-label="Filtrar por ambiente"
-          >
-            <option value="all">Todos os ambientes</option>
-            <option value="chat">Chat</option>
-            <option value="playground">Playground</option>
-          </select>
+            value={ambiente}
+            onChange={(v) =>
+              setAmbiente(v as "all" | "chat" | "playground")
+            }
+            triggerClassName="h-9 min-w-[180px]"
+            options={[
+              { value: "all", label: "Todos os ambientes" },
+              { value: "chat", label: "Chat" },
+              { value: "playground", label: "Playground" },
+            ]}
+          />
         </div>
 
         {isLoading && (

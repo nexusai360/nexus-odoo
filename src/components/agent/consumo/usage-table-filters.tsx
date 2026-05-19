@@ -10,6 +10,8 @@
  * Design: docs/superpowers/research/2026-05-18-f5-ui-design.md §10
  */
 
+import { CustomSelect } from "@/components/ui/custom-select";
+
 interface UsageTableFiltersProps {
   providers: string[];
   modelsByProvider: Record<string, string[]>;
@@ -18,6 +20,8 @@ interface UsageTableFiltersProps {
   onProviderChange: (provider: string | undefined) => void;
   onModelChange: (model: string | undefined) => void;
 }
+
+const ALL = "__all__";
 
 function providerLabel(key: string): string {
   const labels: Record<string, string> = {
@@ -44,38 +48,32 @@ export function UsageTableFilters({
   return (
     <div className="flex flex-wrap items-center gap-2">
       {/* Filtro de provider */}
-      <select
-        value={selectedProvider ?? "__all__"}
-        onChange={(e) => {
-          const v = e.target.value;
-          onProviderChange(v === "__all__" ? undefined : v);
+      <CustomSelect
+        aria-label="Filtrar por provedor"
+        value={selectedProvider ?? ALL}
+        onChange={(v) => {
+          onProviderChange(v === ALL ? undefined : v);
           onModelChange(undefined); // cascade reset
         }}
-        className="h-8 cursor-pointer rounded-lg border border-border bg-background px-2.5 text-xs text-foreground transition-colors focus:border-violet-500/60 focus:outline-none focus:ring-2 focus:ring-violet-500"
-        aria-label="Filtrar por provider"
-      >
-        <option value="__all__">Todos os providers</option>
-        {providers.map((p) => (
-          <option key={p} value={p}>{providerLabel(p)}</option>
-        ))}
-      </select>
+        triggerClassName="h-9 min-w-[200px]"
+        options={[
+          { value: ALL, label: "Todos os provedores" },
+          ...providers.map((p) => ({ value: p, label: providerLabel(p) })),
+        ]}
+      />
 
       {/* Filtro de modelo (cascade) */}
       {availableModels.length > 0 && (
-        <select
-          value={selectedModel ?? "__all__"}
-          onChange={(e) => {
-            const v = e.target.value;
-            onModelChange(v === "__all__" ? undefined : v);
-          }}
-          className="h-8 cursor-pointer rounded-lg border border-border bg-background px-2.5 text-xs text-foreground transition-colors focus:border-violet-500/60 focus:outline-none focus:ring-2 focus:ring-violet-500"
+        <CustomSelect
           aria-label="Filtrar por modelo"
-        >
-          <option value="__all__">Todos os modelos</option>
-          {availableModels.map((m) => (
-            <option key={m} value={m}>{m}</option>
-          ))}
-        </select>
+          value={selectedModel ?? ALL}
+          onChange={(v) => onModelChange(v === ALL ? undefined : v)}
+          triggerClassName="h-9 min-w-[200px]"
+          options={[
+            { value: ALL, label: "Todos os modelos" },
+            ...availableModels.map((m) => ({ value: m, label: m })),
+          ]}
+        />
       )}
     </div>
   );

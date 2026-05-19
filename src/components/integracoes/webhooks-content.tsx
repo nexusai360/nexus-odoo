@@ -17,7 +17,7 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { CustomSelect } from "@/components/ui/custom-select";
 import { Switch } from "@/components/ui/switch";
 import {
   createWebhook,
@@ -34,8 +34,8 @@ interface Props {
 }
 
 const DIRECTION_LABELS: Record<string, string> = {
-  inbound: "Entrada (inbound)",
-  outbound: "Saída (outbound)",
+  inbound: "Entrada",
+  outbound: "Saída",
 };
 
 function formatDate(date: Date) {
@@ -192,18 +192,24 @@ export function WebhooksContent({ initial }: Props) {
 
           <div className="space-y-2">
             <Label htmlFor="wh-direction">Direção</Label>
-            <Select
+            <CustomSelect
+              aria-label="Direção do webhook"
               value={newDirection}
-              onValueChange={(v) => setNewDirection(v as "inbound" | "outbound")}
-            >
-              <SelectTrigger id="wh-direction">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="inbound">Entrada (inbound) — receptor de mensagens</SelectItem>
-                <SelectItem value="outbound">Saída (outbound) — callback do n8n</SelectItem>
-              </SelectContent>
-            </Select>
+              onChange={(v) => setNewDirection(v as "inbound" | "outbound")}
+              triggerClassName="min-h-[44px]"
+              options={[
+                {
+                  value: "inbound",
+                  label: "Entrada",
+                  description: "Receptor de mensagens",
+                },
+                {
+                  value: "outbound",
+                  label: "Saída",
+                  description: "Callback do n8n",
+                },
+              ]}
+            />
           </div>
 
           <div className="space-y-2">

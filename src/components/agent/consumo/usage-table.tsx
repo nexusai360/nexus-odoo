@@ -26,6 +26,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { cn } from "@/lib/utils";
+import { CustomSelect } from "@/components/ui/custom-select";
 import { UsageTableFilters } from "./usage-table-filters";
 import { UsageDetail } from "./usage-detail";
 import { fetchUsageDetails, fetchDistinctModels } from "@/lib/actions/llm-usage";
@@ -374,19 +375,19 @@ export function UsageTable({
               </div>
 
               <div className="inline-flex items-center text-xs text-muted-foreground">
-                <select
+                <CustomSelect
+                  aria-label="Itens por página"
                   value={String(pageSize)}
-                  onChange={(e) => {
-                    const next = Number(e.target.value) as PageSize;
+                  onChange={(v) => {
+                    const next = Number(v) as PageSize;
                     if (PAGE_SIZE_OPTIONS.includes(next)) setPageSize(next);
                   }}
-                  className="h-8 cursor-pointer rounded-lg border border-border bg-background px-2 text-xs text-foreground transition-colors focus:border-violet-500/60 focus:outline-none focus:ring-2 focus:ring-violet-500"
-                  aria-label="Itens por página"
-                >
-                  {PAGE_SIZE_OPTIONS.map((n) => (
-                    <option key={n} value={String(n)}>{n} por página</option>
-                  ))}
-                </select>
+                  triggerClassName="h-9 min-w-[150px]"
+                  options={PAGE_SIZE_OPTIONS.map((n) => ({
+                    value: String(n),
+                    label: `${n} por página`,
+                  }))}
+                />
               </div>
             </div>
           ) : null}

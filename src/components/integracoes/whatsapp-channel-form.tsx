@@ -6,7 +6,7 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { CustomSelect } from "@/components/ui/custom-select";
 import { Switch } from "@/components/ui/switch";
 import {
   updateWhatsappChannel,
@@ -108,22 +108,24 @@ export function WhatsappChannelForm({ initial }: Props) {
       {/* Modo de resposta */}
       <div className="space-y-2">
         <Label htmlFor="response-mode">Modo de resposta</Label>
-        <Select
+        <CustomSelect
+          aria-label="Modo de resposta"
           value={responseMode}
-          onValueChange={(v) => setResponseMode(v as "direct" | "n8n_webhook")}
-        >
-          <SelectTrigger id="response-mode">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="direct">
-              Direto — a plataforma envia a resposta via Graph API
-            </SelectItem>
-            <SelectItem value="n8n_webhook">
-              Webhook n8n — a resposta é enviada via webhook de saída
-            </SelectItem>
-          </SelectContent>
-        </Select>
+          onChange={(v) => setResponseMode(v as "direct" | "n8n_webhook")}
+          triggerClassName="min-h-[44px]"
+          options={[
+            {
+              value: "direct",
+              label: "Direto",
+              description: "A plataforma envia a resposta via Graph API",
+            },
+            {
+              value: "n8n_webhook",
+              label: "Webhook n8n",
+              description: "A resposta é devolvida ao n8n via webhook de saída",
+            },
+          ]}
+        />
         <p className="text-xs text-muted-foreground">
           No modo &quot;Webhook n8n&quot;, configure também o webhook de saída em{" "}
           <a href="/integracoes/webhooks" className="text-violet-500 hover:underline">
