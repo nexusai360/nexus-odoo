@@ -22,13 +22,16 @@ export const inboundSchema = z.object({
   timestamp: z.number().int().positive(),
 
   /** Tipo da mensagem. */
-  type: z.enum(["text", "audio"]),
+  type: z.enum(["text", "audio", "image"]),
 
   /** Texto da mensagem (presente quando type=text). */
   text: z.string().optional(),
 
   /** Media ID para download do áudio na Graph API (presente quando type=audio). */
   audioMediaId: z.string().optional(),
+
+  /** Media ID para download da imagem na Graph API (presente quando type=image). */
+  imageMediaId: z.string().optional(),
 });
 
 export type InboundPayload = z.infer<typeof inboundSchema>;

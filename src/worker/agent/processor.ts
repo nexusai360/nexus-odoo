@@ -18,6 +18,7 @@ import { getOrCreateWhatsappConversation } from "@/lib/agent/conversation";
 import { transcribeAudio } from "@/lib/agent/transcribe";
 import { buildCloudClientFromDb } from "@/lib/whatsapp/cloud-client";
 import { signPayload } from "@/lib/whatsapp/hmac";
+import { prisma } from "@/lib/prisma";
 import type { AgentChannel } from "@/generated/prisma/client";
 
 /** Mensagem de erro amigável enviada ao usuário quando o agente falha. */
@@ -40,11 +41,13 @@ export interface AgentJobData {
   /** Canal do agente — sempre "whatsapp" para jobs desta fila. */
   channel: AgentChannel;
   /** Tipo da mensagem. */
-  type: "text" | "audio";
+  type: "text" | "audio" | "image";
   /** Texto da mensagem (presente quando type=text). */
   text?: string;
   /** Media ID para download do áudio (presente quando type=audio). */
   audioMediaId?: string;
+  /** Media ID para download da imagem (presente quando type=image). */
+  imageMediaId?: string;
   /** Número de destino para a resposta (E.164). */
   replyTo: string;
   /** Configuração de resposta do canal. */
@@ -56,6 +59,47 @@ export interface AgentJobData {
  * Exportado como função para facilitar testes sem BullMQ.
  */
 export async function processAgentJob(data: AgentJobData): Promise<void> {
+  // G2 — Regras de comportamento para WhatsApp baseadas nos checkpoints
+  // configurados em AgentSettings. "PRODUCTION" libera o recurso para o
+  // WhatsApp; outros valores indicam que o canal não deve processar mídia.
+  const settings = await prisma.agentSettings.findFirst().catch(() => null);
+  const audioInProduction = settings?.audioCheckpoint === "PRODUCTION";
+  const imageInProduction = settings?.imageCheckpoint === "PRODUCTION";
+
+  if (data.type === "image") {
+    // G2 — Imagem desativada para WhatsApp: ignorar silenciosamente
+    // (sem resposta). Quando habilitado, ainda não há pipeline de visão
+    // dedicado; responde com aviso provisório.
+    if (!imageInProduction) {
+      console.info(
+        `[agent-processor] Mensagem de imagem ignorada (imageCheckpoint != PRODUCTION) — messageId=${data.messageId}`,
+      );
+      return;
+    }
+    const provisional =
+      "Recebi sua imagem, mas a análise de imagens ainda está em ajustes finais. Em instantes consigo responder a essa modalidade.";
+    if (data.channelConfig.responseMode === "n8n_webhook") {
+      await sendViaWebhook(data, provisional);
+    } else {
+      const cloudClient = await buildCloudClientFromDb();
+      await cloudClient.sendText(data.replyTo, provisional);
+    }
+    return;
+  }
+
+  if (data.type === "audio" && !audioInProduction) {
+    // G2 — Áudio desativado para WhatsApp: responder explicando.
+    const message =
+      "No momento não consigo entender mensagens de áudio. Por favor, envie sua pergunta por escrito.";
+    if (data.channelConfig.responseMode === "n8n_webhook") {
+      await sendViaWebhook(data, message);
+    } else {
+      const cloudClient = await buildCloudClientFromDb();
+      await cloudClient.sendText(data.replyTo, message);
+    }
+    return;
+  }
+
   // 1. Resolver texto da mensagem (text ou áudio transcrito)
   let userMessage: string;
 
