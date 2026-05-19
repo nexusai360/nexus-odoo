@@ -311,18 +311,16 @@ export function PlaygroundContent({
   function handleOpenPreview() {
     startPreview(async () => {
       try {
-        const res = await fetch("/api/agent/stream", {
-          method: "POST",
+        const res = await fetch("/api/agent/prompt-preview", {
+          method: "GET",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ message: "__preview_prompt__", isPlayground: true, previewOnly: true }),
         });
-        // Se o endpoint não suporta previewOnly, exibimos uma mensagem informativa
         if (!res.ok) {
-          setPreviewText("Visualização do prompt não disponível. Configure o agente em /agente/configuracao.");
+          setPreviewText("Visualização do prompt não disponível. Verifique as permissões.");
           setPreviewOpen(true);
           return;
         }
-        const data = (await res.json().catch(() => ({}))) as { composedPrompt?: string };
+        const data = (await res.json()) as { composedPrompt?: string };
         setPreviewText(data.composedPrompt ?? "Prompt não disponível.");
         setPreviewOpen(true);
       } catch {
