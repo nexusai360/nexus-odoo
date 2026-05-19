@@ -69,7 +69,11 @@ const REGULAR_USER = {
 const WEBHOOK_ROW = {
   id: "wh-1",
   direction: "inbound",
-  url: "https://n8n.example.com/webhook/abc",
+  name: "Receptor WhatsApp",
+  url: null,
+  path: "whatsapp/inbound",
+  targetUrl: null,
+  methods: ["POST"],
   secret: "enc:mysecret",
   enabled: true,
   createdAt: new Date("2026-05-01"),
@@ -78,10 +82,28 @@ const WEBHOOK_ROW = {
 const WEBHOOK_ROW_OUTBOUND = {
   id: "wh-2",
   direction: "outbound",
+  name: "Callback n8n",
   url: "https://n8n.example.com/webhook/xyz",
+  path: null,
+  targetUrl: "https://n8n.example.com/webhook/xyz",
+  methods: ["POST"],
   secret: "enc:othersecret",
   enabled: false,
   createdAt: new Date("2026-05-02"),
+};
+
+const INBOUND_INPUT = {
+  direction: "inbound" as const,
+  name: "Receptor WhatsApp",
+  path: "whatsapp/inbound",
+  methods: ["POST" as const],
+};
+
+const OUTBOUND_INPUT = {
+  direction: "outbound" as const,
+  name: "Callback n8n",
+  targetUrl: "https://n8n.example.com/webhook/xyz",
+  methods: ["POST" as const],
 };
 
 // ──────────────────────────────────────────────
@@ -103,7 +125,7 @@ beforeEach(() => {
 
 describe("createWebhook", () => {
   it("cria um webhook com secret cifrado", async () => {
-    const result = await createWebhook("inbound", "https://n8n.example.com/webhook/abc");
+    const result = await createWebhook(INBOUND_INPUT);
     expect(result.success).toBe(true);
     // O secret deve ser cifrado antes de gravar
     expect(mockEncrypt).toHaveBeenCalled();
@@ -112,7 +134,8 @@ describe("createWebhook", () => {
   });
 
   it("retorna o secret em claro ao criar para exibição inicial", async () => {
-    const result = await createWebhook("outbound", "https://n8n.example.com/webhook/xyz");
+    mockPrismaWebhookCreate.mockResolvedValue(WEBHOOK_ROW_OUTBOUND);
+    const result = await createWebhook(OUTBOUND_INPUT);
     expect(result.success).toBe(true);
     if (result.success) {
       // Deve retornar o secret em claro para exibição única
@@ -122,21 +145,49 @@ describe("createWebhook", () => {
     }
   });
 
+  it("persiste path para inbound e targetUrl para outbound", async () => {
+    await createWebhook(INBOUND_INPUT);
+    expect(mockPrismaWebhookCreate.mock.calls[0][0].data.path).toBe(
+      "whatsapp/inbound",
+    );
+    expect(mockPrismaWebhookCreate.mock.calls[0][0].data.targetUrl).toBeNull();
+
+    mockPrismaWebhookCreate.mockClear();
+    await createWebhook(OUTBOUND_INPUT);
+    expect(mockPrismaWebhookCreate.mock.calls[0][0].data.targetUrl).toBe(
+      "https://n8n.example.com/webhook/xyz",
+    );
+    expect(mockPrismaWebhookCreate.mock.calls[0][0].data.path).toBeNull();
+  });
+
   it("retorna erro para usuário sem permissão", async () => {
     mockGetCurrentUser.mockResolvedValue(REGULAR_USER);
-    const result = await createWebhook("inbound", "https://n8n.example.com/webhook/abc");
+    const result = await createWebhook(INBOUND_INPUT);
     expect(result.success).toBe(false);
     expect(mockPrismaWebhookCreate).not.toHaveBeenCalled();
   });
 
   it("retorna erro quando não autenticado", async () => {
     mockGetCurrentUser.mockResolvedValue(null);
-    const result = await createWebhook("inbound", null);
+    const result = await createWebhook(INBOUND_INPUT);
     expect(result.success).toBe(false);
   });
 
   it("valida direction inválido", async () => {
-    const result = await createWebhook("invalid" as "inbound", null);
+    const result = await createWebhook({
+      ...INBOUND_INPUT,
+      direction: "invalid" as "inbound",
+    });
+    expect(result.success).toBe(false);
+  });
+
+  it("rejeita path inseguro em webhook de entrada", async () => {
+    const result = await createWebhook({ ...INBOUND_INPUT, path: "../etc" });
+    expect(result.success).toBe(false);
+  });
+
+  it("rejeita lista de métodos vazia", async () => {
+    const result = await createWebhook({ ...INBOUND_INPUT, methods: [] });
     expect(result.success).toBe(false);
   });
 });

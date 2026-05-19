@@ -67,7 +67,15 @@ export function WebhooksContent({ initial }: Props) {
   function handleCreate(e: React.FormEvent) {
     e.preventDefault();
     startTransition(async () => {
-      const result = await createWebhook(newDirection, newUrl.trim() || null);
+      // NOTA: esta tela é remodelada no Bloco J (passa a usar o WebhookWizard).
+      // Aqui mantém-se uma chamada mínima compatível com a nova assinatura.
+      const result = await createWebhook({
+        direction: newDirection,
+        name: newUrl.trim() || "Webhook",
+        path: newDirection === "inbound" ? "webhook" : null,
+        targetUrl: newDirection === "outbound" ? newUrl.trim() || null : null,
+        methods: ["POST"],
+      });
       if (result.success) {
         setRevealedSecret({ id: result.data.id, secret: result.data.secretPlain });
         setShowRevealedSecret(true);
@@ -283,9 +291,9 @@ function WebhookRow({ webhook, isPending, onToggle, onRotate, onDelete }: Webhoo
               {DIRECTION_LABELS[webhook.direction] ?? webhook.direction}
             </span>
           </div>
-          {webhook.url && (
+          {(webhook.targetUrl ?? webhook.path) && (
             <p className="text-xs text-muted-foreground font-mono truncate">
-              {webhook.url}
+              {webhook.targetUrl ?? webhook.path}
             </p>
           )}
           <p className="text-xs text-muted-foreground">

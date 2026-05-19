@@ -5,9 +5,10 @@
  *
  * Gate: apenas `super_admin` pode criar, listar, rotacionar, habilitar/desabilitar e deletar.
  * O secret é cifrado com AES-256-GCM antes de gravar no banco.
- * Ao criar ou rotacionar, o secret em claro é retornado 1× para exibição.
+ * Ao criar ou rotacionar, o secret em claro é retornado 1× para exibição
+ * (`SecretRevealStep`).
  *
- * SPEC §7.3.3 e §9.
+ * SPEC §4.5 / §7.3.3 e §9.
  */
 
 import { randomBytes } from "crypto";
@@ -23,12 +24,29 @@ import { encrypt } from "@/lib/encryption";
 
 type DataResult<T> = { success: true; data: T } | { success: false; error: string };
 
+/** Direção do webhook — valores do enum Prisma `WebhookDirection`. */
 export type WebhookDirection = "inbound" | "outbound";
+
+/** Métodos HTTP aceitos por um webhook. */
+export type WebhookMethod = "GET" | "POST" | "PUT" | "PATCH" | "DELETE";
+
+export interface CreateWebhookInput {
+  direction: WebhookDirection;
+  name: string;
+  /** Caminho (slug) — somente inbound. */
+  path?: string | null;
+  /** URL de destino completa — somente outbound. */
+  targetUrl?: string | null;
+  methods: WebhookMethod[];
+}
 
 export interface WebhookListItem {
   id: string;
   direction: WebhookDirection;
-  url: string | null;
+  name: string | null;
+  path: string | null;
+  targetUrl: string | null;
+  methods: string[];
   enabled: boolean;
   createdAt: Date;
 }
@@ -36,7 +54,10 @@ export interface WebhookListItem {
 export interface CreatedWebhook {
   id: string;
   direction: WebhookDirection;
-  url: string | null;
+  name: string | null;
+  path: string | null;
+  targetUrl: string | null;
+  methods: string[];
   enabled: boolean;
   secretPlain: string; // retornado 1× na criação
 }
@@ -61,12 +82,42 @@ function generateSecret(): string {
 // Schemas
 // ──────────────────────────────────────────────────────────────────────────────
 
-const directionSchema = z.enum(["inbound", "outbound"]);
+const methodSchema = z.enum(["GET", "POST", "PUT", "PATCH", "DELETE"]);
 
-const createSchema = z.object({
-  direction: directionSchema,
-  url: z.string().url().nullable().optional(),
-});
+/** Slug seguro para o path de um webhook de entrada. */
+const pathSchema = z
+  .string()
+  .regex(/^[a-z0-9][a-z0-9-/]*$/, "Caminho inválido");
+
+const createSchema = z
+  .object({
+    direction: z.enum(["inbound", "outbound"]),
+    name: z.string().trim().min(1, "Nome obrigatório"),
+    path: z.string().nullable().optional(),
+    targetUrl: z.string().nullable().optional(),
+    methods: z.array(methodSchema).min(1, "Selecione ao menos um método"),
+  })
+  .superRefine((val, ctx) => {
+    if (val.direction === "inbound") {
+      const parsed = pathSchema.safeParse(val.path ?? "");
+      if (!parsed.success) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ["path"],
+          message: "Caminho inválido para webhook de entrada",
+        });
+      }
+    } else {
+      const parsed = z.string().url().safeParse(val.targetUrl ?? "");
+      if (!parsed.success) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ["targetUrl"],
+          message: "URL de destino inválida",
+        });
+      }
+    }
+  });
 
 // ──────────────────────────────────────────────────────────────────────────────
 // createWebhook
@@ -74,30 +125,37 @@ const createSchema = z.object({
 
 /**
  * Cria um novo webhook (inbound ou outbound).
- * Retorna o secret em claro uma única vez.
+ * Retorna o secret em claro uma única vez (para o `SecretRevealStep`).
  * Gate: super_admin.
  */
 export async function createWebhook(
-  direction: string,
-  url: string | null | undefined,
+  input: CreateWebhookInput,
 ): Promise<DataResult<CreatedWebhook>> {
   const me = await getCurrentUser();
   if (!me) return { success: false, error: "Não autenticado" };
   if (!isSuperAdmin(me.platformRole)) return { success: false, error: "Acesso negado" };
 
-  const parsed = createSchema.safeParse({ direction, url });
+  const parsed = createSchema.safeParse(input);
   if (!parsed.success) {
-    return { success: false, error: "Dados inválidos" };
+    return {
+      success: false,
+      error: parsed.error.issues[0]?.message ?? "Dados inválidos",
+    };
   }
 
+  const data = parsed.data;
   const secretPlain = generateSecret();
   const secretEncrypted = encrypt(secretPlain);
 
   try {
     const created = await prisma.whatsappWebhook.create({
       data: {
-        direction: parsed.data.direction,
-        url: parsed.data.url ?? null,
+        direction: data.direction,
+        name: data.name,
+        path: data.direction === "inbound" ? (data.path ?? null) : null,
+        targetUrl: data.direction === "outbound" ? (data.targetUrl ?? null) : null,
+        url: data.direction === "outbound" ? (data.targetUrl ?? null) : null,
+        methods: data.methods,
         secret: secretEncrypted,
         enabled: true,
       },
@@ -110,7 +168,10 @@ export async function createWebhook(
       data: {
         id: created.id,
         direction: created.direction as WebhookDirection,
-        url: created.url,
+        name: created.name,
+        path: created.path,
+        targetUrl: created.targetUrl,
+        methods: created.methods,
         enabled: created.enabled,
         secretPlain,
       },
@@ -142,7 +203,10 @@ export async function listWebhooks(): Promise<DataResult<WebhookListItem[]>> {
     const data: WebhookListItem[] = rows.map((r) => ({
       id: r.id,
       direction: r.direction as WebhookDirection,
-      url: r.url,
+      name: r.name,
+      path: r.path,
+      targetUrl: r.targetUrl ?? r.url,
+      methods: r.methods,
       enabled: r.enabled,
       createdAt: r.createdAt,
     }));
