@@ -71,6 +71,10 @@ export interface ChatRequest {
   temperature?: number;
   /** Limite máximo de tokens de output. */
   maxTokens?: number;
+  /** Quando true, o adapter deve fazer streaming token-a-token (se suportado). */
+  stream?: boolean;
+  /** Callback invocado para cada token delta durante streaming. */
+  onToken?: (token: string) => void;
 }
 
 export interface ProviderClient {

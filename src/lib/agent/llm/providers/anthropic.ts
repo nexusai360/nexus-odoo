@@ -148,6 +148,12 @@ export class AnthropicClient implements ProviderClient {
     const tools = mapTools(request.tools);
     if (tools) body.tools = tools;
 
+    const useStream = request.stream === true && !request.tools?.length;
+
+    if (useStream) {
+      body.stream = true;
+    }
+
     const res = await fetch(ANTHROPIC_API_URL, {
       method: "POST",
       headers: {
@@ -161,6 +167,10 @@ export class AnthropicClient implements ProviderClient {
     if (!res.ok) {
       const text = await res.text().catch(() => "");
       throw new Error(`Anthropic ${res.status}: ${text || res.statusText}`);
+    }
+
+    if (useStream) {
+      return this.#parseStream(res, request.onToken);
     }
 
     const data = (await res.json()) as AnthropicResponse;
@@ -190,6 +200,73 @@ export class AnthropicClient implements ProviderClient {
         tokensOutput,
         costUsd: costUsd ?? 0,
       },
+    };
+  }
+
+  /**
+   * Consome a response SSE do Anthropic streaming e retorna ChatResult.
+   * Parseia eventos `message_start` (input tokens), `content_block_delta`
+   * (text delta → onToken), `message_delta` (output tokens).
+   */
+  async #parseStream(
+    res: Response,
+    onToken?: (token: string) => void,
+  ): Promise<ChatResult> {
+    if (!res.body) throw new Error("Anthropic stream: response.body é null");
+
+    const reader = res.body.getReader();
+    const decoder = new TextDecoder();
+
+    let messageText = "";
+    let tokensInput = 0;
+    let tokensOutput = 0;
+    let buf = "";
+
+    try {
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        buf += decoder.decode(value, { stream: true });
+
+        const lines = buf.split("\n");
+        buf = lines.pop() ?? "";
+
+        for (const line of lines) {
+          if (!line.startsWith("data: ")) continue;
+          const raw = line.slice(6).trim();
+          if (raw === "[DONE]") continue;
+
+          let evt: Record<string, unknown>;
+          try {
+            evt = JSON.parse(raw) as Record<string, unknown>;
+          } catch {
+            continue;
+          }
+
+          if (evt.type === "message_start") {
+            const msg = evt.message as { usage?: { input_tokens?: number } } | undefined;
+            tokensInput = msg?.usage?.input_tokens ?? 0;
+          } else if (evt.type === "content_block_delta") {
+            const delta = evt.delta as { type?: string; text?: string } | undefined;
+            if (delta?.type === "text_delta" && typeof delta.text === "string") {
+              messageText += delta.text;
+              onToken?.(delta.text);
+            }
+          } else if (evt.type === "message_delta") {
+            const usage = (evt as { usage?: { output_tokens?: number } }).usage;
+            tokensOutput = usage?.output_tokens ?? 0;
+          }
+        }
+      }
+    } finally {
+      reader.releaseLock();
+    }
+
+    const { costUsd } = calculateCost(this.model, tokensInput, tokensOutput);
+
+    return {
+      message: messageText,
+      usage: { tokensInput, tokensOutput, costUsd: costUsd ?? 0 },
     };
   }
 }
