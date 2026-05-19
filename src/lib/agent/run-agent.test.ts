@@ -47,6 +47,19 @@ jest.mock("./bi-schema-reference", () => ({
   BI_SCHEMA_REFERENCE: "DDL das fact tables...",
 }));
 
+jest.mock("./rag/search", () => ({
+  searchKb: jest.fn().mockResolvedValue([]),
+}));
+
+jest.mock("./rag/embed", () => ({
+  EmbeddingUnavailable: class EmbeddingUnavailable extends Error {
+    constructor(msg: string) {
+      super(msg);
+      this.name = "EmbeddingUnavailable";
+    }
+  },
+}));
+
 const { prisma } = jest.requireMock("@/lib/prisma");
 const { createMcpSession } = jest.requireMock("./mcp-client");
 const { getActiveLlmConfig } = jest.requireMock("./llm/get-active-config");
@@ -260,6 +273,36 @@ describe("runAgent", () => {
 
     expect(result.ok).toBe(false);
     expect(session.close).toHaveBeenCalled();
+  });
+
+  test("KB habilitada → searchKb é chamado com a mensagem do usuário", async () => {
+    prisma.agentSettings.findUnique.mockResolvedValue({
+      id: "global",
+      identityBase: null,
+      personality: "",
+      tone: "",
+      guardrails: [],
+      advancedOverride: null,
+      kbEnabled: true,
+      terminology: {},
+      suggestionsEnabled: false,
+    });
+    const client = makeClient([{ message: "Resposta com KB." }]);
+    buildLlmClient.mockReturnValue(client);
+    createMcpSession.mockResolvedValue(makeMcpSession());
+
+    const { searchKb } = jest.requireMock("./rag/search");
+    searchKb.mockResolvedValue([{ id: "doc-1", name: "Doc", extractedText: "Conteúdo relevante." }]);
+
+    await runAgent({
+      conversationId: "conv-1",
+      userId: "user-1",
+      userMessage: "Pergunta sobre o doc",
+      channel: "in_app",
+      isPlayground: false,
+    });
+
+    expect(searchKb).toHaveBeenCalledWith("Pergunta sobre o doc", 5);
   });
 
   test("onEvent é chamado com eventos de progresso", async () => {

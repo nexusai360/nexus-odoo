@@ -24,6 +24,8 @@ import {
 } from "./conversation";
 import { composeSystemPrompt } from "./prompt/compose";
 import { BI_SCHEMA_REFERENCE } from "./bi-schema-reference";
+import { searchKb } from "./rag/search";
+import { EmbeddingUnavailable } from "./rag/embed";
 import type { ChatMessage, ChatUsage, ToolCall } from "./llm/types";
 import type { AgentChannel } from "@/generated/prisma/client";
 
@@ -149,12 +151,26 @@ export async function runAgent(args: RunAgentInput): Promise<RunAgentResult> {
     // Carregar AgentSettings do banco
     const agentSettings = await loadAgentSettings();
 
+    // Buscar snippets da KB por similaridade (RAG — onda 7)
+    // Se KB estiver habilitada, tenta searchKb; sem embedding → fallback interno do search.
+    let kbSnippets: { name: string; extractedText: string }[] = [];
+    if (agentSettings.kbEnabled) {
+      try {
+        kbSnippets = await searchKb(args.userMessage, 5);
+      } catch (err) {
+        if (!(err instanceof EmbeddingUnavailable)) {
+          console.warn("[runAgent] Erro ao buscar KB:", err);
+        }
+        // EmbeddingUnavailable é tratado internamente por searchKb (fallback)
+      }
+    }
+
     // Compor system prompt
     const promptCfg = {
       ...agentSettings,
       advancedOverride: args.promptOverride ?? agentSettings.advancedOverride,
     };
-    const systemPrompt = composeSystemPrompt(promptCfg, [], undefined, biSchema);
+    const systemPrompt = composeSystemPrompt(promptCfg, kbSnippets, undefined, biSchema);
 
     // Carregar tools do MCP
     const mcpTools = session ? await session.listTools() : [];
