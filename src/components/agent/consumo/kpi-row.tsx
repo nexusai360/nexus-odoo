@@ -12,7 +12,6 @@
 
 import { motion, useReducedMotion } from "framer-motion";
 import {
-  Activity,
   BrainCircuit,
   Coins,
   DollarSign,

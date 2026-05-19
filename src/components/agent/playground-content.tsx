@@ -91,7 +91,7 @@ export function PlaygroundContent({
   providerLabel,
   modelLabel,
   audioInputEnabled,
-  userId,
+  userId: _userId,
 }: PlaygroundContentProps) {
   const prefersReducedMotion = useReducedMotion();
 
@@ -397,7 +397,7 @@ export function PlaygroundContent({
               <p className="text-sm font-medium text-foreground">Comece uma conversa de teste</p>
               <p className="mt-1 text-xs text-muted-foreground">
                 Conversas são salvas com <code className="rounded bg-muted px-1 text-[10px]">channel=playground</code>{" "}
-                e marcadas em consumo. Use "Nova sessão" para limpar.
+                e marcadas em consumo. Use &quot;Nova sessão&quot; para limpar.
               </p>
             </div>
           </div>

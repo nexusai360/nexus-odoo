@@ -112,7 +112,7 @@ export function UsageTable({
   isPlayground,
   providers,
   modelsByProvider,
-  onFetchModels,
+  onFetchModels: _onFetchModels,
 }: UsageTableProps) {
   const [filterProvider, setFilterProvider] = useState<string | undefined>(globalProvider);
   const [filterModel, setFilterModel] = useState<string | undefined>();
@@ -189,7 +189,6 @@ export function UsageTable({
     };
     void run();
     return () => { cancelled = true; };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [rangeStart, rangeEnd, page, pageSize, filterProvider, filterModel, isPlayground]);
 
   const totalPages = Math.max(1, Math.ceil(total / pageSize));
