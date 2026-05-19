@@ -28,8 +28,10 @@ export interface LogUsageArgs {
   isPlayground?: boolean;
   promptChars?: number;
   responseChars?: number;
-  /** Chave de API usada — dispara atualização do saldo após a chamada. */
+  /** Chave de API usada — atribui o consumo à chave e atualiza o saldo. */
   credentialId?: string;
+  /** Tipo da requisição: texto | imagem | audio | arquivo (default: texto). */
+  requestKind?: "texto" | "imagem" | "audio" | "arquivo";
 }
 
 /**
@@ -85,6 +87,8 @@ export async function logUsage(args: LogUsageArgs): Promise<void> {
         durationMs: args.durationMs ?? null,
         errorMessage: args.errorMessage ?? null,
         isPlayground: args.isPlayground ?? false,
+        credentialId: args.credentialId ?? null,
+        requestKind: args.requestKind ?? "texto",
       },
     });
 
