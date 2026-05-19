@@ -424,13 +424,6 @@ export function PlaygroundContent({
     void submitMessage(message);
   }
 
-  function handleKeyDown(e: React.KeyboardEvent<HTMLTextAreaElement>) {
-    if (e.key === "Enter" && !e.shiftKey) {
-      e.preventDefault();
-      if (!isSending && !audioFlight) void submitMessage(message);
-    }
-  }
-
   async function handleSendAudio(blob: Blob) {
     if (audioFlight) return;
     setAudioFlight(true);

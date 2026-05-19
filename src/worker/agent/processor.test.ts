@@ -15,6 +15,7 @@ const mockDownloadMedia = jest.fn();
 const mockBuildCloudClientFromDb = jest.fn();
 const mockSendText = jest.fn();
 const mockFetch = jest.fn();
+const mockAgentSettingsFindFirst = jest.fn();
 
 jest.mock("@/lib/agent/run-agent", () => ({ runAgent: mockRunAgent }));
 jest.mock("@/lib/agent/conversation", () => ({
@@ -26,6 +27,11 @@ jest.mock("@/lib/whatsapp/cloud-client", () => ({
 }));
 jest.mock("@/lib/whatsapp/hmac", () => ({
   signPayload: jest.fn().mockReturnValue("sig123"),
+}));
+jest.mock("@/lib/prisma", () => ({
+  prisma: {
+    agentSettings: { findFirst: (...args: unknown[]) => mockAgentSettingsFindFirst(...args) },
+  },
 }));
 
 global.fetch = mockFetch;
@@ -69,6 +75,11 @@ beforeEach(() => {
   });
   mockBuildCloudClientFromDb.mockResolvedValue({ sendText: mockSendText });
   mockSendText.mockResolvedValue(undefined);
+  // Default — todos os recursos ativos em produção (não bloqueia audio/image).
+  mockAgentSettingsFindFirst.mockResolvedValue({
+    audioCheckpoint: "PRODUCTION",
+    imageCheckpoint: "PRODUCTION",
+  });
 });
 
 // ──────────────────────────────────────────────
