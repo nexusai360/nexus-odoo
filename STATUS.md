@@ -16,14 +16,20 @@
 | **F3 — Dashboard de relatórios** | 6 relatórios de estoque sobre o cache | ✅ mergeado na `main` (PR #4) |
 | **F3.5 — Dashboard de relatórios v2** | Sofisticação no padrão `nexus-insights` | ✅ mergeado na `main` (PR #4) |
 | **F4 — MCP semântico** | Servidor MCP, **todos os domínios** + Caminho 3c funcional | ✅ **completa — mergeada na `main` (PR #5 + #6 + #7)** |
-| **F5 — Integração WhatsApp** | Agente de IA por WhatsApp + chat in-app, Integrações, RAG | ✅ **completa na branch — aguardando merge (PR)** |
+| **F5 — Integração WhatsApp** | Agente de IA por WhatsApp + chat in-app, Integrações, RAG | 🔄 **backend pronto; REWORK DE UI em andamento** |
 | F6 — Construtor de relatórios | Wizard in-app guiado por IA | ⬜ futura (inclui o polimento fino dos relatórios) |
 
-**Branch ativa: `feat/integracao-whatsapp`** (criada de `main`, já no remoto). A `main`
-tem F0+F1+F2+F3+F3.5+F4 — tudo em produção. A F5 está completa na branch
-(SPEC v1→v3, PLAN v1→v3, 7 ondas executadas, 3 reviews adversariais Opus,
-correções aplicadas, verificação e2e real) — **aguardando merge na `main`
-(decisão humana)**. Resumo em `docs/superpowers/reviews/2026-05-19-f5-verificacao-final.md`.
+**Branch ativa: `feat/integracao-whatsapp`**. A `main` tem F0+F1+F2+F3+F3.5+F4.
+O backend da F5 (agente, MCP, webhook, ondas 1–7) está pronto na branch. Porém a
+**UI foi reprovada pelo usuário e está em rework** — em andamento.
+
+> ## ⚠️ RETOMADA — LEIA O HANDOFF
+> A próxima sessão DEVE começar lendo **`docs/HANDOFF-2026-05-19-f5-ui.md`** —
+> ele tem o estado exato do rework de UI, o que falta (Blocos C e D do plano
+> `docs/superpowers/plans/2026-05-19-f5-ui-ajustes-v3.md`), as **regras
+> inegociáveis** e as **frustrações recorrentes do usuário** que não podem se
+> repetir (ui-ux-pro-max obrigatório, clonar o nexus-insights, não delegar,
+> testar de verdade, "Agente Nex"). NÃO mergear o PR antes da UI aprovada.
 
 ---
 
