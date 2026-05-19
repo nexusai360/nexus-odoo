@@ -1,11 +1,21 @@
 /**
- * Layout da página /agente — suprime o padding do layout protegido pai
- * para que o painel de chat ocupe toda a altura disponível sem scroll.
+ * Layout das telas de administração do Agente (/agente/*).
+ *
+ * Gate de role: todas as sub-telas do Agente (Configuração, Chaves de API,
+ * Prompt, Consumo, Playground) são exclusivas de super_admin. O chat do agente
+ * em si é a bubble flutuante — não vive aqui.
  */
-export default function AgenteLayout({
+import { redirect } from "next/navigation";
+import { getCurrentUser } from "@/lib/auth";
+
+export default async function AgenteLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
-  return <div className="-mt-16 -mb-8 sm:-mt-8 h-screen overflow-hidden">{children}</div>;
+  const user = await getCurrentUser();
+  if (!user) redirect("/login");
+  if (user.platformRole !== "super_admin") redirect("/dashboard");
+
+  return <>{children}</>;
 }

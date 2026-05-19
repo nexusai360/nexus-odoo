@@ -33,11 +33,6 @@ interface ChatPanelProps {
   /** conversationId atual (null = novo). Após primeira msg, recebe o id criado. */
   conversationId?: string | null;
   onConversationCreated?: (id: string) => void;
-  /**
-   * Modo embedded: remove o posicionamento fixed/floating e o backdrop mobile.
-   * Usado na página dedicada /agente onde o painel ocupa toda a área de conteúdo.
-   */
-  embedded?: boolean;
 }
 
 interface UiMessage {
@@ -73,7 +68,6 @@ export function ChatPanel({
   audioInputEnabled: _audioInputEnabled = false,
   conversationId: externalConvId,
   onConversationCreated,
-  embedded = false,
 }: ChatPanelProps) {
   const reduceMotion = useReducedMotion();
 
@@ -483,23 +477,6 @@ export function ChatPanel({
         </footer>
     </>
   );
-
-  // ── Modo embedded: div estática sem floating ──────────────────────────────
-  if (embedded) {
-    return (
-      <>
-        <div className="flex h-full flex-col overflow-hidden bg-card text-foreground">
-          {innerContent}
-        </div>
-        <style jsx global>{`
-          @keyframes agentDotBounce {
-            0%, 80%, 100% { transform: translateY(0); opacity: 0.4; }
-            40% { transform: translateY(-3px); opacity: 1; }
-          }
-        `}</style>
-      </>
-    );
-  }
 
   // ── Modo flutuante (bubble): dialog animado ───────────────────────────────
   return (

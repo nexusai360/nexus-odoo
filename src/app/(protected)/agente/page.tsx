@@ -1,49 +1,12 @@
 /**
- * /agente — Página dedicada do agente com lista de conversas e chat em tela cheia.
- *
- * Layout 2 colunas: lista de conversas (w-72) + painel de chat (flex-1).
- * Server Component: busca conversas e agentSettings no servidor.
- * Interatividade delegada ao AgentPageClient.
- *
- * Design: docs/superpowers/research/2026-05-18-f5-ui-design.md §7
+ * /agente — não há tela dedicada do agente. O chat do agente é a bubble
+ * flutuante (super_admin + admin). Esta rota apenas redireciona para a
+ * primeira sub-tela de administração do agente.
  */
-
 import { redirect } from "next/navigation";
-import { getCurrentUser } from "@/lib/auth";
-import { prisma } from "@/lib/prisma";
-import { getPublicAgentFlags } from "@/lib/actions/agent-config";
-import { getPublicActiveLlmConfig } from "@/lib/agent/llm/get-active-config";
-import { AgentPageClient } from "./client";
 
-export const metadata = { title: "Agente | Nexus Odoo" };
+export const dynamic = "force-dynamic";
 
-export default async function AgentePage() {
-  const user = await getCurrentUser();
-  if (!user) redirect("/login");
-
-  const [conversations, flags, activeLlm] = await Promise.all([
-    prisma.conversation.findMany({
-      where: { userId: user.id, channel: "in_app" },
-      orderBy: { updatedAt: "desc" },
-      take: 50,
-      select: { id: true, title: true, updatedAt: true },
-    }),
-    getPublicAgentFlags(),
-    getPublicActiveLlmConfig(),
-  ]);
-
-  const audioInputEnabled =
-    flags.audioInputEnabled === true && activeLlm?.provider === "openai";
-
-  return (
-    <AgentPageClient
-      initialConversations={conversations.map((c) => ({
-        id: c.id,
-        title: c.title,
-        updatedAt: c.updatedAt.toISOString(),
-      }))}
-      audioInputEnabled={audioInputEnabled}
-      userId={user.id}
-    />
-  );
+export default function Page(): never {
+  redirect("/agente/configuracao");
 }
