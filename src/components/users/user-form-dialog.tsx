@@ -45,6 +45,7 @@ import {
   type UserListItem,
 } from "@/lib/actions/users";
 import { updateUserDomains } from "@/lib/actions/domain-access";
+import { addWhatsappNumber } from "@/lib/actions/user-whatsapp";
 import { canCreateRole } from "@/lib/permissions";
 import { cn } from "@/lib/utils";
 import {
@@ -161,6 +162,8 @@ export function UserFormDialog({
   const [createdPassword, setCreatedPassword] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
   const [checkingEmail, setCheckingEmail] = useState(false);
+  // Modo criação: números de WhatsApp em rascunho, persistidos após criar.
+  const [draftWhatsapp, setDraftWhatsapp] = useState<string[]>([]);
 
   const emailRef = useRef<HTMLInputElement | null>(null);
 
@@ -183,6 +186,7 @@ export function UserFormDialog({
     setCreatedPassword(null);
     setCopied(false);
     setCheckingEmail(false);
+    setDraftWhatsapp([]);
     if (isEdit && user) {
       setForm({
         ...EMPTY_FORM,
@@ -305,6 +309,24 @@ export function UserFormDialog({
           domains: form.domains,
         });
         if (result.success && result.data) {
+          // Persiste os números de WhatsApp informados na criação. Falhas
+          // individuais não abortam o fluxo — o usuário já foi criado.
+          if (draftWhatsapp.length > 0) {
+            const failures: string[] = [];
+            for (const raw of draftWhatsapp) {
+              const r = await addWhatsappNumber({
+                userId: result.data.id,
+                raw,
+              });
+              if (!r.success) failures.push(raw);
+            }
+            if (failures.length > 0) {
+              toast.error(
+                `Usuário criado, mas ${failures.length} número(s) de WhatsApp não foram salvos: ${failures.join(", ")}`,
+              );
+            }
+          }
+
           if (result.data.tempPassword) {
             setCreatedPassword(result.data.tempPassword);
           } else {
@@ -432,6 +454,7 @@ export function UserFormDialog({
                 availableRoles={availableRoles}
                 showActiveToggle={showActiveToggle}
                 editUserId={isEdit ? user?.id : undefined}
+                onWhatsappDraftChange={setDraftWhatsapp}
                 emailRef={emailRef}
                 ids={{
                   name: nameId,
@@ -592,6 +615,8 @@ interface StepIdentityProps {
   showActiveToggle: boolean;
   /** Id do usuário sendo editado; habilita a seção de números de WhatsApp. */
   editUserId?: string;
+  /** Modo criação: recebe os números de WhatsApp em rascunho. */
+  onWhatsappDraftChange?: (numbers: string[]) => void;
   emailRef: React.RefObject<HTMLInputElement | null>;
   ids: {
     name: string;
@@ -615,6 +640,7 @@ function StepIdentity({
   availableRoles,
   showActiveToggle,
   editUserId,
+  onWhatsappDraftChange,
   emailRef,
   ids,
 }: StepIdentityProps) {
@@ -812,12 +838,14 @@ function StepIdentity({
         </div>
       ) : null}
 
-      {/* Números de WhatsApp — só no modo edição (exige usuário persistido) */}
-      {isEdit && editUserId ? (
-        <div className="rounded-lg border border-border bg-muted/20 px-4 py-3">
+      {/* Números de WhatsApp — edição grava na hora; criação fica em rascunho */}
+      <div className="rounded-lg border border-border bg-muted/20 px-4 py-3">
+        {isEdit && editUserId ? (
           <WhatsappNumbersField userId={editUserId} />
-        </div>
-      ) : null}
+        ) : (
+          <WhatsappNumbersField onDraftChange={onWhatsappDraftChange} />
+        )}
+      </div>
     </>
   );
 }
