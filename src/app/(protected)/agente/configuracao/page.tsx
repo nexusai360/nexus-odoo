@@ -17,6 +17,7 @@ import { LlmConfigForm } from "@/components/agent/llm-config-form";
 import { getCurrentUser } from "@/lib/auth";
 import { listCredentials } from "@/lib/agent/llm/credentials";
 import { getPublicActiveLlmConfig } from "@/lib/agent/llm/get-active-config";
+import { getAgentSettings } from "@/lib/actions/agent-config";
 import { prisma } from "@/lib/prisma";
 import type { LlmProvider } from "@/lib/agent/llm/types";
 
@@ -30,36 +31,36 @@ export default async function Page() {
   if (!user) redirect("/login");
   if (user.platformRole !== "super_admin") redirect("/dashboard");
 
-  const [credentials, activeConfig] = await Promise.all([
+  const [credentials, activeConfig, settingsResult] = await Promise.all([
     listCredentials().catch(
       () => [] as Awaited<ReturnType<typeof listCredentials>>,
     ),
     getPublicActiveLlmConfig(),
+    getAgentSettings(),
   ]);
 
   const llmConfigs = await prisma.llmConfig.findMany({
     orderBy: { updatedAt: "desc" },
-    include: {
-      credential: { select: { label: true, last4: true } },
-    },
+    select: { id: true, provider: true, model: true },
   });
 
   const configsForForm = llmConfigs.map((c) => ({
     id: c.id,
     provider: c.provider as LlmProvider,
     model: c.model,
-    isActive: c.isActive,
-    credentialId: c.credentialId,
-    credentialLabel: c.credential?.label ?? null,
-    last4: c.credential?.last4 ?? null,
   }));
+
+  const bubbleEnabled =
+    settingsResult.success && settingsResult.data
+      ? settingsResult.data.bubbleEnabled
+      : true;
 
   return (
     <PageShell variant="narrow">
       <PageHeader
         icon={SlidersHorizontal}
-        title="Configuração do Agente"
-        subtitle="Provedor, modelo e chave de API em uso pelo agente de IA."
+        title="Configuração do Agente Nex"
+        subtitle="Provedor, modelo e chave em uso pelo Agente Nex."
       />
       <Card className="rounded-2xl border border-border bg-muted/30 p-2">
         <CardContent>
@@ -67,6 +68,7 @@ export default async function Page() {
             configs={configsForForm}
             credentials={credentials}
             activeConfig={activeConfig}
+            bubbleEnabled={bubbleEnabled}
           />
         </CardContent>
       </Card>
