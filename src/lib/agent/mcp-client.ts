@@ -28,14 +28,50 @@ export interface McpSession {
 }
 
 /**
+ * Remove campos do JSON Schema incompatíveis com a API do Gemini/OpenRouter.
+ *
+ * A API Gemini aceita apenas o subconjunto OpenAPI 3.0:
+ * - `$schema` → não aceito
+ * - `additionalProperties` → não aceito
+ * - `$ref` → não aceito (deve ser resolvido inline antes)
+ *
+ * Anthropic e OpenAI toleram campos extras, mas sanitizar é inócuo.
+ */
+export function sanitizeMcpSchema(schema: Record<string, unknown>): Record<string, unknown> {
+  const BLOCKED = new Set(["$schema", "additionalProperties", "$ref", "$defs", "definitions"]);
+  const result: Record<string, unknown> = {};
+
+  for (const [key, value] of Object.entries(schema)) {
+    if (BLOCKED.has(key)) continue;
+
+    if (key === "properties" && typeof value === "object" && value !== null) {
+      const props: Record<string, unknown> = {};
+      for (const [pk, pv] of Object.entries(value as Record<string, unknown>)) {
+        props[pk] = typeof pv === "object" && pv !== null
+          ? sanitizeMcpSchema(pv as Record<string, unknown>)
+          : pv;
+      }
+      result[key] = props;
+    } else if (key === "items" && typeof value === "object" && value !== null) {
+      result[key] = sanitizeMcpSchema(value as Record<string, unknown>);
+    } else {
+      result[key] = value;
+    }
+  }
+
+  return result;
+}
+
+/**
  * Converte a lista de tools do MCP para o formato ToolDefinition
  * que os adapters de LLM (mapTools) consomem.
+ * Sanitiza o inputSchema para compatibilidade com Gemini/OpenRouter.
  */
 export function mcpToolsToProviderTools(mcpTools: McpTool[]): ToolDefinition[] {
   return mcpTools.map((t) => ({
     name: t.name,
     description: t.description,
-    parameters: t.inputSchema as ToolDefinition["parameters"],
+    parameters: sanitizeMcpSchema(t.inputSchema) as ToolDefinition["parameters"],
   }));
 }
 
