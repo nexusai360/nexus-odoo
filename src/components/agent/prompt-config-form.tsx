@@ -19,7 +19,7 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
+import { ExpandableTextarea } from "@/components/ui/expandable-textarea";
 import { updateAgentSettings } from "@/lib/actions/agent-config";
 import { cn } from "@/lib/utils";
 
@@ -112,10 +112,11 @@ export function PromptConfigForm({ initial }: PromptConfigFormProps) {
             {personality.length}/{MAX_PERSONALITY}
           </span>
         </div>
-        <Textarea
+        <ExpandableTextarea
           id="agent-personality"
+          label="Personalidade"
           value={personality}
-          onChange={(e) => setPersonality(e.currentTarget.value)}
+          onChange={setPersonality}
           maxLength={MAX_PERSONALITY}
           rows={3}
           placeholder="Ex.: Direto, prático, prefere bullets curtos. Evita rodeios."
@@ -140,10 +141,11 @@ export function PromptConfigForm({ initial }: PromptConfigFormProps) {
             {tone.length}/{MAX_TONE}
           </span>
         </div>
-        <Textarea
+        <ExpandableTextarea
           id="agent-tone"
+          label="Tom"
           value={tone}
-          onChange={(e) => setTone(e.currentTarget.value)}
+          onChange={setTone}
           maxLength={MAX_TONE}
           rows={3}
           placeholder="Ex.: Profissional, mas amigável. Em pt-BR. Use 'você'."

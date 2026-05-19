@@ -15,7 +15,7 @@ import { FileText, Loader2, Save } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
+import { ExpandableTextarea } from "@/components/ui/expandable-textarea";
 import { updateAgentSettings } from "@/lib/actions/agent-config";
 import { cn } from "@/lib/utils";
 
@@ -82,10 +82,11 @@ export function IdentityBaseEditor({ initial }: IdentityBaseEditorProps) {
           {MAX_IDENTITY.toLocaleString("pt-BR")}
         </span>
       </div>
-      <Textarea
+      <ExpandableTextarea
         id="agent-identity-base"
+        label="Identidade base"
         value={identityBase}
-        onChange={(e) => setIdentityBase(e.currentTarget.value)}
+        onChange={setIdentityBase}
         maxLength={MAX_IDENTITY}
         rows={8}
         placeholder="Defina aqui a identidade fixa do Agente Nex — quem ele é, o que faz, contexto da empresa…"
