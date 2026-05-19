@@ -38,6 +38,12 @@ export interface CredentialSummary {
   updatedAt: string;
   /** Saldo da conta do provedor (null quando nunca consultado). */
   balance: CredentialBalance | null;
+  /**
+   * Consumo acumulado (USD) rastreado por nós — soma de `LlmUsage.costUsd`
+   * das requisições feitas com esta chave. Sempre cresce; não zera ao trocar
+   * de chave ativa (cada chave tem o seu próprio total). Task A4.
+   */
+  consumedUsd: number;
 }
 
 export interface CreateCredentialInput {
@@ -95,6 +101,24 @@ export async function listCredentials(
     },
   });
 
+  // Consumo acumulado por chave — soma de LlmUsage.costUsd agrupada por
+  // credentialId (Task A4). Best-effort: em falha, consumo exibido como 0.
+  const consumoByCredential = new Map<string, number>();
+  try {
+    const grupos = await prisma.llmUsage.groupBy({
+      by: ["credentialId"],
+      where: { credentialId: { not: null } },
+      _sum: { costUsd: true },
+    });
+    for (const g of grupos) {
+      if (g.credentialId) {
+        consumoByCredential.set(g.credentialId, Number(g._sum.costUsd ?? 0));
+      }
+    }
+  } catch (err) {
+    console.warn("[agent] Falha ao agregar consumo por chave:", err);
+  }
+
   return rows.map((row) => ({
     id: row.id,
     provider: row.provider as LlmProvider,
@@ -110,6 +134,7 @@ export async function listCredentials(
           checkedAt: row.balanceCheckedAt?.toISOString() ?? null,
         }
       : null,
+    consumedUsd: consumoByCredential.get(row.id) ?? 0,
   }));
 }
 
