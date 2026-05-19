@@ -97,8 +97,27 @@ export interface RunAgentInput {
   isPlayground: boolean;
   /** Callback para eventos de progresso (streaming in-app). */
   onEvent?: (evt: AgentEvent) => void;
-  /** Override de prompt (Playground). */
+  /** Override de prompt bruto (substitui todo o system prompt). */
   promptOverride?: string;
+  /**
+   * Override parcial de prompt (Playground): substitui identidade,
+   * personalidade, tom e guardrails preservando KB e BI schema.
+   */
+  promptConfigOverride?: {
+    identityBase: string | null;
+    personality: string;
+    tone: string;
+    guardrails: string[];
+  };
+  /**
+   * Override de LLM (Playground): provider, modelo e API key da credencial
+   * escolhida na sessão. Quando ausente, usa a config ativa de produção.
+   */
+  llmOverride?: {
+    provider: import("./llm/types").LlmProvider;
+    model: string;
+    apiKey: string;
+  };
 }
 
 export type RunAgentResult =
@@ -129,12 +148,23 @@ export async function runAgent(args: RunAgentInput): Promise<RunAgentResult> {
   });
 
   try {
-    // Carregar config LLM ativa
-    const llmConfig = await getActiveLlmConfig();
-    if (!llmConfig) {
-      return {
-        ok: false,
-        error: "Nenhum provedor de IA configurado. Configure uma credencial LLM.",
+    // Resolver LLM: override da sessão de playground tem prioridade sobre a
+    // config ativa de produção.
+    let resolvedLlm: { provider: import("./llm/types").LlmProvider; model: string; apiKey: string };
+    if (args.llmOverride) {
+      resolvedLlm = args.llmOverride;
+    } else {
+      const llmConfig = await getActiveLlmConfig();
+      if (!llmConfig) {
+        return {
+          ok: false,
+          error: "Nenhum provedor de IA configurado. Configure uma credencial LLM.",
+        };
+      }
+      resolvedLlm = {
+        provider: llmConfig.provider,
+        model: llmConfig.model,
+        apiKey: llmConfig.apiKey,
       };
     }
 
@@ -142,7 +172,7 @@ export async function runAgent(args: RunAgentInput): Promise<RunAgentResult> {
     await assertConversationOwned(args.conversationId, args.userId);
 
     // Construir cliente LLM
-    const client = buildLlmClient(llmConfig.provider, llmConfig.apiKey, llmConfig.model);
+    const client = buildLlmClient(resolvedLlm.provider, resolvedLlm.apiKey, resolvedLlm.model);
 
     // Carregar PlatformRole do usuário para BI schema (G7)
     const userRecord = await prisma.user.findUnique({
@@ -169,9 +199,18 @@ export async function runAgent(args: RunAgentInput): Promise<RunAgentResult> {
       }
     }
 
-    // Compor system prompt
+    // Compor system prompt — playground pode sobrepor a config do prompt
+    // (identidade/personalidade/tom/guardrails) sem afetar KB nem BI schema.
     const promptCfg = {
       ...agentSettings,
+      ...(args.promptConfigOverride
+        ? {
+            identityBase: args.promptConfigOverride.identityBase,
+            personality: args.promptConfigOverride.personality,
+            tone: args.promptConfigOverride.tone,
+            guardrails: args.promptConfigOverride.guardrails,
+          }
+        : {}),
       advancedOverride: args.promptOverride ?? agentSettings.advancedOverride,
     };
     const systemPrompt = composeSystemPrompt(promptCfg, kbSnippets, undefined, biSchema);

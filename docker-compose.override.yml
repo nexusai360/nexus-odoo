@@ -1,0 +1,12 @@
+# docker-compose.override.yml — ajustes APENAS para desenvolvimento local.
+# O Docker Compose carrega este arquivo automaticamente por cima do
+# docker-compose.yml. NÃO é usado em produção (Portainer usa só o
+# docker-compose.yml). Mantém o compose de produção limpo.
+#
+# Aqui publicamos a porta do MCP no host para permitir testes locais
+# (em produção a 3100 fica só na rede interna, atrás do Traefik).
+
+services:
+  mcp:
+    ports:
+      - "3100:3100"

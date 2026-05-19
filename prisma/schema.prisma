@@ -1693,6 +1693,9 @@ model PlaygroundSession {
   title          String?
   provider       String
   model          String
+  /// Conversa (canal playground) usada pelo runAgent para histórico/contexto.
+  /// Criada sob demanda na primeira mensagem da sessão.
+  conversationId String?  @map("conversation_id") @db.Uuid
   /// Snapshot do prompt da sessão: { identityBase, personality, tone, guardrails }.
   /// Inicia como cópia da produção; editável sem afetar produção.
   promptSnapshot Json     @map("prompt_snapshot")
