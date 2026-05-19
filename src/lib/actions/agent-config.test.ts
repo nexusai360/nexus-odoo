@@ -12,6 +12,7 @@ jest.mock("@/lib/prisma", () => ({
     agentSettings: {
       findUnique: jest.fn(),
       upsert: jest.fn(),
+      update: jest.fn(),
     },
     llmConfig: {
       updateMany: jest.fn(),
@@ -61,7 +62,7 @@ const VIEWER_USER = {
 
 const MOCK_SETTINGS = {
   id: "global",
-  identityBase: null,
+  identityBase: "Identidade base existente",
   personality: "Profissional e direto",
   tone: "Formal",
   guardrails: ["Não discutir dados de outras empresas"],
@@ -110,6 +111,45 @@ describe("getAgentSettings", () => {
     const result = await getAgentSettings();
 
     expect(result.success).toBe(true);
+  });
+
+  it("auto-repara singleton antigo criado vazio", async () => {
+    getCurrentUser.mockResolvedValue(ADMIN_USER);
+    // Instalação antiga: singleton existe mas com campos em branco.
+    prisma.agentSettings.findUnique.mockResolvedValue({
+      ...MOCK_SETTINGS,
+      identityBase: null,
+      personality: "",
+      tone: "",
+      guardrails: [],
+    });
+    prisma.agentSettings.update.mockImplementation(
+      async ({ data }: { data: Record<string, unknown> }) => ({
+        ...MOCK_SETTINGS,
+        ...data,
+      }),
+    );
+
+    const result = await getAgentSettings();
+
+    expect(result.success).toBe(true);
+    // O reparo preenche apenas os campos vazios.
+    expect(prisma.agentSettings.update).toHaveBeenCalledTimes(1);
+    if (result.success) {
+      expect(result.data!.identityBase).toBeTruthy();
+      expect(result.data!.personality.length).toBeGreaterThan(0);
+      expect(result.data!.tone.length).toBeGreaterThan(0);
+      expect(result.data!.guardrails.length).toBeGreaterThan(0);
+    }
+  });
+
+  it("não repara singleton já preenchido", async () => {
+    getCurrentUser.mockResolvedValue(ADMIN_USER);
+    prisma.agentSettings.findUnique.mockResolvedValue(MOCK_SETTINGS);
+
+    await getAgentSettings();
+
+    expect(prisma.agentSettings.update).not.toHaveBeenCalled();
   });
 
   it("nega acesso a viewer", async () => {
