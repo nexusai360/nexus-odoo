@@ -95,7 +95,7 @@ export function PromptConfigForm({ initial }: PromptConfigFormProps) {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-7">
       {/* Personalidade */}
       <div className="space-y-1.5">
         <div className="flex items-center justify-between gap-2">
@@ -230,7 +230,7 @@ export function PromptConfigForm({ initial }: PromptConfigFormProps) {
       </div>
 
       {/* Ação principal — canto inferior direito, botão compacto. */}
-      <div className="flex items-center justify-end pt-1">
+      <div className="flex items-center justify-end pt-3">
         <Button
           type="button"
           onClick={handleSave}

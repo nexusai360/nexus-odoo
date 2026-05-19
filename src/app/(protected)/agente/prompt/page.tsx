@@ -89,39 +89,39 @@ export default async function Page() {
         }
       />
 
-      <div className="space-y-6">
+      <div className="space-y-8">
         <Card className="rounded-2xl border border-border bg-muted/30 p-2">
-          <CardHeader>
+          <CardHeader className="pb-3">
             <CardTitle>Identidade base</CardTitle>
           </CardHeader>
-          <CardContent>
+          <CardContent className="pb-5">
             <IdentityBaseEditor initial={initialSettings} />
           </CardContent>
         </Card>
 
         <Card className="rounded-2xl border border-border bg-muted/30 p-2">
-          <CardHeader>
+          <CardHeader className="pb-3">
             <CardTitle>Comportamento</CardTitle>
           </CardHeader>
-          <CardContent>
+          <CardContent className="pb-5">
             <PromptConfigForm initial={initialSettings} />
           </CardContent>
         </Card>
 
         <Card className="rounded-2xl border border-border bg-muted/30 p-2">
-          <CardHeader>
+          <CardHeader className="pb-3">
             <CardTitle>Recursos</CardTitle>
           </CardHeader>
-          <CardContent>
+          <CardContent className="pb-5">
             <ResourcesToggles initial={initialResources} />
           </CardContent>
         </Card>
 
         <Card className="rounded-2xl border border-border bg-muted/30 p-2">
-          <CardHeader>
+          <CardHeader className="pb-3">
             <CardTitle>Base de conhecimento</CardTitle>
           </CardHeader>
-          <CardContent>
+          <CardContent className="pb-5">
             <KbSection initial={kbDocs} />
           </CardContent>
         </Card>

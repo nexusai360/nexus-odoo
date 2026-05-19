@@ -66,7 +66,7 @@ export function IdentityBaseEditor({ initial }: IdentityBaseEditorProps) {
   }
 
   return (
-    <div className="space-y-3">
+    <div className="space-y-4">
       <div className="flex items-center justify-between gap-2">
         <Label htmlFor="agent-identity-base" className="flex items-center gap-2">
           <FileText className="h-3.5 w-3.5 text-muted-foreground" />
@@ -100,7 +100,7 @@ export function IdentityBaseEditor({ initial }: IdentityBaseEditorProps) {
         longo: descreva quem é o agente, o contexto da empresa, a operação e os
         dados disponíveis.
       </p>
-      <div className="flex justify-end pt-1">
+      <div className="flex justify-end pt-3">
         <Button
           type="button"
           onClick={handleSave}
