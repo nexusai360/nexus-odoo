@@ -18,6 +18,8 @@ import { encrypt, decrypt, mask } from "@/lib/encryption";
 import { logAudit } from "@/lib/audit";
 import type { ActionResult } from "@/lib/actions/users";
 
+type DataResult<T> = { success: true; data: T } | { success: false; error: string };
+
 /** Schema de atualização do canal WhatsApp. */
 const updateSchema = z.object({
   apiToken: z.string().min(1).optional(),
@@ -52,7 +54,7 @@ function isSuperAdmin(role: string): boolean {
  * Retorna os dados do canal WhatsApp com o token mascarado.
  * Gate: super_admin.
  */
-export async function getWhatsappChannel(): Promise<ActionResult<WhatsappChannelData>> {
+export async function getWhatsappChannel(): Promise<DataResult<WhatsappChannelData>> {
   const me = await getCurrentUser();
   if (!me) return { success: false, error: "Não autenticado" };
   if (!isSuperAdmin(me.platformRole)) return { success: false, error: "Acesso negado" };
@@ -112,7 +114,7 @@ export async function getWhatsappChannel(): Promise<ActionResult<WhatsappChannel
  */
 export async function updateWhatsappChannel(
   input: UpdateWhatsappChannelInput,
-): Promise<ActionResult<void>> {
+): Promise<DataResult<void>> {
   const me = await getCurrentUser();
   if (!me) return { success: false, error: "Não autenticado" };
   if (!isSuperAdmin(me.platformRole)) return { success: false, error: "Acesso negado" };

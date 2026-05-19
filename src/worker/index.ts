@@ -14,6 +14,9 @@ import { AGENT_QUEUE_NAME } from "./agent/queue";
 import { processAgentJob, type AgentJobData } from "./agent/processor";
 import { cleanupIdempotencyTable } from "./agent/cleanup";
 
+export const MAINTENANCE_QUEUE = "maintenance";
+export const JOB_CLEANUP_IDEMPOTENCY = "cleanup-idempotency";
+
 const REDIS_URL = process.env.REDIS_URL ?? "redis://localhost:6379";
 const connection = new IORedis(REDIS_URL, { maxRetriesPerRequest: null });
 connection.on("error", (err: Error) => console.error("[worker] erro Redis:", err.message));
@@ -39,6 +42,27 @@ agentWorker.on("failed", (job, err) =>
   console.error(`[agent-worker] job ${job?.id} falhou:`, err),
 );
 agentWorker.on("error", (err) => console.error("[agent-worker] erro:", err));
+
+// ─── Fila de manutenção (cron diário) ─────────────────────────────────────────
+export const maintenanceQueue = new Queue(MAINTENANCE_QUEUE, { connection });
+
+const maintenanceWorker = new Worker(
+  MAINTENANCE_QUEUE,
+  async (job: Job) => {
+    if (job.name === JOB_CLEANUP_IDEMPOTENCY) {
+      const result = await cleanupIdempotencyTable();
+      console.log(`[maintenance] cleanup idempotência: ${result.deleted} registros removidos`);
+      return result;
+    }
+    return { ok: true };
+  },
+  { connection, concurrency: 1 },
+);
+
+maintenanceWorker.on("ready", () =>
+  console.log(`[maintenance-worker] pronto — fila "${MAINTENANCE_QUEUE}"`),
+);
+maintenanceWorker.on("error", (err) => console.error("[maintenance-worker] erro:", err));
 
 // Guarda de sobreposição cluster-safe: lock no Redis com TTL (WR-01). Sobrevive
 // a restart e protege contra uma segunda réplica do worker rodando o mesmo
@@ -145,6 +169,13 @@ async function bootstrap(): Promise<void> {
     { every: 60_000 },
     { name: JOB_CONFIG_CHECK },
   );
+  // Limpeza diária da tabela de idempotência (ProcessedWhatsappMessage > 7 dias).
+  await maintenanceQueue.upsertJobScheduler(
+    JOB_CLEANUP_IDEMPOTENCY,
+    { every: 24 * 60 * 60_000 }, // 24h em ms
+    { name: JOB_CLEANUP_IDEMPOTENCY },
+  );
+  console.log("[worker] cron de limpeza de idempotência agendado (24h)");
 }
 
 bootstrap().catch((err) => console.error("[worker] falha no bootstrap:", err));
@@ -154,8 +185,10 @@ async function shutdown() {
   console.log("[worker] encerrando…");
   await worker.close();
   await agentWorker.close();
+  await maintenanceWorker.close();
   await syncQueue.close();
   await agentQueue.close();
+  await maintenanceQueue.close();
   await connection.quit();
   await prisma.$disconnect();
   process.exit(0);
