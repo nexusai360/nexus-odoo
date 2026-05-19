@@ -131,6 +131,7 @@ export async function listPlaygroundSessions(): Promise<
         title: r.title,
         provider: r.provider,
         model: r.model,
+        credentialId: r.credentialId ?? null,
         costUsd: Number(r.costUsd),
         costBrl: Number(r.costBrl),
         messageCount: r._count.messages,
@@ -145,22 +146,25 @@ export async function listPlaygroundSessions(): Promise<
   }
 }
 
-/** Cria uma nova sessão — prompt inicia como cópia da produção. */
+/**
+ * Cria uma nova sessão — prompt inicia como cópia da produção (D2).
+ * Provider/model/credentialId podem ser opcionais para permitir uma sessão
+ * em branco onde o usuário escolhe manualmente antes da primeira mensagem.
+ */
 export async function createPlaygroundSession(input: {
-  provider: string;
-  model: string;
+  provider?: string;
+  model?: string;
+  credentialId?: string | null;
 }): Promise<ActionResult<PlaygroundSessionDetail>> {
   try {
     const { userId } = await requirePlaygroundAccess();
-    if (!input.provider || !input.model) {
-      return { success: false, error: "Provedor e modelo são obrigatórios" };
-    }
     const snapshot = await productionPromptSnapshot();
     const row = await prisma.playgroundSession.create({
       data: {
         userId,
-        provider: input.provider,
-        model: input.model,
+        provider: input.provider ?? "",
+        model: input.model ?? "",
+        credentialId: input.credentialId ?? null,
         promptSnapshot: snapshot as unknown as object,
       },
     });
@@ -171,6 +175,7 @@ export async function createPlaygroundSession(input: {
         title: row.title,
         provider: row.provider,
         model: row.model,
+        credentialId: row.credentialId ?? null,
         promptSnapshot: snapshot,
         costUsd: 0,
         costBrl: 0,
@@ -202,6 +207,7 @@ export async function getPlaygroundSession(
         title: row.title,
         provider: row.provider,
         model: row.model,
+        credentialId: row.credentialId ?? null,
         promptSnapshot: parseSnapshot(row.promptSnapshot),
         costUsd: Number(row.costUsd),
         costBrl: Number(row.costBrl),
@@ -211,6 +217,9 @@ export async function getPlaygroundSession(
             id: m.id,
             role: m.role as "user" | "assistant" | "tool",
             content: m.content,
+            provider: m.provider ?? null,
+            model: m.model ?? null,
+            requestKind: m.requestKind ?? null,
             createdAt: m.createdAt.toISOString(),
           }),
         ),
@@ -263,11 +272,15 @@ export async function deletePlaygroundSession(
   }
 }
 
-/** Atualiza provedor/modelo de uma sessão (sem afetar produção). */
+/**
+ * Atualiza provedor/modelo/chave de uma sessão (D2) — sem afetar produção.
+ * Aceita credentialId opcional para registrar a chave usada pela sessão.
+ */
 export async function updatePlaygroundSessionModel(input: {
   sessionId: string;
   provider: string;
   model: string;
+  credentialId?: string | null;
 }): Promise<ActionResult> {
   try {
     const { userId } = await requirePlaygroundAccess();
@@ -278,12 +291,42 @@ export async function updatePlaygroundSessionModel(input: {
     if (!owned) return { success: false, error: "Sessão não encontrada" };
     await prisma.playgroundSession.update({
       where: { id: input.sessionId },
-      data: { provider: input.provider, model: input.model },
+      data: {
+        provider: input.provider,
+        model: input.model,
+        ...(input.credentialId !== undefined
+          ? { credentialId: input.credentialId }
+          : {}),
+      },
     });
     return { success: true };
   } catch (err) {
     console.error("[updatePlaygroundSessionModel]", err);
     return { success: false, error: "Erro ao atualizar modelo" };
+  }
+}
+
+/** Renomeia uma sessão (D3) — apenas título, sem efeito em produção. */
+export async function renamePlaygroundSession(input: {
+  sessionId: string;
+  title: string;
+}): Promise<ActionResult> {
+  try {
+    const { userId } = await requirePlaygroundAccess();
+    const owned = await prisma.playgroundSession.findFirst({
+      where: { id: input.sessionId, userId },
+      select: { id: true },
+    });
+    if (!owned) return { success: false, error: "Sessão não encontrada" };
+    const trimmed = input.title.trim().slice(0, 200);
+    await prisma.playgroundSession.update({
+      where: { id: input.sessionId },
+      data: { title: trimmed || null },
+    });
+    return { success: true };
+  } catch (err) {
+    console.error("[renamePlaygroundSession]", err);
+    return { success: false, error: "Erro ao renomear sessão" };
   }
 }
 

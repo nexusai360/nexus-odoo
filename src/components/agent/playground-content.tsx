@@ -14,19 +14,24 @@
 import React, {
   useCallback,
   useEffect,
+  useMemo,
   useRef,
   useState,
 } from "react";
 import { motion, useReducedMotion } from "framer-motion";
 import {
+  Check,
   FileText,
   KeyRound,
   Loader2,
   MessageSquare,
   Mic,
+  Pencil,
   Plus,
+  Save,
   Send,
   Trash2,
+  X,
 } from "lucide-react";
 import Link from "next/link";
 import { toast } from "sonner";
@@ -52,8 +57,10 @@ import {
   createPlaygroundSession,
   getPlaygroundSession,
   deletePlaygroundSession,
+  renamePlaygroundSession,
   updatePlaygroundSessionModel,
 } from "@/lib/actions/playground";
+import { Input } from "@/components/ui/input";
 import type {
   PlaygroundSessionSummary,
   PlaygroundSessionDetail,
@@ -73,6 +80,12 @@ interface UiMessage {
   toolName?: string;
   suggestions?: string[];
   streaming?: boolean;
+  /** D5 — provedor/modelo que gerou esta mensagem. */
+  provider?: string | null;
+  /** D5 — modelo que gerou esta mensagem. */
+  model?: string | null;
+  /** D5 — tipo da requisição: texto | audio | imagem | arquivo. */
+  requestKind?: string | null;
 }
 
 interface ProviderOption {
@@ -112,6 +125,8 @@ export interface PlaygroundContentProps {
   /** Áudio disponível no playground (checkpoint >= PLAYGROUND). */
   audioInputEnabled?: boolean;
   userId: string;
+  /** D2 — credenciais agrupadas por provedor. */
+  credentialsByProvider?: Record<string, { id: string; label: string }[]>;
 }
 
 // ---------------------------------------------------------------------------
@@ -121,6 +136,7 @@ export interface PlaygroundContentProps {
 export function PlaygroundContent({
   audioInputEnabled,
   userId: _userId,
+  credentialsByProvider = {},
 }: PlaygroundContentProps) {
   const prefersReducedMotion = useReducedMotion();
 
@@ -132,6 +148,16 @@ export function PlaygroundContent({
   const [sessions, setSessions] = useState<PlaygroundSessionSummary[]>([]);
   const [active, setActive] = useState<PlaygroundSessionDetail | null>(null);
   const [isLoadingSession, setIsLoadingSession] = useState(false);
+
+  // D2 — rascunho de configuração antes do "Salvar"
+  const [draftProvider, setDraftProvider] = useState<string>("");
+  const [draftModel, setDraftModel] = useState<string>("");
+  const [draftCredentialId, setDraftCredentialId] = useState<string>("");
+  const [savingConfig, setSavingConfig] = useState(false);
+
+  // D3 — rename da sessão
+  const [renamingId, setRenamingId] = useState<string | null>(null);
+  const [renameValue, setRenameValue] = useState("");
 
   // Chat
   const [items, setItems] = useState<UiMessage[]>([]);
@@ -150,8 +176,19 @@ export function PlaygroundContent({
 
   const trimmed = message.trim();
   const overLimit = message.length > MAX_INPUT_LEN;
+  const isConfigured = Boolean(active?.provider && active?.model);
   const canSubmit =
-    trimmed.length > 0 && !overLimit && !isSending && active !== null;
+    trimmed.length > 0 &&
+    !overLimit &&
+    !isSending &&
+    active !== null &&
+    isConfigured;
+  const draftDirty =
+    !!active &&
+    (draftProvider !== (active.provider ?? "") ||
+      draftModel !== (active.model ?? "") ||
+      draftCredentialId !== (active.credentialId ?? ""));
+  const draftValid = !!draftProvider && !!draftModel;
 
   // ---- Carregamento inicial -----------------------------------------------
 
@@ -206,25 +243,28 @@ export function PlaygroundContent({
         id: m.id,
         role: m.role as AgentMessageRole,
         content: m.content,
+        provider: m.provider,
+        model: m.model,
+        requestKind: m.requestKind,
       })),
     );
     setMessage("");
+    setDraftProvider(detail.provider ?? "");
+    setDraftModel(detail.model ?? "");
+    setDraftCredentialId(detail.credentialId ?? "");
     setView("chat");
   }
 
   async function handleNewSession() {
-    const first = providers[0];
-    if (!first || first.models.length === 0) {
+    if (providers.length === 0) {
       toast.error("Cadastre uma chave de API antes de criar uma sessão.");
       return;
     }
     setIsLoadingSession(true);
-    // D4 — não arquiva a sessão atual: ela permanece no histórico para o
-    // usuário voltar quando quiser. Apenas desfoca a sessão atual.
-    const res = await createPlaygroundSession({
-      provider: first.provider,
-      model: first.models[0]!.id,
-    });
+    // D2 — não auto-seleciona provedor/modelo/chave; usuário escolhe e clica
+    // Salvar antes da primeira mensagem.
+    // D4 — não arquiva a sessão atual; ela continua no histórico.
+    const res = await createPlaygroundSession({});
     setIsLoadingSession(false);
     if (res.success && res.data) {
       loadDetailIntoChat(res.data);
@@ -264,27 +304,70 @@ export function PlaygroundContent({
     }
   }
 
-  async function handleProviderChange(providerKey: string) {
-    if (!active) return;
-    const prov = providers.find((p) => p.provider === providerKey);
-    if (!prov || prov.models.length === 0) return;
-    const model = prov.models[0]!.id;
-    setActive({ ...active, provider: providerKey, model });
-    await updatePlaygroundSessionModel({
-      sessionId: active.id,
-      provider: providerKey,
-      model,
-    });
+  // D2 — handlers de rascunho (não persistem direto; o usuário aciona Salvar).
+  function handleDraftProviderChange(providerKey: string) {
+    setDraftProvider(providerKey);
+    setDraftModel("");
+    setDraftCredentialId("");
+  }
+  function handleDraftModelChange(modelId: string) {
+    setDraftModel(modelId);
+  }
+  function handleDraftCredentialChange(id: string) {
+    setDraftCredentialId(id);
   }
 
-  async function handleModelChange(modelId: string) {
+  async function handleSaveConfig() {
     if (!active) return;
-    setActive({ ...active, model: modelId });
-    await updatePlaygroundSessionModel({
+    if (!draftProvider || !draftModel) {
+      toast.error("Selecione provedor e modelo antes de salvar.");
+      return;
+    }
+    setSavingConfig(true);
+    const res = await updatePlaygroundSessionModel({
       sessionId: active.id,
-      provider: active.provider,
-      model: modelId,
+      provider: draftProvider,
+      model: draftModel,
+      credentialId: draftCredentialId || null,
     });
+    setSavingConfig(false);
+    if (!res.success) {
+      toast.error(res.error ?? "Erro ao salvar configuração.");
+      return;
+    }
+    setActive({
+      ...active,
+      provider: draftProvider,
+      model: draftModel,
+      credentialId: draftCredentialId || null,
+    });
+    await reloadSessions();
+    toast.success("Configuração da sessão salva.");
+  }
+
+  function startRename(id: string, currentTitle: string | null | undefined) {
+    setRenamingId(id);
+    setRenameValue(currentTitle ?? "");
+  }
+  function cancelRename() {
+    setRenamingId(null);
+    setRenameValue("");
+  }
+  async function commitRename(id: string) {
+    const next = renameValue.trim();
+    setRenamingId(null);
+    const res = await renamePlaygroundSession({
+      sessionId: id,
+      title: next,
+    });
+    if (!res.success) {
+      toast.error(res.error ?? "Erro ao renomear sessão.");
+      return;
+    }
+    setSessions((prev) =>
+      prev.map((s) => (s.id === id ? { ...s, title: next || null } : s)),
+    );
+    if (active?.id === id) setActive({ ...active, title: next || null });
   }
 
   function handlePromptSaved(saved: PlaygroundPromptSnapshot | null) {
@@ -304,12 +387,29 @@ export function PlaygroundContent({
       return;
     }
 
-    appendItems([{ id: genId(), role: "user", content: trimmedText }]);
+    appendItems([
+      {
+        id: genId(),
+        role: "user",
+        content: trimmedText,
+        requestKind: "texto",
+      },
+    ]);
     setMessage("");
     setIsSending(true);
 
     const assistantId = genId();
-    appendItems([{ id: assistantId, role: "loading" as AgentMessageRole, content: "" }]);
+    // D5 — tag de modelo já fica preenchida durante o streaming.
+    appendItems([
+      {
+        id: assistantId,
+        role: "loading" as AgentMessageRole,
+        content: "",
+        provider: active.provider,
+        model: active.model,
+        requestKind: "texto",
+      },
+    ]);
 
     try {
       const res = await fetch("/api/agent/playground/stream", {
@@ -442,6 +542,15 @@ export function PlaygroundContent({
         toast.error("Não conseguimos entender o áudio.");
         return;
       }
+      // D5 — marca a mensagem do usuário como "audio" (transcrita).
+      appendItems([
+        {
+          id: genId(),
+          role: "user",
+          content: text,
+          requestKind: "audio",
+        },
+      ]);
       void submitMessage(text);
     } catch (err) {
       toast.error(
@@ -458,13 +567,24 @@ export function PlaygroundContent({
   const activeProvider = active
     ? providers.find((p) => p.provider === active.provider)
     : undefined;
-  const modelOptions: SearchableSelectOption[] = (activeProvider?.models ?? []).map(
-    (m) => ({
-      value: m.id,
-      label: m.label,
-      notes: m.description,
-      endAdornment: <TierBadge tier={m.tier as CostTier} />,
-    }),
+  const draftProviderEntry = providers.find((p) => p.provider === draftProvider);
+  const draftModelOptions: SearchableSelectOption[] = (
+    draftProviderEntry?.models ?? []
+  ).map((m) => ({
+    value: m.id,
+    label: m.label,
+    notes: m.description,
+    endAdornment: <TierBadge tier={m.tier as CostTier} />,
+  }));
+  const draftCredOptions = (credentialsByProvider[draftProvider] ?? []).map(
+    (c) => ({ value: c.id, label: c.label }),
+  );
+  const providersWithCreds = useMemo(
+    () =>
+      providers.filter(
+        (p) => (credentialsByProvider[p.provider]?.length ?? 0) > 0,
+      ),
+    [providers, credentialsByProvider],
   );
 
   // ---- Render --------------------------------------------------------------
@@ -495,7 +615,7 @@ export function PlaygroundContent({
             <p className="text-xs font-semibold text-foreground">
               Configuração da sessão
             </p>
-            {hasProviders ? (
+            {providersWithCreds.length > 0 ? (
               <>
                 <div className="space-y-1">
                   <label className="text-[11px] text-muted-foreground">
@@ -503,10 +623,11 @@ export function PlaygroundContent({
                   </label>
                   <CustomSelect
                     aria-label="Provedor da sessão"
-                    value={active.provider}
-                    onChange={handleProviderChange}
+                    value={draftProvider}
+                    onChange={handleDraftProviderChange}
                     triggerClassName="h-9 w-full text-xs"
-                    options={providers.map((p) => ({
+                    placeholder="Selecione…"
+                    options={providersWithCreds.map((p) => ({
                       value: p.provider,
                       label: p.label,
                     }))}
@@ -517,14 +638,43 @@ export function PlaygroundContent({
                     Modelo
                   </label>
                   <SearchableSelect
-                    value={active.model}
-                    onChange={handleModelChange}
-                    options={modelOptions}
+                    value={draftModel}
+                    onChange={handleDraftModelChange}
+                    options={draftModelOptions}
                     placeholder="Selecionar modelo"
                     searchPlaceholder="Buscar modelo…"
                     triggerClassName="h-9 w-full text-xs"
                   />
                 </div>
+                <div className="space-y-1">
+                  <label className="text-[11px] text-muted-foreground">
+                    Chave de API
+                  </label>
+                  <CustomSelect
+                    aria-label="Chave de API da sessão"
+                    value={draftCredentialId}
+                    onChange={handleDraftCredentialChange}
+                    triggerClassName="h-9 w-full text-xs"
+                    placeholder="Selecione…"
+                    options={draftCredOptions}
+                  />
+                </div>
+                {draftDirty ? (
+                  <Button
+                    type="button"
+                    size="sm"
+                    onClick={handleSaveConfig}
+                    disabled={!draftValid || savingConfig}
+                    className="mt-1 h-8 w-full text-xs"
+                  >
+                    {savingConfig ? (
+                      <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />
+                    ) : (
+                      <Save className="mr-1.5 h-3.5 w-3.5" />
+                    )}
+                    Salvar
+                  </Button>
+                ) : null}
               </>
             ) : (
               <Link
@@ -571,39 +721,113 @@ export function PlaygroundContent({
                 Nenhuma sessão ainda.
               </p>
             ) : (
-              sessions.map((s) => (
-                <div
-                  key={s.id}
-                  className={cn(
-                    "group flex items-center gap-1 rounded-lg border px-2 py-1.5 transition-colors",
-                    active?.id === s.id
-                      ? "border-violet-500/50 bg-violet-500/10"
-                      : "border-transparent hover:bg-muted",
-                  )}
-                >
-                  <button
-                    type="button"
-                    onClick={() => handleOpenSession(s.id)}
-                    className="flex-1 cursor-pointer text-left"
+              sessions.map((s) => {
+                const isRenaming = renamingId === s.id;
+                return (
+                  <div
+                    key={s.id}
+                    className={cn(
+                      "group flex items-center gap-1 rounded-lg border px-2 py-1.5 transition-colors",
+                      active?.id === s.id
+                        ? "border-violet-500/50 bg-violet-500/10"
+                        : "border-transparent hover:bg-muted",
+                    )}
                   >
-                    <p className="truncate text-xs font-medium text-foreground">
-                      {s.title ?? `Sessão · ${s.model}`}
-                    </p>
-                    <p className="flex items-center justify-between text-[10px] text-muted-foreground tabular-nums">
-                      <span>{dateTimeFmt.format(new Date(s.createdAt))}</span>
-                      <span>{brlFmt.format(s.costBrl)}</span>
-                    </p>
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => handleDeleteSession(s.id)}
-                    aria-label="Excluir sessão"
-                    className="flex h-7 w-7 shrink-0 cursor-pointer items-center justify-center rounded-md text-muted-foreground opacity-0 transition-all hover:text-destructive group-hover:opacity-100 focus-visible:opacity-100"
-                  >
-                    <Trash2 className="h-3.5 w-3.5" aria-hidden />
-                  </button>
-                </div>
-              ))
+                    {isRenaming ? (
+                      <div className="flex flex-1 items-center gap-1">
+                        <Input
+                          autoFocus
+                          value={renameValue}
+                          onChange={(e) => setRenameValue(e.currentTarget.value)}
+                          onKeyDown={(e) => {
+                            if (e.key === "Enter") commitRename(s.id);
+                            if (e.key === "Escape") cancelRename();
+                          }}
+                          className="h-7 px-2 text-xs"
+                          placeholder="Nome da sessão"
+                          aria-label="Renomear sessão"
+                        />
+                        <Tooltip>
+                          <TooltipTrigger
+                            render={
+                              <button
+                                type="button"
+                                onClick={() => commitRename(s.id)}
+                                aria-label="Salvar nome"
+                                className="flex h-7 w-7 shrink-0 cursor-pointer items-center justify-center rounded-md text-emerald-600 transition-colors hover:bg-emerald-500/10"
+                              >
+                                <Check className="h-3.5 w-3.5" aria-hidden />
+                              </button>
+                            }
+                          />
+                          <TooltipContent>Salvar (Enter)</TooltipContent>
+                        </Tooltip>
+                        <Tooltip>
+                          <TooltipTrigger
+                            render={
+                              <button
+                                type="button"
+                                onClick={cancelRename}
+                                aria-label="Cancelar"
+                                className="flex h-7 w-7 shrink-0 cursor-pointer items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-muted"
+                              >
+                                <X className="h-3.5 w-3.5" aria-hidden />
+                              </button>
+                            }
+                          />
+                          <TooltipContent>Cancelar (Esc)</TooltipContent>
+                        </Tooltip>
+                      </div>
+                    ) : (
+                      <>
+                        <button
+                          type="button"
+                          onClick={() => handleOpenSession(s.id)}
+                          className="flex-1 cursor-pointer text-left"
+                        >
+                          <p className="truncate text-xs font-medium text-foreground">
+                            {s.title ?? `Sessão · ${s.model || "—"}`}
+                          </p>
+                          <p className="flex items-center justify-between text-[10px] text-muted-foreground tabular-nums">
+                            <span>{dateTimeFmt.format(new Date(s.createdAt))}</span>
+                            <span>{brlFmt.format(s.costBrl)}</span>
+                          </p>
+                        </button>
+                        <Tooltip>
+                          <TooltipTrigger
+                            render={
+                              <button
+                                type="button"
+                                onClick={() => startRename(s.id, s.title)}
+                                aria-label="Renomear sessão"
+                                className="flex h-7 w-7 shrink-0 cursor-pointer items-center justify-center rounded-md text-muted-foreground opacity-0 transition-all hover:text-foreground group-hover:opacity-100 focus-visible:opacity-100"
+                              >
+                                <Pencil className="h-3.5 w-3.5" aria-hidden />
+                              </button>
+                            }
+                          />
+                          <TooltipContent>Renomear</TooltipContent>
+                        </Tooltip>
+                        <Tooltip>
+                          <TooltipTrigger
+                            render={
+                              <button
+                                type="button"
+                                onClick={() => handleDeleteSession(s.id)}
+                                aria-label="Excluir sessão"
+                                className="flex h-7 w-7 shrink-0 cursor-pointer items-center justify-center rounded-md text-muted-foreground opacity-0 transition-all hover:text-destructive group-hover:opacity-100 focus-visible:opacity-100"
+                              >
+                                <Trash2 className="h-3.5 w-3.5" aria-hidden />
+                              </button>
+                            }
+                          />
+                          <TooltipContent>Excluir</TooltipContent>
+                        </Tooltip>
+                      </>
+                    )}
+                  </div>
+                );
+              })
             )}
           </div>
         </div>
@@ -712,6 +936,10 @@ export function PlaygroundContent({
                       item.role === "assistant" &&
                       idx === items.length - 1 &&
                       !isSending;
+                    const showTag =
+                      (item.role === "assistant" || item.role === "user") &&
+                      ((item.provider && item.model) ||
+                        (item.requestKind && item.requestKind !== "texto"));
                     return (
                       <React.Fragment key={item.id}>
                         <AgentMessage
@@ -720,6 +948,18 @@ export function PlaygroundContent({
                           toolName={item.toolName}
                           streaming={item.streaming}
                         />
+                        {showTag ? (
+                          <MessageMetaTag
+                            provider={item.provider ?? null}
+                            model={item.model ?? null}
+                            requestKind={item.requestKind ?? null}
+                            providerLabel={
+                              providers.find((p) => p.provider === item.provider)
+                                ?.label ?? item.provider ?? ""
+                            }
+                            alignRight={item.role === "user"}
+                          />
+                        ) : null}
                         {isLastAssistant &&
                         item.suggestions &&
                         item.suggestions.length > 0 ? (
@@ -859,5 +1099,60 @@ export function PlaygroundContent({
         )}
       </section>
     </motion.div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// MessageMetaTag (D5) — badge "provedor · modelo · tipo" por mensagem
+// ---------------------------------------------------------------------------
+
+function MessageMetaTag({
+  provider,
+  model,
+  requestKind,
+  providerLabel,
+  alignRight,
+}: {
+  provider: string | null;
+  model: string | null;
+  requestKind: string | null;
+  providerLabel: string;
+  alignRight?: boolean;
+}) {
+  const KIND_LABELS: Record<string, string> = {
+    texto: "Texto",
+    audio: "Áudio",
+    imagem: "Imagem",
+    arquivo: "Arquivo",
+  };
+  const KIND_STYLES: Record<string, string> = {
+    texto: "bg-slate-500/10 text-slate-700 dark:text-slate-300",
+    audio: "bg-violet-500/10 text-violet-700 dark:text-violet-300",
+    imagem: "bg-sky-500/10 text-sky-700 dark:text-sky-300",
+    arquivo: "bg-emerald-500/10 text-emerald-700 dark:text-emerald-300",
+  };
+  return (
+    <div
+      className={cn(
+        "mt-0.5 flex flex-wrap items-center gap-1.5",
+        alignRight ? "justify-end" : "justify-start",
+      )}
+    >
+      {provider && model ? (
+        <span className="inline-flex items-center rounded-full bg-muted px-2 py-0.5 text-[10px] text-muted-foreground">
+          {providerLabel} · <span className="ml-1 font-mono">{model}</span>
+        </span>
+      ) : null}
+      {requestKind && requestKind !== "texto" ? (
+        <span
+          className={cn(
+            "inline-flex items-center rounded-full px-2 py-0.5 text-[10px] font-medium",
+            KIND_STYLES[requestKind] ?? "bg-muted text-muted-foreground",
+          )}
+        >
+          {KIND_LABELS[requestKind] ?? requestKind}
+        </span>
+      ) : null}
+    </div>
   );
 }

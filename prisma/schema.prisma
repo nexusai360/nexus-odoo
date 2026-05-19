@@ -1709,6 +1709,8 @@ model PlaygroundSession {
   title          String?
   provider       String
   model          String
+  /// Chave de API usada nesta sessão (D2) — desacopla da config global.
+  credentialId   String?  @map("credential_id") @db.Uuid
   /// Conversa (canal playground) usada pelo runAgent para histórico/contexto.
   /// Criada sob demanda na primeira mensagem da sessão.
   conversationId String?  @map("conversation_id") @db.Uuid
@@ -1737,6 +1739,12 @@ model PlaygroundMessage {
   content   String
   toolCalls Json?             @map("tool_calls")
   costUsd   Decimal?          @map("cost_usd") @db.Decimal(12, 6)
+  /// Provedor que gerou esta mensagem (D5) — registra por turn.
+  provider    String?  @map("provider")
+  /// Modelo que gerou esta mensagem (D5).
+  model       String?  @map("model")
+  /// Tipo de requisição (D5/G11): texto, audio, imagem, arquivo.
+  requestKind String?  @map("request_kind")
   createdAt DateTime          @default(now()) @map("created_at")
 
   @@index([sessionId, createdAt])

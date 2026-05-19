@@ -16,6 +16,7 @@ import { getPublicAgentFlags } from "@/lib/actions/agent-config";
 import { PlaygroundContent } from "@/components/agent/playground-content";
 import { PageHeader } from "@/components/page-header";
 import { PageShell } from "@/components/layout/page-shell";
+import { listCredentials } from "@/lib/agent/llm/credentials";
 
 export const metadata = { title: "Playground do Agente Nex | Matrix Fitness Group" };
 export const dynamic = "force-dynamic";
@@ -25,7 +26,19 @@ export default async function PlaygroundPage() {
   if (!user) redirect("/login");
   if (user.platformRole !== "super_admin") redirect("/dashboard");
 
-  const flags = await getPublicAgentFlags();
+  const [flags, credentials] = await Promise.all([
+    getPublicAgentFlags(),
+    listCredentials().catch(
+      () => [] as Awaited<ReturnType<typeof listCredentials>>,
+    ),
+  ]);
+
+  const credentialsByProvider: Record<string, { id: string; label: string }[]> = {};
+  for (const c of credentials) {
+    const list = credentialsByProvider[c.provider] ?? [];
+    list.push({ id: c.id, label: c.label });
+    credentialsByProvider[c.provider] = list;
+  }
 
   return (
     <PageShell variant="wide">
@@ -37,6 +50,7 @@ export default async function PlaygroundPage() {
       <PlaygroundContent
         audioInputEnabled={flags.audioInPlayground}
         userId={user.id}
+        credentialsByProvider={credentialsByProvider}
       />
     </PageShell>
   );

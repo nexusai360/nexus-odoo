@@ -19,6 +19,7 @@ export interface PlaygroundSessionSummary {
   title: string | null;
   provider: string;
   model: string;
+  credentialId: string | null;
   costUsd: number;
   costBrl: number;
   messageCount: number;
@@ -32,6 +33,12 @@ export interface PlaygroundMessageData {
   id: string;
   role: "user" | "assistant" | "tool";
   content: string;
+  /** Provedor que gerou esta mensagem (D5). */
+  provider: string | null;
+  /** Modelo que gerou esta mensagem (D5). */
+  model: string | null;
+  /** Tipo da requisição: texto | audio | imagem | arquivo (D5/G11). */
+  requestKind: string | null;
   createdAt: string;
 }
 
@@ -41,6 +48,8 @@ export interface PlaygroundSessionDetail {
   title: string | null;
   provider: string;
   model: string;
+  /** Chave de API usada pela sessão (D2). */
+  credentialId: string | null;
   promptSnapshot: PlaygroundPromptSnapshot;
   costUsd: number;
   costBrl: number;

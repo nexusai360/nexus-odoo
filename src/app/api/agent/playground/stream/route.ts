@@ -78,19 +78,38 @@ export async function POST(req: Request): Promise<Response> {
   });
   if (!session) return jsonError("Sessão não encontrada", 404);
 
-  // Resolver a credencial do provedor escolhido na sessão
-  const credential = await prisma.llmCredential.findFirst({
-    where: { provider: session.provider },
-    orderBy: { updatedAt: "desc" },
-    select: { id: true },
-  });
-  if (!credential) {
+  if (!session.provider || !session.model) {
     return jsonError(
-      `Nenhuma chave de API cadastrada para ${session.provider}.`,
+      "Configure provedor, modelo e chave de API da sessão antes de enviar mensagens.",
       400,
     );
   }
-  const apiKey = await getDecryptedKey(credential.id);
+
+  // D2 — preferir a credencial registrada na sessão; fallback para a chave
+  // mais recente do provedor escolhido.
+  let credentialId: string | null = session.credentialId ?? null;
+  if (credentialId) {
+    const exists = await prisma.llmCredential.findFirst({
+      where: { id: credentialId, provider: session.provider },
+      select: { id: true },
+    });
+    if (!exists) credentialId = null;
+  }
+  if (!credentialId) {
+    const fallback = await prisma.llmCredential.findFirst({
+      where: { provider: session.provider },
+      orderBy: { updatedAt: "desc" },
+      select: { id: true },
+    });
+    if (!fallback) {
+      return jsonError(
+        `Nenhuma chave de API cadastrada para ${session.provider}.`,
+        400,
+      );
+    }
+    credentialId = fallback.id;
+  }
+  const apiKey = await getDecryptedKey(credentialId);
   if (!apiKey) return jsonError("Falha ao decifrar a chave de API.", 500);
 
   // Garantir a conversa (canal playground) ligada à sessão
@@ -107,9 +126,14 @@ export async function POST(req: Request): Promise<Response> {
   const snapshot = parseSnapshot(session.promptSnapshot);
   const userMessage = body.message.trim();
 
-  // Persistir a mensagem do usuário no histórico da sessão
+  // Persistir a mensagem do usuário no histórico da sessão (D5 — tipo texto).
   await prisma.playgroundMessage.create({
-    data: { sessionId: session.id, role: "user", content: userMessage },
+    data: {
+      sessionId: session.id,
+      role: "user",
+      content: userMessage,
+      requestKind: "texto",
+    },
   });
 
   const stream = new ReadableStream<Uint8Array>({
@@ -152,13 +176,17 @@ export async function POST(req: Request): Promise<Response> {
         });
 
         if (result.ok) {
-          // Persistir resposta do assistente na sessão
+          // Persistir resposta do assistente na sessão (D5 — registra provedor
+          // e modelo que geraram a resposta, p/ exibir tag por turn).
           await prisma.playgroundMessage.create({
             data: {
               sessionId: session.id,
               role: "assistant",
               content: result.message,
               costUsd: result.usage.costUsd || null,
+              provider: session.provider,
+              model: session.model,
+              requestKind: "texto",
             },
           });
 
