@@ -172,7 +172,7 @@ export async function runAgent(args: RunAgentInput): Promise<RunAgentResult> {
       { role: "user", content: args.userMessage },
     ];
 
-    const totalUsage: ChatUsage = { tokensInput: 0, tokensOutput: 0 };
+    const totalUsage: ChatUsage = { tokensInput: 0, tokensOutput: 0, costUsd: 0 };
     const start = Date.now();
 
     args.onEvent?.({ type: "thinking" });
@@ -183,6 +183,7 @@ export async function runAgent(args: RunAgentInput): Promise<RunAgentResult> {
 
       totalUsage.tokensInput += result.usage.tokensInput;
       totalUsage.tokensOutput += result.usage.tokensOutput;
+      totalUsage.costUsd += result.usage.costUsd ?? 0;
 
       // Registrar uso desta iteração
       void logUsage({

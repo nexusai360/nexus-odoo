@@ -84,7 +84,7 @@ export async function createMcpSession(userId: string): Promise<McpSession> {
 
   const client = new Client(
     { name: "nexus-odoo-agent", version: "1.0.0" },
-    { capabilities: { tools: {} } },
+    { capabilities: {} },
   );
 
   await client.connect(transport);
