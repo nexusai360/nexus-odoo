@@ -63,7 +63,31 @@ export async function processAgentJob(data: AgentJobData): Promise<void> {
     if (!data.audioMediaId) {
       throw new Error("[agent-processor] audioMediaId ausente para tipo=audio");
     }
-    const cloudClient = await buildCloudClientFromDb();
+
+    // Download de mídia requer credenciais Meta independente do modo de resposta.
+    // Se não estiverem disponíveis, responde com pedido amigável em vez de matar o job.
+    let cloudClient: Awaited<ReturnType<typeof buildCloudClientFromDb>> | null = null;
+    try {
+      cloudClient = await buildCloudClientFromDb();
+    } catch (err) {
+      console.warn("[agent-processor] Cloud client indisponível para áudio:", err);
+    }
+
+    if (!cloudClient) {
+      // Sem credenciais Meta: não é possível baixar o áudio. Responder com fallback.
+      const fallbackText =
+        "Recebi seu áudio, mas ainda não consigo processá-lo no momento. " +
+        "Por favor, envie sua pergunta por escrito.";
+
+      if (data.channelConfig.responseMode === "n8n_webhook") {
+        await sendViaWebhook(data, fallbackText);
+      } else {
+        // direct — seria necessário cloud client também; loga e encerra sem matar o job
+        console.warn("[agent-processor] Modo direct sem cloud client — resposta de áudio impossível.");
+      }
+      return;
+    }
+
     const { buffer, mimeType } = await cloudClient.downloadMedia(data.audioMediaId);
     const blob = new Blob([buffer], { type: mimeType });
     const transcription = await transcribeAudio(blob, "pt");
@@ -109,8 +133,8 @@ async function sendViaWebhook(data: AgentJobData, replyText: string): Promise<vo
   const { outboundUrl, outboundSecret } = data.channelConfig;
 
   if (!outboundUrl) {
-    console.error("[agent-processor] outboundUrl ausente para modo n8n_webhook — pulando envio");
-    return;
+    // Lança para que o BullMQ reprocesse com backoff — não silenciar perda de resposta.
+    throw new Error("[agent-processor] outboundUrl ausente para modo n8n_webhook");
   }
 
   const timestamp = String(Date.now());
@@ -131,10 +155,12 @@ async function sendViaWebhook(data: AgentJobData, replyText: string): Promise<vo
       "X-Timestamp": timestamp,
     },
     body,
+    signal: AbortSignal.timeout(15_000), // 15s timeout — evita job pendurando
   });
 
   if (!response.ok) {
-    console.error(
+    // Lança para que o BullMQ reprocesse com backoff exponencial.
+    throw new Error(
       `[agent-processor] Webhook de saída falhou (${response.status}): ${outboundUrl}`,
     );
   }
