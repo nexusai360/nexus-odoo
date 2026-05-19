@@ -1691,6 +1691,8 @@ model ApiKey {
 model ProcessedWhatsappMessage {
   messageId   String   @id @map("message_id")
   processedAt DateTime @default(now()) @map("processed_at")
+  userId      String?  @map("user_id")
 
+  @@index([userId, processedAt])
   @@map("processed_whatsapp_messages")
 }
