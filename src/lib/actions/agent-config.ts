@@ -147,6 +147,52 @@ export async function getAgentSettings(): Promise<ActionResult<AgentSettingsData
 }
 
 /**
+ * Feature-flags públicas do agente, legíveis por qualquer usuário autenticado.
+ *
+ * O AgentSettings é um singleton de plataforma — os toggles de áudio,
+ * base de conhecimento e sugestões valem para todos os usuários. Telas
+ * protegidas (layout, /agente) precisam desses flags sem o gate de admin
+ * que protege getAgentSettings(). Não expõe identidade/guardrails/override.
+ */
+export interface PublicAgentFlags {
+  audioInputEnabled: boolean;
+  kbEnabled: boolean;
+  suggestionsEnabled: boolean;
+}
+
+/** Retorna apenas os feature-flags do agente — sem gate de perfil. */
+export async function getPublicAgentFlags(): Promise<PublicAgentFlags> {
+  try {
+    const me = await getCurrentUser();
+    if (!me) {
+      return { audioInputEnabled: false, kbEnabled: true, suggestionsEnabled: true };
+    }
+
+    const settings = await prisma.agentSettings.findUnique({
+      where: { id: "global" },
+      select: {
+        audioInputEnabled: true,
+        kbEnabled: true,
+        suggestionsEnabled: true,
+      },
+    });
+
+    if (!settings) {
+      return { audioInputEnabled: false, kbEnabled: true, suggestionsEnabled: true };
+    }
+
+    return {
+      audioInputEnabled: settings.audioInputEnabled,
+      kbEnabled: settings.kbEnabled,
+      suggestionsEnabled: settings.suggestionsEnabled,
+    };
+  } catch (err) {
+    console.error("[getPublicAgentFlags]", err);
+    return { audioInputEnabled: false, kbEnabled: true, suggestionsEnabled: true };
+  }
+}
+
+/**
  * Atualiza os campos de configuração do agente.
  * Audita a ação como `agent_settings_updated`.
  */

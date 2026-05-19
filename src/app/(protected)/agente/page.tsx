@@ -11,7 +11,7 @@
 import { redirect } from "next/navigation";
 import { getCurrentUser } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { getAgentSettings } from "@/lib/actions/agent-config";
+import { getPublicAgentFlags } from "@/lib/actions/agent-config";
 import { getPublicActiveLlmConfig } from "@/lib/agent/llm/get-active-config";
 import { AgentPageClient } from "./client";
 
@@ -21,21 +21,19 @@ export default async function AgentePage() {
   const user = await getCurrentUser();
   if (!user) redirect("/login");
 
-  const [conversations, settingsResult, activeLlm] = await Promise.all([
+  const [conversations, flags, activeLlm] = await Promise.all([
     prisma.conversation.findMany({
       where: { userId: user.id, channel: "in_app" },
       orderBy: { updatedAt: "desc" },
       take: 50,
       select: { id: true, title: true, updatedAt: true },
     }),
-    getAgentSettings(),
+    getPublicAgentFlags(),
     getPublicActiveLlmConfig(),
   ]);
 
   const audioInputEnabled =
-    settingsResult.success &&
-    settingsResult.data?.audioInputEnabled === true &&
-    activeLlm?.provider === "openai";
+    flags.audioInputEnabled === true && activeLlm?.provider === "openai";
 
   return (
     <AgentPageClient
