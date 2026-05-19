@@ -12,7 +12,6 @@ import { useEffect, useMemo, useState, useTransition } from "react";
 import {
   Plus,
   Pencil,
-  RefreshCw,
   Trash2,
   Loader2,
   KeyRound,
@@ -23,7 +22,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 
-import { Button } from "@/components/ui/button";
+import { Button, buttonVariants } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
@@ -47,17 +46,13 @@ import {
 } from "@/components/ui/alert-dialog";
 import { getProviderIcon } from "@/components/icons/providers";
 import { PROVIDER_META } from "@/lib/agent/llm/catalog";
-import type {
-  CredentialSummary,
-  CredentialBalance,
-} from "@/lib/agent/llm/credentials";
+import type { CredentialSummary } from "@/lib/agent/llm/credentials";
 import type { LlmProvider } from "@/lib/agent/llm/types";
 import {
   createCredentialAction,
   deleteCredentialAction,
   updateCredentialAction,
   listCredentialsAction,
-  refreshCredentialBalanceAction,
 } from "@/lib/actions/credentials";
 import { cn } from "@/lib/utils";
 
@@ -79,26 +74,6 @@ type DialogState =
   // "edit" — tela única: muda o nome e (opcionalmente) troca a chave (B3).
   | { mode: "edit"; cred: CredentialSummary };
 
-/** Texto curto do saldo conhecido de uma chave. */
-function balanceLabel(balance: CredentialBalance | null): {
-  text: string;
-  tone: "ok" | "muted" | "warn";
-} {
-  if (!balance) return { text: "Saldo não consultado", tone: "muted" };
-  if (balance.status === "ok" && balance.usd != null) {
-    const tone = balance.usd <= 0 ? "warn" : "ok";
-    const value = balance.usd.toLocaleString("pt-BR", {
-      style: "currency",
-      currency: balance.currency ?? "USD",
-    });
-    return { text: `Saldo: ${value}`, tone };
-  }
-  if (balance.status === "unavailable") {
-    return { text: "Saldo indisponível", tone: "muted" };
-  }
-  return { text: "Falha ao consultar saldo", tone: "warn" };
-}
-
 export function CredentialsSection({
   initialCredentials,
   onCredentialsChange,
@@ -107,7 +82,6 @@ export function CredentialsSection({
     useState<CredentialSummary[]>(initialCredentials);
   const [pending, startTransition] = useTransition();
   const [deletingId, setDeletingId] = useState<string | null>(null);
-  const [refreshingId, setRefreshingId] = useState<string | null>(null);
   const [dialogState, setDialogState] = useState<DialogState>({
     mode: "closed",
   });
@@ -150,30 +124,6 @@ export function CredentialsSection({
       toast.success("Chave removida.");
       setItems((arr) => arr.filter((x) => x.id !== c.id));
       onCredentialsChange?.();
-    });
-  }
-
-  function handleRefreshBalance(c: CredentialSummary) {
-    setRefreshingId(c.id);
-    startTransition(async () => {
-      const r = await refreshCredentialBalanceAction(c.id);
-      setRefreshingId(null);
-      if (!r.success) {
-        toast.error(r.error ?? "Erro ao consultar saldo.");
-        return;
-      }
-      setItems((arr) =>
-        arr.map((x) =>
-          x.id === c.id ? { ...x, balance: r.data ?? null } : x,
-        ),
-      );
-      if (r.data?.status === "unavailable") {
-        toast.info("Este provedor não expõe consulta de saldo via API.");
-      } else if (r.data?.status === "ok") {
-        toast.success("Saldo atualizado.");
-      } else {
-        toast.warning("Não foi possível obter o saldo.");
-      }
     });
   }
 
@@ -272,12 +222,20 @@ export function CredentialsSection({
             ) : (
               <ul className="mt-3 divide-y divide-border">
                 {list.map((c) => {
-                  const bal = balanceLabel(c.balance);
+                  const realBalance =
+                    c.balance?.status === "ok" && c.balance.usd != null
+                      ? c.balance.usd
+                      : null;
+                  const fmtUsd = (v: number) =>
+                    v.toLocaleString("pt-BR", {
+                      style: "currency",
+                      currency: "USD",
+                    });
                   return (
                     <li
                       key={c.id}
                       data-testid={`credential-row-${c.id}`}
-                      className="flex flex-col gap-2 py-3 sm:flex-row sm:items-center sm:justify-between"
+                      className="flex flex-col gap-3 py-3.5 sm:flex-row sm:items-center sm:justify-between"
                     >
                       <div className="flex min-w-0 flex-col gap-2.5">
                         <div className="flex min-w-0 items-center gap-2">
@@ -288,48 +246,38 @@ export function CredentialsSection({
                             ••••••{c.last4}
                           </span>
                         </div>
-                        <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
-                          <span className="inline-flex items-center gap-1 text-xs text-muted-foreground">
+                        <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
+                          <span className="inline-flex items-center gap-1.5 text-xs text-muted-foreground">
                             <Wallet className="h-3.5 w-3.5" aria-hidden />
                             Consumo:{" "}
-                            {c.consumedUsd.toLocaleString("pt-BR", {
-                              style: "currency",
-                              currency: "USD",
-                            })}
+                            <span className="font-medium tabular-nums text-foreground">
+                              {fmtUsd(c.consumedUsd)}
+                            </span>
                           </span>
-                          <span
-                            className={cn(
-                              "inline-flex items-center gap-1 text-xs",
-                              bal.tone === "ok" &&
-                                "text-emerald-600 dark:text-emerald-400",
-                              bal.tone === "warn" &&
-                                "text-amber-600 dark:text-amber-400",
-                              bal.tone === "muted" && "text-muted-foreground",
-                            )}
-                          >
-                            <Wallet className="h-3.5 w-3.5" aria-hidden />
-                            {bal.text}
-                          </span>
-                          <button
-                            type="button"
-                            onClick={() => handleRefreshBalance(c)}
-                            disabled={pending}
-                            className="inline-flex cursor-pointer items-center gap-1 text-xs text-muted-foreground transition-colors hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                            aria-label={`Atualizar saldo de ${c.label}`}
-                          >
-                            {refreshingId === c.id ? (
-                              <Loader2 className="h-3 w-3 animate-spin" />
-                            ) : (
-                              <RefreshCw className="h-3 w-3" />
-                            )}
-                            Atualizar
-                          </button>
+                          {realBalance != null ? (
+                            <span
+                              className="inline-flex items-center gap-1.5 text-xs text-emerald-600 dark:text-emerald-400"
+                            >
+                              <Wallet className="h-3.5 w-3.5" aria-hidden />
+                              Saldo:{" "}
+                              <span className="font-medium tabular-nums">
+                                {fmtUsd(realBalance)}
+                              </span>
+                            </span>
+                          ) : null}
                           {PROVIDER_META[c.provider]?.topUpUrl ? (
                             <a
                               href={PROVIDER_META[c.provider].topUpUrl}
                               target="_blank"
                               rel="noreferrer noopener"
-                              className="inline-flex items-center gap-1 text-xs text-violet-600 transition-colors hover:text-violet-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring dark:text-violet-400"
+                              className={cn(
+                                buttonVariants({
+                                  variant: "outline",
+                                  size: "sm",
+                                }),
+                                "cursor-pointer gap-1.5",
+                              )}
+                              title="Abrir o painel de billing do provedor"
                             >
                               <CreditCard className="h-3.5 w-3.5" />
                               Adicionar crédito
@@ -553,14 +501,17 @@ function CredentialDialog({ state, onClose, onSaved }: CredentialDialogProps) {
               type="password"
               value={apiKey}
               onChange={(e) => setApiKey(e.currentTarget.value)}
-              placeholder={state.mode === "edit" ? "Deixe em branco para manter a chave atual" : "sk-…"}
+              placeholder={
+                state.mode === "edit" ? "Nova chave — opcional" : "sk-…"
+              }
               className="font-mono"
               disabled={pending}
               autoComplete="off"
             />
             {state.mode === "edit" ? (
-              <p className="text-xs text-muted-foreground">
-                Cole uma nova chave apenas se quiser trocá-la.
+              <p className="text-xs leading-snug text-muted-foreground">
+                Deixe em branco para manter a chave atual. Cole uma nova chave
+                apenas se quiser trocá-la.
               </p>
             ) : null}
           </div>

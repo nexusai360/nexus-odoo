@@ -20,10 +20,12 @@ import {
   Plug,
   KeyRound,
   AlertCircle,
+  Plus,
+  CreditCard,
 } from "lucide-react";
 import { toast } from "sonner";
 
-import { Button } from "@/components/ui/button";
+import { Button, buttonVariants } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import {
@@ -176,6 +178,23 @@ export function LlmConfigForm({
   const isConfigured = Boolean(activeConfig);
   const busy = isSaving || isTesting;
   const actionsDisabled = busy || hasNoCredentials || !effectiveCredentialId;
+
+  // "Sujo" — a seleção atual difere da config ativa salva. Sem config ativa,
+  // qualquer estado é sujo. Governa se "Testar conexão" fica habilitado e se o
+  // resultado do teste é refletido na tarja do topo.
+  const isDirty =
+    !activeConfig ||
+    provider !== activeConfig.provider ||
+    resolvedModel !== activeConfig.model ||
+    effectiveCredentialId !== (activeConfig.credentialId ?? "");
+
+  // Testar só faz sentido quando há algo novo a verificar. Conexão ativa e
+  // inalterada → botão desabilitado (nada a testar).
+  const testDisabled = actionsDisabled || (isConfigured && !isDirty);
+
+  // O resultado do teste é exibido na tarja do topo (fonte da verdade do
+  // status) — nunca numa segunda tarja embaixo.
+  const showTestInTop = test.status !== "idle" && isDirty;
 
   function handleProviderChange(next: string) {
     const p = next as LlmProvider;
@@ -353,31 +372,55 @@ export function LlmConfigForm({
 
       {/* Seção: Conexão LLM */}
       <div className="space-y-6 border-t border-border/50 pt-6">
-        <div
-          className={cn(
-            "flex items-center gap-2 rounded-lg px-3 py-2.5 text-xs",
-            isConfigured
-              ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400"
-              : "bg-amber-500/10 text-amber-600 dark:text-amber-400",
-          )}
-          role="status"
-          aria-live="polite"
-        >
-          {isConfigured ? (
-            <CheckCircle2 className="h-4 w-4 shrink-0" aria-hidden="true" />
-          ) : (
-            <AlertCircle className="h-4 w-4 shrink-0" aria-hidden="true" />
-          )}
-          <span className="leading-snug">
-            {isConfigured
-              ? `Conexão ativa: ${PROVIDER_META[activeConfig!.provider]?.label ?? activeConfig!.provider} · ${activeConfig!.model}${
-                  activeConfig!.credentialLabel
-                    ? ` · ${activeConfig!.credentialLabel}`
-                    : ""
-                }`
-              : "Nenhuma conexão ativa — selecione provedor, modelo e chave abaixo."}
-          </span>
-        </div>
+        {(() => {
+          // Tarja única do topo — fonte da verdade do status. Reflete o teste
+          // apenas quando há algo novo a verificar (isDirty); caso contrário,
+          // mostra a conexão ativa salva.
+          const tone: "ok" | "fail" | "active" | "idle" = showTestInTop
+            ? test.status === "ok"
+              ? "ok"
+              : "fail"
+            : isConfigured
+              ? "active"
+              : "idle";
+          const text =
+            tone === "ok"
+              ? "Conexão verificada com sucesso."
+              : tone === "fail"
+                ? test.message ?? "Falha ao conectar."
+                : tone === "active"
+                  ? `Conexão ativa: ${PROVIDER_META[activeConfig!.provider]?.label ?? activeConfig!.provider} · ${activeConfig!.model}${
+                      activeConfig!.credentialLabel
+                        ? ` · ${activeConfig!.credentialLabel}`
+                        : ""
+                    }`
+                  : "Nenhuma conexão ativa — selecione provedor, modelo e chave abaixo.";
+          const isGood = tone === "ok" || tone === "active";
+          const isBad = tone === "fail";
+          return (
+            <div
+              className={cn(
+                "flex items-center gap-2 rounded-lg px-3 py-2.5 text-xs",
+                isGood &&
+                  "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400",
+                isBad && "bg-destructive/10 text-destructive",
+                tone === "idle" &&
+                  "bg-amber-500/10 text-amber-600 dark:text-amber-400",
+              )}
+              role="status"
+              aria-live="polite"
+            >
+              {isGood ? (
+                <CheckCircle2 className="h-4 w-4 shrink-0" aria-hidden="true" />
+              ) : isBad ? (
+                <XCircle className="h-4 w-4 shrink-0" aria-hidden="true" />
+              ) : (
+                <AlertCircle className="h-4 w-4 shrink-0" aria-hidden="true" />
+              )}
+              <span className="break-words leading-snug">{text}</span>
+            </div>
+          );
+        })()}
 
         {/* Provedor | Modelo na mesma linha */}
         <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
@@ -460,6 +503,19 @@ export function LlmConfigForm({
                 placeholder="Selecionar chave"
                 disabled={busy}
                 triggerClassName="min-h-[44px]"
+                footer={(close) => (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      close();
+                      router.push("/agente/chaves");
+                    }}
+                    className="flex w-full cursor-pointer items-center gap-2 rounded-md px-3 py-2 text-left text-sm font-medium text-violet-600 transition-colors hover:bg-accent dark:text-violet-400"
+                  >
+                    <Plus className="h-4 w-4 shrink-0" />
+                    Nova chave de {meta.label}
+                  </button>
+                )}
               />
               {(() => {
                 const sel = credentialsForProvider.find(
@@ -479,21 +535,33 @@ export function LlmConfigForm({
                     currency: "USD",
                   });
                 return (
-                  <div className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-border bg-muted/20 px-3 py-2 text-xs">
-                    <span className="text-muted-foreground">
-                      {sel.balance?.status === "ok" &&
-                      sel.balance.usd != null
-                        ? `Saldo: ${fmt(sel.balance.usd)}`
-                        : `Consumo desta chave: ${fmt(sel.consumedUsd)}`}
-                    </span>
+                  <div className="mt-3 flex flex-wrap items-center justify-between gap-3 rounded-lg border border-border bg-muted/20 px-3.5 py-3">
+                    <div className="flex flex-col gap-0.5">
+                      <span className="text-xs text-muted-foreground">
+                        {sel.balance?.status === "ok" &&
+                        sel.balance.usd != null
+                          ? "Saldo da chave"
+                          : "Consumo desta chave"}
+                      </span>
+                      <span className="text-sm font-semibold text-foreground tabular-nums">
+                        {sel.balance?.status === "ok" &&
+                        sel.balance.usd != null
+                          ? fmt(sel.balance.usd)
+                          : fmt(sel.consumedUsd)}
+                      </span>
+                    </div>
                     {meta.topUpUrl ? (
                       <a
                         href={meta.topUpUrl}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="inline-flex cursor-pointer items-center gap-1 font-medium text-violet-600 hover:text-violet-700 dark:text-violet-400"
+                        className={cn(
+                          buttonVariants({ variant: "outline", size: "sm" }),
+                          "cursor-pointer gap-1.5",
+                        )}
                         title="Abrir o painel de billing do provedor"
                       >
+                        <CreditCard className="h-3.5 w-3.5" />
                         Adicionar crédito
                       </a>
                     ) : null}
@@ -504,47 +572,19 @@ export function LlmConfigForm({
           )}
         </div>
 
-        {/* Resultado do teste */}
-        {test.status !== "idle" && (
-          <div
-            className={cn(
-              "flex items-start gap-2 rounded-lg px-3 py-2.5 text-xs",
-              test.status === "ok" &&
-                "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400",
-              test.status === "fail" && "bg-destructive/10 text-destructive",
-            )}
-            role="status"
-            aria-live="polite"
-          >
-            {test.status === "ok" ? (
-              <CheckCircle2
-                className="mt-0.5 h-4 w-4 shrink-0"
-                aria-hidden="true"
-              />
-            ) : (
-              <XCircle className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />
-            )}
-            <div className="flex-1 leading-snug">
-              <p className="font-medium">
-                {test.status === "ok"
-                  ? "Conexão verificada com sucesso"
-                  : "Falha ao conectar"}
-              </p>
-              {test.status === "fail" && test.message && (
-                <p className="break-words opacity-80">{test.message}</p>
-              )}
-            </div>
-          </div>
-        )}
-
         {/* Ações */}
         <div className="flex flex-col-reverse gap-2 sm:flex-row sm:items-center sm:justify-end">
           <Button
             type="button"
             variant="outline"
             onClick={handleTest}
-            disabled={actionsDisabled}
+            disabled={testDisabled}
             className="cursor-pointer"
+            title={
+              isConfigured && !isDirty
+                ? "Conexão ativa e inalterada — nada a testar"
+                : "Verificar a conexão com o provedor"
+            }
           >
             {isTesting ? (
               <Loader2 className="mr-1.5 h-4 w-4 animate-spin" />

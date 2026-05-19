@@ -1685,6 +1685,10 @@ model KbDocument {
   /// Checkpoint do documento: OFF, PLAYGROUND ou PRODUCTION.
   checkpoint    FeatureCheckpoint @default(PRODUCTION)
   createdAt     DateTime          @default(now()) @map("created_at")
+  /// Embedding pgvector(1536) para RAG. Tipo sem suporte nativo no Prisma —
+  /// declarado com `Unsupported` para que `prisma migrate dev` NÃO o derrube.
+  /// O índice HNSW vive em migration raw (Prisma não modela índice de vetor).
+  embedding     Unsupported("vector(1536)")?
 
   @@map("kb_documents")
 }

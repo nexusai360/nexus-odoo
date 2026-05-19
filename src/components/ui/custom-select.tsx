@@ -27,6 +27,11 @@ interface CustomSelectProps {
   disabled?: boolean;
   /** Label acessível para o trigger (lido por screen readers). */
   "aria-label"?: string;
+  /**
+   * Conteúdo opcional fixo no rodapé do menu (ex.: atalho "Nova chave").
+   * Recebe `close` para fechar o popover ao acionar a ação.
+   */
+  footer?: (close: () => void) => React.ReactNode;
 }
 
 /**
@@ -47,6 +52,7 @@ export function CustomSelect({
   icon,
   disabled = false,
   "aria-label": ariaLabel,
+  footer,
 }: CustomSelectProps) {
   const [open, setOpen] = useState(false);
   const selected = options.find((o) => o.value === value);
@@ -84,7 +90,7 @@ export function CustomSelect({
         <PopoverContent
           align="start"
           sideOffset={4}
-          className="min-w-[280px] w-auto max-w-[min(calc(100vw-2rem),420px)] p-0 overflow-hidden"
+          className="min-w-[280px] w-auto max-w-[min(calc(100vw-2rem),420px)] rounded-lg p-0 overflow-hidden"
         >
           <ul role="listbox" className="flex flex-col">
             {options.map((option) => {
@@ -127,6 +133,11 @@ export function CustomSelect({
               );
             })}
           </ul>
+          {footer ? (
+            <div className="border-t border-border p-1">
+              {footer(() => setOpen(false))}
+            </div>
+          ) : null}
         </PopoverContent>
       </Popover>
     </div>
