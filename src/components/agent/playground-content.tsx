@@ -51,7 +51,6 @@ import {
   listPlaygroundSessions,
   createPlaygroundSession,
   getPlaygroundSession,
-  archivePlaygroundSession,
   deletePlaygroundSession,
   updatePlaygroundSessionModel,
 } from "@/lib/actions/playground";
@@ -220,8 +219,8 @@ export function PlaygroundContent({
       return;
     }
     setIsLoadingSession(true);
-    // Arquiva a sessão atual antes de abrir uma nova.
-    if (active) await archivePlaygroundSession(active.id);
+    // D4 — não arquiva a sessão atual: ela permanece no histórico para o
+    // usuário voltar quando quiser. Apenas desfoca a sessão atual.
     const res = await createPlaygroundSession({
       provider: first.provider,
       model: first.models[0]!.id,
