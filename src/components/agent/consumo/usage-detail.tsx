@@ -88,7 +88,7 @@ export function UsageDetail({ row, open, onOpenChange }: UsageDetailProps) {
 
   const isWhisper = /whisper/i.test(row.model);
 
-  const originLabel = row.isPlayground ? "Playground" : "Chat";
+  const originLabel = row.isPlayground ? "Playground" : "Agente Nex";
   const originClass = row.isPlayground
     ? "bg-amber-500/10 text-amber-700 dark:text-amber-300"
     : "bg-violet-500/10 text-violet-700 dark:text-violet-300";

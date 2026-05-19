@@ -16,12 +16,13 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { motion, useReducedMotion } from "framer-motion";
-import { Loader2 } from "lucide-react";
+import { CalendarRange, Loader2 } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { CustomSelect } from "@/components/ui/custom-select";
 import { KpiRow, type KpiRowData } from "./kpi-row";
 import { UsageCharts } from "./usage-charts";
 import { UsageTable } from "./usage-table";
+import { DateRangePopover } from "./date-range-popover";
 import {
   fetchUsageStats,
   fetchDistinctProviders,
@@ -115,7 +116,7 @@ export function ConsumoContent({ minDate: minDateIso }: ConsumoContentProps) {
   const [pill, setPill] = useState<PeriodKey>("mes_atual");
   const [customRange, setCustomRange] = useState<{ start: string; end: string } | undefined>();
   const [globalProvider, setGlobalProvider] = useState<string | undefined>();
-  const [ambiente, setAmbiente] = useState<"all" | "chat" | "playground">("all");
+  const [ambiente, setAmbiente] = useState<"all" | "agente" | "playground">("all");
   const [providers, setProviders] = useState<string[]>([]);
 
   // Dados
@@ -197,9 +198,8 @@ export function ConsumoContent({ minDate: minDateIso }: ConsumoContentProps) {
       <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between">
         {/* Pills de período */}
         <div className="flex flex-wrap items-center gap-2">
-          {(Object.keys(PERIOD_LABELS) as PeriodKey[])
-            .filter((k) => k !== "custom")
-            .map((key) => (
+          {(["hoje", "semana_atual", "mes_atual", "todos"] as PeriodKey[]).map(
+            (key) => (
               <button
                 key={key}
                 type="button"
@@ -212,7 +212,32 @@ export function ConsumoContent({ minDate: minDateIso }: ConsumoContentProps) {
               >
                 {PERIOD_LABELS[key]}
               </button>
-            ))}
+            ),
+          )}
+
+          {/* Pill "Personalizado" — abre o seletor de intervalo */}
+          <DateRangePopover
+            value={customRange}
+            minDate={minDateIso.slice(0, 10)}
+            onApply={(start, end) => {
+              setCustomRange({ start, end });
+              setPill("custom");
+            }}
+          >
+            <button
+              type="button"
+              className={`inline-flex cursor-pointer items-center gap-1.5 rounded-full border px-3 py-1 text-xs font-medium transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-500 ${
+                pill === "custom"
+                  ? "border-violet-500/60 bg-violet-500/10 text-violet-700 dark:text-violet-300"
+                  : "border-border bg-background text-muted-foreground hover:border-violet-500/30 hover:text-foreground"
+              }`}
+            >
+              <CalendarRange className="h-3.5 w-3.5" aria-hidden />
+              {pill === "custom" && customRange
+                ? `${customRange.start.split("-").reverse().slice(0, 2).join("/")} – ${customRange.end.split("-").reverse().slice(0, 2).join("/")}`
+                : "Personalizado"}
+            </button>
+          </DateRangePopover>
 
           {/* Filtro de provedor */}
           {providers.length > 0 && (
@@ -238,12 +263,12 @@ export function ConsumoContent({ minDate: minDateIso }: ConsumoContentProps) {
             aria-label="Filtrar por ambiente"
             value={ambiente}
             onChange={(v) =>
-              setAmbiente(v as "all" | "chat" | "playground")
+              setAmbiente(v as "all" | "agente" | "playground")
             }
             triggerClassName="h-9 min-w-[180px]"
             options={[
               { value: "all", label: "Todos os ambientes" },
-              { value: "chat", label: "Chat" },
+              { value: "agente", label: "Agente Nex" },
               { value: "playground", label: "Playground" },
             ]}
           />

@@ -297,7 +297,7 @@ export function UsageTable({
                               ? "bg-amber-500/10 text-amber-700 dark:text-amber-300"
                               : "bg-violet-500/10 text-violet-700 dark:text-violet-300",
                           )}>
-                            {row.isPlayground ? "Playground" : "Chat"}
+                            {row.isPlayground ? "Playground" : "Agente Nex"}
                           </span>
                         </TableCell>
 
