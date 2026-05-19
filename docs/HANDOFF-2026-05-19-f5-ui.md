@@ -99,7 +99,30 @@ mudou para corrigir a UI antes de qualquer merge.
 | **C** | Consumo — **cópia visual fiel do nexus-insights** | ⬜ **PENDENTE (grande)** — só o G11 (coluna Tipo) foi feito |
 | **D** | Playground — **redesenho completo (9 tarefas)** | ⬜ **PENDENTE (grande)** |
 | **E** | Sidebar "Agente" → "Agente Nex" | ✅ feito |
-| **G** | Feedback 4ª rodada (11 tarefas) | parcial: G3 ✅, G8 ✅ (já coberto), G11 ✅; **G1,G2,G4,G5,G6,G7,G9,G10 pendentes** |
+| **G** | Feedback 4ª rodada (11 tarefas) | parcial: G1 ✅, G3 ✅, G8 ✅, G11 ✅; **G2,G4,G5,G6,G7,G9,G10 pendentes** |
+| **H** | 5ª rodada — Configuração (teste, dropdown, saldo) | ✅ feito |
+| **I** | 5ª rodada — Chaves de API (Atualizar, crédito, dialog) | ✅ feito |
+
+### Sessão 2026-05-19 (5ª rodada) — o que foi feito e verificado
+
+- **Erro `column "embedding" does not exist`** — causa-raiz: a migration
+  `f5_llm_usage_credential_kind` derrubou a coluna `embedding` (o
+  `prisma migrate dev` não enxerga o tipo `vector`). Corrigido com migration
+  idempotente `f5_restore_kb_embedding` + `embedding Unsupported(...)` no schema.
+- **Bloco H** (Configuração): "Testar conexão" sem tarja verde permanente —
+  resultado vai para a tarja única do topo + toast; botão desabilita quando a
+  conexão está ativa e inalterada; dropdown de Chave de API com rodapé "Nova
+  chave"; menu menos arredondado; bloco Consumo/Saldo com respiro e "Adicionar
+  crédito" como botão outline.
+- **Bloco I** (Chaves de API): removidos "Atualizar" e "Saldo indisponível";
+  "Adicionar crédito" como botão outline; placeholder do dialog Editar corrigido.
+- **G1**: o prompt do Agente Nex agora é semeado preenchido (identidade,
+  personalidade, tom, guardrails); `ensureGlobalSettings` auto-repara
+  instalações antigas; row local backfillada; testes cobrem o reparo.
+- Verificação: `tsc`, `eslint`, `next build`, `jest` (agent-config) verdes.
+
+> **Pendente para a próxima sessão:** Bloco C (Consumo), Bloco D (Playground,
+> 9 tarefas) e o restante do Bloco G (G2, G4, G5, G6, G7, G9, G10).
 
 ### O que FALTA (prioridade)
 
