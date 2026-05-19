@@ -232,6 +232,7 @@ export function UsageTable({
                   <TableHead>Origem</TableHead>
                   <TableHead>Provider</TableHead>
                   <TableHead className="hidden md:table-cell">Modelo</TableHead>
+                  <TableHead>Tipo</TableHead>
                   <TableHead className="text-right">Tokens entrada</TableHead>
                   <TableHead className="text-right">Tokens saída</TableHead>
                   <TableHead className="text-right">Custo USD</TableHead>
@@ -242,7 +243,7 @@ export function UsageTable({
                 {/* Linha de total */}
                 {totals && totals.count > 0 ? (
                   <TableRow className="sticky top-0 z-[1] bg-violet-500/5 dark:bg-violet-500/10 border-b border-border/60 font-bold text-sm">
-                    <TableCell colSpan={4} className="whitespace-nowrap">
+                    <TableCell colSpan={5} className="whitespace-nowrap">
                       Total no filtro
                     </TableCell>
                     <TableCell className="text-right tabular-nums">
@@ -263,7 +264,7 @@ export function UsageTable({
                 {/* Dados */}
                 {rows.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={8} className="py-8 text-center text-sm text-muted-foreground">
+                    <TableCell colSpan={9} className="py-8 text-center text-sm text-muted-foreground">
                       {isLoading ? (
                         <span className="inline-flex items-center gap-2">
                           <Loader2 className="h-4 w-4 animate-spin" />
@@ -303,6 +304,35 @@ export function UsageTable({
 
                         <TableCell className="text-sm">{providerLabel(row.provider)}</TableCell>
                         <TableCell className="hidden md:table-cell font-mono text-xs">{row.model}</TableCell>
+
+                        {/* Tipo da requisição — Task G11 */}
+                        <TableCell>
+                          {(() => {
+                            const k = row.requestKind || "texto";
+                            const styles: Record<string, string> = {
+                              texto: "bg-slate-500/10 text-slate-700 dark:text-slate-300",
+                              imagem: "bg-sky-500/10 text-sky-700 dark:text-sky-300",
+                              audio: "bg-violet-500/10 text-violet-700 dark:text-violet-300",
+                              arquivo: "bg-emerald-500/10 text-emerald-700 dark:text-emerald-300",
+                            };
+                            const labels: Record<string, string> = {
+                              texto: "Texto",
+                              imagem: "Imagem",
+                              audio: "Áudio",
+                              arquivo: "Arquivo",
+                            };
+                            return (
+                              <span
+                                className={cn(
+                                  "inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-medium",
+                                  styles[k] ?? styles.texto,
+                                )}
+                              >
+                                {labels[k] ?? "Texto"}
+                              </span>
+                            );
+                          })()}
+                        </TableCell>
 
                         <TableCell className={cn("text-right tabular-nums text-xs", isWhisper && "text-muted-foreground")}>
                           {isWhisper ? "—" : numberFmt.format(row.tokensInput)}

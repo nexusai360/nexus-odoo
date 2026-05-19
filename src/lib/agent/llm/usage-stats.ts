@@ -88,6 +88,8 @@ export interface UsageDetailRow {
   errorMessage: string | null;
   isPlayground: boolean;
   conversationId: string | null;
+  /** Tipo da requisição: texto | imagem | audio | arquivo (Task G11). */
+  requestKind: string;
 }
 
 export interface UsageDetailsTotals {
@@ -375,6 +377,7 @@ export async function getUsageDetails(args: {
         errorMessage: true,
         isPlayground: true,
         conversationId: true,
+        requestKind: true,
       },
     }),
     prisma.llmUsage.count({ where }),
@@ -411,6 +414,7 @@ export async function getUsageDetails(args: {
     errorMessage: r.errorMessage ?? null,
     isPlayground: r.isPlayground,
     conversationId: r.conversationId ?? null,
+    requestKind: r.requestKind ?? "texto",
   }));
 
   return {
