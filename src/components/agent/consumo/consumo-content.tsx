@@ -20,9 +20,11 @@ import { Loader2 } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { KpiRow, type KpiRowData } from "./kpi-row";
 import { UsageCharts } from "./usage-charts";
+import { UsageTable } from "./usage-table";
 import {
   fetchUsageStats,
   fetchDistinctProviders,
+  fetchDistinctModels,
 } from "@/lib/actions/llm-usage";
 import type { UsageSummaryV2 } from "@/lib/agent/llm/usage-stats";
 
@@ -265,30 +267,18 @@ export function ConsumoContent({ minDate: minDateIso }: ConsumoContentProps) {
         isLoading={isLoading && stats === null}
         isHourly={pill === "hoje" && !!stats?.byHour}
       />
-      {/* Tabela (Task 5.2c) — montada a seguir */}
-      <UsageTablePlaceholder stats={stats} range={range} globalProvider={globalProvider} isPlayground={isPlaygroundFilter} />
+      {/* Tabela paginada com filtros e drill-down — Task 5.2c */}
+      <UsageTable
+        rangeStart={range.start.toISOString()}
+        rangeEnd={range.end.toISOString()}
+        globalProvider={globalProvider}
+        isPlayground={isPlaygroundFilter}
+        providers={providers}
+        modelsByProvider={{}}
+        onFetchModels={async (p, start, end) => fetchDistinctModels({ start, end, provider: p ?? null })}
+      />
     </motion.div>
   );
-}
-
-// ---------------------------------------------------------------------------
-// Placeholder — substituído na task 5.2c
-// ---------------------------------------------------------------------------
-
-function UsageTablePlaceholder({
-  stats,
-  range,
-  globalProvider,
-  isPlayground,
-}: {
-  stats: UsageSummaryV2 | null;
-  range: { start: Date; end: Date };
-  globalProvider: string | undefined;
-  isPlayground: boolean | null;
-}) {
-  if (!stats) return null;
-  // placeholder vazio — substituído pelo UsageTable na Task 5.2c
-  return null;
 }
 
 // Re-export para uso em subcomponentes
