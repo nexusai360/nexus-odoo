@@ -29,8 +29,6 @@ interface IdentityBaseEditorProps {
     guardrails: string[];
     advancedOverride: string | null;
     terminology: Record<string, string>;
-    audioInputEnabled: boolean;
-    kbEnabled: boolean;
     suggestionsEnabled: boolean;
   };
 }
@@ -56,8 +54,6 @@ export function IdentityBaseEditor({ initial }: IdentityBaseEditorProps) {
         guardrails: initial.guardrails,
         advancedOverride: initial.advancedOverride ?? undefined,
         terminology: initial.terminology,
-        audioInputEnabled: initial.audioInputEnabled,
-        kbEnabled: initial.kbEnabled,
         suggestionsEnabled: initial.suggestionsEnabled,
       });
       if (!result.success) {
@@ -74,7 +70,7 @@ export function IdentityBaseEditor({ initial }: IdentityBaseEditorProps) {
       <div className="flex items-center justify-between gap-2">
         <Label htmlFor="agent-identity-base" className="flex items-center gap-2">
           <FileText className="h-3.5 w-3.5 text-muted-foreground" />
-          Identidade base
+          Texto do prompt
         </Label>
         <span
           className={cn(
@@ -98,22 +94,24 @@ export function IdentityBaseEditor({ initial }: IdentityBaseEditorProps) {
         aria-describedby="agent-identity-base-help"
       />
       <p id="agent-identity-base-help" className="text-xs text-muted-foreground">
-        Texto injetado no início de todo system prompt, antes de personalidade e tom.
-        Pode ser longo — use para descrever o contexto da empresa, operação e dados disponíveis.
+        Aqui se escreve o prompt do Agente Nex — a identidade base injetada no
+        início de todo system prompt, antes de personalidade e tom. Pode ser
+        longo: descreva quem é o agente, o contexto da empresa, a operação e os
+        dados disponíveis.
       </p>
-      <div className="flex justify-end">
+      <div className="flex justify-end pt-1">
         <Button
           type="button"
           onClick={handleSave}
           disabled={isSaving}
-          className="min-h-[44px] cursor-pointer bg-violet-600 hover:bg-violet-700 text-white"
+          className="h-9 cursor-pointer bg-violet-600 hover:bg-violet-700 text-white"
         >
           {isSaving ? (
             <Loader2 className="mr-1.5 h-4 w-4 animate-spin" />
           ) : (
             <Save className="mr-1.5 h-4 w-4" />
           )}
-          Salvar identidade
+          Salvar prompt
         </Button>
       </div>
     </div>

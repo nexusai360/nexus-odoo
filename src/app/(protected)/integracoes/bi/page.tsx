@@ -5,6 +5,10 @@ import { Breadcrumb } from "@/components/integracoes/breadcrumb";
 
 export const metadata = { title: "BI | Integrações | Nexus Odoo" };
 
+// Página dentro de (protected) — o layout depende da sessão do usuário.
+// Sem isto o Next tenta prerender estático e o layout protegido falha.
+export const dynamic = "force-dynamic";
+
 export default function BiPage() {
   return (
     <PageShell variant="narrow">

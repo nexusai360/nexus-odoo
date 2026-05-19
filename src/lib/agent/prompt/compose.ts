@@ -20,7 +20,7 @@ export const MAX_TONE_LEN = 500;
 export const MAX_GUARDRAIL_LEN = 300;
 export const MAX_GUARDRAILS = 20;
 export const MAX_PROMPT_LEN = 50_000;
-export const MAX_KB_TOTAL_CHARS = 30_000;
+export const MAX_KB_TOTAL_CHARS = 50_000;
 
 export interface AgentPromptConfig {
   /** Texto-base do agente. NULL = usa IDENTITY_BASE hardcoded como default. */

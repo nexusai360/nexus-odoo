@@ -25,6 +25,15 @@ export interface ModelPricing {
   perMinuteUsd?: number;
 }
 
+/** Para que serve o modelo — usado na linha de descrição do select. */
+export type ModelUse =
+  | "conversação"
+  | "código"
+  | "áudio"
+  | "raciocínio"
+  | "raciocínio profundo"
+  | "busca";
+
 export interface ModelEntry {
   id: string;
   provider: LlmProvider;
@@ -34,6 +43,12 @@ export interface ModelEntry {
   released?: string;
   /** null = preço desconhecido; calculateCost devolve costKnown=false. */
   pricing: ModelPricing | null;
+  /** Para que serve (default "conversação"). */
+  use?: ModelUse;
+  /** Entende áudio (transcrição de voz). */
+  audio?: boolean;
+  /** Entende imagem (visão multimodal). */
+  vision?: boolean;
 }
 
 export interface ProviderMeta {
@@ -77,58 +92,60 @@ export const PROVIDER_META: Record<LlmProvider, ProviderMeta> = {
 
 // ─── OpenAI ──────────────────────────────────────────────────────────────────
 const OPENAI: ModelEntry[] = [
-  { id: "gpt-5.5",             provider: "openai", label: "GPT-5.5",          tier: "high",    notes: "$5/$30",       released: "2026-04", pricing: { inputPerMTok: 5.0,   outputPerMTok: 30.0  } },
-  { id: "gpt-5.5-pro",         provider: "openai", label: "GPT-5.5 Pro",      tier: "premium", notes: "$30/$180",     released: "2026-04", pricing: { inputPerMTok: 30.0,  outputPerMTok: 180.0 } },
-  { id: "gpt-5.4",             provider: "openai", label: "GPT-5.4",          tier: "high",    notes: "$2.5/$15",     released: "2026-04", pricing: { inputPerMTok: 2.5,   outputPerMTok: 15.0  } },
-  { id: "gpt-5.4-pro",         provider: "openai", label: "GPT-5.4 Pro",      tier: "premium", notes: "$30/$180",     released: "2026-04", pricing: { inputPerMTok: 30.0,  outputPerMTok: 180.0 } },
-  { id: "gpt-5.4-mini",        provider: "openai", label: "GPT-5.4 mini",     tier: "low",                            released: "2026-04", pricing: { inputPerMTok: 0.25,  outputPerMTok: 2.0   } },
-  { id: "gpt-5.4-nano",        provider: "openai", label: "GPT-5.4 nano",     tier: "low",                            released: "2026-04", pricing: { inputPerMTok: 0.05,  outputPerMTok: 0.4   } },
-  { id: "gpt-5.1",             provider: "openai", label: "GPT-5.1",          tier: "high",                           released: "2026-02", pricing: { inputPerMTok: 1.25,  outputPerMTok: 10.0  } },
-  { id: "gpt-5.1-codex-mini",  provider: "openai", label: "GPT-5.1 Codex mini", tier: "low",  notes: "código",       released: "2026-02", pricing: { inputPerMTok: 0.25,  outputPerMTok: 2.0   } },
-  { id: "gpt-5",               provider: "openai", label: "GPT-5",            tier: "high",                           released: "2025-12", pricing: { inputPerMTok: 1.25,  outputPerMTok: 10.0  } },
-  { id: "gpt-5-mini",          provider: "openai", label: "GPT-5 mini",       tier: "medium",                         released: "2025-12", pricing: { inputPerMTok: 0.25,  outputPerMTok: 2.0   } },
-  { id: "gpt-5-nano",          provider: "openai", label: "GPT-5 nano",       tier: "low",                            released: "2025-12", pricing: { inputPerMTok: 0.05,  outputPerMTok: 0.4   } },
-  { id: "gpt-5-codex",         provider: "openai", label: "GPT-5 Codex",      tier: "medium",  notes: "código",      released: "2025-12", pricing: { inputPerMTok: 1.25,  outputPerMTok: 10.0  } },
-  { id: "gpt-5.3-codex",       provider: "openai", label: "GPT-5.3 Codex",    tier: "high",    notes: "código",      released: "2026-03", pricing: { inputPerMTok: 1.25,  outputPerMTok: 10.0  } },
-  { id: "o3-pro",              provider: "openai", label: "o3-pro",            tier: "premium", notes: "raciocínio profundo", released: "2025-04", pricing: { inputPerMTok: 20.0,  outputPerMTok: 80.0  } },
-  { id: "o3",                  provider: "openai", label: "o3",                tier: "high",    notes: "raciocínio",  released: "2025-04", pricing: { inputPerMTok: 2.0,   outputPerMTok: 8.0   } },
-  { id: "o1-pro",              provider: "openai", label: "o1-pro",            tier: "premium", notes: "raciocínio profundo", released: "2025-03", pricing: null },
-  { id: "o1",                  provider: "openai", label: "o1",                tier: "high",    notes: "raciocínio",  released: "2024-12", pricing: { inputPerMTok: 15.0,  outputPerMTok: 60.0  } },
-  { id: "gpt-4.1",             provider: "openai", label: "GPT-4.1",          tier: "medium",                         released: "2025-04", pricing: { inputPerMTok: 2.0,   outputPerMTok: 8.0   } },
-  { id: "gpt-4.1-mini",        provider: "openai", label: "GPT-4.1 mini",     tier: "low",                            released: "2025-04", pricing: { inputPerMTok: 0.4,   outputPerMTok: 1.6   } },
-  { id: "gpt-4o",              provider: "openai", label: "GPT-4o",           tier: "medium",                         released: "2024-05", pricing: { inputPerMTok: 2.5,   outputPerMTok: 10.0  } },
-  { id: "gpt-4o-mini",         provider: "openai", label: "GPT-4o mini",      tier: "low",                            released: "2024-07", pricing: { inputPerMTok: 0.15,  outputPerMTok: 0.6   } },
-  { id: "gpt-4-turbo",         provider: "openai", label: "GPT-4 Turbo",      tier: "high",                           released: "2024-04", pricing: { inputPerMTok: 10.0,  outputPerMTok: 30.0  } },
+  { id: "gpt-5.5",             provider: "openai", label: "GPT-5.5",          tier: "high",    notes: "$5/$30",       released: "2026-04", pricing: { inputPerMTok: 5.0,   outputPerMTok: 30.0  }, vision: true },
+  { id: "gpt-5.5-pro",         provider: "openai", label: "GPT-5.5 Pro",      tier: "premium", notes: "$30/$180",     released: "2026-04", pricing: { inputPerMTok: 30.0,  outputPerMTok: 180.0 }, use: "raciocínio profundo", vision: true },
+  { id: "gpt-5.4",             provider: "openai", label: "GPT-5.4",          tier: "high",    notes: "$2.5/$15",     released: "2026-04", pricing: { inputPerMTok: 2.5,   outputPerMTok: 15.0  }, vision: true },
+  { id: "gpt-5.4-pro",         provider: "openai", label: "GPT-5.4 Pro",      tier: "premium", notes: "$30/$180",     released: "2026-04", pricing: { inputPerMTok: 30.0,  outputPerMTok: 180.0 }, use: "raciocínio profundo", vision: true },
+  { id: "gpt-5.4-mini",        provider: "openai", label: "GPT-5.4 mini",     tier: "low",                            released: "2026-04", pricing: { inputPerMTok: 0.25,  outputPerMTok: 2.0   }, vision: true },
+  { id: "gpt-5.4-nano",        provider: "openai", label: "GPT-5.4 nano",     tier: "low",                            released: "2026-04", pricing: { inputPerMTok: 0.05,  outputPerMTok: 0.4   }, vision: true },
+  { id: "gpt-5.3-codex",       provider: "openai", label: "GPT-5.3 Codex",    tier: "high",    notes: "código",      released: "2026-03", pricing: { inputPerMTok: 1.25,  outputPerMTok: 10.0  }, use: "código", vision: true },
+  { id: "gpt-5.2",             provider: "openai", label: "GPT-5.2",          tier: "high",                           released: "2026-03", pricing: { inputPerMTok: 1.25,  outputPerMTok: 10.0  }, vision: true },
+  { id: "gpt-5.1",             provider: "openai", label: "GPT-5.1",          tier: "high",                           released: "2026-02", pricing: { inputPerMTok: 1.25,  outputPerMTok: 10.0  }, vision: true },
+  { id: "gpt-5.1-codex-mini",  provider: "openai", label: "GPT-5.1 Codex mini", tier: "low",  notes: "código",       released: "2026-02", pricing: { inputPerMTok: 0.25,  outputPerMTok: 2.0   }, use: "código" },
+  { id: "gpt-5",               provider: "openai", label: "GPT-5",            tier: "high",                           released: "2025-12", pricing: { inputPerMTok: 1.25,  outputPerMTok: 10.0  }, vision: true },
+  { id: "gpt-5-codex",         provider: "openai", label: "GPT-5 Codex",      tier: "medium",  notes: "código",      released: "2025-12", pricing: { inputPerMTok: 1.25,  outputPerMTok: 10.0  }, use: "código", vision: true },
+  { id: "gpt-5-mini",          provider: "openai", label: "GPT-5 mini",       tier: "medium",                         released: "2025-12", pricing: { inputPerMTok: 0.25,  outputPerMTok: 2.0   }, vision: true },
+  { id: "gpt-5-nano",          provider: "openai", label: "GPT-5 nano",       tier: "low",                            released: "2025-12", pricing: { inputPerMTok: 0.05,  outputPerMTok: 0.4   }, vision: true },
+  { id: "o3-pro",              provider: "openai", label: "o3-pro",            tier: "premium", notes: "raciocínio profundo", released: "2025-04", pricing: { inputPerMTok: 20.0,  outputPerMTok: 80.0  }, use: "raciocínio profundo" },
+  { id: "o3",                  provider: "openai", label: "o3",                tier: "high",    notes: "raciocínio",  released: "2025-04", pricing: { inputPerMTok: 2.0,   outputPerMTok: 8.0   }, use: "raciocínio" },
+  { id: "o1-pro",              provider: "openai", label: "o1-pro",            tier: "premium", notes: "raciocínio profundo", released: "2025-03", pricing: null, use: "raciocínio profundo" },
+  { id: "o1",                  provider: "openai", label: "o1",                tier: "high",    notes: "raciocínio",  released: "2024-12", pricing: { inputPerMTok: 15.0,  outputPerMTok: 60.0  }, use: "raciocínio" },
+  { id: "gpt-4.1",             provider: "openai", label: "GPT-4.1",          tier: "medium",                         released: "2025-04", pricing: { inputPerMTok: 2.0,   outputPerMTok: 8.0   }, vision: true },
+  { id: "gpt-4.1-mini",        provider: "openai", label: "GPT-4.1 mini",     tier: "low",                            released: "2025-04", pricing: { inputPerMTok: 0.4,   outputPerMTok: 1.6   }, vision: true },
+  { id: "gpt-4o",              provider: "openai", label: "GPT-4o",           tier: "medium",                         released: "2024-05", pricing: { inputPerMTok: 2.5,   outputPerMTok: 10.0  }, vision: true, audio: true },
+  { id: "gpt-4o-mini",         provider: "openai", label: "GPT-4o mini",      tier: "low",                            released: "2024-07", pricing: { inputPerMTok: 0.15,  outputPerMTok: 0.6   }, vision: true, audio: true },
+  { id: "gpt-4-turbo",         provider: "openai", label: "GPT-4 Turbo",      tier: "high",                           released: "2024-04", pricing: { inputPerMTok: 10.0,  outputPerMTok: 30.0  }, vision: true },
   { id: "gpt-4",               provider: "openai", label: "GPT-4",            tier: "medium",                         released: "2023-03", pricing: { inputPerMTok: 30.0,  outputPerMTok: 60.0  } },
-  // Áudio (transcrição) — cobrado por minuto, não por token.
-  { id: "whisper-1",           provider: "openai", label: "Whisper-1",        tier: "low",     notes: "áudio",       released: "2022-09", pricing: { inputPerMTok: 0, outputPerMTok: 0, perMinuteUsd: 0.006 } },
-  { id: "gpt-4o-mini-transcribe", provider: "openai", label: "GPT-4o mini Transcribe", tier: "low", notes: "áudio", released: "2024-07", pricing: { inputPerMTok: 3.0, outputPerMTok: 5.0 } },
+  // Áudio (transcrição).
+  { id: "gpt-4o-transcribe",      provider: "openai", label: "GPT-4o Transcribe",      tier: "low", use: "áudio", audio: true, released: "2025-03", pricing: { inputPerMTok: 6.0, outputPerMTok: 10.0 } },
+  { id: "gpt-4o-mini-transcribe", provider: "openai", label: "GPT-4o mini Transcribe", tier: "low", use: "áudio", audio: true, released: "2025-03", pricing: { inputPerMTok: 3.0, outputPerMTok: 5.0 } },
+  { id: "whisper-1",           provider: "openai", label: "Whisper-1",        tier: "low",     use: "áudio", audio: true, released: "2022-09", pricing: { inputPerMTok: 0, outputPerMTok: 0, perMinuteUsd: 0.006 } },
 ];
 
 // ─── Anthropic ────────────────────────────────────────────────────────────────
 const ANTHROPIC: ModelEntry[] = [
-  { id: "claude-opus-4-7",          provider: "anthropic", label: "Claude Opus 4.7",      tier: "high",    notes: "$5/$25",  released: "2026-04", pricing: { inputPerMTok: 5.0,  outputPerMTok: 25.0 } },
-  { id: "claude-sonnet-4-7",        provider: "anthropic", label: "Claude Sonnet 4.7",    tier: "medium",                    released: "2026-04", pricing: { inputPerMTok: 3.0,  outputPerMTok: 15.0 } },
-  { id: "claude-sonnet-4-6",        provider: "anthropic", label: "Claude Sonnet 4.6",    tier: "medium",                    released: "2026-01", pricing: { inputPerMTok: 3.0,  outputPerMTok: 15.0 } },
-  { id: "claude-opus-4-5",          provider: "anthropic", label: "Claude Opus 4.5",      tier: "high",                      released: "2025-09", pricing: { inputPerMTok: 15.0, outputPerMTok: 75.0 } },
-  { id: "claude-sonnet-4-5",        provider: "anthropic", label: "Claude Sonnet 4.5",    tier: "medium",                    released: "2025-09", pricing: { inputPerMTok: 3.0,  outputPerMTok: 15.0 } },
-  { id: "claude-haiku-4-5",         provider: "anthropic", label: "Claude Haiku 4.5",     tier: "low",                       released: "2025-10", pricing: { inputPerMTok: 1.0,  outputPerMTok: 5.0  } },
-  { id: "claude-3-5-sonnet-20241022", provider: "anthropic", label: "Claude 3.5 Sonnet", tier: "medium",                    released: "2024-10", pricing: { inputPerMTok: 3.0,  outputPerMTok: 15.0 } },
+  { id: "claude-opus-4-7",          provider: "anthropic", label: "Claude Opus 4.7",      tier: "high",    notes: "$5/$25",  released: "2026-04", pricing: { inputPerMTok: 5.0,  outputPerMTok: 25.0 }, vision: true },
+  { id: "claude-sonnet-4-7",        provider: "anthropic", label: "Claude Sonnet 4.7",    tier: "medium",                    released: "2026-04", pricing: { inputPerMTok: 3.0,  outputPerMTok: 15.0 }, vision: true },
+  { id: "claude-sonnet-4-6",        provider: "anthropic", label: "Claude Sonnet 4.6",    tier: "medium",                    released: "2026-01", pricing: { inputPerMTok: 3.0,  outputPerMTok: 15.0 }, vision: true },
+  { id: "claude-haiku-4-5",         provider: "anthropic", label: "Claude Haiku 4.5",     tier: "low",                       released: "2025-10", pricing: { inputPerMTok: 1.0,  outputPerMTok: 5.0  }, vision: true },
+  { id: "claude-opus-4-5",          provider: "anthropic", label: "Claude Opus 4.5",      tier: "high",                      released: "2025-09", pricing: { inputPerMTok: 15.0, outputPerMTok: 75.0 }, vision: true },
+  { id: "claude-sonnet-4-5",        provider: "anthropic", label: "Claude Sonnet 4.5",    tier: "medium",                    released: "2025-09", pricing: { inputPerMTok: 3.0,  outputPerMTok: 15.0 }, vision: true },
+  { id: "claude-3-5-sonnet-20241022", provider: "anthropic", label: "Claude 3.5 Sonnet", tier: "medium",                    released: "2024-10", pricing: { inputPerMTok: 3.0,  outputPerMTok: 15.0 }, vision: true },
   { id: "claude-3-5-haiku-20241022",  provider: "anthropic", label: "Claude 3.5 Haiku",  tier: "low",                       released: "2024-10", pricing: { inputPerMTok: 1.0,  outputPerMTok: 5.0  } },
-  { id: "claude-3-opus-20240229",   provider: "anthropic", label: "Claude 3 Opus",        tier: "premium", notes: "legado",  released: "2024-02", pricing: { inputPerMTok: 15.0, outputPerMTok: 75.0 } },
+  { id: "claude-3-opus-20240229",   provider: "anthropic", label: "Claude 3 Opus",        tier: "premium", notes: "legado",  released: "2024-02", pricing: { inputPerMTok: 15.0, outputPerMTok: 75.0 }, vision: true },
 ];
 
 // ─── Gemini ───────────────────────────────────────────────────────────────────
 const GEMINI: ModelEntry[] = [
-  { id: "gemini-2.5-pro",        provider: "gemini", label: "Gemini 2.5 Pro",         tier: "high",   notes: "atual mais novo", released: "2025-09", pricing: { inputPerMTok: 1.25, outputPerMTok: 10.0 } },
-  { id: "gemini-2.5-flash",      provider: "gemini", label: "Gemini 2.5 Flash",       tier: "low",                              released: "2025-09", pricing: { inputPerMTok: 0.3,  outputPerMTok: 2.5  } },
-  { id: "gemini-2.5-flash-lite", provider: "gemini", label: "Gemini 2.5 Flash Lite",  tier: "low",                              released: "2025-09", pricing: { inputPerMTok: 0.1,  outputPerMTok: 0.4  } },
-  { id: "gemini-2.0-pro",        provider: "gemini", label: "Gemini 2.0 Pro",         tier: "medium",                           released: "2025-02", pricing: { inputPerMTok: 1.25, outputPerMTok: 5.0  } },
-  { id: "gemini-2.0-flash",      provider: "gemini", label: "Gemini 2.0 Flash",       tier: "low",                              released: "2024-12", pricing: { inputPerMTok: 0.075, outputPerMTok: 0.3 } },
-  { id: "gemini-2.0-flash-lite", provider: "gemini", label: "Gemini 2.0 Flash Lite",  tier: "low",                              released: "2025-02", pricing: { inputPerMTok: 0.075, outputPerMTok: 0.3 } },
-  { id: "gemini-1.5-pro",        provider: "gemini", label: "Gemini 1.5 Pro",         tier: "medium",                           released: "2024-05", pricing: { inputPerMTok: 1.25, outputPerMTok: 5.0  } },
-  { id: "gemini-1.5-flash",      provider: "gemini", label: "Gemini 1.5 Flash",       tier: "low",                              released: "2024-05", pricing: { inputPerMTok: 0.075, outputPerMTok: 0.3 } },
-  { id: "gemini-1.5-flash-8b",   provider: "gemini", label: "Gemini 1.5 Flash-8B",   tier: "low",                              released: "2024-10", pricing: null },
+  { id: "gemini-2.5-pro",        provider: "gemini", label: "Gemini 2.5 Pro",         tier: "high",   notes: "atual mais novo", released: "2025-09", pricing: { inputPerMTok: 1.25, outputPerMTok: 10.0 }, vision: true, audio: true },
+  { id: "gemini-2.5-flash",      provider: "gemini", label: "Gemini 2.5 Flash",       tier: "low",                              released: "2025-09", pricing: { inputPerMTok: 0.3,  outputPerMTok: 2.5  }, vision: true, audio: true },
+  { id: "gemini-2.5-flash-lite", provider: "gemini", label: "Gemini 2.5 Flash Lite",  tier: "low",                              released: "2025-09", pricing: { inputPerMTok: 0.1,  outputPerMTok: 0.4  }, vision: true, audio: true },
+  { id: "gemini-2.0-pro",        provider: "gemini", label: "Gemini 2.0 Pro",         tier: "medium",                           released: "2025-02", pricing: { inputPerMTok: 1.25, outputPerMTok: 5.0  }, vision: true, audio: true },
+  { id: "gemini-2.0-flash",      provider: "gemini", label: "Gemini 2.0 Flash",       tier: "low",                              released: "2024-12", pricing: { inputPerMTok: 0.075, outputPerMTok: 0.3 }, vision: true, audio: true },
+  { id: "gemini-2.0-flash-lite", provider: "gemini", label: "Gemini 2.0 Flash Lite",  tier: "low",                              released: "2025-02", pricing: { inputPerMTok: 0.075, outputPerMTok: 0.3 }, vision: true },
+  { id: "gemini-1.5-pro",        provider: "gemini", label: "Gemini 1.5 Pro",         tier: "medium",                           released: "2024-05", pricing: { inputPerMTok: 1.25, outputPerMTok: 5.0  }, vision: true, audio: true },
+  { id: "gemini-1.5-flash",      provider: "gemini", label: "Gemini 1.5 Flash",       tier: "low",                              released: "2024-05", pricing: { inputPerMTok: 0.075, outputPerMTok: 0.3 }, vision: true, audio: true },
+  { id: "gemini-1.5-flash-8b",   provider: "gemini", label: "Gemini 1.5 Flash-8B",   tier: "low",                              released: "2024-10", pricing: null, vision: true },
 ];
 
 // ─── OpenRouter ───────────────────────────────────────────────────────────────
@@ -221,9 +238,59 @@ export function getModel(id: string): ModelEntry | undefined {
   return MODELS.find((m) => m.id === id);
 }
 
-/** Retorna todos os modelos de um provider. */
+/** Custo médio (input+output)/2 por MTok — para ordenar do mais caro ao mais barato. */
+function avgCost(m: ModelEntry): number {
+  if (!m.pricing) return -1;
+  return (m.pricing.inputPerMTok + m.pricing.outputPerMTok) / 2;
+}
+
+/**
+ * Ordena modelos: mais recente → mais antigo; dentro da mesma data,
+ * mais caro → mais barato. Sem preço por último no grupo.
+ */
+export function sortModels(models: ModelEntry[]): ModelEntry[] {
+  return [...models].sort((a, b) => {
+    const relA = a.released ?? "0000-00";
+    const relB = b.released ?? "0000-00";
+    if (relA !== relB) return relB.localeCompare(relA);
+    return avgCost(b) - avgCost(a);
+  });
+}
+
+/** Retorna todos os modelos de um provider, já ordenados. */
 export function listModels(provider: LlmProvider): ModelEntry[] {
-  return MODELS.filter((m) => m.provider === provider);
+  return sortModels(MODELS.filter((m) => m.provider === provider));
+}
+
+/** Modelos de um provider que entendem áudio (transcrição de voz), ordenados. */
+export function listAudioModels(provider: LlmProvider): ModelEntry[] {
+  return sortModels(MODELS.filter((m) => m.provider === provider && m.audio));
+}
+
+/** Modelos de um provider que entendem imagem (visão multimodal), ordenados. */
+export function listVisionModels(provider: LlmProvider): ModelEntry[] {
+  return sortModels(MODELS.filter((m) => m.provider === provider && m.vision));
+}
+
+/** Provedores que têm ao menos um modelo de áudio. */
+export const PROVIDERS_WITH_AUDIO: LlmProvider[] = (
+  ["openai", "anthropic", "gemini", "openrouter"] as LlmProvider[]
+).filter((p) => MODELS.some((m) => m.provider === p && m.audio));
+
+/** Provedores que têm ao menos um modelo de visão. */
+export const PROVIDERS_WITH_VISION: LlmProvider[] = (
+  ["openai", "anthropic", "gemini", "openrouter"] as LlmProvider[]
+).filter((p) => MODELS.some((m) => m.provider === p && m.vision));
+
+/** Linha de descrição "preço · para que serve" para o select de modelo. */
+export function modelDescription(m: ModelEntry): string {
+  const use = m.use ?? "conversação";
+  if (!m.pricing) return `preço sob consulta · ${use}`;
+  const fmt = (n: number) => `$${n}`;
+  if (m.pricing.perMinuteUsd !== undefined) {
+    return `${fmt(m.pricing.perMinuteUsd)}/min · ${use}`;
+  }
+  return `${fmt(m.pricing.inputPerMTok)}/${fmt(m.pricing.outputPerMTok)} por 1M · ${use}`;
 }
 
 export interface CostResult {

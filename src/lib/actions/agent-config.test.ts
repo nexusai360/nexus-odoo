@@ -67,9 +67,15 @@ const MOCK_SETTINGS = {
   guardrails: ["Não discutir dados de outras empresas"],
   terminology: { estoque: "inventário" },
   advancedOverride: null,
-  audioInputEnabled: false,
-  kbEnabled: true,
   suggestionsEnabled: true,
+  bubbleEnabled: true,
+  audioCheckpoint: "OFF",
+  imageCheckpoint: "OFF",
+  kbCheckpoint: "PRODUCTION",
+  audioProvider: null,
+  audioModel: null,
+  imageProvider: null,
+  imageModel: null,
   updatedAt: new Date(),
 };
 
@@ -139,8 +145,6 @@ describe("updateAgentSettings", () => {
       tone: "Informal",
       guardrails: ["Regra 1"],
       terminology: {},
-      kbEnabled: false,
-      audioInputEnabled: true,
       suggestionsEnabled: false,
     });
 
@@ -159,43 +163,52 @@ describe("updateAgentSettings", () => {
       tone: "",
       guardrails: [],
       terminology: {},
-      kbEnabled: true,
-      audioInputEnabled: false,
       suggestionsEnabled: true,
     });
 
     expect(result.success).toBe(false);
   });
 
-  it("rejeita personality maior que 500 chars", async () => {
+  it("rejeita personality maior que 1000 chars", async () => {
     getCurrentUser.mockResolvedValue(ADMIN_USER);
 
     const result = await updateAgentSettings({
-      personality: "x".repeat(501),
+      personality: "x".repeat(1001),
       tone: "",
       guardrails: [],
       terminology: {},
-      kbEnabled: true,
-      audioInputEnabled: false,
       suggestionsEnabled: true,
     });
 
     expect(result.success).toBe(false);
     if (!result.success) {
-      expect(result.error).toMatch(/personality|personalidade|500|caracteres/i);
+      expect(result.error).toMatch(/personality|comportamento|1000|caracteres/i);
     }
   });
 
-  it("rejeita mais de 20 guardrails", async () => {
+  it("aceita guardrails ilimitados (sem teto de quantidade)", async () => {
+    getCurrentUser.mockResolvedValue(ADMIN_USER);
+    prisma.agentSettings.upsert.mockResolvedValue(MOCK_SETTINGS);
+
+    const result = await updateAgentSettings({
+      personality: "",
+      tone: "",
+      guardrails: Array(40).fill("Regra"),
+      terminology: {},
+      suggestionsEnabled: true,
+    });
+
+    expect(result.success).toBe(true);
+  });
+
+  it("rejeita guardrail maior que 500 chars", async () => {
     getCurrentUser.mockResolvedValue(ADMIN_USER);
 
     const result = await updateAgentSettings({
       personality: "",
       tone: "",
-      guardrails: Array(21).fill("Regra"),
+      guardrails: ["x".repeat(501)],
       terminology: {},
-      kbEnabled: true,
-      audioInputEnabled: false,
       suggestionsEnabled: true,
     });
 

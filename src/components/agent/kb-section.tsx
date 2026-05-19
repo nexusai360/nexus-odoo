@@ -1,25 +1,13 @@
 "use client";
 
 /**
- * Seção de gestão da Base de Conhecimento (KB) do agente nexus-odoo.
+ * Seção de gestão da Base de Conhecimento (KB) do Agente Nex.
  *
- * Exibe:
- * - Barra de progresso de uso (chars vs cap de 30.000).
- * - Aviso quando próximo/acima do limite.
- * - Lista de documentos com nome, badge de tipo (TXT/PDF/URL),
- *   contagem de chars, indicador de embedding (ícone Sparkles ou X)
- *   e ação de excluir com confirmação via AlertDialog.
- * - Estado vazio amigável.
- * - Botão "Adicionar conhecimento" → abre KbUploadDialog (abas Arquivo/URL).
- *
- * Gates: admin/super_admin (verificação no server — este componente é client).
- *
- * Adaptado de nexus-insights/src/components/agente-nex/kb-section.tsx.
- * Diferenças:
- * - Sem fileSize (usa charCount apenas).
- * - Sem refreshKbUrlAction (não implementado nesta onda).
- * - Adiciona indicador de embedding (hasEmbedding).
- * - Chama deleteKbDocumentAction de src/lib/actions/kb.ts.
+ * Rework F5-UI v2:
+ * - Cada documento tem um controle de checkpoint de 3 estados
+ *   (desativado / playground / produção) no lugar do antigo botão "X".
+ * - Clicar num documento abre um modal com o conteúdo extraído.
+ * - Cap de caracteres da KB elevado para 50.000.
  */
 
 import { useMemo, useState, useTransition } from "react";
@@ -48,22 +36,34 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { deleteKbDocumentAction } from "@/lib/actions/kb";
+import {
+  FeatureCheckpoint,
+  checkpointIconClass,
+  type CheckpointState,
+} from "@/components/ui/feature-checkpoint";
+import {
+  deleteKbDocumentAction,
+  updateKbCheckpointAction,
+} from "@/lib/actions/kb";
 import { cn } from "@/lib/utils";
 
 import { KbUploadDialog } from "./kb-upload-dialog";
+import { KbDocumentViewer } from "./kb-document-viewer";
 
-const KB_TOTAL_CAP = 30_000;
-const KB_WARN_THRESHOLD = 25_000;
+const KB_TOTAL_CAP = 50_000;
+const KB_WARN_THRESHOLD = 42_000;
+
+type DocKind = "TXT" | "PDF" | "URL" | "MARKDOWN" | "CSV" | "XML";
 
 export interface KbDocSummary {
   id: string;
   name: string;
-  kind: "TXT" | "PDF" | "URL";
+  kind: DocKind;
   sourceUrl: string | null;
   charCount: number;
   createdAt: Date;
   hasEmbedding: boolean;
+  checkpoint: CheckpointState;
 }
 
 interface KbSectionProps {
@@ -79,17 +79,22 @@ function safeHostname(url: string | null): string | null {
   }
 }
 
-const KIND_BADGE: Record<"TXT" | "PDF" | "URL", string> = {
+const KIND_LABEL: Record<DocKind, string> = {
   TXT: "TXT",
   PDF: "PDF",
   URL: "URL",
+  MARKDOWN: "MD",
+  CSV: "CSV",
+  XML: "XML",
 };
 
 export function KbSection({ initial }: KbSectionProps) {
   const router = useRouter();
   const [uploadOpen, setUploadOpen] = useState(false);
   const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [savingCheckpointId, setSavingCheckpointId] = useState<string | null>(null);
   const [confirmDelete, setConfirmDelete] = useState<KbDocSummary | null>(null);
+  const [viewerDocId, setViewerDocId] = useState<string | null>(null);
   const [, startTransition] = useTransition();
 
   const totalChars = useMemo(
@@ -115,6 +120,20 @@ export function KbSection({ initial }: KbSectionProps) {
         return;
       }
       toast.success("Documento removido");
+      router.refresh();
+    });
+  }
+
+  function handleCheckpointChange(doc: KbDocSummary, next: CheckpointState) {
+    setSavingCheckpointId(doc.id);
+    startTransition(async () => {
+      const result = await updateKbCheckpointAction(doc.id, next);
+      setSavingCheckpointId(null);
+      if (!result.ok) {
+        toast.error(result.error ?? "Erro ao atualizar documento");
+        router.refresh();
+        return;
+      }
       router.refresh();
     });
   }
@@ -157,7 +176,7 @@ export function KbSection({ initial }: KbSectionProps) {
           aria-valuenow={progressPct}
           aria-valuemin={0}
           aria-valuemax={100}
-          aria-label={`Uso da base de conhecimento: ${progressPct}% de 30.000 caracteres`}
+          aria-label={`Uso da base de conhecimento: ${progressPct}% de 50.000 caracteres`}
           className="h-2 w-full overflow-hidden rounded-full bg-muted"
         >
           <div
@@ -174,7 +193,7 @@ export function KbSection({ initial }: KbSectionProps) {
             role="alert"
             className="flex items-start gap-2 rounded-lg border border-destructive/40 bg-destructive/10 px-3 py-2 text-xs text-destructive"
           >
-            <TriangleAlert className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />
+            <TriangleAlert className="mt-0.5 h-4 w-4 shrink-0" aria-hidden />
             <p className="leading-snug">
               <span className="font-semibold">
                 {overflowChars.toLocaleString("pt-BR")} chars
@@ -188,9 +207,10 @@ export function KbSection({ initial }: KbSectionProps) {
             aria-live="polite"
             className="flex items-start gap-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800 dark:border-amber-900/50 dark:bg-amber-950/30 dark:text-amber-200"
           >
-            <TriangleAlert className="mt-0.5 h-4 w-4 shrink-0" aria-hidden="true" />
+            <TriangleAlert className="mt-0.5 h-4 w-4 shrink-0" aria-hidden />
             <p className="leading-snug">
-              Próximo do limite (30.000 chars). Considere remover documentos antes de adicionar novos.
+              Próximo do limite (50.000 chars). Considere remover documentos
+              antes de adicionar novos.
             </p>
           </div>
         ) : null}
@@ -199,12 +219,13 @@ export function KbSection({ initial }: KbSectionProps) {
       {/* Lista de documentos */}
       {initial.length === 0 ? (
         <div className="flex flex-col items-center justify-center gap-2 rounded-xl border border-dashed border-border bg-muted/20 px-4 py-8 text-center">
-          <FileText className="h-7 w-7 text-muted-foreground" aria-hidden="true" />
+          <FileText className="h-7 w-7 text-muted-foreground" aria-hidden />
           <p className="text-sm font-medium text-foreground">
             Nenhum documento adicionado ainda.
           </p>
           <p className="text-xs text-muted-foreground">
-            Envie um PDF, TXT ou adicione uma URL para enriquecer o contexto do agente.
+            Envie um PDF, TXT, Markdown, CSV ou XML — ou adicione uma URL para
+            enriquecer o contexto do Agente Nex.
           </p>
         </div>
       ) : (
@@ -223,13 +244,23 @@ export function KbSection({ initial }: KbSectionProps) {
                   isDeleting && "opacity-60",
                 )}
               >
-                {/* Ícone de tipo */}
-                <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-violet-500/10 text-violet-500">
-                  <Icon className="h-4 w-4" aria-hidden="true" />
+                {/* Ícone — cor reflete o checkpoint */}
+                <span
+                  className={cn(
+                    "flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-muted",
+                    checkpointIconClass(doc.checkpoint),
+                  )}
+                >
+                  <Icon className="h-4 w-4" aria-hidden />
                 </span>
 
-                {/* Nome + metadata */}
-                <div className="min-w-0 flex-1">
+                {/* Nome + metadata — clicável para abrir o visualizador */}
+                <button
+                  type="button"
+                  onClick={() => setViewerDocId(doc.id)}
+                  className="min-w-0 flex-1 cursor-pointer text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded"
+                  aria-label={`Visualizar documento ${doc.name}`}
+                >
                   <div className="flex items-center gap-2">
                     <p
                       className="truncate text-sm font-medium text-foreground"
@@ -237,46 +268,65 @@ export function KbSection({ initial }: KbSectionProps) {
                     >
                       {doc.name}
                     </p>
-                    <Badge variant="secondary" className="shrink-0 text-[10px] px-1.5 py-0 font-mono">
-                      {KIND_BADGE[doc.kind]}
+                    <Badge
+                      variant="secondary"
+                      className="shrink-0 px-1.5 py-0 font-mono text-[10px]"
+                    >
+                      {KIND_LABEL[doc.kind]}
                     </Badge>
                   </div>
                   <p className="text-xs tabular-nums text-muted-foreground">
                     {isUrl && doc.sourceUrl ? (
                       <>
-                        <a
-                          href={doc.sourceUrl}
-                          target="_blank"
-                          rel="noopener noreferrer"
+                        <span
+                          className="inline-block max-w-[180px] truncate align-bottom"
                           title={doc.sourceUrl}
-                          aria-label={`Abrir ${doc.sourceUrl} em nova aba`}
-                          className="inline-block max-w-[180px] truncate align-bottom text-muted-foreground underline-offset-2 hover:text-foreground hover:underline"
                         >
                           {hostname ?? doc.sourceUrl}
-                        </a>
+                        </span>
                         <span className="mx-1.5 text-muted-foreground/60">•</span>
                       </>
                     ) : null}
                     <span>{doc.charCount.toLocaleString("pt-BR")} chars</span>
                   </p>
-                </div>
+                </button>
 
                 {/* Indicador de embedding */}
                 <span
-                  title={doc.hasEmbedding ? "Embedding vetorial disponível" : "Sem embedding — busca por similaridade indisponível"}
-                  aria-label={doc.hasEmbedding ? "Embedding disponível" : "Sem embedding"}
+                  title={
+                    doc.hasEmbedding
+                      ? "Embedding vetorial disponível"
+                      : "Sem embedding — busca por similaridade indisponível"
+                  }
+                  aria-label={
+                    doc.hasEmbedding ? "Embedding disponível" : "Sem embedding"
+                  }
                   className={cn(
                     "flex h-7 w-7 shrink-0 items-center justify-center rounded-full",
-                    doc.hasEmbedding
-                      ? "text-violet-500"
-                      : "text-muted-foreground/40",
+                    doc.hasEmbedding ? "text-violet-500" : "text-muted-foreground/40",
                   )}
                 >
                   {doc.hasEmbedding ? (
-                    <Sparkles className="h-3.5 w-3.5" aria-hidden="true" />
+                    <Sparkles className="h-3.5 w-3.5" aria-hidden />
                   ) : (
-                    <XCircle className="h-3.5 w-3.5" aria-hidden="true" />
+                    <XCircle className="h-3.5 w-3.5" aria-hidden />
                   )}
+                </span>
+
+                {/* Controle de checkpoint */}
+                <span className="flex shrink-0 items-center gap-2">
+                  {savingCheckpointId === doc.id && (
+                    <Loader2
+                      className="h-3.5 w-3.5 animate-spin text-muted-foreground"
+                      aria-hidden
+                    />
+                  )}
+                  <FeatureCheckpoint
+                    value={doc.checkpoint}
+                    onChange={(next) => handleCheckpointChange(doc, next)}
+                    disabled={savingCheckpointId === doc.id || isDeleting}
+                    aria-label={`Estado do documento ${doc.name}`}
+                  />
                 </span>
 
                 {/* Excluir */}
@@ -288,12 +338,12 @@ export function KbSection({ initial }: KbSectionProps) {
                   disabled={isDeleting}
                   aria-label={`Excluir documento ${doc.name}`}
                   title="Excluir"
-                  className="text-muted-foreground hover:text-destructive cursor-pointer"
+                  className="cursor-pointer text-muted-foreground hover:text-destructive"
                 >
                   {isDeleting ? (
-                    <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
+                    <Loader2 className="h-4 w-4 animate-spin" aria-hidden />
                   ) : (
-                    <Trash2 className="h-4 w-4" aria-hidden="true" />
+                    <Trash2 className="h-4 w-4" aria-hidden />
                   )}
                 </Button>
               </li>
@@ -307,15 +357,21 @@ export function KbSection({ initial }: KbSectionProps) {
         <Button
           type="button"
           variant="outline"
+          size="sm"
           onClick={() => setUploadOpen(true)}
-          className="border-border cursor-pointer"
+          className="cursor-pointer border-border"
         >
-          <Plus className="h-4 w-4" aria-hidden="true" />
+          <Plus className="mr-1.5 h-3.5 w-3.5" aria-hidden />
           Adicionar conhecimento
         </Button>
       </div>
 
       <KbUploadDialog open={uploadOpen} onOpenChange={setUploadOpen} />
+
+      <KbDocumentViewer
+        docId={viewerDocId}
+        onClose={() => setViewerDocId(null)}
+      />
 
       {/* Confirmação de exclusão */}
       <AlertDialog
@@ -327,7 +383,7 @@ export function KbSection({ initial }: KbSectionProps) {
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle className="flex items-center gap-2 text-foreground">
-              <TriangleAlert className="h-5 w-5 text-destructive" aria-hidden="true" />
+              <TriangleAlert className="h-5 w-5 text-destructive" aria-hidden />
               Excluir documento
             </AlertDialogTitle>
             <AlertDialogDescription>
@@ -349,10 +405,10 @@ export function KbSection({ initial }: KbSectionProps) {
               type="button"
               onClick={handleConfirmDelete}
               disabled={deletingId !== null}
-              className="gap-2 bg-red-600 text-white hover:bg-red-700 cursor-pointer transition-all duration-200"
+              className="cursor-pointer gap-2 bg-red-600 text-white transition-all duration-200 hover:bg-red-700"
             >
               {deletingId !== null ? (
-                <Loader2 className="h-4 w-4 animate-spin" aria-hidden="true" />
+                <Loader2 className="h-4 w-4 animate-spin" aria-hidden />
               ) : null}
               Excluir
             </AlertDialogAction>

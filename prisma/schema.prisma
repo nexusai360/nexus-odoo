@@ -67,6 +67,17 @@ enum KbKind {
   PDF
   TXT
   URL
+  MARKDOWN
+  CSV
+  XML
+}
+
+/// Estado de checkpoint de um recurso do agente (áudio, imagem, KB, documento).
+/// OFF = desativado; PLAYGROUND = ativo só no playground; PRODUCTION = ativo em produção.
+enum FeatureCheckpoint {
+  OFF
+  PLAYGROUND
+  PRODUCTION
 }
 
 enum WhatsappResponseMode {
@@ -119,6 +130,7 @@ model User {
   // F5
   conversations       Conversation[]
   whatsappNumbers     UserWhatsappNumber[]
+  playgroundSessions  PlaygroundSession[]
 
   @@index([platformRole, isActive])
   @@index([email])
@@ -1566,6 +1578,14 @@ model LlmCredential {
   createdById     String?   @map("created_by_id") @db.Uuid
   configs         LlmConfig[]
 
+  /// Saldo/crédito da conta do provedor para esta chave.
+  /// balanceStatus: "ok" (valor real), "unavailable" (provedor sem API de saldo),
+  /// "error" (consulta falhou). balanceUsd nulo quando status != "ok".
+  balanceUsd       Decimal?  @map("balance_usd") @db.Decimal(14, 4)
+  balanceCurrency  String?   @map("balance_currency")
+  balanceStatus    String?   @map("balance_status")
+  balanceCheckedAt DateTime? @map("balance_checked_at")
+
   @@unique([provider, label])
   @@index([provider, updatedAt(sort: Desc)])
   @@map("llm_credentials")
@@ -1624,9 +1644,24 @@ model AgentSettings {
   guardrails        Json     @default("[]")
   terminology       Json     @default("{}")
   advancedOverride  String?  @map("advanced_override")
-  audioInputEnabled Boolean  @default(false) @map("audio_input_enabled")
-  kbEnabled         Boolean  @default(true) @map("kb_enabled")
   suggestionsEnabled Boolean @default(true) @map("suggestions_enabled")
+
+  /// Exibição da bolha flutuante do Agente Nex nas páginas autenticadas.
+  bubbleEnabled     Boolean  @default(true) @map("bubble_enabled")
+
+  /// Checkpoints de 3 estados (OFF/PLAYGROUND/PRODUCTION).
+  audioCheckpoint   FeatureCheckpoint @default(OFF) @map("audio_checkpoint")
+  imageCheckpoint   FeatureCheckpoint @default(OFF) @map("image_checkpoint")
+  kbCheckpoint      FeatureCheckpoint @default(PRODUCTION) @map("kb_checkpoint")
+
+  /// Modelo dedicado de transcrição de áudio (independente do modelo de produção).
+  audioProvider     String?  @map("audio_provider")
+  audioModel        String?  @map("audio_model")
+
+  /// Modelo dedicado de entendimento de imagem (independente do modelo de produção).
+  imageProvider     String?  @map("image_provider")
+  imageModel        String?  @map("image_model")
+
   updatedAt         DateTime @updatedAt @map("updated_at")
 
   @@map("agent_settings")
@@ -1635,15 +1670,58 @@ model AgentSettings {
 /// Documento da base de conhecimento do agente.
 /// A coluna embedding vector(1536) é adicionada via SQL raw na migration (pgvector, onda 7).
 model KbDocument {
-  id            String   @id @default(uuid()) @db.Uuid
+  id            String            @id @default(uuid()) @db.Uuid
   name          String
-  kind          KbKind   @default(TXT)
-  sourceUrl     String?  @map("source_url")
-  extractedText String   @map("extracted_text")
-  charCount     Int      @map("char_count")
-  createdAt     DateTime @default(now()) @map("created_at")
+  kind          KbKind            @default(TXT)
+  sourceUrl     String?           @map("source_url")
+  extractedText String            @map("extracted_text")
+  charCount     Int               @map("char_count")
+  /// Checkpoint do documento: OFF, PLAYGROUND ou PRODUCTION.
+  checkpoint    FeatureCheckpoint @default(PRODUCTION)
+  createdAt     DateTime          @default(now()) @map("created_at")
 
   @@map("kb_documents")
+}
+
+/// Sessão persistente do playground do Agente Nex.
+/// Cada sessão tem provedor/modelo próprios, snapshot de prompt editável
+/// e histórico de mensagens com custo acumulado. Independente da produção.
+model PlaygroundSession {
+  id             String   @id @default(uuid()) @db.Uuid
+  userId         String   @map("user_id") @db.Uuid
+  user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  title          String?
+  provider       String
+  model          String
+  /// Snapshot do prompt da sessão: { identityBase, personality, tone, guardrails }.
+  /// Inicia como cópia da produção; editável sem afetar produção.
+  promptSnapshot Json     @map("prompt_snapshot")
+  costUsd        Decimal  @default(0) @map("cost_usd") @db.Decimal(14, 6)
+  costBrl        Decimal  @default(0) @map("cost_brl") @db.Decimal(14, 6)
+  createdAt      DateTime @default(now()) @map("created_at")
+  updatedAt      DateTime @updatedAt @map("updated_at")
+  /// Preenchido quando a sessão é arquivada ("Nova sessão").
+  archivedAt     DateTime? @map("archived_at")
+
+  messages       PlaygroundMessage[]
+
+  @@index([userId, updatedAt(sort: Desc)])
+  @@map("playground_sessions")
+}
+
+/// Mensagem de uma sessão de playground.
+model PlaygroundMessage {
+  id        String            @id @default(uuid()) @db.Uuid
+  sessionId String            @map("session_id") @db.Uuid
+  session   PlaygroundSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  role      MessageRole
+  content   String
+  toolCalls Json?             @map("tool_calls")
+  costUsd   Decimal?          @map("cost_usd") @db.Decimal(12, 6)
+  createdAt DateTime          @default(now()) @map("created_at")
+
+  @@index([sessionId, createdAt])
+  @@map("playground_messages")
 }
 
 /// Canal WhatsApp — singleton (id="global") com credenciais Meta + modo de resposta.

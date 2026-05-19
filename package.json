@@ -39,6 +39,7 @@
     "nanoid": "^5.1.7",
     "next": "16.2.2",
     "next-auth": "^5.0.0-beta.30",
+    "pdf-parse": "^1.1.4",
     "pg": "^8.20.0",
     "pgsql-parser": "^17.9.15",
     "prisma": "^7.6.0",

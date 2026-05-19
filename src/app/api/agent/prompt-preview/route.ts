@@ -34,7 +34,7 @@ export async function GET(_req: NextRequest): Promise<NextResponse> {
     tone: row?.tone ?? "",
     guardrails: (row?.guardrails as string[]) ?? [],
     advancedOverride: row?.advancedOverride ?? null,
-    kbEnabled: row?.kbEnabled ?? true,
+    kbEnabled: (row?.kbCheckpoint ?? "PRODUCTION") === "PRODUCTION",
     terminology: (row?.terminology as Record<string, string>) ?? {},
     suggestionsEnabled: row?.suggestionsEnabled ?? true,
   };

@@ -159,3 +159,19 @@ chegam ao `onToken` callback — o `ChatPanel` os exibirá na bolha de streaming
 depois sobrescreve com o `message` do evento `done`. Comportamento visual pode
 causar piscar no chat em turnos intermediários. Tolerado para a fase atual;
 resolver refinando o streaming para só emitir tokens quando `stop_reason !== tool_use`.
+
+### R6 — Build quebra no prerender de `/_not-found` e `/_global-error` (PRÉ-EXISTENTE, ALTO)
+`next build` falha no prerender das páginas internas do Next (`_not-found`,
+`_global-error`) com `TypeError: Cannot read properties of null (reading 'useContext')`.
+**Confirmado pré-existente:** reproduzido em `git stash` total (código 100% HEAD,
+sem nenhuma mudança do rework F5-UI v2) — o build da branch `feat/integracao-whatsapp`
+já estava quebrado. O bug é mascarado por um segundo: `/integracoes/bi` quebra
+antes no prerender estático (corrigido com `export const dynamic = "force-dynamic"`),
+e só então `_global-error`/`_not-found` aparecem.
+**Causa provável:** o root `app/layout.tsx` usa `cookies()` (`getResolvedThemeFromCookie`),
+o que conflita com o prerender estático das páginas de erro internas no Next 16
+Turbopack. `tsc`, `eslint` e `jest` passam — só o `next build` quebra.
+**Ação:** investigação dedicada — tornar o root layout compatível com prerender
+estático das páginas de erro (ex.: mover a leitura de cookie para um boundary
+dinâmico, ou adicionar `export const dynamic` ao `not-found.tsx`/`global-error.tsx`
+próprios). Fora do escopo do rework de UI da F5.

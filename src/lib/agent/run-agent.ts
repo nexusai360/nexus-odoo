@@ -116,7 +116,7 @@ async function loadAgentSettings() {
     advancedOverride: row?.advancedOverride ?? null,
     // @default(true) no schema — alinhar fallback para evitar comportamento diferente
     // em instâncias novas antes da primeira gravação em AgentSettings.
-    kbEnabled: row?.kbEnabled ?? true,
+    kbEnabled: (row?.kbCheckpoint ?? "PRODUCTION") === "PRODUCTION",
     terminology: (row?.terminology as Record<string, string>) ?? {},
     suggestionsEnabled: row?.suggestionsEnabled ?? true,
   };

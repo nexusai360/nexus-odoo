@@ -28,7 +28,6 @@ import { ResourcesToggles } from "@/components/agent/resources-toggles";
 import { KbSection } from "@/components/agent/kb-section";
 import { getCurrentUser } from "@/lib/auth";
 import { getAgentSettings } from "@/lib/actions/agent-config";
-import { getPublicActiveLlmConfig } from "@/lib/agent/llm/get-active-config";
 import { listKbDocumentsAction } from "@/lib/actions/kb";
 import type { KbDocSummary } from "@/components/agent/kb-section";
 
@@ -42,9 +41,8 @@ export default async function Page() {
   if (!user) redirect("/login");
   if (user.platformRole !== "super_admin") redirect("/dashboard");
 
-  const [settingsResult, activeConfig, kbResult] = await Promise.all([
+  const [settingsResult, kbResult] = await Promise.all([
     getAgentSettings(),
-    getPublicActiveLlmConfig(),
     listKbDocumentsAction(),
   ]);
 
@@ -58,10 +56,19 @@ export default async function Page() {
     advancedOverride: settings?.advancedOverride ?? null,
     terminology: (settings?.terminology as Record<string, string>) ?? {},
     identityBase: settings?.identityBase ?? null,
-    audioInputEnabled: settings?.audioInputEnabled ?? false,
-    kbEnabled: settings?.kbEnabled ?? true,
     suggestionsEnabled: settings?.suggestionsEnabled ?? true,
   };
+
+  const initialResources = {
+    ...initialSettings,
+    audioCheckpoint: settings?.audioCheckpoint ?? "OFF",
+    imageCheckpoint: settings?.imageCheckpoint ?? "OFF",
+    kbCheckpoint: settings?.kbCheckpoint ?? "PRODUCTION",
+    audioProvider: settings?.audioProvider ?? null,
+    audioModel: settings?.audioModel ?? null,
+    imageProvider: settings?.imageProvider ?? null,
+    imageModel: settings?.imageModel ?? null,
+  } as const;
 
   return (
     <PageShell variant="narrow">
@@ -106,10 +113,7 @@ export default async function Page() {
             <CardTitle>Recursos</CardTitle>
           </CardHeader>
           <CardContent>
-            <ResourcesToggles
-              initial={initialSettings}
-              activeProvider={activeConfig?.provider ?? null}
-            />
+            <ResourcesToggles initial={initialResources} />
           </CardContent>
         </Card>
 

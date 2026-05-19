@@ -4,8 +4,10 @@
  * Server Actions de configuração do agente nexus-odoo.
  *
  * - getAgentSettings(): lê o singleton AgentSettings id="global".
- * - updateAgentSettings(): persiste campos editáveis + audita.
- * - activateLlmConfig(id): desativa todas as configs + ativa a escolhida (transacional).
+ * - updateAgentSettings(): persiste comportamento/tom/guardrails + audita.
+ * - updateAgentResources(): checkpoints de áudio/imagem/KB + modelos dedicados.
+ * - updateBubbleEnabled(): liga/desliga a bolha flutuante do Agente Nex.
+ * - activateLlmConfig(id): desativa todas as configs + ativa a escolhida.
  *
  * Gate: super_admin e admin (manager/viewer → acesso negado).
  */
@@ -16,53 +18,47 @@ import { prisma } from "@/lib/prisma";
 import { getCurrentUser } from "@/lib/auth";
 import { logAudit } from "@/lib/audit";
 import type { ActionResult } from "@/lib/actions/users";
+import {
+  CHECKPOINT_VALUES,
+  type AgentSettingsData,
+  type FeatureCheckpoint,
+  type PublicAgentFlags,
+} from "./agent-config-types";
 
-// ---------------------------------------------------------------------------
-// Schemas de validação
-// ---------------------------------------------------------------------------
+export type {
+  AgentSettingsData,
+  FeatureCheckpoint,
+  PublicAgentFlags,
+} from "./agent-config-types";
+
+const CheckpointSchema = z.enum(CHECKPOINT_VALUES);
 
 const UpdateSettingsSchema = z.object({
   identityBase: z.string().max(50_000).optional(),
-  personality: z.string().max(500, "Personalidade não pode exceder 500 caracteres"),
-  tone: z.string().max(500),
-  guardrails: z
-    .array(z.string().max(300))
-    .max(20, "Máximo de 20 guardrails permitidos"),
+  personality: z.string().max(1000, "Comportamento não pode exceder 1000 caracteres"),
+  tone: z.string().max(1000, "Tom não pode exceder 1000 caracteres"),
+  guardrails: z.array(z.string().max(500, "Cada guardrail não pode exceder 500 caracteres")),
   terminology: z.record(z.string(), z.string()),
   advancedOverride: z.string().max(50_000).optional(),
-  audioInputEnabled: z.boolean(),
-  kbEnabled: z.boolean(),
   suggestionsEnabled: z.boolean(),
 });
 
 export type UpdateAgentSettingsInput = z.infer<typeof UpdateSettingsSchema>;
 
-// ---------------------------------------------------------------------------
-// Tipos de retorno
-// ---------------------------------------------------------------------------
-
-export interface AgentSettingsData {
-  id: string;
-  identityBase: string | null;
-  personality: string;
-  tone: string;
-  guardrails: string[];
-  terminology: Record<string, string>;
-  advancedOverride: string | null;
-  audioInputEnabled: boolean;
-  kbEnabled: boolean;
-  suggestionsEnabled: boolean;
-  updatedAt: Date;
-}
-
-// ---------------------------------------------------------------------------
-// Helpers
-// ---------------------------------------------------------------------------
+const UpdateResourcesSchema = z.object({
+  audioCheckpoint: CheckpointSchema,
+  imageCheckpoint: CheckpointSchema,
+  kbCheckpoint: CheckpointSchema,
+  audioProvider: z.string().nullable().optional(),
+  audioModel: z.string().nullable().optional(),
+  imageProvider: z.string().nullable().optional(),
+  imageModel: z.string().nullable().optional(),
+});
+export type UpdateAgentResourcesInput = z.infer<typeof UpdateResourcesSchema>;
 
 /** Verifica se o usuário tem permissão (admin ou super_admin). */
 async function requireAdminOrAbove(): Promise<
-  | { ok: true; userId: string }
-  | { ok: false; error: string }
+  { ok: true; userId: string } | { ok: false; error: string }
 > {
   const me = await getCurrentUser();
   if (!me) return { ok: false, error: "Não autenticado" };
@@ -72,29 +68,57 @@ async function requireAdminOrAbove(): Promise<
   return { ok: true, userId: me.id };
 }
 
+/** Linha bruta do AgentSettings vinda do Prisma. */
+type AgentSettingsRow = {
+  id: string;
+  identityBase: string | null;
+  personality: string;
+  tone: string;
+  guardrails: unknown;
+  terminology: unknown;
+  advancedOverride: string | null;
+  suggestionsEnabled: boolean;
+  bubbleEnabled: boolean;
+  audioCheckpoint: FeatureCheckpoint;
+  imageCheckpoint: FeatureCheckpoint;
+  kbCheckpoint: FeatureCheckpoint;
+  audioProvider: string | null;
+  audioModel: string | null;
+  imageProvider: string | null;
+  imageModel: string | null;
+  updatedAt: Date;
+};
+
+/** Converte a linha Prisma no DTO público. */
+function mapSettings(row: AgentSettingsRow): AgentSettingsData {
+  return {
+    id: row.id,
+    identityBase: row.identityBase,
+    personality: row.personality,
+    tone: row.tone,
+    guardrails: (row.guardrails as string[]) ?? [],
+    terminology: (row.terminology as Record<string, string>) ?? {},
+    advancedOverride: row.advancedOverride,
+    suggestionsEnabled: row.suggestionsEnabled,
+    bubbleEnabled: row.bubbleEnabled,
+    audioCheckpoint: row.audioCheckpoint,
+    imageCheckpoint: row.imageCheckpoint,
+    kbCheckpoint: row.kbCheckpoint,
+    audioProvider: row.audioProvider,
+    audioModel: row.audioModel,
+    imageProvider: row.imageProvider,
+    imageModel: row.imageModel,
+    updatedAt: row.updatedAt,
+  };
+}
+
 /** Garante que o singleton existe (cria com defaults se necessário). */
 async function ensureGlobalSettings(): Promise<AgentSettingsData> {
   const existing = await prisma.agentSettings.findUnique({
     where: { id: "global" },
   });
+  if (existing) return mapSettings(existing as AgentSettingsRow);
 
-  if (existing) {
-    return {
-      id: existing.id,
-      identityBase: existing.identityBase,
-      personality: existing.personality,
-      tone: existing.tone,
-      guardrails: (existing.guardrails as string[]) ?? [],
-      terminology: (existing.terminology as Record<string, string>) ?? {},
-      advancedOverride: existing.advancedOverride,
-      audioInputEnabled: existing.audioInputEnabled,
-      kbEnabled: existing.kbEnabled,
-      suggestionsEnabled: existing.suggestionsEnabled,
-      updatedAt: existing.updatedAt,
-    };
-  }
-
-  // Upsert com defaults
   const created = await prisma.agentSettings.upsert({
     where: { id: "global" },
     create: {
@@ -103,31 +127,12 @@ async function ensureGlobalSettings(): Promise<AgentSettingsData> {
       tone: "",
       guardrails: [],
       terminology: {},
-      audioInputEnabled: false,
-      kbEnabled: true,
       suggestionsEnabled: true,
     },
     update: {},
   });
-
-  return {
-    id: created.id,
-    identityBase: created.identityBase,
-    personality: created.personality,
-    tone: created.tone,
-    guardrails: (created.guardrails as string[]) ?? [],
-    terminology: (created.terminology as Record<string, string>) ?? {},
-    advancedOverride: created.advancedOverride,
-    audioInputEnabled: created.audioInputEnabled,
-    kbEnabled: created.kbEnabled,
-    suggestionsEnabled: created.suggestionsEnabled,
-    updatedAt: created.updatedAt,
-  };
+  return mapSettings(created as AgentSettingsRow);
 }
-
-// ---------------------------------------------------------------------------
-// Actions
-// ---------------------------------------------------------------------------
 
 /** Retorna a configuração do agente (singleton "global"). */
 export async function getAgentSettings(): Promise<ActionResult<AgentSettingsData>> {
@@ -146,56 +151,52 @@ export async function getAgentSettings(): Promise<ActionResult<AgentSettingsData
   }
 }
 
-/**
- * Feature-flags públicas do agente, legíveis por qualquer usuário autenticado.
- *
- * O AgentSettings é um singleton de plataforma — os toggles de áudio,
- * base de conhecimento e sugestões valem para todos os usuários. Telas
- * protegidas (layout, /agente) precisam desses flags sem o gate de admin
- * que protege getAgentSettings(). Não expõe identidade/guardrails/override.
- */
-export interface PublicAgentFlags {
-  audioInputEnabled: boolean;
-  kbEnabled: boolean;
-  suggestionsEnabled: boolean;
-}
+const DEFAULT_FLAGS: PublicAgentFlags = {
+  audioInputEnabled: false,
+  audioInPlayground: false,
+  imageInputEnabled: false,
+  imageInPlayground: false,
+  kbEnabled: true,
+  kbInPlayground: true,
+  suggestionsEnabled: true,
+  bubbleEnabled: true,
+};
 
-/** Retorna apenas os feature-flags do agente — sem gate de perfil. */
+/** Feature-flags públicas do agente, legíveis por qualquer usuário autenticado. */
 export async function getPublicAgentFlags(): Promise<PublicAgentFlags> {
   try {
     const me = await getCurrentUser();
-    if (!me) {
-      return { audioInputEnabled: false, kbEnabled: true, suggestionsEnabled: true };
-    }
+    if (!me) return DEFAULT_FLAGS;
 
     const settings = await prisma.agentSettings.findUnique({
       where: { id: "global" },
       select: {
-        audioInputEnabled: true,
-        kbEnabled: true,
+        audioCheckpoint: true,
+        imageCheckpoint: true,
+        kbCheckpoint: true,
         suggestionsEnabled: true,
+        bubbleEnabled: true,
       },
     });
-
-    if (!settings) {
-      return { audioInputEnabled: false, kbEnabled: true, suggestionsEnabled: true };
-    }
+    if (!settings) return DEFAULT_FLAGS;
 
     return {
-      audioInputEnabled: settings.audioInputEnabled,
-      kbEnabled: settings.kbEnabled,
+      audioInputEnabled: settings.audioCheckpoint === "PRODUCTION",
+      audioInPlayground: settings.audioCheckpoint !== "OFF",
+      imageInputEnabled: settings.imageCheckpoint === "PRODUCTION",
+      imageInPlayground: settings.imageCheckpoint !== "OFF",
+      kbEnabled: settings.kbCheckpoint === "PRODUCTION",
+      kbInPlayground: settings.kbCheckpoint !== "OFF",
       suggestionsEnabled: settings.suggestionsEnabled,
+      bubbleEnabled: settings.bubbleEnabled,
     };
   } catch (err) {
     console.error("[getPublicAgentFlags]", err);
-    return { audioInputEnabled: false, kbEnabled: true, suggestionsEnabled: true };
+    return DEFAULT_FLAGS;
   }
 }
 
-/**
- * Atualiza os campos de configuração do agente.
- * Audita a ação como `agent_settings_updated`.
- */
+/** Atualiza comportamento, tom e guardrails do agente. */
 export async function updateAgentSettings(
   input: UpdateAgentSettingsInput,
 ): Promise<ActionResult> {
@@ -205,48 +206,32 @@ export async function updateAgentSettings(
 
     const parsed = UpdateSettingsSchema.safeParse(input);
     if (!parsed.success) {
-      // Zod v4 usa .issues; v3 usava .errors — suportar ambos
-      const issues = (parsed.error as { issues?: { message: string; path: (string | number)[] }[]; errors?: { message: string; path: (string | number)[] }[] }).issues
-        ?? (parsed.error as { errors?: { message: string; path: (string | number)[] }[] }).errors
-        ?? [];
+      const issues =
+        (parsed.error as { issues?: { message: string; path: (string | number)[] }[] })
+          .issues ?? [];
       const first = issues[0];
       const message = first?.message ?? "Dados inválidos";
       const path = first?.path?.join(".") ?? "";
-      const enriched = path ? `${path}: ${message}` : message;
-      return { success: false, error: enriched };
+      return { success: false, error: path ? `${path}: ${message}` : message };
     }
 
     const data = parsed.data;
+    const common = {
+      personality: data.personality,
+      tone: data.tone,
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      guardrails: data.guardrails as any,
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      terminology: data.terminology as any,
+      advancedOverride: data.advancedOverride ?? null,
+      suggestionsEnabled: data.suggestionsEnabled,
+      ...(data.identityBase !== undefined ? { identityBase: data.identityBase } : {}),
+    };
 
     await prisma.agentSettings.upsert({
       where: { id: "global" },
-      create: {
-        id: "global",
-        personality: data.personality,
-        tone: data.tone,
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        guardrails: data.guardrails as any,
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        terminology: data.terminology as any,
-        advancedOverride: data.advancedOverride ?? null,
-        audioInputEnabled: data.audioInputEnabled,
-        kbEnabled: data.kbEnabled,
-        suggestionsEnabled: data.suggestionsEnabled,
-        ...(data.identityBase !== undefined ? { identityBase: data.identityBase } : {}),
-      },
-      update: {
-        personality: data.personality,
-        tone: data.tone,
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        guardrails: data.guardrails as any,
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        terminology: data.terminology as any,
-        advancedOverride: data.advancedOverride ?? null,
-        audioInputEnabled: data.audioInputEnabled,
-        kbEnabled: data.kbEnabled,
-        suggestionsEnabled: data.suggestionsEnabled,
-        ...(data.identityBase !== undefined ? { identityBase: data.identityBase } : {}),
-      },
+      create: { id: "global", ...common },
+      update: common,
     });
 
     void logAudit({
@@ -257,6 +242,7 @@ export async function updateAgentSettings(
     });
 
     revalidatePath("/agente");
+    revalidatePath("/agente/prompt");
     revalidatePath("/agente/configuracao");
 
     return { success: true };
@@ -270,31 +256,126 @@ export async function updateAgentSettings(
 }
 
 /**
+ * Atualiza os recursos do agente: checkpoints de áudio/imagem/KB e os
+ * modelos dedicados de áudio e imagem.
+ */
+export async function updateAgentResources(
+  input: UpdateAgentResourcesInput,
+): Promise<ActionResult> {
+  try {
+    const auth = await requireAdminOrAbove();
+    if (!auth.ok) return { success: false, error: auth.error };
+
+    const parsed = UpdateResourcesSchema.safeParse(input);
+    if (!parsed.success) {
+      return { success: false, error: "Dados de recursos inválidos" };
+    }
+    const d = parsed.data;
+
+    const payload = {
+      audioCheckpoint: d.audioCheckpoint,
+      imageCheckpoint: d.imageCheckpoint,
+      kbCheckpoint: d.kbCheckpoint,
+      audioProvider: d.audioProvider ?? null,
+      audioModel: d.audioModel ?? null,
+      imageProvider: d.imageProvider ?? null,
+      imageModel: d.imageModel ?? null,
+    };
+
+    await prisma.agentSettings.upsert({
+      where: { id: "global" },
+      create: {
+        id: "global",
+        personality: "",
+        tone: "",
+        guardrails: [],
+        terminology: {},
+        ...payload,
+      },
+      update: payload,
+    });
+
+    void logAudit({
+      userId: auth.userId,
+      action: "agent_settings_updated",
+      targetType: "AgentSettings",
+      targetId: "global",
+      details: { kind: "resources" },
+    });
+
+    revalidatePath("/agente");
+    revalidatePath("/agente/prompt");
+
+    return { success: true };
+  } catch (err) {
+    console.error("[updateAgentResources]", err);
+    return {
+      success: false,
+      error: err instanceof Error ? err.message : "Erro ao atualizar recursos",
+    };
+  }
+}
+
+/** Liga/desliga a exibição da bolha flutuante do Agente Nex. */
+export async function updateBubbleEnabled(enabled: boolean): Promise<ActionResult> {
+  try {
+    const auth = await requireAdminOrAbove();
+    if (!auth.ok) return { success: false, error: auth.error };
+
+    await prisma.agentSettings.upsert({
+      where: { id: "global" },
+      create: {
+        id: "global",
+        personality: "",
+        tone: "",
+        guardrails: [],
+        terminology: {},
+        bubbleEnabled: enabled,
+      },
+      update: { bubbleEnabled: enabled },
+    });
+
+    void logAudit({
+      userId: auth.userId,
+      action: "agent_settings_updated",
+      targetType: "AgentSettings",
+      targetId: "global",
+      details: { kind: "bubble", enabled },
+    });
+
+    revalidatePath("/agente");
+    revalidatePath("/agente/configuracao");
+    return { success: true };
+  } catch (err) {
+    console.error("[updateBubbleEnabled]", err);
+    return {
+      success: false,
+      error: err instanceof Error ? err.message : "Erro ao atualizar bolha",
+    };
+  }
+}
+
+/**
  * Ativa uma LlmConfig pelo id.
  * Transacional: desativa todas + ativa a escolhida.
- * Gate: super_admin ou admin.
  */
 export async function activateLlmConfig(configId: string): Promise<ActionResult> {
   try {
     const auth = await requireAdminOrAbove();
     if (!auth.ok) return { success: false, error: auth.error };
 
-    // Verificar que a config existe
     const config = await prisma.llmConfig.findFirst({
       where: { id: configId },
       select: { id: true, provider: true },
     });
-
     if (!config) {
       return { success: false, error: `Config ${configId} não encontrada` };
     }
 
-    // Transacional: desativa todas → ativa a escolhida
     await prisma.llmConfig.updateMany({
       where: { isActive: true },
       data: { isActive: false },
     });
-
     await prisma.llmConfig.update({
       where: { id: configId },
       data: { isActive: true },
@@ -309,7 +390,6 @@ export async function activateLlmConfig(configId: string): Promise<ActionResult>
     });
 
     revalidatePath("/agente/configuracao");
-
     return { success: true };
   } catch (err) {
     console.error("[activateLlmConfig]", err);
@@ -320,10 +400,7 @@ export async function activateLlmConfig(configId: string): Promise<ActionResult>
   }
 }
 
-/**
- * Cria uma nova LlmConfig (inativa por padrão).
- * Gate: super_admin ou admin.
- */
+/** Cria uma nova LlmConfig (inativa por padrão). */
 export async function createLlmConfig(input: {
   provider: string;
   model: string;
@@ -356,7 +433,6 @@ export async function createLlmConfig(input: {
     });
 
     revalidatePath("/agente/configuracao");
-
     return { success: true, data: { id: created.id } };
   } catch (err) {
     console.error("[createLlmConfig]", err);
