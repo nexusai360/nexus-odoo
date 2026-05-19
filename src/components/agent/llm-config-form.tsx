@@ -461,9 +461,45 @@ export function LlmConfigForm({
                 disabled={busy}
                 triggerClassName="min-h-[44px]"
               />
-              <p className="text-xs text-muted-foreground">
-                As chaves são gerenciadas em &ldquo;Chaves de API&rdquo;.
-              </p>
+              {(() => {
+                const sel = credentialsForProvider.find(
+                  (c) => c.id === effectiveCredentialId,
+                );
+                if (!sel) {
+                  return (
+                    <p className="text-xs text-muted-foreground">
+                      As chaves são gerenciadas em &ldquo;Chaves de
+                      API&rdquo;.
+                    </p>
+                  );
+                }
+                const fmt = (v: number) =>
+                  v.toLocaleString("pt-BR", {
+                    style: "currency",
+                    currency: "USD",
+                  });
+                return (
+                  <div className="flex flex-wrap items-center justify-between gap-2 rounded-lg border border-border bg-muted/20 px-3 py-2 text-xs">
+                    <span className="text-muted-foreground">
+                      {sel.balance?.status === "ok" &&
+                      sel.balance.usd != null
+                        ? `Saldo: ${fmt(sel.balance.usd)}`
+                        : `Consumo desta chave: ${fmt(sel.consumedUsd)}`}
+                    </span>
+                    {meta.topUpUrl ? (
+                      <a
+                        href={meta.topUpUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-flex cursor-pointer items-center gap-1 font-medium text-violet-600 hover:text-violet-700 dark:text-violet-400"
+                        title="Abrir o painel de billing do provedor"
+                      >
+                        Adicionar crédito
+                      </a>
+                    ) : null}
+                  </div>
+                );
+              })()}
             </>
           )}
         </div>
