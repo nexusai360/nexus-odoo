@@ -6,6 +6,7 @@ jest.mock("@/lib/prisma", () => ({
     user: { findUnique: jest.fn() },
     message: { create: jest.fn(), findMany: jest.fn() },
     conversation: { findFirst: jest.fn(), findUnique: jest.fn(), create: jest.fn() },
+    agentSettings: { findUnique: jest.fn().mockResolvedValue(null) },
   },
 }));
 

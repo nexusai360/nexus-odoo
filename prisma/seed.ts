@@ -91,6 +91,23 @@ async function main() {
     });
   }
 
+  // AgentSettings singleton
+  await prisma.agentSettings.upsert({
+    where: { id: "global" },
+    create: {
+      id: "global",
+      personality: "",
+      tone: "",
+      guardrails: [],
+      terminology: {},
+      audioInputEnabled: false,
+      kbEnabled: false,
+      suggestionsEnabled: true,
+    },
+    update: {},
+  });
+  console.log("[seed] AgentSettings semeado");
+
   console.log(
     `[seed] owner=${owner.email}, settings=${APP_SETTINGS_DEFAULTS.length}`,
   );

@@ -101,17 +101,20 @@ export type RunAgentResult =
   | { ok: true; message: string; suggestions: string[]; usage: ChatUsage }
   | { ok: false; error: string };
 
-/** Config do prompt (configuração mínima sem DB — futuramente virá de AgentSettings). */
-const DEFAULT_PROMPT_CONFIG = {
-  identityBase: null,
-  personality: "",
-  tone: "",
-  guardrails: [] as string[],
-  advancedOverride: null as string | null,
-  kbEnabled: false,
-  terminology: {} as Record<string, string>,
-  suggestionsEnabled: false,
-};
+/** Carrega o singleton AgentSettings do banco (fallback para defaults se não existir). */
+async function loadAgentSettings() {
+  const row = await prisma.agentSettings.findUnique({ where: { id: "global" } });
+  return {
+    identityBase: row?.identityBase ?? null,
+    personality: row?.personality ?? "",
+    tone: row?.tone ?? "",
+    guardrails: (row?.guardrails as string[]) ?? [],
+    advancedOverride: row?.advancedOverride ?? null,
+    kbEnabled: row?.kbEnabled ?? false,
+    terminology: (row?.terminology as Record<string, string>) ?? {},
+    suggestionsEnabled: row?.suggestionsEnabled ?? false,
+  };
+}
 
 export async function runAgent(args: RunAgentInput): Promise<RunAgentResult> {
   const session = await createMcpSession(args.userId).catch((err) => {
@@ -143,10 +146,13 @@ export async function runAgent(args: RunAgentInput): Promise<RunAgentResult> {
     const platformRole = userRecord?.platformRole ?? null;
     const biSchema = platformRole && BI_ROLES.has(platformRole) ? BI_SCHEMA_REFERENCE : undefined;
 
+    // Carregar AgentSettings do banco
+    const agentSettings = await loadAgentSettings();
+
     // Compor system prompt
     const promptCfg = {
-      ...DEFAULT_PROMPT_CONFIG,
-      advancedOverride: args.promptOverride ?? null,
+      ...agentSettings,
+      advancedOverride: args.promptOverride ?? agentSettings.advancedOverride,
     };
     const systemPrompt = composeSystemPrompt(promptCfg, [], undefined, biSchema);
 
