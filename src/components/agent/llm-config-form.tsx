@@ -20,7 +20,6 @@ import {
   Plug,
   KeyRound,
   AlertCircle,
-  CreditCard,
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -53,7 +52,6 @@ import { testCredentialConnectionAction } from "@/lib/actions/credentials";
 import { cn } from "@/lib/utils";
 
 const CUSTOM_MODEL_VALUE = "__custom__";
-const NEW_CREDENTIAL_VALUE = "__new__";
 
 const PROVIDERS: LlmProvider[] = [
   "openai",
@@ -150,25 +148,21 @@ export function LlmConfigForm({
     [credentials, provider],
   );
 
-  const credentialOptions = useMemo<SelectOption[]>(() => {
-    const opts: SelectOption[] = credentialsForProvider.map((c) => ({
-      value: c.id,
-      label: `${c.label} · ••••${c.last4}`,
-    }));
-    opts.push({
-      value: NEW_CREDENTIAL_VALUE,
-      label: "+ Nova chave",
-      description: "Cadastrar em 'Chaves de API'",
-    });
-    return opts;
-  }, [credentialsForProvider]);
+  const credentialOptions = useMemo<SelectOption[]>(
+    () =>
+      credentialsForProvider.map((c) => ({
+        value: c.id,
+        label: `${c.label} · ••••${c.last4}`,
+      })),
+    [credentialsForProvider],
+  );
 
   const usingCustom = modelSelect === CUSTOM_MODEL_VALUE;
   const resolvedModel = (usingCustom ? customModel : modelSelect).trim();
   const hasNoCredentials = credentialsForProvider.length === 0;
 
-  // Credencial efetiva: a escolha do usuário, se ainda existir no provider;
-  // senão a primeira disponível; senão vazio.
+  // Credencial efetiva: a escolha explícita do usuário, se ainda existir no
+  // provider. Sem escolha → vazio (o campo NÃO pré-seleciona nenhuma chave).
   const effectiveCredentialId = useMemo(() => {
     if (
       credentialId &&
@@ -176,7 +170,7 @@ export function LlmConfigForm({
     ) {
       return credentialId;
     }
-    return credentialsForProvider[0]?.id ?? "";
+    return "";
   }, [credentialId, credentialsForProvider]);
 
   const isConfigured = Boolean(activeConfig);
@@ -199,11 +193,6 @@ export function LlmConfigForm({
   }
 
   function handleCredentialChange(next: string) {
-    if (next === NEW_CREDENTIAL_VALUE) {
-      router.push("/agente/chaves");
-      toast.info("Cadastre a nova chave em 'Chaves de API'.");
-      return;
-    }
     setCredentialId(next);
     setTest({ status: "idle" });
   }
@@ -273,8 +262,8 @@ export function LlmConfigForm({
         return;
       }
       if (result.data.reachable) {
-        setTest({ status: "ok", message: "Conexão verificada com sucesso." });
-        toast.success("Conexão OK");
+        setTest({ status: "ok" });
+        toast.success("Conexão verificada com sucesso");
       } else {
         setTest({
           status: "fail",
@@ -443,38 +432,40 @@ export function LlmConfigForm({
             <KeyRound className="h-3.5 w-3.5 text-muted-foreground" />
             Chave de API
           </Label>
-          <CustomSelect
-            aria-label="Chave de API"
-            value={
-              effectiveCredentialId ||
-              (hasNoCredentials ? NEW_CREDENTIAL_VALUE : "")
-            }
-            onChange={handleCredentialChange}
-            options={credentialOptions}
-            placeholder={
-              hasNoCredentials ? "Sem chaves cadastradas" : "Selecionar chave"
-            }
-            disabled={busy}
-            triggerClassName="min-h-[44px]"
-          />
-          <p className="text-xs text-muted-foreground">
-            {hasNoCredentials
-              ? `Nenhuma chave cadastrada para ${meta.label}. Use 'Chaves de API' para adicionar.`
-              : "As chaves são gerenciadas em 'Chaves de API'."}
-          </p>
-          {meta.topUpUrl ? (
-            <div className="flex flex-wrap items-center gap-2 pt-1 text-xs">
-              <a
-                href={meta.topUpUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="inline-flex items-center gap-1.5 rounded-md border border-border bg-background/60 px-2 py-1 font-medium text-foreground transition-colors hover:bg-accent hover:text-accent-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          {hasNoCredentials ? (
+            // Sem chaves: em vez de uma opção de select, um botão de ação
+            // claro que leva à tela de Chaves de API.
+            <div className="flex flex-col gap-2 rounded-lg border border-dashed border-border bg-muted/20 px-3 py-3 sm:flex-row sm:items-center sm:justify-between">
+              <p className="text-xs text-muted-foreground">
+                Nenhuma chave cadastrada para {meta.label}.
+              </p>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => router.push("/agente/chaves")}
+                className="cursor-pointer"
               >
-                <CreditCard className="h-3.5 w-3.5" aria-hidden="true" />
-                Adicionar crédito
-              </a>
+                <KeyRound className="mr-1.5 h-3.5 w-3.5" />
+                Nova chave de {meta.label}
+              </Button>
             </div>
-          ) : null}
+          ) : (
+            <>
+              <CustomSelect
+                aria-label="Chave de API"
+                value={effectiveCredentialId}
+                onChange={handleCredentialChange}
+                options={credentialOptions}
+                placeholder="Selecionar chave"
+                disabled={busy}
+                triggerClassName="min-h-[44px]"
+              />
+              <p className="text-xs text-muted-foreground">
+                As chaves são gerenciadas em &ldquo;Chaves de API&rdquo;.
+              </p>
+            </>
+          )}
         </div>
 
         {/* Resultado do teste */}
@@ -500,10 +491,10 @@ export function LlmConfigForm({
             <div className="flex-1 leading-snug">
               <p className="font-medium">
                 {test.status === "ok"
-                  ? "Conexão verificada"
+                  ? "Conexão verificada com sucesso"
                   : "Falha ao conectar"}
               </p>
-              {test.message && (
+              {test.status === "fail" && test.message && (
                 <p className="break-words opacity-80">{test.message}</p>
               )}
             </div>
@@ -540,13 +531,6 @@ export function LlmConfigForm({
             Salvar configuração
           </Button>
         </div>
-
-        {hasNoCredentials ? (
-          <p className="text-xs text-amber-600 dark:text-amber-400" role="note">
-            Sem chaves cadastradas para {meta.label} — botões desativados.
-            Cadastre uma em &ldquo;Chaves de API&rdquo;.
-          </p>
-        ) : null}
       </div>
     </div>
   );
