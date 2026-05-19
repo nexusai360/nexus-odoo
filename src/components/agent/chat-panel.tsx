@@ -32,6 +32,11 @@ interface ChatPanelProps {
   /** conversationId atual (null = novo). Após primeira msg, recebe o id criado. */
   conversationId?: string | null;
   onConversationCreated?: (id: string) => void;
+  /**
+   * Modo embedded: remove o posicionamento fixed/floating e o backdrop mobile.
+   * Usado na página dedicada /agente onde o painel ocupa toda a área de conteúdo.
+   */
+  embedded?: boolean;
 }
 
 interface UiMessage {
@@ -64,9 +69,10 @@ const WELCOME_SUGGESTIONS = [
 export function ChatPanel({
   open,
   onClose,
-  audioInputEnabled = false,
+  audioInputEnabled: _audioInputEnabled = false,
   conversationId: externalConvId,
   onConversationCreated,
+  embedded = false,
 }: ChatPanelProps) {
   const reduceMotion = useReducedMotion();
 
@@ -292,44 +298,10 @@ export function ChatPanel({
 
   const showWelcome = messages.length === 0;
 
-  return (
+  const innerContent = (
     <>
-      {/* Backdrop mobile */}
-      <motion.div
-        aria-hidden
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        exit={{ opacity: 0, transition: { duration: 0.12 } }}
-        transition={{ duration: 0.18 }}
-        className="fixed inset-0 z-40 bg-black/40 backdrop-blur-[1px] sm:hidden"
-        onClick={onClose}
-      />
-
-      <motion.div
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby="agent-panel-title"
-        initial={
-          reduceMotion ? { opacity: 0 } : { opacity: 0, scale: 0.92, y: 24, x: 24 }
-        }
-        animate={
-          reduceMotion ? { opacity: 1 } : { opacity: 1, scale: 1, y: 0, x: 0 }
-        }
-        exit={
-          reduceMotion
-            ? { opacity: 0, transition: { duration: 0.12 } }
-            : { opacity: 0, scale: 0.94, y: 16, x: 16, transition: { duration: 0.16, ease: "easeIn" } }
-        }
-        transition={transition}
-        style={{ transformOrigin: "bottom right" }}
-        className={cn(
-          "fixed z-50 flex flex-col overflow-hidden bg-card text-foreground shadow-2xl shadow-black/30",
-          "inset-0 rounded-none border-0",
-          "sm:inset-auto sm:right-6 sm:bottom-24 sm:h-[70vh] sm:max-h-[640px] sm:w-[420px] sm:rounded-2xl sm:border sm:border-border",
-        )}
-      >
-        {/* Header */}
-        <header className="flex items-center justify-between gap-2 border-b border-border bg-background/60 px-4 py-3">
+      {/* Header */}
+      <header className="flex items-center justify-between gap-2 border-b border-border bg-background/60 px-4 py-3">
           <div className="flex items-center gap-2.5">
             <div className="relative flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-violet-600 to-violet-500 text-white shadow-md shadow-violet-600/40">
               <Sparkles className="h-4.5 w-4.5" strokeWidth={2.25} />
@@ -481,6 +453,64 @@ export function ChatPanel({
             Enter envia · Shift+Enter quebra linha
           </p>
         </footer>
+    </>
+  );
+
+  // ── Modo embedded: div estática sem floating ──────────────────────────────
+  if (embedded) {
+    return (
+      <>
+        <div className="flex h-full flex-col overflow-hidden bg-card text-foreground">
+          {innerContent}
+        </div>
+        <style jsx global>{`
+          @keyframes agentDotBounce {
+            0%, 80%, 100% { transform: translateY(0); opacity: 0.4; }
+            40% { transform: translateY(-3px); opacity: 1; }
+          }
+        `}</style>
+      </>
+    );
+  }
+
+  // ── Modo flutuante (bubble): dialog animado ───────────────────────────────
+  return (
+    <>
+      {/* Backdrop mobile */}
+      <motion.div
+        aria-hidden
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        exit={{ opacity: 0, transition: { duration: 0.12 } }}
+        transition={{ duration: 0.18 }}
+        className="fixed inset-0 z-40 bg-black/40 backdrop-blur-[1px] sm:hidden"
+        onClick={onClose}
+      />
+
+      <motion.div
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="agent-panel-title"
+        initial={
+          reduceMotion ? { opacity: 0 } : { opacity: 0, scale: 0.92, y: 24, x: 24 }
+        }
+        animate={
+          reduceMotion ? { opacity: 1 } : { opacity: 1, scale: 1, y: 0, x: 0 }
+        }
+        exit={
+          reduceMotion
+            ? { opacity: 0, transition: { duration: 0.12 } }
+            : { opacity: 0, scale: 0.94, y: 16, x: 16, transition: { duration: 0.16, ease: "easeIn" } }
+        }
+        transition={transition}
+        style={{ transformOrigin: "bottom right" }}
+        className={cn(
+          "fixed z-50 flex flex-col overflow-hidden bg-card text-foreground shadow-2xl shadow-black/30",
+          "inset-0 rounded-none border-0",
+          "sm:inset-auto sm:right-6 sm:bottom-24 sm:h-[70vh] sm:max-h-[640px] sm:w-[420px] sm:rounded-2xl sm:border sm:border-border",
+        )}
+      >
+        {innerContent}
       </motion.div>
 
       {/* Keyframe global para loading dots */}
