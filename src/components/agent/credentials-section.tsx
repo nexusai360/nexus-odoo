@@ -279,7 +279,7 @@ export function CredentialsSection({
                       data-testid={`credential-row-${c.id}`}
                       className="flex flex-col gap-2 py-3 sm:flex-row sm:items-center sm:justify-between"
                     >
-                      <div className="flex min-w-0 flex-col gap-1">
+                      <div className="flex min-w-0 flex-col gap-2.5">
                         <div className="flex min-w-0 items-center gap-2">
                           <span className="truncate text-sm font-medium">
                             {c.label}
@@ -289,6 +289,14 @@ export function CredentialsSection({
                           </span>
                         </div>
                         <div className="flex flex-wrap items-center gap-x-3 gap-y-1">
+                          <span className="inline-flex items-center gap-1 text-xs text-muted-foreground">
+                            <Wallet className="h-3.5 w-3.5" aria-hidden />
+                            Consumo:{" "}
+                            {c.consumedUsd.toLocaleString("pt-BR", {
+                              style: "currency",
+                              currency: "USD",
+                            })}
+                          </span>
                           <span
                             className={cn(
                               "inline-flex items-center gap-1 text-xs",
