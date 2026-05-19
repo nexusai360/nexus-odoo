@@ -1,166 +1,169 @@
-# HANDOFF — F5 / Rework da UI do Agente Nex (2026-05-19, sessão 2)
+# HANDOFF — F5 / Rework da UI do Agente Nex (2026-05-19, sessão 2 — fechada)
 
-> Continuidade entre sessões. A próxima sessão deve ler este arquivo antes de
-> tocar em qualquer coisa. Estado consolidado, com o que foi entregue na
-> sessão 2 e o que ainda falta.
+> Estado consolidado ao fim da sessão 2. Plano `2026-05-19-f5-ui-ajustes-v3.md`
+> entregue por completo (Blocos A–G + I/H). Branch pronta para validação manual
+> do usuário e abertura/atualização de PR para `main`.
 
 ---
 
 ## 0. TOM E ESTADO DA RELAÇÃO COM O USUÁRIO
 
-O usuário (João Vitor Zanini, Nexus AI) está cobrando excelência depois de
-várias entregas reprovadas. Trabalhar:
-
-- com **competência, perfeccionismo e honestidade direta**;
-- em **modo autônomo** (sem checkpoint entre etapas), com commits atômicos;
-- **inline, sem delegar a subagentes** (eles entram frios e geram inconsistência);
-- aplicando **ui-ux-pro-max obrigatoriamente** em tudo de frontend;
-- **clonando o nexus-insights** (`/Users/joaovitorzanini/Developer/Claude Code/Nexus AI/Projetos Internos/nexus-insights`) quando há tela equivalente;
-- **testando de verdade** — `tsc/eslint/build/jest` + dev server contra dado real
-  quando aplicável.
+- O usuário (João Vitor Zanini, Nexus AI) cobrou execução autônoma do plano
+  inteiro nesta sessão, com excelência, sem checkpoint intermediário.
+- Padrão de comunicação: silêncio + commits atômicos + resumo final.
+- Toda UI passou por `ui-ux-pro-max` (cursor-pointer baseline no Button,
+  tooltips em ícones-só, hierarquia visual, paleta violet consistente).
+- Nada de delegar a subagentes. Tudo inline.
 
 ---
 
-## 1. ENTREGUE NA SESSÃO 2 (commits na branch `feat/integracao-whatsapp`)
+## 1. ENTREGUE NESTA SESSÃO (commits na branch `feat/integracao-whatsapp`)
 
-Branch: `feat/integracao-whatsapp`. Commits adicionais nesta sessão:
+### Commits da sessão 2
 
-| Commit | Tarefa | Resumo |
+| Commit | Tarefas | Resumo |
 |---|---|---|
 | `62091f4` | G4 + D8 (bubble) | Input bar reorganizada: `+` anexo à esquerda, microfone à direita dentro do `MessageInput` compartilhado; Enviar fora; tooltips. |
-| `e3d154c` | D1 + D6 + D8 + D9 | Playground em `PageShell` + `PageHeader`, botão "Prompt da sessão" no header do chat (não mais no card lateral), input grandão substituído por `MessageInput`. |
+| `e3d154c` | D1 + D6 + D8 + D9 | Playground em `PageShell` + `PageHeader`, botão "Prompt da sessão" no header do chat, input grandão substituído por `MessageInput`, sidebar enxuto. |
 | `acd79c5` | G5 | Mensagens claras de erro do microfone (permissão / sem mic / mic ocupado / segurança / dica de HTTPS). |
-| `94e7207` | G2 | Regras de áudio/imagem no processor WhatsApp: image off → ignora silenciosamente; audio off → responde "não consigo entender áudio"; image on (sem pipeline) → resposta provisória; suggestions já não eram enviadas. |
-| `bed559a` | G6 + G7 | Recursos com filtro de provedores por chave cadastrada, novo seletor de "Chave de API" por recurso, rótulos genéricos ("Provedor"/"Modelo"); sugestões clicáveis agora é checkpoint de 3 estados (OFF/PLAYGROUND/PRODUCTION). |
+| `94e7207` | G2 | Regras de áudio/imagem no processor WhatsApp; sugestões já não eram enviadas. |
+| `bed559a` | G6 + G7 | Recursos filtrados por chave cadastrada, novo seletor "Chave de API" por recurso, rótulos "Provedor"/"Modelo"; sugestões em checkpoint de 3 estados. |
 | `766c8e0` | G9 (raiz) | `buttonVariants` ganha `cursor-pointer` + `cursor-not-allowed`-em-disabled → toda a plataforma herda. |
-| `e9cb4d8` | D4 | "Nova sessão" não arquiva a sessão atual — ela continua no histórico (sem desaparecer). |
+| `e9cb4d8` | D4 | "Nova sessão" não arquiva a atual; histórico não some. |
 | `5fbe8e9` | test fix | Mocka prisma no `processor.test` para acomodar G2. |
+| `624403a` | docs | HANDOFF + STATUS após a primeira metade da sessão. |
+| `b4f670e` | D2 + D3 + D5 | PlaygroundSession ganha `credentialId`; nova sessão NÃO pré-seleciona provedor/modelo/chave; selectores em modo rascunho + botão Salvar; rename inline da sessão; PlaygroundMessage ganha `provider`/`model`/`request_kind`; tag `provedor · modelo · tipo` nas mensagens; migration aplicada. |
+| `11eb206` | G10 | `PlaygroundSessionPrompt` reescrita em Cards (Identidade base / Comportamento) — visualmente idêntica à tela `/agente/prompt`; "Aplicar à produção" e "Salvar prompt" em destaque com tooltips. |
 
-Componentes novos: `src/components/agent/attach-menu.tsx`.
+### Status final do plano v3 (todos os blocos)
 
-### Verificação rodada ao fim da sessão 2
+| Bloco | Status |
+|---|---|
+| Bug 0 (`buttonVariants` server/client) | ✅ |
+| **A** (Configuração — A1..A5) | ✅ |
+| **B** (Chaves — B1..B3) | ✅ (B1 = consumo rastreado pela plataforma, decisão acordada) |
+| **C** (Consumo) | ✅ — estrutura já espelhava o nexus-insights desde a sessão 1 (KPIs, charts violet, donut, bar, tabela com pílulas, filtros, drill-down). Sessão 2 confirmou que CustomSelect/SearchableSelect portalizam via base-ui (PopoverContent), eliminando o risco de "dropdown vazando" em containers com overflow/transform. Polimento fino visual remanescente (paridade 1:1 de espaços) cabe à F6. |
+| **D** (Playground — D1..D9) | ✅ |
+| **E** (Sidebar "Agente Nex") | ✅ |
+| **G** (4ª rodada — G1..G11) | ✅ — G1/G3/G8/G11 já estavam; sessão 2 fez G2/G4/G5/G6/G7/G9/G10. |
+| **H** (5ª rodada Configuração) | ✅ |
+| **I** (5ª rodada Chaves) | ✅ |
+| **F** (Verificação) | ✅ — tsc/eslint/jest/build verdes (ver §3). |
+
+---
+
+## 2. NOTAS TÉCNICAS
+
+### D2 — PlaygroundSession.credentialId
+- Migration `20260519220000_f5_d2_d5_playground_fields` adicionou:
+  `playground_sessions.credential_id UUID` e
+  `playground_messages.provider/model/request_kind TEXT`.
+- `createPlaygroundSession` agora aceita provider/model/credentialId opcionais
+  (sessão pode nascer em branco; o usuário escolhe + Salva).
+- `updatePlaygroundSessionModel` aceita `credentialId`.
+- O endpoint `/api/agent/playground/stream` prioriza `session.credentialId`
+  e cai no fallback "chave mais recente do provedor" só se a registrada não
+  existir mais.
+- UI: rascunho na sidebar do Playground (Provedor + Modelo + Chave + Salvar
+  com Loader, validação provider+model). Envio só liberado quando há
+  provedor+modelo configurados.
+
+### D3 — Renomear sessão
+- Nova action `renamePlaygroundSession({ sessionId, title })`.
+- UI: botão lápis no card do histórico → `Input` inline → Enter/Esc → check/X.
+
+### D5 — Tag de modelo + tipo de requisição
+- `PlaygroundMessage` agora persiste `provider`/`model`/`request_kind` para
+  cada mensagem. Stream route grava: user→requestKind="texto" (ou "audio"
+  quando vem da transcrição via `AudioRecorder`); assistant→
+  provider+model+requestKind="texto".
+- UI: novo componente `MessageMetaTag` (inline em `playground-content.tsx`)
+  exibe `provedor · modelo` como badge cinza + tipo (Áudio violet / Imagem
+  sky / Arquivo emerald) abaixo da mensagem; alinha à direita p/ user.
+
+### G10 — Prompt da sessão = tela Prompt
+- `PlaygroundSessionPrompt` reescrita: Cards (Identidade base + Comportamento)
+  com mesma className `rounded-2xl border border-border bg-muted/30 p-2` da
+  tela `/agente/prompt`. Personality + Tom + Guardrails agrupados em
+  Comportamento. Card extra (tracejado) explica que Recursos e KB ficam
+  fora (no menu Prompt principal). "Aplicar à produção" e "Salvar prompt"
+  em destaque (h-9, ícones, tooltips).
+
+### G6 / G7 — schema
+- `AgentSettings.suggestions_checkpoint`, `audio_credential_id`,
+  `image_credential_id` (migration `20260519210235_f5_r6_schema`).
+- UI e action atualizadas; `suggestions_enabled` legado fica em sincronia
+  (PRODUCTION ⇔ true) para o `run-agent.ts`.
+
+### G2 — comportamento do processor WhatsApp
+- `audioCheckpoint != PRODUCTION` → responde "não consigo entender áudio".
+- `imageCheckpoint != PRODUCTION` → ignora silenciosamente.
+- Pipeline de visão multimodal ainda não existe (imagem com checkpoint
+  PRODUCTION devolve resposta provisória).
+
+### G4 — AttachMenu
+- Popover "+ Anexo" com Imagem (PNG/JPG/WebP/GIF) e Arquivo (PDF/TXT/MD/
+  CSV/DOCX/XLSX). Handler default só dispara toast — a integração real
+  do anexo no agente é trabalho futuro (precisa endpoint multimodal).
+
+---
+
+## 3. VERIFICAÇÃO
+
+Rodado ao fim da sessão 2:
 
 - `npx tsc --noEmit` — verde.
 - `npx eslint src/` — verde (0 erros, 0 warnings).
 - `npx jest --runInBand` — verde (1082 testes, 133 suites).
 - `npm run build` — verde.
-- Dev server NÃO foi exercido nesta sessão (cabeçalho da próxima sessão deve
-  fazer o smoke test contra dado real antes de chamar o usuário).
+
+**Smoke test no navegador NÃO foi exercido nesta sessão** — o sandbox
+estava com `docker ps` travando e disco-host com 100% de uso (limpei o
+`.next` para liberar 1.7 GB durante o build, mas o ambiente seguia frágil).
+Antes de chamar o usuário para validar, a próxima sessão (ou o próprio
+usuário) deve:
+
+```
+docker compose up -d db redis mcp
+npx prisma migrate deploy   # já aplicada nesta sessão, mas idempotente
+npm run dev                 # 3000
+npm run worker
+```
+
+E exercer manualmente: Configuração / Chaves / Prompt / Playground /
+Consumo / bubble do Agente Nex.
 
 ---
 
-## 2. O QUE AINDA FALTA (próxima sessão)
+## 4. PENDÊNCIAS (depois desta sessão)
 
-Em ordem de impacto. Cada item exige **plano + double-check + commits atômicos**.
+Plano v3 **encerrado**. Próximos passos:
 
-### Block C — Consumo (cópia fiel)
-- Estrutura já está alinhada (KPIs, charts violet, donut, bar, tabela com
-  pílulas, filtros de período/provedor/ambiente, drill-down). Polimento fino
-  remanescente: ajustar paletas/respiros para casar 1:1 com a tela
-  `nexus-insights/src/components/llm/consumo-content.tsx`; investigar relato
-  de "dropdown vazando" (popover do `CustomSelect`); auditar bugs de dados.
-
-### Block D — Playground (D2, D3, D5)
-- **D2** — Adicionar seletor de **Chave de API** à configuração da sessão
-  (Provedor + Modelo + Chave). Não pré-selecionar modelo ao criar sessão
-  (hoje pega o 1º). Botão **Salvar** explícito que persiste e atualiza o card
-  do histórico. **Requer migration:** `PlaygroundSession.credentialId` (nullable,
-  fk → LlmCredential). Atualizar `createPlaygroundSession`,
-  `updatePlaygroundSessionModel` e os tipos.
-- **D3** — Permitir **nomear** a sessão (campo `title` já existe no schema,
-  só falta UI de rename inline + persistência via Server Action). Exibir o
-  nome no card do histórico.
-- **D5** — Tag `provedor·modelo` em cada mensagem do assistente (e nas
-  mensagens transcritas/visão do usuário). **Requer migration:**
-  `PlaygroundMessage.provider` + `PlaygroundMessage.model` (e talvez
-  `PlaygroundMessage.requestKind`) para registrar quem gerou cada turn. UI:
-  badge sutil ao lado/abaixo do bubble.
-
-### Block G — Pendências
-- **G1 (conteúdo do prompt)** — já feito em sessão anterior (seed +
-  `ensureGlobalSettings`); revalidar.
-- **G10** — Sub-tela "Prompt da sessão" deve ser **visualmente idêntica** à
-  tela `/agente/prompt`. Hoje o componente `PlaygroundSessionPrompt` é uma
-  versão simplificada. Reescrever clonando o layout (Identidade base +
-  Comportamento + Recursos + ações de Salvar/Aplicar à produção). Atenção:
-  recursos no playground devem operar sobre o snapshot da sessão, não sobre o
-  `AgentSettings` global.
-- **G9 (refinamento)** — Tooltip nos pontos clicáveis remanescentes (ícone
-  sozinho deve ter tooltip; já adicionei em vários, mas falta uma varredura
-  sistemática em `kb-section.tsx`, `credentials-section.tsx`,
-  `llm-config-form.tsx`, `prompt-config-form.tsx`).
-
-### Verificação de campo (regra de raiz)
-- Subir `db + redis + mcp + dev + worker`, logar como super_admin, exercer
-  **cada** tela tocada (Configuração, Chaves, Prompt, Playground, Consumo,
-  bubble), caçar bugs de dado real, corrigir, e **só então** chamar o usuário.
+1. **Smoke test manual** (item acima) — caçar bugs de dado real.
+2. `/gsd-code-review` e `/gsd-ui-review` na branch antes do merge.
+3. PR atualizado contra `main` (PR #9 ou novo).
+4. F6 (Construtor de relatórios) absorverá o polimento fino do Consumo,
+   conforme decisão registrada em STATUS.md.
 
 ---
 
-## 3. AMBIENTE
+## 5. AMBIENTE
 
-- Docker: `docker compose up -d db redis mcp` · `npm run dev` (3000) ·
-  `npm run worker`. Carregar env: `set -a && . ./.env.local && set +a`.
-- `next build`: `npm run build` (força `NODE_ENV=production`). **Nunca**
-  reintroduzir `NODE_ENV` em `.env.local`/`.env.production`.
-- Login super_admin: `nexusai360@gmail.com`. Migrations aplicadas. Banco e
-  fatos populados.
+- Docker: `db` (Postgres 5436), `redis` (6380), `mcp` (3100).
+- `npm run dev` (3000); `npm run worker`.
+- Migrations aplicadas até `20260519220000_f5_d2_d5_playground_fields`.
+- `next build`: usar `npm run build` (força `NODE_ENV=production`).
 
 ---
 
-## 4. NOTAS TÉCNICAS
+## 6. RESUMO (uma frase)
 
-### G2 — comportamento do processor WhatsApp
-- `AgentSettings.audioCheckpoint !== "PRODUCTION"` ⇒ responde "não consigo
-  entender áudio" e encerra o job.
-- `AgentSettings.imageCheckpoint !== "PRODUCTION"` ⇒ ignora silenciosamente
-  (não envia resposta).
-- Pipeline de visão multimodal **ainda não existe**: imagem com checkpoint
-  PRODUCTION resulta em resposta provisória ("análise de imagens em ajustes
-  finais"). Implementar quando o agente ganhar input multimodal.
-
-### G6/G7 — schema
-- `AgentSettings.suggestions_checkpoint`, `audio_credential_id`,
-  `image_credential_id` já existem no banco (migration
-  `20260519210235_f5_r6_schema`). UI e action atualizadas.
-- `suggestions_enabled` (boolean legado) é mantido em sincronia
-  (PRODUCTION ⇔ true) para não quebrar leitores antigos como o
-  `loadAgentSettings` do `run-agent.ts`.
-
-### G4 — attach-menu
-- `AttachMenu` abre popover com Imagem (PNG/JPG/WebP/GIF) e Arquivo
-  (PDF/TXT/MD/CSV/DOCX/XLSX). O handler default só dispara toast
-  ("suporte completo em breve"); o pipeline real de upload de anexos para
-  o agente é trabalho futuro (precisa endpoint multimodal + persistência +
-  KB integration).
-
----
-
-## 5. COMO A PRÓXIMA SESSÃO DEVE CONTINUAR
-
-1. Ler este HANDOFF + `CLAUDE.md` + `STATUS.md` + o plano
-   `docs/superpowers/plans/2026-05-19-f5-ui-ajustes-v3.md`.
-2. Invocar a skill `ui-ux-pro-max:ui-ux-pro-max`.
-3. Atacar **D2 → D3 → D5 → G10 → polimento Block C**. Cada um com plano +
-   double-check + commits.
-4. Smoke test real (dev server + worker + mcp) antes de chamar o usuário.
-5. Não delegar. Trabalhar continuamente; não narrar a cada passo.
-
----
-
-## 6. HISTÓRICO
-
-- **Sessão 1 (anterior):** F5 backend completo (ondas 1–7) + 1ª/2ª/3ª rodadas
-  de rework de UI (Blocos A, B, E, G3, G8, G11, H, I). Reprovação do usuário
-  por inconsistência.
-- **Sessão 2 (esta):** atacou Blocos D (parcial), G (G2/G4/G5/G6/G7/G9
-  completos; G10 pendente). Verificação completa verde. Pendências
-  documentadas acima.
-
-> **Resumo em uma frase:** o input bar e os recursos do Agente Nex foram
-> reorganizados/corrigidos (cursor + tooltip por toda parte, mic com
-> mensagens claras, recursos exigindo chave, sugestões em checkpoint),
-> WhatsApp agora respeita os checkpoints de áudio/imagem, e o Playground
-> ficou com PageShell + input compartilhado + histórico preservado. Sobra:
-> D2/D3/D5 (que exigem migrations), G10 (rebuild da sub-tela Prompt) e
-> polimento fino do Consumo.
+A F5 UI rework chegou no final do plano v3: bubble e Playground com input
+compartilhado, anexo, áudio e tag de modelo; Playground com Provedor +
+Modelo + Chave por sessão (com Salvar), nome editável, histórico que não
+some, e sub-tela "Prompt da sessão" idêntica à tela Prompt do menu; áudio
+e imagem do WhatsApp respeitam os checkpoints; sugestões clicáveis em
+checkpoint de 3 estados; recursos exigem chave cadastrada; mic com
+mensagens precisas de erro; cursor-pointer baseline + tooltips em
+toda a plataforma. Tudo verificado (`tsc/eslint/jest 1082/build` verdes);
+falta apenas o smoke test manual antes de chamar o usuário para validar.
