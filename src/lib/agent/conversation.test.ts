@@ -120,16 +120,30 @@ describe("assertConversationOwned", () => {
 });
 
 describe("loadHistory", () => {
-  test("retorna mensagens em ordem cronológica", async () => {
+  test("retorna mensagens em ordem cronológica (últimas N, invertidas)", async () => {
+    // findMany é chamado com orderBy: desc — o mock retorna as msgs em ordem desc
+    // (mais recente primeiro). O código faz .reverse() para ordem cronológica.
     prisma.message.findMany.mockResolvedValue([
-      { id: "m1", role: "user", content: "Olá", toolCalls: null },
       { id: "m2", role: "assistant", content: "Oi!", toolCalls: null },
+      { id: "m1", role: "user", content: "Olá", toolCalls: null },
     ]);
 
     const history = await loadHistory("conv-1", 10);
     expect(history).toHaveLength(2);
+    // Após reverse: m1(user) primeiro, m2(assistant) depois
     expect(history[0].role).toBe("user");
     expect(history[1].role).toBe("assistant");
+  });
+
+  test("busca com orderBy desc para retornar as últimas mensagens", async () => {
+    prisma.message.findMany.mockResolvedValue([]);
+    await loadHistory("conv-1", 20);
+    expect(prisma.message.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        orderBy: { createdAt: "desc" },
+        take: 20,
+      }),
+    );
   });
 
   test("budget 0 → retorna array vazio", async () => {

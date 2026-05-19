@@ -23,6 +23,7 @@ import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { AgentMessage, type AgentMessageRole } from "./agent-message";
 import { SuggestionsBar } from "./suggestions-bar";
+import { getConversationMessages } from "@/lib/actions/conversation-messages";
 
 interface ChatPanelProps {
   open: boolean;
@@ -86,9 +87,36 @@ export function ChatPanel({
   const inputRef = React.useRef<HTMLTextAreaElement | null>(null);
   const abortRef = React.useRef<AbortController | null>(null);
 
-  // Sync external conversationId
+  // Sync external conversationId + carrega histórico do servidor
   React.useEffect(() => {
     conversationIdRef.current = externalConvId ?? null;
+
+    if (!externalConvId) {
+      // Nova conversa: limpa mensagens
+      setMessages([]);
+      return;
+    }
+
+    // Carrega histórico persistido para a conversa selecionada
+    let cancelled = false;
+    void (async () => {
+      const result = await getConversationMessages(externalConvId);
+      if (cancelled) return;
+      if (!result.ok) {
+        toast.error("Não foi possível carregar o histórico da conversa.");
+        return;
+      }
+      const uiMessages: UiMessage[] = result.messages
+        .filter((m) => m.role !== "tool") // esconde mensagens de tool do usuário
+        .map((m) => ({
+          id: m.id,
+          role: m.role as AgentMessageRole,
+          content: m.content,
+        }));
+      setMessages(uiMessages);
+    })();
+
+    return () => { cancelled = true; };
   }, [externalConvId]);
 
   // ESC fecha + foco no input ao abrir
@@ -128,8 +156,8 @@ export function ChatPanel({
       const controller = new AbortController();
       abortRef.current = controller;
 
-      const userMsgId = `u_${Date.now()}`;
-      const assistantMsgId = `a_${Date.now()}`;
+      const userMsgId = `u_${crypto.randomUUID()}`;
+      const assistantMsgId = `a_${crypto.randomUUID()}`;
 
       setMessages((prev) => [
         ...prev,

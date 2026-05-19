@@ -44,6 +44,48 @@ export function deriveTitle(firstUserMessage: string): string {
 }
 
 /**
+ * Remove do histórico mensagens que formariam pares tool_use/tool_result incompletos.
+ *
+ * A API Anthropic exige que toda mensagem assistant com toolCalls tenha a correspondente
+ * mensagem tool logo após. Se o budget de histórico cortar no meio de um par,
+ * a API retorna 400. Esta função remove pares incompletos da borda do histórico.
+ */
+export function sanitizeHistoryPairs(history: HistoryMessage[]): HistoryMessage[] {
+  if (history.length === 0) return history;
+
+  // Percorre do início: remove um assistant-with-toolCalls sem tool_result subsequente
+  // e remove um tool sem assistant-with-toolCalls precedente.
+  const result: HistoryMessage[] = [];
+  let i = 0;
+  while (i < history.length) {
+    const msg = history[i];
+    if (msg.role === "assistant" && msg.toolCalls && msg.toolCalls.length > 0) {
+      // Verifica se a próxima mensagem é tool (par completo)
+      if (i + 1 < history.length && history[i + 1].role === "tool") {
+        result.push(msg);
+        result.push(history[i + 1]);
+        i += 2;
+      } else {
+        // Par incompleto — descarta o assistant com toolCalls
+        i++;
+      }
+    } else if (msg.role === "tool") {
+      // tool sem assistant precedente no result — descarta
+      // (pode acontecer quando o assistant foi descartado acima)
+      const lastInResult = result[result.length - 1];
+      if (lastInResult?.role === "assistant" && lastInResult.toolCalls?.length) {
+        result.push(msg);
+      }
+      i++;
+    } else {
+      result.push(msg);
+      i++;
+    }
+  }
+  return result;
+}
+
+/**
  * Retorna a conversa WhatsApp ativa (última msg < 24h) ou cria uma nova.
  * Semântica de canal: uma conversa por janela de 24h para WhatsApp.
  */
@@ -121,9 +163,10 @@ export async function loadHistory(
 ): Promise<HistoryMessage[]> {
   if (budget <= 0) return [];
 
+  // Busca as últimas N mensagens em ordem decrescente e inverte para cronológico
   const messages = await prisma.message.findMany({
     where: { conversationId },
-    orderBy: { createdAt: "asc" },
+    orderBy: { createdAt: "desc" },
     take: budget,
     select: {
       id: true,
@@ -132,6 +175,9 @@ export async function loadHistory(
       toolCalls: true,
     },
   });
+
+  // Inverter para ordem cronológica (mais antigas primeiro)
+  messages.reverse();
 
   return messages.map((m) => ({
     id: m.id,
