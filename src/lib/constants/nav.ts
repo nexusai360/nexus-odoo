@@ -1,4 +1,4 @@
-import { BarChart3, Bot, Home, Settings, Users } from "lucide-react";
+import { BarChart3, Bot, Home, Plug, Settings, Users } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import type { PlatformRole } from "@/generated/prisma/client";
 
@@ -28,6 +28,13 @@ export const NAV_ITEMS: NavItem[] = [
     icon: Users,
     section: "admin",
     visibleTo: ["super_admin", "admin"],
+  },
+  {
+    label: "Integrações",
+    href: "/integracoes",
+    icon: Plug,
+    section: "admin",
+    visibleTo: ["super_admin"],
   },
   {
     label: "Configuração",
