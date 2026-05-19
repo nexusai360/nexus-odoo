@@ -16,6 +16,7 @@
 import { Check, Copy, Database } from "lucide-react";
 import * as React from "react";
 import { cn } from "@/lib/utils";
+import { AudioPlayer } from "@/components/agent/audio-player";
 
 export type AgentMessageRole = "user" | "assistant" | "tool" | "loading";
 
@@ -57,11 +58,10 @@ export function AgentMessage({
       <div className="group/msg flex w-full justify-end">
         <div className="relative flex max-w-[85%] flex-col gap-1.5">
           {audioBlobUrl ? (
-            // AudioPlayer é carregado dinamicamente para evitar SSR issues
-            // Implementado em Task 3.3c
-            <div className="rounded-2xl bg-violet-600/10 px-3 py-2 text-xs text-muted-foreground">
-              🎙 {durationSeconds ? `${Math.round(durationSeconds)}s` : "Áudio"}
-            </div>
+            <AudioPlayer
+              src={audioBlobUrl}
+              durationSeconds={durationSeconds}
+            />
           ) : (
             <div className="rounded-2xl bg-muted px-3 py-2 text-xs text-muted-foreground">
               (áudio expirado)
