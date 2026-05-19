@@ -36,7 +36,7 @@ export const NAV_ITEMS: NavItem[] = [
   {
     // href é o prefixo do grupo — usado como chave de openGroups e por
     // isGroupActive (o item de grupo é um <button>, não navega).
-    label: "Agente",
+    label: "Agente Nex",
     href: "/agente",
     icon: Sparkles,
     section: "admin",
