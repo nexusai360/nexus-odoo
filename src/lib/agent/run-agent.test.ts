@@ -37,6 +37,8 @@ jest.mock("./conversation", () => ({
   loadHistory: jest.fn().mockResolvedValue([]),
   persistMessage: jest.fn().mockResolvedValue(undefined),
   assertConversationOwned: jest.fn().mockResolvedValue(undefined),
+  // sanitizeHistoryPairs: passthrough — retorna o array sem modificação nos testes
+  sanitizeHistoryPairs: jest.fn((h: unknown[]) => h),
 }));
 
 jest.mock("./prompt/compose", () => ({

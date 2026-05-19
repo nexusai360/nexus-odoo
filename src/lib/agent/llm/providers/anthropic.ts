@@ -148,7 +148,10 @@ export class AnthropicClient implements ProviderClient {
     const tools = mapTools(request.tools);
     if (tools) body.tools = tools;
 
-    const useStream = request.stream === true && !request.tools?.length;
+    // Streaming habilitado quando solicitado, inclusive quando há tools.
+    // A API Anthropic suporta SSE com tool_use — os blocos tool_use chegam
+    // via content_block_start/content_block_delta e são parseados em #parseStream.
+    const useStream = request.stream === true && !!request.onToken;
 
     if (useStream) {
       body.stream = true;
@@ -205,8 +208,11 @@ export class AnthropicClient implements ProviderClient {
 
   /**
    * Consome a response SSE do Anthropic streaming e retorna ChatResult.
-   * Parseia eventos `message_start` (input tokens), `content_block_delta`
-   * (text delta → onToken), `message_delta` (output tokens).
+   * Parseia:
+   * - `message_start` → input tokens
+   * - `content_block_start` → identifica blocos tool_use (captura id/name)
+   * - `content_block_delta` → text_delta (texto) ou input_json_delta (args tool)
+   * - `message_delta` → output tokens + stop_reason
    */
   async #parseStream(
     res: Response,
@@ -221,6 +227,10 @@ export class AnthropicClient implements ProviderClient {
     let tokensInput = 0;
     let tokensOutput = 0;
     let buf = "";
+
+    // Estado para blocos tool_use
+    const toolCallMap: Record<number, { id: string; name: string; jsonBuf: string }> = {};
+    let currentBlockIndex = -1;
 
     try {
       while (true) {
@@ -246,11 +256,23 @@ export class AnthropicClient implements ProviderClient {
           if (evt.type === "message_start") {
             const msg = evt.message as { usage?: { input_tokens?: number } } | undefined;
             tokensInput = msg?.usage?.input_tokens ?? 0;
+          } else if (evt.type === "content_block_start") {
+            const index = evt.index as number ?? 0;
+            const block = evt.content_block as { type?: string; id?: string; name?: string } | undefined;
+            currentBlockIndex = index;
+            if (block?.type === "tool_use") {
+              toolCallMap[index] = { id: block.id ?? "", name: block.name ?? "", jsonBuf: "" };
+            }
           } else if (evt.type === "content_block_delta") {
-            const delta = evt.delta as { type?: string; text?: string } | undefined;
+            const index = (evt.index as number | undefined) ?? currentBlockIndex;
+            const delta = evt.delta as { type?: string; text?: string; partial_json?: string } | undefined;
             if (delta?.type === "text_delta" && typeof delta.text === "string") {
               messageText += delta.text;
               onToken?.(delta.text);
+            } else if (delta?.type === "input_json_delta" && typeof delta.partial_json === "string") {
+              if (toolCallMap[index]) {
+                toolCallMap[index].jsonBuf += delta.partial_json;
+              }
             }
           } else if (evt.type === "message_delta") {
             const usage = (evt as { usage?: { output_tokens?: number } }).usage;
@@ -262,10 +284,18 @@ export class AnthropicClient implements ProviderClient {
       reader.releaseLock();
     }
 
+    // Montar tool calls a partir dos blocos acumulados
+    const toolCalls: ToolCall[] = Object.entries(toolCallMap).map(([, tc]) => {
+      let args: object = {};
+      try { args = JSON.parse(tc.jsonBuf) as object; } catch { /* args permanece {} */ }
+      return { id: tc.id, name: tc.name, arguments: args };
+    });
+
     const { costUsd } = calculateCost(this.model, tokensInput, tokensOutput);
 
     return {
       message: messageText,
+      toolCalls: toolCalls.length > 0 ? toolCalls : undefined,
       usage: { tokensInput, tokensOutput, costUsd: costUsd ?? 0 },
     };
   }

@@ -21,6 +21,7 @@ import {
   loadHistory,
   persistMessage,
   assertConversationOwned,
+  sanitizeHistoryPairs,
 } from "./conversation";
 import { composeSystemPrompt } from "./prompt/compose";
 import { BI_SCHEMA_REFERENCE } from "./bi-schema-reference";
@@ -83,6 +84,7 @@ function guardToolResult(result: string): string {
 /** Evento emitido durante a execução do agente. */
 export type AgentEvent =
   | { type: "thinking" }
+  | { type: "token"; delta: string }
   | { type: "tool_call"; toolName: string }
   | { type: "tool_result"; toolName: string; truncated: boolean }
   | { type: "done" };
@@ -103,7 +105,7 @@ export type RunAgentResult =
   | { ok: true; message: string; suggestions: string[]; usage: ChatUsage }
   | { ok: false; error: string };
 
-/** Carrega o singleton AgentSettings do banco (fallback para defaults se não existir). */
+/** Carrega o singleton AgentSettings do banco (fallback alinhado com @default do schema). */
 async function loadAgentSettings() {
   const row = await prisma.agentSettings.findUnique({ where: { id: "global" } });
   return {
@@ -112,9 +114,11 @@ async function loadAgentSettings() {
     tone: row?.tone ?? "",
     guardrails: (row?.guardrails as string[]) ?? [],
     advancedOverride: row?.advancedOverride ?? null,
-    kbEnabled: row?.kbEnabled ?? false,
+    // @default(true) no schema — alinhar fallback para evitar comportamento diferente
+    // em instâncias novas antes da primeira gravação em AgentSettings.
+    kbEnabled: row?.kbEnabled ?? true,
     terminology: (row?.terminology as Record<string, string>) ?? {},
-    suggestionsEnabled: row?.suggestionsEnabled ?? false,
+    suggestionsEnabled: row?.suggestionsEnabled ?? true,
   };
 }
 
@@ -176,9 +180,10 @@ export async function runAgent(args: RunAgentInput): Promise<RunAgentResult> {
     const mcpTools = session ? await session.listTools() : [];
     const tools = mcpToolsToProviderTools(mcpTools);
 
-    // Carregar histórico
-    const history = await loadHistory(args.conversationId, 20);
-    const historyMessages: ChatMessage[] = history.map((m) => ({
+    // Carregar histórico (últimas 20 msgs) e sanitizar pares tool_use/tool_result
+    const rawHistory = await loadHistory(args.conversationId, 20);
+    const sanitizedHistory = sanitizeHistoryPairs(rawHistory);
+    const historyMessages: ChatMessage[] = sanitizedHistory.map((m) => ({
       role: m.role as "user" | "assistant" | "tool",
       content: m.content,
       ...(m.toolCalls ? { toolCalls: m.toolCalls as ToolCall[] } : {}),
@@ -205,7 +210,20 @@ export async function runAgent(args: RunAgentInput): Promise<RunAgentResult> {
 
     for (let i = 0; i < MAX_ITERATIONS; i++) {
       const iterStart = Date.now();
-      const result = await client.chat({ messages: conversation, tools });
+
+      // Na iteração final (ou quando não há mais tools esperadas), tenta streamar
+      // tokens para o callback onEvent — heurística: streamar sempre e usar os
+      // tokens visualmente só quando stop_reason não for tool_use.
+      const onToken = args.onEvent
+        ? (delta: string) => args.onEvent!({ type: "token", delta })
+        : undefined;
+
+      const result = await client.chat({
+        messages: conversation,
+        tools,
+        stream: !!onToken,
+        onToken,
+      });
 
       totalUsage.tokensInput += result.usage.tokensInput;
       totalUsage.tokensOutput += result.usage.tokensOutput;

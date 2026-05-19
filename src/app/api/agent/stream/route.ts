@@ -16,6 +16,9 @@ import { getCurrentUser } from "@/lib/auth";
 import { runAgent } from "@/lib/agent/run-agent";
 import { createConversation, assertConversationOwned } from "@/lib/agent/conversation";
 import type { AgentEvent } from "@/lib/agent/run-agent";
+import type { AgentChannel } from "@/generated/prisma/client";
+
+const PLAYGROUND_ROLES = new Set(["admin", "super_admin"]);
 
 const encoder = new TextEncoder();
 
@@ -32,7 +35,7 @@ export async function POST(req: Request): Promise<Response> {
     });
   }
 
-  let body: { conversationId?: string; message?: string; isPlayground?: boolean };
+  let body: { conversationId?: string; message?: string; isPlayground?: boolean; channel?: string };
   try {
     body = (await req.json()) as typeof body;
   } catch {
@@ -49,6 +52,18 @@ export async function POST(req: Request): Promise<Response> {
     });
   }
 
+  // Gate de role para playground — apenas admin/super_admin
+  const isPlayground = body.isPlayground === true;
+  if (isPlayground && !PLAYGROUND_ROLES.has(user.platformRole)) {
+    return new Response(JSON.stringify({ error: "Acesso negado ao playground" }), {
+      status: 403,
+      headers: { "Content-Type": "application/json" },
+    });
+  }
+
+  // Canal: playground usa canal "playground", demais usam "in_app"
+  const channel: AgentChannel = isPlayground ? "playground" : "in_app";
+
   // Resolver conversationId: usar existente ou criar nova
   let conversationId: string;
   if (body.conversationId) {
@@ -62,7 +77,7 @@ export async function POST(req: Request): Promise<Response> {
     }
     conversationId = body.conversationId;
   } else {
-    const conv = await createConversation(user.id, "in_app");
+    const conv = await createConversation(user.id, channel);
     conversationId = conv.id;
   }
 
@@ -79,6 +94,8 @@ export async function POST(req: Request): Promise<Response> {
       function onEvent(evt: AgentEvent) {
         if (evt.type === "thinking") {
           emit({ type: "status", status: "thinking" });
+        } else if (evt.type === "token") {
+          emit({ type: "token", delta: evt.delta });
         } else if (evt.type === "tool_call") {
           emit({ type: "tool_call", toolName: evt.toolName });
         } else if (evt.type === "tool_result") {
@@ -93,8 +110,8 @@ export async function POST(req: Request): Promise<Response> {
           conversationId,
           userId: user.id,
           userMessage: body.message!.trim(),
-          channel: "in_app",
-          isPlayground: body.isPlayground ?? false,
+          channel,
+          isPlayground,
           onEvent,
         });
 
