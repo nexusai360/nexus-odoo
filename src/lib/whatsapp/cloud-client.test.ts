@@ -25,15 +25,6 @@ function mockFetchJson(body: unknown, status = 200) {
   });
 }
 
-function mockFetchBinary(buffer: ArrayBuffer, status = 200) {
-  return jest.fn().mockResolvedValueOnce({
-    ok: status >= 200 && status < 300,
-    status,
-    json: async () => ({}),
-    arrayBuffer: async () => buffer,
-  });
-}
-
 // ──────────────────────────────────────────────
 // sendText
 // ──────────────────────────────────────────────

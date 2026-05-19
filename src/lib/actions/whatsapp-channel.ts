@@ -16,8 +16,6 @@ import { prisma } from "@/lib/prisma";
 import { getCurrentUser } from "@/lib/auth";
 import { encrypt, decrypt, mask } from "@/lib/encryption";
 import { logAudit } from "@/lib/audit";
-import type { ActionResult } from "@/lib/actions/users";
-
 type DataResult<T> = { success: true; data: T } | { success: false; error: string };
 
 /** Schema de atualização do canal WhatsApp. */
