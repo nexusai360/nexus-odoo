@@ -15,7 +15,7 @@ import { BookOpen, FlaskConical } from "lucide-react";
 
 import { PageHeader } from "@/components/page-header";
 import { PageShell } from "@/components/layout/page-shell";
-import { buttonVariants } from "@/components/ui/button";
+import { buttonVariants } from "@/components/ui/button-variants";
 import {
   Card,
   CardContent,
