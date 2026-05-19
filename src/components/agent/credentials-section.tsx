@@ -76,8 +76,8 @@ interface CredentialsSectionProps {
 type DialogState =
   | { mode: "closed" }
   | { mode: "create"; provider: LlmProvider }
-  | { mode: "rename"; cred: CredentialSummary }
-  | { mode: "rotate"; cred: CredentialSummary };
+  // "edit" — tela única: muda o nome e (opcionalmente) troca a chave (B3).
+  | { mode: "edit"; cred: CredentialSummary };
 
 /** Texto curto do saldo conhecido de uma chave. */
 function balanceLabel(balance: CredentialBalance | null): {
@@ -341,26 +341,15 @@ export function CredentialsSection({
                         <Button
                           size="sm"
                           variant="ghost"
-                          className="cursor-pointer"
+                          className="cursor-pointer gap-1.5"
                           disabled={pending}
                           onClick={() =>
-                            setDialogState({ mode: "rename", cred: c })
+                            setDialogState({ mode: "edit", cred: c })
                           }
-                          aria-label={`Renomear ${c.label}`}
+                          aria-label={`Editar ${c.label}`}
+                          title="Editar nome e chave de API"
                         >
-                          <Pencil className="h-3.5 w-3.5" /> Renomear
-                        </Button>
-                        <Button
-                          size="sm"
-                          variant="ghost"
-                          className="cursor-pointer"
-                          disabled={pending}
-                          onClick={() =>
-                            setDialogState({ mode: "rotate", cred: c })
-                          }
-                          aria-label={`Trocar chave ${c.label}`}
-                        >
-                          <RefreshCw className="h-3.5 w-3.5" /> Trocar
+                          <Pencil className="h-3.5 w-3.5" /> Editar
                         </Button>
                         <AlertDialog
                           open={deletingId === c.id}
@@ -459,11 +448,7 @@ function CredentialDialog({ state, onClose, onSaved }: CredentialDialogProps) {
 
   useEffect(() => {
     if (state.mode === "closed") return;
-    if (state.mode === "rename") {
-      setLabel(state.cred.label);
-    } else {
-      setLabel("");
-    }
+    setLabel(state.mode === "edit" ? state.cred.label : "");
     setApiKey("");
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [dialogKey]);
@@ -497,34 +482,19 @@ function CredentialDialog({ state, onClose, onSaved }: CredentialDialogProps) {
         onSaved();
         return;
       }
-      if (current.mode === "rename") {
-        const trimmed = label.trim();
-        if (!trimmed) {
-          toast.error("Informe um nome para a chave.");
-          return;
-        }
-        const r = await updateCredentialAction(current.cred.id, {
-          label: trimmed,
-        });
-        if (!r.success) {
-          toast.error(r.error ?? "Erro ao renomear.");
-          return;
-        }
-        toast.success("Chave renomeada.");
-        onSaved();
+      // edit — muda o nome e, se uma nova chave foi colada, troca a chave.
+      const trimmed = label.trim();
+      if (!trimmed) {
+        toast.error("Informe um nome para a chave.");
         return;
       }
-      // rotate
       const trimmedKey = apiKey.trim();
-      if (!trimmedKey) {
-        toast.error("Cole a nova chave de API.");
-        return;
-      }
       const r = await updateCredentialAction(current.cred.id, {
-        apiKey: trimmedKey,
+        label: trimmed,
+        ...(trimmedKey ? { apiKey: trimmedKey } : {}),
       });
       if (!r.success) {
-        toast.error(r.error ?? "Erro ao trocar chave.");
+        toast.error(r.error ?? "Erro ao salvar a chave.");
         return;
       }
       toast.success("Chave atualizada.");
@@ -532,12 +502,7 @@ function CredentialDialog({ state, onClose, onSaved }: CredentialDialogProps) {
     });
   }
 
-  const title =
-    state.mode === "create"
-      ? "Nova chave"
-      : state.mode === "rename"
-        ? "Renomear chave"
-        : "Trocar chave";
+  const title = state.mode === "create" ? "Nova chave" : "Editar chave";
 
   return (
     <Dialog
@@ -557,45 +522,48 @@ function CredentialDialog({ state, onClose, onSaved }: CredentialDialogProps) {
         </DialogHeader>
 
         <div className="space-y-4">
-          {state.mode !== "rotate" ? (
-            <div className="space-y-1.5">
-              <Label htmlFor="cred-label">
-                Nome{" "}
+          <div className="space-y-1.5">
+            <Label htmlFor="cred-label">
+              Nome{" "}
+              <span aria-hidden="true" className="text-destructive">
+                *
+              </span>
+            </Label>
+            <Input
+              id="cred-label"
+              value={label}
+              onChange={(e) => setLabel(e.currentTarget.value)}
+              placeholder="Ex: Conta principal"
+              maxLength={60}
+              disabled={pending}
+              autoComplete="off"
+            />
+          </div>
+          <div className="space-y-1.5">
+            <Label htmlFor="cred-key">
+              Chave de API{" "}
+              {state.mode === "create" ? (
                 <span aria-hidden="true" className="text-destructive">
                   *
                 </span>
-              </Label>
-              <Input
-                id="cred-label"
-                value={label}
-                onChange={(e) => setLabel(e.currentTarget.value)}
-                placeholder="Ex: Conta principal"
-                maxLength={60}
-                disabled={pending}
-                autoComplete="off"
-              />
-            </div>
-          ) : null}
-          {state.mode !== "rename" ? (
-            <div className="space-y-1.5">
-              <Label htmlFor="cred-key">
-                Chave de API{" "}
-                <span aria-hidden="true" className="text-destructive">
-                  *
-                </span>
-              </Label>
-              <Input
-                id="cred-key"
-                type="password"
-                value={apiKey}
-                onChange={(e) => setApiKey(e.currentTarget.value)}
-                placeholder="sk-…"
-                className="font-mono"
-                disabled={pending}
-                autoComplete="off"
-              />
-            </div>
-          ) : null}
+              ) : null}
+            </Label>
+            <Input
+              id="cred-key"
+              type="password"
+              value={apiKey}
+              onChange={(e) => setApiKey(e.currentTarget.value)}
+              placeholder={state.mode === "edit" ? "Deixe em branco para manter a chave atual" : "sk-…"}
+              className="font-mono"
+              disabled={pending}
+              autoComplete="off"
+            />
+            {state.mode === "edit" ? (
+              <p className="text-xs text-muted-foreground">
+                Cole uma nova chave apenas se quiser trocá-la.
+              </p>
+            ) : null}
+          </div>
         </div>
 
         <DialogFooter>
