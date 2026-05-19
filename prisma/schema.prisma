@@ -38,6 +38,45 @@ enum AuditAction {
   setting_updated
   session_revoked
   user_domains_changed
+  // F5 — agente + WhatsApp + integrações
+  user_whatsapp_added
+  user_whatsapp_removed
+  whatsapp_inbound_rejected
+  agent_settings_updated
+  llm_credential_created
+  llm_credential_deleted
+  api_key_created
+  api_key_revoked
+  whatsapp_channel_updated
+}
+
+// F5 — enums do agente e integrações
+enum AgentChannel {
+  whatsapp
+  in_app
+  playground
+}
+
+enum MessageRole {
+  user
+  assistant
+  tool
+}
+
+enum KbKind {
+  PDF
+  TXT
+  URL
+}
+
+enum WhatsappResponseMode {
+  direct
+  n8n_webhook
+}
+
+enum WebhookDirection {
+  inbound
+  outbound
 }
 
 enum ReportDomain {
@@ -77,6 +116,9 @@ model User {
   emailChangeTokens   EmailChangeToken[]
   domainAccess        UserDomainAccess[]   @relation("UserDomainAccess")
   reportPresets       ReportPreset[]
+  // F5
+  conversations       Conversation[]
+  whatsappNumbers     UserWhatsappNumber[]
 
   @@index([platformRole, isActive])
   @@index([email])
@@ -1464,4 +1506,191 @@ model FeatureRequest {
   criadoEm       DateTime @default(now()) @map("criado_em")
 
   @@map("feature_requests")
+}
+
+// ─── F5 — Agente de IA + WhatsApp + Integrações ──────────────────────────────
+
+/// Número de WhatsApp vinculado a um usuário da plataforma (N por usuário).
+model UserWhatsappNumber {
+  id         String    @id @default(uuid()) @db.Uuid
+  userId     String    @map("user_id") @db.Uuid
+  user       User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  phoneE164  String    @unique @map("phone_e164")
+  label      String?
+  verifiedAt DateTime? @map("verified_at")
+  createdAt  DateTime  @default(now()) @map("created_at")
+
+  @@index([userId])
+  @@map("user_whatsapp_numbers")
+}
+
+/// Conversa de agente (WhatsApp, in-app ou playground).
+/// Agrupamento: WhatsApp → automático (< 24h); in-app/playground → explícito.
+model Conversation {
+  id        String       @id @default(uuid()) @db.Uuid
+  userId    String       @map("user_id") @db.Uuid
+  user      User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  channel   AgentChannel
+  title     String?
+  createdAt DateTime     @default(now()) @map("created_at")
+  updatedAt DateTime     @updatedAt @map("updated_at")
+  messages  Message[]
+
+  @@index([userId, updatedAt])
+  @@map("conversations")
+}
+
+/// Mensagem de conversa (user, assistant ou tool).
+model Message {
+  id             String       @id @default(uuid()) @db.Uuid
+  conversationId String       @map("conversation_id") @db.Uuid
+  conversation   Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  role           MessageRole
+  content        String
+  toolCalls      Json?        @map("tool_calls")
+  createdAt      DateTime     @default(now()) @map("created_at")
+
+  @@index([conversationId, createdAt])
+  @@map("messages")
+}
+
+/// Credencial de API de LLM — chave cifrada com AES-256.
+model LlmCredential {
+  id              String    @id @default(uuid()) @db.Uuid
+  provider        String
+  label           String
+  encryptedApiKey String    @map("encrypted_api_key")
+  last4           String
+  createdAt       DateTime  @default(now()) @map("created_at")
+  updatedAt       DateTime  @updatedAt @map("updated_at")
+  createdById     String?   @map("created_by_id") @db.Uuid
+  configs         LlmConfig[]
+
+  @@unique([provider, label])
+  @@index([provider, updatedAt(sort: Desc)])
+  @@map("llm_credentials")
+}
+
+/// Configuração LLM ativa (provider + model + credencial).
+/// Ativar é transacional: desativa todas e ativa a escolhida.
+model LlmConfig {
+  id           String         @id @default(uuid()) @db.Uuid
+  provider     String
+  model        String
+  credentialId String?        @map("credential_id") @db.Uuid
+  credential   LlmCredential? @relation(fields: [credentialId], references: [id])
+  isActive     Boolean        @default(false) @map("is_active")
+  createdAt    DateTime       @default(now()) @map("created_at")
+  updatedAt    DateTime       @updatedAt @map("updated_at")
+
+  @@map("llm_configs")
+}
+
+/// Registro de uso de LLM por iteração do loop de tool calling.
+/// costUsd = null quando costKnown = false (modelo sem preço no catálogo).
+/// costBrl calculado com cotação versionada; rateStale=true se cotação falhou.
+model LlmUsage {
+  id             String   @id @default(uuid()) @db.Uuid
+  conversationId String?  @map("conversation_id") @db.Uuid
+  provider       String
+  model          String
+  tokensInput    Int      @map("tokens_input")
+  tokensOutput   Int      @map("tokens_output")
+  costUsd        Decimal? @map("cost_usd") @db.Decimal(12, 6)
+  costKnown      Boolean  @default(true) @map("cost_known")
+  costBrl        Decimal? @map("cost_brl") @db.Decimal(14, 6)
+  usdToBrlRate   Decimal? @map("usd_to_brl_rate") @db.Decimal(10, 4)
+  rateSpread     Decimal? @map("rate_spread") @db.Decimal(6, 4)
+  rateStale      Boolean  @default(false) @map("rate_stale")
+  promptChars    Int?     @map("prompt_chars")
+  responseChars  Int?     @map("response_chars")
+  durationMs     Int?     @map("duration_ms")
+  errorMessage   String?  @map("error_message")
+  isPlayground   Boolean  @default(false) @map("is_playground")
+  userId         String?  @map("user_id") @db.Uuid
+  createdAt      DateTime @default(now()) @map("created_at")
+
+  @@index([createdAt])
+  @@index([provider, model, createdAt])
+  @@map("llm_usage")
+}
+
+/// Configuração do agente — singleton (id="global").
+model AgentSettings {
+  id                String   @id @default("global")
+  identityBase      String?  @map("identity_base")
+  personality       String   @default("")
+  tone              String   @default("")
+  guardrails        Json     @default("[]")
+  terminology       Json     @default("{}")
+  advancedOverride  String?  @map("advanced_override")
+  audioInputEnabled Boolean  @default(false) @map("audio_input_enabled")
+  kbEnabled         Boolean  @default(true) @map("kb_enabled")
+  suggestionsEnabled Boolean @default(true) @map("suggestions_enabled")
+  updatedAt         DateTime @updatedAt @map("updated_at")
+
+  @@map("agent_settings")
+}
+
+/// Documento da base de conhecimento do agente.
+/// A coluna embedding vector(1536) é adicionada via SQL raw na migration (pgvector, onda 7).
+model KbDocument {
+  id            String   @id @default(uuid()) @db.Uuid
+  name          String
+  kind          KbKind   @default(TXT)
+  sourceUrl     String?  @map("source_url")
+  extractedText String   @map("extracted_text")
+  charCount     Int      @map("char_count")
+  createdAt     DateTime @default(now()) @map("created_at")
+
+  @@map("kb_documents")
+}
+
+/// Canal WhatsApp — singleton (id="global") com credenciais Meta + modo de resposta.
+model WhatsappChannel {
+  id                String               @id @default("global")
+  encryptedApiToken String?              @map("encrypted_api_token")
+  businessAccountId String?              @map("business_account_id")
+  phoneNumberId     String?              @map("phone_number_id")
+  responseMode      WhatsappResponseMode @default(direct)
+  enabled           Boolean              @default(false)
+  updatedAt         DateTime             @updatedAt @map("updated_at")
+
+  @@map("whatsapp_channel")
+}
+
+/// Webhook configurado (inbound = receptor; outbound = n8n callback).
+model WhatsappWebhook {
+  id        String           @id @default(uuid()) @db.Uuid
+  direction WebhookDirection
+  url       String?
+  secret    String
+  enabled   Boolean          @default(true)
+  createdAt DateTime         @default(now()) @map("created_at")
+
+  @@map("whatsapp_webhooks")
+}
+
+/// API key da plataforma para acesso externo (ex.: node Agent do n8n).
+/// A key só é exibida na criação; persiste-se só o hash SHA-256.
+model ApiKey {
+  id          String    @id @default(uuid()) @db.Uuid
+  label       String
+  keyHash     String    @unique @map("key_hash")
+  last4       String
+  scopes      Json      @default("[]")
+  revokedAt   DateTime? @map("revoked_at")
+  createdById String?   @map("created_by_id") @db.Uuid
+  createdAt   DateTime  @default(now()) @map("created_at")
+
+  @@map("api_keys")
+}
+
+/// Idempotência do webhook receptor (evitar reprocessamento de mensagem WhatsApp).
+/// Job de limpeza remove registros com processedAt > 7 dias.
+model ProcessedWhatsappMessage {
+  messageId   String   @id @map("message_id")
+  processedAt DateTime @default(now()) @map("processed_at")
+
+  @@map("processed_whatsapp_messages")
 }

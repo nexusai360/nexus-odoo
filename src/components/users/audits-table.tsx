@@ -34,6 +34,16 @@ const ACTION_LABELS: Record<AuditAction, string> = {
   setting_updated: "Configuração alterada",
   session_revoked: "Sessão revogada",
   user_domains_changed: "Domínios de acesso alterados",
+  // F5
+  user_whatsapp_added: "WhatsApp vinculado",
+  user_whatsapp_removed: "WhatsApp removido",
+  whatsapp_inbound_rejected: "Mensagem WhatsApp rejeitada",
+  agent_settings_updated: "Config. do agente atualizada",
+  llm_credential_created: "Credencial LLM criada",
+  llm_credential_deleted: "Credencial LLM excluída",
+  api_key_created: "API key criada",
+  api_key_revoked: "API key revogada",
+  whatsapp_channel_updated: "Canal WhatsApp atualizado",
 };
 
 function getActionBadgeClasses(action: AuditAction): string {
