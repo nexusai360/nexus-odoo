@@ -2,6 +2,12 @@ import { PrismaClient, Prisma } from "../src/generated/prisma/client";
 import { PrismaPg } from "@prisma/adapter-pg";
 import bcrypt from "bcryptjs";
 import { MODEL_CATALOG } from "../src/worker/catalog/model-catalog";
+import {
+  DEFAULT_PERSONALITY,
+  DEFAULT_TONE,
+  DEFAULT_GUARDRAILS,
+} from "../src/lib/agent/prompt/defaults";
+import { IDENTITY_BASE } from "../src/lib/agent/prompt/identity-base";
 
 if (!process.env.DATABASE_URL) {
   throw new Error("[seed] DATABASE_URL não definido no ambiente.");
@@ -91,17 +97,18 @@ async function main() {
     });
   }
 
-  // AgentSettings singleton
+  // AgentSettings singleton — semeado já preenchido com o prompt do domínio
+  // Matrix Fitness Group (identidade, personalidade, tom, guardrails), para
+  // que a tela Prompt nunca apareça vazia numa instalação nova.
   await prisma.agentSettings.upsert({
     where: { id: "global" },
     create: {
       id: "global",
-      personality: "",
-      tone: "",
-      guardrails: [],
+      identityBase: IDENTITY_BASE,
+      personality: DEFAULT_PERSONALITY,
+      tone: DEFAULT_TONE,
+      guardrails: DEFAULT_GUARDRAILS,
       terminology: {},
-      audioInputEnabled: false,
-      kbEnabled: false,
       suggestionsEnabled: true,
     },
     update: {},

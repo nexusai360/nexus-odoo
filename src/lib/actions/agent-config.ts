@@ -29,6 +29,7 @@ import {
   DEFAULT_TONE,
   DEFAULT_GUARDRAILS,
 } from "@/lib/agent/prompt/defaults";
+import { IDENTITY_BASE } from "@/lib/agent/prompt/identity-base";
 
 export type {
   AgentSettingsData,
@@ -117,17 +118,47 @@ function mapSettings(row: AgentSettingsRow): AgentSettingsData {
   };
 }
 
-/** Garante que o singleton existe (cria com defaults se necessário). */
+/**
+ * Garante que o singleton existe e está preenchido.
+ *
+ * Cria com os defaults do domínio Matrix Fitness Group quando ausente. Para
+ * instalações antigas em que o singleton foi criado vazio (personality/tone/
+ * guardrails em branco, identityBase nulo), faz um auto-reparo preenchendo
+ * APENAS os campos ainda vazios — edições feitas pelo admin nunca são tocadas.
+ */
 async function ensureGlobalSettings(): Promise<AgentSettingsData> {
   const existing = await prisma.agentSettings.findUnique({
     where: { id: "global" },
   });
-  if (existing) return mapSettings(existing as AgentSettingsRow);
+  if (existing) {
+    const repair: {
+      identityBase?: string;
+      personality?: string;
+      tone?: string;
+      guardrails?: string[];
+    } = {};
+    if (!existing.identityBase) repair.identityBase = IDENTITY_BASE;
+    if (!existing.personality.trim()) repair.personality = DEFAULT_PERSONALITY;
+    if (!existing.tone.trim()) repair.tone = DEFAULT_TONE;
+    const currentGuardrails = existing.guardrails as unknown;
+    if (!Array.isArray(currentGuardrails) || currentGuardrails.length === 0) {
+      repair.guardrails = DEFAULT_GUARDRAILS;
+    }
+    if (Object.keys(repair).length > 0) {
+      const fixed = await prisma.agentSettings.update({
+        where: { id: "global" },
+        data: repair,
+      });
+      return mapSettings(fixed as AgentSettingsRow);
+    }
+    return mapSettings(existing as AgentSettingsRow);
+  }
 
   const created = await prisma.agentSettings.upsert({
     where: { id: "global" },
     create: {
       id: "global",
+      identityBase: IDENTITY_BASE,
       personality: DEFAULT_PERSONALITY,
       tone: DEFAULT_TONE,
       guardrails: DEFAULT_GUARDRAILS,

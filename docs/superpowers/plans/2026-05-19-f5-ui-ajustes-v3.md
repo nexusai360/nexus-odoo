@@ -338,3 +338,45 @@ atômicos `fix(f5-ui):`/`feat(f5-ui):`. `tsc`+`build` verdes ao fim de cada bloc
 | Feedback de clicável (cursor + tooltip) | G9 |
 | Playground: prompt da sessão = tela Prompt | G10 |
 | Consumo: tag de tipo de requisição | G11 |
+
+---
+
+## BLOCO H — 5ª rodada de feedback (Configuração, Chaves de API) ✅
+
+> Feedback dado após revisão das telas Configuração e Chaves de API.
+> Implementado em `fix(f5-ui): erro embedding + ajustes ...`.
+
+### Task H0 — Erro `column "embedding" does not exist` ✅
+- [x] A migration `f5_llm_usage_credential_kind` derrubou a coluna `embedding`
+  de `kb_documents` (o `prisma migrate dev` não enxerga o tipo `vector`).
+  Nova migration idempotente `f5_restore_kb_embedding` re-adiciona coluna +
+  índice HNSW; schema declara `embedding Unsupported("vector(1536)")?`.
+
+### Task H1 — "Testar conexão": sem tarja permanente ✅
+- [x] Removida a segunda tarja verde embaixo. O resultado do teste vai para a
+  **tarja única do topo** (fonte da verdade) e por toast.
+- [x] Botão "Testar conexão" **desabilita** quando a conexão está ativa e
+  inalterada (provedor/modelo/chave iguais aos salvos); reativa ao mudar.
+
+### Task H2 — Atalho "Nova chave" no dropdown de Chave de API ✅
+- [x] O `CustomSelect` ganha prop `footer`; o select de Chave de API exibe
+  no rodapé "Nova chave de <provedor>" levando a `/agente/chaves`.
+
+### Task H3 — Dropdown menos arredondado ✅
+- [x] Menu do `CustomSelect` passa de `rounded-xl` para `rounded-lg`.
+
+### Task H4 — Bloco Consumo/Saldo da chave ✅
+- [x] Respiro entre o select e o bloco; "Adicionar crédito" vira botão outline.
+
+## BLOCO I — 5ª rodada (Chaves de API) ✅
+
+### Task I1 — Remover "Atualizar" e "Saldo indisponível" ✅
+- [x] O consumo é rastreado pela plataforma; botão "Atualizar" removido.
+  Saldo real só aparece quando o provedor o expõe (OpenRouter).
+
+### Task I2 — "Adicionar crédito" como botão outline ✅
+- [x] Substitui o link roxo por botão com contorno.
+
+### Task I3 — Placeholder cortado no dialog Editar ✅
+- [x] Placeholder encurtado para "Nova chave — opcional"; explicação completa
+  movida para o helper text.
