@@ -29,7 +29,7 @@ export default async function ConsumoPage() {
     <PageShell variant="wide">
       <PageHeader
         icon={TrendingUp}
-        title="Consumo do Agente"
+        title="Consumo do Agente Nex"
         subtitle="Custo e uso de tokens por modelo, provedor e período."
       />
       <ConsumoContent minDate={minDate.toISOString()} />

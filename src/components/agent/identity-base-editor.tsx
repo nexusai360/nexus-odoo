@@ -88,7 +88,7 @@ export function IdentityBaseEditor({ initial }: IdentityBaseEditorProps) {
         onChange={(e) => setIdentityBase(e.currentTarget.value)}
         maxLength={MAX_IDENTITY}
         rows={8}
-        placeholder="Defina aqui a identidade fixa do agente — quem ele é, o que faz, contexto da empresa…"
+        placeholder="Defina aqui a identidade fixa do Agente Nex — quem ele é, o que faz, contexto da empresa…"
         disabled={isSaving}
         className="font-mono text-xs"
         aria-describedby="agent-identity-base-help"

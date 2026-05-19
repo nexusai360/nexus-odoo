@@ -74,7 +74,7 @@ export default async function Page() {
     <PageShell variant="narrow">
       <PageHeader
         icon={BookOpen}
-        title="Prompt do Agente"
+        title="Prompt do Agente Nex"
         subtitle="Identidade, comportamento, recursos e base de conhecimento."
         actions={
           <Link
