@@ -262,6 +262,23 @@ export function listModels(provider: LlmProvider): ModelEntry[] {
   return sortModels(MODELS.filter((m) => m.provider === provider));
 }
 
+/** Capacidades multimodais de um modelo. */
+export interface ModelCapabilities {
+  /** Entende imagem (visão multimodal). */
+  vision: boolean;
+  /** Entende áudio (transcrição de voz). */
+  audio: boolean;
+}
+
+/**
+ * Capacidades de um modelo pelo id. Modelo desconhecido → tudo `false`.
+ * Fonte: as flags `vision`/`audio` de cada `ModelEntry`.
+ */
+export function modelCapabilities(id: string): ModelCapabilities {
+  const m = getModel(id);
+  return { vision: m?.vision ?? false, audio: m?.audio ?? false };
+}
+
 /** Modelos de um provider que entendem áudio (transcrição de voz), ordenados. */
 export function listAudioModels(provider: LlmProvider): ModelEntry[] {
   return sortModels(MODELS.filter((m) => m.provider === provider && m.audio));
