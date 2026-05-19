@@ -1,7 +1,7 @@
 /**
  * /agente/playground — Playground do agente como página dedicada.
  *
- * Gate: super_admin ou admin.
+ * Gate: super_admin (aplicado também no layout do grupo /agente).
  * Playground persiste (channel=playground, isPlayground=true).
  * Portado de nexus-insights playground-sheet.tsx, adaptado para full-page.
  *
@@ -15,16 +15,13 @@ import { getPublicAgentFlags } from "@/lib/actions/agent-config";
 import { getPublicActiveLlmConfig } from "@/lib/agent/llm/get-active-config";
 import { PlaygroundContent } from "@/components/agent/playground-content";
 
-export const metadata = { title: "Playground | Nexus Odoo" };
+export const metadata = { title: "Playground do Agente | Matrix Fitness Group" };
+export const dynamic = "force-dynamic";
 
 export default async function PlaygroundPage() {
   const user = await getCurrentUser();
   if (!user) redirect("/login");
-
-  // Gate: apenas admin e super_admin
-  if (user.platformRole !== "super_admin" && user.platformRole !== "admin") {
-    redirect("/dashboard");
-  }
+  if (user.platformRole !== "super_admin") redirect("/dashboard");
 
   const [flags, activeLlm] = await Promise.all([
     getPublicAgentFlags(),
