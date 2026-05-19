@@ -34,15 +34,17 @@ import { toast } from "sonner";
 import { AgentMessage, type AgentMessageRole } from "@/components/agent/agent-message";
 import { SuggestionsBar } from "@/components/agent/suggestions-bar";
 import { AudioRecorder, type AudioRecorderHandle } from "@/components/agent/audio-recorder";
+import { AttachMenu, defaultAttachHandler } from "@/components/agent/attach-menu";
+import { MessageInput } from "@/components/agent/message-input";
 import { PlaygroundSessionPrompt } from "@/components/agent/playground-session-prompt";
 import { Button } from "@/components/ui/button";
-import { Textarea } from "@/components/ui/textarea";
 import { CustomSelect } from "@/components/ui/custom-select";
 import {
   SearchableSelect,
   type SearchableSelectOption,
 } from "@/components/ui/searchable-select";
 import { TierBadge, type CostTier } from "@/components/ui/tier-badge";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
 import {
   listAvailablePlaygroundProviders,
@@ -480,7 +482,7 @@ export function PlaygroundContent({
       initial={prefersReducedMotion ? false : { opacity: 0 }}
       animate={{ opacity: 1 }}
       transition={{ duration: 0.2, ease: "easeOut" }}
-      className="flex h-[calc(100vh-64px-4rem)] gap-4"
+      className="flex h-[calc(100vh-220px)] min-h-[520px] gap-4"
     >
       {/* ===================== Painel lateral ===================== */}
       <aside className="flex w-72 shrink-0 flex-col gap-3 overflow-hidden rounded-2xl border border-border bg-muted/30 p-3">
@@ -563,16 +565,6 @@ export function PlaygroundContent({
               </p>
             </div>
 
-            <Button
-              type="button"
-              size="sm"
-              variant="outline"
-              onClick={() => setView("prompt")}
-              className="h-8 w-full cursor-pointer text-xs"
-            >
-              <FileText className="mr-1.5 h-3.5 w-3.5" aria-hidden />
-              Prompt da sessão
-            </Button>
           </div>
         ) : null}
 
@@ -643,6 +635,25 @@ export function PlaygroundContent({
                   ? `Playground · ${activeProvider?.label ?? active.provider} · ${active.model}`
                   : "Playground do Agente Nex"}
               </span>
+              {active ? (
+                <Tooltip>
+                  <TooltipTrigger
+                    render={
+                      <button
+                        type="button"
+                        onClick={() => setView("prompt")}
+                        className="ml-auto inline-flex h-8 cursor-pointer items-center gap-1.5 rounded-lg border border-violet-500/40 bg-violet-500/10 px-3 text-xs font-medium text-violet-700 transition-colors hover:bg-violet-500/20 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-500 dark:text-violet-300"
+                      >
+                        <FileText className="h-3.5 w-3.5" aria-hidden />
+                        Prompt da sessão
+                      </button>
+                    }
+                  />
+                  <TooltipContent>
+                    Editar o prompt usado nesta sessão de teste
+                  </TooltipContent>
+                </Tooltip>
+              ) : null}
             </div>
 
             {/* Mensagens */}
@@ -733,7 +744,7 @@ export function PlaygroundContent({
               )}
             </div>
 
-            {/* Input bar */}
+            {/* Input bar (G4 + D8 + D9) — anexo+mic dentro do MessageInput */}
             {active ? (
               <footer className="shrink-0 border-t border-border bg-background/80 px-4 pb-4 pt-3">
                 <form
@@ -743,68 +754,98 @@ export function PlaygroundContent({
                   }}
                   className="flex items-end gap-2"
                 >
-                  {audioInputEnabled && !isRecording && !audioFlight ? (
-                    <button
-                      type="button"
-                      onClick={() => {
-                        void recorderRef.current?.start();
-                      }}
-                      aria-label="Gravar áudio"
-                      className="flex h-9 w-9 shrink-0 cursor-pointer items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-500"
-                    >
-                      <Mic className="h-4 w-4" />
-                    </button>
-                  ) : null}
-
-                  <div
-                    className={cn(
-                      "flex min-h-9 flex-1 items-center rounded-xl border border-input bg-background px-3 py-1 transition-colors",
-                      "focus-within:border-violet-500/60 focus-within:ring-2 focus-within:ring-violet-400/30",
-                    )}
-                  >
-                    {!isRecording ? (
-                      <Textarea
+                  <div className="min-w-0 flex-1">
+                    {isRecording ? (
+                      <div className="flex min-h-9 items-center rounded-xl border border-violet-500/40 bg-violet-500/5 px-3 py-1">
+                        {audioInputEnabled ? (
+                          <AudioRecorder
+                            ref={recorderRef}
+                            mode="embedded"
+                            onSend={(blob) => {
+                              void handleSendAudio(blob);
+                            }}
+                            onRecordingStateChange={setIsRecording}
+                          />
+                        ) : null}
+                      </div>
+                    ) : (
+                      <MessageInput
                         value={message}
-                        onChange={(e) => setMessage(e.currentTarget.value)}
-                        onKeyDown={handleKeyDown}
-                        maxLength={MAX_INPUT_LEN}
-                        rows={1}
-                        placeholder="Pergunte ao Agente Nex…"
+                        onChange={setMessage}
+                        onSend={() => void submitMessage(message)}
                         disabled={isSending}
+                        placeholder="Pergunte ao Agente Nex…"
                         aria-label="Mensagem para o Agente Nex"
-                        className="max-h-28 resize-none border-0 bg-transparent px-0 py-1 text-sm leading-relaxed shadow-none focus-visible:ring-0"
+                        maxRows={6}
+                        leftSlot={
+                          <AttachMenu
+                            disabled={isSending}
+                            onPick={defaultAttachHandler}
+                          />
+                        }
+                        rightSlot={
+                          audioInputEnabled && !audioFlight ? (
+                            <Tooltip>
+                              <TooltipTrigger
+                                render={
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      void recorderRef.current?.start();
+                                    }}
+                                    aria-label="Gravar áudio"
+                                    className="flex h-9 w-9 cursor-pointer items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-500"
+                                  >
+                                    <Mic className="h-4 w-4" />
+                                  </button>
+                                }
+                              />
+                              <TooltipContent>Gravar áudio</TooltipContent>
+                            </Tooltip>
+                          ) : null
+                        }
+                        id="playground-input"
                       />
-                    ) : null}
-                    {audioInputEnabled ? (
-                      <AudioRecorder
-                        ref={recorderRef}
-                        mode="embedded"
-                        onSend={(blob) => {
-                          void handleSendAudio(blob);
-                        }}
-                        onRecordingStateChange={setIsRecording}
-                      />
+                    )}
+                    {audioInputEnabled && !isRecording ? (
+                      <div className="sr-only" aria-hidden>
+                        <AudioRecorder
+                          ref={recorderRef}
+                          mode="embedded"
+                          onSend={(blob) => {
+                            void handleSendAudio(blob);
+                          }}
+                          onRecordingStateChange={setIsRecording}
+                        />
+                      </div>
                     ) : null}
                   </div>
 
-                  <button
-                    type="submit"
-                    aria-label={isRecording ? "Enviar áudio" : "Enviar pergunta"}
-                    disabled={isRecording ? false : !canSubmit || audioFlight}
-                    className={cn(
-                      "flex h-9 w-9 shrink-0 cursor-pointer items-center justify-center rounded-xl",
-                      "bg-gradient-to-br from-violet-600 to-violet-500 text-white shadow-md shadow-violet-600/30",
-                      "transition-all hover:from-violet-500 hover:to-violet-400 hover:shadow-lg",
-                      "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-400/50",
-                      "disabled:cursor-not-allowed disabled:opacity-40 disabled:shadow-none",
-                    )}
-                  >
-                    {isSending ? (
-                      <Loader2 className="h-4 w-4 animate-spin motion-reduce:animate-none" aria-hidden />
-                    ) : (
-                      <Send className="h-4 w-4" strokeWidth={2.25} />
-                    )}
-                  </button>
+                  <Tooltip>
+                    <TooltipTrigger
+                      render={
+                        <button
+                          type="submit"
+                          aria-label={isRecording ? "Enviar áudio" : "Enviar pergunta"}
+                          disabled={isRecording ? false : !canSubmit || audioFlight}
+                          className={cn(
+                            "flex h-9 w-9 shrink-0 cursor-pointer items-center justify-center rounded-xl",
+                            "bg-gradient-to-br from-violet-600 to-violet-500 text-white shadow-md shadow-violet-600/30",
+                            "transition-all hover:from-violet-500 hover:to-violet-400 hover:shadow-lg",
+                            "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-400/50",
+                            "disabled:cursor-not-allowed disabled:opacity-40 disabled:shadow-none",
+                          )}
+                        >
+                          {isSending ? (
+                            <Loader2 className="h-4 w-4 animate-spin motion-reduce:animate-none" aria-hidden />
+                          ) : (
+                            <Send className="h-4 w-4" strokeWidth={2.25} />
+                          )}
+                        </button>
+                      }
+                    />
+                    <TooltipContent>Enviar mensagem (Enter)</TooltipContent>
+                  </Tooltip>
                 </form>
                 {overLimit ? (
                   <p className="mt-1.5 px-1 text-[11px] text-destructive">

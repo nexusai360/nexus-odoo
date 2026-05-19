@@ -10,9 +10,12 @@
  */
 
 import { redirect } from "next/navigation";
+import { FlaskConical } from "lucide-react";
 import { getCurrentUser } from "@/lib/auth";
 import { getPublicAgentFlags } from "@/lib/actions/agent-config";
 import { PlaygroundContent } from "@/components/agent/playground-content";
+import { PageHeader } from "@/components/page-header";
+import { PageShell } from "@/components/layout/page-shell";
 
 export const metadata = { title: "Playground do Agente Nex | Matrix Fitness Group" };
 export const dynamic = "force-dynamic";
@@ -25,9 +28,16 @@ export default async function PlaygroundPage() {
   const flags = await getPublicAgentFlags();
 
   return (
-    <PlaygroundContent
-      audioInputEnabled={flags.audioInPlayground}
-      userId={user.id}
-    />
+    <PageShell variant="wide">
+      <PageHeader
+        icon={FlaskConical}
+        title="Playground do Agente Nex"
+        subtitle="Teste o Agente Nex com sessões isoladas — escolha provedor, modelo e prompt sem afetar a produção."
+      />
+      <PlaygroundContent
+        audioInputEnabled={flags.audioInPlayground}
+        userId={user.id}
+      />
+    </PageShell>
   );
 }
