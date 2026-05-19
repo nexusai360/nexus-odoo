@@ -150,7 +150,12 @@ export async function runAgent(args: RunAgentInput): Promise<RunAgentResult> {
   try {
     // Resolver LLM: override da sessão de playground tem prioridade sobre a
     // config ativa de produção.
-    let resolvedLlm: { provider: import("./llm/types").LlmProvider; model: string; apiKey: string };
+    let resolvedLlm: {
+      provider: import("./llm/types").LlmProvider;
+      model: string;
+      apiKey: string;
+      credentialId?: string | null;
+    };
     if (args.llmOverride) {
       resolvedLlm = args.llmOverride;
     } else {
@@ -165,6 +170,7 @@ export async function runAgent(args: RunAgentInput): Promise<RunAgentResult> {
         provider: llmConfig.provider,
         model: llmConfig.model,
         apiKey: llmConfig.apiKey,
+        credentialId: llmConfig.credentialId,
       };
     }
 
@@ -273,6 +279,7 @@ export async function runAgent(args: RunAgentInput): Promise<RunAgentResult> {
         logUsage({
         provider: client.provider,
         model: client.model,
+        credentialId: resolvedLlm.credentialId ?? undefined,
         tokensInput: result.usage.tokensInput,
         tokensOutput: result.usage.tokensOutput,
         conversationId: args.conversationId,

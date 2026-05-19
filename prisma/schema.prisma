@@ -44,6 +44,7 @@ enum AuditAction {
   whatsapp_inbound_rejected
   agent_settings_updated
   llm_credential_created
+  llm_credential_updated
   llm_credential_deleted
   api_key_created
   api_key_revoked

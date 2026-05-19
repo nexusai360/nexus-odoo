@@ -12,11 +12,22 @@ import { prisma } from "@/lib/prisma";
 import { encrypt, decrypt } from "@/lib/encryption";
 import { logAudit } from "@/lib/audit";
 import type { LlmProvider } from "./types";
+import { fetchProviderBalance, type BalanceStatus } from "./billing";
 
 export const CREDENTIAL_IN_USE = "CREDENTIAL_IN_USE";
 
 const MAX_LABEL_LEN = 60;
 const MIN_API_KEY_LEN = 10;
+
+/** Saldo da conta do provedor associado a uma chave de API. */
+export interface CredentialBalance {
+  status: BalanceStatus;
+  /** Saldo em USD quando status === "ok". */
+  usd: number | null;
+  currency: string | null;
+  /** ISO timestamp da última consulta, ou null se nunca consultado. */
+  checkedAt: string | null;
+}
 
 export interface CredentialSummary {
   id: string;
@@ -25,6 +36,8 @@ export interface CredentialSummary {
   last4: string;
   createdAt: string;
   updatedAt: string;
+  /** Saldo da conta do provedor (null quando nunca consultado). */
+  balance: CredentialBalance | null;
 }
 
 export interface CreateCredentialInput {
@@ -75,6 +88,10 @@ export async function listCredentials(
       last4: true,
       createdAt: true,
       updatedAt: true,
+      balanceUsd: true,
+      balanceCurrency: true,
+      balanceStatus: true,
+      balanceCheckedAt: true,
     },
   });
 
@@ -85,7 +102,61 @@ export async function listCredentials(
     last4: row.last4,
     createdAt: row.createdAt.toISOString(),
     updatedAt: row.updatedAt.toISOString(),
+    balance: row.balanceStatus
+      ? {
+          status: row.balanceStatus as BalanceStatus,
+          usd: row.balanceUsd != null ? Number(row.balanceUsd) : null,
+          currency: row.balanceCurrency,
+          checkedAt: row.balanceCheckedAt?.toISOString() ?? null,
+        }
+      : null,
   }));
+}
+
+/**
+ * Consulta o saldo da conta do provedor para uma chave e persiste o resultado
+ * em `LlmCredential` (balanceUsd/balanceCurrency/balanceStatus/balanceCheckedAt).
+ *
+ * Chamado pela tela Chaves de API (atualização manual) e após cada uso da
+ * chave pelo agente. Best-effort: nunca lança — erros viram status "error".
+ */
+export async function refreshCredentialBalance(
+  credentialId: string,
+): Promise<CredentialBalance | null> {
+  const row = await prisma.llmCredential.findUnique({
+    where: { id: credentialId },
+    select: { provider: true, encryptedApiKey: true },
+  });
+  if (!row) return null;
+
+  let apiKey: string;
+  try {
+    apiKey = decrypt(row.encryptedApiKey);
+  } catch {
+    return null;
+  }
+
+  const result = await fetchProviderBalance(row.provider as LlmProvider, apiKey);
+  const checkedAt = new Date();
+
+  await prisma.llmCredential
+    .update({
+      where: { id: credentialId },
+      data: {
+        balanceUsd: result.balanceUsd,
+        balanceCurrency: result.currency,
+        balanceStatus: result.status,
+        balanceCheckedAt: checkedAt,
+      },
+    })
+    .catch(() => undefined);
+
+  return {
+    status: result.status,
+    usd: result.balanceUsd,
+    currency: result.currency,
+    checkedAt: checkedAt.toISOString(),
+  };
 }
 
 /** Cria uma credencial — chave cifrada com AES-256. */
@@ -156,6 +227,89 @@ export async function deleteCredential(
     targetType: "llm_credential",
     targetId: id,
   });
+}
+
+export interface UpdateCredentialInput {
+  /** Novo rótulo (renomear). */
+  label?: string;
+  /** Nova chave de API (trocar). */
+  apiKey?: string;
+}
+
+/**
+ * Atualiza uma credencial — renomear (label) e/ou trocar a chave (apiKey).
+ * Ao trocar a chave, o saldo persistido é invalidado (precisa nova consulta).
+ */
+export async function updateCredential(
+  id: string,
+  input: UpdateCredentialInput,
+  updatedById?: string | null,
+): Promise<{ provider: LlmProvider; label: string; last4: string }> {
+  const current = await prisma.llmCredential.findUnique({
+    where: { id },
+    select: { provider: true },
+  });
+  if (!current) throw new Error("Credencial não encontrada");
+  const provider = current.provider as LlmProvider;
+
+  const data: {
+    label?: string;
+    encryptedApiKey?: string;
+    last4?: string;
+    balanceStatus?: null;
+    balanceUsd?: null;
+    balanceCurrency?: null;
+    balanceCheckedAt?: null;
+  } = {};
+
+  if (input.label !== undefined) {
+    const label = input.label.trim();
+    assertValidLabel(label);
+    if (await isLabelTaken(provider, label, id)) {
+      throw new Error(`Label "${label}" já existe para este provider`);
+    }
+    data.label = label;
+  }
+
+  if (input.apiKey !== undefined) {
+    const trimmed = input.apiKey.trim();
+    assertValidApiKey(trimmed);
+    data.encryptedApiKey = encrypt(trimmed);
+    data.last4 = trimmed.slice(-4);
+    // Trocar a chave invalida o saldo conhecido.
+    data.balanceStatus = null;
+    data.balanceUsd = null;
+    data.balanceCurrency = null;
+    data.balanceCheckedAt = null;
+  }
+
+  if (Object.keys(data).length === 0) {
+    throw new Error("Nada a atualizar");
+  }
+
+  const updated = await prisma.llmCredential.update({
+    where: { id },
+    data,
+    select: { provider: true, label: true, last4: true },
+  });
+
+  await logAudit({
+    userId: updatedById ?? undefined,
+    action: "llm_credential_updated",
+    targetType: "llm_credential",
+    targetId: id,
+    details: {
+      provider,
+      renamed: input.label !== undefined,
+      rotated: input.apiKey !== undefined,
+    },
+  });
+
+  return {
+    provider: updated.provider as LlmProvider,
+    label: updated.label,
+    last4: updated.last4,
+  };
 }
 
 /** Retorna a chave decifrada, ou null se a credencial não existir. */

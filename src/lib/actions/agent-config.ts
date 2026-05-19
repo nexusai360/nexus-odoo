@@ -24,6 +24,11 @@ import {
   type FeatureCheckpoint,
   type PublicAgentFlags,
 } from "./agent-config-types";
+import {
+  DEFAULT_PERSONALITY,
+  DEFAULT_TONE,
+  DEFAULT_GUARDRAILS,
+} from "@/lib/agent/prompt/defaults";
 
 export type {
   AgentSettingsData,
@@ -123,9 +128,9 @@ async function ensureGlobalSettings(): Promise<AgentSettingsData> {
     where: { id: "global" },
     create: {
       id: "global",
-      personality: "",
-      tone: "",
-      guardrails: [],
+      personality: DEFAULT_PERSONALITY,
+      tone: DEFAULT_TONE,
+      guardrails: DEFAULT_GUARDRAILS,
       terminology: {},
       suggestionsEnabled: true,
     },

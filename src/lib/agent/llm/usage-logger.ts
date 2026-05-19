@@ -14,6 +14,7 @@
 import { prisma } from "@/lib/prisma";
 import { calculateCost } from "./catalog";
 import { getUsdBrlRate } from "./exchange-rate";
+import { refreshCredentialBalance } from "./credentials";
 
 export interface LogUsageArgs {
   provider: string;
@@ -27,6 +28,8 @@ export interface LogUsageArgs {
   isPlayground?: boolean;
   promptChars?: number;
   responseChars?: number;
+  /** Chave de API usada — dispara atualização do saldo após a chamada. */
+  credentialId?: string;
 }
 
 /**
@@ -84,6 +87,12 @@ export async function logUsage(args: LogUsageArgs): Promise<void> {
         isPlayground: args.isPlayground ?? false,
       },
     });
+
+    // Atualiza o saldo da conta do provedor após o uso (best-effort, sem
+    // bloquear). Mantém o saldo exibido na tela Chaves de API em dia.
+    if (args.credentialId) {
+      void refreshCredentialBalance(args.credentialId).catch(() => undefined);
+    }
   } catch (err) {
     console.warn("[agent] Falha ao registrar uso em LlmUsage:", err);
   }

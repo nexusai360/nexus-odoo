@@ -15,10 +15,13 @@ import { IDENTITY_BASE } from "./identity-base";
 
 export { IDENTITY_BASE };
 
-export const MAX_PERSONALITY_LEN = 500;
-export const MAX_TONE_LEN = 500;
-export const MAX_GUARDRAIL_LEN = 300;
-export const MAX_GUARDRAILS = 20;
+// Limites elevados no rework F5-UI v2: comportamento/tom 1000, cada guardrail
+// 500, guardrails sem teto de quantidade. MAX_GUARDRAILS é só referência
+// defensiva interna (não imposto na UI).
+export const MAX_PERSONALITY_LEN = 1000;
+export const MAX_TONE_LEN = 1000;
+export const MAX_GUARDRAIL_LEN = 500;
+export const MAX_GUARDRAILS = 1000;
 export const MAX_PROMPT_LEN = 50_000;
 export const MAX_KB_TOTAL_CHARS = 50_000;
 

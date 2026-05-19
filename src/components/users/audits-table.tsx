@@ -40,6 +40,7 @@ const ACTION_LABELS: Record<AuditAction, string> = {
   whatsapp_inbound_rejected: "Mensagem WhatsApp rejeitada",
   agent_settings_updated: "Config. do agente atualizada",
   llm_credential_created: "Credencial LLM criada",
+  llm_credential_updated: "Credencial LLM atualizada",
   llm_credential_deleted: "Credencial LLM excluída",
   api_key_created: "API key criada",
   api_key_revoked: "API key revogada",
