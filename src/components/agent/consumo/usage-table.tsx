@@ -328,7 +328,7 @@ export function UsageTable({
                               <span>{fmtBrl(row.costBrl)}</span>
                               {row.rateStale && (
                                 <span className="text-[9px] text-amber-600 dark:text-amber-400">
-                                  cotação estale
+                                  cotação desatualizada
                                 </span>
                               )}
                             </span>

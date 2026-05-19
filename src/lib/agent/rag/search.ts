@@ -100,15 +100,16 @@ export async function searchKb(query: string, topK: number): Promise<KbSearchRes
     return rows;
   } catch (err) {
     if (err instanceof EmbeddingUnavailable) {
-      // Fallback: texto integral, sem semântica
+      // Fallback: texto integral, sem semântica.
+      // Sem `take: topK` — busca todos os documentos e deixa o budget de
+      // FALLBACK_MAX_CHARS do composeSystemPrompt fazer o corte (MÉDIO-4 do review 1-2-7).
       console.info("[searchKb] Sem embedding — usando fallback de texto integral.");
       const docs = await prisma.kbDocument.findMany({
         select: { id: true, name: true, extractedText: true },
-        take: topK,
         orderBy: { createdAt: "desc" },
       });
 
-      // Truncar cada doc ao limite proporcional
+      // Distribui o orçamento proporcional entre todos os docs
       const perDoc = Math.floor(FALLBACK_MAX_CHARS / Math.max(docs.length, 1));
       return docs.map((d) => ({
         id: d.id,
