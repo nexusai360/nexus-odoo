@@ -39,11 +39,12 @@ export interface LogUsageArgs {
  */
 export async function logUsage(args: LogUsageArgs): Promise<void> {
   try {
-    // Calcular custo — retorna {costUsd: null, costKnown: false} para modelos sem preço
+    // Calcular custo — repassa durationMs para modelos cobrados por minuto (ex.: whisper-1)
     const { costUsd, costKnown } = calculateCost(
       args.model,
       args.tokensInput,
       args.tokensOutput,
+      args.durationMs !== undefined ? { durationMs: args.durationMs } : undefined,
     );
 
     // Cotação cambial — nunca retorna null (usa cache stale em falha)
