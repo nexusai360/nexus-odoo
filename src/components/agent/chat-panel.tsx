@@ -512,7 +512,7 @@ export function ChatPanel({
         className={cn(
           "fixed z-50 flex flex-col overflow-hidden bg-card text-foreground shadow-2xl shadow-black/30",
           "inset-0 rounded-none border-0",
-          "sm:inset-auto sm:right-6 sm:bottom-24 sm:h-[70vh] sm:max-h-[640px] sm:w-[420px] sm:rounded-2xl sm:border sm:border-border",
+          "sm:inset-auto sm:right-6 sm:bottom-6 sm:h-[70vh] sm:max-h-[640px] sm:w-[420px] sm:rounded-2xl sm:border sm:border-border",
         )}
       >
         {innerContent}

@@ -20,6 +20,10 @@ export default async function ProtectedLayout({
     avatarUrl: user.avatarUrl,
   };
 
+  // A bubble do agente é exclusiva de super_admin e admin.
+  const canUseAgent =
+    user.platformRole === "super_admin" || user.platformRole === "admin";
+
   // Resolve audioInputEnabled: toggle ligado + provider OpenAI ativo.
   const [flags, activeLlm] = await Promise.all([
     getPublicAgentFlags(),
@@ -34,7 +38,9 @@ export default async function ProtectedLayout({
       <main className="flex-1 overflow-y-auto overscroll-contain">
         <div className="pt-16 pb-8 sm:pt-8">{children}</div>
       </main>
-      <AgentBubble audioInputEnabled={audioInputEnabled} />
+      {canUseAgent ? (
+        <AgentBubble audioInputEnabled={audioInputEnabled} />
+      ) : null}
     </div>
   );
 }
