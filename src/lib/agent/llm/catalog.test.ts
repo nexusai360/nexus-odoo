@@ -1,10 +1,4 @@
-import {
-  MODELS,
-  getModel,
-  listModels,
-  calculateCost,
-  type ModelEntry,
-} from "./catalog";
+import { MODELS, getModel, listModels, calculateCost } from "./catalog";
 
 describe("catalog — fonte única de modelos e pricing", () => {
   test("todos os modelos têm id, provider, tier e pricing (ou null explícito)", () => {

@@ -576,6 +576,27 @@ docs/runbooks/n8n-whatsapp.md            — orientação de config do n8n
 - [ ] **Step 4:** `npx next build` → PASS.
 - [ ] **Step 5:** Commit — `feat(f5): UI de edição de prompt + página de config do agente`.
 
+## Task 3.0e — Ligar `AgentSettings` ao `runAgent` (achado da review da onda 1)
+
+> A review da onda 1 detectou: `runAgent` usa um `DEFAULT_PROMPT_CONFIG`
+> hardcoded em vez de ler o singleton `AgentSettings`. Corrigir agora que as
+> actions de `AgentSettings` existem (Task 3.0a).
+
+**Files:**
+- Modify: `src/lib/agent/run-agent.ts`
+- Modify: `src/lib/agent/run-agent.test.ts`
+- Modify: `prisma/seed.ts` (seed do singleton `AgentSettings` id="global")
+
+- [ ] **Step 1:** Seed: garantir uma linha `AgentSettings` id="global" com
+  defaults sensatos (idempotente, como os demais seeds).
+- [ ] **Step 2:** Atualizar o teste de `run-agent` para esperar que o prompt
+  use os campos de `AgentSettings` (mock do `getAgentSettings`).
+- [ ] **Step 3:** `runAgent` carrega `AgentSettings` (via `getAgentSettings` da
+  Task 3.0a) e monta o `promptCfg` a partir dele — `promptOverride` do
+  Playground ainda tem precedência. Remover o `DEFAULT_PROMPT_CONFIG`.
+- [ ] **Step 4:** `npx jest run-agent` → PASS.
+- [ ] **Step 5:** Commit — `fix(f5): runAgent lê AgentSettings em vez de config hardcoded`.
+
 ## Task 3.1 — Streaming token-a-token no adapter Anthropic (P3)
 
 **Files:**
