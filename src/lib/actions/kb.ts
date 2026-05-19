@@ -8,8 +8,7 @@
 "use server";
 
 import { prisma } from "@/lib/prisma";
-import { getServerSession } from "next-auth";
-import { authOptions } from "@/lib/auth";
+import { getCurrentUser } from "@/lib/auth";
 import { ingestKbDocument } from "@/lib/agent/rag/search";
 import type { KbKind } from "@/generated/prisma/client";
 
@@ -17,19 +16,13 @@ import type { KbKind } from "@/generated/prisma/client";
 const KB_ADMIN_ROLES = new Set(["admin", "super_admin"]);
 
 /** Verifica se o usuário da sessão tem permissão de admin de KB. */
-async function assertKbAdmin() {
-  const session = await getServerSession(authOptions);
-  if (!session?.user?.id) {
-    throw new Error("Não autenticado.");
+async function assertKbAdmin(): Promise<string> {
+  const me = await getCurrentUser();
+  if (!me) throw new Error("Não autenticado.");
+  if (!KB_ADMIN_ROLES.has(me.platformRole ?? "")) {
+    throw new Error("Permissão negada — requer perfil admin ou super_admin.");
   }
-  const user = await prisma.user.findUnique({
-    where: { id: session.user.id },
-    select: { platformRole: true },
-  });
-  if (!user || !KB_ADMIN_ROLES.has(user.platformRole ?? "")) {
-    throw new Error("Permissão negada.");
-  }
-  return session.user.id;
+  return me.id;
 }
 
 /** Resultado padronizado para Server Actions. */

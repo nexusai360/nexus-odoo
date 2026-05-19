@@ -1,5 +1,5 @@
 import { redirect } from "next/navigation";
-import { Bot, Key, Cpu, Sliders, Mic } from "lucide-react";
+import { Bot, Brain, Cpu, Key, Mic, Sliders } from "lucide-react";
 
 import { PageHeader } from "@/components/page-header";
 import { PageShell } from "@/components/layout/page-shell";
@@ -9,12 +9,15 @@ import { LlmConfigForm } from "@/components/agent/llm-config-form";
 import { PromptConfigForm } from "@/components/agent/prompt-config-form";
 import { IdentityBaseEditor } from "@/components/agent/identity-base-editor";
 import { ResourcesToggles } from "@/components/agent/resources-toggles";
+import { KbSection } from "@/components/agent/kb-section";
 import { getCurrentUser } from "@/lib/auth";
 import { getAgentSettings } from "@/lib/actions/agent-config";
 import { listCredentials } from "@/lib/agent/llm/credentials";
 import { getPublicActiveLlmConfig } from "@/lib/agent/llm/get-active-config";
+import { listKbDocumentsAction } from "@/lib/actions/kb";
 import { prisma } from "@/lib/prisma";
 import type { LlmProvider } from "@/lib/agent/llm/types";
+import type { KbDocSummary } from "@/components/agent/kb-section";
 
 export const metadata = { title: "Configuração do Agente | Matrix Fitness Group" };
 export const dynamic = "force-dynamic";
@@ -26,11 +29,14 @@ export default async function Page() {
     redirect("/dashboard");
   }
 
-  const [settingsResult, credentials, activeConfig] = await Promise.all([
+  const [settingsResult, credentials, activeConfig, kbResult] = await Promise.all([
     getAgentSettings(),
     listCredentials().catch(() => [] as Awaited<ReturnType<typeof listCredentials>>),
     getPublicActiveLlmConfig(),
+    listKbDocumentsAction(),
   ]);
+
+  const kbDocs: KbDocSummary[] = kbResult.ok ? kbResult.data : [];
 
   const settings = settingsResult.success ? settingsResult.data : null;
 
@@ -142,6 +148,19 @@ export default async function Page() {
               initial={initialSettings}
               activeProvider={activeConfig?.provider ?? null}
             />
+          </Card>
+        </section>
+
+        {/* Seção: Base de Conhecimento (KB) — admin/super_admin */}
+        <section aria-labelledby="section-kb">
+          <div className="flex items-center gap-2 mb-3">
+            <Brain className="h-4 w-4 text-muted-foreground" />
+            <h2 id="section-kb" className="text-base font-semibold">
+              Base de Conhecimento
+            </h2>
+          </div>
+          <Card className="px-5 py-4">
+            <KbSection initial={kbDocs} />
           </Card>
         </section>
       </div>

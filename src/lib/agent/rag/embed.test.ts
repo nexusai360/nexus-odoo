@@ -7,6 +7,8 @@
  * - Vetor com dimensão ≠ 1536 → lança erro
  */
 
+export {}; // isolatedModules: torna o arquivo um módulo
+
 jest.mock("@/lib/prisma", () => ({
   prisma: {
     appSetting: { findUnique: jest.fn() },

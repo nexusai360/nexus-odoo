@@ -8,6 +8,8 @@
  * - searchKb: fallback texto integral truncado sem credencial de embedding
  */
 
+export {}; // isolatedModules: torna o arquivo um módulo
+
 jest.mock("@/lib/prisma", () => ({
   prisma: {
     kbDocument: {
