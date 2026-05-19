@@ -16,11 +16,14 @@
 | **F3 — Dashboard de relatórios** | 6 relatórios de estoque sobre o cache | ✅ mergeado na `main` (PR #4) |
 | **F3.5 — Dashboard de relatórios v2** | Sofisticação no padrão `nexus-insights` | ✅ mergeado na `main` (PR #4) |
 | **F4 — MCP semântico** | Servidor MCP, **todos os domínios** + Caminho 3c funcional | ✅ **completa — mergeada na `main` (PR #5 + #6 + #7)** |
-| **F5 — Integração WhatsApp** | Agente conectado ao MCP via WhatsApp | 🔄 **EM EXECUÇÃO** (branch `feat/integracao-whatsapp`) |
+| **F5 — Integração WhatsApp** | Agente de IA por WhatsApp + chat in-app, Integrações, RAG | ✅ **completa na branch — aguardando merge (PR)** |
 | F6 — Construtor de relatórios | Wizard in-app guiado por IA | ⬜ futura (inclui o polimento fino dos relatórios) |
 
 **Branch ativa: `feat/integracao-whatsapp`** (criada de `main`, já no remoto). A `main`
-tem F0+F1+F2+F3+F3.5+F4 — tudo em produção.
+tem F0+F1+F2+F3+F3.5+F4 — tudo em produção. A F5 está completa na branch
+(SPEC v1→v3, PLAN v1→v3, 7 ondas executadas, 3 reviews adversariais Opus,
+correções aplicadas, verificação e2e real) — **aguardando merge na `main`
+(decisão humana)**. Resumo em `docs/superpowers/reviews/2026-05-19-f5-verificacao-final.md`.
 
 ---
 
