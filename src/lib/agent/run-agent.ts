@@ -196,6 +196,10 @@ export async function runAgent(args: RunAgentInput): Promise<RunAgentResult> {
 
     const totalUsage: ChatUsage = { tokensInput: 0, tokensOutput: 0, costUsd: 0 };
     const start = Date.now();
+    // Promessas de logUsage pendentes — aguardadas antes de qualquer return para
+    // garantir que o registro de uso seja gravado mesmo que o processo encerre
+    // logo após a resposta (request serverless / job do worker).
+    const usageWrites: Promise<unknown>[] = [];
 
     args.onEvent?.({ type: "thinking" });
 
@@ -207,8 +211,9 @@ export async function runAgent(args: RunAgentInput): Promise<RunAgentResult> {
       totalUsage.tokensOutput += result.usage.tokensOutput;
       totalUsage.costUsd += result.usage.costUsd ?? 0;
 
-      // Registrar uso desta iteração
-      void logUsage({
+      // Registrar uso desta iteração (aguardado antes do return — ver usageWrites)
+      usageWrites.push(
+        logUsage({
         provider: client.provider,
         model: client.model,
         tokensInput: result.usage.tokensInput,
@@ -219,11 +224,12 @@ export async function runAgent(args: RunAgentInput): Promise<RunAgentResult> {
         promptChars: i === 0 ? args.userMessage.length : 0,
         responseChars: result.message.length,
         isPlayground: args.isPlayground,
-        errorMessage:
-          i === MAX_ITERATIONS - 1 && (result.toolCalls?.length ?? 0) > 0
-            ? "max_iterations_exceeded"
-            : undefined,
-      });
+          errorMessage:
+            i === MAX_ITERATIONS - 1 && (result.toolCalls?.length ?? 0) > 0
+              ? "max_iterations_exceeded"
+              : undefined,
+        }),
+      );
 
       if (!result.toolCalls?.length) {
         // Resposta final
@@ -231,6 +237,7 @@ export async function runAgent(args: RunAgentInput): Promise<RunAgentResult> {
         await persistMessage(args.conversationId, "assistant", message);
         args.onEvent?.({ type: "done" });
         void start;
+        await Promise.allSettled(usageWrites);
         return { ok: true, message, suggestions, usage: totalUsage };
       }
 
@@ -274,6 +281,7 @@ export async function runAgent(args: RunAgentInput): Promise<RunAgentResult> {
     }
 
     // Esgotou iterações
+    await Promise.allSettled(usageWrites);
     return {
       ok: false,
       error: "O agente ficou em loop. Tente reformular a pergunta.",
