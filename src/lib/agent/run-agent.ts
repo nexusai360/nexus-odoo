@@ -1,0 +1,267 @@
+/**
+ * Orquestrador do agente nexus-odoo.
+ *
+ * Portado de nexus-insights/src/lib/llm/agent/run-nex.ts.
+ * Adaptações principais:
+ * - Tools vêm do MCP da F4 (createMcpSession) em vez de NEX_TOOLS estático.
+ * - executeTool substituído por session.callTool (MCP).
+ * - Resultado MCP normalizado para string e truncado (G6 — MAX_TOOL_RESULT_BYTES).
+ * - PlatformRole do usuário carregado para injetar BI_SCHEMA_REFERENCE (G7).
+ * - Histórico e persistência via conversation.ts.
+ * - logUsage usa a interface corrigida (costKnown, sem costUsd fixo).
+ * - Sessão MCP fechada em finally (B1).
+ */
+
+import { prisma } from "@/lib/prisma";
+import { buildLlmClient } from "./llm/get-client";
+import { getActiveLlmConfig } from "./llm/get-active-config";
+import { logUsage } from "./llm/usage-logger";
+import { createMcpSession, mcpToolsToProviderTools } from "./mcp-client";
+import {
+  loadHistory,
+  persistMessage,
+  assertConversationOwned,
+} from "./conversation";
+import { composeSystemPrompt } from "./prompt/compose";
+import { BI_SCHEMA_REFERENCE } from "./bi-schema-reference";
+import type { ChatMessage, ChatUsage, ToolCall } from "./llm/types";
+import type { AgentChannel } from "@/generated/prisma/client";
+
+/** Limite de iterações do loop de tool calling. */
+const MAX_ITERATIONS = 5;
+
+/** Máximo de bytes aceitos no resultado de uma tool call (SPEC §4.3). */
+const MAX_TOOL_RESULT_BYTES = 24_576;
+
+/** Roles que recebem o BI_SCHEMA_REFERENCE no prompt (G7). */
+const BI_ROLES = new Set(["admin", "super_admin"]);
+
+/** Aviso appended quando o resultado é truncado. */
+const TRUNCATION_NOTICE = "\n[...resultado truncado por exceder o limite de tamanho...]";
+
+/** Regex para extrair sufixo [[suggestions]]. */
+const SUGGESTIONS_RE = /(?:^|\n)\[\[suggestions\]\]:([^\n]+?)(?:\n|$)/;
+const MAX_SUGGESTIONS = 3;
+const MAX_SUGGESTION_LEN = 60;
+
+/**
+ * Extrai sugestões do sufixo `[[suggestions]]:item1|item2|...`.
+ * Retorna message sem o sufixo + array de sugestões.
+ */
+export function extractSuggestions(text: string): {
+  message: string;
+  suggestions: string[];
+} {
+  const match = text.match(SUGGESTIONS_RE);
+  if (!match) return { message: text, suggestions: [] };
+  const raw = match[1].trim();
+  const suggestions = raw
+    .split("|")
+    .map((s) => s.trim())
+    .filter((s) => s.length > 0 && s.length <= MAX_SUGGESTION_LEN)
+    .slice(0, MAX_SUGGESTIONS);
+  const message = text.replace(match[0], "").trimEnd();
+  return { message, suggestions };
+}
+
+/**
+ * Trunca o resultado de uma tool call para MAX_TOOL_RESULT_BYTES.
+ * Appenda aviso de truncagem quando necessário.
+ */
+function guardToolResult(result: string): string {
+  const encoded = Buffer.byteLength(result, "utf8");
+  if (encoded <= MAX_TOOL_RESULT_BYTES) return result;
+  // Calcula quantos bytes do início cabem dentro do limite
+  const truncated = Buffer.from(result, "utf8")
+    .slice(0, MAX_TOOL_RESULT_BYTES - Buffer.byteLength(TRUNCATION_NOTICE, "utf8"))
+    .toString("utf8");
+  return truncated + TRUNCATION_NOTICE;
+}
+
+/** Evento emitido durante a execução do agente. */
+export type AgentEvent =
+  | { type: "thinking" }
+  | { type: "tool_call"; toolName: string }
+  | { type: "tool_result"; toolName: string; truncated: boolean }
+  | { type: "done" };
+
+export interface RunAgentInput {
+  conversationId: string;
+  userId: string;
+  userMessage: string;
+  channel: AgentChannel;
+  isPlayground: boolean;
+  /** Callback para eventos de progresso (streaming in-app). */
+  onEvent?: (evt: AgentEvent) => void;
+  /** Override de prompt (Playground). */
+  promptOverride?: string;
+}
+
+export type RunAgentResult =
+  | { ok: true; message: string; suggestions: string[]; usage: ChatUsage }
+  | { ok: false; error: string };
+
+/** Config do prompt (configuração mínima sem DB — futuramente virá de AgentSettings). */
+const DEFAULT_PROMPT_CONFIG = {
+  identityBase: null,
+  personality: "",
+  tone: "",
+  guardrails: [] as string[],
+  advancedOverride: null as string | null,
+  kbEnabled: false,
+  terminology: {} as Record<string, string>,
+  suggestionsEnabled: false,
+};
+
+export async function runAgent(args: RunAgentInput): Promise<RunAgentResult> {
+  const session = await createMcpSession(args.userId).catch((err) => {
+    console.warn("[runAgent] Falha ao criar sessão MCP:", err);
+    return null;
+  });
+
+  try {
+    // Carregar config LLM ativa
+    const llmConfig = await getActiveLlmConfig();
+    if (!llmConfig) {
+      return {
+        ok: false,
+        error: "Nenhum provedor de IA configurado. Configure uma credencial LLM.",
+      };
+    }
+
+    // Garantir ownership da conversa
+    await assertConversationOwned(args.conversationId, args.userId);
+
+    // Construir cliente LLM
+    const client = buildLlmClient(llmConfig.provider, llmConfig.apiKey, llmConfig.model);
+
+    // Carregar PlatformRole do usuário para BI schema (G7)
+    const userRecord = await prisma.user.findUnique({
+      where: { id: args.userId },
+      select: { platformRole: true },
+    });
+    const platformRole = userRecord?.platformRole ?? null;
+    const biSchema = platformRole && BI_ROLES.has(platformRole) ? BI_SCHEMA_REFERENCE : undefined;
+
+    // Compor system prompt
+    const promptCfg = {
+      ...DEFAULT_PROMPT_CONFIG,
+      advancedOverride: args.promptOverride ?? null,
+    };
+    const systemPrompt = composeSystemPrompt(promptCfg, [], undefined, biSchema);
+
+    // Carregar tools do MCP
+    const mcpTools = session ? await session.listTools() : [];
+    const tools = mcpToolsToProviderTools(mcpTools);
+
+    // Carregar histórico
+    const history = await loadHistory(args.conversationId, 20);
+    const historyMessages: ChatMessage[] = history.map((m) => ({
+      role: m.role as "user" | "assistant" | "tool",
+      content: m.content,
+      ...(m.toolCalls ? { toolCalls: m.toolCalls as ToolCall[] } : {}),
+    }));
+
+    // Persistir mensagem do usuário
+    await persistMessage(args.conversationId, "user", args.userMessage);
+
+    // Montar conversa inicial
+    const conversation: ChatMessage[] = [
+      { role: "system", content: systemPrompt },
+      ...historyMessages,
+      { role: "user", content: args.userMessage },
+    ];
+
+    const totalUsage: ChatUsage = { tokensInput: 0, tokensOutput: 0 };
+    const start = Date.now();
+
+    args.onEvent?.({ type: "thinking" });
+
+    for (let i = 0; i < MAX_ITERATIONS; i++) {
+      const iterStart = Date.now();
+      const result = await client.chat({ messages: conversation, tools });
+
+      totalUsage.tokensInput += result.usage.tokensInput;
+      totalUsage.tokensOutput += result.usage.tokensOutput;
+
+      // Registrar uso desta iteração
+      void logUsage({
+        provider: client.provider,
+        model: client.model,
+        tokensInput: result.usage.tokensInput,
+        tokensOutput: result.usage.tokensOutput,
+        conversationId: args.conversationId,
+        userId: args.userId,
+        durationMs: Date.now() - iterStart,
+        promptChars: i === 0 ? args.userMessage.length : 0,
+        responseChars: result.message.length,
+        isPlayground: args.isPlayground,
+        errorMessage:
+          i === MAX_ITERATIONS - 1 && (result.toolCalls?.length ?? 0) > 0
+            ? "max_iterations_exceeded"
+            : undefined,
+      });
+
+      if (!result.toolCalls?.length) {
+        // Resposta final
+        const { message, suggestions } = extractSuggestions(result.message);
+        await persistMessage(args.conversationId, "assistant", message);
+        args.onEvent?.({ type: "done" });
+        void start;
+        return { ok: true, message, suggestions, usage: totalUsage };
+      }
+
+      // Adiciona assistant com tool_calls
+      conversation.push({
+        role: "assistant",
+        content: result.message,
+        toolCalls: result.toolCalls,
+      });
+
+      // Persistir assistant com toolCalls
+      await persistMessage(args.conversationId, "assistant", result.message, result.toolCalls);
+
+      // Executar cada tool via MCP
+      for (const tc of result.toolCalls) {
+        args.onEvent?.({ type: "tool_call", toolName: tc.name });
+
+        let toolResultStr: string;
+        if (session) {
+          toolResultStr = await session.callTool(
+            tc.name,
+            (tc.arguments ?? {}) as Record<string, unknown>,
+          );
+        } else {
+          toolResultStr = "(MCP indisponível)";
+        }
+
+        // G6: normalizar para string (já feito pelo session.callTool) + guard de tamanho
+        const guarded = guardToolResult(toolResultStr);
+        const wasTruncated = guarded !== toolResultStr;
+
+        args.onEvent?.({ type: "tool_result", toolName: tc.name, truncated: wasTruncated });
+
+        conversation.push({
+          role: "tool",
+          toolCallId: tc.id,
+          toolName: tc.name,
+          content: guarded,
+        });
+      }
+    }
+
+    // Esgotou iterações
+    return {
+      ok: false,
+      error: "O agente ficou em loop. Tente reformular a pergunta.",
+    };
+  } catch (err) {
+    console.error("[runAgent] Erro inesperado:", err);
+    return {
+      ok: false,
+      error: err instanceof Error ? err.message : "Erro interno do agente.",
+    };
+  } finally {
+    if (session) await session.close();
+  }
+}
