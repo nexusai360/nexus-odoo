@@ -10,6 +10,9 @@ import {
   processReconcileCycle,
 } from "./sync/processors";
 import { JOB_INCREMENTAL, JOB_SNAPSHOT, JOB_RECONCILE, JOB_CONFIG_CHECK } from "./jobs";
+import { AGENT_QUEUE_NAME } from "./agent/queue";
+import { processAgentJob, type AgentJobData } from "./agent/processor";
+import { cleanupIdempotencyTable } from "./agent/cleanup";
 
 const REDIS_URL = process.env.REDIS_URL ?? "redis://localhost:6379";
 const connection = new IORedis(REDIS_URL, { maxRetriesPerRequest: null });
@@ -17,6 +20,25 @@ connection.on("error", (err: Error) => console.error("[worker] erro Redis:", err
 
 export const ODOO_SYNC_QUEUE = "odoo-sync";
 export const syncQueue = new Queue(ODOO_SYNC_QUEUE, { connection });
+
+// ─── Fila do agente ───────────────────────────────────────────────────────────
+export const agentQueue = new Queue(AGENT_QUEUE_NAME, { connection });
+
+const agentWorker = new Worker(
+  AGENT_QUEUE_NAME,
+  async (job: Job<AgentJobData>) => {
+    console.log(`[agent-worker] processando job ${job.id} (messageId: ${job.data.messageId})`);
+    await processAgentJob(job.data);
+    return { ok: true };
+  },
+  { connection, concurrency: 3 },
+);
+
+agentWorker.on("ready", () => console.log(`[agent-worker] pronto — fila "${AGENT_QUEUE_NAME}"`));
+agentWorker.on("failed", (job, err) =>
+  console.error(`[agent-worker] job ${job?.id} falhou:`, err),
+);
+agentWorker.on("error", (err) => console.error("[agent-worker] erro:", err));
 
 // Guarda de sobreposição cluster-safe: lock no Redis com TTL (WR-01). Sobrevive
 // a restart e protege contra uma segunda réplica do worker rodando o mesmo
@@ -131,7 +153,9 @@ console.log("[worker] nexus-odoo worker iniciado");
 async function shutdown() {
   console.log("[worker] encerrando…");
   await worker.close();
+  await agentWorker.close();
   await syncQueue.close();
+  await agentQueue.close();
   await connection.quit();
   await prisma.$disconnect();
   process.exit(0);
