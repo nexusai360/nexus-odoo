@@ -17,12 +17,13 @@
  */
 
 import { motion, useReducedMotion } from "framer-motion";
-import { MoreVertical, Send, Sparkles, Trash2, X } from "lucide-react";
+import { Loader2, Mic, MoreVertical, Send, Sparkles, Trash2, X } from "lucide-react";
 import * as React from "react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { AgentMessage, type AgentMessageRole } from "./agent-message";
 import { SuggestionsBar } from "./suggestions-bar";
+import { AudioRecorder, type AudioRecorderHandle } from "./audio-recorder";
 import { getConversationMessages } from "@/lib/actions/conversation-messages";
 
 interface ChatPanelProps {
@@ -65,7 +66,7 @@ const WELCOME_SUGGESTIONS = [
 export function ChatPanel({
   open,
   onClose,
-  audioInputEnabled: _audioInputEnabled = false,
+  audioInputEnabled = false,
   conversationId: externalConvId,
   onConversationCreated,
 }: ChatPanelProps) {
@@ -75,11 +76,14 @@ export function ChatPanel({
   const [input, setInput] = React.useState("");
   const [pending, setPending] = React.useState(false);
   const [menuOpen, setMenuOpen] = React.useState(false);
+  const [isRecording, setIsRecording] = React.useState(false);
+  const [audioFlight, setAudioFlight] = React.useState(false);
 
   const conversationIdRef = React.useRef<string | null>(externalConvId ?? null);
   const scrollRef = React.useRef<HTMLDivElement | null>(null);
   const inputRef = React.useRef<HTMLTextAreaElement | null>(null);
   const abortRef = React.useRef<AbortController | null>(null);
+  const recorderRef = React.useRef<AudioRecorderHandle | null>(null);
 
   // Sync external conversationId + carrega histórico do servidor
   React.useEffect(() => {
@@ -312,6 +316,41 @@ export function ChatPanel({
     conversationIdRef.current = null;
   }, []);
 
+  // Transcreve o áudio gravado e envia o texto resultante como pergunta.
+  const handleSendAudio = React.useCallback(
+    async (blob: Blob) => {
+      if (audioFlight) return;
+      setAudioFlight(true);
+      try {
+        const fd = new FormData();
+        fd.append("audio", blob, "recording.webm");
+        fd.append("language", "pt");
+        const res = await fetch("/api/agent/transcribe", {
+          method: "POST",
+          body: fd,
+        });
+        if (!res.ok) {
+          const d = (await res.json().catch(() => ({}))) as { error?: string };
+          throw new Error(d?.error ?? `HTTP ${res.status}`);
+        }
+        const d = (await res.json()) as { text?: string };
+        const text = (d?.text ?? "").trim();
+        if (!text) {
+          toast.error("Não conseguimos entender o áudio.");
+          return;
+        }
+        void handleSend(text);
+      } catch (err) {
+        toast.error(
+          `Falha ao transcrever: ${err instanceof Error ? err.message : String(err)}`,
+        );
+      } finally {
+        setAudioFlight(false);
+      }
+    },
+    [audioFlight, handleSend],
+  );
+
   const sendDisabled = pending || input.trim().length === 0;
 
   const transition = reduceMotion
@@ -424,42 +463,76 @@ export function ChatPanel({
           <form
             onSubmit={(e) => {
               e.preventDefault();
+              if (isRecording) {
+                recorderRef.current?.sendNow();
+                return;
+              }
               void handleSend(input);
             }}
             className="flex items-end gap-2"
           >
+            {/* Botão Mic — só em idle, quando o áudio está habilitado */}
+            {audioInputEnabled && !isRecording && !audioFlight ? (
+              <button
+                type="button"
+                onClick={() => {
+                  void recorderRef.current?.start();
+                }}
+                aria-label="Gravar mensagem de áudio"
+                className={cn(
+                  "flex h-9 w-9 shrink-0 cursor-pointer items-center justify-center rounded-full text-muted-foreground transition-colors",
+                  "hover:bg-muted hover:text-foreground",
+                  "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-500",
+                )}
+              >
+                <Mic className="h-4 w-4" />
+              </button>
+            ) : null}
+
             <div
               className={cn(
                 "flex min-h-9 flex-1 items-center rounded-xl border border-input bg-background px-3 py-1 transition-colors",
                 "focus-within:border-violet-500/60 focus-within:ring-2 focus-within:ring-violet-400/30",
               )}
             >
-              <textarea
-                ref={inputRef}
-                value={input}
-                disabled={pending}
-                onChange={(e) => setInput(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter" && !e.shiftKey) {
-                    e.preventDefault();
-                    void handleSend(input);
-                  }
-                }}
-                rows={1}
-                placeholder="Pergunte algo sobre a operação…"
-                aria-label="Mensagem para o Agente"
-                className={cn(
-                  "flex-1 resize-none bg-transparent py-1 text-sm leading-relaxed text-foreground placeholder:text-muted-foreground",
-                  "max-h-28 outline-none",
-                  "disabled:cursor-not-allowed disabled:opacity-50",
-                )}
-              />
+              {!isRecording ? (
+                <textarea
+                  ref={inputRef}
+                  value={input}
+                  disabled={pending}
+                  onChange={(e) => setInput(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" && !e.shiftKey) {
+                      e.preventDefault();
+                      void handleSend(input);
+                    }
+                  }}
+                  rows={1}
+                  placeholder="Pergunte algo sobre a operação…"
+                  aria-label="Mensagem para o Agente"
+                  className={cn(
+                    "flex-1 resize-none bg-transparent py-1 text-sm leading-relaxed text-foreground placeholder:text-muted-foreground",
+                    "max-h-28 outline-none",
+                    "disabled:cursor-not-allowed disabled:opacity-50",
+                  )}
+                />
+              ) : null}
+              {audioInputEnabled ? (
+                <AudioRecorder
+                  ref={recorderRef}
+                  mode="embedded"
+                  onSend={(blob) => {
+                    void handleSendAudio(blob);
+                  }}
+                  onRecordingStateChange={setIsRecording}
+                />
+              ) : null}
             </div>
 
             <button
               type="submit"
-              aria-label="Enviar pergunta"
-              disabled={sendDisabled}
+              aria-label={isRecording ? "Enviar áudio" : "Enviar pergunta"}
+              disabled={isRecording ? false : sendDisabled || audioFlight}
               className={cn(
                 "flex h-9 w-9 shrink-0 cursor-pointer items-center justify-center rounded-xl",
                 "bg-gradient-to-br from-violet-600 to-violet-500 text-white shadow-md shadow-violet-600/30",
@@ -468,10 +541,19 @@ export function ChatPanel({
                 "disabled:cursor-not-allowed disabled:opacity-40 disabled:shadow-none",
               )}
             >
-              <Send className="h-4 w-4" strokeWidth={2.25} />
+              {audioFlight ? (
+                <Loader2 className="h-4 w-4 animate-spin" aria-hidden />
+              ) : (
+                <Send className="h-4 w-4" strokeWidth={2.25} />
+              )}
             </button>
           </form>
-          <p className="mt-1.5 px-1 text-[11px] text-muted-foreground">
+          <p
+            className={cn(
+              "mt-1.5 px-1 text-[11px] text-muted-foreground transition-opacity",
+              isRecording ? "invisible" : "visible",
+            )}
+          >
             Enter envia · Shift+Enter quebra linha
           </p>
         </footer>
