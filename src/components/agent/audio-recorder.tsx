@@ -145,7 +145,17 @@ function AudioRecorderImpl(
 
   const start = React.useCallback(async () => {
     if (!supported) {
-      toast.error("Gravação de áudio não suportada neste navegador");
+      // G5: dica de HTTPS — getUserMedia exige contexto seguro fora de localhost.
+      const insecure =
+        typeof window !== "undefined" &&
+        window.location.protocol !== "https:" &&
+        window.location.hostname !== "localhost" &&
+        window.location.hostname !== "127.0.0.1";
+      toast.error(
+        insecure
+          ? "Gravação de áudio exige HTTPS. Acesse a plataforma por uma URL segura para usar o microfone."
+          : "Gravação de áudio não suportada neste navegador.",
+      );
       return;
     }
     try {
@@ -173,13 +183,29 @@ function AudioRecorderImpl(
     } catch (err) {
       cleanup();
       setStatus("idle");
-      const isPermissionError =
-        err instanceof DOMException && err.name === "NotAllowedError";
-      toast.error(
-        isPermissionError
-          ? "Acesso ao microfone negado"
-          : "Não foi possível acessar o microfone",
-      );
+      // G5: mensagens claras por tipo de erro + dica de HTTPS quando aplicável.
+      let title = "Não foi possível acessar o microfone.";
+      let description: string | undefined;
+      if (err instanceof DOMException) {
+        if (err.name === "NotAllowedError" || err.name === "PermissionDeniedError") {
+          title = "Acesso ao microfone negado.";
+          description =
+            "Libere o microfone nas configurações do navegador (ícone de cadeado na barra de endereço) e tente novamente.";
+        } else if (err.name === "NotFoundError" || err.name === "DevicesNotFoundError") {
+          title = "Nenhum microfone encontrado.";
+          description = "Conecte um microfone e tente novamente.";
+        } else if (err.name === "NotReadableError") {
+          title = "Microfone ocupado por outro aplicativo.";
+          description = "Feche programas que estejam usando o microfone (Zoom, Meet, etc.) e tente novamente.";
+        } else if (err.name === "SecurityError") {
+          title = "Gravação bloqueada por segurança.";
+          description =
+            typeof window !== "undefined" && window.location.protocol !== "https:"
+              ? "getUserMedia exige HTTPS. Acesse por URL segura para gravar áudio."
+              : "Verifique as permissões do navegador.";
+        }
+      }
+      toast.error(title, description ? { description } : undefined);
     }
   }, [cleanup, pickMimeType, startTick, supported]);
 
