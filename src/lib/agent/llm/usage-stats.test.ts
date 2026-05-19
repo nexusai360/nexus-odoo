@@ -90,7 +90,7 @@ describe("getUsageStats", () => {
   function setupMocks({
     convCount = 0,
     usageCount = 0,
-    aggregate = { _sum: { costUsd: null, costBrl: null, tokensInput: null, tokensOutput: null }, _count: { _all: 0 } },
+    aggregate = { _sum: { costUsd: null, costBrl: null, tokensInput: null, tokensOutput: null }, _count: { _all: 0 } } as unknown,
     byModel = [] as unknown[],
     byProvider = [] as unknown[],
     byDay = [] as unknown[],
