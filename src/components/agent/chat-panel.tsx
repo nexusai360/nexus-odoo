@@ -24,6 +24,9 @@ import { cn } from "@/lib/utils";
 import { AgentMessage, type AgentMessageRole } from "./agent-message";
 import { SuggestionsBar } from "./suggestions-bar";
 import { AudioRecorder, type AudioRecorderHandle } from "./audio-recorder";
+import { AttachMenu, defaultAttachHandler } from "./attach-menu";
+import { MessageInput } from "./message-input";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { getConversationMessages } from "@/lib/actions/conversation-messages";
 
 interface ChatPanelProps {
@@ -458,7 +461,7 @@ export function ChatPanel({
           )}
         </div>
 
-        {/* Input bar */}
+        {/* Input bar (G4 + D8) — anexo à esquerda, mic à direita, enviar fora */}
         <footer className="border-t border-border bg-background/60 px-3 pt-3 pb-3">
           <form
             onSubmit={(e) => {
@@ -471,82 +474,103 @@ export function ChatPanel({
             }}
             className="flex items-end gap-2"
           >
-            {/* Botão Mic — só em idle, quando o áudio está habilitado */}
-            {audioInputEnabled && !isRecording && !audioFlight ? (
-              <button
-                type="button"
-                onClick={() => {
-                  void recorderRef.current?.start();
-                }}
-                aria-label="Gravar mensagem de áudio"
-                className={cn(
-                  "flex h-9 w-9 shrink-0 cursor-pointer items-center justify-center rounded-full text-muted-foreground transition-colors",
-                  "hover:bg-muted hover:text-foreground",
-                  "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-500",
-                )}
-              >
-                <Mic className="h-4 w-4" />
-              </button>
-            ) : null}
-
-            <div
-              className={cn(
-                "flex min-h-9 flex-1 items-center rounded-xl border border-input bg-background px-3 py-1 transition-colors",
-                "focus-within:border-violet-500/60 focus-within:ring-2 focus-within:ring-violet-400/30",
-              )}
-            >
-              {!isRecording ? (
-                <textarea
-                  ref={inputRef}
+            {/* Área central: MessageInput quando idle; barra de gravação quando recording. */}
+            <div className="min-w-0 flex-1">
+              {isRecording ? (
+                <div className="flex min-h-9 items-center rounded-xl border border-violet-500/40 bg-violet-500/5 px-3 py-1">
+                  {audioInputEnabled ? (
+                    <AudioRecorder
+                      ref={recorderRef}
+                      mode="embedded"
+                      onSend={(blob) => {
+                        void handleSendAudio(blob);
+                      }}
+                      onRecordingStateChange={setIsRecording}
+                    />
+                  ) : null}
+                </div>
+              ) : (
+                <MessageInput
                   value={input}
+                  onChange={setInput}
+                  onSend={() => void handleSend(input)}
                   disabled={pending}
-                  onChange={(e) => setInput(e.target.value)}
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter" && !e.shiftKey) {
-                      e.preventDefault();
-                      void handleSend(input);
-                    }
-                  }}
-                  rows={1}
-                  placeholder="Pergunte algo sobre a operação…"
-                  aria-label="Mensagem para o Agente"
-                  className={cn(
-                    "flex-1 resize-none bg-transparent py-1 text-sm leading-relaxed text-foreground placeholder:text-muted-foreground",
-                    "max-h-28 outline-none",
-                    "disabled:cursor-not-allowed disabled:opacity-50",
-                  )}
+                  placeholder="Pergunte ao Agente Nex…"
+                  aria-label="Mensagem para o Agente Nex"
+                  maxRows={6}
+                  leftSlot={
+                    <AttachMenu
+                      disabled={pending}
+                      onPick={defaultAttachHandler}
+                    />
+                  }
+                  rightSlot={
+                    audioInputEnabled && !audioFlight ? (
+                      <Tooltip>
+                        <TooltipTrigger
+                          render={
+                            <button
+                              type="button"
+                              onClick={() => {
+                                void recorderRef.current?.start();
+                              }}
+                              aria-label="Gravar mensagem de áudio"
+                              className="flex h-9 w-9 cursor-pointer items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-500"
+                            >
+                              <Mic className="h-4 w-4" />
+                            </button>
+                          }
+                        />
+                        <TooltipContent>Gravar áudio</TooltipContent>
+                      </Tooltip>
+                    ) : null
+                  }
+                  id="agent-bubble-input"
                 />
-              ) : null}
-              {audioInputEnabled ? (
-                <AudioRecorder
-                  ref={recorderRef}
-                  mode="embedded"
-                  onSend={(blob) => {
-                    void handleSendAudio(blob);
-                  }}
-                  onRecordingStateChange={setIsRecording}
-                />
+              )}
+              {/* Mount persistente do AudioRecorder p/ manter o handle estável.
+                  Em idle renderiza null (mode="embedded"). Esta cópia entra em
+                  ação quando isRecording=true (mas o componente é remountado;
+                  é seguro porque o estado do MediaRecorder está em ref). */}
+              {audioInputEnabled && !isRecording ? (
+                <div className="sr-only" aria-hidden>
+                  <AudioRecorder
+                    ref={recorderRef}
+                    mode="embedded"
+                    onSend={(blob) => {
+                      void handleSendAudio(blob);
+                    }}
+                    onRecordingStateChange={setIsRecording}
+                  />
+                </div>
               ) : null}
             </div>
 
-            <button
-              type="submit"
-              aria-label={isRecording ? "Enviar áudio" : "Enviar pergunta"}
-              disabled={isRecording ? false : sendDisabled || audioFlight}
-              className={cn(
-                "flex h-9 w-9 shrink-0 cursor-pointer items-center justify-center rounded-xl",
-                "bg-gradient-to-br from-violet-600 to-violet-500 text-white shadow-md shadow-violet-600/30",
-                "transition-all duration-200 hover:from-violet-500 hover:to-violet-400 hover:shadow-lg",
-                "focus-visible:ring-2 focus-visible:ring-violet-400/50 focus-visible:outline-none",
-                "disabled:cursor-not-allowed disabled:opacity-40 disabled:shadow-none",
-              )}
-            >
-              {audioFlight ? (
-                <Loader2 className="h-4 w-4 animate-spin" aria-hidden />
-              ) : (
-                <Send className="h-4 w-4" strokeWidth={2.25} />
-              )}
-            </button>
+            <Tooltip>
+              <TooltipTrigger
+                render={
+                  <button
+                    type="submit"
+                    aria-label={isRecording ? "Enviar áudio" : "Enviar pergunta"}
+                    disabled={isRecording ? false : sendDisabled || audioFlight}
+                    className={cn(
+                      "flex h-9 w-9 shrink-0 cursor-pointer items-center justify-center rounded-xl",
+                      "bg-gradient-to-br from-violet-600 to-violet-500 text-white shadow-md shadow-violet-600/30",
+                      "transition-all duration-200 hover:from-violet-500 hover:to-violet-400 hover:shadow-lg",
+                      "focus-visible:ring-2 focus-visible:ring-violet-400/50 focus-visible:outline-none",
+                      "disabled:cursor-not-allowed disabled:opacity-40 disabled:shadow-none",
+                    )}
+                  >
+                    {audioFlight ? (
+                      <Loader2 className="h-4 w-4 animate-spin" aria-hidden />
+                    ) : (
+                      <Send className="h-4 w-4" strokeWidth={2.25} />
+                    )}
+                  </button>
+                }
+              />
+              <TooltipContent>Enviar mensagem (Enter)</TooltipContent>
+            </Tooltip>
           </form>
           <p
             className={cn(
