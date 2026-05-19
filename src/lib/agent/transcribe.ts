@@ -16,6 +16,17 @@ import { getActiveLlmConfig } from "./llm/get-active-config";
 /** Cap defensivo igual Whisper API (25 MB). */
 export const MAX_AUDIO_BYTES = 25 * 1024 * 1024;
 
+/**
+ * Lançado quando não há credencial OpenAI disponível para transcrição.
+ * Análogo a EmbeddingUnavailable do RAG — permite tratamento tipado pelo caller.
+ */
+export class TranscriptionUnavailable extends Error {
+  constructor(message = "Credencial OpenAI não configurada para transcrição de áudio.") {
+    super(message);
+    this.name = "TranscriptionUnavailable";
+  }
+}
+
 const WHISPER_URL = "https://api.openai.com/v1/audio/transcriptions";
 
 interface TranscribeUsage {
@@ -61,7 +72,7 @@ export async function transcribeAudio(
 
   const config = await getActiveLlmConfig();
   if (!config || config.provider !== "openai") {
-    throw new Error(
+    throw new TranscriptionUnavailable(
       "Transcrição de áudio requer uma credencial OpenAI ativa. Configure um modelo OpenAI em Integrações → Agente.",
     );
   }
