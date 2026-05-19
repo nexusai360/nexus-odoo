@@ -1659,14 +1659,20 @@ model AgentSettings {
   audioCheckpoint   FeatureCheckpoint @default(OFF) @map("audio_checkpoint")
   imageCheckpoint   FeatureCheckpoint @default(OFF) @map("image_checkpoint")
   kbCheckpoint      FeatureCheckpoint @default(PRODUCTION) @map("kb_checkpoint")
+  /// Checkpoint das sugestões clicáveis (substitui suggestionsEnabled — B3).
+  suggestionsCheckpoint FeatureCheckpoint @default(PRODUCTION) @map("suggestions_checkpoint")
 
   /// Modelo dedicado de transcrição de áudio (independente do modelo de produção).
   audioProvider     String?  @map("audio_provider")
   audioModel        String?  @map("audio_model")
+  /// Credencial (chave de API) usada pelo modelo dedicado de áudio.
+  audioCredentialId String?  @map("audio_credential_id") @db.Uuid
 
   /// Modelo dedicado de entendimento de imagem (independente do modelo de produção).
   imageProvider     String?  @map("image_provider")
   imageModel        String?  @map("image_model")
+  /// Credencial (chave de API) usada pelo modelo dedicado de imagem.
+  imageCredentialId String?  @map("image_credential_id") @db.Uuid
 
   updatedAt         DateTime @updatedAt @map("updated_at")
 
@@ -1751,15 +1757,50 @@ model WhatsappChannel {
 }
 
 /// Webhook configurado (inbound = receptor; outbound = n8n callback).
+/// Campos `name`, `path`, `targetUrl` e `methods` adicionados na rodada 6
+/// (F4) — aditivos, sem quebrar o receptor de WhatsApp da F5 que usa
+/// `direction`/`url`/`secret`/`enabled`.
 model WhatsappWebhook {
   id        String           @id @default(uuid()) @db.Uuid
   direction WebhookDirection
+  /// Rótulo amigável do webhook (R6).
+  name      String?
   url       String?
+  /// Caminho (slug) para webhooks de entrada — o que vem após a URL base (R6).
+  path      String?
+  /// URL de destino completa para webhooks de saída (R6).
+  targetUrl String?          @map("target_url")
+  /// Métodos HTTP aceitos (GET/POST/PUT/PATCH/DELETE) (R6).
+  methods   String[]         @default([])
   secret    String
   enabled   Boolean          @default(true)
   createdAt DateTime         @default(now()) @map("created_at")
 
+  instances WhatsappInstance[]
+
   @@map("whatsapp_webhooks")
+}
+
+/// Instância do canal WhatsApp — substitui o singleton WhatsappChannel (R6).
+/// Cada instância tem credenciais Meta próprias, modo de resposta e um
+/// webhook associado.
+model WhatsappInstance {
+  id                String               @id @default(uuid()) @db.Uuid
+  name              String
+  phoneNumber       String               @map("phone_number")
+  /// Token da Graph API (cifrado AES-256).
+  graphApiToken     String?              @map("graph_api_token")
+  businessAccountId String?              @map("business_account_id")
+  phoneNumberId     String?              @map("phone_number_id")
+  responseMode      WhatsappResponseMode @default(direct) @map("response_mode")
+  webhookId         String?              @map("webhook_id") @db.Uuid
+  webhook           WhatsappWebhook?     @relation(fields: [webhookId], references: [id])
+  enabled           Boolean              @default(true)
+  createdAt         DateTime             @default(now()) @map("created_at")
+  updatedAt         DateTime             @updatedAt @map("updated_at")
+
+  @@index([webhookId])
+  @@map("whatsapp_instances")
 }
 
 /// API key da plataforma para acesso externo (ex.: node Agent do n8n).
