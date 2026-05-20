@@ -1,15 +1,15 @@
 # F4 Onda 2 — Capacidade de Escrita no Servidor MCP (Design)
 
-> **Status:** v2 (pós Review #1) — aguarda Review crítica #2
+> **Status:** v3 (pós Review #1 + Review #2) — versão final, base para o plano
 > **Data:** 2026-05-20
 > **Branch alvo:** `feat/f4-onda2-mcp-escrita`
 > **Fase predecessora:** F4 Onda 1 (estoque + financeiro, leitura) — em andamento no `main`
-> **Decisão canônica afetada:** `CLAUDE.md` §5 #2 (revisada nesta spec)
+> **Decisão canônica afetada:** `CLAUDE.md` §5 #2 (revisada nesta spec; ver §3.2 para a numeração)
 >
 > **Histórico de versões:**
 > - **v1** (2026-05-20): rascunho inicial pós-brainstorming. Não passou por review formal.
-> - **v2** (2026-05-20): aplica 41 achados materiais da Review #1 (`docs/superpowers/specs/reviews/2026-05-20-f4-onda2-mcp-escrita-review-1.md`). Mudanças principais: estado real do `mcp/` existente (inspeção), arquitetura ancorada no SDK 1.29.0 + `StreamableHTTPServerTransport`, auth DUAL (interno + externo) preservando o que existe, `ApiKey` existente estendida em vez de renomeada, formato de resposta conformante ao protocolo MCP 2025-06-18, 5 TBDs decididos para Onda 0.
-> - **v3** (TBD): após Review crítica #2 (`docs/superpowers/specs/reviews/2026-05-20-f4-onda2-mcp-escrita-review-2.md`).
+> - **v2** (2026-05-20): aplica 41 achados da Review #1 (`docs/superpowers/specs/reviews/2026-05-20-f4-onda2-mcp-escrita-review-1.md`). Estado real do `mcp/` existente documentado; arquitetura ancorada no SDK 1.29.0; auth DUAL (interno + externo); `ApiKey` existente estendida; formato MCP 2025-06-18; 5 TBDs decididos.
+> - **v3** (2026-05-20): aplica 24 achados da Review #2 (`docs/superpowers/specs/reviews/2026-05-20-f4-onda2-mcp-escrita-review-2.md`). Endpoint único `/api/mcp` (sem `/internal`); cache LRU de ApiKeys; coexistência dos dois modelos de autorização documentada; CORS opt-in por chave; logging operacional via `pino`; política de payload em denials; comportamento sob falha do Redis; freshness do cache no health check; 7 cenários E2E novos; setup de bootstrap key; checklist de 8 validações pré-plano.
 
 ---
 
@@ -96,13 +96,34 @@ model AuditLog {
 - **Reorganização do menu** (Plugar MCPs → Nex; API REST com "Em breve").
 - **1 read tool + 1 write tool de POC para o CRM** (`crm.res_partner.get` + `crm.res_partner.create`).
 
-### 0.3. Implicações para a v2
+### 0.3. Implicações para a arquitetura
 
 - **Auth dual:** Onda 0 preserva o modo interno e ADICIONA o modo externo (sem remover nada).
 - **Estender `ApiKey`, não renomear.** Mantém `ApiKey` (genérico) e adiciona campos faltando. O futuro card "API REST" pode usar a mesma tabela com `scopes` diferentes — flexibilidade preservada.
 - **Reusar `ToolEntry` existente** estendendo para writes com tipo derivado `WriteToolEntry`.
 - **Reusar `mcp/catalog/registry.ts`** sem reescrita.
 - **Reusar `mcp/lib/audit.ts`** (estender, não substituir) ou criar `McpAuditLog` Prisma para writes (decisão técnica fica para o plano).
+
+### 0.4. Reservado para extensões futuras
+
+(intencionalmente vazio — preservar numeração das seções)
+
+### 0.5. (já preenchido acima — §0.1 a §0.3)
+
+### 0.6. Checklist de validação pré-plano
+
+> **Obrigatório:** o plano da Onda 0 começa executando estas verificações **em ordem**. Cada item pode mudar decisões do plano. Não pular.
+
+1. **Ler `mcp/auth/user-context.ts`** — confirmar como `UserContext` é resolvido (role, dominios, gatedRoles). Decisão: estender ou wrappear no middleware de auth externo.
+2. **Ler `mcp/lib/audit.ts`** — verificar se o audit atual é compatível com o esquema de `McpAuditLog` proposto. Decidir: estender módulo existente ou criar paralelo.
+3. **Ler `mcp/lib/rate-limit.ts`** — verificar implementação atual (Redis? memória?). Decidir: estender para per-`apiKeyId` ou reescrever.
+4. **Verificar `prisma/migrations/`** — confirmar padrão de migrations usado (manuais via `prisma migrate dev` + nomes descritivos). Garantir que a migration nova segue o padrão.
+5. **Confirmar `pino` (ou outro logger) em uso** — `grep -r "from 'pino'" src/ mcp/`. Se ausente, adicionar como dependência na Onda 0.
+6. **Inspecionar `src/components/integracoes/`** — estrutura atual dos cards (container, grid, sub-rotas). Replicar padrão visual para "Servidor MCP".
+7. **Confirmar local do submenu "Plugar MCPs" no Agente Nex** — ler `src/components/layout/sidebar.tsx` + `src/components/agent/*`. Identificar onde inserir a entrada.
+8. **Verificar `src/worker/odoo/client.ts`** — métodos atuais. Se só tem `search_read`, adicionar `create`, `write`, `unlink`, `execute_kw`, `searchIrModelData`. Se já tem, reusar.
+
+Resultado da checklist alimenta as decisões do plano (`docs/superpowers/plans/2026-05-20-f4-onda2-onda0-fundacao.md`).
 
 ---
 
@@ -176,12 +197,14 @@ Sem estes, a Onda 0 inicia em modo dry-run (handlers validam mas não chamam Odo
 
 ### 3.1. Visão macro (atualizada para a realidade)
 
+> **Endpoint único:** `POST /api/mcp`. A distinção entre modo INTERNO e EXTERNO é feita **pelo valor do Bearer token** no middleware de auth (não por path). Razão: clientes externos esperam um único MCP URL (padrão da indústria); modo interno é detalhe de implementação. O dual abaixo é fluxo interno do servidor MCP.
+
 ```
 ┌──────────────────────────────────────────────────────────────┐
 │ Modo INTERNO (existente, preservado)                          │
 │ ─────────────────────────────────────                         │
 │ App Next.js (container "app")                                 │
-│   ↓ HTTPS POST /api/mcp/internal                              │
+│   ↓ HTTPS POST /api/mcp                                       │
 │   ↓ Authorization: Bearer <MCP_SERVICE_TOKEN>                 │
 │   ↓ X-Mcp-User-Id: <userId-da-plataforma>                     │
 │   ▼                                                            │
@@ -205,12 +228,17 @@ Sem estes, a Onda 0 inicia em modo dry-run (handlers validam mas não chamam Odo
 │ Servidor MCP (mesmo container)                                 │
 │   ┌──────────────────────────────────────────────────────┐    │
 │   │ Auth Middleware (NOVO)                                │    │
-│   │   - Bearer != MCP_SERVICE_TOKEN → modo EXTERNO        │    │
-│   │   - SHA-256(token) → SELECT em ApiKey por keyHash     │    │
+│   │   - timingSafeEqual(Bearer, MCP_SERVICE_TOKEN)?       │    │
+│   │     → SIM: modo INTERNO; lê X-Mcp-User-Id;            │    │
+│   │            UserContext via resolveUserContext         │    │
+│   │     → NÃO: modo EXTERNO; segue abaixo                 │    │
+│   │   - LRU cache lookup por keyHash (60s TTL)            │    │
+│   │   - miss → SELECT em ApiKey por keyHash               │    │
 │   │   - active? expiresAt? revokedAt? → 401               │    │
 │   │   - tenant scoping (verifica ApiKey.tenantId)         │    │
 │   │   - rate limit Redis (sliding window 60s)             │    │
 │   │   - carrega capabilities em ctx                       │    │
+│   │   - token em URL/body (não header) → 400              │    │
 │   └──────────────────────────────────────────────────────┘    │
 │   ┌──────────────────────────────────────────────────────┐    │
 │   │ Idempotency Middleware (NOVO — writes apenas)         │    │
@@ -264,6 +292,8 @@ Sem estes, a Onda 0 inicia em modo dry-run (handlers validam mas não chamam Odo
 
 ### 3.2. Revisão da decisão canônica #2
 
+> **Nota:** confirmar numeração atual no `CLAUDE.md` antes do merge — outras sessões podem ter editado §5. A decisão alvo é a que fala de cache obrigatório e ausência de fallback JSON-RPC nas tools (atualmente #2).
+
 **Texto antigo (CLAUDE.md §5 #2):**
 > "Sem fallback JSON-RPC nas tools. O Odoo é tocado somente pelo cron de sincronização. Nenhuma pergunta de usuário dispara chamada ao Odoo."
 
@@ -276,6 +306,37 @@ Sem estes, a Onda 0 inicia em modo dry-run (handlers validam mas não chamam Odo
 - Cutover para produção (`grupojht.tauga.online`) **só após** Onda 0 mergeada + validação humana explícita do usuário + comunicação prévia ao cliente.
 - Variável de ambiente `ODOO_WRITE_URL` separada de `ODOO_READ_URL` (cron usa read).
 - Reversibilidade: trocar `ODOO_WRITE_URL` de volta para `teste.tauga.online` se algo der errado em produção. Não há lock-in.
+
+### 3.4. Cache de ApiKeys em memória (LRU)
+
+- Biblioteca: `lru-cache` (NPM) ou impl. própria simples.
+- Tamanho máximo: **1.000 entradas**.
+- TTL: **60 segundos**.
+- Key do cache: `keyHash` (SHA-256 do token).
+- Value: full row da `ApiKey` + `capabilities` já parseadas em estrutura nativa.
+- Hit: middleware usa direto, sem query DB.
+- Miss: SELECT no DB → popula cache.
+- **Invalidação via pub/sub:** mudança de capability no painel publica em `mcp:keys:invalidated:<apiKeyId>`; servidor MCP recebe e faz `cache.delete(keyHash)`.
+- **Fallback de invalidação:** TTL de 60s natural — mudanças que o pub/sub perder vão refletir em até 60s.
+
+### 3.5. CORS — política
+
+- **Default: CORS desabilitado.** Servidor MCP responde **sem** header `Access-Control-Allow-Origin` para todas as requisições.
+- **Opt-in por chave:** `ApiKey` tem campo opcional `allowedOrigins: string[]` (parte do JSON `capabilities` ou campo separado — decisão no plano).
+- Quando há `Origin` no request e a chave tem `allowedOrigins` configurada:
+  - Origin na whitelist → responde com `Access-Control-Allow-Origin: <origin>` + `Vary: Origin`.
+  - Origin fora → omite o header (browser bloqueia).
+- Sem `allowedOrigins` configurado → requisição de navegador é bloqueada (servidor não diferencia, mas browser respeita ausência do header).
+- Preflight `OPTIONS` tratado pelo middleware antes da auth.
+
+### 3.6. Logging operacional (não-audit)
+
+- Logger: **`pino`** (verificar instalação na §0.6 checklist — se ausente, adicionar).
+- Nível default: `info` em produção, `debug` em dev (via env `LOG_LEVEL`).
+- Errors fatais (panics, exceptions) → stdout estruturado em JSON. Portainer captura.
+- **Audit log é separado** — DB via Prisma; cobre apenas chamadas de tool. Logs operacionais cobrem o resto (deploys, conexões, jobs do worker, etc).
+- Sentry opcional via env `SENTRY_DSN` — se setado, envia errors (não decididos em Onda 0; ficar como opt-in operacional).
+- **Token nunca aparece em log:** middleware mascara `Authorization` header para `Bearer mcp_live_aBcD****` (mostra apenas prefix + 4 chars).
 
 ---
 
@@ -518,6 +579,8 @@ Justificativa: sem ambiguidade entre `account.move` vs `account.payment` quando 
 
 ### 6.1. Requisição de exemplo (conforme MCP 2025-06-18)
 
+> **Endpoint único:** `POST /api/mcp` para AMBOS os modos (interno e externo). Distinção pelo valor do Bearer token (§3.1).
+
 ```
 POST /api/mcp
 Authorization: Bearer mcp_live_aBcD1234EfGh5678IjKl9012MnOp3456
@@ -619,23 +682,37 @@ Content-Type: application/json
 
 ---
 
-## 7. Defesa em Profundidade — 7 Camadas
+## 7. Defesa em Profundidade — 6 Camadas + Guard-rail Odoo
 
 | Camada | Trava | Responsável |
 |---|---|---|
-| 1. Catálogo filtrado | `tools/list` só retorna tools cobertas pelas capabilities da `ApiKey`. Tools fora do escopo nem aparecem | Dispatcher / McpServer por sessão (reuso da arquitetura existente "Opção A") |
+| 1. Catálogo filtrado | `tools/list` só retorna tools cobertas pelas capabilities da `ApiKey` (modo externo) ou pelo `UserContext` (modo interno). Tools fora do escopo nem aparecem | Dispatcher / McpServer por sessão (reuso da arquitetura existente "Opção A") |
 | 2. Auth na borda | Token inválido/revogado/expirado/sem ApiKey conhecida → 401 antes de qualquer lógica | Auth middleware (novo) |
 | 3. Capability check no dispatcher | Tool requer `create:crm`; chave não tem? → 403 antes do handler. **Tools `WriteToolEntry` no modo INTERNO** → 403 `forbidden_via_internal_auth` (independente de capability) | Dispatcher |
 | 4. Validação Zod do input | Schema inválido → 400 com detalhes | Dispatcher (já existente para reads; estender p/ writes) |
-| 5. Defesa secundária do user Odoo | User Odoo do MCP tem o conjunto de permissões mais amplo necessário. **Guard-rail global** (não diferenciador por chave) — protege contra bug no dispatcher | Odoo |
-| 6. Idempotency-Key + lock distribuído | Retry não duplica. Lock `SET NX EX 60 mcp:idem:<apiKeyId>:<key>` previne race. Payload diferente com mesma key → 422 | Idempotency middleware (novo) |
-| 7. Audit + rate limit | Toda chamada registrada (`McpAuditLog`). Rate limit sliding window 60s por `apiKeyId`, default 60req, máx 600req → 429 | Audit (estender existente) + Rate limit (estender existente) |
+| 5. Idempotency-Key + lock distribuído | Retry não duplica. Lock `SET NX EX 60 mcp:idem:<apiKeyId>:<key>` previne race. Payload diferente com mesma key → 422 | Idempotency middleware (novo) |
+| 6. Audit + rate limit | Toda chamada registrada (`McpAuditLog`). Rate limit sliding window 60s por `apiKeyId`, default 60req, máx 600req → 429 | Audit (estender existente) + Rate limit (estender existente) |
+
+### Guard-rail do Odoo (defesa adicional, fora das camadas próprias)
+
+O user Odoo configurado para o servidor MCP tem o conjunto de permissões mais amplo necessário (para que tools funcionem). **Não é diferenciador por chave** — é guard-rail global. Protege contra **bug nosso** (ex: dispatcher com bug que permitiria escalada): mesmo que algo passe pelas 6 camadas, Odoo ainda recusa write em modelo proibido para o user. Não confie nele como sua principal defesa.
+
+### 7.1. Coexistência dos dois modelos de autorização
+
+O servidor MCP suporta dois modelos de autorização em paralelo, dependendo do modo de auth:
+
+| Modo | Identificação | Modelo de autorização | Restrição adicional |
+|---|---|---|---|
+| **INTERNO** | `Authorization: Bearer <MCP_SERVICE_TOKEN>` + `X-Mcp-User-Id` | `UserContext.dominio` + `gatedRoles` + `sempreVisivel` (mecanismo existente em `mcp/catalog/registry.ts`) | `WriteToolEntry` sempre rejeitada → 403 `forbidden_via_internal_auth` |
+| **EXTERNO** | `Authorization: Bearer mcp_live_<token>` (uma `ApiKey`) | `ApiKey.capabilities` (matriz `read[]` + `write{}`) | Writes exigem `Idempotency-Key` |
+
+**Tools de leitura podem ser visíveis em ambos os modos** se forem alcançáveis pelos dois mecanismos. Tools de escrita são exclusivamente do modo externo.
 
 **Materialização da regra "Agente Nex nunca escreve":**
-- Modo de auth INTERNO (service token + X-Mcp-User-Id) é a única rota usada pelo Agente Nex.
-- Camada 3 rejeita qualquer `WriteToolEntry` chamada via modo interno (`status: denied`, `errorCode: forbidden_via_internal_auth`).
-- Camada 1 mantém writes fora do `tools/list` em sessões internas (LLM do Nex nem vê).
-- Defesa por **rota de auth**, não por flag de chave. Mais simples e robusto que ter "chave de sistema do Nex" como na v1.
+- Modo INTERNO é a única rota usada pelo Agente Nex.
+- Camada 3 rejeita qualquer `WriteToolEntry` via modo interno.
+- Camada 1 já filtra: writes não aparecem em `tools/list` para sessões internas.
+- Defesa por **rota de auth**, não por flag de chave. Mais simples e robusto.
 
 ---
 
@@ -720,6 +797,19 @@ Conforme §5.5: lista whitelisted de campos por tool, truncamento >10KB.
 - **Mascaramento padrão:** campos com nomes que casem regex `/(cpf|cnpj|password|senha|token|secret)/i` viram `"[REDACTED]"` no `payload` armazenado. Spec MCP de cada tool pode opt-out via `noRedactFields: ["cnpj_cpf"]` quando o uso justifica (ex: criar partner exige enviar CPF — preserva para debug).
 - LGPD revisão completa: Onda 4 (Fiscal) ou fase dedicada.
 
+### 10.5. Audit em denials — política de payload
+
+Diferenciar o que se grava conforme o motivo do denial:
+
+| Tipo de denial | Payload no audit | Justificativa |
+|---|---|---|
+| `unauthorized` (token inválido/ausente) | **NÃO grava payload.** Apenas metadados: `tokenHashTruncado`, `ip`, `userAgent`, `httpStatus=401` | Token inválido = sem confiança. Não preservar input potencialmente malicioso |
+| `forbidden_via_internal_auth` | Grava payload (com redaction §10.4) | Forensics — entender quem tentou e o quê |
+| `capability_missing` | Grava payload (com redaction §10.4) | Forensics — entender qual capability foi pedida |
+| `rate_limited` | Grava payload (com redaction §10.4) | Forensics — entender padrão de abuso |
+| `validation_failed` | Grava payload (com redaction §10.4) | Debug do cliente |
+| Erros do Odoo | Grava payload (com redaction §10.4) | Debug |
+
 ---
 
 ## 11. Cache: Sync Direcionado
@@ -756,6 +846,20 @@ Conforme §5.5: lista whitelisted de campos por tool, truncamento >10KB.
 
 - `delete` no cache remove da tabela `raw_*`.
 - Se houver `fato_*` que referencia a linha removida, política: **manter o fato historicamente** (não delete cascade) marcando flag `deletedAt`. Decisão por modelo na onda do módulo correspondente. Onda 0 só faz delete no `raw_*` da POC (`raw_res_partner` se existir; senão N/A).
+
+### 11.6. Comportamento sob falha do Redis
+
+Redis é crítico (auth cache, idempotency lock, rate limit, sync queue). Política por componente:
+
+| Componente | Redis indisponível | Justificativa |
+|---|---|---|
+| Auth cache (LRU) | **Fallback ao DB** sem cache. Degrada performance, mantém correto | Pior cenário aceitável |
+| Idempotency lock | **Recusa writes** com 503 `idempotency_unavailable` | Fail closed — melhor recusar que duplicar |
+| Rate limit | **Modo permissivo** (não bloqueia) + log nível `warn` + alerta | Fail open — clientes legítimos não devem sofrer por Redis caído |
+| Sync queue (BullMQ) | **Write segue no Odoo**, mas job não enfileira → audit registra `sync_failed` | Cache fica stale; cron incremental pega na próxima janela |
+| pub/sub para hot reload | Falha silenciosa; TTL natural de 60s do cache LRU faz fallback (§3.4) | Mudança de capability demora <60s em vez de <1s |
+
+Todos os casos registram em log operacional (§3.6) nível `error` ou `warn`.
 
 ---
 
@@ -1040,12 +1144,60 @@ A reorganização foi aprovada pelo usuário no brainstorm de 2026-05-20 (esta s
 - **Tauga offline durante write**: 502 `odoo_unavailable` + audit registra.
 - **Sync direcionado**: cache local reflete em <2s pós-write; valida via SELECT no Postgres.
 - **Sync direcionado falha + retry**: simula erro, valida retry, valida consistência final.
+- **Tenant cross-leakage**: 2 ApiKeys com `tenantId` distintos; chave A tenta ler dados do tenant B → 403 + audit.
+- **Chave expirada**: criar chave com `expiresAt = now() + 1ms`; aguardar; chamar → 401 `unauthorized`.
+- **Rotação durante uso**: chave A em uso (10 req/s); rotacionar; A continua válida até `revokedAt` (24h grace); A' já funciona.
+- **Hot reload de capability**: chave sem `create:crm` → 403; editar e adicionar; aguardar pub/sub (<1s); chamar → sucesso.
+- **Token vazado regenerado**: criar chave; "esquecer" de copiar; clicar "Marcar perdida e regenerar"; novo funciona; antigo revogado.
+- **Catálogo filtrado verificação direta**: chave com só `read:crm` faz `tools/list` → não vê `crm.res_partner.create`.
+- **Health check com Tauga offline**: bloquear conexão com Tauga; chamar `/api/mcp/health` → `degraded`, `odoo_write: fail`.
 
 ### 19.4. Frequência
 
 - Local antes do PR.
 - CI: roda inteiro em cada PR contra branch da feature.
 - Não roda contra produção. Não em loop autônomo.
+
+### 19.5. Setup de testes E2E — bootstrap key
+
+Como o painel ainda não existe quando os primeiros testes E2E rodam, e a auth externa precisa de uma `ApiKey` no DB, fixtures criam chaves diretamente:
+
+```typescript
+// mcp/__tests__/fixtures/api-key.ts
+export async function createTestApiKey(opts: {
+  label?: string;
+  capabilities: ApiKeyCapabilities;
+  tenantId?: string;
+  rateLimit?: number;
+  expiresAt?: Date;
+}): Promise<{ id: string; token: string; apiKey: ApiKey }> {
+  const tokenRaw = `mcp_live_${randomBytes(32).toString("base64url")}`;
+  const keyHash = sha256(tokenRaw);
+  const last4 = tokenRaw.slice(-4);
+
+  const apiKey = await prisma.apiKey.create({
+    data: {
+      label: opts.label ?? `test-${Date.now()}`,
+      keyHash,
+      last4,
+      capabilities: opts.capabilities,
+      tenantId: opts.tenantId ?? null,
+      rateLimit: opts.rateLimit ?? 60,
+      expiresAt: opts.expiresAt ?? null,
+      active: true,
+      isSystemKey: false,
+    },
+  });
+
+  return { id: apiKey.id, token: tokenRaw, apiKey };
+}
+
+export async function cleanupTestApiKey(id: string): Promise<void> {
+  await prisma.apiKey.delete({ where: { id } });
+}
+```
+
+Cada test suite usa em `beforeAll` para criar chaves com capabilities específicas, e em `afterAll` deleta. Independente de painel.
 
 ---
 
@@ -1080,7 +1232,11 @@ Amarrados aos cenários de §19.3.
 
 - [ ] Pré-requisitos externos PR1, PR2, PR3 cumpridos (PR4 já feito).
 - [ ] Migration Prisma rodada; tabelas/campos novos existem; `ApiKey` existente continua funcional.
-- [ ] Endpoint `POST /api/mcp` aceita Bearer externo (ApiKey); preserva modo interno em `/api/mcp/internal` (ou via header `MCP_SERVICE_TOKEN`).
+- [ ] Endpoint **único** `POST /api/mcp` distingue modo interno (Bearer = MCP_SERVICE_TOKEN) e externo (Bearer = ApiKey) por valor do token.
+- [ ] Cache LRU de ApiKeys funcional (TTL 60s, invalidação por pub/sub).
+- [ ] CORS desabilitado por default; opt-in via campo `allowedOrigins` na ApiKey.
+- [ ] Logging operacional via `pino`; token mascarado em todos os logs.
+- [ ] Comportamento sob falha do Redis testado (idempotency fail closed; rate limit fail open).
 - [ ] Endpoint `GET /api/mcp/health` retorna JSON com checks Postgres/Redis/Odoo + queue depth.
 - [ ] Chamada sem token → 401; com token inválido → 401; com token revogado → 401.
 - [ ] Chamada write modo interno → 403 `forbidden_via_internal_auth`.
@@ -1116,11 +1272,13 @@ Amarrados aos cenários de §19.3.
 
 ## 22. Decisões em Aberto (TBD reduzidos)
 
+- **DROP do campo `ApiKey.scopes`:** preservado em Onda 0 como `@deprecated` para migração de dados; migration final para DROP planejada na Onda 1 (depois de garantir que nenhum consumidor existente lê `scopes`).
+- **`If-Unmodified-Since` em writes multi-tabela** (ex: `sale.order` com `sale.order.line`): comportamento decidido na Onda 2 (vendas). Onda 0 POC não tem sub-objetos.
 - **Cobrança/observability** por chave/módulo: métricas já estão no audit; expor é tema futuro pós-Onda 3.
 - **Re-discovery automático periódico:** semestral; mecanismo definido pós-Onda 1.
 - **Cliente MCP para o painel (testar tools no navegador):** UX nice-to-have; pós-Onda 0.
 
-(TBDs originais resolvidos na v2: PII/LGPD política Onda 0 §10.4; Acesso super_admin only §15.6; Retenção audit log §10.3; Webhook events `eventName` reservado §4.2.)
+(TBDs originais resolvidos na v2: PII/LGPD política Onda 0 §10.4; Acesso super_admin only §15.6; Retenção audit log §10.3; Webhook events `eventName` reservado §4.2. TBDs adicionais resolvidos na v3: endpoint unificado §3.1; cache LRU §3.4; CORS opt-in §3.5; logging operacional §3.6; coexistência de modelos de autorização §7.1; payload em denials §10.5; failover Redis §11.6.)
 
 ---
 
@@ -1161,7 +1319,8 @@ Amarrados aos cenários de §19.3.
     "odoo_read": "ok",
     "odoo_write": "ok",
     "worker_queue_depth": 12,
-    "sync_directed_lag_ms": 850
+    "sync_directed_lag_ms": 850,
+    "cache_freshness_seconds": 142
   },
   "version": "0.1.0",
   "commit": "abc1234",
@@ -1171,9 +1330,11 @@ Amarrados aos cenários de §19.3.
 ```
 
 **Mapeamento status:**
-- `healthy`: todos os checks `ok`.
-- `degraded`: 1+ checks falham mas servidor MCP responde a tools.
-- `unhealthy`: Postgres ou Redis caem.
+- `healthy`: todos os checks `ok`; `cache_freshness_seconds < 600` (10 min).
+- `degraded`: 1+ checks falham mas servidor responde a tools; OU `cache_freshness_seconds` entre 600 e 3600.
+- `unhealthy`: Postgres ou Redis caem; OU `cache_freshness_seconds > 3600` (1h — cron incremental claramente parado).
+
+`cache_freshness_seconds` = `now() - max(last_sync_at de qualquer tabela raw_*)`. Onda 0 implementa para `raw_res_partner` (POC); ondas seguintes para os demais.
 
 Consumido por: painel "Visão geral" (§15.2), monitoração externa (uptime check).
 
