@@ -75,12 +75,13 @@ export function MessageInput({
   return (
     <div
       className={cn(
-        "flex items-end gap-2 rounded-xl border border-input bg-background px-2 py-1.5 transition-colors focus-within:border-ring focus-within:ring-2 focus-within:ring-ring/30",
+        // h-10 alinha verticalmente com o botão de enviar (h-10) por fora.
+        "flex min-h-10 items-center gap-1 rounded-xl border border-input bg-background px-2 py-0 transition-colors focus-within:border-ring focus-within:ring-2 focus-within:ring-ring/30",
         disabled && "opacity-60",
         className,
       )}
     >
-      {leftSlot && <div className="flex shrink-0 items-center pb-0.5">{leftSlot}</div>}
+      {leftSlot && <div className="flex shrink-0 items-center">{leftSlot}</div>}
       <textarea
         ref={ref}
         id={id}
@@ -91,9 +92,9 @@ export function MessageInput({
         aria-label={ariaLabel}
         onChange={(e) => onChange(e.currentTarget.value)}
         onKeyDown={handleKeyDown}
-        className="flex-1 resize-none bg-transparent px-1 py-1.5 text-sm leading-5 outline-none placeholder:text-muted-foreground disabled:cursor-not-allowed"
+        className="flex-1 resize-none self-center bg-transparent px-1 py-1.5 text-sm leading-5 outline-none placeholder:text-muted-foreground disabled:cursor-not-allowed"
       />
-      {rightSlot && <div className="flex shrink-0 items-center gap-1 pb-0.5">{rightSlot}</div>}
+      {rightSlot && <div className="flex shrink-0 items-center gap-1">{rightSlot}</div>}
     </div>
   )
 }

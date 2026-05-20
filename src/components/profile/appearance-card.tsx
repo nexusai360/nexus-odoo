@@ -25,16 +25,16 @@ const THEME_OPTIONS: Array<{
   icon: typeof Sun;
 }> = [
   {
-    value: "dark",
-    label: "Escuro",
-    description: "Tema escuro padrão",
-    icon: Moon,
-  },
-  {
     value: "light",
     label: "Claro",
     description: "Tema claro",
     icon: Sun,
+  },
+  {
+    value: "dark",
+    label: "Escuro",
+    description: "Tema escuro padrão",
+    icon: Moon,
   },
   {
     value: "system",

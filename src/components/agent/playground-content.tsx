@@ -611,21 +611,84 @@ export function PlaygroundContent({
 
         {/* Config da sessão ativa */}
         {active ? (
-          <div className="space-y-2 rounded-xl border border-border bg-card p-3">
-            <p className="text-xs font-semibold text-foreground">
+          <div className="space-y-3 rounded-xl border border-border bg-card p-3">
+            <p className="text-sm font-semibold text-foreground">
               Configuração da sessão
             </p>
             {providersWithCreds.length > 0 ? (
               <>
+                {/* Nome da sessão — campo no topo, antes de Provedor */}
                 <div className="space-y-1">
-                  <label className="text-[11px] text-muted-foreground">
+                  <label
+                    htmlFor="pg-session-name"
+                    className="text-xs font-medium text-muted-foreground"
+                  >
+                    Nome
+                  </label>
+                  {renamingId === active.id ? (
+                    <div className="flex items-center gap-1">
+                      <Input
+                        id="pg-session-name"
+                        autoFocus
+                        value={renameValue}
+                        onChange={(e) => setRenameValue(e.currentTarget.value)}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter") commitRename(active.id);
+                          if (e.key === "Escape") cancelRename();
+                        }}
+                        className="h-9 text-sm"
+                        placeholder="Sem nome"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => commitRename(active.id)}
+                        aria-label="Salvar nome"
+                        className="flex h-9 w-9 shrink-0 cursor-pointer items-center justify-center rounded-md text-emerald-600 hover:bg-emerald-500/10"
+                      >
+                        <Check className="h-4 w-4" aria-hidden />
+                      </button>
+                      <button
+                        type="button"
+                        onClick={cancelRename}
+                        aria-label="Cancelar"
+                        className="flex h-9 w-9 shrink-0 cursor-pointer items-center justify-center rounded-md text-muted-foreground hover:bg-muted"
+                      >
+                        <X className="h-4 w-4" aria-hidden />
+                      </button>
+                    </div>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={() => startRename(active.id, active.title)}
+                      className="group flex h-9 w-full cursor-pointer items-center justify-between gap-2 rounded-md border border-border bg-card px-3 text-sm hover:border-muted-foreground/40"
+                    >
+                      <span
+                        className={cn(
+                          "truncate",
+                          active.title
+                            ? "text-foreground"
+                            : "text-muted-foreground/70 italic",
+                        )}
+                      >
+                        {active.title ?? "Sem nome — clique para nomear"}
+                      </span>
+                      <Pencil
+                        className="h-3.5 w-3.5 shrink-0 text-muted-foreground opacity-0 transition-opacity group-hover:opacity-100"
+                        aria-hidden
+                      />
+                    </button>
+                  )}
+                </div>
+
+                <div className="space-y-1">
+                  <label className="text-xs font-medium text-muted-foreground">
                     Provedor
                   </label>
                   <CustomSelect
                     aria-label="Provedor da sessão"
                     value={draftProvider}
                     onChange={handleDraftProviderChange}
-                    triggerClassName="h-9 w-full text-xs"
+                    triggerClassName="h-9 w-full text-sm"
                     placeholder="Selecione…"
                     options={providersWithCreds.map((p) => ({
                       value: p.provider,
@@ -634,7 +697,7 @@ export function PlaygroundContent({
                   />
                 </div>
                 <div className="space-y-1">
-                  <label className="text-[11px] text-muted-foreground">
+                  <label className="text-xs font-medium text-muted-foreground">
                     Modelo
                   </label>
                   <SearchableSelect
@@ -643,18 +706,18 @@ export function PlaygroundContent({
                     options={draftModelOptions}
                     placeholder="Selecionar modelo"
                     searchPlaceholder="Buscar modelo…"
-                    triggerClassName="h-9 w-full text-xs"
+                    triggerClassName="h-9 w-full text-sm"
                   />
                 </div>
                 <div className="space-y-1">
-                  <label className="text-[11px] text-muted-foreground">
+                  <label className="text-xs font-medium text-muted-foreground">
                     Chave de API
                   </label>
                   <CustomSelect
                     aria-label="Chave de API da sessão"
                     value={draftCredentialId}
                     onChange={handleDraftCredentialChange}
-                    triggerClassName="h-9 w-full text-xs"
+                    triggerClassName="h-9 w-full text-sm"
                     placeholder="Selecione…"
                     options={draftCredOptions}
                   />
@@ -689,14 +752,14 @@ export function PlaygroundContent({
             {/* Consumo da sessão — destacado (atualiza ao vivo a cada done SSE) */}
             <div className="mt-2 rounded-lg border border-violet-500/30 bg-violet-500/[0.04] px-3 py-2.5">
               <div className="flex items-baseline justify-between gap-2">
-                <span className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
+                <span className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
                   Consumo da sessão
                 </span>
                 <span className="text-[10px] text-muted-foreground tabular-nums">
                   ≈ {usdFmt.format(active.costUsd)}
                 </span>
               </div>
-              <p className="mt-0.5 text-lg font-bold tabular-nums text-violet-700 dark:text-violet-300">
+              <p className="mt-0.5 text-sm font-semibold tabular-nums text-violet-700 dark:text-violet-300">
                 {brlFmt.format(active.costBrl)}
               </p>
               <div className="mt-2 h-1 w-full overflow-hidden rounded-full bg-muted">
@@ -797,6 +860,9 @@ export function PlaygroundContent({
                             <span className="text-muted-foreground">Consumo:</span>
                             <span className="font-semibold text-violet-700 dark:text-violet-300">
                               {brlFmt.format(s.costBrl)}
+                            </span>
+                            <span className="text-[10px] text-muted-foreground">
+                              · {usdFmt.format(s.costUsd)}
                             </span>
                           </p>
                         </button>
@@ -991,7 +1057,7 @@ export function PlaygroundContent({
                     e.preventDefault();
                     handleSendClick();
                   }}
-                  className="flex items-end gap-2"
+                  className="flex items-center gap-2"
                 >
                   <div className="min-w-0 flex-1">
                     {isRecording ? (
@@ -1068,7 +1134,7 @@ export function PlaygroundContent({
                           aria-label={isRecording ? "Enviar áudio" : "Enviar pergunta"}
                           disabled={isRecording ? false : !canSubmit || audioFlight}
                           className={cn(
-                            "flex h-9 w-9 shrink-0 cursor-pointer items-center justify-center rounded-xl",
+                            "flex h-10 w-10 shrink-0 cursor-pointer items-center justify-center self-center rounded-xl",
                             "bg-gradient-to-br from-violet-600 to-violet-500 text-white shadow-md shadow-violet-600/30",
                             "transition-all hover:from-violet-500 hover:to-violet-400 hover:shadow-lg",
                             "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-400/50",

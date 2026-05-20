@@ -472,7 +472,7 @@ export function ChatPanel({
               }
               void handleSend(input);
             }}
-            className="flex items-end gap-2"
+            className="flex items-center gap-2"
           >
             {/* Área central: MessageInput quando idle; barra de gravação quando recording. */}
             <div className="min-w-0 flex-1">
@@ -554,7 +554,7 @@ export function ChatPanel({
                     aria-label={isRecording ? "Enviar áudio" : "Enviar pergunta"}
                     disabled={isRecording ? false : sendDisabled || audioFlight}
                     className={cn(
-                      "flex h-9 w-9 shrink-0 cursor-pointer items-center justify-center rounded-xl",
+                      "flex h-10 w-10 shrink-0 cursor-pointer items-center justify-center self-center rounded-xl",
                       "bg-gradient-to-br from-violet-600 to-violet-500 text-white shadow-md shadow-violet-600/30",
                       "transition-all duration-200 hover:from-violet-500 hover:to-violet-400 hover:shadow-lg",
                       "focus-visible:ring-2 focus-visible:ring-violet-400/50 focus-visible:outline-none",
