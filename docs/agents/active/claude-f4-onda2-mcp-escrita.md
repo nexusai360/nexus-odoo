@@ -64,17 +64,14 @@ Se eu precisar tocar alguma dessas áreas para a reorganização do menu (Plugar
 
 ## Progresso
 
-- ✅ Spec v1 escrita (rascunho inicial pós-brainstorm)
-- ✅ Review crítica #1 — 41 achados materiais
-- ✅ Spec v2 — aplica os 41 achados
-- ✅ Review crítica #2 — 24 achados materiais
-- ✅ Spec v3 — aplica os 24 achados (FINAL)
-- 🔄 Plan v1 — em curso
-- ⏳ Review crítica #1 do plan
-- ⏳ Plan v2
-- ⏳ Review crítica #2 do plan
-- ⏳ Plan v3
-- ⏳ Execução da Onda 0 (fundação MCP escrita)
+- ✅ Spec v1 → review #1 (41) → v2 → review #2 (24) → v3 (FINAL)
+- ✅ Plan v1 → review #1 (32) → v2 → review #2 (23) → v3 (FINAL)
+- 🔄 Execução da Onda 0 — Bloco A (checklist de validação) em curso
+- ⏳ Bloco B (Schema + migration)
+- ⏳ Bloco C (Odoo client wrapper)
+- ⏳ Blocos D-Q (subagentes via subagent-driven-development)
+
+**Total: 120 achados materiais aplicados em 4 reviews adversariais reais.**
 
 ## Bloqueios
 
