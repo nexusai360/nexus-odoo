@@ -1,28 +1,15 @@
 # F4 Onda 2 — Capacidade de Escrita no Servidor MCP (Design)
 
-> **Status:** v3 (consolidada com 2 reviews críticas internas)
+> **Status:** v1 (pré-review) — aguarda Review crítica #1
 > **Data:** 2026-05-20
 > **Branch alvo:** `feat/f4-onda2-mcp-escrita`
 > **Fase predecessora:** F4 Onda 1 (estoque + financeiro, leitura) — em andamento
 > **Decisão canônica afetada:** `CLAUDE.md` §5 #2 (revisada nesta spec)
-
-## 0. Histórico de Reviews Internas
-
-Esta spec foi escrita já incorporando duas reviews críticas. Pontos de inflexão:
-
-**Review #1 (escopo e segurança):**
-- Faltava onda 0 de fundação — não dá pra começar pelo CRM sem schema/middleware/painel/testes E2E prontos.
-- Faltava versionamento da capability — chaves antigas precisam continuar válidas quando novas ações são adicionadas.
-- Faltava hot reload — mudança de capability no painel precisava invalidação imediata, não TTL.
-- Faltava classificação de erros do Odoo (AccessError, ValidationError, UserError, MissingError) para HTTP status.
-
-**Review #2 (consistência e operacional):**
-- `external_id` não pode usar campo `x_*` custom — usar `ir.model.data` nativo do Odoo.
-- Sync direcionado pós-write deve aproveitar o snapshot `after` em vez de fazer novo `search_read` (otimização).
-- Sync direcionado de DELETE precisa lógica diferente — remover do cache, não buscar.
-- Concurrency: optimistic locking via `write_date` com header `If-Unmodified-Since` opcional.
-- Documentação interna do painel: não é Markdown estático, é componente React com syntax highlighting e tabs por linguagem.
-- Reorganização do menu ("Plugar MCPs" → Nex; "API REST" com tag "Em breve") integra a esta onda — não é trabalho separado.
+>
+> **Histórico de versões:**
+> - **v1** (2026-05-20): rascunho inicial pós-brainstorming. Conteúdo redigido em uma passada; ajustes feitos só durante a escrita, sem auditoria adversarial formal.
+> - **v2** (TBD): após Review crítica #1 (`docs/superpowers/specs/reviews/2026-05-20-f4-onda2-mcp-escrita-review-1.md`).
+> - **v3** (TBD): após Review crítica #2 (`docs/superpowers/specs/reviews/2026-05-20-f4-onda2-mcp-escrita-review-2.md`).
 
 ---
 
