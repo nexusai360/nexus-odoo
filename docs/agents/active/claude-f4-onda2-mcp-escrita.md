@@ -62,6 +62,22 @@ Se eu precisar tocar alguma dessas áreas para a reorganização do menu (Plugar
 - 4 ações canônicas (create/update/delete/transition) + sensíveis específicas em fiscal/contábil/financeiro/estoque/vendas/compras/produção.
 - Discovery por ondas, cobertura final = 100% dos módulos ativos no Odoo Tauga.
 
+## Progresso
+
+- ✅ Spec v1 escrita (rascunho inicial pós-brainstorm)
+- ✅ Review crítica #1 — 41 achados materiais
+- ✅ Spec v2 — aplica os 41 achados
+- ✅ Review crítica #2 — 24 achados materiais
+- ✅ Spec v3 — aplica os 24 achados (FINAL)
+- 🔄 Plan v1 — em curso
+- ⏳ Review crítica #1 do plan
+- ⏳ Plan v2
+- ⏳ Review crítica #2 do plan
+- ⏳ Plan v3
+- ⏳ Execução da Onda 0 (fundação MCP escrita)
+
 ## Bloqueios
 
-(vazio)
+- **PR1 (externo):** Tauga precisa criar usuário Odoo dedicado em `grupojht.teste.tauga.online` com permissões plenas. Sem isso, Onda 0 inicia em modo dry-run.
+- **PR2 (externo):** SLA da base de teste confirmado pela Tauga.
+- **PR3 (externo):** Confirmar `module = mcp_nexus` livre em `ir.model.data` no Odoo Tauga.
