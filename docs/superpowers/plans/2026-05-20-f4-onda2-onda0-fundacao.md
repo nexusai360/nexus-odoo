@@ -370,54 +370,60 @@ model ApiKey {
 ```
 - [ ] Manter `scopes` (deprecated; marcado com `///` comment).
 
-### Task B2: Criar modelo `McpAuditLog`
+### Task B2: ESTENDER modelo `McpAuditLog` existente (revisado pós-Bloco A)
+
+> **🔴 IMPORTANTE:** o modelo `McpAuditLog` JÁ EXISTE no schema (linha 1499) com formato simples focado em reads. Em vez de criar paralelo, ESTENDER com campos opcionais.
 
 **Files:**
 - Modify: `prisma/schema.prisma`
 
-- [ ] Adicionar:
+- [ ] **Estender** o modelo `McpAuditLog` existente. Adicionar campos novos OPCIONAIS preservando os legados:
 ```prisma
 model McpAuditLog {
-  id              String    @id @default(uuid()) @db.Uuid
-  apiKeyId        String?   @map("api_key_id") @db.Uuid
-  apiKey          ApiKey?   @relation(fields: [apiKeyId], references: [id])
+  // LEGADOS — preservados para retrocompatibilidade com mcp/lib/audit.ts
+  id         String   @id @default(uuid())
+  userId     String   @map("user_id")  // permanece; em modo externo = createdById da ApiKey
+  tool       String                     // = toolId (alias do legado)
+  params     Json                       // = payload em writes; output bruto em reads
+  outcome    String                     // = status (legado "ok"/"denied"/"error"/"invalid_input")
+  rowCount   Int?     @map("row_count")
+  durationMs Int?     @map("duration_ms")
+  criadoEm   DateTime @default(now()) @map("criado_em")
 
-  authMode        String    @map("auth_mode")
-  toolId          String    @map("tool_id")
-  operation       String
-  module          String?
-  action          String?
-  capability      String?
-  eventName       String?   @map("event_name")
+  // NOVOS — F4 Onda 2 (opcionais)
+  apiKeyId       String?   @map("api_key_id") @db.Uuid
+  apiKey         ApiKey?   @relation(fields: [apiKeyId], references: [id])
+  authMode       String?   @map("auth_mode")              // "internal" | "external"
+  operation      String?                                   // "read" | "write"
+  module         String?
+  action         String?
+  capability     String?
+  eventName      String?   @map("event_name")
+  requestId      String?   @map("request_id")
+  idempotencyKey String?   @map("idempotency_key")
+  payload        Json?                                     // payload novo (separado de params legado)
+  result         Json?
+  snapshotBefore Json?     @map("snapshot_before")
+  snapshotAfter  Json?     @map("snapshot_after")
+  status         String?                                   // novo: "success"|"denied"|"validation_error"|...
+  httpStatus     Int?      @map("http_status")
+  errorCode      String?   @map("error_code")
+  errorMessage   String?   @map("error_message")
+  ipAddress      String?   @map("ip_address")
+  userAgent      String?   @map("user_agent")
 
-  requestId       String    @map("request_id")
-  idempotencyKey  String?   @map("idempotency_key")
-
-  payload         Json?
-  result          Json?
-  snapshotBefore  Json?     @map("snapshot_before")
-  snapshotAfter   Json?     @map("snapshot_after")
-
-  status          String
-  httpStatus      Int       @map("http_status")
-  errorCode       String?   @map("error_code")
-  errorMessage    String?   @map("error_message")
-
-  durationMs      Int       @map("duration_ms")
-  ipAddress       String?   @map("ip_address")
-  userAgent       String?   @map("user_agent")
-
-  createdAt       DateTime  @default(now()) @map("created_at")
-
-  @@index([apiKeyId, createdAt(sort: Desc)])
-  @@index([toolId, createdAt(sort: Desc)])
-  @@index([status, createdAt(sort: Desc)])
+  @@index([userId, criadoEm])                              // legado preservado
+  @@index([apiKeyId, criadoEm(sort: Desc)])
+  @@index([tool, criadoEm(sort: Desc)])                    // tool legado também serve
+  @@index([status, criadoEm(sort: Desc)])
   @@index([idempotencyKey])
-  @@index([module, action, createdAt(sort: Desc)])
-  @@index([eventName, createdAt])
-  @@map("mcp_audit_logs")
+  @@index([module, action, criadoEm(sort: Desc)])
+  @@index([eventName, criadoEm])
+  @@map("mcp_audit_log")                                   // mantém nome singular existente
 }
 ```
+
+> **Política de uso:** código novo (Bloco F dispatcher writes) preenche TODOS os campos novos. Campos legados ficam `tool=toolId`, `params=payload` por compatibilidade do código de leitura existente em `mcp/lib/audit.ts`. Eventualmente (onda futura), refatorar `mcp/lib/audit.ts` para preencher só campos novos e marcar legados como `@deprecated`.
 
 ### Task B3: Criar modelo `McpIdempotencyRecord`
 
@@ -618,34 +624,83 @@ Co-Authored-By: Claude Opus 4.7 <noreply@anthropic.com>"`
 
 ---
 
-## Bloco C — Odoo Client Wrapper para Writes
+## Bloco C — Estender `OdooClient` existente com métodos de escrita (revisado pós-Bloco A)
 
-### Task C1: Criar arquivo base `mcp/odoo/client.ts`
+> **🔴 IMPORTANTE pós-Bloco A:** `src/worker/odoo/client.ts` já existe como classe `OdooClient` com `executeKw`, `searchReadPaged`, `searchReadPage`, `searchIds`. NÃO criar paralelo em `mcp/odoo/`. **Estender o existente** com métodos de write + novo factory `OdooClient.fromEnv(mode)` que distingue `read` (ODOO_*) vs `write` (ODOO_WRITE_*).
+
+### Task C1: Estender interface e factory de `OdooClient`
 
 **Files:**
-- Create: `mcp/odoo/client.ts`
-- Test: `mcp/odoo/__tests__/client.test.ts`
+- Modify: `src/worker/odoo/client.ts`
+- Create: `src/worker/odoo/errors.ts`
+- Test: `src/worker/odoo/__tests__/client-writes.test.ts`
 
-- [ ] Escrever interface do client:
+- [ ] Estender classe `OdooClient` com métodos novos:
 ```typescript
-// mcp/odoo/client.ts
-export interface OdooWriteClient {
-  authenticate(): Promise<number>;          // retorna uid
-  create(model: string, vals: object): Promise<number>;
-  write(model: string, ids: number[], vals: object): Promise<boolean>;
-  unlink(model: string, ids: number[]): Promise<boolean>;
-  read(model: string, ids: number[], fields: string[]): Promise<object[]>;
-  search(model: string, domain: unknown[], options?: { limit?: number; offset?: number }): Promise<number[]>;
-  execute_kw<T>(model: string, method: string, args: unknown[], kwargs?: object): Promise<T>;
-  searchIrModelData(model: string, externalKey: string): Promise<{ res_id: number; id: number } | null>;
+// src/worker/odoo/client.ts (adições)
+export class OdooClient {
+  // ... existente: version, authenticate, executeKw, searchReadPaged, searchReadPage, searchIds
+
+  async create(model: string, vals: object): Promise<number> {
+    return this.executeKw<number>(model, "create", [vals]);
+  }
+
+  async write(model: string, ids: number[], vals: object): Promise<boolean> {
+    return this.executeKw<boolean>(model, "write", [ids, vals]);
+  }
+
+  async unlink(model: string, ids: number[]): Promise<boolean> {
+    return this.executeKw<boolean>(model, "unlink", [ids]);
+  }
+
+  async read(model: string, ids: number[], fields: string[]): Promise<object[]> {
+    return this.executeKw<object[]>(model, "read", [ids], { fields });
+  }
+
+  async searchRead<T = object>(
+    model: string, domain: unknown[], fields: string[],
+    options: { limit?: number; offset?: number; order?: string } = {},
+  ): Promise<T[]> {
+    return this.executeKw<T[]>(model, "search_read", [domain], { fields, ...options });
+  }
+
+  async fieldsGet(model: string, attributes?: string[]): Promise<Record<string, object>> {
+    const args: unknown[] = attributes ? [false, attributes] : [];
+    return this.executeKw<Record<string, object>>(model, "fields_get", args);
+  }
+
+  async searchIrModelData(
+    model: string, externalKey: string,
+  ): Promise<{ id: number; res_id: number } | null> {
+    const rows = await this.searchRead<{ id: number; res_id: number }>(
+      "ir.model.data",
+      [["model", "=", model], ["module", "=", "mcp_nexus"], ["name", "=", externalKey]],
+      ["id", "res_id"],
+      { limit: 1 },
+    );
+    return rows[0] ?? null;
+  }
 }
 
-export interface OdooConfig {
-  url: string;
-  db: string;
-  username: string;
-  password: string;
-  timeoutMs?: number;
+// NOVO factory com 2 modos
+export function clientFromEnv(mode: "read" | "write" = "read"): OdooClient {
+  const prefix = mode === "write" ? "ODOO_WRITE_" : "ODOO_";
+  const fallback = mode === "write" ? "ODOO_" : null;  // se write não definido, fallback para read
+
+  const get = (key: string): string => {
+    return process.env[`${prefix}${key}`] ?? (fallback ? process.env[`${fallback}${key}`] : undefined) ?? "";
+  };
+
+  const required = ["URL", "DB", "USERNAME", "PASSWORD"];
+  const faltando = required.filter((k) => !get(k));
+  if (faltando.length) throw new OdooError(`Variáveis ausentes para modo '${mode}': ${faltando.join(", ")}`);
+
+  return new OdooClient({
+    url: get("URL"),
+    db: get("DB"),
+    username: get("USERNAME"),
+    password: get("PASSWORD"),
+  });
 }
 ```
 
@@ -1574,7 +1629,7 @@ Co-Authored-By: Claude Opus 4.7 <noreply@anthropic.com>"`
 
 ## Bloco G — Rate Limit por apiKeyId
 
-> Estende `mcp/lib/rate-limit.ts` existente (decisão tomada em Bloco A task A3).
+> **🔴 IMPORTANTE pós-Bloco A:** `mcp/lib/rate-limit.ts` já existe com `checkMcpRateLimit(redis, userId)` (60req/min hardcoded, fail-open). NÃO reescrever. **Adicionar função paralela** `checkMcpRateLimitFor(redis, scope)` que aceita scope `{ type: "user", userId, limit? } | { type: "apiKey", apiKeyId, limit }`. Original mantida para retrocompat.
 
 ### Task G1: TDD — Rate limit por apiKeyId, sliding window 60s
 
@@ -2624,14 +2679,22 @@ Cada sub-task L tem commit próprio (substitui o commit único do Bloco L).
 - **N5.3:** Syntax highlighting via Shiki (lib + tema dark/light)
 - **N5.4:** Busca interna Cmd+K (componente próprio com index in-memory)
 
-### Decomposição da Task O1 (Bloco O — Mover Plugar MCPs)
+### Decomposição da Task O1 (Bloco O — Mover Plugar MCPs) — revisado pós-Bloco A
 
-- **O1.1:** Coordenação multi-agente (`ls docs/agents/active/`; comunicar via active/ próprio se houver overlap em sidebar.tsx)
+- **O1.1:** Coordenação multi-agente (`ls docs/agents/active/`; comunicar via active/ próprio se houver overlap)
 - **O1.2:** Criar nova rota `src/app/(protected)/agente/plugar-mcps/page.tsx`
-- **O1.3:** Mover componentes e conteúdo da rota antiga `src/app/(protected)/integracoes/mcp/`
-- **O1.4:** Atualizar `src/components/layout/sidebar.tsx` (remover de Integrações; adicionar em Agente Nex)
-- **O1.5:** Remover rota antiga (`git rm` da pasta antiga)
-- **O1.6:** Validar navegação no dev server (`npm run dev` + clicar pelo menu)
+- **O1.3:** Mover/renomear `src/components/integracoes/mcp-panel.tsx` → `src/components/agent/plugar-mcps-content.tsx`; usar na rota nova; **NÃO** afeta `src/components/layout/sidebar.tsx` (sidebar lê de `nav.ts`).
+- **O1.4:** Editar `src/lib/constants/nav.ts` (NÃO `sidebar.tsx`):
+  - Adicionar `{ label: "Plugar MCPs", href: "/agente/plugar-mcps", icon: Plug, superAdminOnly: true }` como 6º child de Agente Nex.
+  - Integrações continua flat (sem entry no nav; rotas internas via Next.js routing).
+- **O1.5:** Remover rota antiga (`git rm` em `src/app/(protected)/integracoes/mcp/`).
+- **O1.6:** Validar navegação no dev server (`npm run dev` + clicar pelo menu).
+
+### Decomposição da Task K1 (criar rotas do "Servidor MCP") — revisado pós-Bloco A
+
+- Card "Servidor MCP" criado em `src/components/integracoes/servidor-mcp/servidor-mcp-card.tsx` (atualiza `integracoes-grid.tsx` para incluir o card).
+- Rota interna do card: `src/app/(protected)/integracoes/servidor-mcp/page.tsx` (visão geral) + sub-rotas `/chaves`, `/logs`, `/documentacao`.
+- Card "APIs" (atual `api-keys-content.tsx`) → renomear card visualmente para "API REST" com tag "Em breve"; rota fica `/integracoes/api-rest` (não-clicável).
 
 ### Código completo: `requireSuperAdmin()` (referenciado em Bloco L)
 
