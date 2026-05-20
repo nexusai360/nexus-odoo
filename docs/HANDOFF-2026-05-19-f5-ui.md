@@ -156,6 +156,14 @@ Plano v3 **encerrado**. Próximos passos:
 
 ---
 
+## 5d. SESSÃO 3.3 — 20/05/2026 (manhã)
+
+| # | Tarefa | Estado |
+|---|---|---|
+| 31 | Integrações/MCP polimento | ✅ Reorganizado em 3 Cards (rounded-2xl bg-muted/30): Status com ícone semântico em pílula + título destacado; Endpoint & Token com Tooltips nos botões Copy/Eye; Card de conexão n8n. Botões h-9. |
+| 32 | Integrações/Webhooks polimento | ✅ WebhookRow ganhou ícone Webhook violet em pílula, hover-border, Switch+botões com Tooltip, separador interno, botão Remover ml-auto. Botão "Novo webhook" promovido (h-9 primary + Plus). |
+| 33 | Integrações/APIs polimento | ✅ ApiKeyRow com ícone Key violet em pílula, scopes em chips violet rounded-full, hover-border, botão Revogar com Tooltip explicando irreversibilidade. Botão "Nova API key" promovido (h-9 primary). |
+
 ## 5c. SESSÃO 3.2 — 20/05/2026 (continuação madrugada)
 
 Rodada extra após retorno do usuário:
