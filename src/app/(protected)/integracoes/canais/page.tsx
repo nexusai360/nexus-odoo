@@ -5,6 +5,7 @@ import { PageHeader } from "@/components/page-header";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Breadcrumb } from "@/components/integracoes/breadcrumb";
+import { WhatsappInstancesList } from "@/components/integracoes/whatsapp-instances-list";
 import { getWhatsappChannel } from "@/lib/actions/whatsapp-channel";
 
 export const metadata = { title: "Canais | Integrações | Nexus Odoo" };
@@ -54,14 +55,17 @@ export default async function CanaisPage() {
                   </Badge>
                 </div>
                 <p className="mt-0.5 line-clamp-2 text-xs text-muted-foreground">
-                  Meta Graph API para receber e enviar mensagens via WhatsApp
-                  Business.
+                  Configuração legada (canal global).
                 </p>
               </div>
               <ChevronRight className="h-4 w-4 shrink-0 text-muted-foreground transition-transform duration-200 group-hover:translate-x-0.5" />
             </CardContent>
           </Card>
         </Link>
+      </div>
+
+      <div className="mt-8">
+        <WhatsappInstancesList />
       </div>
     </PageShell>
   );
