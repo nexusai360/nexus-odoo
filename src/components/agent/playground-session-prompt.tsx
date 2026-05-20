@@ -2,24 +2,32 @@
 
 /**
  * PlaygroundSessionPrompt — sub-tela de edição do prompt de uma sessão de
- * playground. NÃO é modal: entra e volta dentro do playground.
+ * playground. Espelha visualmente `/agente/prompt`: usa os MESMOS
+ * componentes (ExpandableTextarea), os mesmos ícones (FileText, Sparkles,
+ * Wand2, Shield), os mesmos rótulos e os mesmos limites de caracteres.
  *
- * G10 — layout espelha a tela `/agente/prompt`: cards Identidade base e
- * Comportamento (Personalidade + Tom + Guardrails). KB e Recursos ficam
- * no menu Prompt e refletem aqui via checkpoint (PRODUCTION/PLAYGROUND).
+ * Diferenças funcionais (esperadas, escondidas do usuário):
+ * - Salva no snapshot da sessão (savePlaygroundSessionPrompt) em vez de
+ *   AgentSettings global.
+ * - Botão extra "Aplicar à produção" promove o snapshot para
+ *   AgentSettings via applyPlaygroundPromptToProduction.
  *
- * Edições são por sessão; "Aplicar à produção" promove o prompt para
- * AgentSettings global.
+ * KB e Recursos ficam no menu Prompt principal (refletem aqui via
+ * checkpoint PLAYGROUND/PRODUCTION).
  */
 
 import { useState } from "react";
 import {
   ArrowLeft,
+  FileText,
   Loader2,
   Plus,
   Save,
+  Shield,
+  Sparkles,
   Trash2,
   UploadCloud,
+  Wand2,
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -30,8 +38,9 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { Textarea } from "@/components/ui/textarea";
+import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { ExpandableTextarea } from "@/components/ui/expandable-textarea";
 import {
   Tooltip,
   TooltipContent,
@@ -56,9 +65,10 @@ interface PlaygroundSessionPromptProps {
   onBack: (saved: PlaygroundPromptSnapshot | null) => void;
 }
 
-function counterClass(len: number, max: number): string {
-  if (len > max) return "text-destructive";
-  if (len > max * 0.9) return "text-amber-600 dark:text-amber-400";
+function counterClass(current: number, max: number): string {
+  const ratio = current / max;
+  if (current > max) return "text-destructive";
+  if (ratio >= 0.9) return "text-amber-600 dark:text-amber-400";
   return "text-muted-foreground";
 }
 
@@ -112,7 +122,6 @@ export function PlaygroundSessionPrompt({
       return;
     }
     setIsApplying(true);
-    // Garante que a sessão tem o snapshot atual antes de promover.
     await savePlaygroundSessionPrompt({ sessionId, prompt: snapshot() });
     const res = await applyPlaygroundPromptToProduction(sessionId);
     setIsApplying(false);
@@ -178,42 +187,25 @@ export function PlaygroundSessionPrompt({
               Substitui o prompt do Agente Nex em produção pelo desta sessão
             </TooltipContent>
           </Tooltip>
-          <Tooltip>
-            <TooltipTrigger
-              render={
-                <Button
-                  type="button"
-                  size="sm"
-                  onClick={handleSave}
-                  disabled={isSaving || isApplying || overLimit}
-                  className="h-9 text-xs"
-                >
-                  {isSaving ? (
-                    <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" aria-hidden />
-                  ) : (
-                    <Save className="mr-1.5 h-3.5 w-3.5" aria-hidden />
-                  )}
-                  Salvar prompt
-                </Button>
-              }
-            />
-            <TooltipContent>Salva apenas no contexto desta sessão</TooltipContent>
-          </Tooltip>
         </div>
       </div>
 
-      {/* Conteúdo rolável — mesmo layout da tela /agente/prompt */}
+      {/* Conteúdo rolável — mesmo layout/Cards/labels da tela /agente/prompt */}
       <div className="flex-1 overflow-y-auto bg-muted/10 px-4 py-5">
-        <div className="mx-auto max-w-3xl space-y-6">
-          {/* Identidade base */}
+        <div className="mx-auto max-w-3xl space-y-8">
+          {/* ─────── Identidade base (espelha IdentityBaseEditor) ─────── */}
           <Card className="rounded-2xl border border-border bg-muted/30 p-2">
             <CardHeader className="pb-3">
               <CardTitle>Identidade base</CardTitle>
             </CardHeader>
-            <CardContent className="space-y-1.5 pb-5">
-              <div className="flex items-center justify-between">
-                <Label htmlFor="pg-identity" className="text-xs font-medium">
-                  Quem é o Agente Nex
+            <CardContent className="space-y-4 pb-5">
+              <div className="flex items-center justify-between gap-2">
+                <Label
+                  htmlFor="pg-identity-base"
+                  className="flex items-center gap-2"
+                >
+                  <FileText className="h-3.5 w-3.5 text-muted-foreground" />
+                  Texto do prompt
                 </Label>
                 <span
                   className={cn(
@@ -221,30 +213,62 @@ export function PlaygroundSessionPrompt({
                     counterClass(identityBase.length, MAX_IDENTITY),
                   )}
                 >
-                  {identityBase.length}/{MAX_IDENTITY}
+                  {identityBase.length.toLocaleString("pt-BR")}/
+                  {MAX_IDENTITY.toLocaleString("pt-BR")}
                 </span>
               </div>
-              <Textarea
-                id="pg-identity"
+              <ExpandableTextarea
+                id="pg-identity-base"
+                label="Identidade base"
                 value={identityBase}
-                onChange={(e) => setIdentityBase(e.currentTarget.value)}
+                onChange={setIdentityBase}
                 maxLength={MAX_IDENTITY}
                 rows={8}
-                placeholder="Identidade base do Agente Nex. Vazio usa a identidade padrão."
-                className="resize-y text-sm"
+                placeholder="Defina aqui a identidade fixa do Agente Nex — quem ele é, o que faz, contexto da empresa…"
+                disabled={isSaving || isApplying}
+                className="font-mono text-xs"
+                aria-describedby="pg-identity-base-help"
               />
+              <p
+                id="pg-identity-base-help"
+                className="text-xs text-muted-foreground"
+              >
+                Identidade base injetada no início do system prompt, antes de
+                personalidade e tom. Pode ser longa: descreva quem é o agente,
+                a operação e os dados disponíveis.
+              </p>
+              <div className="flex justify-end pt-3">
+                <Button
+                  type="button"
+                  onClick={handleSave}
+                  disabled={isSaving || isApplying || overLimit}
+                  className="h-9 bg-violet-600 text-white hover:bg-violet-700"
+                >
+                  {isSaving ? (
+                    <Loader2 className="mr-1.5 h-4 w-4 animate-spin" />
+                  ) : (
+                    <Save className="mr-1.5 h-4 w-4" />
+                  )}
+                  Salvar prompt
+                </Button>
+              </div>
             </CardContent>
           </Card>
 
-          {/* Comportamento (Personalidade + Tom + Guardrails) */}
+          {/* ─────── Comportamento (espelha PromptConfigForm) ─────── */}
           <Card className="rounded-2xl border border-border bg-muted/30 p-2">
             <CardHeader className="pb-3">
               <CardTitle>Comportamento</CardTitle>
             </CardHeader>
-            <CardContent className="space-y-5 pb-5">
-              <section className="space-y-1.5">
-                <div className="flex items-center justify-between">
-                  <Label htmlFor="pg-personality" className="text-xs font-medium">
+            <CardContent className="space-y-7 pb-5">
+              {/* Personalidade */}
+              <div className="space-y-1.5">
+                <div className="flex items-center justify-between gap-2">
+                  <Label
+                    htmlFor="pg-personality"
+                    className="flex items-center gap-2"
+                  >
+                    <Sparkles className="h-3.5 w-3.5 text-muted-foreground" />
                     Personalidade
                   </Label>
                   <span
@@ -256,21 +280,34 @@ export function PlaygroundSessionPrompt({
                     {personality.length}/{MAX_PERSONALITY}
                   </span>
                 </div>
-                <Textarea
+                <ExpandableTextarea
                   id="pg-personality"
+                  label="Personalidade"
                   value={personality}
-                  onChange={(e) => setPersonality(e.currentTarget.value)}
+                  onChange={setPersonality}
                   maxLength={MAX_PERSONALITY}
                   rows={3}
-                  placeholder="Como o Agente Nex se comporta."
-                  className="resize-y text-sm"
+                  placeholder="Ex.: Direto, prático, prefere bullets curtos. Evita rodeios."
+                  disabled={isSaving || isApplying}
+                  aria-describedby="pg-personality-help"
                 />
-              </section>
+                <p
+                  id="pg-personality-help"
+                  className="text-xs text-muted-foreground"
+                >
+                  Como o Agente Nex se comporta — voz, foco, atitude geral.
+                </p>
+              </div>
 
-              <section className="space-y-1.5">
-                <div className="flex items-center justify-between">
-                  <Label htmlFor="pg-tone" className="text-xs font-medium">
-                    Tom de voz
+              {/* Tom */}
+              <div className="space-y-1.5">
+                <div className="flex items-center justify-between gap-2">
+                  <Label
+                    htmlFor="pg-tone"
+                    className="flex items-center gap-2"
+                  >
+                    <Wand2 className="h-3.5 w-3.5 text-muted-foreground" />
+                    Tom
                   </Label>
                   <span
                     className={cn(
@@ -281,43 +318,63 @@ export function PlaygroundSessionPrompt({
                     {tone.length}/{MAX_TONE}
                   </span>
                 </div>
-                <Textarea
+                <ExpandableTextarea
                   id="pg-tone"
+                  label="Tom"
                   value={tone}
-                  onChange={(e) => setTone(e.currentTarget.value)}
+                  onChange={setTone}
                   maxLength={MAX_TONE}
                   rows={3}
-                  placeholder="Tom das respostas do Agente Nex."
-                  className="resize-y text-sm"
+                  placeholder="Ex.: Profissional, mas amigável. Em pt-BR. Use 'você'."
+                  disabled={isSaving || isApplying}
+                  aria-describedby="pg-tone-help"
                 />
-              </section>
+                <p
+                  id="pg-tone-help"
+                  className="text-xs text-muted-foreground"
+                >
+                  Estilo de escrita — formalidade, calor humano, vocabulário.
+                </p>
+              </div>
 
-              <section className="space-y-2">
-                <Label className="text-xs font-medium">Guardrails</Label>
-                <div className="space-y-2">
-                  {guardrails.length === 0 ? (
-                    <p className="text-xs text-muted-foreground">
-                      Nenhuma regra de guardrail.
-                    </p>
-                  ) : (
-                    guardrails.map((g, i) => (
-                      <div key={i} className="flex items-start gap-2">
-                        <div className="flex-1">
-                          <Textarea
+              {/* Guardrails */}
+              <div className="space-y-2">
+                <Label className="flex items-center gap-2">
+                  <Shield className="h-3.5 w-3.5 text-muted-foreground" />
+                  Guardrails ({guardrails.length})
+                </Label>
+                <p className="text-xs text-muted-foreground">
+                  Regras que o Agente Nex nunca deve violar (ex.: &ldquo;Nunca
+                  exponha dados de outro tenant&rdquo;, &ldquo;Não simule
+                  ações destrutivas&rdquo;). Crie quantas precisar.
+                </p>
+
+                {guardrails.length === 0 ? (
+                  <div className="rounded-lg border border-dashed border-border bg-background/40 px-3 py-4 text-center text-xs text-muted-foreground">
+                    Nenhum guardrail definido. Clique em &ldquo;Adicionar
+                    regra&rdquo; para começar.
+                  </div>
+                ) : (
+                  <ul className="space-y-2">
+                    {guardrails.map((g, idx) => (
+                      <li key={idx} className="flex items-start gap-2">
+                        <div className="flex flex-1 flex-col gap-1">
+                          <Input
+                            aria-label={`Guardrail ${idx + 1}`}
                             value={g}
                             onChange={(e) => {
                               const next = [...guardrails];
-                              next[i] = e.currentTarget.value;
+                              next[idx] = e.currentTarget.value;
                               setGuardrails(next);
                             }}
                             maxLength={MAX_GUARDRAIL}
-                            rows={2}
-                            placeholder={`Regra ${i + 1}`}
-                            className="resize-y text-sm"
+                            placeholder={`Regra ${idx + 1}`}
+                            disabled={isSaving || isApplying}
+                            className="min-h-[40px]"
                           />
                           <span
                             className={cn(
-                              "mt-0.5 block text-right text-xs tabular-nums",
+                              "self-end text-[10px] tabular-nums",
                               counterClass(g.length, MAX_GUARDRAIL),
                             )}
                           >
@@ -327,39 +384,60 @@ export function PlaygroundSessionPrompt({
                         <Tooltip>
                           <TooltipTrigger
                             render={
-                              <button
+                              <Button
                                 type="button"
+                                variant="ghost"
+                                size="icon"
                                 onClick={() =>
                                   setGuardrails(
-                                    guardrails.filter((_, idx) => idx !== i),
+                                    guardrails.filter((_, i) => i !== idx),
                                   )
                                 }
-                                aria-label={`Remover regra ${i + 1}`}
-                                className="mt-1.5 flex h-8 w-8 shrink-0 cursor-pointer items-center justify-center rounded-md border border-border text-muted-foreground transition-colors hover:border-destructive/40 hover:text-destructive focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-500"
+                                disabled={isSaving || isApplying}
+                                aria-label={`Remover guardrail ${idx + 1}`}
+                                className="mt-1 h-8 w-8 text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
                               >
-                                <Trash2 className="h-3.5 w-3.5" aria-hidden />
-                              </button>
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
                             }
                           />
-                          <TooltipContent>Remover guardrail</TooltipContent>
+                          <TooltipContent>Remover regra</TooltipContent>
                         </Tooltip>
-                      </div>
-                    ))
-                  )}
-                </div>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+
                 <div className="flex justify-end">
                   <Button
                     type="button"
-                    size="sm"
                     variant="outline"
+                    size="sm"
                     onClick={() => setGuardrails([...guardrails, ""])}
-                    className="h-8 text-xs"
+                    disabled={isSaving || isApplying}
                   >
-                    <Plus className="mr-1.5 h-3.5 w-3.5" aria-hidden />
-                    Adicionar guardrail
+                    <Plus className="mr-1.5 h-3.5 w-3.5" />
+                    Adicionar regra
                   </Button>
                 </div>
-              </section>
+              </div>
+
+              {/* Ação principal */}
+              <div className="flex items-center justify-end pt-3">
+                <Button
+                  type="button"
+                  onClick={handleSave}
+                  disabled={isSaving || isApplying || overLimit}
+                  className="h-9 bg-violet-600 text-white hover:bg-violet-700"
+                >
+                  {isSaving ? (
+                    <Loader2 className="mr-1.5 h-4 w-4 animate-spin" />
+                  ) : (
+                    <Save className="mr-1.5 h-4 w-4" />
+                  )}
+                  Salvar comportamento
+                </Button>
+              </div>
             </CardContent>
           </Card>
 

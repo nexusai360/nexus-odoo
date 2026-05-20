@@ -686,25 +686,27 @@ export function PlaygroundContent({
               </Link>
             )}
 
-            {/* Barra de consumo da sessão */}
-            <div className="space-y-1 border-t border-border pt-2">
-              <div className="flex items-center justify-between text-[11px]">
-                <span className="text-muted-foreground">Consumo da sessão</span>
-                <span className="font-medium tabular-nums text-foreground">
-                  {brlFmt.format(active.costBrl)}
+            {/* Consumo da sessão — destacado (atualiza ao vivo a cada done SSE) */}
+            <div className="mt-2 rounded-lg border border-violet-500/30 bg-violet-500/[0.04] px-3 py-2.5">
+              <div className="flex items-baseline justify-between gap-2">
+                <span className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
+                  Consumo da sessão
+                </span>
+                <span className="text-[10px] text-muted-foreground tabular-nums">
+                  ≈ {usdFmt.format(active.costUsd)}
                 </span>
               </div>
-              <div className="h-1.5 w-full overflow-hidden rounded-full bg-muted">
+              <p className="mt-0.5 text-lg font-bold tabular-nums text-violet-700 dark:text-violet-300">
+                {brlFmt.format(active.costBrl)}
+              </p>
+              <div className="mt-2 h-1 w-full overflow-hidden rounded-full bg-muted">
                 <div
-                  className="h-full rounded-full bg-gradient-to-r from-violet-500 to-violet-400"
+                  className="h-full rounded-full bg-gradient-to-r from-violet-500 to-violet-400 transition-all"
                   style={{
                     width: `${Math.min(100, active.costBrl > 0 ? Math.max(6, (active.costBrl / 1) * 100) : 0)}%`,
                   }}
                 />
               </div>
-              <p className="text-right text-[10px] text-muted-foreground tabular-nums">
-                ≈ {usdFmt.format(active.costUsd)}
-              </p>
             </div>
 
           </div>
@@ -788,9 +790,14 @@ export function PlaygroundContent({
                           <p className="truncate text-xs font-medium text-foreground">
                             {s.title ?? `Sessão · ${s.model || "—"}`}
                           </p>
-                          <p className="flex items-center justify-between text-[10px] text-muted-foreground tabular-nums">
-                            <span>{dateTimeFmt.format(new Date(s.createdAt))}</span>
-                            <span>{brlFmt.format(s.costBrl)}</span>
+                          <p className="mt-0.5 text-[10px] text-muted-foreground tabular-nums">
+                            {dateTimeFmt.format(new Date(s.createdAt))}
+                          </p>
+                          <p className="mt-0.5 flex items-baseline gap-1 text-[11px] tabular-nums">
+                            <span className="text-muted-foreground">Consumo:</span>
+                            <span className="font-semibold text-violet-700 dark:text-violet-300">
+                              {brlFmt.format(s.costBrl)}
+                            </span>
                           </p>
                         </button>
                         <Tooltip>
