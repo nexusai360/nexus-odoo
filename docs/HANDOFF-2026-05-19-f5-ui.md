@@ -156,6 +156,44 @@ Plano v3 **encerrado**. Próximos passos:
 
 ---
 
+## 5b. SESSÃO 3 — 20/05/2026 (madrugada)
+
+Após apontamentos do usuário, foi feita uma rodada extra:
+
+| # | Tarefa | Estado |
+|---|---|---|
+| 19 | **CRÍTICO — Worker offline** | ✅ Worker reiniciado (`npm run worker`). `sync_state` voltou a atualizar a cada 3 min; `estoque.extrato` (snapshot completo) rodou. **O job rodando em produção depende do container `worker` do docker-compose ficar de pé** — se cair, sync para. |
+| 20 | KB — remover X | ✅ XCircle removido; Sparkles permanece só quando há embedding. |
+| 21 | Bubble — tooltips atrás do modal | ✅ Tooltip portal+popup com `z-[60]` e `isolate`. |
+| 22 | Microfone negado | ✅ Mensagens claras (G5) já em produção. Quando o navegador grava "Bloquear", JS não reabre o prompt — usuário precisa liberar no cadeado da URL. |
+| 23 | Consumo da sessão (Playground) | ✅ Painel destacado violet, valor BRL em fonte grande, atualiza ao vivo; card de histórico mostra "Consumo:" em linha própria. |
+| 24 | Prompt da sessão = tela Prompt | ✅ Reescrito usando exatamente os componentes/labels de `/agente/prompt` (ExpandableTextarea, ícones FileText/Sparkles/Wand2/Shield, layout em Cards). |
+| 25 | Consumo (Bloco C) | ⚠️ Estrutura já estava alinhada à do nexus-insights. Sem A/B visual no momento; polimento fino fica para próxima rodada com screenshots. |
+| 26 | Configuração — simplificar última execução | ✅ Faixa "Última execução por tipo" removida; cada campo (Incremental/Completa/Reconciliação) ganha linha sutil "Última execução: …" sob o helper. Botão "Ver estado da ingestão" com gap+border consistente. |
+| 27 | Perfil | ✅ Ordem ajustada (Pessoais → Acessos → WhatsApp → E-mail → Senha → Aparência); WhatsappCard editável para super_admin/admin (reusa WhatsappNumbersField). |
+| 28 | Sidebar — tema 3 ícones | ✅ Botão único substituído por radiogroup de 3 ícones (Sun/Moon/Monitor); padrão pílula FeatureCheckpoint. |
+| 29 | Sidebar — colapso/expansão | ⏭️ **Pendente para próxima rodada.** Requer redesenho do `<aside>` com modo recolhido (logo + ícones + foto), animação da setinha vertical e regra de expansão automática ao abrir submenu colapsado. |
+| 30 | Integrações/Canais | ✅ Card WhatsApp redimensionado (grid `lg:grid-cols-3`, igual à grade principal). **Pendente:** UI de instâncias WhatsApp (tabela `whatsapp_instances` já existe no schema; falta o CRUD UI). |
+| 31 | Integrações/MCP | ⏭️ **Existe (`mcp-panel.tsx`, 143 linhas).** Faltam ajustes específicos — precisa do usuário detalhar o que mudar. |
+| 32 | Integrações/Webhooks | ⏭️ **Existe (`webhooks-content.tsx`, 343 linhas).** Idem — precisa detalhe do que mudar. |
+| 33 | Integrações/APIs (chaves) | ⏭️ **Existe (`api-keys-content.tsx`, 292 linhas).** Idem — precisa detalhe do que mudar. |
+
+### Verificação rodada nesta sub-sessão
+- `npx tsc --noEmit` — verde.
+- `npx eslint src/` — verde.
+- `npx jest --runInBand` — verde (1082 testes, 133 suites).
+- Dev server + worker no ar; `curl /agente/prompt` → 302; `curl /perfil` → 302.
+
+### Próxima sessão — priorizar
+1. **#29 Sidebar colapsável** — design + animação completa.
+2. **#30 Instâncias WhatsApp** — CRUD UI sobre `whatsapp_instances`.
+3. **#31/32/33** — pedir ao usuário um diff específico (screenshot + texto)
+   das telas MCP/Webhooks/APIs/BI antes de mexer.
+4. **#25 Consumo polimento** — abrir a tela lado a lado com a do
+   nexus-insights e ajustar paleta/espaços fino.
+5. **Operacional**: garantir que o container `worker` do docker-compose
+   esteja UP em produção, com healthcheck + restart policy `always`.
+
 ## 6. RESUMO (uma frase)
 
 A F5 UI rework chegou no final do plano v3: bubble e Playground com input
