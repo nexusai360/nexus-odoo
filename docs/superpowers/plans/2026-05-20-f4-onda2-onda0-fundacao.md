@@ -1,8 +1,13 @@
 # F4 Onda 2 — Onda 0 (Fundação MCP Escrita) Implementation Plan
 
-> **Versão:** v1 (pré-review) — aguarda Review crítica #1
+> **Versão:** v2 (pós Review #1) — aguarda Review crítica #2
 > **Spec base:** `docs/superpowers/specs/2026-05-20-f4-onda2-mcp-escrita-design.md` v3
 > **Para agentes:** REQUIRED SUB-SKILL: Use `superpowers:subagent-driven-development` (recomendado) ou `superpowers:executing-plans` para implementar bloco por bloco. Steps usam `- [ ]` para tracking.
+>
+> **Histórico:**
+> - **v1** (2026-05-20): rascunho inicial.
+> - **v2** (2026-05-20): aplica 32 achados da Review #1 (`docs/superpowers/plans/reviews/2026-05-20-f4-onda2-onda0-fundacao-review-1.md`). Principais mudanças: decomposição de tasks grandes (K2, L3, L5, N5, O1); códigos completos onde havia placeholders (B1-B8); Bloco B-1 NOVO (setup de mocks/fixtures globais); Task D0 NOVA (configurar pino); Task D10 NOVA (CORS middleware); Tasks H5/H6 NOVAS (cleanup jobs idempotency + audit); commits intermediários nos blocos L e N; declaração explícita de dependências; nota sobre Bloco P paralelo.
+> - **v3** (TBD): após Review crítica #2 (`docs/superpowers/plans/reviews/2026-05-20-f4-onda2-onda0-fundacao-review-2.md`).
 
 **Goal:** Entregar a fundação do servidor MCP com capacidade de **escrita** no Odoo Tauga: schema + auth dual + idempotência + capability check + sync direcionado + painel "Servidor MCP" + 2 tools POC (`crm.res_partner.get` + `crm.res_partner.create`) com testes E2E reais contra `grupojht.teste.tauga.online`.
 
@@ -33,6 +38,153 @@
 **Bloco Q** → Atualização CLAUDE.md + STATUS.md + handoff
 
 > Cada bloco fecha com **commit atômico** (mensagem `feat(f4-onda2-bloco-X): ...`) e pode ser executado por um subagente Sonnet fresh, revisado por Opus entre blocos (conforme `feedback_subagent-model-strategy`).
+>
+> **Nota sobre o Bloco P (Testes E2E):** os testes do Bloco P são **executados em paralelo** com os blocos correspondentes (não sequencialmente no fim). À medida que cada componente fica pronto, o teste E2E daquele componente é escrito e validado contra a base de teste. O Bloco P consolidado existe como **referência** dos cenários totais e como **portão final** antes do merge.
+
+---
+
+## Bloco B-1 — Setup global de mocks e fixtures (NOVO em v2)
+
+> Pré-requisito para os blocos B em diante. Mocks/fixtures usados em todos os testes do Onda 0.
+
+### Task B-1.1: Criar `mcp/__tests__/mocks/prisma.ts`
+
+**Files:**
+- Create: `mcp/__tests__/mocks/prisma.ts`
+
+- [ ] Implementar factory `mockPrisma(overrides)`:
+```typescript
+// mcp/__tests__/mocks/prisma.ts
+import type { PrismaClient } from "@/generated/prisma/client";
+
+export function mockPrisma(overrides: Partial<{
+  apiKey: Partial<PrismaClient["apiKey"]>;
+  mcpAuditLog: Partial<PrismaClient["mcpAuditLog"]>;
+  mcpIdempotencyRecord: Partial<PrismaClient["mcpIdempotencyRecord"]>;
+  rawResPartner: Partial<PrismaClient["rawResPartner"]>;
+}> = {}): jest.Mocked<PrismaClient> {
+  return {
+    apiKey: {
+      findUnique: jest.fn(),
+      findMany: jest.fn(),
+      create: jest.fn(),
+      update: jest.fn(),
+      delete: jest.fn(),
+      ...overrides.apiKey,
+    },
+    mcpAuditLog: {
+      create: jest.fn(),
+      findMany: jest.fn(),
+      groupBy: jest.fn(),
+      ...overrides.mcpAuditLog,
+    },
+    mcpIdempotencyRecord: {
+      findUnique: jest.fn(),
+      create: jest.fn(),
+      delete: jest.fn(),
+      deleteMany: jest.fn(),
+      ...overrides.mcpIdempotencyRecord,
+    },
+    rawResPartner: {
+      findUnique: jest.fn(),
+      create: jest.fn(),
+      update: jest.fn(),
+      upsert: jest.fn(),
+      delete: jest.fn(),
+      aggregate: jest.fn(),
+      ...overrides.rawResPartner,
+    },
+    $queryRaw: jest.fn(),
+    $executeRaw: jest.fn(),
+  } as unknown as jest.Mocked<PrismaClient>;
+}
+```
+
+### Task B-1.2: Criar `mcp/__tests__/mocks/redis.ts`
+
+**Files:**
+- Create: `mcp/__tests__/mocks/redis.ts`
+
+- [ ] Usar `ioredis-mock` (adicionar em devDependencies):
+```typescript
+import RedisMock from "ioredis-mock";
+import type Redis from "ioredis";
+export function createMockRedis(): Redis {
+  return new RedisMock() as unknown as Redis;
+}
+```
+
+### Task B-1.3: Criar `mcp/__tests__/mocks/odoo-write-client.ts`
+
+**Files:**
+- Create: `mcp/__tests__/mocks/odoo-write-client.ts`
+
+- [ ] Implementar:
+```typescript
+import type { OdooWriteClient } from "@/mcp/odoo/client";
+export function mockOdooWriteClient(): jest.Mocked<OdooWriteClient> {
+  return {
+    authenticate: jest.fn(),
+    create: jest.fn(),
+    write: jest.fn(),
+    unlink: jest.fn(),
+    read: jest.fn(),
+    search: jest.fn(),
+    execute_kw: jest.fn(),
+    searchIrModelData: jest.fn(),
+  };
+}
+```
+
+### Task B-1.4: Criar `mcp/__tests__/fixtures/contexts.ts`
+
+**Files:**
+- Create: `mcp/__tests__/fixtures/contexts.ts`
+
+- [ ] Factories para contextos de teste:
+```typescript
+import type { ApiKeyContext, Capabilities } from "@/mcp/auth/api-key-context";
+import type { ToolHandlerCtx } from "@/mcp/catalog/types";
+import { mockPrisma } from "../mocks/prisma";
+
+export const baseApiKeyContext: ApiKeyContext = {
+  apiKeyId: "test-key-1",
+  label: "test",
+  last4: "AbCd",
+  capabilities: { version: 1, read: [], write: {} },
+  capabilitiesVersion: 1,
+  rateLimit: 60,
+  tenantId: null,
+  allowedOrigins: [],
+  isSystemKey: false,
+};
+
+export function createApiKeyCtx(overrides: { read?: string[]; write?: Record<string, string[]>; capabilitiesVersion?: number } = {}): ApiKeyContext {
+  return {
+    ...baseApiKeyContext,
+    capabilities: { version: 1, read: overrides.read ?? [], write: overrides.write ?? {} },
+    capabilitiesVersion: overrides.capabilitiesVersion ?? 1,
+  };
+}
+
+export function createMockContext(overrides: Partial<ToolHandlerCtx> = {}): ToolHandlerCtx {
+  return {
+    prisma: mockPrisma() as any,
+    user: { id: "test-user", role: "super_admin", dominios: [] } as any,
+    ...overrides,
+  };
+}
+```
+
+### Task B-1.5: Commit Bloco B-1
+
+- [ ] `git add mcp/__tests__/mocks/ mcp/__tests__/fixtures/contexts.ts package.json`
+- [ ] `git commit -m "test(f4-onda2-bloco-b1): mocks e fixtures globais para testes da Onda 0
+
+mockPrisma, mockOdooWriteClient, createMockRedis, createApiKeyCtx,
+createMockContext — reusados em todos os blocos seguintes.
+
+Co-Authored-By: Claude Opus 4.7 <noreply@anthropic.com>"`
 
 ---
 
@@ -561,6 +713,48 @@ Co-Authored-By: Claude Opus 4.7 <noreply@anthropic.com>"`
 
 ## Bloco D — Auth Middleware Externo + Cache LRU
 
+### Task D0: Configurar `pino` logger (NOVO em v2)
+
+**Files:**
+- Create: `mcp/lib/logger.ts`
+- Test: `mcp/lib/__tests__/logger.test.ts`
+
+- [ ] Adicionar `pino` + `pino-pretty` em devDependencies (se A5 não confirmou existência).
+- [ ] Implementar:
+```typescript
+// mcp/lib/logger.ts
+import pino from "pino";
+
+export const logger = pino({
+  level: process.env.LOG_LEVEL ?? (process.env.NODE_ENV === "production" ? "info" : "debug"),
+  transport: process.env.NODE_ENV === "development" ? { target: "pino-pretty" } : undefined,
+  redact: {
+    paths: ["headers.authorization", "*.token", "*.password", "*.secret"],
+    censor: "[REDACTED]",
+  },
+});
+
+export function maskToken(authHeader: string | undefined): string {
+  if (!authHeader || !authHeader.startsWith("Bearer ")) return "<missing>";
+  const token = authHeader.slice(7);
+  if (token.startsWith("mcp_live_")) {
+    const last4 = token.slice(-4);
+    return `Bearer mcp_live_****${last4}`;
+  }
+  return "Bearer <internal>";
+}
+```
+- [ ] Test:
+```typescript
+it("maskToken não revela token externo", () => {
+  expect(maskToken("Bearer mcp_live_aBcD1234EFGH5678XYZ")).toBe("Bearer mcp_live_****8XYZ");
+});
+it("maskToken trata internal sem revelar", () => {
+  expect(maskToken("Bearer some-other-token")).toBe("Bearer <internal>");
+});
+```
+- [ ] PASS.
+
 ### Task D1: Criar tipo `ApiKeyContext`
 
 **Files:**
@@ -810,6 +1004,53 @@ it("log de auth contém token mascarado", async () => {
 });
 ```
 - [ ] Implementar mascaramento no log.
+- [ ] PASS.
+
+### Task D10: CORS middleware com opt-in por chave (NOVO em v2)
+
+**Files:**
+- Create: `mcp/middleware/cors.ts`
+- Test: `mcp/middleware/__tests__/cors.test.ts`
+
+- [ ] Test:
+```typescript
+it("sem allowedOrigins → não devolve Access-Control-Allow-Origin", () => {
+  const headers = corsHeaders({
+    requestOrigin: "https://example.com",
+    apiKey: { ...baseApiKeyContext, allowedOrigins: [] },
+  });
+  expect(headers["Access-Control-Allow-Origin"]).toBeUndefined();
+});
+
+it("Origin na whitelist → devolve com Vary: Origin", () => {
+  const headers = corsHeaders({
+    requestOrigin: "https://example.com",
+    apiKey: { ...baseApiKeyContext, allowedOrigins: ["https://example.com"] },
+  });
+  expect(headers["Access-Control-Allow-Origin"]).toBe("https://example.com");
+  expect(headers["Vary"]).toBe("Origin");
+});
+
+it("Origin fora da whitelist → omite header", () => {
+  const headers = corsHeaders({
+    requestOrigin: "https://other.com",
+    apiKey: { ...baseApiKeyContext, allowedOrigins: ["https://example.com"] },
+  });
+  expect(headers["Access-Control-Allow-Origin"]).toBeUndefined();
+});
+
+it("preflight OPTIONS responde 204 + headers permitidos", async () => {
+  const response = await handlePreflight({
+    requestOrigin: "https://example.com",
+    apiKey: { ...baseApiKeyContext, allowedOrigins: ["https://example.com"] },
+  });
+  expect(response.status).toBe(204);
+  expect(response.headers["Access-Control-Allow-Methods"]).toContain("POST");
+  expect(response.headers["Access-Control-Allow-Headers"]).toContain("Authorization");
+  expect(response.headers["Access-Control-Allow-Headers"]).toContain("Idempotency-Key");
+});
+```
+- [ ] Implementar conforme spec §3.5.
 - [ ] PASS.
 
 ### Task D9: Commit Bloco D
@@ -1289,6 +1530,82 @@ it("update sem snapshotAfter: re-busca no Odoo", async () => {
 - [ ] Adicionar `new Worker("odoo-sync:directed", processDirectedSync, { connection: redisOpts });`.
 - [ ] Reiniciar worker e validar.
 
+### Task H5: Cleanup job idempotency records expirados (NOVO em v2)
+
+**Files:**
+- Create: `src/worker/cleanup/idempotency.ts`
+- Test: `src/worker/cleanup/__tests__/idempotency.test.ts`
+
+- [ ] Implementar:
+```typescript
+// src/worker/cleanup/idempotency.ts
+import { prisma } from "@/lib/prisma";
+import { logger } from "@/mcp/lib/logger";
+
+export async function cleanupExpiredIdempotency(): Promise<{ deleted: number }> {
+  const result = await prisma.mcpIdempotencyRecord.deleteMany({
+    where: { expiresAt: { lt: new Date() } },
+  });
+  logger.info({ deleted: result.count }, "idempotency cleanup ran");
+  return { deleted: result.count };
+}
+```
+- [ ] Registrar como repeatable job a cada 1h via BullMQ.
+- [ ] Test: cria records expirados + não-expirados; roda; verifica que só os expirados foram deletados.
+- [ ] PASS.
+
+### Task H6: Cleanup job audit log com retenção 90d/2a (NOVO em v2)
+
+**Files:**
+- Create: `src/worker/cleanup/audit-log.ts`
+- Test: `src/worker/cleanup/__tests__/audit-log.test.ts`
+
+- [ ] Implementar:
+```typescript
+// src/worker/cleanup/audit-log.ts
+import { prisma } from "@/lib/prisma";
+import { logger } from "@/mcp/lib/logger";
+
+const DETAIL_DAYS = parseInt(process.env.MCP_AUDIT_DETAIL_RETENTION_DAYS ?? "90", 10);
+const FULL_DAYS = parseInt(process.env.MCP_AUDIT_FULL_RETENTION_DAYS ?? "730", 10);
+
+export async function cleanupAuditLog(): Promise<{ detailsNullified: number; deleted: number }> {
+  const detailCutoff = new Date(Date.now() - DETAIL_DAYS * 86400_000);
+  const fullCutoff = new Date(Date.now() - FULL_DAYS * 86400_000);
+
+  // Step 1: NULLify campos grandes em registros entre DETAIL e FULL
+  const detailsResult = await prisma.mcpAuditLog.updateMany({
+    where: { createdAt: { lt: detailCutoff, gte: fullCutoff } },
+    data: { payload: undefined, result: undefined, snapshotBefore: undefined, snapshotAfter: undefined },
+  });
+  // Step 2: DELETE registros mais antigos que FULL
+  const deletedResult = await prisma.mcpAuditLog.deleteMany({
+    where: { createdAt: { lt: fullCutoff } },
+  });
+
+  logger.info({ detailsNullified: detailsResult.count, deleted: deletedResult.count }, "audit cleanup ran");
+  return { detailsNullified: detailsResult.count, deleted: deletedResult.count };
+}
+```
+- [ ] Registrar como repeatable job diário 01:00 BRT via BullMQ.
+- [ ] Test:
+```typescript
+it("nullifica payloads de registros >90d mas mantém metadados", async () => {
+  const old = await prisma.mcpAuditLog.create({ data: { createdAt: dayjs().subtract(100, "day").toDate(), payload: {x:1}, status: "success", /* ... */ } });
+  await cleanupAuditLog();
+  const refetched = await prisma.mcpAuditLog.findUnique({ where: { id: old.id } });
+  expect(refetched?.payload).toBeNull();
+  expect(refetched?.status).toBe("success");
+});
+
+it("deleta registros >2a", async () => {
+  const ancient = await prisma.mcpAuditLog.create({ data: { createdAt: dayjs().subtract(800, "day").toDate(), /* ... */ } });
+  await cleanupAuditLog();
+  expect(await prisma.mcpAuditLog.findUnique({ where: { id: ancient.id } })).toBeNull();
+});
+```
+- [ ] PASS.
+
 ### Task H4: Commit Bloco H
 
 - [ ] `git add mcp/sync/queue.ts src/worker/sync/directed.ts src/worker/sync/__tests__/ src/worker/index.ts`
@@ -1393,6 +1710,44 @@ export const crmResPartnerGet: ToolEntry = {
 };
 ```
 - [ ] Registrar no catálogo (`mcp/catalog/index.ts`).
+- [ ] PASS.
+
+### Task J2.0: Criar `mcp/lib/errors.ts` com classes de erro padronizadas (NOVO em v2)
+
+**Files:**
+- Create: `mcp/lib/errors.ts`
+- Test: `mcp/lib/__tests__/errors.test.ts`
+
+- [ ] Implementar todas as classes correspondendo ao Anexo C da spec:
+```typescript
+// mcp/lib/errors.ts
+export abstract class McpError extends Error {
+  abstract code: string;
+  abstract httpStatus: number;
+  details?: object;
+  constructor(message: string, details?: object) {
+    super(message);
+    this.details = details;
+    this.name = this.constructor.name;
+  }
+}
+
+export class UnauthorizedError extends McpError { code = "unauthorized"; httpStatus = 401; }
+export class ForbiddenViaInternalAuthError extends McpError { code = "forbidden_via_internal_auth"; httpStatus = 403; }
+export class CapabilityMissingError extends McpError { code = "capability_missing"; httpStatus = 403; }
+export class ValidationFailedError extends McpError { code = "validation_failed"; httpStatus = 400; }
+export class IdempotencyKeyRequiredError extends McpError { code = "idempotency_key_required"; httpStatus = 400; }
+export class IdempotencyKeyConflictError extends McpError { code = "idempotency_key_conflict"; httpStatus = 422; }
+export class IdempotencyInProgressError extends McpError { code = "idempotency_in_progress"; httpStatus = 409; }
+export class IdempotencyUnavailableError extends McpError { code = "idempotency_unavailable"; httpStatus = 503; }
+export class ExternalIdAlreadyExistsError extends McpError { code = "external_id_already_exists"; httpStatus = 409; }
+export class PreconditionFailedError extends McpError { code = "precondition_failed"; httpStatus = 412; }
+export class RateLimitedError extends McpError { code = "rate_limited"; httpStatus = 429; }
+export class TokenInUnsafeLocationError extends McpError { code = "token_in_unsafe_location"; httpStatus = 400; }
+export class InternalErrorWrap extends McpError { code = "internal_error"; httpStatus = 500; }
+export class ConflictError extends McpError { code = "conflict"; httpStatus = 409; }
+```
+- [ ] Test: cada classe tem httpStatus e code corretos.
 - [ ] PASS.
 
 ### Task J2: Criar `mcp/tools/crm/res-partner-create.ts` (write tool)
@@ -1867,23 +2222,187 @@ Co-Authored-By: Claude Opus 4.7 <noreply@anthropic.com>"`
 
 ---
 
-## Self-Review (vai virar Review #1 deste plano)
+---
 
-(executada após a redação, antes do commit do plano)
+## Apêndice v2: Decomposições e Códigos Completos (aplica achados Review #1)
 
-- [ ] **Spec coverage:** cada seção da spec v3 tem ao menos uma task? Listar gaps.
-- [ ] **Placeholder scan:** procurar "TBD", "implementar depois", "similar a Task N".
-- [ ] **Type consistency:** funções nomeadas em uma task batem com referências em outras.
-- [ ] **Decomposição:** cada task é 2-5 min ou explicita sub-steps? Tasks grandes (J3-J4 UI complexa) precisam mais detalhe?
+### Decomposição da Task K2 (Bloco K — Painel Visão Geral)
 
-(Achados consolidados na Review #1 do plano em arquivo separado.)
+Substituir K2 monolítica por sub-tasks:
+- **K2.1:** Card base com URL pública + botão copy-to-clipboard
+- **K2.2:** Status badge (cores conforme `healthy`/`degraded`/`unhealthy` do health endpoint)
+- **K2.3:** Badges informativos (Transport: "Streamable HTTP"; Protocolo: "2025-06-18")
+- **K2.4:** Versão do servidor (semver + commit hash)
+- **K2.5:** Métricas 24h (delega a K3)
+
+Cada sub-task = teste + implementação + commit incremental.
+
+### Decomposição da Task L3 (Bloco L — Nova Chave Dialog)
+
+- **L3.1:** Form base (Label, descrição, tenant selector)
+- **L3.2:** Sub-componente `MatrizCapabilities` (módulos × ações com checkboxes)
+- **L3.3:** Sub-componente `ConfirmacaoSensiveis` (modal "Confirmo conhecer os impactos")
+- **L3.4:** Rate limit slider
+- **L3.5:** Expiração date picker
+- **L3.6:** Sub-componente `AllowedOriginsList` (lista editável)
+- **L3.7:** Handler de submit + integração com `TokenRevealDialog` (Task L4)
+
+### Decomposição da Task L5 (Bloco L — Editar/Rotacionar/Revogar)
+
+- **L5.1:** Server action `updateApiKey` + test (modifica capabilities, rate, expires; emite pub/sub)
+- **L5.2:** Server action `rotateApiKey` + test (novo token; grace 24h para antigo)
+- **L5.3:** Server action `revokeApiKey(id, reason)` + test
+- **L5.4:** Server action `markLostAndRegenerate(id)` + test
+- **L5.5:** Componente `EditarChaveDialog`
+- **L5.6:** Integração no menu de ações da lista de chaves
+
+Cada sub-task L tem commit próprio (substitui o commit único do Bloco L).
+
+### Decomposição da Task N5 (Bloco N — Layout Documentação)
+
+- **N5.1:** Layout base com sidebar de seções
+- **N5.2:** Renderização de MDX via `next-mdx-remote`
+- **N5.3:** Syntax highlighting via Shiki (lib + tema dark/light)
+- **N5.4:** Busca interna Cmd+K (componente próprio com index in-memory)
+
+### Decomposição da Task O1 (Bloco O — Mover Plugar MCPs)
+
+- **O1.1:** Coordenação multi-agente (`ls docs/agents/active/`; comunicar via active/ próprio se houver overlap em sidebar.tsx)
+- **O1.2:** Criar nova rota `src/app/(protected)/agente/plugar-mcps/page.tsx`
+- **O1.3:** Mover componentes e conteúdo da rota antiga `src/app/(protected)/integracoes/mcp/`
+- **O1.4:** Atualizar `src/components/layout/sidebar.tsx` (remover de Integrações; adicionar em Agente Nex)
+- **O1.5:** Remover rota antiga (`git rm` da pasta antiga)
+- **O1.6:** Validar navegação no dev server (`npm run dev` + clicar pelo menu)
+
+### Código completo: `requireSuperAdmin()` (referenciado em Bloco L)
+
+```typescript
+// src/lib/actions/_helpers.ts
+"use server";
+import { auth } from "@/auth";
+import { ForbiddenError } from "@/lib/errors";
+
+export async function requireSuperAdmin(): Promise<string> {
+  const session = await auth();
+  if (!session?.user?.id) throw new ForbiddenError("not_authenticated");
+  if (session.user.role !== "super_admin") throw new ForbiddenError("not_super_admin");
+  return session.user.id;
+}
+```
+
+Usado em todas as server actions de `src/lib/actions/mcp-*.ts`.
+
+### Código completo: `processDirectedSync` (substitui placeholder do Bloco H Task H2)
+
+```typescript
+// src/worker/sync/directed.ts
+import { Job } from "bullmq";
+import { prisma } from "@/lib/prisma";
+import { redisClient } from "@/lib/redis";
+import { acquireLock, releaseLock } from "@/mcp/lib/distributed-lock";
+import { logger } from "@/mcp/lib/logger";
+import type { DirectedSyncJob } from "@/mcp/sync/queue";
+import type { OdooWriteClient } from "@/mcp/odoo/client";
+
+const FIELDS_RES_PARTNER = [
+  "id", "name", "is_company", "cnpj_cpf", "email", "phone", "street",
+  "city_id", "state_id", "country_id", "write_date", "create_date",
+];
+
+export async function processDirectedSync(
+  job: Job<DirectedSyncJob> | DirectedSyncJob,
+  deps?: { odoo?: OdooWriteClient },
+): Promise<void> {
+  const data: DirectedSyncJob = "data" in (job as Job) ? (job as Job).data : (job as DirectedSyncJob);
+  const { model, ids, operation, snapshotAfter, requestId, apiKeyId } = data;
+
+  for (const id of ids) {
+    const lockKey = `mcp:sync:${model}:${id}`;
+    const got = await acquireLock(redisClient, lockKey, { ttlSec: 30 });
+    if (!got) {
+      logger.info({ model, id, requestId }, "sync skipped: another worker holds the lock");
+      continue;
+    }
+    try {
+      if (operation === "delete") {
+        if (model === "res.partner") {
+          await prisma.rawResPartner.delete({ where: { id } }).catch(() => null);
+        }
+        // outros modelos: adicionados nas ondas seguintes
+      } else {
+        const row = snapshotAfter ?? (await deps?.odoo?.read(model, [id], FIELDS_RES_PARTNER))?.[0];
+        if (!row) continue;
+        if (model === "res.partner") {
+          await prisma.rawResPartner.upsert({
+            where: { id },
+            create: row as any,
+            update: row as any,
+          });
+        }
+      }
+      logger.debug({ model, id, operation, requestId }, "sync directed completed");
+    } catch (err) {
+      logger.error({ err, model, id, requestId }, "sync directed failed");
+      throw err;  // BullMQ aplica retry exponencial
+    } finally {
+      await releaseLock(redisClient, lockKey);
+    }
+  }
+}
+```
+
+### Código completo: SQL de p50/p99 (substitui placeholder do Bloco K Task K3)
+
+```typescript
+const latencyStats = await prisma.$queryRaw<Array<{ p50: number; p99: number }>>`
+  SELECT
+    COALESCE(percentile_cont(0.5) WITHIN GROUP (ORDER BY duration_ms)::int, 0) AS p50,
+    COALESCE(percentile_cont(0.99) WITHIN GROUP (ORDER BY duration_ms)::int, 0) AS p99
+  FROM mcp_audit_logs
+  WHERE created_at >= ${since}::timestamptz
+    AND status = 'success';
+`;
+```
+
+### Código completo: `cacheFreshness()` para health check (substitui placeholder do Bloco I Task I1)
+
+```typescript
+async function cacheFreshnessSeconds(): Promise<number> {
+  // Onda 0: apenas raw_res_partner. Adicionar outras tabelas nas ondas seguintes.
+  const result = await prisma.rawResPartner.aggregate({ _max: { updatedAt: true } });
+  if (!result._max.updatedAt) return 0;
+  return Math.floor((Date.now() - result._max.updatedAt.getTime()) / 1000);
+}
+```
+
+### Campo `examples` em `ToolEntry` (referenciado em Bloco N Task N4)
+
+```typescript
+// adicionar em mcp/catalog/types.ts (Task F1 estendida)
+export interface ToolEntryExample {
+  language: "curl" | "n8n" | "python" | "javascript";
+  description?: string;
+  code: string;
+}
+
+export interface ToolEntry<I = unknown, O = unknown> {
+  // ... existing
+  examples?: ReadonlyArray<ToolEntryExample>;
+}
+```
+
+POC `crm.res_partner.create` da Task J2 inclui 4 exemplos (um por linguagem).
+
+---
+
+## Self-Review (Review #1 já produzida; ver `reviews/`)
+
+A Review #1 deste plano foi produzida em `docs/superpowers/plans/reviews/2026-05-20-f4-onda2-onda0-fundacao-review-1.md` com 32 achados materiais. Achados aplicados nesta v2.
 
 ---
 
 ## Próximos passos
 
-1. **Review #1 deste plano** (adversarial, achados materiais) → `docs/superpowers/plans/reviews/2026-05-20-f4-onda2-onda0-fundacao-review-1.md`.
-2. Aplicar achados → **Plan v2**.
-3. **Review #2 do plano v2** → `...-review-2.md`.
-4. Aplicar achados → **Plan v3** (final).
-5. Executar via `superpowers:subagent-driven-development` bloco por bloco.
+1. **Review #2 deste plano v2** → `docs/superpowers/plans/reviews/2026-05-20-f4-onda2-onda0-fundacao-review-2.md`.
+2. Aplicar achados → **Plan v3** (final).
+3. Executar via `superpowers:subagent-driven-development` bloco por bloco.
