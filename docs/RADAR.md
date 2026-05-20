@@ -116,3 +116,62 @@ npm run db:deploy   # = prisma migrate deploy && npm run db:provision
 
 Runbook: `docs/runbooks/deploy-mcp-db.md`. O deploy assistido [12] usa
 `npm run db:deploy` como passo de banco.
+
+---
+
+## R5 — Achados BAIXO do review adversarial F5 (2026-05-19)
+
+**Aberto desde:** 2026-05-19 (reviews adversariais das ondas 1-7).
+
+### R5-A — `logAudit` sem `await` em `user-whatsapp.ts` (review 1-2-7, BAIXO-1)
+`addWhatsappNumber`/`removeWhatsappNumber` chamam `logAudit({...})` sem `await`.
+Em Server Action serverless, a promise pode não completar → risco de auditoria perdida.
+**Ação:** adicionar `await logAudit(...)` nas duas actions.
+
+### R5-B — `deleteCredential` sem `findUnique` antes do delete (review 1-2-7, BAIXO-2)
+`prisma.llmCredential.delete` lança erro `P2025` cru quando `id` não existir.
+**Ação:** capturar `P2025` e retornar erro de domínio claro.
+
+### R5-C — `ChatUsage` agregado perde `costKnown` (review 1-2-7, BAIXO-3)
+`totalUsage.costUsd` soma 0 para iterações sem pricing — total pode ser subestimado
+sem sinalização. A tela de consumo lê de `LlmUsage` (correto), mas o retorno de
+`runAgent` é impreciso para quem o consumir diretamente.
+**Ação:** adicionar `costKnown`/`costPartial` ao `ChatUsage` agregado.
+
+### R5-D — Rota SSE sem heartbeat (review 3-5, BAIXO-1)
+Loop de tool calling longo pode passar 30-60s sem byte SSE → proxies podem fechar.
+**Ação:** adicionar comentário SSE de keep-alive (`: ping\n\n`) periódico no `route.ts`.
+
+### R5-E — `ApiKey.createdById` sem FK para `User` (review 4-6, BAIXO-3)
+`createdById` é `String?` solto sem `@relation`. Verificar `revokedAt` ao consumir
+chaves na F6.
+**Ação:** adicionar `@relation` no schema na F6 antes de consumir API keys.
+
+### R5-F — Idempotência do inbound: `processedCreate` pode duplicar em race extremo (review 4-6, M4 — parcialmente corrigido)
+A ordem foi corrigida (enfileira antes de gravar), mas em race extremo de dois
+requests simultâneos do mesmo `messageId` pode processar 2×. O dedup no job
+mitiga o impacto, mas é tolerado conscientemente.
+
+### R5-G — Streaming do Anthropic com tools: stop_reason é ignorado (review 1-2-7, ALTO-2 — mitigado)
+O streaming foi habilitado mesmo com tools. O `#parseStream` acumula tokens e
+tool_use blocks. No entanto, tokens emitidos durante um turno com tool_use também
+chegam ao `onToken` callback — o `ChatPanel` os exibirá na bolha de streaming e
+depois sobrescreve com o `message` do evento `done`. Comportamento visual pode
+causar piscar no chat em turnos intermediários. Tolerado para a fase atual;
+resolver refinando o streaming para só emitir tokens quando `stop_reason !== tool_use`.
+
+### R6 — Build quebra no prerender de `/_not-found` e `/_global-error` (PRÉ-EXISTENTE, ALTO)
+`next build` falha no prerender das páginas internas do Next (`_not-found`,
+`_global-error`) com `TypeError: Cannot read properties of null (reading 'useContext')`.
+**Confirmado pré-existente:** reproduzido em `git stash` total (código 100% HEAD,
+sem nenhuma mudança do rework F5-UI v2) — o build da branch `feat/integracao-whatsapp`
+já estava quebrado. O bug é mascarado por um segundo: `/integracoes/bi` quebra
+antes no prerender estático (corrigido com `export const dynamic = "force-dynamic"`),
+e só então `_global-error`/`_not-found` aparecem.
+**Causa provável:** o root `app/layout.tsx` usa `cookies()` (`getResolvedThemeFromCookie`),
+o que conflita com o prerender estático das páginas de erro internas no Next 16
+Turbopack. `tsc`, `eslint` e `jest` passam — só o `next build` quebra.
+**Ação:** investigação dedicada — tornar o root layout compatível com prerender
+estático das páginas de erro (ex.: mover a leitura de cookie para um boundary
+dinâmico, ou adicionar `export const dynamic` ao `not-found.tsx`/`global-error.tsx`
+próprios). Fora do escopo do rework de UI da F5.

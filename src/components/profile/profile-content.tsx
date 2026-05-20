@@ -5,6 +5,8 @@ import { PersonalInfoCard } from "./personal-info-card";
 import { EmailChangeCard } from "./email-change-card";
 import { PasswordChangeCard } from "./password-change-card";
 import { AppearanceCard } from "./appearance-card";
+import { WhatsappCard } from "./whatsapp-card";
+import { AccessCard } from "./access-card";
 
 const containerVariants = {
   hidden: { opacity: 0 },
@@ -29,6 +31,14 @@ interface ProfileContentProps {
   initialAvatarUrl: string | null;
   initialTheme: "dark" | "light" | "system";
   createdAt: string;
+  /** Números de WhatsApp do usuário. */
+  whatsappNumbers: string[];
+  /** Domínios de negócio com acesso (somente leitura). */
+  domains: string[];
+  /** ID do usuário (para edição do próprio WhatsApp). */
+  userId: string;
+  /** Papel — define se pode editar o próprio WhatsApp. */
+  platformRole: string;
 }
 
 export function ProfileContent({
@@ -37,7 +47,14 @@ export function ProfileContent({
   initialAvatarUrl,
   initialTheme,
   createdAt,
+  whatsappNumbers,
+  domains,
+  userId,
+  platformRole,
 }: ProfileContentProps) {
+  const canEditWhatsapp =
+    platformRole === "super_admin" || platformRole === "admin";
+
   return (
     <motion.div
       variants={containerVariants}
@@ -54,11 +71,24 @@ export function ProfileContent({
         </p>
       </motion.div>
 
+      {/* Ordem solicitada: Informações pessoais → Acessos → WhatsApp → E-mail → Senha → Aparência */}
       <motion.div variants={itemVariants}>
         <PersonalInfoCard
           initialName={initialName}
           initialAvatarUrl={initialAvatarUrl}
           createdAt={createdAt}
+        />
+      </motion.div>
+
+      <motion.div variants={itemVariants}>
+        <AccessCard domains={domains} />
+      </motion.div>
+
+      <motion.div variants={itemVariants}>
+        <WhatsappCard
+          numbers={whatsappNumbers}
+          canEdit={canEditWhatsapp}
+          userId={userId}
         />
       </motion.div>
 

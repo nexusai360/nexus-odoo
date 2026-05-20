@@ -38,6 +38,57 @@ enum AuditAction {
   setting_updated
   session_revoked
   user_domains_changed
+  // F5 — agente + WhatsApp + integrações
+  user_whatsapp_added
+  user_whatsapp_removed
+  whatsapp_inbound_rejected
+  agent_settings_updated
+  llm_credential_created
+  llm_credential_updated
+  llm_credential_deleted
+  api_key_created
+  api_key_revoked
+  whatsapp_channel_updated
+}
+
+// F5 — enums do agente e integrações
+enum AgentChannel {
+  whatsapp
+  in_app
+  playground
+}
+
+enum MessageRole {
+  user
+  assistant
+  tool
+}
+
+enum KbKind {
+  PDF
+  TXT
+  URL
+  MARKDOWN
+  CSV
+  XML
+}
+
+/// Estado de checkpoint de um recurso do agente (áudio, imagem, KB, documento).
+/// OFF = desativado; PLAYGROUND = ativo só no playground; PRODUCTION = ativo em produção.
+enum FeatureCheckpoint {
+  OFF
+  PLAYGROUND
+  PRODUCTION
+}
+
+enum WhatsappResponseMode {
+  direct
+  n8n_webhook
+}
+
+enum WebhookDirection {
+  inbound
+  outbound
 }
 
 enum ReportDomain {
@@ -77,6 +128,10 @@ model User {
   emailChangeTokens   EmailChangeToken[]
   domainAccess        UserDomainAccess[]   @relation("UserDomainAccess")
   reportPresets       ReportPreset[]
+  // F5
+  conversations       Conversation[]
+  whatsappNumbers     UserWhatsappNumber[]
+  playgroundSessions  PlaygroundSession[]
 
   @@index([platformRole, isActive])
   @@index([email])
@@ -1464,4 +1519,320 @@ model FeatureRequest {
   criadoEm       DateTime @default(now()) @map("criado_em")
 
   @@map("feature_requests")
+}
+
+// ─── F5 — Agente de IA + WhatsApp + Integrações ──────────────────────────────
+
+/// Número de WhatsApp vinculado a um usuário da plataforma (N por usuário).
+model UserWhatsappNumber {
+  id         String    @id @default(uuid()) @db.Uuid
+  userId     String    @map("user_id") @db.Uuid
+  user       User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  phoneE164  String    @unique @map("phone_e164")
+  label      String?
+  verifiedAt DateTime? @map("verified_at")
+  createdAt  DateTime  @default(now()) @map("created_at")
+
+  @@index([userId])
+  @@map("user_whatsapp_numbers")
+}
+
+/// Conversa de agente (WhatsApp, in-app ou playground).
+/// Agrupamento: WhatsApp → automático (< 24h); in-app/playground → explícito.
+model Conversation {
+  id        String       @id @default(uuid()) @db.Uuid
+  userId    String       @map("user_id") @db.Uuid
+  user      User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  channel   AgentChannel
+  title     String?
+  createdAt DateTime     @default(now()) @map("created_at")
+  updatedAt DateTime     @updatedAt @map("updated_at")
+  messages  Message[]
+
+  @@index([userId, updatedAt])
+  @@map("conversations")
+}
+
+/// Mensagem de conversa (user, assistant ou tool).
+model Message {
+  id             String       @id @default(uuid()) @db.Uuid
+  conversationId String       @map("conversation_id") @db.Uuid
+  conversation   Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  role           MessageRole
+  content        String
+  toolCalls      Json?        @map("tool_calls")
+  createdAt      DateTime     @default(now()) @map("created_at")
+
+  @@index([conversationId, createdAt])
+  @@map("messages")
+}
+
+/// Credencial de API de LLM — chave cifrada com AES-256.
+model LlmCredential {
+  id              String    @id @default(uuid()) @db.Uuid
+  provider        String
+  label           String
+  encryptedApiKey String    @map("encrypted_api_key")
+  last4           String
+  createdAt       DateTime  @default(now()) @map("created_at")
+  updatedAt       DateTime  @updatedAt @map("updated_at")
+  createdById     String?   @map("created_by_id") @db.Uuid
+  configs         LlmConfig[]
+
+  /// Saldo/crédito da conta do provedor para esta chave.
+  /// balanceStatus: "ok" (valor real), "unavailable" (provedor sem API de saldo),
+  /// "error" (consulta falhou). balanceUsd nulo quando status != "ok".
+  balanceUsd       Decimal?  @map("balance_usd") @db.Decimal(14, 4)
+  balanceCurrency  String?   @map("balance_currency")
+  balanceStatus    String?   @map("balance_status")
+  balanceCheckedAt DateTime? @map("balance_checked_at")
+
+  @@unique([provider, label])
+  @@index([provider, updatedAt(sort: Desc)])
+  @@map("llm_credentials")
+}
+
+/// Configuração LLM ativa (provider + model + credencial).
+/// Ativar é transacional: desativa todas e ativa a escolhida.
+model LlmConfig {
+  id           String         @id @default(uuid()) @db.Uuid
+  provider     String
+  model        String
+  credentialId String?        @map("credential_id") @db.Uuid
+  credential   LlmCredential? @relation(fields: [credentialId], references: [id])
+  isActive     Boolean        @default(false) @map("is_active")
+  createdAt    DateTime       @default(now()) @map("created_at")
+  updatedAt    DateTime       @updatedAt @map("updated_at")
+
+  @@map("llm_configs")
+}
+
+/// Registro de uso de LLM por iteração do loop de tool calling.
+/// costUsd = null quando costKnown = false (modelo sem preço no catálogo).
+/// costBrl calculado com cotação versionada; rateStale=true se cotação falhou.
+model LlmUsage {
+  id             String   @id @default(uuid()) @db.Uuid
+  conversationId String?  @map("conversation_id") @db.Uuid
+  provider       String
+  model          String
+  tokensInput    Int      @map("tokens_input")
+  tokensOutput   Int      @map("tokens_output")
+  costUsd        Decimal? @map("cost_usd") @db.Decimal(12, 6)
+  costKnown      Boolean  @default(true) @map("cost_known")
+  costBrl        Decimal? @map("cost_brl") @db.Decimal(14, 6)
+  usdToBrlRate   Decimal? @map("usd_to_brl_rate") @db.Decimal(10, 4)
+  rateSpread     Decimal? @map("rate_spread") @db.Decimal(6, 4)
+  rateStale      Boolean  @default(false) @map("rate_stale")
+  promptChars    Int?     @map("prompt_chars")
+  responseChars  Int?     @map("response_chars")
+  durationMs     Int?     @map("duration_ms")
+  errorMessage   String?  @map("error_message")
+  isPlayground   Boolean  @default(false) @map("is_playground")
+  userId         String?  @map("user_id") @db.Uuid
+  // Credencial (chave de API) usada — permite somar o consumo por chave (A4).
+  credentialId   String?  @map("credential_id") @db.Uuid
+  // Tipo da requisição para a tag de Consumo (G11): texto/imagem/audio/arquivo.
+  requestKind    String   @default("texto") @map("request_kind")
+  createdAt      DateTime @default(now()) @map("created_at")
+
+  @@index([createdAt])
+  @@index([provider, model, createdAt])
+  @@index([credentialId])
+  @@map("llm_usage")
+}
+
+/// Configuração do agente — singleton (id="global").
+model AgentSettings {
+  id                String   @id @default("global")
+  identityBase      String?  @map("identity_base")
+  personality       String   @default("")
+  tone              String   @default("")
+  guardrails        Json     @default("[]")
+  terminology       Json     @default("{}")
+  advancedOverride  String?  @map("advanced_override")
+  suggestionsEnabled Boolean @default(true) @map("suggestions_enabled")
+
+  /// Exibição da bolha flutuante do Agente Nex nas páginas autenticadas.
+  bubbleEnabled     Boolean  @default(true) @map("bubble_enabled")
+
+  /// Checkpoints de 3 estados (OFF/PLAYGROUND/PRODUCTION).
+  audioCheckpoint   FeatureCheckpoint @default(OFF) @map("audio_checkpoint")
+  imageCheckpoint   FeatureCheckpoint @default(OFF) @map("image_checkpoint")
+  kbCheckpoint      FeatureCheckpoint @default(PRODUCTION) @map("kb_checkpoint")
+  /// Checkpoint das sugestões clicáveis (substitui suggestionsEnabled — B3).
+  suggestionsCheckpoint FeatureCheckpoint @default(PRODUCTION) @map("suggestions_checkpoint")
+
+  /// Modelo dedicado de transcrição de áudio (independente do modelo de produção).
+  audioProvider     String?  @map("audio_provider")
+  audioModel        String?  @map("audio_model")
+  /// Credencial (chave de API) usada pelo modelo dedicado de áudio.
+  audioCredentialId String?  @map("audio_credential_id") @db.Uuid
+
+  /// Modelo dedicado de entendimento de imagem (independente do modelo de produção).
+  imageProvider     String?  @map("image_provider")
+  imageModel        String?  @map("image_model")
+  /// Credencial (chave de API) usada pelo modelo dedicado de imagem.
+  imageCredentialId String?  @map("image_credential_id") @db.Uuid
+
+  updatedAt         DateTime @updatedAt @map("updated_at")
+
+  @@map("agent_settings")
+}
+
+/// Documento da base de conhecimento do agente.
+/// A coluna embedding vector(1536) é adicionada via SQL raw na migration (pgvector, onda 7).
+model KbDocument {
+  id            String            @id @default(uuid()) @db.Uuid
+  name          String
+  kind          KbKind            @default(TXT)
+  sourceUrl     String?           @map("source_url")
+  extractedText String            @map("extracted_text")
+  charCount     Int               @map("char_count")
+  /// Checkpoint do documento: OFF, PLAYGROUND ou PRODUCTION.
+  checkpoint    FeatureCheckpoint @default(PRODUCTION)
+  createdAt     DateTime          @default(now()) @map("created_at")
+  /// Embedding pgvector(1536) para RAG. Tipo sem suporte nativo no Prisma —
+  /// declarado com `Unsupported` para que `prisma migrate dev` NÃO o derrube.
+  /// O índice HNSW vive em migration raw (Prisma não modela índice de vetor).
+  embedding     Unsupported("vector(1536)")?
+
+  @@map("kb_documents")
+}
+
+/// Sessão persistente do playground do Agente Nex.
+/// Cada sessão tem provedor/modelo próprios, snapshot de prompt editável
+/// e histórico de mensagens com custo acumulado. Independente da produção.
+model PlaygroundSession {
+  id             String   @id @default(uuid()) @db.Uuid
+  userId         String   @map("user_id") @db.Uuid
+  user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  title          String?
+  provider       String
+  model          String
+  /// Chave de API usada nesta sessão (D2) — desacopla da config global.
+  credentialId   String?  @map("credential_id") @db.Uuid
+  /// Conversa (canal playground) usada pelo runAgent para histórico/contexto.
+  /// Criada sob demanda na primeira mensagem da sessão.
+  conversationId String?  @map("conversation_id") @db.Uuid
+  /// Snapshot do prompt da sessão: { identityBase, personality, tone, guardrails }.
+  /// Inicia como cópia da produção; editável sem afetar produção.
+  promptSnapshot Json     @map("prompt_snapshot")
+  costUsd        Decimal  @default(0) @map("cost_usd") @db.Decimal(14, 6)
+  costBrl        Decimal  @default(0) @map("cost_brl") @db.Decimal(14, 6)
+  createdAt      DateTime @default(now()) @map("created_at")
+  updatedAt      DateTime @updatedAt @map("updated_at")
+  /// Preenchido quando a sessão é arquivada ("Nova sessão").
+  archivedAt     DateTime? @map("archived_at")
+
+  messages       PlaygroundMessage[]
+
+  @@index([userId, updatedAt(sort: Desc)])
+  @@map("playground_sessions")
+}
+
+/// Mensagem de uma sessão de playground.
+model PlaygroundMessage {
+  id        String            @id @default(uuid()) @db.Uuid
+  sessionId String            @map("session_id") @db.Uuid
+  session   PlaygroundSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  role      MessageRole
+  content   String
+  toolCalls Json?             @map("tool_calls")
+  costUsd   Decimal?          @map("cost_usd") @db.Decimal(12, 6)
+  /// Provedor que gerou esta mensagem (D5) — registra por turn.
+  provider    String?  @map("provider")
+  /// Modelo que gerou esta mensagem (D5).
+  model       String?  @map("model")
+  /// Tipo de requisição (D5/G11): texto, audio, imagem, arquivo.
+  requestKind String?  @map("request_kind")
+  createdAt DateTime          @default(now()) @map("created_at")
+
+  @@index([sessionId, createdAt])
+  @@map("playground_messages")
+}
+
+/// Canal WhatsApp — singleton (id="global") com credenciais Meta + modo de resposta.
+model WhatsappChannel {
+  id                String               @id @default("global")
+  encryptedApiToken String?              @map("encrypted_api_token")
+  businessAccountId String?              @map("business_account_id")
+  phoneNumberId     String?              @map("phone_number_id")
+  responseMode      WhatsappResponseMode @default(direct)
+  enabled           Boolean              @default(false)
+  updatedAt         DateTime             @updatedAt @map("updated_at")
+
+  @@map("whatsapp_channel")
+}
+
+/// Webhook configurado (inbound = receptor; outbound = n8n callback).
+/// Campos `name`, `path`, `targetUrl` e `methods` adicionados na rodada 6
+/// (F4) — aditivos, sem quebrar o receptor de WhatsApp da F5 que usa
+/// `direction`/`url`/`secret`/`enabled`.
+model WhatsappWebhook {
+  id        String           @id @default(uuid()) @db.Uuid
+  direction WebhookDirection
+  /// Rótulo amigável do webhook (R6).
+  name      String?
+  url       String?
+  /// Caminho (slug) para webhooks de entrada — o que vem após a URL base (R6).
+  path      String?
+  /// URL de destino completa para webhooks de saída (R6).
+  targetUrl String?          @map("target_url")
+  /// Métodos HTTP aceitos (GET/POST/PUT/PATCH/DELETE) (R6).
+  methods   String[]         @default([])
+  secret    String
+  enabled   Boolean          @default(true)
+  createdAt DateTime         @default(now()) @map("created_at")
+
+  instances WhatsappInstance[]
+
+  @@map("whatsapp_webhooks")
+}
+
+/// Instância do canal WhatsApp — substitui o singleton WhatsappChannel (R6).
+/// Cada instância tem credenciais Meta próprias, modo de resposta e um
+/// webhook associado.
+model WhatsappInstance {
+  id                String               @id @default(uuid()) @db.Uuid
+  name              String
+  phoneNumber       String               @map("phone_number")
+  /// Token da Graph API (cifrado AES-256).
+  graphApiToken     String?              @map("graph_api_token")
+  businessAccountId String?              @map("business_account_id")
+  phoneNumberId     String?              @map("phone_number_id")
+  responseMode      WhatsappResponseMode @default(direct) @map("response_mode")
+  webhookId         String?              @map("webhook_id") @db.Uuid
+  webhook           WhatsappWebhook?     @relation(fields: [webhookId], references: [id])
+  enabled           Boolean              @default(true)
+  createdAt         DateTime             @default(now()) @map("created_at")
+  updatedAt         DateTime             @updatedAt @map("updated_at")
+
+  @@index([webhookId])
+  @@map("whatsapp_instances")
+}
+
+/// API key da plataforma para acesso externo (ex.: node Agent do n8n).
+/// A key só é exibida na criação; persiste-se só o hash SHA-256.
+model ApiKey {
+  id          String    @id @default(uuid()) @db.Uuid
+  label       String
+  keyHash     String    @unique @map("key_hash")
+  last4       String
+  scopes      Json      @default("[]")
+  revokedAt   DateTime? @map("revoked_at")
+  createdById String?   @map("created_by_id") @db.Uuid
+  createdAt   DateTime  @default(now()) @map("created_at")
+
+  @@map("api_keys")
+}
+
+/// Idempotência do webhook receptor (evitar reprocessamento de mensagem WhatsApp).
+/// Job de limpeza remove registros com processedAt > 7 dias.
+model ProcessedWhatsappMessage {
+  messageId   String   @id @map("message_id")
+  processedAt DateTime @default(now()) @map("processed_at")
+  userId      String?  @map("user_id")
+
+  @@index([userId, processedAt])
+  @@map("processed_whatsapp_messages")
 }

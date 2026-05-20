@@ -1,0 +1,172 @@
+"use server";
+
+import { revalidatePath } from "next/cache";
+import { z } from "zod";
+import { prisma } from "@/lib/prisma";
+import { getCurrentUser } from "@/lib/auth";
+import { logAudit } from "@/lib/audit";
+import { normalizeE164 } from "@/lib/whatsapp/resolve";
+import type { ActionResult } from "@/lib/actions/users";
+
+export interface WhatsappNumberItem {
+  id: string;
+  phoneE164: string;
+  label: string | null;
+  verifiedAt: Date | null;
+  createdAt: Date;
+}
+
+/** Papéis autorizados a gerir números de WhatsApp de usuários. */
+function canManageWhatsapp(role: string): boolean {
+  return role === "super_admin" || role === "admin";
+}
+
+// --- listWhatsappNumbers ---------------------------------------------------
+
+export async function listWhatsappNumbers(
+  userId: string,
+): Promise<ActionResult<WhatsappNumberItem[]>> {
+  try {
+    const me = await getCurrentUser();
+    if (!me) return { success: false, error: "Não autenticado" };
+    if (!canManageWhatsapp(me.platformRole)) {
+      return { success: false, error: "Acesso negado" };
+    }
+
+    const parsed = z.string().uuid().safeParse(userId);
+    if (!parsed.success) return { success: false, error: "Dados inválidos" };
+
+    const rows = await prisma.userWhatsappNumber.findMany({
+      where: { userId: parsed.data },
+      select: {
+        id: true,
+        phoneE164: true,
+        label: true,
+        verifiedAt: true,
+        createdAt: true,
+      },
+      orderBy: { createdAt: "asc" },
+    });
+    return { success: true, data: rows };
+  } catch (err) {
+    console.error("[user-whatsapp.list]", err);
+    return { success: false, error: "Erro ao listar números" };
+  }
+}
+
+// --- addWhatsappNumber -----------------------------------------------------
+
+const AddInput = z.object({
+  userId: z.string().uuid(),
+  raw: z.string().min(1).max(40),
+  label: z.string().max(60).optional(),
+});
+
+export async function addWhatsappNumber(
+  rawInput: unknown,
+): Promise<ActionResult<{ id: string; phoneE164: string }>> {
+  try {
+    const me = await getCurrentUser();
+    if (!me) return { success: false, error: "Não autenticado" };
+    if (!canManageWhatsapp(me.platformRole)) {
+      return { success: false, error: "Acesso negado" };
+    }
+
+    const parsed = AddInput.safeParse(rawInput);
+    if (!parsed.success) return { success: false, error: "Dados inválidos" };
+    const input = parsed.data;
+
+    let phoneE164: string;
+    try {
+      phoneE164 = normalizeE164(input.raw);
+    } catch {
+      return { success: false, error: "Número de WhatsApp inválido" };
+    }
+
+    // Unicidade global: o número não pode estar vinculado a outro usuário.
+    const existing = await prisma.userWhatsappNumber.findUnique({
+      where: { phoneE164 },
+      select: { id: true, userId: true },
+    });
+    if (existing) {
+      if (existing.userId === input.userId) {
+        return {
+          success: false,
+          error: "Este número já está vinculado a este usuário",
+        };
+      }
+      return {
+        success: false,
+        error: "Este número já está em uso por outro usuário",
+      };
+    }
+
+    const target = await prisma.user.findUnique({
+      where: { id: input.userId },
+      select: { id: true },
+    });
+    if (!target) return { success: false, error: "Usuário não encontrado" };
+
+    const created = await prisma.userWhatsappNumber.create({
+      data: {
+        userId: input.userId,
+        phoneE164,
+        label: input.label ?? null,
+      },
+      select: { id: true, phoneE164: true },
+    });
+
+    logAudit({
+      userId: me.id,
+      action: "user_whatsapp_added",
+      targetType: "User",
+      targetId: input.userId,
+      details: { phoneE164, label: input.label ?? null },
+    });
+
+    revalidatePath("/usuarios");
+    return { success: true, data: created };
+  } catch (err) {
+    console.error("[user-whatsapp.add]", err);
+    return { success: false, error: "Erro ao adicionar número" };
+  }
+}
+
+// --- removeWhatsappNumber --------------------------------------------------
+
+export async function removeWhatsappNumber(
+  id: string,
+): Promise<ActionResult> {
+  try {
+    const me = await getCurrentUser();
+    if (!me) return { success: false, error: "Não autenticado" };
+    if (!canManageWhatsapp(me.platformRole)) {
+      return { success: false, error: "Acesso negado" };
+    }
+
+    const parsed = z.string().uuid().safeParse(id);
+    if (!parsed.success) return { success: false, error: "Dados inválidos" };
+
+    const row = await prisma.userWhatsappNumber.findUnique({
+      where: { id: parsed.data },
+      select: { id: true, userId: true, phoneE164: true },
+    });
+    if (!row) return { success: false, error: "Número não encontrado" };
+
+    await prisma.userWhatsappNumber.delete({ where: { id: parsed.data } });
+
+    logAudit({
+      userId: me.id,
+      action: "user_whatsapp_removed",
+      targetType: "User",
+      targetId: row.userId,
+      details: { phoneE164: row.phoneE164 },
+    });
+
+    revalidatePath("/usuarios");
+    return { success: true };
+  } catch (err) {
+    console.error("[user-whatsapp.remove]", err);
+    return { success: false, error: "Erro ao remover número" };
+  }
+}

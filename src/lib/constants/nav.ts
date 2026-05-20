@@ -1,4 +1,16 @@
-import { BarChart3, Home, Settings, Users } from "lucide-react";
+import {
+  BarChart3,
+  BookOpen,
+  FlaskConical,
+  Home,
+  KeyRound,
+  Plug,
+  Settings,
+  SlidersHorizontal,
+  Sparkles,
+  TrendingUp,
+  Users,
+} from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import type { PlatformRole } from "@/generated/prisma/client";
 
@@ -22,11 +34,59 @@ export const NAV_ITEMS: NavItem[] = [
   { label: "Dashboard", href: "/dashboard", icon: Home },
   { label: "Relatórios", href: "/relatorios", icon: BarChart3 },
   {
+    // href é o prefixo do grupo — usado como chave de openGroups e por
+    // isGroupActive (o item de grupo é um <button>, não navega).
+    label: "Agente Nex",
+    href: "/agente",
+    icon: Sparkles,
+    section: "admin",
+    superAdminOnly: true,
+    children: [
+      {
+        label: "Configuração",
+        href: "/agente/configuracao",
+        icon: SlidersHorizontal,
+        superAdminOnly: true,
+      },
+      {
+        label: "Chaves de API",
+        href: "/agente/chaves",
+        icon: KeyRound,
+        superAdminOnly: true,
+      },
+      {
+        label: "Prompt",
+        href: "/agente/prompt",
+        icon: BookOpen,
+        superAdminOnly: true,
+      },
+      {
+        label: "Consumo",
+        href: "/agente/consumo",
+        icon: TrendingUp,
+        superAdminOnly: true,
+      },
+      {
+        label: "Playground",
+        href: "/agente/playground",
+        icon: FlaskConical,
+        superAdminOnly: true,
+      },
+    ],
+  },
+  {
     label: "Usuários",
     href: "/usuarios",
     icon: Users,
     section: "admin",
     visibleTo: ["super_admin", "admin"],
+  },
+  {
+    label: "Integrações",
+    href: "/integracoes",
+    icon: Plug,
+    section: "admin",
+    visibleTo: ["super_admin"],
   },
   {
     label: "Configuração",

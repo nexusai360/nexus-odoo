@@ -1,6 +1,6 @@
 # STATUS — nexus-odoo
 
-> **Ponto de retomada entre sessões.** Atualizado em 2026-05-17.
+> **Ponto de retomada entre sessões.** Atualizado em 2026-05-19.
 > Ao abrir uma sessão: ler **este arquivo** e o **`CLAUDE.md`**. Modo autônomo
 > é o padrão (ver `CLAUDE.md §6`).
 
@@ -16,11 +16,20 @@
 | **F3 — Dashboard de relatórios** | 6 relatórios de estoque sobre o cache | ✅ mergeado na `main` (PR #4) |
 | **F3.5 — Dashboard de relatórios v2** | Sofisticação no padrão `nexus-insights` | ✅ mergeado na `main` (PR #4) |
 | **F4 — MCP semântico** | Servidor MCP, **todos os domínios** + Caminho 3c funcional | ✅ **completa — mergeada na `main` (PR #5 + #6 + #7)** |
-| **F5 — Integração WhatsApp** | Agente conectado ao MCP via WhatsApp | ⬜ **PRÓXIMA** |
+| **F5 — Integração WhatsApp** | Agente de IA por WhatsApp + chat in-app, Integrações, RAG | 🔄 **backend pronto; UI rework + self-healing sync entregues; PR #9 atualizado, aguardando code review humano + merge** |
 | F6 — Construtor de relatórios | Wizard in-app guiado por IA | ⬜ futura (inclui o polimento fino dos relatórios) |
 
-**Branch ativa: `feat/mcp-semantico`** (criada de `main`, já no remoto). A `main`
-tem F0+F1+F2+F3+F3.5 — tudo em produção.
+**Branch ativa: `feat/integracao-whatsapp`**. A `main` tem F0+F1+F2+F3+F3.5+F4.
+O backend da F5 (agente, MCP, webhook, ondas 1–7) está pronto na branch. Porém a
+**UI foi reprovada pelo usuário e está em rework** — em andamento.
+
+> ## ⚠️ RETOMADA — LEIA O HANDOFF
+> A próxima sessão DEVE começar lendo **`docs/HANDOFF-2026-05-19-f5-ui.md`** —
+> ele tem o estado exato do rework de UI, o que falta (Blocos C e D do plano
+> `docs/superpowers/plans/2026-05-19-f5-ui-ajustes-v3.md`), as **regras
+> inegociáveis** e as **frustrações recorrentes do usuário** que não podem se
+> repetir (ui-ux-pro-max obrigatório, clonar o nexus-insights, não delegar,
+> testar de verdade, "Agente Nex"). NÃO mergear o PR antes da UI aprovada.
 
 ---
 
@@ -101,25 +110,39 @@ permissão entre etapas):
 
 ---
 
-## 5. PARA RETOMAR — F4 completa; F5 com brainstorm pronto
+## 5. PARA RETOMAR — F5 em execução (ondas 1–7 completas)
 
-A **F4 (MCP semântico) está completa e na `main`** — PRs #5, #6, #7, #8. Tudo
-testado end-to-end contra o cache real. Deploy: `npm run db:deploy` + containers
-(ver `docs/runbooks/deploy-mcp-db.md`).
+A **F4 (MCP semântico) está completa e na `main`** — PRs #5, #6, #7, #8.
 
-**Próximo trabalho: F5 — Integração WhatsApp + Agente de IA.** O **brainstorm
-já foi feito** com o usuário (2026-05-18) e está capturado em
-`docs/superpowers/specs/2026-05-18-f5-whatsapp-agente-design.md` — **esse doc é
-o escopo TRAVADO e o roteiro de execução**. Na próxima sessão, dizer **"vamos
-para a F5"**: a sessão entra **direto em modo autônomo** (o brainstorm está
-fechado — não há nova rodada de perguntas), mapeia o agente "Nex" no projeto
-irmão `/Users/joaovitorzanini/Developer/Claude Code/Nexus AI/Projetos Internos/nexus-insights`,
-escreve SPEC v1→v3 (2 reviews) + PLAN v1→v3 (2 reviews) cobrindo **todas as
-sub-fases F5a–F5f**, e executa **a F5 inteira** com o ciclo `[1]→[10]`. Resumo
-da F5: agente de IA por WhatsApp (via n8n) e chat in-app (clone melhorado do
-"Nex"); menu Integrações (superadmin); MCP consumível de fora (n8n); números de
-WhatsApp no cadastro de usuário. **Escopo entregue por completo — faseado, mas
-sem recorte.** Detalhes e seção "Como retomar" no doc de brainstorm.
+A **F5 está em execução** na branch `feat/integracao-whatsapp`. Todas as 7 ondas
+implementadas. Próximo passo: code review + UI review (`/gsd-code-review` e
+`/gsd-ui-review`) → PR para `main`.
+
+### F5 — Status das ondas
+
+| Onda | Entrega | Status |
+|---|---|---|
+| **Onda 1** | Fundação de dados + núcleo do agente (schema, mcp-client, run-agent, conversation, llm stack) | ✅ completa |
+| **Onda 2** | Cadastro de WhatsApp no usuário (campo phone, resolução número→usuário) | ✅ completa |
+| **Onda 3** | Chat in-app (SSE, página `/agente`, config LLM/prompt, playground) | ✅ completa |
+| **Onda 4** | Webhook receptor WhatsApp + processor BullMQ (inbound, HMAC, cloud-client) | ✅ completa |
+| **Onda 5** | Consumo + playground (tela de consumo, histórico, playground com override de prompt) | ✅ completa |
+| **Onda 6** | Menu Integrações (superadmin: Canais/WhatsApp, MCP, Webhooks, API, BI) | ✅ completa |
+| **Onda 7** | RAG com pgvector (embed, searchKb, ingestão, integração ao prompt, UI de gestão de KB) | ✅ **completa (2026-05-19)** |
+
+### Próximo passo
+
+1. `/gsd-code-review` — auditoria de bugs, segurança, qualidade (Opus).
+2. `/gsd-ui-review` — 6 pilares visuais nas telas novas (Opus).
+3. Corrigir achados materiais.
+4. Abrir PR `feat/integracao-whatsapp` → `main` (decisão de merge é humana).
+
+### Artefatos da F5
+
+- Spec v3: `docs/superpowers/specs/2026-05-18-f5-whatsapp-agente-spec.md`
+- Plano v3: `docs/superpowers/plans/2026-05-18-f5-whatsapp-agente.md`
+- Design: `docs/superpowers/research/2026-05-18-f5-ui-design.md`
+- Runbook n8n: `docs/runbooks/n8n-whatsapp.md`
 
 ### O que a F4 entregou (33 tools no catálogo do MCP)
 

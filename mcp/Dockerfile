@@ -28,12 +28,17 @@ COPY --from=deps /app/node_modules ./node_modules
 
 # Copiar apenas o necessário para gerar o Prisma client e verificar tipos
 COPY prisma/ ./prisma/
+COPY prisma.config.ts ./
+COPY tsconfig.json ./
 COPY src/ ./src/
 COPY mcp/ ./mcp/
 
-# Gerar Prisma client (necessário para os tipos em src/generated/prisma)
+# Gerar Prisma client (necessário para os tipos em src/generated/prisma).
+# Prisma v7 lê prisma.config.ts (schema + generator output) — por isso ele é
+# copiado acima. Verifica que o client foi de fato gerado antes de seguir.
 ENV DATABASE_URL="postgresql://dummy:dummy@localhost:5432/dummy"
-RUN npx prisma generate
+RUN npx prisma generate --schema prisma/schema.prisma \
+    && test -f src/generated/prisma/client.ts
 
 # Verificação de tipo do MCP — tsconfig autônomo (N1):
 #   • Não recompila src/**/*.tsx (sem jsx no mcp/tsconfig.json)
@@ -54,9 +59,18 @@ RUN addgroup --system --gid 1001 nodejs && \
 # Copiar artefatos do builder
 COPY --from=builder --chown=mcpuser:nodejs /app/node_modules ./node_modules
 COPY --from=builder --chown=mcpuser:nodejs /app/prisma ./prisma
+COPY --from=builder --chown=mcpuser:nodejs /app/prisma.config.ts ./prisma.config.ts
+COPY --from=builder --chown=mcpuser:nodejs /app/tsconfig.json ./tsconfig.json
 COPY --from=builder --chown=mcpuser:nodejs /app/src ./src
 COPY --from=builder --chown=mcpuser:nodejs /app/mcp ./mcp
 COPY --from=builder --chown=mcpuser:nodejs /app/package.json ./package.json
+
+# Gerar o Prisma client diretamente no runner — garante que src/generated/prisma
+# exista na imagem final independentemente de cache de camadas multi-stage.
+ENV DATABASE_URL="postgresql://dummy:dummy@localhost:5432/dummy"
+RUN npx prisma generate --schema prisma/schema.prisma \
+    && test -f src/generated/prisma/client.ts \
+    && chown -R mcpuser:nodejs src/generated
 
 USER mcpuser
 EXPOSE 3100

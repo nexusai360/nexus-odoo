@@ -10,6 +10,18 @@ import {
   processReconcileCycle,
 } from "./sync/processors";
 import { JOB_INCREMENTAL, JOB_SNAPSHOT, JOB_RECONCILE, JOB_CONFIG_CHECK } from "./jobs";
+import { AGENT_QUEUE_NAME } from "./agent/queue";
+import { processAgentJob, type AgentJobData } from "./agent/processor";
+import { cleanupIdempotencyTable } from "./agent/cleanup";
+import {
+  clearPending,
+  isOdooUnavailable,
+  markPending,
+  readPending,
+} from "./recovery";
+
+export const MAINTENANCE_QUEUE = "maintenance";
+export const JOB_CLEANUP_IDEMPOTENCY = "cleanup-idempotency";
 
 const REDIS_URL = process.env.REDIS_URL ?? "redis://localhost:6379";
 const connection = new IORedis(REDIS_URL, { maxRetriesPerRequest: null });
@@ -17,6 +29,46 @@ connection.on("error", (err: Error) => console.error("[worker] erro Redis:", err
 
 export const ODOO_SYNC_QUEUE = "odoo-sync";
 export const syncQueue = new Queue(ODOO_SYNC_QUEUE, { connection });
+
+// ─── Fila do agente ───────────────────────────────────────────────────────────
+export const agentQueue = new Queue(AGENT_QUEUE_NAME, { connection });
+
+const agentWorker = new Worker(
+  AGENT_QUEUE_NAME,
+  async (job: Job<AgentJobData>) => {
+    console.log(`[agent-worker] processando job ${job.id} (messageId: ${job.data.messageId})`);
+    await processAgentJob(job.data);
+    return { ok: true };
+  },
+  { connection, concurrency: 3 },
+);
+
+agentWorker.on("ready", () => console.log(`[agent-worker] pronto — fila "${AGENT_QUEUE_NAME}"`));
+agentWorker.on("failed", (job, err) =>
+  console.error(`[agent-worker] job ${job?.id} falhou:`, err),
+);
+agentWorker.on("error", (err) => console.error("[agent-worker] erro:", err));
+
+// ─── Fila de manutenção (cron diário) ─────────────────────────────────────────
+export const maintenanceQueue = new Queue(MAINTENANCE_QUEUE, { connection });
+
+const maintenanceWorker = new Worker(
+  MAINTENANCE_QUEUE,
+  async (job: Job) => {
+    if (job.name === JOB_CLEANUP_IDEMPOTENCY) {
+      const result = await cleanupIdempotencyTable();
+      console.log(`[maintenance] cleanup idempotência: ${result.deleted} registros removidos`);
+      return result;
+    }
+    return { ok: true };
+  },
+  { connection, concurrency: 1 },
+);
+
+maintenanceWorker.on("ready", () =>
+  console.log(`[maintenance-worker] pronto — fila "${MAINTENANCE_QUEUE}"`),
+);
+maintenanceWorker.on("error", (err) => console.error("[maintenance-worker] erro:", err));
 
 // Guarda de sobreposição cluster-safe: lock no Redis com TTL (WR-01). Sobrevive
 // a restart e protege contra uma segunda réplica do worker rodando o mesmo
@@ -86,6 +138,34 @@ async function rodarCiclo(name: string): Promise<void> {
   else if (name === JOB_RECONCILE) await processReconcileCycle(ctx, MODEL_CATALOG);
 }
 
+/**
+ * Drena snapshot/reconcile pendentes após uma recuperação.
+ *
+ * Chamado somente após um JOB_INCREMENTAL bem-sucedido — esse é o "sinal
+ * vital" de que o Tauga voltou. Enfileira os jobs marcados como pendentes
+ * com prioridade alta e limpa o flag. O resto do agendamento normal
+ * (snapshot 30min / reconcile 1440min) continua intacto.
+ */
+async function drenarPendentes(): Promise<void> {
+  const pending = await readPending(connection);
+  if (!pending.snapshot && !pending.reconcile) return;
+
+  if (pending.snapshot) {
+    await syncQueue.add(JOB_SNAPSHOT, { kind: JOB_SNAPSHOT }, { priority: 1 });
+    await clearPending(connection, "snapshot");
+    console.log(
+      "[worker] recovery — snapshot pendente enfileirado após Tauga voltar",
+    );
+  }
+  if (pending.reconcile) {
+    await syncQueue.add(JOB_RECONCILE, { kind: JOB_RECONCILE }, { priority: 1 });
+    await clearPending(connection, "reconcile");
+    console.log(
+      "[worker] recovery — reconcile pendente enfileirado após Tauga voltar",
+    );
+  }
+}
+
 const worker = new Worker(
   ODOO_SYNC_QUEUE,
   async (job: Job) => {
@@ -103,7 +183,35 @@ const worker = new Worker(
     try {
       await rodarCiclo(job.name);
       console.log(`[worker] ciclo "${job.name}" concluído em ${Date.now() - inicio}ms`);
+      // Self-healing: incremental bem-sucedido = Tauga vivo → drena pendentes.
+      if (job.name === JOB_INCREMENTAL) {
+        await drenarPendentes().catch((err) =>
+          console.error("[worker] falha ao drenar pendentes:", err),
+        );
+      }
       return { ok: true };
+    } catch (err) {
+      // Indisponibilidade do Tauga: snapshot/reconcile ficam "pendentes" para
+      // o próximo incremental bem-sucedido enfileirar imediatamente. Para o
+      // incremental, basta deixar o BullMQ tentar de novo no próximo ciclo
+      // (3min) — não precisa marcar nada.
+      if (
+        isOdooUnavailable(err) &&
+        (job.name === JOB_SNAPSHOT || job.name === JOB_RECONCILE)
+      ) {
+        await markPending(
+          connection,
+          job.name === JOB_SNAPSHOT ? "snapshot" : "reconcile",
+        );
+        console.warn(
+          `[worker] Odoo indisponível durante ciclo "${job.name}" — ` +
+            `marcado como pendente; será rodado quando o incremental voltar.`,
+        );
+        // Retorna ok para o BullMQ não fazer retry exponencial agressivo
+        // (o incremental já é o nosso health check).
+        return { ok: false, pendingRecovery: true };
+      }
+      throw err;
     } finally {
       await liberarLock(job.name);
     }
@@ -123,6 +231,13 @@ async function bootstrap(): Promise<void> {
     { every: 60_000 },
     { name: JOB_CONFIG_CHECK },
   );
+  // Limpeza diária da tabela de idempotência (ProcessedWhatsappMessage > 7 dias).
+  await maintenanceQueue.upsertJobScheduler(
+    JOB_CLEANUP_IDEMPOTENCY,
+    { every: 24 * 60 * 60_000 }, // 24h em ms
+    { name: JOB_CLEANUP_IDEMPOTENCY },
+  );
+  console.log("[worker] cron de limpeza de idempotência agendado (24h)");
 }
 
 bootstrap().catch((err) => console.error("[worker] falha no bootstrap:", err));
@@ -131,7 +246,11 @@ console.log("[worker] nexus-odoo worker iniciado");
 async function shutdown() {
   console.log("[worker] encerrando…");
   await worker.close();
+  await agentWorker.close();
+  await maintenanceWorker.close();
   await syncQueue.close();
+  await agentQueue.close();
+  await maintenanceQueue.close();
   await connection.quit();
   await prisma.$disconnect();
   process.exit(0);
