@@ -16,7 +16,7 @@
 | **F3 — Dashboard de relatórios** | 6 relatórios de estoque sobre o cache | ✅ mergeado na `main` (PR #4) |
 | **F3.5 — Dashboard de relatórios v2** | Sofisticação no padrão `nexus-insights` | ✅ mergeado na `main` (PR #4) |
 | **F4 — MCP semântico** | Servidor MCP, **todos os domínios** + Caminho 3c funcional | ✅ **completa — mergeada na `main` (PR #5 + #6 + #7)** |
-| **F5 — Integração WhatsApp** | Agente de IA por WhatsApp + chat in-app, Integrações, RAG | 🔄 **backend pronto; UI rework plano v3 completo, pendente smoke test + code review + merge** |
+| **F5 — Integração WhatsApp** | Agente de IA por WhatsApp + chat in-app, Integrações, RAG | 🔄 **backend pronto; UI rework + self-healing sync entregues; PR #9 atualizado, aguardando code review humano + merge** |
 | F6 — Construtor de relatórios | Wizard in-app guiado por IA | ⬜ futura (inclui o polimento fino dos relatórios) |
 
 **Branch ativa: `feat/integracao-whatsapp`**. A `main` tem F0+F1+F2+F3+F3.5+F4.

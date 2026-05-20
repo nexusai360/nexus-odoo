@@ -156,6 +156,69 @@ Plano v3 **encerrado**. Próximos passos:
 
 ---
 
+## 5f. SESSÃO 3.5 — 20/05/2026 (final manhã: feedback iterativo)
+
+Várias rodadas de ajuste fino do Playground baseadas em screenshots:
+
+### Self-healing do sync (CRÍTICO)
+- `src/worker/recovery.ts` + `recovery.test.ts` (20 testes): quando Tauga
+  cai (502/503/504/Manutenção/ECONNREFUSED/ETIMEDOUT/`authenticate falhou`),
+  snapshot/reconcile que falharem marcam flag no Redis
+  (`odoo-sync:pending-recovery`) e retornam ok (sem retry agressivo).
+- `src/worker/index.ts`: incremental bem-sucedido = "sinal vital" do
+  Tauga → `drenarPendentes()` enfileira pendentes com `priority: 1`,
+  rodam imediatamente, flags limpos. Agendamento (3/30/1440 min)
+  permanece intacto.
+- **Comportamento configurado e testado**. Worker em produção precisa
+  apenas reiniciar pra carregar a lógica (zero migration).
+
+### Visuais (commits incrementais 0a→9k)
+- ExpandableTextarea modal: `max-w-6xl` → `min(96vw, 1400px) × 90vh`.
+- "Entrada de imagem" → **"Entrada de anexo"** (master para anexo na
+  bubble + WhatsApp). Subtítulo explica regra evolutiva (PROD ⊇
+  PLAYGROUND ⊇ —).
+- Sidebar do Playground:
+  - `w-72` → `w-80`.
+  - Tabs **Configuração / Histórico** no topo, `text-xs h-8`.
+  - "HISTÓRICO" label sumiu quando há sessão ativa (deduplica com tab).
+  - Label "Nome" → **"Nome da sessão"**; placeholder objetivo.
+  - Input direto sem botão check (Enter/onBlur salvam, Esc cancela).
+  - Selects (Provedor/Modelo/Chave) `text-sm` → `text-xs`.
+  - Consumo da sessão: R$ ajustado iterativamente (`text-base` → `text-sm`
+    semibold); padding generoso (`px-4 py-3.5`), `mt-4` descola.
+- Histórico cards:
+  - Ordem final: **título** · provedor·modelo · data · consumo R$+US$.
+  - R$ `text-xs semibold`; metadados `text-[11px]`.
+  - Lápis vira **"Editar"** — clicar abre a aba Configuração da sessão
+    (não mais dialog inline).
+- Recursos (tela Prompt): `space-y-3` → `space-y-5`, cada Card
+  `rounded-xl px-4 py-3.5` — respiro entre Áudio / Anexo / Sugestões.
+- KB (tela Prompt): linha invertida — **lixeira à esquerda**, checkpoint
+  Desativado/Playground/Produção à direita.
+- PlaygroundSessionPrompt: subtítulo sem travessão; botão **"Colocar em
+  produção"** (era "Aplicar à produção") em violet shadow; Cards
+  separados de Recursos e Base de conhecimento com explicação da regra
+  evolutiva.
+- Labels de provedor: `providerLabelFor()` — OpenAI / Anthropic /
+  Gemini / OpenRouter (case-insensitive map). Aplicado no histórico,
+  header do chat e tags por mensagem.
+
+### Bateria
+- `npx tsc --noEmit` ✅
+- `npx eslint src/` ✅
+- `npx jest --runInBand` ✅ 134 suites, 1102 testes (20 novos do
+  `recovery.test.ts`).
+- Dev server + worker rodando; hydration mismatch (cache stale do
+  turbopack) resolvido com `rm -rf .next` + restart.
+
+### Pendentes documentados
+- **Override de Recursos + KB por sessão** (Playground): precisa
+  expandir `promptSnapshot` para guardar `resourcesOverride` + `kbOverride`
+  e renderizar `ResourcesToggles`/`KbSection` operando sobre eles em vez
+  do `AgentSettings` global. Bloco de Recursos e Base de Conhecimento
+  no `PlaygroundSessionPrompt` já está visualmente disposto, só falta
+  a parte editável + persistência.
+
 ## 5e. SESSÃO 3.4 — 20/05/2026 (manhã, pós-Tauga)
 
 Tauga voltou da manutenção. Bateria completa da metodologia §[10]:
