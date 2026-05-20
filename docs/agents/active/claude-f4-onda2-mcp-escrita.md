@@ -78,6 +78,4 @@ Se eu precisar tocar alguma dessas áreas para a reorganização do menu (Plugar
 
 ## Bloqueios
 
-- **PR1 (externo):** Tauga precisa criar usuário Odoo dedicado em `grupojht.teste.tauga.online` com permissões plenas. Sem isso, Onda 0 inicia em modo dry-run.
-- **PR2 (externo):** SLA da base de teste confirmado pela Tauga.
-- **PR3 (externo):** Confirmar `module = mcp_nexus` livre em `ir.model.data` no Odoo Tauga.
+(vazio — credenciais reutilizadas da leitura; verificação `mcp_nexus` é parte do início da execução)

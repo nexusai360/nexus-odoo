@@ -177,14 +177,11 @@ Spec própria por onda (ou subseção desta) → plan → execução → testes 
 - Migração de fluxos n8n existentes do cliente (cliente cuida).
 - Webhooks push de eventos write (campo `eventName` reservado em `McpAuditLog` desde já; consumidor virá em fase futura).
 
-### 2.4. Pré-requisitos externos (BLOQUEADORES)
+### 2.4. Configuração e validações de início
 
-Sem estes, a Onda 0 inicia em modo dry-run (handlers validam mas não chamam Odoo):
-
-1. **PR1 — User Odoo dedicado em `grupojht.teste.tauga.online`** com permissões plenas confirmadas pela Tauga. Comunicação da credencial via cofre/Portainer (não chat/email). Prazo aceitável: 3 dias úteis após início da Onda 0.
-2. **PR2 — SLA da base de teste** confirmado pela Tauga (mín. 30 dias de disponibilidade, aviso prévio de manutenção).
-3. **PR3 — Confirmação de `module = mcp_nexus` livre em `ir.model.data`** (não conflita com nada já existente no Odoo Tauga). Verificar via busca direta no Odoo.
-4. **PR4 — Estado do PR #9 (F5)** confirmado mergeado em `main` (✓ já feito em 2026-05-20, commit `682b9a7`).
+- **Credenciais Odoo:** o usuário Odoo já configurado para a leitura é reutilizado para escrita. Apontamento de URL: `ODOO_READ_URL=https://grupojht.tauga.online` (produção, leitura — mantém o que existe); `ODOO_WRITE_URL=https://grupojht.teste.tauga.online` (teste, escrita — apenas durante validação da Onda 0). Cutover de write para produção é decisão humana futura.
+- **Verificação técnica no início da Onda 0** (parte do checklist §0.6): confirmar que `module = mcp_nexus` está livre em `ir.model.data` antes de gravar o primeiro `external_id`. Se ocupado, escolher alternativa (`nexus_mcp`, `mcp_nexus_external`).
+- **PR #9 (F5)** já mergeado em `main` (commit `682b9a7`, 2026-05-20).
 
 ### 2.5. Suposições
 
@@ -1230,7 +1227,7 @@ Cada test suite usa em `beforeAll` para criar chaves com capabilities específic
 
 Amarrados aos cenários de §19.3.
 
-- [ ] Pré-requisitos externos PR1, PR2, PR3 cumpridos (PR4 já feito).
+- [ ] Checklist §0.6 executado; `module = mcp_nexus` confirmado livre em `ir.model.data`.
 - [ ] Migration Prisma rodada; tabelas/campos novos existem; `ApiKey` existente continua funcional.
 - [ ] Endpoint **único** `POST /api/mcp` distingue modo interno (Bearer = MCP_SERVICE_TOKEN) e externo (Bearer = ApiKey) por valor do token.
 - [ ] Cache LRU de ApiKeys funcional (TTL 60s, invalidação por pub/sub).
