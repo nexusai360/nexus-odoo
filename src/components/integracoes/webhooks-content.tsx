@@ -7,10 +7,11 @@ import {
   Eye,
   EyeOff,
   Loader2,
-  PlusCircle,
+  Plus,
   RefreshCw,
   RotateCcw,
   Trash2,
+  Webhook,
   XCircle,
 } from "lucide-react";
 import { toast } from "sonner";
@@ -19,6 +20,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { CustomSelect } from "@/components/ui/custom-select";
 import { Switch } from "@/components/ui/switch";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import {
   createWebhook,
   deleteWebhook,
@@ -183,12 +185,12 @@ export function WebhooksContent({ initial }: Props) {
             : `${webhooks.length} webhook${webhooks.length !== 1 ? "s" : ""}`}
         </p>
         <Button
-          variant="outline"
+          type="button"
           size="sm"
-          className="gap-1.5"
           onClick={() => setShowForm((v) => !v)}
+          className="h-9"
         >
-          <PlusCircle className="h-3.5 w-3.5" />
+          <Plus className="mr-1.5 h-4 w-4" />
           Novo webhook
         </Button>
       </div>
@@ -278,62 +280,95 @@ interface WebhookRowProps {
 
 function WebhookRow({ webhook, isPending, onToggle, onRotate, onDelete }: WebhookRowProps) {
   return (
-    <div className="rounded-xl border border-border bg-card p-4 space-y-3">
+    <div
+      className={cn(
+        "rounded-xl border border-border bg-muted/30 p-4 space-y-3 transition-colors hover:border-foreground/20",
+        !webhook.enabled && "opacity-60",
+      )}
+    >
       <div className="flex items-start justify-between gap-3">
-        <div className="space-y-0.5 min-w-0">
-          <div className="flex items-center gap-2">
-            {webhook.enabled ? (
-              <CheckCircle2 className="h-3.5 w-3.5 text-emerald-500 shrink-0" />
-            ) : (
-              <XCircle className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+        <div className="flex items-center gap-3 min-w-0">
+          <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-violet-500/10">
+            <Webhook className="h-4 w-4 text-violet-500" />
+          </span>
+          <div className="space-y-0.5 min-w-0">
+            <div className="flex items-center gap-2">
+              {webhook.enabled ? (
+                <CheckCircle2 className="h-3.5 w-3.5 text-emerald-500 shrink-0" />
+              ) : (
+                <XCircle className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+              )}
+              <span className="text-sm font-semibold">
+                {DIRECTION_LABELS[webhook.direction] ?? webhook.direction}
+              </span>
+            </div>
+            {(webhook.targetUrl ?? webhook.path) && (
+              <p className="text-xs text-muted-foreground font-mono truncate">
+                {webhook.targetUrl ?? webhook.path}
+              </p>
             )}
-            <span className="text-sm font-medium">
-              {DIRECTION_LABELS[webhook.direction] ?? webhook.direction}
-            </span>
-          </div>
-          {(webhook.targetUrl ?? webhook.path) && (
-            <p className="text-xs text-muted-foreground font-mono truncate">
-              {webhook.targetUrl ?? webhook.path}
+            <p className="text-[11px] text-muted-foreground">
+              Criado em {formatDate(webhook.createdAt)}
             </p>
-          )}
-          <p className="text-xs text-muted-foreground">
-            Criado em {formatDate(webhook.createdAt)}
-          </p>
+          </div>
         </div>
 
         {/* Toggle habilitado */}
-        <Switch
-          checked={webhook.enabled}
-          onCheckedChange={(v) => onToggle(webhook.id, v)}
-          disabled={isPending}
-          aria-label={webhook.enabled ? "Desabilitar webhook" : "Habilitar webhook"}
-        />
+        <Tooltip>
+          <TooltipTrigger
+            render={
+              <Switch
+                checked={webhook.enabled}
+                onCheckedChange={(v) => onToggle(webhook.id, v)}
+                disabled={isPending}
+                aria-label={webhook.enabled ? "Desabilitar webhook" : "Habilitar webhook"}
+              />
+            }
+          />
+          <TooltipContent>{webhook.enabled ? "Desabilitar" : "Habilitar"}</TooltipContent>
+        </Tooltip>
       </div>
 
       {/* Ações */}
-      <div className="flex items-center gap-2">
-        <Button
-          variant="outline"
-          size="sm"
-          className={cn("gap-1.5 text-xs")}
-          disabled={isPending}
-          onClick={() => onRotate(webhook.id)}
-          aria-label="Rotacionar secret"
-        >
-          <RotateCcw className="h-3 w-3" />
-          Rotacionar secret
-        </Button>
-        <Button
-          variant="ghost"
-          size="sm"
-          className="gap-1.5 text-xs text-destructive hover:text-destructive"
-          disabled={isPending}
-          onClick={() => onDelete(webhook.id)}
-          aria-label="Remover webhook"
-        >
-          <Trash2 className="h-3 w-3" />
-          Remover
-        </Button>
+      <div className="flex items-center gap-2 border-t border-border/40 pt-3">
+        <Tooltip>
+          <TooltipTrigger
+            render={
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className="gap-1.5 text-xs"
+                disabled={isPending}
+                onClick={() => onRotate(webhook.id)}
+                aria-label="Rotacionar secret"
+              >
+                <RotateCcw className="h-3.5 w-3.5" />
+                Rotacionar secret
+              </Button>
+            }
+          />
+          <TooltipContent>Gerar novo secret HMAC e invalidar o anterior</TooltipContent>
+        </Tooltip>
+        <Tooltip>
+          <TooltipTrigger
+            render={
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                className="ml-auto gap-1.5 text-xs text-destructive hover:bg-destructive/10 hover:text-destructive"
+                disabled={isPending}
+                onClick={() => onDelete(webhook.id)}
+                aria-label="Remover webhook"
+              >
+                <Trash2 className="h-3.5 w-3.5" />
+                Remover
+              </Button>
+            }
+          />
+          <TooltipContent>Excluir este webhook</TooltipContent>
+        </Tooltip>
       </div>
     </div>
   );

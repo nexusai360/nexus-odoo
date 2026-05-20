@@ -6,8 +6,9 @@ import {
   Copy,
   Eye,
   EyeOff,
+  Key,
   Loader2,
-  PlusCircle,
+  Plus,
   ShieldOff,
   XCircle,
 } from "lucide-react";
@@ -15,6 +16,7 @@ import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import {
   createApiKey,
   listApiKeys,
@@ -141,12 +143,12 @@ export function ApiKeysContent({ initial }: Props) {
             : `${activeKeys.length} key${activeKeys.length !== 1 ? "s" : ""} ativa${activeKeys.length !== 1 ? "s" : ""}`}
         </p>
         <Button
-          variant="outline"
+          type="button"
           size="sm"
-          className="gap-1.5"
           onClick={() => setShowForm((v) => !v)}
+          className="h-9"
         >
-          <PlusCircle className="h-3.5 w-3.5" />
+          <Plus className="mr-1.5 h-4 w-4" />
           Nova API key
         </Button>
       </div>
@@ -239,52 +241,67 @@ function ApiKeyRow({ apiKey, isPending, onRevoke, revoked }: ApiKeyRowProps) {
   return (
     <div
       className={cn(
-        "rounded-xl border border-border bg-card p-4",
+        "rounded-xl border border-border bg-muted/30 p-4 transition-colors hover:border-foreground/20",
         revoked && "opacity-60",
       )}
     >
       <div className="flex items-start justify-between gap-3">
-        <div className="space-y-0.5 min-w-0">
-          <div className="flex items-center gap-2">
-            {revoked ? (
-              <XCircle className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
-            ) : (
-              <CheckCircle2 className="h-3.5 w-3.5 text-emerald-500 shrink-0" />
-            )}
-            <span className="text-sm font-medium">{apiKey.label}</span>
+        <div className="flex items-center gap-3 min-w-0">
+          <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-violet-500/10">
+            <Key className="h-4 w-4 text-violet-500" />
+          </span>
+          <div className="space-y-0.5 min-w-0">
+            <div className="flex items-center gap-2">
+              {revoked ? (
+                <XCircle className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+              ) : (
+                <CheckCircle2 className="h-3.5 w-3.5 text-emerald-500 shrink-0" />
+              )}
+              <span className="text-sm font-semibold">{apiKey.label}</span>
+            </div>
+            <p className="text-xs text-muted-foreground font-mono">
+              ••••••••{apiKey.last4}
+            </p>
+            <div className="flex flex-wrap gap-1 mt-1">
+              {(apiKey.scopes as string[]).map((scope) => (
+                <span
+                  key={scope}
+                  className="text-[10px] px-1.5 py-0.5 rounded-full bg-violet-500/10 text-violet-700 dark:text-violet-300 font-mono"
+                >
+                  {scope}
+                </span>
+              ))}
+            </div>
+            <p className="text-[11px] text-muted-foreground">
+              {revoked
+                ? `Revogada em ${formatDate(apiKey.revokedAt!)}`
+                : `Criada em ${formatDate(apiKey.createdAt)}`}
+            </p>
           </div>
-          <p className="text-xs text-muted-foreground font-mono">
-            ••••••••{apiKey.last4}
-          </p>
-          <div className="flex flex-wrap gap-1 mt-1">
-            {(apiKey.scopes as string[]).map((scope) => (
-              <span
-                key={scope}
-                className="text-xs px-1.5 py-0.5 rounded bg-muted text-muted-foreground font-mono"
-              >
-                {scope}
-              </span>
-            ))}
-          </div>
-          <p className="text-xs text-muted-foreground">
-            {revoked
-              ? `Revogada em ${formatDate(apiKey.revokedAt!)}`
-              : `Criada em ${formatDate(apiKey.createdAt)}`}
-          </p>
         </div>
 
         {!revoked && (
-          <Button
-            variant="ghost"
-            size="sm"
-            className="gap-1.5 text-xs text-destructive hover:text-destructive shrink-0"
-            disabled={isPending}
-            onClick={() => onRevoke(apiKey.id)}
-            aria-label="Revogar API key"
-          >
-            <ShieldOff className="h-3 w-3" />
-            Revogar
-          </Button>
+          <Tooltip>
+            <TooltipTrigger
+              render={
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  className="shrink-0 gap-1.5 text-xs text-destructive hover:bg-destructive/10 hover:text-destructive"
+                  disabled={isPending}
+                  onClick={() => onRevoke(apiKey.id)}
+                  aria-label="Revogar API key"
+                >
+                  <ShieldOff className="h-3.5 w-3.5" />
+                  Revogar
+                </Button>
+              }
+            />
+            <TooltipContent>
+              Invalida a chave imediatamente — não pode ser desfeito
+            </TooltipContent>
+          </Tooltip>
         )}
       </div>
     </div>
