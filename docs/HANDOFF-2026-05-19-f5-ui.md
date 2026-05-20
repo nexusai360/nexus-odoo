@@ -156,6 +156,21 @@ Plano v3 **encerrado**. Próximos passos:
 
 ---
 
+## 5c. SESSÃO 3.2 — 20/05/2026 (continuação madrugada)
+
+Rodada extra após retorno do usuário:
+
+| # | Tarefa | Estado |
+|---|---|---|
+| 29 | Sidebar colapsável + setinha | ✅ Implementado: `motion.aside` anima width 240↔64, setinha circular ChevronLeft/ChevronRight no centro da borda direita, estado persistido em `localStorage` (`nexus-sidebar-collapsed`). Modo colapsado: logo + ícones com Tooltip side="right", tema vira botão único que cicla light/dark/system, footer escondido. Click no grupo Agente Nex quando colapsado expande + abre submenu. |
+| 30 | Instâncias WhatsApp | ✅ CRUD completo: `whatsapp_instances` table (já no schema), action `whatsapp-instances.ts` (list/create/toggle/delete com super_admin guard + audit), componente `whatsapp-instances-list.tsx` (lista com Switch enable + dialog de criação com Nome/E.164/BusinessAccountId/PhoneNumberId/GraphApiToken cifrado AES-256/responseMode). Plugado em `/integracoes/canais`. |
+| 35 | Playground (consumo+nome+alinhamento) | ✅ R$ menor (text-sm semibold); histórico com R$ · US$; campo Nome no topo da Configuração (inline edit Enter/Esc); labels Provedor/Modelo/Chave aumentados (text-xs font-medium + selects text-sm); botão Enviar h-10 self-center + form items-center → alinhado com input em ambos bubble e playground. |
+| Perfil/Aparência | Ordem dos cards | ✅ Trocada para Claro → Escuro → Sistema. |
+| **Operacional** | Sync Tauga | ⚠️ Worker está rodando, mas o **Odoo Tauga (`grupojht.tauga.online`) está em manutenção** retornando HTTP 502 ("Taŭga - Manutenção"). Sync vai retomar automaticamente quando o cliente voltar — sem ação necessária do nosso lado, log mostra retries com backoff exponencial. |
+
+### Pendente
+- **#31/32/33** — telas MCP/Webhooks/APIs **existem** (143/343/292 linhas, com PageShell + PageHeader + Breadcrumb). Precisam de **screenshot + texto descrevendo o diff esperado** — sem isso, qualquer mudança vira chute (e já foi reprovado antes).
+
 ## 5b. SESSÃO 3 — 20/05/2026 (madrugada)
 
 Após apontamentos do usuário, foi feita uma rodada extra:
