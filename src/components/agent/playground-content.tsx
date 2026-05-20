@@ -159,6 +159,9 @@ export function PlaygroundContent({
   const [renamingId, setRenamingId] = useState<string | null>(null);
   const [renameValue, setRenameValue] = useState("");
 
+  // Painel lateral: alterna entre Configuração e Histórico (resolve cobrir o histórico)
+  const [sidePanel, setSidePanel] = useState<"config" | "history">("config");
+
   // Chat
   const [items, setItems] = useState<UiMessage[]>([]);
   const [message, setMessage] = useState("");
@@ -597,7 +600,7 @@ export function PlaygroundContent({
       className="flex h-[calc(100vh-220px)] min-h-[520px] gap-4"
     >
       {/* ===================== Painel lateral ===================== */}
-      <aside className="flex w-72 shrink-0 flex-col gap-3 overflow-hidden rounded-2xl border border-border bg-muted/30 p-3">
+      <aside className="flex w-80 shrink-0 flex-col gap-3 overflow-hidden rounded-2xl border border-border bg-muted/30 p-3">
         <Button
           type="button"
           size="sm"
@@ -609,8 +612,32 @@ export function PlaygroundContent({
           Nova sessão
         </Button>
 
-        {/* Config da sessão ativa */}
+        {/* Tabs Configuração / Histórico — alterna o painel inferior */}
         {active ? (
+          <div className="flex w-full items-center gap-0.5 rounded-full border border-border bg-background/40 p-0.5">
+            {(["config", "history"] as const).map((p) => {
+              const selected = sidePanel === p;
+              return (
+                <button
+                  key={p}
+                  type="button"
+                  onClick={() => setSidePanel(p)}
+                  className={cn(
+                    "flex h-7 flex-1 cursor-pointer items-center justify-center rounded-full text-[11px] font-medium transition-all",
+                    selected
+                      ? "bg-violet-500/15 text-violet-600 dark:text-violet-300"
+                      : "text-muted-foreground hover:bg-accent/40 hover:text-foreground",
+                  )}
+                >
+                  {p === "config" ? "Configuração" : "Histórico"}
+                </button>
+              );
+            })}
+          </div>
+        ) : null}
+
+        {/* Config da sessão ativa */}
+        {active && sidePanel === "config" ? (
           <div className="space-y-3 rounded-xl border border-border bg-card p-3">
             <p className="text-sm font-semibold text-foreground">
               Configuração da sessão
@@ -623,10 +650,10 @@ export function PlaygroundContent({
                     htmlFor="pg-session-name"
                     className="text-xs font-medium text-muted-foreground"
                   >
-                    Nome
+                    Nome da sessão
                   </label>
                   {renamingId === active.id ? (
-                    <div className="flex items-center gap-1">
+                    <div className="flex items-center gap-1.5">
                       <Input
                         id="pg-session-name"
                         autoFocus
@@ -636,25 +663,25 @@ export function PlaygroundContent({
                           if (e.key === "Enter") commitRename(active.id);
                           if (e.key === "Escape") cancelRename();
                         }}
+                        onBlur={() => commitRename(active.id)}
                         className="h-9 text-sm"
-                        placeholder="Sem nome"
+                        placeholder="Ex.: Teste GPT-4 — tom comercial"
                       />
-                      <button
-                        type="button"
-                        onClick={() => commitRename(active.id)}
-                        aria-label="Salvar nome"
-                        className="flex h-9 w-9 shrink-0 cursor-pointer items-center justify-center rounded-md text-emerald-600 hover:bg-emerald-500/10"
-                      >
-                        <Check className="h-4 w-4" aria-hidden />
-                      </button>
-                      <button
-                        type="button"
-                        onClick={cancelRename}
-                        aria-label="Cancelar"
-                        className="flex h-9 w-9 shrink-0 cursor-pointer items-center justify-center rounded-md text-muted-foreground hover:bg-muted"
-                      >
-                        <X className="h-4 w-4" aria-hidden />
-                      </button>
+                      <Tooltip>
+                        <TooltipTrigger
+                          render={
+                            <button
+                              type="button"
+                              onClick={() => commitRename(active.id)}
+                              aria-label="Salvar nome da sessão"
+                              className="flex h-9 w-9 shrink-0 cursor-pointer items-center justify-center rounded-md bg-violet-600 text-white hover:bg-violet-700"
+                            >
+                              <Check className="h-4 w-4" aria-hidden />
+                            </button>
+                          }
+                        />
+                        <TooltipContent>Salvar (Enter)</TooltipContent>
+                      </Tooltip>
                     </div>
                   ) : (
                     <button
@@ -759,7 +786,7 @@ export function PlaygroundContent({
                   ≈ {usdFmt.format(active.costUsd)}
                 </span>
               </div>
-              <p className="mt-0.5 text-sm font-semibold tabular-nums text-violet-700 dark:text-violet-300">
+              <p className="mt-0.5 text-xs font-semibold tabular-nums text-violet-700 dark:text-violet-300">
                 {brlFmt.format(active.costBrl)}
               </p>
               <div className="mt-2 h-1 w-full overflow-hidden rounded-full bg-muted">
@@ -775,8 +802,13 @@ export function PlaygroundContent({
           </div>
         ) : null}
 
-        {/* Histórico de sessões */}
-        <div className="flex min-h-0 flex-1 flex-col">
+        {/* Histórico de sessões — só visível quando sidePanel="history" ou sem sessão ativa */}
+        <div
+          className={cn(
+            "flex min-h-0 flex-1 flex-col",
+            active && sidePanel !== "history" && "hidden",
+          )}
+        >
           <p className="mb-1.5 px-1 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
             Histórico
           </p>

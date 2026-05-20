@@ -169,17 +169,16 @@ export function PlaygroundSessionPrompt({
                 <Button
                   type="button"
                   size="sm"
-                  variant="outline"
                   onClick={handleApplyToProduction}
                   disabled={isApplying || isSaving || overLimit}
-                  className="h-9 text-xs"
+                  className="h-9 bg-violet-600 text-white shadow-md shadow-violet-600/30 hover:bg-violet-700"
                 >
                   {isApplying ? (
                     <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" aria-hidden />
                   ) : (
                     <UploadCloud className="mr-1.5 h-3.5 w-3.5" aria-hidden />
                   )}
-                  Aplicar à produção
+                  Colocar em produção
                 </Button>
               }
             />
@@ -441,21 +440,52 @@ export function PlaygroundSessionPrompt({
             </CardContent>
           </Card>
 
-          {/* Recursos & KB — referência informativa */}
-          <Card className="rounded-2xl border border-dashed border-border bg-muted/20 p-2">
-            <CardHeader className="pb-2">
-              <CardTitle className="text-sm">
-                Recursos e Base de conhecimento
-              </CardTitle>
+          {/* Recursos da sessão — espelha a estrutura do menu Prompt */}
+          <Card className="rounded-2xl border border-border bg-muted/30 p-2">
+            <CardHeader className="pb-3">
+              <CardTitle>Recursos</CardTitle>
             </CardHeader>
-            <CardContent className="pb-4 text-xs text-muted-foreground">
-              Áudio, imagem, sugestões e base de conhecimento são controlados
-              em{" "}
-              <span className="font-medium text-foreground">
-                Prompt → Recursos
-              </span>{" "}
-              (no menu principal). Esta sub-tela edita apenas o prompt da
-              sessão.
+            <CardContent className="space-y-2 pb-5 text-xs text-muted-foreground">
+              <p>
+                Entrada de áudio, Entrada de anexo e Sugestões clicáveis seguem
+                o checkpoint definido em{" "}
+                <span className="font-medium text-foreground">
+                  Prompt → Recursos
+                </span>{" "}
+                — regra evolutiva:{" "}
+                <span className="font-medium">PRODUÇÃO</span> aparece no
+                Playground; <span className="font-medium">PLAYGROUND</span>{" "}
+                aparece só aqui;{" "}
+                <span className="font-medium">DESATIVADO</span> não aparece em
+                lugar nenhum.
+              </p>
+              <p className="text-[11px] text-muted-foreground/70">
+                Override por sessão (mudar recurso só para esta sessão) será
+                liberado em rodada futura — pede mudança no schema.
+              </p>
+            </CardContent>
+          </Card>
+
+          <Card className="rounded-2xl border border-border bg-muted/30 p-2">
+            <CardHeader className="pb-3">
+              <CardTitle>Base de conhecimento</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-2 pb-5 text-xs text-muted-foreground">
+              <p>
+                Documentos da base de conhecimento têm checkpoint próprio em{" "}
+                <span className="font-medium text-foreground">
+                  Prompt → Base de conhecimento
+                </span>
+                . Documentos marcados{" "}
+                <span className="font-medium">PRODUÇÃO</span> aparecem aqui;{" "}
+                <span className="font-medium">PLAYGROUND</span> só no Playground;{" "}
+                <span className="font-medium">DESATIVADO</span> não compõe o
+                prompt.
+              </p>
+              <p className="text-[11px] text-muted-foreground/70">
+                Adicionar/desativar documentos por sessão será liberado em
+                rodada futura.
+              </p>
             </CardContent>
           </Card>
         </div>

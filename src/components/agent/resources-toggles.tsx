@@ -277,8 +277,8 @@ export function ResourcesToggles({
         icon={
           <ImageIcon className={`h-4 w-4 ${checkpointIconClass(imageCp)}`} aria-hidden />
         }
-        title="Entrada de imagem"
-        subtitle="Entendimento de imagens enviadas pelo usuário (visão multimodal)."
+        title="Entrada de anexo"
+        subtitle="Imagens e arquivos enviados pelo usuário (clip de anexo na bubble e WhatsApp). Controle master: PRODUÇÃO libera no chat e no WhatsApp; PLAYGROUND só nas sessões de teste; OFF desativa em todos."
         checkpoint={imageCp}
         onCheckpointChange={(cp) => {
           setImageCp(cp);
@@ -289,7 +289,7 @@ export function ResourcesToggles({
       >
         {imageCp !== "OFF" && (
           imageProviders.length === 0 ? (
-            <NoCredentialsCta provider="imagem" />
+            <NoCredentialsCta provider="anexo" />
           ) : (
             <div className="grid gap-3 sm:grid-cols-3">
               <FieldBlock label="Provedor">
@@ -373,7 +373,7 @@ export function ResourcesToggles({
 
 /* -------------------------------------------------------------------------- */
 
-function NoCredentialsCta({ provider }: { provider: "áudio" | "imagem" }) {
+function NoCredentialsCta({ provider }: { provider: "áudio" | "anexo" }) {
   return (
     <div className="flex flex-col items-start gap-2 rounded-lg border border-dashed border-border/70 bg-muted/20 p-3 text-xs text-muted-foreground sm:flex-row sm:items-center sm:justify-between">
       <span>
