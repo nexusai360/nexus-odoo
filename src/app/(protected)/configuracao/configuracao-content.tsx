@@ -268,10 +268,11 @@ export function ConfiguracaoContent({ config, estado }: Props) {
             </CardDescription>
           </div>
           <Button
+            type="button"
             variant="outline"
             size="sm"
             onClick={() => setEstadoOpen(true)}
-            className="shrink-0"
+            className="shrink-0 gap-2 border-border"
           >
             <Database className="h-3.5 w-3.5" aria-hidden="true" />
             Ver estado da ingestão
@@ -279,7 +280,7 @@ export function ConfiguracaoContent({ config, estado }: Props) {
         </CardHeader>
         <CardContent className="space-y-6">
           <div className="grid gap-4 sm:grid-cols-3">
-            {FIELD_LABELS.map(([key, , label, helper]) => {
+            {FIELD_LABELS.map(([key, typeKey, label, helper]) => {
               const fieldInvalid = !isFieldValid(form[key]);
               const readable = minToReadable(form[key]);
               return (
@@ -313,25 +314,22 @@ export function ConfiguracaoContent({ config, estado }: Props) {
                   ) : (
                     <p className="text-xs text-muted-foreground">{helper}</p>
                   )}
+                  {/* Última execução — uma linha sutil sob cada campo. */}
+                  {(() => {
+                    const exec = ultimasExecucoes.find((u) => u.typeKey === typeKey);
+                    if (!exec) return null;
+                    return (
+                      <p className="text-[11px] text-muted-foreground/80">
+                        Última execução:{" "}
+                        <span className="tabular-nums">
+                          {exec.date ? formatDateTime(exec.date) : "—"}
+                        </span>
+                      </p>
+                    );
+                  })()}
                 </div>
               );
             })}
-          </div>
-          <div className="border-t border-border pt-4">
-            <p className="text-xs font-medium text-muted-foreground mb-3">Última execução por tipo</p>
-            <div className="grid gap-3 sm:grid-cols-3">
-              {ultimasExecucoes.map(({ typeKey, label, description, date }) => (
-                <div key={typeKey} className="flex flex-col gap-0.5">
-                  <span className="text-xs font-medium text-foreground">
-                    {label}
-                    <span className="ml-1 font-normal text-muted-foreground">({description})</span>
-                  </span>
-                  <span className="text-xs text-muted-foreground">
-                    {date ? `Última execução: ${formatDateTime(date)}` : "Nunca executada"}
-                  </span>
-                </div>
-              ))}
-            </div>
           </div>
 
           <Button onClick={salvar} disabled={!dirty || !valid || pending}>

@@ -20,7 +20,6 @@ import {
   Sparkles,
   Trash2,
   TriangleAlert,
-  XCircle,
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -291,27 +290,16 @@ export function KbSection({ initial }: KbSectionProps) {
                   </p>
                 </button>
 
-                {/* Indicador de embedding */}
-                <span
-                  title={
-                    doc.hasEmbedding
-                      ? "Embedding vetorial disponível"
-                      : "Sem embedding — busca por similaridade indisponível"
-                  }
-                  aria-label={
-                    doc.hasEmbedding ? "Embedding disponível" : "Sem embedding"
-                  }
-                  className={cn(
-                    "flex h-7 w-7 shrink-0 items-center justify-center rounded-full",
-                    doc.hasEmbedding ? "text-violet-500" : "text-muted-foreground/40",
-                  )}
-                >
-                  {doc.hasEmbedding ? (
+                {/* Sparkles sutil só quando há embedding (sem X poluindo). */}
+                {doc.hasEmbedding ? (
+                  <span
+                    title="Embedding vetorial disponível"
+                    aria-label="Embedding disponível"
+                    className="flex h-6 w-6 shrink-0 items-center justify-center text-violet-500"
+                  >
                     <Sparkles className="h-3.5 w-3.5" aria-hidden />
-                  ) : (
-                    <XCircle className="h-3.5 w-3.5" aria-hidden />
-                  )}
-                </span>
+                  </span>
+                ) : null}
 
                 {/* Controle de checkpoint */}
                 <span className="flex shrink-0 items-center gap-2">
