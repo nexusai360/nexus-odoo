@@ -6,6 +6,13 @@
 > **Ao iniciar uma sessão, ler `STATUS.md`** — é o ponto de retomada: o que já
 > foi feito, em que fase/bloco estamos e qual a próxima ação. Trabalho conduzido
 > em **modo autônomo** (ver §5).
+>
+> **Multi-agente:** se houver outras sessões Claude trabalhando no repo em
+> paralelo (comum neste projeto), seguir o protocolo de `AGENTS.md` (raiz) e
+> `docs/agents/_README.md`. Criar `docs/agents/active/<seu-id>.md` antes de
+> tocar código, registrar commits relevantes em `docs/agents/HISTORY.md`,
+> respeitar lista de arquivos compartilhados. Sem o protocolo, conflitos de
+> merge garantidos.
 
 ---
 
