@@ -52,6 +52,8 @@ export default async function PerfilPage() {
         createdAt={createdAtIso}
         whatsappNumbers={whatsappRows.map((r) => r.phoneE164)}
         domains={domains}
+        userId={user.id}
+        platformRole={user.platformRole}
       />
     </PageShell>
   );

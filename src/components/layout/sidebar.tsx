@@ -35,7 +35,6 @@ interface SidebarProps {
   user: SidebarUser;
 }
 
-const THEME_CYCLE = ["dark", "light", "system"] as const;
 const THEME_ICONS = { dark: Moon, light: Sun, system: Monitor } as const;
 const THEME_LABELS = {
   dark: "Modo escuro",
@@ -60,13 +59,6 @@ export function Sidebar({ user }: SidebarProps) {
     return () => window.removeEventListener("keydown", onKey);
   }, [mobileOpen]);
 
-  function cycleTheme() {
-    const idx = THEME_CYCLE.indexOf(theme);
-    const next = THEME_CYCLE[(idx + 1) % THEME_CYCLE.length];
-    setTheme(next);
-  }
-
-  const ThemeIcon = THEME_ICONS[theme] ?? Moon;
   const visibleNav = filterNav(NAV_ITEMS, user);
   const allLeafHrefs = useMemo(() => collectLeafHrefs(visibleNav), [visibleNav]);
 
@@ -262,15 +254,36 @@ export function Sidebar({ user }: SidebarProps) {
           </div>
         </Link>
 
-        <Button
-          variant="ghost"
-          onClick={cycleTheme}
-          className="w-full justify-start gap-2 text-muted-foreground hover:text-foreground hover:bg-accent/50 cursor-pointer transition-all duration-200"
-          size="sm"
+        {/* Tema — 3 ícones no padrão do FeatureCheckpoint (claro / escuro / sistema) */}
+        <div
+          role="radiogroup"
+          aria-label="Tema da plataforma"
+          className="inline-flex w-full items-center gap-0.5 rounded-full border border-border bg-background/40 p-0.5"
         >
-          <ThemeIcon className="h-4 w-4" />
-          {THEME_LABELS[theme]}
-        </Button>
+          {(["light", "dark", "system"] as const).map((t) => {
+            const Icon = THEME_ICONS[t];
+            const selected = theme === t;
+            return (
+              <button
+                key={t}
+                type="button"
+                role="radio"
+                aria-checked={selected}
+                aria-label={THEME_LABELS[t]}
+                title={THEME_LABELS[t]}
+                onClick={() => setTheme(t)}
+                className={cn(
+                  "flex h-7 flex-1 cursor-pointer items-center justify-center rounded-full transition-all duration-200",
+                  selected
+                    ? "bg-violet-500/15 text-violet-600 dark:text-violet-300"
+                    : "text-muted-foreground hover:bg-accent/40 hover:text-foreground",
+                )}
+              >
+                <Icon className="h-4 w-4" aria-hidden />
+              </button>
+            );
+          })}
+        </div>
 
         <Button
           variant="ghost"

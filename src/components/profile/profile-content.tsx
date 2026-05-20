@@ -31,10 +31,14 @@ interface ProfileContentProps {
   initialAvatarUrl: string | null;
   initialTheme: "dark" | "light" | "system";
   createdAt: string;
-  /** Números de WhatsApp do usuário (somente leitura). */
+  /** Números de WhatsApp do usuário. */
   whatsappNumbers: string[];
   /** Domínios de negócio com acesso (somente leitura). */
   domains: string[];
+  /** ID do usuário (para edição do próprio WhatsApp). */
+  userId: string;
+  /** Papel — define se pode editar o próprio WhatsApp. */
+  platformRole: string;
 }
 
 export function ProfileContent({
@@ -45,7 +49,12 @@ export function ProfileContent({
   createdAt,
   whatsappNumbers,
   domains,
+  userId,
+  platformRole,
 }: ProfileContentProps) {
+  const canEditWhatsapp =
+    platformRole === "super_admin" || platformRole === "admin";
+
   return (
     <motion.div
       variants={containerVariants}
@@ -62,6 +71,7 @@ export function ProfileContent({
         </p>
       </motion.div>
 
+      {/* Ordem solicitada: Informações pessoais → Acessos → WhatsApp → E-mail → Senha → Aparência */}
       <motion.div variants={itemVariants}>
         <PersonalInfoCard
           initialName={initialName}
@@ -71,11 +81,15 @@ export function ProfileContent({
       </motion.div>
 
       <motion.div variants={itemVariants}>
-        <WhatsappCard numbers={whatsappNumbers} />
+        <AccessCard domains={domains} />
       </motion.div>
 
       <motion.div variants={itemVariants}>
-        <AccessCard domains={domains} />
+        <WhatsappCard
+          numbers={whatsappNumbers}
+          canEdit={canEditWhatsapp}
+          userId={userId}
+        />
       </motion.div>
 
       <motion.div variants={itemVariants}>

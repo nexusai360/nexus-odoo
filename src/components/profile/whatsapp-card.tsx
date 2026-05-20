@@ -7,22 +7,28 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import { WhatsappNumbersField } from "@/components/users/whatsapp-numbers-field";
 
 interface WhatsappCardProps {
-  /** Números de WhatsApp do usuário, em formato E.164. Somente leitura. */
+  /** Números de WhatsApp do usuário, em formato E.164. */
   numbers: string[];
+  /** True quando o usuário pode editar os próprios números (admin/super_admin). */
+  canEdit?: boolean;
+  /** ID do próprio usuário (necessário para o modo edição). */
+  userId?: string;
 }
 
 /**
  * Seção "WhatsApp" da tela de Perfil.
  *
- * Somente leitura — o usuário não edita os próprios números; isso cabe a quem
- * tem acesso de administração. Estado vazio quando não há números.
+ * Modo leitura (canEdit=false): mostra os chips dos números.
+ * Modo edição (canEdit=true): usa o WhatsappNumbersField — mesma UX da
+ * tela de usuários, com add/remove imediato via Server Actions.
  */
-export function WhatsappCard({ numbers }: WhatsappCardProps) {
+export function WhatsappCard({ numbers, canEdit, userId }: WhatsappCardProps) {
   return (
     <Card className="rounded-2xl border border-border bg-muted/30 p-2">
-      <CardHeader className="pb-4">
+      <CardHeader className="pb-3">
         <CardTitle className="flex items-center gap-2 text-base text-foreground">
           <MessageCircle
             className="h-4 w-4 text-muted-foreground"
@@ -31,13 +37,14 @@ export function WhatsappCard({ numbers }: WhatsappCardProps) {
           WhatsApp
         </CardTitle>
       </CardHeader>
-      <CardContent>
-        <p className="mb-3 text-sm text-muted-foreground">
-          Números de WhatsApp pelos quais você é reconhecido ao falar com o
-          agente de IA.
+      <CardContent className="space-y-3">
+        <p className="text-xs text-muted-foreground">
+          Números pelos quais você é reconhecido ao falar com o Agente Nex.
         </p>
 
-        {numbers.length > 0 ? (
+        {canEdit && userId ? (
+          <WhatsappNumbersField userId={userId} />
+        ) : numbers.length > 0 ? (
           <ul className="flex flex-wrap gap-2" aria-label="Números de WhatsApp">
             {numbers.map((n) => (
               <li
@@ -53,10 +60,9 @@ export function WhatsappCard({ numbers }: WhatsappCardProps) {
             ))}
           </ul>
         ) : (
-          <div className="rounded-lg border border-dashed border-border px-4 py-4 text-sm text-muted-foreground">
-            Nenhum número cadastrado — fale com um administrador para vincular
-            o seu WhatsApp.
-          </div>
+          <p className="text-xs text-muted-foreground">
+            Sem números cadastrados.
+          </p>
         )}
       </CardContent>
     </Card>

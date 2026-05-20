@@ -29,7 +29,7 @@ export default async function CanaisPage() {
         subtitle="Configure os canais de comunicação disponíveis na plataforma."
       />
 
-      <div className="mt-6 grid grid-cols-1 gap-3 sm:grid-cols-2">
+      <div className="mt-6 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
         <Link
           href="/integracoes/canais/whatsapp"
           className="group block focus-visible:outline-none"
