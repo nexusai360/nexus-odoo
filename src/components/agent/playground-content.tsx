@@ -98,6 +98,22 @@ function genId(): string {
   return `pg-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
 }
 
+/** Label oficial de cada provedor — mantém capitalização da marca. */
+const PROVIDER_DISPLAY: Record<string, string> = {
+  openai: "OpenAI",
+  anthropic: "Anthropic",
+  gemini: "Gemini",
+  openrouter: "OpenRouter",
+};
+
+function providerLabelFor(slug: string | null | undefined): string {
+  if (!slug) return "";
+  return (
+    PROVIDER_DISPLAY[slug.toLowerCase()] ??
+    slug.charAt(0).toUpperCase() + slug.slice(1)
+  );
+}
+
 const usdFmt = new Intl.NumberFormat("en-US", {
   style: "currency",
   currency: "USD",
@@ -567,9 +583,6 @@ export function PlaygroundContent({
   // ---- Derivados -----------------------------------------------------------
 
   const hasProviders = providers.length > 0;
-  const activeProvider = active
-    ? providers.find((p) => p.provider === active.provider)
-    : undefined;
   const draftProviderEntry = providers.find((p) => p.provider === draftProvider);
   const draftModelOptions: SearchableSelectOption[] = (
     draftProviderEntry?.models ?? []
@@ -780,9 +793,13 @@ export function PlaygroundContent({
             active && sidePanel !== "history" && "hidden",
           )}
         >
-          <p className="mb-1.5 px-1 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
-            Histórico
-          </p>
+          {/* "Histórico" só aparece quando NÃO há sessão ativa (sem tab acima
+              já indicando) — evita duplicação com o seletor Configuração/Histórico. */}
+          {!active ? (
+            <p className="mb-1.5 px-1 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+              Histórico
+            </p>
+          ) : null}
           <div className="flex-1 space-y-1 overflow-y-auto">
             {sessions.length === 0 ? (
               <p className="px-1 text-xs text-muted-foreground">
@@ -853,19 +870,16 @@ export function PlaygroundContent({
                           onClick={() => handleOpenSession(s.id)}
                           className="flex-1 cursor-pointer space-y-1.5 py-1 text-left"
                         >
-                          <p className="truncate text-sm font-semibold text-foreground">
-                            {s.title ? (
-                              <>
-                                {s.title}
-                                {s.provider && s.model ? (
-                                  <span className="ml-1 font-normal text-muted-foreground">
-                                    · {s.provider} {s.model}
-                                  </span>
-                                ) : null}
-                              </>
-                            ) : (
-                              `Sessão · ${s.provider ?? ""} ${s.model || "—"}`.trim()
-                            )}
+                          <p className="space-y-0.5">
+                            <span className="block truncate text-sm font-semibold text-foreground">
+                              {s.title ?? "Sessão sem nome"}
+                            </span>
+                            {s.provider || s.model ? (
+                              <span className="block truncate text-[11px] text-muted-foreground">
+                                · {providerLabelFor(s.provider)}
+                                {s.model ? ` ${s.model}` : ""}
+                              </span>
+                            ) : null}
                           </p>
                           <p className="text-xs text-muted-foreground tabular-nums">
                             {dateTimeFmt.format(new Date(s.createdAt))}
@@ -945,7 +959,7 @@ export function PlaygroundContent({
               <MessageSquare className="h-4 w-4 shrink-0 text-violet-500" aria-hidden />
               <span className="truncate text-sm font-medium">
                 {active
-                  ? `Playground · ${activeProvider?.label ?? active.provider} · ${active.model}`
+                  ? `Playground · ${providerLabelFor(active.provider)} · ${active.model}`
                   : "Playground do Agente Nex"}
               </span>
               {active ? (
@@ -1050,10 +1064,7 @@ export function PlaygroundContent({
                             provider={item.provider ?? null}
                             model={item.model ?? null}
                             requestKind={item.requestKind ?? null}
-                            providerLabel={
-                              providers.find((p) => p.provider === item.provider)
-                                ?.label ?? item.provider ?? ""
-                            }
+                            providerLabel={providerLabelFor(item.provider)}
                             alignRight={item.role === "user"}
                           />
                         ) : null}
