@@ -870,20 +870,19 @@ export function PlaygroundContent({
                           onClick={() => handleOpenSession(s.id)}
                           className="flex-1 cursor-pointer space-y-1.5 py-1 text-left"
                         >
-                          <p className="space-y-0.5">
-                            <span className="block truncate text-sm font-semibold text-foreground">
-                              {s.title ?? "Sessão sem nome"}
-                            </span>
-                            {s.provider || s.model ? (
-                              <span className="block truncate text-[11px] text-muted-foreground">
-                                · {providerLabelFor(s.provider)}
-                                {s.model ? ` ${s.model}` : ""}
-                              </span>
-                            ) : null}
+                          <p className="truncate text-sm font-semibold text-foreground">
+                            {s.title ?? "Sessão sem nome"}
                           </p>
                           <p className="text-xs text-muted-foreground tabular-nums">
                             {dateTimeFmt.format(new Date(s.createdAt))}
                           </p>
+                          {s.provider || s.model ? (
+                            <p className="truncate text-[11px] text-muted-foreground">
+                              {providerLabelFor(s.provider)}
+                              {s.provider && s.model ? " · " : ""}
+                              {s.model ?? ""}
+                            </p>
+                          ) : null}
                           <p className="flex items-baseline gap-1.5 tabular-nums">
                             <span className="text-xs text-muted-foreground">
                               Consumo:
