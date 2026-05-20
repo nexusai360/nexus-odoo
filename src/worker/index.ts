@@ -13,6 +13,12 @@ import { JOB_INCREMENTAL, JOB_SNAPSHOT, JOB_RECONCILE, JOB_CONFIG_CHECK } from "
 import { AGENT_QUEUE_NAME } from "./agent/queue";
 import { processAgentJob, type AgentJobData } from "./agent/processor";
 import { cleanupIdempotencyTable } from "./agent/cleanup";
+import {
+  clearPending,
+  isOdooUnavailable,
+  markPending,
+  readPending,
+} from "./recovery";
 
 export const MAINTENANCE_QUEUE = "maintenance";
 export const JOB_CLEANUP_IDEMPOTENCY = "cleanup-idempotency";
@@ -132,6 +138,34 @@ async function rodarCiclo(name: string): Promise<void> {
   else if (name === JOB_RECONCILE) await processReconcileCycle(ctx, MODEL_CATALOG);
 }
 
+/**
+ * Drena snapshot/reconcile pendentes após uma recuperação.
+ *
+ * Chamado somente após um JOB_INCREMENTAL bem-sucedido — esse é o "sinal
+ * vital" de que o Tauga voltou. Enfileira os jobs marcados como pendentes
+ * com prioridade alta e limpa o flag. O resto do agendamento normal
+ * (snapshot 30min / reconcile 1440min) continua intacto.
+ */
+async function drenarPendentes(): Promise<void> {
+  const pending = await readPending(connection);
+  if (!pending.snapshot && !pending.reconcile) return;
+
+  if (pending.snapshot) {
+    await syncQueue.add(JOB_SNAPSHOT, { kind: JOB_SNAPSHOT }, { priority: 1 });
+    await clearPending(connection, "snapshot");
+    console.log(
+      "[worker] recovery — snapshot pendente enfileirado após Tauga voltar",
+    );
+  }
+  if (pending.reconcile) {
+    await syncQueue.add(JOB_RECONCILE, { kind: JOB_RECONCILE }, { priority: 1 });
+    await clearPending(connection, "reconcile");
+    console.log(
+      "[worker] recovery — reconcile pendente enfileirado após Tauga voltar",
+    );
+  }
+}
+
 const worker = new Worker(
   ODOO_SYNC_QUEUE,
   async (job: Job) => {
@@ -149,7 +183,35 @@ const worker = new Worker(
     try {
       await rodarCiclo(job.name);
       console.log(`[worker] ciclo "${job.name}" concluído em ${Date.now() - inicio}ms`);
+      // Self-healing: incremental bem-sucedido = Tauga vivo → drena pendentes.
+      if (job.name === JOB_INCREMENTAL) {
+        await drenarPendentes().catch((err) =>
+          console.error("[worker] falha ao drenar pendentes:", err),
+        );
+      }
       return { ok: true };
+    } catch (err) {
+      // Indisponibilidade do Tauga: snapshot/reconcile ficam "pendentes" para
+      // o próximo incremental bem-sucedido enfileirar imediatamente. Para o
+      // incremental, basta deixar o BullMQ tentar de novo no próximo ciclo
+      // (3min) — não precisa marcar nada.
+      if (
+        isOdooUnavailable(err) &&
+        (job.name === JOB_SNAPSHOT || job.name === JOB_RECONCILE)
+      ) {
+        await markPending(
+          connection,
+          job.name === JOB_SNAPSHOT ? "snapshot" : "reconcile",
+        );
+        console.warn(
+          `[worker] Odoo indisponível durante ciclo "${job.name}" — ` +
+            `marcado como pendente; será rodado quando o incremental voltar.`,
+        );
+        // Retorna ok para o BullMQ não fazer retry exponencial agressivo
+        // (o incremental já é o nosso health check).
+        return { ok: false, pendingRecovery: true };
+      }
+      throw err;
     } finally {
       await liberarLock(job.name);
     }
