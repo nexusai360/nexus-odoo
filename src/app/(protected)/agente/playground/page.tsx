@@ -45,7 +45,7 @@ export default async function PlaygroundPage() {
       <PageHeader
         icon={FlaskConical}
         title="Playground do Agente Nex"
-        subtitle="Teste o Agente Nex com sessões isoladas — escolha provedor, modelo e prompt sem afetar a produção."
+        subtitle="Teste o Agente Nex em sessões isoladas. Escolha provedor, modelo e prompt sem afetar a produção."
       />
       <PlaygroundContent
         audioInputEnabled={flags.audioInPlayground}

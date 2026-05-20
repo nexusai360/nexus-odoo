@@ -301,23 +301,7 @@ export function KbSection({ initial }: KbSectionProps) {
                   </span>
                 ) : null}
 
-                {/* Controle de checkpoint */}
-                <span className="flex shrink-0 items-center gap-2">
-                  {savingCheckpointId === doc.id && (
-                    <Loader2
-                      className="h-3.5 w-3.5 animate-spin text-muted-foreground"
-                      aria-hidden
-                    />
-                  )}
-                  <FeatureCheckpoint
-                    value={doc.checkpoint}
-                    onChange={(next) => handleCheckpointChange(doc, next)}
-                    disabled={savingCheckpointId === doc.id || isDeleting}
-                    aria-label={`Estado do documento ${doc.name}`}
-                  />
-                </span>
-
-                {/* Excluir */}
+                {/* Excluir — agora à esquerda dos controles de status */}
                 <Button
                   type="button"
                   variant="ghost"
@@ -334,6 +318,22 @@ export function KbSection({ initial }: KbSectionProps) {
                     <Trash2 className="h-4 w-4" aria-hidden />
                   )}
                 </Button>
+
+                {/* Controle de checkpoint — agora à direita (extremidade) */}
+                <span className="flex shrink-0 items-center gap-2">
+                  {savingCheckpointId === doc.id && (
+                    <Loader2
+                      className="h-3.5 w-3.5 animate-spin text-muted-foreground"
+                      aria-hidden
+                    />
+                  )}
+                  <FeatureCheckpoint
+                    value={doc.checkpoint}
+                    onChange={(next) => handleCheckpointChange(doc, next)}
+                    disabled={savingCheckpointId === doc.id || isDeleting}
+                    aria-label={`Estado do documento ${doc.name}`}
+                  />
+                </span>
               </li>
             );
           })}

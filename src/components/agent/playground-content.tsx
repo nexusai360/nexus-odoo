@@ -623,7 +623,7 @@ export function PlaygroundContent({
                   type="button"
                   onClick={() => setSidePanel(p)}
                   className={cn(
-                    "flex h-7 flex-1 cursor-pointer items-center justify-center rounded-full text-[11px] font-medium transition-all",
+                    "flex h-8 flex-1 cursor-pointer items-center justify-center rounded-full text-xs font-medium transition-all",
                     selected
                       ? "bg-violet-500/15 text-violet-600 dark:text-violet-300"
                       : "text-muted-foreground hover:bg-accent/40 hover:text-foreground",
@@ -665,7 +665,7 @@ export function PlaygroundContent({
                         }}
                         onBlur={() => commitRename(active.id)}
                         className="h-9 text-sm"
-                        placeholder="Ex.: Teste GPT-4 — tom comercial"
+                        placeholder="Nome da sessão"
                       />
                       <Tooltip>
                         <TooltipTrigger
@@ -697,7 +697,7 @@ export function PlaygroundContent({
                             : "text-muted-foreground/70 italic",
                         )}
                       >
-                        {active.title ?? "Sem nome — clique para nomear"}
+                        {active.title ?? "Adicionar nome"}
                       </span>
                       <Pencil
                         className="h-3.5 w-3.5 shrink-0 text-muted-foreground opacity-0 transition-opacity group-hover:opacity-100"
@@ -777,19 +777,19 @@ export function PlaygroundContent({
             )}
 
             {/* Consumo da sessão — destacado (atualiza ao vivo a cada done SSE) */}
-            <div className="mt-2 rounded-lg border border-violet-500/30 bg-violet-500/[0.04] px-3 py-2.5">
+            <div className="mt-4 rounded-xl border border-violet-500/30 bg-violet-500/[0.04] px-4 py-3.5">
               <div className="flex items-baseline justify-between gap-2">
                 <span className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
                   Consumo da sessão
                 </span>
-                <span className="text-[10px] text-muted-foreground tabular-nums">
+                <span className="text-xs text-muted-foreground tabular-nums">
                   ≈ {usdFmt.format(active.costUsd)}
                 </span>
               </div>
-              <p className="mt-0.5 text-xs font-semibold tabular-nums text-violet-700 dark:text-violet-300">
+              <p className="mt-1 text-base font-bold tabular-nums text-violet-700 dark:text-violet-300">
                 {brlFmt.format(active.costBrl)}
               </p>
-              <div className="mt-2 h-1 w-full overflow-hidden rounded-full bg-muted">
+              <div className="mt-2.5 h-1 w-full overflow-hidden rounded-full bg-muted">
                 <div
                   className="h-full rounded-full bg-gradient-to-r from-violet-500 to-violet-400 transition-all"
                   style={{
@@ -880,20 +880,22 @@ export function PlaygroundContent({
                         <button
                           type="button"
                           onClick={() => handleOpenSession(s.id)}
-                          className="flex-1 cursor-pointer text-left"
+                          className="flex-1 cursor-pointer space-y-1.5 py-1 text-left"
                         >
-                          <p className="truncate text-xs font-medium text-foreground">
+                          <p className="truncate text-sm font-semibold text-foreground">
                             {s.title ?? `Sessão · ${s.model || "—"}`}
                           </p>
-                          <p className="mt-0.5 text-[10px] text-muted-foreground tabular-nums">
+                          <p className="text-xs text-muted-foreground tabular-nums">
                             {dateTimeFmt.format(new Date(s.createdAt))}
                           </p>
-                          <p className="mt-0.5 flex items-baseline gap-1 text-[11px] tabular-nums">
-                            <span className="text-muted-foreground">Consumo:</span>
-                            <span className="font-semibold text-violet-700 dark:text-violet-300">
+                          <p className="flex items-baseline gap-1.5 tabular-nums">
+                            <span className="text-xs text-muted-foreground">
+                              Consumo:
+                            </span>
+                            <span className="text-sm font-semibold text-violet-700 dark:text-violet-300">
                               {brlFmt.format(s.costBrl)}
                             </span>
-                            <span className="text-[10px] text-muted-foreground">
+                            <span className="text-xs text-muted-foreground">
                               · {usdFmt.format(s.costUsd)}
                             </span>
                           </p>
