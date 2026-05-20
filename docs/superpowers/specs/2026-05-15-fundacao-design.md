@@ -26,7 +26,7 @@ funcionando, RBAC de 4 perfis, usuário admin semeado, e CI/CD configurado.
 - Middleware de proteção de rotas; rota pública `(auth)` e protegida `(protected)`.
 - `/api/health`; `/api/auth/[...nextauth]`.
 - Infra: Docker multi-stage, `docker-compose.yml` (app + worker-esqueleto +
-  db + redis), CI/CD GitHub Actions → `ghcr.io/jvzanini/nexus-odoo` → Portainer.
+  db + redis), CI/CD GitHub Actions → `ghcr.io/nexusai360/nexus-odoo` → Portainer.
 - Seed do usuário owner inicial.
 - Segurança: encryption AES-256, rate limit no login (Redis), audit log.
 
@@ -95,7 +95,7 @@ Reaproveitar (adaptando nomes `nexus_insights` → `nexus_odoo`):
 
 - Docker multi-stage (`node:22-alpine`), `docker-compose.yml` com serviços
   `app`, `worker`, `db` (postgres:16-alpine), `redis` (7-alpine).
-- CI/CD: push em `main` → build → push `ghcr.io/jvzanini/nexus-odoo` →
+- CI/CD: push em `main` → build → push `ghcr.io/nexusai360/nexus-odoo` →
   redeploy via Portainer API (Traefik + SSL no destino).
 - Migrations Prisma aplicadas manualmente em produção (workflow dedicado).
 

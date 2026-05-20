@@ -258,7 +258,7 @@ O projeto irmão `nexus-insights` (mesmo cliente) compartilha o stack canônico.
 - **DB:** PostgreSQL + Prisma v7 (`@prisma/adapter-pg`).
 - **Fila/cache/realtime:** Redis 7 + BullMQ + Pub/Sub + SSE.
 - **RBAC, design system, componentes, ThemeProvider, Toast, padrão de Server Actions, tenant scoping, auditoria, encryption** — portar do `nexus-insights`.
-- **Infra:** VPS Hostinger + Portainer + Docker + Traefik (SSL Let's Encrypt); CI/CD GitHub Actions → `ghcr.io/jvzanini/nexus-odoo` → redeploy.
+- **Infra:** VPS Hostinger + Portainer + Docker + Traefik (SSL Let's Encrypt); CI/CD GitHub Actions → `ghcr.io/nexusai360/nexus-odoo` → redeploy.
 - **Containers:** `app` + `worker` + `db` + `redis`, **acrescentando `mcp`**.
 
 O inventário detalhado do que copiar é trabalho da F1 (Fundação).
