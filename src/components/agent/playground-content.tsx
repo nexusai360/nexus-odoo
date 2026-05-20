@@ -873,9 +873,6 @@ export function PlaygroundContent({
                           <p className="truncate text-sm font-semibold text-foreground">
                             {s.title ?? "Sessão sem nome"}
                           </p>
-                          <p className="text-xs text-muted-foreground tabular-nums">
-                            {dateTimeFmt.format(new Date(s.createdAt))}
-                          </p>
                           {s.provider || s.model ? (
                             <p className="truncate text-[11px] text-muted-foreground">
                               {providerLabelFor(s.provider)}
@@ -883,6 +880,9 @@ export function PlaygroundContent({
                               {s.model ?? ""}
                             </p>
                           ) : null}
+                          <p className="text-xs text-muted-foreground tabular-nums">
+                            {dateTimeFmt.format(new Date(s.createdAt))}
+                          </p>
                           <p className="flex items-baseline gap-1.5 tabular-nums">
                             <span className="text-xs text-muted-foreground">
                               Consumo:
