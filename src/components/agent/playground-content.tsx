@@ -652,59 +652,30 @@ export function PlaygroundContent({
                   >
                     Nome da sessão
                   </label>
-                  {renamingId === active.id ? (
-                    <div className="flex items-center gap-1.5">
-                      <Input
-                        id="pg-session-name"
-                        autoFocus
-                        value={renameValue}
-                        onChange={(e) => setRenameValue(e.currentTarget.value)}
-                        onKeyDown={(e) => {
-                          if (e.key === "Enter") commitRename(active.id);
-                          if (e.key === "Escape") cancelRename();
-                        }}
-                        onBlur={() => commitRename(active.id)}
-                        className="h-9 text-sm"
-                        placeholder="Nome da sessão"
-                      />
-                      <Tooltip>
-                        <TooltipTrigger
-                          render={
-                            <button
-                              type="button"
-                              onClick={() => commitRename(active.id)}
-                              aria-label="Salvar nome da sessão"
-                              className="flex h-9 w-9 shrink-0 cursor-pointer items-center justify-center rounded-md bg-violet-600 text-white hover:bg-violet-700"
-                            >
-                              <Check className="h-4 w-4" aria-hidden />
-                            </button>
-                          }
-                        />
-                        <TooltipContent>Salvar (Enter)</TooltipContent>
-                      </Tooltip>
-                    </div>
-                  ) : (
-                    <button
-                      type="button"
-                      onClick={() => startRename(active.id, active.title)}
-                      className="group flex h-9 w-full cursor-pointer items-center justify-between gap-2 rounded-md border border-border bg-card px-3 text-sm hover:border-muted-foreground/40"
-                    >
-                      <span
-                        className={cn(
-                          "truncate",
-                          active.title
-                            ? "text-foreground"
-                            : "text-muted-foreground/70 italic",
-                        )}
-                      >
-                        {active.title ?? "Adicionar nome"}
-                      </span>
-                      <Pencil
-                        className="h-3.5 w-3.5 shrink-0 text-muted-foreground opacity-0 transition-opacity group-hover:opacity-100"
-                        aria-hidden
-                      />
-                    </button>
-                  )}
+                  {/* Input direto — Salvar fica no botão geral lá embaixo,
+                      não precisa de check inline. */}
+                  <Input
+                    id="pg-session-name"
+                    value={
+                      renamingId === active.id
+                        ? renameValue
+                        : (active.title ?? "")
+                    }
+                    onFocus={() =>
+                      renamingId !== active.id &&
+                      startRename(active.id, active.title)
+                    }
+                    onChange={(e) => setRenameValue(e.currentTarget.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") commitRename(active.id);
+                      if (e.key === "Escape") cancelRename();
+                    }}
+                    onBlur={() =>
+                      renamingId === active.id && commitRename(active.id)
+                    }
+                    className="h-9 text-xs"
+                    placeholder="Nome da sessão"
+                  />
                 </div>
 
                 <div className="space-y-1">
@@ -715,7 +686,7 @@ export function PlaygroundContent({
                     aria-label="Provedor da sessão"
                     value={draftProvider}
                     onChange={handleDraftProviderChange}
-                    triggerClassName="h-9 w-full text-sm"
+                    triggerClassName="h-9 w-full text-xs"
                     placeholder="Selecione…"
                     options={providersWithCreds.map((p) => ({
                       value: p.provider,
@@ -733,7 +704,7 @@ export function PlaygroundContent({
                     options={draftModelOptions}
                     placeholder="Selecionar modelo"
                     searchPlaceholder="Buscar modelo…"
-                    triggerClassName="h-9 w-full text-sm"
+                    triggerClassName="h-9 w-full text-xs"
                   />
                 </div>
                 <div className="space-y-1">
@@ -744,7 +715,7 @@ export function PlaygroundContent({
                     aria-label="Chave de API da sessão"
                     value={draftCredentialId}
                     onChange={handleDraftCredentialChange}
-                    triggerClassName="h-9 w-full text-sm"
+                    triggerClassName="h-9 w-full text-xs"
                     placeholder="Selecione…"
                     options={draftCredOptions}
                   />
@@ -786,7 +757,7 @@ export function PlaygroundContent({
                   ≈ {usdFmt.format(active.costUsd)}
                 </span>
               </div>
-              <p className="mt-1 text-base font-bold tabular-nums text-violet-700 dark:text-violet-300">
+              <p className="mt-1 text-sm font-semibold tabular-nums text-violet-700 dark:text-violet-300">
                 {brlFmt.format(active.costBrl)}
               </p>
               <div className="mt-2.5 h-1 w-full overflow-hidden rounded-full bg-muted">
@@ -883,7 +854,18 @@ export function PlaygroundContent({
                           className="flex-1 cursor-pointer space-y-1.5 py-1 text-left"
                         >
                           <p className="truncate text-sm font-semibold text-foreground">
-                            {s.title ?? `Sessão · ${s.model || "—"}`}
+                            {s.title ? (
+                              <>
+                                {s.title}
+                                {s.provider && s.model ? (
+                                  <span className="ml-1 font-normal text-muted-foreground">
+                                    · {s.provider} {s.model}
+                                  </span>
+                                ) : null}
+                              </>
+                            ) : (
+                              `Sessão · ${s.provider ?? ""} ${s.model || "—"}`.trim()
+                            )}
                           </p>
                           <p className="text-xs text-muted-foreground tabular-nums">
                             {dateTimeFmt.format(new Date(s.createdAt))}
@@ -892,10 +874,10 @@ export function PlaygroundContent({
                             <span className="text-xs text-muted-foreground">
                               Consumo:
                             </span>
-                            <span className="text-sm font-semibold text-violet-700 dark:text-violet-300">
+                            <span className="text-xs font-semibold text-violet-700 dark:text-violet-300">
                               {brlFmt.format(s.costBrl)}
                             </span>
-                            <span className="text-xs text-muted-foreground">
+                            <span className="text-[11px] text-muted-foreground">
                               · {usdFmt.format(s.costUsd)}
                             </span>
                           </p>
@@ -905,15 +887,23 @@ export function PlaygroundContent({
                             render={
                               <button
                                 type="button"
-                                onClick={() => startRename(s.id, s.title)}
-                                aria-label="Renomear sessão"
+                                onClick={async () => {
+                                  // Abre a sessão (se ainda não estiver aberta)
+                                  // e leva para a aba Configuração para edição
+                                  // completa de nome / provedor / modelo / chave.
+                                  if (active?.id !== s.id) {
+                                    await handleOpenSession(s.id);
+                                  }
+                                  setSidePanel("config");
+                                }}
+                                aria-label="Editar sessão"
                                 className="flex h-7 w-7 shrink-0 cursor-pointer items-center justify-center rounded-md text-muted-foreground opacity-0 transition-all hover:text-foreground group-hover:opacity-100 focus-visible:opacity-100"
                               >
                                 <Pencil className="h-3.5 w-3.5" aria-hidden />
                               </button>
                             }
                           />
-                          <TooltipContent>Renomear</TooltipContent>
+                          <TooltipContent>Editar</TooltipContent>
                         </Tooltip>
                         <Tooltip>
                           <TooltipTrigger
