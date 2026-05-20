@@ -156,6 +156,42 @@ Plano v3 **encerrado**. Próximos passos:
 
 ---
 
+## 5e. SESSÃO 3.4 — 20/05/2026 (manhã, pós-Tauga)
+
+Tauga voltou da manutenção. Bateria completa da metodologia §[10]:
+
+### Verificação do sync (Tauga reativo)
+- Disparado snapshot + reconcile manuais via BullMQ (script tsx em `Queue("odoo-sync")`).
+- Resultado em `sync_state`:
+  | Modo | Última execução (UTC) | OK |
+  |---|---|---|
+  | incremental | 2026-05-20 10:15 | 72/72 |
+  | snapshot | 2026-05-20 10:14 | 5/5 |
+  | reconcile | 2026-05-20 10:16 | 72/72 |
+  | estatico | 2026-05-20 10:14 | 1/2 (`pedido.documento.historico.tempo` segue com defeito conhecido do Odoo) |
+- Cron BullMQ permanece ativo (incremental 3min / snapshot 30min / reconcile 1440min).
+
+### Code review (§[10] — gsd-code-review surrogate)
+- `git diff main..HEAD` → 210 arquivos, ~35k LOC.
+- Sem `TODO`/`FIXME` novos em código de produção. `console.log` só em scripts (`seed`/`verify-*`).
+- `as any`: confinados ao boundary do Recharts (3 ocorrências) e a campos `Json` do Prisma (2, já `eslint-disable`d com motivo).
+- Segurança: `whatsapp-instances.ts` valida via Zod, exige `super_admin`, cifra token AES-256, audita; `playground/stream` valida ownership da sessão.
+- Sem regressão de testes.
+
+### Bateria automatizada
+| Check | Resultado |
+|---|---|
+| `npx tsc --noEmit` | ✅ exit 0 |
+| `npx eslint src/` | ✅ 0 erros, 0 warnings |
+| `npx jest --runInBand` | ✅ 133 suites, 1082 testes |
+| `npm run build` | ✅ verde |
+| Dev server log | ✅ sem erros novos (só prisma:query debug + DEP0169 de dep transitiva) |
+
+### Smoke test (17 rotas)
+`/perfil`, `/agente/{playground,prompt,chaves,configuracao,consumo}`, `/relatorios`,
+`/configuracao`, `/integracoes`, `/integracoes/{canais,canais/whatsapp,mcp,webhooks,api,bi}`,
+`/usuarios`, `/dashboard` — todas respondem 302 (redirect para `/login` em request sem sessão) = OK.
+
 ## 5d. SESSÃO 3.3 — 20/05/2026 (manhã)
 
 | # | Tarefa | Estado |
