@@ -1,13 +1,13 @@
 # F4 Onda 2 — Onda 0 (Fundação MCP Escrita) Implementation Plan
 
-> **Versão:** v2 (pós Review #1) — aguarda Review crítica #2
+> **Versão:** v3 (pós Review #1 + Review #2) — versão final, pronta para execução
 > **Spec base:** `docs/superpowers/specs/2026-05-20-f4-onda2-mcp-escrita-design.md` v3
 > **Para agentes:** REQUIRED SUB-SKILL: Use `superpowers:subagent-driven-development` (recomendado) ou `superpowers:executing-plans` para implementar bloco por bloco. Steps usam `- [ ]` para tracking.
 >
 > **Histórico:**
 > - **v1** (2026-05-20): rascunho inicial.
-> - **v2** (2026-05-20): aplica 32 achados da Review #1 (`docs/superpowers/plans/reviews/2026-05-20-f4-onda2-onda0-fundacao-review-1.md`). Principais mudanças: decomposição de tasks grandes (K2, L3, L5, N5, O1); códigos completos onde havia placeholders (B1-B8); Bloco B-1 NOVO (setup de mocks/fixtures globais); Task D0 NOVA (configurar pino); Task D10 NOVA (CORS middleware); Tasks H5/H6 NOVAS (cleanup jobs idempotency + audit); commits intermediários nos blocos L e N; declaração explícita de dependências; nota sobre Bloco P paralelo.
-> - **v3** (TBD): após Review crítica #2 (`docs/superpowers/plans/reviews/2026-05-20-f4-onda2-onda0-fundacao-review-2.md`).
+> - **v2** (2026-05-20): aplica 32 achados da Review #1.
+> - **v3** (2026-05-20): aplica 23 achados da Review #2 (`docs/superpowers/plans/reviews/2026-05-20-f4-onda2-onda0-fundacao-review-2.md`). Principais mudanças: Task A11 (deps NPM antecipada); Task B4.5 (migration de dados scopes→capabilities); Task B5.5 (rollback documentado); OdooWriteClient ganha `searchRead` e `fieldsGet`; Task H2.5 (truncamento snapshot); Task L0 (requireSuperAdmin como task explícita); Task P0 (.env.test setup); Task P-coexist (modo interno+externo no mesmo servidor); cenários E2E para denials (audit policy §10.5); Task Q-rollback (kill switch MCP_WRITE_ENABLED); Task Q-cutover (modo shadow); banner de chaves herdadas no painel. Apêndice v2 mantido como referência histórica.
 
 **Goal:** Entregar a fundação do servidor MCP com capacidade de **escrita** no Odoo Tauga: schema + auth dual + idempotência + capability check + sync direcionado + painel "Servidor MCP" + 2 tools POC (`crm.res_partner.get` + `crm.res_partner.create`) com testes E2E reais contra `grupojht.teste.tauga.online`.
 
@@ -273,6 +273,20 @@ Co-Authored-By: Claude Opus 4.7 <noreply@anthropic.com>"`
 - [ ] Se retorno vazio (`[]`) → confirmado livre. Continuar com `module = "mcp_nexus"`.
 - [ ] Se retorno não-vazio → escolher alternativa (`nexus_mcp`, `nexus_mcp_external`) e atualizar a spec.
 
+### Task A11: Dependências NPM finais (movido do Bloco B0)
+
+**Files:**
+- Modify: `package.json`
+
+- [ ] Adicionar (somente as que faltam, conforme A5 verificou):
+  - `lru-cache` (cache de ApiKey)
+  - `json-stable-stringify` (canonicalização)
+  - `pino` + `pino-pretty` (logger)
+  - `ioredis-mock` (devDependencies — para testes unit)
+- [ ] `npm install`.
+- [ ] Verificar `node_modules/` e `package-lock.json` atualizados.
+- [ ] **Justificativa de ordem:** Bloco B-1 (mocks) usa `ioredis-mock`; precisa estar instalado antes.
+
 ### Task A10: Commit do Bloco A
 
 - [ ] `git add docs/agents/active/claude-f4-onda2-mcp-escrita.md discovery/check-mcp-nexus-module.py`
@@ -288,14 +302,38 @@ Co-Authored-By: Claude Opus 4.7 <noreply@anthropic.com>"`
 
 ## Bloco B — Schema Prisma + Migration
 
-### Task B0: Adicionar dependências NPM (se ausentes — depende de A5)
+### Task B-1.5: Atualizar `.env.example` (NOVO em v3)
 
 **Files:**
-- Modify: `package.json`
+- Modify: `.env.example`
 
-- [ ] Adicionar (somente as que faltam): `lru-cache`, `json-stable-stringify`, `pino`, `pino-pretty`.
-- [ ] `npm install`.
-- [ ] Verificar `node_modules/` e `package-lock.json` atualizados.
+- [ ] Adicionar variáveis novas:
+```bash
+# F4 Onda 2 — Servidor MCP
+ODOO_WRITE_URL=https://grupojht.teste.tauga.online
+ODOO_WRITE_DB=grupojht_teste
+ODOO_WRITE_USER=
+ODOO_WRITE_PASSWORD=
+ODOO_WRITE_TIMEOUT_MS=30000
+
+MCP_AUDIT_DETAIL_RETENTION_DAYS=90
+MCP_AUDIT_FULL_RETENTION_DAYS=730
+MCP_IDEMPOTENCY_TTL_HOURS=24
+MCP_TOKEN_PREFIX=mcp_live_
+MCP_TOKEN_ENTROPY_BYTES=32
+MCP_EXTERNAL_RATE_LIMIT_DEFAULT=60
+MCP_EXTERNAL_RATE_LIMIT_MAX=600
+MCP_KEY_CACHE_TTL_SEC=60
+MCP_KEY_CACHE_MAX_SIZE=1000
+
+# Kill switch (v3 §Q-rollback): false desabilita TODAS as WriteToolEntry
+MCP_WRITE_ENABLED=false
+
+LOG_LEVEL=info
+
+# Modo interno — já existente
+# MCP_SERVICE_TOKEN=
+```
 
 ### Task B1: Estender `ApiKey` no schema Prisma
 
@@ -414,6 +452,72 @@ model McpIdempotencyRecord {
 - [ ] **Revisar SQL gerado:** garantir que adiciona colunas a `api_keys` (não recria), cria `mcp_audit_logs` e `mcp_idempotency_records`, todos os índices presentes.
 - [ ] Se algo estranho → editar o SQL manualmente antes de aplicar.
 
+### Task B4.5: Migration de dados `scopes` → `capabilities` (NOVO em v3)
+
+**Files:**
+- Create: `prisma/scripts/migrate-scopes.ts`
+- Test: `prisma/scripts/__tests__/migrate-scopes.test.ts`
+
+- [ ] Implementar:
+```typescript
+// prisma/scripts/migrate-scopes.ts
+import { prisma } from "@/lib/prisma";
+
+interface OldScopes { [k: number]: string }
+interface NewCapabilities { version: 1; read: string[]; write: Record<string, string[]> }
+
+export function parseScopes(scopes: string[]): NewCapabilities {
+  const cap: NewCapabilities = { version: 1, read: [], write: {} };
+  for (const s of scopes) {
+    const [action, module] = s.split(":");
+    if (!action || !module) continue;
+    if (action === "read") {
+      if (!cap.read.includes(module)) cap.read.push(module);
+    } else if (["create", "update", "delete", "transition"].includes(action)) {
+      cap.write[module] = [...new Set([...(cap.write[module] ?? []), action])];
+    }
+  }
+  return cap;
+}
+
+export async function migrateAllScopes(): Promise<{ migrated: number }> {
+  const keys = await prisma.apiKey.findMany({ where: { active: true } });
+  let migrated = 0;
+  for (const key of keys) {
+    const oldScopes = (key.scopes as unknown as string[]) ?? [];
+    const capabilities = parseScopes(oldScopes);
+    await prisma.apiKey.update({
+      where: { id: key.id },
+      data: { capabilities: capabilities as unknown as any, isSystemKey: true, capabilitiesVersion: 1 },
+    });
+    migrated++;
+  }
+  return { migrated };
+}
+
+if (require.main === module) {
+  migrateAllScopes().then(r => console.log(`Migrated ${r.migrated} keys`)).then(() => process.exit(0));
+}
+```
+- [ ] Test:
+```typescript
+it("parseScopes mapeia formato antigo para capabilities", () => {
+  expect(parseScopes(["read:crm", "read:vendas", "create:crm"])).toEqual({
+    version: 1,
+    read: ["crm", "vendas"],
+    write: { crm: ["create"] },
+  });
+});
+
+it("parseScopes ignora scopes inválidos", () => {
+  expect(parseScopes(["invalid", "read:", ":vendas"])).toEqual({
+    version: 1, read: [], write: {},
+  });
+});
+```
+- [ ] Rodar: `npx tsx prisma/scripts/migrate-scopes.ts` após migration estrutural.
+- [ ] PASS.
+
 ### Task B5: Aplicar migration
 
 **Files:**
@@ -421,6 +525,44 @@ model McpIdempotencyRecord {
 
 - [ ] Confirmar tabelas/colunas existem: `psql $DATABASE_URL -c "\\d api_keys" -c "\\d mcp_audit_logs" -c "\\d mcp_idempotency_records"`.
 - [ ] Confirmar `npx prisma generate` regenerou os tipos.
+
+### Task B5.5: Documentar rollback da migration (NOVO em v3)
+
+**Files:**
+- Create: `prisma/migrations/<timestamp>_f4_onda2_mcp_writes/rollback.sql`
+
+- [ ] Escrever SQL inverso completo:
+```sql
+-- rollback.sql para f4_onda2_mcp_writes
+-- USO: psql $DATABASE_URL -f rollback.sql
+-- PRÉ-REQUISITO: backup completo da base antes (pg_dump)
+-- IMPACTO: remove capacidade de escrita do MCP; chaves criadas perdem capabilities
+
+BEGIN;
+
+DROP TABLE IF EXISTS mcp_idempotency_records;
+DROP TABLE IF EXISTS mcp_audit_logs;
+
+ALTER TABLE api_keys
+  DROP COLUMN IF EXISTS description,
+  DROP COLUMN IF EXISTS capabilities,
+  DROP COLUMN IF EXISTS capabilities_version,
+  DROP COLUMN IF EXISTS rate_limit,
+  DROP COLUMN IF EXISTS active,
+  DROP COLUMN IF EXISTS expires_at,
+  DROP COLUMN IF EXISTS last_used_at,
+  DROP COLUMN IF EXISTS rotated_at,
+  DROP COLUMN IF EXISTS revoked_reason,
+  DROP COLUMN IF EXISTS is_system_key,
+  DROP COLUMN IF EXISTS tenant_id,
+  DROP COLUMN IF EXISTS allowed_origins;
+
+-- Recriar índices antigos se necessário
+-- (consultar versão anterior do schema)
+
+COMMIT;
+```
+- [ ] Documentar procedimento no handoff: `(1) pg_dump → (2) testar rollback em staging → (3) aplicar em prod só com aprovação humana → (4) restaurar de backup se falhar`.
 
 ### Task B6: Testar geração de tipo TypeScript
 
@@ -648,6 +790,44 @@ it("searchIrModelData retorna null quando não existe", async () => {
 });
 ```
 - [ ] Implementar `searchIrModelData`: usa `search_read("ir.model.data", [["model", "=", model], ["name", "=", externalKey]], ["res_id", "id"])`.
+- [ ] PASS.
+
+### Task C7.5: TDD — `searchRead` e `fieldsGet` (NOVO em v3)
+
+**Files:**
+- Modify: `mcp/odoo/client.ts`
+- Test: `mcp/odoo/__tests__/client.test.ts`
+
+- [ ] Adicionar à interface:
+```typescript
+searchRead<T = object>(model: string, domain: unknown[], fields: string[], options?: { limit?: number; offset?: number; order?: string }): Promise<T[]>;
+fieldsGet(model: string, attributes?: string[]): Promise<Record<string, object>>;
+```
+- [ ] Test:
+```typescript
+it("searchRead combina search + read em uma chamada", async () => {
+  const fetchMock = jest.fn()
+    .mockResolvedValueOnce({ json: async () => ({ result: 42 }), ok: true })
+    .mockResolvedValueOnce({ json: async () => ({ result: [{ id: 1, name: "X" }] }), ok: true });
+  global.fetch = fetchMock;
+  const client = createOdooClient({ url: "x", db: "x", username: "u", password: "p", fetch: fetchMock });
+  const rows = await client.searchRead("res.partner", [["is_company", "=", true]], ["name"], { limit: 10 });
+  expect(rows).toHaveLength(1);
+  expect(fetchMock.mock.calls[1][1].body).toContain('"search_read"');
+});
+
+it("fieldsGet retorna descritor de campos", async () => {
+  const fetchMock = jest.fn()
+    .mockResolvedValueOnce({ json: async () => ({ result: 42 }), ok: true })
+    .mockResolvedValueOnce({ json: async () => ({ result: { name: { type: "char", required: true } } }), ok: true });
+  global.fetch = fetchMock;
+  const client = createOdooClient({ url: "x", db: "x", username: "u", password: "p", fetch: fetchMock });
+  const fields = await client.fieldsGet("res.partner");
+  expect(fields.name).toMatchObject({ type: "char", required: true });
+});
+```
+- [ ] **Nota v3:** suporte a `fetch` injetável via `OdooConfig.fetch` (limpa o mock de `global.fetch`).
+- [ ] Implementar.
 - [ ] PASS.
 
 ### Task C8: TDD — Mapeamento de erros Odoo para classes próprias
@@ -1530,6 +1710,44 @@ it("update sem snapshotAfter: re-busca no Odoo", async () => {
 - [ ] Adicionar `new Worker("odoo-sync:directed", processDirectedSync, { connection: redisOpts });`.
 - [ ] Reiniciar worker e validar.
 
+### Task H2.5: Helper de truncamento do snapshot (NOVO em v3)
+
+**Files:**
+- Create: `mcp/lib/snapshot.ts`
+- Test: `mcp/lib/__tests__/snapshot.test.ts`
+
+- [ ] Implementar conforme spec §5.5:
+```typescript
+// mcp/lib/snapshot.ts
+const MAX_FIELD_SIZE = 10 * 1024;
+
+export function truncateSnapshot<T extends Record<string, unknown>>(snapshot: T): T {
+  const out = { ...snapshot } as Record<string, unknown>;
+  for (const [k, v] of Object.entries(out)) {
+    if (typeof v === "string" && v.length > MAX_FIELD_SIZE) {
+      out[k] = `${v.slice(0, MAX_FIELD_SIZE)}...[truncated:${v.length}]`;
+    }
+  }
+  return out as T;
+}
+```
+- [ ] Test:
+```typescript
+it("trunca campos string >10KB", () => {
+  const big = "a".repeat(20_000);
+  const result = truncateSnapshot({ name: "X", description: big });
+  expect(result.description).toMatch(/^a+\.\.\.\[truncated:20000\]$/);
+  expect(result.name).toBe("X");
+});
+
+it("não toca campos numéricos ou pequenos", () => {
+  const result = truncateSnapshot({ id: 123, name: "short" });
+  expect(result).toEqual({ id: 123, name: "short" });
+});
+```
+- [ ] Usar no middleware antes de gravar em `McpAuditLog`.
+- [ ] PASS.
+
 ### Task H5: Cleanup job idempotency records expirados (NOVO em v2)
 
 **Files:**
@@ -1880,6 +2098,49 @@ export async function getMcp24hMetrics() {
 
 ## Bloco L — Painel: Tab "Chaves de Acesso" (CRUD)
 
+### Task L0: Helper `requireSuperAdmin` (NOVO em v3)
+
+**Files:**
+- Create: `src/lib/actions/_helpers.ts`
+- Test: `src/lib/actions/__tests__/_helpers.test.ts`
+
+- [ ] Implementar:
+```typescript
+// src/lib/actions/_helpers.ts
+"use server";
+import { auth } from "@/auth";
+
+export class ForbiddenError extends Error {
+  constructor(public reason: string) { super(reason); }
+}
+
+export async function requireSuperAdmin(): Promise<string> {
+  const session = await auth();
+  if (!session?.user?.id) throw new ForbiddenError("not_authenticated");
+  if (session.user.role !== "super_admin") throw new ForbiddenError("not_super_admin");
+  return session.user.id;
+}
+```
+- [ ] Test:
+```typescript
+it("lança not_authenticated quando sem sessão", async () => {
+  jest.mocked(auth).mockResolvedValue(null);
+  await expect(requireSuperAdmin()).rejects.toThrow(/not_authenticated/);
+});
+
+it("lança not_super_admin quando role != super_admin", async () => {
+  jest.mocked(auth).mockResolvedValue({ user: { id: "u1", role: "admin" } } as any);
+  await expect(requireSuperAdmin()).rejects.toThrow(/not_super_admin/);
+});
+
+it("retorna userId para super_admin válido", async () => {
+  jest.mocked(auth).mockResolvedValue({ user: { id: "u1", role: "super_admin" } } as any);
+  await expect(requireSuperAdmin()).resolves.toBe("u1");
+});
+```
+- [ ] Usado em TODAS as server actions `src/lib/actions/mcp-*.ts`.
+- [ ] PASS.
+
 ### Task L1: Lista de chaves
 
 **Files:**
@@ -2087,6 +2348,39 @@ Co-Authored-By: Claude Opus 4.7 <noreply@anthropic.com>"`
 
 > Base de teste: `grupojht.teste.tauga.online`. Prefixo `[MCP-TEST]` + cleanup automático.
 
+### Task P0: Setup `.env.test` com credenciais de teste (NOVO em v3)
+
+**Files:**
+- Create: `.env.test.example`
+- Modify: `.gitignore` (garantir `.env.test` ignorado)
+
+- [ ] `.env.test.example` lista todas as variáveis necessárias para E2E:
+```bash
+DATABASE_URL=postgres://...test_db
+REDIS_URL=redis://localhost:6379/15  # use db 15 para tests; isola
+
+ODOO_WRITE_URL=https://grupojht.teste.tauga.online
+ODOO_WRITE_DB=grupojht_teste
+ODOO_WRITE_USER=<from-vault>
+ODOO_WRITE_PASSWORD=<from-vault>
+ODOO_WRITE_TIMEOUT_MS=30000
+
+MCP_SERVICE_TOKEN=test-internal-token
+MCP_WRITE_ENABLED=true
+```
+- [ ] `.env.test` (cópia local com valores reais; nunca commitado) preenchido por dev individual.
+- [ ] Test runner valida ENVs antes de rodar E2E; se faltar, skip com mensagem clara:
+```typescript
+// mcp/__tests__/e2e/setup.ts
+const REQUIRED = ["ODOO_WRITE_USER", "ODOO_WRITE_PASSWORD"];
+for (const v of REQUIRED) {
+  if (!process.env[v]) {
+    console.warn(`E2E SKIPPED: ${v} ausente em .env.test`);
+    process.exit(0);
+  }
+}
+```
+
 ### Task P1: Fixture de bootstrap key
 
 **Files:**
@@ -2136,6 +2430,30 @@ Co-Authored-By: Claude Opus 4.7 <noreply@anthropic.com>"`
   15. Sync direcionado falha + retry: consistência final.
 - [ ] PASS.
 
+### Task P-coexist: Suite E2E — Modos interno + externo coexistindo (NOVO em v3)
+
+**Files:**
+- Create: `mcp/__tests__/e2e/coexist-modes.test.ts`
+
+- [ ] Suite cobre (spec §7.1):
+  - Cliente A com `Bearer <MCP_SERVICE_TOKEN>` + `X-Mcp-User-Id: <userA>` chama `crm.res_partner.get` (tool de leitura) → 200; audit log entry com `authMode: "internal"`.
+  - Cliente B com `Bearer <ApiKey externa>` chama `crm.res_partner.create` (write) → 200; audit log entry com `authMode: "external"`.
+  - Cliente A tenta chamar `crm.res_partner.create` (write) → 403 `forbidden_via_internal_auth`; audit log entry com `authMode: "internal"`, `status: "denied"`.
+  - Mesma sessão HTTP do servidor responde ambos corretamente.
+- [ ] PASS.
+
+### Task P-denials: Suite E2E — Audit em denials (NOVO em v3)
+
+**Files:**
+- Create: `mcp/__tests__/e2e/denial-audit.test.ts`
+
+- [ ] Cobre spec §10.5:
+  - `unauthorized` → audit log SEM `payload`, apenas metadados.
+  - `capability_missing` → audit log COM `payload` (com redaction).
+  - `forbidden_via_internal_auth` → audit log COM `payload`.
+  - `rate_limited` → audit log COM `payload`.
+- [ ] PASS.
+
 ### Task P5: Suite E2E — Cenários novos da Review #2
 
 **Files:**
@@ -2174,13 +2492,54 @@ Co-Authored-By: Claude Opus 4.7 <noreply@anthropic.com>"`
 
 ## Bloco Q — Atualização CLAUDE.md + STATUS.md + Handoff
 
-### Task Q1: Atualizar `CLAUDE.md` decisão canônica #2
+### Task Q-rollback: Kill switch `MCP_WRITE_ENABLED` (NOVO em v3)
+
+**Files:**
+- Modify: `mcp/middleware/auth-middleware.ts` (ou onde estiver o gate)
+
+- [ ] Implementar:
+```typescript
+if (toolEntry.operation === "write" && process.env.MCP_WRITE_ENABLED !== "true") {
+  throw new ServiceUnavailableError("feature_disabled", { feature: "mcp_write" });
+}
+```
+- [ ] Default `false` em produção; super_admin ativa explicitamente.
+- [ ] Test: ENV `false` + chamada write → 503 `feature_disabled`.
+- [ ] Documentar em `docs/HANDOFF` o procedimento para ativar.
+- [ ] PASS.
+
+### Task Q-cutover-shadow: Modo shadow para cutover (NOVO em v3)
+
+**Files:**
+- Modify: `mcp/middleware/auth-middleware.ts`
+
+- [ ] Suportar header `X-MCP-Shadow-Run: true` (apenas em writes):
+  - Quando presente, o handler executa contra `ODOO_WRITE_URL` (base de teste), mesmo que o cutover já tenha apontado para produção.
+  - Resposta tem `_meta.shadow: true`.
+  - Painel "Visão geral" mostra alerta "modo shadow disponível" quando `MCP_WRITE_ENABLED=true` AND ainda dentro de janela de cutover (env `MCP_CUTOVER_END_AT`).
+- [ ] Test: header `X-MCP-Shadow-Run: true` + tool de write → execução em `ODOO_WRITE_URL` (teste), audit grava `meta.shadow=true`.
+- [ ] PASS.
+
+### Task Q-banner-herdadas: Banner no painel para chaves migradas (NOVO em v3)
+
+**Files:**
+- Modify: `src/components/integracoes/servidor-mcp/chaves-lista.tsx`
+
+- [ ] Lista de chaves mostra contador no topo: "X chaves herdadas precisam de reconfiguração".
+- [ ] Click no contador filtra a lista para `isSystemKey=true && capabilities.read=[] && capabilities.write={}`.
+- [ ] Cada linha herdada mostra badge "Herdada" + tooltip "Esta chave foi migrada de uma versão anterior. Capabilities precisam ser reconfiguradas antes de uso ativo."
+- [ ] Editar chave herdada + marcar `isSystemKey=false` remove o badge.
+
+### Task Q1: Atualizar `CLAUDE.md` decisão canônica (v3 detalhada)
 
 **Files:**
 - Modify: `CLAUDE.md`
 
-- [ ] Confirmar numeração atual da decisão (pode ter mudado).
-- [ ] Substituir texto antigo pelo novo conforme spec §3.2.
+- [ ] **Passo 1:** Ler `CLAUDE.md` §5 inteira. Identificar a decisão atual sobre "cache obrigatório" / "fallback JSON-RPC ausente". Pode estar como #2 ou ter outro número se mudou.
+- [ ] **Passo 2:** Verificar `git log -3 -- CLAUDE.md` que não foi editada por outro agente nas últimas horas. Se foi, ler diff antes de mexer.
+- [ ] **Passo 3:** Substituir o texto da decisão pelo novo, conforme spec v3 §3.2:
+  > "Leitura **sempre** do cache; o cache é alimentado pelos ciclos da F2 (incremental 3min + snapshot/reconcile 24h). Escrita pode ir ao Odoo **exclusivamente** via tools `WriteToolEntry` do servidor MCP, gated por capability de `ApiKey` (modo EXTERNO) e disponível só pelo endpoint público `/api/mcp`. Toda write é seguida de sync direcionado da(s) linha(s) afetada(s), retornando ao cache em <2s. O Agente Nex permanece read-only por design (usa modo interno; tools `WriteToolEntry` rejeitadas via modo interno)."
+- [ ] **Passo 4:** `git diff CLAUDE.md` — revisar antes do commit.
 
 ### Task Q2: Atualizar `STATUS.md`
 
