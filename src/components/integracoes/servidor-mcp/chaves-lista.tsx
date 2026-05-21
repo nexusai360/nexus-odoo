@@ -6,19 +6,13 @@ import {
   ArrowLeft,
   ArrowRight,
   Check,
-  Copy,
-  Eye,
-  EyeOff,
   Key,
   Loader2,
-  MoreHorizontal,
   Pencil,
   Plus,
-  RefreshCw,
   RotateCcw,
   ShieldOff,
   X,
-  XCircle,
 } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -28,6 +22,7 @@ import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
 import { DateField } from "@/components/ui/date-field";
 import { StepIndicator } from "@/components/ui/step-indicator";
+import { SecretRevealStep } from "@/components/ui/secret-reveal-step";
 import {
   Dialog,
   DialogContent,
@@ -36,7 +31,6 @@ import {
   DialogDescription,
 } from "@/components/ui/dialog";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
-import { Popover } from "@base-ui/react/popover";
 import { useTour } from "@/components/tour/tour-provider";
 import { servidorMcpChavesTour } from "@/lib/tours/servidor-mcp-tour";
 import { cn } from "@/lib/utils";
@@ -47,7 +41,6 @@ import {
   updateMcpApiKey,
   rotateMcpApiKey,
   revokeMcpApiKey,
-  markLostAndRegenerate,
 } from "@/lib/actions/mcp-api-keys";
 import {
   MCP_MODULES,
@@ -134,8 +127,6 @@ export function ChavesLista({ initial, moduleWriteActions }: Props) {
   const [createOpenManual, setCreateOpenManual] = useState(false);
   const createOpen = createOpenManual || tourWizardOpen;
   const [editTarget, setEditTarget] = useState<McpApiKeyListItem | null>(null);
-  const [revealToken, setRevealToken] = useState<{ token: string; label: string } | null>(null);
-  const [showToken, setShowToken] = useState(false);
 
   async function refresh() {
     const r = await listMcpApiKeys();
@@ -151,60 +142,8 @@ export function ChavesLista({ initial, moduleWriteActions }: Props) {
   const activeKeys = keys.filter((k) => !k.revokedAt);
   const revokedKeys = keys.filter((k) => k.revokedAt);
 
-  function copyToken(token: string) {
-    navigator.clipboard.writeText(token).then(() => toast.success("Token copiado"));
-  }
-
   return (
     <div className="space-y-6 max-w-3xl">
-      {/* Banner de token revelado */}
-      {revealToken && (
-        <div className="rounded-xl border border-amber-500/40 bg-amber-500/5 p-4 space-y-2">
-          <p className="text-sm font-semibold text-amber-700 dark:text-amber-400">
-            Token gerado, copie agora
-          </p>
-          <p className="text-xs text-muted-foreground">
-            Chave <span className="font-medium text-foreground">{revealToken.label}</span>. Este
-            token não será exibido novamente. Depois de fechar, será preciso rotacionar a chave.
-          </p>
-          <div className="flex items-center gap-2 mt-2">
-            <code className="flex-1 rounded-lg bg-muted px-3 py-2 text-sm font-mono break-all">
-              {showToken ? revealToken.token : "•".repeat(Math.min(revealToken.token.length, 32))}
-            </code>
-            <Button
-              variant="outline"
-              size="sm"
-              className="h-9"
-              aria-label={showToken ? "Ocultar token" : "Mostrar token"}
-              onClick={() => setShowToken((v) => !v)}
-            >
-              {showToken ? <EyeOff className="h-3.5 w-3.5" /> : <Eye className="h-3.5 w-3.5" />}
-            </Button>
-            <Button
-              variant="outline"
-              size="sm"
-              className="h-9"
-              aria-label="Copiar token"
-              onClick={() => copyToken(revealToken.token)}
-            >
-              <Copy className="h-3.5 w-3.5" />
-            </Button>
-            <Button
-              variant="ghost"
-              size="sm"
-              className="h-9"
-              aria-label="Fechar aviso"
-              onClick={() => {
-                setRevealToken(null);
-                setShowToken(false);
-              }}
-            >
-              <XCircle className="h-3.5 w-3.5" />
-            </Button>
-          </div>
-        </div>
-      )}
-
       {/* Banner de chaves de sistema sem capabilities */}
       {systemKeysNeedingReconfig.length > 0 && (
         <div className="flex items-start gap-3 rounded-xl border border-amber-500/40 bg-amber-500/5 p-4">
@@ -265,19 +204,6 @@ export function ChavesLista({ initial, moduleWriteActions }: Props) {
                 });
               }}
               onEdit={() => setEditTarget(k)}
-              onRotate={() => {
-                startTransition(async () => {
-                  const r = await rotateMcpApiKey(k.id);
-                  if (r.success) {
-                    setRevealToken({ token: r.data.token, label: r.data.label });
-                    setShowToken(false);
-                    await refresh();
-                    toast.success("Chave rotacionada, copie o novo token");
-                  } else {
-                    toast.error(r.error ?? "Erro ao rotacionar chave");
-                  }
-                });
-              }}
               onRevoke={() => {
                 startTransition(async () => {
                   const r = await revokeMcpApiKey(k.id);
@@ -286,19 +212,6 @@ export function ChavesLista({ initial, moduleWriteActions }: Props) {
                     toast.success("Chave revogada");
                   } else {
                     toast.error(r.error ?? "Erro ao revogar chave");
-                  }
-                });
-              }}
-              onMarkLost={() => {
-                startTransition(async () => {
-                  const r = await markLostAndRegenerate(k.id);
-                  if (r.success) {
-                    setRevealToken({ token: r.data.token, label: r.data.label });
-                    setShowToken(false);
-                    await refresh();
-                    toast.success("Chave antiga revogada, nova gerada");
-                  } else {
-                    toast.error(r.error ?? "Erro ao regenerar chave");
                   }
                 });
               }}
@@ -327,9 +240,7 @@ export function ChavesLista({ initial, moduleWriteActions }: Props) {
         moduleWriteActions={moduleWriteActions}
         open={createOpen}
         onOpenChange={setCreateOpenManual}
-        onCreated={(token, label) => {
-          setRevealToken({ token, label });
-          setShowToken(false);
+        onCreated={() => {
           setCreateOpenManual(false);
           startTransition(async () => {
             await refresh();
@@ -367,9 +278,7 @@ interface ChaveRowProps {
   revoked?: boolean;
   onToggleEnabled?: (enabled: boolean) => void;
   onEdit?: () => void;
-  onRotate?: () => void;
   onRevoke?: () => void;
-  onMarkLost?: () => void;
 }
 
 function ChaveRow({
@@ -378,11 +287,8 @@ function ChaveRow({
   revoked,
   onToggleEnabled,
   onEdit,
-  onRotate,
   onRevoke,
-  onMarkLost,
 }: ChaveRowProps) {
-  const [menuOpen, setMenuOpen] = useState(false);
   const disabled = !revoked && !chave.active;
 
   return (
@@ -470,49 +376,6 @@ function ChaveRow({
               </TooltipTrigger>
               <TooltipContent>Editar</TooltipContent>
             </Tooltip>
-
-            <Popover.Root open={menuOpen} onOpenChange={setMenuOpen}>
-              <Popover.Trigger
-                render={
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="sm"
-                    className="h-8 w-8 p-0"
-                    aria-label="Mais ações da chave"
-                    disabled={isPending}
-                  />
-                }
-              >
-                <MoreHorizontal className="h-4 w-4" />
-              </Popover.Trigger>
-              <Popover.Portal>
-                <Popover.Positioner side="bottom" align="end" sideOffset={4}>
-                  <Popover.Popup className="z-50 min-w-[200px] rounded-xl border border-border bg-popover p-1 shadow-md text-sm text-popover-foreground outline-none">
-                    <button
-                      className="flex w-full items-center gap-2 rounded-lg px-3 py-1.5 text-sm hover:bg-muted transition-colors"
-                      onClick={() => {
-                        setMenuOpen(false);
-                        onRotate?.();
-                      }}
-                    >
-                      <RotateCcw className="h-3.5 w-3.5 text-muted-foreground" />
-                      Rotacionar token
-                    </button>
-                    <button
-                      className="flex w-full items-center gap-2 rounded-lg px-3 py-1.5 text-sm hover:bg-muted transition-colors"
-                      onClick={() => {
-                        setMenuOpen(false);
-                        onMarkLost?.();
-                      }}
-                    >
-                      <RefreshCw className="h-3.5 w-3.5 text-muted-foreground" />
-                      Marcar como perdida
-                    </button>
-                  </Popover.Popup>
-                </Popover.Positioner>
-              </Popover.Portal>
-            </Popover.Root>
 
             <Tooltip>
               <TooltipTrigger
@@ -754,7 +617,7 @@ type ChaveDialogProps =
       moduleWriteActions: ModuleWriteActionsMap;
       open: boolean;
       onOpenChange: (open: boolean) => void;
-      onCreated: (token: string, label: string) => void;
+      onCreated: () => void;
       onSaved?: undefined;
     }
   | {
@@ -779,6 +642,7 @@ function ChaveDialog(props: ChaveDialogProps) {
   const [isPending, startTransition] = useTransition();
 
   const [step, setStep] = useState(1);
+  const [revealedToken, setRevealedToken] = useState<string | null>(null);
   const [label, setLabel] = useState("");
   const [description, setDescription] = useState("");
   const [tenant, setTenant] = useState("");
@@ -811,6 +675,7 @@ function ChaveDialog(props: ChaveDialogProps) {
     }
     setOriginDraft("");
     setStep(1);
+    setRevealedToken(null);
     setHydratedFor(editKey);
   }
   if (!open && hydratedFor !== null) {
@@ -859,8 +724,7 @@ function ChaveDialog(props: ChaveDialogProps) {
           allowedOrigins,
         });
         if (r.success) {
-          props.onCreated(r.data.token, r.data.label);
-          toast.success("Chave criada, copie o token agora");
+          setRevealedToken(r.data.token);
         } else {
           toast.error(r.error ?? "Erro ao criar chave");
         }
@@ -882,6 +746,18 @@ function ChaveDialog(props: ChaveDialogProps) {
     });
   }
 
+  function rotateToken() {
+    if (mode !== "edit" || !chave) return;
+    startTransition(async () => {
+      const r = await rotateMcpApiKey(chave.id);
+      if (r.success) {
+        setRevealedToken(r.data.token);
+      } else {
+        toast.error(r.error ?? "Erro ao rotacionar token");
+      }
+    });
+  }
+
   const canAdvance = step !== 1 || label.trim().length > 0;
   const isLast = step === WIZARD_STEPS.length;
 
@@ -899,6 +775,18 @@ function ChaveDialog(props: ChaveDialogProps) {
           </DialogDescription>
         </DialogHeader>
 
+        {revealedToken ? (
+          <div className="space-y-4 mt-1">
+            <SecretRevealStep
+              secret={revealedToken}
+              label="Token da chave"
+              onAcknowledge={() => {
+                if (mode === "create") props.onCreated?.();
+                else setRevealedToken(null);
+              }}
+            />
+          </div>
+        ) : (
         <div data-tour="mcp-chaves-wizard" className="flex min-h-0 flex-1 flex-col gap-5 mt-1">
           <StepIndicator steps={WIZARD_STEPS} current={step} className="shrink-0" />
 
@@ -1089,9 +977,17 @@ function ChaveDialog(props: ChaveDialogProps) {
                     </dd>
                     <dt className="text-muted-foreground">Origens</dt>
                     <dd className="text-foreground">
-                      {allowedOrigins.length > 0
-                        ? `${allowedOrigins.length} permitida${allowedOrigins.length !== 1 ? "s" : ""}`
-                        : "Qualquer origem"}
+                      {allowedOrigins.length > 0 ? (
+                        <span className="flex flex-col gap-0.5">
+                          {allowedOrigins.map((o) => (
+                            <span key={o} className="font-mono text-[12px] break-all">
+                              {o}
+                            </span>
+                          ))}
+                        </span>
+                      ) : (
+                        "Qualquer origem"
+                      )}
                     </dd>
                   </dl>
                 </div>
@@ -1130,6 +1026,28 @@ function ChaveDialog(props: ChaveDialogProps) {
                     </div>
                   )}
                 </div>
+
+                {mode === "edit" && (
+                  <div className="flex items-center justify-between gap-3 rounded-xl border border-border bg-muted/30 p-3.5">
+                    <div>
+                      <p className="text-sm font-medium">Token da chave</p>
+                      <p className="text-xs text-muted-foreground">
+                        Gere um novo token e invalide o anterior.
+                      </p>
+                    </div>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      className="shrink-0 gap-1.5"
+                      disabled={isPending}
+                      onClick={rotateToken}
+                    >
+                      <RotateCcw className="h-3.5 w-3.5" />
+                      Rotacionar
+                    </Button>
+                  </div>
+                )}
               </div>
             )}
           </div>
@@ -1181,6 +1099,7 @@ function ChaveDialog(props: ChaveDialogProps) {
             </div>
           </div>
         </div>
+        )}
       </DialogContent>
     </Dialog>
   );
