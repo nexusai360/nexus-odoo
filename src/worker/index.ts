@@ -19,9 +19,19 @@ import {
   markPending,
   readPending,
 } from "./recovery";
+import {
+  processDirectedSync,
+  type DirectedSyncDeps,
+} from "./sync/directed";
+import { DIRECTED_SYNC_QUEUE_NAME } from "../../mcp/sync/queue";
+import type { DirectedSyncJob } from "../../mcp/sync/queue";
+import { cleanupExpiredIdempotency } from "./cleanup/idempotency";
+import { cleanupAuditLog } from "./cleanup/audit-log";
 
 export const MAINTENANCE_QUEUE = "maintenance";
 export const JOB_CLEANUP_IDEMPOTENCY = "cleanup-idempotency";
+export const JOB_CLEANUP_MCP_IDEMPOTENCY = "cleanup-mcp-idempotency";
+export const JOB_CLEANUP_AUDIT_LOG = "cleanup-audit-log";
 
 const REDIS_URL = process.env.REDIS_URL ?? "redis://localhost:6379";
 const connection = new IORedis(REDIS_URL, { maxRetriesPerRequest: null });
@@ -60,6 +70,21 @@ const maintenanceWorker = new Worker(
       console.log(`[maintenance] cleanup idempotência: ${result.deleted} registros removidos`);
       return result;
     }
+    if (job.name === JOB_CLEANUP_MCP_IDEMPOTENCY) {
+      const result = await cleanupExpiredIdempotency(prisma);
+      console.log(
+        `[maintenance] cleanup McpIdempotencyRecord: ${result.deleted} registros removidos`,
+      );
+      return result;
+    }
+    if (job.name === JOB_CLEANUP_AUDIT_LOG) {
+      const result = await cleanupAuditLog(prisma);
+      console.log(
+        `[maintenance] cleanup McpAuditLog: ${result.nullified} nullificados, ` +
+          `${result.deleted} deletados`,
+      );
+      return result;
+    }
     return { ok: true };
   },
   { connection, concurrency: 1 },
@@ -69,6 +94,36 @@ maintenanceWorker.on("ready", () =>
   console.log(`[maintenance-worker] pronto — fila "${MAINTENANCE_QUEUE}"`),
 );
 maintenanceWorker.on("error", (err) => console.error("[maintenance-worker] erro:", err));
+
+// ─── Worker de sync direcionado (H3) ──────────────────────────────────────────
+// Processa jobs disparados pelas tools MCP após mutações (create/update/delete).
+// Usa a mesma conexão Redis compartilhada; concorrência 5 para processar
+// bursts de sync sem bloquear o cron incremental.
+const directedDeps: DirectedSyncDeps = {
+  prisma,
+  odoo: clientFromEnv(),
+  redis: connection,
+};
+
+export const directedSyncQueue = new Queue<DirectedSyncJob>(DIRECTED_SYNC_QUEUE_NAME, {
+  connection,
+});
+
+const directedSyncWorker = new Worker<DirectedSyncJob>(
+  DIRECTED_SYNC_QUEUE_NAME,
+  async (job: Job<DirectedSyncJob>) => {
+    return processDirectedSync(job, directedDeps);
+  },
+  { connection, concurrency: 5 },
+);
+
+directedSyncWorker.on("ready", () =>
+  console.log(`[directed-sync-worker] pronto — fila "${DIRECTED_SYNC_QUEUE_NAME}"`),
+);
+directedSyncWorker.on("failed", (job, err) =>
+  console.error(`[directed-sync-worker] job ${job?.id} falhou:`, err),
+);
+directedSyncWorker.on("error", (err) => console.error("[directed-sync-worker] erro:", err));
 
 // Guarda de sobreposição cluster-safe: lock no Redis com TTL (WR-01). Sobrevive
 // a restart e protege contra uma segunda réplica do worker rodando o mesmo
@@ -238,6 +293,23 @@ async function bootstrap(): Promise<void> {
     { name: JOB_CLEANUP_IDEMPOTENCY },
   );
   console.log("[worker] cron de limpeza de idempotência agendado (24h)");
+
+  // Limpeza horária do McpIdempotencyRecord (registros com expiresAt expirado).
+  await maintenanceQueue.upsertJobScheduler(
+    JOB_CLEANUP_MCP_IDEMPOTENCY,
+    { every: 60 * 60_000 }, // 1h em ms
+    { name: JOB_CLEANUP_MCP_IDEMPOTENCY },
+  );
+  console.log("[worker] cron de limpeza de McpIdempotencyRecord agendado (1h)");
+
+  // Limpeza diária do McpAuditLog às 01:00 BRT (UTC-3 → 04:00 UTC).
+  // pattern cron: "0 4 * * *"
+  await maintenanceQueue.upsertJobScheduler(
+    JOB_CLEANUP_AUDIT_LOG,
+    { pattern: "0 4 * * *" },
+    { name: JOB_CLEANUP_AUDIT_LOG },
+  );
+  console.log("[worker] cron de limpeza de McpAuditLog agendado (diário 01:00 BRT)");
 }
 
 bootstrap().catch((err) => console.error("[worker] falha no bootstrap:", err));
@@ -248,9 +320,11 @@ async function shutdown() {
   await worker.close();
   await agentWorker.close();
   await maintenanceWorker.close();
+  await directedSyncWorker.close();
   await syncQueue.close();
   await agentQueue.close();
   await maintenanceQueue.close();
+  await directedSyncQueue.close();
   await connection.quit();
   await prisma.$disconnect();
   process.exit(0);
