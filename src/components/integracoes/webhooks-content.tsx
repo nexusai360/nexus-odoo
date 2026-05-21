@@ -216,7 +216,7 @@ export function WebhooksContent({ initial }: Props) {
                 {
                   value: "outbound",
                   label: "Saída",
-                  description: "Callback do n8n",
+                  description: "Envia eventos para um sistema externo",
                 },
               ]}
             />
