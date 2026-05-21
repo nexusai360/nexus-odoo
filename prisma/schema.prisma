@@ -1179,6 +1179,68 @@ enum SyncStatus {
   sem_acesso
 }
 
+// ─── F4 L1a — modelos raw da expansão da base de leitura ────────────────────
+
+model RawSpedTabelaPreco {
+  odooId        Int       @id @map("odoo_id")
+  data          Json
+  odooWriteDate DateTime? @map("odoo_write_date")
+  syncedAt      DateTime  @default(now()) @map("synced_at")
+  rawDeleted    Boolean   @default(false) @map("raw_deleted")
+
+  @@index([odooWriteDate])
+  @@index([rawDeleted])
+  @@map("raw_sped_tabela_preco")
+}
+
+model RawSpedTabelaPrecoRegra {
+  odooId        Int       @id @map("odoo_id")
+  data          Json
+  odooWriteDate DateTime? @map("odoo_write_date")
+  syncedAt      DateTime  @default(now()) @map("synced_at")
+  rawDeleted    Boolean   @default(false) @map("raw_deleted")
+
+  @@index([odooWriteDate])
+  @@index([rawDeleted])
+  @@map("raw_sped_tabela_preco_regra")
+}
+
+model RawSpedServico {
+  odooId        Int       @id @map("odoo_id")
+  data          Json
+  odooWriteDate DateTime? @map("odoo_write_date")
+  syncedAt      DateTime  @default(now()) @map("synced_at")
+  rawDeleted    Boolean   @default(false) @map("raw_deleted")
+
+  @@index([odooWriteDate])
+  @@index([rawDeleted])
+  @@map("raw_sped_servico")
+}
+
+model RawSpedApuracao {
+  odooId        Int       @id @map("odoo_id")
+  data          Json
+  odooWriteDate DateTime? @map("odoo_write_date")
+  syncedAt      DateTime  @default(now()) @map("synced_at")
+  rawDeleted    Boolean   @default(false) @map("raw_deleted")
+
+  @@index([odooWriteDate])
+  @@index([rawDeleted])
+  @@map("raw_sped_apuracao")
+}
+
+model RawSpedCartaCorrecao {
+  odooId        Int       @id @map("odoo_id")
+  data          Json
+  odooWriteDate DateTime? @map("odoo_write_date")
+  syncedAt      DateTime  @default(now()) @map("synced_at")
+  rawDeleted    Boolean   @default(false) @map("raw_deleted")
+
+  @@index([odooWriteDate])
+  @@index([rawDeleted])
+  @@map("raw_sped_carta_correcao")
+}
+
 /// Estado de sincronização por modelo do Odoo. Fonte do "atualizado há Xs".
 model SyncState {
   model             String     @id
@@ -1491,6 +1553,49 @@ model FatoContaContabil {
   @@index([natureza])
   @@index([contaPaiId])
   @@map("fato_conta_contabil")
+}
+
+/// F4 L1a — preço por regra de tabela de preço (achatado de sped.tabela.preco.regra).
+/// Grão: uma linha por regra. A dimensão indica se a regra é por produto,
+/// família, participante ou geral.
+model FatoPreco {
+  odooId           Int       @id @map("odoo_id")
+  tabelaId         Int?      @map("tabela_id")
+  tabelaNome       String?   @map("tabela_nome")
+  dimensao         String    @default("geral")
+  produtoId        Int?      @map("produto_id")
+  produtoNome      String?   @map("produto_nome")
+  familiaId        Int?      @map("familia_id")
+  familiaNome      String?   @map("familia_nome")
+  participanteId   Int?      @map("participante_id")
+  participanteNome String?   @map("participante_nome")
+  operacao         String?
+  precoBase        String?   @map("preco_base")
+  valor            Decimal?  @db.Decimal(18, 4)
+  aliquota         Decimal?  @db.Decimal(9, 4)
+  quantidadeMinima Decimal   @default(0) @db.Decimal(18, 4) @map("quantidade_minima")
+  dataInicial      DateTime? @map("data_inicial")
+  dataFinal        DateTime? @map("data_final")
+  atualizadoEm     DateTime  @default(now()) @map("atualizado_em")
+
+  @@index([produtoId])
+  @@index([tabelaId])
+  @@index([familiaId])
+  @@map("fato_preco")
+}
+
+/// F4 L1a — catálogo de serviços fiscais (de sped.servico).
+model FatoServico {
+  odooId           Int      @id @map("odoo_id")
+  codigo           String
+  codigoFormatado  String?  @map("codigo_formatado")
+  descricao        String
+  codigoTributacao String?  @map("codigo_tributacao")
+  alInssRetido     Decimal  @default(0) @db.Decimal(9, 4) @map("al_inss_retido")
+  atualizadoEm     DateTime @default(now()) @map("atualizado_em")
+
+  @@index([codigo])
+  @@map("fato_servico")
 }
 
 // ─── F4 — Logs e feature requests do MCP ─────────────────────────────────────

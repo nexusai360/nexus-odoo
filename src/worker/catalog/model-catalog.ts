@@ -1,5 +1,5 @@
 // Gerado a partir de discovery/output/modelos/ — F2.
-// 72 incremental | 5 snapshot | 2 estatico.
+// 77 incremental | 5 snapshot | 2 estatico.
 export type SyncMode = "incremental" | "snapshot" | "estatico";
 
 export interface CatalogEntry {
@@ -87,6 +87,12 @@ export const MODEL_CATALOG: readonly CatalogEntry[] = [
   { odooModel: "sped.usuario.departamento", mode: "incremental" },
   { odooModel: "sped.usuario.perfil", mode: "incremental" },
   { odooModel: "sped.veiculo", mode: "incremental" },
+  // F4 L1a — expansão da base de leitura (novo acesso joaozanini)
+  { odooModel: "sped.tabela.preco", mode: "incremental" },
+  { odooModel: "sped.tabela.preco.regra", mode: "incremental" },
+  { odooModel: "sped.servico", mode: "incremental" },
+  { odooModel: "sped.apuracao", mode: "incremental" },
+  { odooModel: "sped.carta.correcao", mode: "incremental" },
 ] as const;
 
 /** Nome da tabela raw de um modelo Odoo: estoque.saldo.hoje -> raw_estoque_saldo_hoje. */
