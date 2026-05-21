@@ -497,6 +497,25 @@ export function LogsTimeline({ initial, toolDescriptions = {} }: Props) {
 
   return (
     <div className="space-y-4 max-w-5xl">
+      {/* Nota explicativa: o que são estes logs */}
+      <div className="flex items-start gap-3 rounded-xl border border-border bg-muted/30 p-4">
+        <Info className="mt-0.5 h-4 w-4 shrink-0 text-violet-500" />
+        <div className="space-y-1 text-[13px] leading-relaxed text-muted-foreground">
+          <p>
+            <span className="font-medium text-foreground">
+              Registro de auditoria do servidor MCP.
+            </span>{" "}
+            Cada linha é uma chamada de tool ao servidor: tanto as do Agente Nex interno
+            quanto as de integrações externas autenticadas por chave de API.
+          </p>
+          <p>
+            As chamadas internas usam um token de serviço e não têm chave de API, por isso a
+            coluna de chave aparece vazia nesses casos. A lista reflete chamadas reais: se não
+            houve chamada num período, não há registro nele.
+          </p>
+        </div>
+      </div>
+
       <FilterBar
         filters={filters}
         onFiltersChange={applyFilters}
