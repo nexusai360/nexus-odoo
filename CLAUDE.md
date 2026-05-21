@@ -202,9 +202,10 @@ autônomo até o fim.
 
 **[8] Execução — Superpowers (decisão revista em 2026-05-16).**
 > Avaliação GSD × Superpowers: embora o projeto seja multi-fase, o ciclo Superpowers (brainstorming → writing-plans → execução → verification → code review) cobre o fluxo inteiro e provou-se limpo no F0. Adotar a família `gsd-*` como espinha exigiria reformatar specs/plans para o formato GSD e somar cerimônia (`.planning/`, ROADMAP formal, requirements rastreados) sem ganho proporcional — a estrutura de fases já vive neste documento (§4) e a continuidade entre sessões é garantida por specs/plans versionados + tasks + git. **Decisão: Superpowers de ponta a ponta.**
-> - **Fase enxuta** (ex.: F0): executar **inline**, task a task.
-> - **Fase grande** (ex.: F1): `superpowers:subagent-driven-development` — subagente fresco por task, com revisão entre tasks. Usar subagentes críticos, que já identificam problemas durante a execução, não só no review.
-> - **Modelo dos subagentes:** execução de task → **Sonnet** (o plano já é exaustivo, a implementação é mecânica). Review de cada bloco → **Opus**. Review completa da fase [10] → **Opus**. Após o review de bloco (Opus), volta a Sonnet para a execução do bloco seguinte.
+> - **Padrão: executar na sessão principal (Opus 4.7), inline.** Não delegar para subagente por padrão. A experiência com delegação foi ruim — o subagente não pega o contexto da conversa, das documentações nem das decisões, e entrega trabalho desalinhado. Execução inline mantém todo o contexto.
+> - **Subagente é exceção, não regra.** Só delegar quando: (a) houver ganho real de paralelismo ou de isolamento de contexto E (b) for criado **antes** um arquivo de briefing que compartilhe TODO o contexto necessário (resumo do projeto, decisões, padrões, o que está sendo feito e por quê). Sem esse briefing, não delegar.
+> - **Modelo: SEMPRE Opus 4.7 — nunca Sonnet.** Vale para execução inline E para qualquer subagente (execução, review, o que for). Sonnet 4.6 está proibido para qualquer trabalho neste projeto (decisão do usuário, 2026-05-21, após entregas de UI ruins feitas com Sonnet).
+> - **Toda UI/frontend: exclusivamente na sessão principal (Opus 4.7) + `ui-ux-pro-max` obrigatório.** Nunca delegar layout/componente/tela para subagente. Regra absoluta.
 > - `superpowers:test-driven-development` dentro de cada task com código testável.
 > `/gsd-code-review` e `/gsd-ui-review` permanecem como auditorias pontuais na etapa [10] — é o único uso da família `gsd-*`.
 

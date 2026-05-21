@@ -1,0 +1,25 @@
+{
+  "primaryLanguage": "typescript",
+  "languages": [
+    "javascript",
+    "typescript",
+    "python"
+  ],
+  "frameworks": [
+    "nextjs"
+  ],
+  "buildTools": [
+    "docker-compose"
+  ],
+  "testFrameworks": [
+    "jest"
+  ],
+  "packageManager": "npm",
+  "isMonorepo": false,
+  "hasDocker": true,
+  "hasCI": true,
+  "runtimeEnvironment": "browser",
+  "hasBinField": false,
+  "hasMainExport": false,
+  "hasTypesField": false
+}

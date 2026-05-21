@@ -50,10 +50,19 @@ const healthCheck = buildHealthHandler({
   queryRaw: () => prisma.$queryRaw`SELECT 1`,
   redisPing: () => mcpRedis.ping(),
   odooAuthenticate: makeOdooAuthenticate(),
-  getQueueCounts: () => getDirectedSyncQueue().getJobCounts("active", "waiting", "delayed", "failed", "completed"),
+  getQueueCounts: async () => {
+    const counts = await getDirectedSyncQueue().getJobCounts("active", "waiting", "delayed", "failed", "completed");
+    return {
+      active: counts["active"] ?? 0,
+      waiting: counts["waiting"] ?? 0,
+      delayed: counts["delayed"] ?? 0,
+      failed: counts["failed"] ?? 0,
+      completed: counts["completed"] ?? 0,
+    };
+  },
   getCacheFreshnessSeconds: async () => {
-    const result = await prisma.rawResPartner.aggregate({ _max: { updatedAt: true } });
-    const maxDate = result._max.updatedAt;
+    const result = await prisma.rawResPartner.aggregate({ _max: { syncedAt: true } });
+    const maxDate = result._max?.syncedAt;
     if (!maxDate) return 999999;
     return Math.floor((Date.now() - maxDate.getTime()) / 1000);
   },

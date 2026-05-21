@@ -1,0 +1,152 @@
+[
+  {
+    "path": "mcp/catalog/index.ts",
+    "description": "Module exports",
+    "category": "entrypoint"
+  },
+  {
+    "path": "mcp/health/index.ts",
+    "description": "Module exports",
+    "category": "entrypoint"
+  },
+  {
+    "path": "mcp/index.ts",
+    "description": "mcp module exports",
+    "category": "entrypoint"
+  },
+  {
+    "path": "mcp/server.ts",
+    "description": "MCP server implementation",
+    "category": "entrypoint"
+  },
+  {
+    "path": "mcp/tools/cadastros/index.ts",
+    "description": "Module exports",
+    "category": "entrypoint"
+  },
+  {
+    "path": "mcp/tools/caminho3/index.ts",
+    "description": "Module exports",
+    "category": "entrypoint"
+  },
+  {
+    "path": "mcp/tools/comercial/index.ts",
+    "description": "Module exports",
+    "category": "entrypoint"
+  },
+  {
+    "path": "mcp/tools/contabil/index.ts",
+    "description": "Module exports",
+    "category": "entrypoint"
+  },
+  {
+    "path": "mcp/tools/crm/index.ts",
+    "description": "Module exports",
+    "category": "entrypoint"
+  },
+  {
+    "path": "mcp/tools/dominios-vazios/index.ts",
+    "description": "Module exports",
+    "category": "entrypoint"
+  },
+  {
+    "path": "mcp/tools/estoque/index.ts",
+    "description": "Module exports",
+    "category": "entrypoint"
+  },
+  {
+    "path": "mcp/tools/financeiro/index.ts",
+    "description": "Module exports",
+    "category": "entrypoint"
+  },
+  {
+    "path": "mcp/tools/fiscal/index.ts",
+    "description": "Module exports",
+    "category": "entrypoint"
+  },
+  {
+    "path": "src/components/icons/providers/index.ts",
+    "description": "providers module exports",
+    "category": "entrypoint"
+  },
+  {
+    "path": "src/content/mcp-docs/index.ts",
+    "description": "Module exports",
+    "category": "entrypoint"
+  },
+  {
+    "path": "src/worker/index.ts",
+    "description": "Module exports",
+    "category": "entrypoint"
+  },
+  {
+    "path": "eslint.config.mjs",
+    "description": "Tool configuration",
+    "category": "config"
+  },
+  {
+    "path": "jest.config.ts",
+    "description": "Tool configuration",
+    "category": "config"
+  },
+  {
+    "path": "mcp/tsconfig.json",
+    "description": "TypeScript configuration",
+    "category": "config"
+  },
+  {
+    "path": "next.config.ts",
+    "description": "Tool configuration",
+    "category": "config"
+  },
+  {
+    "path": "package.json",
+    "description": "Package manifest",
+    "category": "config"
+  },
+  {
+    "path": "postcss.config.mjs",
+    "description": "Tool configuration",
+    "category": "config"
+  },
+  {
+    "path": "prisma.config.ts",
+    "description": "Tool configuration",
+    "category": "config"
+  },
+  {
+    "path": "src/auth.config.ts",
+    "description": "Tool configuration",
+    "category": "config"
+  },
+  {
+    "path": "tsconfig.json",
+    "description": "TypeScript configuration",
+    "category": "config"
+  },
+  {
+    "path": "mcp/catalog/types.ts",
+    "description": "Type definitions",
+    "category": "types"
+  },
+  {
+    "path": "src/lib/actions/agent-config-types.ts",
+    "description": "Type definitions",
+    "category": "types"
+  },
+  {
+    "path": "src/lib/actions/kb-types.ts",
+    "description": "Type definitions",
+    "category": "types"
+  },
+  {
+    "path": "src/lib/actions/mcp-api-keys-types.ts",
+    "description": "Type definitions",
+    "category": "types"
+  },
+  {
+    "path": "src/lib/actions/playground-types.ts",
+    "description": "Type definitions",
+    "category": "types"
+  }
+]

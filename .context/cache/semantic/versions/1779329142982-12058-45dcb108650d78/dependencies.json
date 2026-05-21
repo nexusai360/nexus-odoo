@@ -1,0 +1,88 @@
+{
+  "mostImported": [
+    {
+      "file": "src/generated/prisma/internal/prismaNamespace.ts",
+      "importedBy": 121
+    },
+    {
+      "file": "src/generated/prisma/client.ts",
+      "importedBy": 20
+    },
+    {
+      "file": "src/worker/fatos/fato-build-state.ts",
+      "importedBy": 14
+    },
+    {
+      "file": "src/worker/fatos/odoo-relational.ts",
+      "importedBy": 13
+    },
+    {
+      "file": "src/worker/odoo/client.ts",
+      "importedBy": 11
+    },
+    {
+      "file": "src/lib/agent/llm/types.ts",
+      "importedBy": 9,
+      "description": "Type definitions"
+    },
+    {
+      "file": "mcp/__tests__/mocks/prisma.ts",
+      "importedBy": 8,
+      "description": "Mock implementations"
+    },
+    {
+      "file": "src/worker/catalog/model-catalog.ts",
+      "importedBy": 6
+    },
+    {
+      "file": "mcp/sync/queue.ts",
+      "importedBy": 6
+    },
+    {
+      "file": "src/lib/agent/llm/catalog.ts",
+      "importedBy": 6
+    },
+    {
+      "file": "src/components/charts/kpi-card.tsx",
+      "importedBy": 6
+    },
+    {
+      "file": "src/lib/reports/types.ts",
+      "importedBy": 5,
+      "description": "Type definitions"
+    },
+    {
+      "file": "src/components/charts/data-table.tsx",
+      "importedBy": 5
+    },
+    {
+      "file": "src/components/charts/chart-states.tsx",
+      "importedBy": 5
+    },
+    {
+      "file": "src/worker/odoo/field-selection.ts",
+      "importedBy": 4
+    },
+    {
+      "file": "mcp/__tests__/mocks/redis.ts",
+      "importedBy": 4,
+      "description": "Mock implementations"
+    },
+    {
+      "file": "src/components/charts/colors.ts",
+      "importedBy": 4
+    },
+    {
+      "file": "mcp/auth/api-key-context.ts",
+      "importedBy": 4
+    },
+    {
+      "file": "src/components/reports/filter-controls/filter-select.tsx",
+      "importedBy": 4
+    },
+    {
+      "file": "src/worker/sync/sync-state.ts",
+      "importedBy": 3
+    }
+  ]
+}

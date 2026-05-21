@@ -1,0 +1,1167 @@
+{
+  "version": "2.0.0",
+  "generated": "2026-05-21T02:05:42.830Z",
+  "meta": {
+    "schemaVersion": "2.0.0",
+    "generatedAt": "2026-05-21T02:05:42.830Z",
+    "repoFingerprint": "99980fd8a76d5aec5650e4c35479a5f506d37d4b",
+    "analyzer": {
+      "useLSP": false,
+      "includesSymbolPayload": false
+    }
+  },
+  "stack": {
+    "primaryLanguage": "typescript",
+    "languages": [
+      "javascript",
+      "typescript",
+      "python"
+    ],
+    "frameworks": [
+      "nextjs"
+    ],
+    "buildTools": [
+      "docker-compose"
+    ],
+    "testFrameworks": [
+      "jest"
+    ],
+    "packageManager": "npm",
+    "isMonorepo": false,
+    "hasDocker": true,
+    "hasCI": true,
+    "runtimeEnvironment": "browser",
+    "hasBinField": false,
+    "hasMainExport": false,
+    "hasTypesField": false
+  },
+  "structure": {
+    "totalFiles": 960,
+    "rootPath": ".",
+    "topDirectories": [
+      {
+        "name": "discovery",
+        "fileCount": 97,
+        "description": "Module directory"
+      },
+      {
+        "name": "docker",
+        "fileCount": 2,
+        "description": "Module directory"
+      },
+      {
+        "name": "docs",
+        "fileCount": 105,
+        "description": "Documentation files"
+      },
+      {
+        "name": "mcp",
+        "fileCount": 152,
+        "description": "MCP server implementation"
+      },
+      {
+        "name": "prisma",
+        "fileCount": 26,
+        "description": "Module directory"
+      },
+      {
+        "name": "public",
+        "fileCount": 1,
+        "description": "Public static assets"
+      },
+      {
+        "name": "scripts",
+        "fileCount": 4,
+        "description": "Build and utility scripts"
+      },
+      {
+        "name": "src",
+        "fileCount": 558,
+        "description": "Source code root"
+      }
+    ],
+    "languageDistribution": [
+      {
+        "extension": ".ts",
+        "count": 536
+      },
+      {
+        "extension": ".tsx",
+        "count": 178
+      },
+      {
+        "extension": ".md",
+        "count": 113
+      },
+      {
+        "extension": ".json",
+        "count": 87
+      },
+      {
+        "extension": ".sql",
+        "count": 23
+      },
+      {
+        "extension": ".py",
+        "count": 11
+      },
+      {
+        "extension": ".mjs",
+        "count": 2
+      },
+      {
+        "extension": ".yml",
+        "count": 2
+      },
+      {
+        "extension": ".png",
+        "count": 1
+      },
+      {
+        "extension": ".sh",
+        "count": 1
+      }
+    ]
+  },
+  "architecture": {
+    "layers": [
+      {
+        "name": "Config",
+        "description": "Configuration and constants",
+        "directories": [
+          ".",
+          "src",
+          "src/worker/sync",
+          "src/app/(protected)/configuracao"
+        ],
+        "symbolCount": 15,
+        "dependsOn": [
+          "Utils"
+        ]
+      },
+      {
+        "name": "Models",
+        "description": "Data structures and domain objects",
+        "directories": [
+          "scripts",
+          "src/worker/catalog",
+          "src/lib/agent",
+          "src/lib/reports",
+          "src/lib/actions",
+          "src/generated/prisma",
+          "src/generated/prisma/models"
+        ],
+        "symbolCount": 7309,
+        "dependsOn": [
+          "Utils",
+          "Controllers"
+        ]
+      },
+      {
+        "name": "Utils",
+        "description": "Shared utilities and helpers",
+        "directories": [
+          "src/lib",
+          "mcp/lib",
+          "src/lib/validations",
+          "src/lib/whatsapp",
+          "src/lib/utils",
+          "src/lib/constants",
+          "src/lib/__tests__",
+          "src/lib/agent",
+          "src/lib/reports",
+          "src/lib/__mocks__",
+          "src/lib/actions",
+          "src/generated/prisma",
+          "mcp/lib/migrations",
+          "mcp/lib/__tests__",
+          "src/lib/agent/rag",
+          "src/lib/agent/prompt",
+          "src/lib/agent/llm",
+          "src/lib/reports/queries",
+          "src/lib/agent/llm/providers",
+          "src/lib/reports/queries/__mocks__"
+        ],
+        "symbolCount": 668,
+        "dependsOn": [
+          "Repositories",
+          "Controllers",
+          "Services"
+        ]
+      },
+      {
+        "name": "Controllers",
+        "description": "Request handling and routing",
+        "directories": [
+          "mcp/health",
+          "mcp/catalog",
+          "mcp/auth",
+          "src/lib/actions",
+          "mcp/auth/__tests__",
+          "src/generated/prisma/models",
+          "src/app/api/health",
+          "src/lib/agent/llm/providers",
+          "src/app/api/user/theme",
+          "src/app/api/auth/[...nextauth]",
+          "src/app/api/agent/transcribe",
+          "src/app/api/agent/stream",
+          "src/app/api/agent/prompt-preview",
+          "src/app/api/integrations/whatsapp/inbound",
+          "src/app/api/agent/playground/stream",
+          "src/app/(protected)/api/integracoes/servidor-mcp/logs/export",
+          "src/components/integracoes",
+          "src/components/icons/providers",
+          "src/app/(protected)/integracoes/api"
+        ],
+        "symbolCount": 165,
+        "dependsOn": [
+          "Services",
+          "Utils",
+          "Components"
+        ]
+      },
+      {
+        "name": "Services",
+        "description": "Business logic and orchestration",
+        "directories": [
+          "mcp/auth"
+        ],
+        "symbolCount": 1,
+        "dependsOn": []
+      },
+      {
+        "name": "Repositories",
+        "description": "Data access and persistence",
+        "directories": [
+          "src/lib/actions",
+          "src/components/charts"
+        ],
+        "symbolCount": 40,
+        "dependsOn": [
+          "Components"
+        ]
+      },
+      {
+        "name": "Components",
+        "description": "UI components and views",
+        "directories": [
+          "src/components/users",
+          "src/components/ui",
+          "src/components/charts",
+          "src/components/icons/providers",
+          "src/components",
+          "src/app",
+          "src/components/reports",
+          "src/components/providers",
+          "src/components/profile",
+          "src/components/login",
+          "src/components/layout",
+          "src/components/integrations",
+          "src/components/integracoes",
+          "src/components/agent",
+          "src/components/reports/filter-controls",
+          "src/components/integracoes/servidor-mcp",
+          "src/components/agent/consumo",
+          "src/app/(protected)/usuarios",
+          "src/app/(protected)/relatorios",
+          "src/app/(protected)/perfil",
+          "src/app/(protected)/integracoes",
+          "src/app/(protected)/dashboard",
+          "src/app/(protected)/configuracao",
+          "src/app/(protected)/agente",
+          "src/app/(auth)/verify-email",
+          "src/app/(auth)/reset-password",
+          "src/app/(auth)/login",
+          "src/app/(auth)/forgot-password",
+          "src/app/(protected)/relatorios/[id]",
+          "src/app/(protected)/perfil/trocar-senha",
+          "src/app/(protected)/integracoes/webhooks",
+          "src/app/(protected)/integracoes/servidor-mcp",
+          "src/app/(protected)/integracoes/canais",
+          "src/app/(protected)/integracoes/bi",
+          "src/app/(protected)/agente/prompt",
+          "src/app/(protected)/agente/plugar-mcps",
+          "src/app/(protected)/agente/playground",
+          "src/app/(protected)/agente/consumo",
+          "src/app/(protected)/agente/configuracao",
+          "src/app/(protected)/agente/chaves",
+          "src/app/(protected)/integracoes/servidor-mcp/logs",
+          "src/app/(protected)/integracoes/servidor-mcp/docs",
+          "src/app/(protected)/integracoes/servidor-mcp/chaves",
+          "src/app/(protected)/integracoes/canais/whatsapp"
+        ],
+        "symbolCount": 677,
+        "dependsOn": []
+      }
+    ],
+    "patterns": [],
+    "entryPoints": [
+      "mcp/server.ts",
+      "mcp/index.ts",
+      "src/worker/index.ts",
+      "mcp/health/index.ts",
+      "mcp/catalog/index.ts",
+      "src/content/mcp-docs/index.ts",
+      "mcp/tools/fiscal/index.ts",
+      "mcp/tools/financeiro/index.ts",
+      "mcp/tools/crm/index.ts",
+      "mcp/tools/dominios-vazios/index.ts",
+      "mcp/tools/estoque/index.ts",
+      "mcp/tools/contabil/index.ts",
+      "mcp/tools/cadastros/index.ts",
+      "mcp/tools/comercial/index.ts",
+      "mcp/tools/caminho3/index.ts",
+      "src/components/icons/providers/index.ts"
+    ],
+    "mainEntryPoints": [
+      "mcp/server.ts"
+    ],
+    "moduleExports": [
+      "mcp/index.ts",
+      "src/worker/index.ts",
+      "mcp/health/index.ts",
+      "mcp/catalog/index.ts",
+      "src/content/mcp-docs/index.ts",
+      "mcp/tools/fiscal/index.ts",
+      "mcp/tools/financeiro/index.ts",
+      "mcp/tools/crm/index.ts",
+      "mcp/tools/dominios-vazios/index.ts",
+      "mcp/tools/estoque/index.ts",
+      "mcp/tools/contabil/index.ts",
+      "mcp/tools/cadastros/index.ts",
+      "mcp/tools/comercial/index.ts",
+      "mcp/tools/caminho3/index.ts",
+      "src/components/icons/providers/index.ts"
+    ]
+  },
+  "functionalPatterns": {
+    "hasAuthPattern": true,
+    "hasDatabasePattern": true,
+    "hasApiPattern": true,
+    "hasCachePattern": true,
+    "hasQueuePattern": true,
+    "hasWebSocketPattern": false,
+    "hasLoggingPattern": true,
+    "hasValidationPattern": true,
+    "hasErrorHandlingPattern": true,
+    "hasTestingPattern": true,
+    "patterns": [
+      {
+        "type": "auth",
+        "confidence": 1,
+        "indicators": [
+          {
+            "file": "/Users/joaovitorzanini/Developer/Claude Code/Nexus AI/Clientes/Matrix Fitness Group/API e MCP Odoo/src/types/next-auth.d.ts",
+            "symbol": "Session",
+            "line": 6,
+            "reason": "Auth-related symbol: Session"
+          },
+          {
+            "file": "/Users/joaovitorzanini/Developer/Claude Code/Nexus AI/Clientes/Matrix Fitness Group/API e MCP Odoo/src/types/next-auth.d.ts",
+            "symbol": "JWT",
+            "line": 27,
+            "reason": "Auth-related symbol: JWT"
+          },
+          {
+            "file": "/Users/joaovitorzanini/Developer/Claude Code/Nexus AI/Clientes/Matrix Fitness Group/API e MCP Odoo/src/lib/auth-helpers.ts",
+            "symbol": "Credentials",
+            "line": 7,
+            "reason": "Auth-related symbol: Credentials"
+          },
+          {
+            "file": "/Users/joaovitorzanini/Developer/Claude Code/Nexus AI/Clientes/Matrix Fitness Group/API e MCP Odoo/src/lib/auth-helpers.ts",
+            "symbol": "AuthUser",
+            "line": 12,
+            "reason": "Auth-related symbol: AuthUser"
+          },
+          {
+            "file": "/Users/joaovitorzanini/Developer/Claude Code/Nexus AI/Clientes/Matrix Fitness Group/API e MCP Odoo/src/lib/auth-helpers.ts",
+            "symbol": "authorizeCredentials",
+            "line": 36,
+            "reason": "Auth-related symbol: authorizeCredentials"
+          },
+          {
+            "file": "/Users/joaovitorzanini/Developer/Claude Code/Nexus AI/Clientes/Matrix Fitness Group/API e MCP Odoo/mcp/lib/errors.ts",
+            "symbol": "TokenInUnsafeLocationError",
+            "line": 79,
+            "reason": "Auth-related symbol: TokenInUnsafeLocationError"
+          },
+          {
+            "file": "/Users/joaovitorzanini/Developer/Claude Code/Nexus AI/Clientes/Matrix Fitness Group/API e MCP Odoo/mcp/auth/auth-middleware.ts",
+            "symbol": "AuthResult",
+            "line": 15,
+            "reason": "Auth-related symbol: AuthResult"
+          },
+          {
+            "file": "/Users/joaovitorzanini/Developer/Claude Code/Nexus AI/Clientes/Matrix Fitness Group/API e MCP Odoo/mcp/auth/auth-middleware.ts",
+            "symbol": "authenticate",
+            "line": 72,
+            "reason": "Auth-related symbol: authenticate"
+          },
+          {
+            "file": "/Users/joaovitorzanini/Developer/Claude Code/Nexus AI/Clientes/Matrix Fitness Group/API e MCP Odoo/src/generated/prisma/client.ts",
+            "symbol": "PasswordResetToken",
+            "line": 75,
+            "reason": "Auth-related symbol: PasswordResetToken"
+          },
+          {
+            "file": "/Users/joaovitorzanini/Developer/Claude Code/Nexus AI/Clientes/Matrix Fitness Group/API e MCP Odoo/src/generated/prisma/browser.ts",
+            "symbol": "PasswordResetToken",
+            "line": 51,
+            "reason": "Auth-related symbol: PasswordResetToken"
+          }
+        ],
+        "description": "Authentication and authorization functionality"
+      },
+      {
+        "type": "database",
+        "confidence": 1,
+        "indicators": [
+          {
+            "file": "/Users/joaovitorzanini/Developer/Claude Code/Nexus AI/Clientes/Matrix Fitness Group/API e MCP Odoo/src/generated/prisma/client.ts",
+            "symbol": "PrismaClient",
+            "line": 41,
+            "reason": "Database-related symbol: PrismaClient"
+          },
+          {
+            "file": "/Users/joaovitorzanini/Developer/Claude Code/Nexus AI/Clientes/Matrix Fitness Group/API e MCP Odoo/src/lib/actions/mcp-audit-query.ts",
+            "symbol": "queryAuditLogs",
+            "line": 83,
+            "reason": "Database-related symbol: queryAuditLogs"
+          },
+          {
+            "file": "/Users/joaovitorzanini/Developer/Claude Code/Nexus AI/Clientes/Matrix Fitness Group/API e MCP Odoo/src/generated/prisma/internal/prismaNamespaceBrowser.ts",
+            "symbol": "ModelName",
+            "line": 174,
+            "reason": "Database-related symbol: ModelName"
+          },
+          {
+            "file": "/Users/joaovitorzanini/Developer/Claude Code/Nexus AI/Clientes/Matrix Fitness Group/API e MCP Odoo/src/generated/prisma/internal/prismaNamespaceBrowser.ts",
+            "symbol": "QueryMode",
+            "line": 1770,
+            "reason": "Database-related symbol: QueryMode"
+          },
+          {
+            "file": "/Users/joaovitorzanini/Developer/Claude Code/Nexus AI/Clientes/Matrix Fitness Group/API e MCP Odoo/src/generated/prisma/internal/prismaNamespace.ts",
+            "symbol": "PrismaPromise",
+            "line": 26,
+            "reason": "Database-related symbol: PrismaPromise"
+          },
+          {
+            "file": "/Users/joaovitorzanini/Developer/Claude Code/Nexus AI/Clientes/Matrix Fitness Group/API e MCP Odoo/src/generated/prisma/internal/prismaNamespace.ts",
+            "symbol": "PrismaClientKnownRequestError",
+            "line": 33,
+            "reason": "Database-related symbol: PrismaClientKnownRequestError"
+          },
+          {
+            "file": "/Users/joaovitorzanini/Developer/Claude Code/Nexus AI/Clientes/Matrix Fitness Group/API e MCP Odoo/src/generated/prisma/internal/prismaNamespace.ts",
+            "symbol": "PrismaClientUnknownRequestError",
+            "line": 36,
+            "reason": "Database-related symbol: PrismaClientUnknownRequestError"
+          },
+          {
+            "file": "/Users/joaovitorzanini/Developer/Claude Code/Nexus AI/Clientes/Matrix Fitness Group/API e MCP Odoo/src/generated/prisma/internal/prismaNamespace.ts",
+            "symbol": "PrismaClientRustPanicError",
+            "line": 39,
+            "reason": "Database-related symbol: PrismaClientRustPanicError"
+          },
+          {
+            "file": "/Users/joaovitorzanini/Developer/Claude Code/Nexus AI/Clientes/Matrix Fitness Group/API e MCP Odoo/src/generated/prisma/internal/prismaNamespace.ts",
+            "symbol": "PrismaClientInitializationError",
+            "line": 42,
+            "reason": "Database-related symbol: PrismaClientInitializationError"
+          },
+          {
+            "file": "/Users/joaovitorzanini/Developer/Claude Code/Nexus AI/Clientes/Matrix Fitness Group/API e MCP Odoo/src/generated/prisma/internal/prismaNamespace.ts",
+            "symbol": "PrismaClientValidationError",
+            "line": 45,
+            "reason": "Database-related symbol: PrismaClientValidationError"
+          }
+        ],
+        "description": "Database access and ORM functionality"
+      },
+      {
+        "type": "api",
+        "confidence": 1,
+        "indicators": [
+          {
+            "file": "/Users/joaovitorzanini/Developer/Claude Code/Nexus AI/Clientes/Matrix Fitness Group/API e MCP Odoo/mcp/server.ts",
+            "symbol": "handler",
+            "line": 180,
+            "reason": "API-related symbol: handler"
+          },
+          {
+            "file": "/Users/joaovitorzanini/Developer/Claude Code/Nexus AI/Clientes/Matrix Fitness Group/API e MCP Odoo/mcp/server.test.ts",
+            "symbol": "handler",
+            "line": 282,
+            "reason": "API-related symbol: handler"
+          },
+          {
+            "file": "/Users/joaovitorzanini/Developer/Claude Code/Nexus AI/Clientes/Matrix Fitness Group/API e MCP Odoo/mcp/server.test.ts",
+            "symbol": "handler",
+            "line": 313,
+            "reason": "API-related symbol: handler"
+          },
+          {
+            "file": "/Users/joaovitorzanini/Developer/Claude Code/Nexus AI/Clientes/Matrix Fitness Group/API e MCP Odoo/mcp/server.test.ts",
+            "symbol": "handler",
+            "line": 346,
+            "reason": "API-related symbol: handler"
+          },
+          {
+            "file": "/Users/joaovitorzanini/Developer/Claude Code/Nexus AI/Clientes/Matrix Fitness Group/API e MCP Odoo/mcp/auth/api-key-lookup.ts",
+            "symbol": "ApiKeyLookupResult",
+            "line": 8,
+            "reason": "API-related symbol: ApiKeyLookupResult"
+          },
+          {
+            "file": "/Users/joaovitorzanini/Developer/Claude Code/Nexus AI/Clientes/Matrix Fitness Group/API e MCP Odoo/mcp/auth/api-key-context.ts",
+            "symbol": "ApiKeyContext",
+            "line": 13,
+            "reason": "API-related symbol: ApiKeyContext"
+          },
+          {
+            "file": "/Users/joaovitorzanini/Developer/Claude Code/Nexus AI/Clientes/Matrix Fitness Group/API e MCP Odoo/mcp/auth/api-key-context.ts",
+            "symbol": "apiKeyContextFromRow",
+            "line": 29,
+            "reason": "API-related symbol: apiKeyContextFromRow"
+          },
+          {
+            "file": "/Users/joaovitorzanini/Developer/Claude Code/Nexus AI/Clientes/Matrix Fitness Group/API e MCP Odoo/mcp/auth/api-key-cache.ts",
+            "symbol": "ApiKeyCache",
+            "line": 7,
+            "reason": "API-related symbol: ApiKeyCache"
+          },
+          {
+            "file": "/Users/joaovitorzanini/Developer/Claude Code/Nexus AI/Clientes/Matrix Fitness Group/API e MCP Odoo/src/generated/prisma/client.ts",
+            "symbol": "ApiKey",
+            "line": 653,
+            "reason": "API-related symbol: ApiKey"
+          },
+          {
+            "file": "/Users/joaovitorzanini/Developer/Claude Code/Nexus AI/Clientes/Matrix Fitness Group/API e MCP Odoo/src/generated/prisma/browser.ts",
+            "symbol": "ApiKey",
+            "line": 629,
+            "reason": "API-related symbol: ApiKey"
+          }
+        ],
+        "description": "API endpoints and routing"
+      },
+      {
+        "type": "cache",
+        "confidence": 1,
+        "indicators": [
+          {
+            "file": "/Users/joaovitorzanini/Developer/Claude Code/Nexus AI/Clientes/Matrix Fitness Group/API e MCP Odoo/src/worker/index.ts",
+            "reason": "Cache library import: ioredis"
+          },
+          {
+            "file": "/Users/joaovitorzanini/Developer/Claude Code/Nexus AI/Clientes/Matrix Fitness Group/API e MCP Odoo/src/lib/redis.ts",
+            "reason": "Cache library import: ioredis"
+          },
+          {
+            "file": "/Users/joaovitorzanini/Developer/Claude Code/Nexus AI/Clientes/Matrix Fitness Group/API e MCP Odoo/mcp/sync/queue.ts",
+            "reason": "Cache library import: ioredis"
+          },
+          {
+            "file": "/Users/joaovitorzanini/Developer/Claude Code/Nexus AI/Clientes/Matrix Fitness Group/API e MCP Odoo/mcp/lib/redis.ts",
+            "reason": "Cache library import: ioredis"
+          },
+          {
+            "file": "/Users/joaovitorzanini/Developer/Claude Code/Nexus AI/Clientes/Matrix Fitness Group/API e MCP Odoo/mcp/auth/api-key-cache.ts",
+            "reason": "Cache library import: lru-cache"
+          },
+          {
+            "file": "/Users/joaovitorzanini/Developer/Claude Code/Nexus AI/Clientes/Matrix Fitness Group/API e MCP Odoo/mcp/__tests__/mocks/redis.ts",
+            "reason": "Cache library import: ioredis-mock"
+          },
+          {
+            "file": "/Users/joaovitorzanini/Developer/Claude Code/Nexus AI/Clientes/Matrix Fitness Group/API e MCP Odoo/src/app/api/integrations/whatsapp/inbound/route.ts",
+            "reason": "Cache library import: ioredis"
+          }
+        ],
+        "description": "Caching and data memoization"
+      },
+      {
+        "type": "queue",
+        "confidence": 1,
+        "indicators": [
+          {
+            "file": "/Users/joaovitorzanini/Developer/Claude Code/Nexus AI/Clientes/Matrix Fitness Group/API e MCP Odoo/mcp/health/handler.ts",
+            "symbol": "QueueCounts",
+            "line": 24,
+            "reason": "Queue-related symbol: QueueCounts"
+          },
+          {
+            "file": "/Users/joaovitorzanini/Developer/Claude Code/Nexus AI/Clientes/Matrix Fitness Group/API e MCP Odoo/src/generated/prisma/enums.ts",
+            "symbol": "MessageRole",
+            "line": 79,
+            "reason": "Queue-related symbol: MessageRole"
+          },
+          {
+            "file": "/Users/joaovitorzanini/Developer/Claude Code/Nexus AI/Clientes/Matrix Fitness Group/API e MCP Odoo/src/generated/prisma/client.ts",
+            "symbol": "Message",
+            "line": 586,
+            "reason": "Queue-related symbol: Message"
+          },
+          {
+            "file": "/Users/joaovitorzanini/Developer/Claude Code/Nexus AI/Clientes/Matrix Fitness Group/API e MCP Odoo/src/generated/prisma/browser.ts",
+            "symbol": "Message",
+            "line": 562,
+            "reason": "Queue-related symbol: Message"
+          },
+          {
+            "file": "/Users/joaovitorzanini/Developer/Claude Code/Nexus AI/Clientes/Matrix Fitness Group/API e MCP Odoo/src/generated/prisma/internal/prismaNamespaceBrowser.ts",
+            "symbol": "MessageScalarFieldEnum",
+            "line": 1525,
+            "reason": "Queue-related symbol: MessageScalarFieldEnum"
+          },
+          {
+            "file": "/Users/joaovitorzanini/Developer/Claude Code/Nexus AI/Clientes/Matrix Fitness Group/API e MCP Odoo/src/generated/prisma/internal/prismaNamespace.ts",
+            "symbol": "MessageScalarFieldEnum",
+            "line": 10630,
+            "reason": "Queue-related symbol: MessageScalarFieldEnum"
+          },
+          {
+            "file": "/Users/joaovitorzanini/Developer/Claude Code/Nexus AI/Clientes/Matrix Fitness Group/API e MCP Odoo/src/generated/prisma/models/Message.ts",
+            "symbol": "MessageModel",
+            "line": 19,
+            "reason": "Queue-related symbol: MessageModel"
+          },
+          {
+            "file": "/Users/joaovitorzanini/Developer/Claude Code/Nexus AI/Clientes/Matrix Fitness Group/API e MCP Odoo/src/generated/prisma/models/Message.ts",
+            "symbol": "MessageMinAggregateOutputType",
+            "line": 27,
+            "reason": "Queue-related symbol: MessageMinAggregateOutputType"
+          },
+          {
+            "file": "/Users/joaovitorzanini/Developer/Claude Code/Nexus AI/Clientes/Matrix Fitness Group/API e MCP Odoo/src/generated/prisma/models/Message.ts",
+            "symbol": "MessageMaxAggregateOutputType",
+            "line": 35,
+            "reason": "Queue-related symbol: MessageMaxAggregateOutputType"
+          },
+          {
+            "file": "/Users/joaovitorzanini/Developer/Claude Code/Nexus AI/Clientes/Matrix Fitness Group/API e MCP Odoo/src/generated/prisma/models/Message.ts",
+            "symbol": "MessageCountAggregateOutputType",
+            "line": 43,
+            "reason": "Queue-related symbol: MessageCountAggregateOutputType"
+          }
+        ],
+        "description": "Message queues and background jobs"
+      },
+      {
+        "type": "logging",
+        "confidence": 1,
+        "indicators": [
+          {
+            "file": "/Users/joaovitorzanini/Developer/Claude Code/Nexus AI/Clientes/Matrix Fitness Group/API e MCP Odoo/src/lib/audit.ts",
+            "symbol": "LogAuditParams",
+            "line": 4,
+            "reason": "Logging-related symbol: LogAuditParams"
+          },
+          {
+            "file": "/Users/joaovitorzanini/Developer/Claude Code/Nexus AI/Clientes/Matrix Fitness Group/API e MCP Odoo/src/lib/audit.ts",
+            "symbol": "logAudit",
+            "line": 14,
+            "reason": "Logging-related symbol: logAudit"
+          },
+          {
+            "file": "/Users/joaovitorzanini/Developer/Claude Code/Nexus AI/Clientes/Matrix Fitness Group/API e MCP Odoo/src/generated/prisma/internal/prismaNamespace.ts",
+            "symbol": "LogLevel",
+            "line": 11376,
+            "reason": "Logging-related symbol: LogLevel"
+          },
+          {
+            "file": "/Users/joaovitorzanini/Developer/Claude Code/Nexus AI/Clientes/Matrix Fitness Group/API e MCP Odoo/src/generated/prisma/internal/prismaNamespace.ts",
+            "symbol": "LogDefinition",
+            "line": 11377,
+            "reason": "Logging-related symbol: LogDefinition"
+          },
+          {
+            "file": "/Users/joaovitorzanini/Developer/Claude Code/Nexus AI/Clientes/Matrix Fitness Group/API e MCP Odoo/src/generated/prisma/internal/prismaNamespace.ts",
+            "symbol": "LogEvent",
+            "line": 11400,
+            "reason": "Logging-related symbol: LogEvent"
+          },
+          {
+            "file": "/Users/joaovitorzanini/Developer/Claude Code/Nexus AI/Clientes/Matrix Fitness Group/API e MCP Odoo/src/generated/prisma/internal/class.ts",
+            "symbol": "LogOptions",
+            "line": 60,
+            "reason": "Logging-related symbol: LogOptions"
+          },
+          {
+            "file": "/Users/joaovitorzanini/Developer/Claude Code/Nexus AI/Clientes/Matrix Fitness Group/API e MCP Odoo/src/lib/agent/llm/usage-logger.ts",
+            "symbol": "LogUsageArgs",
+            "line": 19,
+            "reason": "Logging-related symbol: LogUsageArgs"
+          },
+          {
+            "file": "/Users/joaovitorzanini/Developer/Claude Code/Nexus AI/Clientes/Matrix Fitness Group/API e MCP Odoo/src/lib/agent/llm/usage-logger.ts",
+            "symbol": "logUsage",
+            "line": 45,
+            "reason": "Logging-related symbol: logUsage"
+          },
+          {
+            "file": "/Users/joaovitorzanini/Developer/Claude Code/Nexus AI/Clientes/Matrix Fitness Group/API e MCP Odoo/src/app/(auth)/login/actions.ts",
+            "symbol": "loginAction",
+            "line": 13,
+            "reason": "Logging-related symbol: loginAction"
+          },
+          {
+            "file": "/Users/joaovitorzanini/Developer/Claude Code/Nexus AI/Clientes/Matrix Fitness Group/API e MCP Odoo/src/components/login/login-content.tsx",
+            "symbol": "LoginContent",
+            "line": 13,
+            "reason": "Logging-related symbol: LoginContent"
+          }
+        ],
+        "description": "Logging and observability"
+      },
+      {
+        "type": "validation",
+        "confidence": 1,
+        "indicators": [
+          {
+            "file": "/Users/joaovitorzanini/Developer/Claude Code/Nexus AI/Clientes/Matrix Fitness Group/API e MCP Odoo/scripts/verify-f5-onda4.ts",
+            "symbol": "check",
+            "line": 85,
+            "reason": "Validation-related symbol: check"
+          },
+          {
+            "file": "/Users/joaovitorzanini/Developer/Claude Code/Nexus AI/Clientes/Matrix Fitness Group/API e MCP Odoo/scripts/verify-f5-onda2.ts",
+            "symbol": "check",
+            "line": 30,
+            "reason": "Validation-related symbol: check"
+          },
+          {
+            "file": "/Users/joaovitorzanini/Developer/Claude Code/Nexus AI/Clientes/Matrix Fitness Group/API e MCP Odoo/src/lib/rate-limit.ts",
+            "symbol": "checkRateLimit",
+            "line": 15,
+            "reason": "Validation-related symbol: checkRateLimit"
+          },
+          {
+            "file": "/Users/joaovitorzanini/Developer/Claude Code/Nexus AI/Clientes/Matrix Fitness Group/API e MCP Odoo/src/lib/rate-limit.ts",
+            "symbol": "checkLoginRateLimit",
+            "line": 53,
+            "reason": "Validation-related symbol: checkLoginRateLimit"
+          },
+          {
+            "file": "/Users/joaovitorzanini/Developer/Claude Code/Nexus AI/Clientes/Matrix Fitness Group/API e MCP Odoo/mcp/middleware/idempotency.ts",
+            "symbol": "checkIdempotency",
+            "line": 40,
+            "reason": "Validation-related symbol: checkIdempotency"
+          },
+          {
+            "file": "/Users/joaovitorzanini/Developer/Claude Code/Nexus AI/Clientes/Matrix Fitness Group/API e MCP Odoo/mcp/lib/rate-limit.ts",
+            "symbol": "checkMcpRateLimit",
+            "line": 42,
+            "reason": "Validation-related symbol: checkMcpRateLimit"
+          },
+          {
+            "file": "/Users/joaovitorzanini/Developer/Claude Code/Nexus AI/Clientes/Matrix Fitness Group/API e MCP Odoo/mcp/lib/rate-limit.ts",
+            "symbol": "checkMcpRateLimitFor",
+            "line": 103,
+            "reason": "Validation-related symbol: checkMcpRateLimitFor"
+          },
+          {
+            "file": "/Users/joaovitorzanini/Developer/Claude Code/Nexus AI/Clientes/Matrix Fitness Group/API e MCP Odoo/mcp/lib/errors.ts",
+            "symbol": "ValidationFailedError",
+            "line": 61,
+            "reason": "Validation-related symbol: ValidationFailedError"
+          },
+          {
+            "file": "/Users/joaovitorzanini/Developer/Claude Code/Nexus AI/Clientes/Matrix Fitness Group/API e MCP Odoo/mcp/dispatcher/check-mode.ts",
+            "symbol": "checkMode",
+            "line": 33,
+            "reason": "Validation-related symbol: checkMode"
+          },
+          {
+            "file": "/Users/joaovitorzanini/Developer/Claude Code/Nexus AI/Clientes/Matrix Fitness Group/API e MCP Odoo/mcp/catalog/registry.ts",
+            "symbol": "assertToolAllowed",
+            "line": 40,
+            "reason": "Validation-related symbol: assertToolAllowed"
+          }
+        ],
+        "description": "Input validation and schema enforcement"
+      },
+      {
+        "type": "error-handling",
+        "confidence": 1,
+        "indicators": [
+          {
+            "file": "/Users/joaovitorzanini/Developer/Claude Code/Nexus AI/Clientes/Matrix Fitness Group/API e MCP Odoo/mcp/server.ts",
+            "symbol": "errorResult",
+            "line": 122,
+            "reason": "Error handling symbol: errorResult"
+          },
+          {
+            "file": "/Users/joaovitorzanini/Developer/Claude Code/Nexus AI/Clientes/Matrix Fitness Group/API e MCP Odoo/mcp/server.ts",
+            "symbol": "handler",
+            "line": 180,
+            "reason": "Error handling symbol: handler"
+          },
+          {
+            "file": "/Users/joaovitorzanini/Developer/Claude Code/Nexus AI/Clientes/Matrix Fitness Group/API e MCP Odoo/mcp/server.test.ts",
+            "symbol": "handler",
+            "line": 282,
+            "reason": "Error handling symbol: handler"
+          },
+          {
+            "file": "/Users/joaovitorzanini/Developer/Claude Code/Nexus AI/Clientes/Matrix Fitness Group/API e MCP Odoo/mcp/server.test.ts",
+            "symbol": "handler",
+            "line": 313,
+            "reason": "Error handling symbol: handler"
+          },
+          {
+            "file": "/Users/joaovitorzanini/Developer/Claude Code/Nexus AI/Clientes/Matrix Fitness Group/API e MCP Odoo/mcp/server.test.ts",
+            "symbol": "handler",
+            "line": 346,
+            "reason": "Error handling symbol: handler"
+          },
+          {
+            "file": "/Users/joaovitorzanini/Developer/Claude Code/Nexus AI/Clientes/Matrix Fitness Group/API e MCP Odoo/src/components/users/user-form-dialog.internals.ts",
+            "symbol": "handleRoleChange",
+            "line": 31,
+            "reason": "Error handling symbol: handleRoleChange"
+          },
+          {
+            "file": "/Users/joaovitorzanini/Developer/Claude Code/Nexus AI/Clientes/Matrix Fitness Group/API e MCP Odoo/src/generated/prisma/internal/prismaNamespace.ts",
+            "symbol": "ErrorFormat",
+            "line": 11154,
+            "reason": "Error handling symbol: ErrorFormat"
+          },
+          {
+            "file": "/Users/joaovitorzanini/Developer/Claude Code/Nexus AI/Clientes/Matrix Fitness Group/API e MCP Odoo/src/lib/agent/llm/providers/test-connection.ts",
+            "symbol": "ErrorKind",
+            "line": 19,
+            "reason": "Error handling symbol: ErrorKind"
+          },
+          {
+            "file": "/Users/joaovitorzanini/Developer/Claude Code/Nexus AI/Clientes/Matrix Fitness Group/API e MCP Odoo/src/components/users/whatsapp-numbers-field.tsx",
+            "symbol": "handleRemove",
+            "line": 102,
+            "reason": "Error handling symbol: handleRemove"
+          },
+          {
+            "file": "/Users/joaovitorzanini/Developer/Claude Code/Nexus AI/Clientes/Matrix Fitness Group/API e MCP Odoo/src/components/users/whatsapp-numbers-field.tsx",
+            "symbol": "handleRemoveDraft",
+            "line": 116,
+            "reason": "Error handling symbol: handleRemoveDraft"
+          }
+        ],
+        "description": "Error handling and exception management"
+      },
+      {
+        "type": "testing",
+        "confidence": 1,
+        "indicators": [
+          {
+            "file": "/Users/joaovitorzanini/Developer/Claude Code/Nexus AI/Clientes/Matrix Fitness Group/API e MCP Odoo/jest.config.ts",
+            "reason": "Test library import: jest"
+          },
+          {
+            "file": "/Users/joaovitorzanini/Developer/Claude Code/Nexus AI/Clientes/Matrix Fitness Group/API e MCP Odoo/src/hooks/use-keyboard-shortcuts.test.ts",
+            "reason": "Test library import: @testing-library/react"
+          },
+          {
+            "file": "/Users/joaovitorzanini/Developer/Claude Code/Nexus AI/Clientes/Matrix Fitness Group/API e MCP Odoo/src/components/users/access-step.test.tsx",
+            "reason": "Test library import: @testing-library/react"
+          },
+          {
+            "file": "/Users/joaovitorzanini/Developer/Claude Code/Nexus AI/Clientes/Matrix Fitness Group/API e MCP Odoo/src/components/reports/report-tour.test.tsx",
+            "reason": "Test library import: @testing-library/react"
+          },
+          {
+            "file": "/Users/joaovitorzanini/Developer/Claude Code/Nexus AI/Clientes/Matrix Fitness Group/API e MCP Odoo/src/components/reports/report-filters.test.tsx",
+            "reason": "Test library import: @testing-library/react"
+          },
+          {
+            "file": "/Users/joaovitorzanini/Developer/Claude Code/Nexus AI/Clientes/Matrix Fitness Group/API e MCP Odoo/src/components/reports/presets-popover.test.tsx",
+            "reason": "Test library import: @testing-library/react"
+          },
+          {
+            "file": "/Users/joaovitorzanini/Developer/Claude Code/Nexus AI/Clientes/Matrix Fitness Group/API e MCP Odoo/src/components/reports/period-bar.test.tsx",
+            "reason": "Test library import: @testing-library/react"
+          },
+          {
+            "file": "/Users/joaovitorzanini/Developer/Claude Code/Nexus AI/Clientes/Matrix Fitness Group/API e MCP Odoo/src/components/reports/custom-range-popover.test.tsx",
+            "reason": "Test library import: @testing-library/react"
+          },
+          {
+            "file": "/Users/joaovitorzanini/Developer/Claude Code/Nexus AI/Clientes/Matrix Fitness Group/API e MCP Odoo/src/components/reports/applied-filters-chips.test.tsx",
+            "reason": "Test library import: @testing-library/react"
+          },
+          {
+            "file": "/Users/joaovitorzanini/Developer/Claude Code/Nexus AI/Clientes/Matrix Fitness Group/API e MCP Odoo/src/components/charts/pie-chart.test.tsx",
+            "reason": "Test library import: @testing-library/react"
+          }
+        ],
+        "description": "Testing infrastructure and test files"
+      }
+    ]
+  },
+  "dependencies": {
+    "mostImported": [
+      {
+        "file": "src/generated/prisma/internal/prismaNamespace.ts",
+        "importedBy": 121
+      },
+      {
+        "file": "src/generated/prisma/client.ts",
+        "importedBy": 20
+      },
+      {
+        "file": "src/worker/fatos/fato-build-state.ts",
+        "importedBy": 14
+      },
+      {
+        "file": "src/worker/fatos/odoo-relational.ts",
+        "importedBy": 13
+      },
+      {
+        "file": "src/worker/odoo/client.ts",
+        "importedBy": 11
+      },
+      {
+        "file": "src/lib/agent/llm/types.ts",
+        "importedBy": 9,
+        "description": "Type definitions"
+      },
+      {
+        "file": "mcp/__tests__/mocks/prisma.ts",
+        "importedBy": 8,
+        "description": "Mock implementations"
+      },
+      {
+        "file": "src/worker/catalog/model-catalog.ts",
+        "importedBy": 6
+      },
+      {
+        "file": "mcp/sync/queue.ts",
+        "importedBy": 6
+      },
+      {
+        "file": "src/lib/agent/llm/catalog.ts",
+        "importedBy": 6
+      },
+      {
+        "file": "src/components/charts/kpi-card.tsx",
+        "importedBy": 6
+      },
+      {
+        "file": "src/lib/reports/types.ts",
+        "importedBy": 5,
+        "description": "Type definitions"
+      },
+      {
+        "file": "src/components/charts/data-table.tsx",
+        "importedBy": 5
+      },
+      {
+        "file": "src/components/charts/chart-states.tsx",
+        "importedBy": 5
+      },
+      {
+        "file": "src/worker/odoo/field-selection.ts",
+        "importedBy": 4
+      },
+      {
+        "file": "mcp/__tests__/mocks/redis.ts",
+        "importedBy": 4,
+        "description": "Mock implementations"
+      },
+      {
+        "file": "src/components/charts/colors.ts",
+        "importedBy": 4
+      },
+      {
+        "file": "mcp/auth/api-key-context.ts",
+        "importedBy": 4
+      },
+      {
+        "file": "src/components/reports/filter-controls/filter-select.tsx",
+        "importedBy": 4
+      },
+      {
+        "file": "src/worker/sync/sync-state.ts",
+        "importedBy": 3
+      }
+    ]
+  },
+  "stats": {
+    "totalFiles": 728,
+    "totalSymbols": 9955,
+    "exportedSymbols": 8896,
+    "analysisTimeMs": 304
+  },
+  "keyFiles": [
+    {
+      "path": "mcp/catalog/index.ts",
+      "description": "Module exports",
+      "category": "entrypoint"
+    },
+    {
+      "path": "mcp/health/index.ts",
+      "description": "Module exports",
+      "category": "entrypoint"
+    },
+    {
+      "path": "mcp/index.ts",
+      "description": "mcp module exports",
+      "category": "entrypoint"
+    },
+    {
+      "path": "mcp/server.ts",
+      "description": "MCP server implementation",
+      "category": "entrypoint"
+    },
+    {
+      "path": "mcp/tools/cadastros/index.ts",
+      "description": "Module exports",
+      "category": "entrypoint"
+    },
+    {
+      "path": "mcp/tools/caminho3/index.ts",
+      "description": "Module exports",
+      "category": "entrypoint"
+    },
+    {
+      "path": "mcp/tools/comercial/index.ts",
+      "description": "Module exports",
+      "category": "entrypoint"
+    },
+    {
+      "path": "mcp/tools/contabil/index.ts",
+      "description": "Module exports",
+      "category": "entrypoint"
+    },
+    {
+      "path": "mcp/tools/crm/index.ts",
+      "description": "Module exports",
+      "category": "entrypoint"
+    },
+    {
+      "path": "mcp/tools/dominios-vazios/index.ts",
+      "description": "Module exports",
+      "category": "entrypoint"
+    },
+    {
+      "path": "mcp/tools/estoque/index.ts",
+      "description": "Module exports",
+      "category": "entrypoint"
+    },
+    {
+      "path": "mcp/tools/financeiro/index.ts",
+      "description": "Module exports",
+      "category": "entrypoint"
+    },
+    {
+      "path": "mcp/tools/fiscal/index.ts",
+      "description": "Module exports",
+      "category": "entrypoint"
+    },
+    {
+      "path": "src/components/icons/providers/index.ts",
+      "description": "providers module exports",
+      "category": "entrypoint"
+    },
+    {
+      "path": "src/content/mcp-docs/index.ts",
+      "description": "Module exports",
+      "category": "entrypoint"
+    },
+    {
+      "path": "src/worker/index.ts",
+      "description": "Module exports",
+      "category": "entrypoint"
+    },
+    {
+      "path": "eslint.config.mjs",
+      "description": "Tool configuration",
+      "category": "config"
+    },
+    {
+      "path": "jest.config.ts",
+      "description": "Tool configuration",
+      "category": "config"
+    },
+    {
+      "path": "mcp/tsconfig.json",
+      "description": "TypeScript configuration",
+      "category": "config"
+    },
+    {
+      "path": "next.config.ts",
+      "description": "Tool configuration",
+      "category": "config"
+    },
+    {
+      "path": "package.json",
+      "description": "Package manifest",
+      "category": "config"
+    },
+    {
+      "path": "postcss.config.mjs",
+      "description": "Tool configuration",
+      "category": "config"
+    },
+    {
+      "path": "prisma.config.ts",
+      "description": "Tool configuration",
+      "category": "config"
+    },
+    {
+      "path": "src/auth.config.ts",
+      "description": "Tool configuration",
+      "category": "config"
+    },
+    {
+      "path": "tsconfig.json",
+      "description": "TypeScript configuration",
+      "category": "config"
+    },
+    {
+      "path": "mcp/catalog/types.ts",
+      "description": "Type definitions",
+      "category": "types"
+    },
+    {
+      "path": "src/lib/actions/agent-config-types.ts",
+      "description": "Type definitions",
+      "category": "types"
+    },
+    {
+      "path": "src/lib/actions/kb-types.ts",
+      "description": "Type definitions",
+      "category": "types"
+    },
+    {
+      "path": "src/lib/actions/mcp-api-keys-types.ts",
+      "description": "Type definitions",
+      "category": "types"
+    },
+    {
+      "path": "src/lib/actions/playground-types.ts",
+      "description": "Type definitions",
+      "category": "types"
+    }
+  ],
+  "navigation": {
+    "tests": "**/__tests__/**/*.ts",
+    "config": [
+      "package.json",
+      "tsconfig.json",
+      "jest.config.ts",
+      "next.config.ts"
+    ],
+    "types": [
+      "src/types/pdf-parse.d.ts",
+      "src/types/next-auth.d.ts",
+      "mcp/catalog/types.ts",
+      "src/lib/reports/types.ts",
+      "src/lib/agent/llm/types.ts"
+    ],
+    "mainLogic": [
+      "src/lib"
+    ]
+  }
+}

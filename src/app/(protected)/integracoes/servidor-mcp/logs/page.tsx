@@ -40,20 +40,20 @@ export default async function LogsPage() {
       <Tabs defaultValue="logs" className="mt-6">
         <TabsList>
           <TabsTrigger
-            value="visao-geral"
+            value="visao-geral" nativeButton={false}
             render={<Link href="/integracoes/servidor-mcp" />}
           >
             Visão Geral
           </TabsTrigger>
           <TabsTrigger
-            value="chaves"
+            value="chaves" nativeButton={false}
             render={<Link href="/integracoes/servidor-mcp/chaves" />}
           >
             Chaves de Acesso
           </TabsTrigger>
           <TabsTrigger value="logs">Logs</TabsTrigger>
           <TabsTrigger
-            value="docs"
+            value="docs" nativeButton={false}
             render={<Link href="/integracoes/servidor-mcp/docs" />}
           >
             Documentação

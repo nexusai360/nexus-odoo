@@ -32,16 +32,16 @@ export default async function ChavesPage() {
       <Tabs defaultValue="chaves" className="mt-6">
         <TabsList>
           <TabsTrigger
-            value="visao-geral"
+            value="visao-geral" nativeButton={false}
             render={<Link href="/integracoes/servidor-mcp" />}
           >
             Visão Geral
           </TabsTrigger>
           <TabsTrigger value="chaves">Chaves de Acesso</TabsTrigger>
-          <TabsTrigger value="logs" render={<Link href="/integracoes/servidor-mcp/logs" />}>
+          <TabsTrigger value="logs" nativeButton={false} render={<Link href="/integracoes/servidor-mcp/logs" />}>
             Logs
           </TabsTrigger>
-          <TabsTrigger value="docs" render={<Link href="/integracoes/servidor-mcp/docs" />}>
+          <TabsTrigger value="docs" nativeButton={false} render={<Link href="/integracoes/servidor-mcp/docs" />}>
             Documentação
           </TabsTrigger>
         </TabsList>

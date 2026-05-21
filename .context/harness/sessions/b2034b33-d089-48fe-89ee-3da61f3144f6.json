@@ -1,0 +1,18 @@
+{
+  "id": "b2034b33-d089-48fe-89ee-3da61f3144f6",
+  "name": "mcp-activity",
+  "status": "active",
+  "repoPath": "/Users/joaovitorzanini/Developer/Claude Code/Nexus AI/Clientes/Matrix Fitness Group/API e MCP Odoo",
+  "createdAt": "2026-05-21T01:48:12.597Z",
+  "updatedAt": "2026-05-21T02:05:46.041Z",
+  "startedAt": "2026-05-21T01:48:12.597Z",
+  "traceCount": 6,
+  "artifactCount": 0,
+  "checkpointCount": 0,
+  "checkpoints": [],
+  "metadata": {
+    "transport": "mcp",
+    "purpose": "tool-audit"
+  },
+  "lastTraceAt": "2026-05-21T02:05:46.041Z"
+}

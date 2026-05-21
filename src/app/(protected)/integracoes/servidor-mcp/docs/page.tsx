@@ -39,19 +39,19 @@ export default async function DocsPage() {
       <Tabs defaultValue="docs" className="mt-6">
         <TabsList>
           <TabsTrigger
-            value="visao-geral"
+            value="visao-geral" nativeButton={false}
             render={<Link href="/integracoes/servidor-mcp" />}
           >
             Visão Geral
           </TabsTrigger>
           <TabsTrigger
-            value="chaves"
+            value="chaves" nativeButton={false}
             render={<Link href="/integracoes/servidor-mcp/chaves" />}
           >
             Chaves de Acesso
           </TabsTrigger>
           <TabsTrigger
-            value="logs"
+            value="logs" nativeButton={false}
             render={<Link href="/integracoes/servidor-mcp/logs" />}
           >
             Logs
