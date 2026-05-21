@@ -38,8 +38,12 @@ export default async function ChavesPage() {
             Visão Geral
           </TabsTrigger>
           <TabsTrigger value="chaves">Chaves de Acesso</TabsTrigger>
-          <TabsTrigger value="logs" disabled>Logs</TabsTrigger>
-          <TabsTrigger value="docs" disabled>Documentação</TabsTrigger>
+          <TabsTrigger value="logs" render={<Link href="/integracoes/servidor-mcp/logs" />}>
+            Logs
+          </TabsTrigger>
+          <TabsTrigger value="docs" render={<Link href="/integracoes/servidor-mcp/docs" />}>
+            Documentação
+          </TabsTrigger>
         </TabsList>
 
         <TabsContent value="chaves" className="mt-6">
