@@ -41,6 +41,7 @@ import {
   toggleExternalMcpServer,
   deleteExternalMcpServer,
   testExternalMcpEndpoint,
+  testExternalMcpServer,
 } from "@/lib/actions/external-mcp-servers";
 import type { ExternalMcpServerListItem } from "@/lib/actions/external-mcp-servers-types";
 
@@ -401,6 +402,8 @@ function McpWizardDialog({
           authToken: authToken.trim() || null,
         });
         if (r.success) {
+          // Persiste o status de conexão (o teste do wizard foi em campos crus).
+          await testExternalMcpServer(r.data.id);
           onDone();
           toast.success("Servidor MCP conectado");
         } else {
@@ -417,6 +420,7 @@ function McpWizardDialog({
           ...(authToken.trim() ? { authToken: authToken.trim() } : {}),
         });
         if (r.success) {
+          await testExternalMcpServer(server.id);
           onDone();
           toast.success("Servidor MCP atualizado");
         } else {

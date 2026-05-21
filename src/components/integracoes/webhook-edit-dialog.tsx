@@ -13,9 +13,11 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { SecretRevealStep } from "@/components/ui/secret-reveal-step";
 import { cn } from "@/lib/utils";
 import {
   updateWebhook,
+  rotateWebhookSecret,
   type WebhookListItem,
   type WebhookMethod,
 } from "@/lib/actions/webhooks";
@@ -28,21 +30,20 @@ interface Props {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onSaved: () => void;
-  /** Dispara a rotação de secret do webhook (revelado pelo banner da tela). */
-  onRotate: (id: string) => void;
 }
 
 /**
  * Modal de edição de webhook: altera nome, métodos e caminho/URL, com checagem
- * de caminho único na Server Action. A direção não é editável. Permite também
- * rotacionar o secret.
+ * de caminho único na Server Action. A direção não é editável. A rotação de
+ * secret revela o novo segredo dentro do próprio modal.
  */
-export function WebhookEditDialog({ webhook, open, onOpenChange, onSaved, onRotate }: Props) {
+export function WebhookEditDialog({ webhook, open, onOpenChange, onSaved }: Props) {
   const [isPending, startTransition] = useTransition();
   const [name, setName] = useState("");
   const [path, setPath] = useState("");
   const [targetUrl, setTargetUrl] = useState("");
   const [methods, setMethods] = useState<WebhookMethod[]>([]);
+  const [revealedSecret, setRevealedSecret] = useState<string | null>(null);
   const [hydratedFor, setHydratedFor] = useState<string | null>(null);
 
   // Hidrata ao abrir, uma vez por webhook alvo.
@@ -51,6 +52,7 @@ export function WebhookEditDialog({ webhook, open, onOpenChange, onSaved, onRota
     setPath(webhook.path ?? "");
     setTargetUrl(webhook.targetUrl ?? "");
     setMethods(webhook.methods as WebhookMethod[]);
+    setRevealedSecret(null);
     setHydratedFor(webhook.id);
   }
   if (!open && hydratedFor !== null) {
@@ -59,6 +61,18 @@ export function WebhookEditDialog({ webhook, open, onOpenChange, onSaved, onRota
 
   if (!webhook) return null;
   const isInbound = webhook.direction === "inbound";
+
+  function handleRotate() {
+    if (!webhook) return;
+    startTransition(async () => {
+      const r = await rotateWebhookSecret(webhook.id);
+      if (r.success) {
+        setRevealedSecret(r.data.secretPlain);
+      } else {
+        toast.error(r.error ?? "Erro ao rotacionar secret");
+      }
+    });
+  }
 
   function toggleMethod(m: WebhookMethod) {
     setMethods((prev) => (prev.includes(m) ? prev.filter((x) => x !== m) : [...prev, m]));
@@ -99,6 +113,15 @@ export function WebhookEditDialog({ webhook, open, onOpenChange, onSaved, onRota
           </DialogDescription>
         </DialogHeader>
 
+        {revealedSecret ? (
+          <div className="space-y-4">
+            <SecretRevealStep
+              secret={revealedSecret}
+              label="Secret do webhook"
+              onAcknowledge={() => setRevealedSecret(null)}
+            />
+          </div>
+        ) : (
         <div className="space-y-4">
           <div className="space-y-1.5">
             <Label htmlFor="wh-edit-name">Nome</Label>
@@ -177,7 +200,7 @@ export function WebhookEditDialog({ webhook, open, onOpenChange, onSaved, onRota
                 size="sm"
                 className="shrink-0 gap-1.5"
                 disabled={isPending}
-                onClick={() => onRotate(webhook.id)}
+                onClick={handleRotate}
               >
                 <RotateCcw className="h-3.5 w-3.5" />
                 Rotacionar
@@ -185,20 +208,34 @@ export function WebhookEditDialog({ webhook, open, onOpenChange, onSaved, onRota
             </div>
           </div>
         </div>
+        )}
 
         <div className="flex items-center justify-end gap-2 border-t border-border/60 pt-4">
-          <Button
-            type="button"
-            variant="ghost"
-            onClick={() => onOpenChange(false)}
-            disabled={isPending}
-          >
-            Cancelar
-          </Button>
-          <Button type="button" onClick={handleSave} disabled={isPending || !valid} className="gap-1.5">
-            {isPending && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
-            Salvar alterações
-          </Button>
+          {revealedSecret ? (
+            <Button type="button" onClick={() => onOpenChange(false)}>
+              Concluir
+            </Button>
+          ) : (
+            <>
+              <Button
+                type="button"
+                variant="ghost"
+                onClick={() => onOpenChange(false)}
+                disabled={isPending}
+              >
+                Cancelar
+              </Button>
+              <Button
+                type="button"
+                onClick={handleSave}
+                disabled={isPending || !valid}
+                className="gap-1.5"
+              >
+                {isPending && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
+                Salvar alterações
+              </Button>
+            </>
+          )}
         </div>
       </DialogContent>
     </Dialog>

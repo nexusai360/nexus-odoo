@@ -4,14 +4,9 @@ import { useState, useTransition } from "react";
 import {
   ArrowDownToLine,
   ArrowUpFromLine,
-  Copy,
-  Eye,
-  EyeOff,
   Pencil,
   Plus,
-  RefreshCw,
   Trash2,
-  XCircle,
 } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
@@ -24,7 +19,6 @@ import { WebhookEditDialog } from "@/components/integracoes/webhook-edit-dialog"
 import {
   deleteWebhook,
   listWebhooks,
-  rotateWebhookSecret,
   toggleWebhook,
   type WebhookListItem,
 } from "@/lib/actions/webhooks";
@@ -66,12 +60,6 @@ export function WebhooksContent({ initial, inboundBaseUrl }: Props) {
   // Edição de webhook
   const [editTarget, setEditTarget] = useState<WebhookListItem | null>(null);
 
-  // Revelação de secret após rotação (a criação revela pelo próprio wizard).
-  const [revealedSecret, setRevealedSecret] = useState<{ id: string; secret: string } | null>(
-    null,
-  );
-  const [showRevealedSecret, setShowRevealedSecret] = useState(false);
-
   async function refresh() {
     const result = await listWebhooks();
     if (result.success) setWebhooks(result.data);
@@ -88,25 +76,11 @@ export function WebhooksContent({ initial, inboundBaseUrl }: Props) {
     });
   }
 
-  function handleRotate(id: string) {
-    startTransition(async () => {
-      const result = await rotateWebhookSecret(id);
-      if (result.success) {
-        setRevealedSecret({ id, secret: result.data.secretPlain });
-        setShowRevealedSecret(true);
-        toast.success("Secret rotacionado, copie o novo secret agora");
-      } else {
-        toast.error(result.error ?? "Erro ao rotacionar secret");
-      }
-    });
-  }
-
   function handleDelete(id: string) {
     startTransition(async () => {
       const result = await deleteWebhook(id);
       if (result.success) {
         await refresh();
-        if (revealedSecret?.id === id) setRevealedSecret(null);
         toast.success("Webhook removido");
       } else {
         toast.error(result.error ?? "Erro ao remover webhook");
@@ -114,61 +88,8 @@ export function WebhooksContent({ initial, inboundBaseUrl }: Props) {
     });
   }
 
-  function copySecret(secret: string) {
-    navigator.clipboard.writeText(secret).then(() => {
-      toast.success("Secret copiado");
-    });
-  }
-
   return (
     <div className="space-y-6 max-w-3xl">
-      {/* Banner de secret revelado (rotação) */}
-      {revealedSecret && (
-        <div className="rounded-xl border border-amber-500/40 bg-amber-500/5 p-4 space-y-2">
-          <p className="text-sm font-semibold text-amber-700 dark:text-amber-400">
-            Secret gerado, copie agora
-          </p>
-          <p className="text-xs text-muted-foreground">
-            Este secret não será exibido novamente após você fechar este aviso.
-          </p>
-          <div className="flex items-center gap-2 mt-2">
-            <code className="flex-1 rounded-lg bg-muted px-3 py-2 text-sm font-mono break-all">
-              {showRevealedSecret
-                ? revealedSecret.secret
-                : "•".repeat(Math.min(revealedSecret.secret.length, 24))}
-            </code>
-            <Button
-              variant="outline"
-              size="sm"
-              aria-label={showRevealedSecret ? "Ocultar secret" : "Mostrar secret"}
-              onClick={() => setShowRevealedSecret((v) => !v)}
-            >
-              {showRevealedSecret ? (
-                <EyeOff className="h-3.5 w-3.5" />
-              ) : (
-                <Eye className="h-3.5 w-3.5" />
-              )}
-            </Button>
-            <Button
-              variant="outline"
-              size="sm"
-              aria-label="Copiar secret"
-              onClick={() => copySecret(revealedSecret.secret)}
-            >
-              <Copy className="h-3.5 w-3.5" />
-            </Button>
-            <Button
-              variant="ghost"
-              size="sm"
-              aria-label="Fechar aviso"
-              onClick={() => setRevealedSecret(null)}
-            >
-              <XCircle className="h-3.5 w-3.5" />
-            </Button>
-          </div>
-        </div>
-      )}
-
       {/* Cabeçalho com botão de criação */}
       <div data-tour="webhooks-novo" className="flex items-center justify-between">
         <p className="text-sm text-muted-foreground">
@@ -238,7 +159,6 @@ export function WebhooksContent({ initial, inboundBaseUrl }: Props) {
             await refresh();
           });
         }}
-        onRotate={handleRotate}
       />
     </div>
   );
@@ -362,6 +282,3 @@ function WebhookRow({ webhook, isPending, onToggle, onEdit, onDelete }: WebhookR
     </div>
   );
 }
-
-// Ícone de refresh para uso externo
-export { RefreshCw };
