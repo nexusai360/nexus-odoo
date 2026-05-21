@@ -4,7 +4,6 @@ import { useState, useCallback, useEffect, useRef, ReactNode } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Badge } from "@/components/ui/badge";
 import {
-  Code2,
   Copy,
   Check,
   ChevronDown,
@@ -598,7 +597,7 @@ const concepts = [
     title: "RBAC em 7 camadas",
     icon: <ShieldCheck className="h-4 w-4 text-amber-500" />,
     content:
-      "O controle de acesso é estrutural, não depende de prompt: catálogo filtrado, validação no handler, escopo de tenant injetado, role Postgres com grants mínimos, RLS opcional, validação Zod e auditoria com rate limit.",
+      "RBAC (controle de acesso por função) em 7 camadas estruturais, que não dependem de prompt: catálogo filtrado, validação no handler, escopo de tenant injetado, papel do Postgres com permissões mínimas, isolamento por linha (RLS) opcional, validação de schema (Zod) e auditoria com limite de uso.",
   },
   {
     title: "Cache e frescor do dado",
@@ -656,8 +655,9 @@ const errorCodes = [
 function scrollToSection(id: string) {
   const el = document.getElementById(id);
   if (!el) return;
-  const y = el.getBoundingClientRect().top + window.scrollY - 80;
-  window.scrollTo({ top: y, behavior: "smooth" });
+  // O scroll real acontece no <main> do layout, não na window; scrollIntoView
+  // rola o container correto. O deslocamento vem do scroll-mt das seções.
+  el.scrollIntoView({ behavior: "smooth", block: "start" });
 }
 
 // ---------------------------------------------------------------------------
@@ -743,7 +743,7 @@ export function McpDocsContent({ catalog, mcpUrl }: Props) {
       {/* Navegação lateral, oculta em telas menores */}
       <div className="hidden lg:block w-56 shrink-0">
         <div className="sticky top-24 space-y-2">
-          <p className="px-3 text-[10px] font-semibold uppercase tracking-widest text-muted-foreground mb-3">
+          <p className="px-3 text-[11px] font-semibold uppercase tracking-widest text-muted-foreground mb-3">
             Navegação
           </p>
           <SideNav activeSection={activeSection} />
@@ -755,21 +755,18 @@ export function McpDocsContent({ catalog, mcpUrl }: Props) {
         variants={containerVariants}
         initial="hidden"
         animate="visible"
-        className="min-w-0 flex-1 space-y-12 pb-16"
+        className="min-w-0 flex-1 space-y-12 pb-[60vh]"
       >
         {/* Hero */}
         <motion.div variants={itemVariants} id="intro" className="space-y-6 scroll-mt-24">
-          <div className="flex items-center gap-4">
-            <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-violet-600/10 border border-violet-500/20">
-              <Code2 className="h-6 w-6 text-violet-500" />
-            </div>
-            <div>
-              <h1 className="text-3xl font-bold tracking-tight text-foreground">Servidor MCP</h1>
-              <p className="text-sm text-muted-foreground mt-1">
-                Endpoint semântico para agentes de IA, com {totalTools} tools de leitura e escrita
-                sobre os dados do Odoo
-              </p>
-            </div>
+          <div>
+            <h1 className="text-base font-semibold tracking-tight text-foreground">
+              Servidor MCP, Documentação
+            </h1>
+            <p className="text-sm text-muted-foreground mt-1">
+              Endpoint semântico para agentes de IA, com {totalTools} tools de leitura e escrita
+              sobre os dados do Odoo
+            </p>
           </div>
 
           <div className="flex flex-wrap items-center gap-3">
@@ -789,26 +786,6 @@ export function McpDocsContent({ catalog, mcpUrl }: Props) {
             >
               Streamable HTTP
             </Badge>
-          </div>
-
-          <div className="flex flex-wrap gap-2">
-            {[
-              { label: "Autenticação", id: "auth", icon: <Key className="h-3 w-3" /> },
-              { label: "Conceitos", id: "concepts", icon: <ListTree className="h-3 w-3" /> },
-              { label: "Fluxo", id: "flow", icon: <Zap className="h-3 w-3" /> },
-              { label: "Tools", id: "tools", icon: <Layers className="h-3 w-3" /> },
-              { label: "Erros", id: "errors", icon: <AlertTriangle className="h-3 w-3" /> },
-              { label: "Rate limits", id: "rate-limits", icon: <Gauge className="h-3 w-3" /> },
-            ].map((link) => (
-              <button
-                key={link.id}
-                onClick={() => scrollToSection(link.id)}
-                className="inline-flex items-center gap-1.5 rounded-lg border border-border bg-card px-3 py-1.5 text-xs font-medium text-muted-foreground transition-colors hover:border-violet-500/30 hover:text-violet-500"
-              >
-                {link.icon}
-                {link.label}
-              </button>
-            ))}
           </div>
 
           <p className="text-sm text-muted-foreground leading-relaxed">
@@ -895,7 +872,7 @@ export function McpDocsContent({ catalog, mcpUrl }: Props) {
                   {c.icon}
                   <h3 className="text-sm font-semibold text-foreground">{c.title}</h3>
                 </div>
-                <p className="text-xs text-muted-foreground leading-relaxed">{c.content}</p>
+                <p className="text-[13px] text-muted-foreground leading-relaxed">{c.content}</p>
               </div>
             ))}
           </div>
@@ -938,7 +915,7 @@ export function McpDocsContent({ catalog, mcpUrl }: Props) {
                   </span>
                   <div>
                     <p className="text-sm font-medium text-foreground">{step.t}</p>
-                    <p className="text-xs text-muted-foreground">{step.d}</p>
+                    <p className="text-[13px] text-muted-foreground">{step.d}</p>
                   </div>
                 </li>
               ))}
