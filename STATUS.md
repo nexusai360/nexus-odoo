@@ -22,16 +22,17 @@
 
 **Branch ativa: `feat/f4-onda2-mcp-escrita`**. A `main` tem F0+F1+F2+F3+F3.5+F4+F5.
 
-> ## ⚠️ RETOMADA, F4 ONDA 2: RODADA 3 DE CORREÇÕES CONCLUÍDA
-> A F4 Onda 2 está na branch `feat/f4-onda2-mcp-escrita` (PR #10). Onda 0 + Rodadas 1, 2 e 3
-> de correções **concluídas**. A rodada 3 entregou: ajuste do sidebar, Logs úteis, URL
-> completa do MCP, Documentação clara com passo a passo, modal de Chaves refeito (2 colunas,
-> 4 ações em pt-br, origens com chips), catálogo de tools via snapshot in-app
-> (`npm run gen:mcp-catalog`), Visão Geral mais larga, mini-tour em todas as abas do Servidor
-> MCP, e Plugar MCPs + Webhooks com tour que ensina a criar. Detalhe no plano
-> `docs/superpowers/plans/2026-05-21-f4-onda2-correcoes-r3.md` (seção Progresso).
+> ## ⚠️ RETOMADA, F4 ONDA 2: RODADA 4 DE CORREÇÕES CONCLUÍDA
+> A F4 Onda 2 está na branch `feat/f4-onda2-mcp-escrita` (PR #10). Onda 0 + Rodadas 1, 2, 3
+> e 4 de correções **concluídas**. A rodada 4 (plano `docs/superpowers/plans/2026-05-21-
+> f4-onda2-correcoes-r4.md`) entregou: trava de rolagem da Documentação; write tool de CRM
+> registrada no catálogo (aparecia "0 de escrita"); nota explicativa nos Logs; Chaves de
+> Acesso refeita como **wizard em 4 etapas** com seletor de acessos por módulo estilo
+> roteador de eventos e ações de escrita derivadas das write tools reais; calendário com
+> navegação por mês/ano; tour colado ao título e mais completo; Webhooks usando o
+> `WebhookWizard` (métodos HTTP, direção Receber/Enviar); polimento do Plugar MCPs.
 > `tsc`/`jest` (1526)/`next build` verdes na branch. `eslint` tem 83 erros pré-existentes
-> do MCP (Bloco P, não da r3) registrados no RADAR R7.
+> do MCP (Bloco P) registrados no RADAR R7; nenhum arquivo da r4 tem erro de lint.
 >
 > **Pendências herdadas:** teste E2E de escrita real contra `grupojht.teste.tauga.online`
 > nunca rodou (faltam credenciais `ODOO_WRITE_*`); inspeção visual pixel a pixel.

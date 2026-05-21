@@ -45,7 +45,7 @@ export interface WebhookWizardProps {
 type Step = 1 | 2 | 3
 
 /**
- * Wizard de criação de webhook — componente compartilhado entre a tela de
+ * Wizard de criação de webhook, componente compartilhado entre a tela de
  * Webhooks e o passo embutido do wizard de instância WhatsApp (SPEC §4.5).
  *
  * Passo 1: direção (Entrada/Saída). Passo 2: configuração (path ou targetUrl
@@ -106,7 +106,7 @@ export function WebhookWizard({
     <div className={cn("space-y-5", !embedded && "rounded-xl border p-6")}>
       <StepIndicator steps={["Tipo", "Configuração", "Conclusão"]} current={step} />
 
-      {/* Passo 1 — Direção */}
+      {/* Passo 1, Direção */}
       {step === 1 && (
         <div className="space-y-4">
           <div className="space-y-1">
@@ -154,7 +154,7 @@ export function WebhookWizard({
         </div>
       )}
 
-      {/* Passo 2 — Configuração */}
+      {/* Passo 2, Configuração */}
       {step === 2 && direction && (
         <div className="space-y-4">
           <div className="space-y-1.5">
@@ -244,13 +244,13 @@ export function WebhookWizard({
         </div>
       )}
 
-      {/* Passo 3 — Secret */}
+      {/* Passo 3, Secret */}
       {step === 3 && created && (
         <div className="space-y-4">
           <div className="space-y-1">
             <h3 className="text-sm font-medium">Webhook criado</h3>
             <p className="text-xs text-muted-foreground">
-              Guarde o secret abaixo — ele é usado para validar as requisições.
+              Guarde o secret abaixo, ele é usado para validar as requisições.
             </p>
           </div>
           <SecretRevealStep

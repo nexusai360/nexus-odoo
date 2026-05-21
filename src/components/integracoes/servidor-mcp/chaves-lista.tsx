@@ -17,7 +17,6 @@ import {
   RefreshCw,
   RotateCcw,
   ShieldOff,
-  Trash2,
   X,
   XCircle,
 } from "lucide-react";
@@ -361,7 +360,7 @@ export function ChavesLista({ initial, moduleWriteActions }: Props) {
 }
 
 // ──────────────────────────────────────────────────────────────────────────────
-// ChaveRow — card compacto
+// ChaveRow, card compacto
 // ──────────────────────────────────────────────────────────────────────────────
 
 interface ChaveRowProps {
@@ -543,7 +542,7 @@ function ChaveRow({
 }
 
 // ──────────────────────────────────────────────────────────────────────────────
-// ModuleAccessPicker — seletor de acessos por módulo, estilo roteador de eventos
+// ModuleAccessPicker, seletor de acessos por módulo, estilo roteador de eventos
 // ──────────────────────────────────────────────────────────────────────────────
 
 const LEVEL_OPTIONS = [
@@ -744,7 +743,7 @@ function ModuleAccessPicker({
 }
 
 // ──────────────────────────────────────────────────────────────────────────────
-// ChaveDialog — wizard de criar e editar
+// ChaveDialog, wizard de criar e editar
 // ──────────────────────────────────────────────────────────────────────────────
 
 type ChaveDialogProps =
@@ -903,7 +902,7 @@ function ChaveDialog(props: ChaveDialogProps) {
           <StepIndicator steps={WIZARD_STEPS} current={step} />
 
           <div className="min-h-[300px]">
-            {/* Passo 1 — Identificação */}
+            {/* Passo 1, Identificação */}
             {step === 1 && (
               <div className="space-y-4">
                 <div className="space-y-1.5">
@@ -950,7 +949,7 @@ function ChaveDialog(props: ChaveDialogProps) {
               </div>
             )}
 
-            {/* Passo 2 — Acessos por módulo */}
+            {/* Passo 2, Acessos por módulo */}
             {step === 2 && (
               <ModuleAccessPicker
                 value={access}
@@ -959,7 +958,7 @@ function ChaveDialog(props: ChaveDialogProps) {
               />
             )}
 
-            {/* Passo 3 — Limites e validade */}
+            {/* Passo 3, Limites e validade */}
             {step === 3 && (
               <div className="space-y-4">
                 <div className="space-y-1.5">
@@ -1005,7 +1004,7 @@ function ChaveDialog(props: ChaveDialogProps) {
               </div>
             )}
 
-            {/* Passo 4 — Origens e revisão */}
+            {/* Passo 4, Origens e revisão */}
             {step === 4 && (
               <div className="space-y-4">
                 <div className="space-y-2">
@@ -1071,7 +1070,7 @@ function ChaveDialog(props: ChaveDialogProps) {
                   </p>
                   <dl className="grid grid-cols-2 gap-x-4 gap-y-1 text-[13px]">
                     <dt className="text-muted-foreground">Rótulo</dt>
-                    <dd className="text-foreground">{label.trim() || "—"}</dd>
+                    <dd className="text-foreground">{label.trim() || "Sem rótulo"}</dd>
                     <dt className="text-muted-foreground">Módulos com acesso</dt>
                     <dd className="text-foreground">{modulesWithAccess}</dd>
                     <dt className="text-muted-foreground">Limite por minuto</dt>

@@ -28,7 +28,7 @@ do Plugar MCPs.
 - **Webhook:** o model `WhatsappWebhook` já tem `methods String[]`, `path`, `targetUrl`,
   `direction`. A Server Action `createWebhook` já aceita `methods`. Já existe um
   `WebhookWizard` completo (3 passos, seletor de métodos HTTP, cards de direção) em
-  `src/components/integrations/webhook-wizard.tsx` — só não está plugado: `webhooks-content.tsx`
+  `src/components/integrations/webhook-wizard.tsx`, só não está plugado: `webhooks-content.tsx`
   usa um form cru que manda `methods: ["POST"]` fixo.
 - **Calendário:** `src/components/ui/calendar.tsx` (react-day-picker v9) aceita
   `captionLayout` e renderiza dropdowns de mês/ano. `DateField` hoje não passa isso.
@@ -38,7 +38,7 @@ do Plugar MCPs.
 
 ---
 
-## ÁREA A — Documentação MCP: travar a rolagem no fim
+## ÁREA A, Documentação MCP: travar a rolagem no fim
 
 > Hoje o `pb-[60vh]` (adicionado na r3 para o scrollspy) deixa rolar muito além da
 > última seção. O usuário quer: ao clicar em "Rate limits" no menu, a tela posiciona
@@ -47,7 +47,7 @@ do Plugar MCPs.
 ## Task A1: Trocar o padding final por um espaço mínimo
 
 - [ ] Em `mcp-docs-content.tsx`, no `motion.div` do conteúdo, trocar `pb-[60vh]` por um
-  padding pequeno (`pb-16`) — suficiente para respiro, sem criar área morta de rolagem.
+  padding pequeno (`pb-16`), suficiente para respiro, sem criar área morta de rolagem.
 - [ ] `tsc` verde.
 
 ## Task A2: Scrollspy marca a última seção ao chegar ao fim
@@ -66,7 +66,7 @@ do Plugar MCPs.
 
 ---
 
-## ÁREA B — Tools de escrita no catálogo
+## ÁREA B, Tools de escrita no catálogo
 
 ## Task B1: Registrar a write tool de CRM no catálogo
 
@@ -98,7 +98,7 @@ do Plugar MCPs.
 
 ---
 
-## ÁREA C — Logs: deixar claro o que são
+## ÁREA C, Logs: deixar claro o que são
 
 > O usuário não entendeu de que são os logs e estranhou logs sem chave de acesso.
 
@@ -106,7 +106,7 @@ do Plugar MCPs.
 
 - [ ] Consultar `ui-ux-pro-max`. Adicionar no topo de `logs-timeline.tsx` (acima da
   `FilterBar`) um card/nota explicativa curta: estes são os registros de auditoria de
-  **toda chamada ao servidor MCP** — tanto as do Agente Nex interno (autenticação por
+  **toda chamada ao servidor MCP**, tanto as do Agente Nex interno (autenticação por
   token de serviço, sem chave de API, por isso a coluna de chave fica vazia) quanto as de
   integrações externas (autenticadas por chave de API). Cada linha = uma chamada de tool.
 - [ ] Explicar também, em uma linha, que a lista reflete chamadas reais: se não houve
@@ -115,7 +115,7 @@ do Plugar MCPs.
 
 ---
 
-## ÁREA D — Chaves de Acesso: redesenho da criação e da lista
+## ÁREA D, Chaves de Acesso: redesenho da criação e da lista
 
 > O modal atual é largo mas pouco usável. Refazer a criação como **wizard em etapas**
 > (padrão dos prints da NFE: stepper numerado, uma etapa por vez, Voltar/Próximo), com um
@@ -161,7 +161,7 @@ do Plugar MCPs.
   - No topo da lista, um contador geral ("X de N módulos com acesso") e uma ação
     "Conceder leitura a todos" / "Limpar tudo" (equivalente ao "Selecionar todos" do print).
 - [ ] Manter o modelo de dados `ModuleAccessMap` / `capabilitiesToLevels` /
-  `levelsToCapabilities` intacto — muda só a apresentação.
+  `levelsToCapabilities` intacto, muda só a apresentação.
 - [ ] `tsc` verde. Commit.
 
 ## Task D4 [UI]: Ações de escrita derivadas das write tools reais
@@ -172,7 +172,7 @@ do Plugar MCPs.
   (`getMcpCatalogSchema`/`mcp-catalog-snapshot.json`). Hoje: só `crm` tem `create`.
 - [ ] Mapa de rótulo das ações em pt-br: `create→Criar`, `update→Atualizar`,
   `delete→Excluir`, `transition→Mover`. Cada ação mostra, em texto pequeno, a(s) tool(s)
-  que ela cobre (ex.: "Criar — `crm.res_partner.create`") para o usuário saber o que está
+  que ela cobre (ex.: "Criar, `crm.res_partner.create`") para o usuário saber o que está
   liberando. Ações sensíveis (delete/transition) mantêm o realce âmbar.
 - [ ] Módulo **sem** write tool: ao escolher "Leitura e escrita", mostrar um aviso curto
   "Nenhuma ação de escrita disponível neste módulo ainda" em vez de checkboxes falsos.
@@ -216,7 +216,7 @@ do Plugar MCPs.
 
 ---
 
-## ÁREA E — Tour: reposicionar o "?" e completar o conteúdo
+## ÁREA E, Tour: reposicionar o "?" e completar o conteúdo
 
 ## Task E1 [UI]: Reposicionar o botão de tour para perto do título
 
@@ -266,7 +266,7 @@ do Plugar MCPs.
 
 - [ ] `servidorMcpDocsTour`: o passo de tools hoje ancora no `motion.div#tools` inteiro,
   que engloba dezenas de cards e fica um halo gigante. Mudar a âncora para apenas o
-  **cabeçalho da seção Tools** (`SectionTitle` + parágrafo) — adicionar
+  **cabeçalho da seção Tools** (`SectionTitle` + parágrafo), adicionar
   `data-tour="mcp-docs-tools-head"` num wrapper só do título/intro. A descrição explica que
   há tools de leitura (verde) e de escrita (violeta), agrupadas por módulo.
 - [ ] Acrescentar passos para as seções Autenticação, Códigos de erro e Rate limits
@@ -275,7 +275,7 @@ do Plugar MCPs.
 
 ---
 
-## ÁREA F — Webhooks: redesenho da criação
+## ÁREA F, Webhooks: redesenho da criação
 
 > O form atual é cru (manda `methods:["POST"]` fixo, direção "Entrada/Saída" confusa,
 > URL "opcional"). Já existe um `WebhookWizard` completo não plugado.
@@ -286,7 +286,7 @@ do Plugar MCPs.
   `WebhookWizard` (`src/components/integrations/webhook-wizard.tsx`), renderizado no lugar
   do `{formVisible && <form>}`. O wizard já tem 3 passos, seleção de métodos HTTP e cards
   de direção. Ligar `onCreated` ao fluxo de `revealedSecret` existente (o wizard tem
-  `SecretRevealStep` próprio no passo 3 — decidir: usar o do wizard e só dar refresh, ou
+  `SecretRevealStep` próprio no passo 3, decidir: usar o do wizard e só dar refresh, ou
   manter o banner. Preferir o do wizard e remover o banner duplicado se ficar redundante).
 - [ ] `onCancel` fecha o wizard. Manter o force-open pelo tour.
 - [ ] `tsc`/`build` verdes. Commit.
@@ -297,7 +297,7 @@ do Plugar MCPs.
   - `inbound` → "Receber eventos" (a plataforma escuta um endpoint; outro sistema chama).
   - `outbound` → "Enviar eventos" (a plataforma dispara uma chamada para um sistema externo).
   - Ajustar descrições e o resto do wizard (labels "Caminho" para receber, "URL de destino"
-    para enviar). Manter os valores `inbound`/`outbound` no model/Server Action — muda só o
+    para enviar). Manter os valores `inbound`/`outbound` no model/Server Action, muda só o
     texto exibido. Conferir e alinhar os rótulos em `DIRECTION_LABELS` de `webhooks-content.tsx`
     e no `WebhookRow`.
 - [ ] `tsc`/`build` verdes. Commit.
@@ -306,7 +306,7 @@ do Plugar MCPs.
 
 - [ ] Garantir que o passo de configuração do wizard expõe, de forma legível:
   - **Receber:** Caminho (path) com a base read-only, e os métodos HTTP aceitos
-    (multi-seleção GET/POST/PUT/PATCH/DELETE — o wizard já tem `toggleMethod`).
+    (multi-seleção GET/POST/PUT/PATCH/DELETE, o wizard já tem `toggleMethod`).
   - **Enviar:** URL de destino e o(s) método(s) HTTP usados no disparo.
   - Nome do webhook nos dois casos.
 - [ ] Conferir que `createWebhook` persiste `methods` corretamente (já aceita). Sem
@@ -325,7 +325,7 @@ do Plugar MCPs.
 
 ---
 
-## ÁREA G — Plugar MCPs: polimento
+## ÁREA G, Plugar MCPs: polimento
 
 ## Task G1 [UI]: Asteriscos vermelhos e texto enxuto
 
@@ -338,7 +338,7 @@ do Plugar MCPs.
 
 ---
 
-## ÁREA H — Verificação e fechamento
+## ÁREA H, Verificação e fechamento
 
 - [ ] `npm run gen:mcp-catalog` rodado e snapshot commitado (se B1 mudou tools).
 - [ ] `tsc`, `eslint` (nos arquivos tocados), `jest`, `next build` verdes.
@@ -357,14 +357,18 @@ A → B → C → D → E → F → G → H. (D depende de B para as write actio
 
 ## Progresso (atualizar conforme avança)
 
-- [ ] Área A — trava de rolagem da doc.
-- [ ] Área B — write tools no catálogo + rótulos de módulo.
-- [ ] Área C — texto explicativo dos Logs.
-- [ ] Área D — wizard de Chaves de Acesso + seletor de acessos + calendário + lista.
-- [ ] Área E — tour reposicionado e completo.
-- [ ] Área F — redesenho dos Webhooks.
-- [ ] Área G — polimento do Plugar MCPs.
-- [ ] Área H — verificação e fechamento.
+- [x] Área A, trava de rolagem da doc (pb-16 + scrollspy marca a última seção no fim).
+- [x] Área B, write tool de CRM registrada no catálogo; rótulos de módulo corretos.
+- [x] Área C, nota explicativa no topo dos Logs.
+- [x] Área D, wizard de Chaves em 4 etapas + seletor de acessos por módulo + ações
+  derivadas do catálogo + calendário navegável + auto-https nas origens + lista em cards.
+- [x] Área E, tour colado ao título (titleAccessory), Visão Geral cobre Tools mais usadas,
+  tour de Chaves abre o wizard, tour de Logs expande a primeira linha, tour da Doc com
+  Autenticação/Erros/Rate limits.
+- [x] Área F, Webhooks usam o WebhookWizard; direção como Receber/Enviar; métodos HTTP.
+- [x] Área G, Plugar MCPs com asteriscos vermelhos e texto enxuto.
+- [x] Área H, verificação: `tsc`/`jest` (1526)/`next build` verdes; eslint dos arquivos
+  tocados sem erro; travessão removido; rotas respondem (302, sem 500).
 
 ---
 
