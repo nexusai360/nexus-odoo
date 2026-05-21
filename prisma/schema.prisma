@@ -183,8 +183,31 @@ model ExternalMcpServer {
   createdAt   DateTime  @default(now()) @map("created_at")
   updatedAt   DateTime  @updatedAt @map("updated_at")
 
+  callLogs ExternalMcpCallLog[]
+
   @@index([enabled])
   @@map("external_mcp_servers")
+}
+
+/// Registro das chamadas que o Agente Nex faz a tools de servidores MCP
+/// externos (Plugar MCP). Distinto do McpAuditLog, que e do nosso MCP interno.
+/// `serverName` e denormalizado para o log sobreviver a exclusao do servidor.
+model ExternalMcpCallLog {
+  id           String             @id @default(uuid()) @db.Uuid
+  serverId     String?            @map("server_id") @db.Uuid
+  server       ExternalMcpServer? @relation(fields: [serverId], references: [id], onDelete: SetNull)
+  serverName   String             @map("server_name")
+  toolName     String             @map("tool_name")
+  outcome      String
+  durationMs   Int?               @map("duration_ms")
+  errorMessage String?            @map("error_message")
+  argsPreview  Json?              @map("args_preview")
+  userId       String             @map("user_id") @db.Uuid
+  criadoEm     DateTime           @default(now()) @map("criado_em")
+
+  @@index([criadoEm])
+  @@index([serverId])
+  @@map("external_mcp_call_log")
 }
 
 /// Registro de que um usuário já viu o tour de uma tela. Usado para abrir o
