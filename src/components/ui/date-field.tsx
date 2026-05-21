@@ -6,6 +6,7 @@ import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Calendar } from "@/components/ui/calendar";
+import { CustomSelect } from "@/components/ui/custom-select";
 import { cn } from "@/lib/utils";
 
 interface DateFieldProps {
@@ -18,9 +19,19 @@ interface DateFieldProps {
   className?: string;
 }
 
+/** Nomes completos dos meses, capitalizados. */
+const MONTH_NAMES = Array.from({ length: 12 }, (_, i) => {
+  const name = new Date(2000, i, 1).toLocaleString("pt-BR", { month: "long" });
+  return name.charAt(0).toUpperCase() + name.slice(1);
+});
+
+/** Quantos anos a frente o seletor de ano vai (faixa: ano atual ate +30). */
+const YEAR_SPAN = 30;
+
 /**
  * Campo de data único no padrão do sistema: botão estilizado que abre um
- * calendário em popover. Substitui o `<input type="date">` nativo.
+ * calendário em popover. A navegação de mês e ano usa o `CustomSelect` do
+ * sistema (lista suspensa padrão, rolável), em vez dos dropdowns nativos.
  */
 export function DateField({
   value,
@@ -31,9 +42,24 @@ export function DateField({
   className,
 }: DateFieldProps) {
   const [open, setOpen] = useState(false);
+  const today = new Date();
+  const minYear = (fromDate ?? today).getFullYear();
+  const [displayMonth, setDisplayMonth] = useState<Date>(value ?? fromDate ?? today);
+
+  // Ao abrir, posiciona o calendário no mês do valor atual (ou hoje).
+  function handleOpenChange(next: boolean) {
+    if (next) setDisplayMonth(value ?? fromDate ?? today);
+    setOpen(next);
+  }
+
+  const monthOptions = MONTH_NAMES.map((label, i) => ({ value: String(i), label }));
+  const yearOptions = Array.from({ length: YEAR_SPAN + 1 }, (_, i) => {
+    const y = minYear + i;
+    return { value: String(y), label: String(y) };
+  });
 
   return (
-    <Popover open={open} onOpenChange={setOpen}>
+    <Popover open={open} onOpenChange={handleOpenChange}>
       <PopoverTrigger
         render={
           <button
@@ -53,13 +79,35 @@ export function DateField({
           </button>
         }
       />
-      <PopoverContent align="start" sideOffset={4} className="w-auto p-0">
+      <PopoverContent
+        align="start"
+        sideOffset={4}
+        className="w-[var(--anchor-width)] min-w-[280px] p-0"
+      >
+        <div className="flex gap-2 border-b border-border p-2">
+          <CustomSelect
+            aria-label="Mês"
+            className="flex-1"
+            value={String(displayMonth.getMonth())}
+            onChange={(v) =>
+              setDisplayMonth(new Date(displayMonth.getFullYear(), Number(v), 1))
+            }
+            options={monthOptions}
+          />
+          <CustomSelect
+            aria-label="Ano"
+            className="w-[104px] shrink-0"
+            value={String(displayMonth.getFullYear())}
+            onChange={(v) => setDisplayMonth(new Date(Number(v), displayMonth.getMonth(), 1))}
+            options={yearOptions}
+          />
+        </div>
         <Calendar
           mode="single"
-          captionLayout="dropdown"
-          startMonth={fromDate ?? new Date()}
-          endMonth={new Date(new Date().getFullYear() + 30, 11)}
-          defaultMonth={value ?? fromDate ?? new Date()}
+          month={displayMonth}
+          onMonthChange={setDisplayMonth}
+          hideNavigation
+          classNames={{ month_caption: "hidden" }}
           selected={value}
           onSelect={(d) => {
             onChange(d ?? undefined);

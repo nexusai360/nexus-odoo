@@ -92,7 +92,7 @@ export function CustomSelect({
           sideOffset={4}
           className="min-w-[280px] w-auto max-w-[min(calc(100vw-2rem),420px)] rounded-lg p-0 overflow-hidden"
         >
-          <ul role="listbox" className="flex flex-col">
+          <ul role="listbox" className="flex max-h-[290px] flex-col overflow-y-auto">
             {options.map((option) => {
               const isSelected = value === option.value;
               return (
