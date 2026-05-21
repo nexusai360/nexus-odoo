@@ -64,9 +64,9 @@ export const servidorMcpChavesTour: TourConfig = {
     {
       id: "wizard",
       targetSelector: "[data-tour='mcp-chaves-wizard']",
-      title: "Assistente em quatro passos",
+      title: "Assistente em cinco passos",
       description:
-        "Identificação dá nome à chave; Acessos define o que ela pode ler e escrever em cada módulo; Limites ajusta o rate limit e a validade; Origens restringe de onde a chave pode ser usada. Ao final, o token é exibido uma única vez.",
+        "Identificação dá nome à chave; Acessos define, módulo a módulo, o nível de leitura ou escrita; Limites ajusta o rate limit e a validade; Origens restringe de onde a chave pode ser usada; Resumo confirma tudo. Ao criar, o token é exibido uma única vez.",
       placement: "top",
     },
   ],
@@ -90,7 +90,7 @@ export const servidorMcpLogsTour: TourConfig = {
       targetSelector: "[data-tour='mcp-logs-lista']",
       title: "Cada chamada registrada",
       description:
-        "Toda chamada ao servidor MCP vira uma linha aqui. Abrimos a primeira para você ver o detalhe: duração, parâmetros, módulo e o que a tool faz.",
+        "Toda chamada ao servidor MCP vira uma linha aqui. Abrimos a primeira para você ver o detalhe: duração, parâmetros, módulo e, quando a chamada falha, o código e o motivo do erro.",
       placement: "top",
     },
   ],

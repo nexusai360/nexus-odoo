@@ -29,7 +29,7 @@ export const webhookTour: TourConfig = {
       targetSelector: "[data-tour='webhooks-lista']",
       title: "Seus webhooks",
       description:
-        "Cada webhook criado aparece aqui com o tipo, o endereço e os métodos. Use o interruptor para habilitar ou desabilitar, rotacione o secret quando precisar, ou remova o webhook.",
+        "Cada webhook aparece aqui com o caminho e os métodos HTTP em tags. Use o interruptor para habilitar ou desabilitar, o lápis para editar (alterar métodos, caminho ou rotacionar o secret) e a lixeira para remover.",
       placement: "top",
     },
   ],
