@@ -332,7 +332,7 @@ export function Sidebar({ user }: SidebarProps) {
                   : "gap-3 px-2 py-2.5 -mx-1",
               )}
             >
-              <div className="flex h-9 w-9 items-center justify-center rounded-full bg-muted text-sm font-semibold text-foreground overflow-hidden shrink-0">
+              <div className="flex h-[34px] w-[34px] items-center justify-center rounded-full bg-muted text-xs font-semibold text-foreground overflow-hidden shrink-0">
                 {user.avatarUrl ? (
                   // eslint-disable-next-line @next/next/no-img-element
                   <img
@@ -346,7 +346,7 @@ export function Sidebar({ user }: SidebarProps) {
               </div>
               {!isCollapsed && (
                 <div className="flex-1 min-w-0">
-                  <p className="text-base font-medium text-foreground truncate">
+                  <p className="text-[15px] font-medium text-foreground truncate">
                     {user.name}
                   </p>
                   <p className="text-xs text-muted-foreground truncate">
