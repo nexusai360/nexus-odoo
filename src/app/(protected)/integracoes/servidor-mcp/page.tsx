@@ -27,32 +27,12 @@ async function pingMcp(mcpUrl: string): Promise<"healthy" | "degraded" | "unheal
   }
 }
 
-async function getMcpVersion(mcpUrl: string): Promise<{ version: string; commit: string } | null> {
-  if (!mcpUrl) return null;
-  try {
-    const res = await fetch(`${mcpUrl}/health`, {
-      method: "GET",
-      signal: AbortSignal.timeout(3000),
-      cache: "no-store",
-    });
-    if (!res.ok) return null;
-    const json = (await res.json()) as Record<string, unknown>;
-    return {
-      version: typeof json.version === "string" ? json.version : "—",
-      commit: typeof json.commit === "string" ? (json.commit as string).slice(0, 7) : "—",
-    };
-  } catch {
-    return null;
-  }
-}
-
 export default async function ServidorMcpPage() {
   const mcpUrl = process.env.MCP_URL ?? "";
   const mcpPublicUrl = `${process.env.NEXT_PUBLIC_APP_URL ?? ""}/api/mcp`;
 
-  const [healthStatus, versionInfo, metricsResult] = await Promise.all([
+  const [healthStatus, metricsResult] = await Promise.all([
     pingMcp(mcpUrl),
-    getMcpVersion(mcpUrl),
     getMcp24hMetrics(),
   ]);
 
@@ -77,7 +57,6 @@ export default async function ServidorMcpPage() {
         <McpVisaoGeral
           mcpPublicUrl={mcpPublicUrl}
           healthStatus={healthStatus}
-          versionInfo={versionInfo}
           metrics={metrics}
         />
       </div>
