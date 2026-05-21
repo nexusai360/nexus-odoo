@@ -1497,6 +1497,7 @@ model FatoContaContabil {
 
 /// Log de auditoria de chamadas ao MCP semântico.
 model McpAuditLog {
+  // LEGADOS — preservados (mcp/lib/audit.ts já usa)
   id         String   @id @default(uuid())
   userId     String   @map("user_id")
   tool       String
@@ -1506,7 +1507,35 @@ model McpAuditLog {
   durationMs Int?     @map("duration_ms")
   criadoEm   DateTime @default(now()) @map("criado_em")
 
+  // NOVOS — F4 Onda 2 (opcionais)
+  apiKeyId       String?   @map("api_key_id") @db.Uuid
+  apiKey         ApiKey?   @relation(fields: [apiKeyId], references: [id])
+  authMode       String?   @map("auth_mode")
+  operation      String?
+  module         String?
+  action         String?
+  capability     String?
+  eventName      String?   @map("event_name")
+  requestId      String?   @map("request_id")
+  idempotencyKey String?   @map("idempotency_key")
+  payload        Json?
+  result         Json?
+  snapshotBefore Json?     @map("snapshot_before")
+  snapshotAfter  Json?     @map("snapshot_after")
+  status         String?
+  httpStatus     Int?      @map("http_status")
+  errorCode      String?   @map("error_code")
+  errorMessage   String?   @map("error_message")
+  ipAddress      String?   @map("ip_address")
+  userAgent      String?   @map("user_agent")
+
   @@index([userId, criadoEm])
+  @@index([apiKeyId, criadoEm(sort: Desc)])
+  @@index([tool, criadoEm(sort: Desc)])
+  @@index([status, criadoEm(sort: Desc)])
+  @@index([idempotencyKey])
+  @@index([module, action, criadoEm(sort: Desc)])
+  @@index([eventName, criadoEm])
   @@map("mcp_audit_log")
 }
 
