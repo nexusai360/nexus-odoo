@@ -120,39 +120,134 @@ function mcpErrorContent(
   };
 }
 
-/** Grava McpAuditLog de forma silenciosa (falha não derruba o pipeline). */
-async function auditWriteSafe(
+// ─── Redaction de PII em payload ─────────────────────────────────────────────
+
+/** Campos sensíveis que devem ser substituídos por "[REDACTED]" no audit log. */
+const SENSITIVE_FIELD_RE = /(cpf|cnpj|password|senha|token|secret)/i;
+
+/**
+ * Redacta campos sensíveis em um payload plano.
+ * Processa apenas o primeiro nível (shallow). Arrays são preservados como estão.
+ * Campos cujo nome case-insensitive bate com SENSITIVE_FIELD_RE viram "[REDACTED]".
+ */
+export function redactPayload(input: unknown): unknown {
+  if (!input || typeof input !== "object" || Array.isArray(input)) return input;
+  const out: Record<string, unknown> = {};
+  for (const [k, v] of Object.entries(input as Record<string, unknown>)) {
+    out[k] = SENSITIVE_FIELD_RE.test(k) ? "[REDACTED]" : v;
+  }
+  return out;
+}
+
+// ─── Tipos do audit externo ───────────────────────────────────────────────────
+
+export interface ExternalAuditFields {
+  apiKeyId: string;
+  toolId: string;
+  requestId: string;
+  idempotencyKey?: string;
+  /** Input bruto (será redactado internamente). */
+  input: unknown;
+  /** "success" | "denied" | "validation_error" | "odoo_error" | "rate_limited" | "error" */
+  status: string;
+  httpStatus: number;
+  durationMs: number;
+  operation: "read" | "write";
+  module?: string;
+  action?: string;
+  capability?: string;
+  eventName?: string;
+  snapshotBefore?: object | null;
+  snapshotAfter?: object | null;
+  resultData?: unknown;
+  errorCode?: string;
+  errorMessage?: string;
+  /** Política §10.5: se true, payload NÃO é gravado (apenas token inválido). */
+  suppressPayload?: boolean;
+}
+
+/**
+ * Mapeia status externo para o outcome legado (campo `outcome` do schema legado).
+ * Mantém compatibilidade com o campo original enquanto o novo campo `status` é granular.
+ */
+function toOutcomeLegacy(status: string): "ok" | "denied" | "error" | "invalid_input" {
+  if (status === "success") return "ok";
+  if (status === "denied" || status === "rate_limited") return "denied";
+  if (status === "validation_error") return "invalid_input";
+  return "error";
+}
+
+/**
+ * Grava McpAuditLog com todos os campos do Bloco B (migration 20260521001439_f4_onda2_mcp_writes).
+ *
+ * IMPORTANTE: usa createMany() para suprimir o RETURNING implícito do Prisma/adapter-pg.
+ * O role nexus_mcp tem GRANT INSERT mas não SELECT em mcp_audit_log — createMany()
+ * emite apenas INSERT sem RETURNING, preservando menor privilégio.
+ *
+ * Política §10.5: status "unauthorized" (token inválido) → NÃO grava payload.
+ * Outros denials → grava payload com redaction de PII.
+ *
+ * Falha silenciosa: nunca lança — falha de audit não derruba o pipeline.
+ */
+export async function recordExternalAudit(
   prisma: PrismaClient,
-  fields: {
-    apiKeyId: string;
-    toolId: string;
-    requestId: string;
-    idempotencyKey?: string;
-    input: unknown;
-    outcome: string;
-    status: string;
-    httpStatus: number;
-    durationMs: number;
-    module?: string;
-    action?: string;
-    eventName?: string;
-    snapshotBefore?: object | null;
-    snapshotAfter?: object | null;
-    resultData?: unknown;
-  },
+  fields: ExternalAuditFields,
 ): Promise<void> {
   try {
-    // Os campos extras (apiKeyId, requestId, etc.) são gravados via cast para `object`
-    // porque o schema Prisma ainda não incluiu as colunas do Bloco P migration.
-    // Quando a migration rodar, remover o cast e tipar diretamente.
+    // Política §10.5: sem payload para unauthorized
+    const payloadToStore = fields.suppressPayload
+      ? null
+      : (redactPayload(fields.input) as object | null);
+
+    const capabilityStr =
+      fields.capability ??
+      (fields.module && fields.action ? `${fields.module}.${fields.action}` : undefined);
+
+    // Truncar snapshots antes de persistir (evita linhas gigantescas no banco).
+    // Para nullable JSON fields: usar undefined para omitir o campo quando não há valor
+    // (Prisma interpreta undefined como "não alterar/omitir" em createMany).
+    const safeBefore = fields.snapshotBefore
+      ? (truncateSnapshot(fields.snapshotBefore as Record<string, unknown>) as object)
+      : undefined;
+    const safeAfter = fields.snapshotAfter
+      ? (truncateSnapshot(fields.snapshotAfter as Record<string, unknown>) as object)
+      : undefined;
+    const safeResultVal =
+      fields.resultData !== undefined
+        ? ({ _raw: truncateSnapshot({ _r: JSON.stringify(fields.resultData) })._r } as object)
+        : undefined;
+
+    // Para o campo legado params (NOT NULL): usar {} quando payload é suprimido.
+    const prismaParams = (payloadToStore ?? {}) as object;
+
     await prisma.mcpAuditLog.createMany({
       data: [
         {
+          // Campos legados (compatibilidade)
           userId: fields.apiKeyId,
           tool: fields.toolId,
-          params: (fields.input ?? {}) as object,
-          outcome: (fields.status === "success" ? "ok" : fields.status) as "ok" | "denied" | "error" | "invalid_input",
+          params: prismaParams,
+          outcome: toOutcomeLegacy(fields.status),
           durationMs: fields.durationMs,
+
+          // Campos novos (F4 Onda 2 — migration 20260521001439_f4_onda2_mcp_writes)
+          apiKeyId: fields.apiKeyId,
+          authMode: "external",
+          operation: fields.operation,
+          module: fields.module ?? null,
+          action: fields.action ?? null,
+          capability: capabilityStr ?? null,
+          eventName: fields.eventName ?? null,
+          requestId: fields.requestId,
+          idempotencyKey: fields.idempotencyKey ?? null,
+          payload: payloadToStore as object | undefined,
+          result: safeResultVal,
+          snapshotBefore: safeBefore,
+          snapshotAfter: safeAfter,
+          status: fields.status,
+          httpStatus: fields.httpStatus,
+          errorCode: fields.errorCode ?? null,
+          errorMessage: fields.errorMessage ?? null,
         },
       ],
     });
@@ -373,12 +468,14 @@ export async function handleExternalWriteCall(
       errorCode = (err as { code?: string }).code ?? errorCode;
     }
 
-    await auditWriteSafe(prisma, {
+    await recordExternalAudit(prisma, {
       apiKeyId: apiKey.apiKeyId, toolId: tool.id, requestId,
-      idempotencyKey, input: rawInput, outcome: "denied",
-      status: "error", httpStatus, durationMs: dur,
+      idempotencyKey, input: rawInput,
+      status: "odoo_error", httpStatus, durationMs: dur,
+      operation: "write",
       module: tool.capability.module, action: tool.capability.action,
       eventName: tool.eventName,
+      errorCode, errorMessage: err instanceof Error ? err.message : String(err),
     });
 
     return {
@@ -407,11 +504,13 @@ export async function handleExternalWriteCall(
     : null;
 
   // Audit de sucesso
-  await auditWriteSafe(prisma, {
+  await recordExternalAudit(prisma, {
     apiKeyId: apiKey.apiKeyId, toolId: tool.id, requestId,
-    idempotencyKey, input: rawInput, outcome: "ok",
+    idempotencyKey, input: rawInput,
     status: "success", httpStatus: 200, durationMs: dur,
+    operation: "write",
     module: tool.capability.module, action: tool.capability.action,
+    capability: `${tool.capability.module}.${tool.capability.action}`,
     eventName: tool.eventName, snapshotBefore: safeBefore, snapshotAfter: safeAfter,
     resultData: writeResult.data,
   });
@@ -490,6 +589,12 @@ export async function handleExternalReadCall(
     parsedInput = tool.inputSchema.parse(rawInput);
   } catch (err) {
     const dur = Date.now() - start;
+    await recordExternalAudit(prisma, {
+      apiKeyId: apiKey.apiKeyId, toolId: tool.id, requestId,
+      input: rawInput, status: "validation_error", httpStatus: 400,
+      durationMs: dur, operation: "read", module: tool.dominio,
+      errorCode: "validation_failed", errorMessage: String(err),
+    });
     return {
       status: 400,
       body: {
@@ -515,6 +620,12 @@ export async function handleExternalReadCall(
     output = await tool.handler(parsedInput, { prisma, user: syntheticUser as Parameters<typeof tool.handler>[1]["user"] });
   } catch (err) {
     const dur = Date.now() - start;
+    await recordExternalAudit(prisma, {
+      apiKeyId: apiKey.apiKeyId, toolId: tool.id, requestId,
+      input: rawInput, status: "error", httpStatus: 500,
+      durationMs: dur, operation: "read", module: tool.dominio,
+      errorCode: "tool_error", errorMessage: err instanceof Error ? err.message : String(err),
+    });
     return {
       status: 500,
       body: {
@@ -530,6 +641,12 @@ export async function handleExternalReadCall(
   }
 
   const dur = Date.now() - start;
+  await recordExternalAudit(prisma, {
+    apiKeyId: apiKey.apiKeyId, toolId: tool.id, requestId,
+    input: rawInput, status: "success", httpStatus: 200,
+    durationMs: dur, operation: "read", module: tool.dominio,
+    resultData: output,
+  });
   return {
     status: 200,
     body: {
