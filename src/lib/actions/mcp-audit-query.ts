@@ -103,7 +103,9 @@ export async function queryAuditLogs(
   if (f.tool) where.tool = { contains: f.tool, mode: "insensitive" };
   if (f.module) where.module = { contains: f.module, mode: "insensitive" };
   if (f.action) where.action = { contains: f.action, mode: "insensitive" };
-  if (f.status) where.status = f.status;
+  // O resultado da chamada é gravado em `outcome` (ex.: ok, error, denied,
+  // invalid_input); a coluna `status` fica nula. O filtro do painel usa `outcome`.
+  if (f.status) where.outcome = f.status;
 
   if (f.dateFrom || f.dateTo) {
     where.criadoEm = {};

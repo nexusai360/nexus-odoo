@@ -51,6 +51,12 @@ function getStatusConfig(status: string | null, outcome: string) {
       icon: Shield,
       className: "border-amber-500/30 bg-amber-500/10 text-amber-600 dark:text-amber-400",
     };
+  if (s === "invalid_input" || s === "invalid" || s === "validation_error")
+    return {
+      label: "Inválido",
+      icon: AlertTriangle,
+      className: "border-orange-500/30 bg-orange-500/10 text-orange-600 dark:text-orange-400",
+    };
   return {
     label: s || "-",
     icon: Info,
@@ -264,11 +270,13 @@ const PERIOD_PRESETS: { preset: Exclude<PeriodPreset, "custom">; label: string }
   { preset: "30d", label: "30 dias" },
 ];
 
+// Os valores batem com a coluna `outcome` gravada no audit log.
 const STATUS_OPTIONS = [
   { value: "", label: "Todos os status" },
-  { value: "success", label: "Sucesso" },
+  { value: "ok", label: "Sucesso" },
   { value: "error", label: "Erro" },
   { value: "denied", label: "Negado" },
+  { value: "invalid_input", label: "Inválido" },
 ];
 
 // ──────────────────────────────────────────────────────────────────────────────
