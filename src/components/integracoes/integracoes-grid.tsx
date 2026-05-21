@@ -24,7 +24,13 @@ const CARDS: IntegrationCard[] = [
     href: "/integracoes/canais",
   },
   {
-    label: "MCP",
+    label: "Servidor MCP",
+    description: "Painel do MCP semântico — status, chaves de acesso e métricas.",
+    icon: Cpu,
+    href: "/integracoes/servidor-mcp",
+  },
+  {
+    label: "MCP (legado)",
     description: "Endpoint do servidor MCP e token para conexões externas.",
     icon: Cpu,
     href: "/integracoes/mcp",
