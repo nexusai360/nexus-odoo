@@ -18,6 +18,7 @@ import { fiscalTools } from "../tools/fiscal/index.js";     // onda C — 6 tool
 import { cadastrosTools } from "../tools/cadastros/index.js"; // onda D — 3 tools
 import { contabilTools } from "../tools/contabil/index.js";   // onda E — 2 tools
 import { dominiosVaziosTools } from "../tools/dominios-vazios/index.js"; // onda F — 3 tools
+import { crmTools } from "../tools/crm/index.js"; // Bloco J — crm read + write tools
 
 export const catalogo: ToolEntry[] = [
   ...estoqueTools,
@@ -28,4 +29,5 @@ export const catalogo: ToolEntry[] = [
   ...cadastrosTools,
   ...contabilTools,
   ...dominiosVaziosTools,
+  ...crmTools,
 ];
