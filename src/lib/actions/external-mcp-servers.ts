@@ -240,6 +240,73 @@ export async function deleteExternalMcpServer(
 // test — alcançabilidade do MCP externo
 // ──────────────────────────────────────────────────────────────────────────────
 
+/**
+ * Testa a alcançabilidade de um endpoint MCP a partir de campos crus, antes de
+ * o servidor ser criado/salvo. Usado pelo passo de revisão do wizard.
+ * Quando `serverId` é informado e `authToken` vem vazio, usa o token cifrado já
+ * salvo desse servidor (caso de edição que mantém o token).
+ */
+export async function testExternalMcpEndpoint(input: {
+  url: string;
+  authHeader?: string | null;
+  authToken?: string | null;
+  serverId?: string | null;
+}): Promise<DataResult<{ status: "ok" | "error"; message: string }>> {
+  try {
+    await requireSuperAdmin();
+    const parsedUrl = z.string().url("URL inválida").safeParse(input.url?.trim());
+    if (!parsedUrl.success) {
+      return { success: false, error: "URL inválida" };
+    }
+
+    let token = input.authToken?.trim() || null;
+    const header = input.authHeader?.trim() || null;
+    if (!token && input.serverId) {
+      const row = await prisma.externalMcpServer.findUnique({
+        where: { id: input.serverId },
+      });
+      if (row?.authToken) {
+        try {
+          token = decrypt(row.authToken);
+        } catch {
+          token = null;
+        }
+      }
+    }
+
+    const headers: Record<string, string> = {
+      Accept: "application/json, text/event-stream",
+    };
+    if (header && token) headers[header] = token;
+
+    try {
+      const res = await fetch(parsedUrl.data, {
+        method: "GET",
+        headers,
+        signal: AbortSignal.timeout(5000),
+        cache: "no-store",
+      });
+      return {
+        success: true,
+        data: { status: "ok", message: `Servidor alcançável (HTTP ${res.status}).` },
+      };
+    } catch (err) {
+      return {
+        success: true,
+        data: {
+          status: "error",
+          message:
+            err instanceof Error && err.name === "TimeoutError"
+              ? "Tempo esgotado, o servidor não respondeu em 5s."
+              : "Não foi possível conectar ao servidor.",
+        },
+      };
+    }
+  } catch (e) {
+    return { success: false, error: e instanceof Error ? e.message : "Erro ao testar" };
+  }
+}
+
 export async function testExternalMcpServer(
   id: string,
 ): Promise<DataResult<{ status: "ok" | "error"; message: string }>> {
