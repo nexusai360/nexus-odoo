@@ -104,6 +104,20 @@ correto; o dev server foi reiniciado limpo. Sem mudança de código necessária.
   exemplos) num lugar fácil. Mostrar a URL completa do MCP de forma destacada e copiável.
 - [ ] `tsc`/`build` verdes. Commit.
 
+## Task C3 [UI]: Navegação lateral funcional e ícone consistente
+
+- [ ] A navegação lateral da doc precisa funcionar como atalho: clicar em um item rola a tela
+  até a seção. Hoje `scrollToSection` usa `window.scrollTo`, mas o scroll real acontece no
+  `<main>` do layout protegido (`overflow-y-auto`). Corrigir: usar `scrollIntoView` no elemento
+  alvo (com `scroll-margin-top`) ou rolar o container correto. Clicar deve mover a tela.
+- [ ] Remover o cabeçalho duplicado dentro do `McpDocsContent` (o hero com ícone `Code2` +
+  "Servidor MCP" + subtítulo). O `PageHeader` da rota já mostra ícone + "Servidor MCP" +
+  subtítulo; ter dois títulos com ícones diferentes confunde. Manter no conteúdo só o que é útil
+  (URL completa, badges, passo a passo), sem repetir o título nem usar um segundo ícone.
+- [ ] Seguir o padrão de ícones da plataforma: um ícone só por tela, no `PageHeader`, como nas
+  telas do Agente Nex. Sem ícone concorrente no corpo.
+- [ ] `tsc`/`build` verdes. Commit.
+
 ---
 
 ## ÁREA D — Visão Geral
@@ -112,10 +126,10 @@ correto; o dev server foi reiniciado limpo. Sem mudança de código necessária.
 
 - [ ] Consultar `ui-ux-pro-max`. Visão Geral usa pouco a tela; deixar mais larga, bump +1 em
   todas as fontes, sutil.
-- [ ] A URL pública mostrada e copiada deve ser a URL completa real (não abreviada). Resolver no
-  server component a partir dos headers da request (`await headers()`, host + proto), com
-  fallback para `NEXT_PUBLIC_APP_URL`, e passar a URL pronta para a UI. A mesma URL real vai
-  para a documentação (Área C).
+- [ ] A URL pública mostrada e copiada deve ser a URL completa real (não abreviada). Criar um
+  helper compartilhado `resolveMcpPublicUrl()` (server-side: `await headers()`, host + proto,
+  com fallback para `NEXT_PUBLIC_APP_URL`) e usá-lo tanto na Visão Geral quanto na Documentação
+  (Área C), para a URL ser idêntica e real nas duas telas.
 - [ ] `tsc`/`build` verdes. Commit.
 
 ---
