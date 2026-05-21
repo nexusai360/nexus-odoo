@@ -9,3 +9,7 @@
 ## Estado
 
 Execução autônoma autorizada. Sessão única no repo.
+
+## PAUSADO 2026-05-21
+
+Rodada 3 parcial. Retomar por `docs/HANDOFF-2026-05-21-f4-onda2-r3.md`. Áreas B, C1, D, E, F, G, H pendentes.

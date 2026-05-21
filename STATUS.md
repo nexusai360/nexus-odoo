@@ -22,21 +22,19 @@
 
 **Branch ativa: `feat/f4-onda2-mcp-escrita`**. A `main` tem F0+F1+F2+F3+F3.5+F4+F5.
 
-> ## ⚠️ RETOMADA, F4 ONDA 2: DUAS RODADAS DE CORREÇÕES APLICADAS
-> Correções da F4 Onda 2 executadas na branch `feat/f4-onda2-mcp-escrita` em duas rodadas.
-> **Rodada 1** (`docs/superpowers/plans/2026-05-21-f4-onda2-correcoes.md`): painel Servidor MCP
-> refeito (sub-nav, Visão Geral, Chaves, Logs, Documentação), "Plugar MCPs" com conceito certo,
-> health check consertado. **Rodada 2** (`docs/superpowers/plans/2026-05-21-f4-onda2-correcoes-r2.md`):
-> documentação do MCP clonada do padrão nexus-nfe, Chaves de Acesso redesenhada (modais,
-> capabilities por nível, toggle, date picker próprio), Logs com busca única e filtro de
-> período, Plugar MCPs enxuto, bubble do Agente Nex responsivo, perfil do sidebar maior, tour
-> de onboarding nas telas de Integrações. Travessão banido (`CLAUDE.md §2`).
-> `tsc`/`eslint`/`jest` (1529)/`build` verdes; code review + UI review inline OK
-> (`docs/superpowers/reviews/`).
+> ## ⚠️ RETOMADA, F4 ONDA 2: RODADA 3 DE CORREÇÕES EM ANDAMENTO
+> **LEIA PRIMEIRO `docs/HANDOFF-2026-05-21-f4-onda2-r3.md`.** A F4 Onda 2 está na branch
+> `feat/f4-onda2-mcp-escrita` (PR #10). Onda 0 + Rodadas 1 e 2 de correções concluídas. A
+> **Rodada 3 está parcial**: feito o ajuste do sidebar, os Logs (filtro de status, status
+> Inválido, detalhe com descrição da tool), a URL completa do MCP e grande parte da
+> Documentação. **Falta** (ver o plano `docs/superpowers/plans/2026-05-21-f4-onda2-correcoes-r3.md`,
+> seção Progresso): modal de Chaves refeito (B), catálogo de tools que não carrega + passo a
+> passo (C1), fontes da Visão Geral (D), botão de tour em todas as abas (E), redesenho do
+> Plugar MCPs (F) e dos Webhooks (G), verificação (H).
+> `tsc`/`jest` (1529)/`build` verdes na branch.
 >
-> **Pendências não bloqueantes:** o **teste E2E de escrita real** contra
-> `grupojht.teste.tauga.online` ainda não rodou (faltam credenciais `ODOO_WRITE_*`, Task 16
-> da rodada 1); e a inspeção visual pixel a pixel num navegador autenticado.
+> **Pendências herdadas:** teste E2E de escrita real contra `grupojht.teste.tauga.online`
+> nunca rodou (faltam credenciais `ODOO_WRITE_*`); inspeção visual pixel a pixel.
 > **NÃO mergear o PR #10 antes do teste E2E de escrita.**
 
 ---
