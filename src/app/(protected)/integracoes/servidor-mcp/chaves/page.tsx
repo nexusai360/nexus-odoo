@@ -38,7 +38,7 @@ export default async function ChavesPage() {
         icon={Key}
         title="Servidor MCP"
         subtitle="Endpoint semântico para agentes de IA, RBAC de 7 camadas, Streamable HTTP"
-        actions={<TourTriggerButton config={servidorMcpChavesTour} />}
+        titleAccessory={<TourTriggerButton config={servidorMcpChavesTour} />}
       />
       <TourAutoStart tour={servidorMcpChavesTour} />
 

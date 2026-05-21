@@ -1,5 +1,6 @@
 import type { TourConfig } from "@/components/tour/tour-provider";
 
+/** Tour da aba Visão Geral do Servidor MCP. */
 export const servidorMcpTour: TourConfig = {
   id: "integracoes-servidor-mcp-v1",
   title: "Tour do Servidor MCP",
@@ -28,34 +29,50 @@ export const servidorMcpTour: TourConfig = {
         "Acompanhe o número de chamadas, a taxa de erro e a latência típica. É o jeito rápido de saber se as integrações estão saudáveis.",
       placement: "top",
     },
+    {
+      id: "top-tools",
+      targetSelector: "[data-tour='mcp-top-tools']",
+      title: "Tools mais usadas",
+      description:
+        "Quando há chamadas no período, este bloco lista as tools mais acionadas e quantos erros cada uma teve, ajudando a achar gargalos.",
+      placement: "top",
+    },
   ],
 };
 
-/** Mini-tour da aba Chaves de Acesso. */
+/** Mini-tour da aba Chaves de Acesso. Abre o assistente de criação. */
 export const servidorMcpChavesTour: TourConfig = {
   id: "integracoes-servidor-mcp-chaves-v1",
   title: "Tour das Chaves de Acesso",
   steps: [
     {
-      id: "nova",
-      targetSelector: "[data-tour='mcp-chaves-nova']",
-      title: "Crie uma chave de API",
+      id: "lista",
+      targetSelector: "[data-tour='mcp-chaves-cabecalho']",
+      title: "Suas chaves de acesso",
       description:
-        "Clique em Nova chave para gerar um token. Você define o rótulo, o que a chave pode fazer em cada módulo e o limite de chamadas por minuto.",
+        "Cada chave de API criada aparece abaixo, com o resumo de acessos e o último uso. Por ela você edita, rotaciona o token ou revoga.",
       placement: "bottom",
     },
     {
-      id: "lista",
-      targetSelector: "[data-tour='mcp-chaves-cabecalho']",
-      title: "Suas chaves",
+      id: "nova",
+      targetSelector: "[data-tour='mcp-chaves-nova']",
+      title: "Criar uma chave",
       description:
-        "Cada chave aparece abaixo com o resumo de acessos e o último uso. Pelo menu de cada uma você edita, rotaciona o token ou revoga.",
+        "Use Nova chave para abrir o assistente de criação. Vamos abri-lo agora para conhecer os passos.",
       placement: "bottom",
+    },
+    {
+      id: "wizard",
+      targetSelector: "[data-tour='mcp-chaves-wizard']",
+      title: "Assistente em quatro passos",
+      description:
+        "Identificação dá nome à chave; Acessos define o que ela pode ler e escrever em cada módulo; Limites ajusta o rate limit e a validade; Origens restringe de onde a chave pode ser usada. Ao final, o token é exibido uma única vez.",
+      placement: "top",
     },
   ],
 };
 
-/** Mini-tour da aba Logs / Audit. */
+/** Mini-tour da aba Logs / Audit. Expande a primeira linha de log. */
 export const servidorMcpLogsTour: TourConfig = {
   id: "integracoes-servidor-mcp-logs-v1",
   title: "Tour dos Logs",
@@ -65,7 +82,7 @@ export const servidorMcpLogsTour: TourConfig = {
       targetSelector: "[data-tour='mcp-logs-filtros']",
       title: "Filtre as chamadas",
       description:
-        "Busque por tool, filtre por status (Sucesso, Erro, Negado, Inválido) e por período. Dá para exportar o resultado filtrado.",
+        "Busque por tool, filtre por status (Sucesso, Erro, Negado, Inválido) e por período. O botão Exportar baixa o resultado filtrado.",
       placement: "bottom",
     },
     {
@@ -73,7 +90,7 @@ export const servidorMcpLogsTour: TourConfig = {
       targetSelector: "[data-tour='mcp-logs-lista']",
       title: "Cada chamada registrada",
       description:
-        "Toda chamada ao servidor MCP vira uma linha aqui. Clique para expandir e ver duração, parâmetros e o que aquela tool faz.",
+        "Toda chamada ao servidor MCP vira uma linha aqui. Abrimos a primeira para você ver o detalhe: duração, parâmetros, módulo e o que a tool faz.",
       placement: "top",
     },
   ],
@@ -93,11 +110,35 @@ export const servidorMcpDocsTour: TourConfig = {
       placement: "bottom",
     },
     {
+      id: "auth",
+      targetSelector: "#auth",
+      title: "Autenticação",
+      description:
+        "Explica como gerar a chave de API e enviá-la no header Authorization. Toda requisição é autenticada de forma independente.",
+      placement: "bottom",
+    },
+    {
       id: "tools",
-      targetSelector: "[data-tour='mcp-docs-tools']",
+      targetSelector: "[data-tour='mcp-docs-tools-head']",
       title: "O catálogo de tools",
       description:
-        "Todas as tools disponíveis, agrupadas por módulo, com os argumentos de cada uma e exemplos prontos em curl, JSON-RPC e n8n.",
+        "Logo abaixo, as tools são agrupadas por módulo. As de leitura aparecem em verde, as de escrita em violeta; abra qualquer uma para ver os argumentos e exemplos.",
+      placement: "bottom",
+    },
+    {
+      id: "errors",
+      targetSelector: "#errors",
+      title: "Códigos de erro",
+      description:
+        "A tabela lista cada código de erro, o status HTTP e quando acontece, para a integração tratar as falhas corretamente.",
+      placement: "top",
+    },
+    {
+      id: "rate-limits",
+      targetSelector: "#rate-limits",
+      title: "Rate limits",
+      description:
+        "Cada chave tem um limite de chamadas por minuto. Quando atingido, a resposta traz o tempo a aguardar antes de tentar de novo.",
       placement: "top",
     },
   ],

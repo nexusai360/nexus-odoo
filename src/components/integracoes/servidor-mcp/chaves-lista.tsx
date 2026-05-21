@@ -40,6 +40,8 @@ import {
 } from "@/components/ui/dialog";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { Popover } from "@base-ui/react/popover";
+import { useTour } from "@/components/tour/tour-provider";
+import { servidorMcpChavesTour } from "@/lib/tours/servidor-mcp-tour";
 import { cn } from "@/lib/utils";
 import { moduleLabel } from "@/lib/mcp-module-labels";
 import {
@@ -127,7 +129,13 @@ export function ChavesLista({ initial, moduleWriteActions }: Props) {
   const [keys, setKeys] = useState<McpApiKeyListItem[]>(initial);
   const [isPending, startTransition] = useTransition();
 
-  const [createOpen, setCreateOpen] = useState(false);
+  // O tour de Chaves abre o assistente ao chegar no passo do wizard (índice 2).
+  const { active, currentStepIndex } = useTour();
+  const tourWizardOpen =
+    active?.id === servidorMcpChavesTour.id && currentStepIndex >= 2;
+
+  const [createOpenManual, setCreateOpenManual] = useState(false);
+  const createOpen = createOpenManual || tourWizardOpen;
   const [editTarget, setEditTarget] = useState<McpApiKeyListItem | null>(null);
   const [revealToken, setRevealToken] = useState<{ token: string; label: string } | null>(null);
   const [showToken, setShowToken] = useState(false);
@@ -233,7 +241,7 @@ export function ChavesLista({ initial, moduleWriteActions }: Props) {
           size="sm"
           className="h-9"
           data-tour="mcp-chaves-nova"
-          onClick={() => setCreateOpen(true)}
+          onClick={() => setCreateOpenManual(true)}
         >
           <Plus className="mr-1.5 h-4 w-4" />
           Nova chave
@@ -321,11 +329,11 @@ export function ChavesLista({ initial, moduleWriteActions }: Props) {
         mode="create"
         moduleWriteActions={moduleWriteActions}
         open={createOpen}
-        onOpenChange={setCreateOpen}
+        onOpenChange={setCreateOpenManual}
         onCreated={(token, label) => {
           setRevealToken({ token, label });
           setShowToken(false);
-          setCreateOpen(false);
+          setCreateOpenManual(false);
           startTransition(async () => {
             await refresh();
           });

@@ -27,7 +27,7 @@ export default async function WebhooksPage() {
         icon={Webhook}
         title="Webhooks"
         subtitle="Gerencie endpoints de entrada e saída para integração com n8n e outros sistemas"
-        actions={<TourTriggerButton config={webhookTour} />}
+        titleAccessory={<TourTriggerButton config={webhookTour} />}
       />
       <TourAutoStart tour={webhookTour} />
 

@@ -52,7 +52,7 @@ export default async function LogsPage() {
         icon={Terminal}
         title="Servidor MCP"
         subtitle="Endpoint semântico para agentes de IA, RBAC de 7 camadas, Streamable HTTP"
-        actions={<TourTriggerButton config={servidorMcpLogsTour} />}
+        titleAccessory={<TourTriggerButton config={servidorMcpLogsTour} />}
       />
       <TourAutoStart tour={servidorMcpLogsTour} />
 

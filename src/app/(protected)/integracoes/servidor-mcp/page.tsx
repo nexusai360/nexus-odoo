@@ -72,7 +72,7 @@ export default async function ServidorMcpPage() {
         icon={Cpu}
         title="Servidor MCP"
         subtitle="Endpoint semântico para agentes de IA, RBAC de 7 camadas, Streamable HTTP"
-        actions={<TourTriggerButton config={servidorMcpTour} />}
+        titleAccessory={<TourTriggerButton config={servidorMcpTour} />}
       />
       <TourAutoStart tour={servidorMcpTour} />
 

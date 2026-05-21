@@ -1023,15 +1023,17 @@ export function McpDocsContent({ catalog, mcpUrl }: Props) {
         <motion.div
           variants={itemVariants}
           id="tools"
-          data-tour="mcp-docs-tools"
           className="space-y-5 scroll-mt-24"
         >
-          <SectionTitle icon={Layers} color="text-violet-500">
-            Tools
-          </SectionTitle>
-          <p className="text-sm text-muted-foreground leading-relaxed">
-            Todas as tools disponíveis, agrupadas por módulo. Leitura em verde, escrita em violeta.
-          </p>
+          <div data-tour="mcp-docs-tools-head" className="space-y-2 scroll-mt-24">
+            <SectionTitle icon={Layers} color="text-violet-500">
+              Tools
+            </SectionTitle>
+            <p className="text-sm text-muted-foreground leading-relaxed">
+              Todas as tools disponíveis, agrupadas por módulo. Leitura em verde, escrita em
+              violeta. Abra qualquer tool para ver os argumentos e exemplos prontos.
+            </p>
+          </div>
           {catalog.length === 0 ? (
             <div className="rounded-xl border border-dashed border-border bg-muted/30 p-8 text-center">
               <p className="text-sm text-muted-foreground">

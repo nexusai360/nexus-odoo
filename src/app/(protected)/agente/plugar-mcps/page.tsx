@@ -26,7 +26,7 @@ export default async function PlugarMcpsPage() {
         icon={Cable}
         title="Plugar MCPs"
         subtitle="Conecte servidores MCP externos para ampliar as capacidades do Agente Nex"
-        actions={<TourTriggerButton config={plugarMcpsTour} />}
+        titleAccessory={<TourTriggerButton config={plugarMcpsTour} />}
       />
       <TourAutoStart tour={plugarMcpsTour} />
 

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition, useCallback } from "react";
+import { useState, useTransition, useCallback, useEffect } from "react";
 import {
   AlertTriangle,
   CalendarDays,
@@ -22,6 +22,8 @@ import { DateField } from "@/components/ui/date-field";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { cn } from "@/lib/utils";
 import { moduleLabel } from "@/lib/mcp-module-labels";
+import { useTour } from "@/components/tour/tour-provider";
+import { servidorMcpLogsTour } from "@/lib/tours/servidor-mcp-tour";
 import {
   queryAuditLogs,
   type AuditLogItem,
@@ -453,6 +455,19 @@ export function LogsTimeline({ initial, toolDescriptions = {} }: Props) {
   const [isPending, startTransition] = useTransition();
   const [isLoadingMore, setIsLoadingMore] = useState(false);
   const [isExporting, setIsExporting] = useState(false);
+
+  // O tour de Logs expande a primeira linha ao chegar no passo da lista.
+  const { active, currentStepIndex } = useTour();
+  useEffect(() => {
+    if (
+      active?.id === servidorMcpLogsTour.id &&
+      currentStepIndex >= 1 &&
+      items.length > 0 &&
+      !expandedId
+    ) {
+      setExpandedId(items[0].id);
+    }
+  }, [active, currentStepIndex, items, expandedId]);
 
   const applyFilters = useCallback((newFilters: AuditLogFilters) => {
     setFilters(newFilters);

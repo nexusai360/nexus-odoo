@@ -39,7 +39,7 @@ export default async function DocsPage() {
         icon={BookOpen}
         title="Servidor MCP"
         subtitle="Endpoint semântico para agentes de IA, RBAC de 7 camadas, Streamable HTTP"
-        actions={<TourTriggerButton config={servidorMcpDocsTour} />}
+        titleAccessory={<TourTriggerButton config={servidorMcpDocsTour} />}
       />
       <TourAutoStart tour={servidorMcpDocsTour} />
 

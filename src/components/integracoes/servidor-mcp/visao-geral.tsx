@@ -129,7 +129,10 @@ export function McpVisaoGeral({ mcpPublicUrl, healthStatus, metrics }: Props) {
 
       {/* ── O que mais é chamado? ───────────────────────────────────────────── */}
       {hasUsage && metrics!.topTools.length > 0 && (
-        <div className="rounded-xl border border-border bg-card p-6 space-y-3">
+        <div
+          data-tour="mcp-top-tools"
+          className="rounded-xl border border-border bg-card p-6 space-y-3"
+        >
           <p className="text-[15px] font-semibold">Tools mais usadas</p>
           <div className="space-y-1.5">
             {metrics!.topTools.map((t) => (
