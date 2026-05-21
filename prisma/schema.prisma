@@ -187,6 +187,19 @@ model ExternalMcpServer {
   @@map("external_mcp_servers")
 }
 
+/// Registro de que um usuário já viu o tour de uma tela. Usado para abrir o
+/// tour automaticamente só na primeira visita, sobrevivendo a logout e troca
+/// de conta (a marca fica por usuário, não no navegador).
+model UserTourSeen {
+  id      String   @id @default(uuid()) @db.Uuid
+  userId  String   @map("user_id") @db.Uuid
+  tourKey String   @map("tour_key")
+  seenAt  DateTime @default(now()) @map("seen_at")
+
+  @@unique([userId, tourKey])
+  @@map("user_tour_seen")
+}
+
 model AuditLog {
   id         String      @id @default(uuid()) @db.Uuid
   userId     String?     @map("user_id") @db.Uuid
