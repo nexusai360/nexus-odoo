@@ -13,8 +13,60 @@ import {
   type WriteAction,
   type McpCapabilities,
 } from "@/lib/actions/mcp-api-keys-types";
+import type { CatalogByModule } from "@/lib/actions/mcp-catalog-schema";
 
 export type AccessLevel = "none" | "read" | "write";
+
+/** Uma ação de escrita disponível para um módulo, derivada do catálogo. */
+export interface ModuleWriteAction {
+  /** Ação no formato persistido (`WriteAction`). */
+  action: WriteAction;
+  /** IDs das write tools que essa ação libera. */
+  tools: string[];
+}
+
+/** Ações de escrita disponíveis por módulo (derivadas das write tools reais). */
+export type ModuleWriteActionsMap = Partial<Record<McpModule, ModuleWriteAction[]>>;
+
+/** Mapeia o código de ação do catálogo ("create") para o `WriteAction` persistido. */
+const ACTION_CODE_TO_WRITE: Record<string, WriteAction> = {
+  create: "Create",
+  update: "Update",
+  delete: "Delete",
+  transition: "Transition",
+};
+
+/**
+ * Deriva, a partir do catálogo serializado, quais ações de escrita cada módulo
+ * realmente oferece. A UI de capabilities só mostra ações que têm write tool;
+ * módulos sem write tool não têm ações de escrita.
+ */
+export function deriveModuleWriteActions(
+  catalog: CatalogByModule[],
+): ModuleWriteActionsMap {
+  const map: ModuleWriteActionsMap = {};
+  const modules = MCP_MODULES as readonly string[];
+
+  for (const mod of catalog) {
+    if (!modules.includes(mod.module)) continue;
+    const byAction = new Map<WriteAction, string[]>();
+    for (const tool of mod.writeTools) {
+      // capability serializada: "crm.create" → código de ação "create".
+      const code = (tool.capability ?? "").split(".").pop() ?? "";
+      const writeAction = ACTION_CODE_TO_WRITE[code];
+      if (!writeAction) continue;
+      const arr = byAction.get(writeAction) ?? [];
+      arr.push(tool.id);
+      byAction.set(writeAction, arr);
+    }
+    if (byAction.size > 0) {
+      map[mod.module as McpModule] = [...byAction.entries()].map(
+        ([action, tools]) => ({ action, tools }),
+      );
+    }
+  }
+  return map;
+}
 
 export interface ModuleAccess {
   level: AccessLevel;
