@@ -140,9 +140,8 @@ export function PlugarMcpsContent({ initial }: Props) {
     <div className="space-y-6 max-w-3xl">
       {/* Introdução */}
       <p className="text-sm text-muted-foreground">
-        Conecte servidores MCP externos (Slack, GitHub, ou qualquer serviço com endpoint MCP)
-        para o Agente Nex usar como ferramentas. Para expor o nosso MCP a serviços de fora, use
-        as Chaves de Acesso em Integrações, Servidor MCP.
+        Conecte servidores MCP externos para o Agente Nex usar como ferramentas. Para expor o
+        nosso MCP a terceiros, use as Chaves de Acesso do Servidor MCP.
       </p>
 
       {/* Cabeçalho */}
@@ -173,7 +172,9 @@ export function PlugarMcpsContent({ initial }: Props) {
           <p className="text-sm font-semibold">Conectar servidor MCP externo</p>
 
           <div className="space-y-2">
-            <Label htmlFor="mcp-name">Nome *</Label>
+            <Label htmlFor="mcp-name">
+              Nome <span className="text-red-500">*</span>
+            </Label>
             <Input
               id="mcp-name"
               placeholder="Ex: Slack, GitHub, Notion..."
@@ -208,7 +209,9 @@ export function PlugarMcpsContent({ initial }: Props) {
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="mcp-url">URL do endpoint *</Label>
+            <Label htmlFor="mcp-url">
+              URL do endpoint <span className="text-red-500">*</span>
+            </Label>
             <Input
               id="mcp-url"
               placeholder="https://mcp.exemplo.com/mcp"
