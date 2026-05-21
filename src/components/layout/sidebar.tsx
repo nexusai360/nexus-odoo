@@ -346,10 +346,10 @@ export function Sidebar({ user }: SidebarProps) {
               </div>
               {!isCollapsed && (
                 <div className="flex-1 min-w-0">
-                  <p className="text-[15px] font-medium text-foreground truncate">
+                  <p className="text-[14.5px] font-medium text-foreground truncate">
                     {user.name}
                   </p>
-                  <p className="text-xs text-muted-foreground truncate">
+                  <p className="text-[11.5px] text-muted-foreground truncate">
                     {PLATFORM_ROLE_LABELS[user.platformRole]}
                   </p>
                 </div>
