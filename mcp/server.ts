@@ -27,6 +27,7 @@ import { recordAudit, extractRowCount, type AuditOutcome } from "./lib/audit.js"
 import { toOutcome, safeErrorMessage } from "./lib/failure.js";
 import { checkMcpRateLimit, RATE_LIMIT_EXCEEDED_MESSAGE, type RateLimitRedis } from "./lib/rate-limit.js";
 import type { ToolEntry } from "./catalog/types.js";
+import { handleHealthRequest } from "./health/index.js";
 
 // ─── handleToolCall — pipeline de tools/call (4a.17) ────────────────────────
 
@@ -180,6 +181,13 @@ export function createHttpServer(): TestableServer {
     req: http.IncomingMessage,
     res: http.ServerResponse,
   ): Promise<void> => {
+    // Bloco I — Health check: rota pública, sem auth (antes de qualquer middleware)
+    const url = req.url ?? "";
+    if (req.method === "GET" && (url === "/health" || url === "/api/mcp/health")) {
+      await handleHealthRequest(req, res);
+      return;
+    }
+
     // 4a.14 — Middleware de service token
     if (!validateServiceToken(req.headers.authorization)) {
       res.writeHead(401, { "Content-Type": "application/json" });
