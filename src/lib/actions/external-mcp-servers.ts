@@ -132,7 +132,7 @@ export async function createExternalMcpServer(input: {
       details: { op: "create", name: row.name, url: row.url },
     });
 
-    revalidatePath("/agente/plugar-mcps");
+    revalidatePath("/agente/plugar-mcps", "layout");
     return { success: true, data: toListItem(row) };
   } catch (e) {
     return { success: false, error: e instanceof Error ? e.message : "Erro ao criar" };
@@ -184,7 +184,7 @@ export async function updateExternalMcpServer(
       details: { op: "update", name: row.name },
     });
 
-    revalidatePath("/agente/plugar-mcps");
+    revalidatePath("/agente/plugar-mcps", "layout");
     return { success: true, data: toListItem(row) };
   } catch (e) {
     return { success: false, error: e instanceof Error ? e.message : "Erro ao atualizar" };
@@ -205,7 +205,7 @@ export async function toggleExternalMcpServer(
       where: { id },
       data: { enabled },
     });
-    revalidatePath("/agente/plugar-mcps");
+    revalidatePath("/agente/plugar-mcps", "layout");
     return { success: true, data: toListItem(row) };
   } catch (e) {
     return { success: false, error: e instanceof Error ? e.message : "Erro ao alternar" };
@@ -229,7 +229,7 @@ export async function deleteExternalMcpServer(
       targetId: id,
       details: { op: "delete" },
     });
-    revalidatePath("/agente/plugar-mcps");
+    revalidatePath("/agente/plugar-mcps", "layout");
     return { success: true, data: { id } };
   } catch (e) {
     return { success: false, error: e instanceof Error ? e.message : "Erro ao remover" };
@@ -348,7 +348,7 @@ export async function testExternalMcpServer(
       where: { id },
       data: { lastStatus: status, lastCheckAt: new Date() },
     });
-    revalidatePath("/agente/plugar-mcps");
+    revalidatePath("/agente/plugar-mcps", "layout");
     return { success: true, data: { status, message } };
   } catch (e) {
     return { success: false, error: e instanceof Error ? e.message : "Erro ao testar" };

@@ -220,7 +220,7 @@ function McpServerRow({
         !server.enabled && "opacity-60",
       )}
     >
-      <div className="flex items-start justify-between gap-3">
+      <div className="flex items-center justify-between gap-3">
         <div className="flex items-start gap-3 min-w-0">
           <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-violet-500/10">
             <Plug className="h-4 w-4 text-violet-500" />
@@ -242,7 +242,7 @@ function McpServerRow({
           </div>
         </div>
 
-        <div className="flex shrink-0 flex-col items-end gap-1.5">
+        <div className="flex shrink-0 items-center gap-1">
           <Tooltip>
             <TooltipTrigger
               render={
@@ -256,44 +256,42 @@ function McpServerRow({
             />
             <TooltipContent>{server.enabled ? "Desativar" : "Ativar"}</TooltipContent>
           </Tooltip>
-          <div className="flex items-center gap-0.5">
-            <Tooltip>
-              <TooltipTrigger
-                render={
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="sm"
-                    className="h-8 w-8 p-0"
-                    disabled={isPending}
-                    onClick={onEdit}
-                    aria-label="Editar servidor"
-                  />
-                }
-              >
-                <Pencil className="h-4 w-4 text-muted-foreground" />
-              </TooltipTrigger>
-              <TooltipContent>Editar</TooltipContent>
-            </Tooltip>
-            <Tooltip>
-              <TooltipTrigger
-                render={
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="sm"
-                    className="h-8 w-8 p-0 text-destructive hover:bg-destructive/10 hover:text-destructive"
-                    disabled={isPending}
-                    onClick={() => onDelete(server.id)}
-                    aria-label="Remover servidor"
-                  />
-                }
-              >
-                <Trash2 className="h-4 w-4" />
-              </TooltipTrigger>
-              <TooltipContent>Remover</TooltipContent>
-            </Tooltip>
-          </div>
+          <Tooltip>
+            <TooltipTrigger
+              render={
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  className="h-8 w-8 p-0"
+                  disabled={isPending}
+                  onClick={onEdit}
+                  aria-label="Editar servidor"
+                />
+              }
+            >
+              <Pencil className="h-4 w-4 text-muted-foreground" />
+            </TooltipTrigger>
+            <TooltipContent>Editar</TooltipContent>
+          </Tooltip>
+          <Tooltip>
+            <TooltipTrigger
+              render={
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  className="h-8 w-8 p-0 text-destructive hover:bg-destructive/10 hover:text-destructive"
+                  disabled={isPending}
+                  onClick={() => onDelete(server.id)}
+                  aria-label="Remover servidor"
+                />
+              }
+            >
+              <Trash2 className="h-4 w-4" />
+            </TooltipTrigger>
+            <TooltipContent>Remover</TooltipContent>
+          </Tooltip>
         </div>
       </div>
     </div>

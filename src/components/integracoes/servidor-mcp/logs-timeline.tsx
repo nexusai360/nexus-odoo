@@ -21,6 +21,13 @@ import { CustomSelect } from "@/components/ui/custom-select";
 import { DateField } from "@/components/ui/date-field";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { cn } from "@/lib/utils";
+import {
+  formatDatetime,
+  formatMs,
+  isEmptyValue,
+  JsonBlock,
+  DetailField,
+} from "@/components/integracoes/log-primitives";
 import { moduleLabel } from "@/lib/mcp-module-labels";
 import { useTour } from "@/components/tour/tour-provider";
 import { servidorMcpLogsTour } from "@/lib/tours/servidor-mcp-tour";
@@ -68,52 +75,8 @@ function getStatusConfig(status: string | null, outcome: string) {
 }
 
 // ──────────────────────────────────────────────────────────────────────────────
-// Helpers
-// ──────────────────────────────────────────────────────────────────────────────
-
-function formatDatetime(iso: string) {
-  return new Intl.DateTimeFormat("pt-BR", {
-    day: "2-digit",
-    month: "2-digit",
-    hour: "2-digit",
-    minute: "2-digit",
-    second: "2-digit",
-  }).format(new Date(iso));
-}
-
-function formatMs(ms: number | null): string {
-  if (ms == null) return "-";
-  if (ms >= 1000) return `${(ms / 1000).toFixed(2)} s`;
-  return `${ms} ms`;
-}
-
-function isEmptyValue(value: unknown): boolean {
-  if (value == null) return true;
-  if (Array.isArray(value)) return value.length === 0;
-  if (typeof value === "object") return Object.keys(value as object).length === 0;
-  return false;
-}
-
-function JsonBlock({ value }: { value: unknown }) {
-  return (
-    <pre className="whitespace-pre-wrap break-all text-xs font-mono bg-muted/50 border border-border rounded-lg p-3 max-h-72 overflow-auto">
-      {JSON.stringify(value, null, 2)}
-    </pre>
-  );
-}
-
-// ──────────────────────────────────────────────────────────────────────────────
 // Detalhe inline
 // ──────────────────────────────────────────────────────────────────────────────
-
-function DetailField({ label, value, mono }: { label: string; value: string; mono?: boolean }) {
-  return (
-    <div className="flex items-baseline gap-2">
-      <span className="text-xs text-muted-foreground w-28 shrink-0">{label}</span>
-      <span className={cn("text-xs", mono && "font-mono")}>{value}</span>
-    </div>
-  );
-}
 
 /**
  * Explicação de um outcome diferente de sucesso, para o detalhe do log sempre
