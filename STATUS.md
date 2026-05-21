@@ -22,20 +22,28 @@
 
 **Branch ativa: `feat/f4-onda2-mcp-escrita`**. A `main` tem F0+F1+F2+F3+F3.5+F4+F5.
 
-> ## ⚠️ RETOMADA, F4 ONDA 2: RODADA 5 DE CORREÇÕES CONCLUÍDA
-> A F4 Onda 2 está na branch `feat/f4-onda2-mcp-escrita` (PR #10). Onda 0 + Rodadas 1 a 5
-> de correções **concluídas**. A rodada 5 (plano `docs/superpowers/plans/2026-05-21-
-> f4-onda2-correcoes-r5.md`, v3 com 2 reviews) entregou: travessão removido do card do
-> Servidor MCP; motivo do erro nos Logs (`recordAudit` grava `errorCode`/`errorMessage`);
-> wizard de Chaves ajustado (stepper maior, modal travado com corpo rolável, seletor de
-> acessos com controle segmentado, 5 passos com Origens e Resumo separados); calendário
-> (`DateField`) no padrão (navegação mês/ano por `CustomSelect`, ano até +30); trava de
-> rolagem real da Documentação (espaçador dinâmico) e título "Documentação do Servidor
-> MCP"; Webhooks com método HEAD, base `/api/webhooks/`, caminho único, `updateWebhook`,
-> edição e card com tags; Plugar MCPs como wizard em modal com teste obrigatório antes de
-> conectar e status Conectado/Sem conexão/Desativado.
-> `tsc`/`jest` (1530)/`next build` verdes na branch. `eslint` tem erros pré-existentes do
-> MCP (Bloco P) registrados no RADAR R7; nenhum arquivo da r5 introduz erro de lint.
+> ## ⚠️ RETOMADA, F4 ONDA 2: RODADA 6 DE CORREÇÕES **PARCIAL**
+> **LER PRIMEIRO** o plano `docs/superpowers/plans/2026-05-21-f4-onda2-correcoes-r6.md`
+> (seção Progresso) e `docs/agents/active/claude-f4-onda2-correcoes-r6.md` (ponto de
+> retomada). A F4 Onda 2 está na branch `feat/f4-onda2-mcp-escrita` (PR #10). Onda 0 +
+> Rodadas 1 a 5 **concluídas**; rodada 6 **parcial**.
+>
+> **Rodada 6 — feito (commitado, `tsc`/`jest` 1530/`build` verdes):** webhook rotaciona o
+> secret dentro do modal de edição; Plugar MCPs persiste `lastStatus` após o teste
+> (corrige o card "Não testado"); criação de chave revela o token dentro do modal
+> (`SecretRevealStep`), sem tarja externa; card de chave só com toggle + lápis + revogar
+> (menu "..." removido); edição de chave com "Rotacionar token" in-modal; Resumo lista as
+> URLs de origem.
+>
+> **Rodada 6 — PENDENTE (próxima sessão):**
+> 1. **Área B — calendário (`DateField`/`Calendar`):** a grade de dias precisa ocupar
+>    toda a largura do componente (hoje sobra espaço em branco); adicionar setas de mês
+>    anterior/próximo com travas (não passar de dez/2056, não voltar antes do mês
+>    corrente).
+> 2. **Área H — Enter avança os wizards** (Chave, Webhook, MCP): Enter num campo vai para
+>    o próximo passo; no último passo não submete sozinho.
+> 3. **Ajuste F:** na edição de chave, travar **Origens** como somente-leitura (a r6
+>    adicionou o rotate in-modal mas não travou as origens; Expiração já é read-only).
 >
 > **Pendências herdadas:** teste E2E de escrita real contra `grupojht.teste.tauga.online`
 > nunca rodou (faltam credenciais `ODOO_WRITE_*`); inspeção visual pixel a pixel.
