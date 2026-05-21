@@ -21,7 +21,9 @@ import {
   Hash,
   Clock,
   ListTree,
+  ArrowRight,
 } from "lucide-react";
+import Link from "next/link";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import type { CatalogByModule, CatalogToolItem } from "@/lib/actions/mcp-catalog-schema";
@@ -794,6 +796,73 @@ export function McpDocsContent({ catalog, mcpUrl }: Props) {
             auditado. As leituras respondem a partir do cache interno, e as escritas vão ao Odoo
             de forma controlada, gated por capability da chave de API.
           </p>
+
+          {/* Passo a passo de uso */}
+          <div className="rounded-xl border border-border bg-card p-5 space-y-3">
+            <h3 className="text-sm font-semibold text-foreground">Como começar, em 4 passos</h3>
+            <ol className="space-y-1.5">
+              {[
+                {
+                  n: 1,
+                  t: "Gere uma chave de API",
+                  d: "Em Chaves de Acesso, crie uma chave com as capabilities que a integração precisa.",
+                  href: "/integracoes/servidor-mcp/chaves",
+                },
+                {
+                  n: 2,
+                  t: "Autentique cada chamada",
+                  d: "Envie a chave no header Authorization: Bearer. Não há sessão, cada chamada é independente.",
+                  section: "auth",
+                },
+                {
+                  n: 3,
+                  t: "Escolha a tool certa",
+                  d: "O catálogo lista todas as tools por módulo, com os argumentos de cada uma.",
+                  section: "tools",
+                },
+                {
+                  n: 4,
+                  t: "Copie um exemplo pronto",
+                  d: "Cada tool traz exemplos em curl, JSON-RPC e n8n para você adaptar.",
+                  section: "tools",
+                },
+              ].map((step) => {
+                const inner = (
+                  <>
+                    <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-violet-500/10 text-xs font-semibold text-violet-500">
+                      {step.n}
+                    </span>
+                    <span className="min-w-0 flex-1">
+                      <span className="block text-sm font-medium text-foreground">{step.t}</span>
+                      <span className="block text-[13px] text-muted-foreground leading-relaxed">
+                        {step.d}
+                      </span>
+                    </span>
+                    <ArrowRight className="mt-1 h-4 w-4 shrink-0 text-muted-foreground" />
+                  </>
+                );
+                const className =
+                  "flex w-full items-start gap-3 rounded-lg border border-transparent px-2 py-2 text-left transition-colors hover:border-border hover:bg-muted/50";
+                return (
+                  <li key={step.n}>
+                    {step.href ? (
+                      <Link href={step.href} className={className}>
+                        {inner}
+                      </Link>
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={() => step.section && scrollToSection(step.section)}
+                        className={className}
+                      >
+                        {inner}
+                      </button>
+                    )}
+                  </li>
+                );
+              })}
+            </ol>
+          </div>
         </motion.div>
 
         <div className="h-px bg-border" />

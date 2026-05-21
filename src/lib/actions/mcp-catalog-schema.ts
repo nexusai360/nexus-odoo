@@ -1,23 +1,22 @@
 "use server";
 
 /**
- * Server Action: exporta catálogo serializável de tools do MCP.
+ * Server Action: exporta o catálogo serializável de tools do MCP.
  *
- * Busca o catálogo via GET ${MCP_URL}/api/mcp/catalog-schema — endpoint público
- * do container MCP. Nunca importa código do container mcp/ diretamente (o Turbopack
- * não resolve imports .js→.ts cross-boundary).
- *
- * Fallback gracioso: se MCP_URL não estiver configurado ou o serviço estiver
- * offline, retorna { success: true, data: [], unavailable: true }.
+ * Fonte do catálogo: o snapshot in-app `src/lib/mcp-catalog-snapshot.json`,
+ * gerado por `scripts/gen-mcp-catalog-snapshot.ts` (`npm run gen:mcp-catalog`)
+ * a partir do catálogo do código do servidor MCP. A documentação não depende
+ * mais do container `mcp` estar no ar — em dev ele não roda, e antes o catálogo
+ * aparecia vazio ("0 tools").
  *
  * Gate: super_admin.
  */
 
 import { requireSuperAdmin } from "@/lib/actions/_helpers";
+import catalogSnapshot from "@/lib/mcp-catalog-snapshot.json";
 
 // ──────────────────────────────────────────────────────────────────────────────
-// Tipo local espelhando McpEndpointToolItem do endpoint MCP.
-// Definido aqui (sem import cross-boundary) para não quebrar o Turbopack.
+// Tipo do snapshot (espelha CatalogSchemaToolItem do endpoint MCP).
 // ──────────────────────────────────────────────────────────────────────────────
 
 interface McpEndpointToolItem {
@@ -66,50 +65,13 @@ export type CatalogSchemaResult =
   | { success: false; error: string };
 
 // ──────────────────────────────────────────────────────────────────────────────
-// getMcpCatalogSchema
+// Agrupamento por módulo (pura, testável isoladamente)
 // ──────────────────────────────────────────────────────────────────────────────
 
-/** URL base do container MCP (env configurada no .env.example). */
-function getMcpUrl(): string | null {
-  const url = process.env.MCP_URL;
-  return url && url.trim() !== "" ? url.trim().replace(/\/$/, "") : null;
-}
-
-export async function getMcpCatalogSchema(): Promise<CatalogSchemaResult> {
-  try {
-    await requireSuperAdmin();
-  } catch (err) {
-    return { success: false, error: (err as Error).message };
-  }
-
-  const mcpUrl = getMcpUrl();
-
-  if (!mcpUrl) {
-    // MCP_URL não configurado — catálogo indisponível (dev sem container MCP)
-    return { success: true, data: [], unavailable: true };
-  }
-
-  let tools: McpEndpointToolItem[];
-  try {
-    const res = await fetch(`${mcpUrl}/api/mcp/catalog-schema`, {
-      method: "GET",
-      headers: { Accept: "application/json" },
-      // Next.js 15+: sem cache no SSR para garantir dados frescos
-      cache: "no-store",
-    });
-
-    if (!res.ok) {
-      return { success: true, data: [], unavailable: true };
-    }
-
-    const json = (await res.json()) as { tools?: McpEndpointToolItem[]; count?: number };
-    tools = Array.isArray(json.tools) ? json.tools : [];
-  } catch {
-    // Container MCP offline ou timeout
-    return { success: true, data: [], unavailable: true };
-  }
-
-  // Agrupar por módulo (excluindo tools sempreVisivel sem módulo explícito — "outros")
+/** Agrupa as tools do snapshot por módulo, separando leitura e escrita. */
+export async function groupCatalogTools(
+  tools: McpEndpointToolItem[],
+): Promise<CatalogByModule[]> {
   const byModule = new Map<string, CatalogByModule>();
 
   function getOrCreate(module: string): CatalogByModule {
@@ -142,14 +104,33 @@ export async function getMcpCatalogSchema(): Promise<CatalogSchemaResult> {
     }
   }
 
-  // Sort módulos alfabeticamente, tools dentro do módulo por id
-  const result: CatalogByModule[] = Array.from(byModule.values())
+  return Array.from(byModule.values())
     .sort((a, b) => a.module.localeCompare(b.module))
     .map((m) => ({
       ...m,
       readTools: [...m.readTools].sort((a, b) => a.id.localeCompare(b.id)),
       writeTools: [...m.writeTools].sort((a, b) => a.id.localeCompare(b.id)),
     }));
+}
 
-  return { success: true, data: result };
+// ──────────────────────────────────────────────────────────────────────────────
+// getMcpCatalogSchema
+// ──────────────────────────────────────────────────────────────────────────────
+
+export async function getMcpCatalogSchema(): Promise<CatalogSchemaResult> {
+  try {
+    await requireSuperAdmin();
+  } catch (err) {
+    return { success: false, error: (err as Error).message };
+  }
+
+  const snapshot = catalogSnapshot as { tools: McpEndpointToolItem[] };
+  const tools = Array.isArray(snapshot.tools) ? snapshot.tools : [];
+  const data = await groupCatalogTools(tools);
+
+  if (data.length === 0) {
+    return { success: true, data: [], unavailable: true };
+  }
+
+  return { success: true, data };
 }
