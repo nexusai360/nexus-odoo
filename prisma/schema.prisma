@@ -1539,6 +1539,24 @@ model McpAuditLog {
   @@map("mcp_audit_log")
 }
 
+/// Idempotency tracking para writes externas (F4 Onda 2).
+/// PK composta (apiKeyId, key) isola Idempotency-Key por canal sem colisão.
+model McpIdempotencyRecord {
+  apiKeyId        String   @map("api_key_id") @db.Uuid
+  key             String
+  toolId          String   @map("tool_id")
+  payloadHash     String   @map("payload_hash")
+  result          Json
+  status          String
+  httpStatus      Int      @map("http_status")
+  expiresAt       DateTime @map("expires_at")
+  createdAt       DateTime @default(now()) @map("created_at")
+
+  @@id([apiKeyId, key])
+  @@index([expiresAt])
+  @@map("mcp_idempotency_records")
+}
+
 /// Registro de perguntas fora do catálogo (Caminho 3a — gap logging).
 model FeatureRequest {
   id             String   @id @default(uuid())
