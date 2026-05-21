@@ -38,6 +38,11 @@ Ambas leem de um **banco interno (cache)** alimentado por sincronização perió
 - Padrão: silêncio. Trabalho feito com ferramentas, sem narração.
 - Falar só quando necessário: erro/bloqueio, informação crítica, ou resumo final.
 - Resumo final em um único parágrafo.
+- **Proibido o caractere travessão (`—`, em dash) em qualquer texto:** UI, documentação,
+  comentários de código, mensagens de commit, chat. Vale também para o travessão como
+  separador de frase. Usar vírgula, parênteses, dois-pontos ou ponto final no lugar.
+  A escrita deve ser humanizada, em linguagem natural de produto, como se uma pessoa
+  tivesse escrito cada parte da plataforma.
 
 ---
 
