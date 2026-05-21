@@ -11,6 +11,10 @@ export interface AuditParams {
   outcome: AuditOutcome;
   rowCount?: number;
   durationMs?: number;
+  /** Código do erro (gravado quando outcome != ok). */
+  errorCode?: string;
+  /** Mensagem detalhada do erro, para o operador inspecionar nos Logs. */
+  errorMessage?: string;
 }
 
 /**
@@ -34,6 +38,8 @@ export async function recordAudit(
         outcome: p.outcome,
         rowCount: p.rowCount,
         durationMs: p.durationMs,
+        errorCode: p.errorCode,
+        errorMessage: p.errorMessage,
       },
     ],
   });

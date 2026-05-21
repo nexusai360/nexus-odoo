@@ -24,7 +24,7 @@ import { mcpRedis } from "./lib/redis.js";
 import { catalogo } from "./catalog/index.js";
 import { visibleTools, assertToolAllowed } from "./catalog/registry.js";
 import { recordAudit, extractRowCount, type AuditOutcome } from "./lib/audit.js";
-import { toOutcome, safeErrorMessage } from "./lib/failure.js";
+import { toOutcome, safeErrorMessage, describeAuditError } from "./lib/failure.js";
 import { checkMcpRateLimit, RATE_LIMIT_EXCEEDED_MESSAGE, type RateLimitRedis } from "./lib/rate-limit.js";
 import type { ToolEntry } from "./catalog/types.js";
 import { handleHealthRequest } from "./health/index.js";
@@ -64,7 +64,10 @@ export async function handleToolCall(
     const rl = await checkMcpRateLimit(deps.rateLimit, userId);
     if (!rl.allowed) {
       outcome = "denied";
-      await auditSafe(deps.record, userId, tool.id, rawInput, outcome, undefined, Date.now() - start);
+      await auditSafe(deps.record, userId, tool.id, rawInput, outcome, undefined, Date.now() - start, {
+        errorCode: "rate_limit_exceeded",
+        errorMessage: "Limite de chamadas por minuto da sessão atingido.",
+      });
       return errorResult(RATE_LIMIT_EXCEEDED_MESSAGE);
     }
 
@@ -72,7 +75,10 @@ export async function handleToolCall(
     const user = await deps.resolveUser(prisma, userId);
     if (!user) {
       outcome = "denied";
-      await auditSafe(deps.record, userId, tool.id, rawInput, outcome, undefined, Date.now() - start);
+      await auditSafe(deps.record, userId, tool.id, rawInput, outcome, undefined, Date.now() - start, {
+        errorCode: "denied",
+        errorMessage: "Sessão inválida, expirada ou revogada.",
+      });
       return errorResult(safeErrorMessage("denied"));
     }
 
@@ -92,7 +98,16 @@ export async function handleToolCall(
   } catch (err: unknown) {
     const errOutcome = toOutcome(err);
     outcome = errOutcome;
-    await auditSafe(deps.record, userId, tool.id, rawInput, outcome, undefined, Date.now() - start);
+    await auditSafe(
+      deps.record,
+      userId,
+      tool.id,
+      rawInput,
+      outcome,
+      undefined,
+      Date.now() - start,
+      describeAuditError(err),
+    );
     return errorResult(safeErrorMessage(errOutcome));
   }
 }
@@ -105,9 +120,19 @@ async function auditSafe(
   outcome: AuditOutcome,
   rowCount: number | undefined,
   durationMs: number,
+  errorInfo?: { errorCode?: string; errorMessage?: string },
 ): Promise<void> {
   try {
-    await record(prisma, { userId, tool, params, outcome, rowCount, durationMs });
+    await record(prisma, {
+      userId,
+      tool,
+      params,
+      outcome,
+      rowCount,
+      durationMs,
+      errorCode: errorInfo?.errorCode,
+      errorMessage: errorInfo?.errorMessage,
+    });
   } catch (err: unknown) {
     // Falha de audit NÃO derruba a resposta — mas deve ser visível em produção.
     // SEVERIDADE ALTA: falha sistemática de audit invalida a camada 7 do RBAC.

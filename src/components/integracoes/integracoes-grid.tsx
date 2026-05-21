@@ -25,7 +25,7 @@ const CARDS: IntegrationCard[] = [
   },
   {
     label: "Servidor MCP",
-    description: "Painel do MCP semântico — status, chaves de acesso e métricas.",
+    description: "Painel do MCP semântico: status, chaves de acesso e métricas.",
     icon: Cpu,
     href: "/integracoes/servidor-mcp",
   },

@@ -39,3 +39,32 @@ export function safeErrorMessage(outcome: Exclude<AuditOutcome, "ok">): string {
       return "Erro interno ao processar a consulta. Tente novamente em instantes.";
   }
 }
+
+/**
+ * Descreve uma exceção para o registro de auditoria: código e mensagem.
+ *
+ * Diferente de `safeErrorMessage` (genérica, devolvida ao agente), esta mensagem
+ * é detalhada e vai apenas para o `McpAuditLog` — o operador precisa saber o
+ * motivo real do erro ao inspecionar os Logs do painel.
+ */
+export function describeAuditError(err: unknown): {
+  errorCode: string;
+  errorMessage: string;
+} {
+  if (err instanceof ZodError) {
+    const detail = err.issues
+      .map((i) => `${i.path.join(".") || "input"}: ${i.message}`)
+      .join("; ");
+    return { errorCode: "validation_error", errorMessage: detail || "Entrada inválida" };
+  }
+  if (err instanceof DomainDeniedError) {
+    return { errorCode: "domain_denied", errorMessage: err.message };
+  }
+  if (err instanceof SqlGuardError) {
+    return { errorCode: "sql_guard", errorMessage: err.message };
+  }
+  if (err instanceof Error) {
+    return { errorCode: "internal_error", errorMessage: err.message };
+  }
+  return { errorCode: "internal_error", errorMessage: String(err) };
+}
