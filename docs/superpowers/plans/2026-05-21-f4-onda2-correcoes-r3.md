@@ -12,6 +12,19 @@ Integrações, e um padrão visual consistente entre Servidor MCP, Plugar MCPs e
 undefined` eram do dev server rodando código/cliente Prisma antigos. O código commitado está
 correto; o dev server foi reiniciado limpo. Sem mudança de código necessária.
 
+## Progresso (atualizar conforme avança; commits com prefixo `f4-onda2-fix-r3`)
+
+- [x] Task 0, perfil do sidebar afinado.
+- [x] Área A, logs (A1 filtro de status por `outcome`, A2 status Inválido, A3 detalhe com descrição da tool).
+- [x] D1, helper `resolveMcpPublicUrl` e URL completa na Visão Geral e Documentação. Falta o bump de fontes da Visão Geral.
+- [ ] Área B, modal de Chaves de Acesso refeito.
+- [ ] Área C, documentação (C1 catálogo, C2 clareza/fontes/scrollspy/passo a passo, C3 nav funcional + hero sem ícone + título menor).
+- [ ] Área D, restante, bump sutil de fontes da Visão Geral.
+- [ ] Área E, botão de tour em todas as abas, reposicionado.
+- [ ] Área F, Plugar MCPs redesenhado.
+- [ ] Área G, Webhooks redesenhado + tour que ensina a criar.
+- [ ] Área H, verificação e fechamento.
+
 ---
 
 ## Task 0 [UI]: Ajuste fino do perfil no sidebar
@@ -110,12 +123,12 @@ correto; o dev server foi reiniciado limpo. Sem mudança de código necessária.
   até a seção. Hoje `scrollToSection` usa `window.scrollTo`, mas o scroll real acontece no
   `<main>` do layout protegido (`overflow-y-auto`). Corrigir: usar `scrollIntoView` no elemento
   alvo (com `scroll-margin-top`) ou rolar o container correto. Clicar deve mover a tela.
-- [ ] Remover o cabeçalho duplicado dentro do `McpDocsContent` (o hero com ícone `Code2` +
-  "Servidor MCP" + subtítulo). O `PageHeader` da rota já mostra ícone + "Servidor MCP" +
-  subtítulo; ter dois títulos com ícones diferentes confunde. Manter no conteúdo só o que é útil
-  (URL completa, badges, passo a passo), sem repetir o título nem usar um segundo ícone.
-- [ ] Seguir o padrão de ícones da plataforma: um ícone só por tela, no `PageHeader`, como nas
-  telas do Agente Nex. Sem ícone concorrente no corpo.
+- [ ] Correção de rota (instrução do usuário, substitui o pedido anterior sobre ícones): manter
+  o ícone do `PageHeader` da rota de documentação (representa a seção Documentação). No hero
+  dentro do `McpDocsContent`, **remover o ícone** (`Code2`). O título do hero "Servidor MCP",
+  hoje grande demais (`text-3xl`), deve **diminuir de tamanho** e passar a incluir Documentação,
+  ex.: "Servidor MCP, Documentação". A fonte da **descrição** abaixo do título não muda.
+  Manter no hero a URL completa, os badges e o passo a passo.
 - [ ] `tsc`/`build` verdes. Commit.
 
 ---
