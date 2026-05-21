@@ -3,21 +3,23 @@
 import { useState, useTransition, useCallback } from "react";
 import {
   AlertTriangle,
+  CalendarDays,
   CheckCircle2,
   ChevronDown,
   Download,
-  Filter,
   Info,
   Loader2,
   Search,
   Shield,
   Terminal,
-  X,
   XCircle,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { CustomSelect } from "@/components/ui/custom-select";
+import { DateField } from "@/components/ui/date-field";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { cn } from "@/lib/utils";
 import {
   queryAuditLogs,
@@ -76,7 +78,6 @@ function formatMs(ms: number | null): string {
   return `${ms} ms`;
 }
 
-/** Verdadeiro quando o valor é vazio (`null`, `{}` ou `[]`). */
 function isEmptyValue(value: unknown): boolean {
   if (value == null) return true;
   if (Array.isArray(value)) return value.length === 0;
@@ -93,15 +94,23 @@ function JsonBlock({ value }: { value: unknown }) {
 }
 
 // ──────────────────────────────────────────────────────────────────────────────
-// Detalhe inline — substitui o modal
+// Detalhe inline
 // ──────────────────────────────────────────────────────────────────────────────
+
+function DetailField({ label, value, mono }: { label: string; value: string; mono?: boolean }) {
+  return (
+    <div className="flex items-baseline gap-2">
+      <span className="text-xs text-muted-foreground w-28 shrink-0">{label}</span>
+      <span className={cn("text-xs", mono && "font-mono")}>{value}</span>
+    </div>
+  );
+}
 
 function LogDetail({ log }: { log: AuditLogItem }) {
   const payload = log.payload ?? log.params;
 
   return (
     <div className="rounded-lg border border-border bg-muted/30 p-4 space-y-4">
-      {/* Identificadores */}
       <div className="grid gap-2 sm:grid-cols-2">
         <DetailField label="Timestamp" value={formatDatetime(log.criadoEm)} mono />
         <DetailField label="Duração" value={formatMs(log.durationMs)} mono />
@@ -113,8 +122,8 @@ function LogDetail({ log }: { log: AuditLogItem }) {
         {log.authMode && <DetailField label="Modo de auth" value={log.authMode} mono />}
         {log.module && (
           <DetailField
-            label="Módulo / ação"
-            value={log.action ? `${log.module} · ${log.action}` : log.module}
+            label="Módulo e ação"
+            value={log.action ? `${log.module}, ${log.action}` : log.module}
           />
         )}
         {log.capability && <DetailField label="Capability" value={log.capability} mono />}
@@ -122,20 +131,16 @@ function LogDetail({ log }: { log: AuditLogItem }) {
         {log.ipAddress && <DetailField label="IP" value={log.ipAddress} mono />}
       </div>
 
-      {/* Erro */}
       {(log.errorCode || log.errorMessage) && (
         <div className="space-y-1.5 rounded-lg border border-destructive/30 bg-destructive/5 p-3">
           <p className="text-xs font-medium text-destructive flex items-center gap-1.5">
             <AlertTriangle className="h-3.5 w-3.5" />
-            Erro {log.errorCode ? `— ${log.errorCode}` : ""}
+            Erro {log.errorCode ? `, ${log.errorCode}` : ""}
           </p>
-          {log.errorMessage && (
-            <p className="text-xs text-destructive/90">{log.errorMessage}</p>
-          )}
+          {log.errorMessage && <p className="text-xs text-destructive/90">{log.errorMessage}</p>}
         </div>
       )}
 
-      {/* Payload */}
       <div className="space-y-1.5">
         <p className="text-xs font-medium text-muted-foreground">Parâmetros da chamada</p>
         {isEmptyValue(payload) ? (
@@ -145,7 +150,6 @@ function LogDetail({ log }: { log: AuditLogItem }) {
         )}
       </div>
 
-      {/* Resultado */}
       {!isEmptyValue(log.result) && (
         <div className="space-y-1.5">
           <p className="text-xs font-medium text-muted-foreground">Resultado</p>
@@ -153,7 +157,6 @@ function LogDetail({ log }: { log: AuditLogItem }) {
         </div>
       )}
 
-      {/* Snapshots de escrita */}
       {!isEmptyValue(log.snapshotBefore) && (
         <div className="space-y-1.5">
           <p className="text-xs font-medium text-muted-foreground">Snapshot antes</p>
@@ -170,25 +173,8 @@ function LogDetail({ log }: { log: AuditLogItem }) {
   );
 }
 
-function DetailField({
-  label,
-  value,
-  mono,
-}: {
-  label: string;
-  value: string;
-  mono?: boolean;
-}) {
-  return (
-    <div className="flex items-baseline gap-2">
-      <span className="text-xs text-muted-foreground w-28 shrink-0">{label}</span>
-      <span className={cn("text-xs", mono && "font-mono")}>{value}</span>
-    </div>
-  );
-}
-
 // ──────────────────────────────────────────────────────────────────────────────
-// Linha de log + detalhe expansível
+// Linha de log
 // ──────────────────────────────────────────────────────────────────────────────
 
 function LogRow({
@@ -247,6 +233,45 @@ function LogRow({
 }
 
 // ──────────────────────────────────────────────────────────────────────────────
+// Período: presets e cálculo de faixa
+// ──────────────────────────────────────────────────────────────────────────────
+
+type PeriodPreset = "tudo" | "hoje" | "7d" | "30d" | "custom";
+
+function rangeForPreset(preset: PeriodPreset): { dateFrom?: string; dateTo?: string } {
+  const now = new Date();
+  if (preset === "tudo") return { dateFrom: undefined, dateTo: undefined };
+  if (preset === "hoje") {
+    const start = new Date(now);
+    start.setHours(0, 0, 0, 0);
+    return { dateFrom: start.toISOString(), dateTo: now.toISOString() };
+  }
+  if (preset === "7d") {
+    const start = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
+    return { dateFrom: start.toISOString(), dateTo: now.toISOString() };
+  }
+  if (preset === "30d") {
+    const start = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+    return { dateFrom: start.toISOString(), dateTo: now.toISOString() };
+  }
+  return {};
+}
+
+const PERIOD_PRESETS: { preset: Exclude<PeriodPreset, "custom">; label: string }[] = [
+  { preset: "tudo", label: "Tudo" },
+  { preset: "hoje", label: "Hoje" },
+  { preset: "7d", label: "7 dias" },
+  { preset: "30d", label: "30 dias" },
+];
+
+const STATUS_OPTIONS = [
+  { value: "", label: "Todos os status" },
+  { value: "success", label: "Sucesso" },
+  { value: "error", label: "Erro" },
+  { value: "denied", label: "Negado" },
+];
+
+// ──────────────────────────────────────────────────────────────────────────────
 // Barra de filtros
 // ──────────────────────────────────────────────────────────────────────────────
 
@@ -261,61 +286,61 @@ function FilterBar({
   onExport: () => void;
   isExporting: boolean;
 }) {
-  const [showAdvanced, setShowAdvanced] = useState(false);
-  const hasActiveFilters = Boolean(
-    filters.apiKeyId ||
-      filters.tool ||
-      filters.module ||
-      filters.status ||
-      filters.dateFrom ||
-      filters.dateTo ||
-      filters.search,
-  );
+  const [preset, setPreset] = useState<PeriodPreset>("tudo");
+  const [customFrom, setCustomFrom] = useState<Date | undefined>(undefined);
+  const [customTo, setCustomTo] = useState<Date | undefined>(undefined);
+  const [customOpen, setCustomOpen] = useState(false);
+
+  function applyPreset(p: Exclude<PeriodPreset, "custom">) {
+    setPreset(p);
+    onFiltersChange({ ...filters, ...rangeForPreset(p) });
+  }
+
+  function applyCustom() {
+    if (!customFrom && !customTo) return;
+    const from = customFrom ? new Date(customFrom) : undefined;
+    const to = customTo ? new Date(customTo) : undefined;
+    if (from) from.setHours(0, 0, 0, 0);
+    if (to) to.setHours(23, 59, 59, 999);
+    setPreset("custom");
+    setCustomOpen(false);
+    onFiltersChange({
+      ...filters,
+      dateFrom: from?.toISOString(),
+      dateTo: to?.toISOString(),
+    });
+  }
+
+  const pillClass = (active: boolean) =>
+    cn(
+      "inline-flex h-8 cursor-pointer items-center gap-1.5 rounded-full px-3.5 text-sm font-medium transition-colors",
+      "focus-visible:ring-2 focus-visible:ring-ring/50 focus-visible:outline-none",
+      active
+        ? "bg-violet-600 text-white"
+        : "bg-muted text-muted-foreground hover:bg-muted/70 hover:text-foreground",
+    );
 
   return (
     <div className="rounded-xl border border-border bg-card p-4 space-y-3">
+      {/* Busca, status e exportar */}
       <div className="flex flex-wrap gap-2">
         <div className="relative flex-1 min-w-52">
           <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
           <Input
-            placeholder="Buscar requestId, idempotencyKey…"
+            placeholder="Buscar por tool, requestId ou idempotency-key"
             className="pl-8 h-9 text-sm"
             value={filters.search ?? ""}
             onChange={(e) => onFiltersChange({ ...filters, search: e.target.value || undefined })}
           />
         </div>
-        <Input
-          placeholder="Tool (ex: saldo_produto)"
-          className="h-9 text-sm w-48"
-          value={filters.tool ?? ""}
-          onChange={(e) => onFiltersChange({ ...filters, tool: e.target.value || undefined })}
-        />
-        <select
-          className="h-9 rounded-md border border-input bg-background px-2 text-sm text-foreground"
-          value={filters.status ?? ""}
-          onChange={(e) => onFiltersChange({ ...filters, status: e.target.value || undefined })}
-          aria-label="Filtrar por status"
-        >
-          <option value="">Todos os status</option>
-          <option value="success">Sucesso</option>
-          <option value="error">Erro</option>
-          <option value="denied">Negado</option>
-        </select>
-        <Button
-          variant="outline"
-          size="sm"
-          className="h-9 gap-1.5"
-          onClick={() => setShowAdvanced((v) => !v)}
-        >
-          <Filter className="h-3.5 w-3.5" />
-          Filtros
-          {hasActiveFilters && (
-            <span
-              className="ml-0.5 inline-block h-1.5 w-1.5 rounded-full bg-violet-500"
-              aria-label="Filtros ativos"
-            />
-          )}
-        </Button>
+        <div className="w-44">
+          <CustomSelect
+            aria-label="Filtrar por status"
+            value={filters.status ?? ""}
+            onChange={(v) => onFiltersChange({ ...filters, status: v || undefined })}
+            options={STATUS_OPTIONS}
+          />
+        </div>
         <Button
           variant="outline"
           size="sm"
@@ -330,60 +355,53 @@ function FilterBar({
           )}
           CSV
         </Button>
-        {hasActiveFilters && (
-          <Button
-            variant="ghost"
-            size="sm"
-            className="h-9 gap-1 text-muted-foreground"
-            onClick={() => onFiltersChange({})}
-          >
-            <X className="h-3.5 w-3.5" />
-            Limpar
-          </Button>
-        )}
       </div>
 
-      {showAdvanced && (
-        <div className="flex flex-wrap gap-3 pt-3 border-t border-border">
-          <div className="space-y-1">
-            <Label className="text-xs text-muted-foreground">Módulo</Label>
-            <Input
-              placeholder="ex: estoque"
-              className="h-9 text-sm w-40"
-              value={filters.module ?? ""}
-              onChange={(e) => onFiltersChange({ ...filters, module: e.target.value || undefined })}
-            />
-          </div>
-          <div className="space-y-1">
-            <Label className="text-xs text-muted-foreground">De</Label>
-            <Input
-              type="datetime-local"
-              className="h-9 text-sm w-52"
-              value={filters.dateFrom ? filters.dateFrom.slice(0, 16) : ""}
-              onChange={(e) =>
-                onFiltersChange({
-                  ...filters,
-                  dateFrom: e.target.value ? `${e.target.value}:00.000Z` : undefined,
-                })
-              }
-            />
-          </div>
-          <div className="space-y-1">
-            <Label className="text-xs text-muted-foreground">Até</Label>
-            <Input
-              type="datetime-local"
-              className="h-9 text-sm w-52"
-              value={filters.dateTo ? filters.dateTo.slice(0, 16) : ""}
-              onChange={(e) =>
-                onFiltersChange({
-                  ...filters,
-                  dateTo: e.target.value ? `${e.target.value}:59.999Z` : undefined,
-                })
-              }
-            />
-          </div>
-        </div>
-      )}
+      {/* Período */}
+      <div className="flex flex-wrap items-center gap-2">
+        <span className="text-xs uppercase tracking-wide text-muted-foreground mr-1">
+          Período
+        </span>
+        {PERIOD_PRESETS.map((p) => (
+          <button
+            key={p.preset}
+            type="button"
+            className={pillClass(preset === p.preset)}
+            onClick={() => applyPreset(p.preset)}
+          >
+            {p.label}
+          </button>
+        ))}
+        <Popover open={customOpen} onOpenChange={setCustomOpen}>
+          <PopoverTrigger
+            render={
+              <button type="button" className={pillClass(preset === "custom")}>
+                <CalendarDays className="h-3.5 w-3.5" />
+                Personalizado
+              </button>
+            }
+          />
+          <PopoverContent align="start" sideOffset={4} className="w-72 space-y-3">
+            <p className="text-sm font-medium">Intervalo personalizado</p>
+            <div className="space-y-1.5">
+              <Label className="text-xs text-muted-foreground">De</Label>
+              <DateField value={customFrom} onChange={setCustomFrom} placeholder="Data inicial" />
+            </div>
+            <div className="space-y-1.5">
+              <Label className="text-xs text-muted-foreground">Até</Label>
+              <DateField value={customTo} onChange={setCustomTo} placeholder="Data final" />
+            </div>
+            <Button
+              size="sm"
+              className="w-full"
+              onClick={applyCustom}
+              disabled={!customFrom && !customTo}
+            >
+              Aplicar intervalo
+            </Button>
+          </PopoverContent>
+        </Popover>
+      </div>
     </div>
   );
 }
@@ -437,9 +455,6 @@ export function LogsTimeline({ initial }: Props) {
   const handleExport = async () => {
     setIsExporting(true);
     const params = new URLSearchParams();
-    if (filters.apiKeyId) params.set("apiKeyId", filters.apiKeyId);
-    if (filters.tool) params.set("tool", filters.tool);
-    if (filters.module) params.set("module", filters.module);
     if (filters.status) params.set("status", filters.status);
     if (filters.dateFrom) params.set("dateFrom", filters.dateFrom);
     if (filters.dateTo) params.set("dateTo", filters.dateTo);
@@ -465,12 +480,12 @@ export function LogsTimeline({ initial }: Props) {
 
       <div className="flex items-center justify-between px-1">
         <p className="text-xs text-muted-foreground">
-          {total.toLocaleString("pt-BR")} registro{total !== 1 ? "s" : ""} no total
+          {total.toLocaleString("pt-BR")} registro{total !== 1 ? "s" : ""}
         </p>
         {isPending && (
           <span className="flex items-center gap-1 text-xs text-muted-foreground">
             <Loader2 className="h-3 w-3 animate-spin" />
-            Buscando…
+            Buscando
           </span>
         )}
       </div>

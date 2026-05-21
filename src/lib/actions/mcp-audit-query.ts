@@ -112,9 +112,11 @@ export async function queryAuditLogs(
   }
 
   if (f.search) {
+    // Busca única: cobre requestId, idempotencyKey e o nome da tool.
     where.OR = [
       { idempotencyKey: { contains: f.search, mode: "insensitive" } },
       { requestId: { contains: f.search, mode: "insensitive" } },
+      { tool: { contains: f.search, mode: "insensitive" } },
     ];
   }
 
