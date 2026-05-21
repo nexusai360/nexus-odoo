@@ -1,6 +1,6 @@
 # STATUS — nexus-odoo
 
-> **Ponto de retomada entre sessões.** Atualizado em 2026-05-19.
+> **Ponto de retomada entre sessões.** Atualizado em 2026-05-21.
 > Ao abrir uma sessão: ler **este arquivo** e o **`CLAUDE.md`**. Modo autônomo
 > é o padrão (ver `CLAUDE.md §6`).
 
@@ -17,21 +17,24 @@
 | **F3.5 — Dashboard de relatórios v2** | Sofisticação no padrão `nexus-insights` | ✅ mergeado na `main` (PR #4) |
 | **F4 — MCP semântico** | Servidor MCP, **todos os domínios** + Caminho 3c funcional | ✅ **completa — mergeada na `main` (PR #5 + #6 + #7)** |
 | **F5 — Integração WhatsApp** | Agente de IA por WhatsApp + chat in-app, Integrações, RAG | ✅ **mergeada na `main` (PR #9, commit `682b9a7`)** |
-| **F4 Onda 2 — Escrita no MCP** | Capacidade de escrita no servidor MCP, gate por API Key com capabilities, painel Servidor MCP | 🔄 **Onda 0 (fundação) implementada na branch `feat/f4-onda2-mcp-escrita`** |
+| **F4 Onda 2 — Escrita no MCP** | Capacidade de escrita no servidor MCP, gate por API Key com capabilities, painel Servidor MCP | 🔄 **Onda 0 + correções de UI na branch `feat/f4-onda2-mcp-escrita`** — painel refeito; pendente: teste E2E de escrita real (aguarda credenciais) |
 | F6 — Construtor de relatórios | Wizard in-app guiado por IA | ⬜ futura (inclui o polimento fino dos relatórios) |
 
 **Branch ativa: `feat/f4-onda2-mcp-escrita`**. A `main` tem F0+F1+F2+F3+F3.5+F4+F5.
 
-> ## ⚠️ RETOMADA — LEIA O HANDOFF DE CORREÇÕES
-> A próxima sessão DEVE começar lendo **`docs/HANDOFF-2026-05-21-f4-onda2-correcoes.md`**.
-> A F4 Onda 2 teve a UI **reprovada integralmente** pelo usuário e a escrita no Odoo
-> **nunca foi testada de verdade**. O handoff de correções consolida tudo: o que está
-> errado (UI do painel Servidor MCP, "Plugar MCPs" com conceito errado, documentação,
-> 12 issues), as verificações já feitas (leitura Odoo OK; escrita não testada), o que
-> pedir ao usuário (credenciais da base de teste) e a sequência: montar plano →
-> double review → plan v3 → executar na sessão principal com Opus 4.7 + ui-ux-pro-max.
-> **NÃO mergear o PR #10 antes das correções.** O handoff anterior
-> (`HANDOFF-2026-05-21-f4-onda2-onda0.md`) descreve o estado da fundação.
+> ## ⚠️ RETOMADA — CORREÇÕES DE UI APLICADAS; FALTA O TESTE E2E DE ESCRITA
+> As correções da F4 Onda 2 reprovadas pelo usuário foram **executadas** na branch
+> `feat/f4-onda2-mcp-escrita` (plano `docs/superpowers/plans/2026-05-21-f4-onda2-correcoes.md`):
+> painel Servidor MCP refeito do zero (sub-nav, Visão Geral, Chaves, Logs, Documentação
+> no padrão NFE Nexus), "Plugar MCPs" corrigido para o conceito certo (registro de MCPs
+> externos do Agente Nex), health check consertado. `tsc`/`eslint`/`jest` (1519)/`build`
+> verdes; code review + UI review inline OK (`docs/superpowers/reviews/`).
+>
+> **Pendência única — não bloqueante:** o **teste E2E de escrita real** contra
+> `grupojht.teste.tauga.online` ainda não rodou — o usuário não tinha as credenciais.
+> Quando tiver: preencher `ODOO_WRITE_*` em `.env.local` e rodar a Task 16 do plano.
+> Falta também a inspeção visual pixel a pixel num navegador autenticado.
+> **NÃO mergear o PR #10 antes do teste E2E de escrita.**
 
 ---
 

@@ -9,6 +9,27 @@
 
 ---
 
+## ✅ STATUS DE EXECUÇÃO — 2026-05-21 (correções aplicadas)
+
+Correções executadas. Plano: `docs/superpowers/plans/2026-05-21-f4-onda2-correcoes.md`
+(v3, review crítica dupla em `docs/superpowers/plans/reviews/`). Code + UI review inline
+em `docs/superpowers/reviews/2026-05-21-f4-onda2-correcoes-code-review.md`.
+
+| Item da §2 | Status |
+|---|---|
+| §2.1 — Teste E2E de escrita real | ⏳ **Pendente** — usuário não tinha credenciais. Task 16 do plano fica gated. |
+| §2.2 — UI do painel Servidor MCP | ✅ **Refeita** — sub-nav compartilhada, Visão Geral, Chaves (form inline), Logs (detalhe inline), Documentação (padrão NFE). |
+| §2.3 — "Plugar MCPs" conceito errado | ✅ **Refeito** — model `ExternalMcpServer` + Server Actions CRUD + UI de registro de MCPs externos. Sem n8n, sem `MCP_SERVICE_TOKEN` exposto. |
+| §2.3 — falso "MCP inacessível" | ✅ **Corrigido** — health check resolve `/health` na origem do MCP (antes ia para `/mcp/health`). |
+| §2.4 — 12 issues de console | ⏳ Parcial — `TabsTrigger` já corrigido; demais exigem captura em navegador autenticado (sem lista). |
+| §2.5 — CLAUDE.md / processo | ✅ Feito (commit `ff46692`). |
+
+Verificação: `tsc`/`eslint`/`jest` (1519 passed, 1 skipped)/`next build` verdes; as 5
+rotas respondem sem erro de SSR. **Pendências não bloqueantes:** teste E2E de escrita
+real (credenciais) e inspeção visual pixel a pixel em navegador autenticado.
+
+---
+
 ## 0. Como conduzir a sessão de retomada
 
 1. Ler este handoff + `STATUS.md` + `CLAUDE.md` + `AGENTS.md`.
