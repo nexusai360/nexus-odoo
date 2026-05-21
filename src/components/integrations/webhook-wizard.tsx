@@ -4,7 +4,6 @@ import * as React from "react"
 import {
   ArrowDownToLine,
   ArrowUpFromLine,
-  Check,
   Loader2,
 } from "lucide-react"
 
@@ -13,6 +12,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Checkbox } from "@/components/ui/checkbox"
+import { StepIndicator } from "@/components/ui/step-indicator"
 import { SecretRevealStep } from "@/components/ui/secret-reveal-step"
 import {
   createWebhook,
@@ -104,7 +104,7 @@ export function WebhookWizard({
 
   return (
     <div className={cn("space-y-5", !embedded && "rounded-xl border p-6")}>
-      <StepIndicator current={step} />
+      <StepIndicator steps={["Tipo", "Configuração", "Conclusão"]} current={step} />
 
       {/* Passo 1 — Direção */}
       {step === 1 && (
@@ -271,44 +271,6 @@ function isValidUrl(value: string): boolean {
   } catch {
     return false
   }
-}
-
-function StepIndicator({ current }: { current: Step }) {
-  const labels = ["Direção", "Configuração", "Conclusão"]
-  return (
-    <ol className="flex items-center gap-2">
-      {labels.map((label, i) => {
-        const n = (i + 1) as Step
-        const done = n < current
-        const active = n === current
-        return (
-          <li key={label} className="flex flex-1 items-center gap-2">
-            <span
-              className={cn(
-                "flex size-6 shrink-0 items-center justify-center rounded-full text-xs font-medium",
-                done && "bg-primary text-primary-foreground",
-                active && "bg-primary/15 text-primary ring-1 ring-primary",
-                !done && !active && "bg-muted text-muted-foreground",
-              )}
-            >
-              {done ? <Check className="size-3.5" /> : n}
-            </span>
-            <span
-              className={cn(
-                "text-xs",
-                active ? "font-medium text-foreground" : "text-muted-foreground",
-              )}
-            >
-              {label}
-            </span>
-            {i < labels.length - 1 && (
-              <span className="ml-1 h-px flex-1 bg-border" />
-            )}
-          </li>
-        )
-      })}
-    </ol>
-  )
 }
 
 function DirectionCard({

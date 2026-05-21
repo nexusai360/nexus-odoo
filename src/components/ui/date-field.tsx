@@ -56,6 +56,10 @@ export function DateField({
       <PopoverContent align="start" sideOffset={4} className="w-auto p-0">
         <Calendar
           mode="single"
+          captionLayout="dropdown"
+          startMonth={fromDate ?? new Date()}
+          endMonth={new Date(new Date().getFullYear() + 30, 11)}
+          defaultMonth={value ?? fromDate ?? new Date()}
           selected={value}
           onSelect={(d) => {
             onChange(d ?? undefined);
