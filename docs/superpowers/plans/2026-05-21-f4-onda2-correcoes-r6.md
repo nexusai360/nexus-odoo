@@ -71,15 +71,19 @@ segredos/tokens precisam ser revelados **dentro do modal**, nunca em tarja exter
 ## Ordem: A -> B -> C -> D -> E -> F -> G -> H -> I.
 
 ## Progresso
-- [ ] A webhook rotate in-modal
-- [ ] B calendario (grade + setas)
-- [ ] C resumo lista origens
-- [ ] D token in-modal na criacao da chave
-- [ ] E card de chave no padrao
-- [ ] F edicao de chave (read-only + rotate in-modal)
-- [ ] G plugar status apos teste
-- [ ] H Enter avanca wizards
-- [ ] I verificacao
+- [x] A webhook rotate in-modal (WebhookEditDialog revela o secret no modal)
+- [ ] **PENDENTE** B calendario (grade full width + setas mes ant/prox com travas)
+- [x] C resumo lista as URLs de origem
+- [x] D token in-modal na criacao da chave (SecretRevealStep)
+- [x] E card de chave: toggle + lapis + revogar (menu removido)
+- [x] F edicao de chave: rotate token in-modal no Resumo
+- [x] G plugar status apos teste (persiste lastStatus via testExternalMcpServer)
+- [ ] **PENDENTE** H Enter avanca os wizards (Chave, Webhook, MCP)
+- [x] I verificacao: tsc/jest(1530)/build verdes (das areas feitas)
+
+> **PENDENTE para a proxima sessao:** B (calendario) e H (Enter). F tambem nao
+> travou Origens como read-only na edicao (so adicionou rotate) — revisar se o
+> usuario exigir. Demais areas concluidas e commitadas.
 
 ## Historico de review
 ### Review #1 (v1->v2)
