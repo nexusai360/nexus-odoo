@@ -52,7 +52,7 @@ function getStatusConfig(status: string | null, outcome: string) {
       className: "border-amber-500/30 bg-amber-500/10 text-amber-600 dark:text-amber-400",
     };
   return {
-    label: s || "—",
+    label: s || "-",
     icon: Info,
     className: "border-border bg-muted/40 text-muted-foreground",
   };
@@ -73,7 +73,7 @@ function formatDatetime(iso: string) {
 }
 
 function formatMs(ms: number | null): string {
-  if (ms == null) return "—";
+  if (ms == null) return "-";
   if (ms >= 1000) return `${(ms / 1000).toFixed(2)} s`;
   return `${ms} ms`;
 }
@@ -202,7 +202,7 @@ function LogRow({
         </span>
         <code className="flex-1 text-sm font-mono truncate">{log.tool}</code>
         <span className="text-xs font-mono text-muted-foreground w-16 shrink-0 text-right hidden sm:block">
-          {log.apiKeyLast4 ? `····${log.apiKeyLast4}` : "—"}
+          {log.apiKeyLast4 ? `····${log.apiKeyLast4}` : "-"}
         </span>
         <span
           className={cn(

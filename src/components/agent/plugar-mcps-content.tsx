@@ -42,7 +42,7 @@ function formatDate(date: Date | string) {
 }
 
 /**
- * "Plugar MCPs" — registro de servidores MCP externos que o Agente Nex consome
+ * "Plugar MCPs": registro de servidores MCP externos que o Agente Nex consome
  * como cliente, para agregar capacidades de terceiros (Slack, GitHub, etc.).
  */
 export function PlugarMcpsContent({ initial }: Props) {
@@ -132,21 +132,11 @@ export function PlugarMcpsContent({ initial }: Props) {
   return (
     <div className="space-y-6 max-w-3xl">
       {/* Introdução */}
-      <div className="space-y-1.5">
-        <p className="text-sm text-muted-foreground">
-          Conecte servidores MCP externos para o Agente Nex usar como ferramentas — Slack,
-          GitHub, ou qualquer serviço que exponha um endpoint MCP. Cada servidor amplia o que o
-          agente consegue fazer.
-        </p>
-        <p className="text-xs text-muted-foreground">
-          Para expor <span className="font-medium text-foreground">o nosso</span> MCP a serviços
-          de fora, o caminho é{" "}
-          <span className="font-medium text-foreground">
-            Integrações → Servidor MCP → Chaves de Acesso
-          </span>
-          .
-        </p>
-      </div>
+      <p className="text-sm text-muted-foreground">
+        Conecte servidores MCP externos (Slack, GitHub, ou qualquer serviço com endpoint MCP)
+        para o Agente Nex usar como ferramentas. Para expor o nosso MCP a serviços de fora, use
+        as Chaves de Acesso em Integrações, Servidor MCP.
+      </p>
 
       {/* Cabeçalho */}
       <div className="flex items-center justify-between">
@@ -255,7 +245,7 @@ export function PlugarMcpsContent({ initial }: Props) {
               </Button>
             </div>
             <p className="text-xs text-muted-foreground">
-              Armazenado cifrado. Este é o token do serviço externo — não do Nexus Odoo.
+              Armazenado cifrado. Este é o token do serviço externo, não do Nexus Odoo.
             </p>
           </div>
 

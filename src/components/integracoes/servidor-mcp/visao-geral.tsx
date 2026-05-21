@@ -14,7 +14,7 @@ interface Props {
 }
 
 // ──────────────────────────────────────────────────────────────────────────────
-// Config de estado de saúde — linguagem direta, sem jargão
+// Config de estado de saúde, linguagem direta, sem jargão
 // ──────────────────────────────────────────────────────────────────────────────
 
 const HEALTH_CONFIG = {
@@ -48,7 +48,7 @@ function copyToClipboard(text: string, label: string) {
 }
 
 // ──────────────────────────────────────────────────────────────────────────────
-// McpVisaoGeral — responde 3 perguntas: está no ar? está sendo usado? o que mais é chamado?
+// McpVisaoGeral: responde 3 perguntas. Está no ar? Está sendo usado? O que mais é chamado?
 // ──────────────────────────────────────────────────────────────────────────────
 
 export function McpVisaoGeral({ mcpPublicUrl, healthStatus, metrics }: Props) {
@@ -117,7 +117,7 @@ export function McpVisaoGeral({ mcpPublicUrl, healthStatus, metrics }: Props) {
             />
             <MetricItem
               label="Latência típica"
-              value={metrics!.p50Ms == null ? "—" : `${metrics!.p50Ms} ms`}
+              value={metrics!.p50Ms == null ? "-" : `${metrics!.p50Ms} ms`}
             />
           </div>
         ) : (

@@ -12,7 +12,7 @@ const TABS = [
 ] as const;
 
 /**
- * Sub-navegação do painel Servidor MCP. Aba ativa derivada do pathname —
+ * Sub-navegação do painel Servidor MCP. Aba ativa derivada do pathname,
  * fonte única, sem `<Tabs>` duplicado por rota.
  */
 export function ServidorMcpNav() {
