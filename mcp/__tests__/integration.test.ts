@@ -181,8 +181,11 @@ describe("Catálogo completo — rede de proteção N6", () => {
     expect(ids).toEqual([...TODOS_IDS].sort());
   });
 
-  it("catálogo bruto (antes do filtro) tem exatamente 34 entradas", () => {
-    expect(catalogo).toHaveLength(34);
+  it("catálogo bruto (antes do filtro) tem exatamente 35 entradas", () => {
+    // 34 tools de leitura + 1 write tool (crm.res_partner.create). A write tool
+    // não aparece em visibleTools (modo interno) porque não tem `dominio`; é
+    // liberada só no modo externo por capability da chave de API.
+    expect(catalogo).toHaveLength(35);
   });
 });
 

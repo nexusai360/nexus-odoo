@@ -442,8 +442,50 @@
         "id"
       ],
       "examples": []
+    },
+    {
+      "id": "crm.res_partner.create",
+      "operation": "write",
+      "module": "crm",
+      "descricao": "Cria um novo parceiro (cliente, fornecedor ou contato) no Odoo via JSON-RPC. Requer API key com capability crm:create. Retorna o snapshot completo do registro criado (snapshotAfter). Se external_id for fornecido, garante unicidade via ir.model.data.",
+      "capability": "crm.create",
+      "sensitive": false,
+      "addedInVersion": 2,
+      "inputSchemaKeys": [
+        "name",
+        "cnpj_cpf",
+        "is_company",
+        "email",
+        "phone",
+        "street",
+        "city_id",
+        "state_id",
+        "external_id"
+      ],
+      "examples": [
+        {
+          "language": "curl",
+          "description": "Criar empresa via curl",
+          "code": "curl -X POST https://mcp.exemplo.com.br/mcp \\\n  -H \"Authorization: Bearer <SERVICE_TOKEN>\" \\\n  -H \"X-Mcp-User-Id: <USER_ID>\" \\\n  -H \"X-Api-Key: <API_KEY>\" \\\n  -H \"Idempotency-Key: $(uuidgen)\" \\\n  -H \"Content-Type: application/json\" \\\n  -d '{\n    \"jsonrpc\": \"2.0\",\n    \"method\": \"tools/call\",\n    \"params\": {\n      \"name\": \"crm.res_partner.create\",\n      \"arguments\": {\n        \"name\": \"Academia Exemplo Ltda\",\n        \"is_company\": true,\n        \"cnpj_cpf\": \"12.345.678/0001-99\",\n        \"email\": \"contato@academia.com.br\",\n        \"phone\": \"(11) 9999-9999\",\n        \"external_id\": \"erp-cliente-001\"\n      }\n    }\n  }'"
+        },
+        {
+          "language": "n8n",
+          "description": "Node HTTP Request no n8n apontando para o MCP",
+          "code": "// Node: HTTP Request\n// Method: POST\n// URL: {{ $env.MCP_URL }}/mcp\n// Headers:\n//   Authorization: Bearer {{ $env.MCP_SERVICE_TOKEN }}\n//   X-Mcp-User-Id: {{ $env.MCP_USER_ID }}\n//   X-Api-Key: {{ $env.MCP_API_KEY }}\n//   Idempotency-Key: {{ $json.idempotencyKey }}\n// Body (JSON):\n{\n  \"jsonrpc\": \"2.0\",\n  \"method\": \"tools/call\",\n  \"params\": {\n    \"name\": \"crm.res_partner.create\",\n    \"arguments\": {\n      \"name\": \"{{ $json.nome }}\",\n      \"is_company\": true,\n      \"email\": \"{{ $json.email }}\",\n      \"external_id\": \"{{ $json.externalId }}\"\n    }\n  }\n}"
+        },
+        {
+          "language": "python",
+          "description": "Criar parceiro com requests",
+          "code": "import requests, uuid\n\nresponse = requests.post(\n    \"https://mcp.exemplo.com.br/mcp\",\n    headers={\n        \"Authorization\": \"Bearer <SERVICE_TOKEN>\",\n        \"X-Mcp-User-Id\": \"<USER_ID>\",\n        \"X-Api-Key\": \"<API_KEY>\",\n        \"Idempotency-Key\": str(uuid.uuid4()),\n        \"Content-Type\": \"application/json\",\n    },\n    json={\n        \"jsonrpc\": \"2.0\",\n        \"method\": \"tools/call\",\n        \"params\": {\n            \"name\": \"crm.res_partner.create\",\n            \"arguments\": {\n                \"name\": \"Academia Exemplo\",\n                \"is_company\": True,\n                \"email\": \"contato@academia.com.br\",\n                \"external_id\": \"python-001\",\n            },\n        },\n    },\n)\ndata = response.json()\nprint(data[\"result\"][\"id\"])"
+        },
+        {
+          "language": "javascript",
+          "description": "Criar parceiro com fetch",
+          "code": "const response = await fetch(\"https://mcp.exemplo.com.br/mcp\", {\n  method: \"POST\",\n  headers: {\n    \"Authorization\": \"Bearer <SERVICE_TOKEN>\",\n    \"X-Mcp-User-Id\": \"<USER_ID>\",\n    \"X-Api-Key\": \"<API_KEY>\",\n    \"Idempotency-Key\": crypto.randomUUID(),\n    \"Content-Type\": \"application/json\",\n  },\n  body: JSON.stringify({\n    jsonrpc: \"2.0\",\n    method: \"tools/call\",\n    params: {\n      name: \"crm.res_partner.create\",\n      arguments: {\n        name: \"Academia Exemplo\",\n        is_company: true,\n        email: \"contato@academia.com.br\",\n        external_id: \"js-001\",\n      },\n    },\n  }),\n});\nconst { result } = await response.json();\nconsole.log(\"Criado com ID:\", result.id);"
+        }
+      ]
     }
   ],
-  "count": 34,
-  "generatedAt": "2026-05-21T10:34:42.724Z"
+  "count": 35,
+  "generatedAt": "2026-05-21T12:03:29.957Z"
 }

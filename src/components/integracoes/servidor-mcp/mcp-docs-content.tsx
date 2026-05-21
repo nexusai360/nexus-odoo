@@ -26,6 +26,7 @@ import {
 import Link from "next/link";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
+import { moduleLabel } from "@/lib/mcp-module-labels";
 import type { CatalogByModule, CatalogToolItem } from "@/lib/actions/mcp-catalog-schema";
 
 // ---------------------------------------------------------------------------
@@ -491,11 +492,11 @@ function ToolCard({ tool, base }: { tool: CatalogToolItem; base: string }) {
         )}
         <span
           className={cn(
-            "inline-flex w-16 shrink-0 items-center justify-center rounded px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider border",
+            "inline-flex w-[68px] shrink-0 items-center justify-center rounded px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider border",
             kindClass,
           )}
         >
-          {isWrite ? "Write" : "Read"}
+          {isWrite ? "Escrita" : "Leitura"}
         </span>
         <code className="text-sm font-mono text-foreground truncate">{tool.id}</code>
         {tool.sensitive && (
@@ -733,7 +734,23 @@ export function McpDocsContent({ catalog, mcpUrl }: Props) {
       const el = document.getElementById(s.id);
       if (el) observerRef.current?.observe(el);
     });
-    return () => observerRef.current?.disconnect();
+
+    // O scroll real acontece no <main> do layout protegido (overflow-y-auto).
+    // Sem espaço morto de rolagem após a última seção, ela nunca cruza a faixa
+    // do observer; ao chegar ao fim do scroll, marcamos a última seção ativa.
+    const scrollEl = document.querySelector("main");
+    function onScroll() {
+      if (!scrollEl) return;
+      const atBottom =
+        scrollEl.scrollTop + scrollEl.clientHeight >= scrollEl.scrollHeight - 4;
+      if (atBottom) setActiveSection(sections[sections.length - 1].id);
+    }
+    scrollEl?.addEventListener("scroll", onScroll, { passive: true });
+
+    return () => {
+      observerRef.current?.disconnect();
+      scrollEl?.removeEventListener("scroll", onScroll);
+    };
   }, []);
 
   const totalTools = catalog.reduce((acc, m) => acc + m.readTools.length + m.writeTools.length, 0);
@@ -757,7 +774,7 @@ export function McpDocsContent({ catalog, mcpUrl }: Props) {
         variants={containerVariants}
         initial="hidden"
         animate="visible"
-        className="min-w-0 flex-1 space-y-12 pb-[60vh]"
+        className="min-w-0 flex-1 space-y-12 pb-16"
       >
         {/* Hero */}
         <motion.div variants={itemVariants} id="intro" className="space-y-6 scroll-mt-24">
@@ -1029,8 +1046,8 @@ export function McpDocsContent({ catalog, mcpUrl }: Props) {
                 return (
                   <div key={mod.module} className="space-y-2">
                     <div className="flex items-center gap-2">
-                      <h3 className="text-sm font-semibold text-foreground capitalize">
-                        {mod.module}
+                      <h3 className="text-sm font-semibold text-foreground">
+                        {moduleLabel(mod.module)}
                       </h3>
                       <span className="text-xs text-muted-foreground">
                         {mod.readTools.length} de leitura, {mod.writeTools.length} de escrita

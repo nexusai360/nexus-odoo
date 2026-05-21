@@ -21,6 +21,7 @@ import { CustomSelect } from "@/components/ui/custom-select";
 import { DateField } from "@/components/ui/date-field";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { cn } from "@/lib/utils";
+import { moduleLabel } from "@/lib/mcp-module-labels";
 import {
   queryAuditLogs,
   type AuditLogItem,
@@ -135,7 +136,11 @@ function LogDetail({ log, description }: { log: AuditLogItem; description?: stri
         {log.module && (
           <DetailField
             label="Módulo e ação"
-            value={log.action ? `${log.module}, ${log.action}` : log.module}
+            value={
+              log.action
+                ? `${moduleLabel(log.module)}, ${log.action}`
+                : moduleLabel(log.module)
+            }
           />
         )}
         {log.capability && <DetailField label="Capability" value={log.capability} mono />}
