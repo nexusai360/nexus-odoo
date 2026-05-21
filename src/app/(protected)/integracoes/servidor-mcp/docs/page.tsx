@@ -1,10 +1,9 @@
 import { BookOpen } from "lucide-react";
-import Link from "next/link";
 import { redirect } from "next/navigation";
 import { PageShell } from "@/components/layout/page-shell";
 import { PageHeader } from "@/components/page-header";
 import { Breadcrumb } from "@/components/integracoes/breadcrumb";
-import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import { ServidorMcpNav } from "@/components/integracoes/servidor-mcp/servidor-mcp-nav";
 import { McpDocsLayout } from "@/components/integracoes/servidor-mcp/docs-layout";
 import { docSections } from "@/content/mcp-docs/index";
 import { getMcpCatalogSchema } from "@/lib/actions/mcp-catalog-schema";
@@ -36,33 +35,10 @@ export default async function DocsPage() {
         subtitle="Endpoint semântico para agentes de IA — RBAC de 7 camadas, Streamable HTTP"
       />
 
-      <Tabs defaultValue="docs" className="mt-6">
-        <TabsList>
-          <TabsTrigger
-            value="visao-geral" nativeButton={false}
-            render={<Link href="/integracoes/servidor-mcp" />}
-          >
-            Visão Geral
-          </TabsTrigger>
-          <TabsTrigger
-            value="chaves" nativeButton={false}
-            render={<Link href="/integracoes/servidor-mcp/chaves" />}
-          >
-            Chaves de Acesso
-          </TabsTrigger>
-          <TabsTrigger
-            value="logs" nativeButton={false}
-            render={<Link href="/integracoes/servidor-mcp/logs" />}
-          >
-            Logs
-          </TabsTrigger>
-          <TabsTrigger value="docs">Documentação</TabsTrigger>
-        </TabsList>
-
-        <TabsContent value="docs" className="mt-6">
-          <McpDocsLayout sections={docSections} catalog={catalog} />
-        </TabsContent>
-      </Tabs>
+      <ServidorMcpNav />
+      <div className="mt-6">
+        <McpDocsLayout sections={docSections} catalog={catalog} />
+      </div>
     </PageShell>
   );
 }

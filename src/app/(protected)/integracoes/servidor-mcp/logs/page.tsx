@@ -1,12 +1,11 @@
 import { Terminal } from "lucide-react";
-import Link from "next/link";
+import { redirect } from "next/navigation";
 import { PageShell } from "@/components/layout/page-shell";
 import { PageHeader } from "@/components/page-header";
 import { Breadcrumb } from "@/components/integracoes/breadcrumb";
-import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import { ServidorMcpNav } from "@/components/integracoes/servidor-mcp/servidor-mcp-nav";
 import { LogsTimeline } from "@/components/integracoes/servidor-mcp/logs-timeline";
 import { queryAuditLogs } from "@/lib/actions/mcp-audit-query";
-import { redirect } from "next/navigation";
 import { getCurrentUser } from "@/lib/auth";
 
 export const metadata = { title: "Logs / Audit | Servidor MCP | Nexus Odoo" };
@@ -37,33 +36,10 @@ export default async function LogsPage() {
         subtitle="Endpoint semântico para agentes de IA — RBAC de 7 camadas, Streamable HTTP"
       />
 
-      <Tabs defaultValue="logs" className="mt-6">
-        <TabsList>
-          <TabsTrigger
-            value="visao-geral" nativeButton={false}
-            render={<Link href="/integracoes/servidor-mcp" />}
-          >
-            Visão Geral
-          </TabsTrigger>
-          <TabsTrigger
-            value="chaves" nativeButton={false}
-            render={<Link href="/integracoes/servidor-mcp/chaves" />}
-          >
-            Chaves de Acesso
-          </TabsTrigger>
-          <TabsTrigger value="logs">Logs</TabsTrigger>
-          <TabsTrigger
-            value="docs" nativeButton={false}
-            render={<Link href="/integracoes/servidor-mcp/docs" />}
-          >
-            Documentação
-          </TabsTrigger>
-        </TabsList>
-
-        <TabsContent value="logs" className="mt-6">
-          <LogsTimeline initial={initial} />
-        </TabsContent>
-      </Tabs>
+      <ServidorMcpNav />
+      <div className="mt-6">
+        <LogsTimeline initial={initial} />
+      </div>
     </PageShell>
   );
 }

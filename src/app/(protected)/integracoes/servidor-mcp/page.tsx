@@ -1,9 +1,8 @@
 import { Cpu } from "lucide-react";
-import Link from "next/link";
 import { PageShell } from "@/components/layout/page-shell";
 import { PageHeader } from "@/components/page-header";
 import { Breadcrumb } from "@/components/integracoes/breadcrumb";
-import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import { ServidorMcpNav } from "@/components/integracoes/servidor-mcp/servidor-mcp-nav";
 import { McpVisaoGeral } from "@/components/integracoes/servidor-mcp/visao-geral";
 import { getMcp24hMetrics } from "@/lib/actions/mcp-metrics";
 
@@ -73,29 +72,15 @@ export default async function ServidorMcpPage() {
         subtitle="Endpoint semântico para agentes de IA — RBAC de 7 camadas, Streamable HTTP"
       />
 
-      <Tabs defaultValue="visao-geral" className="mt-6">
-        <TabsList>
-          <TabsTrigger value="visao-geral">Visão Geral</TabsTrigger>
-          <TabsTrigger value="chaves" nativeButton={false} render={<Link href="/integracoes/servidor-mcp/chaves" />}>
-            Chaves de Acesso
-          </TabsTrigger>
-          <TabsTrigger value="logs" nativeButton={false} render={<Link href="/integracoes/servidor-mcp/logs" />}>
-            Logs
-          </TabsTrigger>
-          <TabsTrigger value="docs" nativeButton={false} render={<Link href="/integracoes/servidor-mcp/docs" />}>
-            Documentação
-          </TabsTrigger>
-        </TabsList>
-
-        <TabsContent value="visao-geral" className="mt-6">
-          <McpVisaoGeral
-            mcpPublicUrl={mcpPublicUrl}
-            healthStatus={healthStatus}
-            versionInfo={versionInfo}
-            metrics={metrics}
-          />
-        </TabsContent>
-      </Tabs>
+      <ServidorMcpNav />
+      <div className="mt-6">
+        <McpVisaoGeral
+          mcpPublicUrl={mcpPublicUrl}
+          healthStatus={healthStatus}
+          versionInfo={versionInfo}
+          metrics={metrics}
+        />
+      </div>
     </PageShell>
   );
 }
