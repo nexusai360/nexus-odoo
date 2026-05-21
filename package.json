@@ -2,7 +2,7 @@
   "name": "nexus-odoo",
   "version": "0.1.0",
   "private": true,
-  "description": "Plataforma de dados do ERP Odoo da Matrix Fitness Group — dashboard e MCP",
+  "description": "Plataforma de dados do ERP Odoo da Matrix Fitness Group, dashboard e MCP",
   "scripts": {
     "dev": "next dev",
     "build": "prisma generate && NODE_ENV=production next build",

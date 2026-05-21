@@ -19,13 +19,13 @@ correto; o dev server foi reiniciado limpo. Sem mudança de código necessária.
 - [x] D1, helper `resolveMcpPublicUrl` e URL completa na Visão Geral e Documentação.
 - [x] C2/C3 (parcial), doc: hero sem ícone e título menor ("Servidor MCP, Documentação"), nav lateral funcional (scrollIntoView), atalhos duplicados removidos, espaço de rolagem ao final, fontes de Conceitos/Fluxo e rótulo Navegação maiores, jargão (RBAC/RLS/Zod) explicado.
 - [x] Webhooks, texto de n8n removido da direção.
-- [ ] **PENDENTE** Área B, modal de Chaves de Acesso refeito (mais largo, 4 ações visíveis, origens com adicionar item a item).
-- [ ] **PENDENTE** Área C1, catálogo de tools que não carrega (`getMcpCatalogSchema` retorna unavailable); C, passo a passo de uso.
-- [ ] **PENDENTE** Área D, bump sutil de fontes da Visão Geral.
-- [ ] **PENDENTE** Área E, botão de tour em todas as abas do Servidor MCP, reposicionado.
-- [ ] **PENDENTE** Área F, Plugar MCPs redesenhado + tour.
-- [ ] **PENDENTE** Área G, Webhooks redesenhado no padrão + tour que ensina a criar.
-- [ ] **PENDENTE** Área H, verificação e fechamento.
+- [x] Área B, modal de Chaves de Acesso refeito: `max-w-3xl`, seções (Identificação em 2 colunas, Acessos por módulo em grid de 2 colunas, Origens), 4 ações de escrita em pt-br (Criar/Atualizar/Excluir/Mover) visíveis no nível Leitura e escrita, origens com campo + botão Adicionar e chips removíveis.
+- [x] Área C1, catálogo de tools: passou a vir de um snapshot in-app (`src/lib/mcp-catalog-snapshot.json`, gerado por `scripts/gen-mcp-catalog-snapshot.ts` / `npm run gen:mcp-catalog`), não depende mais do container `mcp`. C, passo a passo "Como começar, em 4 passos" adicionado no início da doc.
+- [x] Área D, Visão Geral mais larga (`max-w-4xl`) com bump sutil de fontes.
+- [x] Área E, mini-tour próprio em Chaves, Logs e Documentação + botão "?" no cabeçalho de cada aba; `TourTriggerButton` aumentado para `h-9 w-9`.
+- [x] Área F, Plugar MCPs com tour (`plugarMcpsTour`); formulário abre sozinho durante o tour; empty state e âncoras.
+- [x] Área G, Webhooks com `webhookTour` reescrito campo a campo (direção, URL, criar), formulário aberto durante o tour, empty state, direção de entrada com descrição genérica.
+- [x] Área H, verificação: `tsc`/`jest` (1526) /`next build` verdes; varredura de travessão nos arquivos tocados (snapshot regenerado limpo); eslint pré-existente do MCP registrado no RADAR R7.
 
 ---
 

@@ -52,7 +52,7 @@ export const biConsultaAvancada: ToolEntry<Input, Output> = {
   descricao:
     "Modo BI avançado (Caminho 3c): executa um SQL SELECT pronto sob o role " +
     "read-only nexus_mcp_bi. O SQL deve ser gerado pelo agente (F5); esta tool " +
-    "apenas executa. Restrito a admin/super_admin. AVISO: consulta dinâmica — " +
+    "apenas executa. Restrito a admin/super_admin. AVISO: consulta dinâmica, " +
     "resultados não são filtrados pelo RBAC semântico das tools de domínio.",
   inputSchemaShape: inputSchema.shape,
   inputSchema,

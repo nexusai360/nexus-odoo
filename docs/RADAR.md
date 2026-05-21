@@ -175,3 +175,23 @@ Turbopack. `tsc`, `eslint` e `jest` passam — só o `next build` quebra.
 estático das páginas de erro (ex.: mover a leitura de cookie para um boundary
 dinâmico, ou adicionar `export const dynamic` ao `not-found.tsx`/`global-error.tsx`
 próprios). Fora do escopo do rework de UI da F5.
+
+---
+
+## R7 — `eslint .` acusa `no-explicit-any` em test files do MCP (PRÉ-EXISTENTE, BAIXO)
+
+**Aberto desde:** 2026-05-21 (verificação da F4 Onda 2 rodada 3 de correções).
+
+`npm run lint` (`eslint .`) reporta 83 erros `@typescript-eslint/no-explicit-any`,
+todos em arquivos de **teste** do servidor MCP (`mcp/__tests__/e2e/*`,
+`mcp/auth/__tests__/*`, `mcp/middleware/idempotency.ts`, `migrate-scopes.ts`) e
+em `src/lib/actions/mcp-api-keys.test.ts` / `src/worker/odoo/__tests__/`. Foram
+introduzidos pela F4 Onda 2 (Bloco P, commit `736cd0d` e arredores), não pela
+rodada 3 de correções de UI — nenhum arquivo tocado na r3 tem erro de lint.
+
+**Implicação:** não bloqueia (`tsc`/`jest`/`build` verdes; produção não usa
+`any` de teste), mas deixa `npm run lint` vermelho no repo inteiro.
+
+**Ação:** numa varredura dedicada, tipar os mocks dos testes do MCP ou aplicar
+`eslint-disable` justificado por bloco. Fora do escopo da r3 (correções de UI
+do painel Servidor MCP).

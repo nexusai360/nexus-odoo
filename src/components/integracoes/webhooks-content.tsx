@@ -92,7 +92,7 @@ export function WebhooksContent({ initial }: Props) {
         setShowForm(false);
         setNewUrl("");
         await refresh();
-        toast.success("Webhook criado — copie o secret agora, ele não será exibido novamente");
+        toast.success("Webhook criado, copie o secret agora, ele não será exibido novamente");
       } else {
         toast.error(result.error ?? "Erro ao criar webhook");
       }
@@ -116,7 +116,7 @@ export function WebhooksContent({ initial }: Props) {
       if (result.success) {
         setRevealedSecret({ id, secret: result.data.secretPlain });
         setShowRevealedSecret(true);
-        toast.success("Secret rotacionado — copie o novo secret agora");
+        toast.success("Secret rotacionado, copie o novo secret agora");
       } else {
         toast.error(result.error ?? "Erro ao rotacionar secret");
       }
@@ -148,7 +148,7 @@ export function WebhooksContent({ initial }: Props) {
       {revealedSecret && (
         <div className="rounded-xl border border-amber-500/40 bg-amber-500/5 p-4 space-y-2">
           <p className="text-sm font-semibold text-amber-700 dark:text-amber-400">
-            Secret gerado — copie agora
+            Secret gerado, copie agora
           </p>
           <p className="text-xs text-muted-foreground">
             Este secret não será exibido novamente após você fechar este aviso.

@@ -56,7 +56,7 @@ export const contabilPlanoDeContas: ToolEntry<Input, Output> = {
   descricao:
     "Lista as contas do plano de contas contábil da Matrix, com código hierárquico, nome, tipo (S=sintética/A=analítica) e conta pai. " +
     "Filtre por termo (código ou nome). " +
-    "NOTA: não há lançamento/movimento contábil no Odoo da Matrix — apenas a estrutura do plano de contas.",
+    "NOTA: não há lançamento/movimento contábil no Odoo da Matrix, apenas a estrutura do plano de contas.",
   inputSchemaShape: inputSchema.shape,
   inputSchema,
   outputSchema,

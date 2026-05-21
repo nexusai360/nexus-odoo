@@ -15,7 +15,7 @@ interface Props {
  *
  * Padrão visual: ghost icon button h-8 w-8, hover violet-500.
  *
- * Convive com `<TourButton>` (h-11 w-11, padrão antigo dos relatórios) —
+ * Convive com `<TourButton>` (h-11 w-11, padrão antigo dos relatórios) ,
  * use este aqui quando quiser um affordance discreto que não compete
  * visualmente com o título; use o outro quando o "?" for a única ação
  * dessa região e precisa de touch target HIG-compliant (44pt).

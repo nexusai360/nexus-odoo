@@ -70,12 +70,12 @@ beforeEach(() => {
 });
 
 // ──────────────────────────────────────────────
-// Tests — auth
+// Tests, auth
 // ──────────────────────────────────────────────
 
-describe("getMcpCatalogSchema — auth", () => {
+describe("getMcpCatalogSchema, auth", () => {
   it("retorna erro se não for super_admin", async () => {
-    mockRequireSuperAdmin.mockRejectedValue(new Error("Acesso negado — requer super_admin"));
+    mockRequireSuperAdmin.mockRejectedValue(new Error("Acesso negado, requer super_admin"));
     const result = await getMcpCatalogSchema();
     expect(result.success).toBe(false);
     if (!result.success) expect(result.error).toMatch(/super_admin/);
@@ -83,7 +83,7 @@ describe("getMcpCatalogSchema — auth", () => {
 });
 
 // ──────────────────────────────────────────────
-// Tests — agrupamento (groupCatalogTools)
+// Tests, agrupamento (groupCatalogTools)
 // ──────────────────────────────────────────────
 
 describe("groupCatalogTools", () => {
@@ -131,10 +131,10 @@ describe("groupCatalogTools", () => {
 });
 
 // ──────────────────────────────────────────────
-// Tests — catálogo via snapshot in-app
+// Tests, catálogo via snapshot in-app
 // ──────────────────────────────────────────────
 
-describe("getMcpCatalogSchema — snapshot in-app", () => {
+describe("getMcpCatalogSchema, snapshot in-app", () => {
   it("retorna o catálogo agrupado do snapshot", async () => {
     const result = await getMcpCatalogSchema();
     expect(result.success).toBe(true);

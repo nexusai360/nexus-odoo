@@ -29,7 +29,7 @@ export const crmResPartnerGet: ToolEntry<Input, Output> = {
   dominio: "crm",
   descricao:
     "Retorna o registro raw de um res.partner pelo seu ID do Odoo. " +
-    "Lê do cache local (rawResPartner) — não consulta o Odoo ao vivo. " +
+    "Lê do cache local (rawResPartner), não consulta o Odoo ao vivo. " +
     "Retorna o campo `data` (JSON bruto sincronizado) e metadados de sync.",
   inputSchemaShape: inputSchema.shape,
   inputSchema,

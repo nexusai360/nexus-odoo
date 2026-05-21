@@ -22,16 +22,16 @@
 
 **Branch ativa: `feat/f4-onda2-mcp-escrita`**. A `main` tem F0+F1+F2+F3+F3.5+F4+F5.
 
-> ## ⚠️ RETOMADA, F4 ONDA 2: RODADA 3 DE CORREÇÕES EM ANDAMENTO
-> **LEIA PRIMEIRO `docs/HANDOFF-2026-05-21-f4-onda2-r3.md`.** A F4 Onda 2 está na branch
-> `feat/f4-onda2-mcp-escrita` (PR #10). Onda 0 + Rodadas 1 e 2 de correções concluídas. A
-> **Rodada 3 está parcial**: feito o ajuste do sidebar, os Logs (filtro de status, status
-> Inválido, detalhe com descrição da tool), a URL completa do MCP e grande parte da
-> Documentação. **Falta** (ver o plano `docs/superpowers/plans/2026-05-21-f4-onda2-correcoes-r3.md`,
-> seção Progresso): modal de Chaves refeito (B), catálogo de tools que não carrega + passo a
-> passo (C1), fontes da Visão Geral (D), botão de tour em todas as abas (E), redesenho do
-> Plugar MCPs (F) e dos Webhooks (G), verificação (H).
-> `tsc`/`jest` (1529)/`build` verdes na branch.
+> ## ⚠️ RETOMADA, F4 ONDA 2: RODADA 3 DE CORREÇÕES CONCLUÍDA
+> A F4 Onda 2 está na branch `feat/f4-onda2-mcp-escrita` (PR #10). Onda 0 + Rodadas 1, 2 e 3
+> de correções **concluídas**. A rodada 3 entregou: ajuste do sidebar, Logs úteis, URL
+> completa do MCP, Documentação clara com passo a passo, modal de Chaves refeito (2 colunas,
+> 4 ações em pt-br, origens com chips), catálogo de tools via snapshot in-app
+> (`npm run gen:mcp-catalog`), Visão Geral mais larga, mini-tour em todas as abas do Servidor
+> MCP, e Plugar MCPs + Webhooks com tour que ensina a criar. Detalhe no plano
+> `docs/superpowers/plans/2026-05-21-f4-onda2-correcoes-r3.md` (seção Progresso).
+> `tsc`/`jest` (1526)/`next build` verdes na branch. `eslint` tem 83 erros pré-existentes
+> do MCP (Bloco P, não da r3) registrados no RADAR R7.
 >
 > **Pendências herdadas:** teste E2E de escrita real contra `grupojht.teste.tauga.online`
 > nunca rodou (faltam credenciais `ODOO_WRITE_*`); inspeção visual pixel a pixel.

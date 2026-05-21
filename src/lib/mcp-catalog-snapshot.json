@@ -174,7 +174,7 @@
       "id": "bi_consulta_avancada",
       "operation": "read",
       "module": "outros",
-      "descricao": "Modo BI avançado (Caminho 3c): executa um SQL SELECT pronto sob o role read-only nexus_mcp_bi. O SQL deve ser gerado pelo agente (F5); esta tool apenas executa. Restrito a admin/super_admin. AVISO: consulta dinâmica — resultados não são filtrados pelo RBAC semântico das tools de domínio.",
+      "descricao": "Modo BI avançado (Caminho 3c): executa um SQL SELECT pronto sob o role read-only nexus_mcp_bi. O SQL deve ser gerado pelo agente (F5); esta tool apenas executa. Restrito a admin/super_admin. AVISO: consulta dinâmica, resultados não são filtrados pelo RBAC semântico das tools de domínio.",
       "capability": null,
       "sensitive": false,
       "addedInVersion": null,
@@ -374,7 +374,7 @@
       "id": "contabil_plano_de_contas",
       "operation": "read",
       "module": "contabil",
-      "descricao": "Lista as contas do plano de contas contábil da Matrix, com código hierárquico, nome, tipo (S=sintética/A=analítica) e conta pai. Filtre por termo (código ou nome). NOTA: não há lançamento/movimento contábil no Odoo da Matrix — apenas a estrutura do plano de contas.",
+      "descricao": "Lista as contas do plano de contas contábil da Matrix, com código hierárquico, nome, tipo (S=sintética/A=analítica) e conta pai. Filtre por termo (código ou nome). NOTA: não há lançamento/movimento contábil no Odoo da Matrix, apenas a estrutura do plano de contas.",
       "capability": null,
       "sensitive": false,
       "addedInVersion": null,
@@ -388,7 +388,7 @@
       "id": "contabil_estrutura_conta",
       "operation": "read",
       "module": "contabil",
-      "descricao": "Retorna os detalhes de uma conta contábil pelo odooId e suas contas filhas diretas. Útil para navegar a hierarquia do plano de contas. NOTA: não há lançamento/movimento contábil no Odoo da Matrix — apenas a estrutura do plano de contas.",
+      "descricao": "Retorna os detalhes de uma conta contábil pelo odooId e suas contas filhas diretas. Útil para navegar a hierarquia do plano de contas. NOTA: não há lançamento/movimento contábil no Odoo da Matrix, apenas a estrutura do plano de contas.",
       "capability": null,
       "sensitive": false,
       "addedInVersion": null,
@@ -434,7 +434,7 @@
       "id": "crm.res_partner.get",
       "operation": "read",
       "module": "crm",
-      "descricao": "Retorna o registro raw de um res.partner pelo seu ID do Odoo. Lê do cache local (rawResPartner) — não consulta o Odoo ao vivo. Retorna o campo `data` (JSON bruto sincronizado) e metadados de sync.",
+      "descricao": "Retorna o registro raw de um res.partner pelo seu ID do Odoo. Lê do cache local (rawResPartner), não consulta o Odoo ao vivo. Retorna o campo `data` (JSON bruto sincronizado) e metadados de sync.",
       "capability": null,
       "sensitive": false,
       "addedInVersion": 2,
@@ -445,5 +445,5 @@
     }
   ],
   "count": 34,
-  "generatedAt": "2026-05-21T10:22:02.302Z"
+  "generatedAt": "2026-05-21T10:34:42.724Z"
 }

@@ -6,7 +6,7 @@
  * Fonte do catálogo: o snapshot in-app `src/lib/mcp-catalog-snapshot.json`,
  * gerado por `scripts/gen-mcp-catalog-snapshot.ts` (`npm run gen:mcp-catalog`)
  * a partir do catálogo do código do servidor MCP. A documentação não depende
- * mais do container `mcp` estar no ar — em dev ele não roda, e antes o catálogo
+ * mais do container `mcp` estar no ar, em dev ele não roda, e antes o catálogo
  * aparecia vazio ("0 tools").
  *
  * Gate: super_admin.
