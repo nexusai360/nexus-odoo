@@ -22,12 +22,16 @@
 
 **Branch ativa: `feat/f4-onda2-mcp-escrita`**. A `main` tem F0+F1+F2+F3+F3.5+F4+F5.
 
-> ## ⚠️ RETOMADA — LEIA O HANDOFF
-> A próxima sessão DEVE começar lendo **`docs/HANDOFF-2026-05-21-f4-onda2-onda0.md`** —
-> estado exato da F4 Onda 2 (capacidade de escrita no MCP): Onda 0 (fundação)
-> implementada, o que falta (cutover de produção, Ondas 1–7 dos demais módulos),
-> e os bloqueadores externos. Repo migrado para `github.com/nexusai360/nexus-odoo`.
-> Protocolo multi-agente ativo (`AGENTS.md`).
+> ## ⚠️ RETOMADA — LEIA O HANDOFF DE CORREÇÕES
+> A próxima sessão DEVE começar lendo **`docs/HANDOFF-2026-05-21-f4-onda2-correcoes.md`**.
+> A F4 Onda 2 teve a UI **reprovada integralmente** pelo usuário e a escrita no Odoo
+> **nunca foi testada de verdade**. O handoff de correções consolida tudo: o que está
+> errado (UI do painel Servidor MCP, "Plugar MCPs" com conceito errado, documentação,
+> 12 issues), as verificações já feitas (leitura Odoo OK; escrita não testada), o que
+> pedir ao usuário (credenciais da base de teste) e a sequência: montar plano →
+> double review → plan v3 → executar na sessão principal com Opus 4.7 + ui-ux-pro-max.
+> **NÃO mergear o PR #10 antes das correções.** O handoff anterior
+> (`HANDOFF-2026-05-21-f4-onda2-onda0.md`) descreve o estado da fundação.
 
 ---
 
