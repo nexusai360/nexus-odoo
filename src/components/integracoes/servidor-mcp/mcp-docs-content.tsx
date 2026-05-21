@@ -798,7 +798,10 @@ export function McpDocsContent({ catalog, mcpUrl }: Props) {
           </p>
 
           {/* Passo a passo de uso */}
-          <div className="rounded-xl border border-border bg-card p-5 space-y-3">
+          <div
+            data-tour="mcp-docs-passos"
+            className="rounded-xl border border-border bg-card p-5 space-y-3"
+          >
             <h3 className="text-sm font-semibold text-foreground">Como começar, em 4 passos</h3>
             <ol className="space-y-1.5">
               {[
@@ -1000,7 +1003,12 @@ export function McpDocsContent({ catalog, mcpUrl }: Props) {
         <div className="h-px bg-border" />
 
         {/* Tools */}
-        <motion.div variants={itemVariants} id="tools" className="space-y-5 scroll-mt-24">
+        <motion.div
+          variants={itemVariants}
+          id="tools"
+          data-tour="mcp-docs-tools"
+          className="space-y-5 scroll-mt-24"
+        >
           <SectionTitle icon={Layers} color="text-violet-500">
             Tools
           </SectionTitle>

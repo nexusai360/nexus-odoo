@@ -57,28 +57,28 @@ export function McpVisaoGeral({ mcpPublicUrl, healthStatus, metrics }: Props) {
   const hasUsage = metrics != null && metrics.totalCalls > 0;
 
   return (
-    <div className="space-y-6 max-w-3xl">
+    <div className="space-y-6 max-w-4xl">
       {/* Está no ar? */}
-      <div data-tour="mcp-status" className="rounded-xl border border-border bg-card p-5 space-y-4">
+      <div data-tour="mcp-status" className="rounded-xl border border-border bg-card p-6 space-y-5">
         <div className="flex items-center gap-3">
           <span
             className={cn(
-              "flex h-9 w-9 shrink-0 items-center justify-center rounded-lg",
+              "flex h-10 w-10 shrink-0 items-center justify-center rounded-lg",
               health.bgClass,
             )}
           >
-            <HealthIcon className={cn("h-4 w-4", health.iconClass)} />
+            <HealthIcon className={cn("h-5 w-5", health.iconClass)} />
           </span>
           <div className="space-y-0.5">
-            <p className="text-sm font-semibold">{health.title}</p>
-            <p className="text-xs text-muted-foreground">{health.desc}</p>
+            <p className="text-[15px] font-semibold">{health.title}</p>
+            <p className="text-[13px] text-muted-foreground">{health.desc}</p>
           </div>
         </div>
 
         <div className="space-y-2">
-          <p className="text-xs font-medium text-muted-foreground">Endpoint público</p>
+          <p className="text-[13px] font-medium text-muted-foreground">Endpoint público</p>
           <div className="flex items-center gap-2">
-            <code className="flex-1 rounded-lg bg-muted px-3 py-2 text-sm font-mono break-all">
+            <code className="flex-1 rounded-lg bg-muted px-3 py-2.5 text-sm font-mono break-all">
               {mcpPublicUrl || "Não configurado"}
             </code>
             {mcpPublicUrl && (
@@ -105,8 +105,8 @@ export function McpVisaoGeral({ mcpPublicUrl, healthStatus, metrics }: Props) {
       </div>
 
       {/* Está sendo usado? */}
-      <div data-tour="mcp-uso" className="rounded-xl border border-border bg-card p-5 space-y-4">
-        <p className="text-sm font-semibold">Uso nas últimas 24 horas</p>
+      <div data-tour="mcp-uso" className="rounded-xl border border-border bg-card p-6 space-y-4">
+        <p className="text-[15px] font-semibold">Uso nas últimas 24 horas</p>
         {hasUsage ? (
           <div className="grid grid-cols-3 gap-3">
             <MetricItem label="Chamadas" value={String(metrics!.totalCalls)} />
@@ -121,7 +121,7 @@ export function McpVisaoGeral({ mcpPublicUrl, healthStatus, metrics }: Props) {
             />
           </div>
         ) : (
-          <p className="text-sm text-muted-foreground">
+          <p className="text-[13px] text-muted-foreground">
             Nenhuma chamada registrada nas últimas 24 horas.
           </p>
         )}
@@ -129,17 +129,17 @@ export function McpVisaoGeral({ mcpPublicUrl, healthStatus, metrics }: Props) {
 
       {/* ── O que mais é chamado? ───────────────────────────────────────────── */}
       {hasUsage && metrics!.topTools.length > 0 && (
-        <div className="rounded-xl border border-border bg-card p-5 space-y-3">
-          <p className="text-sm font-semibold">Tools mais usadas</p>
+        <div className="rounded-xl border border-border bg-card p-6 space-y-3">
+          <p className="text-[15px] font-semibold">Tools mais usadas</p>
           <div className="space-y-1.5">
             {metrics!.topTools.map((t) => (
               <div
                 key={t.tool}
-                className="flex items-center justify-between gap-3 rounded-lg border border-border bg-muted/30 px-3 py-2"
+                className="flex items-center justify-between gap-3 rounded-lg border border-border bg-muted/30 px-3 py-2.5"
               >
-                <code className="text-xs font-mono truncate">{t.tool}</code>
+                <code className="text-[13px] font-mono truncate">{t.tool}</code>
                 <div className="flex items-center gap-2 shrink-0">
-                  <span className="text-xs text-muted-foreground">
+                  <span className="text-[13px] text-muted-foreground">
                     {t.total} chamada{t.total !== 1 ? "s" : ""}
                   </span>
                   {t.errors > 0 && (
@@ -171,11 +171,11 @@ function MetricItem({
   warn?: boolean;
 }) {
   return (
-    <div className="rounded-lg border border-border bg-muted/30 px-3 py-2.5 space-y-1">
-      <p className="text-[11px] text-muted-foreground">{label}</p>
+    <div className="rounded-lg border border-border bg-muted/30 px-3.5 py-3 space-y-1">
+      <p className="text-xs text-muted-foreground">{label}</p>
       <p
         className={cn(
-          "text-base font-semibold font-mono tabular-nums",
+          "text-lg font-semibold font-mono tabular-nums",
           warn && "text-amber-600 dark:text-amber-400",
         )}
       >

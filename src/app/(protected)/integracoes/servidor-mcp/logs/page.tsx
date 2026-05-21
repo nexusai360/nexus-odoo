@@ -5,6 +5,9 @@ import { PageHeader } from "@/components/page-header";
 import { Breadcrumb } from "@/components/integracoes/breadcrumb";
 import { ServidorMcpNav } from "@/components/integracoes/servidor-mcp/servidor-mcp-nav";
 import { LogsTimeline } from "@/components/integracoes/servidor-mcp/logs-timeline";
+import { TourTriggerButton } from "@/components/tour/tour-trigger-button";
+import { TourAutoStart } from "@/components/tour/tour-auto-start";
+import { servidorMcpLogsTour } from "@/lib/tours/servidor-mcp-tour";
 import { queryAuditLogs } from "@/lib/actions/mcp-audit-query";
 import { getMcpCatalogSchema } from "@/lib/actions/mcp-catalog-schema";
 import { getCurrentUser } from "@/lib/auth";
@@ -49,7 +52,9 @@ export default async function LogsPage() {
         icon={Terminal}
         title="Servidor MCP"
         subtitle="Endpoint semântico para agentes de IA, RBAC de 7 camadas, Streamable HTTP"
+        actions={<TourTriggerButton config={servidorMcpLogsTour} />}
       />
+      <TourAutoStart tour={servidorMcpLogsTour} />
 
       <ServidorMcpNav />
       <div className="mt-6">

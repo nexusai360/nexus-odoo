@@ -222,7 +222,7 @@ export function ChavesLista({ initial }: Props) {
       )}
 
       {/* Cabeçalho */}
-      <div className="flex items-center justify-between">
+      <div data-tour="mcp-chaves-cabecalho" className="flex items-center justify-between">
         <div>
           <p className="text-sm text-muted-foreground">
             {activeKeys.length === 0
@@ -233,7 +233,13 @@ export function ChavesLista({ initial }: Props) {
             Chaves de API para serviços externos consumirem o servidor MCP.
           </p>
         </div>
-        <Button type="button" size="sm" className="h-9" onClick={() => setCreateOpen(true)}>
+        <Button
+          type="button"
+          size="sm"
+          className="h-9"
+          data-tour="mcp-chaves-nova"
+          onClick={() => setCreateOpen(true)}
+        >
           <Plus className="mr-1.5 h-4 w-4" />
           Nova chave
         </Button>

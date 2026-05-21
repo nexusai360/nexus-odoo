@@ -5,6 +5,9 @@ import { PageHeader } from "@/components/page-header";
 import { Breadcrumb } from "@/components/integracoes/breadcrumb";
 import { ServidorMcpNav } from "@/components/integracoes/servidor-mcp/servidor-mcp-nav";
 import { McpDocsContent } from "@/components/integracoes/servidor-mcp/mcp-docs-content";
+import { TourTriggerButton } from "@/components/tour/tour-trigger-button";
+import { TourAutoStart } from "@/components/tour/tour-auto-start";
+import { servidorMcpDocsTour } from "@/lib/tours/servidor-mcp-tour";
 import { getMcpCatalogSchema } from "@/lib/actions/mcp-catalog-schema";
 import { resolveMcpPublicUrl } from "@/lib/mcp-public-url";
 import { getCurrentUser } from "@/lib/auth";
@@ -36,7 +39,9 @@ export default async function DocsPage() {
         icon={BookOpen}
         title="Servidor MCP"
         subtitle="Endpoint semântico para agentes de IA, RBAC de 7 camadas, Streamable HTTP"
+        actions={<TourTriggerButton config={servidorMcpDocsTour} />}
       />
+      <TourAutoStart tour={servidorMcpDocsTour} />
 
       <ServidorMcpNav />
       <div className="mt-6">

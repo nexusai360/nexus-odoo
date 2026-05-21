@@ -337,7 +337,10 @@ function FilterBar({
     );
 
   return (
-    <div className="rounded-xl border border-border bg-card p-4 space-y-3">
+    <div
+      data-tour="mcp-logs-filtros"
+      className="rounded-xl border border-border bg-card p-4 space-y-3"
+    >
       {/* Busca, status e exportar */}
       <div className="flex flex-wrap gap-2">
         <div className="relative flex-1 min-w-52">
@@ -496,7 +499,7 @@ export function LogsTimeline({ initial, toolDescriptions = {} }: Props) {
         isExporting={isExporting}
       />
 
-      <div className="flex items-center justify-between px-1">
+      <div data-tour="mcp-logs-lista" className="flex items-center justify-between px-1">
         <p className="text-xs text-muted-foreground">
           {total.toLocaleString("pt-BR")} registro{total !== 1 ? "s" : ""}
         </p>

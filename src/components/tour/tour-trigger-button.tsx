@@ -27,12 +27,12 @@ export function TourTriggerButton({ config, label = "Tour da tela" }: Props) {
       type="button"
       variant="ghost"
       size="icon"
-      className="h-8 w-8 cursor-pointer text-muted-foreground hover:text-violet-500"
+      className="h-9 w-9 cursor-pointer text-muted-foreground hover:text-violet-500"
       aria-label={label}
       title={label}
       onClick={() => start(config)}
     >
-      <HelpCircle className="h-4 w-4" aria-hidden />
+      <HelpCircle className="h-[18px] w-[18px]" aria-hidden />
     </Button>
   );
 }
