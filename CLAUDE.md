@@ -102,7 +102,7 @@ Ordem: **F0 → F1 → F2 → F3 → F4 → F5**. F3 e F4 podem ser paralelas ap
 ## 5. Decisões canônicas já tomadas (não rediscutir sem motivo)
 
 1. **Cache local é obrigatório.** Dashboard e MCP leem do Postgres interno, nunca do Odoo ao vivo.
-2. **Sem fallback JSON-RPC nas tools.** O Odoo é tocado **somente** pelo cron de sincronização. Nenhuma pergunta de usuário dispara chamada ao Odoo. Toda tool retorna o timestamp da última sync (`atualizado há Xs`).
+2. **Leitura sempre do cache; escrita só via tools `write:*` do MCP.** Leitura: o cache Postgres é alimentado pelos ciclos da F2 (incremental 3min + snapshot/reconcile 24h); nenhuma pergunta de usuário dispara chamada de leitura ao Odoo; toda tool de leitura retorna o timestamp da última sync (`atualizado há Xs`). Escrita (F4 Onda 2): pode ir ao Odoo **exclusivamente** via tools `WriteToolEntry` do servidor MCP, gated por capability de `ApiKey` (modo EXTERNO de auth) e disponível só pelo endpoint público `/api/mcp`. Toda write é seguida de sync direcionado da(s) linha(s) afetada(s), retornando ao cache em <2s. O Agente Nex (in-app + WhatsApp) usa o modo INTERNO de auth e **nunca pode** chamar uma `WriteToolEntry` — é defesa pela rota de auth, não pelo prompt.
 3. **A IA consulta via ferramentas semânticas (MCP próprio), não text-to-SQL livre.** Tools de vocabulário de negócio (`faturamento_no_periodo`, `estoque_modelo`...), cada uma código TS validado/testado/auditado.
 4. **Não usar DuckFly.** MCP próprio em TypeScript com `@modelcontextprotocol/sdk`.
 5. **Caminho 3 — perguntas fora do catálogo:**

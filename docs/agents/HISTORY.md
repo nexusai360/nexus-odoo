@@ -23,3 +23,4 @@
 2026-05-20 21:22 | agent=claude-f4-onda2-mcp-escrita-b2 (Sonnet subagent) | commit=81030c8 | scope=feat | summary=B2 estende McpAuditLog (preservando legados)
 2026-05-20 21:23 | agent=claude-f4-onda2-mcp-escrita-b3 (Sonnet subagent) | commit=ff92220 | scope=feat | summary=B3 cria McpIdempotencyRecord
 2026-05-20 21:30 | agent=claude-f4-onda2-mcp-escrita | commit=f445052 | scope=feat | summary=B4-B6 migration aplicada + scripts auxiliares + tipos validados (28 tests passed; Bloco B COMPLETO)
+2026-05-21 00:00 | agent=claude-f4-onda2-mcp-escrita | commit=2c5b37a | scope=feat | summary=Onda 0 completa — blocos A-Q + P-0 + auditoria UI ui-ux-pro-max (1519 tests, build OK)
