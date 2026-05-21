@@ -46,11 +46,11 @@ export const servidorMcpChavesTour: TourConfig = {
   title: "Tour das Chaves de Acesso",
   steps: [
     {
-      id: "lista",
+      id: "cabecalho",
       targetSelector: "[data-tour='mcp-chaves-cabecalho']",
       title: "Suas chaves de acesso",
       description:
-        "Cada chave de API criada aparece abaixo, com o resumo de acessos e o último uso. Por ela você edita, rotaciona o token ou revoga.",
+        "Aqui você vê quantas chaves existem e cria novas. Cada chave de API dá a um serviço externo acesso ao servidor MCP.",
       placement: "bottom",
     },
     {
@@ -58,8 +58,16 @@ export const servidorMcpChavesTour: TourConfig = {
       targetSelector: "[data-tour='mcp-chaves-nova']",
       title: "Criar uma chave",
       description:
-        "Use Nova chave para abrir o assistente de criação. Vamos abri-lo agora para conhecer os passos.",
+        "Use Nova chave para abrir o assistente de criação. Vamos abri-lo daqui a pouco.",
       placement: "bottom",
+    },
+    {
+      id: "cadastradas",
+      targetSelector: "[data-tour='mcp-chaves-lista']",
+      title: "As chaves cadastradas",
+      description:
+        "Cada chave criada aparece como um card, com o resumo de acessos e o último uso. Pelo card você habilita, edita ou revoga a chave.",
+      placement: "top",
     },
     {
       id: "wizard",
@@ -90,7 +98,15 @@ export const servidorMcpLogsTour: TourConfig = {
       targetSelector: "[data-tour='mcp-logs-lista']",
       title: "Cada chamada registrada",
       description:
-        "Toda chamada ao servidor MCP vira uma linha aqui. Abrimos a primeira para você ver o detalhe: duração, parâmetros, módulo e, quando a chamada falha, o código e o motivo do erro.",
+        "Toda chamada ao servidor MCP vira uma linha aqui, com a tool, a chave que a fez e o status.",
+      placement: "top",
+    },
+    {
+      id: "registro",
+      targetSelector: "[data-tour='mcp-logs-registro']",
+      title: "O detalhe de um registro",
+      description:
+        "Abrimos o primeiro registro: ele mostra duração, parâmetros, a chave usada e, quando a chamada não dá Sucesso (Erro, Negado ou Inválido), o motivo. O botão Exportar CSV, nos filtros, baixa a lista.",
       placement: "top",
     },
   ],
@@ -122,8 +138,16 @@ export const servidorMcpDocsTour: TourConfig = {
       targetSelector: "[data-tour='mcp-docs-tools-head']",
       title: "O catálogo de tools",
       description:
-        "Logo abaixo, as tools são agrupadas por módulo. As de leitura aparecem em verde, as de escrita em violeta; abra qualquer uma para ver os argumentos e exemplos.",
+        "Logo abaixo, as tools são agrupadas por módulo. As de leitura aparecem em verde, as de escrita em violeta.",
       placement: "bottom",
+    },
+    {
+      id: "tool-aberta",
+      targetSelector: "[data-tour='mcp-docs-tool']",
+      title: "Como uma tool funciona",
+      description:
+        "Abrimos a primeira tool: cada uma traz a descrição, a capability exigida, os argumentos aceitos e um exemplo de chamada pronto em cURL, JavaScript e Python para copiar e adaptar.",
+      placement: "top",
     },
     {
       id: "errors",

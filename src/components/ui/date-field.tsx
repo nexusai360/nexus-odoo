@@ -99,15 +99,15 @@ export function DateField({
         sideOffset={4}
         className="w-[var(--anchor-width)] min-w-[300px] p-0"
       >
-        <div className="flex items-center gap-2 border-b border-border p-2">
+        <div className="flex items-center gap-1 border-b border-border p-2">
           <button
             type="button"
             aria-label="Mês anterior"
             disabled={atMinMonth}
             onClick={() => shiftMonth(-1)}
             className={cn(
-              "flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-border bg-card text-muted-foreground transition-colors",
-              "hover:text-foreground disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:text-muted-foreground",
+              "flex h-8 w-6 shrink-0 items-center justify-center text-muted-foreground transition-colors",
+              "hover:text-foreground disabled:cursor-not-allowed disabled:opacity-30 disabled:hover:text-muted-foreground",
             )}
           >
             <ChevronLeft className="h-4 w-4" aria-hidden />
@@ -123,7 +123,7 @@ export function DateField({
           />
           <CustomSelect
             aria-label="Ano"
-            className="w-[80px] shrink-0"
+            className="w-[78px] shrink-0"
             value={String(displayMonth.getFullYear())}
             onChange={(v) => setDisplayMonth(new Date(Number(v), displayMonth.getMonth(), 1))}
             options={yearOptions}
@@ -134,8 +134,8 @@ export function DateField({
             disabled={atMaxMonth}
             onClick={() => shiftMonth(1)}
             className={cn(
-              "flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-border bg-card text-muted-foreground transition-colors",
-              "hover:text-foreground disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:text-muted-foreground",
+              "flex h-8 w-6 shrink-0 items-center justify-center text-muted-foreground transition-colors",
+              "hover:text-foreground disabled:cursor-not-allowed disabled:opacity-30 disabled:hover:text-muted-foreground",
             )}
           >
             <ChevronRight className="h-4 w-4" aria-hidden />

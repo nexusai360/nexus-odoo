@@ -3,7 +3,7 @@
 /**
  * Server Actions para consulta de logs / audit do servidor MCP.
  *
- * queryAuditLogs — paginação cursor-based por criadoEm (DESC).
+ * queryAuditLogs: paginação cursor-based por criadoEm (DESC).
  * Filtros: apiKeyId, tool, module, action, status, faixa de data,
  *          busca por idempotencyKey/requestId.
  *
@@ -25,6 +25,8 @@ export interface AuditLogItem {
   apiKeyId: string | null;
   /** last4 da chave de API (se disponível via join). */
   apiKeyLast4: string | null;
+  /** Rótulo da chave de API; null nas chamadas internas (Agente Nex). */
+  apiKeyLabel: string | null;
   tool: string;
   module: string | null;
   action: string | null;
@@ -151,7 +153,7 @@ export async function queryAuditLogs(
       take: PAGE_SIZE + 1,
       include: {
         apiKey: {
-          select: { last4: true },
+          select: { last4: true, label: true },
         },
       },
     }),
@@ -169,7 +171,10 @@ export async function queryAuditLogs(
     id: row.id,
     userId: row.userId,
     apiKeyId: row.apiKeyId ?? null,
-    apiKeyLast4: (row as unknown as { apiKey?: { last4: string } | null }).apiKey?.last4 ?? null,
+    apiKeyLast4:
+      (row as unknown as { apiKey?: { last4: string } | null }).apiKey?.last4 ?? null,
+    apiKeyLabel:
+      (row as unknown as { apiKey?: { label: string } | null }).apiKey?.label ?? null,
     tool: row.tool,
     module: row.module ?? null,
     action: row.action ?? null,

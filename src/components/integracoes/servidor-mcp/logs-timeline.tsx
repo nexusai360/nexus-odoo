@@ -115,8 +115,48 @@ function DetailField({ label, value, mono }: { label: string; value: string; mon
   );
 }
 
+/**
+ * Explicação de um outcome diferente de sucesso, para o detalhe do log sempre
+ * dizer o porquê, mesmo quando não há código/mensagem gravados (logs antigos).
+ */
+function outcomeExplanation(outcome: string): {
+  label: string;
+  generic: string;
+  panelClass: string;
+  textClass: string;
+} {
+  const o = outcome.toLowerCase();
+  if (o === "denied" || o === "forbidden")
+    return {
+      label: "Chamada negada",
+      generic:
+        "O controle de acesso bloqueou a chamada: a chave ou a sessão não tem permissão para esta tool.",
+      panelClass: "border-amber-500/30 bg-amber-500/5",
+      textClass: "text-amber-600 dark:text-amber-400",
+    };
+  if (o === "invalid_input" || o === "invalid" || o === "validation_error")
+    return {
+      label: "Entrada inválida",
+      generic:
+        "Os parâmetros enviados não passaram na validação de entrada. Confira o formato dos argumentos abaixo.",
+      panelClass: "border-orange-500/30 bg-orange-500/5",
+      textClass: "text-orange-600 dark:text-orange-400",
+    };
+  return {
+    label: "Erro na execução",
+    generic:
+      "A tool falhou durante a execução. Quando o servidor registra o código e a mensagem do erro, eles aparecem aqui.",
+    panelClass: "border-destructive/30 bg-destructive/5",
+    textClass: "text-destructive",
+  };
+}
+
 function LogDetail({ log, description }: { log: AuditLogItem; description?: string }) {
   const payload = log.payload ?? log.params;
+  const failure =
+    log.outcome !== "ok" && log.outcome !== "success"
+      ? outcomeExplanation(log.outcome)
+      : null;
 
   return (
     <div className="rounded-lg border border-border bg-muted/30 p-4 space-y-4">
@@ -150,13 +190,21 @@ function LogDetail({ log, description }: { log: AuditLogItem; description?: stri
         {log.ipAddress && <DetailField label="IP" value={log.ipAddress} mono />}
       </div>
 
-      {(log.errorCode || log.errorMessage) && (
-        <div className="space-y-1.5 rounded-lg border border-destructive/30 bg-destructive/5 p-3">
-          <p className="text-xs font-medium text-destructive flex items-center gap-1.5">
+      {failure && (
+        <div className={cn("space-y-1.5 rounded-lg border p-3", failure.panelClass)}>
+          <p
+            className={cn(
+              "text-xs font-medium flex items-center gap-1.5",
+              failure.textClass,
+            )}
+          >
             <AlertTriangle className="h-3.5 w-3.5" />
-            Erro {log.errorCode ? `, ${log.errorCode}` : ""}
+            {failure.label}
+            {log.errorCode ? `, ${log.errorCode}` : ""}
           </p>
-          {log.errorMessage && <p className="text-xs text-destructive/90">{log.errorMessage}</p>}
+          <p className={cn("text-xs opacity-90", failure.textClass)}>
+            {log.errorMessage ?? failure.generic}
+          </p>
         </div>
       )}
 
@@ -201,17 +249,22 @@ function LogRow({
   expanded,
   onToggle,
   description,
+  dataTour,
 }: {
   log: AuditLogItem;
   expanded: boolean;
   onToggle: () => void;
   description?: string;
+  dataTour?: string;
 }) {
   const statusConfig = getStatusConfig(log.status, log.outcome);
   const StatusIcon = statusConfig.icon;
 
   return (
-    <div className="rounded-xl border border-border bg-muted/30 overflow-hidden">
+    <div
+      data-tour={dataTour}
+      className="rounded-xl border border-border bg-muted/30 overflow-hidden"
+    >
       <button
         type="button"
         onClick={onToggle}
@@ -222,8 +275,8 @@ function LogRow({
           {formatDatetime(log.criadoEm)}
         </span>
         <code className="flex-1 text-sm font-mono truncate">{log.tool}</code>
-        <span className="text-xs font-mono text-muted-foreground w-16 shrink-0 text-right hidden sm:block">
-          {log.apiKeyLast4 ? `····${log.apiKeyLast4}` : "-"}
+        <span className="hidden sm:inline-flex max-w-[140px] shrink-0 items-center rounded-full bg-violet-500/10 px-2 py-0.5 text-[11px] font-medium text-violet-600 dark:text-violet-300">
+          <span className="truncate">{log.apiKeyLabel ?? "Agente Nex"}</span>
         </span>
         <span
           className={cn(
@@ -515,20 +568,13 @@ export function LogsTimeline({ initial, toolDescriptions = {} }: Props) {
       {/* Nota explicativa: o que são estes logs */}
       <div className="flex items-start gap-3 rounded-xl border border-border bg-muted/30 p-4">
         <Info className="mt-0.5 h-4 w-4 shrink-0 text-violet-500" />
-        <div className="space-y-1 text-[13px] leading-relaxed text-muted-foreground">
-          <p>
-            <span className="font-medium text-foreground">
-              Registro de auditoria do servidor MCP.
-            </span>{" "}
-            Cada linha é uma chamada de tool ao servidor: tanto as do Agente Nex interno
-            quanto as de integrações externas autenticadas por chave de API.
-          </p>
-          <p>
-            As chamadas internas usam um token de serviço e não têm chave de API, por isso a
-            coluna de chave aparece vazia nesses casos. A lista reflete chamadas reais: se não
-            houve chamada num período, não há registro nele.
-          </p>
-        </div>
+        <p className="text-[13px] leading-relaxed text-muted-foreground">
+          <span className="font-medium text-foreground">
+            Registro de auditoria do servidor MCP.
+          </span>{" "}
+          Cada linha é uma chamada de tool, feita pelo Agente Nex ou por integrações
+          externas, e a lista reflete só chamadas que realmente aconteceram.
+        </p>
       </div>
 
       <FilterBar
@@ -562,13 +608,14 @@ export function LogsTimeline({ initial, toolDescriptions = {} }: Props) {
         </div>
       ) : (
         <div className="space-y-1.5">
-          {items.map((log) => (
+          {items.map((log, i) => (
             <LogRow
               key={log.id}
               log={log}
               expanded={expandedId === log.id}
               onToggle={() => setExpandedId((id) => (id === log.id ? null : log.id))}
               description={toolDescriptions[log.tool]}
+              dataTour={i === 0 ? "mcp-logs-registro" : undefined}
             />
           ))}
         </div>

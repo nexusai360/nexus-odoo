@@ -22,20 +22,21 @@
 
 **Branch ativa: `feat/f4-onda2-mcp-escrita`**. A `main` tem F0+F1+F2+F3+F3.5+F4+F5.
 
-> ## ⚠️ RETOMADA, F4 ONDA 2: RODADA 6 DE CORREÇÕES **CONCLUÍDA**
-> **LER PRIMEIRO** o plano `docs/superpowers/plans/2026-05-21-f4-onda2-correcoes-r6.md`
+> ## ⚠️ RETOMADA, F4 ONDA 2: RODADA 7 DE CORREÇÕES **CONCLUÍDA**
+> **LER PRIMEIRO** o plano `docs/superpowers/plans/2026-05-21-f4-onda2-correcoes-r7.md`
 > (seção Progresso). A F4 Onda 2 está na branch `feat/f4-onda2-mcp-escrita` (PR #10).
-> Onda 0 + Rodadas 1 a 6 **concluídas**.
+> Onda 0 + Rodadas 1 a 7 **concluídas**.
 >
-> **Rodada 6 — completa (commitado, `tsc`/`eslint`/`jest` 1520/`build` verdes):** webhook
-> rotaciona o secret dentro do modal de edição; Plugar MCPs persiste `lastStatus` após o
-> teste (corrige o card "Não testado"); criação de chave revela o token dentro do modal
-> (`SecretRevealStep`), sem tarja externa; card de chave só com toggle + lápis + revogar
-> (menu "..." removido); edição de chave com "Rotacionar token" in-modal e Origens
-> somente-leitura; Resumo lista as URLs de origem; calendário do `DateField` com grade de
-> dias full width e setas de mês anterior/próximo com travas (não passa de dez do ano
-> máximo, não volta antes do mês corrente); Enter avança os wizards (Chave, Webhook, MCP)
-> sem submeter sozinho no último passo.
+> **Rodada 7 — completa (commitado, `tsc`/`eslint`/`jest` 1531/`build` verdes):**
+> calendário do `DateField` com setas de mês simples nas extremidades (mais espaço para
+> mês/ano); `SecretRevealStep` sem travessão, descrição em 1 linha, termo "token" e botão
+> "Concluir" (no rotate da edição o Concluir já salva a edição); modal de criação de
+> chave atualiza a lista ao fechar (Concluir ou X); na edição da chave o Tenant fica
+> visível (read-only) e as Origens voltaram a ser editáveis; Logs: detalhe sempre
+> explica o motivo de erro/negado/inválido, nota do topo resumida, e cada linha ganhou
+> uma tag com o nome da chave (ou "Agente Nex"); tours de Documentação, Logs e Chaves
+> ganharam passos (tool aberta, registro aberto, chaves cadastradas) e o `tour-overlay`
+> passou a re-tentar localizar alvos que surgem após a troca de passo.
 >
 > **Pendências herdadas:** teste E2E de escrita real contra `grupojht.teste.tauga.online`
 > nunca rodou (faltam credenciais `ODOO_WRITE_*`); inspeção visual pixel a pixel.

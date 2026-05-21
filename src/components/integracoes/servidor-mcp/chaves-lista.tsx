@@ -119,10 +119,10 @@ export function ChavesLista({ initial, moduleWriteActions }: Props) {
   const [keys, setKeys] = useState<McpApiKeyListItem[]>(initial);
   const [isPending, startTransition] = useTransition();
 
-  // O tour de Chaves abre o assistente ao chegar no passo do wizard (índice 2).
+  // O tour de Chaves abre o assistente ao chegar no passo do wizard (índice 3).
   const { active, currentStepIndex } = useTour();
   const tourWizardOpen =
-    active?.id === servidorMcpChavesTour.id && currentStepIndex >= 2;
+    active?.id === servidorMcpChavesTour.id && currentStepIndex >= 3;
 
   const [createOpenManual, setCreateOpenManual] = useState(false);
   const createOpen = createOpenManual || tourWizardOpen;
@@ -239,7 +239,16 @@ export function ChavesLista({ initial, moduleWriteActions }: Props) {
         mode="create"
         moduleWriteActions={moduleWriteActions}
         open={createOpen}
-        onOpenChange={setCreateOpenManual}
+        onOpenChange={(o) => {
+          setCreateOpenManual(o);
+          // Ao fechar o modal de criação (Concluir ou X), atualiza a seção de
+          // chaves sem recarregar a página, para a chave nova já aparecer.
+          if (!o) {
+            startTransition(async () => {
+              await refresh();
+            });
+          }
+        }}
         onCreated={() => {
           setCreateOpenManual(false);
           startTransition(async () => {
@@ -787,10 +796,13 @@ function ChaveDialog(props: ChaveDialogProps) {
           <div className="space-y-4 mt-1">
             <SecretRevealStep
               secret={revealedToken}
-              label="Token da chave"
+              label="Token"
               onAcknowledge={() => {
+                // Criação: a chave já existe, Concluir fecha e atualiza a lista.
+                // Edição: Concluir salva o resto da edição (o rotate já persistiu
+                // o token) e fecha, sem voltar para "Salvar alterações".
                 if (mode === "create") props.onCreated?.();
-                else setRevealedToken(null);
+                else submit();
               }}
             />
           </div>
@@ -845,6 +857,20 @@ function ChaveDialog(props: ChaveDialogProps) {
                       Identificador da organização/cliente, usado para isolar dados quando a
                       plataforma atende vários clientes (ex.: cliente-001). No uso atual da
                       Matrix, deixe vazio para acesso global.
+                    </p>
+                  </div>
+                )}
+                {mode === "edit" && (
+                  <div className="space-y-1.5">
+                    <Label>Tenant</Label>
+                    <p className="text-sm text-muted-foreground">
+                      {tenant.trim()
+                        ? tenant
+                        : "Acesso global, sem tenant."}
+                    </p>
+                    <p className="text-xs text-muted-foreground">
+                      Identificador da organização/cliente. Definido na criação e não
+                      editável.
                     </p>
                   </div>
                 )}
@@ -906,8 +932,8 @@ function ChaveDialog(props: ChaveDialogProps) {
               </div>
             )}
 
-            {/* Passo 4, Origens permitidas */}
-            {step === 4 && mode === "create" && (
+            {/* Passo 4, Origens permitidas (editável em criação e edição) */}
+            {step === 4 && (
               <div className="space-y-2">
                 <Label htmlFor={originsId}>Origens permitidas</Label>
                 <p className="text-xs text-muted-foreground">
@@ -961,33 +987,6 @@ function ChaveDialog(props: ChaveDialogProps) {
                 ) : (
                   <p className="text-xs text-muted-foreground/70">
                     Nenhuma origem adicionada. A chave aceita qualquer origem.
-                  </p>
-                )}
-              </div>
-            )}
-
-            {/* Passo 4 no modo edição: origens são somente leitura. */}
-            {step === 4 && mode === "edit" && (
-              <div className="space-y-2">
-                <Label>Origens permitidas</Label>
-                <p className="text-xs text-muted-foreground">
-                  As origens são definidas na criação da chave e não podem ser alteradas
-                  depois. Para mudar, revogue esta chave e crie uma nova.
-                </p>
-                {allowedOrigins.length > 0 ? (
-                  <div className="flex flex-wrap gap-1.5">
-                    {allowedOrigins.map((origin) => (
-                      <span
-                        key={origin}
-                        className="inline-flex items-center rounded-lg border border-border bg-muted/50 px-2.5 py-1 text-xs font-mono text-muted-foreground"
-                      >
-                        {origin}
-                      </span>
-                    ))}
-                  </div>
-                ) : (
-                  <p className="text-xs text-muted-foreground/70">
-                    Sem origens definidas. A chave aceita requisições de qualquer origem.
                   </p>
                 )}
               </div>
@@ -1070,7 +1069,7 @@ function ChaveDialog(props: ChaveDialogProps) {
                 {mode === "edit" && (
                   <div className="flex items-center justify-between gap-3 rounded-xl border border-border bg-muted/30 p-3.5">
                     <div>
-                      <p className="text-sm font-medium">Token da chave</p>
+                      <p className="text-sm font-medium">Token</p>
                       <p className="text-xs text-muted-foreground">
                         Gere um novo token e invalide o anterior.
                       </p>

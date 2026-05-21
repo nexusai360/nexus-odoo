@@ -20,12 +20,12 @@ interface TourOverlayProps {
   stepIndex: number;
 }
 
-const POPOVER_WIDTH = 440; // px (default desktop) — caber footer com dots + "N de M" + Pular/Voltar/Próximo sem quebrar linha
+const POPOVER_WIDTH = 440; // px (default desktop), caber footer com dots + "N de M" + Pular/Voltar/Próximo sem quebrar linha
 const POPOVER_FALLBACK_HEIGHT = 220; // usado apenas no primeiro frame, antes de medir
 const POPOVER_MARGIN = 12; // gap entre target e popover
 const VIEWPORT_PADDING = 16; // distância mínima das bordas
 const SPOTLIGHT_PADDING = 6; // padding do hole sobre o target
-const NARROW_VIEWPORT_BREAKPOINT = 480; // px — abaixo disso, popover ocupa quase a viewport inteira
+const NARROW_VIEWPORT_BREAKPOINT = 480; // px, abaixo disso o popover ocupa quase a viewport inteira
 
 type Rect = {
   top: number;
@@ -47,7 +47,7 @@ function rectFromDOMRect(domRect: DOMRect): Rect {
  * Calcula posição do popover relativa ao viewport, com fallback automático
  * quando a placement preferida não cabe.
  *
- * Recebe `popoverWidth` e `popoverHeight` REAIS (medidos via ref) — só usa o
+ * Recebe `popoverWidth` e `popoverHeight` REAIS (medidos via ref), só usa o
  * fallback fixo no primeiro frame antes da medição.
  */
 function computePopoverPosition(
@@ -159,31 +159,61 @@ export function TourOverlay({ config, stepIndex }: TourOverlayProps) {
     setMounted(true);
   }, []);
 
-  // Tracking do elemento target — scroll, resize e mutações do layout.
+  // Tracking do elemento target: scroll, resize e mutações do layout.
+  // O alvo pode ainda não estar montado quando o passo troca (um dialog ou
+  // accordion que abre em resposta ao próprio avanço do tour). Quando não é
+  // encontrado, re-tenta por até ~3s antes de desistir.
   useEffect(() => {
     if (!step) return;
-    const el = document.querySelector(step.targetSelector);
-    if (!el || !(el instanceof HTMLElement)) {
+    let cancelled = false;
+    let ro: ResizeObserver | null = null;
+    let pollId: number | null = null;
+    let cleanupListeners: (() => void) | null = null;
+
+    const attach = (el: HTMLElement) => {
+      el.scrollIntoView({ behavior: "smooth", block: "center" });
+      const update = () => {
+        setRect(rectFromDOMRect(el.getBoundingClientRect()));
+        setViewport({ width: window.innerWidth, height: window.innerHeight });
+      };
+      update();
+      ro = new ResizeObserver(update);
+      ro.observe(el);
+      window.addEventListener("scroll", update, true);
+      window.addEventListener("resize", update);
+      cleanupListeners = () => {
+        window.removeEventListener("scroll", update, true);
+        window.removeEventListener("resize", update);
+      };
+    };
+
+    const tryFind = (): boolean => {
+      const el = document.querySelector(step.targetSelector);
+      if (el instanceof HTMLElement) {
+        attach(el);
+        return true;
+      }
+      return false;
+    };
+
+    if (!tryFind()) {
       setRect(null);
-      return;
+      let elapsed = 0;
+      pollId = window.setInterval(() => {
+        if (cancelled) return;
+        elapsed += 120;
+        if (tryFind() || elapsed >= 3000) {
+          if (pollId != null) window.clearInterval(pollId);
+          pollId = null;
+        }
+      }, 120);
     }
 
-    el.scrollIntoView({ behavior: "smooth", block: "center" });
-
-    const update = () => {
-      setRect(rectFromDOMRect(el.getBoundingClientRect()));
-      setViewport({ width: window.innerWidth, height: window.innerHeight });
-    };
-    update();
-
-    const ro = new ResizeObserver(update);
-    ro.observe(el);
-    window.addEventListener("scroll", update, true);
-    window.addEventListener("resize", update);
     return () => {
-      ro.disconnect();
-      window.removeEventListener("scroll", update, true);
-      window.removeEventListener("resize", update);
+      cancelled = true;
+      if (pollId != null) window.clearInterval(pollId);
+      if (ro) ro.disconnect();
+      if (cleanupListeners) cleanupListeners();
     };
   }, [step]);
 
@@ -246,7 +276,7 @@ export function TourOverlay({ config, stepIndex }: TourOverlayProps) {
     ? { opacity: 1 }
     : { scale: 1, opacity: 1 };
 
-  // Hole arredondado sobre o target — usa SVG mask para criar o spotlight
+  // Hole arredondado sobre o target: usa SVG mask para criar o spotlight
   // exato sem precisar combinar múltiplos divs com clip-path.
   const holePadding = SPOTLIGHT_PADDING;
 
@@ -350,8 +380,8 @@ export function TourOverlay({ config, stepIndex }: TourOverlayProps) {
               {step.description}
             </p>
 
-            {/* Footer: dots + step counter (em uma linha), botões (em outra) —
-                duas linhas dedicadas evitam que "1 de 11" quebre o layout em
+            {/* Footer: dots + step counter (em uma linha), botões (em outra).
+                Duas linhas dedicadas evitam que "1 de 11" quebre o layout em
                 viewports estreitos. */}
             <div className="mt-5 flex flex-col gap-3 border-t border-border/40 pt-3">
               <div className="flex items-center justify-between gap-2">

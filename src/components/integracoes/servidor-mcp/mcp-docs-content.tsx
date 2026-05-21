@@ -27,6 +27,8 @@ import Link from "next/link";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { moduleLabel } from "@/lib/mcp-module-labels";
+import { useTour } from "@/components/tour/tour-provider";
+import { servidorMcpDocsTour } from "@/lib/tours/servidor-mcp-tour";
 import type { CatalogByModule, CatalogToolItem } from "@/lib/actions/mcp-catalog-schema";
 
 // ---------------------------------------------------------------------------
@@ -466,8 +468,25 @@ function toolExamplesRecord(tool: CatalogToolItem): Partial<Record<Language, str
 // ToolCard, card expansível de uma tool do catálogo
 // ---------------------------------------------------------------------------
 
-function ToolCard({ tool, base }: { tool: CatalogToolItem; base: string }) {
+function ToolCard({
+  tool,
+  base,
+  isFirst,
+  forceOpen,
+}: {
+  tool: CatalogToolItem;
+  base: string;
+  isFirst?: boolean;
+  forceOpen?: boolean;
+}) {
   const [open, setOpen] = useState(false);
+
+  // O tour da Documentação força a abertura da primeira tool, para o passo
+  // mostrar os argumentos e o exemplo de chamada já visíveis.
+  useEffect(() => {
+    if (forceOpen) setOpen(true);
+  }, [forceOpen]);
+
   const isWrite = tool.operation === "write";
   const kindClass = isWrite
     ? "border-violet-500/30 bg-violet-500/10 text-violet-600 dark:text-violet-400"
@@ -479,7 +498,10 @@ function ToolCard({ tool, base }: { tool: CatalogToolItem; base: string }) {
   const fallbackExamples = buildExamples(base, tool.id, sampleArgs);
 
   return (
-    <div className="rounded-xl border border-border bg-card overflow-hidden transition-colors hover:border-foreground/20">
+    <div
+      data-tour={isFirst ? "mcp-docs-tool" : undefined}
+      className="rounded-xl border border-border bg-card overflow-hidden transition-colors hover:border-foreground/20"
+    >
       <button
         onClick={() => setOpen(!open)}
         aria-expanded={open}
@@ -718,6 +740,13 @@ interface Props {
 
 export function McpDocsContent({ catalog, mcpUrl }: Props) {
   const base = mcpUrl && mcpUrl.length > 0 ? mcpUrl : BASE_FALLBACK;
+  const { active, currentStepIndex } = useTour();
+  // No tour da Documentação, ao chegar no passo "tool-aberta" (índice 3) a
+  // primeira tool do catálogo é aberta para o passo destacá-la.
+  const docsToolStepActive =
+    active?.id === servidorMcpDocsTour.id && currentStepIndex >= 3;
+  const firstToolId =
+    catalog.flatMap((m) => [...m.readTools, ...m.writeTools])[0]?.id ?? null;
   const [activeSection, setActiveSection] = useState("intro");
   const [spacerHeight, setSpacerHeight] = useState(0);
   const observerRef = useRef<IntersectionObserver | null>(null);
@@ -1084,7 +1113,13 @@ export function McpDocsContent({ catalog, mcpUrl }: Props) {
                     </div>
                     <div className="space-y-1.5">
                       {tools.map((tool) => (
-                        <ToolCard key={tool.id} tool={tool} base={base} />
+                        <ToolCard
+                          key={tool.id}
+                          tool={tool}
+                          base={base}
+                          isFirst={tool.id === firstToolId}
+                          forceOpen={tool.id === firstToolId && docsToolStepActive}
+                        />
                       ))}
                     </div>
                   </div>
