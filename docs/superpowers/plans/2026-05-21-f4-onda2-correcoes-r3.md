@@ -16,14 +16,16 @@ correto; o dev server foi reiniciado limpo. Sem mudança de código necessária.
 
 - [x] Task 0, perfil do sidebar afinado.
 - [x] Área A, logs (A1 filtro de status por `outcome`, A2 status Inválido, A3 detalhe com descrição da tool).
-- [x] D1, helper `resolveMcpPublicUrl` e URL completa na Visão Geral e Documentação. Falta o bump de fontes da Visão Geral.
-- [ ] Área B, modal de Chaves de Acesso refeito.
-- [ ] Área C, documentação (C1 catálogo, C2 clareza/fontes/scrollspy/passo a passo, C3 nav funcional + hero sem ícone + título menor).
-- [ ] Área D, restante, bump sutil de fontes da Visão Geral.
-- [ ] Área E, botão de tour em todas as abas, reposicionado.
-- [ ] Área F, Plugar MCPs redesenhado.
-- [ ] Área G, Webhooks redesenhado + tour que ensina a criar.
-- [ ] Área H, verificação e fechamento.
+- [x] D1, helper `resolveMcpPublicUrl` e URL completa na Visão Geral e Documentação.
+- [x] C2/C3 (parcial), doc: hero sem ícone e título menor ("Servidor MCP, Documentação"), nav lateral funcional (scrollIntoView), atalhos duplicados removidos, espaço de rolagem ao final, fontes de Conceitos/Fluxo e rótulo Navegação maiores, jargão (RBAC/RLS/Zod) explicado.
+- [x] Webhooks, texto de n8n removido da direção.
+- [ ] **PENDENTE** Área B, modal de Chaves de Acesso refeito (mais largo, 4 ações visíveis, origens com adicionar item a item).
+- [ ] **PENDENTE** Área C1, catálogo de tools que não carrega (`getMcpCatalogSchema` retorna unavailable); C, passo a passo de uso.
+- [ ] **PENDENTE** Área D, bump sutil de fontes da Visão Geral.
+- [ ] **PENDENTE** Área E, botão de tour em todas as abas do Servidor MCP, reposicionado.
+- [ ] **PENDENTE** Área F, Plugar MCPs redesenhado + tour.
+- [ ] **PENDENTE** Área G, Webhooks redesenhado no padrão + tour que ensina a criar.
+- [ ] **PENDENTE** Área H, verificação e fechamento.
 
 ---
 
