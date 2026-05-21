@@ -17,27 +17,39 @@
 | **F3.5 — Dashboard de relatórios v2** | Sofisticação no padrão `nexus-insights` | ✅ mergeado na `main` (PR #4) |
 | **F4 — MCP semântico** | Servidor MCP, **todos os domínios** + Caminho 3c funcional | ✅ **completa — mergeada na `main` (PR #5 + #6 + #7)** |
 | **F5 — Integração WhatsApp** | Agente de IA por WhatsApp + chat in-app, Integrações, RAG | ✅ **mergeada na `main` (PR #9, commit `682b9a7`)** |
-| **F4 Onda 2 — Escrita no MCP** | Capacidade de escrita no servidor MCP, gate por API Key com capabilities, painel Servidor MCP | 🔄 **Onda 0 + correções de UI na branch `feat/f4-onda2-mcp-escrita`** — painel refeito; pendente: teste E2E de escrita real (aguarda credenciais) |
+| **F4 Onda 2 — Escrita no MCP** | Capacidade de escrita no servidor MCP, gate por API Key com capabilities, painel Servidor MCP | 🔄 **PR #10 aberto e avaliado** (branch `feat/f4-onda2-mcp-escrita`): Onda 0 + painel Servidor MCP + Plugar MCP com abas + integração agente para MCP externo; pendente: testes E2E (escrita real e MCP externo) |
 | F6 — Construtor de relatórios | Wizard in-app guiado por IA | ⬜ futura (inclui o polimento fino dos relatórios) |
 
 **Branch ativa: `feat/f4-onda2-mcp-escrita`**. A `main` tem F0+F1+F2+F3+F3.5+F4+F5.
 
-> ## ⚠️ RETOMADA, F4 ONDA 2: RODADA 8 **CONCLUÍDA**
-> **LER PRIMEIRO** a spec `docs/superpowers/specs/2026-05-21-f4-onda2-r8-webhooks-plugar-mcp.md`
-> e o plano `docs/superpowers/plans/2026-05-21-f4-onda2-r8.md` (seção Progresso).
-> A F4 Onda 2 está na branch `feat/f4-onda2-mcp-escrita` (PR #10). Onda 0 +
-> Rodadas 1 a 7 + Rodada 8 **concluídas**.
+> ## ⚠️ RETOMADA, F4 ONDA 2: RODADAS 8 E 9 **CONCLUÍDAS**, PR #10 AVALIADO
+> A F4 Onda 2 está na branch `feat/f4-onda2-mcp-escrita`, **PR #10** aberto para
+> a `main` e **avaliado por Claude** (a avaliação completa está no corpo do PR).
+> Onda 0 + Rodadas 1 a 9 **concluídas**. Árvore de trabalho limpa, branch
+> sincronizada com `origin`. Spec/plano da r8 em `docs/superpowers/`
+> (`specs/2026-05-21-f4-onda2-r8-*`, `plans/2026-05-21-f4-onda2-r8.md`,
+> `reviews/2026-05-21-r8-plan-review-{1,2}.md`).
 >
-> **Rodada 8 — completa (`tsc`/`eslint` 0 erros/`jest` 1536/`build` verdes):**
-> seguiu a metodologia inteira (spec revisada por investigação de código; plano
-> v1 → 2 reviews adversariais genuínas → v3, em `docs/superpowers/reviews/`).
-> Entregou: ajustes do calendário e tag de logs (Frente 3); webhooks no padrão
-> de card + criação em modal + edição corrigida + tour adaptado; **Plugar MCP
-> com abas** (Visão Geral, Servidores, Logs) no padrão do Servidor MCP; e a
-> **integração agente→MCP-externo**: o Agente Nex agora abre sessão com os
-> servidores MCP externos cadastrados, soma as tools deles ao catálogo (prefixo
-> `ext__`), e cada chamada vira `ExternalMcpCallLog`. **Pendente:** teste E2E
-> assistido de um MCP externo real (requer MCP externo alcançável + LLM ativo).
+> **R8 (feature, metodologia completa: spec + plano v1 a 2 reviews genuínas a
+> v3):** webhooks no padrão de card + criação em modal; **Plugar MCP com abas**
+> (Visão Geral, Servidores, Logs); **integração agente para MCP externo**
+> (`src/lib/agent/external-mcp.ts`): o Agente Nex abre sessão com os servidores
+> MCP externos cadastrados, soma as tools deles ao catálogo com prefixo `ext__`,
+> e cada chamada vira `ExternalMcpCallLog`.
+> **R9 (ajustes pós-validação):** alinhamento das tags de log, seletor de ano
+> mais estreito, respiro no modal de webhook, cabeçalho do Plugar MCP consistente
+> entre abas (header e nav movidos para o `layout`).
+>
+> **Verificação (estado atual da branch):** `tsc` limpo, `eslint src/` 0 erros
+> (4 warnings pré-existentes, RADAR R7), `jest` 1536 testes, `next build` verde.
+>
+> **PENDENTE antes do merge do PR #10:**
+> 1. Teste E2E de **escrita real** contra `grupojht.teste.tauga.online` (faltam
+>    credenciais `ODOO_WRITE_*`). É o gate de merge.
+> 2. Teste E2E da **integração agente para MCP externo** (precisa de um servidor
+>    MCP externo alcançável + credencial de LLM ativa).
+> 3. Deploy: após `prisma migrate deploy`, reexecutar os GRANT scripts (RADAR R4).
+> **NÃO mergear o PR #10 antes dos testes E2E.**
 >
 > **Rodada 7 — completa (commitado, `tsc`/`eslint`/`jest` 1531/`build` verdes):**
 > calendário do `DateField` com setas de mês simples nas extremidades (mais espaço para

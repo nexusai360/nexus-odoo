@@ -247,6 +247,11 @@ Documento canônico: **`docs/git-workflow.md`**. Em resumo:
 - Toda mudança: feature branch → teste local → PR → review → merge.
 - Deploy de produção dispara só no merge da `main` — decisão humana.
 - Claude **coordena e nomeia** todas as branches, abre os PRs, controla o ciclo.
+- **Claude avalia e revisa todos os PRs.** Quem avalia o PR é o Claude, não o
+  humano: confere completude (tudo que foi feito localmente está na branch),
+  verificação (tsc/eslint/jest/build), correção e consistência, e escreve a
+  avaliação no corpo do PR. O humano não revisa o PR. Ao humano cabe só a
+  decisão final de merge para a `main`.
 - Branches por fase: `feat/discovery-odoo`, `feat/fundacao`, `feat/ingestao`, `feat/dashboard-*`, `feat/mcp-*`.
 
 ---
