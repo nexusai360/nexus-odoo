@@ -69,7 +69,7 @@ export function WebhookEditDialog({ webhook, open, onOpenChange, onSaved }: Prop
       if (r.success) {
         setRevealedSecret(r.data.secretPlain);
       } else {
-        toast.error(r.error ?? "Erro ao rotacionar secret");
+        toast.error(r.error ?? "Erro ao rotacionar token");
       }
     });
   }
@@ -117,11 +117,12 @@ export function WebhookEditDialog({ webhook, open, onOpenChange, onSaved }: Prop
           <div className="space-y-4">
             <SecretRevealStep
               secret={revealedSecret}
-              label="Secret do webhook"
-              onAcknowledge={() => setRevealedSecret(null)}
+              label="Token do webhook"
+              onAcknowledge={() => handleSave()}
             />
           </div>
         ) : (
+        <>
         <div className="space-y-4">
           <div className="space-y-1.5">
             <Label htmlFor="wh-edit-name">Nome</Label>
@@ -189,9 +190,9 @@ export function WebhookEditDialog({ webhook, open, onOpenChange, onSaved }: Prop
           <div className="rounded-lg border border-border bg-muted/30 p-3">
             <div className="flex items-center justify-between gap-3">
               <div>
-                <p className="text-sm font-medium">Secret de assinatura</p>
+                <p className="text-sm font-medium">Token de assinatura</p>
                 <p className="text-xs text-muted-foreground">
-                  Gere um novo secret e invalide o anterior.
+                  Gere um novo token e invalide o anterior.
                 </p>
               </div>
               <Button
@@ -208,35 +209,28 @@ export function WebhookEditDialog({ webhook, open, onOpenChange, onSaved }: Prop
             </div>
           </div>
         </div>
-        )}
 
         <div className="flex items-center justify-end gap-2 border-t border-border/60 pt-4">
-          {revealedSecret ? (
-            <Button type="button" onClick={() => onOpenChange(false)}>
-              Concluir
-            </Button>
-          ) : (
-            <>
-              <Button
-                type="button"
-                variant="ghost"
-                onClick={() => onOpenChange(false)}
-                disabled={isPending}
-              >
-                Cancelar
-              </Button>
-              <Button
-                type="button"
-                onClick={handleSave}
-                disabled={isPending || !valid}
-                className="gap-1.5"
-              >
-                {isPending && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
-                Salvar alterações
-              </Button>
-            </>
-          )}
+          <Button
+            type="button"
+            variant="ghost"
+            onClick={() => onOpenChange(false)}
+            disabled={isPending}
+          >
+            Cancelar
+          </Button>
+          <Button
+            type="button"
+            onClick={handleSave}
+            disabled={isPending || !valid}
+            className="gap-1.5"
+          >
+            {isPending && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
+            Salvar alterações
+          </Button>
         </div>
+        </>
+        )}
       </DialogContent>
     </Dialog>
   );

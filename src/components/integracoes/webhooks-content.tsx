@@ -11,6 +11,13 @@ import {
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+} from "@/components/ui/dialog";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { useTour } from "@/components/tour/tour-provider";
 import { webhookTour } from "@/lib/tours/webhook-tour";
@@ -48,14 +55,15 @@ export function WebhooksContent({ initial, inboundBaseUrl }: Props) {
   const [webhooks, setWebhooks] = useState<WebhookListItem[]>(initial);
   const [isPending, startTransition] = useTransition();
 
-  // O tour percorre o assistente de criação, então mantém o wizard aberto
-  // enquanto ele roda.
-  const { active } = useTour();
-  const tourActive = active?.id === webhookTour.id;
+  // O assistente de criação é um modal. Durante o tour ele abre só no passo do
+  // assistente (índice 1); nos passos do botão e da lista fica fechado.
+  const { active, currentStepIndex } = useTour();
+  const tourWizardOpen =
+    active?.id === webhookTour.id && currentStepIndex === 1;
 
   // Assistente de criação
   const [showForm, setShowForm] = useState(false);
-  const formVisible = showForm || tourActive;
+  const formVisible = showForm || tourWizardOpen;
 
   // Edição de webhook
   const [editTarget, setEditTarget] = useState<WebhookListItem | null>(null);
@@ -108,20 +116,27 @@ export function WebhooksContent({ initial, inboundBaseUrl }: Props) {
         </Button>
       </div>
 
-      {/* Assistente de criação */}
-      {formVisible && (
-        <WebhookWizard
-          inboundBaseUrl={inboundBaseUrl}
-          onCreated={() => {
-            setShowForm(false);
+      {/* Assistente de criação, em modal */}
+      <WebhookCreateDialog
+        open={formVisible}
+        onOpenChange={(o) => {
+          setShowForm(o);
+          // Fechar pelo X também atualiza a lista, mostrando o webhook novo.
+          if (!o) {
             startTransition(async () => {
               await refresh();
             });
-            toast.success("Webhook criado");
-          }}
-          onCancel={() => setShowForm(false)}
-        />
-      )}
+          }
+        }}
+        inboundBaseUrl={inboundBaseUrl}
+        onCreated={() => {
+          setShowForm(false);
+          startTransition(async () => {
+            await refresh();
+          });
+          toast.success("Webhook criado");
+        }}
+      />
 
       {/* Lista de webhooks */}
       <div data-tour="webhooks-lista" className="space-y-3">
@@ -165,6 +180,36 @@ export function WebhooksContent({ initial, inboundBaseUrl }: Props) {
 }
 
 // ──────────────────────────────────────────────────────────────────────────────
+// WebhookCreateDialog, assistente de criação em modal
+// ──────────────────────────────────────────────────────────────────────────────
+
+function WebhookCreateDialog({
+  open,
+  onOpenChange,
+  inboundBaseUrl,
+  onCreated,
+}: {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  inboundBaseUrl: string;
+  onCreated: () => void;
+}) {
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent data-tour="webhook-wizard-modal" className="sm:max-w-lg">
+        <DialogHeader>
+          <DialogTitle>Novo webhook</DialogTitle>
+          <DialogDescription>
+            Configure um webhook para receber ou enviar eventos de outros sistemas.
+          </DialogDescription>
+        </DialogHeader>
+        <WebhookWizard embedded inboundBaseUrl={inboundBaseUrl} onCreated={onCreated} />
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+// ──────────────────────────────────────────────────────────────────────────────
 // WebhookRow
 // ──────────────────────────────────────────────────────────────────────────────
 
@@ -192,7 +237,7 @@ function WebhookRow({ webhook, isPending, onToggle, onEdit, onDelete }: WebhookR
         !webhook.enabled && "opacity-60",
       )}
     >
-      <div className="flex items-start justify-between gap-3">
+      <div className="flex items-center justify-between gap-3">
         <div className="flex items-start gap-3 min-w-0">
           <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-violet-500/10">
             <DirIcon className="h-4 w-4 text-violet-500" />
@@ -225,7 +270,7 @@ function WebhookRow({ webhook, isPending, onToggle, onEdit, onDelete }: WebhookR
           </div>
         </div>
 
-        <div className="flex shrink-0 flex-col items-end gap-1.5">
+        <div className="flex shrink-0 items-center gap-1">
           <Tooltip>
             <TooltipTrigger
               render={
@@ -239,44 +284,42 @@ function WebhookRow({ webhook, isPending, onToggle, onEdit, onDelete }: WebhookR
             />
             <TooltipContent>{webhook.enabled ? "Desabilitar" : "Habilitar"}</TooltipContent>
           </Tooltip>
-          <div className="flex items-center gap-0.5">
-            <Tooltip>
-              <TooltipTrigger
-                render={
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="sm"
-                    className="h-8 w-8 p-0"
-                    disabled={isPending}
-                    onClick={onEdit}
-                    aria-label="Editar webhook"
-                  />
-                }
-              >
-                <Pencil className="h-4 w-4 text-muted-foreground" />
-              </TooltipTrigger>
-              <TooltipContent>Editar</TooltipContent>
-            </Tooltip>
-            <Tooltip>
-              <TooltipTrigger
-                render={
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="sm"
-                    className="h-8 w-8 p-0 text-destructive hover:bg-destructive/10 hover:text-destructive"
-                    disabled={isPending}
-                    onClick={() => onDelete(webhook.id)}
-                    aria-label="Remover webhook"
-                  />
-                }
-              >
-                <Trash2 className="h-4 w-4" />
-              </TooltipTrigger>
-              <TooltipContent>Remover</TooltipContent>
-            </Tooltip>
-          </div>
+          <Tooltip>
+            <TooltipTrigger
+              render={
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  className="h-8 w-8 p-0"
+                  disabled={isPending}
+                  onClick={onEdit}
+                  aria-label="Editar webhook"
+                />
+              }
+            >
+              <Pencil className="h-4 w-4 text-muted-foreground" />
+            </TooltipTrigger>
+            <TooltipContent>Editar</TooltipContent>
+          </Tooltip>
+          <Tooltip>
+            <TooltipTrigger
+              render={
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  className="h-8 w-8 p-0 text-destructive hover:bg-destructive/10 hover:text-destructive"
+                  disabled={isPending}
+                  onClick={() => onDelete(webhook.id)}
+                  aria-label="Remover webhook"
+                />
+              }
+            >
+              <Trash2 className="h-4 w-4" />
+            </TooltipTrigger>
+            <TooltipContent>Remover</TooltipContent>
+          </Tooltip>
         </div>
       </div>
     </div>
