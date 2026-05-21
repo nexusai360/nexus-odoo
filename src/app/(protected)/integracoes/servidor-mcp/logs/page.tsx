@@ -33,7 +33,7 @@ export default async function LogsPage() {
       <PageHeader
         icon={Terminal}
         title="Servidor MCP"
-        subtitle="Endpoint semântico para agentes de IA — RBAC de 7 camadas, Streamable HTTP"
+        subtitle="Endpoint semântico para agentes de IA, RBAC de 7 camadas, Streamable HTTP"
       />
 
       <ServidorMcpNav />

@@ -25,7 +25,7 @@ export default async function ChavesPage() {
       <PageHeader
         icon={Key}
         title="Servidor MCP"
-        subtitle="Endpoint semântico para agentes de IA — RBAC de 7 camadas, Streamable HTTP"
+        subtitle="Endpoint semântico para agentes de IA, RBAC de 7 camadas, Streamable HTTP"
       />
 
       <ServidorMcpNav />

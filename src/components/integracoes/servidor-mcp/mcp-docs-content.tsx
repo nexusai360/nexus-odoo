@@ -7,8 +7,6 @@ import {
   Code2,
   Copy,
   Check,
-  CheckCircle2,
-  Minus,
   ChevronDown,
   ChevronRight,
   Key,
