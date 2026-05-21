@@ -1814,15 +1814,35 @@ model WhatsappInstance {
 /// API key da plataforma para acesso externo (ex.: node Agent do n8n).
 /// A key só é exibida na criação; persiste-se só o hash SHA-256.
 model ApiKey {
+  // EXISTENTES — preservados
   id          String    @id @default(uuid()) @db.Uuid
   label       String
   keyHash     String    @unique @map("key_hash")
   last4       String
-  scopes      Json      @default("[]")
+  scopes      Json      @default("[]") // deprecated — migrado para capabilities em B4.5
   revokedAt   DateTime? @map("revoked_at")
   createdById String?   @map("created_by_id") @db.Uuid
   createdAt   DateTime  @default(now()) @map("created_at")
 
+  // NOVOS — F4 Onda 2
+  description         String?
+  capabilities        Json      @default("{\"version\":1,\"read\":[],\"write\":{}}")
+  capabilitiesVersion Int       @default(1) @map("capabilities_version")
+  rateLimit           Int       @default(60) @map("rate_limit")
+  active              Boolean   @default(true)
+  expiresAt           DateTime? @map("expires_at")
+  lastUsedAt          DateTime? @map("last_used_at")
+  rotatedAt           DateTime? @map("rotated_at")
+  revokedReason       String?   @map("revoked_reason")
+  isSystemKey         Boolean   @default(false) @map("is_system_key")
+  tenantId            String?   @map("tenant_id") @db.Uuid
+  allowedOrigins      Json      @default("[]") @map("allowed_origins")
+
+  auditLogs           McpAuditLog[]
+
+  @@index([active, revokedAt, expiresAt])
+  @@index([tenantId, active])
+  @@index([last4])
   @@map("api_keys")
 }
 
