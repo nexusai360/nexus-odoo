@@ -21,6 +21,7 @@ export function ServidorMcpNav() {
   return (
     <nav
       aria-label="Seções do Servidor MCP"
+      data-tour="mcp-nav"
       className="mt-6 inline-flex h-9 items-center gap-1 rounded-lg bg-muted p-1"
     >
       {TABS.map((tab) => {

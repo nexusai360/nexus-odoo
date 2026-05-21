@@ -58,8 +58,8 @@ export function McpVisaoGeral({ mcpPublicUrl, healthStatus, metrics }: Props) {
 
   return (
     <div className="space-y-6 max-w-3xl">
-      {/* ── Está no ar? ─────────────────────────────────────────────────────── */}
-      <div className="rounded-xl border border-border bg-card p-5 space-y-4">
+      {/* Está no ar? */}
+      <div data-tour="mcp-status" className="rounded-xl border border-border bg-card p-5 space-y-4">
         <div className="flex items-center gap-3">
           <span
             className={cn(
@@ -104,8 +104,8 @@ export function McpVisaoGeral({ mcpPublicUrl, healthStatus, metrics }: Props) {
         </div>
       </div>
 
-      {/* ── Está sendo usado? ───────────────────────────────────────────────── */}
-      <div className="rounded-xl border border-border bg-card p-5 space-y-4">
+      {/* Está sendo usado? */}
+      <div data-tour="mcp-uso" className="rounded-xl border border-border bg-card p-5 space-y-4">
         <p className="text-sm font-semibold">Uso nas últimas 24 horas</p>
         {hasUsage ? (
           <div className="grid grid-cols-3 gap-3">

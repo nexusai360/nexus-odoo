@@ -6,6 +6,9 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Breadcrumb } from "@/components/integracoes/breadcrumb";
 import { WhatsappInstancesList } from "@/components/integracoes/whatsapp-instances-list";
+import { TourTriggerButton } from "@/components/tour/tour-trigger-button";
+import { TourAutoStart } from "@/components/tour/tour-auto-start";
+import { canaisTour } from "@/lib/tours/canais-tour";
 import { getWhatsappChannel } from "@/lib/actions/whatsapp-channel";
 
 export const metadata = { title: "Canais | Integrações | Nexus Odoo" };
@@ -28,9 +31,14 @@ export default async function CanaisPage() {
         icon={MessageSquare}
         title="Canais"
         subtitle="Configure os canais de comunicação disponíveis na plataforma."
+        actions={<TourTriggerButton config={canaisTour} />}
       />
+      <TourAutoStart tour={canaisTour} />
 
-      <div className="mt-6 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+      <div
+        data-tour="canais-cards"
+        className="mt-6 grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3"
+      >
         <Link
           href="/integracoes/canais/whatsapp"
           className="group block focus-visible:outline-none"
@@ -64,7 +72,7 @@ export default async function CanaisPage() {
         </Link>
       </div>
 
-      <div className="mt-8">
+      <div data-tour="canais-instancias" className="mt-8">
         <WhatsappInstancesList />
       </div>
     </PageShell>

@@ -4,6 +4,9 @@ import { PageHeader } from "@/components/page-header";
 import { Breadcrumb } from "@/components/integracoes/breadcrumb";
 import { ServidorMcpNav } from "@/components/integracoes/servidor-mcp/servidor-mcp-nav";
 import { McpVisaoGeral } from "@/components/integracoes/servidor-mcp/visao-geral";
+import { TourTriggerButton } from "@/components/tour/tour-trigger-button";
+import { TourAutoStart } from "@/components/tour/tour-auto-start";
+import { servidorMcpTour } from "@/lib/tours/servidor-mcp-tour";
 import { getMcp24hMetrics } from "@/lib/actions/mcp-metrics";
 
 export const metadata = { title: "Servidor MCP | Integrações | Nexus Odoo" };
@@ -67,8 +70,10 @@ export default async function ServidorMcpPage() {
       <PageHeader
         icon={Cpu}
         title="Servidor MCP"
-        subtitle="Endpoint semântico para agentes de IA — RBAC de 7 camadas, Streamable HTTP"
+        subtitle="Endpoint semântico para agentes de IA, RBAC de 7 camadas, Streamable HTTP"
+        actions={<TourTriggerButton config={servidorMcpTour} />}
       />
+      <TourAutoStart tour={servidorMcpTour} />
 
       <ServidorMcpNav />
       <div className="mt-6">

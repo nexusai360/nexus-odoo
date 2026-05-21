@@ -178,7 +178,7 @@ export function WebhooksContent({ initial }: Props) {
       )}
 
       {/* Cabeçalho com botão de criação */}
-      <div className="flex items-center justify-between">
+      <div data-tour="webhooks-novo" className="flex items-center justify-between">
         <p className="text-sm text-muted-foreground">
           {webhooks.length === 0
             ? "Nenhum webhook configurado"
@@ -250,7 +250,7 @@ export function WebhooksContent({ initial }: Props) {
       )}
 
       {/* Lista de webhooks */}
-      <div className="space-y-3">
+      <div data-tour="webhooks-lista" className="space-y-3">
         {webhooks.map((wh) => (
           <WebhookRow
             key={wh.id}
