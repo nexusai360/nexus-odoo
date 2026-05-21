@@ -27,13 +27,13 @@ export function StepIndicator({ steps, current, className }: StepIndicatorProps)
           <li key={label} className="flex flex-1 items-center gap-2">
             <span
               className={cn(
-                "flex size-6 shrink-0 items-center justify-center rounded-full text-xs font-medium",
+                "flex size-7 shrink-0 items-center justify-center rounded-full text-[13px] font-semibold leading-none tabular-nums",
                 done && "bg-primary text-primary-foreground",
                 active && "bg-primary/15 text-primary ring-1 ring-primary",
                 !done && !active && "bg-muted text-muted-foreground",
               )}
             >
-              {done ? <Check className="size-3.5" /> : n}
+              {done ? <Check className="size-4" /> : <span className="translate-y-px">{n}</span>}
             </span>
             <span
               className={cn(

@@ -5,7 +5,7 @@ import {
   AlertTriangle,
   ArrowLeft,
   ArrowRight,
-  ChevronDown,
+  Check,
   Copy,
   Eye,
   EyeOff,
@@ -27,7 +27,6 @@ import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
 import { Checkbox } from "@/components/ui/checkbox";
-import { CustomSelect } from "@/components/ui/custom-select";
 import { DateField } from "@/components/ui/date-field";
 import { StepIndicator } from "@/components/ui/step-indicator";
 import {
@@ -545,18 +544,49 @@ function ChaveRow({
 // ModuleAccessPicker, seletor de acessos por módulo, estilo roteador de eventos
 // ──────────────────────────────────────────────────────────────────────────────
 
-const LEVEL_OPTIONS = [
-  { value: "none", label: "Sem acesso", description: "A chave não acessa este módulo" },
-  { value: "read", label: "Somente leitura", description: "Consultar dados, sem alterar" },
-  { value: "write", label: "Leitura e escrita", description: "Consultar e alterar dados" },
+const LEVELS: { value: AccessLevel; label: string }[] = [
+  { value: "none", label: "Sem acesso" },
+  { value: "read", label: "Leitura" },
+  { value: "write", label: "Leitura e escrita" },
 ];
 
-function levelBadge(access: ModuleAccessMap[McpModule]): string {
-  if (access.level === "none") return "Sem acesso";
-  if (access.level === "read") return "Leitura";
-  const n = access.actions.length;
-  if (n === 0) return "Leitura e escrita";
-  return `Leitura e escrita · ${n} ${n === 1 ? "ação" : "ações"}`;
+/** Controle segmentado de nível de acesso, na própria linha do módulo. */
+function LevelSegmented({
+  value,
+  onChange,
+  ariaLabel,
+}: {
+  value: AccessLevel;
+  onChange: (v: AccessLevel) => void;
+  ariaLabel: string;
+}) {
+  return (
+    <div
+      role="group"
+      aria-label={ariaLabel}
+      className="inline-flex shrink-0 rounded-lg border border-border bg-muted/40 p-0.5"
+    >
+      {LEVELS.map((l) => {
+        const selected = value === l.value;
+        return (
+          <button
+            key={l.value}
+            type="button"
+            onClick={() => onChange(l.value)}
+            aria-pressed={selected}
+            className={cn(
+              "whitespace-nowrap rounded-md px-2.5 py-1 text-[11.5px] font-medium transition-colors",
+              selected
+                ? "bg-violet-500/15 text-violet-600 dark:text-violet-400"
+                : "text-muted-foreground hover:text-foreground",
+            )}
+          >
+            {l.label}
+          </button>
+        );
+      })}
+    </div>
+  );
 }
 
 function ModuleAccessPicker({
@@ -568,8 +598,6 @@ function ModuleAccessPicker({
   onChange: (v: ModuleAccessMap) => void;
   moduleWriteActions: ModuleWriteActionsMap;
 }) {
-  const [expanded, setExpanded] = useState<McpModule | null>(null);
-
   const withAccess = MCP_MODULES.filter((m) => value[m].level !== "none").length;
 
   function setLevel(mod: McpModule, level: AccessLevel) {
@@ -606,10 +634,22 @@ function ModuleAccessPicker({
           {withAccess} de {MCP_MODULES.length} módulos com acesso
         </p>
         <div className="flex items-center gap-1">
-          <Button type="button" variant="ghost" size="sm" className="h-7 text-xs" onClick={grantReadAll}>
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            className="h-7 text-xs"
+            onClick={grantReadAll}
+          >
             Conceder leitura a todos
           </Button>
-          <Button type="button" variant="ghost" size="sm" className="h-7 text-xs" onClick={clearAll}>
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            className="h-7 text-xs"
+            onClick={clearAll}
+          >
             Limpar tudo
           </Button>
         </div>
@@ -618,7 +658,6 @@ function ModuleAccessPicker({
       <div className="space-y-2">
         {MCP_MODULES.map((mod) => {
           const access = value[mod];
-          const isOpen = expanded === mod;
           const hasAccess = access.level !== "none";
           const isWrite = access.level === "write";
           const writeActions = moduleWriteActions[mod] ?? [];
@@ -626,23 +665,14 @@ function ModuleAccessPicker({
             <div
               key={mod}
               className={cn(
-                "rounded-xl border transition-colors",
-                isWrite
-                  ? "border-violet-500/50 bg-violet-500/[0.07]"
-                  : hasAccess
-                    ? "border-violet-500/30 bg-violet-500/[0.03]"
-                    : "border-border bg-muted/20",
+                "rounded-xl border bg-card transition-colors",
+                hasAccess ? "border-violet-500/30" : "border-border",
               )}
             >
-              <button
-                type="button"
-                onClick={() => setExpanded(isOpen ? null : mod)}
-                aria-expanded={isOpen}
-                className="flex w-full items-center gap-3 px-3.5 py-3 text-left"
-              >
+              <div className="flex items-center gap-3 px-3.5 py-2.5">
                 <span
                   className={cn(
-                    "flex h-7 w-7 shrink-0 items-center justify-center rounded-lg text-xs font-semibold",
+                    "flex h-7 w-7 shrink-0 items-center justify-center rounded-lg text-[11px] font-semibold",
                     hasAccess
                       ? "bg-violet-500/15 text-violet-600 dark:text-violet-400"
                       : "bg-muted text-muted-foreground",
@@ -650,84 +680,56 @@ function ModuleAccessPicker({
                 >
                   {moduleLabel(mod).slice(0, 2)}
                 </span>
-                <span className="min-w-0 flex-1">
-                  <span className="block text-sm font-semibold">{moduleLabel(mod)}</span>
-                  <span
-                    className={cn(
-                      "block text-[11.5px]",
-                      hasAccess ? "text-violet-600 dark:text-violet-400" : "text-muted-foreground",
-                    )}
-                  >
-                    {levelBadge(access)}
-                  </span>
+                <span className="min-w-0 flex-1 text-sm font-semibold">
+                  {moduleLabel(mod)}
                 </span>
-                <ChevronDown
-                  className={cn(
-                    "h-4 w-4 shrink-0 text-muted-foreground transition-transform",
-                    isOpen && "rotate-180",
-                  )}
+                <LevelSegmented
+                  value={access.level}
+                  onChange={(v) => setLevel(mod, v)}
+                  ariaLabel={`Nível de acesso, ${moduleLabel(mod)}`}
                 />
-              </button>
+              </div>
 
-              {isOpen && (
-                <div className="space-y-2.5 border-t border-border/60 px-3.5 py-3">
-                  <CustomSelect
-                    aria-label={`Nível de acesso, ${moduleLabel(mod)}`}
-                    value={access.level}
-                    onChange={(v) => setLevel(mod, v as AccessLevel)}
-                    options={LEVEL_OPTIONS}
-                  />
-                  {isWrite && writeActions.length === 0 && (
-                    <p className="rounded-lg border border-border bg-muted/40 px-3 py-2 text-[11.5px] text-muted-foreground">
+              {isWrite && (
+                <div className="border-t border-border/60 px-3.5 py-2.5">
+                  {writeActions.length === 0 ? (
+                    <p className="text-[11.5px] text-muted-foreground">
                       Nenhuma ação de escrita disponível neste módulo ainda. A chave terá só
                       leitura aqui até novas tools de escrita serem publicadas.
                     </p>
-                  )}
-                  {isWrite && writeActions.length > 0 && (
-                    <div className="space-y-1.5">
-                      <p className="text-[11px] font-medium text-muted-foreground">
-                        Ações de escrita permitidas
-                      </p>
-                      {writeActions.map(({ action, tools }) => {
+                  ) : (
+                    <div className="flex flex-wrap items-center gap-1.5">
+                      <span className="mr-1 text-[11px] font-medium text-muted-foreground">
+                        Ações de escrita:
+                      </span>
+                      {writeActions.map(({ action }) => {
                         const sensitive = SENSITIVE_ACTIONS.includes(action);
                         const checked = access.actions.includes(action);
                         return (
-                          <label
+                          <button
                             key={action}
+                            type="button"
+                            onClick={() => toggleAction(mod, action)}
+                            aria-pressed={checked}
                             className={cn(
-                              "flex cursor-pointer items-start gap-2 rounded-lg border px-2.5 py-2 transition-colors",
+                              "inline-flex items-center gap-1 rounded-lg border px-2 py-1 text-xs font-medium transition-colors",
                               checked
                                 ? sensitive
-                                  ? "border-amber-500/50 bg-amber-500/10"
-                                  : "border-violet-500/50 bg-violet-500/10"
-                                : "border-border bg-background hover:border-foreground/25",
+                                  ? "border-amber-500/50 bg-amber-500/10 text-amber-600 dark:text-amber-400"
+                                  : "border-violet-500/50 bg-violet-500/10 text-violet-600 dark:text-violet-400"
+                                : "border-border text-muted-foreground hover:text-foreground",
                             )}
                           >
-                            <Checkbox
-                              checked={checked}
-                              onCheckedChange={() => toggleAction(mod, action)}
-                              aria-label={`${WRITE_ACTION_LABELS[action]} em ${moduleLabel(mod)}`}
-                              className="mt-0.5"
-                            />
-                            <span className="min-w-0 flex-1">
-                              <span
-                                className={cn(
-                                  "flex items-center gap-1.5 text-xs font-medium",
-                                  sensitive &&
-                                    checked &&
-                                    "text-amber-600 dark:text-amber-400",
-                                )}
-                              >
-                                {WRITE_ACTION_LABELS[action]}
-                                {sensitive && (
-                                  <AlertTriangle className="h-3 w-3 shrink-0 text-amber-500" />
-                                )}
-                              </span>
-                              <span className="block truncate font-mono text-[10.5px] text-muted-foreground">
-                                {tools.join(", ")}
-                              </span>
-                            </span>
-                          </label>
+                            {checked ? (
+                              <Check className="h-3 w-3" />
+                            ) : (
+                              <Plus className="h-3 w-3" />
+                            )}
+                            {WRITE_ACTION_LABELS[action]}
+                            {sensitive && (
+                              <AlertTriangle className="h-3 w-3 text-amber-500" />
+                            )}
+                          </button>
                         );
                       })}
                     </div>
@@ -766,7 +768,7 @@ type ChaveDialogProps =
       onSaved: () => void;
     };
 
-const WIZARD_STEPS = ["Identificação", "Acessos", "Limites", "Origens"];
+const WIZARD_STEPS = ["Identificação", "Acessos", "Limites", "Origens", "Resumo"];
 
 function ChaveDialog(props: ChaveDialogProps) {
   const { mode, chave, moduleWriteActions, open, onOpenChange } = props;
@@ -886,22 +888,23 @@ function ChaveDialog(props: ChaveDialogProps) {
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-2xl max-h-[88vh] overflow-y-auto">
+      <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-hidden flex flex-col">
         <DialogHeader>
           <DialogTitle>
             {mode === "create" ? "Nova chave de acesso" : `Editar chave: ${chave?.label ?? ""}`}
           </DialogTitle>
           <DialogDescription>
             {mode === "create"
-              ? "Quatro passos: identifique a chave, defina os acessos, ajuste os limites e as origens. O token aparece uma única vez."
+              ? "Cinco passos: identifique a chave, defina os acessos, ajuste os limites, as origens e revise. O token aparece uma única vez."
               : "Altere os acessos, o limite e as origens. O token não muda, use Rotacionar para gerar um novo."}
           </DialogDescription>
         </DialogHeader>
 
-        <div data-tour="mcp-chaves-wizard" className="space-y-5 mt-1">
-          <StepIndicator steps={WIZARD_STEPS} current={step} />
+        <div data-tour="mcp-chaves-wizard" className="flex min-h-0 flex-1 flex-col gap-5 mt-1">
+          <StepIndicator steps={WIZARD_STEPS} current={step} className="shrink-0" />
 
-          <div className="min-h-[300px]">
+          {/* Corpo do passo: rola dentro, o modal não cresce. */}
+          <div className="min-h-[280px] flex-1 overflow-y-auto pr-1">
             {/* Passo 1, Identificação */}
             {step === 1 && (
               <div className="space-y-4">
@@ -935,14 +938,14 @@ function ChaveDialog(props: ChaveDialogProps) {
                     <Label htmlFor={tenantId}>Tenant</Label>
                     <Input
                       id={tenantId}
-                      placeholder="Vazio para acesso global"
+                      placeholder="Ex.: cliente-001, matrix-sp (vazio para acesso global)"
                       value={tenant}
                       onChange={(e) => setTenant(e.target.value)}
                     />
                     <p className="text-xs text-muted-foreground">
                       Identificador da organização/cliente, usado para isolar dados quando a
-                      plataforma atende vários clientes. No uso atual da Matrix, deixe vazio
-                      para acesso global.
+                      plataforma atende vários clientes (ex.: cliente-001). No uso atual da
+                      Matrix, deixe vazio para acesso global.
                     </p>
                   </div>
                 )}
@@ -1004,75 +1007,75 @@ function ChaveDialog(props: ChaveDialogProps) {
               </div>
             )}
 
-            {/* Passo 4, Origens e revisão */}
+            {/* Passo 4, Origens permitidas */}
             {step === 4 && (
-              <div className="space-y-4">
-                <div className="space-y-2">
-                  <Label htmlFor={originsId}>Origens permitidas</Label>
-                  <p className="text-xs text-muted-foreground">
-                    As requisições só são aceitas a partir destas URLs. Sem nenhuma origem, a
-                    chave aceita requisições de qualquer lugar. O `https://` é completado
-                    automaticamente.
-                  </p>
-                  <div className="flex gap-2">
-                    <Input
-                      id={originsId}
-                      placeholder="app.exemplo.com"
-                      value={originDraft}
-                      onChange={(e) => setOriginDraft(e.target.value)}
-                      onKeyDown={(e) => {
-                        if (e.key === "Enter") {
-                          e.preventDefault();
-                          addOrigin();
-                        }
-                      }}
-                    />
-                    <Button
-                      type="button"
-                      variant="outline"
-                      className="shrink-0"
-                      onClick={addOrigin}
-                    >
-                      <Plus className="mr-1 h-3.5 w-3.5" />
-                      Adicionar
-                    </Button>
-                  </div>
-                  {allowedOrigins.length > 0 ? (
-                    <div className="flex flex-wrap gap-1.5">
-                      {allowedOrigins.map((origin) => (
-                        <span
-                          key={origin}
-                          className="inline-flex items-center gap-1.5 rounded-lg border border-border bg-muted/50 py-1 pl-2.5 pr-1.5 text-xs font-mono"
-                        >
-                          {origin}
-                          <button
-                            type="button"
-                            onClick={() => removeOrigin(origin)}
-                            aria-label={`Remover origem ${origin}`}
-                            className="rounded p-0.5 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
-                          >
-                            <X className="h-3 w-3" />
-                          </button>
-                        </span>
-                      ))}
-                    </div>
-                  ) : (
-                    <p className="text-xs text-muted-foreground/70">
-                      Nenhuma origem adicionada. A chave aceita qualquer origem.
-                    </p>
-                  )}
+              <div className="space-y-2">
+                <Label htmlFor={originsId}>Origens permitidas</Label>
+                <p className="text-xs text-muted-foreground">
+                  As requisições só são aceitas a partir destas URLs. Sem nenhuma origem, a
+                  chave aceita requisições de qualquer lugar. O `https://` é completado
+                  automaticamente.
+                </p>
+                <div className="flex gap-2">
+                  <Input
+                    id={originsId}
+                    placeholder="app.exemplo.com"
+                    value={originDraft}
+                    onChange={(e) => setOriginDraft(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") {
+                        e.preventDefault();
+                        addOrigin();
+                      }
+                    }}
+                  />
+                  <Button
+                    type="button"
+                    variant="outline"
+                    className="shrink-0"
+                    onClick={addOrigin}
+                  >
+                    <Plus className="mr-1 h-3.5 w-3.5" />
+                    Adicionar
+                  </Button>
                 </div>
-
-                {/* Revisão */}
-                <div className="rounded-xl border border-border bg-muted/30 p-3.5 space-y-1.5">
-                  <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                    Resumo
+                {allowedOrigins.length > 0 ? (
+                  <div className="flex flex-wrap gap-1.5">
+                    {allowedOrigins.map((origin) => (
+                      <span
+                        key={origin}
+                        className="inline-flex items-center gap-1.5 rounded-lg border border-border bg-muted/50 py-1 pl-2.5 pr-1.5 text-xs font-mono"
+                      >
+                        {origin}
+                        <button
+                          type="button"
+                          onClick={() => removeOrigin(origin)}
+                          aria-label={`Remover origem ${origin}`}
+                          className="rounded p-0.5 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+                        >
+                          <X className="h-3 w-3" />
+                        </button>
+                      </span>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-xs text-muted-foreground/70">
+                    Nenhuma origem adicionada. A chave aceita qualquer origem.
                   </p>
-                  <dl className="grid grid-cols-2 gap-x-4 gap-y-1 text-[13px]">
+                )}
+              </div>
+            )}
+
+            {/* Passo 5, Resumo */}
+            {step === 5 && (
+              <div className="space-y-4">
+                <div className="rounded-xl border border-border bg-muted/30 p-4">
+                  <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                    Resumo da chave
+                  </p>
+                  <dl className="grid grid-cols-[120px_1fr] gap-x-4 gap-y-1.5 text-[13px]">
                     <dt className="text-muted-foreground">Rótulo</dt>
                     <dd className="text-foreground">{label.trim() || "Sem rótulo"}</dd>
-                    <dt className="text-muted-foreground">Módulos com acesso</dt>
-                    <dd className="text-foreground">{modulesWithAccess}</dd>
                     <dt className="text-muted-foreground">Limite por minuto</dt>
                     <dd className="text-foreground">{rateLimit}</dd>
                     <dt className="text-muted-foreground">Expiração</dt>
@@ -1088,17 +1091,52 @@ function ChaveDialog(props: ChaveDialogProps) {
                     <dt className="text-muted-foreground">Origens</dt>
                     <dd className="text-foreground">
                       {allowedOrigins.length > 0
-                        ? `${allowedOrigins.length} restrita${allowedOrigins.length !== 1 ? "s" : ""}`
+                        ? `${allowedOrigins.length} permitida${allowedOrigins.length !== 1 ? "s" : ""}`
                         : "Qualquer origem"}
                     </dd>
                   </dl>
+                </div>
+
+                <div className="space-y-2">
+                  <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                    Acessos por módulo ({modulesWithAccess})
+                  </p>
+                  {modulesWithAccess === 0 ? (
+                    <p className="text-[13px] text-muted-foreground">
+                      Nenhum módulo com acesso. A chave não poderá consultar nem alterar dados.
+                    </p>
+                  ) : (
+                    <div className="space-y-1.5">
+                      {MCP_MODULES.filter((m) => access[m].level !== "none").map((m) => {
+                        const a = access[m];
+                        return (
+                          <div
+                            key={m}
+                            className="flex items-start justify-between gap-3 rounded-lg border border-border bg-card px-3 py-2"
+                          >
+                            <span className="text-sm font-medium">{moduleLabel(m)}</span>
+                            <span className="text-right">
+                              <span className="block text-[12px] font-medium text-violet-600 dark:text-violet-400">
+                                {a.level === "write" ? "Leitura e escrita" : "Leitura"}
+                              </span>
+                              {a.level === "write" && a.actions.length > 0 && (
+                                <span className="block text-[11.5px] text-muted-foreground">
+                                  {a.actions.map((x) => WRITE_ACTION_LABELS[x]).join(", ")}
+                                </span>
+                              )}
+                            </span>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
                 </div>
               </div>
             )}
           </div>
 
           {/* Navegação */}
-          <div className="flex items-center justify-between gap-2 border-t border-border/60 pt-4">
+          <div className="flex shrink-0 items-center justify-between gap-2 border-t border-border/60 pt-4">
             <Button
               type="button"
               variant="ghost"
