@@ -166,6 +166,27 @@ model AppSetting {
   @@map("app_settings")
 }
 
+/// Servidor MCP externo registrado para o Agente Nex consumir como cliente.
+/// "Plugar MCPs" — agrega capacidades de terceiros (Slack, GitHub, etc.) ao Nex.
+/// O `authToken` é persistido cifrado (AES-256-GCM via src/lib/encryption.ts).
+model ExternalMcpServer {
+  id          String    @id @default(uuid()) @db.Uuid
+  name        String
+  description String?
+  transport   String    @default("http")
+  url         String
+  authHeader  String?   @map("auth_header")
+  authToken   String?   @map("auth_token")
+  enabled     Boolean   @default(true)
+  lastStatus  String    @default("unknown") @map("last_status")
+  lastCheckAt DateTime? @map("last_check_at")
+  createdAt   DateTime  @default(now()) @map("created_at")
+  updatedAt   DateTime  @updatedAt @map("updated_at")
+
+  @@index([enabled])
+  @@map("external_mcp_servers")
+}
+
 model AuditLog {
   id         String      @id @default(uuid()) @db.Uuid
   userId     String?     @map("user_id") @db.Uuid
