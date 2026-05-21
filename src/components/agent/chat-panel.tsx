@@ -617,8 +617,14 @@ export function ChatPanel({
         style={{ transformOrigin: "bottom right" }}
         className={cn(
           "fixed z-50 flex flex-col overflow-hidden bg-card text-foreground shadow-2xl shadow-black/30",
+          // Mobile: ocupa a tela inteira ao abrir.
           "inset-0 rounded-none border-0",
-          "sm:inset-auto sm:right-6 sm:bottom-6 sm:h-[70vh] sm:max-h-[640px] sm:w-[420px] sm:rounded-2xl sm:border sm:border-border",
+          // Tablet e desktop: janela flutuante adaptativa, cresce com o viewport.
+          "sm:inset-auto sm:right-5 sm:bottom-5 sm:rounded-2xl sm:border sm:border-border",
+          "sm:h-[66vh] sm:max-h-[500px] sm:w-[340px]",
+          "md:w-[360px]",
+          "lg:h-[68vh] lg:max-h-[560px] lg:w-[380px]",
+          "2xl:max-h-[620px] 2xl:w-[420px]",
         )}
       >
         {innerContent}
