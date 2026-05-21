@@ -11,6 +11,8 @@
 
 const mockGetCurrentUser = jest.fn();
 const mockPrismaWebhookFindMany = jest.fn();
+const mockPrismaWebhookFindFirst = jest.fn();
+const mockPrismaWebhookFindUnique = jest.fn();
 const mockPrismaWebhookCreate = jest.fn();
 const mockPrismaWebhookUpdate = jest.fn();
 const mockPrismaWebhookDelete = jest.fn();
@@ -30,6 +32,8 @@ jest.mock("@/lib/prisma", () => ({
   prisma: {
     whatsappWebhook: {
       findMany: mockPrismaWebhookFindMany,
+      findFirst: mockPrismaWebhookFindFirst,
+      findUnique: mockPrismaWebhookFindUnique,
       create: mockPrismaWebhookCreate,
       update: mockPrismaWebhookUpdate,
       delete: mockPrismaWebhookDelete,
@@ -43,6 +47,7 @@ jest.mock("@/lib/prisma", () => ({
 
 import {
   createWebhook,
+  updateWebhook,
   listWebhooks,
   rotateWebhookSecret,
   toggleWebhook,
@@ -114,6 +119,8 @@ beforeEach(() => {
   jest.clearAllMocks();
   mockGetCurrentUser.mockResolvedValue(SUPER_ADMIN);
   mockPrismaWebhookFindMany.mockResolvedValue([WEBHOOK_ROW, WEBHOOK_ROW_OUTBOUND]);
+  mockPrismaWebhookFindFirst.mockResolvedValue(null);
+  mockPrismaWebhookFindUnique.mockResolvedValue({ id: "wh-1", direction: "inbound" });
   mockPrismaWebhookCreate.mockResolvedValue(WEBHOOK_ROW);
   mockPrismaWebhookUpdate.mockResolvedValue({ ...WEBHOOK_ROW });
   mockPrismaWebhookDelete.mockResolvedValue(WEBHOOK_ROW);
@@ -295,5 +302,59 @@ describe("deleteWebhook", () => {
     const result = await deleteWebhook("wh-1");
     expect(result.success).toBe(false);
     expect(mockPrismaWebhookDelete).not.toHaveBeenCalled();
+  });
+});
+
+// ──────────────────────────────────────────────
+// Caminho único e updateWebhook
+// ──────────────────────────────────────────────
+
+describe("createWebhook — caminho único", () => {
+  it("bloqueia webhook de entrada com caminho duplicado", async () => {
+    mockPrismaWebhookFindFirst.mockResolvedValue({ id: "wh-existente" });
+    const result = await createWebhook({
+      direction: "inbound",
+      name: "Outro",
+      path: "whatsapp/inbound",
+      methods: ["POST"],
+    });
+    expect(result.success).toBe(false);
+    expect(mockPrismaWebhookCreate).not.toHaveBeenCalled();
+  });
+});
+
+describe("updateWebhook", () => {
+  it("atualiza nome e métodos de um webhook de entrada", async () => {
+    const result = await updateWebhook("wh-1", {
+      name: "Receptor renomeado",
+      path: "whatsapp/inbound",
+      methods: ["POST", "HEAD"],
+    });
+    expect(result.success).toBe(true);
+    expect(mockPrismaWebhookUpdate).toHaveBeenCalledWith(
+      expect.objectContaining({ where: { id: "wh-1" } }),
+    );
+  });
+
+  it("bloqueia troca de caminho para um já existente", async () => {
+    mockPrismaWebhookFindFirst.mockResolvedValue({ id: "wh-outro" });
+    const result = await updateWebhook("wh-1", {
+      name: "Receptor",
+      path: "ja-existe",
+      methods: ["POST"],
+    });
+    expect(result.success).toBe(false);
+    expect(mockPrismaWebhookUpdate).not.toHaveBeenCalled();
+  });
+
+  it("retorna erro para usuário sem permissão", async () => {
+    mockGetCurrentUser.mockResolvedValue(REGULAR_USER);
+    const result = await updateWebhook("wh-1", {
+      name: "X",
+      path: "x",
+      methods: ["POST"],
+    });
+    expect(result.success).toBe(false);
+    expect(mockPrismaWebhookUpdate).not.toHaveBeenCalled();
   });
 });

@@ -23,7 +23,7 @@ import {
 } from "@/lib/actions/webhooks"
 
 /** Métodos HTTP disponíveis para seleção. */
-const HTTP_METHODS: WebhookMethod[] = ["GET", "POST", "PUT", "PATCH", "DELETE"]
+const HTTP_METHODS: WebhookMethod[] = ["GET", "POST", "PUT", "PATCH", "DELETE", "HEAD"]
 
 /** Slug seguro: mesma regra do schema da Server Action. */
 const PATH_RE = /^[a-z0-9][a-z0-9-/]*$/

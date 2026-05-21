@@ -4,13 +4,12 @@ import { useState, useTransition } from "react";
 import {
   ArrowDownToLine,
   ArrowUpFromLine,
-  CheckCircle2,
   Copy,
   Eye,
   EyeOff,
+  Pencil,
   Plus,
   RefreshCw,
-  RotateCcw,
   Trash2,
   XCircle,
 } from "lucide-react";
@@ -21,6 +20,7 @@ import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip
 import { useTour } from "@/components/tour/tour-provider";
 import { webhookTour } from "@/lib/tours/webhook-tour";
 import { WebhookWizard } from "@/components/integrations/webhook-wizard";
+import { WebhookEditDialog } from "@/components/integracoes/webhook-edit-dialog";
 import {
   deleteWebhook,
   listWebhooks,
@@ -62,6 +62,9 @@ export function WebhooksContent({ initial, inboundBaseUrl }: Props) {
   // Assistente de criação
   const [showForm, setShowForm] = useState(false);
   const formVisible = showForm || tourActive;
+
+  // Edição de webhook
+  const [editTarget, setEditTarget] = useState<WebhookListItem | null>(null);
 
   // Revelação de secret após rotação (a criação revela pelo próprio wizard).
   const [revealedSecret, setRevealedSecret] = useState<{ id: string; secret: string } | null>(
@@ -216,12 +219,27 @@ export function WebhooksContent({ initial, inboundBaseUrl }: Props) {
               webhook={wh}
               isPending={isPending}
               onToggle={handleToggle}
-              onRotate={handleRotate}
+              onEdit={() => setEditTarget(wh)}
               onDelete={handleDelete}
             />
           ))
         )}
       </div>
+
+      <WebhookEditDialog
+        webhook={editTarget}
+        open={editTarget != null}
+        onOpenChange={(o) => {
+          if (!o) setEditTarget(null);
+        }}
+        onSaved={() => {
+          setEditTarget(null);
+          startTransition(async () => {
+            await refresh();
+          });
+        }}
+        onRotate={handleRotate}
+      />
     </div>
   );
 }
@@ -234,105 +252,112 @@ interface WebhookRowProps {
   webhook: WebhookListItem;
   isPending: boolean;
   onToggle: (id: string, enabled: boolean) => void;
-  onRotate: (id: string) => void;
+  onEdit: () => void;
   onDelete: (id: string) => void;
 }
 
-function WebhookRow({ webhook, isPending, onToggle, onRotate, onDelete }: WebhookRowProps) {
+function WebhookRow({ webhook, isPending, onToggle, onEdit, onDelete }: WebhookRowProps) {
   const isInbound = webhook.direction === "inbound";
   const DirIcon = isInbound ? ArrowDownToLine : ArrowUpFromLine;
-  const endpoint = webhook.targetUrl ?? webhook.path;
+  const endpoint = isInbound
+    ? webhook.path
+      ? `/${webhook.path}`
+      : null
+    : webhook.targetUrl;
 
   return (
     <div
       className={cn(
-        "rounded-xl border border-border bg-muted/30 p-4 space-y-3 transition-colors hover:border-foreground/20",
+        "rounded-xl border border-border bg-muted/30 p-3.5 transition-colors hover:border-foreground/20",
         !webhook.enabled && "opacity-60",
       )}
     >
       <div className="flex items-start justify-between gap-3">
-        <div className="flex items-center gap-3 min-w-0">
+        <div className="flex items-start gap-3 min-w-0">
           <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-violet-500/10">
             <DirIcon className="h-4 w-4 text-violet-500" />
           </span>
-          <div className="space-y-0.5 min-w-0">
+          <div className="space-y-1 min-w-0">
             <div className="flex items-center gap-2 flex-wrap">
-              {webhook.enabled ? (
-                <CheckCircle2 className="h-3.5 w-3.5 text-emerald-500 shrink-0" />
-              ) : (
-                <XCircle className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
-              )}
               <span className="text-sm font-semibold">{webhook.name ?? "Webhook"}</span>
               <span className="text-[11px] text-muted-foreground">
                 {DIRECTION_LABELS[webhook.direction] ?? webhook.direction}
               </span>
             </div>
-            {endpoint && (
-              <p className="text-xs text-muted-foreground font-mono truncate">{endpoint}</p>
-            )}
+            <div className="flex items-center gap-1.5 flex-wrap">
+              {endpoint && (
+                <code className="max-w-full truncate rounded-md border border-border bg-muted px-1.5 py-0.5 text-[11px] font-mono text-foreground">
+                  {endpoint}
+                </code>
+              )}
+              {webhook.methods.map((m) => (
+                <span
+                  key={m}
+                  className="rounded-md border border-violet-500/30 bg-violet-500/10 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-violet-600 dark:text-violet-400"
+                >
+                  {m}
+                </span>
+              ))}
+            </div>
             <p className="text-[11px] text-muted-foreground">
-              {webhook.methods.length > 0 && <>{webhook.methods.join(", ")} · </>}
               Criado em {formatDate(webhook.createdAt)}
             </p>
           </div>
         </div>
 
-        {/* Toggle habilitado */}
-        <Tooltip>
-          <TooltipTrigger
-            render={
-              <Switch
-                checked={webhook.enabled}
-                onCheckedChange={(v) => onToggle(webhook.id, v)}
-                disabled={isPending}
-                aria-label={webhook.enabled ? "Desabilitar webhook" : "Habilitar webhook"}
-              />
-            }
-          />
-          <TooltipContent>{webhook.enabled ? "Desabilitar" : "Habilitar"}</TooltipContent>
-        </Tooltip>
-      </div>
-
-      {/* Ações */}
-      <div className="flex items-center gap-2 border-t border-border/40 pt-3">
-        <Tooltip>
-          <TooltipTrigger
-            render={
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                className="gap-1.5 text-xs"
-                disabled={isPending}
-                onClick={() => onRotate(webhook.id)}
-                aria-label="Rotacionar secret"
+        <div className="flex shrink-0 flex-col items-end gap-1.5">
+          <Tooltip>
+            <TooltipTrigger
+              render={
+                <Switch
+                  checked={webhook.enabled}
+                  onCheckedChange={(v) => onToggle(webhook.id, v)}
+                  disabled={isPending}
+                  aria-label={webhook.enabled ? "Desabilitar webhook" : "Habilitar webhook"}
+                />
+              }
+            />
+            <TooltipContent>{webhook.enabled ? "Desabilitar" : "Habilitar"}</TooltipContent>
+          </Tooltip>
+          <div className="flex items-center gap-0.5">
+            <Tooltip>
+              <TooltipTrigger
+                render={
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    className="h-8 w-8 p-0"
+                    disabled={isPending}
+                    onClick={onEdit}
+                    aria-label="Editar webhook"
+                  />
+                }
               >
-                <RotateCcw className="h-3.5 w-3.5" />
-                Rotacionar secret
-              </Button>
-            }
-          />
-          <TooltipContent>Gerar novo secret HMAC e invalidar o anterior</TooltipContent>
-        </Tooltip>
-        <Tooltip>
-          <TooltipTrigger
-            render={
-              <Button
-                type="button"
-                variant="ghost"
-                size="sm"
-                className="ml-auto gap-1.5 text-xs text-destructive hover:bg-destructive/10 hover:text-destructive"
-                disabled={isPending}
-                onClick={() => onDelete(webhook.id)}
-                aria-label="Remover webhook"
+                <Pencil className="h-4 w-4 text-muted-foreground" />
+              </TooltipTrigger>
+              <TooltipContent>Editar</TooltipContent>
+            </Tooltip>
+            <Tooltip>
+              <TooltipTrigger
+                render={
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    className="h-8 w-8 p-0 text-destructive hover:bg-destructive/10 hover:text-destructive"
+                    disabled={isPending}
+                    onClick={() => onDelete(webhook.id)}
+                    aria-label="Remover webhook"
+                  />
+                }
               >
-                <Trash2 className="h-3.5 w-3.5" />
-                Remover
-              </Button>
-            }
-          />
-          <TooltipContent>Excluir este webhook</TooltipContent>
-        </Tooltip>
+                <Trash2 className="h-4 w-4" />
+              </TooltipTrigger>
+              <TooltipContent>Remover</TooltipContent>
+            </Tooltip>
+          </div>
+        </div>
       </div>
     </div>
   );

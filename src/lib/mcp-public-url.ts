@@ -24,21 +24,21 @@ export async function resolveMcpPublicUrl(): Promise<string> {
 }
 
 /**
- * Resolve a URL base dos webhooks de entrada (`.../api/hooks/`), à qual o
+ * Resolve a URL base dos webhooks de entrada (`.../api/webhooks/`), à qual o
  * caminho (slug) do webhook é concatenado. Server-side apenas.
  */
 export async function resolveWebhookInboundBase(): Promise<string> {
   const envUrl = process.env.NEXT_PUBLIC_APP_URL;
   if (envUrl && envUrl.length > 0) {
-    return `${envUrl.replace(/\/+$/, "")}/api/hooks/`;
+    return `${envUrl.replace(/\/+$/, "")}/api/webhooks/`;
   }
   try {
     const h = await headers();
     const host = h.get("host");
     const proto = h.get("x-forwarded-proto") ?? "http";
-    if (host) return `${proto}://${host}/api/hooks/`;
+    if (host) return `${proto}://${host}/api/webhooks/`;
   } catch {
     // headers() indisponível fora de uma request; cai no fallback.
   }
-  return "/api/hooks/";
+  return "/api/webhooks/";
 }
