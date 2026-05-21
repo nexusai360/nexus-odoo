@@ -28,6 +28,10 @@ import { toOutcome, safeErrorMessage } from "./lib/failure.js";
 import { checkMcpRateLimit, RATE_LIMIT_EXCEEDED_MESSAGE, type RateLimitRedis } from "./lib/rate-limit.js";
 import type { ToolEntry } from "./catalog/types.js";
 import { handleHealthRequest } from "./health/index.js";
+import { authenticate, type AuthResult } from "./auth/auth-middleware.js";
+import { createApiKeyCache } from "./auth/api-key-cache.js";
+import { handlePreflight } from "./middleware/cors.js";
+import { handleExternalRequest, type ExternalPipelineDeps } from "./dispatcher/external-pipeline.js";
 
 // ─── handleToolCall — pipeline de tools/call (4a.17) ────────────────────────
 
@@ -123,6 +127,10 @@ function errorResult(message: string): { content: Array<{ type: "text"; text: st
   return { content: [{ type: "text", text: message }], isError: true };
 }
 
+// ─── Cache de API keys (singleton por processo) ───────────────────────────────
+// Compartilhado entre requests — LRU com TTL de 60s, até 500 entradas.
+export const apiKeyCache = createApiKeyCache();
+
 // ─── Registro de McpServer por sessão ────────────────────────────────────────
 
 /**
@@ -188,12 +196,84 @@ export function createHttpServer(): TestableServer {
       return;
     }
 
-    // 4a.14 — Middleware de service token
-    if (!validateServiceToken(req.headers.authorization)) {
+    // Preflight CORS — OPTIONS antes de qualquer auth (Bloco P-0)
+    if (req.method === "OPTIONS") {
+      // Auth da API key para obter allowedOrigins (best-effort — sem apiKey retorna 403)
+      const authResult = await authenticate(prisma, apiKeyCache, {
+        headerAuth: req.headers.authorization,
+        headerUserId: req.headers["x-mcp-user-id"] as string | undefined,
+        requestUrl: req.url,
+      });
+      const apiKey = authResult.mode === "external" ? authResult.apiKey : undefined;
+      const preflight = handlePreflight({ requestOrigin: req.headers.origin as string | undefined, apiKey });
+      res.writeHead(preflight.status, { "Content-Type": "text/plain", ...preflight.headers });
+      res.end();
+      return;
+    }
+
+    // ── Auth gate (Bloco P-0) ────────────────────────────────────────────────
+    //
+    // Estratégia de dois estágios para preservar retrocompat total com testes do
+    // modo interno (4a.14/4a.15/C-NOVO) sem alterar seus timings de microtask:
+    //
+    //   Estágio 1 — service token (síncrono, legado):
+    //     validateServiceToken() é executado PRIMEIRO.
+    //     - Se válido → modo INTERNO (fluxo original sem nenhuma await extra).
+    //     - Se inválido → possível modo externo (API key): coletar body e chamar
+    //       authenticate() para identificar a API key.
+    //
+    //   Estágio 2 — API key (assíncrono, Bloco P-0):
+    //     authenticate() retorna "external" → pipeline externo (handler direto).
+    //     authenticate() retorna "unauthorized" → 401.
+    //
+    // Dessa forma o fluxo interno não acumula awaits extras e os testes existentes
+    // continuam funcionando sem modificação de timing.
+
+    const isServiceTokenValid = validateServiceToken(req.headers.authorization);
+
+    if (!isServiceTokenValid) {
+      // Possível autenticação externa (API key) — Bloco P-0.
+      // Ler body antes (necessário para handleExternalRequest).
+      // Guard: socket null = ambiente de teste sem stream real → body vazio.
+      let bodyBuffer: Buffer = Buffer.alloc(0);
+      if (req.socket !== null) {
+        try {
+          const chunks: Buffer[] = [];
+          for await (const chunk of req) {
+            chunks.push(chunk as Buffer);
+          }
+          bodyBuffer = Buffer.concat(chunks);
+        } catch {
+          bodyBuffer = Buffer.alloc(0);
+        }
+      }
+
+      const authResult: AuthResult = await authenticate(prisma, apiKeyCache, {
+        headerAuth: req.headers.authorization,
+        headerUserId: req.headers["x-mcp-user-id"] as string | undefined,
+        requestUrl: req.url,
+      });
+
+      if (authResult.mode === "external") {
+        const deps: ExternalPipelineDeps = {
+          prisma,
+          redis: mcpRedis as import("ioredis").default,
+          catalog: catalogo as ReadonlyArray<ToolEntry | import("./catalog/types.js").WriteToolEntry>,
+        };
+        const response = await handleExternalRequest(req, bodyBuffer, authResult.apiKey, deps);
+        res.writeHead(response.status, response.headers);
+        res.end(response.body);
+        return;
+      }
+
+      // Token inválido e não é API key → 401
       res.writeHead(401, { "Content-Type": "application/json" });
       res.end(JSON.stringify({ error: "Unauthorized" }));
       return;
     }
+
+    // ── Modo interno (service token válido) ──────────────────────────────────
+    // Fluxo original 4a.14/4a.15/4a.16 — sem awaits extras antes do transport.
 
     // 4a.15 — Middleware de resolução de sessão
     // O X-Mcp-User-Id é obrigatório em cada request (stateless por design).
@@ -253,6 +333,7 @@ export function createHttpServer(): TestableServer {
       transport = newTransport;
     }
 
+    // O modo interno não lê o body (o transport lê diretamente do req).
     // Delegar ao transport da sessão
     await transport.handleRequest(req, res);
   };
