@@ -49,3 +49,4 @@ discovery/output/
 
 # Docker
 docker-compose.production.yml
+.context/
