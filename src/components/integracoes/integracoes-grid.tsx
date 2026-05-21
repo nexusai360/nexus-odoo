@@ -30,22 +30,18 @@ const CARDS: IntegrationCard[] = [
     href: "/integracoes/servidor-mcp",
   },
   {
-    label: "MCP (legado)",
-    description: "Endpoint do servidor MCP e token para conexões externas.",
-    icon: Cpu,
-    href: "/integracoes/mcp",
-  },
-  {
     label: "Webhooks",
     description: "Endpoints de entrada e saída para integração com o n8n.",
     icon: Webhook,
     href: "/integracoes/webhooks",
   },
   {
-    label: "API",
+    label: "API REST",
     description: "Crie e revogue chaves de API da plataforma.",
     icon: Key,
     href: "/integracoes/api",
+    disabled: true,
+    badge: "Em breve",
   },
   {
     label: "BI",

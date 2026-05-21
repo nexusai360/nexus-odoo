@@ -20,13 +20,13 @@ interface Props {
 }
 
 /**
- * Painel de informações do MCP — exibe endpoint, token mascarado (read-only)
+ * Conteúdo de "Plugar MCPs" — exibe endpoint, token mascarado (read-only)
  * e documentação para conexão com o node Agent do n8n.
  *
  * O MCP_SERVICE_TOKEN é uma variável de ambiente — a UI não o rotaciona.
  * Rotação deve ser feita via Portainer/env conforme instrução exibida abaixo.
  */
-export function McpPanel({ mcpUrl, maskedToken, healthStatus }: Props) {
+export function PlugarMcpsContent({ mcpUrl, maskedToken, healthStatus }: Props) {
   const [showToken, setShowToken] = useState(false);
 
   function copyToClipboard(text: string, label: string) {

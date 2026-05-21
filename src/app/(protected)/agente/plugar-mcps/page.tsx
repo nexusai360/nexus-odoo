@@ -1,10 +1,9 @@
-import { Cpu } from "lucide-react";
+import { Cable } from "lucide-react";
 import { PageShell } from "@/components/layout/page-shell";
 import { PageHeader } from "@/components/page-header";
-import { McpPanel } from "@/components/integracoes/mcp-panel";
-import { Breadcrumb } from "@/components/integracoes/breadcrumb";
+import { PlugarMcpsContent } from "@/components/agent/plugar-mcps-content";
 
-export const metadata = { title: "MCP | Integrações | Nexus Odoo" };
+export const metadata = { title: "Plugar MCPs | Agente Nex | Nexus Odoo" };
 export const dynamic = "force-dynamic";
 
 /**
@@ -32,7 +31,7 @@ async function pingMcp(mcpUrl: string): Promise<"ok" | "error" | "unknown"> {
   }
 }
 
-export default async function McpPage() {
+export default async function PlugarMcpsPage() {
   const mcpUrl = process.env.MCP_URL ?? "";
   const serviceToken = process.env.MCP_SERVICE_TOKEN;
   const maskedToken = maskToken(serviceToken);
@@ -41,20 +40,14 @@ export default async function McpPage() {
 
   return (
     <PageShell variant="narrow">
-      <Breadcrumb
-        items={[
-          { label: "Integrações", href: "/integracoes" },
-          { label: "MCP" },
-        ]}
-      />
       <PageHeader
-        icon={Cpu}
-        title="MCP"
+        icon={Cable}
+        title="Plugar MCPs"
         subtitle="Endpoint do servidor MCP semântico e configuração de conexão para agentes externos"
       />
 
       <div className="mt-6">
-        <McpPanel
+        <PlugarMcpsContent
           mcpUrl={mcpUrl}
           maskedToken={maskedToken}
           healthStatus={healthStatus}
