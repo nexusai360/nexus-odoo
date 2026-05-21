@@ -110,25 +110,25 @@ export function WebhookWizard({
       {step === 1 && (
         <div className="space-y-4">
           <div className="space-y-1">
-            <h3 className="text-sm font-medium">Direção do webhook</h3>
+            <h3 className="text-sm font-medium">Tipo do webhook</h3>
             <p className="text-xs text-muted-foreground">
-              Escolha se a plataforma recebe ou envia eventos.
+              Escolha se a plataforma vai receber ou enviar eventos.
             </p>
           </div>
-          <div className="grid gap-3 sm:grid-cols-2">
+          <div className="grid gap-3 sm:grid-cols-2" data-tour="webhook-wizard-tipo">
             <DirectionCard
               selected={direction === "inbound"}
               onSelect={() => setDirection("inbound")}
               icon={<ArrowDownToLine className="size-5" />}
-              title="Entrada"
-              description="A plataforma recebe eventos de sistemas externos (ex.: mensagens do WhatsApp encaminhadas pelo n8n)."
+              title="Receber eventos"
+              description="A plataforma expõe um endereço e fica escutando. Um sistema externo chama esse endereço quando algo acontece."
             />
             <DirectionCard
               selected={direction === "outbound"}
               onSelect={() => setDirection("outbound")}
               icon={<ArrowUpFromLine className="size-5" />}
-              title="Saída"
-              description="A plataforma envia eventos para um sistema externo (ex.: dispara uma chamada ao n8n)."
+              title="Enviar eventos"
+              description="A plataforma dispara uma chamada para um endereço externo quando um evento ocorre aqui dentro."
             />
           </div>
           <div className="flex justify-end gap-2">

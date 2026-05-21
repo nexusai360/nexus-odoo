@@ -1,9 +1,8 @@
 import type { TourConfig } from "@/components/tour/tour-provider";
 
 /**
- * Tour dos Webhooks. Ensina a criar um webhook campo a campo: o formulário de
- * criação fica aberto enquanto o tour roda, para os passos apontarem para
- * cada campo.
+ * Tour dos Webhooks. O assistente de criação fica aberto enquanto o tour roda,
+ * para os passos apontarem para ele.
  */
 export const webhookTour: TourConfig = {
   id: "integracoes-webhooks-v1",
@@ -14,31 +13,15 @@ export const webhookTour: TourConfig = {
       targetSelector: "[data-tour='webhooks-novo']",
       title: "Criar um webhook",
       description:
-        "Comece por aqui para registrar um endpoint de entrada ou de saída. O formulário de criação já está aberto abaixo para percorrermos cada campo.",
+        "Comece por aqui. O assistente de criação já está aberto abaixo para conhecermos os passos.",
       placement: "bottom",
     },
     {
-      id: "direcao",
-      targetSelector: "[data-tour='webhooks-form-direcao']",
-      title: "Direção",
+      id: "tipo",
+      targetSelector: "[data-tour='webhook-wizard-tipo']",
+      title: "Receber ou enviar",
       description:
-        "Entrada recebe eventos de sistemas externos na plataforma. Saída envia eventos da plataforma para um sistema externo. Escolha conforme o fluxo que você precisa.",
-      placement: "bottom",
-    },
-    {
-      id: "url",
-      targetSelector: "[data-tour='webhooks-form-url']",
-      title: "URL de destino",
-      description:
-        "Para um webhook de saída, informe o endereço que vai receber os eventos. Para um webhook de entrada a URL é opcional, a plataforma gera o caminho de recepção.",
-      placement: "bottom",
-    },
-    {
-      id: "criar",
-      targetSelector: "[data-tour='webhooks-form-criar']",
-      title: "Confirmar a criação",
-      description:
-        "Ao criar, a plataforma gera um secret de assinatura exibido uma única vez. Copie na hora: ele não aparece de novo, depois só é possível rotacioná-lo.",
+        "Primeiro escolha o tipo: Receber eventos faz a plataforma escutar um endereço; Enviar eventos faz a plataforma disparar uma chamada externa. Depois você define os métodos HTTP e o caminho ou a URL de destino; ao concluir, a plataforma gera um secret de assinatura exibido uma única vez.",
       placement: "top",
     },
     {
@@ -46,7 +29,7 @@ export const webhookTour: TourConfig = {
       targetSelector: "[data-tour='webhooks-lista']",
       title: "Seus webhooks",
       description:
-        "Cada cartão mostra a direção, a URL e a data de criação. Use o interruptor para habilitar ou desabilitar, rotacione o secret quando precisar, ou remova o webhook.",
+        "Cada webhook criado aparece aqui com o tipo, o endereço e os métodos. Use o interruptor para habilitar ou desabilitar, rotacione o secret quando precisar, ou remova o webhook.",
       placement: "top",
     },
   ],

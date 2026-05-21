@@ -7,12 +7,16 @@ import { TourTriggerButton } from "@/components/tour/tour-trigger-button";
 import { TourAutoStart } from "@/components/tour/tour-auto-start";
 import { webhookTour } from "@/lib/tours/webhook-tour";
 import { listWebhooks } from "@/lib/actions/webhooks";
+import { resolveWebhookInboundBase } from "@/lib/mcp-public-url";
 
 export const metadata = { title: "Webhooks | Integrações | Nexus Odoo" };
 export const dynamic = "force-dynamic";
 
 export default async function WebhooksPage() {
-  const result = await listWebhooks();
+  const [result, inboundBaseUrl] = await Promise.all([
+    listWebhooks(),
+    resolveWebhookInboundBase(),
+  ]);
   const webhooks = result.success ? result.data : [];
 
   return (
@@ -26,13 +30,13 @@ export default async function WebhooksPage() {
       <PageHeader
         icon={Webhook}
         title="Webhooks"
-        subtitle="Gerencie endpoints de entrada e saída para integração com n8n e outros sistemas"
+        subtitle="Endpoints para receber e enviar eventos de integração com outros sistemas"
         titleAccessory={<TourTriggerButton config={webhookTour} />}
       />
       <TourAutoStart tour={webhookTour} />
 
       <div className="mt-6">
-        <WebhooksContent initial={webhooks} />
+        <WebhooksContent initial={webhooks} inboundBaseUrl={inboundBaseUrl} />
       </div>
     </PageShell>
   );
