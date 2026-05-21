@@ -21,6 +21,13 @@ jest.mock("./mcp-client", () => ({
   ),
 }));
 
+// MCPs externos: sem servidores no teste; o run usa só o MCP interno.
+jest.mock("./external-mcp", () => ({
+  openExternalMcpSessions: jest.fn().mockResolvedValue(null),
+  callExternalTool: jest.fn(),
+  isExternalToolName: (name: string) => name.startsWith("ext__"),
+}));
+
 jest.mock("./llm/get-active-config", () => ({
   getActiveLlmConfig: jest.fn(),
 }));

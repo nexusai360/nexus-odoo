@@ -18,6 +18,11 @@ import { getActiveLlmConfig } from "./llm/get-active-config";
 import { logUsage } from "./llm/usage-logger";
 import { createMcpSession, mcpToolsToProviderTools } from "./mcp-client";
 import {
+  openExternalMcpSessions,
+  callExternalTool,
+  isExternalToolName,
+} from "./external-mcp";
+import {
   loadHistory,
   persistMessage,
   assertConversationOwned,
@@ -146,6 +151,12 @@ export async function runAgent(args: RunAgentInput): Promise<RunAgentResult> {
     console.warn("[runAgent] Falha ao criar sessão MCP:", err);
     return null;
   });
+  // MCPs externos (Plugar MCP) municiam o agente com as tools de terceiros.
+  // Falha aqui nunca derruba o run: o agente segue só com o MCP interno.
+  const externalBundle = await openExternalMcpSessions().catch((err) => {
+    console.warn("[runAgent] Falha ao abrir MCPs externos:", err);
+    return null;
+  });
 
   try {
     // Resolver LLM: override da sessão de playground tem prioridade sobre a
@@ -221,9 +232,12 @@ export async function runAgent(args: RunAgentInput): Promise<RunAgentResult> {
     };
     const systemPrompt = composeSystemPrompt(promptCfg, kbSnippets, undefined, biSchema);
 
-    // Carregar tools do MCP
+    // Carregar tools do MCP interno + dos MCPs externos plugados
     const mcpTools = session ? await session.listTools() : [];
-    const tools = mcpToolsToProviderTools(mcpTools);
+    const tools = mcpToolsToProviderTools([
+      ...mcpTools,
+      ...(externalBundle?.tools ?? []),
+    ]);
 
     // Carregar histórico (últimas 20 msgs) e sanitizar pares tool_use/tool_result
     const rawHistory = await loadHistory(args.conversationId, 20);
@@ -319,12 +333,15 @@ export async function runAgent(args: RunAgentInput): Promise<RunAgentResult> {
       for (const tc of result.toolCalls) {
         args.onEvent?.({ type: "tool_call", toolName: tc.name });
 
+        const toolArgs = (tc.arguments ?? {}) as Record<string, unknown>;
         let toolResultStr: string;
-        if (session) {
-          toolResultStr = await session.callTool(
-            tc.name,
-            (tc.arguments ?? {}) as Record<string, unknown>,
-          );
+        if (isExternalToolName(tc.name)) {
+          // Tool de MCP externo: roteia para a sessão do servidor certo.
+          toolResultStr = externalBundle
+            ? await callExternalTool(externalBundle, tc.name, toolArgs, args.userId)
+            : "(MCP externo indisponível)";
+        } else if (session) {
+          toolResultStr = await session.callTool(tc.name, toolArgs);
         } else {
           toolResultStr = "(MCP indisponível)";
         }
@@ -358,5 +375,6 @@ export async function runAgent(args: RunAgentInput): Promise<RunAgentResult> {
     };
   } finally {
     if (session) await session.close();
+    if (externalBundle) await externalBundle.closeAll();
   }
 }
