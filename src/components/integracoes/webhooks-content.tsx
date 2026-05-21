@@ -21,6 +21,8 @@ import { Label } from "@/components/ui/label";
 import { CustomSelect } from "@/components/ui/custom-select";
 import { Switch } from "@/components/ui/switch";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import { useTour } from "@/components/tour/tour-provider";
+import { webhookTour } from "@/lib/tours/webhook-tour";
 import {
   createWebhook,
   deleteWebhook,
@@ -52,8 +54,14 @@ export function WebhooksContent({ initial }: Props) {
   const [webhooks, setWebhooks] = useState<WebhookListItem[]>(initial);
   const [isPending, startTransition] = useTransition();
 
+  // O tour percorre o formulário campo a campo, então mantém o form aberto
+  // enquanto ele roda.
+  const { active } = useTour();
+  const tourActive = active?.id === webhookTour.id;
+
   // Form de criação
   const [showForm, setShowForm] = useState(false);
+  const formVisible = showForm || tourActive;
   const [newDirection, setNewDirection] = useState<"inbound" | "outbound">("inbound");
   const [newUrl, setNewUrl] = useState("");
 
@@ -196,11 +204,11 @@ export function WebhooksContent({ initial }: Props) {
       </div>
 
       {/* Form de criação */}
-      {showForm && (
+      {formVisible && (
         <form onSubmit={handleCreate} className="rounded-xl border border-border bg-card p-5 space-y-4">
           <p className="text-sm font-semibold">Criar webhook</p>
 
-          <div className="space-y-2">
+          <div data-tour="webhooks-form-direcao" className="space-y-2">
             <Label htmlFor="wh-direction">Direção</Label>
             <CustomSelect
               aria-label="Direção do webhook"
@@ -211,7 +219,7 @@ export function WebhooksContent({ initial }: Props) {
                 {
                   value: "inbound",
                   label: "Entrada",
-                  description: "Receptor de mensagens",
+                  description: "Recebe eventos de um sistema externo",
                 },
                 {
                   value: "outbound",
@@ -220,20 +228,32 @@ export function WebhooksContent({ initial }: Props) {
                 },
               ]}
             />
+            <p className="text-xs text-muted-foreground">
+              Entrada recebe eventos de fora. Saída envia eventos da plataforma para outro sistema.
+            </p>
           </div>
 
-          <div className="space-y-2">
-            <Label htmlFor="wh-url">URL (opcional)</Label>
+          <div data-tour="webhooks-form-url" className="space-y-2">
+            <Label htmlFor="wh-url">URL de destino (opcional)</Label>
             <Input
               id="wh-url"
-              placeholder="https://n8n.example.com/webhook/..."
+              placeholder="https://exemplo.com/webhook/..."
               value={newUrl}
               onChange={(e) => setNewUrl(e.target.value)}
             />
+            <p className="text-xs text-muted-foreground">
+              Para um webhook de saída, o endereço que vai receber os eventos. Entrada não precisa.
+            </p>
           </div>
 
           <div className="flex gap-2">
-            <Button type="submit" size="sm" disabled={isPending} className="gap-1.5">
+            <Button
+              type="submit"
+              size="sm"
+              disabled={isPending}
+              className="gap-1.5"
+              data-tour="webhooks-form-criar"
+            >
               {isPending && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
               Criar
             </Button>
@@ -251,16 +271,26 @@ export function WebhooksContent({ initial }: Props) {
 
       {/* Lista de webhooks */}
       <div data-tour="webhooks-lista" className="space-y-3">
-        {webhooks.map((wh) => (
-          <WebhookRow
-            key={wh.id}
-            webhook={wh}
-            isPending={isPending}
-            onToggle={handleToggle}
-            onRotate={handleRotate}
-            onDelete={handleDelete}
-          />
-        ))}
+        {webhooks.length === 0 ? (
+          <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-border bg-muted/30 py-12 text-center">
+            <Webhook className="h-8 w-8 text-muted-foreground/40 mb-3" />
+            <p className="text-sm text-muted-foreground">Nenhum webhook configurado</p>
+            <p className="text-xs text-muted-foreground/70 mt-1">
+              Crie um webhook de entrada ou de saída para integrar com outros sistemas.
+            </p>
+          </div>
+        ) : (
+          webhooks.map((wh) => (
+            <WebhookRow
+              key={wh.id}
+              webhook={wh}
+              isPending={isPending}
+              onToggle={handleToggle}
+              onRotate={handleRotate}
+              onDelete={handleDelete}
+            />
+          ))
+        )}
       </div>
     </div>
   );

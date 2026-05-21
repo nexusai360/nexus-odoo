@@ -19,6 +19,8 @@ import { Label } from "@/components/ui/label";
 import { CustomSelect } from "@/components/ui/custom-select";
 import { Switch } from "@/components/ui/switch";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import { useTour } from "@/components/tour/tour-provider";
+import { plugarMcpsTour } from "@/lib/tours/plugar-mcps-tour";
 import { cn } from "@/lib/utils";
 import {
   listExternalMcpServers,
@@ -49,6 +51,11 @@ export function PlugarMcpsContent({ initial }: Props) {
   const [servers, setServers] = useState<ExternalMcpServerListItem[]>(initial);
   const [isPending, startTransition] = useTransition();
   const [showForm, setShowForm] = useState(false);
+
+  // O tour percorre o formulário, então mantém o form aberto enquanto ele roda.
+  const { active } = useTour();
+  const tourActive = active?.id === plugarMcpsTour.id;
+  const formVisible = showForm || tourActive;
 
   // Form
   const [name, setName] = useState("");
@@ -139,7 +146,7 @@ export function PlugarMcpsContent({ initial }: Props) {
       </p>
 
       {/* Cabeçalho */}
-      <div className="flex items-center justify-between">
+      <div data-tour="plugar-mcps-novo" className="flex items-center justify-between">
         <p className="text-sm text-muted-foreground">
           {servers.length === 0
             ? "Nenhum servidor conectado"
@@ -157,9 +164,10 @@ export function PlugarMcpsContent({ initial }: Props) {
       </div>
 
       {/* Form inline */}
-      {showForm && (
+      {formVisible && (
         <form
           onSubmit={handleCreate}
+          data-tour="plugar-mcps-form"
           className="rounded-xl border border-border bg-card p-5 space-y-4"
         >
           <p className="text-sm font-semibold">Conectar servidor MCP externo</p>
@@ -275,28 +283,30 @@ export function PlugarMcpsContent({ initial }: Props) {
       )}
 
       {/* Lista */}
-      {servers.length === 0 ? (
-        <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-border bg-muted/30 py-12 text-center">
-          <Plug className="h-8 w-8 text-muted-foreground/40 mb-3" />
-          <p className="text-sm text-muted-foreground">Nenhum servidor MCP conectado</p>
-          <p className="text-xs text-muted-foreground/70 mt-1">
-            Conecte um MCP externo para ampliar as ferramentas do Agente Nex.
-          </p>
-        </div>
-      ) : (
-        <div className="space-y-3">
-          {servers.map((server) => (
-            <McpServerRow
-              key={server.id}
-              server={server}
-              isPending={isPending}
-              onToggle={handleToggle}
-              onTest={handleTest}
-              onDelete={handleDelete}
-            />
-          ))}
-        </div>
-      )}
+      <div data-tour="plugar-mcps-lista">
+        {servers.length === 0 ? (
+          <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-border bg-muted/30 py-12 text-center">
+            <Plug className="h-8 w-8 text-muted-foreground/40 mb-3" />
+            <p className="text-sm text-muted-foreground">Nenhum servidor MCP conectado</p>
+            <p className="text-xs text-muted-foreground/70 mt-1">
+              Conecte um MCP externo para ampliar as ferramentas do Agente Nex.
+            </p>
+          </div>
+        ) : (
+          <div className="space-y-3">
+            {servers.map((server) => (
+              <McpServerRow
+                key={server.id}
+                server={server}
+                isPending={isPending}
+                onToggle={handleToggle}
+                onTest={handleTest}
+                onDelete={handleDelete}
+              />
+            ))}
+          </div>
+        )}
+      </div>
     </div>
   );
 }
