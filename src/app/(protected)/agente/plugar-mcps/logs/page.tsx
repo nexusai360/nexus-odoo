@@ -1,7 +1,3 @@
-import { Cable } from "lucide-react";
-import { PageShell } from "@/components/layout/page-shell";
-import { PageHeader } from "@/components/page-header";
-import { PlugarMcpsNav } from "@/components/agent/plugar-mcps-nav";
 import { ExternalMcpLogs } from "@/components/agent/external-mcp-logs";
 import { queryExternalMcpCallLogs } from "@/lib/actions/external-mcp-call-log";
 import { listExternalMcpServers } from "@/lib/actions/external-mcp-servers";
@@ -23,17 +19,8 @@ export default async function PlugarMcpsLogsPage() {
     : [];
 
   return (
-    <PageShell variant="narrow">
-      <PageHeader
-        icon={Cable}
-        title="Plugar MCPs"
-        subtitle="Conecte servidores MCP externos para ampliar as capacidades do Agente Nex"
-      />
-
-      <PlugarMcpsNav />
-      <div className="mt-6">
-        <ExternalMcpLogs initial={initial} servers={servers} />
-      </div>
-    </PageShell>
+    <div className="mt-6">
+      <ExternalMcpLogs initial={initial} servers={servers} />
+    </div>
   );
 }

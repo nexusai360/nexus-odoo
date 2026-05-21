@@ -25,6 +25,8 @@ interface CustomSelectProps {
   placeholder?: string;
   className?: string;
   triggerClassName?: string;
+  /** Sobrescreve a largura/estilo do menu suspenso (ex.: lista de anos). */
+  contentClassName?: string;
   icon?: React.ReactNode;
   disabled?: boolean;
   /** Label acessível para o trigger (lido por screen readers). */
@@ -51,6 +53,7 @@ export function CustomSelect({
   placeholder = "Selecionar",
   className,
   triggerClassName,
+  contentClassName,
   icon,
   disabled = false,
   "aria-label": ariaLabel,
@@ -92,7 +95,10 @@ export function CustomSelect({
         <PopoverContent
           align="start"
           sideOffset={4}
-          className="min-w-[280px] w-auto max-w-[min(calc(100vw-2rem),420px)] rounded-lg p-0 overflow-hidden"
+          className={cn(
+            "min-w-[280px] w-auto max-w-[min(calc(100vw-2rem),420px)] rounded-lg p-0 overflow-hidden",
+            contentClassName,
+          )}
         >
           <ul role="listbox" className="flex max-h-[290px] flex-col overflow-y-auto">
             {options.map((option) => {

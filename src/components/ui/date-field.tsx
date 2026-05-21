@@ -131,6 +131,7 @@ export function DateField({
           <CustomSelect
             aria-label="Ano"
             className="w-[94px] shrink-0"
+            contentClassName="min-w-[120px] w-[120px]"
             value={String(displayMonth.getFullYear())}
             onChange={(v) => setDisplayMonth(new Date(Number(v), displayMonth.getMonth(), 1))}
             options={yearOptions}

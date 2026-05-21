@@ -112,13 +112,13 @@ export function WebhookWizard({
   return (
     <form
       onSubmit={handleEnterAdvance}
-      className={cn("space-y-5", !embedded && "rounded-xl border p-6")}
+      className={cn("space-y-6", !embedded && "rounded-xl border p-6")}
     >
       <StepIndicator steps={["Tipo", "Configuração", "Conclusão"]} current={step} />
 
       {/* Passo 1, Direção */}
       {step === 1 && (
-        <div className="space-y-4">
+        <div className="space-y-5">
           <div className="space-y-1">
             <h3 className="text-sm font-medium">Tipo do webhook</h3>
             <p className="text-xs text-muted-foreground">
@@ -141,7 +141,7 @@ export function WebhookWizard({
               description="A plataforma dispara uma chamada para um endereço externo quando um evento ocorre aqui dentro."
             />
           </div>
-          <div className="flex justify-end gap-2">
+          <div className="flex justify-end gap-2 border-t border-border/60 pt-5">
             {onCancel && (
               <Button
                 type="button"
@@ -166,7 +166,7 @@ export function WebhookWizard({
 
       {/* Passo 2, Configuração */}
       {step === 2 && direction && (
-        <div className="space-y-4">
+        <div className="space-y-5">
           <div className="space-y-1.5">
             <Label htmlFor="wh-name">Nome</Label>
             <Input
@@ -232,7 +232,7 @@ export function WebhookWizard({
 
           {error && <p className="text-xs text-destructive">{error}</p>}
 
-          <div className="flex justify-between gap-2">
+          <div className="flex justify-between gap-2 border-t border-border/60 pt-5">
             <Button
               type="button"
               variant="outline"
@@ -256,16 +256,16 @@ export function WebhookWizard({
 
       {/* Passo 3, Secret */}
       {step === 3 && created && (
-        <div className="space-y-4">
+        <div className="space-y-5">
           <div className="space-y-1">
             <h3 className="text-sm font-medium">Webhook criado</h3>
             <p className="text-xs text-muted-foreground">
-              Guarde o secret abaixo, ele é usado para validar as requisições.
+              Guarde o token abaixo, ele é usado para validar as requisições.
             </p>
           </div>
           <SecretRevealStep
             secret={created.secretPlain}
-            label="Secret do webhook"
+            label="Token do webhook"
             onAcknowledge={() => onCreated(created)}
           />
         </div>

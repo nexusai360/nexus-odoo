@@ -237,13 +237,16 @@ function LogRow({
         <span className="text-xs font-mono text-muted-foreground w-28 shrink-0">
           {formatDatetime(log.criadoEm)}
         </span>
-        <code className="flex-1 text-sm font-mono truncate">{log.tool}</code>
-        <span className="hidden sm:inline-flex w-[150px] shrink-0 items-center rounded-full bg-violet-500/10 px-2 py-0.5 text-[11px] font-medium text-violet-600 dark:text-violet-300">
-          <span className="truncate">{log.apiKeyLabel ?? "Agente Nex"}</span>
+        <code className="flex-1 min-w-0 text-sm font-mono truncate">{log.tool}</code>
+        {/* Coluna de largura fixa: alinha a tag, mas o badge se ajusta ao texto. */}
+        <span className="hidden sm:flex w-[140px] shrink-0">
+          <span className="inline-flex max-w-full items-center rounded-full bg-violet-500/10 px-2 py-0.5 text-[11px] font-medium text-violet-600 dark:text-violet-300">
+            <span className="truncate">{log.apiKeyLabel ?? "Agente Nex"}</span>
+          </span>
         </span>
         <span
           className={cn(
-            "inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-xs font-medium shrink-0",
+            "inline-flex w-[96px] shrink-0 items-center justify-center gap-1 rounded-full border px-2 py-0.5 text-xs font-medium",
             statusConfig.className,
           )}
         >

@@ -196,7 +196,7 @@ function WebhookCreateDialog({
 }) {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent data-tour="webhook-wizard-modal" className="sm:max-w-lg">
+      <DialogContent data-tour="webhook-wizard-modal" className="sm:max-w-xl">
         <DialogHeader>
           <DialogTitle>Novo webhook</DialogTitle>
           <DialogDescription>

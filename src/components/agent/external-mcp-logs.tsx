@@ -5,6 +5,7 @@ import {
   AlertTriangle,
   CheckCircle2,
   ChevronDown,
+  Info,
   Loader2,
   Plug,
   Search,
@@ -149,12 +150,15 @@ function LogRow({
           {formatDatetime(log.criadoEm)}
         </span>
         <code className="flex-1 min-w-0 text-sm font-mono truncate">{log.toolName}</code>
-        <span className="hidden sm:inline-flex w-[150px] shrink-0 items-center rounded-full bg-violet-500/10 px-2 py-0.5 text-[11px] font-medium text-violet-600 dark:text-violet-300">
-          <span className="truncate">{log.serverName}</span>
+        {/* Coluna de largura fixa: alinha a tag, mas o badge se ajusta ao texto. */}
+        <span className="hidden sm:flex w-[140px] shrink-0">
+          <span className="inline-flex max-w-full items-center rounded-full bg-violet-500/10 px-2 py-0.5 text-[11px] font-medium text-violet-600 dark:text-violet-300">
+            <span className="truncate">{log.serverName}</span>
+          </span>
         </span>
         <span
           className={cn(
-            "inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-xs font-medium shrink-0",
+            "inline-flex w-[96px] shrink-0 items-center justify-center gap-1 rounded-full border px-2 py-0.5 text-xs font-medium",
             status.className,
           )}
         >
@@ -259,6 +263,19 @@ export function ExternalMcpLogs({ initial, servers }: Props) {
 
   return (
     <div className="space-y-4 max-w-5xl">
+      {/* Nota explicativa: o que são estes logs */}
+      <div className="flex items-start gap-3 rounded-xl border border-border bg-muted/30 p-4">
+        <Info className="mt-0.5 h-4 w-4 shrink-0 text-violet-500" />
+        <p className="text-[13px] leading-relaxed text-muted-foreground">
+          <span className="font-medium text-foreground">
+            Registro de chamadas a MCPs externos.
+          </span>{" "}
+          Cada linha é uma chamada que o Agente Nex fez a uma tool de um servidor MCP
+          externo conectado aqui no Plugar MCP, e a lista reflete só chamadas que
+          realmente aconteceram.
+        </p>
+      </div>
+
       {/* Filtros */}
       <div className="rounded-xl border border-border bg-card p-4 space-y-3">
         <div className="flex flex-wrap gap-2">
