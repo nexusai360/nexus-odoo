@@ -21,6 +21,12 @@ describe("mockPrisma()", () => {
     expect(prisma.mcpAuditLog.findMany).toBeDefined();
     expect(prisma.mcpAuditLog.groupBy).toBeDefined();
 
+    // mcpIdempotencyRecord (F4 Onda 2)
+    expect(prisma.mcpIdempotencyRecord.findUnique).toBeDefined();
+    expect(prisma.mcpIdempotencyRecord.create).toBeDefined();
+    expect(prisma.mcpIdempotencyRecord.delete).toBeDefined();
+    expect(prisma.mcpIdempotencyRecord.deleteMany).toBeDefined();
+
     // rawResPartner
     expect(prisma.rawResPartner.findUnique).toBeDefined();
     expect(prisma.rawResPartner.create).toBeDefined();

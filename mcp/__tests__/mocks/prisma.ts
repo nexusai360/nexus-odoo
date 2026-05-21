@@ -8,7 +8,7 @@ export function mockPrisma(
   overrides: Partial<{
     apiKey: Partial<PrismaClient["apiKey"]>;
     mcpAuditLog: Partial<PrismaClient["mcpAuditLog"]>;
-    // mcpIdempotencyRecord: adicionado quando o modelo for criado no schema Prisma (F4 Onda 2)
+    mcpIdempotencyRecord: Partial<PrismaClient["mcpIdempotencyRecord"]>;
     rawResPartner: Partial<PrismaClient["rawResPartner"]>;
   }> = {},
 ): jest.Mocked<PrismaClient> {
@@ -28,6 +28,13 @@ export function mockPrisma(
       findMany: jest.fn(),
       groupBy: jest.fn(),
       ...overrides.mcpAuditLog,
+    },
+    mcpIdempotencyRecord: {
+      findUnique: jest.fn(),
+      create: jest.fn(),
+      delete: jest.fn(),
+      deleteMany: jest.fn(),
+      ...overrides.mcpIdempotencyRecord,
     },
     rawResPartner: {
       findUnique: jest.fn(),
