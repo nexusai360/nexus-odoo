@@ -9,10 +9,28 @@ import { getMcp24hMetrics } from "@/lib/actions/mcp-metrics";
 export const metadata = { title: "Servidor MCP | Integrações | Nexus Odoo" };
 export const dynamic = "force-dynamic";
 
-async function pingMcp(mcpUrl: string): Promise<"healthy" | "degraded" | "unhealthy"> {
-  if (!mcpUrl) return "unhealthy";
+/**
+ * Resolve a URL de health do servidor MCP. `MCP_URL` aponta para o endpoint MCP
+ * e pode incluir o path `/mcp` (ex.: `http://mcp:3001/mcp`); o health é servido
+ * na raiz do servidor (`/health`). Concatenar `${MCP_URL}/health` ingenuamente
+ * gerava `/mcp/health` — rota inexistente — e fazia o painel reportar o servidor
+ * como inacessível mesmo no ar. Aqui extraímos a origem e apontamos para `/health`.
+ */
+function resolveHealthUrl(mcpUrl: string): string | null {
+  if (!mcpUrl) return null;
   try {
-    const res = await fetch(`${mcpUrl}/health`, {
+    const u = new URL(mcpUrl);
+    return `${u.protocol}//${u.host}/health`;
+  } catch {
+    return null;
+  }
+}
+
+async function pingMcp(mcpUrl: string): Promise<"healthy" | "degraded" | "unhealthy"> {
+  const healthUrl = resolveHealthUrl(mcpUrl);
+  if (!healthUrl) return "unhealthy";
+  try {
+    const res = await fetch(healthUrl, {
       method: "GET",
       signal: AbortSignal.timeout(3000),
       cache: "no-store",
