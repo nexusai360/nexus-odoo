@@ -3,19 +3,34 @@
 /**
  * Server Action: exporta catálogo serializável de tools do MCP.
  *
- * Importa o catálogo real de mcp/catalog/index via path relativo.
- * Serializa apenas os campos seguros (sem handlers, sem schemas Zod).
+ * Busca o catálogo via GET ${MCP_URL}/api/mcp/catalog-schema — endpoint público
+ * do container MCP. Nunca importa código do container mcp/ diretamente (o Turbopack
+ * não resolve imports .js→.ts cross-boundary).
  *
- * Abordagem: import relativo cross-boundary funciona — confirmado por
- * src/lib/reports/queries/financeiro.ts e paridade.test.ts.
+ * Fallback gracioso: se MCP_URL não estiver configurado ou o serviço estiver
+ * offline, retorna { success: true, data: [], unavailable: true }.
  *
  * Gate: super_admin.
  */
 
 import { requireSuperAdmin } from "@/lib/actions/_helpers";
-import { catalogo } from "../../../mcp/catalog/index";
-import { isWriteToolEntry } from "../../../mcp/catalog/types";
-import type { ToolEntryExample } from "../../../mcp/catalog/types";
+
+// ──────────────────────────────────────────────────────────────────────────────
+// Tipo local espelhando McpEndpointToolItem do endpoint MCP.
+// Definido aqui (sem import cross-boundary) para não quebrar o Turbopack.
+// ──────────────────────────────────────────────────────────────────────────────
+
+interface McpEndpointToolItem {
+  id: string;
+  operation: "read" | "write";
+  module: string;
+  descricao: string;
+  capability: string | null;
+  sensitive: boolean;
+  addedInVersion: number | null;
+  inputSchemaKeys: string[];
+  examples: ReadonlyArray<{ language: string; description?: string; code: string }>;
+}
 
 // ──────────────────────────────────────────────────────────────────────────────
 // Types serializáveis (sem functions, sem Zod)
@@ -32,7 +47,12 @@ export interface CatalogToolItem {
   /** Se true, badge "Sensível" exibido na documentação. */
   sensitive: boolean;
   addedInVersion: number | null;
-  examples: ReadonlyArray<ToolEntryExample>;
+  inputSchemaKeys: string[];
+  examples: ReadonlyArray<{
+    language: string;
+    description?: string;
+    code: string;
+  }>;
 }
 
 export interface CatalogByModule {
@@ -42,12 +62,18 @@ export interface CatalogByModule {
 }
 
 export type CatalogSchemaResult =
-  | { success: true; data: CatalogByModule[] }
+  | { success: true; data: CatalogByModule[]; unavailable?: true }
   | { success: false; error: string };
 
 // ──────────────────────────────────────────────────────────────────────────────
 // getMcpCatalogSchema
 // ──────────────────────────────────────────────────────────────────────────────
+
+/** URL base do container MCP (env configurada no .env.example). */
+function getMcpUrl(): string | null {
+  const url = process.env.MCP_URL;
+  return url && url.trim() !== "" ? url.trim().replace(/\/$/, "") : null;
+}
 
 export async function getMcpCatalogSchema(): Promise<CatalogSchemaResult> {
   try {
@@ -56,6 +82,34 @@ export async function getMcpCatalogSchema(): Promise<CatalogSchemaResult> {
     return { success: false, error: (err as Error).message };
   }
 
+  const mcpUrl = getMcpUrl();
+
+  if (!mcpUrl) {
+    // MCP_URL não configurado — catálogo indisponível (dev sem container MCP)
+    return { success: true, data: [], unavailable: true };
+  }
+
+  let tools: McpEndpointToolItem[];
+  try {
+    const res = await fetch(`${mcpUrl}/api/mcp/catalog-schema`, {
+      method: "GET",
+      headers: { Accept: "application/json" },
+      // Next.js 15+: sem cache no SSR para garantir dados frescos
+      cache: "no-store",
+    });
+
+    if (!res.ok) {
+      return { success: true, data: [], unavailable: true };
+    }
+
+    const json = (await res.json()) as { tools?: McpEndpointToolItem[]; count?: number };
+    tools = Array.isArray(json.tools) ? json.tools : [];
+  } catch {
+    // Container MCP offline ou timeout
+    return { success: true, data: [], unavailable: true };
+  }
+
+  // Agrupar por módulo (excluindo tools sempreVisivel sem módulo explícito — "outros")
   const byModule = new Map<string, CatalogByModule>();
 
   function getOrCreate(module: string): CatalogByModule {
@@ -67,39 +121,28 @@ export async function getMcpCatalogSchema(): Promise<CatalogSchemaResult> {
     return entry;
   }
 
-  for (const entry of catalogo) {
-    if (isWriteToolEntry(entry)) {
-      const mod = getOrCreate(entry.module);
-      mod.writeTools.push({
-        id: entry.id,
-        operation: "write",
-        module: entry.module,
-        descricao: entry.descricao,
-        capability: `${entry.capability.module}.${entry.capability.action}`,
-        sensitive: entry.sensitive,
-        addedInVersion: entry.addedInVersion ?? null,
-        examples: entry.examples ?? [],
-      });
+  for (const tool of tools) {
+    const item: CatalogToolItem = {
+      id: tool.id,
+      operation: tool.operation,
+      module: tool.module,
+      descricao: tool.descricao,
+      capability: tool.capability,
+      sensitive: tool.sensitive,
+      addedInVersion: tool.addedInVersion,
+      inputSchemaKeys: tool.inputSchemaKeys,
+      examples: tool.examples,
+    };
+
+    const mod = getOrCreate(tool.module);
+    if (tool.operation === "write") {
+      mod.writeTools.push(item);
     } else {
-      // read tool — dominio pode ser undefined (caminho3 / sempreVisivel)
-      const module = entry.dominio ?? "outros";
-      // Excluir tools de domínio-neutro do catálogo público (registrar_lacuna, bi_consulta_avancada)
-      if (entry.sempreVisivel) continue;
-      const mod = getOrCreate(module);
-      mod.readTools.push({
-        id: entry.id,
-        operation: "read",
-        module,
-        descricao: entry.descricao,
-        capability: null,
-        sensitive: false,
-        addedInVersion: entry.addedInVersion ?? null,
-        examples: entry.examples ?? [],
-      });
+      mod.readTools.push(item);
     }
   }
 
-  // Sort modules alphabetically, tools within module by id
+  // Sort módulos alfabeticamente, tools dentro do módulo por id
   const result: CatalogByModule[] = Array.from(byModule.values())
     .sort((a, b) => a.module.localeCompare(b.module))
     .map((m) => ({
