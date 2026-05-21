@@ -38,7 +38,8 @@ export async function migrateAllScopes(prisma: PrismaClient): Promise<{ migrated
 async function main(): Promise<void> {
   // Importar lazy para não bater no problema de import.meta do client gerado
   // quando o arquivo é importado em ambiente que não suporta ESM nativo (jest).
-  const { prisma } = await import("@/lib/prisma");
+  // @ts-ignore — script CLI standalone; import resolve em runtime via tsx
+  const { prisma } = await import("../../../src/lib/prisma.ts");
   try {
     const r = await migrateAllScopes(prisma);
     console.log(`✅ Migrated ${r.migrated} ApiKeys (scopes → capabilities, isSystemKey=true)`);
