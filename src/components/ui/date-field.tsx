@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { CalendarDays } from "lucide-react";
+import { CalendarDays, ChevronLeft, ChevronRight } from "lucide-react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -58,6 +58,21 @@ export function DateField({
     return { value: String(y), label: String(y) };
   });
 
+  // Navegação por mês com travas: não volta antes do mês corrente (ou do
+  // fromDate) e não passa de dezembro do ano máximo (ano atual +30).
+  const baseDate = fromDate ?? today;
+  const minMonth = new Date(baseDate.getFullYear(), baseDate.getMonth(), 1);
+  const maxMonth = new Date(minYear + YEAR_SPAN, 11, 1);
+  const monthCursor = new Date(displayMonth.getFullYear(), displayMonth.getMonth(), 1);
+  const atMinMonth = monthCursor.getTime() <= minMonth.getTime();
+  const atMaxMonth = monthCursor.getTime() >= maxMonth.getTime();
+
+  function shiftMonth(delta: number) {
+    setDisplayMonth(
+      new Date(displayMonth.getFullYear(), displayMonth.getMonth() + delta, 1),
+    );
+  }
+
   return (
     <Popover open={open} onOpenChange={handleOpenChange}>
       <PopoverTrigger
@@ -82,12 +97,24 @@ export function DateField({
       <PopoverContent
         align="start"
         sideOffset={4}
-        className="w-[var(--anchor-width)] min-w-[280px] p-0"
+        className="w-[var(--anchor-width)] min-w-[300px] p-0"
       >
-        <div className="flex gap-2 border-b border-border p-2">
+        <div className="flex items-center gap-2 border-b border-border p-2">
+          <button
+            type="button"
+            aria-label="Mês anterior"
+            disabled={atMinMonth}
+            onClick={() => shiftMonth(-1)}
+            className={cn(
+              "flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-border bg-card text-muted-foreground transition-colors",
+              "hover:text-foreground disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:text-muted-foreground",
+            )}
+          >
+            <ChevronLeft className="h-4 w-4" aria-hidden />
+          </button>
           <CustomSelect
             aria-label="Mês"
-            className="flex-1"
+            className="min-w-0 flex-1"
             value={String(displayMonth.getMonth())}
             onChange={(v) =>
               setDisplayMonth(new Date(displayMonth.getFullYear(), Number(v), 1))
@@ -96,18 +123,30 @@ export function DateField({
           />
           <CustomSelect
             aria-label="Ano"
-            className="w-[104px] shrink-0"
+            className="w-[80px] shrink-0"
             value={String(displayMonth.getFullYear())}
             onChange={(v) => setDisplayMonth(new Date(Number(v), displayMonth.getMonth(), 1))}
             options={yearOptions}
           />
+          <button
+            type="button"
+            aria-label="Próximo mês"
+            disabled={atMaxMonth}
+            onClick={() => shiftMonth(1)}
+            className={cn(
+              "flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border border-border bg-card text-muted-foreground transition-colors",
+              "hover:text-foreground disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:text-muted-foreground",
+            )}
+          >
+            <ChevronRight className="h-4 w-4" aria-hidden />
+          </button>
         </div>
         <Calendar
           mode="single"
           month={displayMonth}
           onMonthChange={setDisplayMonth}
           hideNavigation
-          classNames={{ month_caption: "hidden" }}
+          classNames={{ month_caption: "hidden", root: "w-full" }}
           selected={value}
           onSelect={(d) => {
             onChange(d ?? undefined);

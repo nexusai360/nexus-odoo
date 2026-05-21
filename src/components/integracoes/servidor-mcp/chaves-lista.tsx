@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition, useId } from "react";
+import { useState, useTransition, useId, type FormEvent } from "react";
 import {
   AlertTriangle,
   ArrowLeft,
@@ -761,6 +761,14 @@ function ChaveDialog(props: ChaveDialogProps) {
   const canAdvance = step !== 1 || label.trim().length > 0;
   const isLast = step === WIZARD_STEPS.length;
 
+  // Enter num campo avança para o próximo passo (equivale a Próximo). No último
+  // passo não submete sozinho: a ação final exige clique.
+  function handleEnterAdvance(e: FormEvent) {
+    e.preventDefault();
+    if (isLast || !canAdvance || isPending) return;
+    setStep((s) => s + 1);
+  }
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-2xl max-h-[90vh] overflow-hidden flex flex-col">
@@ -787,7 +795,11 @@ function ChaveDialog(props: ChaveDialogProps) {
             />
           </div>
         ) : (
-        <div data-tour="mcp-chaves-wizard" className="flex min-h-0 flex-1 flex-col gap-5 mt-1">
+        <form
+          onSubmit={handleEnterAdvance}
+          data-tour="mcp-chaves-wizard"
+          className="flex min-h-0 flex-1 flex-col gap-5 mt-1"
+        >
           <StepIndicator steps={WIZARD_STEPS} current={step} className="shrink-0" />
 
           {/* Corpo do passo: rola dentro, o modal não cresce. */}
@@ -895,7 +907,7 @@ function ChaveDialog(props: ChaveDialogProps) {
             )}
 
             {/* Passo 4, Origens permitidas */}
-            {step === 4 && (
+            {step === 4 && mode === "create" && (
               <div className="space-y-2">
                 <Label htmlFor={originsId}>Origens permitidas</Label>
                 <p className="text-xs text-muted-foreground">
@@ -912,6 +924,7 @@ function ChaveDialog(props: ChaveDialogProps) {
                     onKeyDown={(e) => {
                       if (e.key === "Enter") {
                         e.preventDefault();
+                        e.stopPropagation();
                         addOrigin();
                       }
                     }}
@@ -948,6 +961,33 @@ function ChaveDialog(props: ChaveDialogProps) {
                 ) : (
                   <p className="text-xs text-muted-foreground/70">
                     Nenhuma origem adicionada. A chave aceita qualquer origem.
+                  </p>
+                )}
+              </div>
+            )}
+
+            {/* Passo 4 no modo edição: origens são somente leitura. */}
+            {step === 4 && mode === "edit" && (
+              <div className="space-y-2">
+                <Label>Origens permitidas</Label>
+                <p className="text-xs text-muted-foreground">
+                  As origens são definidas na criação da chave e não podem ser alteradas
+                  depois. Para mudar, revogue esta chave e crie uma nova.
+                </p>
+                {allowedOrigins.length > 0 ? (
+                  <div className="flex flex-wrap gap-1.5">
+                    {allowedOrigins.map((origin) => (
+                      <span
+                        key={origin}
+                        className="inline-flex items-center rounded-lg border border-border bg-muted/50 px-2.5 py-1 text-xs font-mono text-muted-foreground"
+                      >
+                        {origin}
+                      </span>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-xs text-muted-foreground/70">
+                    Sem origens definidas. A chave aceita requisições de qualquer origem.
                   </p>
                 )}
               </div>
@@ -1098,7 +1138,7 @@ function ChaveDialog(props: ChaveDialogProps) {
               )}
             </div>
           </div>
-        </div>
+        </form>
         )}
       </DialogContent>
     </Dialog>

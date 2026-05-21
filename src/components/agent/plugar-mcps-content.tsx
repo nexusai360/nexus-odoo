@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useState, useTransition, type FormEvent } from "react";
 import {
   AlertCircle,
   ArrowLeft,
@@ -438,6 +438,14 @@ function McpWizardDialog({
         : true;
   const isLast = step === WIZARD_STEPS.length;
 
+  // Enter num campo avança para o próximo passo. No último passo não submete
+  // sozinho: testar e concluir exigem clique.
+  function handleEnterAdvance(e: FormEvent) {
+    e.preventDefault();
+    if (isLast || !canAdvance || isPending) return;
+    setStep((s) => s + 1);
+  }
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-xl max-h-[90vh] overflow-hidden flex flex-col">
@@ -451,7 +459,10 @@ function McpWizardDialog({
           </DialogDescription>
         </DialogHeader>
 
-        <div className="flex min-h-0 flex-1 flex-col gap-5 mt-1">
+        <form
+          onSubmit={handleEnterAdvance}
+          className="flex min-h-0 flex-1 flex-col gap-5 mt-1"
+        >
           <StepIndicator steps={WIZARD_STEPS} current={step} className="shrink-0" />
 
           <div className="min-h-[260px] flex-1 overflow-y-auto pr-1">
@@ -681,7 +692,7 @@ function McpWizardDialog({
               )}
             </div>
           </div>
-        </div>
+        </form>
       </DialogContent>
     </Dialog>
   );

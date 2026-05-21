@@ -74,6 +74,13 @@ export function WebhookWizard({
     )
   }
 
+  // Enter num campo avança o passo 1 para o 2. O passo 2 cria o webhook (ação
+  // final), então não dispara sozinho: criar exige clique.
+  function handleEnterAdvance(e: React.FormEvent) {
+    e.preventDefault()
+    if (step === 1 && direction) setStep(2)
+  }
+
   const step2Valid =
     name.trim().length > 0 &&
     methods.length > 0 &&
@@ -103,7 +110,10 @@ export function WebhookWizard({
   }
 
   return (
-    <div className={cn("space-y-5", !embedded && "rounded-xl border p-6")}>
+    <form
+      onSubmit={handleEnterAdvance}
+      className={cn("space-y-5", !embedded && "rounded-xl border p-6")}
+    >
       <StepIndicator steps={["Tipo", "Configuração", "Conclusão"]} current={step} />
 
       {/* Passo 1, Direção */}
@@ -260,7 +270,7 @@ export function WebhookWizard({
           />
         </div>
       )}
-    </div>
+    </form>
   )
 }
 
