@@ -65,10 +65,10 @@ Se eu precisar tocar alguma dessas áreas para a reorganização do menu (Plugar
 ## Progresso
 
 - ✅ Spec v1 → review #1 (41) → v2 → review #2 (24) → v3 (FINAL)
-- ✅ Plan v1 → review #1 (32) → v2 → review #2 (23) → v3 (FINAL)
-- 🔄 Execução da Onda 0 — Bloco A (checklist de validação) em curso
-- ⏳ Bloco B (Schema + migration)
-- ⏳ Bloco C (Odoo client wrapper)
+- ✅ Plan v1 → review #1 (32) → v2 → review #2 (23) → v3 (FINAL; ajustado pós-Bloco A com 6 mudanças cirúrgicas)
+- ✅ Bloco A: checklist de validação (achados em claude-f4-onda2-bloco-a-achados.md; deps NPM instaladas; script discovery/check-mcp-nexus-module.py)
+- ✅ Bloco B: schema (ApiKey + McpAuditLog estendidos; McpIdempotencyRecord novo); migration aplicada (20260521001439_f4_onda2_mcp_writes); rollback.sql; mocks + fixtures + types tests (28 passed); script migrate-scopes
+- 🔄 Bloco C: estender OdooClient com create/write/unlink/searchRead/fieldsGet/searchIrModelData + factory dual-mode
 - ⏳ Blocos D-Q (subagentes via subagent-driven-development)
 
 **Total: 120 achados materiais aplicados em 4 reviews adversariais reais.**

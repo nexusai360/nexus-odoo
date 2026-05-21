@@ -12,3 +12,14 @@
 2026-05-20 20:50 | agent=claude-f4-onda2-mcp-escrita | commit=cd72c1b | scope=plan | summary=Plan v2 — aplica 32 achados (B-1 mocks, D0 pino, D10 CORS, H5/H6 cleanup)
 2026-05-20 20:58 | agent=claude-f4-onda2-mcp-escrita | commit=e3ab4fe | scope=docs | summary=Review crítica #2 do Plan v2 (23 achados)
 2026-05-20 21:07 | agent=claude-f4-onda2-mcp-escrita | commit=36f67c6 | scope=plan | summary=Plan v3 (FINAL) — aplica 23 achados (A11 deps, B4.5 migrate scopes, B5.5 rollback, C7.5 searchRead/fieldsGet, H2.5 truncate, L0 requireSuperAdmin, P0 .env.test, P-coexist/denials E2E, Q-rollback kill switch, Q-cutover shadow, Q-banner herdadas)
+2026-05-20 21:13 | agent=claude-f4-onda2-mcp-escrita | commit=79891ba | scope=plan | summary=Plan v3 ajustado pós-Bloco A (6 mudanças cirúrgicas: estender McpAuditLog/OdooClient/rate-limit existentes; nav.ts não sidebar.tsx; mcp-panel.tsx → plugar-mcps-content.tsx)
+2026-05-20 21:18 | agent=claude-f4-onda2-mcp-escrita | commit=7aa8061 | scope=chore | summary=Bloco A — checklist de validação executado; deps NPM (lru-cache/json-stable-stringify/pino/ioredis-mock) instaladas
+2026-05-20 21:01 | agent=claude-f4-onda2-mcp-escrita-b11 (Sonnet subagent) | commit=df03c84 | scope=test | summary=B-1.1 mockPrisma factory
+2026-05-20 21:09 | agent=claude-f4-onda2-mcp-escrita-b12 (Sonnet subagent) | commit=f43a8c0 | scope=test | summary=B-1.2 mockRedis (ioredis-mock)
+2026-05-20 21:12 | agent=claude-f4-onda2-mcp-escrita-b13 (Sonnet subagent) | commit=e1f3ff5 | scope=test | summary=B-1.3 mockOdooClient
+2026-05-20 21:15 | agent=claude-f4-onda2-mcp-escrita-b14 (Sonnet subagent) | commit=df90e69 | scope=test | summary=B-1.4 fixtures contexts + api-key-context.ts (tipos antecipados)
+2026-05-20 21:17 | agent=claude-f4-onda2-mcp-escrita | commit=e98df49 | scope=feat | summary=B-1.5 .env.example com vars novas da Onda 2
+2026-05-20 21:21 | agent=claude-f4-onda2-mcp-escrita-b1 (Sonnet subagent) | commit=fed7f4d | scope=feat | summary=B1 estende ApiKey schema (capabilities, rateLimit, etc)
+2026-05-20 21:22 | agent=claude-f4-onda2-mcp-escrita-b2 (Sonnet subagent) | commit=81030c8 | scope=feat | summary=B2 estende McpAuditLog (preservando legados)
+2026-05-20 21:23 | agent=claude-f4-onda2-mcp-escrita-b3 (Sonnet subagent) | commit=ff92220 | scope=feat | summary=B3 cria McpIdempotencyRecord
+2026-05-20 21:30 | agent=claude-f4-onda2-mcp-escrita | commit=f445052 | scope=feat | summary=B4-B6 migration aplicada + scripts auxiliares + tipos validados (28 tests passed; Bloco B COMPLETO)
