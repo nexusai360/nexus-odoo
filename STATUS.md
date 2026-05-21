@@ -22,10 +22,22 @@
 
 **Branch ativa: `feat/f4-onda2-mcp-escrita`**. A `main` tem F0+F1+F2+F3+F3.5+F4+F5.
 
-> ## ⚠️ RETOMADA, F4 ONDA 2: RODADA 7 DE CORREÇÕES **CONCLUÍDA**
-> **LER PRIMEIRO** o plano `docs/superpowers/plans/2026-05-21-f4-onda2-correcoes-r7.md`
-> (seção Progresso). A F4 Onda 2 está na branch `feat/f4-onda2-mcp-escrita` (PR #10).
-> Onda 0 + Rodadas 1 a 7 **concluídas**.
+> ## ⚠️ RETOMADA, F4 ONDA 2: RODADA 8 **CONCLUÍDA**
+> **LER PRIMEIRO** a spec `docs/superpowers/specs/2026-05-21-f4-onda2-r8-webhooks-plugar-mcp.md`
+> e o plano `docs/superpowers/plans/2026-05-21-f4-onda2-r8.md` (seção Progresso).
+> A F4 Onda 2 está na branch `feat/f4-onda2-mcp-escrita` (PR #10). Onda 0 +
+> Rodadas 1 a 7 + Rodada 8 **concluídas**.
+>
+> **Rodada 8 — completa (`tsc`/`eslint` 0 erros/`jest` 1536/`build` verdes):**
+> seguiu a metodologia inteira (spec revisada por investigação de código; plano
+> v1 → 2 reviews adversariais genuínas → v3, em `docs/superpowers/reviews/`).
+> Entregou: ajustes do calendário e tag de logs (Frente 3); webhooks no padrão
+> de card + criação em modal + edição corrigida + tour adaptado; **Plugar MCP
+> com abas** (Visão Geral, Servidores, Logs) no padrão do Servidor MCP; e a
+> **integração agente→MCP-externo**: o Agente Nex agora abre sessão com os
+> servidores MCP externos cadastrados, soma as tools deles ao catálogo (prefixo
+> `ext__`), e cada chamada vira `ExternalMcpCallLog`. **Pendente:** teste E2E
+> assistido de um MCP externo real (requer MCP externo alcançável + LLM ativo).
 >
 > **Rodada 7 — completa (commitado, `tsc`/`eslint`/`jest` 1531/`build` verdes):**
 > calendário do `DateField` com setas de mês simples nas extremidades (mais espaço para
