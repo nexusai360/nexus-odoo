@@ -193,7 +193,7 @@ export function PlugarMcpsContent({ initial }: Props) {
 }
 
 // ──────────────────────────────────────────────────────────────────────────────
-// McpServerRow — card compacto
+// McpServerRow, card compacto
 // ──────────────────────────────────────────────────────────────────────────────
 
 function McpServerRow({
@@ -300,7 +300,7 @@ function McpServerRow({
 }
 
 // ──────────────────────────────────────────────────────────────────────────────
-// McpWizardDialog — wizard de conectar e editar
+// McpWizardDialog, wizard de conectar e editar
 // ──────────────────────────────────────────────────────────────────────────────
 
 const WIZARD_STEPS = ["Identificação", "Conexão", "Autenticação", "Revisão"];

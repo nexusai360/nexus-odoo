@@ -18,7 +18,7 @@ export interface AuditParams {
 }
 
 /**
- * Grava uma linha em mcp_audit_log. Nunca lança — envolver em try/catch no pipeline.
+ * Grava uma linha em mcp_audit_log. Nunca lança, envolver em try/catch no pipeline.
  *
  * IMPORTANTE: usa createMany() em vez de create() para suprimir o RETURNING implícito
  * que o Prisma/adapter-pg emite no create(). O role nexus_mcp tem GRANT INSERT mas não

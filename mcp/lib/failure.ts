@@ -28,7 +28,7 @@ export function toOutcome(err: unknown): Exclude<AuditOutcome, "ok"> {
   return "error";
 }
 
-/** Devolve mensagem genérica e segura ao agente — sem vazar stack/detalhes internos. */
+/** Devolve mensagem genérica e segura ao agente, sem vazar stack/detalhes internos. */
 export function safeErrorMessage(outcome: Exclude<AuditOutcome, "ok">): string {
   switch (outcome) {
     case "denied":
@@ -44,7 +44,7 @@ export function safeErrorMessage(outcome: Exclude<AuditOutcome, "ok">): string {
  * Descreve uma exceção para o registro de auditoria: código e mensagem.
  *
  * Diferente de `safeErrorMessage` (genérica, devolvida ao agente), esta mensagem
- * é detalhada e vai apenas para o `McpAuditLog` — o operador precisa saber o
+ * é detalhada e vai apenas para o `McpAuditLog`, o operador precisa saber o
  * motivo real do erro ao inspecionar os Logs do painel.
  */
 export function describeAuditError(err: unknown): {

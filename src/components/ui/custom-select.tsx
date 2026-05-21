@@ -36,7 +36,7 @@ interface CustomSelectProps {
 
 /**
  * Select customizado em cima do `Popover` da base-ui. A base-ui já trata
- * click-outside, foco e dismiss via Escape — evitamos o handler manual de
+ * click-outside, foco e dismiss via Escape, evitamos o handler manual de
  * `mousedown` que causava race no toggle do trigger.
  *
  * Largura mínima fixa (280px) garante boa legibilidade dos labels descritivos

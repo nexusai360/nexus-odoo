@@ -309,7 +309,7 @@ describe("deleteWebhook", () => {
 // Caminho único e updateWebhook
 // ──────────────────────────────────────────────
 
-describe("createWebhook — caminho único", () => {
+describe("createWebhook, caminho único", () => {
   it("bloqueia webhook de entrada com caminho duplicado", async () => {
     mockPrismaWebhookFindFirst.mockResolvedValue({ id: "wh-existente" });
     const result = await createWebhook({

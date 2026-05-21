@@ -3,12 +3,12 @@
 /**
  * Server Actions de gerenciamento de servidores MCP externos.
  *
- * "Plugar MCPs" — registro de MCPs de terceiros que o Agente Nex consome como
+ * "Plugar MCPs", registro de MCPs de terceiros que o Agente Nex consome como
  * cliente, para agregar capacidades (Slack, GitHub, etc.).
  *
  * Gate: super_admin em todas as operações (requireSuperAdmin).
  * O `authToken` é persistido cifrado (AES-256-GCM, src/lib/encryption.ts) e
- * jamais devolvido ao cliente — a UI só recebe `hasAuth: boolean`.
+ * jamais devolvido ao cliente, a UI só recebe `hasAuth: boolean`.
  */
 
 import { revalidatePath } from "next/cache";
@@ -237,7 +237,7 @@ export async function deleteExternalMcpServer(
 }
 
 // ──────────────────────────────────────────────────────────────────────────────
-// test — alcançabilidade do MCP externo
+// test, alcançabilidade do MCP externo
 // ──────────────────────────────────────────────────────────────────────────────
 
 /**
@@ -320,7 +320,7 @@ export async function testExternalMcpServer(
       try {
         headers[row.authHeader] = decrypt(row.authToken);
       } catch {
-        // token corrompido — segue sem auth; o teste vai refletir
+        // token corrompido, segue sem auth; o teste vai refletir
       }
     }
 
@@ -340,7 +340,7 @@ export async function testExternalMcpServer(
       status = "error";
       message =
         err instanceof Error && err.name === "TimeoutError"
-          ? "Tempo esgotado — servidor não respondeu em 5s."
+          ? "Tempo esgotado, servidor não respondeu em 5s."
           : "Não foi possível conectar ao servidor.";
     }
 

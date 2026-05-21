@@ -24,7 +24,7 @@ import { encrypt } from "@/lib/encryption";
 
 type DataResult<T> = { success: true; data: T } | { success: false; error: string };
 
-/** Direção do webhook — valores do enum Prisma `WebhookDirection`. */
+/** Direção do webhook, valores do enum Prisma `WebhookDirection`. */
 export type WebhookDirection = "inbound" | "outbound";
 
 /** Métodos HTTP aceitos por um webhook. */
@@ -33,18 +33,18 @@ export type WebhookMethod = "GET" | "POST" | "PUT" | "PATCH" | "DELETE" | "HEAD"
 export interface CreateWebhookInput {
   direction: WebhookDirection;
   name: string;
-  /** Caminho (slug) — somente inbound. */
+  /** Caminho (slug), somente inbound. */
   path?: string | null;
-  /** URL de destino completa — somente outbound. */
+  /** URL de destino completa, somente outbound. */
   targetUrl?: string | null;
   methods: WebhookMethod[];
 }
 
 export interface UpdateWebhookInput {
   name: string;
-  /** Caminho (slug) — somente inbound. */
+  /** Caminho (slug), somente inbound. */
   path?: string | null;
-  /** URL de destino completa — somente outbound. */
+  /** URL de destino completa, somente outbound. */
   targetUrl?: string | null;
   methods: WebhookMethod[];
 }
@@ -154,7 +154,7 @@ export async function createWebhook(
 
   const data = parsed.data;
 
-  // Caminho (path) de webhook de entrada precisa ser único — duplicado quebraria
+  // Caminho (path) de webhook de entrada precisa ser único, duplicado quebraria
   // o roteamento das requisições recebidas.
   if (data.direction === "inbound" && data.path) {
     const taken = await prisma.whatsappWebhook.findFirst({

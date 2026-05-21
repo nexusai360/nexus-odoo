@@ -315,16 +315,23 @@ A -> B -> C -> D -> E -> F -> G -> H -> I.
 
 ## Progresso
 
-- [ ] Area A, travessao do card Servidor MCP.
-- [ ] Area B, motivo do erro nos Logs.
-- [ ] Area C, ajustes do wizard de Chaves (stepper, tenant, modal travado, seletor,
-  separar Origens/Resumo).
-- [ ] Area D, calendario no padrao (largura, mes/ano, faixa de anos).
-- [ ] Area E, trava de rolagem e titulo da Documentacao.
-- [ ] Area F, Webhooks (HEAD, /api/webhooks/, path unico, updateWebhook, card, edicao).
-- [ ] Area G, Plugar MCPs (wizard, testar antes de conectar, status, card, edicao).
-- [ ] Area H, tours atualizados.
-- [ ] Area I, verificacao e fechamento.
+- [x] Area A, travessao removido do card Servidor MCP.
+- [x] Area B, recordAudit grava errorCode/errorMessage; describeAuditError; o detalhe
+  do log ja exibe o bloco de erro.
+- [x] Area C, wizard de Chaves: stepper maior, tenant com exemplo, modal travado com
+  corpo rolavel, seletor de acessos com controle segmentado, 5 passos (Origens e Resumo
+  separados).
+- [x] Area D, DateField no padrao: navegacao mes/ano por CustomSelect, mes por extenso,
+  ano ate +30, popover com a largura do gatilho.
+- [x] Area E, espacador de fundo dinamico auto-corretivo; titulo "Documentacao do
+  Servidor MCP" no tamanho dos titulos de secao.
+- [x] Area F, Webhooks: metodo HEAD, base /api/webhooks/, path unico (create+update),
+  updateWebhook, WebhookEditDialog, card com tags + icones.
+- [x] Area G, Plugar MCPs: wizard em modal, testExternalMcpEndpoint, teste obrigatorio
+  antes de conectar, status Conectado/Sem conexao/Desativado, card com icones, edicao.
+- [x] Area H, tours atualizados (Chaves 5 passos, Logs com erro, Plugar wizard, Webhooks).
+- [x] Area I, verificacao: tsc/jest(1530)/next build verdes; travessao removido dos
+  arquivos da r5; eslint pre-existente do MCP no RADAR R7.
 
 ---
 

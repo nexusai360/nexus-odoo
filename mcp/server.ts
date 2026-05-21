@@ -1,9 +1,9 @@
 // mcp/server.ts
-// Servidor HTTP do MCP — middlewares de auth + sessão + McpServer + pipeline de tools/call.
+// Servidor HTTP do MCP, middlewares de auth + sessão + McpServer + pipeline de tools/call.
 // Decomposto nas tasks 4a.14 (service token) / 4a.15 (sessão) / 4a.16 (transport+McpServer)
 // / 4a.17 (pipeline tools/call) / 4f-3 (rate limiter).
 //
-// NOTA DE ARQUITETURA (Opção A — McpServer por sessão):
+// NOTA DE ARQUITETURA (Opção A, McpServer por sessão):
 // Para implementar a camada 1 do RBAC (tools/list filtrado por usuário), criamos
 // um McpServer + StreamableHTTPServerTransport por sessão na requisição `initialize`.
 // Cada McpServer registra apenas as tools visíveis ao usuário (visibleTools), garantindo
@@ -34,7 +34,7 @@ import { createApiKeyCache } from "./auth/api-key-cache.js";
 import { handlePreflight } from "./middleware/cors.js";
 import { handleExternalRequest, type ExternalPipelineDeps } from "./dispatcher/external-pipeline.js";
 
-// ─── handleToolCall — pipeline de tools/call (4a.17) ────────────────────────
+// ─── handleToolCall, pipeline de tools/call (4a.17) ────────────────────────
 
 export interface HandleToolCallDeps {
   resolveUser: typeof resolveUserContext;
@@ -60,7 +60,7 @@ export async function handleToolCall(
   let outcome: AuditOutcome = "error";
 
   try {
-    // Camada 7b (4f-3): rate limit por usuário — antes de qualquer processamento
+    // Camada 7b (4f-3): rate limit por usuário, antes de qualquer processamento
     const rl = await checkMcpRateLimit(deps.rateLimit, userId);
     if (!rl.allowed) {
       outcome = "denied";
@@ -134,7 +134,7 @@ async function auditSafe(
       errorMessage: errorInfo?.errorMessage,
     });
   } catch (err: unknown) {
-    // Falha de audit NÃO derruba a resposta — mas deve ser visível em produção.
+    // Falha de audit NÃO derruba a resposta, mas deve ser visível em produção.
     // SEVERIDADE ALTA: falha sistemática de audit invalida a camada 7 do RBAC.
     // Se este log aparecer com frequência, investigar permissões do role nexus_mcp.
     const msg = err instanceof Error ? err.message : String(err);
@@ -154,24 +154,24 @@ function errorResult(message: string): { content: Array<{ type: "text"; text: st
 }
 
 // ─── Cache de API keys (singleton por processo) ───────────────────────────────
-// Compartilhado entre requests — LRU com TTL de 60s, até 500 entradas.
+// Compartilhado entre requests, LRU com TTL de 60s, até 500 entradas.
 export const apiKeyCache = createApiKeyCache();
 
 // ─── Registro de McpServer por sessão ────────────────────────────────────────
 
 /**
  * Cria um McpServer e registra apenas as tools visíveis ao usuário (camada 1 do RBAC).
- * Cada sessão tem sua própria instância — tools/list devolve só o catálogo filtrado.
+ * Cada sessão tem sua própria instância, tools/list devolve só o catálogo filtrado.
  *
  * C1: visibleTools é chamado aqui, garantindo que o agente nunca veja tools de
  * domínios ou roles a que não tem acesso.
- * C2: cada tool é registrada com inputSchemaShape real — o agente recebe o schema
+ * C2: cada tool é registrada com inputSchemaShape real, o agente recebe o schema
  * completo dos parâmetros em tools/list.
  */
 function createMcpServerForUser(userCtx: UserContext): McpServer {
   const mcpServer = new McpServer({ name: "nexus-odoo-mcp", version: "1.0.0" });
 
-  // Camada 1 — filtro de visibilidade: só tools autorizadas para este usuário
+  // Camada 1, filtro de visibilidade: só tools autorizadas para este usuário
   const tools = visibleTools(catalogo, userCtx);
 
   for (const tool of tools) {
@@ -190,7 +190,7 @@ function createMcpServerForUser(userCtx: UserContext): McpServer {
   return mcpServer;
 }
 
-// ─── createHttpServer — 4a.14, 4a.15, 4a.16 ────────────────────────────────
+// ─── createHttpServer, 4a.14, 4a.15, 4a.16 ────────────────────────────────
 
 /** Servidor http.Server com o handler principal exposto como `_handler` para testes. */
 export type TestableServer = http.Server & {
@@ -210,27 +210,27 @@ const sessionMap = new Map<string, { mcpServer: McpServer; transport: Streamable
  * O campo `_handler` expõe o handler internamente para testes unitários (4a.14/4a.15).
  */
 export function createHttpServer(): TestableServer {
-  // Handler HTTP principal — 4a.14 (service token) + 4a.15 (sessão) + 4a.16 (transport)
+  // Handler HTTP principal, 4a.14 (service token) + 4a.15 (sessão) + 4a.16 (transport)
   const handler = async (
     req: http.IncomingMessage,
     res: http.ServerResponse,
   ): Promise<void> => {
-    // Bloco I — Health check: rota pública, sem auth (antes de qualquer middleware)
+    // Bloco I, Health check: rota pública, sem auth (antes de qualquer middleware)
     const url = req.url ?? "";
     if (req.method === "GET" && (url === "/health" || url === "/api/mcp/health")) {
       await handleHealthRequest(req, res);
       return;
     }
 
-    // Catálogo de tools — endpoint público de metadados (sem auth, equivalente a /health)
+    // Catálogo de tools, endpoint público de metadados (sem auth, equivalente a /health)
     if (req.method === "GET" && (url === "/api/mcp/catalog-schema" || url === "/catalog-schema")) {
       handleCatalogSchemaRequest(res, catalogo);
       return;
     }
 
-    // Preflight CORS — OPTIONS antes de qualquer auth (Bloco P-0)
+    // Preflight CORS, OPTIONS antes de qualquer auth (Bloco P-0)
     if (req.method === "OPTIONS") {
-      // Auth da API key para obter allowedOrigins (best-effort — sem apiKey retorna 403)
+      // Auth da API key para obter allowedOrigins (best-effort, sem apiKey retorna 403)
       const authResult = await authenticate(prisma, apiKeyCache, {
         headerAuth: req.headers.authorization,
         headerUserId: req.headers["x-mcp-user-id"] as string | undefined,
@@ -248,13 +248,13 @@ export function createHttpServer(): TestableServer {
     // Estratégia de dois estágios para preservar retrocompat total com testes do
     // modo interno (4a.14/4a.15/C-NOVO) sem alterar seus timings de microtask:
     //
-    //   Estágio 1 — service token (síncrono, legado):
+    //   Estágio 1, service token (síncrono, legado):
     //     validateServiceToken() é executado PRIMEIRO.
     //     - Se válido → modo INTERNO (fluxo original sem nenhuma await extra).
     //     - Se inválido → possível modo externo (API key): coletar body e chamar
     //       authenticate() para identificar a API key.
     //
-    //   Estágio 2 — API key (assíncrono, Bloco P-0):
+    //   Estágio 2, API key (assíncrono, Bloco P-0):
     //     authenticate() retorna "external" → pipeline externo (handler direto).
     //     authenticate() retorna "unauthorized" → 401.
     //
@@ -264,7 +264,7 @@ export function createHttpServer(): TestableServer {
     const isServiceTokenValid = validateServiceToken(req.headers.authorization);
 
     if (!isServiceTokenValid) {
-      // Possível autenticação externa (API key) — Bloco P-0.
+      // Possível autenticação externa (API key), Bloco P-0.
       // Ler body antes (necessário para handleExternalRequest).
       // Guard: socket null = ambiente de teste sem stream real → body vazio.
       let bodyBuffer: Buffer = Buffer.alloc(0);
@@ -305,9 +305,9 @@ export function createHttpServer(): TestableServer {
     }
 
     // ── Modo interno (service token válido) ──────────────────────────────────
-    // Fluxo original 4a.14/4a.15/4a.16 — sem awaits extras antes do transport.
+    // Fluxo original 4a.14/4a.15/4a.16, sem awaits extras antes do transport.
 
-    // 4a.15 — Middleware de resolução de sessão
+    // 4a.15, Middleware de resolução de sessão
     // O X-Mcp-User-Id é obrigatório em cada request (stateless por design).
     const userId = req.headers["x-mcp-user-id"];
     if (!userId || typeof userId !== "string") {
@@ -323,7 +323,7 @@ export function createHttpServer(): TestableServer {
       return;
     }
 
-    // 4a.16 — McpServer por sessão (Opção A, C1)
+    // 4a.16, McpServer por sessão (Opção A, C1)
     // Se a request traz Mcp-Session-Id já conhecido, reusar o par existente.
     // Se não (initialize ou primeira request), criar novo par McpServer+transport.
     const incomingSessionId = req.headers["mcp-session-id"];
@@ -350,7 +350,7 @@ export function createHttpServer(): TestableServer {
         },
       });
 
-      // I3 — registrar limpeza da sessão no fechamento do transport
+      // I3, registrar limpeza da sessão no fechamento do transport
       newTransport.onclose = () => {
         const sid = newTransport.sessionId;
         if (sid) {
@@ -359,7 +359,7 @@ export function createHttpServer(): TestableServer {
         }
       };
 
-      // I2 — await para não engolir erro de inicialização
+      // I2, await para não engolir erro de inicialização
       await newMcpServer.connect(newTransport);
 
       transport = newTransport;
