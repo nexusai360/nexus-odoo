@@ -28,6 +28,7 @@ import { toOutcome, safeErrorMessage } from "./lib/failure.js";
 import { checkMcpRateLimit, RATE_LIMIT_EXCEEDED_MESSAGE, type RateLimitRedis } from "./lib/rate-limit.js";
 import type { ToolEntry } from "./catalog/types.js";
 import { handleHealthRequest } from "./health/index.js";
+import { handleCatalogSchemaRequest } from "./catalog/schema-endpoint.js";
 import { authenticate, type AuthResult } from "./auth/auth-middleware.js";
 import { createApiKeyCache } from "./auth/api-key-cache.js";
 import { handlePreflight } from "./middleware/cors.js";
@@ -193,6 +194,12 @@ export function createHttpServer(): TestableServer {
     const url = req.url ?? "";
     if (req.method === "GET" && (url === "/health" || url === "/api/mcp/health")) {
       await handleHealthRequest(req, res);
+      return;
+    }
+
+    // Catálogo de tools — endpoint público de metadados (sem auth, equivalente a /health)
+    if (req.method === "GET" && (url === "/api/mcp/catalog-schema" || url === "/catalog-schema")) {
+      handleCatalogSchemaRequest(res, catalogo);
       return;
     }
 
