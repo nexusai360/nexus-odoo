@@ -719,6 +719,7 @@ interface Props {
 export function McpDocsContent({ catalog, mcpUrl }: Props) {
   const base = mcpUrl && mcpUrl.length > 0 ? mcpUrl : BASE_FALLBACK;
   const [activeSection, setActiveSection] = useState("intro");
+  const [spacerHeight, setSpacerHeight] = useState(0);
   const observerRef = useRef<IntersectionObserver | null>(null);
 
   useEffect(() => {
@@ -736,20 +737,46 @@ export function McpDocsContent({ catalog, mcpUrl }: Props) {
     });
 
     // O scroll real acontece no <main> do layout protegido (overflow-y-auto).
-    // Sem espaço morto de rolagem após a última seção, ela nunca cruza a faixa
-    // do observer; ao chegar ao fim do scroll, marcamos a última seção ativa.
     const scrollEl = document.querySelector("main");
+    const lastId = sections[sections.length - 1].id;
+    // Topo padrão de cada seção ao ser selecionada (scroll-mt-24 = 96px).
+    const TOP_OFFSET = 96;
+
     function onScroll() {
       if (!scrollEl) return;
       const atBottom =
         scrollEl.scrollTop + scrollEl.clientHeight >= scrollEl.scrollHeight - 4;
-      if (atBottom) setActiveSection(sections[sections.length - 1].id);
+      if (atBottom) setActiveSection(lastId);
     }
+
+    // Espaçador dinâmico: ajusta o espaço de rolagem abaixo do conteúdo para que
+    // a rolagem máxima posicione a última seção exatamente no topo padrão, e nada
+    // além. Auto-corrige (o espaçador é a única variável): newSpacer = prev +
+    // (rolagem desejada - rolagem atual).
+    function recomputeSpacer() {
+      const last = document.getElementById(lastId);
+      if (!scrollEl || !last) return;
+      const lastTop =
+        last.getBoundingClientRect().top -
+        scrollEl.getBoundingClientRect().top +
+        scrollEl.scrollTop;
+      const desiredMaxScroll = Math.max(0, lastTop - TOP_OFFSET);
+      const currentMaxScroll = scrollEl.scrollHeight - scrollEl.clientHeight;
+      setSpacerHeight((prev) =>
+        Math.max(0, Math.round(prev + (desiredMaxScroll - currentMaxScroll))),
+      );
+    }
+
+    recomputeSpacer();
+    const settle = setTimeout(recomputeSpacer, 300);
     scrollEl?.addEventListener("scroll", onScroll, { passive: true });
+    window.addEventListener("resize", recomputeSpacer);
 
     return () => {
       observerRef.current?.disconnect();
       scrollEl?.removeEventListener("scroll", onScroll);
+      window.removeEventListener("resize", recomputeSpacer);
+      clearTimeout(settle);
     };
   }, []);
 
@@ -774,13 +801,13 @@ export function McpDocsContent({ catalog, mcpUrl }: Props) {
         variants={containerVariants}
         initial="hidden"
         animate="visible"
-        className="min-w-0 flex-1 space-y-12 pb-16"
+        className="min-w-0 flex-1 space-y-12"
       >
         {/* Hero */}
         <motion.div variants={itemVariants} id="intro" className="space-y-6 scroll-mt-24">
           <div>
-            <h1 className="text-base font-semibold tracking-tight text-foreground">
-              Servidor MCP, Documentação
+            <h1 className="text-xl font-semibold tracking-tight text-foreground">
+              Documentação do Servidor MCP
             </h1>
             <p className="text-sm text-muted-foreground mt-1">
               Endpoint semântico para agentes de IA, com {totalTools} tools de leitura e escrita
@@ -1153,11 +1180,14 @@ export function McpDocsContent({ catalog, mcpUrl }: Props) {
           </div>
         </motion.div>
 
-        <div className="pt-4 border-t border-border">
+        <div id="docs-footer" className="pt-4 border-t border-border">
           <p className="text-center text-xs text-muted-foreground">
             Servidor MCP do Nexus Odoo. Transporte Streamable HTTP, autenticação por chave de API.
           </p>
         </div>
+
+        {/* Espaçador dinâmico: permite a última seção alcançar o topo, sem rolagem extra. */}
+        <div aria-hidden style={{ height: spacerHeight }} />
       </motion.div>
     </div>
   );
