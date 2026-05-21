@@ -40,7 +40,7 @@ export function PlugarMcpsContent({ mcpUrl, maskedToken, healthStatus }: Props) 
   return (
     <div className="space-y-6 max-w-3xl">
       {/* Status de saúde */}
-      <Card className="rounded-2xl border border-border bg-muted/30 p-2">
+      <Card className="rounded-xl border border-border bg-muted/30 p-2">
         <CardContent className="flex items-center gap-3 py-3">
           {healthStatus === "ok" ? (
             <>
@@ -89,7 +89,7 @@ export function PlugarMcpsContent({ mcpUrl, maskedToken, healthStatus }: Props) 
       </Card>
 
       {/* Endpoint + Token */}
-      <Card className="rounded-2xl border border-border bg-muted/30 p-2">
+      <Card className="rounded-xl border border-border bg-muted/30 p-2">
         <CardHeader className="pb-3">
           <CardTitle>Endpoint &amp; token</CardTitle>
         </CardHeader>
@@ -194,7 +194,7 @@ export function PlugarMcpsContent({ mcpUrl, maskedToken, healthStatus }: Props) 
       </Card>
 
       {/* Documentação de conexão — node Agent do n8n */}
-      <Card className="rounded-2xl border border-border bg-muted/30 p-2">
+      <Card className="rounded-xl border border-border bg-muted/30 p-2">
         <CardHeader className="pb-3">
           <CardTitle className="flex items-center gap-2">
             Conectar o node Agent do n8n

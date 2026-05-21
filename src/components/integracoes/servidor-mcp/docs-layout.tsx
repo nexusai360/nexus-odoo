@@ -162,7 +162,7 @@ export function McpDocsLayout({ sections, catalog }: Props) {
             <DocsCatalog catalog={catalog} />
           </div>
         ) : activeSection ? (
-          <Card className="rounded-2xl border border-border bg-muted/30 p-2">
+          <Card className="rounded-xl border border-border bg-muted/30 p-2">
             <CardContent className="pt-4 pb-6 px-5">
               <div className="mb-4 space-y-1 pb-4 border-b border-border">
                 <h2 className="text-base font-semibold text-foreground">
@@ -174,7 +174,7 @@ export function McpDocsLayout({ sections, catalog }: Props) {
             </CardContent>
           </Card>
         ) : (
-          <Card className="rounded-2xl border border-border bg-muted/30">
+          <Card className="rounded-xl border border-border bg-muted/30">
             <CardContent className="flex flex-col items-center justify-center py-12 text-center">
               <BookOpen className="h-8 w-8 text-muted-foreground/40 mb-3" />
               <p className="text-sm text-muted-foreground">Selecione uma seção na sidebar.</p>

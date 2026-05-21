@@ -461,16 +461,28 @@ function CapabilitiesMatrix({ value, onChange }: CapabilitiesMatrixProps) {
                 <th
                   key={a}
                   className={cn(
-                    "py-2 px-2 text-center font-medium",
+                    "py-2 px-2 font-medium",
                     SENSITIVE_ACTIONS.includes(a)
                       ? "text-amber-600 dark:text-amber-400"
                       : "text-muted-foreground",
                   )}
                 >
-                  {a}
-                  {SENSITIVE_ACTIONS.includes(a) && (
-                    <span title="Ação sensível" className="ml-1 text-amber-500">⚠</span>
-                  )}
+                  <span className="inline-flex items-center justify-center gap-1">
+                    {a}
+                    {SENSITIVE_ACTIONS.includes(a) && (
+                      <Tooltip>
+                        <TooltipTrigger
+                          render={
+                            <AlertTriangle
+                              className="h-3 w-3 text-amber-500"
+                              aria-label="Ação sensível"
+                            />
+                          }
+                        />
+                        <TooltipContent>Ação sensível — exige confirmação</TooltipContent>
+                      </Tooltip>
+                    )}
+                  </span>
                 </th>
               ))}
             </tr>
@@ -633,7 +645,7 @@ function NovaChaveDialog({ open, onClose, onCreated }: NovaChaveDialogProps) {
           <div className="space-y-2">
             <Label className="text-sm font-medium">Capabilities</Label>
             <p className="text-xs text-muted-foreground">
-              Marque os módulos e ações que esta chave pode executar. Ações marcadas com ⚠ exigem confirmação.
+              Marque os módulos e ações que esta chave pode executar. Ações sensíveis exigem confirmação.
             </p>
             <CapabilitiesMatrix value={capabilities} onChange={setCapabilities} />
           </div>

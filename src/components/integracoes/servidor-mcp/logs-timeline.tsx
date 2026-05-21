@@ -360,7 +360,7 @@ function FilterBar({
     filters.search;
 
   return (
-    <Card className="rounded-2xl border border-border bg-muted/30 p-2">
+    <Card className="rounded-xl border border-border bg-muted/30 p-2">
       <CardContent className="pt-4 pb-4 space-y-3">
         {/* Row 1: Search + status + export */}
         <div className="flex flex-wrap gap-2">
@@ -398,9 +398,10 @@ function FilterBar({
             <Filter className="h-3 w-3" />
             Filtros
             {hasActiveFilters && (
-              <span className="ml-0.5 flex h-4 w-4 items-center justify-center rounded-full bg-primary text-[9px] text-primary-foreground font-bold">
-                •
-              </span>
+              <span
+                className="ml-0.5 inline-block h-1.5 w-1.5 rounded-full bg-violet-500"
+                aria-label="Filtros ativos"
+              />
             )}
           </Button>
           <Button
@@ -605,7 +606,7 @@ export function LogsTimeline({ initial }: Props) {
       <div className="space-y-1">
         <TimelineHeader />
         {items.length === 0 && !isPending ? (
-          <Card className="rounded-2xl border border-border bg-muted/30">
+          <Card className="rounded-xl border border-border bg-muted/30">
             <CardContent className="flex flex-col items-center justify-center py-12 text-center">
               <Terminal className="h-8 w-8 text-muted-foreground/40 mb-3" />
               <p className="text-sm text-muted-foreground">

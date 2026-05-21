@@ -35,7 +35,7 @@ interface Props {
 
 const HEALTH_CONFIG = {
   healthy: {
-    label: "Healthy",
+    label: "Saudável",
     icon: CheckCircle2,
     iconClass: "text-emerald-500",
     bgClass: "bg-emerald-500/10",
@@ -44,7 +44,7 @@ const HEALTH_CONFIG = {
     desc: "Servidor MCP respondendo normalmente.",
   },
   degraded: {
-    label: "Degraded",
+    label: "Degradado",
     icon: MinusCircle,
     iconClass: "text-amber-500",
     bgClass: "bg-amber-500/10",
@@ -53,7 +53,7 @@ const HEALTH_CONFIG = {
     desc: "Servidor MCP respondendo com limitações.",
   },
   unhealthy: {
-    label: "Unhealthy",
+    label: "Indisponível",
     icon: AlertCircle,
     iconClass: "text-destructive",
     bgClass: "bg-destructive/10",
@@ -93,7 +93,7 @@ export function McpVisaoGeral({ mcpPublicUrl, healthStatus, versionInfo, metrics
   return (
     <div className="space-y-4 max-w-3xl">
       {/* ── Card 1: Status + URL + badges informativos ─────────────────────── */}
-      <Card className="rounded-2xl border border-border bg-muted/30 p-2">
+      <Card className="rounded-xl border border-border bg-muted/30 p-2">
         <CardHeader className="pb-3">
           <div className="flex items-center justify-between gap-3">
             <CardTitle className="text-base">Servidor MCP</CardTitle>
@@ -190,7 +190,7 @@ export function McpVisaoGeral({ mcpPublicUrl, healthStatus, versionInfo, metrics
       </Card>
 
       {/* ── Card 2: Métricas 24h ────────────────────────────────────────────── */}
-      <Card className="rounded-2xl border border-border bg-muted/30 p-2">
+      <Card className="rounded-xl border border-border bg-muted/30 p-2">
         <CardHeader className="pb-3">
           <CardTitle className="flex items-center gap-2 text-base">
             <BarChart2 className="h-4 w-4 text-muted-foreground" />

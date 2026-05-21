@@ -128,7 +128,7 @@ function ModuleSection({ data, query }: { data: CatalogByModule; query: string }
   if (readTools.length === 0 && writeTools.length === 0) return null;
 
   return (
-    <Card className="rounded-2xl border border-border bg-muted/30 p-2">
+    <Card className="rounded-xl border border-border bg-muted/30 p-2">
       <CardHeader className="pb-2">
         <CardTitle className="flex items-center gap-2 text-sm">
           <Layers className="h-4 w-4 text-muted-foreground" />
@@ -141,7 +141,7 @@ function ModuleSection({ data, query }: { data: CatalogByModule; query: string }
               </Badge>
             )}
             {writeTools.length > 0 && (
-              <Badge variant="outline" className="text-[10px] border-blue-500/30 bg-blue-500/10 text-blue-600 dark:text-blue-400">
+              <Badge variant="outline" className="text-[10px] border-violet-500/30 bg-violet-500/10 text-violet-600 dark:text-violet-400">
                 {writeTools.length} write
               </Badge>
             )}
@@ -206,7 +206,7 @@ export function DocsCatalog({ catalog }: Props) {
           <Badge variant="outline" className="text-[10px] border-emerald-500/30 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400">
             {totalRead} read
           </Badge>
-          <Badge variant="outline" className="text-[10px] border-blue-500/30 bg-blue-500/10 text-blue-600 dark:text-blue-400">
+          <Badge variant="outline" className="text-[10px] border-violet-500/30 bg-violet-500/10 text-violet-600 dark:text-violet-400">
             {totalWrite} write
           </Badge>
         </div>
@@ -242,7 +242,7 @@ export function DocsCatalog({ catalog }: Props) {
               t.descricao.toLowerCase().includes(query.toLowerCase()),
           ).length === 0,
       ) && (
-        <Card className="rounded-2xl border border-border bg-muted/30">
+        <Card className="rounded-xl border border-border bg-muted/30">
           <CardContent className="flex flex-col items-center justify-center py-12 text-center">
             <Search className="h-8 w-8 text-muted-foreground/40 mb-3" />
             <p className="text-sm text-muted-foreground">
