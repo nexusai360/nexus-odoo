@@ -1,24 +1,17 @@
 "use client";
 
 /**
- * McpDocsRenderer — renderiza markdown como HTML estilizado.
+ * McpDocsRenderer — renderiza markdown como HTML estilizado, no padrão visual
+ * da documentação de API do NFE Nexus.
  *
- * Decisão MDX: o projeto não tem setup MDX nem react-markdown instalados.
- * Para não adicionar dependência pesada, usamos um parser simples inline:
- * - headings (# ## ###)
- * - bold (**text**)
- * - inline code (`code`)
- * - fenced code blocks (``` ... ```)
- * - tables (| col | col |)
- * - unordered lists (- item)
- * - ordered lists (1. item)
- * - horizontal rules (---)
- * - blockquotes (> text)
- * - paragraphs
- *
- * Suficiente para o conteúdo dos docs do MCP sem dep extra.
+ * Parser inline simples (sem dependência de MDX/react-markdown):
+ * headings, bold, itálico, inline code, fenced code blocks com botão copiar,
+ * tabelas, listas, regras horizontais, blockquotes (callout) e parágrafos.
  */
 
+import { useState } from "react";
+import { Check, Copy } from "lucide-react";
+import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 
 // ──────────────────────────────────────────────────────────────────────────────
@@ -26,24 +19,17 @@ import { cn } from "@/lib/utils";
 // ──────────────────────────────────────────────────────────────────────────────
 
 function parseInline(text: string): string {
-  // Escape HTML first
-  let s = text
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;");
-
-  // Bold **text**
+  let s = text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
   s = s.replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>");
-  // Italic *text*
   s = s.replace(/\*(.+?)\*/g, "<em>$1</em>");
-  // Inline code `code`
-  s = s.replace(/`([^`]+)`/g, '<code class="inline-code">$1</code>');
-  // Links [text](url)
+  s = s.replace(
+    /`([^`]+)`/g,
+    '<code class="rounded bg-muted px-1 py-0.5 font-mono text-[0.85em] text-foreground">$1</code>',
+  );
   s = s.replace(
     /\[([^\]]+)\]\(([^)]+)\)/g,
-    '<a href="$2" class="text-primary underline underline-offset-2 hover:no-underline" target="_blank" rel="noopener noreferrer">$1</a>',
+    '<a href="$2" class="text-violet-500 underline underline-offset-2 hover:no-underline" target="_blank" rel="noopener noreferrer">$1</a>',
   );
-
   return s;
 }
 
@@ -71,7 +57,6 @@ function parseMarkdown(md: string): Block[] {
   while (i < lines.length) {
     const line = lines[i];
 
-    // Fenced code block
     const fenceMatch = line.match(/^```(\w*)$/);
     if (fenceMatch) {
       const lang = fenceMatch[1] || "";
@@ -81,19 +66,17 @@ function parseMarkdown(md: string): Block[] {
         codeLines.push(lines[i]);
         i++;
       }
-      i++; // skip closing ```
+      i++;
       blocks.push({ type: "code", content: codeLines.join("\n"), lang });
       continue;
     }
 
-    // Horizontal rule
     if (/^---+$/.test(line.trim())) {
       blocks.push({ type: "hr", content: "" });
       i++;
       continue;
     }
 
-    // Headings
     const headingMatch = line.match(/^(#{1,4})\s+(.+)$/);
     if (headingMatch) {
       blocks.push({
@@ -105,7 +88,6 @@ function parseMarkdown(md: string): Block[] {
       continue;
     }
 
-    // Blockquote
     if (line.startsWith("> ")) {
       const quoteLines: string[] = [line.slice(2)];
       i++;
@@ -117,13 +99,12 @@ function parseMarkdown(md: string): Block[] {
       continue;
     }
 
-    // Table (starts with | and has header separator on next line)
     if (line.startsWith("|") && i + 1 < lines.length && lines[i + 1].match(/^\|[-| :]+\|$/)) {
       const header = line
         .split("|")
         .slice(1, -1)
         .map((c) => c.trim());
-      i += 2; // skip separator
+      i += 2;
       const rows: string[][] = [];
       while (i < lines.length && lines[i].startsWith("|")) {
         rows.push(
@@ -138,7 +119,6 @@ function parseMarkdown(md: string): Block[] {
       continue;
     }
 
-    // Unordered list
     if (/^[-*+]\s/.test(line)) {
       const items: string[] = [];
       while (i < lines.length && /^[-*+]\s/.test(lines[i])) {
@@ -149,12 +129,10 @@ function parseMarkdown(md: string): Block[] {
       continue;
     }
 
-    // Ordered list
     const olMatch = line.match(/^(\d+)\.\s(.+)$/);
     if (olMatch) {
       const items: string[] = [];
-      let startNum = parseInt(olMatch[1], 10);
-      let matchNum = startNum;
+      const startNum = parseInt(olMatch[1], 10);
       while (i < lines.length) {
         const m = lines[i].match(/^(\d+)\.\s(.+)$/);
         if (!m) break;
@@ -165,13 +143,11 @@ function parseMarkdown(md: string): Block[] {
       continue;
     }
 
-    // Empty line
     if (line.trim() === "") {
       i++;
       continue;
     }
 
-    // Paragraph — collect consecutive non-empty non-special lines
     const paraLines: string[] = [line];
     i++;
     while (
@@ -194,6 +170,58 @@ function parseMarkdown(md: string): Block[] {
 }
 
 // ──────────────────────────────────────────────────────────────────────────────
+// CodeBlock — bloco de código com rótulo de linguagem e botão copiar
+// ──────────────────────────────────────────────────────────────────────────────
+
+const LANG_LABELS: Record<string, string> = {
+  bash: "Shell",
+  sh: "Shell",
+  shell: "Shell",
+  json: "JSON",
+  js: "JavaScript",
+  javascript: "JavaScript",
+  ts: "TypeScript",
+  typescript: "TypeScript",
+  http: "HTTP",
+  text: "Texto",
+};
+
+function CodeBlock({ code, lang }: { code: string; lang: string }) {
+  const [copied, setCopied] = useState(false);
+  const label = LANG_LABELS[lang.toLowerCase()] ?? (lang || "Código");
+
+  function copy() {
+    navigator.clipboard.writeText(code).then(() => {
+      setCopied(true);
+      toast.success("Código copiado");
+      setTimeout(() => setCopied(false), 1500);
+    });
+  }
+
+  return (
+    <div className="overflow-hidden rounded-xl border border-border">
+      <div className="flex items-center justify-between border-b border-border bg-muted/60 px-3 py-1.5">
+        <span className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
+          {label}
+        </span>
+        <button
+          type="button"
+          onClick={copy}
+          aria-label="Copiar código"
+          className="inline-flex items-center gap-1 rounded-md px-1.5 py-0.5 text-[11px] text-muted-foreground transition-colors hover:bg-background hover:text-foreground"
+        >
+          {copied ? <Check className="h-3 w-3" /> : <Copy className="h-3 w-3" />}
+          {copied ? "Copiado" : "Copiar"}
+        </button>
+      </div>
+      <pre className="overflow-x-auto bg-muted/30 p-4 text-xs font-mono leading-relaxed">
+        <code>{code}</code>
+      </pre>
+    </div>
+  );
+}
+
+// ──────────────────────────────────────────────────────────────────────────────
 // Block renderer
 // ──────────────────────────────────────────────────────────────────────────────
 
@@ -201,12 +229,12 @@ function renderBlock(block: Block, idx: number): React.ReactElement {
   switch (block.type) {
     case "heading": {
       const classes: Record<number, string> = {
-        1: "text-xl font-bold text-foreground mt-8 mb-4 first:mt-0",
-        2: "text-base font-semibold text-foreground mt-6 mb-3",
-        3: "text-sm font-semibold text-foreground mt-4 mb-2",
+        1: "text-base font-semibold text-foreground mt-8 mb-3 first:mt-0",
+        2: "text-sm font-semibold text-foreground mt-6 mb-2",
+        3: "text-[13px] font-semibold text-foreground mt-4 mb-2",
         4: "text-xs font-semibold text-muted-foreground mt-3 mb-1 uppercase tracking-wide",
       };
-      const Tag = (`h${block.level ?? 1}`) as "h1" | "h2" | "h3" | "h4";
+      const Tag = `h${block.level ?? 1}` as "h1" | "h2" | "h3" | "h4";
       return (
         <Tag
           key={idx}
@@ -226,29 +254,22 @@ function renderBlock(block: Block, idx: number): React.ReactElement {
       );
 
     case "code":
-      return (
-        <pre
-          key={idx}
-          className="bg-muted/60 border border-border rounded-xl p-4 overflow-x-auto text-xs font-mono leading-relaxed"
-        >
-          <code>{block.content}</code>
-        </pre>
-      );
+      return <CodeBlock key={idx} code={block.content} lang={block.lang ?? ""} />;
 
     case "hr":
       return <hr key={idx} className="border-border my-4" />;
 
     case "blockquote":
       return (
-        <blockquote
+        <div
           key={idx}
-          className="border-l-2 border-primary/40 pl-4 py-1 bg-muted/30 rounded-r-lg"
+          className="rounded-lg border-l-2 border-violet-500/50 bg-violet-500/5 px-4 py-3"
         >
           <p
-            className="text-sm text-muted-foreground italic"
+            className="text-sm text-muted-foreground"
             dangerouslySetInnerHTML={{ __html: parseInline(block.content) }}
           />
-        </blockquote>
+        </div>
       );
 
     case "table": {
@@ -270,7 +291,13 @@ function renderBlock(block: Block, idx: number): React.ReactElement {
             </thead>
             <tbody>
               {rows.map((row, ri) => (
-                <tr key={ri} className={cn("border-b border-border last:border-0", ri % 2 === 0 ? "" : "bg-muted/20")}>
+                <tr
+                  key={ri}
+                  className={cn(
+                    "border-b border-border last:border-0",
+                    ri % 2 === 0 ? "" : "bg-muted/20",
+                  )}
+                >
                   {row.map((cell, ci) => (
                     <td
                       key={ci}
@@ -290,7 +317,7 @@ function renderBlock(block: Block, idx: number): React.ReactElement {
       const items = block.items ?? [];
       if (block.ordered) {
         return (
-          <ol key={idx} className="list-decimal list-inside space-y-1" start={block.startNum}>
+          <ol key={idx} className="list-decimal list-outside ml-5 space-y-1" start={block.startNum}>
             {items.map((item, ii) => (
               <li
                 key={ii}
@@ -302,7 +329,7 @@ function renderBlock(block: Block, idx: number): React.ReactElement {
         );
       }
       return (
-        <ul key={idx} className="list-disc list-inside space-y-1">
+        <ul key={idx} className="list-disc list-outside ml-5 space-y-1">
           {items.map((item, ii) => (
             <li
               key={ii}
@@ -330,19 +357,8 @@ interface Props {
 
 export function McpDocsRenderer({ content, className }: Props) {
   const blocks = parseMarkdown(content);
-
   return (
     <article className={cn("space-y-4", className)}>
-      <style>{`
-        .inline-code {
-          font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
-          font-size: 0.75rem;
-          background-color: hsl(var(--muted) / 0.6);
-          border: 1px solid hsl(var(--border));
-          border-radius: 0.25rem;
-          padding: 0.1em 0.35em;
-        }
-      `}</style>
       {blocks.map((block, idx) => renderBlock(block, idx))}
     </article>
   );
