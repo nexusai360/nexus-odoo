@@ -112,11 +112,17 @@ function DetailField({ label, value, mono }: { label: string; value: string; mon
   );
 }
 
-function LogDetail({ log }: { log: AuditLogItem }) {
+function LogDetail({ log, description }: { log: AuditLogItem; description?: string }) {
   const payload = log.payload ?? log.params;
 
   return (
     <div className="rounded-lg border border-border bg-muted/30 p-4 space-y-4">
+      <div className="space-y-1">
+        <p className="text-sm font-semibold font-mono">{log.tool}</p>
+        <p className="text-xs text-muted-foreground">
+          {description ?? "Chamada registrada no servidor MCP."}
+        </p>
+      </div>
       <div className="grid gap-2 sm:grid-cols-2">
         <DetailField label="Timestamp" value={formatDatetime(log.criadoEm)} mono />
         <DetailField label="Duração" value={formatMs(log.durationMs)} mono />
@@ -187,10 +193,12 @@ function LogRow({
   log,
   expanded,
   onToggle,
+  description,
 }: {
   log: AuditLogItem;
   expanded: boolean;
   onToggle: () => void;
+  description?: string;
 }) {
   const statusConfig = getStatusConfig(log.status, log.outcome);
   const StatusIcon = statusConfig.icon;
@@ -231,7 +239,7 @@ function LogRow({
       </button>
       {expanded && (
         <div className="px-3.5 pb-3.5 pt-1">
-          <LogDetail log={log} />
+          <LogDetail log={log} description={description} />
         </div>
       )}
     </div>
@@ -424,9 +432,11 @@ interface Props {
     nextCursor: string | null;
     total: number;
   };
+  /** Mapa nome da tool -> descrição, para o detalhe explicar o que a chamada faz. */
+  toolDescriptions?: Record<string, string>;
 }
 
-export function LogsTimeline({ initial }: Props) {
+export function LogsTimeline({ initial, toolDescriptions = {} }: Props) {
   const [items, setItems] = useState<AuditLogItem[]>(initial.items);
   const [nextCursor, setNextCursor] = useState<string | null>(initial.nextCursor);
   const [total, setTotal] = useState(initial.total);
@@ -516,6 +526,7 @@ export function LogsTimeline({ initial }: Props) {
               log={log}
               expanded={expandedId === log.id}
               onToggle={() => setExpandedId((id) => (id === log.id ? null : log.id))}
+              description={toolDescriptions[log.tool]}
             />
           ))}
         </div>
