@@ -64,6 +64,28 @@ jest.mock("../lib/redis.js", () => ({
   },
 }));
 
+// Mocks para módulos do Bloco P-0 (não exercitados neste teste — modo interno apenas).
+// Evitam que conexões de ioredis/BullMQ permaneçam abertas após afterAll.
+jest.mock("../auth/auth-middleware.js", () => ({
+  authenticate: jest.fn().mockResolvedValue({ mode: "unauthorized", reason: "invalid_token" }),
+}));
+jest.mock("../auth/api-key-cache.js", () => ({
+  createApiKeyCache: jest.fn(() => ({
+    getOrLoad: jest.fn(),
+    invalidate: jest.fn(),
+    invalidateByApiKeyId: jest.fn(),
+  })),
+}));
+jest.mock("../dispatcher/external-pipeline.js", () => ({
+  handleExternalRequest: jest.fn(),
+}));
+jest.mock("../sync/queue.js", () => ({
+  getDirectedSyncQueue: jest.fn(() => ({ add: jest.fn().mockResolvedValue(undefined) })),
+}));
+jest.mock("@/worker/odoo/client.js", () => ({
+  clientFromEnv: jest.fn(),
+}));
+
 // NÃO mockar o catálogo — usamos o catálogo REAL (rede de proteção N6 — 34 tools)
 
 // ─── Imports pós-mock ─────────────────────────────────────────────────────────
