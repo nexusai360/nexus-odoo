@@ -14,6 +14,8 @@ export interface SelectOption {
   label: string;
   description?: string;
   icon?: React.ReactNode;
+  /** Opção visível porém não selecionável (cinza, sem clique). */
+  disabled?: boolean;
 }
 
 interface CustomSelectProps {
@@ -101,13 +103,19 @@ export function CustomSelect({
                     type="button"
                     role="option"
                     aria-selected={isSelected}
+                    aria-disabled={option.disabled || undefined}
+                    disabled={option.disabled}
                     onClick={() => {
+                      if (option.disabled) return;
                       onChange(option.value);
                       setOpen(false);
                     }}
                     className={cn(
-                      "flex w-full items-start gap-3 px-4 py-2.5 text-left cursor-pointer transition-all duration-200 hover:bg-accent",
-                      isSelected && "bg-accent/50",
+                      "flex w-full items-start gap-3 px-4 py-2.5 text-left transition-all duration-200",
+                      option.disabled
+                        ? "cursor-not-allowed opacity-40"
+                        : "cursor-pointer hover:bg-accent",
+                      isSelected && !option.disabled && "bg-accent/50",
                     )}
                   >
                     <div className="flex-1 min-w-0">

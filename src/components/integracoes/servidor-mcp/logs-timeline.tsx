@@ -275,7 +275,7 @@ function LogRow({
           {formatDatetime(log.criadoEm)}
         </span>
         <code className="flex-1 text-sm font-mono truncate">{log.tool}</code>
-        <span className="hidden sm:inline-flex max-w-[140px] shrink-0 items-center rounded-full bg-violet-500/10 px-2 py-0.5 text-[11px] font-medium text-violet-600 dark:text-violet-300">
+        <span className="hidden sm:inline-flex w-[150px] shrink-0 items-center rounded-full bg-violet-500/10 px-2 py-0.5 text-[11px] font-medium text-violet-600 dark:text-violet-300">
           <span className="truncate">{log.apiKeyLabel ?? "Agente Nex"}</span>
         </span>
         <span

@@ -52,7 +52,14 @@ export function DateField({
     setOpen(next);
   }
 
-  const monthOptions = MONTH_NAMES.map((label, i) => ({ value: String(i), label }));
+  // No ano mínimo, os meses anteriores ao mês corrente ficam desabilitados,
+  // coerentes com a trava da seta de mês anterior.
+  const minMonthIndex = (fromDate ?? today).getMonth();
+  const monthOptions = MONTH_NAMES.map((label, i) => ({
+    value: String(i),
+    label,
+    disabled: displayMonth.getFullYear() === minYear && i < minMonthIndex,
+  }));
   const yearOptions = Array.from({ length: YEAR_SPAN + 1 }, (_, i) => {
     const y = minYear + i;
     return { value: String(y), label: String(y) };
@@ -123,7 +130,7 @@ export function DateField({
           />
           <CustomSelect
             aria-label="Ano"
-            className="w-[78px] shrink-0"
+            className="w-[94px] shrink-0"
             value={String(displayMonth.getFullYear())}
             onChange={(v) => setDisplayMonth(new Date(Number(v), displayMonth.getMonth(), 1))}
             options={yearOptions}
