@@ -1,234 +1,413 @@
 "use client";
 
-import { useState } from "react";
-import { AlertCircle, CheckCircle2, Copy, Eye, EyeOff, ExternalLink } from "lucide-react";
+import { useState, useTransition } from "react";
+import {
+  AlertCircle,
+  CheckCircle2,
+  Eye,
+  EyeOff,
+  Loader2,
+  Plug,
+  Plus,
+  Trash2,
+  Wifi,
+} from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { CustomSelect } from "@/components/ui/custom-select";
+import { Switch } from "@/components/ui/switch";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
+import {
+  listExternalMcpServers,
+  createExternalMcpServer,
+  toggleExternalMcpServer,
+  deleteExternalMcpServer,
+  testExternalMcpServer,
+} from "@/lib/actions/external-mcp-servers";
+import type { ExternalMcpServerListItem } from "@/lib/actions/external-mcp-servers-types";
 
 interface Props {
-  mcpUrl: string;
-  maskedToken: string;
-  healthStatus: "ok" | "error" | "unknown";
+  initial: ExternalMcpServerListItem[];
+}
+
+function formatDate(date: Date | string) {
+  return new Intl.DateTimeFormat("pt-BR", {
+    day: "2-digit",
+    month: "short",
+    year: "numeric",
+  }).format(new Date(date));
 }
 
 /**
- * Conteúdo de "Plugar MCPs" — exibe endpoint, token mascarado (read-only)
- * e documentação para conexão com o node Agent do n8n.
- *
- * O MCP_SERVICE_TOKEN é uma variável de ambiente — a UI não o rotaciona.
- * Rotação deve ser feita via Portainer/env conforme instrução exibida abaixo.
+ * "Plugar MCPs" — registro de servidores MCP externos que o Agente Nex consome
+ * como cliente, para agregar capacidades de terceiros (Slack, GitHub, etc.).
  */
-export function PlugarMcpsContent({ mcpUrl, maskedToken, healthStatus }: Props) {
+export function PlugarMcpsContent({ initial }: Props) {
+  const [servers, setServers] = useState<ExternalMcpServerListItem[]>(initial);
+  const [isPending, startTransition] = useTransition();
+  const [showForm, setShowForm] = useState(false);
+
+  // Form
+  const [name, setName] = useState("");
+  const [description, setDescription] = useState("");
+  const [transport, setTransport] = useState<"http" | "sse">("http");
+  const [url, setUrl] = useState("");
+  const [authHeader, setAuthHeader] = useState("");
+  const [authToken, setAuthToken] = useState("");
   const [showToken, setShowToken] = useState(false);
 
-  function copyToClipboard(text: string, label: string) {
-    navigator.clipboard.writeText(text).then(() => {
-      toast.success(`${label} copiado`);
+  async function refresh() {
+    const r = await listExternalMcpServers();
+    if (r.success) setServers(r.data);
+  }
+
+  function resetForm() {
+    setName("");
+    setDescription("");
+    setTransport("http");
+    setUrl("");
+    setAuthHeader("");
+    setAuthToken("");
+    setShowToken(false);
+  }
+
+  function handleCreate(e: React.FormEvent) {
+    e.preventDefault();
+    startTransition(async () => {
+      const r = await createExternalMcpServer({
+        name: name.trim(),
+        description: description.trim() || null,
+        transport,
+        url: url.trim(),
+        authHeader: authHeader.trim() || null,
+        authToken: authToken.trim() || null,
+      });
+      if (r.success) {
+        resetForm();
+        setShowForm(false);
+        await refresh();
+        toast.success("Servidor MCP conectado");
+      } else {
+        toast.error(r.error ?? "Erro ao conectar servidor");
+      }
     });
   }
 
-  const displayToken = showToken ? maskedToken : maskedToken.replace(/[^•]/g, "•").slice(0, 20) + "••••";
+  function handleToggle(id: string, enabled: boolean) {
+    startTransition(async () => {
+      const r = await toggleExternalMcpServer(id, enabled);
+      if (r.success) await refresh();
+      else toast.error(r.error ?? "Erro ao atualizar servidor");
+    });
+  }
+
+  function handleDelete(id: string) {
+    startTransition(async () => {
+      const r = await deleteExternalMcpServer(id);
+      if (r.success) {
+        await refresh();
+        toast.success("Servidor removido");
+      } else {
+        toast.error(r.error ?? "Erro ao remover servidor");
+      }
+    });
+  }
+
+  function handleTest(id: string) {
+    startTransition(async () => {
+      const r = await testExternalMcpServer(id);
+      if (r.success) {
+        if (r.data.status === "ok") toast.success(r.data.message);
+        else toast.error(r.data.message);
+        await refresh();
+      } else {
+        toast.error(r.error ?? "Erro ao testar conexão");
+      }
+    });
+  }
 
   return (
     <div className="space-y-6 max-w-3xl">
-      {/* Status de saúde */}
-      <Card className="rounded-xl border border-border bg-muted/30 p-2">
-        <CardContent className="flex items-center gap-3 py-3">
-          {healthStatus === "ok" ? (
-            <>
-              <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-emerald-500/10">
-                <CheckCircle2 className="h-4 w-4 text-emerald-500" />
-              </span>
-              <div>
-                <p className="text-sm font-semibold text-emerald-700 dark:text-emerald-400">
-                  MCP online
-                </p>
-                <p className="text-[11px] text-muted-foreground">
-                  Servidor MCP respondendo no /health.
-                </p>
-              </div>
-            </>
-          ) : healthStatus === "error" ? (
-            <>
-              <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-destructive/10">
-                <AlertCircle className="h-4 w-4 text-destructive" />
-              </span>
-              <div>
-                <p className="text-sm font-semibold text-destructive">
-                  MCP inacessível
-                </p>
-                <p className="text-[11px] text-muted-foreground">
-                  Verifique o container <code>mcp</code> no Portainer.
-                </p>
-              </div>
-            </>
-          ) : (
-            <>
-              <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-muted">
-                <AlertCircle className="h-4 w-4 text-muted-foreground" />
-              </span>
-              <div>
-                <p className="text-sm font-semibold text-muted-foreground">
-                  Status desconhecido
-                </p>
-                <p className="text-[11px] text-muted-foreground">
-                  MCP_URL não configurada no ambiente.
-                </p>
-              </div>
-            </>
-          )}
-        </CardContent>
-      </Card>
+      {/* Introdução */}
+      <div className="space-y-1.5">
+        <p className="text-sm text-muted-foreground">
+          Conecte servidores MCP externos para o Agente Nex usar como ferramentas — Slack,
+          GitHub, ou qualquer serviço que exponha um endpoint MCP. Cada servidor amplia o que o
+          agente consegue fazer.
+        </p>
+        <p className="text-xs text-muted-foreground">
+          Para expor <span className="font-medium text-foreground">o nosso</span> MCP a serviços
+          de fora, o caminho é{" "}
+          <span className="font-medium text-foreground">
+            Integrações → Servidor MCP → Chaves de Acesso
+          </span>
+          .
+        </p>
+      </div>
 
-      {/* Endpoint + Token */}
-      <Card className="rounded-xl border border-border bg-muted/30 p-2">
-        <CardHeader className="pb-3">
-          <CardTitle>Endpoint &amp; token</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-5 pb-5">
+      {/* Cabeçalho */}
+      <div className="flex items-center justify-between">
+        <p className="text-sm text-muted-foreground">
+          {servers.length === 0
+            ? "Nenhum servidor conectado"
+            : `${servers.length} servidor${servers.length !== 1 ? "es" : ""} conectado${servers.length !== 1 ? "s" : ""}`}
+        </p>
+        <Button
+          type="button"
+          size="sm"
+          className="h-9"
+          onClick={() => setShowForm((v) => !v)}
+        >
+          <Plus className="mr-1.5 h-4 w-4" />
+          Conectar MCP
+        </Button>
+      </div>
+
+      {/* Form inline */}
+      {showForm && (
+        <form
+          onSubmit={handleCreate}
+          className="rounded-xl border border-border bg-card p-5 space-y-4"
+        >
+          <p className="text-sm font-semibold">Conectar servidor MCP externo</p>
+
           <div className="space-y-2">
-            <p className="text-xs font-medium text-muted-foreground">
-              Endpoint do MCP
-            </p>
-            <div className="flex items-center gap-2">
-              <code className="flex-1 rounded-lg bg-background/60 border border-border px-3 py-2 text-sm font-mono break-all">
-                {mcpUrl || "MCP_URL não configurada no ambiente"}
-              </code>
-              {mcpUrl && (
-                <Tooltip>
-                  <TooltipTrigger
-                    render={
-                      <Button
-                        type="button"
-                        variant="outline"
-                        size="sm"
-                        aria-label="Copiar endpoint"
-                        className="shrink-0 h-9"
-                        onClick={() => copyToClipboard(mcpUrl, "Endpoint")}
-                      >
-                        <Copy className="h-3.5 w-3.5" />
-                      </Button>
-                    }
-                  />
-                  <TooltipContent>Copiar para a área de transferência</TooltipContent>
-                </Tooltip>
-              )}
-            </div>
+            <Label htmlFor="mcp-name">Nome *</Label>
+            <Input
+              id="mcp-name"
+              placeholder="Ex: Slack, GitHub, Notion..."
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              required
+            />
           </div>
 
           <div className="space-y-2">
-            <p className="text-xs font-medium text-muted-foreground">
-              Token de serviço (MCP_SERVICE_TOKEN)
+            <Label htmlFor="mcp-desc">Descrição</Label>
+            <Input
+              id="mcp-desc"
+              placeholder="O que este MCP agrega ao agente (opcional)"
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+            />
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="mcp-transport">Transporte</Label>
+            <CustomSelect
+              aria-label="Transporte do MCP"
+              value={transport}
+              onChange={(v) => setTransport(v as "http" | "sse")}
+              triggerClassName="min-h-[44px]"
+              options={[
+                { value: "http", label: "Streamable HTTP", description: "Protocolo MCP padrão" },
+                { value: "sse", label: "SSE", description: "Server-Sent Events (legado)" },
+              ]}
+            />
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="mcp-url">URL do endpoint *</Label>
+            <Input
+              id="mcp-url"
+              placeholder="https://mcp.exemplo.com/mcp"
+              value={url}
+              onChange={(e) => setUrl(e.target.value)}
+              required
+            />
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="mcp-auth-header">Header de autenticação</Label>
+            <Input
+              id="mcp-auth-header"
+              placeholder="Authorization"
+              value={authHeader}
+              onChange={(e) => setAuthHeader(e.target.value)}
+            />
+            <p className="text-xs text-muted-foreground">
+              Nome do header que o MCP externo exige. Deixe vazio se for público.
             </p>
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="mcp-token">Token</Label>
             <div className="flex items-center gap-2">
-              <code
-                className={cn(
-                  "flex-1 rounded-lg bg-background/60 border border-border px-3 py-2 text-sm font-mono tracking-widest",
-                  !showToken && "select-none",
-                )}
+              <Input
+                id="mcp-token"
+                type={showToken ? "text" : "password"}
+                placeholder="Token/secret do serviço externo (opcional)"
+                value={authToken}
+                onChange={(e) => setAuthToken(e.target.value)}
+              />
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className="h-9 shrink-0"
+                aria-label={showToken ? "Ocultar token" : "Mostrar token"}
+                onClick={() => setShowToken((v) => !v)}
               >
-                {displayToken || "Não configurado"}
-              </code>
-              <Tooltip>
-                <TooltipTrigger
-                  render={
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="sm"
-                      aria-label={
-                        showToken ? "Ocultar token" : "Revelar token mascarado"
-                      }
-                      className="shrink-0 h-9"
-                      onClick={() => setShowToken((v) => !v)}
-                    >
-                      {showToken ? (
-                        <EyeOff className="h-3.5 w-3.5" />
-                      ) : (
-                        <Eye className="h-3.5 w-3.5" />
-                      )}
-                    </Button>
-                  }
-                />
-                <TooltipContent>
-                  {showToken ? "Ocultar token" : "Revelar token"}
-                </TooltipContent>
-              </Tooltip>
+                {showToken ? <EyeOff className="h-3.5 w-3.5" /> : <Eye className="h-3.5 w-3.5" />}
+              </Button>
             </div>
+            <p className="text-xs text-muted-foreground">
+              Armazenado cifrado. Este é o token do serviço externo — não do Nexus Odoo.
+            </p>
           </div>
 
-          <div className="rounded-lg border border-amber-500/30 bg-amber-500/5 p-3 text-sm space-y-1.5">
-            <p className="font-medium text-amber-700 dark:text-amber-400">
-              Como rotacionar o token
-            </p>
-            <ol className="list-decimal list-inside space-y-0.5 text-xs text-muted-foreground">
-              <li>
-                Gere um novo secret:{" "}
-                <code className="bg-muted rounded px-1">openssl rand -hex 32</code>
-              </li>
-              <li>
-                No Portainer, atualize a env var{" "}
-                <code className="bg-muted rounded px-1">MCP_SERVICE_TOKEN</code>{" "}
-                do container <strong>mcp</strong>
-              </li>
-              <li>
-                Atualize também{" "}
-                <code className="bg-muted rounded px-1">MCP_SERVICE_TOKEN</code>{" "}
-                no container <strong>app</strong> (worker usa a mesma chave)
-              </li>
-              <li>
-                Redeploy ambos os containers. O token antigo para de funcionar
-                imediatamente.
-              </li>
-            </ol>
+          <div className="flex gap-2">
+            <Button
+              type="submit"
+              size="sm"
+              disabled={isPending || !name.trim() || !url.trim()}
+              className="gap-1.5"
+            >
+              {isPending && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
+              Conectar
+            </Button>
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              onClick={() => {
+                resetForm();
+                setShowForm(false);
+              }}
+            >
+              Cancelar
+            </Button>
           </div>
-        </CardContent>
-      </Card>
+        </form>
+      )}
 
-      {/* Documentação de conexão — node Agent do n8n */}
-      <Card className="rounded-xl border border-border bg-muted/30 p-2">
-        <CardHeader className="pb-3">
-          <CardTitle className="flex items-center gap-2">
-            Conectar o node Agent do n8n
-            <ExternalLink className="h-3.5 w-3.5 text-muted-foreground" />
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-3 pb-5">
-          <p className="text-xs text-muted-foreground">
-            O MCP do Nexus Odoo usa o protocolo Streamable HTTP do{" "}
-            <code>@modelcontextprotocol/sdk</code>. Configure assim no n8n:
+      {/* Lista */}
+      {servers.length === 0 ? (
+        <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-border bg-muted/30 py-12 text-center">
+          <Plug className="h-8 w-8 text-muted-foreground/40 mb-3" />
+          <p className="text-sm text-muted-foreground">Nenhum servidor MCP conectado</p>
+          <p className="text-xs text-muted-foreground/70 mt-1">
+            Conecte um MCP externo para ampliar as ferramentas do Agente Nex.
           </p>
-          <div className="rounded-lg bg-background/60 border border-border p-3 font-mono text-xs space-y-1">
-            <p>
-              <span className="text-muted-foreground">Protocolo:</span> Streamable HTTP
-            </p>
-            <p>
-              <span className="text-muted-foreground">URL:</span>{" "}
-              {mcpUrl || "<MCP_URL>"}/mcp
-            </p>
-            <p>
-              <span className="text-muted-foreground">Auth:</span> Bearer token
-            </p>
-            <p>
-              <span className="text-muted-foreground">Header:</span> Authorization:
-              Bearer {"<MCP_SERVICE_TOKEN>"}
+        </div>
+      ) : (
+        <div className="space-y-3">
+          {servers.map((server) => (
+            <McpServerRow
+              key={server.id}
+              server={server}
+              isPending={isPending}
+              onToggle={handleToggle}
+              onTest={handleTest}
+              onDelete={handleDelete}
+            />
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ──────────────────────────────────────────────────────────────────────────────
+// McpServerRow
+// ──────────────────────────────────────────────────────────────────────────────
+
+const STATUS_CONFIG = {
+  ok: { label: "Alcançável", className: "text-emerald-600 dark:text-emerald-400", Icon: CheckCircle2 },
+  error: { label: "Inacessível", className: "text-destructive", Icon: AlertCircle },
+  unknown: { label: "Não testado", className: "text-muted-foreground", Icon: AlertCircle },
+} as const;
+
+function McpServerRow({
+  server,
+  isPending,
+  onToggle,
+  onTest,
+  onDelete,
+}: {
+  server: ExternalMcpServerListItem;
+  isPending: boolean;
+  onToggle: (id: string, enabled: boolean) => void;
+  onTest: (id: string) => void;
+  onDelete: (id: string) => void;
+}) {
+  const status = STATUS_CONFIG[server.lastStatus];
+  const StatusIcon = status.Icon;
+
+  return (
+    <div
+      className={cn(
+        "rounded-xl border border-border bg-muted/30 p-4 space-y-3 transition-colors hover:border-foreground/20",
+        !server.enabled && "opacity-60",
+      )}
+    >
+      <div className="flex items-start justify-between gap-3">
+        <div className="flex items-center gap-3 min-w-0">
+          <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-violet-500/10">
+            <Plug className="h-4 w-4 text-violet-500" />
+          </span>
+          <div className="space-y-0.5 min-w-0">
+            <div className="flex items-center gap-2 flex-wrap">
+              <span className="text-sm font-semibold">{server.name}</span>
+              <span className={cn("inline-flex items-center gap-1 text-[11px]", status.className)}>
+                <StatusIcon className="h-3 w-3" />
+                {status.label}
+              </span>
+            </div>
+            <p className="text-xs text-muted-foreground font-mono truncate">{server.url}</p>
+            {server.description && (
+              <p className="text-xs text-muted-foreground">{server.description}</p>
+            )}
+            <p className="text-[11px] text-muted-foreground">
+              {server.transport === "sse" ? "SSE" : "Streamable HTTP"}
+              {server.hasAuth ? " · autenticado" : " · público"} · conectado em{" "}
+              {formatDate(server.createdAt)}
             </p>
           </div>
-          <p className="text-xs text-muted-foreground">
-            O header <code>x-user-id</code> deve conter o ID do usuário da
-            plataforma (obrigatório para o RBAC de 7 camadas). O n8n injeta isso
-            via expressão: <code>{`{{ $json.userId }}`}</code>.
-          </p>
-        </CardContent>
-      </Card>
+        </div>
+
+        <Tooltip>
+          <TooltipTrigger
+            render={
+              <Switch
+                checked={server.enabled}
+                onCheckedChange={(v) => onToggle(server.id, v)}
+                disabled={isPending}
+                aria-label={server.enabled ? "Desabilitar servidor" : "Habilitar servidor"}
+              />
+            }
+          />
+          <TooltipContent>{server.enabled ? "Desabilitar" : "Habilitar"}</TooltipContent>
+        </Tooltip>
+      </div>
+
+      <div className="flex items-center gap-2 border-t border-border/40 pt-3">
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          className="gap-1.5 text-xs"
+          disabled={isPending}
+          onClick={() => onTest(server.id)}
+        >
+          <Wifi className="h-3.5 w-3.5" />
+          Testar conexão
+        </Button>
+        <Button
+          type="button"
+          variant="ghost"
+          size="sm"
+          className="ml-auto gap-1.5 text-xs text-destructive hover:bg-destructive/10 hover:text-destructive"
+          disabled={isPending}
+          onClick={() => onDelete(server.id)}
+        >
+          <Trash2 className="h-3.5 w-3.5" />
+          Remover
+        </Button>
+      </div>
     </div>
   );
 }
