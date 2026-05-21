@@ -8,6 +8,7 @@ import { TourTriggerButton } from "@/components/tour/tour-trigger-button";
 import { TourAutoStart } from "@/components/tour/tour-auto-start";
 import { servidorMcpTour } from "@/lib/tours/servidor-mcp-tour";
 import { getMcp24hMetrics } from "@/lib/actions/mcp-metrics";
+import { resolveMcpPublicUrl } from "@/lib/mcp-public-url";
 
 export const metadata = { title: "Servidor MCP | Integrações | Nexus Odoo" };
 export const dynamic = "force-dynamic";
@@ -50,11 +51,11 @@ async function pingMcp(mcpUrl: string): Promise<"healthy" | "degraded" | "unheal
 
 export default async function ServidorMcpPage() {
   const mcpUrl = process.env.MCP_URL ?? "";
-  const mcpPublicUrl = `${process.env.NEXT_PUBLIC_APP_URL ?? ""}/api/mcp`;
 
-  const [healthStatus, metricsResult] = await Promise.all([
+  const [healthStatus, metricsResult, mcpPublicUrl] = await Promise.all([
     pingMcp(mcpUrl),
     getMcp24hMetrics(),
+    resolveMcpPublicUrl(),
   ]);
 
   const metrics = metricsResult.success ? metricsResult.data : null;

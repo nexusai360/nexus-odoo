@@ -6,6 +6,7 @@ import { Breadcrumb } from "@/components/integracoes/breadcrumb";
 import { ServidorMcpNav } from "@/components/integracoes/servidor-mcp/servidor-mcp-nav";
 import { McpDocsContent } from "@/components/integracoes/servidor-mcp/mcp-docs-content";
 import { getMcpCatalogSchema } from "@/lib/actions/mcp-catalog-schema";
+import { resolveMcpPublicUrl } from "@/lib/mcp-public-url";
 import { getCurrentUser } from "@/lib/auth";
 
 export const metadata = { title: "Documentação | Servidor MCP | Nexus Odoo" };
@@ -16,9 +17,11 @@ export default async function DocsPage() {
   if (!user) redirect("/login");
   if (user.platformRole !== "super_admin") redirect("/dashboard");
 
-  const catalogResult = await getMcpCatalogSchema();
+  const [catalogResult, mcpPublicUrl] = await Promise.all([
+    getMcpCatalogSchema(),
+    resolveMcpPublicUrl(),
+  ]);
   const catalog = catalogResult.success ? catalogResult.data : [];
-  const mcpPublicUrl = `${process.env.NEXT_PUBLIC_APP_URL ?? ""}/api/mcp`;
 
   return (
     <PageShell variant="narrow">
