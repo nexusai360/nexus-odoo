@@ -22,18 +22,21 @@
 
 **Branch ativa: `feat/f4-onda2-mcp-escrita`**. A `main` tem F0+F1+F2+F3+F3.5+F4+F5.
 
-> ## ⚠️ RETOMADA — CORREÇÕES DE UI APLICADAS; FALTA O TESTE E2E DE ESCRITA
-> As correções da F4 Onda 2 reprovadas pelo usuário foram **executadas** na branch
-> `feat/f4-onda2-mcp-escrita` (plano `docs/superpowers/plans/2026-05-21-f4-onda2-correcoes.md`):
-> painel Servidor MCP refeito do zero (sub-nav, Visão Geral, Chaves, Logs, Documentação
-> no padrão NFE Nexus), "Plugar MCPs" corrigido para o conceito certo (registro de MCPs
-> externos do Agente Nex), health check consertado. `tsc`/`eslint`/`jest` (1519)/`build`
-> verdes; code review + UI review inline OK (`docs/superpowers/reviews/`).
+> ## ⚠️ RETOMADA, F4 ONDA 2: DUAS RODADAS DE CORREÇÕES APLICADAS
+> Correções da F4 Onda 2 executadas na branch `feat/f4-onda2-mcp-escrita` em duas rodadas.
+> **Rodada 1** (`docs/superpowers/plans/2026-05-21-f4-onda2-correcoes.md`): painel Servidor MCP
+> refeito (sub-nav, Visão Geral, Chaves, Logs, Documentação), "Plugar MCPs" com conceito certo,
+> health check consertado. **Rodada 2** (`docs/superpowers/plans/2026-05-21-f4-onda2-correcoes-r2.md`):
+> documentação do MCP clonada do padrão nexus-nfe, Chaves de Acesso redesenhada (modais,
+> capabilities por nível, toggle, date picker próprio), Logs com busca única e filtro de
+> período, Plugar MCPs enxuto, bubble do Agente Nex responsivo, perfil do sidebar maior, tour
+> de onboarding nas telas de Integrações. Travessão banido (`CLAUDE.md §2`).
+> `tsc`/`eslint`/`jest` (1529)/`build` verdes; code review + UI review inline OK
+> (`docs/superpowers/reviews/`).
 >
-> **Pendência única — não bloqueante:** o **teste E2E de escrita real** contra
-> `grupojht.teste.tauga.online` ainda não rodou — o usuário não tinha as credenciais.
-> Quando tiver: preencher `ODOO_WRITE_*` em `.env.local` e rodar a Task 16 do plano.
-> Falta também a inspeção visual pixel a pixel num navegador autenticado.
+> **Pendências não bloqueantes:** o **teste E2E de escrita real** contra
+> `grupojht.teste.tauga.online` ainda não rodou (faltam credenciais `ODOO_WRITE_*`, Task 16
+> da rodada 1); e a inspeção visual pixel a pixel num navegador autenticado.
 > **NÃO mergear o PR #10 antes do teste E2E de escrita.**
 
 ---
