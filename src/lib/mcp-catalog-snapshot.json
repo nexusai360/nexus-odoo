@@ -451,6 +451,21 @@
       "examples": []
     },
     {
+      "id": "referencia_buscar",
+      "operation": "read",
+      "module": "fiscal",
+      "descricao": "Consulta as tabelas de referência fiscais, cadastrais e geográficas (NCM, CFOP, CEST, CNAE, NBS, naturezas de operação, unidades, CSTs, municípios, países, estados). Informe `tabela` e um `termo` (código ou parte da descrição) para resolver 'o que é o código X'.",
+      "capability": null,
+      "sensitive": false,
+      "addedInVersion": null,
+      "inputSchemaKeys": [
+        "tabela",
+        "termo",
+        "limite"
+      ],
+      "examples": []
+    },
+    {
       "id": "cadastro_buscar_parceiro",
       "operation": "read",
       "module": "cadastros",
@@ -642,6 +657,6 @@
       ]
     }
   ],
-  "count": 47,
-  "generatedAt": "2026-05-22T17:26:59.412Z"
+  "count": 48,
+  "generatedAt": "2026-05-22T17:53:57.808Z"
 }
