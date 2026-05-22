@@ -31,9 +31,17 @@ interface AgentBubbleProps {
    * Resolvido pelo layout protegido com base no toggle do Prompt config + provider ativo.
    */
   audioInputEnabled?: boolean;
+  /**
+   * Quando true, o painel libera o anexo (clip). Resolvido pelo layout com base
+   * no checkpoint de imagem: só PRODUÇÃO libera na bubble.
+   */
+  imageInputEnabled?: boolean;
 }
 
-export function AgentBubble({ audioInputEnabled = false }: AgentBubbleProps = {}) {
+export function AgentBubble({
+  audioInputEnabled = false,
+  imageInputEnabled = false,
+}: AgentBubbleProps = {}) {
   const [open, setOpen] = React.useState(false);
   const reduceMotion = useReducedMotion();
 
@@ -124,6 +132,7 @@ export function AgentBubble({ audioInputEnabled = false }: AgentBubbleProps = {}
             open={open}
             onClose={() => setOpen(false)}
             audioInputEnabled={audioInputEnabled}
+            imageInputEnabled={imageInputEnabled}
           />
         ) : null}
       </AnimatePresence>

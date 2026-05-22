@@ -140,6 +140,8 @@ const dateTimeFmt = new Intl.DateTimeFormat("pt-BR", {
 export interface PlaygroundContentProps {
   /** Áudio disponível no playground (checkpoint >= PLAYGROUND). */
   audioInputEnabled?: boolean;
+  /** Anexo disponível no playground (checkpoint de imagem >= PLAYGROUND). */
+  imageInputEnabled?: boolean;
   userId: string;
   /** D2 — credenciais agrupadas por provedor. */
   credentialsByProvider?: Record<string, { id: string; label: string }[]>;
@@ -151,6 +153,7 @@ export interface PlaygroundContentProps {
 
 export function PlaygroundContent({
   audioInputEnabled,
+  imageInputEnabled,
   userId: _userId,
   credentialsByProvider = {},
 }: PlaygroundContentProps) {
@@ -1117,10 +1120,12 @@ export function PlaygroundContent({
                         aria-label="Mensagem para o Agente Nex"
                         maxRows={6}
                         leftSlot={
-                          <AttachMenu
-                            disabled={isSending}
-                            onPick={defaultAttachHandler}
-                          />
+                          imageInputEnabled ? (
+                            <AttachMenu
+                              disabled={isSending}
+                              onPick={defaultAttachHandler}
+                            />
+                          ) : undefined
                         }
                         rightSlot={
                           audioInputEnabled && !audioFlight ? (

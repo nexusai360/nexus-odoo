@@ -92,7 +92,15 @@ export function MessageInput({
         aria-label={ariaLabel}
         onChange={(e) => onChange(e.currentTarget.value)}
         onKeyDown={handleKeyDown}
-        className="flex-1 resize-none self-center bg-transparent px-1 py-1.5 text-sm leading-5 outline-none placeholder:text-muted-foreground disabled:cursor-not-allowed"
+        className={cn(
+          "flex-1 resize-none self-center bg-transparent py-1.5 text-sm leading-5 outline-none placeholder:text-muted-foreground disabled:cursor-not-allowed",
+          // Input adaptativo: o textarea (flex-1) já ocupa o espaço livre quando
+          // um slot some. O padding condicional garante que o texto não cole na
+          // borda quando não há ícone adjacente, mantendo o campo visualmente
+          // consistente com 0, 1 ou 2 slots.
+          leftSlot ? "pl-1" : "pl-2",
+          rightSlot ? "pr-1" : "pr-2",
+        )}
       />
       {rightSlot && <div className="flex shrink-0 items-center gap-1">{rightSlot}</div>}
     </div>

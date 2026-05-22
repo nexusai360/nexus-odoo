@@ -34,6 +34,8 @@ interface ChatPanelProps {
   onClose: () => void;
   /** Quando true exibe botão de gravação de áudio (Task 3.3c). */
   audioInputEnabled?: boolean;
+  /** Quando true exibe o anexo (clip). Gated pelo checkpoint de imagem. */
+  imageInputEnabled?: boolean;
   /** conversationId atual (null = novo). Após primeira msg, recebe o id criado. */
   conversationId?: string | null;
   onConversationCreated?: (id: string) => void;
@@ -70,6 +72,7 @@ export function ChatPanel({
   open,
   onClose,
   audioInputEnabled = false,
+  imageInputEnabled = false,
   conversationId: externalConvId,
   onConversationCreated,
 }: ChatPanelProps) {
@@ -502,10 +505,12 @@ export function ChatPanel({
                   aria-label="Mensagem para o Agente Nex"
                   maxRows={6}
                   leftSlot={
-                    <AttachMenu
-                      disabled={pending}
-                      onPick={defaultAttachHandler}
-                    />
+                    imageInputEnabled ? (
+                      <AttachMenu
+                        disabled={pending}
+                        onPick={defaultAttachHandler}
+                      />
+                    ) : undefined
                   }
                   rightSlot={
                     audioInputEnabled && !audioFlight ? (

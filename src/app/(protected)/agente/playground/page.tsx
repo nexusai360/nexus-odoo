@@ -49,6 +49,7 @@ export default async function PlaygroundPage() {
       />
       <PlaygroundContent
         audioInputEnabled={flags.audioInPlayground}
+        imageInputEnabled={flags.imageInPlayground}
         userId={user.id}
         credentialsByProvider={credentialsByProvider}
       />

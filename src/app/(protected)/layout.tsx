@@ -33,6 +33,8 @@ export default async function ProtectedLayout({
   ]);
   const audioInputEnabled =
     flags.audioInputEnabled === true && activeLlm?.provider === "openai";
+  // Anexo (clip) na bubble: liberado só com o checkpoint de imagem em PRODUÇÃO.
+  const imageInputEnabled = flags.imageInputEnabled === true;
 
   return (
     <TourProvider>
@@ -42,7 +44,10 @@ export default async function ProtectedLayout({
           <div className="pt-16 pb-8 sm:pt-8">{children}</div>
         </main>
         {canUseAgent && flags.bubbleEnabled ? (
-          <AgentBubble audioInputEnabled={audioInputEnabled} />
+          <AgentBubble
+            audioInputEnabled={audioInputEnabled}
+            imageInputEnabled={imageInputEnabled}
+          />
         ) : null}
       </div>
     </TourProvider>
