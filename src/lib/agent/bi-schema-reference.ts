@@ -319,4 +319,18 @@ TABLE fato_carta_correcao (
   sequencia             INT,
   atualizado_em         TIMESTAMPTZ
 );
+
+-- Certificados digitais (e-CNPJ) das empresas
+TABLE fato_certificado (
+  odoo_id              INT PRIMARY KEY,
+  tipo                 TEXT,          -- ex.: A1
+  numero_serie         TEXT,
+  proprietario         TEXT,
+  cnpj_cpf             TEXT,
+  data_inicio_validade TIMESTAMPTZ,
+  data_fim_validade    TIMESTAMPTZ,
+  data_vencimento_util TIMESTAMPTZ,
+  nome_arquivo         TEXT,
+  atualizado_em        TIMESTAMPTZ
+);
 `.trim();
