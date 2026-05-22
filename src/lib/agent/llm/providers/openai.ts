@@ -120,12 +120,22 @@ export class OpenAIClient implements ProviderClient {
 
     const reasoning = isReasoningModel(this.model);
     if (reasoning && request.reasoningEffort) {
-      // Alguns modelos GPT-5.x (ex.: gpt-5.4-nano) rejeitam "minimal" na API
-      // dizendo "Supported values are: 'none', 'low', 'medium', 'high', and
-      // 'xhigh'". "low" é o nível mais leve compatível com toda a família;
-      // mapeia "minimal" para ele em vez de quebrar a chamada.
-      body.reasoning_effort =
-        request.reasoningEffort === "minimal" ? "low" : request.reasoningEffort;
+      // Duas incompatibilidades do gpt-5.4-nano em /v1/chat/completions:
+      //   1) rejeita "minimal" ("Supported values: none|low|medium|high|xhigh"
+      //      no nano).
+      //   2) rejeita reasoning_effort quando há function tools ("Function tools
+      //      with reasoning_effort are not supported for gpt-5.4-nano in
+      //      /v1/chat/completions. Please use /v1/responses").
+      // Como o agente sempre carrega o catálogo MCP como tools, o nano não
+      // aceita o parâmetro. Estratégia: só envia reasoning_effort quando NÃO
+      // há tools (e mapeia "minimal" → "low" para a família 5.x).
+      const noTools = !tools || tools.length === 0;
+      if (noTools) {
+        body.reasoning_effort =
+          request.reasoningEffort === "minimal"
+            ? "low"
+            : request.reasoningEffort;
+      }
     }
     if (typeof request.temperature === "number" && !reasoning) {
       body.temperature = request.temperature;
