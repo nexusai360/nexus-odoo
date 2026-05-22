@@ -42,3 +42,4 @@
 2026-05-22 13:36 | agent=claude-f4-leitura-expansao | commit=5623840 | scope=spec | summary=Spec L1b+L1c (execucao da camada de referencia + residuo 4a); sondagem de schema tirou pedido.faturamento de escopo e exigiu exclusao de campos sensiveis de sped.certificado
 2026-05-22 14:05 | agent=claude-f4-leitura-expansao | commit=0b94381 | scope=plan | summary=Plano de execucao da onda L1c (residuo operacional 4a) — 11 tasks TDD
 2026-05-22 14:35 | agent=claude-f4-leitura-expansao | commit=fa5d869 | scope=feat | summary=Onda L1c executada — migration f4l_residuo_4a (3 raw + fato_certificado), tool fiscal_certificados, excludeFields no sync; ingestao e smoke verdes (senha/arquivo fora do cache)
+2026-05-22 14:55 | agent=claude-f4-leitura-expansao | commit=5a0e988 | scope=plan | summary=Spec v3 + plano da L1b corrigida (camada de referencia) — 27 tabelas, fato_referencia unico, tool referencia_buscar
