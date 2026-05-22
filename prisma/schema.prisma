@@ -1598,6 +1598,42 @@ model FatoServico {
   @@map("fato_servico")
 }
 
+/// F4 L1a — apurações fiscais (ICMS-IPI e PIS-COFINS), de sped.apuracao.
+model FatoApuracao {
+  odooId            Int       @id @map("odoo_id")
+  empresaNome       String?   @map("empresa_nome")
+  dataInicial       DateTime? @map("data_inicial")
+  dataFinal         DateTime? @map("data_final")
+  tipo              String?
+  entregue          Boolean   @default(false)
+  regimeTributario  String?   @map("regime_tributario")
+  vrIcmsARecolher   Decimal   @default(0) @db.Decimal(18, 2) @map("vr_icms_a_recolher")
+  vrIcmsSaldoCredor Decimal   @default(0) @db.Decimal(18, 2) @map("vr_icms_saldo_credor")
+  vrIpiARecolher    Decimal   @default(0) @db.Decimal(18, 2) @map("vr_ipi_a_recolher")
+  vrPisARecolher    Decimal   @default(0) @db.Decimal(18, 2) @map("vr_pis_a_recolher")
+  vrCofinsARecolher Decimal   @default(0) @db.Decimal(18, 2) @map("vr_cofins_a_recolher")
+  atualizadoEm      DateTime  @default(now()) @map("atualizado_em")
+
+  @@index([dataInicial])
+  @@index([tipo])
+  @@map("fato_apuracao")
+}
+
+/// F4 L1a — cartas de correção de documentos fiscais, de sped.carta.correcao.
+model FatoCartaCorrecao {
+  odooId               Int       @id @map("odoo_id")
+  descricao            String?
+  correcao             String?
+  documentoId          Int?      @map("documento_id")
+  dataAutorizacao      DateTime? @map("data_autorizacao")
+  protocoloAutorizacao String?   @map("protocolo_autorizacao")
+  sequencia            Int?
+  atualizadoEm         DateTime  @default(now()) @map("atualizado_em")
+
+  @@index([documentoId])
+  @@map("fato_carta_correcao")
+}
+
 // ─── F4 — Logs e feature requests do MCP ─────────────────────────────────────
 
 /// Log de auditoria de chamadas ao MCP semântico.

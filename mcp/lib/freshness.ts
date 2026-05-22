@@ -44,6 +44,8 @@ export const FATO_FONTE: Record<string, { model: string; mode: "snapshot" | "inc
   // F4 L1a — expansão da base de leitura
   fato_preco:                { model: "sped.tabela.preco.regra",   mode: "incremental" },
   fato_servico:              { model: "sped.servico",              mode: "incremental" },
+  fato_apuracao:             { model: "sped.apuracao",             mode: "incremental" },
+  fato_carta_correcao:       { model: "sped.carta.correcao",        mode: "incremental" },
   // Cadastros (onda D) — model confirmado via SELECT model FROM sync_state
   fato_parceiro:             { model: "res.partner",               mode: "incremental" },
   // Contábil (onda E) — model confirmado via SELECT model FROM sync_state
