@@ -17,6 +17,7 @@ import { rebuildFatoServico } from "./fato-servico";
 import { rebuildFatoApuracao } from "./fato-apuracao";
 import { rebuildFatoCartaCorrecao } from "./fato-carta-correcao";
 import { rebuildFatoCertificado } from "./fato-certificado";
+import { rebuildFatoReferencia } from "./fato-referencia";
 
 export interface FatoBuilderEntry {
   nome: string;
@@ -42,6 +43,7 @@ export const FATO_BUILDERS: FatoBuilderEntry[] = [
   { nome: "fato_apuracao", cycle: "incremental", run: rebuildFatoApuracao },
   { nome: "fato_carta_correcao", cycle: "incremental", run: rebuildFatoCartaCorrecao },
   { nome: "fato_certificado", cycle: "incremental", run: rebuildFatoCertificado },
+  { nome: "fato_referencia", cycle: "incremental", run: rebuildFatoReferencia },
 ];
 
 /**

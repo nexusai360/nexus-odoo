@@ -48,6 +48,8 @@ export const FATO_FONTE: Record<string, { model: string; mode: "snapshot" | "inc
   fato_carta_correcao:       { model: "sped.carta.correcao",        mode: "incremental" },
   // F4 L1c — resíduo operacional 4a
   fato_certificado:          { model: "sped.certificado",          mode: "incremental" },
+  // F4 L1b — fato_referencia vem de 15 modelos; sped.ncm é o representativo p/ fonteStatus.
+  fato_referencia:           { model: "sped.ncm",                  mode: "incremental" },
   // Cadastros (onda D) — model confirmado via SELECT model FROM sync_state
   fato_parceiro:             { model: "res.partner",               mode: "incremental" },
   // Contábil (onda E) — model confirmado via SELECT model FROM sync_state
