@@ -171,9 +171,10 @@ Clone do `consumo-content.tsx` do insights (1058 linhas) com estas adaptações:
 - **Filtros**: `PeriodPills` + `CustomSelect` de provider global + `CustomSelect`
   de ambiente. Sincronização com URL (`?provider=`, `?env=`) como no insights.
 - **Tabela**: `Histórico de chamadas` com `UsageTableFilters` (cascade), linha de
-  TOTAL no topo, e estas colunas: Data/hora, Origem, Provider, Modelo,
+  TOTAL no topo, e estas 10 colunas (as 9 do insights, que incluem Duração, mais
+  a coluna Tipo): Data/hora, Origem, Provider, Modelo,
   **Tipo** (coluna extra do odoo — badge texto/imagem/áudio/arquivo), Tokens
-  entrada, Tokens saída, Custo USD, Custo BRL. Custo USD mostra badge "preço
+  entrada, Tokens saída, Duração, Custo USD, Custo BRL. Custo USD mostra badge "preço
   desconhecido" quando `!costKnown`; Custo BRL mostra "cotação desatualizada"
   quando `rateStale`. Paginação em 3 zonas, `pageSize` 25/50/100.
 - Clique na linha abre `UsageDetailSheet`. **Acessibilidade (achado do
