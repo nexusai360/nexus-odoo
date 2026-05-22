@@ -234,3 +234,52 @@ export async function queryProdutosFaturados(
 
   return { linhas };
 }
+
+// ---------------------------------------------------------------------------
+// queryNotasRecebidasPorFornecedor — F4 L1a Onda 3
+// ---------------------------------------------------------------------------
+
+/** Notas fiscais de entrada (DF-e de fornecedores) agregadas por fornecedor.
+ * Espelha queryFaturamentoPorCliente, mas no sentido de entrada
+ * (entradaSaida = "0"). Ordena por valor recebido e corta em `limite`. */
+export async function queryNotasRecebidasPorFornecedor(
+  prisma: PrismaClient,
+  filtros: { periodoDe?: string; periodoAte?: string; limite?: number },
+): Promise<{
+  linhas: { participanteNome: string | null; quantidade: number; valorTotal: number }[];
+}> {
+  const limite = filtros.limite ?? 30;
+  const periodoWhere =
+    filtros.periodoDe && filtros.periodoAte
+      ? {
+          dataEmissao: {
+            gte: new Date(`${filtros.periodoDe}T00:00:00`),
+            lte: new Date(`${filtros.periodoAte}T00:00:00`),
+          },
+        }
+      : {};
+
+  const rows = await prisma.fatoNotaFiscal.findMany({
+    where: { entradaSaida: "0", ...periodoWhere },
+    select: { participanteNome: true, vrNf: true },
+  });
+
+  const map = new Map<string | null, { quantidade: number; valorTotal: number }>();
+  for (const r of rows) {
+    const key = r.participanteNome;
+    const existing = map.get(key);
+    if (existing) {
+      existing.quantidade += 1;
+      existing.valorTotal += Number(r.vrNf);
+    } else {
+      map.set(key, { quantidade: 1, valorTotal: Number(r.vrNf) });
+    }
+  }
+
+  const linhas = [...map.entries()]
+    .map(([participanteNome, v]) => ({ participanteNome, ...v }))
+    .sort((a, b) => b.valorTotal - a.valorTotal)
+    .slice(0, limite);
+
+  return { linhas };
+}

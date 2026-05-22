@@ -7,6 +7,7 @@ import { fiscalNotasRecebidas } from "./notas-recebidas.js";
 import { fiscalImpostosPeriodo } from "./impostos-periodo.js";
 import { fiscalFaturamentoPorCliente } from "./faturamento-por-cliente.js";
 import { fiscalProdutosFaturados } from "./produtos-faturados.js";
+import { fiscalNotasRecebidasPorFornecedor } from "./notas-recebidas-por-fornecedor.js";
 
 export const fiscalTools: ToolEntry[] = [
   fiscalFaturamentoPeriodo as ToolEntry,
@@ -15,4 +16,5 @@ export const fiscalTools: ToolEntry[] = [
   fiscalImpostosPeriodo as ToolEntry,
   fiscalFaturamentoPorCliente as ToolEntry,
   fiscalProdutosFaturados as ToolEntry,
+  fiscalNotasRecebidasPorFornecedor as ToolEntry,
 ];
