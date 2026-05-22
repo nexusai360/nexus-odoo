@@ -62,7 +62,7 @@ export interface SaldoProdutoData {
  */
 export async function querySaldoProduto(
   prisma: PrismaClient,
-  filtros: { armazemId?: number; familiaId?: number },
+  filtros: { armazemId?: number; familiaId?: number; termo?: string },
 ): Promise<SaldoProdutoData> {
   // groupBy não suporta _count(distinct), então buscamos os dados brutos e
   // agregamos em JS — dataset cabe confortavelmente em memória.
@@ -70,6 +70,9 @@ export async function querySaldoProduto(
     where: {
       ...(filtros.armazemId ? { localId: filtros.armazemId } : {}),
       ...(filtros.familiaId ? { familiaId: filtros.familiaId } : {}),
+      ...(filtros.termo
+        ? { produtoNome: { contains: filtros.termo, mode: "insensitive" as const } }
+        : {}),
     },
     select: {
       produtoId: true,

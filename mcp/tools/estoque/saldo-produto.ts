@@ -8,6 +8,9 @@ import { withFreshness } from "../../lib/freshness.js";
 const inputSchema = z.object({
   armazemId: z.number().int().positive().optional(),
   familiaId: z.number().int().positive().optional(),
+  /** Filtra por nome do produto (busca parcial) — use para perguntas sobre
+   * o saldo de um produto específico. Aceita o nome ou o código do produto. */
+  termo: z.string().min(1).max(120).optional(),
 });
 
 const linha = z.object({
@@ -64,7 +67,10 @@ function shape(d: Awaited<ReturnType<typeof querySaldoProduto>>) {
 export const estoqueSaldoProduto: ToolEntry<Input, Output> = {
   id: "estoque_saldo_produto",
   dominio: "estoque",
-  descricao: "Saldo de estoque por produto: unidades e valor a custo, com nº de localizações.",
+  descricao:
+    "Saldo de estoque por produto: unidades e valor a custo, com nº de " +
+    "localizações. Para o saldo de um produto específico, passe `termo` com " +
+    "o nome ou o código do produto.",
   inputSchemaShape: inputSchema.shape,
   inputSchema,
   outputSchema,
