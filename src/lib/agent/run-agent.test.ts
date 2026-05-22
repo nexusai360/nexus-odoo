@@ -143,6 +143,13 @@ describe("extractSuggestions", () => {
     expect(suggestions[0]).toBe("Curta");
   });
 
+  test("remove markdown das sugestões (chips de texto puro)", () => {
+    const text =
+      "Resposta.\n\n[[suggestions]]:Quero o **preço de venda**|Custo do `PMB403`";
+    const { suggestions } = extractSuggestions(text);
+    expect(suggestions).toEqual(["Quero o preço de venda", "Custo do PMB403"]);
+  });
+
   test("aceita até 5 sugestões (cap elevado para desambiguação)", () => {
     const text =
       "Resposta.\n\n[[suggestions]]:Um|Dois|Tres|Quatro|Cinco|Seis";

@@ -71,7 +71,9 @@ export function extractSuggestions(text: string): {
   const raw = match[1].trim();
   const suggestions = raw
     .split("|")
-    .map((s) => s.trim())
+    // As sugestões viram chips de texto puro na UI: remove markdown (negrito,
+    // crase) para não aparecer "**" ou "`" literal no chip.
+    .map((s) => s.trim().replace(/\*\*/g, "").replace(/`/g, "").trim())
     .filter((s) => s.length > 0 && s.length <= MAX_SUGGESTION_LEN)
     .slice(0, MAX_SUGGESTIONS);
   const message = text.replace(match[0], "").trimEnd();
