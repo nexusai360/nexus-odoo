@@ -54,11 +54,9 @@ function contemTexto(resposta: string, alvo: string): boolean {
 
 // ─── Geração de casos ─────────────────────────────────────────────────────────
 
-function nomeCurto(participante: string): string {
-  // "Jds Comércio - Matriz DF 18.282.961/..." → "Jds Comércio"
-  const semColchete = participante.replace(/\[[^\]]*\]/g, "").trim();
-  const parte = semColchete.split(/\s-\s/)[0]?.trim() ?? semColchete;
-  return parte.length >= 4 ? parte : semColchete;
+/** Nome do participante sem o CNPJ entre colchetes. */
+function nomeFornecedor(participante: string): string {
+  return participante.replace(/\[[^\]]*\]/g, "").trim();
 }
 
 async function montarCasos(): Promise<Caso[]> {
@@ -149,11 +147,19 @@ async function montarCasos(): Promise<Caso[]> {
     orderBy: { _count: { participanteNome: "desc" } },
     take: 210,
   });
+  // Só fornecedores cujo nome (sem o CNPJ) é único, para a pergunta ser
+  // inequívoca — o agente filtra a tool por esse nome.
+  const fornCont = new Map<string, number>();
   for (const f of fornecedores) {
-    const curto = nomeCurto(f.participanteNome ?? "");
+    const n = nomeFornecedor(f.participanteNome ?? "");
+    fornCont.set(n, 1 + (fornCont.get(n) ?? 0));
+  }
+  for (const f of fornecedores) {
+    const nome = nomeFornecedor(f.participanteNome ?? "");
+    if (nome.length < 4 || (fornCont.get(nome) ?? 0) !== 1) continue;
     casos.push({
       categoria: "notas_entrada_fornecedor",
-      pergunta: `Quantas notas fiscais de entrada recebemos do fornecedor "${curto}"?`,
+      pergunta: `Quantas notas fiscais de entrada recebemos do fornecedor "${nome}"?`,
       esperado: `${f._count._all} notas`,
       verificar: (r) => contemNumero(r, f._count._all),
     });

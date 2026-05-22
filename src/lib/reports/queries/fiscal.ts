@@ -244,11 +244,14 @@ export async function queryProdutosFaturados(
  * (entradaSaida = "0"). Ordena por valor recebido e corta em `limite`. */
 export async function queryNotasRecebidasPorFornecedor(
   prisma: PrismaClient,
-  filtros: { periodoDe?: string; periodoAte?: string; limite?: number },
+  filtros: { periodoDe?: string; periodoAte?: string; fornecedor?: string; limite?: number },
 ): Promise<{
   linhas: { participanteNome: string | null; quantidade: number; valorTotal: number }[];
 }> {
   const limite = filtros.limite ?? 30;
+  const fornecedorWhere = filtros.fornecedor
+    ? { participanteNome: { contains: filtros.fornecedor, mode: "insensitive" as const } }
+    : {};
   const periodoWhere =
     filtros.periodoDe && filtros.periodoAte
       ? {
@@ -260,7 +263,7 @@ export async function queryNotasRecebidasPorFornecedor(
       : {};
 
   const rows = await prisma.fatoNotaFiscal.findMany({
-    where: { entradaSaida: "0", ...periodoWhere },
+    where: { entradaSaida: "0", ...periodoWhere, ...fornecedorWhere },
     select: { participanteNome: true, vrNf: true },
   });
 

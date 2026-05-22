@@ -6,6 +6,9 @@ import { queryNotasRecebidasPorFornecedor } from "@/lib/reports/queries/fiscal.j
 import { withFreshness } from "../../lib/freshness.js";
 
 const inputSchema = z.object({
+  /** Filtra por nome do fornecedor (busca parcial). Use para perguntas
+   * sobre um fornecedor específico, em vez de depender do ranking. */
+  fornecedor: z.string().min(1).max(160).optional(),
   periodoDe: z.string().optional(),
   periodoAte: z.string().optional(),
   limite: z.number().int().min(1).max(200).optional(),
@@ -55,7 +58,8 @@ export const fiscalNotasRecebidasPorFornecedor: ToolEntry<Input, Output> = {
   descricao:
     "Notas fiscais de entrada (compras e devoluções, DF-e de fornecedores) " +
     "agrupadas por fornecedor, ordenadas por valor total decrescente. " +
-    "Aceita filtro de período (periodoDe/periodoAte em AAAA-MM-DD).",
+    "Para perguntas sobre um fornecedor específico, passe `fornecedor` (nome " +
+    "ou parte dele). Aceita filtro de período (periodoDe/periodoAte AAAA-MM-DD).",
   inputSchemaShape: inputSchema.shape,
   inputSchema,
   outputSchema,

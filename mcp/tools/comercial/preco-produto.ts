@@ -6,7 +6,9 @@ import { queryPrecoProduto } from "@/lib/reports/queries/precos.js";
 import { withFreshness } from "../../lib/freshness.js";
 
 const inputSchema = z.object({
-  produtoId: z.number().int().positive().optional(),
+  // Busca por termo no nome do produto (aceita o nome ou o código que aparece
+  // entre colchetes no nome). NÃO existe parâmetro de id interno: o código
+  // visível do produto não é o id interno e usá-lo como id retorna vazio.
   termo: z.string().min(1).max(120).optional(),
   limite: z.number().int().min(1).max(500).optional(),
 });
@@ -57,7 +59,8 @@ export const comercialPrecoProduto: ToolEntry<Input, Output> = {
   descricao:
     "Regras de preço de um produto nas tabelas de preço: valor, operação " +
     "(fixo, valor, margem, markup, desconto), preço-base, vigência e " +
-    "quantidade mínima. Filtra por produtoId ou por termo no nome do produto.",
+    "quantidade mínima. Busca por `termo` no nome do produto (passe o nome " +
+    "do produto ou o código que aparece entre colchetes no nome).",
   inputSchemaShape: inputSchema.shape,
   inputSchema,
   outputSchema,
