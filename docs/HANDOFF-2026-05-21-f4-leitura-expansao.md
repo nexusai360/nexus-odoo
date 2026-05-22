@@ -74,3 +74,8 @@ nem rodar o agente** sem autorização explícita. A bateria L3 já foi concluí
 - Censo: `docs/superpowers/research/2026-05-21-censo-novo-acesso.md`
 - Spec/plano L1: `docs/superpowers/specs|plans/2026-05-21-f4-leitura-expansao*`
 - Relatório L3: `docs/superpowers/research/2026-05-22-l3-relatorio.md`
+- **L3 — caminho dos 97,73% aos 100%:**
+  `docs/superpowers/research/2026-05-22-l3-caminho-100.md` (análise das 26
+  falhas + melhorias por categoria; foco da próxima sessão).
+- **Bloqueio da base de teste Tauga:** `docs/tauga-base-teste-bloqueio.md`
+  (investigação completa, erros encontrados e o texto a enviar à Tauga).
