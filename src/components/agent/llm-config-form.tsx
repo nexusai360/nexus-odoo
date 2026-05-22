@@ -174,7 +174,10 @@ export function LlmConfigForm({
   const [isTogglingBubble, startBubbleToggle] = useTransition();
 
   const meta = PROVIDER_META[provider];
-  const models = useMemo(() => modelsFor(provider), [provider]);
+  const models = useMemo(
+    () => modelsByProvider?.[provider] ?? listModels(provider),
+    [provider, modelsByProvider],
+  );
 
   const modelOptions = useMemo<SearchableSelectOption[]>(() => {
     const fromCatalog: SearchableSelectOption[] = models.map((m) => ({
