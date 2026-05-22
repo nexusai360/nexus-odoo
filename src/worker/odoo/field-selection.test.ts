@@ -63,4 +63,20 @@ describe("getModelFields", () => {
       { attributes: ["type", "store"] },
     );
   });
+
+  it("subtrai os excludeFields declarados no MODEL_CATALOG", async () => {
+    // sped.certificado consta no MODEL_CATALOG com excludeFields:["senha","arquivo"].
+    const client = fakeClient({
+      id: { type: "integer", store: true },
+      tipo: { type: "selection", store: true },
+      senha: { type: "char", store: true },
+      arquivo: { type: "binary", store: true },
+      proprietario: { type: "char", store: true },
+    });
+    const fields = await getModelFields(client, "sped.certificado");
+    expect(fields).toContain("tipo");
+    expect(fields).toContain("proprietario");
+    expect(fields).not.toContain("senha");
+    expect(fields).not.toContain("arquivo");
+  });
 });
