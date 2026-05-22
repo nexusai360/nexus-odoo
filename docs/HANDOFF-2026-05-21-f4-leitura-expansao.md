@@ -1,99 +1,76 @@
 # HANDOFF — F4 Expansão da base de leitura (L1/L2/L3)
 
-> Retomada da fase. Branch: `feat/f4-leitura-expansao` (de `origin/main`).
-> Modo autônomo. Atualizado em 2026-05-21.
+> Retomada de sessão. Branch: `feat/f4-leitura-expansao`. Atualizado 2026-05-22.
+> Modo autônomo. **Ler este arquivo antes de seguir.**
 
-## Contexto
+## Resumo do estado
 
-O acesso ao Odoo passou a ser `joaozanini` (103 grupos, quase admin). Objetivo:
-ampliar a base de **leitura** do MCP ao máximo do acesso e validar o agente
-Nex com 1000+ requisições reais (meta 97%+ de acerto). Três sub-projetos:
-**L1** (expansão), **L2** (bateria de leitura), **L3** (validação do agente).
+A branch `feat/f4-leitura-expansao` está **com tudo unificado**: a expansão de
+leitura (L1) **mais** o merge da `feat/f4-onda2-mcp-escrita` (146 commits:
+escrita no MCP, Plugar MCPs, Servidor MCP, documentação, integração do Agente
+Nex com MCP externo). O catálogo do MCP tem **42 entradas** (41 tools de
+leitura + 1 write tool). Verificação após o merge: `jest` 1546, `tsc`
+raiz+mcp verdes.
+
+A validação L3 do agente Nex atingiu **97,73%** de assertividade
+(meta 97%). Relatório: `docs/superpowers/research/2026-05-22-l3-relatorio.md`.
+
+## Ambiente local
+
+- **Banco desta branch:** `nexus_odoo_l1` (container `db`, porta 5436). O
+  `.env.local` aponta `DATABASE_URL`/`MCP_DATABASE_URL`/`MCP_BI_DATABASE_URL`
+  para ele. 25 migrations aplicadas (main + f4-onda2 + L1).
+- **Containers:** `db`, `redis`, `mcp` (3100). `docker-compose.override.yml`
+  aponta o MCP para `nexus_odoo_l1` e seta `MCP_RATE_LIMIT=100000` (dev).
+- **App:** `npm run dev` na porta 3000 (login `nexusai360@gmail.com`).
+- **Cache populado:** ingestão completa dos 84 modelos do Odoo de produção;
+  14 fatos construídos. Re-rodar: `tsx --env-file=.env.local scripts/f4l-ingest.ts`
+  e depois `scripts/f4l-build-fatos.ts`.
+- Credencial OpenAI cifrada + LlmConfig `gpt-5.4-nano` semeadas no banco
+  (`scripts/f4l-seed-llm.ts`).
+
+## ⚠️ Não disparar requisições à OpenAI
+
+A pedido do usuário (custo de créditos): **não reexecutar `f4l-l3-harness.ts`
+nem rodar o agente** sem autorização explícita. A bateria L3 já foi concluída.
+
+## O que foi entregue (L1 + merge)
+
+- Metodologia completa: censo, spec L1 v3, plano L1 v3 (2 reviews cada).
+- **Ondas L1a 1-5:** raw + fatos + queries + tools de MCP para preços,
+  serviços, DF-e de entrada por fornecedor, apuração fiscal e cartas de
+  correção. `bi-schema-reference.ts` atualizado (Caminho 3c).
+- Ingestão real do cache; fix do timeout do builder `fato_nota_fiscal`.
+- Merge da `feat/f4-onda2-mcp-escrita` (Plugar MCPs, Servidor MCP, escrita).
+- **L3:** harness de 1146 perguntas reais, 4 correções de tool aplicadas
+  (preço sem `produtoId`, fornecedor com filtro, estoque com `termo`, nomes de
+  tool saneados para a OpenAI), assertividade 63,4% → 86,2% → **97,73%**.
+
+## O que falta
+
+1. **Escrita na base de teste (F4 Onda 2): BLOQUEADA pela Tauga.** A base
+   `grupojht.teste.tauga.online` recusa autenticação (`permissão negada para
+   esquema public`). Texto técnico do pedido à Tauga já foi entregue ao
+   usuário (corrigir privilégio do schema `public` + configurar `url_api` de
+   teste nas `pedido.operacao`). Credenciais de teste em `.env.local`
+   (`ODOO_WRITE_*`).
+2. **L3 — 26 falhas residuais (2,27%)** para chegar a 100%: categoria `global`
+   (5 casos — agente erra contagens-totais), `notas_entrada_fornecedor`
+   (13 — nome de fornecedor ambíguo / filtro), e falhas esparsas de serviço.
+   Próximo passo se quiser 100%: afinar essas tools/perguntas.
+3. **L1b (camada de referência)** e **L2 (bateria de leitura)** do plano L1
+   não foram executadas (decisão de priorizar L3).
+4. PR: a branch não foi aberta como PR nem mergeada na `main` — decisão do
+   usuário.
+
+## Scripts (em `scripts/`)
+
+`f4l-ingest.ts` (sync), `f4l-build-fatos.ts` (rebuild de fatos),
+`f4l-seed-llm.ts` (credencial OpenAI), `f4l-l3-smoke.ts` (smoke do agente),
+`f4l-l3-harness.ts` (bateria L3 — NÃO rodar sem autorização), `f4l-smoke.ts`.
 
 ## Artefatos
 
 - Censo: `docs/superpowers/research/2026-05-21-censo-novo-acesso.md`
-- Spec L1 v3: `docs/superpowers/specs/2026-05-21-f4-leitura-expansao-spec.md`
-- Plano L1 v3: `docs/superpowers/plans/2026-05-21-f4-leitura-expansao.md`
-
-## Ambiente
-
-- **Banco isolado desta branch:** `nexus_odoo_l1` (no container `db`, 5436). O
-  `.env.local` aponta `DATABASE_URL`/`MCP_DATABASE_URL`/`MCP_BI_DATABASE_URL`
-  para ele. Foi criado porque o `nexus_odoo` tinha migrations da branch de
-  escrita que conflitavam. Migrations aplicadas (19 + `f4l_l1a_dados`).
-- **Stack:** containers `db` (5436), `redis` (6380), `mcp` (3100) de pé.
-- **Chave OpenAI** em `.env.local` (`OPENAI_API_KEY`). Falta semear a
-  `LlmCredential` cifrada no banco (o agente lê de lá, não do env).
-
-## Estado atual
-
-Metodologia cumprida até o plano. Execução:
-
-- Schema, migration `f4l_l1a_dados` e Ondas L1a 1-2 (preços e serviços)
-  completas e commitadas (`6d64043`, `bc11d59`, `41e2ed5`): builders
-  `fato-preco`/`fato-servico`, query layer, tools `preco_produto`,
-  `preco_tabela`, `servico_buscar`, `servico_listar`, testes.
-- **Ingestão completa** (`nexus_odoo_l1`): todos os 84 modelos sincronizados
-  do Odoo de produção; `raw_sped_documento_item` 213.099 linhas, contagens dos
-  modelos novos batem com o Odoo (servico 336, tabela_preco 15, regra 11864,
-  apuracao 8, carta_correcao 12).
-- **Todos os 14 fatos construídos** (`f4l-build-fatos.ts`): inclui
-  `fato_preco` 11864, `fato_servico` 336, `fato_nota_fiscal` 46987.
-- **Commit `09ca327`:** fix de bug real achado na verificação —
-  `rebuildFatoNotaFiscal` estourava o timeout de 5s da transação (P2028) com a
-  base real; timeout estendido para 180s.
-- **Roles MCP provisionados** em `nexus_odoo_l1` (`provision-mcp.sql`);
-  `nexus_mcp`/`nexus_mcp_bi` com SELECT nos `fato_*` (cobre os novos).
-- **Container MCP de pé** na 3100, lendo de `nexus_odoo_l1`.
-- **Smoke test verde** (`f4l-smoke.ts`): as 4 tools novas retornam dado real.
-
-## Próximo passo exato
-
-1. ~~Onda 3 — DF-e de entrada~~ **CONCLUÍDA** (commit `afe2b11`): a visão por
-   período já existia (`fiscal_notas_recebidas`); foi adicionada a tool
-   `fiscal_notas_recebidas_por_fornecedor`. Catálogo agora com 38 tools.
-2. **Onda 4 — apuração e carta de correção.** ATENÇÃO: o `provision-mcp.sql`
-   REVOGA `raw_*` dos roles do MCP — tools NÃO podem ler `raw` direto. Apuração
-   e carta de correção precisam de fato (`fato_apuracao`, `fato_carta_correcao`)
-   ou a query roda sob outro role. Revisar o plano L1 §4.2/4.4 nesse ponto.
-3. **Onda 5 — cross-cutting:** `bi-schema-reference.ts` (tabelas novas no
-   Caminho 3c), regenerar `mcp-catalog-snapshot.json`, documentação do MCP.
-4. **L1b** (referência) e **expandir o catálogo** para mais modelos do censo.
-5. **L2:** harness de 1000+ leituras reais conferidas contra o Odoo.
-6. **L3 — agente Nex:** semear `LlmCredential` (OpenAI, `.env.local`) e
-   `LlmConfig` ativa com o modelo **`gpt-5.4-nano`** (instrução do usuário:
-   todas as requisições usam esse modelo); harness de 1000+ perguntas reais
-   variadas; conferir cada resposta contra consulta independente; relatório
-   geral, meta 97%+.
-
-## Resultado L3 (2026-05-22)
-
-Bateria L3 executada: **1182 requisições reais** ao agente Nex (gpt-5.4-nano),
-relatório em `docs/superpowers/research/2026-05-22-l3-relatorio.md`.
-Assertividade geral **63,4%** — abaixo da meta de 97%. Diagnóstico:
-
-- **4 categorias 99-100%** (conta contábil por código, parceiros por UF,
-  pedidos por etapa, serviço por descrição): o agente acerta quando a tool
-  cobre a pergunta de forma direta.
-- **4 categorias baixas** por gaps de cobertura das tools, não por erro de
-  raciocínio: (a) `fiscal_notas_recebidas_por_fornecedor` devolve só o top-N,
-  então perguntas sobre fornecedores fora do topo falham; (b) nos produtos,
-  o agente trata o código entre colchetes (`[1000110843] ...`) como
-  `produtoId` e consulta o id errado, retornando 0.
-
-**Para chegar a 97%:** ajustar as tools — `preco_produto`/`estoque` por
-produto devem casar pelo código/nome (não pelo `produtoId` interno; ou
-remover o parâmetro `produtoId` da tool e clarificar a descrição); a tool de
-notas por fornecedor precisa de busca por fornecedor específico, não só
-top-N. Depois, reexecutar `scripts/f4l-l3-harness.ts`.
-
-## Notas
-
-- `npx tsc` acusa erros em `.next/types/validator.ts` (páginas
-  `servidor-mcp`/`plugar-mcps`): artefatos `.next` obsoletos da outra branch.
-  Não é regressão; `rm -rf .next` limpa.
-- F4 Onda 2 escrita (PR #10) segue bloqueada: base de teste
-  `grupojht.teste.tauga.online` com erro Postgres de schema. Credenciais em
-  `.env.local` (`ODOO_WRITE_*`).
-- Protocolo multi-agente: `docs/agents/active/claude-f4-leitura-expansao.md`.
+- Spec/plano L1: `docs/superpowers/specs|plans/2026-05-21-f4-leitura-expansao*`
+- Relatório L3: `docs/superpowers/research/2026-05-22-l3-relatorio.md`
