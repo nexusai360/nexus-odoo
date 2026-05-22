@@ -1,8 +1,17 @@
 # SPEC — F4 L1: execução da L1b + onda L1c (resíduo operacional 4a)
 
-> Versão: **v1** (2026-05-22). Continuação do sub-projeto L1 (Expansão da base
+> Versão: **v2** (2026-05-22). Continuação do sub-projeto L1 (Expansão da base
 > de leitura). Pesquisa-base: `docs/superpowers/research/2026-05-21-censo-novo-acesso.md`.
 > Spec-mãe da L1: `docs/superpowers/specs/2026-05-21-f4-leitura-expansao-spec.md`.
+
+## Histórico de revisão
+
+- **v1 → v2:** sondagem `fields_get`/`search_read` read-only dos três modelos
+  da L1c. Dois ajustes: (1) o sync ganha exclusão de campos por modelo, para
+  não copiar `senha` (texto puro) e `arquivo` (binário) de `sped.certificado`
+  para o cache; (2) `pedido.faturamento` foi confirmado **dentro** do escopo
+  como modelo de faturamento real (a v1 chegou a tirá-lo por leitura apressada
+  da contagem de campos; ver §2.2).
 
 ## 1. Contexto e objetivo
 
@@ -41,45 +50,60 @@ Executar T6.1 a T6.10 do plano-mãe. Resumo do que entregam:
 
 ### 2.2 Onda L1c — resíduo operacional 4a (escopo novo)
 
-> **Sondagem de schema (2026-05-22).** Antes de planejar, os três modelos do
-> censo §4a foram sondados por `fields_get`/`search_read` read-only contra a
-> produção. O resultado corrigiu a lista: `pedido.faturamento` **saiu de
-> escopo** (ver §2.4), e `sped.certificado` exige exclusão de campos sensíveis.
-
-Modelos operacionais com dado real que o censo §4a listou e que não entraram
-na L1a por volume mínimo:
+> **Sondagem de schema (2026-05-22).** Os três modelos do censo §4a foram
+> sondados por `fields_get`/`search_read` read-only contra a produção.
+> Resultado: os três são dado operacional real e entram como `raw`;
+> `sped.certificado` exige exclusão de dois campos sensíveis na cópia.
 
 | Modelo Odoo | Registros | Tratamento |
 |---|---|---|
-| `sped.certificado` | 11 | `raw` (campos selecionados) + `fato_certificado` + tool |
+| `sped.certificado` | 11 | `raw` (sem `senha`/`arquivo`) + `fato_certificado` + tool |
 | `finan.baixa.lancamento` | 3 | `raw` apenas |
+| `pedido.faturamento` | 1 (cresce) | `raw` apenas |
 
-- Os dois recebem modelo Prisma `Raw*` e entrada no `MODEL_CATALOG`, numa
-  migration própria (`f4l_residuo_4a`). Ambos expõem `write_date`, logo
+Conteúdo de cada modelo (confirmado na sondagem):
+
+- **`sped.certificado`** — certificados digitais (e-CNPJ A1) das empresas do
+  grupo: tipo, número de série, proprietário, CNPJ, validades (início, fim,
+  vencimento útil), nome do arquivo.
+- **`finan.baixa.lancamento`** — baixas de lançamentos financeiros em lote:
+  empresa, tipo (a receber / a pagar), período, participante, conta gerencial,
+  flag de executado.
+- **`pedido.faturamento`** — faturamento de pedidos/contratos: tipo, número
+  (ex.: `FCV-0002/26`), datas de faturamento, valores (total, já faturado,
+  a faturar, confirmado), empresa, cliente, contrato, operação. O `fields_get`
+  retorna 198 campos, mas **145 são de configuração herdada e não-gravados**
+  (`store=false`): o `getModelFields` do worker já os ignora porque copia só
+  campos `store=true`. Sobram os ~30 campos reais de faturamento. Sem
+  tratamento especial.
+
+Regras da onda:
+
+- Os três recebem modelo Prisma `Raw*` e entrada no `MODEL_CATALOG`, numa
+  migration própria (`f4l_residuo_4a`). Os três expõem `write_date`, logo
   `mode: "incremental"`.
-- **`sped.certificado` — exclusão obrigatória de campos.** A sondagem mostrou
-  que o modelo tem `arquivo` (campo `binary`: o arquivo `.pfx` do certificado,
-  base64, dezenas de KB por registro) e `senha` (campo `char`: a senha do
-  certificado **em texto puro**). Nenhum dos dois pode ir para o cache: o
-  blob binário incha a base sem valor analítico e a senha é segredo que não
-  se replica. O sync de `sped.certificado` exclui `arquivo` e `senha` via
-  uma lista de exclusão por modelo (ver §3). Os campos úteis ficam: `tipo`,
-  `numero_serie`, `proprietario`, `cnpj_cpf`, `data_inicio_validade`,
-  `data_fim_validade`, `data_vencimento_util`, `descricao`, `fora_validade`.
+- **`sped.certificado` — exclusão de campos sensíveis na cópia.** A sondagem
+  mostrou que o modelo tem `arquivo` (`binary`, `store=true`: o `.pfx` do
+  certificado, base64) e `senha` (`char`, `store=true`: a senha do certificado
+  **em texto puro**). Decisão do usuário (2026-05-22): nenhum dos dois é
+  copiado para o cache. A cópia ao Odoo é só leitura e o `excludeFields` (ver
+  §3) controla quais colunas o sync grava no **nosso** banco; o dado original
+  no Odoo não é alterado. `sped.certificado` declara
+  `excludeFields: ["senha", "arquivo"]`.
 - `sped.certificado` ganha **uma** tool semântica (`fiscal_certificados`):
-  lista os certificados digitais com identificação e validade, para responder
-  perguntas como "quais certificados temos e quando vencem". A tool lê o
+  lista os certificados com identificação e validade, para responder perguntas
+  como "quais certificados temos e quando vencem". A tool lê o
   `fato_certificado`, construído a partir de `raw_sped_certificado` (mesmo
   padrão de `fato_apuracao` e `fato_carta_correcao`, que têm fato apesar do
   volume baixo). O fato é **exigido** porque o helper `withFreshness` do MCP
   precisa de pelo menos um `FatoBuildState` para reportar frescor; uma tool
   sem fato quebraria esse contrato.
-- `finan.baixa.lancamento` fica só em `raw`: 3 registros não justificam fato
-  nem tool dedicada, e o catálogo enxuto reduz o ruído de seleção do modelo
-  (lição da L3). Fica alcançável pelo Caminho 3c.
-- `fato_certificado` e `raw_finan_baixa_lancamento` entram em
-  `bi-schema-reference.ts`; todas as tabelas novas (`raw_*` e `fato_*`)
-  recebem GRANT aos roles `nexus_mcp`/`nexus_mcp_bi`.
+- `finan.baixa.lancamento` e `pedido.faturamento` ficam só em `raw`: 1 a 3
+  registros não justificam fato nem tool dedicada, e o catálogo enxuto reduz o
+  ruído de seleção do modelo (lição da L3). Ficam alcançáveis pelo Caminho 3c.
+- `fato_certificado`, `raw_finan_baixa_lancamento` e `raw_pedido_faturamento`
+  entram em `bi-schema-reference.ts`; todas as tabelas novas (`raw_*` e
+  `fato_*`) recebem GRANT aos roles `nexus_mcp`/`nexus_mcp_bi`.
 
 ### 2.3 Onda I — ingestão real (executar o plano-mãe)
 
@@ -93,15 +117,9 @@ Odoo, smoke test das tools novas.
 - `sped.consulta.dfe` e `sped.consulta.dfe.item`: o plano-mãe os excluiu com
   motivo revisado (cursor de distribuição SEFAZ, redundante com `sped.documento`
   e `sped.dfe.importacao` já sincronizados). A decisão é mantida.
-- **`pedido.faturamento` — fora de escopo (decisão da sondagem).** O censo o
-  classificou como "faturamento de pedido/contrato" com 1 registro. A sondagem
-  `fields_get` revelou **198 campos de configuração de sistema** (`nome_sistema`,
-  `servidores_dns`, `sistema_emite_nfe`, `tauga_formato_celular`, etc.): é um
-  modelo de **configuração** (singleton de settings), não um modelo de dado
-  operacional. Sincronizá-lo como tabela de negócio não agrega nada e seria
-  enganoso. Fica fora; o censo será anotado como tendo-o classificado errado.
-- `fato_*` para `finan.baixa.lancamento` (só `raw`). `sped.certificado` tem
-  `fato_certificado` por exigência do `withFreshness`.
+- `fato_*` para `finan.baixa.lancamento` e `pedido.faturamento` (só `raw`).
+  `sped.certificado` tem `fato_certificado` por exigência do `withFreshness`.
+- Cópia dos campos `senha` e `arquivo` de `sped.certificado` para o cache.
 - Registros gerados de SPED, views de árvore, modelos vazios e abstratos
   (spec-mãe §2.4).
 - A bateria L2 de validação de leitura (sub-projeto seguinte, spec própria).
@@ -115,16 +133,18 @@ migration). Nada de camada nova.
 
 Pontos específicos da L1c:
 
-- **Domínio RBAC:** `fiscal` para `sped.certificado`; `finan.baixa.lancamento`
-  não gera tool, logo não declara domínio (só `raw`).
+- **Domínio RBAC:** `fiscal` para `sped.certificado`. `finan.baixa.lancamento`
+  e `pedido.faturamento` não geram tool, logo não declaram domínio (só `raw`).
 - **Exclusão de campos por modelo (mudança no sync engine).** Hoje
   `getModelFields` (`src/worker/odoo/field-selection.ts`) seleciona todos os
   campos `store=true` exceto `one2many`/`many2many`. A L1c acrescenta uma
   lista de exclusão por modelo: a entrada de `MODEL_CATALOG` ganha um campo
   opcional `excludeFields?: string[]`, e `getModelFields` o subtrai da lista.
-  `sped.certificado` declara `excludeFields: ["arquivo", "senha"]`. A mudança
-  é retrocompatível (modelos sem `excludeFields` não mudam de comportamento)
-  e tem teste unitário próprio em `field-selection.test.ts`.
+  `sped.certificado` declara `excludeFields: ["senha", "arquivo"]`. A mudança
+  é retrocompatível (modelos sem `excludeFields` não mudam de comportamento) e
+  tem teste unitário próprio em `field-selection.test.ts`. `excludeFields`
+  controla apenas o que o sync **copia para o nosso cache**; é leitura do
+  Odoo, não altera nada na origem.
 - **`fato_certificado`:** builder em `src/worker/fatos/fato-certificado.ts`,
   registrado em `FATO_BUILDERS` (`registry.ts`) com `cycle: "incremental"`,
   modelo `FatoCertificado` no Prisma, mapeando o JSONB de `raw_sped_certificado`
@@ -143,17 +163,17 @@ Pontos específicos da L1c:
 1. L1b: T6.1 a T6.10 do plano-mãe concluídas; `referencia_buscar` visível para
    o domínio e some para quem não tem; tabelas de referência em
    `bi-schema-reference.ts`.
-2. L1c: os dois modelos têm `Raw*`, entrada em `MODEL_CATALOG` e migration
+2. L1c: os três modelos têm `Raw*`, entrada em `MODEL_CATALOG` e migration
    `f4l_residuo_4a` aplicada; `FatoCertificado` e seu builder existem com
-   teste unitário verde; `fato_certificado` e `raw_finan_baixa_lancamento`
-   constam em `bi-schema-reference.ts` e nos GRANT. `raw_sped_certificado`
-   **não contém** as colunas/JSON de `arquivo` nem `senha`.
+   teste unitário verde; `fato_certificado`, `raw_finan_baixa_lancamento` e
+   `raw_pedido_faturamento` constam em `bi-schema-reference.ts` e nos GRANT.
+   `raw_sped_certificado` **não contém** os campos `senha` nem `arquivo`.
 3. `fiscal_certificados` aparece em `tools/list` para usuário com domínio
    `fiscal`, some para quem não tem, e responde com dado real do cache.
 4. Onda I: worker completa um ciclo de sync sem falha por modelo; para cada
    modelo novo, `count(raw_*)` é conferido contra o `search_count` do Odoo
    medido após o sync. Tabelas de referência (L1b, estáticas) batem
-   exatamente; as duas tabelas da L1c batem ou divergem apenas pelos
+   exatamente; as três tabelas da L1c batem ou divergem apenas pelos
    registros criados na janela de sync, com a divergência justificada.
 5. Verde: `npx tsc --noEmit` (raiz), typecheck do container `mcp`,
    `npx eslint`, `npx jest`, `npx next build` e `docker compose build mcp`.
@@ -163,14 +183,16 @@ Pontos específicos da L1c:
 ## 5. Riscos
 
 - **Segredo no cache (`sped.certificado`).** O modelo carrega a senha do
-  certificado em texto puro e o arquivo `.pfx`. Mitigação: exclusão de
-  `arquivo` e `senha` no sync (§2.2 e §3), com critério de aceite 2
-  verificando que `raw_sped_certificado` não os contém.
-- **Schema dos modelos Odoo.** Sondado por `fields_get` read-only durante o
-  planejamento; campos e exclusões fixados na spec antes de codar.
-- **Censo com classificação imprecisa.** `pedido.faturamento` provou ser
-  modelo de configuração, não de dado. Mitigação: sondar antes de planejar
-  qualquer modelo novo (já aplicada nesta onda).
+  certificado em texto puro e o arquivo `.pfx`. Mitigação: `excludeFields`
+  exclui `senha` e `arquivo` da cópia (§2.2 e §3); o critério de aceite 2
+  verifica que `raw_sped_certificado` não os contém.
+- **Schema dos modelos Odoo.** Sondado por `fields_get`/`search_read`
+  read-only durante o planejamento; campos, `store` e exclusões fixados na
+  spec antes de codar.
+- **Leitura apressada de schema.** A v1 tirou `pedido.faturamento` do escopo
+  por contar 198 campos sem checar `store`. Lição: classificar modelo pelos
+  campos `store=true` e por uma amostra real, não pela contagem bruta de
+  `fields_get`.
 - **GRANT esquecido pós-migration.** Reaplicar `db:provision` após cada
   migration (RADAR R4), coberto pelo critério 2 e pela Onda I.
 
