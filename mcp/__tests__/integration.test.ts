@@ -1,8 +1,8 @@
 // mcp/__tests__/integration.test.ts
-// Harness de teste de integração do MCP — 4f-4 (Onda F: 33 tools).
+// Harness de teste de integração do MCP — 4f-4 (Onda F: 40 tools).
 //
 // Cobre:
-//   1. Assertiva de catálogo: super_admin recebe EXATAMENTE 33 tools com os IDs corretos (N6).
+//   1. Assertiva de catálogo: super_admin recebe EXATAMENTE 40 tools com os IDs corretos (N6).
 //   2. Catálogo filtrado por perfil: cada role recebe o subconjunto correto.
 //   3. bi_consulta_avancada só para super_admin e admin.
 //   4. registrar_lacuna sempre visível (sempreVisivel).
@@ -16,7 +16,7 @@
 //   - resolveUserContext: retorna UserContext fixo por userId (sem banco)
 //   - prisma: mock mínimo para handleToolCall (resolveUser injeta o contexto)
 //   - mcpRedis: pipeline mock que sempre retorna count=1 (sem Redis real)
-//   - catalogo: REAL (as 33 tools de produção — objetivo da rede N6)
+//   - catalogo: REAL (as 40 tools de produção — objetivo da rede N6)
 
 // ─── Mocks configurados ANTES dos imports de implementação ────────────────────
 
@@ -64,7 +64,7 @@ jest.mock("../lib/redis.js", () => ({
   },
 }));
 
-// NÃO mockar o catálogo — usamos o catálogo REAL (rede de proteção N6 — 33 tools)
+// NÃO mockar o catálogo — usamos o catálogo REAL (rede de proteção N6 — 40 tools)
 
 // ─── Imports pós-mock ─────────────────────────────────────────────────────────
 import { catalogo } from "../catalog/index.js";
@@ -98,6 +98,8 @@ const COMERCIAL_IDS = [
   "comercial_pedidos_por_vendedor",
   "comercial_pedidos_atrasados",
   "comercial_parcelas_a_vencer",
+  "preco_produto",
+  "preco_tabela",
 ];
 
 const FISCAL_IDS = [
@@ -107,12 +109,17 @@ const FISCAL_IDS = [
   "fiscal_impostos_periodo",
   "fiscal_faturamento_por_cliente",
   "fiscal_produtos_faturados",
+  "fiscal_notas_recebidas_por_fornecedor",
+  "fiscal_apuracao",
+  "fiscal_carta_correcao",
 ];
 
 const CADASTROS_IDS = [
   "cadastro_buscar_parceiro",
   "cadastro_parceiros_por_uf",
   "cadastro_contar_parceiros",
+  "servico_buscar",
+  "servico_listar",
 ];
 
 const CONTABIL_IDS = [
@@ -141,10 +148,10 @@ const TODOS_IDS = [
 // ─── 1. Assertiva de catálogo completo (achado N6) ────────────────────────────
 
 describe("Catálogo completo — rede de proteção N6", () => {
-  it("super_admin recebe EXATAMENTE 33 tools", () => {
+  it("super_admin recebe EXATAMENTE 40 tools", () => {
     const user = { userId: "u", role: "super_admin" as const, domains: ["estoque", "financeiro"] } as unknown as Parameters<typeof visibleTools>[1];
     const tools = visibleTools(catalogo, user);
-    expect(tools).toHaveLength(33);
+    expect(tools).toHaveLength(40);
   });
 
   it("super_admin recebe o conjunto exato de IDs", () => {
@@ -154,8 +161,8 @@ describe("Catálogo completo — rede de proteção N6", () => {
     expect(ids).toEqual([...TODOS_IDS].sort());
   });
 
-  it("catálogo bruto (antes do filtro) tem exatamente 33 entradas", () => {
-    expect(catalogo).toHaveLength(33);
+  it("catálogo bruto (antes do filtro) tem exatamente 40 entradas", () => {
+    expect(catalogo).toHaveLength(40);
   });
 });
 
@@ -167,17 +174,17 @@ describe("Catálogo filtrado por perfil", () => {
     return visibleTools(catalogo, user).map((t) => t.id);
   }
 
-  it("super_admin vê todas as 33 tools", () => {
+  it("super_admin vê todas as 40 tools", () => {
     const ids = tools("super_admin", ["estoque", "financeiro"]);
-    expect(ids).toHaveLength(33);
+    expect(ids).toHaveLength(40);
     for (const id of TODOS_IDS) {
       expect(ids).toContain(id);
     }
   });
 
-  it("admin vê todas as 33 tools", () => {
+  it("admin vê todas as 40 tools", () => {
     const ids = tools("admin", ["estoque", "financeiro"]);
-    expect(ids).toHaveLength(33);
+    expect(ids).toHaveLength(40);
   });
 
   it("manager com estoque+financeiro vê estoque+financeiro+sempreVisivel (sem bi_consulta_avancada)", () => {
@@ -460,7 +467,7 @@ describe("Servidor HTTP real — protocolo Streamable HTTP end-to-end", () => {
 
   // ── 5b. tools/list via HTTP — catálogo filtrado por perfil ────────────────
 
-  it("super_admin: tools/list via HTTP retorna 33 tools com os IDs corretos", async () => {
+  it("super_admin: tools/list via HTTP retorna 40 tools com os IDs corretos", async () => {
     const sid = await initializeSession(testServer.baseUrl, "user-super-admin");
 
     const { status, body } = await mcpRequest(
@@ -474,7 +481,7 @@ describe("Servidor HTTP real — protocolo Streamable HTTP end-to-end", () => {
     const result = extractRpcResult(body);
     const tools = result?.tools as Array<{ name: string }> | undefined;
     expect(tools).toBeDefined();
-    expect(tools!).toHaveLength(33);
+    expect(tools!).toHaveLength(40);
 
     const names = tools!.map((t) => t.name).sort();
     expect(names).toEqual([...TODOS_IDS].sort());

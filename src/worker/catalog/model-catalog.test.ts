@@ -2,9 +2,20 @@ import { MODEL_CATALOG, rawTableFor } from "./model-catalog";
 import fs from "node:fs";
 import path from "node:path";
 
+// Modelos acrescentados na F4 L1a (expansão da base de leitura). Entraram pela
+// investigação `fields_get`, não pela varredura F0, então não têm arquivo
+// correspondente em discovery/output/modelos.
+const MODELOS_L1A = new Set([
+  "sped.tabela.preco",
+  "sped.tabela.preco.regra",
+  "sped.servico",
+  "sped.apuracao",
+  "sped.carta.correcao",
+]);
+
 describe("model-catalog", () => {
-  it("tem 79 modelos", () => {
-    expect(MODEL_CATALOG).toHaveLength(79);
+  it("tem 84 modelos (79 do F0 + 5 da expansão L1a)", () => {
+    expect(MODEL_CATALOG).toHaveLength(84);
   });
 
   // discovery/output/ é gitignored (saídas brutas locais — ver .gitignore).
@@ -13,13 +24,15 @@ describe("model-catalog", () => {
   const discoveryDir = path.join(process.cwd(), "discovery/output/modelos");
   const temDiscovery = fs.existsSync(discoveryDir);
   (temDiscovery ? it : it.skip)(
-    "cobre exatamente os modelos de discovery/output/modelos",
+    "cobre exatamente os modelos de discovery/output/modelos (fora os da L1a)",
     () => {
       const arquivos = fs
         .readdirSync(discoveryDir)
         .filter((f) => f.endsWith(".json"));
       const noDisco = new Set(arquivos.map((f) => f.replace(/\.json$/, "")));
-      const noCatalogo = new Set(MODEL_CATALOG.map((m) => m.odooModel));
+      const noCatalogo = new Set(
+        MODEL_CATALOG.map((m) => m.odooModel).filter((m) => !MODELOS_L1A.has(m)),
+      );
       expect(noCatalogo).toEqual(noDisco);
     },
   );
