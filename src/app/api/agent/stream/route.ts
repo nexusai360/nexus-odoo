@@ -77,8 +77,23 @@ export async function POST(req: Request): Promise<Response> {
     }
     conversationId = body.conversationId;
   } else {
-    const conv = await createConversation(user.id, channel);
-    conversationId = conv.id;
+    try {
+      const conv = await createConversation(user.id, channel);
+      conversationId = conv.id;
+    } catch (err) {
+      // Nunca deixar uma falha de criação de conversa virar um 500 cru sem
+      // contexto. O caso mais provável é a sessão apontar para um usuário que
+      // não existe mais na base (FK conversations_user_id); a resposta orienta
+      // o novo login.
+      console.error("[agent/stream] Falha ao criar conversa:", err);
+      return new Response(
+        JSON.stringify({
+          error:
+            "Não foi possível iniciar a conversa. Saia da conta e entre novamente, depois tente de novo.",
+        }),
+        { status: 500, headers: { "Content-Type": "application/json" } },
+      );
+    }
   }
 
   const stream = new ReadableStream<Uint8Array>({

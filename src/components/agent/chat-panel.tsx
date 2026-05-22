@@ -186,7 +186,10 @@ export function ChatPanel({
 
         if (!res.ok || !res.body) {
           setMessages((prev) => prev.filter((m) => m.id !== "loading"));
-          toast.error(`Erro ao contatar o agente (${res.status})`);
+          const detalhe = (await res.json().catch(() => null)) as {
+            error?: string;
+          } | null;
+          toast.error(detalhe?.error ?? `Erro ao contatar o agente (${res.status})`);
           setPending(false);
           return;
         }
