@@ -4,13 +4,14 @@
       "id": "estoque_saldo_produto",
       "operation": "read",
       "module": "estoque",
-      "descricao": "Saldo de estoque por produto: unidades e valor a custo, com nº de localizações.",
+      "descricao": "Saldo de estoque por produto: unidades e valor a custo, com nº de localizações. Para o saldo de um produto específico, passe `termo` com o nome ou o código do produto.",
       "capability": null,
       "sensitive": false,
       "addedInVersion": null,
       "inputSchemaKeys": [
         "armazemId",
-        "familiaId"
+        "familiaId",
+        "termo"
       ],
       "examples": []
     },
@@ -247,6 +248,56 @@
       "examples": []
     },
     {
+      "id": "preco_produto",
+      "operation": "read",
+      "module": "comercial",
+      "descricao": "Regras de preço de um produto nas tabelas de preço: valor, operação (fixo, valor, margem, markup, desconto), preço-base, vigência e quantidade mínima. Busca por `termo` no nome do produto (passe o nome do produto ou o código que aparece entre colchetes no nome).",
+      "capability": null,
+      "sensitive": false,
+      "addedInVersion": null,
+      "inputSchemaKeys": [
+        "termo",
+        "limite"
+      ],
+      "examples": []
+    },
+    {
+      "id": "preco_tabela",
+      "operation": "read",
+      "module": "comercial",
+      "descricao": "Regras de uma tabela de preço pelo seu id: lista as regras (por produto, família ou participante) com valor, operação e vigência.",
+      "capability": null,
+      "sensitive": false,
+      "addedInVersion": null,
+      "inputSchemaKeys": [
+        "tabelaId",
+        "limite"
+      ],
+      "examples": []
+    },
+    {
+      "id": "comercial_contar_pedidos",
+      "operation": "read",
+      "module": "comercial",
+      "descricao": "Contagem total de pedidos cadastrados. Use para perguntas de quantidade absoluta ('quantos pedidos existem'): devolve só o número, sem amostra.",
+      "capability": null,
+      "sensitive": false,
+      "addedInVersion": null,
+      "inputSchemaKeys": [],
+      "examples": []
+    },
+    {
+      "id": "preco_contar_regras",
+      "operation": "read",
+      "module": "comercial",
+      "descricao": "Contagem total de regras de preço cadastradas (todas as tabelas). Use para perguntas de quantidade absoluta ('quantas regras de preço existem'): devolve só o número, sem amostra.",
+      "capability": null,
+      "sensitive": false,
+      "addedInVersion": null,
+      "inputSchemaKeys": [],
+      "examples": []
+    },
+    {
       "id": "fiscal_faturamento_periodo",
       "operation": "read",
       "module": "fiscal",
@@ -333,6 +384,62 @@
       "examples": []
     },
     {
+      "id": "fiscal_notas_recebidas_por_fornecedor",
+      "operation": "read",
+      "module": "fiscal",
+      "descricao": "Notas fiscais de entrada (compras e devoluções, DF-e de fornecedores) agrupadas por fornecedor, ordenadas por valor total decrescente. Para perguntas sobre um fornecedor específico, passe `fornecedor` (nome ou parte) ou `documento` (CNPJ/CPF, sem ambiguidade). Quando filtrado, `totalAgregado` traz a contagem e o valor somados de todas as notas que casaram — é a resposta para 'quantas notas do fornecedor X'. Aceita filtro de período (periodoDe/periodoAte AAAA-MM-DD).",
+      "capability": null,
+      "sensitive": false,
+      "addedInVersion": null,
+      "inputSchemaKeys": [
+        "fornecedor",
+        "documento",
+        "periodoDe",
+        "periodoAte",
+        "limite"
+      ],
+      "examples": []
+    },
+    {
+      "id": "fiscal_apuracao",
+      "operation": "read",
+      "module": "fiscal",
+      "descricao": "Apurações fiscais da empresa (ICMS-IPI e PIS-COFINS): período, valores a recolher de ICMS, IPI, PIS e COFINS, saldo credor de ICMS e se a apuração foi entregue. Filtra por tipo.",
+      "capability": null,
+      "sensitive": false,
+      "addedInVersion": null,
+      "inputSchemaKeys": [
+        "tipo",
+        "limite"
+      ],
+      "examples": []
+    },
+    {
+      "id": "fiscal_carta_correcao",
+      "operation": "read",
+      "module": "fiscal",
+      "descricao": "Cartas de correção (CC-e) de documentos fiscais: o texto da correção, o documento corrigido, a data e o protocolo de autorização. Filtra por documentoId.",
+      "capability": null,
+      "sensitive": false,
+      "addedInVersion": null,
+      "inputSchemaKeys": [
+        "documentoId",
+        "limite"
+      ],
+      "examples": []
+    },
+    {
+      "id": "fiscal_contar_notas",
+      "operation": "read",
+      "module": "fiscal",
+      "descricao": "Contagem total de notas fiscais. Use para perguntas de quantidade absoluta ('quantas notas fiscais existem'): devolve só os números — `total`, `totalEntrada` (DF-e de fornecedores) e `totalSaida` (emitidas).",
+      "capability": null,
+      "sensitive": false,
+      "addedInVersion": null,
+      "inputSchemaKeys": [],
+      "examples": []
+    },
+    {
       "id": "cadastro_buscar_parceiro",
       "operation": "read",
       "module": "cadastros",
@@ -364,6 +471,44 @@
       "operation": "read",
       "module": "cadastros",
       "descricao": "Contagem total de parceiros cadastrados, segmentada por tipo: clientes, fornecedores e empresas.",
+      "capability": null,
+      "sensitive": false,
+      "addedInVersion": null,
+      "inputSchemaKeys": [],
+      "examples": []
+    },
+    {
+      "id": "servico_buscar",
+      "operation": "read",
+      "module": "cadastros",
+      "descricao": "Busca serviços no catálogo fiscal por termo (código ou descrição). Retorna código, descrição, código de tributação e alíquota de INSS retido.",
+      "capability": null,
+      "sensitive": false,
+      "addedInVersion": null,
+      "inputSchemaKeys": [
+        "termo",
+        "limite"
+      ],
+      "examples": []
+    },
+    {
+      "id": "servico_listar",
+      "operation": "read",
+      "module": "cadastros",
+      "descricao": "Lista o catálogo de serviços fiscais ordenado por código. Útil para panorama dos serviços cadastrados.",
+      "capability": null,
+      "sensitive": false,
+      "addedInVersion": null,
+      "inputSchemaKeys": [
+        "limite"
+      ],
+      "examples": []
+    },
+    {
+      "id": "servico_contar",
+      "operation": "read",
+      "module": "cadastros",
+      "descricao": "Contagem total de serviços no catálogo. Use para perguntas de quantidade absoluta ('quantos serviços existem'): devolve só o número, sem amostra.",
       "capability": null,
       "sensitive": false,
       "addedInVersion": null,
@@ -486,6 +631,6 @@
       ]
     }
   ],
-  "count": 35,
-  "generatedAt": "2026-05-21T12:03:29.957Z"
+  "count": 46,
+  "generatedAt": "2026-05-22T15:50:33.327Z"
 }

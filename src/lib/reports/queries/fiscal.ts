@@ -241,12 +241,25 @@ export async function queryProdutosFaturados(
 
 /** Notas fiscais de entrada (DF-e de fornecedores) agregadas por fornecedor.
  * Espelha queryFaturamentoPorCliente, mas no sentido de entrada
- * (entradaSaida = "0"). Ordena por valor recebido e corta em `limite`. */
+ * (entradaSaida = "0"). Ordena por valor recebido e corta em `limite`.
+ *
+ * Filtros de fornecedor:
+ *  - `fornecedor`: busca parcial (ILIKE) no nome do participante. Um nome
+ *    pode casar com mais de um participante (matriz/filial, nomes parecidos),
+ *    gerando várias linhas.
+ *  - `documento`: CNPJ/CPF do fornecedor, comparado dígito a dígito contra o
+ *    cadastro de parceiros — identificação inequívoca.
+ *
+ * `totalAgregado` soma TODAS as notas que casaram o filtro (antes do corte por
+ * `limite`), para perguntas de contagem ("quantas notas do fornecedor X").
+ * `totalFornecedoresDistintos` é quantos participantes casaram o filtro. */
 export async function queryNotasRecebidasPorFornecedor(
   prisma: PrismaClient,
-  filtros: { periodoDe?: string; periodoAte?: string; fornecedor?: string; limite?: number },
+  filtros: { periodoDe?: string; periodoAte?: string; fornecedor?: string; documento?: string; limite?: number },
 ): Promise<{
   linhas: { participanteNome: string | null; quantidade: number; valorTotal: number }[];
+  totalAgregado: { quantidade: number; valorTotal: number };
+  totalFornecedoresDistintos: number;
 }> {
   const limite = filtros.limite ?? 30;
   const fornecedorWhere = filtros.fornecedor
@@ -262,8 +275,24 @@ export async function queryNotasRecebidasPorFornecedor(
         }
       : {};
 
+  // Filtro por documento (CNPJ/CPF): fato_nota_fiscal não guarda o documento
+  // do participante — resolve via fato_parceiro, comparando só os dígitos para
+  // ser imune a formatação (pontos, barras, traços).
+  let documentoWhere: { participanteId?: { in: number[] } } = {};
+  const alvoDoc = (filtros.documento ?? "").replace(/\D/g, "");
+  if (alvoDoc) {
+    const parceiros = await prisma.fatoParceiro.findMany({
+      select: { odooId: true, documento: true },
+    });
+    const ids = parceiros
+      .filter((p) => (p.documento ?? "").replace(/\D/g, "").includes(alvoDoc))
+      .map((p) => p.odooId);
+    // Lista vazia → -1 garante zero resultados (em vez de ignorar o filtro).
+    documentoWhere = { participanteId: { in: ids.length ? ids : [-1] } };
+  }
+
   const rows = await prisma.fatoNotaFiscal.findMany({
-    where: { entradaSaida: "0", ...periodoWhere, ...fornecedorWhere },
+    where: { entradaSaida: "0", ...periodoWhere, ...fornecedorWhere, ...documentoWhere },
     select: { participanteNome: true, vrNf: true },
   });
 
@@ -284,5 +313,30 @@ export async function queryNotasRecebidasPorFornecedor(
     .sort((a, b) => b.valorTotal - a.valorTotal)
     .slice(0, limite);
 
-  return { linhas };
+  // Agregado sobre TODAS as linhas que casaram (não só as `limite` exibidas).
+  const totalAgregado = rows.reduce(
+    (acc, r) => ({ quantidade: acc.quantidade + 1, valorTotal: acc.valorTotal + Number(r.vrNf) }),
+    { quantidade: 0, valorTotal: 0 },
+  );
+
+  return { linhas, totalAgregado, totalFornecedoresDistintos: map.size };
+}
+
+// ---------------------------------------------------------------------------
+// queryContarNotas
+// ---------------------------------------------------------------------------
+
+/** Conta o total de notas fiscais (fato_nota_fiscal), segmentado por entrada
+ * (entradaSaida = "0", DF-e de fornecedores) e saída (entradaSaida = "1",
+ * notas emitidas). Devolve só os números, para perguntas de contagem-total
+ * ("quantas notas fiscais"). */
+export async function queryContarNotas(
+  prisma: PrismaClient,
+): Promise<{ total: number; totalEntrada: number; totalSaida: number }> {
+  const [total, totalEntrada, totalSaida] = await Promise.all([
+    prisma.fatoNotaFiscal.count(),
+    prisma.fatoNotaFiscal.count({ where: { entradaSaida: "0" } }),
+    prisma.fatoNotaFiscal.count({ where: { entradaSaida: "1" } }),
+  ]);
+  return { total, totalEntrada, totalSaida };
 }

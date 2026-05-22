@@ -50,7 +50,7 @@ function shape(d: Awaited<ReturnType<typeof queryPedidosAtrasados>>) {
     totalAtrasado: d.totalAtrasado,
     aviso:
       "Atraso calculado por parcela de pedido com data de vencimento anterior a hoje e não faturada. " +
-      "Atraso por dataPrevista do pedido é parcial (~30/71) e não usado nesta tool.",
+      "Atraso por dataPrevista do pedido tem preenchimento parcial e não é usado nesta tool.",
   };
 }
 

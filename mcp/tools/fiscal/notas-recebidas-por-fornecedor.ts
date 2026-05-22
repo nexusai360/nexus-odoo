@@ -8,9 +8,24 @@ import { withFreshness } from "../../lib/freshness.js";
 const inputSchema = z.object({
   /** Filtra por nome do fornecedor (busca parcial). Use para perguntas
    * sobre um fornecedor específico, em vez de depender do ranking. */
-  fornecedor: z.string().min(1).max(160).optional(),
-  periodoDe: z.string().optional(),
-  periodoAte: z.string().optional(),
+  fornecedor: z
+    .string()
+    .min(1)
+    .max(160)
+    .optional()
+    .describe(
+      "Nome (ou parte) do fornecedor. Pode casar com matriz e filiais ao " +
+        "mesmo tempo: para o total do fornecedor leia `totalAgregado`, não uma linha.",
+    ),
+  /** CNPJ ou CPF do fornecedor — identificação inequívoca. */
+  documento: z
+    .string()
+    .min(1)
+    .max(20)
+    .optional()
+    .describe("CNPJ/CPF do fornecedor. Identifica o fornecedor sem ambiguidade."),
+  periodoDe: z.string().optional().describe("Início do período, AAAA-MM-DD."),
+  periodoAte: z.string().optional().describe("Fim do período, AAAA-MM-DD."),
   limite: z.number().int().min(1).max(200).optional(),
 });
 
@@ -22,6 +37,11 @@ const linhaSchema = z.object({
 
 const dados = z.object({
   linhas: z.array(linhaSchema),
+  totalAgregado: z.object({
+    quantidade: z.number().int(),
+    valorTotal: z.number(),
+  }),
+  totalFornecedoresDistintos: z.number().int(),
   aviso: z.string(),
 });
 
@@ -46,9 +66,13 @@ type Output = z.infer<typeof outputSchema>;
 function shape(d: Awaited<ReturnType<typeof queryNotasRecebidasPorFornecedor>>) {
   return {
     linhas: d.linhas,
+    totalAgregado: d.totalAgregado,
+    totalFornecedoresDistintos: d.totalFornecedoresDistintos,
     aviso:
       "Agrupa notas fiscais de entrada (DF-e de fornecedores) por fornecedor, " +
-      "ordenado por valor recebido decrescente.",
+      "ordenado por valor recebido decrescente. `totalAgregado` soma todas as " +
+      "notas que casaram o filtro (use-o para 'quantas notas do fornecedor X'); " +
+      "`linhas` é o detalhamento por participante.",
   };
 }
 
@@ -59,7 +83,10 @@ export const fiscalNotasRecebidasPorFornecedor: ToolEntry<Input, Output> = {
     "Notas fiscais de entrada (compras e devoluções, DF-e de fornecedores) " +
     "agrupadas por fornecedor, ordenadas por valor total decrescente. " +
     "Para perguntas sobre um fornecedor específico, passe `fornecedor` (nome " +
-    "ou parte dele). Aceita filtro de período (periodoDe/periodoAte AAAA-MM-DD).",
+    "ou parte) ou `documento` (CNPJ/CPF, sem ambiguidade). Quando filtrado, " +
+    "`totalAgregado` traz a contagem e o valor somados de todas as notas que " +
+    "casaram — é a resposta para 'quantas notas do fornecedor X'. Aceita " +
+    "filtro de período (periodoDe/periodoAte AAAA-MM-DD).",
   inputSchemaShape: inputSchema.shape,
   inputSchema,
   outputSchema,

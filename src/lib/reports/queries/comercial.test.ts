@@ -5,6 +5,7 @@ import {
   queryPedidosPorVendedor,
   queryPedidosAtrasados,
   queryParcelasAVencer,
+  queryContarPedidos,
 } from "./comercial";
 
 // Mocks são definidos por cada describe conforme necessário
@@ -277,5 +278,19 @@ describe("queryParcelasAVencer", () => {
     const lte = call.where?.dataVencimento?.lte as Date;
     const diff = (lte.getTime() - gte.getTime()) / (1000 * 60 * 60 * 24);
     expect(diff).toBe(30);
+  });
+});
+
+describe("queryContarPedidos", () => {
+  it("retorna o total de pedidos via count", async () => {
+    const mockPrisma = {
+      fatoPedido: {
+        count: jest.fn().mockResolvedValue(71),
+      },
+    } as unknown as import("@/generated/prisma/client").PrismaClient;
+
+    const result = await queryContarPedidos(mockPrisma);
+    expect(result.total).toBe(71);
+    expect(mockPrisma.fatoPedido.count).toHaveBeenCalledTimes(1);
   });
 });

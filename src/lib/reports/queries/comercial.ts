@@ -28,6 +28,15 @@ export async function queryPedidosPeriodo(
   return { totalPedidos: rows.length, valorTotal };
 }
 
+/** Conta o total de pedidos cadastrados (fato_pedido). Devolve só o número,
+ * sem amostra de linhas, para perguntas de contagem-total ("quantos pedidos"). */
+export async function queryContarPedidos(
+  prisma: PrismaClient,
+): Promise<{ total: number }> {
+  const total = await prisma.fatoPedido.count();
+  return { total };
+}
+
 export async function queryPedidosPorEtapa(
   prisma: PrismaClient,
 ): Promise<{ linhas: { etapaNome: string | null; etapaFinaliza: boolean; quantidade: number; valorTotal: number }[] }> {

@@ -138,3 +138,17 @@ export async function queryPrecoTabela(
     truncado: total > rows.length,
   };
 }
+
+// ---------------------------------------------------------------------------
+// queryContarRegrasPreco
+// ---------------------------------------------------------------------------
+
+/** Conta o total de regras de preço cadastradas (fato_preco). Devolve só o
+ * número, sem amostra de linhas, para perguntas de contagem-total
+ * ("quantas regras de preço"). */
+export async function queryContarRegrasPreco(
+  prisma: PrismaClient,
+): Promise<{ total: number }> {
+  const total = await prisma.fatoPreco.count();
+  return { total };
+}

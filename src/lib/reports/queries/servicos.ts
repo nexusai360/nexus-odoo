@@ -84,3 +84,16 @@ export async function queryServicoListar(
   ]);
   return { linhas: rows.map(toLinha), total, truncado: total > rows.length };
 }
+
+// ---------------------------------------------------------------------------
+// queryContarServicos
+// ---------------------------------------------------------------------------
+
+/** Conta o total de serviços no catálogo (fato_servico). Devolve só o número,
+ * sem amostra de linhas, para perguntas de contagem-total ("quantos serviços"). */
+export async function queryContarServicos(
+  prisma: PrismaClient,
+): Promise<{ total: number }> {
+  const total = await prisma.fatoServico.count();
+  return { total };
+}
