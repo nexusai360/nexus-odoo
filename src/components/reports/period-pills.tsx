@@ -115,7 +115,6 @@ function CustomRangePicker({
         onOpenChange(false);
       }}
       onCancel={() => onOpenChange(false)}
-      isMobile={isMobile}
       minDate={minDate}
     />
   ) : null;
@@ -135,10 +134,7 @@ function CustomRangePicker({
   return (
     <Popover open={open} onOpenChange={onOpenChange}>
       <PopoverTrigger render={trigger as React.ReactElement} />
-      <PopoverContent
-        align="start"
-        className="w-auto max-w-[min(calc(100vw-2rem),640px)] p-3"
-      >
+      <PopoverContent align="start" className="w-auto p-3">
         {panel}
       </PopoverContent>
     </Popover>
@@ -149,7 +145,6 @@ interface PickerPanelProps {
   initialRange?: { start: string; end: string };
   onApply: (range: { start: string; end: string }) => void;
   onCancel: () => void;
-  isMobile: boolean;
   minDate?: Date;
 }
 
@@ -157,7 +152,6 @@ function PickerPanel({
   initialRange,
   onApply,
   onCancel,
-  isMobile,
   minDate,
 }: PickerPanelProps) {
   const [range, setRange] = useState<DateRange | undefined>(() =>
@@ -199,21 +193,23 @@ function PickerPanel({
   };
 
   const helperText = minDate
-    ? `Selecione qualquer intervalo a partir de ${new Intl.DateTimeFormat("pt-BR", { day: "2-digit", month: "short", year: "numeric" }).format(minDate)}.`
-    : "Selecione qualquer intervalo até hoje.";
+    ? `Selecione a partir de ${new Intl.DateTimeFormat("pt-BR", { day: "2-digit", month: "short", year: "numeric" }).format(minDate)}.`
+    : "Selecione qualquer data até hoje.";
 
   return (
-    <div className="flex flex-col gap-3">
+    <div className="flex w-[17rem] max-w-[calc(100vw-3rem)] flex-col gap-3">
       <Calendar
         mode="range"
         selected={range}
         onSelect={setRange}
         locale={ptBR}
-        numberOfMonths={isMobile ? 1 : 2}
+        numberOfMonths={1}
         defaultMonth={range?.from ?? today}
         disabled={disabledMatcher}
         startMonth={minDate}
         endMonth={today}
+        className="w-full"
+        classNames={{ root: "w-full" }}
       />
       {error ? (
         <p role="alert" className="px-1 text-xs text-destructive">
