@@ -1,62 +1,79 @@
 # HANDOFF — F4 Expansão da base de leitura (L1/L2/L3)
 
-> Retomada da sessão de 2026-05-21. Branch: `feat/f4-leitura-expansao`
-> (criada de `origin/main`). Modo autônomo.
+> Retomada da fase. Branch: `feat/f4-leitura-expansao` (de `origin/main`).
+> Modo autônomo. Atualizado em 2026-05-21.
 
 ## Contexto
 
-O acesso ao Odoo passou a ser `joaozanini` (103 grupos, quase admin). O
-objetivo é ampliar a base de **leitura** ao máximo desse acesso e validar o
-agente Nex. Três sub-projetos: **L1** (expansão), **L2** (bateria de 1000+
-leituras reais) e **L3** (validação do agente Nex, 1000+ perguntas, meta
-97-100%).
+O acesso ao Odoo passou a ser `joaozanini` (103 grupos, quase admin). Objetivo:
+ampliar a base de **leitura** do MCP ao máximo do acesso e validar o agente
+Nex com 1000+ requisições reais (meta 97%+ de acerto). Três sub-projetos:
+**L1** (expansão), **L2** (bateria de leitura), **L3** (validação do agente).
 
-Em paralelo, a F4 Onda 2 (escrita, PR #10 na branch `feat/f4-onda2-mcp-escrita`)
-está **bloqueada**: a base de teste `grupojht.teste.tauga.online` recusa
-autenticação com erro Postgres `permissão negada para esquema public` (defeito
-de configuração da Tauga). Credenciais de teste guardadas em `.env.local`
-(`ODOO_WRITE_*`).
-
-## Artefatos desta fase
+## Artefatos
 
 - Censo: `docs/superpowers/research/2026-05-21-censo-novo-acesso.md`
 - Spec L1 v3: `docs/superpowers/specs/2026-05-21-f4-leitura-expansao-spec.md`
 - Plano L1 v3: `docs/superpowers/plans/2026-05-21-f4-leitura-expansao.md`
 
-## Estado atual (o que já foi feito)
+## Estado atual
 
-Metodologia cumprida até o plano: censo, spec v1 com 2 reviews adversariais
-até v3, plano v1 com 2 reviews até v3. Investigação de schema (`fields_get`
-read-only) feita e decisões travadas no plano.
+Metodologia cumprida até o plano (censo, spec v1→v3 com 2 reviews, plano
+v1→v3 com 2 reviews). Investigação de schema `fields_get` feita.
 
-**Execução iniciada — Onda L1a, camada de dados (commit `6d64043`):**
-modelos `Raw*` (tabela.preco, tabela.preco.regra, servico, apuracao,
-carta.correcao), fatos `FatoPreco` e `FatoServico`, e as 5 entradas no
-`MODEL_CATALOG`. `prisma validate` verde.
+Execução iniciada:
+- **Commit `6d64043`:** schema da Onda L1a (modelos `Raw*` e `Fato*` de
+  preços, serviços, apuração, carta de correção) + entradas no `MODEL_CATALOG`.
+  `prisma validate` verde.
+- **Chave da OpenAI** guardada em `.env.local` (`OPENAI_API_KEY`). L3
+  deixa de estar bloqueada por credencial. Ainda falta semear a
+  `LlmCredential` cifrada no banco (o agente lê a chave de lá, não do env).
+- **Stack local de pé:** containers `db` (5436), `redis` (6380), `mcp` (3100).
 
-## Próximo passo exato
+## ATENÇÃO — drift de banco a resolver primeiro
 
-Retomar o plano L1 em **Onda 1, tarefa T1.4** (migration). Sequência:
+O banco local `nexus_odoo` tem 4 migrations da branch `feat/f4-onda2-mcp-escrita`
+(`f4_onda2_mcp_writes`, `external_mcp_servers`, `user_tour_seen`,
+`external_mcp_call_log`) que **não existem** nesta branch. `prisma migrate dev`
+exige reset do banco. Resolução recomendada (banco isolado para esta branch,
+sem destruir o ambiente da outra):
 
-1. **Onda I parcial primeiro:** subir `docker compose up -d db redis`,
-   `prisma migrate dev` das ondas, `npm run db:provision` (GRANT).
-2. Onda 1 T1.5-T1.12: builder `fato-preco.ts`, queries, tools `preco_produto`
-   /`preco_tabela`, testes (TDD).
-3. Ondas 2, 3, 4, 5 do plano; depois L1b; depois a carga de ingestão (Onda I)
-   completa e a verificação de contagem.
-4. L1 verde → L2 (spec própria) → L3.
+```
+docker compose exec -T db psql -U nexus -d nexus_odoo \
+  -c "CREATE DATABASE nexus_odoo_l1 OWNER nexus;"
+# repontar no .env.local: DATABASE_URL, MCP_DATABASE_URL, MCP_BI_DATABASE_URL
+#   para o banco nexus_odoo_l1
+DATABASE_URL=...nexus_odoo_l1 npx prisma migrate dev --name f4l_l1a_dados
+npm run db:provision   # roles nexus_mcp / nexus_mcp_bi
+```
 
-## Bloqueio conhecido de L3
+Alternativa: `prisma migrate reset` no `nexus_odoo` (mais simples, mas apaga o
+estado local da outra branch; aceitável por ser banco de dev).
 
-O agente Nex tira a chave de LLM do banco (`LlmCredential` cifrada), não do
-`.env.local`. O ambiente local não tem chave da OpenAI. **L3 (1000+ perguntas
-ao agente) não roda sem uma chave real da OpenAI** semeada na config local. O
-usuário foi avisado; aguarda a chave. L1 e L2 não dependem dela.
+## Próximo passo exato (retomar o plano L1)
+
+1. Resolver o drift de banco (acima) e aplicar a migration `f4l_l1a_dados`.
+2. Plano L1, Onda 1 T1.5+: builder `fato-preco.ts`, queries, tools
+   `preco_produto`/`preco_tabela`, testes TDD. Depois Ondas 2-5, L1b.
+3. Onda I: rodar o worker (`npm run worker`) para popular o cache com os
+   modelos novos; verificar contagem contra o Odoo.
+4. **Expandir o catálogo** conforme o pedido do usuário ("79 é pouco"): além
+   dos domínios do plano, avaliar incluir mais modelos do censo (a spec L1 v3
+   tinha recortado; o usuário pediu cobertura ampla, então a próxima sessão
+   deve revisar o escopo da spec para abranger mais modelos com dado).
+5. **L3 — validação do agente Nex:** semear `LlmCredential` (OpenAI) no banco
+   via `src/lib/agent/llm/credentials.ts` e a `LlmConfig` ativa com o modelo
+   **`gpt-5.4-nano`** (instrução do usuário: todas as requisições do teste
+   usam esse modelo); montar harness de 1000+ perguntas reais variadas (temas
+   e modos diversos); para cada uma, comparar a resposta do agente com uma
+   consulta independente à mesma base; relatório geral de acerto (meta 97%+).
 
 ## Notas
 
-- `npx tsc` acusa erros em `.next/types/validator.ts` referentes a páginas
-  `servidor-mcp`/`plugar-mcps`: são artefatos `.next` obsoletos da branch
-  `feat/f4-onda2-mcp-escrita`. Não é regressão desta branch; `rm -rf .next`
-  limpa. Confirmar com build limpo.
+- `npx tsc` acusa erros em `.next/types/validator.ts` (páginas
+  `servidor-mcp`/`plugar-mcps`): artefatos `.next` obsoletos da outra branch.
+  Não é regressão; `rm -rf .next` limpa.
+- F4 Onda 2 escrita (PR #10) segue bloqueada: base de teste
+  `grupojht.teste.tauga.online` com erro Postgres de schema. Credenciais em
+  `.env.local` (`ODOO_WRITE_*`).
 - Protocolo multi-agente: `docs/agents/active/claude-f4-leitura-expansao.md`.
