@@ -13,9 +13,17 @@ const MODELOS_L1A = new Set([
   "sped.carta.correcao",
 ]);
 
+// Modelos acrescentados na F4 L1c (resíduo operacional 4a). Mesma situação da
+// L1a: entraram via sondagem `fields_get`, não pela varredura F0.
+const MODELOS_L1C = new Set([
+  "sped.certificado",
+  "finan.baixa.lancamento",
+  "pedido.faturamento",
+]);
+
 describe("model-catalog", () => {
-  it("tem 84 modelos (79 do F0 + 5 da expansão L1a)", () => {
-    expect(MODEL_CATALOG).toHaveLength(84);
+  it("tem 87 modelos (79 do F0 + 5 da L1a + 3 da L1c)", () => {
+    expect(MODEL_CATALOG).toHaveLength(87);
   });
 
   // discovery/output/ é gitignored (saídas brutas locais — ver .gitignore).
@@ -31,7 +39,9 @@ describe("model-catalog", () => {
         .filter((f) => f.endsWith(".json"));
       const noDisco = new Set(arquivos.map((f) => f.replace(/\.json$/, "")));
       const noCatalogo = new Set(
-        MODEL_CATALOG.map((m) => m.odooModel).filter((m) => !MODELOS_L1A.has(m)),
+        MODEL_CATALOG.map((m) => m.odooModel).filter(
+          (m) => !MODELOS_L1A.has(m) && !MODELOS_L1C.has(m),
+        ),
       );
       expect(noCatalogo).toEqual(noDisco);
     },

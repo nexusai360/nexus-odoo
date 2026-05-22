@@ -1,10 +1,13 @@
 // Gerado a partir de discovery/output/modelos/ — F2.
-// 77 incremental | 5 snapshot | 2 estatico.
+// 80 incremental | 5 snapshot | 2 estatico.
 export type SyncMode = "incremental" | "snapshot" | "estatico";
 
 export interface CatalogEntry {
   odooModel: string;
   mode: SyncMode;
+  /** Campos que NÃO devem ser copiados para o cache (segredos, blobs).
+   * `getModelFields` os subtrai. Vazio/ausente = comportamento padrão. */
+  excludeFields?: readonly string[];
 }
 
 export const MODEL_CATALOG: readonly CatalogEntry[] = [
@@ -93,6 +96,10 @@ export const MODEL_CATALOG: readonly CatalogEntry[] = [
   { odooModel: "sped.servico", mode: "incremental" },
   { odooModel: "sped.apuracao", mode: "incremental" },
   { odooModel: "sped.carta.correcao", mode: "incremental" },
+  // F4 L1c — resíduo operacional 4a
+  { odooModel: "sped.certificado", mode: "incremental", excludeFields: ["senha", "arquivo"] },
+  { odooModel: "finan.baixa.lancamento", mode: "incremental" },
+  { odooModel: "pedido.faturamento", mode: "incremental" },
 ] as const;
 
 /** Nome da tabela raw de um modelo Odoo: estoque.saldo.hoje -> raw_estoque_saldo_hoje. */
