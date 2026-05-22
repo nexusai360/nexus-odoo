@@ -12,9 +12,10 @@
   três premissas e motivou esta spec dedicada (ver §1).
 - **Reviews v1→v3 (duas passadas adversariais):** (1) `mode` dos 27 modelos
   passou de `estatico` para `incremental` — caminho provado, mais barato, sem
-  depender de um processador `estatico` não confirmado. (2) O `createMany` do
-  builder de `fato_referencia` (~23k linhas) passa a gravar em lotes, para não
-  repetir o timeout do builder de `fato_nota_fiscal`.
+  depender de um processador `estatico` não confirmado. (2) O builder de
+  `fato_referencia` (~23k linhas) usa o `$transaction` com `timeout` estendido,
+  exatamente o padrão de `rebuildFatoNotaFiscal` (que resolveu o P2028 com
+  ~47k linhas).
 
 ## 1. Por que o desenho da spec-mãe não serve
 
@@ -151,8 +152,8 @@ código→descrição via JOIN) e é coberto pelo GRANT dinâmico de `fato_*` do
    e a migration `f4l_referencia` aplicada.
 2. `FatoReferencia` + `rebuildFatoReferencia` existem, com teste unitário do
    mapeamento (cada um dos 15 tipos de tabela mapeado para `codigo`/`descricao`
-   certos) verde. O `createMany` do builder grava em lotes (chunks) para não
-   estourar timeout com ~23k linhas.
+   certos) verde. O builder usa `$transaction` com `timeout` estendido
+   (padrão de `rebuildFatoNotaFiscal`) para os ~23k `createMany`.
 3. `referencia_buscar` aparece em `tools/list` para o domínio `fiscal`, some
    para quem não tem, e devolve resultados reais (busca por código e por termo).
 4. `fato_referencia` consta em `bi-schema-reference.ts`; GRANT coberto pelo
@@ -170,9 +171,9 @@ código→descrição via JOIN) e é coberto pelo GRANT dinâmico de `fato_*` do
 - **Heterogeneidade de campos.** Mitigação: o mapa código/descrição por tabela
   (§2.1) foi fixado pela sondagem; o teste unitário do builder cobre os 15.
 - **Volume e timeout do builder.** `ncm` 12k, `municipio` 5,8k; `raw` JSONB
-  aguenta com folga. `fato_referencia` terá ~23k linhas — o `createMany` do
-  builder grava em lotes (ex.: 5k) dentro da transação, para não repetir o
-  timeout que atingiu o builder de `fato_nota_fiscal` (RADAR / handoff L1a).
+  aguenta com folga. `fato_referencia` terá ~23k linhas — o builder usa
+  `prisma.$transaction(fn, { timeout: 180_000, maxWait: 15_000 })`, o mesmo
+  padrão que resolveu o P2028 em `rebuildFatoNotaFiscal` (~47k linhas).
 - **`FATO_FONTE` 1-para-1.** `fato_referencia` vem de 15 modelos mas o mapa
   aceita um; usar um representativo é aproximação aceitável para `fonteStatus`
   (decisão registrada no plano).
