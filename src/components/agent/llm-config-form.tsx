@@ -122,6 +122,11 @@ interface LlmConfigFormProps {
   credentials: CredentialSummary[];
   /** Estado atual do toggle "Agente Nex ativo". */
   bubbleEnabled: boolean;
+  /**
+   * Modelos efetivos por provedor (base do catalog + overrides do banco).
+   * Quando ausente, cai em `modelsFor(provider)` (só a base versionada).
+   */
+  modelsByProvider?: Partial<Record<LlmProvider, import("@/lib/agent/llm/catalog").ModelEntry[]>>;
 }
 
 interface TestState {
@@ -134,8 +139,10 @@ export function LlmConfigForm({
   configs,
   credentials,
   bubbleEnabled,
+  modelsByProvider,
 }: LlmConfigFormProps) {
   const router = useRouter();
+  const modelsFor = (p: LlmProvider) => modelsByProvider?.[p] ?? listModels(p);
 
   const [provider, setProvider] = useState<LlmProvider>(
     activeConfig?.provider ?? "openai",
@@ -143,9 +150,9 @@ export function LlmConfigForm({
 
   const initialModel = useMemo(() => {
     if (!activeConfig?.model) {
-      return { select: listModels(provider)[0]?.id ?? "", custom: "" };
+      return { select: modelsFor(provider)[0]?.id ?? "", custom: "" };
     }
-    const inCatalog = listModels(activeConfig.provider).some(
+    const inCatalog = modelsFor(activeConfig.provider).some(
       (m) => m.id === activeConfig.model,
     );
     return inCatalog
@@ -167,7 +174,7 @@ export function LlmConfigForm({
   const [isTogglingBubble, startBubbleToggle] = useTransition();
 
   const meta = PROVIDER_META[provider];
-  const models = useMemo(() => listModels(provider), [provider]);
+  const models = useMemo(() => modelsFor(provider), [provider]);
 
   const modelOptions = useMemo<SearchableSelectOption[]>(() => {
     const fromCatalog: SearchableSelectOption[] = models.map((m) => ({
@@ -240,7 +247,7 @@ export function LlmConfigForm({
   function handleProviderChange(next: string) {
     const p = next as LlmProvider;
     setProvider(p);
-    setModelSelect(listModels(p)[0]?.id ?? "");
+    setModelSelect(modelsFor(p)[0]?.id ?? "");
     setCustomModel("");
     setCredentialId("");
     setTest({ status: "idle" });

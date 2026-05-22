@@ -29,6 +29,8 @@ import { listCredentials } from "@/lib/agent/llm/credentials";
 import { getPublicActiveLlmConfig } from "@/lib/agent/llm/get-active-config";
 import { getAgentSettings } from "@/lib/actions/agent-config";
 import { prisma } from "@/lib/prisma";
+import { loadEffectiveModelsByProvider } from "@/lib/agent/llm/effective-catalog";
+import type { ModelEntry } from "@/lib/agent/llm/catalog";
 import type { LlmProvider } from "@/lib/agent/llm/types";
 
 export const metadata = {
@@ -94,6 +96,17 @@ export default async function Page() {
 
   const activeModelId = activeConfig?.model ?? "";
 
+  const PROVIDERS: LlmProvider[] = ["openai", "anthropic", "gemini", "openrouter"];
+  const modelEntries = await Promise.all(
+    PROVIDERS.map((p) => loadEffectiveModelsByProvider(p)),
+  );
+  const modelsByProvider: Record<LlmProvider, ModelEntry[]> = {
+    openai: modelEntries[0],
+    anthropic: modelEntries[1],
+    gemini: modelEntries[2],
+    openrouter: modelEntries[3],
+  };
+
   return (
     <PageShell variant="narrow">
       <PageHeader
@@ -109,6 +122,7 @@ export default async function Page() {
               credentials={credentials}
               activeConfig={activeConfig}
               bubbleEnabled={bubbleEnabled}
+              modelsByProvider={modelsByProvider}
             />
           </CardContent>
         </Card>
