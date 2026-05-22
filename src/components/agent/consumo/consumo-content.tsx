@@ -265,26 +265,18 @@ export function ConsumoContent({ minDate: minDateIso }: ConsumoContentProps) {
   const [pageSize, setPageSize] = useState<PageSize>(DEFAULT_PAGE_SIZE);
   // Filtro global de provider (afeta KPIs, charts e tabela). Sincroniza com URL.
   const [globalProvider, setGlobalProvider] = useState<string | undefined>(
-    () => {
-      if (typeof window === "undefined") return undefined;
-      const params = new URLSearchParams(window.location.search);
-      return params.get("provider") ?? undefined;
-    },
+    undefined,
   );
   const [filterProvider, setFilterProvider] = useState<string | undefined>(
-    () => {
-      if (typeof window === "undefined") return undefined;
-      const params = new URLSearchParams(window.location.search);
-      return params.get("provider") ?? undefined;
-    },
+    undefined,
   );
   const [filterModel, setFilterModel] = useState<string | undefined>();
   // Filtro Ambiente (Agente Nex / Playground). Sincroniza com URL ?env=...
-  const [ambiente, setAmbiente] = useState<Ambiente>(() => {
-    if (typeof window === "undefined") return "all";
-    const v = new URLSearchParams(window.location.search).get("env");
-    return v === "playground" || v === "agente" ? v : "all";
-  });
+  const [ambiente, setAmbiente] = useState<Ambiente>("all");
+  // O estado inicial dos filtros vem da URL, mas só pode ser lido após a
+  // montagem no client — ler window.location no primeiro render quebraria a
+  // hidratação (o servidor não tem a query string).
+  const [hydrated, setHydrated] = useState(false);
   const isPlaygroundFilter =
     ambiente === "all" ? null : ambiente === "playground";
   const [providers, setProviders] = useState<string[]>([]);
@@ -392,23 +384,35 @@ export function ConsumoContent({ minDate: minDateIso }: ConsumoContentProps) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [chartReferenceDate, effectiveChartRange.start.getTime(), effectiveChartRange.end.getTime(), globalProvider, isPlaygroundFilter]);
 
-  // Sincroniza filtro global com URL (?provider=...).
+  // Lê o estado inicial dos filtros da URL — só após a montagem no client,
+  // para o primeiro render bater com o do servidor (evita hydration mismatch).
   useEffect(() => {
-    if (typeof window === "undefined") return;
+    const params = new URLSearchParams(window.location.search);
+    const provider = params.get("provider") ?? undefined;
+    if (provider) setGlobalProvider(provider);
+    const env = params.get("env");
+    if (env === "playground" || env === "agente") setAmbiente(env);
+    setHydrated(true);
+  }, []);
+
+  // Sincroniza filtro global com URL (?provider=...). Só depois da leitura
+  // inicial, para não apagar a query string antes de lê-la.
+  useEffect(() => {
+    if (!hydrated) return;
     const url = new URL(window.location.href);
     if (globalProvider) url.searchParams.set("provider", globalProvider);
     else url.searchParams.delete("provider");
     window.history.replaceState({}, "", url.toString());
-  }, [globalProvider]);
+  }, [globalProvider, hydrated]);
 
   // Sincroniza filtro Ambiente com URL (?env=...).
   useEffect(() => {
-    if (typeof window === "undefined") return;
+    if (!hydrated) return;
     const url = new URL(window.location.href);
     if (ambiente === "all") url.searchParams.delete("env");
     else url.searchParams.set("env", ambiente);
     window.history.replaceState({}, "", url.toString());
-  }, [ambiente]);
+  }, [ambiente, hydrated]);
 
   // Quando o filtro global muda, espelha no filtro da tabela e reseta o modelo.
   useEffect(() => {
