@@ -440,6 +440,17 @@
       "examples": []
     },
     {
+      "id": "fiscal_certificados",
+      "operation": "read",
+      "module": "fiscal",
+      "descricao": "Certificados digitais (e-CNPJ) das empresas do grupo: tipo, número de série, proprietário, CNPJ e datas de validade. Ordenado do que vence primeiro para o último, útil para 'quais certificados estão perto de vencer'. Não expõe a senha nem o arquivo do certificado.",
+      "capability": null,
+      "sensitive": false,
+      "addedInVersion": null,
+      "inputSchemaKeys": [],
+      "examples": []
+    },
+    {
       "id": "cadastro_buscar_parceiro",
       "operation": "read",
       "module": "cadastros",
@@ -631,6 +642,6 @@
       ]
     }
   ],
-  "count": 46,
-  "generatedAt": "2026-05-22T15:50:33.327Z"
+  "count": 47,
+  "generatedAt": "2026-05-22T17:26:59.412Z"
 }
