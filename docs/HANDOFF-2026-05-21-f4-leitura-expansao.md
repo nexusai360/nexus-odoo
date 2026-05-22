@@ -67,6 +67,27 @@ Metodologia cumprida até o plano. Execução:
    variadas; conferir cada resposta contra consulta independente; relatório
    geral, meta 97%+.
 
+## Resultado L3 (2026-05-22)
+
+Bateria L3 executada: **1182 requisições reais** ao agente Nex (gpt-5.4-nano),
+relatório em `docs/superpowers/research/2026-05-22-l3-relatorio.md`.
+Assertividade geral **63,4%** — abaixo da meta de 97%. Diagnóstico:
+
+- **4 categorias 99-100%** (conta contábil por código, parceiros por UF,
+  pedidos por etapa, serviço por descrição): o agente acerta quando a tool
+  cobre a pergunta de forma direta.
+- **4 categorias baixas** por gaps de cobertura das tools, não por erro de
+  raciocínio: (a) `fiscal_notas_recebidas_por_fornecedor` devolve só o top-N,
+  então perguntas sobre fornecedores fora do topo falham; (b) nos produtos,
+  o agente trata o código entre colchetes (`[1000110843] ...`) como
+  `produtoId` e consulta o id errado, retornando 0.
+
+**Para chegar a 97%:** ajustar as tools — `preco_produto`/`estoque` por
+produto devem casar pelo código/nome (não pelo `produtoId` interno; ou
+remover o parâmetro `produtoId` da tool e clarificar a descrição); a tool de
+notas por fornecedor precisa de busca por fornecedor específico, não só
+top-N. Depois, reexecutar `scripts/f4l-l3-harness.ts`.
+
 ## Notas
 
 - `npx tsc` acusa erros em `.next/types/validator.ts` (páginas
