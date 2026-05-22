@@ -1,6 +1,6 @@
 # SPEC — F4 L1: execução da L1b + onda L1c (resíduo operacional 4a)
 
-> Versão: **v2** (2026-05-22). Continuação do sub-projeto L1 (Expansão da base
+> Versão: **v3** (2026-05-22). Continuação do sub-projeto L1 (Expansão da base
 > de leitura). Pesquisa-base: `docs/superpowers/research/2026-05-21-censo-novo-acesso.md`.
 > Spec-mãe da L1: `docs/superpowers/specs/2026-05-21-f4-leitura-expansao-spec.md`.
 
@@ -12,6 +12,10 @@
   para o cache; (2) `pedido.faturamento` foi confirmado **dentro** do escopo
   como modelo de faturamento real (a v1 chegou a tirá-lo por leitura apressada
   da contagem de campos; ver §2.2).
+- **v2 → v3:** revisão contra o `provision-mcp.sql`. O script concede `SELECT`
+  em `fato_*` por loop dinâmico e **revoga `raw_*`** dos roles do MCP por
+  desenho. Logo `fato_certificado` é coberto sozinho e entra no `bi-schema`;
+  as duas tabelas `raw` puras saem do `bi-schema` e dos GRANT (ver §2.2).
 
 ## 1. Contexto e objetivo
 
@@ -101,9 +105,16 @@ Regras da onda:
 - `finan.baixa.lancamento` e `pedido.faturamento` ficam só em `raw`: 1 a 3
   registros não justificam fato nem tool dedicada, e o catálogo enxuto reduz o
   ruído de seleção do modelo (lição da L3). Ficam alcançáveis pelo Caminho 3c.
-- `fato_certificado`, `raw_finan_baixa_lancamento` e `raw_pedido_faturamento`
-  entram em `bi-schema-reference.ts`; todas as tabelas novas (`raw_*` e
-  `fato_*`) recebem GRANT aos roles `nexus_mcp`/`nexus_mcp_bi`.
+- **GRANT e Caminho 3c.** O `provision-mcp.sql` concede `SELECT` em todo
+  `fato_*` por um loop dinâmico e **revoga `raw_*`** dos dois roles do MCP por
+  desenho (RBAC camada 4: o MCP nunca lê `raw`). Consequência: `fato_certificado`
+  é coberto automaticamente pelo GRANT dinâmico e entra em `bi-schema-reference.ts`.
+  `raw_finan_baixa_lancamento` e `raw_pedido_faturamento` **não** entram em
+  `bi-schema-reference.ts` nem recebem GRANT aos roles do MCP: ficam só no
+  cache (sincronizados, portanto mapeados), acessíveis pelo app/dashboard, que
+  usa o role completo. Pôr uma tabela `raw` no `bi-schema` sem GRANT só faria
+  o Caminho 3c gerar SQL que falha por permissão; manter o limite da camada 4
+  intacto vale mais que expor 1 a 3 linhas.
 
 ### 2.3 Onda I — ingestão real (executar o plano-mãe)
 
@@ -120,6 +131,8 @@ Odoo, smoke test das tools novas.
 - `fato_*` para `finan.baixa.lancamento` e `pedido.faturamento` (só `raw`).
   `sped.certificado` tem `fato_certificado` por exigência do `withFreshness`.
 - Cópia dos campos `senha` e `arquivo` de `sped.certificado` para o cache.
+- `raw_finan_baixa_lancamento` e `raw_pedido_faturamento` no `bi-schema` /
+  Caminho 3c — o `provision-mcp.sql` nega `raw_*` aos roles do MCP por desenho.
 - Registros gerados de SPED, views de árvore, modelos vazios e abstratos
   (spec-mãe §2.4).
 - A bateria L2 de validação de leitura (sub-projeto seguinte, spec própria).
@@ -165,8 +178,8 @@ Pontos específicos da L1c:
    `bi-schema-reference.ts`.
 2. L1c: os três modelos têm `Raw*`, entrada em `MODEL_CATALOG` e migration
    `f4l_residuo_4a` aplicada; `FatoCertificado` e seu builder existem com
-   teste unitário verde; `fato_certificado`, `raw_finan_baixa_lancamento` e
-   `raw_pedido_faturamento` constam em `bi-schema-reference.ts` e nos GRANT.
+   teste unitário verde; `fato_certificado` consta em `bi-schema-reference.ts`
+   (GRANT coberto pelo loop dinâmico de `fato_*` do `provision-mcp.sql`).
    `raw_sped_certificado` **não contém** os campos `senha` nem `arquivo`.
 3. `fiscal_certificados` aparece em `tools/list` para usuário com domínio
    `fiscal`, some para quem não tem, e responde com dado real do cache.
