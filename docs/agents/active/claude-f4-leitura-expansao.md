@@ -16,21 +16,23 @@ status: in_progress
 
 ## Sessão atual (2026-05-22)
 
-Correções das tools do MCP rumo a 100% de assertividade na bateria L3, conforme
-`docs/superpowers/research/2026-05-22-l3-caminho-100.md`:
-
-- **A** — tools de contagem dedicadas (`servico_contar`, `comercial_contar_pedidos`,
-  `fiscal_contar_notas`, `preco_contar_regras`) para resolver a categoria `global`.
-- **B** — `fiscal_notas_recebidas_por_fornecedor` ganha `totalAgregado`,
-  `totalFornecedoresDistintos` e filtro por `documento` (CNPJ/CPF).
+1. **CONCLUÍDO** — Correções L3 (commit 088cb91): tools de contagem (`servico_contar`,
+   `comercial_contar_pedidos`, `fiscal_contar_notas`, `preco_contar_regras`) e
+   `fiscal_notas_recebidas_por_fornecedor` com `totalAgregado` + filtro CNPJ.
+2. **EM CURSO** — L1b + resíduo 4a: camada de referência (NCM, CFOP, CEST, CNAE,
+   municípios, alíquotas) como raw consultável + fato/tool para o resíduo
+   operacional de 4a (certificado, baixa de lançamento, faturamento, consulta DF-e).
+   Depois: bateria L2 de validação de leitura.
 
 ## Arquivos que VOU modificar nesta sessão
 
-- `mcp/tools/cadastros/`, `mcp/tools/comercial/`, `mcp/tools/fiscal/` (novas tools + índices)
-- `src/lib/reports/queries/{servicos,comercial,fiscal,precos}.ts` (novas queries de contagem)
-- `mcp/__tests__/integration.test.ts` (contagem do catálogo: 41→45 / 42→46)
-- `src/lib/reports/queries/*.test.ts` (testes unitários das queries novas)
-- `STATUS.md`, `docs/agents/HISTORY.md`
+- `prisma/schema.prisma`, `prisma/migrations/` (novos modelos Raw* / Fato*)
+- `src/worker/catalog/model-catalog.ts` (novos modelos de sync)
+- `src/worker/fatos/` (builders do resíduo 4a)
+- `mcp/tools/`, `mcp/catalog/` (tools novas)
+- `src/lib/reports/queries/` (queries novas)
+- `mcp/__tests__/integration.test.ts`, testes unitários
+- `STATUS.md`, `docs/agents/HISTORY.md`, `docs/superpowers/{specs,plans}/`
 
 ## Arquivos compartilhados que VOU modificar
 
