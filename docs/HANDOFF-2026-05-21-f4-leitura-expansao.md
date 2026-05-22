@@ -16,57 +16,48 @@ Nex com 1000+ requisições reais (meta 97%+ de acerto). Três sub-projetos:
 - Spec L1 v3: `docs/superpowers/specs/2026-05-21-f4-leitura-expansao-spec.md`
 - Plano L1 v3: `docs/superpowers/plans/2026-05-21-f4-leitura-expansao.md`
 
+## Ambiente
+
+- **Banco isolado desta branch:** `nexus_odoo_l1` (no container `db`, 5436). O
+  `.env.local` aponta `DATABASE_URL`/`MCP_DATABASE_URL`/`MCP_BI_DATABASE_URL`
+  para ele. Foi criado porque o `nexus_odoo` tinha migrations da branch de
+  escrita que conflitavam. Migrations aplicadas (19 + `f4l_l1a_dados`).
+- **Stack:** containers `db` (5436), `redis` (6380), `mcp` (3100) de pé.
+- **Chave OpenAI** em `.env.local` (`OPENAI_API_KEY`). Falta semear a
+  `LlmCredential` cifrada no banco (o agente lê de lá, não do env).
+
 ## Estado atual
 
-Metodologia cumprida até o plano (censo, spec v1→v3 com 2 reviews, plano
-v1→v3 com 2 reviews). Investigação de schema `fields_get` feita.
+Metodologia cumprida até o plano (censo, spec v1→v3, plano v1→v3, 2 reviews
+cada). Execução em andamento:
 
-Execução iniciada:
-- **Commit `6d64043`:** schema da Onda L1a (modelos `Raw*` e `Fato*` de
-  preços, serviços, apuração, carta de correção) + entradas no `MODEL_CATALOG`.
-  `prisma validate` verde.
-- **Chave da OpenAI** guardada em `.env.local` (`OPENAI_API_KEY`). L3
-  deixa de estar bloqueada por credencial. Ainda falta semear a
-  `LlmCredential` cifrada no banco (o agente lê a chave de lá, não do env).
-- **Stack local de pé:** containers `db` (5436), `redis` (6380), `mcp` (3100).
+- **Commit `6d64043`:** schema da Onda L1a (raw + fato).
+- **Commit `bc11d59`:** migration `f4l_l1a_dados` aplicada em `nexus_odoo_l1`.
+- **Commit `41e2ed5`:** Ondas L1a 1-2 (preços e serviços) completas — builders
+  `fato-preco`/`fato-servico` (em `FATO_BUILDERS` e `FATO_FONTE`), query layer,
+  tools `preco_produto`, `preco_tabela`, `servico_buscar`, `servico_listar`,
+  testes de mapeamento. `tsc` raiz+mcp, `eslint`, `jest` verdes.
+- **Ingestão:** snapshot concluído; ciclo incremental (carga fria, pull
+  completo) rodando via `scripts/f4l-ingest.ts`.
 
-## ATENÇÃO — drift de banco a resolver primeiro
+## Próximo passo exato
 
-O banco local `nexus_odoo` tem 4 migrations da branch `feat/f4-onda2-mcp-escrita`
-(`f4_onda2_mcp_writes`, `external_mcp_servers`, `user_tour_seen`,
-`external_mcp_call_log`) que **não existem** nesta branch. `prisma migrate dev`
-exige reset do banco. Resolução recomendada (banco isolado para esta branch,
-sem destruir o ambiente da outra):
-
-```
-docker compose exec -T db psql -U nexus -d nexus_odoo \
-  -c "CREATE DATABASE nexus_odoo_l1 OWNER nexus;"
-# repontar no .env.local: DATABASE_URL, MCP_DATABASE_URL, MCP_BI_DATABASE_URL
-#   para o banco nexus_odoo_l1
-DATABASE_URL=...nexus_odoo_l1 npx prisma migrate dev --name f4l_l1a_dados
-npm run db:provision   # roles nexus_mcp / nexus_mcp_bi
-```
-
-Alternativa: `prisma migrate reset` no `nexus_odoo` (mais simples, mas apaga o
-estado local da outra branch; aceitável por ser banco de dev).
-
-## Próximo passo exato (retomar o plano L1)
-
-1. Resolver o drift de banco (acima) e aplicar a migration `f4l_l1a_dados`.
-2. Plano L1, Onda 1 T1.5+: builder `fato-preco.ts`, queries, tools
-   `preco_produto`/`preco_tabela`, testes TDD. Depois Ondas 2-5, L1b.
-3. Onda I: rodar o worker (`npm run worker`) para popular o cache com os
-   modelos novos; verificar contagem contra o Odoo.
-4. **Expandir o catálogo** conforme o pedido do usuário ("79 é pouco"): além
-   dos domínios do plano, avaliar incluir mais modelos do censo (a spec L1 v3
-   tinha recortado; o usuário pediu cobertura ampla, então a próxima sessão
-   deve revisar o escopo da spec para abranger mais modelos com dado).
-5. **L3 — validação do agente Nex:** semear `LlmCredential` (OpenAI) no banco
-   via `src/lib/agent/llm/credentials.ts` e a `LlmConfig` ativa com o modelo
-   **`gpt-5.4-nano`** (instrução do usuário: todas as requisições do teste
-   usam esse modelo); montar harness de 1000+ perguntas reais variadas (temas
-   e modos diversos); para cada uma, comparar a resposta do agente com uma
-   consulta independente à mesma base; relatório geral de acerto (meta 97%+).
+1. **Após a ingestão:** rodar `tsx --env-file=.env.local scripts/f4l-build-fatos.ts`
+   — a ingestão one-shot rodou com o registry anterior ao registro de
+   `fato_preco`/`fato_servico`, então esses dois fatos precisam ser
+   reconstruídos. Verificar contagem `raw_*` x `search_count` do Odoo.
+2. Smoke test das 4 tools novas contra o cache populado.
+3. **Ondas 3-5 do plano:** DF-e de entrada (sobre `fato_nota_fiscal`, que já
+   tem coluna `entrada_saida`), apuração e carta de correção (tools que leem
+   `raw` direto), e o cross-cutting (bi-schema-reference, GRANT, snapshot do
+   catálogo, documentação do MCP). Depois L1b (referência).
+4. **Expandir o catálogo** conforme o pedido do usuário ("79 é pouco"):
+   revisar o escopo da spec para abranger mais modelos com dado do censo.
+5. **L2:** harness de 1000+ leituras reais conferidas contra o Odoo.
+6. **L3 — agente Nex:** semear `LlmCredential` (OpenAI) e `LlmConfig` ativa
+   com o modelo **`gpt-5.4-nano`** (instrução do usuário: todas as requisições
+   usam esse modelo); harness de 1000+ perguntas reais variadas; conferir cada
+   resposta contra consulta independente; relatório geral, meta 97%+.
 
 ## Notas
 
