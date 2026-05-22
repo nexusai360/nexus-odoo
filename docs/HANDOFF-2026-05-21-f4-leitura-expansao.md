@@ -28,36 +28,44 @@ Nex com 1000+ requisições reais (meta 97%+ de acerto). Três sub-projetos:
 
 ## Estado atual
 
-Metodologia cumprida até o plano (censo, spec v1→v3, plano v1→v3, 2 reviews
-cada). Execução em andamento:
+Metodologia cumprida até o plano. Execução:
 
-- **Commit `6d64043`:** schema da Onda L1a (raw + fato).
-- **Commit `bc11d59`:** migration `f4l_l1a_dados` aplicada em `nexus_odoo_l1`.
-- **Commit `41e2ed5`:** Ondas L1a 1-2 (preços e serviços) completas — builders
-  `fato-preco`/`fato-servico` (em `FATO_BUILDERS` e `FATO_FONTE`), query layer,
-  tools `preco_produto`, `preco_tabela`, `servico_buscar`, `servico_listar`,
-  testes de mapeamento. `tsc` raiz+mcp, `eslint`, `jest` verdes.
-- **Ingestão:** snapshot concluído; ciclo incremental (carga fria, pull
-  completo) rodando via `scripts/f4l-ingest.ts`.
+- Schema, migration `f4l_l1a_dados` e Ondas L1a 1-2 (preços e serviços)
+  completas e commitadas (`6d64043`, `bc11d59`, `41e2ed5`): builders
+  `fato-preco`/`fato-servico`, query layer, tools `preco_produto`,
+  `preco_tabela`, `servico_buscar`, `servico_listar`, testes.
+- **Ingestão completa** (`nexus_odoo_l1`): todos os 84 modelos sincronizados
+  do Odoo de produção; `raw_sped_documento_item` 213.099 linhas, contagens dos
+  modelos novos batem com o Odoo (servico 336, tabela_preco 15, regra 11864,
+  apuracao 8, carta_correcao 12).
+- **Todos os 14 fatos construídos** (`f4l-build-fatos.ts`): inclui
+  `fato_preco` 11864, `fato_servico` 336, `fato_nota_fiscal` 46987.
+- **Commit `09ca327`:** fix de bug real achado na verificação —
+  `rebuildFatoNotaFiscal` estourava o timeout de 5s da transação (P2028) com a
+  base real; timeout estendido para 180s.
+- **Roles MCP provisionados** em `nexus_odoo_l1` (`provision-mcp.sql`);
+  `nexus_mcp`/`nexus_mcp_bi` com SELECT nos `fato_*` (cobre os novos).
+- **Container MCP de pé** na 3100, lendo de `nexus_odoo_l1`.
+- **Smoke test verde** (`f4l-smoke.ts`): as 4 tools novas retornam dado real.
 
 ## Próximo passo exato
 
-1. **Após a ingestão:** rodar `tsx --env-file=.env.local scripts/f4l-build-fatos.ts`
-   — a ingestão one-shot rodou com o registry anterior ao registro de
-   `fato_preco`/`fato_servico`, então esses dois fatos precisam ser
-   reconstruídos. Verificar contagem `raw_*` x `search_count` do Odoo.
-2. Smoke test das 4 tools novas contra o cache populado.
-3. **Ondas 3-5 do plano:** DF-e de entrada (sobre `fato_nota_fiscal`, que já
-   tem coluna `entrada_saida`), apuração e carta de correção (tools que leem
-   `raw` direto), e o cross-cutting (bi-schema-reference, GRANT, snapshot do
-   catálogo, documentação do MCP). Depois L1b (referência).
-4. **Expandir o catálogo** conforme o pedido do usuário ("79 é pouco"):
-   revisar o escopo da spec para abranger mais modelos com dado do censo.
+1. **Onda 3 — DF-e de entrada:** `fato_nota_fiscal` já tem `entradaSaida`;
+   criar `queries/dfe-entrada.ts` + tools `dfe_entrada_periodo` e
+   `dfe_entrada_por_fornecedor` (domínio `fiscal`, filtram `entradaSaida='0'`).
+2. **Onda 4 — apuração e carta de correção.** ATENÇÃO: o `provision-mcp.sql`
+   REVOGA `raw_*` dos roles do MCP — tools NÃO podem ler `raw` direto. Apuração
+   e carta de correção precisam de fato (`fato_apuracao`, `fato_carta_correcao`)
+   ou a query roda sob outro role. Revisar o plano L1 §4.2/4.4 nesse ponto.
+3. **Onda 5 — cross-cutting:** `bi-schema-reference.ts` (tabelas novas no
+   Caminho 3c), regenerar `mcp-catalog-snapshot.json`, documentação do MCP.
+4. **L1b** (referência) e **expandir o catálogo** para mais modelos do censo.
 5. **L2:** harness de 1000+ leituras reais conferidas contra o Odoo.
-6. **L3 — agente Nex:** semear `LlmCredential` (OpenAI) e `LlmConfig` ativa
-   com o modelo **`gpt-5.4-nano`** (instrução do usuário: todas as requisições
-   usam esse modelo); harness de 1000+ perguntas reais variadas; conferir cada
-   resposta contra consulta independente; relatório geral, meta 97%+.
+6. **L3 — agente Nex:** semear `LlmCredential` (OpenAI, `.env.local`) e
+   `LlmConfig` ativa com o modelo **`gpt-5.4-nano`** (instrução do usuário:
+   todas as requisições usam esse modelo); harness de 1000+ perguntas reais
+   variadas; conferir cada resposta contra consulta independente; relatório
+   geral, meta 97%+.
 
 ## Notas
 
