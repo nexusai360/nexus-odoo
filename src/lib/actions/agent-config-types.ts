@@ -32,6 +32,8 @@ export interface AgentSettingsData {
   imageModel: string | null;
   /** Credencial (chave de API) usada pelo modelo dedicado de imagem (G6). */
   imageCredentialId: string | null;
+  /** Profundidade de raciocínio dos modelos reasoning (null = default do provider). */
+  reasoningEffort: string | null;
   updatedAt: Date;
 }
 

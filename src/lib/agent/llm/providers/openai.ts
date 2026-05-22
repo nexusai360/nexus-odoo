@@ -119,6 +119,9 @@ export class OpenAIClient implements ProviderClient {
     if (tools) body.tools = tools;
 
     const reasoning = isReasoningModel(this.model);
+    if (reasoning && request.reasoningEffort) {
+      body.reasoning_effort = request.reasoningEffort;
+    }
     if (typeof request.temperature === "number" && !reasoning) {
       body.temperature = request.temperature;
     }

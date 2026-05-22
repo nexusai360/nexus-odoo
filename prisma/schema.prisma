@@ -2302,6 +2302,10 @@ model AgentSettings {
   /// Checkpoint das sugestões clicáveis (substitui suggestionsEnabled — B3).
   suggestionsCheckpoint FeatureCheckpoint @default(PRODUCTION) @map("suggestions_checkpoint")
 
+  /// Profundidade de raciocínio dos modelos reasoning (ex.: GPT-5.x).
+  /// null = usa o default do provider. Valores: minimal | low | medium | high.
+  reasoningEffort   String?  @map("reasoning_effort")
+
   /// Modelo dedicado de transcrição de áudio (independente do modelo de produção).
   audioProvider     String?  @map("audio_provider")
   audioModel        String?  @map("audio_model")

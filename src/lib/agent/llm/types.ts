@@ -64,6 +64,12 @@ export interface ChatResult {
   usage: ChatUsage;
 }
 
+/**
+ * Profundidade de raciocínio para modelos reasoning (ex.: GPT-5.x, o-series).
+ * Ignorado por modelos não-reasoning.
+ */
+export type ReasoningEffort = "minimal" | "low" | "medium" | "high";
+
 export interface ChatRequest {
   messages: ChatMessage[];
   tools?: ToolDefinition[];
@@ -75,6 +81,11 @@ export interface ChatRequest {
   stream?: boolean;
   /** Callback invocado para cada token delta durante streaming. */
   onToken?: (token: string) => void;
+  /**
+   * Profundidade de raciocínio (modelos reasoning). Quando ausente, o provider
+   * usa seu default.
+   */
+  reasoningEffort?: ReasoningEffort;
 }
 
 export interface ProviderClient {

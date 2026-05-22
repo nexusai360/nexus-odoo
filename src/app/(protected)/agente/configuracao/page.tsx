@@ -88,6 +88,7 @@ export default async function Page() {
     imageProvider: settings?.imageProvider ?? null,
     imageModel: settings?.imageModel ?? null,
     imageCredentialId: settings?.imageCredentialId ?? null,
+    reasoningEffort: settings?.reasoningEffort ?? null,
   } as const;
 
   return (

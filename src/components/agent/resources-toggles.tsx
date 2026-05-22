@@ -16,7 +16,7 @@
 import { useMemo, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { Image as ImageIcon, KeyRound, Loader2, MessageSquare, Mic } from "lucide-react";
+import { Brain, Image as ImageIcon, KeyRound, Loader2, MessageSquare, Mic } from "lucide-react";
 import { toast } from "sonner";
 import {
   FeatureCheckpoint,
@@ -36,7 +36,7 @@ import {
   type ModelEntry,
 } from "@/lib/agent/llm/catalog";
 import { updateAgentResources } from "@/lib/actions/agent-config";
-import type { LlmProvider } from "@/lib/agent/llm/types";
+import type { LlmProvider, ReasoningEffort } from "@/lib/agent/llm/types";
 
 export interface CredentialOption {
   id: string;
@@ -62,6 +62,7 @@ interface ResourcesTogglesProps {
     imageProvider: string | null;
     imageModel: string | null;
     imageCredentialId: string | null;
+    reasoningEffort: string | null;
   };
   /** G6 — credenciais cadastradas, agrupadas por provedor. */
   credentialsByProvider?: Record<string, CredentialOption[]>;
@@ -133,9 +134,13 @@ export function ResourcesToggles({
       (imageProvider ? credentialsByProvider[imageProvider]?.[0]?.id ?? "" : ""),
   );
 
-  const [pending, setPending] = useState<"audio" | "image" | "suggestions" | null>(
-    null,
+  const [reasoningEffort, setReasoningEffort] = useState<ReasoningEffort | "">(
+    (initial.reasoningEffort as ReasoningEffort | null) ?? "",
   );
+
+  const [pending, setPending] = useState<
+    "audio" | "image" | "suggestions" | "reasoning" | null
+  >(null);
 
   function persistResources(
     next: Partial<{
@@ -148,8 +153,9 @@ export function ResourcesToggles({
       imageProvider: string;
       imageModel: string;
       imageCredentialId: string | null;
+      reasoningEffort: ReasoningEffort | null;
     }>,
-    label: "audio" | "image" | "suggestions",
+    label: "audio" | "image" | "suggestions" | "reasoning",
   ) {
     setPending(label);
     startTransition(async () => {
@@ -170,6 +176,10 @@ export function ResourcesToggles({
           next.imageCredentialId !== undefined
             ? next.imageCredentialId
             : imageCredentialId || null,
+        reasoningEffort:
+          next.reasoningEffort !== undefined
+            ? next.reasoningEffort
+            : reasoningEffort || null,
       });
       setPending(null);
       if (!result.success) {
@@ -367,6 +377,47 @@ export function ResourcesToggles({
         loading={pending === "suggestions"}
         ariaLabel="Estado das sugestões clicáveis"
       />
+
+      {/* Profundidade de raciocínio do modelo de produção */}
+      <div className="rounded-xl border border-border bg-muted/30 px-4 py-3.5">
+        <div className="flex items-start justify-between gap-4">
+          <div className="min-w-0 flex-1">
+            <div className="flex items-center gap-2 text-sm font-medium text-foreground">
+              <Brain className="h-4 w-4 text-violet-500" aria-hidden />
+              Profundidade de raciocínio
+            </div>
+            <p className="mt-0.5 text-xs text-muted-foreground">
+              Quanto o modelo pensa antes de responder. Vale para modelos com
+              raciocínio (ex.: GPT-5). Mais profundidade ajuda em perguntas
+              ambíguas, com resposta um pouco mais lenta.
+            </p>
+          </div>
+          {pending === "reasoning" ? (
+            <Loader2
+              className="h-4 w-4 shrink-0 animate-spin text-muted-foreground"
+              aria-hidden
+            />
+          ) : null}
+        </div>
+        <div className="mt-3 sm:max-w-xs">
+          <CustomSelect
+            aria-label="Profundidade de raciocínio"
+            value={reasoningEffort}
+            onChange={(v) => {
+              const next = (v as ReasoningEffort | "") || "";
+              setReasoningEffort(next);
+              persistResources({ reasoningEffort: next || null }, "reasoning");
+            }}
+            options={[
+              { value: "", label: "Padrão do modelo" },
+              { value: "minimal", label: "Mínima (mais rápida)" },
+              { value: "low", label: "Baixa" },
+              { value: "medium", label: "Média" },
+              { value: "high", label: "Alta (mais precisa)" },
+            ]}
+          />
+        </div>
+      </div>
     </div>
   );
 }

@@ -65,6 +65,11 @@ const UpdateResourcesSchema = z.object({
   imageModel: z.string().nullable().optional(),
   /** G6 — chave de API usada pelo modelo dedicado de imagem. */
   imageCredentialId: z.string().nullable().optional(),
+  /** Profundidade de raciocínio (modelos reasoning). null = default do provider. */
+  reasoningEffort: z
+    .enum(["minimal", "low", "medium", "high"])
+    .nullable()
+    .optional(),
 });
 export type UpdateAgentResourcesInput = z.infer<typeof UpdateResourcesSchema>;
 
@@ -101,6 +106,7 @@ type AgentSettingsRow = {
   imageProvider: string | null;
   imageModel: string | null;
   imageCredentialId: string | null;
+  reasoningEffort: string | null;
   updatedAt: Date;
 };
 
@@ -126,6 +132,7 @@ function mapSettings(row: AgentSettingsRow): AgentSettingsData {
     imageProvider: row.imageProvider,
     imageModel: row.imageModel,
     imageCredentialId: row.imageCredentialId,
+    reasoningEffort: row.reasoningEffort,
     updatedAt: row.updatedAt,
   };
 }
@@ -337,6 +344,9 @@ export async function updateAgentResources(
       payload.suggestionsCheckpoint = d.suggestionsCheckpoint;
       // Mantém o boolean legado em sincronia (compat com leitores antigos).
       payload.suggestionsEnabled = d.suggestionsCheckpoint === "PRODUCTION";
+    }
+    if (d.reasoningEffort !== undefined) {
+      payload.reasoningEffort = d.reasoningEffort;
     }
 
     await prisma.agentSettings.upsert({

@@ -33,7 +33,12 @@ import { BI_SCHEMA_REFERENCE } from "./bi-schema-reference";
 import { progressLabel } from "./progress-labels";
 import { searchKb } from "./rag/search";
 import { EmbeddingUnavailable } from "./rag/embed";
-import type { ChatMessage, ChatUsage, ToolCall } from "./llm/types";
+import type {
+  ChatMessage,
+  ChatUsage,
+  ToolCall,
+  ReasoningEffort,
+} from "./llm/types";
 import type { AgentChannel } from "@/generated/prisma/client";
 
 /** Limite de iterações do loop de tool calling. */
@@ -131,6 +136,21 @@ export type RunAgentResult =
   | { ok: true; message: string; suggestions: string[]; usage: ChatUsage }
   | { ok: false; error: string };
 
+/** Valida o reasoningEffort vindo do banco; valor inválido ou ausente vira null. */
+function normalizeReasoningEffort(
+  value: string | null | undefined,
+): ReasoningEffort | null {
+  if (
+    value === "minimal" ||
+    value === "low" ||
+    value === "medium" ||
+    value === "high"
+  ) {
+    return value;
+  }
+  return null;
+}
+
 /** Carrega o singleton AgentSettings do banco (fallback alinhado com @default do schema). */
 async function loadAgentSettings() {
   const row = await prisma.agentSettings.findUnique({ where: { id: "global" } });
@@ -145,6 +165,7 @@ async function loadAgentSettings() {
     kbEnabled: (row?.kbCheckpoint ?? "PRODUCTION") === "PRODUCTION",
     terminology: (row?.terminology as Record<string, string>) ?? {},
     suggestionsEnabled: row?.suggestionsEnabled ?? true,
+    reasoningEffort: normalizeReasoningEffort(row?.reasoningEffort),
   };
 }
 
@@ -295,6 +316,7 @@ export async function runAgent(args: RunAgentInput): Promise<RunAgentResult> {
         tools,
         stream: !!onToken,
         onToken,
+        reasoningEffort: agentSettings.reasoningEffort ?? undefined,
       });
 
       totalUsage.tokensInput += result.usage.tokensInput;
