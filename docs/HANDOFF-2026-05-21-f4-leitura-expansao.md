@@ -50,9 +50,9 @@ Metodologia cumprida até o plano. Execução:
 
 ## Próximo passo exato
 
-1. **Onda 3 — DF-e de entrada:** `fato_nota_fiscal` já tem `entradaSaida`;
-   criar `queries/dfe-entrada.ts` + tools `dfe_entrada_periodo` e
-   `dfe_entrada_por_fornecedor` (domínio `fiscal`, filtram `entradaSaida='0'`).
+1. ~~Onda 3 — DF-e de entrada~~ **CONCLUÍDA** (commit `afe2b11`): a visão por
+   período já existia (`fiscal_notas_recebidas`); foi adicionada a tool
+   `fiscal_notas_recebidas_por_fornecedor`. Catálogo agora com 38 tools.
 2. **Onda 4 — apuração e carta de correção.** ATENÇÃO: o `provision-mcp.sql`
    REVOGA `raw_*` dos roles do MCP — tools NÃO podem ler `raw` direto. Apuração
    e carta de correção precisam de fato (`fato_apuracao`, `fato_carta_correcao`)
