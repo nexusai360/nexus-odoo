@@ -1298,6 +1298,46 @@ model RawSpedCartaCorrecao {
   @@map("raw_sped_carta_correcao")
 }
 
+// ─── F4 L1c — resíduo operacional 4a ─────────────────────────────────────────
+
+/// raw de sped.certificado. NOTA: os campos `senha` e `arquivo` NÃO são
+/// copiados (excludeFields no MODEL_CATALOG) — não aparecem no JSONB `data`.
+model RawSpedCertificado {
+  odooId        Int       @id @map("odoo_id")
+  data          Json
+  odooWriteDate DateTime? @map("odoo_write_date")
+  syncedAt      DateTime  @default(now()) @map("synced_at")
+  rawDeleted    Boolean   @default(false) @map("raw_deleted")
+
+  @@index([odooWriteDate])
+  @@index([rawDeleted])
+  @@map("raw_sped_certificado")
+}
+
+model RawFinanBaixaLancamento {
+  odooId        Int       @id @map("odoo_id")
+  data          Json
+  odooWriteDate DateTime? @map("odoo_write_date")
+  syncedAt      DateTime  @default(now()) @map("synced_at")
+  rawDeleted    Boolean   @default(false) @map("raw_deleted")
+
+  @@index([odooWriteDate])
+  @@index([rawDeleted])
+  @@map("raw_finan_baixa_lancamento")
+}
+
+model RawPedidoFaturamento {
+  odooId        Int       @id @map("odoo_id")
+  data          Json
+  odooWriteDate DateTime? @map("odoo_write_date")
+  syncedAt      DateTime  @default(now()) @map("synced_at")
+  rawDeleted    Boolean   @default(false) @map("raw_deleted")
+
+  @@index([odooWriteDate])
+  @@index([rawDeleted])
+  @@map("raw_pedido_faturamento")
+}
+
 /// Estado de sincronização por modelo do Odoo. Fonte do "atualizado há Xs".
 model SyncState {
   model             String     @id
@@ -1689,6 +1729,23 @@ model FatoCartaCorrecao {
 
   @@index([documentoId])
   @@map("fato_carta_correcao")
+}
+
+/// Certificados digitais (e-CNPJ) das empresas — F4 L1c. Sem senha nem arquivo.
+model FatoCertificado {
+  odooId             Int       @id @map("odoo_id")
+  tipo               String?
+  numeroSerie        String?   @map("numero_serie")
+  proprietario       String?
+  cnpjCpf            String?   @map("cnpj_cpf")
+  dataInicioValidade DateTime? @map("data_inicio_validade")
+  dataFimValidade    DateTime? @map("data_fim_validade")
+  dataVencimentoUtil DateTime? @map("data_vencimento_util")
+  nomeArquivo        String?   @map("nome_arquivo")
+  atualizadoEm       DateTime  @default(now()) @map("atualizado_em")
+
+  @@index([dataFimValidade])
+  @@map("fato_certificado")
 }
 
 // ─── F4 — Logs e feature requests do MCP ─────────────────────────────────────
