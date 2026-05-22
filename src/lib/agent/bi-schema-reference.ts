@@ -334,8 +334,8 @@ TABLE fato_certificado (
   atualizado_em        TIMESTAMPTZ
 );
 
--- Tabelas de referência achatadas. Filtre sempre por `tabela`. Valores de
--- `tabela`: ncm, cfop, cest, cnae, nbs, natureza_operacao, unidade, cst_icms,
+-- Tabelas de referencia achatadas. Filtre sempre pela coluna tabela. Valores
+-- possiveis: ncm, cfop, cest, cnae, nbs, natureza_operacao, unidade, cst_icms,
 -- cst_icms_sn, cst_ipi, cst_pis_cofins, cst_cibs, municipio, pais, estado.
 TABLE fato_referencia (
   id        INT PRIMARY KEY,
