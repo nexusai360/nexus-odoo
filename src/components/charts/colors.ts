@@ -41,3 +41,6 @@ export function colorAt(i: number): string {
   if (!Number.isFinite(i) || i < 0) return CHART_PALETTE[0];
   return CHART_PALETTE[Math.floor(i) % CHART_PALETTE.length];
 }
+
+/** Alias de `colorAt` — compat com componentes portados do nexus-insights. */
+export const getColorByIndex = colorAt;
