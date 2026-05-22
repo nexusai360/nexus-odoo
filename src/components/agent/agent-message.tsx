@@ -95,7 +95,7 @@ export function AgentMessage({
         )}
       >
         <MarkdownLite content={content} />
-        {streaming && (
+        {streaming && content.length > 0 && (
           <span
             aria-hidden="true"
             className="ml-0.5 inline-block h-[1em] w-[2px] animate-pulse bg-violet-500 align-text-bottom motion-reduce:animate-none"

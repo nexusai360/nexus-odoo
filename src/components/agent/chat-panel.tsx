@@ -23,6 +23,7 @@ import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { AgentMessage, type AgentMessageRole } from "./agent-message";
 import { SuggestionsBar } from "./suggestions-bar";
+import { ProgressTrail, type ProgressStep } from "./progress-trail";
 import { AudioRecorder, type AudioRecorderHandle } from "./audio-recorder";
 import { AttachMenu, defaultAttachHandler } from "./attach-menu";
 import { MessageInput } from "./message-input";
@@ -43,9 +44,11 @@ interface ChatPanelProps {
 
 interface UiMessage {
   id: string;
-  role: AgentMessageRole;
+  /** "progress" é a trilha de consultas do turno (ProgressTrail). */
+  role: AgentMessageRole | "progress";
   content: string;
-  toolName?: string;
+  /** Passos da trilha de progresso (apenas para role "progress"). */
+  steps?: ProgressStep[];
   kind?: "text" | "audio";
   audioBlobUrl?: string | null;
   durationSeconds?: number;
@@ -57,8 +60,8 @@ interface UiMessage {
 type SseEvent =
   | { type: "status"; status: string }
   | { type: "token"; delta: string }
-  | { type: "tool_call"; toolName: string }
-  | { type: "tool_result"; toolName: string; truncated: boolean }
+  | { type: "tool_call"; label: string; toolName?: string }
+  | { type: "tool_result"; label: string; truncated: boolean; toolName?: string }
   | { type: "done"; conversationId: string; message: string; suggestions: string[] }
   | { type: "error"; error: string };
 
@@ -162,6 +165,7 @@ export function ChatPanel({
 
       const userMsgId = `u_${crypto.randomUUID()}`;
       const assistantMsgId = `a_${crypto.randomUUID()}`;
+      const progressMsgId = `p_${crypto.randomUUID()}`;
 
       setMessages((prev) => [
         ...prev,
@@ -197,11 +201,13 @@ export function ChatPanel({
           return;
         }
 
-        // Remove loading e prepara a bolha de streaming
-        setMessages((prev) => [
-          ...prev.filter((m) => m.id !== "loading"),
-          { id: assistantMsgId, role: "assistant", content: "", streaming: true },
-        ]);
+        // A bolha do assistente só nasce quando o primeiro token chega (ou no
+        // done/error). Até lá fica a loading bubble ou a trilha de progresso —
+        // nunca um caret "|" órfão.
+        let assistantCreated = false;
+        let progressCreated = false;
+        const dropLoading = (list: UiMessage[]) =>
+          list.filter((m) => m.id !== "loading");
 
         const reader = res.body.getReader();
         const decoder = new TextDecoder();
@@ -228,60 +234,140 @@ export function ChatPanel({
             }
 
             if (evt.type === "status") {
-              // thinking → já temos a loading bubble → noop
+              // thinking → loading bubble já cobre o estado
             } else if (evt.type === "token") {
-              // Streaming token-a-token (Anthropic)
-              setMessages((prev) =>
-                prev.map((m) =>
-                  m.id === assistantMsgId
-                    ? { ...m, content: m.content + evt.delta }
-                    : m,
-                ),
-              );
-            } else if (evt.type === "tool_call") {
-              // Insere ToolBubble antes do assistantMsg
-              const toolId = `t_${Date.now()}_${Math.random()}`;
               setMessages((prev) => {
-                const idx = prev.findIndex((m) => m.id === assistantMsgId);
-                if (idx === -1) return prev;
-                const copy = [...prev];
-                copy.splice(idx, 0, {
-                  id: toolId,
-                  role: "tool",
+                if (assistantCreated) {
+                  return prev.map((m) =>
+                    m.id === assistantMsgId
+                      ? { ...m, content: m.content + evt.delta }
+                      : m,
+                  );
+                }
+                return [
+                  ...dropLoading(prev),
+                  {
+                    id: assistantMsgId,
+                    role: "assistant",
+                    content: evt.delta,
+                    streaming: true,
+                  },
+                ];
+              });
+              assistantCreated = true;
+            } else if (evt.type === "tool_call") {
+              const step: ProgressStep = {
+                id: `s_${crypto.randomUUID()}`,
+                label: evt.label,
+                state: "running",
+              };
+              setMessages((prev) => {
+                if (progressCreated) {
+                  return prev.map((m) =>
+                    m.id === progressMsgId
+                      ? { ...m, steps: [...(m.steps ?? []), step] }
+                      : m,
+                  );
+                }
+                // Trilha entra antes da bolha do assistente, se ela já existir.
+                const base = dropLoading(prev);
+                const progressMsg: UiMessage = {
+                  id: progressMsgId,
+                  role: "progress",
                   content: "",
-                  toolName: evt.toolName,
-                });
+                  steps: [step],
+                };
+                const idx = base.findIndex((m) => m.id === assistantMsgId);
+                if (idx === -1) return [...base, progressMsg];
+                const copy = [...base];
+                copy.splice(idx, 0, progressMsg);
                 return copy;
               });
+              progressCreated = true;
+            } else if (evt.type === "tool_result") {
+              // Matching FIFO: marca como done o primeiro passo running de
+              // mesmo rótulo (os eventos não carregam id de correlação).
+              setMessages((prev) =>
+                prev.map((m) => {
+                  if (m.id !== progressMsgId) return m;
+                  let marked = false;
+                  const steps = (m.steps ?? []).map((s) => {
+                    if (
+                      !marked &&
+                      s.state === "running" &&
+                      s.label === evt.label
+                    ) {
+                      marked = true;
+                      return { ...s, state: "done" as const };
+                    }
+                    return s;
+                  });
+                  return { ...m, steps };
+                }),
+              );
             } else if (evt.type === "done") {
               if (evt.conversationId && !conversationIdRef.current) {
                 conversationIdRef.current = evt.conversationId;
                 onConversationCreated?.(evt.conversationId);
               }
-              setMessages((prev) =>
-                prev.map((m) =>
-                  m.id === assistantMsgId
-                    ? {
-                        ...m,
-                        content: evt.message,
-                        suggestions: evt.suggestions,
-                        streaming: false,
-                      }
-                    : m,
-                ),
-              );
+              setMessages((prev) => {
+                const finalized = dropLoading(prev).map((m) => {
+                  if (m.id === progressMsgId) {
+                    return {
+                      ...m,
+                      steps: (m.steps ?? []).map((s) => ({
+                        ...s,
+                        state: "done" as const,
+                      })),
+                    };
+                  }
+                  if (m.id === assistantMsgId) {
+                    return {
+                      ...m,
+                      content: evt.message,
+                      suggestions: evt.suggestions,
+                      streaming: false,
+                    };
+                  }
+                  return m;
+                });
+                if (assistantCreated) return finalized;
+                return [
+                  ...finalized,
+                  {
+                    id: assistantMsgId,
+                    role: "assistant",
+                    content: evt.message,
+                    suggestions: evt.suggestions,
+                    streaming: false,
+                  },
+                ];
+              });
+              assistantCreated = true;
             } else if (evt.type === "error") {
-              setMessages((prev) =>
-                prev.map((m) =>
-                  m.id === assistantMsgId
-                    ? {
-                        ...m,
-                        content: `**Erro:** ${evt.error}`,
-                        streaming: false,
-                      }
-                    : m,
-                ),
-              );
+              setMessages((prev) => {
+                if (assistantCreated) {
+                  return prev.map((m) =>
+                    m.id === assistantMsgId
+                      ? {
+                          ...m,
+                          content: `**Erro:** ${evt.error}`,
+                          streaming: false,
+                        }
+                      : m,
+                  );
+                }
+                return [
+                  ...dropLoading(prev),
+                  {
+                    id: assistantMsgId,
+                    role: "assistant",
+                    content: `**Erro:** ${evt.error}`,
+                    streaming: false,
+                  },
+                ];
+              });
+              assistantCreated = true;
             }
           }
         }
@@ -297,11 +383,16 @@ export function ChatPanel({
         ]);
       } finally {
         setPending(false);
-        // Garante que streaming=false na mensagem final
+        // Garante streaming=false na resposta e remove a loading bubble caso o
+        // stream tenha encerrado sem nenhum evento.
         setMessages((prev) =>
-          prev.map((m) =>
-            m.id === assistantMsgId && m.streaming ? { ...m, streaming: false } : m,
-          ),
+          prev
+            .filter((m) => m.id !== "loading")
+            .map((m) =>
+              m.id === assistantMsgId && m.streaming
+                ? { ...m, streaming: false }
+                : m,
+            ),
         );
       }
     },
@@ -441,6 +532,9 @@ export function ChatPanel({
           ) : (
             <div className="space-y-3">
               {messages.map((m, idx) => {
+                if (m.role === "progress") {
+                  return <ProgressTrail key={m.id} steps={m.steps ?? []} />;
+                }
                 const isLastAssistant =
                   m.role === "assistant" && idx === messages.length - 1 && !pending;
                 return (
@@ -448,7 +542,6 @@ export function ChatPanel({
                     <AgentMessage
                       role={m.role}
                       content={m.content}
-                      toolName={m.toolName}
                       kind={m.kind}
                       audioBlobUrl={m.audioBlobUrl}
                       durationSeconds={m.durationSeconds}
