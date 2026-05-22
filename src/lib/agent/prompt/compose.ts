@@ -135,7 +135,7 @@ export function composeSystemPrompt(
 
   if (cfg.suggestionsEnabled) {
     parts.push(
-      `\n\n## Sugestões clicáveis (HABILITADAS — USE SEMPRE QUE POSSÍVEL)\nApós responder, inclua **exatamente uma linha em branco seguida de uma linha no formato abaixo**:\n\`[[suggestions]]:Pergunta 1|Pergunta 2|Pergunta 3\`\n\nRegras:\n- Inclua 2-3 sugestões na grande maioria das respostas.\n- Omita apenas quando não existir follow-up natural.\n- Máximo 3 sugestões. Cada uma: ≤ 60 caracteres, pergunta direta, sem \`|\` no texto.\n- NUNCA repita no texto da resposta o que já está como sugestão clicável.`,
+      `\n\n## Sugestões clicáveis (HABILITADAS — USE SEMPRE QUE POSSÍVEL)\nApós responder, inclua **exatamente uma linha em branco seguida de uma linha no formato abaixo**:\n\`[[suggestions]]:Pergunta 1|Pergunta 2|Pergunta 3\`\n\nRegras:\n- Inclua 2 a 5 sugestões na grande maioria das respostas.\n- Omita apenas quando não existir follow-up natural.\n- Máximo 5 sugestões. Cada uma: ≤ 80 caracteres, pergunta direta, sem \`|\` no texto.\n- Quando a resposta for uma pergunta de desambiguação, as sugestões DEVEM resolver a ambiguidade: ofereça as opções concretas (cada registro que casou pelo nome, ou os sentidos possíveis da métrica). É o caso de maior prioridade para incluir sugestões; use até 5 nesse caso.\n- NUNCA repita no texto da resposta o que já está como sugestão clicável.`,
     );
   }
 

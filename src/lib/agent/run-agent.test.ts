@@ -135,12 +135,20 @@ describe("extractSuggestions", () => {
     expect(suggestions).toEqual([]);
   });
 
-  test("sugestão com >60 chars é filtrada", () => {
-    const longSugg = "a".repeat(61);
+  test("sugestão com >80 chars é filtrada", () => {
+    const longSugg = "a".repeat(81);
     const text = `Resposta.\n\n[[suggestions]]:Curta|${longSugg}`;
     const { suggestions } = extractSuggestions(text);
     expect(suggestions).toHaveLength(1);
     expect(suggestions[0]).toBe("Curta");
+  });
+
+  test("aceita até 5 sugestões (cap elevado para desambiguação)", () => {
+    const text =
+      "Resposta.\n\n[[suggestions]]:Um|Dois|Tres|Quatro|Cinco|Seis";
+    const { suggestions } = extractSuggestions(text);
+    expect(suggestions).toHaveLength(5);
+    expect(suggestions).toEqual(["Um", "Dois", "Tres", "Quatro", "Cinco"]);
   });
 });
 

@@ -1,5 +1,6 @@
-import { composeSystemPrompt } from "./compose";
+import { composeSystemPrompt, IDENTITY_BASE } from "./compose";
 import type { AgentPromptConfig, KbDocSnippet } from "./compose";
+import { DEFAULT_GUARDRAILS } from "./defaults";
 
 const baseConfig: AgentPromptConfig = {
   identityBase: null,
@@ -132,5 +133,52 @@ describe("composeSystemPrompt", () => {
     const result = composeSystemPrompt(cfg, [], undefined, biSchema);
     expect(result).toBe("Override total.");
     expect(result).not.toContain("Schema para consulta avançada");
+  });
+});
+
+describe("IDENTITY_BASE — melhorias de comportamento do Agente Nex", () => {
+  test("traz a política de desambiguação com exemplos", () => {
+    expect(IDENTITY_BASE).toContain("[DESAMBIGUAÇÃO]");
+    expect(IDENTITY_BASE.toLowerCase()).toContain("pergunte de volta");
+    expect(IDENTITY_BASE).toContain("Exemplo 1");
+  });
+
+  test("não pede mais o selo de atualização e manda ignorar o carimbo", () => {
+    expect(IDENTITY_BASE).not.toContain("Sempre inclua o timestamp");
+    expect(IDENTITY_BASE.toLowerCase()).toContain("ignore esse carimbo");
+  });
+
+  test("abre exceção de concisão para desambiguação e listas", () => {
+    expect(IDENTITY_BASE).toContain(
+      "mensagens de desambiguação e listas podem ser mais longas",
+    );
+  });
+
+  test("traz o bloco de segurança da informação", () => {
+    expect(IDENTITY_BASE).toContain("## Segurança da informação");
+    expect(IDENTITY_BASE.toLowerCase()).toContain("chave de api");
+  });
+
+  test("orienta formatação humanizada com negrito", () => {
+    expect(IDENTITY_BASE.toLowerCase()).toContain("negrito");
+  });
+});
+
+describe("DEFAULT_GUARDRAILS — segurança da informação", () => {
+  test("bloqueia perguntas sobre arquitetura e chave de API", () => {
+    const joined = DEFAULT_GUARDRAILS.join(" ").toLowerCase();
+    expect(joined).toContain("arquitetura");
+    expect(joined).toContain("chave de api");
+  });
+});
+
+describe("composeSystemPrompt — sugestões de desambiguação", () => {
+  test("instrução de sugestões cobre desambiguação e o cap de 5", () => {
+    const out = composeSystemPrompt(
+      { ...baseConfig, suggestionsEnabled: true },
+      [],
+    );
+    expect(out).toContain("desambiguação");
+    expect(out).toContain("Máximo 5 sugestões");
   });
 });

@@ -49,8 +49,8 @@ const TRUNCATION_NOTICE = "\n[...resultado truncado por exceder o limite de tama
 
 /** Regex para extrair sufixo [[suggestions]]. */
 const SUGGESTIONS_RE = /(?:^|\n)\[\[suggestions\]\]:([^\n]+?)(?:\n|$)/;
-const MAX_SUGGESTIONS = 3;
-const MAX_SUGGESTION_LEN = 60;
+const MAX_SUGGESTIONS = 5;
+const MAX_SUGGESTION_LEN = 80;
 
 /**
  * Extrai sugestões do sufixo `[[suggestions]]:item1|item2|...`.
