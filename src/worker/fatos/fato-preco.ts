@@ -93,12 +93,15 @@ export async function rebuildFatoPreco(prisma: PrismaClient): Promise<number> {
     where: { rawDeleted: false },
   });
   const mapped = rawRows.map((r) => mapPrecoRegraRow(r.data as Record<string, unknown>));
-  await prisma.$transaction(async (tx) => {
-    await tx.fatoPreco.deleteMany({});
-    if (mapped.length) {
-      await tx.fatoPreco.createMany({ data: mapped });
-    }
-    await markFatoBuilt(tx, "fato_preco");
-  });
+  await prisma.$transaction(
+    async (tx) => {
+      await tx.fatoPreco.deleteMany({});
+      if (mapped.length) {
+        await tx.fatoPreco.createMany({ data: mapped });
+      }
+      await markFatoBuilt(tx, "fato_preco");
+    },
+    { timeout: 180_000, maxWait: 15_000 },
+  );
   return mapped.length;
 }

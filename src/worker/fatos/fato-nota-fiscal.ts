@@ -81,20 +81,25 @@ export function mapNotaFiscalRow(raw: Record<string, unknown>): FatoNotaFiscalRo
 }
 
 /** Reconstrói fato_nota_fiscal a partir de raw_sped_documento.
- * Filtra rawDeleted=false. Transação: deleteMany + createMany + markFatoBuilt. */
+ * Filtra rawDeleted=false. Transação: deleteMany + createMany + markFatoBuilt.
+ * Timeout estendido: com a base real (~47 mil documentos) o createMany passa
+ * dos 5s padrão da transação interativa do Prisma (P2028). */
 export async function rebuildFatoNotaFiscal(prisma: PrismaClient): Promise<number> {
   const rawRows = await prisma.rawSpedDocumento.findMany({
     where: { rawDeleted: false },
   });
   const mapped = rawRows.map((r) => mapNotaFiscalRow(r.data as Record<string, unknown>));
 
-  await prisma.$transaction(async (tx) => {
-    await tx.fatoNotaFiscal.deleteMany({});
-    if (mapped.length) {
-      await tx.fatoNotaFiscal.createMany({ data: mapped });
-    }
-    await markFatoBuilt(tx, "fato_nota_fiscal");
-  });
+  await prisma.$transaction(
+    async (tx) => {
+      await tx.fatoNotaFiscal.deleteMany({});
+      if (mapped.length) {
+        await tx.fatoNotaFiscal.createMany({ data: mapped });
+      }
+      await markFatoBuilt(tx, "fato_nota_fiscal");
+    },
+    { timeout: 180_000, maxWait: 15_000 },
+  );
 
   return mapped.length;
 }
