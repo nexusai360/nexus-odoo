@@ -120,7 +120,12 @@ export class OpenAIClient implements ProviderClient {
 
     const reasoning = isReasoningModel(this.model);
     if (reasoning && request.reasoningEffort) {
-      body.reasoning_effort = request.reasoningEffort;
+      // Alguns modelos GPT-5.x (ex.: gpt-5.4-nano) rejeitam "minimal" na API
+      // dizendo "Supported values are: 'none', 'low', 'medium', 'high', and
+      // 'xhigh'". "low" é o nível mais leve compatível com toda a família;
+      // mapeia "minimal" para ele em vez de quebrar a chamada.
+      body.reasoning_effort =
+        request.reasoningEffort === "minimal" ? "low" : request.reasoningEffort;
     }
     if (typeof request.temperature === "number" && !reasoning) {
       body.temperature = request.temperature;
