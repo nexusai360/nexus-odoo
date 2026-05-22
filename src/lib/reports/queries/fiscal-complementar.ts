@@ -121,3 +121,57 @@ export async function queryCartaCorrecao(
   ]);
   return { linhas: rows.map(toCartaLinha), total, truncado: total > rows.length };
 }
+
+// ---------------------------------------------------------------------------
+// Certificados digitais
+// ---------------------------------------------------------------------------
+
+export interface CertificadoLinha {
+  odooId: number;
+  tipo: string | null;
+  numeroSerie: string | null;
+  proprietario: string | null;
+  cnpjCpf: string | null;
+  dataInicioValidade: string | null;
+  dataFimValidade: string | null;
+  dataVencimentoUtil: string | null;
+  nomeArquivo: string | null;
+}
+
+type CertificadoRow = {
+  odooId: number;
+  tipo: string | null;
+  numeroSerie: string | null;
+  proprietario: string | null;
+  cnpjCpf: string | null;
+  dataInicioValidade: Date | null;
+  dataFimValidade: Date | null;
+  dataVencimentoUtil: Date | null;
+  nomeArquivo: string | null;
+};
+
+function toCertificadoLinha(r: CertificadoRow): CertificadoLinha {
+  return {
+    odooId: r.odooId,
+    tipo: r.tipo,
+    numeroSerie: r.numeroSerie,
+    proprietario: r.proprietario,
+    cnpjCpf: r.cnpjCpf,
+    dataInicioValidade: dia(r.dataInicioValidade),
+    dataFimValidade: dia(r.dataFimValidade),
+    dataVencimentoUtil: dia(r.dataVencimentoUtil),
+    nomeArquivo: r.nomeArquivo,
+  };
+}
+
+/** Lista os certificados digitais cadastrados, do que vence primeiro para o
+ * que vence por último. Volume baixo (~11): sem paginação. */
+export async function queryCertificados(
+  prisma: PrismaClient,
+): Promise<{ linhas: CertificadoLinha[]; total: number }> {
+  const [rows, total] = await Promise.all([
+    prisma.fatoCertificado.findMany({ orderBy: { dataFimValidade: "asc" } }),
+    prisma.fatoCertificado.count(),
+  ]);
+  return { linhas: rows.map(toCertificadoLinha), total };
+}
