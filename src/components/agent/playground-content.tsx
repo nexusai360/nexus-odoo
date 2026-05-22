@@ -41,6 +41,10 @@ import { SuggestionsBar } from "@/components/agent/suggestions-bar";
 import { AudioRecorder, type AudioRecorderHandle } from "@/components/agent/audio-recorder";
 import { AttachMenu, defaultAttachHandler } from "@/components/agent/attach-menu";
 import { MessageInput } from "@/components/agent/message-input";
+import {
+  ProgressTrail,
+  type ProgressStep,
+} from "@/components/agent/progress-trail";
 import { PlaygroundSessionPrompt } from "@/components/agent/playground-session-prompt";
 import { Button } from "@/components/ui/button";
 import { CustomSelect } from "@/components/ui/custom-select";
@@ -75,9 +79,12 @@ const MAX_INPUT_LEN = 1000;
 
 interface UiMessage {
   id: string;
-  role: AgentMessageRole;
+  /** "progress" é a trilha de consultas do turno (ProgressTrail). */
+  role: AgentMessageRole | "progress";
   content: string;
   toolName?: string;
+  /** Passos da trilha de progresso (apenas para role "progress"). */
+  steps?: ProgressStep[];
   suggestions?: string[];
   streaming?: boolean;
   /** D5 — provedor/modelo que gerou esta mensagem. */
@@ -421,6 +428,7 @@ export function PlaygroundContent({
     setIsSending(true);
 
     const assistantId = genId();
+    const progressId = genId();
     // D5 — tag de modelo já fica preenchida durante o streaming.
     appendItems([
       {
@@ -449,13 +457,10 @@ export function PlaygroundContent({
       const decoder = new TextDecoder();
       let buffer = "";
 
-      setItems((prev) =>
-        prev.map((m) =>
-          m.id === assistantId
-            ? { ...m, role: "assistant" as AgentMessageRole, content: "", streaming: true }
-            : m,
-        ),
-      );
+      // A bolha do assistente só vira "assistant" no primeiro token (ou no
+      // done) — sem caret "|" órfão. A trilha de progresso cobre as consultas.
+      let assistantCreated = false;
+      let progressCreated = false;
 
       while (true) {
         const { done, value } = await reader.read();
@@ -473,30 +478,96 @@ export function PlaygroundContent({
             continue;
           }
           if (evt.type === "token") {
-            updateLastAssistant((m) => ({
-              ...m,
-              content: m.content + String(evt.delta ?? ""),
-              streaming: true,
-            }));
+            const delta = String(evt.delta ?? "");
+            setItems((prev) =>
+              prev.map((m) =>
+                m.id === assistantId
+                  ? {
+                      ...m,
+                      role: "assistant" as AgentMessageRole,
+                      content: assistantCreated ? m.content + delta : delta,
+                      streaming: true,
+                    }
+                  : m,
+              ),
+            );
+            assistantCreated = true;
           } else if (evt.type === "tool_call") {
-            appendItems([
-              {
-                id: genId(),
-                role: "tool_call" as AgentMessageRole,
+            const step: ProgressStep = {
+              id: genId(),
+              label: String(evt.label ?? "dados da operação"),
+              state: "running",
+            };
+            setItems((prev) => {
+              if (progressCreated) {
+                return prev.map((m) =>
+                  m.id === progressId
+                    ? { ...m, steps: [...(m.steps ?? []), step] }
+                    : m,
+                );
+              }
+              const idx = prev.findIndex((m) => m.id === assistantId);
+              const progressMsg: UiMessage = {
+                id: progressId,
+                role: "progress",
                 content: "",
-                toolName: String(evt.toolName ?? ""),
-              },
-            ]);
+                steps: [step],
+              };
+              if (idx === -1) return [...prev, progressMsg];
+              const copy = [...prev];
+              copy.splice(idx, 0, progressMsg);
+              return copy;
+            });
+            progressCreated = true;
+          } else if (evt.type === "tool_result") {
+            const label = String(evt.label ?? "");
+            setItems((prev) =>
+              prev.map((m) => {
+                if (m.id !== progressId) return m;
+                let marked = false;
+                const steps = (m.steps ?? []).map((s) => {
+                  if (
+                    !marked &&
+                    s.state === "running" &&
+                    s.label === label
+                  ) {
+                    marked = true;
+                    return { ...s, state: "done" as const };
+                  }
+                  return s;
+                });
+                return { ...m, steps };
+              }),
+            );
           } else if (evt.type === "done") {
             const suggestions = Array.isArray(evt.suggestions)
               ? (evt.suggestions as string[])
               : [];
-            updateLastAssistant((m) => ({
-              ...m,
-              content: String(evt.message ?? m.content),
-              streaming: false,
-              suggestions: suggestions.length > 0 ? suggestions : undefined,
-            }));
+            setItems((prev) =>
+              prev.map((m) => {
+                if (m.id === progressId) {
+                  return {
+                    ...m,
+                    steps: (m.steps ?? []).map((s) => ({
+                      ...s,
+                      state: "done" as const,
+                    })),
+                  };
+                }
+                if (m.id === assistantId) {
+                  return {
+                    ...m,
+                    role: "assistant" as AgentMessageRole,
+                    content: String(evt.message ?? m.content),
+                    streaming: false,
+                    suggestions:
+                      suggestions.length > 0 ? suggestions : undefined,
+                  };
+                }
+                return m;
+              }),
+            );
+            assistantCreated = true;
             // Atualiza o custo acumulado da sessão
             if (
               typeof evt.costUsd === "number" &&
@@ -518,7 +589,19 @@ export function PlaygroundContent({
       const msg = err instanceof Error ? err.message : String(err);
       toast.error(`Erro: ${msg}`);
       setItems((prev) =>
-        prev.filter((m) => !(m.id === assistantId && m.role === "loading")),
+        prev
+          .filter((m) => !(m.id === assistantId && m.role === "loading"))
+          .map((m) =>
+            m.id === progressId
+              ? {
+                  ...m,
+                  steps: (m.steps ?? []).map((s) => ({
+                    ...s,
+                    state: "done" as const,
+                  })),
+                }
+              : m,
+          ),
       );
     } finally {
       setIsSending(false);
@@ -1045,6 +1128,14 @@ export function PlaygroundContent({
               ) : (
                 <div className="space-y-3">
                   {items.map((item, idx) => {
+                    if (item.role === "progress") {
+                      return (
+                        <ProgressTrail
+                          key={item.id}
+                          steps={item.steps ?? []}
+                        />
+                      );
+                    }
                     const isLastAssistant =
                       item.role === "assistant" &&
                       idx === items.length - 1 &&
