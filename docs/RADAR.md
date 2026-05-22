@@ -221,3 +221,14 @@ conferências de tool da L2 passaram. É dívida de robustez do sync da F2, não
 um gap da F4 leitura. Cada ciclo de sync gasta 3 tentativas falhas em cada um.
 
 **Ação:** sessão de debug dedicada ao sync da F2. Fora do escopo da F4 L2.
+
+### R8-B — Gap pequeno de backfill em 4 modelos (BAIXO)
+
+A mesma conferência de fidelidade da L2 achou 4 modelos com `last_status` ok
+mas `raw` ligeiramente abaixo do Odoo, persistente entre corridas:
+`estoque.saldo` (−92), `finan.fluxo.caixa` (−147), `finan.banco.extrato` (−20),
+`finan.banco.saldo` (−4) — todos ~1%. São modelos `incremental`: o ciclo
+incremental só puxa por `write_date` e nunca remove/repuxa linhas antigas
+perdidas no backfill. O ciclo de **reconcile** (24h) fecharia o gap; o
+`f4l-ingest.ts` roda só snapshot+incremental, sem reconcile. Não é bug de
+tool. Ação: rodar um reconcile, ou aceitar o gap de ~1% como ruído de janela.
