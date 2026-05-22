@@ -6,6 +6,8 @@ import { comercialPedidosPorEtapa } from "./pedidos-por-etapa.js";
 import { comercialPedidosPorVendedor } from "./pedidos-por-vendedor.js";
 import { comercialPedidosAtrasados } from "./pedidos-atrasados.js";
 import { comercialParcelasAVencer } from "./parcelas-a-vencer.js";
+import { comercialPrecoProduto } from "./preco-produto.js";
+import { comercialPrecoTabela } from "./preco-tabela.js";
 
 export const comercialTools: ToolEntry[] = [
   comercialPedidosPeriodo as ToolEntry,
@@ -13,4 +15,6 @@ export const comercialTools: ToolEntry[] = [
   comercialPedidosPorVendedor as ToolEntry,
   comercialPedidosAtrasados as ToolEntry,
   comercialParcelasAVencer as ToolEntry,
+  comercialPrecoProduto as ToolEntry,
+  comercialPrecoTabela as ToolEntry,
 ];
