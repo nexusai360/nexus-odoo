@@ -158,13 +158,23 @@ async function conferirFidelidade(odoo: OdooClient): Promise<FidLinha[]> {
       ];
       const raw = await delegate.count();
       const odooN = await contar(odoo, model);
+      const sync = await prisma.syncState.findFirst({
+        where: { model },
+        select: { lastStatus: true },
+      });
       // Estáticas/referência batem exato; transacionais toleram a janela de sync (<=0,5%).
       const diff = Math.abs(raw - odooN);
       const tol = Math.max(0, Math.ceil(odooN * 0.005));
-      const ok = diff <= tol;
+      const syncErro = sync?.lastStatus === "erro";
+      // Modelo com sync em erro é achado conhecido (RADAR R8), não "diverge silencioso".
+      const ok = diff <= tol && !syncErro;
       out.push({
         model, raw, odoo: odooN, ok,
-        nota: ok ? (diff === 0 ? "exato" : `janela de sync (${diff})`) : `DIVERGE em ${diff}`,
+        nota: syncErro
+          ? `SYNC EM ERRO (RADAR R8) — diff ${diff}`
+          : ok
+            ? (diff === 0 ? "exato" : `janela de sync (${diff})`)
+            : `DIVERGE em ${diff}`,
       });
     } catch (err) {
       out.push({ model, raw: -1, odoo: -1, ok: false, nota: `erro: ${String(err).slice(0, 120)}` });
@@ -330,15 +340,16 @@ async function montarCasos(odoo: OdooClient): Promise<Caso[]> {
       descricao: `res_partner.get(${umParceiro.odooId}) confere com o Odoo`,
       input: { id: umParceiro.odooId },
       conferir: async (s, o) => {
-        const { estado } = envelope(s);
-        if (estado !== "ok") return smoke(s);
+        // crm.res_partner.get devolve { found, record } — não o envelope withFreshness.
+        const found = (s as { found?: boolean }).found === true;
         const rows = await o.searchRead<{ id: number }>(
           "res.partner", [["id", "=", umParceiro.odooId]], ["id"], { limit: 1 },
         );
+        const noOdoo = rows.length === 1;
         return {
-          ok: rows.length === 1,
-          esperado: `res.partner ${umParceiro.odooId} existe no Odoo`,
-          obtido: rows.length === 1 ? "encontrado" : "não encontrado",
+          ok: found === noOdoo,
+          esperado: `found=${noOdoo} (res.partner ${umParceiro.odooId} no Odoo)`,
+          obtido: `found=${found}`,
         };
       },
     });
