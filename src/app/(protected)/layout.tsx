@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 import { getCurrentUser } from "@/lib/auth";
 import { Sidebar } from "@/components/layout/sidebar";
 import { AgentBubble } from "@/components/agent/agent-bubble";
+import { TourProvider } from "@/components/tour/tour-provider";
 import { getPublicAgentFlags } from "@/lib/actions/agent-config";
 import { getPublicActiveLlmConfig } from "@/lib/agent/llm/get-active-config";
 
@@ -34,14 +35,16 @@ export default async function ProtectedLayout({
     flags.audioInputEnabled === true && activeLlm?.provider === "openai";
 
   return (
-    <div className="flex h-screen overflow-hidden bg-background">
-      <Sidebar user={sidebarUser} />
-      <main className="flex-1 overflow-y-auto overscroll-contain">
-        <div className="pt-16 pb-8 sm:pt-8">{children}</div>
-      </main>
-      {canUseAgent && flags.bubbleEnabled ? (
-        <AgentBubble audioInputEnabled={audioInputEnabled} />
-      ) : null}
-    </div>
+    <TourProvider>
+      <div className="flex h-screen overflow-hidden bg-background">
+        <Sidebar user={sidebarUser} />
+        <main className="flex-1 overflow-y-auto overscroll-contain">
+          <div className="pt-16 pb-8 sm:pt-8">{children}</div>
+        </main>
+        {canUseAgent && flags.bubbleEnabled ? (
+          <AgentBubble audioInputEnabled={audioInputEnabled} />
+        ) : null}
+      </div>
+    </TourProvider>
   );
 }

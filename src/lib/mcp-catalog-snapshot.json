@@ -1,0 +1,491 @@
+{
+  "tools": [
+    {
+      "id": "estoque_saldo_produto",
+      "operation": "read",
+      "module": "estoque",
+      "descricao": "Saldo de estoque por produto: unidades e valor a custo, com nº de localizações.",
+      "capability": null,
+      "sensitive": false,
+      "addedInVersion": null,
+      "inputSchemaKeys": [
+        "armazemId",
+        "familiaId"
+      ],
+      "examples": []
+    },
+    {
+      "id": "estoque_valor_armazem",
+      "operation": "read",
+      "module": "estoque",
+      "descricao": "Valor de estoque a preço de custo por armazém.",
+      "capability": null,
+      "sensitive": false,
+      "addedInVersion": null,
+      "inputSchemaKeys": [],
+      "examples": []
+    },
+    {
+      "id": "estoque_entradas_saidas",
+      "operation": "read",
+      "module": "estoque",
+      "descricao": "Série mensal de entradas e saídas de estoque.",
+      "capability": null,
+      "sensitive": false,
+      "addedInVersion": null,
+      "inputSchemaKeys": [
+        "periodoDe",
+        "periodoAte",
+        "armazemId"
+      ],
+      "examples": []
+    },
+    {
+      "id": "estoque_top_movimentados",
+      "operation": "read",
+      "module": "estoque",
+      "descricao": "Top 20 produtos mais movimentados em estoque.",
+      "capability": null,
+      "sensitive": false,
+      "addedInVersion": null,
+      "inputSchemaKeys": [
+        "periodoDe",
+        "periodoAte",
+        "sentido"
+      ],
+      "examples": []
+    },
+    {
+      "id": "estoque_produtos_parados",
+      "operation": "read",
+      "module": "estoque",
+      "descricao": "Produtos parados em estoque (saldo > 0, sem movimento).",
+      "capability": null,
+      "sensitive": false,
+      "addedInVersion": null,
+      "inputSchemaKeys": [
+        "faixaDias",
+        "armazemId"
+      ],
+      "examples": []
+    },
+    {
+      "id": "estoque_concentracao",
+      "operation": "read",
+      "module": "estoque",
+      "descricao": "Concentração do estoque por família e marca (valor e percentual).",
+      "capability": null,
+      "sensitive": false,
+      "addedInVersion": null,
+      "inputSchemaKeys": [],
+      "examples": []
+    },
+    {
+      "id": "financeiro_saldo_contas",
+      "operation": "read",
+      "module": "financeiro",
+      "descricao": "Saldo atual de cada conta/banco.",
+      "capability": null,
+      "sensitive": false,
+      "addedInVersion": null,
+      "inputSchemaKeys": [],
+      "examples": []
+    },
+    {
+      "id": "financeiro_caixa_periodo",
+      "operation": "read",
+      "module": "financeiro",
+      "descricao": "Entradas, saídas e saldo de caixa realizado em um período.",
+      "capability": null,
+      "sensitive": false,
+      "addedInVersion": null,
+      "inputSchemaKeys": [
+        "periodoDe",
+        "periodoAte"
+      ],
+      "examples": []
+    },
+    {
+      "id": "financeiro_fluxo_caixa",
+      "operation": "read",
+      "module": "financeiro",
+      "descricao": "Série mensal de fluxo de caixa: realizado vs. previsto.",
+      "capability": null,
+      "sensitive": false,
+      "addedInVersion": null,
+      "inputSchemaKeys": [
+        "periodoDe",
+        "periodoAte"
+      ],
+      "examples": []
+    },
+    {
+      "id": "financeiro_contas_a_receber",
+      "operation": "read",
+      "module": "financeiro",
+      "descricao": "Títulos a receber em aberto, com valor total e dias de atraso.",
+      "capability": null,
+      "sensitive": false,
+      "addedInVersion": null,
+      "inputSchemaKeys": [
+        "participanteId"
+      ],
+      "examples": []
+    },
+    {
+      "id": "financeiro_contas_a_pagar",
+      "operation": "read",
+      "module": "financeiro",
+      "descricao": "Títulos a pagar em aberto, com valor total e dias de atraso.",
+      "capability": null,
+      "sensitive": false,
+      "addedInVersion": null,
+      "inputSchemaKeys": [
+        "participanteId"
+      ],
+      "examples": []
+    },
+    {
+      "id": "financeiro_titulos_vencidos",
+      "operation": "read",
+      "module": "financeiro",
+      "descricao": "Todos os títulos vencidos e não pagos (a receber e a pagar), com dias de atraso.",
+      "capability": null,
+      "sensitive": false,
+      "addedInVersion": null,
+      "inputSchemaKeys": [],
+      "examples": []
+    },
+    {
+      "id": "registrar_lacuna",
+      "operation": "read",
+      "module": "outros",
+      "descricao": "Registra uma pergunta que não foi coberta pelo catálogo de tools (Caminho 3a). Use quando o usuário faz uma pergunta fora do escopo das tools disponíveis.",
+      "capability": null,
+      "sensitive": false,
+      "addedInVersion": null,
+      "inputSchemaKeys": [
+        "perguntaResumo",
+        "dominio"
+      ],
+      "examples": []
+    },
+    {
+      "id": "bi_consulta_avancada",
+      "operation": "read",
+      "module": "outros",
+      "descricao": "Modo BI avançado (Caminho 3c): executa um SQL SELECT pronto sob o role read-only nexus_mcp_bi. O SQL deve ser gerado pelo agente (F5); esta tool apenas executa. Restrito a admin/super_admin. AVISO: consulta dinâmica, resultados não são filtrados pelo RBAC semântico das tools de domínio.",
+      "capability": null,
+      "sensitive": false,
+      "addedInVersion": null,
+      "inputSchemaKeys": [
+        "sql"
+      ],
+      "examples": []
+    },
+    {
+      "id": "comercial_pedidos_periodo",
+      "operation": "read",
+      "module": "comercial",
+      "descricao": "Total de pedidos e valor faturado no período informado.",
+      "capability": null,
+      "sensitive": false,
+      "addedInVersion": null,
+      "inputSchemaKeys": [
+        "periodoDe",
+        "periodoAte"
+      ],
+      "examples": []
+    },
+    {
+      "id": "comercial_pedidos_por_etapa",
+      "operation": "read",
+      "module": "comercial",
+      "descricao": "Distribuição de pedidos por etapa do fluxo comercial, com valor total por etapa.",
+      "capability": null,
+      "sensitive": false,
+      "addedInVersion": null,
+      "inputSchemaKeys": [],
+      "examples": []
+    },
+    {
+      "id": "comercial_pedidos_por_vendedor",
+      "operation": "read",
+      "module": "comercial",
+      "descricao": "Ranking de pedidos por vendedor no período, com quantidade e valor total.",
+      "capability": null,
+      "sensitive": false,
+      "addedInVersion": null,
+      "inputSchemaKeys": [
+        "periodoDe",
+        "periodoAte"
+      ],
+      "examples": []
+    },
+    {
+      "id": "comercial_pedidos_atrasados",
+      "operation": "read",
+      "module": "comercial",
+      "descricao": "Parcelas de pedidos vencidas e não faturadas, com valor total atrasado e dias de atraso.",
+      "capability": null,
+      "sensitive": false,
+      "addedInVersion": null,
+      "inputSchemaKeys": [],
+      "examples": []
+    },
+    {
+      "id": "comercial_parcelas_a_vencer",
+      "operation": "read",
+      "module": "comercial",
+      "descricao": "Parcelas de pedidos a vencer nos próximos N dias (padrão 30), com valor total a receber.",
+      "capability": null,
+      "sensitive": false,
+      "addedInVersion": null,
+      "inputSchemaKeys": [
+        "ateDias"
+      ],
+      "examples": []
+    },
+    {
+      "id": "fiscal_faturamento_periodo",
+      "operation": "read",
+      "module": "fiscal",
+      "descricao": "Total de notas fiscais de saída autorizadas e valor faturado no período.",
+      "capability": null,
+      "sensitive": false,
+      "addedInVersion": null,
+      "inputSchemaKeys": [
+        "periodoDe",
+        "periodoAte"
+      ],
+      "examples": []
+    },
+    {
+      "id": "fiscal_notas_emitidas",
+      "operation": "read",
+      "module": "fiscal",
+      "descricao": "Notas fiscais de saída emitidas, com valor e situação NFe, opcionalmente filtradas por período ou status.",
+      "capability": null,
+      "sensitive": false,
+      "addedInVersion": null,
+      "inputSchemaKeys": [
+        "periodoDe",
+        "periodoAte",
+        "situacaoNfe"
+      ],
+      "examples": []
+    },
+    {
+      "id": "fiscal_notas_recebidas",
+      "operation": "read",
+      "module": "fiscal",
+      "descricao": "Notas fiscais de entrada recebidas (compras/devoluções), opcionalmente filtradas por período.",
+      "capability": null,
+      "sensitive": false,
+      "addedInVersion": null,
+      "inputSchemaKeys": [
+        "periodoDe",
+        "periodoAte"
+      ],
+      "examples": []
+    },
+    {
+      "id": "fiscal_impostos_periodo",
+      "operation": "read",
+      "module": "fiscal",
+      "descricao": "Estimativa de impostos (IBPT e ICMS próprio) no período, agregados do cabeçalho da nota fiscal.",
+      "capability": null,
+      "sensitive": false,
+      "addedInVersion": null,
+      "inputSchemaKeys": [
+        "periodoDe",
+        "periodoAte"
+      ],
+      "examples": []
+    },
+    {
+      "id": "fiscal_faturamento_por_cliente",
+      "operation": "read",
+      "module": "fiscal",
+      "descricao": "Faturamento agrupado por cliente (notas de saída autorizadas), ordenado por valor total decrescente.",
+      "capability": null,
+      "sensitive": false,
+      "addedInVersion": null,
+      "inputSchemaKeys": [
+        "periodoDe",
+        "periodoAte"
+      ],
+      "examples": []
+    },
+    {
+      "id": "fiscal_produtos_faturados",
+      "operation": "read",
+      "module": "fiscal",
+      "descricao": "Produtos mais faturados em notas de saída, agrupados por nome do produto com quantidade total e valor total. Útil para analisar mix de vendas.",
+      "capability": null,
+      "sensitive": false,
+      "addedInVersion": null,
+      "inputSchemaKeys": [
+        "periodoDe",
+        "periodoAte",
+        "limite"
+      ],
+      "examples": []
+    },
+    {
+      "id": "cadastro_buscar_parceiro",
+      "operation": "read",
+      "module": "cadastros",
+      "descricao": "Busca parceiros (clientes, fornecedores ou contatos) por nome, nome completo ou documento (CNPJ/CPF) via busca textual.",
+      "capability": null,
+      "sensitive": false,
+      "addedInVersion": null,
+      "inputSchemaKeys": [
+        "termo",
+        "limite"
+      ],
+      "examples": []
+    },
+    {
+      "id": "cadastro_parceiros_por_uf",
+      "operation": "read",
+      "module": "cadastros",
+      "descricao": "Distribuição geográfica de parceiros por UF (estado), ordenado por quantidade decrescente. Pode filtrar apenas clientes.",
+      "capability": null,
+      "sensitive": false,
+      "addedInVersion": null,
+      "inputSchemaKeys": [
+        "apenasClientes"
+      ],
+      "examples": []
+    },
+    {
+      "id": "cadastro_contar_parceiros",
+      "operation": "read",
+      "module": "cadastros",
+      "descricao": "Contagem total de parceiros cadastrados, segmentada por tipo: clientes, fornecedores e empresas.",
+      "capability": null,
+      "sensitive": false,
+      "addedInVersion": null,
+      "inputSchemaKeys": [],
+      "examples": []
+    },
+    {
+      "id": "contabil_plano_de_contas",
+      "operation": "read",
+      "module": "contabil",
+      "descricao": "Lista as contas do plano de contas contábil da Matrix, com código hierárquico, nome, tipo (S=sintética/A=analítica) e conta pai. Filtre por termo (código ou nome). NOTA: não há lançamento/movimento contábil no Odoo da Matrix, apenas a estrutura do plano de contas.",
+      "capability": null,
+      "sensitive": false,
+      "addedInVersion": null,
+      "inputSchemaKeys": [
+        "termo",
+        "limite"
+      ],
+      "examples": []
+    },
+    {
+      "id": "contabil_estrutura_conta",
+      "operation": "read",
+      "module": "contabil",
+      "descricao": "Retorna os detalhes de uma conta contábil pelo odooId e suas contas filhas diretas. Útil para navegar a hierarquia do plano de contas. NOTA: não há lançamento/movimento contábil no Odoo da Matrix, apenas a estrutura do plano de contas.",
+      "capability": null,
+      "sensitive": false,
+      "addedInVersion": null,
+      "inputSchemaKeys": [
+        "odooId"
+      ],
+      "examples": []
+    },
+    {
+      "id": "rh_status_dominio",
+      "operation": "read",
+      "module": "outros",
+      "descricao": "Informa o status do domínio RH no Odoo da Matrix: módulo existente mas não operado (0 registros).",
+      "capability": null,
+      "sensitive": false,
+      "addedInVersion": null,
+      "inputSchemaKeys": [],
+      "examples": []
+    },
+    {
+      "id": "crm_status_dominio",
+      "operation": "read",
+      "module": "outros",
+      "descricao": "Informa o status do domínio CRM no Odoo da Matrix: módulo existente mas não operado (0 registros).",
+      "capability": null,
+      "sensitive": false,
+      "addedInVersion": null,
+      "inputSchemaKeys": [],
+      "examples": []
+    },
+    {
+      "id": "producao_status_dominio",
+      "operation": "read",
+      "module": "outros",
+      "descricao": "Informa o status do domínio Produção no Odoo da Matrix: módulo existente mas não operado (0 registros).",
+      "capability": null,
+      "sensitive": false,
+      "addedInVersion": null,
+      "inputSchemaKeys": [],
+      "examples": []
+    },
+    {
+      "id": "crm.res_partner.get",
+      "operation": "read",
+      "module": "crm",
+      "descricao": "Retorna o registro raw de um res.partner pelo seu ID do Odoo. Lê do cache local (rawResPartner), não consulta o Odoo ao vivo. Retorna o campo `data` (JSON bruto sincronizado) e metadados de sync.",
+      "capability": null,
+      "sensitive": false,
+      "addedInVersion": 2,
+      "inputSchemaKeys": [
+        "id"
+      ],
+      "examples": []
+    },
+    {
+      "id": "crm.res_partner.create",
+      "operation": "write",
+      "module": "crm",
+      "descricao": "Cria um novo parceiro (cliente, fornecedor ou contato) no Odoo via JSON-RPC. Requer API key com capability crm:create. Retorna o snapshot completo do registro criado (snapshotAfter). Se external_id for fornecido, garante unicidade via ir.model.data.",
+      "capability": "crm.create",
+      "sensitive": false,
+      "addedInVersion": 2,
+      "inputSchemaKeys": [
+        "name",
+        "cnpj_cpf",
+        "is_company",
+        "email",
+        "phone",
+        "street",
+        "city_id",
+        "state_id",
+        "external_id"
+      ],
+      "examples": [
+        {
+          "language": "curl",
+          "description": "Criar empresa via curl",
+          "code": "curl -X POST https://mcp.exemplo.com.br/mcp \\\n  -H \"Authorization: Bearer <SERVICE_TOKEN>\" \\\n  -H \"X-Mcp-User-Id: <USER_ID>\" \\\n  -H \"X-Api-Key: <API_KEY>\" \\\n  -H \"Idempotency-Key: $(uuidgen)\" \\\n  -H \"Content-Type: application/json\" \\\n  -d '{\n    \"jsonrpc\": \"2.0\",\n    \"method\": \"tools/call\",\n    \"params\": {\n      \"name\": \"crm.res_partner.create\",\n      \"arguments\": {\n        \"name\": \"Academia Exemplo Ltda\",\n        \"is_company\": true,\n        \"cnpj_cpf\": \"12.345.678/0001-99\",\n        \"email\": \"contato@academia.com.br\",\n        \"phone\": \"(11) 9999-9999\",\n        \"external_id\": \"erp-cliente-001\"\n      }\n    }\n  }'"
+        },
+        {
+          "language": "n8n",
+          "description": "Node HTTP Request no n8n apontando para o MCP",
+          "code": "// Node: HTTP Request\n// Method: POST\n// URL: {{ $env.MCP_URL }}/mcp\n// Headers:\n//   Authorization: Bearer {{ $env.MCP_SERVICE_TOKEN }}\n//   X-Mcp-User-Id: {{ $env.MCP_USER_ID }}\n//   X-Api-Key: {{ $env.MCP_API_KEY }}\n//   Idempotency-Key: {{ $json.idempotencyKey }}\n// Body (JSON):\n{\n  \"jsonrpc\": \"2.0\",\n  \"method\": \"tools/call\",\n  \"params\": {\n    \"name\": \"crm.res_partner.create\",\n    \"arguments\": {\n      \"name\": \"{{ $json.nome }}\",\n      \"is_company\": true,\n      \"email\": \"{{ $json.email }}\",\n      \"external_id\": \"{{ $json.externalId }}\"\n    }\n  }\n}"
+        },
+        {
+          "language": "python",
+          "description": "Criar parceiro com requests",
+          "code": "import requests, uuid\n\nresponse = requests.post(\n    \"https://mcp.exemplo.com.br/mcp\",\n    headers={\n        \"Authorization\": \"Bearer <SERVICE_TOKEN>\",\n        \"X-Mcp-User-Id\": \"<USER_ID>\",\n        \"X-Api-Key\": \"<API_KEY>\",\n        \"Idempotency-Key\": str(uuid.uuid4()),\n        \"Content-Type\": \"application/json\",\n    },\n    json={\n        \"jsonrpc\": \"2.0\",\n        \"method\": \"tools/call\",\n        \"params\": {\n            \"name\": \"crm.res_partner.create\",\n            \"arguments\": {\n                \"name\": \"Academia Exemplo\",\n                \"is_company\": True,\n                \"email\": \"contato@academia.com.br\",\n                \"external_id\": \"python-001\",\n            },\n        },\n    },\n)\ndata = response.json()\nprint(data[\"result\"][\"id\"])"
+        },
+        {
+          "language": "javascript",
+          "description": "Criar parceiro com fetch",
+          "code": "const response = await fetch(\"https://mcp.exemplo.com.br/mcp\", {\n  method: \"POST\",\n  headers: {\n    \"Authorization\": \"Bearer <SERVICE_TOKEN>\",\n    \"X-Mcp-User-Id\": \"<USER_ID>\",\n    \"X-Api-Key\": \"<API_KEY>\",\n    \"Idempotency-Key\": crypto.randomUUID(),\n    \"Content-Type\": \"application/json\",\n  },\n  body: JSON.stringify({\n    jsonrpc: \"2.0\",\n    method: \"tools/call\",\n    params: {\n      name: \"crm.res_partner.create\",\n      arguments: {\n        name: \"Academia Exemplo\",\n        is_company: true,\n        email: \"contato@academia.com.br\",\n        external_id: \"js-001\",\n      },\n    },\n  }),\n});\nconst { result } = await response.json();\nconsole.log(\"Criado com ID:\", result.id);"
+        }
+      ]
+    }
+  ],
+  "count": 35,
+  "generatedAt": "2026-05-21T12:03:29.957Z"
+}

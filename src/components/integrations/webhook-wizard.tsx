@@ -4,7 +4,6 @@ import * as React from "react"
 import {
   ArrowDownToLine,
   ArrowUpFromLine,
-  Check,
   Loader2,
 } from "lucide-react"
 
@@ -13,6 +12,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Checkbox } from "@/components/ui/checkbox"
+import { StepIndicator } from "@/components/ui/step-indicator"
 import { SecretRevealStep } from "@/components/ui/secret-reveal-step"
 import {
   createWebhook,
@@ -23,7 +23,7 @@ import {
 } from "@/lib/actions/webhooks"
 
 /** Métodos HTTP disponíveis para seleção. */
-const HTTP_METHODS: WebhookMethod[] = ["GET", "POST", "PUT", "PATCH", "DELETE"]
+const HTTP_METHODS: WebhookMethod[] = ["GET", "POST", "PUT", "PATCH", "DELETE", "HEAD"]
 
 /** Slug seguro: mesma regra do schema da Server Action. */
 const PATH_RE = /^[a-z0-9][a-z0-9-/]*$/
@@ -45,7 +45,7 @@ export interface WebhookWizardProps {
 type Step = 1 | 2 | 3
 
 /**
- * Wizard de criação de webhook — componente compartilhado entre a tela de
+ * Wizard de criação de webhook, componente compartilhado entre a tela de
  * Webhooks e o passo embutido do wizard de instância WhatsApp (SPEC §4.5).
  *
  * Passo 1: direção (Entrada/Saída). Passo 2: configuração (path ou targetUrl
@@ -72,6 +72,13 @@ export function WebhookWizard({
     setMethods((prev) =>
       prev.includes(m) ? prev.filter((x) => x !== m) : [...prev, m],
     )
+  }
+
+  // Enter num campo avança o passo 1 para o 2. O passo 2 cria o webhook (ação
+  // final), então não dispara sozinho: criar exige clique.
+  function handleEnterAdvance(e: React.FormEvent) {
+    e.preventDefault()
+    if (step === 1 && direction) setStep(2)
   }
 
   const step2Valid =
@@ -103,35 +110,38 @@ export function WebhookWizard({
   }
 
   return (
-    <div className={cn("space-y-5", !embedded && "rounded-xl border p-6")}>
-      <StepIndicator current={step} />
+    <form
+      onSubmit={handleEnterAdvance}
+      className={cn("space-y-6", !embedded && "rounded-xl border p-6")}
+    >
+      <StepIndicator steps={["Tipo", "Configuração", "Conclusão"]} current={step} />
 
-      {/* Passo 1 — Direção */}
+      {/* Passo 1, Direção */}
       {step === 1 && (
-        <div className="space-y-4">
+        <div className="space-y-5">
           <div className="space-y-1">
-            <h3 className="text-sm font-medium">Direção do webhook</h3>
+            <h3 className="text-sm font-medium">Tipo do webhook</h3>
             <p className="text-xs text-muted-foreground">
-              Escolha se a plataforma recebe ou envia eventos.
+              Escolha se a plataforma vai receber ou enviar eventos.
             </p>
           </div>
-          <div className="grid gap-3 sm:grid-cols-2">
+          <div className="grid gap-3 sm:grid-cols-2" data-tour="webhook-wizard-tipo">
             <DirectionCard
               selected={direction === "inbound"}
               onSelect={() => setDirection("inbound")}
               icon={<ArrowDownToLine className="size-5" />}
-              title="Entrada"
-              description="A plataforma recebe eventos de sistemas externos (ex.: mensagens do WhatsApp encaminhadas pelo n8n)."
+              title="Receber eventos"
+              description="A plataforma expõe um endereço e fica escutando. Um sistema externo chama esse endereço quando algo acontece."
             />
             <DirectionCard
               selected={direction === "outbound"}
               onSelect={() => setDirection("outbound")}
               icon={<ArrowUpFromLine className="size-5" />}
-              title="Saída"
-              description="A plataforma envia eventos para um sistema externo (ex.: dispara uma chamada ao n8n)."
+              title="Enviar eventos"
+              description="A plataforma dispara uma chamada para um endereço externo quando um evento ocorre aqui dentro."
             />
           </div>
-          <div className="flex justify-end gap-2">
+          <div className="flex justify-end gap-2 border-t border-border/60 pt-5">
             {onCancel && (
               <Button
                 type="button"
@@ -154,9 +164,9 @@ export function WebhookWizard({
         </div>
       )}
 
-      {/* Passo 2 — Configuração */}
+      {/* Passo 2, Configuração */}
       {step === 2 && direction && (
-        <div className="space-y-4">
+        <div className="space-y-5">
           <div className="space-y-1.5">
             <Label htmlFor="wh-name">Nome</Label>
             <Input
@@ -222,7 +232,7 @@ export function WebhookWizard({
 
           {error && <p className="text-xs text-destructive">{error}</p>}
 
-          <div className="flex justify-between gap-2">
+          <div className="flex justify-between gap-2 border-t border-border/60 pt-5">
             <Button
               type="button"
               variant="outline"
@@ -244,23 +254,23 @@ export function WebhookWizard({
         </div>
       )}
 
-      {/* Passo 3 — Secret */}
+      {/* Passo 3, Secret */}
       {step === 3 && created && (
-        <div className="space-y-4">
+        <div className="space-y-5">
           <div className="space-y-1">
             <h3 className="text-sm font-medium">Webhook criado</h3>
             <p className="text-xs text-muted-foreground">
-              Guarde o secret abaixo — ele é usado para validar as requisições.
+              Guarde o token abaixo, ele é usado para validar as requisições.
             </p>
           </div>
           <SecretRevealStep
             secret={created.secretPlain}
-            label="Secret do webhook"
+            label="Token do webhook"
             onAcknowledge={() => onCreated(created)}
           />
         </div>
       )}
-    </div>
+    </form>
   )
 }
 
@@ -271,44 +281,6 @@ function isValidUrl(value: string): boolean {
   } catch {
     return false
   }
-}
-
-function StepIndicator({ current }: { current: Step }) {
-  const labels = ["Direção", "Configuração", "Conclusão"]
-  return (
-    <ol className="flex items-center gap-2">
-      {labels.map((label, i) => {
-        const n = (i + 1) as Step
-        const done = n < current
-        const active = n === current
-        return (
-          <li key={label} className="flex flex-1 items-center gap-2">
-            <span
-              className={cn(
-                "flex size-6 shrink-0 items-center justify-center rounded-full text-xs font-medium",
-                done && "bg-primary text-primary-foreground",
-                active && "bg-primary/15 text-primary ring-1 ring-primary",
-                !done && !active && "bg-muted text-muted-foreground",
-              )}
-            >
-              {done ? <Check className="size-3.5" /> : n}
-            </span>
-            <span
-              className={cn(
-                "text-xs",
-                active ? "font-medium text-foreground" : "text-muted-foreground",
-              )}
-            >
-              {label}
-            </span>
-            {i < labels.length - 1 && (
-              <span className="ml-1 h-px flex-1 bg-border" />
-            )}
-          </li>
-        )
-      })}
-    </ol>
-  )
 }
 
 function DirectionCard({

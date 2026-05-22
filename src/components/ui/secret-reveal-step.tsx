@@ -10,17 +10,19 @@ import { Label } from "@/components/ui/label"
 /**
  * Passo de exibição de um segredo recém-gerado, exibido UMA ÚNICA VEZ
  * (SPEC §2.4). Pensado para ser o passo final de um wizard/modal de criação
- * de webhook, API key ou token — não uma tarja solta.
+ * de webhook, API key ou token, não uma tarja solta.
  *
  * Mostra o segredo num campo monospace read-only, com botões de copiar e de
  * ocultar/mostrar, e um botão de confirmação ("Já copiei") que dispara
- * `onAcknowledge` — quem fecha o fluxo.
+ * `onAcknowledge`, quem fecha o fluxo.
  */
 export interface SecretRevealStepProps {
   /** O segredo em claro a exibir. */
   secret: string
-  /** Rótulo do campo (ex.: "Secret do webhook", "API key"). */
+  /** Rótulo do campo (ex.: "Token", "Secret do webhook"). */
   label?: string
+  /** Texto do botão de confirmação. Default "Concluir". */
+  acknowledgeLabel?: string
   /** Disparado quando o usuário confirma que copiou o segredo. */
   onAcknowledge: () => void
   className?: string
@@ -29,6 +31,7 @@ export interface SecretRevealStepProps {
 export function SecretRevealStep({
   secret,
   label = "Segredo",
+  acknowledgeLabel = "Concluir",
   onAcknowledge,
   className,
 }: SecretRevealStepProps) {
@@ -41,7 +44,7 @@ export function SecretRevealStep({
       setCopied(true)
       window.setTimeout(() => setCopied(false), 2000)
     } catch {
-      // clipboard indisponível — o usuário ainda pode selecionar manualmente
+      // clipboard indisponível, o usuário ainda pode selecionar manualmente
     }
   }
 
@@ -58,11 +61,10 @@ export function SecretRevealStep({
         <ShieldAlert className="mt-0.5 size-4 shrink-0 text-amber-600 dark:text-amber-500" />
         <div className="space-y-0.5">
           <p className="text-sm font-medium">
-            Copie agora — não será exibido novamente
+            Copie agora, ele não aparece de novo
           </p>
           <p className="text-xs text-muted-foreground">
-            Guarde este {label.toLowerCase()} em local seguro. Por segurança,
-            ele não pode ser recuperado depois de fechar.
+            Guarde em local seguro: não dá para ver depois de fechar.
           </p>
         </div>
       </div>
@@ -114,7 +116,7 @@ export function SecretRevealStep({
         onClick={onAcknowledge}
         className="w-full cursor-pointer"
       >
-        Já copiei
+        {acknowledgeLabel}
       </Button>
     </div>
   )

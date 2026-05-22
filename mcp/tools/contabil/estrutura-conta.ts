@@ -61,7 +61,7 @@ export const contabilEstruturaConta: ToolEntry<Input, Output> = {
   descricao:
     "Retorna os detalhes de uma conta contábil pelo odooId e suas contas filhas diretas. " +
     "Útil para navegar a hierarquia do plano de contas. " +
-    "NOTA: não há lançamento/movimento contábil no Odoo da Matrix — apenas a estrutura do plano de contas.",
+    "NOTA: não há lançamento/movimento contábil no Odoo da Matrix, apenas a estrutura do plano de contas.",
   inputSchemaShape: inputSchema.shape,
   inputSchema,
   outputSchema,

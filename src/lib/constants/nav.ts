@@ -1,6 +1,7 @@
 import {
   BarChart3,
   BookOpen,
+  Cable,
   FlaskConical,
   Home,
   KeyRound,
@@ -70,6 +71,12 @@ export const NAV_ITEMS: NavItem[] = [
         label: "Playground",
         href: "/agente/playground",
         icon: FlaskConical,
+        superAdminOnly: true,
+      },
+      {
+        label: "Plugar MCPs",
+        href: "/agente/plugar-mcps",
+        icon: Cable,
         superAdminOnly: true,
       },
     ],

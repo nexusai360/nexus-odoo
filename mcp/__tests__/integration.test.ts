@@ -1,8 +1,8 @@
 // mcp/__tests__/integration.test.ts
-// Harness de teste de integração do MCP — 4f-4 (Onda F: 40 tools).
+// Harness de teste de integração do MCP — rede de proteção N6 do catálogo.
 //
 // Cobre:
-//   1. Assertiva de catálogo: super_admin recebe EXATAMENTE 40 tools com os IDs corretos (N6).
+//   1. Assertiva de catálogo: super_admin recebe EXATAMENTE 41 tools com os IDs corretos (N6).
 //   2. Catálogo filtrado por perfil: cada role recebe o subconjunto correto.
 //   3. bi_consulta_avancada só para super_admin e admin.
 //   4. registrar_lacuna sempre visível (sempreVisivel).
@@ -16,7 +16,7 @@
 //   - resolveUserContext: retorna UserContext fixo por userId (sem banco)
 //   - prisma: mock mínimo para handleToolCall (resolveUser injeta o contexto)
 //   - mcpRedis: pipeline mock que sempre retorna count=1 (sem Redis real)
-//   - catalogo: REAL (as 40 tools de produção — objetivo da rede N6)
+//   - catalogo: REAL (catálogo de produção — objetivo da rede N6)
 
 // ─── Mocks configurados ANTES dos imports de implementação ────────────────────
 
@@ -64,7 +64,29 @@ jest.mock("../lib/redis.js", () => ({
   },
 }));
 
-// NÃO mockar o catálogo — usamos o catálogo REAL (rede de proteção N6 — 40 tools)
+// Mocks para módulos do Bloco P-0 (não exercitados neste teste — modo interno apenas).
+// Evitam que conexões de ioredis/BullMQ permaneçam abertas após afterAll.
+jest.mock("../auth/auth-middleware.js", () => ({
+  authenticate: jest.fn().mockResolvedValue({ mode: "unauthorized", reason: "invalid_token" }),
+}));
+jest.mock("../auth/api-key-cache.js", () => ({
+  createApiKeyCache: jest.fn(() => ({
+    getOrLoad: jest.fn(),
+    invalidate: jest.fn(),
+    invalidateByApiKeyId: jest.fn(),
+  })),
+}));
+jest.mock("../dispatcher/external-pipeline.js", () => ({
+  handleExternalRequest: jest.fn(),
+}));
+jest.mock("../sync/queue.js", () => ({
+  getDirectedSyncQueue: jest.fn(() => ({ add: jest.fn().mockResolvedValue(undefined) })),
+}));
+jest.mock("@/worker/odoo/client.js", () => ({
+  clientFromEnv: jest.fn(),
+}));
+
+// NÃO mockar o catálogo — usamos o catálogo REAL (rede de proteção N6)
 
 // ─── Imports pós-mock ─────────────────────────────────────────────────────────
 import { catalogo } from "../catalog/index.js";
@@ -133,6 +155,10 @@ const DOMINIOS_VAZIOS_IDS = [
   "producao_status_dominio",
 ];
 
+const CRM_IDS = [
+  "crm.res_partner.get",
+];
+
 const TODOS_IDS = [
   ...ESTOQUE_IDS,
   ...FINANCEIRO_IDS,
@@ -141,6 +167,7 @@ const TODOS_IDS = [
   ...CADASTROS_IDS,
   ...CONTABIL_IDS,
   ...DOMINIOS_VAZIOS_IDS,
+  ...CRM_IDS,
   "registrar_lacuna",
   "bi_consulta_avancada",
 ];
@@ -148,10 +175,10 @@ const TODOS_IDS = [
 // ─── 1. Assertiva de catálogo completo (achado N6) ────────────────────────────
 
 describe("Catálogo completo — rede de proteção N6", () => {
-  it("super_admin recebe EXATAMENTE 40 tools", () => {
+  it("super_admin recebe EXATAMENTE 41 tools", () => {
     const user = { userId: "u", role: "super_admin" as const, domains: ["estoque", "financeiro"] } as unknown as Parameters<typeof visibleTools>[1];
     const tools = visibleTools(catalogo, user);
-    expect(tools).toHaveLength(40);
+    expect(tools).toHaveLength(41);
   });
 
   it("super_admin recebe o conjunto exato de IDs", () => {
@@ -161,8 +188,11 @@ describe("Catálogo completo — rede de proteção N6", () => {
     expect(ids).toEqual([...TODOS_IDS].sort());
   });
 
-  it("catálogo bruto (antes do filtro) tem exatamente 40 entradas", () => {
-    expect(catalogo).toHaveLength(40);
+  it("catálogo bruto (antes do filtro) tem exatamente 42 entradas", () => {
+    // 41 tools de leitura + 1 write tool (crm.res_partner.create). A write tool
+    // não aparece em visibleTools (modo interno) porque não tem `dominio`; é
+    // liberada só no modo externo por capability da chave de API.
+    expect(catalogo).toHaveLength(42);
   });
 });
 
@@ -174,17 +204,17 @@ describe("Catálogo filtrado por perfil", () => {
     return visibleTools(catalogo, user).map((t) => t.id);
   }
 
-  it("super_admin vê todas as 40 tools", () => {
+  it("super_admin vê todas as 41 tools", () => {
     const ids = tools("super_admin", ["estoque", "financeiro"]);
-    expect(ids).toHaveLength(40);
+    expect(ids).toHaveLength(41);
     for (const id of TODOS_IDS) {
       expect(ids).toContain(id);
     }
   });
 
-  it("admin vê todas as 40 tools", () => {
+  it("admin vê todas as 41 tools", () => {
     const ids = tools("admin", ["estoque", "financeiro"]);
-    expect(ids).toHaveLength(40);
+    expect(ids).toHaveLength(41);
   });
 
   it("manager com estoque+financeiro vê estoque+financeiro+sempreVisivel (sem bi_consulta_avancada)", () => {
@@ -467,7 +497,7 @@ describe("Servidor HTTP real — protocolo Streamable HTTP end-to-end", () => {
 
   // ── 5b. tools/list via HTTP — catálogo filtrado por perfil ────────────────
 
-  it("super_admin: tools/list via HTTP retorna 40 tools com os IDs corretos", async () => {
+  it("super_admin: tools/list via HTTP retorna 41 tools com os IDs corretos", async () => {
     const sid = await initializeSession(testServer.baseUrl, "user-super-admin");
 
     const { status, body } = await mcpRequest(
@@ -481,7 +511,7 @@ describe("Servidor HTTP real — protocolo Streamable HTTP end-to-end", () => {
     const result = extractRpcResult(body);
     const tools = result?.tools as Array<{ name: string }> | undefined;
     expect(tools).toBeDefined();
-    expect(tools!).toHaveLength(40);
+    expect(tools!).toHaveLength(41);
 
     const names = tools!.map((t) => t.name).sort();
     expect(names).toEqual([...TODOS_IDS].sort());

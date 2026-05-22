@@ -51,3 +51,75 @@ export function isAccessError(exc: unknown): boolean {
     texto.includes("you are not allowed")
   );
 }
+
+// ---------------------------------------------------------------------------
+// Classes de erro tipadas por fault do Odoo
+// ---------------------------------------------------------------------------
+
+export class OdooAccessError extends OdooError {
+  code = "odoo_access_denied" as const;
+  httpStatus = 403;
+}
+
+export class OdooValidationError extends OdooError {
+  code = "odoo_validation_failed" as const;
+  httpStatus = 422;
+}
+
+export class OdooUserError extends OdooError {
+  code = "odoo_business_rule" as const;
+  httpStatus = 422;
+}
+
+export class OdooMissingError extends OdooError {
+  code = "odoo_record_not_found" as const;
+  httpStatus = 404;
+}
+
+export class OdooIntegrityError extends OdooError {
+  code = "odoo_integrity_violation" as const;
+  httpStatus = 422;
+}
+
+export class OdooNotImplementedError extends OdooError {
+  code = "odoo_method_not_implemented" as const;
+  httpStatus = 422;
+}
+
+export class OdooPoolExhaustedError extends OdooError {
+  code = "odoo_pool_exhausted" as const;
+  httpStatus = 502;
+}
+
+export class OdooUnavailableError extends OdooError {
+  code = "odoo_unavailable" as const;
+  httpStatus = 502;
+}
+
+export class OdooInternalError extends OdooError {
+  code = "odoo_internal_error" as const;
+  httpStatus = 500;
+}
+
+// ---------------------------------------------------------------------------
+// Fault mapping
+// ---------------------------------------------------------------------------
+
+export interface OdooFault {
+  code?: number;
+  message?: string;
+  data?: { name?: string; message?: string };
+}
+
+export function mapOdooFault(fault: OdooFault): Error {
+  const name = fault.data?.name ?? "";
+  const msg = fault.data?.message ?? fault.message ?? "Unknown Odoo error";
+  if (/AccessError/i.test(name)) return new OdooAccessError(msg);
+  if (/ValidationError/i.test(name)) return new OdooValidationError(msg);
+  if (/UserError/i.test(name)) return new OdooUserError(msg);
+  if (/MissingError/i.test(name)) return new OdooMissingError(msg);
+  if (/IntegrityError/i.test(name)) return new OdooIntegrityError(msg);
+  if (/NotImplementedError/i.test(name)) return new OdooNotImplementedError(msg);
+  if (/PoolError/i.test(name)) return new OdooPoolExhaustedError(msg);
+  return new OdooInternalError(msg);
+}

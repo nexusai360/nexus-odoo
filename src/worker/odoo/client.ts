@@ -1,5 +1,29 @@
 // src/worker/odoo/client.ts
-import { OdooError, OdooAuthError, OdooRpcFault, redactSecret } from "./errors";
+import {
+  OdooError,
+  OdooAuthError,
+  OdooRpcFault,
+  redactSecret,
+  mapOdooFault,
+  type OdooFault,
+} from "./errors";
+
+export {
+  OdooError,
+  OdooAuthError,
+  OdooRpcFault,
+  OdooAccessError,
+  OdooValidationError,
+  OdooUserError,
+  OdooMissingError,
+  OdooIntegrityError,
+  OdooNotImplementedError,
+  OdooPoolExhaustedError,
+  OdooUnavailableError,
+  OdooInternalError,
+  mapOdooFault,
+} from "./errors";
+export type { OdooFault } from "./errors";
 
 export interface OdooClientOptions {
   url: string;
@@ -83,7 +107,17 @@ export class OdooClient {
         }
         const body = (await resp.json()) as { error?: unknown; result?: T };
         await sleep(this.throttleMs);
-        if (body.error) throw new OdooRpcFault(body.error as never, this.password);
+        if (body.error) {
+          const fault = body.error as OdooFault & { data?: { name?: string; message?: string } };
+          const rpcFault = new OdooRpcFault(body.error as never, this.password);
+          // Se o fault tem data.name reconhecível, lança erro tipado; caso contrário,
+          // relança o OdooRpcFault genérico para preservar backward compat.
+          const faultName = fault?.data?.name ?? "";
+          if (faultName && !/^(false|undefined)$/i.test(faultName)) {
+            throw mapOdooFault(fault);
+          }
+          throw rpcFault;
+        }
         return body.result as T;
       } catch (exc) {
         if (exc instanceof OdooRpcFault) throw exc;
@@ -193,17 +227,86 @@ export class OdooClient {
     }
     return out;
   }
+
+  // ---------------------------------------------------------------------------
+  // Métodos de escrita (Bloco C)
+  // ---------------------------------------------------------------------------
+
+  /** Cria um registro no modelo e retorna o id criado. */
+  async create(model: string, vals: object): Promise<number> {
+    return this.executeKw<number>(model, "create", [vals]);
+  }
+
+  /** Atualiza registros pelos ids fornecidos. Retorna true em sucesso. */
+  async write(model: string, ids: number[], vals: object): Promise<boolean> {
+    return this.executeKw<boolean>(model, "write", [ids, vals]);
+  }
+
+  /** Remove registros pelos ids fornecidos. Retorna true em sucesso. */
+  async unlink(model: string, ids: number[]): Promise<boolean> {
+    return this.executeKw<boolean>(model, "unlink", [ids]);
+  }
+
+  /** Lê campos específicos dos registros pelos ids fornecidos. */
+  async read(model: string, ids: number[], fields: string[]): Promise<object[]> {
+    return this.executeKw<object[]>(model, "read", [ids], { fields });
+  }
+
+  /**
+   * search_read pontual — busca domínio e retorna campos solicitados em uma
+   * única chamada RPC (sem paginação; use searchReadPaged para volumes grandes).
+   */
+  async searchRead<T = object>(
+    model: string,
+    domain: unknown[],
+    fields: string[],
+    options: { limit?: number; offset?: number; order?: string } = {},
+  ): Promise<T[]> {
+    return this.executeKw<T[]>(model, "search_read", [domain], { fields, ...options });
+  }
+
+  /** Introspecção do modelo: retorna descritores de campos. */
+  async fieldsGet(model: string, attributes?: string[]): Promise<Record<string, object>> {
+    const args: unknown[] = attributes ? [false, attributes] : [];
+    return this.executeKw<Record<string, object>>(model, "fields_get", args);
+  }
+
+  /**
+   * Procura um external_id no módulo "mcp_nexus".
+   * Retorna { id, res_id } ou null se não encontrado.
+   */
+  async searchIrModelData(
+    model: string,
+    externalKey: string,
+  ): Promise<{ id: number; res_id: number } | null> {
+    const rows = await this.searchRead<{ id: number; res_id: number }>(
+      "ir.model.data",
+      [["model", "=", model], ["module", "=", "mcp_nexus"], ["name", "=", externalKey]],
+      ["id", "res_id"],
+      { limit: 1 },
+    );
+    return rows[0] ?? null;
+  }
 }
 
-export function clientFromEnv(): OdooClient {
-  const faltando = ["ODOO_URL", "ODOO_DB", "ODOO_USERNAME", "ODOO_PASSWORD"].filter(
-    (v) => !process.env[v],
-  );
-  if (faltando.length) throw new OdooError(`Variáveis ausentes: ${faltando.join(", ")}`);
+export function clientFromEnv(mode: "read" | "write" = "read"): OdooClient {
+  const isWrite = mode === "write";
+  const get = (key: string): string => {
+    if (isWrite) {
+      // USERNAME → ODOO_WRITE_USER; demais: ODOO_WRITE_<KEY>
+      const writeEnv = `ODOO_WRITE_${key === "USERNAME" ? "USER" : key}`;
+      return process.env[writeEnv] ?? process.env[`ODOO_${key}`] ?? "";
+    }
+    return process.env[`ODOO_${key}`] ?? "";
+  };
+  const required = ["URL", "DB", "USERNAME", "PASSWORD"];
+  const faltando = required.filter((k) => !get(k));
+  if (faltando.length)
+    throw new OdooError(`Variáveis ausentes para modo '${mode}': ${faltando.join(", ")}`);
   return new OdooClient({
-    url: process.env.ODOO_URL!,
-    db: process.env.ODOO_DB!,
-    username: process.env.ODOO_USERNAME!,
-    password: process.env.ODOO_PASSWORD!,
+    url: get("URL"),
+    db: get("DB"),
+    username: get("USERNAME"),
+    password: get("PASSWORD"),
   });
 }

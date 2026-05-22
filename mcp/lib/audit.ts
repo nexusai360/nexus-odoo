@@ -11,10 +11,14 @@ export interface AuditParams {
   outcome: AuditOutcome;
   rowCount?: number;
   durationMs?: number;
+  /** Código do erro (gravado quando outcome != ok). */
+  errorCode?: string;
+  /** Mensagem detalhada do erro, para o operador inspecionar nos Logs. */
+  errorMessage?: string;
 }
 
 /**
- * Grava uma linha em mcp_audit_log. Nunca lança — envolver em try/catch no pipeline.
+ * Grava uma linha em mcp_audit_log. Nunca lança, envolver em try/catch no pipeline.
  *
  * IMPORTANTE: usa createMany() em vez de create() para suprimir o RETURNING implícito
  * que o Prisma/adapter-pg emite no create(). O role nexus_mcp tem GRANT INSERT mas não
@@ -34,6 +38,8 @@ export async function recordAudit(
         outcome: p.outcome,
         rowCount: p.rowCount,
         durationMs: p.durationMs,
+        errorCode: p.errorCode,
+        errorMessage: p.errorMessage,
       },
     ],
   });

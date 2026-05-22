@@ -166,6 +166,63 @@ model AppSetting {
   @@map("app_settings")
 }
 
+/// Servidor MCP externo registrado para o Agente Nex consumir como cliente.
+/// "Plugar MCPs" — agrega capacidades de terceiros (Slack, GitHub, etc.) ao Nex.
+/// O `authToken` é persistido cifrado (AES-256-GCM via src/lib/encryption.ts).
+model ExternalMcpServer {
+  id          String    @id @default(uuid()) @db.Uuid
+  name        String
+  description String?
+  transport   String    @default("http")
+  url         String
+  authHeader  String?   @map("auth_header")
+  authToken   String?   @map("auth_token")
+  enabled     Boolean   @default(true)
+  lastStatus  String    @default("unknown") @map("last_status")
+  lastCheckAt DateTime? @map("last_check_at")
+  createdAt   DateTime  @default(now()) @map("created_at")
+  updatedAt   DateTime  @updatedAt @map("updated_at")
+
+  callLogs ExternalMcpCallLog[]
+
+  @@index([enabled])
+  @@map("external_mcp_servers")
+}
+
+/// Registro das chamadas que o Agente Nex faz a tools de servidores MCP
+/// externos (Plugar MCP). Distinto do McpAuditLog, que e do nosso MCP interno.
+/// `serverName` e denormalizado para o log sobreviver a exclusao do servidor.
+model ExternalMcpCallLog {
+  id           String             @id @default(uuid()) @db.Uuid
+  serverId     String?            @map("server_id") @db.Uuid
+  server       ExternalMcpServer? @relation(fields: [serverId], references: [id], onDelete: SetNull)
+  serverName   String             @map("server_name")
+  toolName     String             @map("tool_name")
+  outcome      String
+  durationMs   Int?               @map("duration_ms")
+  errorMessage String?            @map("error_message")
+  argsPreview  Json?              @map("args_preview")
+  userId       String             @map("user_id") @db.Uuid
+  criadoEm     DateTime           @default(now()) @map("criado_em")
+
+  @@index([criadoEm])
+  @@index([serverId])
+  @@map("external_mcp_call_log")
+}
+
+/// Registro de que um usuário já viu o tour de uma tela. Usado para abrir o
+/// tour automaticamente só na primeira visita, sobrevivendo a logout e troca
+/// de conta (a marca fica por usuário, não no navegador).
+model UserTourSeen {
+  id      String   @id @default(uuid()) @db.Uuid
+  userId  String   @map("user_id") @db.Uuid
+  tourKey String   @map("tour_key")
+  seenAt  DateTime @default(now()) @map("seen_at")
+
+  @@unique([userId, tourKey])
+  @@map("user_tour_seen")
+}
+
 model AuditLog {
   id         String      @id @default(uuid()) @db.Uuid
   userId     String?     @map("user_id") @db.Uuid
@@ -1638,6 +1695,7 @@ model FatoCartaCorrecao {
 
 /// Log de auditoria de chamadas ao MCP semântico.
 model McpAuditLog {
+  // LEGADOS — preservados (mcp/lib/audit.ts já usa)
   id         String   @id @default(uuid())
   userId     String   @map("user_id")
   tool       String
@@ -1647,8 +1705,54 @@ model McpAuditLog {
   durationMs Int?     @map("duration_ms")
   criadoEm   DateTime @default(now()) @map("criado_em")
 
+  // NOVOS — F4 Onda 2 (opcionais)
+  apiKeyId       String?   @map("api_key_id") @db.Uuid
+  apiKey         ApiKey?   @relation(fields: [apiKeyId], references: [id])
+  authMode       String?   @map("auth_mode")
+  operation      String?
+  module         String?
+  action         String?
+  capability     String?
+  eventName      String?   @map("event_name")
+  requestId      String?   @map("request_id")
+  idempotencyKey String?   @map("idempotency_key")
+  payload        Json?
+  result         Json?
+  snapshotBefore Json?     @map("snapshot_before")
+  snapshotAfter  Json?     @map("snapshot_after")
+  status         String?
+  httpStatus     Int?      @map("http_status")
+  errorCode      String?   @map("error_code")
+  errorMessage   String?   @map("error_message")
+  ipAddress      String?   @map("ip_address")
+  userAgent      String?   @map("user_agent")
+
   @@index([userId, criadoEm])
+  @@index([apiKeyId, criadoEm(sort: Desc)])
+  @@index([tool, criadoEm(sort: Desc)])
+  @@index([status, criadoEm(sort: Desc)])
+  @@index([idempotencyKey])
+  @@index([module, action, criadoEm(sort: Desc)])
+  @@index([eventName, criadoEm])
   @@map("mcp_audit_log")
+}
+
+/// Idempotency tracking para writes externas (F4 Onda 2).
+/// PK composta (apiKeyId, key) isola Idempotency-Key por canal sem colisão.
+model McpIdempotencyRecord {
+  apiKeyId        String   @map("api_key_id") @db.Uuid
+  key             String
+  toolId          String   @map("tool_id")
+  payloadHash     String   @map("payload_hash")
+  result          Json
+  status          String
+  httpStatus      Int      @map("http_status")
+  expiresAt       DateTime @map("expires_at")
+  createdAt       DateTime @default(now()) @map("created_at")
+
+  @@id([apiKeyId, key])
+  @@index([expiresAt])
+  @@map("mcp_idempotency_records")
 }
 
 /// Registro de perguntas fora do catálogo (Caminho 3a — gap logging).
@@ -1955,15 +2059,35 @@ model WhatsappInstance {
 /// API key da plataforma para acesso externo (ex.: node Agent do n8n).
 /// A key só é exibida na criação; persiste-se só o hash SHA-256.
 model ApiKey {
+  // EXISTENTES — preservados
   id          String    @id @default(uuid()) @db.Uuid
   label       String
   keyHash     String    @unique @map("key_hash")
   last4       String
-  scopes      Json      @default("[]")
+  scopes      Json      @default("[]") // deprecated — migrado para capabilities em B4.5
   revokedAt   DateTime? @map("revoked_at")
   createdById String?   @map("created_by_id") @db.Uuid
   createdAt   DateTime  @default(now()) @map("created_at")
 
+  // NOVOS — F4 Onda 2
+  description         String?
+  capabilities        Json      @default("{\"version\":1,\"read\":[],\"write\":{}}")
+  capabilitiesVersion Int       @default(1) @map("capabilities_version")
+  rateLimit           Int       @default(60) @map("rate_limit")
+  active              Boolean   @default(true)
+  expiresAt           DateTime? @map("expires_at")
+  lastUsedAt          DateTime? @map("last_used_at")
+  rotatedAt           DateTime? @map("rotated_at")
+  revokedReason       String?   @map("revoked_reason")
+  isSystemKey         Boolean   @default(false) @map("is_system_key")
+  tenantId            String?   @map("tenant_id") @db.Uuid
+  allowedOrigins      Json      @default("[]") @map("allowed_origins")
+
+  auditLogs           McpAuditLog[]
+
+  @@index([active, revokedAt, expiresAt])
+  @@index([tenantId, active])
+  @@index([last4])
   @@map("api_keys")
 }
 

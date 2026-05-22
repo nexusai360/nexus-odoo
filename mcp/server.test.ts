@@ -27,6 +27,28 @@ jest.mock("./lib/prisma.js", () => ({
 jest.mock("./catalog/index.js", () => ({
   catalogo: [],
 }));
+// Mock do auth-middleware — no modo interno os testes existentes usam
+// validateServiceToken diretamente; authenticate sempre retorna "unauthorized"
+// nesses contextos para que o fluxo caia no bloco validateServiceToken legado.
+jest.mock("./auth/auth-middleware.js", () => ({
+  authenticate: jest.fn().mockResolvedValue({ mode: "unauthorized", reason: "invalid_token" }),
+}));
+// Mock do api-key-cache — não usado nos testes do modo interno.
+jest.mock("./auth/api-key-cache.js", () => ({
+  createApiKeyCache: jest.fn(() => ({
+    getOrLoad: jest.fn(),
+    invalidate: jest.fn(),
+    invalidateByApiKeyId: jest.fn(),
+  })),
+}));
+// Mock do external-pipeline — não exercitado nos testes do modo interno.
+jest.mock("./dispatcher/external-pipeline.js", () => ({
+  handleExternalRequest: jest.fn(),
+}));
+// Mock do mcpRedis — não usado nos testes do modo interno.
+jest.mock("./lib/redis.js", () => ({
+  mcpRedis: {},
+}));
 
 // Mock do StreamableHTTPServerTransport — captura as opções do construtor
 // para que os testes de sessão possam disparar onsessioninitialized manualmente.

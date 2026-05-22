@@ -24,18 +24,27 @@ import { encrypt } from "@/lib/encryption";
 
 type DataResult<T> = { success: true; data: T } | { success: false; error: string };
 
-/** Direção do webhook — valores do enum Prisma `WebhookDirection`. */
+/** Direção do webhook, valores do enum Prisma `WebhookDirection`. */
 export type WebhookDirection = "inbound" | "outbound";
 
 /** Métodos HTTP aceitos por um webhook. */
-export type WebhookMethod = "GET" | "POST" | "PUT" | "PATCH" | "DELETE";
+export type WebhookMethod = "GET" | "POST" | "PUT" | "PATCH" | "DELETE" | "HEAD";
 
 export interface CreateWebhookInput {
   direction: WebhookDirection;
   name: string;
-  /** Caminho (slug) — somente inbound. */
+  /** Caminho (slug), somente inbound. */
   path?: string | null;
-  /** URL de destino completa — somente outbound. */
+  /** URL de destino completa, somente outbound. */
+  targetUrl?: string | null;
+  methods: WebhookMethod[];
+}
+
+export interface UpdateWebhookInput {
+  name: string;
+  /** Caminho (slug), somente inbound. */
+  path?: string | null;
+  /** URL de destino completa, somente outbound. */
   targetUrl?: string | null;
   methods: WebhookMethod[];
 }
@@ -82,7 +91,7 @@ function generateSecret(): string {
 // Schemas
 // ──────────────────────────────────────────────────────────────────────────────
 
-const methodSchema = z.enum(["GET", "POST", "PUT", "PATCH", "DELETE"]);
+const methodSchema = z.enum(["GET", "POST", "PUT", "PATCH", "DELETE", "HEAD"]);
 
 /** Slug seguro para o path de um webhook de entrada. */
 const pathSchema = z
@@ -144,6 +153,19 @@ export async function createWebhook(
   }
 
   const data = parsed.data;
+
+  // Caminho (path) de webhook de entrada precisa ser único, duplicado quebraria
+  // o roteamento das requisições recebidas.
+  if (data.direction === "inbound" && data.path) {
+    const taken = await prisma.whatsappWebhook.findFirst({
+      where: { direction: "inbound", path: data.path },
+      select: { id: true },
+    });
+    if (taken) {
+      return { success: false, error: "Já existe um webhook de entrada com esse caminho." };
+    }
+  }
+
   const secretPlain = generateSecret();
   const secretEncrypted = encrypt(secretPlain);
 
@@ -179,6 +201,79 @@ export async function createWebhook(
   } catch (err) {
     console.error("[webhooks] createWebhook error:", err);
     return { success: false, error: "Erro ao criar webhook" };
+  }
+}
+
+// ──────────────────────────────────────────────────────────────────────────────
+// updateWebhook
+// ──────────────────────────────────────────────────────────────────────────────
+
+/**
+ * Atualiza um webhook (nome, métodos e caminho/URL). A direção não muda.
+ * Mantém a checagem de caminho único. Gate: super_admin.
+ */
+export async function updateWebhook(
+  id: string,
+  input: UpdateWebhookInput,
+): Promise<DataResult<void>> {
+  const me = await getCurrentUser();
+  if (!me) return { success: false, error: "Não autenticado" };
+  if (!isSuperAdmin(me.platformRole)) return { success: false, error: "Acesso negado" };
+
+  const existing = await prisma.whatsappWebhook.findUnique({
+    where: { id },
+    select: { id: true, direction: true },
+  });
+  if (!existing) return { success: false, error: "Webhook não encontrado" };
+  const direction = existing.direction as WebhookDirection;
+
+  const nameOk = z.string().trim().min(1).safeParse(input.name);
+  if (!nameOk.success) return { success: false, error: "Nome obrigatório" };
+  const methodsOk = z.array(methodSchema).min(1).safeParse(input.methods);
+  if (!methodsOk.success) {
+    return { success: false, error: "Selecione ao menos um método" };
+  }
+
+  let path: string | null = null;
+  let targetUrl: string | null = null;
+
+  if (direction === "inbound") {
+    const p = pathSchema.safeParse(input.path ?? "");
+    if (!p.success) {
+      return { success: false, error: "Caminho inválido para webhook de entrada" };
+    }
+    path = p.data;
+    const taken = await prisma.whatsappWebhook.findFirst({
+      where: { direction: "inbound", path, id: { not: id } },
+      select: { id: true },
+    });
+    if (taken) {
+      return { success: false, error: "Já existe um webhook de entrada com esse caminho." };
+    }
+  } else {
+    const u = z.string().url().safeParse(input.targetUrl ?? "");
+    if (!u.success) {
+      return { success: false, error: "URL de destino inválida" };
+    }
+    targetUrl = u.data;
+  }
+
+  try {
+    await prisma.whatsappWebhook.update({
+      where: { id },
+      data: {
+        name: nameOk.data,
+        methods: methodsOk.data,
+        path,
+        targetUrl,
+        url: direction === "outbound" ? targetUrl : null,
+      },
+    });
+    revalidatePath("/integracoes/webhooks");
+    return { success: true, data: undefined };
+  } catch (err) {
+    console.error("[webhooks] updateWebhook error:", err);
+    return { success: false, error: "Erro ao atualizar webhook" };
   }
 }
 
