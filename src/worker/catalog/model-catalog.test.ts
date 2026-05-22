@@ -21,9 +21,22 @@ const MODELOS_L1C = new Set([
   "pedido.faturamento",
 ]);
 
+// Modelos acrescentados na F4 L1b (camada de referência). Também via sondagem.
+const MODELOS_L1B = new Set([
+  "sped.ncm", "sped.cfop", "sped.cest", "sped.cnae", "sped.nbs",
+  "sped.natureza.operacao", "sped.unidade", "sped.cst.icms",
+  "sped.cst.icms.sn", "sped.cst.ipi", "sped.cst.pis.cofins", "sped.cst.cibs",
+  "sped.municipio", "sped.pais", "sped.estado", "sped.condicao.pagamento",
+  "sped.feriado", "sped.aliquota.icms.proprio", "sped.aliquota.icms.st",
+  "sped.aliquota.inss", "sped.aliquota.ipi", "sped.aliquota.irpf",
+  "sped.aliquota.iss", "sped.aliquota.pis.cofins",
+  "sped.aliquota.simples.aliquota", "sped.aliquota.simples.anexo",
+  "sped.aliquota.simples.teto",
+]);
+
 describe("model-catalog", () => {
-  it("tem 87 modelos (79 do F0 + 5 da L1a + 3 da L1c)", () => {
-    expect(MODEL_CATALOG).toHaveLength(87);
+  it("tem 114 modelos (79 do F0 + 5 da L1a + 3 da L1c + 27 da L1b)", () => {
+    expect(MODEL_CATALOG).toHaveLength(114);
   });
 
   // discovery/output/ é gitignored (saídas brutas locais — ver .gitignore).
@@ -40,7 +53,7 @@ describe("model-catalog", () => {
       const noDisco = new Set(arquivos.map((f) => f.replace(/\.json$/, "")));
       const noCatalogo = new Set(
         MODEL_CATALOG.map((m) => m.odooModel).filter(
-          (m) => !MODELOS_L1A.has(m) && !MODELOS_L1C.has(m),
+          (m) => !MODELOS_L1A.has(m) && !MODELOS_L1C.has(m) && !MODELOS_L1B.has(m),
         ),
       );
       expect(noCatalogo).toEqual(noDisco);

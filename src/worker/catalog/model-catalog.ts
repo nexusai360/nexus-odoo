@@ -1,5 +1,5 @@
 // Gerado a partir de discovery/output/modelos/ — F2.
-// 80 incremental | 5 snapshot | 2 estatico.
+// 107 incremental | 5 snapshot | 2 estatico.
 export type SyncMode = "incremental" | "snapshot" | "estatico";
 
 export interface CatalogEntry {
@@ -100,6 +100,34 @@ export const MODEL_CATALOG: readonly CatalogEntry[] = [
   { odooModel: "sped.certificado", mode: "incremental", excludeFields: ["senha", "arquivo"] },
   { odooModel: "finan.baixa.lancamento", mode: "incremental" },
   { odooModel: "pedido.faturamento", mode: "incremental" },
+  // F4 L1b — camada de referência (27 tabelas)
+  { odooModel: "sped.ncm", mode: "incremental" },
+  { odooModel: "sped.cfop", mode: "incremental" },
+  { odooModel: "sped.cest", mode: "incremental" },
+  { odooModel: "sped.cnae", mode: "incremental" },
+  { odooModel: "sped.nbs", mode: "incremental" },
+  { odooModel: "sped.natureza.operacao", mode: "incremental" },
+  { odooModel: "sped.unidade", mode: "incremental" },
+  { odooModel: "sped.cst.icms", mode: "incremental" },
+  { odooModel: "sped.cst.icms.sn", mode: "incremental" },
+  { odooModel: "sped.cst.ipi", mode: "incremental" },
+  { odooModel: "sped.cst.pis.cofins", mode: "incremental" },
+  { odooModel: "sped.cst.cibs", mode: "incremental" },
+  { odooModel: "sped.municipio", mode: "incremental" },
+  { odooModel: "sped.pais", mode: "incremental" },
+  { odooModel: "sped.estado", mode: "incremental" },
+  { odooModel: "sped.condicao.pagamento", mode: "incremental" },
+  { odooModel: "sped.feriado", mode: "incremental" },
+  { odooModel: "sped.aliquota.icms.proprio", mode: "incremental" },
+  { odooModel: "sped.aliquota.icms.st", mode: "incremental" },
+  { odooModel: "sped.aliquota.inss", mode: "incremental" },
+  { odooModel: "sped.aliquota.ipi", mode: "incremental" },
+  { odooModel: "sped.aliquota.irpf", mode: "incremental" },
+  { odooModel: "sped.aliquota.iss", mode: "incremental" },
+  { odooModel: "sped.aliquota.pis.cofins", mode: "incremental" },
+  { odooModel: "sped.aliquota.simples.aliquota", mode: "incremental" },
+  { odooModel: "sped.aliquota.simples.anexo", mode: "incremental" },
+  { odooModel: "sped.aliquota.simples.teto", mode: "incremental" },
 ] as const;
 
 /** Nome da tabela raw de um modelo Odoo: estoque.saldo.hoje -> raw_estoque_saldo_hoje. */
