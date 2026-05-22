@@ -195,3 +195,29 @@ rodada 3 de correções de UI — nenhum arquivo tocado na r3 tem erro de lint.
 **Ação:** numa varredura dedicada, tipar os mocks dos testes do MCP ou aplicar
 `eslint-disable` justificado por bloco. Fora do escopo da r3 (correções de UI
 do painel Servidor MCP).
+
+---
+
+## R8 — Dois modelos da F2 não sincronizam (achado da bateria L2, MÉDIO)
+
+**Aberto desde:** 2026-05-22 (bateria L2 de validação de leitura).
+
+A conferência de fidelidade da L2 (count `raw_*` vs `search_count` do Odoo)
+flagrou dois modelos do catálogo F2 com `sync_state.last_status = 'erro'`:
+
+- **`pedido.documento.historico.tempo`** (raw 0, Odoo 8.658). Erro do Odoo:
+  `coluna pedido_documento_historico_tempo.id não existe`. É um modelo Odoo
+  sem coluna `id` (view/agregado); o sync, que faz `search_read` selecionando
+  `id`, não consegue lê-lo. **É não-sincronizável pelo mecanismo atual.**
+  Ação: removê-lo do `MODEL_CATALOG` (e ajustar `model-catalog.test.ts`), ou
+  dar ao sync um caminho para modelos sem `id`.
+- **`sped.produto.lote.serie`** (raw 5.000, Odoo 7.534). `last_error` vazio
+  após 3 tentativas — provável timeout ou erro não serializado numa página
+  específica. O raw tem 5.000 de um sync parcial anterior. Ação: re-rodar o
+  sync só desse modelo com log verboso para capturar o erro real.
+
+**Implicação:** nenhuma tool da F4 depende desses dois modelos — as 55/56
+conferências de tool da L2 passaram. É dívida de robustez do sync da F2, não
+um gap da F4 leitura. Cada ciclo de sync gasta 3 tentativas falhas em cada um.
+
+**Ação:** sessão de debug dedicada ao sync da F2. Fora do escopo da F4 L2.
