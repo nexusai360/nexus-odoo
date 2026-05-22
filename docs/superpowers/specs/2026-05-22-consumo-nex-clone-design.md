@@ -176,7 +176,10 @@ Clone do `consumo-content.tsx` do insights (1058 linhas) com estas adaptações:
   entrada, Tokens saída, Custo USD, Custo BRL. Custo USD mostra badge "preço
   desconhecido" quando `!costKnown`; Custo BRL mostra "cotação desatualizada"
   quando `rateStale`. Paginação em 3 zonas, `pageSize` 25/50/100.
-- Clique na linha abre `UsageDetailSheet`.
+- Clique na linha abre `UsageDetailSheet`. **Acessibilidade (achado do
+  ui-ux-pro-max, §11)**: a linha clicável recebe `role="button"`, `tabIndex={0}`
+  e handler de teclado (Enter/Espaço abre o Sheet) — o original do insights só
+  responde a `onClick`, o que falha a regra CRITICAL `keyboard-nav`.
 
 ### 5.2 `UsageDetailSheet`
 
@@ -244,7 +247,31 @@ correção, não regressão).
   gráficos, navegação de período, filtros, tabela, drill-down sheet, e que os
   números batem com o back-end (que não mudou).
 
-## 10. Histórico de revisão
+## 11. Design (ui-ux-pro-max)
+
+Consulta à skill `ui-ux-pro-max` (obrigatória para frontend, `CLAUDE.md §6`).
+O design system do projeto já está estabelecido (Tailwind v4, tema violet,
+light/dark) e a tela do insights o segue — não há troca de paleta/tipografia.
+A skill **valida** as escolhas do clone e aponta um ajuste:
+
+- **Charts** — tendência no tempo → área/linha (gráfico de custo, correto);
+  proporção de poucos itens → donut (distribuição por provider, correto,
+  abaixo do limite de 5 categorias da regra `no-pie-overuse`); comparação →
+  barras (custo por modelo, correto). Os charts portados já cumprem
+  `legend-visible`, `tooltip-on-interact`, `empty-data-state`, `loading-chart`
+  (skeleton), `animation-optional` (respeitam `prefers-reduced-motion`) e
+  `trend-emphasis` (gradiente sutil sem competir com o dado).
+- **`number-tabular`** — colunas numéricas usam `tabular-nums` (já no clone).
+- **`data-table` / overflow** — tabela em `overflow-x-auto` (já no clone).
+- **Loading** — skeleton para esperas > 300ms (já no clone).
+- **Achado material — `keyboard-nav` (CRITICAL)**: a linha de dados clicável da
+  tabela do insights só responde a `onClick`. O clone adiciona `role="button"`,
+  `tabIndex={0}` e handler de Enter/Espaço (registrado em §5.1).
+- **Fora de escopo** (melhorias que a skill sugere, mas o usuário travou o
+  escopo ao clone): ordenação de coluna com `aria-sort` e exportação CSV. Ficam
+  para a rodada de melhorias posterior.
+
+## 12. Histórico de revisão
 
 ### Review crítica #1 (spec v1 → v2) — achados materiais
 
