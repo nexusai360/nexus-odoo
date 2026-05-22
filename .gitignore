@@ -50,3 +50,6 @@ discovery/output/
 # Docker
 docker-compose.production.yml
 .context/
+
+# Backups de banco (gerados por scripts/db-backup.sh)
+/backups/
