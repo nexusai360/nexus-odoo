@@ -34,6 +34,9 @@ export type ModelUse =
   | "raciocínio profundo"
   | "busca";
 
+/** Níveis de esforço de raciocínio (thinking), do menor ao maior. */
+export type ReasoningLevel = "minimal" | "low" | "medium" | "high";
+
 export interface ModelEntry {
   id: string;
   provider: LlmProvider;
@@ -49,6 +52,11 @@ export interface ModelEntry {
   audio?: boolean;
   /** Entende imagem (visão multimodal). */
   vision?: boolean;
+  /**
+   * Suporte a modo raciocínio (thinking). Ausente = não suporta.
+   * `levels` traz os níveis de esforço aceitos, do menor ao maior.
+   */
+  reasoning?: { levels: ReasoningLevel[] };
 }
 
 export interface ProviderMeta {
@@ -232,6 +240,47 @@ export const MODELS: ModelEntry[] = [
   ...GEMINI,
   ...OPENROUTER,
 ];
+
+// ─── Suporte a raciocínio ─────────────────────────────────────────────────────
+// Preenchido por id. Fonte e critério:
+// docs/superpowers/research/2026-05-22-modelos-raciocinio.md. Só modelos OpenAI
+// nesta entrega — o wiring de reasoning_effort cobre o provider OpenAI; o card
+// de Modo Raciocínio só destrava quando há wiring real por trás.
+const REASONING_LEVELS: Record<string, ReasoningLevel[]> = {
+  "gpt-5.5": ["minimal", "low", "medium", "high"],
+  "gpt-5.5-pro": ["minimal", "low", "medium", "high"],
+  "gpt-5.4": ["minimal", "low", "medium", "high"],
+  "gpt-5.4-pro": ["minimal", "low", "medium", "high"],
+  "gpt-5.4-mini": ["minimal", "low", "medium", "high"],
+  "gpt-5.4-nano": ["minimal", "low", "medium", "high"],
+  "gpt-5.3-codex": ["minimal", "low", "medium", "high"],
+  "gpt-5.2": ["minimal", "low", "medium", "high"],
+  "gpt-5.1": ["minimal", "low", "medium", "high"],
+  "gpt-5.1-codex-mini": ["minimal", "low", "medium", "high"],
+  "gpt-5": ["minimal", "low", "medium", "high"],
+  "gpt-5-codex": ["minimal", "low", "medium", "high"],
+  "gpt-5-mini": ["minimal", "low", "medium", "high"],
+  "gpt-5-nano": ["minimal", "low", "medium", "high"],
+  "o3-pro": ["low", "medium", "high"],
+  o3: ["low", "medium", "high"],
+  "o1-pro": ["low", "medium", "high"],
+  o1: ["low", "medium", "high"],
+};
+
+for (const m of MODELS) {
+  const levels = REASONING_LEVELS[m.id];
+  if (levels) m.reasoning = { levels };
+}
+
+/** `true` se o modelo suporta modo raciocínio (thinking). */
+export function modelSupportsReasoning(id: string): boolean {
+  return (getModel(id)?.reasoning?.levels.length ?? 0) > 0;
+}
+
+/** Níveis de raciocínio aceitos pelo modelo; vazio quando não suporta. */
+export function reasoningLevelsOf(id: string): ReasoningLevel[] {
+  return getModel(id)?.reasoning?.levels ?? [];
+}
 
 /** Retorna um modelo pelo id exato, ou undefined. */
 export function getModel(id: string): ModelEntry | undefined {
