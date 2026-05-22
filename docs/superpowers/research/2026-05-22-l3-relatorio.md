@@ -1,384 +1,101 @@
 # Relatório L3 — Validação do agente Nex
 
-> Data: 2026-05-22. Modelo: gpt-5.4-nano. 1182 requisições reais.
+> Data: 2026-05-22. Modelo: gpt-5.4-nano. 1146 requisições reais.
 
-## Assertividade geral: 63.37% (749/1182)
+## Assertividade geral: 97.73% (1120/1146)
 
-Meta: 97% ou mais. Resultado: ABAIXO DA META.
+Meta: 97% ou mais. Resultado: ATINGIDA.
 
 ## Por categoria
 
 | Categoria | Acertos | Total | % |
 |---|---|---|---|
-| conta_contabil_codigo | 229 | 230 | 99.6% |
-| estoque_saldo_produto | 72 | 210 | 34.3% |
-| global | 2 | 5 | 40.0% |
-| notas_entrada_fornecedor | 25 | 210 | 11.9% |
+| conta_contabil_codigo | 227 | 230 | 98.7% |
+| estoque_saldo_produto | 209 | 210 | 99.5% |
+| global | 1 | 5 | 20.0% |
+| notas_entrada_fornecedor | 161 | 174 | 92.5% |
 | parceiros_por_uf | 27 | 27 | 100.0% |
-| pedidos_por_etapa | 50 | 50 | 100.0% |
-| preco_regras_produto | 124 | 230 | 53.9% |
-| servico_codigo | 220 | 220 | 100.0% |
+| pedidos_por_etapa | 49 | 50 | 98.0% |
+| preco_regras_produto | 228 | 230 | 99.1% |
+| servico_codigo | 218 | 220 | 99.1% |
 
-## Falhas (433)
+## Falhas (26)
 
-- **P:** Quantas regras de preço existem para o produto "[1000110843] MOTOR DE INCLINACAO 220VCA - 0,17HP - 1000424887"?
-  - esperado: 4 regras
-  - resposta: Não há nenhuma regra de preço cadastrada para o produto **[1000110843] MOTOR DE INCLINACAO 220VCA - 0,17HP - 1000424887** (total: **0**).   atualizado há 38s
-- **P:** Quantas regras de preço existem para o produto "[1000110846] ACABAMENTO PLASTICO PARA MASTRO - 1000203749"?
-  - esperado: 4 regras
-  - resposta: Não existem regras de preço cadastradas para o produto [1000110846] ACABAMENTO PLASTICO PARA MASTRO - 1000203749. atualizado há 31s
-- **P:** Quantas regras de preço existem para o produto "[1000110852] CONJ. ETIQ. SUPINO G7-S13 - TG-739707"?
-  - esperado: 4 regras
-  - resposta: Para o produto **[1000110852] CONJ. ETIQ. SUPINO G7-S13 - TG-739707**, **não existe nenhuma regra de preço** cadastrada no momento (**0**).   atualizado há **321s**.
-- **P:** Quantas regras de preço existem para o produto "[1000110854] CONJ. ETIQ. PUXADOR G7-S33 - TG-739709"?
-  - esperado: 4 regras
-  - resposta: Para o produto “[1000110854] CONJ. ETIQ. PUXADOR G7-S33 - TG-739709” existem 0 regras de preço cadastradas.    atualizado há 21s
-- **P:** Quantas regras de preço existem para o produto "[1000110856] CONJ. ETIQ. ABDOMINAL G7-S51 - TG-739711"?
-  - esperado: 4 regras
-  - resposta: Para o produto **[1000110856] CONJ. ETIQ. ABDOMINAL G7-S51 - TG-739711** existem **0 regras de preço** cadastradas.   Dados atualizados há **15s**.
-- **P:** Quantas regras de preço existem para o produto "[1000110857] CONJ. ETIQ. EXTENSAO DE PERNAS G7-S71 - TG-739712"?
-  - esperado: 4 regras
-  - resposta: Para o produto “[1000110857] CONJ. ETIQ. EXTENSAO DE PERNAS G7-S71 - TG-739712”, não há regras de preço cadastradas (0 regras).   Dados atualizados há 37s.
-- **P:** Quantas regras de preço existem para o produto "[1000110859] CONJ. ETIQ. ABDUTOR G7-S75 - TG-739714"?
-  - esperado: 4 regras
-  - resposta: Para o produto **[1000110859] CONJ. ETIQ. ABDUTOR G7-S75 - TG-739714** existem **0 regras de preço** cadastradas.   Dados atualizados há **0s**.
-- **P:** Quantas regras de preço existem para o produto "[1000110862] ONYX22-C PAINEL 22 POL P/ ESTR ONYX MATRIX 220V PF (ONYX22-C)"?
-  - esperado: 4 regras
-  - resposta: Para o produto **[1000110862] ONYX22-C PAINEL 22 POL P/ ESTR ONYX MATRIX 220V PF (ONYX22-C)**, existem **0 regras de preço** cadastradas.   atualizado há 2026-05-22T12:58:37s
-- **P:** Quantas regras de preço existem para o produto "[1000110863] BASE PLASTICA PARA PAINEL BIKE CXC - 1000412950"?
-  - esperado: 4 regras
-  - resposta: Para esse produto, não há nenhuma regra de preço cadastrada no momento (0 regras). atualizado há 12s
-- **P:** Quantas regras de preço existem para o produto "[1000110868] R1821 - DUMBBELL 36KG ROTHA MONOBLOCO PEG INOX (UN)"?
-  - esperado: 4 regras
-  - resposta: Para o produto **[1000110868] R1821 - DUMBBELL 36KG ROTHA MONOBLOCO PEG INOX (UN)**, **não existem regras de preço cadastradas** (total: **0**).   atualizado há 0s
-- **P:** Quantas regras de preço existem para o produto "[1000110869] R1823 - DUMBBELL 38KG ROTHA MONOBLOCO PEG INOX (UN)"?
-  - esperado: 4 regras
-  - resposta: Para o produto **[1000110869] R1823 - DUMBBELL 38KG ROTHA MONOBLOCO PEG INOX (UN)**, existem **0 regras de preço** cadastradas no momento.   Dados **atualizado há 1s**.
-- **P:** Quantas regras de preço existem para o produto "[1000110871] LP8410/64 - SUPER BAND 6.4 - SUPER FORTE - 2080*4.5*64MM - PRETA (LIVEPRO)"?
-  - esperado: 4 regras
-  - resposta: Não encontrei nenhuma regra de preço cadastrada para o produto 1000110871.   Isso significa que existem 0 regras ativas no momento.   atualizado há 58s
-- **P:** Quantas regras de preço existem para o produto "[1000211848] TECLADO DE MEMBRANA PLASTICA - VISION R60-S60-U60 - 1000211848"?
-  - esperado: 4 regras
-  - resposta: Não encontrei regras de preço para o produto **[1000211848] TECLADO DE MEMBRANA PLASTICA - VISION R60-S60-U60** (total: **0**).   atualizado há 0s
-- **P:** Quantas regras de preço existem para o produto "[1000218651] MEMBRANA DO PAINEL INTERMEDIÁRIO PARA ESTEIRA T5X-03-F - MATRIX FITNESS"?
-  - esperado: 4 regras
-  - resposta: Não existem regras de preço cadastradas para esse produto (total: 0). atualizado há 10s
-- **P:** Quantas regras de preço existem para o produto "[1000362093] MTX240 - AGACHAMENTO SUMÔ"?
-  - esperado: 4 regras
-  - resposta: Não existem regras de preço cadastradas para o produto “[1000362093] MTX240 - AGACHAMENTO SUMÔ” (0 regras). atualizado há 37s.
-- **P:** Quantas regras de preço existem para o produto "[1000362094] MEMBRANA PLASTICA FLEXIVEL TIPO BOTOEIRA DO PAINEL - 1000206771"?
-  - esperado: 4 regras
-  - resposta: Para o produto [1000362094] MEMBRANA PLASTICA FLEXIVEL TIPO BOTOEIRA DO PAINEL - 1000206771, existem 0 regras de preço cadastradas.   atualizado há 250s
-- **P:** Quantas regras de preço existem para o produto "[1000362095] ADESIVO PLASTICO TIPO MASCARA P TECLADO FUNCOES C3X - 1000211525"?
-  - esperado: 4 regras
-  - resposta: Não há regras de preço cadastradas para esse produto (total: 0). atualizado há 12s.
-- **P:** Quantas regras de preço existem para o produto "[1000362098] IC700 VF INDOOR CYCLE VISION"?
-  - esperado: 4 regras
-  - resposta: Para o produto **[1000362098] IC700 VF INDOOR CYCLE VISION**, existem **0 regras de preço** cadastradas.   Dados atualizados há **X segundos** (última atualização do status: **2026-05-22T12:21:50.709Z**).
-- **P:** Quantas regras de preço existem para o produto "[1000362101] MGPL41 MAGNUM PL BICEPS CURL"?
-  - esperado: 6 regras
-  - resposta: Para o produto “[1000362101] MGPL41 MAGNUM PL BICEPS CURL”, existem **0** regras de preço cadastradas.   Dados atualizados há **~38s**.
-- **P:** Quantas regras de preço existem para o produto "[1000362107] VST600-PL74 KNEELING LEG CURL"?
-  - esperado: 4 regras
-  - resposta: Para o produto [1000362107] VST600-PL74 KNEELING LEG CURL, existem 0 regras de preço cadastradas no momento.   atualizado há 620s
-- **P:** Quantas regras de preço existem para o produto "[1000362110] SC700 - Stair Climber with V-DLED-C"?
-  - esperado: 4 regras
-  - resposta: Não há regras de preço cadastradas para o produto **[1000362110] SC700 - Stair Climber with V-DLED-C** (total: **0**).   Dados atualizados há **~15s**.
-- **P:** Quantas regras de preço existem para o produto "[1000362113] DDMEI18- DUMBBELL DUCTIL MONOBLOCO EQUILIBRIO INOX 18 KG"?
-  - esperado: 4 regras
-  - resposta: Não há nenhuma regra de preço cadastrada para esse produto (0 regras). atualizado há 37s.
-- **P:** Quantas regras de preço existem para o produto "[1000362115] EBP - ETIQUETA DE BORRACHA"?
-  - esperado: 4 regras
-  - resposta: Para o produto “[1000362115] EBP - ETIQUETA DE BORRACHA”, não há nenhuma regra de preço cadastrada (total: 0).   atualizado há 0s
-- **P:** Quantas regras de preço existem para o produto "[1000362116] EB12 - ETIQUETA DE BORRACHA 12KG"?
-  - esperado: 4 regras
-  - resposta: Para o produto “[1000362116] EB12 - ETIQUETA DE BORRACHA 12KG” existem 0 regras de preço cadastradas.   atualizado há 1.6s
-- **P:** Quantas regras de preço existem para o produto "[1000362117] EB14 - ETIQUETA DE BORRACHA 14KG"?
-  - esperado: 4 regras
-  - resposta: Não há regras de preço cadastradas para o produto “[1000362117] EB14 - ETIQUETA DE BORRACHA 14KG” (0 regras).   atualizado há 1.2s
-- **P:** Quantas regras de preço existem para o produto "[1000362118] EB16 - ETIQUETA DE BORRACHA 16KG"?
-  - esperado: 4 regras
-  - resposta: Não há regras de preço cadastradas para o produto **[1000362118] EB16 - ETIQUETA DE BORRACHA 16KG** (total: **0**).   atualizado há 2026-05-22T12:58:37s.
-- **P:** Quantas regras de preço existem para o produto "[1000362119] EB18 - ETIQUETA DE BORRACHA 18KG"?
-  - esperado: 4 regras
-  - resposta: Para o produto **[1000362119] EB18 - ETIQUETA DE BORRACHA 18KG**, **não há regras de preço cadastradas** no momento (0 regras).   atualizado há 38s
-- **P:** Quantas regras de preço existem para o produto "[1000362122] EB24 - ETIQUETA DE BORRACHA 24KG"?
-  - esperado: 4 regras
-  - resposta: Para o produto **[1000362122] EB24 - ETIQUETA DE BORRACHA 24KG**, **não há regras de preço cadastradas** no momento (total: **0**).   atualizado há **Xs**: **2026-05-22T12:58:37Z**.
-- **P:** Quantas regras de preço existem para o produto "[1000362124] EB28 - ETIQUETA DE BORRACHA 28KG"?
-  - esperado: 4 regras
-  - resposta: Para o produto “[1000362124] EB28 - ETIQUETA DE BORRACHA 28KG” não há nenhuma regra de preço cadastrada no sistema (0 regras).   atualizado há 41s
-- **P:** Quantas regras de preço existem para o produto "[1000362126] 24912 - COR PRONTA POL VW PRATA LUNAR LAZZUDUR G09"?
-  - esperado: 4 regras
-  - resposta: Para esse produto, não há regras de preço cadastradas no momento (total: 0). atualizado há 252s.
-- **P:** Quantas regras de preço existem para o produto "[1000362127] SUPORTE P/ DISCO HOOKIT 6" NEWPAD UND"?
-  - esperado: 4 regras
-  - resposta: Para o produto “[1000362127] SUPORTE P/ DISCO HOOKIT 6 NEWPAD UND” não existem regras de preço cadastradas (total: 0). atualizado há 37s.
-- **P:** Quantas regras de preço existem para o produto "[1000362132] ACABAMENTO PLASTICO INFERIOR DO  PEDAL LE X20 - 1000103341"?
-  - esperado: 4 regras
-  - resposta: Para o produto **[1000362132] ACABAMENTO PLASTICO INFERIOR DO PEDAL LE X20 - 1000103341**, **não existe nenhuma regra de preço cadastrada** (total: **0**).   atualizado há **~2 min**.
-- **P:** Quantas regras de preço existem para o produto "[1000362133] ACABAMENTO PLASTICO SUPERIOR DO PEDAL LD X20 - 1000105271"?
-  - esperado: 4 regras
-  - resposta: Não há nenhuma regra de preço cadastrada para o produto **[1000362133] ACABAMENTO PLASTICO SUPERIOR DO PEDAL LD X20 - 1000105271** (total: **0**).   atualizado há 38s
-- **P:** Quantas regras de preço existem para o produto "[1000362134] ACABAMENTO PLASTICO INFERIOR DO PEDAL LD X20 - 1000105273"?
-  - esperado: 4 regras
-  - resposta: Para o produto **[1000362134] ACABAMENTO PLASTICO INFERIOR DO PEDAL LD X20 - 1000105273**, existem **0 regras de preço** cadastradas.   atualizado há **Xs**: **~12**.
-- **P:** Quantas regras de preço existem para o produto "[1000362135] BA84 - ESTANTE 12 PARES DUMBELLS PRETO"?
-  - esperado: 4 regras
-  - resposta: Não há regras de preço cadastradas para o produto “1000362135 BA84 - ESTANTE 12 PARES DUMBELLS PRETO” (total: 0).   atualizado há 23s
-- **P:** Quantas regras de preço existem para o produto "[1000362138] SUPORTE METALICO DE MONTAGEM DA POLIA - 008448-D"?
-  - esperado: 4 regras
-  - resposta: Não encontrei nenhuma regra de preço cadastrada para o produto “[1000362138] SUPORTE METALICO DE MONTAGEM DA POLIA - 008448-D” (total: 0).   atualizado há 37s
-- **P:** Quantas regras de preço existem para o produto "[1000362139] PARAFUSO METALICO - 1000104704"?
-  - esperado: 4 regras
-  - resposta: Não encontrei nenhuma regra de preço cadastrada para o produto “1000362139 PARAFUSO METALICO - 1000104704” (0 regras).   atualizado há 22s
-- **P:** Quantas regras de preço existem para o produto "[1000362143] SUPORTE EM ACO PARA AJUSTE DE BARRA LD DE EQUIPAMENTO MG-PL62 - 1000439998"?
-  - esperado: 4 regras
-  - resposta: Não há nenhuma regra de preço cadastrada para o produto 1000362143.   atualizado há 0s
-- **P:** Quantas regras de preço existem para o produto "[1000362144] SUPORTE EM ACO PARA AJUSTE DE BARRA LE DE EQUIPAMENTO MG-PL62 - 1000439999"?
-  - esperado: 4 regras
-  - resposta: Para o produto **[1000362144] SUPORTE EM ACO PARA AJUSTE DE BARRA LE DE EQUIPAMENTO MG-PL62 - 1000439999**, existem **0** regras de preço cadastradas.    atualizado há 10s
-- **P:** Quantas regras de preço existem para o produto "[1000362149] VST600-S13 SUPINO VERTICAL VISION PF/PR"?
-  - esperado: 5 regras
-  - resposta: Para o produto “1000362149 VST600-S13 SUPINO VERTICAL VISION PF/PR” existem **0 regras de preço** cadastradas.   atualizado há 37s
-- **P:** Quantas regras de preço existem para o produto "[1000362152] MGPL72 MATRIX MG PLATE LOAD KNEELING LEG CURL"?
-  - esperado: 6 regras
-  - resposta: Para o produto “[1000362152] MGPL72 MATRIX MG PLATE LOAD KNEELING LEG CURL” não há nenhuma regra de preço cadastrada no momento.   atualizado há 0s
-- **P:** Quantas regras de preço existem para o produto "[1000362155] MGPL80 MATRIX MG PLATE LOAD PENDULUM SQUAT"?
-  - esperado: 6 regras
-  - resposta: Não há regras de preço cadastradas para o produto “[1000362155] MGPL80 MATRIX MG PLATE LOAD PENDULUM SQUAT” (0 regras).   atualizado há 37s
-- **P:** Quantas regras de preço existem para o produto "[1000362158] MGPL35 MATRIX MG T-BAR ROW"?
-  - esperado: 4 regras
-  - resposta: Não existem regras de preço cadastradas para o produto **[1000362158] MGPL35 MATRIX MG T-BAR ROW** (0 regras).   atualizado há 59s
-- **P:** Quantas regras de preço existem para o produto "[1000362164] VST700-PL62 - SMITH MACHINE"?
-  - esperado: 4 regras
-  - resposta: Esse produto “[1000362164] VST700-PL62 - SMITH MACHINE” não possui regras de preço cadastradas no momento (0 regras).   atualizado há 37s
-- **P:** Quantas regras de preço existem para o produto "[1000362168] VST700-PL70 - LEG PRESS"?
-  - esperado: 4 regras
-  - resposta: Para o produto **[1000362168] VST700-PL70 - LEG PRESS**, **não há regras de preço cadastradas** no momento (total: **0**).   atualizado há **~212s**.
-- **P:** Quantas regras de preço existem para o produto "[1000362169] ESTOFADO TIPO ASSENTO NA COR PRETO G7-S34 - 1000095178"?
-  - esperado: 4 regras
-  - resposta: Para esse produto, existem 0 regras de preço cadastradas.   atualizado há 0s
-- **P:** Quantas regras de preço existem para o produto "[1000362171] PEDALEIRA PLASTICA PARA APOIO DOS PES LE E3XC -  000174-DA"?
-  - esperado: 4 regras
-  - resposta: Não encontrei nenhuma regra de preço cadastrada para esse produto. Total: 0 regras. Atualizado há 37s.
-- **P:** Quantas regras de preço existem para o produto "[1000362172] JUNCAO DE ACO PARA FIXACAO DO PINO DE REGULAGEM  FW15/ FW12 - 022479-C"?
-  - esperado: 4 regras
-  - resposta: Para o produto **[1000362172] JUNCAO DE ACO PARA FIXACAO DO PINO DE REGULAGEM  FW15/ FW12 - 022479-C**, **não há regras de preço cadastradas** no momento (total: **0**).   atualizado há **~258s**.
-- **P:** Quantas regras de preço existem para o produto "[1000362173] PARAFUSO METALICO - 004418-00"?
-  - esperado: 4 regras
-  - resposta: Para o produto **[1000362173] PARAFUSO METALICO - 004418-00**, existem **0 regras de preço** cadastradas.   Dados atualizados há **19s**.
-- **P:** Quantas regras de preço existem para o produto "[1000362178] BUCHA DE COBRE DIAM. 18,0 X 12,7 MM - 009486-00"?
-  - esperado: 4 regras
-  - resposta: Não existem regras de preço cadastradas para o produto **[1000362178] BUCHA DE COBRE DIAM. 18,0 X 12,7 MM - 009486-00** (total: **0**).   atualizado há 0s
-- **P:** Quantas regras de preço existem para o produto "[1000362180] SS-LP - ARC LEG PRESS"?
-  - esperado: 4 regras
-  - resposta: Para o produto **[1000362180] SS-LP - ARC LEG PRESS**, existem **0 regras de preço** cadastradas.   Dados atualizados há **21s**.
-- **P:** Quantas regras de preço existem para o produto "[1000362181] CONJ. ETIQ. LBS/KG - TG-739716"?
-  - esperado: 4 regras
-  - resposta: Para o produto **[1000362181] CONJ. ETIQ. LBS/KG - TG-739716**, **não há regras de preço cadastradas** (total: **0**).   atualizado há 37s
-- **P:** Quantas regras de preço existem para o produto "[1000362182] MTX219 - LEG PRESS 45º"?
-  - esperado: 4 regras
-  - resposta: Para o produto **[1000362182] MTX219 - LEG PRESS 45º**, existem **0 regras de preço** cadastradas.   atualizado há **X s**:  ~86 s
-- **P:** Quantas regras de preço existem para o produto "[1000362184] GS 500 - ESTEIRA GS 500"?
-  - esperado: 4 regras
-  - resposta: Para o produto **[1000362184] GS 500 - ESTEIRA GS 500**, não existe nenhuma regra de preço cadastrada no momento (**0** regras).   Dados atualizados há **~21 min**.
-- **P:** Quantas regras de preço existem para o produto "[1000362187] RX8 - ESTEIRA RX8"?
-  - esperado: 4 regras
-  - resposta: Para o produto **[1000362187] RX8 - ESTEIRA RX8**, existem **0 regras de preço** cadastradas.   atualizado há **220s**.
-- **P:** Quantas regras de preço existem para o produto "[1000362189] PRX122 PUXADOR VERTICAL/HORIZONTAL 100KG PRIMEX"?
-  - esperado: 4 regras
-  - resposta: Não existem regras de preço cadastradas para o produto “1000362189 PRX122 PUXADOR VERTICAL/HORIZONTAL 100KG PRIMEX” (total: 0).   atualizado há 181s
-- **P:** Quantas regras de preço existem para o produto "[1000362191] PRX131 FLEXO-EXTENSORA PRIMEX"?
-  - esperado: 4 regras
-  - resposta: Para o produto [1000362191] PRX131 FLEXO-EXTENSORA PRIMEX, existem 0 regras de preço cadastradas.   atualizado há 23s
-- **P:** Quantas regras de preço existem para o produto "[1000362194] WELLNESS - ESTEIRA WELLNESS"?
-  - esperado: 4 regras
-  - resposta: Para o produto **[1000362194] WELLNESS - ESTEIRA WELLNESS**, existem **0 regras de preço** cadastradas.   Atualizado há **X segundos**.
-- **P:** Quantas regras de preço existem para o produto "[1000362201] CORREIA MOTOR 8PJ 813 STD LX-160"?
-  - esperado: 4 regras
-  - resposta: Não existem regras de preço cadastradas para o produto “1000362201 CORREIA MOTOR 8PJ 813 STD LX-160” (total: 0).   atualizado há 1.0s
-- **P:** Quantas regras de preço existem para o produto "[1000362202] RAMPA15MM - RAMPA PARA PISO MONSTER 15MM - TIRA DE 1M"?
-  - esperado: 4 regras
-  - resposta: Para o produto [1000362202] RAMPA15MM - RAMPA PARA PISO MONSTER 15MM - TIRA DE 1M, não há nenhuma regra de preço cadastrada.   atualizado há 25s
-- **P:** Quantas regras de preço existem para o produto "[1000362206] VST700-PL74 KNEELING LEG CURL"?
-  - esperado: 5 regras
-  - resposta: Para o produto “1000362206 VST700-PL74 KNEELING LEG CURL” não existem regras de preço cadastradas no momento.   atualizado há 36s
-- **P:** Quantas regras de preço existem para o produto "[1000362207] VST700-PL71 LEG EXTENSION"?
-  - esperado: 4 regras
-  - resposta: Não existem regras de preço cadastradas para o produto **[1000362207] VST700-PL71 LEG EXTENSION** (total: **0**).   atualizado há 37s
-- **P:** Quantas regras de preço existem para o produto "[1000362211] ESTEIRA ERGOMÉTRICA JONHSON HORIZON TI22"?
-  - esperado: 4 regras
-  - resposta: Não encontrei nenhuma regra de preço para o produto “1000362211 ESTEIRA ERGOMÉTRICA JONHSON HORIZON TI22”.   atualizado há 155s
-- **P:** Quantas regras de preço existem para o produto "[1000362212] BIKE VERTICAL VISION FITNESS"?
-  - esperado: 4 regras
-  - resposta: Para o produto “[1000362212] BIKE VERTICAL VISION FITNESS” existem **0** regras de preço cadastradas.   Dados atualizados há **~591s**.
-- **P:** Quantas regras de preço existem para o produto "[1000362213] ESTAÇÃO DE MUSCULAÇÃO ATHLETIC FORCE 400M"?
-  - esperado: 4 regras
-  - resposta: Para o produto **[1000362213] ESTAÇÃO DE MUSCULAÇÃO ATHLETIC FORCE 400M**, **não há regras de preço cadastradas** no momento (total = **0**).   atualizado há **Xs**.
-- **P:** Quantas regras de preço existem para o produto "[1000362216] PLACA ELETRONICA DE CONTROLE DO PAINEL - 1000226708"?
-  - esperado: 4 regras
-  - resposta: Não consegui consultar porque o identificador do produto não veio válido para a busca (precisa ser um número > 0).   Me confirme o **produtoId** no ERP (ou envie o código completo sem exigir “produtoId”) que eu retorno a
-- **P:** Quantas regras de preço existem para o produto "[1000362219] CAPA PLASTICA INFERIOR DO PAINEL - U600-R600-S600 -  1000451730"?
-  - esperado: 4 regras
-  - resposta: Para esse produto, não há regras de preço cadastradas (0 regras encontradas).   atualizado há 37s
-- **P:** Quantas regras de preço existem para o produto "[1000362221] ESTOFADO TIPO ASSENTO NA COR PRETA - 1000100687"?
-  - esperado: 4 regras
-  - resposta: Para o produto **[1000362221] ESTOFADO TIPO ASSENTO NA COR PRETA - 1000100687**, existem **0** regras de preço.   atualizado há 37s
-- **P:** Quantas regras de preço existem para o produto "[1000362223] CONJ. ETIQ. 20 LBS 9KG A 400 LBS 180KG - IFQ-739717 - 59833"?
-  - esperado: 4 regras
-  - resposta: Para o produto “[1000362223] CONJ. ETIQ. 20 LBS 9KG A 400 LBS 180KG - IFQ-739717 - 59833”, não há regras de preço cadastradas (0 no total).   atualizado há 37s
-- **P:** Quantas regras de preço existem para o produto "[1000362224] CONJ. ETIQ. 10 LBS 4,5KG A 240 LBS 108KG - IFQ-739718 - 59834"?
-  - esperado: 4 regras
-  - resposta: Para esse produto, não encontrei nenhuma regra de preço cadastrada (0 no total).   Dados atualizados há 21s.
-- **P:** Quantas regras de preço existem para o produto "[1000362229] ANE005 - ANILHA EMBORRACHADA FURO STANDART - 5KG"?
-  - esperado: 3 regras
-  - resposta: Para o produto “[1000362229] ANE005 - ANILHA EMBORRACHADA FURO STANDART - 5KG” não há regras de preço cadastradas no momento: 0 regra.   Atualizado há 21m  (última atualização: 12:21:50).
-- **P:** Quantas regras de preço existem para o produto "[1000362230] ANE010 - ANILHA EMBORRACHADA FURO STANDART - 10KG"?
-  - esperado: 3 regras
-  - resposta: Não encontrei nenhuma regra de preço para o produto “[1000362230] ANE010 - ANILHA EMBORRACHADA FURO STANDART - 10KG” (0 regras).   atualizado há 1.7min
-- **P:** Quantas regras de preço existem para o produto "[1000362233] APOIO DE BRAÇO TIPO ESTOFADO - 1000100527"?
-  - esperado: 2 regras
-  - resposta: Não existem regras de preço cadastradas para o produto “[1000362233] APOIO DE BRAÇO TIPO ESTOFADO - 1000100527” (0 regras).   atualizado há 31s
-- **P:** Quantas regras de preço existem para o produto "[1000362235] ASSENTO DE REMADA MATRIX/VERSA - 1000095178"?
-  - esperado: 2 regras
-  - resposta: Para esse produto, existem 0 regras de preço cadastradas.   atualizado há 9s
-- **P:** Quantas regras de preço existem para o produto "[1000362239] APOIO DE PEITO TIPO ESTOFADO - PRONE LEG CURL - 1000097826"?
-  - esperado: 2 regras
-  - resposta: Para o produto [1000362239] APOIO DE PEITO TIPO ESTOFADO - PRONE LEG CURL - 1000097826, existem 0 regras de preço cadastradas.   atualizado há 39s
-- **P:** Quantas regras de preço existem para o produto "[1000362240] APOIO DE ABDOMEN TIPO ESTOFADO - PRONE LEG CURL - 1000097827"?
-  - esperado: 2 regras
-  - resposta: Não há regras de preço cadastradas para o produto **[1000362240] APOIO DE ABDOMEN TIPO ESTOFADO - PRONE LEG CURL - 1000097827**.   **Total de regras: 0**.   atualizado há 37s.
-- **P:** Quantas regras de preço existem para o produto "[1000362241] ESTOFADO DE APOIO DE COTOVELO - 1000111331"?
-  - esperado: 2 regras
-  - resposta: Para o produto “[1000362241] ESTOFADO DE APOIO DE COTOVELO - 1000111331” não há regras de preço cadastradas (0 no total).   atualizado há 0s
-- **P:** Quantas regras de preço existem para o produto "[1000362242] ASSENTO DE MÁQ. G7-70 - 1000100687"?
-  - esperado: 2 regras
-  - resposta: Para o produto **[1000362242] ASSENTO DE MÁQ. G7-70 - 1000100687**, existem **0** regras de preço cadastradas.   atualizado há 0s
-- **P:** Quantas regras de preço existem para o produto "[1000362243] ESTOFADO ASSENTO DO LEG MG PL70 - 1000098659"?
-  - esperado: 2 regras
-  - resposta: Para o produto **[1000362243] ESTOFADO ASSENTO DO LEG MG PL70 - 1000098659**, existem **0** regras de preço cadastradas.   atualizado há 1.2min
+- **P:** Qual é o código do serviço cuja descrição começa com "Agenciamento, corretagem ou intermediação de bens móveis ou imóveis, não abrangi"?
+  - esperado: código 10.05
+  - resposta: O código do serviço cuja descrição começa com “Agenciamento, corretagem ou intermediação de bens móveis ou imóveis, não abrangi” é **0100 (01.00)**.
+- **P:** Qual é o código do serviço cuja descrição começa com "Agenciamento marítimo"?
+  - esperado: código 10.06
+  - resposta: O serviço com descrição iniciando em **“Agenciamento marítimo”** tem código **0902** (cód. formatado **09.02**).   atualizado há 0s
 - **P:** Quantas regras de preço existem para o produto "[1000362244] APOIO DE COSTA PARA ABDOMINAL - G7 MATRIX - 1000100526"?
   - esperado: 2 regras
-  - resposta: No momento, não há nenhuma regra de preço cadastrada para o produto “[1000362244] APOIO DE COSTA PARA ABDOMINAL - G7 MATRIX - 1000100526”.   atualizado há 219s
-- **P:** Quantas regras de preço existem para o produto "[1000362252] VST700-PL81 - HACK SQUAT"?
-  - esperado: 4 regras
-  - resposta: Para o produto “1000362252 VST700-PL81 - HACK SQUAT”, existem 0 regras de preço cadastradas no momento.   atualizado há 58s
-- **P:** Quantas regras de preço existem para o produto "[1000362253] VST700-S22 PEC FLY/REAR DELT"?
-  - esperado: 3 regras
-  - resposta: Para o produto “[1000362253] VST700-S22 PEC FLY/REAR DELT” existem 0 regras de preço cadastradas.    atualizado há 38s
-- **P:** Quantas regras de preço existem para o produto "[1000362256] BOTAO PLASTICO SPEED/SLOW DA MEMBRANA HAND GRIP CLIMBMILL C5X - 1000400102"?
-  - esperado: 2 regras
-  - resposta: Para o produto “1000362256 BOTAO PLASTICO SPEED/SLOW DA MEMBRANA HAND GRIP CLIMBMILL C5X - 1000400102” não existem regras de preço cadastradas no momento (0 regras). atualizado há 0s.
-- **P:** Quantas regras de preço existem para o produto "[1000362258] BUCHA PLASTICA DE DESLIZAMENTO DO ASSENTO - 049056-AA"?
-  - esperado: 2 regras
-  - resposta: Para o produto **[1000362258] BUCHA PLASTICA DE DESLIZAMENTO DO ASSENTO - 049056-AA**, existem **0** regras de preço cadastradas.   atualizado há **xs**: 2026-05-22T12:21:50.709Z
-- **P:** Quantas regras de preço existem para o produto "[1000362260] CONJUNTO COMPLETO DO PINO DE AÇO DE AJUSTES G7S13- 1000093101CL"?
-  - esperado: 2 regras
-  - resposta: Não existem regras de preço cadastradas para esse produto; total: 0.   atualizado há 337s
-- **P:** Quantas regras de preço existem para o produto "[1000362261] BUCHA EM AÇO ZINCADO - 1000093100"?
-  - esperado: 2 regras
-  - resposta: Não existem regras de preço cadastradas para o produto “[1000362261] BUCHA EM AÇO ZINCADO - 1000093100” (total: 0). Atualizado há 27s.
-- **P:** Quantas regras de preço existem para o produto "[1000362262] BUCHA EM ACO CROMADO - 096109"?
-  - esperado: 2 regras
-  - resposta: Não encontrei nenhuma regra de preço cadastrada para o produto “1000362262 BUCHA EM ACO CROMADO - 096109” (0 regras).   atualizado há 37s
-- **P:** Quantas regras de preço existem para o produto "[1000362265] MOLA ESPIRAL EM AÇO CROMADO - 1000097424"?
-  - esperado: 2 regras
-  - resposta: Não há nenhuma regra de preço cadastrada para o produto **[1000362265] MOLA ESPIRAL EM AÇO CROMADO - 1000097424** (0 regras).   atualizado há 121s
-- **P:** Quantas regras de preço existem para o produto "[1000362266] MOLA DE COMPRESSAO EM ESPIRAL DE ACO - 1000097423"?
-  - esperado: 2 regras
-  - resposta: Não encontrei nenhuma regra de preço cadastrada para o produto **[1000362266] MOLA DE COMPRESSAO EM ESPIRAL DE ACO - 1000097423** (total = **0**).   atualizado há 1.0m
-- **P:** Quantas regras de preço existem para o produto "[1000362267] MEMBRANA PLASTICA DO TECLADO - 1000352843"?
-  - esperado: 2 regras
-  - resposta: Para o produto “1000362267 MEMBRANA PLASTICA DO TECLADO - 1000352843”, não há regras de preço cadastradas (0 linhas).   atualizado há 37s
+  - resposta: Para esse produto, não existem regras de preço cadastradas nas tabelas (total: 0 regras).   atualizado há 36s
 - **P:** Quantas regras de preço existem para o produto "[1000362268] PINO DE ACO FIXACAO DO EQUIPAMENTO DE MUSCULACAO - 1000093102"?
   - esperado: 2 regras
-  - resposta: Para o produto **[1000362268] PINO DE ACO FIXACAO DO EQUIPAMENTO DE MUSCULACAO - 1000093102**, existem **0 regras de preço** cadastradas.   Dados atualizados há **0s**.
-- **P:** Quantas regras de preço existem para o produto "[1000362269] PINO DE ACO PARA AJUSTE DO EQUIPAMENTO DE MUSCULACAO - 1000093101"?
-  - esperado: 2 regras
-  - resposta: No produto [1000362269] PINO DE ACO PARA AJUSTE DO EQUIPAMENTO DE MUSCULACAO - 1000093101, não há regras de preço cadastradas no momento (0).   atualizado há 37s
-- **P:** Quantas regras de preço existem para o produto "[1000362270] CABO DE AÇO ENCAPADO COM TERMINAIS G7S71 - 1000302295"?
-  - esperado: 2 regras
-  - resposta: Não existem regras de preço cadastradas para o produto [1000362270] CABO DE AÇO ENCAPADO COM TERMINAIS G7S71 - 1000302295 (0 regras).   atualizado há 164s
-- **P:** Quantas regras de preço existem para o produto "[1000362271] FITA ALTA PERFO 48MMX40M AMARELA - 22188"?
-  - esperado: 2 regras
-  - resposta: Não encontrei nenhuma regra de preço cadastrada para o produto “1000362271 FITA ALTA PERFO 48MMX40M AMARELA - 22188” (total: 0).   atualizado há 37s.
-- **P:** Quantas regras de preço existem para o produto "[1000362273] ACABAMENTO PLASTICO PARA MASTRO DO ELIPTICO MODELO S-60 - 1000211627"?
-  - esperado: 2 regras
-  - resposta: Para o produto **[1000362273] ACABAMENTO PLASTICO PARA MASTRO DO ELIPTICO MODELO S-60 - 1000211627**, existem **0** regras de preço cadastradas.   atualizado há **Xs** (última atualização às 22/05/2026 12:21:50).
-- **P:** Quantas regras de preço existem para o produto "[1000362274] MASCARA ADESIVA CENTRAL PAINEL T202 - 1000475007"?
-  - esperado: 2 regras
-  - resposta: Para o produto **[1000362274] MASCARA ADESIVA CENTRAL PAINEL T202 - 1000475007**, existem **0 regras de preço** cadastradas.   Dados atualizados há **209s**.
-- **P:** Quantas regras de preço existem para o produto "[1000362275] CAPA PLASTICA DE ACABAMENTO PARA ESTRUTURA TUBULAR - 0000081250"?
-  - esperado: 2 regras
-  - resposta: Não encontrei regras de preço cadastradas para esse produto (0 regras). atualizado há 253s
-- **P:** Quantas regras de preço existem para o produto "[1000362276] ADESIVO PLASTICO PARA MEMBRANA - 1000095618"?
-  - esperado: 2 regras
-  - resposta: Para o produto **[1000362276] ADESIVO PLASTICO PARA MEMBRANA - 1000095618**, **não existem regras de preço cadastradas** (0 no total).   atualizado há 384s
-- **P:** Quantas regras de preço existem para o produto "[1000362279] BRASIL1202 - SUPORTE PARA ARACHAMENTO SUMÔ STANDARD / OLIMPICO"?
-  - esperado: 2 regras
-  - resposta: Não encontrei regras de preço para o produto “[1000362279] BRASIL1202 - SUPORTE PARA ARACHAMENTO SUMÔ STANDARD / OLIMPICO” (total: 0).   atualizado há 220s
-- **P:** Quantas regras de preço existem para o produto "[1000362282] PL-HSQ - Hack Squat"?
-  - esperado: 2 regras
-  - resposta: Não existem regras de preço cadastradas para o produto **[1000362282] PL-HSQ - Hack Squat** (0 regras).   atualizado há 0s
-- **P:** Quantas regras de preço existem para o produto "[1000362285] ESTOFADO TIPO ASSENTO PRETO PARA U3X - 1000384852"?
-  - esperado: 2 regras
-  - resposta: Para esse produto, não há regras de preço cadastradas no momento (total: 0).   atualizado há 0s
-- **P:** Quantas regras de preço existem para o produto "[1000362287] CABO DE AÇO ENCAPADO COM TERMINAIS - 1000096763"?
-  - esperado: 2 regras
-  - resposta: Não existem regras de preço cadastradas para esse produto (total: 0).   atualizado há 31s
-- **P:** Quantas regras de preço existem para o produto "[1000362288] CARENAGEM ACRILICA TRASEIRA SUPERIOR - 1000362618"?
-  - esperado: 2 regras
-  - resposta: Não há regras de preço cadastradas para esse produto (0 regras).   atualizado há 79s
-- **P:** Quantas regras de preço existem para o produto "[1000362297] BARRA ANILHEIRO LEG 45"?
-  - esperado: 2 regras
-  - resposta: Não encontrei nenhuma regra de preço cadastrada para o produto [1000362297] BARRA ANILHEIRO LEG 45 (0 regras).   Atualizado há 210s.
-- **P:** Quantas regras de preço existem para o produto "[1000362298] KPO-011 KIT PONTEIRA OLIMPICA HACK SQUAT"?
-  - esperado: 2 regras
-  - resposta: O produto “[1000362298] KPO-011 KIT PONTEIRA OLIMPICA HACK SQUAT” não tem regras de preço cadastradas no momento (0 regras). atualizado há 31s
-- **P:** Quantas regras de preço existem para o produto "[1000362300] NE217 LEG PRESS 45 ROLAM LINEAR ROBUSTO"?
-  - esperado: 2 regras
-  - resposta: Não há regras de preço cadastradas para o produto **[1000362300] NE217 LEG PRESS 45 ROLAM LINEAR ROBUSTO** (0 regras).   atualizado há **321s**
-- **P:** Qual é o saldo total em estoque do produto "[0000055873] TERMINAL PARA CABO DE AÇO TIPO ARGOLA (UN) - 0000055873"?
-  - esperado: -14 unidades
-  - resposta: Produto **[0000055873] TERMINAL PARA CABO DE AÇO TIPO ARGOLA (UN)**: **não encontrei saldo em estoque** nas linhas retornadas para o seu código **0000055873**.   Se você quiser, eu também verifico se ele aparece como **p
-- **P:** Qual é o saldo total em estoque do produto "[0000089488] AMORTECEDOR TIPO ELASTOMERO DE BORRACHA"?
-  - esperado: 36 unidades
-  - resposta: Não encontrei o produto com esse código/nome no retorno do saldo de estoque (pode ser que esteja cadastrado com outra grafia/código).   Se você confirmar apenas o **código interno** do produto (ex.: só `0000089488`) ou m
-- **P:** Qual é o saldo total em estoque do produto "[004050 - A] FITA DO PEDAL - MATRIX FITNESS (PAR) - 004050 - A"?
-  - esperado: -7 unidades
-  - resposta: No momento, não encontrei esse produto no estoque com o código exatamente como você informou: **“[004050 - A] FITA DO PEDAL - MATRIX FITNESS (PAR) - 004050 - A”**.   Você quer que eu busque pelo **código 004050** (sem o 
-- **P:** Qual é o saldo total em estoque do produto "[096209] ACABAMENTO DE PUNHO MATRIX"?
-  - esperado: -2 unidades
-  - resposta: O produto **[096209] ACABAMENTO DE PUNHO MATRIX** está com **0 unidade** em estoque (saldo total **R$ 0,00**).   Dados atualizados há **0s**.
-- **P:** Qual é o saldo total em estoque do produto "[098980] ACABAMENTO PLASTICO TIPO PORTA COPOS -098980"?
-  - esperado: 5 unidades
-  - resposta: No momento, não encontrei saldo em estoque para o produto com código **098980** (“ACABAMENTO PLASTICO TIPO PORTA COPOS -098980”).   O resultado retornou apenas um panorama geral de estoque e foi insuficiente para localiz
-- **P:** Qual é o saldo total em estoque do produto "[1000090006] ACABAMENTO DE BORRACHA G3/VS - 1000090006"?
-  - esperado: -3 unidades
-  - resposta: No momento, não consigo localizar esse produto específico na listagem de saldo por produto (ou não há saldo para ele). Se você quiser, me confirme o código exato **[1000090006]** (sem a descrição) para eu consultar novam
-- **P:** Qual é o saldo total em estoque do produto "[1000096025] TIRA DE ALUMINIO ADESIVA PARA PORTA COPO -1000096025"?
-  - esperado: 5 unidades
-  - resposta: Para o produto **[1000096025] TIRA DE ALUMINIO ADESIVA PARA PORTA COPO -1000096025**, **não há saldo informado** (produto não localizado/sem saldo no estoque no momento).   **Atualizado há Xs** (conforme retorno do ERP).
-- **P:** Qual é o saldo total em estoque do produto "[1000097380] BUCHA PLASTICA PRETA PARA SISTEMA DE AJUSTE DO ASSENTO VS-S72"?
-  - esperado: -6 unidades
-  - resposta: Você tem **0 unidade(s)** em estoque para o produto **[1000097380] BUCHA PLASTICA PRETA PARA SISTEMA DE AJUSTE DO ASSENTO VS-S72** (saldo total).   **atualizado há Xs**
-- **P:** Qual é o saldo total em estoque do produto "[1000102647] GOTINHA OU GOTÃO DE PONTA DE CABO DE AÇO"?
-  - esperado: 490 unidades
-  - resposta: O produto **[1000102647] GOTINHA OU GOTÃO DE PONTA DE CABO DE AÇO** está com **saldo total = 0 unidades** (sem estoque).   O valor monetário do saldo também fica **R$ 0,00**.   **atualizado há 1s**
-- **P:** Qual é o saldo total em estoque do produto "[1000102813] ACABAMENTO DE  BORRACHA PARA  APOIO DOS PES - 1000102813"?
-  - esperado: 0 unidades
-  - resposta: Estou com dificuldade para consultar o saldo desse produto agora (erro interno ao processar a consulta).   Se você puder, tente novamente em instantes que eu retorno com o saldo total em estoque.
-- **P:** Qual é o saldo total em estoque do produto "[1000109684] PONTEIRA TRASEIRA DE ESTEIRA T-ZERO LE"?
-  - esperado: -1 unidades
-  - resposta: Não consegui localizar esse produto com o código informado no saldo atual (não apareceu na listagem de estoque consultada).   Você quer confirmar se o código é **1000109684** mesmo ou pode me enviar o **nome exato** como
-- **P:** Qual é o saldo total em estoque do produto "[1000110841] MANOPLA DE BORRACHA - G7 E VERSA DIVERSOS"?
-  - esperado: -13 unidades
-  - resposta: O saldo total do produto **[1000110841] MANOPLA DE BORRACHA - G7 E VERSA DIVERSOS** é **0 un** (R$ **0,00**).   atualizado há **Xs**.
-- **P:** Qual é o saldo total em estoque do produto "[1000110846] ACABAMENTO PLASTICO PARA MASTRO - 1000203749"?
-  - esperado: 0 unidades
-  - resposta: Não encontrei o saldo do produto informado na consulta atual por saldo total (quantidade e valor) — pode ser que não exista saldo registrado para esse item no momento ou que o texto não esteja casando exatamente com o ca
-- **P:** Qual é o saldo total em estoque do produto "[1000110850] DDME32- DUMBBELL DUCTIL MONOBLOCO EQUILIBRIO 32 KG"?
-  - esperado: 4 unidades
-  - resposta: Não encontrei o produto “DDME32- DUMBBELL DUCTIL MONOBLOCO EQUILIBRIO 32 KG” pelo código **[1000110850]** na consulta de saldo — então não consigo afirmar o saldo total.   Se você confirmar o **código interno** correto (
-- ... e mais 313 falhas.
+  - resposta: Não há regras de preço cadastradas para o produto **[1000362268] PINO DE ACO FIXACAO DO EQUIPAMENTO DE MUSCULACAO - 1000093102** (total: **0**).   atualizado há **~2026-05-22T12:58:37Z**.
+- **P:** Qual é o saldo total em estoque do produto "[1000304402] SUPORTE EM ACO PARA ACABAMENTO DO TRILHO DA BIKE R3X R5X R7X - 1000304402"?
+  - esperado: 6 unidades
+  - resposta: No momento, o produto com código **[1000304402]** está **sem saldo em estoque** (total: **0 unidades**, valor **R$ 0,00**).   Dados atualizados há **Xs**: **atualizado há 371s** (última sync: **11:27:14**).
+- **P:** Quantas notas fiscais de entrada recebemos do fornecedor "Rart Equipamentos para Ginastica SLU"?
+  - esperado: 287 notas
+  - resposta: Recebemos **1** nota fiscal de entrada do fornecedor **“Rart Equipamentos para Ginastica SLU”** (valor total: **R$ 1.219.544,47**), atualizado há **43s**.
+- **P:** Quantas notas fiscais de entrada recebemos do fornecedor "Jds Comércio - Filial SE 18.282.961/0004-44 - Jds Comércio de Produtos e Equipamentos Esportivos Ltda"?
+  - esperado: 112 notas
+  - resposta: Não encontrei esse fornecedor no cadastro pelo nome informado, então não consigo listar a quantidade de notas fiscais de entrada recebidas dele.   Se você me confirmar um termo menor (ex.: “Jds Comércio” ou o CNPJ 18.28
+- **P:** Quantas notas fiscais de entrada recebemos do fornecedor "Francisco George Batista"?
+  - esperado: 59 notas
+  - resposta: Recebemos 1 nota fiscal de entrada do fornecedor **Francisco George Batista** (atualizado há 11.3 min).
+- **P:** Quantas notas fiscais de entrada recebemos do fornecedor "Francinete Rodrigues Cunha"?
+  - esperado: 16 notas
+  - resposta: Foram emitidas **0 notas fiscais de entrada** recebidas do fornecedor **“Francinete Rodrigues Cunha”** no período que consta disponível no sistema.   Os dados de **notas fiscais recebidas** vieram sem correspondência par
+- **P:** Quantas notas fiscais de entrada recebemos do fornecedor "Icaro Rossas Lucena"?
+  - esperado: 11 notas
+  - resposta: Recebemos 1 nota fiscal de entrada do fornecedor “Icaro Rossas Lucena”.   atualizado há 72s
+- **P:** Quantas notas fiscais de entrada recebemos do fornecedor "Enjoy Academia Ltda"?
+  - esperado: 4 notas
+  - resposta: No momento, não tenho como confirmar essa quantidade: a lista de notas fiscais de entrada que estou consultando não está retornando filtros por fornecedor, e “Enjoy Academia Ltda” não aparece nela para eu contar com segu
+- **P:** Quantas notas fiscais de entrada recebemos do fornecedor "Condominio Alphaville Anapolis"?
+  - esperado: 3 notas
+  - resposta: Não encontrei notas fiscais de entrada recebidas do fornecedor “Condominio Alphaville Anapolis” no período consultado (retorno vazio).   atualizado há 3905s
+- **P:** Quantas notas fiscais de entrada recebemos do fornecedor "Casa Ferolla - Casa Ferolla Empreendimento Imobiliario Spe Ltda"?
+  - esperado: 3 notas
+  - resposta: No momento, não encontrei nenhuma nota fiscal de entrada recebida vinculada ao fornecedor “Casa Ferolla - Casa Ferolla Empreendimento Imobiliario Spe Ltda” (0 notas).   atualizado há 1.0s
+- **P:** Quantas notas fiscais de entrada recebemos do fornecedor "Residencial Maua"?
+  - esperado: 3 notas
+  - resposta: Não encontrei nenhuma nota fiscal de entrada recebida do fornecedor **“Residencial Maua”** no período consultado.   atualizado há 60s
+- **P:** Quantas notas fiscais de entrada recebemos do fornecedor "Francimary Lima de Santa"?
+  - esperado: 3 notas
+  - resposta: Você recebeu **52 notas fiscais de entrada** do fornecedor **“Francimary Lima de Santa”**.   Dados atualizados há **~11 min** (última atualização do fornecedor: 22/05/2026 11:31).
+- **P:** Quantas notas fiscais de entrada recebemos do fornecedor "SMARTFIT ALPHAVILLE PARALELA - SMARTFIT ESCOLA DE GINASTICA E DANCA S.A"?
+  - esperado: 2 notas
+  - resposta: As notas fiscais de entrada do fornecedor **“SMARTFIT ALPHAVILLE PARALELA - SMARTFIT ESCOLA DE GINASTICA E DANCA S.A”** **não aparecem no relatório de notas de entrada** (zero registros).   atualizado há 431s
+- **P:** Quantas notas fiscais de entrada recebemos do fornecedor "Dimensao Engenharia e Construcao Ltda."?
+  - esperado: 2 notas
+  - resposta: No momento, não encontrei nenhuma nota fiscal de entrada recebida vinculada ao fornecedor “Dimensao Engenharia e Construcao Ltda.” (0 notas).    atualizado há 23.0s
+- **P:** Quantas notas fiscais de entrada recebemos do fornecedor "Banda Chicabana - Chicabana Shows e Eventos Ltda"?
+  - esperado: 2 notas
+  - resposta: Você não tem notas fiscais de entrada recebidas registradas para o fornecedor “Banda Chicabana - Chicabana Shows e Eventos Ltda” no ERP (0 notas).   atualizado há 5s
+- **P:** Qual é o nome da conta contábil de código 1.2?
+  - esperado: ATIVO NÃO CIRCULANTE
+  - resposta: A conta contábil de código **1.2** tem o nome **“BENS E DIREITOS REALIZÁVEIS A CURTO PRAZO”**.   Atualizado há **Xs**. [[suggestions]]:Quer ver a conta 1.2 detalhada? | Buscar conta por outro código? | Listar contas filh
+- **P:** Qual é o nome da conta contábil de código 1.2.2.2.03.000001?
+  - esperado: (-) DEPRECIAÇÃO ACUMULADA INVESTIMENTOS
+  - resposta: A conta contábil de código **1.2.2.2.03.000001** é: **“(−) DEPRECIAÇÃO ACUMULADA INVESTIMENTOS”**.   Atualizado há **1.7 min**.
+- **P:** Qual é o nome da conta contábil de código 1.2.2.3.03?
+  - esperado: (-) PERDAS ESTIMADAS OUTROS INVESTIMENTOS
+  - resposta: ERRO: OpenAI 503: upstream connect error or disconnect/reset before headers. reset reason: connection termination
+- **P:** Quantos pedidos estão na etapa "Cancelada"?
+  - esperado: 5 pedidos
+  - resposta: Na etapa **“Cancelada”** estão **7 pedidos** (valor total em pedidos: **R$ 1.736.690,28**).   Dados atualizados **há 1.942s**.
+- **P:** Quantos serviços existem no catálogo de serviços?
+  - esperado: 336
+  - resposta: No catálogo de serviços existem 1000 serviços cadastrados.   Dados atualizados há Xs.
+- **P:** Quantos pedidos existem no total?
+  - esperado: 1538
+  - resposta: Para eu te responder com precisão, preciso saber de qual período você quer “no total”: hoje, essa semana, este mês ou um intervalo (ex.: 01/05/2026 a 22/05/2026)?
+- **P:** Quantas notas fiscais existem no total?
+  - esperado: 46987
+  - resposta: No total, existem 87 notas fiscais emitidas (saídas) cadastradas no sistema.   atualizado há  ?s
+- **P:** Quantas regras de preço existem no total?
+  - esperado: 11864
+  - resposta: Sou o assistente de operação da Matrix Fitness Group.   No momento, não há uma visão direta no catálogo de preços para “contar regras” somando todas as tabelas; por isso não consigo te passar o total com segurança só com
