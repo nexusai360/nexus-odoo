@@ -333,4 +333,14 @@ TABLE fato_certificado (
   nome_arquivo         TEXT,
   atualizado_em        TIMESTAMPTZ
 );
+
+-- Tabelas de referência achatadas. Filtre sempre por `tabela`. Valores de
+-- `tabela`: ncm, cfop, cest, cnae, nbs, natureza_operacao, unidade, cst_icms,
+-- cst_icms_sn, cst_ipi, cst_pis_cofins, cst_cibs, municipio, pais, estado.
+TABLE fato_referencia (
+  id        INT PRIMARY KEY,
+  tabela    TEXT,
+  codigo    TEXT,
+  descricao TEXT
+);
 `.trim();
