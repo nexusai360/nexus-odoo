@@ -535,7 +535,7 @@ export function LlmConfigForm({
                     currency: "USD",
                   });
                 return (
-                  <div className="mt-3 flex flex-wrap items-center justify-between gap-3 rounded-lg border border-border bg-muted/20 px-3.5 py-3">
+                  <div className="mt-4 flex flex-wrap items-center justify-between gap-3 rounded-lg border border-border bg-muted/20 px-3.5 py-3">
                     <div className="flex flex-col gap-0.5">
                       <span className="text-xs text-muted-foreground">
                         {sel.balance?.status === "ok" &&
