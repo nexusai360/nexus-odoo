@@ -3,6 +3,12 @@
 > **Ponto de retomada entre sessões.** Atualizado em 2026-05-19.
 > Ao abrir uma sessão: ler **este arquivo** e o **`CLAUDE.md`**. Modo autônomo
 > é o padrão (ver `CLAUDE.md §6`).
+>
+> ## ⚠️ BRANCH ATUAL: `feat/f4-leitura-expansao`
+> Trabalho em curso: F4 Expansão da base de leitura (L1/L2/L3). A retomada
+> desta branch está em **`docs/HANDOFF-2026-05-21-f4-leitura-expansao.md`** —
+> ler esse handoff antes de seguir. O conteúdo abaixo é o estado da `main`
+> anterior a esta branch.
 
 ---
 
