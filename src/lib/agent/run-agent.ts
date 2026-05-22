@@ -232,11 +232,22 @@ export async function runAgent(args: RunAgentInput): Promise<RunAgentResult> {
     };
     const systemPrompt = composeSystemPrompt(promptCfg, kbSnippets, undefined, biSchema);
 
-    // Carregar tools do MCP interno + dos MCPs externos plugados
-    const mcpTools = session ? await session.listTools() : [];
+    // Carregar tools do MCP interno + dos MCPs externos plugados.
+    // Nomes com caracteres fora de [a-zA-Z0-9_-] (ex.: `crm.res_partner.get`)
+    // são saneados — a OpenAI recusa nome de function com ponto. `nomeRealDaTool`
+    // mapeia o nome saneado de volta ao real na hora de chamar a tool.
+    const mcpToolsRaw = session ? await session.listTools() : [];
+    const nomeRealDaTool = new Map<string, string>();
+    const sanearTool = <T extends { name: string }>(t: T): T => {
+      const seguro = t.name.replace(/[^a-zA-Z0-9_-]/g, "_");
+      if (seguro === t.name) return t;
+      nomeRealDaTool.set(seguro, t.name);
+      return { ...t, name: seguro };
+    };
+    const mcpTools = mcpToolsRaw.map(sanearTool);
     const tools = mcpToolsToProviderTools([
       ...mcpTools,
-      ...(externalBundle?.tools ?? []),
+      ...(externalBundle?.tools ?? []).map(sanearTool),
     ]);
 
     // Carregar histórico (últimas 20 msgs) e sanitizar pares tool_use/tool_result
@@ -338,10 +349,10 @@ export async function runAgent(args: RunAgentInput): Promise<RunAgentResult> {
         if (isExternalToolName(tc.name)) {
           // Tool de MCP externo: roteia para a sessão do servidor certo.
           toolResultStr = externalBundle
-            ? await callExternalTool(externalBundle, tc.name, toolArgs, args.userId)
+            ? await callExternalTool(externalBundle, nomeRealDaTool.get(tc.name) ?? tc.name, toolArgs, args.userId)
             : "(MCP externo indisponível)";
         } else if (session) {
-          toolResultStr = await session.callTool(tc.name, toolArgs);
+          toolResultStr = await session.callTool(nomeRealDaTool.get(tc.name) ?? tc.name, toolArgs);
         } else {
           toolResultStr = "(MCP indisponível)";
         }
