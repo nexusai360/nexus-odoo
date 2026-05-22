@@ -21,7 +21,9 @@ export interface RateLimitResult {
   remaining: number;
 }
 
-const LIMIT = 60;       // requisições por janela
+// Limite por janela. Padrão 60/min; `MCP_RATE_LIMIT` permite ajustar por
+// ambiente (ex.: bateria de carga/validação). Produção mantém o padrão.
+const LIMIT = Number(process.env.MCP_RATE_LIMIT) || 60;
 const WINDOW_SECS = 60; // janela em segundos
 
 /** Mensagem retornada ao cliente quando o rate limit é excedido. */
