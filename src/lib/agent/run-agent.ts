@@ -30,6 +30,7 @@ import {
 } from "./conversation";
 import { composeSystemPrompt } from "./prompt/compose";
 import { BI_SCHEMA_REFERENCE } from "./bi-schema-reference";
+import { progressLabel } from "./progress-labels";
 import { searchKb } from "./rag/search";
 import { EmbeddingUnavailable } from "./rag/embed";
 import type { ChatMessage, ChatUsage, ToolCall } from "./llm/types";
@@ -90,8 +91,9 @@ function guardToolResult(result: string): string {
 export type AgentEvent =
   | { type: "thinking" }
   | { type: "token"; delta: string }
-  | { type: "tool_call"; toolName: string }
-  | { type: "tool_result"; toolName: string; truncated: boolean }
+  /** `label` é o rótulo genérico exibido na UI; `toolName` é o id cru interno. */
+  | { type: "tool_call"; toolName: string; label: string }
+  | { type: "tool_result"; toolName: string; truncated: boolean; label: string }
   | { type: "done" };
 
 export interface RunAgentInput {
@@ -342,7 +344,11 @@ export async function runAgent(args: RunAgentInput): Promise<RunAgentResult> {
 
       // Executar cada tool via MCP
       for (const tc of result.toolCalls) {
-        args.onEvent?.({ type: "tool_call", toolName: tc.name });
+        args.onEvent?.({
+          type: "tool_call",
+          toolName: tc.name,
+          label: progressLabel(tc.name),
+        });
 
         const toolArgs = (tc.arguments ?? {}) as Record<string, unknown>;
         let toolResultStr: string;
@@ -361,7 +367,12 @@ export async function runAgent(args: RunAgentInput): Promise<RunAgentResult> {
         const guarded = guardToolResult(toolResultStr);
         const wasTruncated = guarded !== toolResultStr;
 
-        args.onEvent?.({ type: "tool_result", toolName: tc.name, truncated: wasTruncated });
+        args.onEvent?.({
+          type: "tool_result",
+          toolName: tc.name,
+          truncated: wasTruncated,
+          label: progressLabel(tc.name),
+        });
 
         conversation.push({
           role: "tool",
