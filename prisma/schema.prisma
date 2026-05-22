@@ -2326,6 +2326,29 @@ model AgentSettings {
   @@map("agent_settings")
 }
 
+/// Overrides do catálogo de modelos LLM. Modelos novos descobertos pelo botão
+/// "atualizar" (ou pelo script CLI) ficam aqui; o catálogo efetivo em runtime
+/// é o merge de catalog.ts (base) + esta tabela. Tabela vazia = usa só a base.
+model LlmModelEntry {
+  id                 String   @id
+  provider           String
+  label              String
+  tier               String
+  pricingInput       Float?   @map("pricing_input")
+  pricingOutput      Float?   @map("pricing_output")
+  pricingPerMinute   Float?   @map("pricing_per_minute")
+  modelUse           String?  @map("model_use")
+  audio              Boolean  @default(false)
+  vision             Boolean  @default(false)
+  reasoningLevels    Json?    @map("reasoning_levels")
+  released           String?
+  notes              String?
+  source             String   @default("sync")
+  updatedAt          DateTime @updatedAt @map("updated_at")
+  @@index([provider])
+  @@map("llm_model_entry")
+}
+
 /// Documento da base de conhecimento do agente.
 /// A coluna embedding vector(1536) é adicionada via SQL raw na migration (pgvector, onda 7).
 model KbDocument {

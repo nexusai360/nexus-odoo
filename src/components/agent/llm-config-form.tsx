@@ -22,6 +22,7 @@ import {
   AlertCircle,
   Plus,
   CreditCard,
+  RefreshCw,
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -51,9 +52,49 @@ import {
   updateBubbleEnabled,
 } from "@/lib/actions/agent-config";
 import { testCredentialConnectionAction } from "@/lib/actions/credentials";
+import { syncProviderModels } from "@/lib/actions/sync-models";
 import { cn } from "@/lib/utils";
 
 const CUSTOM_MODEL_VALUE = "__custom__";
+
+function SyncModelsButton({ provider }: { provider: LlmProvider }) {
+  const router = useRouter();
+  const [pending, startTransition] = useTransition();
+  return (
+    <button
+      type="button"
+      title="Buscar modelos novos e atualizar precos do provedor"
+      aria-label="Atualizar modelos"
+      disabled={pending}
+      onClick={() => {
+        startTransition(async () => {
+          const r = await syncProviderModels(provider);
+          if (!r.success) {
+            toast.error(r.error ?? "Falha ao atualizar.");
+            return;
+          }
+          const novos = r.novos?.length ?? 0;
+          const atualizados = r.atualizados?.length ?? 0;
+          if (novos === 0 && atualizados === 0) {
+            toast.success("Catalogo ja esta atualizado.");
+          } else {
+            toast.success(
+              `${novos} novo(s), ${atualizados} atualizado(s).`,
+            );
+          }
+          router.refresh();
+        });
+      }}
+      className="inline-flex h-7 w-7 cursor-pointer items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-muted hover:text-foreground disabled:cursor-not-allowed disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+    >
+      {pending ? (
+        <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden />
+      ) : (
+        <RefreshCw className="h-3.5 w-3.5" aria-hidden />
+      )}
+    </button>
+  );
+}
 
 const PROVIDERS: LlmProvider[] = [
   "openai",
@@ -441,7 +482,10 @@ export function LlmConfigForm({
           </div>
 
           <div className="space-y-1.5">
-            <Label htmlFor="llm-model">Modelo</Label>
+            <div className="flex items-center justify-between">
+              <Label htmlFor="llm-model">Modelo</Label>
+              <SyncModelsButton provider={provider} />
+            </div>
             <SearchableSelect
               value={modelSelect}
               onChange={handleModelChange}
