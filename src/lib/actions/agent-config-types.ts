@@ -34,6 +34,8 @@ export interface AgentSettingsData {
   imageCredentialId: string | null;
   /** Profundidade de raciocínio dos modelos reasoning (null = default do provider). */
   reasoningEffort: string | null;
+  /** Checkpoint de 3 estados do modo raciocínio (OFF/PLAYGROUND/PRODUCTION). */
+  reasoningCheckpoint: FeatureCheckpoint;
   updatedAt: Date;
 }
 

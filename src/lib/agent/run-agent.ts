@@ -168,6 +168,7 @@ async function loadAgentSettings() {
     terminology: (row?.terminology as Record<string, string>) ?? {},
     suggestionsEnabled: row?.suggestionsEnabled ?? true,
     reasoningEffort: normalizeReasoningEffort(row?.reasoningEffort),
+    reasoningCheckpoint: row?.reasoningCheckpoint ?? "OFF",
   };
 }
 
@@ -313,12 +314,20 @@ export async function runAgent(args: RunAgentInput): Promise<RunAgentResult> {
         ? (delta: string) => args.onEvent!({ type: "token", delta })
         : undefined;
 
+      // Respeita o checkpoint: OFF nunca envia; PLAYGROUND só no playground;
+      // PRODUCTION libera nos dois ambientes.
+      const reasoningAllowed =
+        agentSettings.reasoningCheckpoint === "PRODUCTION" ||
+        (agentSettings.reasoningCheckpoint === "PLAYGROUND" && args.isPlayground);
       const result = await client.chat({
         messages: conversation,
         tools,
         stream: !!onToken,
         onToken,
-        reasoningEffort: agentSettings.reasoningEffort ?? undefined,
+        reasoningEffort:
+          reasoningAllowed
+            ? agentSettings.reasoningEffort ?? undefined
+            : undefined,
       });
 
       totalUsage.tokensInput += result.usage.tokensInput;

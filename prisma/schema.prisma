@@ -2302,6 +2302,9 @@ model AgentSettings {
   /// Checkpoint das sugestões clicáveis (substitui suggestionsEnabled — B3).
   suggestionsCheckpoint FeatureCheckpoint @default(PRODUCTION) @map("suggestions_checkpoint")
 
+  /// Checkpoint de 3 estados do modo raciocínio (OFF/PLAYGROUND/PRODUCTION).
+  /// Controla em qual ambiente o reasoning_effort é aplicado.
+  reasoningCheckpoint FeatureCheckpoint @default(OFF) @map("reasoning_checkpoint")
   /// Profundidade de raciocínio dos modelos reasoning (ex.: GPT-5.x).
   /// null = usa o default do provider. Valores: minimal | low | medium | high.
   reasoningEffort   String?  @map("reasoning_effort")

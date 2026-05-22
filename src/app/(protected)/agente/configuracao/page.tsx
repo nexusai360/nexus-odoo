@@ -89,7 +89,10 @@ export default async function Page() {
     imageModel: settings?.imageModel ?? null,
     imageCredentialId: settings?.imageCredentialId ?? null,
     reasoningEffort: settings?.reasoningEffort ?? null,
+    reasoningCheckpoint: settings?.reasoningCheckpoint ?? "OFF",
   } as const;
+
+  const activeModelId = activeConfig?.model ?? "";
 
   return (
     <PageShell variant="narrow">
@@ -118,6 +121,7 @@ export default async function Page() {
             <ResourcesToggles
               initial={initialResources}
               credentialsByProvider={credentialsByProvider}
+              activeModelId={activeModelId}
             />
           </CardContent>
         </Card>

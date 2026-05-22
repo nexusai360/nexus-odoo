@@ -70,6 +70,8 @@ const UpdateResourcesSchema = z.object({
     .enum(["minimal", "low", "medium", "high"])
     .nullable()
     .optional(),
+  /** Checkpoint de 3 estados do modo raciocínio (OFF/PLAYGROUND/PRODUCTION). */
+  reasoningCheckpoint: z.enum(CHECKPOINT_VALUES).optional(),
 });
 export type UpdateAgentResourcesInput = z.infer<typeof UpdateResourcesSchema>;
 
@@ -107,6 +109,7 @@ type AgentSettingsRow = {
   imageModel: string | null;
   imageCredentialId: string | null;
   reasoningEffort: string | null;
+  reasoningCheckpoint: FeatureCheckpoint;
   updatedAt: Date;
 };
 
@@ -133,6 +136,7 @@ function mapSettings(row: AgentSettingsRow): AgentSettingsData {
     imageModel: row.imageModel,
     imageCredentialId: row.imageCredentialId,
     reasoningEffort: row.reasoningEffort,
+    reasoningCheckpoint: row.reasoningCheckpoint,
     updatedAt: row.updatedAt,
   };
 }
@@ -347,6 +351,9 @@ export async function updateAgentResources(
     }
     if (d.reasoningEffort !== undefined) {
       payload.reasoningEffort = d.reasoningEffort;
+    }
+    if (d.reasoningCheckpoint) {
+      payload.reasoningCheckpoint = d.reasoningCheckpoint;
     }
 
     await prisma.agentSettings.upsert({
