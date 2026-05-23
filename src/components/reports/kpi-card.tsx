@@ -77,45 +77,48 @@ export function KpiCard({
   const DeltaIcon = delta ? deltaIcon[delta.direction] : null;
   return (
     <div className="group relative min-h-[128px] rounded-2xl border border-border bg-muted/30 p-5 transition-colors hover:border-foreground/20">
-      <div className="flex items-start justify-between gap-4">
-        <div className="min-w-0 flex-1">
-          <p className="text-xs uppercase tracking-wide text-muted-foreground">
+      {/* Icone fica em posicao absoluta no canto, fora do fluxo, para o valor
+          ocupar 100% da largura do card sem ser empurrado pelo icone. */}
+      <div
+        className={cn(
+          "absolute top-5 right-5 flex h-9 w-9 items-center justify-center rounded-lg",
+          toneBgColor[tone],
+        )}
+      >
+        <Icon className={cn("h-5 w-5", toneIconColor[tone])} />
+      </div>
+      <div className="min-w-0">
+        {/* O label reserva espaco lateral so para o icone (pr-12). */}
+        <div className="pr-12">
+          <p className="truncate text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
             {label}
           </p>
-          <div className="mt-2 text-[1.75rem] font-bold leading-tight tracking-tight">
-            {value}
-          </div>
-          {delta && DeltaIcon ? (
-            <p
-              className={cn(
-                "mt-1 inline-flex items-center gap-1 text-xs font-medium",
-                deltaTextColor[delta.direction],
-              )}
-            >
-              <DeltaIcon className="h-3.5 w-3.5" />
-              <span>{formatDelta(delta)}</span>
-            </p>
-          ) : null}
-          {hint ? (
-            <p className="mt-1 text-xs text-muted-foreground">{hint}</p>
-          ) : null}
-          {subtitle ? (
-            <p
-              data-slot="kpi-subtitle"
-              className="mt-0.5 text-xs text-muted-foreground/80"
-            >
-              {subtitle}
-            </p>
-          ) : null}
         </div>
-        <div
-          className={cn(
-            "flex h-9 w-9 shrink-0 items-center justify-center rounded-lg p-2",
-            toneBgColor[tone],
-          )}
-        >
-          <Icon className={cn("h-5 w-5", toneIconColor[tone])} />
+        <div className="mt-3 text-[1.75rem] font-bold leading-tight tracking-tight">
+          {value}
         </div>
+        {delta && DeltaIcon ? (
+          <p
+            className={cn(
+              "mt-1 inline-flex items-center gap-1 text-xs font-medium",
+              deltaTextColor[delta.direction],
+            )}
+          >
+            <DeltaIcon className="h-3.5 w-3.5" />
+            <span>{formatDelta(delta)}</span>
+          </p>
+        ) : null}
+        {hint ? (
+          <p className="mt-1 text-xs text-muted-foreground">{hint}</p>
+        ) : null}
+        {subtitle ? (
+          <p
+            data-slot="kpi-subtitle"
+            className="mt-0.5 text-xs text-muted-foreground/80"
+          >
+            {subtitle}
+          </p>
+        ) : null}
       </div>
     </div>
   );
