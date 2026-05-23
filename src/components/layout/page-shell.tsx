@@ -21,9 +21,12 @@ interface Props {
  * - `full`: telas densas de dados, sem teto.
  */
 const MAX: Record<Variant, string> = {
-  compact: "max-w-3xl",
-  form: "max-w-4xl",
-  agent: "max-w-5xl",
+  // Variantes do Agente Nex: apenas estreitam levemente em relacao ao
+  // narrow (max-w-7xl ~ 1280px) para dar um pouco mais de respiro lateral
+  // sem encolher a tela.
+  compact: "max-w-6xl",
+  form: "max-w-6xl",
+  agent: "max-w-7xl",
   narrow: "max-w-7xl",
   wide: "max-w-[1600px]",
   full: "max-w-none",
