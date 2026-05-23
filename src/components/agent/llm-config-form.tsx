@@ -73,13 +73,22 @@ function SyncModelsButton({ provider }: { provider: LlmProvider }) {
           }
           const novos = r.novos?.length ?? 0;
           const atualizados = r.atualizados?.length ?? 0;
-          if (novos === 0 && atualizados === 0) {
-            toast.success("Catalogo ja esta atualizado.");
-          } else {
-            toast.success(
-              `${novos} novo(s), ${atualizados} atualizado(s).`,
-            );
-          }
+          const revividos = r.revividos?.length ?? 0;
+          const depreciados = r.depreciados?.length ?? 0;
+          const ignoradosWL = r.ignoradosWhitelist?.length ?? 0;
+          const ignoradosSP = r.ignoradosSemPricing?.length ?? 0;
+          const partes: string[] = [];
+          if (novos) partes.push(`${novos} novo(s)`);
+          if (atualizados) partes.push(`${atualizados} atualizado(s)`);
+          if (revividos) partes.push(`${revividos} reativado(s)`);
+          if (depreciados) partes.push(`${depreciados} desativado(s)`);
+          if (ignoradosWL) partes.push(`${ignoradosWL} fora da whitelist`);
+          if (ignoradosSP) partes.push(`${ignoradosSP} sem preco`);
+          toast.success(
+            partes.length
+              ? `Catalogo sincronizado: ${partes.join(", ")}.`
+              : "Catalogo ja esta atualizado.",
+          );
           router.refresh();
         });
       }}
@@ -455,6 +464,19 @@ export function LlmConfigForm({
                 ? "Modelo customizado — útil para snapshots datados."
                 : "Tier $ / $$ / $$$ / $$$$ indica o custo por milhão de tokens."}
             </p>
+            {(() => {
+              const selected = models.find((m) => m.id === modelSelect);
+              if (!selected?.deprecated) return null;
+              return (
+                <div
+                  role="alert"
+                  className="rounded-lg border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-xs text-amber-700 dark:text-amber-300"
+                >
+                  Este modelo foi descontinuado pelo provedor. Escolha outro
+                  modelo para continuar usando o Agente Nex.
+                </div>
+              );
+            })()}
           </div>
         </div>
 

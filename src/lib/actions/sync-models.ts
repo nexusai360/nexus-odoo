@@ -17,6 +17,10 @@ export interface SyncModelsResult {
   success: boolean;
   novos?: string[];
   atualizados?: string[];
+  ignoradosWhitelist?: string[];
+  ignoradosSemPricing?: string[];
+  depreciados?: string[];
+  revividos?: string[];
   error?: string;
 }
 
@@ -50,5 +54,9 @@ export async function syncProviderModels(
     success: true,
     novos: result.novos,
     atualizados: result.atualizados,
+    ignoradosWhitelist: result.ignoradosWhitelist,
+    ignoradosSemPricing: result.ignoradosSemPricing,
+    depreciados: result.depreciados,
+    revividos: result.revividos,
   };
 }
