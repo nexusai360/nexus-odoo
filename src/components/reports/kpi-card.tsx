@@ -76,25 +76,26 @@ export function KpiCard({
 }: KpiCardProps) {
   const DeltaIcon = delta ? deltaIcon[delta.direction] : null;
   return (
-    <div className="group relative min-h-[128px] rounded-2xl border border-border bg-muted/30 p-5 transition-colors hover:border-foreground/20">
-      {/* Icone fica em posicao absoluta no canto, fora do fluxo, para o valor
-          ocupar 100% da largura do card sem ser empurrado pelo icone. */}
+    <div className="group relative min-h-[128px] rounded-2xl border border-border bg-muted/30 px-5 pt-4 pb-5 transition-colors hover:border-foreground/20">
+      {/* Icone absoluto: sobe junto com o titulo (top-4) e ganha 4px no chip
+          + 2px no glifo para ficar levemente maior, mas sem dominar. */}
       <div
         className={cn(
-          "absolute top-5 right-5 flex h-9 w-9 items-center justify-center rounded-lg",
+          "absolute top-4 right-4 flex h-10 w-10 items-center justify-center rounded-lg",
           toneBgColor[tone],
         )}
       >
-        <Icon className={cn("h-5 w-5", toneIconColor[tone])} />
+        <Icon className={cn("h-[1.4rem] w-[1.4rem]", toneIconColor[tone])} />
       </div>
       <div className="min-w-0">
-        {/* O label reserva espaco lateral so para o icone (pr-12). */}
         <div className="pr-12">
-          <p className="truncate text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
+          <p className="truncate text-[12px] font-medium uppercase tracking-wide text-muted-foreground">
             {label}
           </p>
         </div>
-        <div className="mt-3 text-[1.75rem] font-bold leading-tight tracking-tight">
+        {/* mt-6 garante que o topo do valor fique abaixo da base do icone
+            (icone ocupa y 16..56; value comeca em y 58), eliminando o aperto. */}
+        <div className="mt-6 text-[1.75rem] font-bold leading-tight tracking-tight">
           {value}
         </div>
         {delta && DeltaIcon ? (
