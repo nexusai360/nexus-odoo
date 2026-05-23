@@ -1,8 +1,39 @@
 # Base de teste Tauga — bloqueio de autenticação (investigação)
 
-> Data: 2026-05-21/22. Contexto: F4 Onda 2 (escrita no MCP). Documenta o que
-> foi testado contra a base de teste, os erros encontrados e o texto a enviar
-> à Tauga com a solução.
+> Data: 2026-05-21/22, atualizado 2026-05-23. Contexto: F4 Onda 2 (escrita no
+> MCP). Documenta o que foi testado contra a base de teste, os erros
+> encontrados, a solução aplicada e o que ainda falta destravar.
+
+## Status (2026-05-23)
+
+- **Bloqueio 1, autenticação (resolvido).** A Tauga refez a base de teste com
+  dump da produção. Novos parâmetros:
+  - `ODOO_URL = https://grupojht.teste.tauga.online`
+  - `ODOO_DB  = teste_grupojht`
+  - `ODOO_USER = joaozanini` (mesmo da prod)
+  - `ODOO_PASS = 123456` (senha de teste, NÃO é a de prod)
+
+  E2E validado em `scripts/e2e/test-write-partner.ts`: auth uid=11, create
+  `res.partner` id=16426 + snapshot completo + cleanup, tudo verde.
+- **Bloqueio 2, base sem módulos de operação (parcial).** A base de teste
+  hoje só tem `res.users` (41), `res.partner` (6531) e `pedido.operacao`
+  (119, com 1 só `url_api` preenchido, `prospecto_teste`). Os modelos
+  `product.product`, `stock.quant`, `account.move`, `sale.order`,
+  `purchase.order` **não existem**. Sem isso, as ondas seguintes (vendas,
+  estoque, financeiro, compras, fiscal, contábil) não podem ser exercidas
+  E2E. A Onda 1 (CRM completo, `res.partner` + `crm.*`) é a única que dá
+  pra executar sem depender desse refresh.
+- **Próximo passo com a Tauga.** Mandar a lista de write tools da F4 Onda 2
+  para eles (a) garantirem que a base de teste passe a ter os módulos
+  correspondentes, (b) preencherem os `url_api` em `pedido.operacao` para
+  cada tipo de documento que vamos escrever, (c) confirmarem que o usuário
+  de integração pode chamar `tauga_api_post` na base de teste.
+- **Defesa do nosso lado.** `clientFromEnv("write")` agora exige todas as
+  `ODOO_WRITE_*` preenchidas (sem fallback silencioso para `ODOO_*` de
+  produção). Se faltar qualquer uma, lança erro e a tool falha de forma
+  alta. Vide `src/worker/odoo/client.ts:292-312` e o teste em
+  `src/worker/odoo/__tests__/client-writes.test.ts` ("sem fallback para
+  ODOO_*"). Aplicado em 2026-05-23.
 
 ## 1. Contexto
 
