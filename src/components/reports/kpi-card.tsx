@@ -76,25 +76,25 @@ export function KpiCard({
 }: KpiCardProps) {
   const DeltaIcon = delta ? deltaIcon[delta.direction] : null;
   return (
-    <div className="group relative min-h-[128px] rounded-2xl border border-border bg-muted/30 px-5 pt-4 pb-5 transition-colors hover:border-foreground/20">
+    <div className="group relative min-h-[124px] rounded-2xl border border-border bg-muted/30 px-4 pt-4 pb-4 transition-colors hover:border-foreground/20">
       {/* Label e icone na mesma linha flex com items-center: o label fica
-          verticalmente centrado em relacao ao chip do icone. O value, abaixo,
-          segue em bloco proprio para ocupar 100% da largura sem aperto. */}
-      <div className="flex items-center justify-between gap-3">
-        <p className="truncate text-[12px] font-medium uppercase tracking-wide text-muted-foreground">
+          verticalmente centrado em relacao ao chip do icone. Padding e gap
+          reduzidos pontualmente para caber "TOKENS ENTRADA" sem truncar. */}
+      <div className="flex items-center justify-between gap-1.5">
+        <p className="whitespace-nowrap text-[12px] font-medium uppercase tracking-wide text-muted-foreground">
           {label}
         </p>
         <div
           className={cn(
-            "flex h-[2.375rem] w-[2.375rem] shrink-0 items-center justify-center rounded-lg",
+            "flex h-9 w-9 shrink-0 items-center justify-center rounded-lg",
             toneBgColor[tone],
           )}
         >
-          <Icon className={cn("h-[1.3rem] w-[1.3rem]", toneIconColor[tone])} />
+          <Icon className={cn("h-[1.2rem] w-[1.2rem]", toneIconColor[tone])} />
         </div>
       </div>
       <div className="min-w-0">
-        <div className="mt-3 text-[1.75rem] font-bold leading-tight tracking-tight">
+        <div className="mt-2 text-[1.75rem] font-bold leading-tight tracking-tight">
           {value}
         </div>
         {delta && DeltaIcon ? (

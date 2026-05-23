@@ -3,7 +3,7 @@ agent: claude-f4-onda2-crm-completo
 started_at: 2026-05-23T15:50-03:00
 branch: feat/f4-onda2-crm-completo
 target_phase: F4 Onda 2 (escrita) — Onda 1 do plano da spec 2026-05-20-f4-onda2-mcp-escrita-design
-status: in_progress
+status: blocked
 ---
 
 ## Tópico

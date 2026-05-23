@@ -727,7 +727,7 @@ export function ConsumoContent({ minDate: minDateIso }: ConsumoContentProps) {
           hidden: {},
           visible: { transition: { staggerChildren: 0.06 } },
         }}
-        className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-5"
+        className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-5"
       >
         {kpiCards.map((card) => (
           <motion.div
