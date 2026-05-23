@@ -77,9 +77,9 @@ export function KpiCard({
   const DeltaIcon = delta ? deltaIcon[delta.direction] : null;
   return (
     <div className="group relative min-h-[128px] rounded-2xl border border-border bg-muted/30 p-5 transition-colors hover:border-foreground/20">
-      <div className="flex items-start justify-between gap-4">
+      <div className="flex items-start justify-between gap-2">
         <div className="min-w-0 flex-1">
-          <p className="text-xs uppercase tracking-wide text-muted-foreground">
+          <p className="whitespace-nowrap text-xs uppercase tracking-wide text-muted-foreground">
             {label}
           </p>
           <div className="mt-2 text-[1.75rem] font-bold leading-tight tracking-tight">
@@ -110,7 +110,7 @@ export function KpiCard({
         </div>
         <div
           className={cn(
-            "flex h-9 w-9 shrink-0 items-center justify-center rounded-lg p-2",
+            "flex h-[2.375rem] w-[2.375rem] shrink-0 items-center justify-center rounded-lg p-2",
             toneBgColor[tone],
           )}
         >

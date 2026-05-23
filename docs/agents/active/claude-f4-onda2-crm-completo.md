@@ -42,4 +42,12 @@ desses modelos sem depender do refresh com módulos de operação).
 
 ## Bloqueios
 
-- (nenhum)
+- A investigação completa (registrada em
+  `docs/laudo-f4-onda2-realidade-tauga.md`) mostrou que a spec mãe da
+  F4 Onda 2 (2026-05-20) partiu de premissa errada: assumiu modelos padrão
+  do Odoo (`crm.lead`, `sale.order`, `purchase.order`, `stock.picking`,
+  `account.move`, etc.) que **não existem no Odoo da Tauga, nem em prod**.
+  O ERP é todo custom (`pedido.*`, `sped.*`, `finan.*`, `contabil.*`,
+  `estoque.*`). Aguardando decisão do usuário sobre executar a Onda 1
+  redefinida (`res.partner` completo, único escopo executável hoje sem
+  destravamento da Tauga) e sobre a mensagem para a Tauga (§7 do laudo).
