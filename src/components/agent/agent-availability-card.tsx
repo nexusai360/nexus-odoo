@@ -16,7 +16,7 @@
 
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { Bot, MessageCircle, Smartphone } from "lucide-react";
+import { MessageCircle, Smartphone } from "lucide-react";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { toast } from "sonner";
@@ -78,32 +78,27 @@ export function AgentAvailabilityCard({ initial, isConfigured }: Props) {
   }
 
   return (
-    <div className="space-y-4 rounded-xl border border-border bg-muted/30 p-4">
-      <div className="flex items-start gap-3">
+    <div className="space-y-3">
+      <div className="flex items-center gap-2 text-xs">
         <span
           aria-hidden
           className={cn(
-            "mt-0.5 inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-full transition-colors",
-            summary.tone === "active" &&
-              "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400",
-            summary.tone === "partial" &&
-              "bg-amber-500/15 text-amber-600 dark:text-amber-400",
-            summary.tone === "off" && "bg-muted text-muted-foreground",
+            "inline-flex h-2 w-2 rounded-full",
+            summary.tone === "active" && "bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.55)]",
+            summary.tone === "partial" && "bg-amber-500 shadow-[0_0_8px_rgba(245,158,11,0.55)]",
+            summary.tone === "off" && "bg-zinc-400 dark:bg-zinc-600",
           )}
-        >
-          <Bot className="h-3.5 w-3.5" aria-hidden />
-        </span>
-        <div className="min-w-0 flex-1">
-          <p className="text-sm font-medium text-foreground">{summary.title}</p>
-          <p className="text-xs text-muted-foreground">{summary.helper}</p>
-        </div>
+        />
+        <span className="font-medium text-foreground">{summary.title}</span>
+        <span className="text-muted-foreground">·</span>
+        <span className="text-muted-foreground">{summary.helper}</span>
       </div>
 
       <div className="grid gap-3 sm:grid-cols-2">
         <Row
           icon={<MessageCircle className="h-4 w-4" aria-hidden />}
           title="Bubble no app"
-          helper="Mostra a bolha flutuante do Agente Nex nas paginas autenticadas."
+          helper="Mostra a bolha flutuante nas paginas autenticadas."
           checked={bubble}
           onChange={onBubble}
           loading={pending === "bubble"}
@@ -112,12 +107,11 @@ export function AgentAvailabilityCard({ initial, isConfigured }: Props) {
         <Row
           icon={<Smartphone className="h-4 w-4" aria-hidden />}
           title="WhatsApp"
-          helper="Permite que o agente responda mensagens recebidas pelo webhook de WhatsApp (F5)."
+          helper="Responde mensagens recebidas pelo webhook (F5)."
           checked={whatsapp}
           onChange={onWhatsapp}
           loading={pending === "whatsapp"}
           disabled={!isConfigured}
-          footnote="Webhook do WhatsApp entra com a F5. A preferencia ja fica salva."
         />
       </div>
     </div>
