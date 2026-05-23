@@ -81,11 +81,11 @@ export function KpiCard({
           + 2px no glifo para ficar levemente maior, mas sem dominar. */}
       <div
         className={cn(
-          "absolute top-4 right-4 flex h-10 w-10 items-center justify-center rounded-lg",
+          "absolute top-4 right-4 flex h-9 w-9 items-center justify-center rounded-lg",
           toneBgColor[tone],
         )}
       >
-        <Icon className={cn("h-[1.4rem] w-[1.4rem]", toneIconColor[tone])} />
+        <Icon className={cn("h-[1.2rem] w-[1.2rem]", toneIconColor[tone])} />
       </div>
       <div className="min-w-0">
         <div className="pr-12">
