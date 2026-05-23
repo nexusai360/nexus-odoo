@@ -17,7 +17,7 @@
  */
 
 import { motion, useReducedMotion } from "framer-motion";
-import { Loader2, Mic, MoreVertical, Send, Sparkles, Trash2, X } from "lucide-react";
+import { Loader2, LogOut, Mic, MoreVertical, Send, Sparkles, Trash2, X } from "lucide-react";
 import * as React from "react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
@@ -40,6 +40,9 @@ interface ChatPanelProps {
   /** conversationId atual (null = novo). Após primeira msg, recebe o id criado. */
   conversationId?: string | null;
   onConversationCreated?: (id: string) => void;
+  /** "Encerrar sessão": limpa o turno atual e fecha o painel (o pai zera o
+   *  conversationId). Quando ausente, o item não aparece no menu. */
+  onEndSession?: () => void;
 }
 
 interface UiMessage {
@@ -78,6 +81,7 @@ export function ChatPanel({
   imageInputEnabled = false,
   conversationId: externalConvId,
   onConversationCreated,
+  onEndSession,
 }: ChatPanelProps) {
   const reduceMotion = useReducedMotion();
 
@@ -203,9 +207,8 @@ export function ChatPanel({
 
         // A bolha do assistente só nasce quando o primeiro token chega (ou no
         // done/error). Até lá fica a loading bubble ou a trilha de progresso —
-        // nunca um caret "|" órfão.
-        let assistantCreated = false;
-        let progressCreated = false;
+        // nunca um caret "|" órfão. Detectamos "já criado" lendo do próprio
+        // `prev` dentro do setMessages (race-free com o batching do React).
         const dropLoading = (list: UiMessage[]) =>
           list.filter((m) => m.id !== "loading");
 
@@ -237,7 +240,7 @@ export function ChatPanel({
               // thinking → loading bubble já cobre o estado
             } else if (evt.type === "token") {
               setMessages((prev) => {
-                if (assistantCreated) {
+                if (prev.some((m) => m.id === assistantMsgId)) {
                   return prev.map((m) =>
                     m.id === assistantMsgId
                       ? { ...m, content: m.content + evt.delta }
@@ -254,7 +257,6 @@ export function ChatPanel({
                   },
                 ];
               });
-              assistantCreated = true;
             } else if (evt.type === "tool_call") {
               const step: ProgressStep = {
                 id: `s_${crypto.randomUUID()}`,
@@ -262,7 +264,7 @@ export function ChatPanel({
                 state: "running",
               };
               setMessages((prev) => {
-                if (progressCreated) {
+                if (prev.some((m) => m.id === progressMsgId)) {
                   return prev.map((m) =>
                     m.id === progressMsgId
                       ? { ...m, steps: [...(m.steps ?? []), step] }
@@ -283,7 +285,6 @@ export function ChatPanel({
                 copy.splice(idx, 0, progressMsg);
                 return copy;
               });
-              progressCreated = true;
             } else if (evt.type === "tool_result") {
               // Matching FIFO: marca como done o primeiro passo running de
               // mesmo rótulo (os eventos não carregam id de correlação).
@@ -331,7 +332,8 @@ export function ChatPanel({
                   }
                   return m;
                 });
-                if (assistantCreated) return finalized;
+                if (finalized.some((m) => m.id === assistantMsgId))
+                  return finalized;
                 return [
                   ...finalized,
                   {
@@ -343,10 +345,9 @@ export function ChatPanel({
                   },
                 ];
               });
-              assistantCreated = true;
             } else if (evt.type === "error") {
               setMessages((prev) => {
-                if (assistantCreated) {
+                if (prev.some((m) => m.id === assistantMsgId)) {
                   return prev.map((m) =>
                     m.id === assistantMsgId
                       ? {
@@ -367,7 +368,6 @@ export function ChatPanel({
                   },
                 ];
               });
-              assistantCreated = true;
             }
           }
         }
@@ -517,6 +517,21 @@ export function ChatPanel({
                   <Trash2 className="h-3.5 w-3.5 text-muted-foreground" />
                   Limpar histórico
                 </button>
+                {onEndSession ? (
+                  <button
+                    type="button"
+                    role="menuitem"
+                    onClick={() => {
+                      setMenuOpen(false);
+                      handleClear();
+                      onEndSession();
+                    }}
+                    className="flex w-full cursor-pointer items-center gap-2 border-t border-border/50 px-3 py-2 text-left text-sm text-foreground transition-colors hover:bg-muted"
+                  >
+                    <LogOut className="h-3.5 w-3.5 text-muted-foreground" />
+                    Encerrar sessão
+                  </button>
+                ) : null}
               </div>
             )}
           </div>

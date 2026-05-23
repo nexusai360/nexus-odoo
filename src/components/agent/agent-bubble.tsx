@@ -43,6 +43,12 @@ export function AgentBubble({
   imageInputEnabled = false,
 }: AgentBubbleProps = {}) {
   const [open, setOpen] = React.useState(false);
+  // O conversationId vive AQUI (no FAB), e não no ChatPanel: assim ele
+  // sobrevive ao unmount do painel quando o usuário fecha a bubble pelo "X" e
+  // o histórico é restaurado na próxima abertura. Só zera ao "Encerrar sessão".
+  const [conversationId, setConversationId] = React.useState<string | null>(
+    null,
+  );
   const reduceMotion = useReducedMotion();
 
   return (
@@ -133,6 +139,12 @@ export function AgentBubble({
             onClose={() => setOpen(false)}
             audioInputEnabled={audioInputEnabled}
             imageInputEnabled={imageInputEnabled}
+            conversationId={conversationId}
+            onConversationCreated={setConversationId}
+            onEndSession={() => {
+              setConversationId(null);
+              setOpen(false);
+            }}
           />
         ) : null}
       </AnimatePresence>

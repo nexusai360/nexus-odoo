@@ -458,9 +458,8 @@ export function PlaygroundContent({
       let buffer = "";
 
       // A bolha do assistente só vira "assistant" no primeiro token (ou no
-      // done) — sem caret "|" órfão. A trilha de progresso cobre as consultas.
-      let assistantCreated = false;
-      let progressCreated = false;
+      // done) — sem caret "|" órfão. Detectamos "já criado" lendo do próprio
+      // `prev` dentro do setItems (race-free com o batching do React).
 
       while (true) {
         const { done, value } = await reader.read();
@@ -485,13 +484,18 @@ export function PlaygroundContent({
                   ? {
                       ...m,
                       role: "assistant" as AgentMessageRole,
-                      content: assistantCreated ? m.content + delta : delta,
+                      // Se a bolha ainda era "loading", o primeiro token vira o
+                      // conteúdo. Se já era "assistant", concatena. Race-free
+                      // (lemos do próprio item, não de uma flag fechada).
+                      content:
+                        m.role === ("loading" as AgentMessageRole)
+                          ? delta
+                          : m.content + delta,
                       streaming: true,
                     }
                   : m,
               ),
             );
-            assistantCreated = true;
           } else if (evt.type === "tool_call") {
             const step: ProgressStep = {
               id: genId(),
@@ -499,7 +503,7 @@ export function PlaygroundContent({
               state: "running",
             };
             setItems((prev) => {
-              if (progressCreated) {
+              if (prev.some((m) => m.id === progressId)) {
                 return prev.map((m) =>
                   m.id === progressId
                     ? { ...m, steps: [...(m.steps ?? []), step] }
@@ -518,7 +522,6 @@ export function PlaygroundContent({
               copy.splice(idx, 0, progressMsg);
               return copy;
             });
-            progressCreated = true;
           } else if (evt.type === "tool_result") {
             const label = String(evt.label ?? "");
             setItems((prev) =>
@@ -567,7 +570,6 @@ export function PlaygroundContent({
                 return m;
               }),
             );
-            assistantCreated = true;
             // Atualiza o custo acumulado da sessão
             if (
               typeof evt.costUsd === "number" &&
