@@ -383,6 +383,7 @@ export function InteractiveBarChart({
                 fill={color}
                 stackId={stacked ? "stack" : undefined}
                 radius={stacked ? 0 : 6}
+                maxBarSize={56}
                 fillOpacity={dim ? 0.4 : 1}
                 isAnimationActive={!prefersReducedMotion}
                 animationBegin={0}
