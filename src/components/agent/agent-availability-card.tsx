@@ -21,7 +21,10 @@ import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { toast } from "sonner";
 import { updateAgentAvailability } from "@/lib/actions/agent-config";
+import { summarizeAvailability } from "./agent-availability-summary";
 import { cn } from "@/lib/utils";
+
+export { summarizeAvailability };
 
 interface Props {
   initial: {
@@ -30,42 +33,6 @@ interface Props {
   };
   /** Quando false (sem conexao LLM ativa), os dois toggles ficam desabilitados. */
   isConfigured: boolean;
-}
-
-export function summarizeAvailability(
-  bubble: boolean,
-  whatsapp: boolean,
-): { title: string; helper: string; tone: "active" | "partial" | "off" } {
-  if (bubble && whatsapp) {
-    return {
-      title: "Ativo no chat in-app e no WhatsApp",
-      helper:
-        "A bubble aparece nas paginas autenticadas e o agente responde via WhatsApp.",
-      tone: "active",
-    };
-  }
-  if (bubble) {
-    return {
-      title: "Ativo apenas no chat in-app",
-      helper:
-        "A bubble aparece nas paginas autenticadas. O agente nao responde no WhatsApp.",
-      tone: "partial",
-    };
-  }
-  if (whatsapp) {
-    return {
-      title: "Ativo apenas no WhatsApp",
-      helper:
-        "A bubble esta oculta na plataforma. O agente responde no WhatsApp quando o webhook estiver no ar.",
-      tone: "partial",
-    };
-  }
-  return {
-    title: "Desativado em todos os canais",
-    helper:
-      "Nenhum canal responde. Ligue um dos toggles para reativar o Agente Nex.",
-    tone: "off",
-  };
 }
 
 export function AgentAvailabilityCard({ initial, isConfigured }: Props) {
