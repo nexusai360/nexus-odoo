@@ -36,6 +36,8 @@ export interface AgentSettingsData {
   reasoningEffort: string | null;
   /** Checkpoint de 3 estados do modo raciocínio (OFF/PLAYGROUND/PRODUCTION). */
   reasoningCheckpoint: FeatureCheckpoint;
+  /** Máximo de sugestões clicáveis (default 3, hard cap em 5). */
+  maxSuggestions: number;
   updatedAt: Date;
 }
 

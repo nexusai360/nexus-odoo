@@ -37,6 +37,7 @@ import {
   type ModelEntry,
 } from "@/lib/agent/llm/catalog";
 import { updateAgentResources } from "@/lib/actions/agent-config";
+import { cn } from "@/lib/utils";
 import type { LlmProvider, ReasoningEffort } from "@/lib/agent/llm/types";
 
 export interface CredentialOption {
@@ -65,6 +66,7 @@ interface ResourcesTogglesProps {
     imageCredentialId: string | null;
     reasoningEffort: string | null;
     reasoningCheckpoint: CheckpointState;
+    maxSuggestions: number;
   };
   /** G6 — credenciais cadastradas, agrupadas por provedor. */
   credentialsByProvider?: Record<string, CredentialOption[]>;
@@ -145,6 +147,9 @@ export function ResourcesToggles({
   const [reasoningCp, setReasoningCp] = useState<CheckpointState>(
     initial.reasoningCheckpoint,
   );
+  const [maxSuggestions, setMaxSuggestions] = useState<number>(
+    initial.maxSuggestions ?? 3,
+  );
 
   const [pending, setPending] = useState<
     "audio" | "image" | "suggestions" | "reasoning" | null
@@ -163,6 +168,7 @@ export function ResourcesToggles({
       imageCredentialId: string | null;
       reasoningEffort: ReasoningEffort | null;
       reasoningCheckpoint: CheckpointState;
+      maxSuggestions: number;
     }>,
     label: "audio" | "image" | "suggestions" | "reasoning",
   ) {
@@ -190,6 +196,7 @@ export function ResourcesToggles({
             ? next.reasoningEffort
             : reasoningEffort || null,
         reasoningCheckpoint: next.reasoningCheckpoint ?? reasoningCp,
+        maxSuggestions: next.maxSuggestions ?? maxSuggestions,
       });
       setPending(null);
       if (!result.success) {
@@ -402,7 +409,43 @@ export function ResourcesToggles({
         }}
         loading={pending === "suggestions"}
         ariaLabel="Estado das sugestões clicáveis"
-      />
+      >
+        {suggestionsCp !== "OFF" ? (
+          <div className="flex flex-col gap-1.5 sm:flex-row sm:items-center sm:justify-between">
+            <span className="text-xs font-medium text-muted-foreground">
+              Máximo por resposta
+            </span>
+            <div className="inline-flex shrink-0 rounded-lg border border-border bg-background p-0.5">
+              {[1, 2, 3, 4, 5].map((n) => {
+                const isActive = maxSuggestions === n;
+                return (
+                  <button
+                    key={n}
+                    type="button"
+                    aria-pressed={isActive}
+                    aria-label={`Máximo de ${n} sugestão${n === 1 ? "" : "ões"}`}
+                    disabled={pending === "suggestions"}
+                    onClick={() => {
+                      if (maxSuggestions === n) return;
+                      setMaxSuggestions(n);
+                      persistResources({ maxSuggestions: n }, "suggestions");
+                    }}
+                    className={cn(
+                      "flex h-7 w-8 cursor-pointer items-center justify-center rounded-md text-xs font-medium transition-colors",
+                      isActive
+                        ? "bg-violet-500/15 text-violet-700 ring-1 ring-violet-500/40 dark:text-violet-300"
+                        : "text-muted-foreground hover:bg-muted hover:text-foreground",
+                      "disabled:cursor-not-allowed disabled:opacity-50",
+                    )}
+                  >
+                    {n}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        ) : null}
+      </ResourceCard>
 
     </div>
   );

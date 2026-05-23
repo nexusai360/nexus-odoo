@@ -92,6 +92,7 @@ export default async function Page() {
     imageCredentialId: settings?.imageCredentialId ?? null,
     reasoningEffort: settings?.reasoningEffort ?? null,
     reasoningCheckpoint: settings?.reasoningCheckpoint ?? "OFF",
+    maxSuggestions: settings?.maxSuggestions ?? 3,
   } as const;
 
   const activeModelId = activeConfig?.model ?? "";

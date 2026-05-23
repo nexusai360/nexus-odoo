@@ -2309,6 +2309,10 @@ model AgentSettings {
   /// null = usa o default do provider. Valores: minimal | low | medium | high.
   reasoningEffort   String?  @map("reasoning_effort")
 
+  /// Máximo de sugestões clicáveis que o agente pode mostrar por resposta.
+  /// Aplicado deterministicamente em `extractSuggestions` e instruído no prompt.
+  maxSuggestions    Int      @default(3) @map("max_suggestions")
+
   /// Modelo dedicado de transcrição de áudio (independente do modelo de produção).
   audioProvider     String?  @map("audio_provider")
   audioModel        String?  @map("audio_model")

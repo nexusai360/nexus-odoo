@@ -37,6 +37,9 @@ export interface AgentPromptConfig {
   terminology: Record<string, string>;
   /** Quando true, agente oferece sugestões em formato `[[suggestions]]:item|item`. */
   suggestionsEnabled: boolean;
+  /** Máximo de sugestões por resposta. Default 3, hard cap 5 (forçado em
+   *  `extractSuggestions`). Substitui o valor no texto instrucional. */
+  maxSuggestions?: number;
 }
 
 export interface KbDocSnippet {
@@ -134,8 +137,9 @@ export function composeSystemPrompt(
   }
 
   if (cfg.suggestionsEnabled) {
+    const maxSugg = Math.min(Math.max(1, cfg.maxSuggestions ?? 3), 5);
     parts.push(
-      `\n\n## Sugestões clicáveis (HABILITADAS — USE SEMPRE QUE POSSÍVEL)\nApós responder, inclua **exatamente uma linha em branco seguida de uma linha no formato abaixo**:\n\`[[suggestions]]:Pergunta 1|Pergunta 2|Pergunta 3\`\n\nRegras:\n- Inclua 2 a 5 sugestões na grande maioria das respostas.\n- Omita apenas quando não existir follow-up natural.\n- Máximo 5 sugestões. Cada uma: ≤ 80 caracteres, pergunta direta, sem \`|\` no texto.\n- Quando a resposta for uma pergunta de desambiguação, as sugestões DEVEM resolver a ambiguidade: ofereça as opções concretas (cada registro que casou pelo nome, ou os sentidos possíveis da métrica). É o caso de maior prioridade para incluir sugestões; use até 5 nesse caso.\n- NUNCA repita no texto da resposta o que já está como sugestão clicável.`,
+      `\n\n## Sugestões clicáveis (HABILITADAS — USE SEMPRE QUE POSSÍVEL)\nApós responder, inclua **exatamente uma linha em branco seguida de uma linha no formato abaixo**:\n\`[[suggestions]]:Pergunta 1|Pergunta 2|Pergunta 3\`\n\nRegras:\n- Inclua até **${maxSugg} sugestões** na grande maioria das respostas (o máximo está configurado em ${maxSugg}; nunca passe disso).\n- Omita apenas quando não existir follow-up natural.\n- Cada sugestão: ≤ 80 caracteres, pergunta direta, sem \`|\` no texto.\n- Quando a resposta for uma pergunta de desambiguação, as sugestões DEVEM resolver a ambiguidade: ofereça as opções concretas (cada registro que casou pelo nome, ou os sentidos possíveis da métrica). É o caso de maior prioridade para incluir sugestões — respeitando o teto de ${maxSugg}.\n- NUNCA repita no texto da resposta o que já está como sugestão clicável.`,
     );
   }
 

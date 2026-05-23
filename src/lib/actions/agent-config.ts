@@ -72,6 +72,8 @@ const UpdateResourcesSchema = z.object({
     .optional(),
   /** Checkpoint de 3 estados do modo raciocínio (OFF/PLAYGROUND/PRODUCTION). */
   reasoningCheckpoint: z.enum(CHECKPOINT_VALUES).optional(),
+  /** Máximo de sugestões clicáveis (1..5). */
+  maxSuggestions: z.number().int().min(1).max(5).optional(),
 });
 export type UpdateAgentResourcesInput = z.infer<typeof UpdateResourcesSchema>;
 
@@ -110,6 +112,7 @@ type AgentSettingsRow = {
   imageCredentialId: string | null;
   reasoningEffort: string | null;
   reasoningCheckpoint: FeatureCheckpoint;
+  maxSuggestions: number;
   updatedAt: Date;
 };
 
@@ -137,6 +140,7 @@ function mapSettings(row: AgentSettingsRow): AgentSettingsData {
     imageCredentialId: row.imageCredentialId,
     reasoningEffort: row.reasoningEffort,
     reasoningCheckpoint: row.reasoningCheckpoint,
+    maxSuggestions: row.maxSuggestions,
     updatedAt: row.updatedAt,
   };
 }
@@ -351,6 +355,9 @@ export async function updateAgentResources(
     }
     if (d.reasoningEffort !== undefined) {
       payload.reasoningEffort = d.reasoningEffort;
+    }
+    if (d.maxSuggestions !== undefined) {
+      payload.maxSuggestions = d.maxSuggestions;
     }
     if (d.reasoningCheckpoint) {
       payload.reasoningCheckpoint = d.reasoningCheckpoint;

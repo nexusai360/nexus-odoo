@@ -62,12 +62,22 @@ const MAX_SUGGESTION_LEN = 80;
  * Extrai sugestões do sufixo `[[suggestions]]:item1|item2|...`.
  * Retorna message sem o sufixo + array de sugestões.
  */
-export function extractSuggestions(text: string): {
+export function extractSuggestions(
+  text: string,
+  maxCount?: number,
+): {
   message: string;
   suggestions: string[];
 } {
   const match = text.match(SUGGESTIONS_RE);
   if (!match) return { message: text, suggestions: [] };
+  // Cap deterministicamente pela config (1..5, default 3) e nunca acima do
+  // hard cap MAX_SUGGESTIONS. Defesa em profundidade: o prompt instrui o
+  // modelo, esta camada garante que extra é descartado.
+  const limit = Math.min(
+    Math.max(1, maxCount ?? MAX_SUGGESTIONS),
+    MAX_SUGGESTIONS,
+  );
   const raw = match[1].trim();
   const suggestions = raw
     .split("|")
@@ -75,7 +85,7 @@ export function extractSuggestions(text: string): {
     // crase) para não aparecer "**" ou "`" literal no chip.
     .map((s) => s.trim().replace(/\*\*/g, "").replace(/`/g, "").trim())
     .filter((s) => s.length > 0 && s.length <= MAX_SUGGESTION_LEN)
-    .slice(0, MAX_SUGGESTIONS);
+    .slice(0, limit);
   const message = text.replace(match[0], "").trimEnd();
   return { message, suggestions };
 }
@@ -169,6 +179,7 @@ async function loadAgentSettings() {
     suggestionsEnabled: row?.suggestionsEnabled ?? true,
     reasoningEffort: normalizeReasoningEffort(row?.reasoningEffort),
     reasoningCheckpoint: row?.reasoningCheckpoint ?? "OFF",
+    maxSuggestions: row?.maxSuggestions ?? 3,
   };
 }
 
@@ -356,8 +367,11 @@ export async function runAgent(args: RunAgentInput): Promise<RunAgentResult> {
       );
 
       if (!result.toolCalls?.length) {
-        // Resposta final
-        const { message, suggestions } = extractSuggestions(result.message);
+        // Resposta final — limite vem do AgentSettings (default 3, hard cap 5).
+        const { message, suggestions } = extractSuggestions(
+          result.message,
+          agentSettings.maxSuggestions,
+        );
         await persistMessage(args.conversationId, "assistant", message);
         args.onEvent?.({ type: "done" });
         void start;
