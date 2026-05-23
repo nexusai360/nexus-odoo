@@ -23,6 +23,8 @@ import { getColorByIndex } from "@/components/charts/colors";
 export interface AreaChartData {
   name: string;
   isFuture?: boolean;
+  /** Rotulo opcional para o tooltip (cai em `name` se ausente). */
+  tooltipLabel?: string;
   [key: string]: string | number | boolean | null | undefined;
 }
 
@@ -241,7 +243,7 @@ export function InteractiveAreaChart({
                 <ChartTooltip
                   active={props.active}
                   payload={props.payload as ChartTooltipPayloadItem[] | undefined}
-                  label={String(props.label ?? "")}
+                  label={entry?.tooltipLabel ?? String(props.label ?? "")}
                   formatValue={formatValue}
                 />
               );

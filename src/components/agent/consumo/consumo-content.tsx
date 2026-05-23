@@ -142,9 +142,11 @@ const dateTimeFmt = new Intl.DateTimeFormat("pt-BR", {
   minute: "2-digit",
   second: "2-digit",
 });
+// Formato compacto dd/mm para legendas e ticks do eixo X (melhor aproveitamento
+// de espaco horizontal, especialmente no grafico mensal).
 const dayLabelFmt = new Intl.DateTimeFormat("pt-BR", {
   day: "2-digit",
-  month: "short",
+  month: "2-digit",
 });
 
 function formatUsdRaw(v: number | null | undefined): string {
@@ -201,14 +203,21 @@ function dateIsoInBrt(date: Date): string {
   return new Intl.DateTimeFormat("en-CA", { timeZone: TZ }).format(date);
 }
 
-function buildHourlyFullPeriod(stats: UsageSummaryV2 | null): AreaChartData[] {
-  const currentHour = currentHourInBrt();
+function buildHourlyFullPeriod(
+  stats: UsageSummaryV2 | null,
+  /** Quando o grafico mostra o dia de hoje, marca horas futuras; em dias
+   *  passados, todas as 24 horas sao validas. */
+  isToday: boolean,
+): AreaChartData[] {
+  const cutoffHour = isToday ? currentHourInBrt() : 23;
   const map = new Map<number, number>();
   for (const h of stats?.byHour ?? []) map.set(h.hour, h.costBrl);
   return Array.from({ length: 24 }, (_, hour) => {
-    const isFuture = hour > currentHour;
+    const isFuture = hour > cutoffHour;
+    const hh = String(hour).padStart(2, "0");
     return {
-      name: `${String(hour).padStart(2, "0")}:00`,
+      name: `${hh}:00`,
+      tooltipLabel: `${hh}:00 - ${hh}:59`,
       Custo: isFuture ? null : Number((map.get(hour) ?? 0).toFixed(6)),
       isFuture,
     };
@@ -546,7 +555,12 @@ export function ConsumoContent({ minDate: minDateIso }: ConsumoContentProps) {
 
   const areaData = useMemo<AreaChartData[]>(() => {
     if (isHourly) {
-      return buildHourlyFullPeriod(activeChartStats);
+      // O navegador opera em escala diaria quando pill="hoje"; comparamos
+      // se a data de referencia eh o dia atual em BRT para decidir se ha
+      // horas "futuras" a esmaecer.
+      const refIso = chartReferenceDate ?? todayIsoInBrt();
+      const isToday = refIso.slice(0, 10) === todayIsoInBrt();
+      return buildHourlyFullPeriod(activeChartStats, isToday);
     }
     if (navigatorPeriod) {
       return buildDailyFullPeriod(
@@ -555,41 +569,67 @@ export function ConsumoContent({ minDate: minDateIso }: ConsumoContentProps) {
         effectiveChartRange.end,
       );
     }
-    // Pill não navegável (todos, custom) — exibe apenas dias com dados reais.
+    // Pill nao navegavel ("tudo", "custom"): exibe linha continua do primeiro
+    // dia com dado ate hoje (em BRT), nao apenas os dias com requisicoes
+    // (evita 1 ponto solto quando so um dia teve atividade).
     if (!activeChartStats) return [];
-    return activeChartStats.byDay.map((d) => ({
-      name: dayLabelFmt.format(isoLocalToDate(d.day)).replace(".", ""),
-      Custo: Number(d.costBrl.toFixed(6)),
-    }));
+    const byDay = activeChartStats.byDay;
+    if (byDay.length === 0) return [];
+    const map = new Map<string, number>();
+    for (const d of byDay) map.set(d.day, d.costBrl);
+    const firstIso = byDay[0].day;
+    const todayIso = todayIsoInBrt();
+    const startDate = isoLocalToDate(firstIso);
+    const endDate = isoLocalToDate(todayIso);
+    if (endDate < startDate) {
+      return byDay.map((d) => ({
+        name: dayLabelFmt.format(isoLocalToDate(d.day)),
+        Custo: Number(d.costBrl.toFixed(6)),
+      }));
+    }
+    const out: AreaChartData[] = [];
+    let curIso = firstIso;
+    const endIsoCmp = todayIso;
+    while (curIso <= endIsoCmp) {
+      out.push({
+        name: dayLabelFmt.format(isoLocalToDate(curIso)),
+        Custo: Number((map.get(curIso) ?? 0).toFixed(6)),
+      });
+      const [y, m, d] = curIso.split("-").map(Number);
+      const next = new Date(y, m - 1, d + 1);
+      curIso = dateIsoInBrt(next);
+    }
+    return out;
   }, [
     activeChartStats,
     isHourly,
     navigatorPeriod,
+    chartReferenceDate,
     effectiveChartRange.start,
     effectiveChartRange.end,
   ]);
 
   const providerPieData = useMemo<PieChartData[]>(() => {
-    if (!stats) return [];
-    return stats.byProvider.map((p, i) => ({
+    if (!activeChartStats) return [];
+    return activeChartStats.byProvider.map((p, i) => ({
       name: providerLabel(p.provider),
       value: Number(p.costBrl.toFixed(6)),
       color: getColorByIndex(i),
     }));
-  }, [stats]);
+  }, [activeChartStats]);
 
   const modelBarData = useMemo<BarChartData[]>(() => {
-    if (!stats) return [];
-    return stats.byModel.slice(0, 12).map((m) => ({
+    if (!activeChartStats) return [];
+    return activeChartStats.byModel.slice(0, 12).map((m) => ({
       name: m.model,
       Custo: Number(m.costBrl.toFixed(6)),
     }));
-  }, [stats]);
+  }, [activeChartStats]);
 
   // Mapa modelo → provider (alimenta o sub-rótulo "(Provider)" do BarChart).
   const providersByModel = useMemo<Record<string, string>>(() => {
     const map: Record<string, string> = {};
-    for (const m of stats?.byModel ?? []) {
+    for (const m of activeChartStats?.byModel ?? []) {
       map[m.model] = providerLabel(m.provider);
     }
     return map;
@@ -815,7 +855,7 @@ export function ConsumoContent({ minDate: minDateIso }: ConsumoContentProps) {
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <CircuitBoard className="h-4 w-4 text-violet-500" />
-              Distribuição por provider
+              Distribuição por provedor
             </CardTitle>
           </CardHeader>
           <CardContent>
@@ -828,7 +868,7 @@ export function ConsumoContent({ minDate: minDateIso }: ConsumoContentProps) {
                 centerValue={totalCostBrlFormatted}
                 formatValue={formatBrl4}
                 ariaLabel="Custo agrupado por provider em BRL"
-                emptyMessage="Sem dados de provider"
+                emptyMessage="Sem dados de provedor"
               />
             )}
           </CardContent>
