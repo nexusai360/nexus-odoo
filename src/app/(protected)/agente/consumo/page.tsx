@@ -26,7 +26,7 @@ export default async function ConsumoPage() {
   const minDate = await getFirstUsageDate();
 
   return (
-    <PageShell variant="agent">
+    <PageShell variant="form">
       <PageHeader
         icon={TrendingUp}
         title="Consumo do Agente Nex"

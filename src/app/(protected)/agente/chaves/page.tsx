@@ -30,7 +30,7 @@ export default async function Page() {
   );
 
   return (
-    <PageShell variant="agent">
+    <PageShell variant="form">
       <PageHeader
         icon={KeyRound}
         title="Chaves de API"

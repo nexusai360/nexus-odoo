@@ -41,7 +41,7 @@ export default async function PlaygroundPage() {
   }
 
   return (
-    <PageShell variant="agent">
+    <PageShell variant="form">
       <PageHeader
         icon={FlaskConical}
         title="Playground do Agente Nex"
