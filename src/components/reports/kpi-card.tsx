@@ -86,7 +86,7 @@ export function KpiCard({
         </p>
         <div
           className={cn(
-            "flex h-9 w-9 shrink-0 items-center justify-center rounded-lg",
+            "flex h-10 w-10 shrink-0 items-center justify-center rounded-lg",
             toneBgColor[tone],
           )}
         >
