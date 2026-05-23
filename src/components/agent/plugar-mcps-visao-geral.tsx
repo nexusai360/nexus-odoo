@@ -25,7 +25,7 @@ export function PlugarMcpsVisaoGeral({ servers, stats }: Props) {
 
   if (total === 0) {
     return (
-      <div className="max-w-4xl">
+      <div className="w-full">
         <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-border bg-muted/30 py-12 text-center">
           <Plug className="h-8 w-8 text-muted-foreground/40 mb-3" />
           <p className="text-sm text-muted-foreground">Nenhum servidor MCP conectado</p>
@@ -39,7 +39,7 @@ export function PlugarMcpsVisaoGeral({ servers, stats }: Props) {
   }
 
   return (
-    <div className="space-y-6 max-w-4xl">
+    <div className="space-y-6">
       <div className="rounded-xl border border-border bg-card p-6 space-y-4">
         <p className="text-[15px] font-semibold">Servidores conectados</p>
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">

@@ -116,7 +116,7 @@ export function PlugarMcpsContent({ initial }: Props) {
   }
 
   return (
-    <div className="space-y-6 max-w-3xl">
+    <div className="space-y-6">
       <p className="text-sm text-muted-foreground">
         Conecte servidores MCP externos para o Agente Nex usar como ferramentas. Para expor o
         nosso MCP a terceiros, use as Chaves de Acesso do Servidor MCP.
