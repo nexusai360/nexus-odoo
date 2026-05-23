@@ -156,13 +156,19 @@ export async function POST(req: Request): Promise<Response> {
         if (evt.type === "thinking") emit({ type: "status", status: "thinking" });
         else if (evt.type === "token") emit({ type: "token", delta: evt.delta });
         else if (evt.type === "tool_call")
-          emit({ type: "tool_call", toolName: evt.toolName, label: evt.label });
+          emit({
+            type: "tool_call",
+            toolName: evt.toolName,
+            label: evt.label,
+            toolCallId: evt.toolCallId,
+          });
         else if (evt.type === "tool_result")
           emit({
             type: "tool_result",
             toolName: evt.toolName,
             truncated: evt.truncated,
             label: evt.label,
+            toolCallId: evt.toolCallId,
           });
       }
 

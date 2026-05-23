@@ -1,28 +1,24 @@
 "use client";
 
 /**
- * ReasoningCard — card de Modo Raciocínio da seção Recursos do Agente Nex.
+ * ReasoningCard, card de Modo Raciocinio da secao Recursos do Agente Nex.
  *
- * Segue o padrão visual dos cards de `resources-toggles.tsx`: ícone + título +
- * subtítulo à esquerda, `FeatureCheckpoint` (3 status) à direita.
+ * Consome o `ResourceCard` shared (ganha chevron de expandir/recolher).
  *
- * - Quando o modelo de produção ativo não suporta raciocínio, o checkpoint
- *   fica travado em `OFF` (disabled) com uma nota explicativa.
- * - Quando suporta e o status `!= OFF`, a área do card expande com o seletor
- *   de nível de esforço e a exibição do custo de saída do modelo.
- *
- * O nível enviado à requisição é o "nível efetivo" (o salvo, se válido para o
- * modelo; senão o maior nível disponível) — resolvido em `effectiveLevel`.
+ * - Quando o modelo de producao ativo nao suporta raciocinio, o checkpoint
+ *   fica travado em OFF (disabled) com uma nota explicativa.
+ * - Quando suporta e o status != OFF, expande com seletor de nivel + tarifa
+ *   fixa + indicador qualitativo de consumo por nivel.
  */
 
-import { Brain, Loader2 } from "lucide-react";
+import { Brain } from "lucide-react";
 import {
-  FeatureCheckpoint,
   checkpointIconClass,
   type CheckpointState,
 } from "@/components/ui/feature-checkpoint";
 import { CustomSelect } from "@/components/ui/custom-select";
 import { TierBadge } from "@/components/ui/tier-badge";
+import { ResourceCard } from "@/components/agent/resource-card";
 import {
   getModel,
   modelSupportsReasoning,
@@ -37,22 +33,22 @@ const LEVEL_LABELS: Record<ReasoningLevel, string> = {
   high: "Alto",
 };
 
+const LEVEL_CONSUMPTION: Record<ReasoningLevel, string> = {
+  minimal: "Consumo leve",
+  low: "Consumo moderado",
+  medium: "Consumo alto",
+  high: "Consumo intenso",
+};
+
 export interface ReasoningCardProps {
-  /** Status do recurso (OFF / PLAYGROUND / PRODUCTION). */
   checkpoint: CheckpointState;
-  /** Nível de esforço salvo (`null` = default do modelo). */
   effort: string | null;
-  /** Id do modelo de produção ativo — determina o suporte a raciocínio. */
   activeModelId: string;
   onCheckpointChange: (cp: CheckpointState) => void;
   onEffortChange: (level: ReasoningLevel) => void;
   loading: boolean;
 }
 
-/**
- * Resolve o nível efetivo: o salvo, se válido para o modelo; senão o maior
- * disponível; `null` quando o modelo não tem níveis.
- */
 export function resolveEffectiveLevel(
   effort: string | null,
   levels: ReasoningLevel[],
@@ -86,48 +82,32 @@ export function ReasoningCard({
 
   const model = getModel(activeModelId);
   const outputPrice = model?.pricing?.outputPerMTok ?? null;
+  const consumptionLabel = effectiveLevel
+    ? LEVEL_CONSUMPTION[effectiveLevel]
+    : null;
 
   return (
-    <div className="rounded-xl border border-border bg-muted/30 px-4 py-3.5">
-      <div className="flex items-start justify-between gap-4">
-        <div className="min-w-0 flex-1">
-          <div className="flex items-center gap-2 text-sm font-medium text-foreground">
-            <Brain
-              className={`h-4 w-4 ${checkpointIconClass(cp)}`}
-              aria-hidden
-            />
-            Modo raciocínio
-          </div>
-          <p className="mt-0.5 text-xs text-muted-foreground">
-            Deixa o modelo pensar antes de responder. A própria IA decide
-            quando usar, conforme a complexidade da pergunta; o nível é o teto.
-          </p>
-        </div>
-        <span className="flex shrink-0 items-center gap-2">
-          {loading && (
-            <Loader2
-              className="h-3.5 w-3.5 animate-spin text-muted-foreground"
-              aria-hidden
-            />
-          )}
-          <FeatureCheckpoint
-            value={cp}
-            onChange={onCheckpointChange}
-            disabled={loading || !supports}
-            aria-label="Estado do modo raciocínio"
-          />
-        </span>
-      </div>
-
+    <ResourceCard
+      id="raciocinio"
+      collapsible
+      defaultCollapsed={!supports || checkpoint === "OFF"}
+      icon={
+        <Brain className={`h-4 w-4 ${checkpointIconClass(cp)}`} aria-hidden />
+      }
+      title="Modo raciocínio"
+      subtitle="Deixa o modelo pensar antes de responder. A própria IA decide quando usar, conforme a complexidade da pergunta; o nível é o teto."
+      checkpoint={cp}
+      onCheckpointChange={onCheckpointChange}
+      loading={loading}
+      ariaLabel="Estado do modo raciocínio"
+    >
       {!supports ? (
-        <div className="mt-3 border-t border-border/60 pt-3">
-          <p className="text-xs text-muted-foreground">
-            O modelo de produção atual não suporta raciocínio. Escolha um
-            modelo compatível na conexão acima para liberar este recurso.
-          </p>
-        </div>
+        <p className="text-xs text-muted-foreground">
+          O modelo selecionado não tem suporte a raciocínio. Para usar
+          raciocínio, escolha um modelo compatível na seção de conexão.
+        </p>
       ) : checkpoint !== "OFF" ? (
-        <div className="mt-3 grid gap-3 border-t border-border/60 pt-3 sm:grid-cols-2">
+        <div className="grid gap-3 sm:grid-cols-2">
           <div className="space-y-1.5">
             <span className="text-xs font-medium text-muted-foreground">
               Nível de esforço
@@ -139,12 +119,13 @@ export function ReasoningCard({
               options={levels.map((l) => ({
                 value: l,
                 label: LEVEL_LABELS[l],
+                notes: LEVEL_CONSUMPTION[l],
               }))}
             />
           </div>
           <div className="space-y-1.5">
             <span className="text-xs font-medium text-muted-foreground">
-              Custo de saída do modelo
+              Custo e consumo
             </span>
             <div className="flex h-9 items-center gap-2">
               <span className="text-sm font-semibold tabular-nums text-foreground">
@@ -154,13 +135,21 @@ export function ReasoningCard({
               </span>
               {model ? <TierBadge tier={model.tier} /> : null}
             </div>
-            <p className="text-[11px] text-muted-foreground">
-              O raciocínio consome tokens de saída; níveis maiores geram mais
-              desses tokens.
+            {consumptionLabel ? (
+              <p className="text-[11px] font-medium text-foreground/80">
+                {consumptionLabel} neste nível
+              </p>
+            ) : null}
+            <p
+              className="text-[11px] text-muted-foreground"
+              title="A tarifa por token de saída é a mesma. O nível controla quantos tokens de raciocínio o modelo gera antes de responder. Estimativa, não valor de fatura."
+            >
+              Tarifa fixa por token de saída. Níveis maiores geram mais tokens
+              de raciocínio.
             </p>
           </div>
         </div>
       ) : null}
-    </div>
+    </ResourceCard>
   );
 }

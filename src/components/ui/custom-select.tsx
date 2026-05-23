@@ -95,8 +95,9 @@ export function CustomSelect({
         <PopoverContent
           align="start"
           sideOffset={4}
+          style={{ minWidth: "var(--anchor-width, 280px)" }}
           className={cn(
-            "min-w-[280px] w-auto max-w-[min(calc(100vw-2rem),420px)] rounded-lg p-0 overflow-hidden",
+            "w-auto max-w-[min(calc(100vw-2rem),420px)] rounded-lg p-0 overflow-hidden",
             contentClassName,
           )}
         >

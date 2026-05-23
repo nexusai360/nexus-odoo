@@ -206,7 +206,8 @@ export function SearchableSelect({
         <PopoverContent
           align="start"
           sideOffset={4}
-          className="w-[var(--anchor-width,280px)] min-w-[280px] max-w-[min(calc(100vw-2rem),420px)] p-0 overflow-hidden"
+          style={{ minWidth: "var(--anchor-width, 280px)" }}
+          className="w-auto max-w-[min(calc(100vw-2rem),420px)] p-0 overflow-hidden"
         >
           <div className="p-2">
             <div className="relative">

@@ -72,7 +72,9 @@ export function ProgressTrail({ steps }: { steps: ProgressStep[] }) {
             )}
             <span
               className={cn(
-                running ? "text-foreground" : "text-muted-foreground",
+                running
+                  ? "animate-pulse text-foreground motion-reduce:animate-none"
+                  : "text-muted-foreground",
               )}
             >
               {running ? "Consultando" : "Consultou"} {row.label}

@@ -16,11 +16,11 @@
 import { useMemo, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { Image as ImageIcon, KeyRound, Loader2, MessageSquare, Mic } from "lucide-react";
+import { Image as ImageIcon, KeyRound, MessageSquare, Mic } from "lucide-react";
 import { ReasoningCard } from "@/components/agent/reasoning-card";
+import { ResourceCard } from "@/components/agent/resource-card";
 import { toast } from "sonner";
 import {
-  FeatureCheckpoint,
   checkpointIconClass,
   type CheckpointState,
 } from "@/components/ui/feature-checkpoint";
@@ -242,6 +242,9 @@ export function ResourcesToggles({
 
       {/* Entrada de áudio */}
       <ResourceCard
+        id="audio"
+        collapsible
+        defaultCollapsed={audioCp === "OFF"}
         icon={<Mic className={`h-4 w-4 ${checkpointIconClass(audioCp)}`} aria-hidden />}
         title="Entrada de áudio"
         subtitle="Transcrição de mensagens de voz enviadas pelo usuário."
@@ -317,6 +320,9 @@ export function ResourcesToggles({
 
       {/* Entrada de imagem */}
       <ResourceCard
+        id="anexo"
+        collapsible
+        defaultCollapsed={imageCp === "OFF"}
         icon={
           <ImageIcon className={`h-4 w-4 ${checkpointIconClass(imageCp)}`} aria-hidden />
         }
@@ -392,15 +398,18 @@ export function ResourcesToggles({
         )}
       </ResourceCard>
 
-      {/* Sugestões clicáveis (G7) — checkpoint de 3 estados */}
+      {/* Sugestão de pergunta — checkpoint de 3 estados + maximo por resposta */}
       <ResourceCard
+        id="sugestao-pergunta"
+        collapsible
+        defaultCollapsed={suggestionsCp === "OFF"}
         icon={
           <MessageSquare
             className={`h-4 w-4 ${checkpointIconClass(suggestionsCp)}`}
             aria-hidden
           />
         }
-        title="Sugestões clicáveis"
+        title="Sugestão de pergunta"
         subtitle="O Agente Nex oferece perguntas de continuidade no fim das respostas. Não enviadas no WhatsApp."
         checkpoint={suggestionsCp}
         onCheckpointChange={(cp) => {
@@ -408,14 +417,18 @@ export function ResourcesToggles({
           persistResources({ suggestionsCheckpoint: cp }, "suggestions");
         }}
         loading={pending === "suggestions"}
-        ariaLabel="Estado das sugestões clicáveis"
+        ariaLabel="Estado das sugestões de pergunta"
       >
         {suggestionsCp !== "OFF" ? (
-          <div className="flex flex-col gap-1.5 sm:flex-row sm:items-center sm:justify-between">
+          <div className="flex flex-col gap-2">
             <span className="text-xs font-medium text-muted-foreground">
               Máximo por resposta
             </span>
-            <div className="inline-flex shrink-0 rounded-lg border border-border bg-background p-0.5">
+            <div
+              role="group"
+              aria-label="Máximo de sugestões por resposta"
+              className="inline-flex w-fit rounded-lg border border-border bg-background p-0.5"
+            >
               {[1, 2, 3, 4, 5].map((n) => {
                 const isActive = maxSuggestions === n;
                 return (
@@ -466,57 +479,6 @@ function NoCredentialsCta({ provider }: { provider: "áudio" | "anexo" }) {
         <KeyRound className="h-3.5 w-3.5" aria-hidden />
         Nova chave
       </Link>
-    </div>
-  );
-}
-
-interface ResourceCardProps {
-  icon: React.ReactNode;
-  title: string;
-  subtitle: string;
-  checkpoint: CheckpointState;
-  onCheckpointChange: (cp: CheckpointState) => void;
-  loading: boolean;
-  ariaLabel: string;
-  children?: React.ReactNode;
-}
-
-function ResourceCard({
-  icon,
-  title,
-  subtitle,
-  checkpoint,
-  onCheckpointChange,
-  loading,
-  ariaLabel,
-  children,
-}: ResourceCardProps) {
-  return (
-    <div className="rounded-xl border border-border bg-muted/30 px-4 py-3.5">
-      <div className="flex items-start justify-between gap-4">
-        <div className="min-w-0 flex-1">
-          <div className="flex items-center gap-2 text-sm font-medium text-foreground">
-            {icon}
-            {title}
-          </div>
-          <p className="mt-0.5 text-xs text-muted-foreground">{subtitle}</p>
-        </div>
-        <span className="flex shrink-0 items-center gap-2">
-          {loading && (
-            <Loader2
-              className="h-3.5 w-3.5 animate-spin text-muted-foreground"
-              aria-hidden
-            />
-          )}
-          <FeatureCheckpoint
-            value={checkpoint}
-            onChange={onCheckpointChange}
-            disabled={loading}
-            aria-label={ariaLabel}
-          />
-        </span>
-      </div>
-      {children && <div className="mt-3 border-t border-border/60 pt-3">{children}</div>}
     </div>
   );
 }

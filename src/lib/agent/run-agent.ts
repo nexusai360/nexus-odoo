@@ -109,8 +109,8 @@ export type AgentEvent =
   | { type: "thinking" }
   | { type: "token"; delta: string }
   /** `label` é o rótulo genérico exibido na UI; `toolName` é o id cru interno. */
-  | { type: "tool_call"; toolName: string; label: string }
-  | { type: "tool_result"; toolName: string; truncated: boolean; label: string }
+  | { type: "tool_call"; toolName: string; label: string; toolCallId?: string }
+  | { type: "tool_result"; toolName: string; truncated: boolean; label: string; toolCallId?: string }
   | { type: "done" };
 
 export interface RunAgentInput {
@@ -406,6 +406,7 @@ export async function runAgent(args: RunAgentInput): Promise<RunAgentResult> {
           type: "tool_call",
           toolName: tc.name,
           label: progressLabel(tc.name),
+          toolCallId: tc.id,
         });
 
         const toolArgs = (tc.arguments ?? {}) as Record<string, unknown>;
@@ -430,6 +431,7 @@ export async function runAgent(args: RunAgentInput): Promise<RunAgentResult> {
           toolName: tc.name,
           truncated: wasTruncated,
           label: progressLabel(tc.name),
+          toolCallId: tc.id,
         });
 
         conversation.push({

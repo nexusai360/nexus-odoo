@@ -275,6 +275,7 @@ describe("runAgent", () => {
       expect.anything(),
       undefined,
       expect.stringContaining("DDL"),
+      expect.any(String),
     );
   });
 

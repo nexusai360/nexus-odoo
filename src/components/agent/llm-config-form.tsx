@@ -28,7 +28,6 @@ import { toast } from "sonner";
 
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
-import { Switch } from "@/components/ui/switch";
 import {
   CustomSelect,
   type SelectOption,
@@ -49,7 +48,6 @@ import type { PublicLlmConfig } from "@/lib/agent/llm/get-active-config";
 import {
   createLlmConfig,
   activateLlmConfig,
-  updateBubbleEnabled,
 } from "@/lib/actions/agent-config";
 import { testCredentialConnectionAction } from "@/lib/actions/credentials";
 import { syncProviderModels } from "@/lib/actions/sync-models";
@@ -120,8 +118,6 @@ interface LlmConfigFormProps {
   /** Configs já cadastradas — reusa o id em vez de duplicar ao salvar. */
   configs: LlmConfigItem[];
   credentials: CredentialSummary[];
-  /** Estado atual do toggle "Agente Nex ativo". */
-  bubbleEnabled: boolean;
   /**
    * Modelos efetivos por provedor (base do catalog + overrides do banco).
    * Quando ausente, cai em `modelsFor(provider)` (só a base versionada).
@@ -138,7 +134,6 @@ export function LlmConfigForm({
   activeConfig,
   configs,
   credentials,
-  bubbleEnabled,
   modelsByProvider,
 }: LlmConfigFormProps) {
   const router = useRouter();
@@ -170,9 +165,6 @@ export function LlmConfigForm({
   const [test, setTest] = useState<TestState>({ status: "idle" });
   const [isSaving, startSave] = useTransition();
   const [isTesting, startTest] = useTransition();
-  const [bubble, setBubble] = useState(bubbleEnabled);
-  const [isTogglingBubble, startBubbleToggle] = useTransition();
-
   const meta = PROVIDER_META[provider];
   const models = useMemo(
     () => modelsByProvider?.[provider] ?? listModels(provider),
@@ -359,67 +351,10 @@ export function LlmConfigForm({
     });
   }
 
-  function handleBubbleToggle(checked: boolean) {
-    if (!isConfigured) {
-      toast.error("Configure um provedor antes de ativar o Agente Nex.");
-      return;
-    }
-    const previous = bubble;
-    setBubble(checked);
-    startBubbleToggle(async () => {
-      const result = await updateBubbleEnabled(checked);
-      if (!result.success) {
-        setBubble(previous);
-        toast.error(result.error ?? "Erro ao salvar preferência.");
-        return;
-      }
-      toast.success(
-        checked
-          ? "Agente Nex ativado — bolha visível em todas as páginas."
-          : "Agente Nex desativado — bolha oculta.",
-      );
-      router.refresh();
-    });
-  }
-
   return (
     <div className="space-y-8 pt-3">
-      {/* Região: Agente Nex ativo — respiro do topo do card (Task A2) */}
-      <div className="flex items-center justify-between gap-4 rounded-xl border border-border bg-muted/30 px-4 py-3.5">
-        <div className="flex min-w-0 items-center gap-3">
-          <span
-            aria-hidden
-            className={cn(
-              "h-2.5 w-2.5 shrink-0 rounded-full transition-[background-color,box-shadow] duration-200",
-              bubble
-                ? "bg-emerald-400 shadow-[0_0_10px_rgba(52,211,153,0.6)]"
-                : "bg-zinc-400 dark:bg-zinc-600",
-            )}
-          />
-          <div className="min-w-0">
-            <Label
-              htmlFor="agent-bubble-toggle"
-              className="cursor-pointer text-sm font-medium text-foreground"
-            >
-              {bubble ? "Agente Nex ativo" : "Agente Nex desativado"}
-            </Label>
-            <p className="text-xs text-muted-foreground">
-              {!isConfigured
-                ? "Configure um provedor abaixo para liberar a bolha flutuante."
-                : bubble
-                  ? "A bolha flutuante aparece em todas as páginas autenticadas."
-                  : "A bolha flutuante está oculta para todos os usuários."}
-            </p>
-          </div>
-        </div>
-        <Switch
-          id="agent-bubble-toggle"
-          checked={bubble}
-          onCheckedChange={handleBubbleToggle}
-          disabled={isTogglingBubble || !isConfigured}
-          aria-label={bubble ? "Desativar Agente Nex" : "Ativar Agente Nex"}
-        />
-      </div>
+      {/* Disponibilidade do Agente Nex passou para AgentAvailabilityCard
+          (separado por canal: bubble + WhatsApp). */}
 
       {/* Seção: Conexão LLM */}
       <div className="space-y-6 border-t border-border/50 pt-6">

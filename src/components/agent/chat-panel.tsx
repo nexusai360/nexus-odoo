@@ -63,8 +63,8 @@ interface UiMessage {
 type SseEvent =
   | { type: "status"; status: string }
   | { type: "token"; delta: string }
-  | { type: "tool_call"; label: string; toolName?: string }
-  | { type: "tool_result"; label: string; truncated: boolean; toolName?: string }
+  | { type: "tool_call"; label: string; toolName?: string; toolCallId?: string }
+  | { type: "tool_result"; label: string; truncated: boolean; toolName?: string; toolCallId?: string }
   | { type: "done"; conversationId: string; message: string; suggestions: string[] }
   | { type: "error"; error: string };
 
@@ -159,7 +159,7 @@ export function ChatPanel({
   }, []);
 
   const handleSend = React.useCallback(
-    async (text: string) => {
+    async (text: string, opts?: { source?: "bubble" | "suggestion" }) => {
       const trimmed = text.trim();
       if (!trimmed || pending) return;
 
@@ -191,6 +191,7 @@ export function ChatPanel({
           body: JSON.stringify({
             message: trimmed,
             conversationId: conversationIdRef.current ?? undefined,
+            meta: { source: opts?.source ?? "bubble" },
           }),
           signal: controller.signal,
         });
@@ -258,8 +259,10 @@ export function ChatPanel({
                 ];
               });
             } else if (evt.type === "tool_call") {
+              // Usa toolCallId do provider para correlacionar com tool_result.
+              // Fallback FIFO permanece para providers que nao expoem id.
               const step: ProgressStep = {
-                id: `s_${crypto.randomUUID()}`,
+                id: evt.toolCallId ?? `s_${crypto.randomUUID()}`,
                 label: evt.label,
                 state: "running",
               };
@@ -286,18 +289,18 @@ export function ChatPanel({
                 return copy;
               });
             } else if (evt.type === "tool_result") {
-              // Matching FIFO: marca como done o primeiro passo running de
-              // mesmo rótulo (os eventos não carregam id de correlação).
+              // Matching por toolCallId quando disponivel; FIFO label como
+              // fallback (compat com providers sem id de correlacao).
               setMessages((prev) =>
                 prev.map((m) => {
                   if (m.id !== progressMsgId) return m;
                   let marked = false;
                   const steps = (m.steps ?? []).map((s) => {
-                    if (
-                      !marked &&
-                      s.state === "running" &&
-                      s.label === evt.label
-                    ) {
+                    if (marked) return s;
+                    if (s.state !== "running") return s;
+                    const byId = evt.toolCallId && s.id === evt.toolCallId;
+                    const byLabel = !evt.toolCallId && s.label === evt.label;
+                    if (byId || byLabel) {
                       marked = true;
                       return { ...s, state: "done" as const };
                     }
@@ -404,7 +407,7 @@ export function ChatPanel({
       setMessages((prev) =>
         prev.map((m) => (m.id === msgId ? { ...m, suggestions: undefined } : m)),
       );
-      void handleSend(suggestion);
+      void handleSend(suggestion, { source: "suggestion" });
     },
     [handleSend],
   );
@@ -543,7 +546,10 @@ export function ChatPanel({
           className="flex-1 overflow-y-auto overscroll-contain px-4 py-3"
         >
           {showWelcome ? (
-            <WelcomeBlock onPick={handleSend} suggestions={WELCOME_SUGGESTIONS} />
+            <WelcomeBlock
+              onPick={(s) => void handleSend(s, { source: "suggestion" })}
+              suggestions={WELCOME_SUGGESTIONS}
+            />
           ) : (
             <div className="space-y-3">
               {messages.map((m, idx) => {

@@ -19,7 +19,7 @@ export default async function PlugarMcpsLayout({ children }: { children: ReactNo
   if (user.platformRole !== "super_admin") redirect("/dashboard");
 
   return (
-    <PageShell variant="narrow">
+    <PageShell variant="agent">
       <PageHeader
         icon={Cable}
         title="Plugar MCPs"

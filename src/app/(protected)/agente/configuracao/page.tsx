@@ -20,6 +20,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { LlmConfigForm } from "@/components/agent/llm-config-form";
+import { AgentAvailabilityCard } from "@/components/agent/agent-availability-card";
 import {
   ResourcesToggles,
   type CredentialOption,
@@ -65,6 +66,8 @@ export default async function Page() {
   const settings = settingsResult.success ? settingsResult.data : null;
 
   const bubbleEnabled = settings ? settings.bubbleEnabled : true;
+  const whatsappEnabled = settings ? settings.whatsappEnabled : true;
+  const isConfigured = activeConfig != null;
 
   const credentialsByProvider: Record<string, CredentialOption[]> = {};
   for (const c of credentials) {
@@ -109,7 +112,7 @@ export default async function Page() {
   };
 
   return (
-    <PageShell variant="narrow">
+    <PageShell variant="compact">
       <PageHeader
         icon={SlidersHorizontal}
         title="Configuração do Agente Nex"
@@ -117,19 +120,30 @@ export default async function Page() {
       />
       <div className="space-y-8">
         <Card className="rounded-2xl border border-border bg-muted/30 p-2">
+          <CardHeader className="pb-3">
+            <CardTitle>Disponibilidade</CardTitle>
+          </CardHeader>
+          <CardContent className="pb-5">
+            <AgentAvailabilityCard
+              initial={{ bubbleEnabled, whatsappEnabled }}
+              isConfigured={isConfigured}
+            />
+          </CardContent>
+        </Card>
+
+        <Card className="rounded-2xl border border-border bg-muted/30 p-2">
           <CardContent>
             <LlmConfigForm
               configs={configsForForm}
               credentials={credentials}
               activeConfig={activeConfig}
-              bubbleEnabled={bubbleEnabled}
               modelsByProvider={modelsByProvider}
             />
           </CardContent>
         </Card>
 
         <Card className="rounded-2xl border border-border bg-muted/30 p-2">
-          <CardHeader className="pb-3">
+          <CardHeader className="pt-6 pb-3">
             <CardTitle>Recursos</CardTitle>
           </CardHeader>
           <CardContent className="pb-5">

@@ -172,16 +172,16 @@ describe("DEFAULT_GUARDRAILS — segurança da informação", () => {
   });
 });
 
-describe("composeSystemPrompt — sugestões de desambiguação", () => {
-  test("instrução de sugestões cobre desambiguação e o cap configurável", () => {
+describe("composeSystemPrompt — sugestoes de desambiguacao", () => {
+  test("instrucao de sugestoes cobre desambiguacao e o cap configuravel", () => {
     const out = composeSystemPrompt(
       { ...baseConfig, suggestionsEnabled: true, maxSuggestions: 3 },
       [],
     );
-    expect(out).toContain("desambiguação");
+    expect(out).toContain("desambiguacao");
     // O texto traz o limite configurado dinamicamente em pelo menos dois pontos.
-    expect(out).toContain("até **3 sugestões**");
-    expect(out).toContain("máximo está configurado em 3");
+    expect(out).toContain("ate **3 sugestoes**");
+    expect(out).toContain("maximo esta configurado em 3");
   });
 
   test("respeita maxSuggestions configurado", () => {
@@ -189,7 +189,26 @@ describe("composeSystemPrompt — sugestões de desambiguação", () => {
       { ...baseConfig, suggestionsEnabled: true, maxSuggestions: 5 },
       [],
     );
-    expect(out).toContain("até **5 sugestões**");
-    expect(out).not.toContain("até **3 sugestões**");
+    expect(out).toContain("ate **5 sugestoes**");
+    expect(out).not.toContain("ate **3 sugestoes**");
+  });
+
+  test("source=suggestion injeta diretiva de resposta direta", () => {
+    const out = composeSystemPrompt(
+      { ...baseConfig, suggestionsEnabled: true },
+      [],
+      undefined,
+      undefined,
+      "suggestion",
+    );
+    expect(out).toContain("Entrada veio de sugestao clicada");
+    expect(out).toContain("Responda direto");
+  });
+
+  test("bloco Comportamento adiciona defaults razoaveis e limite de clarificacao", () => {
+    const out = composeSystemPrompt({ ...baseConfig }, []);
+    expect(out).toContain("## Comportamento");
+    expect(out).toContain("mes do calendario corrente");
+    expect(out).toContain("Nao faca mais de uma rodada de clarificacao");
   });
 });
