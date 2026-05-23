@@ -21,6 +21,8 @@ export interface AgentSettingsData {
   /** Checkpoint de 3 estados das sugestões clicáveis (G7). */
   suggestionsCheckpoint: FeatureCheckpoint;
   bubbleEnabled: boolean;
+  /** Disponibilidade do Agente Nex no canal WhatsApp (F5). */
+  whatsappEnabled: boolean;
   audioCheckpoint: FeatureCheckpoint;
   imageCheckpoint: FeatureCheckpoint;
   kbCheckpoint: FeatureCheckpoint;
@@ -57,4 +59,5 @@ export interface PublicAgentFlags {
   /** true se sugestões clicáveis aparecem ao menos no playground (G7). */
   suggestionsInPlayground: boolean;
   bubbleEnabled: boolean;
+  whatsappEnabled: boolean;
 }

@@ -64,15 +64,25 @@ export async function querySaldoProduto(
   prisma: PrismaClient,
   filtros: { armazemId?: number; familiaId?: number; termo?: string },
 ): Promise<SaldoProdutoData> {
+  // Busca tolerante a acento: quando vier `termo`, usa helper SQL com unaccent
+  // + fallback pg_trgm e filtra os fatos pelos produtoIds retornados, em vez
+  // de depender do ILIKE case-insensitive do Prisma (que nao tira acento).
+  let produtoIdsFiltro: number[] | undefined;
+  if (filtros.termo) {
+    const { searchProductIdsByName } = await import("./_search-helpers");
+    produtoIdsFiltro = await searchProductIdsByName(prisma, filtros.termo);
+    if (produtoIdsFiltro.length === 0) {
+      return { kpis: { totalProdutos: 0, produtosNegativos: 0, valorTotal: 0 }, linhas: [] };
+    }
+  }
+
   // groupBy não suporta _count(distinct), então buscamos os dados brutos e
   // agregamos em JS — dataset cabe confortavelmente em memória.
   const rows = await prisma.fatoEstoqueSaldo.findMany({
     where: {
       ...(filtros.armazemId ? { localId: filtros.armazemId } : {}),
       ...(filtros.familiaId ? { familiaId: filtros.familiaId } : {}),
-      ...(filtros.termo
-        ? { produtoNome: { contains: filtros.termo, mode: "insensitive" as const } }
-        : {}),
+      ...(produtoIdsFiltro ? { produtoId: { in: produtoIdsFiltro } } : {}),
     },
     select: {
       produtoId: true,

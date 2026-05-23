@@ -29,6 +29,7 @@ function rowToModelEntry(row: {
   reasoningLevels: unknown;
   released: string | null;
   notes: string | null;
+  deprecatedAt: Date | null;
 }): ModelEntry {
   const pricing =
     row.pricingInput == null && row.pricingOutput == null
@@ -55,6 +56,7 @@ function rowToModelEntry(row: {
     released: row.released ?? undefined,
     notes: row.notes ?? undefined,
     reasoning,
+    deprecated: row.deprecatedAt != null,
   };
 }
 

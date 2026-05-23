@@ -11,11 +11,20 @@ import "server-only";
 
 import { prisma } from "@/lib/prisma";
 import { MODELS, type LlmProvider } from "./catalog";
+import { isAllowedByWhitelist } from "./sync-whitelist";
 
 export interface SyncResult {
   provider: LlmProvider;
   novos: string[];
   atualizados: string[];
+  /** Modelos ignorados por nao estar na whitelist do provider. */
+  ignoradosWhitelist: string[];
+  /** Modelos ignorados por nao terem pricing (input/output). */
+  ignoradosSemPricing: string[];
+  /** Ids marcados como deprecated por nao virem mais no sync. */
+  depreciados: string[];
+  /** Ids que voltaram (deprecated_at -> null). */
+  revividos: string[];
   erro?: string;
 }
 
@@ -77,7 +86,15 @@ export async function syncProvider(
   provider: LlmProvider,
   apiKey: string,
 ): Promise<SyncResult> {
-  const out: SyncResult = { provider, novos: [], atualizados: [] };
+  const out: SyncResult = {
+    provider,
+    novos: [],
+    atualizados: [],
+    ignoradosWhitelist: [],
+    ignoradosSemPricing: [],
+    depreciados: [],
+    revividos: [],
+  };
   try {
     let fetched: FetchedModel[] = [];
     if (provider === "openai") fetched = await fetchOpenAI(apiKey);
@@ -92,15 +109,42 @@ export async function syncProvider(
     );
     const overrides = await prisma.llmModelEntry.findMany({
       where: { provider },
-      select: { id: true },
+      select: { id: true, deprecatedAt: true },
     });
-    const knownOverride = new Set(overrides.map((o) => o.id));
+    const knownOverride = new Map(
+      overrides.map((o) => [o.id, o.deprecatedAt] as const),
+    );
+
+    // Conjunto de ids vistos no sync atual (validos), para detectar deprecated.
+    const vistosEsteSync = new Set<string>();
 
     for (const m of fetched) {
+      // Filtro 1: whitelist por provider (recusa modelos antigos/experimentais).
+      if (!isAllowedByWhitelist(provider, m.id)) {
+        out.ignoradosWhitelist.push(m.id);
+        continue;
+      }
+      // Filtro 2: pricing precisa estar disponivel para entrar no catalogo
+      // (caso OpenRouter). OpenAI nao expoe pricing na listagem, entao quando
+      // estamos no provider openai aceitamos `null` se a base ja conhecer o id
+      // (vai ficar como "sob consulta" ate curadoria). Para qualquer outro
+      // provider, exigimos pricing.
+      const semPricing =
+        m.pricingInput == null || m.pricingOutput == null;
+      const aceitaSemPricing = provider === "openai" && knownBase.has(m.id);
+      if (semPricing && !aceitaSemPricing) {
+        out.ignoradosSemPricing.push(m.id);
+        continue;
+      }
+
+      vistosEsteSync.add(m.id);
       const inBase = knownBase.has(m.id);
-      const inOverride = knownOverride.has(m.id);
-      if (inBase) continue; // base versionada vence — não duplica
+      if (inBase) {
+        // Base versionada vence: nao duplica entrada no banco.
+        continue;
+      }
       const tier = deriveTier(m.pricingInput, m.pricingOutput);
+      const eraDepreciado = (knownOverride.get(m.id) ?? null) != null;
       await prisma.llmModelEntry.upsert({
         where: { id: m.id },
         create: {
@@ -117,10 +161,29 @@ export async function syncProvider(
           tier,
           pricingInput: m.pricingInput,
           pricingOutput: m.pricingOutput,
+          // Reativa o modelo se estava marcado como deprecated.
+          deprecatedAt: null,
         },
       });
-      if (inOverride) out.atualizados.push(m.id);
+      if (eraDepreciado) out.revividos.push(m.id);
+      if (knownOverride.has(m.id)) out.atualizados.push(m.id);
       else out.novos.push(m.id);
+    }
+
+    // Detecta deprecated: entries do banco que nao vieram no sync e ainda
+    // nao estavam marcadas.
+    const aDepreciar: string[] = [];
+    for (const [id, deprecatedAt] of knownOverride) {
+      if (vistosEsteSync.has(id)) continue;
+      if (deprecatedAt != null) continue;
+      aDepreciar.push(id);
+    }
+    if (aDepreciar.length > 0) {
+      await prisma.llmModelEntry.updateMany({
+        where: { id: { in: aDepreciar } },
+        data: { deprecatedAt: new Date() },
+      });
+      out.depreciados.push(...aDepreciar);
     }
   } catch (err) {
     out.erro = err instanceof Error ? err.message : "Falha na sincronização.";

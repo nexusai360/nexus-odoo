@@ -101,6 +101,7 @@ type AgentSettingsRow = {
   suggestionsEnabled: boolean;
   suggestionsCheckpoint: FeatureCheckpoint;
   bubbleEnabled: boolean;
+  whatsappEnabled: boolean;
   audioCheckpoint: FeatureCheckpoint;
   imageCheckpoint: FeatureCheckpoint;
   kbCheckpoint: FeatureCheckpoint;
@@ -129,6 +130,7 @@ function mapSettings(row: AgentSettingsRow): AgentSettingsData {
     suggestionsEnabled: row.suggestionsEnabled,
     suggestionsCheckpoint: row.suggestionsCheckpoint,
     bubbleEnabled: row.bubbleEnabled,
+    whatsappEnabled: row.whatsappEnabled,
     audioCheckpoint: row.audioCheckpoint,
     imageCheckpoint: row.imageCheckpoint,
     kbCheckpoint: row.kbCheckpoint,
@@ -224,6 +226,7 @@ const DEFAULT_FLAGS: PublicAgentFlags = {
   suggestionsEnabled: true,
   suggestionsInPlayground: true,
   bubbleEnabled: true,
+  whatsappEnabled: true,
 };
 
 /** Feature-flags públicas do agente, legíveis por qualquer usuário autenticado. */
@@ -240,6 +243,7 @@ export async function getPublicAgentFlags(): Promise<PublicAgentFlags> {
         kbCheckpoint: true,
         suggestionsCheckpoint: true,
         bubbleEnabled: true,
+        whatsappEnabled: true,
       },
     });
     if (!settings) return DEFAULT_FLAGS;
@@ -254,6 +258,7 @@ export async function getPublicAgentFlags(): Promise<PublicAgentFlags> {
       suggestionsEnabled: settings.suggestionsCheckpoint === "PRODUCTION",
       suggestionsInPlayground: settings.suggestionsCheckpoint !== "OFF",
       bubbleEnabled: settings.bubbleEnabled,
+      whatsappEnabled: settings.whatsappEnabled,
     };
   } catch (err) {
     console.error("[getPublicAgentFlags]", err);
@@ -393,6 +398,60 @@ export async function updateAgentResources(
     return {
       success: false,
       error: err instanceof Error ? err.message : "Erro ao atualizar recursos",
+    };
+  }
+}
+
+/**
+ * Atualiza a disponibilidade do Agente Nex em cada canal (bubble in-app e
+ * WhatsApp). Persistido como dois booleans independentes; a UI lê e mostra
+ * um sumario de 4 estados (off, so bubble, so whatsapp, ambos).
+ */
+export async function updateAgentAvailability(input: {
+  bubbleEnabled: boolean;
+  whatsappEnabled: boolean;
+}): Promise<ActionResult> {
+  try {
+    const auth = await requireAdminOrAbove();
+    if (!auth.ok) return { success: false, error: auth.error };
+
+    await prisma.agentSettings.upsert({
+      where: { id: "global" },
+      create: {
+        id: "global",
+        personality: "",
+        tone: "",
+        guardrails: [],
+        terminology: {},
+        bubbleEnabled: input.bubbleEnabled,
+        whatsappEnabled: input.whatsappEnabled,
+      },
+      update: {
+        bubbleEnabled: input.bubbleEnabled,
+        whatsappEnabled: input.whatsappEnabled,
+      },
+    });
+
+    void logAudit({
+      userId: auth.userId,
+      action: "agent_settings_updated",
+      targetType: "AgentSettings",
+      targetId: "global",
+      details: {
+        kind: "availability",
+        bubbleEnabled: input.bubbleEnabled,
+        whatsappEnabled: input.whatsappEnabled,
+      },
+    });
+
+    revalidatePath("/agente");
+    revalidatePath("/agente/configuracao");
+    return { success: true };
+  } catch (err) {
+    console.error("[updateAgentAvailability]", err);
+    return {
+      success: false,
+      error: err instanceof Error ? err.message : "Erro ao atualizar disponibilidade",
     };
   }
 }

@@ -142,6 +142,11 @@ export interface RunAgentInput {
     model: string;
     apiKey: string;
   };
+  /**
+   * Origem do turno (afeta diretrizes do prompt). Default "bubble".
+   * Quando "suggestion", o composer instrui o modelo a responder direto.
+   */
+  source?: import("./prompt/compose").AgentPromptSource;
 }
 
 export type RunAgentResult =
@@ -267,7 +272,13 @@ export async function runAgent(args: RunAgentInput): Promise<RunAgentResult> {
         : {}),
       advancedOverride: args.promptOverride ?? agentSettings.advancedOverride,
     };
-    const systemPrompt = composeSystemPrompt(promptCfg, kbSnippets, undefined, biSchema);
+    const systemPrompt = composeSystemPrompt(
+      promptCfg,
+      kbSnippets,
+      undefined,
+      biSchema,
+      args.source ?? (args.isPlayground ? "playground" : "bubble"),
+    );
 
     // Carregar tools do MCP interno + dos MCPs externos plugados.
     // Nomes com caracteres fora de [a-zA-Z0-9_-] (ex.: `crm.res_partner.get`)

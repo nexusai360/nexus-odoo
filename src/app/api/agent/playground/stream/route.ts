@@ -59,7 +59,13 @@ export async function POST(req: Request): Promise<Response> {
     return jsonError("Acesso negado ao playground", 403);
   }
 
-  let body: { sessionId?: string; message?: string };
+  let body: {
+    sessionId?: string;
+    message?: string;
+    meta?: {
+      source?: "bubble" | "suggestion" | "whatsapp" | "playground";
+    };
+  };
   try {
     body = (await req.json()) as typeof body;
   } catch {
@@ -174,6 +180,7 @@ export async function POST(req: Request): Promise<Response> {
             model: session.model,
             apiKey,
           },
+          source: body.meta?.source ?? "playground",
         });
 
         if (result.ok) {

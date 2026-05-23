@@ -57,6 +57,8 @@ export interface ModelEntry {
    * `levels` traz os níveis de esforço aceitos, do menor ao maior.
    */
   reasoning?: { levels: ReasoningLevel[] };
+  /** true quando o modelo veio do banco e foi marcado como deprecated_at. */
+  deprecated?: boolean;
 }
 
 export interface ProviderMeta {

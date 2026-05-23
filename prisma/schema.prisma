@@ -2295,6 +2295,9 @@ model AgentSettings {
   /// Exibição da bolha flutuante do Agente Nex nas páginas autenticadas.
   bubbleEnabled     Boolean  @default(true) @map("bubble_enabled")
 
+  /// Habilita o Agente Nex no canal WhatsApp (F5). Independente de bubble.
+  whatsappEnabled   Boolean  @default(true) @map("whatsapp_enabled")
+
   /// Checkpoints de 3 estados (OFF/PLAYGROUND/PRODUCTION).
   audioCheckpoint   FeatureCheckpoint @default(OFF) @map("audio_checkpoint")
   imageCheckpoint   FeatureCheckpoint @default(OFF) @map("image_checkpoint")
@@ -2348,6 +2351,9 @@ model LlmModelEntry {
   released           String?
   notes              String?
   source             String   @default("sync")
+  /// Quando o modelo some do catalogo upstream, marca o instante;
+  /// permite manter selecao do usuario e exibir banner de deprecated.
+  deprecatedAt       DateTime? @map("deprecated_at")
   updatedAt          DateTime @updatedAt @map("updated_at")
   @@index([provider])
   @@map("llm_model_entry")

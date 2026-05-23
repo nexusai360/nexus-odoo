@@ -35,7 +35,15 @@ export async function POST(req: Request): Promise<Response> {
     });
   }
 
-  let body: { conversationId?: string; message?: string; isPlayground?: boolean; channel?: string };
+  let body: {
+    conversationId?: string;
+    message?: string;
+    isPlayground?: boolean;
+    channel?: string;
+    meta?: {
+      source?: "bubble" | "suggestion" | "whatsapp" | "playground";
+    };
+  };
   try {
     body = (await req.json()) as typeof body;
   } catch {
@@ -133,6 +141,8 @@ export async function POST(req: Request): Promise<Response> {
           channel,
           isPlayground,
           onEvent,
+          source:
+            body.meta?.source ?? (isPlayground ? "playground" : "bubble"),
         });
 
         if (result.ok) {
