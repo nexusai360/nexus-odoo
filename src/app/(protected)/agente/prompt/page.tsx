@@ -58,7 +58,7 @@ export default async function Page() {
   };
 
   return (
-    <PageShell variant="form">
+    <PageShell variant="agent">
       <PageHeader
         icon={BookOpen}
         title="Prompt do Agente Nex"

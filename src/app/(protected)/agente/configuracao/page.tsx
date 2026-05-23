@@ -112,7 +112,7 @@ export default async function Page() {
   };
 
   return (
-    <PageShell variant="compact">
+    <PageShell variant="agent">
       <PageHeader
         icon={SlidersHorizontal}
         title="Configuração do Agente Nex"
