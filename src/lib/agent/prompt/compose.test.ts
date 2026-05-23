@@ -173,12 +173,23 @@ describe("DEFAULT_GUARDRAILS — segurança da informação", () => {
 });
 
 describe("composeSystemPrompt — sugestões de desambiguação", () => {
-  test("instrução de sugestões cobre desambiguação e o cap de 5", () => {
+  test("instrução de sugestões cobre desambiguação e o cap configurável", () => {
     const out = composeSystemPrompt(
-      { ...baseConfig, suggestionsEnabled: true },
+      { ...baseConfig, suggestionsEnabled: true, maxSuggestions: 3 },
       [],
     );
     expect(out).toContain("desambiguação");
-    expect(out).toContain("Máximo 5 sugestões");
+    // O texto traz o limite configurado dinamicamente em pelo menos dois pontos.
+    expect(out).toContain("até **3 sugestões**");
+    expect(out).toContain("máximo está configurado em 3");
+  });
+
+  test("respeita maxSuggestions configurado", () => {
+    const out = composeSystemPrompt(
+      { ...baseConfig, suggestionsEnabled: true, maxSuggestions: 5 },
+      [],
+    );
+    expect(out).toContain("até **5 sugestões**");
+    expect(out).not.toContain("até **3 sugestões**");
   });
 });
