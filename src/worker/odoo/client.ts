@@ -293,9 +293,11 @@ export function clientFromEnv(mode: "read" | "write" = "read"): OdooClient {
   const isWrite = mode === "write";
   const get = (key: string): string => {
     if (isWrite) {
-      // USERNAME → ODOO_WRITE_USER; demais: ODOO_WRITE_<KEY>
+      // USERNAME → ODOO_WRITE_USER; demais: ODOO_WRITE_<KEY>.
+      // Sem fallback para ODOO_* (leitura/producao): canal de escrita exige
+      // credenciais proprias para nao escrever na producao por acidente.
       const writeEnv = `ODOO_WRITE_${key === "USERNAME" ? "USER" : key}`;
-      return process.env[writeEnv] ?? process.env[`ODOO_${key}`] ?? "";
+      return process.env[writeEnv] ?? "";
     }
     return process.env[`ODOO_${key}`] ?? "";
   };

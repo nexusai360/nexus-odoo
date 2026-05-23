@@ -431,7 +431,7 @@ export function LlmConfigForm({
               triggerClassName="min-h-[44px]"
             />
             <p className="text-xs text-muted-foreground">
-              Plataforma de IA que processará as consultas do Agente Nex.
+              Plataforma do LLM.
             </p>
           </div>
 
@@ -461,8 +461,8 @@ export function LlmConfigForm({
             />
             <p className="text-xs text-muted-foreground">
               {usingCustom
-                ? "Modelo customizado — útil para snapshots datados."
-                : "Tier $ / $$ / $$$ / $$$$ indica o custo por milhão de tokens."}
+                ? "Modelo customizado, útil para snapshots datados."
+                : "Tier $/$$/$$$/$$$$ indica o custo por milhão de tokens."}
             </p>
             {(() => {
               const selected = models.find((m) => m.id === modelSelect);

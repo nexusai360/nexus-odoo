@@ -296,9 +296,9 @@ describe("clientFromEnv('write') — lê ODOO_WRITE_*", () => {
 });
 
 // ---------------------------------------------------------------------------
-// 10. clientFromEnv("write") — fallback para ODOO_* quando write vars ausentes
+// 10. clientFromEnv("write") — sem fallback para ODOO_* (producao)
 // ---------------------------------------------------------------------------
-describe("clientFromEnv('write') — fallback para ODOO_*", () => {
+describe("clientFromEnv('write') — sem fallback para ODOO_*", () => {
   const originalEnv = process.env;
 
   beforeEach(() => {
@@ -308,7 +308,6 @@ describe("clientFromEnv('write') — fallback para ODOO_*", () => {
       ODOO_DB: "readdb",
       ODOO_USERNAME: "readuser",
       ODOO_PASSWORD: "readpass",
-      // Sem ODOO_WRITE_* — deve usar ODOO_*
     };
     delete process.env.ODOO_WRITE_URL;
     delete process.env.ODOO_WRITE_DB;
@@ -320,9 +319,10 @@ describe("clientFromEnv('write') — fallback para ODOO_*", () => {
     process.env = originalEnv;
   });
 
-  it("usa ODOO_* como fallback quando ODOO_WRITE_* ausente", () => {
-    const client = clientFromEnv("write");
-    expect(client).toBeInstanceOf(OdooClient);
+  it("lanca erro listando todas as ODOO_WRITE_* ausentes (nao cai em ODOO_*)", () => {
+    expect(() => clientFromEnv("write")).toThrow(
+      /Variáveis ausentes para modo 'write': URL, DB, USERNAME, PASSWORD/,
+    );
   });
 });
 
