@@ -639,6 +639,12 @@ export function ConsumoContent({ minDate: minDateIso }: ConsumoContentProps) {
     () => (stats ? formatBrl4(stats.totalCostBrl) : "—"),
     [stats],
   );
+  // Valor "centro do donut": sincroniza com o periodo navegado (segue
+  // activeChartStats); o KPI Custo total continua usando o periodo inteiro.
+  const chartTotalCostBrlFormatted = useMemo(
+    () => (activeChartStats ? formatBrl4(activeChartStats.totalCostBrl) : "—"),
+    [activeChartStats],
+  );
   const custoSubtitle = useMemo(() => {
     if (!stats) return undefined;
     const base = `≈ ${formatUsd4(stats.totalCostUsd)}`;
@@ -865,7 +871,7 @@ export function ConsumoContent({ minDate: minDateIso }: ConsumoContentProps) {
               <DonutWithCenter
                 data={providerPieData}
                 centerLabel="Custo total"
-                centerValue={totalCostBrlFormatted}
+                centerValue={chartTotalCostBrlFormatted}
                 formatValue={formatBrl4}
                 ariaLabel="Custo agrupado por provider em BRL"
                 emptyMessage="Sem dados de provedor"
