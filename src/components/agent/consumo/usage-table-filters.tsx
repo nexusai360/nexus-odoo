@@ -24,7 +24,7 @@ export interface UsageTableFiltersProps {
   providers: string[];
   /** Mapa provider → modelos disponíveis no período. */
   modelsByProvider: Record<string, string[]>;
-  /** Provider ativo. `undefined` = "Todos os providers". */
+  /** Provider ativo. `undefined` = "Todos os provedores". */
   selectedProvider?: string;
   /** Modelo ativo. `undefined` = "Todos os modelos". */
   selectedModel?: string;
@@ -117,7 +117,7 @@ function ProviderSelect({
   const label =
     selectedProvider !== undefined
       ? providerLabel(selectedProvider)
-      : "Todos os providers";
+      : "Todos os provedores";
 
   return (
     <Popover open={open} onOpenChange={setOpen}>
@@ -125,7 +125,7 @@ function ProviderSelect({
         render={
           <button
             type="button"
-            aria-label="Filtrar por provider"
+            aria-label="Filtrar por provedor"
             aria-haspopup="listbox"
             aria-expanded={open}
             className="flex h-9 min-w-[180px] cursor-pointer items-center justify-between gap-2 rounded-lg border border-border bg-card px-3 text-sm text-foreground transition-colors hover:border-muted-foreground/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
@@ -148,11 +148,11 @@ function ProviderSelect({
       >
         <ul
           role="listbox"
-          aria-label="Providers"
+          aria-label="Provedores"
           className="flex flex-col py-1"
         >
           <SelectOption
-            label="Todos os providers"
+            label="Todos os provedores"
             selected={selectedProvider === undefined}
             onClick={() => {
               onChange(undefined);

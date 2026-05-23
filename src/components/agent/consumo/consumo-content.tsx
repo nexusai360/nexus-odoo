@@ -363,6 +363,30 @@ export function ConsumoContent({ minDate: minDateIso }: ConsumoContentProps) {
   // Próximo período disponível quando o range do gráfico termina antes de agora.
   const chartNextAvailable = effectiveChartRange.end < new Date();
 
+  // Range "drill-down": quando o usuario navega via PeriodNavigator do
+  // grafico, o resto da pagina (histórico de chamadas) acompanha. Sem
+  // navegacao ativa, usa o periodo da pill.
+  const effectiveDetailsRange = useMemo(
+    () => (chartReferenceDate ? effectiveChartRange : range),
+    [chartReferenceDate, effectiveChartRange, range],
+  );
+
+  const drillLabel = useMemo<string | null>(() => {
+    if (!chartReferenceDate) return null;
+    try {
+      const fmtDay = new Intl.DateTimeFormat("pt-BR", {
+        timeZone: TZ,
+        day: "2-digit",
+        month: "2-digit",
+      });
+      const s = fmtDay.format(effectiveChartRange.start);
+      const e = fmtDay.format(effectiveChartRange.end);
+      return s === e ? s : `${s} - ${e}`;
+    } catch {
+      return null;
+    }
+  }, [chartReferenceDate, effectiveChartRange]);
+
   // Fetch separado de stats para o gráfico quando navegando.
   useEffect(() => {
     if (!chartReferenceDate || !canonicalLabel) {
@@ -438,6 +462,8 @@ export function ConsumoContent({ minDate: minDateIso }: ConsumoContentProps) {
       try {
         const startIso = range.start.toISOString();
         const endIso = range.end.toISOString();
+        const detStartIso = effectiveDetailsRange.start.toISOString();
+        const detEndIso = effectiveDetailsRange.end.toISOString();
         const [s, d] = await Promise.all([
           fetchUsageStats({
             start: startIso,
@@ -446,8 +472,8 @@ export function ConsumoContent({ minDate: minDateIso }: ConsumoContentProps) {
             isPlayground: isPlaygroundFilter,
           }),
           fetchUsageDetails({
-            start: startIso,
-            end: endIso,
+            start: detStartIso,
+            end: detEndIso,
             limit: pageSize,
             offset: page * pageSize,
             provider: filterProvider ?? null,
@@ -474,7 +500,7 @@ export function ConsumoContent({ minDate: minDateIso }: ConsumoContentProps) {
       cancelled = true;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [range.start.getTime(), range.end.getTime(), page, pageSize, globalProvider, filterProvider, filterModel, isPlaygroundFilter]);
+  }, [range.start.getTime(), range.end.getTime(), effectiveDetailsRange.start.getTime(), effectiveDetailsRange.end.getTime(), page, pageSize, globalProvider, filterProvider, filterModel, isPlaygroundFilter]);
 
   // Fetch lista de providers no range (para filtros cascade).
   useEffect(() => {
@@ -728,14 +754,14 @@ export function ConsumoContent({ minDate: minDateIso }: ConsumoContentProps) {
               setGlobalProvider(v === "__all__" ? undefined : v)
             }
             options={[
-              { value: "__all__", label: "Todos os providers" },
+              { value: "__all__", label: "Todos os provedores" },
               ...providers.map((p) => ({
                 value: p,
                 label: providerLabel(p),
               })),
             ]}
             triggerClassName="min-h-[36px] h-9 w-[200px]"
-            aria-label="Filtrar por provider (global)"
+            aria-label="Filtrar por provedor (global)"
           />
           <CustomSelect
             value={ambiente}
@@ -923,6 +949,23 @@ export function ConsumoContent({ minDate: minDateIso }: ConsumoContentProps) {
           <CardTitle className="flex items-center gap-2">
             <History className="h-4 w-4 text-violet-500" />
             Histórico de chamadas
+            {drillLabel ? (
+              <span
+                role="status"
+                aria-label={`Periodo filtrado pelo grafico: ${drillLabel}`}
+                className="ml-2 inline-flex items-center gap-2 rounded-full border border-violet-500/40 bg-violet-500/10 px-2.5 py-0.5 text-[11px] font-medium text-violet-700 dark:text-violet-300"
+              >
+                <span aria-hidden className="h-1.5 w-1.5 rounded-full bg-violet-500" />
+                Periodo: {drillLabel}
+                <button
+                  type="button"
+                  onClick={() => setChartReferenceDate(null)}
+                  className="ml-1 cursor-pointer text-[11px] font-medium text-violet-600 underline-offset-2 hover:underline dark:text-violet-300"
+                >
+                  Limpar
+                </button>
+              </span>
+            ) : null}
           </CardTitle>
           <UsageTableFilters
             providers={providers}
@@ -940,7 +983,7 @@ export function ConsumoContent({ minDate: minDateIso }: ConsumoContentProps) {
                 <TableRow>
                   <TableHead>Data/hora</TableHead>
                   <TableHead>Origem</TableHead>
-                  <TableHead>Provider</TableHead>
+                  <TableHead>Provedor</TableHead>
                   <TableHead className="hidden md:table-cell">Modelo</TableHead>
                   <TableHead>Tipo</TableHead>
                   <TableHead
