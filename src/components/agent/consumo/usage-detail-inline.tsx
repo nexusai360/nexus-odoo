@@ -225,9 +225,7 @@ function CostBreakdownBlock({ row }: { row: UsageDetailRow }) {
           <CalcRow
             op="×"
             label="PTAX venda do dia (USD/BRL)"
-            value={
-              commercialRate != null ? commercialRate.toFixed(4) : "—"
-            }
+            value={commercialRate != null ? brlFmt.format(commercialRate) : "—"}
           />
           <CalcRow
             op="="
