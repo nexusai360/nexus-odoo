@@ -17,7 +17,6 @@ import { useRouter } from "next/navigation";
 import { Loader2, Plus, Save, Shield, Sparkles, Trash2, Wand2 } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { ExpandableTextarea } from "@/components/ui/expandable-textarea";
 import { updateAgentSettings } from "@/lib/actions/agent-config";
@@ -179,22 +178,24 @@ export function PromptConfigForm({ initial }: PromptConfigFormProps) {
             {guardrails.map((g, idx) => (
               <li key={idx} className="flex items-start gap-2">
                 <div className="flex flex-1 flex-col gap-1">
-                  <Input
-                    aria-label={`Guardrail ${idx + 1}`}
+                  <ExpandableTextarea
+                    label={`Guardrail ${idx + 1}`}
                     value={g}
-                    onChange={(e) => handleGuardrailChange(idx, e.currentTarget.value)}
+                    onChange={(next) => handleGuardrailChange(idx, next)}
                     maxLength={MAX_GUARDRAIL}
+                    rows={1}
                     placeholder={`Regra ${idx + 1}`}
                     disabled={isSaving}
-                    className="min-h-[40px]"
+                    aria-describedby={`guardrail-counter-${idx}`}
                   />
                   <span
+                    id={`guardrail-counter-${idx}`}
                     className={cn(
                       "self-end text-[10px] tabular-nums",
                       counterClass(g.length, MAX_GUARDRAIL),
                     )}
                   >
-                    {g.length}/{MAX_GUARDRAIL}
+                    {g.length.toLocaleString("pt-BR")}/{MAX_GUARDRAIL.toLocaleString("pt-BR")}
                   </span>
                 </div>
                 <Button

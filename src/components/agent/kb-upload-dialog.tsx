@@ -95,6 +95,8 @@ interface KbUploadDialogProps {
   currentKbChars?: number;
   /** Nomes de arquivos já presentes na KB, para detectar duplicidade pré-save. */
   existingKbNames?: string[];
+  /** URLs já gravadas na KB, para detectar duplicidade na aba URL. */
+  existingKbUrls?: string[];
 }
 
 const TABS: { id: "file" | "url"; label: string; icon: typeof FileText }[] = [
@@ -132,6 +134,7 @@ export function KbUploadDialog({
   initialTab = "file",
   currentKbChars = 0,
   existingKbNames = [],
+  existingKbUrls = [],
 }: KbUploadDialogProps) {
   const router = useRouter();
   const [items, setItems] = useState<FileItem[]>([]);
@@ -301,20 +304,20 @@ export function KbUploadDialog({
       );
       return;
     }
+    // Trava na seleção: se trouxe mais que o restante, não adiciona ninguém.
+    if (list.length > remainingSlots) {
+      setError(
+        `Você pode adicionar no máximo ${remainingSlots} arquivo(s) agora. Selecione um número compatível.`,
+      );
+      return;
+    }
 
     const validationErrors: string[] = [];
     const dupInList: string[] = [];
+    const dupInKb: string[] = [];
     const accepted: FileItem[] = [];
 
     for (const f of list) {
-      if (accepted.length >= remainingSlots) {
-        validationErrors.push(
-          `Limite de ${MAX_FILES_PER_UPLOAD} por upload, ${
-            list.length - accepted.length
-          } arquivo(s) ignorado(s).`,
-        );
-        break;
-      }
       const v = validateBasic(f);
       if (v) {
         validationErrors.push(v);
@@ -327,12 +330,22 @@ export function KbUploadDialog({
         dupInList.push(f.name);
         continue;
       }
-      const alreadyInKb = existingNamesSet.has(f.name.toLowerCase());
-      accepted.push(makeFileItem(f, alreadyInKb));
+      if (existingNamesSet.has(f.name.toLowerCase())) {
+        dupInKb.push(f.name);
+        continue;
+      }
+      accepted.push(makeFileItem(f, false));
     }
 
     if (accepted.length > 0) setItems((prev) => [...prev, ...accepted]);
-    if (dupInList.length > 0) {
+    // Avisos amarelos para duplicatas (KB tem prioridade visual sobre lista).
+    if (dupInKb.length > 0) {
+      setInfo(
+        dupInKb.length === 1
+          ? `${dupInKb[0]} já está na base.`
+          : `${dupInKb.length} arquivos já estão na base.`,
+      );
+    } else if (dupInList.length > 0) {
       setInfo(
         dupInList.length === 1
           ? `${dupInList[0]} já está nesta seleção.`
@@ -512,7 +525,7 @@ export function KbUploadDialog({
       >
         <DialogContent
           className={cn(
-            "w-[min(720px,calc(100%-2rem))] min-h-[480px] sm:max-w-none",
+            "w-[min(720px,calc(100%-2rem))] min-h-[600px] sm:max-w-none",
             isDragging && "ring-2 ring-violet-500/60 ring-offset-2 ring-offset-background",
           )}
           onDragEnter={handleDragEnter}
@@ -609,7 +622,7 @@ export function KbUploadDialog({
                 <div className="rounded-xl border border-border bg-card/40 p-2">
                   <ul
                     ref={listRef}
-                    className="max-h-[240px] space-y-2 overflow-y-auto pr-1"
+                    className="max-h-[380px] space-y-2 overflow-y-auto pr-1"
                   >
                     {items.map((it, i) => {
                       const isLast = i === items.length - 1;
@@ -747,8 +760,8 @@ export function KbUploadDialog({
                     />
                   </div>
                   <p className="text-[11px] text-muted-foreground">
-                    {currentKbChars.toLocaleString("pt-BR")} já na base ·{" "}
-                    +{budget.selectedChars.toLocaleString("pt-BR")} desta seleção
+                    {currentKbChars.toLocaleString("pt-BR")} já na base
+                    {"   "}+{budget.selectedChars.toLocaleString("pt-BR")} desta seleção
                   </p>
                 </div>
               )}
@@ -829,6 +842,9 @@ export function KbUploadDialog({
               isDisabled={isPending}
               onContentChange={setUrlDirty}
               resetSignal={urlResetSignal}
+              existingKbNames={existingKbNames}
+              existingKbUrls={existingKbUrls}
+              currentKbChars={currentKbChars}
             />
           )}
         </DialogContent>

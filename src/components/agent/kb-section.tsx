@@ -362,6 +362,9 @@ export function KbSection({ initial }: KbSectionProps) {
         onOpenChange={setUploadOpen}
         currentKbChars={totalChars}
         existingKbNames={initial.map((d) => d.name)}
+        existingKbUrls={initial
+          .map((d) => d.sourceUrl)
+          .filter((u): u is string => Boolean(u))}
       />
 
       <KbDocumentViewer

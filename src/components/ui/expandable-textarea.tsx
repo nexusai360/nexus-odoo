@@ -60,6 +60,7 @@ export function ExpandableTextarea({
   // para não passar uma sensação de exagero.
   const modalSize = React.useMemo(() => {
     const cap = maxLength ?? Number.POSITIVE_INFINITY
+    if (cap <= 1000) return "h-[42vh] w-[min(56vw,540px)]"
     if (cap <= 5000) return "h-[55vh] w-[min(70vw,720px)]"
     if (cap <= 10000) return "h-[72vh] w-[min(84vw,1000px)]"
     return "h-[90vh] w-[min(96vw,1400px)]"
