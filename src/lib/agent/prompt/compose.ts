@@ -105,6 +105,17 @@ export function composeSystemPrompt(
     );
   }
 
+  if (source === "whatsapp") {
+    parts.push(
+      "\n\n## Canal WhatsApp" +
+        "\n- A resposta vai para WhatsApp. Use a sintaxe propria do WhatsApp: *negrito*, _italico_, ~tachado~, ```bloco de codigo```." +
+        "\n- Sem tabelas. Sem cabecalhos markdown. Sem listas aninhadas." +
+        "\n- Frases ainda mais curtas que o normal. Cada paragrafo separado por linha em branco." +
+        "\n- Numeros em formato brasileiro (1.234,56) e datas dd/mm/aaaa." +
+        "\n- Quando oferecer sugestoes de continuidade, termine a mensagem com a linha exata 'Voce tambem pode perguntar:' seguida de ate 3 opcoes numeradas (1, 2, 3) em linhas proprias. Sem usar o canal [[suggestions]] (o WhatsApp nao renderiza chips clicaveis; o usuario responde com o numero).",
+    );
+  }
+
   if (cfg.personality.trim()) {
     parts.push(`\n\n[PERSONALIDADE]\nPersonalidade: ${cfg.personality.trim()}`);
   }

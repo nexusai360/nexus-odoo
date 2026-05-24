@@ -400,7 +400,14 @@ export async function runAgent(args: RunAgentInput): Promise<RunAgentResult> {
       // Persistir assistant com toolCalls
       await persistMessage(args.conversationId, "assistant", result.message, result.toolCalls);
 
-      // Executar cada tool via MCP
+      // Executar cada tool via MCP. Onda D do Renascimento:
+      //   - Cache intra-sessao por (tool, args) com TTL 60s reduz latencia
+      //     quando o agente repete a mesma chamada no mesmo loop ou turno.
+      //   - Telemetria leve via console.info: tool + ms + status, util para
+      //     identificar gargalos sem painel UI (que vem em proxima onda).
+      const { getCachedToolResult, setCachedToolResult } = await import(
+        "./session-cache"
+      );
       for (const tc of result.toolCalls) {
         args.onEvent?.({
           type: "tool_call",
@@ -411,7 +418,13 @@ export async function runAgent(args: RunAgentInput): Promise<RunAgentResult> {
 
         const toolArgs = (tc.arguments ?? {}) as Record<string, unknown>;
         let toolResultStr: string;
-        if (isExternalToolName(tc.name)) {
+        let cacheHit = false;
+        const tStart = Date.now();
+        const cached = getCachedToolResult(args.conversationId, tc.name, toolArgs);
+        if (cached !== null) {
+          toolResultStr = cached;
+          cacheHit = true;
+        } else if (isExternalToolName(tc.name)) {
           // Tool de MCP externo: roteia para a sessão do servidor certo.
           toolResultStr = externalBundle
             ? await callExternalTool(externalBundle, nomeRealDaTool.get(tc.name) ?? tc.name, toolArgs, args.userId)
@@ -420,6 +433,24 @@ export async function runAgent(args: RunAgentInput): Promise<RunAgentResult> {
           toolResultStr = await session.callTool(nomeRealDaTool.get(tc.name) ?? tc.name, toolArgs);
         } else {
           toolResultStr = "(MCP indisponível)";
+        }
+        if (!cacheHit && toolResultStr) {
+          setCachedToolResult(args.conversationId, tc.name, toolArgs, toolResultStr);
+        }
+        const ms = Date.now() - tStart;
+        try {
+          // Telemetria leve, sem PII de payload (so meta).
+          console.info(
+            "[nex:tool]",
+            JSON.stringify({
+              tool: tc.name,
+              ms,
+              cacheHit,
+              conversationId: args.conversationId,
+            }),
+          );
+        } catch {
+          /* swallow */
         }
 
         // G6: normalizar para string (já feito pelo session.callTool) + guard de tamanho
