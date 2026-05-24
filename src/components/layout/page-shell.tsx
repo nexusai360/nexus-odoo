@@ -34,8 +34,11 @@ const MAX: Record<Variant, string> = {
     "max-w-[clamp(1280px,calc(1280px+(100vw-1366px)*0.05),1536px)]",
   agent:
     "max-w-[clamp(1280px,calc(1280px+(100vw-1366px)*0.05),1536px)]",
-  narrow: "max-w-7xl",
-  wide: "max-w-[1600px]",
+  // narrow/wide: mesma regra sutil das telas do agente — piso = tamanho
+  // anterior (1280 / 1600), crescimento de 5% do excedente acima de
+  // 1366px, teto +15-20% em monitores muito grandes.
+  narrow: "max-w-[clamp(1280px,calc(1280px+(100vw-1366px)*0.05),1480px)]",
+  wide: "max-w-[clamp(1600px,calc(1600px+(100vw-1366px)*0.05),1840px)]",
   full: "max-w-none",
 };
 
