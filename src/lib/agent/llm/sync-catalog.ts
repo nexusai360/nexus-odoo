@@ -49,6 +49,52 @@ async function fetchOpenAI(apiKey: string): Promise<FetchedModel[]> {
   }));
 }
 
+/**
+ * Humaniza o id "vendor/model-x" do OpenRouter para nosso padrao.
+ * Ex.: "openai/gpt-5.4-mini" -> "GPT-5.4 Mini",
+ *      "anthropic/claude-opus-4.7" -> "Claude Opus 4.7",
+ *      "google/gemini-2.5-pro" -> "Gemini 2.5 Pro",
+ *      "deepseek/deepseek-r1:free" -> "DeepSeek R1 (free)".
+ */
+function humanizeOpenrouterLabel(id: string, apiName?: string): string {
+  const isFree = id.endsWith(":free");
+  const cleanId = id.replace(/:free$/, "");
+  const idx = cleanId.indexOf("/");
+  if (idx < 0) return apiName ?? id;
+  const slug = cleanId.slice(idx + 1);
+  // Vendor-specific casing
+  const parts = slug.split(/[-_]/).map((p) => {
+    if (/^\d/.test(p)) return p; // numero puro
+    if (/^v\d/i.test(p)) return p.toUpperCase();
+    if (p.toLowerCase() === "gpt") return "GPT";
+    if (p.toLowerCase() === "qwq") return "QwQ";
+    return p.charAt(0).toUpperCase() + p.slice(1).toLowerCase();
+  });
+  // Mantem "gpt-5.4-mini" como "GPT-5.4 Mini" — primeiro junta GPT com numero
+  let label = parts.join(" ").replace(/GPT\s+(\d)/, "GPT-$1");
+  // Claude/Gemini: prefere "Claude Sonnet 4.7" (juntar palavras)
+  label = label.replace(/^(Claude|Gemini|Llama|DeepSeek|Qwen|Grok|Mistral|Phi|Gemma|Command|Sonar)\s/, "$1 ");
+  if (isFree) label = `${label} (free)`;
+  return label;
+}
+
+/**
+ * Modelos NAO conversacionais que devem ser descartados do dropdown.
+ * Identificacao por sufixos/keywords no id.
+ */
+function isOpenrouterNonChat(id: string): boolean {
+  const lower = id.toLowerCase();
+  if (/(image|tts|stt|whisper|embed|moderation|vision-only|rerank|sora|veo|imagen|midjourney|stable-diffusion|dall-e|kling|runway|suno|riffusion|recraft|leonardo|ideogram)/.test(lower)) {
+    return true;
+  }
+  // Modelos legados (pre-2024) por palavras-chave
+  if (/-instruct$|-legacy|-deprecated/i.test(lower)) {
+    // mantemos llama-*-instruct (sao a versao chat) mas filtramos -instruct-2023
+    if (/2023|2022/.test(lower)) return true;
+  }
+  return false;
+}
+
 async function fetchOpenRouter(apiKey: string): Promise<FetchedModel[]> {
   const res = await fetch("https://openrouter.ai/api/v1/models", {
     headers: { Authorization: `Bearer ${apiKey}` },
@@ -58,19 +104,30 @@ async function fetchOpenRouter(apiKey: string): Promise<FetchedModel[]> {
     data: Array<{
       id: string;
       name?: string;
+      created?: number;
       pricing?: { prompt?: string; completion?: string };
+      architecture?: { input_modalities?: string[]; output_modalities?: string[] };
     }>;
   };
-  return data.data.map((m) => ({
-    id: m.id,
-    label: m.name ?? m.id,
-    pricingInput: m.pricing?.prompt
-      ? Number(m.pricing.prompt) * 1_000_000
-      : null,
-    pricingOutput: m.pricing?.completion
-      ? Number(m.pricing.completion) * 1_000_000
-      : null,
-  }));
+  return data.data
+    .filter((m) => !isOpenrouterNonChat(m.id))
+    .filter((m) => {
+      // Filtra por architecture: deve ter output text
+      const out = m.architecture?.output_modalities ?? ["text"];
+      return out.includes("text");
+    })
+    .filter((m) => {
+      // Filtra por data: created e unix timestamp; precisa ser >= 2024-01-01
+      if (!m.created) return true; // sem data, deixa passar (whitelist depois decide)
+      const cutoff = new Date("2024-01-01").getTime() / 1000;
+      return m.created >= cutoff;
+    })
+    .map((m) => ({
+      id: m.id,
+      label: humanizeOpenrouterLabel(m.id, m.name),
+      pricingInput: m.pricing?.prompt ? Number(m.pricing.prompt) * 1_000_000 : null,
+      pricingOutput: m.pricing?.completion ? Number(m.pricing.completion) * 1_000_000 : null,
+    }));
 }
 
 async function fetchAnthropic(apiKey: string): Promise<FetchedModel[]> {

@@ -126,6 +126,11 @@ export function translateProviderMessage(
     const id = model ? ` (${model})` : "";
     return `Este modelo${id} só funciona via API "Responses" da OpenAI. O Agente Nex ainda não suporta essa API — escolha outro modelo (gpt-5-mini, gpt-5.4-mini, gpt-4.1-mini ou similar).`;
   }
+  // OpenAI: "This is not a chat model..." — modelo reasoning/responses-only.
+  if (/this is not a chat model|did you mean to use v1\/completions|did you mean to use the v1\/responses/i.test(raw)) {
+    const id = model ? ` (${model})` : "";
+    return `Este modelo${id} não é compatível com o endpoint de chat (v1/chat/completions). É um modelo de raciocínio que só roda via API Responses, que o Agente Nex ainda não suporta. Escolha um modelo de chat tradicional (gpt-5-mini, gpt-5.4-mini, gpt-4.1-mini ou similar).`;
+  }
   // Acesso negado / modelo não disponível.
   if (/does not exist or you do not have access/i.test(raw)) {
     return `Modelo${model ? ` "${model}"` : ""} indisponível nesta chave (acesso restrito ou ID inválido).`;
