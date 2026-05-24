@@ -47,6 +47,7 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { getProviderIcon } from "@/components/icons/providers";
+import { MoneyDual } from "@/components/ui/money-dual";
 import { PROVIDER_META } from "@/lib/agent/llm/catalog";
 import type { CredentialSummary } from "@/lib/agent/llm/credentials";
 import type { LlmProvider } from "@/lib/agent/llm/types";
@@ -68,6 +69,8 @@ const PROVIDERS: LlmProvider[] = [
 interface CredentialsSectionProps {
   initialCredentials: CredentialSummary[];
   onCredentialsChange?: () => void;
+  /** Cotação USD→BRL (PTAX × spread × IOF). Null quando indisponível. */
+  usdBrlRate?: number | null;
 }
 
 type DialogState =
@@ -79,6 +82,7 @@ type DialogState =
 export function CredentialsSection({
   initialCredentials,
   onCredentialsChange,
+  usdBrlRate = null,
 }: CredentialsSectionProps) {
   const [items, setItems] =
     useState<CredentialSummary[]>(initialCredentials);
@@ -228,11 +232,6 @@ export function CredentialsSection({
                     c.balance?.status === "ok" && c.balance.usd != null
                       ? c.balance.usd
                       : null;
-                  const fmtUsd = (v: number) =>
-                    v.toLocaleString("pt-BR", {
-                      style: "currency",
-                      currency: "USD",
-                    });
                   return (
                     <li
                       key={c.id}
@@ -249,22 +248,31 @@ export function CredentialsSection({
                           </span>
                         </div>
                         <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
-                          <span className="inline-flex items-center gap-1.5 text-xs text-muted-foreground">
-                            <Wallet className="h-3.5 w-3.5" aria-hidden />
-                            Consumo:{" "}
-                            <span className="font-medium tabular-nums text-foreground">
-                              {fmtUsd(c.consumedUsd)}
-                            </span>
+                          <span className="inline-flex items-baseline gap-1.5 text-xs text-muted-foreground">
+                            <Wallet
+                              className="h-3.5 w-3.5 self-center"
+                              aria-hidden
+                            />
+                            Consumo:
+                            <MoneyDual
+                              usd={c.consumedUsd}
+                              rate={usdBrlRate}
+                              size="sm"
+                            />
                           </span>
                           {realBalance != null ? (
-                            <span
-                              className="inline-flex items-center gap-1.5 text-xs text-emerald-600 dark:text-emerald-400"
-                            >
-                              <Wallet className="h-3.5 w-3.5" aria-hidden />
-                              Saldo:{" "}
-                              <span className="font-medium tabular-nums">
-                                {fmtUsd(realBalance)}
-                              </span>
+                            <span className="inline-flex items-baseline gap-1.5 text-xs text-emerald-600 dark:text-emerald-400">
+                              <Wallet
+                                className="h-3.5 w-3.5 self-center"
+                                aria-hidden
+                              />
+                              Saldo:
+                              <MoneyDual
+                                usd={realBalance}
+                                rate={usdBrlRate}
+                                size="sm"
+                                className="text-emerald-700 dark:text-emerald-300"
+                              />
                             </span>
                           ) : null}
                           {PROVIDER_META[c.provider]?.topUpUrl ? (

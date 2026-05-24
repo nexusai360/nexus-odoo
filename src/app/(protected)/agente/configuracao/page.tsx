@@ -33,6 +33,7 @@ import { prisma } from "@/lib/prisma";
 import { loadEffectiveModelsByProvider } from "@/lib/agent/llm/effective-catalog";
 import type { ModelEntry } from "@/lib/agent/llm/catalog";
 import type { LlmProvider } from "@/lib/agent/llm/types";
+import { getUsdBrlRate } from "@/lib/agent/llm/exchange-rate";
 
 export const metadata = {
   title: "Configuração do Agente | Matrix Fitness Group",
@@ -44,13 +45,15 @@ export default async function Page() {
   if (!user) redirect("/login");
   if (user.platformRole !== "super_admin") redirect("/dashboard");
 
-  const [credentials, activeConfig, settingsResult] = await Promise.all([
+  const [credentials, activeConfig, settingsResult, usdBrl] = await Promise.all([
     listCredentials().catch(
       () => [] as Awaited<ReturnType<typeof listCredentials>>,
     ),
     getPublicActiveLlmConfig(),
     getAgentSettings(),
+    getUsdBrlRate().catch(() => null),
   ]);
+  const usdBrlRate = usdBrl?.rate ?? null;
 
   const llmConfigs = await prisma.llmConfig.findMany({
     orderBy: { updatedAt: "desc" },
@@ -138,6 +141,7 @@ export default async function Page() {
               credentials={credentials}
               activeConfig={activeConfig}
               modelsByProvider={modelsByProvider}
+              usdBrlRate={usdBrlRate}
             />
           </CardContent>
         </Card>

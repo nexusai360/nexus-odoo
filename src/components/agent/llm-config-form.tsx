@@ -37,6 +37,7 @@ import {
   type SearchableSelectOption,
 } from "@/components/ui/searchable-select";
 import { TierBadge } from "@/components/ui/tier-badge";
+import { MoneyDual } from "@/components/ui/money-dual";
 import { ProviderBadge, providerKeyFromModelId } from "@/components/ui/provider-badge";
 import {
   PROVIDER_META,
@@ -139,6 +140,8 @@ interface LlmConfigFormProps {
    * Quando ausente, cai em `modelsFor(provider)` (só a base versionada).
    */
   modelsByProvider?: Partial<Record<LlmProvider, import("@/lib/agent/llm/catalog").ModelEntry[]>>;
+  /** Cotação USD→BRL efetiva (PTAX × spread × IOF). Null quando indisponível. */
+  usdBrlRate?: number | null;
 }
 
 interface TestState {
@@ -151,6 +154,7 @@ export function LlmConfigForm({
   configs,
   credentials,
   modelsByProvider,
+  usdBrlRate = null,
 }: LlmConfigFormProps) {
   const router = useRouter();
   const modelsFor = (p: LlmProvider) => modelsByProvider?.[p] ?? listModels(p);
@@ -586,26 +590,19 @@ export function LlmConfigForm({
                     </p>
                   );
                 }
-                const fmt = (v: number) =>
-                  v.toLocaleString("pt-BR", {
-                    style: "currency",
-                    currency: "USD",
-                  });
+                const usdValue =
+                  sel.balance?.status === "ok" && sel.balance.usd != null
+                    ? sel.balance.usd
+                    : sel.consumedUsd;
+                const isSaldo =
+                  sel.balance?.status === "ok" && sel.balance.usd != null;
                 return (
                   <div className="mt-4 flex flex-wrap items-center justify-between gap-3 rounded-lg border border-border bg-muted/20 px-3.5 py-3">
                     <div className="flex flex-col gap-0.5">
                       <span className="text-xs text-muted-foreground">
-                        {sel.balance?.status === "ok" &&
-                        sel.balance.usd != null
-                          ? "Saldo da chave"
-                          : "Consumo desta chave"}
+                        {isSaldo ? "Saldo da chave" : "Consumo desta chave"}
                       </span>
-                      <span className="text-sm font-semibold text-foreground tabular-nums">
-                        {sel.balance?.status === "ok" &&
-                        sel.balance.usd != null
-                          ? fmt(sel.balance.usd)
-                          : fmt(sel.consumedUsd)}
-                      </span>
+                      <MoneyDual usd={usdValue} rate={usdBrlRate} size="sm" />
                     </div>
                     {meta.topUpUrl ? (
                       <a

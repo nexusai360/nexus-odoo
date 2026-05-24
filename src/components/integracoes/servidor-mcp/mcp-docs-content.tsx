@@ -29,7 +29,7 @@ import { cn } from "@/lib/utils";
 import { moduleLabel } from "@/lib/mcp-module-labels";
 import { useTour } from "@/components/tour/tour-provider";
 import { servidorMcpDocsTour } from "@/lib/tours/servidor-mcp-tour";
-import type { CatalogByModule, CatalogToolItem } from "@/lib/actions/mcp-catalog-schema";
+import type { CatalogByModule, CatalogInputField, CatalogToolItem } from "@/lib/actions/mcp-catalog-schema";
 
 // ---------------------------------------------------------------------------
 // Animation variants
@@ -410,7 +410,35 @@ function Warning({ children }: { children: ReactNode }) {
 
 const BASE_FALLBACK = "https://seu-dominio.com/api/mcp";
 
-function buildExamples(base: string, toolName: string, args: Record<string, unknown>): Record<Language, string> {
+/**
+ * Placeholder semântico para gerar um valor de exemplo em cada campo do input.
+ * Resolve o bug visual antigo onde tudo virava `"..."`. Cobre os tipos do snapshot.
+ */
+export function typedPlaceholder(field: CatalogInputField): unknown {
+  switch (field.type) {
+    case "boolean":
+      return true;
+    case "integer":
+    case "number":
+      return 1;
+    case "date":
+      return "2026-05-24";
+    case "datetime":
+      return "2026-05-24T00:00:00Z";
+    case "enum":
+      return field.enumValues?.[0] ?? "<valor>";
+    case "array":
+      return [];
+    case "object":
+      return {};
+    case "string":
+      return `<${field.name}>`;
+    default:
+      return "<valor>";
+  }
+}
+
+function buildExamples(base: string, toolName: string, args: Record<string, unknown>, opts: { write?: boolean } = {}): Record<Language, string> {
   const argsJson = JSON.stringify(args, null, 2)
     .split("\n")
     .map((l, i) => (i === 0 ? l : "        " + l))
@@ -424,27 +452,35 @@ function buildExamples(base: string, toolName: string, args: Record<string, unkn
     "arguments": ${argsJson}
   }
 }`;
+  const isWrite = opts.write === true;
+  const curlIdemPrefix = isWrite ? `IDEM=$(uuidgen)\n` : "";
+  const curlIdemHeader = isWrite ? `  -H "Idempotency-Key: $IDEM" \\\n` : "";
+  const jsIdemConst = isWrite ? `const idem = crypto.randomUUID();\n` : "";
+  const jsIdemHeader = isWrite ? `,\n    "Idempotency-Key": idem` : "";
+  const pyIdemImport = isWrite ? "import uuid\n" : "";
+  const pyIdemVar = isWrite ? "idem = str(uuid.uuid4())\n" : "";
+  const pyIdemHeader = isWrite ? `,\n        "Idempotency-Key": idem` : "";
   return {
-    curl: `curl -X POST "${base}" \\
+    curl: `${curlIdemPrefix}curl -X POST "${base}" \\
   -H "Authorization: Bearer mcp_live_SEU_TOKEN" \\
   -H "Content-Type: application/json" \\
-  -d '${body}'`,
-    javascript: `const res = await fetch("${base}", {
+${curlIdemHeader}  -d '${body}'`,
+    javascript: `${jsIdemConst}const res = await fetch("${base}", {
   method: "POST",
   headers: {
     "Authorization": "Bearer mcp_live_SEU_TOKEN",
-    "Content-Type": "application/json"
+    "Content-Type": "application/json"${jsIdemHeader}
   },
   body: JSON.stringify(${body})
 });
 const data = await res.json();`,
     python: `import requests
-
-res = requests.post(
+${pyIdemImport}
+${pyIdemVar}res = requests.post(
     "${base}",
     headers={
         "Authorization": "Bearer mcp_live_SEU_TOKEN",
-        "Content-Type": "application/json"
+        "Content-Type": "application/json"${pyIdemHeader}
     },
     json=${body.replace(/true/g, "True").replace(/false/g, "False").replace(/null/g, "None")}
 )
@@ -494,8 +530,13 @@ function ToolCard({
 
   const catalogExamples = toolExamplesRecord(tool);
   const sampleArgs: Record<string, unknown> = {};
-  for (const k of tool.inputSchemaKeys.slice(0, 3)) sampleArgs[k] = "...";
-  const fallbackExamples = buildExamples(base, tool.id, sampleArgs);
+  const fields: CatalogInputField[] = tool.inputSchemaFields
+    ? tool.inputSchemaFields
+    : tool.inputSchemaKeys.map((name) => ({ name, type: "unknown" as const, optional: false }));
+  for (const f of fields.slice(0, 3)) {
+    sampleArgs[f.name] = typedPlaceholder(f);
+  }
+  const fallbackExamples = buildExamples(base, tool.id, sampleArgs, { write: isWrite });
 
   return (
     <div
@@ -545,12 +586,15 @@ function ToolCard({
                 <div className="flex items-start gap-2 rounded-md border border-violet-500/20 bg-violet-500/5 px-3 py-2 text-xs text-violet-700 dark:text-violet-300">
                   <Key className="mt-0.5 h-3.5 w-3.5 shrink-0" />
                   <span>
-                    Esta tool só pode ser invocada por uma chave de API cadastrada em{" "}
-                    <strong>Chaves de Acesso</strong> que tenha a permissão{" "}
+                    Esta tool exige a capability{" "}
                     <code className="rounded bg-violet-500/10 px-1 py-0.5 font-mono">
                       {tool.capability}
                     </code>{" "}
-                    marcada. O Agente Nex (modo interno) não consegue chamar tools de escrita.
+                    marcada na chave de acesso e o header{" "}
+                    <code className="rounded bg-violet-500/10 px-1 py-0.5 font-mono">
+                      Idempotency-Key
+                    </code>{" "}
+                    em toda chamada.
                   </span>
                 </div>
               )}
@@ -591,46 +635,62 @@ function ToolCard({
 // Navegação de seções
 // ---------------------------------------------------------------------------
 
-const sections = [
-  { id: "intro", label: "Início", icon: BookOpen },
-  { id: "auth", label: "Autenticação", icon: Key },
-  { id: "concepts", label: "Conceitos", icon: ListTree },
-  { id: "flow", label: "Fluxo de uma chamada", icon: Zap },
-  { id: "tools", label: "Tools", icon: Layers },
-  { id: "errors", label: "Códigos de erro", icon: AlertTriangle },
-  { id: "rate-limits", label: "Rate limits", icon: Gauge },
+type SectionGroup = "visao-geral" | "externo" | "interno";
+
+interface DocSection {
+  id: string;
+  label: string;
+  icon: typeof BookOpen;
+  group: SectionGroup;
+}
+
+const GROUP_LABELS: Record<SectionGroup, string> = {
+  "visao-geral": "Visão geral",
+  externo: "Integrar de fora",
+  interno: "Operar por dentro",
+};
+
+const sections: DocSection[] = [
+  { id: "intro", label: "Início", icon: BookOpen, group: "visao-geral" },
+  { id: "concepts", label: "Conceitos", icon: ListTree, group: "visao-geral" },
+  { id: "errors", label: "Códigos de erro", icon: AlertTriangle, group: "visao-geral" },
+  { id: "rate-limits", label: "Rate limits", icon: Gauge, group: "visao-geral" },
+  { id: "como-comecar", label: "Como começar", icon: ArrowRight, group: "externo" },
+  { id: "auth", label: "Autenticação", icon: Key, group: "externo" },
+  { id: "headers", label: "Headers obrigatórios", icon: Hash, group: "externo" },
+  { id: "flow", label: "Fluxo de chamada", icon: Zap, group: "externo" },
+  { id: "tools-leitura", label: "Tools de leitura", icon: Layers, group: "externo" },
+  { id: "tools-escrita", label: "Tools de escrita", icon: ShieldCheck, group: "externo" },
+  { id: "quando-usar", label: "Quando usar", icon: Clock, group: "interno" },
+  { id: "service-token", label: "Service token e identidade", icon: Key, group: "interno" },
+  { id: "restricao-escrita", label: "Restrição de escrita", icon: ShieldCheck, group: "interno" },
+  { id: "exemplo-agente-nex", label: "Exemplo: Agente Nex", icon: Terminal, group: "interno" },
 ];
 
 const concepts = [
   {
-    title: "Capabilities",
-    icon: <Layers className="h-4 w-4 text-violet-500" />,
-    content:
-      "Cada chave de API declara o que pode fazer em cada módulo de negócio: somente leitura, ou leitura e escrita com ações específicas. O catálogo de tools que a chave enxerga já vem filtrado por essas capabilities.",
-  },
-  {
-    title: "Idempotência",
+    title: "Stateless",
     icon: <Repeat className="h-4 w-4 text-emerald-500" />,
     content:
-      "Operações de escrita exigem o header Idempotency-Key. Reenviar a mesma requisição devolve o resultado original sem reexecutar a operação. O registro de idempotência expira em 24 horas.",
+      "Cada chamada se autentica sozinha; não há sessão. Reenvie o header Authorization em toda requisição. Tools de leitura respondem do cache Postgres interno, sincronizado periodicamente com o Odoo.",
   },
   {
-    title: "External ID",
-    icon: <Hash className="h-4 w-4 text-sky-500" />,
+    title: "JSON-RPC 2.0",
+    icon: <Layers className="h-4 w-4 text-violet-500" />,
     content:
-      "Registros do Odoo podem ser referenciados por um identificador textual (xmlid) no formato modulo.referencia, sem precisar conhecer o ID interno. Útil para integrar vários sistemas que apontam para o mesmo registro.",
+      "Protocolo de RPC padrão da indústria. Envie {jsonrpc, id, method, params}; receba {jsonrpc, id, result | error}. Versão 2.0 é a única suportada. Sem chamadas em lote por enquanto.",
   },
   {
-    title: "RBAC em 7 camadas",
+    title: "Modos de autenticação",
+    icon: <Key className="h-4 w-4 text-amber-500" />,
+    content:
+      "Dois modos, mutuamente exclusivos. Externo (Bearer mcp_live_*) para integradores. Interno (MCP_SERVICE_TOKEN + X-Mcp-User-Id) só para código nosso server-side. Detalhes em Operar por dentro.",
+  },
+  {
+    title: "RBAC por capabilities",
     icon: <ShieldCheck className="h-4 w-4 text-amber-500" />,
     content:
-      "RBAC (controle de acesso por função) em 7 camadas estruturais, que não dependem de prompt: catálogo filtrado, validação no handler, escopo de tenant injetado, papel do Postgres com permissões mínimas, isolamento por linha (RLS) opcional, validação de schema (Zod) e auditoria com limite de uso.",
-  },
-  {
-    title: "Cache e frescor do dado",
-    icon: <Clock className="h-4 w-4 text-violet-500" />,
-    content:
-      "As tools de leitura respondem a partir do cache Postgres interno, alimentado por sincronização periódica do Odoo. Cada resposta informa há quanto tempo o dado foi atualizado.",
+      "O que sua chave vê em tools/list depende das capabilities marcadas no momento da criação. Tools fora do escopo não aparecem. A verificação é estrutural (7 camadas), não depende de prompt.",
   },
 ];
 
@@ -638,43 +698,43 @@ const errorCodes = [
   {
     code: "unauthorized",
     http: 401,
-    description: "Token ausente, inválido, expirado ou revogado.",
+    description: "Header Authorization ausente, token inválido ou chave revogada. Reenvie com um token válido.",
     color: "border-amber-500/30 bg-amber-500/10 text-amber-600 dark:text-amber-400",
   },
   {
     code: "capability_missing",
     http: 403,
-    description: "Token válido, mas sem capability para a tool solicitada.",
+    description: "A chave existe, mas não tem permissão para a tool. Edite a chave em Chaves de Acesso e marque a capability.",
     color: "border-amber-500/30 bg-amber-500/10 text-amber-600 dark:text-amber-400",
   },
   {
     code: "idempotency_key_required",
     http: 400,
-    description: "Write tool invocada sem o header Idempotency-Key.",
+    description: "Tool de escrita chamada sem o header Idempotency-Key. Envie um UUID v4 novo e refaça.",
     color: "border-amber-500/30 bg-amber-500/10 text-amber-600 dark:text-amber-400",
   },
   {
     code: "idempotency_conflict",
     http: 409,
-    description: "Mesma Idempotency-Key usada para um payload diferente.",
+    description: "Mesma Idempotency-Key reutilizada com payload diferente. Gere uma chave nova ou repita o payload original.",
     color: "border-orange-500/30 bg-orange-500/10 text-orange-600 dark:text-orange-400",
   },
   {
-    code: "validation_error",
+    code: "idempotency_in_progress",
     http: 422,
-    description: "Argumentos da tool reprovados pela validação de schema.",
+    description: "A mesma Idempotency-Key já está em execução em outra requisição. Aguarde alguns segundos e tente de novo.",
     color: "border-orange-500/30 bg-orange-500/10 text-orange-600 dark:text-orange-400",
   },
   {
     code: "rate_limit_exceeded",
     http: 429,
-    description: "Limite de chamadas por minuto da chave atingido.",
+    description: "Mais chamadas por minuto que o limite da chave. Espere o retryAfterMs antes de tentar de novo.",
     color: "border-red-500/30 bg-red-500/10 text-red-600 dark:text-red-400",
   },
   {
-    code: "internal_error",
-    http: 500,
-    description: "Erro interno do servidor. Tente novamente ou contate o suporte.",
+    code: "idempotency_lock_unavailable",
+    http: 503,
+    description: "Lock distribuído (Redis) indisponível. Tente novamente em alguns segundos.",
     color: "border-red-500/30 bg-red-500/10 text-red-600 dark:text-red-400",
   },
 ];
@@ -692,28 +752,38 @@ function scrollToSection(id: string) {
 // ---------------------------------------------------------------------------
 
 function SideNav({ activeSection }: { activeSection: string }) {
+  const groups: SectionGroup[] = ["visao-geral", "externo", "interno"];
   return (
-    <nav className="space-y-0.5">
-      {sections.map((s) => {
-        const Icon = s.icon;
-        const isActive = activeSection === s.id;
-        return (
-          <button
-            key={s.id}
-            onClick={() => scrollToSection(s.id)}
-            aria-current={isActive ? "true" : undefined}
-            className={cn(
-              "flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-left text-sm transition-colors",
-              isActive
-                ? "bg-violet-500/10 text-violet-600 dark:text-violet-400 font-medium"
-                : "text-muted-foreground hover:text-foreground hover:bg-muted/60",
-            )}
-          >
-            <Icon className="h-3.5 w-3.5 shrink-0" />
-            {s.label}
-          </button>
-        );
-      })}
+    <nav className="space-y-4">
+      {groups.map((group) => (
+        <div key={group} className="space-y-0.5">
+          <div className="px-3 pb-1 text-[10px] font-semibold uppercase tracking-[0.08em] text-muted-foreground/70">
+            {GROUP_LABELS[group]}
+          </div>
+          {sections
+            .filter((s) => s.group === group)
+            .map((s) => {
+              const Icon = s.icon;
+              const isActive = activeSection === s.id;
+              return (
+                <button
+                  key={s.id}
+                  onClick={() => scrollToSection(s.id)}
+                  aria-current={isActive ? "true" : undefined}
+                  className={cn(
+                    "flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-left text-sm transition-colors",
+                    isActive
+                      ? "bg-violet-500/10 text-violet-600 dark:text-violet-400 font-medium"
+                      : "text-muted-foreground hover:text-foreground hover:bg-muted/60",
+                  )}
+                >
+                  <Icon className="h-3.5 w-3.5 shrink-0" />
+                  {s.label}
+                </button>
+              );
+            })}
+        </div>
+      ))}
     </nav>
   );
 }
@@ -841,8 +911,7 @@ export function McpDocsContent({ catalog, mcpUrl }: Props) {
               Documentação do Servidor MCP
             </h1>
             <p className="text-sm text-muted-foreground mt-1">
-              Endpoint semântico para agentes de IA, com {totalTools} tools de leitura e escrita
-              sobre os dados do Odoo
+              Endpoint semântico para agentes de IA, com {totalTools} tools de leitura e escrita sobre os dados do Odoo.
             </p>
           </div>
 
@@ -866,43 +935,151 @@ export function McpDocsContent({ catalog, mcpUrl }: Props) {
           </div>
 
           <p className="text-sm text-muted-foreground leading-relaxed">
-            O servidor MCP expõe os dados do Odoo para agentes de IA e integrações externas por
-            ferramentas semânticas, não por SQL livre. Cada tool tem um contrato validado e
-            auditado. As leituras respondem a partir do cache interno, e as escritas vão ao Odoo
-            de forma controlada, gated por capability da chave de API.
+            O servidor MCP expõe os dados do Odoo por ferramentas semânticas, não por SQL livre. Cada tool tem contrato validado e auditado. Leitura responde do cache Postgres interno (atualizado pelo worker). Escrita vai ao Odoo, gated por capability da chave de API e idempotência. Esta página cobre os dois modos de uso: integração externa (Bearer mcp_live_*) e operação interna server-side (service token).
           </p>
+        </motion.div>
 
-          {/* Passo a passo de uso */}
+        <div className="h-px bg-border" />
+
+        {/* Conceitos */}
+        <motion.div variants={itemVariants} id="concepts" className="space-y-5 scroll-mt-24">
+          <SectionTitle icon={ListTree} color="text-violet-500">
+            Conceitos
+          </SectionTitle>
+          <p className="text-sm text-muted-foreground leading-relaxed">
+            Quatro ideias que valem entender antes de integrar.
+          </p>
+          <div className="grid gap-3 sm:grid-cols-2">
+            {concepts.map((c) => (
+              <div key={c.title} className="rounded-xl border border-border bg-card p-4 space-y-2">
+                <div className="flex items-center gap-2">
+                  {c.icon}
+                  <h3 className="text-sm font-semibold text-foreground">{c.title}</h3>
+                </div>
+                <p className="text-[13px] text-muted-foreground leading-relaxed">{c.content}</p>
+              </div>
+            ))}
+          </div>
+        </motion.div>
+
+        <div className="h-px bg-border" />
+
+        {/* Códigos de erro */}
+        <motion.div variants={itemVariants} id="errors" className="space-y-5 scroll-mt-24">
+          <SectionTitle icon={AlertTriangle} color="text-red-500">
+            Códigos de erro
+          </SectionTitle>
+          <p className="text-sm text-muted-foreground leading-relaxed">
+            Os erros que o servidor pode retornar e como agir em cada um.
+          </p>
+          <div className="rounded-xl border border-border overflow-hidden overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b border-border bg-muted/40">
+                  <th className="px-4 py-2.5 text-left font-medium text-muted-foreground">Código</th>
+                  <th className="px-4 py-2.5 text-left font-medium text-muted-foreground">HTTP</th>
+                  <th className="px-4 py-2.5 text-left font-medium text-muted-foreground">Quando acontece e como resolver</th>
+                </tr>
+              </thead>
+              <tbody>
+                {errorCodes.map((e) => (
+                  <tr key={e.code} className="border-b border-border last:border-0">
+                    <td className="px-4 py-2.5">
+                      <code className="rounded bg-muted px-1.5 py-0.5 font-mono text-xs text-foreground">
+                        {e.code}
+                      </code>
+                    </td>
+                    <td className="px-4 py-2.5">
+                      <span
+                        className={cn(
+                          "inline-flex items-center rounded border px-1.5 py-0.5 text-xs font-mono",
+                          e.color,
+                        )}
+                      >
+                        {e.http}
+                      </span>
+                    </td>
+                    <td className="px-4 py-2.5 text-xs text-muted-foreground">{e.description}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </motion.div>
+
+        <div className="h-px bg-border" />
+
+        {/* Rate limits */}
+        <motion.div variants={itemVariants} id="rate-limits" className="space-y-5 scroll-mt-24">
+          <SectionTitle icon={Gauge} color="text-violet-500">
+            Rate limits
+          </SectionTitle>
+          <div className="rounded-xl border border-border bg-card p-6 space-y-5">
+            <p className="text-sm text-muted-foreground leading-relaxed">
+              Cada chave tem um limite por minuto, configurável no passo 3 do assistente de criação. Mínimo 1, máximo 600, padrão 60. Janela de 60 segundos deslizantes, contagem por chave. Ao exceder, o servidor responde com HTTP 429 e o campo <code className="rounded bg-muted px-1 py-0.5 font-mono text-xs">retryAfterMs</code> indicando quantos milissegundos aguardar.
+            </p>
+            <div>
+              <h4 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-2">
+                Resposta quando o limite é atingido
+              </h4>
+              <CodeBlock
+                highlight
+                code={`{
+  "jsonrpc": "2.0",
+  "id": 1,
+  "error": {
+    "code": -32603,
+    "message": "rate_limit_exceeded",
+    "data": {
+      "errorCode": "rate_limit_exceeded",
+      "retryAfterMs": 12000
+    }
+  }
+}`}
+              />
+            </div>
+            <Tip>
+              Use backoff exponencial com jitter nas automações. Acima de 600 req/min, peça aumento ao suporte.
+            </Tip>
+          </div>
+        </motion.div>
+
+        <div className="h-px bg-border" />
+
+        {/* Como começar — modo externo */}
+        <motion.div variants={itemVariants} id="como-comecar" className="space-y-5 scroll-mt-24">
+          <SectionTitle icon={ArrowRight} color="text-violet-500">
+            Como começar
+          </SectionTitle>
           <div
             data-tour="mcp-docs-passos"
             className="rounded-xl border border-border bg-card p-5 space-y-3"
           >
-            <h3 className="text-sm font-semibold text-foreground">Como começar, em 4 passos</h3>
             <ol className="space-y-1.5">
               {[
                 {
                   n: 1,
-                  t: "Gere uma chave de API",
-                  d: "Em Chaves de Acesso, crie uma chave com as capabilities que a integração precisa.",
+                  t: "Crie uma chave de API",
+                  d: "Em Integrações > Servidor MCP > Chaves de Acesso, clique em Nova chave.",
                   href: "/integracoes/servidor-mcp/chaves",
                 },
                 {
                   n: 2,
-                  t: "Autentique cada chamada",
-                  d: "Envie a chave no header Authorization: Bearer. Não há sessão, cada chamada é independente.",
-                  section: "auth",
+                  t: "Marque as capabilities",
+                  d: "No passo 2 do assistente, escolha leitura ou leitura e escrita por módulo.",
+                  href: "/integracoes/servidor-mcp/chaves",
                 },
                 {
                   n: 3,
-                  t: "Escolha a tool certa",
-                  d: "O catálogo lista todas as tools por módulo, com os argumentos de cada uma.",
-                  section: "tools",
+                  t: "Copie o token",
+                  d: "Na tela final, o token mcp_live_... aparece uma única vez. Guarde em local seguro.",
+                  href: "/integracoes/servidor-mcp/chaves",
                 },
                 {
                   n: 4,
-                  t: "Copie um exemplo pronto",
-                  d: "Cada tool traz exemplos em curl, JSON-RPC e n8n para você adaptar.",
-                  section: "tools",
+                  t: "Faça a primeira chamada",
+                  d: "Use o token no header Authorization. Veja Autenticação e Headers obrigatórios.",
+                  section: "auth",
                 },
               ].map((step) => {
                 const inner = (
@@ -945,7 +1122,7 @@ export function McpDocsContent({ catalog, mcpUrl }: Props) {
 
         <div className="h-px bg-border" />
 
-        {/* Autenticação */}
+        {/* Autenticação — modo externo */}
         <motion.div variants={itemVariants} id="auth" className="space-y-5 scroll-mt-24">
           <SectionTitle icon={Key} color="text-amber-500">
             Autenticação
@@ -957,46 +1134,22 @@ export function McpDocsContent({ catalog, mcpUrl }: Props) {
               <code className="rounded bg-muted px-1.5 py-0.5 text-xs font-mono text-violet-500">
                 Authorization
               </code>{" "}
-              com a chave de API. Não há sessão, cada chamada é autenticada de forma independente.
+              com a chave de API que você gerou. Não há sessão; cada chamada é autenticada de forma independente.
             </p>
 
             <div>
               <h4 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-2">
-                Como gerar a chave
+                Exemplo: primeira chamada de leitura autenticada
               </h4>
-              <ol className="text-sm text-muted-foreground space-y-2 list-decimal list-inside">
-                <li>
-                  Abra{" "}
-                  <span className="text-foreground font-medium">
-                    Integrações, Servidor MCP, Chaves de Acesso
-                  </span>
-                </li>
-                <li>
-                  Clique em <span className="text-foreground font-medium">Nova chave</span> e
-                  defina rótulo, capabilities e rate limit
-                </li>
-                <li>Copie o token gerado, ele aparece uma única vez</li>
-                <li>
-                  Envie o token no header{" "}
-                  <code className="rounded bg-muted px-1.5 py-0.5 text-xs font-mono text-violet-500">
-                    Authorization: Bearer mcp_live_...
-                  </code>
-                </li>
-              </ol>
-            </div>
-
-            <div>
-              <h4 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-2">
-                Exemplo de chamada
-              </h4>
+              <p className="text-xs text-muted-foreground mb-2 leading-relaxed">
+                A chamada abaixo já está autenticada. Use a tool <code className="font-mono">estoque_saldo_produto</code> para validar suas credenciais sem mexer em dado nenhum.
+              </p>
               <CodeBlock code={authExample} />
             </div>
 
             <Warning>
               <p>
-                <span className="font-medium">Mantenha a chave em segredo.</span> Nunca a exponha
-                em código de cliente, repositórios públicos ou logs. Se uma chave for
-                comprometida, revogue na hora pelo painel e gere uma nova.
+                <span className="font-medium">Mantenha a chave em segredo.</span> Nunca em código de cliente, repositório público ou log. Se uma chave for comprometida, revogue na hora pelo painel e gere uma nova.
               </p>
             </Warning>
           </div>
@@ -1004,92 +1157,107 @@ export function McpDocsContent({ catalog, mcpUrl }: Props) {
 
         <div className="h-px bg-border" />
 
-        {/* Conceitos */}
-        <motion.div variants={itemVariants} id="concepts" className="space-y-5 scroll-mt-24">
-          <SectionTitle icon={ListTree} color="text-violet-500">
-            Conceitos
+        {/* Headers obrigatórios — modo externo */}
+        <motion.div variants={itemVariants} id="headers" className="space-y-5 scroll-mt-24">
+          <SectionTitle icon={Hash} color="text-violet-500">
+            Headers obrigatórios
           </SectionTitle>
-          <p className="text-sm text-muted-foreground leading-relaxed">
-            Cinco ideias que valem entender antes de integrar.
-          </p>
-          <div className="grid gap-3 sm:grid-cols-2">
-            {concepts.map((c) => (
-              <div key={c.title} className="rounded-xl border border-border bg-card p-4 space-y-2">
-                <div className="flex items-center gap-2">
-                  {c.icon}
-                  <h3 className="text-sm font-semibold text-foreground">{c.title}</h3>
-                </div>
-                <p className="text-[13px] text-muted-foreground leading-relaxed">{c.content}</p>
-              </div>
-            ))}
+          <div className="rounded-xl border border-border overflow-hidden">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b border-border bg-muted/40">
+                  <th className="px-4 py-2.5 text-left font-medium text-muted-foreground">Header</th>
+                  <th className="px-4 py-2.5 text-left font-medium text-muted-foreground">Quando</th>
+                  <th className="px-4 py-2.5 text-left font-medium text-muted-foreground">Valor</th>
+                </tr>
+              </thead>
+              <tbody className="text-xs">
+                <tr className="border-b border-border">
+                  <td className="px-4 py-2.5 font-mono">Authorization</td>
+                  <td className="px-4 py-2.5">sempre</td>
+                  <td className="px-4 py-2.5 font-mono">Bearer mcp_live_...</td>
+                </tr>
+                <tr className="border-b border-border">
+                  <td className="px-4 py-2.5 font-mono">Content-Type</td>
+                  <td className="px-4 py-2.5">sempre</td>
+                  <td className="px-4 py-2.5 font-mono">application/json</td>
+                </tr>
+                <tr>
+                  <td className="px-4 py-2.5 font-mono">Idempotency-Key</td>
+                  <td className="px-4 py-2.5">só em escrita</td>
+                  <td className="px-4 py-2.5 font-mono">UUID v4 único por operação</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+
+          <div className="rounded-xl border border-border bg-card p-5 space-y-3">
+            <h4 className="text-sm font-semibold text-foreground">Como gerar o Idempotency-Key</h4>
+            <p className="text-xs text-muted-foreground leading-relaxed">
+              Uma chave UUID v4 nova por operação de escrita. Reenviar com a mesma chave devolve o resultado original sem duplicar (idempotência implementada em mcp/middleware/idempotency.ts).
+            </p>
+            <CodeBlock
+              code={{
+                curl: `IDEM=$(uuidgen)
+curl -X POST "${base}" \\
+  -H "Authorization: Bearer mcp_live_SEU_TOKEN" \\
+  -H "Content-Type: application/json" \\
+  -H "Idempotency-Key: $IDEM" \\
+  -d '{...}'`,
+                javascript: `const idem = crypto.randomUUID();
+await fetch("${base}", {
+  method: "POST",
+  headers: {
+    "Authorization": "Bearer mcp_live_SEU_TOKEN",
+    "Content-Type": "application/json",
+    "Idempotency-Key": idem,
+  },
+  body: JSON.stringify({ /* ... */ }),
+});`,
+                python: `import uuid, requests
+
+idem = str(uuid.uuid4())
+requests.post(
+    "${base}",
+    headers={
+        "Authorization": "Bearer mcp_live_SEU_TOKEN",
+        "Content-Type": "application/json",
+        "Idempotency-Key": idem,
+    },
+    json={ },
+)`,
+              }}
+            />
           </div>
         </motion.div>
 
         <div className="h-px bg-border" />
 
-        {/* Fluxo de uma chamada */}
+        {/* Fluxo de chamada — modo externo */}
         <motion.div variants={itemVariants} id="flow" className="space-y-5 scroll-mt-24">
           <SectionTitle icon={Zap} color="text-violet-500">
-            Fluxo de uma chamada
+            Fluxo de chamada
           </SectionTitle>
-          <div className="rounded-xl border border-border bg-card p-6">
-            <ol className="space-y-4">
-              {[
-                {
-                  t: "Autenticação",
-                  d: "O servidor valida o Bearer token e carrega as capabilities da chave.",
-                },
-                {
-                  t: "Catálogo filtrado",
-                  d: "A chave só enxerga as tools que suas capabilities permitem.",
-                },
-                {
-                  t: "Validação",
-                  d: "Os argumentos da tool passam por validação de schema antes de executar.",
-                },
-                {
-                  t: "Execução",
-                  d: "Leitura responde do cache Postgres. Escrita vai ao Odoo, com idempotência.",
-                },
-                {
-                  t: "Auditoria",
-                  d: "A chamada é registrada nos logs com duração, status e capability usada.",
-                },
-              ].map((step, i) => (
-                <li key={step.t} className="flex gap-3">
-                  <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-violet-500/10 text-xs font-semibold text-violet-500">
-                    {i + 1}
-                  </span>
-                  <div>
-                    <p className="text-sm font-medium text-foreground">{step.t}</p>
-                    <p className="text-[13px] text-muted-foreground">{step.d}</p>
-                  </div>
-                </li>
-              ))}
-            </ol>
-          </div>
-          <Tip>
-            Para operações de escrita, envie sempre o header{" "}
-            <code className="rounded bg-amber-500/10 px-1 font-mono">Idempotency-Key</code> com um
-            UUID v4 único por operação. Reenvios devolvem o mesmo resultado, sem duplicar.
-          </Tip>
+          <pre className="overflow-x-auto rounded-xl border border-border bg-card p-5 text-xs leading-relaxed text-muted-foreground font-mono">
+{`seu sistema  ──POST /api/mcp──▶  servidor MCP  ──SELECT──▶  Postgres (cache)
+                                       │
+                                       └── auditoria ──▶  McpAuditLog`}
+          </pre>
+          <p className="text-sm text-muted-foreground leading-relaxed">
+            Leitura responde do cache Postgres interno, atualizado pelo worker em duas frentes: incremental a cada 3 minutos e snapshot/reconcile a cada 24 horas. Cada resposta de leitura inclui o <code className="rounded bg-muted px-1 py-0.5 font-mono text-xs">lastSyncAt</code> da tabela base. Escrita vai ao Odoo, com sincronização direcionada da linha afetada para o cache em até 2 segundos.
+          </p>
         </motion.div>
 
         <div className="h-px bg-border" />
 
-        {/* Tools */}
-        <motion.div
-          variants={itemVariants}
-          id="tools"
-          className="space-y-5 scroll-mt-24"
-        >
+        {/* Tools de leitura — modo externo */}
+        <motion.div variants={itemVariants} id="tools-leitura" className="space-y-5 scroll-mt-24">
           <div data-tour="mcp-docs-tools-head" className="space-y-2 scroll-mt-24">
-            <SectionTitle icon={Layers} color="text-violet-500">
-              Tools
+            <SectionTitle icon={Layers} color="text-emerald-500">
+              Tools de leitura
             </SectionTitle>
             <p className="text-sm text-muted-foreground leading-relaxed">
-              Todas as tools disponíveis, agrupadas por módulo. Leitura em verde, escrita em
-              violeta. Abra qualquer tool para ver os argumentos e exemplos prontos.
+              Consultas que não modificam dados. Não exigem Idempotency-Key. Agrupadas por módulo.
             </p>
           </div>
           {catalog.length === 0 ? (
@@ -1101,20 +1269,19 @@ export function McpDocsContent({ catalog, mcpUrl }: Props) {
           ) : (
             <div className="space-y-6">
               {catalog.map((mod) => {
-                const tools = [...mod.readTools, ...mod.writeTools];
-                if (tools.length === 0) return null;
+                if (mod.readTools.length === 0) return null;
                 return (
-                  <div key={mod.module} className="space-y-2">
+                  <div key={`r-${mod.module}`} className="space-y-2">
                     <div className="flex items-center gap-2">
                       <h3 className="text-sm font-semibold text-foreground">
                         {moduleLabel(mod.module)}
                       </h3>
                       <span className="text-xs text-muted-foreground">
-                        {mod.readTools.length} de leitura, {mod.writeTools.length} de escrita
+                        {mod.readTools.length} {mod.readTools.length === 1 ? "tool" : "tools"}
                       </span>
                     </div>
                     <div className="space-y-1.5">
-                      {tools.map((tool) => (
+                      {mod.readTools.map((tool) => (
                         <ToolCard
                           key={tool.id}
                           tool={tool}
@@ -1133,88 +1300,139 @@ export function McpDocsContent({ catalog, mcpUrl }: Props) {
 
         <div className="h-px bg-border" />
 
-        {/* Códigos de erro */}
-        <motion.div variants={itemVariants} id="errors" className="space-y-5 scroll-mt-24">
-          <SectionTitle icon={AlertTriangle} color="text-red-500">
-            Códigos de erro
+        {/* Tools de escrita — modo externo */}
+        <motion.div variants={itemVariants} id="tools-escrita" className="space-y-5 scroll-mt-24">
+          <SectionTitle icon={ShieldCheck} color="text-violet-500">
+            Tools de escrita
           </SectionTitle>
-          <div className="rounded-xl border border-border overflow-hidden overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="border-b border-border bg-muted/40">
-                  <th className="px-4 py-2.5 text-left font-medium text-muted-foreground">
-                    Código
-                  </th>
-                  <th className="px-4 py-2.5 text-left font-medium text-muted-foreground">HTTP</th>
-                  <th className="px-4 py-2.5 text-left font-medium text-muted-foreground">
-                    Quando acontece
-                  </th>
-                </tr>
-              </thead>
-              <tbody>
-                {errorCodes.map((e) => (
-                  <tr key={e.code} className="border-b border-border last:border-0">
-                    <td className="px-4 py-2.5">
-                      <code className="rounded bg-muted px-1.5 py-0.5 font-mono text-xs text-foreground">
-                        {e.code}
-                      </code>
-                    </td>
-                    <td className="px-4 py-2.5">
-                      <span
-                        className={cn(
-                          "inline-flex items-center rounded border px-1.5 py-0.5 text-xs font-mono",
-                          e.color,
-                        )}
-                      >
-                        {e.http}
+          <p className="text-sm text-muted-foreground leading-relaxed">
+            Mutações no Odoo. Exigem o header <code className="rounded bg-muted px-1 py-0.5 font-mono text-xs">Idempotency-Key</code> e capability marcada na chave. Só executáveis pelo modo externo. Ver <a href="#restricao-escrita" className="text-violet-600 dark:text-violet-400 hover:underline">Restrição de escrita</a> para o motivo.
+          </p>
+          {catalog.length === 0 ? (
+            <div className="rounded-xl border border-dashed border-border bg-muted/30 p-8 text-center">
+              <p className="text-sm text-muted-foreground">
+                O catálogo de tools não pôde ser carregado.
+              </p>
+            </div>
+          ) : (
+            <div className="space-y-6">
+              {catalog.map((mod) => {
+                if (mod.writeTools.length === 0) return null;
+                return (
+                  <div key={`w-${mod.module}`} className="space-y-2">
+                    <div className="flex items-center gap-2">
+                      <h3 className="text-sm font-semibold text-foreground">
+                        {moduleLabel(mod.module)}
+                      </h3>
+                      <span className="text-xs text-muted-foreground">
+                        {mod.writeTools.length} {mod.writeTools.length === 1 ? "tool" : "tools"}
                       </span>
-                    </td>
-                    <td className="px-4 py-2.5 text-xs text-muted-foreground">{e.description}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+                    </div>
+                    <div className="space-y-1.5">
+                      {mod.writeTools.map((tool) => (
+                        <ToolCard key={tool.id} tool={tool} base={base} />
+                      ))}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
         </motion.div>
 
         <div className="h-px bg-border" />
 
-        {/* Rate limits */}
-        <motion.div variants={itemVariants} id="rate-limits" className="space-y-5 scroll-mt-24">
-          <SectionTitle icon={Gauge} color="text-violet-500">
-            Rate limits
+        {/* Modo interno — quando usar */}
+        <motion.div variants={itemVariants} id="quando-usar" className="space-y-5 scroll-mt-24">
+          <SectionTitle icon={Clock} color="text-amber-500">
+            Quando usar o modo interno
           </SectionTitle>
-          <div className="rounded-xl border border-border bg-card p-6 space-y-5">
-            <p className="text-sm text-muted-foreground leading-relaxed">
-              Cada chave tem um limite independente de chamadas por minuto, definido ao criar ou
-              editar a chave. O mínimo é 1, o máximo é 600, e o padrão é 60 chamadas por minuto.
-            </p>
-            <div>
-              <h4 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-2">
-                Resposta quando o limite é atingido
-              </h4>
-              <CodeBlock
-                highlight
-                code={`{
-  "jsonrpc": "2.0",
-  "id": 1,
-  "error": {
-    "code": -32603,
-    "message": "rate_limit_exceeded",
-    "data": {
-      "errorCode": "rate_limit_exceeded",
-      "retryAfterMs": 12000
-    }
-  }
-}`}
-              />
-            </div>
-            <Tip>
-              O campo <code className="rounded bg-amber-500/10 px-1 font-mono">retryAfterMs</code>{" "}
-              diz quantos milissegundos aguardar antes de tentar de novo. Use backoff exponencial
-              com jitter nas automações.
-            </Tip>
+          <p className="text-sm text-muted-foreground leading-relaxed">
+            Modo interno é só para código nosso, server-side: worker de sincronização, Agente Nex in-app, scripts internos. Cliente nunca recebe <code className="rounded bg-muted px-1 py-0.5 font-mono text-xs">MCP_SERVICE_TOKEN</code>. Se você está integrando uma plataforma externa (n8n, scripts de terceiros, automações em outro app), use o <a href="#auth" className="text-violet-600 dark:text-violet-400 hover:underline">modo externo</a> com Bearer mcp_live_*.
+          </p>
+        </motion.div>
+
+        <div className="h-px bg-border" />
+
+        {/* Modo interno — service token + identidade */}
+        <motion.div variants={itemVariants} id="service-token" className="space-y-5 scroll-mt-24">
+          <SectionTitle icon={Key} color="text-amber-500">
+            Service token e identidade
+          </SectionTitle>
+          <p className="text-sm text-muted-foreground leading-relaxed">
+            O modo interno usa dois headers obrigatórios em cada requisição. Não há sessão.
+          </p>
+          <div className="rounded-xl border border-border overflow-hidden">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b border-border bg-muted/40">
+                  <th className="px-4 py-2.5 text-left font-medium text-muted-foreground">Header</th>
+                  <th className="px-4 py-2.5 text-left font-medium text-muted-foreground">Valor</th>
+                </tr>
+              </thead>
+              <tbody className="text-xs">
+                <tr className="border-b border-border">
+                  <td className="px-4 py-2.5 font-mono">Authorization</td>
+                  <td className="px-4 py-2.5 font-mono">{"Bearer ${MCP_SERVICE_TOKEN}"}</td>
+                </tr>
+                <tr>
+                  <td className="px-4 py-2.5 font-mono">X-Mcp-User-Id</td>
+                  <td className="px-4 py-2.5">ID do usuário da plataforma cuja identidade efetua a chamada</td>
+                </tr>
+              </tbody>
+            </table>
           </div>
+          <p className="text-xs text-muted-foreground leading-relaxed">
+            A comparação do service token é constant-time (<code className="font-mono">timingSafeEqual</code>) contra a env var <code className="font-mono">MCP_SERVICE_TOKEN</code>, definida no <code className="font-mono">.env.local</code> ou <code className="font-mono">.env.production</code> do servidor. Sem <code className="font-mono">X-Mcp-User-Id</code> ou com usuário inexistente, o servidor responde 401.
+          </p>
+        </motion.div>
+
+        <div className="h-px bg-border" />
+
+        {/* Modo interno — restrição de escrita */}
+        <motion.div variants={itemVariants} id="restricao-escrita" className="space-y-5 scroll-mt-24">
+          <SectionTitle icon={ShieldCheck} color="text-amber-500">
+            Restrição de escrita
+          </SectionTitle>
+          <p className="text-sm text-muted-foreground leading-relaxed">
+            O dispatcher do modo interno bloqueia qualquer tool com <code className="font-mono">operation: &quot;write&quot;</code>, retornando 403 <code className="font-mono">forbidden_via_internal_auth</code> antes de chegar no Odoo. É defesa por rota de autenticação, não por prompt: o Agente Nex pode até listar tools de escrita no <code className="font-mono">tools/list</code>, mas não consegue executá-las nesse modo. Quem escreve no Odoo é sempre uma chave do modo externo, com capability marcada.
+          </p>
+          <p className="text-xs text-muted-foreground leading-relaxed">
+            Implementado em <code className="rounded bg-muted px-1 py-0.5 font-mono text-xs">mcp/dispatcher/check-mode.ts</code>.
+          </p>
+        </motion.div>
+
+        <div className="h-px bg-border" />
+
+        {/* Modo interno — exemplo Agente Nex */}
+        <motion.div variants={itemVariants} id="exemplo-agente-nex" className="space-y-5 scroll-mt-24">
+          <SectionTitle icon={Terminal} color="text-violet-500">
+            Exemplo: Agente Nex
+          </SectionTitle>
+          <p className="text-sm text-muted-foreground leading-relaxed">
+            Snippet de chamada server-side dentro do app Next.js, lendo o token do env e resolvendo o usuário da sessão da plataforma.
+          </p>
+          <CodeBlock
+            code={{
+              javascript: `// Server-side, dentro do app Next.js
+const userId = await resolveUserIdFromSession();
+const res = await fetch(process.env.MCP_INTERNAL_URL!, {
+  method: "POST",
+  headers: {
+    "Authorization": \`Bearer \${process.env.MCP_SERVICE_TOKEN}\`,
+    "X-Mcp-User-Id": userId,
+    "Content-Type": "application/json",
+  },
+  body: JSON.stringify({
+    jsonrpc: "2.0",
+    id: 1,
+    method: "tools/call",
+    params: { name: "cadastro_contar_parceiros", arguments: {} },
+  }),
+});
+const data = await res.json();`,
+            }}
+          />
         </motion.div>
 
         <div id="docs-footer" className="pt-4 border-t border-border">

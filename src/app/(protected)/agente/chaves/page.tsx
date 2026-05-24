@@ -14,6 +14,7 @@ import { PageShell } from "@/components/layout/page-shell";
 import { CredentialsSection } from "@/components/agent/credentials-section";
 import { getCurrentUser } from "@/lib/auth";
 import { listCredentials } from "@/lib/agent/llm/credentials";
+import { getUsdBrlRate } from "@/lib/agent/llm/exchange-rate";
 
 export const metadata = {
   title: "Chaves de API do Agente | Matrix Fitness Group",
@@ -25,9 +26,12 @@ export default async function Page() {
   if (!user) redirect("/login");
   if (user.platformRole !== "super_admin") redirect("/dashboard");
 
-  const credentials = await listCredentials().catch(
-    () => [] as Awaited<ReturnType<typeof listCredentials>>,
-  );
+  const [credentials, usdBrl] = await Promise.all([
+    listCredentials().catch(
+      () => [] as Awaited<ReturnType<typeof listCredentials>>,
+    ),
+    getUsdBrlRate().catch(() => null),
+  ]);
 
   return (
     <PageShell variant="form">
@@ -37,7 +41,10 @@ export default async function Page() {
         subtitle="Gerencie as chaves de API por provedor de IA."
       />
       <div className="mt-2">
-        <CredentialsSection initialCredentials={credentials} />
+        <CredentialsSection
+          initialCredentials={credentials}
+          usdBrlRate={usdBrl?.rate ?? null}
+        />
       </div>
     </PageShell>
   );
