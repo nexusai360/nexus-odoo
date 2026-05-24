@@ -167,12 +167,16 @@ export function ChatPanel({
     };
   }, [open, onClose]);
 
-  // Auto-scroll
+  // Auto-scroll dispara apenas com nova mensagem (length aumenta) ou enquanto
+  // o turno esta em andamento. Mudanca interna em mensagem existente, como
+  // expandir/colapsar trilha pelo chevron, NAO scrolla (corrige o bug de
+  // jogar a tela pro fim ao clicar no chevron de uma resposta antiga).
+  const messagesCount = messages.length;
   React.useEffect(() => {
     const el = scrollRef.current;
     if (!el) return;
     el.scrollTo({ top: el.scrollHeight, behavior: "smooth" });
-  }, [messages, pending]);
+  }, [messagesCount, pending]);
 
   // Cleanup on unmount
   React.useEffect(() => {
@@ -340,9 +344,16 @@ export function ChatPanel({
                 // Onda C v2: a bolha do assistant ja tem steps (criada no
                 // primeiro tool_call). Aqui so finaliza: content/suggestions
                 // do done, marca todos os steps como done, colapsa trilha,
-                // grava doneAt para o resumo "Como cheguei aqui . N etapas . Xs".
+                // grava doneAt para o resumo "Raciocinio . N etapas . Xs".
+                // Defesa em profundidade contra suggestions vazio: usa o set
+                // welcomeSuggestionsForUi (ja respeita maxSuggestions + ancora
+                // de role + personalizado). Garante que toda resposta tem chips.
                 const dropped = dropLoading(prev);
                 const doneAt = Date.now();
+                const safeSuggestions =
+                  Array.isArray(evt.suggestions) && evt.suggestions.length > 0
+                    ? evt.suggestions
+                    : welcomeSuggestionsForUi;
                 const finalized = dropped.map((m) => {
                   if (m.id === assistantMsgId) {
                     const steps = (m.steps ?? []).map((s) => ({
@@ -352,7 +363,7 @@ export function ChatPanel({
                     return {
                       ...m,
                       content: evt.message,
-                      suggestions: evt.suggestions,
+                      suggestions: safeSuggestions,
                       streaming: false,
                       steps: steps.length > 0 ? steps : undefined,
                       stepsCollapsed: true,
@@ -370,7 +381,7 @@ export function ChatPanel({
                     id: assistantMsgId,
                     role: "assistant",
                     content: evt.message,
-                    suggestions: evt.suggestions,
+                    suggestions: safeSuggestions,
                     streaming: false,
                     stepsCollapsed: true,
                     startedAt: doneAt,

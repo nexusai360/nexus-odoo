@@ -166,13 +166,11 @@ function AssistantTrailBlock({
       ? ` · ${(durationMs / 1000).toFixed(1)}s`
       : "";
   const headerLabel = streaming || running
-    ? "Pensando…"
-    : `Como cheguei aqui · ${total} etapa${total === 1 ? "" : "s"}${durationLabel}`;
-  // Durante o streaming a trilha fica aberta (o usuario quer ver o agente
-  // pensando). Apos done o caller passa stepsCollapsed=true e o chevron
-  // permite reabrir manualmente. Esc nao e necessario aqui (toggle e local).
+    ? "Pensando"
+    : `Raciocínio · ${total}${total === 1 ? " etapa" : " etapas"}${durationLabel}`;
   const expanded = streaming || !collapsed;
   const Chevron = expanded ? ChevronDown : ChevronRight;
+  const showDots = streaming || running;
 
   return (
     <div className="mb-2 rounded-xl border border-border/40 bg-background/30 px-2.5 py-1.5">
@@ -190,9 +188,9 @@ function AssistantTrailBlock({
             : "cursor-default",
         )}
       >
-        {streaming || running ? (
+        {showDots ? (
           <Sparkles
-            className="h-3.5 w-3.5 shrink-0 animate-pulse text-violet-500 motion-reduce:animate-none"
+            className="h-3.5 w-3.5 shrink-0 text-violet-500 motion-reduce:animate-none"
             aria-hidden
           />
         ) : (
@@ -201,7 +199,10 @@ function AssistantTrailBlock({
             aria-hidden
           />
         )}
-        <span className="flex-1 truncate">{headerLabel}</span>
+        <span className="flex-1 truncate">
+          {headerLabel}
+          {showDots ? <AnimatedDots /> : null}
+        </span>
       </button>
       {expanded ? (
         <ul
@@ -418,4 +419,25 @@ function renderInline(text: string): React.ReactNode {
   }
   if (lastIndex < text.length) nodes.push(text.slice(lastIndex));
   return nodes;
+}
+
+// Dots animados pos icone Sparkles no header "Pensando". Mesma cadencia da
+// LoadingBubble da entrada do turno. Respeita prefers-reduced-motion.
+function AnimatedDots() {
+  return (
+    <span className="ml-1 inline-flex gap-0.5" aria-hidden>
+      <span
+        className="inline-block h-1 w-1 rounded-full bg-violet-500 motion-reduce:animate-none"
+        style={{ animation: "agentDotBounce 1s ease-in-out infinite", animationDelay: "0s" }}
+      />
+      <span
+        className="inline-block h-1 w-1 rounded-full bg-violet-500 motion-reduce:animate-none"
+        style={{ animation: "agentDotBounce 1s ease-in-out infinite", animationDelay: "0.15s" }}
+      />
+      <span
+        className="inline-block h-1 w-1 rounded-full bg-violet-500 motion-reduce:animate-none"
+        style={{ animation: "agentDotBounce 1s ease-in-out infinite", animationDelay: "0.3s" }}
+      />
+    </span>
+  );
 }
