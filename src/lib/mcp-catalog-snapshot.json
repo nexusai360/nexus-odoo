@@ -480,6 +480,17 @@
       "examples": []
     },
     {
+      "id": "cadastro_contar_parceiros",
+      "operation": "read",
+      "module": "cadastros",
+      "descricao": "Contagem total de parceiros cadastrados, segmentada por tipo: clientes, fornecedores e empresas.",
+      "capability": null,
+      "sensitive": false,
+      "addedInVersion": null,
+      "inputSchemaKeys": [],
+      "examples": []
+    },
+    {
       "id": "cadastro_parceiros_por_uf",
       "operation": "read",
       "module": "cadastros",
@@ -490,17 +501,6 @@
       "inputSchemaKeys": [
         "apenasClientes"
       ],
-      "examples": []
-    },
-    {
-      "id": "cadastro_contar_parceiros",
-      "operation": "read",
-      "module": "cadastros",
-      "descricao": "Contagem total de parceiros cadastrados, segmentada por tipo: clientes, fornecedores e empresas.",
-      "capability": null,
-      "sensitive": false,
-      "addedInVersion": null,
-      "inputSchemaKeys": [],
       "examples": []
     },
     {
@@ -518,6 +518,17 @@
       "examples": []
     },
     {
+      "id": "servico_contar",
+      "operation": "read",
+      "module": "cadastros",
+      "descricao": "Contagem total de serviços no catálogo. Use para perguntas de quantidade absoluta ('quantos serviços existem'): devolve só o número, sem amostra.",
+      "capability": null,
+      "sensitive": false,
+      "addedInVersion": null,
+      "inputSchemaKeys": [],
+      "examples": []
+    },
+    {
       "id": "servico_listar",
       "operation": "read",
       "module": "cadastros",
@@ -531,15 +542,319 @@
       "examples": []
     },
     {
-      "id": "servico_contar",
-      "operation": "read",
+      "id": "cadastros.mail_activity.complete",
+      "operation": "write",
       "module": "cadastros",
-      "descricao": "Contagem total de serviços no catálogo. Use para perguntas de quantidade absoluta ('quantos serviços existem'): devolve só o número, sem amostra.",
-      "capability": null,
+      "descricao": "Conclui uma atividade (action_done). O Odoo cria uma mail.message de feedback e REMOVE a atividade (state nao fica 'done', e apagada). Segunda chamada retorna AtividadeNaoEncontradaError.",
+      "capability": "transition:cadastros",
       "sensitive": false,
-      "addedInVersion": null,
-      "inputSchemaKeys": [],
-      "examples": []
+      "addedInVersion": 2,
+      "inputSchemaKeys": [
+        "id"
+      ],
+      "examples": [
+        {
+          "language": "curl",
+          "description": "Invocacao direta via curl",
+          "code": "curl -X POST https://mcp.exemplo.com.br/mcp \\\n  -H \"Authorization: Bearer <SERVICE_TOKEN>\" \\\n  -H \"X-Mcp-User-Id: <USER_ID>\" \\\n  -H \"X-Api-Key: <API_KEY>\" \\\n  -H \"Idempotency-Key: $(uuidgen)\" \\\n  -H \"Content-Type: application/json\" \\\n  -d '{\n  \"jsonrpc\": \"2.0\",\n  \"method\": \"tools/call\",\n  \"params\": {\n    \"name\": \"cadastros.mail_activity.complete\",\n    \"arguments\": {\n      \"id\": 11\n    }\n  }\n}'"
+        },
+        {
+          "language": "n8n",
+          "description": "Node HTTP Request no n8n",
+          "code": "// Node: HTTP Request\n// Method: POST\n// URL: {{ $env.MCP_URL }}\n// Headers:\n//   Authorization: Bearer {{ $env.MCP_SERVICE_TOKEN }}\n//   X-Mcp-User-Id: {{ $env.MCP_USER_ID }}\n//   X-Api-Key: {{ $env.MCP_API_KEY }}\n//   Idempotency-Key: {{ $json.idempotencyKey }}\n// Body (JSON):\n{\n  \"jsonrpc\": \"2.0\",\n  \"method\": \"tools/call\",\n  \"params\": {\n    \"name\": \"cadastros.mail_activity.complete\",\n    \"arguments\": {\n          \"id\": 11\n        }\n  }\n}"
+        },
+        {
+          "language": "python",
+          "description": "Chamada via requests",
+          "code": "import requests, uuid\n\nresponse = requests.post(\n    \"https://mcp.exemplo.com.br/mcp\",\n    headers={\n        \"Authorization\": \"Bearer <SERVICE_TOKEN>\",\n        \"X-Mcp-User-Id\": \"<USER_ID>\",\n        \"X-Api-Key\": \"<API_KEY>\",\n        \"Idempotency-Key\": str(uuid.uuid4()),\n        \"Content-Type\": \"application/json\",\n    },\n    json={\n        \"jsonrpc\": \"2.0\",\n        \"method\": \"tools/call\",\n        \"params\": {\n            \"name\": \"cadastros.mail_activity.complete\",\n            \"arguments\": {\n          \"id\": 11\n        },\n        },\n    },\n)\ndata = response.json()\nprint(data.get(\"result\"))"
+        },
+        {
+          "language": "javascript",
+          "description": "Chamada via fetch",
+          "code": "const response = await fetch(\"https://mcp.exemplo.com.br/mcp\", {\n  method: \"POST\",\n  headers: {\n    \"Authorization\": \"Bearer <SERVICE_TOKEN>\",\n    \"X-Mcp-User-Id\": \"<USER_ID>\",\n    \"X-Api-Key\": \"<API_KEY>\",\n    \"Idempotency-Key\": crypto.randomUUID(),\n    \"Content-Type\": \"application/json\",\n  },\n  body: JSON.stringify({\n    jsonrpc: \"2.0\",\n    method: \"tools/call\",\n    params: {\n      name: \"cadastros.mail_activity.complete\",\n      arguments: {\n          \"id\": 11\n        },\n    },\n  }),\n});\nconst { result } = await response.json();\nconsole.log(result);"
+        }
+      ]
+    },
+    {
+      "id": "cadastros.mail_activity.create",
+      "operation": "write",
+      "module": "cadastros",
+      "descricao": "Cria uma atividade/tarefa atrelada a qualquer record Odoo (parceiro, pedido, etc). Define prazo (date_deadline), responsavel (user_id), tipo (activity_type_id) e descricao (summary + note opcional em HTML). Use cadastros.mail_activity.complete para concluir. note aceita HTML; sanitize ao renderizar para o usuario final.",
+      "capability": "create:cadastros",
+      "sensitive": false,
+      "addedInVersion": 2,
+      "inputSchemaKeys": [
+        "res_model",
+        "res_id",
+        "summary",
+        "note",
+        "date_deadline",
+        "user_id",
+        "activity_type_id"
+      ],
+      "examples": [
+        {
+          "language": "curl",
+          "description": "Invocacao direta via curl",
+          "code": "curl -X POST https://mcp.exemplo.com.br/mcp \\\n  -H \"Authorization: Bearer <SERVICE_TOKEN>\" \\\n  -H \"X-Mcp-User-Id: <USER_ID>\" \\\n  -H \"X-Api-Key: <API_KEY>\" \\\n  -H \"Idempotency-Key: $(uuidgen)\" \\\n  -H \"Content-Type: application/json\" \\\n  -d '{\n  \"jsonrpc\": \"2.0\",\n  \"method\": \"tools/call\",\n  \"params\": {\n    \"name\": \"cadastros.mail_activity.create\",\n    \"arguments\": {\n      \"res_model\": \"res.partner\",\n      \"res_id\": 16426,\n      \"summary\": \"Ligar para o cliente\",\n      \"note\": \"<p>Cliente solicitou retorno em 48h.</p>\",\n      \"date_deadline\": \"2026-05-30\",\n      \"user_id\": 11,\n      \"activity_type_id\": 2\n    }\n  }\n}'"
+        },
+        {
+          "language": "n8n",
+          "description": "Node HTTP Request no n8n",
+          "code": "// Node: HTTP Request\n// Method: POST\n// URL: {{ $env.MCP_URL }}\n// Headers:\n//   Authorization: Bearer {{ $env.MCP_SERVICE_TOKEN }}\n//   X-Mcp-User-Id: {{ $env.MCP_USER_ID }}\n//   X-Api-Key: {{ $env.MCP_API_KEY }}\n//   Idempotency-Key: {{ $json.idempotencyKey }}\n// Body (JSON):\n{\n  \"jsonrpc\": \"2.0\",\n  \"method\": \"tools/call\",\n  \"params\": {\n    \"name\": \"cadastros.mail_activity.create\",\n    \"arguments\": {\n          \"res_model\": \"res.partner\",\n          \"res_id\": 16426,\n          \"summary\": \"Ligar para o cliente\",\n          \"note\": \"<p>Cliente solicitou retorno em 48h.</p>\",\n          \"date_deadline\": \"2026-05-30\",\n          \"user_id\": 11,\n          \"activity_type_id\": 2\n        }\n  }\n}"
+        },
+        {
+          "language": "python",
+          "description": "Chamada via requests",
+          "code": "import requests, uuid\n\nresponse = requests.post(\n    \"https://mcp.exemplo.com.br/mcp\",\n    headers={\n        \"Authorization\": \"Bearer <SERVICE_TOKEN>\",\n        \"X-Mcp-User-Id\": \"<USER_ID>\",\n        \"X-Api-Key\": \"<API_KEY>\",\n        \"Idempotency-Key\": str(uuid.uuid4()),\n        \"Content-Type\": \"application/json\",\n    },\n    json={\n        \"jsonrpc\": \"2.0\",\n        \"method\": \"tools/call\",\n        \"params\": {\n            \"name\": \"cadastros.mail_activity.create\",\n            \"arguments\": {\n          \"res_model\": \"res.partner\",\n          \"res_id\": 16426,\n          \"summary\": \"Ligar para o cliente\",\n          \"note\": \"<p>Cliente solicitou retorno em 48h.</p>\",\n          \"date_deadline\": \"2026-05-30\",\n          \"user_id\": 11,\n          \"activity_type_id\": 2\n        },\n        },\n    },\n)\ndata = response.json()\nprint(data.get(\"result\"))"
+        },
+        {
+          "language": "javascript",
+          "description": "Chamada via fetch",
+          "code": "const response = await fetch(\"https://mcp.exemplo.com.br/mcp\", {\n  method: \"POST\",\n  headers: {\n    \"Authorization\": \"Bearer <SERVICE_TOKEN>\",\n    \"X-Mcp-User-Id\": \"<USER_ID>\",\n    \"X-Api-Key\": \"<API_KEY>\",\n    \"Idempotency-Key\": crypto.randomUUID(),\n    \"Content-Type\": \"application/json\",\n  },\n  body: JSON.stringify({\n    jsonrpc: \"2.0\",\n    method: \"tools/call\",\n    params: {\n      name: \"cadastros.mail_activity.create\",\n      arguments: {\n          \"res_model\": \"res.partner\",\n          \"res_id\": 16426,\n          \"summary\": \"Ligar para o cliente\",\n          \"note\": \"<p>Cliente solicitou retorno em 48h.</p>\",\n          \"date_deadline\": \"2026-05-30\",\n          \"user_id\": 11,\n          \"activity_type_id\": 2\n        },\n    },\n  }),\n});\nconst { result } = await response.json();\nconsole.log(result);"
+        }
+      ]
+    },
+    {
+      "id": "cadastros.mail_activity.update",
+      "operation": "write",
+      "module": "cadastros",
+      "descricao": "Atualiza summary, note, date_deadline, user_id ou activity_type_id de uma atividade existente. NAO permite mudar res_model/res_id (atividade nao muda de registro alvo). Exige ao menos 1 campo alem de id.",
+      "capability": "update:cadastros",
+      "sensitive": false,
+      "addedInVersion": 2,
+      "inputSchemaKeys": [
+        "id",
+        "summary",
+        "note",
+        "date_deadline",
+        "user_id",
+        "activity_type_id"
+      ],
+      "examples": [
+        {
+          "language": "curl",
+          "description": "Invocacao direta via curl",
+          "code": "curl -X POST https://mcp.exemplo.com.br/mcp \\\n  -H \"Authorization: Bearer <SERVICE_TOKEN>\" \\\n  -H \"X-Mcp-User-Id: <USER_ID>\" \\\n  -H \"X-Api-Key: <API_KEY>\" \\\n  -H \"Idempotency-Key: $(uuidgen)\" \\\n  -H \"Content-Type: application/json\" \\\n  -d '{\n  \"jsonrpc\": \"2.0\",\n  \"method\": \"tools/call\",\n  \"params\": {\n    \"name\": \"cadastros.mail_activity.update\",\n    \"arguments\": {\n      \"id\": 11,\n      \"date_deadline\": \"2026-06-15\",\n      \"summary\": \"Reagendado\"\n    }\n  }\n}'"
+        },
+        {
+          "language": "n8n",
+          "description": "Node HTTP Request no n8n",
+          "code": "// Node: HTTP Request\n// Method: POST\n// URL: {{ $env.MCP_URL }}\n// Headers:\n//   Authorization: Bearer {{ $env.MCP_SERVICE_TOKEN }}\n//   X-Mcp-User-Id: {{ $env.MCP_USER_ID }}\n//   X-Api-Key: {{ $env.MCP_API_KEY }}\n//   Idempotency-Key: {{ $json.idempotencyKey }}\n// Body (JSON):\n{\n  \"jsonrpc\": \"2.0\",\n  \"method\": \"tools/call\",\n  \"params\": {\n    \"name\": \"cadastros.mail_activity.update\",\n    \"arguments\": {\n          \"id\": 11,\n          \"date_deadline\": \"2026-06-15\",\n          \"summary\": \"Reagendado\"\n        }\n  }\n}"
+        },
+        {
+          "language": "python",
+          "description": "Chamada via requests",
+          "code": "import requests, uuid\n\nresponse = requests.post(\n    \"https://mcp.exemplo.com.br/mcp\",\n    headers={\n        \"Authorization\": \"Bearer <SERVICE_TOKEN>\",\n        \"X-Mcp-User-Id\": \"<USER_ID>\",\n        \"X-Api-Key\": \"<API_KEY>\",\n        \"Idempotency-Key\": str(uuid.uuid4()),\n        \"Content-Type\": \"application/json\",\n    },\n    json={\n        \"jsonrpc\": \"2.0\",\n        \"method\": \"tools/call\",\n        \"params\": {\n            \"name\": \"cadastros.mail_activity.update\",\n            \"arguments\": {\n          \"id\": 11,\n          \"date_deadline\": \"2026-06-15\",\n          \"summary\": \"Reagendado\"\n        },\n        },\n    },\n)\ndata = response.json()\nprint(data.get(\"result\"))"
+        },
+        {
+          "language": "javascript",
+          "description": "Chamada via fetch",
+          "code": "const response = await fetch(\"https://mcp.exemplo.com.br/mcp\", {\n  method: \"POST\",\n  headers: {\n    \"Authorization\": \"Bearer <SERVICE_TOKEN>\",\n    \"X-Mcp-User-Id\": \"<USER_ID>\",\n    \"X-Api-Key\": \"<API_KEY>\",\n    \"Idempotency-Key\": crypto.randomUUID(),\n    \"Content-Type\": \"application/json\",\n  },\n  body: JSON.stringify({\n    jsonrpc: \"2.0\",\n    method: \"tools/call\",\n    params: {\n      name: \"cadastros.mail_activity.update\",\n      arguments: {\n          \"id\": 11,\n          \"date_deadline\": \"2026-06-15\",\n          \"summary\": \"Reagendado\"\n        },\n    },\n  }),\n});\nconst { result } = await response.json();\nconsole.log(result);"
+        }
+      ]
+    },
+    {
+      "id": "cadastros.res_partner.archive",
+      "operation": "write",
+      "module": "cadastros",
+      "descricao": "Arquiva (desativa) um parceiro definindo active=false. Reversivel: chame cadastros.res_partner.update com {active: true}. Use cadastros.res_partner.delete para remocao permanente.",
+      "capability": "archive:cadastros",
+      "sensitive": false,
+      "addedInVersion": 2,
+      "inputSchemaKeys": [
+        "id"
+      ],
+      "examples": [
+        {
+          "language": "curl",
+          "description": "Invocacao direta via curl",
+          "code": "curl -X POST https://mcp.exemplo.com.br/mcp \\\n  -H \"Authorization: Bearer <SERVICE_TOKEN>\" \\\n  -H \"X-Mcp-User-Id: <USER_ID>\" \\\n  -H \"X-Api-Key: <API_KEY>\" \\\n  -H \"Idempotency-Key: $(uuidgen)\" \\\n  -H \"Content-Type: application/json\" \\\n  -d '{\n  \"jsonrpc\": \"2.0\",\n  \"method\": \"tools/call\",\n  \"params\": {\n    \"name\": \"cadastros.res_partner.archive\",\n    \"arguments\": {\n      \"id\": 16426\n    }\n  }\n}'"
+        },
+        {
+          "language": "n8n",
+          "description": "Node HTTP Request no n8n",
+          "code": "// Node: HTTP Request\n// Method: POST\n// URL: {{ $env.MCP_URL }}\n// Headers:\n//   Authorization: Bearer {{ $env.MCP_SERVICE_TOKEN }}\n//   X-Mcp-User-Id: {{ $env.MCP_USER_ID }}\n//   X-Api-Key: {{ $env.MCP_API_KEY }}\n//   Idempotency-Key: {{ $json.idempotencyKey }}\n// Body (JSON):\n{\n  \"jsonrpc\": \"2.0\",\n  \"method\": \"tools/call\",\n  \"params\": {\n    \"name\": \"cadastros.res_partner.archive\",\n    \"arguments\": {\n          \"id\": 16426\n        }\n  }\n}"
+        },
+        {
+          "language": "python",
+          "description": "Chamada via requests",
+          "code": "import requests, uuid\n\nresponse = requests.post(\n    \"https://mcp.exemplo.com.br/mcp\",\n    headers={\n        \"Authorization\": \"Bearer <SERVICE_TOKEN>\",\n        \"X-Mcp-User-Id\": \"<USER_ID>\",\n        \"X-Api-Key\": \"<API_KEY>\",\n        \"Idempotency-Key\": str(uuid.uuid4()),\n        \"Content-Type\": \"application/json\",\n    },\n    json={\n        \"jsonrpc\": \"2.0\",\n        \"method\": \"tools/call\",\n        \"params\": {\n            \"name\": \"cadastros.res_partner.archive\",\n            \"arguments\": {\n          \"id\": 16426\n        },\n        },\n    },\n)\ndata = response.json()\nprint(data.get(\"result\"))"
+        },
+        {
+          "language": "javascript",
+          "description": "Chamada via fetch",
+          "code": "const response = await fetch(\"https://mcp.exemplo.com.br/mcp\", {\n  method: \"POST\",\n  headers: {\n    \"Authorization\": \"Bearer <SERVICE_TOKEN>\",\n    \"X-Mcp-User-Id\": \"<USER_ID>\",\n    \"X-Api-Key\": \"<API_KEY>\",\n    \"Idempotency-Key\": crypto.randomUUID(),\n    \"Content-Type\": \"application/json\",\n  },\n  body: JSON.stringify({\n    jsonrpc: \"2.0\",\n    method: \"tools/call\",\n    params: {\n      name: \"cadastros.res_partner.archive\",\n      arguments: {\n          \"id\": 16426\n        },\n    },\n  }),\n});\nconst { result } = await response.json();\nconsole.log(result);"
+        }
+      ]
+    },
+    {
+      "id": "cadastros.res_partner_category.create",
+      "operation": "write",
+      "module": "cadastros",
+      "descricao": "Cria uma tag/categoria de parceiro (res.partner.category). Idempotente por (name, parent_id): se ja existir uma com mesmo nome e mesma categoria pai, retorna a existente com created=false. Em race extrema pode duplicar.",
+      "capability": "create:cadastros",
+      "sensitive": false,
+      "addedInVersion": 2,
+      "inputSchemaKeys": [
+        "name",
+        "color",
+        "parent_id"
+      ],
+      "examples": [
+        {
+          "language": "curl",
+          "description": "Invocacao direta via curl",
+          "code": "curl -X POST https://mcp.exemplo.com.br/mcp \\\n  -H \"Authorization: Bearer <SERVICE_TOKEN>\" \\\n  -H \"X-Mcp-User-Id: <USER_ID>\" \\\n  -H \"X-Api-Key: <API_KEY>\" \\\n  -H \"Idempotency-Key: $(uuidgen)\" \\\n  -H \"Content-Type: application/json\" \\\n  -d '{\n  \"jsonrpc\": \"2.0\",\n  \"method\": \"tools/call\",\n  \"params\": {\n    \"name\": \"cadastros.res_partner_category.create\",\n    \"arguments\": {\n      \"name\": \"VIP\",\n      \"color\": 1\n    }\n  }\n}'"
+        },
+        {
+          "language": "n8n",
+          "description": "Node HTTP Request no n8n",
+          "code": "// Node: HTTP Request\n// Method: POST\n// URL: {{ $env.MCP_URL }}\n// Headers:\n//   Authorization: Bearer {{ $env.MCP_SERVICE_TOKEN }}\n//   X-Mcp-User-Id: {{ $env.MCP_USER_ID }}\n//   X-Api-Key: {{ $env.MCP_API_KEY }}\n//   Idempotency-Key: {{ $json.idempotencyKey }}\n// Body (JSON):\n{\n  \"jsonrpc\": \"2.0\",\n  \"method\": \"tools/call\",\n  \"params\": {\n    \"name\": \"cadastros.res_partner_category.create\",\n    \"arguments\": {\n          \"name\": \"VIP\",\n          \"color\": 1\n        }\n  }\n}"
+        },
+        {
+          "language": "python",
+          "description": "Chamada via requests",
+          "code": "import requests, uuid\n\nresponse = requests.post(\n    \"https://mcp.exemplo.com.br/mcp\",\n    headers={\n        \"Authorization\": \"Bearer <SERVICE_TOKEN>\",\n        \"X-Mcp-User-Id\": \"<USER_ID>\",\n        \"X-Api-Key\": \"<API_KEY>\",\n        \"Idempotency-Key\": str(uuid.uuid4()),\n        \"Content-Type\": \"application/json\",\n    },\n    json={\n        \"jsonrpc\": \"2.0\",\n        \"method\": \"tools/call\",\n        \"params\": {\n            \"name\": \"cadastros.res_partner_category.create\",\n            \"arguments\": {\n          \"name\": \"VIP\",\n          \"color\": 1\n        },\n        },\n    },\n)\ndata = response.json()\nprint(data.get(\"result\"))"
+        },
+        {
+          "language": "javascript",
+          "description": "Chamada via fetch",
+          "code": "const response = await fetch(\"https://mcp.exemplo.com.br/mcp\", {\n  method: \"POST\",\n  headers: {\n    \"Authorization\": \"Bearer <SERVICE_TOKEN>\",\n    \"X-Mcp-User-Id\": \"<USER_ID>\",\n    \"X-Api-Key\": \"<API_KEY>\",\n    \"Idempotency-Key\": crypto.randomUUID(),\n    \"Content-Type\": \"application/json\",\n  },\n  body: JSON.stringify({\n    jsonrpc: \"2.0\",\n    method: \"tools/call\",\n    params: {\n      name: \"cadastros.res_partner_category.create\",\n      arguments: {\n          \"name\": \"VIP\",\n          \"color\": 1\n        },\n    },\n  }),\n});\nconst { result } = await response.json();\nconsole.log(result);"
+        }
+      ]
+    },
+    {
+      "id": "cadastros.res_partner_category.set_tags",
+      "operation": "write",
+      "module": "cadastros",
+      "descricao": "Gerencia as tags de um parceiro. Modes: 'add' (default, adiciona sem remover), 'remove' (remove as listadas), 'replace' (DESTRUTIVO: substitui todas pelas listadas). ADD/REMOVE sao idempotentes. Use REPLACE com cuidado.",
+      "capability": "update:cadastros",
+      "sensitive": false,
+      "addedInVersion": 2,
+      "inputSchemaKeys": [
+        "partner_id",
+        "category_ids",
+        "mode"
+      ],
+      "examples": [
+        {
+          "language": "curl",
+          "description": "Invocacao direta via curl",
+          "code": "curl -X POST https://mcp.exemplo.com.br/mcp \\\n  -H \"Authorization: Bearer <SERVICE_TOKEN>\" \\\n  -H \"X-Mcp-User-Id: <USER_ID>\" \\\n  -H \"X-Api-Key: <API_KEY>\" \\\n  -H \"Idempotency-Key: $(uuidgen)\" \\\n  -H \"Content-Type: application/json\" \\\n  -d '{\n  \"jsonrpc\": \"2.0\",\n  \"method\": \"tools/call\",\n  \"params\": {\n    \"name\": \"cadastros.res_partner_category.set_tags\",\n    \"arguments\": {\n      \"partner_id\": 16426,\n      \"category_ids\": [\n        1,\n        2\n      ],\n      \"mode\": \"add\"\n    }\n  }\n}'"
+        },
+        {
+          "language": "n8n",
+          "description": "Node HTTP Request no n8n",
+          "code": "// Node: HTTP Request\n// Method: POST\n// URL: {{ $env.MCP_URL }}\n// Headers:\n//   Authorization: Bearer {{ $env.MCP_SERVICE_TOKEN }}\n//   X-Mcp-User-Id: {{ $env.MCP_USER_ID }}\n//   X-Api-Key: {{ $env.MCP_API_KEY }}\n//   Idempotency-Key: {{ $json.idempotencyKey }}\n// Body (JSON):\n{\n  \"jsonrpc\": \"2.0\",\n  \"method\": \"tools/call\",\n  \"params\": {\n    \"name\": \"cadastros.res_partner_category.set_tags\",\n    \"arguments\": {\n          \"partner_id\": 16426,\n          \"category_ids\": [\n            1,\n            2\n          ],\n          \"mode\": \"add\"\n        }\n  }\n}"
+        },
+        {
+          "language": "python",
+          "description": "Chamada via requests",
+          "code": "import requests, uuid\n\nresponse = requests.post(\n    \"https://mcp.exemplo.com.br/mcp\",\n    headers={\n        \"Authorization\": \"Bearer <SERVICE_TOKEN>\",\n        \"X-Mcp-User-Id\": \"<USER_ID>\",\n        \"X-Api-Key\": \"<API_KEY>\",\n        \"Idempotency-Key\": str(uuid.uuid4()),\n        \"Content-Type\": \"application/json\",\n    },\n    json={\n        \"jsonrpc\": \"2.0\",\n        \"method\": \"tools/call\",\n        \"params\": {\n            \"name\": \"cadastros.res_partner_category.set_tags\",\n            \"arguments\": {\n          \"partner_id\": 16426,\n          \"category_ids\": [\n            1,\n            2\n          ],\n          \"mode\": \"add\"\n        },\n        },\n    },\n)\ndata = response.json()\nprint(data.get(\"result\"))"
+        },
+        {
+          "language": "javascript",
+          "description": "Chamada via fetch",
+          "code": "const response = await fetch(\"https://mcp.exemplo.com.br/mcp\", {\n  method: \"POST\",\n  headers: {\n    \"Authorization\": \"Bearer <SERVICE_TOKEN>\",\n    \"X-Mcp-User-Id\": \"<USER_ID>\",\n    \"X-Api-Key\": \"<API_KEY>\",\n    \"Idempotency-Key\": crypto.randomUUID(),\n    \"Content-Type\": \"application/json\",\n  },\n  body: JSON.stringify({\n    jsonrpc: \"2.0\",\n    method: \"tools/call\",\n    params: {\n      name: \"cadastros.res_partner_category.set_tags\",\n      arguments: {\n          \"partner_id\": 16426,\n          \"category_ids\": [\n            1,\n            2\n          ],\n          \"mode\": \"add\"\n        },\n    },\n  }),\n});\nconst { result } = await response.json();\nconsole.log(result);"
+        }
+      ]
+    },
+    {
+      "id": "cadastros.res_partner.delete",
+      "operation": "write",
+      "module": "cadastros",
+      "descricao": "Remove permanentemente um parceiro (unlink). IRREVERSIVEL. Falha com ParceiroEmUsoError se houver pedidos/lancamentos/usuarios vinculados. Para desativacao reversivel, use cadastros.res_partner.archive.",
+      "capability": "delete:cadastros",
+      "sensitive": true,
+      "addedInVersion": 2,
+      "inputSchemaKeys": [
+        "id"
+      ],
+      "examples": [
+        {
+          "language": "curl",
+          "description": "Invocacao direta via curl",
+          "code": "curl -X POST https://mcp.exemplo.com.br/mcp \\\n  -H \"Authorization: Bearer <SERVICE_TOKEN>\" \\\n  -H \"X-Mcp-User-Id: <USER_ID>\" \\\n  -H \"X-Api-Key: <API_KEY>\" \\\n  -H \"Idempotency-Key: $(uuidgen)\" \\\n  -H \"Content-Type: application/json\" \\\n  -d '{\n  \"jsonrpc\": \"2.0\",\n  \"method\": \"tools/call\",\n  \"params\": {\n    \"name\": \"cadastros.res_partner.delete\",\n    \"arguments\": {\n      \"id\": 16426\n    }\n  }\n}'"
+        },
+        {
+          "language": "n8n",
+          "description": "Node HTTP Request no n8n",
+          "code": "// Node: HTTP Request\n// Method: POST\n// URL: {{ $env.MCP_URL }}\n// Headers:\n//   Authorization: Bearer {{ $env.MCP_SERVICE_TOKEN }}\n//   X-Mcp-User-Id: {{ $env.MCP_USER_ID }}\n//   X-Api-Key: {{ $env.MCP_API_KEY }}\n//   Idempotency-Key: {{ $json.idempotencyKey }}\n// Body (JSON):\n{\n  \"jsonrpc\": \"2.0\",\n  \"method\": \"tools/call\",\n  \"params\": {\n    \"name\": \"cadastros.res_partner.delete\",\n    \"arguments\": {\n          \"id\": 16426\n        }\n  }\n}"
+        },
+        {
+          "language": "python",
+          "description": "Chamada via requests",
+          "code": "import requests, uuid\n\nresponse = requests.post(\n    \"https://mcp.exemplo.com.br/mcp\",\n    headers={\n        \"Authorization\": \"Bearer <SERVICE_TOKEN>\",\n        \"X-Mcp-User-Id\": \"<USER_ID>\",\n        \"X-Api-Key\": \"<API_KEY>\",\n        \"Idempotency-Key\": str(uuid.uuid4()),\n        \"Content-Type\": \"application/json\",\n    },\n    json={\n        \"jsonrpc\": \"2.0\",\n        \"method\": \"tools/call\",\n        \"params\": {\n            \"name\": \"cadastros.res_partner.delete\",\n            \"arguments\": {\n          \"id\": 16426\n        },\n        },\n    },\n)\ndata = response.json()\nprint(data.get(\"result\"))"
+        },
+        {
+          "language": "javascript",
+          "description": "Chamada via fetch",
+          "code": "const response = await fetch(\"https://mcp.exemplo.com.br/mcp\", {\n  method: \"POST\",\n  headers: {\n    \"Authorization\": \"Bearer <SERVICE_TOKEN>\",\n    \"X-Mcp-User-Id\": \"<USER_ID>\",\n    \"X-Api-Key\": \"<API_KEY>\",\n    \"Idempotency-Key\": crypto.randomUUID(),\n    \"Content-Type\": \"application/json\",\n  },\n  body: JSON.stringify({\n    jsonrpc: \"2.0\",\n    method: \"tools/call\",\n    params: {\n      name: \"cadastros.res_partner.delete\",\n      arguments: {\n          \"id\": 16426\n        },\n    },\n  }),\n});\nconst { result } = await response.json();\nconsole.log(result);"
+        }
+      ]
+    },
+    {
+      "id": "cadastros.res_partner.update",
+      "operation": "write",
+      "module": "cadastros",
+      "descricao": "Atualiza um parceiro (cliente, fornecedor ou contato) existente no Odoo. Aceita campos de identidade, contato, endereco, classificacao e flags (active/customer/supplier/employee). 'whatsapp' e alias de 'mobile' (se ambos passados, whatsapp prevalece). Snapshot antes lido por padrao; use _skipSnapshotBefore=true em fluxos de alto volume.",
+      "capability": "update:cadastros",
+      "sensitive": false,
+      "addedInVersion": 2,
+      "inputSchemaKeys": [
+        "id",
+        "name",
+        "is_company",
+        "company_type",
+        "company_registry",
+        "vat",
+        "email",
+        "phone",
+        "mobile",
+        "whatsapp",
+        "website",
+        "function",
+        "street",
+        "street2",
+        "city",
+        "zip",
+        "country_id",
+        "state_id",
+        "industry_id",
+        "title",
+        "active",
+        "customer",
+        "supplier",
+        "employee",
+        "lang",
+        "tz",
+        "comment",
+        "ref",
+        "_skipSnapshotBefore"
+      ],
+      "examples": [
+        {
+          "language": "curl",
+          "description": "Invocacao direta via curl",
+          "code": "curl -X POST https://mcp.exemplo.com.br/mcp \\\n  -H \"Authorization: Bearer <SERVICE_TOKEN>\" \\\n  -H \"X-Mcp-User-Id: <USER_ID>\" \\\n  -H \"X-Api-Key: <API_KEY>\" \\\n  -H \"Idempotency-Key: $(uuidgen)\" \\\n  -H \"Content-Type: application/json\" \\\n  -d '{\n  \"jsonrpc\": \"2.0\",\n  \"method\": \"tools/call\",\n  \"params\": {\n    \"name\": \"cadastros.res_partner.update\",\n    \"arguments\": {\n      \"id\": 16426,\n      \"phone\": \"(11) 4002-8923\",\n      \"whatsapp\": \"(11) 99999-1234\",\n      \"comment\": \"<p>Atualizado em 2026-05-23.</p>\"\n    }\n  }\n}'"
+        },
+        {
+          "language": "n8n",
+          "description": "Node HTTP Request no n8n",
+          "code": "// Node: HTTP Request\n// Method: POST\n// URL: {{ $env.MCP_URL }}\n// Headers:\n//   Authorization: Bearer {{ $env.MCP_SERVICE_TOKEN }}\n//   X-Mcp-User-Id: {{ $env.MCP_USER_ID }}\n//   X-Api-Key: {{ $env.MCP_API_KEY }}\n//   Idempotency-Key: {{ $json.idempotencyKey }}\n// Body (JSON):\n{\n  \"jsonrpc\": \"2.0\",\n  \"method\": \"tools/call\",\n  \"params\": {\n    \"name\": \"cadastros.res_partner.update\",\n    \"arguments\": {\n          \"id\": 16426,\n          \"phone\": \"(11) 4002-8923\",\n          \"whatsapp\": \"(11) 99999-1234\",\n          \"comment\": \"<p>Atualizado em 2026-05-23.</p>\"\n        }\n  }\n}"
+        },
+        {
+          "language": "python",
+          "description": "Chamada via requests",
+          "code": "import requests, uuid\n\nresponse = requests.post(\n    \"https://mcp.exemplo.com.br/mcp\",\n    headers={\n        \"Authorization\": \"Bearer <SERVICE_TOKEN>\",\n        \"X-Mcp-User-Id\": \"<USER_ID>\",\n        \"X-Api-Key\": \"<API_KEY>\",\n        \"Idempotency-Key\": str(uuid.uuid4()),\n        \"Content-Type\": \"application/json\",\n    },\n    json={\n        \"jsonrpc\": \"2.0\",\n        \"method\": \"tools/call\",\n        \"params\": {\n            \"name\": \"cadastros.res_partner.update\",\n            \"arguments\": {\n          \"id\": 16426,\n          \"phone\": \"(11) 4002-8923\",\n          \"whatsapp\": \"(11) 99999-1234\",\n          \"comment\": \"<p>Atualizado em 2026-05-23.</p>\"\n        },\n        },\n    },\n)\ndata = response.json()\nprint(data.get(\"result\"))"
+        },
+        {
+          "language": "javascript",
+          "description": "Chamada via fetch",
+          "code": "const response = await fetch(\"https://mcp.exemplo.com.br/mcp\", {\n  method: \"POST\",\n  headers: {\n    \"Authorization\": \"Bearer <SERVICE_TOKEN>\",\n    \"X-Mcp-User-Id\": \"<USER_ID>\",\n    \"X-Api-Key\": \"<API_KEY>\",\n    \"Idempotency-Key\": crypto.randomUUID(),\n    \"Content-Type\": \"application/json\",\n  },\n  body: JSON.stringify({\n    jsonrpc: \"2.0\",\n    method: \"tools/call\",\n    params: {\n      name: \"cadastros.res_partner.update\",\n      arguments: {\n          \"id\": 16426,\n          \"phone\": \"(11) 4002-8923\",\n          \"whatsapp\": \"(11) 99999-1234\",\n          \"comment\": \"<p>Atualizado em 2026-05-23.</p>\"\n        },\n    },\n  }),\n});\nconst { result } = await response.json();\nconsole.log(result);"
+        }
+      ]
     },
     {
       "id": "contabil_plano_de_contas",
@@ -619,7 +934,7 @@
       "operation": "write",
       "module": "crm",
       "descricao": "Cria um novo parceiro (cliente, fornecedor ou contato) no Odoo via JSON-RPC. Requer API key com capability crm:create. Retorna o snapshot completo do registro criado (snapshotAfter). Se external_id for fornecido, garante unicidade via ir.model.data.",
-      "capability": "crm.create",
+      "capability": "create:crm",
       "sensitive": false,
       "addedInVersion": 2,
       "inputSchemaKeys": [
@@ -657,6 +972,6 @@
       ]
     }
   ],
-  "count": 48,
-  "generatedAt": "2026-05-22T17:53:57.808Z"
+  "count": 56,
+  "generatedAt": "2026-05-24T01:53:55.055Z"
 }

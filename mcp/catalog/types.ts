@@ -68,6 +68,11 @@ export interface ToolEntry<I = unknown, O = unknown> {
    * Versão (inteiro monotônico) em que a tool foi adicionada.
    * Usado por capability-check: chaves com capabilitiesVersion menor
    * não enxergam tools adicionadas após sua criação.
+   *
+   * Convencao do projeto:
+   * - 1 = tools de leitura originais (F4 leitura).
+   * - 2 = primeiras tools de escrita (crm.res_partner.create + onda 2 cadastros/tarefas).
+   * - Incrementos futuros so com mudanca de contrato declarada.
    */
   addedInVersion?: number;
   /** Exemplos de uso para documentação / AI hints. */

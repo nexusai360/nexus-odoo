@@ -16,26 +16,10 @@ import type { WriteToolEntry, WriteToolResult } from "../../catalog/types.js";
 import { ExternalIdAlreadyExistsError } from "../../lib/errors.js";
 
 // ─── Campos que sempre lemos de volta do Odoo após criar/alterar ─────────────
-// TODO: confirmar lista definitiva de campos contra discovery do Odoo (F0).
-// Campos comuns do res.partner — discovery a completar.
-export const FIELDS_RES_PARTNER = [
-  "id",
-  "name",
-  "is_company",
-  "email",
-  "phone",
-  "street",
-  "city",
-  "zip",
-  "country_id",
-  "state_id",
-  "active",
-  "customer_rank",
-  "supplier_rank",
-  "write_date",
-  // TODO(discovery): confirmar se cnpj_cpf é o campo real ou l10n_br_cnpj_cpf
-  "cnpj_cpf",
-] as const;
+// Migrado para mcp/lib/fields/partner-fields.ts (Onda 2 cadastros).
+// Re-exportado aqui como FIELDS_RES_PARTNER por compatibilidade.
+import { PARTNER_SNAPSHOT_FIELDS } from "../../lib/fields/partner-fields.js";
+export const FIELDS_RES_PARTNER = PARTNER_SNAPSHOT_FIELDS;
 
 // ─── Input schema ─────────────────────────────────────────────────────────────
 
