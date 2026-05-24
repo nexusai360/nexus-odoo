@@ -143,7 +143,7 @@ export function ChavesLista({ initial, moduleWriteActions }: Props) {
   const revokedKeys = keys.filter((k) => k.revokedAt);
 
   return (
-    <div className="space-y-6 max-w-3xl">
+    <div className="space-y-6 ">
       {/* Banner de chaves de sistema sem capabilities */}
       {systemKeysNeedingReconfig.length > 0 && (
         <div className="flex items-start gap-3 rounded-xl border border-amber-500/40 bg-amber-500/5 p-4">

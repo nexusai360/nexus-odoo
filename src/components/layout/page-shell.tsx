@@ -21,18 +21,20 @@ interface Props {
  * - `full`: telas densas de dados, sem teto.
  */
 const MAX: Record<Variant, string> = {
-  // UNIFICADO: todas as variants compartilham o mesmo piso/cap do wide
-  // (Dashboard/Relatorios), aplicando a regra cap 15% (= 1636) com
-  // crescimento proporcional ao viewport via clamp.
-  // - Piso: 1600 (= max-w do Dashboard)
-  // - K: 0.0075 (crescimento sutil e adaptativo)
-  // - Cap: 1636 (= 1600 + 15% de bump)
-  // Mantemos 'full' sem cap para telas densas de dados (Relatorios detalhe).
-  compact: "max-w-[clamp(1600px,calc(1600px+(100vw-1366px)*0.0075),1636px)]",
-  form: "max-w-[clamp(1600px,calc(1600px+(100vw-1366px)*0.0075),1636px)]",
-  agent: "max-w-[clamp(1600px,calc(1600px+(100vw-1366px)*0.0075),1636px)]",
-  narrow: "max-w-[clamp(1600px,calc(1600px+(100vw-1366px)*0.0075),1636px)]",
-  wide: "max-w-[clamp(1600px,calc(1600px+(100vw-1366px)*0.0075),1636px)]",
+  // REGRA SUPREMA UNIFICADA: TODAS as telas usam exatamente a mesma
+  // largura. Em monitor de 27" o cap de 1310px e atingido (referencia
+  // visual do Dashboard). Em telas menores cai proporcionalmente para
+  // o piso; em telas maiores trava no cap.
+  // - Piso (mobile/laptop): 1280px
+  // - Crescimento: 0.025 do excedente acima de 1366px de viewport
+  //   (cap atingido em viewport ~2566, que cobre 27" FHD/QHD).
+  // - Cap (27" e acima): 1310px
+  // 'full' continua sem cap para telas densas de relatorio.
+  compact: "max-w-[clamp(1280px,calc(1280px+(100vw-1366px)*0.025),1310px)]",
+  form: "max-w-[clamp(1280px,calc(1280px+(100vw-1366px)*0.025),1310px)]",
+  agent: "max-w-[clamp(1280px,calc(1280px+(100vw-1366px)*0.025),1310px)]",
+  narrow: "max-w-[clamp(1280px,calc(1280px+(100vw-1366px)*0.025),1310px)]",
+  wide: "max-w-[clamp(1280px,calc(1280px+(100vw-1366px)*0.025),1310px)]",
   full: "max-w-none",
 };
 
