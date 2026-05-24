@@ -19,7 +19,7 @@ import { ExpandableTextarea } from "@/components/ui/expandable-textarea";
 import { updateAgentSettings } from "@/lib/actions/agent-config";
 import { cn } from "@/lib/utils";
 
-const MAX_IDENTITY = 500_000;
+const MAX_IDENTITY = 100_000;
 
 interface IdentityBaseEditorProps {
   initial: {

@@ -18,7 +18,8 @@ const RECENT_WINDOW_DAYS = 28;
 const CACHE_TTL_SECONDS = 5 * 60;
 
 function cacheKey(userId: string, max: number): string {
-  return `nex:welcome-suggestions:${userId}:v1:${max}`;
+  // v2 introduzido em 2026-05-24 19:30 para invalidar caches antigos.
+  return `nex:welcome-suggestions:${userId}:v2:${max}`;
 }
 
 export async function getPersonalizedWelcomeSuggestions(

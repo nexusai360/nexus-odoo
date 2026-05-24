@@ -7,7 +7,7 @@
  * - Cada documento tem um controle de checkpoint de 3 estados
  *   (desativado / playground / produção) no lugar do antigo botão "X".
  * - Clicar num documento abre um modal com o conteúdo extraído.
- * - Cap de caracteres da KB elevado para 500.000.
+ * - Cap de caracteres da KB elevado para 1.000.000.
  */
 
 import { useMemo, useState, useTransition } from "react";
@@ -49,8 +49,8 @@ import { cn } from "@/lib/utils";
 import { KbUploadDialog } from "./kb-upload-dialog";
 import { KbDocumentViewer } from "./kb-document-viewer";
 
-const KB_TOTAL_CAP = 500_000;
-const KB_WARN_THRESHOLD = 420_000;
+const KB_TOTAL_CAP = 1_000_000;
+const KB_WARN_THRESHOLD = 850_000;
 
 type DocKind = "TXT" | "PDF" | "URL" | "MARKDOWN" | "CSV" | "XML" | "YAML" | "XLSX" | "DOCX" | "JSON";
 
@@ -361,6 +361,7 @@ export function KbSection({ initial }: KbSectionProps) {
         open={uploadOpen}
         onOpenChange={setUploadOpen}
         currentKbChars={totalChars}
+        existingKbNames={initial.map((d) => d.name)}
       />
 
       <KbDocumentViewer

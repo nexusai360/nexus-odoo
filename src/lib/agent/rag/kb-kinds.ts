@@ -18,7 +18,10 @@ export const FILE_KB_KINDS = [
 export type FileKbKind = (typeof FILE_KB_KINDS)[number];
 
 /** Limite de quantidade de arquivos por upload em lote. */
-export const MAX_FILES_PER_UPLOAD = 10;
+export const MAX_FILES_PER_UPLOAD = 5;
+
+/** Limite de bytes por arquivo. */
+export const MAX_FILE_BYTES = 10 * 1024 * 1024;
 
 /** Extensões aceitas, para o atributo `accept` do input de arquivo. */
 export const ACCEPTED_KB_EXTENSIONS =

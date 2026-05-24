@@ -53,7 +53,7 @@ import {
 } from "@/lib/actions/playground";
 import type { PlaygroundPromptSnapshot } from "@/lib/actions/playground-types";
 
-const MAX_IDENTITY = 500_000;
+const MAX_IDENTITY = 100_000;
 const MAX_PERSONALITY = 1000;
 const MAX_TONE = 1000;
 const MAX_GUARDRAIL = 500;

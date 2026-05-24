@@ -20,7 +20,7 @@ export interface KbSearchResult {
 }
 
 /** Máximo de chars por documento no fallback de texto integral. */
-const FALLBACK_MAX_CHARS = 500_000;
+const FALLBACK_MAX_CHARS = 1_000_000;
 
 /**
  * Ingere um documento na base de conhecimento.

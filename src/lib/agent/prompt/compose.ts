@@ -22,8 +22,10 @@ export const MAX_PERSONALITY_LEN = 1000;
 export const MAX_TONE_LEN = 1000;
 export const MAX_GUARDRAIL_LEN = 500;
 export const MAX_GUARDRAILS = 1000;
-export const MAX_PROMPT_LEN = 500_000;
-export const MAX_KB_TOTAL_CHARS = 500_000;
+/** Cap independente do texto do prompt (identityBase + advancedOverride). */
+export const MAX_PROMPT_LEN = 100_000;
+/** Cap total dos documentos da base de conhecimento. Independente do prompt. */
+export const MAX_KB_TOTAL_CHARS = 1_000_000;
 
 /**
  * Origem do turno atual. Influencia o prompt:

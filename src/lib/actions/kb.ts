@@ -15,8 +15,8 @@ import { kindFromFilename } from "@/lib/agent/rag/kb-kinds";
 import type { KbKind } from "@/generated/prisma/client";
 import type { KbCheckpoint, KbDocRow } from "./kb-types";
 
-/** Limite de tamanho do arquivo de upload da KB: 15 MB. */
-const MAX_KB_FILE_BYTES = 15 * 1024 * 1024;
+/** Limite de tamanho do arquivo de upload da KB: 10 MB. */
+const MAX_KB_FILE_BYTES = 10 * 1024 * 1024;
 
 /** Roles que podem gerenciar a KB. */
 const KB_ADMIN_ROLES = new Set(["admin", "super_admin"]);
@@ -85,7 +85,7 @@ export async function uploadKbFileAction(
       return { ok: false, error: "Arquivo vazio." };
     }
     if (file.size > MAX_KB_FILE_BYTES) {
-      return { ok: false, error: "Arquivo excede 15 MB." };
+      return { ok: false, error: "Arquivo excede 10 MB." };
     }
 
     const kind = kindFromFilename(file.name);
@@ -223,6 +223,70 @@ export async function updateKbCheckpointAction(
 }
 
 /** Remove um documento da KB pelo ID. */
+/**
+ * Conta os caracteres extraíveis de um arquivo SEM persistir.
+ * Usado pelo modal de upload para validar o orçamento antes do save.
+ */
+export async function precountKbCharsAction(
+  formData: FormData,
+): Promise<ActionResult<{ charCount: number }>> {
+  try {
+    await assertKbAdmin();
+    const file = formData.get("file");
+    if (!(file instanceof File)) {
+      return { ok: false, error: "Arquivo não enviado." };
+    }
+    if (file.size === 0) {
+      return { ok: false, error: "Arquivo vazio." };
+    }
+    if (file.size > MAX_KB_FILE_BYTES) {
+      return { ok: false, error: "Arquivo excede 10 MB." };
+    }
+    const kind = kindFromFilename(file.name);
+    if (!kind) {
+      return { ok: false, error: "Formato inválido." };
+    }
+    const buffer = Buffer.from(await file.arrayBuffer());
+    const { extractKbText } = await import("@/lib/agent/rag/extract");
+    try {
+      const text = await extractKbText(buffer, kind);
+      return { ok: true, data: { charCount: text.length } };
+    } catch (err) {
+      return {
+        ok: false,
+        error: err instanceof Error ? err.message : "Falha ao processar arquivo.",
+      };
+    }
+  } catch (err) {
+    return {
+      ok: false,
+      error: err instanceof Error ? err.message : "Erro ao processar arquivo.",
+    };
+  }
+}
+
+/**
+ * Lista apenas nomes (e id) dos documentos da KB para o modal de upload
+ * detectar duplicidades antes do save. Não traz texto.
+ */
+export async function listKbDocumentNamesAction(): Promise<
+  ActionResult<{ id: string; name: string }[]>
+> {
+  try {
+    await assertKbAdmin();
+    const rows = await prisma.kbDocument.findMany({
+      select: { id: true, name: true },
+      orderBy: { createdAt: "desc" },
+    });
+    return { ok: true, data: rows };
+  } catch (err) {
+    return {
+      ok: false,
+      error: err instanceof Error ? err.message : "Erro ao listar documentos.",
+    };
+  }
+}
+
 export async function deleteKbDocumentAction(id: string): Promise<ActionResult> {
   try {
     await assertKbAdmin();

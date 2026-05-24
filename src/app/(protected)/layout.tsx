@@ -38,23 +38,38 @@ export default async function ProtectedLayout({
   // Anexo (clip) na bubble: liberado só com o checkpoint de imagem em PRODUÇÃO.
   const imageInputEnabled = flags.imageInputEnabled === true;
 
-  // Sugestoes na bubble: tres camadas em ordem de prioridade.
-  // 1) Personalizado: agregado do historico real de tools do proprio usuario.
-  // 2) Por role: pacote curado com perguntas de alto impacto para o nivel
-  //    de acesso (super_admin/admin/manager priorizam faturamento + comercial).
-  // 3) Fallback final: catalogo fixo WELCOME_SUGGESTIONS.
-  // O ChatPanel ja faz o slice por maxSuggestions; aqui resolvemos qual lista
-  // entregar. Se o personalizado vier vazio, mandamos a do role (nunca vazia).
+  // Sugestoes na bubble: ancora obrigatoria por role + complemento personalizado.
+  // Pedido do usuario em 2026-05-24 19:24: faturamento/produto mais vendido/
+  // financeiro devem SEMPRE aparecer mesmo quando ha historico que aponte
+  // para outras tools. O historico ENRIQUECE, nao SUBSTITUI as ancoras.
+  //
+  // Estrategia:
+  //   - ancora 0 sempre primeiro (faturamento para gestor)
+  //   - personalizadas ocupam ate floor(max/2) slots
+  //   - resto da ancora completa ate o teto, dedupado
   let welcomeSet: string[] = [];
   if (canUseAgent) {
-    const personalized = await getPersonalizedWelcomeSuggestions(
-      user.id,
-      flags.maxSuggestions,
-    );
-    welcomeSet =
-      personalized.length > 0
-        ? personalized
-        : [...pickWelcomeByRole(user.platformRole)];
+    const ancora = pickWelcomeByRole(user.platformRole);
+    const max = flags.maxSuggestions ?? 3;
+    const personalizadasMax = Math.max(0, Math.floor(max / 2));
+    const personalized =
+      personalizadasMax > 0
+        ? await getPersonalizedWelcomeSuggestions(user.id, personalizadasMax)
+        : [];
+
+    const out: string[] = [];
+    const seen = new Set<string>();
+    const push = (s: string) => {
+      const t = s.trim();
+      if (t && !seen.has(t) && out.length < max) {
+        seen.add(t);
+        out.push(t);
+      }
+    };
+    if (ancora.length > 0) push(ancora[0]);
+    for (const p of personalized) push(p);
+    for (const a of ancora.slice(1)) push(a);
+    welcomeSet = out;
   }
 
   return (
