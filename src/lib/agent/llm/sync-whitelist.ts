@@ -27,7 +27,7 @@ export const SYNC_WHITELIST: WhitelistEntry[] = [
   { provider: "anthropic", pattern: /^claude-3-(5|7)-(sonnet|opus|haiku)(-[\w-]+)?$/ },
 
   // Gemini
-  { provider: "gemini", pattern: /^gemini-(1\.5|2\.0|2\.5|3\.[\w-]+)-(pro|flash|flash-lite|flash-8b)(-thinking)?(-[\w-]+)?$/ },
+  { provider: "gemini", pattern: /^gemini-(1\.5|2\.0|2\.5|3(?:\.\d+)?)-(pro|flash|flash-lite|flash-8b)(-thinking)?(-[\w-]+)?$/ },
 
   // OpenRouter — padrões por sub-família.
   { provider: "openrouter", pattern: /^openai\/(gpt-(5|5\.[\w-]+|4o|4\.[\w-]+)|o[1-9])(-[\w./-]+)?$/ },

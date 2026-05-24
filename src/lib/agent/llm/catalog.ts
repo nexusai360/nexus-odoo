@@ -145,7 +145,12 @@ const ANTHROPIC: ModelEntry[] = [
 
 // ─── Gemini ───────────────────────────────────────────────────────────────────
 const GEMINI: ModelEntry[] = [
-  { id: "gemini-2.5-pro",        provider: "gemini", label: "Gemini 2.5 Pro",         tier: "high",   notes: "atual mais novo", released: "2025-09", pricing: { inputPerMTok: 1.25, outputPerMTok: 10.0 }, vision: true, audio: true },
+  // Gemini 3.x — geracao mais nova (lancada no Google AI Studio em 2026).
+  { id: "gemini-3-pro",          provider: "gemini", label: "Gemini 3 Pro",           tier: "high",   notes: "raciocínio profundo", released: "2026-05", pricing: { inputPerMTok: 2.0,  outputPerMTok: 12.0 }, use: "raciocínio profundo", vision: true, audio: true },
+  { id: "gemini-3.5-flash",      provider: "gemini", label: "Gemini 3.5 Flash",       tier: "low",                                  released: "2026-05", pricing: { inputPerMTok: 0.35, outputPerMTok: 2.8  }, vision: true, audio: true },
+  { id: "gemini-3.1-flash-lite", provider: "gemini", label: "Gemini 3.1 Flash-Lite",  tier: "low",                                  released: "2026-05", pricing: { inputPerMTok: 0.1,  outputPerMTok: 0.4  }, vision: true, audio: true },
+  // Gemini 2.5 (geracao anterior).
+  { id: "gemini-2.5-pro",        provider: "gemini", label: "Gemini 2.5 Pro",         tier: "high",                              released: "2025-09", pricing: { inputPerMTok: 1.25, outputPerMTok: 10.0 }, vision: true, audio: true },
   { id: "gemini-2.5-flash",      provider: "gemini", label: "Gemini 2.5 Flash",       tier: "low",                              released: "2025-09", pricing: { inputPerMTok: 0.3,  outputPerMTok: 2.5  }, vision: true, audio: true },
   { id: "gemini-2.5-flash-lite", provider: "gemini", label: "Gemini 2.5 Flash Lite",  tier: "low",                              released: "2025-09", pricing: { inputPerMTok: 0.1,  outputPerMTok: 0.4  }, vision: true, audio: true },
   { id: "gemini-2.5-flash-thinking", provider: "gemini", label: "Gemini 2.5 Flash (Thinking)", tier: "low",                    released: "2025-12", pricing: { inputPerMTok: 0.3,  outputPerMTok: 2.5  }, use: "raciocínio", vision: true },
@@ -277,9 +282,11 @@ const REASONING_LEVELS: Record<string, ReasoningLevel[]> = {
   "claude-sonnet-4-7": ["low", "medium", "high"],
   "claude-opus-4-5": ["low", "medium", "high"],
   "claude-sonnet-4-5": ["low", "medium", "high"],
-  // Google — Gemini 2.5 com thinking_config
+  // Google — Gemini 2.5/3.x com thinking_config
   "gemini-2.5-pro": ["low", "medium", "high"],
   "gemini-2.5-flash": ["low", "medium", "high"],
+  "gemini-3-pro": ["low", "medium", "high"],
+  "gemini-3.5-flash": ["low", "medium", "high"],
   // OpenRouter (mesmos providers via gateway)
   "anthropic/claude-opus-4.7": ["low", "medium", "high"],
   "anthropic/claude-sonnet-4.7": ["low", "medium", "high"],
