@@ -17,7 +17,7 @@ import { Button } from "@/components/ui/button";
 import {
   IOF_RATE,
   BANK_SPREAD_RATE,
-} from "@/lib/agent/llm/exchange-rate";
+} from "@/lib/agent/llm/exchange-rate-constants";
 import type { UsageDetailRow } from "@/lib/agent/llm/usage-stats";
 import { cn } from "@/lib/utils";
 

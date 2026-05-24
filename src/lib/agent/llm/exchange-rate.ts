@@ -18,7 +18,23 @@
  * com codigo legado: (1 + BANK_SPREAD_RATE) * (1 + IOF_RATE) ~= 1.0539.
  */
 
+import "server-only";
 import { redis } from "@/lib/redis";
+import {
+  IOF_RATE,
+  BANK_SPREAD_RATE,
+  RATE_SPREAD,
+  FALLBACK_COMMERCIAL_RATE,
+  REDIS_KEY_USD_BRL_PTAX,
+} from "./exchange-rate-constants";
+
+export {
+  IOF_RATE,
+  BANK_SPREAD_RATE,
+  RATE_SPREAD,
+  FALLBACK_COMMERCIAL_RATE,
+  REDIS_KEY_USD_BRL_PTAX,
+};
 
 const TTL_MS = 24 * 60 * 60 * 1000; // janela de cache in-process: 1 dia
 const FETCH_TIMEOUT_MS = 5_000;
@@ -27,18 +43,6 @@ const FETCH_TIMEOUT_MS = 5_000;
 const BCB_PTAX_SGS_URL =
   "https://api.bcb.gov.br/dados/serie/bcdata.sgs.10813/dados/ultimos/1?formato=json";
 const AWESOMEAPI_URL = "https://economia.awesomeapi.com.br/last/USD-BRL";
-
-// Componentes de cobrança (cartao internacional, vigentes em 2026):
-//  - IOF 3,5% (Decreto 12.499/2025).
-//  - Spread bancario ~1,83% (calibrado por engenharia reversa Santander).
-export const IOF_RATE = 0.035;
-export const BANK_SPREAD_RATE = 0.0183;
-// Multiplicador efetivo agregado, mantido para retrocompat.
-export const RATE_SPREAD = +((1 + BANK_SPREAD_RATE) * (1 + IOF_RATE)).toFixed(6);
-export const FALLBACK_COMMERCIAL_RATE = 5.06;
-
-// Redis key compartilhada entre worker (que faz refresh diario) e web.
-export const REDIS_KEY_USD_BRL_PTAX = "nexus:exchange:usd-brl:ptax-venda";
 
 export interface UsdBrlRate {
   /** Cotacao efetiva (commercial * (1+spread) * (1+iof)). */

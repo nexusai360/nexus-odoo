@@ -13,15 +13,14 @@ export interface WhitelistEntry {
 }
 
 export const SYNC_WHITELIST: WhitelistEntry[] = [
-  // OpenAI
-  { provider: "openai", pattern: /^gpt-5(\.[\w-]+)?(-\d{8})?$/ },
+  // OpenAI — apenas modelos de conversacao/raciocinio/codigo + audio do agente.
+  // NAO inclui: embeddings, tts, image, search-api, realtime, gpt-4 legado.
+  { provider: "openai", pattern: /^gpt-5(\.[\w-]+)?$/ },
   { provider: "openai", pattern: /^gpt-4\.1(-mini|-nano)?$/ },
-  { provider: "openai", pattern: /^gpt-4o(-mini)?(-realtime(-preview)?)?(-\d{4}-\d{2}-\d{2})?$/ },
-  { provider: "openai", pattern: /^gpt-4o-(mini-)?(transcribe|tts)$/ },
+  { provider: "openai", pattern: /^gpt-4o(-mini)?$/ },
+  { provider: "openai", pattern: /^gpt-4o-(mini-)?transcribe$/ },
   { provider: "openai", pattern: /^o[1-9](-pro|-mini)?$/ },
-  { provider: "openai", pattern: /^text-embedding-3-(small|large)$/ },
   { provider: "openai", pattern: /^whisper-1$/ },
-  { provider: "openai", pattern: /^tts-1(-hd)?$/ },
 
   // Anthropic
   { provider: "anthropic", pattern: /^claude-(opus|sonnet|haiku)-4(-\d+)?(-\d{8})?$/ },
