@@ -38,8 +38,8 @@ export const cadastrosMailActivityUpdate: WriteToolEntry<Input, OdooRecord> = {
   module: "cadastros",
   descricao:
     "Atualiza summary, note, date_deadline, user_id ou activity_type_id de uma " +
-    "atividade existente. NAO permite mudar res_model/res_id (atividade nao " +
-    "muda de registro alvo). Exige ao menos 1 campo alem de id.",
+    "atividade existente. NÃO permite mudar res_model/res_id (a atividade não muda " +
+    "de registro alvo). Exige ao menos 1 campo além de id.",
   inputSchemaShape: inputBase.shape,
   inputSchema,
   outputSchema,

@@ -30,9 +30,9 @@ export const cadastrosResPartnerCategoryCreate: WriteToolEntry<Input, CategoryOu
   operation: "write",
   module: "cadastros",
   descricao:
-    "Cria uma tag/categoria de parceiro (res.partner.category). Idempotente por " +
-    "(name, parent_id): se ja existir uma com mesmo nome e mesma categoria pai, " +
-    "retorna a existente com created=false. Em race extrema pode duplicar.",
+    "Cria uma tag/categoria de parceiro (res.partner.category). É idempotente por " +
+    "(name, parent_id): se já existir uma tag com o mesmo nome e mesma categoria pai, " +
+    "retorna a existente com created=false. Em condição de corrida extrema pode duplicar.",
   inputSchemaShape: inputSchema.shape,
   inputSchema,
   outputSchema,

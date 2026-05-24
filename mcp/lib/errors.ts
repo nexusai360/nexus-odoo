@@ -169,55 +169,55 @@ export class ParceiroEmUsoError extends McpError {
   readonly httpStatus = 409;
   constructor(partnerId: number, originalMessage?: string) {
     super(
-      `Parceiro ${partnerId} tem registros vinculados e nao pode ser removido. Considere arquivar (active=false).`,
+      `Parceiro ${partnerId} tem registros vinculados e não pode ser removido. Considere arquivar (active=false).`,
       { partnerId, originalMessage },
     );
   }
 }
 
-/** 409 — categoria/tag ja existe com mesmo nome no mesmo nivel. */
+/** 409 — categoria/tag já existe com mesmo nome no mesmo nível. */
 export class CategoriaJaExisteError extends McpError {
   readonly code = "CATEGORIA_JA_EXISTE" as const;
   readonly httpStatus = 409;
   constructor(name: string, existingId: number, parentId: number | null) {
     super(
-      `Categoria '${name}' ja existe (id=${existingId}).`,
+      `Categoria '${name}' já existe (id=${existingId}).`,
       { name, existingId, parentId },
     );
   }
 }
 
-/** 404 — atividade nao encontrada (provavelmente ja completada ou removida). */
+/** 404 — atividade não encontrada (provavelmente já completada ou removida). */
 export class AtividadeNaoEncontradaError extends McpError {
   readonly code = "ATIVIDADE_NAO_ENCONTRADA" as const;
   readonly httpStatus = 404;
   constructor(activityId: number) {
     super(
-      `Atividade ${activityId} nao encontrada (pode ter sido concluida ou removida).`,
+      `Atividade ${activityId} não encontrada (pode ter sido concluída ou removida).`,
       { activityId },
     );
   }
 }
 
-/** 400 — modelo Odoo solicitado nao existe ou nao esta acessivel. */
+/** 400 — modelo Odoo solicitado não existe ou não está acessível. */
 export class ModeloNaoSuportadoError extends McpError {
   readonly code = "MODELO_NAO_SUPORTADO" as const;
   readonly httpStatus = 400;
   constructor(modelName: string) {
     super(
-      `Modelo Odoo '${modelName}' nao existe ou nao esta acessivel.`,
+      `Modelo Odoo '${modelName}' não existe ou não está acessível.`,
       { modelName },
     );
   }
 }
 
-/** 404 — registro alvo de atividade nao existe no modelo informado. */
+/** 404 — registro alvo de atividade não existe no modelo informado. */
 export class RegistroNaoEncontradoError extends McpError {
   readonly code = "REGISTRO_NAO_ENCONTRADO" as const;
   readonly httpStatus = 404;
   constructor(modelName: string, recordId: number) {
     super(
-      `Registro id=${recordId} nao encontrado em '${modelName}'.`,
+      `Registro id=${recordId} não encontrado em '${modelName}'.`,
       { modelName, recordId },
     );
   }

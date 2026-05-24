@@ -3,7 +3,9 @@
 // teste Tauga (ODOO_WRITE_*) e limpa o registro criado ao final.
 //
 // Uso: set -a && source .env.local && set +a && npx tsx scripts/e2e/test-write-partner.ts
+// @ts-expect-error tsx aceita .ts em runtime; tsc reclama mas o script roda standalone
 import { clientFromEnv } from "../../src/worker/odoo/client.ts";
+// @ts-expect-error idem
 import { crmResPartnerCreate } from "../../mcp/tools/crm/res-partner-create.ts";
 
 async function main() {

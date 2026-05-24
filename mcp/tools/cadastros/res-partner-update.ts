@@ -92,9 +92,9 @@ export const cadastrosResPartnerUpdate: WriteToolEntry<Input, OdooRecord> = {
   module: "cadastros",
   descricao:
     "Atualiza um parceiro (cliente, fornecedor ou contato) existente no Odoo. " +
-    "Aceita campos de identidade, contato, endereco, classificacao e flags " +
-    "(active/customer/supplier/employee). 'whatsapp' e alias de 'mobile' " +
-    "(se ambos passados, whatsapp prevalece). Snapshot antes lido por padrao; " +
+    "Aceita campos de identidade, contato, endereço, classificação e flags " +
+    "(active/customer/supplier/employee). 'whatsapp' é apelido de 'mobile' " +
+    "(se ambos forem passados, whatsapp prevalece). O snapshot anterior é lido por padrão; " +
     "use _skipSnapshotBefore=true em fluxos de alto volume.",
   inputSchemaShape: inputBase.shape,
   inputSchema,

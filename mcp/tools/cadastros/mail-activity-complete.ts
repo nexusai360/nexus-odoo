@@ -30,8 +30,8 @@ export const cadastrosMailActivityComplete: WriteToolEntry<Input, CompleteOutput
   module: "cadastros",
   descricao:
     "Conclui uma atividade (action_done). O Odoo cria uma mail.message de feedback " +
-    "e REMOVE a atividade (state nao fica 'done', e apagada). Segunda chamada " +
-    "retorna AtividadeNaoEncontradaError.",
+    "e REMOVE a atividade (o estado não fica 'done', a atividade é apagada). Uma " +
+    "segunda chamada no mesmo id retorna AtividadeNaoEncontradaError.",
   inputSchemaShape: inputSchema.shape,
   inputSchema,
   outputSchema,

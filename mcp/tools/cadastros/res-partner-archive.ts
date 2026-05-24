@@ -23,9 +23,9 @@ export const cadastrosResPartnerArchive: WriteToolEntry<Input, OdooRecord> = {
   operation: "write",
   module: "cadastros",
   descricao:
-    "Arquiva (desativa) um parceiro definindo active=false. Reversivel: chame " +
-    "cadastros.res_partner.update com {active: true}. Use cadastros.res_partner.delete " +
-    "para remocao permanente.",
+    "Arquiva (desativa) um parceiro definindo active=false. É reversível: chame " +
+    "cadastros.res_partner.update com {active: true} para reativar. Use " +
+    "cadastros.res_partner.delete para remoção permanente.",
   inputSchemaShape: inputSchema.shape,
   inputSchema,
   outputSchema,

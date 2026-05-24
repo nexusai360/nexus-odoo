@@ -541,24 +541,16 @@ function ToolCard({
             <div className="border-t border-border px-4 py-4 space-y-4">
               <p className="text-sm text-muted-foreground leading-relaxed">{tool.descricao}</p>
 
-              <div className="flex flex-wrap gap-2 text-xs text-muted-foreground">
-                {tool.capability && (
-                  <span>
-                    Capability:{" "}
-                    <code className="rounded bg-muted px-1 py-0.5 font-mono text-foreground">
-                      {tool.capability}
-                    </code>
-                  </span>
-                )}
-                {tool.addedInVersion && <span>Disponível desde a v{tool.addedInVersion}</span>}
-              </div>
-
-              {isWrite && (
+              {isWrite && tool.capability && (
                 <div className="flex items-start gap-2 rounded-md border border-violet-500/20 bg-violet-500/5 px-3 py-2 text-xs text-violet-700 dark:text-violet-300">
                   <Key className="mt-0.5 h-3.5 w-3.5 shrink-0" />
                   <span>
-                    Requer API key externa com a capability acima. Não pode ser invocada
-                    pelo Agente Nex (modo interno é bloqueado para escrita).
+                    Esta é uma tool de escrita. Só pode ser invocada por uma chave de API
+                    (cadastrada em <strong>Chaves de Acesso</strong>) que tenha a permissão{" "}
+                    <code className="rounded bg-violet-500/10 px-1 py-0.5 font-mono">
+                      {tool.capability}
+                    </code>{" "}
+                    marcada. O Agente Nex (modo interno) não consegue chamar tools de escrita.
                   </span>
                 </div>
               )}

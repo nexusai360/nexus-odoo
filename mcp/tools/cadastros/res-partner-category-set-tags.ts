@@ -29,9 +29,9 @@ export const cadastrosResPartnerCategorySetTags: WriteToolEntry<Input, OdooRecor
   operation: "write",
   module: "cadastros",
   descricao:
-    "Gerencia as tags de um parceiro. Modes: 'add' (default, adiciona sem remover), " +
-    "'remove' (remove as listadas), 'replace' (DESTRUTIVO: substitui todas pelas listadas). " +
-    "ADD/REMOVE sao idempotentes. Use REPLACE com cuidado.",
+    "Gerencia as tags de um parceiro. Modos: 'add' (padrão, adiciona sem remover as " +
+    "atuais), 'remove' (remove as listadas) e 'replace' (DESTRUTIVO: substitui todas " +
+    "pelas listadas). ADD e REMOVE são idempotentes. Use REPLACE com cuidado.",
   inputSchemaShape: inputSchema.shape,
   inputSchema,
   outputSchema,

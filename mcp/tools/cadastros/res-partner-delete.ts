@@ -27,9 +27,9 @@ export const cadastrosResPartnerDelete: WriteToolEntry<Input, OdooRecord> = {
   operation: "write",
   module: "cadastros",
   descricao:
-    "Remove permanentemente um parceiro (unlink). IRREVERSIVEL. Falha com " +
-    "ParceiroEmUsoError se houver pedidos/lancamentos/usuarios vinculados. " +
-    "Para desativacao reversivel, use cadastros.res_partner.archive.",
+    "Remove permanentemente um parceiro (unlink). IRREVERSÍVEL. Falha com " +
+    "ParceiroEmUsoError se houver pedidos, lançamentos ou usuários vinculados. " +
+    "Para desativação reversível, use cadastros.res_partner.archive.",
   inputSchemaShape: inputSchema.shape,
   inputSchema,
   outputSchema,

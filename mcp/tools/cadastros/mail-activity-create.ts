@@ -37,10 +37,10 @@ export const cadastrosMailActivityCreate: WriteToolEntry<Input, OdooRecord> = {
   operation: "write",
   module: "cadastros",
   descricao:
-    "Cria uma atividade/tarefa atrelada a qualquer record Odoo (parceiro, pedido, etc). " +
-    "Define prazo (date_deadline), responsavel (user_id), tipo (activity_type_id) " +
-    "e descricao (summary + note opcional em HTML). Use cadastros.mail_activity.complete " +
-    "para concluir. note aceita HTML; sanitize ao renderizar para o usuario final.",
+    "Cria uma atividade (tarefa) atrelada a qualquer registro Odoo (parceiro, pedido, etc). " +
+    "Define prazo (date_deadline), responsável (user_id), tipo (activity_type_id) e " +
+    "descrição (summary + note opcional em HTML). Use cadastros.mail_activity.complete " +
+    "para concluir. O campo note aceita HTML; sanitize ao renderizar para o usuário final.",
   inputSchemaShape: inputSchema.shape,
   inputSchema,
   outputSchema,
