@@ -57,7 +57,7 @@ export function McpVisaoGeral({ mcpPublicUrl, healthStatus, metrics }: Props) {
   const hasUsage = metrics != null && metrics.totalCalls > 0;
 
   return (
-    <div className="space-y-6 max-w-4xl">
+    <div className="space-y-6 ">
       {/* Está no ar? */}
       <div data-tour="mcp-status" className="rounded-xl border border-border bg-card p-6 space-y-5">
         <div className="flex items-center gap-3">

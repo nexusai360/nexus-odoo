@@ -93,7 +93,7 @@ export function ApiKeysContent({ initial }: Props) {
   const revokedKeys = keys.filter((k) => k.revokedAt);
 
   return (
-    <div className="space-y-6 max-w-3xl">
+    <div className="space-y-6 ">
       {/* Banner de key revelada */}
       {revealedKey && (
         <div className="rounded-xl border border-amber-500/40 bg-amber-500/5 p-4 space-y-2">

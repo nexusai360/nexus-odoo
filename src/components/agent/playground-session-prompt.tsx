@@ -191,7 +191,7 @@ export function PlaygroundSessionPrompt({
 
       {/* Conteúdo rolável — mesmo layout/Cards/labels da tela /agente/prompt */}
       <div className="flex-1 overflow-y-auto bg-muted/10 px-4 py-5">
-        <div className="mx-auto max-w-3xl space-y-8">
+        <div className="mx-auto space-y-8">
           {/* ─────── Identidade base (espelha IdentityBaseEditor) ─────── */}
           <Card className="rounded-2xl border border-border bg-muted/30 p-2">
             <CardHeader className="pb-3">

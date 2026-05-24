@@ -97,7 +97,7 @@ export function WebhooksContent({ initial, inboundBaseUrl }: Props) {
   }
 
   return (
-    <div className="space-y-6 max-w-3xl">
+    <div className="space-y-6 ">
       {/* Cabeçalho com botão de criação */}
       <div data-tour="webhooks-novo" className="flex items-center justify-between">
         <p className="text-sm text-muted-foreground">
