@@ -545,12 +545,11 @@ function ToolCard({
                 <div className="flex items-start gap-2 rounded-md border border-violet-500/20 bg-violet-500/5 px-3 py-2 text-xs text-violet-700 dark:text-violet-300">
                   <Key className="mt-0.5 h-3.5 w-3.5 shrink-0" />
                   <span>
-                    Esta é uma tool de escrita. Só pode ser invocada por uma chave de API
-                    (cadastrada em <strong>Chaves de Acesso</strong>) que tenha a permissão{" "}
+                    Requer chave de API com a permissão{" "}
                     <code className="rounded bg-violet-500/10 px-1 py-0.5 font-mono">
                       {tool.capability}
                     </code>{" "}
-                    marcada. O Agente Nex (modo interno) não consegue chamar tools de escrita.
+                    marcada em <strong>Chaves de Acesso</strong>. Inacessível pelo Agente Nex.
                   </span>
                 </div>
               )}
