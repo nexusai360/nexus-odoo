@@ -21,14 +21,19 @@ interface Props {
  * - `full`: telas densas de dados, sem teto.
  */
 const MAX: Record<Variant, string> = {
-  // Variantes do Agente Nex: largura proporcional ao viewport (% via
-  // min(NN vw, cap)) com piso minimo confortavel para laptops e teto
-  // alto para nao explodir em 60" 4K. Mobile/tablet preservados pelo
-  // min-width: o min(...) seleciona o menor entre o vw e o piso.
-  // Regra: usa 92% / 94% da viewport; nunca menor que o piso base.
-  compact: "w-full max-w-[min(92vw,2400px)]",
-  form: "w-full max-w-[min(92vw,2400px)]",
-  agent: "w-full max-w-[min(94vw,2600px)]",
+  // Variantes do Agente Nex: largura cresce devagar com a viewport via
+  // clamp(piso, formula, teto). Base = tamanho anterior (max-w-6xl /
+  // max-w-7xl). Crescimento = 10% do excedente acima de 1366px de
+  // viewport, com teto de no maximo +20% sobre o piso. Mobile/tablet
+  // continuam dentro do piso (max-width nao force largura minima).
+  // compact/form: piso 1152px (max-w-6xl), teto 1380 (+20%).
+  // agent:        piso 1280px (max-w-7xl), teto 1536 (+20%).
+  compact:
+    "max-w-[clamp(1152px,calc(1152px+(100vw-1366px)*0.10),1380px)]",
+  form:
+    "max-w-[clamp(1152px,calc(1152px+(100vw-1366px)*0.10),1380px)]",
+  agent:
+    "max-w-[clamp(1280px,calc(1280px+(100vw-1366px)*0.10),1536px)]",
   narrow: "max-w-7xl",
   wide: "max-w-[1600px]",
   full: "max-w-none",
