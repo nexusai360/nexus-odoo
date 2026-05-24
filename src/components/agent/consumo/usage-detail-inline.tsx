@@ -68,8 +68,8 @@ export function UsageDetailInline({ row }: { row: UsageDetailRow }) {
       </div>
 
       {row.promptChars != null || row.responseChars != null ? (
-        <div className="relative mt-3 flex items-center justify-between border-t border-violet-500/15 pt-2 text-[11px] text-muted-foreground">
-          <div>
+        <div className="mt-3 grid grid-cols-3 items-center border-t border-violet-500/15 pt-2 text-[11px] text-muted-foreground">
+          <div className="justify-self-start">
             {row.promptChars != null ? (
               <span className="mr-4">
                 prompt:{" "}
@@ -87,7 +87,7 @@ export function UsageDetailInline({ row }: { row: UsageDetailRow }) {
               </span>
             ) : null}
           </div>
-          <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 pt-1">
+          <div className="justify-self-center">
             <Button
               type="button"
               variant="outline"
@@ -99,6 +99,7 @@ export function UsageDetailInline({ row }: { row: UsageDetailRow }) {
               <span>Copiar JSON</span>
             </Button>
           </div>
+          <div aria-hidden />
         </div>
       ) : null}
 
