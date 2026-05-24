@@ -19,6 +19,25 @@ import catalogSnapshot from "@/lib/mcp-catalog-snapshot.json";
 // Tipo do snapshot (espelha CatalogSchemaToolItem do endpoint MCP).
 // ──────────────────────────────────────────────────────────────────────────────
 
+export type CatalogFieldType =
+  | "string"
+  | "number"
+  | "integer"
+  | "boolean"
+  | "date"
+  | "datetime"
+  | "enum"
+  | "array"
+  | "object"
+  | "unknown";
+
+export interface CatalogInputField {
+  name: string;
+  type: CatalogFieldType;
+  optional: boolean;
+  enumValues?: string[];
+}
+
 interface McpEndpointToolItem {
   id: string;
   operation: "read" | "write";
@@ -28,6 +47,7 @@ interface McpEndpointToolItem {
   sensitive: boolean;
   addedInVersion: number | null;
   inputSchemaKeys: string[];
+  inputSchemaFields?: CatalogInputField[];
   examples: ReadonlyArray<{ language: string; description?: string; code: string }>;
 }
 
@@ -41,12 +61,14 @@ export interface CatalogToolItem {
   /** Domínio de negócio (ex: "estoque", "financeiro", "crm"). */
   module: string;
   descricao: string;
-  /** Capability necessária (ex: "crm.create"). Apenas write tools. */
+  /** Capability necessária (formato "action:module"). Apenas write tools. */
   capability: string | null;
   /** Se true, badge "Sensível" exibido na documentação. */
   sensitive: boolean;
   addedInVersion: number | null;
   inputSchemaKeys: string[];
+  /** Tipos dos campos do input, usados para gerar placeholder semântico. */
+  inputSchemaFields?: CatalogInputField[];
   examples: ReadonlyArray<{
     language: string;
     description?: string;
@@ -93,6 +115,7 @@ export async function groupCatalogTools(
       sensitive: tool.sensitive,
       addedInVersion: tool.addedInVersion,
       inputSchemaKeys: tool.inputSchemaKeys,
+      inputSchemaFields: tool.inputSchemaFields,
       examples: tool.examples,
     };
 

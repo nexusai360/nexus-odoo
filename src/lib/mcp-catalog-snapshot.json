@@ -13,6 +13,23 @@
         "familiaId",
         "termo"
       ],
+      "inputSchemaFields": [
+        {
+          "name": "armazemId",
+          "type": "integer",
+          "optional": true
+        },
+        {
+          "name": "familiaId",
+          "type": "integer",
+          "optional": true
+        },
+        {
+          "name": "termo",
+          "type": "string",
+          "optional": true
+        }
+      ],
       "examples": []
     },
     {
@@ -24,6 +41,7 @@
       "sensitive": false,
       "addedInVersion": null,
       "inputSchemaKeys": [],
+      "inputSchemaFields": [],
       "examples": []
     },
     {
@@ -38,6 +56,23 @@
         "periodoDe",
         "periodoAte",
         "armazemId"
+      ],
+      "inputSchemaFields": [
+        {
+          "name": "periodoDe",
+          "type": "string",
+          "optional": true
+        },
+        {
+          "name": "periodoAte",
+          "type": "string",
+          "optional": true
+        },
+        {
+          "name": "armazemId",
+          "type": "integer",
+          "optional": true
+        }
       ],
       "examples": []
     },
@@ -54,6 +89,27 @@
         "periodoAte",
         "sentido"
       ],
+      "inputSchemaFields": [
+        {
+          "name": "periodoDe",
+          "type": "string",
+          "optional": true
+        },
+        {
+          "name": "periodoAte",
+          "type": "string",
+          "optional": true
+        },
+        {
+          "name": "sentido",
+          "type": "enum",
+          "optional": true,
+          "enumValues": [
+            "entrada",
+            "saida"
+          ]
+        }
+      ],
       "examples": []
     },
     {
@@ -68,6 +124,18 @@
         "faixaDias",
         "armazemId"
       ],
+      "inputSchemaFields": [
+        {
+          "name": "faixaDias",
+          "type": "integer",
+          "optional": true
+        },
+        {
+          "name": "armazemId",
+          "type": "integer",
+          "optional": true
+        }
+      ],
       "examples": []
     },
     {
@@ -79,6 +147,7 @@
       "sensitive": false,
       "addedInVersion": null,
       "inputSchemaKeys": [],
+      "inputSchemaFields": [],
       "examples": []
     },
     {
@@ -90,6 +159,7 @@
       "sensitive": false,
       "addedInVersion": null,
       "inputSchemaKeys": [],
+      "inputSchemaFields": [],
       "examples": []
     },
     {
@@ -103,6 +173,18 @@
       "inputSchemaKeys": [
         "periodoDe",
         "periodoAte"
+      ],
+      "inputSchemaFields": [
+        {
+          "name": "periodoDe",
+          "type": "string",
+          "optional": true
+        },
+        {
+          "name": "periodoAte",
+          "type": "string",
+          "optional": true
+        }
       ],
       "examples": []
     },
@@ -118,6 +200,18 @@
         "periodoDe",
         "periodoAte"
       ],
+      "inputSchemaFields": [
+        {
+          "name": "periodoDe",
+          "type": "string",
+          "optional": true
+        },
+        {
+          "name": "periodoAte",
+          "type": "string",
+          "optional": true
+        }
+      ],
       "examples": []
     },
     {
@@ -130,6 +224,13 @@
       "addedInVersion": null,
       "inputSchemaKeys": [
         "participanteId"
+      ],
+      "inputSchemaFields": [
+        {
+          "name": "participanteId",
+          "type": "integer",
+          "optional": true
+        }
       ],
       "examples": []
     },
@@ -144,6 +245,13 @@
       "inputSchemaKeys": [
         "participanteId"
       ],
+      "inputSchemaFields": [
+        {
+          "name": "participanteId",
+          "type": "integer",
+          "optional": true
+        }
+      ],
       "examples": []
     },
     {
@@ -155,6 +263,7 @@
       "sensitive": false,
       "addedInVersion": null,
       "inputSchemaKeys": [],
+      "inputSchemaFields": [],
       "examples": []
     },
     {
@@ -169,6 +278,18 @@
         "perguntaResumo",
         "dominio"
       ],
+      "inputSchemaFields": [
+        {
+          "name": "perguntaResumo",
+          "type": "string",
+          "optional": false
+        },
+        {
+          "name": "dominio",
+          "type": "string",
+          "optional": true
+        }
+      ],
       "examples": []
     },
     {
@@ -181,6 +302,13 @@
       "addedInVersion": null,
       "inputSchemaKeys": [
         "sql"
+      ],
+      "inputSchemaFields": [
+        {
+          "name": "sql",
+          "type": "string",
+          "optional": false
+        }
       ],
       "examples": []
     },
@@ -196,6 +324,18 @@
         "periodoDe",
         "periodoAte"
       ],
+      "inputSchemaFields": [
+        {
+          "name": "periodoDe",
+          "type": "string",
+          "optional": true
+        },
+        {
+          "name": "periodoAte",
+          "type": "string",
+          "optional": true
+        }
+      ],
       "examples": []
     },
     {
@@ -207,6 +347,7 @@
       "sensitive": false,
       "addedInVersion": null,
       "inputSchemaKeys": [],
+      "inputSchemaFields": [],
       "examples": []
     },
     {
@@ -221,6 +362,18 @@
         "periodoDe",
         "periodoAte"
       ],
+      "inputSchemaFields": [
+        {
+          "name": "periodoDe",
+          "type": "string",
+          "optional": true
+        },
+        {
+          "name": "periodoAte",
+          "type": "string",
+          "optional": true
+        }
+      ],
       "examples": []
     },
     {
@@ -232,6 +385,7 @@
       "sensitive": false,
       "addedInVersion": null,
       "inputSchemaKeys": [],
+      "inputSchemaFields": [],
       "examples": []
     },
     {
@@ -244,6 +398,13 @@
       "addedInVersion": null,
       "inputSchemaKeys": [
         "ateDias"
+      ],
+      "inputSchemaFields": [
+        {
+          "name": "ateDias",
+          "type": "integer",
+          "optional": true
+        }
       ],
       "examples": []
     },
@@ -259,6 +420,18 @@
         "termo",
         "limite"
       ],
+      "inputSchemaFields": [
+        {
+          "name": "termo",
+          "type": "string",
+          "optional": true
+        },
+        {
+          "name": "limite",
+          "type": "integer",
+          "optional": true
+        }
+      ],
       "examples": []
     },
     {
@@ -273,6 +446,18 @@
         "tabelaId",
         "limite"
       ],
+      "inputSchemaFields": [
+        {
+          "name": "tabelaId",
+          "type": "integer",
+          "optional": false
+        },
+        {
+          "name": "limite",
+          "type": "integer",
+          "optional": true
+        }
+      ],
       "examples": []
     },
     {
@@ -284,6 +469,7 @@
       "sensitive": false,
       "addedInVersion": null,
       "inputSchemaKeys": [],
+      "inputSchemaFields": [],
       "examples": []
     },
     {
@@ -295,6 +481,7 @@
       "sensitive": false,
       "addedInVersion": null,
       "inputSchemaKeys": [],
+      "inputSchemaFields": [],
       "examples": []
     },
     {
@@ -308,6 +495,18 @@
       "inputSchemaKeys": [
         "periodoDe",
         "periodoAte"
+      ],
+      "inputSchemaFields": [
+        {
+          "name": "periodoDe",
+          "type": "string",
+          "optional": true
+        },
+        {
+          "name": "periodoAte",
+          "type": "string",
+          "optional": true
+        }
       ],
       "examples": []
     },
@@ -324,6 +523,23 @@
         "periodoAte",
         "situacaoNfe"
       ],
+      "inputSchemaFields": [
+        {
+          "name": "periodoDe",
+          "type": "string",
+          "optional": true
+        },
+        {
+          "name": "periodoAte",
+          "type": "string",
+          "optional": true
+        },
+        {
+          "name": "situacaoNfe",
+          "type": "string",
+          "optional": true
+        }
+      ],
       "examples": []
     },
     {
@@ -337,6 +553,18 @@
       "inputSchemaKeys": [
         "periodoDe",
         "periodoAte"
+      ],
+      "inputSchemaFields": [
+        {
+          "name": "periodoDe",
+          "type": "string",
+          "optional": true
+        },
+        {
+          "name": "periodoAte",
+          "type": "string",
+          "optional": true
+        }
       ],
       "examples": []
     },
@@ -352,6 +580,18 @@
         "periodoDe",
         "periodoAte"
       ],
+      "inputSchemaFields": [
+        {
+          "name": "periodoDe",
+          "type": "string",
+          "optional": true
+        },
+        {
+          "name": "periodoAte",
+          "type": "string",
+          "optional": true
+        }
+      ],
       "examples": []
     },
     {
@@ -365,6 +605,18 @@
       "inputSchemaKeys": [
         "periodoDe",
         "periodoAte"
+      ],
+      "inputSchemaFields": [
+        {
+          "name": "periodoDe",
+          "type": "string",
+          "optional": true
+        },
+        {
+          "name": "periodoAte",
+          "type": "string",
+          "optional": true
+        }
       ],
       "examples": []
     },
@@ -380,6 +632,23 @@
         "periodoDe",
         "periodoAte",
         "limite"
+      ],
+      "inputSchemaFields": [
+        {
+          "name": "periodoDe",
+          "type": "string",
+          "optional": true
+        },
+        {
+          "name": "periodoAte",
+          "type": "string",
+          "optional": true
+        },
+        {
+          "name": "limite",
+          "type": "integer",
+          "optional": true
+        }
       ],
       "examples": []
     },
@@ -398,6 +667,33 @@
         "periodoAte",
         "limite"
       ],
+      "inputSchemaFields": [
+        {
+          "name": "fornecedor",
+          "type": "string",
+          "optional": true
+        },
+        {
+          "name": "documento",
+          "type": "string",
+          "optional": true
+        },
+        {
+          "name": "periodoDe",
+          "type": "string",
+          "optional": true
+        },
+        {
+          "name": "periodoAte",
+          "type": "string",
+          "optional": true
+        },
+        {
+          "name": "limite",
+          "type": "integer",
+          "optional": true
+        }
+      ],
       "examples": []
     },
     {
@@ -411,6 +707,22 @@
       "inputSchemaKeys": [
         "tipo",
         "limite"
+      ],
+      "inputSchemaFields": [
+        {
+          "name": "tipo",
+          "type": "enum",
+          "optional": true,
+          "enumValues": [
+            "ICMS-IPI",
+            "PIS-COFINS"
+          ]
+        },
+        {
+          "name": "limite",
+          "type": "integer",
+          "optional": true
+        }
       ],
       "examples": []
     },
@@ -426,6 +738,18 @@
         "documentoId",
         "limite"
       ],
+      "inputSchemaFields": [
+        {
+          "name": "documentoId",
+          "type": "integer",
+          "optional": true
+        },
+        {
+          "name": "limite",
+          "type": "integer",
+          "optional": true
+        }
+      ],
       "examples": []
     },
     {
@@ -437,6 +761,7 @@
       "sensitive": false,
       "addedInVersion": null,
       "inputSchemaKeys": [],
+      "inputSchemaFields": [],
       "examples": []
     },
     {
@@ -448,6 +773,7 @@
       "sensitive": false,
       "addedInVersion": null,
       "inputSchemaKeys": [],
+      "inputSchemaFields": [],
       "examples": []
     },
     {
@@ -463,6 +789,40 @@
         "termo",
         "limite"
       ],
+      "inputSchemaFields": [
+        {
+          "name": "tabela",
+          "type": "enum",
+          "optional": false,
+          "enumValues": [
+            "ncm",
+            "cfop",
+            "cest",
+            "cnae",
+            "nbs",
+            "natureza_operacao",
+            "unidade",
+            "cst_icms",
+            "cst_icms_sn",
+            "cst_ipi",
+            "cst_pis_cofins",
+            "cst_cibs",
+            "municipio",
+            "pais",
+            "estado"
+          ]
+        },
+        {
+          "name": "termo",
+          "type": "string",
+          "optional": true
+        },
+        {
+          "name": "limite",
+          "type": "integer",
+          "optional": true
+        }
+      ],
       "examples": []
     },
     {
@@ -477,6 +837,18 @@
         "termo",
         "limite"
       ],
+      "inputSchemaFields": [
+        {
+          "name": "termo",
+          "type": "string",
+          "optional": false
+        },
+        {
+          "name": "limite",
+          "type": "integer",
+          "optional": true
+        }
+      ],
       "examples": []
     },
     {
@@ -488,6 +860,7 @@
       "sensitive": false,
       "addedInVersion": null,
       "inputSchemaKeys": [],
+      "inputSchemaFields": [],
       "examples": []
     },
     {
@@ -500,6 +873,13 @@
       "addedInVersion": null,
       "inputSchemaKeys": [
         "apenasClientes"
+      ],
+      "inputSchemaFields": [
+        {
+          "name": "apenasClientes",
+          "type": "boolean",
+          "optional": true
+        }
       ],
       "examples": []
     },
@@ -515,6 +895,18 @@
         "termo",
         "limite"
       ],
+      "inputSchemaFields": [
+        {
+          "name": "termo",
+          "type": "string",
+          "optional": false
+        },
+        {
+          "name": "limite",
+          "type": "integer",
+          "optional": true
+        }
+      ],
       "examples": []
     },
     {
@@ -526,6 +918,7 @@
       "sensitive": false,
       "addedInVersion": null,
       "inputSchemaKeys": [],
+      "inputSchemaFields": [],
       "examples": []
     },
     {
@@ -539,6 +932,13 @@
       "inputSchemaKeys": [
         "limite"
       ],
+      "inputSchemaFields": [
+        {
+          "name": "limite",
+          "type": "integer",
+          "optional": true
+        }
+      ],
       "examples": []
     },
     {
@@ -551,6 +951,13 @@
       "addedInVersion": 2,
       "inputSchemaKeys": [
         "id"
+      ],
+      "inputSchemaFields": [
+        {
+          "name": "id",
+          "type": "integer",
+          "optional": false
+        }
       ],
       "examples": [
         {
@@ -592,6 +999,43 @@
         "user_id",
         "activity_type_id"
       ],
+      "inputSchemaFields": [
+        {
+          "name": "res_model",
+          "type": "string",
+          "optional": false
+        },
+        {
+          "name": "res_id",
+          "type": "integer",
+          "optional": false
+        },
+        {
+          "name": "summary",
+          "type": "string",
+          "optional": false
+        },
+        {
+          "name": "note",
+          "type": "string",
+          "optional": true
+        },
+        {
+          "name": "date_deadline",
+          "type": "string",
+          "optional": false
+        },
+        {
+          "name": "user_id",
+          "type": "integer",
+          "optional": false
+        },
+        {
+          "name": "activity_type_id",
+          "type": "integer",
+          "optional": true
+        }
+      ],
       "examples": [
         {
           "language": "curl",
@@ -631,6 +1075,38 @@
         "user_id",
         "activity_type_id"
       ],
+      "inputSchemaFields": [
+        {
+          "name": "id",
+          "type": "integer",
+          "optional": false
+        },
+        {
+          "name": "summary",
+          "type": "string",
+          "optional": true
+        },
+        {
+          "name": "note",
+          "type": "string",
+          "optional": true
+        },
+        {
+          "name": "date_deadline",
+          "type": "string",
+          "optional": true
+        },
+        {
+          "name": "user_id",
+          "type": "integer",
+          "optional": true
+        },
+        {
+          "name": "activity_type_id",
+          "type": "integer",
+          "optional": true
+        }
+      ],
       "examples": [
         {
           "language": "curl",
@@ -664,6 +1140,13 @@
       "addedInVersion": 2,
       "inputSchemaKeys": [
         "id"
+      ],
+      "inputSchemaFields": [
+        {
+          "name": "id",
+          "type": "integer",
+          "optional": false
+        }
       ],
       "examples": [
         {
@@ -701,6 +1184,23 @@
         "color",
         "parent_id"
       ],
+      "inputSchemaFields": [
+        {
+          "name": "name",
+          "type": "string",
+          "optional": false
+        },
+        {
+          "name": "color",
+          "type": "integer",
+          "optional": true
+        },
+        {
+          "name": "parent_id",
+          "type": "integer",
+          "optional": true
+        }
+      ],
       "examples": [
         {
           "language": "curl",
@@ -737,6 +1237,28 @@
         "category_ids",
         "mode"
       ],
+      "inputSchemaFields": [
+        {
+          "name": "partner_id",
+          "type": "integer",
+          "optional": false
+        },
+        {
+          "name": "category_ids",
+          "type": "array",
+          "optional": false
+        },
+        {
+          "name": "mode",
+          "type": "enum",
+          "optional": true,
+          "enumValues": [
+            "add",
+            "remove",
+            "replace"
+          ]
+        }
+      ],
       "examples": [
         {
           "language": "curl",
@@ -770,6 +1292,13 @@
       "addedInVersion": 2,
       "inputSchemaKeys": [
         "id"
+      ],
+      "inputSchemaFields": [
+        {
+          "name": "id",
+          "type": "integer",
+          "optional": false
+        }
       ],
       "examples": [
         {
@@ -833,6 +1362,157 @@
         "ref",
         "_skipSnapshotBefore"
       ],
+      "inputSchemaFields": [
+        {
+          "name": "id",
+          "type": "integer",
+          "optional": false
+        },
+        {
+          "name": "name",
+          "type": "string",
+          "optional": true
+        },
+        {
+          "name": "is_company",
+          "type": "boolean",
+          "optional": true
+        },
+        {
+          "name": "company_type",
+          "type": "enum",
+          "optional": true,
+          "enumValues": [
+            "person",
+            "company"
+          ]
+        },
+        {
+          "name": "company_registry",
+          "type": "string",
+          "optional": true
+        },
+        {
+          "name": "vat",
+          "type": "string",
+          "optional": true
+        },
+        {
+          "name": "email",
+          "type": "string",
+          "optional": true
+        },
+        {
+          "name": "phone",
+          "type": "string",
+          "optional": true
+        },
+        {
+          "name": "mobile",
+          "type": "string",
+          "optional": true
+        },
+        {
+          "name": "whatsapp",
+          "type": "string",
+          "optional": true
+        },
+        {
+          "name": "website",
+          "type": "string",
+          "optional": true
+        },
+        {
+          "name": "function",
+          "type": "string",
+          "optional": true
+        },
+        {
+          "name": "street",
+          "type": "string",
+          "optional": true
+        },
+        {
+          "name": "street2",
+          "type": "string",
+          "optional": true
+        },
+        {
+          "name": "city",
+          "type": "string",
+          "optional": true
+        },
+        {
+          "name": "zip",
+          "type": "string",
+          "optional": true
+        },
+        {
+          "name": "country_id",
+          "type": "integer",
+          "optional": true
+        },
+        {
+          "name": "state_id",
+          "type": "integer",
+          "optional": true
+        },
+        {
+          "name": "industry_id",
+          "type": "integer",
+          "optional": true
+        },
+        {
+          "name": "title",
+          "type": "integer",
+          "optional": true
+        },
+        {
+          "name": "active",
+          "type": "boolean",
+          "optional": true
+        },
+        {
+          "name": "customer",
+          "type": "boolean",
+          "optional": true
+        },
+        {
+          "name": "supplier",
+          "type": "boolean",
+          "optional": true
+        },
+        {
+          "name": "employee",
+          "type": "boolean",
+          "optional": true
+        },
+        {
+          "name": "lang",
+          "type": "string",
+          "optional": true
+        },
+        {
+          "name": "tz",
+          "type": "string",
+          "optional": true
+        },
+        {
+          "name": "comment",
+          "type": "string",
+          "optional": true
+        },
+        {
+          "name": "ref",
+          "type": "string",
+          "optional": true
+        },
+        {
+          "name": "_skipSnapshotBefore",
+          "type": "boolean",
+          "optional": true
+        }
+      ],
       "examples": [
         {
           "language": "curl",
@@ -868,6 +1548,18 @@
         "termo",
         "limite"
       ],
+      "inputSchemaFields": [
+        {
+          "name": "termo",
+          "type": "string",
+          "optional": true
+        },
+        {
+          "name": "limite",
+          "type": "integer",
+          "optional": true
+        }
+      ],
       "examples": []
     },
     {
@@ -881,6 +1573,13 @@
       "inputSchemaKeys": [
         "odooId"
       ],
+      "inputSchemaFields": [
+        {
+          "name": "odooId",
+          "type": "integer",
+          "optional": false
+        }
+      ],
       "examples": []
     },
     {
@@ -892,6 +1591,7 @@
       "sensitive": false,
       "addedInVersion": null,
       "inputSchemaKeys": [],
+      "inputSchemaFields": [],
       "examples": []
     },
     {
@@ -903,6 +1603,7 @@
       "sensitive": false,
       "addedInVersion": null,
       "inputSchemaKeys": [],
+      "inputSchemaFields": [],
       "examples": []
     },
     {
@@ -914,6 +1615,7 @@
       "sensitive": false,
       "addedInVersion": null,
       "inputSchemaKeys": [],
+      "inputSchemaFields": [],
       "examples": []
     },
     {
@@ -926,6 +1628,13 @@
       "addedInVersion": 2,
       "inputSchemaKeys": [
         "id"
+      ],
+      "inputSchemaFields": [
+        {
+          "name": "id",
+          "type": "integer",
+          "optional": false
+        }
       ],
       "examples": []
     },
@@ -947,6 +1656,53 @@
         "city_id",
         "state_id",
         "external_id"
+      ],
+      "inputSchemaFields": [
+        {
+          "name": "name",
+          "type": "string",
+          "optional": false
+        },
+        {
+          "name": "cnpj_cpf",
+          "type": "string",
+          "optional": true
+        },
+        {
+          "name": "is_company",
+          "type": "boolean",
+          "optional": true
+        },
+        {
+          "name": "email",
+          "type": "string",
+          "optional": true
+        },
+        {
+          "name": "phone",
+          "type": "string",
+          "optional": true
+        },
+        {
+          "name": "street",
+          "type": "string",
+          "optional": true
+        },
+        {
+          "name": "city_id",
+          "type": "integer",
+          "optional": true
+        },
+        {
+          "name": "state_id",
+          "type": "integer",
+          "optional": true
+        },
+        {
+          "name": "external_id",
+          "type": "string",
+          "optional": true
+        }
       ],
       "examples": [
         {
@@ -973,5 +1729,5 @@
     }
   ],
   "count": 56,
-  "generatedAt": "2026-05-24T05:53:30.303Z"
+  "generatedAt": "2026-05-24T07:38:06.584Z"
 }
