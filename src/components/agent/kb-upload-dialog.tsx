@@ -19,6 +19,16 @@ import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
 import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import {
   Dialog,
   DialogContent,
   DialogDescription,
@@ -64,6 +74,9 @@ export function KbUploadDialog({
   const [isPending, startTransition] = useTransition();
   const [activeTab, setActiveTab] = useState<"file" | "url">(initialTab);
   const [isDragging, setIsDragging] = useState(false);
+  const [urlDirty, setUrlDirty] = useState(false);
+  const [pendingSwitch, setPendingSwitch] = useState<"file" | "url" | null>(null);
+  const [urlResetSignal, setUrlResetSignal] = useState(0);
   const dragCounterRef = useRef(0);
   const inputRef = useRef<HTMLInputElement | null>(null);
 
@@ -72,12 +85,45 @@ export function KbUploadDialog({
       setFiles([]);
       setError(null);
       setIsDragging(false);
+      setUrlDirty(false);
+      setPendingSwitch(null);
       dragCounterRef.current = 0;
       if (inputRef.current) inputRef.current.value = "";
     } else {
       setActiveTab(initialTab);
     }
   }, [open, initialTab]);
+
+  // Mensagem de erro some sozinha após 10s (sem indicador visual de contagem).
+  useEffect(() => {
+    if (!error) return;
+    const t = setTimeout(() => setError(null), 10_000);
+    return () => clearTimeout(t);
+  }, [error]);
+
+  function requestTabSwitch(target: "file" | "url") {
+    if (target === activeTab || isPending) return;
+    const currentHasContent =
+      (activeTab === "file" && files.length > 0) ||
+      (activeTab === "url" && urlDirty);
+    if (currentHasContent) {
+      setPendingSwitch(target);
+      return;
+    }
+    setActiveTab(target);
+  }
+
+  function confirmSwitch() {
+    if (!pendingSwitch) return;
+    if (activeTab === "file") {
+      setFiles([]);
+    } else {
+      setUrlResetSignal((s) => s + 1);
+    }
+    setError(null);
+    setActiveTab(pendingSwitch);
+    setPendingSwitch(null);
+  }
 
   function validate(f: File): string | null {
     if (!kindFromFilename(f.name)) {
@@ -192,6 +238,7 @@ export function KbUploadDialog({
   }
 
   return (
+    <>
     <Dialog
       open={open}
       onOpenChange={(next) => {
@@ -220,18 +267,17 @@ export function KbUploadDialog({
         <DialogHeader>
           <DialogTitle>Adicionar conhecimento</DialogTitle>
           <DialogDescription>
-            Envie um arquivo (PDF, TXT, Markdown, CSV ou XML, ≤ 15 MB) ou
-            adicione uma URL de referência. O conteúdo é incorporado ao contexto
-            do Agente Nex. Você pode arrastar arquivos em qualquer ponto da
-            janela.
+            Envie arquivos (menor ou igual a 15 MB cada) ou adicione uma URL de
+            referência para enriquecer o contexto do Agente Nex. Arraste para
+            qualquer parte da janela.
           </DialogDescription>
         </DialogHeader>
 
-        {/* Segmented control Arquivo / URL. */}
+        {/* Segmented control Arquivo / URL — altura compacta e fixa. */}
         <div
           role="tablist"
           aria-label="Origem do conhecimento"
-          className="grid grid-cols-2 gap-1 rounded-lg border border-border bg-muted/40 p-1"
+          className="grid h-9 shrink-0 grid-cols-2 gap-1 self-start rounded-lg border border-border bg-muted/40 p-1"
         >
           {TABS.map((tab) => {
             const Icon = tab.icon;
@@ -243,9 +289,9 @@ export function KbUploadDialog({
                 type="button"
                 aria-selected={selected}
                 disabled={isPending}
-                onClick={() => setActiveTab(tab.id)}
+                onClick={() => requestTabSwitch(tab.id)}
                 className={cn(
-                  "inline-flex h-8 items-center justify-center gap-1.5 rounded-md text-sm font-medium transition-colors",
+                  "inline-flex h-7 items-center justify-center gap-1.5 rounded-md px-3 text-xs font-medium transition-colors",
                   "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
                   isPending ? "cursor-not-allowed" : "cursor-pointer",
                   selected
@@ -293,7 +339,7 @@ export function KbUploadDialog({
                     Clique para selecionar ou arraste para qualquer parte da janela
                   </p>
                   <p className="text-xs text-muted-foreground">
-                    PDF, TXT, Markdown, CSV ou XML até 15 MB. Vários arquivos de uma vez.
+                    PDF, Word, Excel, Markdown, TXT, CSV, XML ou YAML. Menor ou igual a 15 MB cada.
                   </p>
                 </div>
               </label>
@@ -393,9 +439,32 @@ export function KbUploadDialog({
             key={open ? "open" : "closed"}
             onSuccess={() => onOpenChange(false)}
             isDisabled={isPending}
+            onContentChange={setUrlDirty}
+            resetSignal={urlResetSignal}
           />
         )}
       </DialogContent>
     </Dialog>
+
+    <AlertDialog
+      open={pendingSwitch !== null}
+      onOpenChange={(o) => {
+        if (!o) setPendingSwitch(null);
+      }}
+    >
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          <AlertDialogTitle>Descartar o conteúdo atual?</AlertDialogTitle>
+          <AlertDialogDescription>
+            Ao trocar entre arquivo e URL, o conteúdo da aba atual é apagado. Você quer continuar?
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogCancel onClick={() => setPendingSwitch(null)}>Cancelar</AlertDialogCancel>
+          <AlertDialogAction onClick={confirmSwitch}>Trocar e descartar</AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
+    </>
   );
 }

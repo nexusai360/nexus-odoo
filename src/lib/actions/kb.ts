@@ -26,7 +26,7 @@ async function assertKbAdmin(): Promise<string> {
   const me = await getCurrentUser();
   if (!me) throw new Error("Não autenticado.");
   if (!KB_ADMIN_ROLES.has(me.platformRole ?? "")) {
-    throw new Error("Permissão negada — requer perfil admin ou super_admin.");
+    throw new Error("Permissão negada. Requer perfil admin ou super_admin.");
   }
   return me.id;
 }
@@ -69,7 +69,7 @@ export async function ingestKbDocumentAction(
 
 /**
  * Faz upload de um arquivo para a KB com extração de texto real no servidor.
- * Aceita PDF, TXT, Markdown, CSV e XML. O arquivo chega como FormData.
+ * Aceita PDF, TXT, Markdown, CSV, XML, YAML, XLSX e DOCX. O arquivo chega como FormData.
  */
 export async function uploadKbFileAction(
   formData: FormData,
@@ -92,7 +92,7 @@ export async function uploadKbFileAction(
     if (!kind) {
       return {
         ok: false,
-        error: "Formato inválido. Aceitos: PDF, TXT, Markdown, CSV, XML.",
+        error: "Formato inválido. Aceitos: PDF, TXT, Markdown, CSV, XML, YAML, XLSX e DOCX.",
       };
     }
 

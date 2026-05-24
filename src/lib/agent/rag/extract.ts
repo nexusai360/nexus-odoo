@@ -1,13 +1,15 @@
 /**
  * Extração de texto de documentos da base de conhecimento — SERVER-ONLY.
  *
- * Importa `pdf-parse`, que é Node-only; nunca importar este arquivo de um
- * client component. As constantes/tipos puros estão em `kb-kinds.ts`.
+ * Importa `pdf-parse`, `mammoth` (DOCX) e `xlsx`, que são Node-only; nunca
+ * importar este arquivo de um client component. As constantes/tipos puros
+ * estão em `kb-kinds.ts`.
  *
  * - PDF: extração real via pdf-parse.
- * - TXT / Markdown: texto direto (o agente entende sintaxe Markdown).
+ * - TXT / Markdown / XML / YAML: texto cru direto.
  * - CSV: normalizado para texto tabular legível.
- * - XML: tags preservadas como texto.
+ * - XLSX: cada aba vira um bloco "## Aba: <nome>" com linhas em CSV.
+ * - DOCX: extração de texto via mammoth.
  */
 
 import type { KbKind } from "@/generated/prisma/client";
@@ -36,6 +38,32 @@ export async function extractKbText(
     return result.text.trim();
   }
 
+  if (kind === "DOCX") {
+    const mammoth = (await import("mammoth")) as unknown as {
+      extractRawText: (input: { buffer: Buffer }) => Promise<{ value: string }>;
+    };
+    const result = await mammoth.extractRawText({ buffer });
+    return result.value.trim();
+  }
+
+  if (kind === "XLSX") {
+    const XLSX = (await import("xlsx")) as unknown as {
+      read: (data: Buffer, opts: { type: "buffer" }) => {
+        SheetNames: string[];
+        Sheets: Record<string, unknown>;
+      };
+      utils: { sheet_to_csv: (sheet: unknown) => string };
+    };
+    const workbook = XLSX.read(buffer, { type: "buffer" });
+    const blocks: string[] = [];
+    for (const name of workbook.SheetNames) {
+      const csv = XLSX.utils.sheet_to_csv(workbook.Sheets[name]).trim();
+      if (csv.length === 0) continue;
+      blocks.push(`## Aba: ${name}\n${csv}`);
+    }
+    return blocks.join("\n\n").trim();
+  }
+
   const raw = buffer.toString("utf-8");
 
   if (kind === "CSV") {
@@ -46,7 +74,7 @@ export async function extractKbText(
       .join("\n");
   }
 
-  // TXT, MARKDOWN, XML — texto cru já é legível para o modelo.
+  // TXT, MARKDOWN, XML, YAML — texto cru já é legível para o modelo.
   return raw.trim();
 }
 

@@ -71,6 +71,9 @@ enum KbKind {
   MARKDOWN
   CSV
   XML
+  YAML
+  XLSX
+  DOCX
 }
 
 /// Estado de checkpoint de um recurso do agente (áudio, imagem, KB, documento).

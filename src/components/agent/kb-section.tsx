@@ -52,7 +52,7 @@ import { KbDocumentViewer } from "./kb-document-viewer";
 const KB_TOTAL_CAP = 50_000;
 const KB_WARN_THRESHOLD = 42_000;
 
-type DocKind = "TXT" | "PDF" | "URL" | "MARKDOWN" | "CSV" | "XML";
+type DocKind = "TXT" | "PDF" | "URL" | "MARKDOWN" | "CSV" | "XML" | "YAML" | "XLSX" | "DOCX";
 
 export interface KbDocSummary {
   id: string;
@@ -85,6 +85,9 @@ const KIND_LABEL: Record<DocKind, string> = {
   MARKDOWN: "MD",
   CSV: "CSV",
   XML: "XML",
+  YAML: "YAML",
+  XLSX: "XLSX",
+  DOCX: "DOCX",
 };
 
 export function KbSection({ initial }: KbSectionProps) {
@@ -223,8 +226,7 @@ export function KbSection({ initial }: KbSectionProps) {
             Nenhum documento adicionado ainda.
           </p>
           <p className="text-xs text-muted-foreground">
-            Envie um PDF, TXT, Markdown, CSV ou XML — ou adicione uma URL para
-            enriquecer o contexto do Agente Nex.
+            Envie um arquivo ou adicione uma URL para enriquecer o contexto do Agente Nex.
           </p>
         </div>
       ) : (
