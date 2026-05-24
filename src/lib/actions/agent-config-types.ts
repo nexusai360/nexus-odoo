@@ -60,4 +60,8 @@ export interface PublicAgentFlags {
   suggestionsInPlayground: boolean;
   bubbleEnabled: boolean;
   whatsappEnabled: boolean;
+  /** Máximo de sugestões clicáveis na bubble. Vale tanto para as iniciais
+   *  (welcome) quanto para as de continuidade no fim de cada resposta.
+   *  Default 3, hard cap em 5. */
+  maxSuggestions: number;
 }

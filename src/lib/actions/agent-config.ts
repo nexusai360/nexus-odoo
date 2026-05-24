@@ -227,6 +227,7 @@ const DEFAULT_FLAGS: PublicAgentFlags = {
   suggestionsInPlayground: true,
   bubbleEnabled: true,
   whatsappEnabled: true,
+  maxSuggestions: 3,
 };
 
 /** Feature-flags públicas do agente, legíveis por qualquer usuário autenticado. */
@@ -244,6 +245,7 @@ export async function getPublicAgentFlags(): Promise<PublicAgentFlags> {
         suggestionsCheckpoint: true,
         bubbleEnabled: true,
         whatsappEnabled: true,
+        maxSuggestions: true,
       },
     });
     if (!settings) return DEFAULT_FLAGS;
@@ -259,6 +261,7 @@ export async function getPublicAgentFlags(): Promise<PublicAgentFlags> {
       suggestionsInPlayground: settings.suggestionsCheckpoint !== "OFF",
       bubbleEnabled: settings.bubbleEnabled,
       whatsappEnabled: settings.whatsappEnabled,
+      maxSuggestions: Math.min(Math.max(1, settings.maxSuggestions ?? 3), 5),
     };
   } catch (err) {
     console.error("[getPublicAgentFlags]", err);

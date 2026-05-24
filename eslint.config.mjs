@@ -32,13 +32,15 @@ const eslintConfig = defineConfig([
       ],
     },
   },
-  // Regra local: trava travessao (em-dash) e en-dash em literais e templates.
-  // Cobre src e mcp; documentacao e seed de prompt seguem o veto via lint.
+  // Regra local: sinaliza travessao (em-dash) e en-dash em literais e
+  // templates. Cobre src e mcp. Mantida como "warn" enquanto a varredura
+  // one-shot do segmento A do renascimento elimina os pendentes; sera
+  // promovida a "error" no final do segmento A.
   {
     files: ["src/**/*.{ts,tsx,js,jsx}", "mcp/**/*.ts"],
     plugins: { "no-travessao": noTravessao },
     rules: {
-      "no-travessao/no-travessao": "error",
+      "no-travessao/no-travessao": "warn",
     },
   },
 ]);

@@ -29,6 +29,7 @@ import { AttachMenu, defaultAttachHandler } from "./attach-menu";
 import { MessageInput } from "./message-input";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { getConversationMessages } from "@/lib/actions/conversation-messages";
+import { WELCOME_SUGGESTIONS } from "@/lib/agent/welcome-suggestions";
 
 interface ChatPanelProps {
   open: boolean;
@@ -43,6 +44,9 @@ interface ChatPanelProps {
   /** "Encerrar sessão": limpa o turno atual e fecha o painel (o pai zera o
    *  conversationId). Quando ausente, o item não aparece no menu. */
   onEndSession?: () => void;
+  /** Limite de sugestões clicáveis (welcome + follow-up) configurado no
+   *  /agente/comportamento pelo super_admin. Default 3, hard cap 5. */
+  maxSuggestions?: number;
 }
 
 interface UiMessage {
@@ -68,12 +72,6 @@ type SseEvent =
   | { type: "done"; conversationId: string; message: string; suggestions: string[] }
   | { type: "error"; error: string };
 
-const WELCOME_SUGGESTIONS = [
-  "Quanto vendemos este mês?",
-  "Qual o saldo atual de estoque?",
-  "Mostre os lançamentos financeiros recentes.",
-];
-
 export function ChatPanel({
   open,
   onClose,
@@ -82,7 +80,15 @@ export function ChatPanel({
   conversationId: externalConvId,
   onConversationCreated,
   onEndSession,
+  maxSuggestions = 3,
 }: ChatPanelProps) {
+  // Sugestoes iniciais respeitam o limite definido pelo super_admin em
+  // /agente/comportamento (bloco "Sugestoes na Bubble"). Catalogo curado
+  // em src/lib/agent/welcome-suggestions.ts; aqui apenas fatia ao N pedido.
+  const welcomeSuggestionsForUi = React.useMemo(
+    () => WELCOME_SUGGESTIONS.slice(0, Math.min(Math.max(1, maxSuggestions), 5)),
+    [maxSuggestions],
+  );
   const reduceMotion = useReducedMotion();
 
   const [messages, setMessages] = React.useState<UiMessage[]>([]);
@@ -548,7 +554,7 @@ export function ChatPanel({
           {showWelcome ? (
             <WelcomeBlock
               onPick={(s) => void handleSend(s, { source: "suggestion" })}
-              suggestions={WELCOME_SUGGESTIONS}
+              suggestions={welcomeSuggestionsForUi}
             />
           ) : (
             <div className="space-y-3">

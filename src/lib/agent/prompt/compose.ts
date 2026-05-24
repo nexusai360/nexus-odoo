@@ -4,11 +4,11 @@
  * Portado de nexus-insights/src/lib/nex/prompt-compose.ts.
  * Adaptações:
  * - Removido `accountUrls` (irrelevante no domínio Odoo).
- * - Adicionado parâmetro `biSchema` opcional (Caminho 3c — admin/super_admin).
+ * - Adicionado parâmetro `biSchema` opcional (Caminho 3c, admin/super_admin).
  * - `NexPromptConfig` renomeado para `AgentPromptConfig`.
  * - `IDENTITY_BASE` vem de `identity-base.ts` (domínio Odoo).
  *
- * Módulo puro/isomórfico — não importa server-only nem acessa DB ou env.
+ * Módulo puro/isomórfico. Não importa server-only nem acessa DB ou env.
  */
 
 import { IDENTITY_BASE } from "./identity-base";

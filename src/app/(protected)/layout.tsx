@@ -47,6 +47,7 @@ export default async function ProtectedLayout({
           <AgentBubble
             audioInputEnabled={audioInputEnabled}
             imageInputEnabled={imageInputEnabled}
+            maxSuggestions={flags.maxSuggestions}
           />
         ) : null}
       </div>

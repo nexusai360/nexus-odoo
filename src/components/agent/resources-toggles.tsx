@@ -418,9 +418,11 @@ export function ResourcesToggles({
         )}
       </ResourceCard>
 
-      {/* Sugestão de pergunta — checkpoint de 3 estados + maximo por resposta */}
+      {/* Sugestões na Bubble: cobre as iniciais (welcome quando a conversa
+          comeca) e as de continuidade no fim de cada resposta. WhatsApp nao
+          recebe esse formato (la o usuario digita ou usa atalho numerico). */}
       <ResourceCard
-        id="sugestao-pergunta"
+        id="sugestoes-bubble"
         collapsible
         defaultCollapsed={suggestionsCp === "OFF"}
         icon={
@@ -429,8 +431,8 @@ export function ResourcesToggles({
             aria-hidden
           />
         }
-        title="Sugestão de pergunta"
-        subtitle="O Agente Nex oferece perguntas de continuidade no fim das respostas. Não enviadas no WhatsApp."
+        title="Sugestões na Bubble"
+        subtitle="Perguntas clicáveis que o Agente Nex mostra na bubble: as iniciais quando a conversa começa e as de continuidade no fim de cada resposta. O limite definido aqui vale para os dois casos. Não vão para o WhatsApp."
         checkpoint={suggestionsCp}
         onCheckpointChange={(cp) => {
           setSuggestionsCp(cp);

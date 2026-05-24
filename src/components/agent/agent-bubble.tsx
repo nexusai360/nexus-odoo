@@ -36,11 +36,17 @@ interface AgentBubbleProps {
    * no checkpoint de imagem: só PRODUÇÃO libera na bubble.
    */
   imageInputEnabled?: boolean;
+  /**
+   * Limite de sugestões clicáveis (welcome + follow-up) configurado pelo
+   * super_admin em /agente/comportamento. Default 3, hard cap 5.
+   */
+  maxSuggestions?: number;
 }
 
 export function AgentBubble({
   audioInputEnabled = false,
   imageInputEnabled = false,
+  maxSuggestions = 3,
 }: AgentBubbleProps = {}) {
   const [open, setOpen] = React.useState(false);
   // O conversationId vive AQUI (no FAB), e não no ChatPanel: assim ele
@@ -139,6 +145,7 @@ export function AgentBubble({
             onClose={() => setOpen(false)}
             audioInputEnabled={audioInputEnabled}
             imageInputEnabled={imageInputEnabled}
+            maxSuggestions={maxSuggestions}
             conversationId={conversationId}
             onConversationCreated={setConversationId}
             onEndSession={() => {
