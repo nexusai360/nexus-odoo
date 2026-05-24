@@ -381,7 +381,10 @@ export function LlmConfigForm({
           (separado por canal: bubble + WhatsApp). */}
 
       {/* Seção: Conexão LLM */}
-      <div className="space-y-6 border-t border-border/50 pt-6">
+      <div className="space-y-6 pt-2">
+        <h3 className="text-base font-semibold tracking-tight text-foreground">
+          Configuração do LLM
+        </h3>
         {(() => {
           // Tarja única do topo — fonte da verdade do status. Reflete o teste
           // apenas quando há algo novo a verificar (isDirty); caso contrário,
@@ -435,7 +438,11 @@ export function LlmConfigForm({
         {/* Provedor | Modelo na mesma linha */}
         <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
           <div className="space-y-1.5">
-            <Label htmlFor="llm-provider">Provedor</Label>
+            <div className="flex items-center justify-between">
+              <Label htmlFor="llm-provider">Provedor</Label>
+              {/* Placeholder invisivel pra alinhar com o row "Modelo" que tem botao Atualizar */}
+              <span className="h-7" aria-hidden />
+            </div>
             <CustomSelect
               aria-label="Provedor"
               value={provider}

@@ -120,7 +120,7 @@ export default async function Page() {
       />
       <div className="space-y-8">
         <Card className="rounded-2xl border border-border bg-muted/30 p-2">
-          <CardHeader className="pb-3">
+          <CardHeader className="pt-5 pb-5">
             <CardTitle>Disponibilidade</CardTitle>
           </CardHeader>
           <CardContent className="pb-5">

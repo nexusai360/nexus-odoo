@@ -16,7 +16,7 @@ import {
   checkpointIconClass,
   type CheckpointState,
 } from "@/components/ui/feature-checkpoint";
-import { CustomSelect } from "@/components/ui/custom-select";
+import { SearchableSelect } from "@/components/ui/searchable-select";
 import { TierBadge } from "@/components/ui/tier-badge";
 import { ResourceCard } from "@/components/agent/resource-card";
 import {
@@ -38,6 +38,20 @@ const LEVEL_CONSUMPTION: Record<ReasoningLevel, string> = {
   low: "Consumo moderado",
   medium: "Consumo alto",
   high: "Consumo intenso",
+};
+
+/**
+ * Multiplicador qualitativo de tokens de raciocinio por nivel.
+ * Provedores nao publicam custo direto por nivel: a tarifa por token de
+ * saida e a mesma; o que muda e a QUANTIDADE de tokens de raciocinio
+ * gerados antes da resposta. Estes valores sao estimativas internas
+ * (nao oficiais) usadas apenas para indicar grau qualitativo.
+ */
+const LEVEL_TIER: Record<ReasoningLevel, "low" | "medium" | "high" | "premium"> = {
+  minimal: "low",
+  low: "medium",
+  medium: "high",
+  high: "premium",
 };
 
 export interface ReasoningCardProps {
@@ -112,14 +126,15 @@ export function ReasoningCard({
             <span className="text-xs font-medium text-muted-foreground">
               Nível de esforço
             </span>
-            <CustomSelect
-              aria-label="Nível de raciocínio"
+            <SearchableSelect
               value={effectiveLevel ?? ""}
               onChange={(v) => onEffortChange(v as ReasoningLevel)}
+              searchPlaceholder="Buscar nível..."
               options={levels.map((l) => ({
                 value: l,
                 label: LEVEL_LABELS[l],
                 notes: LEVEL_CONSUMPTION[l],
+                endAdornment: <TierBadge tier={LEVEL_TIER[l]} />,
               }))}
             />
           </div>

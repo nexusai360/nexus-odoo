@@ -30,13 +30,32 @@ async function collectReferencedIds(): Promise<Set<string>> {
   return refs;
 }
 
-function isInvalid(entry: { id: string; provider: string; released?: string | null; pricingInput?: number | null; pricingOutput?: number | null }): boolean {
+function isInvalid(entry: {
+  id: string;
+  provider: string;
+  released?: string | null;
+  pricingInput?: number | null;
+  pricingOutput?: number | null;
+}): boolean {
   // 1. Whitelist
   if (!isAllowedByWhitelist(entry.provider as LlmProvider, entry.id)) return true;
   // 2. Released < 2024-01 (se conhecido)
   if (entry.released && entry.released < "2024-01") return true;
-  // 3. Sem pricing (somente para non-OpenRouter — OpenAI/Anthropic/Gemini sem pricing é "preço sob consulta")
-  // Aceitamos pricing=null nas entries de Anthropic/Gemini (curadoria manual depois).
+  // 3. Snapshot datado (-YYYY-MM-DD ou -YYYYMMDD) — duplica id base
+  if (/-\d{4}-\d{2}-\d{2}$/.test(entry.id)) return true;
+  if (/-\d{8}$/.test(entry.id)) return true;
+  // 4. Variantes pouco usadas que poluem a lista (chat-latest, codex-max, *-latest)
+  if (/(-chat-latest|-codex-max|-codex|-realtime|-search|-image|-tts|-transcribe|-preview)$/.test(entry.id)
+      && entry.provider === "openai") return true;
+  // 5. Sem pricing em OpenAI/Anthropic/Gemini — duplica o id base que ja existe no catalogo
+  if (
+    (entry.pricingInput == null || entry.pricingOutput == null) &&
+    entry.provider !== "openrouter"
+  ) {
+    // tts/whisper/embedding podem ficar (sem pricing tabelado mas validos)
+    if (/^(tts-|whisper-|text-embedding-)/.test(entry.id)) return false;
+    return true;
+  }
   return false;
 }
 

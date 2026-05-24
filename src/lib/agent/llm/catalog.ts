@@ -341,15 +341,75 @@ function avgCost(m: ModelEntry): number {
 }
 
 /**
- * Ordena modelos: mais recente → mais antigo; dentro da mesma data,
- * mais caro → mais barato. Sem preço por último no grupo.
+ * Score de "família/versão" extraído do id. Famílias mais novas têm score
+ * maior. Ex.: gpt-5.5 > gpt-5.4 > gpt-5 > gpt-4.1 > gpt-4o > gpt-4 > o3 > o1.
+ * Para Claude: opus/sonnet/haiku 4.7 > 4.6 > 4.5 > 3.7 > 3.5. Para Gemini:
+ * 3.x > 2.5 > 2.0 > 1.5. Empate cai pro próximo critério.
+ */
+function familyScore(m: ModelEntry): number {
+  const id = m.id.toLowerCase();
+  // Captura "X.Y" ou "X" como número (GPT-5.5 -> 5.5, GPT-5 -> 5)
+  const m1 = id.match(/(?:gpt-|claude-(?:opus|sonnet|haiku)-|gemini-|grok-|llama-|deepseek-(?:r|v)?|qwen)(\d+(?:[.-]\d+)?)/);
+  if (!m1) return 0;
+  return parseFloat(m1[1].replace("-", "."));
+}
+
+/**
+ * Ordena modelos. Regras (em ordem):
+ *  1. Família/versão mais nova primeiro (gpt-5.5 antes de gpt-5.4-pro).
+ *  2. Data de lançamento mais recente primeiro.
+ *  3. Custo médio mais alto primeiro.
+ *  4. Alfabético do id (desempate determinístico).
  */
 export function sortModels(models: ModelEntry[]): ModelEntry[] {
   return [...models].sort((a, b) => {
+    const famA = familyScore(a);
+    const famB = familyScore(b);
+    if (famA !== famB) return famB - famA;
     const relA = a.released ?? "0000-00";
     const relB = b.released ?? "0000-00";
     if (relA !== relB) return relB.localeCompare(relA);
-    return avgCost(b) - avgCost(a);
+    const costA = avgCost(a);
+    const costB = avgCost(b);
+    if (costA !== costB) return costB - costA;
+    return a.id.localeCompare(b.id);
+  });
+}
+
+/** Ordem dos tiers OpenRouter (mais caro primeiro; free no final). */
+const OPENROUTER_TIER_RANK: Record<string, number> = {
+  premium: 0,
+  high: 1,
+  medium: 2,
+  low: 3,
+  free: 4,
+};
+
+/** Prefixo do provedor em ids OpenRouter (ex.: "openai/gpt-..." → "openai"). */
+function openrouterProvider(m: ModelEntry): string {
+  const idx = m.id.indexOf("/");
+  return idx > 0 ? m.id.slice(0, idx).toLowerCase() : "zzz";
+}
+
+/**
+ * Ordenação especial para OpenRouter:
+ *  1. Tier (premium → high → medium → low → free).
+ *  2. Dentro do tier, agrupar por provedor (alfabético).
+ *  3. Dentro do provedor, data mais recente primeiro.
+ *  4. Empate: alfabético do id.
+ */
+export function sortOpenrouterModels(models: ModelEntry[]): ModelEntry[] {
+  return [...models].sort((a, b) => {
+    const ta = OPENROUTER_TIER_RANK[a.tier] ?? 9;
+    const tb = OPENROUTER_TIER_RANK[b.tier] ?? 9;
+    if (ta !== tb) return ta - tb;
+    const pa = openrouterProvider(a);
+    const pb = openrouterProvider(b);
+    if (pa !== pb) return pa.localeCompare(pb);
+    const relA = a.released ?? "0000-00";
+    const relB = b.released ?? "0000-00";
+    if (relA !== relB) return relB.localeCompare(relA);
+    return a.id.localeCompare(b.id);
   });
 }
 
@@ -364,7 +424,9 @@ export function listModels(
 ): ModelEntry[] {
   const all = MODELS.filter((m) => m.provider === provider);
   const filtered = opts.includeLegacy ? all : all.filter((m) => !isLegacyModel(m));
-  return sortModels(filtered);
+  return provider === "openrouter"
+    ? sortOpenrouterModels(filtered)
+    : sortModels(filtered);
 }
 
 /** Capacidades multimodais de um modelo. */

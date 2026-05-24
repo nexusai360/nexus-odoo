@@ -9,6 +9,7 @@ import {
   MODELS,
   isLegacyModel,
   sortModels,
+  sortOpenrouterModels,
   type CostTier,
   type LlmProvider,
   type ModelEntry,
@@ -82,5 +83,7 @@ export async function loadEffectiveModelsByProvider(
   }
   const all = [...base, ...extras];
   const filtered = opts.includeLegacy ? all : all.filter((m) => !isLegacyModel(m));
-  return sortModels(filtered);
+  return provider === "openrouter"
+    ? sortOpenrouterModels(filtered)
+    : sortModels(filtered);
 }
