@@ -553,6 +553,16 @@ function ToolCard({
                 {tool.addedInVersion && <span>Disponível desde a v{tool.addedInVersion}</span>}
               </div>
 
+              {isWrite && (
+                <div className="flex items-start gap-2 rounded-md border border-violet-500/20 bg-violet-500/5 px-3 py-2 text-xs text-violet-700 dark:text-violet-300">
+                  <Key className="mt-0.5 h-3.5 w-3.5 shrink-0" />
+                  <span>
+                    Requer API key externa com a capability acima. Não pode ser invocada
+                    pelo Agente Nex (modo interno é bloqueado para escrita).
+                  </span>
+                </div>
+              )}
+
               {tool.inputSchemaKeys.length > 0 && (
                 <div>
                   <h4 className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-2">
