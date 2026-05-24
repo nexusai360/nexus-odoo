@@ -427,10 +427,13 @@ function LevelSegmented({
   value,
   onChange,
   ariaLabel,
+  writeDisabled = false,
 }: {
   value: AccessLevel;
   onChange: (v: AccessLevel) => void;
   ariaLabel: string;
+  /** Quando true, o segmento "Leitura e escrita" fica desabilitado (sem write tools publicadas). */
+  writeDisabled?: boolean;
 }) {
   return (
     <div
@@ -440,17 +443,23 @@ function LevelSegmented({
     >
       {LEVELS.map((l) => {
         const selected = value === l.value;
+        const isWriteSegment = l.value === "write";
+        const disabled = isWriteSegment && writeDisabled;
         return (
           <button
             key={l.value}
             type="button"
-            onClick={() => onChange(l.value)}
+            onClick={disabled ? undefined : () => onChange(l.value)}
             aria-pressed={selected}
+            aria-disabled={disabled || undefined}
+            disabled={disabled}
+            title={disabled ? "Sem tools de escrita publicadas neste módulo ainda" : undefined}
             className={cn(
               "whitespace-nowrap rounded-md px-2.5 py-1 text-[11.5px] font-medium transition-colors",
-              selected
+              disabled && "cursor-not-allowed opacity-50",
+              !disabled && selected
                 ? "bg-violet-500/15 text-violet-600 dark:text-violet-400"
-                : "text-muted-foreground hover:text-foreground",
+                : !disabled && "text-muted-foreground hover:text-foreground",
             )}
           >
             {l.label}
@@ -559,17 +568,20 @@ function ModuleAccessPicker({
                   value={access.level}
                   onChange={(v) => setLevel(mod, v)}
                   ariaLabel={`Nível de acesso, ${moduleLabel(mod)}`}
+                  writeDisabled={(moduleWriteActions[mod] ?? []).length === 0}
                 />
               </div>
 
-              {isWrite && (
+              {isWrite && writeActions.length === 0 && (
                 <div className="border-t border-border/60 px-3.5 py-2.5">
-                  {writeActions.length === 0 ? (
-                    <p className="text-[11.5px] text-muted-foreground">
-                      Nenhuma ação de escrita disponível neste módulo ainda. A chave terá só
-                      leitura aqui até novas tools de escrita serem publicadas.
-                    </p>
-                  ) : (
+                  <p className="text-[11.5px] text-amber-600 dark:text-amber-400">
+                    Esta chave foi marcada com escrita em um módulo sem tools de escrita publicadas. Troque para Leitura ou aguarde novas tools.
+                  </p>
+                </div>
+              )}
+              {isWrite && writeActions.length > 0 && (
+                <div className="border-t border-border/60 px-3.5 py-2.5">
+                  {(
                     <div className="flex flex-wrap items-center gap-1.5">
                       <span className="mr-1 text-[11px] font-medium text-muted-foreground">
                         Ações de escrita:
