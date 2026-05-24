@@ -17,6 +17,16 @@ import type {
 } from "../types";
 
 const OPENAI_API_URL = "https://api.openai.com/v1/chat/completions";
+const OPENAI_RESPONSES_URL = "https://api.openai.com/v1/responses";
+
+/**
+ * Modelos que SO funcionam via /v1/responses (a "Pro/Deep Reasoning" family
+ * da OpenAI). Lista heuristica por padroes de id; cobre gpt-5.x-pro, o1-pro,
+ * o3-pro, etc.
+ */
+function requiresResponsesApi(model: string): boolean {
+  return /-pro(-|$)|^o[1-9]-pro$|^gpt-5(\.[0-9]+)?-pro/.test(model);
+}
 
 interface OpenAIToolCallRaw {
   id: string;
@@ -146,6 +156,62 @@ export class OpenAIClient implements ProviderClient {
       } else {
         body.max_tokens = request.maxTokens;
       }
+    }
+
+    // Modelos pro/deep-reasoning (gpt-5.5-pro, o1-pro, etc) usam /v1/responses.
+    if (requiresResponsesApi(this.model)) {
+      const mapped = mapMessages(request.messages) as Array<{
+        role: string;
+        content: unknown;
+      }>;
+      const respBody: Record<string, unknown> = {
+        model: this.model,
+        input: mapped.map((m) => ({
+          role: m.role,
+          content: typeof m.content === "string" ? m.content : "",
+        })),
+      };
+      if (reasoning && request.reasoningEffort) {
+        respBody.reasoning = {
+          effort:
+            request.reasoningEffort === "minimal" ? "low" : request.reasoningEffort,
+        };
+      }
+      if (typeof request.maxTokens === "number") {
+        respBody.max_output_tokens = request.maxTokens;
+      }
+      const rRes = await fetch(OPENAI_RESPONSES_URL, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${this.apiKey}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(respBody),
+      });
+      if (!rRes.ok) {
+        const text = await rRes.text().catch(() => "");
+        throw new Error(`OpenAI Responses ${rRes.status}: ${text || rRes.statusText}`);
+      }
+      const rData = (await rRes.json()) as {
+        output?: Array<{ content?: Array<{ text?: string; type?: string }> }>;
+        output_text?: string;
+        usage?: { input_tokens?: number; output_tokens?: number };
+      };
+      const text =
+        rData.output_text ??
+        rData.output
+          ?.flatMap((o) => o.content ?? [])
+          .filter((c) => c.type === "output_text" || typeof c.text === "string")
+          .map((c) => c.text ?? "")
+          .join("") ??
+        "";
+      const tIn = rData.usage?.input_tokens ?? 0;
+      const tOut = rData.usage?.output_tokens ?? 0;
+      const { costUsd } = calculateCost(this.model, tIn, tOut);
+      return {
+        message: text,
+        usage: { tokensInput: tIn, tokensOutput: tOut, costUsd: costUsd ?? 0 },
+      };
     }
 
     const res = await fetch(OPENAI_API_URL, {

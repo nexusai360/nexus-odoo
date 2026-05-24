@@ -210,6 +210,37 @@ export async function deepTestOpenAI(
     }
   }
 
+  // 2a. Modelos pro/deep-reasoning rodam em /v1/responses (gpt-5.5-pro,
+  // o1-pro, etc). Probe minimal nesse endpoint.
+  if (/-pro(-|$)|^gpt-5(\.[0-9]+)?-pro/.test(model)) {
+    const rRes = await fetchWithTimeout(
+      "https://api.openai.com/v1/responses",
+      {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${apiKey}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          model,
+          input: [{ role: "user", content: "ok" }],
+          max_output_tokens: 16,
+        }),
+      },
+    );
+    if (rRes.ok) return { reachable: true };
+    if (rRes.status === 401) return { reachable: false, errorKind: "invalid_key" };
+    const rText = await rRes.text().catch(() => "");
+    const rParsed = parseJsonSafe(rText) as { error?: { message?: string } } | null;
+    return {
+      reachable: false,
+      errorKind: "other",
+      message:
+        translateProviderMessage(rParsed?.error?.message, model) ??
+        `Erro do provedor (HTTP ${rRes.status}): ${rText || rRes.statusText}`,
+    };
+  }
+
   // 2. POST /v1/chat/completions minimal — confirma que key+modelo funcionam.
   // Modelos GPT-5.x e família o-series (o1/o3/o4) só aceitam
   // `max_completion_tokens` e rejeitam `temperature` != default → ajustamos
