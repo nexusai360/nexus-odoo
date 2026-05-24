@@ -16,9 +16,18 @@ const TTL_MS = 4 * 60 * 60 * 1000; // 4 horas
 const FETCH_TIMEOUT_MS = 5_000;
 const AWESOMEAPI_URL = "https://economia.awesomeapi.com.br/last/USD-BRL";
 
-/** Spread cartão aplicado sobre a cotação comercial (BUG 6 corrigido). */
-export const RATE_SPREAD = 1.10;
-export const FALLBACK_COMMERCIAL_RATE = 5.5;
+// Decomposicao do "spread cartao" sobre a cotacao comercial USD/BRL:
+//  - IOF_RATE = 3,38% (aliquota legal Brasileira em vigor para cartao de
+//    credito internacional, conforme cronograma de reducao IOF 2024-2028).
+//  - BANK_SPREAD = 2,35% (spread operacional do banco emissor; calibrado
+//    para que o total efetivo bata com extrato real ~5,73% sobre Google).
+//  - RATE_SPREAD = 1 + IOF_RATE + BANK_SPREAD = 1,0573.
+// Constantes individuais sao usadas na UI para mostrar a quebra (IOF
+// destacado separadamente do spread bancario).
+export const IOF_RATE = 0.0338;
+export const BANK_SPREAD_RATE = 0.0235;
+export const RATE_SPREAD = +(1 + IOF_RATE + BANK_SPREAD_RATE).toFixed(6);
+export const FALLBACK_COMMERCIAL_RATE = 5.06;
 
 export interface UsdBrlRate {
   /** Cotação efetiva (commercial × spread). */

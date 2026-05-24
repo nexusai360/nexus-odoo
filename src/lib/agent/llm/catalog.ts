@@ -150,6 +150,8 @@ const GEMINI: ModelEntry[] = [
   { id: "gemini-2.5-pro",        provider: "gemini", label: "Gemini 2.5 Pro",         tier: "high",   notes: "atual mais novo", released: "2025-09", pricing: { inputPerMTok: 1.25, outputPerMTok: 10.0 }, vision: true, audio: true },
   { id: "gemini-2.5-flash",      provider: "gemini", label: "Gemini 2.5 Flash",       tier: "low",                              released: "2025-09", pricing: { inputPerMTok: 0.3,  outputPerMTok: 2.5  }, vision: true, audio: true },
   { id: "gemini-2.5-flash-lite", provider: "gemini", label: "Gemini 2.5 Flash Lite",  tier: "low",                              released: "2025-09", pricing: { inputPerMTok: 0.1,  outputPerMTok: 0.4  }, vision: true, audio: true },
+  { id: "gemini-2.5-flash-thinking", provider: "gemini", label: "Gemini 2.5 Flash (Thinking)", tier: "low",                    released: "2025-12", pricing: { inputPerMTok: 0.3,  outputPerMTok: 2.5  }, use: "raciocínio", vision: true },
+  { id: "gemini-2.5-pro-thinking",   provider: "gemini", label: "Gemini 2.5 Pro (Thinking)",   tier: "high",                   released: "2025-12", pricing: { inputPerMTok: 1.25, outputPerMTok: 10.0 }, use: "raciocínio profundo", vision: true },
   { id: "gemini-2.0-pro",        provider: "gemini", label: "Gemini 2.0 Pro",         tier: "medium",                           released: "2025-02", pricing: { inputPerMTok: 1.25, outputPerMTok: 5.0  }, vision: true, audio: true },
   { id: "gemini-2.0-flash",      provider: "gemini", label: "Gemini 2.0 Flash",       tier: "low",                              released: "2024-12", pricing: { inputPerMTok: 0.075, outputPerMTok: 0.3 }, vision: true, audio: true },
   { id: "gemini-2.0-flash-lite", provider: "gemini", label: "Gemini 2.0 Flash Lite",  tier: "low",                              released: "2025-02", pricing: { inputPerMTok: 0.075, outputPerMTok: 0.3 }, vision: true },
@@ -224,9 +226,13 @@ const OPENROUTER: ModelEntry[] = [
   { id: "cohere/command-r-plus-08-2024", provider: "openrouter", label: "Command R+ 08-24", tier: "medium", released: "2024-08", pricing: { inputPerMTok: 2.5, outputPerMTok: 10.0 } },
   { id: "cohere/command-r-08-2024",      provider: "openrouter", label: "Command R 08-24",  tier: "low",    released: "2024-08", pricing: null },
   // xAI Grok
-  { id: "x-ai/grok-3",    provider: "openrouter", label: "Grok 3",    tier: "medium", released: "2025-02", pricing: null },
-  { id: "x-ai/grok-3-mini",provider: "openrouter", label: "Grok 3 mini",tier: "low", released: "2025-02", pricing: null },
-  { id: "x-ai/grok-4",    provider: "openrouter", label: "Grok 4",    tier: "medium", released: "2025-07", pricing: null },
+  { id: "x-ai/grok-3",    provider: "openrouter", label: "Grok 3",    tier: "medium", released: "2025-02", pricing: { inputPerMTok: 3.0,  outputPerMTok: 15.0 } },
+  { id: "x-ai/grok-3-mini",provider: "openrouter", label: "Grok 3 mini",tier: "low", released: "2025-02", pricing: { inputPerMTok: 0.3,  outputPerMTok: 0.5  } },
+  { id: "x-ai/grok-4",    provider: "openrouter", label: "Grok 4",    tier: "medium", released: "2025-07", pricing: { inputPerMTok: 3.0,  outputPerMTok: 15.0 } },
+  { id: "x-ai/grok-4-fast",provider: "openrouter", label: "Grok 4 Fast",tier: "low", released: "2025-09", pricing: { inputPerMTok: 0.2,  outputPerMTok: 0.5  } },
+  // Free adicionais (Llama 4 / Gemma novos)
+  { id: "meta-llama/llama-4-scout:free",   provider: "openrouter", label: "Llama 4 Scout (free)",   tier: "free", notes: "free",                 released: "2025-04", pricing: null },
+  { id: "deepseek/deepseek-v3.1:free",     provider: "openrouter", label: "DeepSeek V3.1 (free)",   tier: "free", notes: "free",                 released: "2025-08", pricing: null },
   // Microsoft
   { id: "microsoft/phi-4",              provider: "openrouter", label: "Phi-4",            tier: "low", released: "2024-12", pricing: null },
   // Perplexity
@@ -249,6 +255,7 @@ export const MODELS: ModelEntry[] = [
 // nesta entrega — o wiring de reasoning_effort cobre o provider OpenAI; o card
 // de Modo Raciocínio só destrava quando há wiring real por trás.
 const REASONING_LEVELS: Record<string, ReasoningLevel[]> = {
+  // OpenAI — GPT-5 series + o-series
   "gpt-5.5": ["minimal", "low", "medium", "high"],
   "gpt-5.5-pro": ["minimal", "low", "medium", "high"],
   "gpt-5.4": ["minimal", "low", "medium", "high"],
@@ -267,6 +274,29 @@ const REASONING_LEVELS: Record<string, ReasoningLevel[]> = {
   o3: ["low", "medium", "high"],
   "o1-pro": ["low", "medium", "high"],
   o1: ["low", "medium", "high"],
+  // Anthropic — Claude 4.x com extended thinking (budget tokens internos)
+  "claude-opus-4-7": ["low", "medium", "high"],
+  "claude-sonnet-4-7": ["low", "medium", "high"],
+  "claude-opus-4-5": ["low", "medium", "high"],
+  "claude-sonnet-4-5": ["low", "medium", "high"],
+  // Google — Gemini 2.5 com thinking_config
+  "gemini-2.5-pro": ["low", "medium", "high"],
+  "gemini-2.5-flash": ["low", "medium", "high"],
+  // OpenRouter (mesmos providers via gateway)
+  "anthropic/claude-opus-4.7": ["low", "medium", "high"],
+  "anthropic/claude-sonnet-4.7": ["low", "medium", "high"],
+  "anthropic/claude-opus-4.5": ["low", "medium", "high"],
+  "anthropic/claude-sonnet-4.5": ["low", "medium", "high"],
+  "google/gemini-2.5-pro": ["low", "medium", "high"],
+  "google/gemini-2.5-flash": ["low", "medium", "high"],
+  // DeepSeek R1 — reasoning nativo (sem effort, modelado como medium)
+  "deepseek/deepseek-r1": ["medium"],
+  "deepseek/deepseek-r1-0528": ["medium"],
+  "deepseek/deepseek-r1:free": ["medium"],
+  "deepseek/deepseek-r1-0528:free": ["medium"],
+  // Qwen QwQ — reasoning nativo
+  "qwen/qwq-32b": ["medium"],
+  "qwen/qwq-32b:free": ["medium"],
 };
 
 for (const m of MODELS) {
