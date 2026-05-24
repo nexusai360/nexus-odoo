@@ -211,4 +211,24 @@ export async function persistMessage(
       toolCalls: toolCalls ? JSON.parse(JSON.stringify(toolCalls)) : undefined,
     },
   });
+
+  // Mensagem assistant com tool calls altera o ranking de uso do usuario,
+  // invalida o cache das sugestoes personalizadas para refletir o uso recente
+  // ja na proxima abertura da bubble. Best-effort: erros nao bloqueiam o save.
+  if (role === "assistant" && toolCalls && toolCalls.length > 0) {
+    try {
+      const conv = await prisma.conversation.findUnique({
+        where: { id: conversationId },
+        select: { userId: true },
+      });
+      if (conv?.userId) {
+        const { invalidatePersonalizedWelcomeCache } = await import(
+          "@/lib/agent/personalized-suggestions"
+        );
+        await invalidatePersonalizedWelcomeCache(conv.userId);
+      }
+    } catch {
+      // best-effort; cache cai por TTL se a invalidacao falhar
+    }
+  }
 }

@@ -41,12 +41,19 @@ interface AgentBubbleProps {
    * super_admin em /agente/comportamento. Default 3, hard cap 5.
    */
   maxSuggestions?: number;
+  /**
+   * Sugestões iniciais personalizadas para o usuário logado (computadas no
+   * server a partir do histórico de uso de tools). Vazio = usuário novo ou
+   * erro; o ChatPanel cai no catálogo curado neste caso.
+   */
+  personalizedWelcome?: string[];
 }
 
 export function AgentBubble({
   audioInputEnabled = false,
   imageInputEnabled = false,
   maxSuggestions = 3,
+  personalizedWelcome = [],
 }: AgentBubbleProps = {}) {
   const [open, setOpen] = React.useState(false);
   // O conversationId vive AQUI (no FAB), e não no ChatPanel: assim ele
@@ -146,6 +153,7 @@ export function AgentBubble({
             audioInputEnabled={audioInputEnabled}
             imageInputEnabled={imageInputEnabled}
             maxSuggestions={maxSuggestions}
+            personalizedWelcome={personalizedWelcome}
             conversationId={conversationId}
             onConversationCreated={setConversationId}
             onEndSession={() => {

@@ -47,6 +47,9 @@ interface ChatPanelProps {
   /** Limite de sugestões clicáveis (welcome + follow-up) configurado no
    *  /agente/comportamento pelo super_admin. Default 3, hard cap 5. */
   maxSuggestions?: number;
+  /** Sugestões iniciais personalizadas (auto-aprendizado por usuário).
+   *  Quando vazias, o painel cai no catálogo curado WELCOME_SUGGESTIONS. */
+  personalizedWelcome?: string[];
 }
 
 interface UiMessage {
@@ -81,14 +84,20 @@ export function ChatPanel({
   onConversationCreated,
   onEndSession,
   maxSuggestions = 3,
+  personalizedWelcome = [],
 }: ChatPanelProps) {
-  // Sugestoes iniciais respeitam o limite definido pelo super_admin em
-  // /agente/comportamento (bloco "Sugestoes na Bubble"). Catalogo curado
-  // em src/lib/agent/welcome-suggestions.ts; aqui apenas fatia ao N pedido.
-  const welcomeSuggestionsForUi = React.useMemo(
-    () => WELCOME_SUGGESTIONS.slice(0, Math.min(Math.max(1, maxSuggestions), 5)),
-    [maxSuggestions],
-  );
+  // Sugestoes iniciais: prioridade ao set personalizado computado no server
+  // (auto-aprendizado por usuario). Fallback ao catalogo curado quando o
+  // usuario nao tem historico ou a query falhou. Em ambos os casos respeita
+  // o `maxSuggestions` configurado pelo super_admin.
+  const welcomeSuggestionsForUi = React.useMemo(() => {
+    const cap = Math.min(Math.max(1, maxSuggestions), 5);
+    const personalized = personalizedWelcome.filter(
+      (s) => typeof s === "string" && s.trim().length > 0,
+    );
+    if (personalized.length > 0) return personalized.slice(0, cap);
+    return WELCOME_SUGGESTIONS.slice(0, cap);
+  }, [maxSuggestions, personalizedWelcome]);
   const reduceMotion = useReducedMotion();
 
   const [messages, setMessages] = React.useState<UiMessage[]>([]);

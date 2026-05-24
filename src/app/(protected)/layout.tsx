@@ -5,6 +5,7 @@ import { AgentBubble } from "@/components/agent/agent-bubble";
 import { TourProvider } from "@/components/tour/tour-provider";
 import { getPublicAgentFlags } from "@/lib/actions/agent-config";
 import { getPublicActiveLlmConfig } from "@/lib/agent/llm/get-active-config";
+import { getPersonalizedWelcomeSuggestions } from "@/lib/agent/personalized-suggestions";
 
 export default async function ProtectedLayout({
   children,
@@ -36,6 +37,13 @@ export default async function ProtectedLayout({
   // Anexo (clip) na bubble: liberado só com o checkpoint de imagem em PRODUÇÃO.
   const imageInputEnabled = flags.imageInputEnabled === true;
 
+  // Sugestoes personalizadas por usuario: agregam o uso de tools do proprio
+  // historico (all-time + ultimos 28 dias) e mapeiam para perguntas template.
+  // Quando vazio (usuario novo ou erro), o ChatPanel cai no catalogo curado.
+  const personalizedWelcome = canUseAgent
+    ? await getPersonalizedWelcomeSuggestions(user.id, flags.maxSuggestions)
+    : [];
+
   return (
     <TourProvider>
       <div className="flex h-screen overflow-hidden bg-background">
@@ -48,6 +56,7 @@ export default async function ProtectedLayout({
             audioInputEnabled={audioInputEnabled}
             imageInputEnabled={imageInputEnabled}
             maxSuggestions={flags.maxSuggestions}
+            personalizedWelcome={personalizedWelcome}
           />
         ) : null}
       </div>
