@@ -201,7 +201,7 @@ export function KbUploadDialog({
     >
       <DialogContent
         className={cn(
-          "relative w-[min(720px,calc(100%-2rem))] min-h-[440px] sm:max-w-none",
+          "w-[min(720px,calc(100%-2rem))] min-h-[440px] sm:max-w-none",
           isDragging && "ring-2 ring-violet-500/60 ring-offset-2 ring-offset-background",
         )}
         onDragEnter={handleDragEnter}
