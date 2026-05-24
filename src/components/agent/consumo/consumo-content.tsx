@@ -1155,7 +1155,7 @@ export function ConsumoContent({ minDate: minDateIso }: ConsumoContentProps) {
                           key={`${row.id}-expanded`}
                           className="bg-violet-500/[0.02] hover:bg-violet-500/[0.02]"
                         >
-                          <TableCell colSpan={9} className="p-3">
+                          <TableCell colSpan={10} className="p-3">
                             <UsageDetailInline row={row} />
                           </TableCell>
                         </TableRow>
