@@ -7,7 +7,7 @@
  * Cada sessão tem provedor/modelo próprios e um snapshot de prompt editável,
  * independente da configuração de produção.
  *
- * Bloco 6 — F5 UI rework v2.
+ * Bloco 6 , F5 UI rework v2.
  */
 
 import { redirect } from "next/navigation";
@@ -25,7 +25,7 @@ import type {
 } from "@/lib/actions/playground-types";
 
 // ---------------------------------------------------------------------------
-// Guard RBAC — playground é super_admin/admin (SPEC §8.3)
+// Guard RBAC , playground é super_admin/admin (SPEC §8.3)
 // ---------------------------------------------------------------------------
 
 async function requirePlaygroundAccess(): Promise<{ userId: string }> {
@@ -52,7 +52,7 @@ function parseSnapshot(json: unknown): PlaygroundPromptSnapshot {
   };
 }
 
-/** Snapshot do prompt de produção — base de uma nova sessão. */
+/** Snapshot do prompt de produção , base de uma nova sessão. */
 async function productionPromptSnapshot(): Promise<PlaygroundPromptSnapshot> {
   const res = await getAgentSettings();
   if (!res.success || !res.data) {
@@ -147,7 +147,7 @@ export async function listPlaygroundSessions(): Promise<
 }
 
 /**
- * Cria uma nova sessão — prompt inicia como cópia da produção (D2).
+ * Cria uma nova sessão , prompt inicia como cópia da produção (D2).
  * Provider/model/credentialId podem ser opcionais para permitir uma sessão
  * em branco onde o usuário escolhe manualmente antes da primeira mensagem.
  */
@@ -273,7 +273,7 @@ export async function deletePlaygroundSession(
 }
 
 /**
- * Atualiza provedor/modelo/chave de uma sessão (D2) — sem afetar produção.
+ * Atualiza provedor/modelo/chave de uma sessão (D2) , sem afetar produção.
  * Aceita credentialId opcional para registrar a chave usada pela sessão.
  */
 export async function updatePlaygroundSessionModel(input: {
@@ -306,7 +306,7 @@ export async function updatePlaygroundSessionModel(input: {
   }
 }
 
-/** Renomeia uma sessão (D3) — apenas título, sem efeito em produção. */
+/** Renomeia uma sessão (D3) , apenas título, sem efeito em produção. */
 export async function renamePlaygroundSession(input: {
   sessionId: string;
   title: string;

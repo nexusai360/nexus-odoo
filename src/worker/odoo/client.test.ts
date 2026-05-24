@@ -34,7 +34,7 @@ describe("OdooClient._rpc", () => {
     expect(fetchMock).toHaveBeenCalledTimes(2);
   });
 
-  it("WR-06: 4xx não é retryado — propaga imediatamente", async () => {
+  it("WR-06: 4xx não é retryado , propaga imediatamente", async () => {
     const fetchMock = jest.fn().mockResolvedValue({
       ok: false,
       status: 401,

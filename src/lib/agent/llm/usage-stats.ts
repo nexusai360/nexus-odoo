@@ -1,12 +1,12 @@
 /**
- * Queries de agregação de uso de LLM — Task 5.1 da Onda 5 (F5).
+ * Queries de agregação de uso de LLM , Task 5.1 da Onda 5 (F5).
  *
  * Portado e corrigido de nexus-insights/src/lib/llm/queries/usage-stats.ts.
  * Usa Prisma v7 (não pgPool). Correções dos BUGs 5, 7 e 8 da SPEC §4.6:
  *
- * BUG 5 — costBrl/costUsd: apenas rows costKnown=true entram no custo total.
- * BUG 7 — isPlayground já existe no schema (onda 1). Filtrado aqui.
- * BUG 8 — totalConversations (count Conversation) ≠ totalIterations (count LlmUsage).
+ * BUG 5 , costBrl/costUsd: apenas rows costKnown=true entram no custo total.
+ * BUG 7 , isPlayground já existe no schema (onda 1). Filtrado aqui.
+ * BUG 8 , totalConversations (count Conversation) ≠ totalIterations (count LlmUsage).
  *          Rótulos explícitos e contagens separadas.
  *
  * unknownCount: número de iterações sem preço conhecido no período.
@@ -21,13 +21,13 @@ const TZ = "America/Sao_Paulo";
 // ---------------------------------------------------------------------------
 
 export interface UsageSummaryV2 {
-  /** Número de Conversations (threads) no período — BUG 8. */
+  /** Número de Conversations (threads) no período , BUG 8. */
   totalConversations: number;
-  /** Número de chamadas LLM (linhas em LlmUsage) — BUG 8. */
+  /** Número de chamadas LLM (linhas em LlmUsage) , BUG 8. */
   totalIterations: number;
-  /** Custo USD total — apenas rows costKnown=true — BUG 5. */
+  /** Custo USD total , apenas rows costKnown=true , BUG 5. */
   totalCostUsd: number;
-  /** Custo BRL total — apenas rows costKnown=true — BUG 5. */
+  /** Custo BRL total , apenas rows costKnown=true , BUG 5. */
   totalCostBrl: number;
   /** Tokens de entrada total. */
   totalTokensInput: number;
@@ -149,9 +149,9 @@ const ONE_DAY_MS = 24 * 60 * 60 * 1000;
 /**
  * Estatísticas agregadas de uso do LLM no período.
  *
- * - totalConversations: count de Conversation (não de LlmUsage) — BUG 8.
- * - totalIterations: count de LlmUsage (uma por chamada ao provider) — BUG 8.
- * - custo total: apenas rows costKnown=true — BUG 5.
+ * - totalConversations: count de Conversation (não de LlmUsage) , BUG 8.
+ * - totalIterations: count de LlmUsage (uma por chamada ao provider) , BUG 8.
+ * - custo total: apenas rows costKnown=true , BUG 5.
  * - unknownCount: rows costKnown=false no período.
  */
 export async function getUsageStats(args: {
@@ -173,14 +173,14 @@ export async function getUsageStats(args: {
     ...(isPlayground !== undefined ? { isPlayground } : {}),
   };
 
-  // Where para Conversation (sem filtro de provider/model — conversas são agregadas)
+  // Where para Conversation (sem filtro de provider/model , conversas são agregadas)
   const convWhere = {
     createdAt: { gte: start, lt: end },
     ...(isPlayground !== undefined ? { channel: isPlayground ? ("playground" as const) : { not: "playground" as const } } : {}),
   };
 
-  // 1. Contagem separada de conversas e iterações — BUG 8
-  // 2. Agregação de custo (apenas costKnown=true) — BUG 5
+  // 1. Contagem separada de conversas e iterações , BUG 8
+  // 2. Agregação de custo (apenas costKnown=true) , BUG 5
   // 3. groupBy model, provider, day
   // 4. Optionally: groupBy hour (range <= 24h)
 
@@ -225,7 +225,7 @@ export async function getUsageStats(args: {
       orderBy: { _sum: { costUsd: "desc" } },
     }),
 
-    // byDay — agrupa por data UTC; toIsoDay converte para BRT no mapeamento
+    // byDay , agrupa por data UTC; toIsoDay converte para BRT no mapeamento
     prisma.llmUsage.groupBy({
       by: ["createdAt"],
       where: usageWhere,

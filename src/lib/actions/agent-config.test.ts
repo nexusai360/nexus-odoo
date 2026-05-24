@@ -257,7 +257,7 @@ describe("updateAgentSettings", () => {
 });
 
 describe("activateLlmConfig", () => {
-  it("desativa todos e ativa o escolhido — transacional", async () => {
+  it("desativa todos e ativa o escolhido , transacional", async () => {
     getCurrentUser.mockResolvedValue(SUPER_ADMIN_USER);
     prisma.llmConfig.findFirst.mockResolvedValue({ id: "cfg-1", provider: "anthropic" });
     prisma.llmConfig.updateMany.mockResolvedValue({ count: 3 });

@@ -166,7 +166,7 @@ export async function getUsdBrlRate(): Promise<UsdBrlRate> {
     return memo.result;
   }
 
-  // 2) Redis (preferido — worker grava todo dia)
+  // 2) Redis (preferido , worker grava todo dia)
   const snap = await readRedisSnapshot();
   if (snap) {
     const result = buildRate(snap.commercial, "redis-bcb", false);

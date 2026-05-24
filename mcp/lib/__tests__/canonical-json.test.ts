@@ -8,7 +8,7 @@ describe("canonicalHash", () => {
     expect(canonicalHash(a)).toBe(canonicalHash(b));
   });
 
-  it("arrays preservam ordem — diferente ordem → hash diferente", () => {
+  it("arrays preservam ordem , diferente ordem → hash diferente", () => {
     const arr1 = [1, 2, 3];
     const arr2 = [3, 2, 1];
     expect(canonicalHash(arr1)).not.toBe(canonicalHash(arr2));

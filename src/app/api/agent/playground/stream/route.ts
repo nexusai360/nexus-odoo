@@ -9,7 +9,7 @@
  * Body: { sessionId, message }
  * Eventos SSE: idênticos a /api/agent/stream.
  *
- * Bloco 6 — F5 UI rework v2.
+ * Bloco 6 , F5 UI rework v2.
  */
 
 import { getCurrentUser } from "@/lib/auth";
@@ -91,7 +91,7 @@ export async function POST(req: Request): Promise<Response> {
     );
   }
 
-  // D2 — preferir a credencial registrada na sessão; fallback para a chave
+  // D2 , preferir a credencial registrada na sessão; fallback para a chave
   // mais recente do provedor escolhido.
   let credentialId: string | null = session.credentialId ?? null;
   if (credentialId) {
@@ -132,7 +132,7 @@ export async function POST(req: Request): Promise<Response> {
   const snapshot = parseSnapshot(session.promptSnapshot);
   const userMessage = body.message.trim();
 
-  // Persistir a mensagem do usuário no histórico da sessão (D5 — tipo texto).
+  // Persistir a mensagem do usuário no histórico da sessão (D5 , tipo texto).
   await prisma.playgroundMessage.create({
     data: {
       sessionId: session.id,
@@ -190,7 +190,7 @@ export async function POST(req: Request): Promise<Response> {
         });
 
         if (result.ok) {
-          // Persistir resposta do assistente na sessão (D5 — registra provedor
+          // Persistir resposta do assistente na sessão (D5 , registra provedor
           // e modelo que geraram a resposta, p/ exibir tag por turn).
           await prisma.playgroundMessage.create({
             data: {

@@ -16,7 +16,7 @@ describe("maskToken", () => {
     expect(result).not.toContain("supersecr");
   });
 
-  it("token de 32 chars — retorna 4 visíveis + ****", () => {
+  it("token de 32 chars , retorna 4 visíveis + ****", () => {
     const token = "a".repeat(32);
     const result = maskToken(token);
     expect(result).toBe("aaaa****");

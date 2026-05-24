@@ -8,7 +8,7 @@ beforeAll(async () => {
   await loadModule();
 });
 
-describe("validarSqlSelect — aprovados", () => {
+describe("validarSqlSelect , aprovados", () => {
   it("SELECT simples → ok: true", async () => {
     const result = await validarSqlSelect("SELECT * FROM fato_pedido");
     expect(result.ok).toBe(true);
@@ -34,7 +34,7 @@ describe("validarSqlSelect — aprovados", () => {
   });
 });
 
-describe("validarSqlSelect — rejeitados", () => {
+describe("validarSqlSelect , rejeitados", () => {
   it("DELETE → ok: false", async () => {
     const result = await validarSqlSelect("DELETE FROM fato_pedido");
     expect(result.ok).toBe(false);

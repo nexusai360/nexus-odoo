@@ -56,7 +56,7 @@ async function estadoDoFato(fato: string): Promise<"preparando" | "ok"> {
 
 /**
  * Resolve a entrada de catálogo de um relatório; lança erro explícito se o
- * id não existir. Usado por todas as queries — CR-03.
+ * id não existir. Usado por todas as queries , CR-03.
  */
 function requireReport(id: string): ReportEntry {
   const entry = getReport(id);
@@ -85,7 +85,7 @@ function agruparTopN(
   return top;
 }
 
-/** R1 — Saldo por produto (wrapper). */
+/** R1 , Saldo por produto (wrapper). */
 export async function getRelatorioSaldoProduto(
   filtros: ReportFilterValues,
 ): Promise<ReportResult<SaldoProdutoData>> {
@@ -112,7 +112,7 @@ export async function getRelatorioSaldoProduto(
   }
 }
 
-/** R2 — Valor de estoque por armazém (wrapper). */
+/** R2 , Valor de estoque por armazém (wrapper). */
 export async function getRelatorioValorPorArmazem(
   _filtros: ReportFilterValues,
 ): Promise<ReportResult<ValorArmazemData>> {
@@ -145,7 +145,7 @@ export async function getRelatorioValorPorArmazem(
   }
 }
 
-/** R3 — Entradas vs. saídas por mês (wrapper). */
+/** R3 , Entradas vs. saídas por mês (wrapper). */
 export async function getRelatorioEntradasSaidas(
   filtros: ReportFilterValues,
 ): Promise<ReportResult<EntradasSaidasData>> {
@@ -170,7 +170,7 @@ export async function getRelatorioEntradasSaidas(
   }
 }
 
-/** R4 — Produtos parados (wrapper). */
+/** R4 , Produtos parados (wrapper). */
 export async function getRelatorioProdutoParado(
   filtros: ReportFilterValues,
 ): Promise<ReportResult<ProdutoParadoData>> {
@@ -198,7 +198,7 @@ export async function getRelatorioProdutoParado(
   }
 }
 
-/** R5 — Top produtos movimentados (wrapper). */
+/** R5 , Top produtos movimentados (wrapper). */
 export async function getRelatorioTopMovimentados(
   filtros: ReportFilterValues,
 ): Promise<ReportResult<TopMovimentadoData>> {
@@ -228,7 +228,7 @@ export async function getRelatorioTopMovimentados(
   }
 }
 
-/** R6 — Concentração do estoque por família e por marca (wrapper). */
+/** R6 , Concentração do estoque por família e por marca (wrapper). */
 export async function getRelatorioConcentracao(
   _filtros: ReportFilterValues,
 ): Promise<ReportResult<ConcentracaoData>> {

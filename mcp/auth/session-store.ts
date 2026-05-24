@@ -1,7 +1,7 @@
 // mcp/auth/session-store.ts
-// Store em memória — válido para instância única do container `mcp`.
+// Store em memória , válido para instância única do container `mcp`.
 // A F4 tem um único cliente (o agente F5) e o servidor é stateless quanto a
-// conversa. Escalar para 2+ réplicas exigiria mover a sessão para Redis —
+// conversa. Escalar para 2+ réplicas exigiria mover a sessão para Redis ,
 // endurecimento de F5.
 import type { UserContext } from "./user-context.js";
 

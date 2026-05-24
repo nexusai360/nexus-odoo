@@ -55,7 +55,7 @@ const agentWorker = new Worker(
   { connection, concurrency: 3 },
 );
 
-agentWorker.on("ready", () => console.log(`[agent-worker] pronto — fila "${AGENT_QUEUE_NAME}"`));
+agentWorker.on("ready", () => console.log(`[agent-worker] pronto , fila "${AGENT_QUEUE_NAME}"`));
 agentWorker.on("failed", (job, err) =>
   console.error(`[agent-worker] job ${job?.id} falhou:`, err),
 );
@@ -106,7 +106,7 @@ const maintenanceWorker = new Worker(
 );
 
 maintenanceWorker.on("ready", () =>
-  console.log(`[maintenance-worker] pronto — fila "${MAINTENANCE_QUEUE}"`),
+  console.log(`[maintenance-worker] pronto , fila "${MAINTENANCE_QUEUE}"`),
 );
 maintenanceWorker.on("error", (err) => console.error("[maintenance-worker] erro:", err));
 
@@ -133,7 +133,7 @@ const directedSyncWorker = new Worker<DirectedSyncJob>(
 );
 
 directedSyncWorker.on("ready", () =>
-  console.log(`[directed-sync-worker] pronto — fila "${DIRECTED_SYNC_QUEUE_NAME}"`),
+  console.log(`[directed-sync-worker] pronto , fila "${DIRECTED_SYNC_QUEUE_NAME}"`),
 );
 directedSyncWorker.on("failed", (job, err) =>
   console.error(`[directed-sync-worker] job ${job?.id} falhou:`, err),
@@ -158,12 +158,12 @@ async function liberarLock(jobName: string): Promise<void> {
   await connection.del(lockKey(jobName));
 }
 
-// Cache da última config aplicada — evita churn de upsertJobScheduler (WR-04).
+// Cache da última config aplicada , evita churn de upsertJobScheduler (WR-04).
 let ultimaConfigAplicada: Awaited<ReturnType<typeof readSyncConfig>> | null = null;
 
 /**
  * (Re)agenda os três ciclos de sync com os intervalos atuais da config.
- * upsertJobScheduler é idempotente — chamar de novo com outro `every`
+ * upsertJobScheduler é idempotente , chamar de novo com outro `every`
  * reajusta o agendamento. É o que faz a mudança na tela /configuracao
  * valer sem reiniciar o worker. Só reagenda quando algum valor mudou.
  */
@@ -175,7 +175,7 @@ async function aplicarAgendamento(): Promise<void> {
     ultimaConfigAplicada.snapshotIntervalMin === cfg.snapshotIntervalMin &&
     ultimaConfigAplicada.reconcileIntervalMin === cfg.reconcileIntervalMin
   ) {
-    return; // nada mudou — não reagenda (WR-04)
+    return; // nada mudou , não reagenda (WR-04)
   }
   await syncQueue.upsertJobScheduler(
     JOB_INCREMENTAL,
@@ -194,7 +194,7 @@ async function aplicarAgendamento(): Promise<void> {
   );
   ultimaConfigAplicada = cfg;
   console.log(
-    `[worker] agendado — incremental ${cfg.incrementalIntervalMin}min, ` +
+    `[worker] agendado , incremental ${cfg.incrementalIntervalMin}min, ` +
       `snapshot ${cfg.snapshotIntervalMin}min, reconcile ${cfg.reconcileIntervalMin}min`,
   );
 }
@@ -211,7 +211,7 @@ async function rodarCiclo(name: string): Promise<void> {
 /**
  * Drena snapshot/reconcile pendentes após uma recuperação.
  *
- * Chamado somente após um JOB_INCREMENTAL bem-sucedido — esse é o "sinal
+ * Chamado somente após um JOB_INCREMENTAL bem-sucedido , esse é o "sinal
  * vital" de que o Tauga voltou. Enfileira os jobs marcados como pendentes
  * com prioridade alta e limpa o flag. O resto do agendamento normal
  * (snapshot 30min / reconcile 1440min) continua intacto.
@@ -224,14 +224,14 @@ async function drenarPendentes(): Promise<void> {
     await syncQueue.add(JOB_SNAPSHOT, { kind: JOB_SNAPSHOT }, { priority: 1 });
     await clearPending(connection, "snapshot");
     console.log(
-      "[worker] recovery — snapshot pendente enfileirado após Tauga voltar",
+      "[worker] recovery , snapshot pendente enfileirado após Tauga voltar",
     );
   }
   if (pending.reconcile) {
     await syncQueue.add(JOB_RECONCILE, { kind: JOB_RECONCILE }, { priority: 1 });
     await clearPending(connection, "reconcile");
     console.log(
-      "[worker] recovery — reconcile pendente enfileirado após Tauga voltar",
+      "[worker] recovery , reconcile pendente enfileirado após Tauga voltar",
     );
   }
 }
@@ -246,7 +246,7 @@ const worker = new Worker(
     }
     // Lock cluster-safe: se outro worker/ciclo já o detém, pula (WR-01).
     if (!(await adquirirLock(job.name))) {
-      console.log(`[worker] ciclo "${job.name}" ainda rodando (lock) — pulado`);
+      console.log(`[worker] ciclo "${job.name}" ainda rodando (lock) , pulado`);
       return { skipped: true };
     }
     const inicio = Date.now();
@@ -264,7 +264,7 @@ const worker = new Worker(
       // Indisponibilidade do Tauga: snapshot/reconcile ficam "pendentes" para
       // o próximo incremental bem-sucedido enfileirar imediatamente. Para o
       // incremental, basta deixar o BullMQ tentar de novo no próximo ciclo
-      // (3min) — não precisa marcar nada.
+      // (3min) , não precisa marcar nada.
       if (
         isOdooUnavailable(err) &&
         (job.name === JOB_SNAPSHOT || job.name === JOB_RECONCILE)
@@ -274,7 +274,7 @@ const worker = new Worker(
           job.name === JOB_SNAPSHOT ? "snapshot" : "reconcile",
         );
         console.warn(
-          `[worker] Odoo indisponível durante ciclo "${job.name}" — ` +
+          `[worker] Odoo indisponível durante ciclo "${job.name}" , ` +
             `marcado como pendente; será rodado quando o incremental voltar.`,
         );
         // Retorna ok para o BullMQ não fazer retry exponencial agressivo
@@ -289,7 +289,7 @@ const worker = new Worker(
   { connection, concurrency: 1 },
 );
 
-worker.on("ready", () => console.log(`[worker] pronto — fila "${ODOO_SYNC_QUEUE}"`));
+worker.on("ready", () => console.log(`[worker] pronto , fila "${ODOO_SYNC_QUEUE}"`));
 worker.on("failed", (job, err) => console.error(`[worker] job ${job?.id} falhou:`, err));
 worker.on("error", (err) => console.error("[worker] erro:", err));
 

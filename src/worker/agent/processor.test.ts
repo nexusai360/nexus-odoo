@@ -75,7 +75,7 @@ beforeEach(() => {
   });
   mockBuildCloudClientFromDb.mockResolvedValue({ sendText: mockSendText });
   mockSendText.mockResolvedValue(undefined);
-  // Default — todos os recursos ativos em produção (não bloqueia audio/image).
+  // Default , todos os recursos ativos em produção (não bloqueia audio/image).
   mockAgentSettingsFindFirst.mockResolvedValue({
     audioCheckpoint: "PRODUCTION",
     imageCheckpoint: "PRODUCTION",
@@ -83,10 +83,10 @@ beforeEach(() => {
 });
 
 // ──────────────────────────────────────────────
-// Testes — type=text, modo direct
+// Testes , type=text, modo direct
 // ──────────────────────────────────────────────
 
-describe("processAgentJob — type=text, modo direct", () => {
+describe("processAgentJob , type=text, modo direct", () => {
   it("chama runAgent com a mensagem de texto", async () => {
     await processAgentJob(BASE_JOB);
 
@@ -113,10 +113,10 @@ describe("processAgentJob — type=text, modo direct", () => {
 });
 
 // ──────────────────────────────────────────────
-// Testes — type=text, modo n8n_webhook
+// Testes , type=text, modo n8n_webhook
 // ──────────────────────────────────────────────
 
-describe("processAgentJob — type=text, modo n8n_webhook", () => {
+describe("processAgentJob , type=text, modo n8n_webhook", () => {
   const webhookJob: AgentJobData = {
     ...BASE_JOB,
     channelConfig: {
@@ -151,10 +151,10 @@ describe("processAgentJob — type=text, modo n8n_webhook", () => {
 });
 
 // ──────────────────────────────────────────────
-// Testes — type=audio
+// Testes , type=audio
 // ──────────────────────────────────────────────
 
-describe("processAgentJob — type=audio", () => {
+describe("processAgentJob , type=audio", () => {
   const audioBuffer = new ArrayBuffer(512);
   const audioJob: AgentJobData = {
     ...BASE_JOB,
@@ -190,10 +190,10 @@ describe("processAgentJob — type=audio", () => {
 });
 
 // ──────────────────────────────────────────────
-// Testes — runAgent retorna erro
+// Testes , runAgent retorna erro
 // ──────────────────────────────────────────────
 
-describe("processAgentJob — erro do runAgent", () => {
+describe("processAgentJob , erro do runAgent", () => {
   it("modo direct: envia mensagem de erro amigável ao usuário", async () => {
     mockRunAgent.mockResolvedValue({ ok: false, error: "MCP indisponível" });
 

@@ -1,6 +1,6 @@
 // mcp/tools/dominios-vazios/producao-status-dominio.ts
 // Tool MCP: producao_status_dominio
-// Domínio sem dado operacional — resposta honesta estruturada.
+// Domínio sem dado operacional , resposta honesta estruturada.
 import { z } from "zod";
 import type { ToolEntry } from "../../catalog/types.js";
 
@@ -29,7 +29,7 @@ export const producaoStatusDominio: ToolEntry<Input, Output> = {
     operado: false as const,
     registros: 0 as const,
     mensagem:
-      "O domínio Produção existe no Odoo da Matrix mas não é operado — 0 registros. " +
+      "O domínio Produção existe no Odoo da Matrix mas não é operado , 0 registros. " +
       "Quando a Matrix passar a usar o módulo, este domínio ganha tools de consulta.",
   }),
 };

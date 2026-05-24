@@ -1,5 +1,5 @@
 // mcp/__tests__/mocks/__tests__/prisma.test.ts
-// Testes da factory mockPrisma — verifica que retorna métodos esperados e que overrides funcionam.
+// Testes da factory mockPrisma , verifica que retorna métodos esperados e que overrides funcionam.
 
 import { mockPrisma } from "../prisma.js";
 

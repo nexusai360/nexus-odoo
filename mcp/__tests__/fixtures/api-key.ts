@@ -107,7 +107,7 @@ export async function createTestApiKey(
 
 /**
  * Remove uma ApiKey criada em teste.
- * Silencia NotFoundError — idempotente para uso em afterAll.
+ * Silencia NotFoundError , idempotente para uso em afterAll.
  */
 export async function cleanupTestApiKey(
   prisma: PrismaClient,
@@ -116,6 +116,6 @@ export async function cleanupTestApiKey(
   try {
     await prisma.apiKey.delete({ where: { id } });
   } catch {
-    // Ignorar — já removida ou nunca criada
+    // Ignorar , já removida ou nunca criada
   }
 }

@@ -16,7 +16,7 @@ import { CHART_PALETTE, getColorByIndex } from "@/components/charts/colors";
 import { cn } from "@/lib/utils";
 
 /**
- * Forma de dado de uma fatia do donut. Declarada localmente — no nexus-insights
+ * Forma de dado de uma fatia do donut. Declarada localmente , no nexus-insights
  * vinha de `charts/pie-chart`; aqui o donut interativo é auto-contido para não
  * colidir com o `pie-chart.tsx` que o nexus-odoo já tem (F3.5).
  */
@@ -88,7 +88,7 @@ export function DonutTooltipStacked({
     ? formatValue(numericValue)
     : Number.isFinite(numericValue)
       ? numericValue.toLocaleString("pt-BR")
-      : "—";
+      : ",";
   const name = String(entry.name ?? entry.dataKey ?? "");
 
   return (
@@ -110,7 +110,7 @@ export function DonutTooltipStacked({
  * `tooltipPosition`. Mantém z-index alto (50) para ficar acima da legenda
  * dentro do mesmo container.
  *
- * Exportado para testabilidade — não é parte da API pública.
+ * Exportado para testabilidade , não é parte da API pública.
  */
 export function donutTooltipWrapperStyle(
   pos: DonutTooltipPosition,
@@ -187,7 +187,7 @@ export function DonutWithCenter({
       ? formatValue(v)
       : Number.isFinite(v)
         ? v.toLocaleString("pt-BR")
-        : "—";
+        : ",";
     if (!showPercentInTooltip) return base;
     const pct = total > 0 ? ((v / total) * 100).toFixed(1) : "0";
     return `${base} (${pct}%)`;

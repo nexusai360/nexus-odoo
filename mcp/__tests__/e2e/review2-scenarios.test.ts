@@ -1,12 +1,12 @@
 // mcp/__tests__/e2e/review2-scenarios.test.ts
-// Suíte E2E — cenários do Review #2 (spec §7–§10).
+// Suíte E2E , cenários do Review #2 (spec §7,§10).
 //
 // Cenários cobertos:
 //   R1. Tenant cross-leakage: apiKey com tenantId só enxerga tools do catálogo
-//       (catálogo filtrado por apiKey.capabilities — sem leakage de tenant)
-//   R2. Chave expirada — pipeline deve rejeitar (simulado via context expiresAt)
-//   R3. Rotação de chave — chave velha inválida após rotação (mock de lookup)
-//   R4. Hot reload de capabilities — capabilitiesVersion gate
+//       (catálogo filtrado por apiKey.capabilities , sem leakage de tenant)
+//   R2. Chave expirada , pipeline deve rejeitar (simulado via context expiresAt)
+//   R3. Rotação de chave , chave velha inválida após rotação (mock de lookup)
+//   R4. Hot reload de capabilities , capabilitiesVersion gate
 //   R5. Token vazado em payload → redaction no audit
 //   R6. Catálogo filtrado por capability (tools/list)
 //   R7. Método desconhecido → 400 method not found
@@ -28,7 +28,7 @@ import { hasCapability } from "../../auth/capability-check.js";
 import { crmResPartnerCreate as _crmResPartnerCreate } from "../../tools/crm/res-partner-create.js";
 import type { ToolEntry, WriteToolEntry } from "../../catalog/types.js";
 
-// Cast para WriteToolEntry<unknown> — contravariance no handler
+// Cast para WriteToolEntry<unknown> , contravariance no handler
 const crmResPartnerCreate = _crmResPartnerCreate as WriteToolEntry;
 import RedisMock from "ioredis-mock";
 import type Redis from "ioredis";
@@ -69,9 +69,9 @@ afterAll(() => {
 
 // ─── Testes ───────────────────────────────────────────────────────────────────
 
-describe("E2E review2-scenarios — spec §7–§10", () => {
+describe("E2E review2-scenarios , spec §7,§10", () => {
   // R1. Tenant cross-leakage: ApiKey com tenantId só vê tools que passam
-  // pela capability check — não há leakage entre tenants no catálogo
+  // pela capability check , não há leakage entre tenants no catálogo
   it("R1. tenant cross-leakage: chave com tenantId só vê tools autorizadas", () => {
     const apiKeyTenantA = createApiKeyCtx({
       read: ["estoque"],
@@ -106,7 +106,7 @@ describe("E2E review2-scenarios — spec §7–§10", () => {
 
   // R2. Chave expirada: capabilitiesVersion gate bloqueia tools adicionadas
   // após a versão da chave
-  it("R2. chave expirada por versão — capabilitiesVersion gate bloqueia tool", () => {
+  it("R2. chave expirada por versão , capabilitiesVersion gate bloqueia tool", () => {
     // crmResPartnerCreate tem addedInVersion: 2
     const oldKey = createApiKeyCtx({
       read: [],
@@ -123,8 +123,8 @@ describe("E2E review2-scenarios — spec §7–§10", () => {
     expect(allowed).toBe(false);
   });
 
-  // R3. Rotação de chave — checkMode com key nova tem acesso, key velha não
-  it("R3. rotação — chave nova com capabilities atualizadas tem acesso", () => {
+  // R3. Rotação de chave , checkMode com key nova tem acesso, key velha não
+  it("R3. rotação , chave nova com capabilities atualizadas tem acesso", () => {
     const oldKey = createApiKeyCtx({ read: [], write: {}, capabilitiesVersion: 2 });
     const newKey = createApiKeyCtx({ read: [], write: { crm: ["create"] }, capabilitiesVersion: 2 });
 
@@ -136,8 +136,8 @@ describe("E2E review2-scenarios — spec §7–§10", () => {
     expect(resultNew.allowed).toBe(true);
   });
 
-  // R4. Hot reload de capabilities — versão nova de capability expõe tool
-  it("R4. hot reload — chave com capabilitiesVersion atualizado enxerga tool nova", () => {
+  // R4. Hot reload de capabilities , versão nova de capability expõe tool
+  it("R4. hot reload , chave com capabilitiesVersion atualizado enxerga tool nova", () => {
     const staleKey = createApiKeyCtx({
       read: [],
       write: { crm: ["create"] },
@@ -170,7 +170,7 @@ describe("E2E review2-scenarios — spec §7–§10", () => {
       name: "Parceiro Teste",
       token: "super-secret-token",
       password: "senha123",
-      // cnpj_cpf contém "cpf" no nome — é redactado pelo regex
+      // cnpj_cpf contém "cpf" no nome , é redactado pelo regex
       cnpj_cpf: "12.345.678/0001-99",
       secret: "mysecret",
       email: "test@example.com",
@@ -198,14 +198,14 @@ describe("E2E review2-scenarios — spec §7–§10", () => {
   });
 
   // R6. Catálogo filtrado por capability em tools/list
-  it("R6. catálogo filtrado — chave sem capabilities vê catálogo vazio", () => {
+  it("R6. catálogo filtrado , chave sem capabilities vê catálogo vazio", () => {
     const apiKey = createApiKeyCtx({ read: [], write: {}, capabilitiesVersion: 2 });
     const response = handleExternalToolList(null, CATALOG as any, apiKey);
     const tools = (response.result as { tools: unknown[] }).tools;
     expect(tools).toHaveLength(0);
   });
 
-  it("R6b. catálogo filtrado — chave com read:estoque vê tool de estoque", () => {
+  it("R6b. catálogo filtrado , chave com read:estoque vê tool de estoque", () => {
     const apiKey = createApiKeyCtx({ read: ["estoque"], write: {}, capabilitiesVersion: 2 });
     const response = handleExternalToolList(null, CATALOG as any, apiKey);
     const tools = (response.result as { tools: { name: string }[] }).tools;
@@ -213,7 +213,7 @@ describe("E2E review2-scenarios — spec §7–§10", () => {
     expect(tools.map((t) => t.name)).not.toContain("crm.res_partner.create");
   });
 
-  it("R6c. catálogo filtrado — chave com write crm:create vê write tool", () => {
+  it("R6c. catálogo filtrado , chave com write crm:create vê write tool", () => {
     const apiKey = createApiKeyCtx({ read: [], write: { crm: ["create"] }, capabilitiesVersion: 2 });
     const response = handleExternalToolList(null, CATALOG as any, apiKey);
     const tools = (response.result as { tools: { name: string }[] }).tools;

@@ -13,7 +13,7 @@ export interface ActiveLlmConfig {
   id: string;
   provider: LlmProvider;
   model: string;
-  /** API key descriptografada — manter em memória, nunca expor pela rede. */
+  /** API key descriptografada , manter em memória, nunca expor pela rede. */
   apiKey: string;
   credentialId: string | null;
   credentialLabel: string | null;
@@ -56,7 +56,7 @@ export async function getActiveLlmConfig(): Promise<ActiveLlmConfig | null> {
 
   if (!row.credential) {
     throw new Error(
-      `Config LLM ativa (id=${row.id}) está sem credencial — configure uma API key.`,
+      `Config LLM ativa (id=${row.id}) está sem credencial , configure uma API key.`,
     );
   }
 

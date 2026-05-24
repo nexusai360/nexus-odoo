@@ -1,7 +1,7 @@
 // src/worker/fatos/fato-apuracao.ts
 // FONTE: raw_sped_apuracao (modelo sped.apuracao).
 // ESCOPO: apurações fiscais (ICMS-IPI e PIS-COFINS) da Matrix Fitness Group.
-// CYCLE: incremental — volume baixo (~8 apurações).
+// CYCLE: incremental , volume baixo (~8 apurações).
 import type { PrismaClient } from "../../generated/prisma/client";
 import { relNome, type OdooM2O } from "./odoo-relational";
 import { markFatoBuilt } from "./fato-build-state";

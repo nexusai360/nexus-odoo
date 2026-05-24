@@ -56,7 +56,7 @@ describe("estoque_concentracao", () => {
   it("estado:'ok' quando famílias vazias mas marcas preenchidas (paridade dashboard F3)", async () => {
     // Cenário: família.length===0, marca.length>0.
     // Dashboard usa regra conjuntiva (&&): não é "vazio".
-    // MCP deve concordar — predicado customizado garante paridade.
+    // MCP deve concordar , predicado customizado garante paridade.
     const now = new Date("2026-05-01T12:00:00Z");
     const ctx = makeCtx();
     (ctx.prisma.fatoBuildState.findMany as jest.Mock).mockResolvedValue([
@@ -71,7 +71,7 @@ describe("estoque_concentracao", () => {
         { marcaNome: "Matrix", _sum: { vrSaldo: 1000 } },
       ]);
     const result = await estoqueConcentracao.handler({}, ctx);
-    // Deve ser "ok", não "vazio" — paridade com dashboard
+    // Deve ser "ok", não "vazio" , paridade com dashboard
     expect(result).toMatchObject({ estado: "ok" });
     if (result.estado !== "preparando") {
       expect(result.dados.familia).toHaveLength(0);

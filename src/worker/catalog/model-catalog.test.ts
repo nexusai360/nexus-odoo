@@ -39,7 +39,7 @@ describe("model-catalog", () => {
     expect(MODEL_CATALOG).toHaveLength(114);
   });
 
-  // discovery/output/ é gitignored (saídas brutas locais — ver .gitignore).
+  // discovery/output/ é gitignored (saídas brutas locais , ver .gitignore).
   // Em dev, com os field-maps presentes, valida-se que o catálogo bate com
   // o discovery; em CI o diretório não existe e o caso é pulado.
   const discoveryDir = path.join(process.cwd(), "discovery/output/modelos");

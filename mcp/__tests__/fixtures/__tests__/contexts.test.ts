@@ -1,5 +1,5 @@
 // mcp/__tests__/fixtures/__tests__/contexts.test.ts
-// Testes das factories de contexto usadas nos testes dos blocos B–J do F4 Onda 2.
+// Testes das factories de contexto usadas nos testes dos blocos B,J do F4 Onda 2.
 
 import {
   baseApiKeyContext,

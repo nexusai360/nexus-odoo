@@ -1,8 +1,8 @@
 // mcp/tools/caminho3/sql-guard.ts
-// Verificação estrutural de SQL por AST — defesa-em-profundidade para o Caminho 3c.
+// Verificação estrutural de SQL por AST , defesa-em-profundidade para o Caminho 3c.
 //
 // Abordagem: parse via pgsql-parser (libpg-query WASM, parser do PostgreSQL real).
-// NÃO usa blacklist de strings — valida a estrutura do AST diretamente.
+// NÃO usa blacklist de strings , valida a estrutura do AST diretamente.
 //
 // Regras (todas devem ser satisfeitas para aprovar):
 //   (a) O array stmts tem comprimento 1 (sem multi-statement).
@@ -10,7 +10,7 @@
 //   (c) O SelectStmt NÃO tem intoClause (rejeita SELECT INTO).
 //   (d) O SelectStmt NÃO tem lockingClause (rejeita SELECT ... FOR UPDATE/FOR SHARE).
 //   (e) Se há withClause (CTE), cada CTE deve ter ctequery cujo nó-raiz seja SelectStmt
-//       — rejeita CTEs data-modifying (WITH ... DELETE/INSERT/UPDATE RETURNING).
+//       , rejeita CTEs data-modifying (WITH ... DELETE/INSERT/UPDATE RETURNING).
 //
 // O role nexus_mcp_bi é o controle primário de read-only; esta verificação
 // AST é defesa-em-profundidade (achado N1 da SPEC v3).
@@ -26,7 +26,7 @@ export type SqlGuardResult =
  * Valida que `sql` é uma instrução SELECT única e sem INTO, sem FOR UPDATE/FOR SHARE,
  * e sem CTEs data-modifying.
  * Retorna `{ ok: true }` ou `{ ok: false, motivo }`.
- * Nunca lança — exceções do parser são capturadas e retornadas como `{ ok: false }`.
+ * Nunca lança , exceções do parser são capturadas e retornadas como `{ ok: false }`.
  *
  * Também remove ponto-e-vírgula final antes do parse para evitar que um `;`
  * solitário quebre o wrap de subquery ou seja interpretado como multi-statement.
@@ -79,7 +79,7 @@ export async function validarSqlSelect(sql: string): Promise<SqlGuardResult> {
   }
 
   // (d) sem lockingClause (rejeita SELECT ... FOR UPDATE / FOR SHARE)
-  // lockingClause adquire locks de linha — semântica de escrita incompatível com read-only.
+  // lockingClause adquire locks de linha , semântica de escrita incompatível com read-only.
   if (selectStmt["lockingClause"]) {
     return {
       ok: false,
@@ -116,18 +116,18 @@ export async function validarSqlSelect(sql: string): Promise<SqlGuardResult> {
 
 /**
  * Retorna o SQL normalizado (sem ponto-e-vírgula final) para uso seguro no wrap de subquery.
- * Usar junto com `validarSqlSelect` — chamar após a validação ser aprovada.
+ * Usar junto com `validarSqlSelect` , chamar após a validação ser aprovada.
  *
  * Para queries CTE (WITH ...), o wrap `SELECT * FROM (...) AS _bi_subquery` não funciona em
  * PostgreSQL (CTEs no topo não podem ser subquery aninhada). Nesses casos, o SQL deve ser
- * executado diretamente sem wrap — o cap é aplicado via LIMIT inline no próprio SQL ou via
+ * executado diretamente sem wrap , o cap é aplicado via LIMIT inline no próprio SQL ou via
  * leitura das primeiras N linhas do result. O handler de bi-consulta-avancada usa esta função
  * para detectar o caso CTE e ajustar a estratégia de cap.
  */
 export function normalizarSql(sql: string): { sql: string; temCte: boolean } {
   const sqlNormalizado = sql.trimEnd().replace(/;+$/, "").trimEnd();
   // Detecção heurística de CTE: começa com WITH (case-insensitive) seguido de espaço/newline.
-  // Suficiente para o propósito — o guard AST já validou a estrutura real.
+  // Suficiente para o propósito , o guard AST já validou a estrutura real.
   const temCte = /^\s*with\s/i.test(sqlNormalizado);
   return { sql: sqlNormalizado, temCte };
 }

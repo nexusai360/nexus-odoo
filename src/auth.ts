@@ -11,7 +11,7 @@ const loginSchema = z.object({
   password: z.string().min(1, "Senha é obrigatória"),
 });
 
-// auth.ts roda em Node Runtime — aqui mora o callback `jwt`, que consulta o
+// auth.ts roda em Node Runtime , aqui mora o callback `jwt`, que consulta o
 // Prisma para manter o token fresco. O middleware (Edge) usa apenas authConfig.
 export const { handlers, auth, signIn, signOut } = NextAuth({
   ...authConfig,
@@ -62,7 +62,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
           }
         } catch (err) {
           // Falha transitória do banco: mantém o token anterior em vez de
-          // derrubar todas as sessões. Logado para não silenciar de vez —
+          // derrubar todas as sessões. Logado para não silenciar de vez ,
           // se recorrente, indica problema de conectividade com o Postgres.
           console.error("[auth.jwt] falha ao revalidar token:", err);
         }

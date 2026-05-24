@@ -1,4 +1,4 @@
-// Helpers PUROS de datetime — sem dependências de DB ou Node-only.
+// Helpers PUROS de datetime , sem dependências de DB ou Node-only.
 // Pode ser importado por Client Components, Server Components, libs.
 //
 // A versão server-side completa (com leitura de settings da plataforma)
@@ -36,7 +36,7 @@ export const DEFAULT_TZ = "America/Sao_Paulo";
 export const DEFAULT_LOCALE = "pt-BR";
 
 // ---------------------------------------------------------------------------
-// Helper canônico v0.42 — fonte única da verdade para cálculo de período.
+// Helper canônico v0.42 , fonte única da verdade para cálculo de período.
 // ---------------------------------------------------------------------------
 //
 // Regra suprema do projeto (definida pelo usuário):
@@ -182,14 +182,14 @@ export function getCanonicalPeriod(args: CanonicalPeriodInput): CanonicalPeriod 
 }
 
 // ---------------------------------------------------------------------------
-// `getPeriodInTz` — wrapper legado (compat). Usa `getCanonicalPeriod` por baixo.
+// `getPeriodInTz` , wrapper legado (compat). Usa `getCanonicalPeriod` por baixo.
 // ---------------------------------------------------------------------------
 
 /**
  * Calcula o intervalo (em UTC) correspondente ao "dia/semana/mês" no
  * timezone informado.
  *
- * Para `semana_atual` é ISO week (segunda-feira) — REGRA CANÔNICA v0.42:
+ * Para `semana_atual` é ISO week (segunda-feira) , REGRA CANÔNICA v0.42:
  * sempre segunda → próxima segunda, sem `rolling`.
  *
  * @deprecated em favor de `getCanonicalPeriod`. Mantido para compat.

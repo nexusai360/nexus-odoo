@@ -1,10 +1,10 @@
 "use server";
 
 /**
- * Server Actions para consultas de uso de LLM — expostas para Client Components.
+ * Server Actions para consultas de uso de LLM , expostas para Client Components.
  *
  * Todas as actions validam que o usuário é super_admin ou admin antes de retornar
- * dados (consumo é informação sensível de custo — SPEC §8.2).
+ * dados (consumo é informação sensível de custo , SPEC §8.2).
  */
 
 import { redirect } from "next/navigation";

@@ -1,5 +1,5 @@
 /**
- * Extração de texto de documentos da base de conhecimento — SERVER-ONLY.
+ * Extração de texto de documentos da base de conhecimento , SERVER-ONLY.
  *
  * Importa `pdf-parse`, `mammoth` (DOCX) e `xlsx`, que são Node-only; nunca
  * importar este arquivo de um client component. As constantes/tipos puros
@@ -29,7 +29,7 @@ export async function extractKbText(
 ): Promise<string> {
   if (kind === "PDF") {
     // Importa o módulo interno (lib/pdf-parse.js) e não o entry index.js do
-    // pacote — o index.js de pdf-parse v1 roda um auto-teste de debug no
+    // pacote , o index.js de pdf-parse v1 roda um auto-teste de debug no
     // top-level que quebra em ambiente de bundle.
     const mod = (await import("pdf-parse/lib/pdf-parse.js")) as unknown as {
       default: (data: Buffer) => Promise<{ text: string }>;
@@ -74,7 +74,7 @@ export async function extractKbText(
       .join("\n");
   }
 
-  // TXT, MARKDOWN, XML, YAML — texto cru já é legível para o modelo.
+  // TXT, MARKDOWN, XML, YAML , texto cru já é legível para o modelo.
   return raw.trim();
 }
 

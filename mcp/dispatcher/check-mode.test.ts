@@ -1,5 +1,5 @@
 // mcp/dispatcher/check-mode.test.ts
-// TDD para checkMode (Bloco F — F5).
+// TDD para checkMode (Bloco F , F5).
 import { z } from "zod";
 import { checkMode } from "./check-mode.js";
 import type { ToolEntry, WriteToolEntry } from "../catalog/types.js";
@@ -60,7 +60,7 @@ function makeWriteTool(module: string, action: string, addedInVersion?: number):
   };
 }
 
-describe("checkMode — WriteToolEntry", () => {
+describe("checkMode , WriteToolEntry", () => {
   it("nega write tool via auth interna (forbidden_via_internal_auth)", () => {
     const tool = makeWriteTool("comercial", "create_order");
     const result = checkMode(tool, { mode: "internal", userId: "u1" });
@@ -94,7 +94,7 @@ describe("checkMode — WriteToolEntry", () => {
   });
 });
 
-describe("checkMode — ToolEntry read via auth externa", () => {
+describe("checkMode , ToolEntry read via auth externa", () => {
   it("permite read tool com domínio na lista de read da chave", () => {
     const tool = makeReadTool("estoque");
     const apiKey = makeApiKey();
@@ -127,8 +127,8 @@ describe("checkMode — ToolEntry read via auth externa", () => {
   });
 });
 
-describe("checkMode — ToolEntry read via auth interna", () => {
-  it("delega ao caller (allowed:true) — validação de role/domínio é da visibleTools legada", () => {
+describe("checkMode , ToolEntry read via auth interna", () => {
+  it("delega ao caller (allowed:true) , validação de role/domínio é da visibleTools legada", () => {
     const tool = makeReadTool("estoque");
     const result = checkMode(tool, { mode: "internal", userId: "u1" });
     expect(result.allowed).toBe(true);

@@ -62,7 +62,7 @@ describe("processDirectedSync", () => {
     });
   });
 
-  describe("res.partner — create com snapshotAfter", () => {
+  describe("res.partner , create com snapshotAfter", () => {
     it("deve fazer upsert com o snapshotAfter fornecido", async () => {
       const deps = makeDeps();
       const snapshot = { id: 1, name: "Acme", write_date: "2025-01-01 00:00:00" };
@@ -87,7 +87,7 @@ describe("processDirectedSync", () => {
     });
   });
 
-  describe("res.partner — update sem snapshotAfter (fallback Odoo)", () => {
+  describe("res.partner , update sem snapshotAfter (fallback Odoo)", () => {
     it("deve buscar campos do Odoo e fazer upsert", async () => {
       const deps = makeDeps();
       const job = makeJob({
@@ -104,7 +104,7 @@ describe("processDirectedSync", () => {
     });
   });
 
-  describe("res.partner — delete", () => {
+  describe("res.partner , delete", () => {
     it("deve chamar update com rawDeleted=true", async () => {
       const deps = makeDeps();
       const job = makeJob({
@@ -140,12 +140,12 @@ describe("processDirectedSync", () => {
         requestId: "r5",
         apiKeyId: "k5",
       });
-      // Não deve lançar — P2025 é ignorado graciosamente
+      // Não deve lançar , P2025 é ignorado graciosamente
       await expect(processDirectedSync(job, deps)).resolves.toEqual({ ok: true, processed: 1 });
     });
   });
 
-  describe("res.partner — fallback quando Odoo retorna vazio", () => {
+  describe("res.partner , fallback quando Odoo retorna vazio", () => {
     it("deve pular o registro sem erro quando Odoo.read retorna []", async () => {
       const deps = makeDeps({
         odoo: { read: jest.fn().mockResolvedValue([]) } as unknown as DirectedSyncDeps["odoo"],

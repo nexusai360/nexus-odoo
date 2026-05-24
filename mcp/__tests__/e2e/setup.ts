@@ -3,7 +3,7 @@
 //
 // SKIP ELEGANTE:
 //   - DATABASE_URL: obrigatório para todos os E2E (DB local).
-//   - ODOO_WRITE_USER / ODOO_WRITE_PASSWORD: opcionais — testes que tocam
+//   - ODOO_WRITE_USER / ODOO_WRITE_PASSWORD: opcionais , testes que tocam
 //     Odoo real ficam em describe.skip quando ausentes, exibindo mensagem clara.
 //   - MCP_WRITE_ENABLED: deve ser "true" para testes de write passarem.
 //
@@ -24,7 +24,7 @@ export const writeEnabled = process.env.MCP_WRITE_ENABLED === "true";
 
 /**
  * Emite console.warn descrevendo quais variáveis estão ausentes.
- * Chamado no beforeAll de cada suíte E2E — não lança, apenas informa.
+ * Chamado no beforeAll de cada suíte E2E , não lança, apenas informa.
  */
 export function warnMissingEnv(): void {
   const missing: string[] = [];

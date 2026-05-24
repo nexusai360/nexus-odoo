@@ -1,5 +1,5 @@
 /**
- * Recovery — self-healing do worker frente a indisponibilidade do Odoo.
+ * Recovery , self-healing do worker frente a indisponibilidade do Odoo.
  *
  * Regra: o incremental roda de 3 em 3 min (configurável) e é o "health check"
  * vivo do Tauga. Snapshot (1/dia) e reconcile (1/dia) rodam pouco. Quando o
@@ -8,7 +8,7 @@
  *   - Snapshot / reconcile, se caírem nessa janela, marcam um flag de
  *     "pendente após recovery" no Redis em vez de só falhar.
  *   - O próximo incremental bem-sucedido drena os flags pendentes
- *     enfileirando os jobs em modo "now" — ao final, o estado volta ao
+ *     enfileirando os jobs em modo "now" , ao final, o estado volta ao
  *     normal (3min/24h conforme configurado).
  *
  * Storage: chave `odoo-sync:pending-recovery` no Redis (uma string JSON

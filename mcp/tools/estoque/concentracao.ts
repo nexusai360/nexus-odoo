@@ -1,7 +1,7 @@
 // mcp/tools/estoque/concentracao.ts
 // Tool MCP: estoque_concentracao
-// percentual é shaping — calculado aqui na tool (regra N8), não no núcleo.
-// Sem agruparTopN — o agente recebe a lista completa (sem shaping de gráfico).
+// percentual é shaping , calculado aqui na tool (regra N8), não no núcleo.
+// Sem agruparTopN , o agente recebe a lista completa (sem shaping de gráfico).
 import { z } from "zod";
 import type { ToolEntry } from "../../catalog/types.js";
 import { queryConcentracao } from "@/lib/reports/queries/estoque.js";
@@ -36,7 +36,7 @@ function shape(d: Awaited<ReturnType<typeof queryConcentracao>>) {
   const totalFamilia = d.familiasBruto.reduce((acc, r) => acc + r.valor, 0);
   const totalMarca = d.marcasBruto.reduce((acc, r) => acc + r.valor, 0);
   return {
-    // percentual calculado aqui na tool (regra N8 — shaping fora do núcleo)
+    // percentual calculado aqui na tool (regra N8 , shaping fora do núcleo)
     familia: d.familiasBruto.map((r) => ({
       familia: r.rotulo,
       valor: r.valor,
@@ -47,7 +47,7 @@ function shape(d: Awaited<ReturnType<typeof queryConcentracao>>) {
       valor: r.valor,
       percentual: totalMarca > 0 ? (r.valor / totalMarca) * 100 : 0,
     })),
-    // sem agruparTopN — agente recebe lista completa
+    // sem agruparTopN , agente recebe lista completa
   };
 }
 

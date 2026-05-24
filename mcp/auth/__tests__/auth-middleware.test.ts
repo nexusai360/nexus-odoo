@@ -145,7 +145,7 @@ describe("authenticate", () => {
     });
   });
 
-  describe("D8: mascaramento de token em logs — sem vazar token bruto", () => {
+  describe("D8: mascaramento de token em logs , sem vazar token bruto", () => {
     it("não expõe token bruto na resposta (modo unauthorized)", async () => {
       const cache = createApiKeyCache();
       const result = await authenticate(mockPrisma() as any, cache, {

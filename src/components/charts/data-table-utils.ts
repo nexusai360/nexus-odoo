@@ -1,5 +1,5 @@
 /**
- * Utilitários puros da DataTable — extraídos para facilitar TDD.
+ * Utilitários puros da DataTable , extraídos para facilitar TDD.
  * Sem dependências de React.
  */
 

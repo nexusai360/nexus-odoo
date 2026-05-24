@@ -1,7 +1,7 @@
 "use client";
 
 /**
- * ChatPanel — painel de chat do agente nexus-odoo.
+ * ChatPanel , painel de chat do agente nexus-odoo.
  *
  * Portado de nexus-insights/src/components/nex/nex-chat-panel.tsx.
  * Adaptações principais:
@@ -230,7 +230,7 @@ export function ChatPanel({
         }
 
         // A bolha do assistente só nasce quando o primeiro token chega (ou no
-        // done/error). Até lá fica a loading bubble ou a trilha de progresso —
+        // done/error). Até lá fica a loading bubble ou a trilha de progresso ,
         // nunca um caret "|" órfão. Detectamos "já criado" lendo do próprio
         // `prev` dentro do setMessages (race-free com o batching do React).
         const dropLoading = (list: UiMessage[]) =>
@@ -635,7 +635,7 @@ export function ChatPanel({
           )}
         </div>
 
-        {/* Input bar (G4 + D8) — anexo à esquerda, mic à direita, enviar fora */}
+        {/* Input bar (G4 + D8) , anexo à esquerda, mic à direita, enviar fora */}
         <footer className="border-t border-border bg-background/60 px-3 pt-3 pb-3">
           <form
             onSubmit={(e) => {

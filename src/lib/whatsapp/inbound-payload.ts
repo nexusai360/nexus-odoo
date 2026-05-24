@@ -12,7 +12,7 @@
 import { z } from "zod";
 
 export const inboundSchema = z.object({
-  /** ID da mensagem no WhatsApp — chave de dedup. */
+  /** ID da mensagem no WhatsApp , chave de dedup. */
   messageId: z.string().min(1),
 
   /** Número E.164 do remetente (ex.: "+5511999999999"). */

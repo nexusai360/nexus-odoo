@@ -1,7 +1,7 @@
 "use client";
 
 /**
- * ProgressTrail — trilha compacta "o que o agente está fazendo".
+ * ProgressTrail , trilha compacta "o que o agente está fazendo".
  *
  * Mostra os passos de consulta do turno atual em linguagem genérica de
  * operação (ex.: "Consultando faturamento"), sem nunca expor id de tool,

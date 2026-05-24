@@ -1046,7 +1046,7 @@ export function McpDocsContent({ catalog, mcpUrl }: Props) {
 
         <div className="h-px bg-border" />
 
-        {/* Como começar — modo externo */}
+        {/* Como começar , modo externo */}
         <motion.div variants={itemVariants} id="como-comecar" className="space-y-5 scroll-mt-24">
           <SectionTitle icon={ArrowRight} color="text-violet-500">
             Como começar
@@ -1122,7 +1122,7 @@ export function McpDocsContent({ catalog, mcpUrl }: Props) {
 
         <div className="h-px bg-border" />
 
-        {/* Autenticação — modo externo */}
+        {/* Autenticação , modo externo */}
         <motion.div variants={itemVariants} id="auth" className="space-y-5 scroll-mt-24">
           <SectionTitle icon={Key} color="text-amber-500">
             Autenticação
@@ -1157,7 +1157,7 @@ export function McpDocsContent({ catalog, mcpUrl }: Props) {
 
         <div className="h-px bg-border" />
 
-        {/* Headers obrigatórios — modo externo */}
+        {/* Headers obrigatórios , modo externo */}
         <motion.div variants={itemVariants} id="headers" className="space-y-5 scroll-mt-24">
           <SectionTitle icon={Hash} color="text-violet-500">
             Headers obrigatórios
@@ -1233,7 +1233,7 @@ requests.post(
 
         <div className="h-px bg-border" />
 
-        {/* Fluxo de chamada — modo externo */}
+        {/* Fluxo de chamada , modo externo */}
         <motion.div variants={itemVariants} id="flow" className="space-y-5 scroll-mt-24">
           <SectionTitle icon={Zap} color="text-violet-500">
             Fluxo de chamada
@@ -1250,7 +1250,7 @@ requests.post(
 
         <div className="h-px bg-border" />
 
-        {/* Tools de leitura — modo externo */}
+        {/* Tools de leitura , modo externo */}
         <motion.div variants={itemVariants} id="tools-leitura" className="space-y-5 scroll-mt-24">
           <div data-tour="mcp-docs-tools-head" className="space-y-2 scroll-mt-24">
             <SectionTitle icon={Layers} color="text-emerald-500">
@@ -1300,7 +1300,7 @@ requests.post(
 
         <div className="h-px bg-border" />
 
-        {/* Tools de escrita — modo externo */}
+        {/* Tools de escrita , modo externo */}
         <motion.div variants={itemVariants} id="tools-escrita" className="space-y-5 scroll-mt-24">
           <SectionTitle icon={ShieldCheck} color="text-violet-500">
             Tools de escrita
@@ -1342,7 +1342,7 @@ requests.post(
 
         <div className="h-px bg-border" />
 
-        {/* Modo interno — quando usar */}
+        {/* Modo interno , quando usar */}
         <motion.div variants={itemVariants} id="quando-usar" className="space-y-5 scroll-mt-24">
           <SectionTitle icon={Clock} color="text-amber-500">
             Quando usar o modo interno
@@ -1354,7 +1354,7 @@ requests.post(
 
         <div className="h-px bg-border" />
 
-        {/* Modo interno — service token + identidade */}
+        {/* Modo interno , service token + identidade */}
         <motion.div variants={itemVariants} id="service-token" className="space-y-5 scroll-mt-24">
           <SectionTitle icon={Key} color="text-amber-500">
             Service token e identidade
@@ -1389,7 +1389,7 @@ requests.post(
 
         <div className="h-px bg-border" />
 
-        {/* Modo interno — restrição de escrita */}
+        {/* Modo interno , restrição de escrita */}
         <motion.div variants={itemVariants} id="restricao-escrita" className="space-y-5 scroll-mt-24">
           <SectionTitle icon={ShieldCheck} color="text-amber-500">
             Restrição de escrita
@@ -1404,7 +1404,7 @@ requests.post(
 
         <div className="h-px bg-border" />
 
-        {/* Modo interno — exemplo Agente Nex */}
+        {/* Modo interno , exemplo Agente Nex */}
         <motion.div variants={itemVariants} id="exemplo-agente-nex" className="space-y-5 scroll-mt-24">
           <SectionTitle icon={Terminal} color="text-violet-500">
             Exemplo: Agente Nex

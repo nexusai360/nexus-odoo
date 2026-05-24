@@ -11,7 +11,7 @@ interface Props {
 
 /**
  * Container de página.
- * - `compact`: formulario centralizado bem respirado (`max-w-3xl`) — uso na
+ * - `compact`: formulario centralizado bem respirado (`max-w-3xl`) , uso na
  *   configuracao do Agente Nex.
  * - `form`: telas de formulario padrao do agente (`max-w-4xl`).
  * - `agent`: telas mistas do agente que precisam de duas colunas

@@ -1,11 +1,11 @@
 /**
- * CRUD de credenciais de API de LLM — chaves cifradas com AES-256.
+ * CRUD de credenciais de API de LLM , chaves cifradas com AES-256.
  *
  * Portado de nexus-insights/src/lib/llm/credentials.ts. Adaptações:
  *  - Usa `src/lib/prisma.ts` e o model `LlmCredential` da migration F5.
  *  - Usa `src/lib/encryption.ts` (mesmo contrato encrypt/decrypt).
  *  - Grava `AuditLog` via `src/lib/audit.ts`.
- *  - Sem `ensureLlmTables()` — usamos migrations Prisma.
+ *  - Sem `ensureLlmTables()` , usamos migrations Prisma.
  */
 
 import { prisma } from "@/lib/prisma";
@@ -39,7 +39,7 @@ export interface CredentialSummary {
   /** Saldo da conta do provedor (null quando nunca consultado). */
   balance: CredentialBalance | null;
   /**
-   * Consumo acumulado (USD) rastreado por nós — soma de `LlmUsage.costUsd`
+   * Consumo acumulado (USD) rastreado por nós , soma de `LlmUsage.costUsd`
    * das requisições feitas com esta chave. Sempre cresce; não zera ao trocar
    * de chave ativa (cada chave tem o seu próprio total). Task A4.
    */
@@ -80,7 +80,7 @@ async function isLabelTaken(
   return existing !== null;
 }
 
-/** Lista todas as credenciais (chave mascarada — expõe só `last4`). */
+/** Lista todas as credenciais (chave mascarada , expõe só `last4`). */
 export async function listCredentials(
   provider?: LlmProvider,
 ): Promise<CredentialSummary[]> {
@@ -101,7 +101,7 @@ export async function listCredentials(
     },
   });
 
-  // Consumo acumulado por chave — soma de LlmUsage.costUsd agrupada por
+  // Consumo acumulado por chave , soma de LlmUsage.costUsd agrupada por
   // credentialId (Task A4). Best-effort: em falha, consumo exibido como 0.
   const consumoByCredential = new Map<string, number>();
   try {
@@ -143,7 +143,7 @@ export async function listCredentials(
  * em `LlmCredential` (balanceUsd/balanceCurrency/balanceStatus/balanceCheckedAt).
  *
  * Chamado pela tela Chaves de API (atualização manual) e após cada uso da
- * chave pelo agente. Best-effort: nunca lança — erros viram status "error".
+ * chave pelo agente. Best-effort: nunca lança , erros viram status "error".
  */
 export async function refreshCredentialBalance(
   credentialId: string,
@@ -184,7 +184,7 @@ export async function refreshCredentialBalance(
   };
 }
 
-/** Cria uma credencial — chave cifrada com AES-256. */
+/** Cria uma credencial , chave cifrada com AES-256. */
 export async function createCredential(
   input: CreateCredentialInput,
   createdById?: string | null,
@@ -262,7 +262,7 @@ export interface UpdateCredentialInput {
 }
 
 /**
- * Atualiza uma credencial — renomear (label) e/ou trocar a chave (apiKey).
+ * Atualiza uma credencial , renomear (label) e/ou trocar a chave (apiKey).
  * Ao trocar a chave, o saldo persistido é invalidado (precisa nova consulta).
  */
 export async function updateCredential(

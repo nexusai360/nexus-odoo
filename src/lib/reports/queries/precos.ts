@@ -1,7 +1,7 @@
 // src/lib/reports/queries/precos.ts
 //
 // Núcleo de consulta de preços, framework-neutro. Recebe `prisma` + filtros,
-// devolve dados crus — sem `estado`/`freshness`/shaping. `withFreshness` vive
+// devolve dados crus , sem `estado`/`freshness`/shaping. `withFreshness` vive
 // no handler MCP, não aqui.
 // Fonte primária: fato_preco (regras de preço achatadas de
 // sped.tabela.preco.regra).

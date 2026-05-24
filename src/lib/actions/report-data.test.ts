@@ -9,7 +9,7 @@ jest.mock("@/lib/prisma", () => ({
     syncState: { findUnique: jest.fn() },
   },
 }));
-// Mock do núcleo de estoque — os wrappers delegam para ele.
+// Mock do núcleo de estoque , os wrappers delegam para ele.
 // As funções são adicionadas conforme cada task -extr é concluída.
 jest.mock("@/lib/reports/queries/estoque", () => ({
   querySaldoProduto: jest.fn(),

@@ -13,7 +13,7 @@ export interface WhitelistEntry {
 }
 
 export const SYNC_WHITELIST: WhitelistEntry[] = [
-  // OpenAI — apenas modelos de conversacao/raciocinio/codigo + audio do agente.
+  // OpenAI , apenas modelos de conversacao/raciocinio/codigo + audio do agente.
   // NAO inclui: embeddings, tts, image, search-api, realtime, gpt-4 legado.
   { provider: "openai", pattern: /^gpt-5(\.[\w-]+)?$/ },
   { provider: "openai", pattern: /^gpt-4\.1(-mini|-nano)?$/ },
@@ -29,7 +29,7 @@ export const SYNC_WHITELIST: WhitelistEntry[] = [
   // Gemini
   { provider: "gemini", pattern: /^gemini-(1\.5|2\.0|2\.5|3(?:\.\d+)?)-(pro|flash|flash-lite|flash-8b)(-thinking)?(-[\w-]+)?$/ },
 
-  // OpenRouter — padrões por sub-família.
+  // OpenRouter , padrões por sub-família.
   { provider: "openrouter", pattern: /^openai\/(gpt-(5|5\.[\w-]+|4o|4\.[\w-]+)|o[1-9])(-[\w./-]+)?$/ },
   { provider: "openrouter", pattern: /^anthropic\/claude-(opus|sonnet|haiku)-[34]([.-][\w./-]+)?$/ },
   { provider: "openrouter", pattern: /^anthropic\/claude-3\.(5|7)-(sonnet|haiku|opus)(:[\w-]+)?$/ },

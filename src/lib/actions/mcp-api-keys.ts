@@ -6,7 +6,7 @@
  * Gate: super_admin em todas as operações (via requireSuperAdmin).
  * Token gerado: mcp_live_<32 bytes base64url>
  * keyHash = sha256hex(token), last4 = token.slice(-4)
- * O token em claro é devolvido UMA vez na criação — jamais persiste.
+ * O token em claro é devolvido UMA vez na criação , jamais persiste.
  *
  * Spec §15 (Painel MCP) + §5.3 (capabilities).
  */
@@ -279,7 +279,7 @@ export async function updateMcpApiKey(
 
     await publishKeyInvalidated(id);
 
-    // Nota: AuditAction não tem api_key_updated ainda — usa setting_updated como proxy
+    // Nota: AuditAction não tem api_key_updated ainda , usa setting_updated como proxy
     await logAudit({
       userId: me.id,
       action: "setting_updated",
@@ -297,7 +297,7 @@ export async function updateMcpApiKey(
 }
 
 // ──────────────────────────────────────────────────────────────────────────────
-// rotateMcpApiKey (L5.2) — gera novo token com grace period de 24h
+// rotateMcpApiKey (L5.2) , gera novo token com grace period de 24h
 // ──────────────────────────────────────────────────────────────────────────────
 
 export async function rotateMcpApiKey(id: string): Promise<DataResult<CreatedMcpApiKey>> {
@@ -326,7 +326,7 @@ export async function rotateMcpApiKey(id: string): Promise<DataResult<CreatedMcp
 
     await publishKeyInvalidated(id);
 
-    // Nota: AuditAction não tem api_key_rotated ainda — usa setting_updated como proxy
+    // Nota: AuditAction não tem api_key_rotated ainda , usa setting_updated como proxy
     await logAudit({
       userId: me.id,
       action: "setting_updated",

@@ -7,7 +7,7 @@
  * - Cada documento tem um controle de checkpoint de 3 estados
  *   (desativado / playground / produção) no lugar do antigo botão "X".
  * - Clicar num documento abre um modal com o conteúdo extraído.
- * - Cap de caracteres da KB elevado para 50.000.
+ * - Cap de caracteres da KB elevado para 500.000.
  */
 
 import { useMemo, useState, useTransition } from "react";
@@ -49,10 +49,10 @@ import { cn } from "@/lib/utils";
 import { KbUploadDialog } from "./kb-upload-dialog";
 import { KbDocumentViewer } from "./kb-document-viewer";
 
-const KB_TOTAL_CAP = 50_000;
-const KB_WARN_THRESHOLD = 42_000;
+const KB_TOTAL_CAP = 500_000;
+const KB_WARN_THRESHOLD = 420_000;
 
-type DocKind = "TXT" | "PDF" | "URL" | "MARKDOWN" | "CSV" | "XML" | "YAML" | "XLSX" | "DOCX";
+type DocKind = "TXT" | "PDF" | "URL" | "MARKDOWN" | "CSV" | "XML" | "YAML" | "XLSX" | "DOCX" | "JSON";
 
 export interface KbDocSummary {
   id: string;
@@ -88,6 +88,7 @@ const KIND_LABEL: Record<DocKind, string> = {
   YAML: "YAML",
   XLSX: "XLSX",
   DOCX: "DOCX",
+  JSON: "JSON",
 };
 
 export function KbSection({ initial }: KbSectionProps) {
@@ -178,7 +179,7 @@ export function KbSection({ initial }: KbSectionProps) {
           aria-valuenow={progressPct}
           aria-valuemin={0}
           aria-valuemax={100}
-          aria-label={`Uso da base de conhecimento: ${progressPct}% de 50.000 caracteres`}
+          aria-label={`Uso da base de conhecimento: ${progressPct}% de ${KB_TOTAL_CAP.toLocaleString("pt-BR")} caracteres`}
           className="h-2 w-full overflow-hidden rounded-full bg-muted"
         >
           <div
@@ -211,8 +212,8 @@ export function KbSection({ initial }: KbSectionProps) {
           >
             <TriangleAlert className="mt-0.5 h-4 w-4 shrink-0" aria-hidden />
             <p className="leading-snug">
-              Próximo do limite (50.000 chars). Considere remover documentos
-              antes de adicionar novos.
+              Próximo do limite ({KB_TOTAL_CAP.toLocaleString("pt-BR")} chars).
+              Considere remover documentos antes de adicionar novos.
             </p>
           </div>
         ) : null}
@@ -245,7 +246,7 @@ export function KbSection({ initial }: KbSectionProps) {
                   isDeleting && "opacity-60",
                 )}
               >
-                {/* Ícone — cor reflete o checkpoint */}
+                {/* Ícone , cor reflete o checkpoint */}
                 <span
                   className={cn(
                     "flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-muted",
@@ -255,7 +256,7 @@ export function KbSection({ initial }: KbSectionProps) {
                   <Icon className="h-4 w-4" aria-hidden />
                 </span>
 
-                {/* Nome + metadata — clicável para abrir o visualizador */}
+                {/* Nome + metadata , clicável para abrir o visualizador */}
                 <button
                   type="button"
                   onClick={() => setViewerDocId(doc.id)}
@@ -303,7 +304,7 @@ export function KbSection({ initial }: KbSectionProps) {
                   </span>
                 ) : null}
 
-                {/* Excluir — agora à esquerda dos controles de status */}
+                {/* Excluir , agora à esquerda dos controles de status */}
                 <Button
                   type="button"
                   variant="ghost"
@@ -321,7 +322,7 @@ export function KbSection({ initial }: KbSectionProps) {
                   )}
                 </Button>
 
-                {/* Controle de checkpoint — agora à direita (extremidade) */}
+                {/* Controle de checkpoint , agora à direita (extremidade) */}
                 <span className="flex shrink-0 items-center gap-2">
                   {savingCheckpointId === doc.id && (
                     <Loader2

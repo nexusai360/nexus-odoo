@@ -1,7 +1,7 @@
 "use client";
 
 /**
- * IdentityBaseEditor — edição da identidade base do agente (super_admin only).
+ * IdentityBaseEditor , edição da identidade base do agente (super_admin only).
  *
  * Campo grande de texto (textarea mono) com contador de caracteres.
  * Persiste via updateAgentSettings de agent-config.ts.
@@ -19,7 +19,7 @@ import { ExpandableTextarea } from "@/components/ui/expandable-textarea";
 import { updateAgentSettings } from "@/lib/actions/agent-config";
 import { cn } from "@/lib/utils";
 
-const MAX_IDENTITY = 50_000;
+const MAX_IDENTITY = 500_000;
 
 interface IdentityBaseEditorProps {
   initial: {
@@ -89,7 +89,7 @@ export function IdentityBaseEditor({ initial }: IdentityBaseEditorProps) {
         onChange={setIdentityBase}
         maxLength={MAX_IDENTITY}
         rows={8}
-        placeholder="Defina aqui a identidade fixa do Agente Nex — quem ele é, o que faz, contexto da empresa…"
+        placeholder="Defina aqui a identidade fixa do Agente Nex , quem ele é, o que faz, contexto da empresa…"
         disabled={isSaving}
         className="font-mono text-xs"
         aria-describedby="agent-identity-base-help"

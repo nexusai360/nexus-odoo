@@ -5,7 +5,7 @@ import * as React from "react"
 import { cn } from "@/lib/utils"
 
 /**
- * Input de mensagem compartilhado (SPEC §3.10 / §D8) — usado na bubble do
+ * Input de mensagem compartilhado (SPEC §3.10 / §D8) , usado na bubble do
  * Agente Nex e no Playground.
  *
  * É um `<textarea>` de uma única linha que cresce conforme o usuário digita,

@@ -20,7 +20,7 @@ function makeCtx(): WriteToolHandlerCtx {
   };
 }
 
-describe("cadastros.res_partner.update — metadados", () => {
+describe("cadastros.res_partner.update , metadados", () => {
   it("tem id, capability e module corretos", () => {
     expect(cadastrosResPartnerUpdate.id).toBe("cadastros.res_partner.update");
     expect(cadastrosResPartnerUpdate.operation).toBe("write");
@@ -38,7 +38,7 @@ describe("cadastros.res_partner.update — metadados", () => {
   });
 });
 
-describe("cadastros.res_partner.update — inputSchema", () => {
+describe("cadastros.res_partner.update , inputSchema", () => {
   it("aceita id + 1 campo", () => {
     const r = cadastrosResPartnerUpdate.inputSchema.safeParse({ id: 1, phone: "x" });
     expect(r.success).toBe(true);
@@ -72,7 +72,7 @@ describe("cadastros.res_partner.update — inputSchema", () => {
   });
 });
 
-describe("cadastros.res_partner.update — handler", () => {
+describe("cadastros.res_partner.update , handler", () => {
   beforeEach(() => jest.clearAllMocks());
 
   it("chama write + le snapshot before e after", async () => {

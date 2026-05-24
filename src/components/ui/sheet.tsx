@@ -8,7 +8,7 @@ import { type ReactNode } from "react";
 import { cn } from "@/lib/utils";
 
 /**
- * Sheet — drawer lateral genérico (lado direito).
+ * Sheet , drawer lateral genérico (lado direito).
  *
  * Comportamento:
  * - Wrapper sobre `Dialog` da `@base-ui/react/dialog` (focus trap + body scroll

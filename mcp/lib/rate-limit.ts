@@ -1,5 +1,5 @@
 // mcp/lib/rate-limit.ts
-// Rate limiter do servidor MCP — 4f-3 / Bloco G.
+// Rate limiter do servidor MCP , 4f-3 / Bloco G.
 // Padrão: Redis INCR+EXPIRE (pipeline), janela deslizante de 60s.
 //
 // Interface mínima do Redis exigida: .pipeline() que retorna um pipeline com
@@ -7,8 +7,8 @@
 // Compatível com ioredis e com o mock de teste.
 //
 // Exports principais:
-//   checkMcpRateLimit(redis, userId)          — legado, preservado
-//   checkMcpRateLimitFor(redis, scope)        — novo, aceita user | apiKey
+//   checkMcpRateLimit(redis, userId)          , legado, preservado
+//   checkMcpRateLimitFor(redis, scope)        , novo, aceita user | apiKey
 
 export interface RateLimitPipeline {
   incr(key: string): RateLimitPipeline;
@@ -36,8 +36,8 @@ export const RATE_LIMIT_EXCEEDED_MESSAGE =
 
 /**
  * Verifica o rate limit do MCP para um usuário.
- * Chave Redis: `mcp:rate:{userId}` — janela deslizante de 60s, 60 req/min.
- * INCR+EXPIRE em pipeline atômico (best-effort — não usa MULTI/EXEC).
+ * Chave Redis: `mcp:rate:{userId}` , janela deslizante de 60s, 60 req/min.
+ * INCR+EXPIRE em pipeline atômico (best-effort , não usa MULTI/EXEC).
  *
  * Retorna `{ allowed: false, remaining: 0 }` na 61ª chamada ou além.
  */
@@ -69,7 +69,7 @@ export async function checkMcpRateLimit(
 }
 
 // ---------------------------------------------------------------------------
-// checkMcpRateLimitFor — novo, Bloco G
+// checkMcpRateLimitFor , novo, Bloco G
 // ---------------------------------------------------------------------------
 
 /** Escopo para checkMcpRateLimitFor. */

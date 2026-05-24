@@ -1,5 +1,5 @@
 // mcp/tools/dominios-vazios/rh-status-dominio.test.ts
-// TDD — Onda F, Task F.1
+// TDD , Onda F, Task F.1
 import { rhStatusDominio } from "./rh-status-dominio.js";
 
 describe("rhStatusDominio", () => {

@@ -12,7 +12,7 @@ import { prisma } from "@/lib/prisma";
 import type { AgentChannel, MessageRole } from "@/generated/prisma/client";
 import type { ToolCall } from "./llm/types";
 
-/** 24 horas em ms — janela de reutilização de conversa WhatsApp. */
+/** 24 horas em ms , janela de reutilização de conversa WhatsApp. */
 const WHATSAPP_REUSE_WINDOW_MS = 24 * 60 * 60 * 1000;
 
 /** Quantidade padrão de mensagens carregadas no histórico. */
@@ -66,11 +66,11 @@ export function sanitizeHistoryPairs(history: HistoryMessage[]): HistoryMessage[
         result.push(history[i + 1]);
         i += 2;
       } else {
-        // Par incompleto — descarta o assistant com toolCalls
+        // Par incompleto , descarta o assistant com toolCalls
         i++;
       }
     } else if (msg.role === "tool") {
-      // tool sem assistant precedente no result — descarta
+      // tool sem assistant precedente no result , descarta
       // (pode acontecer quando o assistant foi descartado acima)
       const lastInResult = result[result.length - 1];
       if (lastInResult?.role === "assistant" && lastInResult.toolCalls?.length) {
@@ -214,21 +214,24 @@ export async function persistMessage(
 
   // Mensagem assistant com tool calls altera o ranking de uso do usuario,
   // invalida o cache das sugestoes personalizadas para refletir o uso recente
-  // ja na proxima abertura da bubble. Best-effort: erros nao bloqueiam o save.
+  // ja na proxima abertura da bubble. Fire-and-forget: erros (Redis off,
+  // findUnique nao mockado em teste, etc.) nao bloqueiam nem demoram o save.
   if (role === "assistant" && toolCalls && toolCalls.length > 0) {
-    try {
-      const conv = await prisma.conversation.findUnique({
-        where: { id: conversationId },
-        select: { userId: true },
-      });
-      if (conv?.userId) {
-        const { invalidatePersonalizedWelcomeCache } = await import(
-          "@/lib/agent/personalized-suggestions"
-        );
-        await invalidatePersonalizedWelcomeCache(conv.userId);
+    void (async () => {
+      try {
+        const conv = await prisma.conversation.findUnique({
+          where: { id: conversationId },
+          select: { userId: true },
+        });
+        if (conv?.userId) {
+          const { invalidatePersonalizedWelcomeCache } = await import(
+            "@/lib/agent/personalized-suggestions"
+          );
+          await invalidatePersonalizedWelcomeCache(conv.userId);
+        }
+      } catch {
+        // best-effort; cache cai por TTL se a invalidacao falhar
       }
-    } catch {
-      // best-effort; cache cai por TTL se a invalidacao falhar
-    }
+    })();
   }
 }

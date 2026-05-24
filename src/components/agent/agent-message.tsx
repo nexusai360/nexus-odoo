@@ -1,7 +1,7 @@
 "use client";
 
 /**
- * AgentMessage — renderiza uma única mensagem no chat do agente.
+ * AgentMessage , renderiza uma única mensagem no chat do agente.
  *
  * Portado de nexus-insights/src/components/nex/nex-message.tsx.
  * Adaptações:
@@ -179,7 +179,7 @@ function AssistantTrailBlock({
       <button
         type="button"
         onClick={onToggle}
-        disabled={!onToggle && !streaming}
+        disabled={!onToggle}
         aria-expanded={expanded}
         aria-controls="agent-trail-list"
         className={cn(

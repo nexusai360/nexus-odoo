@@ -20,7 +20,7 @@ export interface EmptyChartStateProps {
  * Substitui charts vazios por um placeholder explicativo, evitando o
  * anti-pattern de mostrar eixos/legenda sem dados.
  *
- * Cumpre `empty-data-state` (Charts & Data) — mensagem clara + ícone semântico,
+ * Cumpre `empty-data-state` (Charts & Data) , mensagem clara + ícone semântico,
  * com altura preservada para evitar layout shift.
  */
 export function EmptyChartState({

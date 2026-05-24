@@ -87,7 +87,7 @@ export function AppearanceCard({ initialTheme }: AppearanceCardProps) {
                 type="button"
                 role="radio"
                 aria-checked={selected}
-                aria-label={`${option.label} — ${option.description}`}
+                aria-label={`${option.label} , ${option.description}`}
                 onClick={() => handleSelect(option.value)}
                 disabled={isPending}
                 className={[

@@ -87,13 +87,14 @@ describe("composeSystemPrompt", () => {
 
   test("KB com doc grande → trunca e adiciona marker", () => {
     const cfg: AgentPromptConfig = { ...baseConfig, kbEnabled: true };
-    // Cap da KB é 50.000 chars — doc maior é truncado.
-    const bigText = "x".repeat(60_000);
+    // Cap da KB foi elevado para 500.000 chars; doc maior continua sendo
+    // truncado com marker. Teste usa 600k para garantir overflow do cap.
+    const bigText = "x".repeat(600_000);
     const docs: KbDocSnippet[] = [{ name: "Grande.txt", extractedText: bigText }];
     const result = composeSystemPrompt(cfg, docs);
     expect(result).toContain("[...truncado...]");
-    // Resultado total não deve explodir o prompt.
-    expect(result.length).toBeLessThan(75_000);
+    // Resultado total nao deve explodir o prompt acima de uma folga sobre o cap.
+    expect(result.length).toBeLessThan(550_000);
   });
 
   test("terminology → injeta bloco Terminologia", () => {
@@ -136,7 +137,7 @@ describe("composeSystemPrompt", () => {
   });
 });
 
-describe("IDENTITY_BASE — melhorias de comportamento do Agente Nex", () => {
+describe("IDENTITY_BASE , melhorias de comportamento do Agente Nex", () => {
   test("traz a política de desambiguação com exemplos", () => {
     expect(IDENTITY_BASE).toContain("[DESAMBIGUAÇÃO]");
     expect(IDENTITY_BASE.toLowerCase()).toContain("pergunte de volta");
@@ -164,7 +165,7 @@ describe("IDENTITY_BASE — melhorias de comportamento do Agente Nex", () => {
   });
 });
 
-describe("DEFAULT_GUARDRAILS — segurança da informação", () => {
+describe("DEFAULT_GUARDRAILS , segurança da informação", () => {
   test("bloqueia perguntas sobre arquitetura e chave de API", () => {
     const joined = DEFAULT_GUARDRAILS.join(" ").toLowerCase();
     expect(joined).toContain("arquitetura");
@@ -172,7 +173,7 @@ describe("DEFAULT_GUARDRAILS — segurança da informação", () => {
   });
 });
 
-describe("composeSystemPrompt — sugestoes de desambiguacao", () => {
+describe("composeSystemPrompt , sugestoes de desambiguacao", () => {
   test("instrucao de sugestoes cobre desambiguacao e o cap configuravel", () => {
     const out = composeSystemPrompt(
       { ...baseConfig, suggestionsEnabled: true, maxSuggestions: 3 },

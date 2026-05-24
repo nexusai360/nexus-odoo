@@ -18,7 +18,7 @@ const RAW_REAL_SALDO = {
 };
 
 describe("mapSaldoFinanceiroRow", () => {
-  it("extrai os campos do registro raw real de saldo bancário (C1+C2 — fonte real)", () => {
+  it("extrai os campos do registro raw real de saldo bancário (C1+C2 , fonte real)", () => {
     const result = mapSaldoFinanceiroRow(RAW_REAL_SALDO);
     // C1: bancoId vem de banco_id[0], não de raw.id (1142 seria errado).
     expect(result.bancoId).toBe(4);
@@ -33,7 +33,7 @@ describe("mapSaldoFinanceiroRow", () => {
     expect(result.saldo).toBe(-971197.61);
   });
 
-  it("tolera campos ausentes — valores monetários viram 0", () => {
+  it("tolera campos ausentes , valores monetários viram 0", () => {
     // banco_id false = many2one vazio no Odoo (sem relacionamento)
     const raw = { id: 5, banco_id: false };
     const result = mapSaldoFinanceiroRow(raw);
@@ -48,12 +48,12 @@ describe("mapSaldoFinanceiroRow", () => {
     expect(result.saldo).toBe(0);
   });
 
-  it("NÃO produz atualizadoEm (decisão N5 — @default(now()) no schema)", () => {
+  it("NÃO produz atualizadoEm (decisão N5 , @default(now()) no schema)", () => {
     const result = mapSaldoFinanceiroRow(RAW_REAL_SALDO);
     expect(result).not.toHaveProperty("atualizadoEm");
   });
 
-  it("I2: data '2026-05-14' parseada como hora local — não desloca para 2026-05-13", () => {
+  it("I2: data '2026-05-14' parseada como hora local , não desloca para 2026-05-13", () => {
     const result = mapSaldoFinanceiroRow({ ...RAW_REAL_SALDO, data: "2026-05-14" });
     expect(result.dataReferencia?.getDate()).toBe(14);
   });
@@ -84,7 +84,7 @@ describe("rebuildFatoFinanceiroSaldo", () => {
     expect(markFatoBuilt).toHaveBeenCalledWith(tx, "fato_financeiro_saldo");
   });
 
-  it("createMany recebe data: mapped com bancoId=banco_id[0] (C1 — não raw.id)", async () => {
+  it("createMany recebe data: mapped com bancoId=banco_id[0] (C1 , não raw.id)", async () => {
     const tx = {
       fatoFinanceiroSaldo: {
         deleteMany: jest.fn().mockResolvedValue(undefined),

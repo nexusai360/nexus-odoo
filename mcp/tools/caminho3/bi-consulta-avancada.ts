@@ -1,19 +1,19 @@
 // mcp/tools/caminho3/bi-consulta-avancada.ts
-// Tool MCP: bi_consulta_avancada (Caminho 3c — executor SQL read-only)
+// Tool MCP: bi_consulta_avancada (Caminho 3c , executor SQL read-only)
 //
 // Recebe um SQL pronto do agente e o executa sob o role nexus_mcp_bi (read-only).
-// O text-to-SQL é responsabilidade do agente da F5 — esta tool apenas executa.
+// O text-to-SQL é responsabilidade do agente da F5 , esta tool apenas executa.
 //
 // Gate: só super_admin e admin veem e invocam esta tool.
-// sempreVisivel: true — visibilidade não depende de domínio, apenas de role.
+// sempreVisivel: true , visibilidade não depende de domínio, apenas de role.
 //
 // Nota de auditoria (achado R2-I4):
-//   O audit de params é automático — o pipeline do server.ts grava o rawInput
+//   O audit de params é automático , o pipeline do server.ts grava o rawInput
 //   ({ sql }) em McpAuditLog.params antes mesmo de chamar o handler. Nenhum
 //   código de audit é necessário aqui.
 //
 // Nota de outputSchema (achado R2-I6):
-//   O outputSchema tem SOMENTE a forma tabular de sucesso — sem variante de erro.
+//   O outputSchema tem SOMENTE a forma tabular de sucesso , sem variante de erro.
 //   Os caminhos de recusa (guard) e indisponibilidade (pool null) LANÇAM exceções,
 //   que o pipeline do server.ts captura e mapeia para o outcome correto.
 //   Isso é intencional e diferente das tools de freshness (que retornam { estado }).
@@ -34,7 +34,7 @@ const outputSchema = z.object({
   colunas: z.array(z.string()),
   linhas: z.array(z.record(z.string(), z.unknown())),
   // linhasRetornadas: quantidade efetivamente retornada (≤ 1000).
-  // Quando truncado=true, este número NÃO representa o total real da query —
+  // Quando truncado=true, este número NÃO representa o total real da query ,
   // apenas o que foi devolvido após o cap. O agente deve informar o usuário disso.
   linhasRetornadas: z.number().int(),
   truncado: z.boolean(),
@@ -46,7 +46,7 @@ type Output = z.infer<typeof outputSchema>;
 
 export const biConsultaAvancada: ToolEntry<Input, Output> = {
   id: "bi_consulta_avancada",
-  // dominio ausente intencionalmente — tool de domínio-neutro (sempreVisivel: true).
+  // dominio ausente intencionalmente , tool de domínio-neutro (sempreVisivel: true).
   sempreVisivel: true,
   gatedRoles: ["super_admin", "admin"],
   descricao:
@@ -81,7 +81,7 @@ export const biConsultaAvancada: ToolEntry<Input, Output> = {
     //     SQL executado via pg cru (pool.query), não $queryRawUnsafe.
     //
     //     Estratégia de cap (I-3):
-    //     - Queries sem CTE: envelopar em subquery com LIMIT — forma canônica.
+    //     - Queries sem CTE: envelopar em subquery com LIMIT , forma canônica.
     //     - Queries com CTE (WITH ...): o PostgreSQL não aceita CTE dentro de subquery
     //       aninhada (`SELECT * FROM (WITH ... SELECT ...) AS x`). Nesse caso, executar
     //       o SQL diretamente e cortar o resultado em memória.
@@ -106,7 +106,7 @@ export const biConsultaAvancada: ToolEntry<Input, Output> = {
       aviso:
         "Consulta dinâmica não auditada como tool semântica. " +
         "Resultados não são filtrados pelo RBAC de domínio." +
-        (truncado ? " Resultado truncado em 1000 linhas — total real da query não disponível." : ""),
+        (truncado ? " Resultado truncado em 1000 linhas , total real da query não disponível." : ""),
     });
   },
 };

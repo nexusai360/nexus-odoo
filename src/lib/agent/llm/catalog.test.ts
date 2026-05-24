@@ -1,6 +1,6 @@
 import { MODELS, getModel, listModels, calculateCost } from "./catalog";
 
-describe("catalog — fonte única de modelos e pricing", () => {
+describe("catalog , fonte única de modelos e pricing", () => {
   test("todos os modelos têm id, provider, tier e pricing (ou null explícito)", () => {
     for (const m of MODELS) {
       expect(m.id).toBeTruthy();
@@ -52,7 +52,7 @@ describe("catalog — fonte única de modelos e pricing", () => {
     if (modelWithoutPricing) {
       const result = calculateCost(modelWithoutPricing.id, 1000, 500);
       expect(result.costKnown).toBe(false);
-      // costUsd pode ser null ou 0 — importante: não ser positivo silencioso
+      // costUsd pode ser null ou 0 , importante: não ser positivo silencioso
     }
     // id desconhecido também retorna costKnown=false
     const result = calculateCost("id-nao-existe", 1000, 500);
@@ -72,7 +72,7 @@ describe("catalog — fonte única de modelos e pricing", () => {
     // BUG 3: id do catálogo deve bater com seu próprio pricing dentro do MODELS
     for (const m of MODELS) {
       if (m.pricing !== null) {
-        // O pricing está inline — sem descasamento por definição
+        // O pricing está inline , sem descasamento por definição
         expect(m.pricing.inputPerMTok).toBeGreaterThanOrEqual(0);
         expect(m.pricing.outputPerMTok).toBeGreaterThanOrEqual(0);
       }

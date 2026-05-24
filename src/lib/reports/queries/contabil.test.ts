@@ -74,7 +74,7 @@ describe("queryPlanoDeContas", () => {
 // ---------------------------------------------------------------------------
 
 describe("queryEstruturaConta", () => {
-  it("(a) conta com filhas — retorna conta + filhas", async () => {
+  it("(a) conta com filhas , retorna conta + filhas", async () => {
     const contaMock = { odooId: 5, codigo: "1.1", nome: "ATIVO CIRCULANTE", tipo: "S", contaPaiNome: "1 - ATIVO [D]" };
     const filhasMock = [{ odooId: 100, codigo: "1.1.1", nome: "CAIXA", tipo: "A" }];
     const prisma = {
@@ -92,7 +92,7 @@ describe("queryEstruturaConta", () => {
     expect(result.filhas[0].odooId).toBe(100);
   });
 
-  it("(b) conta folha sem filhas — retorna conta + filhas vazio, estado ok", async () => {
+  it("(b) conta folha sem filhas , retorna conta + filhas vazio, estado ok", async () => {
     const contaMock = { odooId: 100, codigo: "1.1.1", nome: "CAIXA", tipo: "A", contaPaiNome: "ATIVO CIRCULANTE" };
     const prisma = {
       fatoContaContabil: {
@@ -106,7 +106,7 @@ describe("queryEstruturaConta", () => {
     expect(result.filhas).toHaveLength(0);
   });
 
-  it("(c) conta inexistente — conta null, filhas vazio", async () => {
+  it("(c) conta inexistente , conta null, filhas vazio", async () => {
     const prisma = {
       fatoContaContabil: {
         findUnique: jest.fn().mockResolvedValue(null),

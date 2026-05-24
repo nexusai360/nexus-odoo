@@ -38,7 +38,7 @@ export interface OdooClientOptions {
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
-/** Erro HTTP não-retryável (4xx) — propaga sem novas tentativas. */
+/** Erro HTTP não-retryável (4xx) , propaga sem novas tentativas. */
 class HttpClientError extends OdooError {}
 
 export class OdooClient {
@@ -91,7 +91,7 @@ export class OdooClient {
         } finally {
           clearTimeout(timer);
         }
-        // 4xx é erro definitivo (credencial/rota inválida) — não adianta
+        // 4xx é erro definitivo (credencial/rota inválida) , não adianta
         // repetir; 5xx e falhas de rede/timeout caem no retry (WR-06).
         if (resp.status >= 400 && resp.status < 500) {
           const corpo = await resp.text().catch(() => "");
@@ -144,13 +144,13 @@ export class OdooClient {
       this.password,
       {},
     ]);
-    if (!uid) throw new OdooAuthError("Autenticação falhou — verifique ODOO_* no ambiente");
+    if (!uid) throw new OdooAuthError("Autenticação falhou , verifique ODOO_* no ambiente");
     this.uid = uid;
     return uid;
   }
 
   executeKw<T>(model: string, method: string, args: unknown[], kwargs: object = {}): Promise<T> {
-    if (this.uid == null) throw new OdooError("Cliente não autenticado — chame authenticate()");
+    if (this.uid == null) throw new OdooError("Cliente não autenticado , chame authenticate()");
     return this.rpc<T>("object", "execute_kw", [
       this.db,
       this.uid,
@@ -172,7 +172,7 @@ export class OdooClient {
     const out: unknown[] = [];
     let offset = 0;
     for (;;) {
-      // order: "id asc" garante uma ordenação estável entre as páginas —
+      // order: "id asc" garante uma ordenação estável entre as páginas ,
       // sem isso, inserts/deletes durante o pull fazem o offset pular ou
       // duplicar registros (WR-05).
       const result = await this.executeKw<unknown[]>(model, "search_read", [domain], {
@@ -253,7 +253,7 @@ export class OdooClient {
   }
 
   /**
-   * search_read pontual — busca domínio e retorna campos solicitados em uma
+   * search_read pontual , busca domínio e retorna campos solicitados em uma
    * única chamada RPC (sem paginação; use searchReadPaged para volumes grandes).
    */
   async searchRead<T = object>(

@@ -1,11 +1,11 @@
 // mcp/__tests__/mocks/__tests__/redis.test.ts
-// Testes da factory createMockRedis — verifica compatibilidade com RateLimitRedis
+// Testes da factory createMockRedis , verifica compatibilidade com RateLimitRedis
 // (pipeline INCR+EXPIRE) e com SET NX usado no distributed lock do Bloco E.
 
 import { createMockRedis } from "../redis.js";
 
 describe("createMockRedis()", () => {
-  // ioredis-mock usa store singleton — limpar entre testes para evitar vazamento de estado
+  // ioredis-mock usa store singleton , limpar entre testes para evitar vazamento de estado
   let redis: ReturnType<typeof createMockRedis>;
 
   beforeEach(async () => {
@@ -52,7 +52,7 @@ describe("createMockRedis()", () => {
     pipe1.expire("mcp:rate:user-acc", 60);
     await pipe1.exec();
 
-    // Segunda chamada — mesmo redis, mesmo key
+    // Segunda chamada , mesmo redis, mesmo key
     const pipe2 = redis.pipeline();
     pipe2.incr("mcp:rate:user-acc");
     pipe2.expire("mcp:rate:user-acc", 60);
@@ -63,7 +63,7 @@ describe("createMockRedis()", () => {
   });
 
   it("instâncias diferentes compartilham o mesmo store in-memory (comportamento ioredis-mock)", async () => {
-    // ioredis-mock usa um store singleton por módulo — duas instâncias veem as mesmas chaves.
+    // ioredis-mock usa um store singleton por módulo , duas instâncias veem as mesmas chaves.
     // Isso é esperado e documentado: em testes de integração usar flushall() entre suites.
     const redisA = createMockRedis();
     const redisB = createMockRedis();
@@ -79,18 +79,18 @@ describe("createMockRedis()", () => {
     const resultsB = await pipeB.exec();
 
     const [[, incrValB]] = resultsB!;
-    expect(incrValB).toBe(2); // estado compartilhado — comportamento documentado
+    expect(incrValB).toBe(2); // estado compartilhado , comportamento documentado
 
     // Limpar com flushall para não vazar para outros testes
     await redisA.flushall();
   });
 
   it("SET com flag NX: primeira chamada define o valor, segunda é ignorada (lock semântico)", async () => {
-    // SET NX — cria a chave
+    // SET NX , cria a chave
     const first = await redis.set("lock:resource-x", "owner-1", "NX");
     expect(first).toBe("OK");
 
-    // SET NX — chave já existe, deve retornar null
+    // SET NX , chave já existe, deve retornar null
     const second = await redis.set("lock:resource-x", "owner-2", "NX");
     expect(second).toBeNull();
 
@@ -104,7 +104,7 @@ describe("createMockRedis()", () => {
     const result = await redis.set("lock:timed", "owner", "PX", 5000, "NX");
     expect(result).toBe("OK");
 
-    // Segunda tentativa — deve falhar
+    // Segunda tentativa , deve falhar
     const second = await redis.set("lock:timed", "other", "PX", 5000, "NX");
     expect(second).toBeNull();
   });

@@ -164,7 +164,7 @@ export function AuditsTable() {
                       </span>
                     </div>
                   ) : (
-                    <span className="text-xs text-muted-foreground">—</span>
+                    <span className="text-xs text-muted-foreground">,</span>
                   )}
                 </TableCell>
                 <TableCell className="text-xs text-muted-foreground">
@@ -180,11 +180,11 @@ export function AuditsTable() {
                       ) : null}
                     </span>
                   ) : (
-                    "—"
+                    ","
                   )}
                 </TableCell>
                 <TableCell className="text-xs text-muted-foreground font-mono">
-                  {r.ipAddress ?? "—"}
+                  {r.ipAddress ?? ","}
                 </TableCell>
                 <TableCell className="text-xs text-muted-foreground">
                   {formatDateTime(r.createdAt)}

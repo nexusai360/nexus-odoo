@@ -1,6 +1,6 @@
 // mcp/tools/fiscal/contar-notas.ts
 // Tool MCP: fiscal_contar_notas
-// dados só tem escalares — sem array; cai no ramo "ok" do withFreshness.
+// dados só tem escalares , sem array; cai no ramo "ok" do withFreshness.
 import { z } from "zod";
 import type { ToolEntry } from "../../catalog/types.js";
 import { queryContarNotas } from "@/lib/reports/queries/fiscal.js";
@@ -37,7 +37,7 @@ export const fiscalContarNotas: ToolEntry<Input, Output> = {
   dominio: "fiscal",
   descricao:
     "Contagem total de notas fiscais. Use para perguntas de quantidade " +
-    "absoluta ('quantas notas fiscais existem'): devolve só os números — " +
+    "absoluta ('quantas notas fiscais existem'): devolve só os números , " +
     "`total`, `totalEntrada` (DF-e de fornecedores) e `totalSaida` (emitidas).",
   inputSchemaShape: inputSchema.shape,
   inputSchema,

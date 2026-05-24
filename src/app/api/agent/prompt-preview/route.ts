@@ -2,7 +2,7 @@
  * GET /api/agent/prompt-preview
  *
  * Retorna o system prompt composto com a config ativa do agente.
- * Não chama LLM, não persiste nada — apenas composição do prompt.
+ * Não chama LLM, não persiste nada , apenas composição do prompt.
  *
  * Gate: admin ou super_admin apenas.
  * Usado pelo Playground ("Ver prompt usado").

@@ -1,6 +1,6 @@
 "use client";
 
-// PresetsManageDialog — gerenciamento de presets em modal:
+// PresetsManageDialog , gerenciamento de presets em modal:
 // aplicar, alternar favorito (estrela), excluir com confirmação inline.
 
 import { useState, useTransition } from "react";

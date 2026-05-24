@@ -6,7 +6,7 @@ import { queryBuscarParceiro, queryParceirosPorUf, queryContarParceiros } from "
 const fakePrisma = {} as Parameters<typeof queryBuscarParceiro>[0];
 
 // ---------------------------------------------------------------------------
-// queryBuscarParceiro — D.4
+// queryBuscarParceiro , D.4
 // ---------------------------------------------------------------------------
 
 describe("queryBuscarParceiro", () => {
@@ -103,7 +103,7 @@ describe("queryBuscarParceiro", () => {
 });
 
 // ---------------------------------------------------------------------------
-// queryParceirosPorUf — D.5
+// queryParceirosPorUf , D.5
 // ---------------------------------------------------------------------------
 
 describe("queryParceirosPorUf", () => {
@@ -152,7 +152,7 @@ describe("queryParceirosPorUf", () => {
 });
 
 // ---------------------------------------------------------------------------
-// queryContarParceiros — D.6
+// queryContarParceiros , D.6
 // ---------------------------------------------------------------------------
 
 describe("queryContarParceiros", () => {

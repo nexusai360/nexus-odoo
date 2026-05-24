@@ -27,7 +27,7 @@ export function hasCapability(
   capability: CapabilityCheck,
   opts: CapabilityCheckOpts = {},
 ): boolean {
-  // Gate de versão — chave não "vê" tools adicionadas após sua criação
+  // Gate de versão , chave não "vê" tools adicionadas após sua criação
   if (opts.addedInVersion !== undefined && opts.addedInVersion > ctx.capabilitiesVersion) {
     return false;
   }

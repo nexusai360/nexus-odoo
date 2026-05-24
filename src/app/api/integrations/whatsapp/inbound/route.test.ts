@@ -6,7 +6,7 @@
  */
 
 // ──────────────────────────────────────────────
-// Mocks — DEVEM vir antes de qualquer import
+// Mocks , DEVEM vir antes de qualquer import
 // ──────────────────────────────────────────────
 
 const mockVerifySignature = jest.fn();

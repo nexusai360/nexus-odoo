@@ -1,5 +1,5 @@
 // mcp/lib/errors.ts
-// Classes McpError padronizadas — Anexo C da spec F4 Onda 2 (Bloco J2.0).
+// Classes McpError padronizadas , Anexo C da spec F4 Onda 2 (Bloco J2.0).
 //
 // Hierarquia:
 //   McpError (abstract) ← cada erro concreto com code + httpStatus + details?
@@ -10,7 +10,7 @@
 // ─── Base abstrata ────────────────────────────────────────────────────────────
 
 export abstract class McpError extends Error {
-  /** Código de erro em SCREAMING_SNAKE_CASE — estável para clientes. */
+  /** Código de erro em SCREAMING_SNAKE_CASE , estável para clientes. */
   abstract readonly code: string;
   /** HTTP status semântico para documentação/logging. */
   abstract readonly httpStatus: number;
@@ -28,7 +28,7 @@ export abstract class McpError extends Error {
 
 // ─── Auth / acesso ────────────────────────────────────────────────────────────
 
-/** 401 — sem credencial ou credencial inválida. */
+/** 401 , sem credencial ou credencial inválida. */
 export class UnauthorizedError extends McpError {
   readonly code = "UNAUTHORIZED" as const;
   readonly httpStatus = 401;
@@ -37,7 +37,7 @@ export class UnauthorizedError extends McpError {
   }
 }
 
-/** 403 — operação requer auth externa (API key), mas chegou via auth interna. */
+/** 403 , operação requer auth externa (API key), mas chegou via auth interna. */
 export class ForbiddenViaInternalAuthError extends McpError {
   readonly code = "FORBIDDEN_INTERNAL_AUTH" as const;
   readonly httpStatus = 403;
@@ -46,7 +46,7 @@ export class ForbiddenViaInternalAuthError extends McpError {
   }
 }
 
-/** 403 — API key não tem a capability necessária para a operação. */
+/** 403 , API key não tem a capability necessária para a operação. */
 export class CapabilityMissingError extends McpError {
   readonly code = "CAPABILITY_MISSING" as const;
   readonly httpStatus = 403;
@@ -57,7 +57,7 @@ export class CapabilityMissingError extends McpError {
 
 // ─── Input / validação ────────────────────────────────────────────────────────
 
-/** 400 — input inválido (além do que o Zod já cobre). */
+/** 400 , input inválido (além do que o Zod já cobre). */
 export class ValidationFailedError extends McpError {
   readonly code = "VALIDATION_FAILED" as const;
   readonly httpStatus = 400;
@@ -66,7 +66,7 @@ export class ValidationFailedError extends McpError {
   }
 }
 
-/** 400 — header Idempotency-Key obrigatório ausente. */
+/** 400 , header Idempotency-Key obrigatório ausente. */
 export class IdempotencyKeyRequiredError extends McpError {
   readonly code = "IDEMPOTENCY_KEY_REQUIRED" as const;
   readonly httpStatus = 400;
@@ -75,7 +75,7 @@ export class IdempotencyKeyRequiredError extends McpError {
   }
 }
 
-/** 400 — token em local inseguro (ex.: query string). */
+/** 400 , token em local inseguro (ex.: query string). */
 export class TokenInUnsafeLocationError extends McpError {
   readonly code = "TOKEN_IN_UNSAFE_LOCATION" as const;
   readonly httpStatus = 400;
@@ -86,7 +86,7 @@ export class TokenInUnsafeLocationError extends McpError {
 
 // ─── Idempotência ─────────────────────────────────────────────────────────────
 
-/** 422 — Idempotency-Key já usada com payload diferente. */
+/** 422 , Idempotency-Key já usada com payload diferente. */
 export class IdempotencyKeyConflictError extends McpError {
   readonly code = "IDEMPOTENCY_KEY_CONFLICT" as const;
   readonly httpStatus = 422;
@@ -98,7 +98,7 @@ export class IdempotencyKeyConflictError extends McpError {
   }
 }
 
-/** 409 — operação em andamento com a mesma Idempotency-Key. */
+/** 409 , operação em andamento com a mesma Idempotency-Key. */
 export class IdempotencyInProgressError extends McpError {
   readonly code = "IDEMPOTENCY_IN_PROGRESS" as const;
   readonly httpStatus = 409;
@@ -110,7 +110,7 @@ export class IdempotencyInProgressError extends McpError {
   }
 }
 
-/** 503 — serviço de idempotência indisponível. */
+/** 503 , serviço de idempotência indisponível. */
 export class IdempotencyUnavailableError extends McpError {
   readonly code = "IDEMPOTENCY_UNAVAILABLE" as const;
   readonly httpStatus = 503;
@@ -121,7 +121,7 @@ export class IdempotencyUnavailableError extends McpError {
 
 // ─── Conflitos de negócio ─────────────────────────────────────────────────────
 
-/** 409 — external_id já existe no Odoo. */
+/** 409 , external_id já existe no Odoo. */
 export class ExternalIdAlreadyExistsError extends McpError {
   readonly code = "EXTERNAL_ID_ALREADY_EXISTS" as const;
   readonly httpStatus = 409;
@@ -130,7 +130,7 @@ export class ExternalIdAlreadyExistsError extends McpError {
   }
 }
 
-/** 409 — conflito genérico de negócio. */
+/** 409 , conflito genérico de negócio. */
 export class ConflictError extends McpError {
   readonly code = "CONFLICT" as const;
   readonly httpStatus = 409;
@@ -139,7 +139,7 @@ export class ConflictError extends McpError {
   }
 }
 
-/** 412 — pré-condição do negócio não satisfeita. */
+/** 412 , pré-condição do negócio não satisfeita. */
 export class PreconditionFailedError extends McpError {
   readonly code = "PRECONDITION_FAILED" as const;
   readonly httpStatus = 412;
@@ -150,7 +150,7 @@ export class PreconditionFailedError extends McpError {
 
 // ─── Rate limit ───────────────────────────────────────────────────────────────
 
-/** 429 — limite de taxa excedido. */
+/** 429 , limite de taxa excedido. */
 export class RateLimitedError extends McpError {
   readonly code = "RATE_LIMITED" as const;
   readonly httpStatus = 429;
@@ -163,7 +163,7 @@ export class RateLimitedError extends McpError {
 
 // ─── Cadastros + Tarefas (Onda 2 cadastros) ───────────────────────────────────
 
-/** 409 — parceiro tem documentos vinculados; unlink bloqueado pelo Odoo. */
+/** 409 , parceiro tem documentos vinculados; unlink bloqueado pelo Odoo. */
 export class ParceiroEmUsoError extends McpError {
   readonly code = "PARCEIRO_EM_USO" as const;
   readonly httpStatus = 409;
@@ -175,7 +175,7 @@ export class ParceiroEmUsoError extends McpError {
   }
 }
 
-/** 409 — categoria/tag já existe com mesmo nome no mesmo nível. */
+/** 409 , categoria/tag já existe com mesmo nome no mesmo nível. */
 export class CategoriaJaExisteError extends McpError {
   readonly code = "CATEGORIA_JA_EXISTE" as const;
   readonly httpStatus = 409;
@@ -187,7 +187,7 @@ export class CategoriaJaExisteError extends McpError {
   }
 }
 
-/** 404 — atividade não encontrada (provavelmente já completada ou removida). */
+/** 404 , atividade não encontrada (provavelmente já completada ou removida). */
 export class AtividadeNaoEncontradaError extends McpError {
   readonly code = "ATIVIDADE_NAO_ENCONTRADA" as const;
   readonly httpStatus = 404;
@@ -199,7 +199,7 @@ export class AtividadeNaoEncontradaError extends McpError {
   }
 }
 
-/** 400 — modelo Odoo solicitado não existe ou não está acessível. */
+/** 400 , modelo Odoo solicitado não existe ou não está acessível. */
 export class ModeloNaoSuportadoError extends McpError {
   readonly code = "MODELO_NAO_SUPORTADO" as const;
   readonly httpStatus = 400;
@@ -211,7 +211,7 @@ export class ModeloNaoSuportadoError extends McpError {
   }
 }
 
-/** 404 — registro alvo de atividade não existe no modelo informado. */
+/** 404 , registro alvo de atividade não existe no modelo informado. */
 export class RegistroNaoEncontradoError extends McpError {
   readonly code = "REGISTRO_NAO_ENCONTRADO" as const;
   readonly httpStatus = 404;
@@ -225,7 +225,7 @@ export class RegistroNaoEncontradoError extends McpError {
 
 // ─── Erros internos ───────────────────────────────────────────────────────────
 
-/** 500 — wrapping de erro interno inesperado. Não expõe stack ao cliente. */
+/** 500 , wrapping de erro interno inesperado. Não expõe stack ao cliente. */
 export class InternalErrorWrap extends McpError {
   readonly code = "INTERNAL_ERROR" as const;
   readonly httpStatus = 500;

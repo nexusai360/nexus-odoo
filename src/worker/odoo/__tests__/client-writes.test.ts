@@ -229,7 +229,7 @@ describe("OdooClient.searchIrModelData", () => {
 });
 
 // ---------------------------------------------------------------------------
-// 8. clientFromEnv("read") — lê ODOO_*
+// 8. clientFromEnv("read") , lê ODOO_*
 // ---------------------------------------------------------------------------
 describe("clientFromEnv('read')", () => {
   const originalEnv = process.env;
@@ -265,9 +265,9 @@ describe("clientFromEnv('read')", () => {
 });
 
 // ---------------------------------------------------------------------------
-// 9. clientFromEnv("write") — lê ODOO_WRITE_*
+// 9. clientFromEnv("write") , lê ODOO_WRITE_*
 // ---------------------------------------------------------------------------
-describe("clientFromEnv('write') — lê ODOO_WRITE_*", () => {
+describe("clientFromEnv('write') , lê ODOO_WRITE_*", () => {
   const originalEnv = process.env;
 
   beforeEach(() => {
@@ -296,9 +296,9 @@ describe("clientFromEnv('write') — lê ODOO_WRITE_*", () => {
 });
 
 // ---------------------------------------------------------------------------
-// 10. clientFromEnv("write") — sem fallback para ODOO_* (producao)
+// 10. clientFromEnv("write") , sem fallback para ODOO_* (producao)
 // ---------------------------------------------------------------------------
-describe("clientFromEnv('write') — sem fallback para ODOO_*", () => {
+describe("clientFromEnv('write') , sem fallback para ODOO_*", () => {
   const originalEnv = process.env;
 
   beforeEach(() => {
@@ -327,7 +327,7 @@ describe("clientFromEnv('write') — sem fallback para ODOO_*", () => {
 });
 
 // ---------------------------------------------------------------------------
-// 11. mapOdooFault — classificação por regex no fault.data.name
+// 11. mapOdooFault , classificação por regex no fault.data.name
 // ---------------------------------------------------------------------------
 describe("mapOdooFault", () => {
   it("retorna OdooAccessError para AccessError", () => {

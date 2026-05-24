@@ -44,10 +44,10 @@ export default async function RelatorioPage({ params, searchParams }: PageProps)
   const report = getReport(id);
   if (!report) notFound();
 
-  // Camada 2 do RBAC — redireciona se o usuário não tem o domínio.
+  // Camada 2 do RBAC , redireciona se o usuário não tem o domínio.
   await requireDomainAccess(report.dominio);
 
-  // Id presente no catálogo mas sem query mapeada — 404 explícito em vez de
+  // Id presente no catálogo mas sem query mapeada , 404 explícito em vez de
   // "query is not a function" em runtime (IM-04).
   const query = QUERIES[id];
   if (!query) notFound();
@@ -59,7 +59,7 @@ export default async function RelatorioPage({ params, searchParams }: PageProps)
     ? resolverPeriodo(sp, report.temporal.periodoPadrao)
     : null;
 
-  // Mês mais antigo com dado — trava o calendário personalizado para não
+  // Mês mais antigo com dado , trava o calendário personalizado para não
   // permitir escolher um período sem dado nenhum (ex.: 1990).
   let periodoMin: string | null = null;
   if (periodo) {

@@ -8,7 +8,7 @@
  * escopo de negócio do sistema (ex.: culinária, clima, política).
  */
 export const MENSAGEM_RECUSA_3B =
-  "Sou especializado na operação da Matrix Fitness Group — estoque, " +
+  "Sou especializado na operação da Matrix Fitness Group , estoque, " +
   "financeiro, fiscal e comercial. Sua pergunta está fora desse escopo " +
   "de negócio e não consigo respondê-la. Se quiser informações sobre a " +
   "operação da empresa, estou à disposição.";
@@ -25,7 +25,7 @@ export function montarRecusa(assunto?: string): string {
 
   return (
     `A pergunta sobre "${assunto}" está fora do escopo de negócio do sistema. ` +
-    "Sou especializado na operação da Matrix Fitness Group — estoque, " +
+    "Sou especializado na operação da Matrix Fitness Group , estoque, " +
     "financeiro, fiscal e comercial. Se quiser informações sobre a " +
     "operação da empresa, estou à disposição."
   );

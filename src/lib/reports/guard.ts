@@ -20,7 +20,7 @@ export async function requireDomainAccess(
  * Camada 3 do RBAC: guard das queries de leitura, parametrizado pelo
  * domínio do relatório (não mais hardcoded em "estoque"). Exige auth e
  * posse do domínio; lança erro caso contrário. Defesa-em-profundidade da
- * spec §4.2 — vale para qualquer domínio futuro (CR-03).
+ * spec §4.2 , vale para qualquer domínio futuro (CR-03).
  */
 export async function guardDominio(dominio: ReportDomainId): Promise<void> {
   const me = await getCurrentUser();

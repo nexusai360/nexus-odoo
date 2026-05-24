@@ -3,7 +3,7 @@
  *
  * Os adapters concretos (OpenAI, Anthropic, Gemini, OpenRouter) implementam
  * `ProviderClient` e expõem `chat()` com a forma canônica de mensagens, tools
- * e usage. Não dependem de SDKs externos — usam `fetch` direto.
+ * e usage. Não dependem de SDKs externos , usam `fetch` direto.
  *
  * Portado de nexus-insights/src/lib/llm/types.ts para o agente nexus-odoo (F5).
  */
@@ -44,7 +44,7 @@ export interface ChatMessage {
   content: string;
   /** Presente quando role === "assistant" e o modelo solicitou tool calls. */
   toolCalls?: ToolCall[];
-  /** Presente quando role === "tool" — referencia a tool call original. */
+  /** Presente quando role === "tool" , referencia a tool call original. */
   toolCallId?: string;
   /** Nome da tool (role === "tool"). */
   toolName?: string;
@@ -53,7 +53,7 @@ export interface ChatMessage {
 export interface ChatUsage {
   tokensInput: number;
   tokensOutput: number;
-  /** Custo em USD (pode ser 0 quando costKnown=false — ver LlmUsage). */
+  /** Custo em USD (pode ser 0 quando costKnown=false , ver LlmUsage). */
   costUsd: number;
 }
 

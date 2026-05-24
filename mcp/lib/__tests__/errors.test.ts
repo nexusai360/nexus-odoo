@@ -1,5 +1,5 @@
 // mcp/lib/__tests__/errors.test.ts
-// TDD para classes McpError padronizadas (Bloco J2.0 — Anexo C da spec).
+// TDD para classes McpError padronizadas (Bloco J2.0 , Anexo C da spec).
 import {
   McpError,
   UnauthorizedError,

@@ -4,7 +4,7 @@
 //   2. Delete: remove registros completos após <fullCutoff> dias.
 //
 // Agendado como repeatable BullMQ diário às 01:00 BRT em src/worker/index.ts.
-// Usa `criadoEm` (mapeado para `criado_em`) — não `createdAt`.
+// Usa `criadoEm` (mapeado para `criado_em`) , não `createdAt`.
 
 import type { PrismaClient } from "@/generated/prisma/client";
 import { Prisma } from "@/generated/prisma/client";

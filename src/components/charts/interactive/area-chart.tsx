@@ -57,7 +57,7 @@ export interface InteractiveAreaChartProps {
    */
   xAxisFontSize?: number;
   /**
-   * Margem entre os ticks e o eixo X — aplicado como `tickMargin` (default 12).
+   * Margem entre os ticks e o eixo X , aplicado como `tickMargin` (default 12).
    */
   xAxisPadding?: number;
   /**
@@ -68,7 +68,7 @@ export interface InteractiveAreaChartProps {
 }
 
 const defaultFormat = (v: number) =>
-  Number.isFinite(v) ? v.toLocaleString("pt-BR") : "—";
+  Number.isFinite(v) ? v.toLocaleString("pt-BR") : ",";
 
 function makeYAxisFormatter(
   currency: "USD" | "BRL" | undefined,
@@ -81,7 +81,7 @@ function makeYAxisFormatter(
       minimumFractionDigits: 2,
       maximumFractionDigits: 2,
     });
-    return (v) => (Number.isFinite(v) ? fmt.format(v) : "—");
+    return (v) => (Number.isFinite(v) ? fmt.format(v) : ",");
   }
   if (currency === "USD") {
     const fmt = new Intl.NumberFormat("en-US", {
@@ -90,7 +90,7 @@ function makeYAxisFormatter(
       minimumFractionDigits: 2,
       maximumFractionDigits: 2,
     });
-    return (v) => (Number.isFinite(v) ? fmt.format(v) : "—");
+    return (v) => (Number.isFinite(v) ? fmt.format(v) : ",");
   }
   return fallback;
 }
@@ -99,7 +99,7 @@ function makeYAxisFormatter(
  * Area chart com gradient fill, animação de entrada e hover.
  *
  * - Gradient sutil no fill (opacity 0.35 -> 0.05) para evitar competir com a
- *   linha — a linha é o foco visual (`trend-emphasis`);
+ *   linha , a linha é o foco visual (`trend-emphasis`);
  * - prefers-reduced-motion respeitado;
  * - empty state explicativo;
  * - múltiplas séries empilháveis.

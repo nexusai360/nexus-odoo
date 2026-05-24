@@ -6,7 +6,7 @@ import "@testing-library/jest-dom";
 import type { FormState } from "./user-form-dialog.internals";
 import { handleRoleChange } from "./user-form-dialog.internals";
 
-describe("handleRoleChange — troca de role (N10)", () => {
+describe("handleRoleChange , troca de role (N10)", () => {
   const baseForm: FormState = {
     name: "Teste",
     email: "teste@example.com",

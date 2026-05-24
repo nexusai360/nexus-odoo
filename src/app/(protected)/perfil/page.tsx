@@ -8,7 +8,7 @@ import { REPORT_DOMAINS } from "@/lib/reports/domains";
 export const metadata = { title: "Meu Perfil | Nexus Odoo" };
 export const dynamic = "force-dynamic";
 
-/** Domínios — privilegiados (super_admin/admin) enxergam todos. */
+/** Domínios , privilegiados (super_admin/admin) enxergam todos. */
 const ALL_DOMAIN_IDS = REPORT_DOMAINS.map((d) => d.id);
 
 export default async function PerfilPage() {

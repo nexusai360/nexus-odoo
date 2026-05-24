@@ -20,7 +20,7 @@ const PRESETS: { preset: Exclude<PeriodoPreset, "custom">; label: string }[] = [
 
 interface PeriodBarProps {
   periodo: PeriodoResolvido;
-  /** Mês mais antigo com dado ("YYYY-MM") — limita o calendário personalizado. */
+  /** Mês mais antigo com dado ("YYYY-MM") , limita o calendário personalizado. */
   mesMin?: string | null;
 }
 

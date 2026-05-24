@@ -25,7 +25,7 @@ export interface ModelPricing {
   perMinuteUsd?: number;
 }
 
-/** Para que serve o modelo — usado na linha de descrição do select. */
+/** Para que serve o modelo , usado na linha de descrição do select. */
 export type ModelUse =
   | "conversação"
   | "código"
@@ -124,7 +124,7 @@ const OPENAI: ModelEntry[] = [
   { id: "gpt-4.1-mini",        provider: "openai", label: "GPT-4.1 mini",     tier: "low",                            released: "2025-04", pricing: { inputPerMTok: 0.4,   outputPerMTok: 1.6   }, vision: true },
   { id: "gpt-4o",              provider: "openai", label: "GPT-4o",           tier: "medium",                         released: "2024-05", pricing: { inputPerMTok: 2.5,   outputPerMTok: 10.0  }, vision: true, audio: true },
   { id: "gpt-4o-mini",         provider: "openai", label: "GPT-4o mini",      tier: "low",                            released: "2024-07", pricing: { inputPerMTok: 0.15,  outputPerMTok: 0.6   }, vision: true, audio: true },
-  // Áudio (transcrição) — mantido pelo seletor de audio nas configuracoes do agente.
+  // Áudio (transcrição) , mantido pelo seletor de audio nas configuracoes do agente.
   { id: "gpt-4o-transcribe",      provider: "openai", label: "GPT-4o Transcribe",      tier: "low", use: "áudio", audio: true, released: "2025-03", pricing: { inputPerMTok: 6.0, outputPerMTok: 10.0 } },
   { id: "gpt-4o-mini-transcribe", provider: "openai", label: "GPT-4o mini Transcribe", tier: "low", use: "áudio", audio: true, released: "2025-03", pricing: { inputPerMTok: 3.0, outputPerMTok: 5.0 } },
   { id: "whisper-1",           provider: "openai", label: "Whisper-1",        tier: "low",     use: "áudio", audio: true, released: "2022-09", pricing: { inputPerMTok: 0, outputPerMTok: 0, perMinuteUsd: 0.006 } },
@@ -145,7 +145,7 @@ const ANTHROPIC: ModelEntry[] = [
 
 // ─── Gemini ───────────────────────────────────────────────────────────────────
 const GEMINI: ModelEntry[] = [
-  // Gemini 3.x — geracao mais nova (lancada no Google AI Studio em 2026).
+  // Gemini 3.x , geracao mais nova (lancada no Google AI Studio em 2026).
   { id: "gemini-3-pro",          provider: "gemini", label: "Gemini 3 Pro",           tier: "high",   notes: "raciocínio profundo", released: "2026-05", pricing: { inputPerMTok: 2.0,  outputPerMTok: 12.0 }, use: "raciocínio profundo", vision: true, audio: true },
   { id: "gemini-3.5-flash",      provider: "gemini", label: "Gemini 3.5 Flash",       tier: "low",                                  released: "2026-05", pricing: { inputPerMTok: 0.35, outputPerMTok: 2.8  }, vision: true, audio: true },
   { id: "gemini-3.1-flash-lite", provider: "gemini", label: "Gemini 3.1 Flash-Lite",  tier: "low",                                  released: "2026-05", pricing: { inputPerMTok: 0.1,  outputPerMTok: 0.4  }, vision: true, audio: true },
@@ -244,7 +244,7 @@ const OPENROUTER: ModelEntry[] = [
   { id: "perplexity/sonar-reasoning",  provider: "openrouter", label: "Sonar Reasoning",   tier: "low",    notes: "search+R1", released: "2025-02", pricing: null },
 ];
 
-/** Array canônico — fonte única de verdade. */
+/** Array canônico , fonte única de verdade. */
 export const MODELS: ModelEntry[] = [
   ...OPENAI,
   ...ANTHROPIC,
@@ -255,10 +255,10 @@ export const MODELS: ModelEntry[] = [
 // ─── Suporte a raciocínio ─────────────────────────────────────────────────────
 // Preenchido por id. Fonte e critério:
 // docs/superpowers/research/2026-05-22-modelos-raciocinio.md. Só modelos OpenAI
-// nesta entrega — o wiring de reasoning_effort cobre o provider OpenAI; o card
+// nesta entrega , o wiring de reasoning_effort cobre o provider OpenAI; o card
 // de Modo Raciocínio só destrava quando há wiring real por trás.
 const REASONING_LEVELS: Record<string, ReasoningLevel[]> = {
-  // OpenAI — GPT-5 series + o-series
+  // OpenAI , GPT-5 series + o-series
   "gpt-5.5": ["minimal", "low", "medium", "high"],
   "gpt-5.5-pro": ["minimal", "low", "medium", "high"],
   "gpt-5.4": ["minimal", "low", "medium", "high"],
@@ -277,12 +277,12 @@ const REASONING_LEVELS: Record<string, ReasoningLevel[]> = {
   o3: ["low", "medium", "high"],
   "o1-pro": ["low", "medium", "high"],
   o1: ["low", "medium", "high"],
-  // Anthropic — Claude 4.x com extended thinking (budget tokens internos)
+  // Anthropic , Claude 4.x com extended thinking (budget tokens internos)
   "claude-opus-4-7": ["low", "medium", "high"],
   "claude-sonnet-4-7": ["low", "medium", "high"],
   "claude-opus-4-5": ["low", "medium", "high"],
   "claude-sonnet-4-5": ["low", "medium", "high"],
-  // Google — Gemini 2.5/3.x com thinking_config
+  // Google , Gemini 2.5/3.x com thinking_config
   "gemini-2.5-pro": ["low", "medium", "high"],
   "gemini-2.5-flash": ["low", "medium", "high"],
   "gemini-3-pro": ["low", "medium", "high"],
@@ -294,12 +294,12 @@ const REASONING_LEVELS: Record<string, ReasoningLevel[]> = {
   "anthropic/claude-sonnet-4.5": ["low", "medium", "high"],
   "google/gemini-2.5-pro": ["low", "medium", "high"],
   "google/gemini-2.5-flash": ["low", "medium", "high"],
-  // DeepSeek R1 — reasoning nativo (sem effort, modelado como medium)
+  // DeepSeek R1 , reasoning nativo (sem effort, modelado como medium)
   "deepseek/deepseek-r1": ["medium"],
   "deepseek/deepseek-r1-0528": ["medium"],
   "deepseek/deepseek-r1:free": ["medium"],
   "deepseek/deepseek-r1-0528:free": ["medium"],
-  // Qwen QwQ — reasoning nativo
+  // Qwen QwQ , reasoning nativo
   "qwen/qwq-32b": ["medium"],
   "qwen/qwq-32b:free": ["medium"],
 };
@@ -339,7 +339,7 @@ export function labelWithLegacy(m: ModelEntry): string {
   return isLegacyModel(m) ? `${m.label} (legado)` : m.label;
 }
 
-/** Custo médio (input+output)/2 por MTok — para ordenar do mais caro ao mais barato. */
+/** Custo médio (input+output)/2 por MTok , para ordenar do mais caro ao mais barato. */
 function avgCost(m: ModelEntry): number {
   if (!m.pricing) return -1;
   return (m.pricing.inputPerMTok + m.pricing.outputPerMTok) / 2;
@@ -402,7 +402,7 @@ function openrouterProvider(m: ModelEntry): string {
  *  2. Dentro do tier: data mais recente primeiro.
  *  3. Empate: alfabetico do id.
  *
- * NAO agrupa por provedor — modelos do mesmo tier podem misturar OpenAI,
+ * NAO agrupa por provedor , modelos do mesmo tier podem misturar OpenAI,
  * Anthropic, DeepSeek etc. de acordo com a data de lancamento.
  */
 export function sortOpenrouterModels(models: ModelEntry[]): ModelEntry[] {
@@ -484,7 +484,7 @@ export function modelDescription(m: ModelEntry): string {
 export interface CostResult {
   /** Custo em USD. null quando pricing=null (costKnown=false). */
   costUsd: number | null;
-  /** false = modelo sem preço conhecido — não registrar como 0. */
+  /** false = modelo sem preço conhecido , não registrar como 0. */
   costKnown: boolean;
 }
 

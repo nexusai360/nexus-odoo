@@ -111,7 +111,7 @@ export async function processReconcileCycle(
   for (const entry of catalog) {
     // Reconcile só faz sentido em modelos incrementais: linhas se acumulam e
     // exclusões individuais precisam ser detectadas. Modelos snapshot são
-    // recriados por completo a cada ciclo e seus ids no Odoo rotacionam —
+    // recriados por completo a cada ciclo e seus ids no Odoo rotacionam ,
     // comparar ids marcaria a tabela raw inteira como rawDeleted (WR-08).
     // Modelos estáticos também não têm remoções detectáveis.
     if (entry.mode !== "incremental") continue;

@@ -26,7 +26,7 @@ describe("acquireLock", () => {
 });
 
 describe("releaseLock", () => {
-  it("libera o lock — acquire volta a ser possível", async () => {
+  it("libera o lock , acquire volta a ser possível", async () => {
     const redis = createMockRedis();
     await acquireLock(redis, "mcp:idem:key1", { ttlSec: 60 });
     await releaseLock(redis, "mcp:idem:key1");

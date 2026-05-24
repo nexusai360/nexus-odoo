@@ -1,5 +1,5 @@
 // mcp/catalog/api-key-catalog.test.ts
-// TDD para visibleToolsForApiKey (Bloco F — F4).
+// TDD para visibleToolsForApiKey (Bloco F , F4).
 import { z } from "zod";
 import { visibleToolsForApiKey } from "./api-key-catalog.js";
 import type { ToolEntry, WriteToolEntry } from "./types.js";
@@ -110,13 +110,13 @@ describe("visibleToolsForApiKey", () => {
     expect(result).toHaveLength(0);
   });
 
-  it("gate addedInVersion — exclui tool adicionada após versão da chave (read)", () => {
+  it("gate addedInVersion , exclui tool adicionada após versão da chave (read)", () => {
     const catalog = [makeReadTool("nova_tool", "estoque", false, 10)];
     const ctx = makeApiKey({ capabilitiesVersion: 3 });
     expect(visibleToolsForApiKey(catalog, ctx)).toHaveLength(0);
   });
 
-  it("gate addedInVersion — inclui tool adicionada na versão exata (write)", () => {
+  it("gate addedInVersion , inclui tool adicionada na versão exata (write)", () => {
     const catalog = [makeWriteTool("criar_pedido_v5", "comercial", "create_order", 5)];
     const ctx = makeApiKey({ capabilitiesVersion: 5 });
     expect(visibleToolsForApiKey(catalog, ctx)).toHaveLength(1);
@@ -133,7 +133,7 @@ describe("visibleToolsForApiKey", () => {
     expect(visibleToolsForApiKey(catalog, ctx)).toHaveLength(0);
   });
 
-  it("catálogo misto — retorna read e write corretos", () => {
+  it("catálogo misto , retorna read e write corretos", () => {
     const catalog = [
       makeReadTool("saldo_produto", "estoque"),
       makeReadTool("nota_fiscal", "fiscal"),

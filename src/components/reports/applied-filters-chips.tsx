@@ -24,7 +24,7 @@ interface AppliedFiltersChipsProps {
 }
 
 /**
- * Chips de filtros aplicados — um chip por filtro ativo.
+ * Chips de filtros aplicados , um chip por filtro ativo.
  *
  * Cada chip exibe `Rótulo: Valor` com um botão X para remover apenas aquele
  * filtro. Um botão "Limpar todos" ao final remove todos os params de uma vez.

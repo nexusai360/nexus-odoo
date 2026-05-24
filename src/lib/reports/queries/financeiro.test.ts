@@ -24,7 +24,7 @@ function makePrisma(overrides: Record<string, unknown> = {}) {
 }
 
 // ---------------------------------------------------------------------------
-// querySaldoContas — task 4d.1-q
+// querySaldoContas , task 4d.1-q
 // ---------------------------------------------------------------------------
 
 describe("querySaldoContas", () => {
@@ -50,7 +50,7 @@ describe("querySaldoContas", () => {
 });
 
 // ---------------------------------------------------------------------------
-// queryCaixaPeriodo — task 4d.2-q
+// queryCaixaPeriodo , task 4d.2-q
 // ---------------------------------------------------------------------------
 
 describe("queryCaixaPeriodo", () => {
@@ -84,7 +84,7 @@ describe("queryCaixaPeriodo", () => {
 });
 
 // ---------------------------------------------------------------------------
-// queryFluxoCaixa — task 4d.3-q
+// queryFluxoCaixa , task 4d.3-q
 // ---------------------------------------------------------------------------
 
 describe("queryFluxoCaixa", () => {
@@ -112,7 +112,7 @@ describe("queryFluxoCaixa", () => {
 });
 
 // ---------------------------------------------------------------------------
-// queryContasAReceber — task 4d.5-q
+// queryContasAReceber , task 4d.5-q
 // ---------------------------------------------------------------------------
 
 describe("queryContasAReceber", () => {
@@ -134,7 +134,7 @@ describe("queryContasAReceber", () => {
     expect(call.where).not.toHaveProperty("dataPagamento");
   });
 
-  it("seleciona vrSaldo no findMany (fonte finan.lancamento — bug R1 corrigido)", async () => {
+  it("seleciona vrSaldo no findMany (fonte finan.lancamento , bug R1 corrigido)", async () => {
     const prisma = makePrisma();
     (prisma.fatoFinanceiroTitulo.findMany as jest.Mock).mockResolvedValue([]);
     await queryContasAReceber(prisma as never, {}, hoje);
@@ -158,7 +158,7 @@ describe("queryContasAReceber", () => {
     expect(result.totalAReceber).toBeCloseTo(15015.25);
   });
 
-  it("título quitado não aparece (banco não devolve — filtro situacaoSimples='aberto')", async () => {
+  it("título quitado não aparece (banco não devolve , filtro situacaoSimples='aberto')", async () => {
     const prisma = makePrisma();
     (prisma.fatoFinanceiroTitulo.findMany as jest.Mock).mockResolvedValue([]);
     const result = await queryContasAReceber(prisma as never, {}, hoje);
@@ -176,7 +176,7 @@ describe("queryContasAReceber", () => {
 });
 
 // ---------------------------------------------------------------------------
-// queryContasAPagar — task 4d.6-q
+// queryContasAPagar , task 4d.6-q
 // ---------------------------------------------------------------------------
 
 describe("queryContasAPagar", () => {
@@ -198,7 +198,7 @@ describe("queryContasAPagar", () => {
     expect(call.where).not.toHaveProperty("dataPagamento");
   });
 
-  it("seleciona vrSaldo no findMany (fonte finan.lancamento — bug R1 corrigido)", async () => {
+  it("seleciona vrSaldo no findMany (fonte finan.lancamento , bug R1 corrigido)", async () => {
     const prisma = makePrisma();
     (prisma.fatoFinanceiroTitulo.findMany as jest.Mock).mockResolvedValue([]);
     await queryContasAPagar(prisma as never, {}, hoje);
@@ -220,7 +220,7 @@ describe("queryContasAPagar", () => {
     expect(result.totalAPagar).toBeCloseTo(5314.75);
   });
 
-  it("título quitado não aparece (banco não devolve — filtro situacaoSimples='aberto')", async () => {
+  it("título quitado não aparece (banco não devolve , filtro situacaoSimples='aberto')", async () => {
     const prisma = makePrisma();
     (prisma.fatoFinanceiroTitulo.findMany as jest.Mock).mockResolvedValue([]);
     const result = await queryContasAPagar(prisma as never, {}, hoje);
@@ -230,7 +230,7 @@ describe("queryContasAPagar", () => {
 });
 
 // ---------------------------------------------------------------------------
-// queryTitulosVencidos — task 4d.7-q
+// queryTitulosVencidos , task 4d.7-q
 // ---------------------------------------------------------------------------
 
 describe("queryTitulosVencidos", () => {
@@ -276,7 +276,7 @@ describe("queryTitulosVencidos", () => {
 
   // Caso de borda I-1: título que vence EXATAMENTE hoje NÃO deve aparecer como vencido.
   // O banco não chega a devolvê-lo (o filtro `lt: inicioDoDia` exclui), mas validamos
-  // que a chamada ao Prisma usa inicioDoDia correto — e que diasAtraso seria 0
+  // que a chamada ao Prisma usa inicioDoDia correto , e que diasAtraso seria 0
   // (reforço: não há incoerência "listado como vencido com diasAtraso: 0").
   it("caso de borda: título que vence hoje NÃO é incluído (inicioDoDia normalizado)", async () => {
     const prisma = makePrisma();

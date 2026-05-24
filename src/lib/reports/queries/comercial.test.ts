@@ -163,7 +163,7 @@ describe("queryPedidosAtrasados", () => {
   });
 
   it("usa where com dataVencimento < início do dia e parcelaFaturada=false (C1: normaliza hoje)", async () => {
-    // hoje com hora corrente — o where deve usar o início do dia, não a hora corrente
+    // hoje com hora corrente , o where deve usar o início do dia, não a hora corrente
     const hoje = new Date("2024-03-10T14:35:22.123Z");
     const mockPrisma = {
       fatoPedidoParcela: {
@@ -183,7 +183,7 @@ describe("queryPedidosAtrasados", () => {
   });
 
   it("C1 borda: parcela que vence hoje (T00:00:00) NÃO é considerada atrasada", async () => {
-    // hoje com hora corrente — se a query não normalizar, parcela T00:00:00 aparece como lt=hoje
+    // hoje com hora corrente , se a query não normalizar, parcela T00:00:00 aparece como lt=hoje
     const hojeComHora = new Date("2024-03-10T09:00:00");
     const mockPrisma = {
       fatoPedidoParcela: {
@@ -229,7 +229,7 @@ describe("queryParcelasAVencer", () => {
   });
 
   it("aplica filtro de dataVencimento gte início do dia e lte início+ateDias (C1: normaliza hoje)", async () => {
-    // hoje com hora corrente — o gte deve ser início do dia para incluir parcelas de hoje
+    // hoje com hora corrente , o gte deve ser início do dia para incluir parcelas de hoje
     const hoje = new Date("2024-03-10T09:00:00");
     const mockPrisma = {
       fatoPedidoParcela: {

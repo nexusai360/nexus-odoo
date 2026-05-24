@@ -1,5 +1,5 @@
 /**
- * /agente/chaves — Chaves de API do agente.
+ * /agente/chaves , Chaves de API do agente.
  *
  * Rework F5-UI: espelha agente-nex/chaves do nexus-insights. CRUD de chaves
  * de API agrupadas por provedor.

@@ -1,5 +1,5 @@
 // mcp/sync/queue.ts
-// Fila BullMQ para sync direcionado — disparada por tools do MCP após mutações.
+// Fila BullMQ para sync direcionado , disparada por tools do MCP após mutações.
 // O worker (src/worker/sync/directed.ts) consome esta fila e aplica as mudanças
 // no cache Postgres, coordenando com o cron incremental via lock Redis.
 
@@ -16,7 +16,7 @@ export interface DirectedSyncJob {
   operation: "create" | "update" | "delete";
   /**
    * Snapshot dos dados do registro pós-mutação, fornecido pela tool MCP.
-   * Quando presente, evita um RPC extra ao Odoo — é usado diretamente no upsert.
+   * Quando presente, evita um RPC extra ao Odoo , é usado diretamente no upsert.
    */
   snapshotAfter?: object;
   /** requestId da requisição MCP que originou o job (rastreabilidade). */
@@ -31,7 +31,7 @@ let _queue: Queue<DirectedSyncJob> | null = null;
 
 /**
  * Retorna (ou inicializa) a fila de sync direcionado.
- * Singleton por processo — reutiliza a conexão Redis.
+ * Singleton por processo , reutiliza a conexão Redis.
  */
 export function getDirectedSyncQueue(): Queue<DirectedSyncJob> {
   if (_queue) return _queue;

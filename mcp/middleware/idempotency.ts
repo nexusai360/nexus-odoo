@@ -65,7 +65,7 @@ export async function checkIdempotency(
   }
 
   if (!acquired) {
-    // Lock em posse de outro executor — buscar record existente
+    // Lock em posse de outro executor , buscar record existente
     const record = await prisma.mcpIdempotencyRecord.findUnique({
       where: { apiKeyId_key: { apiKeyId, key } },
     });
@@ -86,7 +86,7 @@ export async function checkIdempotency(
     return { status: 409, errorCode: "idempotency_in_progress" };
   }
 
-  // Lock adquirido — verificar se já existe record
+  // Lock adquirido , verificar se já existe record
   const existingRecord = await prisma.mcpIdempotencyRecord.findUnique({
     where: { apiKeyId_key: { apiKeyId, key } },
   });

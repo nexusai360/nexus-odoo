@@ -1,7 +1,7 @@
 "use client";
 
 /**
- * UsageDetailInline — drill-down compacto exibido como linha expansivel
+ * UsageDetailInline , drill-down compacto exibido como linha expansivel
  * abaixo da linha clicada na tabela de Historico de chamadas.
  *
  * Layout em duas colunas para aproveitar toda a largura da tabela:
@@ -131,13 +131,13 @@ function IdentificationBlock({ row }: { row: UsageDetailRow }) {
           label="ID da conversa"
           value={row.conversationId}
           mono
-          fallback="—"
+          fallback=","
         />
         <KvRow
           label="ID do usuario"
           value={row.userId}
           mono
-          fallback="—"
+          fallback=","
         />
       </dl>
     </div>
@@ -155,8 +155,8 @@ function KvRow({
   mono?: boolean;
   fallback?: string;
 }) {
-  const display = value ?? fallback ?? "—";
-  const isDash = display === "—";
+  const display = value ?? fallback ?? ",";
+  const isDash = display === ",";
   return (
     <div className="flex items-start justify-between gap-3 text-[11px]">
       <span className="shrink-0 text-muted-foreground">{label}</span>
@@ -184,7 +184,7 @@ function CostBreakdownBlock({ row }: { row: UsageDetailRow }) {
           Quebra de custo
         </h5>
         <div className="inline-flex w-fit items-center rounded-full bg-amber-500/10 px-2 py-0.5 text-[11px] font-medium text-amber-700 dark:text-amber-300">
-          Preco desconhecido — sem catalogo para este modelo
+          Preco desconhecido , sem catalogo para este modelo
         </div>
       </div>
     );
@@ -220,39 +220,39 @@ function CostBreakdownBlock({ row }: { row: UsageDetailRow }) {
           <CalcRow
             op=""
             label="Custo do modelo (USD)"
-            value={costUsd ? usdFmt.format(costUsd) : "—"}
+            value={costUsd ? usdFmt.format(costUsd) : ","}
           />
           <CalcRow
             op="×"
             label="PTAX venda do dia (USD/BRL)"
-            value={commercialRate != null ? brlFmt.format(commercialRate) : "—"}
+            value={commercialRate != null ? brlFmt.format(commercialRate) : ","}
           />
           <CalcRow
             op="="
             label="Subtotal (BRL)"
-            value={subtotalBase != null ? brlFmt.format(subtotalBase) : "—"}
+            value={subtotalBase != null ? brlFmt.format(subtotalBase) : ","}
             divider
           />
           <CalcRow
             op="+"
             label={`Spread bancario (${percentFmt.format(BANK_SPREAD_RATE)})`}
-            value={bankAmount != null ? brlFmt.format(bankAmount) : "—"}
+            value={bankAmount != null ? brlFmt.format(bankAmount) : ","}
           />
           <CalcRow
             op="="
             label="Base do banco (BRL)"
-            value={afterSpread != null ? brlFmt.format(afterSpread) : "—"}
+            value={afterSpread != null ? brlFmt.format(afterSpread) : ","}
             divider
           />
           <CalcRow
             op="+"
             label={`IOF (${percentFmt.format(IOF_RATE)})`}
-            value={iofAmount != null ? brlFmt.format(iofAmount) : "—"}
+            value={iofAmount != null ? brlFmt.format(iofAmount) : ","}
           />
           <CalcRow
             op="="
             label="Custo final (BRL)"
-            value={row.costBrl != null ? brlFmt.format(row.costBrl) : "—"}
+            value={row.costBrl != null ? brlFmt.format(row.costBrl) : ","}
             total
           />
         </tbody>

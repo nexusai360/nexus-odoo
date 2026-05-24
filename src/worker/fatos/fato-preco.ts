@@ -5,7 +5,7 @@
 //   família, participante ou geral. O `valor` é resolvido quando a operação
 //   é direta (fixo/valor); operações relativas (margem, markup, desconto)
 //   guardam o percentual em `aliquota` e deixam `valor` nulo.
-// CYCLE: incremental — ~12k regras, mudam pouco.
+// CYCLE: incremental , ~12k regras, mudam pouco.
 import type { PrismaClient } from "../../generated/prisma/client";
 import { relId, relNome, type OdooM2O } from "./odoo-relational";
 import { markFatoBuilt } from "./fato-build-state";

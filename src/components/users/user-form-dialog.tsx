@@ -102,7 +102,7 @@ const ROLE_META: Record<RoleValue, RoleMeta> = {
   },
 };
 
-// Fundo dos badges/quadrados de papel — alinhado a PLATFORM_ROLE_STYLES.
+// Fundo dos badges/quadrados de papel , alinhado a PLATFORM_ROLE_STYLES.
 const ROLE_BADGE_BG: Record<RoleValue, string> = {
   super_admin: PLATFORM_ROLE_STYLES.super_admin.className,
   admin: PLATFORM_ROLE_STYLES.admin.className,
@@ -310,7 +310,7 @@ export function UserFormDialog({
         });
         if (result.success && result.data) {
           // Persiste os números de WhatsApp informados na criação. Falhas
-          // individuais não abortam o fluxo — o usuário já foi criado.
+          // individuais não abortam o fluxo , o usuário já foi criado.
           if (draftWhatsapp.length > 0) {
             const failures: string[] = [];
             for (const raw of draftWhatsapp) {
@@ -343,7 +343,7 @@ export function UserFormDialog({
       if (!user) return;
 
       // N1: domínios primeiro. updateUserDomains é idempotente; com role
-      // privilegiado, form.domains já é [] (N10) — então a chamada apenas
+      // privilegiado, form.domains já é [] (N10) , então a chamada apenas
       // remove eventuais linhas remanescentes, sem deixar estado órfão.
       const editavelDominio =
         form.role === "manager" || form.role === "viewer";
@@ -354,7 +354,7 @@ export function UserFormDialog({
         );
         if (!domRes.success) {
           toast.error(`Falha ao atualizar domínios: ${domRes.error}`);
-          return; // não prossegue para updateUser — nada de identidade foi tocado
+          return; // não prossegue para updateUser , nada de identidade foi tocado
         }
       }
 
@@ -370,7 +370,7 @@ export function UserFormDialog({
         onSuccess();
         onOpenChange(false);
       } else {
-        // Domínios já foram salvos; identidade falhou — erro parcial.
+        // Domínios já foram salvos; identidade falhou , erro parcial.
         toast.error(`Domínios salvos, mas a identidade falhou: ${result.error}`);
       }
     });
@@ -600,7 +600,7 @@ function Stepper({ step, items }: StepperProps) {
 }
 
 // ─────────────────────────────────────────────────────────────────────────
-// Etapa 1 — Identidade
+// Etapa 1 , Identidade
 // ─────────────────────────────────────────────────────────────────────────
 
 interface StepIdentityProps {
@@ -751,7 +751,7 @@ function StepIdentity({
         ) : null}
       </div>
 
-      {/* Confirmar senha — só quando há senha digitada */}
+      {/* Confirmar senha , só quando há senha digitada */}
       {form.password.length > 0 ? (
         <div className="space-y-1.5">
           <label
@@ -812,7 +812,7 @@ function StepIdentity({
         )}
       </div>
 
-      {/* Toggle ativo/inativo — apenas em edit */}
+      {/* Toggle ativo/inativo , apenas em edit */}
       {showActiveToggle ? (
         <div className="flex items-center justify-between rounded-lg border border-border bg-muted/30 px-4 py-3">
           <div className="flex items-center gap-2">
@@ -838,7 +838,7 @@ function StepIdentity({
         </div>
       ) : null}
 
-      {/* Números de WhatsApp — edição grava na hora; criação fica em rascunho */}
+      {/* Números de WhatsApp , edição grava na hora; criação fica em rascunho */}
       <div className="rounded-lg border border-border bg-muted/20 px-4 py-3">
         {isEdit && editUserId ? (
           <WhatsappNumbersField userId={editUserId} />
@@ -1039,7 +1039,7 @@ function RoleDropdown({ value, options, onChange }: RoleDropdownProps) {
 }
 
 // ─────────────────────────────────────────────────────────────────────────
-// Etapa 2 — Confirmação
+// Etapa 2 , Confirmação
 // ─────────────────────────────────────────────────────────────────────────
 
 interface StepConfirmProps {
@@ -1051,8 +1051,8 @@ function StepConfirm({ form, isEdit }: StepConfirmProps) {
   return (
     <div className="space-y-3">
       <div className="rounded-lg border border-border bg-muted/20 p-4 space-y-2 text-sm">
-        <Row label="Nome" value={form.name || "—"} />
-        <Row label="E-mail" value={form.email || "—"} />
+        <Row label="Nome" value={form.name || ","} />
+        <Row label="E-mail" value={form.email || ","} />
         <Row label="Nível" value={ROLE_META[form.role].label} />
         {isEdit ? (
           <Row label="Status" value={form.isActive ? "Ativo" : "Inativo"} />
@@ -1079,7 +1079,7 @@ function StepConfirm({ form, isEdit }: StepConfirmProps) {
             </span>
           ) : (
             <span className="text-xs text-amber-600 dark:text-amber-500">
-              Nenhum domínio selecionado — o usuário não verá nenhum relatório.
+              Nenhum domínio selecionado , o usuário não verá nenhum relatório.
             </span>
           )}
         </div>

@@ -130,7 +130,7 @@ export const cadastrosResPartnerUpdate: WriteToolEntry<Input, OdooRecord> = {
       snapshotBefore = (rows[0] as OdooRecord) ?? null;
     }
 
-    // 2. Write — apenas campos definidos
+    // 2. Write , apenas campos definidos
     const vals: Record<string, unknown> = {};
     for (const [k, v] of Object.entries(rest)) {
       if (v !== undefined) vals[k] = v;

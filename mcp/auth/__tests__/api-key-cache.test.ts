@@ -24,7 +24,7 @@ describe("createApiKeyCache", () => {
     expect(loader).toHaveBeenCalledTimes(1);
   });
 
-  it("usa cache na segunda chamada — loader não invocado", async () => {
+  it("usa cache na segunda chamada , loader não invocado", async () => {
     const cache = createApiKeyCache({ ttlMs: 60_000, maxSize: 10 });
     const loader = jest.fn().mockResolvedValue(makeCtx("id-2"));
 

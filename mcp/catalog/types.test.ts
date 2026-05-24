@@ -1,5 +1,5 @@
 // mcp/catalog/types.test.ts
-// Tests for WriteToolEntry, ToolEntryExample, and isWriteToolEntry (Bloco F — F1/F2).
+// Tests for WriteToolEntry, ToolEntryExample, and isWriteToolEntry (Bloco F , F1/F2).
 import { z } from "zod";
 import {
   isWriteToolEntry,
@@ -72,7 +72,7 @@ describe("isWriteToolEntry", () => {
   });
 });
 
-describe("WriteToolEntry — campos opcionais", () => {
+describe("WriteToolEntry , campos opcionais", () => {
   it("aceita addedInVersion e examples opcionais", () => {
     const example: ToolEntryExample = {
       language: "curl",
@@ -91,7 +91,7 @@ describe("WriteToolEntry — campos opcionais", () => {
   });
 });
 
-describe("ToolEntry — novos campos opcionais (F1)", () => {
+describe("ToolEntry , novos campos opcionais (F1)", () => {
   it("aceita addedInVersion, examples e requiresExternalAuth opcionais", () => {
     const tool: ToolEntry = {
       ...makeReadTool(),

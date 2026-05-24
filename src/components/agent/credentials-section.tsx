@@ -1,7 +1,7 @@
 "use client";
 
 /**
- * CredentialsSection — gerenciamento de chaves de API por provedor.
+ * CredentialsSection , gerenciamento de chaves de API por provedor.
  *
  * Rework F5-UI v2: clone visual do `LlmCredentialsManager` do nexus-insights.
  * Cada provedor é um card com ícone, link "Criar API key" e botão "Nova chave".
@@ -76,7 +76,7 @@ interface CredentialsSectionProps {
 type DialogState =
   | { mode: "closed" }
   | { mode: "create"; provider: LlmProvider }
-  // "edit" — tela única: muda o nome e (opcionalmente) troca a chave (B3).
+  // "edit" , tela única: muda o nome e (opcionalmente) troca a chave (B3).
   | { mode: "edit"; cred: CredentialSummary };
 
 export function CredentialsSection({
@@ -403,7 +403,7 @@ function CredentialDialog({ state, onClose, onSaved }: CredentialDialogProps) {
   const [pending, startTransition] = useTransition();
   const [label, setLabel] = useState("");
   const [apiKey, setApiKey] = useState("");
-  // A chave digitada fica visível por padrão — é a primeira (e única) vez
+  // A chave digitada fica visível por padrão , é a primeira (e única) vez
   // que o admin a vê para conferir a colagem. O toggle permite ocultá-la.
   const [showKey, setShowKey] = useState(true);
 
@@ -451,7 +451,7 @@ function CredentialDialog({ state, onClose, onSaved }: CredentialDialogProps) {
         onSaved();
         return;
       }
-      // edit — muda o nome e, se uma nova chave foi colada, troca a chave.
+      // edit , muda o nome e, se uma nova chave foi colada, troca a chave.
       const trimmed = label.trim();
       if (!trimmed) {
         toast.error("Informe um nome para a chave.");
@@ -483,7 +483,7 @@ function CredentialDialog({ state, onClose, onSaved }: CredentialDialogProps) {
       <DialogContent className="max-w-md">
         <DialogHeader>
           <DialogTitle>
-            {title} — {PROVIDER_META[provider].label}
+            {title} , {PROVIDER_META[provider].label}
           </DialogTitle>
           <DialogDescription>
             A chave é armazenada cifrada (AES-256) e nunca é exibida novamente.
@@ -524,7 +524,7 @@ function CredentialDialog({ state, onClose, onSaved }: CredentialDialogProps) {
                 value={apiKey}
                 onChange={(e) => setApiKey(e.currentTarget.value)}
                 placeholder={
-                  state.mode === "edit" ? "Nova chave — opcional" : "sk-…"
+                  state.mode === "edit" ? "Nova chave , opcional" : "sk-…"
                 }
                 className="pr-10 font-mono"
                 disabled={pending}

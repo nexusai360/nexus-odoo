@@ -25,7 +25,7 @@ export interface ModeCheckResult {
  *
  * | tool       | auth     | resultado                                      |
  * |------------|----------|------------------------------------------------|
- * | write      | internal | denied — forbidden_via_internal_auth           |
+ * | write      | internal | denied , forbidden_via_internal_auth           |
  * | write      | external | OK se capability write presente; else denied   |
  * | read       | internal | allowed (gate de role/domínio delegado ao caller via visibleTools) |
  * | read       | external | OK se capability read presente; sempreVisivel sem domínio = livre |

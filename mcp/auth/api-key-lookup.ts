@@ -12,7 +12,7 @@ export type ApiKeyLookupResult =
 /**
  * Busca uma ApiKey pelo keyHash (SHA-256 do token bruto) e valida seu estado.
  * O parâmetro é nomeado tokenHash externamente; internamente usa-se keyHash no DB.
- * Não toca o Odoo — lê apenas do Postgres cache.
+ * Não toca o Odoo , lê apenas do Postgres cache.
  */
 export async function lookupApiKey(
   prisma: PrismaClient,
@@ -46,7 +46,7 @@ export async function lookupApiKey(
 }
 
 /**
- * Versão completa com motivo de rejeição — útil para audit log interno.
+ * Versão completa com motivo de rejeição , útil para audit log interno.
  */
 export async function lookupApiKeyWithReason(
   prisma: PrismaClient,

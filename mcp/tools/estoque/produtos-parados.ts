@@ -40,7 +40,7 @@ type Input = z.infer<typeof inputSchema>;
 type Output = z.infer<typeof outputSchema>;
 
 function shape(d: Awaited<ReturnType<typeof queryProdutosParados>>) {
-  // `total` é redundante para o agente — omitido (está em kpis.totalParados)
+  // `total` é redundante para o agente , omitido (está em kpis.totalParados)
   return { kpis: d.kpis, linhas: d.linhas };
 }
 

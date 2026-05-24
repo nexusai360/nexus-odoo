@@ -74,6 +74,7 @@ enum KbKind {
   YAML
   XLSX
   DOCX
+  JSON
 }
 
 /// Estado de checkpoint de um recurso do agente (áudio, imagem, KB, documento).

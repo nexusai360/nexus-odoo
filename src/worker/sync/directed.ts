@@ -23,7 +23,7 @@ export function lockKey(model: string, id: number): string {
   return `mcp:sync:${model}:${id}`;
 }
 
-/** TTL do lock em segundos — curto para não bloquear o cron incremental. */
+/** TTL do lock em segundos , curto para não bloquear o cron incremental. */
 const LOCK_TTL_SEC = 30;
 /** Intervalo de espera entre tentativas de lock (ms). */
 const LOCK_RETRY_DELAY_MS = 50;
@@ -39,7 +39,7 @@ async function acquireLock(redis: IORedis, model: string, id: number): Promise<b
   for (let i = 0; i < LOCK_MAX_RETRIES; i++) {
     const res = await redis.set(key, "1", "EX", LOCK_TTL_SEC, "NX");
     if (res === "OK") return true;
-    // Lock não adquirido — aguarda antes de tentar novamente
+    // Lock não adquirido , aguarda antes de tentar novamente
     await new Promise<void>((r) => setTimeout(r, LOCK_RETRY_DELAY_MS));
   }
   return false;
@@ -69,7 +69,7 @@ async function processResPartner(
       if (!acquired) {
         logger.warn(
           { model: job.model, id, requestId: job.requestId },
-          "[directed-sync] lock não adquirido para delete — prosseguindo best-effort",
+          "[directed-sync] lock não adquirido para delete , prosseguindo best-effort",
         );
       }
       try {
@@ -82,12 +82,12 @@ async function processResPartner(
           "[directed-sync] soft-delete aplicado",
         );
       } catch (err: unknown) {
-        // Registro pode não existir no cache — ignora graciosamente
+        // Registro pode não existir no cache , ignora graciosamente
         const code = (err as { code?: string })?.code;
         if (code === "P2025") {
           logger.warn(
             { model: job.model, id, requestId: job.requestId },
-            "[directed-sync] registro não encontrado para delete — ignorado",
+            "[directed-sync] registro não encontrado para delete , ignorado",
           );
         } else {
           throw err;
@@ -105,14 +105,14 @@ async function processResPartner(
     if (!acquired) {
       logger.warn(
         { model: job.model, id, requestId: job.requestId },
-        "[directed-sync] lock não adquirido para upsert — prosseguindo best-effort",
+        "[directed-sync] lock não adquirido para upsert , prosseguindo best-effort",
       );
     }
     try {
       let data: object;
 
       if (snapshotAfter && ids.length === 1) {
-        // Snapshot fornecido diretamente pela tool — evita RPC ao Odoo
+        // Snapshot fornecido diretamente pela tool , evita RPC ao Odoo
         data = snapshotAfter;
       } else {
         // Fallback: lê os campos do registro no Odoo
@@ -121,7 +121,7 @@ async function processResPartner(
         if (!records.length) {
           logger.warn(
             { model: job.model, id, requestId: job.requestId },
-            "[directed-sync] registro não retornado pelo Odoo — pulando",
+            "[directed-sync] registro não retornado pelo Odoo , pulando",
           );
           continue;
         }
@@ -187,10 +187,10 @@ export async function processDirectedSync(
   }
 
 
-  // Modelos não suportados nesta onda — no-op com aviso
+  // Modelos não suportados nesta onda , no-op com aviso
   logger.warn(
     { model, requestId, jobId: job.id },
-    "[directed-sync] modelo não suportado nesta onda — job ignorado",
+    "[directed-sync] modelo não suportado nesta onda , job ignorado",
   );
   return { ok: true, processed: 0 };
 }

@@ -1,5 +1,5 @@
 // mcp/lib/rate-limit.test.ts
-// TDD — 4f-3 Step 1
+// TDD , 4f-3 Step 1
 // Testa checkMcpRateLimit: chave mcp:rate:{userId}, INCR+EXPIRE 60s, limite 60.
 // A 61ª chamada deve retornar bloqueado.
 
@@ -51,7 +51,7 @@ describe("checkMcpRateLimit", () => {
     expect(result.remaining).toBe(0);
   });
 
-  it("retorna allowed=false para a 61ª chamada (count=61) — rate limit atingido", async () => {
+  it("retorna allowed=false para a 61ª chamada (count=61) , rate limit atingido", async () => {
     const redis = makeRedisMock({ incrValue: 61 }) as unknown as Parameters<typeof checkMcpRateLimit>[0];
     const result = await checkMcpRateLimit(redis, "user-blocked");
 
@@ -101,7 +101,7 @@ function makeRedisMockFor(overrides?: {
   } as unknown as RateLimitRedis;
 }
 
-describe("checkMcpRateLimitFor — scope user", () => {
+describe("checkMcpRateLimitFor , scope user", () => {
   it("retorna allowed=true para count=1 com limite padrão (60)", async () => {
     const redis = makeRedisMockFor({ incrValue: 1 });
     const result = await checkMcpRateLimitFor(redis, { type: "user", userId: "u1" });
@@ -148,7 +148,7 @@ describe("checkMcpRateLimitFor — scope user", () => {
   });
 });
 
-describe("checkMcpRateLimitFor — scope apiKey", () => {
+describe("checkMcpRateLimitFor , scope apiKey", () => {
   it("usa chave Redis mcp:rate:apikey:<apiKeyId>", async () => {
     const redis = makeRedisMockFor({ incrValue: 1 });
     const pl = redis.pipeline();
@@ -176,7 +176,7 @@ describe("checkMcpRateLimitFor — scope apiKey", () => {
   });
 });
 
-describe("checkMcpRateLimitFor — fail-open (Redis indisponível)", () => {
+describe("checkMcpRateLimitFor , fail-open (Redis indisponível)", () => {
   it("permite a requisição quando pipeline.exec() lança exceção", async () => {
     const redis = makeRedisMockFor({ throwOnExec: true });
     const result = await checkMcpRateLimitFor(redis, { type: "user", userId: "u-fail" });

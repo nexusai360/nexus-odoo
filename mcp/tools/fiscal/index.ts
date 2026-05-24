@@ -1,5 +1,5 @@
 // mcp/tools/fiscal/index.ts
-// Índice do domínio fiscal. Exporta o array de tools (6 tools — C.12).
+// Índice do domínio fiscal. Exporta o array de tools (6 tools , C.12).
 import type { ToolEntry } from "../../catalog/types.js";
 import { fiscalFaturamentoPeriodo } from "./faturamento-periodo.js";
 import { fiscalNotasEmitidas } from "./notas-emitidas.js";

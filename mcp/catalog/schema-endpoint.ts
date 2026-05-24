@@ -1,10 +1,10 @@
 // mcp/catalog/schema-endpoint.ts
-// Handler GET /api/mcp/catalog-schema — endpoint público de metadados do catálogo.
+// Handler GET /api/mcp/catalog-schema , endpoint público de metadados do catálogo.
 //
 // Retorna um JSON serializável com os campos de cada tool do catálogo:
 // { id, module, operation, descricao, capability, sensitive, addedInVersion, inputSchemaKeys, examples }
 //
-// SEM autenticação — é apenas metadado público (equivalente a /health).
+// SEM autenticação , é apenas metadado público (equivalente a /health).
 // Não expõe handlers, schemas Zod ou qualquer dado operacional.
 
 import type * as http from "node:http";
@@ -157,7 +157,7 @@ export function serializeCatalog(
         examples: entry.examples ?? [],
       });
     } else {
-      // read tool — dominio pode ser ausente (sempreVisivel / caminho3)
+      // read tool , dominio pode ser ausente (sempreVisivel / caminho3)
       tools.push({
         id: entry.id,
         operation: "read",
@@ -184,7 +184,7 @@ export function serializeCatalog(
 
 /**
  * Handler para GET /api/mcp/catalog-schema.
- * Responde com JSON serializável do catálogo — sem auth, sem handlers Zod.
+ * Responde com JSON serializável do catálogo , sem auth, sem handlers Zod.
  */
 export function handleCatalogSchemaRequest(
   res: http.ServerResponse,

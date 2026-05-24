@@ -1,13 +1,13 @@
 // src/worker/fatos/fato-pedido.ts
-// Builder do fato_pedido — fonte: raw_pedido_documento (modelo pedido.documento).
+// Builder do fato_pedido , fonte: raw_pedido_documento (modelo pedido.documento).
 //
 // A flag de etapa final é CAMPO_ETAPA_FINAL = "finaliza_pedido_confirmando"
-// (discovery O.1 — docs/superpowers/research/2026-05-18-f4-discovery-pre-schema.md).
+// (discovery O.1 , docs/superpowers/research/2026-05-18-f4-discovery-pre-schema.md).
 // O campo selection de tipo é CAMPO_TIPO_PEDIDO = "tipo"
 // (valores: "venda", "inventario", "transferencia_solicitacao").
 //
 // etapaFinaliza é carregada de raw_pedido_etapa ANTES da transação e passada
-// via Map para o mapper — a transação envolve só deleteMany/createMany/markFatoBuilt.
+// via Map para o mapper , a transação envolve só deleteMany/createMany/markFatoBuilt.
 
 import type { PrismaClient } from "../../generated/prisma/client";
 import { relId, relNome, type OdooM2O } from "./odoo-relational";
@@ -38,7 +38,7 @@ export interface FatoPedidoRow {
   dataPrevista: Date | null;
   vrProdutos: number;
   vrNf: number;
-  // NÃO inclui atualizadoEm — campo tem @default(now()) no schema (decisão N5)
+  // NÃO inclui atualizadoEm , campo tem @default(now()) no schema (decisão N5)
 }
 
 export function mapPedidoRow(

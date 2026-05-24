@@ -9,7 +9,7 @@ import type {
   McpIdempotencyRecord,
 } from "@/generated/prisma/client";
 
-describe("F4 Onda 2 — tipos Prisma após migration", () => {
+describe("F4 Onda 2 , tipos Prisma após migration", () => {
   it("ApiKey expõe campos novos da Onda 2", () => {
     // Compile-time check: o type tem que aceitar todos esses campos.
     const k: Partial<ApiKey> = {

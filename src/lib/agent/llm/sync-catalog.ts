@@ -4,7 +4,7 @@
  * Consulta a API de listagem do provedor, compara com o catálogo efetivo
  * (base do `catalog.ts` + tabela `llm_model_entry`) e faz upsert dos modelos
  * novos / atualizações na tabela. Preço: OpenRouter expõe na API; OpenAI/
- * Anthropic/Gemini não — para esses, modelos novos entram com `pricing: null`
+ * Anthropic/Gemini não , para esses, modelos novos entram com `pricing: null`
  * (sinalizados para curadoria manual).
  */
 import "server-only";
@@ -70,7 +70,7 @@ function humanizeOpenrouterLabel(id: string, apiName?: string): string {
     if (p.toLowerCase() === "qwq") return "QwQ";
     return p.charAt(0).toUpperCase() + p.slice(1).toLowerCase();
   });
-  // Mantem "gpt-5.4-mini" como "GPT-5.4 Mini" — primeiro junta GPT com numero
+  // Mantem "gpt-5.4-mini" como "GPT-5.4 Mini" , primeiro junta GPT com numero
   let label = parts.join(" ").replace(/GPT\s+(\d)/, "GPT-$1");
   // Claude/Gemini: prefere "Claude Sonnet 4.7" (juntar palavras)
   label = label.replace(/^(Claude|Gemini|Llama|DeepSeek|Qwen|Grok|Mistral|Phi|Gemma|Command|Sonar)\s/, "$1 ");
@@ -249,7 +249,7 @@ export async function syncProvider(
 
       vistosEsteSync.add(m.id);
       const inBase = knownBase.has(m.id);
-      // OpenRouter expõe pricing oficial via API — SEMPRE persistimos no banco
+      // OpenRouter expõe pricing oficial via API , SEMPRE persistimos no banco
       // para que o effective-catalog use pricing fresco mesmo nas entries da
       // base com pricing=null. Demais providers respeitam a base versionada.
       if (inBase && provider !== "openrouter") {

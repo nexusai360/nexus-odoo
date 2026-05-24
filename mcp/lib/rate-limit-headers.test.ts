@@ -1,5 +1,5 @@
 // mcp/lib/rate-limit-headers.test.ts
-// TDD — Bloco G, G2
+// TDD , Bloco G, G2
 
 import { rateLimitHeaders } from "./rate-limit-headers.js";
 

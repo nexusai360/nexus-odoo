@@ -4,7 +4,7 @@
 // nas tasks 4c.1a-extr … 4c.1f-extr.
 //
 // Jest roda com transform CJS (ts-jest, preset:"ts-jest", sem
-// --experimental-vm-modules). jest.spyOn() intercepta corretamente — ver N7.
+// --experimental-vm-modules). jest.spyOn() intercepta corretamente , ver N7.
 
 import { createMockContext } from "@/lib/reports/queries/__mocks__/prisma";
 import {
@@ -281,7 +281,7 @@ describe("queryTopMovimentados", () => {
     expect(result.kpis.totalUnidades).toBe(130);
   });
 
-  it("NÃO faz slice — devolve lista completa (slice é shaping do wrapper)", async () => {
+  it("NÃO faz slice , devolve lista completa (slice é shaping do wrapper)", async () => {
     const grupos = Array.from({ length: 15 }, (_, i) => ({
       produtoNome: `P${i}`,
       _sum: { quantidade: 100 - i },

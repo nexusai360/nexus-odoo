@@ -5,7 +5,7 @@ global.fetch = mockFetch as unknown as typeof fetch;
 
 beforeEach(() => mockFetch.mockReset());
 
-describe("GeminiClient — MOCK key", () => {
+describe("GeminiClient , MOCK key", () => {
   test("retorna resposta simulada sem chamar fetch", async () => {
     const client = new GeminiClient("MOCK_KEY", "gemini-2.5-flash");
     const result = await client.chat({ messages: [{ role: "user", content: "Olá" }] });

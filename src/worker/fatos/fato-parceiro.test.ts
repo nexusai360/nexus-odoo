@@ -6,7 +6,7 @@ jest.mock("./fato-build-state", () => ({ markFatoBuilt: jest.fn() }));
 const { markFatoBuilt } = require("./fato-build-state");
 
 // ---------------------------------------------------------------------------
-// Fixtures — formato real de res.partner
+// Fixtures , formato real de res.partner
 // Dados confirmados contra o banco real: 6545 parceiros (rawDeleted=false)
 // ---------------------------------------------------------------------------
 
@@ -88,7 +88,7 @@ describe("mapParceiroRow", () => {
     expect(result.ativo).toBe(true);
   });
 
-  it("fallback phone ?? mobile — usa mobile quando phone é null", () => {
+  it("fallback phone ?? mobile , usa mobile quando phone é null", () => {
     const result = mapParceiroRow(RAW_PARCEIRO_PESSOA_FORNECEDOR);
     expect(result.odooId).toBe(2002);
     expect(result.ehFornecedor).toBe(true);
@@ -99,7 +99,7 @@ describe("mapParceiroRow", () => {
     expect(result.email).toBeNull();
   });
 
-  it("fallback phone ?? mobile — phone=false, mobile=false → null", () => {
+  it("fallback phone ?? mobile , phone=false, mobile=false → null", () => {
     const result = mapParceiroRow(RAW_PARCEIRO_SEM_UF);
     expect(result.telefone).toBeNull();
   });

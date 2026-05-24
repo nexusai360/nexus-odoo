@@ -116,7 +116,7 @@ export class OpenAIClient implements ProviderClient {
       const { costUsd } = calculateCost(this.model, tokensInput, tokensOutput);
       return {
         message:
-          "[MOCK OpenAI] Resposta simulada — configure a API key para respostas reais.",
+          "[MOCK OpenAI] Resposta simulada , configure a API key para respostas reais.",
         usage: { tokensInput, tokensOutput, costUsd: costUsd ?? 0 },
       };
     }

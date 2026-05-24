@@ -30,6 +30,7 @@ import {
   DEFAULT_GUARDRAILS,
 } from "@/lib/agent/prompt/defaults";
 import { IDENTITY_BASE } from "@/lib/agent/prompt/identity-base";
+import { sanitizePromptText } from "@/lib/agent/prompt/sanitize";
 
 export type {
   AgentSettingsData,
@@ -39,13 +40,31 @@ export type {
 
 const CheckpointSchema = z.enum(CHECKPOINT_VALUES);
 
+// Sanitiza no schema (defesa de borda): travessao, en-dash, reticencias
+// unicode, aspas francesas e non-breaking spaces sao normalizados antes da
+// persistencia. Acentos e cedilha preservados. Aplicado em todos os campos
+// de prompt editaveis pelo admin para nao deixar `,` entrar de novo via UI.
+const sanitizedString = (max: number, msg?: string) =>
+  z.string().max(max, msg).transform((s) => sanitizePromptText(s));
+
 const UpdateSettingsSchema = z.object({
-  identityBase: z.string().max(50_000).optional(),
-  personality: z.string().max(1000, "Comportamento não pode exceder 1000 caracteres"),
-  tone: z.string().max(1000, "Tom não pode exceder 1000 caracteres"),
-  guardrails: z.array(z.string().max(500, "Cada guardrail não pode exceder 500 caracteres")),
-  terminology: z.record(z.string(), z.string()),
-  advancedOverride: z.string().max(50_000).optional(),
+  identityBase: sanitizedString(500_000).optional(),
+  personality: sanitizedString(1000, "Comportamento não pode exceder 1000 caracteres"),
+  tone: sanitizedString(1000, "Tom não pode exceder 1000 caracteres"),
+  guardrails: z.array(
+    sanitizedString(500, "Cada guardrail não pode exceder 500 caracteres"),
+  ),
+  terminology: z
+    .record(z.string(), z.string())
+    .transform((map) =>
+      Object.fromEntries(
+        Object.entries(map).map(([k, v]) => [
+          sanitizePromptText(k),
+          sanitizePromptText(v),
+        ]),
+      ),
+    ),
+  advancedOverride: sanitizedString(500_000).optional(),
   suggestionsEnabled: z.boolean(),
 });
 
@@ -55,15 +74,15 @@ const UpdateResourcesSchema = z.object({
   audioCheckpoint: CheckpointSchema,
   imageCheckpoint: CheckpointSchema,
   kbCheckpoint: CheckpointSchema,
-  /** G7 — checkpoint das sugestões (substitui o boolean suggestionsEnabled). */
+  /** G7 , checkpoint das sugestões (substitui o boolean suggestionsEnabled). */
   suggestionsCheckpoint: CheckpointSchema.optional(),
   audioProvider: z.string().nullable().optional(),
   audioModel: z.string().nullable().optional(),
-  /** G6 — chave de API usada pelo modelo dedicado de áudio. */
+  /** G6 , chave de API usada pelo modelo dedicado de áudio. */
   audioCredentialId: z.string().nullable().optional(),
   imageProvider: z.string().nullable().optional(),
   imageModel: z.string().nullable().optional(),
-  /** G6 — chave de API usada pelo modelo dedicado de imagem. */
+  /** G6 , chave de API usada pelo modelo dedicado de imagem. */
   imageCredentialId: z.string().nullable().optional(),
   /** Profundidade de raciocínio (modelos reasoning). null = default do provider. */
   reasoningEffort: z
@@ -84,7 +103,7 @@ async function requireAdminOrAbove(): Promise<
   const me = await getCurrentUser();
   if (!me) return { ok: false, error: "Não autenticado" };
   if (me.platformRole !== "admin" && me.platformRole !== "super_admin") {
-    return { ok: false, error: "Acesso negado — requer perfil admin ou super_admin" };
+    return { ok: false, error: "Acesso negado , requer perfil admin ou super_admin" };
   }
   return { ok: true, userId: me.id };
 }
@@ -153,7 +172,7 @@ function mapSettings(row: AgentSettingsRow): AgentSettingsData {
  * Cria com os defaults do domínio Matrix Fitness Group quando ausente. Para
  * instalações antigas em que o singleton foi criado vazio (personality/tone/
  * guardrails em branco, identityBase nulo), faz um auto-reparo preenchendo
- * APENAS os campos ainda vazios — edições feitas pelo admin nunca são tocadas.
+ * APENAS os campos ainda vazios , edições feitas pelo admin nunca são tocadas.
  */
 async function ensureGlobalSettings(): Promise<AgentSettingsData> {
   const existing = await prisma.agentSettings.findUnique({

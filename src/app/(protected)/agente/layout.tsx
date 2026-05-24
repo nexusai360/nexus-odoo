@@ -3,7 +3,7 @@
  *
  * Gate de role: todas as sub-telas do Agente (Configuração, Chaves de API,
  * Prompt, Consumo, Playground) são exclusivas de super_admin. O chat do agente
- * em si é a bubble flutuante — não vive aqui.
+ * em si é a bubble flutuante , não vive aqui.
  */
 import { redirect } from "next/navigation";
 import { getCurrentUser } from "@/lib/auth";

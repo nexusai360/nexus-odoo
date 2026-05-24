@@ -1,5 +1,5 @@
 // mcp/__tests__/e2e/poc-happy-path.test.ts
-// Suíte E2E POC — happy path: criar parceiro via tool, verificar no Odoo real +
+// Suíte E2E POC , happy path: criar parceiro via tool, verificar no Odoo real +
 // audit (McpAuditLog).
 //
 // REQUER ODOO REAL: skipped automaticamente se ODOO_WRITE_USER ou
@@ -18,7 +18,7 @@ import { crmResPartnerCreate as _crmResPartnerCreate } from "../../tools/crm/res
 import type { WriteToolEntry } from "../../catalog/types.js";
 import { createMockRedis } from "../mocks/redis.js";
 
-// Cast para WriteToolEntry<unknown> — contravariance no handler
+// Cast para WriteToolEntry<unknown> , contravariance no handler
 const crmResPartnerCreate = _crmResPartnerCreate as WriteToolEntry;
 
 // ─── Setup ───────────────────────────────────────────────────────────────────
@@ -31,7 +31,7 @@ beforeAll(() => {
 
 const describeOrSkip = odooCredsAvailable ? describe : describe.skip;
 
-describeOrSkip("E2E POC — happy path com Odoo real", () => {
+describeOrSkip("E2E POC , happy path com Odoo real", () => {
   it("cria parceiro via pipeline externo e grava audit", async () => {
     // Todos os imports de infra via jest.requireActual para evitar ESM issues
     // eslint-disable-next-line @typescript-eslint/no-require-imports

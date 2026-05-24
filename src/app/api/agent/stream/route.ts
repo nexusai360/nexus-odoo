@@ -60,7 +60,7 @@ export async function POST(req: Request): Promise<Response> {
     });
   }
 
-  // Gate de role para playground — apenas admin/super_admin
+  // Gate de role para playground , apenas admin/super_admin
   const isPlayground = body.isPlayground === true;
   if (isPlayground && !PLAYGROUND_ROLES.has(user.platformRole)) {
     return new Response(JSON.stringify({ error: "Acesso negado ao playground" }), {

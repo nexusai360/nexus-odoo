@@ -1,7 +1,7 @@
 "use client";
 
 /**
- * ConsumoContent — componente cliente raiz da tela /agente/consumo.
+ * ConsumoContent , componente cliente raiz da tela /agente/consumo.
  *
  * Clone do front-end da tela de consumo do Agente Nex do nexus-insights,
  * reconectado ao back-end V2 do nexus-odoo (UsageSummaryV2: conversas vs
@@ -150,12 +150,12 @@ const dayLabelFmt = new Intl.DateTimeFormat("pt-BR", {
 });
 
 function formatUsdRaw(v: number | null | undefined): string {
-  if (v == null || !Number.isFinite(v)) return "—";
+  if (v == null || !Number.isFinite(v)) return ",";
   return usdRawFmt.format(v);
 }
 
 function formatBrlRaw(v: number | null | undefined): string {
-  if (v == null || !Number.isFinite(v)) return "—";
+  if (v == null || !Number.isFinite(v)) return ",";
   return brlRawFmt.format(v);
 }
 
@@ -167,7 +167,7 @@ function isWhisperModel(model: string): boolean {
   return /whisper/i.test(model);
 }
 
-// Coluna "Tipo" — estilos e rótulos do requestKind (dado próprio do nexus-odoo).
+// Coluna "Tipo" , estilos e rótulos do requestKind (dado próprio do nexus-odoo).
 const REQUEST_KIND_STYLES: Record<string, string> = {
   texto: "bg-slate-500/10 text-slate-700 dark:text-slate-300",
   imagem: "bg-sky-500/10 text-sky-700 dark:text-sky-300",
@@ -283,7 +283,7 @@ export function ConsumoContent({ minDate: minDateIso }: ConsumoContentProps) {
   // Filtro Ambiente (Agente Nex / Playground). Sincroniza com URL ?env=...
   const [ambiente, setAmbiente] = useState<Ambiente>("all");
   // O estado inicial dos filtros vem da URL, mas só pode ser lido após a
-  // montagem no client — ler window.location no primeiro render quebraria a
+  // montagem no client , ler window.location no primeiro render quebraria a
   // hidratação (o servidor não tem a query string).
   const [hydrated, setHydrated] = useState(false);
   const isPlaygroundFilter =
@@ -417,7 +417,7 @@ export function ConsumoContent({ minDate: minDateIso }: ConsumoContentProps) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [chartReferenceDate, effectiveChartRange.start.getTime(), effectiveChartRange.end.getTime(), globalProvider, isPlaygroundFilter]);
 
-  // Lê o estado inicial dos filtros da URL — só após a montagem no client,
+  // Lê o estado inicial dos filtros da URL , só após a montagem no client,
   // para o primeiro render bater com o do servidor (evita hydration mismatch).
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -662,13 +662,13 @@ export function ConsumoContent({ minDate: minDateIso }: ConsumoContentProps) {
   }, [stats]);
 
   const totalCostBrlFormatted = useMemo(
-    () => (stats ? formatBrl4(stats.totalCostBrl) : "—"),
+    () => (stats ? formatBrl4(stats.totalCostBrl) : ","),
     [stats],
   );
   // Valor "centro do donut": sincroniza com o periodo navegado (segue
   // activeChartStats); o KPI Custo total continua usando o periodo inteiro.
   const chartTotalCostBrlFormatted = useMemo(
-    () => (activeChartStats ? formatBrl4(activeChartStats.totalCostBrl) : "—"),
+    () => (activeChartStats ? formatBrl4(activeChartStats.totalCostBrl) : ","),
     [activeChartStats],
   );
   const custoSubtitle = useMemo(() => {
@@ -698,28 +698,28 @@ export function ConsumoContent({ minDate: minDateIso }: ConsumoContentProps) {
     {
       icon: MessageSquare,
       label: "Conversas",
-      value: stats ? numberFmt.format(stats.totalConversations) : "—",
+      value: stats ? numberFmt.format(stats.totalConversations) : ",",
       subtitle: "threads distintos",
       tone: "default" as const,
     },
     {
       icon: Activity,
       label: "Chamadas",
-      value: stats ? numberFmt.format(stats.totalIterations) : "—",
+      value: stats ? numberFmt.format(stats.totalIterations) : ",",
       subtitle: "no período",
       tone: "default" as const,
     },
     {
       icon: Hash,
       label: "Tokens entrada",
-      value: stats ? formatTokens(stats.totalTokensInput) : "—",
+      value: stats ? formatTokens(stats.totalTokensInput) : ",",
       subtitle: "no período",
       tone: "default" as const,
     },
     {
       icon: Zap,
       label: "Tokens saída",
-      value: stats ? formatTokens(stats.totalTokensOutput) : "—",
+      value: stats ? formatTokens(stats.totalTokensOutput) : ",",
       subtitle: "no período",
       tone: "default" as const,
     },
@@ -742,7 +742,7 @@ export function ConsumoContent({ minDate: minDateIso }: ConsumoContentProps) {
       transition={{ duration: 0.2, ease: "easeOut" }}
       className="space-y-6"
     >
-      {/* Filtros — PeriodPills + filtro global de provider + ambiente */}
+      {/* Filtros , PeriodPills + filtro global de provider + ambiente */}
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex flex-wrap items-center gap-3">
           <PeriodPills
@@ -794,7 +794,7 @@ export function ConsumoContent({ minDate: minDateIso }: ConsumoContentProps) {
         </Card>
       ) : null}
 
-      {/* KPI cards — 5 cartões */}
+      {/* KPI cards , 5 cartões */}
       <motion.div
         initial="hidden"
         animate="visible"
@@ -827,7 +827,7 @@ export function ConsumoContent({ minDate: minDateIso }: ConsumoContentProps) {
         ))}
       </motion.div>
 
-      {/* Charts grid — custo ocupa 2/3, distribuição 1/3 */}
+      {/* Charts grid , custo ocupa 2/3, distribuição 1/3 */}
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
         <Card className="rounded-2xl border border-border bg-muted/30 lg:col-span-2">
           <CardHeader className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
@@ -1111,7 +1111,7 @@ export function ConsumoContent({ minDate: minDateIso }: ConsumoContentProps) {
                             whisper && "text-muted-foreground",
                           )}
                         >
-                          {whisper ? "—" : numberFmt.format(row.tokensInput)}
+                          {whisper ? "," : numberFmt.format(row.tokensInput)}
                         </TableCell>
                         <TableCell
                           className={cn(
@@ -1119,11 +1119,11 @@ export function ConsumoContent({ minDate: minDateIso }: ConsumoContentProps) {
                             whisper && "text-muted-foreground",
                           )}
                         >
-                          {whisper ? "—" : numberFmt.format(row.tokensOutput)}
+                          {whisper ? "," : numberFmt.format(row.tokensOutput)}
                         </TableCell>
                         <TableCell className="hidden md:table-cell text-right tabular-nums text-muted-foreground">
                           {row.durationMs == null
-                            ? "—"
+                            ? ","
                             : formatDuration(row.durationMs)}
                         </TableCell>
                         <TableCell className="text-right tabular-nums">
@@ -1137,7 +1137,7 @@ export function ConsumoContent({ minDate: minDateIso }: ConsumoContentProps) {
                         </TableCell>
                         <TableCell className="text-right tabular-nums">
                           {!row.costKnown ? (
-                            <span className="text-muted-foreground">—</span>
+                            <span className="text-muted-foreground">,</span>
                           ) : (
                             <span className="flex flex-col items-end gap-0.5">
                               <span>{formatBrlRaw(row.costBrl)}</span>
@@ -1171,7 +1171,7 @@ export function ConsumoContent({ minDate: minDateIso }: ConsumoContentProps) {
           {detailsTotal > 0 ? (
             <div className="mt-4 flex flex-col items-center justify-between gap-3 border-t border-border pt-4 sm:flex-row">
               <p className="text-xs text-muted-foreground tabular-nums">
-                Mostrando {numberFmt.format(rangeStartIdx)}–
+                Mostrando {numberFmt.format(rangeStartIdx)},
                 {numberFmt.format(rangeEndIdx)} de{" "}
                 {numberFmt.format(detailsTotal)}
               </p>

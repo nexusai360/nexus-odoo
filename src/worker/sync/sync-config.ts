@@ -36,7 +36,7 @@ export async function readSyncConfig(prisma: PrismaClient): Promise<SyncConfig> 
       // Dado corrompido em AppSetting (string, objeto, NaN…): cai no default
       // e registra o aviso em vez de propagar valor inválido (WR-09).
       console.warn(
-        `[sync-config] AppSetting "${row.key}" com valor inválido (${JSON.stringify(row.value)}) — usando default ${SYNC_CONFIG_DEFAULTS[field]}`,
+        `[sync-config] AppSetting "${row.key}" com valor inválido (${JSON.stringify(row.value)}) , usando default ${SYNC_CONFIG_DEFAULTS[field]}`,
       );
     }
   }

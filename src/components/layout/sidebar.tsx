@@ -60,7 +60,7 @@ export function Sidebar({ user }: SidebarProps) {
   const [mobileOpen, setMobileOpen] = useState(false);
   const reduceMotion = useReducedMotion();
   const { theme, setTheme } = useTheme();
-  // Persistido em localStorage — desktop only.
+  // Persistido em localStorage , desktop only.
   const [collapsed, setCollapsed] = useState(false);
 
   useEffect(() => {
@@ -79,7 +79,7 @@ export function Sidebar({ user }: SidebarProps) {
     });
   }
 
-  // Drawer mobile: fecha com Esc (acessibilidade — complementa o overlay
+  // Drawer mobile: fecha com Esc (acessibilidade , complementa o overlay
   // clicável e os atributos role="dialog"/aria-modal do <aside> móvel).
   useEffect(() => {
     if (!mobileOpen) return;
@@ -121,7 +121,7 @@ export function Sidebar({ user }: SidebarProps) {
 
     if (hasChildren) {
       // Quando o sidebar está colapsado, clicar no item de grupo expande
-      // a sidebar inteira E abre o submenu — regra ditada pelo usuário.
+      // a sidebar inteira E abre o submenu , regra ditada pelo usuário.
       const handleGroupClick = () => {
         if (isCollapsed) {
           toggleCollapsed();
@@ -367,7 +367,7 @@ export function Sidebar({ user }: SidebarProps) {
           return profileEl;
         })()}
 
-        {/* Tema — 3 ícones; quando colapsado, mostra só o ícone ativo */}
+        {/* Tema , 3 ícones; quando colapsado, mostra só o ícone ativo */}
         {isCollapsed ? (
           (() => {
             const ActiveIcon = THEME_ICONS[theme] ?? Monitor;
@@ -389,7 +389,7 @@ export function Sidebar({ user }: SidebarProps) {
                     <button
                       type="button"
                       onClick={cycle}
-                      aria-label={`Tema (${THEME_LABELS[theme] ?? ""}) — clique para alternar`}
+                      aria-label={`Tema (${THEME_LABELS[theme] ?? ""}) , clique para alternar`}
                       className="flex h-10 w-full cursor-pointer items-center justify-center rounded-lg text-muted-foreground hover:bg-accent/40 hover:text-foreground"
                     >
                       <ActiveIcon className="h-4 w-4" aria-hidden />
@@ -478,7 +478,7 @@ export function Sidebar({ user }: SidebarProps) {
 
   return (
     <>
-      {/* Desktop — sidebar com largura animada (expandido 240px / colapsado 64px). */}
+      {/* Desktop , sidebar com largura animada (expandido 240px / colapsado 64px). */}
       <motion.aside
         animate={{ width: collapsed ? 64 : 240 }}
         transition={
@@ -490,7 +490,7 @@ export function Sidebar({ user }: SidebarProps) {
       >
         {sidebarContent(collapsed)}
 
-        {/* Botão setinha — centro vertical, borda direita do sidebar */}
+        {/* Botão setinha , centro vertical, borda direita do sidebar */}
         <button
           type="button"
           onClick={toggleCollapsed}

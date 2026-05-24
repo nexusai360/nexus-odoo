@@ -17,7 +17,7 @@ export interface FatoMovimentoRow {
   origem: string | null;
 }
 
-/** Movimento de quantidade 0 é ajuste sem efeito físico — descartado do fato. */
+/** Movimento de quantidade 0 é ajuste sem efeito físico , descartado do fato. */
 export function temEfeito(row: FatoMovimentoRow): boolean {
   return row.quantidade !== 0;
 }
@@ -25,7 +25,7 @@ export function temEfeito(row: FatoMovimentoRow): boolean {
 /**
  * Deriva uma linha de fato_estoque_movimento de um registro raw.
  * Retorna null quando a data é inválida (IM-02): linha sem `data` parseável
- * geraria bucket de mês "NaN-NaN" — descartada em vez de poluir as agregações.
+ * geraria bucket de mês "NaN-NaN" , descartada em vez de poluir as agregações.
  */
 export function mapMovimentoRow(
   raw: Record<string, unknown>,

@@ -35,7 +35,7 @@ describe("recordIdempotencyResult", () => {
     expect(expiresMs).toBeLessThan(before + 25 * 3600 * 1000);
   });
 
-  it("TTL configurável — ttlHours=1 → expiresAt ≈ now+1h", async () => {
+  it("TTL configurável , ttlHours=1 → expiresAt ≈ now+1h", async () => {
     const prisma = mockPrisma();
     (prisma.mcpIdempotencyRecord.create as jest.Mock).mockResolvedValue({});
 

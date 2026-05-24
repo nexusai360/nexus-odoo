@@ -1,13 +1,13 @@
 // src/worker/fatos/fato-parceiro.ts
-// FONTE: raw_res_partner (modelo res.partner — parceiros/contatos do Odoo).
+// FONTE: raw_res_partner (modelo res.partner , parceiros/contatos do Odoo).
 // Cobre clientes, fornecedores e contatos em geral.
 // FILTRO: rawDeleted=false.
 // Campos booleanos (customer, supplier, is_company) mapeados para ehCliente,
 //   ehFornecedor, ehEmpresa.
-// estado_id / country_id são M2O — extraídos via relId/relNome.
+// estado_id / country_id são M2O , extraídos via relId/relNome.
 // telefone: phone com fallback para mobile (P-I8).
 // email: campo direto raw.email.
-// NÃO inclui atualizadoEm — campo tem @default(now()) no schema.
+// NÃO inclui atualizadoEm , campo tem @default(now()) no schema.
 import type { PrismaClient } from "../../generated/prisma/client";
 import { relNome, type OdooM2O } from "./odoo-relational";
 import { markFatoBuilt } from "./fato-build-state";
@@ -27,7 +27,7 @@ export interface FatoParceiroRow {
   email: string | null;
   telefone: string | null;
   ativo: boolean;
-  // NÃO inclui atualizadoEm — campo tem @default(now()) no schema
+  // NÃO inclui atualizadoEm , campo tem @default(now()) no schema
 }
 
 export function mapParceiroRow(raw: Record<string, unknown>): FatoParceiroRow {

@@ -6,7 +6,7 @@
  *
  * Extrai o texto da URL server-side via ingestKbDocumentAction
  * passando kind="URL". O servidor é responsável por buscar o
- * conteúdo — aqui apenas validamos nome e URL client-side.
+ * conteúdo , aqui apenas validamos nome e URL client-side.
  *
  * Adaptado de nexus-insights/src/components/agente-nex/kb-url-form.tsx.
  * Diferença: chama ingestKbDocumentAction (src/lib/actions/kb.ts).
@@ -106,7 +106,7 @@ export function KbUrlForm({
     }
     setError(null);
     startTransition(async () => {
-      // Passar o texto da URL como marcador — o action recebe kind=URL e sourceUrl.
+      // Passar o texto da URL como marcador , o action recebe kind=URL e sourceUrl.
       // Para extrair o conteúdo, passamos um placeholder; a extração real pode
       // ser implementada no action futuramente. Por ora, gravamos a URL como
       // referência e o usuário pode copiar o texto manualmente.

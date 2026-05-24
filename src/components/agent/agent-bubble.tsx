@@ -1,7 +1,7 @@
 "use client";
 
 /**
- * AgentBubble — FAB flutuante que abre o chat do agente.
+ * AgentBubble , FAB flutuante que abre o chat do agente.
  *
  * Portado de nexus-insights/src/components/nex/nex-bubble.tsx.
  * Adaptações:
@@ -9,7 +9,7 @@
  * - aria-label: "Abrir o Agente" (genérico, sem nome próprio Nex).
  *
  * Posição: fixed bottom-6 right-6 (com offset no mobile para não brigar com gesture bar).
- * Tamanho 56px — acima do mínimo 44pt de touch.
+ * Tamanho 56px , acima do mínimo 44pt de touch.
  * Animação de "respiração" do glow respeita prefers-reduced-motion.
  *
  * Rework F5-UI: ao abrir o painel, o FAB some (fade/scale); ao fechar, volta.
@@ -66,7 +66,7 @@ export function AgentBubble({
 
   return (
     <>
-      {/* FAB — visível só com o painel fechado. Some/volta com animação. */}
+      {/* FAB , visível só com o painel fechado. Some/volta com animação. */}
       <AnimatePresence>
         {!open ? (
           <motion.div

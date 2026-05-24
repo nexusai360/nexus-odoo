@@ -123,7 +123,7 @@ describe("DataTable multi-sort (c1)", () => {
     expect(ths[1]).toHaveAttribute("aria-sort", "none");
   });
 
-  it("ordena coluna textual — Anilha vem primeiro na asc", () => {
+  it("ordena coluna textual , Anilha vem primeiro na asc", () => {
     render(<DataTable columns={cols} rows={rows} />);
     fireEvent.click(screen.getByRole("button", { name: /Ordenar por Produto/i }));
     const cells = screen.getAllByRole("cell");

@@ -1,7 +1,7 @@
 "use client";
 
 /**
- * ResourcesToggles — recursos do Agente Nex: entrada de áudio, entrada de
+ * ResourcesToggles , recursos do Agente Nex: entrada de áudio, entrada de
  * imagem e sugestões clicáveis.
  *
  * - Áudio e imagem usam o controle de checkpoint de 3 estados (off / playground
@@ -52,7 +52,7 @@ interface ResourcesTogglesProps {
     guardrails: string[];
     advancedOverride: string | null;
     terminology: Record<string, string>;
-    /** @deprecated G7 — usa suggestionsCheckpoint. */
+    /** @deprecated G7 , usa suggestionsCheckpoint. */
     suggestionsEnabled: boolean;
     suggestionsCheckpoint: CheckpointState;
     audioCheckpoint: CheckpointState;
@@ -68,9 +68,9 @@ interface ResourcesTogglesProps {
     reasoningCheckpoint: CheckpointState;
     maxSuggestions: number;
   };
-  /** G6 — credenciais cadastradas, agrupadas por provedor. */
+  /** G6 , credenciais cadastradas, agrupadas por provedor. */
   credentialsByProvider?: Record<string, CredentialOption[]>;
-  /** Id do modelo de produção ativo — determina o suporte a raciocínio. */
+  /** Id do modelo de produção ativo , determina o suporte a raciocínio. */
   activeModelId: string;
 }
 
@@ -93,7 +93,7 @@ export function ResourcesToggles({
   const router = useRouter();
   const [, startTransition] = useTransition();
 
-  // Modelo exibido no ReasoningCard — espelha em tempo real o que está
+  // Modelo exibido no ReasoningCard , espelha em tempo real o que está
   // selecionado no LlmConfigForm (via CustomEvent), independente de teste ou
   // save. O efeito real só persiste em Save; um refresh recoloca o salvo.
   const [displayedModelId, setDisplayedModelId] = useState(activeModelId);
@@ -244,7 +244,7 @@ export function ResourcesToggles({
 
   return (
     <div className="space-y-5">
-      {/* Modo raciocínio — antes da entrada de áudio */}
+      {/* Modo raciocínio , antes da entrada de áudio */}
       <ReasoningCard
         checkpoint={reasoningCp}
         effort={reasoningEffort || null}

@@ -1,8 +1,8 @@
 /**
- * Testes para usage-stats.ts — Task 5.1 (TDD).
+ * Testes para usage-stats.ts , Task 5.1 (TDD).
  *
  * Coberturas:
- * - getUsageStats: totalConversations (count Conversation) vs totalIterations (count LlmUsage) — BUG 8
+ * - getUsageStats: totalConversations (count Conversation) vs totalIterations (count LlmUsage) , BUG 8
  * - getUsageStats: costUsd ignora rows costKnown=false mas conta unknownCount
  * - getUsageStats: retorna byModel, byProvider, byDay, byHour
  * - getUsageDetails: paginação, filtros, totals
@@ -84,7 +84,7 @@ describe("getUsageStats", () => {
   });
 
   /**
-   * Setup helper — configura os mocks na ordem esperada pelo Promise.all:
+   * Setup helper , configura os mocks na ordem esperada pelo Promise.all:
    * [convCount, usageCount, aggregate, byModel, byProvider, byDay, byHour(findMany), unknownCount]
    */
   function setupMocks({
@@ -115,7 +115,7 @@ describe("getUsageStats", () => {
     mockFindFirst.mockResolvedValueOnce(null);
   }
 
-  it("BUG 8: totalConversations ≠ totalIterations — usa contagens separadas", async () => {
+  it("BUG 8: totalConversations ≠ totalIterations , usa contagens separadas", async () => {
     setupMocks({ convCount: 3, usageCount: 5 });
 
     const result: UsageSummaryV2 = await getUsageStats({ start: START, end: END });

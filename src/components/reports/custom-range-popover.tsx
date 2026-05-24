@@ -17,26 +17,26 @@ const MESES_LONGOS = [
 ];
 
 interface CustomRangePopoverProps {
-  /** Período corrente — pré-seleciona os meses ao abrir. */
+  /** Período corrente , pré-seleciona os meses ao abrir. */
   periodo: PeriodoResolvido;
   /** Chamado ao aplicar um intervalo válido (meses em ordem crescente). */
   onAplicar: (de: string, ate: string) => void;
   /**
    * Mês mais antigo com dado disponível ("YYYY-MM"). Meses anteriores ficam
-   * desabilitados — não faz sentido escolher um período sem dado.
+   * desabilitados , não faz sentido escolher um período sem dado.
    */
   mesMin?: string | null;
   /** Elemento gatilho (a pílula "Personalizado" da PeriodBar). */
   children: React.ReactElement;
 }
 
-/** "YYYY-MM" de um ano + índice de mês (0–11). */
+/** "YYYY-MM" de um ano + índice de mês (0,11). */
 function mesStr(ano: number, i: number): string {
   return `${ano}-${String(i + 1).padStart(2, "0")}`;
 }
 
 /**
- * Popover de seleção de intervalo de meses. Grão de mês — grade de 12 meses
+ * Popover de seleção de intervalo de meses. Grão de mês , grade de 12 meses
  * navegável por ano. Meses futuros (> mês corrente) ficam desabilitados.
  */
 export function CustomRangePopover({

@@ -33,7 +33,7 @@ export interface IncrementalResult {
   count: number;
   /**
    * Marca d'água a gravar como `lastIncrementalAt`. É capturada ANTES do
-   * fetch — qualquer registro modificado no Odoo durante o pull multi-página
+   * fetch , qualquer registro modificado no Odoo durante o pull multi-página
    * será reprocessado no próximo ciclo, sem perda silenciosa (CR-01).
    */
   watermark: Date;
@@ -43,7 +43,7 @@ export interface IncrementalResult {
  * Sincroniza um modelo Odoo página a página, limitando uso de memória a uma
  * página por vez e persistindo incrementalmente.
  *
- * Backfill (since === null): usa createMany em lotes — muito mais rápido que
+ * Backfill (since === null): usa createMany em lotes , muito mais rápido que
  * upsert registro a registro (211k upserts → ~420 createMany em lotes de 500).
  * skipDuplicates: true evita colisão em execuções interrompidas/retomadas.
  *

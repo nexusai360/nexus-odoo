@@ -18,7 +18,7 @@ function makeCtx(): WriteToolHandlerCtx {
   };
 }
 
-describe("cadastros.res_partner_category.set_tags — modes", () => {
+describe("cadastros.res_partner_category.set_tags , modes", () => {
   beforeEach(() => jest.clearAllMocks());
 
   it("mode=add manda [(4, id), ...]", async () => {

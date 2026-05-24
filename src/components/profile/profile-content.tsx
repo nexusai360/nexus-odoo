@@ -37,7 +37,7 @@ interface ProfileContentProps {
   domains: string[];
   /** ID do usuário (para edição do próprio WhatsApp). */
   userId: string;
-  /** Papel — define se pode editar o próprio WhatsApp. */
+  /** Papel , define se pode editar o próprio WhatsApp. */
   platformRole: string;
 }
 

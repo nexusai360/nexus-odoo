@@ -5,9 +5,9 @@
  * `lib/format/date.ts`).
  */
 
-/** Moeda BRL com 4 casas decimais; "—" para valor nulo/inválido. */
+/** Moeda BRL com 4 casas decimais; "," para valor nulo/inválido. */
 export function formatBrl4(v: number | null | undefined): string {
-  if (v == null || !Number.isFinite(v)) return "—";
+  if (v == null || !Number.isFinite(v)) return ",";
   const rounded = Math.round(v * 1e4) / 1e4;
   return new Intl.NumberFormat("pt-BR", {
     style: "currency",
@@ -17,9 +17,9 @@ export function formatBrl4(v: number | null | undefined): string {
   }).format(rounded);
 }
 
-/** Moeda USD com 4 casas decimais; "—" para valor nulo/inválido. */
+/** Moeda USD com 4 casas decimais; "," para valor nulo/inválido. */
 export function formatUsd4(v: number | null | undefined): string {
-  if (v == null || !Number.isFinite(v)) return "—";
+  if (v == null || !Number.isFinite(v)) return ",";
   const rounded = Math.round(v * 1e4) / 1e4;
   return new Intl.NumberFormat("en-US", {
     style: "currency",
@@ -31,7 +31,7 @@ export function formatUsd4(v: number | null | undefined): string {
 
 /** Duração legível com granularidade automática (ms / s / min / h). */
 export function formatDuration(ms: number): string {
-  if (!Number.isFinite(ms) || ms < 0) return "—";
+  if (!Number.isFinite(ms) || ms < 0) return ",";
   if (ms < 1000) return `${Math.round(ms)} ms`;
   const s = Math.round(ms / 1000);
   if (s < 60) return `${s} s`;

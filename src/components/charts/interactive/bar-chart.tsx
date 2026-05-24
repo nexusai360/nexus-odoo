@@ -70,7 +70,7 @@ export interface InteractiveBarChartProps {
    */
   xAxisFontSize?: number;
   /**
-   * Margem entre os ticks e o eixo X — aplicado como `tickMargin` (default 12).
+   * Margem entre os ticks e o eixo X , aplicado como `tickMargin` (default 12).
    */
   xAxisPadding?: number;
   /**
@@ -83,7 +83,7 @@ export interface InteractiveBarChartProps {
 }
 
 const defaultFormat = (v: number) =>
-  Number.isFinite(v) ? v.toLocaleString("pt-BR") : "—";
+  Number.isFinite(v) ? v.toLocaleString("pt-BR") : ",";
 
 function makeYAxisFormatter(
   currency: "USD" | "BRL" | undefined,
@@ -96,7 +96,7 @@ function makeYAxisFormatter(
       minimumFractionDigits: 2,
       maximumFractionDigits: 2,
     });
-    return (v) => (Number.isFinite(v) ? fmt.format(v) : "—");
+    return (v) => (Number.isFinite(v) ? fmt.format(v) : ",");
   }
   if (currency === "USD") {
     const fmt = new Intl.NumberFormat("en-US", {
@@ -105,7 +105,7 @@ function makeYAxisFormatter(
       minimumFractionDigits: 2,
       maximumFractionDigits: 2,
     });
-    return (v) => (Number.isFinite(v) ? fmt.format(v) : "—");
+    return (v) => (Number.isFinite(v) ? fmt.format(v) : ",");
   }
   return fallback;
 }
@@ -114,7 +114,7 @@ function makeYAxisFormatter(
  * Cria um custom tick para o XAxis categórico que renderiza:
  * 1) nome do modelo (truncado em 24 chars com ellipsis se necessário);
  * 2) Badge SVG inline (rect border + text uppercase opacity 0.6, sem fill)
- *    com o nome do provider — apenas quando mapeado em providersByModel.
+ *    com o nome do provider , apenas quando mapeado em providersByModel.
  *    Largura calculada dinamicamente (badgeText.length * 5.5 + 12).
  */
 function makeCustomBarTick(providersByModel?: Record<string, string>) {
@@ -132,7 +132,7 @@ function makeCustomBarTick(providersByModel?: Record<string, string>) {
     const providerLabel = provider
       ? (PROVIDER_LABELS[provider as keyof typeof PROVIDER_LABELS] ?? provider)
       : "";
-    // v0.26.0: case-mixed (OpenAI, Anthropic, Gemini, OpenRouter) — sem .toUpperCase()
+    // v0.26.0: case-mixed (OpenAI, Anthropic, Gemini, OpenRouter) , sem .toUpperCase()
     const badgeText = providerLabel;
     // Heurística case-mixed: ~6px/char + 14px padding total (case-mixed ocupa mais que all-caps).
     const badgeWidth = badgeText.length * 6 + 14;
@@ -212,7 +212,7 @@ export function InteractiveBarChart({
   const [activeKey, setActiveKey] = useState<string | null>(null);
   const numericTickFormatter = makeYAxisFormatter(yAxisCurrency, formatValue);
 
-  // Modo "subcent": valores positivos < R$ 0,01 — eixo numérico mostra apenas
+  // Modo "subcent": valores positivos < R$ 0,01 , eixo numérico mostra apenas
   // 2 ticks (0 e 0.01) com label "< R$ 0,01" no topo. Tooltip preserva real.
   const maxValue = Math.max(
     0,

@@ -1,5 +1,5 @@
 /**
- * Tipos e constantes exportados dos MCP API Keys — sem "use server".
+ * Tipos e constantes exportados dos MCP API Keys , sem "use server".
  * Separado de mcp-api-keys.ts porque "use server" só pode exportar funções async.
  */
 
@@ -25,7 +25,7 @@ export const WRITE_ACTIONS = ["Create", "Update", "Delete", "Archive", "Transiti
 export type WriteAction = (typeof WRITE_ACTIONS)[number];
 
 /**
- * Ações consideradas sensíveis — exigem confirmação dupla na UI.
+ * Ações consideradas sensíveis , exigem confirmação dupla na UI.
  * Baseado na spec §5.3.
  */
 export const SENSITIVE_ACTIONS: WriteAction[] = ["Delete", "Transition"];
@@ -58,6 +58,6 @@ export interface McpApiKeyListItem {
 export interface CreatedMcpApiKey {
   id: string;
   label: string;
-  token: string; // em claro — exibir 1×
+  token: string; // em claro , exibir 1×
   last4: string;
 }

@@ -2,7 +2,7 @@
 // Harness de teste de integração do servidor MCP (4f-4 / Onda F: 33 tools).
 //
 // Sobe o servidor HTTP real numa porta efêmera. O catálogo real (catalogo) é
-// importado diretamente — as tools registradas são as 33 de produção.
+// importado diretamente , as tools registradas são as 33 de produção.
 //
 // Auth é simulada via mocks (validateServiceToken + resolveUserContext) injetados
 // ANTES do createHttpServer ser importado, de forma que o servidor use os mocks
@@ -22,7 +22,7 @@ export type TestUserProfile = {
   domains: ReportDomain[];
 };
 
-/** Perfis de teste — cobrem os 4 roles do RBAC. */
+/** Perfis de teste , cobrem os 4 roles do RBAC. */
 export const TEST_SERVICE_TOKEN = "test-service-token-integration";
 
 export const PROFILES: Record<string, TestUserProfile> = {
@@ -72,7 +72,7 @@ export function makeUserCtx(profile: TestUserProfile): UserContext {
   };
 }
 
-/** Resultado do `startTestServer` — servidor + URL base + função de parada. */
+/** Resultado do `startTestServer` , servidor + URL base + função de parada. */
 export interface TestServer {
   server: http.Server;
   baseUrl: string;

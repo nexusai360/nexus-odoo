@@ -1,5 +1,5 @@
 // mcp/lib/rate-limit-headers.ts
-// Bloco G — G2.
+// Bloco G , G2.
 // Constrói os headers HTTP padrão de rate limit a partir do resultado de
 // checkMcpRateLimitFor.  Usado pelo handler HTTP do servidor MCP para
 // incluir cabeçalhos informativos em todas as respostas.
@@ -19,9 +19,9 @@ export interface RateLimitHeaders {
 /**
  * Retorna os três headers HTTP padrão de rate limit.
  *
- * - `X-RateLimit-Limit`     — limite configurado para a janela
- * - `X-RateLimit-Remaining` — requisições restantes nesta janela
- * - `X-RateLimit-Reset`     — Unix timestamp (segundos) em que a janela reinicia
+ * - `X-RateLimit-Limit`     , limite configurado para a janela
+ * - `X-RateLimit-Remaining` , requisições restantes nesta janela
+ * - `X-RateLimit-Reset`     , Unix timestamp (segundos) em que a janela reinicia
  */
 export function rateLimitHeaders(input: RateLimitHeadersInput): RateLimitHeaders {
   return {

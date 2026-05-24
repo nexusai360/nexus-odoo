@@ -25,12 +25,12 @@ export type ReportTemplate =
   | "LineChart"
   | "PieChart";
 
-/** Uma seção de relatório — um template alimentado por um fato. */
+/** Uma seção de relatório , um template alimentado por um fato. */
 export interface ReportSection {
   /** Id da seção dentro do relatório (usado como chave de render). */
   id: string;
   template: ReportTemplate;
-  /** Nome do fato lido — chave em FatoBuildState. */
+  /** Nome do fato lido , chave em FatoBuildState. */
   fato: string;
   /** Config declarativa repassada ao componente do template. */
   config: Record<string, unknown>;
@@ -44,7 +44,7 @@ export interface ReportEntry {
   dominio: ReportDomainId;
   descricao: string;
   /**
-   * Nome do ícone (string serializável, não componente) — resolvido para
+   * Nome do ícone (string serializável, não componente) , resolvido para
    * `LucideIcon` pelos client components via `resolveReportIcon`.
    * Nomes válidos: "Boxes" | "Coins" | "ArrowLeftRight" | "Clock"
    *               | "TrendingUp" | "PieChart".
@@ -61,7 +61,7 @@ export interface ReportEntry {
 
 /**
  * Filtros já parseados de searchParams para os tipos certos.
- * Todos opcionais — quando ausente, a query aplica o seu default.
+ * Todos opcionais , quando ausente, a query aplica o seu default.
  */
 export interface ReportFilterValues {
   armazemId?: number;

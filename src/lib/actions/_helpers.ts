@@ -8,7 +8,7 @@ import { auth } from "@/auth";
 
 /**
  * Garante que a sessão ativa pertence a um super_admin.
- * Lança um erro descriptivo caso contrário — o caller deve capturar e
+ * Lança um erro descriptivo caso contrário , o caller deve capturar e
  * devolver { success: false, error: "..." } ao cliente.
  */
 export async function requireSuperAdmin(): Promise<{ id: string; platformRole: string }> {
@@ -21,7 +21,7 @@ export async function requireSuperAdmin(): Promise<{ id: string; platformRole: s
     throw new Error("Não autenticado");
   }
   if (user.platformRole !== "super_admin") {
-    throw new Error("Acesso negado — requer super_admin");
+    throw new Error("Acesso negado , requer super_admin");
   }
   return { id: user.id, platformRole: user.platformRole };
 }

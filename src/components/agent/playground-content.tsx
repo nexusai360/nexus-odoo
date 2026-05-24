@@ -1,13 +1,13 @@
 "use client";
 
 /**
- * PlaygroundContent — Playground do Agente Nex com sessões persistentes.
+ * PlaygroundContent , Playground do Agente Nex com sessões persistentes.
  *
  * Layout: painel lateral esquerdo (config + histórico de sessões + consumo) +
  * área de chat à direita. A edição do prompt da sessão abre uma sub-tela
  * navegável (não modal). Sessões persistem em Postgres (PlaygroundSession).
  *
- * Bloco 6 — F5 UI rework v2.
+ * Bloco 6 , F5 UI rework v2.
  * Design: ui-ux-pro-max Quick Reference §5 (layout), §9 (navegação).
  */
 
@@ -87,11 +87,11 @@ interface UiMessage {
   steps?: ProgressStep[];
   suggestions?: string[];
   streaming?: boolean;
-  /** D5 — provedor/modelo que gerou esta mensagem. */
+  /** D5 , provedor/modelo que gerou esta mensagem. */
   provider?: string | null;
-  /** D5 — modelo que gerou esta mensagem. */
+  /** D5 , modelo que gerou esta mensagem. */
   model?: string | null;
-  /** D5 — tipo da requisição: texto | audio | imagem | arquivo. */
+  /** D5 , tipo da requisição: texto | audio | imagem | arquivo. */
   requestKind?: string | null;
 }
 
@@ -105,7 +105,7 @@ function genId(): string {
   return `pg-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
 }
 
-/** Label oficial de cada provedor — mantém capitalização da marca. */
+/** Label oficial de cada provedor , mantém capitalização da marca. */
 const PROVIDER_DISPLAY: Record<string, string> = {
   openai: "OpenAI",
   anthropic: "Anthropic",
@@ -150,7 +150,7 @@ export interface PlaygroundContentProps {
   /** Anexo disponível no playground (checkpoint de imagem >= PLAYGROUND). */
   imageInputEnabled?: boolean;
   userId: string;
-  /** D2 — credenciais agrupadas por provedor. */
+  /** D2 , credenciais agrupadas por provedor. */
   credentialsByProvider?: Record<string, { id: string; label: string }[]>;
 }
 
@@ -175,13 +175,13 @@ export function PlaygroundContent({
   const [active, setActive] = useState<PlaygroundSessionDetail | null>(null);
   const [isLoadingSession, setIsLoadingSession] = useState(false);
 
-  // D2 — rascunho de configuração antes do "Salvar"
+  // D2 , rascunho de configuração antes do "Salvar"
   const [draftProvider, setDraftProvider] = useState<string>("");
   const [draftModel, setDraftModel] = useState<string>("");
   const [draftCredentialId, setDraftCredentialId] = useState<string>("");
   const [savingConfig, setSavingConfig] = useState(false);
 
-  // D3 — rename da sessão
+  // D3 , rename da sessão
   const [renamingId, setRenamingId] = useState<string | null>(null);
   const [renameValue, setRenameValue] = useState("");
 
@@ -290,9 +290,9 @@ export function PlaygroundContent({
       return;
     }
     setIsLoadingSession(true);
-    // D2 — não auto-seleciona provedor/modelo/chave; usuário escolhe e clica
+    // D2 , não auto-seleciona provedor/modelo/chave; usuário escolhe e clica
     // Salvar antes da primeira mensagem.
-    // D4 — não arquiva a sessão atual; ela continua no histórico.
+    // D4 , não arquiva a sessão atual; ela continua no histórico.
     const res = await createPlaygroundSession({});
     setIsLoadingSession(false);
     if (res.success && res.data) {
@@ -333,7 +333,7 @@ export function PlaygroundContent({
     }
   }
 
-  // D2 — handlers de rascunho (não persistem direto; o usuário aciona Salvar).
+  // D2 , handlers de rascunho (não persistem direto; o usuário aciona Salvar).
   function handleDraftProviderChange(providerKey: string) {
     setDraftProvider(providerKey);
     setDraftModel("");
@@ -429,7 +429,7 @@ export function PlaygroundContent({
 
     const assistantId = genId();
     const progressId = genId();
-    // D5 — tag de modelo já fica preenchida durante o streaming.
+    // D5 , tag de modelo já fica preenchida durante o streaming.
     appendItems([
       {
         id: assistantId,
@@ -458,7 +458,7 @@ export function PlaygroundContent({
       let buffer = "";
 
       // A bolha do assistente só vira "assistant" no primeiro token (ou no
-      // done) — sem caret "|" órfão. Detectamos "já criado" lendo do próprio
+      // done) , sem caret "|" órfão. Detectamos "já criado" lendo do próprio
       // `prev` dentro do setItems (race-free com o batching do React).
 
       while (true) {
@@ -649,7 +649,7 @@ export function PlaygroundContent({
         toast.error("Não conseguimos entender o áudio.");
         return;
       }
-      // D5 — marca a mensagem do usuário como "audio" (transcrita).
+      // D5 , marca a mensagem do usuário como "audio" (transcrita).
       appendItems([
         {
           id: genId(),
@@ -713,7 +713,7 @@ export function PlaygroundContent({
           Nova sessão
         </Button>
 
-        {/* Tabs Configuração / Histórico — alterna o painel inferior */}
+        {/* Tabs Configuração / Histórico , alterna o painel inferior */}
         {active ? (
           <div className="flex w-full items-center gap-0.5 rounded-full border border-border bg-background/40 p-0.5">
             {(["config", "history"] as const).map((p) => {
@@ -745,7 +745,7 @@ export function PlaygroundContent({
             </p>
             {providersWithCreds.length > 0 ? (
               <>
-                {/* Nome da sessão — campo no topo, antes de Provedor */}
+                {/* Nome da sessão , campo no topo, antes de Provedor */}
                 <div className="space-y-1">
                   <label
                     htmlFor="pg-session-name"
@@ -753,7 +753,7 @@ export function PlaygroundContent({
                   >
                     Nome da sessão
                   </label>
-                  {/* Input direto — Salvar fica no botão geral lá embaixo,
+                  {/* Input direto , Salvar fica no botão geral lá embaixo,
                       não precisa de check inline. */}
                   <Input
                     id="pg-session-name"
@@ -848,7 +848,7 @@ export function PlaygroundContent({
               </Link>
             )}
 
-            {/* Consumo da sessão — destacado (atualiza ao vivo a cada done SSE) */}
+            {/* Consumo da sessão , destacado (atualiza ao vivo a cada done SSE) */}
             <div className="mt-4 rounded-xl border border-violet-500/30 bg-violet-500/[0.04] px-4 py-3.5">
               <div className="flex items-baseline justify-between gap-2">
                 <span className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
@@ -874,7 +874,7 @@ export function PlaygroundContent({
           </div>
         ) : null}
 
-        {/* Histórico de sessões — só visível quando sidePanel="history" ou sem sessão ativa */}
+        {/* Histórico de sessões , só visível quando sidePanel="history" ou sem sessão ativa */}
         <div
           className={cn(
             "flex min-h-0 flex-1 flex-col",
@@ -882,7 +882,7 @@ export function PlaygroundContent({
           )}
         >
           {/* "Histórico" só aparece quando NÃO há sessão ativa (sem tab acima
-              já indicando) — evita duplicação com o seletor Configuração/Histórico. */}
+              já indicando) , evita duplicação com o seletor Configuração/Histórico. */}
           {!active ? (
             <p className="mb-1.5 px-1 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
               Histórico
@@ -1179,7 +1179,7 @@ export function PlaygroundContent({
               )}
             </div>
 
-            {/* Input bar (G4 + D8 + D9) — anexo+mic dentro do MessageInput */}
+            {/* Input bar (G4 + D8 + D9) , anexo+mic dentro do MessageInput */}
             {active ? (
               <footer className="shrink-0 border-t border-border bg-background/80 px-4 pb-4 pt-3">
                 <form
@@ -1308,7 +1308,7 @@ export function PlaygroundContent({
 }
 
 // ---------------------------------------------------------------------------
-// MessageMetaTag (D5) — badge "provedor · modelo · tipo" por mensagem
+// MessageMetaTag (D5) , badge "provedor · modelo · tipo" por mensagem
 // ---------------------------------------------------------------------------
 
 function MessageMetaTag({

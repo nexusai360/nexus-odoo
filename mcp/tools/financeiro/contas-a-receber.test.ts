@@ -77,7 +77,7 @@ describe("financeiro_contas_a_receber", () => {
   });
 
   // Regressão: o critério correto é situacaoSimples='aberto', não dataPagamento=null.
-  // O banco filtra antes de devolver — o mock simula banco com só títulos abertos.
+  // O banco filtra antes de devolver , o mock simula banco com só títulos abertos.
   it("título aberto (situacaoSimples='aberto') aparece no resultado", async () => {
     const now = new Date("2026-05-18T10:00:00Z");
     const ctx = makeCtx();

@@ -1,6 +1,6 @@
 /**
  * Helpers criptográficos para uso em server actions e API routes do `src/`.
- * Espelha `mcp/lib/crypto.ts` — mantidos separados para não cruzar fronteiras
+ * Espelha `mcp/lib/crypto.ts` , mantidos separados para não cruzar fronteiras
  * de módulo (mcp/ usa Node runtime próprio e não é importável de src/).
  */
 

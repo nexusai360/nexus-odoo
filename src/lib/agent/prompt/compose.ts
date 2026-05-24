@@ -22,8 +22,8 @@ export const MAX_PERSONALITY_LEN = 1000;
 export const MAX_TONE_LEN = 1000;
 export const MAX_GUARDRAIL_LEN = 500;
 export const MAX_GUARDRAILS = 1000;
-export const MAX_PROMPT_LEN = 50_000;
-export const MAX_KB_TOTAL_CHARS = 50_000;
+export const MAX_PROMPT_LEN = 500_000;
+export const MAX_KB_TOTAL_CHARS = 500_000;
 
 /**
  * Origem do turno atual. Influencia o prompt:

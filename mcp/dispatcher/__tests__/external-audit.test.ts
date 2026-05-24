@@ -2,22 +2,22 @@
 // TDD para recordExternalAudit e redactPayload do external-pipeline.
 //
 // Cobre:
-//   1. redactPayload — campos sensíveis são redactados
-//   2. redactPayload — campos não-sensíveis preservados
-//   3. redactPayload — non-object passthrough
-//   4. recordExternalAudit — campos completos gravados via createMany
-//   5. recordExternalAudit — suppressPayload (§10.5: token inválido)
-//   6. recordExternalAudit — campos legados sempre preenchidos
-//   7. recordExternalAudit — falha silenciosa (não lança)
-//   8. recordExternalAudit — read tool com dominio
+//   1. redactPayload , campos sensíveis são redactados
+//   2. redactPayload , campos não-sensíveis preservados
+//   3. redactPayload , non-object passthrough
+//   4. recordExternalAudit , campos completos gravados via createMany
+//   5. recordExternalAudit , suppressPayload (§10.5: token inválido)
+//   6. recordExternalAudit , campos legados sempre preenchidos
+//   7. recordExternalAudit , falha silenciosa (não lança)
+//   8. recordExternalAudit , read tool com dominio
 
 import { redactPayload, recordExternalAudit } from "../external-pipeline.js";
 import type { PrismaClient } from "@/generated/prisma/client";
 import { mockPrisma } from "../../__tests__/mocks/prisma.js";
 
-// ─── 1–3. redactPayload ───────────────────────────────────────────────────────
+// ─── 1,3. redactPayload ───────────────────────────────────────────────────────
 
-describe("redactPayload — campos sensíveis", () => {
+describe("redactPayload , campos sensíveis", () => {
   it("redacta campos cujo nome contém 'cpf'", () => {
     const result = redactPayload({ cpf: "123.456.789-00", nome: "João" }) as Record<string, unknown>;
     expect(result["cpf"]).toBe("[REDACTED]");
@@ -77,9 +77,9 @@ describe("redactPayload — campos sensíveis", () => {
   });
 });
 
-// ─── 4–8. recordExternalAudit ────────────────────────────────────────────────
+// ─── 4,8. recordExternalAudit ────────────────────────────────────────────────
 
-describe("recordExternalAudit — campos completos", () => {
+describe("recordExternalAudit , campos completos", () => {
   let prismaInst: ReturnType<typeof mockPrisma>;
 
   beforeEach(() => {
@@ -239,7 +239,7 @@ describe("recordExternalAudit — campos completos", () => {
     expect(payload["name"]).toBe("João");
   });
 
-  it("falha silenciosa — não lança mesmo se createMany rejeitar", async () => {
+  it("falha silenciosa , não lança mesmo se createMany rejeitar", async () => {
     (prismaInst.mcpAuditLog.createMany as jest.Mock).mockRejectedValue(new Error("DB error"));
 
     await expect(

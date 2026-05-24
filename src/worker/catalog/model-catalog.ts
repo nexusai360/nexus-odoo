@@ -1,4 +1,4 @@
-// Gerado a partir de discovery/output/modelos/ — F2.
+// Gerado a partir de discovery/output/modelos/ , F2.
 // 107 incremental | 5 snapshot | 2 estatico.
 export type SyncMode = "incremental" | "snapshot" | "estatico";
 
@@ -90,17 +90,17 @@ export const MODEL_CATALOG: readonly CatalogEntry[] = [
   { odooModel: "sped.usuario.departamento", mode: "incremental" },
   { odooModel: "sped.usuario.perfil", mode: "incremental" },
   { odooModel: "sped.veiculo", mode: "incremental" },
-  // F4 L1a — expansão da base de leitura (novo acesso joaozanini)
+  // F4 L1a , expansão da base de leitura (novo acesso joaozanini)
   { odooModel: "sped.tabela.preco", mode: "incremental" },
   { odooModel: "sped.tabela.preco.regra", mode: "incremental" },
   { odooModel: "sped.servico", mode: "incremental" },
   { odooModel: "sped.apuracao", mode: "incremental" },
   { odooModel: "sped.carta.correcao", mode: "incremental" },
-  // F4 L1c — resíduo operacional 4a
+  // F4 L1c , resíduo operacional 4a
   { odooModel: "sped.certificado", mode: "incremental", excludeFields: ["senha", "arquivo"] },
   { odooModel: "finan.baixa.lancamento", mode: "incremental" },
   { odooModel: "pedido.faturamento", mode: "incremental" },
-  // F4 L1b — camada de referência (27 tabelas)
+  // F4 L1b , camada de referência (27 tabelas)
   { odooModel: "sped.ncm", mode: "incremental" },
   { odooModel: "sped.cfop", mode: "incremental" },
   { odooModel: "sped.cest", mode: "incremental" },

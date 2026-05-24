@@ -21,5 +21,5 @@ function Button({
 }
 
 export { Button }
-// Reexport para compatibilidade — o local canônico é "./button-variants".
+// Reexport para compatibilidade , o local canônico é "./button-variants".
 export { buttonVariants } from "./button-variants"

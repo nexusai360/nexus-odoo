@@ -1,5 +1,5 @@
 // mcp/__tests__/e2e/denial-audit.test.ts
-// Suíte E2E — política de payload em denials (spec §10.5).
+// Suíte E2E , política de payload em denials (spec §10.5).
 //
 // Valida que:
 //   1. Denial por capability_missing → grava audit com payload redactado
@@ -8,7 +8,7 @@
 //   4. Audit de denial tem status "denied" e httpStatus correto
 //   5. recordExternalAudit não lança em caso de falha do Prisma (falha silenciosa)
 //
-// Roda sem Odoo real — Prisma e Redis mockados.
+// Roda sem Odoo real , Prisma e Redis mockados.
 
 import { warnMissingEnv } from "./setup.js";
 import { mockPrisma } from "../mocks/prisma.js";
@@ -23,9 +23,9 @@ beforeAll(() => {
   warnMissingEnv();
 });
 
-describe("E2E denial-audit — política de payload §10.5", () => {
+describe("E2E denial-audit , política de payload §10.5", () => {
   // 1. Denial por capability: payload deve ser redactado (não suprimido)
-  it("1. denial por capability — audit gravado com payload redactado", async () => {
+  it("1. denial por capability , audit gravado com payload redactado", async () => {
     const createMany = jest.fn().mockResolvedValue({ count: 1 });
     const prisma = mockPrisma({ mcpAuditLog: { createMany } });
 
@@ -61,7 +61,7 @@ describe("E2E denial-audit — política de payload §10.5", () => {
   });
 
   // 2. Denial por token inválido: suppressPayload=true → payload NÃO gravado
-  it("2. unauthorized — suppressPayload=true → payload nulo no audit", async () => {
+  it("2. unauthorized , suppressPayload=true → payload nulo no audit", async () => {
     const createMany = jest.fn().mockResolvedValue({ count: 1 });
     const prisma = mockPrisma({ mcpAuditLog: { createMany } });
 
@@ -89,7 +89,7 @@ describe("E2E denial-audit — política de payload §10.5", () => {
   });
 
   // 3. redactPayload: campos sensíveis substituídos por [REDACTED]
-  it("3. redactPayload — campos sensíveis substituídos", () => {
+  it("3. redactPayload , campos sensíveis substituídos", () => {
     const input = {
       name: "Test",
       cpf: "123.456.789-00",
@@ -112,7 +112,7 @@ describe("E2E denial-audit — política de payload §10.5", () => {
   });
 
   // 4. redactPayload: arrays preservados, primitivos retornados sem alteração
-  it("4. redactPayload — arrays e primitivos passam sem alteração", () => {
+  it("4. redactPayload , arrays e primitivos passam sem alteração", () => {
     expect(redactPayload(["a", "b"])).toEqual(["a", "b"]);
     expect(redactPayload("string")).toBe("string");
     expect(redactPayload(42)).toBe(42);
@@ -121,7 +121,7 @@ describe("E2E denial-audit — política de payload §10.5", () => {
   });
 
   // 5. Falha silenciosa: prisma.createMany lança mas recordExternalAudit não relança
-  it("5. falha silenciosa — erro no Prisma não propaga para o caller", async () => {
+  it("5. falha silenciosa , erro no Prisma não propaga para o caller", async () => {
     const createMany = jest.fn().mockRejectedValue(new Error("DB down"));
     const prisma = mockPrisma({ mcpAuditLog: { createMany } });
 

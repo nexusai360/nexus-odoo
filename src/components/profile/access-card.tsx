@@ -84,7 +84,7 @@ export function AccessCard({ domains }: AccessCardProps) {
           </ul>
         ) : (
           <div className="rounded-lg border border-dashed border-border px-4 py-4 text-sm text-muted-foreground">
-            Nenhum domínio liberado — fale com um administrador para receber
+            Nenhum domínio liberado , fale com um administrador para receber
             acesso.
           </div>
         )}

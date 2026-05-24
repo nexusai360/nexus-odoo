@@ -67,7 +67,7 @@ export const cadastrosMailActivityCreate: WriteToolEntry<Input, OdooRecord> = {
   handler: async (input, ctx): Promise<WriteToolResult<OdooRecord>> => {
     const { odoo } = ctx;
 
-    // 1. Resolver res_model_id (com cache) — lanca ModeloNaoSuportadoError
+    // 1. Resolver res_model_id (com cache) , lanca ModeloNaoSuportadoError
     const resModelId = await resolveModelId(odoo, input.res_model);
 
     // 2. Validar res_id existe no modelo

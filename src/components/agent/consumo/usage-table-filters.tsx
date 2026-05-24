@@ -1,7 +1,7 @@
 "use client";
 
 /**
- * UsageTableFilters — filtros cascade de provider e modelo para a tabela de uso.
+ * UsageTableFilters , filtros cascade de provider e modelo para a tabela de uso.
  *
  * Clone do `usage-table-filters.tsx` do nexus-insights: dois selects em
  * popover, botão "Limpar filtros", sufixo de provider nos modelos quando

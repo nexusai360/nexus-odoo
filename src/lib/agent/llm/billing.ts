@@ -5,12 +5,12 @@
  *  - OpenRouter → GET /api/v1/credits (total_credits − total_usage).
  *  - OpenAI/Anthropic/Gemini → não há endpoint estável de saldo com a própria
  *    API key (billing fica atrás de cookie de sessão do dashboard). Retornamos
- *    `unavailable` — a UI mostra "saldo indisponível" + link "Adicionar crédito".
+ *    `unavailable` , a UI mostra "saldo indisponível" + link "Adicionar crédito".
  *
  * O resultado é persistido em `LlmCredential` (balanceUsd/balanceStatus/
  * balanceCheckedAt) e atualizado após cada uso da chave pelo agente.
  *
- * Módulo server-only — usa `fetch` direto, sem SDK.
+ * Módulo server-only , usa `fetch` direto, sem SDK.
  */
 
 import type { LlmProvider } from "./types";

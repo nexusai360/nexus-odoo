@@ -1,6 +1,6 @@
 // mcp/health/handler.ts
 // Handler do endpoint GET /health do servidor MCP.
-// Spec §25 — health check com postgres, redis, odoo, queue depth, cache freshness.
+// Spec §25 , health check com postgres, redis, odoo, queue depth, cache freshness.
 
 export interface HealthChecks {
   postgres: "ok" | "fail";
@@ -111,7 +111,7 @@ export function buildHealthHandler(deps: HealthDeps): () => Promise<HealthResult
 
     // Status geral:
     // unhealthy: postgres ou redis fail OU freshness > 3600
-    // degraded:  algum check fail OU freshness 600–3600
+    // degraded:  algum check fail OU freshness 600,3600
     // healthy:   todos ok e freshness < 600
     let status: "healthy" | "degraded" | "unhealthy";
 

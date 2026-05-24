@@ -225,7 +225,7 @@ export function UsersContent({ currentUser }: UsersContentProps) {
     }
   }
 
-  // Opções de papel ofertadas no badge inline — restritas ao que o ator
+  // Opções de papel ofertadas no badge inline , restritas ao que o ator
   // logado pode atribuir.
   const ALL_ROLES: RoleValue[] = ["super_admin", "admin", "manager", "viewer"];
 

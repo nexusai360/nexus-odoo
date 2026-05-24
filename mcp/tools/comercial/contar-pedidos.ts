@@ -1,6 +1,6 @@
 // mcp/tools/comercial/contar-pedidos.ts
 // Tool MCP: comercial_contar_pedidos
-// dados só tem escalares — sem array; cai no ramo "ok" do withFreshness.
+// dados só tem escalares , sem array; cai no ramo "ok" do withFreshness.
 import { z } from "zod";
 import type { ToolEntry } from "../../catalog/types.js";
 import { queryContarPedidos } from "@/lib/reports/queries/comercial.js";

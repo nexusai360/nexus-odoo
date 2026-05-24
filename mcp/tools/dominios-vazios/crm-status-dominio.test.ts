@@ -1,5 +1,5 @@
 // mcp/tools/dominios-vazios/crm-status-dominio.test.ts
-// TDD — Onda F, Task F.2
+// TDD , Onda F, Task F.2
 import { crmStatusDominio } from "./crm-status-dominio.js";
 
 describe("crmStatusDominio", () => {

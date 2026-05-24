@@ -1,7 +1,7 @@
 "use server";
 
 /**
- * Server Actions de Instâncias de WhatsApp (#30 — Integrações/Canais).
+ * Server Actions de Instâncias de WhatsApp (#30 , Integrações/Canais).
  *
  * Cada instância representa um número/conta Meta separado, com modo de
  * resposta próprio (direct ou n8n_webhook). Tabela `whatsapp_instances`
@@ -38,7 +38,7 @@ async function requireSuperAdmin(): Promise<
   const me = await getCurrentUser();
   if (!me) return { ok: false, error: "Não autenticado" };
   if (me.platformRole !== "super_admin") {
-    return { ok: false, error: "Acesso negado — requer super_admin" };
+    return { ok: false, error: "Acesso negado , requer super_admin" };
   }
   return { ok: true, userId: me.id };
 }

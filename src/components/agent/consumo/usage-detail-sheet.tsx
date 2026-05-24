@@ -1,7 +1,7 @@
 "use client";
 
 /**
- * UsageDetailSheet — drill-down de uma chamada de LLM em drawer lateral.
+ * UsageDetailSheet , drill-down de uma chamada de LLM em drawer lateral.
  *
  * Clone do `usage-detail-sheet.tsx` do nexus-insights, adaptado ao
  * `UsageDetailRow` V2 do nexus-odoo: badge `preço desconhecido` (costKnown),
@@ -178,7 +178,7 @@ export function UsageDetailSheet({
 }
 
 function IdentificationSection({ row }: { row: UsageDetailRow }) {
-  const dash = <span className="text-muted-foreground">—</span>;
+  const dash = <span className="text-muted-foreground">,</span>;
   return (
     <Section title="Identificação">
       <Field label="ID" value={row.id} mono className="sm:col-span-2" />
@@ -216,7 +216,7 @@ function IdentificationSection({ row }: { row: UsageDetailRow }) {
 
 function TokensSection({ row }: { row: UsageDetailRow }) {
   const isWhisper = isWhisperModel(row.model);
-  const dash = <span className="text-muted-foreground">—</span>;
+  const dash = <span className="text-muted-foreground">,</span>;
   return (
     <Section title="Tokens">
       <Field
@@ -262,7 +262,7 @@ function DurationSection({ row }: { row: UsageDetailRow }) {
         label="Tempo total"
         value={
           row.durationMs == null ? (
-            <span className="text-muted-foreground">—</span>
+            <span className="text-muted-foreground">,</span>
           ) : (
             formatDuration(row.durationMs)
           )
@@ -289,7 +289,7 @@ function CostSection({ row }: { row: UsageDetailRow }) {
           ) : row.costUsd != null ? (
             usdFmt.format(row.costUsd)
           ) : (
-            <span className="text-muted-foreground">—</span>
+            <span className="text-muted-foreground">,</span>
           )
         }
         mono={row.costKnown && row.costUsd != null}
@@ -323,7 +323,7 @@ function CostSection({ row }: { row: UsageDetailRow }) {
               {((row.rateSpread as number) * 100).toFixed(2)}%
             </span>
           ) : (
-            <span className="text-muted-foreground">—</span>
+            <span className="text-muted-foreground">,</span>
           )
         }
       />
@@ -331,11 +331,11 @@ function CostSection({ row }: { row: UsageDetailRow }) {
         label="Custo final (BRL)"
         value={
           !row.costKnown ? (
-            <span className="text-muted-foreground">—</span>
+            <span className="text-muted-foreground">,</span>
           ) : (
             <span className="flex flex-col gap-0.5">
               <span className="font-mono tabular-nums">
-                {row.costBrl != null ? brlFmt.format(row.costBrl) : "—"}
+                {row.costBrl != null ? brlFmt.format(row.costBrl) : ","}
               </span>
               {row.rateStale ? (
                 <span className="text-[10px] text-amber-600 dark:text-amber-400">

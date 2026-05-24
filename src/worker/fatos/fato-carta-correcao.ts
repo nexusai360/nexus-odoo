@@ -1,7 +1,7 @@
 // src/worker/fatos/fato-carta-correcao.ts
 // FONTE: raw_sped_carta_correcao (modelo sped.carta.correcao).
 // ESCOPO: cartas de correção (CC-e) de documentos fiscais.
-// CYCLE: incremental — volume baixo (~12 cartas).
+// CYCLE: incremental , volume baixo (~12 cartas).
 import type { PrismaClient } from "../../generated/prisma/client";
 import { relId, type OdooM2O } from "./odoo-relational";
 import { markFatoBuilt } from "./fato-build-state";

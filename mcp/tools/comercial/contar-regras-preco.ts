@@ -1,6 +1,6 @@
 // mcp/tools/comercial/contar-regras-preco.ts
 // Tool MCP: preco_contar_regras
-// dados só tem escalares — sem array; cai no ramo "ok" do withFreshness.
+// dados só tem escalares , sem array; cai no ramo "ok" do withFreshness.
 import { z } from "zod";
 import type { ToolEntry } from "../../catalog/types.js";
 import { queryContarRegrasPreco } from "@/lib/reports/queries/precos.js";

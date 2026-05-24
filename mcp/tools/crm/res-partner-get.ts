@@ -1,6 +1,6 @@
 // mcp/tools/crm/res-partner-get.ts
-// Tool MCP: crm.res_partner.get — leitura do CACHE local (rawResPartner).
-// NÃO toca o Odoo — lê do Postgres interno conforme decisão canônica #1 e #2.
+// Tool MCP: crm.res_partner.get , leitura do CACHE local (rawResPartner).
+// NÃO toca o Odoo , lê do Postgres interno conforme decisão canônica #1 e #2.
 
 import { z } from "zod";
 import type { ToolEntry } from "../../catalog/types.js";

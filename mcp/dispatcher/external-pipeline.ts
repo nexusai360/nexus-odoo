@@ -4,19 +4,19 @@
 // Implementa o handler JSON-RPC direto para o modo "external" (API key),
 // distinto do modo interno que usa StreamableHTTPServerTransport + McpServer.
 //
-// DECISÃO DE ARQUITETURA — Handler JSON-RPC Direto (vs. Transport SDK):
+// DECISÃO DE ARQUITETURA , Handler JSON-RPC Direto (vs. Transport SDK):
 //   O modo externo NÃO usa StreamableHTTPServerTransport. Razão: o pipeline
-//   externo requer controle fino por requisição — idempotency, audit enriquecido
-//   com apiKeyId, sync direcionado pós-write, headers CORS/rate-limit — que não
+//   externo requer controle fino por requisição , idempotency, audit enriquecido
+//   com apiKeyId, sync direcionado pós-write, headers CORS/rate-limit , que não
 //   se encaixam no ciclo de vida gerenciado pelo transport do SDK sem monkey-patch.
 //   A alternativa (handler direto: parsear body → rotear tools/list | tools/call
 //   → responder JSON) é mais simples, 100% testável via injeção de deps e não
 //   depende de side effects do transport. O modo interno continua com o transport.
 //
 // Funções exportadas:
-//   handleExternalRequest  — entry point do handler HTTP (deps injetáveis)
-//   handleExternalToolCall — sub-handler de tools/call (testável isoladamente)
-//   handleExternalToolList — sub-handler de tools/list
+//   handleExternalRequest  , entry point do handler HTTP (deps injetáveis)
+//   handleExternalToolCall , sub-handler de tools/call (testável isoladamente)
+//   handleExternalToolList , sub-handler de tools/list
 
 import { randomUUID } from "node:crypto";
 import type * as http from "node:http";
@@ -63,10 +63,10 @@ export interface McpToolResult {
   };
 }
 
-/** Deps injetáveis para handleExternalRequest — permite mock completo em testes. */
+/** Deps injetáveis para handleExternalRequest , permite mock completo em testes. */
 export interface ExternalPipelineDeps {
   prisma: PrismaClient;
-  /** ioredis Redis — usado via RateLimitRedis (pipeline) e acquireLock/releaseLock (SET NX). */
+  /** ioredis Redis , usado via RateLimitRedis (pipeline) e acquireLock/releaseLock (SET NX). */
   redis: Redis;
   catalog: ReadonlyArray<ToolEntry | WriteToolEntry>;
   /** Se undefined, usa getDirectedSyncQueue() real. */
@@ -181,13 +181,13 @@ function toOutcomeLegacy(status: string): "ok" | "denied" | "error" | "invalid_i
  * Grava McpAuditLog com todos os campos do Bloco B (migration 20260521001439_f4_onda2_mcp_writes).
  *
  * IMPORTANTE: usa createMany() para suprimir o RETURNING implícito do Prisma/adapter-pg.
- * O role nexus_mcp tem GRANT INSERT mas não SELECT em mcp_audit_log — createMany()
+ * O role nexus_mcp tem GRANT INSERT mas não SELECT em mcp_audit_log , createMany()
  * emite apenas INSERT sem RETURNING, preservando menor privilégio.
  *
  * Política §10.5: status "unauthorized" (token inválido) → NÃO grava payload.
  * Outros denials → grava payload com redaction de PII.
  *
- * Falha silenciosa: nunca lança — falha de audit não derruba o pipeline.
+ * Falha silenciosa: nunca lança , falha de audit não derruba o pipeline.
  */
 export async function recordExternalAudit(
   prisma: PrismaClient,
@@ -230,7 +230,7 @@ export async function recordExternalAudit(
           outcome: toOutcomeLegacy(fields.status),
           durationMs: fields.durationMs,
 
-          // Campos novos (F4 Onda 2 — migration 20260521001439_f4_onda2_mcp_writes)
+          // Campos novos (F4 Onda 2 , migration 20260521001439_f4_onda2_mcp_writes)
           apiKeyId: fields.apiKeyId,
           authMode: "external",
           operation: fields.operation,
@@ -297,7 +297,7 @@ export function handleExternalToolList(
   };
 }
 
-// ─── tools/call externo — write ──────────────────────────────────────────────
+// ─── tools/call externo , write ──────────────────────────────────────────────
 
 export interface HandleExternalWriteCallOpts {
   id: string | number | null;
@@ -316,7 +316,7 @@ export interface HandleExternalWriteCallOpts {
 
 /**
  * Pipeline completo de tools/call para WriteToolEntry no modo externo.
- * Retorna { status, body, corsExtra? } — o caller aplica CORS e envia a resposta.
+ * Retorna { status, body, corsExtra? } , o caller aplica CORS e envia a resposta.
  */
 export async function handleExternalWriteCall(
   opts: HandleExternalWriteCallOpts,
@@ -327,7 +327,7 @@ export async function handleExternalWriteCall(
   } = opts;
   const start = Date.now();
 
-  // Kill switch — feature_disabled
+  // Kill switch , feature_disabled
   if (process.env.MCP_WRITE_ENABLED !== "true") {
     logger.warn({ toolId: tool.id, apiKeyId: apiKey.apiKeyId }, "write disabled (MCP_WRITE_ENABLED != true)");
     const dur = Date.now() - start;
@@ -394,7 +394,7 @@ export async function handleExternalWriteCall(
     };
   }
 
-  // status === "proceed" — idemResult.lockKey disponível
+  // status === "proceed" , idemResult.lockKey disponível
   const lockKey = idemResult.lockKey;
 
   // Validação Zod do input
@@ -418,7 +418,7 @@ export async function handleExternalWriteCall(
     };
   }
 
-  // Montar contexto do handler — UserContext sintético derivado da ApiKey
+  // Montar contexto do handler , UserContext sintético derivado da ApiKey
   const syntheticUser = {
     userId: apiKey.apiKeyId,
     role: "viewer" as const,   // mínimo necessário; gate já feito via capability
@@ -538,7 +538,7 @@ export async function handleExternalWriteCall(
       apiKeyId: apiKey.apiKeyId,
     });
   } catch (err) {
-    // Não derrubar a resposta — sync é best-effort (o cron incremental é o fallback)
+    // Não derrubar a resposta , sync é best-effort (o cron incremental é o fallback)
     logger.error({ err, toolId: tool.id, requestId }, "external-pipeline: sync queue error (best-effort)");
   }
 
@@ -565,7 +565,7 @@ export async function handleExternalWriteCall(
   };
 }
 
-// ─── tools/call externo — read ───────────────────────────────────────────────
+// ─── tools/call externo , read ───────────────────────────────────────────────
 
 export interface HandleExternalReadCallOpts {
   id: string | number | null;
@@ -661,7 +661,7 @@ export async function handleExternalReadCall(
   };
 }
 
-// ─── handleExternalRequest — entry point ─────────────────────────────────────
+// ─── handleExternalRequest , entry point ─────────────────────────────────────
 
 /**
  * Processa uma requisição MCP no modo externo (API key).
@@ -761,7 +761,7 @@ export async function handleExternalRequest(
       };
     }
 
-    // checkMode — capability gate
+    // checkMode , capability gate
     const modeCheck = checkMode(tool, { mode: "external", apiKey });
     if (!modeCheck.allowed) {
       logger.warn({ toolId: toolName, apiKeyId: apiKey.apiKeyId, errorCode: modeCheck.errorCode }, "external-pipeline: mode check denied");

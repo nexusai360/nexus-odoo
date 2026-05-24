@@ -5,7 +5,7 @@
  * Adaptações principais:
  * - Tools vêm do MCP da F4 (createMcpSession) em vez de NEX_TOOLS estático.
  * - executeTool substituído por session.callTool (MCP).
- * - Resultado MCP normalizado para string e truncado (G6 — MAX_TOOL_RESULT_BYTES).
+ * - Resultado MCP normalizado para string e truncado (G6 , MAX_TOOL_RESULT_BYTES).
  * - PlatformRole do usuário carregado para injetar BI_SCHEMA_REFERENCE (G7).
  * - Histórico e persistência via conversation.ts.
  * - logUsage usa a interface corrigida (costKnown, sem costUsd fixo).
@@ -177,7 +177,7 @@ async function loadAgentSettings() {
     tone: row?.tone ?? "",
     guardrails: (row?.guardrails as string[]) ?? [],
     advancedOverride: row?.advancedOverride ?? null,
-    // @default(true) no schema — alinhar fallback para evitar comportamento diferente
+    // @default(true) no schema , alinhar fallback para evitar comportamento diferente
     // em instâncias novas antes da primeira gravação em AgentSettings.
     kbEnabled: (row?.kbCheckpoint ?? "PRODUCTION") === "PRODUCTION",
     terminology: (row?.terminology as Record<string, string>) ?? {},
@@ -244,7 +244,7 @@ export async function runAgent(args: RunAgentInput): Promise<RunAgentResult> {
     // Carregar AgentSettings do banco
     const agentSettings = await loadAgentSettings();
 
-    // Buscar snippets da KB por similaridade (RAG — onda 7)
+    // Buscar snippets da KB por similaridade (RAG , onda 7)
     // Se KB estiver habilitada, tenta searchKb; sem embedding → fallback interno do search.
     let kbSnippets: { name: string; extractedText: string }[] = [];
     if (agentSettings.kbEnabled) {
@@ -258,7 +258,7 @@ export async function runAgent(args: RunAgentInput): Promise<RunAgentResult> {
       }
     }
 
-    // Compor system prompt — playground pode sobrepor a config do prompt
+    // Compor system prompt , playground pode sobrepor a config do prompt
     // (identidade/personalidade/tom/guardrails) sem afetar KB nem BI schema.
     const promptCfg = {
       ...agentSettings,
@@ -282,7 +282,7 @@ export async function runAgent(args: RunAgentInput): Promise<RunAgentResult> {
 
     // Carregar tools do MCP interno + dos MCPs externos plugados.
     // Nomes com caracteres fora de [a-zA-Z0-9_-] (ex.: `crm.res_partner.get`)
-    // são saneados — a OpenAI recusa nome de function com ponto. `nomeRealDaTool`
+    // são saneados , a OpenAI recusa nome de function com ponto. `nomeRealDaTool`
     // mapeia o nome saneado de volta ao real na hora de chamar a tool.
     const mcpToolsRaw = session ? await session.listTools() : [];
     const nomeRealDaTool = new Map<string, string>();
@@ -319,7 +319,7 @@ export async function runAgent(args: RunAgentInput): Promise<RunAgentResult> {
 
     const totalUsage: ChatUsage = { tokensInput: 0, tokensOutput: 0, costUsd: 0 };
     const start = Date.now();
-    // Promessas de logUsage pendentes — aguardadas antes de qualquer return para
+    // Promessas de logUsage pendentes , aguardadas antes de qualquer return para
     // garantir que o registro de uso seja gravado mesmo que o processo encerre
     // logo após a resposta (request serverless / job do worker).
     const usageWrites: Promise<unknown>[] = [];
@@ -330,7 +330,7 @@ export async function runAgent(args: RunAgentInput): Promise<RunAgentResult> {
       const iterStart = Date.now();
 
       // Na iteração final (ou quando não há mais tools esperadas), tenta streamar
-      // tokens para o callback onEvent — heurística: streamar sempre e usar os
+      // tokens para o callback onEvent , heurística: streamar sempre e usar os
       // tokens visualmente só quando stop_reason não for tool_use.
       const onToken = args.onEvent
         ? (delta: string) => args.onEvent!({ type: "token", delta })
@@ -356,7 +356,7 @@ export async function runAgent(args: RunAgentInput): Promise<RunAgentResult> {
       totalUsage.tokensOutput += result.usage.tokensOutput;
       totalUsage.costUsd += result.usage.costUsd ?? 0;
 
-      // Registrar uso desta iteração (aguardado antes do return — ver usageWrites)
+      // Registrar uso desta iteração (aguardado antes do return , ver usageWrites)
       usageWrites.push(
         logUsage({
         provider: client.provider,
@@ -378,7 +378,7 @@ export async function runAgent(args: RunAgentInput): Promise<RunAgentResult> {
       );
 
       if (!result.toolCalls?.length) {
-        // Resposta final — limite vem do AgentSettings (default 3, hard cap 5).
+        // Resposta final , limite vem do AgentSettings (default 3, hard cap 5).
         const { message, suggestions } = extractSuggestions(
           result.message,
           agentSettings.maxSuggestions,

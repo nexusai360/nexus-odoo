@@ -3,15 +3,15 @@
 //
 // Cobre:
 //   1. tools/list filtrado por API key
-//   2. tools/call write — sucesso
-//   3. tools/call — capability_missing (checkMode denied)
-//   4. tools/call write — kill switch off → 503
-//   5. tools/call write — idempotency_key_required (write sem header)
-//   6. tools/call write — idempotency cached → retorna resultado cacheado
-//   7. tools/call — rate limit excedido → 429
-//   8. tools/call read — sucesso
+//   2. tools/call write , sucesso
+//   3. tools/call , capability_missing (checkMode denied)
+//   4. tools/call write , kill switch off → 503
+//   5. tools/call write , idempotency_key_required (write sem header)
+//   6. tools/call write , idempotency cached → retorna resultado cacheado
+//   7. tools/call , rate limit excedido → 429
+//   8. tools/call read , sucesso
 //
-// Todos os testes usam mocks injetáveis — sem I/O real.
+// Todos os testes usam mocks injetáveis , sem I/O real.
 
 import * as http from "node:http";
 import type { PrismaClient } from "@/generated/prisma/client";
@@ -125,7 +125,7 @@ function makeDeps(
 
 // ─── 1. tools/list filtrado ─────────────────────────────────────────────────
 
-describe("handleExternalToolList — catálogo filtrado por API key", () => {
+describe("handleExternalToolList , catálogo filtrado por API key", () => {
   it("retorna apenas tools da capability read:crm", () => {
     const apiKey = createApiKeyCtx({ read: ["crm"] });
     const readTool = makeReadTool("crm.res_partner.get", "crm");
@@ -167,9 +167,9 @@ describe("handleExternalToolList — catálogo filtrado por API key", () => {
   });
 });
 
-// ─── 2. tools/call write — sucesso ──────────────────────────────────────────
+// ─── 2. tools/call write , sucesso ──────────────────────────────────────────
 
-describe("handleExternalRequest — tools/call write sucesso", () => {
+describe("handleExternalRequest , tools/call write sucesso", () => {
   beforeEach(() => {
     process.env.MCP_WRITE_ENABLED = "true";
   });
@@ -209,7 +209,7 @@ describe("handleExternalRequest — tools/call write sucesso", () => {
 
 // ─── 3. capability_missing ───────────────────────────────────────────────────
 
-describe("handleExternalRequest — capability_missing", () => {
+describe("handleExternalRequest , capability_missing", () => {
   beforeEach(() => { process.env.MCP_WRITE_ENABLED = "true"; });
   afterEach(() => { delete process.env.MCP_WRITE_ENABLED; jest.clearAllMocks(); });
 
@@ -236,7 +236,7 @@ describe("handleExternalRequest — capability_missing", () => {
 
 // ─── 4. Kill switch → 503 ───────────────────────────────────────────────────
 
-describe("handleExternalRequest — kill switch MCP_WRITE_ENABLED=false", () => {
+describe("handleExternalRequest , kill switch MCP_WRITE_ENABLED=false", () => {
   beforeEach(() => { delete process.env.MCP_WRITE_ENABLED; });
   afterEach(() => { jest.clearAllMocks(); });
 
@@ -260,9 +260,9 @@ describe("handleExternalRequest — kill switch MCP_WRITE_ENABLED=false", () => 
   });
 });
 
-// ─── 5. Idempotency — key required ──────────────────────────────────────────
+// ─── 5. Idempotency , key required ──────────────────────────────────────────
 
-describe("handleExternalRequest — idempotency key required", () => {
+describe("handleExternalRequest , idempotency key required", () => {
   beforeEach(() => { process.env.MCP_WRITE_ENABLED = "true"; });
   afterEach(() => { delete process.env.MCP_WRITE_ENABLED; jest.clearAllMocks(); });
 
@@ -289,7 +289,7 @@ describe("handleExternalRequest — idempotency key required", () => {
 
 // ─── 6. Idempotency cached ───────────────────────────────────────────────────
 
-describe("handleExternalRequest — idempotency cached", () => {
+describe("handleExternalRequest , idempotency cached", () => {
   beforeEach(() => { process.env.MCP_WRITE_ENABLED = "true"; });
   afterEach(() => { delete process.env.MCP_WRITE_ENABLED; jest.clearAllMocks(); });
 
@@ -359,7 +359,7 @@ describe("handleExternalRequest — idempotency cached", () => {
 
 // ─── 7. Rate limit ───────────────────────────────────────────────────────────
 
-describe("handleExternalRequest — rate limit excedido", () => {
+describe("handleExternalRequest , rate limit excedido", () => {
   afterEach(() => jest.clearAllMocks());
 
   it("retorna 429 quando rate limit excedido", async () => {
@@ -394,9 +394,9 @@ describe("handleExternalRequest — rate limit excedido", () => {
   });
 });
 
-// ─── 8. tools/call read — sucesso ────────────────────────────────────────────
+// ─── 8. tools/call read , sucesso ────────────────────────────────────────────
 
-describe("handleExternalRequest — tools/call read sucesso", () => {
+describe("handleExternalRequest , tools/call read sucesso", () => {
   afterEach(() => jest.clearAllMocks());
 
   it("retorna output do handler de leitura sem idempotency", async () => {

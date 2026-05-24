@@ -1,7 +1,7 @@
 // src/lib/reports/queries/fiscal.ts
 //
 // Núcleo de agregação de fiscal, framework-neutro. Recebe `prisma` + filtros,
-// devolve agregação crua — sem `estado`/`freshness`/shaping. Não captura exceção.
+// devolve agregação crua , sem `estado`/`freshness`/shaping. Não captura exceção.
 // `withFreshness` vive no handler MCP, não aqui.
 // Fonte primária: fato_nota_fiscal (cabeçalho), fato_nota_fiscal_item (itens).
 
@@ -197,7 +197,7 @@ export async function queryProdutosFaturados(
         }
       : {};
 
-  // FatoNotaFiscalItem não tem relação Prisma com FatoNotaFiscal — campos
+  // FatoNotaFiscalItem não tem relação Prisma com FatoNotaFiscal , campos
   // entradaSaida e dataEmissao são desnormalizados diretamente no item (N8).
   const rows = await prisma.fatoNotaFiscalItem.findMany({
     where: {
@@ -236,7 +236,7 @@ export async function queryProdutosFaturados(
 }
 
 // ---------------------------------------------------------------------------
-// queryNotasRecebidasPorFornecedor — F4 L1a Onda 3
+// queryNotasRecebidasPorFornecedor , F4 L1a Onda 3
 // ---------------------------------------------------------------------------
 
 /** Notas fiscais de entrada (DF-e de fornecedores) agregadas por fornecedor.
@@ -248,7 +248,7 @@ export async function queryProdutosFaturados(
  *    pode casar com mais de um participante (matriz/filial, nomes parecidos),
  *    gerando várias linhas.
  *  - `documento`: CNPJ/CPF do fornecedor, comparado dígito a dígito contra o
- *    cadastro de parceiros — identificação inequívoca.
+ *    cadastro de parceiros , identificação inequívoca.
  *
  * `totalAgregado` soma TODAS as notas que casaram o filtro (antes do corte por
  * `limite`), para perguntas de contagem ("quantas notas do fornecedor X").
@@ -276,7 +276,7 @@ export async function queryNotasRecebidasPorFornecedor(
       : {};
 
   // Filtro por documento (CNPJ/CPF): fato_nota_fiscal não guarda o documento
-  // do participante — resolve via fato_parceiro, comparando só os dígitos para
+  // do participante , resolve via fato_parceiro, comparando só os dígitos para
   // ser imune a formatação (pontos, barras, traços).
   let documentoWhere: { participanteId?: { in: number[] } } = {};
   const alvoDoc = (filtros.documento ?? "").replace(/\D/g, "");

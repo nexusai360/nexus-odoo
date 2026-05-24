@@ -20,7 +20,7 @@ interface StateBoxProps {
 }
 
 /**
- * Placeholder padrão dos charts — ícone em pílula + título + dica opcional.
+ * Placeholder padrão dos charts , ícone em pílula + título + dica opcional.
  * Altura fixa (`h-72`) evita layout shift ao alternar estado.
  */
 function StateBox({

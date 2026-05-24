@@ -1,5 +1,5 @@
 // mcp/auth/api-key-cache.ts
-// Cache LRU com TTL para ApiKeyContext — evita round-trips ao Postgres
+// Cache LRU com TTL para ApiKeyContext , evita round-trips ao Postgres
 // a cada requisição. Invalidado por pub/sub Redis (Bloco D5).
 import { LRUCache } from "lru-cache";
 import type { ApiKeyContext } from "./api-key-context.js";

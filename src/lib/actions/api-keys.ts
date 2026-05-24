@@ -36,7 +36,7 @@ export interface ApiKeyListItem {
 export interface CreatedApiKey {
   id: string;
   label: string;
-  key: string; // em claro — exibir 1×, não persistir
+  key: string; // em claro , exibir 1×, não persistir
   last4: string;
 }
 
@@ -118,7 +118,7 @@ export async function createApiKey(
       data: {
         id: created.id,
         label: created.label,
-        key, // em claro — exibir 1×
+        key, // em claro , exibir 1×
         last4,
       },
     };

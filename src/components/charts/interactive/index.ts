@@ -1,5 +1,5 @@
 /**
- * Charts interativos portados do nexus-insights — usados pela tela de consumo
+ * Charts interativos portados do nexus-insights , usados pela tela de consumo
  * do Agente Nex. Vivem em `charts/interactive/` para não colidir com os charts
  * de relatório (`charts/bar-chart.tsx`, `charts/pie-chart.tsx`) da F3.5.
  */

@@ -4,7 +4,7 @@
  * Usado pelo agente no Caminho 3c (bi_consulta_avancada) para que o LLM
  * possa construir queries SQL válidas contra as tabelas de fatos.
  *
- * Derivado de prisma/schema.prisma — modelos Fato*.
+ * Derivado de prisma/schema.prisma , modelos Fato*.
  * Atualizar aqui sempre que o schema mudar (trava: bi-schema-reference.test.ts).
  *
  * Colunas financeiras (Decimal) são armazenadas como NUMERIC(18,2) no Postgres.

@@ -1,5 +1,5 @@
 /**
- * Tipos compartilhados das Server Actions de MCPs externos — sem "use server".
+ * Tipos compartilhados das Server Actions de MCPs externos , sem "use server".
  * Separado de external-mcp-servers.ts porque "use server" só exporta funções async.
  */
 
@@ -9,14 +9,14 @@ export const MCP_TRANSPORTS: McpTransport[] = ["http", "sse"];
 
 export type McpServerStatus = "ok" | "error" | "unknown";
 
-/** Servidor MCP externo — visão para a UI. O token nunca é devolvido ao cliente. */
+/** Servidor MCP externo , visão para a UI. O token nunca é devolvido ao cliente. */
 export interface ExternalMcpServerListItem {
   id: string;
   name: string;
   description: string | null;
   transport: string;
   url: string;
-  /** true quando há token configurado — o valor em si nunca sai do servidor. */
+  /** true quando há token configurado , o valor em si nunca sai do servidor. */
   hasAuth: boolean;
   authHeader: string | null;
   enabled: boolean;

@@ -10,8 +10,8 @@ const inputSchema = z.object({
   periodoAte: z.string().optional(),
 });
 
-// dados só tem escalares — sem array; cai no ramo "ok" do withFreshness
-// (sem isVazio custom — achado P-M1).
+// dados só tem escalares , sem array; cai no ramo "ok" do withFreshness
+// (sem isVazio custom , achado P-M1).
 const dados = z.object({
   totalNotas: z.number().int(),
   valorFaturado: z.number(),

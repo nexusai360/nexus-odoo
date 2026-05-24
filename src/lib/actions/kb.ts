@@ -99,7 +99,7 @@ export async function uploadKbFileAction(
     const buffer = Buffer.from(await file.arrayBuffer());
     let text: string;
     try {
-      // Import dinâmico — extract.ts importa pdf-parse (Node-only).
+      // Import dinâmico , extract.ts importa pdf-parse (Node-only).
       const { extractKbText } = await import("@/lib/agent/rag/extract");
       text = await extractKbText(buffer, kind);
     } catch (err) {

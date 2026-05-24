@@ -22,7 +22,7 @@ import { Calendar } from "@/components/ui/calendar";
 import { type PeriodKey } from "@/lib/datetime-core";
 
 /**
- * Opções de período da tela de consumo. Declaradas aqui — no nexus-insights
+ * Opções de período da tela de consumo. Declaradas aqui , no nexus-insights
  * vinham de `@/lib/reports/period`; este `PeriodPills` é desacoplado do modelo
  * multi-conta do projeto irmão.
  */
@@ -42,7 +42,7 @@ const MOBILE_BREAKPOINT_PX = 640;
 
 /** Datas no formato yyyy-mm-dd ↔ Date local (sem timezone shift). */
 function isoToDate(iso: string): Date {
-  // Constrói uma Date no fuso local com hora 00:00 — coerente com o uso
+  // Constrói uma Date no fuso local com hora 00:00 , coerente com o uso
   // do calendário, que opera em "dias" sem timezone.
   const [y, m, d] = iso.split("-").map((s) => Number.parseInt(s, 10));
   return new Date(y, m - 1, d, 0, 0, 0, 0);
@@ -64,7 +64,7 @@ function formatRange(start: string, end: string, locale = "pt-BR"): string {
   });
   const sStr = fmt.format(s).replace(".", "");
   const eStr = fmt.format(e).replace(".", "");
-  return `${sStr} – ${eStr}`;
+  return `${sStr} , ${eStr}`;
 }
 
 function useIsMobile(): boolean {

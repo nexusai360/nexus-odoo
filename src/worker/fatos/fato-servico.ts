@@ -1,7 +1,7 @@
 // src/worker/fatos/fato-servico.ts
 // FONTE: raw_sped_servico (modelo sped.servico).
 // ESCOPO: catálogo de serviços fiscais (lista de serviços da LC 116).
-// CYCLE: incremental — ~340 serviços, mudam raramente.
+// CYCLE: incremental , ~340 serviços, mudam raramente.
 import type { PrismaClient } from "../../generated/prisma/client";
 import { markFatoBuilt } from "./fato-build-state";
 

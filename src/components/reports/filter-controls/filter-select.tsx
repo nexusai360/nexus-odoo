@@ -17,7 +17,7 @@ import {
 export interface FilterSelectOption {
   value: string;
   label: string;
-  /** Rótulo do grupo — opções com mesmo grupo ficam agrupadas. */
+  /** Rótulo do grupo , opções com mesmo grupo ficam agrupadas. */
   group?: string;
 }
 
@@ -100,7 +100,7 @@ export function FilterSelect({
           side="bottom"
           className="min-w-[200px]"
         >
-          {/* Busca interna — não é um item selecionável */}
+          {/* Busca interna , não é um item selecionável */}
           {showSearch && (
             <div className="px-2 py-1.5 sticky top-0 bg-popover z-10 border-b border-border/50">
               <div className="relative">

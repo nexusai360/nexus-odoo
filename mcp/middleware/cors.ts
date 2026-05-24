@@ -9,7 +9,7 @@ const ALLOWED_HEADERS = "Authorization, Content-Type, Idempotency-Key, If-Unmodi
 
 /**
  * Retorna os headers CORS para uma requisição, se aplicável.
- * Default fechado — retorna {} se origem não está na whitelist.
+ * Default fechado , retorna {} se origem não está na whitelist.
  */
 export function corsHeaders(opts: {
   requestOrigin?: string;

@@ -115,13 +115,13 @@ function formatLocalized(
   ptAction: string,
 ): string {
   const orig = original.trim().replace(/\s+/g, " ");
-  return `${orig} — Em português: ${ptExplanation} Como resolver: ${ptAction}`;
+  return `${orig} , Em português: ${ptExplanation} Como resolver: ${ptAction}`;
 }
 
 /**
  * Traduz padrões comuns das mensagens em inglês dos providers (OpenAI,
  * Anthropic, Gemini, OpenRouter) para PT-BR mantendo a mensagem original
- * visível. Formato fixo: "<original> — Em português: <explicação>. Como
+ * visível. Formato fixo: "<original> , Em português: <explicação>. Como
  * resolver: <ação>." Quando o padrão não casa, retorna a mensagem original
  * crua (o super_admin precisa ver o erro real).
  */
@@ -133,7 +133,7 @@ export function translateProviderMessage(
   const m = raw.toLowerCase();
   const modelTag = model ? ` (${model})` : "";
 
-  // OpenAI: modelo só funciona via /v1/responses. O Agente Nex já suporta —
+  // OpenAI: modelo só funciona via /v1/responses. O Agente Nex já suporta ,
   // se aparecer aqui é porque o probe foi pelo endpoint errado ou porque o
   // server precisa reiniciar para carregar o adapter novo.
   if (
@@ -194,7 +194,7 @@ export function translateProviderMessage(
   ) {
     return formatLocalized(
       raw,
-      "O modelo bateu no teto de tokens do teste antes de terminar — a chave e o modelo funcionam.",
+      "O modelo bateu no teto de tokens do teste antes de terminar , a chave e o modelo funcionam.",
       "Pode salvar a configuração; em uso real o limite de tokens é bem maior que o do teste.",
     );
   }
@@ -217,7 +217,7 @@ export function translateProviderMessage(
     return formatLocalized(
       raw,
       "A cota da conta foi excedida (limite de uso, não saldo).",
-      "Verifique o painel de cotas do provedor — pode ser limite diário/minuto, não falta de crédito.",
+      "Verifique o painel de cotas do provedor , pode ser limite diário/minuto, não falta de crédito.",
     );
   }
   // Rate limit.
@@ -252,7 +252,7 @@ export function translateProviderMessage(
       "Tente novamente em instantes ou escolha outro modelo equivalente.",
     );
   }
-  // Sem padrão conhecido — devolve a mensagem original crua.
+  // Sem padrão conhecido , devolve a mensagem original crua.
   return raw;
 }
 
@@ -264,7 +264,7 @@ export async function deepTestOpenAI(
   apiKey: string,
   model: string,
 ): Promise<DeepTestResult> {
-  // 1. GET /v1/models — usado APENAS para validar a key.
+  // 1. GET /v1/models , usado APENAS para validar a key.
   // NÃO usamos a lista para checar se o modelo existe porque a OpenAI lista
   // só snapshots datados (`gpt-5.1-mini-2025-12-01`), não aliases curtos
   // (`gpt-5.1-mini`). A validação real do modelo acontece no POST abaixo:
@@ -283,7 +283,7 @@ export async function deepTestOpenAI(
     return { reachable: false, errorKind: "invalid_key" };
   }
 
-  // Captura a lista de IDs disponíveis nessa chave — usado pra ajudar o
+  // Captura a lista de IDs disponíveis nessa chave , usado pra ajudar o
   // super_admin quando o modelo escolhido falhar com "does not have access".
   let availableIds: string[] = [];
   if (modelsRes.ok) {
@@ -326,7 +326,7 @@ export async function deepTestOpenAI(
     };
   }
 
-  // 2. POST /v1/chat/completions minimal — confirma que key+modelo funcionam.
+  // 2. POST /v1/chat/completions minimal , confirma que key+modelo funcionam.
   // Modelos GPT-5.x e família o-series (o1/o3/o4) só aceitam
   // `max_completion_tokens` e rejeitam `temperature` != default → ajustamos
   // o body conforme o modelo para evitar HTTP 400 (bug v0.12.0).
@@ -335,7 +335,7 @@ export async function deepTestOpenAI(
     model,
     messages: [{ role: "user", content: "ok" }],
   };
-  // Reasoning models gastam tokens internos no thinking antes da resposta —
+  // Reasoning models gastam tokens internos no thinking antes da resposta ,
   // com 1 token de orçamento, batem em 400 "max_tokens or model output limit
   // was reached" sem nem terminar o thinking. 256 cobre thinking + resposta
   // curta com folga (~ $0,000512 por teste em gpt-5.4-mini).
@@ -377,7 +377,7 @@ export async function deepTestOpenAI(
       | null;
     const provMsg = parsed?.error?.message;
     // "max_tokens or model output limit was reached" significa que a key+modelo
-    // FUNCIONAM — só faltou orçamento de tokens no probe. Conta como conexão OK.
+    // FUNCIONAM , só faltou orçamento de tokens no probe. Conta como conexão OK.
     if (
       /max_tokens or model output limit was reached|max output tokens? reached/i.test(
         provMsg ?? text,
@@ -652,7 +652,7 @@ export async function deepTestOpenRouter(
   apiKey: string,
   model: string,
 ): Promise<DeepTestResult> {
-  // 1. GET /api/v1/credits — valida key + saldo.
+  // 1. GET /api/v1/credits , valida key + saldo.
   let creditsRes: Response;
   try {
     creditsRes = await fetchWithTimeout(
@@ -799,7 +799,7 @@ export function describeErrorKind(
       return "API key inválida ou expirada.";
     case "model_not_found":
       // Se o provider mandou uma mensagem específica (ex.: "you do not have
-      // access to this model"), preserva — é mais útil que a mensagem padrão.
+      // access to this model"), preserva , é mais útil que a mensagem padrão.
       if (fallback && fallback.length > 0) return fallback;
       return model
         ? `Modelo "${model}" não encontrado neste provedor.`

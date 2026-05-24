@@ -9,7 +9,7 @@ describe("sha256hex", () => {
     expect(result).toMatch(/^[0-9a-f]+$/);
   });
 
-  it("é determinístico — mesmo input gera mesmo output", () => {
+  it("é determinístico , mesmo input gera mesmo output", () => {
     const a = sha256hex("token-abc-123");
     const b = sha256hex("token-abc-123");
     expect(a).toBe(b);

@@ -24,7 +24,7 @@ export const FIELDS_RES_PARTNER = PARTNER_SNAPSHOT_FIELDS;
 // ─── Input schema ─────────────────────────────────────────────────────────────
 
 const inputSchema = z.object({
-  /** Nome do parceiro — obrigatório. */
+  /** Nome do parceiro , obrigatório. */
   name: z.string().min(1).max(128),
   /**
    * CNPJ ou CPF. O campo no Odoo Brasil (OCA) é `cnpj_cpf`.
@@ -59,7 +59,7 @@ type Input = z.infer<typeof inputSchema>;
 // O = tipo do dado de negócio (conteúdo de `data` e `snapshotAfter`).
 // WriteToolResult<O> = { id, data: O, snapshotBefore, snapshotAfter: O | null }
 //
-// Usamos z.record para o payload Odoo — campos variáveis por discovery futuro.
+// Usamos z.record para o payload Odoo , campos variáveis por discovery futuro.
 const odooRecordSchema = z.record(z.string(), z.unknown()).nullable();
 
 // outputSchema é ZodType<O> onde O = Record<string, unknown> | null

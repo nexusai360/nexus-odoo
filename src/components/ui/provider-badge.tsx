@@ -1,7 +1,7 @@
 import { cn } from "@/lib/utils";
 
 /**
- * ProviderBadge — chip neutro indicando o provedor de origem do modelo.
+ * ProviderBadge , chip neutro indicando o provedor de origem do modelo.
  *
  * Usado principalmente em entries do OpenRouter (que agrega múltiplos
  * provedores num único catálogo): mostra a procedência (OpenAI, Anthropic,

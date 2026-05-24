@@ -21,12 +21,12 @@ export interface ChartTooltipProps {
 }
 
 const defaultFormatter = (v: number) =>
-  Number.isFinite(v) ? v.toLocaleString("pt-BR") : "—";
+  Number.isFinite(v) ? v.toLocaleString("pt-BR") : ",";
 
 /**
  * Tooltip rico e consistente para todos os charts.
  *
- * - `bg-card` + `border-border` + `shadow-lg` — alinha com os cards do
+ * - `bg-card` + `border-border` + `shadow-lg` , alinha com os cards do
  *   design system;
  * - dot colorido + label semântico + valor em negrito tabular;
  * - aceita formatador para % / R$ / etc.

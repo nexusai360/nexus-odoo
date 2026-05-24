@@ -18,7 +18,7 @@ export const MAX_AUDIO_BYTES = 25 * 1024 * 1024;
 
 /**
  * Lançado quando não há credencial OpenAI disponível para transcrição.
- * Análogo a EmbeddingUnavailable do RAG — permite tratamento tipado pelo caller.
+ * Análogo a EmbeddingUnavailable do RAG , permite tratamento tipado pelo caller.
  */
 export class TranscriptionUnavailable extends Error {
   constructor(message = "Credencial OpenAI não configurada para transcrição de áudio.") {
@@ -113,10 +113,10 @@ export async function transcribeAudio(
     let errorBody = "";
     try { errorBody = await response.text(); } catch { /* noop */ }
     console.warn(
-      `[transcribe] gpt-4o-mini-transcribe ${response.status} — ${errorBody.slice(0, 200)} — fallback whisper-1`,
+      `[transcribe] gpt-4o-mini-transcribe ${response.status} , ${errorBody.slice(0, 200)} , fallback whisper-1`,
     );
   } catch (err) {
-    console.warn("[transcribe] gpt-4o-mini-transcribe falhou — fallback whisper-1:", err);
+    console.warn("[transcribe] gpt-4o-mini-transcribe falhou , fallback whisper-1:", err);
   }
 
   // Fallback: whisper-1

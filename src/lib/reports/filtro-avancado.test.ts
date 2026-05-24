@@ -60,10 +60,10 @@ describe("isGrupo", () => {
 });
 
 // ---------------------------------------------------------------------------
-// compilarFiltro — grupo vazio
+// compilarFiltro , grupo vazio
 // ---------------------------------------------------------------------------
 
-describe("compilarFiltro — grupo vazio", () => {
+describe("compilarFiltro , grupo vazio", () => {
   it("grupo vazio deixa passar todos as linhas", () => {
     const pred = compilarFiltro(grupo("E"), COLS);
     expect(ROWS.every(pred)).toBe(true);
@@ -71,10 +71,10 @@ describe("compilarFiltro — grupo vazio", () => {
 });
 
 // ---------------------------------------------------------------------------
-// compilarFiltro — operadores texto
+// compilarFiltro , operadores texto
 // ---------------------------------------------------------------------------
 
-describe("compilarFiltro — texto: igual", () => {
+describe("compilarFiltro , texto: igual", () => {
   it("filtra case-insensitive", () => {
     const pred = compilarFiltro(grupo("E", cond("ativo", "igual", "SIM")), COLS);
     const result = ROWS.filter(pred);
@@ -83,7 +83,7 @@ describe("compilarFiltro — texto: igual", () => {
   });
 });
 
-describe("compilarFiltro — texto: diferente", () => {
+describe("compilarFiltro , texto: diferente", () => {
   it("exclui linha com valor igual", () => {
     const pred = compilarFiltro(
       grupo("E", cond("ativo", "diferente", "sim")),
@@ -94,7 +94,7 @@ describe("compilarFiltro — texto: diferente", () => {
   });
 });
 
-describe("compilarFiltro — texto: contem", () => {
+describe("compilarFiltro , texto: contem", () => {
   it("case-insensitive substring", () => {
     const pred = compilarFiltro(grupo("E", cond("nome", "contem", "beta")), COLS);
     const result = ROWS.filter(pred);
@@ -104,10 +104,10 @@ describe("compilarFiltro — texto: contem", () => {
 });
 
 // ---------------------------------------------------------------------------
-// compilarFiltro — operadores numéricos
+// compilarFiltro , operadores numéricos
 // ---------------------------------------------------------------------------
 
-describe("compilarFiltro — numero: igual", () => {
+describe("compilarFiltro , numero: igual", () => {
   it("filtra por valor exato", () => {
     const pred = compilarFiltro(grupo("E", cond("qtd", "igual", "5")), COLS);
     const result = ROWS.filter(pred);
@@ -116,7 +116,7 @@ describe("compilarFiltro — numero: igual", () => {
   });
 });
 
-describe("compilarFiltro — numero: diferente", () => {
+describe("compilarFiltro , numero: diferente", () => {
   it("exclui linha com valor igual", () => {
     const pred = compilarFiltro(grupo("E", cond("qtd", "diferente", "0")), COLS);
     const result = ROWS.filter(pred);
@@ -125,7 +125,7 @@ describe("compilarFiltro — numero: diferente", () => {
   });
 });
 
-describe("compilarFiltro — numero: maior", () => {
+describe("compilarFiltro , numero: maior", () => {
   it("retorna linhas com qtd > 5", () => {
     const pred = compilarFiltro(grupo("E", cond("qtd", "maior", "5")), COLS);
     const result = ROWS.filter(pred);
@@ -140,7 +140,7 @@ describe("compilarFiltro — numero: maior", () => {
   });
 });
 
-describe("compilarFiltro — numero: menor", () => {
+describe("compilarFiltro , numero: menor", () => {
   it("retorna linhas com valor < 100", () => {
     const pred = compilarFiltro(grupo("E", cond("valor", "menor", "100")), COLS);
     const result = ROWS.filter(pred);
@@ -148,7 +148,7 @@ describe("compilarFiltro — numero: menor", () => {
   });
 });
 
-describe("compilarFiltro — moeda: maior", () => {
+describe("compilarFiltro , moeda: maior", () => {
   it("trata coluna moeda como numérica", () => {
     const pred = compilarFiltro(
       grupo("E", cond("valor", "maior", "1000")),
@@ -160,10 +160,10 @@ describe("compilarFiltro — moeda: maior", () => {
 });
 
 // ---------------------------------------------------------------------------
-// compilarFiltro — conector E
+// compilarFiltro , conector E
 // ---------------------------------------------------------------------------
 
-describe("compilarFiltro — conector E", () => {
+describe("compilarFiltro , conector E", () => {
   it("exige que todas as condições sejam verdadeiras", () => {
     // ativo=sim (Esteira e Haltere) E valor > 1000 (Esteira 5000 e Bike 2500)
     // Intersecção: apenas Esteira Alpha
@@ -182,10 +182,10 @@ describe("compilarFiltro — conector E", () => {
 });
 
 // ---------------------------------------------------------------------------
-// compilarFiltro — conector OU
+// compilarFiltro , conector OU
 // ---------------------------------------------------------------------------
 
-describe("compilarFiltro — conector OU", () => {
+describe("compilarFiltro , conector OU", () => {
   it("passa se qualquer condição for verdadeira", () => {
     const pred = compilarFiltro(
       grupo(
@@ -201,10 +201,10 @@ describe("compilarFiltro — conector OU", () => {
 });
 
 // ---------------------------------------------------------------------------
-// compilarFiltro — grupos aninhados
+// compilarFiltro , grupos aninhados
 // ---------------------------------------------------------------------------
 
-describe("compilarFiltro — grupos aninhados", () => {
+describe("compilarFiltro , grupos aninhados", () => {
   it("E com subgrupo OU", () => {
     // (ativo = sim) E (qtd = 10 OU qtd = 100)
     const pred = compilarFiltro(
@@ -248,10 +248,10 @@ describe("compilarFiltro — grupos aninhados", () => {
 });
 
 // ---------------------------------------------------------------------------
-// compilarFiltro — campo vazio ignorado
+// compilarFiltro , campo vazio ignorado
 // ---------------------------------------------------------------------------
 
-describe("compilarFiltro — campo vazio ignorado", () => {
+describe("compilarFiltro , campo vazio ignorado", () => {
   it("condição com campo vazio sempre retorna true", () => {
     const pred = compilarFiltro(
       grupo("E", cond("", "igual", "qualquer")),
@@ -262,10 +262,10 @@ describe("compilarFiltro — campo vazio ignorado", () => {
 });
 
 // ---------------------------------------------------------------------------
-// compilarFiltro — campo ausente nas colunas (tratado como texto)
+// compilarFiltro , campo ausente nas colunas (tratado como texto)
 // ---------------------------------------------------------------------------
 
-describe("compilarFiltro — campo não declarado em columns", () => {
+describe("compilarFiltro , campo não declarado em columns", () => {
   it("trata campo desconhecido como texto", () => {
     const extRow = { ...ROWS[0]!, extra: "foo" } as Row & {
       extra: string;

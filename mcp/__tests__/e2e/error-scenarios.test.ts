@@ -1,5 +1,5 @@
 // mcp/__tests__/e2e/error-scenarios.test.ts
-// Suíte E2E — cenários de erro do pipeline externo.
+// Suíte E2E , cenários de erro do pipeline externo.
 //
 // ESTRATÉGIA: exercita o pipeline real (handleExternalRequest /
 // handleExternalWriteCall) com Odoo MOCKADO via odooClientFactory injetável.
@@ -8,7 +8,7 @@
 // Cenários cobertos (§19.3):
 //   1. Capability ausente → 403 capability_missing
 //   2. Modo interno tenta write tool → 403 forbidden_via_internal_auth
-//      (via checkMode direto — pipeline externo não tem modo interno)
+//      (via checkMode direto , pipeline externo não tem modo interno)
 //   3. Validação Zod falha → 400 validation_failed
 //   4. Idempotency key ausente → 400 idempotency_key_required
 //   5. Idempotency key repetida mesma payload → 200 (cached)
@@ -32,7 +32,7 @@ import { crmResPartnerCreate as _crmResPartnerCreate } from "../../tools/crm/res
 import type { WriteToolEntry } from "../../catalog/types.js";
 import RedisMock from "ioredis-mock";
 
-// Cast para WriteToolEntry<unknown> — contravariance no handler
+// Cast para WriteToolEntry<unknown> , contravariance no handler
 const crmResPartnerCreate = _crmResPartnerCreate as WriteToolEntry;
 import type Redis from "ioredis";
 
@@ -80,7 +80,7 @@ afterAll(() => {
 
 // ─── Testes (sem Odoo real) ───────────────────────────────────────────────────
 
-describe("E2E error-scenarios — pipeline com Odoo mockado", () => {
+describe("E2E error-scenarios , pipeline com Odoo mockado", () => {
   // ── 1. Capability ausente ───────────────────────────────────────────────────
   it("1. capability ausente → 403 capability_missing", async () => {
     const apiKey = createApiKeyCtx({ read: [], write: {} }); // sem crm:create
@@ -161,8 +161,8 @@ describe("E2E error-scenarios — pipeline com Odoo mockado", () => {
     expect(content.error).toBe("idempotency_key_required");
   });
 
-  // ── 5. Idempotency cached — mesmo key + payload ────────────────────────────
-  it("5. idempotency cached — segunda chamada com mesmo key → 200 sem chamar Odoo", async () => {
+  // ── 5. Idempotency cached , mesmo key + payload ────────────────────────────
+  it("5. idempotency cached , segunda chamada com mesmo key → 200 sem chamar Odoo", async () => {
     const apiKey = createApiKeyCtx({ read: [], write: { crm: ["create"] }, capabilitiesVersion: 2 });
 
     // Calcular hash real do payload para simular record já gravado com o mesmo hash
@@ -202,13 +202,13 @@ describe("E2E error-scenarios — pipeline com Odoo mockado", () => {
     });
 
     expect(status).toBe(200);
-    // Odoo não deve ter sido chamado — retornou do cache
+    // Odoo não deve ter sido chamado , retornou do cache
     expect(odoo.authenticate).not.toHaveBeenCalled();
   });
 
-  // ── 6. Idempotency — payload diferente para mesma key → 422 ───────────────
+  // ── 6. Idempotency , payload diferente para mesma key → 422 ───────────────
   // Fluxo: lock adquirido → findUnique retorna record com hash diferente → 422
-  it("6. idempotency — payload diferente para mesma key → 422 idempotency_key_conflict", async () => {
+  it("6. idempotency , payload diferente para mesma key → 422 idempotency_key_conflict", async () => {
     const apiKey = createApiKeyCtx({ read: [], write: { crm: ["create"] }, capabilitiesVersion: 2 });
 
     // Hash de um payload diferente do que será enviado

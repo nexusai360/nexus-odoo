@@ -11,7 +11,7 @@ const inputSchema = z.object({
 
 // vrSaldo: valor correto a receber em aberto na fonte finan.lancamento
 //   (vrSaldo == vrDocumento == vrTotal quando aberto; vrSaldo=0 quando quitado).
-//   Bug R1 corrigido em 2026-05-18 — fonte trocada de finan.pagamento.divida para finan.lancamento.
+//   Bug R1 corrigido em 2026-05-18 , fonte trocada de finan.pagamento.divida para finan.lancamento.
 const tituloSchema = z.object({
   participanteNome: z.string().nullable(),
   numeroDocumento: z.string().nullable(),

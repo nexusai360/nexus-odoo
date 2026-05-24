@@ -1,5 +1,5 @@
 /**
- * Exportação CSV — função pura, sem dependências de React/DOM.
+ * Exportação CSV , função pura, sem dependências de React/DOM.
  *
  * Convenções pt-BR:
  *  - Separador: ponto-e-vírgula (;)
@@ -22,7 +22,7 @@ function escapeCsvCell(value: string): string {
 function cellToString(value: unknown): string {
   if (value == null) return "";
   if (typeof value === "number") {
-    // Números simples — Excel interpreta pelo locale do SO
+    // Números simples , Excel interpreta pelo locale do SO
     return String(value);
   }
   return String(value);

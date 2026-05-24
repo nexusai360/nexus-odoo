@@ -1,8 +1,8 @@
 // src/worker/fatos/fato-nota-fiscal.ts
-// Builder do fato_nota_fiscal — fonte: raw_sped_documento (modelo sped.documento).
+// Builder do fato_nota_fiscal , fonte: raw_sped_documento (modelo sped.documento).
 //
 // tipoMovimento é derivado de entrada_saida: "1"→"saida", "0"→"entrada", else→"outro".
-// Nunca é null — alinhado com @default("outro") no schema (achado P-I6).
+// Nunca é null , alinhado com @default("outro") no schema (achado P-I6).
 // dataEmissao/dataEntradaSaida/dataAutorizacao usam sufixo T00:00:00 (parsing como hora local).
 // Valores monetários via Number(... ?? 0). mapper não produz atualizadoEm (@default(now())).
 
@@ -35,7 +35,7 @@ export interface FatoNotaFiscalRow {
   vrIbpt: number;
   vrIcmsProprio: number;
   vrDesconto: number;
-  // NÃO inclui atualizadoEm — @default(now()) no schema (decisão N5)
+  // NÃO inclui atualizadoEm , @default(now()) no schema (decisão N5)
 }
 
 /**
@@ -45,7 +45,7 @@ export interface FatoNotaFiscalRow {
 export function derivarTipoMovimento(entradaSaida: string): string {
   if (entradaSaida === "1") return "saida";
   if (entradaSaida === "0") return "entrada";
-  // Ramo "outro" — inclui null, undefined, string desconhecida
+  // Ramo "outro" , inclui null, undefined, string desconhecida
   console.warn(`[fato-nota-fiscal] entradaSaida desconhecida: ${JSON.stringify(entradaSaida)} → tipoMovimento="outro"`);
   return "outro";
 }

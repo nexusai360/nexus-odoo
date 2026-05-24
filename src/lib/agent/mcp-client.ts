@@ -20,7 +20,7 @@ export interface McpTool {
   inputSchema: Record<string, unknown>;
 }
 
-/** Sessão MCP aberta — fechada pelo chamador via close(). */
+/** Sessão MCP aberta , fechada pelo chamador via close(). */
 export interface McpSession {
   listTools(): Promise<McpTool[]>;
   callTool(name: string, args: Record<string, unknown>): Promise<string>;
@@ -103,7 +103,7 @@ export async function createMcpSession(userId: string): Promise<McpSession> {
   const mcpUrl = process.env.MCP_URL;
   if (!mcpUrl) {
     throw new Error(
-      "MCP_URL não configurado — defina a variável de ambiente antes de usar o agente.",
+      "MCP_URL não configurado , defina a variável de ambiente antes de usar o agente.",
     );
   }
 

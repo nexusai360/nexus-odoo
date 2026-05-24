@@ -12,7 +12,7 @@ jest.mock("pg", () => {
 const ENV_KEY = "MCP_BI_DATABASE_URL";
 const TEST_URL = "postgresql://nexus_mcp_bi:pw@localhost:5436/nexus_odoo";
 
-describe("bi-pool — MCP_BI_DATABASE_URL presente", () => {
+describe("bi-pool , MCP_BI_DATABASE_URL presente", () => {
   let getBiPool: () => unknown;
   let MockPool: jest.Mock;
   let mockOn: jest.Mock;
@@ -79,7 +79,7 @@ describe("bi-pool — MCP_BI_DATABASE_URL presente", () => {
   });
 });
 
-describe("bi-pool — MCP_BI_DATABASE_URL ausente", () => {
+describe("bi-pool , MCP_BI_DATABASE_URL ausente", () => {
   let getBiPool: () => unknown;
 
   beforeEach(() => {

@@ -16,7 +16,7 @@ interface PeriodNavigatorProps {
   /** Backend indica se há período seguinte (range.end < now). */
   nextAvailable: boolean;
   onChange: (referenceDate: string | null) => void;
-  /** ISO string — bloqueia navegação para trás antes desta data. */
+  /** ISO string , bloqueia navegação para trás antes desta data. */
   minDate?: string;
 }
 
@@ -81,7 +81,7 @@ export function PeriodNavigator({
     }
     if (period === "semana") {
       const inclusiveEnd = new Date(new Date(range.end).getTime() - 1).toISOString();
-      return `${formatDayDate(range.start, tz)} — ${formatDayDate(inclusiveEnd, tz)}`;
+      return `${formatDayDate(range.start, tz)} , ${formatDayDate(inclusiveEnd, tz)}`;
     }
     return formatMonthYear(range.start, tz);
   })();

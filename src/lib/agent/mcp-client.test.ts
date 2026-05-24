@@ -1,7 +1,7 @@
 /**
  * Testes do cliente MCP do agente.
  *
- * O Client do SDK MCP é mockado — não faz chamadas reais.
+ * O Client do SDK MCP é mockado , não faz chamadas reais.
  */
 
 import { mcpToolsToProviderTools } from "./mcp-client";

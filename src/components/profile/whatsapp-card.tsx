@@ -22,7 +22,7 @@ interface WhatsappCardProps {
  * Seção "WhatsApp" da tela de Perfil.
  *
  * Modo leitura (canEdit=false): mostra os chips dos números.
- * Modo edição (canEdit=true): usa o WhatsappNumbersField — mesma UX da
+ * Modo edição (canEdit=true): usa o WhatsappNumbersField , mesma UX da
  * tela de usuários, com add/remove imediato via Server Actions.
  */
 export function WhatsappCard({ numbers, canEdit, userId }: WhatsappCardProps) {

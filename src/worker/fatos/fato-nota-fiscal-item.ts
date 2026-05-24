@@ -1,19 +1,19 @@
 // src/worker/fatos/fato-nota-fiscal-item.ts
-// Builder do fato_nota_fiscal_item — fonte: raw_sped_documento_item.
+// Builder do fato_nota_fiscal_item , fonte: raw_sped_documento_item.
 //
 // Estratégia: STREAMING por cursor DENTRO de uma transação única (2026-05-18):
-//   - notaInfoMap: carrega raw_sped_documento inteiro (3743 linhas — trivial, ok).
+//   - notaInfoMap: carrega raw_sped_documento inteiro (3743 linhas , trivial, ok).
 //     Montado ANTES da transação, fora dela (leitura não precisa de atomicidade).
 //   - Transação ÚNICA ($transaction, timeout 600s): deleteMany + loop cursor
-//     por páginas de 5000 + markFatoBuilt — tudo dentro do mesmo callback tx.
+//     por páginas de 5000 + markFatoBuilt , tudo dentro do mesmo callback tx.
 //   - Cada página: tx.rawSpedDocumentoItem.findMany(take:5000, cursor/skip:1),
 //     mapeia, tx.fatoNotaFiscalItem.createMany, DESCARTA a página.
 //   - Memória plana (~5000 linhas por iteração). Sem --max-old-space-size.
 //   - Atomicidade garantida pelo MVCC do Postgres: leitores concorrentes veem
-//     o estado ANTERIOR completo até o COMMIT — sem janela de inconsistência.
-//   - CHUNK_SIZE = 5000 (constante nomeada — R2-M4).
+//     o estado ANTERIOR completo até o COMMIT , sem janela de inconsistência.
+//   - CHUNK_SIZE = 5000 (constante nomeada , R2-M4).
 //   - chunk() mantido como utilitário exportado (R2-M4); a função principal
-//     NÃO usa chunk() — usa o loop de cursor diretamente.
+//     NÃO usa chunk() , usa o loop de cursor diretamente.
 //   - Desnormalização: dataEmissao e entradaSaida vêm da nota-mãe via notaInfoMap.
 //   - Mapper não produz atualizadoEm (@default(now()) no schema).
 //   - Filtra rawDeleted=false em ambas as fontes.
@@ -42,7 +42,7 @@ export interface FatoNotaFiscalItemRow {
   // Desnormalizados da nota-mãe (achado N8)
   dataEmissao: Date | null;
   entradaSaida: string | null;
-  // NÃO inclui atualizadoEm — @default(now()) no schema
+  // NÃO inclui atualizadoEm , @default(now()) no schema
 }
 
 export interface NotaInfo {
@@ -52,7 +52,7 @@ export interface NotaInfo {
 
 /**
  * Fatia um array em chunks de `size` elementos.
- * Exportado deste arquivo (R2-M4) — importar daqui em ondas futuras.
+ * Exportado deste arquivo (R2-M4) , importar daqui em ondas futuras.
  * Nota: rebuildFatoNotaFiscalItem usa cursor de paginação, não chunk().
  */
 export function chunk<T>(arr: T[], size: number): T[][] {
@@ -98,23 +98,23 @@ export function mapNotaFiscalItemRow(
  * Reconstrói fato_nota_fiscal_item a partir de raw_sped_documento_item.
  *
  * STREAMING por cursor DENTRO de uma transação única:
- *   1. notaInfoMap montado fora da transação (leitura de raw_sped_documento —
+ *   1. notaInfoMap montado fora da transação (leitura de raw_sped_documento ,
  *      3743 linhas, ok carregar inteiro; não precisa de atomicidade).
  *   2. $transaction(timeout:600s, maxWait:60s):
  *      a. tx.fatoNotaFiscalItem.deleteMany({})
  *      b. Loop cursor-paginado (take:5000): lê página via tx.rawSpedDocumentoItem,
  *         mapeia, tx.fatoNotaFiscalItem.createMany, DESCARTA a página.
- *      c. markFatoBuilt(tx, ...) — commita junto com os dados.
+ *      c. markFatoBuilt(tx, ...) , commita junto com os dados.
  *
  * Propriedades:
  *   - Atomicidade: leitores concorrentes via MVCC do Postgres veem o estado
- *     ANTERIOR completo até o COMMIT — sem janela de inconsistência (SPEC v3 §3.2 N2).
+ *     ANTERIOR completo até o COMMIT , sem janela de inconsistência (SPEC v3 §3.2 N2).
  *   - Memória plana: cada página (~5000 itens JSONB) é descartada após o createMany;
  *     o GC coleta entre chunks. Heap constante sem --max-old-space-size.
  *   - Timeout 600s cobre amplamente o rebuild de ~40s; maxWait 60s para aquisição de tx.
  */
 export async function rebuildFatoNotaFiscalItem(prisma: PrismaClient): Promise<number> {
-  // 1. Construir notaInfoMap FORA da transação (3743 linhas — trivial)
+  // 1. Construir notaInfoMap FORA da transação (3743 linhas , trivial)
   const rawNotas = await prisma.rawSpedDocumento.findMany({
     where: { rawDeleted: false },
   });
@@ -180,7 +180,7 @@ export async function rebuildFatoNotaFiscalItem(prisma: PrismaClient): Promise<n
         }
       }
 
-      // 2c. Marcar built dentro da mesma transação — commita junto
+      // 2c. Marcar built dentro da mesma transação , commita junto
       await markFatoBuilt(tx, "fato_nota_fiscal_item");
 
       return inserted;

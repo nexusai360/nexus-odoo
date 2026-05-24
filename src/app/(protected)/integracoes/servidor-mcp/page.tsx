@@ -17,7 +17,7 @@ export const dynamic = "force-dynamic";
  * Resolve a URL de health do servidor MCP. `MCP_URL` aponta para o endpoint MCP
  * e pode incluir o path `/mcp` (ex.: `http://mcp:3001/mcp`); o health é servido
  * na raiz do servidor (`/health`). Concatenar `${MCP_URL}/health` ingenuamente
- * gerava `/mcp/health` — rota inexistente — e fazia o painel reportar o servidor
+ * gerava `/mcp/health` , rota inexistente , e fazia o painel reportar o servidor
  * como inacessível mesmo no ar. Aqui extraímos a origem e apontamos para `/health`.
  */
 function resolveHealthUrl(mcpUrl: string): string | null {

@@ -23,13 +23,13 @@ import { Button } from "@/components/ui/button"
  *
  * Renderiza um `<Textarea>` normal com um botão-ícone `Maximize2` discreto no
  * canto superior-direito. Ao clicar, abre um `Dialog` largo e alto com o mesmo
- * conteúdo — o estado do texto (`value`/`onChange`) é controlado pelo pai, de
+ * conteúdo , o estado do texto (`value`/`onChange`) é controlado pelo pai, de
  * modo que a edição no modal e no campo compartilham o mesmo estado.
  */
 export interface ExpandableTextareaProps {
   value: string
   onChange: (value: string) => void
-  /** Rótulo do campo — também vira o título do modal. */
+  /** Rótulo do campo , também vira o título do modal. */
   label?: string
   placeholder?: string
   rows?: number

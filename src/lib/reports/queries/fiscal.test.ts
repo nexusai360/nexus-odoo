@@ -11,7 +11,7 @@ import {
   queryContarNotas,
 } from "./fiscal";
 
-// Stub de prisma — substituído por mock real em cada describe
+// Stub de prisma , substituído por mock real em cada describe
 const fakePrisma = {} as Parameters<typeof queryFaturamentoPeriodo>[0];
 
 describe("queryFaturamentoPeriodo", () => {
@@ -373,5 +373,5 @@ describe("queryContarNotas", () => {
   });
 });
 
-// Silencia o "unused variable" lint — fakePrisma é placeholder para os mocks futuros
+// Silencia o "unused variable" lint , fakePrisma é placeholder para os mocks futuros
 void fakePrisma;

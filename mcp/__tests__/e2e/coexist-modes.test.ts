@@ -1,5 +1,5 @@
 // mcp/__tests__/e2e/coexist-modes.test.ts
-// Suíte E2E — modo interno + externo coexistindo (spec §7.1).
+// Suíte E2E , modo interno + externo coexistindo (spec §7.1).
 //
 // Valida que:
 //   1. O modo externo (API key) e o modo interno (service token) coexistem:
@@ -7,7 +7,7 @@
 //   2. Read tools são permitidas em ambos os modos.
 //   3. checkMode discrimina corretamente.
 //
-// Roda sem Odoo real — usa pipeline direto + checkMode.
+// Roda sem Odoo real , usa pipeline direto + checkMode.
 
 import { warnMissingEnv } from "./setup.js";
 import { createApiKeyCtx } from "../fixtures/contexts.js";
@@ -16,7 +16,7 @@ import { handleExternalToolList } from "../../dispatcher/external-pipeline.js";
 import { crmResPartnerCreate as _crmResPartnerCreate } from "../../tools/crm/res-partner-create.js";
 import type { ToolEntry, WriteToolEntry } from "../../catalog/types.js";
 
-// Cast para WriteToolEntry<unknown> — necessário para compatibilidade de tipos
+// Cast para WriteToolEntry<unknown> , necessário para compatibilidade de tipos
 // em funções que aceitam WriteToolEntry<unknown, unknown> (contravariance no handler).
 const crmResPartnerCreate = _crmResPartnerCreate as WriteToolEntry;
 
@@ -37,7 +37,7 @@ beforeAll(() => {
   warnMissingEnv();
 });
 
-describe("E2E coexist-modes — interno + externo coexistindo (spec §7.1)", () => {
+describe("E2E coexist-modes , interno + externo coexistindo (spec §7.1)", () => {
   // 1. Write tool negada no modo interno
   it("1. write tool bloqueada no modo interno", () => {
     const result = checkMode(crmResPartnerCreate, { mode: "internal", userId: "user-admin" });
@@ -47,7 +47,7 @@ describe("E2E coexist-modes — interno + externo coexistindo (spec §7.1)", () 
 
   // 2. Write tool permitida no modo externo com capability
   it("2. write tool permitida no modo externo com capability correta", () => {
-    // capabilitiesVersion: 2 — crmResPartnerCreate.addedInVersion = 2
+    // capabilitiesVersion: 2 , crmResPartnerCreate.addedInVersion = 2
     const apiKey = createApiKeyCtx({ read: [], write: { crm: ["create"] }, capabilitiesVersion: 2 });
     const result = checkMode(crmResPartnerCreate, { mode: "external", apiKey });
     expect(result.allowed).toBe(true);
@@ -84,7 +84,7 @@ describe("E2E coexist-modes — interno + externo coexistindo (spec §7.1)", () 
   });
 
   // 7. tools/list retorna write + read conforme capabilities
-  it("7. tools/list externo — write + read filtrados por capability", () => {
+  it("7. tools/list externo , write + read filtrados por capability", () => {
     // capabilitiesVersion: 2 para ver crmResPartnerCreate (addedInVersion: 2)
     const apiKey = createApiKeyCtx({ read: ["estoque"], write: { crm: ["create"] }, capabilitiesVersion: 2 });
     const response = handleExternalToolList(null, CATALOG as any, apiKey);
@@ -96,7 +96,7 @@ describe("E2E coexist-modes — interno + externo coexistindo (spec §7.1)", () 
   });
 
   // 8. tools/list retorna apenas write quando só há write capability
-  it("8. tools/list externo — só write se só write capability", () => {
+  it("8. tools/list externo , só write se só write capability", () => {
     const apiKey = createApiKeyCtx({ read: [], write: { crm: ["create"] }, capabilitiesVersion: 2 });
     const response = handleExternalToolList(null, CATALOG as any, apiKey);
     const tools = (response.result as { tools: { name: string }[] }).tools;
@@ -107,7 +107,7 @@ describe("E2E coexist-modes — interno + externo coexistindo (spec §7.1)", () 
   });
 
   // 9. Independência: múltiplos contextos de auth simultâneos não interferem
-  it("9. contextos de auth independentes — sem interferência entre requisições", () => {
+  it("9. contextos de auth independentes , sem interferência entre requisições", () => {
     const apiKeyA = createApiKeyCtx({ read: ["estoque"], write: {}, capabilitiesVersion: 2 });
     const apiKeyB = createApiKeyCtx({ read: [], write: { crm: ["create"] }, capabilitiesVersion: 2 });
 

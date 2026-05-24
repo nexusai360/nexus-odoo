@@ -1,5 +1,5 @@
 // mcp/middleware/__tests__/idempotency.test.ts
-// Testes E3–E7 do middleware de idempotência.
+// Testes E3,E7 do middleware de idempotência.
 
 import { checkIdempotency } from "../idempotency";
 import { mockPrisma } from "../../__tests__/mocks/prisma";
@@ -16,7 +16,7 @@ function makeHeaders(key?: string): Record<string, string | undefined> {
 }
 
 // ─── E3: operation=read → proceed ────────────────────────────────────────────
-describe("E3 — operation=read", () => {
+describe("E3 , operation=read", () => {
   it("retorna proceed sem verificar header ou Redis", async () => {
     const prisma = mockPrisma();
     const redis = createMockRedis();
@@ -54,7 +54,7 @@ describe("E3 — operation=read", () => {
 });
 
 // ─── E3: operation=write sem header → 400 ────────────────────────────────────
-describe("E3 — operation=write sem idempotency-key", () => {
+describe("E3 , operation=write sem idempotency-key", () => {
   it("retorna 400 idempotency_key_required quando header ausente", async () => {
     const prisma = mockPrisma();
     const redis = createMockRedis();
@@ -88,13 +88,13 @@ describe("E3 — operation=write sem idempotency-key", () => {
       redis,
     });
 
-    // Deve prosseguir (não 400) — encontrou header capitalizado
+    // Deve prosseguir (não 400) , encontrou header capitalizado
     expect(result.status).not.toBe(400);
   });
 });
 
 // ─── E4: mesmo key + mesmo payloadHash → cached ──────────────────────────────
-describe("E4 — cached: mesma key + mesmo payloadHash", () => {
+describe("E4 , cached: mesma key + mesmo payloadHash", () => {
   it("com lock adquirido + record existente com mesmo hash → cached + solta lock", async () => {
     const existingRecord = {
       apiKeyId: API_KEY_ID,
@@ -129,7 +129,7 @@ describe("E4 — cached: mesma key + mesmo payloadHash", () => {
 });
 
 // ─── E5: mesma key + payloadHash diferente → 422 ─────────────────────────────
-describe("E5 — conflict: mesma key + payloadHash diferente", () => {
+describe("E5 , conflict: mesma key + payloadHash diferente", () => {
   it("com lock adquirido + record existente com hash diferente → 422", async () => {
     const existingRecord = {
       apiKeyId: API_KEY_ID,
@@ -197,7 +197,7 @@ describe("E5 — conflict: mesma key + payloadHash diferente", () => {
 });
 
 // ─── E6: race condition → 409 ─────────────────────────────────────────────────
-describe("E6 — race condition: lock em posse de outro executor, sem record", () => {
+describe("E6 , race condition: lock em posse de outro executor, sem record", () => {
   it("retorna 409 idempotency_in_progress", async () => {
     const prisma = mockPrisma();
     (prisma.mcpIdempotencyRecord.findUnique as jest.Mock).mockResolvedValue(null);
@@ -222,7 +222,7 @@ describe("E6 — race condition: lock em posse de outro executor, sem record", (
 });
 
 // ─── E7: Redis indisponível → 503 ────────────────────────────────────────────
-describe("E7 — Redis indisponível", () => {
+describe("E7 , Redis indisponível", () => {
   it("retorna 503 idempotency_unavailable quando Redis lança erro", async () => {
     const prisma = mockPrisma();
 
@@ -248,7 +248,7 @@ describe("E7 — Redis indisponível", () => {
 });
 
 // ─── Caminho happy-path: proceed com lock ─────────────────────────────────────
-describe("proceed — sem record existente", () => {
+describe("proceed , sem record existente", () => {
   it("retorna proceed + lockKey quando não há record anterior", async () => {
     const prisma = mockPrisma();
     (prisma.mcpIdempotencyRecord.findUnique as jest.Mock).mockResolvedValue(null);

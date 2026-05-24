@@ -1,6 +1,6 @@
 // mcp/catalog/types.ts
 // Tipos do catálogo de tools do MCP semântico.
-// PrismaClient tipado como tipo nominal (M1) — não como typeof prisma (singleton).
+// PrismaClient tipado como tipo nominal (M1) , não como typeof prisma (singleton).
 // sempreVisivel? nasce aqui na onda 4a (N9).
 // WriteToolEntry + ToolEntryExample adicionados no Bloco F (F4 onda 2).
 import type { z } from "zod";
@@ -15,7 +15,7 @@ export interface ToolHandlerCtx {
 }
 
 /**
- * ZodRawShape — o objeto passado a z.object({...}).
+ * ZodRawShape , o objeto passado a z.object({...}).
  * É o formato que o McpServer.tool / registerTool do SDK aceita como inputSchema.
  */
 export type ZodRawShape = Record<string, z.ZodTypeAny>;
@@ -34,7 +34,7 @@ export interface ToolEntry<I = unknown, O = unknown> {
   /**
    * Domínio de negócio ao qual a tool pertence.
    * Ausente em tools de domínio-neutro (ex.: `registrar_lacuna`,
-   * `bi_consulta_avancada`) que usam `sempreVisivel: true` — nesses casos a
+   * `bi_consulta_avancada`) que usam `sempreVisivel: true` , nesses casos a
    * visibilidade não depende de domínio, então forçar um domínio seria falso.
    * `visibleTools` e `assertToolAllowed` tratam entry sem domínio como
    * sempre-coerente-de-domínio (o gate de `sempreVisivel` já garante isso).
@@ -43,7 +43,7 @@ export interface ToolEntry<I = unknown, O = unknown> {
   /** Descrição legível para o agente. */
   descricao: string;
   /**
-   * Raw shape Zod (objeto passado a z.object({...})) — publicado em tools/list
+   * Raw shape Zod (objeto passado a z.object({...})) , publicado em tools/list
    * como inputSchema do protocolo MCP e aceito pelo SDK.
    * Deve ser consistente com `inputSchema` abaixo.
    */
@@ -79,7 +79,7 @@ export interface ToolEntry<I = unknown, O = unknown> {
   examples?: ReadonlyArray<ToolEntryExample>;
   /** Requer autenticação externa (API key) para ser invocada. */
   requiresExternalAuth?: boolean;
-  /** Handler da tool — recebe input validado e o contexto de execução. */
+  /** Handler da tool , recebe input validado e o contexto de execução. */
   handler: (input: I, ctx: ToolHandlerCtx) => Promise<O>;
 }
 
@@ -110,7 +110,7 @@ export interface WriteToolResult<O = unknown> {
 export interface WriteToolEntry<I = unknown, O = unknown> {
   /** Identificador único da tool (snake_case). */
   id: string;
-  /** Discriminante de tipo — sempre "write". */
+  /** Discriminante de tipo , sempre "write". */
   operation: "write";
   /** Módulo/domínio de negócio desta tool (usado em capability check). */
   module: string;
@@ -134,11 +134,11 @@ export interface WriteToolEntry<I = unknown, O = unknown> {
   eventName: string;
   /** Versão (inteiro monotônico) em que a tool foi adicionada. */
   addedInVersion?: number;
-  /** Sempre true — tools de escrita nunca aceitam auth interna. */
+  /** Sempre true , tools de escrita nunca aceitam auth interna. */
   requiresExternalAuth: true;
   /** Exemplos de uso para documentação / AI hints. */
   examples?: ReadonlyArray<ToolEntryExample>;
-  /** Handler da tool — recebe input validado e o contexto de execução. */
+  /** Handler da tool , recebe input validado e o contexto de execução. */
   handler: (input: I, ctx: WriteToolHandlerCtx) => Promise<WriteToolResult<O>>;
 }
 

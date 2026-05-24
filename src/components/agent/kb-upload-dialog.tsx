@@ -273,7 +273,7 @@ export function KbUploadDialog({
           </DialogDescription>
         </DialogHeader>
 
-        {/* Segmented control Arquivo / URL — altura compacta e fixa. */}
+        {/* Segmented control Arquivo / URL , altura compacta e fixa. */}
         <div
           role="tablist"
           aria-label="Origem do conhecimento"

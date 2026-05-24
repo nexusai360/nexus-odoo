@@ -6,7 +6,7 @@
 //     searchRead, fieldsGet, searchIrModelData)
 //
 // O cast "as unknown as jest.Mocked<OdooClient>" é intencional: os métodos de
-// Bloco C ainda não existem na classe — o mock os declara com antecedência para
+// Bloco C ainda não existem na classe , o mock os declara com antecedência para
 // que os testes de Blocos D/E/F/H/J compilem antes de Bloco C completar a
 // extensão da classe.
 

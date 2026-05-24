@@ -47,7 +47,7 @@ export async function recordIdempotencyResult(
       },
     });
   } catch {
-    // Log silencioso — não propagar erro para não afetar o caller
+    // Log silencioso , não propagar erro para não afetar o caller
     // O TTL do Redis garante que a key expira; ausência do record é aceitável
   }
 }

@@ -1,7 +1,7 @@
 "use client";
 
 /**
- * FiltersDialog — modal de filtros com duas abas:
+ * FiltersDialog , modal de filtros com duas abas:
  * - Simples: accordion de facetas (armazém, família, sentido, faixaDias)
  *   com campo de busca + lista de checkboxes + "Selecionar todos".
  * - Avançado: construtor recursivo de condições E/OU.
@@ -10,7 +10,7 @@
  * aba ativa. Botão "Filtros" na barra do relatório abre o diálogo.
  *
  * Design (ui-ux-pro-max §1/§2/§8):
- * - progressive-disclosure: accordion — apenas 1 seção aberta por vez
+ * - progressive-disclosure: accordion , apenas 1 seção aberta por vez
  * - touch targets ≥ 36px em checkboxes e botões
  * - aria-labels descritivos; anel de foco visível em todos os interativos
  * - sem emoji; ícones lucide
@@ -400,7 +400,7 @@ function GrupoBuilder({
         )}
         {grupo.itens.length === 0 && (
           <p className="text-xs text-muted-foreground italic">
-            Nenhuma condição — adicione abaixo.
+            Nenhuma condição , adicione abaixo.
           </p>
         )}
       </div>
@@ -564,7 +564,7 @@ export function FiltersDialog({
       for (const f of facetas) {
         const sel = simpleDraft[f.key];
         if (sel && sel.size > 0) {
-          // Pega o primeiro valor selecionado — single-select por ora
+          // Pega o primeiro valor selecionado , single-select por ora
           params.set(f.key, Array.from(sel)[0]!);
         } else {
           params.delete(f.key);

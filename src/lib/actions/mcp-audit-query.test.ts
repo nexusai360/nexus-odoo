@@ -77,12 +77,12 @@ beforeEach(() => {
 });
 
 // ──────────────────────────────────────────────
-// queryAuditLogs — auth
+// queryAuditLogs , auth
 // ──────────────────────────────────────────────
 
-describe("queryAuditLogs — auth", () => {
+describe("queryAuditLogs , auth", () => {
   it("retorna erro se não for super_admin", async () => {
-    mockRequireSuperAdmin.mockRejectedValue(new Error("Acesso negado — requer super_admin"));
+    mockRequireSuperAdmin.mockRejectedValue(new Error("Acesso negado , requer super_admin"));
     const result = await queryAuditLogs({});
     expect(result.success).toBe(false);
     if (!result.success) expect(result.error).toMatch(/super_admin/);
@@ -90,10 +90,10 @@ describe("queryAuditLogs — auth", () => {
 });
 
 // ──────────────────────────────────────────────
-// queryAuditLogs — happy path
+// queryAuditLogs , happy path
 // ──────────────────────────────────────────────
 
-describe("queryAuditLogs — happy path", () => {
+describe("queryAuditLogs , happy path", () => {
   it("retorna lista vazia quando não há logs", async () => {
     const result = await queryAuditLogs({});
     expect(result.success).toBe(true);
@@ -135,12 +135,12 @@ describe("queryAuditLogs — happy path", () => {
 });
 
 // ──────────────────────────────────────────────
-// queryAuditLogs — paginação
+// queryAuditLogs , paginação
 // ──────────────────────────────────────────────
 
-describe("queryAuditLogs — paginação", () => {
+describe("queryAuditLogs , paginação", () => {
   it("define nextCursor quando há mais de 50 itens", async () => {
-    // Retorna PAGE_SIZE + 1 = 51 itens — todos com a mesma data base, offset por segundos
+    // Retorna PAGE_SIZE + 1 = 51 itens , todos com a mesma data base, offset por segundos
     const baseDate = new Date("2026-05-20T10:00:00.000Z");
     const rows = Array.from({ length: 51 }, (_, i) =>
       makeRow({ id: `uuid-${i}`, criadoEm: new Date(baseDate.getTime() - i * 1000) }),
@@ -174,10 +174,10 @@ describe("queryAuditLogs — paginação", () => {
 });
 
 // ──────────────────────────────────────────────
-// queryAuditLogs — filtros inválidos
+// queryAuditLogs , filtros inválidos
 // ──────────────────────────────────────────────
 
-describe("queryAuditLogs — validação de filtros", () => {
+describe("queryAuditLogs , validação de filtros", () => {
   it("retorna erro em filtros com UUID inválido", async () => {
     const result = await queryAuditLogs({ apiKeyId: "not-a-uuid" });
     expect(result.success).toBe(false);

@@ -1,9 +1,9 @@
 /**
- * /agente/prompt — Prompt do agente: identidade, comportamento e base de
+ * /agente/prompt , Prompt do agente: identidade, comportamento e base de
  * conhecimento.
  *
  * Rework F5-UI: a seção "Recursos" (entrada de áudio/anexo, sugestões, modo
- * raciocínio) saiu desta tela para a tela "Configuração" — recursos são
+ * raciocínio) saiu desta tela para a tela "Configuração" , recursos são
  * configuração, não prompt.
  *
  * Gate de role: super_admin (aplicado também no layout do grupo /agente).

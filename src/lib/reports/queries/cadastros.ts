@@ -1,7 +1,7 @@
 // src/lib/reports/queries/cadastros.ts
 //
 // Núcleo de agregação de cadastros, framework-neutro. Recebe `prisma` + filtros,
-// devolve agregação crua — sem `estado`/`freshness`/shaping. Não captura exceção.
+// devolve agregação crua , sem `estado`/`freshness`/shaping. Não captura exceção.
 // `withFreshness` vive no handler MCP, não aqui.
 // Fonte primária: fato_parceiro (clientes, fornecedores, contatos).
 

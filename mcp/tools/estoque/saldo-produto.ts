@@ -8,7 +8,7 @@ import { withFreshness } from "../../lib/freshness.js";
 const inputSchema = z.object({
   armazemId: z.number().int().positive().optional(),
   familiaId: z.number().int().positive().optional(),
-  /** Filtra por nome do produto (busca parcial) — use para perguntas sobre
+  /** Filtra por nome do produto (busca parcial) , use para perguntas sobre
    * o saldo de um produto específico. Aceita o nome ou o código do produto. */
   termo: z.string().min(1).max(120).optional(),
 });

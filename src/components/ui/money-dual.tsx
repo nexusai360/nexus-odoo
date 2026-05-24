@@ -1,10 +1,10 @@
 /**
- * MoneyDual — exibe um valor em BRL como principal e USD como referência
+ * MoneyDual , exibe um valor em BRL como principal e USD como referência
  * secundária menor ao lado. Padrão visual usado em telas onde o consumo/saldo
  * é cobrado em USD pelo provedor mas o usuário pensa em reais.
  *
  * Quando `rate` não está disponível (cotação stale ou falha), cai pra USD
- * sozinho — preferimos um dado correto a uma conversão chutada.
+ * sozinho , preferimos um dado correto a uma conversão chutada.
  */
 
 import { cn } from "@/lib/utils";

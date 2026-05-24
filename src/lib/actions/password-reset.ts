@@ -3,7 +3,7 @@
 export async function requestPasswordReset(
   _email: string
 ): Promise<{ success?: boolean; error?: string }> {
-  // TODO: implementar envio de email — fase F2/F3
+  // TODO: implementar envio de email , fase F2/F3
   return { success: true };
 }
 
@@ -22,6 +22,6 @@ export async function resetPassword({
   password: string;
   confirmPassword: string;
 }): Promise<{ success?: boolean; error?: string }> {
-  // TODO: implementar redefinição de senha — fase F2/F3
+  // TODO: implementar redefinição de senha , fase F2/F3
   return { error: 'Funcionalidade não implementada' };
 }

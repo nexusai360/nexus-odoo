@@ -1,8 +1,8 @@
 // src/worker/fatos/fato-certificado.ts
 // FONTE: raw_sped_certificado (modelo sped.certificado).
 // ESCOPO: certificados digitais (e-CNPJ) das empresas. Os campos `senha` e
-// `arquivo` NÃO são copiados (excludeFields no MODEL_CATALOG) — não chegam aqui.
-// CYCLE: incremental — volume baixo (~11 certificados).
+// `arquivo` NÃO são copiados (excludeFields no MODEL_CATALOG) , não chegam aqui.
+// CYCLE: incremental , volume baixo (~11 certificados).
 import type { PrismaClient } from "../../generated/prisma/client";
 import { markFatoBuilt } from "./fato-build-state";
 

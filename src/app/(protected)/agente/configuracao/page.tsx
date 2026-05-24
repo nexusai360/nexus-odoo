@@ -1,9 +1,9 @@
 /**
- * /agente/configuracao — Configuração do Agente Nex: conexão LLM e recursos.
+ * /agente/configuracao , Configuração do Agente Nex: conexão LLM e recursos.
  *
  * Rework F5-UI: além da conexão com o provedor de IA (provedor, modelo, chave),
  * esta tela passou a abrigar a seção "Recursos" (entrada de áudio/anexo,
- * sugestões clicáveis, modo raciocínio) — recursos são configuração, não
+ * sugestões clicáveis, modo raciocínio) , recursos são configuração, não
  * prompt. Identidade, comportamento e base de conhecimento ficam em "Prompt".
  *
  * Gate de role: super_admin (aplicado também no layout do grupo /agente).

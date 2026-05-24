@@ -1,12 +1,12 @@
 "use client";
 
 /**
- * FeatureCheckpoint — controle de 3 estados (Off / Playground / Produção).
+ * FeatureCheckpoint , controle de 3 estados (Off / Playground / Produção).
  *
  * Substitui o toggle on/off dos recursos do Agente Nex (áudio, imagem, KB e
  * documentos da base de conhecimento). Implementado como segmented control
  * acessível: clicável, navegável por teclado (setas), com aria-pressed em cada
- * segmento. Cores: cinza (OFF), âmbar (PLAYGROUND — cor da tag "playground" do
+ * segmento. Cores: cinza (OFF), âmbar (PLAYGROUND , cor da tag "playground" do
  * consumo), roxo (PRODUCTION).
  */
 

@@ -3,7 +3,7 @@
 /**
  * Server Actions para métricas do servidor MCP.
  *
- * getMcp24hMetrics — agrega mcp_audit_log das últimas 24 horas:
+ * getMcp24hMetrics , agrega mcp_audit_log das últimas 24 horas:
  *   - total de chamadas
  *   - percentual de erro
  *   - top 5 tools mais chamadas

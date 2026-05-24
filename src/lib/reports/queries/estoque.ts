@@ -1,22 +1,22 @@
 // src/lib/reports/queries/estoque.ts
 //
 // Núcleo de agregação de estoque, framework-neutro. Cada função recebe `prisma`
-// + filtros e devolve dado de agregação cru — **sem `estado`, sem `freshness`,
-// sem shaping de gráfico**. **Não captura exceção** (deixa propagar — quem
+// + filtros e devolve dado de agregação cru , **sem `estado`, sem `freshness`,
+// sem shaping de gráfico**. **Não captura exceção** (deixa propagar , quem
 // trata é o wrapper). `estadoDoFato`/`reportFreshness` vivem no wrapper
 // `report-data.ts`, não aqui.
 //
 // O módulo **importa** `limparNomeLocal` de `@/lib/reports/local-nome` e a usa
-// nas agregações que precisam de rótulo de local — `limparNomeLocal` permanece
+// nas agregações que precisam de rótulo de local , `limparNomeLocal` permanece
 // em seu módulo atual, não é movida. O que **não vai** para o núcleo:
 // `agruparTopN` (report-data.ts, função local) e as constantes `TOP_N`/
-// `TOP_CONCENTRACAO` — são shaping de gráfico e permanecem no wrapper.
+// `TOP_CONCENTRACAO` , são shaping de gráfico e permanecem no wrapper.
 
 import type { PrismaClient } from "@/generated/prisma/client";
 import { limparNomeLocal } from "@/lib/reports/local-nome";
 
 // ---------------------------------------------------------------------------
-// Tipos de R1 — Saldo por produto
+// Tipos de R1 , Saldo por produto
 // ---------------------------------------------------------------------------
 
 /** Item do detalhamento por local de um produto (para o drill-down). */
@@ -56,13 +56,13 @@ export interface SaldoProdutoData {
 }
 
 // ---------------------------------------------------------------------------
-// R1 — querySaldoProduto
+// R1 , querySaldoProduto
 // ---------------------------------------------------------------------------
 
 /**
  * Agrega saldo de estoque por produto.
  * Fato: fato_estoque_saldo.
- * Não captura exceção — deixa propagar para o wrapper.
+ * Não captura exceção , deixa propagar para o wrapper.
  */
 export async function querySaldoProduto(
   prisma: PrismaClient,
@@ -92,7 +92,7 @@ export async function querySaldoProduto(
   }
 
   // groupBy não suporta _count(distinct), então buscamos os dados brutos e
-  // agregamos em JS — dataset cabe confortavelmente em memória.
+  // agregamos em JS , dataset cabe confortavelmente em memória.
   const rows = await prisma.fatoEstoqueSaldo.findMany({
     where: {
       ...(filtros.armazemId ? { localId: filtros.armazemId } : {}),
@@ -190,10 +190,10 @@ export async function querySaldoProduto(
 }
 
 // ---------------------------------------------------------------------------
-// Tipos de R2 — Valor por armazém
+// Tipos de R2 , Valor por armazém
 // ---------------------------------------------------------------------------
 
-/** Linha da tabela de R2 (sem percentual — calculado no wrapper/tool). */
+/** Linha da tabela de R2 (sem percentual , calculado no wrapper/tool). */
 export interface ValorArmazemRow {
   [k: string]: unknown;
   armazem: string;
@@ -217,11 +217,11 @@ export interface ValorArmazemData {
 }
 
 // ---------------------------------------------------------------------------
-// R2 — queryValorArmazem
+// R2 , queryValorArmazem
 // ---------------------------------------------------------------------------
 
 /**
- * Agrega valor de estoque por armazém. Devolve linhasBruto (sem percentual —
+ * Agrega valor de estoque por armazém. Devolve linhasBruto (sem percentual ,
  * percentual é shaping e calculado no wrapper F3 e na tool MCP, regra N8).
  * Fato: fato_estoque_saldo.
  */
@@ -260,7 +260,7 @@ export async function queryValorArmazem(
 }
 
 // ---------------------------------------------------------------------------
-// Tipos de R3 — Entradas e saídas
+// Tipos de R3 , Entradas e saídas
 // ---------------------------------------------------------------------------
 
 /** Ponto da série de R3. */
@@ -286,7 +286,7 @@ export interface EntradasSaidasData {
 }
 
 // ---------------------------------------------------------------------------
-// R3 — queryEntradasSaidas
+// R3 , queryEntradasSaidas
 // ---------------------------------------------------------------------------
 
 /**
@@ -337,7 +337,7 @@ export async function queryEntradasSaidas(
 }
 
 // ---------------------------------------------------------------------------
-// Tipos de R4 — Produtos parados
+// Tipos de R4 , Produtos parados
 // ---------------------------------------------------------------------------
 
 /** Linha de R4. */
@@ -362,7 +362,7 @@ export interface ProdutoParadoData {
 }
 
 // ---------------------------------------------------------------------------
-// R4 — queryProdutosParados
+// R4 , queryProdutosParados
 // ---------------------------------------------------------------------------
 
 /**
@@ -404,7 +404,7 @@ export async function queryProdutosParados(
 }
 
 // ---------------------------------------------------------------------------
-// Tipos de R5 — Top movimentados
+// Tipos de R5 , Top movimentados
 // ---------------------------------------------------------------------------
 
 /** Barra de R5. */
@@ -418,7 +418,7 @@ export interface TopMovimentadoKpis {
   totalProdutos: number;
   totalUnidades: number;
 }
-/** Dados de R5: KPIs + linhas (lista completa — slice para barras feito no wrapper). */
+/** Dados de R5: KPIs + linhas (lista completa , slice para barras feito no wrapper). */
 export interface TopMovimentadoData {
   kpis: TopMovimentadoKpis;
   barras: TopMovimentadoBar[];
@@ -426,12 +426,12 @@ export interface TopMovimentadoData {
 }
 
 // ---------------------------------------------------------------------------
-// R5 — queryTopMovimentados
+// R5 , queryTopMovimentados
 // ---------------------------------------------------------------------------
 
 /**
  * Agrega movimentações por produto. Devolve a lista completa (sem slice para top-N
- * — o wrapper F3 e a tool MCP fazem o slice independentemente).
+ * , o wrapper F3 e a tool MCP fazem o slice independentemente).
  * Fato: fato_estoque_movimento.
  */
 export async function queryTopMovimentados(
@@ -464,7 +464,7 @@ export async function queryTopMovimentados(
 }
 
 // ---------------------------------------------------------------------------
-// Tipos de R6 — Concentração
+// Tipos de R6 , Concentração
 // ---------------------------------------------------------------------------
 
 /** Linha da tabela de famílias de R6. */
@@ -496,13 +496,13 @@ export interface ConcentracaoData {
 }
 
 // ---------------------------------------------------------------------------
-// R6 — queryConcentracao
+// R6 , queryConcentracao
 // ---------------------------------------------------------------------------
 
 /**
- * Agrega vrSaldo por família e marca. Devolve dados brutos (sem percentual —
+ * Agrega vrSaldo por família e marca. Devolve dados brutos (sem percentual ,
  * percentual é shaping calculado no wrapper F3 e na tool MCP, regra N8).
- * Sem agruparTopN — shaping de gráfico fica no wrapper.
+ * Sem agruparTopN , shaping de gráfico fica no wrapper.
  * Fato: fato_estoque_saldo.
  */
 export async function queryConcentracao(

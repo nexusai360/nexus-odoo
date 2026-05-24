@@ -46,7 +46,7 @@ export async function cleanupPartnersByPrefix(
         await odoo.unlink("res.partner", [id]);
         deleted++;
       } catch {
-        // Ignorar — pode já ter sido deletado
+        // Ignorar , pode já ter sido deletado
       }
     }
   }

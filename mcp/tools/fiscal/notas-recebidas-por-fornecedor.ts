@@ -17,7 +17,7 @@ const inputSchema = z.object({
       "Nome (ou parte) do fornecedor. Pode casar com matriz e filiais ao " +
         "mesmo tempo: para o total do fornecedor leia `totalAgregado`, não uma linha.",
     ),
-  /** CNPJ ou CPF do fornecedor — identificação inequívoca. */
+  /** CNPJ ou CPF do fornecedor , identificação inequívoca. */
   documento: z
     .string()
     .min(1)
@@ -85,7 +85,7 @@ export const fiscalNotasRecebidasPorFornecedor: ToolEntry<Input, Output> = {
     "Para perguntas sobre um fornecedor específico, passe `fornecedor` (nome " +
     "ou parte) ou `documento` (CNPJ/CPF, sem ambiguidade). Quando filtrado, " +
     "`totalAgregado` traz a contagem e o valor somados de todas as notas que " +
-    "casaram — é a resposta para 'quantas notas do fornecedor X'. Aceita " +
+    "casaram , é a resposta para 'quantas notas do fornecedor X'. Aceita " +
     "filtro de período (periodoDe/periodoAte AAAA-MM-DD).",
   inputSchemaShape: inputSchema.shape,
   inputSchema,

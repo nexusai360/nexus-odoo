@@ -1,7 +1,7 @@
 "use client";
 
 /**
- * AudioPlayer — player customizado para mensagens de áudio do agente.
+ * AudioPlayer , player customizado para mensagens de áudio do agente.
  *
  * Portado de nexus-insights/src/components/nex/audio-player.tsx.
  * Adaptações: renomeação nex→agent. Lógica e design inalterados.
@@ -156,7 +156,7 @@ export function AudioPlayer({
         type="button"
         onClick={cycleSpeed}
         aria-label={`Velocidade ${formatSpeed(speed)} (clique para próxima)`}
-        title={`Velocidade ${formatSpeed(speed)} — clique para próxima`}
+        title={`Velocidade ${formatSpeed(speed)} , clique para próxima`}
         className={cn(
           "flex h-5 min-w-[34px] shrink-0 cursor-pointer items-center justify-center rounded-md border border-violet-500/30 bg-transparent px-1 font-mono text-[9px] font-medium tabular-nums text-violet-700 dark:text-violet-300",
           "transition-all duration-150 hover:scale-105 hover:border-violet-500/60 hover:bg-violet-500/20",

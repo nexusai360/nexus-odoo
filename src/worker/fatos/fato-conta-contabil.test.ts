@@ -6,7 +6,7 @@ jest.mock("./fato-build-state", () => ({ markFatoBuilt: jest.fn() }));
 const { markFatoBuilt } = require("./fato-build-state");
 
 // ---------------------------------------------------------------------------
-// Fixtures — formato real de contabil.conta (discovery O.2/O.3)
+// Fixtures , formato real de contabil.conta (discovery O.2/O.3)
 // Fields confirmados contra raw_contabil_conta real (934 linhas):
 //   id, codigo, nome, tipo (S/A), nivel, natureza, conta_superior_id (M2O),
 //   parent_path, caracteristica_saldo, eh_redutora
@@ -20,7 +20,7 @@ const RAW_CONTA_RAIZ = {
   tipo: "S",
   nivel: 1,
   natureza: "01",
-  conta_superior_id: false,    // conta raiz — sem pai
+  conta_superior_id: false,    // conta raiz , sem pai
   parent_path: "4/",
   caracteristica_saldo: "D",
   eh_redutora: false,

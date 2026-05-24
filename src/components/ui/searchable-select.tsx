@@ -25,7 +25,7 @@ export interface SearchableSelectOption {
  * Quando `value === sentinel`, o trigger renderiza um `<input>` editable
  * (substitui o label estático), foca automaticamente, mostra um botão `X`
  * para limpar e sair do customMode. O chevron continua abrindo o dropdown
- * normalmente — selecionar um item do dropdown sai do customMode (chama
+ * normalmente , selecionar um item do dropdown sai do customMode (chama
  * `onChange` com o novo value).
  */
 export interface SearchableSelectCustomMode {
@@ -63,7 +63,7 @@ interface Props {
  *
  * Usa `Popover` (base-ui) para portalizar o popup no `<body>`, evitando que
  * containers com `overflow-hidden` ou `transform` (que criam stacking context)
- * cortem ou empurrem o dropdown — bug conhecido como "dropdown preso".
+ * cortem ou empurrem o dropdown , bug conhecido como "dropdown preso".
  *
  * Mantém o padrão do `<CustomSelect>` (mesma família visual, sideOffset=4,
  * align="start") para consistência entre selects da plataforma.
@@ -145,7 +145,7 @@ export function SearchableSelect({
                       customMode.onCustomChange(e.currentTarget.value)
                     }
                     onClick={(e) => {
-                      // Click no input não abre dropdown — usuário usa o
+                      // Click no input não abre dropdown , usuário usa o
                       // chevron pra abrir, ou o X pra limpar.
                       e.stopPropagation();
                     }}

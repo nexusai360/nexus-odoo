@@ -1,12 +1,12 @@
 // src/lib/reports/queries/contabil.ts
 //
 // Núcleo de agregação contábil, framework-neutro. Recebe `prisma` + filtros,
-// devolve dados crus — sem `estado`/`freshness`/shaping. Não captura exceção.
+// devolve dados crus , sem `estado`/`freshness`/shaping. Não captura exceção.
 // `withFreshness` vive no handler MCP, não aqui.
 // Fonte primária: fato_conta_contabil (plano de contas hierárquico).
 //
 // NOTA: não há lançamento/movimento contábil no Odoo da Matrix Fitness Group
-// — apenas a estrutura do plano de contas (tipo S=sintética, A=analítica).
+// , apenas a estrutura do plano de contas (tipo S=sintética, A=analítica).
 
 import type { PrismaClient } from "@/generated/prisma/client";
 
@@ -16,7 +16,7 @@ import type { PrismaClient } from "@/generated/prisma/client";
 
 /** Lista contas do plano, opcionalmente filtrando por termo (ILIKE em codigo/nome).
  * Devolve até `limite` (padrão 250) resultados ordenados por codigo, junto com
- * `total` (contagem completa do filtro) e `truncado` — para a resposta nunca
+ * `total` (contagem completa do filtro) e `truncado` , para a resposta nunca
  * ocultar silenciosamente que há mais contas do que as retornadas. */
 export async function queryPlanoDeContas(
   prisma: PrismaClient,

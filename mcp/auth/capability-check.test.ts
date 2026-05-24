@@ -1,5 +1,5 @@
 // mcp/auth/capability-check.test.ts
-// TDD para hasCapability (Bloco F — F3).
+// TDD para hasCapability (Bloco F , F3).
 import { hasCapability, type CapabilityCheck } from "./capability-check.js";
 import type { ApiKeyContext } from "./api-key-context.js";
 
@@ -25,7 +25,7 @@ function makeCtx(overrides: Partial<ApiKeyContext> = {}): ApiKeyContext {
   };
 }
 
-describe("hasCapability — read", () => {
+describe("hasCapability , read", () => {
   it("retorna true para módulo na lista de read", () => {
     const ctx = makeCtx();
     expect(hasCapability(ctx, { type: "read", module: "estoque" })).toBe(true);
@@ -42,7 +42,7 @@ describe("hasCapability — read", () => {
   });
 });
 
-describe("hasCapability — write", () => {
+describe("hasCapability , write", () => {
   it("retorna true para ação permitida no módulo", () => {
     const ctx = makeCtx();
     expect(
@@ -72,7 +72,7 @@ describe("hasCapability — write", () => {
   });
 });
 
-describe("hasCapability — addedInVersion gate", () => {
+describe("hasCapability , addedInVersion gate", () => {
   it("retorna false se addedInVersion > capabilitiesVersion", () => {
     const ctx = makeCtx({ capabilitiesVersion: 3 });
     expect(

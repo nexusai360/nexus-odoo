@@ -10,7 +10,7 @@ const inputSchema = z.object({
   periodoAte: z.string().optional(),
 });
 
-// dados só tem escalares — sem array; cai no ramo "ok" do withFreshness por não
+// dados só tem escalares , sem array; cai no ramo "ok" do withFreshness por não
 // achar array em ARRAY_KEYS_PRIORITY (achado P-M1). Sem isVazio custom.
 const dados = z.object({
   totalPedidos: z.number().int(),

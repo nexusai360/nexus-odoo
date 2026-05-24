@@ -1,7 +1,7 @@
 "use client";
 
 /**
- * PromptConfigForm — edição de comportamento, tom e guardrails do Agente Nex.
+ * PromptConfigForm , edição de comportamento, tom e guardrails do Agente Nex.
  *
  * Rework F5-UI v2:
  * - Limites: comportamento e tom 1000 caracteres; cada guardrail 500.
@@ -229,7 +229,7 @@ export function PromptConfigForm({ initial }: PromptConfigFormProps) {
         </div>
       </div>
 
-      {/* Ação principal — canto inferior direito, botão compacto. */}
+      {/* Ação principal , canto inferior direito, botão compacto. */}
       <div className="flex items-center justify-end pt-3">
         <Button
           type="button"

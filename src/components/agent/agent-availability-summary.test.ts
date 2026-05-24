@@ -1,7 +1,7 @@
 import { describe, expect, test } from "@jest/globals";
 import { summarizeAvailability } from "./agent-availability-summary";
 
-describe("summarizeAvailability — 4 estados", () => {
+describe("summarizeAvailability , 4 estados", () => {
   test("bubble + whatsapp -> ativo nos dois canais", () => {
     const s = summarizeAvailability(true, true);
     expect(s.tone).toBe("active");

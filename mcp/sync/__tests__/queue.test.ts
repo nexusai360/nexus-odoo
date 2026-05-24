@@ -1,5 +1,5 @@
 // mcp/sync/__tests__/queue.test.ts
-// Testa getDirectedSyncQueue — singleton, nome da fila, tipagem do job.
+// Testa getDirectedSyncQueue , singleton, nome da fila, tipagem do job.
 
 import { Queue } from "bullmq";
 
@@ -36,7 +36,7 @@ describe("getDirectedSyncQueue", () => {
     expect(q).toBeDefined();
   });
 
-  it("deve retornar singleton — Queue instanciada apenas uma vez por módulo", () => {
+  it("deve retornar singleton , Queue instanciada apenas uma vez por módulo", () => {
     getDirectedSyncQueue();
     getDirectedSyncQueue();
     // Como o singleton está em memória do módulo já carregado (não resetamos

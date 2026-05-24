@@ -20,7 +20,7 @@ export interface KbSearchResult {
 }
 
 /** Máximo de chars por documento no fallback de texto integral. */
-const FALLBACK_MAX_CHARS = 50_000;
+const FALLBACK_MAX_CHARS = 500_000;
 
 /**
  * Ingere um documento na base de conhecimento.
@@ -44,13 +44,13 @@ export async function ingestKbDocument(
   } catch (err) {
     if (err instanceof EmbeddingUnavailable) {
       // Fallback: grava sem embedding; busca semântica não estará disponível
-      console.info("[ingestKbDocument] Sem credencial de embedding — gravando sem vetor.");
+      console.info("[ingestKbDocument] Sem credencial de embedding , gravando sem vetor.");
     } else {
       throw err;
     }
   }
 
-  // Gravar documento via Prisma (sem a coluna vector — Prisma não sabe do tipo)
+  // Gravar documento via Prisma (sem a coluna vector , Prisma não sabe do tipo)
   const doc = await prisma.kbDocument.create({
     data: {
       name,
@@ -101,9 +101,9 @@ export async function searchKb(query: string, topK: number): Promise<KbSearchRes
   } catch (err) {
     if (err instanceof EmbeddingUnavailable) {
       // Fallback: texto integral, sem semântica.
-      // Sem `take: topK` — busca todos os documentos e deixa o budget de
+      // Sem `take: topK` , busca todos os documentos e deixa o budget de
       // FALLBACK_MAX_CHARS do composeSystemPrompt fazer o corte (MÉDIO-4 do review 1-2-7).
-      console.info("[searchKb] Sem embedding — usando fallback de texto integral.");
+      console.info("[searchKb] Sem embedding , usando fallback de texto integral.");
       const docs = await prisma.kbDocument.findMany({
         select: { id: true, name: true, extractedText: true },
         orderBy: { createdAt: "desc" },

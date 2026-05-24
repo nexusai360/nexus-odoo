@@ -10,7 +10,7 @@ import { MessageInput } from "./message-input";
 
 const noop = () => {};
 
-describe("MessageInput — input adaptativo", () => {
+describe("MessageInput , input adaptativo", () => {
   test("sem slots: textarea ganha padding de respiro nos dois lados", () => {
     render(
       <MessageInput value="" onChange={noop} onSend={noop} aria-label="campo" />,

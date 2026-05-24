@@ -1,7 +1,7 @@
 "use client";
 
 /**
- * LlmConfigForm — configuração da conexão LLM do Agente Nex (super_admin only).
+ * LlmConfigForm , configuração da conexão LLM do Agente Nex (super_admin only).
  *
  * Rework F5-UI v2: clone visual do `llm-config-form` do nexus-insights.
  * - Região "Agente Nex ativo" (dot + Switch) controla a bolha flutuante.
@@ -132,7 +132,7 @@ interface LlmConfigItem {
 interface LlmConfigFormProps {
   /** Config LLM ativa (singleton de produção), ou null. */
   activeConfig: PublicLlmConfig | null;
-  /** Configs já cadastradas — reusa o id em vez de duplicar ao salvar. */
+  /** Configs já cadastradas , reusa o id em vez de duplicar ao salvar. */
   configs: LlmConfigItem[];
   credentials: CredentialSummary[];
   /**
@@ -237,7 +237,7 @@ export function LlmConfigForm({
   // Cross-component sync: o ReasoningCard em Recursos precisa refletir o
   // modelo selecionado AQUI em tempo real (mesmo antes de testar/salvar) só
   // pra mostrar os níveis de raciocínio compatíveis. O efeito real só persiste
-  // ao salvar — em refresh, volta pro modelo salvo. Usamos CustomEvent pra
+  // ao salvar , em refresh, volta pro modelo salvo. Usamos CustomEvent pra
   // evitar lifting de state entre componentes siblings.
   useEffect(() => {
     if (typeof window === "undefined") return;
@@ -264,7 +264,7 @@ export function LlmConfigForm({
   const busy = isSaving || isTesting;
   const actionsDisabled = busy || hasNoCredentials || !effectiveCredentialId;
 
-  // "Sujo" — a seleção atual difere da config ativa salva. Sem config ativa,
+  // "Sujo" , a seleção atual difere da config ativa salva. Sem config ativa,
   // qualquer estado é sujo. Governa se "Testar conexão" fica habilitado e se o
   // resultado do teste é refletido na tarja do topo.
   const isDirty =
@@ -273,7 +273,7 @@ export function LlmConfigForm({
     resolvedModel !== activeConfig.model ||
     effectiveCredentialId !== (activeConfig.credentialId ?? "");
 
-  // Gating Testar/Salvar — regra de raiz:
+  // Gating Testar/Salvar , regra de raiz:
   //   - Mudou algo (isDirty) → Testar habilitado, Salvar desabilitado.
   //   - Testou e passou (test.status === "ok") → Testar desabilitado (nada
   //     mais a testar), Salvar habilitado (pode persistir).
@@ -287,7 +287,7 @@ export function LlmConfigForm({
     actionsDisabled || (isDirty && !testPassed) || (isConfigured && !isDirty);
 
   // O resultado do teste é exibido na tarja do topo (fonte da verdade do
-  // status) — nunca numa segunda tarja embaixo.
+  // status) , nunca numa segunda tarja embaixo.
   const showTestInTop = test.status !== "idle" && isDirty;
 
   function handleProviderChange(next: string) {
@@ -413,7 +413,7 @@ export function LlmConfigForm({
           Configuração do LLM
         </h3>
         {(() => {
-          // Tarja única do topo — fonte da verdade do status. Reflete o teste
+          // Tarja única do topo , fonte da verdade do status. Reflete o teste
           // apenas quando há algo novo a verificar (isDirty); caso contrário,
           // mostra a conexão ativa salva.
           const tone: "ok" | "fail" | "active" | "idle" = showTestInTop
@@ -434,7 +434,7 @@ export function LlmConfigForm({
                         ? ` · ${activeConfig!.credentialLabel}`
                         : ""
                     }`
-                  : "Nenhuma conexão ativa — selecione provedor, modelo e chave abaixo.";
+                  : "Nenhuma conexão ativa , selecione provedor, modelo e chave abaixo.";
           const isGood = tone === "ok" || tone === "active";
           const isBad = tone === "fail";
           return (
@@ -530,7 +530,7 @@ export function LlmConfigForm({
           </div>
         </div>
 
-        {/* Chave de API — abaixo, largura total */}
+        {/* Chave de API , abaixo, largura total */}
         <div className="space-y-1.5">
           <Label htmlFor="llm-credential" className="gap-2">
             <KeyRound className="h-3.5 w-3.5 text-muted-foreground" />
@@ -636,9 +636,9 @@ export function LlmConfigForm({
             className="cursor-pointer"
             title={
               testPassed
-                ? "Teste já passou — agora clique em Salvar configuração."
+                ? "Teste já passou , agora clique em Salvar configuração."
                 : isConfigured && !isDirty
-                  ? "Conexão ativa e inalterada — nada a testar."
+                  ? "Conexão ativa e inalterada , nada a testar."
                   : "Verificar a conexão com o provedor antes de salvar."
             }
           >
@@ -656,7 +656,7 @@ export function LlmConfigForm({
             className="cursor-pointer"
             title={
               isDirty && !testPassed
-                ? "Teste a conexão primeiro — só dá pra salvar depois que o teste passar."
+                ? "Teste a conexão primeiro , só dá pra salvar depois que o teste passar."
                 : isConfigured && !isDirty
                   ? "Nada mudou desde a última configuração salva."
                   : "Salvar e ativar esta configuração."

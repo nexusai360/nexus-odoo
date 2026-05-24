@@ -1,7 +1,7 @@
 import { cn } from "@/lib/utils";
 
 interface ChartCardProps {
-  /** Título da seção — opcional. */
+  /** Título da seção , opcional. */
   title?: string;
   /** Linha de apoio abaixo do título. */
   subtitle?: string;
@@ -12,7 +12,7 @@ interface ChartCardProps {
 }
 
 /**
- * Cartão que envolve um chart/tabela — borda sutil, cantos arredondados e
+ * Cartão que envolve um chart/tabela , borda sutil, cantos arredondados e
  * cabeçalho opcional. Padroniza o enquadramento visual de toda seção de
  * relatório, alinhado ao projeto irmão `nexus-insights`.
  */

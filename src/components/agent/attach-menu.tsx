@@ -17,7 +17,7 @@ import {
 import { cn } from "@/lib/utils";
 
 // Imagens aceitas: PNG, JPG/JPEG e WebP (formato moderno do Google, lossy/
-// lossless, estático). GIF foi removido — animado não agrega no chat e a
+// lossless, estático). GIF foi removido , animado não agrega no chat e a
 // extração de texto não enxerga conteúdo de quadros.
 const ACCEPT_IMAGE = "image/png,image/jpeg,image/webp";
 const ACCEPT_FILE = ".pdf,.txt,.md,.csv,.docx,.xlsx";
@@ -126,10 +126,10 @@ export function AttachMenu({ onPick, disabled, className }: AttachMenuProps) {
 }
 
 /**
- * Handler default — exibe toast informando que o suporte completo está em
+ * Handler default , exibe toast informando que o suporte completo está em
  * andamento. Os componentes consumidores podem fornecer um handler próprio
  * que envia para a base de conhecimento ou para o agente.
  */
 export function defaultAttachHandler(file: File, kind: "image" | "file") {
-  toast.info(`${kind === "image" ? "Imagem" : "Arquivo"} "${file.name}" pronta para enviar — suporte completo em breve.`);
+  toast.info(`${kind === "image" ? "Imagem" : "Arquivo"} "${file.name}" pronta para enviar , suporte completo em breve.`);
 }

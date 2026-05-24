@@ -2,7 +2,7 @@
 // Tool MCP: contabil_plano_de_contas
 //
 // NOTA OBRIGATÓRIA: não há lançamento/movimento contábil no Odoo da Matrix
-// Fitness Group — apenas a estrutura do plano de contas (tipo S/A).
+// Fitness Group , apenas a estrutura do plano de contas (tipo S/A).
 import { z } from "zod";
 import type { ToolEntry } from "../../catalog/types.js";
 import { queryPlanoDeContas } from "@/lib/reports/queries/contabil.js";
@@ -47,7 +47,7 @@ type Input = z.infer<typeof inputSchema>;
 type Output = z.infer<typeof outputSchema>;
 
 const AVISO =
-  "ATENÇÃO: não há lançamento/movimento contábil no Odoo da Matrix Fitness Group — " +
+  "ATENÇÃO: não há lançamento/movimento contábil no Odoo da Matrix Fitness Group , " +
   "este domínio expõe apenas a estrutura do plano de contas (contas sintéticas e analíticas).";
 
 export const contabilPlanoDeContas: ToolEntry<Input, Output> = {
@@ -64,7 +64,7 @@ export const contabilPlanoDeContas: ToolEntry<Input, Output> = {
     withFreshness(ctx.prisma, ["fato_conta_contabil"], async () => {
       const result = await queryPlanoDeContas(ctx.prisma, input);
       const aviso = result.truncado
-        ? `${AVISO} Mostrando ${result.linhas.length} de ${result.total} contas — refine com o parâmetro "termo" ou aumente "limite".`
+        ? `${AVISO} Mostrando ${result.linhas.length} de ${result.total} contas , refine com o parâmetro "termo" ou aumente "limite".`
         : AVISO;
       return {
         linhas: result.linhas,

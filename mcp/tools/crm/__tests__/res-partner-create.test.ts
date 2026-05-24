@@ -22,7 +22,7 @@ function makeCtx(odooOverrides: ReturnType<typeof mockOdooClient> = mockOdooClie
   };
 }
 
-describe("crm.res_partner.create — metadados", () => {
+describe("crm.res_partner.create , metadados", () => {
   it("tem id, operation, capability e requiresExternalAuth corretos", () => {
     expect(crmResPartnerCreate.id).toBe("crm.res_partner.create");
     expect(crmResPartnerCreate.operation).toBe("write");
@@ -43,7 +43,7 @@ describe("crm.res_partner.create — metadados", () => {
   });
 });
 
-describe("crm.res_partner.create — inputSchema", () => {
+describe("crm.res_partner.create , inputSchema", () => {
   it("aceita input mínimo com name", () => {
     const r = crmResPartnerCreate.inputSchema.safeParse({ name: "Empresa X" });
     expect(r.success).toBe(true);
@@ -80,7 +80,7 @@ describe("crm.res_partner.create — inputSchema", () => {
   });
 });
 
-describe("crm.res_partner.create — handler", () => {
+describe("crm.res_partner.create , handler", () => {
   it("cria parceiro no Odoo e retorna WriteToolResult", async () => {
     const ctx = makeCtx();
     const input = crmResPartnerCreate.inputSchema.parse({ name: "Empresa A", is_company: false });

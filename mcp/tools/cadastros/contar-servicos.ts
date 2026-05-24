@@ -1,6 +1,6 @@
 // mcp/tools/cadastros/contar-servicos.ts
 // Tool MCP: servico_contar
-// dados só tem escalares — sem array; cai no ramo "ok" do withFreshness.
+// dados só tem escalares , sem array; cai no ramo "ok" do withFreshness.
 import { z } from "zod";
 import type { ToolEntry } from "../../catalog/types.js";
 import { queryContarServicos } from "@/lib/reports/queries/servicos.js";
