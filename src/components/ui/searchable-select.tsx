@@ -15,6 +15,7 @@ export interface SearchableSelectOption {
   label: string;
   description?: string;
   notes?: string;
+  startAdornment?: ReactNode;
   endAdornment?: ReactNode;
 }
 
@@ -44,6 +45,11 @@ interface Props {
   value: string;
   onChange: (value: string) => void;
   options: SearchableSelectOption[];
+  /**
+   * Opções fixadas no topo da lista. Aparecem sempre, mesmo com filtro
+   * de busca aplicado, e em ordem antes das `options` filtradas.
+   */
+  pinnedFirst?: SearchableSelectOption[];
   placeholder?: string;
   disabled?: boolean;
   searchPlaceholder?: string;

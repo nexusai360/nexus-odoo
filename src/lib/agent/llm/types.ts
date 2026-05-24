@@ -11,13 +11,14 @@
 export type LlmProvider = "openai" | "anthropic" | "gemini" | "openrouter";
 
 /**
- * Faixa de custo (4 tiers):
+ * Faixa de custo (5 tiers):
+ *  - free   → modelos gratuitos (ex.: OpenRouter `:free`)
  *  - low    → < $1 / 1M tokens
  *  - medium → $1 a $10 / 1M tokens
  *  - high   → $10 a $30 / 1M tokens
  *  - premium→ > $30 / 1M tokens
  */
-export type CostTier = "low" | "medium" | "high" | "premium";
+export type CostTier = "free" | "low" | "medium" | "high" | "premium";
 
 /** Definição de tool/function exposta para o modelo. */
 export interface ToolDefinition {
