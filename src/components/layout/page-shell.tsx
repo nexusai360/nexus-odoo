@@ -21,24 +21,14 @@ interface Props {
  * - `full`: telas densas de dados, sem teto.
  */
 const MAX: Record<Variant, string> = {
-  // Variantes do Agente Nex: largura base equivalente ao /configuracao
-  // (root, narrow = max-w-7xl), com crescimento sutil em monitores
-  // grandes (clamp ate +20% em 2400px+). No 16/17" o piso de 1280px
-  // mantem o mesmo tamanho que estava antes.
-  // - compact/form: piso 1280px (max-w-7xl, igual ao /configuracao),
-  //   teto 1536 (+20%) em viewports >= 2400.
-  // - agent:        piso 1280px, teto 1536 (+20%).
-  compact:
-    "max-w-[clamp(1280px,calc(1280px+(100vw-1366px)*0.05),1536px)]",
-  form:
-    "max-w-[clamp(1280px,calc(1280px+(100vw-1366px)*0.05),1536px)]",
-  agent:
-    "max-w-[clamp(1280px,calc(1280px+(100vw-1366px)*0.05),1536px)]",
-  // narrow/wide: mesma regra sutil das telas do agente — piso = tamanho
-  // anterior (1280 / 1600), crescimento de 5% do excedente acima de
-  // 1366px, teto +15-20% em monitores muito grandes.
-  narrow: "max-w-[clamp(1280px,calc(1280px+(100vw-1366px)*0.05),1480px)]",
-  wide: "max-w-[clamp(1600px,calc(1600px+(100vw-1366px)*0.05),1840px)]",
+  // Cap reduzido pela metade do ajuste anterior (8e7b7ef), com K=0.025
+  // (metade do crescimento anterior). Piso = tamanho original; teto =
+  // meio caminho entre o original e o cap anterior.
+  compact: "max-w-[clamp(1280px,calc(1280px+(100vw-1366px)*0.025),1408px)]",
+  form: "max-w-[clamp(1280px,calc(1280px+(100vw-1366px)*0.025),1408px)]",
+  agent: "max-w-[clamp(1280px,calc(1280px+(100vw-1366px)*0.025),1408px)]",
+  narrow: "max-w-[clamp(1280px,calc(1280px+(100vw-1366px)*0.025),1380px)]",
+  wide: "max-w-[clamp(1600px,calc(1600px+(100vw-1366px)*0.025),1720px)]",
   full: "max-w-none",
 };
 
