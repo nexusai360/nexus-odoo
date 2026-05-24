@@ -124,7 +124,7 @@ export function PromptConfigForm({ initial }: PromptConfigFormProps) {
           aria-describedby="agent-personality-help"
         />
         <p id="agent-personality-help" className="text-xs text-muted-foreground">
-          Como o Agente Nex se comporta — voz, foco, atitude geral.
+          Como o Agente Nex se comporta. Defina voz, foco e atitude geral.
         </p>
       </div>
 
@@ -153,7 +153,7 @@ export function PromptConfigForm({ initial }: PromptConfigFormProps) {
           aria-describedby="agent-tone-help"
         />
         <p id="agent-tone-help" className="text-xs text-muted-foreground">
-          Estilo de escrita — formalidade, calor humano, vocabulário.
+          Estilo de escrita: formalidade, calor humano e vocabulário.
         </p>
       </div>
 

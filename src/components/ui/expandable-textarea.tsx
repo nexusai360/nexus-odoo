@@ -89,7 +89,7 @@ export function ExpandableTextarea({
       </Tooltip>
 
       <Dialog open={open} onOpenChange={setOpen}>
-        <DialogContent className="flex h-[90vh] w-[min(96vw,1400px)] max-w-none flex-col">
+        <DialogContent className="flex h-[90vh] w-[min(96vw,1400px)] max-w-none sm:max-w-none flex-col">
           <DialogHeader>
             <DialogTitle>{label ?? "Editar texto"}</DialogTitle>
           </DialogHeader>

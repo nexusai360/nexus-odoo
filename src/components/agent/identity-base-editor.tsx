@@ -95,10 +95,10 @@ export function IdentityBaseEditor({ initial }: IdentityBaseEditorProps) {
         aria-describedby="agent-identity-base-help"
       />
       <p id="agent-identity-base-help" className="text-xs text-muted-foreground">
-        Aqui se escreve o prompt do Agente Nex — a identidade base injetada no
-        início de todo system prompt, antes de personalidade e tom. Pode ser
-        longo: descreva quem é o agente, o contexto da empresa, a operação e os
-        dados disponíveis.
+        Escreva aqui a identidade base do Agente Nex, injetada no início de
+        todo system prompt, antes de personalidade e tom. Pode ser longo:
+        descreva quem é o agente, o contexto da empresa, a operação e os dados
+        disponíveis.
       </p>
       <div className="flex justify-end pt-3">
         <Button
