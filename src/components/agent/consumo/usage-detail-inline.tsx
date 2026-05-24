@@ -61,44 +61,44 @@ export function UsageDetailInline({ row }: { row: UsageDetailRow }) {
         </h4>
       </div>
 
-      {/* Layout em 2 colunas: Identificacao + acoes | Quebra de custo */}
+      {/* Layout em 2 colunas: Identificacao | Quebra de custo */}
       <div className="grid grid-cols-1 gap-x-8 gap-y-3 lg:grid-cols-2">
-        <div className="flex h-full flex-col justify-between gap-3">
-          <IdentificationBlock row={row} />
-          <div className="pt-1">
+        <IdentificationBlock row={row} />
+        <CostBreakdownBlock row={row} />
+      </div>
+
+      {row.promptChars != null || row.responseChars != null ? (
+        <div className="relative mt-3 flex items-center justify-between border-t border-violet-500/15 pt-2 text-[11px] text-muted-foreground">
+          <div>
+            {row.promptChars != null ? (
+              <span className="mr-4">
+                prompt:{" "}
+                <span className="font-mono text-foreground">
+                  {numberFmt.format(row.promptChars)} chars
+                </span>
+              </span>
+            ) : null}
+            {row.responseChars != null ? (
+              <span>
+                resposta:{" "}
+                <span className="font-mono text-foreground">
+                  {numberFmt.format(row.responseChars)} chars
+                </span>
+              </span>
+            ) : null}
+          </div>
+          <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 pt-1">
             <Button
               type="button"
               variant="outline"
               size="sm"
               onClick={handleCopy}
-              className="h-7 gap-2 px-3 text-[11px]"
+              className="h-7 gap-2 border-violet-500/40 bg-violet-500/[0.06] px-3 text-[11px] text-violet-700 shadow-sm transition-colors hover:bg-violet-500/15 hover:border-violet-500/60 dark:text-violet-300"
             >
               <Clipboard className="h-3 w-3" aria-hidden />
               <span>Copiar JSON</span>
             </Button>
           </div>
-        </div>
-        <CostBreakdownBlock row={row} />
-      </div>
-
-      {row.promptChars != null || row.responseChars != null ? (
-        <div className="mt-3 border-t border-violet-500/15 pt-2 text-[11px] text-muted-foreground">
-          {row.promptChars != null ? (
-            <span className="mr-4">
-              prompt:{" "}
-              <span className="font-mono text-foreground">
-                {numberFmt.format(row.promptChars)} chars
-              </span>
-            </span>
-          ) : null}
-          {row.responseChars != null ? (
-            <span>
-              resposta:{" "}
-              <span className="font-mono text-foreground">
-                {numberFmt.format(row.responseChars)} chars
-              </span>
-            </span>
-          ) : null}
         </div>
       ) : null}
 
