@@ -9,13 +9,13 @@ export type ChartState = "ok" | "preparando" | "vazio" | "erro";
 /**
  * Formata um número no padrão pt-BR conforme o formato pedido.
  *
- * `decimal` e `moeda` usam `minimumFractionDigits: 0` — casas decimais só
+ * `decimal` e `moeda` usam `minimumFractionDigits: 0` , casas decimais só
  * aparecem quando o valor realmente as tem. Inteiros nunca exibem ",00".
  */
 export function formatNumber(valor: number, formato: NumberFormat): string {
-  if (!Number.isFinite(valor)) return "—";
+  if (!Number.isFinite(valor)) return ",";
   if (formato === "moeda") {
-    // Centavos só aparecem quando o valor realmente os tem — valores
+    // Centavos só aparecem quando o valor realmente os tem , valores
     // redondos saem como "R$ 1.234", nunca "R$ 1.234,00".
     const temCentavos = Math.round(valor * 100) % 100 !== 0;
     return valor.toLocaleString("pt-BR", {
@@ -56,7 +56,7 @@ interface KPICardProps {
   formato: NumberFormat;
   estado?: ChartState;
   onRetry?: () => void;
-  /** Ícone semântico exibido no canto — default `Activity`. */
+  /** Ícone semântico exibido no canto , default `Activity`. */
   icone?: LucideIcon;
   tone?: KpiTone;
   /** Texto auxiliar abaixo do valor. */
@@ -64,7 +64,7 @@ interface KPICardProps {
 }
 
 /**
- * Cartão de indicador — número único com rótulo, ícone e tom semântico.
+ * Cartão de indicador , número único com rótulo, ícone e tom semântico.
  * Visual alinhado ao projeto irmão `nexus-insights` (rounded-2xl, ícone em
  * pílula, hover de borda).
  */

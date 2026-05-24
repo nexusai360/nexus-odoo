@@ -35,7 +35,15 @@ export async function POST(req: Request): Promise<Response> {
     });
   }
 
-  let body: { conversationId?: string; message?: string; isPlayground?: boolean; channel?: string };
+  let body: {
+    conversationId?: string;
+    message?: string;
+    isPlayground?: boolean;
+    channel?: string;
+    meta?: {
+      source?: "bubble" | "suggestion" | "whatsapp" | "playground";
+    };
+  };
   try {
     body = (await req.json()) as typeof body;
   } catch {
@@ -52,7 +60,7 @@ export async function POST(req: Request): Promise<Response> {
     });
   }
 
-  // Gate de role para playground — apenas admin/super_admin
+  // Gate de role para playground , apenas admin/super_admin
   const isPlayground = body.isPlayground === true;
   if (isPlayground && !PLAYGROUND_ROLES.has(user.platformRole)) {
     return new Response(JSON.stringify({ error: "Acesso negado ao playground" }), {
@@ -77,8 +85,23 @@ export async function POST(req: Request): Promise<Response> {
     }
     conversationId = body.conversationId;
   } else {
-    const conv = await createConversation(user.id, channel);
-    conversationId = conv.id;
+    try {
+      const conv = await createConversation(user.id, channel);
+      conversationId = conv.id;
+    } catch (err) {
+      // Nunca deixar uma falha de criação de conversa virar um 500 cru sem
+      // contexto. O caso mais provável é a sessão apontar para um usuário que
+      // não existe mais na base (FK conversations_user_id); a resposta orienta
+      // o novo login.
+      console.error("[agent/stream] Falha ao criar conversa:", err);
+      return new Response(
+        JSON.stringify({
+          error:
+            "Não foi possível iniciar a conversa. Saia da conta e entre novamente, depois tente de novo.",
+        }),
+        { status: 500, headers: { "Content-Type": "application/json" } },
+      );
+    }
   }
 
   const stream = new ReadableStream<Uint8Array>({
@@ -97,9 +120,20 @@ export async function POST(req: Request): Promise<Response> {
         } else if (evt.type === "token") {
           emit({ type: "token", delta: evt.delta });
         } else if (evt.type === "tool_call") {
-          emit({ type: "tool_call", toolName: evt.toolName });
+          emit({
+            type: "tool_call",
+            toolName: evt.toolName,
+            label: evt.label,
+            toolCallId: evt.toolCallId,
+          });
         } else if (evt.type === "tool_result") {
-          emit({ type: "tool_result", toolName: evt.toolName, truncated: evt.truncated });
+          emit({
+            type: "tool_result",
+            toolName: evt.toolName,
+            truncated: evt.truncated,
+            label: evt.label,
+            toolCallId: evt.toolCallId,
+          });
         } else if (evt.type === "done") {
           // done é emitido pelo resultado final abaixo
         }
@@ -113,6 +147,8 @@ export async function POST(req: Request): Promise<Response> {
           channel,
           isPlayground,
           onEvent,
+          source:
+            body.meta?.source ?? (isPlayground ? "playground" : "bubble"),
         });
 
         if (result.ok) {

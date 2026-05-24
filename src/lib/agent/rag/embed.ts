@@ -3,7 +3,7 @@
  *
  * - Credencial resolvida via AppSetting chave `embedding_credential_id`
  *   (aponta para uma LlmCredential de provider openai).
- * - Dimensão travada em 1536 (SPEC §4.8 — B5).
+ * - Dimensão travada em 1536 (SPEC §4.8 , B5).
  * - Sem credencial configurada → lança EmbeddingUnavailable (sinaliza
  *   fallback para texto integral truncado nos callers).
  */
@@ -11,7 +11,7 @@
 import { prisma } from "@/lib/prisma";
 import { decrypt } from "@/lib/encryption";
 
-/** Modelo de embedding usado — dimensão 1536 travada. */
+/** Modelo de embedding usado , dimensão 1536 travada. */
 const EMBEDDING_MODEL = "text-embedding-3-small";
 const EXPECTED_DIM = 1536;
 
@@ -67,7 +67,7 @@ export async function embed(text: string): Promise<number[]> {
     body: JSON.stringify({
       input: text,
       model: EMBEDDING_MODEL,
-      // dimensions não é passado — modelo retorna 1536 por padrão
+      // dimensions não é passado , modelo retorna 1536 por padrão
     }),
   });
 
@@ -80,10 +80,10 @@ export async function embed(text: string): Promise<number[]> {
   const vector = json.data?.[0]?.embedding;
 
   if (!Array.isArray(vector)) {
-    throw new Error("OpenAI Embeddings API: resposta inválida — nenhum vetor retornado.");
+    throw new Error("OpenAI Embeddings API: resposta inválida , nenhum vetor retornado.");
   }
 
-  // 4. Validar dimensão (B5 — travada em 1536)
+  // 4. Validar dimensão (B5 , travada em 1536)
   if (vector.length !== EXPECTED_DIM) {
     throw new Error(
       `Embedding com dimensão incorreta: esperado ${EXPECTED_DIM}, recebido ${vector.length}. ` +

@@ -3,7 +3,7 @@
  *
  * Os adapters concretos (OpenAI, Anthropic, Gemini, OpenRouter) implementam
  * `ProviderClient` e expõem `chat()` com a forma canônica de mensagens, tools
- * e usage. Não dependem de SDKs externos — usam `fetch` direto.
+ * e usage. Não dependem de SDKs externos , usam `fetch` direto.
  *
  * Portado de nexus-insights/src/lib/llm/types.ts para o agente nexus-odoo (F5).
  */
@@ -11,13 +11,14 @@
 export type LlmProvider = "openai" | "anthropic" | "gemini" | "openrouter";
 
 /**
- * Faixa de custo (4 tiers):
+ * Faixa de custo (5 tiers):
+ *  - free   → modelos gratuitos (ex.: OpenRouter `:free`)
  *  - low    → < $1 / 1M tokens
  *  - medium → $1 a $10 / 1M tokens
  *  - high   → $10 a $30 / 1M tokens
  *  - premium→ > $30 / 1M tokens
  */
-export type CostTier = "low" | "medium" | "high" | "premium";
+export type CostTier = "free" | "low" | "medium" | "high" | "premium";
 
 /** Definição de tool/function exposta para o modelo. */
 export interface ToolDefinition {
@@ -43,7 +44,7 @@ export interface ChatMessage {
   content: string;
   /** Presente quando role === "assistant" e o modelo solicitou tool calls. */
   toolCalls?: ToolCall[];
-  /** Presente quando role === "tool" — referencia a tool call original. */
+  /** Presente quando role === "tool" , referencia a tool call original. */
   toolCallId?: string;
   /** Nome da tool (role === "tool"). */
   toolName?: string;
@@ -52,7 +53,7 @@ export interface ChatMessage {
 export interface ChatUsage {
   tokensInput: number;
   tokensOutput: number;
-  /** Custo em USD (pode ser 0 quando costKnown=false — ver LlmUsage). */
+  /** Custo em USD (pode ser 0 quando costKnown=false , ver LlmUsage). */
   costUsd: number;
 }
 
@@ -63,6 +64,12 @@ export interface ChatResult {
   toolCalls?: ToolCall[];
   usage: ChatUsage;
 }
+
+/**
+ * Profundidade de raciocínio para modelos reasoning (ex.: GPT-5.x, o-series).
+ * Ignorado por modelos não-reasoning.
+ */
+export type ReasoningEffort = "minimal" | "low" | "medium" | "high";
 
 export interface ChatRequest {
   messages: ChatMessage[];
@@ -75,6 +82,11 @@ export interface ChatRequest {
   stream?: boolean;
   /** Callback invocado para cada token delta durante streaming. */
   onToken?: (token: string) => void;
+  /**
+   * Profundidade de raciocínio (modelos reasoning). Quando ausente, o provider
+   * usa seu default.
+   */
+  reasoningEffort?: ReasoningEffort;
 }
 
 export interface ProviderClient {

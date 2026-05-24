@@ -3,7 +3,7 @@
 /** Presets escolhíveis na barra de período. */
 export type PeriodoPreset = "mes" | "3meses" | "ano" | "tudo" | "custom";
 
-/** Subconjunto válido como padrão de catálogo — "custom" exige de/ate. */
+/** Subconjunto válido como padrão de catálogo , "custom" exige de/ate. */
 export type PeriodoPresetPadrao = Exclude<PeriodoPreset, "custom">;
 
 /** Par de meses inclusivo; de/ate null = sem limite (preset "tudo"). */
@@ -29,7 +29,7 @@ const MESES_ABREV = [
   "dez",
 ];
 
-/** Valida o formato YYYY-MM (mês 01–12). */
+/** Valida o formato YYYY-MM (mês 01,12). */
 export function ehMesValido(s: string): boolean {
   return typeof s === "string" && MES_REGEX.test(s);
 }
@@ -112,11 +112,11 @@ function formatarMes(m: string): string {
 }
 
 /**
- * Rótulo legível de um período: "Tudo" | "mar/2026" | "jan/2026 – mar/2026".
+ * Rótulo legível de um período: "Tudo" | "mar/2026" | "jan/2026 , mar/2026".
  * Consumido apenas pela pílula "Personalizado" da PeriodBar.
  */
 export function rotuloPeriodo(p: PeriodoResolvido): string {
   if (!p.de || !p.ate) return "Tudo";
   if (p.de === p.ate) return formatarMes(p.de);
-  return `${formatarMes(p.de)} – ${formatarMes(p.ate)}`;
+  return `${formatarMes(p.de)} , ${formatarMes(p.ate)}`;
 }

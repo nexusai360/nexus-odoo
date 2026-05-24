@@ -15,6 +15,7 @@ export interface SearchableSelectOption {
   label: string;
   description?: string;
   notes?: string;
+  startAdornment?: ReactNode;
   endAdornment?: ReactNode;
 }
 
@@ -24,7 +25,7 @@ export interface SearchableSelectOption {
  * Quando `value === sentinel`, o trigger renderiza um `<input>` editable
  * (substitui o label estático), foca automaticamente, mostra um botão `X`
  * para limpar e sair do customMode. O chevron continua abrindo o dropdown
- * normalmente — selecionar um item do dropdown sai do customMode (chama
+ * normalmente , selecionar um item do dropdown sai do customMode (chama
  * `onChange` com o novo value).
  */
 export interface SearchableSelectCustomMode {
@@ -44,6 +45,11 @@ interface Props {
   value: string;
   onChange: (value: string) => void;
   options: SearchableSelectOption[];
+  /**
+   * Opções fixadas no topo da lista. Aparecem sempre, mesmo com filtro
+   * de busca aplicado, e em ordem antes das `options` filtradas.
+   */
+  pinnedFirst?: SearchableSelectOption[];
   placeholder?: string;
   disabled?: boolean;
   searchPlaceholder?: string;
@@ -57,7 +63,7 @@ interface Props {
  *
  * Usa `Popover` (base-ui) para portalizar o popup no `<body>`, evitando que
  * containers com `overflow-hidden` ou `transform` (que criam stacking context)
- * cortem ou empurrem o dropdown — bug conhecido como "dropdown preso".
+ * cortem ou empurrem o dropdown , bug conhecido como "dropdown preso".
  *
  * Mantém o padrão do `<CustomSelect>` (mesma família visual, sideOffset=4,
  * align="start") para consistência entre selects da plataforma.
@@ -70,6 +76,7 @@ export function SearchableSelect({
   value,
   onChange,
   options,
+  pinnedFirst,
   placeholder = "Selecionar",
   disabled = false,
   searchPlaceholder = "Buscar...",
@@ -80,7 +87,9 @@ export function SearchableSelect({
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
 
-  const selected = options.find((o) => o.value === value);
+  const selected =
+    options.find((o) => o.value === value) ??
+    pinnedFirst?.find((o) => o.value === value);
   const isCustomMode = !!customMode && value === customMode.sentinel;
 
   const inputRef = useRef<HTMLInputElement | null>(null);
@@ -136,7 +145,7 @@ export function SearchableSelect({
                       customMode.onCustomChange(e.currentTarget.value)
                     }
                     onClick={(e) => {
-                      // Click no input não abre dropdown — usuário usa o
+                      // Click no input não abre dropdown , usuário usa o
                       // chevron pra abrir, ou o X pra limpar.
                       e.stopPropagation();
                     }}
@@ -206,7 +215,8 @@ export function SearchableSelect({
         <PopoverContent
           align="start"
           sideOffset={4}
-          className="w-[var(--anchor-width,280px)] min-w-[280px] max-w-[min(calc(100vw-2rem),420px)] p-0 overflow-hidden"
+          style={{ minWidth: "var(--anchor-width, 280px)" }}
+          className="w-auto max-w-[min(calc(100vw-2rem),420px)] p-0 overflow-hidden"
         >
           <div className="p-2">
             <div className="relative">
@@ -224,12 +234,8 @@ export function SearchableSelect({
             </div>
           </div>
           <ul role="listbox" className="max-h-72 overflow-y-auto py-1">
-            {filtered.length === 0 ? (
-              <li className="px-3 py-3 text-xs text-muted-foreground">
-                Nenhum resultado
-              </li>
-            ) : (
-              filtered.map((opt) => (
+            {(() => {
+              const renderItem = (opt: SearchableSelectOption) => (
                 <li
                   key={opt.value}
                   role="option"
@@ -262,13 +268,31 @@ export function SearchableSelect({
                         </span>
                       ) : null}
                     </div>
-                    {opt.endAdornment ? (
-                      <span className="shrink-0">{opt.endAdornment}</span>
-                    ) : null}
+                    <span className="flex shrink-0 items-center gap-1.5">
+                      {opt.startAdornment ? <span>{opt.startAdornment}</span> : null}
+                      {opt.endAdornment ? <span>{opt.endAdornment}</span> : null}
+                    </span>
                   </button>
                 </li>
-              ))
-            )}
+              );
+              const pinned = pinnedFirst ?? [];
+              if (pinned.length === 0 && filtered.length === 0) {
+                return (
+                  <li className="px-3 py-3 text-xs text-muted-foreground">
+                    Nenhum resultado
+                  </li>
+                );
+              }
+              return (
+                <>
+                  {pinned.map(renderItem)}
+                  {pinned.length > 0 && filtered.length > 0 ? (
+                    <li className="my-1 border-t border-border/60" aria-hidden />
+                  ) : null}
+                  {filtered.map(renderItem)}
+                </>
+              );
+            })()}
           </ul>
         </PopoverContent>
       </Popover>

@@ -2,7 +2,7 @@
 // Tool MCP: contabil_estrutura_conta
 //
 // NOTA OBRIGATÓRIA: não há lançamento/movimento contábil no Odoo da Matrix
-// Fitness Group — apenas a estrutura do plano de contas (tipo S/A).
+// Fitness Group , apenas a estrutura do plano de contas (tipo S/A).
 import { z } from "zod";
 import type { ToolEntry } from "../../catalog/types.js";
 import { queryEstruturaConta } from "@/lib/reports/queries/contabil.js";
@@ -52,7 +52,7 @@ type Input = z.infer<typeof inputSchema>;
 type Output = z.infer<typeof outputSchema>;
 
 const AVISO =
-  "ATENÇÃO: não há lançamento/movimento contábil no Odoo da Matrix Fitness Group — " +
+  "ATENÇÃO: não há lançamento/movimento contábil no Odoo da Matrix Fitness Group , " +
   "este domínio expõe apenas a estrutura do plano de contas (contas sintéticas e analíticas).";
 
 export const contabilEstruturaConta: ToolEntry<Input, Output> = {
@@ -61,12 +61,12 @@ export const contabilEstruturaConta: ToolEntry<Input, Output> = {
   descricao:
     "Retorna os detalhes de uma conta contábil pelo odooId e suas contas filhas diretas. " +
     "Útil para navegar a hierarquia do plano de contas. " +
-    "NOTA: não há lançamento/movimento contábil no Odoo da Matrix — apenas a estrutura do plano de contas.",
+    "NOTA: não há lançamento/movimento contábil no Odoo da Matrix, apenas a estrutura do plano de contas.",
   inputSchemaShape: inputSchema.shape,
   inputSchema,
   outputSchema,
   // isVazio custom: "vazio" apenas quando a conta não existe (conta=null).
-  // Uma conta-folha (conta populada, filhas=[]) é estado "ok" — P-M1.
+  // Uma conta-folha (conta populada, filhas=[]) é estado "ok" , P-M1.
   handler: (input, ctx) =>
     withFreshness(
       ctx.prisma,

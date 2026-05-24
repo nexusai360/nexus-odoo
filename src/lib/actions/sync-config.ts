@@ -20,13 +20,13 @@ const SYNC_CONFIG_DEFAULTS = {
 /**
  * Lê um valor de AppSetting como intervalo de sync. Dado corrompido (string,
  * objeto, NaN) cai no default com aviso, em vez de devolver NaN para a UI
- * (WR-09) — alinhado à validação do worker.
+ * (WR-09) , alinhado à validação do worker.
  */
 function readInterval(value: unknown, fallback: number, key: string): number {
   const parsed = syncIntervalValueSchema.safeParse(value);
   if (parsed.success) return parsed.data;
   console.warn(
-    `[sync-config] AppSetting "${key}" com valor inválido (${JSON.stringify(value)}) — usando default ${fallback}`,
+    `[sync-config] AppSetting "${key}" com valor inválido (${JSON.stringify(value)}) , usando default ${fallback}`,
   );
   return fallback;
 }
@@ -80,7 +80,7 @@ export async function getSyncState() {
   // que mostrariam 0 após full refresh antes de o markOk ser gravado).
   //
   // Segurança: o nome da tabela é derivado do campo `model` que vem do banco
-  // (populado pelo worker a partir de MODEL_CATALOG, lista fixa de constantes) —
+  // (populado pelo worker a partir de MODEL_CATALOG, lista fixa de constantes) ,
   // não há superfície de injeção SQL via input do usuário.
   const rowsWithLiveCount = await Promise.all(
     rows.map(async (row) => {

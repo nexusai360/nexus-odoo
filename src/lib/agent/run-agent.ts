@@ -5,7 +5,7 @@
  * Adaptações principais:
  * - Tools vêm do MCP da F4 (createMcpSession) em vez de NEX_TOOLS estático.
  * - executeTool substituído por session.callTool (MCP).
- * - Resultado MCP normalizado para string e truncado (G6 — MAX_TOOL_RESULT_BYTES).
+ * - Resultado MCP normalizado para string e truncado (G6 , MAX_TOOL_RESULT_BYTES).
  * - PlatformRole do usuário carregado para injetar BI_SCHEMA_REFERENCE (G7).
  * - Histórico e persistência via conversation.ts.
  * - logUsage usa a interface corrigida (costKnown, sem costUsd fixo).
@@ -18,6 +18,11 @@ import { getActiveLlmConfig } from "./llm/get-active-config";
 import { logUsage } from "./llm/usage-logger";
 import { createMcpSession, mcpToolsToProviderTools } from "./mcp-client";
 import {
+  openExternalMcpSessions,
+  callExternalTool,
+  isExternalToolName,
+} from "./external-mcp";
+import {
   loadHistory,
   persistMessage,
   assertConversationOwned,
@@ -25,9 +30,15 @@ import {
 } from "./conversation";
 import { composeSystemPrompt } from "./prompt/compose";
 import { BI_SCHEMA_REFERENCE } from "./bi-schema-reference";
+import { progressLabel } from "./progress-labels";
 import { searchKb } from "./rag/search";
 import { EmbeddingUnavailable } from "./rag/embed";
-import type { ChatMessage, ChatUsage, ToolCall } from "./llm/types";
+import type {
+  ChatMessage,
+  ChatUsage,
+  ToolCall,
+  ReasoningEffort,
+} from "./llm/types";
 import type { AgentChannel } from "@/generated/prisma/client";
 
 /** Limite de iterações do loop de tool calling. */
@@ -44,25 +55,64 @@ const TRUNCATION_NOTICE = "\n[...resultado truncado por exceder o limite de tama
 
 /** Regex para extrair sufixo [[suggestions]]. */
 const SUGGESTIONS_RE = /(?:^|\n)\[\[suggestions\]\]:([^\n]+?)(?:\n|$)/;
-const MAX_SUGGESTIONS = 3;
-const MAX_SUGGESTION_LEN = 60;
+const MAX_SUGGESTIONS = 5;
+const MAX_SUGGESTION_LEN = 80;
+
+/**
+ * Sugestoes genericas universais usadas como fallback quando o modelo
+ * esquece de emitir o sufixo [[suggestions]]. Garantia de chips visiveis
+ * em toda resposta da bubble (vide pedido do usuario em 2026-05-24 18:58:
+ * "as sugestoes nao estao acontecendo, vira e mexe esse problema").
+ */
+const FALLBACK_SUGGESTIONS: readonly string[] = [
+  "Quanto faturamos no mês corrente?",
+  "Quais 5 produtos mais venderam nos últimos 30 dias?",
+  "Quanto temos em contas a receber em aberto?",
+  "Quais pedidos de venda estão atrasados?",
+  "Qual o valor total do estoque em armazém?",
+];
 
 /**
  * Extrai sugestões do sufixo `[[suggestions]]:item1|item2|...`.
  * Retorna message sem o sufixo + array de sugestões.
+ *
+ * Quando o modelo esquece o sufixo, devolve o set FALLBACK_SUGGESTIONS
+ * fatiado pelo maxCount. Garante que toda resposta na bubble vem com chips.
  */
-export function extractSuggestions(text: string): {
+export function extractSuggestions(
+  text: string,
+  maxCount?: number,
+): {
   message: string;
   suggestions: string[];
 } {
+  const limit = Math.min(
+    Math.max(1, maxCount ?? MAX_SUGGESTIONS),
+    MAX_SUGGESTIONS,
+  );
+
   const match = text.match(SUGGESTIONS_RE);
-  if (!match) return { message: text, suggestions: [] };
+  if (!match) {
+    // Modelo esqueceu de emitir; usa fallback fatiado para nao deixar a
+    // bolha sem chips. UI espera sempre `>=1` chip quando enabled.
+    return {
+      message: text,
+      suggestions: FALLBACK_SUGGESTIONS.slice(0, limit),
+    };
+  }
+  // Cap deterministicamente pela config (1..5, default 3) e nunca acima do
+  // hard cap MAX_SUGGESTIONS. Defesa em profundidade: o prompt instrui o
+  // modelo, esta camada garante que extra é descartado.
   const raw = match[1].trim();
-  const suggestions = raw
+  const parsed = raw
     .split("|")
-    .map((s) => s.trim())
+    // As sugestões viram chips de texto puro na UI: remove markdown (negrito,
+    // crase) para não aparecer "**" ou "`" literal no chip.
+    .map((s) => s.trim().replace(/\*\*/g, "").replace(/`/g, "").trim())
     .filter((s) => s.length > 0 && s.length <= MAX_SUGGESTION_LEN)
-    .slice(0, MAX_SUGGESTIONS);
+    .slice(0, limit);
+  const suggestions =
+    parsed.length > 0 ? parsed : FALLBACK_SUGGESTIONS.slice(0, limit);
   const message = text.replace(match[0], "").trimEnd();
   return { message, suggestions };
 }
@@ -85,8 +135,9 @@ function guardToolResult(result: string): string {
 export type AgentEvent =
   | { type: "thinking" }
   | { type: "token"; delta: string }
-  | { type: "tool_call"; toolName: string }
-  | { type: "tool_result"; toolName: string; truncated: boolean }
+  /** `label` é o rótulo genérico exibido na UI; `toolName` é o id cru interno. */
+  | { type: "tool_call"; toolName: string; label: string; toolCallId?: string }
+  | { type: "tool_result"; toolName: string; truncated: boolean; label: string; toolCallId?: string }
   | { type: "done" };
 
 export interface RunAgentInput {
@@ -118,11 +169,31 @@ export interface RunAgentInput {
     model: string;
     apiKey: string;
   };
+  /**
+   * Origem do turno (afeta diretrizes do prompt). Default "bubble".
+   * Quando "suggestion", o composer instrui o modelo a responder direto.
+   */
+  source?: import("./prompt/compose").AgentPromptSource;
 }
 
 export type RunAgentResult =
   | { ok: true; message: string; suggestions: string[]; usage: ChatUsage }
   | { ok: false; error: string };
+
+/** Valida o reasoningEffort vindo do banco; valor inválido ou ausente vira null. */
+function normalizeReasoningEffort(
+  value: string | null | undefined,
+): ReasoningEffort | null {
+  if (
+    value === "minimal" ||
+    value === "low" ||
+    value === "medium" ||
+    value === "high"
+  ) {
+    return value;
+  }
+  return null;
+}
 
 /** Carrega o singleton AgentSettings do banco (fallback alinhado com @default do schema). */
 async function loadAgentSettings() {
@@ -133,17 +204,26 @@ async function loadAgentSettings() {
     tone: row?.tone ?? "",
     guardrails: (row?.guardrails as string[]) ?? [],
     advancedOverride: row?.advancedOverride ?? null,
-    // @default(true) no schema — alinhar fallback para evitar comportamento diferente
+    // @default(true) no schema , alinhar fallback para evitar comportamento diferente
     // em instâncias novas antes da primeira gravação em AgentSettings.
     kbEnabled: (row?.kbCheckpoint ?? "PRODUCTION") === "PRODUCTION",
     terminology: (row?.terminology as Record<string, string>) ?? {},
     suggestionsEnabled: row?.suggestionsEnabled ?? true,
+    reasoningEffort: normalizeReasoningEffort(row?.reasoningEffort),
+    reasoningCheckpoint: row?.reasoningCheckpoint ?? "OFF",
+    maxSuggestions: row?.maxSuggestions ?? 3,
   };
 }
 
 export async function runAgent(args: RunAgentInput): Promise<RunAgentResult> {
   const session = await createMcpSession(args.userId).catch((err) => {
     console.warn("[runAgent] Falha ao criar sessão MCP:", err);
+    return null;
+  });
+  // MCPs externos (Plugar MCP) municiam o agente com as tools de terceiros.
+  // Falha aqui nunca derruba o run: o agente segue só com o MCP interno.
+  const externalBundle = await openExternalMcpSessions().catch((err) => {
+    console.warn("[runAgent] Falha ao abrir MCPs externos:", err);
     return null;
   });
 
@@ -191,7 +271,7 @@ export async function runAgent(args: RunAgentInput): Promise<RunAgentResult> {
     // Carregar AgentSettings do banco
     const agentSettings = await loadAgentSettings();
 
-    // Buscar snippets da KB por similaridade (RAG — onda 7)
+    // Buscar snippets da KB por similaridade (RAG , onda 7)
     // Se KB estiver habilitada, tenta searchKb; sem embedding → fallback interno do search.
     let kbSnippets: { name: string; extractedText: string }[] = [];
     if (agentSettings.kbEnabled) {
@@ -205,7 +285,7 @@ export async function runAgent(args: RunAgentInput): Promise<RunAgentResult> {
       }
     }
 
-    // Compor system prompt — playground pode sobrepor a config do prompt
+    // Compor system prompt , playground pode sobrepor a config do prompt
     // (identidade/personalidade/tom/guardrails) sem afetar KB nem BI schema.
     const promptCfg = {
       ...agentSettings,
@@ -219,11 +299,31 @@ export async function runAgent(args: RunAgentInput): Promise<RunAgentResult> {
         : {}),
       advancedOverride: args.promptOverride ?? agentSettings.advancedOverride,
     };
-    const systemPrompt = composeSystemPrompt(promptCfg, kbSnippets, undefined, biSchema);
+    const systemPrompt = composeSystemPrompt(
+      promptCfg,
+      kbSnippets,
+      undefined,
+      biSchema,
+      args.source ?? (args.isPlayground ? "playground" : "bubble"),
+    );
 
-    // Carregar tools do MCP
-    const mcpTools = session ? await session.listTools() : [];
-    const tools = mcpToolsToProviderTools(mcpTools);
+    // Carregar tools do MCP interno + dos MCPs externos plugados.
+    // Nomes com caracteres fora de [a-zA-Z0-9_-] (ex.: `crm.res_partner.get`)
+    // são saneados , a OpenAI recusa nome de function com ponto. `nomeRealDaTool`
+    // mapeia o nome saneado de volta ao real na hora de chamar a tool.
+    const mcpToolsRaw = session ? await session.listTools() : [];
+    const nomeRealDaTool = new Map<string, string>();
+    const sanearTool = <T extends { name: string }>(t: T): T => {
+      const seguro = t.name.replace(/[^a-zA-Z0-9_-]/g, "_");
+      if (seguro === t.name) return t;
+      nomeRealDaTool.set(seguro, t.name);
+      return { ...t, name: seguro };
+    };
+    const mcpTools = mcpToolsRaw.map(sanearTool);
+    const tools = mcpToolsToProviderTools([
+      ...mcpTools,
+      ...(externalBundle?.tools ?? []).map(sanearTool),
+    ]);
 
     // Carregar histórico (últimas 20 msgs) e sanitizar pares tool_use/tool_result
     const rawHistory = await loadHistory(args.conversationId, 20);
@@ -246,7 +346,7 @@ export async function runAgent(args: RunAgentInput): Promise<RunAgentResult> {
 
     const totalUsage: ChatUsage = { tokensInput: 0, tokensOutput: 0, costUsd: 0 };
     const start = Date.now();
-    // Promessas de logUsage pendentes — aguardadas antes de qualquer return para
+    // Promessas de logUsage pendentes , aguardadas antes de qualquer return para
     // garantir que o registro de uso seja gravado mesmo que o processo encerre
     // logo após a resposta (request serverless / job do worker).
     const usageWrites: Promise<unknown>[] = [];
@@ -257,24 +357,33 @@ export async function runAgent(args: RunAgentInput): Promise<RunAgentResult> {
       const iterStart = Date.now();
 
       // Na iteração final (ou quando não há mais tools esperadas), tenta streamar
-      // tokens para o callback onEvent — heurística: streamar sempre e usar os
+      // tokens para o callback onEvent , heurística: streamar sempre e usar os
       // tokens visualmente só quando stop_reason não for tool_use.
       const onToken = args.onEvent
         ? (delta: string) => args.onEvent!({ type: "token", delta })
         : undefined;
 
+      // Respeita o checkpoint: OFF nunca envia; PLAYGROUND só no playground;
+      // PRODUCTION libera nos dois ambientes.
+      const reasoningAllowed =
+        agentSettings.reasoningCheckpoint === "PRODUCTION" ||
+        (agentSettings.reasoningCheckpoint === "PLAYGROUND" && args.isPlayground);
       const result = await client.chat({
         messages: conversation,
         tools,
         stream: !!onToken,
         onToken,
+        reasoningEffort:
+          reasoningAllowed
+            ? agentSettings.reasoningEffort ?? undefined
+            : undefined,
       });
 
       totalUsage.tokensInput += result.usage.tokensInput;
       totalUsage.tokensOutput += result.usage.tokensOutput;
       totalUsage.costUsd += result.usage.costUsd ?? 0;
 
-      // Registrar uso desta iteração (aguardado antes do return — ver usageWrites)
+      // Registrar uso desta iteração (aguardado antes do return , ver usageWrites)
       usageWrites.push(
         logUsage({
         provider: client.provider,
@@ -296,8 +405,11 @@ export async function runAgent(args: RunAgentInput): Promise<RunAgentResult> {
       );
 
       if (!result.toolCalls?.length) {
-        // Resposta final
-        const { message, suggestions } = extractSuggestions(result.message);
+        // Resposta final , limite vem do AgentSettings (default 3, hard cap 5).
+        const { message, suggestions } = extractSuggestions(
+          result.message,
+          agentSettings.maxSuggestions,
+        );
         await persistMessage(args.conversationId, "assistant", message);
         args.onEvent?.({ type: "done" });
         void start;
@@ -315,25 +427,70 @@ export async function runAgent(args: RunAgentInput): Promise<RunAgentResult> {
       // Persistir assistant com toolCalls
       await persistMessage(args.conversationId, "assistant", result.message, result.toolCalls);
 
-      // Executar cada tool via MCP
+      // Executar cada tool via MCP. Onda D do Renascimento:
+      //   - Cache intra-sessao por (tool, args) com TTL 60s reduz latencia
+      //     quando o agente repete a mesma chamada no mesmo loop ou turno.
+      //   - Telemetria leve via console.info: tool + ms + status, util para
+      //     identificar gargalos sem painel UI (que vem em proxima onda).
+      const { getCachedToolResult, setCachedToolResult } = await import(
+        "./session-cache"
+      );
       for (const tc of result.toolCalls) {
-        args.onEvent?.({ type: "tool_call", toolName: tc.name });
+        args.onEvent?.({
+          type: "tool_call",
+          toolName: tc.name,
+          label: progressLabel(tc.name),
+          toolCallId: tc.id,
+        });
 
+        const toolArgs = (tc.arguments ?? {}) as Record<string, unknown>;
         let toolResultStr: string;
-        if (session) {
-          toolResultStr = await session.callTool(
-            tc.name,
-            (tc.arguments ?? {}) as Record<string, unknown>,
-          );
+        let cacheHit = false;
+        const tStart = Date.now();
+        const cached = getCachedToolResult(args.conversationId, tc.name, toolArgs);
+        if (cached !== null) {
+          toolResultStr = cached;
+          cacheHit = true;
+        } else if (isExternalToolName(tc.name)) {
+          // Tool de MCP externo: roteia para a sessão do servidor certo.
+          toolResultStr = externalBundle
+            ? await callExternalTool(externalBundle, nomeRealDaTool.get(tc.name) ?? tc.name, toolArgs, args.userId)
+            : "(MCP externo indisponível)";
+        } else if (session) {
+          toolResultStr = await session.callTool(nomeRealDaTool.get(tc.name) ?? tc.name, toolArgs);
         } else {
           toolResultStr = "(MCP indisponível)";
+        }
+        if (!cacheHit && toolResultStr) {
+          setCachedToolResult(args.conversationId, tc.name, toolArgs, toolResultStr);
+        }
+        const ms = Date.now() - tStart;
+        try {
+          // Telemetria leve, sem PII de payload (so meta).
+          console.info(
+            "[nex:tool]",
+            JSON.stringify({
+              tool: tc.name,
+              ms,
+              cacheHit,
+              conversationId: args.conversationId,
+            }),
+          );
+        } catch {
+          /* swallow */
         }
 
         // G6: normalizar para string (já feito pelo session.callTool) + guard de tamanho
         const guarded = guardToolResult(toolResultStr);
         const wasTruncated = guarded !== toolResultStr;
 
-        args.onEvent?.({ type: "tool_result", toolName: tc.name, truncated: wasTruncated });
+        args.onEvent?.({
+          type: "tool_result",
+          toolName: tc.name,
+          truncated: wasTruncated,
+          label: progressLabel(tc.name),
+          toolCallId: tc.id,
+        });
 
         conversation.push({
           role: "tool",
@@ -358,5 +515,6 @@ export async function runAgent(args: RunAgentInput): Promise<RunAgentResult> {
     };
   } finally {
     if (session) await session.close();
+    if (externalBundle) await externalBundle.closeAll();
   }
 }

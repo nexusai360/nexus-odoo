@@ -2,7 +2,7 @@
  * Tipos compartilhados das Server Actions de sessão de playground.
  * Separado de playground.ts porque arquivos "use server" só exportam funções.
  *
- * Bloco 6 — F5 UI rework v2.
+ * Bloco 6 , F5 UI rework v2.
  */
 
 /** Snapshot editável do prompt de uma sessão de playground (sem KB). */

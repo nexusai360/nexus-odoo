@@ -45,7 +45,7 @@ describe("validateServiceToken", () => {
   });
 
   it("retorna false para token com comprimento muito diferente do esperado (não vaza via timing)", () => {
-    // Token fornecido muito mais curto que o esperado — o createHash neutraliza
+    // Token fornecido muito mais curto que o esperado , o createHash neutraliza
     // o vazamento de comprimento: ambos os lados viram buffers de 32 bytes.
     expect(validateServiceToken("Bearer x")).toBe(false);
     // Token fornecido muito mais longo que o esperado

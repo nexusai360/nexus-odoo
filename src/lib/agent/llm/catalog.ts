@@ -25,7 +25,7 @@ export interface ModelPricing {
   perMinuteUsd?: number;
 }
 
-/** Para que serve o modelo — usado na linha de descrição do select. */
+/** Para que serve o modelo , usado na linha de descrição do select. */
 export type ModelUse =
   | "conversação"
   | "código"
@@ -33,6 +33,9 @@ export type ModelUse =
   | "raciocínio"
   | "raciocínio profundo"
   | "busca";
+
+/** Níveis de esforço de raciocínio (thinking), do menor ao maior. */
+export type ReasoningLevel = "minimal" | "low" | "medium" | "high";
 
 export interface ModelEntry {
   id: string;
@@ -49,6 +52,13 @@ export interface ModelEntry {
   audio?: boolean;
   /** Entende imagem (visão multimodal). */
   vision?: boolean;
+  /**
+   * Suporte a modo raciocínio (thinking). Ausente = não suporta.
+   * `levels` traz os níveis de esforço aceitos, do menor ao maior.
+   */
+  reasoning?: { levels: ReasoningLevel[] };
+  /** true quando o modelo veio do banco e foi marcado como deprecated_at. */
+  deprecated?: boolean;
 }
 
 export interface ProviderMeta {
@@ -114,9 +124,7 @@ const OPENAI: ModelEntry[] = [
   { id: "gpt-4.1-mini",        provider: "openai", label: "GPT-4.1 mini",     tier: "low",                            released: "2025-04", pricing: { inputPerMTok: 0.4,   outputPerMTok: 1.6   }, vision: true },
   { id: "gpt-4o",              provider: "openai", label: "GPT-4o",           tier: "medium",                         released: "2024-05", pricing: { inputPerMTok: 2.5,   outputPerMTok: 10.0  }, vision: true, audio: true },
   { id: "gpt-4o-mini",         provider: "openai", label: "GPT-4o mini",      tier: "low",                            released: "2024-07", pricing: { inputPerMTok: 0.15,  outputPerMTok: 0.6   }, vision: true, audio: true },
-  { id: "gpt-4-turbo",         provider: "openai", label: "GPT-4 Turbo",      tier: "high",                           released: "2024-04", pricing: { inputPerMTok: 10.0,  outputPerMTok: 30.0  }, vision: true },
-  { id: "gpt-4",               provider: "openai", label: "GPT-4",            tier: "medium",                         released: "2023-03", pricing: { inputPerMTok: 30.0,  outputPerMTok: 60.0  } },
-  // Áudio (transcrição).
+  // Áudio (transcrição) , mantido pelo seletor de audio nas configuracoes do agente.
   { id: "gpt-4o-transcribe",      provider: "openai", label: "GPT-4o Transcribe",      tier: "low", use: "áudio", audio: true, released: "2025-03", pricing: { inputPerMTok: 6.0, outputPerMTok: 10.0 } },
   { id: "gpt-4o-mini-transcribe", provider: "openai", label: "GPT-4o mini Transcribe", tier: "low", use: "áudio", audio: true, released: "2025-03", pricing: { inputPerMTok: 3.0, outputPerMTok: 5.0 } },
   { id: "whisper-1",           provider: "openai", label: "Whisper-1",        tier: "low",     use: "áudio", audio: true, released: "2022-09", pricing: { inputPerMTok: 0, outputPerMTok: 0, perMinuteUsd: 0.006 } },
@@ -137,9 +145,16 @@ const ANTHROPIC: ModelEntry[] = [
 
 // ─── Gemini ───────────────────────────────────────────────────────────────────
 const GEMINI: ModelEntry[] = [
-  { id: "gemini-2.5-pro",        provider: "gemini", label: "Gemini 2.5 Pro",         tier: "high",   notes: "atual mais novo", released: "2025-09", pricing: { inputPerMTok: 1.25, outputPerMTok: 10.0 }, vision: true, audio: true },
+  // Gemini 3.x , geracao mais nova (lancada no Google AI Studio em 2026).
+  { id: "gemini-3-pro",          provider: "gemini", label: "Gemini 3 Pro",           tier: "high",   notes: "raciocínio profundo", released: "2026-05", pricing: { inputPerMTok: 2.0,  outputPerMTok: 12.0 }, use: "raciocínio profundo", vision: true, audio: true },
+  { id: "gemini-3.5-flash",      provider: "gemini", label: "Gemini 3.5 Flash",       tier: "low",                                  released: "2026-05", pricing: { inputPerMTok: 0.35, outputPerMTok: 2.8  }, vision: true, audio: true },
+  { id: "gemini-3.1-flash-lite", provider: "gemini", label: "Gemini 3.1 Flash-Lite",  tier: "low",                                  released: "2026-05", pricing: { inputPerMTok: 0.1,  outputPerMTok: 0.4  }, vision: true, audio: true },
+  // Gemini 2.5 (geracao anterior).
+  { id: "gemini-2.5-pro",        provider: "gemini", label: "Gemini 2.5 Pro",         tier: "high",                              released: "2025-09", pricing: { inputPerMTok: 1.25, outputPerMTok: 10.0 }, vision: true, audio: true },
   { id: "gemini-2.5-flash",      provider: "gemini", label: "Gemini 2.5 Flash",       tier: "low",                              released: "2025-09", pricing: { inputPerMTok: 0.3,  outputPerMTok: 2.5  }, vision: true, audio: true },
   { id: "gemini-2.5-flash-lite", provider: "gemini", label: "Gemini 2.5 Flash Lite",  tier: "low",                              released: "2025-09", pricing: { inputPerMTok: 0.1,  outputPerMTok: 0.4  }, vision: true, audio: true },
+  { id: "gemini-2.5-flash-thinking", provider: "gemini", label: "Gemini 2.5 Flash (Thinking)", tier: "low",                    released: "2025-12", pricing: { inputPerMTok: 0.3,  outputPerMTok: 2.5  }, use: "raciocínio", vision: true },
+  { id: "gemini-2.5-pro-thinking",   provider: "gemini", label: "Gemini 2.5 Pro (Thinking)",   tier: "high",                   released: "2025-12", pricing: { inputPerMTok: 1.25, outputPerMTok: 10.0 }, use: "raciocínio profundo", vision: true },
   { id: "gemini-2.0-pro",        provider: "gemini", label: "Gemini 2.0 Pro",         tier: "medium",                           released: "2025-02", pricing: { inputPerMTok: 1.25, outputPerMTok: 5.0  }, vision: true, audio: true },
   { id: "gemini-2.0-flash",      provider: "gemini", label: "Gemini 2.0 Flash",       tier: "low",                              released: "2024-12", pricing: { inputPerMTok: 0.075, outputPerMTok: 0.3 }, vision: true, audio: true },
   { id: "gemini-2.0-flash-lite", provider: "gemini", label: "Gemini 2.0 Flash Lite",  tier: "low",                              released: "2025-02", pricing: { inputPerMTok: 0.075, outputPerMTok: 0.3 }, vision: true },
@@ -152,17 +167,17 @@ const GEMINI: ModelEntry[] = [
 // Modelos sem preço oficial público → pricing: null (costKnown=false no logger)
 const OPENROUTER: ModelEntry[] = [
   // FREE
-  { id: "meta-llama/llama-3.3-70b-instruct:free",  provider: "openrouter", label: "Llama 3.3 70B (free)",        tier: "low", notes: "free",              released: "2024-12", pricing: null },
-  { id: "google/gemini-2.0-flash-exp:free",          provider: "openrouter", label: "Gemini 2.0 Flash Exp (free)", tier: "low", notes: "free",              released: "2024-12", pricing: null },
-  { id: "deepseek/deepseek-chat-v3:free",            provider: "openrouter", label: "DeepSeek V3 (free)",          tier: "low", notes: "free",              released: "2024-12", pricing: null },
+  { id: "meta-llama/llama-3.3-70b-instruct:free",  provider: "openrouter", label: "Llama 3.3 70B (free)",        tier: "free", notes: "free",              released: "2024-12", pricing: null },
+  { id: "google/gemini-2.0-flash-exp:free",          provider: "openrouter", label: "Gemini 2.0 Flash Exp (free)", tier: "free", notes: "free",              released: "2024-12", pricing: null },
+  { id: "deepseek/deepseek-chat-v3:free",            provider: "openrouter", label: "DeepSeek V3 (free)",          tier: "free", notes: "free",              released: "2024-12", pricing: null },
   { id: "deepseek/deepseek-r1:free",                 provider: "openrouter", label: "DeepSeek R1 (free)",          tier: "low", notes: "free raciocínio",   released: "2025-01", pricing: null },
-  { id: "deepseek/deepseek-r1-0528:free",            provider: "openrouter", label: "DeepSeek R1 0528 (free)",     tier: "low", notes: "free",              released: "2025-05", pricing: null },
-  { id: "qwen/qwen-2.5-7b-instruct:free",            provider: "openrouter", label: "Qwen 2.5 7B (free)",          tier: "low", notes: "free",              released: "2024-09", pricing: null },
+  { id: "deepseek/deepseek-r1-0528:free",            provider: "openrouter", label: "DeepSeek R1 0528 (free)",     tier: "free", notes: "free",              released: "2025-05", pricing: null },
+  { id: "qwen/qwen-2.5-7b-instruct:free",            provider: "openrouter", label: "Qwen 2.5 7B (free)",          tier: "free", notes: "free",              released: "2024-09", pricing: null },
   { id: "qwen/qwq-32b:free",                         provider: "openrouter", label: "Qwen QwQ 32B (free)",         tier: "low", notes: "free raciocínio",   released: "2025-03", pricing: null },
-  { id: "qwen/qwen3-235b-a22b:free",                 provider: "openrouter", label: "Qwen3 235B (free)",            tier: "low", notes: "free",              released: "2025-04", pricing: null },
-  { id: "mistralai/mistral-7b-instruct:free",        provider: "openrouter", label: "Mistral 7B (free)",            tier: "low", notes: "free",              released: "2023-09", pricing: null },
-  { id: "meta-llama/llama-4-maverick:free",          provider: "openrouter", label: "Llama 4 Maverick (free)",     tier: "low", notes: "free",              released: "2025-04", pricing: null },
-  { id: "google/gemma-3-27b-it:free",                provider: "openrouter", label: "Gemma 3 27B (free)",           tier: "low", notes: "free",              released: "2025-03", pricing: null },
+  { id: "qwen/qwen3-235b-a22b:free",                 provider: "openrouter", label: "Qwen3 235B (free)",            tier: "free", notes: "free",              released: "2025-04", pricing: null },
+  { id: "mistralai/mistral-7b-instruct:free",        provider: "openrouter", label: "Mistral 7B (free)",            tier: "free", notes: "free",              released: "2023-09", pricing: null },
+  { id: "meta-llama/llama-4-maverick:free",          provider: "openrouter", label: "Llama 4 Maverick (free)",     tier: "free", notes: "free",              released: "2025-04", pricing: null },
+  { id: "google/gemma-3-27b-it:free",                provider: "openrouter", label: "Gemma 3 27B (free)",           tier: "free", notes: "free",              released: "2025-03", pricing: null },
   // OpenAI via OpenRouter
   { id: "openai/gpt-4o-mini",         provider: "openrouter", label: "GPT-4o mini",    tier: "low",    released: "2024-07", pricing: { inputPerMTok: 0.15,  outputPerMTok: 0.6   } },
   { id: "openai/gpt-5-mini",          provider: "openrouter", label: "GPT-5 mini",     tier: "low",    released: "2025-08", pricing: { inputPerMTok: 0.25,  outputPerMTok: 2.0   } },
@@ -214,9 +229,13 @@ const OPENROUTER: ModelEntry[] = [
   { id: "cohere/command-r-plus-08-2024", provider: "openrouter", label: "Command R+ 08-24", tier: "medium", released: "2024-08", pricing: { inputPerMTok: 2.5, outputPerMTok: 10.0 } },
   { id: "cohere/command-r-08-2024",      provider: "openrouter", label: "Command R 08-24",  tier: "low",    released: "2024-08", pricing: null },
   // xAI Grok
-  { id: "x-ai/grok-3",    provider: "openrouter", label: "Grok 3",    tier: "medium", released: "2025-02", pricing: null },
-  { id: "x-ai/grok-3-mini",provider: "openrouter", label: "Grok 3 mini",tier: "low", released: "2025-02", pricing: null },
-  { id: "x-ai/grok-4",    provider: "openrouter", label: "Grok 4",    tier: "medium", released: "2025-07", pricing: null },
+  { id: "x-ai/grok-3",    provider: "openrouter", label: "Grok 3",    tier: "medium", released: "2025-02", pricing: { inputPerMTok: 3.0,  outputPerMTok: 15.0 } },
+  { id: "x-ai/grok-3-mini",provider: "openrouter", label: "Grok 3 mini",tier: "low", released: "2025-02", pricing: { inputPerMTok: 0.3,  outputPerMTok: 0.5  } },
+  { id: "x-ai/grok-4",    provider: "openrouter", label: "Grok 4",    tier: "medium", released: "2025-07", pricing: { inputPerMTok: 3.0,  outputPerMTok: 15.0 } },
+  { id: "x-ai/grok-4-fast",provider: "openrouter", label: "Grok 4 Fast",tier: "low", released: "2025-09", pricing: { inputPerMTok: 0.2,  outputPerMTok: 0.5  } },
+  // Free adicionais (Llama 4 / Gemma novos)
+  { id: "meta-llama/llama-4-scout:free",   provider: "openrouter", label: "Llama 4 Scout (free)",   tier: "free", notes: "free",                 released: "2025-04", pricing: null },
+  { id: "deepseek/deepseek-v3.1:free",     provider: "openrouter", label: "DeepSeek V3.1 (free)",   tier: "free", notes: "free",                 released: "2025-08", pricing: null },
   // Microsoft
   { id: "microsoft/phi-4",              provider: "openrouter", label: "Phi-4",            tier: "low", released: "2024-12", pricing: null },
   // Perplexity
@@ -225,7 +244,7 @@ const OPENROUTER: ModelEntry[] = [
   { id: "perplexity/sonar-reasoning",  provider: "openrouter", label: "Sonar Reasoning",   tier: "low",    notes: "search+R1", released: "2025-02", pricing: null },
 ];
 
-/** Array canônico — fonte única de verdade. */
+/** Array canônico , fonte única de verdade. */
 export const MODELS: ModelEntry[] = [
   ...OPENAI,
   ...ANTHROPIC,
@@ -233,33 +252,185 @@ export const MODELS: ModelEntry[] = [
   ...OPENROUTER,
 ];
 
+// ─── Suporte a raciocínio ─────────────────────────────────────────────────────
+// Preenchido por id. Fonte e critério:
+// docs/superpowers/research/2026-05-22-modelos-raciocinio.md. Só modelos OpenAI
+// nesta entrega , o wiring de reasoning_effort cobre o provider OpenAI; o card
+// de Modo Raciocínio só destrava quando há wiring real por trás.
+const REASONING_LEVELS: Record<string, ReasoningLevel[]> = {
+  // OpenAI , GPT-5 series + o-series
+  "gpt-5.5": ["minimal", "low", "medium", "high"],
+  "gpt-5.5-pro": ["minimal", "low", "medium", "high"],
+  "gpt-5.4": ["minimal", "low", "medium", "high"],
+  "gpt-5.4-pro": ["minimal", "low", "medium", "high"],
+  "gpt-5.4-mini": ["minimal", "low", "medium", "high"],
+  "gpt-5.4-nano": ["minimal", "low", "medium", "high"],
+  "gpt-5.3-codex": ["minimal", "low", "medium", "high"],
+  "gpt-5.2": ["minimal", "low", "medium", "high"],
+  "gpt-5.1": ["minimal", "low", "medium", "high"],
+  "gpt-5.1-codex-mini": ["minimal", "low", "medium", "high"],
+  "gpt-5": ["minimal", "low", "medium", "high"],
+  "gpt-5-codex": ["minimal", "low", "medium", "high"],
+  "gpt-5-mini": ["minimal", "low", "medium", "high"],
+  "gpt-5-nano": ["minimal", "low", "medium", "high"],
+  "o3-pro": ["low", "medium", "high"],
+  o3: ["low", "medium", "high"],
+  "o1-pro": ["low", "medium", "high"],
+  o1: ["low", "medium", "high"],
+  // Anthropic , Claude 4.x com extended thinking (budget tokens internos)
+  "claude-opus-4-7": ["low", "medium", "high"],
+  "claude-sonnet-4-7": ["low", "medium", "high"],
+  "claude-opus-4-5": ["low", "medium", "high"],
+  "claude-sonnet-4-5": ["low", "medium", "high"],
+  // Google , Gemini 2.5/3.x com thinking_config
+  "gemini-2.5-pro": ["low", "medium", "high"],
+  "gemini-2.5-flash": ["low", "medium", "high"],
+  "gemini-3-pro": ["low", "medium", "high"],
+  "gemini-3.5-flash": ["low", "medium", "high"],
+  // OpenRouter (mesmos providers via gateway)
+  "anthropic/claude-opus-4.7": ["low", "medium", "high"],
+  "anthropic/claude-sonnet-4.7": ["low", "medium", "high"],
+  "anthropic/claude-opus-4.5": ["low", "medium", "high"],
+  "anthropic/claude-sonnet-4.5": ["low", "medium", "high"],
+  "google/gemini-2.5-pro": ["low", "medium", "high"],
+  "google/gemini-2.5-flash": ["low", "medium", "high"],
+  // DeepSeek R1 , reasoning nativo (sem effort, modelado como medium)
+  "deepseek/deepseek-r1": ["medium"],
+  "deepseek/deepseek-r1-0528": ["medium"],
+  "deepseek/deepseek-r1:free": ["medium"],
+  "deepseek/deepseek-r1-0528:free": ["medium"],
+  // Qwen QwQ , reasoning nativo
+  "qwen/qwq-32b": ["medium"],
+  "qwen/qwq-32b:free": ["medium"],
+};
+
+for (const m of MODELS) {
+  const levels = REASONING_LEVELS[m.id];
+  if (levels) m.reasoning = { levels };
+}
+
+/** `true` se o modelo suporta modo raciocínio (thinking). */
+export function modelSupportsReasoning(id: string): boolean {
+  return (getModel(id)?.reasoning?.levels.length ?? 0) > 0;
+}
+
+/** Níveis de raciocínio aceitos pelo modelo; vazio quando não suporta. */
+export function reasoningLevelsOf(id: string): ReasoningLevel[] {
+  return getModel(id)?.reasoning?.levels ?? [];
+}
+
 /** Retorna um modelo pelo id exato, ou undefined. */
 export function getModel(id: string): ModelEntry | undefined {
   return MODELS.find((m) => m.id === id);
 }
 
-/** Custo médio (input+output)/2 por MTok — para ordenar do mais caro ao mais barato. */
+/**
+ * Modelos lançados antes de 2024-01 são considerados legados.
+ * Mantidos no array para que `getModel` continue retornando, mas filtrados
+ * nas listagens (exceto áudio, onde `whisper-1` ainda é usado em produção).
+ */
+export function isLegacyModel(m: ModelEntry): boolean {
+  if (m.use === "áudio") return false;
+  return !!m.released && m.released < "2024-01";
+}
+
+/** Marca legacy no label visual ("(legado)"). */
+export function labelWithLegacy(m: ModelEntry): string {
+  return isLegacyModel(m) ? `${m.label} (legado)` : m.label;
+}
+
+/** Custo médio (input+output)/2 por MTok , para ordenar do mais caro ao mais barato. */
 function avgCost(m: ModelEntry): number {
   if (!m.pricing) return -1;
   return (m.pricing.inputPerMTok + m.pricing.outputPerMTok) / 2;
 }
 
 /**
- * Ordena modelos: mais recente → mais antigo; dentro da mesma data,
- * mais caro → mais barato. Sem preço por último no grupo.
+ * Score de "família/versão" extraído do id. Famílias mais novas têm score
+ * maior. Ex.: gpt-5.5 > gpt-5.4 > gpt-5 > gpt-4.1 > gpt-4o > gpt-4 > o3 > o1.
+ * Para Claude: opus/sonnet/haiku 4.7 > 4.6 > 4.5 > 3.7 > 3.5. Para Gemini:
+ * 3.x > 2.5 > 2.0 > 1.5. Empate cai pro próximo critério.
+ */
+function familyScore(m: ModelEntry): number {
+  const id = m.id.toLowerCase();
+  // Captura "X.Y" ou "X" como número (GPT-5.5 -> 5.5, GPT-5 -> 5)
+  const m1 = id.match(/(?:gpt-|claude-(?:opus|sonnet|haiku)-|gemini-|grok-|llama-|deepseek-(?:r|v)?|qwen)(\d+(?:[.-]\d+)?)/);
+  if (!m1) return 0;
+  return parseFloat(m1[1].replace("-", "."));
+}
+
+/**
+ * Ordena modelos. Regras (em ordem):
+ *  1. Família/versão mais nova primeiro (gpt-5.5 antes de gpt-5.4-pro).
+ *  2. Data de lançamento mais recente primeiro.
+ *  3. Custo médio mais alto primeiro.
+ *  4. Alfabético do id (desempate determinístico).
  */
 export function sortModels(models: ModelEntry[]): ModelEntry[] {
   return [...models].sort((a, b) => {
+    const famA = familyScore(a);
+    const famB = familyScore(b);
+    if (famA !== famB) return famB - famA;
     const relA = a.released ?? "0000-00";
     const relB = b.released ?? "0000-00";
     if (relA !== relB) return relB.localeCompare(relA);
-    return avgCost(b) - avgCost(a);
+    const costA = avgCost(a);
+    const costB = avgCost(b);
+    if (costA !== costB) return costB - costA;
+    return a.id.localeCompare(b.id);
   });
 }
 
-/** Retorna todos os modelos de um provider, já ordenados. */
-export function listModels(provider: LlmProvider): ModelEntry[] {
-  return sortModels(MODELS.filter((m) => m.provider === provider));
+/** Ordem dos tiers OpenRouter (mais caro primeiro; free no final). */
+const OPENROUTER_TIER_RANK: Record<string, number> = {
+  premium: 0,
+  high: 1,
+  medium: 2,
+  low: 3,
+  free: 4,
+};
+
+/** Prefixo do provedor em ids OpenRouter (ex.: "openai/gpt-..." → "openai"). */
+function openrouterProvider(m: ModelEntry): string {
+  const idx = m.id.indexOf("/");
+  return idx > 0 ? m.id.slice(0, idx).toLowerCase() : "zzz";
+}
+
+/**
+ * Ordenacao especial para OpenRouter:
+ *  1. Tier (premium → high → medium → low → free, free SEMPRE no final).
+ *  2. Dentro do tier: data mais recente primeiro.
+ *  3. Empate: alfabetico do id.
+ *
+ * NAO agrupa por provedor , modelos do mesmo tier podem misturar OpenAI,
+ * Anthropic, DeepSeek etc. de acordo com a data de lancamento.
+ */
+export function sortOpenrouterModels(models: ModelEntry[]): ModelEntry[] {
+  return [...models].sort((a, b) => {
+    const ta = OPENROUTER_TIER_RANK[a.tier] ?? 9;
+    const tb = OPENROUTER_TIER_RANK[b.tier] ?? 9;
+    if (ta !== tb) return ta - tb;
+    const relA = a.released ?? "0000-00";
+    const relB = b.released ?? "0000-00";
+    if (relA !== relB) return relB.localeCompare(relA);
+    return a.id.localeCompare(b.id);
+  });
+}
+
+/**
+ * Retorna todos os modelos de um provider, já ordenados.
+ * Por padrão filtra legados (released < 2024, exceto áudio); passe
+ * `{ includeLegacy: true }` para trazer tudo.
+ */
+export function listModels(
+  provider: LlmProvider,
+  opts: { includeLegacy?: boolean } = {},
+): ModelEntry[] {
+  const all = MODELS.filter((m) => m.provider === provider && m.use !== "áudio");
+  const filtered = opts.includeLegacy ? all : all.filter((m) => !isLegacyModel(m));
+  return provider === "openrouter"
+    ? sortOpenrouterModels(filtered)
+    : sortModels(filtered);
 }
 
 /** Capacidades multimodais de um modelo. */
@@ -313,7 +484,7 @@ export function modelDescription(m: ModelEntry): string {
 export interface CostResult {
   /** Custo em USD. null quando pricing=null (costKnown=false). */
   costUsd: number | null;
-  /** false = modelo sem preço conhecido — não registrar como 0. */
+  /** false = modelo sem preço conhecido , não registrar como 0. */
   costKnown: boolean;
 }
 

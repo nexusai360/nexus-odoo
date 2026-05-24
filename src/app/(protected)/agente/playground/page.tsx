@@ -1,12 +1,12 @@
 /**
- * /agente/playground — Playground do Agente Nex (página dedicada).
+ * /agente/playground , Playground do Agente Nex (página dedicada).
  *
  * Gate: super_admin (aplicado também no layout do grupo /agente).
  * Sessões persistem em Postgres (PlaygroundSession); cada sessão escolhe seu
  * próprio provedor/modelo entre as chaves cadastradas, independente da
  * configuração de produção.
  *
- * Bloco 6 — F5 UI rework v2.
+ * Bloco 6 , F5 UI rework v2.
  */
 
 import { redirect } from "next/navigation";
@@ -41,7 +41,7 @@ export default async function PlaygroundPage() {
   }
 
   return (
-    <PageShell variant="wide">
+    <PageShell variant="form">
       <PageHeader
         icon={FlaskConical}
         title="Playground do Agente Nex"
@@ -49,6 +49,7 @@ export default async function PlaygroundPage() {
       />
       <PlaygroundContent
         audioInputEnabled={flags.audioInPlayground}
+        imageInputEnabled={flags.imageInPlayground}
         userId={user.id}
         credentialsByProvider={credentialsByProvider}
       />

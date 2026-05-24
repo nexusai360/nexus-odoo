@@ -156,7 +156,7 @@ describe("withFreshness", () => {
     });
   });
 
-  // E-1: isVazio custom — contabil_estrutura_conta (conta === null → vazio)
+  // E-1: isVazio custom , contabil_estrutura_conta (conta === null → vazio)
   describe("isVazio custom (E-1)", () => {
     const isVazioConta = (d: { conta: { id: number } | null; filhas: unknown[] }) => d.conta === null;
 

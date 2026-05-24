@@ -121,7 +121,7 @@ describe("assertConversationOwned", () => {
 
 describe("loadHistory", () => {
   test("retorna mensagens em ordem cronológica (últimas N, invertidas)", async () => {
-    // findMany é chamado com orderBy: desc — o mock retorna as msgs em ordem desc
+    // findMany é chamado com orderBy: desc , o mock retorna as msgs em ordem desc
     // (mais recente primeiro). O código faz .reverse() para ordem cronológica.
     prisma.message.findMany.mockResolvedValue([
       { id: "m2", role: "assistant", content: "Oi!", toolCalls: null },

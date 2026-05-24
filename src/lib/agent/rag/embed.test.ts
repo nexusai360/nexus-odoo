@@ -1,5 +1,5 @@
 /**
- * TDD — embed.ts
+ * TDD , embed.ts
  *
  * Comportamentos testados:
  * - Sem credencial configurada → lança EmbeddingUnavailable

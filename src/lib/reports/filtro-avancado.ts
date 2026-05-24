@@ -5,7 +5,7 @@
 // - Grupo: conector E|OU + lista de Condicao|Grupo (recursivo)
 // - compilarFiltro: compila um Grupo em predicado (row) => boolean
 //
-// Reutilizável pela F6 (construtor de relatórios) — sem acoplamento a nenhum
+// Reutilizável pela F6 (construtor de relatórios) , sem acoplamento a nenhum
 // relatório específico.
 
 import type { ColumnDef } from "@/components/charts/data-table";
@@ -66,7 +66,7 @@ export function isGrupo(item: GrupoItem): item is Grupo {
  * Compila um `Grupo` em um predicado puro `(row) => boolean`.
  *
  * @param grupo - Estrutura de filtro serializada.
- * @param columns - Colunas da DataTable — usadas para inferir o tipo de cada
+ * @param columns - Colunas da DataTable , usadas para inferir o tipo de cada
  *   campo ("numero" | "moeda" → comparação numérica; "texto" → string).
  *
  * Comportamentos garantidos:

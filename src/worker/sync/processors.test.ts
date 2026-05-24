@@ -60,7 +60,7 @@ describe("processIncrementalCycle", () => {
     await processIncrementalCycle({ prisma, client: {} as never }, catalog, fakeRun as never);
 
     // O runner capturado chama rawDelegateCount após o syncIncremental.
-    // Aqui verificamos que countFn foi preparado — o assert real está no teste
+    // Aqui verificamos que countFn foi preparado , o assert real está no teste
     // de integração abaixo onde o runner é executado de ponta a ponta com mocks.
     expect(fakeRun).toHaveBeenCalledTimes(1);
     expect(countFn).toBeDefined();

@@ -19,7 +19,7 @@ const TIMESTAMP_TOLERANCE_MS = 5 * 60 * 1000;
 /**
  * Calcula a assinatura HMAC-SHA256 do par `body + timestamp`.
  *
- * A mensagem assinada é `${timestamp}.${body}` — o timestamp é parte da
+ * A mensagem assinada é `${timestamp}.${body}` , o timestamp é parte da
  * mensagem assinada para evitar replay (o mesmo corpo com timestamp diferente
  * produz assinatura diferente).
  *

@@ -1,7 +1,7 @@
 "use client";
 
 /**
- * IdentityBaseEditor — edição da identidade base do agente (super_admin only).
+ * IdentityBaseEditor , edição da identidade base do agente (super_admin only).
  *
  * Campo grande de texto (textarea mono) com contador de caracteres.
  * Persiste via updateAgentSettings de agent-config.ts.
@@ -19,7 +19,7 @@ import { ExpandableTextarea } from "@/components/ui/expandable-textarea";
 import { updateAgentSettings } from "@/lib/actions/agent-config";
 import { cn } from "@/lib/utils";
 
-const MAX_IDENTITY = 50_000;
+const MAX_IDENTITY = 500_000;
 
 interface IdentityBaseEditorProps {
   initial: {
@@ -89,16 +89,16 @@ export function IdentityBaseEditor({ initial }: IdentityBaseEditorProps) {
         onChange={setIdentityBase}
         maxLength={MAX_IDENTITY}
         rows={8}
-        placeholder="Defina aqui a identidade fixa do Agente Nex — quem ele é, o que faz, contexto da empresa…"
+        placeholder="Defina aqui a identidade fixa do Agente Nex , quem ele é, o que faz, contexto da empresa…"
         disabled={isSaving}
         className="font-mono text-xs"
         aria-describedby="agent-identity-base-help"
       />
       <p id="agent-identity-base-help" className="text-xs text-muted-foreground">
-        Aqui se escreve o prompt do Agente Nex — a identidade base injetada no
-        início de todo system prompt, antes de personalidade e tom. Pode ser
-        longo: descreva quem é o agente, o contexto da empresa, a operação e os
-        dados disponíveis.
+        Escreva aqui a identidade base do Agente Nex, injetada no início de
+        todo system prompt, antes de personalidade e tom. Pode ser longo:
+        descreva quem é o agente, o contexto da empresa, a operação e os dados
+        disponíveis.
       </p>
       <div className="flex justify-end pt-3">
         <Button

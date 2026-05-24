@@ -36,7 +36,7 @@ describe("estoque_top_movimentados", () => {
     (ctx.prisma.syncState.findMany as jest.Mock).mockResolvedValue([
       { model: "estoque.extrato", lastStatus: "ok", lastSnapshotAt: null, lastIncrementalAt: now },
     ]);
-    // 25 produtos — espera top-20
+    // 25 produtos , espera top-20
     const grupos = Array.from({ length: 25 }, (_, i) => ({
       produtoNome: `P${i}`,
       _sum: { quantidade: 100 - i },

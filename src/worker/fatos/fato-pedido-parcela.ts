@@ -1,5 +1,5 @@
 // src/worker/fatos/fato-pedido-parcela.ts
-// Builder do fato_pedido_parcela — fonte: raw_pedido_parcela (modelo pedido.parcela).
+// Builder do fato_pedido_parcela , fonte: raw_pedido_parcela (modelo pedido.parcela).
 import type { PrismaClient } from "../../generated/prisma/client";
 import { relId, relNome, type OdooM2O } from "./odoo-relational";
 import { markFatoBuilt } from "./fato-build-state";
@@ -19,7 +19,7 @@ export interface FatoPedidoParcelaRow {
   formaPagamentoNome: string | null;
   parcelaFaturada: boolean;
   finanLancamentoId: number | null;
-  // NÃO inclui atualizadoEm — campo tem @default(now()) no schema (decisão N5)
+  // NÃO inclui atualizadoEm , campo tem @default(now()) no schema (decisão N5)
 }
 
 export function mapPedidoParcelaRow(raw: Record<string, unknown>): FatoPedidoParcelaRow {

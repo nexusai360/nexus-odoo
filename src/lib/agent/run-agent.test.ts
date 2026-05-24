@@ -21,6 +21,13 @@ jest.mock("./mcp-client", () => ({
   ),
 }));
 
+// MCPs externos: sem servidores no teste; o run usa só o MCP interno.
+jest.mock("./external-mcp", () => ({
+  openExternalMcpSessions: jest.fn().mockResolvedValue(null),
+  callExternalTool: jest.fn(),
+  isExternalToolName: (name: string) => name.startsWith("ext__"),
+}));
+
 jest.mock("./llm/get-active-config", () => ({
   getActiveLlmConfig: jest.fn(),
 }));
@@ -37,7 +44,7 @@ jest.mock("./conversation", () => ({
   loadHistory: jest.fn().mockResolvedValue([]),
   persistMessage: jest.fn().mockResolvedValue(undefined),
   assertConversationOwned: jest.fn().mockResolvedValue(undefined),
-  // sanitizeHistoryPairs: passthrough — retorna o array sem modificação nos testes
+  // sanitizeHistoryPairs: passthrough , retorna o array sem modificação nos testes
   sanitizeHistoryPairs: jest.fn((h: unknown[]) => h),
 }));
 
@@ -121,19 +128,38 @@ describe("extractSuggestions", () => {
     expect(message).not.toContain("[[suggestions]]");
   });
 
-  test("sem sufixo → message intacta, suggestions vazio", () => {
+  test("sem sufixo → message intacta, suggestions usa fallback fatiado", () => {
+    // Contrato novo (Onda C v3): quando o modelo esquece de emitir
+    // [[suggestions]], extractSuggestions injeta o set FALLBACK_SUGGESTIONS
+    // fatiado por maxCount para nao deixar a bolha sem chips na UI.
     const text = "Resposta sem sugestões.";
-    const { message, suggestions } = extractSuggestions(text);
+    const { message, suggestions } = extractSuggestions(text, 3);
     expect(message).toBe(text);
-    expect(suggestions).toEqual([]);
+    expect(suggestions).toHaveLength(3);
+    expect(suggestions.every((s) => s.endsWith("?"))).toBe(true);
   });
 
-  test("sugestão com >60 chars é filtrada", () => {
-    const longSugg = "a".repeat(61);
+  test("sugestão com >80 chars é filtrada", () => {
+    const longSugg = "a".repeat(81);
     const text = `Resposta.\n\n[[suggestions]]:Curta|${longSugg}`;
     const { suggestions } = extractSuggestions(text);
     expect(suggestions).toHaveLength(1);
     expect(suggestions[0]).toBe("Curta");
+  });
+
+  test("remove markdown das sugestões (chips de texto puro)", () => {
+    const text =
+      "Resposta.\n\n[[suggestions]]:Quero o **preço de venda**|Custo do `PMB403`";
+    const { suggestions } = extractSuggestions(text);
+    expect(suggestions).toEqual(["Quero o preço de venda", "Custo do PMB403"]);
+  });
+
+  test("aceita até 5 sugestões (cap elevado para desambiguação)", () => {
+    const text =
+      "Resposta.\n\n[[suggestions]]:Um|Dois|Tres|Quatro|Cinco|Seis";
+    const { suggestions } = extractSuggestions(text);
+    expect(suggestions).toHaveLength(5);
+    expect(suggestions).toEqual(["Um", "Dois", "Tres", "Quatro", "Cinco"]);
   });
 });
 
@@ -253,6 +279,7 @@ describe("runAgent", () => {
       expect.anything(),
       undefined,
       expect.stringContaining("DDL"),
+      expect.any(String),
     );
   });
 

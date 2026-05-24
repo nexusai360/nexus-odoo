@@ -33,7 +33,7 @@ import {
   DialogDescription,
 } from "@/components/ui/dialog";
 
-// Local row type — only the fields the UI uses (avoids importing full Prisma model)
+// Local row type , only the fields the UI uses (avoids importing full Prisma model)
 interface SyncStateRow {
   model: string;
   mode: string;
@@ -100,7 +100,7 @@ function getStatusLabel(status: string): string {
 }
 
 function formatDateTime(date: Date | null): string {
-  if (!date) return "—";
+  if (!date) return ",";
   return new Intl.DateTimeFormat("pt-BR", {
     day: "2-digit",
     month: "2-digit",
@@ -314,7 +314,7 @@ export function ConfiguracaoContent({ config, estado }: Props) {
                   ) : (
                     <p className="text-xs text-muted-foreground">{helper}</p>
                   )}
-                  {/* Última execução — uma linha sutil sob cada campo. */}
+                  {/* Última execução , uma linha sutil sob cada campo. */}
                   {(() => {
                     const exec = ultimasExecucoes.find((u) => u.typeKey === typeKey);
                     if (!exec) return null;
@@ -322,7 +322,7 @@ export function ConfiguracaoContent({ config, estado }: Props) {
                       <p className="text-[11px] text-muted-foreground/80">
                         Última execução:{" "}
                         <span className="tabular-nums">
-                          {exec.date ? formatDateTime(exec.date) : "—"}
+                          {exec.date ? formatDateTime(exec.date) : ","}
                         </span>
                       </p>
                     );

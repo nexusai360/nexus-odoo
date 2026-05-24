@@ -8,7 +8,7 @@ beforeEach(() => {
   mockFetch.mockReset();
 });
 
-describe("AnthropicClient — MOCK key", () => {
+describe("AnthropicClient , MOCK key", () => {
   test("retorna resposta simulada sem chamar fetch", async () => {
     const client = new AnthropicClient("MOCK_KEY", "claude-sonnet-4-7");
     const result = await client.chat({ messages: [{ role: "user", content: "Olá" }] });
@@ -18,7 +18,7 @@ describe("AnthropicClient — MOCK key", () => {
 
   test("mapMessages converte role:tool para tool_result em role:user", async () => {
     const client = new AnthropicClient("MOCK_KEY", "claude-sonnet-4-7");
-    // Só testa que não lança — o mapeamento acontece antes do fetch
+    // Só testa que não lança , o mapeamento acontece antes do fetch
     const result = await client.chat({
       messages: [
         { role: "user", content: "Pergunta" },
@@ -51,7 +51,7 @@ describe("AnthropicClient — MOCK key", () => {
   });
 });
 
-describe("AnthropicClient — streaming", () => {
+describe("AnthropicClient , streaming", () => {
   function makeStreamBody(deltas: string[]): ReadableStream<Uint8Array> {
     const encoder = new TextEncoder();
     const lines: string[] = [];

@@ -1,5 +1,5 @@
 // src/worker/prisma.ts
-// PrismaClient dedicado do worker — mesmo adapter de src/lib/prisma.ts.
+// PrismaClient dedicado do worker , mesmo adapter de src/lib/prisma.ts.
 import { PrismaClient } from "../generated/prisma/client";
 import { PrismaPg } from "@prisma/adapter-pg";
 

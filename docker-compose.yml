@@ -10,7 +10,7 @@ services:
       context: .
       dockerfile: docker/Dockerfile
     environment:
-      - DATABASE_URL=postgresql://nexus:${DB_PASSWORD:-nexus}@db:5432/nexus_odoo?schema=public
+      - DATABASE_URL=postgresql://nexus:${DB_PASSWORD:-nexus}@db:5432/nexus_odoo_l1?schema=public
       - REDIS_URL=redis://redis:6379
       - NEXTAUTH_SECRET=${NEXTAUTH_SECRET:-development_secret_at_least_32_chars_long}
       - NEXTAUTH_URL=${NEXTAUTH_URL:-http://localhost:3000}
@@ -29,9 +29,9 @@ services:
       context: .
       dockerfile: mcp/Dockerfile
     environment:
-      - MCP_DATABASE_URL=postgresql://nexus_mcp:${MCP_DB_PASSWORD}@db:5432/nexus_odoo?schema=public
+      - MCP_DATABASE_URL=postgresql://nexus_mcp:${MCP_DB_PASSWORD}@db:5432/nexus_odoo_l1?schema=public
       # Caminho 3c (modo BI) — role read-only nexus_mcp_bi. Configurar no Portainer antes do redeploy.
-      - MCP_BI_DATABASE_URL=postgresql://nexus_mcp_bi:${MCP_BI_DB_PASSWORD}@db:5432/nexus_odoo?schema=public
+      - MCP_BI_DATABASE_URL=postgresql://nexus_mcp_bi:${MCP_BI_DB_PASSWORD}@db:5432/nexus_odoo_l1?schema=public
       - MCP_SERVICE_TOKEN=${MCP_SERVICE_TOKEN:-dev_service_token_change_in_production}
       - REDIS_URL=redis://redis:6379
       - MCP_PORT=3100
@@ -47,7 +47,7 @@ services:
     image: nexus-odoo:local
     command: ["npx", "tsx", "/app/src/worker/index.ts"]
     environment:
-      - DATABASE_URL=postgresql://nexus:${DB_PASSWORD:-nexus}@db:5432/nexus_odoo?schema=public
+      - DATABASE_URL=postgresql://nexus:${DB_PASSWORD:-nexus}@db:5432/nexus_odoo_l1?schema=public
       - REDIS_URL=redis://redis:6379
       - ENCRYPTION_KEY=${ENCRYPTION_KEY:-0000000000000000000000000000000000000000000000000000000000000000}
       - ODOO_URL=${ODOO_URL}
@@ -63,7 +63,7 @@ services:
     environment:
       - POSTGRES_USER=nexus
       - POSTGRES_PASSWORD=${DB_PASSWORD:-nexus}
-      - POSTGRES_DB=nexus_odoo
+      - POSTGRES_DB=nexus_odoo_l1
     ports:
       - "5436:5432"
     volumes:

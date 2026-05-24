@@ -10,7 +10,7 @@ const inputSchema = z.object({
   periodoAte: z.string().optional(),
 });
 
-// dados só tem escalares — sem array; cai no ramo "ok" do withFreshness por não
+// dados só tem escalares , sem array; cai no ramo "ok" do withFreshness por não
 // achar array em ARRAY_KEYS_PRIORITY (achado P-M1). Sem isVazio custom.
 const dados = z.object({
   totalPedidos: z.number().int(),
@@ -41,8 +41,9 @@ function shape(d: Awaited<ReturnType<typeof queryPedidosPeriodo>>) {
     totalPedidos: d.totalPedidos,
     valorTotal: d.valorTotal,
     aviso:
-      "Universo pequeno (~71 pedidos de venda/inventário). Não há pedido de compra neste módulo. " +
-      "Valor usa vrProdutos (vr_produtos) — valor do pedido independente de faturamento, consistente com pedidos_por_etapa e pedidos_por_vendedor.",
+      "Pedidos de venda/inventário. Não há pedido de compra neste módulo. " +
+      "Valor usa vrProdutos (vr_produtos), valor do pedido independente de faturamento, consistente com pedidos_por_etapa e pedidos_por_vendedor. " +
+      "Para a contagem-total do catálogo de pedidos use comercial_contar_pedidos.",
   };
 }
 

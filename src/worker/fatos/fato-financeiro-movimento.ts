@@ -1,5 +1,5 @@
 // src/worker/fatos/fato-financeiro-movimento.ts
-// Realizado e previsto coexistem na mesma linha (decisão #IM-2) — sem campo natureza.
+// Realizado e previsto coexistem na mesma linha (decisão #IM-2) , sem campo natureza.
 import type { PrismaClient } from "../../generated/prisma/client";
 import { relId, relNome, type OdooM2O } from "./odoo-relational";
 import { markFatoBuilt } from "./fato-build-state";
@@ -17,7 +17,7 @@ export interface FatoFinanceiroMovimentoRow {
   entradaPrevista: number;
   saidaPrevista: number;
   valorPrevisto: number;
-  // NÃO inclui atualizadoEm — campo tem @default(now()) no schema (decisão N5)
+  // NÃO inclui atualizadoEm , campo tem @default(now()) no schema (decisão N5)
 }
 
 export function mapMovimentoRow(
@@ -54,7 +54,7 @@ export async function rebuildFatoFinanceiroMovimento(
   await prisma.$transaction(async (tx) => {
     await tx.fatoFinanceiroMovimento.deleteMany({});
     if (mapped.length) {
-      // data: mapped — sem injetar atualizadoEm (divergência N5 vs fato-estoque-saldo)
+      // data: mapped , sem injetar atualizadoEm (divergência N5 vs fato-estoque-saldo)
       await tx.fatoFinanceiroMovimento.createMany({ data: mapped });
     }
     await markFatoBuilt(tx, "fato_financeiro_movimento");

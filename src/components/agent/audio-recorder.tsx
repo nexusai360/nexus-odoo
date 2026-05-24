@@ -1,7 +1,7 @@
 "use client";
 
 /**
- * AudioRecorder — UI de gravação de áudio para o chat do agente.
+ * AudioRecorder , UI de gravação de áudio para o chat do agente.
  *
  * Portado de nexus-insights/src/components/nex/audio-recorder.tsx.
  * Adaptações: renomeação nex→agent. Lógica e design inalterados.
@@ -137,7 +137,7 @@ function AudioRecorderImpl(
       const seconds = Math.floor(totalMs / 1000);
       setElapsed(seconds);
       if (seconds >= MAX_DURATION_SEC) {
-        toast.message("Limite de 5 min — enviando…");
+        toast.message("Limite de 5 min , enviando…");
         sendNowRef.current();
       }
     }, 250);
@@ -145,7 +145,7 @@ function AudioRecorderImpl(
 
   const start = React.useCallback(async () => {
     if (!supported) {
-      // G5: dica de HTTPS — getUserMedia exige contexto seguro fora de localhost.
+      // G5: dica de HTTPS , getUserMedia exige contexto seguro fora de localhost.
       const insecure =
         typeof window !== "undefined" &&
         window.location.protocol !== "https:" &&

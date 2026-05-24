@@ -1,7 +1,7 @@
 /**
  * Trava de drift: garante que BI_SCHEMA_REFERENCE está em sincronia com o
  * schema.prisma. Se um modelo Fato* for adicionado/removido/renomeado, ou se
- * uma coluna for adicionada/removida, este teste falha — forçando atualização
+ * uma coluna for adicionada/removida, este teste falha , forçando atualização
  * da constante.
  */
 
@@ -48,7 +48,7 @@ function extractColumnNames(schemaContent: string, modelMapName: string): string
   return columns;
 }
 
-describe("BI_SCHEMA_REFERENCE — trava de drift", () => {
+describe("BI_SCHEMA_REFERENCE , trava de drift", () => {
   let schemaContent: string;
   let fatoTableNames: string[];
 

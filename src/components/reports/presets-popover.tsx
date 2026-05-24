@@ -1,6 +1,6 @@
 "use client";
 
-// PresetsPopover — botão "Presets" no toolbar do relatório.
+// PresetsPopover , botão "Presets" no toolbar do relatório.
 //
 // Fluxo:
 //  - Lista presets do usuário para o relatório (carregados no mount)

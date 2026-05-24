@@ -5,10 +5,10 @@
  * Adaptações (BUGs 1, 4, 5, 6, 7, 8 da SPEC §4.6):
  * - Usa Prisma v7 + model LlmUsage (não pgPool + ensure-tables).
  * - calculateCost retorna {costUsd, costKnown}: costUsd=null quando costKnown=false (BUG 1).
- * - getUsdBrlRate nunca retorna null — usa cache stale com rateStale=true (BUG 5).
+ * - getUsdBrlRate nunca retorna null , usa cache stale com rateStale=true (BUG 5).
  * - rateSpread é gravado junto com a cotação (BUG 6).
  * - costBrl calculado corretamente com spread já embutido na rate (BUG 4).
- * - Falhas são silenciosas — nunca bloqueiam o chat.
+ * - Falhas são silenciosas , nunca bloqueiam o chat.
  */
 
 import { prisma } from "@/lib/prisma";
@@ -28,7 +28,7 @@ export interface LogUsageArgs {
   isPlayground?: boolean;
   promptChars?: number;
   responseChars?: number;
-  /** Chave de API usada — atribui o consumo à chave e atualiza o saldo. */
+  /** Chave de API usada , atribui o consumo à chave e atualiza o saldo. */
   credentialId?: string;
   /** Tipo da requisição: texto | imagem | audio | arquivo (default: texto). */
   requestKind?: "texto" | "imagem" | "audio" | "arquivo";
@@ -37,14 +37,14 @@ export interface LogUsageArgs {
 /**
  * Registra uma chamada de LLM em `LlmUsage`.
  *
- * Falhas são engolidas silenciosamente — não devem bloquear o chat.
+ * Falhas são engolidas silenciosamente , não devem bloquear o chat.
  * costUsd é null quando o preço do modelo não é conhecido (costKnown=false).
  * costBrl é null quando costUsd for null.
  * rateStale=true quando a cotação está obsoleta (cache de fallback).
  */
 export async function logUsage(args: LogUsageArgs): Promise<void> {
   try {
-    // Calcular custo — repassa durationMs para modelos cobrados por minuto (ex.: whisper-1)
+    // Calcular custo , repassa durationMs para modelos cobrados por minuto (ex.: whisper-1)
     const { costUsd, costKnown } = calculateCost(
       args.model,
       args.tokensInput,
@@ -52,7 +52,7 @@ export async function logUsage(args: LogUsageArgs): Promise<void> {
       args.durationMs !== undefined ? { durationMs: args.durationMs } : undefined,
     );
 
-    // Cotação cambial — nunca retorna null (usa cache stale em falha)
+    // Cotação cambial , nunca retorna null (usa cache stale em falha)
     let costBrl: number | null = null;
     let rateValue: number | null = null;
     let rateSpread: number | null = null;

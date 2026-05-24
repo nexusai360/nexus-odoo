@@ -1,0 +1,1733 @@
+{
+  "tools": [
+    {
+      "id": "estoque_saldo_produto",
+      "operation": "read",
+      "module": "estoque",
+      "descricao": "Saldo de estoque por produto: unidades e valor a custo, com nº de localizações. Para o saldo de um produto específico, passe `termo` com o nome ou o código do produto.",
+      "capability": null,
+      "sensitive": false,
+      "addedInVersion": null,
+      "inputSchemaKeys": [
+        "armazemId",
+        "familiaId",
+        "termo"
+      ],
+      "inputSchemaFields": [
+        {
+          "name": "armazemId",
+          "type": "integer",
+          "optional": true
+        },
+        {
+          "name": "familiaId",
+          "type": "integer",
+          "optional": true
+        },
+        {
+          "name": "termo",
+          "type": "string",
+          "optional": true
+        }
+      ],
+      "examples": []
+    },
+    {
+      "id": "estoque_valor_armazem",
+      "operation": "read",
+      "module": "estoque",
+      "descricao": "Valor de estoque a preço de custo por armazém.",
+      "capability": null,
+      "sensitive": false,
+      "addedInVersion": null,
+      "inputSchemaKeys": [],
+      "inputSchemaFields": [],
+      "examples": []
+    },
+    {
+      "id": "estoque_entradas_saidas",
+      "operation": "read",
+      "module": "estoque",
+      "descricao": "Série mensal de entradas e saídas de estoque.",
+      "capability": null,
+      "sensitive": false,
+      "addedInVersion": null,
+      "inputSchemaKeys": [
+        "periodoDe",
+        "periodoAte",
+        "armazemId"
+      ],
+      "inputSchemaFields": [
+        {
+          "name": "periodoDe",
+          "type": "string",
+          "optional": true
+        },
+        {
+          "name": "periodoAte",
+          "type": "string",
+          "optional": true
+        },
+        {
+          "name": "armazemId",
+          "type": "integer",
+          "optional": true
+        }
+      ],
+      "examples": []
+    },
+    {
+      "id": "estoque_top_movimentados",
+      "operation": "read",
+      "module": "estoque",
+      "descricao": "Top 20 produtos mais movimentados em estoque.",
+      "capability": null,
+      "sensitive": false,
+      "addedInVersion": null,
+      "inputSchemaKeys": [
+        "periodoDe",
+        "periodoAte",
+        "sentido"
+      ],
+      "inputSchemaFields": [
+        {
+          "name": "periodoDe",
+          "type": "string",
+          "optional": true
+        },
+        {
+          "name": "periodoAte",
+          "type": "string",
+          "optional": true
+        },
+        {
+          "name": "sentido",
+          "type": "enum",
+          "optional": true,
+          "enumValues": [
+            "entrada",
+            "saida"
+          ]
+        }
+      ],
+      "examples": []
+    },
+    {
+      "id": "estoque_produtos_parados",
+      "operation": "read",
+      "module": "estoque",
+      "descricao": "Produtos parados em estoque (saldo > 0, sem movimento).",
+      "capability": null,
+      "sensitive": false,
+      "addedInVersion": null,
+      "inputSchemaKeys": [
+        "faixaDias",
+        "armazemId"
+      ],
+      "inputSchemaFields": [
+        {
+          "name": "faixaDias",
+          "type": "integer",
+          "optional": true
+        },
+        {
+          "name": "armazemId",
+          "type": "integer",
+          "optional": true
+        }
+      ],
+      "examples": []
+    },
+    {
+      "id": "estoque_concentracao",
+      "operation": "read",
+      "module": "estoque",
+      "descricao": "Concentração do estoque por família e marca (valor e percentual).",
+      "capability": null,
+      "sensitive": false,
+      "addedInVersion": null,
+      "inputSchemaKeys": [],
+      "inputSchemaFields": [],
+      "examples": []
+    },
+    {
+      "id": "financeiro_saldo_contas",
+      "operation": "read",
+      "module": "financeiro",
+      "descricao": "Saldo atual de cada conta/banco.",
+      "capability": null,
+      "sensitive": false,
+      "addedInVersion": null,
+      "inputSchemaKeys": [],
+      "inputSchemaFields": [],
+      "examples": []
+    },
+    {
+      "id": "financeiro_caixa_periodo",
+      "operation": "read",
+      "module": "financeiro",
+      "descricao": "Entradas, saídas e saldo de caixa realizado em um período.",
+      "capability": null,
+      "sensitive": false,
+      "addedInVersion": null,
+      "inputSchemaKeys": [
+        "periodoDe",
+        "periodoAte"
+      ],
+      "inputSchemaFields": [
+        {
+          "name": "periodoDe",
+          "type": "string",
+          "optional": true
+        },
+        {
+          "name": "periodoAte",
+          "type": "string",
+          "optional": true
+        }
+      ],
+      "examples": []
+    },
+    {
+      "id": "financeiro_fluxo_caixa",
+      "operation": "read",
+      "module": "financeiro",
+      "descricao": "Série mensal de fluxo de caixa: realizado vs. previsto.",
+      "capability": null,
+      "sensitive": false,
+      "addedInVersion": null,
+      "inputSchemaKeys": [
+        "periodoDe",
+        "periodoAte"
+      ],
+      "inputSchemaFields": [
+        {
+          "name": "periodoDe",
+          "type": "string",
+          "optional": true
+        },
+        {
+          "name": "periodoAte",
+          "type": "string",
+          "optional": true
+        }
+      ],
+      "examples": []
+    },
+    {
+      "id": "financeiro_contas_a_receber",
+      "operation": "read",
+      "module": "financeiro",
+      "descricao": "Títulos a receber em aberto, com valor total e dias de atraso.",
+      "capability": null,
+      "sensitive": false,
+      "addedInVersion": null,
+      "inputSchemaKeys": [
+        "participanteId"
+      ],
+      "inputSchemaFields": [
+        {
+          "name": "participanteId",
+          "type": "integer",
+          "optional": true
+        }
+      ],
+      "examples": []
+    },
+    {
+      "id": "financeiro_contas_a_pagar",
+      "operation": "read",
+      "module": "financeiro",
+      "descricao": "Títulos a pagar em aberto, com valor total e dias de atraso.",
+      "capability": null,
+      "sensitive": false,
+      "addedInVersion": null,
+      "inputSchemaKeys": [
+        "participanteId"
+      ],
+      "inputSchemaFields": [
+        {
+          "name": "participanteId",
+          "type": "integer",
+          "optional": true
+        }
+      ],
+      "examples": []
+    },
+    {
+      "id": "financeiro_titulos_vencidos",
+      "operation": "read",
+      "module": "financeiro",
+      "descricao": "Todos os títulos vencidos e não pagos (a receber e a pagar), com dias de atraso.",
+      "capability": null,
+      "sensitive": false,
+      "addedInVersion": null,
+      "inputSchemaKeys": [],
+      "inputSchemaFields": [],
+      "examples": []
+    },
+    {
+      "id": "registrar_lacuna",
+      "operation": "read",
+      "module": "outros",
+      "descricao": "Registra uma pergunta que não foi coberta pelo catálogo de tools (Caminho 3a). Use quando o usuário faz uma pergunta fora do escopo das tools disponíveis.",
+      "capability": null,
+      "sensitive": false,
+      "addedInVersion": null,
+      "inputSchemaKeys": [
+        "perguntaResumo",
+        "dominio"
+      ],
+      "inputSchemaFields": [
+        {
+          "name": "perguntaResumo",
+          "type": "string",
+          "optional": false
+        },
+        {
+          "name": "dominio",
+          "type": "string",
+          "optional": true
+        }
+      ],
+      "examples": []
+    },
+    {
+      "id": "bi_consulta_avancada",
+      "operation": "read",
+      "module": "outros",
+      "descricao": "Modo BI avançado (Caminho 3c): executa um SQL SELECT pronto sob o role read-only nexus_mcp_bi. O SQL deve ser gerado pelo agente (F5); esta tool apenas executa. Restrito a admin/super_admin. AVISO: consulta dinâmica, resultados não são filtrados pelo RBAC semântico das tools de domínio.",
+      "capability": null,
+      "sensitive": false,
+      "addedInVersion": null,
+      "inputSchemaKeys": [
+        "sql"
+      ],
+      "inputSchemaFields": [
+        {
+          "name": "sql",
+          "type": "string",
+          "optional": false
+        }
+      ],
+      "examples": []
+    },
+    {
+      "id": "comercial_pedidos_periodo",
+      "operation": "read",
+      "module": "comercial",
+      "descricao": "Total de pedidos e valor faturado no período informado.",
+      "capability": null,
+      "sensitive": false,
+      "addedInVersion": null,
+      "inputSchemaKeys": [
+        "periodoDe",
+        "periodoAte"
+      ],
+      "inputSchemaFields": [
+        {
+          "name": "periodoDe",
+          "type": "string",
+          "optional": true
+        },
+        {
+          "name": "periodoAte",
+          "type": "string",
+          "optional": true
+        }
+      ],
+      "examples": []
+    },
+    {
+      "id": "comercial_pedidos_por_etapa",
+      "operation": "read",
+      "module": "comercial",
+      "descricao": "Distribuição de pedidos por etapa do fluxo comercial, com valor total por etapa.",
+      "capability": null,
+      "sensitive": false,
+      "addedInVersion": null,
+      "inputSchemaKeys": [],
+      "inputSchemaFields": [],
+      "examples": []
+    },
+    {
+      "id": "comercial_pedidos_por_vendedor",
+      "operation": "read",
+      "module": "comercial",
+      "descricao": "Ranking de pedidos por vendedor no período, com quantidade e valor total.",
+      "capability": null,
+      "sensitive": false,
+      "addedInVersion": null,
+      "inputSchemaKeys": [
+        "periodoDe",
+        "periodoAte"
+      ],
+      "inputSchemaFields": [
+        {
+          "name": "periodoDe",
+          "type": "string",
+          "optional": true
+        },
+        {
+          "name": "periodoAte",
+          "type": "string",
+          "optional": true
+        }
+      ],
+      "examples": []
+    },
+    {
+      "id": "comercial_pedidos_atrasados",
+      "operation": "read",
+      "module": "comercial",
+      "descricao": "Parcelas de pedidos vencidas e não faturadas, com valor total atrasado e dias de atraso.",
+      "capability": null,
+      "sensitive": false,
+      "addedInVersion": null,
+      "inputSchemaKeys": [],
+      "inputSchemaFields": [],
+      "examples": []
+    },
+    {
+      "id": "comercial_parcelas_a_vencer",
+      "operation": "read",
+      "module": "comercial",
+      "descricao": "Parcelas de pedidos a vencer nos próximos N dias (padrão 30), com valor total a receber.",
+      "capability": null,
+      "sensitive": false,
+      "addedInVersion": null,
+      "inputSchemaKeys": [
+        "ateDias"
+      ],
+      "inputSchemaFields": [
+        {
+          "name": "ateDias",
+          "type": "integer",
+          "optional": true
+        }
+      ],
+      "examples": []
+    },
+    {
+      "id": "preco_produto",
+      "operation": "read",
+      "module": "comercial",
+      "descricao": "Regras de preço de um produto nas tabelas de preço: valor, operação (fixo, valor, margem, markup, desconto), preço-base, vigência e quantidade mínima. Busca por `termo` no nome do produto (passe o nome do produto ou o código que aparece entre colchetes no nome).",
+      "capability": null,
+      "sensitive": false,
+      "addedInVersion": null,
+      "inputSchemaKeys": [
+        "termo",
+        "limite"
+      ],
+      "inputSchemaFields": [
+        {
+          "name": "termo",
+          "type": "string",
+          "optional": true
+        },
+        {
+          "name": "limite",
+          "type": "integer",
+          "optional": true
+        }
+      ],
+      "examples": []
+    },
+    {
+      "id": "preco_tabela",
+      "operation": "read",
+      "module": "comercial",
+      "descricao": "Regras de uma tabela de preço pelo seu id: lista as regras (por produto, família ou participante) com valor, operação e vigência.",
+      "capability": null,
+      "sensitive": false,
+      "addedInVersion": null,
+      "inputSchemaKeys": [
+        "tabelaId",
+        "limite"
+      ],
+      "inputSchemaFields": [
+        {
+          "name": "tabelaId",
+          "type": "integer",
+          "optional": false
+        },
+        {
+          "name": "limite",
+          "type": "integer",
+          "optional": true
+        }
+      ],
+      "examples": []
+    },
+    {
+      "id": "comercial_contar_pedidos",
+      "operation": "read",
+      "module": "comercial",
+      "descricao": "Contagem total de pedidos cadastrados. Use para perguntas de quantidade absoluta ('quantos pedidos existem'): devolve só o número, sem amostra.",
+      "capability": null,
+      "sensitive": false,
+      "addedInVersion": null,
+      "inputSchemaKeys": [],
+      "inputSchemaFields": [],
+      "examples": []
+    },
+    {
+      "id": "preco_contar_regras",
+      "operation": "read",
+      "module": "comercial",
+      "descricao": "Contagem total de regras de preço cadastradas (todas as tabelas). Use para perguntas de quantidade absoluta ('quantas regras de preço existem'): devolve só o número, sem amostra.",
+      "capability": null,
+      "sensitive": false,
+      "addedInVersion": null,
+      "inputSchemaKeys": [],
+      "inputSchemaFields": [],
+      "examples": []
+    },
+    {
+      "id": "fiscal_faturamento_periodo",
+      "operation": "read",
+      "module": "fiscal",
+      "descricao": "Total de notas fiscais de saída autorizadas e valor faturado no período.",
+      "capability": null,
+      "sensitive": false,
+      "addedInVersion": null,
+      "inputSchemaKeys": [
+        "periodoDe",
+        "periodoAte"
+      ],
+      "inputSchemaFields": [
+        {
+          "name": "periodoDe",
+          "type": "string",
+          "optional": true
+        },
+        {
+          "name": "periodoAte",
+          "type": "string",
+          "optional": true
+        }
+      ],
+      "examples": []
+    },
+    {
+      "id": "fiscal_notas_emitidas",
+      "operation": "read",
+      "module": "fiscal",
+      "descricao": "Notas fiscais de saída emitidas, com valor e situação NFe, opcionalmente filtradas por período ou status.",
+      "capability": null,
+      "sensitive": false,
+      "addedInVersion": null,
+      "inputSchemaKeys": [
+        "periodoDe",
+        "periodoAte",
+        "situacaoNfe"
+      ],
+      "inputSchemaFields": [
+        {
+          "name": "periodoDe",
+          "type": "string",
+          "optional": true
+        },
+        {
+          "name": "periodoAte",
+          "type": "string",
+          "optional": true
+        },
+        {
+          "name": "situacaoNfe",
+          "type": "string",
+          "optional": true
+        }
+      ],
+      "examples": []
+    },
+    {
+      "id": "fiscal_notas_recebidas",
+      "operation": "read",
+      "module": "fiscal",
+      "descricao": "Notas fiscais de entrada recebidas (compras/devoluções), opcionalmente filtradas por período.",
+      "capability": null,
+      "sensitive": false,
+      "addedInVersion": null,
+      "inputSchemaKeys": [
+        "periodoDe",
+        "periodoAte"
+      ],
+      "inputSchemaFields": [
+        {
+          "name": "periodoDe",
+          "type": "string",
+          "optional": true
+        },
+        {
+          "name": "periodoAte",
+          "type": "string",
+          "optional": true
+        }
+      ],
+      "examples": []
+    },
+    {
+      "id": "fiscal_impostos_periodo",
+      "operation": "read",
+      "module": "fiscal",
+      "descricao": "Estimativa de impostos (IBPT e ICMS próprio) no período, agregados do cabeçalho da nota fiscal.",
+      "capability": null,
+      "sensitive": false,
+      "addedInVersion": null,
+      "inputSchemaKeys": [
+        "periodoDe",
+        "periodoAte"
+      ],
+      "inputSchemaFields": [
+        {
+          "name": "periodoDe",
+          "type": "string",
+          "optional": true
+        },
+        {
+          "name": "periodoAte",
+          "type": "string",
+          "optional": true
+        }
+      ],
+      "examples": []
+    },
+    {
+      "id": "fiscal_faturamento_por_cliente",
+      "operation": "read",
+      "module": "fiscal",
+      "descricao": "Faturamento agrupado por cliente (notas de saída autorizadas), ordenado por valor total decrescente.",
+      "capability": null,
+      "sensitive": false,
+      "addedInVersion": null,
+      "inputSchemaKeys": [
+        "periodoDe",
+        "periodoAte"
+      ],
+      "inputSchemaFields": [
+        {
+          "name": "periodoDe",
+          "type": "string",
+          "optional": true
+        },
+        {
+          "name": "periodoAte",
+          "type": "string",
+          "optional": true
+        }
+      ],
+      "examples": []
+    },
+    {
+      "id": "fiscal_produtos_faturados",
+      "operation": "read",
+      "module": "fiscal",
+      "descricao": "Produtos mais faturados em notas de saída, agrupados por nome do produto com quantidade total e valor total. Útil para analisar mix de vendas.",
+      "capability": null,
+      "sensitive": false,
+      "addedInVersion": null,
+      "inputSchemaKeys": [
+        "periodoDe",
+        "periodoAte",
+        "limite"
+      ],
+      "inputSchemaFields": [
+        {
+          "name": "periodoDe",
+          "type": "string",
+          "optional": true
+        },
+        {
+          "name": "periodoAte",
+          "type": "string",
+          "optional": true
+        },
+        {
+          "name": "limite",
+          "type": "integer",
+          "optional": true
+        }
+      ],
+      "examples": []
+    },
+    {
+      "id": "fiscal_notas_recebidas_por_fornecedor",
+      "operation": "read",
+      "module": "fiscal",
+      "descricao": "Notas fiscais de entrada (compras e devoluções, DF-e de fornecedores) agrupadas por fornecedor, ordenadas por valor total decrescente. Para perguntas sobre um fornecedor específico, passe `fornecedor` (nome ou parte) ou `documento` (CNPJ/CPF, sem ambiguidade). Quando filtrado, `totalAgregado` traz a contagem e o valor somados de todas as notas que casaram — é a resposta para 'quantas notas do fornecedor X'. Aceita filtro de período (periodoDe/periodoAte AAAA-MM-DD).",
+      "capability": null,
+      "sensitive": false,
+      "addedInVersion": null,
+      "inputSchemaKeys": [
+        "fornecedor",
+        "documento",
+        "periodoDe",
+        "periodoAte",
+        "limite"
+      ],
+      "inputSchemaFields": [
+        {
+          "name": "fornecedor",
+          "type": "string",
+          "optional": true
+        },
+        {
+          "name": "documento",
+          "type": "string",
+          "optional": true
+        },
+        {
+          "name": "periodoDe",
+          "type": "string",
+          "optional": true
+        },
+        {
+          "name": "periodoAte",
+          "type": "string",
+          "optional": true
+        },
+        {
+          "name": "limite",
+          "type": "integer",
+          "optional": true
+        }
+      ],
+      "examples": []
+    },
+    {
+      "id": "fiscal_apuracao",
+      "operation": "read",
+      "module": "fiscal",
+      "descricao": "Apurações fiscais da empresa (ICMS-IPI e PIS-COFINS): período, valores a recolher de ICMS, IPI, PIS e COFINS, saldo credor de ICMS e se a apuração foi entregue. Filtra por tipo.",
+      "capability": null,
+      "sensitive": false,
+      "addedInVersion": null,
+      "inputSchemaKeys": [
+        "tipo",
+        "limite"
+      ],
+      "inputSchemaFields": [
+        {
+          "name": "tipo",
+          "type": "enum",
+          "optional": true,
+          "enumValues": [
+            "ICMS-IPI",
+            "PIS-COFINS"
+          ]
+        },
+        {
+          "name": "limite",
+          "type": "integer",
+          "optional": true
+        }
+      ],
+      "examples": []
+    },
+    {
+      "id": "fiscal_carta_correcao",
+      "operation": "read",
+      "module": "fiscal",
+      "descricao": "Cartas de correção (CC-e) de documentos fiscais: o texto da correção, o documento corrigido, a data e o protocolo de autorização. Filtra por documentoId.",
+      "capability": null,
+      "sensitive": false,
+      "addedInVersion": null,
+      "inputSchemaKeys": [
+        "documentoId",
+        "limite"
+      ],
+      "inputSchemaFields": [
+        {
+          "name": "documentoId",
+          "type": "integer",
+          "optional": true
+        },
+        {
+          "name": "limite",
+          "type": "integer",
+          "optional": true
+        }
+      ],
+      "examples": []
+    },
+    {
+      "id": "fiscal_contar_notas",
+      "operation": "read",
+      "module": "fiscal",
+      "descricao": "Contagem total de notas fiscais. Use para perguntas de quantidade absoluta ('quantas notas fiscais existem'): devolve só os números — `total`, `totalEntrada` (DF-e de fornecedores) e `totalSaida` (emitidas).",
+      "capability": null,
+      "sensitive": false,
+      "addedInVersion": null,
+      "inputSchemaKeys": [],
+      "inputSchemaFields": [],
+      "examples": []
+    },
+    {
+      "id": "fiscal_certificados",
+      "operation": "read",
+      "module": "fiscal",
+      "descricao": "Certificados digitais (e-CNPJ) das empresas do grupo: tipo, número de série, proprietário, CNPJ e datas de validade. Ordenado do que vence primeiro para o último, útil para 'quais certificados estão perto de vencer'. Não expõe a senha nem o arquivo do certificado.",
+      "capability": null,
+      "sensitive": false,
+      "addedInVersion": null,
+      "inputSchemaKeys": [],
+      "inputSchemaFields": [],
+      "examples": []
+    },
+    {
+      "id": "referencia_buscar",
+      "operation": "read",
+      "module": "fiscal",
+      "descricao": "Consulta as tabelas de referência fiscais, cadastrais e geográficas (NCM, CFOP, CEST, CNAE, NBS, naturezas de operação, unidades, CSTs, municípios, países, estados). Informe `tabela` e um `termo` (código ou parte da descrição) para resolver 'o que é o código X'.",
+      "capability": null,
+      "sensitive": false,
+      "addedInVersion": null,
+      "inputSchemaKeys": [
+        "tabela",
+        "termo",
+        "limite"
+      ],
+      "inputSchemaFields": [
+        {
+          "name": "tabela",
+          "type": "enum",
+          "optional": false,
+          "enumValues": [
+            "ncm",
+            "cfop",
+            "cest",
+            "cnae",
+            "nbs",
+            "natureza_operacao",
+            "unidade",
+            "cst_icms",
+            "cst_icms_sn",
+            "cst_ipi",
+            "cst_pis_cofins",
+            "cst_cibs",
+            "municipio",
+            "pais",
+            "estado"
+          ]
+        },
+        {
+          "name": "termo",
+          "type": "string",
+          "optional": true
+        },
+        {
+          "name": "limite",
+          "type": "integer",
+          "optional": true
+        }
+      ],
+      "examples": []
+    },
+    {
+      "id": "cadastro_buscar_parceiro",
+      "operation": "read",
+      "module": "cadastros",
+      "descricao": "Busca parceiros (clientes, fornecedores ou contatos) por nome, nome completo ou documento (CNPJ/CPF) via busca textual.",
+      "capability": null,
+      "sensitive": false,
+      "addedInVersion": null,
+      "inputSchemaKeys": [
+        "termo",
+        "limite"
+      ],
+      "inputSchemaFields": [
+        {
+          "name": "termo",
+          "type": "string",
+          "optional": false
+        },
+        {
+          "name": "limite",
+          "type": "integer",
+          "optional": true
+        }
+      ],
+      "examples": []
+    },
+    {
+      "id": "cadastro_contar_parceiros",
+      "operation": "read",
+      "module": "cadastros",
+      "descricao": "Contagem total de parceiros cadastrados, segmentada por tipo: clientes, fornecedores e empresas.",
+      "capability": null,
+      "sensitive": false,
+      "addedInVersion": null,
+      "inputSchemaKeys": [],
+      "inputSchemaFields": [],
+      "examples": []
+    },
+    {
+      "id": "cadastro_parceiros_por_uf",
+      "operation": "read",
+      "module": "cadastros",
+      "descricao": "Distribuição geográfica de parceiros por UF (estado), ordenado por quantidade decrescente. Pode filtrar apenas clientes.",
+      "capability": null,
+      "sensitive": false,
+      "addedInVersion": null,
+      "inputSchemaKeys": [
+        "apenasClientes"
+      ],
+      "inputSchemaFields": [
+        {
+          "name": "apenasClientes",
+          "type": "boolean",
+          "optional": true
+        }
+      ],
+      "examples": []
+    },
+    {
+      "id": "servico_buscar",
+      "operation": "read",
+      "module": "cadastros",
+      "descricao": "Busca serviços no catálogo fiscal por termo (código ou descrição). Retorna código, descrição, código de tributação e alíquota de INSS retido.",
+      "capability": null,
+      "sensitive": false,
+      "addedInVersion": null,
+      "inputSchemaKeys": [
+        "termo",
+        "limite"
+      ],
+      "inputSchemaFields": [
+        {
+          "name": "termo",
+          "type": "string",
+          "optional": false
+        },
+        {
+          "name": "limite",
+          "type": "integer",
+          "optional": true
+        }
+      ],
+      "examples": []
+    },
+    {
+      "id": "servico_contar",
+      "operation": "read",
+      "module": "cadastros",
+      "descricao": "Contagem total de serviços no catálogo. Use para perguntas de quantidade absoluta ('quantos serviços existem'): devolve só o número, sem amostra.",
+      "capability": null,
+      "sensitive": false,
+      "addedInVersion": null,
+      "inputSchemaKeys": [],
+      "inputSchemaFields": [],
+      "examples": []
+    },
+    {
+      "id": "servico_listar",
+      "operation": "read",
+      "module": "cadastros",
+      "descricao": "Lista o catálogo de serviços fiscais ordenado por código. Útil para panorama dos serviços cadastrados.",
+      "capability": null,
+      "sensitive": false,
+      "addedInVersion": null,
+      "inputSchemaKeys": [
+        "limite"
+      ],
+      "inputSchemaFields": [
+        {
+          "name": "limite",
+          "type": "integer",
+          "optional": true
+        }
+      ],
+      "examples": []
+    },
+    {
+      "id": "cadastros.mail_activity.complete",
+      "operation": "write",
+      "module": "cadastros",
+      "descricao": "Conclui uma atividade (action_done). O Odoo cria uma mail.message de feedback e REMOVE a atividade (o estado não fica 'done', a atividade é apagada). Uma segunda chamada no mesmo id retorna AtividadeNaoEncontradaError.",
+      "capability": "transition:cadastros",
+      "sensitive": false,
+      "addedInVersion": 2,
+      "inputSchemaKeys": [
+        "id"
+      ],
+      "inputSchemaFields": [
+        {
+          "name": "id",
+          "type": "integer",
+          "optional": false
+        }
+      ],
+      "examples": [
+        {
+          "language": "curl",
+          "description": "Invocacao direta via curl",
+          "code": "curl -X POST https://mcp.exemplo.com.br/mcp \\\n  -H \"Authorization: Bearer <SERVICE_TOKEN>\" \\\n  -H \"X-Mcp-User-Id: <USER_ID>\" \\\n  -H \"X-Api-Key: <API_KEY>\" \\\n  -H \"Idempotency-Key: $(uuidgen)\" \\\n  -H \"Content-Type: application/json\" \\\n  -d '{\n  \"jsonrpc\": \"2.0\",\n  \"method\": \"tools/call\",\n  \"params\": {\n    \"name\": \"cadastros.mail_activity.complete\",\n    \"arguments\": {\n      \"id\": 11\n    }\n  }\n}'"
+        },
+        {
+          "language": "n8n",
+          "description": "Node HTTP Request no n8n",
+          "code": "// Node: HTTP Request\n// Method: POST\n// URL: {{ $env.MCP_URL }}\n// Headers:\n//   Authorization: Bearer {{ $env.MCP_SERVICE_TOKEN }}\n//   X-Mcp-User-Id: {{ $env.MCP_USER_ID }}\n//   X-Api-Key: {{ $env.MCP_API_KEY }}\n//   Idempotency-Key: {{ $json.idempotencyKey }}\n// Body (JSON):\n{\n  \"jsonrpc\": \"2.0\",\n  \"method\": \"tools/call\",\n  \"params\": {\n    \"name\": \"cadastros.mail_activity.complete\",\n    \"arguments\": {\n          \"id\": 11\n        }\n  }\n}"
+        },
+        {
+          "language": "python",
+          "description": "Chamada via requests",
+          "code": "import requests, uuid\n\nresponse = requests.post(\n    \"https://mcp.exemplo.com.br/mcp\",\n    headers={\n        \"Authorization\": \"Bearer <SERVICE_TOKEN>\",\n        \"X-Mcp-User-Id\": \"<USER_ID>\",\n        \"X-Api-Key\": \"<API_KEY>\",\n        \"Idempotency-Key\": str(uuid.uuid4()),\n        \"Content-Type\": \"application/json\",\n    },\n    json={\n        \"jsonrpc\": \"2.0\",\n        \"method\": \"tools/call\",\n        \"params\": {\n            \"name\": \"cadastros.mail_activity.complete\",\n            \"arguments\": {\n          \"id\": 11\n        },\n        },\n    },\n)\ndata = response.json()\nprint(data.get(\"result\"))"
+        },
+        {
+          "language": "javascript",
+          "description": "Chamada via fetch",
+          "code": "const response = await fetch(\"https://mcp.exemplo.com.br/mcp\", {\n  method: \"POST\",\n  headers: {\n    \"Authorization\": \"Bearer <SERVICE_TOKEN>\",\n    \"X-Mcp-User-Id\": \"<USER_ID>\",\n    \"X-Api-Key\": \"<API_KEY>\",\n    \"Idempotency-Key\": crypto.randomUUID(),\n    \"Content-Type\": \"application/json\",\n  },\n  body: JSON.stringify({\n    jsonrpc: \"2.0\",\n    method: \"tools/call\",\n    params: {\n      name: \"cadastros.mail_activity.complete\",\n      arguments: {\n          \"id\": 11\n        },\n    },\n  }),\n});\nconst { result } = await response.json();\nconsole.log(result);"
+        }
+      ]
+    },
+    {
+      "id": "cadastros.mail_activity.create",
+      "operation": "write",
+      "module": "cadastros",
+      "descricao": "Cria uma atividade (tarefa) atrelada a qualquer registro Odoo (parceiro, pedido, etc). Define prazo (date_deadline), responsável (user_id), tipo (activity_type_id) e descrição (summary + note opcional em HTML). Use cadastros.mail_activity.complete para concluir. O campo note aceita HTML; sanitize ao renderizar para o usuário final.",
+      "capability": "create:cadastros",
+      "sensitive": false,
+      "addedInVersion": 2,
+      "inputSchemaKeys": [
+        "res_model",
+        "res_id",
+        "summary",
+        "note",
+        "date_deadline",
+        "user_id",
+        "activity_type_id"
+      ],
+      "inputSchemaFields": [
+        {
+          "name": "res_model",
+          "type": "string",
+          "optional": false
+        },
+        {
+          "name": "res_id",
+          "type": "integer",
+          "optional": false
+        },
+        {
+          "name": "summary",
+          "type": "string",
+          "optional": false
+        },
+        {
+          "name": "note",
+          "type": "string",
+          "optional": true
+        },
+        {
+          "name": "date_deadline",
+          "type": "string",
+          "optional": false
+        },
+        {
+          "name": "user_id",
+          "type": "integer",
+          "optional": false
+        },
+        {
+          "name": "activity_type_id",
+          "type": "integer",
+          "optional": true
+        }
+      ],
+      "examples": [
+        {
+          "language": "curl",
+          "description": "Invocacao direta via curl",
+          "code": "curl -X POST https://mcp.exemplo.com.br/mcp \\\n  -H \"Authorization: Bearer <SERVICE_TOKEN>\" \\\n  -H \"X-Mcp-User-Id: <USER_ID>\" \\\n  -H \"X-Api-Key: <API_KEY>\" \\\n  -H \"Idempotency-Key: $(uuidgen)\" \\\n  -H \"Content-Type: application/json\" \\\n  -d '{\n  \"jsonrpc\": \"2.0\",\n  \"method\": \"tools/call\",\n  \"params\": {\n    \"name\": \"cadastros.mail_activity.create\",\n    \"arguments\": {\n      \"res_model\": \"res.partner\",\n      \"res_id\": 16426,\n      \"summary\": \"Ligar para o cliente\",\n      \"note\": \"<p>Cliente solicitou retorno em 48h.</p>\",\n      \"date_deadline\": \"2026-05-30\",\n      \"user_id\": 11,\n      \"activity_type_id\": 2\n    }\n  }\n}'"
+        },
+        {
+          "language": "n8n",
+          "description": "Node HTTP Request no n8n",
+          "code": "// Node: HTTP Request\n// Method: POST\n// URL: {{ $env.MCP_URL }}\n// Headers:\n//   Authorization: Bearer {{ $env.MCP_SERVICE_TOKEN }}\n//   X-Mcp-User-Id: {{ $env.MCP_USER_ID }}\n//   X-Api-Key: {{ $env.MCP_API_KEY }}\n//   Idempotency-Key: {{ $json.idempotencyKey }}\n// Body (JSON):\n{\n  \"jsonrpc\": \"2.0\",\n  \"method\": \"tools/call\",\n  \"params\": {\n    \"name\": \"cadastros.mail_activity.create\",\n    \"arguments\": {\n          \"res_model\": \"res.partner\",\n          \"res_id\": 16426,\n          \"summary\": \"Ligar para o cliente\",\n          \"note\": \"<p>Cliente solicitou retorno em 48h.</p>\",\n          \"date_deadline\": \"2026-05-30\",\n          \"user_id\": 11,\n          \"activity_type_id\": 2\n        }\n  }\n}"
+        },
+        {
+          "language": "python",
+          "description": "Chamada via requests",
+          "code": "import requests, uuid\n\nresponse = requests.post(\n    \"https://mcp.exemplo.com.br/mcp\",\n    headers={\n        \"Authorization\": \"Bearer <SERVICE_TOKEN>\",\n        \"X-Mcp-User-Id\": \"<USER_ID>\",\n        \"X-Api-Key\": \"<API_KEY>\",\n        \"Idempotency-Key\": str(uuid.uuid4()),\n        \"Content-Type\": \"application/json\",\n    },\n    json={\n        \"jsonrpc\": \"2.0\",\n        \"method\": \"tools/call\",\n        \"params\": {\n            \"name\": \"cadastros.mail_activity.create\",\n            \"arguments\": {\n          \"res_model\": \"res.partner\",\n          \"res_id\": 16426,\n          \"summary\": \"Ligar para o cliente\",\n          \"note\": \"<p>Cliente solicitou retorno em 48h.</p>\",\n          \"date_deadline\": \"2026-05-30\",\n          \"user_id\": 11,\n          \"activity_type_id\": 2\n        },\n        },\n    },\n)\ndata = response.json()\nprint(data.get(\"result\"))"
+        },
+        {
+          "language": "javascript",
+          "description": "Chamada via fetch",
+          "code": "const response = await fetch(\"https://mcp.exemplo.com.br/mcp\", {\n  method: \"POST\",\n  headers: {\n    \"Authorization\": \"Bearer <SERVICE_TOKEN>\",\n    \"X-Mcp-User-Id\": \"<USER_ID>\",\n    \"X-Api-Key\": \"<API_KEY>\",\n    \"Idempotency-Key\": crypto.randomUUID(),\n    \"Content-Type\": \"application/json\",\n  },\n  body: JSON.stringify({\n    jsonrpc: \"2.0\",\n    method: \"tools/call\",\n    params: {\n      name: \"cadastros.mail_activity.create\",\n      arguments: {\n          \"res_model\": \"res.partner\",\n          \"res_id\": 16426,\n          \"summary\": \"Ligar para o cliente\",\n          \"note\": \"<p>Cliente solicitou retorno em 48h.</p>\",\n          \"date_deadline\": \"2026-05-30\",\n          \"user_id\": 11,\n          \"activity_type_id\": 2\n        },\n    },\n  }),\n});\nconst { result } = await response.json();\nconsole.log(result);"
+        }
+      ]
+    },
+    {
+      "id": "cadastros.mail_activity.update",
+      "operation": "write",
+      "module": "cadastros",
+      "descricao": "Atualiza summary, note, date_deadline, user_id ou activity_type_id de uma atividade existente. NÃO permite mudar res_model/res_id (a atividade não muda de registro alvo). Exige ao menos 1 campo além de id.",
+      "capability": "update:cadastros",
+      "sensitive": false,
+      "addedInVersion": 2,
+      "inputSchemaKeys": [
+        "id",
+        "summary",
+        "note",
+        "date_deadline",
+        "user_id",
+        "activity_type_id"
+      ],
+      "inputSchemaFields": [
+        {
+          "name": "id",
+          "type": "integer",
+          "optional": false
+        },
+        {
+          "name": "summary",
+          "type": "string",
+          "optional": true
+        },
+        {
+          "name": "note",
+          "type": "string",
+          "optional": true
+        },
+        {
+          "name": "date_deadline",
+          "type": "string",
+          "optional": true
+        },
+        {
+          "name": "user_id",
+          "type": "integer",
+          "optional": true
+        },
+        {
+          "name": "activity_type_id",
+          "type": "integer",
+          "optional": true
+        }
+      ],
+      "examples": [
+        {
+          "language": "curl",
+          "description": "Invocacao direta via curl",
+          "code": "curl -X POST https://mcp.exemplo.com.br/mcp \\\n  -H \"Authorization: Bearer <SERVICE_TOKEN>\" \\\n  -H \"X-Mcp-User-Id: <USER_ID>\" \\\n  -H \"X-Api-Key: <API_KEY>\" \\\n  -H \"Idempotency-Key: $(uuidgen)\" \\\n  -H \"Content-Type: application/json\" \\\n  -d '{\n  \"jsonrpc\": \"2.0\",\n  \"method\": \"tools/call\",\n  \"params\": {\n    \"name\": \"cadastros.mail_activity.update\",\n    \"arguments\": {\n      \"id\": 11,\n      \"date_deadline\": \"2026-06-15\",\n      \"summary\": \"Reagendado\"\n    }\n  }\n}'"
+        },
+        {
+          "language": "n8n",
+          "description": "Node HTTP Request no n8n",
+          "code": "// Node: HTTP Request\n// Method: POST\n// URL: {{ $env.MCP_URL }}\n// Headers:\n//   Authorization: Bearer {{ $env.MCP_SERVICE_TOKEN }}\n//   X-Mcp-User-Id: {{ $env.MCP_USER_ID }}\n//   X-Api-Key: {{ $env.MCP_API_KEY }}\n//   Idempotency-Key: {{ $json.idempotencyKey }}\n// Body (JSON):\n{\n  \"jsonrpc\": \"2.0\",\n  \"method\": \"tools/call\",\n  \"params\": {\n    \"name\": \"cadastros.mail_activity.update\",\n    \"arguments\": {\n          \"id\": 11,\n          \"date_deadline\": \"2026-06-15\",\n          \"summary\": \"Reagendado\"\n        }\n  }\n}"
+        },
+        {
+          "language": "python",
+          "description": "Chamada via requests",
+          "code": "import requests, uuid\n\nresponse = requests.post(\n    \"https://mcp.exemplo.com.br/mcp\",\n    headers={\n        \"Authorization\": \"Bearer <SERVICE_TOKEN>\",\n        \"X-Mcp-User-Id\": \"<USER_ID>\",\n        \"X-Api-Key\": \"<API_KEY>\",\n        \"Idempotency-Key\": str(uuid.uuid4()),\n        \"Content-Type\": \"application/json\",\n    },\n    json={\n        \"jsonrpc\": \"2.0\",\n        \"method\": \"tools/call\",\n        \"params\": {\n            \"name\": \"cadastros.mail_activity.update\",\n            \"arguments\": {\n          \"id\": 11,\n          \"date_deadline\": \"2026-06-15\",\n          \"summary\": \"Reagendado\"\n        },\n        },\n    },\n)\ndata = response.json()\nprint(data.get(\"result\"))"
+        },
+        {
+          "language": "javascript",
+          "description": "Chamada via fetch",
+          "code": "const response = await fetch(\"https://mcp.exemplo.com.br/mcp\", {\n  method: \"POST\",\n  headers: {\n    \"Authorization\": \"Bearer <SERVICE_TOKEN>\",\n    \"X-Mcp-User-Id\": \"<USER_ID>\",\n    \"X-Api-Key\": \"<API_KEY>\",\n    \"Idempotency-Key\": crypto.randomUUID(),\n    \"Content-Type\": \"application/json\",\n  },\n  body: JSON.stringify({\n    jsonrpc: \"2.0\",\n    method: \"tools/call\",\n    params: {\n      name: \"cadastros.mail_activity.update\",\n      arguments: {\n          \"id\": 11,\n          \"date_deadline\": \"2026-06-15\",\n          \"summary\": \"Reagendado\"\n        },\n    },\n  }),\n});\nconst { result } = await response.json();\nconsole.log(result);"
+        }
+      ]
+    },
+    {
+      "id": "cadastros.res_partner.archive",
+      "operation": "write",
+      "module": "cadastros",
+      "descricao": "Arquiva (desativa) um parceiro definindo active=false. É reversível: chame cadastros.res_partner.update com {active: true} para reativar. Use cadastros.res_partner.delete para remoção permanente.",
+      "capability": "archive:cadastros",
+      "sensitive": false,
+      "addedInVersion": 2,
+      "inputSchemaKeys": [
+        "id"
+      ],
+      "inputSchemaFields": [
+        {
+          "name": "id",
+          "type": "integer",
+          "optional": false
+        }
+      ],
+      "examples": [
+        {
+          "language": "curl",
+          "description": "Invocacao direta via curl",
+          "code": "curl -X POST https://mcp.exemplo.com.br/mcp \\\n  -H \"Authorization: Bearer <SERVICE_TOKEN>\" \\\n  -H \"X-Mcp-User-Id: <USER_ID>\" \\\n  -H \"X-Api-Key: <API_KEY>\" \\\n  -H \"Idempotency-Key: $(uuidgen)\" \\\n  -H \"Content-Type: application/json\" \\\n  -d '{\n  \"jsonrpc\": \"2.0\",\n  \"method\": \"tools/call\",\n  \"params\": {\n    \"name\": \"cadastros.res_partner.archive\",\n    \"arguments\": {\n      \"id\": 16426\n    }\n  }\n}'"
+        },
+        {
+          "language": "n8n",
+          "description": "Node HTTP Request no n8n",
+          "code": "// Node: HTTP Request\n// Method: POST\n// URL: {{ $env.MCP_URL }}\n// Headers:\n//   Authorization: Bearer {{ $env.MCP_SERVICE_TOKEN }}\n//   X-Mcp-User-Id: {{ $env.MCP_USER_ID }}\n//   X-Api-Key: {{ $env.MCP_API_KEY }}\n//   Idempotency-Key: {{ $json.idempotencyKey }}\n// Body (JSON):\n{\n  \"jsonrpc\": \"2.0\",\n  \"method\": \"tools/call\",\n  \"params\": {\n    \"name\": \"cadastros.res_partner.archive\",\n    \"arguments\": {\n          \"id\": 16426\n        }\n  }\n}"
+        },
+        {
+          "language": "python",
+          "description": "Chamada via requests",
+          "code": "import requests, uuid\n\nresponse = requests.post(\n    \"https://mcp.exemplo.com.br/mcp\",\n    headers={\n        \"Authorization\": \"Bearer <SERVICE_TOKEN>\",\n        \"X-Mcp-User-Id\": \"<USER_ID>\",\n        \"X-Api-Key\": \"<API_KEY>\",\n        \"Idempotency-Key\": str(uuid.uuid4()),\n        \"Content-Type\": \"application/json\",\n    },\n    json={\n        \"jsonrpc\": \"2.0\",\n        \"method\": \"tools/call\",\n        \"params\": {\n            \"name\": \"cadastros.res_partner.archive\",\n            \"arguments\": {\n          \"id\": 16426\n        },\n        },\n    },\n)\ndata = response.json()\nprint(data.get(\"result\"))"
+        },
+        {
+          "language": "javascript",
+          "description": "Chamada via fetch",
+          "code": "const response = await fetch(\"https://mcp.exemplo.com.br/mcp\", {\n  method: \"POST\",\n  headers: {\n    \"Authorization\": \"Bearer <SERVICE_TOKEN>\",\n    \"X-Mcp-User-Id\": \"<USER_ID>\",\n    \"X-Api-Key\": \"<API_KEY>\",\n    \"Idempotency-Key\": crypto.randomUUID(),\n    \"Content-Type\": \"application/json\",\n  },\n  body: JSON.stringify({\n    jsonrpc: \"2.0\",\n    method: \"tools/call\",\n    params: {\n      name: \"cadastros.res_partner.archive\",\n      arguments: {\n          \"id\": 16426\n        },\n    },\n  }),\n});\nconst { result } = await response.json();\nconsole.log(result);"
+        }
+      ]
+    },
+    {
+      "id": "cadastros.res_partner_category.create",
+      "operation": "write",
+      "module": "cadastros",
+      "descricao": "Cria uma tag/categoria de parceiro (res.partner.category). É idempotente por (name, parent_id): se já existir uma tag com o mesmo nome e mesma categoria pai, retorna a existente com created=false. Em condição de corrida extrema pode duplicar.",
+      "capability": "create:cadastros",
+      "sensitive": false,
+      "addedInVersion": 2,
+      "inputSchemaKeys": [
+        "name",
+        "color",
+        "parent_id"
+      ],
+      "inputSchemaFields": [
+        {
+          "name": "name",
+          "type": "string",
+          "optional": false
+        },
+        {
+          "name": "color",
+          "type": "integer",
+          "optional": true
+        },
+        {
+          "name": "parent_id",
+          "type": "integer",
+          "optional": true
+        }
+      ],
+      "examples": [
+        {
+          "language": "curl",
+          "description": "Invocacao direta via curl",
+          "code": "curl -X POST https://mcp.exemplo.com.br/mcp \\\n  -H \"Authorization: Bearer <SERVICE_TOKEN>\" \\\n  -H \"X-Mcp-User-Id: <USER_ID>\" \\\n  -H \"X-Api-Key: <API_KEY>\" \\\n  -H \"Idempotency-Key: $(uuidgen)\" \\\n  -H \"Content-Type: application/json\" \\\n  -d '{\n  \"jsonrpc\": \"2.0\",\n  \"method\": \"tools/call\",\n  \"params\": {\n    \"name\": \"cadastros.res_partner_category.create\",\n    \"arguments\": {\n      \"name\": \"VIP\",\n      \"color\": 1\n    }\n  }\n}'"
+        },
+        {
+          "language": "n8n",
+          "description": "Node HTTP Request no n8n",
+          "code": "// Node: HTTP Request\n// Method: POST\n// URL: {{ $env.MCP_URL }}\n// Headers:\n//   Authorization: Bearer {{ $env.MCP_SERVICE_TOKEN }}\n//   X-Mcp-User-Id: {{ $env.MCP_USER_ID }}\n//   X-Api-Key: {{ $env.MCP_API_KEY }}\n//   Idempotency-Key: {{ $json.idempotencyKey }}\n// Body (JSON):\n{\n  \"jsonrpc\": \"2.0\",\n  \"method\": \"tools/call\",\n  \"params\": {\n    \"name\": \"cadastros.res_partner_category.create\",\n    \"arguments\": {\n          \"name\": \"VIP\",\n          \"color\": 1\n        }\n  }\n}"
+        },
+        {
+          "language": "python",
+          "description": "Chamada via requests",
+          "code": "import requests, uuid\n\nresponse = requests.post(\n    \"https://mcp.exemplo.com.br/mcp\",\n    headers={\n        \"Authorization\": \"Bearer <SERVICE_TOKEN>\",\n        \"X-Mcp-User-Id\": \"<USER_ID>\",\n        \"X-Api-Key\": \"<API_KEY>\",\n        \"Idempotency-Key\": str(uuid.uuid4()),\n        \"Content-Type\": \"application/json\",\n    },\n    json={\n        \"jsonrpc\": \"2.0\",\n        \"method\": \"tools/call\",\n        \"params\": {\n            \"name\": \"cadastros.res_partner_category.create\",\n            \"arguments\": {\n          \"name\": \"VIP\",\n          \"color\": 1\n        },\n        },\n    },\n)\ndata = response.json()\nprint(data.get(\"result\"))"
+        },
+        {
+          "language": "javascript",
+          "description": "Chamada via fetch",
+          "code": "const response = await fetch(\"https://mcp.exemplo.com.br/mcp\", {\n  method: \"POST\",\n  headers: {\n    \"Authorization\": \"Bearer <SERVICE_TOKEN>\",\n    \"X-Mcp-User-Id\": \"<USER_ID>\",\n    \"X-Api-Key\": \"<API_KEY>\",\n    \"Idempotency-Key\": crypto.randomUUID(),\n    \"Content-Type\": \"application/json\",\n  },\n  body: JSON.stringify({\n    jsonrpc: \"2.0\",\n    method: \"tools/call\",\n    params: {\n      name: \"cadastros.res_partner_category.create\",\n      arguments: {\n          \"name\": \"VIP\",\n          \"color\": 1\n        },\n    },\n  }),\n});\nconst { result } = await response.json();\nconsole.log(result);"
+        }
+      ]
+    },
+    {
+      "id": "cadastros.res_partner_category.set_tags",
+      "operation": "write",
+      "module": "cadastros",
+      "descricao": "Gerencia as tags de um parceiro. Modos: 'add' (padrão, adiciona sem remover as atuais), 'remove' (remove as listadas) e 'replace' (DESTRUTIVO: substitui todas pelas listadas). ADD e REMOVE são idempotentes. Use REPLACE com cuidado.",
+      "capability": "update:cadastros",
+      "sensitive": false,
+      "addedInVersion": 2,
+      "inputSchemaKeys": [
+        "partner_id",
+        "category_ids",
+        "mode"
+      ],
+      "inputSchemaFields": [
+        {
+          "name": "partner_id",
+          "type": "integer",
+          "optional": false
+        },
+        {
+          "name": "category_ids",
+          "type": "array",
+          "optional": false
+        },
+        {
+          "name": "mode",
+          "type": "enum",
+          "optional": true,
+          "enumValues": [
+            "add",
+            "remove",
+            "replace"
+          ]
+        }
+      ],
+      "examples": [
+        {
+          "language": "curl",
+          "description": "Invocacao direta via curl",
+          "code": "curl -X POST https://mcp.exemplo.com.br/mcp \\\n  -H \"Authorization: Bearer <SERVICE_TOKEN>\" \\\n  -H \"X-Mcp-User-Id: <USER_ID>\" \\\n  -H \"X-Api-Key: <API_KEY>\" \\\n  -H \"Idempotency-Key: $(uuidgen)\" \\\n  -H \"Content-Type: application/json\" \\\n  -d '{\n  \"jsonrpc\": \"2.0\",\n  \"method\": \"tools/call\",\n  \"params\": {\n    \"name\": \"cadastros.res_partner_category.set_tags\",\n    \"arguments\": {\n      \"partner_id\": 16426,\n      \"category_ids\": [\n        1,\n        2\n      ],\n      \"mode\": \"add\"\n    }\n  }\n}'"
+        },
+        {
+          "language": "n8n",
+          "description": "Node HTTP Request no n8n",
+          "code": "// Node: HTTP Request\n// Method: POST\n// URL: {{ $env.MCP_URL }}\n// Headers:\n//   Authorization: Bearer {{ $env.MCP_SERVICE_TOKEN }}\n//   X-Mcp-User-Id: {{ $env.MCP_USER_ID }}\n//   X-Api-Key: {{ $env.MCP_API_KEY }}\n//   Idempotency-Key: {{ $json.idempotencyKey }}\n// Body (JSON):\n{\n  \"jsonrpc\": \"2.0\",\n  \"method\": \"tools/call\",\n  \"params\": {\n    \"name\": \"cadastros.res_partner_category.set_tags\",\n    \"arguments\": {\n          \"partner_id\": 16426,\n          \"category_ids\": [\n            1,\n            2\n          ],\n          \"mode\": \"add\"\n        }\n  }\n}"
+        },
+        {
+          "language": "python",
+          "description": "Chamada via requests",
+          "code": "import requests, uuid\n\nresponse = requests.post(\n    \"https://mcp.exemplo.com.br/mcp\",\n    headers={\n        \"Authorization\": \"Bearer <SERVICE_TOKEN>\",\n        \"X-Mcp-User-Id\": \"<USER_ID>\",\n        \"X-Api-Key\": \"<API_KEY>\",\n        \"Idempotency-Key\": str(uuid.uuid4()),\n        \"Content-Type\": \"application/json\",\n    },\n    json={\n        \"jsonrpc\": \"2.0\",\n        \"method\": \"tools/call\",\n        \"params\": {\n            \"name\": \"cadastros.res_partner_category.set_tags\",\n            \"arguments\": {\n          \"partner_id\": 16426,\n          \"category_ids\": [\n            1,\n            2\n          ],\n          \"mode\": \"add\"\n        },\n        },\n    },\n)\ndata = response.json()\nprint(data.get(\"result\"))"
+        },
+        {
+          "language": "javascript",
+          "description": "Chamada via fetch",
+          "code": "const response = await fetch(\"https://mcp.exemplo.com.br/mcp\", {\n  method: \"POST\",\n  headers: {\n    \"Authorization\": \"Bearer <SERVICE_TOKEN>\",\n    \"X-Mcp-User-Id\": \"<USER_ID>\",\n    \"X-Api-Key\": \"<API_KEY>\",\n    \"Idempotency-Key\": crypto.randomUUID(),\n    \"Content-Type\": \"application/json\",\n  },\n  body: JSON.stringify({\n    jsonrpc: \"2.0\",\n    method: \"tools/call\",\n    params: {\n      name: \"cadastros.res_partner_category.set_tags\",\n      arguments: {\n          \"partner_id\": 16426,\n          \"category_ids\": [\n            1,\n            2\n          ],\n          \"mode\": \"add\"\n        },\n    },\n  }),\n});\nconst { result } = await response.json();\nconsole.log(result);"
+        }
+      ]
+    },
+    {
+      "id": "cadastros.res_partner.delete",
+      "operation": "write",
+      "module": "cadastros",
+      "descricao": "Remove permanentemente um parceiro (unlink). IRREVERSÍVEL. Falha com ParceiroEmUsoError se houver pedidos, lançamentos ou usuários vinculados. Para desativação reversível, use cadastros.res_partner.archive.",
+      "capability": "delete:cadastros",
+      "sensitive": true,
+      "addedInVersion": 2,
+      "inputSchemaKeys": [
+        "id"
+      ],
+      "inputSchemaFields": [
+        {
+          "name": "id",
+          "type": "integer",
+          "optional": false
+        }
+      ],
+      "examples": [
+        {
+          "language": "curl",
+          "description": "Invocacao direta via curl",
+          "code": "curl -X POST https://mcp.exemplo.com.br/mcp \\\n  -H \"Authorization: Bearer <SERVICE_TOKEN>\" \\\n  -H \"X-Mcp-User-Id: <USER_ID>\" \\\n  -H \"X-Api-Key: <API_KEY>\" \\\n  -H \"Idempotency-Key: $(uuidgen)\" \\\n  -H \"Content-Type: application/json\" \\\n  -d '{\n  \"jsonrpc\": \"2.0\",\n  \"method\": \"tools/call\",\n  \"params\": {\n    \"name\": \"cadastros.res_partner.delete\",\n    \"arguments\": {\n      \"id\": 16426\n    }\n  }\n}'"
+        },
+        {
+          "language": "n8n",
+          "description": "Node HTTP Request no n8n",
+          "code": "// Node: HTTP Request\n// Method: POST\n// URL: {{ $env.MCP_URL }}\n// Headers:\n//   Authorization: Bearer {{ $env.MCP_SERVICE_TOKEN }}\n//   X-Mcp-User-Id: {{ $env.MCP_USER_ID }}\n//   X-Api-Key: {{ $env.MCP_API_KEY }}\n//   Idempotency-Key: {{ $json.idempotencyKey }}\n// Body (JSON):\n{\n  \"jsonrpc\": \"2.0\",\n  \"method\": \"tools/call\",\n  \"params\": {\n    \"name\": \"cadastros.res_partner.delete\",\n    \"arguments\": {\n          \"id\": 16426\n        }\n  }\n}"
+        },
+        {
+          "language": "python",
+          "description": "Chamada via requests",
+          "code": "import requests, uuid\n\nresponse = requests.post(\n    \"https://mcp.exemplo.com.br/mcp\",\n    headers={\n        \"Authorization\": \"Bearer <SERVICE_TOKEN>\",\n        \"X-Mcp-User-Id\": \"<USER_ID>\",\n        \"X-Api-Key\": \"<API_KEY>\",\n        \"Idempotency-Key\": str(uuid.uuid4()),\n        \"Content-Type\": \"application/json\",\n    },\n    json={\n        \"jsonrpc\": \"2.0\",\n        \"method\": \"tools/call\",\n        \"params\": {\n            \"name\": \"cadastros.res_partner.delete\",\n            \"arguments\": {\n          \"id\": 16426\n        },\n        },\n    },\n)\ndata = response.json()\nprint(data.get(\"result\"))"
+        },
+        {
+          "language": "javascript",
+          "description": "Chamada via fetch",
+          "code": "const response = await fetch(\"https://mcp.exemplo.com.br/mcp\", {\n  method: \"POST\",\n  headers: {\n    \"Authorization\": \"Bearer <SERVICE_TOKEN>\",\n    \"X-Mcp-User-Id\": \"<USER_ID>\",\n    \"X-Api-Key\": \"<API_KEY>\",\n    \"Idempotency-Key\": crypto.randomUUID(),\n    \"Content-Type\": \"application/json\",\n  },\n  body: JSON.stringify({\n    jsonrpc: \"2.0\",\n    method: \"tools/call\",\n    params: {\n      name: \"cadastros.res_partner.delete\",\n      arguments: {\n          \"id\": 16426\n        },\n    },\n  }),\n});\nconst { result } = await response.json();\nconsole.log(result);"
+        }
+      ]
+    },
+    {
+      "id": "cadastros.res_partner.update",
+      "operation": "write",
+      "module": "cadastros",
+      "descricao": "Atualiza um parceiro (cliente, fornecedor ou contato) existente no Odoo. Aceita campos de identidade, contato, endereço, classificação e flags (active/customer/supplier/employee). 'whatsapp' é apelido de 'mobile' (se ambos forem passados, whatsapp prevalece). O snapshot anterior é lido por padrão; use _skipSnapshotBefore=true em fluxos de alto volume.",
+      "capability": "update:cadastros",
+      "sensitive": false,
+      "addedInVersion": 2,
+      "inputSchemaKeys": [
+        "id",
+        "name",
+        "is_company",
+        "company_type",
+        "company_registry",
+        "vat",
+        "email",
+        "phone",
+        "mobile",
+        "whatsapp",
+        "website",
+        "function",
+        "street",
+        "street2",
+        "city",
+        "zip",
+        "country_id",
+        "state_id",
+        "industry_id",
+        "title",
+        "active",
+        "customer",
+        "supplier",
+        "employee",
+        "lang",
+        "tz",
+        "comment",
+        "ref",
+        "_skipSnapshotBefore"
+      ],
+      "inputSchemaFields": [
+        {
+          "name": "id",
+          "type": "integer",
+          "optional": false
+        },
+        {
+          "name": "name",
+          "type": "string",
+          "optional": true
+        },
+        {
+          "name": "is_company",
+          "type": "boolean",
+          "optional": true
+        },
+        {
+          "name": "company_type",
+          "type": "enum",
+          "optional": true,
+          "enumValues": [
+            "person",
+            "company"
+          ]
+        },
+        {
+          "name": "company_registry",
+          "type": "string",
+          "optional": true
+        },
+        {
+          "name": "vat",
+          "type": "string",
+          "optional": true
+        },
+        {
+          "name": "email",
+          "type": "string",
+          "optional": true
+        },
+        {
+          "name": "phone",
+          "type": "string",
+          "optional": true
+        },
+        {
+          "name": "mobile",
+          "type": "string",
+          "optional": true
+        },
+        {
+          "name": "whatsapp",
+          "type": "string",
+          "optional": true
+        },
+        {
+          "name": "website",
+          "type": "string",
+          "optional": true
+        },
+        {
+          "name": "function",
+          "type": "string",
+          "optional": true
+        },
+        {
+          "name": "street",
+          "type": "string",
+          "optional": true
+        },
+        {
+          "name": "street2",
+          "type": "string",
+          "optional": true
+        },
+        {
+          "name": "city",
+          "type": "string",
+          "optional": true
+        },
+        {
+          "name": "zip",
+          "type": "string",
+          "optional": true
+        },
+        {
+          "name": "country_id",
+          "type": "integer",
+          "optional": true
+        },
+        {
+          "name": "state_id",
+          "type": "integer",
+          "optional": true
+        },
+        {
+          "name": "industry_id",
+          "type": "integer",
+          "optional": true
+        },
+        {
+          "name": "title",
+          "type": "integer",
+          "optional": true
+        },
+        {
+          "name": "active",
+          "type": "boolean",
+          "optional": true
+        },
+        {
+          "name": "customer",
+          "type": "boolean",
+          "optional": true
+        },
+        {
+          "name": "supplier",
+          "type": "boolean",
+          "optional": true
+        },
+        {
+          "name": "employee",
+          "type": "boolean",
+          "optional": true
+        },
+        {
+          "name": "lang",
+          "type": "string",
+          "optional": true
+        },
+        {
+          "name": "tz",
+          "type": "string",
+          "optional": true
+        },
+        {
+          "name": "comment",
+          "type": "string",
+          "optional": true
+        },
+        {
+          "name": "ref",
+          "type": "string",
+          "optional": true
+        },
+        {
+          "name": "_skipSnapshotBefore",
+          "type": "boolean",
+          "optional": true
+        }
+      ],
+      "examples": [
+        {
+          "language": "curl",
+          "description": "Invocacao direta via curl",
+          "code": "curl -X POST https://mcp.exemplo.com.br/mcp \\\n  -H \"Authorization: Bearer <SERVICE_TOKEN>\" \\\n  -H \"X-Mcp-User-Id: <USER_ID>\" \\\n  -H \"X-Api-Key: <API_KEY>\" \\\n  -H \"Idempotency-Key: $(uuidgen)\" \\\n  -H \"Content-Type: application/json\" \\\n  -d '{\n  \"jsonrpc\": \"2.0\",\n  \"method\": \"tools/call\",\n  \"params\": {\n    \"name\": \"cadastros.res_partner.update\",\n    \"arguments\": {\n      \"id\": 16426,\n      \"phone\": \"(11) 4002-8923\",\n      \"whatsapp\": \"(11) 99999-1234\",\n      \"comment\": \"<p>Atualizado em 2026-05-23.</p>\"\n    }\n  }\n}'"
+        },
+        {
+          "language": "n8n",
+          "description": "Node HTTP Request no n8n",
+          "code": "// Node: HTTP Request\n// Method: POST\n// URL: {{ $env.MCP_URL }}\n// Headers:\n//   Authorization: Bearer {{ $env.MCP_SERVICE_TOKEN }}\n//   X-Mcp-User-Id: {{ $env.MCP_USER_ID }}\n//   X-Api-Key: {{ $env.MCP_API_KEY }}\n//   Idempotency-Key: {{ $json.idempotencyKey }}\n// Body (JSON):\n{\n  \"jsonrpc\": \"2.0\",\n  \"method\": \"tools/call\",\n  \"params\": {\n    \"name\": \"cadastros.res_partner.update\",\n    \"arguments\": {\n          \"id\": 16426,\n          \"phone\": \"(11) 4002-8923\",\n          \"whatsapp\": \"(11) 99999-1234\",\n          \"comment\": \"<p>Atualizado em 2026-05-23.</p>\"\n        }\n  }\n}"
+        },
+        {
+          "language": "python",
+          "description": "Chamada via requests",
+          "code": "import requests, uuid\n\nresponse = requests.post(\n    \"https://mcp.exemplo.com.br/mcp\",\n    headers={\n        \"Authorization\": \"Bearer <SERVICE_TOKEN>\",\n        \"X-Mcp-User-Id\": \"<USER_ID>\",\n        \"X-Api-Key\": \"<API_KEY>\",\n        \"Idempotency-Key\": str(uuid.uuid4()),\n        \"Content-Type\": \"application/json\",\n    },\n    json={\n        \"jsonrpc\": \"2.0\",\n        \"method\": \"tools/call\",\n        \"params\": {\n            \"name\": \"cadastros.res_partner.update\",\n            \"arguments\": {\n          \"id\": 16426,\n          \"phone\": \"(11) 4002-8923\",\n          \"whatsapp\": \"(11) 99999-1234\",\n          \"comment\": \"<p>Atualizado em 2026-05-23.</p>\"\n        },\n        },\n    },\n)\ndata = response.json()\nprint(data.get(\"result\"))"
+        },
+        {
+          "language": "javascript",
+          "description": "Chamada via fetch",
+          "code": "const response = await fetch(\"https://mcp.exemplo.com.br/mcp\", {\n  method: \"POST\",\n  headers: {\n    \"Authorization\": \"Bearer <SERVICE_TOKEN>\",\n    \"X-Mcp-User-Id\": \"<USER_ID>\",\n    \"X-Api-Key\": \"<API_KEY>\",\n    \"Idempotency-Key\": crypto.randomUUID(),\n    \"Content-Type\": \"application/json\",\n  },\n  body: JSON.stringify({\n    jsonrpc: \"2.0\",\n    method: \"tools/call\",\n    params: {\n      name: \"cadastros.res_partner.update\",\n      arguments: {\n          \"id\": 16426,\n          \"phone\": \"(11) 4002-8923\",\n          \"whatsapp\": \"(11) 99999-1234\",\n          \"comment\": \"<p>Atualizado em 2026-05-23.</p>\"\n        },\n    },\n  }),\n});\nconst { result } = await response.json();\nconsole.log(result);"
+        }
+      ]
+    },
+    {
+      "id": "contabil_plano_de_contas",
+      "operation": "read",
+      "module": "contabil",
+      "descricao": "Lista as contas do plano de contas contábil da Matrix, com código hierárquico, nome, tipo (S=sintética/A=analítica) e conta pai. Filtre por termo (código ou nome). NOTA: não há lançamento/movimento contábil no Odoo da Matrix, apenas a estrutura do plano de contas.",
+      "capability": null,
+      "sensitive": false,
+      "addedInVersion": null,
+      "inputSchemaKeys": [
+        "termo",
+        "limite"
+      ],
+      "inputSchemaFields": [
+        {
+          "name": "termo",
+          "type": "string",
+          "optional": true
+        },
+        {
+          "name": "limite",
+          "type": "integer",
+          "optional": true
+        }
+      ],
+      "examples": []
+    },
+    {
+      "id": "contabil_estrutura_conta",
+      "operation": "read",
+      "module": "contabil",
+      "descricao": "Retorna os detalhes de uma conta contábil pelo odooId e suas contas filhas diretas. Útil para navegar a hierarquia do plano de contas. NOTA: não há lançamento/movimento contábil no Odoo da Matrix, apenas a estrutura do plano de contas.",
+      "capability": null,
+      "sensitive": false,
+      "addedInVersion": null,
+      "inputSchemaKeys": [
+        "odooId"
+      ],
+      "inputSchemaFields": [
+        {
+          "name": "odooId",
+          "type": "integer",
+          "optional": false
+        }
+      ],
+      "examples": []
+    },
+    {
+      "id": "rh_status_dominio",
+      "operation": "read",
+      "module": "outros",
+      "descricao": "Informa o status do domínio RH no Odoo da Matrix: módulo existente mas não operado (0 registros).",
+      "capability": null,
+      "sensitive": false,
+      "addedInVersion": null,
+      "inputSchemaKeys": [],
+      "inputSchemaFields": [],
+      "examples": []
+    },
+    {
+      "id": "crm_status_dominio",
+      "operation": "read",
+      "module": "outros",
+      "descricao": "Informa o status do domínio CRM no Odoo da Matrix: módulo existente mas não operado (0 registros).",
+      "capability": null,
+      "sensitive": false,
+      "addedInVersion": null,
+      "inputSchemaKeys": [],
+      "inputSchemaFields": [],
+      "examples": []
+    },
+    {
+      "id": "producao_status_dominio",
+      "operation": "read",
+      "module": "outros",
+      "descricao": "Informa o status do domínio Produção no Odoo da Matrix: módulo existente mas não operado (0 registros).",
+      "capability": null,
+      "sensitive": false,
+      "addedInVersion": null,
+      "inputSchemaKeys": [],
+      "inputSchemaFields": [],
+      "examples": []
+    },
+    {
+      "id": "crm.res_partner.get",
+      "operation": "read",
+      "module": "crm",
+      "descricao": "Retorna o registro raw de um res.partner pelo seu ID do Odoo. Lê do cache local (rawResPartner), não consulta o Odoo ao vivo. Retorna o campo `data` (JSON bruto sincronizado) e metadados de sync.",
+      "capability": null,
+      "sensitive": false,
+      "addedInVersion": 2,
+      "inputSchemaKeys": [
+        "id"
+      ],
+      "inputSchemaFields": [
+        {
+          "name": "id",
+          "type": "integer",
+          "optional": false
+        }
+      ],
+      "examples": []
+    },
+    {
+      "id": "crm.res_partner.create",
+      "operation": "write",
+      "module": "crm",
+      "descricao": "Cria um novo parceiro (cliente, fornecedor ou contato) no Odoo via JSON-RPC. Requer API key com capability crm:create. Retorna o snapshot completo do registro criado (snapshotAfter). Se external_id for fornecido, garante unicidade via ir.model.data.",
+      "capability": "create:crm",
+      "sensitive": false,
+      "addedInVersion": 2,
+      "inputSchemaKeys": [
+        "name",
+        "cnpj_cpf",
+        "is_company",
+        "email",
+        "phone",
+        "street",
+        "city_id",
+        "state_id",
+        "external_id"
+      ],
+      "inputSchemaFields": [
+        {
+          "name": "name",
+          "type": "string",
+          "optional": false
+        },
+        {
+          "name": "cnpj_cpf",
+          "type": "string",
+          "optional": true
+        },
+        {
+          "name": "is_company",
+          "type": "boolean",
+          "optional": true
+        },
+        {
+          "name": "email",
+          "type": "string",
+          "optional": true
+        },
+        {
+          "name": "phone",
+          "type": "string",
+          "optional": true
+        },
+        {
+          "name": "street",
+          "type": "string",
+          "optional": true
+        },
+        {
+          "name": "city_id",
+          "type": "integer",
+          "optional": true
+        },
+        {
+          "name": "state_id",
+          "type": "integer",
+          "optional": true
+        },
+        {
+          "name": "external_id",
+          "type": "string",
+          "optional": true
+        }
+      ],
+      "examples": [
+        {
+          "language": "curl",
+          "description": "Criar empresa via curl",
+          "code": "curl -X POST https://mcp.exemplo.com.br/mcp \\\n  -H \"Authorization: Bearer <SERVICE_TOKEN>\" \\\n  -H \"X-Mcp-User-Id: <USER_ID>\" \\\n  -H \"X-Api-Key: <API_KEY>\" \\\n  -H \"Idempotency-Key: $(uuidgen)\" \\\n  -H \"Content-Type: application/json\" \\\n  -d '{\n    \"jsonrpc\": \"2.0\",\n    \"method\": \"tools/call\",\n    \"params\": {\n      \"name\": \"crm.res_partner.create\",\n      \"arguments\": {\n        \"name\": \"Academia Exemplo Ltda\",\n        \"is_company\": true,\n        \"cnpj_cpf\": \"12.345.678/0001-99\",\n        \"email\": \"contato@academia.com.br\",\n        \"phone\": \"(11) 9999-9999\",\n        \"external_id\": \"erp-cliente-001\"\n      }\n    }\n  }'"
+        },
+        {
+          "language": "n8n",
+          "description": "Node HTTP Request no n8n apontando para o MCP",
+          "code": "// Node: HTTP Request\n// Method: POST\n// URL: {{ $env.MCP_URL }}/mcp\n// Headers:\n//   Authorization: Bearer {{ $env.MCP_SERVICE_TOKEN }}\n//   X-Mcp-User-Id: {{ $env.MCP_USER_ID }}\n//   X-Api-Key: {{ $env.MCP_API_KEY }}\n//   Idempotency-Key: {{ $json.idempotencyKey }}\n// Body (JSON):\n{\n  \"jsonrpc\": \"2.0\",\n  \"method\": \"tools/call\",\n  \"params\": {\n    \"name\": \"crm.res_partner.create\",\n    \"arguments\": {\n      \"name\": \"{{ $json.nome }}\",\n      \"is_company\": true,\n      \"email\": \"{{ $json.email }}\",\n      \"external_id\": \"{{ $json.externalId }}\"\n    }\n  }\n}"
+        },
+        {
+          "language": "python",
+          "description": "Criar parceiro com requests",
+          "code": "import requests, uuid\n\nresponse = requests.post(\n    \"https://mcp.exemplo.com.br/mcp\",\n    headers={\n        \"Authorization\": \"Bearer <SERVICE_TOKEN>\",\n        \"X-Mcp-User-Id\": \"<USER_ID>\",\n        \"X-Api-Key\": \"<API_KEY>\",\n        \"Idempotency-Key\": str(uuid.uuid4()),\n        \"Content-Type\": \"application/json\",\n    },\n    json={\n        \"jsonrpc\": \"2.0\",\n        \"method\": \"tools/call\",\n        \"params\": {\n            \"name\": \"crm.res_partner.create\",\n            \"arguments\": {\n                \"name\": \"Academia Exemplo\",\n                \"is_company\": True,\n                \"email\": \"contato@academia.com.br\",\n                \"external_id\": \"python-001\",\n            },\n        },\n    },\n)\ndata = response.json()\nprint(data[\"result\"][\"id\"])"
+        },
+        {
+          "language": "javascript",
+          "description": "Criar parceiro com fetch",
+          "code": "const response = await fetch(\"https://mcp.exemplo.com.br/mcp\", {\n  method: \"POST\",\n  headers: {\n    \"Authorization\": \"Bearer <SERVICE_TOKEN>\",\n    \"X-Mcp-User-Id\": \"<USER_ID>\",\n    \"X-Api-Key\": \"<API_KEY>\",\n    \"Idempotency-Key\": crypto.randomUUID(),\n    \"Content-Type\": \"application/json\",\n  },\n  body: JSON.stringify({\n    jsonrpc: \"2.0\",\n    method: \"tools/call\",\n    params: {\n      name: \"crm.res_partner.create\",\n      arguments: {\n        name: \"Academia Exemplo\",\n        is_company: true,\n        email: \"contato@academia.com.br\",\n        external_id: \"js-001\",\n      },\n    },\n  }),\n});\nconst { result } = await response.json();\nconsole.log(\"Criado com ID:\", result.id);"
+        }
+      ]
+    }
+  ],
+  "count": 56,
+  "generatedAt": "2026-05-24T07:38:06.584Z"
+}

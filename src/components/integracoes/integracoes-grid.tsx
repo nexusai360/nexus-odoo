@@ -24,10 +24,10 @@ const CARDS: IntegrationCard[] = [
     href: "/integracoes/canais",
   },
   {
-    label: "MCP",
-    description: "Endpoint do servidor MCP e token para conexões externas.",
+    label: "Servidor MCP",
+    description: "Painel do MCP semântico: status, chaves de acesso e métricas.",
     icon: Cpu,
-    href: "/integracoes/mcp",
+    href: "/integracoes/servidor-mcp",
   },
   {
     label: "Webhooks",
@@ -36,10 +36,12 @@ const CARDS: IntegrationCard[] = [
     href: "/integracoes/webhooks",
   },
   {
-    label: "API",
+    label: "API REST",
     description: "Crie e revogue chaves de API da plataforma.",
     icon: Key,
     href: "/integracoes/api",
+    disabled: true,
+    badge: "Em breve",
   },
   {
     label: "BI",

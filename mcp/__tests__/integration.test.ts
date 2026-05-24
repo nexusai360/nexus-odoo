@@ -1,22 +1,22 @@
 // mcp/__tests__/integration.test.ts
-// Harness de teste de integração do MCP — 4f-4 (Onda F: 33 tools).
+// Harness de teste de integração do MCP , rede de proteção N6 do catálogo.
 //
 // Cobre:
-//   1. Assertiva de catálogo: super_admin recebe EXATAMENTE 33 tools com os IDs corretos (N6).
+//   1. Assertiva de catálogo: super_admin recebe EXATAMENTE 47 tools com os IDs corretos (N6).
 //   2. Catálogo filtrado por perfil: cada role recebe o subconjunto correto.
 //   3. bi_consulta_avancada só para super_admin e admin.
 //   4. registrar_lacuna sempre visível (sempreVisivel).
 //   5. Servidor HTTP real: initialize + tools/list via protocolo Streamable HTTP.
 //   6. Tool de domínio negado → denied no pipeline (handleToolCall).
 //   7. Input inválido → erro estruturado (Zod).
-//   8. Tools de domínios-vazios (sempreVisivel) — Onda F.
+//   8. Tools de domínios-vazios (sempreVisivel) , Onda F.
 //
 // Mock strategy:
 //   - validateServiceToken: aceita TEST_SERVICE_TOKEN
 //   - resolveUserContext: retorna UserContext fixo por userId (sem banco)
 //   - prisma: mock mínimo para handleToolCall (resolveUser injeta o contexto)
 //   - mcpRedis: pipeline mock que sempre retorna count=1 (sem Redis real)
-//   - catalogo: REAL (as 33 tools de produção — objetivo da rede N6)
+//   - catalogo: REAL (catálogo de produção , objetivo da rede N6)
 
 // ─── Mocks configurados ANTES dos imports de implementação ────────────────────
 
@@ -64,7 +64,29 @@ jest.mock("../lib/redis.js", () => ({
   },
 }));
 
-// NÃO mockar o catálogo — usamos o catálogo REAL (rede de proteção N6 — 33 tools)
+// Mocks para módulos do Bloco P-0 (não exercitados neste teste , modo interno apenas).
+// Evitam que conexões de ioredis/BullMQ permaneçam abertas após afterAll.
+jest.mock("../auth/auth-middleware.js", () => ({
+  authenticate: jest.fn().mockResolvedValue({ mode: "unauthorized", reason: "invalid_token" }),
+}));
+jest.mock("../auth/api-key-cache.js", () => ({
+  createApiKeyCache: jest.fn(() => ({
+    getOrLoad: jest.fn(),
+    invalidate: jest.fn(),
+    invalidateByApiKeyId: jest.fn(),
+  })),
+}));
+jest.mock("../dispatcher/external-pipeline.js", () => ({
+  handleExternalRequest: jest.fn(),
+}));
+jest.mock("../sync/queue.js", () => ({
+  getDirectedSyncQueue: jest.fn(() => ({ add: jest.fn().mockResolvedValue(undefined) })),
+}));
+jest.mock("@/worker/odoo/client.js", () => ({
+  clientFromEnv: jest.fn(),
+}));
+
+// NÃO mockar o catálogo , usamos o catálogo REAL (rede de proteção N6)
 
 // ─── Imports pós-mock ─────────────────────────────────────────────────────────
 import { catalogo } from "../catalog/index.js";
@@ -98,6 +120,10 @@ const COMERCIAL_IDS = [
   "comercial_pedidos_por_vendedor",
   "comercial_pedidos_atrasados",
   "comercial_parcelas_a_vencer",
+  "preco_produto",
+  "preco_tabela",
+  "comercial_contar_pedidos",
+  "preco_contar_regras",
 ];
 
 const FISCAL_IDS = [
@@ -107,12 +133,21 @@ const FISCAL_IDS = [
   "fiscal_impostos_periodo",
   "fiscal_faturamento_por_cliente",
   "fiscal_produtos_faturados",
+  "fiscal_notas_recebidas_por_fornecedor",
+  "fiscal_apuracao",
+  "fiscal_carta_correcao",
+  "fiscal_contar_notas",
+  "fiscal_certificados",
+  "referencia_buscar",
 ];
 
 const CADASTROS_IDS = [
   "cadastro_buscar_parceiro",
   "cadastro_parceiros_por_uf",
   "cadastro_contar_parceiros",
+  "servico_buscar",
+  "servico_listar",
+  "servico_contar",
 ];
 
 const CONTABIL_IDS = [
@@ -126,6 +161,10 @@ const DOMINIOS_VAZIOS_IDS = [
   "producao_status_dominio",
 ];
 
+const CRM_IDS = [
+  "crm.res_partner.get",
+];
+
 const TODOS_IDS = [
   ...ESTOQUE_IDS,
   ...FINANCEIRO_IDS,
@@ -134,17 +173,18 @@ const TODOS_IDS = [
   ...CADASTROS_IDS,
   ...CONTABIL_IDS,
   ...DOMINIOS_VAZIOS_IDS,
+  ...CRM_IDS,
   "registrar_lacuna",
   "bi_consulta_avancada",
 ];
 
 // ─── 1. Assertiva de catálogo completo (achado N6) ────────────────────────────
 
-describe("Catálogo completo — rede de proteção N6", () => {
-  it("super_admin recebe EXATAMENTE 33 tools", () => {
+describe("Catálogo completo , rede de proteção N6", () => {
+  it("super_admin recebe EXATAMENTE 47 tools", () => {
     const user = { userId: "u", role: "super_admin" as const, domains: ["estoque", "financeiro"] } as unknown as Parameters<typeof visibleTools>[1];
     const tools = visibleTools(catalogo, user);
-    expect(tools).toHaveLength(33);
+    expect(tools).toHaveLength(47);
   });
 
   it("super_admin recebe o conjunto exato de IDs", () => {
@@ -154,8 +194,20 @@ describe("Catálogo completo — rede de proteção N6", () => {
     expect(ids).toEqual([...TODOS_IDS].sort());
   });
 
-  it("catálogo bruto (antes do filtro) tem exatamente 33 entradas", () => {
-    expect(catalogo).toHaveLength(33);
+  it("catálogo bruto (antes do filtro) tem exatamente 56 entradas", () => {
+    // 47 tools de leitura + 9 write tools:
+    //   1) crm.res_partner.create
+    //   2) cadastros.mail_activity.complete
+    //   3) cadastros.mail_activity.create
+    //   4) cadastros.mail_activity.update
+    //   5) cadastros.res_partner.archive
+    //   6) cadastros.res_partner_category.create
+    //   7) cadastros.res_partner_category.set_tags
+    //   8) cadastros.res_partner.delete
+    //   9) cadastros.res_partner.update
+    // Write tools nao aparecem em visibleTools (modo interno); sao liberadas
+    // so no modo externo por capability da chave de API.
+    expect(catalogo).toHaveLength(56);
   });
 });
 
@@ -167,17 +219,17 @@ describe("Catálogo filtrado por perfil", () => {
     return visibleTools(catalogo, user).map((t) => t.id);
   }
 
-  it("super_admin vê todas as 33 tools", () => {
+  it("super_admin vê todas as 47 tools", () => {
     const ids = tools("super_admin", ["estoque", "financeiro"]);
-    expect(ids).toHaveLength(33);
+    expect(ids).toHaveLength(47);
     for (const id of TODOS_IDS) {
       expect(ids).toContain(id);
     }
   });
 
-  it("admin vê todas as 33 tools", () => {
+  it("admin vê todas as 47 tools", () => {
     const ids = tools("admin", ["estoque", "financeiro"]);
-    expect(ids).toHaveLength(33);
+    expect(ids).toHaveLength(47);
   });
 
   it("manager com estoque+financeiro vê estoque+financeiro+sempreVisivel (sem bi_consulta_avancada)", () => {
@@ -221,10 +273,10 @@ describe("Catálogo filtrado por perfil", () => {
     expect(ids).toHaveLength(4);
   });
 
-  // ─── Onda B: comercial — assertivas de perfil (R2-I1) ────────────────────────
+  // ─── Onda B: comercial , assertivas de perfil (R2-I1) ────────────────────────
   // Usa apenas perfis existentes no fixture (não estende o mapa de mocks).
 
-  it("admin vê as 5 tools de comercial (RBAC camada 1 — vê tudo)", () => {
+  it("admin vê as 9 tools de comercial (RBAC camada 1 , vê tudo)", () => {
     const ids = tools("admin", ["estoque", "financeiro"]);
     for (const id of COMERCIAL_IDS) {
       expect(ids).toContain(id);
@@ -238,10 +290,10 @@ describe("Catálogo filtrado por perfil", () => {
     }
   });
 
-  // ─── Onda D: cadastros — assertivas de perfil (R2-I1) ────────────────────────
+  // ─── Onda D: cadastros , assertivas de perfil (R2-I1) ────────────────────────
   // Usa apenas perfis existentes no fixture (não estende o mapa de mocks).
 
-  it("admin vê as 3 tools de cadastros (RBAC camada 1 — vê tudo)", () => {
+  it("admin vê as 6 tools de cadastros (RBAC camada 1 , vê tudo)", () => {
     const ids = tools("admin", ["estoque", "financeiro"]);
     for (const id of CADASTROS_IDS) {
       expect(ids).toContain(id);
@@ -255,10 +307,10 @@ describe("Catálogo filtrado por perfil", () => {
     }
   });
 
-  // ─── Onda E: contábil — assertivas de perfil (R2-I1) ─────────────────────────
+  // ─── Onda E: contábil , assertivas de perfil (R2-I1) ─────────────────────────
   // Usa apenas perfis existentes no fixture (não estende o mapa de mocks).
 
-  it("admin vê as 2 tools de contábil (RBAC camada 1 — vê tudo)", () => {
+  it("admin vê as 2 tools de contábil (RBAC camada 1 , vê tudo)", () => {
     const ids = tools("admin", ["estoque", "financeiro"]);
     for (const id of CONTABIL_IDS) {
       expect(ids).toContain(id);
@@ -272,7 +324,7 @@ describe("Catálogo filtrado por perfil", () => {
     }
   });
 
-  // ─── Onda F: domínios-vazios — sempreVisivel (R2-I1, achado I5) ──────────────
+  // ─── Onda F: domínios-vazios , sempreVisivel (R2-I1, achado I5) ──────────────
 
   it("viewer SEM nenhum domínio vê as 3 tools de domínios-vazios (sempreVisivel)", () => {
     const ids = tools("viewer", []);
@@ -289,7 +341,7 @@ describe("Catálogo filtrado por perfil", () => {
   });
 
   // viewer-comercial: vê comercial + domínios-vazios; NÃO vê fiscal/cadastros/contabil
-  it("viewer COM domínio comercial vê as 5 tools de comercial", () => {
+  it("viewer COM domínio comercial vê as 9 tools de comercial", () => {
     const ids = tools("viewer", ["comercial"]);
     for (const id of COMERCIAL_IDS) {
       expect(ids).toContain(id);
@@ -325,9 +377,9 @@ describe("Catálogo filtrado por perfil", () => {
   });
 });
 
-// ─── 3. bi_consulta_avancada — gate de role ───────────────────────────────────
+// ─── 3. bi_consulta_avancada , gate de role ───────────────────────────────────
 
-describe("bi_consulta_avancada — gate de role", () => {
+describe("bi_consulta_avancada , gate de role", () => {
   const biTool = catalogo.find((t) => t.id === "bi_consulta_avancada");
 
   it("bi_consulta_avancada existe no catálogo", () => {
@@ -352,9 +404,9 @@ describe("bi_consulta_avancada — gate de role", () => {
   });
 });
 
-// ─── 4. registrar_lacuna — sempreVisivel ──────────────────────────────────────
+// ─── 4. registrar_lacuna , sempreVisivel ──────────────────────────────────────
 
-describe("registrar_lacuna — sempreVisivel", () => {
+describe("registrar_lacuna , sempreVisivel", () => {
   const lacunaTool = catalogo.find((t) => t.id === "registrar_lacuna");
 
   it("registrar_lacuna existe no catálogo", () => {
@@ -372,7 +424,7 @@ describe("registrar_lacuna — sempreVisivel", () => {
   });
 });
 
-// ─── 5. Servidor HTTP real — protocolo Streamable HTTP end-to-end ────────────
+// ─── 5. Servidor HTTP real , protocolo Streamable HTTP end-to-end ────────────
 //
 // Exercita a cadeia completa: initialize → captura mcp-session-id → tools/list
 // → tools/call, tudo passando pelo StreamableHTTPServerTransport real.
@@ -414,7 +466,7 @@ async function initializeSession(baseUrl: string, userId: string): Promise<strin
   return sessionId!;
 }
 
-describe("Servidor HTTP real — protocolo Streamable HTTP end-to-end", () => {
+describe("Servidor HTTP real , protocolo Streamable HTTP end-to-end", () => {
   let testServer: TestServer;
 
   beforeAll(async () => {
@@ -458,9 +510,9 @@ describe("Servidor HTTP real — protocolo Streamable HTTP end-to-end", () => {
     expect(status).toBe(403);
   });
 
-  // ── 5b. tools/list via HTTP — catálogo filtrado por perfil ────────────────
+  // ── 5b. tools/list via HTTP , catálogo filtrado por perfil ────────────────
 
-  it("super_admin: tools/list via HTTP retorna 33 tools com os IDs corretos", async () => {
+  it("super_admin: tools/list via HTTP retorna 47 tools com os IDs corretos", async () => {
     const sid = await initializeSession(testServer.baseUrl, "user-super-admin");
 
     const { status, body } = await mcpRequest(
@@ -474,7 +526,7 @@ describe("Servidor HTTP real — protocolo Streamable HTTP end-to-end", () => {
     const result = extractRpcResult(body);
     const tools = result?.tools as Array<{ name: string }> | undefined;
     expect(tools).toBeDefined();
-    expect(tools!).toHaveLength(33);
+    expect(tools!).toHaveLength(47);
 
     const names = tools!.map((t) => t.name).sort();
     expect(names).toEqual([...TODOS_IDS].sort());
@@ -526,7 +578,7 @@ describe("Servidor HTTP real — protocolo Streamable HTTP end-to-end", () => {
     for (const id of DOMINIOS_VAZIOS_IDS) expect(names).toContain(id);
   });
 
-  // ── 5c. tools/call via HTTP — um por domínio + gate 3c + registrar_lacuna ──
+  // ── 5c. tools/call via HTTP , um por domínio + gate 3c + registrar_lacuna ──
 
   it("super_admin: tools/call registrar_lacuna via HTTP retorna resultado sem isError", async () => {
     const sid = await initializeSession(testServer.baseUrl, "user-super-admin");
@@ -556,7 +608,7 @@ describe("Servidor HTTP real — protocolo Streamable HTTP end-to-end", () => {
     expect(result?.isError).toBeFalsy();
   });
 
-  it("admin: tools/call bi_consulta_avancada via HTTP — novo contrato { sql } (sem MCP_BI_DATABASE_URL → erro estruturado)", async () => {
+  it("admin: tools/call bi_consulta_avancada via HTTP , novo contrato { sql } (sem MCP_BI_DATABASE_URL → erro estruturado)", async () => {
     // O harness de teste não configura MCP_BI_DATABASE_URL, portanto o pool é null
     // e o handler lança Error("modo BI não configurado") → isError=true, outcome="error".
     // Este é o comportamento correto em ambiente sem configuração do Caminho 3c.
@@ -609,7 +661,7 @@ describe("Servidor HTTP real — protocolo Streamable HTTP end-to-end", () => {
 
     // O SDK responde 200 com isError=true no MCP (erros de tool não são HTTP 4xx)
     // OU 404 se a tool não estiver registrada nesta sessão (catálogo filtrado).
-    // Ambos são comportamentos corretos — o que importa é que manager não executa a tool.
+    // Ambos são comportamentos corretos , o que importa é que manager não executa a tool.
     const result = extractRpcResult(body);
     const isToolError = result?.isError === true;
     const isHttpNotFound = status === 404;
@@ -644,9 +696,9 @@ describe("Servidor HTTP real — protocolo Streamable HTTP end-to-end", () => {
   });
 });
 
-// ─── 6. Pipeline handleToolCall — domínio negado → denied ─────────────────────
+// ─── 6. Pipeline handleToolCall , domínio negado → denied ─────────────────────
 
-describe("handleToolCall — domínio negado retorna denied", () => {
+describe("handleToolCall , domínio negado retorna denied", () => {
   it("viewer de estoque não pode chamar tool financeira", async () => {
     const finTool = catalogo.find((t) => t.id === "financeiro_saldo_contas");
     expect(finTool).toBeDefined();
@@ -676,11 +728,11 @@ describe("handleToolCall — domínio negado retorna denied", () => {
   });
 });
 
-// ─── 7. Pipeline handleToolCall — input inválido → erro estruturado ───────────
+// ─── 7. Pipeline handleToolCall , input inválido → erro estruturado ───────────
 
-describe("handleToolCall — input inválido retorna erro estruturado", () => {
+describe("handleToolCall , input inválido retorna erro estruturado", () => {
   it("bi_consulta_avancada com sql vazio retorna isError=true", async () => {
-    // bi_consulta_avancada exige sql: z.string().min(1) — string vazia é inválida
+    // bi_consulta_avancada exige sql: z.string().min(1) , string vazia é inválida
     const tool = catalogo.find((t) => t.id === "bi_consulta_avancada");
     expect(tool).toBeDefined();
 

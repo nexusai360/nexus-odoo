@@ -69,7 +69,7 @@ export function WhatsappChannelForm({ initial }: Props) {
           type="password"
           placeholder={
             initial?.maskedApiToken
-              ? `Atual: ${initial.maskedApiToken} — deixe em branco para manter`
+              ? `Atual: ${initial.maskedApiToken} , deixe em branco para manter`
               : "Cole o token de acesso permanente da Meta"
           }
           value={apiToken}

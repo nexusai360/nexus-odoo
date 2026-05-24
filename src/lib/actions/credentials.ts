@@ -41,7 +41,7 @@ async function requireAdminOrAbove(): Promise<
   if (me.platformRole !== "admin" && me.platformRole !== "super_admin") {
     return {
       ok: false,
-      error: "Acesso negado — requer perfil admin ou super_admin",
+      error: "Acesso negado , requer perfil admin ou super_admin",
     };
   }
   return { ok: true, userId: me.id };

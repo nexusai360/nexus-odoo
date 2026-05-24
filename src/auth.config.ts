@@ -3,7 +3,7 @@ import type { NextAuthConfig } from "next-auth";
 
 // Config edge-safe: usado pelo middleware (Edge Runtime). NÃO pode importar
 // Prisma nem nenhum módulo Node. Os callbacks aqui (authorized, session)
-// apenas leem o token/request. O callback `jwt` — que faz query no banco —
+// apenas leem o token/request. O callback `jwt` , que faz query no banco ,
 // vive em auth.ts (Node Runtime).
 export const authConfig = {
   trustHost: true,

@@ -1,7 +1,7 @@
 "use client";
 
 /**
- * global-error.tsx — fallback de erro no nível raiz da aplicação.
+ * global-error.tsx , fallback de erro no nível raiz da aplicação.
  *
  * Renderiza seu próprio <html>/<body> (substitui o root layout). Mantido
  * mínimo e estático para não depender de cookies/contexto no prerender.

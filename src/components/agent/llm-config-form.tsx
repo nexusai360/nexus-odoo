@@ -1,7 +1,7 @@
 "use client";
 
 /**
- * LlmConfigForm — configuração da conexão LLM do Agente Nex (super_admin only).
+ * LlmConfigForm , configuração da conexão LLM do Agente Nex (super_admin only).
  *
  * Rework F5-UI v2: clone visual do `llm-config-form` do nexus-insights.
  * - Região "Agente Nex ativo" (dot + Switch) controla a bolha flutuante.
@@ -10,7 +10,7 @@
  * - Salvar é um upsert do singleton de produção (cria + ativa a config).
  */
 
-import { useMemo, useState, useTransition } from "react";
+import { useEffect, useMemo, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import {
   Save,
@@ -22,12 +22,12 @@ import {
   AlertCircle,
   Plus,
   CreditCard,
+  RefreshCw,
 } from "lucide-react";
 import { toast } from "sonner";
 
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
-import { Switch } from "@/components/ui/switch";
 import {
   CustomSelect,
   type SelectOption,
@@ -37,9 +37,12 @@ import {
   type SearchableSelectOption,
 } from "@/components/ui/searchable-select";
 import { TierBadge } from "@/components/ui/tier-badge";
+import { MoneyDual } from "@/components/ui/money-dual";
+import { ProviderBadge, providerKeyFromModelId } from "@/components/ui/provider-badge";
 import {
   PROVIDER_META,
   listModels,
+  labelWithLegacy,
   modelDescription,
 } from "@/lib/agent/llm/catalog";
 import type { LlmProvider } from "@/lib/agent/llm/types";
@@ -48,12 +51,65 @@ import type { PublicLlmConfig } from "@/lib/agent/llm/get-active-config";
 import {
   createLlmConfig,
   activateLlmConfig,
-  updateBubbleEnabled,
 } from "@/lib/actions/agent-config";
 import { testCredentialConnectionAction } from "@/lib/actions/credentials";
+import { syncProviderModels } from "@/lib/actions/sync-models";
 import { cn } from "@/lib/utils";
 
 const CUSTOM_MODEL_VALUE = "__custom__";
+
+function SyncModelsButton({ provider }: { provider: LlmProvider }) {
+  const router = useRouter();
+  const [pending, startTransition] = useTransition();
+  return (
+    <button
+      type="button"
+      aria-label="Atualizar modelos"
+      disabled={pending}
+      onClick={() => {
+        startTransition(async () => {
+          const r = await syncProviderModels(provider);
+          if (!r.success) {
+            toast.error(r.error ?? "Falha ao atualizar.");
+            return;
+          }
+          const novos = r.novos?.length ?? 0;
+          const atualizados = r.atualizados?.length ?? 0;
+          const revividos = r.revividos?.length ?? 0;
+          const depreciados = r.depreciados?.length ?? 0;
+          const ignoradosWL = r.ignoradosWhitelist?.length ?? 0;
+          const ignoradosSP = r.ignoradosSemPricing?.length ?? 0;
+          const partes: string[] = [];
+          if (novos) partes.push(`${novos} novo(s)`);
+          if (atualizados) partes.push(`${atualizados} atualizado(s)`);
+          if (revividos) partes.push(`${revividos} reativado(s)`);
+          if (depreciados) partes.push(`${depreciados} desativado(s)`);
+          if (ignoradosWL) partes.push(`${ignoradosWL} fora da lista permitida`);
+          if (ignoradosSP) partes.push(`${ignoradosSP} sem preço`);
+          toast.success(
+            partes.length
+              ? `Catálogo sincronizado: ${partes.join(", ")}.`
+              : "Catálogo já está atualizado.",
+          );
+          router.refresh();
+        });
+      }}
+      className="inline-flex h-7 items-center gap-1.5 rounded-md border border-violet-500/30 bg-violet-500/10 px-2.5 text-[11px] font-medium text-violet-700 transition-colors hover:bg-violet-500/20 hover:underline disabled:cursor-not-allowed disabled:opacity-60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-400 dark:text-violet-300 cursor-pointer"
+    >
+      {pending ? (
+        <>
+          <Loader2 className="h-3 w-3 animate-spin" aria-hidden />
+          Atualizando…
+        </>
+      ) : (
+        <>
+          <RefreshCw className="h-3 w-3" aria-hidden />
+          Atualizar modelos
+        </>
+      )}
+    </button>
+  );
+}
 
 const PROVIDERS: LlmProvider[] = [
   "openai",
@@ -76,11 +132,16 @@ interface LlmConfigItem {
 interface LlmConfigFormProps {
   /** Config LLM ativa (singleton de produção), ou null. */
   activeConfig: PublicLlmConfig | null;
-  /** Configs já cadastradas — reusa o id em vez de duplicar ao salvar. */
+  /** Configs já cadastradas , reusa o id em vez de duplicar ao salvar. */
   configs: LlmConfigItem[];
   credentials: CredentialSummary[];
-  /** Estado atual do toggle "Agente Nex ativo". */
-  bubbleEnabled: boolean;
+  /**
+   * Modelos efetivos por provedor (base do catalog + overrides do banco).
+   * Quando ausente, cai em `modelsFor(provider)` (só a base versionada).
+   */
+  modelsByProvider?: Partial<Record<LlmProvider, import("@/lib/agent/llm/catalog").ModelEntry[]>>;
+  /** Cotação USD→BRL efetiva (PTAX × spread × IOF). Null quando indisponível. */
+  usdBrlRate?: number | null;
 }
 
 interface TestState {
@@ -92,9 +153,11 @@ export function LlmConfigForm({
   activeConfig,
   configs,
   credentials,
-  bubbleEnabled,
+  modelsByProvider,
+  usdBrlRate = null,
 }: LlmConfigFormProps) {
   const router = useRouter();
+  const modelsFor = (p: LlmProvider) => modelsByProvider?.[p] ?? listModels(p);
 
   const [provider, setProvider] = useState<LlmProvider>(
     activeConfig?.provider ?? "openai",
@@ -102,9 +165,9 @@ export function LlmConfigForm({
 
   const initialModel = useMemo(() => {
     if (!activeConfig?.model) {
-      return { select: listModels(provider)[0]?.id ?? "", custom: "" };
+      return { select: modelsFor(provider)[0]?.id ?? "", custom: "" };
     }
-    const inCatalog = listModels(activeConfig.provider).some(
+    const inCatalog = modelsFor(activeConfig.provider).some(
       (m) => m.id === activeConfig.model,
     );
     return inCatalog
@@ -122,28 +185,36 @@ export function LlmConfigForm({
   const [test, setTest] = useState<TestState>({ status: "idle" });
   const [isSaving, startSave] = useTransition();
   const [isTesting, startTest] = useTransition();
-  const [bubble, setBubble] = useState(bubbleEnabled);
-  const [isTogglingBubble, startBubbleToggle] = useTransition();
-
   const meta = PROVIDER_META[provider];
-  const models = useMemo(() => listModels(provider), [provider]);
+  const models = useMemo(
+    () => modelsByProvider?.[provider] ?? listModels(provider),
+    [provider, modelsByProvider],
+  );
 
   const modelOptions = useMemo<SearchableSelectOption[]>(() => {
-    const fromCatalog: SearchableSelectOption[] = models.map((m) => ({
-      value: m.id,
-      label: m.label,
-      notes: modelDescription(m),
-      endAdornment: <TierBadge tier={m.tier} />,
-    }));
-    if (meta.allowCustomModel) {
-      fromCatalog.push({
+    return models.map((m) => {
+      const provKey =
+        provider === "openrouter" ? providerKeyFromModelId(m.id) : null;
+      return {
+        value: m.id,
+        label: labelWithLegacy(m),
+        notes: modelDescription(m),
+        startAdornment: provKey ? <ProviderBadge providerKey={provKey} /> : undefined,
+        endAdornment: <TierBadge tier={m.tier} />,
+      };
+    });
+  }, [models, provider]);
+
+  const pinnedModelOptions = useMemo<SearchableSelectOption[]>(() => {
+    if (!meta.allowCustomModel) return [];
+    return [
+      {
         value: CUSTOM_MODEL_VALUE,
         label: "Outro (digitar manualmente)",
         notes: "Especifique um ID de modelo customizado",
-      });
-    }
-    return fromCatalog;
-  }, [models, meta]);
+      },
+    ];
+  }, [meta]);
 
   const credentialsForProvider = useMemo(
     () => credentials.filter((c) => c.provider === provider),
@@ -163,6 +234,20 @@ export function LlmConfigForm({
   const resolvedModel = (usingCustom ? customModel : modelSelect).trim();
   const hasNoCredentials = credentialsForProvider.length === 0;
 
+  // Cross-component sync: o ReasoningCard em Recursos precisa refletir o
+  // modelo selecionado AQUI em tempo real (mesmo antes de testar/salvar) só
+  // pra mostrar os níveis de raciocínio compatíveis. O efeito real só persiste
+  // ao salvar , em refresh, volta pro modelo salvo. Usamos CustomEvent pra
+  // evitar lifting de state entre componentes siblings.
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    window.dispatchEvent(
+      new CustomEvent("agent-config:model-change", {
+        detail: { provider, model: resolvedModel },
+      }),
+    );
+  }, [provider, resolvedModel]);
+
   // Credencial efetiva: a escolha explícita do usuário, se ainda existir no
   // provider. Sem escolha → vazio (o campo NÃO pré-seleciona nenhuma chave).
   const effectiveCredentialId = useMemo(() => {
@@ -179,7 +264,7 @@ export function LlmConfigForm({
   const busy = isSaving || isTesting;
   const actionsDisabled = busy || hasNoCredentials || !effectiveCredentialId;
 
-  // "Sujo" — a seleção atual difere da config ativa salva. Sem config ativa,
+  // "Sujo" , a seleção atual difere da config ativa salva. Sem config ativa,
   // qualquer estado é sujo. Governa se "Testar conexão" fica habilitado e se o
   // resultado do teste é refletido na tarja do topo.
   const isDirty =
@@ -188,18 +273,27 @@ export function LlmConfigForm({
     resolvedModel !== activeConfig.model ||
     effectiveCredentialId !== (activeConfig.credentialId ?? "");
 
-  // Testar só faz sentido quando há algo novo a verificar. Conexão ativa e
-  // inalterada → botão desabilitado (nada a testar).
-  const testDisabled = actionsDisabled || (isConfigured && !isDirty);
+  // Gating Testar/Salvar , regra de raiz:
+  //   - Mudou algo (isDirty) → Testar habilitado, Salvar desabilitado.
+  //   - Testou e passou (test.status === "ok") → Testar desabilitado (nada
+  //     mais a testar), Salvar habilitado (pode persistir).
+  //   - Sem mudança e já salvo → ambos desabilitados.
+  //   - Sem mudança e nada salvo → Testar habilitado (config inicial), Salvar
+  //     bloqueado até o teste passar.
+  const testPassed = test.status === "ok";
+  const testDisabled =
+    actionsDisabled || testPassed || (isConfigured && !isDirty);
+  const saveDisabled =
+    actionsDisabled || (isDirty && !testPassed) || (isConfigured && !isDirty);
 
   // O resultado do teste é exibido na tarja do topo (fonte da verdade do
-  // status) — nunca numa segunda tarja embaixo.
+  // status) , nunca numa segunda tarja embaixo.
   const showTestInTop = test.status !== "idle" && isDirty;
 
   function handleProviderChange(next: string) {
     const p = next as LlmProvider;
     setProvider(p);
-    setModelSelect(listModels(p)[0]?.id ?? "");
+    setModelSelect(modelsFor(p)[0]?.id ?? "");
     setCustomModel("");
     setCredentialId("");
     setTest({ status: "idle" });
@@ -308,72 +402,18 @@ export function LlmConfigForm({
     });
   }
 
-  function handleBubbleToggle(checked: boolean) {
-    if (!isConfigured) {
-      toast.error("Configure um provedor antes de ativar o Agente Nex.");
-      return;
-    }
-    const previous = bubble;
-    setBubble(checked);
-    startBubbleToggle(async () => {
-      const result = await updateBubbleEnabled(checked);
-      if (!result.success) {
-        setBubble(previous);
-        toast.error(result.error ?? "Erro ao salvar preferência.");
-        return;
-      }
-      toast.success(
-        checked
-          ? "Agente Nex ativado — bolha visível em todas as páginas."
-          : "Agente Nex desativado — bolha oculta.",
-      );
-      router.refresh();
-    });
-  }
-
   return (
     <div className="space-y-8 pt-3">
-      {/* Região: Agente Nex ativo — respiro do topo do card (Task A2) */}
-      <div className="flex items-center justify-between gap-4 rounded-xl border border-border bg-muted/30 px-4 py-3.5">
-        <div className="flex min-w-0 items-center gap-3">
-          <span
-            aria-hidden
-            className={cn(
-              "h-2.5 w-2.5 shrink-0 rounded-full transition-[background-color,box-shadow] duration-200",
-              bubble
-                ? "bg-emerald-400 shadow-[0_0_10px_rgba(52,211,153,0.6)]"
-                : "bg-zinc-400 dark:bg-zinc-600",
-            )}
-          />
-          <div className="min-w-0">
-            <Label
-              htmlFor="agent-bubble-toggle"
-              className="cursor-pointer text-sm font-medium text-foreground"
-            >
-              {bubble ? "Agente Nex ativo" : "Agente Nex desativado"}
-            </Label>
-            <p className="text-xs text-muted-foreground">
-              {!isConfigured
-                ? "Configure um provedor abaixo para liberar a bolha flutuante."
-                : bubble
-                  ? "A bolha flutuante aparece em todas as páginas autenticadas."
-                  : "A bolha flutuante está oculta para todos os usuários."}
-            </p>
-          </div>
-        </div>
-        <Switch
-          id="agent-bubble-toggle"
-          checked={bubble}
-          onCheckedChange={handleBubbleToggle}
-          disabled={isTogglingBubble || !isConfigured}
-          aria-label={bubble ? "Desativar Agente Nex" : "Ativar Agente Nex"}
-        />
-      </div>
+      {/* Disponibilidade do Agente Nex passou para AgentAvailabilityCard
+          (separado por canal: bubble + WhatsApp). */}
 
       {/* Seção: Conexão LLM */}
-      <div className="space-y-6 border-t border-border/50 pt-6">
+      <div className="space-y-6 pt-2">
+        <h3 className="text-base font-semibold tracking-tight text-foreground">
+          Configuração do LLM
+        </h3>
         {(() => {
-          // Tarja única do topo — fonte da verdade do status. Reflete o teste
+          // Tarja única do topo , fonte da verdade do status. Reflete o teste
           // apenas quando há algo novo a verificar (isDirty); caso contrário,
           // mostra a conexão ativa salva.
           const tone: "ok" | "fail" | "active" | "idle" = showTestInTop
@@ -394,7 +434,7 @@ export function LlmConfigForm({
                         ? ` · ${activeConfig!.credentialLabel}`
                         : ""
                     }`
-                  : "Nenhuma conexão ativa — selecione provedor, modelo e chave abaixo.";
+                  : "Nenhuma conexão ativa , selecione provedor, modelo e chave abaixo.";
           const isGood = tone === "ok" || tone === "active";
           const isBad = tone === "fail";
           return (
@@ -425,7 +465,11 @@ export function LlmConfigForm({
         {/* Provedor | Modelo na mesma linha */}
         <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
           <div className="space-y-1.5">
-            <Label htmlFor="llm-provider">Provedor</Label>
+            <div className="flex items-center justify-between">
+              <Label htmlFor="llm-provider">Provedor</Label>
+              {/* Placeholder invisivel pra alinhar com o row "Modelo" que tem botao Atualizar */}
+              <span className="h-7" aria-hidden />
+            </div>
             <CustomSelect
               aria-label="Provedor"
               value={provider}
@@ -436,16 +480,20 @@ export function LlmConfigForm({
               triggerClassName="min-h-[44px]"
             />
             <p className="text-xs text-muted-foreground">
-              Plataforma de IA que processará as consultas do Agente Nex.
+              Plataforma do LLM.
             </p>
           </div>
 
           <div className="space-y-1.5">
-            <Label htmlFor="llm-model">Modelo</Label>
+            <div className="flex items-center justify-between">
+              <Label htmlFor="llm-model">Modelo</Label>
+              <SyncModelsButton provider={provider} />
+            </div>
             <SearchableSelect
               value={modelSelect}
               onChange={handleModelChange}
               options={modelOptions}
+              pinnedFirst={pinnedModelOptions}
               customMode={{
                 sentinel: CUSTOM_MODEL_VALUE,
                 customValue: customModel,
@@ -463,13 +511,26 @@ export function LlmConfigForm({
             />
             <p className="text-xs text-muted-foreground">
               {usingCustom
-                ? "Modelo customizado — útil para snapshots datados."
-                : "Tier $ / $$ / $$$ / $$$$ indica o custo por milhão de tokens."}
+                ? "Modelo customizado, útil para snapshots datados."
+                : "Tier $/$$/$$$/$$$$ indica o custo por milhão de tokens."}
             </p>
+            {(() => {
+              const selected = models.find((m) => m.id === modelSelect);
+              if (!selected?.deprecated) return null;
+              return (
+                <div
+                  role="alert"
+                  className="rounded-lg border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-xs text-amber-700 dark:text-amber-300"
+                >
+                  Este modelo foi descontinuado pelo provedor. Escolha outro
+                  modelo para continuar usando o Agente Nex.
+                </div>
+              );
+            })()}
           </div>
         </div>
 
-        {/* Chave de API — abaixo, largura total */}
+        {/* Chave de API , abaixo, largura total */}
         <div className="space-y-1.5">
           <Label htmlFor="llm-credential" className="gap-2">
             <KeyRound className="h-3.5 w-3.5 text-muted-foreground" />
@@ -529,26 +590,19 @@ export function LlmConfigForm({
                     </p>
                   );
                 }
-                const fmt = (v: number) =>
-                  v.toLocaleString("pt-BR", {
-                    style: "currency",
-                    currency: "USD",
-                  });
+                const usdValue =
+                  sel.balance?.status === "ok" && sel.balance.usd != null
+                    ? sel.balance.usd
+                    : sel.consumedUsd;
+                const isSaldo =
+                  sel.balance?.status === "ok" && sel.balance.usd != null;
                 return (
-                  <div className="mt-3 flex flex-wrap items-center justify-between gap-3 rounded-lg border border-border bg-muted/20 px-3.5 py-3">
+                  <div className="mt-4 flex flex-wrap items-center justify-between gap-3 rounded-lg border border-border bg-muted/20 px-3.5 py-3">
                     <div className="flex flex-col gap-0.5">
                       <span className="text-xs text-muted-foreground">
-                        {sel.balance?.status === "ok" &&
-                        sel.balance.usd != null
-                          ? "Saldo da chave"
-                          : "Consumo desta chave"}
+                        {isSaldo ? "Saldo da chave" : "Consumo desta chave"}
                       </span>
-                      <span className="text-sm font-semibold text-foreground tabular-nums">
-                        {sel.balance?.status === "ok" &&
-                        sel.balance.usd != null
-                          ? fmt(sel.balance.usd)
-                          : fmt(sel.consumedUsd)}
-                      </span>
+                      <MoneyDual usd={usdValue} rate={usdBrlRate} size="sm" />
                     </div>
                     {meta.topUpUrl ? (
                       <a
@@ -581,9 +635,11 @@ export function LlmConfigForm({
             disabled={testDisabled}
             className="cursor-pointer"
             title={
-              isConfigured && !isDirty
-                ? "Conexão ativa e inalterada — nada a testar"
-                : "Verificar a conexão com o provedor"
+              testPassed
+                ? "Teste já passou , agora clique em Salvar configuração."
+                : isConfigured && !isDirty
+                  ? "Conexão ativa e inalterada , nada a testar."
+                  : "Verificar a conexão com o provedor antes de salvar."
             }
           >
             {isTesting ? (
@@ -596,8 +652,15 @@ export function LlmConfigForm({
           <Button
             type="button"
             onClick={handleSave}
-            disabled={actionsDisabled}
+            disabled={saveDisabled}
             className="cursor-pointer"
+            title={
+              isDirty && !testPassed
+                ? "Teste a conexão primeiro , só dá pra salvar depois que o teste passar."
+                : isConfigured && !isDirty
+                  ? "Nada mudou desde a última configuração salva."
+                  : "Salvar e ativar esta configuração."
+            }
           >
             {isSaving ? (
               <Loader2 className="mr-1.5 h-4 w-4 animate-spin" />

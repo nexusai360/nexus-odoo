@@ -48,13 +48,13 @@ describe("mapMovimentoRow", () => {
     expect(result.saida).toBe(0);
   });
 
-  it("NÃO produz atualizadoEm (decisão N5 — @default(now()) no schema)", () => {
+  it("NÃO produz atualizadoEm (decisão N5 , @default(now()) no schema)", () => {
     const raw = { id: 1 };
     const result = mapMovimentoRow(raw);
     expect(result).not.toHaveProperty("atualizadoEm");
   });
 
-  it("NÃO produz campo natureza (realizado e previsto coexistem — decisão #IM-2)", () => {
+  it("NÃO produz campo natureza (realizado e previsto coexistem , decisão #IM-2)", () => {
     const raw = { id: 1 };
     const result = mapMovimentoRow(raw);
     expect(result).not.toHaveProperty("natureza");
@@ -86,7 +86,7 @@ describe("rebuildFatoFinanceiroMovimento", () => {
     expect(markFatoBuilt).toHaveBeenCalledWith(tx, "fato_financeiro_movimento");
   });
 
-  it("createMany recebe data: mapped (sem atualizadoEm injetado — N5)", async () => {
+  it("createMany recebe data: mapped (sem atualizadoEm injetado , N5)", async () => {
     const tx = {
       fatoFinanceiroMovimento: {
         deleteMany: jest.fn().mockResolvedValue(undefined),

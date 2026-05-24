@@ -6,13 +6,13 @@
  *
  * Extrai o texto da URL server-side via ingestKbDocumentAction
  * passando kind="URL". O servidor é responsável por buscar o
- * conteúdo — aqui apenas validamos nome e URL client-side.
+ * conteúdo , aqui apenas validamos nome e URL client-side.
  *
  * Adaptado de nexus-insights/src/components/agente-nex/kb-url-form.tsx.
  * Diferença: chama ingestKbDocumentAction (src/lib/actions/kb.ts).
  */
 
-import { useState, useTransition } from "react";
+import { useEffect, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { Globe, Loader2 } from "lucide-react";
 import { toast } from "sonner";
@@ -30,6 +30,17 @@ interface KbUrlFormProps {
   isDisabled?: boolean;
   initialName?: string;
   initialUrl?: string;
+  /**
+   * Callback que dispara sempre que o formulário tem conteúdo digitado
+   * (nome ou URL não vazios). Usado pelo pai para detectar "dirty state"
+   * e abrir confirmação antes de trocar de aba.
+   */
+  onContentChange?: (hasContent: boolean) => void;
+  /**
+   * Incremento numérico que sinaliza "limpe o formulário". O pai bumpa este
+   * valor quando o usuário confirma trocar de aba descartando o conteúdo.
+   */
+  resetSignal?: number;
 }
 
 function validateClientSide(name: string, url: string): string | null {
@@ -47,10 +58,10 @@ function validateClientSide(name: string, url: string): string | null {
   try {
     parsed = new URL(trimmedUrl);
   } catch {
-    return "URL inválida — use HTTPS.";
+    return "URL inválida. Use HTTPS.";
   }
   if (parsed.protocol !== "https:") {
-    return "URL inválida — use HTTPS.";
+    return "URL inválida. Use HTTPS.";
   }
   return null;
 }
@@ -60,6 +71,8 @@ export function KbUrlForm({
   isDisabled = false,
   initialName = "",
   initialUrl = "",
+  onContentChange,
+  resetSignal = 0,
 }: KbUrlFormProps) {
   const router = useRouter();
   const [name, setName] = useState(initialName);
@@ -69,6 +82,22 @@ export function KbUrlForm({
 
   const disabled = isDisabled || isPending;
 
+  // Sinaliza para o pai sempre que houver conteúdo (qualquer um dos campos).
+  useEffect(() => {
+    if (!onContentChange) return;
+    const dirty = name.trim().length > 0 || url.trim().length > 0;
+    onContentChange(dirty);
+  }, [name, url, onContentChange]);
+
+  // Quando o pai bumpa resetSignal, limpa o formulário.
+  useEffect(() => {
+    if (resetSignal > 0) {
+      setName("");
+      setUrl("");
+      setError(null);
+    }
+  }, [resetSignal]);
+
   function handleSubmit() {
     const validation = validateClientSide(name, url);
     if (validation) {
@@ -77,7 +106,7 @@ export function KbUrlForm({
     }
     setError(null);
     startTransition(async () => {
-      // Passar o texto da URL como marcador — o action recebe kind=URL e sourceUrl.
+      // Passar o texto da URL como marcador , o action recebe kind=URL e sourceUrl.
       // Para extrair o conteúdo, passamos um placeholder; a extração real pode
       // ser implementada no action futuramente. Por ora, gravamos a URL como
       // referência e o usuário pode copiar o texto manualmente.

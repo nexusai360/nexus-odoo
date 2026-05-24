@@ -1,8 +1,8 @@
 // mcp/tools/caminho3/bi-consulta-avancada.test.ts
-// Testes da tool bi_consulta_avancada — executor SQL read-only do Caminho 3c.
+// Testes da tool bi_consulta_avancada , executor SQL read-only do Caminho 3c.
 //
 // Nota de auditoria (achado R2-I4):
-//   O audit de params é automático — o pipeline do server.ts grava o rawInput
+//   O audit de params é automático , o pipeline do server.ts grava o rawInput
 //   ({ sql }) em McpAuditLog.params antes mesmo de chamar o handler. Nenhum
 //   código de audit é necessário no handler.
 //
@@ -84,10 +84,10 @@ beforeEach(() => {
 });
 
 // ──────────────────────────────────────────────────────────────────────────────
-// ToolEntry — contratos estáticos
+// ToolEntry , contratos estáticos
 // ──────────────────────────────────────────────────────────────────────────────
 
-describe("biConsultaAvancada — ToolEntry", () => {
+describe("biConsultaAvancada , ToolEntry", () => {
   it("tem id correto", () => {
     expect(biConsultaAvancada.id).toBe("bi_consulta_avancada");
   });
@@ -139,7 +139,7 @@ describe("biConsultaAvancada — ToolEntry", () => {
     expect(result.success).toBe(true);
   });
 
-  it("outputSchema NÃO tem variante de erro (R2-I6 — caminhos de recusa lançam)", () => {
+  it("outputSchema NÃO tem variante de erro (R2-I6 , caminhos de recusa lançam)", () => {
     // outputSchema não aceita { disponivel: false } do stub anterior
     const result = biConsultaAvancada.outputSchema.safeParse({
       disponivel: false,
@@ -151,10 +151,10 @@ describe("biConsultaAvancada — ToolEntry", () => {
 });
 
 // ──────────────────────────────────────────────────────────────────────────────
-// Handler — SQL válido → output tabular
+// Handler , SQL válido → output tabular
 // ──────────────────────────────────────────────────────────────────────────────
 
-describe("biConsultaAvancada — handler: SQL válido", () => {
+describe("biConsultaAvancada , handler: SQL válido", () => {
   beforeEach(() => {
     mockValidarSqlSelect.mockResolvedValue({ ok: true });
     mockGetBiPool.mockReturnValue(mockPoolInstance as never);
@@ -187,10 +187,10 @@ describe("biConsultaAvancada — handler: SQL válido", () => {
 });
 
 // ──────────────────────────────────────────────────────────────────────────────
-// Handler — SQL recusado pelo guard → SqlGuardError → outcome invalid_input
+// Handler , SQL recusado pelo guard → SqlGuardError → outcome invalid_input
 // ──────────────────────────────────────────────────────────────────────────────
 
-describe("biConsultaAvancada — handler: SQL recusado pelo guard", () => {
+describe("biConsultaAvancada , handler: SQL recusado pelo guard", () => {
   beforeEach(() => {
     mockValidarSqlSelect.mockResolvedValue({
       ok: false,
@@ -217,10 +217,10 @@ describe("biConsultaAvancada — handler: SQL recusado pelo guard", () => {
 });
 
 // ──────────────────────────────────────────────────────────────────────────────
-// Handler — pool null (MCP_BI_DATABASE_URL ausente) → Error → outcome error
+// Handler , pool null (MCP_BI_DATABASE_URL ausente) → Error → outcome error
 // ──────────────────────────────────────────────────────────────────────────────
 
-describe("biConsultaAvancada — handler: modo BI não configurado", () => {
+describe("biConsultaAvancada , handler: modo BI não configurado", () => {
   beforeEach(() => {
     mockValidarSqlSelect.mockResolvedValue({ ok: true });
     mockGetBiPool.mockReturnValue(null);
@@ -244,10 +244,10 @@ describe("biConsultaAvancada — handler: modo BI não configurado", () => {
 });
 
 // ──────────────────────────────────────────────────────────────────────────────
-// Handler — resultado acima de 1000 linhas → truncado: true
+// Handler , resultado acima de 1000 linhas → truncado: true
 // ──────────────────────────────────────────────────────────────────────────────
 
-describe("biConsultaAvancada — handler: truncamento de linhas", () => {
+describe("biConsultaAvancada , handler: truncamento de linhas", () => {
   beforeEach(() => {
     mockValidarSqlSelect.mockResolvedValue({ ok: true });
     mockGetBiPool.mockReturnValue(mockPoolInstance as never);
@@ -274,7 +274,7 @@ describe("biConsultaAvancada — handler: truncamento de linhas", () => {
 // Visibilidade por role
 // ──────────────────────────────────────────────────────────────────────────────
 
-describe("biConsultaAvancada — visibilidade por role", () => {
+describe("biConsultaAvancada , visibilidade por role", () => {
   const allTools = [biConsultaAvancada as never];
 
   it("super_admin vê a tool", () => {
@@ -302,7 +302,7 @@ describe("biConsultaAvancada — visibilidade por role", () => {
 // assertToolAllowed por role
 // ──────────────────────────────────────────────────────────────────────────────
 
-describe("biConsultaAvancada — assertToolAllowed", () => {
+describe("biConsultaAvancada , assertToolAllowed", () => {
   it("super_admin pode invocar", () => {
     expect(() =>
       assertToolAllowed(biConsultaAvancada as never, makeUser("super_admin")),

@@ -21,7 +21,7 @@ export const CHART_COLORS = {
 export type ChartColorToken = keyof typeof CHART_COLORS;
 
 /**
- * Paleta ordenada para séries múltiplas — ordem pensada para maximizar a
+ * Paleta ordenada para séries múltiplas , ordem pensada para maximizar a
  * separação perceptual entre cores adjacentes (reduz confusão em pies/bars).
  */
 export const CHART_PALETTE: readonly string[] = [
@@ -41,3 +41,6 @@ export function colorAt(i: number): string {
   if (!Number.isFinite(i) || i < 0) return CHART_PALETTE[0];
   return CHART_PALETTE[Math.floor(i) % CHART_PALETTE.length];
 }
+
+/** Alias de `colorAt` , compat com componentes portados do nexus-insights. */
+export const getColorByIndex = colorAt;

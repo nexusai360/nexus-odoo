@@ -1,7 +1,7 @@
 // mcp/tools/caminho3/bi-pool.ts
 // Pool Postgres dedicado ao Caminho 3c (modo BI avançado).
 //
-// NOTA: este pool NUNCA é exposto no ToolHandlerCtx geral — acessado somente
+// NOTA: este pool NUNCA é exposto no ToolHandlerCtx geral , acessado somente
 // via import direto pelo handler de bi-consulta-avancada.ts.
 //
 // Fail-safe: se MCP_BI_DATABASE_URL não estiver definida, o pool é null e o
@@ -20,7 +20,7 @@ const connectionString = process.env.MCP_BI_DATABASE_URL;
 let pool: Pool | null = null;
 
 if (connectionString) {
-  // max conservador: o 3c é gated a admin/super_admin — concorrência baixa esperada.
+  // max conservador: o 3c é gated a admin/super_admin , concorrência baixa esperada.
   pool = new Pool({ connectionString, max: 5 });
 
   // Reforço de segurança por conexão: read-only + timeout curto.
@@ -36,7 +36,7 @@ if (connectionString) {
       });
   });
 
-  // Handler de erro em clientes idle — sem isso, um erro de conexão ociosa pode
+  // Handler de erro em clientes idle , sem isso, um erro de conexão ociosa pode
   // emitir 'error' no pool e derrubar o processo Node.js (comportamento padrão do pg).
   pool.on("error", (err: Error) => {
     console.error("[bi-pool] erro em cliente idle do pool BI:", err.message);

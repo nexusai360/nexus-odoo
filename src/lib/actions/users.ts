@@ -44,7 +44,7 @@ export async function listUsers(): Promise<ActionResult<UserListItem[]>> {
   try {
     const me = await getCurrentUser();
     if (!me) return { success: false, error: "Não autenticado" };
-    // Apenas visualizador não gerencia usuários — gerente/admin/super_admin sim.
+    // Apenas visualizador não gerencia usuários , gerente/admin/super_admin sim.
     if (me.platformRole === "viewer") {
       return { success: false, error: "Acesso negado" };
     }
@@ -89,7 +89,7 @@ export async function createUser(
   try {
     const me = await getCurrentUser();
     if (!me) return { success: false, error: "Não autenticado" };
-    // Visualizador não cria usuários. Gerente/admin/super_admin podem —
+    // Visualizador não cria usuários. Gerente/admin/super_admin podem ,
     // `canCreateRole` (abaixo) restringe quais papéis cada um pode atribuir.
     if (me.platformRole === "viewer") {
       return { success: false, error: "Acesso negado" };
@@ -189,7 +189,7 @@ const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 /**
  * Verifica se um e-mail ainda não está cadastrado. Usada para validação
- * antecipada no modal de criação de usuário (defesa em profundidade — o
+ * antecipada no modal de criação de usuário (defesa em profundidade , o
  * `createUser` revalida no submit). Exige autenticação; se não autenticado
  * ou e-mail malformado, retorna `available: false`.
  */

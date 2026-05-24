@@ -16,7 +16,10 @@ import {
 } from "@/components/ui/tooltip";
 import { cn } from "@/lib/utils";
 
-const ACCEPT_IMAGE = "image/png,image/jpeg,image/webp,image/gif";
+// Imagens aceitas: PNG, JPG/JPEG e WebP (formato moderno do Google, lossy/
+// lossless, estático). GIF foi removido , animado não agrega no chat e a
+// extração de texto não enxerga conteúdo de quadros.
+const ACCEPT_IMAGE = "image/png,image/jpeg,image/webp";
 const ACCEPT_FILE = ".pdf,.txt,.md,.csv,.docx,.xlsx";
 
 export interface AttachMenuProps {
@@ -67,7 +70,7 @@ export function AttachMenu({ onPick, disabled, className }: AttachMenuProps) {
         <PopoverContent
           side="top"
           align="start"
-          className="w-56 rounded-lg p-1.5"
+          className="w-60 rounded-lg p-1.5"
         >
           <button
             type="button"
@@ -81,7 +84,7 @@ export function AttachMenu({ onPick, disabled, className }: AttachMenuProps) {
             <div className="min-w-0 flex-1">
               <div className="text-sm font-medium">Imagem</div>
               <div className="text-[11px] text-muted-foreground">
-                PNG, JPG, WebP, GIF
+                PNG, JPG, JPEG, WebP
               </div>
             </div>
           </button>
@@ -123,10 +126,10 @@ export function AttachMenu({ onPick, disabled, className }: AttachMenuProps) {
 }
 
 /**
- * Handler default — exibe toast informando que o suporte completo está em
+ * Handler default , exibe toast informando que o suporte completo está em
  * andamento. Os componentes consumidores podem fornecer um handler próprio
  * que envia para a base de conhecimento ou para o agente.
  */
 export function defaultAttachHandler(file: File, kind: "image" | "file") {
-  toast.info(`${kind === "image" ? "Imagem" : "Arquivo"} "${file.name}" pronta para enviar — suporte completo em breve.`);
+  toast.info(`${kind === "image" ? "Imagem" : "Arquivo"} "${file.name}" pronta para enviar , suporte completo em breve.`);
 }

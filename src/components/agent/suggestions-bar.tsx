@@ -1,7 +1,7 @@
 "use client";
 
 /**
- * SuggestionsBar — chips clicáveis com sugestões do agente.
+ * SuggestionsBar , chips clicáveis com sugestões do agente.
  *
  * Portado de nexus-insights/src/components/nex/suggestions-bar.tsx.
  * Adaptações: renomeação nex→agent. Design inalterado.

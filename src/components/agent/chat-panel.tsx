@@ -1,7 +1,7 @@
 "use client";
 
 /**
- * ChatPanel — painel de chat do agente nexus-odoo.
+ * ChatPanel , painel de chat do agente nexus-odoo.
  *
  * Portado de nexus-insights/src/components/nex/nex-chat-panel.tsx.
  * Adaptações principais:
@@ -17,33 +17,56 @@
  */
 
 import { motion, useReducedMotion } from "framer-motion";
-import { Loader2, Mic, MoreVertical, Send, Sparkles, Trash2, X } from "lucide-react";
+import { Loader2, LogOut, Mic, MoreVertical, Send, Sparkles, Trash2, X } from "lucide-react";
 import * as React from "react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { AgentMessage, type AgentMessageRole } from "./agent-message";
 import { SuggestionsBar } from "./suggestions-bar";
+import { ProgressTrail, type ProgressStep } from "./progress-trail";
 import { AudioRecorder, type AudioRecorderHandle } from "./audio-recorder";
 import { AttachMenu, defaultAttachHandler } from "./attach-menu";
 import { MessageInput } from "./message-input";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { getConversationMessages } from "@/lib/actions/conversation-messages";
+import { WELCOME_SUGGESTIONS } from "@/lib/agent/welcome-suggestions";
 
 interface ChatPanelProps {
   open: boolean;
   onClose: () => void;
   /** Quando true exibe botão de gravação de áudio (Task 3.3c). */
   audioInputEnabled?: boolean;
+  /** Quando true exibe o anexo (clip). Gated pelo checkpoint de imagem. */
+  imageInputEnabled?: boolean;
   /** conversationId atual (null = novo). Após primeira msg, recebe o id criado. */
   conversationId?: string | null;
   onConversationCreated?: (id: string) => void;
+  /** "Encerrar sessão": limpa o turno atual e fecha o painel (o pai zera o
+   *  conversationId). Quando ausente, o item não aparece no menu. */
+  onEndSession?: () => void;
+  /** Limite de sugestões clicáveis (welcome + follow-up) configurado no
+   *  /agente/comportamento pelo super_admin. Default 3, hard cap 5. */
+  maxSuggestions?: number;
+  /** Sugestões iniciais personalizadas (auto-aprendizado por usuário).
+   *  Quando vazias, o painel cai no catálogo curado WELCOME_SUGGESTIONS. */
+  personalizedWelcome?: string[];
 }
 
 interface UiMessage {
   id: string;
-  role: AgentMessageRole;
+  /** "progress" continua existindo enquanto o turno está streamando para
+   *  mostrar o feedback de pensamento. No `done` ele é absorvido pelo
+   *  assistant (Onda C do Renascimento, elimina o gap). */
+  role: AgentMessageRole | "progress";
   content: string;
-  toolName?: string;
+  /** Passos da trilha de progresso. Em "progress" durante streaming; em
+   *  "assistant" após `done` (absorvido). */
+  steps?: ProgressStep[];
+  /** Trilha colapsada (default após absorção no done; usuário expande). */
+  stepsCollapsed?: boolean;
+  /** Timestamps para calcular duração total exibida no header da trilha. */
+  startedAt?: number;
+  doneAt?: number;
   kind?: "text" | "audio";
   audioBlobUrl?: string | null;
   durationSeconds?: number;
@@ -55,24 +78,34 @@ interface UiMessage {
 type SseEvent =
   | { type: "status"; status: string }
   | { type: "token"; delta: string }
-  | { type: "tool_call"; toolName: string }
-  | { type: "tool_result"; toolName: string; truncated: boolean }
+  | { type: "tool_call"; label: string; toolName?: string; toolCallId?: string }
+  | { type: "tool_result"; label: string; truncated: boolean; toolName?: string; toolCallId?: string }
   | { type: "done"; conversationId: string; message: string; suggestions: string[] }
   | { type: "error"; error: string };
-
-const WELCOME_SUGGESTIONS = [
-  "Quanto vendemos este mês?",
-  "Qual o saldo atual de estoque?",
-  "Mostre os lançamentos financeiros recentes.",
-];
 
 export function ChatPanel({
   open,
   onClose,
   audioInputEnabled = false,
+  imageInputEnabled = false,
   conversationId: externalConvId,
   onConversationCreated,
+  onEndSession,
+  maxSuggestions = 3,
+  personalizedWelcome = [],
 }: ChatPanelProps) {
+  // Sugestoes iniciais: prioridade ao set personalizado computado no server
+  // (auto-aprendizado por usuario). Fallback ao catalogo curado quando o
+  // usuario nao tem historico ou a query falhou. Em ambos os casos respeita
+  // o `maxSuggestions` configurado pelo super_admin.
+  const welcomeSuggestionsForUi = React.useMemo(() => {
+    const cap = Math.min(Math.max(1, maxSuggestions), 5);
+    const personalized = personalizedWelcome.filter(
+      (s) => typeof s === "string" && s.trim().length > 0,
+    );
+    if (personalized.length > 0) return personalized.slice(0, cap);
+    return WELCOME_SUGGESTIONS.slice(0, cap);
+  }, [maxSuggestions, personalizedWelcome]);
   const reduceMotion = useReducedMotion();
 
   const [messages, setMessages] = React.useState<UiMessage[]>([]);
@@ -149,7 +182,7 @@ export function ChatPanel({
   }, []);
 
   const handleSend = React.useCallback(
-    async (text: string) => {
+    async (text: string, opts?: { source?: "bubble" | "suggestion" }) => {
       const trimmed = text.trim();
       if (!trimmed || pending) return;
 
@@ -159,6 +192,7 @@ export function ChatPanel({
 
       const userMsgId = `u_${crypto.randomUUID()}`;
       const assistantMsgId = `a_${crypto.randomUUID()}`;
+      const progressMsgId = `p_${crypto.randomUUID()}`;
 
       setMessages((prev) => [
         ...prev,
@@ -180,22 +214,27 @@ export function ChatPanel({
           body: JSON.stringify({
             message: trimmed,
             conversationId: conversationIdRef.current ?? undefined,
+            meta: { source: opts?.source ?? "bubble" },
           }),
           signal: controller.signal,
         });
 
         if (!res.ok || !res.body) {
           setMessages((prev) => prev.filter((m) => m.id !== "loading"));
-          toast.error(`Erro ao contatar o agente (${res.status})`);
+          const detalhe = (await res.json().catch(() => null)) as {
+            error?: string;
+          } | null;
+          toast.error(detalhe?.error ?? `Erro ao contatar o agente (${res.status})`);
           setPending(false);
           return;
         }
 
-        // Remove loading e prepara a bolha de streaming
-        setMessages((prev) => [
-          ...prev.filter((m) => m.id !== "loading"),
-          { id: assistantMsgId, role: "assistant", content: "", streaming: true },
-        ]);
+        // A bolha do assistente só nasce quando o primeiro token chega (ou no
+        // done/error). Até lá fica a loading bubble ou a trilha de progresso ,
+        // nunca um caret "|" órfão. Detectamos "já criado" lendo do próprio
+        // `prev` dentro do setMessages (race-free com o batching do React).
+        const dropLoading = (list: UiMessage[]) =>
+          list.filter((m) => m.id !== "loading");
 
         const reader = res.body.getReader();
         const decoder = new TextDecoder();
@@ -222,60 +261,146 @@ export function ChatPanel({
             }
 
             if (evt.type === "status") {
-              // thinking → já temos a loading bubble → noop
+              // thinking → loading bubble já cobre o estado
             } else if (evt.type === "token") {
-              // Streaming token-a-token (Anthropic)
-              setMessages((prev) =>
-                prev.map((m) =>
-                  m.id === assistantMsgId
-                    ? { ...m, content: m.content + evt.delta }
-                    : m,
-                ),
-              );
-            } else if (evt.type === "tool_call") {
-              // Insere ToolBubble antes do assistantMsg
-              const toolId = `t_${Date.now()}_${Math.random()}`;
               setMessages((prev) => {
-                const idx = prev.findIndex((m) => m.id === assistantMsgId);
-                if (idx === -1) return prev;
-                const copy = [...prev];
-                copy.splice(idx, 0, {
-                  id: toolId,
-                  role: "tool",
-                  content: "",
-                  toolName: evt.toolName,
-                });
-                return copy;
+                if (prev.some((m) => m.id === assistantMsgId)) {
+                  return prev.map((m) =>
+                    m.id === assistantMsgId
+                      ? { ...m, content: m.content + evt.delta }
+                      : m,
+                  );
+                }
+                return [
+                  ...dropLoading(prev),
+                  {
+                    id: assistantMsgId,
+                    role: "assistant",
+                    content: evt.delta,
+                    streaming: true,
+                  },
+                ];
               });
+            } else if (evt.type === "tool_call") {
+              // Onda C v2 do Renascimento: a trilha vive DENTRO da bolha do
+              // assistant desde o primeiro tool_call. Sem bolha "progress"
+              // separada, sem gap visual em momento algum do streaming.
+              const step: ProgressStep = {
+                id: evt.toolCallId ?? `s_${crypto.randomUUID()}`,
+                label: evt.label,
+                state: "running",
+              };
+              setMessages((prev) => {
+                const base = dropLoading(prev);
+                if (base.some((m) => m.id === assistantMsgId)) {
+                  return base.map((m) =>
+                    m.id === assistantMsgId
+                      ? { ...m, steps: [...(m.steps ?? []), step] }
+                      : m,
+                  );
+                }
+                return [
+                  ...base,
+                  {
+                    id: assistantMsgId,
+                    role: "assistant",
+                    content: "",
+                    steps: [step],
+                    stepsCollapsed: false,
+                    startedAt: Date.now(),
+                    streaming: true,
+                  },
+                ];
+              });
+            } else if (evt.type === "tool_result") {
+              setMessages((prev) =>
+                prev.map((m) => {
+                  if (m.id !== assistantMsgId) return m;
+                  let marked = false;
+                  const steps = (m.steps ?? []).map((s) => {
+                    if (marked) return s;
+                    if (s.state !== "running") return s;
+                    const byId = evt.toolCallId && s.id === evt.toolCallId;
+                    const byLabel = !evt.toolCallId && s.label === evt.label;
+                    if (byId || byLabel) {
+                      marked = true;
+                      return { ...s, state: "done" as const };
+                    }
+                    return s;
+                  });
+                  return { ...m, steps };
+                }),
+              );
             } else if (evt.type === "done") {
               if (evt.conversationId && !conversationIdRef.current) {
                 conversationIdRef.current = evt.conversationId;
                 onConversationCreated?.(evt.conversationId);
               }
-              setMessages((prev) =>
-                prev.map((m) =>
-                  m.id === assistantMsgId
-                    ? {
-                        ...m,
-                        content: evt.message,
-                        suggestions: evt.suggestions,
-                        streaming: false,
-                      }
-                    : m,
-                ),
-              );
+              setMessages((prev) => {
+                // Onda C v2: a bolha do assistant ja tem steps (criada no
+                // primeiro tool_call). Aqui so finaliza: content/suggestions
+                // do done, marca todos os steps como done, colapsa trilha,
+                // grava doneAt para o resumo "Como cheguei aqui . N etapas . Xs".
+                const dropped = dropLoading(prev);
+                const doneAt = Date.now();
+                const finalized = dropped.map((m) => {
+                  if (m.id === assistantMsgId) {
+                    const steps = (m.steps ?? []).map((s) => ({
+                      ...s,
+                      state: "done" as const,
+                    }));
+                    return {
+                      ...m,
+                      content: evt.message,
+                      suggestions: evt.suggestions,
+                      streaming: false,
+                      steps: steps.length > 0 ? steps : undefined,
+                      stepsCollapsed: true,
+                      startedAt: m.startedAt ?? doneAt,
+                      doneAt,
+                    };
+                  }
+                  return m;
+                });
+                if (finalized.some((m) => m.id === assistantMsgId))
+                  return finalized;
+                return [
+                  ...finalized,
+                  {
+                    id: assistantMsgId,
+                    role: "assistant",
+                    content: evt.message,
+                    suggestions: evt.suggestions,
+                    streaming: false,
+                    stepsCollapsed: true,
+                    startedAt: doneAt,
+                    doneAt,
+                  },
+                ];
+              });
             } else if (evt.type === "error") {
-              setMessages((prev) =>
-                prev.map((m) =>
-                  m.id === assistantMsgId
-                    ? {
-                        ...m,
-                        content: `**Erro:** ${evt.error}`,
-                        streaming: false,
-                      }
-                    : m,
-                ),
-              );
+              setMessages((prev) => {
+                if (prev.some((m) => m.id === assistantMsgId)) {
+                  return prev.map((m) =>
+                    m.id === assistantMsgId
+                      ? {
+                          ...m,
+                          content: `**Erro:** ${evt.error}`,
+                          streaming: false,
+                        }
+                      : m,
+                  );
+                }
+                return [
+                  ...dropLoading(prev),
+                  {
+                    id: assistantMsgId,
+                    role: "assistant",
+                    content: `**Erro:** ${evt.error}`,
+                    streaming: false,
+                  },
+                ];
+              });
             }
           }
         }
@@ -291,11 +416,16 @@ export function ChatPanel({
         ]);
       } finally {
         setPending(false);
-        // Garante que streaming=false na mensagem final
+        // Garante streaming=false na resposta e remove a loading bubble caso o
+        // stream tenha encerrado sem nenhum evento.
         setMessages((prev) =>
-          prev.map((m) =>
-            m.id === assistantMsgId && m.streaming ? { ...m, streaming: false } : m,
-          ),
+          prev
+            .filter((m) => m.id !== "loading")
+            .map((m) =>
+              m.id === assistantMsgId && m.streaming
+                ? { ...m, streaming: false }
+                : m,
+            ),
         );
       }
     },
@@ -307,7 +437,7 @@ export function ChatPanel({
       setMessages((prev) =>
         prev.map((m) => (m.id === msgId ? { ...m, suggestions: undefined } : m)),
       );
-      void handleSend(suggestion);
+      void handleSend(suggestion, { source: "suggestion" });
     },
     [handleSend],
   );
@@ -420,6 +550,21 @@ export function ChatPanel({
                   <Trash2 className="h-3.5 w-3.5 text-muted-foreground" />
                   Limpar histórico
                 </button>
+                {onEndSession ? (
+                  <button
+                    type="button"
+                    role="menuitem"
+                    onClick={() => {
+                      setMenuOpen(false);
+                      handleClear();
+                      onEndSession();
+                    }}
+                    className="flex w-full cursor-pointer items-center gap-2 border-t border-border/50 px-3 py-2 text-left text-sm text-foreground transition-colors hover:bg-muted"
+                  >
+                    <LogOut className="h-3.5 w-3.5 text-muted-foreground" />
+                    Encerrar sessão
+                  </button>
+                ) : null}
               </div>
             )}
           </div>
@@ -431,22 +576,43 @@ export function ChatPanel({
           className="flex-1 overflow-y-auto overscroll-contain px-4 py-3"
         >
           {showWelcome ? (
-            <WelcomeBlock onPick={handleSend} suggestions={WELCOME_SUGGESTIONS} />
+            <WelcomeBlock
+              onPick={(s) => void handleSend(s, { source: "suggestion" })}
+              suggestions={welcomeSuggestionsForUi}
+            />
           ) : (
             <div className="space-y-3">
               {messages.map((m, idx) => {
+                // Onda C v2: nao deve mais existir UiMessage com role "progress"
+                // (steps vivem dentro da bolha do assistant desde o primeiro
+                // tool_call). Mantido como guarda defensiva para historicos
+                // legados em flight: filtra silenciosamente.
+                if (m.role === "progress") return null;
                 const isLastAssistant =
                   m.role === "assistant" && idx === messages.length - 1 && !pending;
+                const durationMs =
+                  m.startedAt && m.doneAt ? m.doneAt - m.startedAt : undefined;
                 return (
                   <React.Fragment key={m.id}>
                     <AgentMessage
                       role={m.role}
                       content={m.content}
-                      toolName={m.toolName}
                       kind={m.kind}
                       audioBlobUrl={m.audioBlobUrl}
                       durationSeconds={m.durationSeconds}
                       streaming={m.streaming}
+                      steps={m.steps}
+                      stepsCollapsed={m.stepsCollapsed ?? true}
+                      durationMs={durationMs}
+                      onToggleSteps={() =>
+                        setMessages((prev) =>
+                          prev.map((x) =>
+                            x.id === m.id
+                              ? { ...x, stepsCollapsed: !(x.stepsCollapsed ?? true) }
+                              : x,
+                          ),
+                        )
+                      }
                     />
                     {isLastAssistant && m.suggestions && m.suggestions.length > 0 && (
                       <SuggestionsBar
@@ -461,7 +627,7 @@ export function ChatPanel({
           )}
         </div>
 
-        {/* Input bar (G4 + D8) — anexo à esquerda, mic à direita, enviar fora */}
+        {/* Input bar (G4 + D8) , anexo à esquerda, mic à direita, enviar fora */}
         <footer className="border-t border-border bg-background/60 px-3 pt-3 pb-3">
           <form
             onSubmit={(e) => {
@@ -499,10 +665,12 @@ export function ChatPanel({
                   aria-label="Mensagem para o Agente Nex"
                   maxRows={6}
                   leftSlot={
-                    <AttachMenu
-                      disabled={pending}
-                      onPick={defaultAttachHandler}
-                    />
+                    imageInputEnabled ? (
+                      <AttachMenu
+                        disabled={pending}
+                        onPick={defaultAttachHandler}
+                      />
+                    ) : undefined
                   }
                   rightSlot={
                     audioInputEnabled && !audioFlight ? (
@@ -617,8 +785,14 @@ export function ChatPanel({
         style={{ transformOrigin: "bottom right" }}
         className={cn(
           "fixed z-50 flex flex-col overflow-hidden bg-card text-foreground shadow-2xl shadow-black/30",
+          // Mobile: ocupa a tela inteira ao abrir.
           "inset-0 rounded-none border-0",
-          "sm:inset-auto sm:right-6 sm:bottom-6 sm:h-[70vh] sm:max-h-[640px] sm:w-[420px] sm:rounded-2xl sm:border sm:border-border",
+          // Tablet e desktop: janela flutuante adaptativa, cresce com o viewport.
+          "sm:inset-auto sm:right-5 sm:bottom-5 sm:rounded-2xl sm:border sm:border-border",
+          "sm:h-[66vh] sm:max-h-[500px] sm:w-[340px]",
+          "md:w-[360px]",
+          "lg:h-[68vh] lg:max-h-[560px] lg:w-[380px]",
+          "2xl:max-h-[620px] 2xl:w-[420px]",
         )}
       >
         {innerContent}

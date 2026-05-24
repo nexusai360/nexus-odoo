@@ -24,7 +24,7 @@ describe("getUsdBrlRate", () => {
   });
 
   test("memo válido: retorna resultado em cache sem chamar fetch", async () => {
-    // Primeira chamada bem-sucedida — popula memo
+    // Primeira chamada bem-sucedida , popula memo
     mockFetch.mockResolvedValueOnce({
       ok: true,
       json: async () => ({ USDBRL: { bid: "5.2" } }),
@@ -32,7 +32,7 @@ describe("getUsdBrlRate", () => {
     const first = await getUsdBrlRate();
     expect(first.stale).toBe(false);
 
-    // Segunda chamada sem reset — deve retornar do memo (fetch não chamado)
+    // Segunda chamada sem reset , deve retornar do memo (fetch não chamado)
     const second = await getUsdBrlRate();
     expect(second.stale).toBe(false);
     expect(second.rate).toBe(first.rate);
@@ -60,7 +60,7 @@ describe("getUsdBrlRate", () => {
     expect(result.spread).toBe(RATE_SPREAD);
   });
 
-  test("nunca retorna null em falha — usa fallback (BUG 5 corrigido)", async () => {
+  test("nunca retorna null em falha , usa fallback (BUG 5 corrigido)", async () => {
     mockFetch.mockRejectedValueOnce(new Error("timeout"));
 
     const result = await getUsdBrlRate();

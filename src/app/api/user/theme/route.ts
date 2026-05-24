@@ -7,7 +7,7 @@ export const runtime = "nodejs";
 /**
  * POST /api/user/theme
  * Persiste preferência de tema no banco e sincroniza cookies server-side.
- * Os cookies são a fonte de verdade para o SSR — o layout os lê para
+ * Os cookies são a fonte de verdade para o SSR , o layout os lê para
  * renderizar o html já com a classe correta, sem flicker.
  */
 export async function POST(request: NextRequest) {

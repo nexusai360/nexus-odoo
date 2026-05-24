@@ -1,7 +1,7 @@
 import Link from "next/link";
 
 /**
- * not-found.tsx — página 404 da aplicação. Estática e leve, sem dependência
+ * not-found.tsx , página 404 da aplicação. Estática e leve, sem dependência
  * de cookies/contexto (evita conflito no prerender com o root layout).
  */
 export default function NotFound() {

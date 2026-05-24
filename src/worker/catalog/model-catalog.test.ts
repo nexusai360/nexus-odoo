@@ -2,24 +2,60 @@ import { MODEL_CATALOG, rawTableFor } from "./model-catalog";
 import fs from "node:fs";
 import path from "node:path";
 
+// Modelos acrescentados na F4 L1a (expansão da base de leitura). Entraram pela
+// investigação `fields_get`, não pela varredura F0, então não têm arquivo
+// correspondente em discovery/output/modelos.
+const MODELOS_L1A = new Set([
+  "sped.tabela.preco",
+  "sped.tabela.preco.regra",
+  "sped.servico",
+  "sped.apuracao",
+  "sped.carta.correcao",
+]);
+
+// Modelos acrescentados na F4 L1c (resíduo operacional 4a). Mesma situação da
+// L1a: entraram via sondagem `fields_get`, não pela varredura F0.
+const MODELOS_L1C = new Set([
+  "sped.certificado",
+  "finan.baixa.lancamento",
+  "pedido.faturamento",
+]);
+
+// Modelos acrescentados na F4 L1b (camada de referência). Também via sondagem.
+const MODELOS_L1B = new Set([
+  "sped.ncm", "sped.cfop", "sped.cest", "sped.cnae", "sped.nbs",
+  "sped.natureza.operacao", "sped.unidade", "sped.cst.icms",
+  "sped.cst.icms.sn", "sped.cst.ipi", "sped.cst.pis.cofins", "sped.cst.cibs",
+  "sped.municipio", "sped.pais", "sped.estado", "sped.condicao.pagamento",
+  "sped.feriado", "sped.aliquota.icms.proprio", "sped.aliquota.icms.st",
+  "sped.aliquota.inss", "sped.aliquota.ipi", "sped.aliquota.irpf",
+  "sped.aliquota.iss", "sped.aliquota.pis.cofins",
+  "sped.aliquota.simples.aliquota", "sped.aliquota.simples.anexo",
+  "sped.aliquota.simples.teto",
+]);
+
 describe("model-catalog", () => {
-  it("tem 79 modelos", () => {
-    expect(MODEL_CATALOG).toHaveLength(79);
+  it("tem 114 modelos (79 do F0 + 5 da L1a + 3 da L1c + 27 da L1b)", () => {
+    expect(MODEL_CATALOG).toHaveLength(114);
   });
 
-  // discovery/output/ é gitignored (saídas brutas locais — ver .gitignore).
+  // discovery/output/ é gitignored (saídas brutas locais , ver .gitignore).
   // Em dev, com os field-maps presentes, valida-se que o catálogo bate com
   // o discovery; em CI o diretório não existe e o caso é pulado.
   const discoveryDir = path.join(process.cwd(), "discovery/output/modelos");
   const temDiscovery = fs.existsSync(discoveryDir);
   (temDiscovery ? it : it.skip)(
-    "cobre exatamente os modelos de discovery/output/modelos",
+    "cobre exatamente os modelos de discovery/output/modelos (fora os da L1a)",
     () => {
       const arquivos = fs
         .readdirSync(discoveryDir)
         .filter((f) => f.endsWith(".json"));
       const noDisco = new Set(arquivos.map((f) => f.replace(/\.json$/, "")));
-      const noCatalogo = new Set(MODEL_CATALOG.map((m) => m.odooModel));
+      const noCatalogo = new Set(
+        MODEL_CATALOG.map((m) => m.odooModel).filter(
+          (m) => !MODELOS_L1A.has(m) && !MODELOS_L1C.has(m) && !MODELOS_L1B.has(m),
+        ),
+      );
       expect(noCatalogo).toEqual(noDisco);
     },
   );

@@ -6,7 +6,7 @@ const globalForRedis = globalThis as unknown as {
 
 function createRedisClient(): IORedis {
   const url = process.env.REDIS_URL;
-  // lazyConnect evita conexão durante `next build`/import — só conecta no
+  // lazyConnect evita conexão durante `next build`/import , só conecta no
   // primeiro comando efetivo (rate-limit, pub/sub).
   const client = url
     ? new IORedis(url, { maxRetriesPerRequest: null, lazyConnect: true })

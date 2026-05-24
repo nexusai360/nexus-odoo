@@ -1,7 +1,7 @@
 "use client";
 
 /**
- * KbDocumentViewer — modal de visualização do conteúdo extraído de um
+ * KbDocumentViewer , modal de visualização do conteúdo extraído de um
  * documento da base de conhecimento.
  *
  * - CSV: renderizado como tabela.

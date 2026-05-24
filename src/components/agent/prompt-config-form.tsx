@@ -1,7 +1,7 @@
 "use client";
 
 /**
- * PromptConfigForm — edição de comportamento, tom e guardrails do Agente Nex.
+ * PromptConfigForm , edição de comportamento, tom e guardrails do Agente Nex.
  *
  * Rework F5-UI v2:
  * - Limites: comportamento e tom 1000 caracteres; cada guardrail 500.
@@ -109,7 +109,7 @@ export function PromptConfigForm({ initial }: PromptConfigFormProps) {
               counterClass(personality.length, MAX_PERSONALITY),
             )}
           >
-            {personality.length}/{MAX_PERSONALITY}
+            {personality.length.toLocaleString("pt-BR")}/{MAX_PERSONALITY.toLocaleString("pt-BR")}
           </span>
         </div>
         <ExpandableTextarea
@@ -124,7 +124,7 @@ export function PromptConfigForm({ initial }: PromptConfigFormProps) {
           aria-describedby="agent-personality-help"
         />
         <p id="agent-personality-help" className="text-xs text-muted-foreground">
-          Como o Agente Nex se comporta — voz, foco, atitude geral.
+          Como o Agente Nex se comporta. Defina voz, foco e atitude geral.
         </p>
       </div>
 
@@ -138,7 +138,7 @@ export function PromptConfigForm({ initial }: PromptConfigFormProps) {
           <span
             className={cn("text-xs tabular-nums", counterClass(tone.length, MAX_TONE))}
           >
-            {tone.length}/{MAX_TONE}
+            {tone.length.toLocaleString("pt-BR")}/{MAX_TONE.toLocaleString("pt-BR")}
           </span>
         </div>
         <ExpandableTextarea
@@ -153,7 +153,7 @@ export function PromptConfigForm({ initial }: PromptConfigFormProps) {
           aria-describedby="agent-tone-help"
         />
         <p id="agent-tone-help" className="text-xs text-muted-foreground">
-          Estilo de escrita — formalidade, calor humano, vocabulário.
+          Estilo de escrita: formalidade, calor humano e vocabulário.
         </p>
       </div>
 
@@ -229,7 +229,7 @@ export function PromptConfigForm({ initial }: PromptConfigFormProps) {
         </div>
       </div>
 
-      {/* Ação principal — canto inferior direito, botão compacto. */}
+      {/* Ação principal , canto inferior direito, botão compacto. */}
       <div className="flex items-center justify-end pt-3">
         <Button
           type="button"

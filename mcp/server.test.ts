@@ -22,13 +22,35 @@ jest.mock("./auth/session-store.js", () => ({
 jest.mock("./lib/prisma.js", () => ({
   prisma: {} as PrismaClient,
 }));
-// Mock do catalogo — padrão vazio (testes de middleware).
+// Mock do catalogo , padrão vazio (testes de middleware).
 // Testes de sessão usam jest.spyOn no módulo para substituir o catálogo.
 jest.mock("./catalog/index.js", () => ({
   catalogo: [],
 }));
+// Mock do auth-middleware , no modo interno os testes existentes usam
+// validateServiceToken diretamente; authenticate sempre retorna "unauthorized"
+// nesses contextos para que o fluxo caia no bloco validateServiceToken legado.
+jest.mock("./auth/auth-middleware.js", () => ({
+  authenticate: jest.fn().mockResolvedValue({ mode: "unauthorized", reason: "invalid_token" }),
+}));
+// Mock do api-key-cache , não usado nos testes do modo interno.
+jest.mock("./auth/api-key-cache.js", () => ({
+  createApiKeyCache: jest.fn(() => ({
+    getOrLoad: jest.fn(),
+    invalidate: jest.fn(),
+    invalidateByApiKeyId: jest.fn(),
+  })),
+}));
+// Mock do external-pipeline , não exercitado nos testes do modo interno.
+jest.mock("./dispatcher/external-pipeline.js", () => ({
+  handleExternalRequest: jest.fn(),
+}));
+// Mock do mcpRedis , não usado nos testes do modo interno.
+jest.mock("./lib/redis.js", () => ({
+  mcpRedis: {},
+}));
 
-// Mock do StreamableHTTPServerTransport — captura as opções do construtor
+// Mock do StreamableHTTPServerTransport , captura as opções do construtor
 // para que os testes de sessão possam disparar onsessioninitialized manualmente.
 // Cada instância gerada pelo mock armazena suas opções e expõe mockSessionId.
 const transportInstances: Array<{
@@ -92,7 +114,7 @@ function makeResponse(): http.ServerResponse & { _statusCode?: number; _ended?: 
   return res;
 }
 
-describe("createHttpServer — middleware de service token (4a.14)", () => {
+describe("createHttpServer , middleware de service token (4a.14)", () => {
   beforeEach(() => {
     jest.clearAllMocks();
     transportInstances.length = 0;
@@ -131,7 +153,7 @@ describe("createHttpServer — middleware de service token (4a.14)", () => {
   });
 });
 
-describe("createHttpServer — middleware de sessão (4a.15)", () => {
+describe("createHttpServer , middleware de sessão (4a.15)", () => {
   beforeEach(() => {
     jest.clearAllMocks();
     transportInstances.length = 0;
@@ -157,7 +179,7 @@ describe("createHttpServer — middleware de sessão (4a.15)", () => {
   });
 });
 
-// ─── Camada 1 do RBAC — tools/list filtrado por usuário (C1) ─────────────────
+// ─── Camada 1 do RBAC , tools/list filtrado por usuário (C1) ─────────────────
 
 function makeTool(
   id: string,
@@ -184,7 +206,7 @@ function makeUser(
   return { userId: "u1", role, domains };
 }
 
-describe("visibleTools — camada 1 do RBAC (C1)", () => {
+describe("visibleTools , camada 1 do RBAC (C1)", () => {
   const estoqueToolA = makeTool("saldo_produto", "estoque");
   const financeiroToolA = makeTool("saldo_contas", "financeiro");
   const gatedTool = makeTool("bi_consulta_avancada", "estoque", {
@@ -198,7 +220,7 @@ describe("visibleTools — camada 1 do RBAC (C1)", () => {
     const ids = result.map((t) => t.id);
 
     expect(ids).toContain("saldo_produto");
-    expect(ids).not.toContain("saldo_contas"); // domínio financeiro — não acessível
+    expect(ids).not.toContain("saldo_contas"); // domínio financeiro , não acessível
   });
 
   it("viewer de estoque não recebe tool gated (bi_consulta_avancada)", () => {
@@ -229,7 +251,7 @@ describe("visibleTools — camada 1 do RBAC (C1)", () => {
 // ─── C-NOVO: registro de sessão via onsessioninitialized ──────────────────────
 //
 // O `StreamableHTTPServerTransport` só atribui `sessionId` ao processar a
-// request `initialize` — não imediatamente após `connect()`. A correção usa
+// request `initialize` , não imediatamente após `connect()`. A correção usa
 // o callback `onsessioninitialized` (opção do construtor) para registrar a
 // sessão no momento correto.
 //
@@ -237,7 +259,7 @@ describe("visibleTools — camada 1 do RBAC (C1)", () => {
 // `transportInstances`. Os testes disparam `onsessioninitialized` manualmente,
 // simulando o que o SDK faz ao processar initialize. Usamos tools reais
 // (catálogo não-vazio via mock do catalog/index) para que o código de
-// createMcpServerForUser não seja trivialmente pulado — o catálogo vazio
+// createMcpServerForUser não seja trivialmente pulado , o catálogo vazio
 // mascararia o defeito pois visibleTools retornaria [] e nenhum tool seria
 // registrado, mas a lógica de registro de sessão ainda rodaria.
 
@@ -255,7 +277,7 @@ function makeRealTool(): ToolEntry {
   };
 }
 
-describe("createHttpServer — registro de sessão via onsessioninitialized (C-NOVO)", () => {
+describe("createHttpServer , registro de sessão via onsessioninitialized (C-NOVO)", () => {
   const realTool = makeRealTool();
   const userCtx: UserContext = { userId: "user-123", role: "viewer", domains: ["estoque"] };
 
@@ -284,7 +306,7 @@ describe("createHttpServer — registro de sessão via onsessioninitialized (C-N
     const req = makeRequest({ authorization: "Bearer valid", "x-mcp-user-id": "user-123" });
     const res = makeResponse();
 
-    // Iniciar handler — isso cria o transport via construtor mockado
+    // Iniciar handler , isso cria o transport via construtor mockado
     const handlerPromise = handler(req, res);
 
     // Aguardar microtasks para o construtor do transport ser chamado
@@ -312,7 +334,7 @@ describe("createHttpServer — registro de sessão via onsessioninitialized (C-N
     const server = createHttpServer();
     const handler = (server as unknown as { _handler: (r: http.IncomingMessage, s: http.ServerResponse) => Promise<void> })._handler;
 
-    // 1ª request — sem session-id (nova sessão)
+    // 1ª request , sem session-id (nova sessão)
     const req1 = makeRequest({ authorization: "Bearer valid", "x-mcp-user-id": "user-123" });
     const res1 = makeResponse();
     const p1 = handler(req1, res1);
@@ -326,7 +348,7 @@ describe("createHttpServer — registro de sessão via onsessioninitialized (C-N
 
     const countAfterFirst = transportInstances.length;
 
-    // 2ª request — com o mesmo mcp-session-id (deve reusar)
+    // 2ª request , com o mesmo mcp-session-id (deve reusar)
     const req2 = makeRequest({
       authorization: "Bearer valid",
       "x-mcp-user-id": "user-123",
@@ -356,7 +378,7 @@ describe("createHttpServer — registro de sessão via onsessioninitialized (C-N
     instance.options.onsessioninitialized!(sid);
     await p;
 
-    // Disparar onclose — simula fechamento do transport pelo SDK
+    // Disparar onclose , simula fechamento do transport pelo SDK
     instance.onclose?.();
 
     // (c) sessionStore.delete deve ter sido chamado com o sessionId correto

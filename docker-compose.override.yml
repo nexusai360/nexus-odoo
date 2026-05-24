@@ -10,3 +10,9 @@ services:
   mcp:
     ports:
       - "3100:3100"
+    # Dev local: o MCP lê do banco isolado desta branch (nexus_odoo_l1).
+    environment:
+      - MCP_DATABASE_URL=postgresql://nexus_mcp:${MCP_DB_PASSWORD}@db:5432/nexus_odoo_l1?schema=public
+      - MCP_BI_DATABASE_URL=postgresql://nexus_mcp_bi:${MCP_BI_DB_PASSWORD}@db:5432/nexus_odoo_l1?schema=public
+      # Bateria de validação L3: rate limit alto (produção mantém o padrão 60).
+      - MCP_RATE_LIMIT=100000

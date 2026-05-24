@@ -1,6 +1,6 @@
 // mcp/tools/estoque/valor-armazem.ts
 // Tool MCP: estoque_valor_armazem
-// percentual é shaping — calculado aqui na tool (regra N8), não no núcleo.
+// percentual é shaping , calculado aqui na tool (regra N8), não no núcleo.
 import { z } from "zod";
 import type { ToolEntry } from "../../catalog/types.js";
 import { queryValorArmazem } from "@/lib/reports/queries/estoque.js";
@@ -43,7 +43,7 @@ function shape(d: Awaited<ReturnType<typeof queryValorArmazem>>) {
       armazem: l.armazem,
       valor: l.valor,
       numProdutos: l.numProdutos,
-      // percentual é shaping — calculado aqui, não no núcleo (regra N8)
+      // percentual é shaping , calculado aqui, não no núcleo (regra N8)
       percentual: d.kpis.valorTotal > 0 ? (l.valor / d.kpis.valorTotal) * 100 : 0,
     })),
   };

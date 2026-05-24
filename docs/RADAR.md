@@ -175,3 +175,60 @@ Turbopack. `tsc`, `eslint` e `jest` passam — só o `next build` quebra.
 estático das páginas de erro (ex.: mover a leitura de cookie para um boundary
 dinâmico, ou adicionar `export const dynamic` ao `not-found.tsx`/`global-error.tsx`
 próprios). Fora do escopo do rework de UI da F5.
+
+---
+
+## R7 — `eslint .` acusa `no-explicit-any` em test files do MCP (PRÉ-EXISTENTE, BAIXO)
+
+**Aberto desde:** 2026-05-21 (verificação da F4 Onda 2 rodada 3 de correções).
+
+`npm run lint` (`eslint .`) reporta 83 erros `@typescript-eslint/no-explicit-any`,
+todos em arquivos de **teste** do servidor MCP (`mcp/__tests__/e2e/*`,
+`mcp/auth/__tests__/*`, `mcp/middleware/idempotency.ts`, `migrate-scopes.ts`) e
+em `src/lib/actions/mcp-api-keys.test.ts` / `src/worker/odoo/__tests__/`. Foram
+introduzidos pela F4 Onda 2 (Bloco P, commit `736cd0d` e arredores), não pela
+rodada 3 de correções de UI — nenhum arquivo tocado na r3 tem erro de lint.
+
+**Implicação:** não bloqueia (`tsc`/`jest`/`build` verdes; produção não usa
+`any` de teste), mas deixa `npm run lint` vermelho no repo inteiro.
+
+**Ação:** numa varredura dedicada, tipar os mocks dos testes do MCP ou aplicar
+`eslint-disable` justificado por bloco. Fora do escopo da r3 (correções de UI
+do painel Servidor MCP).
+
+---
+
+## R8 — Dois modelos da F2 não sincronizam (achado da bateria L2, MÉDIO)
+
+**Aberto desde:** 2026-05-22 (bateria L2 de validação de leitura).
+
+A conferência de fidelidade da L2 (count `raw_*` vs `search_count` do Odoo)
+flagrou dois modelos do catálogo F2 com `sync_state.last_status = 'erro'`:
+
+- **`pedido.documento.historico.tempo`** (raw 0, Odoo 8.658). Erro do Odoo:
+  `coluna pedido_documento_historico_tempo.id não existe`. É um modelo Odoo
+  sem coluna `id` (view/agregado); o sync, que faz `search_read` selecionando
+  `id`, não consegue lê-lo. **É não-sincronizável pelo mecanismo atual.**
+  Ação: removê-lo do `MODEL_CATALOG` (e ajustar `model-catalog.test.ts`), ou
+  dar ao sync um caminho para modelos sem `id`.
+- **`sped.produto.lote.serie`** (raw 5.000, Odoo 7.534). `last_error` vazio
+  após 3 tentativas — provável timeout ou erro não serializado numa página
+  específica. O raw tem 5.000 de um sync parcial anterior. Ação: re-rodar o
+  sync só desse modelo com log verboso para capturar o erro real.
+
+**Implicação:** nenhuma tool da F4 depende desses dois modelos — as 55/56
+conferências de tool da L2 passaram. É dívida de robustez do sync da F2, não
+um gap da F4 leitura. Cada ciclo de sync gasta 3 tentativas falhas em cada um.
+
+**Ação:** sessão de debug dedicada ao sync da F2. Fora do escopo da F4 L2.
+
+### R8-B — Gap pequeno de backfill em 4 modelos (BAIXO)
+
+A mesma conferência de fidelidade da L2 achou 4 modelos com `last_status` ok
+mas `raw` ligeiramente abaixo do Odoo, persistente entre corridas:
+`estoque.saldo` (−92), `finan.fluxo.caixa` (−147), `finan.banco.extrato` (−20),
+`finan.banco.saldo` (−4) — todos ~1%. São modelos `incremental`: o ciclo
+incremental só puxa por `write_date` e nunca remove/repuxa linhas antigas
+perdidas no backfill. O ciclo de **reconcile** (24h) fecharia o gap; o
+`f4l-ingest.ts` roda só snapshot+incremental, sem reconcile. Não é bug de
+tool. Ação: rodar um reconcile, ou aceitar o gap de ~1% como ruído de janela.

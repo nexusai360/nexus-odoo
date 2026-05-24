@@ -71,6 +71,10 @@ enum KbKind {
   MARKDOWN
   CSV
   XML
+  YAML
+  XLSX
+  DOCX
+  JSON
 }
 
 /// Estado de checkpoint de um recurso do agente (áudio, imagem, KB, documento).
@@ -164,6 +168,63 @@ model AppSetting {
   updatedById String?  @map("updated_by_id") @db.Uuid
 
   @@map("app_settings")
+}
+
+/// Servidor MCP externo registrado para o Agente Nex consumir como cliente.
+/// "Plugar MCPs" — agrega capacidades de terceiros (Slack, GitHub, etc.) ao Nex.
+/// O `authToken` é persistido cifrado (AES-256-GCM via src/lib/encryption.ts).
+model ExternalMcpServer {
+  id          String    @id @default(uuid()) @db.Uuid
+  name        String
+  description String?
+  transport   String    @default("http")
+  url         String
+  authHeader  String?   @map("auth_header")
+  authToken   String?   @map("auth_token")
+  enabled     Boolean   @default(true)
+  lastStatus  String    @default("unknown") @map("last_status")
+  lastCheckAt DateTime? @map("last_check_at")
+  createdAt   DateTime  @default(now()) @map("created_at")
+  updatedAt   DateTime  @updatedAt @map("updated_at")
+
+  callLogs ExternalMcpCallLog[]
+
+  @@index([enabled])
+  @@map("external_mcp_servers")
+}
+
+/// Registro das chamadas que o Agente Nex faz a tools de servidores MCP
+/// externos (Plugar MCP). Distinto do McpAuditLog, que e do nosso MCP interno.
+/// `serverName` e denormalizado para o log sobreviver a exclusao do servidor.
+model ExternalMcpCallLog {
+  id           String             @id @default(uuid()) @db.Uuid
+  serverId     String?            @map("server_id") @db.Uuid
+  server       ExternalMcpServer? @relation(fields: [serverId], references: [id], onDelete: SetNull)
+  serverName   String             @map("server_name")
+  toolName     String             @map("tool_name")
+  outcome      String
+  durationMs   Int?               @map("duration_ms")
+  errorMessage String?            @map("error_message")
+  argsPreview  Json?              @map("args_preview")
+  userId       String             @map("user_id") @db.Uuid
+  criadoEm     DateTime           @default(now()) @map("criado_em")
+
+  @@index([criadoEm])
+  @@index([serverId])
+  @@map("external_mcp_call_log")
+}
+
+/// Registro de que um usuário já viu o tour de uma tela. Usado para abrir o
+/// tour automaticamente só na primeira visita, sobrevivendo a logout e troca
+/// de conta (a marca fica por usuário, não no navegador).
+model UserTourSeen {
+  id      String   @id @default(uuid()) @db.Uuid
+  userId  String   @map("user_id") @db.Uuid
+  tourKey String   @map("tour_key")
+  seenAt  DateTime @default(now()) @map("seen_at")
+
+  @@unique([userId, tourKey])
+  @@map("user_tour_seen")
 }
 
 model AuditLog {
@@ -1179,6 +1240,434 @@ enum SyncStatus {
   sem_acesso
 }
 
+// ─── F4 L1a — modelos raw da expansão da base de leitura ────────────────────
+
+model RawSpedTabelaPreco {
+  odooId        Int       @id @map("odoo_id")
+  data          Json
+  odooWriteDate DateTime? @map("odoo_write_date")
+  syncedAt      DateTime  @default(now()) @map("synced_at")
+  rawDeleted    Boolean   @default(false) @map("raw_deleted")
+
+  @@index([odooWriteDate])
+  @@index([rawDeleted])
+  @@map("raw_sped_tabela_preco")
+}
+
+model RawSpedTabelaPrecoRegra {
+  odooId        Int       @id @map("odoo_id")
+  data          Json
+  odooWriteDate DateTime? @map("odoo_write_date")
+  syncedAt      DateTime  @default(now()) @map("synced_at")
+  rawDeleted    Boolean   @default(false) @map("raw_deleted")
+
+  @@index([odooWriteDate])
+  @@index([rawDeleted])
+  @@map("raw_sped_tabela_preco_regra")
+}
+
+model RawSpedServico {
+  odooId        Int       @id @map("odoo_id")
+  data          Json
+  odooWriteDate DateTime? @map("odoo_write_date")
+  syncedAt      DateTime  @default(now()) @map("synced_at")
+  rawDeleted    Boolean   @default(false) @map("raw_deleted")
+
+  @@index([odooWriteDate])
+  @@index([rawDeleted])
+  @@map("raw_sped_servico")
+}
+
+model RawSpedApuracao {
+  odooId        Int       @id @map("odoo_id")
+  data          Json
+  odooWriteDate DateTime? @map("odoo_write_date")
+  syncedAt      DateTime  @default(now()) @map("synced_at")
+  rawDeleted    Boolean   @default(false) @map("raw_deleted")
+
+  @@index([odooWriteDate])
+  @@index([rawDeleted])
+  @@map("raw_sped_apuracao")
+}
+
+model RawSpedCartaCorrecao {
+  odooId        Int       @id @map("odoo_id")
+  data          Json
+  odooWriteDate DateTime? @map("odoo_write_date")
+  syncedAt      DateTime  @default(now()) @map("synced_at")
+  rawDeleted    Boolean   @default(false) @map("raw_deleted")
+
+  @@index([odooWriteDate])
+  @@index([rawDeleted])
+  @@map("raw_sped_carta_correcao")
+}
+
+// ─── F4 L1c — resíduo operacional 4a ─────────────────────────────────────────
+
+/// raw de sped.certificado. NOTA: os campos `senha` e `arquivo` NÃO são
+/// copiados (excludeFields no MODEL_CATALOG) — não aparecem no JSONB `data`.
+model RawSpedCertificado {
+  odooId        Int       @id @map("odoo_id")
+  data          Json
+  odooWriteDate DateTime? @map("odoo_write_date")
+  syncedAt      DateTime  @default(now()) @map("synced_at")
+  rawDeleted    Boolean   @default(false) @map("raw_deleted")
+
+  @@index([odooWriteDate])
+  @@index([rawDeleted])
+  @@map("raw_sped_certificado")
+}
+
+model RawFinanBaixaLancamento {
+  odooId        Int       @id @map("odoo_id")
+  data          Json
+  odooWriteDate DateTime? @map("odoo_write_date")
+  syncedAt      DateTime  @default(now()) @map("synced_at")
+  rawDeleted    Boolean   @default(false) @map("raw_deleted")
+
+  @@index([odooWriteDate])
+  @@index([rawDeleted])
+  @@map("raw_finan_baixa_lancamento")
+}
+
+model RawPedidoFaturamento {
+  odooId        Int       @id @map("odoo_id")
+  data          Json
+  odooWriteDate DateTime? @map("odoo_write_date")
+  syncedAt      DateTime  @default(now()) @map("synced_at")
+  rawDeleted    Boolean   @default(false) @map("raw_deleted")
+
+  @@index([odooWriteDate])
+  @@index([rawDeleted])
+  @@map("raw_pedido_faturamento")
+}
+
+// ─── F4 L1b — camada de referência (27 tabelas) ──────────────────────────────
+
+model RawSpedNcm {
+  odooId        Int       @id @map("odoo_id")
+  data          Json
+  odooWriteDate DateTime? @map("odoo_write_date")
+  syncedAt      DateTime  @default(now()) @map("synced_at")
+  rawDeleted    Boolean   @default(false) @map("raw_deleted")
+
+  @@index([odooWriteDate])
+  @@index([rawDeleted])
+  @@map("raw_sped_ncm")
+}
+
+model RawSpedCfop {
+  odooId        Int       @id @map("odoo_id")
+  data          Json
+  odooWriteDate DateTime? @map("odoo_write_date")
+  syncedAt      DateTime  @default(now()) @map("synced_at")
+  rawDeleted    Boolean   @default(false) @map("raw_deleted")
+
+  @@index([odooWriteDate])
+  @@index([rawDeleted])
+  @@map("raw_sped_cfop")
+}
+
+model RawSpedCest {
+  odooId        Int       @id @map("odoo_id")
+  data          Json
+  odooWriteDate DateTime? @map("odoo_write_date")
+  syncedAt      DateTime  @default(now()) @map("synced_at")
+  rawDeleted    Boolean   @default(false) @map("raw_deleted")
+
+  @@index([odooWriteDate])
+  @@index([rawDeleted])
+  @@map("raw_sped_cest")
+}
+
+model RawSpedCnae {
+  odooId        Int       @id @map("odoo_id")
+  data          Json
+  odooWriteDate DateTime? @map("odoo_write_date")
+  syncedAt      DateTime  @default(now()) @map("synced_at")
+  rawDeleted    Boolean   @default(false) @map("raw_deleted")
+
+  @@index([odooWriteDate])
+  @@index([rawDeleted])
+  @@map("raw_sped_cnae")
+}
+
+model RawSpedNbs {
+  odooId        Int       @id @map("odoo_id")
+  data          Json
+  odooWriteDate DateTime? @map("odoo_write_date")
+  syncedAt      DateTime  @default(now()) @map("synced_at")
+  rawDeleted    Boolean   @default(false) @map("raw_deleted")
+
+  @@index([odooWriteDate])
+  @@index([rawDeleted])
+  @@map("raw_sped_nbs")
+}
+
+model RawSpedNaturezaOperacao {
+  odooId        Int       @id @map("odoo_id")
+  data          Json
+  odooWriteDate DateTime? @map("odoo_write_date")
+  syncedAt      DateTime  @default(now()) @map("synced_at")
+  rawDeleted    Boolean   @default(false) @map("raw_deleted")
+
+  @@index([odooWriteDate])
+  @@index([rawDeleted])
+  @@map("raw_sped_natureza_operacao")
+}
+
+model RawSpedUnidade {
+  odooId        Int       @id @map("odoo_id")
+  data          Json
+  odooWriteDate DateTime? @map("odoo_write_date")
+  syncedAt      DateTime  @default(now()) @map("synced_at")
+  rawDeleted    Boolean   @default(false) @map("raw_deleted")
+
+  @@index([odooWriteDate])
+  @@index([rawDeleted])
+  @@map("raw_sped_unidade")
+}
+
+model RawSpedCstIcms {
+  odooId        Int       @id @map("odoo_id")
+  data          Json
+  odooWriteDate DateTime? @map("odoo_write_date")
+  syncedAt      DateTime  @default(now()) @map("synced_at")
+  rawDeleted    Boolean   @default(false) @map("raw_deleted")
+
+  @@index([odooWriteDate])
+  @@index([rawDeleted])
+  @@map("raw_sped_cst_icms")
+}
+
+model RawSpedCstIcmsSn {
+  odooId        Int       @id @map("odoo_id")
+  data          Json
+  odooWriteDate DateTime? @map("odoo_write_date")
+  syncedAt      DateTime  @default(now()) @map("synced_at")
+  rawDeleted    Boolean   @default(false) @map("raw_deleted")
+
+  @@index([odooWriteDate])
+  @@index([rawDeleted])
+  @@map("raw_sped_cst_icms_sn")
+}
+
+model RawSpedCstIpi {
+  odooId        Int       @id @map("odoo_id")
+  data          Json
+  odooWriteDate DateTime? @map("odoo_write_date")
+  syncedAt      DateTime  @default(now()) @map("synced_at")
+  rawDeleted    Boolean   @default(false) @map("raw_deleted")
+
+  @@index([odooWriteDate])
+  @@index([rawDeleted])
+  @@map("raw_sped_cst_ipi")
+}
+
+model RawSpedCstPisCofins {
+  odooId        Int       @id @map("odoo_id")
+  data          Json
+  odooWriteDate DateTime? @map("odoo_write_date")
+  syncedAt      DateTime  @default(now()) @map("synced_at")
+  rawDeleted    Boolean   @default(false) @map("raw_deleted")
+
+  @@index([odooWriteDate])
+  @@index([rawDeleted])
+  @@map("raw_sped_cst_pis_cofins")
+}
+
+model RawSpedCstCibs {
+  odooId        Int       @id @map("odoo_id")
+  data          Json
+  odooWriteDate DateTime? @map("odoo_write_date")
+  syncedAt      DateTime  @default(now()) @map("synced_at")
+  rawDeleted    Boolean   @default(false) @map("raw_deleted")
+
+  @@index([odooWriteDate])
+  @@index([rawDeleted])
+  @@map("raw_sped_cst_cibs")
+}
+
+model RawSpedMunicipio {
+  odooId        Int       @id @map("odoo_id")
+  data          Json
+  odooWriteDate DateTime? @map("odoo_write_date")
+  syncedAt      DateTime  @default(now()) @map("synced_at")
+  rawDeleted    Boolean   @default(false) @map("raw_deleted")
+
+  @@index([odooWriteDate])
+  @@index([rawDeleted])
+  @@map("raw_sped_municipio")
+}
+
+model RawSpedPais {
+  odooId        Int       @id @map("odoo_id")
+  data          Json
+  odooWriteDate DateTime? @map("odoo_write_date")
+  syncedAt      DateTime  @default(now()) @map("synced_at")
+  rawDeleted    Boolean   @default(false) @map("raw_deleted")
+
+  @@index([odooWriteDate])
+  @@index([rawDeleted])
+  @@map("raw_sped_pais")
+}
+
+model RawSpedEstado {
+  odooId        Int       @id @map("odoo_id")
+  data          Json
+  odooWriteDate DateTime? @map("odoo_write_date")
+  syncedAt      DateTime  @default(now()) @map("synced_at")
+  rawDeleted    Boolean   @default(false) @map("raw_deleted")
+
+  @@index([odooWriteDate])
+  @@index([rawDeleted])
+  @@map("raw_sped_estado")
+}
+
+model RawSpedCondicaoPagamento {
+  odooId        Int       @id @map("odoo_id")
+  data          Json
+  odooWriteDate DateTime? @map("odoo_write_date")
+  syncedAt      DateTime  @default(now()) @map("synced_at")
+  rawDeleted    Boolean   @default(false) @map("raw_deleted")
+
+  @@index([odooWriteDate])
+  @@index([rawDeleted])
+  @@map("raw_sped_condicao_pagamento")
+}
+
+model RawSpedFeriado {
+  odooId        Int       @id @map("odoo_id")
+  data          Json
+  odooWriteDate DateTime? @map("odoo_write_date")
+  syncedAt      DateTime  @default(now()) @map("synced_at")
+  rawDeleted    Boolean   @default(false) @map("raw_deleted")
+
+  @@index([odooWriteDate])
+  @@index([rawDeleted])
+  @@map("raw_sped_feriado")
+}
+
+model RawSpedAliquotaIcmsProprio {
+  odooId        Int       @id @map("odoo_id")
+  data          Json
+  odooWriteDate DateTime? @map("odoo_write_date")
+  syncedAt      DateTime  @default(now()) @map("synced_at")
+  rawDeleted    Boolean   @default(false) @map("raw_deleted")
+
+  @@index([odooWriteDate])
+  @@index([rawDeleted])
+  @@map("raw_sped_aliquota_icms_proprio")
+}
+
+model RawSpedAliquotaIcmsSt {
+  odooId        Int       @id @map("odoo_id")
+  data          Json
+  odooWriteDate DateTime? @map("odoo_write_date")
+  syncedAt      DateTime  @default(now()) @map("synced_at")
+  rawDeleted    Boolean   @default(false) @map("raw_deleted")
+
+  @@index([odooWriteDate])
+  @@index([rawDeleted])
+  @@map("raw_sped_aliquota_icms_st")
+}
+
+model RawSpedAliquotaInss {
+  odooId        Int       @id @map("odoo_id")
+  data          Json
+  odooWriteDate DateTime? @map("odoo_write_date")
+  syncedAt      DateTime  @default(now()) @map("synced_at")
+  rawDeleted    Boolean   @default(false) @map("raw_deleted")
+
+  @@index([odooWriteDate])
+  @@index([rawDeleted])
+  @@map("raw_sped_aliquota_inss")
+}
+
+model RawSpedAliquotaIpi {
+  odooId        Int       @id @map("odoo_id")
+  data          Json
+  odooWriteDate DateTime? @map("odoo_write_date")
+  syncedAt      DateTime  @default(now()) @map("synced_at")
+  rawDeleted    Boolean   @default(false) @map("raw_deleted")
+
+  @@index([odooWriteDate])
+  @@index([rawDeleted])
+  @@map("raw_sped_aliquota_ipi")
+}
+
+model RawSpedAliquotaIrpf {
+  odooId        Int       @id @map("odoo_id")
+  data          Json
+  odooWriteDate DateTime? @map("odoo_write_date")
+  syncedAt      DateTime  @default(now()) @map("synced_at")
+  rawDeleted    Boolean   @default(false) @map("raw_deleted")
+
+  @@index([odooWriteDate])
+  @@index([rawDeleted])
+  @@map("raw_sped_aliquota_irpf")
+}
+
+model RawSpedAliquotaIss {
+  odooId        Int       @id @map("odoo_id")
+  data          Json
+  odooWriteDate DateTime? @map("odoo_write_date")
+  syncedAt      DateTime  @default(now()) @map("synced_at")
+  rawDeleted    Boolean   @default(false) @map("raw_deleted")
+
+  @@index([odooWriteDate])
+  @@index([rawDeleted])
+  @@map("raw_sped_aliquota_iss")
+}
+
+model RawSpedAliquotaPisCofins {
+  odooId        Int       @id @map("odoo_id")
+  data          Json
+  odooWriteDate DateTime? @map("odoo_write_date")
+  syncedAt      DateTime  @default(now()) @map("synced_at")
+  rawDeleted    Boolean   @default(false) @map("raw_deleted")
+
+  @@index([odooWriteDate])
+  @@index([rawDeleted])
+  @@map("raw_sped_aliquota_pis_cofins")
+}
+
+model RawSpedAliquotaSimplesAliquota {
+  odooId        Int       @id @map("odoo_id")
+  data          Json
+  odooWriteDate DateTime? @map("odoo_write_date")
+  syncedAt      DateTime  @default(now()) @map("synced_at")
+  rawDeleted    Boolean   @default(false) @map("raw_deleted")
+
+  @@index([odooWriteDate])
+  @@index([rawDeleted])
+  @@map("raw_sped_aliquota_simples_aliquota")
+}
+
+model RawSpedAliquotaSimplesAnexo {
+  odooId        Int       @id @map("odoo_id")
+  data          Json
+  odooWriteDate DateTime? @map("odoo_write_date")
+  syncedAt      DateTime  @default(now()) @map("synced_at")
+  rawDeleted    Boolean   @default(false) @map("raw_deleted")
+
+  @@index([odooWriteDate])
+  @@index([rawDeleted])
+  @@map("raw_sped_aliquota_simples_anexo")
+}
+
+model RawSpedAliquotaSimplesTeto {
+  odooId        Int       @id @map("odoo_id")
+  data          Json
+  odooWriteDate DateTime? @map("odoo_write_date")
+  syncedAt      DateTime  @default(now()) @map("synced_at")
+  rawDeleted    Boolean   @default(false) @map("raw_deleted")
+
+  @@index([odooWriteDate])
+  @@index([rawDeleted])
+  @@map("raw_sped_aliquota_simples_teto")
+}
+
 /// Estado de sincronização por modelo do Odoo. Fonte do "atualizado há Xs".
 model SyncState {
   model             String     @id
@@ -1493,10 +1982,119 @@ model FatoContaContabil {
   @@map("fato_conta_contabil")
 }
 
+/// F4 L1a — preço por regra de tabela de preço (achatado de sped.tabela.preco.regra).
+/// Grão: uma linha por regra. A dimensão indica se a regra é por produto,
+/// família, participante ou geral.
+model FatoPreco {
+  odooId           Int       @id @map("odoo_id")
+  tabelaId         Int?      @map("tabela_id")
+  tabelaNome       String?   @map("tabela_nome")
+  dimensao         String    @default("geral")
+  produtoId        Int?      @map("produto_id")
+  produtoNome      String?   @map("produto_nome")
+  familiaId        Int?      @map("familia_id")
+  familiaNome      String?   @map("familia_nome")
+  participanteId   Int?      @map("participante_id")
+  participanteNome String?   @map("participante_nome")
+  operacao         String?
+  precoBase        String?   @map("preco_base")
+  valor            Decimal?  @db.Decimal(18, 4)
+  aliquota         Decimal?  @db.Decimal(9, 4)
+  quantidadeMinima Decimal   @default(0) @db.Decimal(18, 4) @map("quantidade_minima")
+  dataInicial      DateTime? @map("data_inicial")
+  dataFinal        DateTime? @map("data_final")
+  atualizadoEm     DateTime  @default(now()) @map("atualizado_em")
+
+  @@index([produtoId])
+  @@index([tabelaId])
+  @@index([familiaId])
+  @@map("fato_preco")
+}
+
+/// F4 L1a — catálogo de serviços fiscais (de sped.servico).
+model FatoServico {
+  odooId           Int      @id @map("odoo_id")
+  codigo           String
+  codigoFormatado  String?  @map("codigo_formatado")
+  descricao        String
+  codigoTributacao String?  @map("codigo_tributacao")
+  alInssRetido     Decimal  @default(0) @db.Decimal(9, 4) @map("al_inss_retido")
+  atualizadoEm     DateTime @default(now()) @map("atualizado_em")
+
+  @@index([codigo])
+  @@map("fato_servico")
+}
+
+/// F4 L1a — apurações fiscais (ICMS-IPI e PIS-COFINS), de sped.apuracao.
+model FatoApuracao {
+  odooId            Int       @id @map("odoo_id")
+  empresaNome       String?   @map("empresa_nome")
+  dataInicial       DateTime? @map("data_inicial")
+  dataFinal         DateTime? @map("data_final")
+  tipo              String?
+  entregue          Boolean   @default(false)
+  regimeTributario  String?   @map("regime_tributario")
+  vrIcmsARecolher   Decimal   @default(0) @db.Decimal(18, 2) @map("vr_icms_a_recolher")
+  vrIcmsSaldoCredor Decimal   @default(0) @db.Decimal(18, 2) @map("vr_icms_saldo_credor")
+  vrIpiARecolher    Decimal   @default(0) @db.Decimal(18, 2) @map("vr_ipi_a_recolher")
+  vrPisARecolher    Decimal   @default(0) @db.Decimal(18, 2) @map("vr_pis_a_recolher")
+  vrCofinsARecolher Decimal   @default(0) @db.Decimal(18, 2) @map("vr_cofins_a_recolher")
+  atualizadoEm      DateTime  @default(now()) @map("atualizado_em")
+
+  @@index([dataInicial])
+  @@index([tipo])
+  @@map("fato_apuracao")
+}
+
+/// F4 L1a — cartas de correção de documentos fiscais, de sped.carta.correcao.
+model FatoCartaCorrecao {
+  odooId               Int       @id @map("odoo_id")
+  descricao            String?
+  correcao             String?
+  documentoId          Int?      @map("documento_id")
+  dataAutorizacao      DateTime? @map("data_autorizacao")
+  protocoloAutorizacao String?   @map("protocolo_autorizacao")
+  sequencia            Int?
+  atualizadoEm         DateTime  @default(now()) @map("atualizado_em")
+
+  @@index([documentoId])
+  @@map("fato_carta_correcao")
+}
+
+/// Entradas de referência (NCM, CFOP, município...) achatadas para lookup — F4 L1b.
+model FatoReferencia {
+  id        Int     @id @default(autoincrement())
+  tabela    String
+  codigo    String
+  descricao String?
+
+  @@index([tabela])
+  @@index([tabela, codigo])
+  @@map("fato_referencia")
+}
+
+/// Certificados digitais (e-CNPJ) das empresas — F4 L1c. Sem senha nem arquivo.
+model FatoCertificado {
+  odooId             Int       @id @map("odoo_id")
+  tipo               String?
+  numeroSerie        String?   @map("numero_serie")
+  proprietario       String?
+  cnpjCpf            String?   @map("cnpj_cpf")
+  dataInicioValidade DateTime? @map("data_inicio_validade")
+  dataFimValidade    DateTime? @map("data_fim_validade")
+  dataVencimentoUtil DateTime? @map("data_vencimento_util")
+  nomeArquivo        String?   @map("nome_arquivo")
+  atualizadoEm       DateTime  @default(now()) @map("atualizado_em")
+
+  @@index([dataFimValidade])
+  @@map("fato_certificado")
+}
+
 // ─── F4 — Logs e feature requests do MCP ─────────────────────────────────────
 
 /// Log de auditoria de chamadas ao MCP semântico.
 model McpAuditLog {
+  // LEGADOS — preservados (mcp/lib/audit.ts já usa)
   id         String   @id @default(uuid())
   userId     String   @map("user_id")
   tool       String
@@ -1506,8 +2104,54 @@ model McpAuditLog {
   durationMs Int?     @map("duration_ms")
   criadoEm   DateTime @default(now()) @map("criado_em")
 
+  // NOVOS — F4 Onda 2 (opcionais)
+  apiKeyId       String?   @map("api_key_id") @db.Uuid
+  apiKey         ApiKey?   @relation(fields: [apiKeyId], references: [id])
+  authMode       String?   @map("auth_mode")
+  operation      String?
+  module         String?
+  action         String?
+  capability     String?
+  eventName      String?   @map("event_name")
+  requestId      String?   @map("request_id")
+  idempotencyKey String?   @map("idempotency_key")
+  payload        Json?
+  result         Json?
+  snapshotBefore Json?     @map("snapshot_before")
+  snapshotAfter  Json?     @map("snapshot_after")
+  status         String?
+  httpStatus     Int?      @map("http_status")
+  errorCode      String?   @map("error_code")
+  errorMessage   String?   @map("error_message")
+  ipAddress      String?   @map("ip_address")
+  userAgent      String?   @map("user_agent")
+
   @@index([userId, criadoEm])
+  @@index([apiKeyId, criadoEm(sort: Desc)])
+  @@index([tool, criadoEm(sort: Desc)])
+  @@index([status, criadoEm(sort: Desc)])
+  @@index([idempotencyKey])
+  @@index([module, action, criadoEm(sort: Desc)])
+  @@index([eventName, criadoEm])
   @@map("mcp_audit_log")
+}
+
+/// Idempotency tracking para writes externas (F4 Onda 2).
+/// PK composta (apiKeyId, key) isola Idempotency-Key por canal sem colisão.
+model McpIdempotencyRecord {
+  apiKeyId        String   @map("api_key_id") @db.Uuid
+  key             String
+  toolId          String   @map("tool_id")
+  payloadHash     String   @map("payload_hash")
+  result          Json
+  status          String
+  httpStatus      Int      @map("http_status")
+  expiresAt       DateTime @map("expires_at")
+  createdAt       DateTime @default(now()) @map("created_at")
+
+  @@id([apiKeyId, key])
+  @@index([expiresAt])
+  @@map("mcp_idempotency_records")
 }
 
 /// Registro de perguntas fora do catálogo (Caminho 3a — gap logging).
@@ -1655,12 +2299,26 @@ model AgentSettings {
   /// Exibição da bolha flutuante do Agente Nex nas páginas autenticadas.
   bubbleEnabled     Boolean  @default(true) @map("bubble_enabled")
 
+  /// Habilita o Agente Nex no canal WhatsApp (F5). Independente de bubble.
+  whatsappEnabled   Boolean  @default(true) @map("whatsapp_enabled")
+
   /// Checkpoints de 3 estados (OFF/PLAYGROUND/PRODUCTION).
   audioCheckpoint   FeatureCheckpoint @default(OFF) @map("audio_checkpoint")
   imageCheckpoint   FeatureCheckpoint @default(OFF) @map("image_checkpoint")
   kbCheckpoint      FeatureCheckpoint @default(PRODUCTION) @map("kb_checkpoint")
   /// Checkpoint das sugestões clicáveis (substitui suggestionsEnabled — B3).
   suggestionsCheckpoint FeatureCheckpoint @default(PRODUCTION) @map("suggestions_checkpoint")
+
+  /// Checkpoint de 3 estados do modo raciocínio (OFF/PLAYGROUND/PRODUCTION).
+  /// Controla em qual ambiente o reasoning_effort é aplicado.
+  reasoningCheckpoint FeatureCheckpoint @default(OFF) @map("reasoning_checkpoint")
+  /// Profundidade de raciocínio dos modelos reasoning (ex.: GPT-5.x).
+  /// null = usa o default do provider. Valores: minimal | low | medium | high.
+  reasoningEffort   String?  @map("reasoning_effort")
+
+  /// Máximo de sugestões clicáveis que o agente pode mostrar por resposta.
+  /// Aplicado deterministicamente em `extractSuggestions` e instruído no prompt.
+  maxSuggestions    Int      @default(3) @map("max_suggestions")
 
   /// Modelo dedicado de transcrição de áudio (independente do modelo de produção).
   audioProvider     String?  @map("audio_provider")
@@ -1677,6 +2335,32 @@ model AgentSettings {
   updatedAt         DateTime @updatedAt @map("updated_at")
 
   @@map("agent_settings")
+}
+
+/// Overrides do catálogo de modelos LLM. Modelos novos descobertos pelo botão
+/// "atualizar" (ou pelo script CLI) ficam aqui; o catálogo efetivo em runtime
+/// é o merge de catalog.ts (base) + esta tabela. Tabela vazia = usa só a base.
+model LlmModelEntry {
+  id                 String   @id
+  provider           String
+  label              String
+  tier               String
+  pricingInput       Float?   @map("pricing_input")
+  pricingOutput      Float?   @map("pricing_output")
+  pricingPerMinute   Float?   @map("pricing_per_minute")
+  modelUse           String?  @map("model_use")
+  audio              Boolean  @default(false)
+  vision             Boolean  @default(false)
+  reasoningLevels    Json?    @map("reasoning_levels")
+  released           String?
+  notes              String?
+  source             String   @default("sync")
+  /// Quando o modelo some do catalogo upstream, marca o instante;
+  /// permite manter selecao do usuario e exibir banner de deprecated.
+  deprecatedAt       DateTime? @map("deprecated_at")
+  updatedAt          DateTime @updatedAt @map("updated_at")
+  @@index([provider])
+  @@map("llm_model_entry")
 }
 
 /// Documento da base de conhecimento do agente.
@@ -1814,15 +2498,35 @@ model WhatsappInstance {
 /// API key da plataforma para acesso externo (ex.: node Agent do n8n).
 /// A key só é exibida na criação; persiste-se só o hash SHA-256.
 model ApiKey {
+  // EXISTENTES — preservados
   id          String    @id @default(uuid()) @db.Uuid
   label       String
   keyHash     String    @unique @map("key_hash")
   last4       String
-  scopes      Json      @default("[]")
+  scopes      Json      @default("[]") // deprecated — migrado para capabilities em B4.5
   revokedAt   DateTime? @map("revoked_at")
   createdById String?   @map("created_by_id") @db.Uuid
   createdAt   DateTime  @default(now()) @map("created_at")
 
+  // NOVOS — F4 Onda 2
+  description         String?
+  capabilities        Json      @default("{\"version\":1,\"read\":[],\"write\":{}}")
+  capabilitiesVersion Int       @default(1) @map("capabilities_version")
+  rateLimit           Int       @default(60) @map("rate_limit")
+  active              Boolean   @default(true)
+  expiresAt           DateTime? @map("expires_at")
+  lastUsedAt          DateTime? @map("last_used_at")
+  rotatedAt           DateTime? @map("rotated_at")
+  revokedReason       String?   @map("revoked_reason")
+  isSystemKey         Boolean   @default(false) @map("is_system_key")
+  tenantId            String?   @map("tenant_id") @db.Uuid
+  allowedOrigins      Json      @default("[]") @map("allowed_origins")
+
+  auditLogs           McpAuditLog[]
+
+  @@index([active, revokedAt, expiresAt])
+  @@index([tenantId, active])
+  @@index([last4])
   @@map("api_keys")
 }
 

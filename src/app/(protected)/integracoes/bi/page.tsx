@@ -5,7 +5,7 @@ import { Breadcrumb } from "@/components/integracoes/breadcrumb";
 
 export const metadata = { title: "BI | Integrações | Nexus Odoo" };
 
-// Página dentro de (protected) — o layout depende da sessão do usuário.
+// Página dentro de (protected) , o layout depende da sessão do usuário.
 // Sem isto o Next tenta prerender estático e o layout protegido falha.
 export const dynamic = "force-dynamic";
 
@@ -31,7 +31,7 @@ export default function BiPage() {
         <div className="space-y-1">
           <p className="text-base font-semibold">Em construção</p>
           <p className="text-sm text-muted-foreground">
-            Os conectores de BI — Power BI, Metabase e outros — serão disponibilizados
+            Os conectores de BI , Power BI, Metabase e outros , serão disponibilizados
             em breve. Quando estiverem prontos, você poderá configurá-los aqui e
             conceder acesso read-only ao cache de dados do Nexus Odoo.
           </p>

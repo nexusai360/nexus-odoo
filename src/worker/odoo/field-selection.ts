@@ -1,10 +1,11 @@
 // src/worker/odoo/field-selection.ts
 import type { OdooClient } from "./client";
+import { MODEL_CATALOG } from "../catalog/model-catalog";
 
 /** Tipos de campo excluídos da sincronização (listas de filhos, redundantes). */
 const EXCLUDED_TYPES = new Set(["one2many", "many2many"]);
 
-/** Cache por modelo — fields_get é chamado no máximo uma vez por processo. */
+/** Cache por modelo , fields_get é chamado no máximo uma vez por processo. */
 const cache = new Map<string, string[]>();
 
 interface FieldMeta {
@@ -41,8 +42,15 @@ export async function getModelFields(
   // alguns módulos customizados do Odoo, mas é sempre necessário).
   if (!fields.includes("id")) fields.unshift("id");
 
-  cache.set(model, fields);
-  return fields;
+  // Exclusão por modelo: remove campos sensíveis/blobs declarados no catálogo
+  // (ex.: senha e arquivo de sped.certificado). Controla só o que é copiado
+  // para o nosso cache , não altera nada no Odoo.
+  const exclude = MODEL_CATALOG.find((e) => e.odooModel === model)?.excludeFields;
+  const finalFields =
+    exclude && exclude.length ? fields.filter((f) => !exclude.includes(f)) : fields;
+
+  cache.set(model, finalFields);
+  return finalFields;
 }
 
 /** Limpa o cache em memória (útil para testes). */

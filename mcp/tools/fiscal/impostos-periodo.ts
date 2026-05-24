@@ -10,7 +10,7 @@ const inputSchema = z.object({
   periodoAte: z.string().optional(),
 });
 
-// dados só tem escalares — sem array; cai no ramo "ok" do withFreshness.
+// dados só tem escalares , sem array; cai no ramo "ok" do withFreshness.
 // aviso FIXO: IBPT é estimativa do cabeçalho; imposto exato item-a-item é refinamento futuro.
 const dados = z.object({
   totalNotas: z.number().int(),

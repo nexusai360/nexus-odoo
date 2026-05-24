@@ -41,9 +41,9 @@ interface ReportViewProps {
   secoes: SecaoComDados[];
   freshness: Date | null;
   options: FilterOptions;
-  /** Período resolvido — `null` em relatórios sem dimensão temporal. */
+  /** Período resolvido , `null` em relatórios sem dimensão temporal. */
   periodo: PeriodoResolvido | null;
-  /** Mês mais antigo com dado ("YYYY-MM") — limita o calendário personalizado. */
+  /** Mês mais antigo com dado ("YYYY-MM") , limita o calendário personalizado. */
   periodoMin: string | null;
 }
 
@@ -56,7 +56,7 @@ function renderSecao(
   switch (secao.template) {
     case "KPICard": {
       const d = dados as { total?: number };
-      // KPICard já é um cartão — não recebe wrapper ChartCard.
+      // KPICard já é um cartão , não recebe wrapper ChartCard.
       return (
         <KPICard
           valor={d?.total ?? 0}
@@ -239,7 +239,7 @@ function renderSecao(
       );
     }
     case "LineChart": {
-      // R3 devolve { serie, detalhe } — extraímos apenas a fatia do gráfico.
+      // R3 devolve { serie, detalhe } , extraímos apenas a fatia do gráfico.
       const lineData = Array.isArray(dados)
         ? (dados as unknown as Record<string, unknown>[])
         : (() => {
@@ -278,7 +278,7 @@ function renderSecao(
 /**
  * Extrai a fatia de dados de uma seção. Quando `dados` é um array, usa-o
  * direto; quando é um objeto multi-fato (R6), seleciona a propriedade
- * homônima ao id da seção (`familia`/`marca`) — discriminação explícita,
+ * homônima ao id da seção (`familia`/`marca`) , discriminação explícita,
  * não por inspeção de chave (IM-05).
  */
 function pickFatia(dados: unknown, secaoId: string): Record<string, unknown>[] {
@@ -308,7 +308,7 @@ const TOUR_STEPS: TourStep[] = [
     target: "[data-tour='presets-btn']",
     title: "Presets",
     description:
-      "Salve combinações de filtros que você usa com frequência. Acesse rapidamente com um clique — ou use a tecla P.",
+      "Salve combinações de filtros que você usa com frequência. Acesse rapidamente com um clique , ou use a tecla P.",
   },
   {
     target: "[data-tour='data-table']",
@@ -341,14 +341,14 @@ export function ReportView({
   );
 
   // Várias seções podem declarar o mesmo filtro (ex.: armazém na seção de KPIs
-  // e na de tabela). A barra de filtros renderiza um controle por tipo — então
+  // e na de tabela). A barra de filtros renderiza um controle por tipo , então
   // deduplicamos por `tipo` para não gerar chaves React repetidas nem
   // controles duplicados na tela.
   const todosFiltros = report.secoes
     .flatMap((s) => s.filtros)
     .filter((f, i, arr) => arr.findIndex((x) => x.tipo === f.tipo) === i);
 
-  // Chips de filtros aplicados — derivados dos searchParams atuais.
+  // Chips de filtros aplicados , derivados dos searchParams atuais.
   const chips = useMemo(
     () => buildChipsFromParams(searchParams, options),
     [searchParams, options],
@@ -467,7 +467,7 @@ export function ReportView({
         active={tourActive}
         onClose={onTourClose}
       />
-      {/* Ref para input de busca — preenchido pelo DataTable via callback */}
+      {/* Ref para input de busca , preenchido pelo DataTable via callback */}
       <span ref={searchInputRef} aria-hidden className="sr-only" />
     </>
   );

@@ -1,7 +1,7 @@
 "use client";
 
 /**
- * AgentBubble — FAB flutuante que abre o chat do agente.
+ * AgentBubble , FAB flutuante que abre o chat do agente.
  *
  * Portado de nexus-insights/src/components/nex/nex-bubble.tsx.
  * Adaptações:
@@ -9,7 +9,7 @@
  * - aria-label: "Abrir o Agente" (genérico, sem nome próprio Nex).
  *
  * Posição: fixed bottom-6 right-6 (com offset no mobile para não brigar com gesture bar).
- * Tamanho 56px — acima do mínimo 44pt de touch.
+ * Tamanho 56px , acima do mínimo 44pt de touch.
  * Animação de "respiração" do glow respeita prefers-reduced-motion.
  *
  * Rework F5-UI: ao abrir o painel, o FAB some (fade/scale); ao fechar, volta.
@@ -31,15 +31,42 @@ interface AgentBubbleProps {
    * Resolvido pelo layout protegido com base no toggle do Prompt config + provider ativo.
    */
   audioInputEnabled?: boolean;
+  /**
+   * Quando true, o painel libera o anexo (clip). Resolvido pelo layout com base
+   * no checkpoint de imagem: só PRODUÇÃO libera na bubble.
+   */
+  imageInputEnabled?: boolean;
+  /**
+   * Limite de sugestões clicáveis (welcome + follow-up) configurado pelo
+   * super_admin em /agente/comportamento. Default 3, hard cap 5.
+   */
+  maxSuggestions?: number;
+  /**
+   * Sugestões iniciais personalizadas para o usuário logado (computadas no
+   * server a partir do histórico de uso de tools). Vazio = usuário novo ou
+   * erro; o ChatPanel cai no catálogo curado neste caso.
+   */
+  personalizedWelcome?: string[];
 }
 
-export function AgentBubble({ audioInputEnabled = false }: AgentBubbleProps = {}) {
+export function AgentBubble({
+  audioInputEnabled = false,
+  imageInputEnabled = false,
+  maxSuggestions = 3,
+  personalizedWelcome = [],
+}: AgentBubbleProps = {}) {
   const [open, setOpen] = React.useState(false);
+  // O conversationId vive AQUI (no FAB), e não no ChatPanel: assim ele
+  // sobrevive ao unmount do painel quando o usuário fecha a bubble pelo "X" e
+  // o histórico é restaurado na próxima abertura. Só zera ao "Encerrar sessão".
+  const [conversationId, setConversationId] = React.useState<string | null>(
+    null,
+  );
   const reduceMotion = useReducedMotion();
 
   return (
     <>
-      {/* FAB — visível só com o painel fechado. Some/volta com animação. */}
+      {/* FAB , visível só com o painel fechado. Some/volta com animação. */}
       <AnimatePresence>
         {!open ? (
           <motion.div
@@ -124,6 +151,15 @@ export function AgentBubble({ audioInputEnabled = false }: AgentBubbleProps = {}
             open={open}
             onClose={() => setOpen(false)}
             audioInputEnabled={audioInputEnabled}
+            imageInputEnabled={imageInputEnabled}
+            maxSuggestions={maxSuggestions}
+            personalizedWelcome={personalizedWelcome}
+            conversationId={conversationId}
+            onConversationCreated={setConversationId}
+            onEndSession={() => {
+              setConversationId(null);
+              setOpen(false);
+            }}
           />
         ) : null}
       </AnimatePresence>

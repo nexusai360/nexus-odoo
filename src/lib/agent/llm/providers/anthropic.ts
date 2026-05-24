@@ -126,7 +126,7 @@ export class AnthropicClient implements ProviderClient {
       const { costUsd } = calculateCost(this.model, tokensInput, tokensOutput);
       return {
         message:
-          "[MOCK Anthropic] Resposta simulada — configure a API key para respostas reais.",
+          "[MOCK Anthropic] Resposta simulada , configure a API key para respostas reais.",
         usage: {
           tokensInput,
           tokensOutput,
@@ -149,7 +149,7 @@ export class AnthropicClient implements ProviderClient {
     if (tools) body.tools = tools;
 
     // Streaming habilitado quando solicitado, inclusive quando há tools.
-    // A API Anthropic suporta SSE com tool_use — os blocos tool_use chegam
+    // A API Anthropic suporta SSE com tool_use , os blocos tool_use chegam
     // via content_block_start/content_block_delta e são parseados em #parseStream.
     const useStream = request.stream === true && !!request.onToken;
 

@@ -14,6 +14,8 @@ export interface SelectOption {
   label: string;
   description?: string;
   icon?: React.ReactNode;
+  /** Opção visível porém não selecionável (cinza, sem clique). */
+  disabled?: boolean;
 }
 
 interface CustomSelectProps {
@@ -23,6 +25,8 @@ interface CustomSelectProps {
   placeholder?: string;
   className?: string;
   triggerClassName?: string;
+  /** Sobrescreve a largura/estilo do menu suspenso (ex.: lista de anos). */
+  contentClassName?: string;
   icon?: React.ReactNode;
   disabled?: boolean;
   /** Label acessível para o trigger (lido por screen readers). */
@@ -36,7 +40,7 @@ interface CustomSelectProps {
 
 /**
  * Select customizado em cima do `Popover` da base-ui. A base-ui já trata
- * click-outside, foco e dismiss via Escape — evitamos o handler manual de
+ * click-outside, foco e dismiss via Escape, evitamos o handler manual de
  * `mousedown` que causava race no toggle do trigger.
  *
  * Largura mínima fixa (280px) garante boa legibilidade dos labels descritivos
@@ -49,6 +53,7 @@ export function CustomSelect({
   placeholder = "Selecionar",
   className,
   triggerClassName,
+  contentClassName,
   icon,
   disabled = false,
   "aria-label": ariaLabel,
@@ -90,9 +95,13 @@ export function CustomSelect({
         <PopoverContent
           align="start"
           sideOffset={4}
-          className="min-w-[280px] w-auto max-w-[min(calc(100vw-2rem),420px)] rounded-lg p-0 overflow-hidden"
+          style={{ minWidth: "var(--anchor-width, 280px)" }}
+          className={cn(
+            "w-auto max-w-[min(calc(100vw-2rem),420px)] rounded-lg p-0 overflow-hidden",
+            contentClassName,
+          )}
         >
-          <ul role="listbox" className="flex flex-col">
+          <ul role="listbox" className="flex max-h-[290px] flex-col overflow-y-auto">
             {options.map((option) => {
               const isSelected = value === option.value;
               return (
@@ -101,13 +110,19 @@ export function CustomSelect({
                     type="button"
                     role="option"
                     aria-selected={isSelected}
+                    aria-disabled={option.disabled || undefined}
+                    disabled={option.disabled}
                     onClick={() => {
+                      if (option.disabled) return;
                       onChange(option.value);
                       setOpen(false);
                     }}
                     className={cn(
-                      "flex w-full items-start gap-3 px-4 py-2.5 text-left cursor-pointer transition-all duration-200 hover:bg-accent",
-                      isSelected && "bg-accent/50",
+                      "flex w-full items-start gap-3 px-4 py-2.5 text-left transition-all duration-200",
+                      option.disabled
+                        ? "cursor-not-allowed opacity-40"
+                        : "cursor-pointer hover:bg-accent",
+                      isSelected && !option.disabled && "bg-accent/50",
                     )}
                   >
                     <div className="flex-1 min-w-0">

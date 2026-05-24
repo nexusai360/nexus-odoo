@@ -1,5 +1,5 @@
 // mcp/auth/user-context.ts
-// Resolução do UserContext a partir do banco — identidade por sessão no MCP.
+// Resolução do UserContext a partir do banco , identidade por sessão no MCP.
 import type { PrismaClient, PlatformRole, ReportDomain } from "@/generated/prisma/client";
 
 /** Contexto de identidade do usuário injetado em todo handler de tool. */

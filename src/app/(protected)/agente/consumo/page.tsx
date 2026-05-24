@@ -1,5 +1,5 @@
 /**
- * /agente/consumo — Tela de consumo de tokens e custo de LLM.
+ * /agente/consumo , Tela de consumo de tokens e custo de LLM.
  *
  * Gate: super_admin (aplicado também no layout do grupo /agente).
  * Server Component: busca a data mínima de uso e passa para o Client.
@@ -26,7 +26,7 @@ export default async function ConsumoPage() {
   const minDate = await getFirstUsageDate();
 
   return (
-    <PageShell variant="wide">
+    <PageShell variant="form">
       <PageHeader
         icon={TrendingUp}
         title="Consumo do Agente Nex"

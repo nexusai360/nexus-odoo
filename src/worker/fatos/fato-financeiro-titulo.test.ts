@@ -5,7 +5,7 @@ jest.mock("./fato-build-state", () => ({ markFatoBuilt: jest.fn() }));
 const { markFatoBuilt } = require("./fato-build-state");
 
 // ---------------------------------------------------------------------------
-// Fixtures — formato real de finan.lancamento (bug R1 — fonte trocada 2026-05-18)
+// Fixtures , formato real de finan.lancamento (bug R1 , fonte trocada 2026-05-18)
 // Dados confirmados contra o banco real:
 //   tipo='a_receber' situacao_divida_simples='aberto': 120 títulos, R$ 1.164.266,36
 //   tipo='a_pagar'  situacao_divida_simples='aberto':  18 títulos, R$    95.694,95
@@ -73,10 +73,10 @@ const RAW_LANCAMENTO_A_RECEBER_QUITADO = {
   vr_desconto: 0.0,
 };
 
-// Tipo de lançamento de caixa — deve ser DESCARTADO pelo builder
+// Tipo de lançamento de caixa , deve ser DESCARTADO pelo builder
 const RAW_LANCAMENTO_RECEBIMENTO_CAIXA = {
   id: 30001,
-  tipo: "recebimento",            // lançamento de caixa — NÃO é título
+  tipo: "recebimento",            // lançamento de caixa , NÃO é título
   participante_id: [20, "Cliente Exemplo SA"],
   conta_id: [1, "Caixa"],
   numero: false,
@@ -96,7 +96,7 @@ const RAW_LANCAMENTO_RECEBIMENTO_CAIXA = {
 
 const RAW_LANCAMENTO_PAGAMENTO_CAIXA = {
   id: 30002,
-  tipo: "pagamento",              // lançamento de caixa — NÃO é título
+  tipo: "pagamento",              // lançamento de caixa , NÃO é título
   participante_id: [10, "Fornecedor Exemplo Ltda"],
   conta_id: [1, "Caixa"],
   numero: false,
@@ -122,14 +122,14 @@ describe("mapTituloRow", () => {
   it("mapeia título a_receber aberto corretamente (tipo direto, data_pagamento=false→null)", () => {
     const result = mapTituloRow(RAW_LANCAMENTO_A_RECEBER_ABERTO);
     expect(result.odooId).toBe(10001);
-    // tipo é campo direto da fonte — não derivado
+    // tipo é campo direto da fonte , não derivado
     expect(result.tipo).toBe("a_receber");
     expect(result.participanteId).toBe(20);
     expect(result.participanteNome).toBe("Cliente Exemplo SA");
     expect(result.contaId).toBe(3);
     expect(result.contaNome).toBe("Conta Clientes");
     expect(result.numeroDocumento).toBe("NF-001/1");
-    // I2: hora local — data não desloca
+    // I2: hora local , data não desloca
     expect(result.dataDocumento).toEqual(new Date("2026-04-01T00:00:00"));
     expect(result.dataVencimento).toEqual(new Date("2026-05-31T00:00:00"));
     // data_pagamento=false → null
@@ -185,7 +185,7 @@ describe("mapTituloRow", () => {
     expect(result.dataPagamento).toBeNull();
   });
 
-  it("I2: data '2026-05-31' parseada como hora local — não desloca para 2026-05-30", () => {
+  it("I2: data '2026-05-31' parseada como hora local , não desloca para 2026-05-30", () => {
     const result = mapTituloRow({ ...RAW_LANCAMENTO_A_RECEBER_ABERTO, data_vencimento: "2026-05-31" });
     expect(result.dataVencimento?.getDate()).toBe(31);
   });
@@ -312,7 +312,7 @@ describe("rebuildFatoFinanceiroTitulo", () => {
     } as never;
 
     const n = await rebuildFatoFinanceiroTitulo(prisma);
-    // O builder não filtra por situação — apenas por tipo; o quitado entra
+    // O builder não filtra por situação , apenas por tipo; o quitado entra
     expect(n).toBe(1);
   });
 

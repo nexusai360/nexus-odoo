@@ -13,11 +13,11 @@
  *   7. Responde 202
  *
  * Respostas:
- *   401 — HMAC inválido
- *   400 — payload malformado ou JSON inválido
- *   200 + {noOp:true} — messageId já processado
- *   200 + {rejected:true, reason} — número desconhecido/inativo ou teto atingido
- *   202 + {queued:true, jobId} — job enfileirado
+ *   401 , HMAC inválido
+ *   400 , payload malformado ou JSON inválido
+ *   200 + {noOp:true} , messageId já processado
+ *   200 + {rejected:true, reason} , número desconhecido/inativo ou teto atingido
+ *   202 + {queued:true, jobId} , job enfileirado
  */
 
 import { type NextRequest, NextResponse } from "next/server";
@@ -41,7 +41,7 @@ const RL_WINDOW_SEC = 60;
 /** Teto diário padrão de mensagens por usuário (sobrescrito por AppSetting). */
 const DEFAULT_DAILY_LIMIT = 100;
 
-/** Instância da fila — lazy, criada na primeira requisição. */
+/** Instância da fila , lazy, criada na primeira requisição. */
 let agentQueueInstance: Queue<AgentJobData> | null = null;
 
 function getAgentQueue(): Queue<AgentJobData> {
@@ -129,7 +129,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     return NextResponse.json({ error: "Rate limit excedido para este número" }, { status: 429 });
   }
 
-  // ── Idempotência — dedup por messageId ────────────────────────────────────
+  // ── Idempotência , dedup por messageId ────────────────────────────────────
   const existing = await prisma.processedWhatsappMessage.findUnique({
     where: { messageId: payload.messageId },
   });

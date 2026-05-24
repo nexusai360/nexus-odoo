@@ -124,7 +124,7 @@ export class GeminiClient implements ProviderClient {
       const { costUsd } = calculateCost(this.model, tokensInput, tokensOutput);
       return {
         message:
-          "[MOCK Gemini] Resposta simulada — configure a API key para respostas reais.",
+          "[MOCK Gemini] Resposta simulada , configure a API key para respostas reais.",
         usage: { tokensInput, tokensOutput, costUsd: costUsd ?? 0 },
       };
     }

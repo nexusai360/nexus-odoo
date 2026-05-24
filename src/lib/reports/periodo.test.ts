@@ -132,5 +132,5 @@ describe("rotuloPeriodo", () => {
   it("intervalo", () =>
     expect(
       rotuloPeriodo({ preset: "custom", de: "2026-01", ate: "2026-03" }),
-    ).toBe("jan/2026 – mar/2026"));
+    ).toBe("jan/2026 , mar/2026"));
 });

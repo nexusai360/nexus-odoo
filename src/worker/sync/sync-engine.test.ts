@@ -1,6 +1,6 @@
 import { runModelCycle } from "./sync-engine";
 
-describe("runModelCycle — isolamento de falha", () => {
+describe("runModelCycle , isolamento de falha", () => {
   it("erro num modelo vira markError, não lança", async () => {
     const deps = {
       prisma: {} as never,

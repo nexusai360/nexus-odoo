@@ -33,7 +33,7 @@ interface BarChartCardProps {
  * - entrada animada (fade/scale 200ms) com `prefers-reduced-motion`;
  * - tooltip rico via `ChartTooltip`;
  * - grid sutil, eixos sem linha, cantos arredondados;
- * - `allowDecimals` desligado para formatos inteiros — sem ticks "0,5".
+ * - `allowDecimals` desligado para formatos inteiros , sem ticks "0,5".
  */
 export function BarChartCard({
   data,

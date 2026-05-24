@@ -11,7 +11,7 @@ const loginSchema = z.object({
   password: z.string().min(1, "Senha é obrigatória"),
 });
 
-// auth.ts roda em Node Runtime — aqui mora o callback `jwt`, que consulta o
+// auth.ts roda em Node Runtime , aqui mora o callback `jwt`, que consulta o
 // Prisma para manter o token fresco. O middleware (Edge) usa apenas authConfig.
 export const { handlers, auth, signIn, signOut } = NextAuth({
   ...authConfig,
@@ -51,10 +51,18 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
             token.theme = fresh.theme;
             token.mustChangePassword = fresh.mustChangePassword;
             if (!fresh.isActive) return null as any;
+          } else {
+            // A query foi bem-sucedida mas não há usuário com esse id: a conta
+            // foi removida ou a sessão foi emitida contra outra base. Invalida a
+            // sessão para forçar novo login, em vez de manter um id órfão que
+            // derruba qualquer query com foreign key para users. (Difere do
+            // catch acima: lá é falha transitória de banco, aqui é ausência
+            // confirmada do registro.)
+            return null as any;
           }
         } catch (err) {
           // Falha transitória do banco: mantém o token anterior em vez de
-          // derrubar todas as sessões. Logado para não silenciar de vez —
+          // derrubar todas as sessões. Logado para não silenciar de vez ,
           // se recorrente, indica problema de conectividade com o Postgres.
           console.error("[auth.jwt] falha ao revalidar token:", err);
         }

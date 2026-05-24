@@ -123,11 +123,11 @@ describe("useKeyboardShortcuts", () => {
 
     renderHook(() => useKeyboardShortcuts(shortcuts));
 
-    // Sem Ctrl — não deve disparar
+    // Sem Ctrl , não deve disparar
     act(() => { fireKey("k"); });
     expect(action).not.toHaveBeenCalled();
 
-    // Com Ctrl — deve disparar
+    // Com Ctrl , deve disparar
     act(() => { fireKey("k", { ctrlKey: true }); });
     expect(action).toHaveBeenCalledTimes(1);
   });
@@ -183,7 +183,7 @@ describe("useKeyboardShortcuts", () => {
     expect(action).not.toHaveBeenCalled();
   });
 
-  it("multiple shortcuts — apenas o correto dispara", () => {
+  it("multiple shortcuts , apenas o correto dispara", () => {
     const actionF = jest.fn();
     const actionP = jest.fn();
     const shortcuts: KeyboardShortcut[] = [

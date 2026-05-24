@@ -18,13 +18,13 @@ export default async function DashboardPage() {
           Olá, {firstName}
         </h1>
         <p className="mt-1 text-sm text-muted-foreground">
-          Bem-vindo ao Nexus Odoo — painel de dados do ERP.
+          Bem-vindo ao Nexus Odoo , painel de dados do ERP.
         </p>
       </div>
       <div className="rounded-xl border border-border bg-card/50 p-8 text-center">
         <p className="text-sm text-muted-foreground">
-          Os relatórios serão adicionados na Fase 3. A fundação — autenticação,
-          RBAC e o shell da plataforma — já está pronta.
+          Os relatórios serão adicionados na Fase 3. A fundação , autenticação,
+          RBAC e o shell da plataforma , já está pronta.
         </p>
       </div>
     </PageShell>

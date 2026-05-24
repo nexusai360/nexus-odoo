@@ -3,7 +3,7 @@ import type { OdooClient } from "../odoo/client";
 import { parseWriteDate } from "../odoo/datetime";
 import { getModelFields } from "../odoo/field-selection";
 
-/** Tamanho do lote para o createMany — evita estourar limites do Postgres. */
+/** Tamanho do lote para o createMany , evita estourar limites do Postgres. */
 const CREATE_BATCH = 1000;
 
 interface SnapshotRawTable {
@@ -17,7 +17,7 @@ interface SnapshotRawTable {
  * `rawTableKey` é a propriedade do client Prisma (ex.: "rawEstoqueSaldoHoje").
  *
  * Guarda anti-cache-vazio (CR-02): se o pull do Odoo voltar 0 registros mas o
- * cache atual não estiver vazio, NÃO apaga a tabela — lança erro e o ciclo
+ * cache atual não estiver vazio, NÃO apaga a tabela , lança erro e o ciclo
  * marca `erro`, preservando os dados. Um pull vazio transitório (glitch de
  * permissão, domínio que retorna vazio) não pode zerar o dashboard.
  */
@@ -45,7 +45,7 @@ export async function syncSnapshot(
       // Pull vazio com cache não-vazio: aborta sem apagar nada.
       const { OdooError } = await import("../odoo/errors");
       throw new OdooError(
-        `snapshot ${odooModel}: pull retornou 0 registros com cache de ${existing} linhas — refresh abortado para não destruir o cache`,
+        `snapshot ${odooModel}: pull retornou 0 registros com cache de ${existing} linhas , refresh abortado para não destruir o cache`,
       );
     }
     // Cache já vazio e pull vazio: nada a fazer, sem wipe desnecessário.

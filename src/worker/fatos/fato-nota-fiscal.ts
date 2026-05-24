@@ -1,8 +1,8 @@
 // src/worker/fatos/fato-nota-fiscal.ts
-// Builder do fato_nota_fiscal — fonte: raw_sped_documento (modelo sped.documento).
+// Builder do fato_nota_fiscal , fonte: raw_sped_documento (modelo sped.documento).
 //
 // tipoMovimento é derivado de entrada_saida: "1"→"saida", "0"→"entrada", else→"outro".
-// Nunca é null — alinhado com @default("outro") no schema (achado P-I6).
+// Nunca é null , alinhado com @default("outro") no schema (achado P-I6).
 // dataEmissao/dataEntradaSaida/dataAutorizacao usam sufixo T00:00:00 (parsing como hora local).
 // Valores monetários via Number(... ?? 0). mapper não produz atualizadoEm (@default(now())).
 
@@ -35,7 +35,7 @@ export interface FatoNotaFiscalRow {
   vrIbpt: number;
   vrIcmsProprio: number;
   vrDesconto: number;
-  // NÃO inclui atualizadoEm — @default(now()) no schema (decisão N5)
+  // NÃO inclui atualizadoEm , @default(now()) no schema (decisão N5)
 }
 
 /**
@@ -45,7 +45,7 @@ export interface FatoNotaFiscalRow {
 export function derivarTipoMovimento(entradaSaida: string): string {
   if (entradaSaida === "1") return "saida";
   if (entradaSaida === "0") return "entrada";
-  // Ramo "outro" — inclui null, undefined, string desconhecida
+  // Ramo "outro" , inclui null, undefined, string desconhecida
   console.warn(`[fato-nota-fiscal] entradaSaida desconhecida: ${JSON.stringify(entradaSaida)} → tipoMovimento="outro"`);
   return "outro";
 }
@@ -81,20 +81,25 @@ export function mapNotaFiscalRow(raw: Record<string, unknown>): FatoNotaFiscalRo
 }
 
 /** Reconstrói fato_nota_fiscal a partir de raw_sped_documento.
- * Filtra rawDeleted=false. Transação: deleteMany + createMany + markFatoBuilt. */
+ * Filtra rawDeleted=false. Transação: deleteMany + createMany + markFatoBuilt.
+ * Timeout estendido: com a base real (~47 mil documentos) o createMany passa
+ * dos 5s padrão da transação interativa do Prisma (P2028). */
 export async function rebuildFatoNotaFiscal(prisma: PrismaClient): Promise<number> {
   const rawRows = await prisma.rawSpedDocumento.findMany({
     where: { rawDeleted: false },
   });
   const mapped = rawRows.map((r) => mapNotaFiscalRow(r.data as Record<string, unknown>));
 
-  await prisma.$transaction(async (tx) => {
-    await tx.fatoNotaFiscal.deleteMany({});
-    if (mapped.length) {
-      await tx.fatoNotaFiscal.createMany({ data: mapped });
-    }
-    await markFatoBuilt(tx, "fato_nota_fiscal");
-  });
+  await prisma.$transaction(
+    async (tx) => {
+      await tx.fatoNotaFiscal.deleteMany({});
+      if (mapped.length) {
+        await tx.fatoNotaFiscal.createMany({ data: mapped });
+      }
+      await markFatoBuilt(tx, "fato_nota_fiscal");
+    },
+    { timeout: 180_000, maxWait: 15_000 },
+  );
 
   return mapped.length;
 }

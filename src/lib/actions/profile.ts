@@ -14,7 +14,7 @@ type ProfileResult = { success?: boolean; error?: string };
 const UpdateProfileInput = z.object({
   name: z.string().min(2).max(120).optional(),
   // Avatar é data-URL de imagem (webp gerado por canvas no client).
-  // Limite de 256 KB e prefixo obrigatório `data:image/` — rejeita
+  // Limite de 256 KB e prefixo obrigatório `data:image/` , rejeita
   // payloads arbitrários numa coluna que é renderizada em <img>.
   avatarUrl: z
     .string()
@@ -129,7 +129,7 @@ const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 /**
  * Valida a solicitação de troca de e-mail. O fluxo de confirmação por token
- * ainda é F2/F3 — por ora, após as validações, retorna aviso de versão
+ * ainda é F2/F3 , por ora, após as validações, retorna aviso de versão
  * futura. As checagens de duplicidade e e-mail igual ao atual já valem.
  */
 export async function requestEmailChange(input: {
@@ -176,6 +176,6 @@ export async function requestEmailChange(input: {
 export async function confirmEmailChange(
   _token: string,
 ): Promise<ProfileResult> {
-  // TODO: implementar confirmação de troca de email — fase futura
+  // TODO: implementar confirmação de troca de email , fase futura
   return { error: "Funcionalidade não implementada" };
 }

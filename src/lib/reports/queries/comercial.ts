@@ -1,7 +1,7 @@
 // src/lib/reports/queries/comercial.ts
 //
 // Núcleo de agregação de comercial, framework-neutro. Recebe `prisma` + filtros,
-// devolve agregação crua — sem `estado`/`freshness`/shaping. Não captura exceção.
+// devolve agregação crua , sem `estado`/`freshness`/shaping. Não captura exceção.
 // `withFreshness` vive no handler MCP, não aqui.
 
 import type { PrismaClient } from "@/generated/prisma/client";
@@ -20,7 +20,7 @@ export async function queryPedidosPeriodo(
           },
         }
       : {};
-  // Usa vrProdutos (valor do pedido independente de faturamento) — consistente
+  // Usa vrProdutos (valor do pedido independente de faturamento) , consistente
   // com queryPedidosPorEtapa e queryPedidosPorVendedor. vrNf ≈ 0 para pedidos
   // pré-faturamento, o que subnotificaria o valor total do período.
   const rows = await prisma.fatoPedido.findMany({ where, select: { vrProdutos: true } });
@@ -28,18 +28,27 @@ export async function queryPedidosPeriodo(
   return { totalPedidos: rows.length, valorTotal };
 }
 
+/** Conta o total de pedidos cadastrados (fato_pedido). Devolve só o número,
+ * sem amostra de linhas, para perguntas de contagem-total ("quantos pedidos"). */
+export async function queryContarPedidos(
+  prisma: PrismaClient,
+): Promise<{ total: number }> {
+  const total = await prisma.fatoPedido.count();
+  return { total };
+}
+
 export async function queryPedidosPorEtapa(
   prisma: PrismaClient,
 ): Promise<{ linhas: { etapaNome: string | null; etapaFinaliza: boolean; quantidade: number; valorTotal: number }[] }> {
   // Usa vrProdutos (valor do pedido independente de faturamento) em vez de vrNf.
   // vrNf é 0 para pedidos ainda não faturados (etapas pré-conclusão), o que
-  // subnotificaria todo o pipeline em aberto — distorcendo a pergunta-alvo
+  // subnotificaria todo o pipeline em aberto , distorcendo a pergunta-alvo
   // "qual o volume por etapa". vrProdutos reflete o valor comprometido em
   // qualquer etapa. A mesma decisão se aplica a queryPedidosPorVendedor.
   const rows = await prisma.fatoPedido.findMany({
     select: { etapaNome: true, etapaFinaliza: true, vrProdutos: true },
   });
-  // Agrupa em memória por etapaNome (não groupBy — precisa carregar etapaFinaliza)
+  // Agrupa em memória por etapaNome (não groupBy , precisa carregar etapaFinaliza)
   const map = new Map<string | null, { etapaFinaliza: boolean; quantidade: number; valorTotal: number }>();
   for (const r of rows) {
     const key = r.etapaNome;
@@ -68,7 +77,7 @@ export async function queryPedidosPorVendedor(
           },
         }
       : {};
-  // Usa vrProdutos — mesma decisão de queryPedidosPorEtapa: vrNf=0 para
+  // Usa vrProdutos , mesma decisão de queryPedidosPorEtapa: vrNf=0 para
   // pedidos não faturados, o que subnotificaria vendedores com pedidos em aberto.
   const rows = await prisma.fatoPedido.findMany({
     where,
@@ -95,7 +104,7 @@ export async function queryPedidosAtrasados(
   prisma: PrismaClient,
   hoje: Date,
 ): Promise<{ linhas: { pedidoId: number | null; participanteNome: string | null; numero: string | null; dataVencimento: Date | null; valor: number; diasAtraso: number }[]; totalAtrasado: number }> {
-  // Normaliza para início do dia local — parcelas gravadas como T00:00:00 não
+  // Normaliza para início do dia local , parcelas gravadas como T00:00:00 não
   // devem ser contadas como atrasadas se vencem HOJE. Mesmo padrão de
   // queryTitulosVencidos (financeiro.ts:230).
   const inicioDoDia = new Date(hoje.getFullYear(), hoje.getMonth(), hoje.getDate());
@@ -131,7 +140,7 @@ export async function queryParcelasAVencer(
   filtros: { ateDias?: number },
   hoje: Date,
 ): Promise<{ linhas: { pedidoId: number | null; participanteNome: string | null; numero: string | null; dataVencimento: Date | null; valor: number }[]; totalAVencer: number }> {
-  // Normaliza para início do dia local — parcelas que vencem HOJE (gravadas como
+  // Normaliza para início do dia local , parcelas que vencem HOJE (gravadas como
   // T00:00:00) devem ser incluídas em "a vencer". Mesmo padrão de
   // queryTitulosVencidos (financeiro.ts:230).
   const inicioDoDia = new Date(hoje.getFullYear(), hoje.getMonth(), hoje.getDate());

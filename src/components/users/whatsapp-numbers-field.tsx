@@ -18,7 +18,7 @@ interface WhatsappNumbersFieldProps {
   /**
    * Usuário-alvo (modo edição). Quando ausente, o campo opera em modo
    * rascunho: os números ficam só no estado local e são reportados via
-   * `onDraftChange` — quem cria o usuário os persiste depois.
+   * `onDraftChange` , quem cria o usuário os persiste depois.
    */
   userId?: string;
   /** Modo rascunho: callback com a lista atual de números (E.164 cru). */

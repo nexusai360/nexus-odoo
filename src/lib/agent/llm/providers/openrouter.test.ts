@@ -5,7 +5,7 @@ global.fetch = mockFetch as unknown as typeof fetch;
 
 beforeEach(() => mockFetch.mockReset());
 
-describe("OpenRouterClient — MOCK key", () => {
+describe("OpenRouterClient , MOCK key", () => {
   test("retorna resposta simulada sem chamar fetch", async () => {
     const client = new OpenRouterClient("MOCK_KEY", "openrouter/deepseek/deepseek-chat-v3");
     const result = await client.chat({ messages: [{ role: "user", content: "Olá" }] });
@@ -14,7 +14,7 @@ describe("OpenRouterClient — MOCK key", () => {
   });
 
   test("normaliza model id: remove prefixo openrouter/ antes de enviar à API", async () => {
-    // Com chave real o fetch seria chamado — verificar que o body tem o id sem prefixo
+    // Com chave real o fetch seria chamado , verificar que o body tem o id sem prefixo
     // Usando mock que retorna 200 para capturar o body
     mockFetch.mockResolvedValueOnce({
       ok: true,

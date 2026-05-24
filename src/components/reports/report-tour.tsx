@@ -85,7 +85,7 @@ export function ReportTour({ steps, active, onClose }: ReportTourProps) {
   // Garante que o portal só renderiza no cliente
   useEffect(() => { setMounted(true); }, []);
 
-  // Callback de medição — depende de `step` (objeto inteiro) para não
+  // Callback de medição , depende de `step` (objeto inteiro) para não
   // violar react-hooks/preserve-manual-memoization
   const measureTarget = useCallback(() => {
     const target = step?.target ?? null;
@@ -194,7 +194,7 @@ export function ReportTour({ steps, active, onClose }: ReportTourProps) {
         aria-hidden="true"
       />
 
-      {/* Spotlight — buraco recortado via clip-path não funciona com border-radius,
+      {/* Spotlight , buraco recortado via clip-path não funciona com border-radius,
           usamos 4 retângulos ao redor do alvo para simular a abertura. */}
       {targetRect && (
         <>

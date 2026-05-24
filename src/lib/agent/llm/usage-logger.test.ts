@@ -80,7 +80,7 @@ describe("logUsage", () => {
     expect(data.costBrl).not.toBeNull(); // ainda calcula, mas marcado como stale
   });
 
-  test("getUsdBrlRate nunca retorna null — usa spread e grava rateSpread (BUG 6)", async () => {
+  test("getUsdBrlRate nunca retorna null , usa spread e grava rateSpread (BUG 6)", async () => {
     calculateCost.mockReturnValue({ costUsd: 0.005, costKnown: true });
     getUsdBrlRate.mockResolvedValue({ rate: 5.8, spread: 1.1, stale: false });
 
@@ -96,7 +96,7 @@ describe("logUsage", () => {
     expect(data.costBrl).not.toBeNull();
   });
 
-  test("falha silenciosa — não lança se prisma.create falhar", async () => {
+  test("falha silenciosa , não lança se prisma.create falhar", async () => {
     calculateCost.mockReturnValue({ costUsd: 0.001, costKnown: true });
     getUsdBrlRate.mockResolvedValue({ rate: 5.5, spread: 1.1, stale: false });
     prisma.llmUsage.create.mockRejectedValue(new Error("DB error"));

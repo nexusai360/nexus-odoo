@@ -224,12 +224,12 @@ describe("rebuildFatoNotaFiscalItem", () => {
     expect(mocks.fatoBuildStateUpsert).toHaveBeenCalled();
   });
 
-  it("exceção em createMany faz rollback — markFatoBuilt não roda", async () => {
+  it("exceção em createMany faz rollback , markFatoBuilt não roda", async () => {
     const { rebuildFatoNotaFiscalItem } = await import("./fato-nota-fiscal-item");
 
     let markFatoBuiltCalled = false;
 
-    // $transaction propaga a exceção do callback (sem commit — rollback implícito)
+    // $transaction propaga a exceção do callback (sem commit , rollback implícito)
     const mockTx = {
       rawSpedDocumentoItem: {
         findMany: jest.fn().mockResolvedValue([{ odooId: 1, data: { id: 1 } }]),

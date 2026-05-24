@@ -1,11 +1,11 @@
 // src/worker/fatos/fato-conta-contabil.ts
-// FONTE: raw_contabil_conta (modelo contabil.conta — plano de contas).
+// FONTE: raw_contabil_conta (modelo contabil.conta , plano de contas).
 // ESCOPO: estrutura hierárquica do plano de contas da Matrix Fitness Group.
-//   Não há lançamento/movimento contábil no Odoo da Matrix — apenas a
+//   Não há lançamento/movimento contábil no Odoo da Matrix , apenas a
 //   estrutura de contas (tipo S=sintética, A=analítica).
 // CAMPOS: id, codigo, nome, tipo, nivel, natureza, conta_superior_id (M2O),
 //   parent_path, caracteristica_saldo, eh_redutora.
-// CYCLE: incremental — 934 linhas, plano de contas muda raramente.
+// CYCLE: incremental , 934 linhas, plano de contas muda raramente.
 import type { PrismaClient } from "../../generated/prisma/client";
 import { relId, relNome, type OdooM2O } from "./odoo-relational";
 import { markFatoBuilt } from "./fato-build-state";
@@ -22,7 +22,7 @@ export interface FatoContaContabilRow {
   parentPath: string | null;
   caracteristicaSaldo: string | null;
   ehRedutora: boolean;
-  // NÃO inclui atualizadoEm — campo tem @default(now()) no schema
+  // NÃO inclui atualizadoEm , campo tem @default(now()) no schema
 }
 
 export function mapContaContabilRow(raw: Record<string, unknown>): FatoContaContabilRow {

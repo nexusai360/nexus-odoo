@@ -64,7 +64,7 @@ export function ApiKeysContent({ initial }: Props) {
         setShowForm(false);
         setNewLabel("");
         await refresh();
-        toast.success("API key criada — copie agora, não será exibida novamente");
+        toast.success("API key criada , copie agora, não será exibida novamente");
       } else {
         toast.error(result.error ?? "Erro ao criar API key");
       }
@@ -93,12 +93,12 @@ export function ApiKeysContent({ initial }: Props) {
   const revokedKeys = keys.filter((k) => k.revokedAt);
 
   return (
-    <div className="space-y-6 max-w-3xl">
+    <div className="space-y-6 ">
       {/* Banner de key revelada */}
       {revealedKey && (
         <div className="rounded-xl border border-amber-500/40 bg-amber-500/5 p-4 space-y-2">
           <p className="text-sm font-semibold text-amber-700 dark:text-amber-400">
-            API key criada — copie agora
+            API key criada , copie agora
           </p>
           <p className="text-xs text-muted-foreground">
             Esta chave não será exibida novamente. Guarde em local seguro.
@@ -299,7 +299,7 @@ function ApiKeyRow({ apiKey, isPending, onRevoke, revoked }: ApiKeyRowProps) {
               }
             />
             <TooltipContent>
-              Invalida a chave imediatamente — não pode ser desfeito
+              Invalida a chave imediatamente , não pode ser desfeito
             </TooltipContent>
           </Tooltip>
         )}

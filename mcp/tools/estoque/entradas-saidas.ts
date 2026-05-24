@@ -1,6 +1,6 @@
 // mcp/tools/estoque/entradas-saidas.ts
 // Tool MCP: estoque_entradas_saidas
-// shape omite detalhe — o agente recebe só a série mensal (mais compacta).
+// shape omite detalhe , o agente recebe só a série mensal (mais compacta).
 import { z } from "zod";
 import type { ToolEntry } from "../../catalog/types.js";
 import { queryEntradasSaidas } from "@/lib/reports/queries/estoque.js";
@@ -35,7 +35,7 @@ type Input = z.infer<typeof inputSchema>;
 type Output = z.infer<typeof outputSchema>;
 
 function shape(d: Awaited<ReturnType<typeof queryEntradasSaidas>>) {
-  // detalhe por produto é volumoso — omitido; agente recebe só a série mensal
+  // detalhe por produto é volumoso , omitido; agente recebe só a série mensal
   return { serie: d.serie };
 }
 

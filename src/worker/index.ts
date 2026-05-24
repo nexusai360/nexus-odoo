@@ -13,15 +13,27 @@ import { JOB_INCREMENTAL, JOB_SNAPSHOT, JOB_RECONCILE, JOB_CONFIG_CHECK } from "
 import { AGENT_QUEUE_NAME } from "./agent/queue";
 import { processAgentJob, type AgentJobData } from "./agent/processor";
 import { cleanupIdempotencyTable } from "./agent/cleanup";
+import { refreshUsdBrlRateFromBCB } from "@/lib/agent/llm/exchange-rate";
 import {
   clearPending,
   isOdooUnavailable,
   markPending,
   readPending,
 } from "./recovery";
+import {
+  processDirectedSync,
+  type DirectedSyncDeps,
+} from "./sync/directed";
+import { DIRECTED_SYNC_QUEUE_NAME } from "../../mcp/sync/queue";
+import type { DirectedSyncJob } from "../../mcp/sync/queue";
+import { cleanupExpiredIdempotency } from "./cleanup/idempotency";
+import { cleanupAuditLog } from "./cleanup/audit-log";
 
 export const MAINTENANCE_QUEUE = "maintenance";
 export const JOB_CLEANUP_IDEMPOTENCY = "cleanup-idempotency";
+export const JOB_CLEANUP_MCP_IDEMPOTENCY = "cleanup-mcp-idempotency";
+export const JOB_CLEANUP_AUDIT_LOG = "cleanup-audit-log";
+export const JOB_REFRESH_USD_BRL = "refresh-usd-brl-ptax";
 
 const REDIS_URL = process.env.REDIS_URL ?? "redis://localhost:6379";
 const connection = new IORedis(REDIS_URL, { maxRetriesPerRequest: null });
@@ -43,7 +55,7 @@ const agentWorker = new Worker(
   { connection, concurrency: 3 },
 );
 
-agentWorker.on("ready", () => console.log(`[agent-worker] pronto — fila "${AGENT_QUEUE_NAME}"`));
+agentWorker.on("ready", () => console.log(`[agent-worker] pronto , fila "${AGENT_QUEUE_NAME}"`));
 agentWorker.on("failed", (job, err) =>
   console.error(`[agent-worker] job ${job?.id} falhou:`, err),
 );
@@ -60,15 +72,73 @@ const maintenanceWorker = new Worker(
       console.log(`[maintenance] cleanup idempotência: ${result.deleted} registros removidos`);
       return result;
     }
+    if (job.name === JOB_CLEANUP_MCP_IDEMPOTENCY) {
+      const result = await cleanupExpiredIdempotency(prisma);
+      console.log(
+        `[maintenance] cleanup McpIdempotencyRecord: ${result.deleted} registros removidos`,
+      );
+      return result;
+    }
+    if (job.name === JOB_REFRESH_USD_BRL) {
+      try {
+        const rate = await refreshUsdBrlRateFromBCB();
+        console.log(
+          `[maintenance] PTAX USD/BRL atualizada: ` +
+            `commercial=${rate.commercial.toFixed(4)} effective=${rate.rate.toFixed(4)}`,
+        );
+        return { ok: true, commercial: rate.commercial };
+      } catch (err) {
+        console.error("[maintenance] falha ao atualizar PTAX:", err);
+        return { ok: false, error: (err as Error).message };
+      }
+    }
+    if (job.name === JOB_CLEANUP_AUDIT_LOG) {
+      const result = await cleanupAuditLog(prisma);
+      console.log(
+        `[maintenance] cleanup McpAuditLog: ${result.nullified} nullificados, ` +
+          `${result.deleted} deletados`,
+      );
+      return result;
+    }
     return { ok: true };
   },
   { connection, concurrency: 1 },
 );
 
 maintenanceWorker.on("ready", () =>
-  console.log(`[maintenance-worker] pronto — fila "${MAINTENANCE_QUEUE}"`),
+  console.log(`[maintenance-worker] pronto , fila "${MAINTENANCE_QUEUE}"`),
 );
 maintenanceWorker.on("error", (err) => console.error("[maintenance-worker] erro:", err));
+
+// ─── Worker de sync direcionado (H3) ──────────────────────────────────────────
+// Processa jobs disparados pelas tools MCP após mutações (create/update/delete).
+// Usa a mesma conexão Redis compartilhada; concorrência 5 para processar
+// bursts de sync sem bloquear o cron incremental.
+const directedDeps: DirectedSyncDeps = {
+  prisma,
+  odoo: clientFromEnv(),
+  redis: connection,
+};
+
+export const directedSyncQueue = new Queue<DirectedSyncJob>(DIRECTED_SYNC_QUEUE_NAME, {
+  connection,
+});
+
+const directedSyncWorker = new Worker<DirectedSyncJob>(
+  DIRECTED_SYNC_QUEUE_NAME,
+  async (job: Job<DirectedSyncJob>) => {
+    return processDirectedSync(job, directedDeps);
+  },
+  { connection, concurrency: 5 },
+);
+
+directedSyncWorker.on("ready", () =>
+  console.log(`[directed-sync-worker] pronto , fila "${DIRECTED_SYNC_QUEUE_NAME}"`),
+);
+directedSyncWorker.on("failed", (job, err) =>
+  console.error(`[directed-sync-worker] job ${job?.id} falhou:`, err),
+);
+directedSyncWorker.on("error", (err) => console.error("[directed-sync-worker] erro:", err));
 
 // Guarda de sobreposição cluster-safe: lock no Redis com TTL (WR-01). Sobrevive
 // a restart e protege contra uma segunda réplica do worker rodando o mesmo
@@ -88,12 +158,12 @@ async function liberarLock(jobName: string): Promise<void> {
   await connection.del(lockKey(jobName));
 }
 
-// Cache da última config aplicada — evita churn de upsertJobScheduler (WR-04).
+// Cache da última config aplicada , evita churn de upsertJobScheduler (WR-04).
 let ultimaConfigAplicada: Awaited<ReturnType<typeof readSyncConfig>> | null = null;
 
 /**
  * (Re)agenda os três ciclos de sync com os intervalos atuais da config.
- * upsertJobScheduler é idempotente — chamar de novo com outro `every`
+ * upsertJobScheduler é idempotente , chamar de novo com outro `every`
  * reajusta o agendamento. É o que faz a mudança na tela /configuracao
  * valer sem reiniciar o worker. Só reagenda quando algum valor mudou.
  */
@@ -105,7 +175,7 @@ async function aplicarAgendamento(): Promise<void> {
     ultimaConfigAplicada.snapshotIntervalMin === cfg.snapshotIntervalMin &&
     ultimaConfigAplicada.reconcileIntervalMin === cfg.reconcileIntervalMin
   ) {
-    return; // nada mudou — não reagenda (WR-04)
+    return; // nada mudou , não reagenda (WR-04)
   }
   await syncQueue.upsertJobScheduler(
     JOB_INCREMENTAL,
@@ -124,7 +194,7 @@ async function aplicarAgendamento(): Promise<void> {
   );
   ultimaConfigAplicada = cfg;
   console.log(
-    `[worker] agendado — incremental ${cfg.incrementalIntervalMin}min, ` +
+    `[worker] agendado , incremental ${cfg.incrementalIntervalMin}min, ` +
       `snapshot ${cfg.snapshotIntervalMin}min, reconcile ${cfg.reconcileIntervalMin}min`,
   );
 }
@@ -141,7 +211,7 @@ async function rodarCiclo(name: string): Promise<void> {
 /**
  * Drena snapshot/reconcile pendentes após uma recuperação.
  *
- * Chamado somente após um JOB_INCREMENTAL bem-sucedido — esse é o "sinal
+ * Chamado somente após um JOB_INCREMENTAL bem-sucedido , esse é o "sinal
  * vital" de que o Tauga voltou. Enfileira os jobs marcados como pendentes
  * com prioridade alta e limpa o flag. O resto do agendamento normal
  * (snapshot 30min / reconcile 1440min) continua intacto.
@@ -154,14 +224,14 @@ async function drenarPendentes(): Promise<void> {
     await syncQueue.add(JOB_SNAPSHOT, { kind: JOB_SNAPSHOT }, { priority: 1 });
     await clearPending(connection, "snapshot");
     console.log(
-      "[worker] recovery — snapshot pendente enfileirado após Tauga voltar",
+      "[worker] recovery , snapshot pendente enfileirado após Tauga voltar",
     );
   }
   if (pending.reconcile) {
     await syncQueue.add(JOB_RECONCILE, { kind: JOB_RECONCILE }, { priority: 1 });
     await clearPending(connection, "reconcile");
     console.log(
-      "[worker] recovery — reconcile pendente enfileirado após Tauga voltar",
+      "[worker] recovery , reconcile pendente enfileirado após Tauga voltar",
     );
   }
 }
@@ -176,7 +246,7 @@ const worker = new Worker(
     }
     // Lock cluster-safe: se outro worker/ciclo já o detém, pula (WR-01).
     if (!(await adquirirLock(job.name))) {
-      console.log(`[worker] ciclo "${job.name}" ainda rodando (lock) — pulado`);
+      console.log(`[worker] ciclo "${job.name}" ainda rodando (lock) , pulado`);
       return { skipped: true };
     }
     const inicio = Date.now();
@@ -194,7 +264,7 @@ const worker = new Worker(
       // Indisponibilidade do Tauga: snapshot/reconcile ficam "pendentes" para
       // o próximo incremental bem-sucedido enfileirar imediatamente. Para o
       // incremental, basta deixar o BullMQ tentar de novo no próximo ciclo
-      // (3min) — não precisa marcar nada.
+      // (3min) , não precisa marcar nada.
       if (
         isOdooUnavailable(err) &&
         (job.name === JOB_SNAPSHOT || job.name === JOB_RECONCILE)
@@ -204,7 +274,7 @@ const worker = new Worker(
           job.name === JOB_SNAPSHOT ? "snapshot" : "reconcile",
         );
         console.warn(
-          `[worker] Odoo indisponível durante ciclo "${job.name}" — ` +
+          `[worker] Odoo indisponível durante ciclo "${job.name}" , ` +
             `marcado como pendente; será rodado quando o incremental voltar.`,
         );
         // Retorna ok para o BullMQ não fazer retry exponencial agressivo
@@ -219,7 +289,7 @@ const worker = new Worker(
   { connection, concurrency: 1 },
 );
 
-worker.on("ready", () => console.log(`[worker] pronto — fila "${ODOO_SYNC_QUEUE}"`));
+worker.on("ready", () => console.log(`[worker] pronto , fila "${ODOO_SYNC_QUEUE}"`));
 worker.on("failed", (job, err) => console.error(`[worker] job ${job?.id} falhou:`, err));
 worker.on("error", (err) => console.error("[worker] erro:", err));
 
@@ -238,6 +308,35 @@ async function bootstrap(): Promise<void> {
     { name: JOB_CLEANUP_IDEMPOTENCY },
   );
   console.log("[worker] cron de limpeza de idempotência agendado (24h)");
+
+  // Limpeza horária do McpIdempotencyRecord (registros com expiresAt expirado).
+  await maintenanceQueue.upsertJobScheduler(
+    JOB_CLEANUP_MCP_IDEMPOTENCY,
+    { every: 60 * 60_000 }, // 1h em ms
+    { name: JOB_CLEANUP_MCP_IDEMPOTENCY },
+  );
+  console.log("[worker] cron de limpeza de McpIdempotencyRecord agendado (1h)");
+
+  // Limpeza diária do McpAuditLog às 01:00 BRT (UTC-3 → 04:00 UTC).
+  // pattern cron: "0 4 * * *"
+  await maintenanceQueue.upsertJobScheduler(
+    JOB_CLEANUP_AUDIT_LOG,
+    { pattern: "0 4 * * *" },
+    { name: JOB_CLEANUP_AUDIT_LOG },
+  );
+  console.log("[worker] cron de limpeza de McpAuditLog agendado (diário 01:00 BRT)");
+
+  // Refresh da PTAX USD/BRL todo dia util as 18:30 BRT (21:30 UTC).
+  // BCB publica PTAX de fechamento ~ 13:10 BRT, mas damos folga para
+  // garantir que a serie 10813 esteja com o valor do dia.
+  // Tambem dispara uma execucao imediata no boot para preencher o Redis.
+  await maintenanceQueue.upsertJobScheduler(
+    JOB_REFRESH_USD_BRL,
+    { pattern: "30 21 * * 1-5" },
+    { name: JOB_REFRESH_USD_BRL },
+  );
+  await maintenanceQueue.add(JOB_REFRESH_USD_BRL, {});
+  console.log("[worker] cron de PTAX USD/BRL agendado (diário 18:30 BRT) + refresh inicial");
 }
 
 bootstrap().catch((err) => console.error("[worker] falha no bootstrap:", err));
@@ -248,9 +347,11 @@ async function shutdown() {
   await worker.close();
   await agentWorker.close();
   await maintenanceWorker.close();
+  await directedSyncWorker.close();
   await syncQueue.close();
   await agentQueue.close();
   await maintenanceQueue.close();
+  await directedSyncQueue.close();
   await connection.quit();
   await prisma.$disconnect();
   process.exit(0);

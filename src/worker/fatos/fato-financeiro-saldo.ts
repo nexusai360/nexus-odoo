@@ -12,7 +12,7 @@ export interface FatoFinanceiroSaldoRow {
   entrada: number;
   saida: number;
   saldo: number;
-  // NÃO inclui atualizadoEm — campo tem @default(now()) no schema (decisão N5)
+  // NÃO inclui atualizadoEm , campo tem @default(now()) no schema (decisão N5)
 }
 
 export function mapSaldoFinanceiroRow(
@@ -48,7 +48,7 @@ export async function rebuildFatoFinanceiroSaldo(
   await prisma.$transaction(async (tx) => {
     await tx.fatoFinanceiroSaldo.deleteMany({});
     if (mapped.length) {
-      // data: mapped — sem injetar atualizadoEm (divergência N5 vs fato-estoque-saldo)
+      // data: mapped , sem injetar atualizadoEm (divergência N5 vs fato-estoque-saldo)
       await tx.fatoFinanceiroSaldo.createMany({ data: mapped });
     }
     await markFatoBuilt(tx, "fato_financeiro_saldo");

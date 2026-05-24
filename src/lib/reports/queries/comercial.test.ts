@@ -5,6 +5,7 @@ import {
   queryPedidosPorVendedor,
   queryPedidosAtrasados,
   queryParcelasAVencer,
+  queryContarPedidos,
 } from "./comercial";
 
 // Mocks são definidos por cada describe conforme necessário
@@ -162,7 +163,7 @@ describe("queryPedidosAtrasados", () => {
   });
 
   it("usa where com dataVencimento < início do dia e parcelaFaturada=false (C1: normaliza hoje)", async () => {
-    // hoje com hora corrente — o where deve usar o início do dia, não a hora corrente
+    // hoje com hora corrente , o where deve usar o início do dia, não a hora corrente
     const hoje = new Date("2024-03-10T14:35:22.123Z");
     const mockPrisma = {
       fatoPedidoParcela: {
@@ -182,7 +183,7 @@ describe("queryPedidosAtrasados", () => {
   });
 
   it("C1 borda: parcela que vence hoje (T00:00:00) NÃO é considerada atrasada", async () => {
-    // hoje com hora corrente — se a query não normalizar, parcela T00:00:00 aparece como lt=hoje
+    // hoje com hora corrente , se a query não normalizar, parcela T00:00:00 aparece como lt=hoje
     const hojeComHora = new Date("2024-03-10T09:00:00");
     const mockPrisma = {
       fatoPedidoParcela: {
@@ -228,7 +229,7 @@ describe("queryParcelasAVencer", () => {
   });
 
   it("aplica filtro de dataVencimento gte início do dia e lte início+ateDias (C1: normaliza hoje)", async () => {
-    // hoje com hora corrente — o gte deve ser início do dia para incluir parcelas de hoje
+    // hoje com hora corrente , o gte deve ser início do dia para incluir parcelas de hoje
     const hoje = new Date("2024-03-10T09:00:00");
     const mockPrisma = {
       fatoPedidoParcela: {
@@ -277,5 +278,19 @@ describe("queryParcelasAVencer", () => {
     const lte = call.where?.dataVencimento?.lte as Date;
     const diff = (lte.getTime() - gte.getTime()) / (1000 * 60 * 60 * 24);
     expect(diff).toBe(30);
+  });
+});
+
+describe("queryContarPedidos", () => {
+  it("retorna o total de pedidos via count", async () => {
+    const mockPrisma = {
+      fatoPedido: {
+        count: jest.fn().mockResolvedValue(71),
+      },
+    } as unknown as import("@/generated/prisma/client").PrismaClient;
+
+    const result = await queryContarPedidos(mockPrisma);
+    expect(result.total).toBe(71);
+    expect(mockPrisma.fatoPedido.count).toHaveBeenCalledTimes(1);
   });
 });

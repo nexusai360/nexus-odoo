@@ -30,6 +30,7 @@ import {
   DEFAULT_GUARDRAILS,
 } from "@/lib/agent/prompt/defaults";
 import { IDENTITY_BASE } from "@/lib/agent/prompt/identity-base";
+import { sanitizePromptText } from "@/lib/agent/prompt/sanitize";
 
 export type {
   AgentSettingsData,
@@ -39,13 +40,31 @@ export type {
 
 const CheckpointSchema = z.enum(CHECKPOINT_VALUES);
 
+// Sanitiza no schema (defesa de borda): travessao, en-dash, reticencias
+// unicode, aspas francesas e non-breaking spaces sao normalizados antes da
+// persistencia. Acentos e cedilha preservados. Aplicado em todos os campos
+// de prompt editaveis pelo admin para nao deixar `,` entrar de novo via UI.
+const sanitizedString = (max: number, msg?: string) =>
+  z.string().max(max, msg).transform((s) => sanitizePromptText(s));
+
 const UpdateSettingsSchema = z.object({
-  identityBase: z.string().max(50_000).optional(),
-  personality: z.string().max(1000, "Comportamento não pode exceder 1000 caracteres"),
-  tone: z.string().max(1000, "Tom não pode exceder 1000 caracteres"),
-  guardrails: z.array(z.string().max(500, "Cada guardrail não pode exceder 500 caracteres")),
-  terminology: z.record(z.string(), z.string()),
-  advancedOverride: z.string().max(50_000).optional(),
+  identityBase: sanitizedString(500_000).optional(),
+  personality: sanitizedString(1000, "Comportamento não pode exceder 1000 caracteres"),
+  tone: sanitizedString(1000, "Tom não pode exceder 1000 caracteres"),
+  guardrails: z.array(
+    sanitizedString(500, "Cada guardrail não pode exceder 500 caracteres"),
+  ),
+  terminology: z
+    .record(z.string(), z.string())
+    .transform((map) =>
+      Object.fromEntries(
+        Object.entries(map).map(([k, v]) => [
+          sanitizePromptText(k),
+          sanitizePromptText(v),
+        ]),
+      ),
+    ),
+  advancedOverride: sanitizedString(500_000).optional(),
   suggestionsEnabled: z.boolean(),
 });
 
@@ -55,16 +74,25 @@ const UpdateResourcesSchema = z.object({
   audioCheckpoint: CheckpointSchema,
   imageCheckpoint: CheckpointSchema,
   kbCheckpoint: CheckpointSchema,
-  /** G7 — checkpoint das sugestões (substitui o boolean suggestionsEnabled). */
+  /** G7 , checkpoint das sugestões (substitui o boolean suggestionsEnabled). */
   suggestionsCheckpoint: CheckpointSchema.optional(),
   audioProvider: z.string().nullable().optional(),
   audioModel: z.string().nullable().optional(),
-  /** G6 — chave de API usada pelo modelo dedicado de áudio. */
+  /** G6 , chave de API usada pelo modelo dedicado de áudio. */
   audioCredentialId: z.string().nullable().optional(),
   imageProvider: z.string().nullable().optional(),
   imageModel: z.string().nullable().optional(),
-  /** G6 — chave de API usada pelo modelo dedicado de imagem. */
+  /** G6 , chave de API usada pelo modelo dedicado de imagem. */
   imageCredentialId: z.string().nullable().optional(),
+  /** Profundidade de raciocínio (modelos reasoning). null = default do provider. */
+  reasoningEffort: z
+    .enum(["minimal", "low", "medium", "high"])
+    .nullable()
+    .optional(),
+  /** Checkpoint de 3 estados do modo raciocínio (OFF/PLAYGROUND/PRODUCTION). */
+  reasoningCheckpoint: z.enum(CHECKPOINT_VALUES).optional(),
+  /** Máximo de sugestões clicáveis (1..5). */
+  maxSuggestions: z.number().int().min(1).max(5).optional(),
 });
 export type UpdateAgentResourcesInput = z.infer<typeof UpdateResourcesSchema>;
 
@@ -75,7 +103,7 @@ async function requireAdminOrAbove(): Promise<
   const me = await getCurrentUser();
   if (!me) return { ok: false, error: "Não autenticado" };
   if (me.platformRole !== "admin" && me.platformRole !== "super_admin") {
-    return { ok: false, error: "Acesso negado — requer perfil admin ou super_admin" };
+    return { ok: false, error: "Acesso negado , requer perfil admin ou super_admin" };
   }
   return { ok: true, userId: me.id };
 }
@@ -92,6 +120,7 @@ type AgentSettingsRow = {
   suggestionsEnabled: boolean;
   suggestionsCheckpoint: FeatureCheckpoint;
   bubbleEnabled: boolean;
+  whatsappEnabled: boolean;
   audioCheckpoint: FeatureCheckpoint;
   imageCheckpoint: FeatureCheckpoint;
   kbCheckpoint: FeatureCheckpoint;
@@ -101,6 +130,9 @@ type AgentSettingsRow = {
   imageProvider: string | null;
   imageModel: string | null;
   imageCredentialId: string | null;
+  reasoningEffort: string | null;
+  reasoningCheckpoint: FeatureCheckpoint;
+  maxSuggestions: number;
   updatedAt: Date;
 };
 
@@ -117,6 +149,7 @@ function mapSettings(row: AgentSettingsRow): AgentSettingsData {
     suggestionsEnabled: row.suggestionsEnabled,
     suggestionsCheckpoint: row.suggestionsCheckpoint,
     bubbleEnabled: row.bubbleEnabled,
+    whatsappEnabled: row.whatsappEnabled,
     audioCheckpoint: row.audioCheckpoint,
     imageCheckpoint: row.imageCheckpoint,
     kbCheckpoint: row.kbCheckpoint,
@@ -126,6 +159,9 @@ function mapSettings(row: AgentSettingsRow): AgentSettingsData {
     imageProvider: row.imageProvider,
     imageModel: row.imageModel,
     imageCredentialId: row.imageCredentialId,
+    reasoningEffort: row.reasoningEffort,
+    reasoningCheckpoint: row.reasoningCheckpoint,
+    maxSuggestions: row.maxSuggestions,
     updatedAt: row.updatedAt,
   };
 }
@@ -136,7 +172,7 @@ function mapSettings(row: AgentSettingsRow): AgentSettingsData {
  * Cria com os defaults do domínio Matrix Fitness Group quando ausente. Para
  * instalações antigas em que o singleton foi criado vazio (personality/tone/
  * guardrails em branco, identityBase nulo), faz um auto-reparo preenchendo
- * APENAS os campos ainda vazios — edições feitas pelo admin nunca são tocadas.
+ * APENAS os campos ainda vazios , edições feitas pelo admin nunca são tocadas.
  */
 async function ensureGlobalSettings(): Promise<AgentSettingsData> {
   const existing = await prisma.agentSettings.findUnique({
@@ -209,6 +245,8 @@ const DEFAULT_FLAGS: PublicAgentFlags = {
   suggestionsEnabled: true,
   suggestionsInPlayground: true,
   bubbleEnabled: true,
+  whatsappEnabled: true,
+  maxSuggestions: 3,
 };
 
 /** Feature-flags públicas do agente, legíveis por qualquer usuário autenticado. */
@@ -225,6 +263,8 @@ export async function getPublicAgentFlags(): Promise<PublicAgentFlags> {
         kbCheckpoint: true,
         suggestionsCheckpoint: true,
         bubbleEnabled: true,
+        whatsappEnabled: true,
+        maxSuggestions: true,
       },
     });
     if (!settings) return DEFAULT_FLAGS;
@@ -239,6 +279,8 @@ export async function getPublicAgentFlags(): Promise<PublicAgentFlags> {
       suggestionsEnabled: settings.suggestionsCheckpoint === "PRODUCTION",
       suggestionsInPlayground: settings.suggestionsCheckpoint !== "OFF",
       bubbleEnabled: settings.bubbleEnabled,
+      whatsappEnabled: settings.whatsappEnabled,
+      maxSuggestions: Math.min(Math.max(1, settings.maxSuggestions ?? 3), 5),
     };
   } catch (err) {
     console.error("[getPublicAgentFlags]", err);
@@ -338,6 +380,15 @@ export async function updateAgentResources(
       // Mantém o boolean legado em sincronia (compat com leitores antigos).
       payload.suggestionsEnabled = d.suggestionsCheckpoint === "PRODUCTION";
     }
+    if (d.reasoningEffort !== undefined) {
+      payload.reasoningEffort = d.reasoningEffort;
+    }
+    if (d.maxSuggestions !== undefined) {
+      payload.maxSuggestions = d.maxSuggestions;
+    }
+    if (d.reasoningCheckpoint) {
+      payload.reasoningCheckpoint = d.reasoningCheckpoint;
+    }
 
     await prisma.agentSettings.upsert({
       where: { id: "global" },
@@ -369,6 +420,60 @@ export async function updateAgentResources(
     return {
       success: false,
       error: err instanceof Error ? err.message : "Erro ao atualizar recursos",
+    };
+  }
+}
+
+/**
+ * Atualiza a disponibilidade do Agente Nex em cada canal (bubble in-app e
+ * WhatsApp). Persistido como dois booleans independentes; a UI lê e mostra
+ * um sumario de 4 estados (off, so bubble, so whatsapp, ambos).
+ */
+export async function updateAgentAvailability(input: {
+  bubbleEnabled: boolean;
+  whatsappEnabled: boolean;
+}): Promise<ActionResult> {
+  try {
+    const auth = await requireAdminOrAbove();
+    if (!auth.ok) return { success: false, error: auth.error };
+
+    await prisma.agentSettings.upsert({
+      where: { id: "global" },
+      create: {
+        id: "global",
+        personality: "",
+        tone: "",
+        guardrails: [],
+        terminology: {},
+        bubbleEnabled: input.bubbleEnabled,
+        whatsappEnabled: input.whatsappEnabled,
+      },
+      update: {
+        bubbleEnabled: input.bubbleEnabled,
+        whatsappEnabled: input.whatsappEnabled,
+      },
+    });
+
+    void logAudit({
+      userId: auth.userId,
+      action: "agent_settings_updated",
+      targetType: "AgentSettings",
+      targetId: "global",
+      details: {
+        kind: "availability",
+        bubbleEnabled: input.bubbleEnabled,
+        whatsappEnabled: input.whatsappEnabled,
+      },
+    });
+
+    revalidatePath("/agente");
+    revalidatePath("/agente/configuracao");
+    return { success: true };
+  } catch (err) {
+    console.error("[updateAgentAvailability]", err);
+    return {
+      success: false,
+      error: err instanceof Error ? err.message : "Erro ao atualizar disponibilidade",
     };
   }
 }

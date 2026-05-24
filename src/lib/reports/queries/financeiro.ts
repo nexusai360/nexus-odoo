@@ -1,20 +1,20 @@
 // src/lib/reports/queries/financeiro.ts
 //
 // Núcleo de agregação de financeiro, framework-neutro. Cada função recebe `prisma`
-// + filtros e devolve dado de agregação cru — **sem `estado`, sem `freshness`,
-// sem shaping de serialização**. **Não captura exceção** (deixa propagar — quem
+// + filtros e devolve dado de agregação cru , **sem `estado`, sem `freshness`,
+// sem shaping de serialização**. **Não captura exceção** (deixa propagar , quem
 // trata é o wrapper/handler). `estadoDoFato`/`withFreshness` vivem no handler
 // MCP, não aqui.
 //
-// Campos monetários são `Decimal` no Prisma — converter via `Number()` no shaping.
-// `diasAtraso` é calculado NA QUERY (não materializado) — usa `mcp/lib/dias-atraso.ts`.
-// Funções implementadas nas tasks 4d.1-q … 4d.7-q (sequenciais — mesmo arquivo).
+// Campos monetários são `Decimal` no Prisma , converter via `Number()` no shaping.
+// `diasAtraso` é calculado NA QUERY (não materializado) , usa `mcp/lib/dias-atraso.ts`.
+// Funções implementadas nas tasks 4d.1-q … 4d.7-q (sequenciais , mesmo arquivo).
 
 import type { PrismaClient } from "@/generated/prisma/client";
 import { diasAtraso as calcDiasAtraso } from "../../../../mcp/lib/dias-atraso";
 
 // ---------------------------------------------------------------------------
-// querySaldoContas — fato_financeiro_saldo (task 4d.1-q)
+// querySaldoContas , fato_financeiro_saldo (task 4d.1-q)
 // ---------------------------------------------------------------------------
 
 export async function querySaldoContas(
@@ -33,7 +33,7 @@ export async function querySaldoContas(
 }
 
 // ---------------------------------------------------------------------------
-// queryCaixaPeriodo — fato_financeiro_movimento (task 4d.2-q)
+// queryCaixaPeriodo , fato_financeiro_movimento (task 4d.2-q)
 // ---------------------------------------------------------------------------
 
 export async function queryCaixaPeriodo(
@@ -61,7 +61,7 @@ export async function queryCaixaPeriodo(
 }
 
 // ---------------------------------------------------------------------------
-// queryFluxoCaixa — fato_financeiro_movimento (task 4d.3-q)
+// queryFluxoCaixa , fato_financeiro_movimento (task 4d.3-q)
 // ---------------------------------------------------------------------------
 
 export async function queryFluxoCaixa(
@@ -80,7 +80,7 @@ export async function queryFluxoCaixa(
 
   const mapa = new Map<string, { realizado: number; previsto: number }>();
   for (const r of rows) {
-    if (!r.data) continue; // linha sem data — ignorar na série
+    if (!r.data) continue; // linha sem data , ignorar na série
     const periodo = r.data.toISOString().slice(0, 7); // YYYY-MM
     const existing = mapa.get(periodo) ?? { realizado: 0, previsto: 0 };
     existing.realizado += Number(r.valor);
@@ -115,9 +115,9 @@ export interface TituloRow {
 }
 
 // ---------------------------------------------------------------------------
-// queryContasAReceber — fato_financeiro_titulo (task 4d.5-q)
-// CRITERIO_ABERTO: { situacaoSimples: 'aberto' } — campo situacao_divida_simples.
-// tipo "a_receber" — campo direto da fonte finan.lancamento (bug R1 corrigido 2026-05-18).
+// queryContasAReceber , fato_financeiro_titulo (task 4d.5-q)
+// CRITERIO_ABERTO: { situacaoSimples: 'aberto' } , campo situacao_divida_simples.
+// tipo "a_receber" , campo direto da fonte finan.lancamento (bug R1 corrigido 2026-05-18).
 // totalAReceber usa vrSaldo (= valor correto a receber em aberto na nova fonte).
 // ---------------------------------------------------------------------------
 
@@ -155,9 +155,9 @@ export async function queryContasAReceber(
 }
 
 // ---------------------------------------------------------------------------
-// queryContasAPagar — fato_financeiro_titulo (task 4d.6-q)
-// CRITERIO_ABERTO: { situacaoSimples: 'aberto' } — campo situacao_divida_simples.
-// tipo "a_pagar" — campo direto da fonte finan.lancamento (bug R1 corrigido 2026-05-18).
+// queryContasAPagar , fato_financeiro_titulo (task 4d.6-q)
+// CRITERIO_ABERTO: { situacaoSimples: 'aberto' } , campo situacao_divida_simples.
+// tipo "a_pagar" , campo direto da fonte finan.lancamento (bug R1 corrigido 2026-05-18).
 // totalAPagar usa vrSaldo (= valor correto a pagar em aberto na nova fonte).
 // ---------------------------------------------------------------------------
 
@@ -195,7 +195,7 @@ export async function queryContasAPagar(
 }
 
 // ---------------------------------------------------------------------------
-// TituloVencidoRow — inclui tipo (task 4d.7-q)
+// TituloVencidoRow , inclui tipo (task 4d.7-q)
 //
 // vrSaldo é o valor correto a receber/pagar para título em aberto (finan.lancamento).
 // totalVencido usa vrSaldo.
@@ -212,9 +212,9 @@ export interface TituloVencidoRow {
 }
 
 // ---------------------------------------------------------------------------
-// queryTitulosVencidos — fato_financeiro_titulo (task 4d.7-q)
-// CRITERIO_ABERTO: { situacaoSimples: 'aberto' } — campo situacao_divida_simples.
-// Fonte corrigida para finan.lancamento (bug R1 — 2026-05-18).
+// queryTitulosVencidos , fato_financeiro_titulo (task 4d.7-q)
+// CRITERIO_ABERTO: { situacaoSimples: 'aberto' } , campo situacao_divida_simples.
+// Fonte corrigida para finan.lancamento (bug R1 , 2026-05-18).
 // Só títulos abertos E com dataVencimento < início do dia de hoje estão vencidos.
 // totalVencido usa vrSaldo (= valor correto a receber/pagar na nova fonte).
 // ---------------------------------------------------------------------------
@@ -223,8 +223,8 @@ export async function queryTitulosVencidos(
   prisma: PrismaClient,
   hoje: Date,
 ): Promise<{ titulos: TituloVencidoRow[]; totalVencido: number }> {
-  // Normaliza para início do dia local — reutiliza o mesmo padrão de
-  // dias-atraso.ts — para que um título que vence HOJE (gravado como
+  // Normaliza para início do dia local , reutiliza o mesmo padrão de
+  // dias-atraso.ts , para que um título que vence HOJE (gravado como
   // T00:00:00) não seja incluído como vencido. Só está vencido quem venceu
   // ANTES de hoje, i.e. diasAtraso > 0.
   const inicioDoDia = new Date(hoje.getFullYear(), hoje.getMonth(), hoje.getDate());

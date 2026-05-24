@@ -21,6 +21,8 @@ export interface AgentSettingsData {
   /** Checkpoint de 3 estados das sugestões clicáveis (G7). */
   suggestionsCheckpoint: FeatureCheckpoint;
   bubbleEnabled: boolean;
+  /** Disponibilidade do Agente Nex no canal WhatsApp (F5). */
+  whatsappEnabled: boolean;
   audioCheckpoint: FeatureCheckpoint;
   imageCheckpoint: FeatureCheckpoint;
   kbCheckpoint: FeatureCheckpoint;
@@ -32,6 +34,12 @@ export interface AgentSettingsData {
   imageModel: string | null;
   /** Credencial (chave de API) usada pelo modelo dedicado de imagem (G6). */
   imageCredentialId: string | null;
+  /** Profundidade de raciocínio dos modelos reasoning (null = default do provider). */
+  reasoningEffort: string | null;
+  /** Checkpoint de 3 estados do modo raciocínio (OFF/PLAYGROUND/PRODUCTION). */
+  reasoningCheckpoint: FeatureCheckpoint;
+  /** Máximo de sugestões clicáveis (default 3, hard cap em 5). */
+  maxSuggestions: number;
   updatedAt: Date;
 }
 
@@ -51,4 +59,9 @@ export interface PublicAgentFlags {
   /** true se sugestões clicáveis aparecem ao menos no playground (G7). */
   suggestionsInPlayground: boolean;
   bubbleEnabled: boolean;
+  whatsappEnabled: boolean;
+  /** Máximo de sugestões clicáveis na bubble. Vale tanto para as iniciais
+   *  (welcome) quanto para as de continuidade no fim de cada resposta.
+   *  Default 3, hard cap em 5. */
+  maxSuggestions: number;
 }

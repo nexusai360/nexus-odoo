@@ -8,7 +8,7 @@ import { withFreshness } from "../../lib/freshness.js";
 const inputSchema = z.object({});
 
 // vrSaldo: valor correto a receber/pagar em aberto na fonte finan.lancamento.
-//   Bug R1 corrigido em 2026-05-18 — fonte trocada de finan.pagamento.divida para finan.lancamento.
+//   Bug R1 corrigido em 2026-05-18 , fonte trocada de finan.pagamento.divida para finan.lancamento.
 const tituloSchema = z.object({
   tipo: z.string(),
   participanteNome: z.string().nullable(),

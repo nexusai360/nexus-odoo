@@ -1,4 +1,4 @@
-// button-variants.ts — definição pura (cva) das variantes de Button.
+// button-variants.ts , definição pura (cva) das variantes de Button.
 //
 // Mantida FORA do button.tsx ("use client") para que Server Components possam
 // importar `buttonVariants` sem violar a fronteira server/client (ex.: aplicar

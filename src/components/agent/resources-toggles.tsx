@@ -1,7 +1,7 @@
 "use client";
 
 /**
- * ResourcesToggles — recursos do Agente Nex: entrada de áudio, entrada de
+ * ResourcesToggles , recursos do Agente Nex: entrada de áudio, entrada de
  * imagem e sugestões clicáveis.
  *
  * - Áudio e imagem usam o controle de checkpoint de 3 estados (off / playground
@@ -13,13 +13,14 @@
  * Persiste via updateAgentResources / updateAgentSettings de agent-config.ts.
  */
 
-import { useMemo, useState, useTransition } from "react";
+import { useEffect, useMemo, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { Image as ImageIcon, KeyRound, Loader2, MessageSquare, Mic } from "lucide-react";
+import { Image as ImageIcon, KeyRound, MessageSquare, Mic } from "lucide-react";
+import { ReasoningCard } from "@/components/agent/reasoning-card";
+import { ResourceCard } from "@/components/agent/resource-card";
 import { toast } from "sonner";
 import {
-  FeatureCheckpoint,
   checkpointIconClass,
   type CheckpointState,
 } from "@/components/ui/feature-checkpoint";
@@ -36,7 +37,8 @@ import {
   type ModelEntry,
 } from "@/lib/agent/llm/catalog";
 import { updateAgentResources } from "@/lib/actions/agent-config";
-import type { LlmProvider } from "@/lib/agent/llm/types";
+import { cn } from "@/lib/utils";
+import type { LlmProvider, ReasoningEffort } from "@/lib/agent/llm/types";
 
 export interface CredentialOption {
   id: string;
@@ -50,7 +52,7 @@ interface ResourcesTogglesProps {
     guardrails: string[];
     advancedOverride: string | null;
     terminology: Record<string, string>;
-    /** @deprecated G7 — usa suggestionsCheckpoint. */
+    /** @deprecated G7 , usa suggestionsCheckpoint. */
     suggestionsEnabled: boolean;
     suggestionsCheckpoint: CheckpointState;
     audioCheckpoint: CheckpointState;
@@ -62,9 +64,14 @@ interface ResourcesTogglesProps {
     imageProvider: string | null;
     imageModel: string | null;
     imageCredentialId: string | null;
+    reasoningEffort: string | null;
+    reasoningCheckpoint: CheckpointState;
+    maxSuggestions: number;
   };
-  /** G6 — credenciais cadastradas, agrupadas por provedor. */
+  /** G6 , credenciais cadastradas, agrupadas por provedor. */
   credentialsByProvider?: Record<string, CredentialOption[]>;
+  /** Id do modelo de produção ativo , determina o suporte a raciocínio. */
+  activeModelId: string;
 }
 
 const DEFAULT_AUDIO_MODEL = "gpt-4o-mini-transcribe";
@@ -81,9 +88,30 @@ function modelOptions(models: ModelEntry[]) {
 export function ResourcesToggles({
   initial,
   credentialsByProvider = {},
+  activeModelId,
 }: ResourcesTogglesProps) {
   const router = useRouter();
   const [, startTransition] = useTransition();
+
+  // Modelo exibido no ReasoningCard , espelha em tempo real o que está
+  // selecionado no LlmConfigForm (via CustomEvent), independente de teste ou
+  // save. O efeito real só persiste em Save; um refresh recoloca o salvo.
+  const [displayedModelId, setDisplayedModelId] = useState(activeModelId);
+  useEffect(() => {
+    setDisplayedModelId(activeModelId);
+  }, [activeModelId]);
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    function onModelChange(ev: Event) {
+      const detail = (ev as CustomEvent<{ model?: string }>).detail;
+      const next = (detail?.model ?? "").trim();
+      if (next) setDisplayedModelId(next);
+      else setDisplayedModelId(activeModelId);
+    }
+    window.addEventListener("agent-config:model-change", onModelChange);
+    return () =>
+      window.removeEventListener("agent-config:model-change", onModelChange);
+  }, [activeModelId]);
 
   const [audioCp, setAudioCp] = useState<CheckpointState>(initial.audioCheckpoint);
   const [imageCp, setImageCp] = useState<CheckpointState>(initial.imageCheckpoint);
@@ -133,9 +161,19 @@ export function ResourcesToggles({
       (imageProvider ? credentialsByProvider[imageProvider]?.[0]?.id ?? "" : ""),
   );
 
-  const [pending, setPending] = useState<"audio" | "image" | "suggestions" | null>(
-    null,
+  const [reasoningEffort, setReasoningEffort] = useState<ReasoningEffort | "">(
+    (initial.reasoningEffort as ReasoningEffort | null) ?? "",
   );
+  const [reasoningCp, setReasoningCp] = useState<CheckpointState>(
+    initial.reasoningCheckpoint,
+  );
+  const [maxSuggestions, setMaxSuggestions] = useState<number>(
+    initial.maxSuggestions ?? 3,
+  );
+
+  const [pending, setPending] = useState<
+    "audio" | "image" | "suggestions" | "reasoning" | null
+  >(null);
 
   function persistResources(
     next: Partial<{
@@ -148,8 +186,11 @@ export function ResourcesToggles({
       imageProvider: string;
       imageModel: string;
       imageCredentialId: string | null;
+      reasoningEffort: ReasoningEffort | null;
+      reasoningCheckpoint: CheckpointState;
+      maxSuggestions: number;
     }>,
-    label: "audio" | "image" | "suggestions",
+    label: "audio" | "image" | "suggestions" | "reasoning",
   ) {
     setPending(label);
     startTransition(async () => {
@@ -170,6 +211,12 @@ export function ResourcesToggles({
           next.imageCredentialId !== undefined
             ? next.imageCredentialId
             : imageCredentialId || null,
+        reasoningEffort:
+          next.reasoningEffort !== undefined
+            ? next.reasoningEffort
+            : reasoningEffort || null,
+        reasoningCheckpoint: next.reasoningCheckpoint ?? reasoningCp,
+        maxSuggestions: next.maxSuggestions ?? maxSuggestions,
       });
       setPending(null);
       if (!result.success) {
@@ -197,8 +244,27 @@ export function ResourcesToggles({
 
   return (
     <div className="space-y-5">
+      {/* Modo raciocínio , antes da entrada de áudio */}
+      <ReasoningCard
+        checkpoint={reasoningCp}
+        effort={reasoningEffort || null}
+        activeModelId={displayedModelId}
+        onCheckpointChange={(cp) => {
+          setReasoningCp(cp);
+          persistResources({ reasoningCheckpoint: cp }, "reasoning");
+        }}
+        onEffortChange={(level) => {
+          setReasoningEffort(level as ReasoningEffort);
+          persistResources({ reasoningEffort: level as ReasoningEffort }, "reasoning");
+        }}
+        loading={pending === "reasoning"}
+      />
+
       {/* Entrada de áudio */}
       <ResourceCard
+        id="audio"
+        collapsible
+        defaultCollapsed={audioCp === "OFF"}
         icon={<Mic className={`h-4 w-4 ${checkpointIconClass(audioCp)}`} aria-hidden />}
         title="Entrada de áudio"
         subtitle="Transcrição de mensagens de voz enviadas pelo usuário."
@@ -274,6 +340,9 @@ export function ResourcesToggles({
 
       {/* Entrada de imagem */}
       <ResourceCard
+        id="anexo"
+        collapsible
+        defaultCollapsed={imageCp === "OFF"}
         icon={
           <ImageIcon className={`h-4 w-4 ${checkpointIconClass(imageCp)}`} aria-hidden />
         }
@@ -349,24 +418,70 @@ export function ResourcesToggles({
         )}
       </ResourceCard>
 
-      {/* Sugestões clicáveis (G7) — checkpoint de 3 estados */}
+      {/* Sugestões na Bubble: cobre as iniciais (welcome quando a conversa
+          comeca) e as de continuidade no fim de cada resposta. WhatsApp nao
+          recebe esse formato (la o usuario digita ou usa atalho numerico). */}
       <ResourceCard
+        id="sugestoes-bubble"
+        collapsible
+        defaultCollapsed={suggestionsCp === "OFF"}
         icon={
           <MessageSquare
             className={`h-4 w-4 ${checkpointIconClass(suggestionsCp)}`}
             aria-hidden
           />
         }
-        title="Sugestões clicáveis"
-        subtitle="O Agente Nex oferece perguntas de continuidade no fim das respostas. Não enviadas no WhatsApp."
+        title="Sugestões na Bubble"
+        subtitle="Perguntas clicáveis que o Agente Nex mostra na bubble: as iniciais quando a conversa começa e as de continuidade no fim de cada resposta. O limite definido aqui vale para os dois casos. Não vão para o WhatsApp."
         checkpoint={suggestionsCp}
         onCheckpointChange={(cp) => {
           setSuggestionsCp(cp);
           persistResources({ suggestionsCheckpoint: cp }, "suggestions");
         }}
         loading={pending === "suggestions"}
-        ariaLabel="Estado das sugestões clicáveis"
-      />
+        ariaLabel="Estado das sugestões de pergunta"
+      >
+        {suggestionsCp !== "OFF" ? (
+          <div className="flex flex-col gap-2">
+            <span className="text-xs font-medium text-muted-foreground">
+              Máximo por resposta
+            </span>
+            <div
+              role="group"
+              aria-label="Máximo de sugestões por resposta"
+              className="inline-flex w-fit rounded-lg border border-border bg-background p-0.5"
+            >
+              {[1, 2, 3, 4, 5].map((n) => {
+                const isActive = maxSuggestions === n;
+                return (
+                  <button
+                    key={n}
+                    type="button"
+                    aria-pressed={isActive}
+                    aria-label={`Máximo de ${n} sugestão${n === 1 ? "" : "ões"}`}
+                    disabled={pending === "suggestions"}
+                    onClick={() => {
+                      if (maxSuggestions === n) return;
+                      setMaxSuggestions(n);
+                      persistResources({ maxSuggestions: n }, "suggestions");
+                    }}
+                    className={cn(
+                      "flex h-7 w-8 cursor-pointer items-center justify-center rounded-md text-xs font-medium transition-colors",
+                      isActive
+                        ? "bg-violet-500/15 text-violet-700 ring-1 ring-violet-500/40 dark:text-violet-300"
+                        : "text-muted-foreground hover:bg-muted hover:text-foreground",
+                      "disabled:cursor-not-allowed disabled:opacity-50",
+                    )}
+                  >
+                    {n}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        ) : null}
+      </ResourceCard>
+
     </div>
   );
 }
@@ -386,57 +501,6 @@ function NoCredentialsCta({ provider }: { provider: "áudio" | "anexo" }) {
         <KeyRound className="h-3.5 w-3.5" aria-hidden />
         Nova chave
       </Link>
-    </div>
-  );
-}
-
-interface ResourceCardProps {
-  icon: React.ReactNode;
-  title: string;
-  subtitle: string;
-  checkpoint: CheckpointState;
-  onCheckpointChange: (cp: CheckpointState) => void;
-  loading: boolean;
-  ariaLabel: string;
-  children?: React.ReactNode;
-}
-
-function ResourceCard({
-  icon,
-  title,
-  subtitle,
-  checkpoint,
-  onCheckpointChange,
-  loading,
-  ariaLabel,
-  children,
-}: ResourceCardProps) {
-  return (
-    <div className="rounded-xl border border-border bg-muted/30 px-4 py-3.5">
-      <div className="flex items-start justify-between gap-4">
-        <div className="min-w-0 flex-1">
-          <div className="flex items-center gap-2 text-sm font-medium text-foreground">
-            {icon}
-            {title}
-          </div>
-          <p className="mt-0.5 text-xs text-muted-foreground">{subtitle}</p>
-        </div>
-        <span className="flex shrink-0 items-center gap-2">
-          {loading && (
-            <Loader2
-              className="h-3.5 w-3.5 animate-spin text-muted-foreground"
-              aria-hidden
-            />
-          )}
-          <FeatureCheckpoint
-            value={checkpoint}
-            onChange={onCheckpointChange}
-            disabled={loading}
-            aria-label={ariaLabel}
-          />
-        </span>
-      </div>
-      {children && <div className="mt-3 border-t border-border/60 pt-3">{children}</div>}
     </div>
   );
 }

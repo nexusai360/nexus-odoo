@@ -26,7 +26,7 @@ class FakeRedis {
 }
 
 function makeRedis() {
-  // O helper só usa get/set/del — FakeRedis basta.
+  // O helper só usa get/set/del , FakeRedis basta.
   return new FakeRedis() as unknown as Parameters<typeof readPending>[0];
 }
 

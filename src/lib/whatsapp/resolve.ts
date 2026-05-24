@@ -59,7 +59,7 @@ export function normalizeE164(raw: string): string {
 /**
  * Resolve um número de WhatsApp (cru) para o usuário da plataforma vinculado.
  *
- * Número malformado é tratado como `unknown` (a resolução nunca lança — é
+ * Número malformado é tratado como `unknown` (a resolução nunca lança , é
  * chamada no caminho de ingestão de mensagens, onde lançar derrubaria o job).
  */
 export async function resolveWhatsappUser(

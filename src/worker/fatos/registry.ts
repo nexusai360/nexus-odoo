@@ -12,6 +12,12 @@ import { rebuildFatoNotaFiscal } from "./fato-nota-fiscal";
 import { rebuildFatoNotaFiscalItem } from "./fato-nota-fiscal-item";
 import { rebuildFatoParceiro } from "./fato-parceiro";
 import { rebuildFatoContaContabil } from "./fato-conta-contabil";
+import { rebuildFatoPreco } from "./fato-preco";
+import { rebuildFatoServico } from "./fato-servico";
+import { rebuildFatoApuracao } from "./fato-apuracao";
+import { rebuildFatoCartaCorrecao } from "./fato-carta-correcao";
+import { rebuildFatoCertificado } from "./fato-certificado";
+import { rebuildFatoReferencia } from "./fato-referencia";
 
 export interface FatoBuilderEntry {
   nome: string;
@@ -32,6 +38,12 @@ export const FATO_BUILDERS: FatoBuilderEntry[] = [
   { nome: "fato_nota_fiscal_item", cycle: "incremental", run: rebuildFatoNotaFiscalItem },
   { nome: "fato_parceiro", cycle: "incremental", run: rebuildFatoParceiro },
   { nome: "fato_conta_contabil", cycle: "incremental", run: rebuildFatoContaContabil },
+  { nome: "fato_preco", cycle: "incremental", run: rebuildFatoPreco },
+  { nome: "fato_servico", cycle: "incremental", run: rebuildFatoServico },
+  { nome: "fato_apuracao", cycle: "incremental", run: rebuildFatoApuracao },
+  { nome: "fato_carta_correcao", cycle: "incremental", run: rebuildFatoCartaCorrecao },
+  { nome: "fato_certificado", cycle: "incremental", run: rebuildFatoCertificado },
+  { nome: "fato_referencia", cycle: "incremental", run: rebuildFatoReferencia },
 ];
 
 /**

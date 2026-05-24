@@ -1,5 +1,6 @@
-import { composeSystemPrompt } from "./compose";
+import { composeSystemPrompt, IDENTITY_BASE } from "./compose";
 import type { AgentPromptConfig, KbDocSnippet } from "./compose";
+import { DEFAULT_GUARDRAILS } from "./defaults";
 
 const baseConfig: AgentPromptConfig = {
   identityBase: null,
@@ -86,13 +87,14 @@ describe("composeSystemPrompt", () => {
 
   test("KB com doc grande → trunca e adiciona marker", () => {
     const cfg: AgentPromptConfig = { ...baseConfig, kbEnabled: true };
-    // Cap da KB é 50.000 chars — doc maior é truncado.
-    const bigText = "x".repeat(60_000);
+    // Cap da KB foi elevado para 500.000 chars; doc maior continua sendo
+    // truncado com marker. Teste usa 600k para garantir overflow do cap.
+    const bigText = "x".repeat(600_000);
     const docs: KbDocSnippet[] = [{ name: "Grande.txt", extractedText: bigText }];
     const result = composeSystemPrompt(cfg, docs);
     expect(result).toContain("[...truncado...]");
-    // Resultado total não deve explodir o prompt.
-    expect(result.length).toBeLessThan(75_000);
+    // Resultado total nao deve explodir o prompt acima de uma folga sobre o cap.
+    expect(result.length).toBeLessThan(550_000);
   });
 
   test("terminology → injeta bloco Terminologia", () => {
@@ -132,5 +134,82 @@ describe("composeSystemPrompt", () => {
     const result = composeSystemPrompt(cfg, [], undefined, biSchema);
     expect(result).toBe("Override total.");
     expect(result).not.toContain("Schema para consulta avançada");
+  });
+});
+
+describe("IDENTITY_BASE , melhorias de comportamento do Agente Nex", () => {
+  test("traz a política de desambiguação com exemplos", () => {
+    expect(IDENTITY_BASE).toContain("[DESAMBIGUAÇÃO]");
+    expect(IDENTITY_BASE.toLowerCase()).toContain("pergunte de volta");
+    expect(IDENTITY_BASE).toContain("Exemplo 1");
+  });
+
+  test("não pede mais o selo de atualização e manda ignorar o carimbo", () => {
+    expect(IDENTITY_BASE).not.toContain("Sempre inclua o timestamp");
+    expect(IDENTITY_BASE.toLowerCase()).toContain("ignore esse carimbo");
+  });
+
+  test("abre exceção de concisão para desambiguação e listas", () => {
+    expect(IDENTITY_BASE).toContain(
+      "mensagens de desambiguação e listas podem ser mais longas",
+    );
+  });
+
+  test("traz o bloco de segurança da informação", () => {
+    expect(IDENTITY_BASE).toContain("## Segurança da informação");
+    expect(IDENTITY_BASE.toLowerCase()).toContain("chave de api");
+  });
+
+  test("orienta formatação humanizada com negrito", () => {
+    expect(IDENTITY_BASE.toLowerCase()).toContain("negrito");
+  });
+});
+
+describe("DEFAULT_GUARDRAILS , segurança da informação", () => {
+  test("bloqueia perguntas sobre arquitetura e chave de API", () => {
+    const joined = DEFAULT_GUARDRAILS.join(" ").toLowerCase();
+    expect(joined).toContain("arquitetura");
+    expect(joined).toContain("chave de api");
+  });
+});
+
+describe("composeSystemPrompt , sugestoes de desambiguacao", () => {
+  test("instrucao de sugestoes cobre desambiguacao e o cap configuravel", () => {
+    const out = composeSystemPrompt(
+      { ...baseConfig, suggestionsEnabled: true, maxSuggestions: 3 },
+      [],
+    );
+    expect(out).toContain("desambiguacao");
+    // O texto traz o limite configurado dinamicamente em pelo menos dois pontos.
+    expect(out).toContain("ate **3 sugestoes**");
+    expect(out).toContain("maximo esta configurado em 3");
+  });
+
+  test("respeita maxSuggestions configurado", () => {
+    const out = composeSystemPrompt(
+      { ...baseConfig, suggestionsEnabled: true, maxSuggestions: 5 },
+      [],
+    );
+    expect(out).toContain("ate **5 sugestoes**");
+    expect(out).not.toContain("ate **3 sugestoes**");
+  });
+
+  test("source=suggestion injeta diretiva de resposta direta", () => {
+    const out = composeSystemPrompt(
+      { ...baseConfig, suggestionsEnabled: true },
+      [],
+      undefined,
+      undefined,
+      "suggestion",
+    );
+    expect(out).toContain("Entrada veio de sugestao clicada");
+    expect(out).toContain("Responda direto");
+  });
+
+  test("bloco Comportamento adiciona defaults razoaveis e limite de clarificacao", () => {
+    const out = composeSystemPrompt({ ...baseConfig }, []);
+    expect(out).toContain("## Comportamento");
+    expect(out).toContain("mes do calendario corrente");
+    expect(out).toContain("Nao faca mais de uma rodada de clarificacao");
   });
 });

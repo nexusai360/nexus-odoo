@@ -8,6 +8,12 @@ const TIER_CONFIG: Record<
   CostTier,
   { symbols: string; title: string; className: string }
 > = {
+  free: {
+    symbols: "FREE",
+    title: "Modelo gratuito",
+    className:
+      "border-emerald-500/40 bg-emerald-500/15 text-emerald-600 dark:text-emerald-400",
+  },
   low: {
     symbols: "$",
     title: "Consumo baixo (< $1 / 1M tokens)",

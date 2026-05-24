@@ -53,7 +53,7 @@ function ThemeProvider({
   initialPreference,
 }: ProvidersProps) {
   // O estado inicial vem das props (lidas dos cookies no servidor), não de
-  // `document.cookie` — assim o primeiro render do cliente bate com o SSR e
+  // `document.cookie` , assim o primeiro render do cliente bate com o SSR e
   // não há hydration mismatch (ex.: ícone de tema na sidebar).
   const [theme, setThemeState] = useState<ThemePreference>(initialPreference);
   const [resolvedTheme, setResolvedTheme] =
@@ -91,7 +91,7 @@ function ThemeProvider({
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ theme: next }),
     }).catch(() => {
-      /* ignorar — cookies e UI já foram atualizados */
+      /* ignorar , cookies e UI já foram atualizados */
     });
   }, []);
 

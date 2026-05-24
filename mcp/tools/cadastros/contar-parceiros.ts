@@ -1,7 +1,7 @@
 // mcp/tools/cadastros/contar-parceiros.ts
 // Tool MCP: cadastro_contar_parceiros
-// dados só tem escalares — sem array; cai no ramo "ok" do withFreshness
-// (sem isVazio custom — comportamento correto).
+// dados só tem escalares , sem array; cai no ramo "ok" do withFreshness
+// (sem isVazio custom , comportamento correto).
 import { z } from "zod";
 import type { ToolEntry } from "../../catalog/types.js";
 import { queryContarParceiros } from "@/lib/reports/queries/cadastros.js";

@@ -25,7 +25,7 @@ interface FreshnessIndicatorProps {
 }
 
 /**
- * Selo de frescor do dado — exibe o tempo relativo desde a última sync
+ * Selo de frescor do dado , exibe o tempo relativo desde a última sync
  * ("Atualizado há 8 min") e o horário exato no `title`. Atualiza-se sozinho
  * a cada 30 s para não "envelhecer" em silêncio na tela.
  */

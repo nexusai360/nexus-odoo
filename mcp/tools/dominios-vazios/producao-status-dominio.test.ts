@@ -1,5 +1,5 @@
 // mcp/tools/dominios-vazios/producao-status-dominio.test.ts
-// TDD — Onda F, Task F.3
+// TDD , Onda F, Task F.3
 import { producaoStatusDominio } from "./producao-status-dominio.js";
 
 describe("producaoStatusDominio", () => {

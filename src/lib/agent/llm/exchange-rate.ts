@@ -1,40 +1,64 @@
 /**
- * Cotação USD→BRL com spread versionado e flag stale.
+ * Cotacao USD -> BRL com decomposicao realista (PTAX + Spread bancario + IOF).
  *
- * Portado de nexus-insights/src/lib/llm/exchange-rate.ts com correções dos
- * BUGs 5 e 6:
- *  - BUG 5: em falha de fetch, nunca retornar null — devolver último cache
- *    in-process com stale=true, ou fallback fixo com stale=true.
- *  - BUG 6: spread retornado explicitamente no objeto (antes só era interno).
+ * Fonte primaria: PTAX venda do Banco Central (SGS serie 10813).
+ *   - Atualizada uma vez por dia automaticamente via job na maintenance
+ *     queue (worker), gravada em Redis com chave compartilhada entre worker
+ *     e web. Sem chamada de IA, sem custo de LLM.
  *
- * Sem dependência de banco — cache em memória por processo. A persistência de
- * `app_settings` do nexus-insights é omitida neste port para evitar acoplamento;
- * o TTL in-process (4h) é suficiente para o uso no agente.
+ * Formula efetiva do banco (calibrada para extrato real Santander
+ * 19/05/2026: US$ 111,25 -> R$ 590,68 ~= dolar efetivo R$ 5,3095):
+ *   subtotal      = USD * commercial
+ *   bankAmount    = subtotal * BANK_SPREAD_RATE
+ *   afterSpread   = subtotal + bankAmount = subtotal * (1 + BANK_SPREAD_RATE)
+ *   iofAmount     = afterSpread * IOF_RATE
+ *   final         = afterSpread + iofAmount = afterSpread * (1 + IOF_RATE)
+ *
+ * RATE_SPREAD aqui e' apenas o multiplicador agregado para retrocompat
+ * com codigo legado: (1 + BANK_SPREAD_RATE) * (1 + IOF_RATE) ~= 1.0539.
  */
 
-const TTL_MS = 4 * 60 * 60 * 1000; // 4 horas
+import "server-only";
+import { redis } from "@/lib/redis";
+import {
+  IOF_RATE,
+  BANK_SPREAD_RATE,
+  RATE_SPREAD,
+  FALLBACK_COMMERCIAL_RATE,
+  REDIS_KEY_USD_BRL_PTAX,
+} from "./exchange-rate-constants";
+
+export {
+  IOF_RATE,
+  BANK_SPREAD_RATE,
+  RATE_SPREAD,
+  FALLBACK_COMMERCIAL_RATE,
+  REDIS_KEY_USD_BRL_PTAX,
+};
+
+const TTL_MS = 24 * 60 * 60 * 1000; // janela de cache in-process: 1 dia
 const FETCH_TIMEOUT_MS = 5_000;
+
+// Endpoints publicos.
+const BCB_PTAX_SGS_URL =
+  "https://api.bcb.gov.br/dados/serie/bcdata.sgs.10813/dados/ultimos/1?formato=json";
 const AWESOMEAPI_URL = "https://economia.awesomeapi.com.br/last/USD-BRL";
 
-/** Spread cartão aplicado sobre a cotação comercial (BUG 6 corrigido). */
-export const RATE_SPREAD = 1.10;
-export const FALLBACK_COMMERCIAL_RATE = 5.5;
-
 export interface UsdBrlRate {
-  /** Cotação efetiva (commercial × spread). */
+  /** Cotacao efetiva (commercial * (1+spread) * (1+iof)). */
   rate: number;
-  /** Cotação comercial (sem spread). */
+  /** PTAX venda do dia (sem encargos). */
   commercial: number;
-  /** Spread aplicado — sempre RATE_SPREAD (BUG 6 corrigido). */
+  /** Multiplicador agregado aplicado. */
   spread: number;
-  /** true = cotação desatualizada (fetch falhou, usando último valor). */
+  /** true = cotacao desatualizada (fetch falhou, usando ultimo valor). */
   stale: boolean;
-  source: "live" | "in-process-cache" | "fallback";
+  source: "redis-bcb" | "live-bcb" | "live-awesomeapi" | "in-process-cache" | "fallback";
 }
 
 interface Memo {
   result: UsdBrlRate;
-  fetchedAt: number; // Date.now()
+  fetchedAt: number;
 }
 
 let memo: Memo | null = null;
@@ -44,69 +68,135 @@ export function __resetUsdBrlCache(): void {
   memo = null;
 }
 
-async function fetchLiveCommercial(): Promise<number> {
+interface RedisSnapshot {
+  commercial: number;
+  fetchedAt: string; // ISO
+  source: "bcb-ptax";
+}
+
+async function readRedisSnapshot(): Promise<RedisSnapshot | null> {
+  try {
+    const raw = await redis.get(REDIS_KEY_USD_BRL_PTAX);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as RedisSnapshot;
+    if (typeof parsed.commercial !== "number") return null;
+    return parsed;
+  } catch {
+    return null;
+  }
+}
+
+async function writeRedisSnapshot(snap: RedisSnapshot): Promise<void> {
+  try {
+    // TTL de 48h: cobre fins de semana/feriado sem PTAX nova; o worker
+    // sobrescreve o valor todo dia util.
+    await redis.set(
+      REDIS_KEY_USD_BRL_PTAX,
+      JSON.stringify(snap),
+      "EX",
+      48 * 60 * 60,
+    );
+  } catch {
+    // Sem Redis disponivel: ignora; cache in-process cobre o ciclo.
+  }
+}
+
+async function fetchPtaxFromBCB(): Promise<number> {
   const ctrl = new AbortController();
   const timer = setTimeout(() => ctrl.abort(), FETCH_TIMEOUT_MS);
   try {
-    const res = await fetch(AWESOMEAPI_URL, { signal: ctrl.signal });
-    if (!res.ok) throw new Error(`HTTP ${res.status}`);
-    const json = (await res.json()) as { USDBRL?: { bid?: string | number } };
-    const bid = json?.USDBRL?.bid;
-    const num = typeof bid === "number" ? bid : Number(bid);
-    if (!Number.isFinite(num) || num <= 0) throw new Error("bid inválido");
+    const res = await fetch(BCB_PTAX_SGS_URL, { signal: ctrl.signal });
+    if (!res.ok) throw new Error(`BCB SGS failed: ${res.status}`);
+    const data = (await res.json()) as Array<{ data?: string; valor?: string }>;
+    if (!Array.isArray(data) || data.length === 0) throw new Error("BCB vazio");
+    const valor = data[0]?.valor;
+    const num = Number(valor);
+    if (!Number.isFinite(num) || num <= 0) throw new Error("BCB valor invalido");
     return num;
   } finally {
     clearTimeout(timer);
   }
 }
 
+async function fetchAwesomeApi(): Promise<number> {
+  const ctrl = new AbortController();
+  const timer = setTimeout(() => ctrl.abort(), FETCH_TIMEOUT_MS);
+  try {
+    const res = await fetch(AWESOMEAPI_URL, { signal: ctrl.signal });
+    if (!res.ok) throw new Error(`AwesomeAPI HTTP ${res.status}`);
+    const json = (await res.json()) as { USDBRL?: { bid?: string | number } };
+    const bid = json?.USDBRL?.bid;
+    const num = typeof bid === "number" ? bid : Number(bid);
+    if (!Number.isFinite(num) || num <= 0) throw new Error("bid invalido");
+    return num;
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+function buildRate(commercial: number, source: UsdBrlRate["source"], stale: boolean): UsdBrlRate {
+  const rate = +(commercial * RATE_SPREAD).toFixed(6);
+  return { rate, commercial, spread: RATE_SPREAD, stale, source };
+}
+
 /**
- * Retorna a cotação USD→BRL com spread. Nunca retorna null ou lança.
- *
- * - stale=false: cotação recente (live ou cache in-process).
- * - stale=true: fetch falhou; devolveu cache antigo ou fallback fixo.
+ * Persiste a PTAX no Redis (chamado pelo worker diariamente).
+ * Tambem atualiza o cache in-process do processo chamador.
+ */
+export async function refreshUsdBrlRateFromBCB(): Promise<UsdBrlRate> {
+  const commercial = await fetchPtaxFromBCB();
+  await writeRedisSnapshot({
+    commercial,
+    fetchedAt: new Date().toISOString(),
+    source: "bcb-ptax",
+  });
+  const result = buildRate(commercial, "live-bcb", false);
+  memo = { result, fetchedAt: Date.now() };
+  return result;
+}
+
+/**
+ * Retorna a cotacao USD->BRL. Nunca lanca nem retorna null.
+ * Ordem de preferencia: Redis (escrito pelo worker) > cache in-process
+ * (TTL 24h) > BCB live > AwesomeAPI live > fallback constante.
  */
 export async function getUsdBrlRate(): Promise<UsdBrlRate> {
-  // Cache in-process ainda válido
+  // 1) cache in-process recente
   if (memo && Date.now() - memo.fetchedAt < TTL_MS) {
     return memo.result;
   }
 
-  try {
-    const commercial = await fetchLiveCommercial();
-    const rate = +(commercial * RATE_SPREAD).toFixed(6);
-    const result: UsdBrlRate = {
-      rate,
-      commercial,
-      spread: RATE_SPREAD,
-      stale: false,
-      source: "live",
-    };
-    memo = { result, fetchedAt: Date.now() };
-    return result;
-  } catch {
-    // Fetch falhou — BUG 5: usar cache antigo (stale) em vez de null
-    if (memo) {
-      const staleResult: UsdBrlRate = {
-        ...memo.result,
-        stale: true,
-        source: "in-process-cache",
-      };
-      return staleResult;
-    }
-
-    // Sem cache algum — usar fallback fixo com stale=true
-    const commercial = FALLBACK_COMMERCIAL_RATE;
-    const rate = +(commercial * RATE_SPREAD).toFixed(6);
-    const result: UsdBrlRate = {
-      rate,
-      commercial,
-      spread: RATE_SPREAD,
-      stale: true,
-      source: "fallback",
-    };
-    // Gravar no memo para evitar req repetidas durante o mesmo processo
+  // 2) Redis (preferido , worker grava todo dia)
+  const snap = await readRedisSnapshot();
+  if (snap) {
+    const result = buildRate(snap.commercial, "redis-bcb", false);
     memo = { result, fetchedAt: Date.now() };
     return result;
   }
+
+  // 3) Live BCB direto (web fallback se worker nao escreveu ainda)
+  try {
+    return await refreshUsdBrlRateFromBCB();
+  } catch {
+    // segue para AwesomeAPI
+  }
+
+  // 4) Live AwesomeAPI (fallback secundario)
+  try {
+    const commercial = await fetchAwesomeApi();
+    const result = buildRate(commercial, "live-awesomeapi", false);
+    memo = { result, fetchedAt: Date.now() };
+    return result;
+  } catch {
+    // segue para fallback
+  }
+
+  // 5) Cache antigo (stale) ou fallback fixo
+  if (memo) {
+    const stale: UsdBrlRate = { ...memo.result, stale: true, source: "in-process-cache" };
+    return stale;
+  }
+  const fallback = buildRate(FALLBACK_COMMERCIAL_RATE, "fallback", true);
+  memo = { result: fallback, fetchedAt: Date.now() };
+  return fallback;
 }

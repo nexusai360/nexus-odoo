@@ -12,13 +12,13 @@
 // Se a regra multi-fato mudar, **os dois pontos devem ser atualizados juntos**.
 //
 // A função `estadoPreparando(prisma, fatos)` exportada por este módulo é o
-// helper compartilhado da regra — `withFreshness` a usa; um refactor futuro
+// helper compartilhado da regra , `withFreshness` a usa; um refactor futuro
 // do wrapper F3 pode adotá-la também.
 
 import type { PrismaClient } from "@/generated/prisma/client.js";
 
 // ---------------------------------------------------------------------------
-// FATO_FONTE — mapa fato → fonte do SyncState com modo
+// FATO_FONTE , mapa fato → fonte do SyncState com modo
 // ---------------------------------------------------------------------------
 //
 // Quando um fato é usado junto de outros, `fonteStatus` reporta a fonte
@@ -35,15 +35,24 @@ export const FATO_FONTE: Record<string, { model: string; mode: "snapshot" | "inc
   fato_financeiro_saldo:     { model: "finan.banco.saldo.hoje",   mode: "snapshot" },
   fato_financeiro_movimento: { model: "finan.fluxo.caixa",        mode: "incremental" },
   fato_financeiro_titulo:    { model: "finan.pagamento.divida",   mode: "incremental" },
-  // Comercial (onda B) — model confirmado via SELECT model FROM sync_state
+  // Comercial (onda B) , model confirmado via SELECT model FROM sync_state
   fato_pedido:               { model: "pedido.documento",          mode: "incremental" },
   fato_pedido_parcela:       { model: "pedido.parcela",            mode: "incremental" },
-  // Fiscal (onda C) — model confirmado via SELECT model FROM sync_state
+  // Fiscal (onda C) , model confirmado via SELECT model FROM sync_state
   fato_nota_fiscal:          { model: "sped.documento",            mode: "incremental" },
   fato_nota_fiscal_item:     { model: "sped.documento.item",       mode: "incremental" },
-  // Cadastros (onda D) — model confirmado via SELECT model FROM sync_state
+  // F4 L1a , expansão da base de leitura
+  fato_preco:                { model: "sped.tabela.preco.regra",   mode: "incremental" },
+  fato_servico:              { model: "sped.servico",              mode: "incremental" },
+  fato_apuracao:             { model: "sped.apuracao",             mode: "incremental" },
+  fato_carta_correcao:       { model: "sped.carta.correcao",        mode: "incremental" },
+  // F4 L1c , resíduo operacional 4a
+  fato_certificado:          { model: "sped.certificado",          mode: "incremental" },
+  // F4 L1b , fato_referencia vem de 15 modelos; sped.ncm é o representativo p/ fonteStatus.
+  fato_referencia:           { model: "sped.ncm",                  mode: "incremental" },
+  // Cadastros (onda D) , model confirmado via SELECT model FROM sync_state
   fato_parceiro:             { model: "res.partner",               mode: "incremental" },
-  // Contábil (onda E) — model confirmado via SELECT model FROM sync_state
+  // Contábil (onda E) , model confirmado via SELECT model FROM sync_state
   fato_conta_contabil:       { model: "contabil.conta",            mode: "incremental" },
 };
 
@@ -114,7 +123,7 @@ function extractFirstArray(dados: unknown): unknown[] | null {
  * @param isVazio Predicado opcional de "vazio" customizado. Quando fornecido,
  * substitui a lógica padrão de `ARRAY_KEYS_PRIORITY`. Use quando a semântica
  * de "vazio" depende de múltiplos arrays (ex.: concentracao, que exige ambos
- * `familia` e `marca` vazios para ser "vazio" — paridade com o dashboard F3).
+ * `familia` e `marca` vazios para ser "vazio" , paridade com o dashboard F3).
  */
 export async function withFreshness<O>(
   prisma: PrismaClient,
@@ -158,7 +167,7 @@ export async function withFreshness<O>(
 
   // Pior fonte: menor ultimaSyncEm.
   // REGRA: se qualquer fonte tem syncAt=null (nunca sincronizou), o resultado
-  // é null — independentemente da ordem de iteração. null é o pior caso absoluto
+  // é null , independentemente da ordem de iteração. null é o pior caso absoluto
   // e jamais pode ser sobrescrito por uma data válida de outra fonte.
   let piorStatus = "ok";
   let piorSyncEm: Date | null | undefined = undefined; // undefined = "ainda não vimos nenhuma fonte"

@@ -5,7 +5,7 @@ global.fetch = mockFetch as unknown as typeof fetch;
 
 beforeEach(() => mockFetch.mockReset());
 
-describe("OpenAIClient — MOCK key", () => {
+describe("OpenAIClient , MOCK key", () => {
   test("retorna resposta simulada sem chamar fetch", async () => {
     const client = new OpenAIClient("MOCK_KEY", "gpt-4o-mini");
     const result = await client.chat({ messages: [{ role: "user", content: "Olá" }] });

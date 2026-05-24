@@ -28,7 +28,7 @@ export function SaldoProdutoDrillDown({
   return (
     <div
       role="region"
-      aria-label={`Detalhe por local — ${produtoNome}`}
+      aria-label={`Detalhe por local , ${produtoNome}`}
       className="border-l-2 border-primary/20 bg-muted/15 px-4 py-3 motion-safe:animate-in motion-safe:fade-in motion-safe:duration-150"
     >
       <p className="mb-2 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">

@@ -38,7 +38,7 @@ describe("SqlGuardError", () => {
   });
 });
 
-describe("toOutcome — SqlGuardError", () => {
+describe("toOutcome , SqlGuardError", () => {
   it("SqlGuardError → invalid_input", () => {
     expect(toOutcome(new SqlGuardError("multi-statement"))).toBe("invalid_input");
   });

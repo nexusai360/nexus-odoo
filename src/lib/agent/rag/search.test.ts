@@ -1,5 +1,5 @@
 /**
- * TDD — search.ts (ingestão e busca)
+ * TDD , search.ts (ingestão e busca)
  *
  * Comportamentos testados:
  * - ingestKbDocument: grava KbDocument com embedding gerado

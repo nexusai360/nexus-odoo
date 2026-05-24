@@ -7,9 +7,11 @@ import {
   queryImpostosPeriodo,
   queryFaturamentoPorCliente,
   queryProdutosFaturados,
+  queryNotasRecebidasPorFornecedor,
+  queryContarNotas,
 } from "./fiscal";
 
-// Stub de prisma — substituído por mock real em cada describe
+// Stub de prisma , substituído por mock real em cada describe
 const fakePrisma = {} as Parameters<typeof queryFaturamentoPeriodo>[0];
 
 describe("queryFaturamentoPeriodo", () => {
@@ -290,5 +292,86 @@ describe("queryProdutosFaturados", () => {
   });
 });
 
-// Silencia o "unused variable" lint — fakePrisma é placeholder para os mocks futuros
+describe("queryNotasRecebidasPorFornecedor", () => {
+  it("agrega todas as linhas que casaram em totalAgregado, mesmo além do limite", async () => {
+    const mockPrisma = {
+      fatoNotaFiscal: {
+        findMany: jest.fn().mockResolvedValue([
+          { participanteNome: "Fornecedor X - Matriz", vrNf: "1000.00" },
+          { participanteNome: "Fornecedor X - Matriz", vrNf: "500.00" },
+          { participanteNome: "Fornecedor X - Filial", vrNf: "300.00" },
+        ]),
+      },
+    } as unknown as Parameters<typeof queryNotasRecebidasPorFornecedor>[0];
+
+    const result = await queryNotasRecebidasPorFornecedor(mockPrisma, {
+      fornecedor: "Fornecedor X",
+      limite: 1,
+    });
+
+    // limite=1 corta as linhas exibidas, mas o agregado soma tudo que casou.
+    expect(result.linhas).toHaveLength(1);
+    expect(result.totalAgregado.quantidade).toBe(3);
+    expect(result.totalAgregado.valorTotal).toBeCloseTo(1800);
+    expect(result.totalFornecedoresDistintos).toBe(2);
+  });
+
+  it("filtra só notas de entrada (entradaSaida='0')", async () => {
+    const mockPrisma = {
+      fatoNotaFiscal: { findMany: jest.fn().mockResolvedValue([]) },
+    } as unknown as Parameters<typeof queryNotasRecebidasPorFornecedor>[0];
+
+    await queryNotasRecebidasPorFornecedor(mockPrisma, {});
+    const call = (mockPrisma.fatoNotaFiscal.findMany as jest.Mock).mock.calls[0][0];
+    expect(call.where?.entradaSaida).toBe("0");
+  });
+
+  it("resolve documento (CNPJ) via fato_parceiro comparando só os dígitos", async () => {
+    const mockPrisma = {
+      fatoParceiro: {
+        findMany: jest.fn().mockResolvedValue([
+          { odooId: 11, documento: "12.345.678/0001-90" },
+          { odooId: 22, documento: "99.999.999/0001-99" },
+        ]),
+      },
+      fatoNotaFiscal: { findMany: jest.fn().mockResolvedValue([]) },
+    } as unknown as Parameters<typeof queryNotasRecebidasPorFornecedor>[0];
+
+    await queryNotasRecebidasPorFornecedor(mockPrisma, { documento: "12345678000190" });
+    const call = (mockPrisma.fatoNotaFiscal.findMany as jest.Mock).mock.calls[0][0];
+    expect(call.where?.participanteId).toEqual({ in: [11] });
+  });
+
+  it("documento sem nenhum parceiro casado força zero resultados (in:[-1])", async () => {
+    const mockPrisma = {
+      fatoParceiro: { findMany: jest.fn().mockResolvedValue([]) },
+      fatoNotaFiscal: { findMany: jest.fn().mockResolvedValue([]) },
+    } as unknown as Parameters<typeof queryNotasRecebidasPorFornecedor>[0];
+
+    await queryNotasRecebidasPorFornecedor(mockPrisma, { documento: "00000000000000" });
+    const call = (mockPrisma.fatoNotaFiscal.findMany as jest.Mock).mock.calls[0][0];
+    expect(call.where?.participanteId).toEqual({ in: [-1] });
+  });
+});
+
+describe("queryContarNotas", () => {
+  it("retorna total, totalEntrada e totalSaida via count", async () => {
+    const mockPrisma = {
+      fatoNotaFiscal: {
+        count: jest
+          .fn()
+          .mockResolvedValueOnce(500) // total
+          .mockResolvedValueOnce(287) // totalEntrada (entradaSaida='0')
+          .mockResolvedValueOnce(213), // totalSaida (entradaSaida='1')
+      },
+    } as unknown as Parameters<typeof queryContarNotas>[0];
+
+    const result = await queryContarNotas(mockPrisma);
+    expect(result.total).toBe(500);
+    expect(result.totalEntrada).toBe(287);
+    expect(result.totalSaida).toBe(213);
+  });
+});
+
+// Silencia o "unused variable" lint , fakePrisma é placeholder para os mocks futuros
 void fakePrisma;

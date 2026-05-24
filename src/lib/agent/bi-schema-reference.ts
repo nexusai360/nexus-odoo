@@ -4,7 +4,7 @@
  * Usado pelo agente no Caminho 3c (bi_consulta_avancada) para que o LLM
  * possa construir queries SQL válidas contra as tabelas de fatos.
  *
- * Derivado de prisma/schema.prisma — modelos Fato*.
+ * Derivado de prisma/schema.prisma , modelos Fato*.
  * Atualizar aqui sempre que o schema mudar (trava: bi-schema-reference.test.ts).
  *
  * Colunas financeiras (Decimal) são armazenadas como NUMERIC(18,2) no Postgres.
@@ -250,5 +250,97 @@ TABLE fato_conta_contabil (
   caracteristica_saldo TEXT,
   eh_redutora          BOOLEAN,
   atualizado_em        TIMESTAMPTZ
+);
+
+-- ─── PREÇOS (F4 L1a) ─────────────────────────────────────────────────────────
+
+-- Regras de preço das tabelas de preço (uma linha por regra)
+TABLE fato_preco (
+  odoo_id           INT PRIMARY KEY,
+  tabela_id         INT,
+  tabela_nome       TEXT,
+  dimensao          TEXT,            -- 'produto' | 'familia' | 'participante' | 'geral'
+  produto_id        INT,
+  produto_nome      TEXT,
+  familia_id        INT,
+  familia_nome      TEXT,
+  participante_id   INT,
+  participante_nome TEXT,
+  operacao          TEXT,            -- 'valor' | 'margem' | 'desconto' | 'markup' | 'fixo' | 'formula'
+  preco_base        TEXT,
+  valor             NUMERIC(18,4),   -- preço resolvido (operações diretas); NULL nas relativas
+  aliquota          NUMERIC(9,4),    -- percentual (operações relativas)
+  quantidade_minima NUMERIC(18,4),
+  data_inicial      TIMESTAMPTZ,
+  data_final        TIMESTAMPTZ,
+  atualizado_em     TIMESTAMPTZ
+);
+
+-- ─── SERVIÇOS (F4 L1a) ───────────────────────────────────────────────────────
+
+-- Catálogo de serviços fiscais (lista de serviços LC 116)
+TABLE fato_servico (
+  odoo_id           INT PRIMARY KEY,
+  codigo            TEXT,
+  codigo_formatado  TEXT,
+  descricao         TEXT,
+  codigo_tributacao TEXT,
+  al_inss_retido    NUMERIC(9,4),
+  atualizado_em     TIMESTAMPTZ
+);
+
+-- ─── FISCAL COMPLEMENTAR (F4 L1a) ────────────────────────────────────────────
+
+-- Apurações fiscais (ICMS-IPI e PIS-COFINS)
+TABLE fato_apuracao (
+  odoo_id              INT PRIMARY KEY,
+  empresa_nome         TEXT,
+  data_inicial         TIMESTAMPTZ,
+  data_final           TIMESTAMPTZ,
+  tipo                 TEXT,            -- 'ICMS-IPI' | 'PIS-COFINS'
+  entregue             BOOLEAN,
+  regime_tributario    TEXT,
+  vr_icms_a_recolher   NUMERIC(18,2),
+  vr_icms_saldo_credor NUMERIC(18,2),
+  vr_ipi_a_recolher    NUMERIC(18,2),
+  vr_pis_a_recolher    NUMERIC(18,2),
+  vr_cofins_a_recolher NUMERIC(18,2),
+  atualizado_em        TIMESTAMPTZ
+);
+
+-- Cartas de correção (CC-e) de documentos fiscais
+TABLE fato_carta_correcao (
+  odoo_id               INT PRIMARY KEY,
+  descricao             TEXT,
+  correcao              TEXT,
+  documento_id          INT,
+  data_autorizacao      TIMESTAMPTZ,
+  protocolo_autorizacao TEXT,
+  sequencia             INT,
+  atualizado_em         TIMESTAMPTZ
+);
+
+-- Certificados digitais (e-CNPJ) das empresas
+TABLE fato_certificado (
+  odoo_id              INT PRIMARY KEY,
+  tipo                 TEXT,          -- ex.: A1
+  numero_serie         TEXT,
+  proprietario         TEXT,
+  cnpj_cpf             TEXT,
+  data_inicio_validade TIMESTAMPTZ,
+  data_fim_validade    TIMESTAMPTZ,
+  data_vencimento_util TIMESTAMPTZ,
+  nome_arquivo         TEXT,
+  atualizado_em        TIMESTAMPTZ
+);
+
+-- Tabelas de referencia achatadas. Filtre sempre pela coluna tabela. Valores
+-- possiveis: ncm, cfop, cest, cnae, nbs, natureza_operacao, unidade, cst_icms,
+-- cst_icms_sn, cst_ipi, cst_pis_cofins, cst_cibs, municipio, pais, estado.
+TABLE fato_referencia (
+  id        INT PRIMARY KEY,
+  tabela    TEXT,
+  codigo    TEXT,
+  descricao TEXT
 );
 `.trim();

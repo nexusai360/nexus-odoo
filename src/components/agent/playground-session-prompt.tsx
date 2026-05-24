@@ -1,7 +1,7 @@
 "use client";
 
 /**
- * PlaygroundSessionPrompt — sub-tela de edição do prompt de uma sessão de
+ * PlaygroundSessionPrompt , sub-tela de edição do prompt de uma sessão de
  * playground. Espelha visualmente `/agente/prompt`: usa os MESMOS
  * componentes (ExpandableTextarea), os mesmos ícones (FileText, Sparkles,
  * Wand2, Shield), os mesmos rótulos e os mesmos limites de caracteres.
@@ -53,7 +53,7 @@ import {
 } from "@/lib/actions/playground";
 import type { PlaygroundPromptSnapshot } from "@/lib/actions/playground-types";
 
-const MAX_IDENTITY = 50_000;
+const MAX_IDENTITY = 500_000;
 const MAX_PERSONALITY = 1000;
 const MAX_TONE = 1000;
 const MAX_GUARDRAIL = 500;
@@ -157,7 +157,7 @@ export function PlaygroundSessionPrompt({
               Prompt da sessão
             </h2>
             <p className="text-xs text-muted-foreground">
-              Alterações valem só nesta sessão — não afetam a produção até
+              Alterações valem só nesta sessão , não afetam a produção até
               você aplicar.
             </p>
           </div>
@@ -189,9 +189,9 @@ export function PlaygroundSessionPrompt({
         </div>
       </div>
 
-      {/* Conteúdo rolável — mesmo layout/Cards/labels da tela /agente/prompt */}
+      {/* Conteúdo rolável , mesmo layout/Cards/labels da tela /agente/prompt */}
       <div className="flex-1 overflow-y-auto bg-muted/10 px-4 py-5">
-        <div className="mx-auto max-w-3xl space-y-8">
+        <div className="mx-auto space-y-8">
           {/* ─────── Identidade base (espelha IdentityBaseEditor) ─────── */}
           <Card className="rounded-2xl border border-border bg-muted/30 p-2">
             <CardHeader className="pb-3">
@@ -223,7 +223,7 @@ export function PlaygroundSessionPrompt({
                 onChange={setIdentityBase}
                 maxLength={MAX_IDENTITY}
                 rows={8}
-                placeholder="Defina aqui a identidade fixa do Agente Nex — quem ele é, o que faz, contexto da empresa…"
+                placeholder="Defina aqui a identidade fixa do Agente Nex , quem ele é, o que faz, contexto da empresa…"
                 disabled={isSaving || isApplying}
                 className="font-mono text-xs"
                 aria-describedby="pg-identity-base-help"
@@ -294,7 +294,7 @@ export function PlaygroundSessionPrompt({
                   id="pg-personality-help"
                   className="text-xs text-muted-foreground"
                 >
-                  Como o Agente Nex se comporta — voz, foco, atitude geral.
+                  Como o Agente Nex se comporta , voz, foco, atitude geral.
                 </p>
               </div>
 
@@ -332,7 +332,7 @@ export function PlaygroundSessionPrompt({
                   id="pg-tone-help"
                   className="text-xs text-muted-foreground"
                 >
-                  Estilo de escrita — formalidade, calor humano, vocabulário.
+                  Estilo de escrita , formalidade, calor humano, vocabulário.
                 </p>
               </div>
 
@@ -440,7 +440,7 @@ export function PlaygroundSessionPrompt({
             </CardContent>
           </Card>
 
-          {/* Recursos da sessão — espelha a estrutura do menu Prompt */}
+          {/* Recursos da sessão , espelha a estrutura do menu Prompt */}
           <Card className="rounded-2xl border border-border bg-muted/30 p-2">
             <CardHeader className="pb-3">
               <CardTitle>Recursos</CardTitle>
@@ -452,7 +452,7 @@ export function PlaygroundSessionPrompt({
                 <span className="font-medium text-foreground">
                   Prompt → Recursos
                 </span>{" "}
-                — regra evolutiva:{" "}
+                , regra evolutiva:{" "}
                 <span className="font-medium">PRODUÇÃO</span> aparece no
                 Playground; <span className="font-medium">PLAYGROUND</span>{" "}
                 aparece só aqui;{" "}
@@ -461,7 +461,7 @@ export function PlaygroundSessionPrompt({
               </p>
               <p className="text-[11px] text-muted-foreground/70">
                 Override por sessão (mudar recurso só para esta sessão) será
-                liberado em rodada futura — pede mudança no schema.
+                liberado em rodada futura , pede mudança no schema.
               </p>
             </CardContent>
           </Card>
