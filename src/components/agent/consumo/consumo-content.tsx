@@ -68,7 +68,7 @@ import {
   type PeriodKey,
   type CanonicalPeriodLabel,
 } from "@/lib/datetime-core";
-import { UsageDetailSheet } from "./usage-detail-sheet";
+import { UsageDetailInline } from "./usage-detail-inline";
 import { UsageTableFilters } from "./usage-table-filters";
 
 // ---------------------------------------------------------------------------
@@ -294,7 +294,7 @@ export function ConsumoContent({ minDate: minDateIso }: ConsumoContentProps) {
   >({});
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
-  const [sheetRow, setSheetRow] = useState<UsageDetailRow | null>(null);
+  const [expandedRowId, setExpandedRowId] = useState<string | null>(null);
 
   // Navegação do gráfico "Custo por dia"
   const [chartReferenceDate, setChartReferenceDate] = useState<string | null>(
@@ -685,11 +685,14 @@ export function ConsumoContent({ minDate: minDateIso }: ConsumoContentProps) {
   const rangeStartIdx = detailsTotal === 0 ? 0 : page * pageSize + 1;
   const rangeEndIdx = Math.min((page + 1) * pageSize, detailsTotal);
 
-  // Trocar de página fecha o sheet (evita cursor stale).
+  // Trocar de página recolhe a linha expandida (evita cursor stale).
   const handlePageChange = (next: number) => {
     setPage(next);
-    setSheetRow(null);
+    setExpandedRowId(null);
   };
+
+  const toggleExpanded = (id: string) =>
+    setExpandedRowId((cur) => (cur === id ? null : id));
 
   const kpiCards = [
     {
@@ -1040,27 +1043,37 @@ export function ConsumoContent({ minDate: minDateIso }: ConsumoContentProps) {
                     </TableCell>
                   </TableRow>
                 ) : (
-                  details.map((row) => {
+                  details.flatMap((row) => {
                     const whisper = isWhisperModel(row.model);
                     const kind = row.requestKind || "texto";
-                    return (
+                    const isExpanded = expandedRowId === row.id;
+                    return [
                       <TableRow
                         key={row.id}
                         role="button"
                         tabIndex={0}
                         aria-label={`Detalhes da chamada de ${dateTimeFmt.format(new Date(row.createdAt))}`}
-                        className="group cursor-pointer transition-colors hover:bg-muted/40 focus-visible:outline-none focus-visible:bg-muted/50"
-                        onClick={() => setSheetRow(row)}
+                        aria-expanded={isExpanded}
+                        className={cn(
+                          "group cursor-pointer transition-colors hover:bg-muted/40 focus-visible:outline-none focus-visible:bg-muted/50",
+                          isExpanded && "bg-violet-500/5",
+                        )}
+                        onClick={() => toggleExpanded(row.id)}
                         onKeyDown={(e) => {
                           if (e.key === "Enter" || e.key === " ") {
                             e.preventDefault();
-                            setSheetRow(row);
+                            toggleExpanded(row.id);
                           }
                         }}
                       >
                         <TableCell className="relative whitespace-nowrap tabular-nums pl-7">
                           <ChevronRight
-                            className="absolute left-1.5 top-1/2 -translate-y-1/2 h-3 w-3 opacity-0 transition-opacity group-hover:opacity-60"
+                            className={cn(
+                              "absolute left-1.5 top-1/2 -translate-y-1/2 h-3 w-3 transition-transform",
+                              isExpanded
+                                ? "rotate-90 opacity-80"
+                                : "opacity-0 group-hover:opacity-60",
+                            )}
                             aria-hidden="true"
                           />
                           {dateTimeFmt.format(new Date(row.createdAt))}
@@ -1136,8 +1149,18 @@ export function ConsumoContent({ minDate: minDateIso }: ConsumoContentProps) {
                             </span>
                           )}
                         </TableCell>
-                      </TableRow>
-                    );
+                      </TableRow>,
+                      isExpanded ? (
+                        <TableRow
+                          key={`${row.id}-expanded`}
+                          className="bg-violet-500/[0.02] hover:bg-violet-500/[0.02]"
+                        >
+                          <TableCell colSpan={9} className="p-3">
+                            <UsageDetailInline row={row} />
+                          </TableCell>
+                        </TableRow>
+                      ) : null,
+                    ];
                   })
                 )}
               </TableBody>
@@ -1201,14 +1224,8 @@ export function ConsumoContent({ minDate: minDateIso }: ConsumoContentProps) {
         </CardContent>
       </Card>
 
-      {/* Drill-down sheet */}
-      <UsageDetailSheet
-        open={sheetRow !== null}
-        onOpenChange={(open) => {
-          if (!open) setSheetRow(null);
-        }}
-        row={sheetRow}
-      />
+      {/* Drill-down inline (linha expansivel na propria tabela) substitui o
+          drawer lateral. */}
     </motion.div>
   );
 }
