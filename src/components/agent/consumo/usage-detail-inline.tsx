@@ -53,21 +53,12 @@ export function UsageDetailInline({ row }: { row: UsageDetailRow }) {
 
   return (
     <div className="rounded-lg border border-violet-500/20 bg-violet-500/[0.03] px-4 py-3">
-      {/* Header com titulo + botao Copiar JSON centralizado */}
-      <div className="mb-3 flex items-center justify-between gap-3 border-b border-violet-500/15 pb-2">
+      {/* Header so com titulo (o botao Copiar JSON foi para o rodape
+          centralizado, fora dos cantos). */}
+      <div className="mb-3 border-b border-violet-500/15 pb-2">
         <h4 className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
           Detalhes da chamada
         </h4>
-        <Button
-          type="button"
-          variant="outline"
-          size="sm"
-          onClick={handleCopy}
-          className="h-7 gap-1.5 px-2.5 text-[11px]"
-        >
-          <Clipboard className="h-3 w-3" aria-hidden />
-          <span>Copiar JSON</span>
-        </Button>
       </div>
 
       {/* Layout em 2 colunas: Identificacao | Quebra de custo */}
@@ -106,6 +97,20 @@ export function UsageDetailInline({ row }: { row: UsageDetailRow }) {
           <span className="break-words font-mono text-xs">{row.errorMessage}</span>
         </div>
       ) : null}
+
+      {/* Acao central, em destaque (nao nos cantos). */}
+      <div className="mt-4 flex justify-center border-t border-violet-500/15 pt-3">
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          onClick={handleCopy}
+          className="h-8 gap-2 border-violet-500/40 bg-violet-500/5 px-4 text-[12px] text-violet-700 hover:bg-violet-500/15 dark:text-violet-300"
+        >
+          <Clipboard className="h-3.5 w-3.5" aria-hidden />
+          <span>Copiar JSON</span>
+        </Button>
+      </div>
     </div>
   );
 }

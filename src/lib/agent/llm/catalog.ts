@@ -124,9 +124,7 @@ const OPENAI: ModelEntry[] = [
   { id: "gpt-4.1-mini",        provider: "openai", label: "GPT-4.1 mini",     tier: "low",                            released: "2025-04", pricing: { inputPerMTok: 0.4,   outputPerMTok: 1.6   }, vision: true },
   { id: "gpt-4o",              provider: "openai", label: "GPT-4o",           tier: "medium",                         released: "2024-05", pricing: { inputPerMTok: 2.5,   outputPerMTok: 10.0  }, vision: true, audio: true },
   { id: "gpt-4o-mini",         provider: "openai", label: "GPT-4o mini",      tier: "low",                            released: "2024-07", pricing: { inputPerMTok: 0.15,  outputPerMTok: 0.6   }, vision: true, audio: true },
-  { id: "gpt-4-turbo",         provider: "openai", label: "GPT-4 Turbo",      tier: "high",                           released: "2024-04", pricing: { inputPerMTok: 10.0,  outputPerMTok: 30.0  }, vision: true },
-  { id: "gpt-4",               provider: "openai", label: "GPT-4",            tier: "medium",                         released: "2023-03", pricing: { inputPerMTok: 30.0,  outputPerMTok: 60.0  } },
-  // Áudio (transcrição).
+  // Áudio (transcrição) — mantido pelo seletor de audio nas configuracoes do agente.
   { id: "gpt-4o-transcribe",      provider: "openai", label: "GPT-4o Transcribe",      tier: "low", use: "áudio", audio: true, released: "2025-03", pricing: { inputPerMTok: 6.0, outputPerMTok: 10.0 } },
   { id: "gpt-4o-mini-transcribe", provider: "openai", label: "GPT-4o mini Transcribe", tier: "low", use: "áudio", audio: true, released: "2025-03", pricing: { inputPerMTok: 3.0, outputPerMTok: 5.0 } },
   { id: "whisper-1",           provider: "openai", label: "Whisper-1",        tier: "low",     use: "áudio", audio: true, released: "2022-09", pricing: { inputPerMTok: 0, outputPerMTok: 0, perMinuteUsd: 0.006 } },
@@ -392,20 +390,19 @@ function openrouterProvider(m: ModelEntry): string {
 }
 
 /**
- * Ordenação especial para OpenRouter:
- *  1. Tier (premium → high → medium → low → free).
- *  2. Dentro do tier, agrupar por provedor (alfabético).
- *  3. Dentro do provedor, data mais recente primeiro.
- *  4. Empate: alfabético do id.
+ * Ordenacao especial para OpenRouter:
+ *  1. Tier (premium → high → medium → low → free, free SEMPRE no final).
+ *  2. Dentro do tier: data mais recente primeiro.
+ *  3. Empate: alfabetico do id.
+ *
+ * NAO agrupa por provedor — modelos do mesmo tier podem misturar OpenAI,
+ * Anthropic, DeepSeek etc. de acordo com a data de lancamento.
  */
 export function sortOpenrouterModels(models: ModelEntry[]): ModelEntry[] {
   return [...models].sort((a, b) => {
     const ta = OPENROUTER_TIER_RANK[a.tier] ?? 9;
     const tb = OPENROUTER_TIER_RANK[b.tier] ?? 9;
     if (ta !== tb) return ta - tb;
-    const pa = openrouterProvider(a);
-    const pb = openrouterProvider(b);
-    if (pa !== pb) return pa.localeCompare(pb);
     const relA = a.released ?? "0000-00";
     const relB = b.released ?? "0000-00";
     if (relA !== relB) return relB.localeCompare(relA);
@@ -422,7 +419,7 @@ export function listModels(
   provider: LlmProvider,
   opts: { includeLegacy?: boolean } = {},
 ): ModelEntry[] {
-  const all = MODELS.filter((m) => m.provider === provider);
+  const all = MODELS.filter((m) => m.provider === provider && m.use !== "áudio");
   const filtered = opts.includeLegacy ? all : all.filter((m) => !isLegacyModel(m));
   return provider === "openrouter"
     ? sortOpenrouterModels(filtered)

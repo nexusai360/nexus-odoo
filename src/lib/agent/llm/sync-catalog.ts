@@ -192,8 +192,10 @@ export async function syncProvider(
 
       vistosEsteSync.add(m.id);
       const inBase = knownBase.has(m.id);
-      if (inBase) {
-        // Base versionada vence: nao duplica entrada no banco.
+      // OpenRouter expõe pricing oficial via API — SEMPRE persistimos no banco
+      // para que o effective-catalog use pricing fresco mesmo nas entries da
+      // base com pricing=null. Demais providers respeitam a base versionada.
+      if (inBase && provider !== "openrouter") {
         continue;
       }
       const tier = deriveTier(m.pricingInput, m.pricingOutput, m.id);

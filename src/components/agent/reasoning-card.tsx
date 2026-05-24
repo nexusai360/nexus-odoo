@@ -134,7 +134,6 @@ export function ReasoningCard({
                 value: l,
                 label: LEVEL_LABELS[l],
                 notes: LEVEL_CONSUMPTION[l],
-                endAdornment: <TierBadge tier={LEVEL_TIER[l]} />,
               }))}
             />
           </div>
