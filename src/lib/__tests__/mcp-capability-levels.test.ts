@@ -2,8 +2,76 @@ import {
   emptyAccessMap,
   capabilitiesToLevels,
   levelsToCapabilities,
+  deriveModuleWriteActions,
 } from "@/lib/mcp-capability-levels";
-import type { McpCapabilities } from "@/lib/actions/mcp-api-keys-types";
+import {
+  MCP_MODULES,
+  WRITE_ACTIONS,
+  SENSITIVE_ACTIONS,
+  type McpCapabilities,
+} from "@/lib/actions/mcp-api-keys-types";
+import type { CatalogByModule } from "@/lib/actions/mcp-catalog-schema";
+
+describe("MCP_MODULES", () => {
+  it("inclui cadastros como módulo canônico", () => {
+    expect(MCP_MODULES).toContain("cadastros");
+  });
+
+  it("preserva os módulos existentes", () => {
+    for (const mod of [
+      "crm",
+      "vendas",
+      "estoque",
+      "compras",
+      "financeiro",
+      "fiscal",
+      "contabil",
+      "producao",
+      "rh",
+      "projeto",
+    ]) {
+      expect(MCP_MODULES).toContain(mod);
+    }
+  });
+});
+
+describe("WRITE_ACTIONS", () => {
+  it("inclui Archive como ação de escrita", () => {
+    expect(WRITE_ACTIONS).toContain("Archive");
+  });
+
+  it("Archive não é considerada sensível (reversível)", () => {
+    expect(SENSITIVE_ACTIONS).not.toContain("Archive" as never);
+  });
+});
+
+describe("deriveModuleWriteActions, archive mapping", () => {
+  it("mapeia capability cadastros.archive para action Archive", () => {
+    const catalog: CatalogByModule[] = [
+      {
+        module: "cadastros",
+        readTools: [],
+        writeTools: [
+          {
+            id: "cadastros.res_partner.archive",
+            operation: "write",
+            module: "cadastros",
+            descricao: "",
+            capability: "cadastros.archive",
+            sensitive: false,
+            addedInVersion: null,
+            inputSchemaKeys: [],
+            examples: [],
+          },
+        ],
+      },
+    ];
+    const map = deriveModuleWriteActions(catalog);
+    expect(map.cadastros).toEqual([
+      { action: "Archive", tools: ["cadastros.res_partner.archive"] },
+    ]);
+  });
+});
 
 describe("mcp-capability-levels", () => {
   it("emptyAccessMap deixa todos os módulos sem acesso", () => {

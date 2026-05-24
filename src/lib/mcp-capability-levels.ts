@@ -33,6 +33,7 @@ const ACTION_CODE_TO_WRITE: Record<string, WriteAction> = {
   create: "Create",
   update: "Update",
   delete: "Delete",
+  archive: "Archive",
   transition: "Transition",
 };
 

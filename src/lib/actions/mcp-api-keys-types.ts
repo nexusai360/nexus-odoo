@@ -7,6 +7,7 @@
 export const MCP_MODULES = [
   "crm",
   "vendas",
+  "cadastros",
   "estoque",
   "compras",
   "financeiro",
@@ -20,7 +21,7 @@ export const MCP_MODULES = [
 export type McpModule = (typeof MCP_MODULES)[number];
 
 /** Ações de escrita por módulo (mutação). Leitura é tratada separadamente. */
-export const WRITE_ACTIONS = ["Create", "Update", "Delete", "Transition"] as const;
+export const WRITE_ACTIONS = ["Create", "Update", "Delete", "Archive", "Transition"] as const;
 export type WriteAction = (typeof WRITE_ACTIONS)[number];
 
 /**

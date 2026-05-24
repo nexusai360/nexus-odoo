@@ -102,6 +102,7 @@ const WRITE_ACTION_LABELS: Record<WriteAction, string> = {
   Create: "Criar",
   Update: "Atualizar",
   Delete: "Excluir",
+  Archive: "Arquivar",
   Transition: "Mover",
 };
 
