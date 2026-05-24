@@ -160,58 +160,7 @@ export class OpenAIClient implements ProviderClient {
 
     // Modelos pro/deep-reasoning (gpt-5.5-pro, o1-pro, etc) usam /v1/responses.
     if (requiresResponsesApi(this.model)) {
-      const mapped = mapMessages(request.messages) as Array<{
-        role: string;
-        content: unknown;
-      }>;
-      const respBody: Record<string, unknown> = {
-        model: this.model,
-        input: mapped.map((m) => ({
-          role: m.role,
-          content: typeof m.content === "string" ? m.content : "",
-        })),
-      };
-      if (reasoning && request.reasoningEffort) {
-        respBody.reasoning = {
-          effort:
-            request.reasoningEffort === "minimal" ? "low" : request.reasoningEffort,
-        };
-      }
-      if (typeof request.maxTokens === "number") {
-        respBody.max_output_tokens = request.maxTokens;
-      }
-      const rRes = await fetch(OPENAI_RESPONSES_URL, {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${this.apiKey}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(respBody),
-      });
-      if (!rRes.ok) {
-        const text = await rRes.text().catch(() => "");
-        throw new Error(`OpenAI Responses ${rRes.status}: ${text || rRes.statusText}`);
-      }
-      const rData = (await rRes.json()) as {
-        output?: Array<{ content?: Array<{ text?: string; type?: string }> }>;
-        output_text?: string;
-        usage?: { input_tokens?: number; output_tokens?: number };
-      };
-      const text =
-        rData.output_text ??
-        rData.output
-          ?.flatMap((o) => o.content ?? [])
-          .filter((c) => c.type === "output_text" || typeof c.text === "string")
-          .map((c) => c.text ?? "")
-          .join("") ??
-        "";
-      const tIn = rData.usage?.input_tokens ?? 0;
-      const tOut = rData.usage?.output_tokens ?? 0;
-      const { costUsd } = calculateCost(this.model, tIn, tOut);
-      return {
-        message: text,
-        usage: { tokensInput: tIn, tokensOutput: tOut, costUsd: costUsd ?? 0 },
-      };
+      return await this.chatViaResponses(request);
     }
 
     const res = await fetch(OPENAI_API_URL, {
@@ -252,4 +201,136 @@ export class OpenAIClient implements ProviderClient {
       usage: { tokensInput, tokensOutput, costUsd: costUsd ?? 0 },
     };
   }
+
+  /**
+   * Variante para /v1/responses (modelos pro/deep-reasoning).
+   * Schema diferente do chat completions: input vira array de items
+   * tipados (message, function_call, function_call_output); tools sao
+   * declaradas com type: function direto (sem wrapping); output volta
+   * em items tipados que sao parseados de volta para ChatResult.
+   */
+  private async chatViaResponses(request: ChatRequest): Promise<ChatResult> {
+    const reasoning = isReasoningModel(this.model);
+    const input = mapMessagesToResponsesInput(request.messages);
+    const respBody: Record<string, unknown> = {
+      model: this.model,
+      input,
+    };
+    const respTools = mapToolsToResponses(request.tools);
+    if (respTools) respBody.tools = respTools;
+    if (reasoning && request.reasoningEffort) {
+      respBody.reasoning = {
+        effort:
+          request.reasoningEffort === "minimal" ? "low" : request.reasoningEffort,
+      };
+    }
+    if (typeof request.maxTokens === "number") {
+      respBody.max_output_tokens = request.maxTokens;
+    }
+    const rRes = await fetch(OPENAI_RESPONSES_URL, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${this.apiKey}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(respBody),
+    });
+    if (!rRes.ok) {
+      const text = await rRes.text().catch(() => "");
+      throw new Error(`OpenAI Responses ${rRes.status}: ${text || rRes.statusText}`);
+    }
+    const rData = (await rRes.json()) as {
+      output?: Array<{
+        type?: string;
+        content?: Array<{ text?: string; type?: string }>;
+        call_id?: string;
+        name?: string;
+        arguments?: string;
+      }>;
+      output_text?: string;
+      usage?: { input_tokens?: number; output_tokens?: number };
+    };
+
+    let text = rData.output_text ?? "";
+    const toolCalls: ToolCall[] = [];
+    for (const item of rData.output ?? []) {
+      if (item.type === "message" && Array.isArray(item.content)) {
+        for (const c of item.content) {
+          if (c.type === "output_text" && typeof c.text === "string") {
+            text += c.text;
+          }
+        }
+      } else if (item.type === "function_call" && item.call_id && item.name) {
+        let args: object = {};
+        try {
+          args = item.arguments ? (JSON.parse(item.arguments) as object) : {};
+        } catch {
+          args = { _raw: item.arguments };
+        }
+        toolCalls.push({ id: item.call_id, name: item.name, arguments: args });
+      }
+    }
+    const tIn = rData.usage?.input_tokens ?? 0;
+    const tOut = rData.usage?.output_tokens ?? 0;
+    const { costUsd } = calculateCost(this.model, tIn, tOut);
+    return {
+      message: text,
+      toolCalls: toolCalls.length > 0 ? toolCalls : undefined,
+      usage: { tokensInput: tIn, tokensOutput: tOut, costUsd: costUsd ?? 0 },
+    };
+  }
+}
+
+/** Converte ChatMessage[] em items do /v1/responses input schema. */
+function mapMessagesToResponsesInput(messages: ChatMessage[]): unknown[] {
+  const items: unknown[] = [];
+  for (const m of messages) {
+    if (m.role === "tool") {
+      items.push({
+        type: "function_call_output",
+        call_id: m.toolCallId,
+        output: m.content,
+      });
+    } else if (m.role === "assistant" && m.toolCalls && m.toolCalls.length > 0) {
+      if (m.content) {
+        items.push({
+          type: "message",
+          role: "assistant",
+          content: [{ type: "output_text", text: m.content }],
+        });
+      }
+      for (const tc of m.toolCalls) {
+        items.push({
+          type: "function_call",
+          call_id: tc.id,
+          name: tc.name,
+          arguments: JSON.stringify(tc.arguments),
+        });
+      }
+    } else {
+      items.push({
+        type: "message",
+        role: m.role,
+        content: [
+          {
+            type: m.role === "assistant" ? "output_text" : "input_text",
+            text: m.content,
+          },
+        ],
+      });
+    }
+  }
+  return items;
+}
+
+/** Converte ToolDefinition[] em tools do /v1/responses (sem wrapping function). */
+function mapToolsToResponses(tools?: ToolDefinition[]): unknown[] | undefined {
+  if (!tools || tools.length === 0) return undefined;
+  return tools.map((t) => ({
+    type: "function",
+    name: t.name,
+    description: t.description,
+    parameters: t.parameters,
+    strict: false,
+  }));
 }
