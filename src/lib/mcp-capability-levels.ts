@@ -52,8 +52,12 @@ export function deriveModuleWriteActions(
     if (!modules.includes(mod.module)) continue;
     const byAction = new Map<WriteAction, string[]>();
     for (const tool of mod.writeTools) {
-      // capability serializada: "crm.create" → código de ação "create".
-      const code = (tool.capability ?? "").split(".").pop() ?? "";
+      // capability serializada pelo servidor MCP: "action:module" (ex.: "create:cadastros").
+      // Toleramos também o legado "module.action" caso algum snapshot antigo ainda apareça.
+      const raw = tool.capability ?? "";
+      const code = raw.includes(":")
+        ? (raw.split(":")[0] ?? "")
+        : (raw.split(".").pop() ?? "");
       const writeAction = ACTION_CODE_TO_WRITE[code];
       if (!writeAction) continue;
       const arr = byAction.get(writeAction) ?? [];

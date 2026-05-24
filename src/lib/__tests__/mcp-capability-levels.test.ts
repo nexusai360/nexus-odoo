@@ -46,7 +46,7 @@ describe("WRITE_ACTIONS", () => {
 });
 
 describe("deriveModuleWriteActions, archive mapping", () => {
-  it("mapeia capability cadastros.archive para action Archive", () => {
+  it("mapeia capability 'archive:cadastros' (formato real do snapshot) para action Archive", () => {
     const catalog: CatalogByModule[] = [
       {
         module: "cadastros",
@@ -57,7 +57,7 @@ describe("deriveModuleWriteActions, archive mapping", () => {
             operation: "write",
             module: "cadastros",
             descricao: "",
-            capability: "cadastros.archive",
+            capability: "archive:cadastros",
             sensitive: false,
             addedInVersion: null,
             inputSchemaKeys: [],
@@ -69,6 +69,32 @@ describe("deriveModuleWriteActions, archive mapping", () => {
     const map = deriveModuleWriteActions(catalog);
     expect(map.cadastros).toEqual([
       { action: "Archive", tools: ["cadastros.res_partner.archive"] },
+    ]);
+  });
+
+  it("tolera o formato legado 'module.action' caso apareça", () => {
+    const catalog: CatalogByModule[] = [
+      {
+        module: "cadastros",
+        readTools: [],
+        writeTools: [
+          {
+            id: "legado.update",
+            operation: "write",
+            module: "cadastros",
+            descricao: "",
+            capability: "cadastros.update",
+            sensitive: false,
+            addedInVersion: null,
+            inputSchemaKeys: [],
+            examples: [],
+          },
+        ],
+      },
+    ];
+    const map = deriveModuleWriteActions(catalog);
+    expect(map.cadastros).toEqual([
+      { action: "Update", tools: ["legado.update"] },
     ]);
   });
 });
