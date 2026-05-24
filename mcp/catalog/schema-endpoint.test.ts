@@ -70,7 +70,7 @@ describe("serializeCatalog", () => {
     expect(tool.id).toBe("crm.res_partner.create");
     expect(tool.operation).toBe("write");
     expect(tool.module).toBe("crm");
-    expect(tool.capability).toBe("crm.create");
+    expect(tool.capability).toBe("create:crm");
     expect(tool.sensitive).toBe(false);
     expect(tool.addedInVersion).toBe(2);
     expect(tool.inputSchemaKeys).toEqual(["name"]);

@@ -51,7 +51,7 @@ export function serializeCatalog(
         operation: "write",
         module: entry.module,
         descricao: entry.descricao,
-        capability: `${entry.capability.module}.${entry.capability.action}`,
+        capability: `${entry.capability.action}:${entry.capability.module}`,
         sensitive: entry.sensitive,
         addedInVersion: entry.addedInVersion ?? null,
         inputSchemaKeys: Object.keys(entry.inputSchemaShape),
