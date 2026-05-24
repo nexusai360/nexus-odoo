@@ -13,10 +13,19 @@
  * Design: docs/superpowers/research/2026-05-18-f5-ui-design.md §4
  */
 
-import { Check, Copy, Database } from "lucide-react";
+import {
+  Check,
+  ChevronDown,
+  ChevronRight,
+  Copy,
+  Database,
+  Loader2,
+  Sparkles,
+} from "lucide-react";
 import * as React from "react";
 import { cn } from "@/lib/utils";
 import { AudioPlayer } from "@/components/agent/audio-player";
+import type { ProgressStep } from "./progress-trail";
 
 export type AgentMessageRole = "user" | "assistant" | "tool" | "loading";
 
@@ -25,17 +34,29 @@ export interface AgentMessageProps {
   content: string;
   /** Para mensagens "tool", nome da função executada. */
   toolName?: string;
-  /** "text" (default) ou "audio" — mostra player + transcrição. */
+  /** "text" (default) ou "audio", mostra player + transcrição. */
   kind?: "text" | "audio";
   /** URL do blob de áudio gravado (agente-audio-recorder, Task 3.3c). */
   audioBlobUrl?: string | null;
   /** Duração em segundos do áudio. */
   durationSeconds?: number;
   /**
-   * Cursor piscante no final — ativo durante streaming.
+   * Cursor piscante no final, ativo durante streaming.
    * Quando true, adiciona bloco cursor animado ao fim do texto.
    */
   streaming?: boolean;
+  /**
+   * Trilha de pensamento absorvida na bolha do assistente (Onda C do
+   * Renascimento). Quando presente, renderiza header colapsável acima do
+   * conteúdo da mensagem com o resumo das tools consultadas.
+   */
+  steps?: import("./progress-trail").ProgressStep[];
+  /** Trilha começa colapsada (default após `done`). */
+  stepsCollapsed?: boolean;
+  /** Callback de toggle do chevron da trilha. */
+  onToggleSteps?: () => void;
+  /** Duração total do turno em ms para o resumo da trilha colapsada. */
+  durationMs?: number;
 }
 
 export function AgentMessage({
@@ -46,6 +67,10 @@ export function AgentMessage({
   audioBlobUrl,
   durationSeconds,
   streaming = false,
+  steps,
+  stepsCollapsed = true,
+  onToggleSteps,
+  durationMs,
 }: AgentMessageProps) {
   if (role === "loading") return <LoadingBubble />;
   if (role === "tool") return <ToolBubble name={toolName ?? "tool"} />;
@@ -79,6 +104,7 @@ export function AgentMessage({
   }
 
   // Mensagens de texto (user + assistant)
+  const showTrail = !isUser && Array.isArray(steps) && steps.length > 0;
   return (
     <div
       className={cn(
@@ -94,6 +120,15 @@ export function AgentMessage({
             : "bg-muted text-foreground",
         )}
       >
+        {showTrail ? (
+          <AssistantTrailBlock
+            steps={steps!}
+            streaming={streaming}
+            collapsed={stepsCollapsed}
+            onToggle={onToggleSteps}
+            durationMs={durationMs}
+          />
+        ) : null}
         <MarkdownLite content={content} />
         {streaming && content.length > 0 && (
           <span
@@ -103,6 +138,104 @@ export function AgentMessage({
         )}
         <CopyButton text={content} />
       </div>
+    </div>
+  );
+}
+
+/* -------------------------------------------------------------------------- */
+/* Trilha absorvida na bolha do assistente                                    */
+/* -------------------------------------------------------------------------- */
+
+function AssistantTrailBlock({
+  steps,
+  streaming,
+  collapsed,
+  onToggle,
+  durationMs,
+}: {
+  steps: ProgressStep[];
+  streaming: boolean;
+  collapsed: boolean;
+  onToggle?: () => void;
+  durationMs?: number;
+}) {
+  const total = steps.length;
+  const running = steps.some((s) => s.state === "running");
+  const durationLabel =
+    typeof durationMs === "number" && durationMs > 0
+      ? ` · ${(durationMs / 1000).toFixed(1)}s`
+      : "";
+  const headerLabel = streaming || running
+    ? "Pensando…"
+    : `Como cheguei aqui · ${total} etapa${total === 1 ? "" : "s"}${durationLabel}`;
+  // Durante o streaming a trilha fica aberta (o usuario quer ver o agente
+  // pensando). Apos done o caller passa stepsCollapsed=true e o chevron
+  // permite reabrir manualmente. Esc nao e necessario aqui (toggle e local).
+  const expanded = streaming || !collapsed;
+  const Chevron = expanded ? ChevronDown : ChevronRight;
+
+  return (
+    <div className="mb-2 rounded-xl border border-border/40 bg-background/30 px-2.5 py-1.5">
+      <button
+        type="button"
+        onClick={onToggle}
+        disabled={!onToggle && !streaming}
+        aria-expanded={expanded}
+        aria-controls="agent-trail-list"
+        className={cn(
+          "flex w-full items-center gap-2 text-left text-xs font-medium",
+          "text-foreground/85 transition-colors",
+          onToggle
+            ? "cursor-pointer hover:text-foreground"
+            : "cursor-default",
+        )}
+      >
+        {streaming || running ? (
+          <Sparkles
+            className="h-3.5 w-3.5 shrink-0 animate-pulse text-violet-500 motion-reduce:animate-none"
+            aria-hidden
+          />
+        ) : (
+          <Chevron
+            className="h-3.5 w-3.5 shrink-0 text-muted-foreground"
+            aria-hidden
+          />
+        )}
+        <span className="flex-1 truncate">{headerLabel}</span>
+      </button>
+      {expanded ? (
+        <ul
+          id="agent-trail-list"
+          aria-live={streaming ? "polite" : undefined}
+          className="mt-1 flex flex-col gap-0.5 pl-5"
+        >
+          {steps.map((s) => (
+            <li key={s.id} className="flex items-center gap-1.5 text-[11px]">
+              {s.state === "running" ? (
+                <Loader2
+                  className="h-3 w-3 shrink-0 animate-spin text-violet-500 motion-reduce:animate-none"
+                  aria-hidden
+                />
+              ) : (
+                <Check
+                  className="h-3 w-3 shrink-0 text-emerald-500"
+                  aria-hidden
+                />
+              )}
+              <span
+                className={cn(
+                  s.state === "running"
+                    ? "text-foreground/80"
+                    : "text-muted-foreground",
+                )}
+              >
+                {s.state === "running" ? "Consultando" : "Consultou"} {s.label}
+                {s.state === "running" ? "…" : ""}
+              </span>
+            </li>
+          ))}
+        </ul>
+      ) : null}
     </div>
   );
 }

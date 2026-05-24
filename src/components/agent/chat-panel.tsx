@@ -54,11 +54,19 @@ interface ChatPanelProps {
 
 interface UiMessage {
   id: string;
-  /** "progress" é a trilha de consultas do turno (ProgressTrail). */
+  /** "progress" continua existindo enquanto o turno está streamando para
+   *  mostrar o feedback de pensamento. No `done` ele é absorvido pelo
+   *  assistant (Onda C do Renascimento, elimina o gap). */
   role: AgentMessageRole | "progress";
   content: string;
-  /** Passos da trilha de progresso (apenas para role "progress"). */
+  /** Passos da trilha de progresso. Em "progress" durante streaming; em
+   *  "assistant" após `done` (absorvido). */
   steps?: ProgressStep[];
+  /** Trilha colapsada (default após absorção no done; usuário expande). */
+  stepsCollapsed?: boolean;
+  /** Timestamps para calcular duração total exibida no header da trilha. */
+  startedAt?: number;
+  doneAt?: number;
   kind?: "text" | "audio";
   audioBlobUrl?: string | null;
   durationSeconds?: number;
@@ -290,12 +298,14 @@ export function ChatPanel({
                   );
                 }
                 // Trilha entra antes da bolha do assistente, se ela já existir.
+                // startedAt marca o inicio do turno para calcular duracao no done.
                 const base = dropLoading(prev);
                 const progressMsg: UiMessage = {
                   id: progressMsgId,
                   role: "progress",
                   content: "",
                   steps: [step],
+                  startedAt: Date.now(),
                 };
                 const idx = base.findIndex((m) => m.id === assistantMsgId);
                 if (idx === -1) return [...base, progressMsg];
@@ -330,22 +340,33 @@ export function ChatPanel({
                 onConversationCreated?.(evt.conversationId);
               }
               setMessages((prev) => {
-                const finalized = dropLoading(prev).map((m) => {
-                  if (m.id === progressMsgId) {
-                    return {
-                      ...m,
-                      steps: (m.steps ?? []).map((s) => ({
-                        ...s,
-                        state: "done" as const,
-                      })),
-                    };
-                  }
+                // Onda C do Renascimento: absorve a trilha de progress na bolha
+                // do assistant e remove a bolha de progress separada. Resultado
+                // visual: uma so bolha com header colapsavel "Como cheguei aqui",
+                // sem gap em branco entre a trilha antiga e a resposta.
+                const dropped = dropLoading(prev);
+                const progressMsg = dropped.find((m) => m.id === progressMsgId);
+                const stepsAbsorvidos = (progressMsg?.steps ?? []).map((s) => ({
+                  ...s,
+                  state: "done" as const,
+                }));
+                const startedAt = progressMsg?.startedAt ?? Date.now();
+                const doneAt = Date.now();
+
+                const withoutProgress = dropped.filter(
+                  (m) => m.id !== progressMsgId,
+                );
+                const finalized = withoutProgress.map((m) => {
                   if (m.id === assistantMsgId) {
                     return {
                       ...m,
                       content: evt.message,
                       suggestions: evt.suggestions,
                       streaming: false,
+                      steps: stepsAbsorvidos.length > 0 ? stepsAbsorvidos : m.steps,
+                      stepsCollapsed: true,
+                      startedAt,
+                      doneAt,
                     };
                   }
                   return m;
@@ -360,6 +381,10 @@ export function ChatPanel({
                     content: evt.message,
                     suggestions: evt.suggestions,
                     streaming: false,
+                    steps: stepsAbsorvidos.length > 0 ? stepsAbsorvidos : undefined,
+                    stepsCollapsed: true,
+                    startedAt,
+                    doneAt,
                   },
                 ];
               });
@@ -573,6 +598,8 @@ export function ChatPanel({
                 }
                 const isLastAssistant =
                   m.role === "assistant" && idx === messages.length - 1 && !pending;
+                const durationMs =
+                  m.startedAt && m.doneAt ? m.doneAt - m.startedAt : undefined;
                 return (
                   <React.Fragment key={m.id}>
                     <AgentMessage
@@ -582,6 +609,18 @@ export function ChatPanel({
                       audioBlobUrl={m.audioBlobUrl}
                       durationSeconds={m.durationSeconds}
                       streaming={m.streaming}
+                      steps={m.steps}
+                      stepsCollapsed={m.stepsCollapsed ?? true}
+                      durationMs={durationMs}
+                      onToggleSteps={() =>
+                        setMessages((prev) =>
+                          prev.map((x) =>
+                            x.id === m.id
+                              ? { ...x, stepsCollapsed: !(x.stepsCollapsed ?? true) }
+                              : x,
+                          ),
+                        )
+                      }
                     />
                     {isLastAssistant && m.suggestions && m.suggestions.length > 0 && (
                       <SuggestionsBar
