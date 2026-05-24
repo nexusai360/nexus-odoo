@@ -105,10 +105,25 @@ function parseJsonSafe(text: string): unknown {
 }
 
 /**
+ * Formata uma mensagem padronizada: original (en) + tradução PT-BR + ação
+ * sugerida. Mantém a frase em inglês do provider visível para super_admin
+ * conferir o erro real, e fornece explicação e passos de resolução em PT-BR.
+ */
+function formatLocalized(
+  original: string,
+  ptExplanation: string,
+  ptAction: string,
+): string {
+  const orig = original.trim().replace(/\s+/g, " ");
+  return `${orig} — Em português: ${ptExplanation} Como resolver: ${ptAction}`;
+}
+
+/**
  * Traduz padrões comuns das mensagens em inglês dos providers (OpenAI,
- * Anthropic, Gemini, OpenRouter) para PT-BR. Quando o padrão não casa,
- * retorna a mensagem original (melhor mostrar inglês do que sumir com a
- * informação útil pro super_admin).
+ * Anthropic, Gemini, OpenRouter) para PT-BR mantendo a mensagem original
+ * visível. Formato fixo: "<original> — Em português: <explicação>. Como
+ * resolver: <ação>." Quando o padrão não casa, retorna a mensagem original
+ * crua (o super_admin precisa ver o erro real).
  */
 export function translateProviderMessage(
   raw: string | undefined | null,
@@ -116,58 +131,128 @@ export function translateProviderMessage(
 ): string | undefined {
   if (!raw) return undefined;
   const m = raw.toLowerCase();
-  // OpenAI: API split entre Chat Completions e Responses (modelos novos
-  // — gpt-5.1, gpt-5.5, alguns codex — só funcionam em /v1/responses).
+  const modelTag = model ? ` (${model})` : "";
+
+  // OpenAI: modelo só funciona via /v1/responses. O Agente Nex já suporta —
+  // se aparecer aqui é porque o probe foi pelo endpoint errado ou porque o
+  // server precisa reiniciar para carregar o adapter novo.
   if (
     /only supported in.*v1\/responses|use the.*responses.*api|only available.*via.*responses/i.test(
       raw,
     )
   ) {
-    const id = model ? ` (${model})` : "";
-    return `Este modelo${id} só funciona via API "Responses" da OpenAI. O Agente Nex ainda não suporta essa API — escolha outro modelo (gpt-5-mini, gpt-5.4-mini, gpt-4.1-mini ou similar).`;
+    return formatLocalized(
+      raw,
+      `Este modelo${modelTag} só roda na API Responses da OpenAI.`,
+      "O Agente Nex já suporta esta API. Se o erro persistir, reinicie o servidor da plataforma para carregar o adapter atualizado, ou escolha um modelo de chat tradicional (gpt-5-mini, gpt-5.4-mini, gpt-4.1-mini).",
+    );
   }
-  // OpenAI: "This is not a chat model..." — modelo reasoning/responses-only.
-  if (/this is not a chat model|did you mean to use v1\/completions|did you mean to use the v1\/responses/i.test(raw)) {
-    const id = model ? ` (${model})` : "";
-    return `Este modelo${id} não é compatível com o endpoint de chat (v1/chat/completions). É um modelo de raciocínio que só roda via API Responses, que o Agente Nex ainda não suporta. Escolha um modelo de chat tradicional (gpt-5-mini, gpt-5.4-mini, gpt-4.1-mini ou similar).`;
+  if (
+    /this is not a chat model|did you mean to use v1\/completions|did you mean to use the v1\/responses/i.test(
+      raw,
+    )
+  ) {
+    return formatLocalized(
+      raw,
+      `Este modelo${modelTag} é de raciocínio profundo e exige a API Responses (/v1/responses), não o endpoint de chat tradicional.`,
+      "O Agente Nex roteia modelos pro/deep-reasoning para /v1/responses automaticamente. Se esta tela ainda mostrar o erro, reinicie o servidor para o adapter novo entrar no ar. Alternativa: troque para um modelo de chat (gpt-5-mini, gpt-5.4-mini, gpt-4.1-mini).",
+    );
   }
   // Acesso negado / modelo não disponível.
   if (/does not exist or you do not have access/i.test(raw)) {
-    return `Modelo${model ? ` "${model}"` : ""} indisponível nesta chave (acesso restrito ou ID inválido).`;
+    return formatLocalized(
+      raw,
+      `O modelo${modelTag} não existe ou esta chave não tem acesso a ele.`,
+      "Verifique o tier/billing da sua conta no painel do provedor, ou troque para outro modelo do dropdown.",
+    );
   }
   if (/do not have access/i.test(raw)) {
-    return `Sua chave não tem acesso a este modelo${model ? ` (${model})` : ""}. Verifique o tier da sua conta na OpenAI.`;
+    return formatLocalized(
+      raw,
+      `Sua chave não tem permissão para usar este modelo${modelTag}.`,
+      "Confira o tier da conta no painel do provedor (alguns modelos exigem tier mais alto). Para OpenAI: https://platform.openai.com/account/limits.",
+    );
   }
   if (/model.*does not exist|model.*not.*found|invalid.*model/i.test(raw)) {
-    return `Modelo${model ? ` "${model}"` : ""} não existe no provedor.`;
+    return formatLocalized(
+      raw,
+      `O modelo${modelTag} não existe neste provedor.`,
+      "Clique em 'Atualizar modelos' para sincronizar o catálogo, ou escolha outro modelo no dropdown.",
+    );
+  }
+  // Anthropic: extended thinking exige max_tokens >= budget + folga.
+  if (/max_tokens.*must be greater than.*thinking|budget_tokens.*max_tokens/i.test(raw)) {
+    return formatLocalized(
+      raw,
+      "Quando o thinking estendido está ligado, o max_tokens precisa ser maior que o budget_tokens do thinking mais a folga da resposta.",
+      "Aumente o orçamento de tokens da configuração (ou desligue o thinking).",
+    );
   }
   // Limites de orçamento/contexto.
   if (
-    /max_tokens or model output limit was reached|max output tokens? reached/i.test(
-      m,
-    )
+    /max_tokens or model output limit was reached|max output tokens? reached/i.test(m)
   ) {
-    return "O modelo não conseguiu completar a resposta no orçamento de tokens do teste — mas a chave e o modelo funcionam.";
+    return formatLocalized(
+      raw,
+      "O modelo bateu no teto de tokens do teste antes de terminar — a chave e o modelo funcionam.",
+      "Pode salvar a configuração; em uso real o limite de tokens é bem maior que o do teste.",
+    );
   }
   if (/context.*length.*exceeded|maximum context length/i.test(m)) {
-    return "Contexto da requisição excedeu o limite do modelo.";
+    return formatLocalized(
+      raw,
+      "A requisição excedeu o limite de contexto do modelo.",
+      "Use um modelo com janela maior, ou reduza o histórico/anexos enviados.",
+    );
   }
   // Quota / créditos.
   if (/insufficient_quota|insufficient.?credit|credit_balance_too_low/i.test(m)) {
-    return "Conta sem crédito disponível neste provedor.";
+    return formatLocalized(
+      raw,
+      "A conta deste provedor está sem crédito disponível.",
+      "Adicione crédito no painel do provedor (botão 'Adicionar crédito' nesta tela leva direto pra lá).",
+    );
   }
-  if (/exceeded.*quota|quota.*exceeded/i.test(m)) {
-    return "Cota da conta excedida. Verifique o painel do provedor.";
+  if (/exceeded.*quota|quota.*exceeded|resource_exhausted/i.test(m)) {
+    return formatLocalized(
+      raw,
+      "A cota da conta foi excedida (limite de uso, não saldo).",
+      "Verifique o painel de cotas do provedor — pode ser limite diário/minuto, não falta de crédito.",
+    );
   }
   // Rate limit.
-  if (/rate.?limit/i.test(m)) {
-    return "Limite de requisições atingido. Tente novamente em alguns segundos.";
+  if (/rate.?limit|too many requests/i.test(m)) {
+    return formatLocalized(
+      raw,
+      "O provedor está limitando o ritmo de requisições da chave.",
+      "Aguarde alguns segundos e teste de novo. Se acontecer com frequência, eleve o tier da conta.",
+    );
+  }
+  // Gemini: billing.
+  if (/billing.*not.*enabled|billing_disabled|requires_billing/i.test(m)) {
+    return formatLocalized(
+      raw,
+      "Este modelo Gemini exige uma conta GCP com billing habilitado.",
+      "Habilite billing em https://console.cloud.google.com/billing e gere uma chave nova no AI Studio.",
+    );
   }
   // Auth.
-  if (/invalid.*api.?key|unauthorized|incorrect api key/i.test(m)) {
-    return "API key inválida ou expirada.";
+  if (/invalid.*api.?key|unauthorized|incorrect api key|api_key_invalid/i.test(m)) {
+    return formatLocalized(
+      raw,
+      "A chave de API é inválida, foi revogada ou expirou.",
+      "Vá em 'Chaves de API', cadastre uma nova e selecione-a aqui.",
+    );
   }
-  // Sem padrão conhecido — devolve a mensagem original com prefixo neutro.
+  // OpenRouter: provider sem retorno.
+  if (/no.*available.*provider|no.*provider.*responded/i.test(m)) {
+    return formatLocalized(
+      raw,
+      "Nenhum provedor por trás do OpenRouter respondeu a este modelo.",
+      "Tente novamente em instantes ou escolha outro modelo equivalente.",
+    );
+  }
+  // Sem padrão conhecido — devolve a mensagem original crua.
   return raw;
 }
 

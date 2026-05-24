@@ -13,7 +13,7 @@
  * Persiste via updateAgentResources / updateAgentSettings de agent-config.ts.
  */
 
-import { useMemo, useState, useTransition } from "react";
+import { useEffect, useMemo, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { Image as ImageIcon, KeyRound, MessageSquare, Mic } from "lucide-react";
@@ -92,6 +92,26 @@ export function ResourcesToggles({
 }: ResourcesTogglesProps) {
   const router = useRouter();
   const [, startTransition] = useTransition();
+
+  // Modelo exibido no ReasoningCard — espelha em tempo real o que está
+  // selecionado no LlmConfigForm (via CustomEvent), independente de teste ou
+  // save. O efeito real só persiste em Save; um refresh recoloca o salvo.
+  const [displayedModelId, setDisplayedModelId] = useState(activeModelId);
+  useEffect(() => {
+    setDisplayedModelId(activeModelId);
+  }, [activeModelId]);
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    function onModelChange(ev: Event) {
+      const detail = (ev as CustomEvent<{ model?: string }>).detail;
+      const next = (detail?.model ?? "").trim();
+      if (next) setDisplayedModelId(next);
+      else setDisplayedModelId(activeModelId);
+    }
+    window.addEventListener("agent-config:model-change", onModelChange);
+    return () =>
+      window.removeEventListener("agent-config:model-change", onModelChange);
+  }, [activeModelId]);
 
   const [audioCp, setAudioCp] = useState<CheckpointState>(initial.audioCheckpoint);
   const [imageCp, setImageCp] = useState<CheckpointState>(initial.imageCheckpoint);
@@ -228,7 +248,7 @@ export function ResourcesToggles({
       <ReasoningCard
         checkpoint={reasoningCp}
         effort={reasoningEffort || null}
-        activeModelId={activeModelId}
+        activeModelId={displayedModelId}
         onCheckpointChange={(cp) => {
           setReasoningCp(cp);
           persistResources({ reasoningCheckpoint: cp }, "reasoning");

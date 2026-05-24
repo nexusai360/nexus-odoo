@@ -10,7 +10,7 @@
  * - Salvar é um upsert do singleton de produção (cria + ativa a config).
  */
 
-import { useMemo, useState, useTransition } from "react";
+import { useEffect, useMemo, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import {
   Save,
@@ -230,6 +230,20 @@ export function LlmConfigForm({
   const resolvedModel = (usingCustom ? customModel : modelSelect).trim();
   const hasNoCredentials = credentialsForProvider.length === 0;
 
+  // Cross-component sync: o ReasoningCard em Recursos precisa refletir o
+  // modelo selecionado AQUI em tempo real (mesmo antes de testar/salvar) só
+  // pra mostrar os níveis de raciocínio compatíveis. O efeito real só persiste
+  // ao salvar — em refresh, volta pro modelo salvo. Usamos CustomEvent pra
+  // evitar lifting de state entre componentes siblings.
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    window.dispatchEvent(
+      new CustomEvent("agent-config:model-change", {
+        detail: { provider, model: resolvedModel },
+      }),
+    );
+  }, [provider, resolvedModel]);
+
   // Credencial efetiva: a escolha explícita do usuário, se ainda existir no
   // provider. Sem escolha → vazio (o campo NÃO pré-seleciona nenhuma chave).
   const effectiveCredentialId = useMemo(() => {
@@ -255,9 +269,18 @@ export function LlmConfigForm({
     resolvedModel !== activeConfig.model ||
     effectiveCredentialId !== (activeConfig.credentialId ?? "");
 
-  // Testar só faz sentido quando há algo novo a verificar. Conexão ativa e
-  // inalterada → botão desabilitado (nada a testar).
-  const testDisabled = actionsDisabled || (isConfigured && !isDirty);
+  // Gating Testar/Salvar — regra de raiz:
+  //   - Mudou algo (isDirty) → Testar habilitado, Salvar desabilitado.
+  //   - Testou e passou (test.status === "ok") → Testar desabilitado (nada
+  //     mais a testar), Salvar habilitado (pode persistir).
+  //   - Sem mudança e já salvo → ambos desabilitados.
+  //   - Sem mudança e nada salvo → Testar habilitado (config inicial), Salvar
+  //     bloqueado até o teste passar.
+  const testPassed = test.status === "ok";
+  const testDisabled =
+    actionsDisabled || testPassed || (isConfigured && !isDirty);
+  const saveDisabled =
+    actionsDisabled || (isDirty && !testPassed) || (isConfigured && !isDirty);
 
   // O resultado do teste é exibido na tarja do topo (fonte da verdade do
   // status) — nunca numa segunda tarja embaixo.
@@ -615,9 +638,11 @@ export function LlmConfigForm({
             disabled={testDisabled}
             className="cursor-pointer"
             title={
-              isConfigured && !isDirty
-                ? "Conexão ativa e inalterada — nada a testar"
-                : "Verificar a conexão com o provedor"
+              testPassed
+                ? "Teste já passou — agora clique em Salvar configuração."
+                : isConfigured && !isDirty
+                  ? "Conexão ativa e inalterada — nada a testar."
+                  : "Verificar a conexão com o provedor antes de salvar."
             }
           >
             {isTesting ? (
@@ -630,8 +655,15 @@ export function LlmConfigForm({
           <Button
             type="button"
             onClick={handleSave}
-            disabled={actionsDisabled}
+            disabled={saveDisabled}
             className="cursor-pointer"
+            title={
+              isDirty && !testPassed
+                ? "Teste a conexão primeiro — só dá pra salvar depois que o teste passar."
+                : isConfigured && !isDirty
+                  ? "Nada mudou desde a última configuração salva."
+                  : "Salvar e ativar esta configuração."
+            }
           >
             {isSaving ? (
               <Loader2 className="mr-1.5 h-4 w-4 animate-spin" />
