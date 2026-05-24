@@ -357,7 +357,11 @@ export function KbSection({ initial }: KbSectionProps) {
         </Button>
       </div>
 
-      <KbUploadDialog open={uploadOpen} onOpenChange={setUploadOpen} />
+      <KbUploadDialog
+        open={uploadOpen}
+        onOpenChange={setUploadOpen}
+        currentKbChars={totalChars}
+      />
 
       <KbDocumentViewer
         docId={viewerDocId}

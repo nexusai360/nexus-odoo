@@ -92,7 +92,7 @@ export async function uploadKbFileAction(
     if (!kind) {
       return {
         ok: false,
-        error: "Formato inválido. Aceitos: PDF, TXT, Markdown, CSV, XML, YAML, XLSX e DOCX.",
+        error: "Formato inválido. Aceitos: PDF, TXT, Markdown, CSV, XML, YAML, XLSX, DOCX e JSON.",
       };
     }
 

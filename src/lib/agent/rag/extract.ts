@@ -66,6 +66,15 @@ export async function extractKbText(
 
   const raw = buffer.toString("utf-8");
 
+  if (kind === "JSON") {
+    try {
+      const parsed = JSON.parse(raw);
+      return JSON.stringify(parsed, null, 2);
+    } catch {
+      return raw.trim();
+    }
+  }
+
   if (kind === "CSV") {
     return raw
       .split(/\r?\n/)
