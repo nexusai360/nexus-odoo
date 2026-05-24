@@ -530,7 +530,7 @@ export function LogsTimeline({ initial, toolDescriptions = {} }: Props) {
   };
 
   return (
-    <div className="space-y-4 max-w-5xl">
+    <div className="space-y-4">
       {/* Nota explicativa: o que são estes logs */}
       <div className="flex items-start gap-3 rounded-xl border border-border bg-muted/30 p-4">
         <Info className="mt-0.5 h-4 w-4 shrink-0 text-violet-500" />
