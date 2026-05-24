@@ -13,6 +13,7 @@ import { JOB_INCREMENTAL, JOB_SNAPSHOT, JOB_RECONCILE, JOB_CONFIG_CHECK } from "
 import { AGENT_QUEUE_NAME } from "./agent/queue";
 import { processAgentJob, type AgentJobData } from "./agent/processor";
 import { cleanupIdempotencyTable } from "./agent/cleanup";
+import { refreshUsdBrlRateFromBCB } from "@/lib/agent/llm/exchange-rate";
 import {
   clearPending,
   isOdooUnavailable,
@@ -32,6 +33,7 @@ export const MAINTENANCE_QUEUE = "maintenance";
 export const JOB_CLEANUP_IDEMPOTENCY = "cleanup-idempotency";
 export const JOB_CLEANUP_MCP_IDEMPOTENCY = "cleanup-mcp-idempotency";
 export const JOB_CLEANUP_AUDIT_LOG = "cleanup-audit-log";
+export const JOB_REFRESH_USD_BRL = "refresh-usd-brl-ptax";
 
 const REDIS_URL = process.env.REDIS_URL ?? "redis://localhost:6379";
 const connection = new IORedis(REDIS_URL, { maxRetriesPerRequest: null });
@@ -76,6 +78,19 @@ const maintenanceWorker = new Worker(
         `[maintenance] cleanup McpIdempotencyRecord: ${result.deleted} registros removidos`,
       );
       return result;
+    }
+    if (job.name === JOB_REFRESH_USD_BRL) {
+      try {
+        const rate = await refreshUsdBrlRateFromBCB();
+        console.log(
+          `[maintenance] PTAX USD/BRL atualizada: ` +
+            `commercial=${rate.commercial.toFixed(4)} effective=${rate.rate.toFixed(4)}`,
+        );
+        return { ok: true, commercial: rate.commercial };
+      } catch (err) {
+        console.error("[maintenance] falha ao atualizar PTAX:", err);
+        return { ok: false, error: (err as Error).message };
+      }
     }
     if (job.name === JOB_CLEANUP_AUDIT_LOG) {
       const result = await cleanupAuditLog(prisma);
@@ -310,6 +325,18 @@ async function bootstrap(): Promise<void> {
     { name: JOB_CLEANUP_AUDIT_LOG },
   );
   console.log("[worker] cron de limpeza de McpAuditLog agendado (diário 01:00 BRT)");
+
+  // Refresh da PTAX USD/BRL todo dia util as 18:30 BRT (21:30 UTC).
+  // BCB publica PTAX de fechamento ~ 13:10 BRT, mas damos folga para
+  // garantir que a serie 10813 esteja com o valor do dia.
+  // Tambem dispara uma execucao imediata no boot para preencher o Redis.
+  await maintenanceQueue.upsertJobScheduler(
+    JOB_REFRESH_USD_BRL,
+    { pattern: "30 21 * * 1-5" },
+    { name: JOB_REFRESH_USD_BRL },
+  );
+  await maintenanceQueue.add(JOB_REFRESH_USD_BRL, {});
+  console.log("[worker] cron de PTAX USD/BRL agendado (diário 18:30 BRT) + refresh inicial");
 }
 
 bootstrap().catch((err) => console.error("[worker] falha no bootstrap:", err));

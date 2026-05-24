@@ -183,19 +183,25 @@ function CostBreakdownBlock({ row }: { row: UsageDetailRow }) {
     );
   }
 
-  // A cotacao gravada na linha ja vem com spread (rate = commercial * spread).
-  // Decompomos: commercial = rate / spread.
+  // A cotacao gravada na linha (usdToBrlRate) ja vem com encargos aplicados.
+  // rate = commercial * (1+BANK_SPREAD) * (1+IOF). Decompomos para mostrar.
   const commercialRate =
     row.usdToBrlRate != null && row.rateSpread != null && row.rateSpread > 0
       ? row.usdToBrlRate / row.rateSpread
       : row.usdToBrlRate ?? null;
 
   const costUsd = row.costUsd ?? 0;
-  const subtotalBrl =
+  // Cascata: USD * PTAX = base; +spread -> base banco; +IOF -> final.
+  const subtotalBase =
     commercialRate != null ? +(costUsd * commercialRate).toFixed(6) : null;
-  const iofBrl = subtotalBrl != null ? +(subtotalBrl * IOF_RATE).toFixed(6) : null;
-  const bankBrl =
-    subtotalBrl != null ? +(subtotalBrl * BANK_SPREAD_RATE).toFixed(6) : null;
+  const bankAmount =
+    subtotalBase != null ? +(subtotalBase * BANK_SPREAD_RATE).toFixed(6) : null;
+  const afterSpread =
+    subtotalBase != null && bankAmount != null
+      ? +(subtotalBase + bankAmount).toFixed(6)
+      : null;
+  const iofAmount =
+    afterSpread != null ? +(afterSpread * IOF_RATE).toFixed(6) : null;
 
   return (
     <div>
@@ -211,7 +217,7 @@ function CostBreakdownBlock({ row }: { row: UsageDetailRow }) {
           />
           <CalcRow
             op="×"
-            label="Cotacao USD/BRL (Google)"
+            label="PTAX venda do dia (USD/BRL)"
             value={
               commercialRate != null ? commercialRate.toFixed(4) : "—"
             }
@@ -219,18 +225,24 @@ function CostBreakdownBlock({ row }: { row: UsageDetailRow }) {
           <CalcRow
             op="="
             label="Subtotal (BRL)"
-            value={subtotalBrl != null ? brlFmt.format(subtotalBrl) : "—"}
+            value={subtotalBase != null ? brlFmt.format(subtotalBase) : "—"}
+            divider
+          />
+          <CalcRow
+            op="+"
+            label={`Spread bancario (${percentFmt.format(BANK_SPREAD_RATE)})`}
+            value={bankAmount != null ? brlFmt.format(bankAmount) : "—"}
+          />
+          <CalcRow
+            op="="
+            label="Base do banco (BRL)"
+            value={afterSpread != null ? brlFmt.format(afterSpread) : "—"}
             divider
           />
           <CalcRow
             op="+"
             label={`IOF (${percentFmt.format(IOF_RATE)})`}
-            value={iofBrl != null ? brlFmt.format(iofBrl) : "—"}
-          />
-          <CalcRow
-            op="+"
-            label={`Spread bancario (${percentFmt.format(BANK_SPREAD_RATE)})`}
-            value={bankBrl != null ? brlFmt.format(bankBrl) : "—"}
+            value={iofAmount != null ? brlFmt.format(iofAmount) : "—"}
           />
           <CalcRow
             op="="
