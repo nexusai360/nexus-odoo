@@ -8,10 +8,10 @@ describe("isAllowedByWhitelist", () => {
     expect(isAllowedByWhitelist("openai", "gpt-4o")).toBe(true);
   });
 
-  test("aceita whisper-1, tts-1, embeddings 3", () => {
+  test("aceita whisper-1 e rejeita tts/embedding (nao usados pelo agente)", () => {
     expect(isAllowedByWhitelist("openai", "whisper-1")).toBe(true);
-    expect(isAllowedByWhitelist("openai", "tts-1")).toBe(true);
-    expect(isAllowedByWhitelist("openai", "text-embedding-3-small")).toBe(true);
+    expect(isAllowedByWhitelist("openai", "tts-1")).toBe(false);
+    expect(isAllowedByWhitelist("openai", "text-embedding-3-small")).toBe(false);
   });
 
   test("rejeita modelos legados e experimentais", () => {
