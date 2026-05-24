@@ -282,43 +282,40 @@ export function ChatPanel({
                 ];
               });
             } else if (evt.type === "tool_call") {
-              // Usa toolCallId do provider para correlacionar com tool_result.
-              // Fallback FIFO permanece para providers que nao expoem id.
+              // Onda C v2 do Renascimento: a trilha vive DENTRO da bolha do
+              // assistant desde o primeiro tool_call. Sem bolha "progress"
+              // separada, sem gap visual em momento algum do streaming.
               const step: ProgressStep = {
                 id: evt.toolCallId ?? `s_${crypto.randomUUID()}`,
                 label: evt.label,
                 state: "running",
               };
               setMessages((prev) => {
-                if (prev.some((m) => m.id === progressMsgId)) {
-                  return prev.map((m) =>
-                    m.id === progressMsgId
+                const base = dropLoading(prev);
+                if (base.some((m) => m.id === assistantMsgId)) {
+                  return base.map((m) =>
+                    m.id === assistantMsgId
                       ? { ...m, steps: [...(m.steps ?? []), step] }
                       : m,
                   );
                 }
-                // Trilha entra antes da bolha do assistente, se ela já existir.
-                // startedAt marca o inicio do turno para calcular duracao no done.
-                const base = dropLoading(prev);
-                const progressMsg: UiMessage = {
-                  id: progressMsgId,
-                  role: "progress",
-                  content: "",
-                  steps: [step],
-                  startedAt: Date.now(),
-                };
-                const idx = base.findIndex((m) => m.id === assistantMsgId);
-                if (idx === -1) return [...base, progressMsg];
-                const copy = [...base];
-                copy.splice(idx, 0, progressMsg);
-                return copy;
+                return [
+                  ...base,
+                  {
+                    id: assistantMsgId,
+                    role: "assistant",
+                    content: "",
+                    steps: [step],
+                    stepsCollapsed: false,
+                    startedAt: Date.now(),
+                    streaming: true,
+                  },
+                ];
               });
             } else if (evt.type === "tool_result") {
-              // Matching por toolCallId quando disponivel; FIFO label como
-              // fallback (compat com providers sem id de correlacao).
               setMessages((prev) =>
                 prev.map((m) => {
-                  if (m.id !== progressMsgId) return m;
+                  if (m.id !== assistantMsgId) return m;
                   let marked = false;
                   const steps = (m.steps ?? []).map((s) => {
                     if (marked) return s;
@@ -340,32 +337,26 @@ export function ChatPanel({
                 onConversationCreated?.(evt.conversationId);
               }
               setMessages((prev) => {
-                // Onda C do Renascimento: absorve a trilha de progress na bolha
-                // do assistant e remove a bolha de progress separada. Resultado
-                // visual: uma so bolha com header colapsavel "Como cheguei aqui",
-                // sem gap em branco entre a trilha antiga e a resposta.
+                // Onda C v2: a bolha do assistant ja tem steps (criada no
+                // primeiro tool_call). Aqui so finaliza: content/suggestions
+                // do done, marca todos os steps como done, colapsa trilha,
+                // grava doneAt para o resumo "Como cheguei aqui . N etapas . Xs".
                 const dropped = dropLoading(prev);
-                const progressMsg = dropped.find((m) => m.id === progressMsgId);
-                const stepsAbsorvidos = (progressMsg?.steps ?? []).map((s) => ({
-                  ...s,
-                  state: "done" as const,
-                }));
-                const startedAt = progressMsg?.startedAt ?? Date.now();
                 const doneAt = Date.now();
-
-                const withoutProgress = dropped.filter(
-                  (m) => m.id !== progressMsgId,
-                );
-                const finalized = withoutProgress.map((m) => {
+                const finalized = dropped.map((m) => {
                   if (m.id === assistantMsgId) {
+                    const steps = (m.steps ?? []).map((s) => ({
+                      ...s,
+                      state: "done" as const,
+                    }));
                     return {
                       ...m,
                       content: evt.message,
                       suggestions: evt.suggestions,
                       streaming: false,
-                      steps: stepsAbsorvidos.length > 0 ? stepsAbsorvidos : m.steps,
+                      steps: steps.length > 0 ? steps : undefined,
                       stepsCollapsed: true,
-                      startedAt,
+                      startedAt: m.startedAt ?? doneAt,
                       doneAt,
                     };
                   }
@@ -381,9 +372,8 @@ export function ChatPanel({
                     content: evt.message,
                     suggestions: evt.suggestions,
                     streaming: false,
-                    steps: stepsAbsorvidos.length > 0 ? stepsAbsorvidos : undefined,
                     stepsCollapsed: true,
-                    startedAt,
+                    startedAt: doneAt,
                     doneAt,
                   },
                 ];
@@ -593,9 +583,11 @@ export function ChatPanel({
           ) : (
             <div className="space-y-3">
               {messages.map((m, idx) => {
-                if (m.role === "progress") {
-                  return <ProgressTrail key={m.id} steps={m.steps ?? []} />;
-                }
+                // Onda C v2: nao deve mais existir UiMessage com role "progress"
+                // (steps vivem dentro da bolha do assistant desde o primeiro
+                // tool_call). Mantido como guarda defensiva para historicos
+                // legados em flight: filtra silenciosamente.
+                if (m.role === "progress") return null;
                 const isLastAssistant =
                   m.role === "assistant" && idx === messages.length - 1 && !pending;
                 const durationMs =

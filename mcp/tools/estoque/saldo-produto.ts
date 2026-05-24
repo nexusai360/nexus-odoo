@@ -4,6 +4,7 @@ import { z } from "zod";
 import type { ToolEntry } from "../../catalog/types.js";
 import { querySaldoProduto } from "@/lib/reports/queries/estoque.js";
 import { withFreshness } from "../../lib/freshness.js";
+import { humanizeName } from "@/lib/agent/text-normalize.js";
 
 const inputSchema = z.object({
   armazemId: z.number().int().positive().optional(),
@@ -73,10 +74,14 @@ type Input = z.infer<typeof inputSchema>;
 type Output = z.infer<typeof outputSchema>;
 
 function shape(d: Awaited<ReturnType<typeof querySaldoProduto>>) {
+  // Onda C v3: normaliza nomes vindos do Odoo (CAIXA ALTA) para Title Case
+  // antes de devolver ao agente. Preserva codigos/modelos (ver helper).
+  // O agente recebe ja humanizado e cita textualmente; nao precisa instrucao
+  // extra no prompt para "deixar bonito".
   const linhas = d.linhas.map((l) => ({
-    produtoNome: l.produtoNome,
-    familiaNome: l.familiaNome,
-    marcaNome: l.marcaNome,
+    produtoNome: humanizeName(l.produtoNome),
+    familiaNome: l.familiaNome ? humanizeName(l.familiaNome) : l.familiaNome,
+    marcaNome: l.marcaNome ? humanizeName(l.marcaNome) : l.marcaNome,
     saldoTotal: l.saldoTotal,
     valorTotal: l.valorTotal,
     numLocais: l.numLocais,

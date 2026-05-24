@@ -59,8 +59,25 @@ const MAX_SUGGESTIONS = 5;
 const MAX_SUGGESTION_LEN = 80;
 
 /**
+ * Sugestoes genericas universais usadas como fallback quando o modelo
+ * esquece de emitir o sufixo [[suggestions]]. Garantia de chips visiveis
+ * em toda resposta da bubble (vide pedido do usuario em 2026-05-24 18:58:
+ * "as sugestoes nao estao acontecendo, vira e mexe esse problema").
+ */
+const FALLBACK_SUGGESTIONS: readonly string[] = [
+  "Quanto faturamos no mês corrente?",
+  "Quais 5 produtos mais venderam nos últimos 30 dias?",
+  "Quanto temos em contas a receber em aberto?",
+  "Quais pedidos de venda estão atrasados?",
+  "Qual o valor total do estoque em armazém?",
+];
+
+/**
  * Extrai sugestões do sufixo `[[suggestions]]:item1|item2|...`.
  * Retorna message sem o sufixo + array de sugestões.
+ *
+ * Quando o modelo esquece o sufixo, devolve o set FALLBACK_SUGGESTIONS
+ * fatiado pelo maxCount. Garante que toda resposta na bubble vem com chips.
  */
 export function extractSuggestions(
   text: string,
@@ -69,23 +86,33 @@ export function extractSuggestions(
   message: string;
   suggestions: string[];
 } {
-  const match = text.match(SUGGESTIONS_RE);
-  if (!match) return { message: text, suggestions: [] };
-  // Cap deterministicamente pela config (1..5, default 3) e nunca acima do
-  // hard cap MAX_SUGGESTIONS. Defesa em profundidade: o prompt instrui o
-  // modelo, esta camada garante que extra é descartado.
   const limit = Math.min(
     Math.max(1, maxCount ?? MAX_SUGGESTIONS),
     MAX_SUGGESTIONS,
   );
+
+  const match = text.match(SUGGESTIONS_RE);
+  if (!match) {
+    // Modelo esqueceu de emitir; usa fallback fatiado para nao deixar a
+    // bolha sem chips. UI espera sempre `>=1` chip quando enabled.
+    return {
+      message: text,
+      suggestions: FALLBACK_SUGGESTIONS.slice(0, limit),
+    };
+  }
+  // Cap deterministicamente pela config (1..5, default 3) e nunca acima do
+  // hard cap MAX_SUGGESTIONS. Defesa em profundidade: o prompt instrui o
+  // modelo, esta camada garante que extra é descartado.
   const raw = match[1].trim();
-  const suggestions = raw
+  const parsed = raw
     .split("|")
     // As sugestões viram chips de texto puro na UI: remove markdown (negrito,
     // crase) para não aparecer "**" ou "`" literal no chip.
     .map((s) => s.trim().replace(/\*\*/g, "").replace(/`/g, "").trim())
     .filter((s) => s.length > 0 && s.length <= MAX_SUGGESTION_LEN)
     .slice(0, limit);
+  const suggestions =
+    parsed.length > 0 ? parsed : FALLBACK_SUGGESTIONS.slice(0, limit);
   const message = text.replace(match[0], "").trimEnd();
   return { message, suggestions };
 }

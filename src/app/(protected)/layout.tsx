@@ -6,6 +6,7 @@ import { TourProvider } from "@/components/tour/tour-provider";
 import { getPublicAgentFlags } from "@/lib/actions/agent-config";
 import { getPublicActiveLlmConfig } from "@/lib/agent/llm/get-active-config";
 import { getPersonalizedWelcomeSuggestions } from "@/lib/agent/personalized-suggestions";
+import { pickWelcomeByRole } from "@/lib/agent/welcome-suggestions";
 
 export default async function ProtectedLayout({
   children,
@@ -37,12 +38,24 @@ export default async function ProtectedLayout({
   // Anexo (clip) na bubble: liberado só com o checkpoint de imagem em PRODUÇÃO.
   const imageInputEnabled = flags.imageInputEnabled === true;
 
-  // Sugestoes personalizadas por usuario: agregam o uso de tools do proprio
-  // historico (all-time + ultimos 28 dias) e mapeiam para perguntas template.
-  // Quando vazio (usuario novo ou erro), o ChatPanel cai no catalogo curado.
-  const personalizedWelcome = canUseAgent
-    ? await getPersonalizedWelcomeSuggestions(user.id, flags.maxSuggestions)
-    : [];
+  // Sugestoes na bubble: tres camadas em ordem de prioridade.
+  // 1) Personalizado: agregado do historico real de tools do proprio usuario.
+  // 2) Por role: pacote curado com perguntas de alto impacto para o nivel
+  //    de acesso (super_admin/admin/manager priorizam faturamento + comercial).
+  // 3) Fallback final: catalogo fixo WELCOME_SUGGESTIONS.
+  // O ChatPanel ja faz o slice por maxSuggestions; aqui resolvemos qual lista
+  // entregar. Se o personalizado vier vazio, mandamos a do role (nunca vazia).
+  let welcomeSet: string[] = [];
+  if (canUseAgent) {
+    const personalized = await getPersonalizedWelcomeSuggestions(
+      user.id,
+      flags.maxSuggestions,
+    );
+    welcomeSet =
+      personalized.length > 0
+        ? personalized
+        : [...pickWelcomeByRole(user.platformRole)];
+  }
 
   return (
     <TourProvider>
@@ -56,7 +69,7 @@ export default async function ProtectedLayout({
             audioInputEnabled={audioInputEnabled}
             imageInputEnabled={imageInputEnabled}
             maxSuggestions={flags.maxSuggestions}
-            personalizedWelcome={personalizedWelcome}
+            personalizedWelcome={welcomeSet}
           />
         ) : null}
       </div>

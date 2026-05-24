@@ -128,11 +128,15 @@ describe("extractSuggestions", () => {
     expect(message).not.toContain("[[suggestions]]");
   });
 
-  test("sem sufixo → message intacta, suggestions vazio", () => {
+  test("sem sufixo → message intacta, suggestions usa fallback fatiado", () => {
+    // Contrato novo (Onda C v3): quando o modelo esquece de emitir
+    // [[suggestions]], extractSuggestions injeta o set FALLBACK_SUGGESTIONS
+    // fatiado por maxCount para nao deixar a bolha sem chips na UI.
     const text = "Resposta sem sugestões.";
-    const { message, suggestions } = extractSuggestions(text);
+    const { message, suggestions } = extractSuggestions(text, 3);
     expect(message).toBe(text);
-    expect(suggestions).toEqual([]);
+    expect(suggestions).toHaveLength(3);
+    expect(suggestions.every((s) => s.endsWith("?"))).toBe(true);
   });
 
   test("sugestão com >80 chars é filtrada", () => {
