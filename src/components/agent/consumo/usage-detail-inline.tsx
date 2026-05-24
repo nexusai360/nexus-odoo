@@ -61,9 +61,23 @@ export function UsageDetailInline({ row }: { row: UsageDetailRow }) {
         </h4>
       </div>
 
-      {/* Layout em 2 colunas: Identificacao | Quebra de custo */}
+      {/* Layout em 2 colunas: Identificacao + acoes | Quebra de custo */}
       <div className="grid grid-cols-1 gap-x-8 gap-y-3 lg:grid-cols-2">
-        <IdentificationBlock row={row} />
+        <div className="flex h-full flex-col justify-between gap-3">
+          <IdentificationBlock row={row} />
+          <div className="pt-1">
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={handleCopy}
+              className="h-7 gap-2 px-3 text-[11px]"
+            >
+              <Clipboard className="h-3 w-3" aria-hidden />
+              <span>Copiar JSON</span>
+            </Button>
+          </div>
+        </div>
         <CostBreakdownBlock row={row} />
       </div>
 
@@ -98,19 +112,6 @@ export function UsageDetailInline({ row }: { row: UsageDetailRow }) {
         </div>
       ) : null}
 
-      {/* Acao central, em destaque (nao nos cantos). */}
-      <div className="mt-4 flex justify-center border-t border-violet-500/15 pt-3">
-        <Button
-          type="button"
-          variant="outline"
-          size="sm"
-          onClick={handleCopy}
-          className="h-8 gap-2 border-violet-500/40 bg-violet-500/5 px-4 text-[12px] text-violet-700 hover:bg-violet-500/15 dark:text-violet-300"
-        >
-          <Clipboard className="h-3.5 w-3.5" aria-hidden />
-          <span>Copiar JSON</span>
-        </Button>
-      </div>
     </div>
   );
 }
