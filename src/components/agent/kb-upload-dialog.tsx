@@ -136,7 +136,7 @@ export function KbUploadDialog({
         onOpenChange(next);
       }}
     >
-      <DialogContent className="sm:max-w-lg">
+      <DialogContent className="w-[min(560px,calc(100%-2rem))] sm:max-w-none">
         <DialogHeader>
           <DialogTitle>Adicionar conhecimento</DialogTitle>
           <DialogDescription>
@@ -215,11 +215,11 @@ export function KbUploadDialog({
                 />
               </label>
             ) : (
-              <div className="flex items-start gap-3 rounded-xl border border-border bg-muted/30 px-3 py-2.5">
+              <div className="flex w-full min-w-0 items-start gap-3 rounded-xl border border-border bg-muted/30 px-3 py-2.5">
                 <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-violet-500/10 text-violet-500">
                   <FileText className="h-4 w-4" aria-hidden />
                 </span>
-                <div className="min-w-0 flex-1">
+                <div className="min-w-0 flex-1 overflow-hidden">
                   <p
                     className="truncate text-sm font-medium text-foreground"
                     title={file.name}
@@ -237,7 +237,7 @@ export function KbUploadDialog({
                   onClick={handleClearFile}
                   disabled={isPending}
                   aria-label="Remover arquivo selecionado"
-                  className="text-muted-foreground hover:text-foreground"
+                  className="shrink-0 text-muted-foreground hover:text-foreground"
                 >
                   <X className="h-4 w-4" />
                 </Button>

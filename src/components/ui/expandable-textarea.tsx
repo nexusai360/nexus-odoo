@@ -103,15 +103,32 @@ export function ExpandableTextarea({
           <DialogHeader>
             <DialogTitle>{label ?? "Editar texto"}</DialogTitle>
           </DialogHeader>
-          <Textarea
-            value={value}
-            onChange={(e) => onChange(e.currentTarget.value)}
-            placeholder={placeholder}
-            disabled={disabled}
-            maxLength={maxLength}
-            autoFocus
-            className={cn("h-full flex-1 resize-none", className)}
-          />
+          <div className="relative flex min-h-0 flex-1 flex-col">
+            <Textarea
+              value={value}
+              onChange={(e) => onChange(e.currentTarget.value)}
+              placeholder={placeholder}
+              disabled={disabled}
+              maxLength={maxLength}
+              autoFocus
+              className={cn("h-full flex-1 resize-none pb-9", className)}
+            />
+            {maxLength !== undefined && (
+              <div
+                aria-live="polite"
+                className={cn(
+                  "pointer-events-none absolute bottom-2 right-3 inline-flex items-center gap-1 rounded-md border bg-card/90 px-2 py-0.5 text-[11px] font-medium tabular-nums backdrop-blur-sm transition-colors",
+                  value.length >= maxLength
+                    ? "border-amber-500/40 bg-amber-500/15 text-amber-600 dark:text-amber-400"
+                    : value.length / maxLength >= 0.9
+                      ? "border-amber-500/30 bg-amber-500/10 text-amber-600 dark:text-amber-400"
+                      : "border-border text-muted-foreground",
+                )}
+              >
+                {value.length.toLocaleString("pt-BR")}/{maxLength.toLocaleString("pt-BR")}
+              </div>
+            )}
+          </div>
         </DialogContent>
       </Dialog>
     </div>
