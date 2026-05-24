@@ -1,52 +1,93 @@
 // Helpers de busca tolerante a acento/grafia para queries de relatorio.
 //
-// Estrategia em camadas:
-// 1. unaccent + lower em ambos os lados (match exato/parcial sem acento).
-// 2. Se < 4 ids retornaram, faz fallback com pg_trgm (similarity >= 0.30)
-//    para tolerar grafia errada (ex.: "aco" vs "aço", "arco" vs "aço").
+// Wrappers finos sobre `_search-universal.fuzzySearch`. A camada universal
+// faz:
+//   1. Tokenizacao AND  (resolve ordem de palavras: "mola espiral aco" ==
+//                        "espiral mola aco" == "aco mola espiral").
+//   2. Camada exata unaccent.
+//   3. Camada fuzzy pg_trgm com threshold dinamico (0.5 para termo curto,
+//      0.3 padrao, 0.2 para termo longo).
 //
-// Indices funcionais ja foram criados na migration 20260523090100_search_unaccent_trgm.
-//
-// Funcao isolada para nao quebrar o uso de Prisma findMany no caller; o caller
-// pega os ids retornados aqui e filtra `produtoId IN ids`.
+// Indices criados em:
+//   - 20260523090100_search_unaccent_trgm (fato_estoque_saldo.produto_nome)
+//   - 20260524190000_search_unaccent_trgm_universal (fato_parceiro, fato_pedido)
 
 import type { PrismaClient } from "@/generated/prisma/client";
+import { fuzzySearch } from "./_search-universal";
 
-const LIMITE = 50;
-
+/**
+ * Wrapper legacy mantido para nao quebrar callers existentes. Novos callers
+ * devem importar `fuzzySearch` direto. Retorna apenas a lista de ids; quando
+ * o caller precisa do `totalMatches` (para sinalizar ambiguidade ao agente),
+ * deve usar a versao detalhada abaixo.
+ */
 export async function searchProductIdsByName(
   prisma: PrismaClient,
   termo: string,
 ): Promise<number[]> {
-  const t = termo.trim();
-  if (!t) return [];
-
-  // 1) match por unaccent
-  const exact = await prisma.$queryRawUnsafe<{ produto_id: number }[]>(
-    `SELECT DISTINCT produto_id FROM fato_estoque_saldo
-     WHERE produto_id IS NOT NULL
-       AND lower(public.f_unaccent_immutable(produto_nome))
-           LIKE '%' || lower(public.f_unaccent_immutable($1)) || '%'
-     LIMIT ${LIMITE}`,
-    t,
+  const r = await fuzzySearch(
+    prisma,
+    {
+      table: "fato_estoque_saldo",
+      pkColumn: "produto_id",
+      nameColumn: "produto_nome",
+    },
+    termo,
   );
-  const ids = new Set<number>(exact.map((r) => r.produto_id));
+  return r.ids.map((id) => (typeof id === "number" ? id : Number(id)));
+}
 
-  if (ids.size >= 4) return Array.from(ids);
-
-  // 2) fallback fuzzy (pg_trgm) para grafia errada
-  const fuzzy = await prisma.$queryRawUnsafe<{ produto_id: number }[]>(
-    `SELECT DISTINCT produto_id FROM fato_estoque_saldo
-     WHERE produto_id IS NOT NULL
-       AND similarity(
-             lower(public.f_unaccent_immutable(produto_nome)),
-             lower(public.f_unaccent_immutable($1))
-           ) >= 0.30
-     ORDER BY produto_id
-     LIMIT ${LIMITE}`,
-    t,
+/**
+ * Versao com metadados: alem dos ids, devolve total real de matches e a
+ * camada que produziu o resultado. Usado pelo handler MCP para preencher o
+ * campo opcional `ambiguidade` quando ha mais de um candidato.
+ */
+export async function searchProductByNameWithMeta(
+  prisma: PrismaClient,
+  termo: string,
+): Promise<{ ids: number[]; totalMatches: number; layer: "exact" | "fuzzy" | "none" }> {
+  const r = await fuzzySearch(
+    prisma,
+    {
+      table: "fato_estoque_saldo",
+      pkColumn: "produto_id",
+      nameColumn: "produto_nome",
+    },
+    termo,
   );
-  for (const r of fuzzy) ids.add(r.produto_id);
+  return {
+    ids: r.ids.map((id) => (typeof id === "number" ? id : Number(id))),
+    totalMatches: r.totalMatches,
+    layer: r.layer,
+  };
+}
 
-  return Array.from(ids);
+/** Busca parceiros (clientes/fornecedores/contatos) pelo nome curto. */
+export async function searchPartnerIdsByName(
+  prisma: PrismaClient,
+  termo: string,
+): Promise<number[]> {
+  const r = await fuzzySearch(
+    prisma,
+    { table: "fato_parceiro", pkColumn: "odoo_id", nameColumn: "nome" },
+    termo,
+  );
+  return r.ids.map((id) => (typeof id === "number" ? id : Number(id)));
+}
+
+/** Busca parceiros pelo nome completo (razao social, full name). */
+export async function searchPartnerIdsByFullName(
+  prisma: PrismaClient,
+  termo: string,
+): Promise<number[]> {
+  const r = await fuzzySearch(
+    prisma,
+    {
+      table: "fato_parceiro",
+      pkColumn: "odoo_id",
+      nameColumn: "nome_completo",
+    },
+    termo,
+  );
+  return r.ids.map((id) => (typeof id === "number" ? id : Number(id)));
 }

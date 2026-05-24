@@ -49,6 +49,10 @@ export interface SaldoProdutoKpis {
 export interface SaldoProdutoData {
   kpis: SaldoProdutoKpis;
   linhas: SaldoProdutoRow[];
+  /** Meta da busca por termo (so presente quando filtros.termo foi informado).
+   *  Usada pelo handler MCP para preencher o campo `ambiguidade` no output e
+   *  guiar o agente a perguntar de volta quando ha multiplos candidatos. */
+  buscaMeta?: { totalMatches: number; layer: "exact" | "fuzzy" | "none" };
 }
 
 // ---------------------------------------------------------------------------
@@ -67,12 +71,23 @@ export async function querySaldoProduto(
   // Busca tolerante a acento: quando vier `termo`, usa helper SQL com unaccent
   // + fallback pg_trgm e filtra os fatos pelos produtoIds retornados, em vez
   // de depender do ILIKE case-insensitive do Prisma (que nao tira acento).
+  // Onda B do Renascimento: tambem captura totalMatches/layer para o handler
+  // MCP preencher o campo opcional `ambiguidade` quando ha multiplos candidatos.
   let produtoIdsFiltro: number[] | undefined;
+  let buscaMeta:
+    | { totalMatches: number; layer: "exact" | "fuzzy" | "none" }
+    | undefined;
   if (filtros.termo) {
-    const { searchProductIdsByName } = await import("./_search-helpers");
-    produtoIdsFiltro = await searchProductIdsByName(prisma, filtros.termo);
+    const { searchProductByNameWithMeta } = await import("./_search-helpers");
+    const r = await searchProductByNameWithMeta(prisma, filtros.termo);
+    produtoIdsFiltro = r.ids;
+    buscaMeta = { totalMatches: r.totalMatches, layer: r.layer };
     if (produtoIdsFiltro.length === 0) {
-      return { kpis: { totalProdutos: 0, produtosNegativos: 0, valorTotal: 0 }, linhas: [] };
+      return {
+        kpis: { totalProdutos: 0, produtosNegativos: 0, valorTotal: 0 },
+        linhas: [],
+        buscaMeta,
+      };
     }
   }
 
@@ -170,6 +185,7 @@ export async function querySaldoProduto(
   return {
     kpis: { totalProdutos, produtosNegativos, valorTotal },
     linhas,
+    buscaMeta,
   };
 }
 

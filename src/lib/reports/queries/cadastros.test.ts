@@ -10,54 +10,95 @@ const fakePrisma = {} as Parameters<typeof queryBuscarParceiro>[0];
 // ---------------------------------------------------------------------------
 
 describe("queryBuscarParceiro", () => {
-  it("busca por nome via ILIKE e devolve campos esperados", async () => {
-    const mockPrisma = {
-      fatoParceiro: {
-        findMany: jest.fn().mockResolvedValue([
-          {
-            odooId: 1001,
-            nome: "Empresa Fitness SA",
-            documento: "12.345.678/0001-99",
-            ehCliente: true,
-            ehFornecedor: false,
-            uf: "DF",
-            cidade: "Brasília",
-          },
-        ]),
-      },
-    } as unknown as Parameters<typeof queryBuscarParceiro>[0];
+  // Mock minimo que cobre o pipeline pos Onda B: fuzzy universal via
+  // $queryRawUnsafe (chamado 2x, nome + nome_completo) + findMany por
+  // documento (restante) + findMany final por odooId IN.
+  function makeMockPrisma(opts: {
+    nomeIds?: number[];
+    nomeCompletoIds?: number[];
+    linhas?: Array<{
+      odooId: number;
+      nome: string | null;
+      documento: string | null;
+      ehCliente: boolean;
+      ehFornecedor: boolean;
+      uf: string | null;
+      cidade: string | null;
+    }>;
+    documentoLinhas?: Array<{ odooId: number }>;
+  }) {
+    let rawCallIdx = 0;
+    const queryRawUnsafe = jest.fn(async () => {
+      const out =
+        rawCallIdx === 0
+          ? (opts.nomeIds ?? []).map((id) => ({ id }))
+          : (opts.nomeCompletoIds ?? []).map((id) => ({ id }));
+      rawCallIdx += 1;
+      return out;
+    });
 
-    const result = await queryBuscarParceiro(mockPrisma, { termo: "Fitness" });
+    const findManyCalls: Array<unknown> = [];
+    const fatoParceiro = {
+      findMany: jest.fn((args: unknown) => {
+        findManyCalls.push(args);
+        const a = args as {
+          where?: { documento?: unknown; odooId?: { in?: number[] } };
+        };
+        if (a.where?.documento) return Promise.resolve(opts.documentoLinhas ?? []);
+        if (a.where?.odooId?.in) return Promise.resolve(opts.linhas ?? []);
+        return Promise.resolve(opts.linhas ?? []);
+      }),
+    };
+
+    return {
+      mock: {
+        fatoParceiro,
+        $queryRawUnsafe: queryRawUnsafe,
+      } as unknown as Parameters<typeof queryBuscarParceiro>[0],
+      findManyCalls,
+    };
+  }
+
+  it("busca por nome via fuzzy universal e devolve campos esperados", async () => {
+    const { mock } = makeMockPrisma({
+      nomeIds: [1001],
+      linhas: [
+        {
+          odooId: 1001,
+          nome: "Empresa Fitness SA",
+          documento: "12.345.678/0001-99",
+          ehCliente: true,
+          ehFornecedor: false,
+          uf: "DF",
+          cidade: "Brasília",
+        },
+      ],
+    });
+
+    const result = await queryBuscarParceiro(mock, { termo: "Fitness" });
     expect(result.linhas).toHaveLength(1);
     expect(result.linhas[0].odooId).toBe(1001);
     expect(result.linhas[0].nome).toBe("Empresa Fitness SA");
     expect(result.linhas[0].ehCliente).toBe(true);
     expect(result.linhas[0].uf).toBe("DF");
-
-    const call = (mockPrisma.fatoParceiro.findMany as jest.Mock).mock.calls[0][0];
-    // deve usar OR de contains (ILIKE)
-    expect(call.where?.OR).toBeDefined();
-    expect(call.where.OR.length).toBeGreaterThanOrEqual(2);
   });
 
-  it("aplica limite padrão de 20", async () => {
-    const mockPrisma = {
-      fatoParceiro: { findMany: jest.fn().mockResolvedValue([]) },
-    } as unknown as Parameters<typeof queryBuscarParceiro>[0];
-
-    await queryBuscarParceiro(mockPrisma, { termo: "X" });
-    const call = (mockPrisma.fatoParceiro.findMany as jest.Mock).mock.calls[0][0];
-    expect(call.take).toBe(20);
+  it("aplica limite padrão de 20 no fallback por documento", async () => {
+    const { mock, findManyCalls } = makeMockPrisma({});
+    await queryBuscarParceiro(mock, { termo: "X" });
+    const docCall = findManyCalls.find(
+      (c) => (c as { where?: { documento?: unknown } }).where?.documento,
+    ) as { take?: number } | undefined;
+    expect(docCall?.take).toBe(20);
   });
 
-  it("respeita limite customizado", async () => {
-    const mockPrisma = {
-      fatoParceiro: { findMany: jest.fn().mockResolvedValue([]) },
-    } as unknown as Parameters<typeof queryBuscarParceiro>[0];
-
-    await queryBuscarParceiro(mockPrisma, { termo: "X", limite: 5 });
-    const call = (mockPrisma.fatoParceiro.findMany as jest.Mock).mock.calls[0][0];
-    expect(call.take).toBe(5);
+  it("respeita limite customizado no fallback por documento", async () => {
+    const { mock, findManyCalls } = makeMockPrisma({});
+    await queryBuscarParceiro(mock, { termo: "X", limite: 5 });
+    const docCall = findManyCalls.find(
+      (c) => (c as { where?: { documento?: unknown } }).where?.documento,
+    ) as { take?: number } | undefined;
+    expect(docCall?.take).toBe(5);
   });
 });
 

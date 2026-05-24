@@ -22,6 +22,28 @@ const linha = z.object({
   numLocais: z.number().int(),
 });
 
+/**
+ * Sinal de ambiguidade: presente apenas quando a busca por `termo` retornou
+ * mais de um produto. O agente deve usar isso para perguntar ao usuario qual
+ * dos candidatos ele quer, em vez de escolher arbitrariamente. Veja regra
+ * em identity-base.ts secao [DESAMBIGUACAO].
+ */
+const ambiguidade = z
+  .object({
+    totalMatches: z.number().int(),
+    layer: z.enum(["exact", "fuzzy", "none"]),
+    topCandidates: z
+      .array(
+        z.object({
+          id: z.number().int().optional(),
+          nome: z.string(),
+          context: z.string().optional(),
+        }),
+      )
+      .max(5),
+  })
+  .optional();
+
 const dados = z.object({
   kpis: z.object({
     totalProdutos: z.number().int(),
@@ -29,6 +51,7 @@ const dados = z.object({
     valorTotal: z.number(),
   }),
   linhas: z.array(linha),
+  ambiguidade,
 });
 
 const fonteStatus = z.object({
@@ -50,18 +73,40 @@ type Input = z.infer<typeof inputSchema>;
 type Output = z.infer<typeof outputSchema>;
 
 function shape(d: Awaited<ReturnType<typeof querySaldoProduto>>) {
-  return {
-    kpis: d.kpis,
-    // achata: o agente não precisa do drill-down detalhePorLocal por linha
-    linhas: d.linhas.map((l) => ({
-      produtoNome: l.produtoNome,
-      familiaNome: l.familiaNome,
-      marcaNome: l.marcaNome,
-      saldoTotal: l.saldoTotal,
-      valorTotal: l.valorTotal,
-      numLocais: l.numLocais,
-    })),
-  };
+  const linhas = d.linhas.map((l) => ({
+    produtoNome: l.produtoNome,
+    familiaNome: l.familiaNome,
+    marcaNome: l.marcaNome,
+    saldoTotal: l.saldoTotal,
+    valorTotal: l.valorTotal,
+    numLocais: l.numLocais,
+  }));
+
+  // Preenche o sinal de ambiguidade quando a busca por termo casou com mais
+  // de um produto. O top de candidatos vem das primeiras 5 linhas (ja
+  // ordenadas por valorTotal desc), com contexto compacto (familia, saldo).
+  let ambiguidade:
+    | {
+        totalMatches: number;
+        layer: "exact" | "fuzzy" | "none";
+        topCandidates: { nome: string; context?: string }[];
+      }
+    | undefined;
+  if (d.buscaMeta && d.buscaMeta.totalMatches > 1) {
+    ambiguidade = {
+      totalMatches: d.buscaMeta.totalMatches,
+      layer: d.buscaMeta.layer,
+      topCandidates: linhas.slice(0, 5).map((l) => ({
+        nome: l.produtoNome,
+        context:
+          l.familiaNome != null
+            ? `${l.familiaNome} · saldo ${l.saldoTotal}`
+            : `saldo ${l.saldoTotal}`,
+      })),
+    };
+  }
+
+  return { kpis: d.kpis, linhas, ambiguidade };
 }
 
 export const estoqueSaldoProduto: ToolEntry<Input, Output> = {

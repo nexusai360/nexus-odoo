@@ -6,13 +6,20 @@
 // Fonte primária: fato_parceiro (clientes, fornecedores, contatos).
 
 import type { PrismaClient } from "@/generated/prisma/client";
+import {
+  searchPartnerIdsByName,
+  searchPartnerIdsByFullName,
+} from "./_search-helpers";
 
 // ---------------------------------------------------------------------------
 // queryBuscarParceiro
 // ---------------------------------------------------------------------------
 
-/** Busca parceiros por nome, nomeCompleto ou documento via ILIKE.
- * Devolve até `limite` (padrão 20) resultados. */
+/** Busca parceiros tolerante a acento/grafia/ordem das palavras.
+ * - Tenta nome + nome_completo via busca fuzzy universal (tokenizacao AND
+ *   + unaccent + fallback pg_trgm).
+ * - Documento (CNPJ/CPF) entra como fallback final via match parcial direto
+ *   (numeros nao se beneficiam de fuzzy mas vale match parcial). */
 export async function queryBuscarParceiro(
   prisma: PrismaClient,
   filtros: { termo: string; limite?: number },
@@ -28,14 +35,37 @@ export async function queryBuscarParceiro(
   }[];
 }> {
   const limite = filtros.limite ?? 20;
+  const termo = filtros.termo.trim();
+
+  if (!termo) return { linhas: [] };
+
+  // Une ids dos dois caminhos (nome curto + nome completo) sem perder ordem
+  // relativa de relevancia (Set preserva ordem de insercao em JS).
+  const [idsByNome, idsByFull] = await Promise.all([
+    searchPartnerIdsByName(prisma, termo),
+    searchPartnerIdsByFullName(prisma, termo),
+  ]);
+  const idSet = new Set<number>([...idsByNome, ...idsByFull]);
+
+  // Fallback documento: numeros e formatos com pontuacao. Match parcial
+  // ILIKE direto cobre os casos tipicos (so digitos, so pontos, ou parcial).
+  if (idSet.size < limite) {
+    const restante = limite - idSet.size;
+    const porDocumento = await prisma.fatoParceiro.findMany({
+      where: {
+        documento: { contains: termo, mode: "insensitive" },
+        odooId: { notIn: Array.from(idSet) },
+      },
+      select: { odooId: true },
+      take: restante,
+    });
+    for (const r of porDocumento) idSet.add(r.odooId);
+  }
+
+  if (idSet.size === 0) return { linhas: [] };
+
   const linhas = await prisma.fatoParceiro.findMany({
-    where: {
-      OR: [
-        { nome: { contains: filtros.termo, mode: "insensitive" } },
-        { nomeCompleto: { contains: filtros.termo, mode: "insensitive" } },
-        { documento: { contains: filtros.termo, mode: "insensitive" } },
-      ],
-    },
+    where: { odooId: { in: Array.from(idSet).slice(0, limite) } },
     select: {
       odooId: true,
       nome: true,
@@ -45,7 +75,6 @@ export async function queryBuscarParceiro(
       uf: true,
       cidade: true,
     },
-    take: limite,
   });
   return { linhas };
 }
