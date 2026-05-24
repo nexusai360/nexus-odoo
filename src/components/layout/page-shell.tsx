@@ -21,12 +21,15 @@ interface Props {
  * - `full`: telas densas de dados, sem teto.
  */
 const MAX: Record<Variant, string> = {
-  // Variantes do Agente Nex: apenas estreitam levemente em relacao ao
-  // narrow (max-w-7xl ~ 1280px) para dar um pouco mais de respiro lateral
-  // sem encolher a tela.
-  compact: "max-w-6xl",
-  form: "max-w-6xl",
-  agent: "max-w-7xl",
+  // Variantes do Agente Nex: largura base confortavel em laptops e que
+  // cresce em saltos quando ha mais viewport (27", ultrawide, TVs),
+  // preservando margem visual. Mobile/tablet seguem cap base ate sm/md.
+  compact:
+    "max-w-6xl 2xl:max-w-[1440px] [@media(min-width:1920px)]:max-w-[1640px] [@media(min-width:2400px)]:max-w-[1880px]",
+  form:
+    "max-w-6xl 2xl:max-w-[1440px] [@media(min-width:1920px)]:max-w-[1640px] [@media(min-width:2400px)]:max-w-[1880px]",
+  agent:
+    "max-w-7xl 2xl:max-w-[1520px] [@media(min-width:1920px)]:max-w-[1720px] [@media(min-width:2400px)]:max-w-[1960px]",
   narrow: "max-w-7xl",
   wide: "max-w-[1600px]",
   full: "max-w-none",
