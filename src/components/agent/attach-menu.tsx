@@ -70,7 +70,7 @@ export function AttachMenu({ onPick, disabled, className }: AttachMenuProps) {
         <PopoverContent
           side="top"
           align="start"
-          className="w-72 rounded-lg p-1.5"
+          className="w-64 rounded-lg p-1.5"
         >
           <button
             type="button"
