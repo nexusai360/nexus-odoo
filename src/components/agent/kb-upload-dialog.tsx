@@ -136,7 +136,7 @@ export function KbUploadDialog({
         onOpenChange(next);
       }}
     >
-      <DialogContent className="w-[min(560px,calc(100%-2rem))] sm:max-w-none">
+      <DialogContent className="w-[min(720px,calc(100%-2rem))] sm:max-w-none">
         <DialogHeader>
           <DialogTitle>Adicionar conhecimento</DialogTitle>
           <DialogDescription>

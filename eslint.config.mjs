@@ -1,6 +1,7 @@
 import { defineConfig, globalIgnores } from "eslint/config";
 import nextVitals from "eslint-config-next/core-web-vitals";
 import nextTs from "eslint-config-next/typescript";
+import noTravessao from "./eslint-plugins/no-travessao/index.js";
 
 const eslintConfig = defineConfig([
   ...nextVitals,
@@ -13,6 +14,9 @@ const eslintConfig = defineConfig([
     "build/**",
     "next-env.d.ts",
     "src/generated/**",
+    // Plugin local e migrations ficam fora do parser TS (sao JS/SQL puros).
+    "eslint-plugins/**",
+    "prisma/migrations/**",
   ]),
   {
     rules: {
@@ -26,6 +30,15 @@ const eslintConfig = defineConfig([
         "warn",
         { argsIgnorePattern: "^_", varsIgnorePattern: "^_" },
       ],
+    },
+  },
+  // Regra local: trava travessao (em-dash) e en-dash em literais e templates.
+  // Cobre src e mcp; documentacao e seed de prompt seguem o veto via lint.
+  {
+    files: ["src/**/*.{ts,tsx,js,jsx}", "mcp/**/*.ts"],
+    plugins: { "no-travessao": noTravessao },
+    rules: {
+      "no-travessao/no-travessao": "error",
     },
   },
 ]);
