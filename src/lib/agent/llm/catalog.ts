@@ -162,17 +162,17 @@ const GEMINI: ModelEntry[] = [
 // Modelos sem preço oficial público → pricing: null (costKnown=false no logger)
 const OPENROUTER: ModelEntry[] = [
   // FREE
-  { id: "meta-llama/llama-3.3-70b-instruct:free",  provider: "openrouter", label: "Llama 3.3 70B (free)",        tier: "low", notes: "free",              released: "2024-12", pricing: null },
-  { id: "google/gemini-2.0-flash-exp:free",          provider: "openrouter", label: "Gemini 2.0 Flash Exp (free)", tier: "low", notes: "free",              released: "2024-12", pricing: null },
-  { id: "deepseek/deepseek-chat-v3:free",            provider: "openrouter", label: "DeepSeek V3 (free)",          tier: "low", notes: "free",              released: "2024-12", pricing: null },
+  { id: "meta-llama/llama-3.3-70b-instruct:free",  provider: "openrouter", label: "Llama 3.3 70B (free)",        tier: "free", notes: "free",              released: "2024-12", pricing: null },
+  { id: "google/gemini-2.0-flash-exp:free",          provider: "openrouter", label: "Gemini 2.0 Flash Exp (free)", tier: "free", notes: "free",              released: "2024-12", pricing: null },
+  { id: "deepseek/deepseek-chat-v3:free",            provider: "openrouter", label: "DeepSeek V3 (free)",          tier: "free", notes: "free",              released: "2024-12", pricing: null },
   { id: "deepseek/deepseek-r1:free",                 provider: "openrouter", label: "DeepSeek R1 (free)",          tier: "low", notes: "free raciocínio",   released: "2025-01", pricing: null },
-  { id: "deepseek/deepseek-r1-0528:free",            provider: "openrouter", label: "DeepSeek R1 0528 (free)",     tier: "low", notes: "free",              released: "2025-05", pricing: null },
-  { id: "qwen/qwen-2.5-7b-instruct:free",            provider: "openrouter", label: "Qwen 2.5 7B (free)",          tier: "low", notes: "free",              released: "2024-09", pricing: null },
+  { id: "deepseek/deepseek-r1-0528:free",            provider: "openrouter", label: "DeepSeek R1 0528 (free)",     tier: "free", notes: "free",              released: "2025-05", pricing: null },
+  { id: "qwen/qwen-2.5-7b-instruct:free",            provider: "openrouter", label: "Qwen 2.5 7B (free)",          tier: "free", notes: "free",              released: "2024-09", pricing: null },
   { id: "qwen/qwq-32b:free",                         provider: "openrouter", label: "Qwen QwQ 32B (free)",         tier: "low", notes: "free raciocínio",   released: "2025-03", pricing: null },
-  { id: "qwen/qwen3-235b-a22b:free",                 provider: "openrouter", label: "Qwen3 235B (free)",            tier: "low", notes: "free",              released: "2025-04", pricing: null },
-  { id: "mistralai/mistral-7b-instruct:free",        provider: "openrouter", label: "Mistral 7B (free)",            tier: "low", notes: "free",              released: "2023-09", pricing: null },
-  { id: "meta-llama/llama-4-maverick:free",          provider: "openrouter", label: "Llama 4 Maverick (free)",     tier: "low", notes: "free",              released: "2025-04", pricing: null },
-  { id: "google/gemma-3-27b-it:free",                provider: "openrouter", label: "Gemma 3 27B (free)",           tier: "low", notes: "free",              released: "2025-03", pricing: null },
+  { id: "qwen/qwen3-235b-a22b:free",                 provider: "openrouter", label: "Qwen3 235B (free)",            tier: "free", notes: "free",              released: "2025-04", pricing: null },
+  { id: "mistralai/mistral-7b-instruct:free",        provider: "openrouter", label: "Mistral 7B (free)",            tier: "free", notes: "free",              released: "2023-09", pricing: null },
+  { id: "meta-llama/llama-4-maverick:free",          provider: "openrouter", label: "Llama 4 Maverick (free)",     tier: "free", notes: "free",              released: "2025-04", pricing: null },
+  { id: "google/gemma-3-27b-it:free",                provider: "openrouter", label: "Gemma 3 27B (free)",           tier: "free", notes: "free",              released: "2025-03", pricing: null },
   // OpenAI via OpenRouter
   { id: "openai/gpt-4o-mini",         provider: "openrouter", label: "GPT-4o mini",    tier: "low",    released: "2024-07", pricing: { inputPerMTok: 0.15,  outputPerMTok: 0.6   } },
   { id: "openai/gpt-5-mini",          provider: "openrouter", label: "GPT-5 mini",     tier: "low",    released: "2025-08", pricing: { inputPerMTok: 0.25,  outputPerMTok: 2.0   } },
@@ -289,6 +289,21 @@ export function getModel(id: string): ModelEntry | undefined {
   return MODELS.find((m) => m.id === id);
 }
 
+/**
+ * Modelos lançados antes de 2024-01 são considerados legados.
+ * Mantidos no array para que `getModel` continue retornando, mas filtrados
+ * nas listagens (exceto áudio, onde `whisper-1` ainda é usado em produção).
+ */
+export function isLegacyModel(m: ModelEntry): boolean {
+  if (m.use === "áudio") return false;
+  return !!m.released && m.released < "2024-01";
+}
+
+/** Marca legacy no label visual ("(legado)"). */
+export function labelWithLegacy(m: ModelEntry): string {
+  return isLegacyModel(m) ? `${m.label} (legado)` : m.label;
+}
+
 /** Custo médio (input+output)/2 por MTok — para ordenar do mais caro ao mais barato. */
 function avgCost(m: ModelEntry): number {
   if (!m.pricing) return -1;
@@ -308,9 +323,18 @@ export function sortModels(models: ModelEntry[]): ModelEntry[] {
   });
 }
 
-/** Retorna todos os modelos de um provider, já ordenados. */
-export function listModels(provider: LlmProvider): ModelEntry[] {
-  return sortModels(MODELS.filter((m) => m.provider === provider));
+/**
+ * Retorna todos os modelos de um provider, já ordenados.
+ * Por padrão filtra legados (released < 2024, exceto áudio); passe
+ * `{ includeLegacy: true }` para trazer tudo.
+ */
+export function listModels(
+  provider: LlmProvider,
+  opts: { includeLegacy?: boolean } = {},
+): ModelEntry[] {
+  const all = MODELS.filter((m) => m.provider === provider);
+  const filtered = opts.includeLegacy ? all : all.filter((m) => !isLegacyModel(m));
+  return sortModels(filtered);
 }
 
 /** Capacidades multimodais de um modelo. */

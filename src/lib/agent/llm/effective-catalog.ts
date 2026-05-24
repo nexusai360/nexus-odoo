@@ -7,6 +7,7 @@ import "server-only";
 import { prisma } from "@/lib/prisma";
 import {
   MODELS,
+  isLegacyModel,
   sortModels,
   type CostTier,
   type LlmProvider,
@@ -60,9 +61,14 @@ function rowToModelEntry(row: {
   };
 }
 
-/** Modelos efetivos de um provedor (base + overrides), ordenados. */
+/**
+ * Modelos efetivos de um provedor (base + overrides), ordenados.
+ * Por padrão filtra legados (pré-2024, exceto áudio); use
+ * `{ includeLegacy: true }` para incluir.
+ */
 export async function loadEffectiveModelsByProvider(
   provider: LlmProvider,
+  opts: { includeLegacy?: boolean } = {},
 ): Promise<ModelEntry[]> {
   const base = MODELS.filter((m) => m.provider === provider);
   const baseIds = new Set(base.map((m) => m.id));
@@ -74,5 +80,7 @@ export async function loadEffectiveModelsByProvider(
     if (baseIds.has(row.id)) continue; // base versionada vence
     extras.push(rowToModelEntry(row));
   }
-  return sortModels([...base, ...extras]);
+  const all = [...base, ...extras];
+  const filtered = opts.includeLegacy ? all : all.filter((m) => !isLegacyModel(m));
+  return sortModels(filtered);
 }

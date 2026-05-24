@@ -143,7 +143,7 @@ export default async function Page() {
         </Card>
 
         <Card className="rounded-2xl border border-border bg-muted/30 p-2">
-          <CardHeader className="pt-6 pb-3">
+          <CardHeader className="pt-5 pb-5">
             <CardTitle>Recursos</CardTitle>
           </CardHeader>
           <CardContent className="pb-5">

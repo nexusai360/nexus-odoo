@@ -76,6 +76,7 @@ export function SearchableSelect({
   value,
   onChange,
   options,
+  pinnedFirst,
   placeholder = "Selecionar",
   disabled = false,
   searchPlaceholder = "Buscar...",
@@ -86,7 +87,9 @@ export function SearchableSelect({
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
 
-  const selected = options.find((o) => o.value === value);
+  const selected =
+    options.find((o) => o.value === value) ??
+    pinnedFirst?.find((o) => o.value === value);
   const isCustomMode = !!customMode && value === customMode.sentinel;
 
   const inputRef = useRef<HTMLInputElement | null>(null);
@@ -231,12 +234,8 @@ export function SearchableSelect({
             </div>
           </div>
           <ul role="listbox" className="max-h-72 overflow-y-auto py-1">
-            {filtered.length === 0 ? (
-              <li className="px-3 py-3 text-xs text-muted-foreground">
-                Nenhum resultado
-              </li>
-            ) : (
-              filtered.map((opt) => (
+            {(() => {
+              const renderItem = (opt: SearchableSelectOption) => (
                 <li
                   key={opt.value}
                   role="option"
@@ -269,13 +268,31 @@ export function SearchableSelect({
                         </span>
                       ) : null}
                     </div>
-                    {opt.endAdornment ? (
-                      <span className="shrink-0">{opt.endAdornment}</span>
-                    ) : null}
+                    <span className="flex shrink-0 items-center gap-1.5">
+                      {opt.startAdornment ? <span>{opt.startAdornment}</span> : null}
+                      {opt.endAdornment ? <span>{opt.endAdornment}</span> : null}
+                    </span>
                   </button>
                 </li>
-              ))
-            )}
+              );
+              const pinned = pinnedFirst ?? [];
+              if (pinned.length === 0 && filtered.length === 0) {
+                return (
+                  <li className="px-3 py-3 text-xs text-muted-foreground">
+                    Nenhum resultado
+                  </li>
+                );
+              }
+              return (
+                <>
+                  {pinned.map(renderItem)}
+                  {pinned.length > 0 && filtered.length > 0 ? (
+                    <li className="my-1 border-t border-border/60" aria-hidden />
+                  ) : null}
+                  {filtered.map(renderItem)}
+                </>
+              );
+            })()}
           </ul>
         </PopoverContent>
       </Popover>

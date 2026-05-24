@@ -34,13 +34,14 @@ describe("isAllowedByWhitelist", () => {
     expect(isAllowedByWhitelist("anthropic", "claude-instant-1.2")).toBe(false);
   });
 
-  test("aceita Gemini 2.x", () => {
+  test("aceita Gemini 1.5/2.0/2.5", () => {
     expect(isAllowedByWhitelist("gemini", "gemini-2.5-pro")).toBe(true);
     expect(isAllowedByWhitelist("gemini", "gemini-2.0-flash")).toBe(true);
+    expect(isAllowedByWhitelist("gemini", "gemini-1.5-flash")).toBe(true);
   });
 
-  test("rejeita Gemini 1.x", () => {
-    expect(isAllowedByWhitelist("gemini", "gemini-1.5-flash")).toBe(false);
+  test("rejeita Gemini 1.0", () => {
+    expect(isAllowedByWhitelist("gemini", "gemini-1.0-pro")).toBe(false);
   });
 
   test("aceita OpenRouter aliasing dos providers conhecidos", () => {

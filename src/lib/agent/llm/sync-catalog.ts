@@ -73,7 +73,58 @@ async function fetchOpenRouter(apiKey: string): Promise<FetchedModel[]> {
   }));
 }
 
-function deriveTier(input: number | null, output: number | null): string {
+async function fetchAnthropic(apiKey: string): Promise<FetchedModel[]> {
+  const res = await fetch("https://api.anthropic.com/v1/models", {
+    headers: {
+      "x-api-key": apiKey,
+      "anthropic-version": "2023-06-01",
+    },
+  });
+  if (!res.ok) throw new Error(`Anthropic listing failed: ${res.status}`);
+  const data = (await res.json()) as {
+    data: Array<{ id: string; display_name?: string; created_at?: string }>;
+  };
+  return data.data.map((m) => ({
+    id: m.id,
+    label: m.display_name ?? m.id,
+    pricingInput: null,
+    pricingOutput: null,
+  }));
+}
+
+async function fetchGemini(apiKey: string): Promise<FetchedModel[]> {
+  const res = await fetch(
+    `https://generativelanguage.googleapis.com/v1beta/models?key=${apiKey}`,
+  );
+  if (!res.ok) throw new Error(`Gemini listing failed: ${res.status}`);
+  const data = (await res.json()) as {
+    models: Array<{
+      name: string;
+      displayName?: string;
+      supportedGenerationMethods?: string[];
+    }>;
+  };
+  return data.models
+    .filter((m) =>
+      (m.supportedGenerationMethods ?? []).includes("generateContent"),
+    )
+    .map((m) => {
+      const id = m.name.startsWith("models/") ? m.name.slice(7) : m.name;
+      return {
+        id,
+        label: m.displayName ?? id,
+        pricingInput: null,
+        pricingOutput: null,
+      };
+    });
+}
+
+function deriveTier(
+  input: number | null,
+  output: number | null,
+  id?: string,
+): string {
+  if (id && id.endsWith(":free")) return "free";
   if (input == null || output == null) return "low";
   const avg = (input + output) / 2;
   if (avg < 1) return "low";
@@ -99,6 +150,8 @@ export async function syncProvider(
     let fetched: FetchedModel[] = [];
     if (provider === "openai") fetched = await fetchOpenAI(apiKey);
     else if (provider === "openrouter") fetched = await fetchOpenRouter(apiKey);
+    else if (provider === "anthropic") fetched = await fetchAnthropic(apiKey);
+    else if (provider === "gemini") fetched = await fetchGemini(apiKey);
     else {
       out.erro = `Sincronização para ${provider} ainda não implementada.`;
       return out;
@@ -143,7 +196,7 @@ export async function syncProvider(
         // Base versionada vence: nao duplica entrada no banco.
         continue;
       }
-      const tier = deriveTier(m.pricingInput, m.pricingOutput);
+      const tier = deriveTier(m.pricingInput, m.pricingOutput, m.id);
       const eraDepreciado = (knownOverride.get(m.id) ?? null) != null;
       await prisma.llmModelEntry.upsert({
         where: { id: m.id },

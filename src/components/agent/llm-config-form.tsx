@@ -37,9 +37,11 @@ import {
   type SearchableSelectOption,
 } from "@/components/ui/searchable-select";
 import { TierBadge } from "@/components/ui/tier-badge";
+import { ProviderBadge, providerKeyFromModelId } from "@/components/ui/provider-badge";
 import {
   PROVIDER_META,
   listModels,
+  labelWithLegacy,
   modelDescription,
 } from "@/lib/agent/llm/catalog";
 import type { LlmProvider } from "@/lib/agent/llm/types";
@@ -61,7 +63,6 @@ function SyncModelsButton({ provider }: { provider: LlmProvider }) {
   return (
     <button
       type="button"
-      title="Buscar modelos novos e atualizar precos do provedor"
       aria-label="Atualizar modelos"
       disabled={pending}
       onClick={() => {
@@ -82,22 +83,28 @@ function SyncModelsButton({ provider }: { provider: LlmProvider }) {
           if (atualizados) partes.push(`${atualizados} atualizado(s)`);
           if (revividos) partes.push(`${revividos} reativado(s)`);
           if (depreciados) partes.push(`${depreciados} desativado(s)`);
-          if (ignoradosWL) partes.push(`${ignoradosWL} fora da whitelist`);
-          if (ignoradosSP) partes.push(`${ignoradosSP} sem preco`);
+          if (ignoradosWL) partes.push(`${ignoradosWL} fora da lista permitida`);
+          if (ignoradosSP) partes.push(`${ignoradosSP} sem preço`);
           toast.success(
             partes.length
-              ? `Catalogo sincronizado: ${partes.join(", ")}.`
-              : "Catalogo ja esta atualizado.",
+              ? `Catálogo sincronizado: ${partes.join(", ")}.`
+              : "Catálogo já está atualizado.",
           );
           router.refresh();
         });
       }}
-      className="inline-flex h-7 w-7 cursor-pointer items-center justify-center rounded-md text-muted-foreground transition-colors hover:bg-muted hover:text-foreground disabled:cursor-not-allowed disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+      className="inline-flex h-7 items-center gap-1.5 rounded-md border border-violet-500/30 bg-violet-500/10 px-2.5 text-[11px] font-medium text-violet-700 transition-colors hover:bg-violet-500/20 hover:underline disabled:cursor-not-allowed disabled:opacity-60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-400 dark:text-violet-300 cursor-pointer"
     >
       {pending ? (
-        <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden />
+        <>
+          <Loader2 className="h-3 w-3 animate-spin" aria-hidden />
+          Atualizando…
+        </>
       ) : (
-        <RefreshCw className="h-3.5 w-3.5" aria-hidden />
+        <>
+          <RefreshCw className="h-3 w-3" aria-hidden />
+          Atualizar modelos
+        </>
       )}
     </button>
   );
@@ -181,21 +188,29 @@ export function LlmConfigForm({
   );
 
   const modelOptions = useMemo<SearchableSelectOption[]>(() => {
-    const fromCatalog: SearchableSelectOption[] = models.map((m) => ({
-      value: m.id,
-      label: m.label,
-      notes: modelDescription(m),
-      endAdornment: <TierBadge tier={m.tier} />,
-    }));
-    if (meta.allowCustomModel) {
-      fromCatalog.push({
+    return models.map((m) => {
+      const provKey =
+        provider === "openrouter" ? providerKeyFromModelId(m.id) : null;
+      return {
+        value: m.id,
+        label: labelWithLegacy(m),
+        notes: modelDescription(m),
+        startAdornment: provKey ? <ProviderBadge providerKey={provKey} /> : undefined,
+        endAdornment: <TierBadge tier={m.tier} />,
+      };
+    });
+  }, [models, provider]);
+
+  const pinnedModelOptions = useMemo<SearchableSelectOption[]>(() => {
+    if (!meta.allowCustomModel) return [];
+    return [
+      {
         value: CUSTOM_MODEL_VALUE,
         label: "Outro (digitar manualmente)",
         notes: "Especifique um ID de modelo customizado",
-      });
-    }
-    return fromCatalog;
-  }, [models, meta]);
+      },
+    ];
+  }, [meta]);
 
   const credentialsForProvider = useMemo(
     () => credentials.filter((c) => c.provider === provider),
@@ -444,6 +459,7 @@ export function LlmConfigForm({
               value={modelSelect}
               onChange={handleModelChange}
               options={modelOptions}
+              pinnedFirst={pinnedModelOptions}
               customMode={{
                 sentinel: CUSTOM_MODEL_VALUE,
                 customValue: customModel,

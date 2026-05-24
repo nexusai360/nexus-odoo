@@ -13,26 +13,38 @@ export interface WhitelistEntry {
 }
 
 export const SYNC_WHITELIST: WhitelistEntry[] = [
-  // OpenAI: GPT-5.x, GPT-4o (incluindo mini), embeddings 3, whisper, tts.
+  // OpenAI
   { provider: "openai", pattern: /^gpt-5(\.[\w-]+)?(-\d{8})?$/ },
+  { provider: "openai", pattern: /^gpt-4\.1(-mini|-nano)?$/ },
   { provider: "openai", pattern: /^gpt-4o(-mini)?(-realtime(-preview)?)?(-\d{4}-\d{2}-\d{2})?$/ },
   { provider: "openai", pattern: /^gpt-4o-(mini-)?(transcribe|tts)$/ },
+  { provider: "openai", pattern: /^o[1-9](-pro|-mini)?$/ },
   { provider: "openai", pattern: /^text-embedding-3-(small|large)$/ },
   { provider: "openai", pattern: /^whisper-1$/ },
   { provider: "openai", pattern: /^tts-1(-hd)?$/ },
 
-  // Anthropic: Claude 4.x (opus/sonnet/haiku) e Claude 3.5/3.7.
+  // Anthropic
   { provider: "anthropic", pattern: /^claude-(opus|sonnet|haiku)-4(-\d+)?(-\d{8})?$/ },
   { provider: "anthropic", pattern: /^claude-3-(5|7)-(sonnet|opus|haiku)(-[\w-]+)?$/ },
 
-  // Google: Gemini 2.x.
-  { provider: "gemini", pattern: /^gemini-2\.[\w-]+$/ },
+  // Gemini
+  { provider: "gemini", pattern: /^gemini-(1\.5|2\.0|2\.5|3\.[\w-]+)-(pro|flash|flash-lite|flash-8b)(-thinking)?(-[\w-]+)?$/ },
 
-  // OpenRouter: agrega multiplos provedores; aceitamos sufixos conhecidos das
-  // familias acima (o id vem como "openai/gpt-4o-mini", etc.).
-  { provider: "openrouter", pattern: /^openai\/gpt-(5|4o)[\w./-]*$/ },
-  { provider: "openrouter", pattern: /^anthropic\/claude-(opus|sonnet|haiku|3)[\w./-]*$/ },
-  { provider: "openrouter", pattern: /^google\/gemini-2[\w./-]*$/ },
+  // OpenRouter — padrões por sub-família.
+  { provider: "openrouter", pattern: /^openai\/(gpt-(5|5\.[\w-]+|4o|4\.[\w-]+)|o[1-9])(-[\w./-]+)?$/ },
+  { provider: "openrouter", pattern: /^anthropic\/claude-(opus|sonnet|haiku)-[34]([.-][\w./-]+)?$/ },
+  { provider: "openrouter", pattern: /^anthropic\/claude-3\.(5|7)-(sonnet|haiku|opus)(:[\w-]+)?$/ },
+  { provider: "openrouter", pattern: /^google\/gemini-(1\.5|2\.0|2\.5)[\w./-]*(:free)?$/ },
+  { provider: "openrouter", pattern: /^google\/gemma-[\w.-]+(:free)?$/ },
+  { provider: "openrouter", pattern: /^deepseek\/deepseek-(chat|coder|r1|v[234])([\w./-]+)?(:free)?$/ },
+  { provider: "openrouter", pattern: /^meta-llama\/llama-(3\.3|4)([\w./-]+)?(:free)?$/ },
+  { provider: "openrouter", pattern: /^mistralai\/(mistral|codestral|mixtral)[\w.-]+(:free)?$/ },
+  { provider: "openrouter", pattern: /^qwen\/qwen[\w.-]+(:free)?$/ },
+  { provider: "openrouter", pattern: /^qwen\/qwq[\w.-]*(:free)?$/ },
+  { provider: "openrouter", pattern: /^x-ai\/grok-[34]([\w./-]+)?$/ },
+  { provider: "openrouter", pattern: /^cohere\/command-[\w.-]+$/ },
+  { provider: "openrouter", pattern: /^perplexity\/sonar([\w.-]*)?$/ },
+  { provider: "openrouter", pattern: /^microsoft\/phi-[34][\w.-]*$/ },
 ];
 
 export function isAllowedByWhitelist(

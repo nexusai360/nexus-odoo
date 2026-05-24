@@ -5,7 +5,7 @@ describe("catalog — fonte única de modelos e pricing", () => {
     for (const m of MODELS) {
       expect(m.id).toBeTruthy();
       expect(m.provider).toMatch(/^(openai|anthropic|gemini|openrouter)$/);
-      expect(["low", "medium", "high", "premium"]).toContain(m.tier);
+      expect(["free", "low", "medium", "high", "premium"]).toContain(m.tier);
       // pricing é objeto com campos numéricos, ou null explícito
       if (m.pricing !== null) {
         expect(typeof m.pricing.inputPerMTok).toBe("number");
