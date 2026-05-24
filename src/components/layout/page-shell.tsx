@@ -30,11 +30,11 @@ const MAX: Record<Variant, string> = {
   //   (cap atingido em viewport ~2566, que cobre 27" FHD/QHD).
   // - Cap (27" e acima): 1310px
   // 'full' continua sem cap para telas densas de relatorio.
-  compact: "max-w-[clamp(1280px,calc(1280px+(100vw-1366px)*0.06),1350px)]",
-  form: "max-w-[clamp(1280px,calc(1280px+(100vw-1366px)*0.06),1350px)]",
-  agent: "max-w-[clamp(1280px,calc(1280px+(100vw-1366px)*0.06),1350px)]",
-  narrow: "max-w-[clamp(1280px,calc(1280px+(100vw-1366px)*0.06),1350px)]",
-  wide: "max-w-[clamp(1280px,calc(1280px+(100vw-1366px)*0.06),1350px)]",
+  compact: "max-w-[clamp(1280px,calc(1280px+(100vw-1366px)*0.085),1380px)]",
+  form: "max-w-[clamp(1280px,calc(1280px+(100vw-1366px)*0.085),1380px)]",
+  agent: "max-w-[clamp(1280px,calc(1280px+(100vw-1366px)*0.085),1380px)]",
+  narrow: "max-w-[clamp(1280px,calc(1280px+(100vw-1366px)*0.085),1380px)]",
+  wide: "max-w-[clamp(1280px,calc(1280px+(100vw-1366px)*0.085),1380px)]",
   full: "max-w-none",
 };
 
