@@ -109,7 +109,7 @@ export function PromptConfigForm({ initial }: PromptConfigFormProps) {
               counterClass(personality.length, MAX_PERSONALITY),
             )}
           >
-            {personality.length}/{MAX_PERSONALITY}
+            {personality.length.toLocaleString("pt-BR")}/{MAX_PERSONALITY.toLocaleString("pt-BR")}
           </span>
         </div>
         <ExpandableTextarea
@@ -138,7 +138,7 @@ export function PromptConfigForm({ initial }: PromptConfigFormProps) {
           <span
             className={cn("text-xs tabular-nums", counterClass(tone.length, MAX_TONE))}
           >
-            {tone.length}/{MAX_TONE}
+            {tone.length.toLocaleString("pt-BR")}/{MAX_TONE.toLocaleString("pt-BR")}
           </span>
         </div>
         <ExpandableTextarea

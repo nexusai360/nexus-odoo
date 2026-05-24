@@ -55,6 +55,16 @@ export function ExpandableTextarea({
 }: ExpandableTextareaProps) {
   const [open, setOpen] = React.useState(false)
 
+  // Tamanho do modal proporcional ao maxLength do campo. Campos com muito
+  // texto (50k+) abrem em tela quase cheia; campos curtos (1k) abrem menores
+  // para não passar uma sensação de exagero.
+  const modalSize = React.useMemo(() => {
+    const cap = maxLength ?? Number.POSITIVE_INFINITY
+    if (cap <= 5000) return "h-[55vh] w-[min(70vw,720px)]"
+    if (cap <= 10000) return "h-[72vh] w-[min(84vw,1000px)]"
+    return "h-[90vh] w-[min(96vw,1400px)]"
+  }, [maxLength])
+
   return (
     <div className="relative">
       <Textarea
@@ -89,7 +99,7 @@ export function ExpandableTextarea({
       </Tooltip>
 
       <Dialog open={open} onOpenChange={setOpen}>
-        <DialogContent className="flex h-[90vh] w-[min(96vw,1400px)] max-w-none sm:max-w-none flex-col">
+        <DialogContent className={cn("flex max-w-none sm:max-w-none flex-col", modalSize)}>
           <DialogHeader>
             <DialogTitle>{label ?? "Editar texto"}</DialogTitle>
           </DialogHeader>
