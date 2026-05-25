@@ -207,7 +207,7 @@ function BubbleSurface({
       transition={
         reduce
           ? { duration: 0 }
-          : { layout: { duration: 0.34, ease: [0.22, 1, 0.36, 1] } }
+          : { layout: { duration: 0.65, ease: [0.22, 1, 0.36, 1] } }
       }
       className={cn(
         "relative max-w-[85%] rounded-2xl px-3.5 py-2.5 text-sm leading-relaxed",
@@ -400,10 +400,10 @@ function AssistantTrailBlock({
                     // Esses tempos casam com o delay+duracao do
                     // BodyReveal (250ms delay + 400ms fade) - quando o
                     // trail termina de sumir, o body acabou de aparecer.
-                    // Alinhado ao mesmo timing da bolha (340ms expo-out)
+                    // Alinhado ao mesmo timing da bolha (650ms expo-out)
                     // para a transicao trail->trail+body ser homogenea.
-                    height: { duration: 0.34, ease: [0.22, 1, 0.36, 1] },
-                    opacity: { duration: 0.28, ease: [0.22, 1, 0.36, 1] },
+                    height: { duration: 0.65, ease: [0.22, 1, 0.36, 1] },
+                    opacity: { duration: 0.5, ease: [0.22, 1, 0.36, 1] },
                   }
             }
             style={{ overflow: "hidden" }}
@@ -425,16 +425,16 @@ function AssistantTrailBlock({
                     // sensacao de "se materializando" sem susto.
                     initial={reduce ? false : { opacity: 0, y: -6 }}
                     animate={{ opacity: 1, y: 0 }}
-                    // Sincronia com a expansao da bolha (motion.layout 340ms):
-                    // delay 170ms (50% da expansao) + duracao 170ms = linha
+                    // Sincronia com a expansao da bolha (motion.layout 650ms):
+                    // delay 325ms (50% da expansao) + duracao 325ms = linha
                     // termina exatamente quando a bolha termina de crescer.
-                    // Fade-in + slide-up, sem scale/blur. Easing identico.
+                    // Mais lenta apos feedback "tudo muito rapido".
                     transition={
                       reduce
                         ? { duration: 0 }
                         : {
-                            duration: 0.17,
-                            delay: 0.17,
+                            duration: 0.325,
+                            delay: 0.325,
                             ease: [0.22, 1, 0.36, 1],
                           }
                     }
