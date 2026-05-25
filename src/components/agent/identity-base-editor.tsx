@@ -253,7 +253,8 @@ export function IdentityBaseEditor({ initial }: IdentityBaseEditorProps) {
         disabled={isSaving}
         className={cn(
           "font-mono text-xs",
-          isDirty && "border-amber-500/40 bg-amber-500/[0.04]",
+          isDirty &&
+            "[&:not(:focus)]:border-yellow-400/50 [&:not(:focus)]:bg-yellow-400/[0.05]",
         )}
         aria-describedby="agent-identity-base-help"
       />

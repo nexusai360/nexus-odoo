@@ -118,14 +118,7 @@ export function AgentMessage({
     !isUser && (streaming || (Array.isArray(steps) && steps.length > 0));
   return (
     <BubbleWrapper isUser={isUser}>
-      <div
-        className={cn(
-          "relative max-w-[85%] rounded-2xl px-3.5 py-2.5 text-sm leading-relaxed",
-          isUser
-            ? "bg-violet-600/15 text-foreground"
-            : "bg-muted text-foreground",
-        )}
-      >
+      <BubbleSurface isUser={isUser}>
         {showTrail ? (
           <AssistantTrailBlock
             steps={steps ?? []}
@@ -160,8 +153,40 @@ export function AgentMessage({
           </div>
         ) : null}
         <CopyButton text={content} />
-      </div>
+      </BubbleSurface>
     </BubbleWrapper>
+  );
+}
+
+// Inner bubble com layout="size": cresce suave conforme trilha colapsa e
+// texto streama em paralelo. Sem layout, o container saltava entre alturas
+// a cada token chegando; com layout, a interpolacao do framer-motion deixa
+// o "container que vai se formando" pedido pelo usuario.
+function BubbleSurface({
+  isUser,
+  children,
+}: {
+  isUser: boolean;
+  children: React.ReactNode;
+}) {
+  const reduce = useReducedMotion();
+  return (
+    <motion.div
+      layout={!reduce ? "size" : false}
+      transition={
+        reduce
+          ? { duration: 0 }
+          : { layout: { duration: 0.42, ease: [0.16, 1, 0.3, 1] } }
+      }
+      className={cn(
+        "relative max-w-[85%] rounded-2xl px-3.5 py-2.5 text-sm leading-relaxed",
+        isUser
+          ? "bg-violet-600/15 text-foreground"
+          : "bg-muted text-foreground",
+      )}
+    >
+      {children}
+    </motion.div>
   );
 }
 
@@ -307,19 +332,27 @@ function AssistantTrailBlock({
         </span>
       </button>
       {/* Expand/collapse via CSS grid trick (grid-template-rows 0fr -> 1fr).
-          Anima de fato, sem o jank do height:auto do framer-motion (que so
-          consegue animar valores numericos e por isso "pula"). Conteudo
-          interno fica em <div overflow-hidden> que o grid colapsa/expande
-          suavemente. */}
+          Duracao 500ms com easing expo-out + opacity 250ms (sai mais rapido
+          que altura): sensacao de "recolhimento" puxando para o header, em
+          vez de simplesmente sumir. Steps internos ganham translate-y -4
+          quando colapsado para reforcar o recoil visual. */}
       <div
         className={cn(
-          "grid transition-[grid-template-rows,opacity] duration-300 ease-out",
-          "motion-reduce:transition-none",
-          expanded ? "grid-rows-[1fr] opacity-100" : "grid-rows-[0fr] opacity-0",
+          "grid motion-reduce:transition-none",
+          "transition-[grid-template-rows,opacity] duration-500 ease-[cubic-bezier(0.16,1,0.3,1)]",
+          expanded
+            ? "grid-rows-[1fr] opacity-100 delay-0"
+            : "grid-rows-[0fr] opacity-0",
         )}
         aria-hidden={!expanded}
       >
-        <div className="overflow-hidden">
+        <div
+          className={cn(
+            "overflow-hidden transition-transform duration-500 ease-[cubic-bezier(0.16,1,0.3,1)]",
+            "motion-reduce:transition-none",
+            expanded ? "translate-y-0" : "-translate-y-1",
+          )}
+        >
           <motion.ul
             id="agent-trail-list"
             aria-live={streaming ? "polite" : undefined}
@@ -409,19 +442,17 @@ function AssistantBodyReveal({
 }) {
   const reduce = useReducedMotion();
   if (!hasContent) return null;
+  // Sem delay: o corpo da resposta entra IMEDIATAMENTE quando o primeiro
+  // token chega, em PARALELO com o recolhimento da trilha e o morph do
+  // header. Tudo na mesma cena, sem hierarquia sequencial.
   return (
     <motion.div
-      initial={reduce ? false : { opacity: 0, y: 3, filter: "blur(2px)" }}
-      animate={{ opacity: 1, y: 0, filter: "blur(0px)" }}
+      initial={reduce ? false : { opacity: 0, y: 2 }}
+      animate={{ opacity: 1, y: 0 }}
       transition={
         reduce
           ? { duration: 0 }
-          : {
-              duration: 0.45,
-              ease: [0.16, 1, 0.3, 1] as const,
-              delay: 0.32,
-              filter: { duration: 0.3, delay: 0.32 },
-            }
+          : { duration: 0.22, ease: [0.16, 1, 0.3, 1] as const }
       }
     >
       {children}
@@ -657,12 +688,11 @@ function StreamingText({ content }: { content: string }) {
               wasSettled
                 ? undefined
                 : {
-                    // Stagger deliberado por palavra: cadencia de typewriter
-                    // que da tempo do usuario sentir cada palavra entrando.
-                    // Cap em 320ms para nao acumular delay infinito em
-                    // respostas longas, mas alto o bastante para a digitacao
-                    // parecer construida, nao "brotada".
-                    animationDelay: `${Math.min((i % 20) * 28, 320)}ms`,
+                    // Typewriter rapido: palavras entram em cascata curta,
+                    // sensacao de digitacao viva. Cap 80ms para nao arrastar
+                    // respostas longas; periodo 12 distribui o stagger no
+                    // grupo de palavras visiveis no viewport tipico.
+                    animationDelay: `${Math.min((i % 12) * 14, 80)}ms`,
                   }
             }
           >

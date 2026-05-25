@@ -70,7 +70,13 @@ export function SuggestionsBar({
           type="button"
           onClick={() => onPick(s)}
           className={cn(
-            "cursor-pointer rounded-full border border-violet-500/40 bg-violet-500/5 px-3 py-1.5 text-xs text-violet-700 transition-colors duration-200",
+            // rounded-2xl em vez de rounded-full: pills mais altas com texto
+            // multi-linha mantem cantos suaves sem virar capsula deformada.
+            // text-left + whitespace-normal + max-w-full: quando texto quebra,
+            // segunda linha alinha pela esquerda colada na primeira (fix do
+            // bug de alinhamento centrado quando havia quebra de linha em
+            // "Liste as 10 maiores clientes por faturamento no mes corrente").
+            "max-w-full cursor-pointer rounded-2xl border border-violet-500/40 bg-violet-500/5 px-3 py-1.5 text-left text-xs leading-snug text-violet-700 whitespace-normal break-words transition-colors duration-200",
             "hover:border-violet-500/60 hover:bg-violet-500/15",
             "focus-visible:ring-2 focus-visible:ring-violet-500 focus-visible:outline-none",
             "dark:text-violet-300",
