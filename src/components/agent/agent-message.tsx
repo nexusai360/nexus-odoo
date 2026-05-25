@@ -138,6 +138,11 @@ export function AgentMessage({
             <span
               aria-hidden="true"
               className="ml-0.5 inline-block h-[1em] w-[2px] animate-pulse bg-violet-500 align-text-bottom motion-reduce:animate-none"
+              style={{
+                // Glow violet sutil para dar vida ao cursor durante streaming.
+                // 4px blur + cor da marca = sensacao de "digitando agora".
+                boxShadow: "0 0 6px rgba(139, 92, 246, 0.6)",
+              }}
             />
           )}
         </AssistantBodyReveal>
@@ -158,10 +163,16 @@ export function AgentMessage({
   );
 }
 
-// Inner bubble com layout="size": cresce suave conforme trilha colapsa e
-// texto streama em paralelo. Sem layout, o container saltava entre alturas
-// a cada token chegando; com layout, a interpolacao do framer-motion deixa
-// o "container que vai se formando" pedido pelo usuario.
+// Bolha SEM motion.layout. Por que: tokens streamam a cada ~30ms; com
+// motion.layout o framer fica em loop perpetuo de re-layout durante o
+// streaming, aplicando transform: scale() no container que mascara o
+// CSS keyframe nexWordIn das palavras (efeito final: usuario nao ve
+// digitacao, ve texto pronto). Trilha ainda anima recolhimento via
+// AnimatePresence height-auto, header morpha em paralelo, e a bolha
+// cresce naturalmente token a token (sem saltos visiveis porque o
+// browser pinta a cada frame). Adicionado will-change:transform na
+// borda externa para promover layer (paint isolado, sem repaint da
+// vizinhanca quando altura muda).
 function BubbleSurface({
   isUser,
   children,
@@ -169,24 +180,20 @@ function BubbleSurface({
   isUser: boolean;
   children: React.ReactNode;
 }) {
-  const reduce = useReducedMotion();
   return (
-    <motion.div
-      layout={!reduce ? "size" : false}
-      transition={
-        reduce
-          ? { duration: 0 }
-          : { layout: { duration: 0.42, ease: [0.16, 1, 0.3, 1] } }
-      }
+    <div
       className={cn(
         "relative max-w-[85%] rounded-2xl px-3.5 py-2.5 text-sm leading-relaxed",
+        // ring sutil violet do design system quando assistant: integra com o
+        // shimmer + glow do cursor durante streaming, sem afetar bolha do user.
         isUser
           ? "bg-violet-600/15 text-foreground"
-          : "bg-muted text-foreground",
+          : "bg-muted text-foreground ring-1 ring-violet-500/0",
       )}
+      style={{ willChange: "transform" }}
     >
       {children}
-    </motion.div>
+    </div>
   );
 }
 
@@ -257,14 +264,15 @@ function AssistantTrailBlock({
   const showThinking = streaming || running;
   const EASE = [0.16, 1, 0.3, 1] as const;
 
+  // Auditoria ui-ux-pro-max:
+  // - §7 layout-shift-avoid + transform-performance: removidos TODOS os
+  //   animatorios de layout (motion.layout, CSS grid 0fr->1fr, motion.li
+  //   layout, filter blur). Tudo agora e opacity + translate puro.
+  // - §6 line-length / leading-snug: header com min-h fixo para shimmer
+  //   nao sentir reflow vindo dos steps abaixo.
+  // - §7 motion-consistency: duration unica de 200ms para crossfades.
   return (
-    <motion.div
-      layout={!reduce ? "size" : false}
-      transition={
-        reduce ? { duration: 0 } : { layout: { duration: 0.5, ease: EASE } }
-      }
-      className="mb-2"
-    >
+    <div className="mb-2">
       <button
         type="button"
         onClick={onToggle}
@@ -272,7 +280,10 @@ function AssistantTrailBlock({
         aria-expanded={expanded}
         aria-controls="agent-trail-list"
         className={cn(
-          "flex w-full items-center gap-2 text-left text-xs font-medium",
+          // min-h-[18px]: altura estavel do header impede que a paint do
+          // shimmer "tremesca" quando steps entram/saem abaixo. Sem isso,
+          // qualquer reflow re-pinta o gradient com subpixel diferente.
+          "flex min-h-[18px] w-full items-center gap-2 text-left text-xs font-medium leading-none",
           "text-foreground/85 transition-colors",
           onToggle
             ? "cursor-pointer hover:text-foreground"
@@ -280,14 +291,14 @@ function AssistantTrailBlock({
         )}
       >
         <span className="relative inline-flex h-3.5 w-3.5 shrink-0 items-center justify-center">
-          <AnimatePresence initial={false} mode="wait">
+          <AnimatePresence initial={false}>
             {showThinking ? (
               <motion.span
                 key="icon-thinking"
-                initial={reduce ? false : { opacity: 0, scale: 0.7, rotate: -8 }}
-                animate={{ opacity: 1, scale: 1, rotate: 0 }}
-                exit={reduce ? { opacity: 0 } : { opacity: 0, scale: 0.7, rotate: 8 }}
-                transition={reduce ? { duration: 0 } : { duration: 0.32, ease: EASE }}
+                initial={reduce ? false : { opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={reduce ? { opacity: 0 } : { opacity: 0 }}
+                transition={reduce ? { duration: 0 } : { duration: 0.18, ease: EASE }}
                 className="absolute inset-0 inline-flex items-center justify-center"
                 aria-hidden
               >
@@ -296,10 +307,10 @@ function AssistantTrailBlock({
             ) : (
               <motion.span
                 key="icon-done"
-                initial={reduce ? false : { opacity: 0, scale: 0.7 }}
-                animate={{ opacity: 1, scale: 1 }}
-                exit={reduce ? { opacity: 0 } : { opacity: 0, scale: 0.7 }}
-                transition={reduce ? { duration: 0 } : { duration: 0.32, ease: EASE }}
+                initial={reduce ? false : { opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={reduce ? { opacity: 0 } : { opacity: 0 }}
+                transition={reduce ? { duration: 0 } : { duration: 0.18, ease: EASE }}
                 className="absolute inset-0 inline-flex items-center justify-center"
                 aria-hidden
               >
@@ -308,6 +319,8 @@ function AssistantTrailBlock({
             )}
           </AnimatePresence>
         </span>
+        {/* Label em position:absolute com placeholder invisivel mantendo a
+            largura. Crossfade paralelo (sem mode="wait") em 200ms. */}
         <span className="relative flex-1">
           <AnimatePresence initial={false}>
             <motion.span
@@ -316,7 +329,7 @@ function AssistantTrailBlock({
               animate={{ opacity: 1 }}
               exit={reduce ? { opacity: 0 } : { opacity: 0 }}
               transition={
-                reduce ? { duration: 0 } : { duration: 0.18, ease: EASE }
+                reduce ? { duration: 0 } : { duration: 0.2, ease: EASE }
               }
               className="absolute inset-0 block truncate"
             >
@@ -328,99 +341,92 @@ function AssistantTrailBlock({
           </AnimatePresence>
         </span>
       </button>
-      {/* Expand/collapse via CSS grid trick (grid-template-rows 0fr -> 1fr).
-          Duracao 500ms com easing expo-out + opacity 250ms (sai mais rapido
-          que altura): sensacao de "recolhimento" puxando para o header, em
-          vez de simplesmente sumir. Steps internos ganham translate-y -4
-          quando colapsado para reforcar o recoil visual. */}
-      <div
-        className={cn(
-          "grid motion-reduce:transition-none",
-          "transition-[grid-template-rows,opacity] duration-500 ease-[cubic-bezier(0.16,1,0.3,1)]",
-          expanded
-            ? "grid-rows-[1fr] opacity-100 delay-0"
-            : "grid-rows-[0fr] opacity-0",
-        )}
-        aria-hidden={!expanded}
-      >
-        <div
-          className={cn(
-            "overflow-hidden transition-transform duration-500 ease-[cubic-bezier(0.16,1,0.3,1)]",
-            "motion-reduce:transition-none",
-            expanded ? "translate-y-0" : "-translate-y-1",
-          )}
-        >
-          <ul
-            id="agent-trail-list"
-            aria-live={streaming ? "polite" : undefined}
-            className="mt-1 flex flex-col gap-0.5 pl-5"
+      {/* Expand/collapse: framer-motion mede height real e anima para pixel
+          exato (sem o jank do CSS grid 0fr->1fr que causa re-layout pos
+          animacao). overflow:hidden no proprio motion.div. */}
+      <AnimatePresence initial={false}>
+        {expanded && (
+          <motion.div
+            key="trail-body"
+            initial={reduce ? false : { height: 0, opacity: 0 }}
+            animate={{ height: "auto", opacity: 1 }}
+            exit={reduce ? { opacity: 0 } : { height: 0, opacity: 0 }}
+            transition={
+              reduce
+                ? { duration: 0 }
+                : {
+                    height: { duration: 0.28, ease: EASE },
+                    opacity: { duration: 0.2, ease: EASE },
+                  }
+            }
+            style={{ overflow: "hidden" }}
+            aria-hidden={!expanded}
           >
-            <AnimatePresence initial={false}>
-              {steps.map((s) => (
-                <motion.li
-                  key={s.id}
-                  initial={
-                    reduce ? false : { opacity: 0, y: -6, filter: "blur(2px)" }
-                  }
-                  animate={{ opacity: 1, y: 0, filter: "blur(0px)" }}
-                  exit={
-                    reduce
-                      ? { opacity: 0 }
-                      : { opacity: 0, y: -6, filter: "blur(2px)" }
-                  }
-                  transition={
-                    reduce
-                      ? { duration: 0 }
-                      : {
-                          duration: 0.4,
-                          ease: EASE,
-                          filter: { duration: 0.3 },
-                        }
-                  }
-                  className="flex items-center gap-1.5 text-[11px]"
-                >
-                  <span className="relative inline-flex h-3 w-3 shrink-0 items-center justify-center">
-                    <AnimatePresence initial={false} mode="wait">
-                      <motion.span
-                        key={s.state}
-                        initial={reduce ? false : { opacity: 0, scale: 0.6 }}
-                        animate={{ opacity: 1, scale: 1 }}
-                        exit={reduce ? { opacity: 0 } : { opacity: 0, scale: 0.6 }}
-                        transition={
-                          reduce ? { duration: 0 } : { duration: 0.3, ease: EASE }
-                        }
-                        className="absolute inset-0 inline-flex items-center justify-center"
-                        aria-hidden
-                      >
-                        <Database
-                          className={cn(
-                            "h-3 w-3",
-                            s.state === "running"
-                              ? "animate-pulse text-violet-500 motion-reduce:animate-none"
-                              : "text-violet-500/70",
-                          )}
-                        />
-                      </motion.span>
-                    </AnimatePresence>
-                  </span>
-                  <span
-                    className={cn(
-                      "transition-colors duration-300",
-                      s.state === "running"
-                        ? "text-foreground/80"
-                        : "text-muted-foreground",
-                    )}
+            <ul
+              id="agent-trail-list"
+              aria-live={streaming ? "polite" : undefined}
+              className="mt-1 flex flex-col gap-0.5 pl-5"
+            >
+              <AnimatePresence initial={false}>
+                {steps.map((s) => (
+                  <motion.li
+                    key={s.id}
+                    // Apenas opacity + translate; sem blur (causava arrasto),
+                    // sem layout (causava re-measure tardio dentro do
+                    // AnimatePresence pai).
+                    initial={reduce ? false : { opacity: 0, y: -4 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    exit={reduce ? { opacity: 0 } : { opacity: 0, y: -4 }}
+                    transition={
+                      reduce
+                        ? { duration: 0 }
+                        : { duration: 0.22, ease: EASE }
+                    }
+                    className="flex items-center gap-1.5 text-[11px]"
                   >
-                    {s.state === "running" ? "Consultando" : "Consultou"} {s.label}
-                    {s.state === "running" ? "…" : ""}
-                  </span>
-                </motion.li>
-              ))}
-            </AnimatePresence>
-          </ul>
-        </div>
-      </div>
-    </motion.div>
+                    <span className="relative inline-flex h-3 w-3 shrink-0 items-center justify-center">
+                      <AnimatePresence initial={false}>
+                        <motion.span
+                          key={s.state}
+                          initial={reduce ? false : { opacity: 0 }}
+                          animate={{ opacity: 1 }}
+                          exit={reduce ? { opacity: 0 } : { opacity: 0 }}
+                          transition={
+                            reduce ? { duration: 0 } : { duration: 0.18, ease: EASE }
+                          }
+                          className="absolute inset-0 inline-flex items-center justify-center"
+                          aria-hidden
+                        >
+                          <Database
+                            className={cn(
+                              "h-3 w-3",
+                              s.state === "running"
+                                ? "animate-pulse text-violet-500 motion-reduce:animate-none"
+                                : "text-violet-500/70",
+                            )}
+                          />
+                        </motion.span>
+                      </AnimatePresence>
+                    </span>
+                    <span
+                      className={cn(
+                        "transition-colors duration-200",
+                        s.state === "running"
+                          ? "text-foreground/80"
+                          : "text-muted-foreground",
+                      )}
+                    >
+                      {s.state === "running" ? "Consultando" : "Consultou"} {s.label}
+                      {s.state === "running" ? "…" : ""}
+                    </span>
+                  </motion.li>
+                ))}
+              </AnimatePresence>
+            </ul>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
   );
 }
 
@@ -667,6 +673,12 @@ function StreamingText({ content }: { content: string }) {
   // Preserva espacos (split capturando whitespace) para alinhamento natural.
   const tokens = React.useMemo(() => content.split(/(\s+)/), [content]);
   const settledRef = React.useRef<Set<number>>(new Set());
+  // mountIndexRef rastreia a ORDEM em que palavras chegam (nao o indice no
+  // array, que pode ser arbitrario). Cada nova palavra recebe seu numero de
+  // chegada; usamos isso para sequenciar o stagger de forma linear de verdade,
+  // independente de quantas palavras chegaram em um mesmo render do React.
+  const mountCounterRef = React.useRef<number>(0);
+  const mountOrderRef = React.useRef<Map<number, number>>(new Map());
 
   return (
     <span aria-live="polite" className="whitespace-pre-wrap">
@@ -674,20 +686,29 @@ function StreamingText({ content }: { content: string }) {
         const isWhitespace = /^\s+$/.test(tok);
         if (isWhitespace) return <React.Fragment key={i}>{tok}</React.Fragment>;
         const wasSettled = settledRef.current.has(i);
-        if (!wasSettled) settledRef.current.add(i);
+        if (!wasSettled) {
+          settledRef.current.add(i);
+          mountOrderRef.current.set(i, mountCounterRef.current++);
+        }
+        const order = mountOrderRef.current.get(i) ?? 0;
         return (
           <span
             key={i}
-            className={wasSettled ? undefined : "nex-word-in"}
+            // inline-block: garante que o transform: translateY do keyframe
+            // nexWordIn nao seja ignorado em spans inline (regra do skill
+            // §7 transform-performance: animar so transform/opacity).
+            className={wasSettled ? "inline-block" : "nex-word-in inline-block"}
             style={
               wasSettled
                 ? undefined
                 : {
-                    // Typewriter rapido: palavras entram em cascata curta,
-                    // sensacao de digitacao viva. Cap 80ms para nao arrastar
-                    // respostas longas; periodo 12 distribui o stagger no
-                    // grupo de palavras visiveis no viewport tipico.
-                    animationDelay: `${Math.min((i % 12) * 14, 80)}ms`,
+                    // Stagger linear pela ORDEM de chegada (nao pelo indice
+                    // no array). Mesmo que o SSE entregue 50 palavras de uma
+                    // vez em 1 frame, elas vao aparecer em cascata 28ms a 28ms
+                    // ate cap 700ms - sensacao de digitacao real, com cadencia
+                    // de ~36 wpm visivel. Apos cap, palavras subsequentes
+                    // viram uma onda final que termina junto.
+                    animationDelay: `${Math.min(order * 28, 700)}ms`,
                   }
             }
           >
@@ -714,10 +735,16 @@ function ShimmerText({ text }: { text: string }) {
       style={{
         backgroundSize: "200% 100%",
         animation: "nexShimmer 2.2s ease-in-out infinite",
-        // Promove a layer proprio para isolar a pintura do gradient.
-        // Sem isso, quando algo abaixo do header cresce (steps entrando),
-        // o reflow re-pintava o gradient com subpixel diferente = tremor.
-        willChange: "background-position",
+        // Layer isolation contra tremor: contain:paint+layout fecha o paint
+        // do shimmer em um stacking context proprio; willChange:transform
+        // promove a layer GPU. Resultado: quando steps aparecem abaixo do
+        // header, o reflow do parent NAO re-pinta o gradient (a paint do
+        // shimmer fica isolada). transform:translateZ(0) forca composite
+        // mesmo se o browser nao decidir promover sozinho.
+        willChange: "transform, background-position",
+        transform: "translateZ(0)",
+        contain: "paint layout",
+        backfaceVisibility: "hidden",
       }}
     >
       {text}
