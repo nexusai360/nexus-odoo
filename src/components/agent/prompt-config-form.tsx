@@ -119,11 +119,11 @@ export function PromptConfigForm({ initial }: PromptConfigFormProps) {
           value={personality}
           onChange={setPersonality}
           maxLength={MAX_PERSONALITY}
-          rows={2}
+          rows={1}
           placeholder="Ex.: Direto, prático, prefere bullets curtos. Evita rodeios."
           disabled={isSaving}
           aria-describedby="agent-personality-help"
-          className="min-h-[60px]"
+          className="min-h-[40px] max-h-[88px] field-sizing-content"
         />
         <p id="agent-personality-help" className="text-xs text-muted-foreground">
           Como o Agente Nex se comporta. Defina voz, foco e atitude geral.
@@ -149,11 +149,11 @@ export function PromptConfigForm({ initial }: PromptConfigFormProps) {
           value={tone}
           onChange={setTone}
           maxLength={MAX_TONE}
-          rows={2}
+          rows={1}
           placeholder="Ex.: Profissional, mas amigável. Em pt-BR. Use 'você'."
           disabled={isSaving}
           aria-describedby="agent-tone-help"
-          className="min-h-[60px]"
+          className="min-h-[40px] max-h-[88px] field-sizing-content"
         />
         <p id="agent-tone-help" className="text-xs text-muted-foreground">
           Estilo de escrita: formalidade, calor humano e vocabulário.
@@ -191,7 +191,7 @@ export function PromptConfigForm({ initial }: PromptConfigFormProps) {
                     placeholder={`Regra ${idx + 1}`}
                     disabled={isSaving}
                     aria-describedby={`guardrail-counter-${idx}`}
-                    className="min-h-[40px]"
+                    className="min-h-[40px] max-h-[88px] field-sizing-content"
                   />
                   <span
                     id={`guardrail-counter-${idx}`}
