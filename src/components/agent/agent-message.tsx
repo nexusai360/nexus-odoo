@@ -434,6 +434,11 @@ function AssistantTrailBlock({
 // monta, fade-in com delay curto para entrar DEPOIS que a trilha terminou de
 // recolher. Sequencia a "historia" da bolha: pensando -> consultando ->
 // (trilha colapsa) -> texto aparece, sem competicao visual.
+// Renderiza o corpo direto, sem fade-in. Tokens chegam via SSE a cada
+// ~30-80ms; o ritmo natural do streaming JA da a sensacao de digitacao
+// (ver StreamingText). Wrappear em motion.div com initial:opacity:0
+// causava "blast" do texto inteiro na entrada quando primeiro chunk era
+// grande - era exatamente o sintoma reportado pelo usuario.
 function AssistantBodyReveal({
   hasContent,
   children,
@@ -441,24 +446,8 @@ function AssistantBodyReveal({
   hasContent: boolean;
   children: React.ReactNode;
 }) {
-  const reduce = useReducedMotion();
   if (!hasContent) return null;
-  // Sem delay: o corpo da resposta entra IMEDIATAMENTE quando o primeiro
-  // token chega, em PARALELO com o recolhimento da trilha e o morph do
-  // header. Tudo na mesma cena, sem hierarquia sequencial.
-  return (
-    <motion.div
-      initial={reduce ? false : { opacity: 0, y: 2 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={
-        reduce
-          ? { duration: 0 }
-          : { duration: 0.22, ease: [0.16, 1, 0.3, 1] as const }
-      }
-    >
-      {children}
-    </motion.div>
-  );
+  return <>{children}</>;
 }
 
 /* -------------------------------------------------------------------------- */
@@ -669,53 +658,15 @@ function AnimatedDots() {
 // keyframe nexWordIn em globals.css) so dispara na primeira vez. Quando
 // streaming termina, AgentMessage troca para MarkdownLite (renderiza
 // negrito, listas etc com syntax completa).
+// Streaming SEM animacao por char/palavra. ChatGPT/Claude usam exatamente
+// isso: renderizam o conteudo conforme tokens chegam via SSE. A sensacao
+// de digitacao vem do ritmo NATURAL dos tokens (Anthropic streaming
+// entrega text_delta a cada ~30-80ms). Qualquer animacao CSS por elemento
+// vira contra: ou mascara o ritmo natural, ou cria filas de keyframes.
 function StreamingText({ content }: { content: string }) {
-  // Preserva espacos (split capturando whitespace) para alinhamento natural.
-  const tokens = React.useMemo(() => content.split(/(\s+)/), [content]);
-  const settledRef = React.useRef<Set<number>>(new Set());
-  // mountIndexRef rastreia a ORDEM em que palavras chegam (nao o indice no
-  // array, que pode ser arbitrario). Cada nova palavra recebe seu numero de
-  // chegada; usamos isso para sequenciar o stagger de forma linear de verdade,
-  // independente de quantas palavras chegaram em um mesmo render do React.
-  const mountCounterRef = React.useRef<number>(0);
-  const mountOrderRef = React.useRef<Map<number, number>>(new Map());
-
   return (
     <span aria-live="polite" className="whitespace-pre-wrap">
-      {tokens.map((tok, i) => {
-        const isWhitespace = /^\s+$/.test(tok);
-        if (isWhitespace) return <React.Fragment key={i}>{tok}</React.Fragment>;
-        const wasSettled = settledRef.current.has(i);
-        if (!wasSettled) {
-          settledRef.current.add(i);
-          mountOrderRef.current.set(i, mountCounterRef.current++);
-        }
-        const order = mountOrderRef.current.get(i) ?? 0;
-        return (
-          <span
-            key={i}
-            // inline-block: garante que o transform: translateY do keyframe
-            // nexWordIn nao seja ignorado em spans inline (regra do skill
-            // §7 transform-performance: animar so transform/opacity).
-            className={wasSettled ? "inline-block" : "nex-word-in inline-block"}
-            style={
-              wasSettled
-                ? undefined
-                : {
-                    // Stagger linear pela ORDEM de chegada (nao pelo indice
-                    // no array). Mesmo que o SSE entregue 50 palavras de uma
-                    // vez em 1 frame, elas vao aparecer em cascata 28ms a 28ms
-                    // ate cap 700ms - sensacao de digitacao real, com cadencia
-                    // de ~36 wpm visivel. Apos cap, palavras subsequentes
-                    // viram uma onda final que termina junto.
-                    animationDelay: `${Math.min(order * 28, 700)}ms`,
-                  }
-            }
-          >
-            {tok}
-          </span>
-        );
-      })}
+      {content}
     </span>
   );
 }
