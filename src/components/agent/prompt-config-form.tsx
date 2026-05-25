@@ -12,12 +12,32 @@
  * Persiste via updateAgentSettings de agent-config.ts.
  */
 
-import { useMemo, useState, useTransition } from "react";
+import { useEffect, useMemo, useRef, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { Loader2, Plus, Save, Shield, Sparkles, Trash2, Wand2 } from "lucide-react";
+import {
+  History,
+  Loader2,
+  Plus,
+  Save,
+  Shield,
+  Sparkles,
+  Trash2,
+  TriangleAlert,
+  Wand2,
+} from "lucide-react";
 
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { toast } from "sonner";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { ExpandableTextarea } from "@/components/ui/expandable-textarea";
@@ -27,6 +47,7 @@ import { cn } from "@/lib/utils";
 const MAX_PERSONALITY = 1000;
 const MAX_TONE = 1000;
 const MAX_GUARDRAIL = 500;
+const DRAFT_KEY = "agent-prompt-draft-v1";
 
 interface PromptConfigFormProps {
   initial: {
@@ -52,6 +73,9 @@ export function PromptConfigForm({ initial }: PromptConfigFormProps) {
   const [personality, setPersonality] = useState(initial.personality);
   const [tone, setTone] = useState(initial.tone);
   const [guardrails, setGuardrails] = useState<string[]>(initial.guardrails);
+  const [autoFocusIdx, setAutoFocusIdx] = useState<number | null>(null);
+  const [pendingNav, setPendingNav] = useState<null | (() => void)>(null);
+  const [draftBannerOpen, setDraftBannerOpen] = useState(false);
 
   const [isSaving, startSave] = useTransition();
 
@@ -67,8 +91,105 @@ export function PromptConfigForm({ initial }: PromptConfigFormProps) {
     [personality, tone, guardrails, initial.terminology, initial.suggestionsEnabled],
   );
 
+  // Dirty state: difere do initial.
+  const isDirty = useMemo(() => {
+    if (personality !== initial.personality) return true;
+    if (tone !== initial.tone) return true;
+    const cleaned = guardrails.map((g) => g.trim()).filter((g) => g.length > 0);
+    if (cleaned.length !== initial.guardrails.length) return true;
+    for (let i = 0; i < cleaned.length; i++) {
+      if (cleaned[i] !== initial.guardrails[i]) return true;
+    }
+    return false;
+  }, [personality, tone, guardrails, initial]);
+
+  // Carrega rascunho do localStorage ao montar.
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const raw = window.localStorage.getItem(DRAFT_KEY);
+    if (!raw) return;
+    try {
+      const draft = JSON.parse(raw) as {
+        personality?: string;
+        tone?: string;
+        guardrails?: string[];
+      };
+      const sameAsInitial =
+        draft.personality === initial.personality &&
+        draft.tone === initial.tone &&
+        JSON.stringify(draft.guardrails ?? []) ===
+          JSON.stringify(initial.guardrails);
+      if (sameAsInitial) {
+        window.localStorage.removeItem(DRAFT_KEY);
+        return;
+      }
+      setDraftBannerOpen(true);
+    } catch {
+      window.localStorage.removeItem(DRAFT_KEY);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Persiste rascunho no localStorage sempre que dirty.
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    if (!isDirty) {
+      window.localStorage.removeItem(DRAFT_KEY);
+      return;
+    }
+    const t = setTimeout(() => {
+      window.localStorage.setItem(
+        DRAFT_KEY,
+        JSON.stringify({ personality, tone, guardrails }),
+      );
+    }, 300);
+    return () => clearTimeout(t);
+  }, [isDirty, personality, tone, guardrails]);
+
+  // beforeunload nativo do browser (close/reload).
+  useEffect(() => {
+    if (!isDirty) return;
+    function handler(e: BeforeUnloadEvent) {
+      e.preventDefault();
+      e.returnValue = "";
+    }
+    window.addEventListener("beforeunload", handler);
+    return () => window.removeEventListener("beforeunload", handler);
+  }, [isDirty]);
+
+  function restoreDraft() {
+    if (typeof window === "undefined") return;
+    const raw = window.localStorage.getItem(DRAFT_KEY);
+    if (!raw) {
+      setDraftBannerOpen(false);
+      return;
+    }
+    try {
+      const draft = JSON.parse(raw) as {
+        personality?: string;
+        tone?: string;
+        guardrails?: string[];
+      };
+      if (typeof draft.personality === "string") setPersonality(draft.personality);
+      if (typeof draft.tone === "string") setTone(draft.tone);
+      if (Array.isArray(draft.guardrails)) setGuardrails(draft.guardrails);
+    } catch {
+      // ignora
+    }
+    setDraftBannerOpen(false);
+  }
+
+  function discardDraft() {
+    if (typeof window !== "undefined") window.localStorage.removeItem(DRAFT_KEY);
+    setDraftBannerOpen(false);
+  }
+
   function handleAddGuardrail() {
-    setGuardrails((prev) => [...prev, ""]);
+    setGuardrails((prev) => {
+      const next = [...prev, ""];
+      setAutoFocusIdx(next.length - 1);
+      return next;
+    });
   }
 
   function handleGuardrailChange(idx: number, next: string) {
@@ -81,6 +202,16 @@ export function PromptConfigForm({ initial }: PromptConfigFormProps) {
 
   function handleRemoveGuardrail(idx: number) {
     setGuardrails((prev) => prev.filter((_, i) => i !== idx));
+    setAutoFocusIdx(null);
+  }
+
+  function handleGuardrailBlur(idx: number) {
+    // Auto-remove guardrail vazio no blur. Não cria a regra no banco se
+    // o usuário abriu o campo e clicou fora sem digitar nada.
+    if (guardrails[idx]?.trim().length === 0) {
+      setGuardrails((prev) => prev.filter((_, i) => i !== idx));
+    }
+    if (autoFocusIdx === idx) setAutoFocusIdx(null);
   }
 
   function handleSave() {
@@ -91,6 +222,7 @@ export function PromptConfigForm({ initial }: PromptConfigFormProps) {
         return;
       }
       toast.success("Comportamento do Agente Nex salvo.");
+      if (typeof window !== "undefined") window.localStorage.removeItem(DRAFT_KEY);
       router.refresh();
     });
   }

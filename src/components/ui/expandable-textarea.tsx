@@ -39,6 +39,8 @@ export interface ExpandableTextareaProps {
   className?: string
   maxLength?: number
   "aria-describedby"?: string
+  autoFocus?: boolean
+  onBlur?: (e: React.FocusEvent<HTMLTextAreaElement>) => void
 }
 
 export function ExpandableTextarea({
@@ -52,6 +54,8 @@ export function ExpandableTextarea({
   className,
   maxLength,
   "aria-describedby": ariaDescribedBy,
+  autoFocus,
+  onBlur,
 }: ExpandableTextareaProps) {
   const [open, setOpen] = React.useState(false)
 
@@ -77,6 +81,8 @@ export function ExpandableTextarea({
         disabled={disabled}
         maxLength={maxLength}
         aria-describedby={ariaDescribedBy}
+        autoFocus={autoFocus}
+        onBlur={onBlur}
         className={cn("pr-10", className)}
       />
 
