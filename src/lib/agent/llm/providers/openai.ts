@@ -314,6 +314,13 @@ export class OpenAIClient implements ProviderClient {
     // Items a preservar como contexto opaco para o proximo turno: reasoning
     // (com summary) e function_call. function_call_output eh adicionado pelo
     // run-agent apos executar a tool (nao volta na resposta deste turno).
+    //
+    // CRITICO: com store:false, a OpenAI NAO persiste os items entre chamadas.
+    // Se reenviarmos com o campo `id` (que eh referencia ao state), a API
+    // retorna 404 "Item with id X not found. Items are not persisted when
+    // store is set to false". Solucao: strippar o `id` dos reasoning items
+    // antes de salvar no contexto. function_call mantem `call_id` (que eh
+    // necessario para parear com function_call_output, nao depende de state).
     const reasoningItems: unknown[] = [];
     for (const item of rData.output ?? []) {
       if (item.type === "message" && Array.isArray(item.content)) {
@@ -330,9 +337,15 @@ export class OpenAIClient implements ProviderClient {
           args = { _raw: item.arguments };
         }
         toolCalls.push({ id: item.call_id, name: item.name, arguments: args });
-        reasoningItems.push(item);
+        // Preservar function_call mantendo call_id mas removendo `id` interno.
+        const { id: _fcId, ...fcWithoutInternalId } = item;
+        void _fcId;
+        reasoningItems.push(fcWithoutInternalId);
       } else if (item.type === "reasoning") {
-        reasoningItems.push(item);
+        // Remove `id` (referencia a state nao-persistido) e preserva summary/content.
+        const { id: _rsId, ...rsWithoutId } = item;
+        void _rsId;
+        reasoningItems.push(rsWithoutId);
       }
     }
 
@@ -377,7 +390,9 @@ function extractInstructions(messages: ChatMessage[]): {
   };
 }
 
-/** Coleta items opacos de reasoningHistory pertencentes ao provider OpenAI. */
+/** Coleta items opacos de reasoningHistory pertencentes ao provider OpenAI.
+ * Defensive: strippa `id` de reasoning items (compat com history antigo que
+ * pode ter sido gravado antes do fix de store:false). */
 function collectHistoryItems(history: ReasoningContext[] | undefined): unknown[] {
   if (!history) return [];
   const items: unknown[] = [];
@@ -385,10 +400,24 @@ function collectHistoryItems(history: ReasoningContext[] | undefined): unknown[]
     if (ctx.provider !== "openai") continue;
     const data = ctx.data as { items?: unknown[] } | null;
     if (data?.items && Array.isArray(data.items)) {
-      items.push(...data.items);
+      for (const item of data.items) {
+        items.push(stripOpenAiItemId(item));
+      }
     }
   }
   return items;
+}
+
+/** Remove `id` interno (mantem call_id) para compat com store:false. */
+function stripOpenAiItemId(item: unknown): unknown {
+  if (!item || typeof item !== "object") return item;
+  const obj = item as Record<string, unknown>;
+  if (obj.type === "reasoning" || obj.type === "function_call") {
+    const { id: _id, ...rest } = obj;
+    void _id;
+    return rest;
+  }
+  return item;
 }
 
 /** Insere historico de raciocinio apos a ultima mensagem user no input. */
