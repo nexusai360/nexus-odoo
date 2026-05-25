@@ -194,26 +194,56 @@ function BubbleSurface({
 }: {
   isUser: boolean;
   children: React.ReactNode;
-  // Props mantidos por compatibilidade mas nao usados aqui (BubbleSurface
-  // delega growth para CSS natural agora).
   layoutDep?: unknown;
   enableLayout?: boolean;
 }) {
+  // ResizeObserver mede o tamanho real do inner content. motion.div externo
+  // anima sua propria width/height para acompanhar essas medicoes. Sem FLIP
+  // (sem deformacao). Crescimento explicito visivel em 1.1s.
+  const reduce = useReducedMotion();
+  const innerRef = React.useRef<HTMLDivElement>(null);
+  const [size, setSize] = React.useState<{
+    width: number | "auto";
+    height: number | "auto";
+  }>({ width: "auto", height: "auto" });
+
+  React.useEffect(() => {
+    const el = innerRef.current;
+    if (!el) return;
+    // Measure inicial sem animar (animate respeita o initial="auto" no
+    // primeiro render).
+    const measure = () => {
+      const w = el.offsetWidth;
+      const h = el.offsetHeight;
+      setSize((prev) => (prev.width === w && prev.height === h ? prev : { width: w, height: h }));
+    };
+    measure();
+    const ro = new ResizeObserver(measure);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
+
   return (
-    <div
+    <motion.div
+      animate={size}
+      transition={
+        reduce
+          ? { duration: 0 }
+          : { duration: 1.1, ease: [0.22, 1, 0.36, 1] }
+      }
       className={cn(
-        // nex-bubble-grow: classe CSS em globals.css com
-        // "transition: width/height 1.1s + interpolate-size: allow-keywords"
-        // - faz a bolha animar smooth do tamanho atual ao novo conforme
-        // novos steps/texto entram. Sem FLIP, sem deformacao de filhos.
-        "nex-bubble-grow relative max-w-[85%] rounded-2xl px-3.5 py-2.5 text-sm leading-relaxed",
+        "relative max-w-[85%] rounded-2xl text-sm leading-relaxed",
         isUser
           ? "bg-violet-600/15 text-foreground"
           : "bg-muted text-foreground",
       )}
+      style={{ overflow: "hidden" }}
     >
-      {children}
-    </div>
+      {/* innerRef tem o padding/conteudo real; tamanho medido por RO. */}
+      <div ref={innerRef} className="px-3.5 py-2.5">
+        {children}
+      </div>
+    </motion.div>
   );
 }
 

@@ -293,23 +293,6 @@ input[type="search"]::-webkit-search-decoration {
   .nex-word-soft { animation: none; opacity: 1; transform: none; }
 }
 
-/* interpolate-size: habilita transicoes CSS de/para keywords como auto.
-   Sem isso "transition: height 1.1s" nao funciona quando o height atual
-   ou alvo eh "auto" (caso da bolha do Agente Nex crescendo com novos
-   steps). Chrome 129+, Safari 18+. Em browsers sem suporte, degrada
-   gracefully para crescimento instantaneo (comportamento atual). */
-:root {
-  interpolate-size: allow-keywords;
-}
-
-/* Bolha do assistant cresce suavemente em width/height. Resolve o
-   "tiro" reportado pelo usuario: bolha posicionava no destino quase
-   instantaneamente. Agora interpola via CSS transition pura, sem
-   FLIP do framer (que causava overshoot/deformacao). */
-.nex-bubble-grow {
-  transition: width 1.1s cubic-bezier(0.22, 1, 0.36, 1),
-              height 1.1s cubic-bezier(0.22, 1, 0.36, 1);
-}
-@media (prefers-reduced-motion: reduce) {
-  .nex-bubble-grow { transition: none; }
-}
+/* nex-bubble-grow + interpolate-size removidos: substituidos por
+   ResizeObserver + motion.div animate em BubbleSurface (agent-message.tsx).
+   Funciona em todo browser, sem depender de suporte a interpolate-size. */
