@@ -308,26 +308,23 @@ function AssistantTrailBlock({
             )}
           </AnimatePresence>
         </span>
-        <span className="relative flex-1 overflow-hidden">
-          <AnimatePresence initial={false} mode="wait">
+        <span className="relative flex-1">
+          <AnimatePresence initial={false}>
             <motion.span
               key={showThinking ? "label-thinking" : "label-done"}
-              initial={reduce ? false : { opacity: 0, y: 4, filter: "blur(2px)" }}
-              animate={{ opacity: 1, y: 0, filter: "blur(0px)" }}
-              exit={
-                reduce
-                  ? { opacity: 0 }
-                  : { opacity: 0, y: -4, filter: "blur(2px)" }
-              }
+              initial={reduce ? false : { opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={reduce ? { opacity: 0 } : { opacity: 0 }}
               transition={
-                reduce
-                  ? { duration: 0 }
-                  : { duration: 0.38, ease: EASE, filter: { duration: 0.28 } }
+                reduce ? { duration: 0 } : { duration: 0.18, ease: EASE }
               }
-              className="block truncate"
+              className="absolute inset-0 block truncate"
             >
               {showThinking ? <ShimmerText text={headerLabel} /> : headerLabel}
             </motion.span>
+            <span className="invisible block truncate" aria-hidden>
+              {headerLabel}
+            </span>
           </AnimatePresence>
         </span>
       </button>
@@ -353,17 +350,15 @@ function AssistantTrailBlock({
             expanded ? "translate-y-0" : "-translate-y-1",
           )}
         >
-          <motion.ul
+          <ul
             id="agent-trail-list"
             aria-live={streaming ? "polite" : undefined}
-            layout={!reduce ? true : false}
             className="mt-1 flex flex-col gap-0.5 pl-5"
           >
             <AnimatePresence initial={false}>
               {steps.map((s) => (
                 <motion.li
                   key={s.id}
-                  layout={!reduce ? true : false}
                   initial={
                     reduce ? false : { opacity: 0, y: -6, filter: "blur(2px)" }
                   }
@@ -422,7 +417,7 @@ function AssistantTrailBlock({
                 </motion.li>
               ))}
             </AnimatePresence>
-          </motion.ul>
+          </ul>
         </div>
       </div>
     </motion.div>
@@ -719,6 +714,10 @@ function ShimmerText({ text }: { text: string }) {
       style={{
         backgroundSize: "200% 100%",
         animation: "nexShimmer 2.2s ease-in-out infinite",
+        // Promove a layer proprio para isolar a pintura do gradient.
+        // Sem isso, quando algo abaixo do header cresce (steps entrando),
+        // o reflow re-pintava o gradient com subpixel diferente = tremor.
+        willChange: "background-position",
       }}
     >
       {text}
