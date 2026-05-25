@@ -207,7 +207,7 @@ function BubbleSurface({
       transition={
         reduce
           ? { duration: 0 }
-          : { layout: { duration: 0.65, ease: [0.22, 1, 0.36, 1] } }
+          : { layout: { duration: 1.1, ease: [0.22, 1, 0.36, 1] } }
       }
       className={cn(
         "relative max-w-[85%] rounded-2xl px-3.5 py-2.5 text-sm leading-relaxed",
@@ -402,8 +402,8 @@ function AssistantTrailBlock({
                     // trail termina de sumir, o body acabou de aparecer.
                     // Alinhado ao mesmo timing da bolha (650ms expo-out)
                     // para a transicao trail->trail+body ser homogenea.
-                    height: { duration: 0.65, ease: [0.22, 1, 0.36, 1] },
-                    opacity: { duration: 0.5, ease: [0.22, 1, 0.36, 1] },
+                    height: { duration: 1.1, ease: [0.22, 1, 0.36, 1] },
+                    opacity: { duration: 0.85, ease: [0.22, 1, 0.36, 1] },
                   }
             }
             style={{ overflow: "hidden" }}
@@ -433,8 +433,8 @@ function AssistantTrailBlock({
                       reduce
                         ? { duration: 0 }
                         : {
-                            duration: 0.325,
-                            delay: 0.325,
+                            duration: 0.55,
+                            delay: 0.55,
                             ease: [0.22, 1, 0.36, 1],
                           }
                     }
