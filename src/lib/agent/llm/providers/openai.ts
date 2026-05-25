@@ -311,16 +311,17 @@ export class OpenAIClient implements ProviderClient {
 
     let text = rData.output_text ?? "";
     const toolCalls: ToolCall[] = [];
-    // Items a preservar como contexto opaco para o proximo turno: reasoning
-    // (com summary) e function_call. function_call_output eh adicionado pelo
-    // run-agent apos executar a tool (nao volta na resposta deste turno).
+    // Items a preservar como contexto opaco para o proximo turno: APENAS
+    // items tipo "reasoning". O `function_call` NAO eh reinjetado aqui porque
+    // o run-agent ja preserva a sequencia via `conversation` (assistant com
+    // toolCalls + role:"tool" com tool result), que `mapMessagesToResponsesInput`
+    // converte em function_call + function_call_output no input do proximo
+    // turno. Reinjetar via reasoningHistory duplicaria o function_call,
+    // gerando OpenAI Responses 400 "No tool output found for function call X"
+    // (porque havia 2 function_calls com mesmo call_id e so 1 output).
     //
-    // CRITICO: com store:false, a OpenAI NAO persiste os items entre chamadas.
-    // Se reenviarmos com o campo `id` (que eh referencia ao state), a API
-    // retorna 404 "Item with id X not found. Items are not persisted when
-    // store is set to false". Solucao: strippar o `id` dos reasoning items
-    // antes de salvar no contexto. function_call mantem `call_id` (que eh
-    // necessario para parear com function_call_output, nao depende de state).
+    // store:false + id reference: alem da duplicidade, items tem campo `id`
+    // que eh referencia ao state nao-persistido. Strippa antes de salvar.
     const reasoningItems: unknown[] = [];
     for (const item of rData.output ?? []) {
       if (item.type === "message" && Array.isArray(item.content)) {
@@ -337,10 +338,7 @@ export class OpenAIClient implements ProviderClient {
           args = { _raw: item.arguments };
         }
         toolCalls.push({ id: item.call_id, name: item.name, arguments: args });
-        // Preservar function_call mantendo call_id mas removendo `id` interno.
-        const { id: _fcId, ...fcWithoutInternalId } = item;
-        void _fcId;
-        reasoningItems.push(fcWithoutInternalId);
+        // function_call NAO entra em reasoningItems (duplicaria no proximo turno).
       } else if (item.type === "reasoning") {
         // Remove `id` (referencia a state nao-persistido) e preserva summary/content.
         const { id: _rsId, ...rsWithoutId } = item;

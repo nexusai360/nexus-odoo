@@ -78,11 +78,11 @@ export async function querySaldoProduto(
     | { totalMatches: number; layer: "exact" | "fuzzy" | "none" }
     | undefined;
   if (filtros.termo) {
-    const { searchProductByNameWithMeta } = await import("./_search-helpers");
+    const { searchProductByNameWithMeta } = await import("./_search-helpers.js");
     const r = await searchProductByNameWithMeta(prisma, filtros.termo);
     produtoIdsFiltro = r.ids;
     buscaMeta = { totalMatches: r.totalMatches, layer: r.layer };
-    if (produtoIdsFiltro.length === 0) {
+    if (produtoIdsFiltro && produtoIdsFiltro.length === 0) {
       return {
         kpis: { totalProdutos: 0, produtosNegativos: 0, valorTotal: 0 },
         linhas: [],

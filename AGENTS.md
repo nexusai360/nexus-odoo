@@ -45,6 +45,17 @@ Estes arquivos têm alta probabilidade de conflito porque várias features tocam
 - `src/mcp/` (servidor MCP — F4)
 - `.env.example`
 
+### REGRA DE RAIZ: rebuild de containers após mudar código
+
+> Cada container dev (`app`, `mcp`, `worker`) **não usa volume mount**:
+> alterações no host só chegam após `docker compose build <svc>` +
+> `up -d <svc>`. Mapa de impacto código→container completo em
+> `CLAUDE.md §2.1` e em `docs/runbooks/rebuild-containers.md`.
+> **Resumo:** mudou `mcp/**` ou `src/lib/reports/queries/**` ⇒ rebuild
+> `mcp`. Mudou `prisma/schema.prisma` ⇒ rebuild todos. Mudou `src/**`
+> ⇒ rebuild `app`. **Pular esse passo = feature entregue que não roda.**
+> Sempre que rebuildar, registre em `HISTORY.md` (`scope=infra`).
+
 Antes de tocar um deles:
 
 1. `git log -3 --oneline -- <arquivo>` — ver quem mexeu recente.
