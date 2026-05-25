@@ -261,7 +261,19 @@ describe("activateLlmConfig", () => {
     getCurrentUser.mockResolvedValue(SUPER_ADMIN_USER);
     prisma.llmConfig.findFirst.mockResolvedValue({ id: "cfg-1", provider: "anthropic" });
     prisma.llmConfig.updateMany.mockResolvedValue({ count: 3 });
-    prisma.llmConfig.update.mockResolvedValue({ id: "cfg-1", isActive: true });
+    prisma.llmConfig.update.mockResolvedValue({
+      id: "cfg-1",
+      isActive: true,
+      model: "claude-haiku-4-5",
+      provider: "anthropic",
+    });
+    // Onda 7: activateLlmConfig agora chama reconcileReasoningEffort que
+    // consulta agentSettings.findUnique. Mockar para evitar crash.
+    prisma.agentSettings.findUnique.mockResolvedValue({
+      reasoningEffort: "medium",
+      reasoningCheckpoint: "PRODUCTION",
+    });
+    prisma.agentSettings.update.mockResolvedValue({});
 
     const result = await activateLlmConfig("cfg-1");
 
@@ -270,10 +282,12 @@ describe("activateLlmConfig", () => {
       where: { isActive: true },
       data: { isActive: false },
     });
-    expect(prisma.llmConfig.update).toHaveBeenCalledWith({
-      where: { id: "cfg-1" },
-      data: { isActive: true },
-    });
+    expect(prisma.llmConfig.update).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { id: "cfg-1" },
+        data: { isActive: true },
+      }),
+    );
   });
 
   it("retorna erro quando config não existe", async () => {
