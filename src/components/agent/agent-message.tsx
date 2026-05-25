@@ -202,7 +202,11 @@ function BubbleSurface({
   return (
     <div
       className={cn(
-        "relative max-w-[85%] rounded-2xl px-3.5 py-2.5 text-sm leading-relaxed",
+        // nex-bubble-grow: classe CSS em globals.css com
+        // "transition: width/height 1.1s + interpolate-size: allow-keywords"
+        // - faz a bolha animar smooth do tamanho atual ao novo conforme
+        // novos steps/texto entram. Sem FLIP, sem deformacao de filhos.
+        "nex-bubble-grow relative max-w-[85%] rounded-2xl px-3.5 py-2.5 text-sm leading-relaxed",
         isUser
           ? "bg-violet-600/15 text-foreground"
           : "bg-muted text-foreground",
@@ -814,8 +818,16 @@ function TypewriterBody({
   }, [reduce]);
 
   const caughtUp = visibleCount >= tokens.length;
-  // Catch-up + done: swap para MarkdownLite (bolds, listas, code formatam).
-  if (caughtUp && !streaming) {
+  // Done: swap para MarkdownLite (bolds, listas, code formatam).
+  // Antes exigia `caughtUp && !streaming`, mas, na primeira resposta de
+  // cada conversa, o RAF as vezes nao concluia o catch-up antes de done
+  // (visibleCount ficava aquem de tokens.length apos o conteudo final
+  // chegar de uma vez no evento done), deixando o usuario com texto
+  // plano sem formatacao. Trocamos para `!streaming`: assim que o
+  // backend sinaliza done, a UI renderiza ja formatado. As respostas
+  // seguintes ja vinham OK porque o RAF concluia a tempo - aqui
+  // garantimos consistencia entre o primeiro turno e os demais.
+  if (!streaming) {
     return <MarkdownLite content={content} />;
   }
 
