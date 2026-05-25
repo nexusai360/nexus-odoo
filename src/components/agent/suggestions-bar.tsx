@@ -60,7 +60,9 @@ export function SuggestionsBar({
     <div
       role="group"
       aria-label="Sugestões clicáveis"
-      className="flex flex-wrap gap-2 px-1 pt-1"
+      // Stack vertical alinhada a esquerda (pedido usuario 2026-05-25 02:00):
+      // chips em coluna, um por linha, todos colados na borda esquerda.
+      className="flex flex-col items-start gap-2 px-1 pt-1"
     >
       {final.map((s) => (
         <button
