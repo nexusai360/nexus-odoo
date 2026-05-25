@@ -129,7 +129,14 @@ export function AgentMessage({
           />
         ) : null}
         <AssistantBodyReveal hasContent={content.length > 0}>
-          <TypewriterBody content={content} streaming={streaming} />
+          {isUser ? (
+            // Mensagem do usuario: NUNCA tem typewriter, vai completa.
+            // Quando ele aperta Enter ou clica numa sugestao, a frase ja
+            // existe inteira; animar seria artificio sem sentido.
+            <span className="whitespace-pre-wrap">{content}</span>
+          ) : (
+            <TypewriterBody content={content} streaming={streaming} />
+          )}
         </AssistantBodyReveal>
         {createdAt && !streaming ? (
           <div
@@ -304,17 +311,33 @@ function AssistantTrailBlock({
             )}
           </AnimatePresence>
         </span>
-        {/* Label em position:absolute com placeholder invisivel mantendo a
-            largura. Crossfade paralelo (sem mode="wait") em 200ms. */}
+        {/* Label crossfade em paralelo (sem mode="wait"): old fica saindo
+            enquanto new entra. Duracao 0.5s com slight y translate +
+            blur reduction = morph mais visivel e premium, sensacao de
+            "transformacao" em vez de "swap brusco". */}
         <span className="relative flex-1">
           <AnimatePresence initial={false}>
             <motion.span
               key={showThinking ? "label-thinking" : "label-done"}
-              initial={reduce ? false : { opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={reduce ? { opacity: 0 } : { opacity: 0 }}
+              initial={
+                reduce
+                  ? false
+                  : { opacity: 0, y: 6, filter: "blur(3px)" }
+              }
+              animate={{ opacity: 1, y: 0, filter: "blur(0px)" }}
+              exit={
+                reduce
+                  ? { opacity: 0 }
+                  : { opacity: 0, y: -6, filter: "blur(3px)" }
+              }
               transition={
-                reduce ? { duration: 0 } : { duration: 0.2, ease: EASE }
+                reduce
+                  ? { duration: 0 }
+                  : {
+                      duration: 0.5,
+                      ease: EASE,
+                      filter: { duration: 0.4 },
+                    }
               }
               className="absolute inset-0 block truncate"
             >
@@ -360,15 +383,25 @@ function AssistantTrailBlock({
                 {steps.map((s) => (
                   <motion.li
                     key={s.id}
-                    // Entrada suave: opacity + translate generoso (8px) com
-                    // duracao 0.45s. Quando trail colapsa, deixa o PAI cuidar
-                    // do exit (sem exit individual = sem dupla animacao).
-                    initial={reduce ? false : { opacity: 0, y: -8 }}
-                    animate={{ opacity: 1, y: 0 }}
+                    // Entry SUAVE estilo premium (Linear/Vercel): blur 4→0
+                    // + opacity 0→1 + leve y -4. Sem transform agressivo;
+                    // duracao 0.6s com ease expo-out = sensacao de "se
+                    // materializando" em vez de "saltando para dentro".
+                    // Exit fica por conta do trail collapse pai.
+                    initial={
+                      reduce
+                        ? false
+                        : { opacity: 0, y: -4, filter: "blur(4px)" }
+                    }
+                    animate={{ opacity: 1, y: 0, filter: "blur(0px)" }}
                     transition={
                       reduce
                         ? { duration: 0 }
-                        : { duration: 0.45, ease: EASE }
+                        : {
+                            duration: 0.6,
+                            ease: EASE,
+                            filter: { duration: 0.45 },
+                          }
                     }
                     className="flex items-center gap-1.5 text-[11px]"
                   >
@@ -658,18 +691,20 @@ function AnimatedDots() {
 // keyframe nexWordIn em globals.css) so dispara na primeira vez. Quando
 // streaming termina, AgentMessage troca para MarkdownLite (renderiza
 // negrito, listas etc com syntax completa).
-// Typewriter NATIVO no frontend, valendo para QUALQUER provedor (OpenAI,
-// Anthropic, Gemini, OpenRouter). Independente do backend streamar token
-// a token ou retornar a resposta inteira de uma vez, o frontend revela
-// chars um a um via requestAnimationFrame.
+// SMOOTH STREAMING (padrao Vercel AI SDK / Linear / Notion AI): texto
+// revelado WORD-BY-WORD com fade-in suave + blur reduction. Independente
+// do backend (OpenAI, Anthropic, Gemini, OpenRouter), todos passam pelo
+// mesmo efeito visual.
 //
-// Quando o backend ja entrega aos poucos: digitacao acompanha o ritmo.
-// Quando o backend dumpa tudo (caso OpenAI sem stream): acelera para nao
-// acumular delay, mas mantem a digitacao visivel.
-//
-// Cursor com glow violet aparece enquanto digitando. Quando termina E
-// streaming flipou para false, troca para MarkdownLite (entao bolds,
-// listas e code formatam corretamente).
+// Funcionamento:
+// - Split em tokens (palavras + whitespace preservado).
+// - rAF loop incrementa `visibleCount` em palavras/seg adaptativos.
+// - Cada palavra renderiza com classe CSS `.nex-word-soft` que dispara
+//   keyframe `nexWordSoft` (opacity 0→1 + blur 4px→0) em 380ms.
+// - Whitespace renderiza como text node puro (sem span) para o wrap
+//   natural de linhas funcionar.
+// - Cursor com glow violet acompanha a digitacao.
+// - Quando catch-up + !streaming, swap automatico para MarkdownLite.
 function TypewriterBody({
   content,
   streaming,
@@ -677,16 +712,17 @@ function TypewriterBody({
   content: string;
   streaming: boolean;
 }) {
-  const [visible, setVisible] = React.useState(0);
-  const contentRef = React.useRef(content);
-  contentRef.current = content;
+  const tokens = React.useMemo(() => content.split(/(\s+)/), [content]);
+  const [visibleCount, setVisibleCount] = React.useState(0);
+  const tokensRef = React.useRef(tokens);
+  tokensRef.current = tokens;
   const visibleRef = React.useRef(0);
   const reduce = useReducedMotion();
 
   React.useEffect(() => {
     if (reduce) {
-      visibleRef.current = contentRef.current.length;
-      setVisible(visibleRef.current);
+      visibleRef.current = tokensRef.current.length;
+      setVisibleCount(visibleRef.current);
       return;
     }
     let rafId = 0;
@@ -694,22 +730,20 @@ function TypewriterBody({
     const tick = (now: number) => {
       const dt = now - lastTime;
       lastTime = now;
-      const target = contentRef.current.length;
+      const target = tokensRef.current.length;
       const cur = visibleRef.current;
       if (cur < target) {
         const gap = target - cur;
-        // Velocidade confortavel de leitura: 32 chars/seg baseline
-        // (~380 wpm, ritmo de digitacao humana rapida), acelera leve
-        // quando ha muito texto pendente mas com cap baixo (90 cps =
-        // ~1080 wpm) para a digitacao SEMPRE ficar visivel, sem virar
-        // flash. Para uma resposta de 300 chars o reveal dura ~3.3s -
-        // sensacao real de digitacao sem cansar.
-        const cps = Math.min(90, 32 + gap * 0.25);
-        const step = (dt / 1000) * cps;
+        // Words per second adaptativo: 7 wps baseline (~420 wpm legivel
+        // confortavel), acelera 0.5 wps por palavra de gap (sem cap
+        // agressivo). Para uma resposta de 80 palavras revela em ~6s
+        // - sensacao de digitacao premium, nao "brega".
+        const wps = Math.min(28, 7 + gap * 0.5);
+        const step = (dt / 1000) * wps;
         const next = Math.min(target, cur + step);
         visibleRef.current = next;
         const floored = Math.floor(next);
-        if (floored !== Math.floor(cur)) setVisible(floored);
+        if (floored !== Math.floor(cur)) setVisibleCount(floored);
       }
       rafId = requestAnimationFrame(tick);
     };
@@ -719,21 +753,38 @@ function TypewriterBody({
     };
   }, [reduce]);
 
-  const caughtUp = visible >= content.length;
-  // Quando catch-up + streaming false: troca para MarkdownLite para
-  // renderizar bold, listas e code com formatacao correta.
+  const caughtUp = visibleCount >= tokens.length;
+  // Catch-up + done: swap para MarkdownLite (bolds, listas, code formatam).
   if (caughtUp && !streaming) {
     return <MarkdownLite content={content} />;
   }
+
+  const visibleTokens = reduce ? tokens : tokens.slice(0, visibleCount);
+
   return (
     <span aria-live="polite" className="whitespace-pre-wrap">
-      {content.slice(0, reduce ? content.length : visible)}
-      {!reduce && (
+      {visibleTokens.map((tok, i) => {
+        // Whitespace como text node puro: garante wrap natural de linhas.
+        if (/^\s+$/.test(tok)) return <React.Fragment key={i}>{tok}</React.Fragment>;
+        // Palavra com classe CSS de fade-in suave (~380ms blur+opacity).
+        // Cada palavra anima APENAS na primeira renderizacao porque o
+        // animation-fill-mode forwards mantem estado final + React reusa o
+        // span por key.
+        return (
+          <span key={i} className="nex-word-soft">
+            {tok}
+          </span>
+        );
+      })}
+      {!reduce && !caughtUp && (
         <span
           aria-hidden="true"
-          className="ml-0.5 inline-block h-[1em] w-[2px] animate-pulse bg-violet-500 align-text-bottom motion-reduce:animate-none"
+          className="ml-0.5 inline-block h-[1em] w-[2px] align-text-bottom"
           style={{
-            boxShadow: "0 0 6px rgba(139, 92, 246, 0.6)",
+            background:
+              "linear-gradient(180deg, rgba(139,92,246,0.4) 0%, rgba(139,92,246,1) 50%, rgba(139,92,246,0.4) 100%)",
+            boxShadow: "0 0 8px rgba(139, 92, 246, 0.7), 0 0 16px rgba(139, 92, 246, 0.3)",
+            animation: "nexCursorPulse 1.1s ease-in-out infinite",
           }}
         />
       )}
