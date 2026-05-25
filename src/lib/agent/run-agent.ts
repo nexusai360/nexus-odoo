@@ -46,8 +46,12 @@ import type {
 } from "./llm/types";
 import type { AgentChannel } from "@/generated/prisma/client";
 
-/** Limite de iterações do loop de tool calling. */
-const MAX_ITERATIONS = 5;
+/** Limite de iterações do loop de tool calling.
+ *  Reduzido de 5 para 3 em 2026-05-25 apos prints recorrentes de "loop"
+ *  (7+ tool calls em uma mesma resposta). 3 iteracoes cobrem casos
+ *  legitimos (consulta inicial + consulta complementar + finalizacao)
+ *  sem dar margem pro modelo encadear tool calls especulativas. */
+const MAX_ITERATIONS = 3;
 
 /** Máximo de bytes aceitos no resultado de uma tool call (SPEC §4.3). */
 const MAX_TOOL_RESULT_BYTES = 24_576;

@@ -220,8 +220,8 @@ describe("composeSystemPrompt , sugestoes de desambiguacao", () => {
     expect(out).toContain("prefira responder com um QUANTITATIVO direto");
     expect(out).toContain("Evite a pergunta");
     // Guardrail contra loop.
-    expect(out).toContain("LIMITE DE TOOLS POR TURNO");
-    expect(out).toContain("nao faca mais de 3 chamadas");
+    expect(out).toContain("LIMITE RIGIDO DE TOOLS");
+    expect(out).toContain("maximo 2 chamadas de ferramenta");
   });
 
   test("diretriz aparece NO FINAL do prompt (recency bias)", () => {

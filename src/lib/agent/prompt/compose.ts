@@ -202,7 +202,7 @@ export function composeSystemPrompt(
       "\n- Se NAO vem agrupados naturalmente, traga o total simples + uma amostra de 3-5 itens. NAO chame a mesma tool de novo so para agrupar." +
       "\n- Use [[suggestions]] para drill-down (\"Liste as autorizadas\", \"Compare com mes anterior\")." +
       "\n\nEvite a pergunta \"qual visao voce quer?\" como resposta principal. Se for genuinamente impossivel responder sem essa clarificacao, ofereca a pergunta DEPOIS de ter trazido pelo menos o total + 1 amostra." +
-      "\n\nLIMITE DE TOOLS POR TURNO: nao faca mais de 3 chamadas de ferramenta para responder uma unica pergunta. Se nao conseguiu o dado em 3 tentativas, pare, traga o que tiver e explique honestamente que so consegue parte. Loop de tools mata a experiencia.",
+      "\n\nLIMITE RIGIDO DE TOOLS: maximo 2 chamadas de ferramenta por resposta. Voce TEM apenas 2 oportunidades de chamar tools para uma pergunta. Use-as bem. Apos a 2a chamada, RESPONDA com o que tiver, mesmo que parcial. NUNCA encadeie a mesma tool 2x esperando resultado diferente. NUNCA chame uma tool diferente esperando 'completar' a primeira: se a 1a tool nao deu o dado, e improvavel que a 2a de. Resposta parcial e honesta vale infinitamente mais que loop de tools.",
   );
 
   return parts.join("");
