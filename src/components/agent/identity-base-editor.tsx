@@ -216,7 +216,7 @@ export function IdentityBaseEditor({ initial }: IdentityBaseEditorProps) {
         <div
           role="status"
           aria-live="polite"
-          className="flex items-start gap-2 rounded-lg border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-xs text-amber-700 dark:text-amber-300"
+          className="flex items-start gap-2 rounded-lg border border-[#F6A10E]/40 bg-[#F6A10E]/10 px-3 py-2 text-xs text-amber-700 dark:text-amber-300"
         >
           <TriangleAlert className="mt-0.5 h-3.5 w-3.5 shrink-0" aria-hidden />
           <p className="leading-snug">
@@ -254,7 +254,7 @@ export function IdentityBaseEditor({ initial }: IdentityBaseEditorProps) {
         className={cn(
           "font-mono text-xs",
           isDirty &&
-            "[&:not(:focus)]:border-amber-400/45 [&:not(:focus)]:bg-amber-400/[0.045]",
+            "[&:not(:focus)]:border-[#F6A10E]/50 [&:not(:focus)]:bg-[#F6A10E]/[0.045]",
         )}
         aria-describedby="agent-identity-base-help"
       />
