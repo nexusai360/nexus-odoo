@@ -42,15 +42,15 @@ export function formatCompactCount(v: number | null | undefined): string {
     return new Intl.NumberFormat("pt-BR").format(n);
   }
   const units: Array<{ threshold: number; suffix: string }> = [
-    { threshold: 1_000_000_000_000_000, suffix: "QUA" },
-    { threshold: 1_000_000_000_000, suffix: "TRI" },
-    { threshold: 1_000_000_000, suffix: "BI" },
-    { threshold: 1_000_000, suffix: "MI" },
+    { threshold: 1_000_000_000_000_000, suffix: "Qua" },
+    { threshold: 1_000_000_000_000, suffix: "Tri" },
+    { threshold: 1_000_000_000, suffix: "Bi" },
+    { threshold: 1_000_000, suffix: "Mi" },
   ];
   for (const { threshold, suffix } of units) {
     if (n >= threshold) {
       const truncated = Math.floor((n / threshold) * 10) / 10;
-      return `${truncated.toLocaleString("pt-BR", { minimumFractionDigits: 1, maximumFractionDigits: 1 })} ${suffix}`;
+      return `${truncated.toLocaleString("pt-BR", { minimumFractionDigits: 1, maximumFractionDigits: 1 })}  ${suffix}`;
     }
   }
   return new Intl.NumberFormat("pt-BR").format(n);
