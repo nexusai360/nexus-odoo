@@ -170,6 +170,23 @@ export function IdentityBaseEditor({ initial }: IdentityBaseEditorProps) {
     return () => document.removeEventListener("click", onClick, true);
   }, [isDirty, router]);
 
+  // Intercepta back/forward do navegador (botões nativos).
+  useEffect(() => {
+    if (!isDirty) return;
+    const trapState = { __nexusDirtyTrap: true } as const;
+    window.history.pushState(trapState, "");
+    function onPop(_e: PopStateEvent) {
+      window.history.pushState(trapState, "");
+      setPendingNav(() => () => {
+        window.history.go(-2);
+      });
+    }
+    window.addEventListener("popstate", onPop);
+    return () => {
+      window.removeEventListener("popstate", onPop);
+    };
+  }, [isDirty]);
+
   function handleSave() {
     startSave(async () => {
       const result = await updateAgentSettings({

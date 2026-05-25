@@ -135,17 +135,19 @@ export function AgentMessage({
             durationMs={durationMs}
           />
         ) : null}
-        {streaming ? (
-          <StreamingText content={content} />
-        ) : (
-          <MarkdownLite content={content} />
-        )}
-        {streaming && content.length > 0 && (
-          <span
-            aria-hidden="true"
-            className="ml-0.5 inline-block h-[1em] w-[2px] animate-pulse bg-violet-500 align-text-bottom motion-reduce:animate-none"
-          />
-        )}
+        <AssistantBodyReveal hasContent={content.length > 0}>
+          {streaming ? (
+            <StreamingText content={content} />
+          ) : (
+            <MarkdownLite content={content} />
+          )}
+          {streaming && content.length > 0 && (
+            <span
+              aria-hidden="true"
+              className="ml-0.5 inline-block h-[1em] w-[2px] animate-pulse bg-violet-500 align-text-bottom motion-reduce:animate-none"
+            />
+          )}
+        </AssistantBodyReveal>
         {createdAt && !streaming ? (
           <div
             className={cn(
@@ -252,19 +254,56 @@ function AssistantTrailBlock({
             : "cursor-default",
         )}
       >
-        {showThinking ? (
-          <Sparkles
-            className="h-3.5 w-3.5 shrink-0 text-violet-500 motion-reduce:animate-none"
-            aria-hidden
-          />
-        ) : (
-          <Chevron
-            className="h-3.5 w-3.5 shrink-0 text-muted-foreground"
-            aria-hidden
-          />
-        )}
-        <span className="flex-1 truncate">
-          {showThinking ? <ShimmerText text={headerLabel} /> : headerLabel}
+        <span className="relative inline-flex h-3.5 w-3.5 shrink-0 items-center justify-center">
+          <AnimatePresence initial={false} mode="wait">
+            {showThinking ? (
+              <motion.span
+                key="icon-thinking"
+                initial={reduce ? false : { opacity: 0, scale: 0.7, rotate: -8 }}
+                animate={{ opacity: 1, scale: 1, rotate: 0 }}
+                exit={reduce ? { opacity: 0 } : { opacity: 0, scale: 0.7, rotate: 8 }}
+                transition={reduce ? { duration: 0 } : { duration: 0.32, ease: EASE }}
+                className="absolute inset-0 inline-flex items-center justify-center"
+                aria-hidden
+              >
+                <Sparkles className="h-3.5 w-3.5 text-violet-500" />
+              </motion.span>
+            ) : (
+              <motion.span
+                key="icon-done"
+                initial={reduce ? false : { opacity: 0, scale: 0.7 }}
+                animate={{ opacity: 1, scale: 1 }}
+                exit={reduce ? { opacity: 0 } : { opacity: 0, scale: 0.7 }}
+                transition={reduce ? { duration: 0 } : { duration: 0.32, ease: EASE }}
+                className="absolute inset-0 inline-flex items-center justify-center"
+                aria-hidden
+              >
+                <Chevron className="h-3.5 w-3.5 text-muted-foreground" />
+              </motion.span>
+            )}
+          </AnimatePresence>
+        </span>
+        <span className="relative flex-1 overflow-hidden">
+          <AnimatePresence initial={false} mode="wait">
+            <motion.span
+              key={showThinking ? "label-thinking" : "label-done"}
+              initial={reduce ? false : { opacity: 0, y: 4, filter: "blur(2px)" }}
+              animate={{ opacity: 1, y: 0, filter: "blur(0px)" }}
+              exit={
+                reduce
+                  ? { opacity: 0 }
+                  : { opacity: 0, y: -4, filter: "blur(2px)" }
+              }
+              transition={
+                reduce
+                  ? { duration: 0 }
+                  : { duration: 0.38, ease: EASE, filter: { duration: 0.28 } }
+              }
+              className="block truncate"
+            >
+              {showThinking ? <ShimmerText text={headerLabel} /> : headerLabel}
+            </motion.span>
+          </AnimatePresence>
         </span>
       </button>
       {/* Expand/collapse via CSS grid trick (grid-template-rows 0fr -> 1fr).
@@ -312,33 +351,80 @@ function AssistantTrailBlock({
                   }
                   className="flex items-center gap-1.5 text-[11px]"
                 >
-                  {s.state === "running" ? (
-                    <Database
-                      className="h-3 w-3 shrink-0 animate-pulse text-violet-500 motion-reduce:animate-none"
-                      aria-hidden
-                    />
-                  ) : (
-                    <Database
-                      className="h-3 w-3 shrink-0 text-violet-500/70"
-                      aria-hidden
-                    />
-                  )}
-              <span
-                className={cn(
-                  s.state === "running"
-                    ? "text-foreground/80"
-                    : "text-muted-foreground",
-                )}
-              >
-                {s.state === "running" ? "Consultando" : "Consultou"} {s.label}
-                {s.state === "running" ? "…" : ""}
-              </span>
+                  <span className="relative inline-flex h-3 w-3 shrink-0 items-center justify-center">
+                    <AnimatePresence initial={false} mode="wait">
+                      <motion.span
+                        key={s.state}
+                        initial={reduce ? false : { opacity: 0, scale: 0.6 }}
+                        animate={{ opacity: 1, scale: 1 }}
+                        exit={reduce ? { opacity: 0 } : { opacity: 0, scale: 0.6 }}
+                        transition={
+                          reduce ? { duration: 0 } : { duration: 0.3, ease: EASE }
+                        }
+                        className="absolute inset-0 inline-flex items-center justify-center"
+                        aria-hidden
+                      >
+                        <Database
+                          className={cn(
+                            "h-3 w-3",
+                            s.state === "running"
+                              ? "animate-pulse text-violet-500 motion-reduce:animate-none"
+                              : "text-violet-500/70",
+                          )}
+                        />
+                      </motion.span>
+                    </AnimatePresence>
+                  </span>
+                  <span
+                    className={cn(
+                      "transition-colors duration-300",
+                      s.state === "running"
+                        ? "text-foreground/80"
+                        : "text-muted-foreground",
+                    )}
+                  >
+                    {s.state === "running" ? "Consultando" : "Consultou"} {s.label}
+                    {s.state === "running" ? "…" : ""}
+                  </span>
                 </motion.li>
               ))}
             </AnimatePresence>
           </motion.ul>
         </div>
       </div>
+    </motion.div>
+  );
+}
+
+// Reveal do corpo da resposta: so monta quando o primeiro token chega; quando
+// monta, fade-in com delay curto para entrar DEPOIS que a trilha terminou de
+// recolher. Sequencia a "historia" da bolha: pensando -> consultando ->
+// (trilha colapsa) -> texto aparece, sem competicao visual.
+function AssistantBodyReveal({
+  hasContent,
+  children,
+}: {
+  hasContent: boolean;
+  children: React.ReactNode;
+}) {
+  const reduce = useReducedMotion();
+  if (!hasContent) return null;
+  return (
+    <motion.div
+      initial={reduce ? false : { opacity: 0, y: 3, filter: "blur(2px)" }}
+      animate={{ opacity: 1, y: 0, filter: "blur(0px)" }}
+      transition={
+        reduce
+          ? { duration: 0 }
+          : {
+              duration: 0.45,
+              ease: [0.16, 1, 0.3, 1] as const,
+              delay: 0.32,
+              filter: { duration: 0.3, delay: 0.32 },
+            }
+      }
+    >
+      {children}
     </motion.div>
   );
 }
@@ -571,10 +657,12 @@ function StreamingText({ content }: { content: string }) {
               wasSettled
                 ? undefined
                 : {
-                    // Stagger leve por palavra para parecer typewriter sem ser
-                    // mecanico. Cap em 80ms para nao acumular delay imenso em
-                    // respostas longas.
-                    animationDelay: `${Math.min((i % 12) * 18, 80)}ms`,
+                    // Stagger deliberado por palavra: cadencia de typewriter
+                    // que da tempo do usuario sentir cada palavra entrando.
+                    // Cap em 320ms para nao acumular delay infinito em
+                    // respostas longas, mas alto o bastante para a digitacao
+                    // parecer construida, nao "brotada".
+                    animationDelay: `${Math.min((i % 20) * 28, 320)}ms`,
                   }
             }
           >

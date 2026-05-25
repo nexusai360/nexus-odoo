@@ -226,6 +226,28 @@ export function PromptConfigForm({ initial }: PromptConfigFormProps) {
     return () => document.removeEventListener("click", onClick, true);
   }, [isDirty, router]);
 
+  // Intercepta back/forward do navegador. Empurramos um "trap" extra na
+  // history; quando o popstate dispara, abrimos o AlertDialog e re-empurramos
+  // o trap. Se o usuário confirmar, fazemos history.back de verdade.
+  useEffect(() => {
+    if (!isDirty) return;
+    const trapState = { __nexusDirtyTrap: true } as const;
+    window.history.pushState(trapState, "");
+    function onPop(_e: PopStateEvent) {
+      // Re-empurra o trap pra continuar interceptando.
+      window.history.pushState(trapState, "");
+      setPendingNav(() => () => {
+        // history.back() leva o usuário pra entrada anterior à atual.
+        // Como acabamos de pushState, precisamos voltar 2x para sair de fato.
+        window.history.go(-2);
+      });
+    }
+    window.addEventListener("popstate", onPop);
+    return () => {
+      window.removeEventListener("popstate", onPop);
+    };
+  }, [isDirty]);
+
   function handleAddGuardrail() {
     setGuardrails((prev) => {
       const next = [...prev, ""];
