@@ -207,7 +207,7 @@ function BubbleSurface({
       transition={
         reduce
           ? { duration: 0 }
-          : { layout: { duration: 0.55, ease: [0.16, 1, 0.3, 1] } }
+          : { layout: { duration: 0.34, ease: [0.22, 1, 0.36, 1] } }
       }
       className={cn(
         "relative max-w-[85%] rounded-2xl px-3.5 py-2.5 text-sm leading-relaxed",
@@ -296,7 +296,7 @@ function AssistantTrailBlock({
   //   nao sentir reflow vindo dos steps abaixo.
   // - §7 motion-consistency: duration unica de 200ms para crossfades.
   return (
-    <div className="mb-2">
+    <div>
       <button
         type="button"
         onClick={onToggle}
@@ -400,8 +400,10 @@ function AssistantTrailBlock({
                     // Esses tempos casam com o delay+duracao do
                     // BodyReveal (250ms delay + 400ms fade) - quando o
                     // trail termina de sumir, o body acabou de aparecer.
-                    height: { duration: 0.7, ease: EASE },
-                    opacity: { duration: 0.5, ease: EASE },
+                    // Alinhado ao mesmo timing da bolha (340ms expo-out)
+                    // para a transicao trail->trail+body ser homogenea.
+                    height: { duration: 0.34, ease: [0.22, 1, 0.36, 1] },
+                    opacity: { duration: 0.28, ease: [0.22, 1, 0.36, 1] },
                   }
             }
             style={{ overflow: "hidden" }}
@@ -421,10 +423,20 @@ function AssistantTrailBlock({
                     // BubbleSurface.motion.layout="size" (interpola entre
                     // tamanhos). Aqui so a opacity + slide subtil pra
                     // sensacao de "se materializando" sem susto.
-                    initial={reduce ? false : { opacity: 0, y: -3 }}
+                    initial={reduce ? false : { opacity: 0, y: -6 }}
                     animate={{ opacity: 1, y: 0 }}
+                    // Sincronia com a expansao da bolha (motion.layout 340ms):
+                    // delay 170ms (50% da expansao) + duracao 170ms = linha
+                    // termina exatamente quando a bolha termina de crescer.
+                    // Fade-in + slide-up, sem scale/blur. Easing identico.
                     transition={
-                      reduce ? { duration: 0 } : { duration: 0.5, ease: EASE }
+                      reduce
+                        ? { duration: 0 }
+                        : {
+                            duration: 0.17,
+                            delay: 0.17,
+                            ease: [0.22, 1, 0.36, 1],
+                          }
                     }
                     className="flex items-center gap-1.5 text-[11px]"
                   >
@@ -515,6 +527,10 @@ function AssistantBodyReveal({
       // que a trilha ja recolheu pelo menos metade. Fade 0.4s + leve
       // translate-y 4 pra 0. Sensacao de "se levantando" enquanto a
       // trilha some - sem ambos competirem no mesmo instante.
+      // mt-2 cria respiro do trail acima (trail nao tem mais mb-2 -
+      // a bolha solo "Pensando" agora tem padding equilibrado, e quando
+      // body aparece esta espacado dele).
+      className="mt-2"
       initial={reduce ? false : { opacity: 0, y: 4 }}
       animate={{ opacity: 1, y: 0 }}
       transition={
