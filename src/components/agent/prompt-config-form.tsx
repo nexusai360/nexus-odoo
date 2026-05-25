@@ -349,7 +349,7 @@ export function PromptConfigForm({ initial }: PromptConfigFormProps) {
           aria-describedby="agent-personality-help"
           className={cn(
             "min-h-[40px] max-h-[88px] field-sizing-content",
-            personalityDirty && "[&:not(:focus)]:border-yellow-400/50 [&:not(:focus)]:bg-yellow-400/[0.05]",
+            personalityDirty && "[&:not(:focus)]:border-amber-400/45 [&:not(:focus)]:bg-amber-400/[0.045]",
           )}
         />
         <p id="agent-personality-help" className="text-xs text-muted-foreground">
@@ -382,7 +382,7 @@ export function PromptConfigForm({ initial }: PromptConfigFormProps) {
           aria-describedby="agent-tone-help"
           className={cn(
             "min-h-[40px] max-h-[88px] field-sizing-content",
-            toneDirty && "[&:not(:focus)]:border-yellow-400/50 [&:not(:focus)]:bg-yellow-400/[0.05]",
+            toneDirty && "[&:not(:focus)]:border-amber-400/45 [&:not(:focus)]:bg-amber-400/[0.045]",
           )}
         />
         <p id="agent-tone-help" className="text-xs text-muted-foreground">
@@ -426,7 +426,7 @@ export function PromptConfigForm({ initial }: PromptConfigFormProps) {
                     className={cn(
                       "min-h-[40px] max-h-[88px] field-sizing-content",
                       guardrailDirty(idx, g) &&
-                        "[&:not(:focus)]:border-yellow-400/50 [&:not(:focus)]:bg-yellow-400/[0.05]",
+                        "[&:not(:focus)]:border-amber-400/45 [&:not(:focus)]:bg-amber-400/[0.045]",
                     )}
                   />
                   <span

@@ -254,7 +254,7 @@ export function IdentityBaseEditor({ initial }: IdentityBaseEditorProps) {
         className={cn(
           "font-mono text-xs",
           isDirty &&
-            "[&:not(:focus)]:border-yellow-400/50 [&:not(:focus)]:bg-yellow-400/[0.05]",
+            "[&:not(:focus)]:border-amber-400/45 [&:not(:focus)]:bg-amber-400/[0.045]",
         )}
         aria-describedby="agent-identity-base-help"
       />
