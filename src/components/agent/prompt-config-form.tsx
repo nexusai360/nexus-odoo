@@ -269,6 +269,21 @@ export function PromptConfigForm({ initial }: PromptConfigFormProps) {
 
   return (
     <div className="space-y-7">
+      {/* Banner no topo: alerta de mudanças não salvas. */}
+      {isDirty && (
+        <div
+          role="status"
+          aria-live="polite"
+          className="flex items-start gap-2 rounded-lg border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-xs text-amber-700 dark:text-amber-300"
+        >
+          <TriangleAlert className="mt-0.5 h-3.5 w-3.5 shrink-0" aria-hidden />
+          <p className="leading-snug">
+            Há alterações que ainda não foram aplicadas ao Agente Nex. Para
+            aplicar, clique em &ldquo;Salvar comportamento&rdquo;.
+          </p>
+        </div>
+      )}
+
       {/* Personalidade */}
       <div className="space-y-1.5">
         <div className="flex items-center justify-between gap-2">
