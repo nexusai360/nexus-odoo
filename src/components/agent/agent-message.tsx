@@ -24,6 +24,7 @@ import {
 } from "lucide-react";
 import * as React from "react";
 import { cn } from "@/lib/utils";
+import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import { AudioPlayer } from "@/components/agent/audio-player";
 import type { ProgressStep } from "./progress-trail";
 import { formatRelativeDateTime } from "@/lib/format-datetime-relative";
@@ -116,19 +117,10 @@ export function AgentMessage({
   const showTrail =
     !isUser && (streaming || (Array.isArray(steps) && steps.length > 0));
   return (
-    <div
-      className={cn(
-        "group/msg flex w-full",
-        isUser ? "justify-end" : "justify-start",
-      )}
-    >
+    <BubbleWrapper isUser={isUser}>
       <div
         className={cn(
           "relative max-w-[85%] rounded-2xl px-3.5 py-2.5 text-sm leading-relaxed",
-          // Anim sutil de surgir (fade + slide pequeno). Bolha cresce sozinha
-          // quando o trail/content vai aumentando porque o conteudo flui.
-          "transition-all duration-200 ease-out motion-reduce:transition-none",
-          "animate-in fade-in-50 slide-in-from-bottom-1 duration-300 motion-reduce:animate-none",
           isUser
             ? "bg-violet-600/15 text-foreground"
             : "bg-muted text-foreground",
@@ -163,7 +155,36 @@ export function AgentMessage({
         ) : null}
         <CopyButton text={content} />
       </div>
-    </div>
+    </BubbleWrapper>
+  );
+}
+
+// Wrapper com motion: opacity 0->1 com duration longa e easing suave.
+// Sem scale, sem slide brusco (feedback 2026-05-24: "brota grosseiramente,
+// chega assusta"). Container layout=true anima crescimento de altura quando
+// trail ganha steps ou content cresce, sem pulos. Respeita reduce-motion.
+function BubbleWrapper({
+  isUser,
+  children,
+}: {
+  isUser: boolean;
+  children: React.ReactNode;
+}) {
+  const reduce = useReducedMotion();
+  return (
+    <motion.div
+      layout={!reduce ? "position" : false}
+      initial={reduce ? false : { opacity: 0 }}
+      animate={{ opacity: 1 }}
+      transition={
+        reduce
+          ? { duration: 0 }
+          : { opacity: { duration: 0.45, ease: [0.16, 1, 0.3, 1] } }
+      }
+      className={cn("flex w-full", isUser ? "justify-end" : "justify-start")}
+    >
+      {children}
+    </motion.div>
   );
 }
 
@@ -184,23 +205,30 @@ function AssistantTrailBlock({
   onToggle?: () => void;
   durationMs?: number;
 }) {
+  const reduce = useReducedMotion();
   const total = steps.length;
   const running = steps.some((s) => s.state === "running");
   const durationLabel =
     typeof durationMs === "number" && durationMs > 0
       ? ` · ${(durationMs / 1000).toFixed(1)}s`
       : "";
-  const headerLabel = streaming || running
-    ? "Pensando"
-    : `Raciocínio · ${total}${total === 1 ? " etapa" : " etapas"}${durationLabel}`;
+  const headerLabel =
+    streaming || running
+      ? "Pensando"
+      : `Raciocínio · ${total}${total === 1 ? " etapa" : " etapas"}${durationLabel}`;
   const expanded = streaming || !collapsed;
   const Chevron = expanded ? ChevronDown : ChevronRight;
-  const showDots = streaming || running;
+  const showThinking = streaming || running;
+  const EASE = [0.16, 1, 0.3, 1] as const;
 
-  // Sem wrapper bordado/colorido. Fica liso dentro da bolha do assistant
-  // para nao criar visual de "card dentro de card" (feedback 2026-05-24 22:52).
   return (
-    <div className="mb-2">
+    <motion.div
+      layout={!reduce ? "size" : false}
+      transition={
+        reduce ? { duration: 0 } : { layout: { duration: 0.5, ease: EASE } }
+      }
+      className="mb-2"
+    >
       <button
         type="button"
         onClick={onToggle}
@@ -215,9 +243,9 @@ function AssistantTrailBlock({
             : "cursor-default",
         )}
       >
-        {showDots ? (
+        {showThinking ? (
           <Sparkles
-            className="h-3.5 w-3.5 shrink-0 animate-pulse text-violet-500 motion-reduce:animate-none"
+            className="h-3.5 w-3.5 shrink-0 text-violet-500 motion-reduce:animate-none"
             aria-hidden
           />
         ) : (
@@ -227,29 +255,58 @@ function AssistantTrailBlock({
           />
         )}
         <span className="flex-1 truncate">
-          {headerLabel}
-          {showDots ? <AnimatedDots /> : null}
+          {showThinking ? <ShimmerText text={headerLabel} /> : headerLabel}
         </span>
       </button>
-      {expanded ? (
-        <ul
-          id="agent-trail-list"
-          aria-live={streaming ? "polite" : undefined}
-          className="mt-1 flex flex-col gap-0.5 pl-5"
-        >
-          {steps.map((s) => (
-            <li key={s.id} className="flex items-center gap-1.5 text-[11px]">
-              {s.state === "running" ? (
-                <Database
-                  className="h-3 w-3 shrink-0 animate-pulse text-violet-500 motion-reduce:animate-none"
-                  aria-hidden
-                />
-              ) : (
-                <Database
-                  className="h-3 w-3 shrink-0 text-foreground/70"
-                  aria-hidden
-                />
-              )}
+      <AnimatePresence initial={false} mode="popLayout">
+        {expanded ? (
+          <motion.ul
+            key="trail-list"
+            id="agent-trail-list"
+            aria-live={streaming ? "polite" : undefined}
+            layout={!reduce ? true : false}
+            initial={reduce ? false : { opacity: 0, height: 0 }}
+            animate={{ opacity: 1, height: "auto" }}
+            exit={reduce ? { opacity: 0 } : { opacity: 0, height: 0 }}
+            transition={reduce ? { duration: 0 } : { duration: 0.45, ease: EASE }}
+            className="mt-1 flex flex-col gap-0.5 overflow-hidden pl-5"
+          >
+            <AnimatePresence initial={false}>
+              {steps.map((s) => (
+                <motion.li
+                  key={s.id}
+                  layout={!reduce ? true : false}
+                  initial={
+                    reduce ? false : { opacity: 0, y: -6, filter: "blur(2px)" }
+                  }
+                  animate={{ opacity: 1, y: 0, filter: "blur(0px)" }}
+                  exit={
+                    reduce
+                      ? { opacity: 0 }
+                      : { opacity: 0, y: -6, filter: "blur(2px)" }
+                  }
+                  transition={
+                    reduce
+                      ? { duration: 0 }
+                      : {
+                          duration: 0.4,
+                          ease: EASE,
+                          filter: { duration: 0.3 },
+                        }
+                  }
+                  className="flex items-center gap-1.5 text-[11px]"
+                >
+                  {s.state === "running" ? (
+                    <Database
+                      className="h-3 w-3 shrink-0 animate-pulse text-violet-500 motion-reduce:animate-none"
+                      aria-hidden
+                    />
+                  ) : (
+                    <Database
+                      className="h-3 w-3 shrink-0 text-foreground/70"
+                      aria-hidden
+                    />
+                  )}
               <span
                 className={cn(
                   s.state === "running"
@@ -260,11 +317,13 @@ function AssistantTrailBlock({
                 {s.state === "running" ? "Consultando" : "Consultou"} {s.label}
                 {s.state === "running" ? "…" : ""}
               </span>
-            </li>
-          ))}
-        </ul>
-      ) : null}
-    </div>
+                </motion.li>
+              ))}
+            </AnimatePresence>
+          </motion.ul>
+        ) : null}
+      </AnimatePresence>
+    </motion.div>
   );
 }
 
@@ -465,6 +524,31 @@ function AnimatedDots() {
         className="inline-block h-1 w-1 rounded-full bg-violet-500 motion-reduce:animate-none"
         style={{ animation: "agentDotBounce 1s ease-in-out infinite", animationDelay: "0.3s" }}
       />
+    </span>
+  );
+}
+
+// "Pensando" com shimmer wave passando suavemente pelas letras. Gradient
+// horizontal alterna foreground/40 -> foreground -> foreground/40 em loop
+// (3s). Sem brilho exagerado, sem flash; e o pulse "thinking" do Claude/
+// ChatGPT. Reduce-motion -> texto estatico.
+function ShimmerText({ text }: { text: string }) {
+  return (
+    <span
+      className={cn(
+        "inline-block bg-clip-text text-transparent",
+        "bg-[linear-gradient(90deg,var(--shimmer-from)_0%,var(--shimmer-to)_50%,var(--shimmer-from)_100%)]",
+        "motion-reduce:bg-none motion-reduce:text-foreground/80",
+      )}
+      style={{
+        backgroundSize: "200% 100%",
+        animation: "nexShimmer 2.4s ease-in-out infinite",
+        // CSS vars com cores que adaptam ao tema (foreground = current).
+        ["--shimmer-from" as string]: "rgba(115, 115, 130, 0.55)",
+        ["--shimmer-to" as string]: "currentColor",
+      }}
+    >
+      {text}
     </span>
   );
 }

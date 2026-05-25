@@ -254,3 +254,16 @@ input[type="search"]::-webkit-search-decoration {
   appearance: none;
   display: none;
 }
+
+/* Animações do Agente Nex (bubble).
+   - agentDotBounce: 3 dots da LoadingBubble + AnimatedDots (sequencial 0.15s).
+   - nexShimmer: gradient horizontal passando pelas letras de "Pensando" (header
+     da trilha), efeito sutil tipo Claude/ChatGPT durante thinking. */
+@keyframes agentDotBounce {
+  0%, 80%, 100% { transform: translateY(0); opacity: 0.55; }
+  40% { transform: translateY(-3px); opacity: 1; }
+}
+@keyframes nexShimmer {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
