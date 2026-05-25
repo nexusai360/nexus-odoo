@@ -32,6 +32,7 @@ import {
 } from "./conversation";
 import { reasoningCapsOf } from "./llm/catalog";
 import { composeSystemPrompt } from "./prompt/compose";
+import { enhanceWithChips } from "./enhance-chips";
 import { BI_SCHEMA_REFERENCE } from "./bi-schema-reference";
 import { progressLabel } from "./progress-labels";
 import { searchKb } from "./rag/search";
@@ -398,11 +399,38 @@ export async function runAgent(args: RunAgentInput): Promise<RunAgentResult> {
       );
 
       if (!result.toolCalls?.length) {
-        // Resposta final , limite vem do AgentSettings (default 3, hard cap 5).
-        const { message, suggestions } = extractSuggestions(
-          result.message,
-          agentSettings.maxSuggestions,
-        );
+        // Resposta final. Tenta Two-pass enhance: extrai bullets-perguntas
+        // como chips e remove do corpo. Em falha, fallback para
+        // extractSuggestions (canal [[suggestions]] do prompt).
+        let message: string;
+        let suggestions: string[];
+        const shouldEnhance =
+          (args.source === "bubble" || args.source === "suggestion") &&
+          result.message.length > 0;
+        if (shouldEnhance) {
+          try {
+            const enhanced = await enhanceWithChips({
+              client,
+              agentResponse: result.message,
+              recentHistory: conversation.slice(-5),
+              maxContextual: agentSettings.maxSuggestions,
+            });
+            message = enhanced.cleanMessage;
+            suggestions = enhanced.chips;
+          } catch (err) {
+            console.warn(
+              "[runAgent] enhanceWithChips fallback:",
+              err instanceof Error ? err.message : err,
+            );
+            const fb = extractSuggestions(result.message, agentSettings.maxSuggestions);
+            message = fb.message;
+            suggestions = fb.suggestions;
+          }
+        } else {
+          const fb = extractSuggestions(result.message, agentSettings.maxSuggestions);
+          message = fb.message;
+          suggestions = fb.suggestions;
+        }
         await persistMessage(args.conversationId, "assistant", message);
         // Persistir historico de raciocinio para o proximo turno (capa interna).
         try {
