@@ -5,18 +5,21 @@
  * Adaptações: usa calculateCost do catalog.ts unificado.
  */
 
-import { calculateCost } from "../catalog";
+import { calculateCost, effortToBudget, reasoningCapsOf } from "../catalog";
 import type {
   ChatMessage,
   ChatRequest,
   ChatResult,
   ProviderClient,
+  ReasoningContext,
   ToolCall,
   ToolDefinition,
 } from "../types";
 
 const ANTHROPIC_API_URL = "https://api.anthropic.com/v1/messages";
 const ANTHROPIC_VERSION = "2023-06-01";
+const INTERLEAVED_BETA = "interleaved-thinking-2025-05-14";
+const DEFAULT_TIMEOUT_MS = 120_000;
 
 interface AnthropicTextBlock {
   type: "text";
@@ -135,18 +138,54 @@ export class AnthropicClient implements ProviderClient {
       };
     }
 
+    const cap = reasoningCapsOf(this.model);
     const { system, messages } = mapMessages(request.messages);
+
+    // Onda 4: multi-turn injetando blocos thinking+tool_use do reasoningHistory.
+    const messagesWithHistory = injectAnthropicHistory(messages, request.reasoningHistory);
+
+    const tools = mapTools(request.tools);
+    const hasTools = !!tools && tools.length > 0;
+
+    // Calcular budget de thinking baseado no cap + effort.
+    const wantsThinking =
+      request.reasoningEffort && cap && cap.enabled && cap.supportsWithTools;
+    const budgetTokens = wantsThinking
+      ? request.reasoningMaxTokens ?? effortToBudget(this.model, request.reasoningEffort!) ?? null
+      : null;
+
+    // max_tokens deve ser > budget_tokens; clampar ao outputCap do modelo.
+    const baseMaxTokens = request.maxTokens ?? 1024;
+    let maxTokens = baseMaxTokens;
+    if (budgetTokens) {
+      maxTokens = budgetTokens + baseMaxTokens;
+      if (cap?.outputCap && maxTokens > cap.outputCap) {
+        maxTokens = cap.outputCap;
+      }
+    }
+
     const body: Record<string, unknown> = {
       model: this.model,
-      messages,
-      max_tokens: request.maxTokens ?? 1024,
+      messages: messagesWithHistory,
+      max_tokens: maxTokens,
     };
     if (system) body.system = system;
-    if (typeof request.temperature === "number") {
+    // Temperatura: Anthropic exige temperature=1 quando thinking esta ativo.
+    if (wantsThinking) {
+      body.temperature = 1;
+    } else if (typeof request.temperature === "number") {
       body.temperature = request.temperature;
     }
-    const tools = mapTools(request.tools);
     if (tools) body.tools = tools;
+
+    // Bloco thinking: adaptiveMode (4.6+) usa type:"adaptive"; demais "enabled".
+    if (wantsThinking && budgetTokens) {
+      body.thinking = {
+        type: cap!.anthropicThinking === "adaptive" ? "adaptive" : "enabled",
+        budget_tokens: budgetTokens,
+        display: "summarized",
+      };
+    }
 
     // Streaming habilitado quando solicitado, inclusive quando há tools.
     // A API Anthropic suporta SSE com tool_use , os blocos tool_use chegam
@@ -157,15 +196,36 @@ export class AnthropicClient implements ProviderClient {
       body.stream = true;
     }
 
-    const res = await fetch(ANTHROPIC_API_URL, {
-      method: "POST",
-      headers: {
-        "x-api-key": this.apiKey,
-        "anthropic-version": ANTHROPIC_VERSION,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify(body),
-    });
+    // Beta header para interleaved thinking nos modelos 4.5 que precisam.
+    const headers: Record<string, string> = {
+      "x-api-key": this.apiKey,
+      "anthropic-version": ANTHROPIC_VERSION,
+      "Content-Type": "application/json",
+    };
+    if (
+      wantsThinking
+      && hasTools
+      && cap?.anthropicInterleavedAuto === false
+      && cap.supportsWithTools
+    ) {
+      headers["anthropic-beta"] = INTERLEAVED_BETA;
+    }
+
+    const timeoutMs = cap?.requestTimeoutMs ?? DEFAULT_TIMEOUT_MS;
+    let res: Response;
+    try {
+      res = await fetch(ANTHROPIC_API_URL, {
+        method: "POST",
+        headers,
+        body: JSON.stringify(body),
+        signal: AbortSignal.timeout(timeoutMs),
+      });
+    } catch (err) {
+      if (err instanceof Error && err.name === "TimeoutError") {
+        throw new Error(`Anthropic timeout apos ${timeoutMs}ms`);
+      }
+      throw err;
+    }
 
     if (!res.ok) {
       const text = await res.text().catch(() => "");
@@ -179,21 +239,32 @@ export class AnthropicClient implements ProviderClient {
     const data = (await res.json()) as AnthropicResponse;
     let messageText = "";
     const toolCalls: ToolCall[] = [];
+    // Blocos preservaveis para o proximo turno (thinking, redacted_thinking, tool_use).
+    const reasoningBlocks: unknown[] = [];
     for (const block of data.content ?? []) {
-      if (block.type === "text") {
-        messageText += block.text;
-      } else if (block.type === "tool_use") {
+      const b = block as { type?: string; text?: string; id?: string; name?: string; input?: object };
+      if (b.type === "text") {
+        messageText += b.text ?? "";
+      } else if (b.type === "tool_use") {
         toolCalls.push({
-          id: block.id,
-          name: block.name,
-          arguments: block.input ?? {},
+          id: b.id ?? "",
+          name: b.name ?? "",
+          arguments: b.input ?? {},
         });
+        reasoningBlocks.push(block);
+      } else if (b.type === "thinking" || b.type === "redacted_thinking") {
+        reasoningBlocks.push(block);
       }
     }
 
     const tokensInput = data.usage?.input_tokens ?? 0;
     const tokensOutput = data.usage?.output_tokens ?? 0;
     const { costUsd } = calculateCost(this.model, tokensInput, tokensOutput);
+
+    const reasoningContext: ReasoningContext | undefined =
+      reasoningBlocks.length > 0
+        ? { provider: "anthropic", data: { blocks: reasoningBlocks } }
+        : undefined;
 
     return {
       message: messageText,
@@ -203,6 +274,10 @@ export class AnthropicClient implements ProviderClient {
         tokensOutput,
         costUsd: costUsd ?? 0,
       },
+      // Anthropic nao expoe reasoning_tokens separado; logger grava NULL.
+      reasoningTokens: undefined,
+      reasoningContext,
+      streamed: false,
     };
   }
 
@@ -297,6 +372,42 @@ export class AnthropicClient implements ProviderClient {
       message: messageText,
       toolCalls: toolCalls.length > 0 ? toolCalls : undefined,
       usage: { tokensInput, tokensOutput, costUsd: costUsd ?? 0 },
+      reasoningTokens: undefined,
+      streamed: true,
     };
   }
+}
+
+/**
+ * Injeta blocos opacos do reasoningHistory (Anthropic-only) como mensagens
+ * assistant intermediarias. Cada item de history vira uma mensagem assistant
+ * com os blocks preservados (thinking + tool_use). Inserido apos a primeira
+ * mensagem user e antes do tool_result correspondente.
+ *
+ * Simplificacao: aplica linearmente ao FINAL da conversa, antes da ultima
+ * mensagem (que normalmente eh um tool_result ou nova pergunta). Para
+ * conversas longas com varias iteracoes, o run-agent ja monta a sequencia
+ * correta via reasoningHistory crescente.
+ */
+function injectAnthropicHistory(
+  messages: Array<{ role: "user" | "assistant"; content: unknown }>,
+  history: ReasoningContext[] | undefined,
+): Array<{ role: "user" | "assistant"; content: unknown }> {
+  if (!history || history.length === 0) return messages;
+  const blocks: unknown[] = [];
+  for (const ctx of history) {
+    if (ctx.provider !== "anthropic") continue;
+    const data = ctx.data as { blocks?: unknown[] } | null;
+    if (data?.blocks && Array.isArray(data.blocks)) {
+      blocks.push(...data.blocks);
+    }
+  }
+  if (blocks.length === 0) return messages;
+  // Inserir como mensagem assistant antes da ultima mensagem.
+  if (messages.length === 0) return messages;
+  return [
+    ...messages.slice(0, -1),
+    { role: "assistant", content: blocks },
+    messages[messages.length - 1],
+  ];
 }
