@@ -383,25 +383,14 @@ function AssistantTrailBlock({
                 {steps.map((s) => (
                   <motion.li
                     key={s.id}
-                    // Entry SUAVE estilo premium (Linear/Vercel): blur 4→0
-                    // + opacity 0→1 + leve y -4. Sem transform agressivo;
-                    // duracao 0.6s com ease expo-out = sensacao de "se
-                    // materializando" em vez de "saltando para dentro".
+                    // Entry SIMPLES: opacity puro, sem blur, sem
+                    // translate. Sem transform = nada de jump de tamanho.
+                    // Duracao 0.35s ease-out = aparicao suave consistente.
                     // Exit fica por conta do trail collapse pai.
-                    initial={
-                      reduce
-                        ? false
-                        : { opacity: 0, y: -4, filter: "blur(4px)" }
-                    }
-                    animate={{ opacity: 1, y: 0, filter: "blur(0px)" }}
+                    initial={reduce ? false : { opacity: 0 }}
+                    animate={{ opacity: 1 }}
                     transition={
-                      reduce
-                        ? { duration: 0 }
-                        : {
-                            duration: 0.6,
-                            ease: EASE,
-                            filter: { duration: 0.45 },
-                          }
+                      reduce ? { duration: 0 } : { duration: 0.35, ease: EASE }
                     }
                     className="flex items-center gap-1.5 text-[11px]"
                   >
