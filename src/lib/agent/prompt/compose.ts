@@ -99,6 +99,24 @@ export function composeSystemPrompt(
       "\n- Quando oferecer opcoes, cubra todas as fatias naturais do dado: tudo, somente em aberto, somente vencidos quando for divida, somente do periodo em foco. Nao apresente lista parcial que omita a fatia obvia.",
   );
 
+  // REGRA OBRIGATORIA injetada no system prompt SEMPRE, independente do
+  // identity_base configurado pelo admin (que pode sobrescrever o default
+  // do codigo). Resolve o bug reportado em 2026-05-25: agente respondia
+  // "Encontrei X notas. Qual visao voce quer?" quando o resultado era
+  // grande, em vez de devolver o quantitativo direto.
+  parts.push(
+    "\n\n## REGRA OBRIGATORIA: Resultados grandes -> sempre traga quantitativo" +
+      "\nQuando uma ferramenta retornar muitos registros (resultado truncado, ou que cobre varios status/situacoes/categorias diferentes), faca SEMPRE assim:" +
+      "\n1. Agrupe os registros pela dimensao natural que os diferencia (status, situacao, categoria, mes, conta, tipo de documento, etc)." +
+      "\n2. Traga a CONTAGEM por grupo + o TOTAL. Quando fizer sentido, traga tambem o VALOR AGREGADO (soma de R$, soma de quantidade)." +
+      "\n3. Apos o quantitativo, ofereca drill-down nas sugestoes de pergunta (canal apropriado para o contexto). Cada sugestao e uma pergunta concreta que abriria UMA fatia." +
+      "\n\nEXEMPLO CORRETO (faca assim):" +
+      "\n\"Em 05/2026 constam 234 notas fiscais: 152 autorizadas, 41 em digitacao, 28 rejeitadas e 13 inutilizadas. Total faturado nas autorizadas: R$ 35.421.925,20.\"" +
+      "\n\nPROIBIDO (NUNCA faca):" +
+      "\n\"Encontrei X notas fiscais. Qual visao voce quer? - Somente autorizadas - Todas\"" +
+      "\n\nPor que: o usuario espera inteligencia. Quando voce devolve uma pergunta em vez da informacao que ele pode usar, vira ping-pong inutil. Quantitativo + drill-down resolve em UMA so ida e volta.",
+  );
+
   if (source === "suggestion") {
     parts.push(
       "\n\n## Entrada veio de sugestao clicada" +

@@ -212,4 +212,41 @@ describe("composeSystemPrompt , sugestoes de desambiguacao", () => {
     expect(out).toContain("mes do calendario corrente");
     expect(out).toContain("Nao faca mais de uma rodada de clarificacao");
   });
+
+  test("REGRA OBRIGATORIA: Resultados grandes - quantitativo obrigatorio", () => {
+    const out = composeSystemPrompt({ ...baseConfig }, []);
+    // Regra esta presente independente do identity_base (do DB ou hardcoded).
+    expect(out).toContain("Resultados grandes -> sempre traga quantitativo");
+    // Mecanica: agrupar por dimensao + contagem + total.
+    expect(out).toContain("CONTAGEM por grupo");
+    expect(out).toContain("TOTAL");
+    // Exemplo positivo concreto.
+    expect(out).toContain("152 autorizadas");
+    // Exemplo do que NAO fazer (anti-pattern).
+    expect(out).toContain("Qual visao voce quer");
+    expect(out).toContain("PROIBIDO");
+  });
+
+  test("regra sobrevive a identity_base customizado (do DB)", () => {
+    // Cenario real: admin tem identity_base de 8601 chars no DB. A regra
+    // de quantitativo precisa continuar sendo appendada nesse caso.
+    const out = composeSystemPrompt(
+      { ...baseConfig, identityBase: "Identidade totalmente customizada do admin." },
+      [],
+    );
+    expect(out).toContain("Identidade totalmente customizada do admin.");
+    expect(out).toContain("Resultados grandes -> sempre traga quantitativo");
+  });
+
+  test("advancedOverride SHORT-CIRCUITA tudo (poder total do admin)", () => {
+    // Decisao de design preexistente: quando admin usa advancedOverride,
+    // ele assume responsabilidade pelo prompt inteiro. Nem a regra de
+    // quantitativo nem o Comportamento sao appendados. Documentar.
+    const out = composeSystemPrompt(
+      { ...baseConfig, advancedOverride: "Prompt totalmente customizado." },
+      [],
+    );
+    expect(out).toBe("Prompt totalmente customizado.");
+    expect(out).not.toContain("Resultados grandes");
+  });
 });
