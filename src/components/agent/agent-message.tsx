@@ -125,6 +125,10 @@ export function AgentMessage({
       <div
         className={cn(
           "relative max-w-[85%] rounded-2xl px-3.5 py-2.5 text-sm leading-relaxed",
+          // Anim sutil de surgir (fade + slide pequeno). Bolha cresce sozinha
+          // quando o trail/content vai aumentando porque o conteudo flui.
+          "transition-all duration-200 ease-out motion-reduce:transition-none",
+          "animate-in fade-in-50 slide-in-from-bottom-1 duration-300 motion-reduce:animate-none",
           isUser
             ? "bg-violet-600/15 text-foreground"
             : "bg-muted text-foreground",
@@ -193,8 +197,10 @@ function AssistantTrailBlock({
   const Chevron = expanded ? ChevronDown : ChevronRight;
   const showDots = streaming || running;
 
+  // Sem wrapper bordado/colorido. Fica liso dentro da bolha do assistant
+  // para nao criar visual de "card dentro de card" (feedback 2026-05-24 22:52).
   return (
-    <div className="mb-2 rounded-xl border border-border/40 bg-background/30 px-2.5 py-1.5">
+    <div className="mb-2">
       <button
         type="button"
         onClick={onToggle}
@@ -210,7 +216,7 @@ function AssistantTrailBlock({
         )}
       >
         {showDots ? (
-          <Database
+          <Sparkles
             className="h-3.5 w-3.5 shrink-0 animate-pulse text-violet-500 motion-reduce:animate-none"
             aria-hidden
           />
@@ -240,7 +246,7 @@ function AssistantTrailBlock({
                 />
               ) : (
                 <Database
-                  className="h-3 w-3 shrink-0 text-emerald-500"
+                  className="h-3 w-3 shrink-0 text-foreground/70"
                   aria-hidden
                 />
               )}
