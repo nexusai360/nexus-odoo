@@ -183,62 +183,31 @@ export function AgentMessage({
 function BubbleSurface({
   isUser,
   children,
-  fastGrow = false,
 }: {
   isUser: boolean;
   children: React.ReactNode;
   layoutDep?: unknown;
   enableLayout?: boolean;
-  /** Quando true (typewriter ativo), animacao W/H usa 100ms para
-   *  bolha acompanhar char a char sem clipar. Quando false (trail
-   *  expandindo), usa 1.1s para o efeito suave de step entrando. */
   fastGrow?: boolean;
 }) {
-  const reduce = useReducedMotion();
-  const innerRef = React.useRef<HTMLDivElement>(null);
-  const [size, setSize] = React.useState<{
-    width: number | "auto";
-    height: number | "auto";
-  }>({ width: "auto", height: "auto" });
-
-  // Mede em TODO render. scrollWidth/scrollHeight dao o tamanho
-  // NATURAL do conteudo, mesmo quando o parent (motion.div) constraint
-  // o filho com width/height fixos. offsetWidth nao funcionava: dava
-  // o tamanho atual (constrained = nao mudava nunca). Resultado: width
-  // nao crescia.
-  React.useEffect(() => {
-    const el = innerRef.current;
-    if (!el) return;
-    const w = el.scrollWidth;
-    const h = el.scrollHeight;
-    setSize((prev) =>
-      prev.width === w && prev.height === h ? prev : { width: w, height: h },
-    );
-  });
-
+  // REVERTIDO: motion.div + ResizeObserver/scrollWidth davam medicao
+  // errada quando o conteudo wrappa (scrollWidth = parent width
+  // constrained, nao a largura natural sem wrap). Resultado visual:
+  // bolha squished com texto quebrando em 3-4 chars por linha.
+  // Voltando a div pura - crescimento natural CSS. O efeito de
+  // "expansao suave" vem do entry dos motion.li (550ms delay +
+  // 550ms duracao + slide-up). Sem regressao no typewriter.
   return (
-    <motion.div
-      animate={size}
-      transition={
-        reduce
-          ? { duration: 0 }
-          : {
-              duration: fastGrow ? 0.1 : 1.1,
-              ease: [0.22, 1, 0.36, 1],
-            }
-      }
+    <div
       className={cn(
-        "relative max-w-[85%] rounded-2xl text-sm leading-relaxed",
+        "relative max-w-[85%] rounded-2xl px-3.5 py-2.5 text-sm leading-relaxed",
         isUser
           ? "bg-violet-600/15 text-foreground"
           : "bg-muted text-foreground",
       )}
-      style={{ overflow: "hidden" }}
     >
-      <div ref={innerRef} className="px-3.5 py-2.5">
-        {children}
-      </div>
-    </motion.div>
+      {children}
+    </div>
   );
 }
 
