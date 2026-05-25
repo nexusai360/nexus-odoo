@@ -150,25 +150,34 @@ export function AgentBubble({
         ) : null}
       </AnimatePresence>
 
-      <AnimatePresence>
-        {open ? (
-          <ChatPanel
-            open={open}
-            onClose={() => setOpen(false)}
-            audioInputEnabled={audioInputEnabled}
-            imageInputEnabled={imageInputEnabled}
-            maxSuggestions={maxSuggestions}
-            personalizedWelcome={personalizedWelcome}
-            isSuperAdmin={isSuperAdmin}
-            conversationId={conversationId}
-            onConversationCreated={setConversationId}
-            onEndSession={() => {
-              setConversationId(null);
-              setOpen(false);
-            }}
-          />
-        ) : null}
-      </AnimatePresence>
+      {/* ChatPanel renderizado por mount condicional. O wrap em
+          AnimatePresence foi removido: como ChatPanel e um function
+          component (nao motion.*), AnimatePresence nao consegue aplicar
+          exit animation nos motion.divs internos e ainda deixava o painel
+          em estado travado depois do fechamento pelo X (cursor "proibido"
+          no FAB ate o refresh). Mount/initial animations dos motion.divs
+          continuam funcionando normalmente. */}
+      {open ? (
+        <ChatPanel
+          open={open}
+          onClose={() => setOpen(false)}
+          audioInputEnabled={audioInputEnabled}
+          imageInputEnabled={imageInputEnabled}
+          maxSuggestions={maxSuggestions}
+          personalizedWelcome={personalizedWelcome}
+          isSuperAdmin={isSuperAdmin}
+          conversationId={conversationId}
+          onConversationCreated={setConversationId}
+          onEndSession={() => {
+            // Encerrar sessao NAO fecha a bubble: so reseta o
+            // conversationId. Combinado com handleClear() dentro do
+            // ChatPanel (que zera messages + abortRef + conversationIdRef
+            // interno), o painel volta sozinho ao welcome (showWelcome
+            // = messages.length === 0).
+            setConversationId(null);
+          }}
+        />
+      ) : null}
     </>
   );
 }
