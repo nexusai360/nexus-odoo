@@ -12,7 +12,7 @@
  * Persiste via updateAgentSettings de agent-config.ts.
  */
 
-import { useEffect, useMemo, useRef, useState, useTransition } from "react";
+import { useEffect, useMemo, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import {
   History,
@@ -229,6 +229,42 @@ export function PromptConfigForm({ initial }: PromptConfigFormProps) {
 
   return (
     <div className="space-y-7">
+      {/* Banner de rascunho não salvo (localStorage). */}
+      {draftBannerOpen && (
+        <div
+          role="status"
+          className="flex items-start gap-3 rounded-lg border border-amber-500/30 bg-amber-500/10 px-3 py-2.5 text-xs text-amber-700 dark:text-amber-300"
+        >
+          <History className="mt-0.5 h-4 w-4 shrink-0" aria-hidden />
+          <div className="min-w-0 flex-1">
+            <p className="font-medium">Rascunho não salvo encontrado</p>
+            <p className="mt-0.5 leading-snug">
+              Você tinha alterações de comportamento que não foram salvas na
+              última visita. Quer restaurar agora ou descartar?
+            </p>
+          </div>
+          <div className="flex shrink-0 items-center gap-2">
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              onClick={discardDraft}
+              className="h-7 cursor-pointer text-amber-700 hover:bg-amber-500/15 hover:text-amber-800 dark:text-amber-300"
+            >
+              Descartar
+            </Button>
+            <Button
+              type="button"
+              size="sm"
+              onClick={restoreDraft}
+              className="h-7 cursor-pointer bg-amber-600 text-white hover:bg-amber-700"
+            >
+              Restaurar
+            </Button>
+          </div>
+        </div>
+      )}
+
       {/* Personalidade */}
       <div className="space-y-1.5">
         <div className="flex items-center justify-between gap-2">
@@ -322,6 +358,8 @@ export function PromptConfigForm({ initial }: PromptConfigFormProps) {
                     rows={1}
                     placeholder={`Regra ${idx + 1}`}
                     disabled={isSaving}
+                    autoFocus={autoFocusIdx === idx}
+                    onBlur={() => handleGuardrailBlur(idx)}
                     aria-describedby={`guardrail-counter-${idx}`}
                     className="min-h-[40px] max-h-[88px] field-sizing-content"
                   />
@@ -374,13 +412,25 @@ export function PromptConfigForm({ initial }: PromptConfigFormProps) {
         </div>
       </div>
 
-      {/* Ação principal , canto inferior direito, botão compacto. */}
-      <div className="flex items-center justify-end pt-3">
+      {/* Ação principal: aviso de não salvo à esquerda + botão à direita. */}
+      <div className="flex items-center justify-between gap-3 pt-3">
+        <div className="min-w-0 flex-1">
+          {isDirty && (
+            <p className="inline-flex items-center gap-1.5 text-[11px] text-amber-600 dark:text-amber-400">
+              <TriangleAlert className="h-3.5 w-3.5 shrink-0" aria-hidden />
+              Mudanças não salvas. Clique em &ldquo;Salvar comportamento&rdquo;
+              para aplicar.
+            </p>
+          )}
+        </div>
         <Button
           type="button"
           onClick={handleSave}
-          disabled={isSaving}
-          className="h-9 cursor-pointer bg-violet-600 text-white hover:bg-violet-700"
+          disabled={isSaving || !isDirty}
+          className={cn(
+            "h-9 cursor-pointer bg-violet-600 text-white hover:bg-violet-700",
+            !isDirty && "opacity-60",
+          )}
         >
           {isSaving ? (
             <Loader2 className="mr-1.5 h-4 w-4 animate-spin" />
@@ -390,6 +440,43 @@ export function PromptConfigForm({ initial }: PromptConfigFormProps) {
           Salvar comportamento
         </Button>
       </div>
+
+      {/* Pop-up de confirmação ao tentar sair com mudanças pendentes. */}
+      <AlertDialog
+        open={pendingNav !== null}
+        onOpenChange={(o) => {
+          if (!o) setPendingNav(null);
+        }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Sair sem salvar?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Você tem mudanças no comportamento que ainda não foram aplicadas
+              ao Agente Nex. Se sair agora sem salvar, elas só ficam guardadas
+              como rascunho local e podem ser perdidas.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel
+              onClick={() => setPendingNav(null)}
+              className="bg-violet-600 text-white hover:bg-violet-700"
+            >
+              Ficar e continuar editando
+            </AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => {
+                const nav = pendingNav;
+                setPendingNav(null);
+                nav?.();
+              }}
+              className="bg-destructive text-white hover:bg-destructive/90"
+            >
+              Sair mesmo assim
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
