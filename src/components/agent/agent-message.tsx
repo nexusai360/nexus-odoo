@@ -181,34 +181,26 @@ export function AgentMessage({
 // browser pinta a cada frame). Adicionado will-change:transform na
 // borda externa para promover layer (paint isolado, sem repaint da
 // vizinhanca quando altura muda).
-// Bubble com motion.layout="size" ATIVO no assistant durante a fase de
-// trail (steps mudando), DESATIVADO durante streaming (para nao mascarar
-// o typewriter que muda height char a char). Controle via prop
-// `hasStreamingText`: quando true (typewriter ativo), layout=false.
-// Resultado: bolha cresce SUAVEMENTE quando steps "Consultando..."
-// aparecem e quando trilha colapsa, mas typewriter renderiza limpo
-// quando texto chega.
+// BubbleSurface SEM motion.layout: o "lag de compressao" que aparecia
+// vinha do FLIP do framer (transform: scale) que deforma os filhos
+// durante a transicao. Agora a bolha cresce naturalmente via CSS
+// conforme novos steps ou texto entram. A sensacao de "expansao suave"
+// vem da entrada animada dos filhos (motion.li opacity+slide) e do
+// AnimatePresence height-auto do container da trilha. Sem deformacao
+// de texto, sem lag, sem "bolha nova nascendo".
 function BubbleSurface({
   isUser,
   children,
-  layoutDep,
-  enableLayout,
 }: {
   isUser: boolean;
   children: React.ReactNode;
+  // Props mantidos por compatibilidade mas nao usados aqui (BubbleSurface
+  // delega growth para CSS natural agora).
   layoutDep?: unknown;
-  enableLayout: boolean;
+  enableLayout?: boolean;
 }) {
-  const reduce = useReducedMotion();
   return (
-    <motion.div
-      layout={!reduce && enableLayout ? "size" : false}
-      layoutDependency={layoutDep}
-      transition={
-        reduce
-          ? { duration: 0 }
-          : { layout: { duration: 1.1, ease: [0.22, 1, 0.36, 1] } }
-      }
+    <div
       className={cn(
         "relative max-w-[85%] rounded-2xl px-3.5 py-2.5 text-sm leading-relaxed",
         isUser
@@ -217,7 +209,7 @@ function BubbleSurface({
       )}
     >
       {children}
-    </motion.div>
+    </div>
   );
 }
 
