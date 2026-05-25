@@ -15,6 +15,8 @@
 import { useMemo, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { Loader2, Plus, Save, Shield, Sparkles, Trash2, Wand2 } from "lucide-react";
+
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
@@ -117,10 +119,11 @@ export function PromptConfigForm({ initial }: PromptConfigFormProps) {
           value={personality}
           onChange={setPersonality}
           maxLength={MAX_PERSONALITY}
-          rows={3}
+          rows={2}
           placeholder="Ex.: Direto, prático, prefere bullets curtos. Evita rodeios."
           disabled={isSaving}
           aria-describedby="agent-personality-help"
+          className="min-h-[60px]"
         />
         <p id="agent-personality-help" className="text-xs text-muted-foreground">
           Como o Agente Nex se comporta. Defina voz, foco e atitude geral.
@@ -146,10 +149,11 @@ export function PromptConfigForm({ initial }: PromptConfigFormProps) {
           value={tone}
           onChange={setTone}
           maxLength={MAX_TONE}
-          rows={3}
+          rows={2}
           placeholder="Ex.: Profissional, mas amigável. Em pt-BR. Use 'você'."
           disabled={isSaving}
           aria-describedby="agent-tone-help"
+          className="min-h-[60px]"
         />
         <p id="agent-tone-help" className="text-xs text-muted-foreground">
           Estilo de escrita: formalidade, calor humano e vocabulário.
@@ -187,6 +191,7 @@ export function PromptConfigForm({ initial }: PromptConfigFormProps) {
                     placeholder={`Regra ${idx + 1}`}
                     disabled={isSaving}
                     aria-describedby={`guardrail-counter-${idx}`}
+                    className="min-h-[40px]"
                   />
                   <span
                     id={`guardrail-counter-${idx}`}
@@ -198,17 +203,24 @@ export function PromptConfigForm({ initial }: PromptConfigFormProps) {
                     {g.length.toLocaleString("pt-BR")}/{MAX_GUARDRAIL.toLocaleString("pt-BR")}
                   </span>
                 </div>
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="icon"
-                  onClick={() => handleRemoveGuardrail(idx)}
-                  disabled={isSaving}
-                  aria-label={`Remover guardrail ${idx + 1}`}
-                  className="mt-1 h-8 w-8 cursor-pointer text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
-                >
-                  <Trash2 className="h-4 w-4" />
-                </Button>
+                <Tooltip>
+                  <TooltipTrigger
+                    render={
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => handleRemoveGuardrail(idx)}
+                        disabled={isSaving}
+                        aria-label={`Remover guardrail ${idx + 1}`}
+                        className="mt-1 h-8 w-8 cursor-pointer text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
+                      />
+                    }
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </TooltipTrigger>
+                  <TooltipContent>Remover guardrail</TooltipContent>
+                </Tooltip>
               </li>
             ))}
           </ul>
