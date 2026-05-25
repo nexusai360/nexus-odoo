@@ -18,6 +18,7 @@ import { rebuildFatoApuracao } from "./fato-apuracao";
 import { rebuildFatoCartaCorrecao } from "./fato-carta-correcao";
 import { rebuildFatoCertificado } from "./fato-certificado";
 import { rebuildFatoReferencia } from "./fato-referencia";
+import { rebuildFatoProduto } from "./fato-produto";
 
 export interface FatoBuilderEntry {
   nome: string;
@@ -44,6 +45,10 @@ export const FATO_BUILDERS: FatoBuilderEntry[] = [
   { nome: "fato_carta_correcao", cycle: "incremental", run: rebuildFatoCartaCorrecao },
   { nome: "fato_certificado", cycle: "incremental", run: rebuildFatoCertificado },
   { nome: "fato_referencia", cycle: "incremental", run: rebuildFatoReferencia },
+  // Catalogo canonico de produtos (3787 linhas). Cycle incremental para
+  // pegar produtos novos rapidamente; truncate+insert do builder garante
+  // consistencia com raw_sped_produto.
+  { nome: "fato_produto", cycle: "incremental", run: rebuildFatoProduto },
 ];
 
 /**

@@ -21,6 +21,10 @@ const linha = z.object({
   saldoTotal: z.number(),
   valorTotal: z.number(),
   numLocais: z.number().int(),
+  /** true quando produto existe no cadastro mas sem linha de saldo. */
+  semEstoqueCadastrado: z.boolean().optional(),
+  /** Microcopy de contexto para o agente. */
+  mensagemContexto: z.string().optional(),
 });
 
 /**
@@ -85,6 +89,8 @@ function shape(d: Awaited<ReturnType<typeof querySaldoProduto>>) {
     saldoTotal: l.saldoTotal,
     valorTotal: l.valorTotal,
     numLocais: l.numLocais,
+    ...(l.semEstoqueCadastrado ? { semEstoqueCadastrado: true } : {}),
+    ...(l.mensagemContexto ? { mensagemContexto: l.mensagemContexto } : {}),
   }));
 
   // Preenche o sinal de ambiguidade quando a busca por termo casou com mais

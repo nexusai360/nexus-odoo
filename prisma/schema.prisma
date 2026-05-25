@@ -1960,6 +1960,44 @@ model FatoParceiro {
   @@map("fato_parceiro")
 }
 
+/// Catalogo canonico de produtos (todos os 3787 de raw_sped_produto).
+/// Fonte primaria de busca: cobre cadastro inteiro independente de saldo.
+/// Saldo continua em fato_estoque_saldo; join por produto_id <-> odoo_id.
+model FatoProduto {
+  odooId             Int       @id @map("odoo_id")
+  nome               String
+  codigo             String?
+  codigoUnico        String?   @map("codigo_unico")
+  codigoBarras       String?   @map("codigo_barras")
+  ativo              Boolean   @default(true)
+  tipo               String?
+  marcaId            Int?      @map("marca_id")
+  marcaNome          String?   @map("marca_nome")
+  familiaId          Int?      @map("familia_id")
+  familiaNome        String?   @map("familia_nome")
+  unidadeNome        String?   @map("unidade_nome")
+  ncmCodigo          String?   @map("ncm_codigo")
+  controlaEstoque    Boolean   @default(false) @map("controla_estoque")
+  permiteVenda       Boolean   @default(true)  @map("permite_venda")
+  permiteCompra      Boolean   @default(true)  @map("permite_compra")
+  precoCusto         Decimal?  @map("preco_custo") @db.Decimal(14, 4)
+  precoVenda         Decimal?  @map("preco_venda") @db.Decimal(14, 4)
+  pesoLiquido        Decimal?  @map("peso_liquido") @db.Decimal(10, 4)
+  pesoBruto          Decimal?  @map("peso_bruto") @db.Decimal(10, 4)
+  criadoEm           DateTime? @map("criado_em")
+  atualizadoEmOdoo   DateTime? @map("atualizado_em_odoo")
+  atualizadoEm       DateTime  @default(now()) @map("atualizado_em")
+
+  @@index([ativo])
+  @@index([codigo])
+  @@index([codigoUnico])
+  @@index([codigoBarras])
+  @@index([familiaId])
+  @@index([marcaId])
+  @@index([controlaEstoque])
+  @@map("fato_produto")
+}
+
 // Colunas DEFINITIVAS — fonte de verdade: discovery O.2/O.3
 // (docs/superpowers/research/2026-05-18-f4-discovery-pre-schema.md).
 model FatoContaContabil {
