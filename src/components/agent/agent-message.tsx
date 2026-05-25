@@ -227,7 +227,12 @@ function BubbleWrapper({
   const reduce = useReducedMotion();
   return (
     <motion.div
-      layout={!reduce ? "position" : false}
+      // SEM layout="position": quando o filho (bolha) cresce em largura
+      // ou altura, o FLIP do framer aplicava transform: scale transitorio
+      // que aparecia como "overshoot horizontal" - bolha esticava muito
+      // pra direita e voltava. Sem layout, a bolha cresce 100% natural
+      // (CSS), e as transicoes internas (motion.li opacity+slide) cuidam
+      // do feel "suave".
       initial={reduce ? false : { opacity: 0 }}
       animate={{ opacity: 1 }}
       transition={
@@ -235,8 +240,6 @@ function BubbleWrapper({
           ? { duration: 0 }
           : { opacity: { duration: 0.45, ease: [0.16, 1, 0.3, 1] } }
       }
-      // group/msg restaurado: CopyButton interno usa group-hover/msg para
-      // aparecer no hover. Perdi a classe ao trocar o div pelo motion.div.
       className={cn(
         "group/msg flex w-full",
         isUser ? "justify-end" : "justify-start",
