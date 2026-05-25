@@ -538,20 +538,27 @@ export async function activateLlmConfig(configId: string): Promise<ActionResult>
       where: { isActive: true },
       data: { isActive: false },
     });
-    await prisma.llmConfig.update({
+    const activated = await prisma.llmConfig.update({
       where: { id: configId },
       data: { isActive: true },
+      select: { id: true, model: true, provider: true },
     });
+
+    // Onda 7 da modernizacao: reconciliar reasoning_effort/reasoning_checkpoint
+    // de acordo com a capability do novo modelo. Evita estado invalido quando
+    // admin troca para modelo que nao suporta reasoning ou usa adaptive mode.
+    await reconcileReasoningEffort(activated.model);
 
     void logAudit({
       userId: auth.userId,
       action: "agent_settings_updated",
       targetType: "LlmConfig",
       targetId: configId,
-      details: { provider: config.provider },
+      details: { provider: config.provider, model: activated.model },
     });
 
     revalidatePath("/agente/configuracao");
+    revalidatePath("/agente/recursos");
     return { success: true };
   } catch (err) {
     console.error("[activateLlmConfig]", err);
@@ -559,6 +566,49 @@ export async function activateLlmConfig(configId: string): Promise<ActionResult>
       success: false,
       error: err instanceof Error ? err.message : "Erro ao ativar config",
     };
+  }
+}
+
+/**
+ * Onda 7 da modernizacao: ajusta reasoning_effort e reasoning_checkpoint
+ * em AgentSettings de acordo com a capability do novo modelo ativo.
+ *
+ * Regras (CRIT-A2-9 + MED-A2-14 da spec):
+ *  1. cap null ou enabled=false: zera reasoning_effort e checkpoint=OFF.
+ *  2. supportsWithTools=false: forca checkpoint=OFF (modelo nao suporta com tools).
+ *  3. levels=["auto"]: forca reasoning_effort="auto".
+ *  4. valor atual nao esta em cap.levels: troca para o mais alto suportado.
+ */
+async function reconcileReasoningEffort(newModelId: string): Promise<void> {
+  const { reasoningCapsOf } = await import("@/lib/agent/llm/catalog");
+  const cap = reasoningCapsOf(newModelId);
+  const settings = await prisma.agentSettings.findUnique({
+    where: { id: "global" },
+    select: { reasoningEffort: true, reasoningCheckpoint: true },
+  });
+  if (!settings) return;
+
+  const patch: { reasoningEffort?: string | null; reasoningCheckpoint?: "OFF" | "PLAYGROUND" | "PRODUCTION" } = {};
+
+  if (!cap || !cap.enabled) {
+    patch.reasoningEffort = null;
+    patch.reasoningCheckpoint = "OFF";
+  } else if (!cap.supportsWithTools) {
+    patch.reasoningCheckpoint = "OFF";
+  } else if (cap.levels.length === 1 && cap.levels[0] === "auto") {
+    patch.reasoningEffort = "auto";
+  } else if (
+    settings.reasoningEffort
+    && !(cap.levels as string[]).includes(settings.reasoningEffort)
+  ) {
+    patch.reasoningEffort = cap.levels[cap.levels.length - 1];
+  }
+
+  if (Object.keys(patch).length > 0) {
+    await prisma.agentSettings.update({
+      where: { id: "global" },
+      data: patch,
+    });
   }
 }
 

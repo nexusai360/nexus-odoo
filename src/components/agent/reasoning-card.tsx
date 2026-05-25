@@ -22,6 +22,7 @@ import { ResourceCard } from "@/components/agent/resource-card";
 import {
   getModel,
   modelSupportsReasoning,
+  reasoningCapsOf,
   reasoningLevelsOf,
   type ReasoningLevel,
 } from "@/lib/agent/llm/catalog";
@@ -92,10 +93,31 @@ export function ReasoningCard({
   onEffortChange,
   loading,
 }: ReasoningCardProps) {
+  // Onda 7: 5 estados derivados do REASONING_CAPS canonico.
+  const cap = reasoningCapsOf(activeModelId);
+  // modelSupportsReasoning ainda usado por defaultCollapsed abaixo
   const supports = modelSupportsReasoning(activeModelId);
   const levels = reasoningLevelsOf(activeModelId);
   const effectiveLevel = resolveEffectiveLevel(effort, levels);
-  const cp: CheckpointState = supports ? checkpoint : "OFF";
+
+  // Estado computado:
+  //   "no_reasoning"          => modelo sem cap ou cap.enabled=false (card disabled, banner cinza)
+  //   "blocked_by_tools"      => cap.supportsWithTools=false (Haiku 4.5; banner amber, dropdown disabled)
+  //   "auto_only"             => cap.levels === ["auto"] (Gemini 3.1 Pro; dropdown disabled mostrando "Auto")
+  //   "adaptive_with_ceiling" => cap.adaptiveMode + levels multi (Claude 4.6+; dropdown habilitado, microcopy)
+  //   "custom"                => default (4 niveis, dropdown habilitado)
+  const state: "no_reasoning" | "blocked_by_tools" | "auto_only" | "adaptive_with_ceiling" | "custom" = !cap || !cap.enabled
+    ? "no_reasoning"
+    : !cap.supportsWithTools
+      ? "blocked_by_tools"
+      : cap.levels.length === 1 && cap.levels[0] === "auto"
+        ? "auto_only"
+        : cap.adaptiveMode
+          ? "adaptive_with_ceiling"
+          : "custom";
+
+  const cp: CheckpointState =
+    state === "no_reasoning" || state === "blocked_by_tools" ? "OFF" : checkpoint;
 
   const model = getModel(activeModelId);
   const outputPrice = model?.pricing?.outputPerMTok ?? null;
@@ -118,10 +140,17 @@ export function ReasoningCard({
       loading={loading}
       ariaLabel="Estado do modo raciocínio"
     >
-      {!supports ? (
+      {state === "no_reasoning" ? (
         <p className="text-xs text-muted-foreground">
           O modelo selecionado não tem suporte a raciocínio. Para usar
           raciocínio, escolha um modelo compatível na seção de conexão.
+        </p>
+      ) : state === "blocked_by_tools" ? (
+        <p className="text-xs rounded-md border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-amber-200">
+          Este modelo suporta raciocínio, mas não junto com ferramentas. Como o
+          agente usa ferramentas em toda consulta, o modo raciocínio foi
+          desligado automaticamente. Para usar raciocínio, escolha outro modelo
+          (Claude Sonnet 4.6+, Gemini 2.5 Pro, gpt-5.4-nano, entre outros).
         </p>
       ) : checkpoint !== "OFF" ? (
         <div className="grid gap-3 sm:grid-cols-2">
@@ -129,16 +158,33 @@ export function ReasoningCard({
             <span className="text-xs font-medium text-muted-foreground">
               Nível de esforço
             </span>
-            <SearchableSelect
-              value={effectiveLevel ?? ""}
-              onChange={(v) => onEffortChange(v as ReasoningLevel)}
-              searchPlaceholder="Buscar nível..."
-              options={levels.map((l) => ({
-                value: l,
-                label: LEVEL_LABELS[l],
-                notes: LEVEL_CONSUMPTION[l],
-              }))}
-            />
+            {state === "auto_only" ? (
+              <div
+                aria-disabled="true"
+                className="flex h-9 items-center rounded-md border border-input bg-muted/30 px-3 text-sm text-muted-foreground cursor-not-allowed"
+              >
+                Modelo define automaticamente
+                {cap?.autoModeHint ? (
+                  <span className="ml-2 text-xs">({cap.autoModeHint})</span>
+                ) : null}
+              </div>
+            ) : (
+              <SearchableSelect
+                value={effectiveLevel ?? ""}
+                onChange={(v) => onEffortChange(v as ReasoningLevel)}
+                searchPlaceholder="Buscar nível..."
+                options={levels.map((l) => ({
+                  value: l,
+                  label: LEVEL_LABELS[l],
+                  notes: LEVEL_CONSUMPTION[l],
+                }))}
+              />
+            )}
+            {state === "adaptive_with_ceiling" ? (
+              <p className="text-[11px] text-muted-foreground">
+                O modelo decide automaticamente até este nível.
+              </p>
+            ) : null}
           </div>
           <div className="space-y-1.5">
             <span className="text-xs font-medium text-muted-foreground">
