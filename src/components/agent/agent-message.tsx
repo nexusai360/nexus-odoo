@@ -340,8 +340,12 @@ function AssistantTrailBlock({
               reduce
                 ? { duration: 0 }
                 : {
-                    height: { duration: 0.28, ease: EASE },
-                    opacity: { duration: 0.2, ease: EASE },
+                    // Entrada generosa 0.45s; saida (recolhimento) mais
+                    // suave 0.55s com opacity saindo um pouco antes (0.4s)
+                    // - sensacao de "se recolhendo para o header" em vez
+                    // de "sumindo de uma vez".
+                    height: { duration: 0.55, ease: EASE },
+                    opacity: { duration: 0.4, ease: EASE },
                   }
             }
             style={{ overflow: "hidden" }}
@@ -356,16 +360,15 @@ function AssistantTrailBlock({
                 {steps.map((s) => (
                   <motion.li
                     key={s.id}
-                    // Apenas opacity + translate; sem blur (causava arrasto),
-                    // sem layout (causava re-measure tardio dentro do
-                    // AnimatePresence pai).
-                    initial={reduce ? false : { opacity: 0, y: -4 }}
+                    // Entrada suave: opacity + translate generoso (8px) com
+                    // duracao 0.45s. Quando trail colapsa, deixa o PAI cuidar
+                    // do exit (sem exit individual = sem dupla animacao).
+                    initial={reduce ? false : { opacity: 0, y: -8 }}
                     animate={{ opacity: 1, y: 0 }}
-                    exit={reduce ? { opacity: 0 } : { opacity: 0, y: -4 }}
                     transition={
                       reduce
                         ? { duration: 0 }
-                        : { duration: 0.22, ease: EASE }
+                        : { duration: 0.45, ease: EASE }
                     }
                     className="flex items-center gap-1.5 text-[11px]"
                   >
@@ -419,11 +422,10 @@ function AssistantTrailBlock({
 // monta, fade-in com delay curto para entrar DEPOIS que a trilha terminou de
 // recolher. Sequencia a "historia" da bolha: pensando -> consultando ->
 // (trilha colapsa) -> texto aparece, sem competicao visual.
-// Renderiza o corpo direto, sem fade-in. Tokens chegam via SSE a cada
-// ~30-80ms; o ritmo natural do streaming JA da a sensacao de digitacao
-// (ver StreamingText). Wrappear em motion.div com initial:opacity:0
-// causava "blast" do texto inteiro na entrada quando primeiro chunk era
-// grande - era exatamente o sintoma reportado pelo usuario.
+// Body fade-in suave 0.35s: entra em paralelo com o recolhimento da trilha
+// (0.55s) - quando body aparece a trilha ainda esta saindo, dando sensacao
+// de "passagem de bastao" continua em vez de transicao brusca. O typewriter
+// interno comeca a digitar imediatamente, mesmo durante o fade-in.
 function AssistantBodyReveal({
   hasContent,
   children,
@@ -431,8 +433,21 @@ function AssistantBodyReveal({
   hasContent: boolean;
   children: React.ReactNode;
 }) {
+  const reduce = useReducedMotion();
   if (!hasContent) return null;
-  return <>{children}</>;
+  return (
+    <motion.div
+      initial={reduce ? false : { opacity: 0 }}
+      animate={{ opacity: 1 }}
+      transition={
+        reduce
+          ? { duration: 0 }
+          : { duration: 0.35, ease: [0.16, 1, 0.3, 1] as const }
+      }
+    >
+      {children}
+    </motion.div>
+  );
 }
 
 /* -------------------------------------------------------------------------- */
@@ -683,11 +698,13 @@ function TypewriterBody({
       const cur = visibleRef.current;
       if (cur < target) {
         const gap = target - cur;
-        // Adaptativa: 55 chars/seg baseline (~660 wpm visivel),
-        // acelera 1.5 chars/seg por char de gap para nao deixar buffer
-        // crescer infinito. Cap 300 cps = limite superior do percebivel
-        // como digitacao (acima vira flash).
-        const cps = Math.min(300, 55 + gap * 1.5);
+        // Velocidade confortavel de leitura: 32 chars/seg baseline
+        // (~380 wpm, ritmo de digitacao humana rapida), acelera leve
+        // quando ha muito texto pendente mas com cap baixo (90 cps =
+        // ~1080 wpm) para a digitacao SEMPRE ficar visivel, sem virar
+        // flash. Para uma resposta de 300 chars o reveal dura ~3.3s -
+        // sensacao real de digitacao sem cansar.
+        const cps = Math.min(90, 32 + gap * 0.25);
         const step = (dt / 1000) * cps;
         const next = Math.min(target, cur + step);
         visibleRef.current = next;
