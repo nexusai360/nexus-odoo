@@ -85,6 +85,7 @@ export default async function ProtectedLayout({
             imageInputEnabled={imageInputEnabled}
             maxSuggestions={flags.maxSuggestions}
             personalizedWelcome={welcomeSet}
+            isSuperAdmin={user.platformRole === "super_admin"}
           />
         ) : null}
       </div>

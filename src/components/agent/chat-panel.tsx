@@ -17,7 +17,7 @@
  */
 
 import { motion, useReducedMotion } from "framer-motion";
-import { Loader2, LogOut, Mic, MoreVertical, Send, Sparkles, Trash2, X } from "lucide-react";
+import { Download, Loader2, LogOut, Mic, MoreVertical, Send, Sparkles, Trash2, X } from "lucide-react";
 import * as React from "react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
@@ -29,6 +29,7 @@ import { AttachMenu, defaultAttachHandler } from "./attach-menu";
 import { MessageInput } from "./message-input";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { getConversationMessages } from "@/lib/actions/conversation-messages";
+import { exportConversationReport } from "@/lib/actions/agent-conversation-export";
 import { WELCOME_SUGGESTIONS } from "@/lib/agent/welcome-suggestions";
 
 interface ChatPanelProps {
@@ -50,6 +51,9 @@ interface ChatPanelProps {
   /** Sugestões iniciais personalizadas (auto-aprendizado por usuário).
    *  Quando vazias, o painel cai no catálogo curado WELCOME_SUGGESTIONS. */
   personalizedWelcome?: string[];
+  /** Quando true, renderiza no menu da bubble a opção "Baixar relatório
+   *  desta conversa". Restrito a super_admin pelo layout protegido. */
+  isSuperAdmin?: boolean;
 }
 
 interface UiMessage {
@@ -93,6 +97,7 @@ export function ChatPanel({
   onEndSession,
   maxSuggestions = 3,
   personalizedWelcome = [],
+  isSuperAdmin = false,
 }: ChatPanelProps) {
   // Sugestoes iniciais: prioridade ao set personalizado computado no server
   // (auto-aprendizado por usuario). Fallback ao catalogo curado quando o
@@ -561,6 +566,43 @@ export function ChatPanel({
                   <Trash2 className="h-3.5 w-3.5 text-muted-foreground" />
                   Limpar histórico
                 </button>
+                {isSuperAdmin ? (
+                  <button
+                    type="button"
+                    role="menuitem"
+                    onClick={async () => {
+                      setMenuOpen(false);
+                      const cid = conversationIdRef.current;
+                      if (!cid) {
+                        toast.info(
+                          "Nada para exportar ainda. Faça pelo menos uma pergunta.",
+                        );
+                        return;
+                      }
+                      const r = await exportConversationReport(cid);
+                      if (!r.ok) {
+                        toast.error(r.error);
+                        return;
+                      }
+                      const blob = new Blob([r.content], {
+                        type: "text/plain;charset=utf-8",
+                      });
+                      const url = URL.createObjectURL(blob);
+                      const a = document.createElement("a");
+                      a.href = url;
+                      a.download = r.filename;
+                      document.body.appendChild(a);
+                      a.click();
+                      a.remove();
+                      URL.revokeObjectURL(url);
+                      toast.success("Relatório baixado.");
+                    }}
+                    className="flex w-full cursor-pointer items-center gap-2 border-t border-border/50 px-3 py-2 text-left text-sm text-foreground transition-colors hover:bg-muted"
+                  >
+                    <Download className="h-3.5 w-3.5 text-muted-foreground" />
+                    Baixar relatório (.txt)
+                  </button>
+                ) : null}
                 {onEndSession ? (
                   <button
                     type="button"

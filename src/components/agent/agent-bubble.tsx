@@ -47,6 +47,10 @@ interface AgentBubbleProps {
    * erro; o ChatPanel cai no catálogo curado neste caso.
    */
   personalizedWelcome?: string[];
+  /** Quando true, renderiza no menu da bubble a opção "Baixar relatório
+   *  desta conversa" (exportConversationReport). Resolvido no layout
+   *  protegido com base em platformRole === "super_admin". */
+  isSuperAdmin?: boolean;
 }
 
 export function AgentBubble({
@@ -54,6 +58,7 @@ export function AgentBubble({
   imageInputEnabled = false,
   maxSuggestions = 3,
   personalizedWelcome = [],
+  isSuperAdmin = false,
 }: AgentBubbleProps = {}) {
   const [open, setOpen] = React.useState(false);
   // O conversationId vive AQUI (no FAB), e não no ChatPanel: assim ele
@@ -154,6 +159,7 @@ export function AgentBubble({
             imageInputEnabled={imageInputEnabled}
             maxSuggestions={maxSuggestions}
             personalizedWelcome={personalizedWelcome}
+            isSuperAdmin={isSuperAdmin}
             conversationId={conversationId}
             onConversationCreated={setConversationId}
             onEndSession={() => {
