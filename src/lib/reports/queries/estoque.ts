@@ -14,6 +14,7 @@
 
 import type { PrismaClient } from "@/generated/prisma/client";
 import { limparNomeLocal } from "@/lib/reports/local-nome";
+import { searchProductByNameWithMetaCanonical } from "./_search-helpers.js";
 
 // ---------------------------------------------------------------------------
 // Tipos de R1 , Saldo por produto
@@ -84,8 +85,7 @@ export async function querySaldoProduto(
     | undefined;
   if (filtros.termo) {
     // Usa o helper canonical contra fato_produto (catalogo completo, nao
-    // limitado a produtos com saldo).
-    const { searchProductByNameWithMetaCanonical } = await import("./_search-helpers.js");
+    // limitado a produtos com saldo). Import estatico no topo do arquivo.
     const r = await searchProductByNameWithMetaCanonical(prisma, filtros.termo);
     produtoIdsFiltro = r.ids;
     buscaMeta = { totalMatches: r.totalMatches, layer: r.layer === "codigo" ? "exact" : r.layer };
