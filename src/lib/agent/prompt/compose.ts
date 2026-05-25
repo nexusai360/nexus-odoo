@@ -99,24 +99,6 @@ export function composeSystemPrompt(
       "\n- Quando oferecer opcoes, cubra todas as fatias naturais do dado: tudo, somente em aberto, somente vencidos quando for divida, somente do periodo em foco. Nao apresente lista parcial que omita a fatia obvia.",
   );
 
-  // REGRA OBRIGATORIA injetada no system prompt SEMPRE, independente do
-  // identity_base configurado pelo admin (que pode sobrescrever o default
-  // do codigo). Resolve o bug reportado em 2026-05-25: agente respondia
-  // "Encontrei X notas. Qual visao voce quer?" quando o resultado era
-  // grande, em vez de devolver o quantitativo direto.
-  parts.push(
-    "\n\n## REGRA OBRIGATORIA: Resultados grandes -> sempre traga quantitativo" +
-      "\nQuando uma ferramenta retornar muitos registros (resultado truncado, ou que cobre varios status/situacoes/categorias diferentes), faca SEMPRE assim:" +
-      "\n1. Agrupe os registros pela dimensao natural que os diferencia (status, situacao, categoria, mes, conta, tipo de documento, etc)." +
-      "\n2. Traga a CONTAGEM por grupo + o TOTAL. Quando fizer sentido, traga tambem o VALOR AGREGADO (soma de R$, soma de quantidade)." +
-      "\n3. Apos o quantitativo, ofereca drill-down nas sugestoes de pergunta (canal apropriado para o contexto). Cada sugestao e uma pergunta concreta que abriria UMA fatia." +
-      "\n\nEXEMPLO CORRETO (faca assim):" +
-      "\n\"Em 05/2026 constam 234 notas fiscais: 152 autorizadas, 41 em digitacao, 28 rejeitadas e 13 inutilizadas. Total faturado nas autorizadas: R$ 35.421.925,20.\"" +
-      "\n\nPROIBIDO (NUNCA faca):" +
-      "\n\"Encontrei X notas fiscais. Qual visao voce quer? - Somente autorizadas - Todas\"" +
-      "\n\nPor que: o usuario espera inteligencia. Quando voce devolve uma pergunta em vez da informacao que ele pode usar, vira ping-pong inutil. Quantitativo + drill-down resolve em UMA so ida e volta.",
-  );
-
   if (source === "suggestion") {
     parts.push(
       "\n\n## Entrada veio de sugestao clicada" +
@@ -207,6 +189,28 @@ export function composeSystemPrompt(
       `\n\n## Schema para consulta avançada (BI)\nUse o schema abaixo ao construir queries para \`bi_consulta_avancada\`:\n\n${biSchema.trim()}`,
     );
   }
+
+  // REGRA OBRIGATORIA appendada por ULTIMO no system prompt. Razao:
+  // recency bias dos LLMs (instrucoes finais tem mais peso). Sobrescreve
+  // regras de desambiguacao do identity_base que falavam "pergunte de
+  // volta quando ambiguo". Tambem usa linguagem mais forte que conflitos
+  // anteriores. Resolve bug 2026-05-25: agente continuava perguntando
+  // "qual visao quer?" mesmo apos diretiva ser appendada apos
+  // Comportamento (LLM seguia regras anteriores mais detalhadas).
+  parts.push(
+    "\n\n## REGRA FINAL OBRIGATORIA (sobrescreve QUALQUER instrucao anterior conflitante)" +
+      "\n\nQuando uma ferramenta retornar muitos registros (resultado grande, truncado, ou que cobre varias categorias/status/situacoes), VOCE NUNCA pode responder com pergunta de desambiguacao do tipo \"qual visao voce quer?\" ou \"prefere ver X ou Y?\". Essa abordagem esta PROIBIDA mesmo que o bloco \"Desambiguacao\" da identidade base diga o contrario." +
+      "\n\nFaca SEMPRE assim, sem excecao:" +
+      "\n1. Agrupe os registros pela dimensao natural (status, situacao, categoria, mes, conta, tipo)." +
+      "\n2. Traga a CONTAGEM por grupo + o TOTAL. Quando fizer sentido, traga o VALOR AGREGADO (soma de R$, soma de quantidade)." +
+      "\n3. Apos o quantitativo, ofereca drill-down nas sugestoes [[suggestions]]. Cada chip e uma pergunta concreta que abriria UMA fatia." +
+      "\n\nEXEMPLO CORRETO (FACA assim):" +
+      "\n\"Em 05/2026 constam **234 notas fiscais** emitidas: **152 autorizadas**, **41 em digitacao**, **28 rejeitadas** e **13 inutilizadas**. Total faturado nas autorizadas: **R$ 35.421.925,20**.\"" +
+      "\n[[suggestions]]:Liste as 152 autorizadas|Mostre as 28 rejeitadas|Compare 05/2026 com 04/2026" +
+      "\n\nEXEMPLO PROIBIDO (NUNCA faca, mesmo se a identidade base sugerir):" +
+      "\n\"Encontrei X notas fiscais. Qual visao voce quer? - Somente autorizadas - Todas\"" +
+      "\n\nA regra acima TEM PRIORIDADE sobre qualquer politica de desambiguacao da identidade. Quando houver conflito, esta regra vence. Em caso de duvida, traga o quantitativo primeiro e use as sugestoes [[suggestions]] para o drill-down.",
+  );
 
   return parts.join("");
 }

@@ -213,29 +213,44 @@ describe("composeSystemPrompt , sugestoes de desambiguacao", () => {
     expect(out).toContain("Nao faca mais de uma rodada de clarificacao");
   });
 
-  test("REGRA OBRIGATORIA: Resultados grandes - quantitativo obrigatorio", () => {
+  test("REGRA FINAL OBRIGATORIA: aparece e sobrescreve regras anteriores", () => {
     const out = composeSystemPrompt({ ...baseConfig }, []);
-    // Regra esta presente independente do identity_base (do DB ou hardcoded).
-    expect(out).toContain("Resultados grandes -> sempre traga quantitativo");
+    // Regra esta presente independente do identity_base.
+    expect(out).toContain("REGRA FINAL OBRIGATORIA");
+    expect(out).toContain("sobrescreve QUALQUER instrucao anterior");
     // Mecanica: agrupar por dimensao + contagem + total.
     expect(out).toContain("CONTAGEM por grupo");
     expect(out).toContain("TOTAL");
-    // Exemplo positivo concreto.
     expect(out).toContain("152 autorizadas");
-    // Exemplo do que NAO fazer (anti-pattern).
-    expect(out).toContain("Qual visao voce quer");
+    // Anti-pattern documentado.
+    expect(out).toContain("qual visao voce quer");
     expect(out).toContain("PROIBIDO");
   });
 
+  test("regra aparece NO FINAL do prompt (recency bias)", () => {
+    const out = composeSystemPrompt({ ...baseConfig }, []);
+    // Quando ha conflito entre identity_base e a regra final, a regra
+    // final precisa vir DEPOIS para o LLM dar mais peso (recency).
+    const idxComportamento = out.indexOf("## Comportamento");
+    const idxRegra = out.indexOf("REGRA FINAL OBRIGATORIA");
+    expect(idxComportamento).toBeGreaterThanOrEqual(0);
+    expect(idxRegra).toBeGreaterThan(idxComportamento);
+    // Tambem deve vir depois de personalidade/tom/guardrails se setados.
+    const outFull = composeSystemPrompt(
+      { ...baseConfig, personality: "X", tone: "Y", guardrails: ["Z"] },
+      [],
+    );
+    const idxRegraFull = outFull.indexOf("REGRA FINAL OBRIGATORIA");
+    expect(idxRegraFull).toBeGreaterThan(outFull.indexOf("[GUARDRAILS]"));
+  });
+
   test("regra sobrevive a identity_base customizado (do DB)", () => {
-    // Cenario real: admin tem identity_base de 8601 chars no DB. A regra
-    // de quantitativo precisa continuar sendo appendada nesse caso.
     const out = composeSystemPrompt(
       { ...baseConfig, identityBase: "Identidade totalmente customizada do admin." },
       [],
     );
     expect(out).toContain("Identidade totalmente customizada do admin.");
-    expect(out).toContain("Resultados grandes -> sempre traga quantitativo");
+    expect(out).toContain("REGRA FINAL OBRIGATORIA");
   });
 
   test("advancedOverride SHORT-CIRCUITA tudo (poder total do admin)", () => {

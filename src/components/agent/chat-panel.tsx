@@ -255,26 +255,36 @@ export function ChatPanel({
   );
 
   // Helper: snap inicial. Coloca bubble.top em viewport.top - 8.
+  // CORRIGIDO: usa getBoundingClientRect porque o scrollRef NAO eh
+  // offsetParent (o wrapper.relative do FAB e). offsetTop apontaria pra
+  // posicao errada (relativa ao wrapper, nao ao scroll container).
   const snapBubbleTopToViewport = React.useCallback(
     (msgId: string) => {
+      const el = scrollRef.current;
       const bubble = messageRefsMap.current.get(msgId);
-      if (!bubble) return;
-      programmaticScrollTo(bubble.offsetTop - 8);
+      if (!el || !bubble) return;
+      const bRect = bubble.getBoundingClientRect();
+      const sRect = el.getBoundingClientRect();
+      // Quanto de scroll precisa pra que o topo da bolha fique no topo
+      // do scroll container (com 8px de respiro).
+      const target = el.scrollTop + (bRect.top - sRect.top) - 8;
+      programmaticScrollTo(target);
     },
     [programmaticScrollTo],
   );
 
   // Helper: re-snap durante streaming. Coloca bubble.bottom em
   // viewport.top + 60 (writing point perto do topo).
+  // CORRIGIDO: getBoundingClientRect (mesmo motivo do snap inicial).
   const snapWritingPointNearTop = React.useCallback(
     (msgId: string) => {
       const el = scrollRef.current;
       const bubble = messageRefsMap.current.get(msgId);
       if (!el || !bubble) return;
-      // offsetTop e offsetHeight estao em coordenadas do offset parent.
-      // Como o scrollEl e o offsetParent (relative), eles estao no
-      // mesmo sistema. targetScrollTop = bubble.bottom - 60.
-      const target = bubble.offsetTop + bubble.offsetHeight - 60;
+      const bRect = bubble.getBoundingClientRect();
+      const sRect = el.getBoundingClientRect();
+      // Coloca o bottom da bolha 60px abaixo do topo do scroll container.
+      const target = el.scrollTop + (bRect.bottom - sRect.top) - 60;
       programmaticScrollTo(target);
     },
     [programmaticScrollTo],
