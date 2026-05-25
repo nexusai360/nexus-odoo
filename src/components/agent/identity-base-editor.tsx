@@ -251,7 +251,10 @@ export function IdentityBaseEditor({ initial }: IdentityBaseEditorProps) {
         rows={8}
         placeholder="Defina aqui a identidade fixa do Agente Nex, quem ele é, o que faz, contexto da empresa…"
         disabled={isSaving}
-        className="font-mono text-xs"
+        className={cn(
+          "font-mono text-xs",
+          isDirty && "border-amber-500/40 bg-amber-500/[0.04]",
+        )}
         aria-describedby="agent-identity-base-help"
       />
       <p id="agent-identity-base-help" className="text-xs text-muted-foreground">

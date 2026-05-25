@@ -90,7 +90,16 @@ export function PromptConfigForm({ initial }: PromptConfigFormProps) {
     [personality, tone, guardrails, initial.terminology, initial.suggestionsEnabled],
   );
 
-  // Dirty state: difere do initial.
+  // Dirty flags por campo (para destacar visualmente o que foi editado).
+  const personalityDirty = personality !== initial.personality;
+  const toneDirty = tone !== initial.tone;
+  function guardrailDirty(idx: number, value: string): boolean {
+    const original = initial.guardrails[idx];
+    if (original === undefined) return value.trim().length > 0; // novo item
+    return value !== original;
+  }
+
+  // Dirty state agregado: difere do initial em qualquer campo.
   const isDirty = useMemo(() => {
     if (personality !== initial.personality) return true;
     if (tone !== initial.tone) return true;
@@ -338,7 +347,10 @@ export function PromptConfigForm({ initial }: PromptConfigFormProps) {
           placeholder="Ex.: Direto, prático, prefere bullets curtos. Evita rodeios."
           disabled={isSaving}
           aria-describedby="agent-personality-help"
-          className="min-h-[40px] max-h-[88px] field-sizing-content"
+          className={cn(
+            "min-h-[40px] max-h-[88px] field-sizing-content",
+            personalityDirty && "border-amber-500/40 bg-amber-500/[0.04]",
+          )}
         />
         <p id="agent-personality-help" className="text-xs text-muted-foreground">
           Como o Agente Nex se comporta. Defina voz, foco e atitude geral.
@@ -368,7 +380,10 @@ export function PromptConfigForm({ initial }: PromptConfigFormProps) {
           placeholder="Ex.: Profissional, mas amigável. Em pt-BR. Use 'você'."
           disabled={isSaving}
           aria-describedby="agent-tone-help"
-          className="min-h-[40px] max-h-[88px] field-sizing-content"
+          className={cn(
+            "min-h-[40px] max-h-[88px] field-sizing-content",
+            toneDirty && "border-amber-500/40 bg-amber-500/[0.04]",
+          )}
         />
         <p id="agent-tone-help" className="text-xs text-muted-foreground">
           Estilo de escrita: formalidade, calor humano e vocabulário.
@@ -408,7 +423,11 @@ export function PromptConfigForm({ initial }: PromptConfigFormProps) {
                     autoFocus={autoFocusIdx === idx}
                     onBlur={() => handleGuardrailBlur(idx)}
                     aria-describedby={`guardrail-counter-${idx}`}
-                    className="min-h-[40px] max-h-[88px] field-sizing-content"
+                    className={cn(
+                      "min-h-[40px] max-h-[88px] field-sizing-content",
+                      guardrailDirty(idx, g) &&
+                        "border-amber-500/40 bg-amber-500/[0.04]",
+                    )}
                   />
                   <span
                     id={`guardrail-counter-${idx}`}
