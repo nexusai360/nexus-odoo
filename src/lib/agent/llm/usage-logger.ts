@@ -21,6 +21,12 @@ export interface LogUsageArgs {
   model: string;
   tokensInput: number;
   tokensOutput: number;
+  /**
+   * Tokens consumidos no raciocinio interno (subset de tokensOutput).
+   * OpenAI/Gemini/OpenRouter expoem; Anthropic nao (deixe null). Onda 1 da
+   * modernizacao dos adapters.
+   */
+  reasoningTokens?: number | null;
   conversationId?: string;
   userId?: string;
   durationMs?: number;
@@ -74,6 +80,7 @@ export async function logUsage(args: LogUsageArgs): Promise<void> {
         model: args.model,
         tokensInput: args.tokensInput,
         tokensOutput: args.tokensOutput,
+        reasoningTokens: args.reasoningTokens ?? null,
         costUsd: costKnown ? costUsd : null,
         costKnown,
         costBrl,

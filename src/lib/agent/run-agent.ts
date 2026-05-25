@@ -27,7 +27,10 @@ import {
   persistMessage,
   assertConversationOwned,
   sanitizeHistoryPairs,
+  loadConversationReasoningHistory,
+  saveConversationReasoningHistory,
 } from "./conversation";
+import { reasoningCapsOf } from "./llm/catalog";
 import { composeSystemPrompt } from "./prompt/compose";
 import { BI_SCHEMA_REFERENCE } from "./bi-schema-reference";
 import { progressLabel } from "./progress-labels";
@@ -38,6 +41,7 @@ import type {
   ChatUsage,
   ToolCall,
   ReasoningEffort,
+  ReasoningContext,
 } from "./llm/types";
 import type { AgentChannel } from "@/generated/prisma/client";
 
@@ -145,6 +149,7 @@ function normalizeReasoningEffort(
   value: string | null | undefined,
 ): ReasoningEffort | null {
   if (
+    value === "auto" ||
     value === "minimal" ||
     value === "low" ||
     value === "medium" ||
@@ -311,6 +316,14 @@ export async function runAgent(args: RunAgentInput): Promise<RunAgentResult> {
     // logo após a resposta (request serverless / job do worker).
     const usageWrites: Promise<unknown>[] = [];
 
+    // Onda 2 da modernizacao: carregar historico opaco de raciocinio acumulado
+    // em iteracoes anteriores da MESMA conversa. Cada adapter (Anthropic,
+    // Gemini, OpenRouter) injeta esses blocos no formato exigido pelo provider
+    // antes de fazer a chamada. OpenAI segue stateless via Responses API.
+    const reasoningHistory: ReasoningContext[] = await loadConversationReasoningHistory(
+      args.conversationId,
+    ).catch(() => [] as ReasoningContext[]);
+
     args.onEvent?.({ type: "thinking" });
 
     for (let i = 0; i < MAX_ITERATIONS; i++) {
@@ -323,21 +336,40 @@ export async function runAgent(args: RunAgentInput): Promise<RunAgentResult> {
         ? (delta: string) => args.onEvent!({ type: "token", delta })
         : undefined;
 
-      // Respeita o checkpoint: OFF nunca envia; PLAYGROUND só no playground;
-      // PRODUCTION libera nos dois ambientes.
-      const reasoningAllowed =
+      // Onda 2 da modernizacao: checkpoint + cap funcional ponta a ponta.
+      //   OFF        => nunca envia reasoning.
+      //   PLAYGROUND => envia só quando source=playground.
+      //   PRODUCTION => envia em bubble + playground + whatsapp.
+      // Alem do checkpoint, valida a capability do modelo: cap=null,
+      // cap.enabled=false ou cap.supportsWithTools=false => drop silencioso.
+      const cap = reasoningCapsOf(client.model);
+      const checkpointAllows =
         agentSettings.reasoningCheckpoint === "PRODUCTION" ||
         (agentSettings.reasoningCheckpoint === "PLAYGROUND" && args.isPlayground);
+      const reasoningAllowed =
+        cap !== null &&
+        cap.enabled &&
+        cap.supportsWithTools &&
+        checkpointAllows;
+      const effortForRequest: ReasoningEffort | undefined = !reasoningAllowed
+        ? undefined
+        : cap!.levels.length === 1 && cap!.levels[0] === "auto"
+          ? "auto"
+          : agentSettings.reasoningEffort ?? undefined;
+
       const result = await client.chat({
         messages: conversation,
         tools,
         stream: !!onToken,
         onToken,
-        reasoningEffort:
-          reasoningAllowed
-            ? agentSettings.reasoningEffort ?? undefined
-            : undefined,
+        reasoningEffort: effortForRequest,
+        reasoningHistory,
       });
+
+      // Acumular o contexto opaco para o proximo turno e para persistencia.
+      if (result.reasoningContext) {
+        reasoningHistory.push(result.reasoningContext);
+      }
 
       totalUsage.tokensInput += result.usage.tokensInput;
       totalUsage.tokensOutput += result.usage.tokensOutput;
@@ -351,6 +383,7 @@ export async function runAgent(args: RunAgentInput): Promise<RunAgentResult> {
         credentialId: resolvedLlm.credentialId ?? undefined,
         tokensInput: result.usage.tokensInput,
         tokensOutput: result.usage.tokensOutput,
+        reasoningTokens: result.reasoningTokens ?? null,
         conversationId: args.conversationId,
         userId: args.userId,
         durationMs: Date.now() - iterStart,
@@ -371,6 +404,12 @@ export async function runAgent(args: RunAgentInput): Promise<RunAgentResult> {
           agentSettings.maxSuggestions,
         );
         await persistMessage(args.conversationId, "assistant", message);
+        // Persistir historico de raciocinio para o proximo turno (capa interna).
+        try {
+          await saveConversationReasoningHistory(args.conversationId, reasoningHistory);
+        } catch (err) {
+          console.warn("[runAgent] Falha ao persistir reasoning_history:", err);
+        }
         args.onEvent?.({ type: "done" });
         void start;
         await Promise.allSettled(usageWrites);
