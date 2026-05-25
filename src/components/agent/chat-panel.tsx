@@ -132,16 +132,22 @@ export function ChatPanel({
   const inputRef = React.useRef<HTMLTextAreaElement | null>(null);
   const abortRef = React.useRef<AbortController | null>(null);
   const recorderRef = React.useRef<AudioRecorderHandle | null>(null);
-  // Refs por id de mensagem para conseguir scrollIntoView na bolha exata.
+  // === Auto-scroll v4: stick-to-bottom padrao (ChatGPT/Claude.ai) ===
+  // Spec: docs/superpowers/specs/2026-05-25-bubble-v4-spec.md
+  // ResizeObserver no contentRef (inner div com mensagens) detecta
+  // crescimento de altura e, se isSticky=true, ajusta scrollTop do
+  // scrollRef para scrollHeight. Pattern provado em producao.
+  const contentRef = React.useRef<HTMLDivElement | null>(null);
+  // Ref espelha state para uso dentro de listeners criados 1x.
+  const isStickyRef = React.useRef(true);
+  const [isSticky, setIsSticky] = React.useState(true);
+  React.useEffect(() => { isStickyRef.current = isSticky; }, [isSticky]);
+  // Marca quando ultimo scroll programatico aconteceu. Wheel events nos
+  // 120ms seguintes sao ignorados (kinetic scroll do macOS pode gerar
+  // wheel falso durante smooth scroll).
+  const lastProgrammaticAtRef = React.useRef(0);
+  // messageRefsMap mantido (usado por outros lugares para tracking).
   const messageRefsMap = React.useRef<Map<string, HTMLDivElement>>(new Map());
-  // Flag que ignora scroll events disparados pelo proprio codigo (smooth
-  // scroll do snap-to-top e do FAB). Sem isso o onScroll interpretaria o
-  // movimento programatico como "usuario rolou" e desativaria o auto-snap.
-  const isProgrammaticScrollRef = React.useRef(false);
-  // Quando true: usuario rolou pra cima manualmente; auto-snap fica
-  // suspenso ate (a) nova mensagem ser enviada (reset no handleSend) ou
-  // (b) usuario clicar no FAB voltar-pro-fim ou chegar manualmente ao fim.
-  const [userScrolledAway, setUserScrolledAway] = React.useState(false);
 
   // Sync external conversationId + carrega histórico do servidor
   React.useEffect(() => {
@@ -204,223 +210,6 @@ export function ChatPanel({
     };
   }, [open, onClose]);
 
-  // === Auto-scroll v3 (refeito apos protocolo spec/plan completo) ===
-  //
-  // Spec: docs/superpowers/specs/2026-05-25-auto-scroll-v3-spec.md
-  //
-  // Comportamento:
-  // - Snap inicial: ao chegar nova msg do assistant, scroll bubble.top
-  //   para viewport.top - 8px (smooth).
-  // - Re-snap durante streaming: setInterval(250ms) verifica se
-  //   bubble.bottom > viewport.bottom - 80; quando sim, scroll para
-  //   colocar bubble.bottom em viewport.top + 60 (ponto de escrita
-  //   perto do topo). Throttled 700ms entre snaps.
-  // - Wheel up / touchmove down = userScrolledAway = true (pausa).
-  // - Chegar ao fim manualmente OU click no FAB = reativa.
-  // - Reset automatico no handleSend (novo turno).
-  // - prefers-reduced-motion: smooth -> auto, FAB sem transition.
-  // (reduceMotion ja declarado acima para outras animacoes do componente)
-  const messagesCount = messages.length;
-  const lastMsg = messages[messages.length - 1];
-  const lastAssistantId = React.useMemo(() => {
-    for (let i = messages.length - 1; i >= 0; i--) {
-      if (messages[i].role === "assistant") return messages[i].id;
-    }
-    return null;
-  }, [messages]);
-  const lastAssistantStreaming =
-    lastMsg?.role === "assistant" && !!lastMsg.streaming;
-
-  // Single ref para o ID ja snapado inicialmente. Sem Map = sem leak.
-  const initialSnappedIdRef = React.useRef<string | null>(null);
-  const lastStreamSnapTsRef = React.useRef<number>(0);
-
-  // Helper: scrollTo programatico, respeita prefers-reduced-motion.
-  const programmaticScrollTo = React.useCallback(
-    (top: number) => {
-      const el = scrollRef.current;
-      if (!el) return;
-      isProgrammaticScrollRef.current = true;
-      el.scrollTo({
-        top: Math.max(0, top),
-        behavior: reduceMotion ? "auto" : "smooth",
-      });
-      // Smooth scroll dura ~300ms; janela 800ms para nao confundir com
-      // wheel/scroll do usuario.
-      window.setTimeout(() => {
-        isProgrammaticScrollRef.current = false;
-      }, reduceMotion ? 50 : 800);
-    },
-    [reduceMotion],
-  );
-
-  // Snap CALCULADO manualmente (em vez de scrollIntoView que tinha bug
-  // de comportamento). Compute target em coordenadas do scrollEl
-  // diretamente via getBoundingClientRect + scrollTop atual.
-  const snapBubbleTopToViewport = React.useCallback(
-    (msgId: string) => {
-      const el = scrollRef.current;
-      const bubble = messageRefsMap.current.get(msgId);
-      if (!el || !bubble) {
-        console.warn("[nex-scroll] snap-init: faltou ref", {
-          el: !!el,
-          bubble: !!bubble,
-          msgId,
-        });
-        return;
-      }
-      const bRect = bubble.getBoundingClientRect();
-      const sRect = el.getBoundingClientRect();
-      const target = el.scrollTop + (bRect.top - sRect.top) - 8;
-      console.info("[nex-scroll] snap-init -> top", {
-        msgId,
-        scrollTop: el.scrollTop,
-        bubbleTop: bRect.top,
-        scrollContainerTop: sRect.top,
-        target,
-      });
-      isProgrammaticScrollRef.current = true;
-      el.scrollTo({
-        top: Math.max(0, target),
-        behavior: reduceMotion ? "auto" : "smooth",
-      });
-      window.setTimeout(() => {
-        isProgrammaticScrollRef.current = false;
-      }, reduceMotion ? 50 : 800);
-    },
-    [reduceMotion],
-  );
-
-  const snapWritingPointNearTop = React.useCallback(
-    (msgId: string) => {
-      const el = scrollRef.current;
-      const bubble = messageRefsMap.current.get(msgId);
-      if (!el || !bubble) return;
-      const bRect = bubble.getBoundingClientRect();
-      const sRect = el.getBoundingClientRect();
-      // Coloca o BOTTOM da bolha no topo do viewport com 60px de respiro
-      // (writing point perto do topo, espaco para texto novo abaixo).
-      const target = el.scrollTop + (bRect.bottom - sRect.top) - 60;
-      console.info("[nex-scroll] snap-stream -> writing-point", {
-        msgId,
-        bubbleBottom: bRect.bottom,
-        scrollContainerBottom: sRect.bottom,
-        delta: bRect.bottom - sRect.bottom,
-        target,
-      });
-      isProgrammaticScrollRef.current = true;
-      el.scrollTo({
-        top: Math.max(0, target),
-        behavior: reduceMotion ? "auto" : "smooth",
-      });
-      window.setTimeout(() => {
-        isProgrammaticScrollRef.current = false;
-      }, reduceMotion ? 50 : 800);
-    },
-    [reduceMotion],
-  );
-
-  // useEffect snap inicial: dispara UMA vez por novo lastAssistantId.
-  React.useEffect(() => {
-    console.info("[nex-scroll] effect snap-init eval", {
-      lastAssistantId,
-      messagesCount,
-      alreadySnapped: initialSnappedIdRef.current === lastAssistantId,
-      userScrolledAway,
-    });
-    if (!lastAssistantId) return;
-    if (initialSnappedIdRef.current === lastAssistantId) return;
-    if (userScrolledAway) {
-      console.info("[nex-scroll] snap-init SKIP userScrolledAway");
-      return;
-    }
-    initialSnappedIdRef.current = lastAssistantId;
-    // Double-rAF: aguarda 2 frames para garantir que ref callback ja
-    // setou messageRefsMap E que o layout esta estavel.
-    requestAnimationFrame(() => {
-      requestAnimationFrame(() => {
-        snapBubbleTopToViewport(lastAssistantId);
-      });
-    });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [lastAssistantId, messagesCount]);
-
-  // useEffect re-snap streaming via interval.
-  React.useEffect(() => {
-    console.info("[nex-scroll] effect snap-stream eval", {
-      lastAssistantStreaming,
-      lastAssistantId,
-      userScrolledAway,
-    });
-    if (!lastAssistantStreaming || !lastAssistantId) return;
-    if (userScrolledAway) return;
-    const intervalId = window.setInterval(() => {
-      if (userScrolledAway) return;
-      if (isProgrammaticScrollRef.current) return;
-      const now = performance.now();
-      if (now - lastStreamSnapTsRef.current < 700) return;
-      const el = scrollRef.current;
-      const bubble = messageRefsMap.current.get(lastAssistantId);
-      if (!el || !bubble) return;
-      const bRect = bubble.getBoundingClientRect();
-      const sRect = el.getBoundingClientRect();
-      if (bRect.bottom > sRect.bottom - 80) {
-        lastStreamSnapTsRef.current = now;
-        snapWritingPointNearTop(lastAssistantId);
-      }
-    }, 250);
-    return () => window.clearInterval(intervalId);
-  }, [lastAssistantStreaming, lastAssistantId, userScrolledAway, snapWritingPointNearTop]);
-
-  // useEffect listeners user-intent: wheel + touchmove + scroll reset.
-  React.useEffect(() => {
-    const el = scrollRef.current;
-    if (!el) {
-      console.warn("[nex-scroll] listeners NAO anexados - scrollRef null");
-      return;
-    }
-    console.info("[nex-scroll] listeners anexados em scrollRef");
-    const markUserScroll = (source: string) => {
-      console.info("[nex-scroll] userScrolledAway=true por", source);
-      setUserScrolledAway(true);
-    };
-    const onWheel = (e: WheelEvent) => {
-      if (e.deltaY < 0) markUserScroll(`wheel deltaY=${e.deltaY}`);
-    };
-    let touchStartY = 0;
-    const onTouchStart = (e: TouchEvent) => {
-      touchStartY = e.touches[0]?.clientY ?? 0;
-    };
-    const onTouchMove = (e: TouchEvent) => {
-      const y = e.touches[0]?.clientY ?? 0;
-      // Dedo descendo (y > startY) = conteudo rolando pra cima.
-      if (y - touchStartY > 8) markUserScroll(`touchmove dy=${y - touchStartY}`);
-    };
-    const onScroll = () => {
-      // Reset quando chega ao fim, mesmo programatico (FAB usa esse path).
-      const atBottom =
-        el.scrollHeight - el.clientHeight - el.scrollTop < 32;
-      if (atBottom) setUserScrolledAway(false);
-    };
-    el.addEventListener("wheel", onWheel, { passive: true });
-    el.addEventListener("touchstart", onTouchStart, { passive: true });
-    el.addEventListener("touchmove", onTouchMove, { passive: true });
-    el.addEventListener("scroll", onScroll, { passive: true });
-    return () => {
-      el.removeEventListener("wheel", onWheel);
-      el.removeEventListener("touchstart", onTouchStart);
-      el.removeEventListener("touchmove", onTouchMove);
-      el.removeEventListener("scroll", onScroll);
-    };
-  }, []);
-
-  const scrollToBottomNow = React.useCallback(() => {
-    const el = scrollRef.current;
-    if (!el) return;
-    programmaticScrollTo(el.scrollHeight);
-    setUserScrolledAway(false);
-  }, [programmaticScrollTo]);
-
   // Cleanup on unmount
   React.useEffect(() => {
     return () => {
@@ -428,14 +217,84 @@ export function ChatPanel({
     };
   }, []);
 
+  // === Stick-to-bottom: ResizeObserver + wheel/scroll listeners ===
+  React.useEffect(() => {
+    const scrollEl = scrollRef.current;
+    const contentEl = contentRef.current;
+    if (!scrollEl || !contentEl) return;
+
+    // ResizeObserver no inner content: cresce conforme typewriter escreve
+    // ou novas msgs chegam. Se sticky, ajusta scrollTop para o fim.
+    const ro = new ResizeObserver(() => {
+      if (!isStickyRef.current) return;
+      lastProgrammaticAtRef.current = performance.now();
+      scrollEl.scrollTop = scrollEl.scrollHeight;
+    });
+    ro.observe(contentEl);
+
+    // Wheel up = user quer rolar pra cima = desativa sticky. Ignora se
+    // veio logo apos scroll programatico (kinetic scroll macOS).
+    const onWheel = (e: WheelEvent) => {
+      if (e.deltaY < 0) {
+        const dt = performance.now() - lastProgrammaticAtRef.current;
+        if (dt < 120) return;
+        if (isStickyRef.current) setIsSticky(false);
+      }
+    };
+    scrollEl.addEventListener("wheel", onWheel, { passive: true });
+
+    // Touchmove pra baixo (dedo desce na tela) = scroll up.
+    let touchStartY = 0;
+    const onTouchStart = (e: TouchEvent) => {
+      touchStartY = e.touches[0]?.clientY ?? 0;
+    };
+    const onTouchMove = (e: TouchEvent) => {
+      const y = e.touches[0]?.clientY ?? 0;
+      if (y - touchStartY > 8) {
+        const dt = performance.now() - lastProgrammaticAtRef.current;
+        if (dt < 120) return;
+        if (isStickyRef.current) setIsSticky(false);
+      }
+    };
+    scrollEl.addEventListener("touchstart", onTouchStart, { passive: true });
+    scrollEl.addEventListener("touchmove", onTouchMove, { passive: true });
+
+    // Scroll handler: reativa sticky quando user chega no fim manualmente.
+    const onScroll = () => {
+      const atBottom =
+        scrollEl.scrollHeight - scrollEl.scrollTop - scrollEl.clientHeight < 24;
+      if (atBottom && !isStickyRef.current) setIsSticky(true);
+    };
+    scrollEl.addEventListener("scroll", onScroll, { passive: true });
+
+    return () => {
+      ro.disconnect();
+      scrollEl.removeEventListener("wheel", onWheel);
+      scrollEl.removeEventListener("touchstart", onTouchStart);
+      scrollEl.removeEventListener("touchmove", onTouchMove);
+      scrollEl.removeEventListener("scroll", onScroll);
+    };
+  }, []);
+
+  // FAB click: rola pro fim + reativa sticky.
+  const scrollToBottomNow = React.useCallback(() => {
+    const el = scrollRef.current;
+    if (!el) return;
+    lastProgrammaticAtRef.current = performance.now();
+    el.scrollTo({
+      top: el.scrollHeight,
+      behavior: reduceMotion ? "auto" : "smooth",
+    });
+    setIsSticky(true);
+  }, [reduceMotion]);
+
   const handleSend = React.useCallback(
     async (text: string, opts?: { source?: "bubble" | "suggestion" }) => {
       const trimmed = text.trim();
       if (!trimmed || pending) return;
 
-      // Reset do auto-scroll: nova mensagem reativa o snap-to-top mesmo
-      // que o usuario tenha rolado pra cima no turno anterior.
-      setUserScrolledAway(false);
+      // Reset do stick-to-bottom: nova msg reativa scroll automatico.
+      setIsSticky(true);
 
       abortRef.current?.abort();
       const controller = new AbortController();
@@ -900,7 +759,7 @@ export function ChatPanel({
               suggestions={welcomeSuggestionsForUi}
             />
           ) : (
-            <div className="space-y-3">
+            <div ref={contentRef} className="space-y-3">
               {messages.map((m, idx) => {
                 // Onda C v2: nao deve mais existir UiMessage com role "progress"
                 // (steps vivem dentro da bolha do assistant desde o primeiro
@@ -963,9 +822,9 @@ export function ChatPanel({
 
         {/* FAB voltar-pro-fim como filho do outer motion.div (fixed
             providencia o positioning context). z-50 garante que fica
-            acima do scroll. Visivel so quando userScrolledAway. */}
+            acima do scroll. Visivel quando !isSticky (user rolou pra cima). */}
         <ScrollToBottomFab
-          visible={userScrolledAway && !showWelcome}
+          visible={!isSticky && !showWelcome}
           onClick={scrollToBottomNow}
         />
 
@@ -1209,10 +1068,10 @@ function ScrollToBottomFab({
       aria-hidden={!visible}
       tabIndex={visible ? 0 : -1}
       className={cn(
-        // bottom-[76px]: deixa espaco pro footer da input (que tem ~64px
-        // + padding). z-30: acima da area de scroll, abaixo de modais.
-        // Filho do outer motion.div fixed = positioning context = absolute.
-        "pointer-events-auto absolute bottom-[76px] right-3 z-30 flex h-9 w-9 cursor-pointer items-center justify-center rounded-full",
+        // bottom-[100px]: respiro de ~24px acima do footer (input ~64px
+        // + padding + respiro). Mais distante do botao enviar conforme
+        // pedido do usuario. z-30: acima da area de scroll.
+        "pointer-events-auto absolute bottom-[100px] right-3 z-30 flex h-9 w-9 cursor-pointer items-center justify-center rounded-full",
         "border border-violet-500/40 bg-background/90 text-violet-600 shadow-lg backdrop-blur",
         "transition-all duration-200 hover:bg-violet-600 hover:text-white hover:border-violet-500",
         "dark:text-violet-300 dark:hover:text-white",
