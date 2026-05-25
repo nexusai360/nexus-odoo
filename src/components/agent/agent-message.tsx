@@ -135,7 +135,11 @@ export function AgentMessage({
             durationMs={durationMs}
           />
         ) : null}
-        <MarkdownLite content={content} />
+        {streaming ? (
+          <StreamingText content={content} />
+        ) : (
+          <MarkdownLite content={content} />
+        )}
         {streaming && content.length > 0 && (
           <span
             aria-hidden="true"
@@ -531,6 +535,48 @@ function AnimatedDots() {
         className="inline-block h-1 w-1 rounded-full bg-violet-500 motion-reduce:animate-none"
         style={{ animation: "agentDotBounce 1s ease-in-out infinite", animationDelay: "0.3s" }}
       />
+    </span>
+  );
+}
+
+// Renderiza content streaming com cada palavra nova entrando via animacao
+// CSS (opacity 0 + y 4px -> 1 / 0) com duration 250ms. Palavras antigas
+// nao reanimam: useRef Set trackeia indices ja "settled"; React re-render
+// usa key index e a CSS animation com fill-mode forwards (definida via
+// keyframe nexWordIn em globals.css) so dispara na primeira vez. Quando
+// streaming termina, AgentMessage troca para MarkdownLite (renderiza
+// negrito, listas etc com syntax completa).
+function StreamingText({ content }: { content: string }) {
+  // Preserva espacos (split capturando whitespace) para alinhamento natural.
+  const tokens = React.useMemo(() => content.split(/(\s+)/), [content]);
+  const settledRef = React.useRef<Set<number>>(new Set());
+
+  return (
+    <span aria-live="polite" className="whitespace-pre-wrap">
+      {tokens.map((tok, i) => {
+        const isWhitespace = /^\s+$/.test(tok);
+        if (isWhitespace) return <React.Fragment key={i}>{tok}</React.Fragment>;
+        const wasSettled = settledRef.current.has(i);
+        if (!wasSettled) settledRef.current.add(i);
+        return (
+          <span
+            key={i}
+            className={wasSettled ? undefined : "nex-word-in"}
+            style={
+              wasSettled
+                ? undefined
+                : {
+                    // Stagger leve por palavra para parecer typewriter sem ser
+                    // mecanico. Cap em 80ms para nao acumular delay imenso em
+                    // respostas longas.
+                    animationDelay: `${Math.min((i % 12) * 18, 80)}ms`,
+                  }
+            }
+          >
+            {tok}
+          </span>
+        );
+      })}
     </span>
   );
 }
