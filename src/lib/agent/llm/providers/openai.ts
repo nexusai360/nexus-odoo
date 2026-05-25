@@ -389,33 +389,43 @@ function extractInstructions(messages: ChatMessage[]): {
 }
 
 /** Coleta items opacos de reasoningHistory pertencentes ao provider OpenAI.
- * Defensive: strippa `id` de reasoning items (compat com history antigo que
- * pode ter sido gravado antes do fix de store:false). */
+ *
+ * Defensivos cumulativos:
+ *  1. Strippa `id` interno (referencia a state nao-persistido com store:false)
+ *     - sem isso a API retorna 404 "Item with id X not found".
+ *  2. **Filtra items tipo "function_call"** — esses ja vem pelo conversation
+ *     tracking do run-agent (assistant.toolCalls -> mapMessagesToResponsesInput).
+ *     Reinjetar pelo history duplicaria o function_call e/ou deixaria orfao
+ *     (sem function_call_output, que role:"tool" nao persiste), gerando
+ *     400 "No tool output found for function call X".
+ *  Cobre tambem history antigo (commits anteriores ao filtro) que ainda
+ *  pode estar gravado em conversations.reasoning_history.
+ */
 function collectHistoryItems(history: ReasoningContext[] | undefined): unknown[] {
   if (!history) return [];
   const items: unknown[] = [];
   for (const ctx of history) {
     if (ctx.provider !== "openai") continue;
     const data = ctx.data as { items?: unknown[] } | null;
-    if (data?.items && Array.isArray(data.items)) {
-      for (const item of data.items) {
-        items.push(stripOpenAiItemId(item));
+    if (!data?.items || !Array.isArray(data.items)) continue;
+    for (const item of data.items) {
+      if (!item || typeof item !== "object") continue;
+      const obj = item as Record<string, unknown>;
+      // Defensivo 2: pula function_call (e function_call_output, simetria).
+      if (obj.type === "function_call" || obj.type === "function_call_output") {
+        continue;
+      }
+      // Defensivo 1: strippa `id` interno de reasoning items.
+      if (obj.type === "reasoning") {
+        const { id: _id, ...rest } = obj;
+        void _id;
+        items.push(rest);
+      } else {
+        items.push(item);
       }
     }
   }
   return items;
-}
-
-/** Remove `id` interno (mantem call_id) para compat com store:false. */
-function stripOpenAiItemId(item: unknown): unknown {
-  if (!item || typeof item !== "object") return item;
-  const obj = item as Record<string, unknown>;
-  if (obj.type === "reasoning" || obj.type === "function_call") {
-    const { id: _id, ...rest } = obj;
-    void _id;
-    return rest;
-  }
-  return item;
 }
 
 /** Insere historico de raciocinio apos a ultima mensagem user no input. */
