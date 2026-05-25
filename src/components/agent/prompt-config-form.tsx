@@ -15,7 +15,6 @@
 import { useEffect, useMemo, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import {
-  History,
   Loader2,
   Plus,
   Save,
@@ -75,7 +74,6 @@ export function PromptConfigForm({ initial }: PromptConfigFormProps) {
   const [guardrails, setGuardrails] = useState<string[]>(initial.guardrails);
   const [autoFocusIdx, setAutoFocusIdx] = useState<number | null>(null);
   const [pendingNav, setPendingNav] = useState<null | (() => void)>(null);
-  const [draftBannerOpen, setDraftBannerOpen] = useState(false);
 
   const [isSaving, startSave] = useTransition();
 
@@ -103,7 +101,9 @@ export function PromptConfigForm({ initial }: PromptConfigFormProps) {
     return false;
   }, [personality, tone, guardrails, initial]);
 
-  // Carrega rascunho do localStorage ao montar.
+  // Restaura rascunho do localStorage ao montar, automaticamente. Sem banner:
+  // os campos voltam preenchidos como o usuário deixou; o aviso de
+  // "alterações não salvas" abaixo já comunica que precisa salvar.
   useEffect(() => {
     if (typeof window === "undefined") return;
     const raw = window.localStorage.getItem(DRAFT_KEY);
@@ -123,7 +123,9 @@ export function PromptConfigForm({ initial }: PromptConfigFormProps) {
         window.localStorage.removeItem(DRAFT_KEY);
         return;
       }
-      setDraftBannerOpen(true);
+      if (typeof draft.personality === "string") setPersonality(draft.personality);
+      if (typeof draft.tone === "string") setTone(draft.tone);
+      if (Array.isArray(draft.guardrails)) setGuardrails(draft.guardrails);
     } catch {
       window.localStorage.removeItem(DRAFT_KEY);
     }
@@ -157,32 +159,70 @@ export function PromptConfigForm({ initial }: PromptConfigFormProps) {
     return () => window.removeEventListener("beforeunload", handler);
   }, [isDirty]);
 
-  function restoreDraft() {
-    if (typeof window === "undefined") return;
-    const raw = window.localStorage.getItem(DRAFT_KEY);
-    if (!raw) {
-      setDraftBannerOpen(false);
-      return;
-    }
-    try {
-      const draft = JSON.parse(raw) as {
-        personality?: string;
-        tone?: string;
-        guardrails?: string[];
-      };
-      if (typeof draft.personality === "string") setPersonality(draft.personality);
-      if (typeof draft.tone === "string") setTone(draft.tone);
-      if (Array.isArray(draft.guardrails)) setGuardrails(draft.guardrails);
-    } catch {
-      // ignora
-    }
-    setDraftBannerOpen(false);
-  }
+  // Interceptação de cliques em links de navegação interna (sidebar, header
+  // do dashboard, logout, etc.). Quando isDirty=true, captura o clique no
+  // ancestor <a href="..."> ou <button data-nav-href="..."> e abre o
+  // AlertDialog em vez de navegar imediatamente. O usuário decide ficar ou sair.
+  useEffect(() => {
+    if (!isDirty) return;
 
-  function discardDraft() {
-    if (typeof window !== "undefined") window.localStorage.removeItem(DRAFT_KEY);
-    setDraftBannerOpen(false);
-  }
+    function getHref(target: EventTarget | null): {
+      href: string | null;
+      el: HTMLElement | null;
+    } {
+      let el = target as HTMLElement | null;
+      while (el && el !== document.body) {
+        if (el instanceof HTMLAnchorElement && el.href) {
+          return { href: el.href, el };
+        }
+        const dataHref = el.getAttribute?.("data-nav-href");
+        if (dataHref) return { href: dataHref, el };
+        el = el.parentElement;
+      }
+      return { href: null, el: null };
+    }
+
+    function isInternalRelative(href: string): string | null {
+      try {
+        const url = new URL(href, window.location.origin);
+        if (url.origin !== window.location.origin) return null;
+        // Mesma rota? não bloqueia.
+        if (url.pathname === window.location.pathname && url.hash === "") {
+          return null;
+        }
+        return url.pathname + url.search + url.hash;
+      } catch {
+        return null;
+      }
+    }
+
+    function onClick(e: MouseEvent) {
+      if (e.defaultPrevented) return;
+      if (e.button !== 0) return; // só botão esquerdo
+      if (e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return; // nova aba
+      const { href, el } = getHref(e.target);
+      if (!href || !el) return;
+      // Ignora links explicitamente marcados com data-skip-dirty.
+      if (el.closest("[data-skip-dirty]")) return;
+      const target = el.getAttribute?.("target");
+      if (target === "_blank") return;
+      const relative = isInternalRelative(href);
+      if (!relative) return;
+      e.preventDefault();
+      e.stopPropagation();
+      setPendingNav(() => () => {
+        // Tenta usar router (SPA); cai para hard nav se algo der errado.
+        try {
+          router.push(relative);
+        } catch {
+          window.location.href = href;
+        }
+      });
+    }
+
+    document.addEventListener("click", onClick, true);
+    return () => document.removeEventListener("click", onClick, true);
+  }, [isDirty, router]);
 
   function handleAddGuardrail() {
     setGuardrails((prev) => {
@@ -229,42 +269,6 @@ export function PromptConfigForm({ initial }: PromptConfigFormProps) {
 
   return (
     <div className="space-y-7">
-      {/* Banner de rascunho não salvo (localStorage). */}
-      {draftBannerOpen && (
-        <div
-          role="status"
-          className="flex items-start gap-3 rounded-lg border border-amber-500/30 bg-amber-500/10 px-3 py-2.5 text-xs text-amber-700 dark:text-amber-300"
-        >
-          <History className="mt-0.5 h-4 w-4 shrink-0" aria-hidden />
-          <div className="min-w-0 flex-1">
-            <p className="font-medium">Rascunho não salvo encontrado</p>
-            <p className="mt-0.5 leading-snug">
-              Você tinha alterações de comportamento que não foram salvas na
-              última visita. Quer restaurar agora ou descartar?
-            </p>
-          </div>
-          <div className="flex shrink-0 items-center gap-2">
-            <Button
-              type="button"
-              variant="ghost"
-              size="sm"
-              onClick={discardDraft}
-              className="h-7 cursor-pointer text-amber-700 hover:bg-amber-500/15 hover:text-amber-800 dark:text-amber-300"
-            >
-              Descartar
-            </Button>
-            <Button
-              type="button"
-              size="sm"
-              onClick={restoreDraft}
-              className="h-7 cursor-pointer bg-amber-600 text-white hover:bg-amber-700"
-            >
-              Restaurar
-            </Button>
-          </div>
-        </div>
-      )}
-
       {/* Personalidade */}
       <div className="space-y-1.5">
         <div className="flex items-center justify-between gap-2">
