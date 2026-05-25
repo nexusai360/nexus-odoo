@@ -1,9 +1,15 @@
 ---
 agent: claude-nex-llm-adapters-modernization
 started_at: 2026-05-25T04:25-03:00
+last_updated_at: 2026-05-25T05:15-03:00
 branch: feat/f4-leitura-expansao
 target_phase: F4 leitura (modernização dos adapters de LLM)
 status: in_progress
+phase: spec+plan_completos__inicio_execucao
+last_commits:
+  - 459a7e9 (spec phase v3 + 2 reviews + capability table)
+  - b23b5b0 (plan phase v3 + 2 reviews)
+next_task: T1.1 types.ts (ReasoningEffort + auto, ReasoningContext, ChatResult.streamed)
 ---
 
 ## Tópico

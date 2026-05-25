@@ -27,6 +27,7 @@ import {
 } from "@/lib/agent/llm/catalog";
 
 const LEVEL_LABELS: Record<ReasoningLevel, string> = {
+  auto: "Auto",
   minimal: "Mínimo",
   low: "Baixo",
   medium: "Médio",
@@ -34,6 +35,7 @@ const LEVEL_LABELS: Record<ReasoningLevel, string> = {
 };
 
 const LEVEL_CONSUMPTION: Record<ReasoningLevel, string> = {
+  auto: "Modelo decide",
   minimal: "Consumo leve",
   low: "Consumo moderado",
   medium: "Consumo alto",
@@ -48,6 +50,7 @@ const LEVEL_CONSUMPTION: Record<ReasoningLevel, string> = {
  * (nao oficiais) usadas apenas para indicar grau qualitativo.
  */
 const LEVEL_TIER: Record<ReasoningLevel, "low" | "medium" | "high" | "premium"> = {
+  auto: "medium",
   minimal: "low",
   low: "medium",
   medium: "high",

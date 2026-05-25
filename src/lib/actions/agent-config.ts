@@ -86,7 +86,7 @@ const UpdateResourcesSchema = z.object({
   imageCredentialId: z.string().nullable().optional(),
   /** Profundidade de raciocínio (modelos reasoning). null = default do provider. */
   reasoningEffort: z
-    .enum(["minimal", "low", "medium", "high"])
+    .enum(["auto", "minimal", "low", "medium", "high"])
     .nullable()
     .optional(),
   /** Checkpoint de 3 estados do modo raciocínio (OFF/PLAYGROUND/PRODUCTION). */
