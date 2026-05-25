@@ -190,56 +190,72 @@ function BubbleSurface({
   enableLayout?: boolean;
   fastGrow?: boolean;
 }) {
-  // Estrategia: HEIGHT anima via motion.div + RO (funcionou ja
-  // confirmado pelo user). WIDTH anima via CSS transition + interpolate-size
-  // na classe .nex-bubble-grow (Chrome 129+, Safari 18+; degrada para
-  // instant em browsers mais velhos). Sem squish de texto (no constraint
-  // de width vindo do motion.div).
+  // Ghost div approach: renderiza children DUAS vezes - uma invisible
+  // que mede tamanho natural (sem constraint), uma visivel dentro do
+  // motion.div que anima W+H pra esses valores medidos. Unica forma
+  // confiavel universal (sem depender de interpolate-size, sem squish,
+  // sem clipping de texto).
   const reduce = useReducedMotion();
-  const innerRef = React.useRef<HTMLDivElement>(null);
-  const [height, setHeight] = React.useState<number | "auto">("auto");
+  const ghostRef = React.useRef<HTMLDivElement>(null);
+  const [size, setSize] = React.useState<{
+    width: number | "auto";
+    height: number | "auto";
+  }>({ width: "auto", height: "auto" });
 
   React.useEffect(() => {
-    const el = innerRef.current;
+    const el = ghostRef.current;
     if (!el) return;
-    const measure = (entries: ResizeObserverEntry[]) => {
-      const h = entries[0]?.contentRect.height ?? el.offsetHeight;
-      // +20 = padding total (py-2.5 = 20px) ja que contentRect e do
-      // content-box.
-      const total = h + 20;
-      setHeight((prev) => (prev === total ? prev : total));
+    const measure = () => {
+      const w = el.offsetWidth;
+      const h = el.offsetHeight;
+      setSize((prev) =>
+        prev.width === w && prev.height === h ? prev : { width: w, height: h },
+      );
     };
+    measure();
     const ro = new ResizeObserver(measure);
     ro.observe(el);
     return () => ro.disconnect();
   }, []);
 
+  const baseClasses = cn(
+    "relative max-w-[85%] rounded-2xl px-3.5 py-2.5 text-sm leading-relaxed",
+    isUser
+      ? "bg-violet-600/15 text-foreground"
+      : "bg-muted text-foreground",
+  );
+
   return (
-    <motion.div
-      animate={{ height }}
-      transition={
-        reduce
-          ? { duration: 0 }
-          : { duration: 1.1, ease: [0.22, 1, 0.36, 1] }
-      }
-      className={cn(
-        // nex-bubble-grow: transition CSS de width 1.1s + interpolate-size
-        // (em globals.css) faz width animar suave de auto pra auto.
-        "nex-bubble-grow relative max-w-[85%] rounded-2xl px-3.5 text-sm leading-relaxed",
-        isUser
-          ? "bg-violet-600/15 text-foreground"
-          : "bg-muted text-foreground",
-      )}
-      // overflowY hidden clipa height durante animacao; X visivel evita
-      // qualquer clipping horizontal de texto (typewriter etc).
-      style={{ overflowY: "hidden", overflowX: "visible" }}
-    >
-      {/* innerRef mede content height. Tem o padding vertical (py-2.5).
-          Width nao e constrained aqui - vem natural. */}
-      <div ref={innerRef} className="py-2.5">
+    <div className="relative max-w-[85%]">
+      {/* Ghost invisible: mede tamanho natural sem constraint. */}
+      <div
+        ref={ghostRef}
+        aria-hidden
+        className={baseClasses}
+        style={{
+          position: "absolute",
+          visibility: "hidden",
+          pointerEvents: "none",
+          top: 0,
+          left: 0,
+        }}
+      >
         {children}
       </div>
-    </motion.div>
+      {/* Visible: motion.div anima W+H ate valores do ghost. */}
+      <motion.div
+        animate={size}
+        transition={
+          reduce
+            ? { duration: 0 }
+            : { duration: 1.1, ease: [0.22, 1, 0.36, 1] }
+        }
+        className={baseClasses}
+        style={{ overflow: "hidden" }}
+      >
+        {children}
+      </motion.div>
+    </div>
   );
 }
 
