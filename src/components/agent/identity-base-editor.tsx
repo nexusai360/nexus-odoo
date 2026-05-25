@@ -62,6 +62,7 @@ export function IdentityBaseEditor({ initial }: IdentityBaseEditorProps) {
   const [identityBase, setIdentityBase] = useState(initial.identityBase ?? "");
   const [isSaving, startSave] = useTransition();
   const [pendingNav, setPendingNav] = useState<null | (() => void)>(null);
+  const [restoredFromDraft, setRestoredFromDraft] = useState(false);
 
   const isDirty = useMemo(
     () => identityBase !== (initial.identityBase ?? ""),
@@ -81,6 +82,7 @@ export function IdentityBaseEditor({ initial }: IdentityBaseEditorProps) {
         return;
       }
       setIdentityBase(draft.identityBase);
+      setRestoredFromDraft(true);
     } catch {
       window.localStorage.removeItem(DRAFT_KEY);
     }
@@ -185,6 +187,7 @@ export function IdentityBaseEditor({ initial }: IdentityBaseEditorProps) {
       }
       toast.success("Identidade base salva.");
       if (typeof window !== "undefined") window.localStorage.removeItem(DRAFT_KEY);
+      setRestoredFromDraft(false);
       router.refresh();
     });
   }
@@ -200,8 +203,9 @@ export function IdentityBaseEditor({ initial }: IdentityBaseEditorProps) {
         >
           <TriangleAlert className="mt-0.5 h-3.5 w-3.5 shrink-0" aria-hidden />
           <p className="leading-snug">
-            Há alterações que ainda não foram aplicadas ao Agente Nex. Para
-            aplicar, clique em &ldquo;Salvar prompt&rdquo;.
+            {restoredFromDraft
+              ? "Há alterações da sua última visita que ainda não foram aplicadas ao Agente Nex. Para aplicar, clique em “Salvar prompt”."
+              : "Mudanças não salvas. Clique em “Salvar prompt” para aplicá-las."}
           </p>
         </div>
       )}

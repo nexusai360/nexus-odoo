@@ -74,6 +74,7 @@ export function PromptConfigForm({ initial }: PromptConfigFormProps) {
   const [guardrails, setGuardrails] = useState<string[]>(initial.guardrails);
   const [autoFocusIdx, setAutoFocusIdx] = useState<number | null>(null);
   const [pendingNav, setPendingNav] = useState<null | (() => void)>(null);
+  const [restoredFromDraft, setRestoredFromDraft] = useState(false);
 
   const [isSaving, startSave] = useTransition();
 
@@ -126,6 +127,7 @@ export function PromptConfigForm({ initial }: PromptConfigFormProps) {
       if (typeof draft.personality === "string") setPersonality(draft.personality);
       if (typeof draft.tone === "string") setTone(draft.tone);
       if (Array.isArray(draft.guardrails)) setGuardrails(draft.guardrails);
+      setRestoredFromDraft(true);
     } catch {
       window.localStorage.removeItem(DRAFT_KEY);
     }
@@ -263,13 +265,16 @@ export function PromptConfigForm({ initial }: PromptConfigFormProps) {
       }
       toast.success("Comportamento do Agente Nex salvo.");
       if (typeof window !== "undefined") window.localStorage.removeItem(DRAFT_KEY);
+      setRestoredFromDraft(false);
       router.refresh();
     });
   }
 
   return (
     <div className="space-y-7">
-      {/* Banner no topo: alerta de mudanças não salvas. */}
+      {/* Banner no topo: alerta de mudanças não salvas.
+          A mensagem muda quando o rascunho foi restaurado de uma sessão
+          anterior (vindo do localStorage). */}
       {isDirty && (
         <div
           role="status"
@@ -278,8 +283,9 @@ export function PromptConfigForm({ initial }: PromptConfigFormProps) {
         >
           <TriangleAlert className="mt-0.5 h-3.5 w-3.5 shrink-0" aria-hidden />
           <p className="leading-snug">
-            Há alterações que ainda não foram aplicadas ao Agente Nex. Para
-            aplicar, clique em &ldquo;Salvar comportamento&rdquo;.
+            {restoredFromDraft
+              ? "Há alterações da sua última visita que ainda não foram aplicadas ao Agente Nex. Para aplicar, clique em “Salvar comportamento”."
+              : "Mudanças não salvas. Clique em “Salvar comportamento” para aplicá-las."}
           </p>
         </div>
       )}
@@ -431,17 +437,9 @@ export function PromptConfigForm({ initial }: PromptConfigFormProps) {
         </div>
       </div>
 
-      {/* Ação principal: aviso de não salvo à esquerda + botão à direita. */}
-      <div className="flex items-center justify-between gap-3 pt-3">
-        <div className="min-w-0 flex-1">
-          {isDirty && (
-            <p className="inline-flex items-center gap-1.5 text-[11px] text-amber-600 dark:text-amber-400">
-              <TriangleAlert className="h-3.5 w-3.5 shrink-0" aria-hidden />
-              Mudanças não salvas. Clique em &ldquo;Salvar comportamento&rdquo;
-              para aplicar.
-            </p>
-          )}
-        </div>
+      {/* Ação principal: botão à direita, sem aviso duplicado (o banner do
+          topo já comunica o estado dirty). */}
+      <div className="flex items-center justify-end pt-3">
         <Button
           type="button"
           onClick={handleSave}
