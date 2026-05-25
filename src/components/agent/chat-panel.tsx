@@ -148,7 +148,14 @@ export function ChatPanel({
         return;
       }
       const uiMessages: UiMessage[] = result.messages
-        .filter((m) => m.role !== "tool") // esconde mensagens de tool do usuário
+        .filter((m) => m.role !== "tool")
+        // Esconde messages assistant SEM content (iteracao intermediaria do
+        // loop que so registra tool_calls; a resposta textual real vem na
+        // proxima iteracao). Sem isso, a UI mostra uma bolha cinza com so
+        // o timestamp acima da resposta de verdade (bug 2026-05-24 22:59).
+        .filter(
+          (m) => !(m.role === "assistant" && m.content.trim().length === 0),
+        )
         .map((m) => ({
           id: m.id,
           role: m.role as AgentMessageRole,
@@ -689,12 +696,16 @@ export function ChatPanel({
                         )
                       }
                     />
-                    {isLastAssistant && m.suggestions && m.suggestions.length > 0 && (
+                    {isLastAssistant && !m.streaming ? (
+                      // SuggestionsBar agora SEMPRE renderiza apos done:
+                      // se m.suggestions vazio, o componente completa com
+                      // HARD_FALLBACK ate targetCount. Garante chips sempre.
                       <SuggestionsBar
-                        suggestions={m.suggestions}
+                        suggestions={m.suggestions ?? []}
                         onPick={(s) => handlePickSuggestion(m.id, s)}
+                        targetCount={maxSuggestions}
                       />
-                    )}
+                    ) : null}
                   </React.Fragment>
                 );
               })}

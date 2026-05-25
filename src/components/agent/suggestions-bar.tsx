@@ -14,17 +14,53 @@ import { cn } from "@/lib/utils";
 export interface SuggestionsBarProps {
   suggestions: string[];
   onPick: (s: string) => void;
+  /** Quantidade alvo de chips (1..5). Quando o array vier curto, complementa
+   *  com HARD_FALLBACK ate atingir o valor. Default 3 (matchar maxSuggestions
+   *  default do AgentSettings). */
+  targetCount?: number;
 }
 
-export function SuggestionsBar({ suggestions, onPick }: SuggestionsBarProps) {
-  if (suggestions.length === 0) return null;
+// Ultima camada de defesa contra "bolha sem chips" (bug 2026-05-24).
+// Mesmo que o backend, o welcomeSuggestionsForUi e o personalized falhem,
+// o usuario sempre ve 3 perguntas de gestor abaixo da resposta.
+const HARD_FALLBACK = [
+  "Quanto faturamos no mês corrente?",
+  "Quanto temos em contas a receber em aberto?",
+  "Qual o valor total do estoque em armazém?",
+  "Quais pedidos de venda estão atrasados?",
+  "Qual o valor total do estoque em armazém?",
+];
+
+export function SuggestionsBar({
+  suggestions,
+  onPick,
+  targetCount = 3,
+}: SuggestionsBarProps) {
+  const cap = Math.min(Math.max(1, targetCount), 5);
+  const seen = new Set<string>();
+  const final: string[] = [];
+  for (const s of suggestions) {
+    const t = (s ?? "").trim();
+    if (t && !seen.has(t) && final.length < cap) {
+      seen.add(t);
+      final.push(t);
+    }
+  }
+  for (const s of HARD_FALLBACK) {
+    if (final.length >= cap) break;
+    if (!seen.has(s)) {
+      seen.add(s);
+      final.push(s);
+    }
+  }
+  if (final.length === 0) return null;
   return (
     <div
       role="group"
       aria-label="Sugestões clicáveis"
       className="flex flex-wrap gap-2 px-1 pt-1"
     >
-      {suggestions.map((s) => (
+      {final.map((s) => (
         <button
           key={s}
           type="button"
