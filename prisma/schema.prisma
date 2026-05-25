@@ -136,6 +136,9 @@ model User {
   conversations       Conversation[]
   whatsappNumbers     UserWhatsappNumber[]
   playgroundSessions  PlaygroundSession[]
+  // F4.5 — Agente Nex Inteligencia
+  agentProfile           UserAgentProfile?
+  suggestionInteractions SuggestionInteraction[]
 
   @@index([platformRole, isActive])
   @@index([email])
@@ -2231,9 +2234,19 @@ model Conversation {
   /// OpenRouter reasoning_details, OpenAI reasoning items). Array crescente,
   /// capado em 20 iteracoes ou 50KB serialized. Cada item: { provider, data }.
   reasoningHistory Json    @default("[]") @map("reasoning_history")
+  /// Tags de topico/dominio derivadas das mensagens do usuario na conversa.
+  /// Populado pelo job assincrono `agent-topic-tagging` (Onda 1 Inteligencia).
+  /// Cap 5 tags. Ex.: ["estoque", "keyword:saldo", "produto:mola_espiral"].
+  topicTags        String[] @default([]) @map("topic_tags")
+  /// Versao do algoritmo de tagging. Incrementar forca re-tag em backfill.
+  topicTagsVersion Int      @default(0) @map("topic_tags_version")
+  /// Quando foi tagueado pela ultima vez. Usado para decidir re-tag a cada
+  /// 10 mensagens novas.
+  topicTagsAt      DateTime? @map("topic_tags_at")
   createdAt DateTime     @default(now()) @map("created_at")
   updatedAt DateTime     @updatedAt @map("updated_at")
   messages  Message[]
+  qualityEvaluations ConversationQualityEvaluation[]
 
   @@index([userId, updatedAt])
   @@map("conversations")
@@ -2247,6 +2260,10 @@ model Message {
   role           MessageRole
   content        String
   toolCalls      Json?        @map("tool_calls")
+  /// Resultados das tool calls deste turno, em formato canonico cross-provider
+  /// (Array<{ name, args, result }>). NULL em mensagens pre-Onda 1 Inteligencia.
+  /// Spec: docs/superpowers/specs/2026-05-25-agente-nex-inteligencia-design.md §3.2.
+  toolResults    Json?        @map("tool_results")
   createdAt      DateTime     @default(now()) @map("created_at")
 
   @@index([conversationId, createdAt])
@@ -2372,6 +2389,19 @@ model AgentSettings {
   /// Máximo de sugestões clicáveis que o agente pode mostrar por resposta.
   /// Aplicado deterministicamente em `extractSuggestions` e instruído no prompt.
   maxSuggestions    Int      @default(3) @map("max_suggestions")
+
+  /// Modelo usado em chamadas internas de inteligencia (topic-extractor,
+  /// contextual-suggester). Formato: "provider/model" ex. "anthropic/claude-haiku-4-5".
+  /// NULL = default Haiku 4.5 via OpenRouter.
+  intelligenceModel String?  @map("intelligence_model")
+  /// Modelo do juiz de qualidade (Frente A da inteligencia). NULL = Gemini 2.5
+  /// Pro thinking via OpenRouter (fallback: Opus 4.7).
+  qualityJudgeModel String?  @map("quality_judge_model")
+  /// Checkpoint das frentes B/C/D da inteligencia (welcome personalizado,
+  /// sugestoes contextuais, bullets-pergunta para chips). Default OFF para
+  /// rollout controlado. Frente A (analise retrospectiva) e admin-only e
+  /// nao respeita este checkpoint.
+  intelligenceCheckpoint FeatureCheckpoint @default(OFF) @map("intelligence_checkpoint")
 
   /// Modelo dedicado de transcrição de áudio (independente do modelo de produção).
   audioProvider     String?  @map("audio_provider")
@@ -2592,4 +2622,115 @@ model ProcessedWhatsappMessage {
 
   @@index([userId, processedAt])
   @@map("processed_whatsapp_messages")
+}
+
+// ─── F4.5 — Agente Nex Inteligencia ─────────────────────────────────────────
+//
+// Spec canonica: docs/superpowers/specs/2026-05-25-agente-nex-inteligencia-design.md (v3)
+// Plan canonico: docs/superpowers/plans/2026-05-25-agente-nex-inteligencia-plan.md (v3)
+//
+// Quatro frentes:
+//   A. Analise retrospectiva (ConversationQualityEvaluation, PromptRecommendation)
+//   B. Welcome personalizado (UserAgentProfile)
+//   C. Continuidade contextual (SuggestionInteraction + dedup runtime)
+//   D. Bullets-pergunta -> chips (sem persist novo; consolida extractor existente)
+
+/// Perfil agregado do usuario para personalizar sugestoes iniciais (Frente B).
+/// Atualizado por job BullMQ `agent-profile-build` (cron 04:30 + on-demand a cada
+/// 10 mensagens novas do usuario). Guarda apenas derivados (topicos, keywords) —
+/// nenhuma frase original do usuario.
+model UserAgentProfile {
+  userId              String   @id @map("user_id") @db.Uuid
+  /// [{topic, score, lastSeenAt}], ordenado por score (recencia x frequencia).
+  topTopics           Json     @default("[]") @map("top_topics")
+  /// [{keyword, score}].
+  topKeywords         Json     @default("[]") @map("top_keywords")
+  preferredDomains    String[] @default([]) @map("preferred_domains")
+  messageCount        Int      @default(0) @map("message_count")
+  lastInteractionAt   DateTime? @map("last_interaction_at")
+  profileBuiltAt      DateTime? @map("profile_built_at")
+  /// Versao do algoritmo de construcao. Incrementar forca rebuild.
+  version             Int      @default(1)
+
+  user                User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([lastInteractionAt])
+  @@map("user_agent_profiles")
+}
+
+/// Avaliacao automatica da qualidade de uma resposta do agente (Frente A).
+/// Uma linha por `assistantMessageId`. Juiz default Gemini 2.5 Pro thinking via
+/// OpenRouter (configuravel em AgentSettings.qualityJudgeModel).
+model ConversationQualityEvaluation {
+  id                    String   @id @default(uuid()) @db.Uuid
+  conversationId        String   @map("conversation_id") @db.Uuid
+  assistantMessageId    String   @unique @map("assistant_message_id") @db.Uuid
+  judgeModel            String   @map("judge_model")
+  judgeVersion          String   @map("judge_version")
+  /// 1-5. NULL quando dimensao nao avaliada (ex.: correcaoFactual sem toolResults).
+  aderencia             Int?
+  correcaoFactual       Int?     @map("correcao_factual")
+  escolhaDeTools        Int?     @map("escolha_de_tools")
+  clareza               Int?
+  razoes                String
+  recomendacaoPrompt    String?  @map("recomendacao_prompt")
+  /// Embedding (1536) da recomendacao para clusterizacao via KNN. Acessado via
+  /// $queryRaw (pgvector). Prisma client nao seleciona campos Unsupported.
+  recomendacaoEmbedding Unsupported("vector(1536)")? @map("recomendacao_embedding")
+  /// {tools: [{name, originalArgs, originalResult, newResult, divergence}]}.
+  toolsReexecuted       Json?    @map("tools_reexecuted")
+  /// Flags informativos: "original_result_missing", "tool_diverged", etc.
+  flags                 String[] @default([])
+  reviewedByHumanAt     DateTime? @map("reviewed_by_human_at")
+  reviewedBy            String?  @map("reviewed_by") @db.Uuid
+  reviewerDecision      String?  @map("reviewer_decision")
+  createdAt             DateTime @default(now()) @map("created_at")
+
+  conversation          Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+
+  @@index([conversationId])
+  @@index([aderencia])
+  @@index([reviewerDecision])
+  @@map("conversation_quality_evaluations")
+}
+
+/// Recomendacao de mudanca do prompt-mestre, agregada por cluster semantico das
+/// `recomendacaoPrompt` dos `ConversationQualityEvaluation`. Revisao humana via UI
+/// `/agente/inteligencia`. Aceitacao NAO automatiza mudanca de prompt — abre
+/// caminho para PR manual no `identity-base.ts`.
+model PromptRecommendation {
+  id              String   @id @default(uuid()) @db.Uuid
+  clusterKey      String   @unique @map("cluster_key")
+  consolidatedText String  @map("consolidated_text")
+  occurrences     Int      @default(1)
+  /// pending | accepted | rejected | needs_more_review
+  status          String   @default("pending")
+  decidedAt       DateTime? @map("decided_at")
+  decidedBy       String?  @map("decided_by") @db.Uuid
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @updatedAt @map("updated_at")
+
+  @@index([status])
+  @@map("prompt_recommendations")
+}
+
+/// Telemetria de interacao com chips de sugestao. Usado para metricas e para
+/// detectar dedup (action="dedup_dropped") e fallback (action="fallback_timeout").
+/// TTL 90 dias via cron `agent-intelligence-cleanup` semanal.
+model SuggestionInteraction {
+  id              String   @id @default(uuid()) @db.Uuid
+  userId          String   @map("user_id") @db.Uuid
+  conversationId  String?  @map("conversation_id") @db.Uuid
+  chipText        String   @map("chip_text")
+  /// welcome | contextual | bullet_extracted
+  chipSource      String   @map("chip_source")
+  /// impressed | clicked | dedup_dropped | fallback_timeout
+  action          String
+  createdAt       DateTime @default(now()) @map("created_at")
+
+  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, createdAt])
+  @@index([chipSource, createdAt])
+  @@map("suggestion_interactions")
 }
