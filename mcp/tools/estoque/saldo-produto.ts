@@ -131,7 +131,7 @@ export const estoqueSaldoProduto: ToolEntry<Input, Output> = {
   inputSchema,
   outputSchema,
   handler: (input, ctx) =>
-    withFreshness(ctx.prisma, ["fato_estoque_saldo"], async () =>
+    withFreshness(ctx.prisma, ["fato_estoque_saldo", "fato_produto"], async () =>
       shape(await querySaldoProduto(ctx.prisma, input)),
     ),
 };
