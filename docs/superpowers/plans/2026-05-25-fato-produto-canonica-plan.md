@@ -1,5 +1,12 @@
 # PLAN v3 — fato_produto canônica
 
+> **STATUS: ENTREGUE em 2026-05-25** (commits 12b6cc2 → 93ee4b8 inclusive).
+> Verificação real: tool retorna 6 produtos para "mola espiral em aço"
+> (1 com saldo + 5 sintéticas). Aprendizado pós-deploy: faltou
+> `GRANT SELECT ON fato_produto TO nexus_mcp` na migration original —
+> agora documentado em `docs/runbooks/rebuild-containers.md` como regra
+> permanente para qualquer fato nova.
+
 **Spec:** `2026-05-25-fato-produto-canonica-design.md` v3 FINAL.
 
 > v1, review #1, v2, review #2, v3 produzidos inline neste plan

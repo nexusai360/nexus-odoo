@@ -15,6 +15,30 @@
 > container antes de validar a feature.** Em dev local é manual. Em
 > produção é automático via CI → Portainer.
 
+## REGRA COMPLEMENTAR: criou tabela nova? Dê GRANT.
+
+> **Toda fato/tabela nova lida pelo MCP precisa de `GRANT SELECT` na
+> própria migration.** O servidor MCP roda com role `nexus_mcp` (e
+> `nexus_mcp_bi` para BI). Sem GRANT explícito, a tool falha com
+> `permission denied for table X` (Postgres code `42501`) — invisível
+> nos logs do Prisma do app, visível no `mcp_audit_log.error_message`.
+>
+> Pattern idempotente recomendado (dev local sem roles + prod com roles):
+>
+> ```sql
+> DO $$ BEGIN
+>   IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'nexus_mcp') THEN
+>     EXECUTE 'GRANT SELECT ON <minha_tabela> TO nexus_mcp';
+>   END IF;
+>   IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'nexus_mcp_bi') THEN
+>     EXECUTE 'GRANT SELECT ON <minha_tabela> TO nexus_mcp_bi';
+>   END IF;
+> END $$;
+> ```
+>
+> Esse pattern existe no migration `20260525130000_fato_produto_canonica`
+> como referência canônica.
+
 ## Mapa de impacto código → container
 
 | Você mudou… | Rebuilde |
