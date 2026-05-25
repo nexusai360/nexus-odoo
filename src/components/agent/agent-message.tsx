@@ -190,24 +190,56 @@ function BubbleSurface({
   enableLayout?: boolean;
   fastGrow?: boolean;
 }) {
-  // REVERTIDO: motion.div + ResizeObserver/scrollWidth davam medicao
-  // errada quando o conteudo wrappa (scrollWidth = parent width
-  // constrained, nao a largura natural sem wrap). Resultado visual:
-  // bolha squished com texto quebrando em 3-4 chars por linha.
-  // Voltando a div pura - crescimento natural CSS. O efeito de
-  // "expansao suave" vem do entry dos motion.li (550ms delay +
-  // 550ms duracao + slide-up). Sem regressao no typewriter.
+  // Estrategia: HEIGHT anima via motion.div + RO (funcionou ja
+  // confirmado pelo user). WIDTH anima via CSS transition + interpolate-size
+  // na classe .nex-bubble-grow (Chrome 129+, Safari 18+; degrada para
+  // instant em browsers mais velhos). Sem squish de texto (no constraint
+  // de width vindo do motion.div).
+  const reduce = useReducedMotion();
+  const innerRef = React.useRef<HTMLDivElement>(null);
+  const [height, setHeight] = React.useState<number | "auto">("auto");
+
+  React.useEffect(() => {
+    const el = innerRef.current;
+    if (!el) return;
+    const measure = (entries: ResizeObserverEntry[]) => {
+      const h = entries[0]?.contentRect.height ?? el.offsetHeight;
+      // +20 = padding total (py-2.5 = 20px) ja que contentRect e do
+      // content-box.
+      const total = h + 20;
+      setHeight((prev) => (prev === total ? prev : total));
+    };
+    const ro = new ResizeObserver(measure);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
+
   return (
-    <div
+    <motion.div
+      animate={{ height }}
+      transition={
+        reduce
+          ? { duration: 0 }
+          : { duration: 1.1, ease: [0.22, 1, 0.36, 1] }
+      }
       className={cn(
-        "relative max-w-[85%] rounded-2xl px-3.5 py-2.5 text-sm leading-relaxed",
+        // nex-bubble-grow: transition CSS de width 1.1s + interpolate-size
+        // (em globals.css) faz width animar suave de auto pra auto.
+        "nex-bubble-grow relative max-w-[85%] rounded-2xl px-3.5 text-sm leading-relaxed",
         isUser
           ? "bg-violet-600/15 text-foreground"
           : "bg-muted text-foreground",
       )}
+      // overflowY hidden clipa height durante animacao; X visivel evita
+      // qualquer clipping horizontal de texto (typewriter etc).
+      style={{ overflowY: "hidden", overflowX: "visible" }}
     >
-      {children}
-    </div>
+      {/* innerRef mede content height. Tem o padding vertical (py-2.5).
+          Width nao e constrained aqui - vem natural. */}
+      <div ref={innerRef} className="py-2.5">
+        {children}
+      </div>
+    </motion.div>
   );
 }
 
