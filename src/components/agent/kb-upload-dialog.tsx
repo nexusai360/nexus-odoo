@@ -629,7 +629,7 @@ export function KbUploadDialog({
                 <div className="rounded-xl border border-border bg-card/40 p-2">
                   <ul
                     ref={listRef}
-                    className="max-h-[380px] space-y-2 overflow-y-auto pr-1"
+                    className="max-h-[460px] space-y-2 overflow-y-auto pr-1"
                   >
                     {items.map((it, i) => {
                       const isLast = i === items.length - 1;
