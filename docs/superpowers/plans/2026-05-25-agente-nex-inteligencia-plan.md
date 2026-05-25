@@ -1,8 +1,55 @@
-# Agente Nex Inteligência — Plano de execução (v1)
+# Agente Nex Inteligência — Plano de execução
 
 > Spec canônica: `docs/superpowers/specs/2026-05-25-agente-nex-inteligencia-design.md` (v3).
 > Branch: `feat/agente-nex-inteligencia`. Workflow: modo autônomo (CLAUDE.md §6).
-> **Status: v1** — entra para 2 reviews adversariais.
+> **Status: v3** (pós-reviews #1 e #2 — `reviews/2026-05-25-inteligencia-plan-review-{1,2}.md`).
+> Versão canônica que entra para execução.
+
+## Versionamento
+
+- **v1**: rascunho. 20 achados (review #1).
+- **v2**: aplicou P1–P20. 15 achados na review #2.
+- **v3** (este): aplica Q1–Q15.
+
+## Orçamento
+
+| Item | Custo estimado |
+|---|---|
+| Onda 1 (tagging síncrono inicial — só pós-deploy) | $0 (jobs assíncronos rodam só após deploy; primeiros tags acontecem em uso natural) |
+| Onda 2 — análise retrospectiva (sample 5 % = 530 turnos, Gemini 2.5 Pro thinking) | ~$8 |
+| Onda 3 — backfill perfis (6 k users × Haiku 4.5) | ~$1 |
+| Onda 4 — contextual + dedup (50 conv/dia regime) | ~$5/mês |
+| Tagging incremental em regime | centavos/dia |
+| **Total inicial (uma vez)** | **≤ $15** |
+| **Operacional mensal estimado** | **< $10** |
+
+---
+
+## Protocolo de coordenação multi-agente em arquivos compartilhados
+
+Aplicar antes de **cada** edit em qualquer arquivo da lista §"Editados (com coordenação)"
+no final deste plano:
+
+1. `ls docs/agents/active/` para listar agentes ativos.
+2. `git log -3 --oneline -- <arquivo>` para olhar commits recentes.
+3. `tail -10 docs/agents/HISTORY.md`.
+4. **Decisão**:
+   - Se outro `active/*.md` declara este arquivo OU último commit < 30 min em arquivo
+     compartilhado → **pausar 1 h** e tentar novamente OU pivotar para outra task.
+   - Senão → prosseguir.
+5. Após editar: append em `HISTORY.md` (scope=feat/fix), `git add <arquivo>` (NUNCA `-A`),
+   commit.
+
+## Rollback
+
+| Onda | Como reverter |
+|---|---|
+| Onda 1 | Migration tem `IF NOT EXISTS`. Revert manual: `DROP TABLE` + `ALTER … DROP COLUMN` (script `prisma/migrations/<...>/down.sql` documentado). Code revert: `git revert` do(s) commit(s) da onda. |
+| Onda 2 | Feature flag inexiste (frente A é admin via script). Desativar = não rodar `pnpm analyze:conversations`. Tela admin permanece mas vazia. Code revert se UI quebrar. |
+| Onda 3 | Setar `AgentSettings.intelligenceCheckpoint = OFF` no banco → welcome volta a estático. Code revert se necessário. |
+| Onda 4 | Setar `AgentSettings.intelligenceCheckpoint = OFF` → contextual desabilitado, extractor legado segue funcionando. Code revert se necessário. |
+
+Migration down não automatizada; documentada.
 
 ## 0. Pré-flight
 
@@ -17,6 +64,17 @@ Antes de tocar código:
   (`LlmCredential` com `provider='anthropic'`). Idem Gemini se for usar judge.
 - **P0.5** — Confirmar agentes ativos via `ls docs/agents/active/`. Coordenar antes de
   tocar `prisma/schema.prisma`, `chat-panel.tsx`, `run-agent.ts`.
+- **P0.6** — `grep -rn "function run.*Chat\|export.*runChat\|chatCompletion" src/lib/agent/llm/`
+  para localizar o cliente LLM unificado (refatorado pela `claude-nex-llm-adapters-modernization`).
+  `topic-extractor`, `quality-judge`, `contextual-suggester` devem chamar essa camada e
+  não criar fetch HTTP próprio. Documentar nome canônico no active file.
+- **P0.7** — `grep -rn "__fixtures__\|test/fixtures\|tests/fixtures" src/` para identificar
+  convenção de fixtures do projeto. Documentar.
+- **P0.8** — `find src/app/api -name "route.test.ts" -o -name "*route.test.ts"` para
+  identificar padrão de teste de App Router. Se nenhum existe: padrão proposto é
+  instanciar `Request` manual + chamar handler exportado.
+- **P0.9** — `pnpm tsx prisma/seed.ts --dry` (ou equivalente) para confirmar que seed
+  existente continua funcionando com schema novo. Ajustar se quebrar.
 
 Critério de saída do pré-flight: tudo verde. Caso contrário, registrar bloqueio no active
 file e parar.
@@ -88,16 +146,38 @@ file e parar.
 - **Verificação**: `pnpm jest normalize-tool-history` verde.
 - **Done**: 6 testes passando.
 
+**T1.7a — Descoberta do callsite** *(file: shell)*
+
+- `grep -n "prisma.message.create" src/lib/agent/run-agent.ts` → anotar linhas.
+- `grep -n "messages.create\|persistMessage" src/lib/agent/` → cobrir outros chamadores.
+- Documentar linha exata no active file.
+- **Done**: callsite identificado.
+
 **T1.7 — Instrumentar `run-agent.ts` para gravar `toolResults`** *(file: `src/lib/agent/run-agent.ts`)*
 
-- Localizar onde `Message` assistant é persistida.
-- Quando há tool result em memória (após o loop de tool calls), gravar como JSON em
-  `Message.toolResults`. **Não alterar** `toolCalls` nem outros campos.
+- Editar o callsite identificado em T1.7a. Acrescentar campo:
+  ```ts
+  toolResults: result.toolCalls && result.toolCalls.length > 0
+    ? normalizeToolResults(result.toolCalls)
+    : Prisma.JsonNull,
+  ```
+- `normalizeToolResults` = helper local ou re-uso do `normalize-tool-history.ts`
+  (T1.5/T1.6) — confirmar na execução qual encaixa melhor.
 - **Compatibilidade obrigatória** (spec §12): não tocar `reasoningHistory`, `LlmUsage`,
   `loadConversationReasoningHistory`, formato de `toolCalls`.
-- **Verificação**: enviar 1 mensagem com tool call no `/agente`, confirmar
-  `tool_results IS NOT NULL` na nova message.
+- **Decisão explícita**: backfill de `toolResults` para mensagens antigas NÃO é executado.
+  Mensagens pré-Onda 1 terão `correcaoFactual = null` (era `pre_instrument` na amostragem
+  da Onda 2; spec §3.2).
+- **blocked_by**: T1.5, T1.6.
 - **Done**: dado persistindo.
+
+**T1.7b — Teste integration de persistência** *(file: `src/lib/agent/run-agent.persist-tool-results.test.ts`)*
+
+- Mock Prisma `message.create`; mock LLM ChatResult.
+- 2 testes: turno com tool call (toolResults populado), turno sem tool call (toolResults
+  null).
+- **Verificação**: `pnpm jest run-agent.persist-tool-results` verde.
+- **Done**: 2 testes passando.
 
 **T1.8 — `topic-extractor.ts`** *(file: `src/lib/agent/intelligence/topic-extractor.ts`)*
 
@@ -143,11 +223,19 @@ file e parar.
 **T1.13 — Job BullMQ `agent-topic-tagging`** *(file: `src/worker/jobs/agent-intelligence/topic-tagging.ts`)*
 
 - Worker BullMQ consome `{ conversationId: string }`.
-- Lê primeira mensagem do user da conversa.
-- Chama `extractTopics`.
-- Lê `topicTags` existente, faz append-mescla com dedup, cap 5 tags.
-- Atualiza `Conversation { topicTags, topicTagsVersion: 1, topicTagsAt: now() }`.
-- Idempotente: se já chamou na mesma `messageCount` (calculável), pula.
+- **Idempotência**: contar `messages.count({ where: { conversationId, createdAt: { gt: topicTagsAt ?? new Date(0) } } })`.
+  Se `< 10` E `topicTagsAt != null` → return early (no-op).
+- Lê primeira mensagem do user da conversa (ou últimas 5 se já tem tags).
+- Chama `extractTopics` → `{topic, domain, keywords}`.
+- **Conversão canônica para `topicTags: string[]`**:
+  ```ts
+  const tag0 = domain && domain !== topic ? `${domain}:${topic}` : topic;
+  const kwTags = keywords.slice(0, 4).map(k => `keyword:${k}`);
+  const merged = dedupCaseInsensitive([...existingTags, tag0, ...kwTags]).slice(0, 5);
+  ```
+- Atualiza `Conversation { topicTags: merged, topicTagsVersion: 1, topicTagsAt: now() }`.
+- **Nota sobre BullMQ**: `:` é proibido em **queue name** (lição 2026-05-25 15:45). Em `jobId`
+  é permitido — usar livremente.
 - **Verificação**: T1.15.
 - **Done**: job exportado.
 
@@ -181,13 +269,27 @@ file e parar.
 - **Verificação**: `docker inspect <container> --format '{{.State.StartedAt}}'` > último commit.
 - **Done**: containers reiniciados.
 
-**T1.18 — Commit Onda 1**
+**T1.18 — Commits intermediários da Onda 1** *(4 commits)*
 
-- `git add` apenas arquivos da Onda 1 (lista explícita; nunca `-A`).
-- Mensagem: `feat(intelligence): onda 1 - schema + telemetria + tagging assincrono`.
-- Append em `docs/agents/HISTORY.md` (scope=feat+infra).
-- **Verificação**: `git log -1` mostra commit; tsc/eslint/jest verdes.
-- **Done**: branch atualizada.
+A Onda 1 fecha como bloco lógico mas é particionada em 4 commits para revert/review:
+
+- **C1** (após T1.3): `feat(intelligence): onda 1 c1 - schema + migration`
+  Arquivos: `prisma/migrations/...`, `prisma/schema.prisma`.
+- **C2** (após T1.6): `feat(intelligence): onda 1 c2 - normalize-tool-history + tests`
+  Arquivos: `src/lib/agent/intelligence/normalize-tool-history.ts` + test + fixtures.
+- **C3** (após T1.12): `feat(intelligence): onda 1 c3 - instrumentacao + helpers + tests`
+  Arquivos: `run-agent.ts`, `topic-extractor.ts` + test, `reasoning-effort-policy.ts`,
+  `conversation.ts` + test, `run-agent.persist-tool-results.test.ts`.
+- **C4** (após T1.16): `feat(intelligence): onda 1 c4 - job topic-tagging + queue`
+  Arquivos: `src/worker/jobs/agent-intelligence/topic-tagging.ts` + test, `index.ts`,
+  `src/worker/index.ts`.
+
+Cada commit:
+- `git add <arquivos-listados>` (nunca `-A`).
+- Append em `HISTORY.md`.
+- Verificação: `pnpm tsc --noEmit && pnpm eslint <pastas> && pnpm jest <area>` verde antes
+  do commit.
+- **Done**: 4 commits na branch.
 
 ### Critério de done da Onda 1
 
@@ -210,9 +312,14 @@ file e parar.
 
 **T2.0 — UI mockups via `ui-ux-pro-max`** *(file: `docs/superpowers/specs/2026-05-25-inteligencia-ui-mockups.md`)*
 
-- Acionar `ui-ux-pro-max` para produzir wireframes da tela `/agente/inteligencia`:
-  KPIs, failure-patterns, recommendations-table, drilldown.
-- Documento serve de input para T2.6+.
+- Invocar skill via tool `Skill { skill: "ui-ux-pro-max:ui-ux-pro-max" }` com `args`
+  descrevendo: "Tela admin `/agente/inteligencia` no estilo do dashboard Nexus
+  (paleta violet, cards consistentes com `/agente/consumo`). Conteúdo: KPIs (médias por
+  dimensão, distribuição 1-5, cobertura por era), padrões de falha (top 10), recomendações
+  pendentes com aceitar/rejeitar, drill-down de conversa, filtros (período, tópico, modelo,
+  usuário)."
+- Output da skill → escrever em `docs/superpowers/specs/2026-05-25-inteligencia-ui-mockups.md`.
+- Commit do arquivo isoladamente, scope=ui.
 - **Done**: arquivo committed.
 
 **T2.1 — `tool-replayer.ts`** *(file: `src/lib/agent/intelligence/tool-replayer.ts`)*
@@ -250,6 +357,34 @@ file e parar.
   → `correcaoFactual: null`.
 - **Done**: 3 testes passando.
 
+**T2.4.5 — `embeddings-client.ts`** *(file: `src/lib/agent/intelligence/embeddings-client.ts`)*
+
+- Verificar se F5 RAG tem helper: `grep -rn "text-embedding-3-small" src/lib/agent/rag/`.
+- Se sim, re-exportar/wrappear. Se não, criar:
+  ```ts
+  export async function embed(text: string): Promise<number[]>; // 1536-dim
+  ```
+- Usa OpenAI client (mesma credencial F5 RAG).
+- **Verificação**: 1 unit test com mock fetch → array 1536 floats.
+- **Done**: módulo pronto; reutilizável por T2.5 e T4.3.
+
+**T2.3a — Mapear cliente LLM unificado** *(file: shell)*
+
+- Reaproveitar achado da P0.6 (nome canônico da função `runChat`/`chatCompletion`).
+- `topic-extractor`, `quality-judge`, `contextual-suggester` chamam essa função. Não criam
+  fetch próprio.
+- **Done**: documentado.
+
+**T2.2.5 — Garantir credencial para o judge** *(file: shell + opcional fallback)*
+
+- `pnpm tsx -e "import {prisma} from 'src/lib/prisma'; console.log(await prisma.llmCredential.findFirst({where:{provider:'google'}}))"`.
+- Se null:
+  - Documentar no plan e seguir com fallback `--judge-model claude-opus-4-7` (Anthropic já
+    confirmado em P0.4).
+  - Registrar follow-up no `STATUS.md`: "Adicionar credencial Gemini para Judge custo $8 vs $48".
+- Se existe: prosseguir com default Gemini.
+- **Done**: decisão documentada.
+
 **T2.5 — `recommendation-clusterer.ts`** *(file: `src/lib/agent/intelligence/recommendation-clusterer.ts`)*
 
 - Função `clusterRecommendations(): Promise<Cluster[]>`.
@@ -271,12 +406,40 @@ file e parar.
 
 **T2.6 — Script `analyze-conversations.ts`** *(file: `scripts/analyze-conversations.ts`)*
 
-- CLI `pnpm analyze:conversations [--sample 0.05] [--max-cost-usd 50]`.
-- Amostragem estratificada §3.2.2 da spec.
-- Loop por turno: chama replayer + judge; persiste eval; acumula custo.
-- Pausa interativa ao bater max-cost.
-- Ao final: chama `clusterRecommendations()`.
-- Reporta cobertura por era no stdout.
+- CLI `pnpm analyze:conversations [--sample 0.05] [--max-cost-usd 50] [--judge-model <id>]`.
+- Pseudocódigo da amostragem estratificada:
+  ```ts
+  const turns = await prisma.message.findMany({
+    where: { role: "assistant", toolCalls: { not: null } },
+    select: { id, conversationId, conversation: { topicTags, ... }, llmConfig: { model }, toolResults },
+  });
+  const buckets = new Map<string, Turn[]>();
+  for (const t of turns) {
+    const era = t.toolResults ? "post_instrument" : "pre_instrument";
+    const topic = t.conversation.topicTags[0] ?? "unknown";
+    const model = t.llmConfig.model;
+    const key = `${era}|${topic}|${model}`;
+    buckets.set(key, [...(buckets.get(key) ?? []), t]);
+  }
+  const sample: Turn[] = [];
+  for (const [key, bucketTurns] of buckets) {
+    const n = Math.min(Math.max(Math.ceil(bucketTurns.length * ratio), 1), 200);
+    sample.push(...shuffle(bucketTurns).slice(0, n));
+  }
+  // Balanço 50/50 entre eras:
+  const postSample = sample.filter(t => t.era === "post_instrument");
+  const preSample = sample.filter(t => t.era === "pre_instrument");
+  const targetEachEra = Math.min(postSample.length, preSample.length);
+  const balanced = [...shuffle(postSample).slice(0, targetEachEra), ...shuffle(preSample).slice(0, targetEachEra)];
+  ```
+- Loop por turno: replayer → judge → persist eval; acumula custo estimado.
+- **Retry/rate-limit**: para cada chamada ao judge:
+  - Retry exponencial: 3 tentativas, backoff `[2s, 8s, 30s]`.
+  - Em 429: respeita `Retry-After` se presente.
+  - Após 3 falhas consecutivas: pula o turno, registra em `analyze.log`, prossegue.
+- Pausa interativa ao bater max-cost (prompt `[y/N/raise]`).
+- Ao final: `clusterRecommendations()`. Reporta turnos pulados.
+- Reporta cobertura por era: `Pre-instrument: X% (Y avals) · Post-instrument: Z% (W avals)`.
 - **Verificação**: T2.11.
 - **Done**: script funcional.
 
@@ -294,6 +457,25 @@ file e parar.
 - 403 ou redirect caso contrário.
 - **Verificação**: smoke test acessando como viewer (deve barrar).
 - **Done**: guard ativo.
+
+**T2.9b — Seed de teste** *(file: `prisma/seed-intelligence.ts`)*
+
+- Script standalone que insere:
+  - 50 `ConversationQualityEvaluation` com rubricas variadas (mistura aderência 1-5).
+  - 10 `PromptRecommendation` em status `pending`.
+  - 200 `SuggestionInteraction` com mix de `chipSource` e `action`.
+- Rodável: `pnpm tsx prisma/seed-intelligence.ts`.
+- Idempotente: limpa antes (`DELETE WHERE source = 'seed'` via campo de marcação ou
+  conferindo timestamps).
+- **Done**: seed disponível para devs/QA.
+
+**T2.10a — Pattern do sidebar** *(file: shell)*
+
+- `head -20 src/components/layout/sidebar.tsx` → identificar server vs client component.
+- Se server (`"use server"` ou ausência de `"use client"`): renderiza condicional direto
+  no JSX.
+- Se client: receber `userRole` via prop do layout server pai.
+- **Done**: pattern documentado para T2.10.
 
 **T2.9 — Tela principal + componentes** *(files: `src/app/(protected)/agente/inteligencia/{page,kpis,failure-patterns,recommendations-table,conversation-drilldown}.tsx`)*
 
@@ -313,13 +495,17 @@ file e parar.
 
 **T2.11 — Verificação E2E real**
 
-- Gate de 100 turnos pós-instrumentação passou.
-- Rodar `pnpm analyze:conversations --sample 0.02 --max-cost-usd 5` em DB local.
-- Conferir ≥ 100 avaliações geradas em `conversation_quality_evaluations`.
-- Conferir `audit_logs` ter ao menos 1 `QUALITY_JUDGE_TOOL_REPLAY`.
-- Abrir `/agente/inteligencia`; revisar 5 recomendações; aceitar/rejeitar 1.
-- Rodar com `intelligenceCheckpoint=OFF` para confirmar que tela ainda renderiza
-  (frente A é admin-only, sem checkpoint runtime).
+Comandos exatos de evidência:
+
+- Gate: `docker compose exec -T db psql -U postgres -d nexus_odoo -c "SELECT COUNT(*) FROM messages WHERE tool_results IS NOT NULL"` ≥ 100.
+- Rodar: `pnpm analyze:conversations --sample 0.02 --max-cost-usd 5`.
+- Contagem: `psql -c "SELECT COUNT(*) FROM conversation_quality_evaluations"` ≥ 100.
+- Audit: `psql -c "SELECT COUNT(*) FROM audit_logs WHERE action='QUALITY_JUDGE_TOOL_REPLAY'"` ≥ 1.
+- Abrir `/agente/inteligencia` no navegador; revisar 5 recomendações; aceitar/rejeitar 1
+  (visual + commit em `prompt_recommendations.status`).
+- Smoke checkpoint: `UPDATE agent_settings SET intelligence_checkpoint='OFF' WHERE id='global'`;
+  recarregar tela; tela renderiza (admin not gated by checkpoint).
+- Restaurar: `UPDATE agent_settings SET intelligence_checkpoint='PRODUCTION' WHERE id='global'`.
 - **Done**: verificação aprovada manualmente.
 
 **T2.12 — Rebuild + commit**
@@ -374,17 +560,30 @@ file e parar.
 
 **T3.5 — Cron 04:30 + listener N+10 msgs** *(file: `src/worker/jobs/agent-intelligence/profile-build.ts` + `src/worker/index.ts`)*
 
-- Cron BullMQ `agent-profile-build` agendado para `30 4 * * *`.
-- Listener no `run-agent.ts`: a cada mensagem do user, conta msgs novas desde
-  `profileBuiltAt`; se ≥ 10 → enfileira.
-- **Verificação**: testes manuais (alterar horário do cron para teste; mandar 10 msgs).
+- Cron BullMQ via `queue.add` com `repeat`:
+  ```ts
+  await profileBuildQueue.add(
+    "scheduled-all-users",
+    {},
+    { repeat: { pattern: "30 4 * * *", tz: "America/Sao_Paulo" } }
+  );
+  ```
+  No worker startup. Idempotente: BullMQ persiste no Redis; subir worker re-registra.
+- Listener no `run-agent.ts`: a cada mensagem do user, conta msgs do user desde
+  `profileBuiltAt`. Se ≥ 10 → enfileira `profileBuildQueue.add(...{userId},
+  { jobId: \`profile-build:${userId}\` })`. BullMQ dedupa.
+- **Verificação**: testes manuais (alterar horário do cron para `*/5 * * * *` em dev;
+  mandar 10 msgs no `/agente`; conferir `user_agent_profiles` atualizado em ≤ 1 min).
 - **Done**: triggers ativos.
 
 **T3.6 — Script `build-user-profiles.ts`** *(file: `scripts/build-user-profiles.ts`)*
 
 - Backfill 1x: lista todos `User`, enfileira job para cada.
-- Rate limit para não floodar (cap N concorrentes).
-- **Done**: script funcional.
+- **Rate limit**: batches de 100; `await sleep(2000)` entre batches; CLI flag
+  `--rate-limit-per-minute 100` (default).
+- Worker para `agent-profile-build` configurado com `concurrency: 5` no
+  `src/worker/jobs/agent-intelligence/profile-build.ts` (registrado em T3.3).
+- **Done**: script funcional sem afogar provider.
 
 **T3.7 — `welcome-suggestions.ts` consome perfil** *(file: `src/lib/agent/welcome-suggestions.ts`)*
 
@@ -443,6 +642,33 @@ file e parar.
 
 ### Tasks
 
+**T4.1.5 — Keep-alive ao Haiku 4.5** *(file: `src/worker/jobs/agent-intelligence/llm-keepalive.ts`)*
+
+- Cron `*/5 * * * *`.
+- Faz call trivial (1-token completion) ao Haiku 4.5 para reduzir cold start do contextual
+  suggester.
+- Gated by `process.env.NODE_ENV === "production"`.
+- Registrado em `src/worker/index.ts`.
+- **Verificação**: dev local não dispara; mock test confirma gate.
+- **Done**: cron ativo em produção.
+
+**T4.2.5 — `tool-keyword-map.ts`** *(file: `src/lib/agent/intelligence/tool-keyword-map.ts`)*
+
+- Tipo: `Record<string, string>` (keyword → toolName).
+- Inicial: 10 mapeamentos baseados em
+  `SELECT unnest(tool_names) AS tn, COUNT(*) FROM llm_usage GROUP BY tn ORDER BY COUNT DESC LIMIT 10`.
+- Ex.: `{"saldo": "querySaldoProduto", "estoque": "querySaldoProduto", "faturamento":
+  "queryFaturamento", "venda": "queryFaturamento", ...}`.
+- **Done**: mapa exportado, consumido por `semantic-dedup.ts` (T4.3) para override.
+
+**T4.11.5 — Descobrir callback `onMessageDone`** *(file: shell)*
+
+- `grep -n "onMessageDone\|onAssistantComplete\|streaming.*done\|onStreamComplete" src/components/agent/chat-panel.tsx`.
+- Se existe callback: usar.
+- Se não: criar via `useEffect` em `chat-panel.tsx` com deps `[streaming, currentMessage]`;
+  dispara quando `streaming` vai de `true` → `false` para mensagem com `role === "assistant"`.
+- **Done**: pattern documentado.
+
 **T4.1 — `contextual-suggester.ts`** *(file: `src/lib/agent/intelligence/contextual-suggester.ts`)*
 
 - Função `suggestContinuation(input: SuggestInput): Promise<{chips: string[]}>`.
@@ -461,10 +687,11 @@ file e parar.
 **T4.3 — `semantic-dedup.ts`** *(file: `src/lib/agent/intelligence/semantic-dedup.ts`)*
 
 - Função `dedupSuggestions(candidates: string[], recent: string[]): Promise<{kept, dropped}>`.
-- Embeddings via `text-embedding-3-small` (reusa credencial F5).
-- Threshold 0.88.
-- Override "tools-differ" — se duas chips usariam tools diferentes (heurística por keyword
-  match), NÃO dedup.
+- Embeddings via `embed()` de `embeddings-client.ts` (T2.4.5).
+- Threshold cosine 0.88.
+- **Override "tools-differ"**: para cada par candidate × recent, infere a tool usando
+  `tool-keyword-map.ts` (T4.2.5) via match de keyword. Se ambas inferiram tools distintas
+  e cosine > 0.88: **mantém ambas** (override vence).
 - Log dedup via `SuggestionInteraction { action: "dedup_dropped" }`.
 - **Verificação**: T4.4.
 - **Done**: módulo pronto.
@@ -557,12 +784,34 @@ file e parar.
 
 **T4.15 — Verificação E2E real**
 
-- 10 conversas reais; bullets-pergunta nunca no corpo (visual + grep no banco).
-- Chips contextuais geradas em ≤ 2 s (visualmente).
-- 1+ dedup descartado (conferir `suggestion_interactions` com `action: "dedup_dropped"`).
-- Smoke `intelligenceCheckpoint=OFF` → chips do extractor legado (sem LLM).
-- Smoke `suggestionsCheckpoint=OFF` → nenhuma chip.
+Comandos exatos de evidência:
+
+- 10 conversas no `/agente`. Para cada: enviar pergunta, ver resposta, conferir
+  visualmente que perguntas-bullet apareceram só nas chips (não no corpo).
+- Conferir no banco:
+  `psql -c "SELECT content FROM messages WHERE role='assistant' ORDER BY created_at DESC LIMIT 10"` →
+  conteúdos não contêm linhas iniciando com `- ` que terminam em `?`.
+- Chips contextuais em ≤ 2 s (cronometrar visualmente nas 10 sessões).
+- `psql -c "SELECT COUNT(*) FROM suggestion_interactions WHERE action='dedup_dropped'"` ≥ 1.
+- Smoke `intelligenceCheckpoint=OFF`:
+  `UPDATE agent_settings SET intelligence_checkpoint='OFF' WHERE id='global'`. Enviar
+  pergunta; conferir chips do extractor legado (sem LLM call ao Haiku — `psql -c "SELECT
+  COUNT(*) FROM llm_usage WHERE created_at > NOW() - INTERVAL '1 minute' AND model LIKE 'claude-haiku%'"` = 0).
+- Smoke `suggestionsCheckpoint=OFF`:
+  `UPDATE agent_settings SET suggestions_checkpoint='OFF' WHERE id='global'`. Enviar
+  pergunta; nenhuma chip visível.
+- Restaurar checkpoints.
 - **Done**: verificação aprovada.
+
+**T4.15.5 — Cron `agent-intelligence-cleanup`** *(file: `src/worker/jobs/agent-intelligence/intelligence-cleanup.ts`)*
+
+- Cron `0 3 * * 0` (domingos 03:00).
+- `DELETE FROM suggestion_interactions WHERE created_at < NOW() - INTERVAL '90 days'`.
+- Idempotente.
+- Reportar contagem deletada no log.
+- Registrar no `src/worker/index.ts`.
+- **Verificação**: 1 unit test com fixture (mock Prisma deleteMany).
+- **Done**: cron ativo.
 
 **T4.16 — Rebuild + commit**
 
@@ -588,8 +837,16 @@ file e parar.
 **T5.4 — Atualizar `STATUS.md`** com novo bloco F4.5 (Inteligência) ou similar.
 **T5.5 — Apagar `docs/agents/active/claude-agente-nex-inteligencia.md`** (fim da sessão).
 **T5.6 — Append final em `HISTORY.md`** com sumário do trabalho.
-**T5.7 — Abrir PR** da branch para `feat/f4-leitura-expansao` (ou `main` se outras branches
-já mergearam).
+**T5.7 — Abrir PR**
+
+Critério de target:
+- `git fetch origin && gh pr list --state open --base main` → confere se
+  `feat/f4-leitura-expansao` ainda tem PR aberto.
+- Se sim: target = `feat/f4-leitura-expansao` (PR encadeado).
+- Se não (já mergeada ou nunca abriu): target = `main`.
+
+Corpo do PR: sumário das 4 ondas + custo total executado + nota de feature flags
+(`intelligenceCheckpoint=OFF` em prod até validação manual).
 
 ---
 
@@ -617,6 +874,55 @@ já mergearam).
 - `src/worker/index.ts` (compartilhado)
 
 ---
+
+## Grafo de dependências
+
+```
+P0.* (pré-flight)
+  └──> T1.1 (timestamp) ──> T1.2 (migration) ──> T1.3 (schema)
+         │                                        │
+         │              ┌─────────────────────────┴─────────────────────────┐
+         ▼              ▼                                                   ▼
+       T1.4 (inspect) T1.10 (reasoning-policy)                          T1.8 (topic-extractor) ── T1.9 (test)
+         │              │                                                   │
+         ▼              ▼                                                   ▼
+       T1.5 (normalize) ── T1.6 (test)                                   T1.13 (job)
+         │                                                                  │
+         ▼                                                                  ▼
+       T1.7a ── T1.7 ── T1.7b                                             T1.14 (register) ── T1.15 (test)
+                                                                            │
+                                                                            ▼
+                                                                          T1.16 (enqueue from run-agent)
+         T1.11 (getLastNPairs) ── T1.12 (test)                              │
+                                                                            ▼
+                                                                          T1.17 (rebuild) ── T1.18 (commits)
+
+Onda 1 ──> Onda 2 ── gate ≥ 100 turnos toolResults ──>
+   T2.0 (ui mockups) ──> T2.9 (UI)
+   T2.1 (replayer) ──> T2.2 (test)
+   T2.2.5 (credencial) ──> T2.3 (judge) ──> T2.4 (test)
+   T2.4.5 (embeddings) ──> T2.5 (clusterer) ──> T2.5b (test)
+   T2.1+T2.3+T2.5 ──> T2.6 (script analyze)
+   T1.14 ──> T2.7 (backfill tags)
+   T2.8 (RBAC) ──> T2.9 ──> T2.10 (sidebar)
+   tudo acima ──> T2.11 (verificação) ──> T2.12 (commit)
+
+Onda 1 ──> Onda 3:
+   T3.1 (profile-builder) ──> T3.2 (test) ──> T3.3 (job) ──> T3.4 (test) ──> T3.5 (cron + listener)
+   T3.5 ──> T3.6 (backfill script) ──> T3.7 (welcome consume) ──> T3.8 (test)
+   T3.7 ──> T3.9 (telemetria) ──> T3.10 (verify) ──> T3.11 (commit)
+
+Onda 1 ──> Onda 4:
+   T4.1 (suggester) ──> T4.2 (test)
+   T2.4.5 ──> T4.3 (dedup) ──> T4.4 (test)
+   T4.1+T4.3 ──> T4.5 (enhance-chips) ──> T4.6 (test)
+   T4.7 (identity-base) ── T4.8 (compose) ── T4.9 (test)
+   T4.5+T4.8 ──> T4.10 (route) ──> T4.11 (test) ──> T4.12 (chat-panel) ──> T4.13 (suggestions-bar) ──> T4.14 (tests) ──> T4.15 (verify)
+   T4.15.5 (cleanup cron)
+   tudo acima ──> T4.16 (commit)
+
+Onda 4 ──> Fase de fechamento (T5.*).
+```
 
 ## Riscos operacionais
 
