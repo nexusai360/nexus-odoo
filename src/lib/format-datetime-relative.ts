@@ -17,15 +17,18 @@ export function formatRelativeDateTime(value: Date | string | null | undefined):
   const hh = String(d.getHours()).padStart(2, "0");
   const mi = String(d.getMinutes()).padStart(2, "0");
 
-  // Regra reforcada (pedido usuario 2026-05-25 01:28): sempre mostrar
-  // dd/mm a esquerda do horario, mesmo no dia atual. So suprime ano
-  // quando ano da mensagem == ano atual. Mensagem antiga de outro ano:
-  // dd/mm/yy hh:mm.
+  // Separador entre data e hora (pedido usuario 2026-05-25 01:45):
+  // "  ·  " = 2 espacos + ponto medio + 2 espacos. Hora 24h, horario
+  // local do servidor (Brasilia).
+  const SEP = "  ·  ";
   const sameYear = d.getFullYear() === now.getFullYear();
-  return sameYear ? `${dd}/${mm} ${hh}:${mi}` : `${dd}/${mm}/${yy} ${hh}:${mi}`;
+  return sameYear
+    ? `${dd}/${mm}${SEP}${hh}:${mi}`
+    : `${dd}/${mm}/${yy}${SEP}${hh}:${mi}`;
 }
 
-// Formato fixo para os logs/relatorios (.txt): sempre dd/mm/yyyy hh:mm.
+// Formato fixo para os logs/relatorios (.txt): sempre dd/mm/yyyy  ·  hh:mm
+// (mesmo separador da bubble para consistencia visual).
 export function formatFullDateTime(value: Date | string | null | undefined): string {
   if (!value) return "";
   const d = value instanceof Date ? value : new Date(value);
@@ -35,5 +38,5 @@ export function formatFullDateTime(value: Date | string | null | undefined): str
   const yyyy = String(d.getFullYear());
   const hh = String(d.getHours()).padStart(2, "0");
   const mi = String(d.getMinutes()).padStart(2, "0");
-  return `${dd}/${mm}/${yyyy} ${hh}:${mi}`;
+  return `${dd}/${mm}/${yyyy}  ·  ${hh}:${mi}`;
 }
