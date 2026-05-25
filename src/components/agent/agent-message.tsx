@@ -258,18 +258,25 @@ function AssistantTrailBlock({
           {showThinking ? <ShimmerText text={headerLabel} /> : headerLabel}
         </span>
       </button>
-      <AnimatePresence initial={false} mode="popLayout">
-        {expanded ? (
+      {/* Expand/collapse via CSS grid trick (grid-template-rows 0fr -> 1fr).
+          Anima de fato, sem o jank do height:auto do framer-motion (que so
+          consegue animar valores numericos e por isso "pula"). Conteudo
+          interno fica em <div overflow-hidden> que o grid colapsa/expande
+          suavemente. */}
+      <div
+        className={cn(
+          "grid transition-[grid-template-rows,opacity] duration-300 ease-out",
+          "motion-reduce:transition-none",
+          expanded ? "grid-rows-[1fr] opacity-100" : "grid-rows-[0fr] opacity-0",
+        )}
+        aria-hidden={!expanded}
+      >
+        <div className="overflow-hidden">
           <motion.ul
-            key="trail-list"
             id="agent-trail-list"
             aria-live={streaming ? "polite" : undefined}
             layout={!reduce ? true : false}
-            initial={reduce ? false : { opacity: 0, height: 0 }}
-            animate={{ opacity: 1, height: "auto" }}
-            exit={reduce ? { opacity: 0 } : { opacity: 0, height: 0 }}
-            transition={reduce ? { duration: 0 } : { duration: 0.45, ease: EASE }}
-            className="mt-1 flex flex-col gap-0.5 overflow-hidden pl-5"
+            className="mt-1 flex flex-col gap-0.5 pl-5"
           >
             <AnimatePresence initial={false}>
               {steps.map((s) => (
@@ -303,7 +310,7 @@ function AssistantTrailBlock({
                     />
                   ) : (
                     <Database
-                      className="h-3 w-3 shrink-0 text-foreground/70"
+                      className="h-3 w-3 shrink-0 text-violet-500/70"
                       aria-hidden
                     />
                   )}
@@ -321,8 +328,8 @@ function AssistantTrailBlock({
               ))}
             </AnimatePresence>
           </motion.ul>
-        ) : null}
-      </AnimatePresence>
+        </div>
+      </div>
     </motion.div>
   );
 }
@@ -528,24 +535,21 @@ function AnimatedDots() {
   );
 }
 
-// "Pensando" com shimmer wave passando suavemente pelas letras. Gradient
-// horizontal alterna foreground/40 -> foreground -> foreground/40 em loop
-// (3s). Sem brilho exagerado, sem flash; e o pulse "thinking" do Claude/
-// ChatGPT. Reduce-motion -> texto estatico.
+// "Pensando" com shimmer wave passando suavemente pelas letras. Usa tokens
+// semanticos do design system (text-muted-foreground -> text-foreground)
+// para adaptar automaticamente entre tema escuro e claro sem cor hardcoded
+// (fix do problema reportado: invisivel no dark mode).
 function ShimmerText({ text }: { text: string }) {
   return (
     <span
       className={cn(
         "inline-block bg-clip-text text-transparent",
-        "bg-[linear-gradient(90deg,var(--shimmer-from)_0%,var(--shimmer-to)_50%,var(--shimmer-from)_100%)]",
-        "motion-reduce:bg-none motion-reduce:text-foreground/80",
+        "bg-gradient-to-r from-muted-foreground/60 via-foreground to-muted-foreground/60",
+        "motion-reduce:bg-none motion-reduce:text-foreground/85",
       )}
       style={{
         backgroundSize: "200% 100%",
-        animation: "nexShimmer 2.4s ease-in-out infinite",
-        // CSS vars com cores que adaptam ao tema (foreground = current).
-        ["--shimmer-from" as string]: "rgba(115, 115, 130, 0.55)",
-        ["--shimmer-to" as string]: "currentColor",
+        animation: "nexShimmer 2.2s ease-in-out infinite",
       }}
     >
       {text}

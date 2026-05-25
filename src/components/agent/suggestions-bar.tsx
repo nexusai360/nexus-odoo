@@ -23,12 +23,14 @@ export interface SuggestionsBarProps {
 // Ultima camada de defesa contra "bolha sem chips" (bug 2026-05-24).
 // Mesmo que o backend, o welcomeSuggestionsForUi e o personalized falhem,
 // o usuario sempre ve 3 perguntas de gestor abaixo da resposta.
+// Fallback hardcoded para sugestoes pos-resposta. Distinto das welcome para
+// evitar repeticao das chips de entrada (feedback usuario 2026-05-24).
 const HARD_FALLBACK = [
-  "Quanto faturamos no mês corrente?",
-  "Quanto temos em contas a receber em aberto?",
-  "Qual o valor total do estoque em armazém?",
-  "Quais pedidos de venda estão atrasados?",
-  "Qual o valor total do estoque em armazém?",
+  "Detalhe o faturamento dos últimos 7 dias.",
+  "Qual cliente mais comprou neste mês?",
+  "Compare o estoque atual com o do mês passado.",
+  "Quais notas fiscais foram emitidas hoje?",
+  "Quais títulos vencem nos próximos 5 dias?",
 ];
 
 export function SuggestionsBar({

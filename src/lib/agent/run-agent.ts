@@ -64,12 +64,18 @@ const MAX_SUGGESTION_LEN = 80;
  * em toda resposta da bubble (vide pedido do usuario em 2026-05-24 18:58:
  * "as sugestoes nao estao acontecendo, vira e mexe esse problema").
  */
+// Fallback para sugestoes pos-resposta (continuidade). Intencionalmente
+// DISTINTO do WELCOME_SUGGESTIONS / pickWelcomeByRole para nao repetir as
+// mesmas perguntas que ja apareciam na tela inicial (bug reportado pelo
+// usuario em 2026-05-24 23:14: "a primeira mensagem roxa e a segunda
+// mensagem roxa sao a mesma"). Perguntas aqui aprofundam temas frequentes
+// em vez de reapresentar o catalogo de entrada.
 const FALLBACK_SUGGESTIONS: readonly string[] = [
-  "Quanto faturamos no mês corrente?",
-  "Quais 5 produtos mais venderam nos últimos 30 dias?",
-  "Quanto temos em contas a receber em aberto?",
-  "Quais pedidos de venda estão atrasados?",
-  "Qual o valor total do estoque em armazém?",
+  "Detalhe o faturamento dos últimos 7 dias.",
+  "Qual cliente mais comprou neste mês?",
+  "Compare o estoque atual com o do mês passado.",
+  "Quais notas fiscais foram emitidas hoje?",
+  "Quais títulos vencem nos próximos 5 dias?",
 ];
 
 /**
