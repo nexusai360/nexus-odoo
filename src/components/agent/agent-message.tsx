@@ -118,7 +118,19 @@ export function AgentMessage({
     !isUser && (streaming || (Array.isArray(steps) && steps.length > 0));
   return (
     <BubbleWrapper isUser={isUser}>
-      <BubbleSurface isUser={isUser}>
+      <BubbleSurface
+        isUser={isUser}
+        // Layout suave da bolha ativo quando:
+        // - usuario (mensagens estaticas, sem typewriter)
+        // - assistant SEM content streaming (so trilha "Pensando" / steps)
+        // Quando assistant esta streamando texto, layout=false para nao
+        // mascarar o typewriter (cada char muda altura).
+        enableLayout={isUser || !streaming || content.length === 0}
+        // Dependencia para remensurar: muda quando count de steps muda
+        // OU quando streaming flag muda (para snapar de "trilha" pra
+        // "trilha + resposta").
+        layoutDep={`${steps?.length ?? 0}-${streaming ? 1 : 0}`}
+      >
         {showTrail ? (
           <AssistantTrailBlock
             steps={steps ?? []}
@@ -165,27 +177,43 @@ export function AgentMessage({
 // browser pinta a cada frame). Adicionado will-change:transform na
 // borda externa para promover layer (paint isolado, sem repaint da
 // vizinhanca quando altura muda).
+// Bubble com motion.layout="size" ATIVO no assistant durante a fase de
+// trail (steps mudando), DESATIVADO durante streaming (para nao mascarar
+// o typewriter que muda height char a char). Controle via prop
+// `hasStreamingText`: quando true (typewriter ativo), layout=false.
+// Resultado: bolha cresce SUAVEMENTE quando steps "Consultando..."
+// aparecem e quando trilha colapsa, mas typewriter renderiza limpo
+// quando texto chega.
 function BubbleSurface({
   isUser,
   children,
+  layoutDep,
+  enableLayout,
 }: {
   isUser: boolean;
   children: React.ReactNode;
+  layoutDep?: unknown;
+  enableLayout: boolean;
 }) {
+  const reduce = useReducedMotion();
   return (
-    <div
+    <motion.div
+      layout={!reduce && enableLayout ? "size" : false}
+      layoutDependency={layoutDep}
+      transition={
+        reduce
+          ? { duration: 0 }
+          : { layout: { duration: 0.55, ease: [0.16, 1, 0.3, 1] } }
+      }
       className={cn(
         "relative max-w-[85%] rounded-2xl px-3.5 py-2.5 text-sm leading-relaxed",
-        // ring sutil violet do design system quando assistant: integra com o
-        // shimmer + glow do cursor durante streaming, sem afetar bolha do user.
         isUser
           ? "bg-violet-600/15 text-foreground"
-          : "bg-muted text-foreground ring-1 ring-violet-500/0",
+          : "bg-muted text-foreground",
       )}
-      style={{ willChange: "transform" }}
     >
       {children}
-    </div>
+    </motion.div>
   );
 }
 
@@ -383,14 +411,15 @@ function AssistantTrailBlock({
                 {steps.map((s) => (
                   <motion.li
                     key={s.id}
-                    // Entry SIMPLES: opacity puro, sem blur, sem
-                    // translate. Sem transform = nada de jump de tamanho.
-                    // Duracao 0.35s ease-out = aparicao suave consistente.
-                    // Exit fica por conta do trail collapse pai.
-                    initial={reduce ? false : { opacity: 0 }}
-                    animate={{ opacity: 1 }}
+                    // Entry suave em 0.5s: opacity + translateY leve (-3px).
+                    // O salto de altura da bolha eh absorvido pelo
+                    // BubbleSurface.motion.layout="size" (interpola entre
+                    // tamanhos). Aqui so a opacity + slide subtil pra
+                    // sensacao de "se materializando" sem susto.
+                    initial={reduce ? false : { opacity: 0, y: -3 }}
+                    animate={{ opacity: 1, y: 0 }}
                     transition={
-                      reduce ? { duration: 0 } : { duration: 0.35, ease: EASE }
+                      reduce ? { duration: 0 } : { duration: 0.5, ease: EASE }
                     }
                     className="flex items-center gap-1.5 text-[11px]"
                   >

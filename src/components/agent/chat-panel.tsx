@@ -254,40 +254,42 @@ export function ChatPanel({
     [reduceMotion],
   );
 
-  // Helper: snap inicial. Coloca bubble.top em viewport.top - 8.
-  // CORRIGIDO: usa getBoundingClientRect porque o scrollRef NAO eh
-  // offsetParent (o wrapper.relative do FAB e). offsetTop apontaria pra
-  // posicao errada (relativa ao wrapper, nao ao scroll container).
+  // Helpers de snap usando scrollIntoView (browser cuida da matematica).
+  // Bem mais simples e robusto que calcular offset manualmente.
   const snapBubbleTopToViewport = React.useCallback(
     (msgId: string) => {
-      const el = scrollRef.current;
       const bubble = messageRefsMap.current.get(msgId);
-      if (!el || !bubble) return;
-      const bRect = bubble.getBoundingClientRect();
-      const sRect = el.getBoundingClientRect();
-      // Quanto de scroll precisa pra que o topo da bolha fique no topo
-      // do scroll container (com 8px de respiro).
-      const target = el.scrollTop + (bRect.top - sRect.top) - 8;
-      programmaticScrollTo(target);
+      if (!bubble) return;
+      isProgrammaticScrollRef.current = true;
+      bubble.scrollIntoView({
+        block: "start",
+        behavior: reduceMotion ? "auto" : "smooth",
+      });
+      window.setTimeout(() => {
+        isProgrammaticScrollRef.current = false;
+      }, reduceMotion ? 50 : 800);
     },
-    [programmaticScrollTo],
+    [reduceMotion],
   );
 
-  // Helper: re-snap durante streaming. Coloca bubble.bottom em
-  // viewport.top + 60 (writing point perto do topo).
-  // CORRIGIDO: getBoundingClientRect (mesmo motivo do snap inicial).
+  // Re-snap durante streaming: usa scrollIntoView({block:'end'}) no
+  // bubble. Browser scrolla para o BOTTOM da bolha ficar visivel. Como
+  // o bottom corresponde ao writing point (texto sendo escrito), o
+  // usuario sempre ve a parte mais recente.
   const snapWritingPointNearTop = React.useCallback(
     (msgId: string) => {
-      const el = scrollRef.current;
       const bubble = messageRefsMap.current.get(msgId);
-      if (!el || !bubble) return;
-      const bRect = bubble.getBoundingClientRect();
-      const sRect = el.getBoundingClientRect();
-      // Coloca o bottom da bolha 60px abaixo do topo do scroll container.
-      const target = el.scrollTop + (bRect.bottom - sRect.top) - 60;
-      programmaticScrollTo(target);
+      if (!bubble) return;
+      isProgrammaticScrollRef.current = true;
+      bubble.scrollIntoView({
+        block: "end",
+        behavior: reduceMotion ? "auto" : "smooth",
+      });
+      window.setTimeout(() => {
+        isProgrammaticScrollRef.current = false;
+      }, reduceMotion ? 50 : 800);
     },
-    [programmaticScrollTo],
+    [reduceMotion],
   );
 
   // useEffect snap inicial: dispara UMA vez por novo lastAssistantId.
@@ -834,15 +836,13 @@ export function ChatPanel({
           </div>
         </header>
 
-        {/* Área de mensagens + FAB voltar-pro-fim (overlay absoluto). */}
-        <div className="relative flex-1 min-h-0">
-          <ScrollToBottomFab
-            visible={userScrolledAway && !showWelcome}
-            onClick={scrollToBottomNow}
-          />
+        {/* Área de mensagens. FAB foi movido pro outer motion.div (que e
+            fixed = positioning context). Aqui voltou layout original
+            (flex-1 + overflow no proprio scrollRef) - sem wrapper extra
+            que estava quebrando a cadeia flex de altura. */}
         <div
           ref={scrollRef}
-          className="h-full overflow-y-auto overscroll-contain px-4 py-3"
+          className="flex-1 overflow-y-auto overscroll-contain px-4 py-3"
         >
           {showWelcome ? (
             <WelcomeBlock
@@ -910,7 +910,14 @@ export function ChatPanel({
             </div>
           )}
         </div>
-        </div>
+
+        {/* FAB voltar-pro-fim como filho do outer motion.div (fixed
+            providencia o positioning context). z-50 garante que fica
+            acima do scroll. Visivel so quando userScrolledAway. */}
+        <ScrollToBottomFab
+          visible={userScrolledAway && !showWelcome}
+          onClick={scrollToBottomNow}
+        />
 
         {/* Input bar (G4 + D8) , anexo à esquerda, mic à direita, enviar fora */}
         <footer className="border-t border-border bg-background/60 px-3 pt-3 pb-3">
@@ -1152,7 +1159,10 @@ function ScrollToBottomFab({
       aria-hidden={!visible}
       tabIndex={visible ? 0 : -1}
       className={cn(
-        "pointer-events-auto absolute bottom-3 right-3 z-10 flex h-9 w-9 cursor-pointer items-center justify-center rounded-full",
+        // bottom-[76px]: deixa espaco pro footer da input (que tem ~64px
+        // + padding). z-30: acima da area de scroll, abaixo de modais.
+        // Filho do outer motion.div fixed = positioning context = absolute.
+        "pointer-events-auto absolute bottom-[76px] right-3 z-30 flex h-9 w-9 cursor-pointer items-center justify-center rounded-full",
         "border border-violet-500/40 bg-background/90 text-violet-600 shadow-lg backdrop-blur",
         "transition-all duration-200 hover:bg-violet-600 hover:text-white hover:border-violet-500",
         "dark:text-violet-300 dark:hover:text-white",
