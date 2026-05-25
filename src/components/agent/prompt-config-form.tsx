@@ -285,7 +285,7 @@ export function PromptConfigForm({ initial }: PromptConfigFormProps) {
           <p className="leading-snug">
             {restoredFromDraft
               ? "Há alterações da sua última visita que ainda não foram aplicadas ao Agente Nex. Para aplicar, clique em “Salvar comportamento”."
-              : "Mudanças não salvas. Clique em “Salvar comportamento” para aplicá-las."}
+              : "Mudanças não salvas. Clique em “Salvar comportamento” para aplicar."}
           </p>
         </div>
       )}

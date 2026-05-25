@@ -205,7 +205,7 @@ export function IdentityBaseEditor({ initial }: IdentityBaseEditorProps) {
           <p className="leading-snug">
             {restoredFromDraft
               ? "Há alterações da sua última visita que ainda não foram aplicadas ao Agente Nex. Para aplicar, clique em “Salvar prompt”."
-              : "Mudanças não salvas. Clique em “Salvar prompt” para aplicá-las."}
+              : "Mudanças não salvas. Clique em “Salvar prompt” para aplicar."}
           </p>
         </div>
       )}
