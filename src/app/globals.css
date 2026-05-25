@@ -271,23 +271,28 @@ input[type="search"]::-webkit-search-decoration {
 /* Typing word-by-word: cada palavra nova entra com fade + leve slide-up.
    fill-mode forwards mantem opacity 1 apos termino; React re-render nao
    reanima palavras antigas (StreamingText skipa className quando settled). */
-/* Smooth streaming word-by-word (padrao Vercel AI SDK / Linear).
-   Cada palavra entra com fade + blur reduction em 380ms. Whitespace
-   fica como text node puro (sem span) para wrap natural funcionar. */
+/* Smooth streaming word-by-word — padrao premium (Apple Intelligence,
+   Claude.ai polished). Cada palavra revela com opacity rapida (170ms)
+   + glow violet temporario via text-shadow que decai em 480ms. Sem cursor
+   (cliche), sem blur (parece fake). O glow tinta brevemente a palavra
+   recem-chegada, dando sensacao de "imponencia viva" sem flashiness. */
 @keyframes nexWordSoft {
-  from { opacity: 0; filter: blur(4px); }
-  to { opacity: 1; filter: blur(0); }
+  0% {
+    opacity: 0;
+    text-shadow: 0 0 12px rgba(139, 92, 246, 0);
+  }
+  30% {
+    opacity: 1;
+    text-shadow: 0 0 10px rgba(139, 92, 246, 0.55);
+  }
+  100% {
+    opacity: 1;
+    text-shadow: 0 0 0 transparent;
+  }
 }
 .nex-word-soft {
-  animation: nexWordSoft 380ms cubic-bezier(0.16, 1, 0.3, 1) both;
+  animation: nexWordSoft 560ms cubic-bezier(0.16, 1, 0.3, 1) both;
 }
 @media (prefers-reduced-motion: reduce) {
-  .nex-word-soft { animation: none; opacity: 1; filter: none; }
-}
-
-/* Cursor com pulso suave (substitui o animate-pulse padrao do Tailwind
-   que e brusco). Glow violet 8px+16px reforca presenca durante digitacao. */
-@keyframes nexCursorPulse {
-  0%, 100% { opacity: 1; }
-  50% { opacity: 0.35; }
+  .nex-word-soft { animation: none; opacity: 1; text-shadow: none; }
 }

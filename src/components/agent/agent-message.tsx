@@ -766,28 +766,15 @@ function TypewriterBody({
       {visibleTokens.map((tok, i) => {
         // Whitespace como text node puro: garante wrap natural de linhas.
         if (/^\s+$/.test(tok)) return <React.Fragment key={i}>{tok}</React.Fragment>;
-        // Palavra com classe CSS de fade-in suave (~380ms blur+opacity).
-        // Cada palavra anima APENAS na primeira renderizacao porque o
-        // animation-fill-mode forwards mantem estado final + React reusa o
-        // span por key.
+        // Palavra com classe nex-word-soft: opacity 0->1 + text-shadow
+        // violet temporario que decai em 560ms. Sem cursor, sem blur.
+        // Padrao Apple Intelligence / Claude.ai polished.
         return (
           <span key={i} className="nex-word-soft">
             {tok}
           </span>
         );
       })}
-      {!reduce && !caughtUp && (
-        <span
-          aria-hidden="true"
-          className="ml-0.5 inline-block h-[1em] w-[2px] align-text-bottom"
-          style={{
-            background:
-              "linear-gradient(180deg, rgba(139,92,246,0.4) 0%, rgba(139,92,246,1) 50%, rgba(139,92,246,0.4) 100%)",
-            boxShadow: "0 0 8px rgba(139, 92, 246, 0.7), 0 0 16px rgba(139, 92, 246, 0.3)",
-            animation: "nexCursorPulse 1.1s ease-in-out infinite",
-          }}
-        />
-      )}
     </span>
   );
 }
