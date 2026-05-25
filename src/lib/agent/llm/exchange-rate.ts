@@ -18,7 +18,9 @@
  * com codigo legado: (1 + BANK_SPREAD_RATE) * (1 + IOF_RATE) ~= 1.0539.
  */
 
-import "server-only";
+// NOTA: nao usa "server-only" porque este modulo eh importado pelo worker
+// (run-agent -> usage-logger -> exchange-rate). "server-only" quebra require
+// quando rodando fora do Next. Protecao preservada pelo consumo (Prisma + fetch).
 import { redis } from "@/lib/redis";
 import {
   IOF_RATE,
