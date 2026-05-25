@@ -17,7 +17,7 @@
  */
 
 import { motion, useReducedMotion } from "framer-motion";
-import { Download, Loader2, LogOut, Mic, MoreVertical, Send, Sparkles, Trash2, X } from "lucide-react";
+import { ChevronDown, Download, Loader2, LogOut, Mic, MoreVertical, Send, Sparkles, Trash2, X } from "lucide-react";
 import * as React from "react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
@@ -132,6 +132,16 @@ export function ChatPanel({
   const inputRef = React.useRef<HTMLTextAreaElement | null>(null);
   const abortRef = React.useRef<AbortController | null>(null);
   const recorderRef = React.useRef<AudioRecorderHandle | null>(null);
+  // Refs por id de mensagem para conseguir scrollIntoView na bolha exata.
+  const messageRefsMap = React.useRef<Map<string, HTMLDivElement>>(new Map());
+  // Flag que ignora scroll events disparados pelo proprio codigo (smooth
+  // scroll do snap-to-top e do FAB). Sem isso o onScroll interpretaria o
+  // movimento programatico como "usuario rolou" e desativaria o auto-snap.
+  const isProgrammaticScrollRef = React.useRef(false);
+  // Quando true: usuario rolou pra cima manualmente; auto-snap fica
+  // suspenso ate (a) nova mensagem ser enviada (reset no handleSend) ou
+  // (b) usuario clicar no FAB voltar-pro-fim ou chegar manualmente ao fim.
+  const [userScrolledAway, setUserScrolledAway] = React.useState(false);
 
   // Sync external conversationId + carrega histórico do servidor
   React.useEffect(() => {
@@ -194,16 +204,126 @@ export function ChatPanel({
     };
   }, [open, onClose]);
 
-  // Auto-scroll dispara apenas com nova mensagem (length aumenta) ou enquanto
-  // o turno esta em andamento. Mudanca interna em mensagem existente, como
-  // expandir/colapsar trilha pelo chevron, NAO scrolla (corrige o bug de
-  // jogar a tela pro fim ao clicar no chevron de uma resposta antiga).
+  // === Auto-scroll inteligente (feature spec 2026-05-25) ===
+  // Comportamento desejado:
+  //  1. Nova mensagem (length cresce): snap-to-TOP da nova bolha (a
+  //     do assistant cresce; o user quer LER de cima).
+  //  2. Durante o streaming, se a bolha cresce e seu BOTTOM sai do
+  //     viewport (ResizeObserver), re-snap pro topo. Maximo 1x por
+  //     resize, com debounce.
+  //  3. Se userScrolledAway===true (usuario rolou pra cima manual),
+  //     nada disso dispara.
+  //  4. Reset acontece em (a) handleSend e (b) usuario chega ao fim
+  //     manualmente ou clica no FAB.
   const messagesCount = messages.length;
+  const lastMsg = messages[messages.length - 1];
+  const lastAssistantId = React.useMemo(() => {
+    for (let i = messages.length - 1; i >= 0; i--) {
+      if (messages[i].role === "assistant") return messages[i].id;
+    }
+    return null;
+  }, [messages]);
+  const lastAssistantStreaming = lastMsg?.role === "assistant" && lastMsg.streaming;
+
+  const snapAssistantToTop = React.useCallback((msgId: string | null) => {
+    if (!msgId) return;
+    const el = messageRefsMap.current.get(msgId);
+    if (!el) return;
+    isProgrammaticScrollRef.current = true;
+    el.scrollIntoView({ block: "start", behavior: "smooth" });
+    // Smooth scroll dura ~300-400ms; abrimos janela de 700ms para garantir
+    // que o handler de scroll nao confunda com movimento do usuario.
+    window.setTimeout(() => {
+      isProgrammaticScrollRef.current = false;
+    }, 700);
+  }, []);
+
+  // Snap inicial (nova msg) — so para o ultimo assistant, so se NAO
+  // tiver scrollado manualmente.
+  React.useEffect(() => {
+    if (userScrolledAway) return;
+    if (!lastAssistantId) return;
+    snapAssistantToTop(lastAssistantId);
+  }, [messagesCount, lastAssistantId, snapAssistantToTop, userScrolledAway]);
+
+  // ResizeObserver na bolha do assistant enquanto streaming: se a bolha
+  // for ficando maior que o viewport e seu bottom passar do fim visivel,
+  // re-snap pro topo.
+  React.useEffect(() => {
+    if (!lastAssistantStreaming || userScrolledAway || !lastAssistantId) return;
+    const bubble = messageRefsMap.current.get(lastAssistantId);
+    const scrollEl = scrollRef.current;
+    if (!bubble || !scrollEl) return;
+    let debounceId: number | null = null;
+    const ro = new ResizeObserver(() => {
+      if (debounceId) window.clearTimeout(debounceId);
+      debounceId = window.setTimeout(() => {
+        const bRect = bubble.getBoundingClientRect();
+        const sRect = scrollEl.getBoundingClientRect();
+        // Bolha ainda esta com topo dentro do viewport E bottom passou:
+        // re-snap pro topo.
+        if (bRect.top >= sRect.top && bRect.bottom > sRect.bottom) {
+          snapAssistantToTop(lastAssistantId);
+        }
+      }, 90);
+    });
+    ro.observe(bubble);
+    return () => {
+      ro.disconnect();
+      if (debounceId) window.clearTimeout(debounceId);
+    };
+  }, [lastAssistantStreaming, userScrolledAway, lastAssistantId, snapAssistantToTop]);
+
+  // Detecta scroll manual do usuario. Wheel/touchmove com delta negativo
+  // (scroll pra cima) desativa auto-scroll imediatamente. Quando chega ao
+  // fim manualmente, reativa.
   React.useEffect(() => {
     const el = scrollRef.current;
     if (!el) return;
+    const onUserScrollIntent = (deltaY: number) => {
+      if (isProgrammaticScrollRef.current) return;
+      if (deltaY < 0) {
+        setUserScrolledAway(true);
+      }
+    };
+    const onWheel = (e: WheelEvent) => onUserScrollIntent(e.deltaY);
+    let touchStartY = 0;
+    const onTouchStart = (e: TouchEvent) => {
+      touchStartY = e.touches[0]?.clientY ?? 0;
+    };
+    const onTouchMove = (e: TouchEvent) => {
+      const y = e.touches[0]?.clientY ?? 0;
+      // Dedo descendo na tela = conteudo rolando pra CIMA.
+      onUserScrollIntent(touchStartY - y);
+    };
+    const onScroll = () => {
+      if (isProgrammaticScrollRef.current) return;
+      const atBottom =
+        el.scrollHeight - el.clientHeight - el.scrollTop < 24;
+      if (atBottom) setUserScrolledAway(false);
+    };
+    el.addEventListener("wheel", onWheel, { passive: true });
+    el.addEventListener("touchstart", onTouchStart, { passive: true });
+    el.addEventListener("touchmove", onTouchMove, { passive: true });
+    el.addEventListener("scroll", onScroll, { passive: true });
+    return () => {
+      el.removeEventListener("wheel", onWheel);
+      el.removeEventListener("touchstart", onTouchStart);
+      el.removeEventListener("touchmove", onTouchMove);
+      el.removeEventListener("scroll", onScroll);
+    };
+  }, []);
+
+  const scrollToBottomNow = React.useCallback(() => {
+    const el = scrollRef.current;
+    if (!el) return;
+    isProgrammaticScrollRef.current = true;
     el.scrollTo({ top: el.scrollHeight, behavior: "smooth" });
-  }, [messagesCount, pending]);
+    window.setTimeout(() => {
+      isProgrammaticScrollRef.current = false;
+    }, 700);
+    setUserScrolledAway(false);
+  }, []);
 
   // Cleanup on unmount
   React.useEffect(() => {
@@ -216,6 +336,10 @@ export function ChatPanel({
     async (text: string, opts?: { source?: "bubble" | "suggestion" }) => {
       const trimmed = text.trim();
       if (!trimmed || pending) return;
+
+      // Reset do auto-scroll: nova mensagem reativa o snap-to-top mesmo
+      // que o usuario tenha rolado pra cima no turno anterior.
+      setUserScrolledAway(false);
 
       abortRef.current?.abort();
       const controller = new AbortController();
@@ -666,10 +790,15 @@ export function ChatPanel({
           </div>
         </header>
 
-        {/* Área de mensagens */}
+        {/* Área de mensagens + FAB voltar-pro-fim (overlay absoluto). */}
+        <div className="relative flex-1 min-h-0">
+          <ScrollToBottomFab
+            visible={userScrolledAway && !showWelcome}
+            onClick={scrollToBottomNow}
+          />
         <div
           ref={scrollRef}
-          className="flex-1 overflow-y-auto overscroll-contain px-4 py-3"
+          className="h-full overflow-y-auto overscroll-contain px-4 py-3"
         >
           {showWelcome ? (
             <WelcomeBlock
@@ -689,7 +818,17 @@ export function ChatPanel({
                 const durationMs =
                   m.startedAt && m.doneAt ? m.doneAt - m.startedAt : undefined;
                 return (
-                  <React.Fragment key={m.id}>
+                  // Wrapper div com ref por msgId permite snapAssistantToTop
+                  // chamar scrollIntoView na bolha exata (feature auto-scroll).
+                  // Fragment foi substituido por div; layout preservado via
+                  // contents do parent (space-y-3 ja existe).
+                  <div
+                    key={m.id}
+                    ref={(el) => {
+                      if (el) messageRefsMap.current.set(m.id, el);
+                      else messageRefsMap.current.delete(m.id);
+                    }}
+                  >
                     <AgentMessage
                       role={m.role}
                       content={m.content}
@@ -721,11 +860,12 @@ export function ChatPanel({
                         targetCount={maxSuggestions}
                       />
                     ) : null}
-                  </React.Fragment>
+                  </div>
                 );
               })}
             </div>
           )}
+        </div>
         </div>
 
         {/* Input bar (G4 + D8) , anexo à esquerda, mic à direita, enviar fora */}
@@ -947,5 +1087,38 @@ function WelcomeBlock({
         ))}
       </div>
     </div>
+  );
+}
+
+// FAB que aparece quando o usuario rolou pra cima durante streaming.
+// Posicionamento: absolute bottom-right do parent relative que envolve o
+// scroll container. Click = scroll suave pro final + reativa auto-snap.
+function ScrollToBottomFab({
+  visible,
+  onClick,
+}: {
+  visible: boolean;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      aria-label="Ir para o fim da conversa"
+      aria-hidden={!visible}
+      tabIndex={visible ? 0 : -1}
+      className={cn(
+        "pointer-events-auto absolute bottom-3 right-3 z-10 flex h-9 w-9 cursor-pointer items-center justify-center rounded-full",
+        "border border-violet-500/40 bg-background/90 text-violet-600 shadow-lg backdrop-blur",
+        "transition-all duration-200 hover:bg-violet-600 hover:text-white hover:border-violet-500",
+        "dark:text-violet-300 dark:hover:text-white",
+        "focus-visible:ring-2 focus-visible:ring-violet-500 focus-visible:outline-none",
+        visible
+          ? "translate-y-0 opacity-100"
+          : "pointer-events-none translate-y-2 opacity-0",
+      )}
+    >
+      <ChevronDown className="h-4 w-4" />
+    </button>
   );
 }
