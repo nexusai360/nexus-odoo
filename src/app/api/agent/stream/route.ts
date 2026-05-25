@@ -118,7 +118,12 @@ export async function POST(req: Request): Promise<Response> {
         if (evt.type === "thinking") {
           emit({ type: "status", status: "thinking" });
         } else if (evt.type === "token") {
-          emit({ type: "token", delta: evt.delta });
+          // INTENCIONALMENTE NAO emitido. Decisao 2026-05-25: typewriter
+          // 100% no frontend (TypewriterBody com requestAnimationFrame).
+          // Backend nao streama tokens; emite somente status, tool_call,
+          // tool_result e done com a mensagem completa. Efeito identico
+          // para todos os provedores (OpenAI/Anthropic/Gemini/OpenRouter),
+          // velocidade controlavel no client.
         } else if (evt.type === "tool_call") {
           emit({
             type: "tool_call",

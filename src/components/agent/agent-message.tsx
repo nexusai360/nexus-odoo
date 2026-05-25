@@ -129,22 +129,7 @@ export function AgentMessage({
           />
         ) : null}
         <AssistantBodyReveal hasContent={content.length > 0}>
-          {streaming ? (
-            <StreamingText content={content} />
-          ) : (
-            <MarkdownLite content={content} />
-          )}
-          {streaming && content.length > 0 && (
-            <span
-              aria-hidden="true"
-              className="ml-0.5 inline-block h-[1em] w-[2px] animate-pulse bg-violet-500 align-text-bottom motion-reduce:animate-none"
-              style={{
-                // Glow violet sutil para dar vida ao cursor durante streaming.
-                // 4px blur + cor da marca = sensacao de "digitando agora".
-                boxShadow: "0 0 6px rgba(139, 92, 246, 0.6)",
-              }}
-            />
-          )}
+          <TypewriterBody content={content} streaming={streaming} />
         </AssistantBodyReveal>
         {createdAt && !streaming ? (
           <div
@@ -658,15 +643,83 @@ function AnimatedDots() {
 // keyframe nexWordIn em globals.css) so dispara na primeira vez. Quando
 // streaming termina, AgentMessage troca para MarkdownLite (renderiza
 // negrito, listas etc com syntax completa).
-// Streaming SEM animacao por char/palavra. ChatGPT/Claude usam exatamente
-// isso: renderizam o conteudo conforme tokens chegam via SSE. A sensacao
-// de digitacao vem do ritmo NATURAL dos tokens (Anthropic streaming
-// entrega text_delta a cada ~30-80ms). Qualquer animacao CSS por elemento
-// vira contra: ou mascara o ritmo natural, ou cria filas de keyframes.
-function StreamingText({ content }: { content: string }) {
+// Typewriter NATIVO no frontend, valendo para QUALQUER provedor (OpenAI,
+// Anthropic, Gemini, OpenRouter). Independente do backend streamar token
+// a token ou retornar a resposta inteira de uma vez, o frontend revela
+// chars um a um via requestAnimationFrame.
+//
+// Quando o backend ja entrega aos poucos: digitacao acompanha o ritmo.
+// Quando o backend dumpa tudo (caso OpenAI sem stream): acelera para nao
+// acumular delay, mas mantem a digitacao visivel.
+//
+// Cursor com glow violet aparece enquanto digitando. Quando termina E
+// streaming flipou para false, troca para MarkdownLite (entao bolds,
+// listas e code formatam corretamente).
+function TypewriterBody({
+  content,
+  streaming,
+}: {
+  content: string;
+  streaming: boolean;
+}) {
+  const [visible, setVisible] = React.useState(0);
+  const contentRef = React.useRef(content);
+  contentRef.current = content;
+  const visibleRef = React.useRef(0);
+  const reduce = useReducedMotion();
+
+  React.useEffect(() => {
+    if (reduce) {
+      visibleRef.current = contentRef.current.length;
+      setVisible(visibleRef.current);
+      return;
+    }
+    let rafId = 0;
+    let lastTime = performance.now();
+    const tick = (now: number) => {
+      const dt = now - lastTime;
+      lastTime = now;
+      const target = contentRef.current.length;
+      const cur = visibleRef.current;
+      if (cur < target) {
+        const gap = target - cur;
+        // Adaptativa: 55 chars/seg baseline (~660 wpm visivel),
+        // acelera 1.5 chars/seg por char de gap para nao deixar buffer
+        // crescer infinito. Cap 300 cps = limite superior do percebivel
+        // como digitacao (acima vira flash).
+        const cps = Math.min(300, 55 + gap * 1.5);
+        const step = (dt / 1000) * cps;
+        const next = Math.min(target, cur + step);
+        visibleRef.current = next;
+        const floored = Math.floor(next);
+        if (floored !== Math.floor(cur)) setVisible(floored);
+      }
+      rafId = requestAnimationFrame(tick);
+    };
+    rafId = requestAnimationFrame(tick);
+    return () => {
+      if (rafId) cancelAnimationFrame(rafId);
+    };
+  }, [reduce]);
+
+  const caughtUp = visible >= content.length;
+  // Quando catch-up + streaming false: troca para MarkdownLite para
+  // renderizar bold, listas e code com formatacao correta.
+  if (caughtUp && !streaming) {
+    return <MarkdownLite content={content} />;
+  }
   return (
     <span aria-live="polite" className="whitespace-pre-wrap">
-      {content}
+      {content.slice(0, reduce ? content.length : visible)}
+      {!reduce && (
+        <span
+          aria-hidden="true"
+          className="ml-0.5 inline-block h-[1em] w-[2px] animate-pulse bg-violet-500 align-text-bottom motion-reduce:animate-none"
+          style={{
+            boxShadow: "0 0 6px rgba(139, 92, 246, 0.6)",
+          }}
+        />
+      )}
     </span>
   );
 }
