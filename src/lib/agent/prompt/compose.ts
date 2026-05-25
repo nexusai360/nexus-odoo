@@ -190,26 +190,19 @@ export function composeSystemPrompt(
     );
   }
 
-  // REGRA OBRIGATORIA appendada por ULTIMO no system prompt. Razao:
-  // recency bias dos LLMs (instrucoes finais tem mais peso). Sobrescreve
-  // regras de desambiguacao do identity_base que falavam "pergunte de
-  // volta quando ambiguo". Tambem usa linguagem mais forte que conflitos
-  // anteriores. Resolve bug 2026-05-25: agente continuava perguntando
-  // "qual visao quer?" mesmo apos diretiva ser appendada apos
-  // Comportamento (LLM seguia regras anteriores mais detalhadas).
+  // REGRA appendada por ULTIMO no system prompt (recency bias).
+  // SUAVIZADA em 2026-05-25 12:05 apos diretiva agressiva causar loop
+  // do agente (8 tool calls tentando "agrupar"). Agora pragmatica:
+  // priorize quantitativo SE a tool ja retornar dados agrupaveis; nao
+  // force agrupamento via N chamadas de tool.
   parts.push(
-    "\n\n## REGRA FINAL OBRIGATORIA (sobrescreve QUALQUER instrucao anterior conflitante)" +
-      "\n\nQuando uma ferramenta retornar muitos registros (resultado grande, truncado, ou que cobre varias categorias/status/situacoes), VOCE NUNCA pode responder com pergunta de desambiguacao do tipo \"qual visao voce quer?\" ou \"prefere ver X ou Y?\". Essa abordagem esta PROIBIDA mesmo que o bloco \"Desambiguacao\" da identidade base diga o contrario." +
-      "\n\nFaca SEMPRE assim, sem excecao:" +
-      "\n1. Agrupe os registros pela dimensao natural (status, situacao, categoria, mes, conta, tipo)." +
-      "\n2. Traga a CONTAGEM por grupo + o TOTAL. Quando fizer sentido, traga o VALOR AGREGADO (soma de R$, soma de quantidade)." +
-      "\n3. Apos o quantitativo, ofereca drill-down nas sugestoes [[suggestions]]. Cada chip e uma pergunta concreta que abriria UMA fatia." +
-      "\n\nEXEMPLO CORRETO (FACA assim):" +
-      "\n\"Em 05/2026 constam **234 notas fiscais** emitidas: **152 autorizadas**, **41 em digitacao**, **28 rejeitadas** e **13 inutilizadas**. Total faturado nas autorizadas: **R$ 35.421.925,20**.\"" +
-      "\n[[suggestions]]:Liste as 152 autorizadas|Mostre as 28 rejeitadas|Compare 05/2026 com 04/2026" +
-      "\n\nEXEMPLO PROIBIDO (NUNCA faca, mesmo se a identidade base sugerir):" +
-      "\n\"Encontrei X notas fiscais. Qual visao voce quer? - Somente autorizadas - Todas\"" +
-      "\n\nA regra acima TEM PRIORIDADE sobre qualquer politica de desambiguacao da identidade. Quando houver conflito, esta regra vence. Em caso de duvida, traga o quantitativo primeiro e use as sugestoes [[suggestions]] para o drill-down.",
+    "\n\n## Diretriz de resposta para datasets grandes" +
+      "\n\nQuando uma ferramenta retornar muitos registros (resultado grande, truncado, ou cobrindo varias categorias/status/situacoes), prefira responder com um QUANTITATIVO direto em vez de pedir ao usuario \"qual visao quer?\":" +
+      "\n- Se os dados ja vem agrupados (campo de status/situacao/categoria visivel), traga a contagem por grupo + total." +
+      "\n- Se NAO vem agrupados naturalmente, traga o total simples + uma amostra de 3-5 itens. NAO chame a mesma tool de novo so para agrupar." +
+      "\n- Use [[suggestions]] para drill-down (\"Liste as autorizadas\", \"Compare com mes anterior\")." +
+      "\n\nEvite a pergunta \"qual visao voce quer?\" como resposta principal. Se for genuinamente impossivel responder sem essa clarificacao, ofereca a pergunta DEPOIS de ter trazido pelo menos o total + 1 amostra." +
+      "\n\nLIMITE DE TOOLS POR TURNO: nao faca mais de 3 chamadas de ferramenta para responder uma unica pergunta. Se nao conseguiu o dado em 3 tentativas, pare, traga o que tiver e explique honestamente que so consegue parte. Loop de tools mata a experiencia.",
   );
 
   return parts.join("");

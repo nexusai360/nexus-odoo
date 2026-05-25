@@ -213,44 +213,38 @@ describe("composeSystemPrompt , sugestoes de desambiguacao", () => {
     expect(out).toContain("Nao faca mais de uma rodada de clarificacao");
   });
 
-  test("REGRA FINAL OBRIGATORIA: aparece e sobrescreve regras anteriores", () => {
+  test("diretriz datasets grandes: aparece e e pragmatica (sem forcar loop)", () => {
     const out = composeSystemPrompt({ ...baseConfig }, []);
-    // Regra esta presente independente do identity_base.
-    expect(out).toContain("REGRA FINAL OBRIGATORIA");
-    expect(out).toContain("sobrescreve QUALQUER instrucao anterior");
-    // Mecanica: agrupar por dimensao + contagem + total.
-    expect(out).toContain("CONTAGEM por grupo");
-    expect(out).toContain("TOTAL");
-    expect(out).toContain("152 autorizadas");
-    // Anti-pattern documentado.
-    expect(out).toContain("qual visao voce quer");
-    expect(out).toContain("PROIBIDO");
+    expect(out).toContain("Diretriz de resposta para datasets grandes");
+    // Preferencia, nao obrigacao agressiva.
+    expect(out).toContain("prefira responder com um QUANTITATIVO direto");
+    expect(out).toContain("Evite a pergunta");
+    // Guardrail contra loop.
+    expect(out).toContain("LIMITE DE TOOLS POR TURNO");
+    expect(out).toContain("nao faca mais de 3 chamadas");
   });
 
-  test("regra aparece NO FINAL do prompt (recency bias)", () => {
+  test("diretriz aparece NO FINAL do prompt (recency bias)", () => {
     const out = composeSystemPrompt({ ...baseConfig }, []);
-    // Quando ha conflito entre identity_base e a regra final, a regra
-    // final precisa vir DEPOIS para o LLM dar mais peso (recency).
     const idxComportamento = out.indexOf("## Comportamento");
-    const idxRegra = out.indexOf("REGRA FINAL OBRIGATORIA");
+    const idxRegra = out.indexOf("Diretriz de resposta para datasets grandes");
     expect(idxComportamento).toBeGreaterThanOrEqual(0);
     expect(idxRegra).toBeGreaterThan(idxComportamento);
-    // Tambem deve vir depois de personalidade/tom/guardrails se setados.
     const outFull = composeSystemPrompt(
       { ...baseConfig, personality: "X", tone: "Y", guardrails: ["Z"] },
       [],
     );
-    const idxRegraFull = outFull.indexOf("REGRA FINAL OBRIGATORIA");
+    const idxRegraFull = outFull.indexOf("Diretriz de resposta para datasets grandes");
     expect(idxRegraFull).toBeGreaterThan(outFull.indexOf("[GUARDRAILS]"));
   });
 
-  test("regra sobrevive a identity_base customizado (do DB)", () => {
+  test("diretriz sobrevive a identity_base customizado (do DB)", () => {
     const out = composeSystemPrompt(
       { ...baseConfig, identityBase: "Identidade totalmente customizada do admin." },
       [],
     );
     expect(out).toContain("Identidade totalmente customizada do admin.");
-    expect(out).toContain("REGRA FINAL OBRIGATORIA");
+    expect(out).toContain("Diretriz de resposta para datasets grandes");
   });
 
   test("advancedOverride SHORT-CIRCUITA tudo (poder total do admin)", () => {
