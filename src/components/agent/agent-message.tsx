@@ -158,10 +158,11 @@ export function AgentMessage({
   );
 }
 
-// Inner bubble com layout="size": cresce suave conforme trilha colapsa e
-// texto streama em paralelo. Sem layout, o container saltava entre alturas
-// a cada token chegando; com layout, a interpolacao do framer-motion deixa
-// o "container que vai se formando" pedido pelo usuario.
+// Inner bubble SEM motion.layout: layout="size" aplicava transform scale()
+// durante interpolacao e mascarava as animacoes word-by-word do StreamingText
+// (o usuario via texto aparecer de uma vez so, sem typewriter). Altura agora
+// cresce naturalmente conforme React re-renderiza com novos tokens; visualmente
+// continua suave porque cada token adiciona poucos pixels.
 function BubbleSurface({
   isUser,
   children,
@@ -169,15 +170,8 @@ function BubbleSurface({
   isUser: boolean;
   children: React.ReactNode;
 }) {
-  const reduce = useReducedMotion();
   return (
-    <motion.div
-      layout={!reduce ? "size" : false}
-      transition={
-        reduce
-          ? { duration: 0 }
-          : { layout: { duration: 0.42, ease: [0.16, 1, 0.3, 1] } }
-      }
+    <div
       className={cn(
         "relative max-w-[85%] rounded-2xl px-3.5 py-2.5 text-sm leading-relaxed",
         isUser
@@ -186,7 +180,7 @@ function BubbleSurface({
       )}
     >
       {children}
-    </motion.div>
+    </div>
   );
 }
 
@@ -258,13 +252,7 @@ function AssistantTrailBlock({
   const EASE = [0.16, 1, 0.3, 1] as const;
 
   return (
-    <motion.div
-      layout={!reduce ? "size" : false}
-      transition={
-        reduce ? { duration: 0 } : { layout: { duration: 0.5, ease: EASE } }
-      }
-      className="mb-2"
-    >
+    <div className="mb-2">
       <button
         type="button"
         onClick={onToggle}
@@ -280,14 +268,14 @@ function AssistantTrailBlock({
         )}
       >
         <span className="relative inline-flex h-3.5 w-3.5 shrink-0 items-center justify-center">
-          <AnimatePresence initial={false} mode="wait">
+          <AnimatePresence initial={false}>
             {showThinking ? (
               <motion.span
                 key="icon-thinking"
-                initial={reduce ? false : { opacity: 0, scale: 0.7, rotate: -8 }}
-                animate={{ opacity: 1, scale: 1, rotate: 0 }}
-                exit={reduce ? { opacity: 0 } : { opacity: 0, scale: 0.7, rotate: 8 }}
-                transition={reduce ? { duration: 0 } : { duration: 0.32, ease: EASE }}
+                initial={reduce ? false : { opacity: 0, scale: 0.75 }}
+                animate={{ opacity: 1, scale: 1 }}
+                exit={reduce ? { opacity: 0 } : { opacity: 0, scale: 0.75 }}
+                transition={reduce ? { duration: 0 } : { duration: 0.18, ease: EASE }}
                 className="absolute inset-0 inline-flex items-center justify-center"
                 aria-hidden
               >
@@ -296,10 +284,10 @@ function AssistantTrailBlock({
             ) : (
               <motion.span
                 key="icon-done"
-                initial={reduce ? false : { opacity: 0, scale: 0.7 }}
+                initial={reduce ? false : { opacity: 0, scale: 0.75 }}
                 animate={{ opacity: 1, scale: 1 }}
-                exit={reduce ? { opacity: 0 } : { opacity: 0, scale: 0.7 }}
-                transition={reduce ? { duration: 0 } : { duration: 0.32, ease: EASE }}
+                exit={reduce ? { opacity: 0 } : { opacity: 0, scale: 0.75 }}
+                transition={reduce ? { duration: 0 } : { duration: 0.18, ease: EASE }}
                 className="absolute inset-0 inline-flex items-center justify-center"
                 aria-hidden
               >
@@ -308,26 +296,29 @@ function AssistantTrailBlock({
             )}
           </AnimatePresence>
         </span>
-        <span className="relative flex-1 overflow-hidden">
-          <AnimatePresence initial={false} mode="wait">
+        {/* Label sem overflow-hidden/truncate: truncate + bg-clip-text causa
+            tremor de subpixel no shimmer durante o thinking. AnimatePresence
+            default (sem mode="wait"): old e new fazem crossfade em paralelo,
+            "Raciocinio" aparece rapido (200ms) em vez dos 760ms sequenciais. */}
+        <span className="relative flex-1">
+          <AnimatePresence initial={false}>
             <motion.span
               key={showThinking ? "label-thinking" : "label-done"}
-              initial={reduce ? false : { opacity: 0, y: 4, filter: "blur(2px)" }}
-              animate={{ opacity: 1, y: 0, filter: "blur(0px)" }}
-              exit={
-                reduce
-                  ? { opacity: 0 }
-                  : { opacity: 0, y: -4, filter: "blur(2px)" }
-              }
+              initial={reduce ? false : { opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={reduce ? { opacity: 0 } : { opacity: 0 }}
               transition={
-                reduce
-                  ? { duration: 0 }
-                  : { duration: 0.38, ease: EASE, filter: { duration: 0.28 } }
+                reduce ? { duration: 0 } : { duration: 0.2, ease: EASE }
               }
-              className="block truncate"
+              className="absolute inset-0 block"
             >
               {showThinking ? <ShimmerText text={headerLabel} /> : headerLabel}
             </motion.span>
+            {/* Placeholder invisivel mantem a altura para nao colapsar
+                durante crossfade (ambas as motion.span ficam absolute). */}
+            <span className="invisible block" aria-hidden>
+              {headerLabel}
+            </span>
           </AnimatePresence>
         </span>
       </button>
@@ -353,34 +344,26 @@ function AssistantTrailBlock({
             expanded ? "translate-y-0" : "-translate-y-1",
           )}
         >
-          <motion.ul
+          <ul
             id="agent-trail-list"
             aria-live={streaming ? "polite" : undefined}
-            layout={!reduce ? true : false}
             className="mt-1 flex flex-col gap-0.5 pl-5"
           >
             <AnimatePresence initial={false}>
               {steps.map((s) => (
                 <motion.li
                   key={s.id}
-                  layout={!reduce ? true : false}
-                  initial={
-                    reduce ? false : { opacity: 0, y: -6, filter: "blur(2px)" }
-                  }
-                  animate={{ opacity: 1, y: 0, filter: "blur(0px)" }}
-                  exit={
-                    reduce
-                      ? { opacity: 0 }
-                      : { opacity: 0, y: -6, filter: "blur(2px)" }
-                  }
+                  // SEM layout (nested layout dentro do CSS grid colapsavel
+                  // causava re-measure tardio e tremor ao expandir o chevron).
+                  // SEM filter blur (causava jitter no shimmer "Pensando" e
+                  // tornava o aparecimento estranho).
+                  initial={reduce ? false : { opacity: 0, y: -4 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  exit={reduce ? { opacity: 0 } : { opacity: 0, y: -4 }}
                   transition={
                     reduce
                       ? { duration: 0 }
-                      : {
-                          duration: 0.4,
-                          ease: EASE,
-                          filter: { duration: 0.3 },
-                        }
+                      : { duration: 0.28, ease: EASE }
                   }
                   className="flex items-center gap-1.5 text-[11px]"
                 >
@@ -422,10 +405,10 @@ function AssistantTrailBlock({
                 </motion.li>
               ))}
             </AnimatePresence>
-          </motion.ul>
+          </ul>
         </div>
       </div>
-    </motion.div>
+    </div>
   );
 }
 
@@ -708,17 +691,25 @@ function StreamingText({ content }: { content: string }) {
 // semanticos do design system (text-muted-foreground -> text-foreground)
 // para adaptar automaticamente entre tema escuro e claro sem cor hardcoded
 // (fix do problema reportado: invisivel no dark mode).
+// Sem inline-block: combinado com bg-clip-text + parent layout muda, causa
+// jitter de subpixel nas letras quando algo abaixo do shimmer cresce
+// (steps entrando). Mantido como inline puro; o gradient anima via
+// background-position sem disparar reflow do texto.
 function ShimmerText({ text }: { text: string }) {
   return (
     <span
       className={cn(
-        "inline-block bg-clip-text text-transparent",
+        "bg-clip-text text-transparent",
         "bg-gradient-to-r from-muted-foreground/60 via-foreground to-muted-foreground/60",
         "motion-reduce:bg-none motion-reduce:text-foreground/85",
       )}
       style={{
         backgroundSize: "200% 100%",
         animation: "nexShimmer 2.2s ease-in-out infinite",
+        // Promove a um layer proprio para isolar pintura do shimmer do
+        // restante da bolha; sem isso, qualquer reflow do parent re-pinta
+        // o gradient com subpixel diferente = tremor.
+        willChange: "background-position",
       }}
     >
       {text}
