@@ -254,15 +254,34 @@ export function ChatPanel({
     [reduceMotion],
   );
 
-  // Helpers de snap usando scrollIntoView (browser cuida da matematica).
-  // Bem mais simples e robusto que calcular offset manualmente.
+  // Snap CALCULADO manualmente (em vez de scrollIntoView que tinha bug
+  // de comportamento). Compute target em coordenadas do scrollEl
+  // diretamente via getBoundingClientRect + scrollTop atual.
   const snapBubbleTopToViewport = React.useCallback(
     (msgId: string) => {
+      const el = scrollRef.current;
       const bubble = messageRefsMap.current.get(msgId);
-      if (!bubble) return;
+      if (!el || !bubble) {
+        console.warn("[nex-scroll] snap-init: faltou ref", {
+          el: !!el,
+          bubble: !!bubble,
+          msgId,
+        });
+        return;
+      }
+      const bRect = bubble.getBoundingClientRect();
+      const sRect = el.getBoundingClientRect();
+      const target = el.scrollTop + (bRect.top - sRect.top) - 8;
+      console.info("[nex-scroll] snap-init -> top", {
+        msgId,
+        scrollTop: el.scrollTop,
+        bubbleTop: bRect.top,
+        scrollContainerTop: sRect.top,
+        target,
+      });
       isProgrammaticScrollRef.current = true;
-      bubble.scrollIntoView({
-        block: "start",
+      el.scrollTo({
+        top: Math.max(0, target),
         behavior: reduceMotion ? "auto" : "smooth",
       });
       window.setTimeout(() => {
@@ -272,17 +291,26 @@ export function ChatPanel({
     [reduceMotion],
   );
 
-  // Re-snap durante streaming: usa scrollIntoView({block:'end'}) no
-  // bubble. Browser scrolla para o BOTTOM da bolha ficar visivel. Como
-  // o bottom corresponde ao writing point (texto sendo escrito), o
-  // usuario sempre ve a parte mais recente.
   const snapWritingPointNearTop = React.useCallback(
     (msgId: string) => {
+      const el = scrollRef.current;
       const bubble = messageRefsMap.current.get(msgId);
-      if (!bubble) return;
+      if (!el || !bubble) return;
+      const bRect = bubble.getBoundingClientRect();
+      const sRect = el.getBoundingClientRect();
+      // Coloca o BOTTOM da bolha no topo do viewport com 60px de respiro
+      // (writing point perto do topo, espaco para texto novo abaixo).
+      const target = el.scrollTop + (bRect.bottom - sRect.top) - 60;
+      console.info("[nex-scroll] snap-stream -> writing-point", {
+        msgId,
+        bubbleBottom: bRect.bottom,
+        scrollContainerBottom: sRect.bottom,
+        delta: bRect.bottom - sRect.bottom,
+        target,
+      });
       isProgrammaticScrollRef.current = true;
-      bubble.scrollIntoView({
-        block: "end",
+      el.scrollTo({
+        top: Math.max(0, target),
         behavior: reduceMotion ? "auto" : "smooth",
       });
       window.setTimeout(() => {
@@ -294,20 +322,38 @@ export function ChatPanel({
 
   // useEffect snap inicial: dispara UMA vez por novo lastAssistantId.
   React.useEffect(() => {
+    console.info("[nex-scroll] effect snap-init eval", {
+      lastAssistantId,
+      messagesCount,
+      alreadySnapped: initialSnappedIdRef.current === lastAssistantId,
+      userScrolledAway,
+    });
     if (!lastAssistantId) return;
     if (initialSnappedIdRef.current === lastAssistantId) return;
+    if (userScrolledAway) {
+      console.info("[nex-scroll] snap-init SKIP userScrolledAway");
+      return;
+    }
     initialSnappedIdRef.current = lastAssistantId;
-    if (userScrolledAway) return;
-    // rAF para aguardar layout estavel apos React commit.
+    // Double-rAF: aguarda 2 frames para garantir que ref callback ja
+    // setou messageRefsMap E que o layout esta estavel.
     requestAnimationFrame(() => {
-      snapBubbleTopToViewport(lastAssistantId);
+      requestAnimationFrame(() => {
+        snapBubbleTopToViewport(lastAssistantId);
+      });
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [lastAssistantId, messagesCount]);
 
   // useEffect re-snap streaming via interval.
   React.useEffect(() => {
+    console.info("[nex-scroll] effect snap-stream eval", {
+      lastAssistantStreaming,
+      lastAssistantId,
+      userScrolledAway,
+    });
     if (!lastAssistantStreaming || !lastAssistantId) return;
+    if (userScrolledAway) return;
     const intervalId = window.setInterval(() => {
       if (userScrolledAway) return;
       if (isProgrammaticScrollRef.current) return;
@@ -318,9 +364,6 @@ export function ChatPanel({
       if (!el || !bubble) return;
       const bRect = bubble.getBoundingClientRect();
       const sRect = el.getBoundingClientRect();
-      // Trigger: bubble.bottom passa de 80px do final do viewport.
-      // Se bubble e menor que viewport (cabe inteira), bRect.bottom <
-      // sRect.bottom - 80 sempre, nada dispara. Comportamento correto.
       if (bRect.bottom > sRect.bottom - 80) {
         lastStreamSnapTsRef.current = now;
         snapWritingPointNearTop(lastAssistantId);
@@ -332,10 +375,17 @@ export function ChatPanel({
   // useEffect listeners user-intent: wheel + touchmove + scroll reset.
   React.useEffect(() => {
     const el = scrollRef.current;
-    if (!el) return;
-    const markUserScroll = () => setUserScrolledAway(true);
+    if (!el) {
+      console.warn("[nex-scroll] listeners NAO anexados - scrollRef null");
+      return;
+    }
+    console.info("[nex-scroll] listeners anexados em scrollRef");
+    const markUserScroll = (source: string) => {
+      console.info("[nex-scroll] userScrolledAway=true por", source);
+      setUserScrolledAway(true);
+    };
     const onWheel = (e: WheelEvent) => {
-      if (e.deltaY < 0) markUserScroll();
+      if (e.deltaY < 0) markUserScroll(`wheel deltaY=${e.deltaY}`);
     };
     let touchStartY = 0;
     const onTouchStart = (e: TouchEvent) => {
@@ -344,7 +394,7 @@ export function ChatPanel({
     const onTouchMove = (e: TouchEvent) => {
       const y = e.touches[0]?.clientY ?? 0;
       // Dedo descendo (y > startY) = conteudo rolando pra cima.
-      if (y - touchStartY > 8) markUserScroll();
+      if (y - touchStartY > 8) markUserScroll(`touchmove dy=${y - touchStartY}`);
     };
     const onScroll = () => {
       // Reset quando chega ao fim, mesmo programatico (FAB usa esse path).
