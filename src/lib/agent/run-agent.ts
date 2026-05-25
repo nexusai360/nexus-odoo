@@ -53,75 +53,29 @@ const BI_ROLES = new Set(["admin", "super_admin"]);
 /** Aviso appended quando o resultado é truncado. */
 const TRUNCATION_NOTICE = "\n[...resultado truncado por exceder o limite de tamanho...]";
 
-/** Regex para extrair sufixo [[suggestions]]. */
-const SUGGESTIONS_RE = /(?:^|\n)\[\[suggestions\]\]:([^\n]+?)(?:\n|$)/;
-const MAX_SUGGESTIONS = 5;
-const MAX_SUGGESTION_LEN = 80;
+// Extracao de sugestoes movida para suggestions-extractor.ts (modulo puro,
+// testavel sem prisma). Import local para uso interno + re-export para
+// nao quebrar imports externos (agent-conversation-export importa daqui).
+import {
+  extractSuggestions,
+  extractBulletQuestions,
+  FALLBACK_SUGGESTIONS,
+  MAX_SUGGESTIONS,
+  MAX_SUGGESTION_LEN,
+  MAX_BULLET_EXTRACTION,
+} from "./suggestions-extractor";
+export {
+  extractSuggestions,
+  extractBulletQuestions,
+  FALLBACK_SUGGESTIONS,
+  MAX_SUGGESTIONS,
+  MAX_SUGGESTION_LEN,
+  MAX_BULLET_EXTRACTION,
+};
 
-/**
- * Sugestoes genericas universais usadas como fallback quando o modelo
- * esquece de emitir o sufixo [[suggestions]]. Garantia de chips visiveis
- * em toda resposta da bubble (vide pedido do usuario em 2026-05-24 18:58:
- * "as sugestoes nao estao acontecendo, vira e mexe esse problema").
- */
-// Fallback para sugestoes pos-resposta (continuidade). Intencionalmente
-// DISTINTO do WELCOME_SUGGESTIONS / pickWelcomeByRole para nao repetir as
-// mesmas perguntas que ja apareciam na tela inicial (bug reportado pelo
-// usuario em 2026-05-24 23:14: "a primeira mensagem roxa e a segunda
-// mensagem roxa sao a mesma"). Perguntas aqui aprofundam temas frequentes
-// em vez de reapresentar o catalogo de entrada.
-const FALLBACK_SUGGESTIONS: readonly string[] = [
-  "Detalhe o faturamento dos últimos 7 dias.",
-  "Qual cliente mais comprou neste mês?",
-  "Compare o estoque atual com o do mês passado.",
-  "Quais notas fiscais foram emitidas hoje?",
-  "Quais títulos vencem nos próximos 5 dias?",
-];
-
-/**
- * Extrai sugestões do sufixo `[[suggestions]]:item1|item2|...`.
- * Retorna message sem o sufixo + array de sugestões.
- *
- * Quando o modelo esquece o sufixo, devolve o set FALLBACK_SUGGESTIONS
- * fatiado pelo maxCount. Garante que toda resposta na bubble vem com chips.
- */
-export function extractSuggestions(
-  text: string,
-  maxCount?: number,
-): {
-  message: string;
-  suggestions: string[];
-} {
-  const limit = Math.min(
-    Math.max(1, maxCount ?? MAX_SUGGESTIONS),
-    MAX_SUGGESTIONS,
-  );
-
-  const match = text.match(SUGGESTIONS_RE);
-  if (!match) {
-    // Modelo esqueceu de emitir; usa fallback fatiado para nao deixar a
-    // bolha sem chips. UI espera sempre `>=1` chip quando enabled.
-    return {
-      message: text,
-      suggestions: FALLBACK_SUGGESTIONS.slice(0, limit),
-    };
-  }
-  // Cap deterministicamente pela config (1..5, default 3) e nunca acima do
-  // hard cap MAX_SUGGESTIONS. Defesa em profundidade: o prompt instrui o
-  // modelo, esta camada garante que extra é descartado.
-  const raw = match[1].trim();
-  const parsed = raw
-    .split("|")
-    // As sugestões viram chips de texto puro na UI: remove markdown (negrito,
-    // crase) para não aparecer "**" ou "`" literal no chip.
-    .map((s) => s.trim().replace(/\*\*/g, "").replace(/`/g, "").trim())
-    .filter((s) => s.length > 0 && s.length <= MAX_SUGGESTION_LEN)
-    .slice(0, limit);
-  const suggestions =
-    parsed.length > 0 ? parsed : FALLBACK_SUGGESTIONS.slice(0, limit);
-  const message = text.replace(match[0], "").trimEnd();
-  return { message, suggestions };
-}
+// FALLBACK_SUGGESTIONS, extractBulletQuestions e extractSuggestions agora
+// vivem em suggestions-extractor.ts (modulo puro, sem dep de prisma) para
+// permitir testes jest sem fixturizar a cadeia toda. Re-exportados acima.
 
 /**
  * Trunca o resultado de uma tool call para MAX_TOOL_RESULT_BYTES.
