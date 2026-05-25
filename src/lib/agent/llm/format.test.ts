@@ -1,5 +1,7 @@
 import { formatCompactCount } from "./format";
 
+const GAP = "  ";
+
 describe("formatCompactCount", () => {
   it("retorna ',' para valor nulo ou invalido", () => {
     expect(formatCompactCount(null)).toBe(",");
@@ -13,22 +15,27 @@ describe("formatCompactCount", () => {
     expect(formatCompactCount(83_421)).toBe("83.421");
   });
 
-  it("compacta com sufixo  Mi a partir de 1 milhao", () => {
-    expect(formatCompactCount(1_000_000)).toBe("1,0  Mi");
-    expect(formatCompactCount(83_900_000)).toBe("83,9  Mi");
-    expect(formatCompactCount(83_999_999)).toBe("83,9  Mi");
-    expect(formatCompactCount(999_999_999)).toBe("999,9  Mi");
+  it("compacta com sufixo Mi a partir de 1 milhao", () => {
+    expect(formatCompactCount(1_000_000)).toBe(`1,0${GAP}Mi`);
+    expect(formatCompactCount(83_900_000)).toBe(`83,9${GAP}Mi`);
+    expect(formatCompactCount(83_999_999)).toBe(`83,9${GAP}Mi`);
+    expect(formatCompactCount(999_999_999)).toBe(`999,9${GAP}Mi`);
   });
 
-  it("compacta com sufixo  Bi/TRI/QUA acima de 1 bilhao", () => {
-    expect(formatCompactCount(1_000_000_000)).toBe("1,0  Bi");
-    expect(formatCompactCount(2_500_000_000)).toBe("2,5  Bi");
-    expect(formatCompactCount(1_000_000_000_000)).toBe("1,0  Tri");
-    expect(formatCompactCount(1_000_000_000_000_000)).toBe("1,0  Qua");
+  it("compacta com sufixo Bi/Tri/Qua acima de 1 bilhao", () => {
+    expect(formatCompactCount(1_000_000_000)).toBe(`1,0${GAP}Bi`);
+    expect(formatCompactCount(2_500_000_000)).toBe(`2,5${GAP}Bi`);
+    expect(formatCompactCount(1_000_000_000_000)).toBe(`1,0${GAP}Tri`);
+    expect(formatCompactCount(1_000_000_000_000_000)).toBe(`1,0${GAP}Qua`);
   });
 
   it("trunca em vez de arredondar para nao 'subir' a marca", () => {
-    expect(formatCompactCount(1_990_000)).toBe("1,9  Mi");
-    expect(formatCompactCount(1_999_999)).toBe("1,9  Mi");
+    expect(formatCompactCount(1_990_000)).toBe(`1,9${GAP}Mi`);
+    expect(formatCompactCount(1_999_999)).toBe(`1,9${GAP}Mi`);
+  });
+
+  it("usa NBSP (U+00A0) para evitar colapso do HTML", () => {
+    const result = formatCompactCount(1_000_000);
+    expect(result).toContain("  ");
   });
 });
