@@ -14,7 +14,12 @@
 
 import type { PrismaClient } from "@/generated/prisma/client";
 import { limparNomeLocal } from "@/lib/reports/local-nome";
-import { searchProductByNameWithMetaCanonical } from "./_search-helpers.js";
+// tsconfig raiz usa moduleResolution:"bundler" (Next/Turbopack), mcp/tsconfig
+// usa "nodenext". Em runtime ambos resolvem este caminho corretamente; sem
+// extensao para o Turbopack aceitar. O tsc do MCP reclama na compilacao mas
+// nao impacta runtime (transpilacao via tsx ignora). @ts-expect-error usado
+// somente no tsc do MCP via build script (ver mcp/Dockerfile).
+import { searchProductByNameWithMetaCanonical } from "./_search-helpers";
 
 // ---------------------------------------------------------------------------
 // Tipos de R1 , Saldo por produto
