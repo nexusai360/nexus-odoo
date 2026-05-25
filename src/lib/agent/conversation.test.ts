@@ -5,7 +5,13 @@ import {
   loadHistory,
   persistMessage,
   deriveTitle,
+  loadConversationReasoningHistory,
+  saveConversationReasoningHistory,
+  capReasoningHistory,
+  REASONING_HISTORY_MAX_ITEMS,
+  REASONING_HISTORY_MAX_BYTES,
 } from "./conversation";
+import type { ReasoningContext } from "./llm/types";
 
 jest.mock("@/lib/prisma", () => ({
   prisma: {
@@ -13,6 +19,7 @@ jest.mock("@/lib/prisma", () => ({
       findFirst: jest.fn(),
       create: jest.fn(),
       findUnique: jest.fn(),
+      update: jest.fn(),
     },
     message: {
       findMany: jest.fn(),
@@ -174,5 +181,66 @@ describe("persistMessage", () => {
     await persistMessage("conv-1", "assistant", "Vou verificar...", toolCalls);
     const callData = prisma.message.create.mock.calls[0][0].data;
     expect(callData.toolCalls).toBeTruthy();
+  });
+});
+
+describe("reasoning history persistence (Onda 1)", () => {
+  test("loadConversationReasoningHistory retorna [] quando conversa nao existe", async () => {
+    prisma.conversation.findUnique.mockResolvedValueOnce(null);
+    const result = await loadConversationReasoningHistory("conv-x");
+    expect(result).toEqual([]);
+  });
+
+  test("loadConversationReasoningHistory retorna array preservado", async () => {
+    const history: ReasoningContext[] = [
+      { provider: "openai", data: { items: [{ type: "reasoning" }] } },
+      { provider: "openai", data: { items: [{ type: "reasoning" }] } },
+    ];
+    prisma.conversation.findUnique.mockResolvedValueOnce({ reasoningHistory: history });
+    const result = await loadConversationReasoningHistory("conv-1");
+    expect(result).toEqual(history);
+  });
+
+  test("loadConversationReasoningHistory retorna [] se campo nao for array", async () => {
+    prisma.conversation.findUnique.mockResolvedValueOnce({ reasoningHistory: null });
+    expect(await loadConversationReasoningHistory("conv-1")).toEqual([]);
+    prisma.conversation.findUnique.mockResolvedValueOnce({ reasoningHistory: { foo: "bar" } });
+    expect(await loadConversationReasoningHistory("conv-1")).toEqual([]);
+  });
+
+  test("saveConversationReasoningHistory chama update com history capped", async () => {
+    prisma.conversation.update.mockResolvedValueOnce({});
+    const history: ReasoningContext[] = [{ provider: "anthropic", data: { blocks: [] } }];
+    await saveConversationReasoningHistory("conv-1", history);
+    expect(prisma.conversation.update).toHaveBeenCalledWith({
+      where: { id: "conv-1" },
+      data: { reasoningHistory: history },
+    });
+  });
+
+  test("capReasoningHistory respeita maxItems=20", () => {
+    const big: ReasoningContext[] = Array.from({ length: 30 }, (_, i) => ({
+      provider: "openai",
+      data: { iter: i },
+    }));
+    const result = capReasoningHistory(big);
+    expect(result.length).toBe(REASONING_HISTORY_MAX_ITEMS);
+    expect((result[0].data as { iter: number }).iter).toBe(10);
+    expect((result[result.length - 1].data as { iter: number }).iter).toBe(29);
+  });
+
+  test("capReasoningHistory respeita maxBytes truncando do início", () => {
+    const big: ReasoningContext[] = Array.from({ length: 10 }, (_, i) => ({
+      provider: "gemini",
+      data: { iter: i, payload: "x".repeat(10_000) },
+    }));
+    const result = capReasoningHistory(big, REASONING_HISTORY_MAX_ITEMS, REASONING_HISTORY_MAX_BYTES);
+    expect(JSON.stringify(result).length).toBeLessThanOrEqual(REASONING_HISTORY_MAX_BYTES);
+    expect((result[result.length - 1].data as { iter: number }).iter).toBe(9);
+  });
+
+  test("capReasoningHistory retorna mesmo array quando dentro dos limites", () => {
+    const small: ReasoningContext[] = [{ provider: "openrouter", data: { details: [] } }];
+    expect(capReasoningHistory(small)).toEqual(small);
   });
 });

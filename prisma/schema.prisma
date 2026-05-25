@@ -2189,6 +2189,10 @@ model Conversation {
   user      User         @relation(fields: [userId], references: [id], onDelete: Cascade)
   channel   AgentChannel
   title     String?
+  /// Historico opaco de raciocinio por iteracao (Anthropic blocks, Gemini parts,
+  /// OpenRouter reasoning_details, OpenAI reasoning items). Array crescente,
+  /// capado em 20 iteracoes ou 50KB serialized. Cada item: { provider, data }.
+  reasoningHistory Json    @default("[]") @map("reasoning_history")
   createdAt DateTime     @default(now()) @map("created_at")
   updatedAt DateTime     @updatedAt @map("updated_at")
   messages  Message[]
@@ -2272,6 +2276,9 @@ model LlmUsage {
   durationMs     Int?     @map("duration_ms")
   errorMessage   String?  @map("error_message")
   isPlayground   Boolean  @default(false) @map("is_playground")
+  /// Tokens de raciocinio internos (subset conceitual de tokens_output).
+  /// OpenAI/Gemini/OpenRouter expoem; Anthropic nao (fica NULL).
+  reasoningTokens Int?    @map("reasoning_tokens")
   userId         String?  @map("user_id") @db.Uuid
   // Credencial (chave de API) usada — permite somar o consumo por chave (A4).
   credentialId   String?  @map("credential_id") @db.Uuid

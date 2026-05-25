@@ -10,7 +10,7 @@
 
 import { prisma } from "@/lib/prisma";
 import type { AgentChannel, MessageRole } from "@/generated/prisma/client";
-import type { ToolCall } from "./llm/types";
+import type { ToolCall, ReasoningContext } from "./llm/types";
 
 /** 24 horas em ms , janela de reutilização de conversa WhatsApp. */
 const WHATSAPP_REUSE_WINDOW_MS = 24 * 60 * 60 * 1000;
@@ -234,4 +234,63 @@ export async function persistMessage(
       }
     })();
   }
+}
+
+// ============================================================================
+// Reasoning history persistence (Onda 1 da modernizacao dos adapters).
+// ============================================================================
+
+/** Cap maximo de iteracoes preservadas. */
+export const REASONING_HISTORY_MAX_ITEMS = 20;
+/** Cap maximo em bytes serializados. */
+export const REASONING_HISTORY_MAX_BYTES = 50_000;
+
+/**
+ * Carrega o historico opaco de raciocinio acumulado em uma conversa.
+ * Retorna array vazio se a conversa nao existe ou nao tem historico.
+ */
+export async function loadConversationReasoningHistory(
+  conversationId: string,
+): Promise<ReasoningContext[]> {
+  const conv = await prisma.conversation.findUnique({
+    where: { id: conversationId },
+    select: { reasoningHistory: true },
+  });
+  if (!conv) return [];
+  const raw = conv.reasoningHistory as unknown;
+  return Array.isArray(raw) ? (raw as ReasoningContext[]) : [];
+}
+
+/**
+ * Trunca o historico para caber em REASONING_HISTORY_MAX_ITEMS e
+ * REASONING_HISTORY_MAX_BYTES (o que vier primeiro), mantendo as
+ * iteracoes mais recentes.
+ */
+export function capReasoningHistory(
+  history: ReasoningContext[],
+  maxItems = REASONING_HISTORY_MAX_ITEMS,
+  maxBytes = REASONING_HISTORY_MAX_BYTES,
+): ReasoningContext[] {
+  let trimmed = history.length > maxItems ? history.slice(-maxItems) : history;
+  // Truncamento por bytes: vai removendo do inicio ate caber.
+  while (trimmed.length > 0) {
+    const size = JSON.stringify(trimmed).length;
+    if (size <= maxBytes) break;
+    trimmed = trimmed.slice(1);
+  }
+  return trimmed;
+}
+
+/**
+ * Persiste o historico de raciocinio na conversa. Aplica cap antes de gravar.
+ */
+export async function saveConversationReasoningHistory(
+  conversationId: string,
+  history: ReasoningContext[],
+): Promise<void> {
+  const capped = capReasoningHistory(history);
+  await prisma.conversation.update({
+    where: { id: conversationId },
+    data: { reasoningHistory: capped as unknown as object },
+  });
 }
