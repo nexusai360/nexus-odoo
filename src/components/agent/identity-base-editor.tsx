@@ -279,18 +279,19 @@ export function IdentityBaseEditor({ initial }: IdentityBaseEditorProps) {
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel
+              variant="default"
               onClick={() => setPendingNav(null)}
-              className="bg-violet-600 text-white hover:bg-violet-700"
+              className="!bg-violet-600 !text-white hover:!bg-violet-700"
             >
               Ficar e continuar editando
             </AlertDialogCancel>
             <AlertDialogAction
+              variant="destructive"
               onClick={() => {
                 const nav = pendingNav;
                 setPendingNav(null);
                 nav?.();
               }}
-              className="bg-destructive text-white hover:bg-destructive/90"
             >
               Sair mesmo assim
             </AlertDialogAction>
