@@ -17,12 +17,10 @@ export function formatRelativeDateTime(value: Date | string | null | undefined):
   const hh = String(d.getHours()).padStart(2, "0");
   const mi = String(d.getMinutes()).padStart(2, "0");
 
-  const sameDay =
-    d.getFullYear() === now.getFullYear() &&
-    d.getMonth() === now.getMonth() &&
-    d.getDate() === now.getDate();
-  if (sameDay) return `${hh}:${mi}`;
-
+  // Regra reforcada (pedido usuario 2026-05-25 01:28): sempre mostrar
+  // dd/mm a esquerda do horario, mesmo no dia atual. So suprime ano
+  // quando ano da mensagem == ano atual. Mensagem antiga de outro ano:
+  // dd/mm/yy hh:mm.
   const sameYear = d.getFullYear() === now.getFullYear();
   return sameYear ? `${dd}/${mm} ${hh}:${mi}` : `${dd}/${mm}/${yy} ${hh}:${mi}`;
 }

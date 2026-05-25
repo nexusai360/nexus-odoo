@@ -123,6 +123,11 @@ export function ChatPanel({
   const [audioFlight, setAudioFlight] = React.useState(false);
 
   const conversationIdRef = React.useRef<string | null>(externalConvId ?? null);
+  // Track conversas criadas nesta sessao do componente para NAO recarregar
+  // do banco e perder o estado local (steps do trail nao sao persistidos;
+  // recarregar apagaria a trilha "Raciocinio" da primeira resposta, bug
+  // reportado pelo usuario em 2026-05-25 01:28).
+  const justCreatedConvIdsRef = React.useRef<Set<string>>(new Set());
   const scrollRef = React.useRef<HTMLDivElement | null>(null);
   const inputRef = React.useRef<HTMLTextAreaElement | null>(null);
   const abortRef = React.useRef<AbortController | null>(null);
@@ -135,6 +140,13 @@ export function ChatPanel({
     if (!externalConvId) {
       // Nova conversa: limpa mensagens
       setMessages([]);
+      return;
+    }
+
+    // Skip reload se essa conversa acabou de ser criada nesta sessao:
+    // o estado local ja tem a primeira resposta com steps; recarregar
+    // do banco perderia steps (nao persistidos) e apagaria o "Raciocinio".
+    if (justCreatedConvIdsRef.current.has(externalConvId)) {
       return;
     }
 
@@ -369,6 +381,9 @@ export function ChatPanel({
             } else if (evt.type === "done") {
               if (evt.conversationId && !conversationIdRef.current) {
                 conversationIdRef.current = evt.conversationId;
+                // Marca como criada nesta sessao para o useEffect de reload
+                // skipar o getConversationMessages e preservar os steps locais.
+                justCreatedConvIdsRef.current.add(evt.conversationId);
                 onConversationCreated?.(evt.conversationId);
               }
               setMessages((prev) => {
