@@ -124,13 +124,6 @@ export function UsageDetailInline({ row }: { row: UsageDetailRow }) {
         <div aria-hidden />
       </div>
 
-      {row.reasoningTokens != null && row.reasoningTokens > 0 ? (
-        <p className="mt-2 text-[10px] italic text-muted-foreground">
-          Tokens de raciocínio são cobrados como tokens de saída; o custo
-          total já inclui.
-        </p>
-      ) : null}
-
       {row.errorMessage ? (
         <div
           role="alert"
@@ -171,7 +164,7 @@ function IdentificationBlock({ row }: { row: UsageDetailRow }) {
         />
       </dl>
       {hasReasoning ? (
-        <div className="mt-3">
+        <div className="mt-6">
           <h5 className="mb-1.5 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground/80">
             Capacidades
           </h5>
