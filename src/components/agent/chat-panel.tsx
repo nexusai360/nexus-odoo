@@ -77,6 +77,8 @@ interface UiMessage {
   suggestions?: string[];
   /** True enquanto este turn está sendo streamado. */
   streaming?: boolean;
+  /** Timestamp da mensagem para rodapé "dd/mm hh:mm" na bolha. */
+  createdAt?: string;
 }
 
 type SseEvent =
@@ -151,6 +153,7 @@ export function ChatPanel({
           id: m.id,
           role: m.role as AgentMessageRole,
           content: m.content,
+          createdAt: m.createdAt,
         }));
       setMessages(uiMessages);
     })();
@@ -205,15 +208,31 @@ export function ChatPanel({
 
       setMessages((prev) => [
         ...prev,
-        { id: userMsgId, role: "user", content: trimmed },
+        {
+          id: userMsgId,
+          role: "user",
+          content: trimmed,
+          createdAt: new Date().toISOString(),
+        },
       ]);
       setInput("");
       setPending(true);
 
-      // Adiciona loading bubble
+      // Nasce a bolha do assistant ja com trilha "Pensando..." dentro.
+      // Sem LoadingBubble separada (eliminado o "Agente pensando" duplicado
+      // que aparecia antes do trail; agora e uma transicao continua: o mesmo
+      // componente que mostra "Pensando" ganha steps e depois vira resposta).
       setMessages((prev) => [
         ...prev,
-        { id: "loading", role: "loading", content: "" },
+        {
+          id: assistantMsgId,
+          role: "assistant",
+          content: "",
+          steps: [],
+          stepsCollapsed: false,
+          startedAt: Date.now(),
+          streaming: true,
+        },
       ]);
 
       try {
@@ -374,6 +393,7 @@ export function ChatPanel({
                       stepsCollapsed: true,
                       startedAt: m.startedAt ?? doneAt,
                       doneAt,
+                      createdAt: m.createdAt ?? new Date(doneAt).toISOString(),
                     };
                   }
                   return m;
@@ -391,6 +411,7 @@ export function ChatPanel({
                     stepsCollapsed: true,
                     startedAt: doneAt,
                     doneAt,
+                    createdAt: new Date(doneAt).toISOString(),
                   },
                 ];
               });
@@ -656,6 +677,7 @@ export function ChatPanel({
                       streaming={m.streaming}
                       steps={m.steps}
                       stepsCollapsed={m.stepsCollapsed ?? true}
+                      createdAt={m.createdAt}
                       durationMs={durationMs}
                       onToggleSteps={() =>
                         setMessages((prev) =>

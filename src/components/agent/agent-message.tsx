@@ -26,6 +26,7 @@ import * as React from "react";
 import { cn } from "@/lib/utils";
 import { AudioPlayer } from "@/components/agent/audio-player";
 import type { ProgressStep } from "./progress-trail";
+import { formatRelativeDateTime } from "@/lib/format-datetime-relative";
 
 export type AgentMessageRole = "user" | "assistant" | "tool" | "loading";
 
@@ -57,6 +58,9 @@ export interface AgentMessageProps {
   onToggleSteps?: () => void;
   /** Duração total do turno em ms para o resumo da trilha colapsada. */
   durationMs?: number;
+  /** Timestamp de envio para exibir no rodapé da bolha. Quando ausente,
+   *  o rodapé fica oculto (histórico legado sem stamp). */
+  createdAt?: string | Date | null;
 }
 
 export function AgentMessage({
@@ -71,6 +75,7 @@ export function AgentMessage({
   stepsCollapsed = true,
   onToggleSteps,
   durationMs,
+  createdAt,
 }: AgentMessageProps) {
   if (role === "loading") return <LoadingBubble />;
   if (role === "tool") return <ToolBubble name={toolName ?? "tool"} />;
@@ -104,7 +109,12 @@ export function AgentMessage({
   }
 
   // Mensagens de texto (user + assistant)
-  const showTrail = !isUser && Array.isArray(steps) && steps.length > 0;
+  // Trilha aparece desde o instante do send (placeholder "Pensando..." com
+  // dots), continua mostrando steps conforme chegam, e fica como header
+  // colapsavel "Raciocinio" apos done. So nao aparece quando NAO ha steps
+  // E nao esta streaming (caso de mensagem antiga sem trilha).
+  const showTrail =
+    !isUser && (streaming || (Array.isArray(steps) && steps.length > 0));
   return (
     <div
       className={cn(
@@ -122,7 +132,7 @@ export function AgentMessage({
       >
         {showTrail ? (
           <AssistantTrailBlock
-            steps={steps!}
+            steps={steps ?? []}
             streaming={streaming}
             collapsed={stepsCollapsed}
             onToggle={onToggleSteps}
@@ -136,6 +146,17 @@ export function AgentMessage({
             className="ml-0.5 inline-block h-[1em] w-[2px] animate-pulse bg-violet-500 align-text-bottom motion-reduce:animate-none"
           />
         )}
+        {createdAt && !streaming ? (
+          <div
+            className={cn(
+              "mt-1 text-[10px] tabular-nums text-muted-foreground/70",
+              isUser ? "text-right" : "text-left",
+            )}
+            suppressHydrationWarning
+          >
+            {formatRelativeDateTime(createdAt)}
+          </div>
+        ) : null}
         <CopyButton text={content} />
       </div>
     </div>
@@ -189,8 +210,8 @@ function AssistantTrailBlock({
         )}
       >
         {showDots ? (
-          <Sparkles
-            className="h-3.5 w-3.5 shrink-0 text-violet-500 motion-reduce:animate-none"
+          <Database
+            className="h-3.5 w-3.5 shrink-0 animate-pulse text-violet-500 motion-reduce:animate-none"
             aria-hidden
           />
         ) : (
@@ -213,12 +234,12 @@ function AssistantTrailBlock({
           {steps.map((s) => (
             <li key={s.id} className="flex items-center gap-1.5 text-[11px]">
               {s.state === "running" ? (
-                <Loader2
-                  className="h-3 w-3 shrink-0 animate-spin text-violet-500 motion-reduce:animate-none"
+                <Database
+                  className="h-3 w-3 shrink-0 animate-pulse text-violet-500 motion-reduce:animate-none"
                   aria-hidden
                 />
               ) : (
-                <Check
+                <Database
                   className="h-3 w-3 shrink-0 text-emerald-500"
                   aria-hidden
                 />

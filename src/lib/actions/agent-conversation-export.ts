@@ -14,9 +14,12 @@
 
 import { prisma } from "@/lib/prisma";
 import { getCurrentUser } from "@/lib/auth";
+import { formatFullDateTime } from "@/lib/format-datetime-relative";
 
 function fmtDate(d: Date): string {
-  return d.toISOString().replace("T", " ").replace("Z", " UTC");
+  // Pedido do usuario em 2026-05-24 22:34: log sempre dd/mm/yyyy hh:mm,
+  // em horario local do servidor. Padrao consistente com a UI da bubble.
+  return formatFullDateTime(d);
 }
 
 function safeStringify(v: unknown): string {
