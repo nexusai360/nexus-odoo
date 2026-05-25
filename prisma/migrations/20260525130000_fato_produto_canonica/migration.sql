@@ -40,3 +40,17 @@ CREATE INDEX IF NOT EXISTS "fato_produto_nome_unaccent_idx"
   ON "fato_produto" (lower(public.f_unaccent_immutable("nome")));
 CREATE INDEX IF NOT EXISTS "fato_produto_nome_trgm_idx"
   ON "fato_produto" USING gin (lower(public.f_unaccent_immutable("nome")) gin_trgm_ops);
+
+-- GRANT para roles do MCP (read-only). Sem isso, queries $queryRawUnsafe
+-- da tool estoque_saldo_produto falham com "permission denied for table
+-- fato_produto" (code 42501). Idempotente: GRANT roda multiplas vezes
+-- sem erro. Roles podem nao existir em ambiente local sem RBAC; DO block
+-- silencia erros para nao quebrar dev local.
+DO $$ BEGIN
+  IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'nexus_mcp') THEN
+    EXECUTE 'GRANT SELECT ON fato_produto TO nexus_mcp';
+  END IF;
+  IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname = 'nexus_mcp_bi') THEN
+    EXECUTE 'GRANT SELECT ON fato_produto TO nexus_mcp_bi';
+  END IF;
+END $$;
