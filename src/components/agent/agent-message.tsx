@@ -19,6 +19,7 @@ import {
   ChevronRight,
   Copy,
   Database,
+  Search,
   Loader2,
   Sparkles,
 } from "lucide-react";
@@ -440,14 +441,28 @@ function AssistantTrailBlock({
                           className="absolute inset-0 inline-flex items-center justify-center"
                           aria-hidden
                         >
-                          <Database
-                            className={cn(
-                              "h-3 w-3",
-                              s.state === "running"
-                                ? "animate-pulse text-violet-500 motion-reduce:animate-none"
-                                : "text-violet-500/70",
-                            )}
-                          />
+                          {/* Tools de BI (consulta avancada) ganham icone
+                              de lupa (Search). Demais tools ficam com
+                              Database. Cor violet da marca em ambos. */}
+                          {s.label === "consulta avançada" ? (
+                            <Search
+                              className={cn(
+                                "h-3 w-3",
+                                s.state === "running"
+                                  ? "animate-pulse text-violet-500 motion-reduce:animate-none"
+                                  : "text-violet-500/70",
+                              )}
+                            />
+                          ) : (
+                            <Database
+                              className={cn(
+                                "h-3 w-3",
+                                s.state === "running"
+                                  ? "animate-pulse text-violet-500 motion-reduce:animate-none"
+                                  : "text-violet-500/70",
+                              )}
+                            />
+                          )}
                         </motion.span>
                       </AnimatePresence>
                     </span>
@@ -459,8 +474,12 @@ function AssistantTrailBlock({
                           : "text-muted-foreground",
                       )}
                     >
-                      {s.state === "running" ? "Consultando" : "Consultou"} {s.label}
-                      {s.state === "running" ? "…" : ""}
+                      {/* BI: label "consulta avancada" e auto-explicativo,
+                          sem prefixo "Consultou/Consultando". Demais tools:
+                          mantem prefixo (ex. "Consultou faturamento"). */}
+                      {s.label === "consulta avançada"
+                        ? `${s.label}${s.state === "running" ? "…" : ""}`
+                        : `${s.state === "running" ? "Consultando" : "Consultou"} ${s.label}${s.state === "running" ? "…" : ""}`}
                     </span>
                   </motion.li>
                 ))}

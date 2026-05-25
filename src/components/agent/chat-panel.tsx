@@ -140,8 +140,14 @@ export function ChatPanel({
   const contentRef = React.useRef<HTMLDivElement | null>(null);
   // Ref espelha state para uso dentro de listeners criados 1x.
   const isStickyRef = React.useRef(true);
-  const [isSticky, setIsSticky] = React.useState(true);
-  React.useEffect(() => { isStickyRef.current = isSticky; }, [isSticky]);
+  const [isSticky, setIsStickyState] = React.useState(true);
+  // Wrapper que ATUALIZA o ref SINCRONAMENTE antes do state. Evita race
+  // com o ResizeObserver que le isStickyRef no mesmo tick em que o state
+  // changes (useEffect de sync corre depois, perdendo a janela).
+  const setIsSticky = React.useCallback((v: boolean) => {
+    isStickyRef.current = v;
+    setIsStickyState(v);
+  }, []);
   // Marca quando ultimo scroll programatico aconteceu. Wheel events nos
   // 120ms seguintes sao ignorados (kinetic scroll do macOS pode gerar
   // wheel falso durante smooth scroll).
@@ -295,6 +301,16 @@ export function ChatPanel({
 
       // Reset do stick-to-bottom: nova msg reativa scroll automatico.
       setIsSticky(true);
+      // Snap explicito pra fim apos React commitar a nova msg, antes
+      // do ResizeObserver disparar. Garante que a bolha do assistant
+      // (que aparece com "Pensando") ja nasce totalmente visivel.
+      // Sem isso, havia race: setMessages adicionava bolha; layout
+      // crescia; mas RO podia firar com isStickyRef ainda nao
+      // atualizado ou o usuario via metade da bolha.
+      requestAnimationFrame(() => {
+        const el = scrollRef.current;
+        if (el) el.scrollTop = el.scrollHeight;
+      });
 
       abortRef.current?.abort();
       const controller = new AbortController();
