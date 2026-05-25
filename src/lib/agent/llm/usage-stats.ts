@@ -93,6 +93,11 @@ export interface UsageDetailRow {
   /** Tokens de raciocinio internos (OpenAI/Gemini/OpenRouter). null
    *  para providers que nao expoem (ex.: Anthropic) ou modelos legados. */
   reasoningTokens: number | null;
+  /** Numero de tool calls disparadas nesta iteracao. 0 = sem tool;
+   *  null = linha antiga pre-instrumentacao. */
+  toolCallsCount: number | null;
+  /** Nomes das tools chamadas, na ordem. Vazio quando nao houve tool. */
+  toolNames: string[];
 }
 
 export interface UsageDetailsTotals {
@@ -382,6 +387,8 @@ export async function getUsageDetails(args: {
         conversationId: true,
         requestKind: true,
         reasoningTokens: true,
+        toolCallsCount: true,
+        toolNames: true,
       },
     }),
     prisma.llmUsage.count({ where }),
@@ -421,6 +428,9 @@ export async function getUsageDetails(args: {
     requestKind: r.requestKind ?? "texto",
     reasoningTokens:
       r.reasoningTokens == null ? null : toNum(r.reasoningTokens),
+    toolCallsCount:
+      r.toolCallsCount == null ? null : toNum(r.toolCallsCount),
+    toolNames: Array.isArray(r.toolNames) ? r.toolNames : [],
   }));
 
   return {

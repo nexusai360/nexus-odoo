@@ -389,6 +389,8 @@ export async function runAgent(args: RunAgentInput): Promise<RunAgentResult> {
         tokensInput: result.usage.tokensInput,
         tokensOutput: result.usage.tokensOutput,
         reasoningTokens: result.reasoningTokens ?? null,
+        toolCallsCount: result.toolCalls?.length ?? 0,
+        toolNames: result.toolCalls?.map((t) => t.name) ?? [],
         conversationId: args.conversationId,
         userId: args.userId,
         durationMs: Date.now() - iterStart,

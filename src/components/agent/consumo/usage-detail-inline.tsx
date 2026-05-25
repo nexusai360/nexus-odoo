@@ -67,8 +67,8 @@ export function UsageDetailInline({ row }: { row: UsageDetailRow }) {
         <CostBreakdownBlock row={row} />
       </div>
 
-      <div className="mt-3 grid grid-cols-3 items-center border-t border-violet-500/15 pt-2 text-[11px] text-muted-foreground">
-        <div className="flex flex-col gap-1 justify-self-start">
+      <div className="mt-3 grid grid-cols-3 items-stretch border-t border-violet-500/15 pt-2 text-[11px] text-muted-foreground">
+        <div className="flex flex-col justify-center gap-1 justify-self-start">
           <div>
             <span className="mr-4">
               entrada:{" "}
@@ -109,7 +109,7 @@ export function UsageDetailInline({ row }: { row: UsageDetailRow }) {
             </div>
           ) : null}
         </div>
-        <div className="justify-self-center">
+        <div className="flex items-center justify-self-center self-center">
           <Button
             type="button"
             variant="outline"
@@ -143,6 +143,9 @@ export function UsageDetailInline({ row }: { row: UsageDetailRow }) {
 function IdentificationBlock({ row }: { row: UsageDetailRow }) {
   const hasReasoning =
     row.reasoningTokens != null && row.reasoningTokens > 0;
+  const toolCount = row.toolCallsCount ?? 0;
+  const hasTools = toolCount > 0;
+  const showCapacidades = hasReasoning || hasTools;
   return (
     <div>
       <h5 className="mb-1.5 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground/80">
@@ -163,15 +166,36 @@ function IdentificationBlock({ row }: { row: UsageDetailRow }) {
           fallback=","
         />
       </dl>
-      {hasReasoning ? (
+      {showCapacidades ? (
         <div className="mt-6">
           <h5 className="mb-1.5 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground/80">
             Capacidades
           </h5>
-          <div className="flex flex-wrap gap-1.5">
-            <span className="inline-flex items-center rounded-full bg-violet-500/10 px-2 py-0.5 text-[11px] font-medium text-violet-700 dark:text-violet-300">
-              Raciocínio · {numberFmt.format(row.reasoningTokens ?? 0)} tokens
-            </span>
+          <div className="flex flex-col gap-1.5">
+            {hasReasoning ? (
+              <span className="inline-flex w-fit items-center rounded-full bg-violet-500/10 px-2 py-0.5 text-[11px] font-medium text-violet-700 dark:text-violet-300">
+                Raciocínio · {numberFmt.format(row.reasoningTokens ?? 0)} tokens
+              </span>
+            ) : null}
+            {hasTools ? (
+              <span
+                className="inline-flex w-fit items-start gap-1 rounded-2xl bg-violet-500/10 px-2 py-0.5 text-[11px] font-medium text-violet-700 dark:text-violet-300"
+                title={
+                  row.toolNames.length > 0
+                    ? row.toolNames.join(", ")
+                    : undefined
+                }
+              >
+                <span className="whitespace-nowrap">
+                  {toolCount === 1 ? "1 tool" : `${toolCount} tools`} ·
+                </span>
+                <span className="break-words">
+                  {row.toolNames.length > 0
+                    ? row.toolNames.join(", ")
+                    : "nomes indisponíveis"}
+                </span>
+              </span>
+            ) : null}
           </div>
         </div>
       ) : null}

@@ -2317,6 +2317,14 @@ model LlmUsage {
   /// Tokens de raciocinio internos (subset conceitual de tokens_output).
   /// OpenAI/Gemini/OpenRouter expoem; Anthropic nao (fica NULL).
   reasoningTokens Int?    @map("reasoning_tokens")
+  /// Contagem de tool calls disparadas nesta iteracao. NULL em linhas
+  /// antigas pre-instrumentacao; 0 quando o modelo respondeu direto
+  /// sem chamar tool. Usado no drill-down de /agente/consumo.
+  toolCallsCount  Int?     @map("tool_calls_count")
+  /// Nomes das tools chamadas nesta iteracao, na ordem em que foram
+  /// requisitadas pelo modelo. Array vazio quando nenhuma tool foi
+  /// chamada; NULL em linhas antigas pre-instrumentacao.
+  toolNames       String[] @map("tool_names")
   userId         String?  @map("user_id") @db.Uuid
   // Credencial (chave de API) usada — permite somar o consumo por chave (A4).
   credentialId   String?  @map("credential_id") @db.Uuid
