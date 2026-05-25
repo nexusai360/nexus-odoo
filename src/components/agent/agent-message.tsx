@@ -201,21 +201,20 @@ function BubbleSurface({
     height: number | "auto";
   }>({ width: "auto", height: "auto" });
 
+  // Mede em TODO render. scrollWidth/scrollHeight dao o tamanho
+  // NATURAL do conteudo, mesmo quando o parent (motion.div) constraint
+  // o filho com width/height fixos. offsetWidth nao funcionava: dava
+  // o tamanho atual (constrained = nao mudava nunca). Resultado: width
+  // nao crescia.
   React.useEffect(() => {
     const el = innerRef.current;
     if (!el) return;
-    const measure = () => {
-      const w = el.offsetWidth;
-      const h = el.offsetHeight;
-      setSize((prev) =>
-        prev.width === w && prev.height === h ? prev : { width: w, height: h },
-      );
-    };
-    measure();
-    const ro = new ResizeObserver(measure);
-    ro.observe(el);
-    return () => ro.disconnect();
-  }, []);
+    const w = el.scrollWidth;
+    const h = el.scrollHeight;
+    setSize((prev) =>
+      prev.width === w && prev.height === h ? prev : { width: w, height: h },
+    );
+  });
 
   return (
     <motion.div
