@@ -185,7 +185,12 @@ function BubbleWrapper({
           ? { duration: 0 }
           : { opacity: { duration: 0.45, ease: [0.16, 1, 0.3, 1] } }
       }
-      className={cn("flex w-full", isUser ? "justify-end" : "justify-start")}
+      // group/msg restaurado: CopyButton interno usa group-hover/msg para
+      // aparecer no hover. Perdi a classe ao trocar o div pelo motion.div.
+      className={cn(
+        "group/msg flex w-full",
+        isUser ? "justify-end" : "justify-start",
+      )}
     >
       {children}
     </motion.div>
