@@ -121,19 +121,11 @@ export function AgentMessage({
     <BubbleWrapper isUser={isUser}>
       <BubbleSurface
         isUser={isUser}
-        // Layout suave da bolha ativo quando:
-        // - usuario (mensagens estaticas, sem typewriter)
-        // - assistant SEM content streaming (so trilha "Pensando" / steps)
-        // Quando assistant esta streamando texto, layout=false para nao
-        // mascarar o typewriter (cada char muda altura).
-        enableLayout={isUser || !streaming || content.length === 0}
-        // Dependencia: SO muda no count de steps (entrada de
-        // "Consultando..."). NAO inclui streaming flag, porque a
-        // transicao streaming->done deve ser orquestrada pelas
-        // animacoes filhas (trail collapse + body fade-in delay),
-        // nao por uma medicao no momento ruim em que body esta
-        // vazio (typewriter visible=0).
-        layoutDep={steps?.length ?? 0}
+        // fastGrow=true quando typewriter ativo (streaming AND content
+        // > 0): bolha cresce com transition 100ms para acompanhar char
+        // a char sem clipar. Fora desse caso (trail "Pensando" / steps
+        // entrando / mensagem do user): 1.1s para o efeito suave.
+        fastGrow={!isUser && streaming && content.length > 0}
       >
         {showTrail ? (
           <AssistantTrailBlock
@@ -191,15 +183,17 @@ export function AgentMessage({
 function BubbleSurface({
   isUser,
   children,
+  fastGrow = false,
 }: {
   isUser: boolean;
   children: React.ReactNode;
   layoutDep?: unknown;
   enableLayout?: boolean;
+  /** Quando true (typewriter ativo), animacao W/H usa 100ms para
+   *  bolha acompanhar char a char sem clipar. Quando false (trail
+   *  expandindo), usa 1.1s para o efeito suave de step entrando. */
+  fastGrow?: boolean;
 }) {
-  // ResizeObserver mede o tamanho real do inner content. motion.div externo
-  // anima sua propria width/height para acompanhar essas medicoes. Sem FLIP
-  // (sem deformacao). Crescimento explicito visivel em 1.1s.
   const reduce = useReducedMotion();
   const innerRef = React.useRef<HTMLDivElement>(null);
   const [size, setSize] = React.useState<{
@@ -210,12 +204,12 @@ function BubbleSurface({
   React.useEffect(() => {
     const el = innerRef.current;
     if (!el) return;
-    // Measure inicial sem animar (animate respeita o initial="auto" no
-    // primeiro render).
     const measure = () => {
       const w = el.offsetWidth;
       const h = el.offsetHeight;
-      setSize((prev) => (prev.width === w && prev.height === h ? prev : { width: w, height: h }));
+      setSize((prev) =>
+        prev.width === w && prev.height === h ? prev : { width: w, height: h },
+      );
     };
     measure();
     const ro = new ResizeObserver(measure);
@@ -229,7 +223,10 @@ function BubbleSurface({
       transition={
         reduce
           ? { duration: 0 }
-          : { duration: 1.1, ease: [0.22, 1, 0.36, 1] }
+          : {
+              duration: fastGrow ? 0.1 : 1.1,
+              ease: [0.22, 1, 0.36, 1],
+            }
       }
       className={cn(
         "relative max-w-[85%] rounded-2xl text-sm leading-relaxed",
@@ -239,7 +236,6 @@ function BubbleSurface({
       )}
       style={{ overflow: "hidden" }}
     >
-      {/* innerRef tem o padding/conteudo real; tamanho medido por RO. */}
       <div ref={innerRef} className="px-3.5 py-2.5">
         {children}
       </div>
