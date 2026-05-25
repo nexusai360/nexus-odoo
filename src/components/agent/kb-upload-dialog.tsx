@@ -304,20 +304,21 @@ export function KbUploadDialog({
       );
       return;
     }
-    // Trava na seleção: se trouxe mais que o restante, não adiciona ninguém.
-    if (list.length > remainingSlots) {
-      setError(
-        `Você pode adicionar no máximo ${remainingSlots} arquivo(s) agora. Selecione um número compatível.`,
-      );
-      return;
-    }
 
     const validationErrors: string[] = [];
     const dupInList: string[] = [];
     const dupInKb: string[] = [];
     const accepted: FileItem[] = [];
+    let droppedByLimit = 0;
 
     for (const f of list) {
+      // Trava de quantidade: a partir do limite, descarta o restante.
+      // O browser não permite limitar a seleção do file picker em si, então
+      // aceitamos os primeiros válidos e informamos quantos sobraram de fora.
+      if (accepted.length >= remainingSlots) {
+        droppedByLimit += 1;
+        continue;
+      }
       const v = validateBasic(f);
       if (v) {
         validationErrors.push(v);
@@ -335,6 +336,12 @@ export function KbUploadDialog({
         continue;
       }
       accepted.push(makeFileItem(f, false));
+    }
+
+    if (droppedByLimit > 0) {
+      validationErrors.unshift(
+        `Limite de ${MAX_FILES_PER_UPLOAD} arquivos por upload. ${droppedByLimit} ignorado(s); ajuste a seleção se quiser enviar os demais.`,
+      );
     }
 
     if (accepted.length > 0) setItems((prev) => [...prev, ...accepted]);

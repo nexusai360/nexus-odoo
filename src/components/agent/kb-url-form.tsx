@@ -3,14 +3,17 @@
 /**
  * Aba "URL" do KbUploadDialog.
  *
- * Lista de até MAX_FILES_PER_UPLOAD URLs. Cada item passa pelo
- * pré-processamento real (fetch + extração de texto) via Server Action
- * precountKbUrlCharsAction; ao salvar, uploadKbUrlAction grava com o
- * texto extraído. Travas:
- *   - duplicidade na KB (mesma URL ou mesmo nome já gravado).
- *   - duplicidade na lista (mesma URL).
- *   - cap de 5 URLs por upload.
- *   - estouro do orçamento total de chars da KB.
+ * Layout reflete o da aba "Arquivo":
+ *   - estado vazio: card grande convidando a adicionar.
+ *   - botão "Adicionar URL" no rodapé esquerdo.
+ *   - clicar abre um sub-dialog (Add URL) com Nome + URL + Cancelar/Adicionar.
+ *
+ * Lista de até MAX_FILES_PER_UPLOAD URLs. Pipeline por item:
+ *   processing → idle → uploading → success | error.
+ *
+ * Pré-processamento real via Server Action precountKbUrlCharsAction
+ * (fetch + strip HTML). Upload via uploadKbUrlAction grava com texto
+ * extraído da página.
  */
 
 import { useEffect, useMemo, useRef, useState, useTransition } from "react";
@@ -27,6 +30,14 @@ import {
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { cn } from "@/lib/utils";
@@ -54,14 +65,10 @@ interface UrlItem {
 interface KbUrlFormProps {
   onSuccess: () => void;
   isDisabled?: boolean;
-  /** Sinaliza ao pai se a aba tem conteúdo (lista ou form aberto preenchido). */
   onContentChange?: (hasContent: boolean) => void;
-  /** Pai bumpa para limpar a aba. */
   resetSignal?: number;
-  /** Nomes e URLs já gravadas na KB, para detectar duplicidade pré-save. */
   existingKbNames?: string[];
   existingKbUrls?: string[];
-  /** Total de caracteres já injetados na KB. */
   currentKbChars?: number;
 }
 
@@ -105,12 +112,14 @@ export function KbUrlForm({
 }: KbUrlFormProps) {
   const router = useRouter();
   const [items, setItems] = useState<UrlItem[]>([]);
-  const [name, setName] = useState("");
-  const [url, setUrl] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [info, setInfo] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
   const [showScrollHint, setShowScrollHint] = useState(false);
+  const [addOpen, setAddOpen] = useState(false);
+  const [draftName, setDraftName] = useState("");
+  const [draftUrl, setDraftUrl] = useState("");
+  const [draftError, setDraftError] = useState<string | null>(null);
   const listRef = useRef<HTMLUListElement | null>(null);
   const lastItemRef = useRef<HTMLLIElement | null>(null);
 
@@ -125,26 +134,23 @@ export function KbUrlForm({
 
   const disabled = isDisabled || isPending;
 
-  // Reset signal
   useEffect(() => {
     if (resetSignal > 0) {
       setItems([]);
-      setName("");
-      setUrl("");
+      setDraftName("");
+      setDraftUrl("");
+      setDraftError(null);
       setError(null);
       setInfo(null);
+      setAddOpen(false);
     }
   }, [resetSignal]);
 
-  // Sinaliza dirty state para o pai.
   useEffect(() => {
     if (!onContentChange) return;
-    const dirty =
-      items.length > 0 || name.trim().length > 0 || url.trim().length > 0;
-    onContentChange(dirty);
-  }, [items.length, name, url, onContentChange]);
+    onContentChange(items.length > 0 || addOpen);
+  }, [items.length, addOpen, onContentChange]);
 
-  // Timers
   useEffect(() => {
     if (!error) return;
     const t = setTimeout(() => setError(null), ERROR_TIMEOUT_MS);
@@ -156,7 +162,6 @@ export function KbUrlForm({
     return () => clearTimeout(t);
   }, [info]);
 
-  // Scroll hint
   useEffect(() => {
     if (items.length <= 1) {
       setShowScrollHint(false);
@@ -206,42 +211,50 @@ export function KbUrlForm({
 
   const remainingSlots = Math.max(0, MAX_FILES_PER_UPLOAD - items.length);
 
-  function handleAddCurrent() {
+  function openAdd() {
     if (remainingSlots <= 0) {
       setError(
         `Você já atingiu o limite de ${MAX_FILES_PER_UPLOAD} URLs por upload.`,
       );
       return;
     }
-    const v = validateClientSide(name, url);
+    setDraftName("");
+    setDraftUrl("");
+    setDraftError(null);
+    setAddOpen(true);
+  }
+
+  function commitAdd() {
+    const v = validateClientSide(draftName, draftUrl);
     if (v) {
-      setError(v);
+      setDraftError(v);
       return;
     }
-    const tn = name.trim();
-    const tu = url.trim();
+    const tn = draftName.trim();
+    const tu = draftUrl.trim();
 
     if (existingNamesSet.has(tn.toLowerCase())) {
-      setInfo(`${tn} já está na base.`);
+      setDraftError(`${tn} já está na base.`);
       return;
     }
     if (existingUrlsSet.has(tu.toLowerCase())) {
-      setInfo(`${tu} já está na base.`);
+      setDraftError(`${tu} já está na base.`);
       return;
     }
     if (items.some((it) => it.url.toLowerCase() === tu.toLowerCase())) {
-      setInfo(`${tu} já está nesta seleção.`);
+      setDraftError(`${tu} já está nesta seleção.`);
       return;
     }
     if (items.some((it) => it.name.toLowerCase() === tn.toLowerCase())) {
-      setInfo(`Nome ${tn} já está nesta seleção.`);
+      setDraftError(`O nome "${tn}" já está em uso nesta seleção.`);
       return;
     }
 
     setItems((prev) => [...prev, makeUrlItem(tn, tu)]);
-    setName("");
-    setUrl("");
-    setError(null);
+    setDraftName("");
+    setDraftUrl("");
+    setDraftError(null);
+    setAddOpen(false);
   }
 
   function handleRemoveItem(id: string) {
@@ -346,65 +359,41 @@ export function KbUrlForm({
       ? "text-amber-600 dark:text-amber-400"
       : "text-foreground";
 
+  const draftInvalid = draftName.trim().length === 0 || draftUrl.trim().length === 0;
+
   return (
     <div className="space-y-3">
-      {/* Form de entrada (nome + url + adicionar). Adiciona à lista. */}
-      <div className="grid gap-2 sm:grid-cols-[1fr_2fr_auto]">
-        <div className="space-y-1">
-          <Label htmlFor="kb-url-name" className="text-[11px] uppercase tracking-wide text-muted-foreground">
-            Nome
-          </Label>
-          <Input
-            id="kb-url-name"
-            type="text"
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            placeholder="Ex.: Política de entrega"
-            maxLength={MAX_NAME}
-            disabled={disabled || remainingSlots === 0}
+      {/* Estado vazio: convite a adicionar (parelha visual do dropzone de arquivo). */}
+      {items.length === 0 ? (
+        <button
+          type="button"
+          onClick={openAdd}
+          disabled={disabled || remainingSlots === 0}
+          className={cn(
+            "group flex min-h-[200px] w-full cursor-pointer flex-col items-center justify-center gap-2 rounded-xl border-2 border-dashed border-border bg-muted/20 px-4 py-8 text-center transition-colors",
+            "hover:border-violet-400/60 hover:bg-violet-500/5",
+            "focus-visible:border-violet-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-500/30",
+            (disabled || remainingSlots === 0) && "pointer-events-none opacity-60",
+          )}
+        >
+          <Globe
+            className="h-7 w-7 text-muted-foreground group-hover:text-violet-500"
+            aria-hidden
           />
-        </div>
-        <div className="space-y-1">
-          <Label htmlFor="kb-url-input" className="text-[11px] uppercase tracking-wide text-muted-foreground">
-            URL
-          </Label>
-          <Input
-            id="kb-url-input"
-            type="url"
-            value={url}
-            onChange={(e) => setUrl(e.target.value)}
-            placeholder="https://exemplo.com/pagina"
-            maxLength={MAX_URL}
-            disabled={disabled || remainingSlots === 0}
-            inputMode="url"
-            onKeyDown={(e) => {
-              if (e.key === "Enter") {
-                e.preventDefault();
-                handleAddCurrent();
-              }
-            }}
-          />
-        </div>
-        <div className="flex items-end">
-          <Button
-            type="button"
-            variant="outline"
-            onClick={handleAddCurrent}
-            disabled={disabled || remainingSlots === 0}
-            className="h-9 cursor-pointer"
-          >
-            <Plus className="h-4 w-4" aria-hidden />
-            Adicionar
-          </Button>
-        </div>
-      </div>
-
-      {/* Lista de URLs adicionadas. */}
-      {items.length > 0 && (
+          <div className="space-y-0.5">
+            <p className="text-sm font-medium text-foreground">
+              Clique para adicionar uma URL
+            </p>
+            <p className="text-xs text-muted-foreground">
+              Páginas HTTPS públicas. Até {MAX_FILES_PER_UPLOAD} por upload.
+            </p>
+          </div>
+        </button>
+      ) : (
         <div className="rounded-xl border border-border bg-card/40 p-2">
           <ul
             ref={listRef}
-            className="max-h-[300px] space-y-2 overflow-y-auto pr-1"
+            className="max-h-[380px] space-y-2 overflow-y-auto pr-1"
           >
             {items.map((it, i) => {
               const isLast = i === items.length - 1;
@@ -513,6 +502,7 @@ export function KbUrlForm({
         </div>
       )}
 
+      {/* Orçamento da KB. */}
       {items.length > 0 && (
         <div className="space-y-1">
           <div className="flex items-baseline justify-between text-[11px]">
@@ -565,32 +555,139 @@ export function KbUrlForm({
       )}
 
       <div className="flex flex-wrap items-center justify-between gap-2 border-t border-border pt-3">
-        <span className="text-[11px] text-muted-foreground">
-          {items.length}/{MAX_FILES_PER_UPLOAD} URLs nesta seleção
-        </span>
-        <div className="flex items-center gap-2">
-          <Button
-            type="button"
-            onClick={handleSubmit}
-            disabled={!canSave}
-            className="h-9 cursor-pointer"
-          >
-            {isPending ? (
-              <>
-                <Loader2 className="h-4 w-4 animate-spin" aria-hidden />
-                Adicionando…
-              </>
-            ) : (
-              <>
-                <Globe className="h-4 w-4" aria-hidden />
-                {pendingItems.length > 1
-                  ? `Salvar (${pendingItems.length})`
-                  : "Salvar"}
-              </>
-            )}
-          </Button>
-        </div>
+        <Button
+          type="button"
+          variant="outline"
+          onClick={openAdd}
+          disabled={disabled || remainingSlots === 0}
+          className="h-9 cursor-pointer"
+        >
+          <Plus className="h-4 w-4" aria-hidden />
+          {items.length === 0 ? "Adicionar URL" : "Adicionar mais"}
+          <span className="ml-1 text-[10px] text-muted-foreground">
+            ({items.length}/{MAX_FILES_PER_UPLOAD})
+          </span>
+        </Button>
+        <Button
+          type="button"
+          onClick={handleSubmit}
+          disabled={!canSave}
+          className="h-9 cursor-pointer"
+        >
+          {isPending ? (
+            <>
+              <Loader2 className="h-4 w-4 animate-spin" aria-hidden />
+              Adicionando…
+            </>
+          ) : (
+            <>
+              <Globe className="h-4 w-4" aria-hidden />
+              {pendingItems.length > 1
+                ? `Salvar (${pendingItems.length})`
+                : "Salvar"}
+            </>
+          )}
+        </Button>
       </div>
+
+      {/* Sub-dialog para adicionar uma URL individual. */}
+      <Dialog
+        open={addOpen}
+        onOpenChange={(o) => {
+          if (!o) {
+            setAddOpen(false);
+            setDraftError(null);
+          }
+        }}
+      >
+        <DialogContent className="w-[min(520px,calc(100%-2rem))] sm:max-w-none">
+          <DialogHeader>
+            <DialogTitle>Adicionar URL</DialogTitle>
+            <DialogDescription>
+              Página HTTPS pública. O texto da página será extraído e
+              adicionado à base.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-3">
+            <div className="space-y-1">
+              <Label
+                htmlFor="kb-url-add-name"
+                className="text-[11px] uppercase tracking-wide text-muted-foreground"
+              >
+                Nome
+              </Label>
+              <Input
+                id="kb-url-add-name"
+                type="text"
+                value={draftName}
+                onChange={(e) => setDraftName(e.target.value)}
+                placeholder="Ex.: Política de entrega"
+                maxLength={MAX_NAME}
+                autoFocus
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" && !draftInvalid) {
+                    e.preventDefault();
+                    commitAdd();
+                  }
+                }}
+              />
+            </div>
+            <div className="space-y-1">
+              <Label
+                htmlFor="kb-url-add-url"
+                className="text-[11px] uppercase tracking-wide text-muted-foreground"
+              >
+                URL
+              </Label>
+              <Input
+                id="kb-url-add-url"
+                type="url"
+                value={draftUrl}
+                onChange={(e) => setDraftUrl(e.target.value)}
+                placeholder="https://exemplo.com/pagina"
+                maxLength={MAX_URL}
+                inputMode="url"
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" && !draftInvalid) {
+                    e.preventDefault();
+                    commitAdd();
+                  }
+                }}
+              />
+            </div>
+            {draftError && (
+              <p
+                role="alert"
+                aria-live="polite"
+                className="truncate rounded-md border border-destructive/30 bg-destructive/10 px-3 py-1.5 text-xs text-destructive"
+                title={draftError}
+              >
+                {draftError}
+              </p>
+            )}
+          </div>
+          <DialogFooter>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => {
+                setAddOpen(false);
+                setDraftError(null);
+              }}
+            >
+              Cancelar
+            </Button>
+            <Button
+              type="button"
+              onClick={commitAdd}
+              disabled={draftInvalid}
+            >
+              <Plus className="h-4 w-4" aria-hidden />
+              Adicionar
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
