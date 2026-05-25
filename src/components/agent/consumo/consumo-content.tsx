@@ -61,7 +61,12 @@ import type {
   UsageSummaryV2,
 } from "@/lib/agent/llm/usage-stats";
 import { providerLabel } from "@/lib/agent/llm/provider-labels";
-import { formatBrl4, formatUsd4, formatDuration } from "@/lib/agent/llm/format";
+import {
+  formatBrl4,
+  formatUsd4,
+  formatDuration,
+  formatCompactCount,
+} from "@/lib/agent/llm/format";
 import {
   getPeriodInTz,
   getCanonicalPeriod,
@@ -160,7 +165,7 @@ function formatBrlRaw(v: number | null | undefined): string {
 }
 
 function formatTokens(v: number): string {
-  return numberFmt.format(Math.round(v));
+  return formatCompactCount(v);
 }
 
 function isWhisperModel(model: string): boolean {
@@ -379,8 +384,11 @@ export function ConsumoContent({ minDate: minDateIso }: ConsumoContentProps) {
         day: "2-digit",
         month: "2-digit",
       });
+      // end vem end-exclusive (proximo 00:00 BRT). Para exibicao, mostramos
+      // o ultimo dia inclusivo (end - 1 ms).
+      const endInclusive = new Date(effectiveChartRange.end.getTime() - 1);
       const s = fmtDay.format(effectiveChartRange.start);
-      const e = fmtDay.format(effectiveChartRange.end);
+      const e = fmtDay.format(endInclusive);
       return s === e ? s : `${s} - ${e}`;
     } catch {
       return null;
@@ -659,25 +667,23 @@ export function ConsumoContent({ minDate: minDateIso }: ConsumoContentProps) {
       map[m.model] = providerLabel(m.provider);
     }
     return map;
-  }, [stats]);
+  }, [activeChartStats]);
 
+  // KPIs e centro do donut sincronizam com o periodo navegado pelo grafico
+  // (activeChartStats = chartStats ?? stats). Quando nao ha navegacao,
+  // activeChartStats === stats e KPI exibe o periodo da pill.
   const totalCostBrlFormatted = useMemo(
-    () => (stats ? formatBrl4(stats.totalCostBrl) : ","),
-    [stats],
-  );
-  // Valor "centro do donut": sincroniza com o periodo navegado (segue
-  // activeChartStats); o KPI Custo total continua usando o periodo inteiro.
-  const chartTotalCostBrlFormatted = useMemo(
     () => (activeChartStats ? formatBrl4(activeChartStats.totalCostBrl) : ","),
     [activeChartStats],
   );
+  const chartTotalCostBrlFormatted = totalCostBrlFormatted;
   const custoSubtitle = useMemo(() => {
-    if (!stats) return undefined;
-    const base = `≈ ${formatUsd4(stats.totalCostUsd)}`;
-    return stats.unknownCount > 0
-      ? `${base} · ${numberFmt.format(stats.unknownCount)} sem preço`
+    if (!activeChartStats) return undefined;
+    const base = `≈ ${formatUsd4(activeChartStats.totalCostUsd)}`;
+    return activeChartStats.unknownCount > 0
+      ? `${base} · ${numberFmt.format(activeChartStats.unknownCount)} sem preço`
       : base;
-  }, [stats]);
+  }, [activeChartStats]);
 
   // ---- Render -------------------------------------------------------------
 
@@ -698,28 +704,36 @@ export function ConsumoContent({ minDate: minDateIso }: ConsumoContentProps) {
     {
       icon: MessageSquare,
       label: "Conversas",
-      value: stats ? numberFmt.format(stats.totalConversations) : ",",
+      value: activeChartStats
+        ? formatCompactCount(activeChartStats.totalConversations)
+        : ",",
       subtitle: "threads distintos",
       tone: "default" as const,
     },
     {
       icon: Activity,
       label: "Chamadas",
-      value: stats ? numberFmt.format(stats.totalIterations) : ",",
+      value: activeChartStats
+        ? formatCompactCount(activeChartStats.totalIterations)
+        : ",",
       subtitle: "no período",
       tone: "default" as const,
     },
     {
       icon: Hash,
       label: "Tokens entrada",
-      value: stats ? formatTokens(stats.totalTokensInput) : ",",
+      value: activeChartStats
+        ? formatTokens(activeChartStats.totalTokensInput)
+        : ",",
       subtitle: "no período",
       tone: "default" as const,
     },
     {
       icon: Zap,
       label: "Tokens saída",
-      value: stats ? formatTokens(stats.totalTokensOutput) : ",",
+      value: activeChartStats
+        ? formatTokens(activeChartStats.totalTokensOutput)
+        : ",",
       subtitle: "no período",
       tone: "default" as const,
     },
@@ -729,7 +743,7 @@ export function ConsumoContent({ minDate: minDateIso }: ConsumoContentProps) {
       value: totalCostBrlFormatted,
       subtitle: custoSubtitle,
       tone:
-        stats && stats.unknownCount > 0
+        activeChartStats && activeChartStats.unknownCount > 0
           ? ("warning" as const)
           : ("default" as const),
     },

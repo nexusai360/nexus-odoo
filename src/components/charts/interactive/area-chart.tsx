@@ -281,6 +281,7 @@ export function InteractiveAreaChart({
                 isAnimationActive={!prefersReducedMotion}
                 animationBegin={0}
                 animationDuration={800}
+                dot={{ r: 2.5, fill: color, stroke: color, strokeWidth: 0 }}
                 activeDot={{ r: 5, strokeWidth: 2, stroke: color, fill: color }}
                 style={{
                   transition:

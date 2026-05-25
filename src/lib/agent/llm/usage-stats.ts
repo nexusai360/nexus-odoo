@@ -90,6 +90,9 @@ export interface UsageDetailRow {
   conversationId: string | null;
   /** Tipo da requisição: texto | imagem | audio | arquivo (Task G11). */
   requestKind: string;
+  /** Tokens de raciocinio internos (OpenAI/Gemini/OpenRouter). null
+   *  para providers que nao expoem (ex.: Anthropic) ou modelos legados. */
+  reasoningTokens: number | null;
 }
 
 export interface UsageDetailsTotals {
@@ -378,6 +381,7 @@ export async function getUsageDetails(args: {
         isPlayground: true,
         conversationId: true,
         requestKind: true,
+        reasoningTokens: true,
       },
     }),
     prisma.llmUsage.count({ where }),
@@ -415,6 +419,8 @@ export async function getUsageDetails(args: {
     isPlayground: r.isPlayground,
     conversationId: r.conversationId ?? null,
     requestKind: r.requestKind ?? "texto",
+    reasoningTokens:
+      r.reasoningTokens == null ? null : toNum(r.reasoningTokens),
   }));
 
   return {

@@ -67,40 +67,68 @@ export function UsageDetailInline({ row }: { row: UsageDetailRow }) {
         <CostBreakdownBlock row={row} />
       </div>
 
-      {row.promptChars != null || row.responseChars != null ? (
-        <div className="mt-3 grid grid-cols-3 items-center border-t border-violet-500/15 pt-2 text-[11px] text-muted-foreground">
-          <div className="justify-self-start">
-            {row.promptChars != null ? (
-              <span className="mr-4">
-                prompt:{" "}
-                <span className="font-mono text-foreground">
-                  {numberFmt.format(row.promptChars)} chars
-                </span>
+      <div className="mt-3 grid grid-cols-3 items-center border-t border-violet-500/15 pt-2 text-[11px] text-muted-foreground">
+        <div className="flex flex-col gap-1 justify-self-start">
+          <div>
+            <span className="mr-4">
+              entrada:{" "}
+              <span className="font-mono text-foreground">
+                {numberFmt.format(row.tokensInput)} tokens
               </span>
-            ) : null}
-            {row.responseChars != null ? (
-              <span>
-                resposta:{" "}
-                <span className="font-mono text-foreground">
-                  {numberFmt.format(row.responseChars)} chars
-                </span>
+            </span>
+            <span>
+              saída:{" "}
+              <span className="font-mono text-foreground">
+                {numberFmt.format(row.tokensOutput)} tokens
               </span>
-            ) : null}
+              {row.reasoningTokens != null && row.reasoningTokens > 0 ? (
+                <span className="ml-1">
+                  ({numberFmt.format(row.reasoningTokens)} de raciocínio)
+                </span>
+              ) : null}
+            </span>
           </div>
-          <div className="justify-self-center">
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              onClick={handleCopy}
-              className="h-7 gap-2 border-violet-500/40 bg-violet-500/[0.06] px-3 text-[11px] text-violet-700 shadow-sm transition-colors hover:bg-violet-500/15 hover:border-violet-500/60 dark:text-violet-300"
-            >
-              <Clipboard className="h-3 w-3" aria-hidden />
-              <span>Copiar JSON</span>
-            </Button>
-          </div>
-          <div aria-hidden />
+          {row.promptChars != null || row.responseChars != null ? (
+            <div>
+              {row.promptChars != null ? (
+                <span className="mr-4">
+                  prompt:{" "}
+                  <span className="font-mono text-foreground">
+                    {numberFmt.format(row.promptChars)} caracteres
+                  </span>
+                </span>
+              ) : null}
+              {row.responseChars != null ? (
+                <span>
+                  resposta:{" "}
+                  <span className="font-mono text-foreground">
+                    {numberFmt.format(row.responseChars)} caracteres
+                  </span>
+                </span>
+              ) : null}
+            </div>
+          ) : null}
         </div>
+        <div className="justify-self-center">
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={handleCopy}
+            className="h-7 gap-2 border-violet-500/40 bg-violet-500/[0.06] px-3 text-[11px] text-violet-700 shadow-sm transition-colors hover:bg-violet-500/15 hover:border-violet-500/60 dark:text-violet-300"
+          >
+            <Clipboard className="h-3 w-3" aria-hidden />
+            <span>Copiar JSON</span>
+          </Button>
+        </div>
+        <div aria-hidden />
+      </div>
+
+      {row.reasoningTokens != null && row.reasoningTokens > 0 ? (
+        <p className="mt-2 text-[10px] italic text-muted-foreground">
+          Tokens de raciocínio são cobrados como tokens de saída; o custo
+          total já inclui.
+        </p>
       ) : null}
 
       {row.errorMessage ? (
@@ -120,6 +148,8 @@ export function UsageDetailInline({ row }: { row: UsageDetailRow }) {
 /* ---------------- Identificacao ---------------- */
 
 function IdentificationBlock({ row }: { row: UsageDetailRow }) {
+  const hasReasoning =
+    row.reasoningTokens != null && row.reasoningTokens > 0;
   return (
     <div>
       <h5 className="mb-1.5 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground/80">
@@ -140,6 +170,18 @@ function IdentificationBlock({ row }: { row: UsageDetailRow }) {
           fallback=","
         />
       </dl>
+      {hasReasoning ? (
+        <div className="mt-3">
+          <h5 className="mb-1.5 text-[10px] font-semibold uppercase tracking-wide text-muted-foreground/80">
+            Capacidades
+          </h5>
+          <div className="flex flex-wrap gap-1.5">
+            <span className="inline-flex items-center rounded-full bg-violet-500/10 px-2 py-0.5 text-[11px] font-medium text-violet-700 dark:text-violet-300">
+              Raciocínio · {numberFmt.format(row.reasoningTokens ?? 0)} tokens
+            </span>
+          </div>
+        </div>
+      ) : null}
     </div>
   );
 }
