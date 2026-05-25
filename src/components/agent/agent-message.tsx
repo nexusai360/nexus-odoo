@@ -126,10 +126,13 @@ export function AgentMessage({
         // Quando assistant esta streamando texto, layout=false para nao
         // mascarar o typewriter (cada char muda altura).
         enableLayout={isUser || !streaming || content.length === 0}
-        // Dependencia para remensurar: muda quando count de steps muda
-        // OU quando streaming flag muda (para snapar de "trilha" pra
-        // "trilha + resposta").
-        layoutDep={`${steps?.length ?? 0}-${streaming ? 1 : 0}`}
+        // Dependencia: SO muda no count de steps (entrada de
+        // "Consultando..."). NAO inclui streaming flag, porque a
+        // transicao streaming->done deve ser orquestrada pelas
+        // animacoes filhas (trail collapse + body fade-in delay),
+        // nao por uma medicao no momento ruim em que body esta
+        // vazio (typewriter visible=0).
+        layoutDep={steps?.length ?? 0}
       >
         {showTrail ? (
           <AssistantTrailBlock
@@ -391,12 +394,13 @@ function AssistantTrailBlock({
               reduce
                 ? { duration: 0 }
                 : {
-                    // Entrada generosa 0.45s; saida (recolhimento) mais
-                    // suave 0.55s com opacity saindo um pouco antes (0.4s)
-                    // - sensacao de "se recolhendo para o header" em vez
-                    // de "sumindo de uma vez".
-                    height: { duration: 0.55, ease: EASE },
-                    opacity: { duration: 0.4, ease: EASE },
+                    // Recolhimento orquestrado: 0.7s para a altura, 0.5s
+                    // para opacity (some 200ms antes de zerar height).
+                    // Esses tempos casam com o delay+duracao do
+                    // BodyReveal (250ms delay + 400ms fade) - quando o
+                    // trail termina de sumir, o body acabou de aparecer.
+                    height: { duration: 0.7, ease: EASE },
+                    opacity: { duration: 0.5, ease: EASE },
                   }
             }
             style={{ overflow: "hidden" }}
@@ -488,12 +492,20 @@ function AssistantBodyReveal({
   if (!hasContent) return null;
   return (
     <motion.div
-      initial={reduce ? false : { opacity: 0 }}
-      animate={{ opacity: 1 }}
+      // Orquestracao: delay 0.25s para o body comecar a aparecer DEPOIS
+      // que a trilha ja recolheu pelo menos metade. Fade 0.4s + leve
+      // translate-y 4 pra 0. Sensacao de "se levantando" enquanto a
+      // trilha some - sem ambos competirem no mesmo instante.
+      initial={reduce ? false : { opacity: 0, y: 4 }}
+      animate={{ opacity: 1, y: 0 }}
       transition={
         reduce
           ? { duration: 0 }
-          : { duration: 0.35, ease: [0.16, 1, 0.3, 1] as const }
+          : {
+              duration: 0.4,
+              delay: 0.25,
+              ease: [0.16, 1, 0.3, 1] as const,
+            }
       }
     >
       {children}
