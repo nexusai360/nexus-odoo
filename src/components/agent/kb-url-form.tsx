@@ -502,36 +502,34 @@ export function KbUrlForm({
         </div>
       )}
 
-      {/* Orçamento da KB. */}
-      {items.length > 0 && (
-        <div className="space-y-1">
-          <div className="flex items-baseline justify-between text-[11px]">
-            <span className="text-muted-foreground">Uso da base de conhecimento</span>
-            <span className={cn("tabular-nums font-medium", budgetTone)}>
-              {budget.total.toLocaleString("pt-BR")}
-              <span className="mx-1 text-muted-foreground/60">/</span>
-              {MAX_KB_TOTAL_CHARS.toLocaleString("pt-BR")} chars ({budgetPct}%)
-            </span>
-          </div>
-          <div className="h-1.5 w-full overflow-hidden rounded-full bg-muted">
-            <div
-              className={cn(
-                "h-full transition-[width] duration-300",
-                budget.hasOverflow
-                  ? "bg-destructive"
-                  : budgetPct >= 85
-                    ? "bg-amber-500"
-                    : "bg-violet-500",
-              )}
-              style={{ width: `${budgetPct}%` }}
-            />
-          </div>
-          <p className="text-[11px] text-muted-foreground">
-            {currentKbChars.toLocaleString("pt-BR")} já na base
-            {"   "}+{budget.selectedChars.toLocaleString("pt-BR")} desta seleção
-          </p>
+      {/* Orçamento da KB sempre visível. */}
+      <div className="space-y-1">
+        <div className="flex items-baseline justify-between text-[11px]">
+          <span className="text-muted-foreground">Uso da base de conhecimento</span>
+          <span className={cn("tabular-nums font-medium", budgetTone)}>
+            {budget.total.toLocaleString("pt-BR")}
+            <span className="mx-1 text-muted-foreground/60">/</span>
+            {MAX_KB_TOTAL_CHARS.toLocaleString("pt-BR")} chars ({budgetPct}%)
+          </span>
         </div>
-      )}
+        <div className="h-1.5 w-full overflow-hidden rounded-full bg-muted">
+          <div
+            className={cn(
+              "h-full transition-[width] duration-300",
+              budget.hasOverflow
+                ? "bg-destructive"
+                : budgetPct >= 85
+                  ? "bg-amber-500"
+                  : "bg-violet-500",
+            )}
+            style={{ width: `${budgetPct}%` }}
+          />
+        </div>
+        <p className="text-[11px] text-muted-foreground">
+          {currentKbChars.toLocaleString("pt-BR")} já na base
+          {"   "}+{budget.selectedChars.toLocaleString("pt-BR")} desta seleção
+        </p>
+      </div>
 
       {error && (
         <p
