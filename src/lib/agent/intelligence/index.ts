@@ -16,3 +16,15 @@ export type { IntelligenceCaller } from "./reasoning-effort-policy";
 
 export { extractTopics } from "./topic-extractor";
 export type { TopicExtractionResult } from "./topic-extractor";
+
+// Frente A — analise retrospectiva (Onda 2).
+export { replayToolCalls } from "./tool-replayer";
+export type { ReplayItem, ReplayResult } from "./tool-replayer";
+
+export { judgeAnswer, JUDGE_VERSION } from "./quality-judge";
+export type { JudgeInput, JudgeOutput } from "./quality-judge";
+
+export { clusterRecommendations } from "./recommendation-clusterer";
+export type { Cluster } from "./recommendation-clusterer";
+
+export { embed as embedText, EmbeddingUnavailable } from "./embeddings-client";
