@@ -27,6 +27,7 @@ import {
   persistMessage,
   persistAssistantMessageWithTools,
   updateMessageToolResults,
+  // findInventedValues importado mais abaixo.
   assertConversationOwned,
   sanitizeHistoryPairs,
   loadConversationReasoningHistory,
@@ -333,6 +334,12 @@ export async function runAgent(args: RunAgentInput): Promise<RunAgentResult> {
 
     args.onEvent?.({ type: "thinking" });
 
+    // Acumula TODOS os tool results do turno (across iteracoes) para guardrail
+    // factual final. Auditoria 2026-05-26 mostrou 12 turnos ERRADO com
+    // `dado_inventado` — agente citava numeros que nao apareciam em nenhum
+    // toolResult do turno.
+    const allTurnToolResults: string[] = [];
+
     for (let i = 0; i < MAX_ITERATIONS; i++) {
       const iterStart = Date.now();
 
@@ -439,6 +446,48 @@ export async function runAgent(args: RunAgentInput): Promise<RunAgentResult> {
           message = fb.message;
           suggestions = fb.suggestions;
         }
+        // GUARDRAIL FACTUAL (auditoria 2026-05-26): valida que numeros R$
+        // citados na mensagem final aparecem em algum toolResult do turno.
+        // Se houver invento, pede ao LLM correcao em UMA chamada adicional.
+        try {
+          const invented = findInventedValues(message, allTurnToolResults);
+          if (invented.length > 0 && allTurnToolResults.length > 0) {
+            console.warn(
+              "[runAgent] possiveis valores inventados:",
+              JSON.stringify(invented),
+              "conv=",
+              args.conversationId,
+            );
+            const correctionMessages = [
+              ...conversation,
+              { role: "assistant" as const, content: message },
+              {
+                role: "user" as const,
+                content:
+                  "Atencao: voce citou valores que NAO aparecem em nenhum dos dados retornados pelas tools deste turno: " +
+                  invented.join(", ") +
+                  ". Reescreva sua resposta anterior REMOVENDO esses valores OU substituindo por 'nao consegui obter esse dado'. Mantenha o resto da resposta intacto. Nao chame novas tools.",
+              },
+            ];
+            try {
+              const correction = await client.chat({
+                messages: correctionMessages,
+                tools: undefined,
+                temperature: 0,
+                maxTokens: 1024,
+                reasoningEffort: undefined,
+              });
+              if (correction.message && correction.message.trim().length > 0) {
+                message = correction.message;
+              }
+            } catch (errCorr) {
+              console.warn("[runAgent] guardrail correction failed:", errCorr);
+            }
+          }
+        } catch (errGuard) {
+          console.warn("[runAgent] guardrail factual skipped:", errGuard);
+        }
+
         await persistMessage(args.conversationId, "assistant", message);
         // Persistir historico de raciocinio para o proximo turno (capa interna).
         try {
@@ -591,6 +640,10 @@ export async function runAgent(args: RunAgentInput): Promise<RunAgentResult> {
       // assistant que disparou as tools. UPDATE best-effort; nao bloqueia
       // o turno se falhar.
       await updateMessageToolResults(assistantMessageId, toolResultsMap);
+
+      // Guardrail factual: acumula todos os results deste turno para
+      // checagem antes do persist da mensagem final.
+      allTurnToolResults.push(...Object.values(toolResultsMap));
     }
 
     // Esgotou iterações
@@ -609,4 +662,37 @@ export async function runAgent(args: RunAgentInput): Promise<RunAgentResult> {
     if (session) await session.close();
     if (externalBundle) await externalBundle.closeAll();
   }
+}
+
+/**
+ * Guardrail factual: detecta valores R$ na resposta que NAO aparecem em
+ * nenhum dos toolResults do turno. Cobre o padrao `dado_inventado` (12 turnos
+ * ERRADO na auditoria 2026-05-26).
+ *
+ * Heuristica:
+ * - Extrai padroes "R$ X.XXX,YY" ou "R$ X" da mensagem.
+ * - Normaliza removendo pontos e virgulas para comparacao tolerante a formato.
+ * - Considera "inventado" se o numero normalizado (>=3 digitos para evitar
+ *   ruido de pequenos valores) nao aparece em nenhum tool result.
+ */
+export function findInventedValues(
+  message: string,
+  toolResults: string[],
+): string[] {
+  if (!message || toolResults.length === 0) return [];
+  const moneyMatches = Array.from(
+    message.matchAll(/R\$\s*([\d.,]+)/g),
+  ).map((m) => m[1]);
+  if (moneyMatches.length === 0) return [];
+
+  const haystack = toolResults.join(" ").replace(/[.,\s]/g, "");
+  const invented: string[] = [];
+  for (const raw of moneyMatches) {
+    const normalized = raw.replace(/[.,\s]/g, "");
+    if (normalized.length < 3) continue; // valores pequenos (R$ 50, R$ 100) ignora
+    if (!haystack.includes(normalized)) {
+      invented.push("R$ " + raw);
+    }
+  }
+  return Array.from(new Set(invented)).slice(0, 8);
 }
