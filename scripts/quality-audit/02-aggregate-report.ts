@@ -369,32 +369,44 @@ async function persistToDatabase(
         });
         if (!msg) continue;
 
-        await prisma.conversationQualityEvaluation.upsert({
+        // assistantMessageId nao eh mais @unique no schema (mudou pra
+        // novo sistema /agente/qualidade). Usar findFirst + create/update
+        // manual em vez de upsert.
+        const existing = await prisma.conversationQualityEvaluation.findFirst({
           where: { assistantMessageId: t.turnoId },
-          create: {
-            conversationId: msg.conversationId,
-            assistantMessageId: t.turnoId,
-            judgeModel: "claude-code-subagent",
-            judgeVersion: "v1-2026-05",
-            aderencia,
-            correcaoFactual: null, // nao avaliamos sem tool_results historicos
-            escolhaDeTools: aderencia,
-            clareza: aderencia,
-            razoes: t.razao,
-            recomendacaoPrompt: t.sugestao_prompt,
-            flags: [t.status, ...t.patterns],
-          },
-          update: {
-            judgeModel: "claude-code-subagent",
-            judgeVersion: "v1-2026-05",
-            aderencia,
-            escolhaDeTools: aderencia,
-            clareza: aderencia,
-            razoes: t.razao,
-            recomendacaoPrompt: t.sugestao_prompt,
-            flags: [t.status, ...t.patterns],
-          },
+          select: { id: true },
         });
+        if (existing) {
+          await prisma.conversationQualityEvaluation.update({
+            where: { id: existing.id },
+            data: {
+              judgeModel: "claude-code-subagent",
+              judgeVersion: "v1-2026-05",
+              aderencia,
+              escolhaDeTools: aderencia,
+              clareza: aderencia,
+              razoes: t.razao,
+              recomendacaoPrompt: t.sugestao_prompt,
+              flags: [t.status, ...t.patterns],
+            },
+          });
+        } else {
+          await prisma.conversationQualityEvaluation.create({
+            data: {
+              conversationId: msg.conversationId,
+              assistantMessageId: t.turnoId,
+              judgeModel: "claude-code-subagent",
+              judgeVersion: "v1-2026-05",
+              aderencia,
+              correcaoFactual: null,
+              escolhaDeTools: aderencia,
+              clareza: aderencia,
+              razoes: t.razao,
+              recomendacaoPrompt: t.sugestao_prompt,
+              flags: [t.status, ...t.patterns],
+            },
+          });
+        }
         savedEvals++;
       } catch (err) {
         console.warn(`[aggregate] falha ao salvar eval turno ${t.turnoId}:`, err);

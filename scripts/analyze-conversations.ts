@@ -211,7 +211,8 @@ async function main() {
     }
 
     // Idempotencia: ja existe avaliacao desse assistantMessageId?
-    const exists = await prisma.conversationQualityEvaluation.findUnique({
+    // (findFirst, ja que assistantMessageId nao eh mais @unique).
+    const exists = await prisma.conversationQualityEvaluation.findFirst({
       where: { assistantMessageId: turn.id },
       select: { id: true },
     });
