@@ -1,5 +1,5 @@
 /**
- * /agente/inteligencia , decommissioned. Redireciona pra /agente/qualidade.
+ * /agente/inteligencia , decommissioned. Redireciona pra /agente/monitoramento.
  *
  * 307 (temporary redirect) preserva metodo HTTP e permite reverter sem
  * cache permanente.
@@ -12,5 +12,5 @@ import { redirect, RedirectType } from "next/navigation";
 export const dynamic = "force-dynamic";
 
 export default function InteligenciaPage(): never {
-  redirect("/agente/qualidade", RedirectType.replace);
+  redirect("/agente/monitoramento", RedirectType.replace);
 }

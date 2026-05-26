@@ -1,5 +1,5 @@
 /**
- * /agente/qualidade , dashboard interno de qualidade do Agente Nex.
+ * /agente/monitoramento , dashboard interno de monitoramento do Agente Nex.
  *
  * Gate: super_admin (layout do grupo /agente).
  * Server Component: busca a data minima (1ª eval registrada) e passa pro
@@ -9,7 +9,7 @@
  */
 
 import { redirect } from "next/navigation";
-import { ShieldCheck } from "lucide-react";
+import { Activity } from "lucide-react";
 
 import { QualidadeContent } from "@/components/agent/qualidade/qualidade-content";
 import { PageHeader } from "@/components/page-header";
@@ -17,7 +17,9 @@ import { PageShell } from "@/components/layout/page-shell";
 import { getCurrentUser } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 
-export const metadata = { title: "Qualidade do Agente | Matrix Fitness Group" };
+export const metadata = {
+  title: "Monitoramento do Agente | Matrix Fitness Group",
+};
 export const dynamic = "force-dynamic";
 
 async function getFirstEvalDate(): Promise<Date> {
@@ -32,7 +34,7 @@ async function getFirstEvalDate(): Promise<Date> {
   return d;
 }
 
-export default async function QualidadePage() {
+export default async function MonitoramentoPage() {
   const user = await getCurrentUser();
   if (!user) redirect("/login");
   if (user.platformRole !== "super_admin") redirect("/dashboard");
@@ -42,8 +44,8 @@ export default async function QualidadePage() {
   return (
     <PageShell variant="form">
       <PageHeader
-        icon={ShieldCheck}
-        title="Qualidade do Agente Nex"
+        icon={Activity}
+        title="Monitoramento do Agente Nex"
         subtitle="Desempenho semântico das respostas por modelo e período. Avaliação on-demand via Claude Code."
       />
       <QualidadeContent minDate={minDate.toISOString()} />

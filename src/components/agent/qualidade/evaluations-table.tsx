@@ -5,7 +5,7 @@
  * drill-down inline. Padrao baseado em usage-table de /agente/consumo.
  */
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { Fragment, useCallback, useEffect, useState } from "react";
 import {
   ChevronDown,
   ChevronLeft,
@@ -232,9 +232,8 @@ export function EvaluationsTable({
               {data.rows.map((row) => {
                 const isOpen = expandedId === row.id;
                 return (
-                  <>
+                  <Fragment key={row.id}>
                     <TableRow
-                      key={row.id}
                       className={cn(
                         "cursor-pointer transition-colors hover:bg-muted/40",
                         isOpen && "bg-muted/40",
@@ -308,7 +307,7 @@ export function EvaluationsTable({
                       </TableCell>
                     </TableRow>
                     {isOpen && (
-                      <TableRow key={`${row.id}-drill`} className="bg-muted/10">
+                      <TableRow className="bg-muted/10">
                         <TableCell colSpan={7} className="p-0">
                           <EvaluationDrilldown
                             evaluationId={row.id}
@@ -317,7 +316,7 @@ export function EvaluationsTable({
                         </TableCell>
                       </TableRow>
                     )}
-                  </>
+                  </Fragment>
                 );
               })}
             </TableBody>

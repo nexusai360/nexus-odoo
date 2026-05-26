@@ -216,6 +216,7 @@ export async function getEvaluationDetail(
     technicalError: string | null;
     humanReviewedBy: string | null;
     humanReviewedAt: Date | null;
+    suggestions: string[];
   };
   toolCalls: unknown;
   toolResults: unknown;
@@ -239,6 +240,7 @@ export async function getEvaluationDetail(
       judgeModel: true,
       judgeVersion: true,
       technicalError: true,
+      suggestions: true,
     },
   });
 
@@ -273,6 +275,7 @@ export async function getEvaluationDetail(
       judgeModel: ev.judgeModel,
       judgeVersion: ev.judgeVersion,
       technicalError: ev.technicalError,
+      suggestions: ev.suggestions,
     },
     toolCalls,
     toolResults,

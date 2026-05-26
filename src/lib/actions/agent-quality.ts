@@ -45,6 +45,6 @@ export async function adjustEvaluation(
     WHERE id = ${parsed.data.evaluationId}::uuid
   `;
 
-  revalidatePath("/agente/qualidade");
+  revalidatePath("/agente/monitoramento");
   return { ok: true };
 }

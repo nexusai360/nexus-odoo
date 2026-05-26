@@ -589,6 +589,7 @@ export async function runAgent(args: RunAgentInput): Promise<RunAgentResult> {
               userMessage: args.userMessage,
               answerMessage: message,
               model: client.model,
+              suggestions,
             });
           } catch (err) {
             console.warn(

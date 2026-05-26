@@ -16,6 +16,7 @@ import {
   Loader2,
   Save,
   ShieldCheck,
+  Sparkles,
   User as UserIcon,
   Wrench,
 } from "lucide-react";
@@ -29,6 +30,7 @@ import { adjustEvaluation } from "@/lib/actions/agent-quality";
 import { fetchQualityEvaluationDetail } from "@/lib/actions/quality-fetch";
 import { cn } from "@/lib/utils";
 import type { EvalStatus } from "@/lib/agent/quality/queries";
+import { MarkdownSnapshot } from "./markdown-snapshot";
 
 const STATUS_LABEL: Record<EvalStatus, string> = {
   CORRETO: "Correto",
@@ -200,11 +202,11 @@ export function EvaluationDrilldown({ evaluationId, onAdjusted }: Props) {
           <h4 className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
             <UserIcon className="h-3.5 w-3.5" /> Pergunta
           </h4>
-          <div className="whitespace-pre-wrap rounded-lg border border-border bg-background px-3 py-2 text-sm">
+          <div className="rounded-lg border border-border bg-background px-3 py-2">
             {e.questionSnapshot ? (
-              e.questionSnapshot
+              <MarkdownSnapshot content={e.questionSnapshot} />
             ) : (
-              <span className="text-muted-foreground">(vazio)</span>
+              <span className="text-sm text-muted-foreground">(vazio)</span>
             )}
           </div>
         </section>
@@ -212,19 +214,38 @@ export function EvaluationDrilldown({ evaluationId, onAdjusted }: Props) {
           <h4 className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
             <Bot className="h-3.5 w-3.5" /> Resposta
           </h4>
-          <div className="whitespace-pre-wrap rounded-lg border border-border bg-background px-3 py-2 text-sm">
+          <div className="rounded-lg border border-border bg-background px-3 py-2">
             {isFalha ? (
-              <span className="text-muted-foreground italic">
+              <span className="text-sm italic text-muted-foreground">
                 (sem resposta , falha técnica)
               </span>
             ) : e.answerSnapshot ? (
-              e.answerSnapshot
+              <MarkdownSnapshot content={e.answerSnapshot} />
             ) : (
-              <span className="text-muted-foreground">(vazio)</span>
+              <span className="text-sm text-muted-foreground">(vazio)</span>
             )}
           </div>
         </section>
       </div>
+
+      {/* Sugestoes (bolhas roxas) oferecidas com a resposta */}
+      {!isFalha && e.suggestions.length > 0 && (
+        <section className="space-y-1.5">
+          <h4 className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+            <Sparkles className="h-3.5 w-3.5" /> Sugestões oferecidas
+          </h4>
+          <div className="flex flex-wrap gap-1.5">
+            {e.suggestions.map((s, i) => (
+              <span
+                key={`${i}-${s}`}
+                className="inline-flex items-center rounded-full border border-violet-500/30 bg-violet-500/10 px-3 py-1 text-xs text-violet-700 dark:text-violet-300"
+              >
+                {s}
+              </span>
+            ))}
+          </div>
+        </section>
+      )}
 
       {/* Erro técnico se FALHA_TECNICA */}
       {isFalha && e.technicalError && (

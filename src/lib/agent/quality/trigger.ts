@@ -27,6 +27,12 @@ export interface CreatePendingEvalArgs {
   userMessage: string;
   answerMessage: string;
   model: string;
+  /**
+   * Chips de sugestao apresentados ao usuario (bolinhas roxas da bubble),
+   * apos extracao do canal [[suggestions]] / bullet-questions. Snapshot
+   * pra reconstituir o que o usuario realmente viu.
+   */
+  suggestions?: string[];
 }
 
 export async function createPendingEval(
@@ -48,6 +54,7 @@ export async function createPendingEval(
       model: args.model,
       questionSnapshot: args.userMessage.slice(0, SNAPSHOT_CAP),
       answerSnapshot: args.answerMessage.slice(0, SNAPSHOT_CAP),
+      suggestions: args.suggestions ?? [],
     },
   });
 }

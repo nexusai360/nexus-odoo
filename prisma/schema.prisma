@@ -2715,6 +2715,10 @@ model ConversationQualityEvaluation {
   /// Cap 4000 chars. Snapshot pra preservar contexto se Message for deletada.
   questionSnapshot      String?  @map("question_snapshot")
   answerSnapshot        String?  @map("answer_snapshot")
+  /// Chips de sugestao oferecidos ao usuario logo apos a resposta
+  /// (bolinhas roxas da bubble). Snapshot do array final, ja apos
+  /// extracao do canal [[suggestions]] / bullet-questions.
+  suggestions           String[] @default([])
   /// Preenchido apenas em FALHA_TECNICA. Cap 1000 chars.
   technicalError        String?  @map("technical_error")
 

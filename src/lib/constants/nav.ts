@@ -1,4 +1,5 @@
 import {
+  Activity,
   BarChart3,
   BookOpen,
   Cable,
@@ -43,6 +44,12 @@ export const NAV_ITEMS: NavItem[] = [
     section: "admin",
     superAdminOnly: true,
     children: [
+      {
+        label: "Monitoramento",
+        href: "/agente/monitoramento",
+        icon: Activity,
+        superAdminOnly: true,
+      },
       {
         label: "Configuração",
         href: "/agente/configuracao",
