@@ -26,18 +26,9 @@ export async function GET(_req: NextRequest): Promise<NextResponse> {
     return NextResponse.json({ error: "Acesso negado" }, { status: 403 });
   }
 
-  // Carregar AgentSettings
-  const row = await prisma.agentSettings.findUnique({ where: { id: "global" } });
-  const agentSettings = {
-    identityBase: row?.identityBase ?? null,
-    personality: row?.personality ?? "",
-    tone: row?.tone ?? "",
-    guardrails: (row?.guardrails as string[]) ?? [],
-    advancedOverride: row?.advancedOverride ?? null,
-    kbEnabled: (row?.kbCheckpoint ?? "PRODUCTION") === "PRODUCTION",
-    terminology: (row?.terminology as Record<string, string>) ?? {},
-    suggestionsEnabled: row?.suggestionsEnabled ?? true,
-  };
+  // Carregar AgentSettings via funcao canonica (respeita flag usesCodeDefaults).
+  const { resolveAgentSettings } = await import("@/lib/agent/prompt/resolve-settings");
+  const agentSettings = await resolveAgentSettings();
 
   // Admin/super_admin recebem o BI schema
   const biSchema = ALLOWED_ROLES.has(user.platformRole) ? BI_SCHEMA_REFERENCE : undefined;
