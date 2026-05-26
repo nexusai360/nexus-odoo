@@ -85,7 +85,13 @@ describe("getUsageStats", () => {
 
   /**
    * Setup helper , configura os mocks na ordem esperada pelo Promise.all:
-   * [convCount, usageCount, aggregate, byModel, byProvider, byDay, byHour(findMany), unknownCount]
+   * [distinctConvs(groupBy), usageCount, aggregate, byModel(groupBy),
+   *  byProvider(groupBy), byDay(groupBy), byHour(findMany se hourly),
+   *  unknownCount(count)]
+   *
+   * totalConversations agora vem de uma groupBy em LlmUsage.conversationId
+   * (passa a respeitar filtros de provider/model). mockConvCount segue
+   * existindo mas nao e mais usado pelo getUsageStats.
    */
   function setupMocks({
     convCount = 0,
@@ -98,12 +104,17 @@ describe("getUsageStats", () => {
     byHourRows = [] as unknown[],
     unknownCount = 0,
   } = {}) {
-    mockConvCount.mockResolvedValueOnce(convCount);
+    // distinctConvs: uma linha por conversationId distinto
+    const distinctConvs = Array.from({ length: convCount }, (_, i) => ({
+      conversationId: `conv-${i}`,
+      _count: { _all: 1 },
+    }));
     mockUsageCount
       .mockResolvedValueOnce(usageCount) // totalIterations
       .mockResolvedValueOnce(unknownCount); // unknownCount
     mockAggregate.mockResolvedValueOnce(aggregate);
     mockGroupBy
+      .mockResolvedValueOnce(distinctConvs)
       .mockResolvedValueOnce(byModel)
       .mockResolvedValueOnce(byProvider)
       .mockResolvedValueOnce(byDay);
@@ -217,7 +228,6 @@ describe("getUsageStats", () => {
     // hora BRT: UTC-3 → 17:00 UTC = 14:00 BRT
     const rowAt14BRT = { createdAt: new Date("2026-05-19T17:00:00Z"), costUsd: 0.005, costBrl: 0.025 };
 
-    mockConvCount.mockResolvedValueOnce(1);
     mockUsageCount
       .mockResolvedValueOnce(1)
       .mockResolvedValueOnce(0);
@@ -226,6 +236,7 @@ describe("getUsageStats", () => {
       _count: { _all: 1 },
     });
     mockGroupBy
+      .mockResolvedValueOnce([{ conversationId: "conv-1", _count: { _all: 1 } }]) // distinctConvs
       .mockResolvedValueOnce([])  // byModel
       .mockResolvedValueOnce([])  // byProvider
       .mockResolvedValueOnce([]); // byDay

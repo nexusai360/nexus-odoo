@@ -184,19 +184,19 @@ export async function getUsageStats(args: {
     ...(isPlayground !== undefined ? { isPlayground } : {}),
   };
 
-  // Where para Conversation (sem filtro de provider/model , conversas são agregadas)
-  const convWhere = {
-    createdAt: { gte: start, lt: end },
-    ...(isPlayground !== undefined ? { channel: isPlayground ? ("playground" as const) : { not: "playground" as const } } : {}),
-  };
-
-  // 1. Contagem separada de conversas e iterações , BUG 8
+  // 1. Conversas que tiveram pelo menos uma chamada que casa com o filtro
+  //    (provider/model/ambiente). Antes contava Conversation.count com
+  //    where so de data+canal, ignorando provider e model - por isso o KPI
+  //    "Conversas" nao mexia quando o usuario filtrava por modelo. Agora
+  //    fazemos groupBy em LlmUsage.conversationId e contamos os grupos:
+  //    cada conversa aparece uma vez no resultado, independente do numero
+  //    de iteracoes/chamadas que ela teve.
   // 2. Agregação de custo (apenas costKnown=true) , BUG 5
   // 3. groupBy model, provider, day
   // 4. Optionally: groupBy hour (range <= 24h)
 
   const [
-    totalConversations,
+    distinctConvs,
     totalIterations,
     aggregate,
     byModelRaw,
@@ -205,8 +205,13 @@ export async function getUsageStats(args: {
     byHourRaw,
     unknownCountRaw,
   ] = await Promise.all([
-    // BUG 8: conta Conversations (não LlmUsage)
-    prisma.conversation.count({ where: convWhere }),
+    // BUG 8 + filtro do modelo: agrupa por conversationId aplicando o
+    // mesmo usageWhere; resultado serve so para contar grupos distintos.
+    prisma.llmUsage.groupBy({
+      by: ["conversationId"],
+      where: { ...usageWhere, conversationId: { not: null } },
+      _count: { _all: true },
+    }),
 
     // BUG 8: conta LlmUsage (iterações individuais)
     prisma.llmUsage.count({ where: usageWhere }),
@@ -293,7 +298,7 @@ export async function getUsageStats(args: {
   }
 
   return {
-    totalConversations,
+    totalConversations: distinctConvs.length,
     totalIterations,
     totalCostUsd: toNum(aggregate._sum.costUsd),
     totalCostBrl: toNum(aggregate._sum.costBrl),
