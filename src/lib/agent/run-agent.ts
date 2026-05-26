@@ -675,6 +675,15 @@ export async function runAgent(args: RunAgentInput): Promise<RunAgentResult> {
         const guarded = guardToolResult(toolResultStr);
         const wasTruncated = guarded !== toolResultStr;
 
+        // Onda 2 (2026-05-26): sanitização opcional via feature flag.
+        // SANITIZE_TOOL_RESULTS=aggregates_only anexa _agregado (soma/
+        // contagem/média/min/max) computado pelo código em vez de pedir
+        // pro LLM calcular. Mais confiável: código é exato, LLM é
+        // interpretativo. Gate de simulação validou 100% (sem quebra
+        // em 306 tool results da rodada 4). Default: off.
+        const { sanitizeToolResult } = await import("./quality/sanitize-tool-result");
+        const sanitized = sanitizeToolResult(guarded);
+
         args.onEvent?.({
           type: "tool_result",
           toolName: tc.name,
@@ -687,12 +696,13 @@ export async function runAgent(args: RunAgentInput): Promise<RunAgentResult> {
           role: "tool",
           toolCallId: tc.id,
           toolName: tc.name,
-          content: guarded,
+          content: sanitized,
         });
 
         // Onda 1 Inteligencia (T1.7): acumular result para gravar em
-        // Message.toolResults apos o loop.
-        toolResultsMap[tc.id] = guarded;
+        // Message.toolResults apos o loop. Persiste o SANITIZADO (o que o
+        // LLM viu), pra auditoria correta no /agente/qualidade.
+        toolResultsMap[tc.id] = sanitized;
       }
 
       // Onda 1 Inteligencia (T1.7): persiste toolResults na Message do
