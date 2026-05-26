@@ -28,3 +28,10 @@ export { clusterRecommendations } from "./recommendation-clusterer";
 export type { Cluster } from "./recommendation-clusterer";
 
 export { embed as embedText, EmbeddingUnavailable } from "./embeddings-client";
+
+// Frente C — continuidade contextual (Onda 4).
+export { suggestContinuation } from "./contextual-suggester";
+export type {
+  SuggestContinuationInput,
+  SuggestContinuationResult,
+} from "./contextual-suggester";
