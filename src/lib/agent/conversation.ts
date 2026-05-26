@@ -241,6 +241,29 @@ export async function persistMessage(
 // ============================================================================
 
 /**
+ * Variante de `persistMessage` que retorna o ID da Message criada.
+ *
+ * Usado pelo sistema /agente/qualidade (Onda 3a): trigger fire-and-forget
+ * em run-agent.ts precisa do `assistantMessageId` pra linkar a avaliacao
+ * PENDENTE criada em ConversationQualityEvaluation.
+ *
+ * Versao generica (qualquer role). Para o caso especifico de assistant
+ * com toolCalls, use `persistAssistantMessageWithTools` (otimizada com
+ * persistencia de toolCalls + invalidacao de cache).
+ */
+export async function persistMessageAndReturnId(
+  conversationId: string,
+  role: MessageRole,
+  content: string,
+): Promise<string> {
+  const created = await prisma.message.create({
+    data: { conversationId, role, content },
+    select: { id: true },
+  });
+  return created.id;
+}
+
+/**
  * Persiste uma mensagem assistant que disparou tool calls e retorna o id da
  * Message criada. Variante de `persistMessage` usada quando o caller precisa
  * fazer um UPDATE posterior (ex.: gravar `toolResults` apos a execucao das

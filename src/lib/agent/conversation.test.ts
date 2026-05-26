@@ -13,6 +13,7 @@ import {
   getLastNPairs,
   updateMessageToolResults,
   persistAssistantMessageWithTools,
+  persistMessageAndReturnId,
 } from "./conversation";
 import type { ReasoningContext } from "./llm/types";
 
@@ -365,5 +366,32 @@ describe("persistAssistantMessageWithTools", () => {
         select: { id: true },
       }),
     );
+  });
+});
+
+describe("persistMessageAndReturnId", () => {
+  beforeEach(() => jest.clearAllMocks());
+
+  it("creates a message with the given role/content and returns the new id", async () => {
+    const fakeId = "11111111-2222-3333-4444-555555555555";
+    (prisma.message.create as jest.Mock).mockResolvedValue({ id: fakeId });
+
+    const result = await persistMessageAndReturnId(
+      "conv-id",
+      "assistant",
+      "hello world",
+    );
+
+    expect(result).toBe(fakeId);
+    expect(prisma.message.create).toHaveBeenCalledWith({
+      data: { conversationId: "conv-id", role: "assistant", content: "hello world" },
+      select: { id: true },
+    });
+  });
+
+  it("works with role=user too", async () => {
+    (prisma.message.create as jest.Mock).mockResolvedValue({ id: "user-msg" });
+    const result = await persistMessageAndReturnId("c", "user", "oi");
+    expect(result).toBe("user-msg");
   });
 });

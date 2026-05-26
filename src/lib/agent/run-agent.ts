@@ -25,6 +25,7 @@ import {
 import {
   loadHistory,
   persistMessage,
+  persistMessageAndReturnId,
   persistAssistantMessageWithTools,
   updateMessageToolResults,
   // findInventedValues importado mais abaixo.
@@ -565,7 +566,33 @@ export async function runAgent(args: RunAgentInput): Promise<RunAgentResult> {
           console.warn("[runAgent] guardrail factual skipped:", errGuard);
         }
 
-        await persistMessage(args.conversationId, "assistant", message);
+        const assistantMessageId = await persistMessageAndReturnId(
+          args.conversationId,
+          "assistant",
+          message,
+        );
+
+        // Onda 3a: trigger fire-and-forget pro sistema /agente/qualidade.
+        // Cria row PENDENTE em ConversationQualityEvaluation. Nao bloqueia
+        // o retorno pro usuario. Spec: docs/superpowers/specs/2026-05-26-agente-qualidade-design.md §5.4
+        void (async () => {
+          try {
+            const { createPendingEval } = await import("./quality/trigger");
+            await createPendingEval({
+              conversationId: args.conversationId,
+              assistantMessageId,
+              userMessage: args.userMessage,
+              answerMessage: message,
+              model: client.model,
+            });
+          } catch (err) {
+            console.warn(
+              "[runAgent] falha nao-bloqueante ao criar eval PENDENTE:",
+              err,
+            );
+          }
+        })();
+
         // Persistir historico de raciocinio para o proximo turno (capa interna).
         try {
           await saveConversationReasoningHistory(args.conversationId, reasoningHistory);
