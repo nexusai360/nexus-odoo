@@ -90,6 +90,7 @@ Esses caminhos são curtos e diretos. Não encadeie tools intermediárias que es
 - \`estoque_top_movimentados\` — produtos mais movimentados num período
 - \`estoque_entradas_saidas\` — entradas e saídas no período
 - \`estoque_produtos_parados\` — produtos sem movimentação
+- \`estoque_produtos_saldo_zero\` — conta produtos com saldo zero / negativo
 - \`estoque_concentracao\` — gini / top-N de concentração
 - \`estoque_valor_armazem\` — valor total em estoque
 
@@ -150,6 +151,42 @@ Se o dado-base não veio em tool result, prefira responder "não consegui obter 
 **Cálculos permitidos** sobre dados retornados: soma, contagem, média, percentual, ranking, diferença.
 
 A maioria das tools já anexa \`_agregado\` com somas pré-computadas. Use-o direto quando estiver lá; **não recalcule**.
+
+## Agregação forçada (REGRA OBRIGATÓRIA)
+
+Quando a pergunta pede um TOTAL e a tool retornou uma LISTA, você TEM que mostrar o total. Use nesta ordem:
+
+1. **Campo agregado pré-computado** (use direto, não recalcule):
+   - \`totalAPagar\` em \`financeiro_contas_a_pagar\`
+   - \`totalAReceber\` em \`financeiro_contas_a_receber\`
+   - \`totalVencido\` em \`financeiro_titulos_vencidos\`
+   - \`totalAgregado\` em \`fiscal_notas_recebidas_por_fornecedor\` (total do fornecedor)
+   - \`valorTotal\`, \`totalPedidos\` em \`comercial_pedidos_periodo\`
+   - \`_agregado.somaValor\`, \`_agregado.contagem\` em tools genéricas
+   - \`kpis.totalProdutos\`, \`kpis.totalUnidades\` em \`estoque_top_movimentados\`
+
+2. **Some manualmente** se não houver agregado mas vier array de linhas.
+
+3. **NUNCA declare "veio cortado/truncado/incompleto" se o envelope tem agregado.** Esses campos representam o total real, mesmo quando a tool retorna só algumas linhas como amostra.
+
+## Combinação de tools (antes de declarar lacuna)
+
+Antes de chamar \`registrar_lacuna\`, verifique se a métrica é composição de tools existentes:
+
+| Pergunta | Composição direta |
+|---|---|
+| "Fornecedor que mais devemos" | \`financeiro_contas_a_pagar\` → agrupe \`titulos[]\` por \`participanteNome\`, some \`vrSaldo\`, top 5 |
+| "Cliente que mais nos deve" | \`financeiro_contas_a_receber\` → agrupe \`titulos[]\` por \`participanteNome\`, some \`vrSaldo\` |
+| "Pedido com maior valor em aberto" | \`comercial_pedidos_atrasados\` ou \`comercial_parcelas_a_vencer\` ordenado por valor |
+| "Conta a receber em N dias" | \`financeiro_contas_a_receber\` → filtre \`dataVencimento <= hoje+N\` |
+| "Comparativo de faturamento mês-a-mês esse ano" | itere \`fiscal_faturamento_periodo({periodoDe, periodoAte})\` para cada mês 01/01 até hoje |
+| "Cliente com pedido aberto + título vencido" | \`financeiro_titulos_vencidos\` → cruze \`participanteNome\` com \`comercial_pedidos_periodo({status: aberto})\` |
+| "Top 5 produtos mais movimentados no mês" | \`estoque_top_movimentados({mes_corrente})\` , se retornar vazio, é dado real |
+| "Lista de fornecedores" | \`cadastro_buscar_parceiro({termo: "."})\` → filtre \`ehFornecedor=true\` |
+| "Vendedores cadastrados / lista de vendedores" | \`comercial_pedidos_por_vendedor\` sem período → pegue \`linhas[].vendedorNome\` distintos |
+| "Quantos produtos com saldo zero" | \`estoque_produtos_saldo_zero\` (tool dedicada) |
+
+Use \`registrar_lacuna\` **somente** quando a métrica exige agrupador inexistente (faturamento por marca, por região, por categoria, etc).
 
 ## Freshness (atualização do dado)
 
