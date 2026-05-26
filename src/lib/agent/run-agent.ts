@@ -470,6 +470,20 @@ export async function runAgent(args: RunAgentInput): Promise<RunAgentResult> {
           message = fb.message;
           suggestions = fb.suggestions;
         }
+
+        // STRIPPER DEFENSIVO de placeholder freshness "Xs" (Onda A1, audit
+        // R0 mostrou 12.7%/624 turnos com esse bug). O envelope da tool ja
+        // expoe `atualizadoHa` pre-computado server-side; o prompt instrui
+        // a usar; este stripper limpa o residual quando o LLM falha.
+        try {
+          const { stripFreshnessPlaceholders } = await import(
+            "./quality/freshness-stripper"
+          );
+          message = stripFreshnessPlaceholders(message);
+        } catch (err) {
+          console.warn("[runAgent] freshness stripper falhou:", err);
+        }
+
         // GUARDRAIL FACTUAL (auditoria 2026-05-26 rodada 5):
         // Dois detectores ortogonais:
         //  (a) findInventedValues — valores R$ que nao aparecem em nenhum
@@ -676,27 +690,32 @@ export async function runAgent(args: RunAgentInput): Promise<RunAgentResult> {
             ? await callExternalTool(externalBundle, nomeRealDaTool.get(tc.name) ?? tc.name, toolArgs, args.userId)
             : "(MCP externo indisponível)";
         } else if (session) {
-          // Auditoria 2026-05-26 (R5): retry implicito em rate limit. Tenta 1x mais
-          // com backoff curto antes de declarar erro. ~20% dos FORA_DE_ESCOPO eram
-          // rate limit que o agente declarava sem nem tentar de novo.
+          // Onda A2 (2026-05-26): retry exponencial em rate limit. 3 tentativas
+          // com backoff 200/800/2000ms antes de declarar erro. Substitui o
+          // single-shot 1500ms anterior (audit R0 mostrou 1.4% de recusa indevida
+          // por rate limit + agente desistia). Total <= ~3s extra no pior caso.
           const realToolName = nomeRealDaTool.get(tc.name) ?? tc.name;
-          try {
-            toolResultStr = await session.callTool(realToolName, toolArgs);
-            // Se o resultado for string indicando rate limit, ja retry.
-            if (
-              typeof toolResultStr === "string" &&
-              /rate.?limit|too many|429|muitas requisic/i.test(toolResultStr) &&
-              toolResultStr.length < 500
-            ) {
-              await new Promise((r) => setTimeout(r, 1500));
+          const RATE_LIMIT_RE = /rate.?limit|too many|429|muitas requisic/i;
+          const BACKOFFS = [200, 800, 2000];
+          const isRateLimitStr = (s: unknown): boolean =>
+            typeof s === "string" && s.length < 500 && RATE_LIMIT_RE.test(s);
+
+          toolResultStr = "";
+          for (let attempt = 0; attempt <= BACKOFFS.length; attempt++) {
+            try {
               toolResultStr = await session.callTool(realToolName, toolArgs);
-            }
-          } catch (err) {
-            const msg = err instanceof Error ? err.message : String(err);
-            if (/rate.?limit|too many|429/i.test(msg)) {
-              await new Promise((r) => setTimeout(r, 1500));
-              toolResultStr = await session.callTool(realToolName, toolArgs);
-            } else {
+              if (!isRateLimitStr(toolResultStr)) break;
+              if (attempt < BACKOFFS.length) {
+                await new Promise((r) => setTimeout(r, BACKOFFS[attempt]!));
+                continue;
+              }
+              break;
+            } catch (err) {
+              const msg = err instanceof Error ? err.message : String(err);
+              if (RATE_LIMIT_RE.test(msg) && attempt < BACKOFFS.length) {
+                await new Promise((r) => setTimeout(r, BACKOFFS[attempt]!));
+                continue;
+              }
               throw err;
             }
           }

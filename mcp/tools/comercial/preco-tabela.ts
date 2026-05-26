@@ -55,8 +55,10 @@ export const comercialPrecoTabela: ToolEntry<Input, Output> = {
   id: "preco_tabela",
   dominio: "comercial",
   descricao:
-    "Regras de uma tabela de preço pelo seu id: lista as regras (por produto, " +
-    "família ou participante) com valor, operação e vigência.",
+    "Regras de UMA TABELA DE PREÇO específica (identificada por `tabelaId`). " +
+    "Lista todas as regras da tabela (por produto, família ou participante) " +
+    "com valor, operação e vigência. " +
+    "NÃO use para: preço de um produto específico (use `preco_produto`).",
   inputSchemaShape: inputSchema.shape,
   inputSchema,
   outputSchema,
