@@ -31,6 +31,7 @@ export default async function ConsumoPage() {
         icon={TrendingUp}
         title="Consumo do Agente Nex"
         subtitle="Custo e uso de tokens por modelo, provedor e período."
+        actions={<div id="agente-consumo-header-actions" />}
       />
       <ConsumoContent minDate={minDate.toISOString()} />
     </PageShell>

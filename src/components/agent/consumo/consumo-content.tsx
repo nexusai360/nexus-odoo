@@ -10,6 +10,7 @@
  */
 
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { createPortal } from "react-dom";
 import { motion, useReducedMotion } from "framer-motion";
 import {
   Activity,
@@ -870,13 +871,19 @@ export function ConsumoContent({ minDate: minDateIso }: ConsumoContentProps) {
             aria-label="Filtrar por modelo (global)"
           />
         </div>
+      </div>
+
+      {/* Loading indicator renderizado via portal no `actions` slot do
+          PageHeader (alinhado ao titulo "Consumo do Agente Nex"), evitando
+          dividir espaco com a linha dos filtros. */}
+      <HeaderActionsPortal>
         {isLoading ? (
           <span className="inline-flex items-center gap-2 text-xs text-muted-foreground">
             <Loader2 className="h-4 w-4 animate-spin" aria-hidden />
             Atualizando…
           </span>
         ) : null}
-      </div>
+      </HeaderActionsPortal>
 
       {error ? (
         <Card className="border-destructive/40">
@@ -1327,6 +1334,19 @@ export function ConsumoContent({ minDate: minDateIso }: ConsumoContentProps) {
 // ---------------------------------------------------------------------------
 // Skeleton
 // ---------------------------------------------------------------------------
+
+// Portal helper para colocar conteudo dentro do `actions` slot do PageHeader
+// (alvo `#agente-consumo-header-actions`, declarado em page.tsx). Mounts ao
+// se montar; descomeca a renderizar quando o target existe no DOM, evitando
+// hydration mismatch.
+function HeaderActionsPortal({ children }: { children: React.ReactNode }) {
+  const [target, setTarget] = useState<HTMLElement | null>(null);
+  useEffect(() => {
+    setTarget(document.getElementById("agente-consumo-header-actions"));
+  }, []);
+  if (!target) return null;
+  return createPortal(children, target);
+}
 
 function ChartSkeleton({ height = 300 }: { height?: number }) {
   return (
