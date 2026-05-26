@@ -13,7 +13,7 @@
  */
 
 import { prisma } from "@/lib/prisma";
-import { extractTopics } from "@/lib/agent/intelligence";
+import { extractTopics } from "@/lib/agent/intelligence/topic-extractor";
 
 const RETAG_THRESHOLD_NEW_MESSAGES = 10;
 const MAX_TAGS = 5;

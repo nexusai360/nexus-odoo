@@ -53,3 +53,7 @@ docker-compose.production.yml
 
 # Backups de banco (gerados por scripts/db-backup.sh)
 /backups/
+
+# Auditoria de qualidade (4914 arquivos de batch + result)
+docs/agent-quality-review/batches/
+docs/agent-quality-review/results/
