@@ -532,6 +532,41 @@ export function ChatPanel({
                   },
                 ];
               });
+
+              // Frente C da inteligencia (auditoria 2026-05-26): chama o
+              // contextual suggester com os ultimos 5 pares e substitui as
+              // chips por sugestoes contextualizadas. Fire-and-forget; se
+              // demorar > 2.5s ou falhar, mantemos as chips originais.
+              void (async () => {
+                try {
+                  const conversationId = evt.conversationId;
+                  if (!conversationId) return;
+                  const ctrl = new AbortController();
+                  const to = setTimeout(() => ctrl.abort(), 3000);
+                  const res = await fetch("/api/agent/suggest-continuation", {
+                    method: "POST",
+                    headers: { "content-type": "application/json" },
+                    body: JSON.stringify({ conversationId, maxChips: 3 }),
+                    signal: ctrl.signal,
+                  });
+                  clearTimeout(to);
+                  if (!res.ok) return;
+                  const data = (await res.json()) as {
+                    chips?: string[];
+                    source?: string;
+                  };
+                  if (!Array.isArray(data.chips) || data.chips.length === 0) return;
+                  setMessages((prev) =>
+                    prev.map((m) =>
+                      m.id === assistantMsgId
+                        ? { ...m, suggestions: data.chips }
+                        : m,
+                    ),
+                  );
+                } catch {
+                  // best-effort; mantem chips originais
+                }
+              })();
             } else if (evt.type === "error") {
               setMessages((prev) => {
                 if (prev.some((m) => m.id === assistantMsgId)) {
