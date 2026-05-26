@@ -214,20 +214,16 @@ void (async () => {
 } catch (err) {
   // ... tratamento atual ...
 
-  // Cria row FALHA_TECNICA pra contabilizar. assistantMessageId fica null
-  // (turno não gerou message), por isso schema tornou esse campo nullable
-  // (ver §5.1).
+  // Cria row FALHA_TECNICA. Atenção: não buscar lastUserMsg via query
+  // (race condition — se o erro aconteceu ANTES do persistMessage("user")
+  // da linha 311, lastUserMsg retornaria o turno ANTERIOR, errado).
+  // Usar args.userMessage direto e deixar userMessageId nullable.
   void (async () => {
     try {
-      const lastUserMsg = await prisma.message.findFirst({
-        where: { conversationId: args.conversationId, role: "user" },
-        orderBy: { createdAt: "desc" },
-        select: { id: true },
-      });
       await prisma.conversationQualityEvaluation.create({
         data: {
           conversationId: args.conversationId,
-          userMessageId: lastUserMsg?.id ?? null,
+          userMessageId: null,
           assistantMessageId: null,
           judgeVersion: "v2-claude-code",
           status: "FALHA_TECNICA",
@@ -246,16 +242,16 @@ void (async () => {
 ### 5.5 Scripts CLI
 
 #### `scripts/quality-audit/dump-pending.ts`
-- Args: `--limit N` (default 200), `--include-evaluated` (default false), `--out PATH` (default `/tmp/quality-audit-pending-{ts}.json`)
-- Comportamento: lê N rows PENDENTES (ou todas + avaliadas se `--include-evaluated`), gera JSON formato batch (mesmo formato dos batches R4/R5: array de turnos com question/answer/toolCalls/toolResults).
-- Output: imprime `{count} turnos em {path}. Cole o path aqui para eu avaliar.`
+- Args: `--limit N` (default **40**, tamanho de 1 batch que cabe no contexto do Claude Code), `--include-evaluated` (default false), `--out PATH` (default `/tmp/quality-audit-pending-{ts}.json`)
+- Comportamento: lê até N rows PENDENTES (ou inclui já avaliadas se `--include-evaluated`), ordenadas por `createdAt asc` (mais antigas primeiro), gera JSON formato batch (mesmo formato dos batches R4/R5: array de turnos com question/answer/toolCalls/toolResults).
+- Output: imprime `{count} turnos em {path}. Cole o path aqui para eu avaliar.`. Se count==0, imprime `Nenhum turno pendente.` e sai com código 0.
 
 #### `scripts/quality-audit/commit-audit-results.ts`
-- Args: `--results PATH` (obrigatório), `--force` (sobrescreve avaliações existentes)
-- Comportamento: lê JSON de resultado (array `[{turnoId, status, patterns, razoes, judgeReasoning}]`), atualiza cada row no banco (status, patterns, razoes, judgeModel="claude-opus-4-7-via-cc", judgeVersion="v2-claude-code").
+- Args: `--results PATH` (obrigatório), `--force` (sobrescreve avaliações já preenchidas)
+- Comportamento: lê JSON de resultado (array `[{turnoId, status, patterns, razoes}]`), atualiza cada row no banco (status, patterns, razoes, judgeModel="claude-opus-4-7-via-cc", judgeVersion="v2-claude-code"). Erro se algum turnoId não existe no banco. Sem `--force`, pula rows que já têm status diferente de PENDENTE.
 - Output: `Atualizadas N rows. Quebra: X CORRETO, Y PARCIAL, ...`
 
-**Tamanho do batch**: 40 turnos por execução (cabe no contexto do Claude Code). Pra >40 PENDENTES, dump gera múltiplos arquivos numerados (`-batch-001.json`, `-batch-002.json`).
+**Tamanho do batch**: 40 turnos por execução. Para zerar fila de N pendentes (N > 40), repetir o ciclo `dump → avaliar → commit` várias vezes até `dump` retornar 0.
 
 ### 5.6 UI `/agente/qualidade`
 
@@ -284,23 +280,31 @@ void (async () => {
 6. **Drill-down** (`UsageDetailInline` adaptado — slide-down inline, padrão consumo):
    - Pergunta completa
    - Resposta completa (markdown rendered)
-   - Tool calls: lista com nome + JSON args expansível
-   - Tool results: JSON colapsado por callId, expansível
+   - Tool calls + tool results (lidos via query adicional em `Message.findFirst({ id: assistantMessageId })` que traz `toolCalls` e `toolResults` JSON)
    - Status do judge: badge grande + diagnóstico em texto livre (`razoes`)
    - Patterns: chips coloridos
    - Bloco "Ajuste manual": select de status, textarea de razão, botão "Salvar ajuste" (escreve `humanStatus`, `humanReviewedBy`, `humanReviewedAt`)
+
+**Caso especial FALHA_TECNICA**: quando `assistantMessageId` é null, drill-down mostra apenas pergunta + `technicalError` + badge FALHA_TECNICA. Não tenta carregar tool calls (não existem).
 
 **UI/UX Pro Max obrigatório**: invocar `ui-ux-pro-max` skill antes de qualquer trabalho de layout/componente novo.
 
 ### 5.7 Decommission `/agente/inteligencia`
 
-- Rota velha `src/app/(protected)/agente/inteligencia/page.tsx`: substituir por `redirect("/agente/qualidade")` (308 permanente).
+- Rota velha `src/app/(protected)/agente/inteligencia/page.tsx`: substituir por `redirect("/agente/qualidade", "replace")` (307 temporário, preserva método HTTP; permite reverter se necessário sem cache problema).
 - Componentes `src/components/agent/inteligencia/*`: **manter por enquanto** (não deletar) — só remover quando confirmar que nada mais usa. Plano: tagear como `@deprecated` no header, remover em uma onda futura de limpeza.
 - Job `enqueueQualityAudit` em `enqueue.ts`: **manter código** (não chamar), pode ser útil futuramente.
 
-### 5.8 Comando do usuário
+### 5.8 Comando do usuário (rodar audit via Claude Code)
 
-Quando o usuário digita aqui "rodar auditoria do agente Nex" (ou variantes: "audit", "avaliar pendentes"), eu:
+**Frases que disparam o fluxo de audit** (documento como referência pro Claude Code reconhecer):
+- "rodar auditoria do agente Nex"
+- "rodar audit"
+- "avaliar pendentes"
+- "auditar qualidade"
+- "audit"
+
+Quando o usuário digita uma dessas, eu:
 
 1. Executo `pnpm tsx scripts/quality-audit/dump-pending.ts --limit 200`
 2. Leio o arquivo JSON gerado em `/tmp/`
@@ -313,10 +317,12 @@ Se houver >40 pendentes, eu faço em loops sucessivos (dump → avaliar → comm
 
 ## 6. Não-funcionais
 
-### Performance
-- Insert PENDENTE no trigger: ~5ms (1 row), fire-and-forget, não afeta tempo de resposta do agente
-- Query da UI (tabela paginada 25 rows + KPIs do período): ≤200ms com índices `(status, createdAt)` e `(model, status)`
-- Tabela pode escalar até 100k+ rows sem degradação (paginação no DB)
+### Performance (estimativas, a verificar com `EXPLAIN ANALYZE`)
+- Insert PENDENTE no trigger: ~5ms (1 row, fire-and-forget). Não afeta tempo de resposta do agente.
+- Query da UI (tabela paginada 25 rows + KPIs do período): ≤200ms com índices `(status, createdAt)` e `(model, status)`. Validar com `EXPLAIN ANALYZE` no plano.
+- Tabela pode escalar até 100k+ rows sem degradação (paginação no DB).
+- **Search textual** (pergunta/resposta): v1 usa `ILIKE %x%` simples (aceitável até ~50k rows). Migrar pra `pg_trgm` index quando necessário (gatilho: search > 500ms).
+- **Query do gráfico "Top patterns"**: usa `unnest(patterns)` + `GROUP BY`. Pode degradar com 100k+ rows. Verificar `EXPLAIN ANALYZE` no plano e considerar materialized view ou índice GIN em `patterns` se o gatilho >500ms for atingido.
 
 ### Segurança
 - Rota `/agente/qualidade` gated super_admin no layout
@@ -328,6 +334,7 @@ Se houver >40 pendentes, eu faço em loops sucessivos (dump → avaliar → comm
 - Logs estruturados nos triggers (`[runAgent] eval criado/falhou`)
 - Logs estruturados nos scripts CLI
 - KPI no próprio dashboard mostra "X pendentes" (alerta visual se ficar muito alto)
+- **Health check do trigger**: query agendada (cron simples, semanal) que conta rows criadas nos últimos 7 dias. Se zero E houve conversas no mesmo período → alertar via log de erro. Detecta caso de trigger silenciosamente quebrado. Implementação: 1 server action chamada em horário ocioso, ou comando manual no Claude Code (`pnpm tsx scripts/quality-audit/trigger-health-check.ts`). Não bloqueante.
 
 ### Compatibilidade retroativa
 - Migração aditiva: 4.914 linhas existentes preservadas, viram PENDENTE
@@ -345,7 +352,9 @@ Se houver >40 pendentes, eu faço em loops sucessivos (dump → avaliar → comm
 
 ### Integração
 - Rodar fluxo completo: agente responde → row PENDENTE existe no banco → script dump pega ela → commit atualiza → UI mostra
+- **Trigger FALHA_TECNICA**: simular `client.chat` throw (mock) → confirmar row criada com status FALHA_TECNICA e technicalError preenchido
 - Decommission: `/agente/inteligencia` redirect funciona, link interno (se houver) ainda funciona
+- **Health check**: rodar manualmente, validar que detecta período de 7 dias sem rows
 
 ### Manual
 - UI vista em desktop e mobile (responsividade)
@@ -359,20 +368,30 @@ Se houver >40 pendentes, eu faço em loops sucessivos (dump → avaliar → comm
 | Migration de renomes quebra prod | Média | Alto | Identificar TODOS os call sites antes; rodar `tsc` + testes; deploy em janela controlada |
 | Trigger PENDENTE causa lock no DB sob carga | Baixa | Médio | Fire-and-forget assíncrono; insert é simples (1 row, índices leves); monitorar em produção |
 | UI fica pesada com 100k+ rows | Baixa | Médio | Paginação DB, índices corretos; lazy load do drill-down |
-| Eu (judge) classifico inconsistente | Média | Baixo | Briefing claro em prompt fixo do script de avaliação; usar mesma taxonomia das rodadas R4/R5 |
+| Eu (judge) classifico inconsistente entre sessões | Média | Médio | **judgeVersion versionado** (string no schema). Cada mudança no prompt-briefing do judge bumpa a versão. Permite comparar evals SÓ entre evals da mesma versão. UI mostra a versão dominante no período filtrado. |
 | LGPD: snapshots com dados sensíveis | Baixa | Médio | Cap em 4000 chars; deletar com a Message via CASCADE; futura: TTL de 180d |
 | Decommission `/agente/inteligencia` quebra bookmark/link externo | Baixa | Baixo | Redirect 308 |
 
 ## 9. Sequência de execução
 
-1. **Migration aditiva** (schema + Prisma + DB): renomes + novos campos. Verificar todos call sites de campos renomeados.
-2. **`persistMessageAndReturnId`** + **trigger PENDENTE** no `run-agent.ts` + **trigger FALHA_TECNICA** no catch externo.
-3. **Scripts CLI**: `dump-pending.ts` e `commit-audit-results.ts`.
-4. **Server actions e queries** da UI (`/lib/agent/quality/queries.ts`, etc).
-5. **UI** `/agente/qualidade/page.tsx` + componentes (`KpisBlock`, `ChartsBlock`, `EvaluationsTable`, `EvaluationDrilldown`). UI/UX Pro Max consultado antes de cada componente.
-6. **Redirect** de `/agente/inteligencia` → `/agente/qualidade`.
-7. **Testes unitários + integração**.
-8. **Smoke test manual**: rodar 1 audit completo via Claude Code, validar UI.
+Cada etapa tem teste integrado (não é fase separada). TDD onde aplicável.
+
+1. **Migration aditiva** (schema Prisma + DB):
+   - 1.1. Grep call sites dos campos renomeados (`reviewerDecision`, `reviewedBy`, `reviewedByHumanAt`) e listar
+   - 1.2. Atualizar Prisma schema (renomes + nullable assistantMessageId + remove @unique + novos campos)
+   - 1.3. `prisma migrate dev --name agent-quality-system`
+   - 1.4. Atualizar todos os call sites identificados; `tsc --noEmit` deve passar
+2. **Helper `persistMessageAndReturnId`** em `conversation.ts` + teste unitário
+3. **Trigger PENDENTE** no `run-agent.ts` (final do try) + teste integração: agente responde → row PENDENTE existe
+4. **Trigger FALHA_TECNICA** no catch externo do `run-agent.ts` + teste integração: simular erro → row FALHA_TECNICA existe
+5. **Scripts CLI**: `dump-pending.ts` e `commit-audit-results.ts` + smoke tests
+6. **Health check script**: `trigger-health-check.ts` (uso futuro, deixar pronto)
+7. **Server actions / queries** da UI em `src/lib/agent/quality/queries.ts` + testes unitários (cálculos de KPI)
+8. **Layout/components UI**: invocar `ui-ux-pro-max` skill antes; reusar `KpiCard`, `PeriodPills`, charts, table de consumo
+9. **UI `/agente/qualidade/page.tsx`** + componentes; teste manual em desktop e mobile
+10. **Redirect 307** de `/agente/inteligencia` → `/agente/qualidade`
+11. **Smoke test E2E manual**: rodar `dump-pending` + eu avaliar + `commit-audit-results` + abrir UI e validar KPIs atualizados
+12. **Commit final + push**
 
 ## 10. Open questions
 
