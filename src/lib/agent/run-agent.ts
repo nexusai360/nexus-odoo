@@ -446,27 +446,86 @@ export async function runAgent(args: RunAgentInput): Promise<RunAgentResult> {
           message = fb.message;
           suggestions = fb.suggestions;
         }
-        // GUARDRAIL FACTUAL (auditoria 2026-05-26): valida que numeros R$
-        // citados na mensagem final aparecem em algum toolResult do turno.
-        // Se houver invento, pede ao LLM correcao em UMA chamada adicional.
+        // GUARDRAIL FACTUAL (auditoria 2026-05-26 rodada 5):
+        // Dois detectores ortogonais:
+        //  (a) findInventedValues — valores R$ que nao aparecem em nenhum
+        //      toolResult. Threshold: dispara so se >=2 valores E >=50% dos
+        //      R$ citados estao flagrados (evita falso positivo de
+        //      agregacoes legitimas onde tool retorna linhas individuais e
+        //      agente soma um total que nao existe literal no JSON).
+        //      Validado contra rodada 4: FP=2.3% (5/214 CORRETO),
+        //      TP=30.8% (4/13 ERRADO).
+        //  (b) detectsHallucinatedNonEmpty — TODAS as tools vieram vazias
+        //      mas resposta nao admite isso. Catch os piores casos de
+        //      invento (#3694548f, #8185fe09). FP baixo.
+        // Anexa toolResults brutos na correcao para o LLM defender
+        // calculos legitimos com referencia factual.
         try {
           const invented = findInventedValues(message, allTurnToolResults);
-          if (invented.length > 0 && allTurnToolResults.length > 0) {
+          const totalMoneyRefs = Array.from(
+            message.matchAll(/R\$\s*([\d.,]+)/g),
+          ).filter((m) => {
+            const n = m[1].replace(/[.,\s]/g, "");
+            return n.length >= 3 && !/^0+$/.test(n);
+          }).length;
+          const inventedRatio =
+            totalMoneyRefs > 0 ? invented.length / totalMoneyRefs : 0;
+          const moneyGuardTrigger =
+            invented.length >= 2 && inventedRatio >= 0.5;
+          const hallucinatedEmpty = detectsHallucinatedNonEmpty(
+            message,
+            allTurnToolResults,
+          );
+          if (
+            (moneyGuardTrigger || hallucinatedEmpty) &&
+            allTurnToolResults.length > 0
+          ) {
             console.warn(
-              "[runAgent] possiveis valores inventados:",
-              JSON.stringify(invented),
+              "[runAgent] guardrail factual disparado:",
+              JSON.stringify({
+                invented,
+                inventedRatio,
+                hallucinatedEmpty,
+                moneyGuardTrigger,
+              }),
               "conv=",
               args.conversationId,
             );
+            // Anexa toolResults brutos (limitados) para o LLM ter referencia
+            // factual sem precisar adivinhar. Cap em 8000 chars para nao
+            // estourar contexto da chamada de correcao.
+            const toolResultsBlob = allTurnToolResults
+              .join("\n---\n")
+              .slice(0, 8000);
+            const correctionBullets: string[] = [];
+            if (moneyGuardTrigger) {
+              correctionBullets.push(
+                "Valores R$ citados que nao aparecem nos toolResults: " +
+                  invented.join(", ") +
+                  ". Se voce computou agregado/soma a partir das linhas, refaca o calculo e confirme contra os dados; se nao for agregado, REMOVA ou substitua por 'nao consegui obter esse dado'.",
+              );
+            }
+            if (hallucinatedEmpty) {
+              correctionBullets.push(
+                "TODAS as tools chamadas neste turno retornaram VAZIO (estado=vazio, linhas=[], total=0 ou equivalente). Sua resposta nao pode afirmar valores concretos, listar itens ou apresentar agregados. Declare honestamente que a consulta nao retornou dados.",
+              );
+            }
             const correctionMessages = [
               ...conversation,
               { role: "assistant" as const, content: message },
               {
                 role: "user" as const,
                 content:
-                  "Atencao: voce citou valores que NAO aparecem em nenhum dos dados retornados pelas tools deste turno: " +
-                  invented.join(", ") +
-                  ". Reescreva sua resposta anterior REMOVENDO esses valores OU substituindo por 'nao consegui obter esse dado'. Mantenha o resto da resposta intacto. Nao chame novas tools.",
+                  "GUARDRAIL FACTUAL: sua resposta anterior contem problemas factuais.\n\n" +
+                  correctionBullets.map((b) => "- " + b).join("\n") +
+                  "\n\nREFERENCIA FACTUAL (toolResults BRUTOS deste turno; use APENAS o que esta aqui):\n" +
+                  toolResultsBlob +
+                  "\n\nREESCREVA sua resposta cumprindo:\n" +
+                  "1. NAO adicione informacao que nao esteja explicitamente no bloco acima.\n" +
+                  "2. Para qualquer valor/nome/codigo que voce nao tem certeza de origem, NAO escreva — diga 'nao consegui obter esse dado'.\n" +
+                  "3. Se as tools vieram vazias, declare isso de forma natural ('Nao encontrei...', 'A consulta nao retornou resultados...').\n" +
+                  "4. Mantenha o tom, idioma e formato da resposta original.\n" +
+                  "5. NAO chame novas tools. NAO peca clarificacao.\n",
               },
             ];
             try {
@@ -680,19 +739,66 @@ export function findInventedValues(
   toolResults: string[],
 ): string[] {
   if (!message || toolResults.length === 0) return [];
-  const moneyMatches = Array.from(
-    message.matchAll(/R\$\s*([\d.,]+)/g),
-  ).map((m) => m[1]);
-  if (moneyMatches.length === 0) return [];
-
-  const haystack = toolResults.join(" ").replace(/[.,\s]/g, "");
+  const haystackNoSep = toolResults.join(" ").replace(/[.,\s]/g, "");
   const invented: string[] = [];
-  for (const raw of moneyMatches) {
+
+  // Valores R$ apenas. Comparacao por PREFIXO ignorando os 2 ultimos digitos
+  // (centavos) para tolerar precisao float: tool retorna 38064323.839999996,
+  // agente arredonda para R$ 38.064.323,84 — comparar so 38064323 evita
+  // falso positivo. R$ 0,00 e excluido (resultado valido de agregacao).
+  // Extensoes para codigos/quantidades foram avaliadas e recuadas: a
+  // igualdade literal nao funciona para agregados que o agente computa
+  // (validacao 2026-05-26: 63% FP). A decisao de DISPARAR correcao usa
+  // threshold (>=2 valores E >=50% dos R$ inventados) — implementado no
+  // ponto de chamada em run-agent.ts.
+  for (const m of message.matchAll(/R\$\s*([\d.,]+)/g)) {
+    const raw = m[1];
     const normalized = raw.replace(/[.,\s]/g, "");
-    if (normalized.length < 3) continue; // valores pequenos (R$ 50, R$ 100) ignora
-    if (!haystack.includes(normalized)) {
-      invented.push("R$ " + raw);
-    }
+    if (normalized.length < 3) continue;
+    if (/^0+$/.test(normalized)) continue;
+    const withoutCents =
+      normalized.length > 2 ? normalized.slice(0, -2) : normalized;
+    if (withoutCents.length < 2) continue;
+    if (!haystackNoSep.includes(withoutCents)) invented.push("R$ " + raw);
   }
+
   return Array.from(new Set(invented)).slice(0, 8);
+}
+
+/**
+ * Detecta hallucination quando TODAS as tools chamadas no turno retornaram
+ * vazio mas a resposta final NAO declara essa ausencia. Catch o pior caso de
+ * invento (auditoria 2026-05-26 caso #8185fe09: bi_consulta_avancada retornou
+ * linhas=[] e agente respondeu "405 clientes com pedido em aberto"; caso
+ * #3694548f: contabil_plano_de_contas retornou estado=vazio e agente listou
+ * varias contas concretas).
+ */
+export function detectsHallucinatedNonEmpty(
+  message: string,
+  toolResults: string[],
+): boolean {
+  if (!message || toolResults.length === 0) return false;
+  const allEmpty = toolResults.every((r) => {
+    if (!r) return true;
+    return (
+      /"estado"\s*:\s*"vazio"/i.test(r) ||
+      /"linhas"\s*:\s*\[\s*\]/i.test(r) ||
+      /"dados"\s*:\s*\[\s*\]/i.test(r) ||
+      /"total"\s*:\s*0\b/i.test(r) ||
+      /\bsem\s+(resultados?|dados|registros?|linhas?)\b/i.test(r)
+    );
+  });
+  if (!allEmpty) return false;
+  const declaresEmpty =
+    /n[ãa]o\s+(encontr|h[áa]\s|consta|consegui|tem\s|temos|existe)/i.test(
+      message,
+    ) ||
+    /sem\s+(resultados?|registros?|dados|linhas?)/i.test(message) ||
+    /\bvazi[oa]\b/i.test(message) ||
+    /nenhum/i.test(message) ||
+    /\b0\s+(registros?|resultados?|itens?|linhas?|pedidos?|clientes?|produtos?)/i.test(
+      message,
+    ) ||
+    /retornou\s+vazi/i.test(message);
+  return !declaresEmpty;
 }
