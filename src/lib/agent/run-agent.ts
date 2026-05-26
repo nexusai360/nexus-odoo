@@ -219,15 +219,20 @@ export async function runAgent(args: RunAgentInput): Promise<RunAgentResult> {
     return null;
   });
 
+  // Declarado fora do try pra ficar acessivel no catch externo
+  // (usado pelo trigger FALHA_TECNICA do /agente/qualidade — Onda 3a).
+  let resolvedLlm:
+    | {
+        provider: import("./llm/types").LlmProvider;
+        model: string;
+        apiKey: string;
+        credentialId?: string | null;
+      }
+    | undefined;
+
   try {
     // Resolver LLM: override da sessão de playground tem prioridade sobre a
     // config ativa de produção.
-    let resolvedLlm: {
-      provider: import("./llm/types").LlmProvider;
-      model: string;
-      apiKey: string;
-      credentialId?: string | null;
-    };
     if (args.llmOverride) {
       resolvedLlm = args.llmOverride;
     } else {
@@ -768,6 +773,25 @@ export async function runAgent(args: RunAgentInput): Promise<RunAgentResult> {
     };
   } catch (err) {
     console.error("[runAgent] Erro inesperado:", err);
+
+    // Onda 3a: trigger fire-and-forget FALHA_TECNICA pro /agente/qualidade.
+    // Cria row separada do KPI normal (status=FALHA_TECNICA nao conta no
+    // % CORRETO). NAO buscar lastUserMsg via query — race condition se erro
+    // foi antes de persistMessage("user"). Spec §5.4.
+    void (async () => {
+      try {
+        const { createTechnicalFailureEval } = await import("./quality/trigger");
+        await createTechnicalFailureEval({
+          conversationId: args.conversationId,
+          userMessage: args.userMessage,
+          model: resolvedLlm?.model ?? "unknown",
+          errorMessage: err instanceof Error ? err.message : String(err),
+        });
+      } catch (innerErr) {
+        console.warn("[runAgent] falha ao criar eval FALHA_TECNICA:", innerErr);
+      }
+    })();
+
     return {
       ok: false,
       error: err instanceof Error ? err.message : "Erro interno do agente.",
