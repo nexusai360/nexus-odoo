@@ -517,7 +517,30 @@ export async function runAgent(args: RunAgentInput): Promise<RunAgentResult> {
             ? await callExternalTool(externalBundle, nomeRealDaTool.get(tc.name) ?? tc.name, toolArgs, args.userId)
             : "(MCP externo indisponível)";
         } else if (session) {
-          toolResultStr = await session.callTool(nomeRealDaTool.get(tc.name) ?? tc.name, toolArgs);
+          // Auditoria 2026-05-26 (R5): retry implicito em rate limit. Tenta 1x mais
+          // com backoff curto antes de declarar erro. ~20% dos FORA_DE_ESCOPO eram
+          // rate limit que o agente declarava sem nem tentar de novo.
+          const realToolName = nomeRealDaTool.get(tc.name) ?? tc.name;
+          try {
+            toolResultStr = await session.callTool(realToolName, toolArgs);
+            // Se o resultado for string indicando rate limit, ja retry.
+            if (
+              typeof toolResultStr === "string" &&
+              /rate.?limit|too many|429|muitas requisic/i.test(toolResultStr) &&
+              toolResultStr.length < 500
+            ) {
+              await new Promise((r) => setTimeout(r, 1500));
+              toolResultStr = await session.callTool(realToolName, toolArgs);
+            }
+          } catch (err) {
+            const msg = err instanceof Error ? err.message : String(err);
+            if (/rate.?limit|too many|429/i.test(msg)) {
+              await new Promise((r) => setTimeout(r, 1500));
+              toolResultStr = await session.callTool(realToolName, toolArgs);
+            } else {
+              throw err;
+            }
+          }
         } else {
           toolResultStr = "(MCP indisponível)";
         }
