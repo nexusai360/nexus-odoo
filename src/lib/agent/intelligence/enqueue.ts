@@ -9,7 +9,8 @@
  * nao quebram o caminho critico do agente.
  */
 
-import "server-only";
+// Sem 'server-only' — este modulo e importado pelo run-agent.ts que tambem
+// roda em scripts tsx (auditoria de qualidade). server-only quebra Node puro.
 
 import { Queue } from "bullmq";
 import IORedis from "ioredis";

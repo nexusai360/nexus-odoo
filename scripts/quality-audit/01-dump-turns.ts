@@ -30,15 +30,25 @@ interface Args {
   batchSize: number;
   limitTotal: number | null;
   sampleStrategy: "stratified" | "all";
+  conversationTitleLike: string | null;
+  outDirName: string;
 }
 
 function parseArgs(argv: string[]): Args {
-  const args: Args = { batchSize: 40, limitTotal: null, sampleStrategy: "all" };
+  const args: Args = {
+    batchSize: 40,
+    limitTotal: null,
+    sampleStrategy: "all",
+    conversationTitleLike: null,
+    outDirName: "batches",
+  };
   for (let i = 2; i < argv.length; i++) {
     const a = argv[i];
     if (a === "--batch-size") args.batchSize = parseInt(argv[++i] ?? "40", 10);
     else if (a === "--limit-total") args.limitTotal = parseInt(argv[++i] ?? "0", 10) || null;
     else if (a === "--sample-strategy") args.sampleStrategy = (argv[++i] as Args["sampleStrategy"]) ?? "all";
+    else if (a === "--title-like") args.conversationTitleLike = argv[++i] ?? null;
+    else if (a === "--out-dir") args.outDirName = argv[++i] ?? "batches";
   }
   return args;
 }
@@ -49,6 +59,7 @@ interface RawMessage {
   role: string;
   content: string;
   tool_calls: unknown;
+  tool_results: unknown;
   created_at: Date;
 }
 
@@ -68,6 +79,7 @@ interface Turno {
   userMessage: string;
   toolMessageId: string | null;
   toolCalls: Array<{ id?: string; name: string; arguments: unknown }> | null;
+  toolResults: Record<string, string> | null;
   finalMessageId: string;
   finalMessage: string;
   model: string | null;
@@ -82,15 +94,26 @@ interface Turno {
  * Constroi turnos: para cada user message, busca o proximo assistant_final
  * e os assistants intermediarios com tool_calls entre eles.
  */
-async function buildTurnos(): Promise<Turno[]> {
+async function buildTurnos(titleLike: string | null): Promise<Turno[]> {
   console.log("[dump] carregando mensagens em ordem cronologica por conversa...");
 
-  // Pega tudo de uma vez (banco e dev local; volume aceitavel).
-  const messages = await prisma.$queryRaw<RawMessage[]>`
-    SELECT id, conversation_id, role, content, tool_calls, created_at
-    FROM messages
-    ORDER BY conversation_id, created_at ASC
-  `;
+  let messages: RawMessage[];
+  if (titleLike) {
+    console.log(`[dump] filtrando conversas com title LIKE '%${titleLike}%'`);
+    messages = await prisma.$queryRawUnsafe<RawMessage[]>(
+      `SELECT m.id, m.conversation_id, m.role, m.content, m.tool_calls, m.tool_results, m.created_at
+       FROM messages m
+       JOIN conversations c ON c.id = m.conversation_id
+       WHERE c.title LIKE '%${titleLike.replace(/'/g, "''")}%'
+       ORDER BY m.conversation_id, m.created_at ASC`,
+    );
+  } else {
+    messages = await prisma.$queryRaw<RawMessage[]>`
+      SELECT id, conversation_id, role, content, tool_calls, tool_results, created_at
+      FROM messages
+      ORDER BY conversation_id, created_at ASC
+    `;
+  }
   console.log(`[dump] ${messages.length} mensagens carregadas.`);
 
   // Agrupa por conversa.
@@ -116,6 +139,7 @@ async function buildTurnos(): Promise<Turno[]> {
       let j = i + 1;
       let toolMessageId: string | null = null;
       let toolCalls: Turno["toolCalls"] = null;
+      let toolResults: Turno["toolResults"] = null;
       while (j < msgs.length && msgs[j].role !== "user") {
         const ass = msgs[j];
         if (ass.role === "assistant") {
@@ -125,6 +149,11 @@ async function buildTurnos(): Promise<Turno[]> {
             if (toolMessageId == null) {
               toolMessageId = ass.id;
               toolCalls = tc as Turno["toolCalls"];
+              // tool_results e gravado na mesma message assistant que tem
+              // tool_calls (instrumentacao Onda 1 da Inteligencia).
+              if (ass.tool_results && typeof ass.tool_results === "object") {
+                toolResults = ass.tool_results as Record<string, string>;
+              }
             }
           } else {
             // Encontrou o final
@@ -135,6 +164,7 @@ async function buildTurnos(): Promise<Turno[]> {
               userMessage: m.content,
               toolMessageId,
               toolCalls,
+              toolResults,
               finalMessageId: ass.id,
               finalMessage: ass.content,
               model: null,
@@ -229,7 +259,7 @@ async function main() {
   const args = parseArgs(process.argv);
   console.log(`[dump] batchSize=${args.batchSize} limit=${args.limitTotal ?? "all"} sample=${args.sampleStrategy}`);
 
-  let turnos = await buildTurnos();
+  let turnos = await buildTurnos(args.conversationTitleLike);
 
   if (args.limitTotal && turnos.length > args.limitTotal) {
     if (args.sampleStrategy === "stratified") {
@@ -245,7 +275,7 @@ async function main() {
   // (Mantemos seed deterministica simples baseada na ordem do turnoId.)
   turnos.sort((a, b) => a.turnoId.localeCompare(b.turnoId));
 
-  const outDir = resolve(process.cwd(), "docs/agent-quality-review/batches");
+  const outDir = resolve(process.cwd(), `docs/agent-quality-review/${args.outDirName}`);
   mkdirSync(outDir, { recursive: true });
 
   let batchIdx = 1;
