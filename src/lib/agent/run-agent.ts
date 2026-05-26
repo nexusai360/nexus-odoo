@@ -168,14 +168,32 @@ function normalizeReasoningEffort(
   return null;
 }
 
-/** Carrega o singleton AgentSettings do banco (fallback alinhado com @default do schema). */
+/**
+ * Carrega o singleton AgentSettings do banco (fallback alinhado com @default
+ * do schema).
+ *
+ * CRÍTICO — flag usesCodeDefaults: quando true (default em instalações novas
+ * E após reset via UI), retorna IDENTITY_BASE/DEFAULT_PERSONALITY/DEFAULT_TONE/
+ * DEFAULT_GUARDRAILS do CÓDIGO. Isso resolve o drift dev/banco: dev edita o
+ * código e a mudança REFLETE imediatamente sem precisar UPDATE manual.
+ * Quando false, admin customizou via UI e o banco vira fonte da verdade.
+ */
 async function loadAgentSettings() {
   const row = await prisma.agentSettings.findUnique({ where: { id: "global" } });
+  const useCode = row?.usesCodeDefaults ?? true;
   return {
-    identityBase: row?.identityBase ?? null,
-    personality: row?.personality ?? "",
-    tone: row?.tone ?? "",
-    guardrails: (row?.guardrails as string[]) ?? [],
+    identityBase: useCode
+      ? (await import("@/lib/agent/prompt/identity-base")).IDENTITY_BASE
+      : (row?.identityBase ?? null),
+    personality: useCode
+      ? (await import("@/lib/agent/prompt/defaults")).DEFAULT_PERSONALITY
+      : (row?.personality ?? ""),
+    tone: useCode
+      ? (await import("@/lib/agent/prompt/defaults")).DEFAULT_TONE
+      : (row?.tone ?? ""),
+    guardrails: useCode
+      ? (await import("@/lib/agent/prompt/defaults")).DEFAULT_GUARDRAILS
+      : ((row?.guardrails as string[]) ?? []),
     advancedOverride: row?.advancedOverride ?? null,
     // @default(true) no schema , alinhar fallback para evitar comportamento diferente
     // em instâncias novas antes da primeira gravação em AgentSettings.

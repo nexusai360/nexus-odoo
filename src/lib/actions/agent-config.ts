@@ -133,17 +133,29 @@ type AgentSettingsRow = {
   reasoningEffort: string | null;
   reasoningCheckpoint: FeatureCheckpoint;
   maxSuggestions: number;
+  usesCodeDefaults: boolean;
   updatedAt: Date;
 };
 
-/** Converte a linha Prisma no DTO público. */
+/**
+ * Converte a linha Prisma no DTO público.
+ *
+ * IMPORTANTE: quando `usesCodeDefaults === true`, retorna identityBase /
+ * personality / tone / guardrails do CÓDIGO em vez do banco. Isso resolve
+ * o drift dev/banco — dev edita identity-base.ts e a mudança REFLETE
+ * imediatamente sem precisar de UPDATE manual. Auto-flip pra false só
+ * quando admin SALVA via UI `/agente/prompt`.
+ */
 function mapSettings(row: AgentSettingsRow): AgentSettingsData {
+  const useCode = row.usesCodeDefaults;
   return {
     id: row.id,
-    identityBase: row.identityBase,
-    personality: row.personality,
-    tone: row.tone,
-    guardrails: (row.guardrails as string[]) ?? [],
+    identityBase: useCode ? IDENTITY_BASE : row.identityBase,
+    personality: useCode ? DEFAULT_PERSONALITY : row.personality,
+    tone: useCode ? DEFAULT_TONE : row.tone,
+    guardrails: useCode
+      ? DEFAULT_GUARDRAILS
+      : ((row.guardrails as string[]) ?? []),
     terminology: (row.terminology as Record<string, string>) ?? {},
     advancedOverride: row.advancedOverride,
     suggestionsEnabled: row.suggestionsEnabled,
@@ -162,6 +174,7 @@ function mapSettings(row: AgentSettingsRow): AgentSettingsData {
     reasoningEffort: row.reasoningEffort,
     reasoningCheckpoint: row.reasoningCheckpoint,
     maxSuggestions: row.maxSuggestions,
+    usesCodeDefaults: row.usesCodeDefaults,
     updatedAt: row.updatedAt,
   };
 }
@@ -179,37 +192,25 @@ async function ensureGlobalSettings(): Promise<AgentSettingsData> {
     where: { id: "global" },
   });
   if (existing) {
-    const repair: {
-      identityBase?: string;
-      personality?: string;
-      tone?: string;
-      guardrails?: string[];
-    } = {};
-    if (!existing.identityBase) repair.identityBase = IDENTITY_BASE;
-    if (!existing.personality.trim()) repair.personality = DEFAULT_PERSONALITY;
-    if (!existing.tone.trim()) repair.tone = DEFAULT_TONE;
-    const currentGuardrails = existing.guardrails as unknown;
-    if (!Array.isArray(currentGuardrails) || currentGuardrails.length === 0) {
-      repair.guardrails = DEFAULT_GUARDRAILS;
-    }
-    if (Object.keys(repair).length > 0) {
-      const fixed = await prisma.agentSettings.update({
-        where: { id: "global" },
-        data: repair,
-      });
-      return mapSettings(fixed as AgentSettingsRow);
-    }
+    // CRÍTICO: NÃO copiar IDENTITY_BASE/DEFAULT_* do código pro banco
+    // automaticamente. Isso era o BUG que causava drift dev/banco —
+    // dev editava o código, banco continuava com versão antiga, agente
+    // lia do banco. Agora a flag `usesCodeDefaults` resolve: quando
+    // true, mapSettings retorna do código sem precisar copiar.
+    // Auto-reparo só pra campos não cobertos pela flag (terminology, etc).
     return mapSettings(existing as AgentSettingsRow);
   }
 
+  // Primeira criação do singleton: deixa flag=true (default) e campos
+  // do banco em branco/null. Agente usa código.
   const created = await prisma.agentSettings.upsert({
     where: { id: "global" },
     create: {
       id: "global",
-      identityBase: IDENTITY_BASE,
-      personality: DEFAULT_PERSONALITY,
-      tone: DEFAULT_TONE,
-      guardrails: DEFAULT_GUARDRAILS,
+      // usesCodeDefaults default true (declarado no schema)
+      personality: "",
+      tone: "",
+      guardrails: [],
       terminology: {},
       suggestionsEnabled: true,
     },
@@ -308,6 +309,9 @@ export async function updateAgentSettings(
     }
 
     const data = parsed.data;
+    // Auto-flip da flag pra false quando admin SALVA via UI. A partir
+    // daqui, banco vira fonte da verdade até admin clicar em "Voltar
+    // ao padrão do sistema" (que faz resetAgentSettingsToCodeDefaults).
     const common = {
       personality: data.personality,
       tone: data.tone,
@@ -317,6 +321,7 @@ export async function updateAgentSettings(
       terminology: data.terminology as any,
       advancedOverride: data.advancedOverride ?? null,
       suggestionsEnabled: data.suggestionsEnabled,
+      usesCodeDefaults: false,
       ...(data.identityBase !== undefined ? { identityBase: data.identityBase } : {}),
     };
 
@@ -651,6 +656,46 @@ export async function createLlmConfig(input: {
     return {
       success: false,
       error: err instanceof Error ? err.message : "Erro ao criar configuração",
+    };
+  }
+}
+
+/**
+ * Volta o prompt ao padrão do sistema (código).
+ *
+ * Use quando o admin quer descartar customizações feitas via UI e voltar
+ * a usar identityBase/personality/tone/guardrails do código. Marca a
+ * flag `usesCodeDefaults = true` (campos do banco passam a ser ignorados
+ * por mapSettings — ver agent-config.ts).
+ *
+ * Os campos no banco NÃO são apagados (preserva histórico caso admin
+ * queira reverter). Só a flag controla a fonte.
+ */
+export async function resetAgentSettingsToCodeDefaults(): Promise<ActionResult> {
+  try {
+    const auth = await requireAdminOrAbove();
+    if (!auth.ok) return { success: false, error: auth.error };
+
+    await prisma.agentSettings.update({
+      where: { id: "global" },
+      data: { usesCodeDefaults: true },
+    });
+
+    void logAudit({
+      userId: auth.userId,
+      action: "agent_settings_updated",
+      targetType: "AgentSettings",
+      targetId: "global",
+    });
+
+    revalidatePath("/agente");
+    revalidatePath("/agente/prompt");
+    return { success: true };
+  } catch (err) {
+    console.error("[resetAgentSettingsToCodeDefaults]", err);
+    return {
+      success: false,
+      error: err instanceof Error ? err.message : "Erro ao restaurar padrão",
     };
   }
 }

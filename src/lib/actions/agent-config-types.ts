@@ -40,6 +40,17 @@ export interface AgentSettingsData {
   reasoningCheckpoint: FeatureCheckpoint;
   /** Máximo de sugestões clicáveis (default 3, hard cap em 5). */
   maxSuggestions: number;
+  /**
+   * Controle de fonte da verdade pro prompt:
+   * - true (default): identityBase/personality/tone/guardrails vêm do
+   *   CÓDIGO. Dev edita identity-base.ts/defaults.ts e a mudança reflete
+   *   imediatamente. Os campos do banco são ignorados.
+   * - false: admin customizou via UI `/agente/prompt`. Banco vira fonte.
+   *
+   * Auto-flip pra false quando admin SALVA via UI.
+   * Voltar a true: action `resetAgentSettingsToCodeDefaults`.
+   */
+  usesCodeDefaults: boolean;
   updatedAt: Date;
 }
 

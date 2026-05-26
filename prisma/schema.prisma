@@ -2366,6 +2366,18 @@ model AgentSettings {
   advancedOverride  String?  @map("advanced_override")
   suggestionsEnabled Boolean @default(true) @map("suggestions_enabled")
 
+  /// **CONTROLE DE FONTE DA VERDADE PRO PROMPT** (resolve drift dev/banco):
+  ///
+  /// - TRUE  (default): agente usa IDENTITY_BASE, DEFAULT_PERSONALITY,
+  ///   DEFAULT_TONE e DEFAULT_GUARDRAILS do CÓDIGO. Os campos `identityBase`,
+  ///   `personality`, `tone` e `guardrails` no banco são IGNORADOS.
+  ///   Dev pode editar o código e a mudança REFLETE imediatamente.
+  /// - FALSE: admin customizou via UI `/agente/prompt`. Usa o banco.
+  ///
+  /// Auto-flip pra FALSE quando admin SALVA via UI.
+  /// Pra voltar a TRUE: botão "Voltar ao padrão do sistema" na UI.
+  usesCodeDefaults  Boolean  @default(true) @map("uses_code_defaults")
+
   /// Exibição da bolha flutuante do Agente Nex nas páginas autenticadas.
   bubbleEnabled     Boolean  @default(true) @map("bubble_enabled")
 
