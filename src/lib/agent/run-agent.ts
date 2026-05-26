@@ -25,6 +25,8 @@ import {
 import {
   loadHistory,
   persistMessage,
+  persistAssistantMessageWithTools,
+  updateMessageToolResults,
   assertConversationOwned,
   sanitizeHistoryPairs,
   loadConversationReasoningHistory,
@@ -457,8 +459,17 @@ export async function runAgent(args: RunAgentInput): Promise<RunAgentResult> {
         toolCalls: result.toolCalls,
       });
 
-      // Persistir assistant com toolCalls
-      await persistMessage(args.conversationId, "assistant", result.message, result.toolCalls);
+      // Persistir assistant com toolCalls. Capturamos o id da Message criada
+      // para fazer UPDATE de `toolResults` apos o loop de execucao (Onda 1
+      // Inteligencia, T1.7). Spec §3.2 — toolResults armazena
+      // { [callId]: resultString }, fonte da verdade para o tool-replayer da
+      // Frente A na Onda 2.
+      const assistantMessageId = await persistAssistantMessageWithTools(
+        args.conversationId,
+        result.message,
+        result.toolCalls,
+      );
+      const toolResultsMap: Record<string, string> = {};
 
       // Executar cada tool via MCP. Onda D do Renascimento:
       //   - Cache intra-sessao por (tool, args) com TTL 60s reduz latencia
@@ -531,7 +542,16 @@ export async function runAgent(args: RunAgentInput): Promise<RunAgentResult> {
           toolName: tc.name,
           content: guarded,
         });
+
+        // Onda 1 Inteligencia (T1.7): acumular result para gravar em
+        // Message.toolResults apos o loop.
+        toolResultsMap[tc.id] = guarded;
       }
+
+      // Onda 1 Inteligencia (T1.7): persiste toolResults na Message do
+      // assistant que disparou as tools. UPDATE best-effort; nao bloqueia
+      // o turno se falhar.
+      await updateMessageToolResults(assistantMessageId, toolResultsMap);
     }
 
     // Esgotou iterações

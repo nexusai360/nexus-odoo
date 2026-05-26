@@ -10,6 +10,9 @@ import {
   capReasoningHistory,
   REASONING_HISTORY_MAX_ITEMS,
   REASONING_HISTORY_MAX_BYTES,
+  getLastNPairs,
+  updateMessageToolResults,
+  persistAssistantMessageWithTools,
 } from "./conversation";
 import type { ReasoningContext } from "./llm/types";
 
@@ -24,6 +27,7 @@ jest.mock("@/lib/prisma", () => ({
     message: {
       findMany: jest.fn(),
       create: jest.fn(),
+      update: jest.fn(),
     },
   },
 }));
@@ -242,5 +246,124 @@ describe("reasoning history persistence (Onda 1)", () => {
   test("capReasoningHistory retorna mesmo array quando dentro dos limites", () => {
     const small: ReasoningContext[] = [{ provider: "openrouter", data: { details: [] } }];
     expect(capReasoningHistory(small)).toEqual(small);
+  });
+});
+
+// ============================================================================
+// Onda 1 Inteligencia — getLastNPairs + tool-results helpers.
+// ============================================================================
+
+describe("getLastNPairs", () => {
+  test("conversa simples (3 pares user->assistant) — retorna 3 em ordem DESC", async () => {
+    const t = (n: number) => new Date(`2026-05-25T20:${n.toString().padStart(2, "0")}:00Z`);
+    // Banco devolve DESC; mais recentes primeiro.
+    prisma.message.findMany.mockResolvedValue([
+      { id: "a3", role: "assistant", content: "ans 3", toolCalls: null, createdAt: t(6) },
+      { id: "u3", role: "user", content: "q3", toolCalls: null, createdAt: t(5) },
+      { id: "a2", role: "assistant", content: "ans 2", toolCalls: null, createdAt: t(4) },
+      { id: "u2", role: "user", content: "q2", toolCalls: null, createdAt: t(3) },
+      { id: "a1", role: "assistant", content: "ans 1", toolCalls: null, createdAt: t(2) },
+      { id: "u1", role: "user", content: "q1", toolCalls: null, createdAt: t(1) },
+    ]);
+    const out = await getLastNPairs("conv-1", 5);
+    expect(out).toHaveLength(3);
+    expect(out[0].user.content).toBe("q3");
+    expect(out[0].assistant.content).toBe("ans 3");
+    expect(out[2].user.content).toBe("q1");
+  });
+
+  test("ignora assistant intermediario com toolCalls (final assistant tem toolCalls vazio)", async () => {
+    const t = (n: number) => new Date(`2026-05-25T20:${n.toString().padStart(2, "0")}:00Z`);
+    prisma.message.findMany.mockResolvedValue([
+      // final assistant (sem toolCalls)
+      { id: "a_final", role: "assistant", content: "resposta final", toolCalls: null, createdAt: t(5) },
+      // tool message intermediaria
+      { id: "tool_1", role: "tool", content: "tool result", toolCalls: null, createdAt: t(4) },
+      // assistant intermediario com toolCalls (turno de chamada de tool)
+      { id: "a_inter", role: "assistant", content: "vou consultar", toolCalls: [{ id: "tc1", name: "x", arguments: {} }], createdAt: t(3) },
+      { id: "u1", role: "user", content: "pergunta", toolCalls: null, createdAt: t(1) },
+    ]);
+    const out = await getLastNPairs("conv-2", 5);
+    expect(out).toHaveLength(1);
+    expect(out[0].user.id).toBe("u1");
+    expect(out[0].assistant.id).toBe("a_final");
+  });
+
+  test("toolCalls array vazio conta como final assistant", async () => {
+    const t = (n: number) => new Date(`2026-05-25T20:${n}:00Z`);
+    prisma.message.findMany.mockResolvedValue([
+      { id: "a1", role: "assistant", content: "resp", toolCalls: [], createdAt: t(2) },
+      { id: "u1", role: "user", content: "q", toolCalls: null, createdAt: t(1) },
+    ]);
+    const out = await getLastNPairs("conv-3", 5);
+    expect(out).toHaveLength(1);
+  });
+
+  test("conversa com menos pares do que pedido — retorna todos disponiveis", async () => {
+    prisma.message.findMany.mockResolvedValue([
+      { id: "a1", role: "assistant", content: "resp", toolCalls: null, createdAt: new Date() },
+      { id: "u1", role: "user", content: "q", toolCalls: null, createdAt: new Date() },
+    ]);
+    const out = await getLastNPairs("conv-4", 5);
+    expect(out).toHaveLength(1);
+  });
+
+  test("conversa sem assistant final — retorna vazio", async () => {
+    prisma.message.findMany.mockResolvedValue([
+      { id: "u1", role: "user", content: "q", toolCalls: null, createdAt: new Date() },
+    ]);
+    expect(await getLastNPairs("conv-5", 5)).toEqual([]);
+  });
+
+  test("cap em n=2 mesmo com 5 pares no banco", async () => {
+    const t = (n: number) => new Date(`2026-05-25T20:${n.toString().padStart(2, "0")}:00Z`);
+    const rows = [];
+    for (let i = 5; i >= 1; i--) {
+      rows.push({ id: `a${i}`, role: "assistant", content: `a${i}`, toolCalls: null, createdAt: t(i * 2) });
+      rows.push({ id: `u${i}`, role: "user", content: `u${i}`, toolCalls: null, createdAt: t(i * 2 - 1) });
+    }
+    prisma.message.findMany.mockResolvedValue(rows);
+    const out = await getLastNPairs("conv-6", 2);
+    expect(out).toHaveLength(2);
+  });
+});
+
+describe("updateMessageToolResults", () => {
+  test("grava JSON na coluna toolResults", async () => {
+    prisma.message.update.mockResolvedValue({});
+    await updateMessageToolResults("msg-1", { c1: "resultA", c2: "resultB" });
+    expect(prisma.message.update).toHaveBeenCalledWith({
+      where: { id: "msg-1" },
+      data: { toolResults: { c1: "resultA", c2: "resultB" } },
+    });
+  });
+
+  test("nao lanca quando mensagem nao existe (cascade delete)", async () => {
+    prisma.message.update.mockRejectedValue(new Error("Record not found"));
+    // best-effort: deve resolver sem throw
+    await expect(updateMessageToolResults("msg-deleted", {})).resolves.toBeUndefined();
+  });
+});
+
+describe("persistAssistantMessageWithTools", () => {
+  test("cria Message com toolCalls e retorna id", async () => {
+    prisma.message.create.mockResolvedValue({ id: "msg-id-1" });
+    prisma.conversation.findUnique.mockResolvedValue({ userId: "u1" });
+    const id = await persistAssistantMessageWithTools(
+      "conv-x",
+      "Vou consultar",
+      [{ id: "tc1", name: "fiscal_faturamento", arguments: { mes: 5 } }],
+    );
+    expect(id).toBe("msg-id-1");
+    expect(prisma.message.create).toHaveBeenCalledWith(
+      expect.objectContaining({
+        data: expect.objectContaining({
+          conversationId: "conv-x",
+          role: "assistant",
+          content: "Vou consultar",
+        }),
+        select: { id: true },
+      }),
+    );
   });
 });

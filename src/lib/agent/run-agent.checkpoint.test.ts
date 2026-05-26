@@ -56,6 +56,8 @@ jest.mock("./conversation", () => ({
   loadConversationReasoningHistory: jest.fn().mockResolvedValue([]),
   saveConversationReasoningHistory: jest.fn().mockResolvedValue(undefined),
   capReasoningHistory: jest.fn((h: unknown[]) => h),
+  persistAssistantMessageWithTools: jest.fn().mockResolvedValue("msg-mock-id"),
+  updateMessageToolResults: jest.fn().mockResolvedValue(undefined),
 }));
 
 jest.mock("./prompt/compose", () => ({
