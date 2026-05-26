@@ -166,10 +166,12 @@ export async function getUsageStats(args: {
   start: Date;
   end: Date;
   provider?: string | null;
+  model?: string | null;
   isPlayground?: boolean | null;
 }): Promise<UsageSummaryV2> {
   const { start, end } = args;
   const provider = args.provider && args.provider !== "" ? args.provider : undefined;
+  const model = args.model && args.model !== "" ? args.model : undefined;
   const isPlayground = typeof args.isPlayground === "boolean" ? args.isPlayground : undefined;
 
   const hourlyMode = end.getTime() - start.getTime() <= ONE_DAY_MS + 1;
@@ -178,6 +180,7 @@ export async function getUsageStats(args: {
   const usageWhere = {
     createdAt: { gte: start, lt: end },
     ...(provider !== undefined ? { provider } : {}),
+    ...(model !== undefined ? { model } : {}),
     ...(isPlayground !== undefined ? { isPlayground } : {}),
   };
 

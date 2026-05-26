@@ -38,6 +38,7 @@ export async function fetchUsageStats(args: {
   start: string;
   end: string;
   provider?: string | null;
+  model?: string | null;
   isPlayground?: boolean | null;
 }): Promise<UsageSummaryV2> {
   await requireAdminOrSuper();
@@ -45,6 +46,7 @@ export async function fetchUsageStats(args: {
     start: new Date(args.start),
     end: new Date(args.end),
     provider: args.provider,
+    model: args.model,
     isPlayground: args.isPlayground,
   });
 }
