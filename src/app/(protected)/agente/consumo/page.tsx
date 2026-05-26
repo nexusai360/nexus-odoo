@@ -31,7 +31,15 @@ export default async function ConsumoPage() {
         icon={TrendingUp}
         title="Consumo do Agente Nex"
         subtitle="Custo e uso de tokens por modelo, provedor e período."
-        actions={<div id="agente-consumo-header-actions" />}
+        actions={
+          // Alvo do portal do loading "Atualizando..." da ConsumoContent.
+          // pt-7 alinha o conteudo na linha do subtitulo do PageHeader
+          // (que comeca logo abaixo do h1 text-xl).
+          <div
+            id="agente-consumo-header-actions"
+            className="flex items-center pt-7"
+          />
+        }
       />
       <ConsumoContent minDate={minDate.toISOString()} />
     </PageShell>
