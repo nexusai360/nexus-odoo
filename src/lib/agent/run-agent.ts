@@ -446,6 +446,22 @@ export async function runAgent(args: RunAgentInput): Promise<RunAgentResult> {
         } catch (err) {
           console.warn("[runAgent] Falha ao persistir reasoning_history:", err);
         }
+        // Onda 1 Inteligencia (T1.16): enfileira tagging assincrono apos o
+        // turno fechar. Fire-and-forget; nao bloqueia o `done` do usuario.
+        void (async () => {
+          try {
+            const { enqueueTopicTagging } = await import(
+              "@/lib/agent/intelligence/enqueue"
+            );
+            // Conta mensagens (cheap) para BullMQ deduplicar via jobId.
+            const msgCount = await import("@/lib/prisma").then((m) =>
+              m.prisma.message.count({ where: { conversationId: args.conversationId } }),
+            );
+            await enqueueTopicTagging(args.conversationId, msgCount);
+          } catch (err) {
+            console.warn("[runAgent] falha ao enfileirar tagging:", err);
+          }
+        })();
         args.onEvent?.({ type: "done" });
         void start;
         await Promise.allSettled(usageWrites);
