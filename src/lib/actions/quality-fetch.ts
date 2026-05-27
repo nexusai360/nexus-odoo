@@ -13,6 +13,7 @@ import {
   getDistinctModels,
   getDailyCorrectness,
   getDistinctPatterns,
+  getDistinctRodadas,
   getEvaluationDetail,
   type EvalStatus,
   type EvaluationFilters,
@@ -32,6 +33,7 @@ export interface FilterInputs {
   models?: string[];
   patterns?: string[];
   search?: string;
+  rodadas?: string[];
 }
 
 function toFilters(f: FilterInputs): EvaluationFilters {
@@ -42,6 +44,7 @@ function toFilters(f: FilterInputs): EvaluationFilters {
     models: f.models,
     patterns: f.patterns,
     search: f.search,
+    rodadas: f.rodadas,
   };
 }
 
@@ -76,4 +79,9 @@ export async function fetchQualityTopPatterns(f: FilterInputs) {
 export async function fetchQualityEvaluationDetail(id: string) {
   await gate();
   return getEvaluationDetail(id);
+}
+
+export async function fetchQualityDistinctRodadas(f: FilterInputs) {
+  await gate();
+  return getDistinctRodadas(toFilters(f));
 }

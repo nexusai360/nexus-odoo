@@ -78,6 +78,16 @@ const dateTimeFmt = new Intl.DateTimeFormat("pt-BR", {
 });
 const numberFmt = new Intl.NumberFormat("pt-BR");
 
+/** "[AUDIT-POS-2026-05-26T03-43-05]" -> "26/05 03:43" */
+function formatRodadaShortLabel(marker: string): string {
+  const m = marker.match(
+    /\[AUDIT-(?:[A-Z]+-)?(\d{4})-(\d{2})-(\d{2})T(\d{2})-(\d{2})/,
+  );
+  if (!m) return marker;
+  const [, , month, day, hour, min] = m;
+  return `${day}/${month} ${hour}:${min}`;
+}
+
 function truncate(text: string | null | undefined, max = 80): string {
   if (!text) return "";
   return text.length > max ? `${text.slice(0, max).trimEnd()}…` : text;
@@ -213,6 +223,7 @@ export function EvaluationsTable({
                 <TableHead>Pergunta</TableHead>
                 <TableHead>Resposta</TableHead>
                 <TableHead className="w-[130px]">Status</TableHead>
+                <TableHead className="w-[120px]">Rodada</TableHead>
                 <TableHead className="w-[140px]">Modelo</TableHead>
                 <TableHead className="w-[180px]">Padrão dominante</TableHead>
                 <TableHead className="w-[60px] text-right">Ações</TableHead>
@@ -222,7 +233,7 @@ export function EvaluationsTable({
               {data.rows.length === 0 && !loading && (
                 <TableRow>
                   <TableCell
-                    colSpan={7}
+                    colSpan={8}
                     className="py-10 text-center text-sm text-muted-foreground"
                   >
                     Nenhuma avaliação encontrada com os filtros atuais.
@@ -274,6 +285,18 @@ export function EvaluationsTable({
                           )}
                         </div>
                       </TableCell>
+                      <TableCell className="text-xs text-muted-foreground">
+                        {row.rodada ? (
+                          <span
+                            className="font-mono"
+                            title={row.rodada}
+                          >
+                            {formatRodadaShortLabel(row.rodada)}
+                          </span>
+                        ) : (
+                          <span className="text-muted-foreground">,</span>
+                        )}
+                      </TableCell>
                       <TableCell className="font-mono text-xs text-muted-foreground">
                         {row.model ?? ","}
                       </TableCell>
@@ -283,7 +306,7 @@ export function EvaluationsTable({
                             {row.dominantPattern}
                           </Badge>
                         ) : (
-                          <span className="text-xs text-muted-foreground">—</span>
+                          <span className="text-xs text-muted-foreground">,</span>
                         )}
                       </TableCell>
                       <TableCell className="text-right">
@@ -308,7 +331,7 @@ export function EvaluationsTable({
                     </TableRow>
                     {isOpen && (
                       <TableRow className="bg-muted/10">
-                        <TableCell colSpan={7} className="p-0">
+                        <TableCell colSpan={8} className="p-0">
                           <EvaluationDrilldown
                             evaluationId={row.id}
                             onAdjusted={handleAdjusted}

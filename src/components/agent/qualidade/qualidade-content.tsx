@@ -20,6 +20,7 @@ import {
 import {
   fetchQualityDailyCorrectness,
   fetchQualityDistinctModels,
+  fetchQualityDistinctRodadas,
   fetchQualityEvaluations,
   fetchQualityKpis,
   fetchQualityTopPatterns,
@@ -45,6 +46,16 @@ function isoLocalToDate(iso: string): Date {
   return new Date(y ?? 1970, (m ?? 1) - 1, d ?? 1, 0, 0, 0, 0);
 }
 
+/** Converte marker tipo "[AUDIT-POS-2026-05-26T03-43-05]" em "26/05 03:43" */
+function formatRodadaLabel(marker: string): string {
+  const m = marker.match(
+    /\[AUDIT-(?:[A-Z]+-)?(\d{4})-(\d{2})-(\d{2})T(\d{2})-(\d{2})/,
+  );
+  if (!m) return marker;
+  const [, , month, day, hour, min] = m;
+  return `${day}/${month} ${hour}:${min}`;
+}
+
 function rangeForPills(
   pill: PeriodKey,
   customRange: { start: string; end: string } | undefined,
@@ -68,8 +79,10 @@ export function QualidadeContent({ minDate }: QualidadeContentProps) {
   const [pill, setPill] = useState<PeriodKey>("mes_atual");
   const [customRange, setCustomRange] = useState<{ start: string; end: string }>();
   const [model, setModel] = useState<string>("all");
+  const [rodada, setRodada] = useState<string>("all");
 
   const [models, setModels] = useState<string[]>([]);
+  const [rodadas, setRodadas] = useState<Array<{ marker: string; count: number }>>([]);
   const [kpis, setKpis] = useState<QualityKpisV2 | null>(null);
   const [evaluations, setEvaluations] = useState<{
     rows: EvaluationRow[];
@@ -94,8 +107,19 @@ export function QualidadeContent({ minDate }: QualidadeContentProps) {
       periodStart: period.start.toISOString(),
       periodEnd: period.end.toISOString(),
       models: model === "all" ? undefined : [model],
+      rodadas: rodada === "all" ? undefined : [rodada],
     }),
-    [period, model],
+    [period, model, rodada],
+  );
+
+  // Range completo do periodo (sem filtro de rodada) para popular o
+  // dropdown de rodadas com todas as opcoes disponiveis no periodo.
+  const rangeFilters = useMemo<FilterInputs>(
+    () => ({
+      periodStart: period.start.toISOString(),
+      periodEnd: period.end.toISOString(),
+    }),
+    [period],
   );
 
   // Carrega modelos disponíveis uma vez.
@@ -106,6 +130,24 @@ export function QualidadeContent({ minDate }: QualidadeContentProps) {
         console.error("[Qualidade] falha ao carregar modelos:", err);
       });
   }, []);
+
+  // Carrega rodadas disponiveis quando o periodo muda. NAO depende do
+  // filtro de rodada atual (queremos mostrar todas as rodadas do periodo
+  // mesmo quando uma esta selecionada). Quando a selecao atual deixa de
+  // existir nas opcoes, reseta pra "all".
+  useEffect(() => {
+    void fetchQualityDistinctRodadas(rangeFilters)
+      .then((list) => {
+        setRodadas(list);
+        if (rodada !== "all" && !list.some((r) => r.marker === rodada)) {
+          setRodada("all");
+        }
+      })
+      .catch((err) => {
+        console.error("[Qualidade] falha ao carregar rodadas:", err);
+      });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [rangeFilters.periodStart, rangeFilters.periodEnd]);
 
   const reload = useCallback(async () => {
     setLoading(true);
@@ -152,7 +194,7 @@ export function QualidadeContent({ minDate }: QualidadeContentProps) {
           }}
           minDate={minDateObj}
         />
-        <div className="ml-auto">
+        <div className="ml-auto flex items-center gap-2">
           <CustomSelect
             value={model}
             onChange={setModel}
@@ -161,6 +203,19 @@ export function QualidadeContent({ minDate }: QualidadeContentProps) {
             options={[
               { value: "all", label: "Todos os modelos" },
               ...models.map((m) => ({ value: m, label: m })),
+            ]}
+          />
+          <CustomSelect
+            value={rodada}
+            onChange={setRodada}
+            triggerClassName="min-h-[36px] h-9 min-w-[220px]"
+            aria-label="Rodada (batch de auditoria)"
+            options={[
+              { value: "all", label: "Todas as rodadas" },
+              ...rodadas.map((r) => ({
+                value: r.marker,
+                label: `${formatRodadaLabel(r.marker)} · ${r.count}`,
+              })),
             ]}
           />
         </div>

@@ -50,6 +50,10 @@ export interface EvaluationRow {
   answerSnapshot: string | null;
   dominantPattern: string | null;
   humanStatus: string | null;
+  /** Marcador da rodada (Conversation.title) - prefixo "[AUDIT-...]" gerado
+   *  pelo harness scripts/quality-audit/03-run-test-questions.ts. null
+   *  para conversas in-app/playground normais. */
+  rodada: string | null;
 }
 
 export interface EvaluationFilters {
@@ -59,6 +63,9 @@ export interface EvaluationFilters {
   models?: string[];
   patterns?: string[];
   search?: string;
+  /** Filtro por rodada/batch (Conversation.title). Lista de markers
+   *  ex.: ["[AUDIT-POS-2026-05-26T03-43-05]", ...]. */
+  rodadas?: string[];
 }
 
 // ---------------------------------------------------------------------------
@@ -137,6 +144,7 @@ export async function listEvaluations(
         questionSnapshot: true,
         answerSnapshot: true,
         humanStatus: true,
+        conversation: { select: { title: true } },
       },
     }),
     prisma.conversationQualityEvaluation.count({ where }),
@@ -144,12 +152,49 @@ export async function listEvaluations(
 
   return {
     rows: rows.map((r) => ({
-      ...r,
+      id: r.id,
+      createdAt: r.createdAt,
+      conversationId: r.conversationId,
       status: r.status as EvalStatus,
+      patterns: r.patterns,
+      model: r.model,
+      questionSnapshot: r.questionSnapshot,
+      answerSnapshot: r.answerSnapshot,
+      humanStatus: r.humanStatus,
       dominantPattern: r.patterns[0] ?? null,
+      rodada: extractRodadaMarker(r.conversation?.title ?? null),
     })),
     total,
   };
+}
+
+/** Extrai o marker da rodada do title da Conversation. */
+function extractRodadaMarker(title: string | null): string | null {
+  if (!title) return null;
+  const m = title.match(/^\[AUDIT-[^\]]+\]/);
+  return m ? m[0] : null;
+}
+
+/** Lista markers de rodada distintos no periodo. Cada marker corresponde
+ *  a um batch do harness `scripts/quality-audit/03-run-test-questions.ts`. */
+export async function getDistinctRodadas(
+  filters: EvaluationFilters,
+): Promise<Array<{ marker: string; count: number }>> {
+  const startIso = filters.periodStart.toISOString();
+  const endIso = filters.periodEnd.toISOString();
+  const rows = (await prisma.$queryRaw`
+    SELECT
+      regexp_replace(c.title, '\s.*$', '') AS marker,
+      COUNT(*)::int AS count
+    FROM conversation_quality_evaluations e
+    JOIN conversations c ON c.id = e.conversation_id
+    WHERE e.created_at >= ${startIso}::timestamptz
+      AND e.created_at <= ${endIso}::timestamptz
+      AND c.title LIKE '[AUDIT-%'
+    GROUP BY marker
+    ORDER BY marker DESC
+  `) as Array<{ marker: string; count: number }>;
+  return rows;
 }
 
 export async function getDistinctModels(): Promise<string[]> {
@@ -241,6 +286,7 @@ export async function getEvaluationDetail(
       judgeVersion: true,
       technicalError: true,
       suggestions: true,
+      conversation: { select: { title: true } },
     },
   });
 
@@ -308,6 +354,7 @@ export async function getEvaluationDetail(
       humanReviewedBy: ev.humanReviewedBy,
       humanReviewedAt: ev.humanReviewedAt,
       dominantPattern: ev.patterns[0] ?? null,
+      rodada: extractRodadaMarker(ev.conversation?.title ?? null),
       razoes: ev.razoes,
       judgeModel: ev.judgeModel,
       judgeVersion: ev.judgeVersion,
@@ -342,6 +389,15 @@ function buildWhere(filters: EvaluationFilters) {
       { questionSnapshot: { contains: s, mode: "insensitive" } },
       { answerSnapshot: { contains: s, mode: "insensitive" } },
     ];
+  }
+  if (filters.rodadas && filters.rodadas.length > 0) {
+    // O title da Conversation comeca com o marker entre colchetes
+    // ("[AUDIT-POS-...]"). Como cada chamada usa o mesmo marker como
+    // prefixo, filtramos por title que comeca com qualquer um dos
+    // markers selecionados.
+    where.conversation = {
+      OR: filters.rodadas.map((r) => ({ title: { startsWith: r } })),
+    };
   }
   return where;
 }
