@@ -1,4 +1,6 @@
-# Agente Nex ≥90% Implementation Plan
+# Agente Nex ≥90% Implementation Plan (v2)
+
+> **Histórico:** v1 → review #1 (12 achados) → v2 (incorpora 3 CRIT + 5 HIGH + 4 MED). Review #2 pendente.
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
@@ -21,19 +23,19 @@ Este plano se decompõe em **11 PRs sequenciais** organizados em 4 ondas. Cada P
 | PR | Onda | Conteúdo | Dias | Bloqueado por |
 |----|------|----------|------|----------------|
 | **PR1** | 1.A | Framework `envelope`/`periodo`/`responder`/`agrupador` + testes | 1-2 | — |
-| PR2 | 1.B | Tools financeiras (4): contas a pagar/receber, títulos vencidos, fluxo caixa | 1 | PR1 |
-| PR3 | 1.C | Tools fiscais (6) | 0.5 | PR1 |
-| PR4 | 1.C | Tools estoque (7) | 0.5 | PR1 |
-| PR5 | 1.C | Tools comercial (6) | 0.5 | PR1 |
-| PR6 | 1.C | Tools cadastros (3) | 0.5 | PR1 + research R-1/R-2 |
-| PR7 | 1.C | Tools contábil (2) | 0.5 | PR1 |
-| PR8 | 1.C | Tools sistema (`registrar_lacuna`, `bi_consulta_avancada`) | 0.5 | PR1 |
-| PR9 | 1.D | A9 (match exato saldo), A10 fase 1 (tipo sugerido), A13 (gate suave) | 1 | PR4, PR8 + R-1, R-3 |
-| PR10 | 1.E | AutoValidator + schema delta + prompt mínimo + briefing v3 | 2-3 | PR1-PR9 + briefing-v3.lock.json |
-| PR11 | 1.5 | Promoção shadow→active + prompt fix `periodoNome` | 0.5 | shadow validado |
-| PR12 | 2 | Edits completos `identity-base.ts` | 1 | PR11 |
-| PR13-PR18 | 3 | 6 tools novas | 2-3 | PR12 |
-| PR19+ | 4 | Refinos condicionais | 1-2 | R20 measure |
+| **PR2** | 1.B+1.C | Aplicar envelope+formatadores em **todas as 25 tools** (7 sub-tasks por domínio) — HIGH-F endereçado | 3-4 | PR1 + research R-1/R-2 |
+| PR3 | 1.D | A9 (match exato saldo), A10 fase 1, A13 (gate suave) | 1 | PR2 + R-3 |
+| **PR4a** | 1.E | Schema delta + AutoValidator standalone (módulo isolado, testes) — CRIT-C | 1-2 | PR3 |
+| **PR4b** | 1.E | Integração do AutoValidator no `run-agent.ts` | 1 | PR4a |
+| **PR4c** | 1.E | Briefing v3 + prompt mínimo (`_RESPOSTA`) + lock hash | 0.5 | PR4b |
+| PR5 | 1.5 | Promoção shadow→active + prompt fix `periodoNome` | 0.5 | shadow validado |
+| PR6 | 2 | Edits completos `identity-base.ts` (7 ajustes) | 1 | PR5 |
+| PR7a-f | 3 | 6 tools novas (uma por PR, mesmo padrão) | 2-3 | PR6 |
+| PR8+ | 4 | Refinos condicionais | 1-2 | R20 measure |
+
+**Nota sobre consolidação (HIGH-F v1 endereçado):** v1 propunha 7 PRs separados (PR2-PR8) para aplicar envelope em cada domínio. v2 consolida em **PR2 único** com 7 sub-tasks. Justificativa: padrão estrutural idêntico (importar `buildEnvelope`+`formatadorPorTool`, refatorar handler da tool, escrever teste), revisão melhor em PR único, redução de ~6h de overhead de sub-planos.
+
+**Nota sobre divisão de PR10 (CRIT-C v1 endereçado):** v1 agregava 5 mudanças críticas. v2 divide em PR4a/b/c.
 
 **Este documento detalha PR1 em microtarefas completas.** PR2 em diante recebe seu próprio sub-plan focado **antes** da execução (gerado por nova invocação de writing-plans com escopo do PR específico). Isso evita um documento de 3.000+ linhas e mantém cada execução com contexto fresco.
 
@@ -409,6 +411,29 @@ describe("resolverPeriodo", () => {
     expect(p.periodoDe).toBe("2028-01-01");
     expect(p.periodoAte).toBe("2028-01-31");
   });
+
+  // HIGH-G v1 endereçado: testes de fronteira de semana
+  it("essa_semana em domingo retorna seg anterior + dom atual (semana ISO terminando hoje)", () => {
+    const domingo = new Date("2026-05-31T12:00:00-03:00"); // dom 31/05
+    const p = resolverPeriodo({ periodoNome: "essa_semana", hoje: domingo });
+    expect(p.periodoDe).toBe("2026-05-25"); // seg 25/05
+    expect(p.periodoAte).toBe("2026-05-31"); // dom 31/05
+  });
+
+  it("essa_semana em segunda retorna a própria segunda como início", () => {
+    const segunda = new Date("2026-05-25T12:00:00-03:00"); // seg 25/05
+    const p = resolverPeriodo({ periodoNome: "essa_semana", hoje: segunda });
+    expect(p.periodoDe).toBe("2026-05-25");
+    expect(p.periodoAte).toBe("2026-05-31");
+  });
+
+  // CRIT-A v1: confirma comportamento em container UTC
+  it("toIsoDate trata 23h BR como mesmo dia (não pula para o dia UTC seguinte)", () => {
+    const tardeBR = new Date("2026-05-27T23:30:00-03:00"); // 02:30 UTC dia 28
+    const p = resolverPeriodo({ periodoNome: "hoje", hoje: tardeBR });
+    expect(p.periodoDe).toBe("2026-05-27"); // hoje em BR ainda é 27
+    expect(p.periodoAte).toBe("2026-05-27");
+  });
 });
 ```
 
@@ -453,32 +478,66 @@ export interface ResolverPeriodoInput {
   hoje?: Date;
 }
 
+// CRIT-A v1 endereçado: container roda em UTC; getDate/setDate local não basta.
+// Sempre que precisar de "dia BR" (-3), usar Intl formatter parametrizado.
+const TZ_BR = "America/Sao_Paulo";
+
 function toIsoDate(d: Date): string {
-  const yyyy = d.getFullYear();
-  const mm = String(d.getMonth() + 1).padStart(2, "0");
-  const dd = String(d.getDate()).padStart(2, "0");
-  return `${yyyy}-${mm}-${dd}`;
+  // Intl com timeZone garante que '2026-05-27T23:00:00-03:00' continue 27/05,
+  // mesmo quando container está em UTC (onde já seria 28/05).
+  const fmt = new Intl.DateTimeFormat("sv-SE", {
+    timeZone: TZ_BR,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  });
+  return fmt.format(d); // "YYYY-MM-DD" (locale sv-SE usa ISO)
+}
+
+function partsBR(d: Date): { y: number; m: number; day: number } {
+  const fmt = new Intl.DateTimeFormat("en-CA", {
+    timeZone: TZ_BR,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  });
+  const [y, m, day] = fmt.format(d).split("-").map(Number);
+  return { y: y as number, m: m as number, day: day as number };
+}
+
+function dateFromBR(y: number, m: number, day: number): Date {
+  // Constrói Date em UTC representando 12:00 BR daquele dia (longe de DST).
+  // ISO: YYYY-MM-DDT15:00:00Z corresponde a 12:00 em -03:00.
+  return new Date(
+    `${y}-${String(m).padStart(2, "0")}-${String(day).padStart(2, "0")}T15:00:00Z`,
+  );
 }
 
 function addDays(base: Date, n: number): Date {
-  const r = new Date(base);
-  r.setDate(r.getDate() + n);
-  return r;
+  const { y, m, day } = partsBR(base);
+  return dateFromBR(y, m, day + n);
 }
 
 function startOfWeekISO(d: Date): Date {
-  // Considera segunda como início da semana (padrão BR para "essa semana").
-  const day = d.getDay(); // 0=dom, 1=seg, ... 6=sab
-  const diff = day === 0 ? -6 : 1 - day; // se domingo, recua 6 dias para seg
-  return addDays(d, diff);
+  // Considera segunda como início da semana (ISO 8601 / padrão BR).
+  const { y, m, day } = partsBR(d);
+  // Calcula day-of-week em BR (não em UTC).
+  const local = dateFromBR(y, m, day);
+  const dow = local.getUTCDay(); // 0=dom..6=sab (em UTC, mas data é meio-dia BR)
+  const diff = dow === 0 ? -6 : 1 - dow;
+  return addDays(local, diff);
 }
 
 function startOfMonth(d: Date): Date {
-  return new Date(d.getFullYear(), d.getMonth(), 1);
+  const { y, m } = partsBR(d);
+  return dateFromBR(y, m, 1);
 }
 
 function endOfMonth(d: Date): Date {
-  return new Date(d.getFullYear(), d.getMonth() + 1, 0);
+  const { y, m } = partsBR(d);
+  // Último dia: dia 0 do mês seguinte.
+  const nextMonth = m === 12 ? { y: y + 1, m: 1 } : { y, m: m + 1 };
+  return addDays(dateFromBR(nextMonth.y, nextMonth.m, 1), -1);
 }
 
 export function resolverPeriodo(input: ResolverPeriodoInput): PeriodoResolvido {
@@ -515,17 +574,22 @@ export function resolverPeriodo(input: ResolverPeriodoInput): PeriodoResolvido {
       };
     case "mes_anterior":
     case "mes_passado": {
-      const refAnt = new Date(hoje.getFullYear(), hoje.getMonth() - 1, 15);
+      const { y, m } = partsBR(hoje);
+      const refAnt = m === 1
+        ? dateFromBR(y - 1, 12, 15)
+        : dateFromBR(y, m - 1, 15);
       return {
         periodoDe: toIsoDate(startOfMonth(refAnt)),
         periodoAte: toIsoDate(endOfMonth(refAnt)),
       };
     }
-    case "ano_corrente":
+    case "ano_corrente": {
+      const { y } = partsBR(hoje);
       return {
-        periodoDe: `${hoje.getFullYear()}-01-01`,
+        periodoDe: `${y}-01-01`,
         periodoAte: toIsoDate(hoje),
       };
+    }
     default:
       throw new Error(
         `resolverPeriodo: periodoNome ausente ou desconhecido (${String(input.periodoNome)}). Passe periodoDe+periodoAte ou um periodoNome valido.`,
@@ -904,19 +968,73 @@ const FORMATADORES: Record<string, FormatadorCanonico> = {
   financeiro_contas_a_receber: fmtContasAReceber,
   financeiro_contas_a_pagar: fmtContasAPagar,
   registrar_lacuna: fmtRegistrarLacuna,
-  // TODO Onda 1.B: financeiro_titulos_vencidos, financeiro_fluxo_caixa, etc.
-  // TODO Onda 1.C: 22 demais tools.
+  // PR2 preenche os demais 22 conforme cada tool é adaptada.
 };
+
+/**
+ * CRIT-B v1 endereçado: lista hard-coded das tools que DEVEM ter formatador
+ * real (não-fallback) ao final do PR2. Teste de contrato falha se alguma
+ * dessas tools ainda usa fmtGenerico no final do PR2.
+ */
+export const TOOLS_QUE_PRECISAM_FORMATADOR = [
+  // financeiro
+  "financeiro_contas_a_pagar",
+  "financeiro_contas_a_receber",
+  "financeiro_titulos_vencidos",
+  "financeiro_fluxo_caixa",
+  "financeiro_saldo_contas",
+  "financeiro_caixa_periodo",
+  // fiscal
+  "fiscal_faturamento_periodo",
+  "fiscal_faturamento_por_cliente",
+  "fiscal_notas_emitidas",
+  "fiscal_notas_recebidas",
+  "fiscal_notas_recebidas_por_fornecedor",
+  "fiscal_apuracao",
+  "fiscal_produtos_faturados",
+  "fiscal_impostos_periodo",
+  // estoque
+  "estoque_saldo_produto",
+  "estoque_top_movimentados",
+  "estoque_produtos_parados",
+  "estoque_produtos_saldo_zero",
+  "estoque_concentracao",
+  "estoque_valor_armazem",
+  "estoque_entradas_saidas",
+  // comercial
+  "comercial_pedidos_periodo",
+  "comercial_pedidos_por_etapa",
+  "comercial_pedidos_atrasados",
+  "comercial_parcelas_a_vencer",
+  "comercial_pedidos_por_vendedor",
+  "comercial_pedidos_listar_top_valor",
+  // cadastros
+  "cadastro_buscar_parceiro",
+  "cadastro_parceiros_por_uf",
+  "cadastro_contar_parceiros",
+  // contábil
+  "contabil_plano_de_contas",
+  "contabil_estrutura_conta",
+  // sistema
+  "registrar_lacuna",
+  "bi_consulta_avancada",
+];
 
 export function formatadorPorTool(toolName: string): FormatadorCanonico {
   return FORMATADORES[toolName] ?? fmtGenerico;
+}
+
+/** PR2 usa para verificar contrato. */
+export function ehFormatadorGenerico(fmt: FormatadorCanonico): boolean {
+  return fmt === fmtGenerico;
 }
 
 // ---------------------------------------------------------------------------
 // Cálculos canônicos
 // ---------------------------------------------------------------------------
 
-interface LinhaFinanceira {
+// HIGH-H v1: exportar para reuso em PR2
+export interface LinhaFinanceira {
   vrSaldo?: number;
   participanteNome?: string | null;
   diasAtraso?: number;
@@ -1136,6 +1254,100 @@ Co-Authored-By: Claude Opus 4.7 <noreply@anthropic.com>"
 
 ---
 
+## Task 5.5: Gerar `casos-x-fixes.csv` (HIGH-D v1 endereçado)
+
+**Files:**
+- Create: `docs/superpowers/research/anexos-laudo-r11-r16/casos-x-fixes.csv`
+- Create: `scripts/quality-audit/build-casos-x-fixes.py`
+
+- [ ] **Step 5.5.1: Script Python que lê `cases_v2.jsonl` e gera CSV**
+
+Criar `scripts/quality-audit/build-casos-x-fixes.py`:
+
+```python
+#!/usr/bin/env python3
+"""Gera CSV mapeando cada caso PARCIAL/ERRADO/FORA_DO_ESCOPO para os fixes
+aplicaveis (Onda X, prob cura).
+
+Consumido pela regressao de cada onda.
+"""
+import json, csv, sys, os
+
+IN = "docs/superpowers/research/anexos-laudo-r11-r16/cases_v2.jsonl"
+OUT = "docs/superpowers/research/anexos-laudo-r11-r16/casos-x-fixes.csv"
+
+# Mapa pattern -> fixes (do laudo §4)
+PATTERN_TO_FIXES = {
+    "resposta_truncada": ("F1,F2,F3", "1", 70),
+    "fluxo_tool_incompleto": ("F4,F5,F6,F7", "1+2", 50),
+    "dado_inventado": ("F1,F9,F10", "1", 75),
+    "entendeu_mal_termo": ("F12,F13,F14", "1+2", 50),
+    "recusa_indevida": ("F16,F17", "1", 80),
+    "pergunta_ignorada": ("F18,F19", "1", 65),
+    "parametro_incompleto": ("F20,F21", "1+2", 60),
+    "formato_quebrado": ("F22", "1", 75),
+    "erro_data": ("F23,F24", "1.5+2", 70),
+    "pediu_clarificacao_desnecessaria": ("F25", "2", 50),
+    "tool_errada": ("F26,F27", "1+3", 55),
+    "placeholder_nao_substituido": ("F18,F19", "1", 80),
+    "limitacao_real_declarada": ("legitimo", "fora", 0),
+    "acerto_objetividade": ("legitimo", "fora", 0),
+    "acerto_modelo": ("legitimo", "fora", 0),
+    "acerto_encadeamento": ("legitimo", "fora", 0),
+}
+
+with open(IN) as f, open(OUT, "w", newline="") as out:
+    w = csv.writer(out)
+    w.writerow(["evalId","rodada","status","patterns","pattern_principal",
+                "fixes_aplicaveis","onda","prob_cura_pct"])
+    for line in f:
+        line = line.strip()
+        if not line:
+            continue
+        c = json.loads(line)
+        pats = c.get("patterns") or []
+        # principal = primeiro negativo, ou primeiro
+        princ = next((p for p in pats if not p.startswith("acerto") and p != "limitacao_real_declarada"), pats[0] if pats else "?")
+        fixes, onda, prob = PATTERN_TO_FIXES.get(princ, ("?", "?", 0))
+        w.writerow([
+            c.get("evalId"),
+            c.get("rodada"),
+            c.get("status"),
+            "|".join(pats),
+            princ,
+            fixes,
+            onda,
+            prob,
+        ])
+
+print(f"OK: {OUT}")
+```
+
+- [ ] **Step 5.5.2: Rodar e verificar**
+
+```bash
+python3 scripts/quality-audit/build-casos-x-fixes.py
+wc -l docs/superpowers/research/anexos-laudo-r11-r16/casos-x-fixes.csv
+head -5 docs/superpowers/research/anexos-laudo-r11-r16/casos-x-fixes.csv
+```
+
+Esperado: 145 linhas (1 header + 144 dados).
+
+- [ ] **Step 5.5.3: Commit**
+
+```bash
+git add scripts/quality-audit/build-casos-x-fixes.py docs/superpowers/research/anexos-laudo-r11-r16/casos-x-fixes.csv
+git commit -m "feat(quality-audit): casos-x-fixes.csv mapeando 144 casos para fixes (HIGH-D)
+
+Mapeia cada caso PARCIAL/ERRADO/FORA_DO_ESCOPO ao fix proposto no laudo
+(F1-F27), a onda de execucao e a probabilidade estimada de cura.
+Consumido pelo run-regression nos PRs seguintes para validar cura caso-a-caso.
+
+Co-Authored-By: Claude Opus 4.7 <noreply@anthropic.com>"
+```
+
+---
+
 ## Task 6: Verificação final do PR1
 
 - [ ] **Step 6.1: `tsc` global**
@@ -1168,7 +1380,15 @@ Esperado: PASS, 4 suites, 26 testes (envelope=4, periodo=11, agrupador=5, respon
 npx jest --silent 2>&1 | tail -5
 ```
 
-Esperado: same total + 26 (PR1 adiciona 26 testes ao baseline).
+Esperado: contém pelo menos 4 suites novas em `mcp/lib/` (`envelope`, `periodo`, `agrupador`, `responder`) e 0 falhas. (MED-J v1: não amarrar em contagem absoluta de testes.)
+
+- [ ] **Step 6.4.1: Smoke build do container mcp (HIGH-E v1)**
+
+```bash
+docker compose build mcp 2>&1 | tail -5
+```
+
+Esperado: `Successfully built ...`. PR1 não chama os helpers em tools, mas o bundle inclui os arquivos novos — confirmar que build não quebra.
 
 - [ ] **Step 6.5: Confirmar branch e logs**
 
@@ -1297,4 +1517,6 @@ Plano v1 fechado.
 
 ## Próximo passo
 
-PLAN v1 recebe 2 reviews adversariais (v2, v3) antes da execução do Step 1.1 da Task 1.
+PLAN v2 endereça achados da Review #1 do plano (12 itens). Recebe Review #2 antes da execução de Step 1.1.
+
+**Comunicação ao usuário (MED-L v1 endereçado):** após PR1 mergiado (decisão humana de merge), aguardar aprovação para iniciar sub-plano de PR2. Não engatilhar PRs autonomamente para `main` sem decisão explícita.
