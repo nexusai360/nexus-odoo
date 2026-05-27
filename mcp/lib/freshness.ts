@@ -66,8 +66,34 @@ export type FreshnessEnvelope<O> =
       estado: "ok" | "vazio";
       dados: O;
       atualizadoEm: string;
+      /**
+       * Texto humano pre-computado da idade do dado (ex.: "30s", "2min", "1h", "3 dias").
+       * Adicionado em 2026-05-26 apos auditoria identificar 624 turnos (12.7%) com
+       * placeholder "Xs" nao substituido pelo LLM. A computacao deterministica
+       * server-side garante a substituicao correta. O prompt deve instruir a IA a
+       * usar este campo TEXTUAL no lugar de calcular a partir de `atualizadoEm`.
+       */
+      atualizadoHa: string;
       fonteStatus: { status: string; ultimaSyncEm: string | null };
     };
+
+/**
+ * Converte um ISO timestamp em texto humano de idade (ex.: "30s", "2min", "1h", "3 dias").
+ * Usado pelo `withFreshness` para pre-computar o campo `atualizadoHa`.
+ */
+export function formatAtualizadoHa(atualizadoEm: string, agora: Date = new Date()): string {
+  const t = new Date(atualizadoEm).getTime();
+  if (Number.isNaN(t)) return "indefinido";
+  const deltaMs = Math.max(0, agora.getTime() - t);
+  const s = Math.round(deltaMs / 1000);
+  if (s < 60) return `${s}s`;
+  const m = Math.round(s / 60);
+  if (m < 60) return `${m}min`;
+  const h = Math.round(m / 60);
+  if (h < 24) return `${h}h`;
+  const d = Math.round(h / 24);
+  return d === 1 ? "1 dia" : `${d} dias`;
+}
 
 // ---------------------------------------------------------------------------
 // Helper: estadoPreparando
@@ -213,5 +239,11 @@ export async function withFreshness<O>(
     estado = firstArr !== null && firstArr.length === 0 ? "vazio" : "ok";
   }
 
-  return { estado, dados, atualizadoEm, fonteStatus };
+  return {
+    estado,
+    dados,
+    atualizadoEm,
+    atualizadoHa: formatAtualizadoHa(atualizadoEm),
+    fonteStatus,
+  };
 }

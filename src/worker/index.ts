@@ -13,6 +13,11 @@ import { JOB_INCREMENTAL, JOB_SNAPSHOT, JOB_RECONCILE, JOB_CONFIG_CHECK } from "
 import { AGENT_QUEUE_NAME } from "./agent/queue";
 import { processAgentJob, type AgentJobData } from "./agent/processor";
 import { cleanupIdempotencyTable } from "./agent/cleanup";
+import {
+  AGENT_TOPIC_TAGGING_QUEUE,
+  type TopicTaggingJobData,
+} from "./agent-intelligence/queue";
+import { processTopicTaggingJob } from "./agent-intelligence/topic-tagging";
 import { refreshUsdBrlRateFromBCB } from "@/lib/agent/llm/exchange-rate";
 import {
   clearPending,
@@ -60,6 +65,27 @@ agentWorker.on("failed", (job, err) =>
   console.error(`[agent-worker] job ${job?.id} falhou:`, err),
 );
 agentWorker.on("error", (err) => console.error("[agent-worker] erro:", err));
+
+// ─── Fila da inteligencia: topic-tagging (Onda 1 F4.5) ────────────────────────
+export const agentTopicTaggingQueue = new Queue(AGENT_TOPIC_TAGGING_QUEUE, { connection });
+
+const agentTopicTaggingWorker = new Worker(
+  AGENT_TOPIC_TAGGING_QUEUE,
+  async (job: Job<TopicTaggingJobData>) => {
+    return processTopicTaggingJob(job.data);
+  },
+  { connection, concurrency: 2 },
+);
+
+agentTopicTaggingWorker.on("ready", () =>
+  console.log(`[agent-topic-tagging-worker] pronto , fila "${AGENT_TOPIC_TAGGING_QUEUE}"`),
+);
+agentTopicTaggingWorker.on("failed", (job, err) =>
+  console.error(`[agent-topic-tagging-worker] job ${job?.id} falhou:`, err),
+);
+agentTopicTaggingWorker.on("error", (err) =>
+  console.error("[agent-topic-tagging-worker] erro:", err),
+);
 
 // ─── Fila de manutenção (cron diário) ─────────────────────────────────────────
 export const maintenanceQueue = new Queue(MAINTENANCE_QUEUE, { connection });

@@ -57,10 +57,13 @@ export const comercialPrecoProduto: ToolEntry<Input, Output> = {
   id: "preco_produto",
   dominio: "comercial",
   descricao:
-    "Regras de preço de um produto nas tabelas de preço: valor, operação " +
-    "(fixo, valor, margem, markup, desconto), preço-base, vigência e " +
-    "quantidade mínima. Busca por `termo` no nome do produto (passe o nome " +
-    "do produto ou o código que aparece entre colchetes no nome).",
+    "Regras de preço de um PRODUTO específico. Retorna as regras em todas " +
+    "as tabelas onde o produto aparece: valor, operação (fixo, valor, margem, " +
+    "markup, desconto), preço-base, vigência e quantidade mínima. " +
+    "Use quando perguntam o PREÇO ou REGRA DE PREÇO de um produto. " +
+    "Parâmetro `termo` aceita nome OU código entre colchetes. " +
+    "NÃO use para: listar uma tabela inteira (use `preco_tabela`), pedidos " +
+    "(use `comercial_pedidos_periodo`), saldo em estoque (use `estoque_saldo_produto`).",
   inputSchemaShape: inputSchema.shape,
   inputSchema,
   outputSchema,

@@ -13,6 +13,7 @@ import { fiscalCartaCorrecao } from "./carta-correcao.js";
 import { fiscalContarNotas } from "./contar-notas.js";
 import { fiscalCertificados } from "./certificados.js";
 import { fiscalReferenciaBuscar } from "./referencia-buscar.js";
+import { fiscalFaturamentoPorMarca } from "./faturamento-por-marca.js";
 
 export const fiscalTools: ToolEntry[] = [
   fiscalFaturamentoPeriodo as ToolEntry,
@@ -27,4 +28,5 @@ export const fiscalTools: ToolEntry[] = [
   fiscalContarNotas as ToolEntry,
   fiscalCertificados as ToolEntry,
   fiscalReferenciaBuscar as ToolEntry,
+  fiscalFaturamentoPorMarca as ToolEntry,
 ];

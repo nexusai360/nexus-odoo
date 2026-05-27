@@ -112,7 +112,7 @@ export async function queryParceirosPorUf(
 // queryContarParceiros
 // ---------------------------------------------------------------------------
 
-/** Conta totais de parceiros, clientes, fornecedores e empresas. */
+/** Conta totais de parceiros segmentado por tipo, natureza e status. */
 export async function queryContarParceiros(
   prisma: PrismaClient,
 ): Promise<{
@@ -120,13 +120,46 @@ export async function queryContarParceiros(
   totalClientes: number;
   totalFornecedores: number;
   totalEmpresas: number;
+  totalPessoasFisicas: number;
+  totalAtivos: number;
+  totalInativos: number;
+  totalClientesAtivos: number;
+  totalFornecedoresAtivos: number;
 }> {
-  const [totalParceiros, totalClientes, totalFornecedores, totalEmpresas] =
-    await Promise.all([
-      prisma.fatoParceiro.count(),
-      prisma.fatoParceiro.count({ where: { ehCliente: true } }),
-      prisma.fatoParceiro.count({ where: { ehFornecedor: true } }),
-      prisma.fatoParceiro.count({ where: { ehEmpresa: true } }),
-    ]);
-  return { totalParceiros, totalClientes, totalFornecedores, totalEmpresas };
+  const [
+    totalParceiros,
+    totalClientes,
+    totalFornecedores,
+    totalEmpresas,
+    totalPessoasFisicas,
+    totalAtivos,
+    totalInativos,
+    totalClientesAtivos,
+    totalFornecedoresAtivos,
+  ] = await Promise.all([
+    prisma.fatoParceiro.count(),
+    prisma.fatoParceiro.count({ where: { ehCliente: true } }),
+    prisma.fatoParceiro.count({ where: { ehFornecedor: true } }),
+    prisma.fatoParceiro.count({ where: { ehEmpresa: true } }),
+    prisma.fatoParceiro.count({ where: { ehEmpresa: false } }),
+    prisma.fatoParceiro.count({ where: { ativo: true } }),
+    prisma.fatoParceiro.count({ where: { ativo: false } }),
+    prisma.fatoParceiro.count({
+      where: { ehCliente: true, ativo: true },
+    }),
+    prisma.fatoParceiro.count({
+      where: { ehFornecedor: true, ativo: true },
+    }),
+  ]);
+  return {
+    totalParceiros,
+    totalClientes,
+    totalFornecedores,
+    totalEmpresas,
+    totalPessoasFisicas,
+    totalAtivos,
+    totalInativos,
+    totalClientesAtivos,
+    totalFornecedoresAtivos,
+  };
 }
