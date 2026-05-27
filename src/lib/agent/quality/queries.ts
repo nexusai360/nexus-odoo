@@ -216,43 +216,45 @@ export async function getDistinctModels(): Promise<string[]> {
 export async function getDistinctPatterns(
   filters: EvaluationFilters,
 ): Promise<Array<{ pattern: string; count: number }>> {
-  const startIso = filters.periodStart.toISOString();
-  const endIso = filters.periodEnd.toISOString();
-  const rows = (await prisma.$queryRaw`
-    SELECT pattern, COUNT(*)::int AS count
-    FROM conversation_quality_evaluations,
-         unnest(patterns) AS pattern
-    WHERE created_at >= ${startIso}::timestamptz
-      AND created_at <= ${endIso}::timestamptz
-    GROUP BY pattern
-    ORDER BY count DESC
-    LIMIT 10
-  `) as Array<{ pattern: string; count: number }>;
-  return rows;
+  const rows = await prisma.conversationQualityEvaluation.findMany({
+    where: { ...buildWhere(filters), NOT: { patterns: { isEmpty: true } } },
+    select: { patterns: true },
+  });
+  const counts = new Map<string, number>();
+  for (const r of rows) {
+    for (const p of r.patterns) counts.set(p, (counts.get(p) ?? 0) + 1);
+  }
+  return [...counts.entries()]
+    .map(([pattern, count]) => ({ pattern, count }))
+    .sort((a, b) => b.count - a.count)
+    .slice(0, 10);
 }
 
 /** Timeseries de % CORRETO por dia, no periodo. */
 export async function getDailyCorrectness(
   filters: EvaluationFilters,
 ): Promise<Array<{ date: string; percent: number | null; total: number }>> {
-  const startIso = filters.periodStart.toISOString();
-  const endIso = filters.periodEnd.toISOString();
-  const rows = (await prisma.$queryRaw`
-    SELECT
-      date_trunc('day', created_at)::date AS date,
-      COUNT(*) FILTER (WHERE status = 'CORRETO')::int AS corretos,
-      COUNT(*) FILTER (WHERE status IN ('CORRETO','PARCIAL','ERRADO','FORA_DO_ESCOPO'))::int AS total
-    FROM conversation_quality_evaluations
-    WHERE created_at >= ${startIso}::timestamptz
-      AND created_at <= ${endIso}::timestamptz
-    GROUP BY 1
-    ORDER BY 1 ASC
-  `) as Array<{ date: Date; corretos: number; total: number }>;
-  return rows.map((r) => ({
-    date: r.date.toISOString().slice(0, 10),
-    percent: r.total > 0 ? (r.corretos / r.total) * 100 : null,
-    total: r.total,
-  }));
+  const rows = await prisma.conversationQualityEvaluation.findMany({
+    where: buildWhere(filters),
+    select: { createdAt: true, status: true },
+  });
+  const byDay = new Map<string, { corretos: number; total: number }>();
+  for (const r of rows) {
+    const key = r.createdAt.toISOString().slice(0, 10);
+    const cur = byDay.get(key) ?? { corretos: 0, total: 0 };
+    if (["CORRETO", "PARCIAL", "ERRADO", "FORA_DO_ESCOPO"].includes(r.status)) {
+      cur.total++;
+      if (r.status === "CORRETO") cur.corretos++;
+    }
+    byDay.set(key, cur);
+  }
+  return [...byDay.entries()]
+    .sort(([a], [b]) => a.localeCompare(b))
+    .map(([date, { corretos, total }]) => ({
+      date,
+      percent: total > 0 ? (corretos / total) * 100 : null,
+      total,
+    }));
 }
 
 export async function getEvaluationDetail(
