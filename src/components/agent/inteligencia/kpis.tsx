@@ -1,5 +1,5 @@
 /**
- * KPIs da Frente A (analise retrospectiva) — server component.
+ * KPIs da Frente A (analise retrospectiva) , server component.
  */
 
 import type { QualityKpis } from "@/lib/agent/intelligence/queries";
@@ -9,7 +9,7 @@ interface KpisProps {
 }
 
 function fmtAvg(v: number | null): string {
-  if (v == null) return "—";
+  if (v == null) return ",";
   return v.toFixed(1);
 }
 

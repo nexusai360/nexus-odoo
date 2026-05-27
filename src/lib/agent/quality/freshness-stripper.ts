@@ -27,9 +27,9 @@ const PATTERNS: ReadonlyArray<RegExp> = [
   // "(atualizado ha Xs)" e variantes com {x}
   /\s*[\(\[]\s*atualizado\s+h[áa]\s+\{?[xX]\}?s\s*[\)\]]/g,
   // "atualizado ha Xs" solto (sem parenteses)
-  /\s*[—\-,;·]?\s*atualizado\s+h[áa]\s+\{?[xX]\}?s\b/g,
+  /\s*[,\-,;·]?\s*atualizado\s+h[áa]\s+\{?[xX]\}?s\b/g,
   // "freshness: Xs"
-  /\s*[—\-,;·]?\s*freshness:\s*\{?[xX]\}?s\b/gi,
+  /\s*[,\-,;·]?\s*freshness:\s*\{?[xX]\}?s\b/gi,
   // "· Xs" suelto no fim de linha
   /\s+·\s+\{?[xX]\}?s\b/g,
 ];

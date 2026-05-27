@@ -12,7 +12,7 @@
  *   normalizeToolHistory(toolCalls, toolResults) -> NormalizedToolHistory
  *
  * Saida `NormalizedToolHistory` e o contrato usado pelos modulos de
- * inteligencia (tool-replayer, quality-judge) — independente do provider.
+ * inteligencia (tool-replayer, quality-judge) , independente do provider.
  *
  * Modulo puro. Sem DB, sem fetch.
  *

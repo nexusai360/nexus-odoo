@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 // mcp/__tests__/e2e/coexist-modes.test.ts
 // Suíte E2E , modo interno + externo coexistindo (spec §7.1).
 //

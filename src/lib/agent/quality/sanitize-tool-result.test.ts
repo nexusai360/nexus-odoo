@@ -14,19 +14,26 @@ describe("sanitizeToolResult", () => {
     expect(sanitizeToolResult(raw, "aggregates_only")).toBe(raw);
   });
 
-  it("returns raw when there's no dados.linhas", () => {
+// Onda E: sanitizer agora sempre injeta _DESTAQUE/_INSTRUCAO. Mantemos so
+  // a garantia de que o conteudo original em `dados` nao e alterado.
+  it("preserva dados originais quando nao ha dados.linhas", () => {
     const raw = '{"estado":"ok","dados":{"total":42}}';
-    expect(sanitizeToolResult(raw, "aggregates_only")).toBe(raw);
+    const out = JSON.parse(sanitizeToolResult(raw, "aggregates_only"));
+    expect(out.dados.total).toBe(42);
+    expect(out._DESTAQUE.contagemLinhas).toBe(0);
   });
 
-  it("returns raw when linhas is empty", () => {
+  it("preserva linhas quando vazia", () => {
     const raw = '{"estado":"ok","dados":{"linhas":[]}}';
-    expect(sanitizeToolResult(raw, "aggregates_only")).toBe(raw);
+    const out = JSON.parse(sanitizeToolResult(raw, "aggregates_only"));
+    expect(out.dados.linhas).toEqual([]);
+    expect(out._DESTAQUE.contagemLinhas).toBe(0);
   });
 
-  it("returns raw when linhas is array of strings (not objects)", () => {
+  it("preserva linhas quando e array de strings (nao objetos)", () => {
     const raw = '{"estado":"ok","dados":{"linhas":["a","b","c"]}}';
-    expect(sanitizeToolResult(raw, "aggregates_only")).toBe(raw);
+    const out = JSON.parse(sanitizeToolResult(raw, "aggregates_only"));
+    expect(out.dados.linhas).toEqual(["a", "b", "c"]);
   });
 
   it("appends _agregado with soma/media/min/max for valor field", () => {
@@ -126,7 +133,10 @@ describe("sanitizeToolResult", () => {
         ],
       },
     });
-    // Sem campos numéricos reconhecidos, retorna raw (sem mutação).
-    expect(sanitizeToolResult(raw, "aggregates_only")).toBe(raw);
+    // Sem campos numericos reconhecidos, nao injeta _agregado. _DESTAQUE
+    // e adicionado sempre pela Onda E.
+    const out = JSON.parse(sanitizeToolResult(raw, "aggregates_only"));
+    expect(out.dados._agregado).toBeUndefined();
+    expect(out._DESTAQUE.contagemLinhas).toBe(2);
   });
 });

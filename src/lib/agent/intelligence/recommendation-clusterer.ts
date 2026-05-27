@@ -5,7 +5,7 @@
  * Estrategia (greedy):
  *  1. Para cada avaliacao com recomendacao e SEM embedding gravado:
  *     gera embedding via `embeddings-client.embed` e grava na coluna
- *     `recomendacao_embedding` (vector(1536)) via $queryRaw — Prisma client
+ *     `recomendacao_embedding` (vector(1536)) via $queryRaw , Prisma client
  *     nao seleciona campos Unsupported.
  *  2. Itera avaliacoes com embedding. Para cada uma, busca os 10 vizinhos
  *     mais proximos (cosine < threshold). Agrupa em cluster com chave
@@ -37,7 +37,7 @@ export async function clusterRecommendations(): Promise<Cluster[]> {
   } catch (err) {
     if (err instanceof EmbeddingUnavailable) {
       console.warn(
-        "[recommendation-clusterer] embeddings indisponiveis — clusterizacao ignorada:",
+        "[recommendation-clusterer] embeddings indisponiveis , clusterizacao ignorada:",
         err.message,
       );
       return [];
@@ -136,7 +136,7 @@ async function backfillEmbeddings(): Promise<void> {
 }
 
 function stableHash(input: string): string {
-  // Hash determinista simples — suficiente para idempotencia do upsert.
+  // Hash determinista simples , suficiente para idempotencia do upsert.
   let h = 2166136261;
   for (let i = 0; i < input.length; i++) {
     h ^= input.charCodeAt(i);

@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 // mcp/__tests__/fixtures/contexts.ts
 // Factories de contexto para testes unitários do MCP semântico.
 // ApiKeyContext importado de mcp/auth/api-key-context.ts (antecipado do Bloco D Task D1).

@@ -2,7 +2,7 @@
  * Sanitização de tool results antes de mandar pro LLM.
  *
  * Onda 2 do plano de melhoria do Agente Nex (rodadas 4/5 mostraram que o
- * LLM erra em agregação de listas — soma valores errados, conta errado,
+ * LLM erra em agregação de listas , soma valores errados, conta errado,
  * lista mais do que cabe na bolha). Mover essa lógica do prompt pro
  * código é mais confiável: código é exato, LLM é interpretativo.
  *
@@ -12,7 +12,7 @@
  *    Se o tool result tem `dados.linhas` array com campos numéricos
  *    reconhecidos (valor, vrSaldo, valorTotal, qtd, quantidade, saldo),
  *    anexa `dados._agregado: { soma_X, contagem, media_X, max_X, min_X }`.
- *    NÃO modifica linhas originais — só adiciona campo novo.
+ *    NÃO modifica linhas originais , só adiciona campo novo.
  *
  * 2. (futuro) FILTER_NULLS: separar linhas com campo principal null,
  *    deixar agente decidir se quer ver. Risco médio, deferido.

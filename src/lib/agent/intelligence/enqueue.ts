@@ -9,7 +9,7 @@
  * nao quebram o caminho critico do agente.
  */
 
-// Sem 'server-only' — este modulo e importado pelo run-agent.ts que tambem
+// Sem 'server-only' , este modulo e importado pelo run-agent.ts que tambem
 // roda em scripts tsx (auditoria de qualidade). server-only quebra Node puro.
 
 import { Queue } from "bullmq";
@@ -36,7 +36,7 @@ function getTopicTaggingQueue(): Queue<{ conversationId: string }> {
 
 /**
  * Enfileira tagging assincrono de uma conversa. Idempotente via `jobId`
- * baseado em `conversationId + messageCount` — BullMQ deduplica.
+ * baseado em `conversationId + messageCount` , BullMQ deduplica.
  *
  * Best-effort: erros sao logados; nunca lanca.
  *
@@ -50,7 +50,7 @@ export async function enqueueTopicTagging(
 ): Promise<void> {
   try {
     const queue = getTopicTaggingQueue();
-    // jobId pode ter `:` (lesson 2026-05-25 — restricao e apenas para queue NAME).
+    // jobId pode ter `:` (lesson 2026-05-25 , restricao e apenas para queue NAME).
     const jobId = `topic-tag:${conversationId}:${Math.floor(messageCount / 10)}`;
     await queue.add(
       "topic-tag",
