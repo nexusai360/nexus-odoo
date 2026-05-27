@@ -85,15 +85,22 @@ export const financeiroContasAPagar: ToolEntry<Input, Output> = {
       async () => shape(await queryContasAPagar(ctx.prisma, input, new Date())),
     );
     if (envelope.estado === "preparando") return envelope;
-    const top10 = [...envelope.dados.titulos]
+    // T-20 (2026-05-27): expor topMaiores lista (top 10 ordenado).
+    const top10List = [...envelope.dados.titulos]
       .sort((a, b) => b.vrSaldo - a.vrSaldo)
-      .slice(0, 10);
-    return enriquecerEnvelope(envelope, "financeiro_contas_a_pagar", {
+      .slice(0, 10)
+      .map((t) => ({
+        nome: t.participanteNome ?? "",
+        valor: t.vrSaldo,
+        documento: t.numeroDocumento ?? "",
+        diasAtraso: t.diasAtraso,
+      }));
+    const enriched = enriquecerEnvelope(envelope, "financeiro_contas_a_pagar", {
       destaque: {
         totalAPagar: envelope.dados.totalAPagar,
         contagem: envelope.dados.titulos.length,
-        topMaiorValor: top10[0]?.vrSaldo ?? 0,
-        topMaiorParticipante: top10[0]?.participanteNome ?? "",
+        topMaiorValor: top10List[0]?.valor ?? 0,
+        topMaiorParticipante: top10List[0]?.nome ?? "",
       },
       titulos: envelope.dados.titulos,
       agregado: {
@@ -101,5 +108,9 @@ export const financeiroContasAPagar: ToolEntry<Input, Output> = {
         contagem: envelope.dados.titulos.length,
       },
     });
+    if (enriched.estado !== "preparando") {
+      (enriched.dados as unknown as Record<string, unknown>)["topMaiores"] = top10List;
+    }
+    return enriched;
   },
 };

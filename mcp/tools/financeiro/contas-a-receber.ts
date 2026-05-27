@@ -85,18 +85,23 @@ export const financeiroContasAReceber: ToolEntry<Input, Output> = {
         shape(await queryContasAReceber(ctx.prisma, input, new Date())),
     );
     if (envelope.estado === "preparando") return envelope;
-    // Onda 1.7 (regra usuario 2026-05-27): expor top maiores individuais
-    // para resolver "Top 10 maiores contas a receber" sem o LLM precisar
-    // ordenar manualmente.
-    const top10 = [...envelope.dados.titulos]
+    // T-20 (2026-05-27): expor `topMaiores` lista (top 10 ordenado por
+    // vrSaldo desc) - resolve "Top 10 maiores contas a receber".
+    const top10List = [...envelope.dados.titulos]
       .sort((a, b) => b.vrSaldo - a.vrSaldo)
-      .slice(0, 10);
-    return enriquecerEnvelope(envelope, "financeiro_contas_a_receber", {
+      .slice(0, 10)
+      .map((t) => ({
+        nome: t.participanteNome ?? "",
+        valor: t.vrSaldo,
+        documento: t.numeroDocumento ?? "",
+        diasAtraso: t.diasAtraso,
+      }));
+    const enriched = enriquecerEnvelope(envelope, "financeiro_contas_a_receber", {
       destaque: {
         totalAReceber: envelope.dados.totalAReceber,
         contagem: envelope.dados.titulos.length,
-        topMaiorValor: top10[0]?.vrSaldo ?? 0,
-        topMaiorParticipante: top10[0]?.participanteNome ?? "",
+        topMaiorValor: top10List[0]?.valor ?? 0,
+        topMaiorParticipante: top10List[0]?.nome ?? "",
       },
       titulos: envelope.dados.titulos,
       agregado: {
@@ -104,5 +109,9 @@ export const financeiroContasAReceber: ToolEntry<Input, Output> = {
         contagem: envelope.dados.titulos.length,
       },
     });
+    if (enriched.estado !== "preparando") {
+      (enriched.dados as unknown as Record<string, unknown>)["topMaiores"] = top10List;
+    }
+    return enriched;
   },
 };

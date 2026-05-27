@@ -28,6 +28,8 @@ export interface EnvelopeExtras {
   _DESTAQUE?: Record<string, string | number>;
   topPorParticipante?: TopParticipante[];
   _agregado?: { soma?: number; contagem?: number; media?: number };
+  /** T-22: texto pronto sobre truncamento quando linhas exibidas < total. */
+  _AVISO_TRUNCAMENTO?: string;
 }
 
 export interface EnriquecerOptions {
@@ -55,11 +57,23 @@ export function calcularExtras(
 
   const top = titulos.length > 0 ? topPorParticipante(titulos, 10) : undefined;
 
+  // T-22 (2026-05-27): aviso automatico de truncamento. Quando o servidor
+  // sabe que ha mais linhas que o limite exibido (`_listaTruncada=true`)
+  // ou quando `_DESTAQUE.contagem > linhas.length`, gera texto pronto
+  // pro LLM injetar ("Encontrei N. Listando K."). Reduz dependencia do
+  // LLM lembrar da regra 12c do prompt.
+  const totalConhecido = Number(destaque?.contagem ?? destaque?.totalProdutos ?? destaque?.totalPedidos ?? 0);
+  const linhasExibidas = titulos.length;
+  const truncadoAuto = listaTruncada || (totalConhecido > 0 && linhasExibidas > 0 && totalConhecido > linhasExibidas);
+  const avisoTruncamento = truncadoAuto && totalConhecido > linhasExibidas
+    ? `Encontrei ${totalConhecido}, listando ${linhasExibidas}. Se quiser ver mais, é só pedir.`
+    : undefined;
+
   const fmt: FormatadorCanonico = formatadorPorTool(toolName);
   // O formatador espera um envelope-like. Montamos um stub com os campos
   // canonicos necessarios.
   const stubEnvelope = {
-    _listaTruncada: listaTruncada,
+    _listaTruncada: truncadoAuto,
     linhas: titulos,
     atualizadoEm: "",
     atualizadoHa: "",
@@ -67,15 +81,19 @@ export function calcularExtras(
     ...(top ? { topPorParticipante: top } : {}),
     ...(options.agregado ? { _agregado: options.agregado } : {}),
   };
-  const _RESPOSTA = fmt(stubEnvelope);
+  let _RESPOSTA = fmt(stubEnvelope);
+  if (avisoTruncamento) {
+    _RESPOSTA = `${_RESPOSTA} ${avisoTruncamento}`.trim();
+  }
 
   return {
     _RESPOSTA,
-    _listaTruncada: listaTruncada,
+    _listaTruncada: truncadoAuto,
     ...(destaque ? { _DESTAQUE: destaque } : {}),
     ...(top ? { topPorParticipante: top } : {}),
     ...(options.agregado ? { _agregado: options.agregado } : {}),
-  };
+    ...(avisoTruncamento ? { _AVISO_TRUNCAMENTO: avisoTruncamento } : {}),
+  } as EnvelopeExtras;
 }
 
 /**

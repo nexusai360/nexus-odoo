@@ -52,7 +52,7 @@ describe("formatadorPorTool", () => {
     expect(r.toLowerCase()).toContain("fornecedor");
   });
 
-  it("registrar_lacuna concatena respostaSugerida e sugestoesRelacionadas", () => {
+  it("registrar_lacuna devolve apenas respostaSugerida (T-19: canal removido)", () => {
     const fmt = formatadorPorTool("registrar_lacuna");
     const env = {
       _listaTruncada: false,
@@ -66,10 +66,12 @@ describe("formatadorPorTool", () => {
     };
     const r = fmt(env);
     expect(r).toContain("Essa métrica não está disponível.");
-    expect(r).toContain("[[suggestions]]:Liste contas|Veja faturamento");
+    // T-19: canal [[suggestions]]:... NAO deve mais aparecer no _RESPOSTA
+    // (suggestions ficam disponiveis no campo separado sugestoesRelacionadas).
+    expect(r).not.toContain("[[suggestions]]");
   });
 
-  it("tool desconhecida cai no formatador generico (nao crasha)", () => {
+  it("tool desconhecida cai no formatador generico (T-18: sem freshness)", () => {
     const fmt = formatadorPorTool("tool_inexistente_xyz");
     const r = fmt({
       _listaTruncada: false,
@@ -78,7 +80,8 @@ describe("formatadorPorTool", () => {
       atualizadoHa: "1min",
     });
     expect(r).toContain("Resultado obtido");
-    expect(r).toContain("1min");
+    // T-18: freshness textual nao deve mais aparecer no _RESPOSTA.
+    expect(r).not.toContain("atualizado ha");
   });
 
   it("ehFormatadorGenerico devolve true para tool nao registrada", () => {

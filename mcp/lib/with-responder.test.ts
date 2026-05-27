@@ -8,7 +8,7 @@ const normSpaces = (s: string) => s.replace(/\s+/g, " ");
 describe("calcularExtras", () => {
   it("calcula _RESPOSTA + topPorParticipante para contas_a_pagar", () => {
     const extras = calcularExtras("financeiro_contas_a_pagar", {
-      destaque: { totalAPagar: 1000, contagem: 5 },
+      destaque: { totalAPagar: 1000, contagem: 3 },
       titulos: [
         { participanteNome: "Jds", vrSaldo: 600 },
         { participanteNome: "Jds", vrSaldo: 200 },
@@ -18,7 +18,18 @@ describe("calcularExtras", () => {
     expect(normSpaces(extras._RESPOSTA)).toContain("R$ 1.000,00");
     expect(extras.topPorParticipante?.[0]?.nome).toBe("Jds");
     expect(extras.topPorParticipante?.[0]?.soma).toBe(800);
+    // T-22: linhas.length == contagem -> nao truncado.
     expect(extras._listaTruncada).toBe(false);
+  });
+
+  it("T-22: _AVISO_TRUNCAMENTO automatico quando contagem > linhas exibidas", () => {
+    const extras = calcularExtras("financeiro_contas_a_pagar", {
+      destaque: { totalAPagar: 1000, contagem: 50 },
+      titulos: [{ participanteNome: "A", vrSaldo: 500 }],
+    });
+    expect(extras._listaTruncada).toBe(true);
+    expect(extras._AVISO_TRUNCAMENTO).toContain("Encontrei 50");
+    expect(extras._AVISO_TRUNCAMENTO).toContain("listando 1");
   });
 
   it("listaTruncada=true reflete no envelope", () => {

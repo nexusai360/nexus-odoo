@@ -76,16 +76,12 @@ const fmtSaldoProduto: FormatadorCanonico = (env) => {
 };
 
 const fmtRegistrarLacuna: FormatadorCanonico = (env) => {
-  const resp = String(env._DESTAQUE?.respostaSugerida ?? "");
-  const dest = env._DESTAQUE as
-    | (Record<string, unknown> & { sugestoesRelacionadas?: unknown })
-    | undefined;
-  const sugs = dest?.["sugestoesRelacionadas"];
-  let sugStr = "";
-  if (Array.isArray(sugs) && sugs.length > 0) {
-    sugStr = ` [[suggestions]]:${sugs.join("|")}`;
-  }
-  return resp + sugStr;
+  // T-19 (2026-05-27): NAO incluir "[[suggestions]]:" aqui. O canal eh um
+  // protocolo entre LLM e UI; quando aparece no _RESPOSTA, o LLM copia
+  // literal e o usuario ve o canal cru. As sugestoes ficam disponiveis no
+  // campo sugestoesRelacionadas separado e o LLM emite o canal por sua
+  // propria conta no fim da resposta (conforme regra do prompt).
+  return String(env._DESTAQUE?.respostaSugerida ?? "");
 };
 
 // ---------------------------------------------------------------------------
@@ -93,11 +89,14 @@ const fmtRegistrarLacuna: FormatadorCanonico = (env) => {
 // ---------------------------------------------------------------------------
 
 const fmtGenerico: FormatadorCanonico = (env) => {
+  // T-18 (2026-05-27): freshness textual removida do fallback generico.
+  // Era um vetor de vazamento para tools sem formatador real (preco_*,
+  // tools de escrita). O LLM nao deve imprimir "(atualizado ha X)" no
+  // texto humano.
   const partes: string[] = ["Resultado obtido."];
   if (env._DESTAQUE && Object.keys(env._DESTAQUE).length > 0) {
     partes.push(`(${JSON.stringify(env._DESTAQUE)})`);
   }
-  partes.push(`(atualizado ha ${env.atualizadoHa})`);
   return partes.join(" ");
 };
 
