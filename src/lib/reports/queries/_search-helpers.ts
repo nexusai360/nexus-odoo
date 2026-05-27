@@ -69,6 +69,7 @@ export async function searchProductByNameWithMetaCanonical(
   const ceClause = filtra_ce ? ` AND "controla_estoque"=true` : "";
 
   // Camada 0: codigo exato.
+  const ehSoDigitos = /^\d+$/.test(t);
   if (/^\d{3,}$|^[A-Z0-9]{8,}$/.test(t)) {
     const codeRows = await prisma.$queryRawUnsafe<{ id: number }[]>(
       `SELECT "odoo_id" AS id FROM "fato_produto"
@@ -82,6 +83,12 @@ export async function searchProductByNameWithMetaCanonical(
         totalMatches: codeRows.length,
         layer: "codigo",
       };
+    }
+    // F4 FIX: termo puramente numerico sem match exato NAO deve cair em
+    // fuzzy no nome (retorna produto errado silenciosamente). Audit R12:
+    // termo "1000362265" retornou "Mola Espiral 1000097424".
+    if (ehSoDigitos) {
+      return { ids: [], totalMatches: 0, layer: "none" };
     }
   }
 

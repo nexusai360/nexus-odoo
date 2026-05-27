@@ -33,14 +33,24 @@ export async function queryPlanoDeContas(
   truncado: boolean;
 }> {
   const limite = filtros.limite ?? 250;
-  const where = filtros.termo
-    ? {
-        OR: [
-          { codigo: { contains: filtros.termo, mode: "insensitive" as const } },
-          { nome: { contains: filtros.termo, mode: "insensitive" as const } },
-        ],
-      }
-    : {};
+  // F5 FIX: busca tokenizada (AND de palavras). Antes "impostos a recolher"
+  // nao achava "OUTROS IMPOSTOS E TAXAS A RECOLHER" porque contains literal.
+  const STOPWORDS = new Set(["a", "as", "de", "do", "da", "dos", "das", "e", "o", "os", "para", "pra", "no", "na", "nos", "nas", "que", "por"]);
+  let where: Record<string, unknown> = {};
+  if (filtros.termo) {
+    const tokens = filtros.termo
+      .toLowerCase()
+      .split(/\s+/)
+      .filter((t) => t.length >= 2 && !STOPWORDS.has(t));
+    where = {
+      OR: [
+        { codigo: { contains: filtros.termo, mode: "insensitive" as const } },
+        tokens.length > 0
+          ? { AND: tokens.map((tk) => ({ nome: { contains: tk, mode: "insensitive" as const } })) }
+          : { nome: { contains: filtros.termo, mode: "insensitive" as const } },
+      ],
+    };
+  }
 
   const [linhas, total] = await Promise.all([
     prisma.fatoContaContabil.findMany({
