@@ -1,8 +1,17 @@
 "use client";
 
-import { useState, useTransition } from "react";
+import { useMemo, useState, useTransition } from "react";
 import { motion } from "framer-motion";
-import { Clock, Database } from "lucide-react";
+import {
+  ArrowDown,
+  ArrowUp,
+  ArrowUpDown,
+  Check,
+  ChevronDown,
+  Clock,
+  Database,
+  X,
+} from "lucide-react";
 import { toast } from "sonner";
 
 import { updateSyncConfig } from "@/lib/actions/sync-config";
@@ -17,6 +26,12 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { CustomSelect } from "@/components/ui/custom-select";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
 import {
   Table,
   TableBody,
@@ -32,6 +47,7 @@ import {
   DialogTitle,
   DialogDescription,
 } from "@/components/ui/dialog";
+import { cn } from "@/lib/utils";
 
 // Local row type , only the fields the UI uses (avoids importing full Prisma model)
 interface SyncStateRow {
@@ -123,27 +139,137 @@ function minToReadable(min: number): string | null {
   return `${min} min ≈ ${hours.toFixed(1)} h`;
 }
 
+// ---------------------------------------------------------------------------
+// Filtros + ordenacao da tabela de estado
+// ---------------------------------------------------------------------------
+
+type SortKey = "model" | "mode" | "status" | "registros" | "ultimaSync";
+type SortDir = "asc" | "desc" | null;
+type StatusKey = "ok" | "rodando" | "erro" | "sem_acesso";
+
+const STATUS_ORDER_FILTER: StatusKey[] = ["ok", "rodando", "erro", "sem_acesso"];
+
+const STATUS_TAG_ACTIVE: Record<StatusKey, string> = {
+  ok: "bg-emerald-500/15 text-emerald-700 border-emerald-500/40 dark:text-emerald-300",
+  rodando: "bg-violet-500/15 text-violet-700 border-violet-500/40 dark:text-violet-300",
+  erro: "bg-red-500/15 text-red-700 border-red-500/40 dark:text-red-300",
+  sem_acesso:
+    "bg-slate-500/15 text-slate-700 border-slate-500/40 dark:text-slate-300",
+};
+
+function lastSyncAt(row: SyncStateRow): Date | null {
+  return row.lastIncrementalAt ?? row.lastSnapshotAt ?? row.lastReconcileAt;
+}
+
 function EstadoModal({ estado, open, onOpenChange }: {
   estado: SyncStateRow[];
   open: boolean;
   onOpenChange: (open: boolean) => void;
 }) {
-  const ok = estado.filter((s) => s.lastStatus === "ok").length;
+  // Filtros locais
+  const [modeFilter, setModeFilter] = useState<string>("all");
+  const [statusFilter, setStatusFilter] = useState<StatusKey[]>([]);
+  // Ordenacao (3-click: asc -> desc -> null) - default: ultimaSync desc
+  const [sortKey, setSortKey] = useState<SortKey>("ultimaSync");
+  const [sortDir, setSortDir] = useState<SortDir>("desc");
+
+  const modes = useMemo(() => {
+    const set = new Set<string>();
+    for (const r of estado) set.add(r.mode);
+    return Array.from(set).sort();
+  }, [estado]);
+
+  const toggleSort = (key: SortKey) => {
+    if (sortKey !== key) {
+      setSortKey(key);
+      setSortDir("asc");
+      return;
+    }
+    setSortDir((d) => (d === "asc" ? "desc" : d === "desc" ? null : "asc"));
+  };
+
+  const visible = useMemo(() => {
+    let rows = estado.slice();
+    if (modeFilter !== "all") rows = rows.filter((r) => r.mode === modeFilter);
+    if (statusFilter.length > 0)
+      rows = rows.filter((r) =>
+        statusFilter.includes(r.lastStatus as StatusKey),
+      );
+    if (sortDir !== null) {
+      const dirSign = sortDir === "asc" ? 1 : -1;
+      rows.sort((a, b) => {
+        const av = getSortValue(a, sortKey);
+        const bv = getSortValue(b, sortKey);
+        if (av === bv) return 0;
+        if (av === null) return 1;
+        if (bv === null) return -1;
+        return av < bv ? -1 * dirSign : 1 * dirSign;
+      });
+    }
+    return rows;
+  }, [estado, modeFilter, statusFilter, sortKey, sortDir]);
+
+  const okCount = estado.filter((s) => s.lastStatus === "ok").length;
   const semAcesso = estado.filter((s) => s.lastStatus === "sem_acesso").length;
   const erro = estado.filter((s) => s.lastStatus === "erro").length;
 
+  const clearFilters = () => {
+    setModeFilter("all");
+    setStatusFilter([]);
+  };
+  const hasActiveFilters = modeFilter !== "all" || statusFilter.length > 0;
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-4xl max-h-[85vh] flex flex-col overflow-hidden">
+      <DialogContent className="sm:max-w-5xl max-h-[85vh] flex flex-col overflow-hidden">
         <DialogHeader>
           <DialogTitle>Estado da ingestão</DialogTitle>
           <DialogDescription>
             {estado.length} modelos
-            {ok > 0 && ` · ${ok} ok`}
+            {okCount > 0 && ` · ${okCount} ok`}
             {semAcesso > 0 && ` · ${semAcesso} sem acesso`}
             {erro > 0 && ` · ${erro} com erro`}
+            {hasActiveFilters &&
+              ` · mostrando ${visible.length} apos filtros`}
           </DialogDescription>
         </DialogHeader>
+
+        {/* Filtros */}
+        <div className="flex flex-wrap items-center gap-2 pb-2">
+          <CustomSelect
+            value={modeFilter}
+            onChange={setModeFilter}
+            triggerClassName="min-h-[36px] h-9 min-w-[180px]"
+            aria-label="Filtrar por modo"
+            options={[
+              { value: "all", label: "Todos os modos" },
+              ...modes.map((m) => ({
+                value: m,
+                label: SYNC_TYPE_LABELS[m]?.label ?? m,
+              })),
+            ]}
+          />
+          <StatusMultiSelect
+            selected={statusFilter}
+            onToggle={(s) =>
+              setStatusFilter((prev) =>
+                prev.includes(s) ? prev.filter((x) => x !== s) : [...prev, s],
+              )
+            }
+            onClear={() => setStatusFilter([])}
+          />
+          {hasActiveFilters && (
+            <button
+              type="button"
+              onClick={clearFilters}
+              className="inline-flex h-9 cursor-pointer items-center gap-1.5 rounded-lg border border-border bg-card px-3 text-xs font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-500"
+              aria-label="Limpar filtros"
+            >
+              <X className="h-3.5 w-3.5" aria-hidden="true" />
+              Limpar
+            </button>
+          )}
+        </div>
 
         {estado.length === 0 ? (
           <div
@@ -158,49 +284,244 @@ function EstadoModal({ estado, open, onOpenChange }: {
             <Table>
               <TableHeader>
                 <TableRow className="hover:bg-transparent">
-                  <TableHead className="text-xs">Modelo</TableHead>
-                  <TableHead className="text-xs">Modo</TableHead>
-                  <TableHead className="text-xs">Status</TableHead>
-                  <TableHead className="text-xs">Registros</TableHead>
-                  <TableHead className="text-xs">Última sync</TableHead>
+                  <SortableHead
+                    label="Modelo"
+                    sortKey="model"
+                    activeKey={sortKey}
+                    dir={sortDir}
+                    onToggle={toggleSort}
+                  />
+                  <SortableHead
+                    label="Modo"
+                    sortKey="mode"
+                    activeKey={sortKey}
+                    dir={sortDir}
+                    onToggle={toggleSort}
+                  />
+                  <SortableHead
+                    label="Status"
+                    sortKey="status"
+                    activeKey={sortKey}
+                    dir={sortDir}
+                    onToggle={toggleSort}
+                  />
+                  <SortableHead
+                    label="Registros"
+                    sortKey="registros"
+                    activeKey={sortKey}
+                    dir={sortDir}
+                    onToggle={toggleSort}
+                  />
+                  <SortableHead
+                    label="Última sync"
+                    sortKey="ultimaSync"
+                    activeKey={sortKey}
+                    dir={sortDir}
+                    onToggle={toggleSort}
+                  />
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {estado.map((s) => (
-                  <TableRow key={s.model} className="border-border hover:bg-muted/30">
-                    <TableCell className="font-mono text-xs text-foreground">
-                      <div>{s.model}</div>
-                      {s.lastStatus === "erro" && s.lastError && (
-                        <div className="text-xs text-muted-foreground mt-0.5 max-w-[320px] truncate" title={s.lastError}>
-                          {s.lastError}
-                        </div>
-                      )}
-                    </TableCell>
-                    <TableCell className="text-xs text-muted-foreground">
-                      {SYNC_TYPE_LABELS[s.mode]?.label ?? s.mode}
-                    </TableCell>
-                    <TableCell>
-                      <Badge
-                        variant="outline"
-                        className={`text-xs ${getStatusBadgeClasses(s.lastStatus)}`}
-                      >
-                        {getStatusLabel(s.lastStatus)}
-                      </Badge>
-                    </TableCell>
-                    <TableCell className="text-xs tabular-nums text-muted-foreground">
-                      {s.recordCount.toLocaleString("pt-BR")}
-                    </TableCell>
-                    <TableCell className="text-xs text-muted-foreground">
-                      {formatDateTime(s.lastIncrementalAt ?? s.lastSnapshotAt)}
+                {visible.length === 0 ? (
+                  <TableRow>
+                    <TableCell
+                      colSpan={5}
+                      className="py-10 text-center text-xs text-muted-foreground"
+                    >
+                      Nenhum modelo encontrado com os filtros atuais.
                     </TableCell>
                   </TableRow>
-                ))}
+                ) : (
+                  visible.map((s) => (
+                    <TableRow key={s.model} className="border-border hover:bg-muted/30">
+                      <TableCell className="font-mono text-xs text-foreground">
+                        <div>{s.model}</div>
+                        {s.lastStatus === "erro" && s.lastError && (
+                          <div className="text-xs text-muted-foreground mt-0.5 max-w-[320px] truncate" title={s.lastError}>
+                            {s.lastError}
+                          </div>
+                        )}
+                      </TableCell>
+                      <TableCell className="text-xs text-muted-foreground">
+                        {SYNC_TYPE_LABELS[s.mode]?.label ?? s.mode}
+                      </TableCell>
+                      <TableCell>
+                        <Badge
+                          variant="outline"
+                          className={`text-xs ${getStatusBadgeClasses(s.lastStatus)}`}
+                        >
+                          {getStatusLabel(s.lastStatus)}
+                        </Badge>
+                      </TableCell>
+                      <TableCell className="text-xs tabular-nums text-muted-foreground">
+                        {s.recordCount.toLocaleString("pt-BR")}
+                      </TableCell>
+                      <TableCell className="text-xs text-muted-foreground tabular-nums">
+                        {formatDateTime(lastSyncAt(s))}
+                      </TableCell>
+                    </TableRow>
+                  ))
+                )}
               </TableBody>
             </Table>
           </div>
         )}
       </DialogContent>
     </Dialog>
+  );
+}
+
+function getSortValue(
+  row: SyncStateRow,
+  key: SortKey,
+): string | number | null {
+  switch (key) {
+    case "model":
+      return row.model;
+    case "mode":
+      return row.mode;
+    case "status":
+      return row.lastStatus;
+    case "registros":
+      return row.recordCount;
+    case "ultimaSync": {
+      const d = lastSyncAt(row);
+      return d ? new Date(d).getTime() : null;
+    }
+  }
+}
+
+interface SortableHeadProps {
+  label: string;
+  sortKey: SortKey;
+  activeKey: SortKey;
+  dir: SortDir;
+  onToggle: (key: SortKey) => void;
+}
+
+/** TableHead com 3-click cycle de ordenacao: asc -> desc -> sem ordenacao. */
+function SortableHead({ label, sortKey, activeKey, dir, onToggle }: SortableHeadProps) {
+  const isActive = activeKey === sortKey && dir !== null;
+  const Icon =
+    !isActive ? ArrowUpDown : dir === "asc" ? ArrowUp : ArrowDown;
+  return (
+    <TableHead className="text-xs">
+      <button
+        type="button"
+        onClick={() => onToggle(sortKey)}
+        className={cn(
+          "inline-flex cursor-pointer select-none items-center gap-1 transition-colors hover:text-foreground",
+          isActive ? "text-foreground font-medium" : "text-muted-foreground",
+        )}
+        aria-label={`Ordenar por ${label}`}
+      >
+        <span>{label}</span>
+        <Icon
+          className={cn(
+            "h-3 w-3 transition-opacity",
+            isActive ? "opacity-100" : "opacity-50",
+          )}
+          aria-hidden="true"
+        />
+      </button>
+    </TableHead>
+  );
+}
+
+interface StatusMultiSelectProps {
+  selected: StatusKey[];
+  onToggle: (s: StatusKey) => void;
+  onClear: () => void;
+}
+
+/** Dropdown multi-select de status com tags coloridas. Padrao alinhado
+ *  ao /agente/monitoramento (mesma UX). */
+function StatusMultiSelect({ selected, onToggle, onClear }: StatusMultiSelectProps) {
+  const [open, setOpen] = useState(false);
+  const triggerLabel =
+    selected.length === 0
+      ? "Status"
+      : selected.length === 1
+        ? getStatusLabel(selected[0])
+        : `${selected.length} selecionados`;
+
+  return (
+    <Popover open={open} onOpenChange={setOpen}>
+      <PopoverTrigger
+        render={
+          <button
+            type="button"
+            aria-label="Filtrar por status"
+            aria-haspopup="listbox"
+            aria-expanded={open}
+            className="flex h-9 min-w-[180px] cursor-pointer items-center justify-between gap-2 rounded-lg border border-border bg-card px-3 text-sm text-foreground transition-colors hover:border-muted-foreground/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-500"
+          >
+            <span className="truncate">{triggerLabel}</span>
+            <ChevronDown
+              className={cn(
+                "h-4 w-4 shrink-0 text-muted-foreground transition-transform",
+                open && "rotate-180",
+              )}
+              aria-hidden="true"
+            />
+          </button>
+        }
+      />
+      <PopoverContent
+        align="start"
+        sideOffset={4}
+        className="min-w-[220px] w-auto overflow-hidden p-1"
+      >
+        <ul role="listbox" aria-label="Status" className="flex flex-col">
+          {STATUS_ORDER_FILTER.map((s) => {
+            const isOn = selected.includes(s);
+            return (
+              <li key={s} role="presentation">
+                <button
+                  type="button"
+                  role="option"
+                  aria-selected={isOn}
+                  onClick={() => onToggle(s)}
+                  className="flex w-full cursor-pointer items-center gap-2 rounded-md px-2 py-1.5 text-left text-sm transition-colors hover:bg-accent"
+                >
+                  <span
+                    className={cn(
+                      "flex h-4 w-4 shrink-0 items-center justify-center rounded border border-border bg-background transition-colors",
+                      isOn && "border-violet-500 bg-violet-500 text-white",
+                    )}
+                    aria-hidden
+                  >
+                    {isOn ? <Check className="h-3 w-3" /> : null}
+                  </span>
+                  <span
+                    className={cn(
+                      "inline-flex items-center rounded-full border px-2 py-0.5 text-xs font-medium transition-colors",
+                      isOn
+                        ? STATUS_TAG_ACTIVE[s]
+                        : "border-border bg-background text-muted-foreground",
+                    )}
+                  >
+                    {getStatusLabel(s)}
+                  </span>
+                </button>
+              </li>
+            );
+          })}
+        </ul>
+        {selected.length > 0 && (
+          <div className="mt-1 border-t border-border pt-1">
+            <button
+              type="button"
+              onClick={onClear}
+              className="flex w-full cursor-pointer items-center gap-2 rounded-md px-2 py-1.5 text-left text-xs text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+            >
+              <X className="h-3 w-3" aria-hidden />
+              Limpar seleção
+            </button>
+          </div>
+        )}
+      </PopoverContent>
+    </Popover>
   );
 }
 
