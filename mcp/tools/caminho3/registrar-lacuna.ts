@@ -47,9 +47,9 @@ const LACUNAS_REAIS: Array<{
     sugestoes: ["Pedidos em aberto no funil", "Pedidos atrasados", "Volume de pedidos por etapa"],
   },
   {
-    pattern: /faturamento por (marca|regi[ãa]o|estado)|por (marca|regi[ãa]o|estado).*faturament/i,
+    pattern: /faturamento por (regi[ãa]o|estado)|por (regi[ãa]o|estado).*faturament/i,
     resposta: "Esse corte não está agrupado no painel. Posso te dar visões alternativas:",
-    sugestoes: ["Faturamento por cliente esse mês", "Top 5 clientes esse mês", "Faturamento total esse mês"],
+    sugestoes: ["Faturamento por marca esse mês", "Faturamento por cliente esse mês", "Faturamento total esse mês"],
   },
   {
     pattern: /parceiros novos.*(semana|mes|periodo)|cadastrados.*semana|fornecedor sem cadastro/i,

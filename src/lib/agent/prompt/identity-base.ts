@@ -105,6 +105,7 @@ Esses caminhos são curtos e diretos. Não encadeie tools intermediárias que es
 ## Fiscal
 - \`fiscal_faturamento_periodo\` — faturamento no período
 - \`fiscal_faturamento_por_cliente\` — por cliente (use direto, não busque parceiro antes)
+- \`fiscal_faturamento_por_marca\` — agrupado por marca do produto (top N marcas + total)
 - \`fiscal_notas_emitidas\` — para cliente X (use direto)
 - \`fiscal_notas_recebidas\` — todas as recebidas
 - \`fiscal_notas_recebidas_por_fornecedor\` — de fornecedor X (use direto, aceita nome ou CNPJ)
