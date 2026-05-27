@@ -184,9 +184,24 @@ const fmtPedidosPeriodo: FormatadorCanonico = (env) => {
 };
 
 const fmtPedidosPorEtapa: FormatadorCanonico = (env) => {
-  const n = Number(env._DESTAQUE?.totalGeral ?? 0);
-  if (n === 0) return "Nenhum pedido encontrado.";
-  return `${n} pedidos distribuidos pelas etapas do funil (consulte linhas/etapas para detalhes).`;
+  // T-31 (Ronda 2): texto rico com categorias separadas. Resolve confusao
+  // do LLM entre "53 etapas" (linhas) e "1.597 pedidos" (quantidade total).
+  const total = Number(env._DESTAQUE?.totalPedidos ?? env._DESTAQUE?.totalGeral ?? 0);
+  if (total === 0) return "Nenhum pedido encontrado no fluxo comercial.";
+  const concluidos = Number(env._DESTAQUE?.pedidosConcluidos ?? 0);
+  const cancelados = Number(env._DESTAQUE?.pedidosCancelados ?? 0);
+  const rascunho = Number(env._DESTAQUE?.pedidosRascunho ?? 0);
+  const aberto = Number(env._DESTAQUE?.pedidosEmAberto ?? 0);
+  const valorTotal = Number(env._DESTAQUE?.valorTotal ?? 0);
+  const partes: string[] = [`${total} pedidos no fluxo comercial`];
+  if (valorTotal > 0) partes.push(`(${formatBRL(valorTotal)})`);
+  const detalhes: string[] = [];
+  if (concluidos > 0) detalhes.push(`${concluidos} concluidos`);
+  if (cancelados > 0) detalhes.push(`${cancelados} cancelados`);
+  if (rascunho > 0) detalhes.push(`${rascunho} em rascunho/digitacao`);
+  if (aberto > 0) detalhes.push(`${aberto} em aberto`);
+  const head = partes.join(" ");
+  return detalhes.length > 0 ? `${head}: ${detalhes.join(", ")}.` : `${head}.`;
 };
 
 const fmtPedidosAtrasados: FormatadorCanonico = (env) => {
@@ -319,6 +334,20 @@ const fmtValorArmazem: FormatadorCanonico = (env) => {
   return `Valor total em estoque: ${formatBRL(valor)} em ${n} armazens.`;
 };
 
+const fmtEntradasSaidas: FormatadorCanonico = (env) => {
+  // T-32 (Ronda 2): texto pronto pro LLM. Quando ambos zero, dispara §10b
+  // ("Nao ha entradas/saidas no periodo").
+  const entrada = Number(env._DESTAQUE?.totalEntrada ?? 0);
+  const saida = Number(env._DESTAQUE?.totalSaida ?? 0);
+  const periodos = Number(env._DESTAQUE?.periodos ?? 0);
+  if (periodos === 0 || (entrada === 0 && saida === 0)) {
+    return "Nao ha entradas nem saidas de estoque no periodo.";
+  }
+  if (entrada === 0) return `Nao ha entradas no periodo. Saidas: ${saida} unidades.`;
+  if (saida === 0) return `Nao ha saidas no periodo. Entradas: ${entrada} unidades.`;
+  return `Entradas: ${entrada} unidades. Saidas: ${saida} unidades. Periodo de ${periodos} meses.`;
+};
+
 const FORMATADORES: Record<string, FormatadorCanonico> = {
   // financeiro
   financeiro_contas_a_receber: fmtContasAReceber,
@@ -338,6 +367,7 @@ const FORMATADORES: Record<string, FormatadorCanonico> = {
   estoque_produtos_parados: fmtProdutosParados,
   estoque_produtos_saldo_zero: fmtProdutosSaldoZero,
   estoque_valor_armazem: fmtValorArmazem,
+  estoque_entradas_saidas: fmtEntradasSaidas,
   // comercial
   comercial_pedidos_periodo: fmtPedidosPeriodo,
   comercial_pedidos_por_etapa: fmtPedidosPorEtapa,

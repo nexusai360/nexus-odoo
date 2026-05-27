@@ -405,16 +405,61 @@ function temRespostaCuradaNaoTrivial(ctx: ValidationContext): {
   return null;
 }
 
+/** Extrai numeros relevantes (moeda, contagens > 4) de um texto. */
+function extrairNumerosRelevantes(texto: string): string[] {
+  const nums = new Set<string>();
+  // Moeda BR: "R$ 1.234,56" / "R$ 0,00" / "R$ 1234,56"
+  for (const m of texto.matchAll(/R\$\s*[\d.]+(?:,\d{1,2})?/g)) {
+    nums.add(m[0].replace(/\s+/g, ""));
+  }
+  // Contagens inteiras >= 5 (evita falso positivo com "3 dias", "top 5").
+  for (const m of texto.matchAll(/\b(\d{1,3}(?:\.\d{3})*|\d+)\b/g)) {
+    const raw = (m[1] ?? "").replace(/\./g, "");
+    const v = Number(raw);
+    if (!Number.isNaN(v) && v >= 5) nums.add(raw);
+  }
+  return [...nums];
+}
+
+/** Normaliza numero pra comparacao: "R$ 1.234,56" -> "1234.56", "5.000" -> "5000". */
+function normNum(s: string): string {
+  return s
+    .replace(/R\$/g, "")
+    .replace(/\s+/g, "")
+    .replace(/\.(?=\d{3}(?:[^\d]|$))/g, "") // remove pontos de milhar
+    .replace(",", ".");
+}
+
 function validateV5(ctx: ValidationContext): ValidationOutcome | null {
   const curada = temRespostaCuradaNaoTrivial(ctx);
   if (!curada) return null;
+
+  // V5b (Ronda 2): primeiro checa numeros ocultos. Se _RESPOSTA tem numero
+  // factual (R$ X / N titulos / N etapas) e a resposta final NAO cita
+  // NENHUM desses numeros, o LLM ignorou o dado entregue. Esse criterio
+  // pega casos onde overlap textual e alto (palavras "receber", "titulos"
+  // aparecem nos dois) mas o numero crucial sumiu.
+  const numsCurados = extrairNumerosRelevantes(curada.resposta).map(normNum);
+  if (numsCurados.length > 0) {
+    const numsLLM = new Set(extrairNumerosRelevantes(ctx.llmResponse).map(normNum));
+    const algumAparece = numsCurados.some((n) => numsLLM.has(n));
+    if (!algumAparece) {
+      return {
+        ok: false,
+        reason: "V5",
+        hint: `O campo _RESPOSTA da tool trouxe os numeros prontos ("${curada.resposta}"), mas voce nao citou nenhum deles. Use o texto curado como base e mantenha os numeros exatamente como vieram.`,
+        detalhe: `V5b:numero_curado_ausente:${numsCurados.length}_curados_0_citados`,
+      };
+    }
+  }
+
+  // V5 original: overlap textual baixo (LLM ignorou completamente o texto).
   const tokensLLM = new Set(tokensSignificativos(ctx.llmResponse));
   let overlap = 0;
   for (const t of curada.tokens) {
     if (tokensLLM.has(t)) overlap++;
   }
   const ratio = overlap / curada.tokens.length;
-  // Threshold conservador: < 25% de overlap = LLM ignorou _RESPOSTA.
   if (ratio >= 0.25) return null;
   return {
     ok: false,
