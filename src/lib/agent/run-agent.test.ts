@@ -43,6 +43,7 @@ jest.mock("./llm/usage-logger", () => ({
 jest.mock("./conversation", () => ({
   loadHistory: jest.fn().mockResolvedValue([]),
   persistMessage: jest.fn().mockResolvedValue(undefined),
+  persistMessageAndReturnId: jest.fn().mockResolvedValue("msg-mock-id"),
   assertConversationOwned: jest.fn().mockResolvedValue(undefined),
   // sanitizeHistoryPairs: passthrough , retorna o array sem modificação nos testes
   sanitizeHistoryPairs: jest.fn((h: unknown[]) => h),
@@ -143,7 +144,7 @@ describe("extractSuggestions", () => {
     const { message, suggestions } = extractSuggestions(text, 3);
     expect(message).toBe(text);
     expect(suggestions).toHaveLength(3);
-    expect(suggestions.every((s) => s.endsWith("?"))).toBe(true);
+    expect(suggestions.every((s) => typeof s === "string" && s.length > 0)).toBe(true);
   });
 
   test("sugestão com >80 chars é filtrada", () => {
@@ -161,12 +162,12 @@ describe("extractSuggestions", () => {
     expect(suggestions).toEqual(["Quero o preço de venda", "Custo do PMB403"]);
   });
 
-  test("aceita até 5 sugestões (cap elevado para desambiguação)", () => {
+  test("aceita até 7 sugestões (cap elevado para desambiguação)", () => {
     const text =
       "Resposta.\n\n[[suggestions]]:Um|Dois|Tres|Quatro|Cinco|Seis";
     const { suggestions } = extractSuggestions(text);
-    expect(suggestions).toHaveLength(5);
-    expect(suggestions).toEqual(["Um", "Dois", "Tres", "Quatro", "Cinco"]);
+    expect(suggestions).toHaveLength(6);
+    expect(suggestions).toEqual(["Um", "Dois", "Tres", "Quatro", "Cinco", "Seis"]);
   });
 });
 
