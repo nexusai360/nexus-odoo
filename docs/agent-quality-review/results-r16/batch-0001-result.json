@@ -1,0 +1,222 @@
+{
+  "batchId": "batch-0001",
+  "evaluatedAt": "2026-05-27T04:45:00.000Z",
+  "totals": {
+    "CORRETO": 17,
+    "PARCIAL": 3,
+    "ERRADO": 3,
+    "FORA_DE_ESCOPO": 2
+  },
+  "patterns": {
+    "acerto_objetividade": 17,
+    "acerto_modelo": 5,
+    "formato_quebrado": 4,
+    "dado_inventado": 3,
+    "limitacao_real_declarada": 2,
+    "pergunta_ignorada": 2,
+    "resposta_truncada": 1,
+    "fluxo_tool_incompleto": 1
+  },
+  "turnos": [
+    {
+      "turnoId": "01a0e168-9f48-4b6f-902e-9e2dae1448ee",
+      "status": "CORRETO",
+      "patterns": ["acerto_objetividade"],
+      "razao": "Pergunta 'já vencidos a receber' atendida com top a_receber vencidos. Smartfit 387.500/24d, Spe Opus 66 148.500/41d, Smartfit 145.602/23d, Center Fit 80.000/9d, SAFRA 39.990/28d, Vexa 34.319,57/4d, Lins 32.399,30/25d, Brascon 29.904/28d — todos batem exato com toolResults. Ranking correto por vrSaldo (filtrando a_receber).",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "02918f83-d4c9-4799-9048-877dc96c267c",
+      "status": "CORRETO",
+      "patterns": ["acerto_objetividade"],
+      "razao": "Nome, cidade/UF (Fortaleza/CE), documento (BR-10.624.805/0001-60) e categoria (cliente) batem com toolResults. Resposta enxuta e completa.",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "059d702a-f9e6-49a1-af6e-5748c43e21d6",
+      "status": "CORRETO",
+      "patterns": ["acerto_objetividade"],
+      "razao": "Valor total R$ 51.977.199,74, 7 armazéns, maior armazém Jds Matriz R$ 27.949.968,19 — tudo bate. Freshness '11h' substituído corretamente.",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "0a470bcf-b1bf-4562-8606-81a9f0fb6a47",
+      "status": "CORRETO",
+      "patterns": ["acerto_objetividade"],
+      "razao": "Saudação 'tem alguém?' atendida com resposta breve e convite à ação. Não precisava de tool.",
+      "sugestao_prompt": null,
+      "correcao_factual": "nao_aplicavel"
+    },
+    {
+      "turnoId": "0cf8e8cf-91dc-4aaa-bf3e-c522165c1f88",
+      "status": "ERRADO",
+      "patterns": ["dado_inventado", "formato_quebrado", "pergunta_ignorada"],
+      "razao": "Resposta inicia com 'Você tem razão. Refaço só com o que está no bloco bruto acima' como se estivesse corrigindo turno anterior inexistente. Não agrega por participante: cita Smartfit R$ 387.500 quando o agregado real é R$ 678.704 (4 títulos somados). Sobre CONDOMINIO ESTRELAS DO MAR cita R$ 35.000 (valor não bate com nenhum título individual — soma parcial não justificada). Pior: diz 'CONDOMINIO ALTOS DO UMARIZAL — não consegui obter esse dado' sendo que o dado está no toolResults (12 títulos somando R$ 320.420,54 — seria o 3º maior devedor). Inventou ranking e omitiu dado existente.",
+      "sugestao_prompt": "Adicionar regra: para 'devedores principais', agregar por participanteNome (somar vrSaldo) e ordenar decrescente. Nunca dizer 'não consegui obter' quando o dado está no resultado da tool.",
+      "correcao_factual": "nao_bate"
+    },
+    {
+      "turnoId": "11812d1c-dcf6-46a1-ae3c-8559f66ce363",
+      "status": "CORRETO",
+      "patterns": ["acerto_objetividade", "acerto_modelo"],
+      "razao": "Mês corrente filtrado (01-27/05/2026), entradas R$ 13.139.706,09, saídas R$ 18.582.222,67, saldo R$ -5.442.516,58, tudo casa com toolResults. Freshness substituído. Resposta enxuta e completa.",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "12c98e00-1fde-42b3-b92a-c8175afb91bf",
+      "status": "CORRETO",
+      "patterns": ["acerto_objetividade", "acerto_modelo"],
+      "razao": "Janela 28/04 a 27/05 (últimos 30d) correta. Top10 bate exato: Jht SP 11.102.117,91/124 notas, Jds Matriz 3.736.256,64/34, Smartfit 2.176.946,16/6 etc. Ordenado por valor.",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "176714be-7595-4e4d-aca6-544d78a31a00",
+      "status": "ERRADO",
+      "patterns": ["dado_inventado"],
+      "razao": "IA disse '519 pedidos abertos'. Somando etapas etapaFinaliza=false e excluindo 'Cancelado'/'Cancelada' (7+7=14), o total real é 526 pedidos abertos (não 519). Com cancelados seria 533. Número 519 não corresponde a nenhuma agregação válida do toolResults.",
+      "sugestao_prompt": "Adicionar regra: 'pedidos abertos' = soma de quantidade onde etapaFinaliza=false E nome ∉ {Cancelado, Cancelada}. Computar matemática explicitamente, não estimar.",
+      "correcao_factual": "nao_bate"
+    },
+    {
+      "turnoId": "17fc7260-c443-490d-85af-068e741d0581",
+      "status": "CORRETO",
+      "patterns": ["acerto_objetividade"],
+      "razao": "Conta analítica CAIXA código 1.1.1.1.01.000001 confere com toolResults. Grupos pai citados também conferem. Freshness '11h' OK.",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "1d59c355-0029-40da-bf5b-c054f3f41c93",
+      "status": "PARCIAL",
+      "patterns": ["resposta_truncada", "formato_quebrado"],
+      "razao": "Resposta termina com 'Posso te ajudar com:' e nenhuma sugestão é listada. As sugestoesRelacionadas do tool ('Pedidos em aberto no funil', 'Pedidos atrasados', 'Volume por etapa') não foram renderizadas. O usuário fica com resposta cortada no meio.",
+      "sugestao_prompt": "Adicionar regra: ao usar resposta sugerida de registrar_lacuna, sempre renderizar sugestoesRelacionadas como lista ou bloco [[suggestions]]. Não terminar com dois-pontos sem o conteúdo.",
+      "correcao_factual": "nao_aplicavel"
+    },
+    {
+      "turnoId": "1ee0a6ee-d301-4dbc-8ef1-1e32c8bf1936",
+      "status": "CORRETO",
+      "patterns": ["acerto_objetividade"],
+      "razao": "Total 934 contas bate (campo total no toolResults). Primeiros nós da hierarquia (1 ATIVO, 1.1, 1.1.1 etc) batem com toolResults. Resposta enxuta com aviso correto sobre não haver lançamentos.",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "21a88352-02a9-4a8a-ac54-e37ef897768c",
+      "status": "FORA_DE_ESCOPO",
+      "patterns": ["limitacao_real_declarada"],
+      "razao": "Filtro de parceiros por UF/cidade não existe como tool dedicada (cadastro_buscar_parceiro é por termo livre). Agente registrou lacuna e devolveu resposta honesta de indisponibilidade. Limitação real.",
+      "sugestao_prompt": null,
+      "correcao_factual": "nao_aplicavel"
+    },
+    {
+      "turnoId": "26bd975f-7f3d-4382-a4d7-b44abbb510e5",
+      "status": "CORRETO",
+      "patterns": ["acerto_objetividade", "acerto_modelo"],
+      "razao": "Produto [102] MGPL78 Glute Trainer Matrix, saldo 16 unidades em 5 locais — bate com toolResults. Freshness '11h' substituído. Resposta direta e completa.",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "27e9b23d-5475-463d-9f60-eff2db5a542f",
+      "status": "CORRETO",
+      "patterns": ["acerto_objetividade"],
+      "razao": "Os 4 SKUs citados (RP010027 5kg, RP010028 10kg, RP010029 15kg, RP010030 20kg) existem no toolResults como anilhas olímpicas crossfit paradas, todos com 70 dias parados. 'Disco' e 'anilha' são sinônimos no contexto fitness. Resposta correta.",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "29b8336d-945f-4276-8c7f-bebd7a2a0522",
+      "status": "CORRETO",
+      "patterns": ["acerto_objetividade"],
+      "razao": "Casa Ferolla, 3 notas, R$ 0,00 no mês corrente — bate exato com toolResults (totalAgregado quantidade=3, valorTotal=0). Período correto. Freshness '11h' OK.",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "2f113a8e-c45b-4e12-b292-b7daf459cc84",
+      "status": "FORA_DE_ESCOPO",
+      "patterns": ["limitacao_real_declarada"],
+      "razao": "Busca de produtos por nome de família não existe como tool dedicada. Agente registrou lacuna e devolveu resposta honesta. Limitação real do catálogo.",
+      "sugestao_prompt": null,
+      "correcao_factual": "nao_aplicavel"
+    },
+    {
+      "turnoId": "3094ecc9-32e1-4b00-80e3-2a42888b9245",
+      "status": "CORRETO",
+      "patterns": ["acerto_objetividade"],
+      "razao": "Totais batem exato: 6.567 parceiros, 6.325 clientes, 754 fornecedores, 4.398 empresas, 2.169 PF, todos ativos. Resposta enxuta e didática.",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "3be7a46b-569c-4ce2-9249-230f45b2e0ec",
+      "status": "CORRETO",
+      "patterns": ["acerto_objetividade"],
+      "razao": "Pergunta conceitual sobre a diferença receber/pagar. Não precisa tool. Resposta correta e enxuta.",
+      "sugestao_prompt": null,
+      "correcao_factual": "nao_aplicavel"
+    },
+    {
+      "turnoId": "3d4acf1e-0c70-41fa-ba26-7df3a1dafcc1",
+      "status": "CORRETO",
+      "patterns": ["acerto_objetividade", "acerto_modelo"],
+      "razao": "Período 01-27/05/2026 correto. Total R$ 88.767.037,12 bate com _agregado.soma. Top10 batendo (MATRIX 71.395.422,65/80,4%, VISION 7.875.264,45/8,9% etc). Percentuais corretos.",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "40b42f21-8ab4-4811-8434-79672982ab84",
+      "status": "ERRADO",
+      "patterns": ["dado_inventado", "fluxo_tool_incompleto"],
+      "razao": "Tool foi registrar_lacuna (que retornou redirecionar para financeiro_contas_a_receber/pagar). IA NÃO chamou a tool de a_pagar, mas mesmo assim respondeu 'R$ 1.352.659,18 em 22 títulos' e 'vencimento até 26/06/2026'. Esses números não estão em nenhum toolResults — foram inventados pelo modelo.",
+      "sugestao_prompt": "Adicionar regra: quando registrar_lacuna retornar {registrado:false, redirecionar:{tool}}, o agente DEVE chamar a tool indicada na próxima rodada. NUNCA responder com números sem origem em tool.",
+      "correcao_factual": "nao_bate"
+    },
+    {
+      "turnoId": "411dc557-5bd2-407e-b322-1064cad3213e",
+      "status": "CORRETO",
+      "patterns": ["acerto_objetividade"],
+      "razao": "Banda Chicabana, cliente, Serrinha/BA, BR-07.930.542/0001-02 — bate exato com toolResults. Freshness '11h' OK.",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "42d3a361-65db-4c58-9572-3c3d503546c5",
+      "status": "CORRETO",
+      "patterns": ["acerto_objetividade"],
+      "razao": "Plano de contas: 934 contas, primeiros nós da hierarquia conferem (ATIVO, ATIVO CIRCULANTE, DISPONIBILIDADES etc). Freshness '11h' OK. Resposta similar a T10, consistente.",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "43fa02c5-7bd2-40f0-8629-3db2bef7a614",
+      "status": "CORRETO",
+      "patterns": ["acerto_objetividade", "acerto_modelo"],
+      "razao": "Período correto, fornecedor Jds Comércio Matriz DF com 187 notas e R$ 15.289.591,54 — bate exato com toolResults (tanto por quantidade quanto por valor, é #1 em ambos). Resposta direta.",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "450ec5ed-5323-45c5-9d5b-cebcdd156e2e",
+      "status": "PARCIAL",
+      "patterns": ["formato_quebrado", "pergunta_ignorada"],
+      "razao": "Tool certa, mas resposta começa com auto-correção 'Você tem razão' sem contexto prévio relevante. Lista 7 títulos a pagar em ordem aleatória (não top), pulando os 3 maiores (Jds R$ 1.150.926,23/768d, R$ 331.800/824d, R$ 277.200/825d). Diz 'não consegui obter total consolidado' sendo trivial somar (soma real ~R$ 2,5 milhões). Pergunta era objetiva e resposta veio caótica.",
+      "sugestao_prompt": "Adicionar regra: para 'titulos vencidos a pagar', ordenar por vrSaldo desc e mostrar top N. Calcular total somando vrSaldo dos a_pagar. Não usar tom de auto-correção sem turno anterior corretivo.",
+      "correcao_factual": "nao_bate"
+    },
+    {
+      "turnoId": "478b9aa4-3d4c-47a4-bafa-1d4b4e3f5132",
+      "status": "PARCIAL",
+      "patterns": ["formato_quebrado"],
+      "razao": "Pergunta sobre 'fechar meta' é legítima limitação (não há tool de meta). Resposta padrão de registrar_lacuna foi devolvida, mas o agente poderia ter sido mais útil oferecendo faturamento corrente vs período anterior ou consultando dado de pipeline. Como devolveu só o redirect padrão sem proatividade, classifico PARCIAL (limitação reconhecida mas sem oferta útil contextualizada).",
+      "sugestao_prompt": "Adicionar regra: para perguntas sobre 'meta'/'previsão de bater meta', oferecer proativamente faturamento_periodo do mês corrente vs mês anterior como aproximação útil.",
+      "correcao_factual": "nao_aplicavel"
+    }
+  ]
+}

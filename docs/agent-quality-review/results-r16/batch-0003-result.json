@@ -1,0 +1,223 @@
+{
+  "batchId": "0003",
+  "evaluatedAt": "2026-05-27T04:32:00.000Z",
+  "totals": {
+    "CORRETO": 15,
+    "PARCIAL": 3,
+    "ERRADO": 4,
+    "FORA_DE_ESCOPO": 3
+  },
+  "patterns": {
+    "acerto_objetividade": 15,
+    "acerto_modelo": 2,
+    "acerto_encadeamento": 2,
+    "limitacao_real_declarada": 3,
+    "resposta_truncada": 3,
+    "dado_inventado": 4,
+    "entendeu_mal_termo": 2,
+    "formato_quebrado": 2,
+    "erro_data": 1
+  },
+  "turnos": [
+    {
+      "turnoId": "a8c9b8be-149a-4adb-9bb5-65dbb156c2a8",
+      "status": "ERRADO",
+      "patterns": ["dado_inventado", "entendeu_mal_termo"],
+      "razao": "Pergunta era 'clientes inadimplentes' (a_receber). Mas vários valores citados divergem do toolResults: Smartfit foi declarado R$ 533.102,00, real R$ 678.704,00 (4 títulos, IA somou só 2). SAFRA declarado R$ 126.867,49, real R$ 154.585,14. Total geral declarado R$ 1.190.782,69, real a_receber vencido R$ 1.391.311,00. IA agregou parcialmente sem citar o critério.",
+      "sugestao_prompt": "Adicionar regra: ao agregar lista de títulos por participante, somar TODOS os títulos do mesmo CNPJ; declarar explicitamente o critério de soma e validar contra o total geral antes de responder.",
+      "correcao_factual": "nao_bate"
+    },
+    {
+      "turnoId": "ab06f508-81fb-4260-a58f-da1c355d16a7",
+      "status": "CORRETO",
+      "patterns": ["acerto_objetividade", "acerto_modelo"],
+      "razao": "Filtrou 5 contas positivas, soma R$ 1.610.274,40 bate exatamente com os valores do toolResults. Freshness 11h coerente.",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "ac710e2c-ffce-4772-b31b-7304b76a5d06",
+      "status": "CORRETO",
+      "patterns": ["acerto_objetividade", "acerto_modelo"],
+      "razao": "3 contas negativas com valores que batem exatamente; soma R$ -25.852.574,69 confere com a aritmética dos saldos do toolResults.",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "acc9f157-eb49-4031-8dff-abd173aa0983",
+      "status": "CORRETO",
+      "patterns": ["acerto_encadeamento", "acerto_objetividade"],
+      "razao": "Encadeou financeiro_saldo_contas + financeiro_titulos_vencidos. Saldo consolidado R$ -24.242.300,29 confere, valores de Jds e Jht SP conferem. Resposta proporcional à pergunta.",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "ae542da1-e015-49c4-81ad-e3cb69c160ef",
+      "status": "PARCIAL",
+      "patterns": ["entendeu_mal_termo", "formato_quebrado"],
+      "razao": "Listou parcelas individuais (3 linhas duplicadas de Smartfit) sem agregar por cliente, embora a UX pareça pedir agregação. Também escreveu 'Academy Center Fit' quando real é 'Academia Center Fit Muriae Ltda' (erro de transcrição leve). Valores das parcelas listadas batem com toolResults.",
+      "sugestao_prompt": "Adicionar regra: ao listar parcelas a receber, oferecer agregação por participante quando aparecem >2 linhas do mesmo CNPJ; preservar nome exato do participante sem traduzir/parafrasear.",
+      "correcao_factual": "nao_bate"
+    },
+    {
+      "turnoId": "b0d59c76-20a9-4d50-9847-aa7c2ffef7a6",
+      "status": "FORA_DE_ESCOPO",
+      "patterns": ["limitacao_real_declarada", "resposta_truncada"],
+      "razao": "Registrou lacuna corretamente (não há tool para filtrar pedidos sem vendedor). Mas a resposta cortou em 'Posso te ajudar com:' sem completar a lista de alternativas.",
+      "sugestao_prompt": "Garantir que sugestões alternativas após registrar_lacuna sejam sempre completadas; nunca terminar mensagem em 'Posso te ajudar com:' sem lista.",
+      "correcao_factual": "nao_aplicavel"
+    },
+    {
+      "turnoId": "b193cc75-5edf-482f-8a51-a8d944396d1b",
+      "status": "CORRETO",
+      "patterns": ["acerto_objetividade"],
+      "razao": "Pergunta com placeholder literal 'x'. Resposta pediu nome/CNPJ que é informação concreta indispensável (não há como assumir default). Ofereceu ações úteis adicionais.",
+      "sugestao_prompt": null,
+      "correcao_factual": "nao_aplicavel"
+    },
+    {
+      "turnoId": "b77224e5-8447-45e1-8c61-7e7f496e293f",
+      "status": "FORA_DE_ESCOPO",
+      "patterns": ["limitacao_real_declarada", "resposta_truncada"],
+      "razao": "Faturamento por estado não está agrupado no painel; registrou lacuna correta. Mas resposta cortou em 'Posso te dar visões alternativas:' sem listar as alternativas.",
+      "sugestao_prompt": "Mesma do turno b0d59c76: garantir que sugestões alternativas após registrar_lacuna sejam sempre completadas.",
+      "correcao_factual": "nao_aplicavel"
+    },
+    {
+      "turnoId": "b7fb1891-bdb4-443e-a7dd-9598bf64e58b",
+      "status": "CORRETO",
+      "patterns": ["acerto_objetividade"],
+      "razao": "Jds Matriz DF R$ 27.949.968,19 e total R$ 51.977.199,74 em 7 armazéns batem exatamente com o toolResults.",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "baf15115-aae0-47cf-94ea-44c0f326fc06",
+      "status": "CORRETO",
+      "patterns": ["acerto_objetividade"],
+      "razao": "Identificou ambiguidade (2 produtos com MGPL78). MGPL78 - Glute Trainer: 16 unidades em 5 locais, R$ 258.370,44 — bate exatamente. Acabamento Ajustavel MGPL78: 0 em 1 local — bate.",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "bd8c6a6f-8a87-4484-bdba-af68fbd59b39",
+      "status": "CORRETO",
+      "patterns": ["acerto_objetividade"],
+      "razao": "Conta 1.1.4.1.02 = DESPESAS ANTECIPADAS FILIAL, tipo 'S' (sintética) — bate com toolResults. Freshness 11h coerente.",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "c37265bb-6042-434d-9cd3-1ee40fd75b1f",
+      "status": "CORRETO",
+      "patterns": ["acerto_objetividade"],
+      "razao": "PMB403 - Puxador Corda, saldo 0, R$ 0,00 — bate com toolResults. Freshness 11h coerente. Resposta concisa.",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "c43dbdb0-282d-41aa-a10e-56d2ef35c2b3",
+      "status": "CORRETO",
+      "patterns": ["acerto_objetividade"],
+      "razao": "Total R$ 51.977.199,74 em 7 armazéns. Distribuição percentual (53,77%, 18,71%, 11,69%, 9,15%, 3,78%) bate exatamente com toolResults.",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "c57a4061-85e4-42b2-8be5-86caa1f32ba0",
+      "status": "FORA_DE_ESCOPO",
+      "patterns": ["limitacao_real_declarada"],
+      "razao": "Cruzamento pedidos em aberto x contas a receber em atraso não tem tool dedicada. Registrou lacuna corretamente e respondeu de forma honesta com oferta de outras vias.",
+      "sugestao_prompt": null,
+      "correcao_factual": "nao_aplicavel"
+    },
+    {
+      "turnoId": "c640bdb8-3e7f-4b32-95f5-6cf51abac204",
+      "status": "ERRADO",
+      "patterns": ["dado_inventado", "formato_quebrado"],
+      "razao": "Declarou 'consulta veio truncada' violando a _INSTRUCAO do toolResults que proíbe esse texto quando _DESTAQUE traz total. Smartfit foi citado como R$ 533.102,00 (parcial) quando real é R$ 678.704,00. A tool retornou 103 títulos agregáveis e o cliente que mais deve seria Smartfit com o valor completo.",
+      "sugestao_prompt": "Reforçar regra do prompt: 'NUNCA usar a palavra truncada/cortada/incompleta quando _DESTAQUE existe; sempre agregar TODOS os títulos por CNPJ antes de declarar maior devedor'.",
+      "correcao_factual": "nao_bate"
+    },
+    {
+      "turnoId": "c697d453-4015-4c0d-9f92-6abccbbcd1da",
+      "status": "ERRADO",
+      "patterns": ["dado_inventado"],
+      "razao": "IA declarou '170 notas' e '70 cadastros/filiais', mas o toolResults trouxe 30 linhas/cadastros somando 68 notas. Valor total R$ 4.659.800,34 confere, mas a contagem foi inventada (170 e 70).",
+      "sugestao_prompt": "Adicionar regra: ao reportar agregados de fiscal_notas_recebidas_por_fornecedor, somar quantidade EXATA das linhas e contar cadastros das linhas; nunca arredondar/inventar contagem.",
+      "correcao_factual": "nao_bate"
+    },
+    {
+      "turnoId": "c7121926-550b-4b0d-9294-79d50c78a6c3",
+      "status": "CORRETO",
+      "patterns": ["acerto_objetividade"],
+      "razao": "Top 5 produtos com período correto (mês corrente até 27/05). Valores R$ 17.797.942,30, R$ 3.984.523,64 etc batem exatamente com toolResults. Soma R$ 30.540.113,06 confere.",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "c7cc5d43-f68e-4e6e-8ebd-dea1d5346ff7",
+      "status": "CORRETO",
+      "patterns": ["acerto_objetividade"],
+      "razao": "Identificou etapa 'Aprovação dono' com 29 pedidos e R$ 7.539.047,29 — bate exatamente com toolResults.",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "c8982cbc-9d6c-4928-9c36-787ea78560de",
+      "status": "CORRETO",
+      "patterns": ["acerto_encadeamento", "acerto_objetividade"],
+      "razao": "Encadeou 2 chamadas (mês corrente até 27/05 e mês passado completo). Valores R$ 38.074.843,78 e R$ 33.997.934,37 batem; delta R$ 4.076.909,41 (12,0%) confere aritmeticamente.",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "c9fa1659-7acd-4092-899d-8f30d9d10364",
+      "status": "CORRETO",
+      "patterns": ["acerto_objetividade"],
+      "razao": "6.325 clientes, todos ativos, 6.567 parceiros — bate exatamente com toolResults.",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "cab26a51-9c4b-4ec0-94ef-0702b1e8c477",
+      "status": "ERRADO",
+      "patterns": ["dado_inventado"],
+      "razao": "Smartfit R$ 678.704,00 bate. Jht SP R$ 322.236,75 bate. Mas Vale dos Passaros foi citada como R$ 338.277,70, valor real é R$ 304.449,93. Diverge em ~R$ 33.827. Inventou número (ou somou linhas erradas).",
+      "sugestao_prompt": "Reforçar agregação por participanteNome: somar somente vrSaldo das linhas com o mesmo CNPJ; validar soma contra o total geral.",
+      "correcao_factual": "nao_bate"
+    },
+    {
+      "turnoId": "cb174d23-3c7e-4e82-b95b-e5156d5ccb44",
+      "status": "CORRETO",
+      "patterns": ["acerto_objetividade"],
+      "razao": "Pergunta 'saldo do produto' sem identificador. Pedir nome/código é a única ação razoável — não há default.",
+      "sugestao_prompt": null,
+      "correcao_factual": "nao_aplicavel"
+    },
+    {
+      "turnoId": "ce33d817-b7b9-4902-9667-454bf5f77b6c",
+      "status": "PARCIAL",
+      "patterns": ["erro_data"],
+      "razao": "Pergunta era 'parcelas que vencem amanhã' (28/05/2026, hoje é 27/05). A tool foi chamada com ateDias=1, retornou parcelas que vencem HOJE (27/05). IA reconheceu o gap e listou as de hoje, mas não filtrou estritamente amanhã. Valores R$ 2.577,89 e R$ 6.000,00 totalizando R$ 8.577,89 batem. Tecnicamente ateDias deveria ser 1 com filtro >= amanhã, ou >=1 dia.",
+      "sugestao_prompt": "Adicionar regra: 'amanhã' deve filtrar dataVencimento == hoje+1 dia (não até amanhã); usar parâmetro com janela exata de 1 dia.",
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "cfd068ae-e5a7-4743-86d6-b1b900d1f1b4",
+      "status": "CORRETO",
+      "patterns": ["acerto_objetividade"],
+      "razao": "Saldo consolidado R$ -24.242.300,29, 3 contas negativas, Jds R$ -15.216.088,79 — todos batem com toolResults. Resposta direta e útil para a pergunta semi-aberta.",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "d0aa88ed-2322-4df1-a95a-5c7340979261",
+      "status": "PARCIAL",
+      "patterns": ["resposta_truncada"],
+      "razao": "Jds Comércio identificado como maior, valor 'passa de R$ 3.666.577,92' bate com a soma real R$ 3.666.577,92. Mas dizer 'passa de' implica que há mais (sugerindo truncamento), quando a tool retornou todos os títulos. Resposta vaga onde poderia ser exata.",
+      "sugestao_prompt": "Adicionar regra: quando _DESTAQUE existe, citar valor exato sem 'passa de'/'pelo menos'; reservar essas formulações apenas para casos onde a lista realmente foi limitada.",
+      "correcao_factual": "bate"
+    }
+  ]
+}

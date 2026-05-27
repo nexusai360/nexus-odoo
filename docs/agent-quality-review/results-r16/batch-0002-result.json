@@ -1,0 +1,281 @@
+{
+  "batchId": "0002",
+  "evaluatedAt": "2026-05-27T04:37:04.526901+00:00",
+  "totals": {
+    "CORRETO": 16,
+    "PARCIAL": 3,
+    "ERRADO": 5,
+    "FORA_DE_ESCOPO": 1
+  },
+  "patterns": {
+    "acerto_encadeamento": 2,
+    "acerto_objetividade": 13,
+    "tool_errada": 1,
+    "limitacao_real_declarada": 3,
+    "fluxo_tool_incompleto": 1,
+    "dado_inventado": 1,
+    "acerto_modelo": 1,
+    "parametro_incompleto": 1,
+    "erro_data": 1,
+    "recusa_indevida": 3,
+    "pergunta_ignorada": 3,
+    "resposta_truncada": 1,
+    "pediu_clarificacao_desnecessaria": 1
+  },
+  "turnos": [
+    {
+      "turnoId": "478f52b8-d798-48d4-8bb8-7bc9effad54e",
+      "status": "CORRETO",
+      "patterns": [
+        "acerto_encadeamento",
+        "acerto_objetividade"
+      ],
+      "razao": "Encadeou 5 tools financeiras (saldo, caixa, a receber, a pagar, vencidos) e produziu resumo coeso. Saldo bancário -24.242.300,29 em 8 contas (5 pos/3 neg) e caixa do mês conferem com o JSON. Nomes citados (Jds, Smartfit, Johnson) aparecem nos resultados.",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "49a59a2a-f0e7-480e-a403-53b326cbc601",
+      "status": "CORRETO",
+      "patterns": [
+        "acerto_objetividade"
+      ],
+      "razao": "MATRIX 87.76%, VISION 5.04%, LONGLIFE PRO 1.85%; soma 94.65% bate com os valores do JSON (arredondamento para 94,6%).",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "4cce2311-3af3-4099-b8df-5ba376c10e67",
+      "status": "CORRETO",
+      "patterns": [],
+      "razao": "Pergunta isolada 'qual fornecedor?' sem contexto anterior. Pedir nome/CNPJ é necessário; não havia default razoável a assumir.",
+      "sugestao_prompt": null,
+      "correcao_factual": "nao_aplicavel"
+    },
+    {
+      "turnoId": "4f2ffac6-5c1a-4ecd-9166-17e701ff768b",
+      "status": "PARCIAL",
+      "patterns": [
+        "tool_errada",
+        "limitacao_real_declarada"
+      ],
+      "razao": "Buscou por termo lexical 'transportadora' e retornou matches contaminados (Juktel Transformadores, Tom Incorporadora, Trans Soja, Silva Transportdora) que não são transportadoras. Admitiu não ter filtro de ativo, mas listou mesmo assim cadastros não-transportadoras como se fossem.",
+      "sugestao_prompt": "Adicionar regra: quando o usuário pede categoria de parceiro (transportadora/cliente/fornecedor), priorizar filtro estrutural (categoria do parceiro), não busca lexical pelo nome.",
+      "correcao_factual": "nao_bate"
+    },
+    {
+      "turnoId": "53f37967-bbe2-4df4-bd48-78e5339ca710",
+      "status": "FORA_DE_ESCOPO",
+      "patterns": [
+        "limitacao_real_declarada"
+      ],
+      "razao": "Pedidos comerciais ainda não estão no escopo do MCP. Lacuna registrada e resposta honesta sugerindo alternativas.",
+      "sugestao_prompt": null,
+      "correcao_factual": "nao_aplicavel"
+    },
+    {
+      "turnoId": "55c108da-6252-4d77-807a-392f009f962c",
+      "status": "CORRETO",
+      "patterns": [
+        "acerto_objetividade"
+      ],
+      "razao": "Tool retornou estado vazio (serie:[]). Resposta honesta de 'não encontrei'.",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "5893f4aa-3692-4774-a809-397cdb8e05d4",
+      "status": "ERRADO",
+      "patterns": [
+        "fluxo_tool_incompleto",
+        "dado_inventado"
+      ],
+      "razao": "Pergunta pedia saldo atual dos top 10. Chamou apenas fiscal_produtos_faturados (sem estoque_saldo_produto). Mesmo assim afirmou saldos numéricos específicos (55 un, 27 un, 69 un, 52 un, 24 un, 59 un) que não vêm de nenhuma tool chamada — dados inventados.",
+      "sugestao_prompt": "Adicionar regra: 'top vendidos + saldo' exige encadear fiscal_produtos_faturados → estoque_saldo_produto para cada item; nunca declarar saldo sem chamar a tool de estoque.",
+      "correcao_factual": "nao_bate"
+    },
+    {
+      "turnoId": "5a540ea4-8bd3-4f4c-b51c-6ca08e731a02",
+      "status": "CORRETO",
+      "patterns": [],
+      "razao": "Pergunta isolada 'qual produto?' sem contexto suficiente. Pedir nome/código é apropriado.",
+      "sugestao_prompt": null,
+      "correcao_factual": "nao_aplicavel"
+    },
+    {
+      "turnoId": "5b4e29dc-29f2-42c5-a91a-0754afef3958",
+      "status": "CORRETO",
+      "patterns": [
+        "acerto_modelo",
+        "acerto_objetividade"
+      ],
+      "razao": "Saldo 4 unidades, 1 localização, R$ 1.871,02. Bate exatamente com o resultado da tool.",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "5bd8da17-38cb-4938-8e73-847c097b6762",
+      "status": "CORRETO",
+      "patterns": [
+        "acerto_objetividade"
+      ],
+      "razao": "Tool retornou totalNotas=0/valorTotal=0. Resposta honesta com totais zerados.",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "651909a7-4500-4d77-b6fd-14245368894c",
+      "status": "ERRADO",
+      "patterns": [
+        "parametro_incompleto",
+        "erro_data"
+      ],
+      "razao": "Usuário pediu ICMS 'do mês' (corrente = maio/2026). A IA chamou fiscal_apuracao sem filtro de período e respondeu com abril/2026, declarando explicitamente 'abril/2026'. Período pedido ≠ período respondido.",
+      "sugestao_prompt": "Adicionar regra: quando o usuário diz 'do mês' sem qualificar, assumir mês corrente (1º dia até hoje) e passar como parâmetro de filtro à tool fiscal_apuracao.",
+      "correcao_factual": "nao_bate"
+    },
+    {
+      "turnoId": "658698e5-f04c-4ff3-b043-b2f98c0d2821",
+      "status": "ERRADO",
+      "patterns": [
+        "recusa_indevida",
+        "pergunta_ignorada"
+      ],
+      "razao": "Tool retornou dados completos: 50 produtos, saldo total 1.265 un, valor R$ 184.706,29, _DESTAQUE.contagemLinhas=50, _agregado.saldoTotal.soma=1265. A IA respondeu 'não consegui obter esse dado com precisão' mesmo com a resposta autoritativa disponível, violando a instrução de NUNCA declarar lista incompleta quando _DESTAQUE/agregado existe.",
+      "sugestao_prompt": "Adicionar regra: se o resultado da tool tem _DESTAQUE/_agregado.saldoTotal/_agregado.valorTotal, sempre reportar esses totais como autoritativos. Proibido dizer 'não consegui obter' nesse caso.",
+      "correcao_factual": "nao_bate"
+    },
+    {
+      "turnoId": "6cad0061-9a09-43f4-aace-c93218f271cf",
+      "status": "CORRETO",
+      "patterns": [
+        "acerto_objetividade"
+      ],
+      "razao": "Fluxo do dia 27/05 zerado, conforme tool. Data correta.",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "79e0b1b4-37a9-4aea-9fe8-d90c9bddfe33",
+      "status": "CORRETO",
+      "patterns": [
+        "acerto_objetividade"
+      ],
+      "razao": "Top 10 listados batem com os maiores vrSaldo do resultado (Smartfit 387.500/24d atraso; Jht SP 322.236,75; Jht DF 156.549,87; Smartfit 145.602/23d; etc), além de explicitar duplicidade legítima por participante.",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "7b726911-d93a-427f-bbca-d91ee417de0e",
+      "status": "CORRETO",
+      "patterns": [
+        "acerto_objetividade"
+      ],
+      "razao": "Tool retornou 2 cadastros com saldo 0 (semEstoqueCadastrado=true). Resposta lista os dois e explica a situação, conforme dados.",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "875f806b-1191-428a-be34-7f73fca15507",
+      "status": "CORRETO",
+      "patterns": [
+        "acerto_objetividade"
+      ],
+      "razao": "4.398 PJ de 6.567 parceiros, bate exatamente.",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "892cc093-f8e9-40b5-b526-cd31a59da8a6",
+      "status": "CORRETO",
+      "patterns": [
+        "acerto_objetividade"
+      ],
+      "razao": "Soma 14.155,50 + 5.922.745,09 = 5.936.900,59. Período correto (mês corrente). Bate.",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "89b43b24-8a34-400e-83ba-74bc208f5268",
+      "status": "CORRETO",
+      "patterns": [
+        "acerto_objetividade"
+      ],
+      "razao": "2 parcelas hoje somando R$ 8.577,89 (2.577,89 + 6.000). Bate.",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "90a80e36-dac1-4325-9826-e34e5fbb301f",
+      "status": "ERRADO",
+      "patterns": [
+        "recusa_indevida",
+        "pergunta_ignorada"
+      ],
+      "razao": "Tool retornou lista com vrSaldo por participante. A IA listou nomes de fornecedores mas escreveu 'não consegui obter esse dado' em cada um, sem somar. Lista truncada não justifica não somar o que veio; bastava reportar 'top X parcial' como em T13.",
+      "sugestao_prompt": "Adicionar regra: quando a tool devolve titulos com vrSaldo+participanteNome, agrupar e somar por participante na resposta, mesmo que a lista esteja parcial; reportar como 'somatório no recorte retornado'.",
+      "correcao_factual": "nao_bate"
+    },
+    {
+      "turnoId": "96aa9330-90c9-4574-8982-36a52057d99b",
+      "status": "ERRADO",
+      "patterns": [
+        "recusa_indevida",
+        "pergunta_ignorada"
+      ],
+      "razao": "Tool retornou listagem de títulos com vrSaldo (mesma estrutura usada em T13). Em vez de somar ou pelo menos reportar parcial, respondeu 'não consegui obter esse dado com segurança'. Recusa indevida.",
+      "sugestao_prompt": "Adicionar regra: pergunta 'quanto temos em contas a X' exige somatório vrSaldo do retorno; se truncado, reportar soma parcial + contagem de títulos vistos.",
+      "correcao_factual": "nao_bate"
+    },
+    {
+      "turnoId": "984d11c7-3f66-4365-9e60-ed1c3381e93b",
+      "status": "PARCIAL",
+      "patterns": [
+        "limitacao_real_declarada",
+        "resposta_truncada"
+      ],
+      "razao": "Lacuna real (FORA_DE_ESCOPO legítimo), mas a resposta final cortou no 'Posso te ajudar com:' sem listar as sugestões que vieram da tool (Pedidos em aberto, Notas semana, Pedidos atrasados).",
+      "sugestao_prompt": "Adicionar regra: ao usar respostaSugerida de registrar_lacuna, sempre anexar as sugestoesRelacionadas em formato bullet ou [[suggestions]].",
+      "correcao_factual": "nao_aplicavel"
+    },
+    {
+      "turnoId": "9b7ae6f0-fe24-43e2-a31f-7278b5e8e27d",
+      "status": "CORRETO",
+      "patterns": [
+        "acerto_objetividade"
+      ],
+      "razao": "R$ 209.598.880,49 em 3.108 notas, período 01/01-27/05/2026. Bate.",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "9d16cb82-b836-4251-866b-04452009a44c",
+      "status": "PARCIAL",
+      "patterns": [
+        "pediu_clarificacao_desnecessaria"
+      ],
+      "razao": "O turno anterior (T21) foi sobre faturamento. 'E do mês anterior?' faz referência clara ao mesmo indicador (faturamento de abril). Podia ter assumido faturamento como default e respondido direto.",
+      "sugestao_prompt": "Adicionar regra: pergunta de follow-up sem indicador explícito deve herdar o último indicador discutido no thread (faturamento, fluxo, ICMS, etc).",
+      "correcao_factual": "nao_aplicavel"
+    },
+    {
+      "turnoId": "a00fdcd9-050c-46c9-baeb-dd12307079f6",
+      "status": "CORRETO",
+      "patterns": [
+        "acerto_encadeamento",
+        "acerto_objetividade"
+      ],
+      "razao": "Rart 64 notas R$ 197.203,00 mês corrente. Bate com o resultado da tool. Inferiu período mês corrente como default razoável.",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "a686ae3f-fd8c-4ca0-b6f1-f489bdc3d7c9",
+      "status": "CORRETO",
+      "patterns": [],
+      "razao": "Mensagem vazia ('?'). Resposta convidando a especificar domínio é o melhor possível.",
+      "sugestao_prompt": null,
+      "correcao_factual": "nao_aplicavel"
+    }
+  ]
+}
