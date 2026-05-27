@@ -87,14 +87,14 @@ describe("composeSystemPrompt", () => {
 
   test("KB com doc grande → trunca e adiciona marker", () => {
     const cfg: AgentPromptConfig = { ...baseConfig, kbEnabled: true };
-    // Cap da KB foi elevado para 500.000 chars; doc maior continua sendo
-    // truncado com marker. Teste usa 600k para garantir overflow do cap.
-    const bigText = "x".repeat(600_000);
+    // Cap da KB foi elevado para 1.000.000 chars; doc maior continua sendo
+    // truncado com marker. Teste usa 1.1M para garantir overflow do cap.
+    const bigText = "x".repeat(1_100_000);
     const docs: KbDocSnippet[] = [{ name: "Grande.txt", extractedText: bigText }];
     const result = composeSystemPrompt(cfg, docs);
     expect(result).toContain("[...truncado...]");
     // Resultado total nao deve explodir o prompt acima de uma folga sobre o cap.
-    expect(result.length).toBeLessThan(550_000);
+    expect(result.length).toBeLessThan(1_050_000);
   });
 
   test("terminology → injeta bloco Terminologia", () => {
