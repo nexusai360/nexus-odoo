@@ -165,15 +165,27 @@ function apareceLiteralEmEnvelope(
       }
     }
     // Varre linhas-array conhecidos buscando campos comuns
-    for (const arrKey of ["titulos", "linhas", "serie"] as const) {
-      const arr = d[arrKey];
+    for (const arrKey of ["titulos", "linhas", "serie", "top", "topMaiores"] as const) {
+      const arr = (d as Record<string, unknown>)[arrKey];
       if (!Array.isArray(arr)) continue;
+      // T-23 (2026-05-27): aceita array.length como valor derivado valido.
+      // Cobre casos "X etapas listadas", "Y filiais" onde o LLM cita a
+      // contagem de itens da lista.
+      valoresCandidatos.push(arr.length);
+      // Soma de campos numericos comuns das linhas (cobre LLM somando
+      // subset como "total dos visiveis" sem precisar de calc canonico
+      // dedicado para a tool).
+      const sumByField: Record<string, number> = {};
       for (const item of arr) {
         if (typeof item !== "object" || item === null) continue;
-        for (const v of Object.values(item as Record<string, unknown>)) {
-          if (typeof v === "number") valoresCandidatos.push(v);
+        for (const [k, v] of Object.entries(item as Record<string, unknown>)) {
+          if (typeof v === "number") {
+            valoresCandidatos.push(v);
+            sumByField[k] = (sumByField[k] ?? 0) + v;
+          }
         }
       }
+      for (const s of Object.values(sumByField)) valoresCandidatos.push(s);
     }
     const tol = Math.max(0.01, Math.abs(valor) * toleranciaPct);
     if (valoresCandidatos.some((v) => Math.abs(v - valor) <= tol)) return true;
@@ -260,6 +272,13 @@ const TERMOS_FORA_ESCOPO = [
   "bater\\s+meta",
   "interior",
   "folha",
+  // T-23 (2026-05-27): termos extra identificados na analise raiz R17
+  "entrega",
+  "sem\\s+nota\\s+emitida",
+  "sem\\s+cadastro",
+  "rede\\s+de\\s+academias",
+  "pra\\s+entrega",
+  "entrega\\s+amanh[ãa]",
 ];
 
 const REGEX_FORA_ESCOPO = new RegExp(
