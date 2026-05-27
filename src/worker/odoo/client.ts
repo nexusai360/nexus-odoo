@@ -57,7 +57,11 @@ export class OdooClient {
     this.db = opts.db;
     this.username = opts.username;
     this.password = opts.password;
-    this.timeoutMs = opts.timeoutMs ?? 120_000;
+    // Default reduzido de 120s para 60s: 120s era folgado demais; em
+    // chamadas honestas o RPC volta em <2s, e com paralelismo no ciclo
+    // a folga de 120s acumulava muito quando algumas chamadas hangavam.
+    // 60s ainda cobre RPCs lentos do Tauga sem permitir hang prolongado.
+    this.timeoutMs = opts.timeoutMs ?? 60_000;
     this.throttleMs = opts.throttleMs ?? 150;
     this.retries = opts.retries ?? 3;
     this.backoffMs = opts.backoffMs ?? 1000;

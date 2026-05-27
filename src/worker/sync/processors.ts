@@ -31,13 +31,44 @@ function rawDelegateCount(prisma: PrismaClient, odooModel: string): Promise<numb
   return delegate.count({ where: { rawDeleted: false } });
 }
 
+/**
+ * Pool de promises simples: roda `worker(item)` para cada item com
+ * concorrencia maxima `limit`. Quando um slot libera, pega o proximo.
+ * Erros individuais sao logados mas nao param o pool (cycle nao deve
+ * abortar se 1 tabela falhar; cada tabela ja tem markError no runCycle).
+ */
+async function pool<T>(
+  items: readonly T[],
+  limit: number,
+  worker: (item: T) => Promise<void>,
+): Promise<void> {
+  let idx = 0;
+  const runners = Array.from({ length: Math.min(limit, items.length) }, async () => {
+    while (idx < items.length) {
+      const i = idx++;
+      try {
+        await worker(items[i]);
+      } catch (err) {
+        console.error("[worker] tabela falhou no pool:", err);
+      }
+    }
+  });
+  await Promise.all(runners);
+}
+
+/** Concorrencia do incremental: 5 tabelas em paralelo. Antes era
+ *  sequencial (1) e 107 tabelas levavam ~20min no Tauga. Com 5 paralelos,
+ *  cycle vai pra ~4-6min. Conservador pra nao bater rate limit do Tauga;
+ *  se aguentar bem, subir pra 10. */
+const INCREMENTAL_CONCURRENCY = 5;
+
 export async function processIncrementalCycle(
   ctx: CycleContext,
   catalog: readonly CatalogEntry[],
   runCycle: RunCycleFn = runModelCycle,
 ): Promise<void> {
-  for (const entry of catalog) {
-    if (entry.mode !== "incremental") continue;
+  const incrementalEntries = catalog.filter((e) => e.mode === "incremental");
+  await pool(incrementalEntries, INCREMENTAL_CONCURRENCY, async (entry) => {
     // Garante a linha de SyncState antes do ciclo: o runner pode assumir
     // que ela existe (WR-03).
     await ensureSyncState(ctx.prisma, entry.odooModel, entry.mode);
@@ -62,7 +93,7 @@ export async function processIncrementalCycle(
       },
     };
     await runCycle(deps, entry.odooModel);
-  }
+  });
   try {
     await runBuilders(ctx.prisma, "incremental");
   } catch (err) {
