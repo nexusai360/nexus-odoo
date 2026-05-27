@@ -126,14 +126,228 @@ const fmtFluxoCaixa: FormatadorCanonico = (env) => {
   return `Fluxo de caixa (${n} periodos): realizado ${formatBRL(real)}, previsto ${formatBRL(prev)}.`;
 };
 
+// ---------------------------------------------------------------------------
+// Formatadores expandidos (Onda 1.C)
+// ---------------------------------------------------------------------------
+
+const fmtFaturamentoPeriodo: FormatadorCanonico = (env) => {
+  const total = Number(env._DESTAQUE?.valorFaturado ?? env._DESTAQUE?.valorTotal ?? 0);
+  const n = Number(env._DESTAQUE?.totalNotas ?? 0);
+  if (n === 0) return "Nenhuma nota emitida no periodo.";
+  return `Faturamento no periodo: ${formatBRL(total)} em ${n} notas.`;
+};
+
+const fmtFaturamentoPorCliente: FormatadorCanonico = (env) => {
+  const top = env._DESTAQUE?.topCliente
+    ? String(env._DESTAQUE.topCliente)
+    : env.topPorParticipante?.[0]?.nome;
+  const valorTop = Number(env._DESTAQUE?.valorTopCliente ?? env.topPorParticipante?.[0]?.soma ?? 0);
+  const total = Number(env._DESTAQUE?.totalGeral ?? 0);
+  if (!top) return "Nenhum cliente com faturamento no periodo.";
+  return `Top cliente por faturamento: ${top} com ${formatBRL(valorTop)}. Total no periodo: ${formatBRL(total)}.`;
+};
+
+const fmtNotasEmitidas: FormatadorCanonico = (env) => {
+  const n = Number(env._DESTAQUE?.totalNotas ?? 0);
+  const total = Number(env._DESTAQUE?.valorTotal ?? 0);
+  if (n === 0) return "Nenhuma nota emitida no periodo.";
+  return `${n} notas emitidas no periodo, total ${formatBRL(total)}.`;
+};
+
+const fmtNotasRecebidas: FormatadorCanonico = (env) => {
+  const n = Number(env._DESTAQUE?.totalNotas ?? 0);
+  const total = Number(env._DESTAQUE?.valorTotal ?? 0);
+  if (n === 0) return "Nenhuma nota recebida no periodo.";
+  return `${n} notas recebidas no periodo, total ${formatBRL(total)}.`;
+};
+
+const fmtNotasRecebidasPorFornecedor: FormatadorCanonico = (env) => {
+  const forn = env._DESTAQUE?.fornecedor ?? "fornecedor consultado";
+  const n = Number(env._DESTAQUE?.totalNotas ?? 0);
+  const total = Number(env._DESTAQUE?.totalAgregado ?? env._DESTAQUE?.valorTotal ?? 0);
+  if (n === 0) return `Nenhuma nota recebida de ${forn} no periodo.`;
+  return `Do fornecedor ${forn}: ${n} notas totalizando ${formatBRL(total)}.`;
+};
+
+const fmtApuracaoFiscal: FormatadorCanonico = (env) => {
+  const tipo = env._DESTAQUE?.tipo ?? "tributo";
+  const periodo = env._DESTAQUE?.periodo ?? "periodo informado";
+  const aRecolher = Number(env._DESTAQUE?.aRecolher ?? 0);
+  const saldoCredor = Number(env._DESTAQUE?.saldoCredor ?? 0);
+  return `Apuracao ${tipo} (${periodo}): a recolher ${formatBRL(aRecolher)}, saldo credor ${formatBRL(saldoCredor)}.`;
+};
+
+const fmtPedidosPeriodo: FormatadorCanonico = (env) => {
+  const n = Number(env._DESTAQUE?.totalPedidos ?? 0);
+  const total = Number(env._DESTAQUE?.valorTotal ?? 0);
+  if (n === 0) return "Nenhum pedido no periodo.";
+  return `No periodo: ${n} pedidos, valor total ${formatBRL(total)}.`;
+};
+
+const fmtPedidosPorEtapa: FormatadorCanonico = (env) => {
+  const n = Number(env._DESTAQUE?.totalGeral ?? 0);
+  if (n === 0) return "Nenhum pedido encontrado.";
+  return `${n} pedidos distribuidos pelas etapas do funil (consulte linhas/etapas para detalhes).`;
+};
+
+const fmtPedidosAtrasados: FormatadorCanonico = (env) => {
+  const n = Number(env._DESTAQUE?.totalAtrasados ?? env._DESTAQUE?.contagem ?? 0);
+  const valor = Number(env._DESTAQUE?.valorEmRisco ?? env._DESTAQUE?.valorTotal ?? 0);
+  const maxDias = Number(env._DESTAQUE?.maxDias ?? 0);
+  if (n === 0) return "Nenhum pedido atrasado no momento.";
+  const tail = maxDias > 0 ? ` Maior atraso: ${maxDias} dias.` : "";
+  return `${n} pedidos atrasados, ${formatBRL(valor)} em risco.${tail}`;
+};
+
+const fmtParcelasAVencer: FormatadorCanonico = (env) => {
+  const n = Number(env._DESTAQUE?.totalParcelas ?? 0);
+  const total = Number(env._DESTAQUE?.valorTotal ?? 0);
+  if (n === 0) return "Nenhuma parcela a vencer na janela consultada.";
+  return `${n} parcelas a vencer na janela, total ${formatBRL(total)}.`;
+};
+
+const fmtPedidosPorVendedor: FormatadorCanonico = (env) => {
+  const top = env._DESTAQUE?.topVendedor;
+  const valor = Number(env._DESTAQUE?.valorTopVendedor ?? 0);
+  if (!top) return "Nenhum vendedor com pedidos no periodo.";
+  return `Top vendedor: ${top} com ${formatBRL(valor)} em pedidos.`;
+};
+
+const fmtPedidosListarTopValor: FormatadorCanonico = (env) => {
+  const top = env._DESTAQUE?.topPedido;
+  const valor = Number(env._DESTAQUE?.valorTopPedido ?? 0);
+  const n = Number(env._DESTAQUE?.totalPedidos ?? 0);
+  if (!top) return "Nenhum pedido encontrado.";
+  return `Top ${n} pedidos por valor. Maior: pedido ${top} com ${formatBRL(valor)}.`;
+};
+
+const fmtBuscarParceiro: FormatadorCanonico = (env) => {
+  const n = Number(env._DESTAQUE?.totalEncontrados ?? env.linhas.length);
+  const termo = env._DESTAQUE?.termo ?? "criterio";
+  if (n === 0) return `Nenhum parceiro encontrado com termo '${termo}'.`;
+  if (n === 1) {
+    const nome = env._DESTAQUE?.parceiroNome ?? "parceiro";
+    const doc = env._DESTAQUE?.documento ?? "";
+    return `Parceiro: ${nome}${doc ? ` (${doc})` : ""}.`;
+  }
+  return `${n} parceiros encontrados com termo '${termo}'.`;
+};
+
+const fmtParceirosPorUF: FormatadorCanonico = (env) => {
+  const totalComUF = Number(env._DESTAQUE?.totalComUF ?? 0);
+  const totalSemUF = Number(env._DESTAQUE?.totalSemUF ?? 0);
+  const topUF = env._DESTAQUE?.topUF;
+  if (totalComUF + totalSemUF === 0) return "Nenhum parceiro cadastrado.";
+  const tail = topUF ? ` Top UF: ${topUF}.` : "";
+  return `${totalComUF} parceiros com UF informada e ${totalSemUF} sem UF.${tail}`;
+};
+
+const fmtContarParceiros: FormatadorCanonico = (env) => {
+  const total = Number(env._DESTAQUE?.total ?? 0);
+  const clientes = Number(env._DESTAQUE?.totalClientes ?? 0);
+  const fornecedores = Number(env._DESTAQUE?.totalFornecedores ?? 0);
+  const ativos = Number(env._DESTAQUE?.totalAtivos ?? 0);
+  return `Total: ${total} parceiros (${clientes} clientes, ${fornecedores} fornecedores, ${ativos} ativos).`;
+};
+
+const fmtPlanoDeContas: FormatadorCanonico = (env) => {
+  const n = Number(env._DESTAQUE?.totalContas ?? env.linhas.length);
+  const termo = env._DESTAQUE?.termo;
+  if (n === 0)
+    return termo
+      ? `Nenhuma conta encontrada com termo '${termo}'.`
+      : "Nenhuma conta encontrada.";
+  if (n === 1) {
+    const codigo = env._DESTAQUE?.codigo ?? "";
+    const nome = env._DESTAQUE?.nome ?? "";
+    return `Conta ${codigo} ${nome}.`.trim();
+  }
+  return termo
+    ? `${n} contas encontradas com termo '${termo}'.`
+    : `${n} contas no plano.`;
+};
+
+const fmtEstruturaConta: FormatadorCanonico = (env) => {
+  const codigo = env._DESTAQUE?.codigo ?? "";
+  const nome = env._DESTAQUE?.nome ?? "";
+  const totalFilhos = Number(env._DESTAQUE?.totalFilhos ?? 0);
+  return `Conta ${codigo} ${nome}: ${totalFilhos} filhos diretos.`.trim();
+};
+
+const fmtBiConsultaAvancada: FormatadorCanonico = (env) => {
+  // BI traz _DESTAQUE livre por consulta. Stringfica o que vier.
+  const dest = env._DESTAQUE;
+  if (!dest || Object.keys(dest).length === 0) {
+    return "Consulta executada (resultados nas linhas).";
+  }
+  const entries = Object.entries(dest)
+    .map(([k, v]) => `${k}: ${typeof v === "number" ? formatBRL(v) : v}`)
+    .join(", ");
+  return `Resultado: ${entries}.`;
+};
+
+// Adicionais de estoque
+const fmtTopMovimentados: FormatadorCanonico = (env) => {
+  const top = env._DESTAQUE?.topProduto;
+  const movs = Number(env._DESTAQUE?.movimentosTop ?? 0);
+  if (!top) return "Nenhuma movimentacao encontrada no periodo.";
+  return `Top produto movimentado: ${top} com ${movs} movimentos.`;
+};
+
+const fmtProdutosParados: FormatadorCanonico = (env) => {
+  const n = Number(env._DESTAQUE?.totalProdutos ?? 0);
+  const valor = Number(env._DESTAQUE?.valorImobilizado ?? 0);
+  if (n === 0) return "Nenhum produto parado.";
+  return `${n} produtos parados, ${formatBRL(valor)} imobilizados.`;
+};
+
+const fmtProdutosSaldoZero: FormatadorCanonico = (env) => {
+  const n = Number(env._DESTAQUE?.totalProdutos ?? 0);
+  return `${n} produtos com saldo zero.`;
+};
+
+const fmtValorArmazem: FormatadorCanonico = (env) => {
+  const valor = Number(env._DESTAQUE?.valorTotal ?? 0);
+  const n = Number(env._DESTAQUE?.contagemArmazens ?? 0);
+  return `Valor total em estoque: ${formatBRL(valor)} em ${n} armazens.`;
+};
+
 const FORMATADORES: Record<string, FormatadorCanonico> = {
+  // financeiro
   financeiro_contas_a_receber: fmtContasAReceber,
   financeiro_contas_a_pagar: fmtContasAPagar,
   financeiro_titulos_vencidos: fmtTitulosVencidos,
   financeiro_fluxo_caixa: fmtFluxoCaixa,
+  // fiscal
+  fiscal_faturamento_periodo: fmtFaturamentoPeriodo,
+  fiscal_faturamento_por_cliente: fmtFaturamentoPorCliente,
+  fiscal_notas_emitidas: fmtNotasEmitidas,
+  fiscal_notas_recebidas: fmtNotasRecebidas,
+  fiscal_notas_recebidas_por_fornecedor: fmtNotasRecebidasPorFornecedor,
+  fiscal_apuracao: fmtApuracaoFiscal,
+  // estoque
   estoque_saldo_produto: fmtSaldoProduto,
+  estoque_top_movimentados: fmtTopMovimentados,
+  estoque_produtos_parados: fmtProdutosParados,
+  estoque_produtos_saldo_zero: fmtProdutosSaldoZero,
+  estoque_valor_armazem: fmtValorArmazem,
+  // comercial
+  comercial_pedidos_periodo: fmtPedidosPeriodo,
+  comercial_pedidos_por_etapa: fmtPedidosPorEtapa,
+  comercial_pedidos_atrasados: fmtPedidosAtrasados,
+  comercial_parcelas_a_vencer: fmtParcelasAVencer,
+  comercial_pedidos_por_vendedor: fmtPedidosPorVendedor,
+  comercial_pedidos_listar_top_valor: fmtPedidosListarTopValor,
+  // cadastros
+  cadastro_buscar_parceiro: fmtBuscarParceiro,
+  cadastro_parceiros_por_uf: fmtParceirosPorUF,
+  cadastro_contar_parceiros: fmtContarParceiros,
+  // contabil
+  contabil_plano_de_contas: fmtPlanoDeContas,
+  contabil_estrutura_conta: fmtEstruturaConta,
+  // sistema
   registrar_lacuna: fmtRegistrarLacuna,
-  // PR2/3+: demais tools.
+  bi_consulta_avancada: fmtBiConsultaAvancada,
 };
 
 /**

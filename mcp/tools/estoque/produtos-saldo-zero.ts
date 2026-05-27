@@ -1,16 +1,9 @@
 // mcp/tools/estoque/produtos-saldo-zero.ts
 // Tool MCP: estoque_produtos_saldo_zero
-//
-// Conta e lista produtos com saldo total zero ou negativo (consolidado em
-// todos os armazens). Resolve um gap detectado na auditoria R12 mini
-// (#27 "Quantos itens temos com saldo zero?") onde o agente registrava
-// lacuna por nao ter tool dedicada.
-//
-// Filtros opcionais: incluirNegativos (default true), familiaId, armazemId.
-
 import { z } from "zod";
 import type { ToolEntry } from "../../catalog/types.js";
 import { withFreshness } from "../../lib/freshness.js";
+import { enriquecerEnvelope } from "../../lib/with-responder.js";
 import type { PrismaClient } from "@/generated/prisma/client.js";
 
 const inputSchema = z.object({
@@ -32,15 +25,16 @@ const linhaSchema = z.object({
   numLocais: z.number().int(),
 });
 
+// Onda 1.C: envelope canonico
 const dados = z.object({
-  /** Total de produtos com saldo zero (e negativo se incluirNegativos=true). */
   totalProdutos: z.number().int(),
-  /** Total apenas zero. */
   totalZerados: z.number().int(),
-  /** Total apenas negativos. */
   totalNegativos: z.number().int(),
-  /** Top N por número de localizações (ordem desc). */
   linhas: z.array(linhaSchema),
+  _RESPOSTA: z.string().optional(),
+  _listaTruncada: z.boolean().optional(),
+  _DESTAQUE: z.record(z.string(), z.union([z.string(), z.number()])).optional(),
+  _agregado: z.record(z.string(), z.number().optional()).optional(),
 });
 
 const fonteStatus = z.object({
@@ -65,7 +59,12 @@ type Output = z.infer<typeof outputSchema>;
 async function queryProdutosSaldoZero(
   prisma: PrismaClient,
   input: Input,
-): Promise<z.infer<typeof dados>> {
+): Promise<{
+  totalProdutos: number;
+  totalZerados: number;
+  totalNegativos: number;
+  linhas: Array<z.infer<typeof linhaSchema>>;
+}> {
   const incluirNegativos = input.incluirNegativos ?? true;
   const limite = input.limite ?? 10;
 
@@ -85,7 +84,6 @@ async function queryProdutosSaldoZero(
     },
   });
 
-  // Agrega por produtoId
   const mapa = new Map<
     number,
     {
@@ -162,14 +160,23 @@ export const estoqueProdutosSaldoZero: ToolEntry<Input, Output> = {
     "consolidado em todos os armazens. Retorna `totalProdutos`, " +
     "`totalZerados`, `totalNegativos` + amostra de produtos. " +
     "Use para perguntas tipo: 'quantos itens com saldo zero?', " +
-    "'produtos sem estoque', 'itens negativos'. " +
-    "Por default inclui negativos no count; passe `incluirNegativos=false` " +
-    "para contar somente zero exato.",
+    "'produtos sem estoque', 'itens negativos'.",
   inputSchemaShape: inputSchema.shape,
   inputSchema,
   outputSchema,
-  handler: (input, ctx) =>
-    withFreshness(ctx.prisma, ["fato_estoque_saldo"], () =>
-      queryProdutosSaldoZero(ctx.prisma, input),
-    ),
+  handler: async (input, ctx) => {
+    const envelope = await withFreshness(
+      ctx.prisma,
+      ["fato_estoque_saldo"],
+      () => queryProdutosSaldoZero(ctx.prisma, input),
+    );
+    if (envelope.estado === "preparando") return envelope;
+    return enriquecerEnvelope(envelope, "estoque_produtos_saldo_zero", {
+      destaque: {
+        totalProdutos: envelope.dados.totalProdutos,
+        totalZerados: envelope.dados.totalZerados,
+        totalNegativos: envelope.dados.totalNegativos,
+      },
+    });
+  },
 };

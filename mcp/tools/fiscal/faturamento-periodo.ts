@@ -4,18 +4,22 @@ import { z } from "zod";
 import type { ToolEntry } from "../../catalog/types.js";
 import { queryFaturamentoPeriodo } from "@/lib/reports/queries/fiscal.js";
 import { withFreshness } from "../../lib/freshness.js";
+import { enriquecerEnvelope } from "../../lib/with-responder.js";
 
 const inputSchema = z.object({
   periodoDe: z.string().optional(),
   periodoAte: z.string().optional(),
 });
 
-// dados só tem escalares , sem array; cai no ramo "ok" do withFreshness
-// (sem isVazio custom , achado P-M1).
+// Onda 1.C: envelope canonico (_RESPOSTA + _DESTAQUE) aplicado.
 const dados = z.object({
   totalNotas: z.number().int(),
   valorFaturado: z.number(),
   aviso: z.string(),
+  _RESPOSTA: z.string().optional(),
+  _listaTruncada: z.boolean().optional(),
+  _DESTAQUE: z.record(z.string(), z.union([z.string(), z.number()])).optional(),
+  _agregado: z.record(z.string(), z.number().optional()).optional(),
 });
 
 const fonteStatus = z.object({
@@ -29,6 +33,7 @@ const outputSchema = z.union([
     estado: z.enum(["ok", "vazio"]),
     dados,
     atualizadoEm: z.string(),
+    atualizadoHa: z.string(),
     fonteStatus,
   }),
 ]);
@@ -53,8 +58,22 @@ export const fiscalFaturamentoPeriodo: ToolEntry<Input, Output> = {
   inputSchemaShape: inputSchema.shape,
   inputSchema,
   outputSchema,
-  handler: (input, ctx) =>
-    withFreshness(ctx.prisma, ["fato_nota_fiscal"], async () =>
-      shape(await queryFaturamentoPeriodo(ctx.prisma, input)),
-    ),
+  handler: async (input, ctx) => {
+    const envelope = await withFreshness(
+      ctx.prisma,
+      ["fato_nota_fiscal"],
+      async () => shape(await queryFaturamentoPeriodo(ctx.prisma, input)),
+    );
+    if (envelope.estado === "preparando") return envelope;
+    return enriquecerEnvelope(envelope, "fiscal_faturamento_periodo", {
+      destaque: {
+        totalNotas: envelope.dados.totalNotas,
+        valorFaturado: envelope.dados.valorFaturado,
+      },
+      agregado: {
+        soma: envelope.dados.valorFaturado,
+        contagem: envelope.dados.totalNotas,
+      },
+    });
+  },
 };

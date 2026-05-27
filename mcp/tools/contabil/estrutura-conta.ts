@@ -7,6 +7,7 @@ import { z } from "zod";
 import type { ToolEntry } from "../../catalog/types.js";
 import { queryEstruturaConta } from "@/lib/reports/queries/contabil.js";
 import { withFreshness } from "../../lib/freshness.js";
+import { enriquecerEnvelope } from "../../lib/with-responder.js";
 
 const inputSchema = z.object({
   odooId: z.number().int().positive(),
@@ -27,10 +28,15 @@ const filhaSchema = z.object({
   tipo: z.string(),
 });
 
+// Onda 1.C: envelope canonico
 const dados = z.object({
   conta: contaSchema.nullable(),
   filhas: z.array(filhaSchema),
   aviso: z.string(),
+  _RESPOSTA: z.string().optional(),
+  _listaTruncada: z.boolean().optional(),
+  _DESTAQUE: z.record(z.string(), z.union([z.string(), z.number()])).optional(),
+  _agregado: z.record(z.string(), z.number().optional()).optional(),
 });
 
 const fonteStatus = z.object({
@@ -44,6 +50,7 @@ const outputSchema = z.union([
     estado: z.enum(["ok", "vazio"]),
     dados,
     atualizadoEm: z.string(),
+    atualizadoHa: z.string(),
     fonteStatus,
   }),
 ]);
@@ -65,10 +72,8 @@ export const contabilEstruturaConta: ToolEntry<Input, Output> = {
   inputSchemaShape: inputSchema.shape,
   inputSchema,
   outputSchema,
-  // isVazio custom: "vazio" apenas quando a conta não existe (conta=null).
-  // Uma conta-folha (conta populada, filhas=[]) é estado "ok" , P-M1.
-  handler: (input, ctx) =>
-    withFreshness(
+  handler: async (input, ctx) => {
+    const envelope = await withFreshness(
       ctx.prisma,
       ["fato_conta_contabil"],
       async () => {
@@ -76,5 +81,15 @@ export const contabilEstruturaConta: ToolEntry<Input, Output> = {
         return { conta: result.conta, filhas: result.filhas, aviso: AVISO };
       },
       (d) => d.conta === null,
-    ),
+    );
+    if (envelope.estado === "preparando") return envelope;
+    const conta = envelope.dados.conta;
+    return enriquecerEnvelope(envelope, "contabil_estrutura_conta", {
+      destaque: {
+        codigo: conta?.codigo ?? "",
+        nome: conta?.nome ?? "",
+        totalFilhos: envelope.dados.filhas.length,
+      },
+    });
+  },
 };

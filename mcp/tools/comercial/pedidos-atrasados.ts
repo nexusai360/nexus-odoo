@@ -4,6 +4,7 @@ import { z } from "zod";
 import type { ToolEntry } from "../../catalog/types.js";
 import { queryPedidosAtrasados } from "@/lib/reports/queries/comercial.js";
 import { withFreshness } from "../../lib/freshness.js";
+import { enriquecerEnvelope } from "../../lib/with-responder.js";
 
 const inputSchema = z.object({});
 
@@ -21,6 +22,11 @@ const dados = z.object({
   linhas: z.array(linhaSchema),
   totalAtrasado: z.number(),
   aviso: z.string(),
+  _RESPOSTA: z.string().optional(),
+  _listaTruncada: z.boolean().optional(),
+  _DESTAQUE: z.record(z.string(), z.union([z.string(), z.number()])).optional(),
+  _agregado: z.record(z.string(), z.number().optional()).optional(),
+
 });
 
 const fonteStatus = z.object({
@@ -34,6 +40,7 @@ const outputSchema = z.union([
     estado: z.enum(["ok", "vazio"]),
     dados,
     atualizadoEm: z.string(),
+    atualizadoHa: z.string(),
     fonteStatus,
   }),
 ]);

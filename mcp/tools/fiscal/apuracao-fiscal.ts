@@ -4,6 +4,7 @@ import { z } from "zod";
 import type { ToolEntry } from "../../catalog/types.js";
 import { queryApuracaoFiscal } from "@/lib/reports/queries/fiscal-complementar.js";
 import { withFreshness } from "../../lib/freshness.js";
+import { enriquecerEnvelope } from "../../lib/with-responder.js";
 
 const inputSchema = z.object({
   tipo: z.enum(["ICMS-IPI", "PIS-COFINS"]).optional(),
@@ -25,10 +26,15 @@ const linha = z.object({
   vrCofinsARecolher: z.number(),
 });
 
+// Onda 1.C: envelope canonico
 const dados = z.object({
   linhas: z.array(linha),
   total: z.number().int(),
   truncado: z.boolean(),
+  _RESPOSTA: z.string().optional(),
+  _listaTruncada: z.boolean().optional(),
+  _DESTAQUE: z.record(z.string(), z.union([z.string(), z.number()])).optional(),
+  _agregado: z.record(z.string(), z.number().optional()).optional(),
 });
 
 const fonteStatus = z.object({
@@ -42,6 +48,7 @@ const outputSchema = z.union([
     estado: z.enum(["ok", "vazio"]),
     dados,
     atualizadoEm: z.string(),
+    atualizadoHa: z.string(),
     fonteStatus,
   }),
 ]);
@@ -59,8 +66,20 @@ export const fiscalApuracao: ToolEntry<Input, Output> = {
   inputSchemaShape: inputSchema.shape,
   inputSchema,
   outputSchema,
-  handler: (input, ctx) =>
-    withFreshness(ctx.prisma, ["fato_apuracao"], () =>
+  handler: async (input, ctx) => {
+    const envelope = await withFreshness(ctx.prisma, ["fato_apuracao"], () =>
       queryApuracaoFiscal(ctx.prisma, input),
-    ),
+    );
+    if (envelope.estado === "preparando") return envelope;
+    const linha0 = envelope.dados.linhas[0];
+    return enriquecerEnvelope(envelope, "fiscal_apuracao", {
+      destaque: {
+        tipo: String(linha0?.tipo ?? input.tipo ?? "tributo"),
+        periodo: String(linha0?.dataFinal ?? ""),
+        aRecolher: Number(linha0?.vrIcmsARecolher ?? 0),
+        saldoCredor: Number(linha0?.vrIcmsSaldoCredor ?? 0),
+      },
+      listaTruncada: envelope.dados.truncado,
+    });
+  },
 };

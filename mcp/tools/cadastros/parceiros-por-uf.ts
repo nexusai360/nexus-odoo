@@ -4,6 +4,7 @@ import { z } from "zod";
 import type { ToolEntry } from "../../catalog/types.js";
 import { queryParceirosPorUf } from "@/lib/reports/queries/cadastros.js";
 import { withFreshness } from "../../lib/freshness.js";
+import { enriquecerEnvelope } from "../../lib/with-responder.js";
 
 const inputSchema = z.object({
   apenasClientes: z.boolean().optional(),
@@ -14,8 +15,13 @@ const linhaSchema = z.object({
   quantidade: z.number().int(),
 });
 
+// Onda 1.C: envelope canonico
 const dados = z.object({
   linhas: z.array(linhaSchema),
+  _RESPOSTA: z.string().optional(),
+  _listaTruncada: z.boolean().optional(),
+  _DESTAQUE: z.record(z.string(), z.union([z.string(), z.number()])).optional(),
+  _agregado: z.record(z.string(), z.number().optional()).optional(),
 });
 
 const fonteStatus = z.object({
@@ -29,6 +35,7 @@ const outputSchema = z.union([
     estado: z.enum(["ok", "vazio"]),
     dados,
     atualizadoEm: z.string(),
+    atualizadoHa: z.string(),
     fonteStatus,
   }),
 ]);
@@ -43,9 +50,29 @@ export const cadastroParceirosPorUf: ToolEntry<Input, Output> = {
   inputSchemaShape: inputSchema.shape,
   inputSchema,
   outputSchema,
-  handler: (input, ctx) =>
-    withFreshness(ctx.prisma, ["fato_parceiro"], async () => {
-      const result = await queryParceirosPorUf(ctx.prisma, input);
-      return { linhas: result.linhas };
-    }),
+  handler: async (input, ctx) => {
+    const envelope = await withFreshness(
+      ctx.prisma,
+      ["fato_parceiro"],
+      async () => {
+        const result = await queryParceirosPorUf(ctx.prisma, input);
+        return { linhas: result.linhas };
+      },
+    );
+    if (envelope.estado === "preparando") return envelope;
+    const linhas = envelope.dados.linhas;
+    const totalComUF = linhas
+      .filter((l) => l.uf)
+      .reduce((s, l) => s + (l.quantidade ?? 0), 0);
+    const totalSemUF = linhas
+      .filter((l) => !l.uf)
+      .reduce((s, l) => s + (l.quantidade ?? 0), 0);
+    return enriquecerEnvelope(envelope, "cadastro_parceiros_por_uf", {
+      destaque: {
+        totalComUF,
+        totalSemUF,
+        topUF: linhas[0]?.uf ?? "",
+      },
+    });
+  },
 };

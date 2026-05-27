@@ -1,13 +1,14 @@
 // mcp/tools/estoque/valor-armazem.ts
 // Tool MCP: estoque_valor_armazem
-// percentual é shaping , calculado aqui na tool (regra N8), não no núcleo.
 import { z } from "zod";
 import type { ToolEntry } from "../../catalog/types.js";
 import { queryValorArmazem } from "@/lib/reports/queries/estoque.js";
 import { withFreshness } from "../../lib/freshness.js";
+import { enriquecerEnvelope } from "../../lib/with-responder.js";
 
 const inputSchema = z.object({});
 
+// Onda 1.C: envelope canonico
 const dados = z.object({
   kpis: z.object({ valorTotal: z.number(), numArmazens: z.number().int() }),
   linhas: z.array(z.object({
@@ -16,6 +17,10 @@ const dados = z.object({
     numProdutos: z.number().int(),
     percentual: z.number(),
   })),
+  _RESPOSTA: z.string().optional(),
+  _listaTruncada: z.boolean().optional(),
+  _DESTAQUE: z.record(z.string(), z.union([z.string(), z.number()])).optional(),
+  _agregado: z.record(z.string(), z.number().optional()).optional(),
 });
 
 const fonteStatus = z.object({
@@ -29,6 +34,7 @@ const outputSchema = z.union([
     estado: z.enum(["ok", "vazio"]),
     dados,
     atualizadoEm: z.string(),
+    atualizadoHa: z.string(),
     fonteStatus,
   }),
 ]);
@@ -43,7 +49,6 @@ function shape(d: Awaited<ReturnType<typeof queryValorArmazem>>) {
       armazem: l.armazem,
       valor: l.valor,
       numProdutos: l.numProdutos,
-      // percentual é shaping , calculado aqui, não no núcleo (regra N8)
       percentual: d.kpis.valorTotal > 0 ? (l.valor / d.kpis.valorTotal) * 100 : 0,
     })),
   };
@@ -56,8 +61,22 @@ export const estoqueValorArmazem: ToolEntry<Input, Output> = {
   inputSchemaShape: inputSchema.shape,
   inputSchema,
   outputSchema,
-  handler: (_input, ctx) =>
-    withFreshness(ctx.prisma, ["fato_estoque_saldo"], async () =>
-      shape(await queryValorArmazem(ctx.prisma)),
-    ),
+  handler: async (_input, ctx) => {
+    const envelope = await withFreshness(
+      ctx.prisma,
+      ["fato_estoque_saldo"],
+      async () => shape(await queryValorArmazem(ctx.prisma)),
+    );
+    if (envelope.estado === "preparando") return envelope;
+    return enriquecerEnvelope(envelope, "estoque_valor_armazem", {
+      destaque: {
+        valorTotal: envelope.dados.kpis.valorTotal,
+        contagemArmazens: envelope.dados.kpis.numArmazens,
+      },
+      agregado: {
+        soma: envelope.dados.kpis.valorTotal,
+        contagem: envelope.dados.kpis.numArmazens,
+      },
+    });
+  },
 };

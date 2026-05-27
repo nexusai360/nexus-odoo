@@ -7,6 +7,7 @@ import { z } from "zod";
 import type { ToolEntry } from "../../catalog/types.js";
 import { queryPlanoDeContas } from "@/lib/reports/queries/contabil.js";
 import { withFreshness } from "../../lib/freshness.js";
+import { enriquecerEnvelope } from "../../lib/with-responder.js";
 
 const inputSchema = z.object({
   termo: z.string().optional(),
@@ -21,11 +22,16 @@ const linhaSchema = z.object({
   contaPaiNome: z.string().nullable(),
 });
 
+// Onda 1.C: envelope canonico
 const dados = z.object({
   linhas: z.array(linhaSchema),
   total: z.number().int(),
   truncado: z.boolean(),
   aviso: z.string(),
+  _RESPOSTA: z.string().optional(),
+  _listaTruncada: z.boolean().optional(),
+  _DESTAQUE: z.record(z.string(), z.union([z.string(), z.number()])).optional(),
+  _agregado: z.record(z.string(), z.number().optional()).optional(),
 });
 
 const fonteStatus = z.object({
@@ -39,6 +45,7 @@ const outputSchema = z.union([
     estado: z.enum(["ok", "vazio"]),
     dados,
     atualizadoEm: z.string(),
+    atualizadoHa: z.string(),
     fonteStatus,
   }),
 ]);
@@ -60,17 +67,37 @@ export const contabilPlanoDeContas: ToolEntry<Input, Output> = {
   inputSchemaShape: inputSchema.shape,
   inputSchema,
   outputSchema,
-  handler: (input, ctx) =>
-    withFreshness(ctx.prisma, ["fato_conta_contabil"], async () => {
-      const result = await queryPlanoDeContas(ctx.prisma, input);
-      const aviso = result.truncado
-        ? `${AVISO} Mostrando ${result.linhas.length} de ${result.total} contas , refine com o parâmetro "termo" ou aumente "limite".`
-        : AVISO;
-      return {
-        linhas: result.linhas,
-        total: result.total,
-        truncado: result.truncado,
-        aviso,
-      };
-    }),
+  handler: async (input, ctx) => {
+    const envelope = await withFreshness(
+      ctx.prisma,
+      ["fato_conta_contabil"],
+      async () => {
+        const result = await queryPlanoDeContas(ctx.prisma, input);
+        const aviso = result.truncado
+          ? `${AVISO} Mostrando ${result.linhas.length} de ${result.total} contas , refine com o parâmetro "termo" ou aumente "limite".`
+          : AVISO;
+        return {
+          linhas: result.linhas,
+          total: result.total,
+          truncado: result.truncado,
+          aviso,
+        };
+      },
+    );
+    if (envelope.estado === "preparando") return envelope;
+    const linhas = envelope.dados.linhas;
+    return enriquecerEnvelope(envelope, "contabil_plano_de_contas", {
+      destaque: {
+        totalContas: linhas.length,
+        termo: input.termo ?? "",
+        ...(linhas.length === 1
+          ? {
+              codigo: linhas[0]?.codigo ?? "",
+              nome: linhas[0]?.nome ?? "",
+            }
+          : {}),
+      },
+      listaTruncada: envelope.dados.truncado,
+    });
+  },
 };

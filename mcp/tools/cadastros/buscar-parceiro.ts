@@ -4,6 +4,7 @@ import { z } from "zod";
 import type { ToolEntry } from "../../catalog/types.js";
 import { queryBuscarParceiro } from "@/lib/reports/queries/cadastros.js";
 import { withFreshness } from "../../lib/freshness.js";
+import { enriquecerEnvelope } from "../../lib/with-responder.js";
 
 const inputSchema = z.object({
   termo: z.string().min(1),
@@ -20,8 +21,13 @@ const linhaSchema = z.object({
   cidade: z.string().nullable(),
 });
 
+// Onda 1.C: envelope canonico
 const dados = z.object({
   linhas: z.array(linhaSchema),
+  _RESPOSTA: z.string().optional(),
+  _listaTruncada: z.boolean().optional(),
+  _DESTAQUE: z.record(z.string(), z.union([z.string(), z.number()])).optional(),
+  _agregado: z.record(z.string(), z.number().optional()).optional(),
 });
 
 const fonteStatus = z.object({
@@ -35,6 +41,7 @@ const outputSchema = z.union([
     estado: z.enum(["ok", "vazio"]),
     dados,
     atualizadoEm: z.string(),
+    atualizadoHa: z.string(),
     fonteStatus,
   }),
 ]);
@@ -49,9 +56,28 @@ export const cadastroBuscarParceiro: ToolEntry<Input, Output> = {
   inputSchemaShape: inputSchema.shape,
   inputSchema,
   outputSchema,
-  handler: (input, ctx) =>
-    withFreshness(ctx.prisma, ["fato_parceiro"], async () => {
-      const result = await queryBuscarParceiro(ctx.prisma, input);
-      return { linhas: result.linhas };
-    }),
+  handler: async (input, ctx) => {
+    const envelope = await withFreshness(
+      ctx.prisma,
+      ["fato_parceiro"],
+      async () => {
+        const result = await queryBuscarParceiro(ctx.prisma, input);
+        return { linhas: result.linhas };
+      },
+    );
+    if (envelope.estado === "preparando") return envelope;
+    const linhas = envelope.dados.linhas;
+    return enriquecerEnvelope(envelope, "cadastro_buscar_parceiro", {
+      destaque: {
+        totalEncontrados: linhas.length,
+        termo: input.termo,
+        ...(linhas.length === 1
+          ? {
+              parceiroNome: linhas[0]?.nome ?? "",
+              documento: linhas[0]?.documento ?? "",
+            }
+          : {}),
+      },
+    });
+  },
 };

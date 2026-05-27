@@ -1,27 +1,28 @@
 // mcp/tools/cadastros/contar-parceiros.ts
 // Tool MCP: cadastro_contar_parceiros
-// dados só tem escalares , sem array; cai no ramo "ok" do withFreshness
-// (sem isVazio custom , comportamento correto).
 import { z } from "zod";
 import type { ToolEntry } from "../../catalog/types.js";
 import { queryContarParceiros } from "@/lib/reports/queries/cadastros.js";
 import { withFreshness } from "../../lib/freshness.js";
+import { enriquecerEnvelope } from "../../lib/with-responder.js";
 
 const inputSchema = z.object({});
 
+// Onda 1.C: envelope canonico
 const dados = z.object({
   totalParceiros: z.number().int(),
   totalClientes: z.number().int(),
   totalFornecedores: z.number().int(),
-  /** Pessoas juridicas (ehEmpresa=true). */
   totalEmpresas: z.number().int(),
-  /** Pessoas fisicas (ehEmpresa=false). */
   totalPessoasFisicas: z.number().int(),
-  /** Parceiros ativos (ativo=true). */
   totalAtivos: z.number().int(),
   totalInativos: z.number().int(),
   totalClientesAtivos: z.number().int(),
   totalFornecedoresAtivos: z.number().int(),
+  _RESPOSTA: z.string().optional(),
+  _listaTruncada: z.boolean().optional(),
+  _DESTAQUE: z.record(z.string(), z.union([z.string(), z.number()])).optional(),
+  _agregado: z.record(z.string(), z.number().optional()).optional(),
 });
 
 const fonteStatus = z.object({
@@ -35,6 +36,7 @@ const outputSchema = z.union([
     estado: z.enum(["ok", "vazio"]),
     dados,
     atualizadoEm: z.string(),
+    atualizadoHa: z.string(),
     fonteStatus,
   }),
 ]);
@@ -55,9 +57,23 @@ export const cadastroContarParceiros: ToolEntry<Input, Output> = {
   inputSchemaShape: inputSchema.shape,
   inputSchema,
   outputSchema,
-  handler: (_input, ctx) =>
-    withFreshness(ctx.prisma, ["fato_parceiro"], async () => {
-      const result = await queryContarParceiros(ctx.prisma);
-      return result;
-    }),
+  handler: async (_input, ctx) => {
+    const envelope = await withFreshness(
+      ctx.prisma,
+      ["fato_parceiro"],
+      async () => {
+        const result = await queryContarParceiros(ctx.prisma);
+        return result;
+      },
+    );
+    if (envelope.estado === "preparando") return envelope;
+    return enriquecerEnvelope(envelope, "cadastro_contar_parceiros", {
+      destaque: {
+        total: envelope.dados.totalParceiros,
+        totalClientes: envelope.dados.totalClientes,
+        totalFornecedores: envelope.dados.totalFornecedores,
+        totalAtivos: envelope.dados.totalAtivos,
+      },
+    });
+  },
 };
