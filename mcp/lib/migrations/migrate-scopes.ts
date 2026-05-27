@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 // mcp/lib/migrations/migrate-scopes.ts
 // Migra dados de ApiKey.scopes (legado) → ApiKey.capabilities (F4 Onda 2).
 //
@@ -38,7 +39,7 @@ export async function migrateAllScopes(prisma: PrismaClient): Promise<{ migrated
 async function main(): Promise<void> {
   // Importar lazy para não bater no problema de import.meta do client gerado
   // quando o arquivo é importado em ambiente que não suporta ESM nativo (jest).
-  // @ts-ignore , script CLI standalone; import resolve em runtime via tsx
+  // @ts-expect-error , script CLI standalone; import resolve em runtime via tsx
   const { prisma } = await import("../../../src/lib/prisma.ts");
   try {
     const r = await migrateAllScopes(prisma);

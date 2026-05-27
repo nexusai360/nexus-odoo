@@ -36,7 +36,7 @@ describe("stripFreshnessPlaceholders", () => {
 
   it("remove sem parenteses solto no fim de linha", () => {
     expect(
-      stripFreshnessPlaceholders("Saldo: R$ 100 — atualizado há Xs"),
+      stripFreshnessPlaceholders("Saldo: R$ 100 , atualizado há Xs"),
     ).toBe("Saldo: R$ 100");
   });
 

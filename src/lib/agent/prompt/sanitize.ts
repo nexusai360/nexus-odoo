@@ -14,7 +14,7 @@
 export function sanitizePromptText(input: string): string {
   if (typeof input !== "string") return "";
   return input
-    .replace(/[—–]/g, ",") // em-dash + en-dash
+    .replace(/[,,]/g, ",") // em-dash + en-dash
     .replace(/…/g, "...") // reticencias unicode
     .replace(/[«]/g, '"') // aspas francesas «
     .replace(/[»]/g, '"') // aspas francesas »

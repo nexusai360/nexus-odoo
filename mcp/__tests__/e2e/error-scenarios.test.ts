@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 // mcp/__tests__/e2e/error-scenarios.test.ts
 // Suíte E2E , cenários de erro do pipeline externo.
 //

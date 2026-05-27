@@ -1,5 +1,5 @@
 /**
- * Juiz de qualidade de respostas do Agente Nex (Frente A — analise retrospectiva).
+ * Juiz de qualidade de respostas do Agente Nex (Frente A , analise retrospectiva).
  *
  * Modelo default: `google/gemini-2.5-pro-thinking` (via OpenRouter; nas
  * credenciais do projeto so ha OpenAI + OpenRouter). Configuravel via
@@ -12,7 +12,7 @@
  *  - escolhaDeTools: tool certa? quantidade adequada?
  *  - clareza: resposta clara e bem estruturada?
  *
- * Sempre tenta extrair recomendacao_prompt — texto livre sugerindo mudanca
+ * Sempre tenta extrair recomendacao_prompt , texto livre sugerindo mudanca
  * pontual no prompt-mestre.
  *
  * Spec: docs/superpowers/specs/2026-05-25-agente-nex-inteligencia-design.md §3.4
@@ -247,7 +247,7 @@ async function resolveJudgeLlm(
 function splitProviderModel(modelId: string): { provider: string | null; model: string } {
   const idx = modelId.indexOf("/");
   if (idx < 0) {
-    // Sem prefixo provider — assume openrouter por compatibilidade.
+    // Sem prefixo provider , assume openrouter por compatibilidade.
     return { provider: "openrouter", model: modelId };
   }
   // OpenRouter usa formato "vendor/model" como o proprio model. Ex.:

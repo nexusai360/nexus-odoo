@@ -41,7 +41,7 @@ export const MODEL_CATALOG: readonly CatalogEntry[] = [
   { odooModel: "finan.tipo.faturamento", mode: "incremental" },
   { odooModel: "pedido.documento", mode: "incremental" },
   { odooModel: "pedido.documento.historico", mode: "incremental" },
-  // pedido.documento.historico.tempo: removido em 2026-05-25 — eh view
+  // pedido.documento.historico.tempo: removido em 2026-05-25 , eh view
   // computada do Odoo sem coluna `id`, falha em todo discovery
   // ("ERRO: coluna pedido_documento_historico_tempo.id nao existe"). Nao
   // tem fato consumidor; raw_pedido_documento_historico_tempo orfa. Se

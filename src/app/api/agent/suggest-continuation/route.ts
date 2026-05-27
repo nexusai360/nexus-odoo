@@ -11,10 +11,10 @@
  *   { chips: string[], source: "ok"|"timeout"|"error"|"empty_context" }
  *
  * Erros:
- *   401 — sem sessao
- *   403 — conversa nao pertence ao usuario
- *   429 — rate limit (30/min por usuario)
- *   400 — body invalido
+ *   401 , sem sessao
+ *   403 , conversa nao pertence ao usuario
+ *   429 , rate limit (30/min por usuario)
+ *   400 , body invalido
  *
  * Respeita `AgentSettings.intelligenceCheckpoint` (OFF → retorna chips vazios).
  * Respeita `AgentSettings.suggestionsCheckpoint` (OFF → retorna chips vazios).
@@ -75,7 +75,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     return NextResponse.json({ error: "Acesso negado" }, { status: 403 });
   }
 
-  // Checkpoints — qualquer um OFF zera o retorno.
+  // Checkpoints , qualquer um OFF zera o retorno.
   const settings = await prisma.agentSettings.findUnique({
     where: { id: "global" },
     select: { intelligenceCheckpoint: true, suggestionsCheckpoint: true },

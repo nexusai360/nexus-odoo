@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 // mcp/auth/__tests__/auth-middleware.test.ts
 import { authenticate } from "../auth-middleware";
 import { createApiKeyCache } from "../api-key-cache";

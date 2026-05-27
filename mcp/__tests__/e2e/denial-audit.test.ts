@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 // mcp/__tests__/e2e/denial-audit.test.ts
 // Suíte E2E , política de payload em denials (spec §10.5).
 //

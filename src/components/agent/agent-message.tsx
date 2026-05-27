@@ -805,7 +805,9 @@ function TypewriterBody({
   const tokens = React.useMemo(() => content.split(/(\s+)/), [content]);
   const [visibleCount, setVisibleCount] = React.useState(0);
   const tokensRef = React.useRef(tokens);
-  tokensRef.current = tokens;
+  React.useEffect(() => {
+    tokensRef.current = tokens;
+  }, [tokens]);
   const visibleRef = React.useRef(0);
   const reduce = useReducedMotion();
 

@@ -4,7 +4,7 @@
  *
  * Estrategia: importa o catalogo MCP em runtime e chama o `handler` da tool
  * com prisma + privilegio elevado (bypass de UserDomainAccess). O resultado
- * nunca volta ao usuario final — apenas alimenta o LLM judge.
+ * nunca volta ao usuario final , apenas alimenta o LLM judge.
  *
  * Apenas tools `read:*` sao reproduzidas. Tools `write:*` sao puladas.
  * Audit log com `actor=system:quality-judge`.
@@ -124,7 +124,7 @@ export async function replayToolCalls(
     }
 
     // Audit minimo via console (AuditLog requer extensao do enum AuditAction
-    // via migration separada — fica como follow-up). Trilha estruturada vive
+    // via migration separada , fica como follow-up). Trilha estruturada vive
     // dentro de ConversationQualityEvaluation.toolsReexecuted.
     try {
       console.info(
@@ -170,7 +170,7 @@ function computeDivergence(a: string | undefined, b: string | undefined): number
   const maxLen = Math.max(a.length, b.length);
   const lenDiff = Math.abs(a.length - b.length) / maxLen;
 
-  // Tokens comuns (palavras de pelo menos 3 chars) — overlap simples
+  // Tokens comuns (palavras de pelo menos 3 chars) , overlap simples
   const tokensA = new Set(a.toLowerCase().match(/[a-z0-9]{3,}/g) ?? []);
   const tokensB = new Set(b.toLowerCase().match(/[a-z0-9]{3,}/g) ?? []);
   const intersection = [...tokensA].filter((t) => tokensB.has(t)).length;
