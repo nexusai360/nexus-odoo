@@ -2,6 +2,13 @@ import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
   output: "standalone",
+  experimental: {
+    serverActions: {
+      // KB aceita arquivos até 10 MB. Margem de 2 MB para overhead do
+      // multipart FormData (campos + headers internos).
+      bodySizeLimit: "12mb",
+    },
+  },
   async headers() {
     return [
       {

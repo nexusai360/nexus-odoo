@@ -1960,6 +1960,44 @@ model FatoParceiro {
   @@map("fato_parceiro")
 }
 
+/// Catalogo canonico de produtos (todos os 3787 de raw_sped_produto).
+/// Fonte primaria de busca: cobre cadastro inteiro independente de saldo.
+/// Saldo continua em fato_estoque_saldo; join por produto_id <-> odoo_id.
+model FatoProduto {
+  odooId             Int       @id @map("odoo_id")
+  nome               String
+  codigo             String?
+  codigoUnico        String?   @map("codigo_unico")
+  codigoBarras       String?   @map("codigo_barras")
+  ativo              Boolean   @default(true)
+  tipo               String?
+  marcaId            Int?      @map("marca_id")
+  marcaNome          String?   @map("marca_nome")
+  familiaId          Int?      @map("familia_id")
+  familiaNome        String?   @map("familia_nome")
+  unidadeNome        String?   @map("unidade_nome")
+  ncmCodigo          String?   @map("ncm_codigo")
+  controlaEstoque    Boolean   @default(false) @map("controla_estoque")
+  permiteVenda       Boolean   @default(true)  @map("permite_venda")
+  permiteCompra      Boolean   @default(true)  @map("permite_compra")
+  precoCusto         Decimal?  @map("preco_custo") @db.Decimal(14, 4)
+  precoVenda         Decimal?  @map("preco_venda") @db.Decimal(14, 4)
+  pesoLiquido        Decimal?  @map("peso_liquido") @db.Decimal(10, 4)
+  pesoBruto          Decimal?  @map("peso_bruto") @db.Decimal(10, 4)
+  criadoEm           DateTime? @map("criado_em")
+  atualizadoEmOdoo   DateTime? @map("atualizado_em_odoo")
+  atualizadoEm       DateTime  @default(now()) @map("atualizado_em")
+
+  @@index([ativo])
+  @@index([codigo])
+  @@index([codigoUnico])
+  @@index([codigoBarras])
+  @@index([familiaId])
+  @@index([marcaId])
+  @@index([controlaEstoque])
+  @@map("fato_produto")
+}
+
 // Colunas DEFINITIVAS — fonte de verdade: discovery O.2/O.3
 // (docs/superpowers/research/2026-05-18-f4-discovery-pre-schema.md).
 model FatoContaContabil {
@@ -2189,6 +2227,10 @@ model Conversation {
   user      User         @relation(fields: [userId], references: [id], onDelete: Cascade)
   channel   AgentChannel
   title     String?
+  /// Historico opaco de raciocinio por iteracao (Anthropic blocks, Gemini parts,
+  /// OpenRouter reasoning_details, OpenAI reasoning items). Array crescente,
+  /// capado em 20 iteracoes ou 50KB serialized. Cada item: { provider, data }.
+  reasoningHistory Json    @default("[]") @map("reasoning_history")
   createdAt DateTime     @default(now()) @map("created_at")
   updatedAt DateTime     @updatedAt @map("updated_at")
   messages  Message[]
@@ -2272,6 +2314,17 @@ model LlmUsage {
   durationMs     Int?     @map("duration_ms")
   errorMessage   String?  @map("error_message")
   isPlayground   Boolean  @default(false) @map("is_playground")
+  /// Tokens de raciocinio internos (subset conceitual de tokens_output).
+  /// OpenAI/Gemini/OpenRouter expoem; Anthropic nao (fica NULL).
+  reasoningTokens Int?    @map("reasoning_tokens")
+  /// Contagem de tool calls disparadas nesta iteracao. NULL em linhas
+  /// antigas pre-instrumentacao; 0 quando o modelo respondeu direto
+  /// sem chamar tool. Usado no drill-down de /agente/consumo.
+  toolCallsCount  Int?     @map("tool_calls_count")
+  /// Nomes das tools chamadas nesta iteracao, na ordem em que foram
+  /// requisitadas pelo modelo. Array vazio quando nenhuma tool foi
+  /// chamada; NULL em linhas antigas pre-instrumentacao.
+  toolNames       String[] @map("tool_names")
   userId         String?  @map("user_id") @db.Uuid
   // Credencial (chave de API) usada — permite somar o consumo por chave (A4).
   credentialId   String?  @map("credential_id") @db.Uuid

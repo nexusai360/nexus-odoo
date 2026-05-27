@@ -46,6 +46,56 @@ Ambas leem de um **banco interno (cache)** alimentado por sincronização perió
 
 ---
 
+## 2.1 REGRA DE RAIZ: rebuild de containers após mudança de código
+
+> **Inegociável.** A stack dev (`docker-compose.yml` + `docker-compose.override.yml`)
+> roda 3 containers que **NÃO usam volume mount** do código-fonte: `app`,
+> `mcp` e `worker`. Toda vez que você muda código que esses containers
+> consomem, **precisa rebuildar e reiniciar o container afetado** antes
+> de testar. Pular esse passo já custou horas de debugging falso ("a
+> feature foi entregue mas não funciona").
+>
+> **Mapa de impacto código → container:**
+>
+> | Mudou em… | Rebuilda |
+> |---|---|
+> | `mcp/**` | `mcp` |
+> | `src/lib/reports/queries/**` | `mcp` (a tool MCP importa daí) |
+> | `src/lib/odoo/**` ou clientes Odoo | `worker` |
+> | `prisma/schema.prisma` ou `src/generated/prisma/**` | **todos** (app + mcp + worker) |
+> | `src/**` exceto os acima | `app` |
+> | `next.config.ts`, `tsconfig.json`, `package.json` | `app` (e `mcp` se afetar import resolvido lá) |
+>
+> **Comando padrão** (dev local):
+>
+> ```bash
+> docker compose build <serviço>
+> docker compose up -d <serviço>
+> # ou faz os dois de uma vez:
+> docker compose up -d --build <serviço>
+> ```
+>
+> **Quando obrigatoriamente rebuildar** (gatilhos automáticos):
+>
+> 1. Encerrou uma onda/commit que tocou caminhos do mapa acima.
+> 2. Antes de validar em UI/bubble/playground qualquer feature nova.
+> 3. Em modo autônomo: ao final de cada onda que afetou container.
+> 4. Antes do `/ultrareview` ou verificação manual do usuário.
+>
+> **Como detectar que o container está velho:** rode
+> `docker inspect <container> --format '{{.State.StartedAt}}'` e compare
+> com `git log -1 --format=%aI -- <caminho-tocado>`. Se o container
+> começou antes do último commit que mexeu no caminho que ele consome,
+> rebuilde.
+>
+> **Em produção:** o push para `main` dispara CI → ghcr.io → Portainer
+> redeploy automaticamente. Mas em **dev local** é manual.
+>
+> **Multi-agente:** registre em `docs/agents/HISTORY.md` quando rebuildar
+> ("scope=infra summary=rebuild mcp pos onda B"). Outros agentes leem.
+
+---
+
 ## 3. Arquitetura macro
 
 ```

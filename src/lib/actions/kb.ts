@@ -15,8 +15,8 @@ import { kindFromFilename } from "@/lib/agent/rag/kb-kinds";
 import type { KbKind } from "@/generated/prisma/client";
 import type { KbCheckpoint, KbDocRow } from "./kb-types";
 
-/** Limite de tamanho do arquivo de upload da KB: 15 MB. */
-const MAX_KB_FILE_BYTES = 15 * 1024 * 1024;
+/** Limite de tamanho do arquivo de upload da KB: 10 MB. */
+const MAX_KB_FILE_BYTES = 10 * 1024 * 1024;
 
 /** Roles que podem gerenciar a KB. */
 const KB_ADMIN_ROLES = new Set(["admin", "super_admin"]);
@@ -85,7 +85,7 @@ export async function uploadKbFileAction(
       return { ok: false, error: "Arquivo vazio." };
     }
     if (file.size > MAX_KB_FILE_BYTES) {
-      return { ok: false, error: "Arquivo excede 15 MB." };
+      return { ok: false, error: "Arquivo excede 10 MB." };
     }
 
     const kind = kindFromFilename(file.name);
@@ -223,6 +223,172 @@ export async function updateKbCheckpointAction(
 }
 
 /** Remove um documento da KB pelo ID. */
+/**
+ * Faz fetch de uma URL HTTPS pública, extrai texto removendo tags HTML
+ * básicas e devolve o conteúdo. Server-only (usa fetch global e timeout).
+ */
+async function fetchUrlAsText(url: string): Promise<string> {
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), 10_000);
+  try {
+    const res = await fetch(url, {
+      signal: controller.signal,
+      redirect: "follow",
+      headers: { "User-Agent": "NexusAgent-KB/1.0" },
+    });
+    if (!res.ok) throw new Error(`HTTP ${res.status} ao ler a URL.`);
+    const raw = await res.text();
+    if (raw.length > 5 * 1024 * 1024) {
+      throw new Error("Página acima de 5 MB. Salve uma versão menor.");
+    }
+    // Remove <script>/<style> primeiro (com conteúdo), depois todas as tags.
+    const cleaned = raw
+      .replace(/<script[\s\S]*?<\/script>/gi, " ")
+      .replace(/<style[\s\S]*?<\/style>/gi, " ")
+      .replace(/<[^>]+>/g, " ")
+      .replace(/&nbsp;/gi, " ")
+      .replace(/&amp;/gi, "&")
+      .replace(/&lt;/gi, "<")
+      .replace(/&gt;/gi, ">")
+      .replace(/&quot;/gi, '"')
+      .replace(/\s+/g, " ")
+      .trim();
+    return cleaned;
+  } finally {
+    clearTimeout(timeout);
+  }
+}
+
+/**
+ * Conta os caracteres extraíveis de uma URL SEM persistir.
+ */
+export async function precountKbUrlCharsAction(
+  url: string,
+): Promise<ActionResult<{ charCount: number }>> {
+  try {
+    await assertKbAdmin();
+    const trimmed = url.trim();
+    if (!trimmed) return { ok: false, error: "URL vazia." };
+    let parsed: URL;
+    try {
+      parsed = new URL(trimmed);
+    } catch {
+      return { ok: false, error: "URL inválida." };
+    }
+    if (parsed.protocol !== "https:") {
+      return { ok: false, error: "Use HTTPS." };
+    }
+    const text = await fetchUrlAsText(trimmed);
+    return { ok: true, data: { charCount: text.length } };
+  } catch (err) {
+    return {
+      ok: false,
+      error: err instanceof Error ? err.message : "Erro ao buscar URL.",
+    };
+  }
+}
+
+/**
+ * Ingere uma URL na KB extraindo o texto da página real (não mais
+ * "Documento de URL: ..."). Reusa ingestKbDocument para gravar.
+ */
+export async function uploadKbUrlAction(
+  name: string,
+  url: string,
+): Promise<ActionResult<{ id: string }>> {
+  try {
+    await assertKbAdmin();
+    const trimmedName = name.trim();
+    const trimmedUrl = url.trim();
+    if (!trimmedName) return { ok: false, error: "Nome é obrigatório." };
+    if (!trimmedUrl) return { ok: false, error: "URL é obrigatória." };
+    let parsed: URL;
+    try {
+      parsed = new URL(trimmedUrl);
+    } catch {
+      return { ok: false, error: "URL inválida." };
+    }
+    if (parsed.protocol !== "https:") {
+      return { ok: false, error: "Use HTTPS." };
+    }
+    const text = await fetchUrlAsText(trimmedUrl);
+    if (text.length === 0) {
+      return { ok: false, error: "Página vazia ou bloqueada." };
+    }
+    const doc = await ingestKbDocument(trimmedName, "URL", text, trimmedUrl);
+    return { ok: true, data: { id: doc.id } };
+  } catch (err) {
+    return {
+      ok: false,
+      error: err instanceof Error ? err.message : "Erro ao gravar URL.",
+    };
+  }
+}
+
+/**
+ * Conta os caracteres extraíveis de um arquivo SEM persistir.
+ * Usado pelo modal de upload para validar o orçamento antes do save.
+ */
+export async function precountKbCharsAction(
+  formData: FormData,
+): Promise<ActionResult<{ charCount: number }>> {
+  try {
+    await assertKbAdmin();
+    const file = formData.get("file");
+    if (!(file instanceof File)) {
+      return { ok: false, error: "Arquivo não enviado." };
+    }
+    if (file.size === 0) {
+      return { ok: false, error: "Arquivo vazio." };
+    }
+    if (file.size > MAX_KB_FILE_BYTES) {
+      return { ok: false, error: "Arquivo excede 10 MB." };
+    }
+    const kind = kindFromFilename(file.name);
+    if (!kind) {
+      return { ok: false, error: "Formato inválido." };
+    }
+    const buffer = Buffer.from(await file.arrayBuffer());
+    const { extractKbText } = await import("@/lib/agent/rag/extract");
+    try {
+      const text = await extractKbText(buffer, kind);
+      return { ok: true, data: { charCount: text.length } };
+    } catch (err) {
+      return {
+        ok: false,
+        error: err instanceof Error ? err.message : "Falha ao processar arquivo.",
+      };
+    }
+  } catch (err) {
+    return {
+      ok: false,
+      error: err instanceof Error ? err.message : "Erro ao processar arquivo.",
+    };
+  }
+}
+
+/**
+ * Lista apenas nomes (e id) dos documentos da KB para o modal de upload
+ * detectar duplicidades antes do save. Não traz texto.
+ */
+export async function listKbDocumentNamesAction(): Promise<
+  ActionResult<{ id: string; name: string }[]>
+> {
+  try {
+    await assertKbAdmin();
+    const rows = await prisma.kbDocument.findMany({
+      select: { id: true, name: true },
+      orderBy: { createdAt: "desc" },
+    });
+    return { ok: true, data: rows };
+  } catch (err) {
+    return {
+      ok: false,
+      error: err instanceof Error ? err.message : "Erro ao listar documentos.",
+    };
+  }
+}
+
 export async function deleteKbDocumentAction(id: string): Promise<ActionResult> {
   try {
     await assertKbAdmin();

@@ -12,7 +12,10 @@
 // virar multi, o caller injeta tenantSql/tenantParams. Sem injection: tudo
 // que sai daqui em SQL e literal de whitelist; valores vao parametrizados.
 
-import "server-only";
+// NOTA: nao usa "server-only" porque o servidor MCP (Node puro, sem Next)
+// importa este modulo via tools como estoque_saldo_produto. O "server-only"
+// e do Next e quebra o require do MCP. A protecao "so roda no server" e
+// garantida pela natureza do consumo (queries Prisma + sql raw).
 
 import type { PrismaClient } from "@/generated/prisma/client";
 

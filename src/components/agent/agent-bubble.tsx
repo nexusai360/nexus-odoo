@@ -47,6 +47,10 @@ interface AgentBubbleProps {
    * erro; o ChatPanel cai no catálogo curado neste caso.
    */
   personalizedWelcome?: string[];
+  /** Quando true, renderiza no menu da bubble a opção "Baixar relatório
+   *  desta conversa" (exportConversationReport). Resolvido no layout
+   *  protegido com base em platformRole === "super_admin". */
+  isSuperAdmin?: boolean;
 }
 
 export function AgentBubble({
@@ -54,6 +58,7 @@ export function AgentBubble({
   imageInputEnabled = false,
   maxSuggestions = 3,
   personalizedWelcome = [],
+  isSuperAdmin = false,
 }: AgentBubbleProps = {}) {
   const [open, setOpen] = React.useState(false);
   // O conversationId vive AQUI (no FAB), e não no ChatPanel: assim ele
@@ -145,24 +150,34 @@ export function AgentBubble({
         ) : null}
       </AnimatePresence>
 
-      <AnimatePresence>
-        {open ? (
-          <ChatPanel
-            open={open}
-            onClose={() => setOpen(false)}
-            audioInputEnabled={audioInputEnabled}
-            imageInputEnabled={imageInputEnabled}
-            maxSuggestions={maxSuggestions}
-            personalizedWelcome={personalizedWelcome}
-            conversationId={conversationId}
-            onConversationCreated={setConversationId}
-            onEndSession={() => {
-              setConversationId(null);
-              setOpen(false);
-            }}
-          />
-        ) : null}
-      </AnimatePresence>
+      {/* ChatPanel renderizado por mount condicional. O wrap em
+          AnimatePresence foi removido: como ChatPanel e um function
+          component (nao motion.*), AnimatePresence nao consegue aplicar
+          exit animation nos motion.divs internos e ainda deixava o painel
+          em estado travado depois do fechamento pelo X (cursor "proibido"
+          no FAB ate o refresh). Mount/initial animations dos motion.divs
+          continuam funcionando normalmente. */}
+      {open ? (
+        <ChatPanel
+          open={open}
+          onClose={() => setOpen(false)}
+          audioInputEnabled={audioInputEnabled}
+          imageInputEnabled={imageInputEnabled}
+          maxSuggestions={maxSuggestions}
+          personalizedWelcome={personalizedWelcome}
+          isSuperAdmin={isSuperAdmin}
+          conversationId={conversationId}
+          onConversationCreated={setConversationId}
+          onEndSession={() => {
+            // Encerrar sessao NAO fecha a bubble: so reseta o
+            // conversationId. Combinado com handleClear() dentro do
+            // ChatPanel (que zera messages + abortRef + conversationIdRef
+            // interno), o painel volta sozinho ao welcome (showWelcome
+            // = messages.length === 0).
+            setConversationId(null);
+          }}
+        />
+      ) : null}
     </>
   );
 }

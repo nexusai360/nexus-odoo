@@ -87,14 +87,14 @@ describe("composeSystemPrompt", () => {
 
   test("KB com doc grande → trunca e adiciona marker", () => {
     const cfg: AgentPromptConfig = { ...baseConfig, kbEnabled: true };
-    // Cap da KB foi elevado para 500.000 chars; doc maior continua sendo
-    // truncado com marker. Teste usa 600k para garantir overflow do cap.
-    const bigText = "x".repeat(600_000);
+    // Cap da KB foi elevado para 1.000.000 chars; doc maior continua sendo
+    // truncado com marker. Teste usa 1.1M para garantir overflow do cap.
+    const bigText = "x".repeat(1_100_000);
     const docs: KbDocSnippet[] = [{ name: "Grande.txt", extractedText: bigText }];
     const result = composeSystemPrompt(cfg, docs);
     expect(result).toContain("[...truncado...]");
     // Resultado total nao deve explodir o prompt acima de uma folga sobre o cap.
-    expect(result.length).toBeLessThan(550_000);
+    expect(result.length).toBeLessThan(1_050_000);
   });
 
   test("terminology → injeta bloco Terminologia", () => {
@@ -211,5 +211,51 @@ describe("composeSystemPrompt , sugestoes de desambiguacao", () => {
     expect(out).toContain("## Comportamento");
     expect(out).toContain("mes do calendario corrente");
     expect(out).toContain("Nao faca mais de uma rodada de clarificacao");
+  });
+
+  test("diretriz datasets grandes: aparece e e pragmatica (sem forcar loop)", () => {
+    const out = composeSystemPrompt({ ...baseConfig }, []);
+    expect(out).toContain("Diretriz de resposta para datasets grandes");
+    // Preferencia, nao obrigacao agressiva.
+    expect(out).toContain("prefira responder com um QUANTITATIVO direto");
+    expect(out).toContain("Evite a pergunta");
+    // Guardrail contra loop.
+    expect(out).toContain("LIMITE RIGIDO DE TOOLS");
+    expect(out).toContain("maximo 2 chamadas de ferramenta");
+  });
+
+  test("diretriz aparece NO FINAL do prompt (recency bias)", () => {
+    const out = composeSystemPrompt({ ...baseConfig }, []);
+    const idxComportamento = out.indexOf("## Comportamento");
+    const idxRegra = out.indexOf("Diretriz de resposta para datasets grandes");
+    expect(idxComportamento).toBeGreaterThanOrEqual(0);
+    expect(idxRegra).toBeGreaterThan(idxComportamento);
+    const outFull = composeSystemPrompt(
+      { ...baseConfig, personality: "X", tone: "Y", guardrails: ["Z"] },
+      [],
+    );
+    const idxRegraFull = outFull.indexOf("Diretriz de resposta para datasets grandes");
+    expect(idxRegraFull).toBeGreaterThan(outFull.indexOf("[GUARDRAILS]"));
+  });
+
+  test("diretriz sobrevive a identity_base customizado (do DB)", () => {
+    const out = composeSystemPrompt(
+      { ...baseConfig, identityBase: "Identidade totalmente customizada do admin." },
+      [],
+    );
+    expect(out).toContain("Identidade totalmente customizada do admin.");
+    expect(out).toContain("Diretriz de resposta para datasets grandes");
+  });
+
+  test("advancedOverride SHORT-CIRCUITA tudo (poder total do admin)", () => {
+    // Decisao de design preexistente: quando admin usa advancedOverride,
+    // ele assume responsabilidade pelo prompt inteiro. Nem a regra de
+    // quantitativo nem o Comportamento sao appendados. Documentar.
+    const out = composeSystemPrompt(
+      { ...baseConfig, advancedOverride: "Prompt totalmente customizado." },
+      [],
+    );
+    expect(out).toBe("Prompt totalmente customizado.");
+    expect(out).not.toContain("Resultados grandes");
   });
 });

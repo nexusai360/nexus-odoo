@@ -35,7 +35,12 @@ export type ModelUse =
   | "busca";
 
 /** Níveis de esforço de raciocínio (thinking), do menor ao maior. */
-export type ReasoningLevel = "minimal" | "low" | "medium" | "high";
+/**
+ * @deprecated Use ReasoningEffort de `./types`. Mantido por compat na
+ * transição da Onda 1 do plano de modernização dos adapters.
+ * Inclui "auto" para modelos com adaptive nativo (Anthropic, Gemini 3.x).
+ */
+export type ReasoningLevel = "auto" | "minimal" | "low" | "medium" | "high";
 
 export interface ModelEntry {
   id: string;
@@ -309,14 +314,150 @@ for (const m of MODELS) {
   if (levels) m.reasoning = { levels };
 }
 
+// ============================================================================
+// REASONING_CAPS - Capability table canônica (Onda 1 do plan de modernização).
+// Substitui REASONING_LEVELS gradualmente. Documentação em
+// docs/superpowers/specs/2026-05-25-reasoning-caps-table.md.
+// ============================================================================
+
+/**
+ * Capability de raciocínio por modelo. Única fonte da verdade para a UI
+ * e adapters decidirem como passar reasoning ao provider.
+ */
+export interface ReasoningCap {
+  /** Níveis aceitos no parâmetro reasoningEffort. ["auto"] = modelo decide. */
+  levels: ReasoningLevel[];
+  /** false = card UI desativa quando este modelo for o ativo. */
+  enabled: boolean;
+  /** Tools + reasoning simultâneos? (Haiku 4.5 = false). */
+  supportsWithTools: boolean;
+  /** Provider decide internamente quando/quanto pensar (Anthropic adaptive, Gemini -1). */
+  adaptiveMode: boolean;
+  /** Endpoint canônico OpenAI. */
+  openaiEndpoint?: "responses" | "chat-completions";
+  /** Anthropic: tipo de thinking. */
+  anthropicThinking?: "adaptive" | "enabled";
+  /** Anthropic: precisa de beta header interleaved? false = sim. */
+  anthropicInterleavedAuto?: boolean;
+  /** Faixa numérica do budget (Anthropic budget_tokens, Gemini thinkingBudget). */
+  budgetRange?: [number, number];
+  /** Gemini: shape do parametro (3.x usa level string; 2.5 usa budget int). */
+  geminiShape?: "level" | "budget";
+  /** OpenRouter: como passar reasoning (effort string vs max_tokens int). */
+  openrouterShape?: "effort" | "max_tokens";
+  /** Cap de output_tokens conhecido do modelo. Opcional (OpenAI omite). */
+  outputCap?: number;
+  /** Quando adaptiveMode=true OU levels=["auto"], texto curto para subtítulo da UI. */
+  autoModeHint?: string;
+  /** Timeout customizado em ms. Default 90000. */
+  requestTimeoutMs?: number;
+}
+
+/** Tabela canônica. Linhas ausentes => `reasoningCapsOf` retorna null. */
+export const REASONING_CAPS: Record<string, ReasoningCap> = {
+  // -------- OpenAI (sempre Responses, supportsWithTools=true) --------
+  "gpt-5.5":            { levels: ["minimal", "low", "medium", "high"], enabled: true, supportsWithTools: true, adaptiveMode: false, openaiEndpoint: "responses", requestTimeoutMs: 90_000 },
+  "gpt-5.5-pro":        { levels: ["low", "medium", "high"],            enabled: true, supportsWithTools: true, adaptiveMode: false, openaiEndpoint: "responses", requestTimeoutMs: 180_000 },
+  "gpt-5.4":            { levels: ["minimal", "low", "medium", "high"], enabled: true, supportsWithTools: true, adaptiveMode: false, openaiEndpoint: "responses", requestTimeoutMs: 90_000 },
+  "gpt-5.4-mini":       { levels: ["minimal", "low", "medium", "high"], enabled: true, supportsWithTools: true, adaptiveMode: false, openaiEndpoint: "responses", requestTimeoutMs: 90_000 },
+  "gpt-5.4-nano":       { levels: ["minimal", "low", "medium", "high"], enabled: true, supportsWithTools: true, adaptiveMode: false, openaiEndpoint: "responses", requestTimeoutMs: 60_000 },
+  "gpt-5.4-pro":        { levels: ["low", "medium", "high"],            enabled: true, supportsWithTools: true, adaptiveMode: false, openaiEndpoint: "responses", requestTimeoutMs: 180_000 },
+  "gpt-5":              { levels: ["minimal", "low", "medium", "high"], enabled: true, supportsWithTools: true, adaptiveMode: false, openaiEndpoint: "responses", requestTimeoutMs: 90_000 },
+  "gpt-5-mini":         { levels: ["minimal", "low", "medium", "high"], enabled: true, supportsWithTools: true, adaptiveMode: false, openaiEndpoint: "responses", requestTimeoutMs: 90_000 },
+  "gpt-5-nano":         { levels: ["minimal", "low", "medium", "high"], enabled: true, supportsWithTools: true, adaptiveMode: false, openaiEndpoint: "responses", requestTimeoutMs: 60_000 },
+  "gpt-5.3-codex":      { levels: ["minimal", "low", "medium", "high"], enabled: true, supportsWithTools: true, adaptiveMode: false, openaiEndpoint: "responses", requestTimeoutMs: 90_000 },
+  "gpt-5.2":            { levels: ["minimal", "low", "medium", "high"], enabled: true, supportsWithTools: true, adaptiveMode: false, openaiEndpoint: "responses", requestTimeoutMs: 90_000 },
+  "gpt-5.1":            { levels: ["minimal", "low", "medium", "high"], enabled: true, supportsWithTools: true, adaptiveMode: false, openaiEndpoint: "responses", requestTimeoutMs: 90_000 },
+  "gpt-5.1-codex-mini": { levels: ["minimal", "low", "medium", "high"], enabled: true, supportsWithTools: true, adaptiveMode: false, openaiEndpoint: "responses", requestTimeoutMs: 60_000 },
+  "gpt-5-codex":        { levels: ["minimal", "low", "medium", "high"], enabled: true, supportsWithTools: true, adaptiveMode: false, openaiEndpoint: "responses", requestTimeoutMs: 90_000 },
+  "o3":                 { levels: ["low", "medium", "high"],            enabled: true, supportsWithTools: true, adaptiveMode: false, openaiEndpoint: "responses", requestTimeoutMs: 120_000 },
+  "o3-pro":             { levels: ["low", "medium", "high"],            enabled: true, supportsWithTools: true, adaptiveMode: false, openaiEndpoint: "responses", requestTimeoutMs: 240_000 },
+  "o1":                 { levels: ["low", "medium", "high"],            enabled: true, supportsWithTools: true, adaptiveMode: false, openaiEndpoint: "responses", requestTimeoutMs: 120_000 },
+  "o1-pro":             { levels: ["low", "medium", "high"],            enabled: true, supportsWithTools: true, adaptiveMode: false, openaiEndpoint: "responses", requestTimeoutMs: 240_000 },
+
+  // -------- Anthropic --------
+  "claude-opus-4-7":    { levels: ["low", "medium", "high"], enabled: true, supportsWithTools: true,  adaptiveMode: true,  anthropicThinking: "adaptive", anthropicInterleavedAuto: true,  budgetRange: [1024, 24000], outputCap: 128_000 },
+  "claude-sonnet-4-7":  { levels: ["low", "medium", "high"], enabled: true, supportsWithTools: true,  adaptiveMode: true,  anthropicThinking: "adaptive", anthropicInterleavedAuto: true,  budgetRange: [1024, 24000], outputCap: 64_000 },
+  "claude-opus-4-6":    { levels: ["low", "medium", "high"], enabled: true, supportsWithTools: true,  adaptiveMode: true,  anthropicThinking: "adaptive", anthropicInterleavedAuto: true,  budgetRange: [1024, 24000], outputCap: 128_000 },
+  "claude-sonnet-4-6":  { levels: ["low", "medium", "high"], enabled: true, supportsWithTools: true,  adaptiveMode: true,  anthropicThinking: "adaptive", anthropicInterleavedAuto: true,  budgetRange: [1024, 24000], outputCap: 64_000 },
+  "claude-opus-4-5":    { levels: ["low", "medium", "high"], enabled: true, supportsWithTools: true,  adaptiveMode: false, anthropicThinking: "enabled",  anthropicInterleavedAuto: false, budgetRange: [1024, 16000], outputCap: 64_000 },
+  "claude-sonnet-4-5":  { levels: ["low", "medium", "high"], enabled: true, supportsWithTools: true,  adaptiveMode: false, anthropicThinking: "enabled",  anthropicInterleavedAuto: false, budgetRange: [1024, 16000], outputCap: 64_000 },
+  "claude-haiku-4-5":   { levels: ["low", "medium", "high"], enabled: true, supportsWithTools: false, adaptiveMode: false, anthropicThinking: "enabled",  anthropicInterleavedAuto: false, budgetRange: [1024,  8000], outputCap: 64_000 },
+
+  // -------- Gemini --------
+  "gemini-2.5-pro":         { levels: ["low", "medium", "high"],           enabled: true, supportsWithTools: true, adaptiveMode: false, geminiShape: "budget", budgetRange: [128, 32768], outputCap: 65_535 },
+  "gemini-2.5-flash":       { levels: ["minimal", "low", "medium", "high"], enabled: true, supportsWithTools: true, adaptiveMode: false, geminiShape: "budget", budgetRange: [0, 24576],   outputCap: 65_535 },
+  "gemini-2.5-flash-lite":  { levels: ["minimal", "low", "medium", "high"], enabled: true, supportsWithTools: true, adaptiveMode: false, geminiShape: "budget", budgetRange: [512, 24576], outputCap: 65_535 },
+  "gemini-2.5-pro-thinking":   { levels: ["low", "medium", "high"],           enabled: true, supportsWithTools: true, adaptiveMode: false, geminiShape: "budget", budgetRange: [128, 32768], outputCap: 65_535 },
+  "gemini-2.5-flash-thinking": { levels: ["minimal", "low", "medium", "high"], enabled: true, supportsWithTools: true, adaptiveMode: false, geminiShape: "budget", budgetRange: [0, 24576],   outputCap: 65_535 },
+  "gemini-3-pro":           { levels: ["low", "medium", "high"],           enabled: true, supportsWithTools: true, adaptiveMode: false, geminiShape: "level",  outputCap: 65_535 },
+  "gemini-3.1-pro":         { levels: ["auto"],                            enabled: true, supportsWithTools: true, adaptiveMode: true,  geminiShape: "level",  outputCap: 65_535, autoModeHint: "baixo, médio, alto" },
+  "gemini-3.5-flash":       { levels: ["minimal", "low", "medium", "high"], enabled: true, supportsWithTools: true, adaptiveMode: false, geminiShape: "level",  outputCap: 65_535 },
+  "gemini-3-flash":         { levels: ["minimal", "low", "medium", "high"], enabled: true, supportsWithTools: true, adaptiveMode: false, geminiShape: "level",  outputCap: 65_535 },
+
+  // -------- OpenRouter (todos com supportsWithTools=true, enabled=true) --------
+  "deepseek/deepseek-r1":              { levels: ["low", "medium", "high"], enabled: true, supportsWithTools: true, adaptiveMode: false, openrouterShape: "effort" },
+  "deepseek/deepseek-r1:free":         { levels: ["low", "medium", "high"], enabled: true, supportsWithTools: true, adaptiveMode: false, openrouterShape: "effort" },
+  "deepseek/deepseek-r1-0528":         { levels: ["low", "medium", "high"], enabled: true, supportsWithTools: true, adaptiveMode: false, openrouterShape: "effort" },
+  "deepseek/deepseek-r1-0528:free":    { levels: ["low", "medium", "high"], enabled: true, supportsWithTools: true, adaptiveMode: false, openrouterShape: "effort" },
+  "qwen/qwq-32b":                      { levels: ["low", "medium", "high"], enabled: true, supportsWithTools: true, adaptiveMode: false, openrouterShape: "effort" },
+  "qwen/qwq-32b:free":                 { levels: ["low", "medium", "high"], enabled: true, supportsWithTools: true, adaptiveMode: false, openrouterShape: "effort" },
+  "anthropic/claude-opus-4.7":         { levels: ["low", "medium", "high"], enabled: true, supportsWithTools: true, adaptiveMode: true,  openrouterShape: "effort" },
+  "anthropic/claude-sonnet-4.7":       { levels: ["low", "medium", "high"], enabled: true, supportsWithTools: true, adaptiveMode: true,  openrouterShape: "effort" },
+  "anthropic/claude-opus-4.6":         { levels: ["low", "medium", "high"], enabled: true, supportsWithTools: true, adaptiveMode: true,  openrouterShape: "effort" },
+  "anthropic/claude-sonnet-4.6":       { levels: ["low", "medium", "high"], enabled: true, supportsWithTools: true, adaptiveMode: true,  openrouterShape: "effort" },
+  "anthropic/claude-opus-4.5":         { levels: ["low", "medium", "high"], enabled: true, supportsWithTools: true, adaptiveMode: false, openrouterShape: "effort" },
+  "anthropic/claude-sonnet-4.5":       { levels: ["low", "medium", "high"], enabled: true, supportsWithTools: true, adaptiveMode: false, openrouterShape: "effort" },
+  "google/gemini-2.5-pro":             { levels: ["low", "medium", "high"], enabled: true, supportsWithTools: true, adaptiveMode: false, openrouterShape: "max_tokens" },
+  "google/gemini-2.5-flash":           { levels: ["low", "medium", "high"], enabled: true, supportsWithTools: true, adaptiveMode: false, openrouterShape: "max_tokens" },
+  "google/gemini-3-pro":               { levels: ["low", "medium", "high"], enabled: true, supportsWithTools: true, adaptiveMode: false, openrouterShape: "max_tokens" },
+  "google/gemini-3.1-pro":             { levels: ["auto"],                  enabled: true, supportsWithTools: true, adaptiveMode: true,  openrouterShape: "max_tokens", autoModeHint: "médio, alto" },
+  "openai/gpt-5.4":                    { levels: ["minimal", "low", "medium", "high"], enabled: true, supportsWithTools: true, adaptiveMode: false, openrouterShape: "effort" },
+  "openai/gpt-5.4-mini":               { levels: ["minimal", "low", "medium", "high"], enabled: true, supportsWithTools: true, adaptiveMode: false, openrouterShape: "effort" },
+  "openai/gpt-5.4-nano":               { levels: ["minimal", "low", "medium", "high"], enabled: true, supportsWithTools: true, adaptiveMode: false, openrouterShape: "effort" },
+  "openai/o3":                         { levels: ["low", "medium", "high"], enabled: true, supportsWithTools: true, adaptiveMode: false, openrouterShape: "effort" },
+};
+
+/** Retorna a capability completa do modelo. null se ausente do mapa. */
+export function reasoningCapsOf(modelId: string): ReasoningCap | null {
+  return REASONING_CAPS[modelId] ?? null;
+}
+
+/** Output cap conhecido (Anthropic obrigatório, OpenAI omite). */
+export function modelOutputCap(modelId: string): number | undefined {
+  return REASONING_CAPS[modelId]?.outputCap;
+}
+
+/**
+ * Mapping effort → budget numérico, clampado ao budgetRange do modelo.
+ * Retorna null quando o modelo não usa budget (OpenAI Responses, OpenRouter shape=effort).
+ * `auto` retorna o teto do range (deixa o provider decidir dentro).
+ */
+export function effortToBudget(modelId: string, effort: ReasoningLevel): number | null {
+  const cap = REASONING_CAPS[modelId];
+  if (!cap || !cap.budgetRange) return null;
+  const [min, max] = cap.budgetRange;
+  const span = max - min;
+  switch (effort) {
+    case "minimal": return min;
+    case "low":     return min + Math.floor(span * 0.2);
+    case "medium":  return min + Math.floor(span * 0.5);
+    case "high":    return max;
+    case "auto":    return max; // teto, provider decide dentro
+  }
+}
+
 /** `true` se o modelo suporta modo raciocínio (thinking). */
 export function modelSupportsReasoning(id: string): boolean {
+  // Mantém compat: usa REASONING_CAPS quando disponível; senão cai no map antigo.
+  const cap = REASONING_CAPS[id];
+  if (cap) return cap.enabled;
   return (getModel(id)?.reasoning?.levels.length ?? 0) > 0;
 }
 
 /** Níveis de raciocínio aceitos pelo modelo; vazio quando não suporta. */
 export function reasoningLevelsOf(id: string): ReasoningLevel[] {
-  return getModel(id)?.reasoning?.levels ?? [];
+  return REASONING_CAPS[id]?.levels ?? (getModel(id)?.reasoning?.levels ?? []);
 }
 
 /** Retorna um modelo pelo id exato, ou undefined. */

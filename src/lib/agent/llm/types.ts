@@ -63,13 +63,49 @@ export interface ChatResult {
   /** Tool calls solicitadas pelo modelo, se houver. */
   toolCalls?: ToolCall[];
   usage: ChatUsage;
+  /**
+   * Tokens consumidos no raciocínio interno. Subset conceitual de
+   * `usage.tokensOutput` (OpenAI inclui na fatura; gravamos separado para
+   * auditoria). `undefined` quando o provider não expõe (ex.: Anthropic).
+   */
+  reasoningTokens?: number;
+  /**
+   * Contexto de raciocínio deste turno, para `run-agent` empilhar em
+   * `reasoningHistory`. `undefined` quando reasoning está off ou quando o
+   * provider não produziu blocos preserváveis.
+   */
+  reasoningContext?: ReasoningContext;
+  /**
+   * `true` quando o adapter emitiu pelo menos um `onToken` durante o
+   * parse (streaming SSE real). Consumidor (bolha do Nex) usa para decidir
+   * entre typewriter frontend (ausente/false) e exibição direta (true).
+   * Opcional na transição da Onda 1; cada adapter define ao migrar para
+   * streaming nas Ondas 3-6.
+   */
+  streamed?: boolean;
 }
 
 /**
- * Profundidade de raciocínio para modelos reasoning (ex.: GPT-5.x, o-series).
- * Ignorado por modelos não-reasoning.
+ * Profundidade de raciocínio para modelos reasoning.
+ *
+ * - "auto": modelo decide internamente (Anthropic adaptive, Gemini thinkingBudget=-1).
+ *   UI exibe "Modelo define automaticamente" e dropdown fica disabled.
+ * - "minimal" | "low" | "medium" | "high": teto explícito.
+ *
+ * O adapter consulta `reasoningCapsOf(modelId).levels` para decidir o que
+ * é aceito; valor fora dos levels do modelo é remapeado ou ignorado.
  */
-export type ReasoningEffort = "minimal" | "low" | "medium" | "high";
+export type ReasoningEffort = "auto" | "minimal" | "low" | "medium" | "high";
+
+/**
+ * Estado opaco de raciocínio de um turno anterior. Cada adapter define seu
+ * `data` shape internamente; `run-agent.ts` trata como caixa preta (recebe,
+ * acumula, repassa). Persistido em `conversations.reasoning_history` JSONB.
+ */
+export interface ReasoningContext {
+  provider: LlmProvider;
+  data: unknown;
+}
 
 export interface ChatRequest {
   messages: ChatMessage[];
@@ -87,6 +123,19 @@ export interface ChatRequest {
    * usa seu default.
    */
   reasoningEffort?: ReasoningEffort;
+  /**
+   * Override do mapping effort→budget para Anthropic budget_tokens, Gemini
+   * thinkingBudget e OpenRouter reasoning.max_tokens. Quando ausente, o
+   * adapter usa `effortToBudget(modelId, effort)` do catálogo.
+   */
+  reasoningMaxTokens?: number;
+  /**
+   * Histórico de contextos de raciocínio das iterações anteriores da MESMA
+   * conversa. Crescente. Capado em 20 iterações ou 50KB serialized. Adapter
+   * faz cast de `data` interno e injeta no próximo request conforme o
+   * formato exigido pelo provider.
+   */
+  reasoningHistory?: ReasoningContext[];
 }
 
 export interface ProviderClient {

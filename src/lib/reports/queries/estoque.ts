@@ -14,6 +14,12 @@
 
 import type { PrismaClient } from "@/generated/prisma/client";
 import { limparNomeLocal } from "@/lib/reports/local-nome";
+// tsconfig raiz usa moduleResolution:"bundler" (Next/Turbopack), mcp/tsconfig
+// usa "nodenext". Em runtime ambos resolvem este caminho corretamente; sem
+// extensao para o Turbopack aceitar. O tsc do MCP reclama na compilacao mas
+// nao impacta runtime (transpilacao via tsx ignora). @ts-expect-error usado
+// somente no tsc do MCP via build script (ver mcp/Dockerfile).
+import { searchProductByNameWithMetaCanonical } from "./_search-helpers";
 
 // ---------------------------------------------------------------------------
 // Tipos de R1 , Saldo por produto
@@ -36,6 +42,11 @@ export interface SaldoProdutoRow {
   numLocais: number;
   /** Saldo do produto quebrado por local, com rótulo limpo. */
   detalhePorLocal: DetalhePorLocal[];
+  /** true quando produto existe no cadastro (fato_produto) mas nao tem linha
+   *  de saldo (fato_estoque_saldo). Distinto de "saldo zero com linha". */
+  semEstoqueCadastrado?: boolean;
+  /** Microcopy para o agente respeitar quando produto sem linha. */
+  mensagemContexto?: string;
 }
 
 /** KPIs de topo de R1. */
@@ -78,11 +89,12 @@ export async function querySaldoProduto(
     | { totalMatches: number; layer: "exact" | "fuzzy" | "none" }
     | undefined;
   if (filtros.termo) {
-    const { searchProductByNameWithMeta } = await import("./_search-helpers");
-    const r = await searchProductByNameWithMeta(prisma, filtros.termo);
+    // Usa o helper canonical contra fato_produto (catalogo completo, nao
+    // limitado a produtos com saldo). Import estatico no topo do arquivo.
+    const r = await searchProductByNameWithMetaCanonical(prisma, filtros.termo);
     produtoIdsFiltro = r.ids;
-    buscaMeta = { totalMatches: r.totalMatches, layer: r.layer };
-    if (produtoIdsFiltro.length === 0) {
+    buscaMeta = { totalMatches: r.totalMatches, layer: r.layer === "codigo" ? "exact" : r.layer };
+    if (produtoIdsFiltro && produtoIdsFiltro.length === 0) {
       return {
         kpis: { totalProdutos: 0, produtosNegativos: 0, valorTotal: 0 },
         linhas: [],
@@ -177,6 +189,36 @@ export async function querySaldoProduto(
         .sort((a, b) => b.valor - a.valor),
     }))
     .sort((a, b) => b.valorTotal - a.valorTotal);
+
+  // Mescla: produtos do filtro que NAO apareceram em fato_estoque_saldo
+  // (cadastrados mas sem linha de saldo). Carrega metadado de fato_produto.
+  if (produtoIdsFiltro && produtoIdsFiltro.length > 0) {
+    const idsComSaldo = new Set(mapa.keys());
+    const idsSemSaldo = produtoIdsFiltro.filter((id) => !idsComSaldo.has(id));
+    if (idsSemSaldo.length > 0) {
+      const metas = await prisma.fatoProduto.findMany({
+        where: { odooId: { in: idsSemSaldo } },
+        select: { odooId: true, nome: true, familiaNome: true, marcaNome: true },
+      });
+      for (const m of metas) {
+        linhas.push({
+          produtoNome: m.nome,
+          familiaNome: m.familiaNome,
+          marcaNome: m.marcaNome,
+          saldoTotal: 0,
+          valorTotal: 0,
+          numLocais: 0,
+          detalhePorLocal: [],
+          semEstoqueCadastrado: true,
+          mensagemContexto: "produto cadastrado, sem linha de saldo",
+        });
+      }
+      linhas.sort((a, b) => {
+        if (b.valorTotal !== a.valorTotal) return b.valorTotal - a.valorTotal;
+        return a.produtoNome.localeCompare(b.produtoNome, "pt-BR");
+      });
+    }
+  }
 
   const totalProdutos = linhas.length;
   const produtosNegativos = linhas.filter((l) => l.saldoTotal < 0).length;

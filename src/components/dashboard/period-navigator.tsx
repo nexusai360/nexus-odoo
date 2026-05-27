@@ -81,7 +81,7 @@ export function PeriodNavigator({
     }
     if (period === "semana") {
       const inclusiveEnd = new Date(new Date(range.end).getTime() - 1).toISOString();
-      return `${formatDayDate(range.start, tz)} , ${formatDayDate(inclusiveEnd, tz)}`;
+      return `${formatDayDate(range.start, tz)} - ${formatDayDate(inclusiveEnd, tz)}`;
     }
     return formatMonthYear(range.start, tz);
   })();

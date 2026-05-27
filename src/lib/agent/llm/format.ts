@@ -29,6 +29,41 @@ export function formatUsd4(v: number | null | undefined): string {
   }).format(rounded);
 }
 
+/** Contagem inteira em pt-BR; compacta com 1 casa decimal (e sufixo Mi/Bi/Tri/Qua)
+ *  a partir de 1 milhao para economizar espaco em KPIs. Abaixo disso usa
+ *  o formato normal com separador de milhar (`83.421`). Sempre arredonda
+ *  para baixo (truncamento) para nao "subir" um digito sem o valor real
+ *  alcancar a marca (ex.: 83.999.999 -> "83,9  Mi" e nao "84,0  Mi").
+ */
+export function formatCompactCount(v: number | null | undefined): string {
+  if (v == null || !Number.isFinite(v)) return ",";
+  const n = Math.max(0, Math.floor(v));
+  if (n < 1_000_000) {
+    return new Intl.NumberFormat("pt-BR").format(n);
+  }
+  const units: Array<{ threshold: number; suffix: string }> = [
+    { threshold: 1_000_000_000_000_000, suffix: "Qua" },
+    { threshold: 1_000_000_000_000, suffix: "Tri" },
+    { threshold: 1_000_000_000, suffix: "Bi" },
+    { threshold: 1_000_000, suffix: "Mi" },
+  ];
+  // Dois NBSP (U+00A0) entre numero e sufixo: o espaco comum em HTML/JSX
+  // colapsa em um so; NBSP preserva os dois espacos pedidos sem precisar
+  // virar bloco CSS.
+  const GAP = "  ";
+  for (const { threshold, suffix } of units) {
+    if (n >= threshold) {
+      const truncated = Math.floor((n / threshold) * 10) / 10;
+      const num = truncated.toLocaleString("pt-BR", {
+        minimumFractionDigits: 1,
+        maximumFractionDigits: 1,
+      });
+      return `${num}${GAP}${suffix}`;
+    }
+  }
+  return new Intl.NumberFormat("pt-BR").format(n);
+}
+
 /** Duração legível com granularidade automática (ms / s / min / h). */
 export function formatDuration(ms: number): string {
   if (!Number.isFinite(ms) || ms < 0) return ",";

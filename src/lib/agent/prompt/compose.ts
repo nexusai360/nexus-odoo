@@ -22,8 +22,10 @@ export const MAX_PERSONALITY_LEN = 1000;
 export const MAX_TONE_LEN = 1000;
 export const MAX_GUARDRAIL_LEN = 500;
 export const MAX_GUARDRAILS = 1000;
-export const MAX_PROMPT_LEN = 500_000;
-export const MAX_KB_TOTAL_CHARS = 500_000;
+/** Cap independente do texto do prompt (identityBase + advancedOverride). */
+export const MAX_PROMPT_LEN = 100_000;
+/** Cap total dos documentos da base de conhecimento. Independente do prompt. */
+export const MAX_KB_TOTAL_CHARS = 1_000_000;
 
 /**
  * Origem do turno atual. Influencia o prompt:
@@ -187,6 +189,21 @@ export function composeSystemPrompt(
       `\n\n## Schema para consulta avançada (BI)\nUse o schema abaixo ao construir queries para \`bi_consulta_avancada\`:\n\n${biSchema.trim()}`,
     );
   }
+
+  // REGRA appendada por ULTIMO no system prompt (recency bias).
+  // SUAVIZADA em 2026-05-25 12:05 apos diretiva agressiva causar loop
+  // do agente (8 tool calls tentando "agrupar"). Agora pragmatica:
+  // priorize quantitativo SE a tool ja retornar dados agrupaveis; nao
+  // force agrupamento via N chamadas de tool.
+  parts.push(
+    "\n\n## Diretriz de resposta para datasets grandes" +
+      "\n\nQuando uma ferramenta retornar muitos registros (resultado grande, truncado, ou cobrindo varias categorias/status/situacoes), prefira responder com um QUANTITATIVO direto em vez de pedir ao usuario \"qual visao quer?\":" +
+      "\n- Se os dados ja vem agrupados (campo de status/situacao/categoria visivel), traga a contagem por grupo + total." +
+      "\n- Se NAO vem agrupados naturalmente, traga o total simples + uma amostra de 3-5 itens. NAO chame a mesma tool de novo so para agrupar." +
+      "\n- Use [[suggestions]] para drill-down (\"Liste as autorizadas\", \"Compare com mes anterior\")." +
+      "\n\nEvite a pergunta \"qual visao voce quer?\" como resposta principal. Se for genuinamente impossivel responder sem essa clarificacao, ofereca a pergunta DEPOIS de ter trazido pelo menos o total + 1 amostra." +
+      "\n\nLIMITE RIGIDO DE TOOLS: maximo 2 chamadas de ferramenta por resposta. Voce TEM apenas 2 oportunidades de chamar tools para uma pergunta. Use-as bem. Apos a 2a chamada, RESPONDA com o que tiver, mesmo que parcial. NUNCA encadeie a mesma tool 2x esperando resultado diferente. NUNCA chame uma tool diferente esperando 'completar' a primeira: se a 1a tool nao deu o dado, e improvavel que a 2a de. Resposta parcial e honesta vale infinitamente mais que loop de tools.",
+  );
 
   return parts.join("");
 }

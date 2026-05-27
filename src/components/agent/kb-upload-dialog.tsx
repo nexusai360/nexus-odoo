@@ -3,13 +3,21 @@
 /**
  * Dialog de adição de documento à Base de Conhecimento (KB) do Agente Nex.
  *
- * Estado por arquivo (idle | uploading | success | error) com feedback visual:
- * verde para sucesso, vermelho para falha. O modal só fecha quando todos os
- * arquivos da fila viram success (ou o usuário cancela). Sucesso some da lista
- * para evitar duplicidade no retry.
+ * Pipeline por arquivo:
+ *   processing → idle (violeta) → uploading → success (verde) | error (vermelho)
  *
- * Pré-validação do total de caracteres: a soma "KB atual + arquivos novos"
- * não pode estourar MAX_KB_TOTAL_CHARS. Se estourar, o botão Salvar bloqueia.
+ * Pré-processamento real: texto cru é contado no client; PDF/DOCX/XLSX/JSON
+ * vão para a Server Action `precountKbCharsAction` que extrai e conta sem
+ * persistir. Heurística por bytes só serve de fallback enquanto a contagem
+ * real chega.
+ *
+ * Travas:
+ *   - duplicidade no modal (mesmo arquivo já na fila) → toast/mensagem.
+ *   - duplicidade na KB (mesmo nome já gravado) → marca o item em vermelho.
+ *   - cap de 5 arquivos por upload (MAX_FILES_PER_UPLOAD).
+ *   - cap de 10 MB por arquivo (MAX_FILE_BYTES).
+ *   - orçamento total da KB (MAX_KB_TOTAL_CHARS = 1.000.000): item que
+ *     estoura o restante fica vermelho; Salvar bloqueia até remover.
  */
 
 import { useEffect, useMemo, useRef, useState, useTransition } from "react";
@@ -45,18 +53,30 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { uploadKbFileAction } from "@/lib/actions/kb";
+import {
+  precountKbCharsAction,
+  uploadKbFileAction,
+} from "@/lib/actions/kb";
 import {
   ACCEPTED_KB_EXTENSIONS,
   MAX_FILES_PER_UPLOAD,
+  MAX_FILE_BYTES,
   kindFromFilename,
+  type FileKbKind,
 } from "@/lib/agent/rag/kb-kinds";
 import { MAX_KB_TOTAL_CHARS } from "@/lib/agent/prompt/compose";
 import { cn } from "@/lib/utils";
 
 import { KbUrlForm } from "./kb-url-form";
 
-const MAX_FILE_BYTES = 15 * 1024 * 1024; // 15 MB
+const ERROR_TIMEOUT_MS = 5_000;
+const TEXT_KINDS: ReadonlySet<FileKbKind> = new Set([
+  "TXT",
+  "MARKDOWN",
+  "CSV",
+  "XML",
+  "YAML",
+]);
 
 export function formatFileSize(bytes: number): string {
   if (!Number.isFinite(bytes) || bytes <= 0) return "0 KB";
@@ -71,9 +91,12 @@ interface KbUploadDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   initialTab?: "file" | "url";
-  /** Total de caracteres já injetados na KB (vindo do server). Usado para
-   *  prever se a soma com os novos arquivos vai estourar o limite. */
+  /** Total de caracteres já injetados na KB. */
   currentKbChars?: number;
+  /** Nomes de arquivos já presentes na KB, para detectar duplicidade pré-save. */
+  existingKbNames?: string[];
+  /** URLs já gravadas na KB, para detectar duplicidade na aba URL. */
+  existingKbUrls?: string[];
 }
 
 const TABS: { id: "file" | "url"; label: string; icon: typeof FileText }[] = [
@@ -81,36 +104,27 @@ const TABS: { id: "file" | "url"; label: string; icon: typeof FileText }[] = [
   { id: "url", label: "URL", icon: Globe },
 ];
 
-/** Estado por arquivo na fila. */
-type FileStatus = "idle" | "uploading" | "success" | "error";
+type FileStatus = "processing" | "idle" | "uploading" | "success" | "error";
 interface FileItem {
   id: string;
   file: File;
   status: FileStatus;
-  /** Estimativa de chars do conteúdo. UTF-8 ≈ bytes para texto; para PDF/DOCX/XLSX
-   *  usamos uma heurística mais conservadora (0.5x para PDF, 0.3x para binários). */
-  estimatedChars: number;
-  /** Mensagem específica quando status="error". */
+  /** Contagem real de chars após pré-processamento. -1 enquanto não processado. */
+  realChars: number;
+  /** Já existe um documento com esse nome na KB. */
+  alreadyInKb: boolean;
   errorMessage?: string;
 }
 
-function estimateChars(f: File): number {
-  const ext = f.name.toLowerCase().split(".").pop() ?? "";
-  if (ext === "pdf") return Math.round(f.size * 0.5);
-  if (ext === "docx" || ext === "doc") return Math.round(f.size * 0.3);
-  if (ext === "xlsx" || ext === "xls") return Math.round(f.size * 0.2);
-  // Texto cru: bytes ≈ chars para conteúdo ASCII; folga 10%.
-  return Math.round(f.size * 1.1);
-}
-
 let fileItemSeq = 0;
-function makeFileItem(file: File): FileItem {
+function makeFileItem(file: File, alreadyInKb: boolean): FileItem {
   fileItemSeq += 1;
   return {
     id: `f-${Date.now()}-${fileItemSeq}`,
     file,
-    status: "idle",
-    estimatedChars: estimateChars(file),
+    status: "processing",
+    realChars: -1,
+    alreadyInKb,
   };
 }
 
@@ -119,10 +133,13 @@ export function KbUploadDialog({
   onOpenChange,
   initialTab = "file",
   currentKbChars = 0,
+  existingKbNames = [],
+  existingKbUrls = [],
 }: KbUploadDialogProps) {
   const router = useRouter();
   const [items, setItems] = useState<FileItem[]>([]);
   const [error, setError] = useState<string | null>(null);
+  const [info, setInfo] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
   const [activeTab, setActiveTab] = useState<"file" | "url">(initialTab);
   const [isDragging, setIsDragging] = useState(false);
@@ -135,10 +152,16 @@ export function KbUploadDialog({
   const listRef = useRef<HTMLUListElement | null>(null);
   const lastItemRef = useRef<HTMLLIElement | null>(null);
 
+  const existingNamesSet = useMemo(
+    () => new Set(existingKbNames.map((n) => n.toLowerCase())),
+    [existingKbNames],
+  );
+
   useEffect(() => {
     if (!open) {
       setItems([]);
       setError(null);
+      setInfo(null);
       setIsDragging(false);
       setUrlDirty(false);
       setPendingSwitch(null);
@@ -149,14 +172,19 @@ export function KbUploadDialog({
     }
   }, [open, initialTab]);
 
+  // Mensagens efêmeras (erro e info) somem após 5s.
   useEffect(() => {
     if (!error) return;
-    const t = setTimeout(() => setError(null), 10_000);
+    const t = setTimeout(() => setError(null), ERROR_TIMEOUT_MS);
     return () => clearTimeout(t);
   }, [error]);
+  useEffect(() => {
+    if (!info) return;
+    const t = setTimeout(() => setInfo(null), ERROR_TIMEOUT_MS);
+    return () => clearTimeout(t);
+  }, [info]);
 
-  // Observer para o indicador "X arquivos abaixo": só aparece quando o último
-  // item não está parcialmente visível dentro do scroll container.
+  // Indicador "mais arquivos abaixo": IntersectionObserver no último item.
   useEffect(() => {
     if (items.length <= 1) {
       setShowScrollHint(false);
@@ -166,13 +194,69 @@ export function KbUploadDialog({
     const last = lastItemRef.current;
     if (!root || !last) return;
     const observer = new IntersectionObserver(
-      ([entry]) => {
-        setShowScrollHint(!entry.isIntersecting);
-      },
+      ([entry]) => setShowScrollHint(!entry.isIntersecting),
       { root, threshold: 0.01 },
     );
     observer.observe(last);
     return () => observer.disconnect();
+  }, [items]);
+
+  // Pré-processamento de cada item recém-adicionado (status="processing").
+  useEffect(() => {
+    const target = items.find((it) => it.status === "processing");
+    if (!target) return;
+
+    let cancelled = false;
+    (async () => {
+      try {
+        const kind = kindFromFilename(target.file.name);
+        let chars = 0;
+        if (kind && TEXT_KINDS.has(kind)) {
+          const text = await target.file.text();
+          chars = text.length;
+        } else {
+          // PDF / DOCX / XLSX / JSON: extração real via Server Action.
+          const fd = new FormData();
+          fd.append("file", target.file);
+          const result = await precountKbCharsAction(fd);
+          if (!result.ok) {
+            if (cancelled) return;
+            setItems((prev) =>
+              prev.map((it) =>
+                it.id === target.id
+                  ? { ...it, status: "error", errorMessage: result.error }
+                  : it,
+              ),
+            );
+            return;
+          }
+          chars = result.data.charCount;
+        }
+        if (cancelled) return;
+        setItems((prev) =>
+          prev.map((it) =>
+            it.id === target.id ? { ...it, status: "idle", realChars: chars } : it,
+          ),
+        );
+      } catch (err) {
+        if (cancelled) return;
+        setItems((prev) =>
+          prev.map((it) =>
+            it.id === target.id
+              ? {
+                  ...it,
+                  status: "error",
+                  errorMessage:
+                    err instanceof Error ? err.message : "Falha ao processar arquivo.",
+                }
+              : it,
+          ),
+        );
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
   }, [items]);
 
   function requestTabSwitch(target: "file" | "url") {
@@ -199,13 +283,11 @@ export function KbUploadDialog({
     setPendingSwitch(null);
   }
 
-  function validate(f: File): string | null {
-    if (!kindFromFilename(f.name)) {
-      return `${f.name}: formato inválido.`;
-    }
+  function validateBasic(f: File): string | null {
+    if (!kindFromFilename(f.name)) return `${f.name}: formato inválido.`;
     if (f.size === 0) return `${f.name}: arquivo vazio.`;
     if (f.size > MAX_FILE_BYTES) {
-      return `${f.name}: excede 15 MB (${formatFileSize(f.size)}).`;
+      return `${f.name}: excede ${(MAX_FILE_BYTES / (1024 * 1024)).toFixed(0)} MB.`;
     }
     return null;
   }
@@ -214,33 +296,72 @@ export function KbUploadDialog({
     if (!incoming) return;
     const list = Array.from(incoming);
     if (list.length === 0) return;
-    const errors: string[] = [];
+
+    const remainingSlots = MAX_FILES_PER_UPLOAD - items.length;
+    if (remainingSlots <= 0) {
+      setError(
+        `Você já atingiu o limite de ${MAX_FILES_PER_UPLOAD} arquivos por upload.`,
+      );
+      return;
+    }
+
+    const validationErrors: string[] = [];
+    const dupInList: string[] = [];
+    const dupInKb: string[] = [];
     const accepted: FileItem[] = [];
+    let droppedByLimit = 0;
+
     for (const f of list) {
-      const v = validate(f);
-      if (v) {
-        errors.push(v);
+      // Trava de quantidade: a partir do limite, descarta o restante.
+      // O browser não permite limitar a seleção do file picker em si, então
+      // aceitamos os primeiros válidos e informamos quantos sobraram de fora.
+      if (accepted.length >= remainingSlots) {
+        droppedByLimit += 1;
         continue;
       }
-      const exists = items.some(
+      const v = validateBasic(f);
+      if (v) {
+        validationErrors.push(v);
+        continue;
+      }
+      const dup = items.some(
         (it) => it.file.name === f.name && it.file.size === f.size,
       );
-      if (exists) continue;
-      accepted.push(makeFileItem(f));
+      if (dup) {
+        dupInList.push(f.name);
+        continue;
+      }
+      if (existingNamesSet.has(f.name.toLowerCase())) {
+        dupInKb.push(f.name);
+        continue;
+      }
+      accepted.push(makeFileItem(f, false));
     }
-    // Aplica limite de MAX_FILES_PER_UPLOAD ao todo (existentes + aceitos).
-    const totalAfter = items.length + accepted.length;
-    if (totalAfter > MAX_FILES_PER_UPLOAD) {
-      const overflow = totalAfter - MAX_FILES_PER_UPLOAD;
-      accepted.splice(MAX_FILES_PER_UPLOAD - items.length);
-      errors.push(
-        `Limite de ${MAX_FILES_PER_UPLOAD} arquivos por upload. ${overflow} arquivo(s) descartado(s).`,
+
+    if (droppedByLimit > 0) {
+      validationErrors.unshift(
+        `Limite de ${MAX_FILES_PER_UPLOAD} arquivos por upload. ${droppedByLimit} ignorado(s); ajuste a seleção se quiser enviar os demais.`,
       );
     }
-    if (accepted.length > 0) {
-      setItems((prev) => [...prev, ...accepted]);
+
+    if (accepted.length > 0) setItems((prev) => [...prev, ...accepted]);
+    // Avisos amarelos para duplicatas (KB tem prioridade visual sobre lista).
+    if (dupInKb.length > 0) {
+      setInfo(
+        dupInKb.length === 1
+          ? `${dupInKb[0]} já está na base.`
+          : `${dupInKb.length} arquivos já estão na base.`,
+      );
+    } else if (dupInList.length > 0) {
+      setInfo(
+        dupInList.length === 1
+          ? `${dupInList[0]} já está nesta seleção.`
+          : `${dupInList.length} arquivos já estão nesta seleção.`,
+      );
     }
-    setError(errors.length > 0 ? errors.join(" ") : null);
+    if (validationErrors.length > 0) {
+      setError(validationErrors.join(" "));
+    }
   }
 
   function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
@@ -253,42 +374,57 @@ export function KbUploadDialog({
     setError(null);
   }
 
-  // Pré-validação do total de chars: marca como excedente os últimos arquivos
-  // que estouram a soma. O usuário precisa removê-los antes de salvar.
-  const charBudgetInfo = useMemo(() => {
+  // Orçamento: soma realChars dos items que vão ser enviados (status != success
+  // e sem error). Items em processing entram com 0 até a contagem chegar.
+  const budget = useMemo(() => {
     const remaining = Math.max(0, MAX_KB_TOTAL_CHARS - currentKbChars);
-    let acc = 0;
+    let selectedChars = 0;
     const overflowIds = new Set<string>();
+    let acc = 0;
     for (const it of items) {
       if (it.status === "success") continue;
-      const next = acc + it.estimatedChars;
-      if (next > remaining) {
-        overflowIds.add(it.id);
-      } else {
-        acc = next;
-      }
+      const chars = it.realChars > 0 ? it.realChars : 0;
+      selectedChars += chars;
+      const next = acc + chars;
+      if (next > remaining) overflowIds.add(it.id);
+      else acc = next;
     }
+    const total = currentKbChars + selectedChars;
     return {
       remaining,
-      projectedChars: acc,
+      selectedChars,
+      total,
       overflowIds,
       hasOverflow: overflowIds.size > 0,
+      isAnyProcessing: items.some((it) => it.status === "processing"),
     };
   }, [items, currentKbChars]);
 
-  const pendingItems = items.filter(
-    (it) => it.status !== "success",
-  );
-  const hasErrors = items.some((it) => it.status === "error");
+  const pendingItems = items.filter((it) => it.status !== "success");
+  const hasErrors = items.some((it) => it.status === "error" || it.alreadyInKb);
+  const remainingSlots = Math.max(0, MAX_FILES_PER_UPLOAD - items.length);
 
   async function handleSubmit() {
     if (pendingItems.length === 0) {
       setError("Selecione pelo menos um arquivo.");
       return;
     }
-    if (charBudgetInfo.hasOverflow) {
+    if (budget.isAnyProcessing) {
+      setError("Aguarde o processamento terminar antes de salvar.");
+      return;
+    }
+    if (budget.hasOverflow) {
       setError(
-        "Alguns arquivos excedem o limite total de caracteres da base de conhecimento. Remova os marcados em vermelho antes de salvar.",
+        "Arquivos em vermelho excedem o limite restante da base. Remova antes de salvar.",
+      );
+      return;
+    }
+    const dupInKb = pendingItems.filter((it) => it.alreadyInKb);
+    if (dupInKb.length > 0) {
+      setError(
+        dupInKb.length === 1
+          ? `${dupInKb[0].file.name} já está na base. Remova antes de salvar.`
+          : `${dupInKb.length} arquivos já estão na base. Remova antes de salvar.`,
       );
       return;
     }
@@ -328,12 +464,10 @@ export function KbUploadDialog({
       const failed = updated.filter((it) => it.status === "error");
       if (failed.length > 0) {
         toast.error(
-          `Falha em ${failed.length} arquivo(s). Confira a lista, remova os com problema e tente de novo.`,
+          `Falha em ${failed.length} arquivo(s). Remova-os e tente de novo.`,
         );
-        // Mantém modal aberto com sucessos em verde e falhas em vermelho.
         return;
       }
-      // Tudo certo: fecha modal.
       onOpenChange(false);
     });
   }
@@ -346,7 +480,6 @@ export function KbUploadDialog({
     dragCounterRef.current += 1;
     setIsDragging(true);
   }
-
   function handleDragOver(e: React.DragEvent<HTMLDivElement>) {
     if (activeTab !== "file" || isPending) return;
     if (!e.dataTransfer.types.includes("Files")) return;
@@ -354,7 +487,6 @@ export function KbUploadDialog({
     e.stopPropagation();
     e.dataTransfer.dropEffect = "copy";
   }
-
   function handleDragLeave(e: React.DragEvent<HTMLDivElement>) {
     if (activeTab !== "file" || isPending) return;
     e.preventDefault();
@@ -362,7 +494,6 @@ export function KbUploadDialog({
     dragCounterRef.current = Math.max(0, dragCounterRef.current - 1);
     if (dragCounterRef.current === 0) setIsDragging(false);
   }
-
   function handleDrop(e: React.DragEvent<HTMLDivElement>) {
     if (activeTab !== "file" || isPending) return;
     e.preventDefault();
@@ -375,8 +506,20 @@ export function KbUploadDialog({
 
   const canSave =
     pendingItems.length > 0 &&
-    !charBudgetInfo.hasOverflow &&
+    !budget.hasOverflow &&
+    !budget.isAnyProcessing &&
+    !hasErrors &&
     !isPending;
+
+  const budgetPct = Math.min(
+    100,
+    Math.round((budget.total / MAX_KB_TOTAL_CHARS) * 100),
+  );
+  const budgetTone = budget.hasOverflow
+    ? "text-destructive"
+    : budgetPct >= 85
+      ? "text-amber-600 dark:text-amber-400"
+      : "text-foreground";
 
   return (
     <>
@@ -389,7 +532,7 @@ export function KbUploadDialog({
       >
         <DialogContent
           className={cn(
-            "w-[min(720px,calc(100%-2rem))] min-h-[440px] sm:max-w-none",
+            "w-[min(720px,calc(100%-2rem))] gap-3 sm:max-w-none",
             isDragging && "ring-2 ring-violet-500/60 ring-offset-2 ring-offset-background",
           )}
           onDragEnter={handleDragEnter}
@@ -408,9 +551,8 @@ export function KbUploadDialog({
           <DialogHeader>
             <DialogTitle>Adicionar conhecimento</DialogTitle>
             <DialogDescription>
-              Envie até {MAX_FILES_PER_UPLOAD} arquivos (menor ou igual a 15 MB
-              cada) ou adicione uma URL de referência. Arraste para qualquer
-              parte da janela.
+              Até {MAX_FILES_PER_UPLOAD} arquivos por upload, cada um com no
+              máximo 10 MB. Arraste para qualquer parte da janela.
             </DialogDescription>
           </DialogHeader>
 
@@ -456,8 +598,8 @@ export function KbUploadDialog({
                 multiple
                 className="sr-only"
                 onChange={handleFileChange}
-                disabled={isPending}
-                aria-label={`Selecionar até ${MAX_FILES_PER_UPLOAD} arquivos`}
+                disabled={isPending || remainingSlots === 0}
+                aria-label={`Selecionar até ${remainingSlots} arquivo(s)`}
               />
 
               {items.length === 0 ? (
@@ -479,51 +621,61 @@ export function KbUploadDialog({
                       Clique para selecionar ou arraste para qualquer parte da janela
                     </p>
                     <p className="text-xs text-muted-foreground">
-                      PDF, Word, Excel, Markdown, TXT, CSV, XML, YAML ou JSON. Menor ou igual a 15 MB cada.
+                      PDF, DOCX, XLSX, Markdown, TXT, CSV, XML, YAML ou JSON.
                     </p>
                   </div>
                 </label>
               ) : (
-                <div className="relative">
+                <div className="rounded-xl border border-border bg-card/40 p-2">
                   <ul
                     ref={listRef}
-                    className="max-h-[260px] space-y-2 overflow-y-auto pr-1"
+                    className="max-h-[460px] space-y-2 overflow-y-auto pr-1"
                   >
                     {items.map((it, i) => {
                       const isLast = i === items.length - 1;
-                      const overflow = charBudgetInfo.overflowIds.has(it.id);
-                      const tone =
-                        it.status === "success"
+                      const overflow = budget.overflowIds.has(it.id);
+                      const isProcessing = it.status === "processing";
+                      const isUploading = it.status === "uploading";
+                      const isSuccess = it.status === "success";
+                      const isError = it.status === "error" || it.alreadyInKb;
+                      const isOverflow = overflow && !isError && !isSuccess;
+                      const tone = isProcessing
+                        ? "border-border bg-muted/40 text-muted-foreground"
+                        : isSuccess
                           ? "border-emerald-500/40 bg-emerald-500/10"
-                          : it.status === "error" || overflow
+                          : isError || isOverflow
                             ? "border-destructive/40 bg-destructive/10"
-                            : it.status === "uploading"
+                            : isUploading
                               ? "border-violet-500/40 bg-violet-500/10"
-                              : "border-border bg-muted/30";
+                              : "border-violet-500/30 bg-violet-500/5";
                       return (
                         <li
                           key={it.id}
                           ref={isLast ? lastItemRef : undefined}
                           className={cn(
-                            "flex w-full min-w-0 items-start gap-3 rounded-xl border px-3 py-2.5 transition-colors",
+                            "flex w-full min-w-0 items-start gap-3 rounded-lg border px-3 py-2 transition-colors",
                             tone,
                           )}
                         >
                           <span
                             className={cn(
-                              "flex h-9 w-9 shrink-0 items-center justify-center rounded-lg",
-                              it.status === "success"
-                                ? "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400"
-                                : it.status === "error" || overflow
-                                  ? "bg-destructive/15 text-destructive"
-                                  : "bg-violet-500/15 text-violet-600 dark:text-violet-400",
+                              "flex h-8 w-8 shrink-0 items-center justify-center rounded-md",
+                              isProcessing
+                                ? "bg-muted text-muted-foreground"
+                                : isSuccess
+                                  ? "bg-emerald-500/15 text-emerald-600 dark:text-emerald-400"
+                                  : isError || isOverflow
+                                    ? "bg-destructive/15 text-destructive"
+                                    : isUploading
+                                      ? "bg-violet-500/15 text-violet-600 dark:text-violet-400"
+                                      : "bg-violet-500/10 text-violet-600 dark:text-violet-400",
                             )}
                           >
-                            {it.status === "uploading" ? (
+                            {isProcessing || isUploading ? (
                               <Loader2 className="h-4 w-4 animate-spin" aria-hidden />
-                            ) : it.status === "success" ? (
+                            ) : isSuccess ? (
                               <Check className="h-4 w-4" aria-hidden />
-                            ) : it.status === "error" || overflow ? (
+                            ) : isError || isOverflow ? (
                               <TriangleAlert className="h-4 w-4" aria-hidden />
                             ) : (
                               <FileText className="h-4 w-4" aria-hidden />
@@ -531,23 +683,35 @@ export function KbUploadDialog({
                           </span>
                           <div className="min-w-0 flex-1 overflow-hidden">
                             <p
-                              className="line-clamp-2 break-words text-sm font-medium text-foreground"
+                              className="line-clamp-2 break-all text-sm font-medium text-foreground"
                               title={it.file.name}
                             >
                               {it.file.name}
                             </p>
-                            <p className="mt-0.5 text-xs tabular-nums text-muted-foreground">
-                              {formatFileSize(it.file.size)} · ~
-                              {it.estimatedChars.toLocaleString("pt-BR")} chars estimados
+                            <p className="mt-0.5 text-[11px] tabular-nums text-muted-foreground">
+                              {formatFileSize(it.file.size)}
+                              {isProcessing ? (
+                                <span> · Processando…</span>
+                              ) : it.realChars >= 0 ? (
+                                <span>
+                                  {" · "}
+                                  {it.realChars.toLocaleString("pt-BR")} chars
+                                </span>
+                              ) : null}
                             </p>
+                            {it.alreadyInKb && (
+                              <p className="mt-0.5 text-[11px] text-destructive">
+                                Já existe na base. Remova antes de salvar.
+                              </p>
+                            )}
                             {it.status === "error" && it.errorMessage && (
-                              <p className="mt-1 text-xs text-destructive">
+                              <p className="mt-0.5 text-[11px] text-destructive">
                                 {it.errorMessage}
                               </p>
                             )}
-                            {overflow && it.status !== "error" && (
-                              <p className="mt-1 text-xs text-destructive">
-                                Excede o limite restante da KB. Remova ou troque por arquivos menores.
+                            {isOverflow && (
+                              <p className="mt-0.5 text-[11px] text-destructive">
+                                Excede o limite restante.
                               </p>
                             )}
                           </div>
@@ -556,7 +720,7 @@ export function KbUploadDialog({
                             variant="ghost"
                             size="icon-sm"
                             onClick={() => handleRemoveItem(it.id)}
-                            disabled={isPending && it.status === "uploading"}
+                            disabled={isPending && isUploading}
                             aria-label={`Remover ${it.file.name}`}
                             className="shrink-0 text-muted-foreground hover:text-foreground"
                           >
@@ -568,64 +732,79 @@ export function KbUploadDialog({
                   </ul>
 
                   {showScrollHint && (
-                    <div className="pointer-events-none absolute -bottom-1 left-1/2 -translate-x-1/2 rounded-full border border-border bg-background/95 px-2.5 py-0.5 text-[10px] font-medium text-muted-foreground shadow-sm backdrop-blur">
-                      <span className="inline-flex items-center gap-1">
+                    <div className="mt-1 flex justify-center">
+                      <span className="inline-flex items-center gap-1 rounded-full bg-muted px-2 py-0.5 text-[10px] text-muted-foreground">
                         <ChevronDown className="h-3 w-3" aria-hidden />
-                        Mais arquivos abaixo
+                        Role para ver mais
                       </span>
                     </div>
                   )}
                 </div>
               )}
 
-              {/* Barra de orçamento da KB. */}
-              {items.length > 0 && (
-                <div
-                  className={cn(
-                    "rounded-md border px-3 py-2 text-xs",
-                    charBudgetInfo.hasOverflow
-                      ? "border-destructive/30 bg-destructive/10 text-destructive"
-                      : "border-border bg-muted/30 text-muted-foreground",
-                  )}
-                >
-                  Orçamento da base: {currentKbChars.toLocaleString("pt-BR")} +
-                  {" "}
-                  ~{charBudgetInfo.projectedChars.toLocaleString("pt-BR")} novos
-                  {" "}/{" "}
-                  {MAX_KB_TOTAL_CHARS.toLocaleString("pt-BR")} chars
-                  {charBudgetInfo.hasOverflow && (
-                    <span className="ml-2 font-medium">
-                      Remova os marcados em vermelho.
-                    </span>
-                  )}
+              {/* Barra de orçamento sempre visível. */}
+              <div className="space-y-1">
+                <div className="flex items-baseline justify-between text-[11px]">
+                  <span className="text-muted-foreground">Uso da base de conhecimento</span>
+                  <span className={cn("tabular-nums font-medium", budgetTone)}>
+                    {budget.total.toLocaleString("pt-BR")}
+                    <span className="mx-1 text-muted-foreground/60">/</span>
+                    {MAX_KB_TOTAL_CHARS.toLocaleString("pt-BR")} chars ({budgetPct}%)
+                  </span>
                 </div>
-              )}
+                <div className="h-1.5 w-full overflow-hidden rounded-full bg-muted">
+                  <div
+                    className={cn(
+                      "h-full transition-[width] duration-300",
+                      budget.hasOverflow
+                        ? "bg-destructive"
+                        : budgetPct >= 85
+                          ? "bg-amber-500"
+                          : "bg-violet-500",
+                    )}
+                    style={{ width: `${budgetPct}%` }}
+                  />
+                </div>
+                <p className="text-[11px] text-muted-foreground">
+                  {currentKbChars.toLocaleString("pt-BR")} já na base
+                  {"   "}+{budget.selectedChars.toLocaleString("pt-BR")} desta seleção
+                </p>
+              </div>
 
-              {error ? (
+              {error && (
                 <p
                   role="alert"
                   aria-live="polite"
-                  className="rounded-md border border-destructive/30 bg-destructive/10 px-3 py-2 text-xs text-destructive"
+                  className="truncate rounded-md border border-destructive/30 bg-destructive/10 px-3 py-1.5 text-xs text-destructive"
+                  title={error}
                 >
                   {error}
                 </p>
-              ) : null}
+              )}
+              {info && !error && (
+                <p
+                  role="status"
+                  aria-live="polite"
+                  className="truncate rounded-md border border-amber-500/30 bg-amber-500/10 px-3 py-1.5 text-xs text-amber-700 dark:text-amber-300"
+                  title={info}
+                >
+                  {info}
+                </p>
+              )}
 
               <div className="flex flex-wrap items-center justify-between gap-2 border-t border-border pt-3">
                 <Button
                   type="button"
                   variant="outline"
                   onClick={() => inputRef.current?.click()}
-                  disabled={isPending || items.length >= MAX_FILES_PER_UPLOAD}
+                  disabled={isPending || remainingSlots === 0}
                   className="h-9 cursor-pointer"
                 >
                   <Plus className="h-4 w-4" aria-hidden />
                   {items.length === 0 ? "Adicionar arquivo" : "Adicionar mais"}
-                  {items.length > 0 && (
-                    <span className="ml-1 text-[10px] text-muted-foreground">
-                      ({items.length}/{MAX_FILES_PER_UPLOAD})
-                    </span>
-                  )}
+                  <span className="ml-1 text-[10px] text-muted-foreground">
+                    ({items.length}/{MAX_FILES_PER_UPLOAD})
+                  </span>
                 </Button>
                 <div className="flex items-center gap-2">
                   <Button
@@ -647,7 +826,7 @@ export function KbUploadDialog({
                     {isPending ? (
                       <>
                         <Loader2 className="h-4 w-4 animate-spin" aria-hidden />
-                        Enviando...
+                        Enviando…
                       </>
                     ) : (
                       <>
@@ -668,6 +847,9 @@ export function KbUploadDialog({
               isDisabled={isPending}
               onContentChange={setUrlDirty}
               resetSignal={urlResetSignal}
+              existingKbNames={existingKbNames}
+              existingKbUrls={existingKbUrls}
+              currentKbChars={currentKbChars}
             />
           )}
         </DialogContent>

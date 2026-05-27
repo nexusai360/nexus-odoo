@@ -19,6 +19,8 @@ import {
 import { providerLabel } from "@/lib/agent/llm/provider-labels";
 import { cn } from "@/lib/utils";
 
+export type AmbienteFilter = "all" | "agente" | "playground";
+
 export interface UsageTableFiltersProps {
   /** Lista de providers distintos no período. */
   providers: string[];
@@ -28,8 +30,11 @@ export interface UsageTableFiltersProps {
   selectedProvider?: string;
   /** Modelo ativo. `undefined` = "Todos os modelos". */
   selectedModel?: string;
+  /** Ambiente ativo. "all" = "Todos os ambientes". */
+  selectedAmbiente: AmbienteFilter;
   onProviderChange: (provider: string | undefined) => void;
   onModelChange: (model: string | undefined) => void;
+  onAmbienteChange: (ambiente: AmbienteFilter) => void;
 }
 
 interface ModelOption {
@@ -43,11 +48,15 @@ export function UsageTableFilters({
   modelsByProvider,
   selectedProvider,
   selectedModel,
+  selectedAmbiente,
   onProviderChange,
   onModelChange,
+  onAmbienteChange,
 }: UsageTableFiltersProps) {
   const hasActiveFilter =
-    selectedProvider !== undefined || selectedModel !== undefined;
+    selectedProvider !== undefined ||
+    selectedModel !== undefined ||
+    selectedAmbiente !== "all";
 
   // Lista de modelos (cascade ou flat com sufixo de provider).
   const modelOptions: ModelOption[] = useMemo(() => {
@@ -71,6 +80,7 @@ export function UsageTableFilters({
         <button
           type="button"
           onClick={() => {
+            onAmbienteChange("all");
             onProviderChange(undefined);
             onModelChange(undefined);
           }}
@@ -81,6 +91,11 @@ export function UsageTableFilters({
           Limpar filtros
         </button>
       ) : null}
+
+      <AmbienteSelect
+        selectedAmbiente={selectedAmbiente}
+        onChange={onAmbienteChange}
+      />
 
       <ProviderSelect
         providers={providers}
@@ -99,6 +114,77 @@ export function UsageTableFilters({
         onChange={onModelChange}
       />
     </div>
+  );
+}
+
+interface AmbienteSelectProps {
+  selectedAmbiente: AmbienteFilter;
+  onChange: (ambiente: AmbienteFilter) => void;
+}
+
+function AmbienteSelect({ selectedAmbiente, onChange }: AmbienteSelectProps) {
+  const [open, setOpen] = useState(false);
+  const label =
+    selectedAmbiente === "agente"
+      ? "Agente Nex"
+      : selectedAmbiente === "playground"
+        ? "Playground"
+        : "Todos os ambientes";
+  return (
+    <Popover open={open} onOpenChange={setOpen}>
+      <PopoverTrigger
+        render={
+          <button
+            type="button"
+            aria-label="Filtrar por ambiente"
+            aria-haspopup="listbox"
+            aria-expanded={open}
+            className="flex h-9 min-w-[180px] cursor-pointer items-center justify-between gap-2 rounded-lg border border-border bg-card px-3 text-sm text-foreground transition-colors hover:border-muted-foreground/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          >
+            <span className="truncate">{label}</span>
+            <ChevronDown
+              className={cn(
+                "h-4 w-4 shrink-0 text-muted-foreground transition-transform",
+                open && "rotate-180",
+              )}
+              aria-hidden="true"
+            />
+          </button>
+        }
+      />
+      <PopoverContent
+        align="end"
+        sideOffset={4}
+        className="min-w-[200px] w-auto overflow-hidden p-0"
+      >
+        <ul role="listbox" aria-label="Ambientes" className="flex flex-col py-1">
+          <SelectOption
+            label="Todos os ambientes"
+            selected={selectedAmbiente === "all"}
+            onClick={() => {
+              onChange("all");
+              setOpen(false);
+            }}
+          />
+          <SelectOption
+            label="Agente Nex"
+            selected={selectedAmbiente === "agente"}
+            onClick={() => {
+              onChange("agente");
+              setOpen(false);
+            }}
+          />
+          <SelectOption
+            label="Playground"
+            selected={selectedAmbiente === "playground"}
+            onClick={() => {
+              onChange("playground");
+              setOpen(false);
+            }}
+          />
+        </ul>
+      </PopoverContent>
+    </Popover>
   );
 }
 

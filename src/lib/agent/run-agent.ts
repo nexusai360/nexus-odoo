@@ -27,8 +27,12 @@ import {
   persistMessage,
   assertConversationOwned,
   sanitizeHistoryPairs,
+  loadConversationReasoningHistory,
+  saveConversationReasoningHistory,
 } from "./conversation";
+import { reasoningCapsOf } from "./llm/catalog";
 import { composeSystemPrompt } from "./prompt/compose";
+import { enhanceWithChips } from "./enhance-chips";
 import { BI_SCHEMA_REFERENCE } from "./bi-schema-reference";
 import { progressLabel } from "./progress-labels";
 import { searchKb } from "./rag/search";
@@ -38,11 +42,16 @@ import type {
   ChatUsage,
   ToolCall,
   ReasoningEffort,
+  ReasoningContext,
 } from "./llm/types";
 import type { AgentChannel } from "@/generated/prisma/client";
 
-/** Limite de iterações do loop de tool calling. */
-const MAX_ITERATIONS = 5;
+/** Limite de iterações do loop de tool calling.
+ *  Reduzido de 5 para 3 em 2026-05-25 apos prints recorrentes de "loop"
+ *  (7+ tool calls em uma mesma resposta). 3 iteracoes cobrem casos
+ *  legitimos (consulta inicial + consulta complementar + finalizacao)
+ *  sem dar margem pro modelo encadear tool calls especulativas. */
+const MAX_ITERATIONS = 3;
 
 /** Máximo de bytes aceitos no resultado de uma tool call (SPEC §4.3). */
 const MAX_TOOL_RESULT_BYTES = 24_576;
@@ -53,69 +62,29 @@ const BI_ROLES = new Set(["admin", "super_admin"]);
 /** Aviso appended quando o resultado é truncado. */
 const TRUNCATION_NOTICE = "\n[...resultado truncado por exceder o limite de tamanho...]";
 
-/** Regex para extrair sufixo [[suggestions]]. */
-const SUGGESTIONS_RE = /(?:^|\n)\[\[suggestions\]\]:([^\n]+?)(?:\n|$)/;
-const MAX_SUGGESTIONS = 5;
-const MAX_SUGGESTION_LEN = 80;
+// Extracao de sugestoes movida para suggestions-extractor.ts (modulo puro,
+// testavel sem prisma). Import local para uso interno + re-export para
+// nao quebrar imports externos (agent-conversation-export importa daqui).
+import {
+  extractSuggestions,
+  extractBulletQuestions,
+  FALLBACK_SUGGESTIONS,
+  MAX_SUGGESTIONS,
+  MAX_SUGGESTION_LEN,
+  MAX_BULLET_EXTRACTION,
+} from "./suggestions-extractor";
+export {
+  extractSuggestions,
+  extractBulletQuestions,
+  FALLBACK_SUGGESTIONS,
+  MAX_SUGGESTIONS,
+  MAX_SUGGESTION_LEN,
+  MAX_BULLET_EXTRACTION,
+};
 
-/**
- * Sugestoes genericas universais usadas como fallback quando o modelo
- * esquece de emitir o sufixo [[suggestions]]. Garantia de chips visiveis
- * em toda resposta da bubble (vide pedido do usuario em 2026-05-24 18:58:
- * "as sugestoes nao estao acontecendo, vira e mexe esse problema").
- */
-const FALLBACK_SUGGESTIONS: readonly string[] = [
-  "Quanto faturamos no mês corrente?",
-  "Quais 5 produtos mais venderam nos últimos 30 dias?",
-  "Quanto temos em contas a receber em aberto?",
-  "Quais pedidos de venda estão atrasados?",
-  "Qual o valor total do estoque em armazém?",
-];
-
-/**
- * Extrai sugestões do sufixo `[[suggestions]]:item1|item2|...`.
- * Retorna message sem o sufixo + array de sugestões.
- *
- * Quando o modelo esquece o sufixo, devolve o set FALLBACK_SUGGESTIONS
- * fatiado pelo maxCount. Garante que toda resposta na bubble vem com chips.
- */
-export function extractSuggestions(
-  text: string,
-  maxCount?: number,
-): {
-  message: string;
-  suggestions: string[];
-} {
-  const limit = Math.min(
-    Math.max(1, maxCount ?? MAX_SUGGESTIONS),
-    MAX_SUGGESTIONS,
-  );
-
-  const match = text.match(SUGGESTIONS_RE);
-  if (!match) {
-    // Modelo esqueceu de emitir; usa fallback fatiado para nao deixar a
-    // bolha sem chips. UI espera sempre `>=1` chip quando enabled.
-    return {
-      message: text,
-      suggestions: FALLBACK_SUGGESTIONS.slice(0, limit),
-    };
-  }
-  // Cap deterministicamente pela config (1..5, default 3) e nunca acima do
-  // hard cap MAX_SUGGESTIONS. Defesa em profundidade: o prompt instrui o
-  // modelo, esta camada garante que extra é descartado.
-  const raw = match[1].trim();
-  const parsed = raw
-    .split("|")
-    // As sugestões viram chips de texto puro na UI: remove markdown (negrito,
-    // crase) para não aparecer "**" ou "`" literal no chip.
-    .map((s) => s.trim().replace(/\*\*/g, "").replace(/`/g, "").trim())
-    .filter((s) => s.length > 0 && s.length <= MAX_SUGGESTION_LEN)
-    .slice(0, limit);
-  const suggestions =
-    parsed.length > 0 ? parsed : FALLBACK_SUGGESTIONS.slice(0, limit);
-  const message = text.replace(match[0], "").trimEnd();
-  return { message, suggestions };
-}
+// FALLBACK_SUGGESTIONS, extractBulletQuestions e extractSuggestions agora
+// vivem em suggestions-extractor.ts (modulo puro, sem dep de prisma) para
+// permitir testes jest sem fixturizar a cadeia toda. Re-exportados acima.
 
 /**
  * Trunca o resultado de uma tool call para MAX_TOOL_RESULT_BYTES.
@@ -185,6 +154,7 @@ function normalizeReasoningEffort(
   value: string | null | undefined,
 ): ReasoningEffort | null {
   if (
+    value === "auto" ||
     value === "minimal" ||
     value === "low" ||
     value === "medium" ||
@@ -351,6 +321,14 @@ export async function runAgent(args: RunAgentInput): Promise<RunAgentResult> {
     // logo após a resposta (request serverless / job do worker).
     const usageWrites: Promise<unknown>[] = [];
 
+    // Onda 2 da modernizacao: carregar historico opaco de raciocinio acumulado
+    // em iteracoes anteriores da MESMA conversa. Cada adapter (Anthropic,
+    // Gemini, OpenRouter) injeta esses blocos no formato exigido pelo provider
+    // antes de fazer a chamada. OpenAI segue stateless via Responses API.
+    const reasoningHistory: ReasoningContext[] = await loadConversationReasoningHistory(
+      args.conversationId,
+    ).catch(() => [] as ReasoningContext[]);
+
     args.onEvent?.({ type: "thinking" });
 
     for (let i = 0; i < MAX_ITERATIONS; i++) {
@@ -363,21 +341,40 @@ export async function runAgent(args: RunAgentInput): Promise<RunAgentResult> {
         ? (delta: string) => args.onEvent!({ type: "token", delta })
         : undefined;
 
-      // Respeita o checkpoint: OFF nunca envia; PLAYGROUND só no playground;
-      // PRODUCTION libera nos dois ambientes.
-      const reasoningAllowed =
+      // Onda 2 da modernizacao: checkpoint + cap funcional ponta a ponta.
+      //   OFF        => nunca envia reasoning.
+      //   PLAYGROUND => envia só quando source=playground.
+      //   PRODUCTION => envia em bubble + playground + whatsapp.
+      // Alem do checkpoint, valida a capability do modelo: cap=null,
+      // cap.enabled=false ou cap.supportsWithTools=false => drop silencioso.
+      const cap = reasoningCapsOf(client.model);
+      const checkpointAllows =
         agentSettings.reasoningCheckpoint === "PRODUCTION" ||
         (agentSettings.reasoningCheckpoint === "PLAYGROUND" && args.isPlayground);
+      const reasoningAllowed =
+        cap !== null &&
+        cap.enabled &&
+        cap.supportsWithTools &&
+        checkpointAllows;
+      const effortForRequest: ReasoningEffort | undefined = !reasoningAllowed
+        ? undefined
+        : cap!.levels.length === 1 && cap!.levels[0] === "auto"
+          ? "auto"
+          : agentSettings.reasoningEffort ?? undefined;
+
       const result = await client.chat({
         messages: conversation,
         tools,
         stream: !!onToken,
         onToken,
-        reasoningEffort:
-          reasoningAllowed
-            ? agentSettings.reasoningEffort ?? undefined
-            : undefined,
+        reasoningEffort: effortForRequest,
+        reasoningHistory,
       });
+
+      // Acumular o contexto opaco para o proximo turno e para persistencia.
+      if (result.reasoningContext) {
+        reasoningHistory.push(result.reasoningContext);
+      }
 
       totalUsage.tokensInput += result.usage.tokensInput;
       totalUsage.tokensOutput += result.usage.tokensOutput;
@@ -391,6 +388,9 @@ export async function runAgent(args: RunAgentInput): Promise<RunAgentResult> {
         credentialId: resolvedLlm.credentialId ?? undefined,
         tokensInput: result.usage.tokensInput,
         tokensOutput: result.usage.tokensOutput,
+        reasoningTokens: result.reasoningTokens ?? null,
+        toolCallsCount: result.toolCalls?.length ?? 0,
+        toolNames: result.toolCalls?.map((t) => t.name) ?? [],
         conversationId: args.conversationId,
         userId: args.userId,
         durationMs: Date.now() - iterStart,
@@ -405,12 +405,45 @@ export async function runAgent(args: RunAgentInput): Promise<RunAgentResult> {
       );
 
       if (!result.toolCalls?.length) {
-        // Resposta final , limite vem do AgentSettings (default 3, hard cap 5).
-        const { message, suggestions } = extractSuggestions(
-          result.message,
-          agentSettings.maxSuggestions,
-        );
+        // Resposta final. Tenta Two-pass enhance: extrai bullets-perguntas
+        // como chips e remove do corpo. Em falha, fallback para
+        // extractSuggestions (canal [[suggestions]] do prompt).
+        let message: string;
+        let suggestions: string[];
+        const shouldEnhance =
+          (args.source === "bubble" || args.source === "suggestion") &&
+          result.message.length > 0;
+        if (shouldEnhance) {
+          try {
+            const enhanced = await enhanceWithChips({
+              client,
+              agentResponse: result.message,
+              recentHistory: conversation.slice(-5),
+              maxContextual: agentSettings.maxSuggestions,
+            });
+            message = enhanced.cleanMessage;
+            suggestions = enhanced.chips;
+          } catch (err) {
+            console.warn(
+              "[runAgent] enhanceWithChips fallback:",
+              err instanceof Error ? err.message : err,
+            );
+            const fb = extractSuggestions(result.message, agentSettings.maxSuggestions);
+            message = fb.message;
+            suggestions = fb.suggestions;
+          }
+        } else {
+          const fb = extractSuggestions(result.message, agentSettings.maxSuggestions);
+          message = fb.message;
+          suggestions = fb.suggestions;
+        }
         await persistMessage(args.conversationId, "assistant", message);
+        // Persistir historico de raciocinio para o proximo turno (capa interna).
+        try {
+          await saveConversationReasoningHistory(args.conversationId, reasoningHistory);
+        } catch (err) {
+          console.warn("[runAgent] Falha ao persistir reasoning_history:", err);
+        }
         args.onEvent?.({ type: "done" });
         void start;
         await Promise.allSettled(usageWrites);

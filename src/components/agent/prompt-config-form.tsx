@@ -12,12 +12,32 @@
  * Persiste via updateAgentSettings de agent-config.ts.
  */
 
-import { useMemo, useState, useTransition } from "react";
+import { useEffect, useMemo, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { Loader2, Plus, Save, Shield, Sparkles, Trash2, Wand2 } from "lucide-react";
+import {
+  Loader2,
+  Plus,
+  Save,
+  Shield,
+  Sparkles,
+  Trash2,
+  TriangleAlert,
+  Wand2,
+} from "lucide-react";
+
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { toast } from "sonner";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { ExpandableTextarea } from "@/components/ui/expandable-textarea";
 import { updateAgentSettings } from "@/lib/actions/agent-config";
@@ -26,6 +46,7 @@ import { cn } from "@/lib/utils";
 const MAX_PERSONALITY = 1000;
 const MAX_TONE = 1000;
 const MAX_GUARDRAIL = 500;
+const DRAFT_KEY = "agent-prompt-draft-v1";
 
 interface PromptConfigFormProps {
   initial: {
@@ -51,6 +72,9 @@ export function PromptConfigForm({ initial }: PromptConfigFormProps) {
   const [personality, setPersonality] = useState(initial.personality);
   const [tone, setTone] = useState(initial.tone);
   const [guardrails, setGuardrails] = useState<string[]>(initial.guardrails);
+  const [autoFocusIdx, setAutoFocusIdx] = useState<number | null>(null);
+  const [pendingNav, setPendingNav] = useState<null | (() => void)>(null);
+  const [restoredFromDraft, setRestoredFromDraft] = useState(false);
 
   const [isSaving, startSave] = useTransition();
 
@@ -66,8 +90,179 @@ export function PromptConfigForm({ initial }: PromptConfigFormProps) {
     [personality, tone, guardrails, initial.terminology, initial.suggestionsEnabled],
   );
 
+  // Dirty flags por campo (para destacar visualmente o que foi editado).
+  const personalityDirty = personality !== initial.personality;
+  const toneDirty = tone !== initial.tone;
+  function guardrailDirty(idx: number, value: string): boolean {
+    const original = initial.guardrails[idx];
+    if (original === undefined) return value.trim().length > 0; // novo item
+    return value !== original;
+  }
+
+  // Dirty state agregado: difere do initial em qualquer campo.
+  const isDirty = useMemo(() => {
+    if (personality !== initial.personality) return true;
+    if (tone !== initial.tone) return true;
+    const cleaned = guardrails.map((g) => g.trim()).filter((g) => g.length > 0);
+    if (cleaned.length !== initial.guardrails.length) return true;
+    for (let i = 0; i < cleaned.length; i++) {
+      if (cleaned[i] !== initial.guardrails[i]) return true;
+    }
+    return false;
+  }, [personality, tone, guardrails, initial]);
+
+  // Restaura rascunho do localStorage ao montar, automaticamente. Sem banner:
+  // os campos voltam preenchidos como o usuário deixou; o aviso de
+  // "alterações não salvas" abaixo já comunica que precisa salvar.
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    const raw = window.localStorage.getItem(DRAFT_KEY);
+    if (!raw) return;
+    try {
+      const draft = JSON.parse(raw) as {
+        personality?: string;
+        tone?: string;
+        guardrails?: string[];
+      };
+      const sameAsInitial =
+        draft.personality === initial.personality &&
+        draft.tone === initial.tone &&
+        JSON.stringify(draft.guardrails ?? []) ===
+          JSON.stringify(initial.guardrails);
+      if (sameAsInitial) {
+        window.localStorage.removeItem(DRAFT_KEY);
+        return;
+      }
+      if (typeof draft.personality === "string") setPersonality(draft.personality);
+      if (typeof draft.tone === "string") setTone(draft.tone);
+      if (Array.isArray(draft.guardrails)) setGuardrails(draft.guardrails);
+      setRestoredFromDraft(true);
+    } catch {
+      window.localStorage.removeItem(DRAFT_KEY);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Persiste rascunho no localStorage sempre que dirty.
+  useEffect(() => {
+    if (typeof window === "undefined") return;
+    if (!isDirty) {
+      window.localStorage.removeItem(DRAFT_KEY);
+      return;
+    }
+    const t = setTimeout(() => {
+      window.localStorage.setItem(
+        DRAFT_KEY,
+        JSON.stringify({ personality, tone, guardrails }),
+      );
+    }, 300);
+    return () => clearTimeout(t);
+  }, [isDirty, personality, tone, guardrails]);
+
+  // beforeunload nativo do browser (close/reload).
+  useEffect(() => {
+    if (!isDirty) return;
+    function handler(e: BeforeUnloadEvent) {
+      e.preventDefault();
+      e.returnValue = "";
+    }
+    window.addEventListener("beforeunload", handler);
+    return () => window.removeEventListener("beforeunload", handler);
+  }, [isDirty]);
+
+  // Interceptação de cliques em links de navegação interna (sidebar, header
+  // do dashboard, logout, etc.). Quando isDirty=true, captura o clique no
+  // ancestor <a href="..."> ou <button data-nav-href="..."> e abre o
+  // AlertDialog em vez de navegar imediatamente. O usuário decide ficar ou sair.
+  useEffect(() => {
+    if (!isDirty) return;
+
+    function getHref(target: EventTarget | null): {
+      href: string | null;
+      el: HTMLElement | null;
+    } {
+      let el = target as HTMLElement | null;
+      while (el && el !== document.body) {
+        if (el instanceof HTMLAnchorElement && el.href) {
+          return { href: el.href, el };
+        }
+        const dataHref = el.getAttribute?.("data-nav-href");
+        if (dataHref) return { href: dataHref, el };
+        el = el.parentElement;
+      }
+      return { href: null, el: null };
+    }
+
+    function isInternalRelative(href: string): string | null {
+      try {
+        const url = new URL(href, window.location.origin);
+        if (url.origin !== window.location.origin) return null;
+        // Mesma rota? não bloqueia.
+        if (url.pathname === window.location.pathname && url.hash === "") {
+          return null;
+        }
+        return url.pathname + url.search + url.hash;
+      } catch {
+        return null;
+      }
+    }
+
+    function onClick(e: MouseEvent) {
+      if (e.defaultPrevented) return;
+      if (e.button !== 0) return; // só botão esquerdo
+      if (e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return; // nova aba
+      const { href, el } = getHref(e.target);
+      if (!href || !el) return;
+      // Ignora links explicitamente marcados com data-skip-dirty.
+      if (el.closest("[data-skip-dirty]")) return;
+      const target = el.getAttribute?.("target");
+      if (target === "_blank") return;
+      const relative = isInternalRelative(href);
+      if (!relative) return;
+      e.preventDefault();
+      e.stopPropagation();
+      setPendingNav(() => () => {
+        // Tenta usar router (SPA); cai para hard nav se algo der errado.
+        try {
+          router.push(relative);
+        } catch {
+          window.location.href = href;
+        }
+      });
+    }
+
+    document.addEventListener("click", onClick, true);
+    return () => document.removeEventListener("click", onClick, true);
+  }, [isDirty, router]);
+
+  // Intercepta back/forward do navegador. Empurramos um "trap" extra na
+  // history; quando o popstate dispara, abrimos o AlertDialog e re-empurramos
+  // o trap. Se o usuário confirmar, fazemos history.back de verdade.
+  useEffect(() => {
+    if (!isDirty) return;
+    const trapState = { __nexusDirtyTrap: true } as const;
+    window.history.pushState(trapState, "");
+    function onPop(_e: PopStateEvent) {
+      // Re-empurra o trap pra continuar interceptando.
+      window.history.pushState(trapState, "");
+      setPendingNav(() => () => {
+        // history.back() leva o usuário pra entrada anterior à atual.
+        // Como acabamos de pushState, precisamos voltar 2x para sair de fato.
+        window.history.go(-2);
+      });
+    }
+    window.addEventListener("popstate", onPop);
+    return () => {
+      window.removeEventListener("popstate", onPop);
+    };
+  }, [isDirty]);
+
   function handleAddGuardrail() {
-    setGuardrails((prev) => [...prev, ""]);
+    setGuardrails((prev) => {
+      const next = [...prev, ""];
+      setAutoFocusIdx(next.length - 1);
+      return next;
+    });
   }
 
   function handleGuardrailChange(idx: number, next: string) {
@@ -80,6 +275,16 @@ export function PromptConfigForm({ initial }: PromptConfigFormProps) {
 
   function handleRemoveGuardrail(idx: number) {
     setGuardrails((prev) => prev.filter((_, i) => i !== idx));
+    setAutoFocusIdx(null);
+  }
+
+  function handleGuardrailBlur(idx: number) {
+    // Auto-remove guardrail vazio no blur. Não cria a regra no banco se
+    // o usuário abriu o campo e clicou fora sem digitar nada.
+    if (guardrails[idx]?.trim().length === 0) {
+      setGuardrails((prev) => prev.filter((_, i) => i !== idx));
+    }
+    if (autoFocusIdx === idx) setAutoFocusIdx(null);
   }
 
   function handleSave() {
@@ -90,12 +295,32 @@ export function PromptConfigForm({ initial }: PromptConfigFormProps) {
         return;
       }
       toast.success("Comportamento do Agente Nex salvo.");
+      if (typeof window !== "undefined") window.localStorage.removeItem(DRAFT_KEY);
+      setRestoredFromDraft(false);
       router.refresh();
     });
   }
 
   return (
     <div className="space-y-7">
+      {/* Banner no topo: alerta de mudanças não salvas.
+          A mensagem muda quando o rascunho foi restaurado de uma sessão
+          anterior (vindo do localStorage). */}
+      {isDirty && (
+        <div
+          role="status"
+          aria-live="polite"
+          className="flex items-start gap-2 rounded-lg border border-[#F6A10E]/40 bg-[#F6A10E]/10 px-3 py-2 text-xs text-amber-700 dark:text-amber-300"
+        >
+          <TriangleAlert className="mt-0.5 h-3.5 w-3.5 shrink-0" aria-hidden />
+          <p className="leading-snug">
+            {restoredFromDraft
+              ? "Há alterações da sua última visita que ainda não foram aplicadas ao Agente Nex. Para aplicar, clique em “Salvar comportamento”."
+              : "Mudanças não salvas. Clique em “Salvar comportamento” para aplicar."}
+          </p>
+        </div>
+      )}
+
       {/* Personalidade */}
       <div className="space-y-1.5">
         <div className="flex items-center justify-between gap-2">
@@ -118,10 +343,14 @@ export function PromptConfigForm({ initial }: PromptConfigFormProps) {
           value={personality}
           onChange={setPersonality}
           maxLength={MAX_PERSONALITY}
-          rows={3}
+          rows={1}
           placeholder="Ex.: Direto, prático, prefere bullets curtos. Evita rodeios."
           disabled={isSaving}
           aria-describedby="agent-personality-help"
+          className={cn(
+            "min-h-[40px] max-h-[88px] field-sizing-content",
+            personalityDirty && "[&:not(:focus)]:border-[#F6A10E]/50 [&:not(:focus)]:bg-[#F6A10E]/[0.045]",
+          )}
         />
         <p id="agent-personality-help" className="text-xs text-muted-foreground">
           Como o Agente Nex se comporta. Defina voz, foco e atitude geral.
@@ -147,10 +376,14 @@ export function PromptConfigForm({ initial }: PromptConfigFormProps) {
           value={tone}
           onChange={setTone}
           maxLength={MAX_TONE}
-          rows={3}
+          rows={1}
           placeholder="Ex.: Profissional, mas amigável. Em pt-BR. Use 'você'."
           disabled={isSaving}
           aria-describedby="agent-tone-help"
+          className={cn(
+            "min-h-[40px] max-h-[88px] field-sizing-content",
+            toneDirty && "[&:not(:focus)]:border-[#F6A10E]/50 [&:not(:focus)]:bg-[#F6A10E]/[0.045]",
+          )}
         />
         <p id="agent-tone-help" className="text-xs text-muted-foreground">
           Estilo de escrita: formalidade, calor humano e vocabulário.
@@ -179,35 +412,51 @@ export function PromptConfigForm({ initial }: PromptConfigFormProps) {
             {guardrails.map((g, idx) => (
               <li key={idx} className="flex items-start gap-2">
                 <div className="flex flex-1 flex-col gap-1">
-                  <Input
-                    aria-label={`Guardrail ${idx + 1}`}
+                  <ExpandableTextarea
+                    label={`Guardrail ${idx + 1}`}
                     value={g}
-                    onChange={(e) => handleGuardrailChange(idx, e.currentTarget.value)}
+                    onChange={(next) => handleGuardrailChange(idx, next)}
                     maxLength={MAX_GUARDRAIL}
+                    rows={1}
                     placeholder={`Regra ${idx + 1}`}
                     disabled={isSaving}
-                    className="min-h-[40px]"
+                    autoFocus={autoFocusIdx === idx}
+                    onBlur={() => handleGuardrailBlur(idx)}
+                    aria-describedby={`guardrail-counter-${idx}`}
+                    className={cn(
+                      "min-h-[40px] max-h-[88px] field-sizing-content",
+                      guardrailDirty(idx, g) &&
+                        "[&:not(:focus)]:border-[#F6A10E]/50 [&:not(:focus)]:bg-[#F6A10E]/[0.045]",
+                    )}
                   />
                   <span
+                    id={`guardrail-counter-${idx}`}
                     className={cn(
                       "self-end text-[10px] tabular-nums",
                       counterClass(g.length, MAX_GUARDRAIL),
                     )}
                   >
-                    {g.length}/{MAX_GUARDRAIL}
+                    {g.length.toLocaleString("pt-BR")}/{MAX_GUARDRAIL.toLocaleString("pt-BR")}
                   </span>
                 </div>
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="icon"
-                  onClick={() => handleRemoveGuardrail(idx)}
-                  disabled={isSaving}
-                  aria-label={`Remover guardrail ${idx + 1}`}
-                  className="mt-1 h-8 w-8 cursor-pointer text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
-                >
-                  <Trash2 className="h-4 w-4" />
-                </Button>
+                <Tooltip>
+                  <TooltipTrigger
+                    render={
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => handleRemoveGuardrail(idx)}
+                        disabled={isSaving}
+                        aria-label={`Remover guardrail ${idx + 1}`}
+                        className="mt-1 h-8 w-8 cursor-pointer text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
+                      />
+                    }
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </TooltipTrigger>
+                  <TooltipContent>Remover guardrail</TooltipContent>
+                </Tooltip>
               </li>
             ))}
           </ul>
@@ -229,13 +478,17 @@ export function PromptConfigForm({ initial }: PromptConfigFormProps) {
         </div>
       </div>
 
-      {/* Ação principal , canto inferior direito, botão compacto. */}
+      {/* Ação principal: botão à direita, sem aviso duplicado (o banner do
+          topo já comunica o estado dirty). */}
       <div className="flex items-center justify-end pt-3">
         <Button
           type="button"
           onClick={handleSave}
-          disabled={isSaving}
-          className="h-9 cursor-pointer bg-violet-600 text-white hover:bg-violet-700"
+          disabled={isSaving || !isDirty}
+          className={cn(
+            "h-9 cursor-pointer bg-violet-600 text-white hover:bg-violet-700",
+            !isDirty && "opacity-60",
+          )}
         >
           {isSaving ? (
             <Loader2 className="mr-1.5 h-4 w-4 animate-spin" />
@@ -245,6 +498,44 @@ export function PromptConfigForm({ initial }: PromptConfigFormProps) {
           Salvar comportamento
         </Button>
       </div>
+
+      {/* Pop-up de confirmação ao tentar sair com mudanças pendentes. */}
+      <AlertDialog
+        open={pendingNav !== null}
+        onOpenChange={(o) => {
+          if (!o) setPendingNav(null);
+        }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Sair sem salvar?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Você tem mudanças no comportamento que ainda não foram aplicadas
+              ao Agente Nex. Se sair agora sem salvar, elas só ficam guardadas
+              como rascunho local e podem ser perdidas.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel
+              variant="default"
+              onClick={() => setPendingNav(null)}
+              className="!bg-violet-600 !text-white hover:!bg-violet-700"
+            >
+              Ficar e continuar editando
+            </AlertDialogCancel>
+            <AlertDialogAction
+              variant="destructive"
+              onClick={() => {
+                const nav = pendingNav;
+                setPendingNav(null);
+                nav?.();
+              }}
+            >
+              Sair mesmo assim
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

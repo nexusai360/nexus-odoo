@@ -1,4 +1,15 @@
-import { MODELS, getModel, listModels, calculateCost } from "./catalog";
+import {
+  MODELS,
+  getModel,
+  listModels,
+  calculateCost,
+  reasoningCapsOf,
+  effortToBudget,
+  modelOutputCap,
+  modelSupportsReasoning,
+  reasoningLevelsOf,
+  REASONING_CAPS,
+} from "./catalog";
 
 describe("catalog , fonte única de modelos e pricing", () => {
   test("todos os modelos têm id, provider, tier e pricing (ou null explícito)", () => {
@@ -75,6 +86,94 @@ describe("catalog , fonte única de modelos e pricing", () => {
         // O pricing está inline , sem descasamento por definição
         expect(m.pricing.inputPerMTok).toBeGreaterThanOrEqual(0);
         expect(m.pricing.outputPerMTok).toBeGreaterThanOrEqual(0);
+      }
+    }
+  });
+});
+
+describe("REASONING_CAPS , capability table canonica (Onda 1)", () => {
+  test("reasoningCapsOf retorna cap para gpt-5.4-nano (OpenAI Responses)", () => {
+    const cap = reasoningCapsOf("gpt-5.4-nano");
+    expect(cap).not.toBeNull();
+    expect(cap!.enabled).toBe(true);
+    expect(cap!.supportsWithTools).toBe(true);
+    expect(cap!.openaiEndpoint).toBe("responses");
+    expect(cap!.levels).toEqual(["minimal", "low", "medium", "high"]);
+  });
+
+  test("reasoningCapsOf retorna null para modelo inexistente", () => {
+    expect(reasoningCapsOf("modelo-inexistente-xyz")).toBeNull();
+  });
+
+  test("Haiku 4.5 marca supportsWithTools=false", () => {
+    const cap = reasoningCapsOf("claude-haiku-4-5");
+    expect(cap).not.toBeNull();
+    expect(cap!.supportsWithTools).toBe(false);
+  });
+
+  test("Opus 4.7 marca adaptiveMode=true com anthropicThinking adaptive", () => {
+    const cap = reasoningCapsOf("claude-opus-4-7");
+    expect(cap).not.toBeNull();
+    expect(cap!.adaptiveMode).toBe(true);
+    expect(cap!.anthropicThinking).toBe("adaptive");
+    expect(cap!.anthropicInterleavedAuto).toBe(true);
+  });
+
+  test("Gemini 3.1 Pro tem levels=['auto'] e adaptiveMode=true", () => {
+    const cap = reasoningCapsOf("gemini-3.1-pro");
+    expect(cap).not.toBeNull();
+    expect(cap!.levels).toEqual(["auto"]);
+    expect(cap!.adaptiveMode).toBe(true);
+    expect(cap!.autoModeHint).toBeTruthy();
+  });
+
+  test("effortToBudget retorna teto do range para 'auto'", () => {
+    expect(effortToBudget("claude-opus-4-7", "auto")).toBe(24000);
+  });
+
+  test("effortToBudget escalona dentro do range (Haiku 4.5)", () => {
+    expect(effortToBudget("claude-haiku-4-5", "minimal")).toBe(1024);
+    const low = effortToBudget("claude-haiku-4-5", "low");
+    const medium = effortToBudget("claude-haiku-4-5", "medium");
+    expect(effortToBudget("claude-haiku-4-5", "high")).toBe(8000);
+    expect(low!).toBeGreaterThan(1024);
+    expect(medium!).toBeGreaterThan(low!);
+    expect(medium!).toBeLessThan(8000);
+  });
+
+  test("effortToBudget retorna null quando modelo nao usa budget", () => {
+    expect(effortToBudget("gpt-5.4-nano", "medium")).toBeNull();
+    expect(effortToBudget("modelo-inexistente", "high")).toBeNull();
+  });
+
+  test("modelOutputCap retorna valor correto para Anthropic", () => {
+    expect(modelOutputCap("claude-haiku-4-5")).toBe(64_000);
+    expect(modelOutputCap("claude-opus-4-7")).toBe(128_000);
+  });
+
+  test("modelOutputCap retorna undefined para OpenAI (sem clamp)", () => {
+    expect(modelOutputCap("gpt-5.4-nano")).toBeUndefined();
+  });
+
+  test("modelSupportsReasoning prioriza REASONING_CAPS", () => {
+    expect(modelSupportsReasoning("gpt-5.4-nano")).toBe(true);
+    expect(modelSupportsReasoning("modelo-inexistente")).toBe(false);
+  });
+
+  test("reasoningLevelsOf retorna levels da CAPS", () => {
+    expect(reasoningLevelsOf("gpt-5.4-nano")).toEqual(["minimal", "low", "medium", "high"]);
+    expect(reasoningLevelsOf("o3")).toEqual(["low", "medium", "high"]);
+  });
+
+  test("invariantes da tabela REASONING_CAPS", () => {
+    for (const [id, cap] of Object.entries(REASONING_CAPS)) {
+      expect(id).toBeTruthy();
+      expect(cap.levels.length).toBeGreaterThan(0);
+      if (cap.levels.includes("auto")) {
+        expect(cap.levels.length).toBe(1);
+      }
+      if (cap.budgetRange) {
+        expect(cap.budgetRange[0]).toBeLessThan(cap.budgetRange[1]);
       }
     }
   });

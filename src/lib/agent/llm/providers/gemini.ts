@@ -5,17 +5,25 @@
  * role "tool" → functionResponse; role "assistant" → role "model".
  */
 
-import { calculateCost } from "../catalog";
+import { calculateCost, effortToBudget, reasoningCapsOf } from "../catalog";
 import type {
   ChatMessage,
   ChatRequest,
   ChatResult,
   ProviderClient,
+  ReasoningContext,
+  ReasoningEffort,
   ToolCall,
   ToolDefinition,
 } from "../types";
 
 const GEMINI_BASE_URL = "https://generativelanguage.googleapis.com/v1beta/models";
+const DEFAULT_TIMEOUT_MS = 90_000;
+
+function mapEffortToLevel(effort: ReasoningEffort): "minimal" | "low" | "medium" | "high" {
+  if (effort === "auto") return "high";
+  return effort;
+}
 
 interface GeminiPart {
   text?: string;
@@ -129,8 +137,13 @@ export class GeminiClient implements ProviderClient {
       };
     }
 
+    const cap = reasoningCapsOf(this.model);
     const { systemInstruction, contents } = mapMessages(request.messages);
-    const body: Record<string, unknown> = { contents };
+
+    // Onda 5: multi-turn injetando parts inteiras do reasoningHistory (Gemini-only).
+    const contentsWithHistory = injectGeminiHistory(contents, request.reasoningHistory);
+
+    const body: Record<string, unknown> = { contents: contentsWithHistory };
     if (systemInstruction) body.systemInstruction = systemInstruction;
     const tools = mapTools(request.tools);
     if (tools) body.tools = tools;
@@ -142,29 +155,65 @@ export class GeminiClient implements ProviderClient {
     if (typeof request.maxTokens === "number") {
       generationConfig.maxOutputTokens = request.maxTokens;
     }
+
+    // Onda 5: thinkingConfig por modelo via REASONING_CAPS.
+    const wantsThinking =
+      request.reasoningEffort && cap && cap.enabled && cap.supportsWithTools;
+    if (wantsThinking) {
+      const thinkingConfig: Record<string, unknown> = { includeThoughts: false };
+      if (cap!.adaptiveMode) {
+        thinkingConfig.thinkingBudget = -1;
+      } else if (cap!.geminiShape === "level") {
+        thinkingConfig.thinkingLevel = mapEffortToLevel(request.reasoningEffort!);
+      } else if (cap!.geminiShape === "budget") {
+        const budget = request.reasoningMaxTokens
+          ?? effortToBudget(this.model, request.reasoningEffort!);
+        if (typeof budget === "number") {
+          thinkingConfig.thinkingBudget = budget;
+        }
+      }
+      generationConfig.thinkingConfig = thinkingConfig;
+    }
+
     if (Object.keys(generationConfig).length > 0) {
       body.generationConfig = generationConfig;
     }
 
     const url = `${GEMINI_BASE_URL}/${encodeURIComponent(this.model)}:generateContent?key=${encodeURIComponent(this.apiKey)}`;
+    const timeoutMs = cap?.requestTimeoutMs ?? DEFAULT_TIMEOUT_MS;
 
-    const res = await fetch(url, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(body),
-    });
+    let res: Response;
+    try {
+      res = await fetch(url, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+        signal: AbortSignal.timeout(timeoutMs),
+      });
+    } catch (err) {
+      if (err instanceof Error && err.name === "TimeoutError") {
+        throw new Error(`Gemini timeout apos ${timeoutMs}ms`);
+      }
+      throw err;
+    }
 
     if (!res.ok) {
       const text = await res.text().catch(() => "");
       throw new Error(`Gemini ${res.status}: ${text || res.statusText}`);
     }
 
-    const data = (await res.json()) as GeminiResponse;
+    const data = (await res.json()) as GeminiResponse & {
+      usageMetadata?: { thoughtsTokenCount?: number };
+    };
     const candidate = data.candidates?.[0];
     let messageText = "";
     const toolCalls: ToolCall[] = [];
+    // Onda 5: salvar TODAS as parts da resposta (com thoughtSignature) para o
+    // proximo turno. Multi-turn Gemini com function calling exige reenvio
+    // exato das parts do turno anterior (incluindo signatures).
+    const responseParts = candidate?.content?.parts ?? [];
 
-    for (const part of candidate?.content?.parts ?? []) {
+    for (const part of responseParts) {
       if (part.text) messageText += part.text;
       if (part.functionCall) {
         toolCalls.push({
@@ -177,12 +226,50 @@ export class GeminiClient implements ProviderClient {
 
     const tokensInput = data.usageMetadata?.promptTokenCount ?? 0;
     const tokensOutput = data.usageMetadata?.candidatesTokenCount ?? 0;
+    const thoughtsTokens = data.usageMetadata?.thoughtsTokenCount;
     const { costUsd } = calculateCost(this.model, tokensInput, tokensOutput);
+
+    const reasoningContext: ReasoningContext | undefined =
+      responseParts.length > 0
+        ? { provider: "gemini", data: { parts: responseParts } }
+        : undefined;
 
     return {
       message: messageText,
       toolCalls: toolCalls.length > 0 ? toolCalls : undefined,
       usage: { tokensInput, tokensOutput, costUsd: costUsd ?? 0 },
+      reasoningTokens: typeof thoughtsTokens === "number" ? thoughtsTokens : undefined,
+      reasoningContext,
+      streamed: false,
     };
   }
+}
+
+/**
+ * Injeta parts inteiras de turnos anteriores (Gemini) como mensagens role:"model".
+ * Gemini exige reenvio exato (com thoughtSignature) em multi-turn com function calling.
+ * Inserido apos a primeira user message e antes da ultima (que normalmente eh
+ * a nova pergunta ou functionResponse).
+ */
+function injectGeminiHistory(
+  contents: Array<{ role: "user" | "model"; parts: unknown[] }>,
+  history: ReasoningContext[] | undefined,
+): Array<{ role: "user" | "model"; parts: unknown[] }> {
+  if (!history || history.length === 0) return contents;
+  if (contents.length === 0) return contents;
+  const modelTurns: Array<{ role: "user" | "model"; parts: unknown[] }> = [];
+  for (const ctx of history) {
+    if (ctx.provider !== "gemini") continue;
+    const data = ctx.data as { parts?: unknown[] } | null;
+    if (data?.parts && Array.isArray(data.parts) && data.parts.length > 0) {
+      modelTurns.push({ role: "model", parts: data.parts });
+    }
+  }
+  if (modelTurns.length === 0) return contents;
+  // Inserir modelTurns antes da ultima mensagem da conversa.
+  return [
+    ...contents.slice(0, -1),
+    ...modelTurns,
+    contents[contents.length - 1],
+  ];
 }

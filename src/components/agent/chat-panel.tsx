@@ -17,7 +17,7 @@
  */
 
 import { motion, useReducedMotion } from "framer-motion";
-import { Loader2, LogOut, Mic, MoreVertical, Send, Sparkles, Trash2, X } from "lucide-react";
+import { ChevronDown, Download, Loader2, LogOut, Mic, MoreVertical, Send, Sparkles, Trash2, X } from "lucide-react";
 import * as React from "react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
@@ -29,6 +29,7 @@ import { AttachMenu, defaultAttachHandler } from "./attach-menu";
 import { MessageInput } from "./message-input";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { getConversationMessages } from "@/lib/actions/conversation-messages";
+import { exportConversationReport } from "@/lib/actions/agent-conversation-export";
 import { WELCOME_SUGGESTIONS } from "@/lib/agent/welcome-suggestions";
 
 interface ChatPanelProps {
@@ -50,6 +51,9 @@ interface ChatPanelProps {
   /** Sugestões iniciais personalizadas (auto-aprendizado por usuário).
    *  Quando vazias, o painel cai no catálogo curado WELCOME_SUGGESTIONS. */
   personalizedWelcome?: string[];
+  /** Quando true, renderiza no menu da bubble a opção "Baixar relatório
+   *  desta conversa". Restrito a super_admin pelo layout protegido. */
+  isSuperAdmin?: boolean;
 }
 
 interface UiMessage {
@@ -73,6 +77,8 @@ interface UiMessage {
   suggestions?: string[];
   /** True enquanto este turn está sendo streamado. */
   streaming?: boolean;
+  /** Timestamp da mensagem para rodapé "dd/mm hh:mm" na bolha. */
+  createdAt?: string;
 }
 
 type SseEvent =
@@ -93,6 +99,7 @@ export function ChatPanel({
   onEndSession,
   maxSuggestions = 3,
   personalizedWelcome = [],
+  isSuperAdmin = false,
 }: ChatPanelProps) {
   // Sugestoes iniciais: prioridade ao set personalizado computado no server
   // (auto-aprendizado por usuario). Fallback ao catalogo curado quando o
@@ -116,10 +123,37 @@ export function ChatPanel({
   const [audioFlight, setAudioFlight] = React.useState(false);
 
   const conversationIdRef = React.useRef<string | null>(externalConvId ?? null);
+  // Track conversas criadas nesta sessao do componente para NAO recarregar
+  // do banco e perder o estado local (steps do trail nao sao persistidos;
+  // recarregar apagaria a trilha "Raciocinio" da primeira resposta, bug
+  // reportado pelo usuario em 2026-05-25 01:28).
+  const justCreatedConvIdsRef = React.useRef<Set<string>>(new Set());
   const scrollRef = React.useRef<HTMLDivElement | null>(null);
   const inputRef = React.useRef<HTMLTextAreaElement | null>(null);
   const abortRef = React.useRef<AbortController | null>(null);
   const recorderRef = React.useRef<AudioRecorderHandle | null>(null);
+  // === Auto-scroll v4: stick-to-bottom padrao (ChatGPT/Claude.ai) ===
+  // Spec: docs/superpowers/specs/2026-05-25-bubble-v4-spec.md
+  // ResizeObserver no contentRef (inner div com mensagens) detecta
+  // crescimento de altura e, se isSticky=true, ajusta scrollTop do
+  // scrollRef para scrollHeight. Pattern provado em producao.
+  const contentRef = React.useRef<HTMLDivElement | null>(null);
+  // Ref espelha state para uso dentro de listeners criados 1x.
+  const isStickyRef = React.useRef(true);
+  const [isSticky, setIsStickyState] = React.useState(true);
+  // Wrapper que ATUALIZA o ref SINCRONAMENTE antes do state. Evita race
+  // com o ResizeObserver que le isStickyRef no mesmo tick em que o state
+  // changes (useEffect de sync corre depois, perdendo a janela).
+  const setIsSticky = React.useCallback((v: boolean) => {
+    isStickyRef.current = v;
+    setIsStickyState(v);
+  }, []);
+  // Marca quando ultimo scroll programatico aconteceu. Wheel events nos
+  // 120ms seguintes sao ignorados (kinetic scroll do macOS pode gerar
+  // wheel falso durante smooth scroll).
+  const lastProgrammaticAtRef = React.useRef(0);
+  // messageRefsMap mantido (usado por outros lugares para tracking).
+  const messageRefsMap = React.useRef<Map<string, HTMLDivElement>>(new Map());
 
   // Sync external conversationId + carrega histórico do servidor
   React.useEffect(() => {
@@ -128,6 +162,13 @@ export function ChatPanel({
     if (!externalConvId) {
       // Nova conversa: limpa mensagens
       setMessages([]);
+      return;
+    }
+
+    // Skip reload se essa conversa acabou de ser criada nesta sessao:
+    // o estado local ja tem a primeira resposta com steps; recarregar
+    // do banco perderia steps (nao persistidos) e apagaria o "Raciocinio".
+    if (justCreatedConvIdsRef.current.has(externalConvId)) {
       return;
     }
 
@@ -141,11 +182,19 @@ export function ChatPanel({
         return;
       }
       const uiMessages: UiMessage[] = result.messages
-        .filter((m) => m.role !== "tool") // esconde mensagens de tool do usuário
+        .filter((m) => m.role !== "tool")
+        // Esconde messages assistant SEM content (iteracao intermediaria do
+        // loop que so registra tool_calls; a resposta textual real vem na
+        // proxima iteracao). Sem isso, a UI mostra uma bolha cinza com so
+        // o timestamp acima da resposta de verdade (bug 2026-05-24 22:59).
+        .filter(
+          (m) => !(m.role === "assistant" && m.content.trim().length === 0),
+        )
         .map((m) => ({
           id: m.id,
           role: m.role as AgentMessageRole,
           content: m.content,
+          createdAt: m.createdAt,
         }));
       setMessages(uiMessages);
     })();
@@ -167,13 +216,6 @@ export function ChatPanel({
     };
   }, [open, onClose]);
 
-  // Auto-scroll
-  React.useEffect(() => {
-    const el = scrollRef.current;
-    if (!el) return;
-    el.scrollTo({ top: el.scrollHeight, behavior: "smooth" });
-  }, [messages, pending]);
-
   // Cleanup on unmount
   React.useEffect(() => {
     return () => {
@@ -181,10 +223,94 @@ export function ChatPanel({
     };
   }, []);
 
+  // === Stick-to-bottom: ResizeObserver + wheel/scroll listeners ===
+  React.useEffect(() => {
+    const scrollEl = scrollRef.current;
+    const contentEl = contentRef.current;
+    if (!scrollEl || !contentEl) return;
+
+    // ResizeObserver no inner content: cresce conforme typewriter escreve
+    // ou novas msgs chegam. Se sticky, ajusta scrollTop para o fim.
+    const ro = new ResizeObserver(() => {
+      if (!isStickyRef.current) return;
+      lastProgrammaticAtRef.current = performance.now();
+      scrollEl.scrollTop = scrollEl.scrollHeight;
+    });
+    ro.observe(contentEl);
+
+    // Wheel up = user quer rolar pra cima = desativa sticky. Ignora se
+    // veio logo apos scroll programatico (kinetic scroll macOS).
+    const onWheel = (e: WheelEvent) => {
+      if (e.deltaY < 0) {
+        const dt = performance.now() - lastProgrammaticAtRef.current;
+        if (dt < 120) return;
+        if (isStickyRef.current) setIsSticky(false);
+      }
+    };
+    scrollEl.addEventListener("wheel", onWheel, { passive: true });
+
+    // Touchmove pra baixo (dedo desce na tela) = scroll up.
+    let touchStartY = 0;
+    const onTouchStart = (e: TouchEvent) => {
+      touchStartY = e.touches[0]?.clientY ?? 0;
+    };
+    const onTouchMove = (e: TouchEvent) => {
+      const y = e.touches[0]?.clientY ?? 0;
+      if (y - touchStartY > 8) {
+        const dt = performance.now() - lastProgrammaticAtRef.current;
+        if (dt < 120) return;
+        if (isStickyRef.current) setIsSticky(false);
+      }
+    };
+    scrollEl.addEventListener("touchstart", onTouchStart, { passive: true });
+    scrollEl.addEventListener("touchmove", onTouchMove, { passive: true });
+
+    // Scroll handler: reativa sticky quando user chega no fim manualmente.
+    const onScroll = () => {
+      const atBottom =
+        scrollEl.scrollHeight - scrollEl.scrollTop - scrollEl.clientHeight < 24;
+      if (atBottom && !isStickyRef.current) setIsSticky(true);
+    };
+    scrollEl.addEventListener("scroll", onScroll, { passive: true });
+
+    return () => {
+      ro.disconnect();
+      scrollEl.removeEventListener("wheel", onWheel);
+      scrollEl.removeEventListener("touchstart", onTouchStart);
+      scrollEl.removeEventListener("touchmove", onTouchMove);
+      scrollEl.removeEventListener("scroll", onScroll);
+    };
+  }, []);
+
+  // FAB click: rola pro fim + reativa sticky.
+  const scrollToBottomNow = React.useCallback(() => {
+    const el = scrollRef.current;
+    if (!el) return;
+    lastProgrammaticAtRef.current = performance.now();
+    el.scrollTo({
+      top: el.scrollHeight,
+      behavior: reduceMotion ? "auto" : "smooth",
+    });
+    setIsSticky(true);
+  }, [reduceMotion]);
+
   const handleSend = React.useCallback(
     async (text: string, opts?: { source?: "bubble" | "suggestion" }) => {
       const trimmed = text.trim();
       if (!trimmed || pending) return;
+
+      // Reset do stick-to-bottom: nova msg reativa scroll automatico.
+      setIsSticky(true);
+      // Snap explicito pra fim apos React commitar a nova msg, antes
+      // do ResizeObserver disparar. Garante que a bolha do assistant
+      // (que aparece com "Pensando") ja nasce totalmente visivel.
+      // Sem isso, havia race: setMessages adicionava bolha; layout
+      // crescia; mas RO podia firar com isStickyRef ainda nao
+      // atualizado ou o usuario via metade da bolha.
+      requestAnimationFrame(() => {
+        const el = scrollRef.current;
+        if (el) el.scrollTop = el.scrollHeight;
+      });
 
       abortRef.current?.abort();
       const controller = new AbortController();
@@ -196,15 +322,31 @@ export function ChatPanel({
 
       setMessages((prev) => [
         ...prev,
-        { id: userMsgId, role: "user", content: trimmed },
+        {
+          id: userMsgId,
+          role: "user",
+          content: trimmed,
+          createdAt: new Date().toISOString(),
+        },
       ]);
       setInput("");
       setPending(true);
 
-      // Adiciona loading bubble
+      // Nasce a bolha do assistant ja com trilha "Pensando..." dentro.
+      // Sem LoadingBubble separada (eliminado o "Agente pensando" duplicado
+      // que aparecia antes do trail; agora e uma transicao continua: o mesmo
+      // componente que mostra "Pensando" ganha steps e depois vira resposta).
       setMessages((prev) => [
         ...prev,
-        { id: "loading", role: "loading", content: "" },
+        {
+          id: assistantMsgId,
+          role: "assistant",
+          content: "",
+          steps: [],
+          stepsCollapsed: false,
+          startedAt: Date.now(),
+          streaming: true,
+        },
       ]);
 
       try {
@@ -334,15 +476,25 @@ export function ChatPanel({
             } else if (evt.type === "done") {
               if (evt.conversationId && !conversationIdRef.current) {
                 conversationIdRef.current = evt.conversationId;
+                // Marca como criada nesta sessao para o useEffect de reload
+                // skipar o getConversationMessages e preservar os steps locais.
+                justCreatedConvIdsRef.current.add(evt.conversationId);
                 onConversationCreated?.(evt.conversationId);
               }
               setMessages((prev) => {
                 // Onda C v2: a bolha do assistant ja tem steps (criada no
                 // primeiro tool_call). Aqui so finaliza: content/suggestions
                 // do done, marca todos os steps como done, colapsa trilha,
-                // grava doneAt para o resumo "Como cheguei aqui . N etapas . Xs".
+                // grava doneAt para o resumo "Raciocinio . N etapas . Xs".
+                // Defesa em profundidade contra suggestions vazio: usa o set
+                // welcomeSuggestionsForUi (ja respeita maxSuggestions + ancora
+                // de role + personalizado). Garante que toda resposta tem chips.
                 const dropped = dropLoading(prev);
                 const doneAt = Date.now();
+                const safeSuggestions =
+                  Array.isArray(evt.suggestions) && evt.suggestions.length > 0
+                    ? evt.suggestions
+                    : welcomeSuggestionsForUi;
                 const finalized = dropped.map((m) => {
                   if (m.id === assistantMsgId) {
                     const steps = (m.steps ?? []).map((s) => ({
@@ -352,12 +504,13 @@ export function ChatPanel({
                     return {
                       ...m,
                       content: evt.message,
-                      suggestions: evt.suggestions,
+                      suggestions: safeSuggestions,
                       streaming: false,
                       steps: steps.length > 0 ? steps : undefined,
                       stepsCollapsed: true,
                       startedAt: m.startedAt ?? doneAt,
                       doneAt,
+                      createdAt: m.createdAt ?? new Date(doneAt).toISOString(),
                     };
                   }
                   return m;
@@ -370,11 +523,12 @@ export function ChatPanel({
                     id: assistantMsgId,
                     role: "assistant",
                     content: evt.message,
-                    suggestions: evt.suggestions,
+                    suggestions: safeSuggestions,
                     streaming: false,
                     stepsCollapsed: true,
                     startedAt: doneAt,
                     doneAt,
+                    createdAt: new Date(doneAt).toISOString(),
                   },
                 ];
               });
@@ -550,6 +704,43 @@ export function ChatPanel({
                   <Trash2 className="h-3.5 w-3.5 text-muted-foreground" />
                   Limpar histórico
                 </button>
+                {isSuperAdmin ? (
+                  <button
+                    type="button"
+                    role="menuitem"
+                    onClick={async () => {
+                      setMenuOpen(false);
+                      const cid = conversationIdRef.current;
+                      if (!cid) {
+                        toast.info(
+                          "Nada para exportar ainda. Faça pelo menos uma pergunta.",
+                        );
+                        return;
+                      }
+                      const r = await exportConversationReport(cid);
+                      if (!r.ok) {
+                        toast.error(r.error);
+                        return;
+                      }
+                      const blob = new Blob([r.content], {
+                        type: "text/plain;charset=utf-8",
+                      });
+                      const url = URL.createObjectURL(blob);
+                      const a = document.createElement("a");
+                      a.href = url;
+                      a.download = r.filename;
+                      document.body.appendChild(a);
+                      a.click();
+                      a.remove();
+                      URL.revokeObjectURL(url);
+                      toast.success("Relatório baixado.");
+                    }}
+                    className="flex w-full cursor-pointer items-center gap-2 border-t border-border/50 px-3 py-2 text-left text-sm text-foreground transition-colors hover:bg-muted"
+                  >
+                    <Download className="h-3.5 w-3.5 text-muted-foreground" />
+                    Baixar relatório (.txt)
+                  </button>
+                ) : null}
                 {onEndSession ? (
                   <button
                     type="button"
@@ -570,7 +761,10 @@ export function ChatPanel({
           </div>
         </header>
 
-        {/* Área de mensagens */}
+        {/* Área de mensagens. FAB foi movido pro outer motion.div (que e
+            fixed = positioning context). Aqui voltou layout original
+            (flex-1 + overflow no proprio scrollRef) - sem wrapper extra
+            que estava quebrando a cadeia flex de altura. */}
         <div
           ref={scrollRef}
           className="flex-1 overflow-y-auto overscroll-contain px-4 py-3"
@@ -581,7 +775,7 @@ export function ChatPanel({
               suggestions={welcomeSuggestionsForUi}
             />
           ) : (
-            <div className="space-y-3">
+            <div ref={contentRef} className="space-y-3">
               {messages.map((m, idx) => {
                 // Onda C v2: nao deve mais existir UiMessage com role "progress"
                 // (steps vivem dentro da bolha do assistant desde o primeiro
@@ -593,7 +787,17 @@ export function ChatPanel({
                 const durationMs =
                   m.startedAt && m.doneAt ? m.doneAt - m.startedAt : undefined;
                 return (
-                  <React.Fragment key={m.id}>
+                  // Wrapper div com ref por msgId permite snapAssistantToTop
+                  // chamar scrollIntoView na bolha exata (feature auto-scroll).
+                  // Fragment foi substituido por div; layout preservado via
+                  // contents do parent (space-y-3 ja existe).
+                  <div
+                    key={m.id}
+                    ref={(el) => {
+                      if (el) messageRefsMap.current.set(m.id, el);
+                      else messageRefsMap.current.delete(m.id);
+                    }}
+                  >
                     <AgentMessage
                       role={m.role}
                       content={m.content}
@@ -603,6 +807,7 @@ export function ChatPanel({
                       streaming={m.streaming}
                       steps={m.steps}
                       stepsCollapsed={m.stepsCollapsed ?? true}
+                      createdAt={m.createdAt}
                       durationMs={durationMs}
                       onToggleSteps={() =>
                         setMessages((prev) =>
@@ -614,18 +819,30 @@ export function ChatPanel({
                         )
                       }
                     />
-                    {isLastAssistant && m.suggestions && m.suggestions.length > 0 && (
+                    {isLastAssistant && !m.streaming ? (
+                      // SuggestionsBar agora SEMPRE renderiza apos done:
+                      // se m.suggestions vazio, o componente completa com
+                      // HARD_FALLBACK ate targetCount. Garante chips sempre.
                       <SuggestionsBar
-                        suggestions={m.suggestions}
+                        suggestions={m.suggestions ?? []}
                         onPick={(s) => handlePickSuggestion(m.id, s)}
+                        targetCount={maxSuggestions}
                       />
-                    )}
-                  </React.Fragment>
+                    ) : null}
+                  </div>
                 );
               })}
             </div>
           )}
         </div>
+
+        {/* FAB voltar-pro-fim como filho do outer motion.div (fixed
+            providencia o positioning context). z-50 garante que fica
+            acima do scroll. Visivel quando !isSticky (user rolou pra cima). */}
+        <ScrollToBottomFab
+          visible={!isSticky && !showWelcome}
+          onClick={scrollToBottomNow}
+        />
 
         {/* Input bar (G4 + D8) , anexo à esquerda, mic à direita, enviar fora */}
         <footer className="border-t border-border bg-background/60 px-3 pt-3 pb-3">
@@ -846,5 +1063,41 @@ function WelcomeBlock({
         ))}
       </div>
     </div>
+  );
+}
+
+// FAB que aparece quando o usuario rolou pra cima durante streaming.
+// Posicionamento: absolute bottom-right do parent relative que envolve o
+// scroll container. Click = scroll suave pro final + reativa auto-snap.
+function ScrollToBottomFab({
+  visible,
+  onClick,
+}: {
+  visible: boolean;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      aria-label="Ir para o fim da conversa"
+      aria-hidden={!visible}
+      tabIndex={visible ? 0 : -1}
+      className={cn(
+        // bottom-[100px]: respiro de ~24px acima do footer (input ~64px
+        // + padding + respiro). Mais distante do botao enviar conforme
+        // pedido do usuario. z-30: acima da area de scroll.
+        "pointer-events-auto absolute bottom-[100px] right-3 z-30 flex h-9 w-9 cursor-pointer items-center justify-center rounded-full",
+        "border border-violet-500/40 bg-background/90 text-violet-600 shadow-lg backdrop-blur",
+        "transition-all duration-200 hover:bg-violet-600 hover:text-white hover:border-violet-500",
+        "dark:text-violet-300 dark:hover:text-white",
+        "focus-visible:ring-2 focus-visible:ring-violet-500 focus-visible:outline-none",
+        visible
+          ? "translate-y-0 opacity-100"
+          : "pointer-events-none translate-y-2 opacity-0",
+      )}
+    >
+      <ChevronDown className="h-4 w-4" />
+    </button>
   );
 }

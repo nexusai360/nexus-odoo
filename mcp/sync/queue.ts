@@ -25,7 +25,9 @@ export interface DirectedSyncJob {
   apiKeyId: string;
 }
 
-const QUEUE_NAME = "odoo-sync:directed";
+// BullMQ >= 5 nao aceita ":" em queue name (Redis usa ":" como separador).
+// Antes era "odoo-sync:directed"; renomeado para nao quebrar new Queue().
+const QUEUE_NAME = "odoo-sync-directed";
 
 let _queue: Queue<DirectedSyncJob> | null = null;
 

@@ -6,12 +6,14 @@
  * não aceitam temperature customizada.
  */
 
-import { calculateCost } from "../catalog";
+import { calculateCost, reasoningCapsOf } from "../catalog";
 import type {
   ChatMessage,
   ChatRequest,
   ChatResult,
   ProviderClient,
+  ReasoningContext,
+  ReasoningEffort,
   ToolCall,
   ToolDefinition,
 } from "../types";
@@ -19,13 +21,41 @@ import type {
 const OPENAI_API_URL = "https://api.openai.com/v1/chat/completions";
 const OPENAI_RESPONSES_URL = "https://api.openai.com/v1/responses";
 
+/** Default 90s; override por modelo via cap.requestTimeoutMs. */
+const DEFAULT_TIMEOUT_MS = 90_000;
+
 /**
- * Modelos que SO funcionam via /v1/responses (a "Pro/Deep Reasoning" family
- * da OpenAI). Lista heuristica por padroes de id; cobre gpt-5.x-pro, o1-pro,
- * o3-pro, etc.
+ * Onda 3 da modernizacao: a fonte da verdade do roteamento eh REASONING_CAPS.
+ * Modelo com cap.openaiEndpoint === "responses" vai para /v1/responses;
+ * caso contrario, cai para /v1/chat/completions (compat para modelos sem
+ * reasoning, ex.: gpt-4o se algum dia precisar).
+ *
+ * O regex `requiresResponsesApi` antigo eh substituido por esta consulta;
+ * mantemos a funcao apenas como helper legado para ajuste fino se aparecer
+ * modelo nao catalogado seguindo o naming `-pro`.
  */
 function requiresResponsesApi(model: string): boolean {
+  const cap = reasoningCapsOf(model);
+  if (cap?.openaiEndpoint === "responses") return true;
+  // Fallback heuristico para modelos sem cap catalogado.
   return /-pro(-|$)|^o[1-9]-pro$|^gpt-5(\.[0-9]+)?-pro/.test(model);
+}
+
+/**
+ * Mapeia "minimal" -> "low" para modelos cujo cap.levels nao inclui "minimal"
+ * (ex.: o3, o1, gpt-5.4-pro). Caso contrario passa o effort literalmente.
+ * "auto" eh sinal interno: mapeia para "medium" (OpenAI nao tem auto nativo).
+ */
+function resolveOpenAiEffort(
+  model: string,
+  effort: ReasoningEffort,
+): "low" | "medium" | "high" | "minimal" | "xhigh" {
+  if (effort === "auto") return "medium";
+  const cap = reasoningCapsOf(model);
+  if (effort === "minimal" && cap && !cap.levels.includes("minimal")) {
+    return "low";
+  }
+  return effort;
 }
 
 interface OpenAIToolCallRaw {
@@ -130,22 +160,11 @@ export class OpenAIClient implements ProviderClient {
 
     const reasoning = isReasoningModel(this.model);
     if (reasoning && request.reasoningEffort) {
-      // Duas incompatibilidades do gpt-5.4-nano em /v1/chat/completions:
-      //   1) rejeita "minimal" ("Supported values: none|low|medium|high|xhigh"
-      //      no nano).
-      //   2) rejeita reasoning_effort quando há function tools ("Function tools
-      //      with reasoning_effort are not supported for gpt-5.4-nano in
-      //      /v1/chat/completions. Please use /v1/responses").
-      // Como o agente sempre carrega o catálogo MCP como tools, o nano não
-      // aceita o parâmetro. Estratégia: só envia reasoning_effort quando NÃO
-      // há tools (e mapeia "minimal" → "low" para a família 5.x).
-      const noTools = !tools || tools.length === 0;
-      if (noTools) {
-        body.reasoning_effort =
-          request.reasoningEffort === "minimal"
-            ? "low"
-            : request.reasoningEffort;
-      }
+      // Branch chat-completions: usado apenas como fallback para modelos sem
+      // cap.openaiEndpoint="responses". Onda 3 da modernizacao tirou a trava
+      // de "noTools" porque a unica famila que rejeitava (gpt-5.x-nano) agora
+      // roteia pela Responses API (cap.openaiEndpoint="responses").
+      body.reasoning_effort = resolveOpenAiEffort(this.model, request.reasoningEffort);
     }
     if (typeof request.temperature === "number" && !reasoning) {
       body.temperature = request.temperature;
@@ -203,38 +222,71 @@ export class OpenAIClient implements ProviderClient {
   }
 
   /**
-   * Variante para /v1/responses (modelos pro/deep-reasoning).
-   * Schema diferente do chat completions: input vira array de items
-   * tipados (message, function_call, function_call_output); tools sao
-   * declaradas com type: function direto (sem wrapping); output volta
-   * em items tipados que sao parseados de volta para ChatResult.
+   * /v1/responses canonica (Onda 3 da modernizacao). Aplicado para todos os
+   * modelos com cap.openaiEndpoint="responses" - isso cobre gpt-5.x (nano,
+   * mini, std, pro), gpt-5.5, o1, o3, codex e variantes. Schema:
+   *   - `instructions`: system prompt como string (nao mensagem).
+   *   - `input[]`: items tipados (message, reasoning, function_call,
+   *     function_call_output) na ordem do turno.
+   *   - `tools[]`: type:"function" direto.
+   *   - `reasoning`: { effort, summary }.
+   *   - `store: false`: stateless.
+   *   - `max_output_tokens` opcional.
+   * Resposta inclui `output[]` typed items e `usage.output_tokens_details.reasoning_tokens`.
    */
   private async chatViaResponses(request: ChatRequest): Promise<ChatResult> {
     const reasoning = isReasoningModel(this.model);
-    const input = mapMessagesToResponsesInput(request.messages);
+    const cap = reasoningCapsOf(this.model);
+
+    // Separa role:"system" do array para virar `instructions` string.
+    const { instructions, restMessages } = extractInstructions(request.messages);
+
+    // Multi-turn: items de reasoningHistory (preservados do turno anterior)
+    // vao DEPOIS da mensagem do usuario, antes dos items deste turno.
+    const historyItems = collectHistoryItems(request.reasoningHistory);
+    const input = mapMessagesToResponsesInput(restMessages);
+    // Insercao: localiza ultima mensagem user e injeta historyItems apos.
+    const inputWithHistory = injectHistoryAfterLastUser(input, historyItems);
+
     const respBody: Record<string, unknown> = {
       model: this.model,
-      input,
+      input: inputWithHistory,
+      store: false,
     };
+    if (instructions) {
+      respBody.instructions = instructions;
+    }
     const respTools = mapToolsToResponses(request.tools);
     if (respTools) respBody.tools = respTools;
     if (reasoning && request.reasoningEffort) {
       respBody.reasoning = {
-        effort:
-          request.reasoningEffort === "minimal" ? "low" : request.reasoningEffort,
+        effort: resolveOpenAiEffort(this.model, request.reasoningEffort),
+        summary: "auto",
       };
     }
     if (typeof request.maxTokens === "number") {
       respBody.max_output_tokens = request.maxTokens;
     }
-    const rRes = await fetch(OPENAI_RESPONSES_URL, {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${this.apiKey}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify(respBody),
-    });
+
+    const timeoutMs = cap?.requestTimeoutMs ?? DEFAULT_TIMEOUT_MS;
+    let rRes: Response;
+    try {
+      rRes = await fetch(OPENAI_RESPONSES_URL, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${this.apiKey}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(respBody),
+        signal: AbortSignal.timeout(timeoutMs),
+      });
+    } catch (err) {
+      if (err instanceof Error && err.name === "TimeoutError") {
+        throw new Error(`OpenAI Responses timeout apos ${timeoutMs}ms`);
+      }
+      throw err;
+    }
+
     if (!rRes.ok) {
       const text = await rRes.text().catch(() => "");
       throw new Error(`OpenAI Responses ${rRes.status}: ${text || rRes.statusText}`);
@@ -242,17 +294,35 @@ export class OpenAIClient implements ProviderClient {
     const rData = (await rRes.json()) as {
       output?: Array<{
         type?: string;
+        id?: string;
         content?: Array<{ text?: string; type?: string }>;
         call_id?: string;
         name?: string;
         arguments?: string;
+        summary?: unknown;
       }>;
       output_text?: string;
-      usage?: { input_tokens?: number; output_tokens?: number };
+      usage?: {
+        input_tokens?: number;
+        output_tokens?: number;
+        output_tokens_details?: { reasoning_tokens?: number };
+      };
     };
 
     let text = rData.output_text ?? "";
     const toolCalls: ToolCall[] = [];
+    // Items a preservar como contexto opaco para o proximo turno: APENAS
+    // items tipo "reasoning". O `function_call` NAO eh reinjetado aqui porque
+    // o run-agent ja preserva a sequencia via `conversation` (assistant com
+    // toolCalls + role:"tool" com tool result), que `mapMessagesToResponsesInput`
+    // converte em function_call + function_call_output no input do proximo
+    // turno. Reinjetar via reasoningHistory duplicaria o function_call,
+    // gerando OpenAI Responses 400 "No tool output found for function call X"
+    // (porque havia 2 function_calls com mesmo call_id e so 1 output).
+    //
+    // store:false + id reference: alem da duplicidade, items tem campo `id`
+    // que eh referencia ao state nao-persistido. Strippa antes de salvar.
+    const reasoningItems: unknown[] = [];
     for (const item of rData.output ?? []) {
       if (item.type === "message" && Array.isArray(item.content)) {
         for (const c of item.content) {
@@ -268,17 +338,117 @@ export class OpenAIClient implements ProviderClient {
           args = { _raw: item.arguments };
         }
         toolCalls.push({ id: item.call_id, name: item.name, arguments: args });
+        // function_call NAO entra em reasoningItems (duplicaria no proximo turno).
+      } else if (item.type === "reasoning") {
+        // Remove `id` (referencia a state nao-persistido) e preserva summary/content.
+        const { id: _rsId, ...rsWithoutId } = item;
+        void _rsId;
+        reasoningItems.push(rsWithoutId);
       }
     }
+
     const tIn = rData.usage?.input_tokens ?? 0;
     const tOut = rData.usage?.output_tokens ?? 0;
+    const rTokens = rData.usage?.output_tokens_details?.reasoning_tokens;
     const { costUsd } = calculateCost(this.model, tIn, tOut);
+
+    const reasoningContext: ReasoningContext | undefined =
+      reasoningItems.length > 0
+        ? { provider: "openai", data: { items: reasoningItems } }
+        : undefined;
+
     return {
       message: text,
       toolCalls: toolCalls.length > 0 ? toolCalls : undefined,
       usage: { tokensInput: tIn, tokensOutput: tOut, costUsd: costUsd ?? 0 },
+      reasoningTokens: typeof rTokens === "number" ? rTokens : undefined,
+      reasoningContext,
+      streamed: false,
     };
   }
+}
+
+/** Extrai o conteudo de role:"system" para o campo `instructions` da Responses API. */
+function extractInstructions(messages: ChatMessage[]): {
+  instructions: string;
+  restMessages: ChatMessage[];
+} {
+  const systemTexts: string[] = [];
+  const rest: ChatMessage[] = [];
+  for (const m of messages) {
+    if (m.role === "system") {
+      systemTexts.push(m.content);
+    } else {
+      rest.push(m);
+    }
+  }
+  return {
+    instructions: systemTexts.join("\n\n"),
+    restMessages: rest,
+  };
+}
+
+/** Coleta items opacos de reasoningHistory pertencentes ao provider OpenAI.
+ *
+ * Defensivos cumulativos:
+ *  1. Strippa `id` interno (referencia a state nao-persistido com store:false)
+ *     - sem isso a API retorna 404 "Item with id X not found".
+ *  2. **Filtra items tipo "function_call"** — esses ja vem pelo conversation
+ *     tracking do run-agent (assistant.toolCalls -> mapMessagesToResponsesInput).
+ *     Reinjetar pelo history duplicaria o function_call e/ou deixaria orfao
+ *     (sem function_call_output, que role:"tool" nao persiste), gerando
+ *     400 "No tool output found for function call X".
+ *  Cobre tambem history antigo (commits anteriores ao filtro) que ainda
+ *  pode estar gravado em conversations.reasoning_history.
+ */
+function collectHistoryItems(history: ReasoningContext[] | undefined): unknown[] {
+  if (!history) return [];
+  const items: unknown[] = [];
+  for (const ctx of history) {
+    if (ctx.provider !== "openai") continue;
+    const data = ctx.data as { items?: unknown[] } | null;
+    if (!data?.items || !Array.isArray(data.items)) continue;
+    for (const item of data.items) {
+      if (!item || typeof item !== "object") continue;
+      const obj = item as Record<string, unknown>;
+      // Defensivo 2: pula function_call (e function_call_output, simetria).
+      if (obj.type === "function_call" || obj.type === "function_call_output") {
+        continue;
+      }
+      // Defensivo 1: strippa `id` interno de reasoning items.
+      if (obj.type === "reasoning") {
+        const { id: _id, ...rest } = obj;
+        void _id;
+        items.push(rest);
+      } else {
+        items.push(item);
+      }
+    }
+  }
+  return items;
+}
+
+/** Insere historico de raciocinio apos a ultima mensagem user no input. */
+function injectHistoryAfterLastUser(
+  input: unknown[],
+  history: unknown[],
+): unknown[] {
+  if (history.length === 0) return input;
+  // Acha o ultimo indice de mensagem com role:"user".
+  let lastUserIdx = -1;
+  for (let i = input.length - 1; i >= 0; i--) {
+    const item = input[i] as { type?: string; role?: string } | null;
+    if (item?.type === "message" && item.role === "user") {
+      lastUserIdx = i;
+      break;
+    }
+  }
+  if (lastUserIdx === -1) return [...history, ...input];
+  return [
+    ...input.slice(0, lastUserIdx + 1),
+    ...history,
+    ...input.slice(lastUserIdx + 1),
+  ];
 }
 
 /** Converte ChatMessage[] em items do /v1/responses input schema. */
