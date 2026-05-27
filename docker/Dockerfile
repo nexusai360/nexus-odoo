@@ -40,6 +40,9 @@ COPY --from=builder --chown=nextjs:nodejs /app/prisma ./prisma
 COPY --from=builder --chown=nextjs:nodejs /app/prisma.config.ts ./prisma.config.ts
 COPY --from=builder --chown=nextjs:nodejs /app/src/generated ./src/generated
 COPY --from=builder --chown=nextjs:nodejs /app/src/worker ./src/worker
+# mcp/ e necessario para o worker: src/worker/sync/directed.ts importa
+# mcp/lib/logger. Sem isso o worker falha no boot com MODULE_NOT_FOUND.
+COPY --from=builder --chown=nextjs:nodejs /app/mcp ./mcp
 COPY --from=builder --chown=nextjs:nodejs /app/src/lib ./src/lib
 COPY --from=builder --chown=nextjs:nodejs /app/tsconfig.json ./tsconfig.json
 COPY --from=builder --chown=nextjs:nodejs /app/package.json ./package.json
