@@ -5,7 +5,7 @@ import { Queue } from "bullmq";
 
 // Mocka bullmq e ioredis antes de importar o módulo
 jest.mock("bullmq", () => ({
-  Queue: jest.fn().mockImplementation(() => ({ name: "odoo-sync:directed" })),
+  Queue: jest.fn().mockImplementation(() => ({ name: "odoo-sync-directed" })),
 }));
 jest.mock("ioredis", () =>
   jest.fn().mockImplementation(() => ({})),
@@ -23,14 +23,14 @@ describe("getDirectedSyncQueue", () => {
   });
 
   it("deve exportar DIRECTED_SYNC_QUEUE_NAME correto", () => {
-    expect(DIRECTED_SYNC_QUEUE_NAME).toBe("odoo-sync:directed");
+    expect(DIRECTED_SYNC_QUEUE_NAME).toBe("odoo-sync-directed");
   });
 
   it("deve instanciar Queue com o nome correto", () => {
     const q = getDirectedSyncQueue();
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     expect(Queue as unknown as jest.Mock<any, any>).toHaveBeenCalledWith(
-      "odoo-sync:directed",
+      "odoo-sync-directed",
       expect.objectContaining({ connection: expect.anything() }),
     );
     expect(q).toBeDefined();
