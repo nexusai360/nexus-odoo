@@ -98,6 +98,30 @@ export function sanitizeToolResult(
 
   dadosObj._agregado = aggregates;
 
+  // ONDA E2: promove totais agregados pro TOPO do JSON via _DESTAQUE.
+  // Mini ignorava campos enterrados (totalAPagar, totalAReceber, etc).
+  // Com _DESTAQUE + _INSTRUCAO no topo, LLM atende.
+  const destaque: Record<string, unknown> = {};
+  const PROMOTE = [
+    "totalAPagar", "totalAReceber", "totalVencido", "totalAgregado",
+    "totalProdutos", "totalUnidades", "totalPedidos", "valorTotal",
+    "totalNotas", "totalEmpresas", "totalClientes", "totalFornecedores",
+    "totalAtivos", "totalInativos", "totalParceiros", "totalPessoasFisicas",
+    "totalClientesAtivos", "totalFornecedoresAtivos",
+    "totalZerados", "totalNegativos",
+  ];
+  for (const k of PROMOTE) {
+    if (k in dadosObj && dadosObj[k] != null) destaque[k] = dadosObj[k];
+  }
+  for (const [k, v] of Object.entries(aggregates)) {
+    if (k === "contagem") destaque.contagemLinhas = v;
+    else if (k.startsWith("agregado_soma_")) destaque[k] = v;
+  }
+  if (Object.keys(destaque).length > 0) {
+    root._DESTAQUE = destaque;
+    root._INSTRUCAO = "Use os valores em _DESTAQUE como totais autoritativos. NUNCA declare 'lista veio cortada/incompleta/sem somatorio' se _DESTAQUE tem o total.";
+  }
+
   try {
     return JSON.stringify(root);
   } catch {
