@@ -275,13 +275,27 @@ function RodadaMultiSelect({
   onClear: () => void;
 }) {
   const [open, setOpen] = useState(false);
+  const [mounted, setMounted] = useState(false);
   const triggerRef = useRef<HTMLButtonElement>(null);
+  useEffect(() => setMounted(true), []);
   const triggerLabel =
     selected.length === 0
       ? "Todas as rodadas"
       : selected.length === 1
         ? markerToRodadaName(selected[0])
         : `${selected.length} rodadas`;
+
+  if (!mounted) {
+    return (
+      <div
+        className="flex h-9 w-[180px] items-center justify-between gap-2 rounded-lg border border-border bg-card px-3 text-sm text-muted-foreground"
+        aria-hidden
+      >
+        <span className="truncate">{triggerLabel}</span>
+        <ChevronDown className="h-4 w-4 shrink-0 text-muted-foreground" />
+      </div>
+    );
+  }
 
   return (
     <Popover open={open} onOpenChange={setOpen}>
