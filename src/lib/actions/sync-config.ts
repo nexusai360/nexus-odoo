@@ -11,9 +11,13 @@ const KEY_OF = {
   reconcileIntervalMin: "sync.reconcile_interval_min",
 } as const;
 
+// Defaults alinhados com src/worker/sync/sync-config.ts (fonte de verdade
+// do worker). Antes tinha snapshotIntervalMin=1440 aqui e 30 no worker -
+// divergencia descoberta em auditoria 2026-05-27. Quando o usuario nunca
+// salvou nada, frontend mostrava 1440 mas worker rodava 30 = silencioso.
 const SYNC_CONFIG_DEFAULTS = {
   incrementalIntervalMin: 3,
-  snapshotIntervalMin: 1440,
+  snapshotIntervalMin: 30,
   reconcileIntervalMin: 1440,
 } as const;
 
