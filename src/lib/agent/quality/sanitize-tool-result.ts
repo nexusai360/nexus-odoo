@@ -81,24 +81,30 @@ export function sanitizeToolResult(
   if (!dados || typeof dados !== "object") return raw;
 
   const dadosObj = dados as Record<string, unknown>;
-  const linhas = dadosObj.linhas;
-  if (!Array.isArray(linhas) || linhas.length === 0) return raw;
 
-  // Apenas processa se as linhas são objetos (não array de strings).
-  if (typeof linhas[0] !== "object" || linhas[0] === null) return raw;
+  // ONDA F1: aceita array em multiplas chaves (nao so `linhas`). Resolve
+  // tools financeiras (titulos), fluxo_caixa (serie), saldo_contas (contas),
+  // top_movimentados (top). Antes o sanitizer saia early se nao houvesse
+  // `linhas`, deixando _DESTAQUE sem aplicar em metade dos casos.
+  const ARRAY_KEYS = ["linhas", "titulos", "serie", "contas", "top"] as const;
+  let arr: unknown[] | null = null;
+  for (const k of ARRAY_KEYS) {
+    if (Array.isArray(dadosObj[k]) && (dadosObj[k] as unknown[]).length > 0) {
+      arr = dadosObj[k] as unknown[];
+      break;
+    }
+  }
 
-  // Camada 1: anexar agregados.
-  // Só anexa se houver pelo menos 1 campo numérico reconhecido (contagem
-  // sozinha é redundante, já que length é trivial).
-  const aggregates = computeAggregates(linhas as Array<Record<string, unknown>>);
-  const hasNumericAgg = Object.keys(aggregates).some((k) =>
-    k.startsWith("agregado_"),
-  );
-  if (!hasNumericAgg) return raw;
+  // Calcula agregados se houver array de objetos
+  let aggregates: Record<string, unknown> = { contagem: 0 };
+  if (arr && typeof arr[0] === "object" && arr[0] !== null) {
+    aggregates = computeAggregates(arr as Array<Record<string, unknown>>);
+    if (Object.keys(aggregates).some((k) => k.startsWith("agregado_"))) {
+      dadosObj._agregado = aggregates;
+    }
+  }
 
-  dadosObj._agregado = aggregates;
-
-  // ONDA E2: promove totais agregados pro TOPO do JSON via _DESTAQUE.
+  // ONDA E2+F1: promove totais agregados pro TOPO do JSON via _DESTAQUE.
   // Mini ignorava campos enterrados (totalAPagar, totalAReceber, etc).
   // Com _DESTAQUE + _INSTRUCAO no topo, LLM atende.
   const destaque: Record<string, unknown> = {};

@@ -13,10 +13,77 @@ const inputSchema = z.object({
 
 const outputSchema = z.object({
   registrado: z.boolean(),
+  /** Quando ha tool alternativa pra tentar antes de aceitar lacuna. */
   redirecionar: z
     .object({ tool: z.string(), motivo: z.string() })
     .optional(),
+  /** Para lacunas reais: pergunta-modelo pronta + 3-5 alternativas relacionadas. */
+  respostaSugerida: z.string().optional(),
+  sugestoesRelacionadas: z.array(z.string()).optional(),
 });
+
+/**
+ * Lacunas REAIS (sem tool, sem composicao). Retornam mensagem util +
+ * chips de assuntos proximos, NUNCA "registrei pra proxima etapa".
+ */
+const LACUNAS_REAIS: Array<{
+  pattern: RegExp;
+  resposta: string;
+  sugestoes: string[];
+}> = [
+  {
+    pattern: /vai (bater|fechar|atingir) (a )?meta|bater.*meta esse m[eê]s/i,
+    resposta: "Não temos cadastro de metas no ERP, então não consigo comparar contra meta. Posso te ajudar com indicadores reais do mês:",
+    sugestoes: ["Faturamento esse mês", "Comparativo mês vs mês anterior", "Top 5 clientes esse mês"],
+  },
+  {
+    pattern: /liquidez (imediata|seca|corrente|geral)/i,
+    resposta: "Esse indicador financeiro não está calculado no painel. Posso te dar os componentes pra você avaliar:",
+    sugestoes: ["Saldo geral em contas", "Contas a receber em aberto", "Contas a pagar em aberto"],
+  },
+  {
+    pattern: /tempo m[eé]dio.*(fechament|conclus|entrega).*pedido/i,
+    resposta: "Não calculamos esse tempo médio porque o fluxo do pedido não tem data fim instrumentada. Posso te ajudar com:",
+    sugestoes: ["Pedidos em aberto no funil", "Pedidos atrasados", "Volume de pedidos por etapa"],
+  },
+  {
+    pattern: /faturamento por (marca|regi[ãa]o|estado)|por (marca|regi[ãa]o|estado).*faturament/i,
+    resposta: "Esse corte não está agrupado no painel. Posso te dar visões alternativas:",
+    sugestoes: ["Faturamento por cliente esse mês", "Top 5 clientes esse mês", "Faturamento total esse mês"],
+  },
+  {
+    pattern: /parceiros novos.*(semana|mes|periodo)|cadastrados.*semana|fornecedor sem cadastro/i,
+    resposta: "Não temos a data de cadastro indexada pra filtrar por período. Posso te ajudar com:",
+    sugestoes: ["Quantos parceiros temos cadastrados", "Parceiros por UF", "Buscar um parceiro específico"],
+  },
+  {
+    pattern: /pedidos? sem vendedor/i,
+    resposta: "Não consigo filtrar pedidos sem vendedor atribuído com as ferramentas atuais. Posso te ajudar com:",
+    sugestoes: ["Pedidos por vendedor esse mês", "Volume de pedidos por etapa", "Vendedores cadastrados"],
+  },
+  {
+    pattern: /pedido (sem nota emitida|faturado parcialmente)/i,
+    resposta: "Não temos o cruzamento pedido↔nota com esse filtro. Posso te ajudar com:",
+    sugestoes: ["Pedidos em aberto no funil", "Notas emitidas esta semana", "Pedidos atrasados"],
+  },
+  {
+    pattern: /(produtos? sem saldo cadastrado|quantos produtos? n[ãa]o tem saldo)/i,
+    resposta: "Posso te dar a contagem de produtos com saldo zero (que cobre os sem estoque). Outras visões úteis:",
+    sugestoes: ["Quantos produtos com saldo zero", "Produtos parados há mais de 90 dias", "Saldo de um produto específico"],
+  },
+  {
+    pattern: /valor.*impostos? pagos?|impostos? pagos? no? m[eê]s/i,
+    resposta: "Não temos o agregado de impostos pagos. Posso te ajudar com:",
+    sugestoes: ["Impostos do período", "Plano de contas de impostos", "Notas emitidas esse mês"],
+  },
+];
+
+function detectarLacunaReal(perguntaResumo: string) {
+  for (const l of LACUNAS_REAIS) {
+    if (l.pattern.test(perguntaResumo)) return l;
+  }
+  return null;
+}
 
 /**
  * REDIRECIONAMENTOS: padroes onde uma "lacuna" tem solucao via composicao
@@ -63,8 +130,6 @@ export const registrarLacuna: ToolEntry<Input, Output> = {
   inputSchema,
   outputSchema,
   handler: async (input, ctx) => {
-    // Intercepta lacunas EVITAVEIS (tem solucao via composicao de tools).
-    // Mini chama registrar_lacuna prematuramente; aqui forcamos retry.
     const redir = detectarRedirecionamento(input.perguntaResumo);
     if (redir) {
       return {
@@ -73,6 +138,7 @@ export const registrarLacuna: ToolEntry<Input, Output> = {
       };
     }
 
+    // Lacuna real: registra + retorna resposta util com chips relacionados
     await ctx.prisma.featureRequest.createMany({
       data: [
         {
@@ -82,6 +148,24 @@ export const registrarLacuna: ToolEntry<Input, Output> = {
         },
       ],
     });
-    return { registrado: true };
+
+    const lacuna = detectarLacunaReal(input.perguntaResumo);
+    if (lacuna) {
+      return {
+        registrado: true,
+        respostaSugerida: lacuna.resposta,
+        sugestoesRelacionadas: lacuna.sugestoes,
+      };
+    }
+    return {
+      registrado: true,
+      respostaSugerida:
+        "Essa informação não está disponível no ERP no momento. Posso te ajudar com outros dados de estoque, financeiro, fiscal, comercial, cadastros ou contábil.",
+      sugestoesRelacionadas: [
+        "Faturamento esse mês",
+        "Contas a receber em aberto",
+        "Posição financeira atual",
+      ],
+    };
   },
 };
