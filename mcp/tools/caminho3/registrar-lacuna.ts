@@ -20,6 +20,10 @@ const outputSchema = z.object({
   /** Para lacunas reais: pergunta-modelo pronta + 3-5 alternativas relacionadas. */
   respostaSugerida: z.string().optional(),
   sugestoesRelacionadas: z.array(z.string()).optional(),
+  /** F22 (Onda 1.E): texto auto-contido (respostaSugerida + sugestoes inline)
+   *  pronto para o LLM usar literalmente sem precisar concatenar. Cura o
+   *  bug do laudo R15/R16 onde a resposta cortava em "Posso te ajudar com:". */
+  _RESPOSTA: z.string().optional(),
 });
 
 /**
@@ -115,13 +119,31 @@ function detectarRedirecionamento(perguntaResumo: string) {
   return null;
 }
 
+/**
+ * F22 (Onda 1.E): monta resposta auto-contida concatenando respostaSugerida
+ * + sugestoes inline ("Posso te ajudar com: A, B, C."). O LLM usa este texto
+ * literalmente sem precisar listar bullets, evitando o bug "Posso te ajudar
+ * com:" cortado no laudo R15/R16.
+ *
+ * Substitui ":" final por ": A, B, C." Tambem anexa o canal [[suggestions]]
+ * para preencher os chips clicaveis.
+ */
+function montarRespostaCompleta(resposta: string, sugestoes: string[]): string {
+  if (sugestoes.length === 0) return resposta;
+  const respTrim = resposta.trimEnd();
+  const inline = sugestoes.join(", ");
+  // Se termina em ":", substitui pelo " A, B, C."
+  const respPreenchida = respTrim.endsWith(":")
+    ? respTrim.slice(0, -1) + ": " + inline + "."
+    : respTrim + " " + inline + ".";
+  return respPreenchida + ` [[suggestions]]:${sugestoes.join("|")}`;
+}
+
 type Input = z.infer<typeof inputSchema>;
 type Output = z.infer<typeof outputSchema>;
 
 export const registrarLacuna: ToolEntry<Input, Output> = {
   id: "registrar_lacuna",
-  // dominio ausente intencionalmente , tool de domínio-neutro (sempreVisivel: true).
-  // Nenhum domínio falso: visibilidade é garantida pelo predicado sempreVisivel.
   sempreVisivel: true,
   descricao:
     "Registra uma pergunta que não foi coberta pelo catálogo de tools (Caminho 3a). " +
@@ -138,7 +160,6 @@ export const registrarLacuna: ToolEntry<Input, Output> = {
       };
     }
 
-    // Lacuna real: registra + retorna resposta util com chips relacionados
     await ctx.prisma.featureRequest.createMany({
       data: [
         {
@@ -155,17 +176,21 @@ export const registrarLacuna: ToolEntry<Input, Output> = {
         registrado: true,
         respostaSugerida: lacuna.resposta,
         sugestoesRelacionadas: lacuna.sugestoes,
+        _RESPOSTA: montarRespostaCompleta(lacuna.resposta, lacuna.sugestoes),
       };
     }
+    const respGenerica =
+      "Essa informação não está disponível no ERP no momento. Posso te ajudar com outros dados de estoque, financeiro, fiscal, comercial, cadastros ou contábil.";
+    const sugGenericas = [
+      "Faturamento esse mês",
+      "Contas a receber em aberto",
+      "Posição financeira atual",
+    ];
     return {
       registrado: true,
-      respostaSugerida:
-        "Essa informação não está disponível no ERP no momento. Posso te ajudar com outros dados de estoque, financeiro, fiscal, comercial, cadastros ou contábil.",
-      sugestoesRelacionadas: [
-        "Faturamento esse mês",
-        "Contas a receber em aberto",
-        "Posição financeira atual",
-      ],
+      respostaSugerida: respGenerica,
+      sugestoesRelacionadas: sugGenericas,
+      _RESPOSTA: montarRespostaCompleta(respGenerica, sugGenericas),
     };
   },
 };

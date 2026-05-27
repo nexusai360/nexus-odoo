@@ -11,6 +11,8 @@ import { comercialPrecoTabela } from "./preco-tabela.js";
 import { comercialContarPedidos } from "./contar-pedidos.js";
 import { comercialContarRegrasPreco } from "./contar-regras-preco.js";
 import { comercialPedidosListarTopValor } from "./pedidos-listar-top-valor.js";
+import { comercialVendedoresCadastrados } from "./vendedores-cadastrados.js";
+import { comercialPedidosSemVendedor } from "./pedidos-sem-vendedor.js";
 
 export const comercialTools: ToolEntry[] = [
   comercialPedidosPeriodo as ToolEntry,
@@ -23,4 +25,6 @@ export const comercialTools: ToolEntry[] = [
   comercialContarPedidos as ToolEntry,
   comercialContarRegrasPreco as ToolEntry,
   comercialPedidosListarTopValor as ToolEntry,
+  comercialVendedoresCadastrados as ToolEntry,
+  comercialPedidosSemVendedor as ToolEntry,
 ];
