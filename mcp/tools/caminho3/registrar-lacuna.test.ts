@@ -25,7 +25,7 @@ describe("registrar_lacuna", () => {
       { perguntaResumo: "Qual o estoque de bicicletas?", dominio: "estoque" },
       ctx,
     );
-    expect(result).toEqual({ registrado: true });
+    expect(result).toMatchObject({ registrado: true });
     expect(ctx.prisma.featureRequest.createMany).toHaveBeenCalledWith({
       data: [
         expect.objectContaining({

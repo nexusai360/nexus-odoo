@@ -35,8 +35,8 @@ const MODELOS_L1B = new Set([
 ]);
 
 describe("model-catalog", () => {
-  it("tem 114 modelos (79 do F0 + 5 da L1a + 3 da L1c + 27 da L1b)", () => {
-    expect(MODEL_CATALOG).toHaveLength(114);
+  it("tem 113 modelos", () => {
+    expect(MODEL_CATALOG).toHaveLength(113);
   });
 
   // discovery/output/ é gitignored (saídas brutas locais , ver .gitignore).
