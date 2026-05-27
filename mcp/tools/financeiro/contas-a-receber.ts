@@ -4,6 +4,7 @@ import { z } from "zod";
 import type { ToolEntry } from "../../catalog/types.js";
 import { queryContasAReceber } from "@/lib/reports/queries/financeiro.js";
 import { withFreshness } from "../../lib/freshness.js";
+import { enriquecerEnvelope } from "../../lib/with-responder.js";
 
 const inputSchema = z.object({
   participanteId: z.number().int().positive().optional(),
@@ -21,9 +22,19 @@ const tituloSchema = z.object({
   diasAtraso: z.number().int(),
 });
 
+// Onda 1.B: envelope canonico do agente Nex aplicado.
 const dados = z.object({
   titulos: z.array(tituloSchema),
   totalAReceber: z.number(),
+  _RESPOSTA: z.string().optional(),
+  _listaTruncada: z.boolean().optional(),
+  _DESTAQUE: z.record(z.string(), z.union([z.string(), z.number()])).optional(),
+  _agregado: z.record(z.string(), z.number().optional()).optional(),
+  topPorParticipante: z
+    .array(
+      z.object({ nome: z.string(), soma: z.number(), n: z.number().int() }),
+    )
+    .optional(),
 });
 
 const fonteStatus = z.object({
@@ -37,6 +48,7 @@ const outputSchema = z.union([
     estado: z.enum(["ok", "vazio"]),
     dados,
     atualizadoEm: z.string(),
+    atualizadoHa: z.string(),
     fonteStatus,
   }),
 ]);
@@ -65,8 +77,24 @@ export const financeiroContasAReceber: ToolEntry<Input, Output> = {
   inputSchemaShape: inputSchema.shape,
   inputSchema,
   outputSchema,
-  handler: (input, ctx) =>
-    withFreshness(ctx.prisma, ["fato_financeiro_titulo"], async () =>
-      shape(await queryContasAReceber(ctx.prisma, input, new Date())),
-    ),
+  handler: async (input, ctx) => {
+    const envelope = await withFreshness(
+      ctx.prisma,
+      ["fato_financeiro_titulo"],
+      async () =>
+        shape(await queryContasAReceber(ctx.prisma, input, new Date())),
+    );
+    if (envelope.estado === "preparando") return envelope;
+    return enriquecerEnvelope(envelope, "financeiro_contas_a_receber", {
+      destaque: {
+        totalAReceber: envelope.dados.totalAReceber,
+        contagem: envelope.dados.titulos.length,
+      },
+      titulos: envelope.dados.titulos,
+      agregado: {
+        soma: envelope.dados.totalAReceber,
+        contagem: envelope.dados.titulos.length,
+      },
+    });
+  },
 };

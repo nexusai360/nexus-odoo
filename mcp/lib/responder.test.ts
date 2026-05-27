@@ -9,7 +9,7 @@ import {
 
 // Helper para comparar strings ignorando NBSP vs espaço normal
 // (Intl.NumberFormat usa NBSP entre R$ e o número).
-const normSpaces = (s: string) => s.replace(/ /g, " ");
+const normSpaces = (s: string) => s.replace(/\s+/g, " ");
 
 describe("formatBRL", () => {
   it("formata em pt-BR com R$ e separadores", () => {

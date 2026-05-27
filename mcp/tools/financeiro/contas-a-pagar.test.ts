@@ -99,4 +99,33 @@ describe("financeiro_contas_a_pagar", () => {
     const viewer: UserContext = { userId: "u2", role: "viewer", domains: [] } as UserContext;
     expect(() => assertToolAllowed(financeiroContasAPagar as never, viewer)).toThrow();
   });
+
+  // Onda 1.B: envelope canonico aplicado.
+  it("retorna _RESPOSTA, _DESTAQUE, topPorParticipante e _agregado (envelope Onda 1.B)", async () => {
+    const now = new Date("2026-05-18T10:00:00Z");
+    const ctx = makeCtx();
+    (ctx.prisma.fatoBuildState.findMany as jest.Mock).mockResolvedValue([
+      { fato: "fato_financeiro_titulo", ultimoBuildAt: now },
+    ]);
+    (ctx.prisma.syncState.findMany as jest.Mock).mockResolvedValue([
+      { model: "finan.pagamento.divida", lastStatus: "ok", lastSnapshotAt: null, lastIncrementalAt: now },
+    ]);
+    (ctx.prisma.fatoFinanceiroTitulo.findMany as jest.Mock).mockResolvedValue([
+      { participanteNome: "Jds", numeroDocumento: "A", dataVencimento: new Date("2026-05-15"), vrSaldo: "600", vrTotal: "600" },
+      { participanteNome: "Jds", numeroDocumento: "B", dataVencimento: new Date("2026-05-16"), vrSaldo: "200", vrTotal: "200" },
+      { participanteNome: "Casa Ferolla", numeroDocumento: "C", dataVencimento: new Date("2026-05-17"), vrSaldo: "200", vrTotal: "200" },
+    ]);
+    const result = await financeiroContasAPagar.handler({}, ctx);
+    if (result.estado !== "preparando") {
+      expect(typeof result.dados._RESPOSTA).toBe("string");
+      expect(result.dados._RESPOSTA).toContain("Total em aberto a pagar");
+      expect(result.dados._RESPOSTA).toContain("Jds");
+      expect(result.dados._listaTruncada).toBe(false);
+      expect(result.dados._DESTAQUE?.totalAPagar).toBe(1000);
+      expect(result.dados._DESTAQUE?.contagem).toBe(3);
+      expect(result.dados.topPorParticipante?.[0]?.nome).toBe("Jds");
+      expect(result.dados.topPorParticipante?.[0]?.soma).toBe(800);
+      expect(result.dados._agregado?.soma).toBe(1000);
+    }
+  });
 });
