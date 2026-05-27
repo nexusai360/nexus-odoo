@@ -1,0 +1,221 @@
+{
+  "batchId": "0004",
+  "evaluatedAt": "2026-05-27T04:45:00.000Z",
+  "totals": {
+    "CORRETO": 18,
+    "PARCIAL": 3,
+    "ERRADO": 1,
+    "FORA_DE_ESCOPO": 3
+  },
+  "patterns": {
+    "acerto_objetividade": 13,
+    "acerto_modelo": 2,
+    "limitacao_real_declarada": 4,
+    "resposta_truncada": 1,
+    "dado_inventado": 1,
+    "fluxo_tool_incompleto": 2,
+    "pediu_clarificacao_desnecessaria": 1
+  },
+  "turnos": [
+    {
+      "turnoId": "d301b501-d9ec-4273-a539-b449ed667b5c",
+      "status": "CORRETO",
+      "patterns": ["acerto_objetividade"],
+      "razao": "Tool certa, listou vencidos com nome, valor e dias de atraso. Smartfit R$ 387.500 / 24 dias, AMAC R$ 8.085 / 37 dias, Yes R$ 500,48 / 37 dias e Intter 100 R$ 1.000,08 / 37 dias batem com o toolResults.",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "d3a00990-e622-477e-a030-881d39407158",
+      "status": "CORRETO",
+      "patterns": ["acerto_objetividade"],
+      "razao": "Resposta enxuta, parceiro Millenium Resort Residence com CNPJ, cidade/UF e papel (cliente+fornecedor) batem com toolResults. Freshness 11h substituido corretamente.",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "da0c0db1-cb80-419d-9340-76f92d1d7ff7",
+      "status": "CORRETO",
+      "patterns": ["acerto_objetividade", "acerto_modelo"],
+      "razao": "Periodo correto (ultimos 7 dias: 2026-05-21 a 2026-05-27), valor R$ 5.439.126,99 e 68 notas batem exatamente com o toolResults.",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "da343631-33d5-45e8-a5b7-7758fbedabb6",
+      "status": "CORRETO",
+      "patterns": ["acerto_objetividade", "acerto_modelo"],
+      "razao": "Calculo correto: R$ 38.074.843,78 / 27 dias = R$ 1.410.179,40. Periodo 01/05 a 27/05 condiz com 'mes corrente'.",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "dec8774c-0235-4ac0-b441-5664d93c9154",
+      "status": "PARCIAL",
+      "patterns": ["entendeu_mal_termo"],
+      "razao": "Usuario perguntou pelo codigo [1000362265] mas a tool retornou produto [1000097424] (Mola Espiral). A resposta diz 'item consultado' sem perceber a divergencia de codigo, e ainda omite o nome do produto encontrado.",
+      "sugestao_prompt": "Adicionar regra: ao chamar estoque_saldo_produto por codigo, comparar o codigo da resposta com o solicitado e sinalizar se forem diferentes.",
+      "correcao_factual": "nao_bate"
+    },
+    {
+      "turnoId": "df6ffcc5-007d-4306-bf9d-5f050924c94e",
+      "status": "FORA_DE_ESCOPO",
+      "patterns": ["limitacao_real_declarada"],
+      "razao": "Cruzamento de pedido em aberto + titulo vencido nao existe como tool. Agente usou registrar_lacuna e respondeu honestamente.",
+      "sugestao_prompt": null,
+      "correcao_factual": "nao_aplicavel"
+    },
+    {
+      "turnoId": "e0554a1b-037d-4a18-b269-51740c930f17",
+      "status": "PARCIAL",
+      "patterns": ["pediu_clarificacao_desnecessaria"],
+      "razao": "Sem contexto da conversa anterior, fazer clarificacao e razoavel, mas a lista de opcoes ('estoque, faturamento, pedidos, financeiro') sugere que poderia ter assumido o mesmo indicador da pergunta anterior. Como nao ha turno anterior referenciado aqui, mantenho PARCIAL leve.",
+      "sugestao_prompt": "Adicionar regra: em follow-up tipo 'e do mes passado?', recuperar o indicador da ultima resposta da mesma conversa antes de pedir clarificacao.",
+      "correcao_factual": "nao_aplicavel"
+    },
+    {
+      "turnoId": "e06fefb2-28bc-4069-9041-2c4a5cd3d60d",
+      "status": "PARCIAL",
+      "patterns": ["fluxo_tool_incompleto", "limitacao_real_declarada"],
+      "razao": "Usuario pediu armazens com o produto 102. Tool retornou numLocais=5 mas sem listar os locais. Agente respondeu honestamente 'nao tenho a lista', porem nao tentou outra tool com filtro por produto que detalhasse locais. Saldo total 16 e valor R$ 258.370,44 batem.",
+      "sugestao_prompt": "Adicionar regra: para 'quais armazens tem produto X', encadear estoque_saldo_produto com tool de detalhamento por local se existir, ou sinalizar gap especifico em vez de so silenciar.",
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "e1768723-1631-4742-9d6c-c9c491a9e7aa",
+      "status": "PARCIAL",
+      "patterns": ["resposta_truncada"],
+      "razao": "Usuario pediu top 20, agente entregou top 10. Numeros listados (R$ 216.500,65; R$ 149.447,46; R$ 149.074,02; etc) batem com as linhas do toolResults. Total imobilizado R$ 51.977.199,74 e 1.262 itens conferem.",
+      "sugestao_prompt": "Adicionar regra: quando usuario especifica limite (top N), entregar exatamente N itens; caso falte espaco no contexto, avisar e priorizar a quantidade pedida.",
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "e4d3503c-a6ba-4617-8230-062e82fcd464",
+      "status": "CORRETO",
+      "patterns": ["acerto_objetividade", "acerto_modelo"],
+      "razao": "Produto [99] T600X liderou com R$ 17.797.942,30 e 1.103 unidades, conforme primeira linha do toolResults. Periodo (mes corrente) coerente.",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "e63df160-2f7e-48f0-8d9a-3c52a882eab4",
+      "status": "CORRETO",
+      "patterns": ["acerto_objetividade"],
+      "razao": "33 produtos parados com R$ 220.824,71 imobilizados conferem com kpis do toolResults. Primeiras linhas (AS5046 6un 180d R$ 2.785,20; FUH08 etc) batem.",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "e9327584-c6c3-4c4c-bcdf-312a6961274f",
+      "status": "CORRETO",
+      "patterns": ["acerto_objetividade"],
+      "razao": "Produto inexistente retornou linhas=0. Resposta honesta 'nao encontrei registros' bate com o estado vazio.",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "eacf264f-71cd-4852-8415-103f8a4f7bd0",
+      "status": "FORA_DE_ESCOPO",
+      "patterns": ["limitacao_real_declarada"],
+      "razao": "'Pedidos em entrega atrasados' nao tem tool dedicada. Agente registrou lacuna e respondeu padrao de gap.",
+      "sugestao_prompt": null,
+      "correcao_factual": "nao_aplicavel"
+    },
+    {
+      "turnoId": "ed1f9532-a3a0-4809-978d-a1b6c631270e",
+      "status": "CORRETO",
+      "patterns": ["acerto_objetividade"],
+      "razao": "Tool financeiro_titulos_vencidos retornou titulos a_receber+a_pagar. Resposta filtrou explicitamente para clientes (a_receber). Smartfit, SAFRA, Opus 66 aparecem no toolResults (verificado por busca textual no payload truncado).",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "ef846f06-174e-4c0d-a665-ac7f08a17c71",
+      "status": "CORRETO",
+      "patterns": ["acerto_objetividade"],
+      "razao": "1.571 pedidos / 47 etapas / R$ 371.451.323,03 batem com _agregado do toolResults. Top etapas (Emite NF Consumidor Final 385 e R$ 35.877.557,68; Input financeiro 97 e R$ 31.365.738,22; Confirmado 70 e R$ 143.411.671,67; Confirmada 70 e R$ 13.326.001,97) batem com linhas amostradas.",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "f29f7cb4-904a-45d8-bcb0-ffc4af1f936f",
+      "status": "CORRETO",
+      "patterns": ["acerto_objetividade", "limitacao_real_declarada"],
+      "razao": "Nao ha conta marcada como 'principal'; agente declarou limitacao e ofereceu fallback (maior saldo positivo: Ks Comercio R$ 875.957,69), que bate com o toolResults. Total -R$ 24.242.300,29 confere.",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "f2ebae9c-f63d-4568-91ba-d8d9f1b43df5",
+      "status": "CORRETO",
+      "patterns": ["acerto_objetividade"],
+      "razao": "Periodo (hoje=27/05) correto, 0 notas e R$ 0 batem exatamente. Aviso de freshness 11h presente.",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "f406bdea-e3af-45d1-8319-0119e8e3e8fa",
+      "status": "CORRETO",
+      "patterns": ["acerto_objetividade"],
+      "razao": "Rart Equipamentos para Ginastica SLU, Paicandu/PR, CNPJ BR-04.028.797/0001-96 batem com linhas do toolResults.",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "f52b8946-a528-4ba3-965a-5004343002b1",
+      "status": "CORRETO",
+      "patterns": ["acerto_objetividade"],
+      "razao": "Saldo consolidado -R$ 24.242.300,29 em 8 contas confere com agregado do toolResults.",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "f6aab802-2ac4-438e-b1c9-5e44bd69d761",
+      "status": "CORRETO",
+      "patterns": ["acerto_objetividade"],
+      "razao": "Termo XPTOXYZ retornou 0 linhas; resposta 'nao encontrei' bate com o estado.",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "f9192e0d-d9fb-43ae-a28d-779865fda5c6",
+      "status": "FORA_DE_ESCOPO",
+      "patterns": ["limitacao_real_declarada"],
+      "razao": "Projecao futura de contas a receber nao esta nas tools. registrar_lacuna acionado, resposta padrao de gap. Nota: poderia ter chamado financeiro_contas_a_receber filtrando por janela de 30 dias, entao ha sinal fraco de gap_de_orquestracao, mas como nao existe filtro de previsao, mantenho FORA_DE_ESCOPO.",
+      "sugestao_prompt": null,
+      "correcao_factual": "nao_aplicavel"
+    },
+    {
+      "turnoId": "fb017828-ad30-462e-8a1d-784e07fea289",
+      "status": "ERRADO",
+      "patterns": ["dado_inventado", "fluxo_tool_incompleto"],
+      "razao": "Tool registrar_lacuna retornou redirect para comercial_pedidos_por_vendedor, mas o agente NAO chamou essa tool no turno e mesmo assim respondeu '19 vendedores' com lista de 10 nomes. Nenhum desses dados vem do toolResults visivel deste turno.",
+      "sugestao_prompt": "Adicionar regra: ao receber redirecionamento de registrar_lacuna, obrigatoriamente executar a tool sugerida antes de responder, e nao inventar contagem ou nomes a partir de memoria.",
+      "correcao_factual": "nao_bate"
+    },
+    {
+      "turnoId": "fbe6421b-5efe-43f0-ae7a-575d4892f006",
+      "status": "CORRETO",
+      "patterns": ["acerto_objetividade"],
+      "razao": "Pedidos 270 (R$ 206.765 / 513d), 266 (R$ 274.729,33 / 485d), 273 (R$ 339.390,40 / 456d) batem com toolResults. Os demais (354/368/444) provavelmente vem do payload truncado mas formato esta coerente. Tool correta para 'pedidos com prazo estourado'.",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "fc8ea8af-9071-4fb8-bf22-c99a41937dc9",
+      "status": "CORRETO",
+      "patterns": ["acerto_objetividade", "limitacao_real_declarada"],
+      "razao": "Plano de contas do passivo retornou exatamente as 3 contas (2, 2.1, 2.2) listadas na resposta. Aviso correto de que nao ha lancamentos contabeis foi repassado fielmente do toolResults.",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "fe6a7974-1f2d-41d9-811e-04694a760e6c",
+      "status": "CORRETO",
+      "patterns": ["acerto_objetividade"],
+      "razao": "Top 10 produtos faturados com valores ([99] R$ 17.797.942,30; [28] R$ 3.984.523,64; [391] R$ 3.457.566,91; etc) batem exatamente com toolResults. Soma R$ 40.597.041,12 confere com _agregado.",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    }
+  ]
+}

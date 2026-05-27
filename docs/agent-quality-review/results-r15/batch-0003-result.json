@@ -1,0 +1,220 @@
+{
+  "batchId": "batch-0003",
+  "evaluatedAt": "2026-05-27T03:58:00.000Z",
+  "totals": {
+    "CORRETO": 19,
+    "PARCIAL": 2,
+    "ERRADO": 0,
+    "FORA_DE_ESCOPO": 4
+  },
+  "patterns": {
+    "acerto_objetividade": 19,
+    "acerto_encadeamento": 1,
+    "acerto_modelo": 3,
+    "limitacao_real_declarada": 4,
+    "formato_quebrado": 1,
+    "dado_inventado": 1
+  },
+  "turnos": [
+    {
+      "turnoId": "89482b2a-84dc-4431-8e43-d981af975401",
+      "status": "CORRETO",
+      "patterns": ["acerto_objetividade", "acerto_modelo"],
+      "razao": "Tool certa com período do mês corrente, lista completa, soma do top 10 (R$ 40.597.041,12) confere com os valores retornados. Resposta bem formatada.",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "8f61e6a7-dac9-4991-8335-eea9fbd12c1a",
+      "status": "FORA_DE_ESCOPO",
+      "patterns": ["limitacao_real_declarada"],
+      "razao": "Filtro de pedidos sem vendedor não existe nas tools atuais. Registrou lacuna corretamente e devolveu resposta honesta. Limitação real.",
+      "sugestao_prompt": null,
+      "correcao_factual": "nao_aplicavel"
+    },
+    {
+      "turnoId": "92415d34-94df-4bea-a1be-97fc96b43072",
+      "status": "CORRETO",
+      "patterns": ["acerto_objetividade"],
+      "razao": "Tool certa, saldo consolidado (-R$ 24.242.300,29) e contagem (8 contas) batem com o toolResult.",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "950cda3f-e5c1-4abb-8842-585ab513d87f",
+      "status": "CORRETO",
+      "patterns": ["acerto_objetividade"],
+      "razao": "Tool certa com período de hoje (2026-05-27), zero notas/zero faturado batem com o retorno. Tom adequado para a pergunta informal.",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "9513be54-298f-44c6-8e6f-981b09a6c972",
+      "status": "CORRETO",
+      "patterns": ["acerto_objetividade"],
+      "razao": "Mesma situação do turno anterior: período correto, zero notas/zero faturado conferem.",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "9ab323e3-97ef-467a-a903-d2bb6ed86227",
+      "status": "CORRETO",
+      "patterns": ["acerto_objetividade"],
+      "razao": "Tool certa filtrando por 'passivo', 3 contas retornadas e listadas corretamente. Resposta enxuta.",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "9dee4445-3edc-4c01-972e-37f0e8b77d62",
+      "status": "CORRETO",
+      "patterns": ["acerto_objetividade", "acerto_modelo"],
+      "razao": "Calculou ticket médio dividindo valorTotal por quantidade. Icaro Victor Lucena (5.654.404,42/4 = R$ 1.413.601,11) é de fato o maior ticket médio entre os retornados. Cálculo confirmado.",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "9dfa1f28-0d6b-4ce8-8e04-878d0dfeb844",
+      "status": "FORA_DE_ESCOPO",
+      "patterns": ["limitacao_real_declarada"],
+      "razao": "Pergunta cruza caixa com folha de pagamento, não há tool de RH. Registrou lacuna e respondeu honestamente.",
+      "sugestao_prompt": null,
+      "correcao_factual": "nao_aplicavel"
+    },
+    {
+      "turnoId": "9f0c4b63-6117-4028-b411-218d5efef851",
+      "status": "FORA_DE_ESCOPO",
+      "patterns": ["limitacao_real_declarada"],
+      "razao": "Não há tool de pedidos em entrega/SLA logístico. Lacuna registrada, resposta honesta.",
+      "sugestao_prompt": null,
+      "correcao_factual": "nao_aplicavel"
+    },
+    {
+      "turnoId": "a44e16f2-f3a5-4168-9a3c-eab0df3164fe",
+      "status": "PARCIAL",
+      "patterns": ["formato_quebrado"],
+      "razao": "Tool retornou lista grande e foi truncada por tamanho, sem campo de total agregado consolidado. Agente declarou honestamente que não conseguiu consolidar. Falha real é da tool não devolver total — não do agente. Resposta fica curta demais e sem nenhuma informação útil para o usuário.",
+      "sugestao_prompt": "Adicionar regra: 'Quando contas_a_receber vier truncado sem total, listar os N maiores títulos disponíveis na resposta e avisar que o total exato exige consulta direcionada'.",
+      "correcao_factual": "nao_aplicavel"
+    },
+    {
+      "turnoId": "a5935b95-61de-4a3b-963c-5ab313525f09",
+      "status": "CORRETO",
+      "patterns": ["acerto_objetividade"],
+      "razao": "Cliente literal 'x' sem identificação — pedir nome/CNPJ é apropriado. Não há como assumir default.",
+      "sugestao_prompt": null,
+      "correcao_factual": "nao_aplicavel"
+    },
+    {
+      "turnoId": "a6ca8c08-86c4-4314-9dd7-312f6c6ef3ec",
+      "status": "CORRETO",
+      "patterns": ["acerto_objetividade"],
+      "razao": "Tool certa, valores citados (Smartfit 387.500, Spe Opus 148.500, Vexa 34.319,57, Lins 32.399,30 etc.) e dias de atraso conferem com o toolResult. Reconheceu corte por volume.",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "a8fc5f3f-f9ea-4ed5-9e86-275680257c00",
+      "status": "CORRETO",
+      "patterns": ["acerto_objetividade"],
+      "razao": "Usuário mandou apenas '?'. Resposta convida a especificar o domínio. Comportamento adequado.",
+      "sugestao_prompt": null,
+      "correcao_factual": "nao_aplicavel"
+    },
+    {
+      "turnoId": "aadf421f-6a72-4813-bdb6-56928e751e19",
+      "status": "CORRETO",
+      "patterns": ["acerto_objetividade"],
+      "razao": "Tool certa, total -R$ 24.242.300,29 e maiores/menores saldos batem com o toolResult.",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "abf9f22f-1a1d-49b1-b5c8-2189a21cfba9",
+      "status": "CORRETO",
+      "patterns": ["acerto_objetividade"],
+      "razao": "Buscou por 'transportadora' e listou os 10 resultados corretamente. Nomes/UFs/CNPJs conferem.",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "b0274cb0-920c-47c4-a353-c095db0cd04a",
+      "status": "CORRETO",
+      "patterns": ["acerto_objetividade", "acerto_encadeamento"],
+      "razao": "Filtrou positivas no client side, somou corretamente R$ 1.610.274,40 (confirmado por cálculo independente), listou as 5 em ordem decrescente.",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "b1e3d589-9600-4141-a9d9-14dca2803901",
+      "status": "CORRETO",
+      "patterns": ["acerto_objetividade"],
+      "razao": "Top 10 títulos por valor: Smartfit (387.500), Jht SP (322.236,75), Jht DF (156.549,87), Smartfit (145.602), Vale dos Passaros (33.827,77), Altos do Umarizal (29.129,14), Peixoto (16.666,67) conferem com o toolResult.",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "b4c940a1-9d30-4853-a320-2d43c9eaa29f",
+      "status": "CORRETO",
+      "patterns": ["acerto_objetividade"],
+      "razao": "Total -R$ 24.242.300,29, 8 contas, maiores positivos/negativos batem com o toolResult. Resposta bem estruturada.",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "b898e94e-9aaf-4505-84fb-a4aab6116a16",
+      "status": "PARCIAL",
+      "patterns": ["dado_inventado"],
+      "razao": "Erro de leitura do toolResult: agregado_quantidade.soma é 6.325 (total geral, incluindo 270 sem UF), não '6.325 com UF informada'. O correto seria 6.055 com UF e 270 sem UF, total 6.325. A lista por UF está correta.",
+      "sugestao_prompt": "Adicionar regra: 'Em cadastro_parceiros_por_uf, distinguir entre total absoluto (agregado.soma) e total com UF informada (soma das linhas com uf != null)'.",
+      "correcao_factual": "nao_bate"
+    },
+    {
+      "turnoId": "b8c77b42-876a-4b5f-9ad4-e82174407d6b",
+      "status": "CORRETO",
+      "patterns": ["acerto_objetividade"],
+      "razao": "Período de 30 dias correto (28/04 a 27/05/2026), top 10 valores e soma R$ 43.166.104,36 conferem.",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "b9465613-a6be-4ab5-93bd-9b89c4c26860",
+      "status": "CORRETO",
+      "patterns": ["acerto_objetividade"],
+      "razao": "Não existe conceito de 'banco principal' nas tools. Respondeu honestamente e ofereceu total consolidado e maior saldo como contexto. Valores conferem.",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "c0b95b33-b6cd-4ed4-97cf-733c3d2061a7",
+      "status": "CORRETO",
+      "patterns": ["acerto_objetividade"],
+      "razao": "Tool certa, percentuais e valores por família conferem. Destacou bem a concentração de 93,75% em JOHNSON.",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "c1ccae96-2350-42a3-920f-07032fab1701",
+      "status": "FORA_DE_ESCOPO",
+      "patterns": ["limitacao_real_declarada"],
+      "razao": "Tool retornou estado vazio (0 entradas na última semana). Resposta honesta refletindo o dado.",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "c449add7-d507-4d18-9418-44f711f9aa47",
+      "status": "CORRETO",
+      "patterns": ["acerto_objetividade"],
+      "razao": "Tool certa, 2.169 pessoas físicas confere com totalPessoasFisicas do toolResult. Resposta enxuta.",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "c44bfe18-4056-4c5b-9de4-9f660868d2ab",
+      "status": "CORRETO",
+      "patterns": ["acerto_objetividade", "acerto_modelo"],
+      "razao": "Extraiu '102' do código entre colchetes, buscou pelo termo, achou produto único. Saldo 16 unidades, R$ 258.370,44 e 5 localizações batem com o toolResult.",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    }
+  ]
+}

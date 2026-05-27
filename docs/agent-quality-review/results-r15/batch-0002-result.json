@@ -1,0 +1,222 @@
+{
+  "batchId": "0002",
+  "evaluatedAt": "2026-05-27T03:57:00.000Z",
+  "totals": {
+    "CORRETO": 15,
+    "PARCIAL": 5,
+    "ERRADO": 1,
+    "FORA_DE_ESCOPO": 4
+  },
+  "patterns": {
+    "acerto_objetividade": 14,
+    "limitacao_real_declarada": 5,
+    "resposta_truncada": 4,
+    "dado_inventado": 2,
+    "acerto_modelo": 1,
+    "fluxo_tool_incompleto": 1,
+    "tool_errada": 1,
+    "acerto_encadeamento": 1
+  },
+  "turnos": [
+    {
+      "turnoId": "4cae38c4-990b-4ff2-8c12-336c843ca047",
+      "status": "CORRETO",
+      "patterns": ["acerto_objetividade"],
+      "razao": "Tool certa (financeiro_fluxo_caixa) com periodo da semana corrente. Resposta cita previsto R$ 320.264,20 e realizado R$ 0,00 que batem com o toolResults.",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "4cfa2334-12b0-416d-b2f7-dcfc42435f39",
+      "status": "CORRETO",
+      "patterns": ["acerto_objetividade"],
+      "razao": "Tool comercial_pedidos_atrasados certa. Lista os pedidos mais antigos com valores, vencimentos e dias de atraso conforme retornado pela tool (pedido 270 venc 30/12/2024, 513 dias, R$ 206.765,00 bate).",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "4d550a64-b604-4448-bcfb-17cfa30bbb3f",
+      "status": "PARCIAL",
+      "patterns": ["limitacao_real_declarada"],
+      "razao": "Tool cadastro_buscar_parceiro retornou 14 nomes; resposta lista os nomes corretamente e declara honestamente que o status de ativo nao veio. Ainda assim a pergunta era 'ativas' e a tool generica nao traz esse filtro.",
+      "sugestao_prompt": "Mapear 'transportadoras ativas' para tool dedicada (cadastro_listar_por_categoria + filtro ativo) ou registrar lacuna em vez de busca textual.",
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "50ac39b1-d599-41e5-8dda-4ed11f7fed50",
+      "status": "CORRETO",
+      "patterns": ["acerto_objetividade"],
+      "razao": "financeiro_caixa_periodo do dia 27/05 retornou saida=0 e saldo=0; resposta repete corretamente R$ 0,00.",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "522f15bb-f710-4eca-b542-ed708a7fdf78",
+      "status": "CORRETO",
+      "patterns": ["acerto_objetividade", "acerto_modelo"],
+      "razao": "Pergunta sobre saldo por marca; tool estoque_concentracao retornou campo marca; resposta usa os valores corretos (MATRIX R$ 45.613.823,65 / 87,76% bate exatamente).",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "56866d0f-6462-4d24-b19c-b623084e62d2",
+      "status": "FORA_DE_ESCOPO",
+      "patterns": ["limitacao_real_declarada"],
+      "razao": "Top pedidos abertos por valor nao existe como tool; o agente registrou lacuna e respondeu com a sugestao oficial. Gap de produto, nao de agente.",
+      "sugestao_prompt": null,
+      "correcao_factual": "nao_aplicavel"
+    },
+    {
+      "turnoId": "5c11af6a-4362-4773-a7cd-084f995acfd4",
+      "status": "PARCIAL",
+      "patterns": ["fluxo_tool_incompleto"],
+      "razao": "Tool retornou 10 filiais do Smartfit; resposta apenas lista, sem encadear cadastro_detalhar_parceiro para entregar o 'cadastro completo' pedido (endereco, contato, condicao de pagto etc.). Ficou em listagem rasa.",
+      "sugestao_prompt": "Adicionar regra: 'Pergunta sobre cadastro completo de cliente? Apos cadastro_buscar_parceiro, se houver match unico ou top1 dominante, encadear cadastro_detalhar_parceiro para trazer dados completos'.",
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "5e80ee7b-2638-45a4-b9ad-8799ec12d485",
+      "status": "PARCIAL",
+      "patterns": ["resposta_truncada", "dado_inventado"],
+      "razao": "Resposta cita 'Smartfit R$ 533.102,00' como maior devedor. O nome Smartfit nao aparece nas primeiras paginas do toolResults visivel (predomina Edificio Porto Farol), e a propria IA admite que 'a listagem veio truncada'. Numero nao confirmavel contra a amostra disponivel.",
+      "sugestao_prompt": "Adicionar regra: 'Quando contas a receber retorna lista grande, usar financeiro_titulos_vencidos ou financeiro_top_devedores ao inves de inferir top devedor de amostra'.",
+      "correcao_factual": "nao_bate"
+    },
+    {
+      "turnoId": "6171cf27-d08c-44ae-b358-dbdbfc0eb453",
+      "status": "ERRADO",
+      "patterns": ["dado_inventado", "tool_errada"],
+      "razao": "Pergunta era 'lista de fornecedores ativos'. Tool chamada (cadastro_buscar_parceiro com termo='.') nao retorna agregado de totais, retorna apenas linhas. Resposta declara '754 fornecedores ativos e 0 inativos' (numeros que so vem de cadastro_contar_parceiros, nao chamada aqui). Alem disso a tool nao filtra por fornecedor: a amostra mostra Matrizes/Filiais sem garantia de serem fornecedores.",
+      "sugestao_prompt": "Adicionar regra: 'Pergunta lista de fornecedores? Usar tool cadastro_listar_parceiros com filtro ehFornecedor=true, e nao buscar por termo generico'.",
+      "correcao_factual": "nao_bate"
+    },
+    {
+      "turnoId": "62351f9e-e5fc-4f64-a305-0b1720bae73f",
+      "status": "CORRETO",
+      "patterns": ["acerto_objetividade"],
+      "razao": "Tool estoque_valor_armazem retornou valorTotal R$ 51.977.199,74 em 7 armazens. Resposta bate exatamente.",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "69a66f53-2604-4e50-99ae-f8ab44c9c920",
+      "status": "CORRETO",
+      "patterns": ["acerto_objetividade"],
+      "razao": "comercial_pedidos_por_vendedor com mes corrente; 15 vendedores listados na tool; valores por vendedor batem (Marcelo 100 ped R$ 21.134.820,57, Jonatas 71 R$ 11.106.092,06 etc). Totais agregados vem do _agregado.",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "6bcf14d5-0054-4448-bf35-7b1cc88a2b52",
+      "status": "CORRETO",
+      "patterns": ["acerto_objetividade"],
+      "razao": "Tool fiscal_faturamento_periodo retornou 775 notas e R$ 38.074.843,78; resposta repete exatamente.",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "6db50404-a556-4cff-959c-9495623ffba6",
+      "status": "CORRETO",
+      "patterns": ["acerto_objetividade"],
+      "razao": "estoque_concentracao tem campo marca; resposta cita MATRIX 87,76% e top 3 = 94,65% que batem (87.76+5.04+1.85=94.65).",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "6f91c37a-e297-4553-9e23-3dbbed51b7c2",
+      "status": "CORRETO",
+      "patterns": ["acerto_objetividade"],
+      "razao": "contabil_plano_de_contas retornou 3 contas com 'bancos' e codigos batem (1.1.1.2.02, 1.2.1.1.01, 1.2.1.1.01.000001).",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "7808cd12-f9f8-46c5-b8ac-daa7f9c25bef",
+      "status": "CORRETO",
+      "patterns": ["acerto_objetividade"],
+      "razao": "cadastro_contar_parceiros retornou totalClientesAtivos=6325; resposta repete corretamente.",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "78e75e1c-04dc-40f7-ba58-55548fc8ce25",
+      "status": "CORRETO",
+      "patterns": ["acerto_encadeamento"],
+      "razao": "Resumo financeiro chamou 5 tools (saldo_contas, caixa_periodo, contas_a_receber, contas_a_pagar, titulos_vencidos). Numeros citados batem: entradas 13.139.706,09 / saidas 18.582.222,67 / saldo -5.442.516,58 vem de caixa_periodo; saldo consolidado -24.242.300,29 confere com soma das 8 contas.",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "7a4601d8-b144-45ba-b2a7-97ddc15fcdc0",
+      "status": "CORRETO",
+      "patterns": ["acerto_objetividade"],
+      "razao": "estoque_entradas_saidas retornou estado=vazio para 18-24/05; resposta diz honestamente nao encontrou saidas no periodo correto.",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "7ae133c9-5de9-4fc0-aab6-45295324343c",
+      "status": "PARCIAL",
+      "patterns": ["resposta_truncada"],
+      "razao": "fiscal_notas_emitidas retornou linhas com sucesso, mas a IA respondeu 'nao consegui obter o total exato agora' e parou. Resposta truncada e desistencia sem entregar o total que estaria no _agregado/_DESTAQUE da tool.",
+      "sugestao_prompt": "Adicionar regra: 'Quando tool retornar com estado=ok e _DESTAQUE/_agregado preenchido, NUNCA dizer nao consegui; usar contagemLinhas ou totalNotas como total autoritativo'.",
+      "correcao_factual": "nao_aplicavel"
+    },
+    {
+      "turnoId": "7baeaf5c-9c34-4bf3-841b-2fb2ffacd0ed",
+      "status": "FORA_DE_ESCOPO",
+      "patterns": ["limitacao_real_declarada"],
+      "razao": "Total de impostos pagos nao existe como tool; registrou lacuna e devolveu a respostaSugerida com alternativas. Gap de produto.",
+      "sugestao_prompt": null,
+      "correcao_factual": "nao_aplicavel"
+    },
+    {
+      "turnoId": "7fce7339-5dc0-4011-bf0a-6463e4fb4693",
+      "status": "CORRETO",
+      "patterns": ["acerto_objetividade"],
+      "razao": "Pergunta conceitual (diferenca entre receber e pagar). Resposta direta e correta, sem necessidade de tool.",
+      "sugestao_prompt": null,
+      "correcao_factual": "nao_aplicavel"
+    },
+    {
+      "turnoId": "8059cc4f-76fe-4606-8d1e-0fbad79254a9",
+      "status": "CORRETO",
+      "patterns": ["acerto_objetividade"],
+      "razao": "fiscal_produtos_faturados com limite=5 e mes corrente; todos os 5 produtos, quantidades e valores batem exatamente com o toolResults. Total dos 5 (30.540.113,06) coerente com a soma dos valoresTotais.",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "80746867-3bcd-4afb-b9a5-12209d1ac0d1",
+      "status": "CORRETO",
+      "patterns": ["acerto_objetividade"],
+      "razao": "estoque_produtos_parados retornou kpis totalParados=1262 e valorImobilizado=51.977.199,74; resposta repete corretamente.",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "80c5dddc-1395-4daa-bf97-ea9d4364c0e8",
+      "status": "FORA_DE_ESCOPO",
+      "patterns": ["limitacao_real_declarada"],
+      "razao": "Faturamento mes a mes do ano corrente nao tem tool; registrou lacuna e devolveu sugestao oficial. Gap de produto.",
+      "sugestao_prompt": null,
+      "correcao_factual": "nao_aplicavel"
+    },
+    {
+      "turnoId": "84a30d9e-247f-496c-860a-4658036e3ae7",
+      "status": "PARCIAL",
+      "patterns": ["resposta_truncada"],
+      "razao": "financeiro_contas_a_pagar retornou lista de titulos; IA desistiu dizendo 'nao consegui obter o total consolidado'. Provavelmente o _agregado/_DESTAQUE da tool tinha o total, e mesmo se nao, somar vrSaldo era trivial.",
+      "sugestao_prompt": "Adicionar regra: 'Se a tool de contas_a_pagar/receber retornar titulos, sempre somar vrSaldo localmente para apresentar o total, mesmo sem _agregado'.",
+      "correcao_factual": "nao_aplicavel"
+    },
+    {
+      "turnoId": "88316781-466a-4426-80cf-aeb856117d11",
+      "status": "FORA_DE_ESCOPO",
+      "patterns": ["limitacao_real_declarada", "resposta_truncada"],
+      "razao": "Liquidez imediata como indicador composto nao existe (registrou lacuna). Gap legitimo. Porem a resposta final corta apos 'Posso te dar os componentes pra voce avaliar:' sem listar os componentes prometidos (sugestoesRelacionadas).",
+      "sugestao_prompt": "Adicionar regra: 'Quando registrar_lacuna retornar sugestoesRelacionadas, listar todas elas como bullets na resposta'.",
+      "correcao_factual": "nao_aplicavel"
+    }
+  ]
+}

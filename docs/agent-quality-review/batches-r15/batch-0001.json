@@ -1,0 +1,670 @@
+{
+  "batchId": "0001",
+  "createdAt": "2026-05-27T03:57:25.811Z",
+  "turnos": [
+    {
+      "turnoId": "04168089-064e-4a15-8664-2b0f67eed4f8",
+      "conversationId": "2302aad0-2585-4f0c-8eb2-9826eed153ce",
+      "userMessageId": "67193cc6-e587-4ea7-ae06-475292fb51f4",
+      "userMessage": "Tem cadastro do CONDOMINIO ESTRELAS DO MAR?",
+      "toolMessageId": "89c340c4-5203-4421-bf33-e340fed5580a",
+      "toolCalls": [
+        {
+          "id": "call_DpKFzI8lWPOe9fjLzuxzlLaj",
+          "name": "cadastro_buscar_parceiro",
+          "arguments": {
+            "termo": "CONDOMINIO ESTRELAS DO MAR",
+            "limite": 5
+          }
+        }
+      ],
+      "toolResults": {
+        "call_DpKFzI8lWPOe9fjLzuxzlLaj": "{\"estado\":\"ok\",\"dados\":{\"linhas\":[{\"odooId\":16234,\"nome\":\"CONDOMINIO ESTRELAS DO MAR\",\"documento\":\"BR-10.624.805/0001-60\",\"ehCliente\":true,\"ehFornecedor\":false,\"uf\":\"Ceará (BR)\",\"cidade\":\"Fortaleza\"}]},\"atualizadoEm\":\"2026-05-26T17:25:02.144Z\",\"atualizadoHa\":\"10h\",\"fonteStatus\":{\"status\":\"ok\",\"ultimaSyncEm\":\"2026-05-26T17:26:21.963Z\"},\"_DESTAQUE\":{\"contagemLinhas\":1},\"_INSTRUCAO\":\"Use os valores em _DESTAQUE como totais autoritativos. NUNCA declare 'lista veio cortada/incompleta/sem somatorio' se _DESTAQUE tem o total.\"}"
+      },
+      "finalMessageId": "04168089-064e-4a15-8664-2b0f67eed4f8",
+      "finalMessage": "Sim. Encontrei **CONDOMINIO ESTRELAS DO MAR** como **cliente**, em **Fortaleza/CE**, com documento **BR-10.624.805/0001-60**. O cadastro está atualizado há **10h**.",
+      "model": "gpt-5.4-mini",
+      "tokensInput": 12131,
+      "tokensOutput": 90,
+      "durationMs": 1760,
+      "createdAt": "2026-05-27T03:38:07.374Z",
+      "primaryTool": "cadastro_buscar_parceiro"
+    },
+    {
+      "turnoId": "1037ce1e-8c84-4330-b018-21662ffc0d46",
+      "conversationId": "a31d8a57-bde0-4cc9-887a-fab43c0b3c12",
+      "userMessageId": "6d7a62b2-e289-4a76-833a-7bac7150c9cc",
+      "userMessage": "Top 10 estados com mais parceiros",
+      "toolMessageId": "6581e0b2-d2f4-4f48-b4a6-0ee6bea16c01",
+      "toolCalls": [
+        {
+          "id": "call_AiZqbdU6jXvDDoDWKk7BG1C6",
+          "name": "cadastro_parceiros_por_uf",
+          "arguments": {
+            "apenasClientes": false
+          }
+        }
+      ],
+      "toolResults": {
+        "call_AiZqbdU6jXvDDoDWKk7BG1C6": "{\"estado\":\"ok\",\"dados\":{\"linhas\":[{\"uf\":\"Distrito Federal (BR)\",\"quantidade\":2351},{\"uf\":\"Goiás (BR)\",\"quantidade\":620},{\"uf\":\"Bahia (BR)\",\"quantidade\":537},{\"uf\":\"Minas Gerais (BR)\",\"quantidade\":517},{\"uf\":null,\"quantidade\":459},{\"uf\":\"São Paulo (BR)\",\"quantidade\":404},{\"uf\":\"Ceará (BR)\",\"quantidade\":336},{\"uf\":\"Sergipe (BR)\",\"quantidade\":276},{\"uf\":\"Alagoas (BR)\",\"quantidade\":179},{\"uf\":\"Paraíba (BR)\",\"quantidade\":152},{\"uf\":\"Rio de Janeiro (BR)\",\"quantidade\":119},{\"uf\":\"Rio Grande do Norte (BR)\",\"quantidade\":111},{\"uf\":\"Piauí (BR)\",\"quantidade\":105},{\"uf\":\"Pará (BR)\",\"quantidade\":73},{\"uf\":\"Maranhão (BR)\",\"quantidade\":68},{\"uf\":\"Paraná (BR)\",\"quantidade\":47},{\"uf\":\"Pernambuco (BR)\",\"quantidade\":40},{\"uf\":\"Mato Grosso (BR)\",\"quantidade\":32},{\"uf\":\"Mato Grosso do Sul (BR)\",\"quantidade\":27},{\"uf\":\"Espírito Santo (BR)\",\"quantidade\":23},{\"uf\":\"Rio Grande do Sul (BR)\",\"quantidade\":22},{\"uf\":\"Santa Catarina (BR)\",\"quantidade\":22},{\"uf\":\"Tocantins (BR)\",\"quantidade\":20},{\"uf\":\"Amazonas (BR)\",\"quantidade\":10},{\"uf\":\"Rondônia (BR)\",\"quantidade\":9},{\"uf\":\"Acre (BR)\",\"quantidade\":5},{\"uf\":\"Roraima (BR)\",\"quantidade\":2},{\"uf\":\"Amapá (BR)\",\"quantidade\":1}],\"_agregado\":{\"contagem\":28,\"agregado_quantidade\":{\"soma\":6567,\"media\":234.54,\"min\":1,\"max\":2351,\"contagemValidos\":28}}},\"atualizadoEm\":\"2026-05-26T17:25:02.144Z\",\"atualizadoHa\":\"10h\",\"fonteStatus\":{\"status\":\"ok\",\"ultimaSyncEm\":\"2026-05-26T17:26:21.963Z\"},\"_DESTAQUE\":{\"contagemLinhas\":28},\"_INSTRUCAO\":\"Use os valores em _DESTAQUE como totais autoritativos. NUNCA declare 'lista veio cortada/incompleta/sem somatorio' se _DESTAQUE tem o total.\"}"
+      },
+      "finalMessageId": "1037ce1e-8c84-4330-b018-21662ffc0d46",
+      "finalMessage": "Top 10 UFs com mais parceiros, considerando todos os cadastros e **459 sem UF informado**:\n\n1. **Distrito Federal** — **2.351**\n2. **Goiás** — **620**\n3. **Bahia** — **537**\n4. **Minas Gerais** — **517**\n5. **São Paulo** — **404**\n6. **Ceará** — **336**\n7. **Sergipe** — **276**\n8. **Alagoas** — **179**\n9. **Paraíba** — **152**\n10. **Rio de Janeiro** — **119**",
+      "model": "gpt-5.4-mini",
+      "tokensInput": 12482,
+      "tokensOutput": 640,
+      "durationMs": 8803,
+      "createdAt": "2026-05-27T03:35:31.152Z",
+      "primaryTool": "cadastro_parceiros_por_uf"
+    },
+    {
+      "turnoId": "11dbbf43-27d9-446e-b4d0-861b4f8895f8",
+      "conversationId": "e21e8a65-d988-4928-b335-d8c538274207",
+      "userMessageId": "e717a52c-4b84-4c2e-89b8-b87779e60140",
+      "userMessage": "Parcelas vencidas a receber",
+      "toolMessageId": "fe1e8a47-476c-4a58-b16b-44fabf440bbb",
+      "toolCalls": [
+        {
+          "id": "call_iV8LRKQD16xaENgjmcQnIYyJ",
+          "name": "financeiro_titulos_vencidos",
+          "arguments": {}
+        }
+      ],
+      "toolResults": {
+        "call_iV8LRKQD16xaENgjmcQnIYyJ": "{\"estado\":\"ok\",\"dados\":{\"titulos\":[{\"tipo\":\"a_pagar\",\"participanteNome\":\"JHT Brasília - Matriz DF 07.390.039/0001-01 - JHT Brasília Com. de Produtos e Equipamentos Esportivos Ltda [07‍.390‍.039‍/0001‑01] \",\"numeroDocumento\":\"1-2612-001/1\",\"dataVencimento\":\"2019-09-03T03:00:00.000Z\",\"vrSaldo\":80,\"vrTotal\":80,\"diasAtraso\":2458},{\"tipo\":\"a_pagar\",\"participanteNome\":\"Jds Comércio - Matriz DF 18.282.961/0001-00 - Jds Comércio de Produtos e Equipamentos Esportivos Ltda [18‍.282‍.961‍/0001‑00] \",\"numeroDocumento\":\"1-11313-1/1\",\"dataVencimento\":\"2025-11-27T03:00:00.000Z\",\"vrSaldo\":1204.21,\"vrTotal\":1204.21,\"diasAtraso\":181},{\"tipo\":\"a_pagar\",\"participanteNome\":\"Reinaldo Leonardeli - 19. 928. 550 Reinaldo Leonardeli [19‍.928‍.550‍/0001‑01] \",\"numeroDocumento\":\"asasdas\",\"dataVencimento\":\"2025-12-16T03:00:00.000Z\",\"vrSaldo\":1000,\"vrTotal\":1000,\"diasAtraso\":162},{\"tipo\":\"a_pagar\",\"participanteNome\":\"Nakar Autocenter Serviços Mecanicos SLU [36‍.142‍.153‍/0001‑10] \",\"numeroDocumento\":\"1-413-001/1\",\"dataVencimento\":\"2025-12-07T03:00:00.000Z\",\"vrSaldo\":1550,\"vrTotal\":1550,\"diasAtraso\":171},{\"tipo\":\"a_pagar\",\"participanteNome\":\"Jds Comércio - Matriz DF 18.282.961/0001-00 - Jds Comércio de Produtos e Equipamentos Esportivos Ltda [18‍.282‍.961‍/0001‑00] \",\"numeroDocumento\":\"1-7304-001/1\",\"dataVencimento\":\"2024-04-01T03:00:00.000Z\",\"vrSaldo\":33600,\"vrTotal\":33600,\"diasAtraso\":786},{\"tipo\":\"a_pagar\",\"participanteNome\":\"Jds Comércio - Matriz DF 18.282.961/0001-00 - Jds Comércio de Produtos e Equipamentos Esportivos Ltda [18‍.282‍.961‍/0001‑00] \",\"numeroDocumento\":\"1-7372-001/1\",\"dataVencimento\":\"2024-04-09T03:00:00.000Z\",\"vrSaldo\":54075,\"vrTotal\":54075,\"diasAtraso\":778},{\"tipo\":\"a_pagar\",\"participanteNome\":\"Jds Comércio - Matriz DF 18.282.961/0001-00 - Jds Comércio de Produtos e Equipamentos Esportivos Ltda [18‍.282‍.961‍/0001‑00] \",\"numeroDocumento\":\"1-7247-001/1\",\"dataVencimento\":\"2024-02-09T03:00:00.000Z\",\"vrSaldo\":57717.16,\"vrTotal\":57717.16,\"diasAtraso\":838},{\"tipo\":\"a_pagar\",\"participanteNome\":\"Jds Comércio - Matriz DF 18.282.961/0001-00 - Jds Comércio de Produtos e Equipamentos Esportivos Ltda [18‍.282‍.961‍/0001‑00] \",\"numeroDocumento\":\"1-7260-001/1\",\"dataVencimento\":\"2024-02-15T03:00:00.000Z\",\"vrSaldo\":4239.52,\"vrTotal\":4239.52,\"diasAtraso\":832},{\"tipo\":\"a_pagar\",\"participanteNome\":\"Jds Comércio - Matriz DF 18.282.961/0001-00 - Jds Comércio de Produtos e Equipamentos Esportivos Ltda [18‍.282‍.961‍/0001‑00] \",\"numeroDocumento\":\"1-7289-001/1\",\"dataVencimento\":\"2024-02-22T03:00:00.000Z\",\"vrSaldo\":277200,\"vrTotal\":277200,\"diasAtraso\":825},{\"tipo\":\"a_pagar\",\"participanteNome\":\"Jds Comércio - Matriz DF 18.282.961/0001-00 - Jds Comércio de Produtos e Equipamentos Esportivos Ltda [18‍.282‍.961‍/0001‑00] \",\"numeroDocumento\":\"1-7291-001/1\",\"dataVencimento\":\"2024-02-23T03:00:00.000Z\",\"vrSaldo\":331800,\"vrTotal\":331800,\"diasAtraso\":824},{\"tipo\":\"a_pagar\",\"participanteNome\":\"Jds Comércio - Matriz DF 18.282.961/0001-00 - Jds Comércio de Produtos e Equipamentos Esportivos Ltda [18‍.282‍.961‍/0001‑00] \",\"numeroDocumento\":\"1-7395-001/1\",\"dataVencimento\":\"2024-04-19T03:00:00.000Z\",\"vrSaldo\":1150926.23,\"vrTotal\":1150926.23,\"diasAtraso\":768},{\"tipo\":\"a_pagar\",\"participanteNome\":\"Jds Comércio - Matriz DF 18.282.961/0001-00 - Jds Comércio de Produtos e Equipamentos Esportivos Ltda [18‍.282‍.961‍/0001‑00] \",\"numeroDocumento\":\"1-7246-001/1\",\"dataVencimento\":\"2024-02-09T03:00:00.000Z\",\"vrSaldo\":14429.29,\"vrTotal\":14429.29,\"diasAtraso\":838},{\"tipo\":\"a_pagar\",\"participanteNome\":\"Jds Comércio - Matriz DF 18.282.961/0001-00 - Jds Comércio de Produtos e Equipamentos Esportivos Ltda [18‍.282‍.961‍/0001‑00] \",\"numeroDocumento\":\"100-3-001/10\",\"dataVencimento\":\"2026-01-28T03:00:00.000Z\",\"vrSaldo\":12245,\"vrTotal\":12245,\"diasAtraso\":119},{\"tipo\":\"a_pagar\",\"participanteNome\":\"Jds Comércio - Matriz DF 18.282.961/0001-00 - Jds Comércio de Produtos e Equipamentos Esportivos Ltda [18‍.282‍.961‍/0001‑00] \",\"numeroDocumento\":\"100-3-002/10\",\"dataVencimento\":\"2026-02-27T03:00:00.000Z\",\"vrSaldo\":12245,\"vrTotal\":12245,\"diasAtraso\":89},{\"tipo\":\"a_pagar\",\"participanteNome\":\"Jds Comércio - Matriz DF 18.282.961/0001-00 - Jds Comércio de Produtos e Equipamentos Esportivos Ltda [18‍.282‍.961‍/0001‑00] \",\"numeroDocumento\":\"100-3-003/10\",\"dataVencimento\":\"2026-03-30T03:00:00.000Z\",\"vrSaldo\":12245,\"vrTotal\":12245,\"diasAtraso\":58},{\"tipo\":\"a_pagar\",\"participanteNome\":\"Jds Comércio - Matriz DF 18.282.961/0001-00 - Jds Comércio de Produtos e Equipamentos Esportivos Ltda [18‍.282‍.961‍/0001‑00] \",\"numeroDocumento\":\"100-3-004/10\",\"dataVencimento\":\"2026-04-28T03:00:00.000Z\",\"vrSaldo\":12245,\"vrTotal\":12245,\"diasAtraso\":29},{\"tipo\":\"a_pagar\",\"participanteNome\":\"Johnson Indústrial do Brasil Ltda [09‍.197‍.394‍/0001‑94] \",\"numeroDocumento\":\"0-95035-1/5\",\"dataVencimento\":\"2026-01-19T03:00:00.000Z\",\"vrSaldo\":61224.99,\"vrTotal\":61224.99,\"diasAtraso\":128},{\"tipo\":\"a_pagar\",\"participanteNome\":\"Johnson Indústrial do Brasil Ltda [09‍.197‍.394‍/0001‑94] \",\"numeroDocumento\":\"0-95036-1/6\",\"dataVencimento\":\"2026-01-19T03:00:00.000Z\",\"vrSaldo\":51020.82,\"vrTotal\":51020.82,\"diasAtraso\":128},{\"tipo\":\"a_pagar\",\"participanteNome\":\"Energy Personal Studio Ltda [40‍.083‍.239‍/0001‑97] \",\"numeroDocumento\":\"1708\",\"dataVencimento\":\"2026-01-23T03:00:00.000Z\",\"vrSaldo\":100,\"vrTotal\":100,\"diasAtraso\":124},{\"tipo\":\"a_pagar\",\"participanteNome\":\"Jds Comércio - Matriz DF 18.282.961/0001-00 - Jds Comércio de Produtos e Equipamentos Esportivos Ltda [18‍.282‍.961‍/0001‑00] \",\"numeroDocumento\":\"100-13-001/9\",\"dataVencimento\":\"2026-02-18T03:00:00.000Z\",\"vrSaldo\":4296.49,\"vrTotal\":4296.49,\"diasAtraso\":98},{\"tipo\":\"a_pagar\",\"participanteNome\":\"Jds Comércio - Matriz DF 18.282.961/0001-00 - Jds Comércio de Produtos e Equipamentos Esportivos Ltda [18‍.282‍.961‍/0001‑00] \",\"numeroDocumento\":\"100-13-002/9\",\"dataVencimento\":\"2026-03-20T03:00:00.000Z\",\"vrSaldo\":4296.49,\"vrTotal\":4296.49,\"diasAtraso\":68},{\"tipo\":\"a_pagar\",\"participanteNome\":\"Jds Comércio - Matriz DF 18.282.961/0001-00 - Jds Comércio de Produtos e Equipamentos Esportivos Ltda [18‍.282‍.961‍/0001‑00] \",\"numeroDocumento\":\"100-13-003/9\",\"dataVencimento\":\"2026-04-20T03:00:00.000Z\",\"vrSaldo\":4296.49,\"vrTotal\":4296.49,\"diasAtraso\":37},{\"tipo\":\"a_pagar\",\"participanteNome\":\"Jds Comércio - Matriz DF 18.282.961/0001-00 - Jds Comércio de Produtos e Equipamentos Esportivos Ltda [18‍.282‍.961‍/0001‑00] \",\"numeroDocumento\":\"100-13-004/9\",\"dataVencimento\":\"2026-05-19T03:00:00.000Z\",\"vrSaldo\":4296.49,\"vrTotal\":4296.49,\"diasAtraso\":8},{\"tipo\":\"a_pagar\",\"participanteNome\":\"Jds Comércio - Matriz DF 18.282.961/0001-00 - Jds Comércio de Produtos e Equipamentos Esportivos Ltda [18‍.282‍.961‍/0001‑00] \",\"numeroDocumento\":\"100-28-001/10\",\"dataVencimento\":\"2026-02-25T03:00:00.000Z\",\"vrSaldo\":97.9,\"vrTotal\":97.9,\"diasAtraso\":91},{\"tipo\":\"a_pagar\",\"participanteNome\":\"Jds Comércio - Matriz DF 18.282.961/0001-00 - Jds Comércio de Produtos e Equipamentos Esportivos Ltda [18‍.282‍.961‍/0001‑00] \",\"numeroDocumento\":\"100-28-002/10\",\"dataVencimento\":\"2026-03-27T03:00:00.000Z\",\"vrSaldo\":97.9,\"vrTotal\":97.9,\"diasAtraso\":61},{\"tipo\":\"a_pagar\",\"participanteNome\":\"Jds Comércio - Matriz DF 18.282.961/0001-00 - Jds Comércio de Produtos e Equipamentos Esportivos Ltda [18‍.282‍.961‍/0001‑00] \",\"numeroDocumento\":\"100-28-003/10\",\"dataVencimento\":\"2026-04-27T03:00:00.000Z\",\"vrSaldo\":97.9,\"vrTotal\":97.9,\"diasAtraso\":30},{\"tipo\":\"a_pagar\",\"participanteNome\":\"Jds Comércio - Matriz DF 18.282.961/0001-00 - Jds Comércio de Produtos e Equipamentos Esportivos Ltda [18‍.282‍.961‍/0001‑00] \",\"numeroDocumento\":\"100-28-004/10\",\"dataVencimento\":\"2026-05-26T03:00:00.000Z\",\"vrSaldo\":97.9,\"vrTotal\":97.9,\"diasAtraso\":1},{\"tipo\":\"a_pagar\",\"participanteNome\":\"Jht DF Comércio - Matriz DF 10.557.556/0001-37 - Jht DF Comércio de Produtos e Equipamentos Esportivos Ltda [10‍.557‍.556‍/0001‑37] \",\"numeroDocumento\":\"1-10314-001/5\",\"dataVencimento\":\"2026-03-04T03:00:00.000Z\",\"vrSaldo\":22473.34,\"vrTotal\":22473.34,\"diasAtraso\":84},{\"tipo\":\"a_pagar\",\"participanteNome\":\"Jht DF Comércio - Matriz DF 10.557.556/0001-37 - Jht DF Comércio de Produtos e Equipamentos Esportivos Ltda [10‍.557‍.556‍/0001‑37] \",\"numeroDocumento\":\"1-10314-002/5\",\"dataVencimento\":\"2026-04-06T03:00:00.000Z\",\"vrSaldo\":22473.34,\"vrTotal\":22473.34,\"diasAtraso\":51},{\"tipo\":\"a_pagar\",\"participanteNome\":\"Jht DF Comércio - Matriz DF 10.557.556/0001-37 - Jht DF Comércio de Produtos e Equipamentos Esportivos Ltda [10‍.557‍.556‍/0001‑37] \",\"numeroDocumento\":\"1-10314-003/5\",\"dataVencimento\":\"2026-05-04T03:00:00.000Z\",\"vrSaldo\":22473.34,\"vrTotal\":22473.34,\"diasAtraso\":23},{\"tipo\":\"a_pagar\",\"participanteNome\":\"Jds Comércio - Matriz DF 18.282.961/0001-00 - Jds Comércio de Produtos e Equipamentos Esportivos Ltda [18‍.282‍.961‍/0001‑00] \",\"numeroDocumento\":\"100-50-001/2\",\"dataVencimento\":\"2026-03-04T03:00:00.000Z\",\"vrSaldo\":195.17,\"vrTotal\":195.17,\"diasAtraso\":84},{\"tipo\":\"a_pagar\",\"participanteNome\":\"Jds Comércio - Matriz DF 18.282.961/0001-00 - Jds Comércio de Produtos e Equipamentos Esportivos Ltda [18‍.282‍.961‍/0001‑00] \",\"numeroDocumento\":\"100-50-002/2\",\"dataVencimento\":\"2026-04-06T03:00:00.000Z\",\"vrSaldo\":195.16,\"vrTotal\":195.16,\"diasAtraso\":51},{\"tipo\":\"a_pagar\",\"participanteNome\":\"Jds Comércio - Matriz DF 18.282.961/0001-00 - Jds Comércio de Produtos e Equipamentos Esportivos Ltda [18‍.282‍.961‍/0001‑00] \",\"numeroDocumento\":\"100-51-001/6\",\"dataVencimento\":\"2026-03-04T03:00:00.000Z\",\"vrSaldo\":1140.66,\"vrTotal\":1140.66,\"diasAtraso\":84},{\"tipo\":\"a_pagar\",\"participanteNome\":\"Jds Comércio - Matriz DF 18.282.961/0001-00 - Jds Comércio de Produtos e Equipamentos Esportivos Ltda [18‍.282‍.961‍/0001‑00] \",\"numeroDocumento\":\"100-51-002/6\",\"dataVencimento\":\"2026-04-06T03:00:00.000Z\",\"vrSaldo\":1140.66,\"vrTotal\":1140.66,\"diasAtraso\":51},{\"tipo\":\"a_pagar\",\"participanteNome\":\"Jds Comércio - Matriz DF 18.282.961/0001-00 - Jds Comércio de Produtos e Equipamentos Esportivos Ltda [18‍.282‍.961‍/0001‑00] \",\"numeroDocumento\":\"100-51-003/6\",\"dataVencimento\":\"2026-05-04T03:00:00.000Z\",\"vrSaldo\":1140.66,\"vrTotal\":1140.66,\"diasAtraso\":23},{\"tipo\":\"a_pagar\",\"participanteNome\":\"Jds Comércio - Matriz DF 18.282.961/0001-00 - Jds Comércio de Produtos e Equipamentos Esportivos Ltda [18‍.282‍.961‍/0001‑00] \",\"numeroDocumento\":\"100-65-001/1\",\"dataVencimento\":\"2026-05-06T03:00:00.000Z\",\"vrSaldo\":861.74,\"vrTotal\":861.74,\"diasAtraso\":21},{\"tipo\":\"a_pagar\",\"participanteNome\":\"Jds Comércio - Matriz DF 18.282.961/0001-00 - Jds Comércio de Produtos e Equipamentos Esportivos Ltda [18‍.282‍.961‍/0001‑00] \",\"numeroDocumento\":\"100-44-001/2\",\"dataVencimento\":\"2026-03-02T03:00:00.000Z\",\"vrSaldo\":148.43,\"vrTotal\":148.43,\"diasAtraso\":86},{\"tipo\":\"a_pagar\",\"participanteNome\":\"Jds Comércio - Matriz DF 18.282.961/0001-00 - Jds Comércio de Produtos e Equipamentos Esportivos Ltda [18‍.282‍.961‍/0001‑00] \",\"numeroDocumento\":\"100-44-002/2\",\"dataVencimento\":\"2026-03-31T03:00:00.000Z\",\"vrSaldo\":148.42,\"vrTotal\":148.42,\"diasAtraso\":57},{\"tipo\":\"a_receber\",\"participanteNome\":\"Fabrica Ct Ceilandia - Fabrica Ct Ceilandia Ltda [62‍.499‍.293‍/0001‑50] \",\"numeroDocumento\":\"PV-0565/26-02/07\",\"dataVencimento\":\"2026-05-10T03:00:00.000Z\",\"vrSaldo\":4241.75,\"vrTotal\":4241.75,\"diasAtraso\":17},{\"tipo\":\"a_receber\",\"participanteNome\":\"Smartfit Escola de Ginastica e DANCa S. a [07‍.594‍.978‍/0646‑56] \",\"numeroDocumento\":\"PV-0508/26-01/01\",\"dataVencimento\":\"2026-05-03T03:00:00.000Z\",\"vrSaldo\":387500,\"vrTotal\":387500,\"diasAtraso\":24},{\"tipo\":\"a_receber\",\"participanteNome\":\"Associacao de Musica Abilio Coelho de Esporte e Lazer - Associacao de Musica Abilio Coelho de Esporte e Lazer - Amac [01‍.775‍.350‍/0001‑92] \",\"numeroDocumento\":\"PV-0463/26-01/15\",\"dataVencimento\":\"2026-04-20T03:00:00.000Z\",\"vrSaldo\":8085,\"vrTotal\":8085,\"diasAtraso\":37},{\"tipo\":\"a_receber\",\"participanteNome\":\"Associacao de Musica Abilio Coelho de Esporte e Lazer - Associacao de Musica Abilio Coelho de Esporte e Lazer - Amac [01‍.775‍.350‍/0001‑92] \",\"numeroDocumento\":\"PV-0463/26-02/15\",\"dataVencimento\":\"2026-05-18T03:00:00.000Z\",\"vrSaldo\":8085,\"vrTotal\":8085,\"diasAtraso\":9},{\"tipo\":\"a_receber\",\"participanteNome\":\"Condominio do Edificio Yes - Condomnio do Edificio Yes [16‍.699‍.254‍/0001‑80] \",\"numeroDocumento\":\"PV-0548/26-01/02\",\"dataVencimento\":\"2026-04-20T03:00:00.000Z\",\"vrSaldo\":500.48,\"vrTotal\":500.48,\"diasAtraso\":37},{\"tipo\":\"a_receber\",\"participanteNome\":\"Condominio do Edificio Yes - Condomnio do Edificio Yes [16‍.699‍.254‍/0001‑80] \",\"numeroDocumento\":\"PV-0548/26-02/02\",\"dataVencimento\":\"2026-05-19T03:00:00.000Z\",\"vrSaldo\":500.48,\"vrTotal\":500.48,\"diasAtraso\":8},{\"tipo\":\"a_receber\",\"participanteNome\":\"Smartfit Escola de Ginastica e DANCa S. a [07‍.594‍.978‍/0646‑56] \",\"numeroDocumento\":\"1-4721-1/1\",\"dataVencimento\":\"2026-05-04T03:00:00.000Z\",\"vrSaldo\":145602,\"vrTotal\":145602,\"diasAtraso\":23},{\"tipo\":\"a_receber\",\"participanteNome\":\"Intter 100 - Intter 100 Construcao e Incorporacao Ltda [39‍.324‍.468‍/0001‑77] \",\"numeroDocumento\":\"PV-0446/26-01/01\",\"dataVencimento\":\"2026-04-20T03:00:00.000Z\",\"vrSaldo\":1000.08,\"vrTotal\":1000.08,\"diasAtraso\":37},{\"tipo\":\"a_receber\",\"participanteNome\":\"Intter 100 - Intter 100 Construcao e Incorporacao Ltda [39‍.324‍.468‍/0001‑77] \",\"numeroDocumento\":\"PV-0554/26-01/01\",\"dataVencimento\":\"2026-04-20T03:00:00.000Z\",\"vrSaldo\":1000.08,\"vrTotal\":1000.08,\"diasAtraso\":37},{\"tipo\":\"a_receber\",\"participanteNome\":\"VILLA LOBOS - CONDOMINIO DO EDIFICIO VILLA LOBOS [02‍.706‍.627‍/0001‑98] \",\"numeroDocumento\":\"PV-0544/26-02/10\",\"dataVencimento\":\"2026-05-19T03:00:00.000Z\",\"vrSaldo\":996.8,\"vrTotal\":996.8,\"diasAtraso\":8},{\"tipo\":\"a_receber\",\"participanteNome\":\"CONDOMINIO ALTOS DO UMARIZAL [22‍.866‍.630‍/0001‑86] \",\"numeroDocumento\":\"1-10410-2/12\",\"dataVencimento\":\"2026-05-19T03:00:00.000Z\",\"vrSaldo\":29129.14,\"vrTotal\":29129.14,\"diasAtraso\":8},{\"tipo\":\"a_receber\",\"participanteNome\":\"Smartfit Escola de Ginastica e DANCa S. a [07‍.594‍.978‍/0646‑56] \",\"numeroDocumento\":\"PV-0523/26-01/01\",\"dataVencimento\":\"2026-05-04T03:00:00.000Z\",\"vrSaldo\":145602,\"vrTotal\":145602,\"diasAtraso\":23},{\"tipo\":\"a_receber\",\"participanteNome\":\"Condominio do Edificio Margarida Marques [53‍.290‍.954‍/0001‑42] \",\"numeroDocumento\":\"PV-0533/26-01/01\",\"dataVencimento\":\"2026-04-18T03:00:00.000Z\",\"vrSaldo\":2250,\"vrTotal\":2250,\"diasAtraso\":39},{\"tipo\":\"a_receber\",\"participanteNome\":\"GRAN PARK TOSCANA - ASSOCIACAO DO RESIDENCIAL GRAN PARK TOSCANA [20‍.442‍.837‍/0001‑06] \",\"numeroDocumento\":\"PV-0467/26-02/10\",\"dataVencimento\":\"2026-05-22T03:00:00.000Z\",\"vrSaldo\":579.27,\"vrTotal\":579.27,\"diasAtraso\":5},{\"tipo\":\"a_receber\",\"participanteNome\":\"PRISCILLA BARBUTO BOTELHO TEIXEIRA [027‍.428‍.636‑05] \",\"numeroDocumento\":\"1-4730-1/10\",\"dataVencimento\":\"2026-04-22T03:00:00.000Z\",\"vrSaldo\":3876.03,\"vrTotal\":3876.03,\"diasAtraso\":35},{\"tipo\":\"a_receber\",\"participanteNome\":\"PRISCILLA BARBUTO BOTELHO TEIXEIRA [027‍.428‍.636‑05] \",\"numeroDocumento\":\"1-4730-2/10\",\"dataVencimento\":\"2026-05-22T03:00:00.000Z\",\"vrSaldo\":3876.03,\"vrTotal\":3876.03,\"diasAtraso\":5},{\"tipo\":\"a_receber\",\"participanteNome\":\"Makani Beach - Makani Beach Flat Carneiros Spe Ltda [45‍.189‍.802‍/0001‑20] \",\"numeroDocumento\":\"PV-0343/26-03/18\",\"dataVencimento\":\"2026-05-25T03:00:00.000Z\",\"vrSaldo\":11094.44,\"vrTotal\":11094.44,\"diasAtraso\":2},{\"tipo\":\"a_receber\",\"participanteNome\":\"Power Fitness - Academia Power Fitness Ltda [23‍.915‍.763‍/0001‑68] \",\"numeroDocumento\":\"PV-0489/26-02/11\",\"dataVencimento\":\"2026-05-12T03:00:00.000Z\",\"vrSaldo\":1331,\"vrTotal\":1331,\"diasAtraso\":15},{\"tipo\":\"a_receber\",\"participanteNome\":\"Academia Center Fit Muriae Ltda [12‍.361‍.148‍/0001‑30] \",\"numeroDocumento\":\"PV-0535/26-02/02\",\"dataVencimento\":\"2026-05-18T03:00:00.000Z\",\"vrSaldo\":80000,\"vrTotal\":80000,\"diasAtraso\":9},{\"tipo\":\"a_receber\",\"participanteNome\":\"Construtora Lins Irmaos Ltda [12‍.481‍.800‍/0001‑50] \",\"numeroDocumento\":\"PV-0612/26-02/10\",\"dataVencimento\":\"2026-05-02T03:00:00.000Z\",\"vrSaldo\":32399.3,\"vrTotal\":32399.3,\"diasAtraso\":25},{\"tipo\":\"a_receber\",\"participanteNome\":\"Condominio do Edificio Icaro [10‍.819‍.303‍/0001‑94] \",\"numeroDocumento\":\"PV-0658/26-01/01\",\"dataVencimento\":\"2026-05-25T03:00:00.000Z\",\"vrSaldo\":197,\"vrTotal\":197,\"diasAtraso\":2},{\"tipo\":\"a_receber\",\"participanteNome\":\"Vexa Egeu Paros Spe Ltda [52‍.872‍.957‍/0001‑21] \",\"numeroDocumento\":\"PV-0604/26-02/12\",\"dataVencimento\":\"2026-05-23T03:00:00.000Z\",\"vrSaldo\":34319.57,\"vrTotal\":34319.57,\"diasAtraso\":4},{\"tipo\":\"a_receber\",\"participanteNome\":\"SAFRA - Banco Safra S a [58‍.160‍.789‍/0001‑28] \",\"numeroDocumento\":\"PV-0592/26-01/04\",\"dataVencimento\":\"2026-04-27T03:00:00.000Z\",\"vrSaldo\":10157.5,\"vrTotal\":10157.5,\"diasAtraso\":30},{\"tipo\":\"a_receber\",\"participanteNome\":\"SAFRA - Banco Safra S a [58‍.160‍.789‍/0001‑28] \",\"numeroDocumento\":\"PV-0592/26-02/04\",\"dataVencimento\":\"2026-05-25T03:00:00.000Z\",\"vrSaldo\":10157.5,\"vrTotal\":10157.5,\"diasAtraso\":2},{\"tipo\":\"a_receber\",\"participanteNome\":\"CONDOMINIO EDILICIO DO EDIFICIO LES AMIS [55‍.986‍.189‍/0001‑25] \",\"numeroDocumento\":\"7188\",\"dataVencimento\":\"2026-04-10T03:00:00.000Z\",\"vrSaldo\":286.05,\"vrTotal\":286.05,\"diasAtraso\":47},{\"tipo\":\"a_receber\",\"participanteNome\":\"SAFRA - Banco Safra S a [58‍.160‍.789‍/0001‑28] \",\"numeroDocumento\":\"PV-0698/26-01/03\",\"dataVencimento\":\"2026-04-27T03:00:00.000Z\",\"vrSaldo\":17560.16,\"vrTotal\":17560.16,\"diasAtraso\":30},{\"tipo\":\"a_receber\",\"participanteNome\":\"SAFRA - Banco Safra S a [58‍.160‍.789‍/0001‑28] \",\"numeroDocumento\":\"PV-0698/26-02/03\",\"dataVencimento\":\"2026-05-26T03:00:00.000Z\",\"vrSaldo\":17560.15,\"vrTotal\":17560.15,\"diasAtraso\":1},{\"tipo\":\"a_receber\",\"participanteNome\":\"VIA FAROL RESIDENCIAL - CONDOMINIO DO VIA FAROL RESIDENCIAL [11‍.246‍.042‍/0001‑23] \",\"numeroDocumento\":\"PV-0673/26-03/10\",\"dataVencimento\":\"2026-05-23T03:00:00.000Z\",\"vrSaldo\":16876.42,\"vrTotal\":16876.42,\"diasAtraso\":4},{\"tipo\":\"a_receber\",\"participanteNome\":\"Residencial Cris Village - Condominio do Edificio Cris Village [12‍.127‍.574‍/0001‑04] \",\"numeroDocumento\":\"PV-0738/26-01/01\",\"dataVencimento\":\"2026-04-27T03:00:00.000Z\",\"vrSaldo\":55,\"vrTotal\":55,\"diasAtraso\":30},{\"tipo\":\"a_receber\",\"participanteNome\":\"Complexo Fitness Comércio e Serviços Ltda [14‍.284‍.767‍/0001‑02] \",\"numeroDocumento\":\"1-4740-1/11\",\"dataVencimento\":\"2026-04-27T03:00:00.000Z\",\"vrSaldo\":6210.7,\"vrTotal\":6210.7,\"diasAtraso\":30},{\"tipo\":\"a_receber\",\"participanteNome\":\"Complexo Fitness Comércio e Serviços Ltda [14‍.284‍.767‍/0001‑02] \",\"numeroDocumento\":\"1-4740-2/11\",\"dataVencimento\":\"2026-05-26T03:00:00.000Z\",\"vrSaldo\":6210.65,\"vrTotal\":6210.65,\"diasAtraso\":1},{\"tipo\":\"a_receber\",\"participanteNome\":\"Condominio Privilege Residence [12‍.623‍.482‍/0001‑15] \",\"numeroDocumento\":\"PV-0746/26-01/01\",\"dataVencimento\":\"2026-04-29T03:00:00.000Z\",\"vrSaldo\":140,\"vrTotal\":140,\"diasAtraso\":28},{\"tipo\":\"a_receber\",\"participanteNome\":\"REDECARD - Redecard Instituicao de Pagamento S/A [01‍.425‍.787‍/0001‑04] \",\"numeroDocumento\":\"PV-0771/26-01/01\",\"dataVencimento\":\"2026-04-29T03:00:00.000Z\",\"vrSaldo\":230,\"vrTotal\":230,\"diasAtraso\":28},{\"tipo\":\"a_receber\",\"participanteNome\":\"CONDOMINIO IMPERIAL [17‍.746‍.671‍/0001‑07] \",\"numeroDocumento\":\"PV-0313/26-01/16\",\"dataVencimento\":\"2026-04-29T03:00:00.000Z\",\"vrSaldo\":24187.5,\"vrTotal\":24187.5,\"diasAtraso\":28},{\"tipo\":\"a_receber\",\"participanteNome\":\"BLUE OCEAN - CONDOMINIO BLUE OCEAN RESIDENCIAL [15‍.738‍.635‍/0001‑68] \",\"numeroDocumento\":\"PV-0341/26-01/02\",\"dataVencimento\":\"2026-04-29T03:00:00.000Z\",\"vrSaldo\":26368.8,\"vrTotal\":26368.8,\"diasAtraso\":28},{\"tipo\":\"a_receber\",\"participanteNome\":\"Condominio Edificio Maison Saint Laurent [02‍.204‍.161‍/0001‑22] \",\"numeroDocumento\":\"PV-0375/26-01/10\",\"dataVencimento\":\"2026-04-29T03:00:00.000Z\",\"vrSaldo\":2714.98,\"vrTotal\":2714.98,\"diasAtraso\":28},{\"tipo\":\"a_receber\",\"participanteNome\":\"Condominio Bali Bahia Itacimirim [33‍.181‍.620‍/0001‑23] \",\"numeroDocumento\":\"PV-0571/26-02/12\",\"dataVencimento\":\"2026-05-10T03:00:00.000Z\",\"vrSaldo\":19458.72,\"vrTotal\":19458.72,\"diasAtraso\":17},{\"tipo\":\"a_receber\",\"participanteNome\":\"Condominio Solar San Marino [32‍.804‍.544‍/0001‑00] \",\"numeroDocumento\":\"PV-0793/26-01/04\",\"dataVencimento\":\"2026-04-20T03:00:00.000Z\",\"vrSaldo\":1070.75,\"vrTotal\":1070.75,\"diasAtraso\":37},{\"tipo\":\"a_receber\",\"participanteNome\":\"Condominio Solar San Marino [32‍.804‍.544‍/0001‑00] \",\"numeroDocumento\":\"PV-0793/26-02/04\",\"dataVencimento\":\"2026-05-19T03:00:00.000Z\",\"vrSaldo\":1070.75,\"vrTotal\":1070.75,\"diasAtraso\":8},{\"tipo\":\"a_receber\",\"participanteNome\":\"SAFRA - Banco Safra S a [58‍.160‍.789‍/0001‑28] \",\"numeroDocumento\":\"PV-0670/26-01/10\",\"dataVencimento\":\"2026-04-29T03:00:00.000Z\",\"vrSaldo\":4390,\"vrTotal\":4390,\"diasAtraso\":28},{\"tipo\":\"a_receber\",\"participanteNome\":\"SAFRA - Banco Safra S a [58‍.160‍.789‍/0001‑28] \",\"numeroDocumento\":\"PV-0751/26-01/06\",\"dataVencimento\":\"2026-04-29T03:00:00.000Z\",\"vrSaldo\":10000,\"vrTotal\":10000,\"diasAtraso\":28},{\"tipo\":\"a_receber\",\"participanteNome\":\"SAFRA - Banco Safra S a [58‍.160‍.789‍/0001‑28] \",\"numeroDocumento\":\"PV-0752/26-01/12\",\"dataVencimento\":\"2026-04-29T03:00:00.000Z\",\"vrSaldo\":3658.37,\"vrTotal\":3658.37,\"diasAtraso\":28},{\"tipo\":\"a_receber\",\"participanteNome\":\"SAFRA - Banco Safra S a [58‍.160‍.789‍/0001‑28] \",\"numeroDocumento\":\"PV-0754/26-01/01\",\"dataVencimento\":\"2026-04-29T03:00:00.000Z\",\"vrSaldo\":39990,\"vrTotal\":39990,\"diasAtraso\":28},{\"tipo\":\"a_receber\",\"participanteNome\":\"Insano Academia - Insano Academia Pa05 Belem Ltda [63‍.474‍.230‍/0001‑02] \",\"numeroDocumento\":\"False-02/03\",\"dataVencimento\":\"2026-05-10T03:00:00.000Z\",\"vrSaldo\":2030,\"vrTotal\":2030,\"diasAtraso\":17},{\"tipo\":\"a_receber\",\"participanteNome\":\"Insano Academia - Insano Academia Pa05 Belem Ltda [63‍.474‍.230‍/0001‑02] \",\"numeroDocumento\":\"False-01/03\",\"dataVencimento\":\"2026-04-10T03:00:00.000Z\",\"vrSaldo\":2030,\"vrTotal\":2030,\"diasAtraso\":47},{\"tipo\":\"a_receber\",\"participanteNome\":\"Sanco Engenharia - Sanco Engenharia Ltda [01‍.393‍.074‍/0001‑06] \",\"numeroDocumento\":\"1-4744-1/8\",\"dataVencimento\":\"2026-04-29T03:00:00.000Z\",\"vrSaldo\":2097.91,\"vrTotal\":2097.91,\"diasAtraso\":28},{\"tipo\":\"a_receber\",\"participanteNome\":\"CONDOMINIO IMPERIAL [17‍.746‍.671‍/0001‑07] \",\"numeroDocumento\":\"1-4745-1/16\",\"dataVencimento\":\"2026-04-29T03:00:00.000Z\",\"vrSaldo\":16649.93,\"vrTotal\":16649.93,\"diasAtraso\":28},{\"tipo\":\"a_receber\",\"participanteNome\":\"Construtora Brascon Ltda [09‍.252‍.701‍/0001‑92] \",\"numeroDocumento\":\"1-10429-1/5\",\"dataVencimento\":\"2026-04-29T03:00:00.000Z\",\"vrSaldo\":29904,\"vrTotal\":29904,\"diasAtraso\":28},{\"tipo\":\"a_receber\",\"participanteNome\":\"Og Fit Academia Ltda [40‍.084‍.589‍/0001‑78] \",\"numeroDocumento\":\"PV-0833/26-03/11\",\"dataVencimento\":\"2026-05-25T03:00:00.000Z\",\"vrSaldo\":11031.48,\"vrTotal\":11031.48,\"diasAtraso\":2},{\"tipo\":\"a_receber\",\"participanteNome\":\"Bf PB 02 Atividades Esportivas S/A [40‍.376‍.775‍/0006‑95] \",\"numeroDocumento\":\"PV-0860/26-01/03\",\"dataVencimento\":\"2026-04-30T03:00:00.000Z\",\"vrSaldo\":881.67,\"vrTotal\":881.67,\"diasAtraso\":27},{\"tipo\":\"a_receber\",\"participanteNome\":\"Spe Opus 66 - Incorporação Opus 66 Spe Ltda [40‍.193‍.493‍/0001‑48] \",\"numeroDocumento\":\"PV-0867/26-01/02\",\"dataVencimento\":\"2026-04-16T03:00:00.000Z\",\"vrSaldo\":148500,\"vrTotal\":148500,\"diasAtraso\":41},{\"tipo\":\"a_receber\",\"participanteNome\":\"SAFRA - Banco Safra S a [58‍.160‍.789‍/0001‑28] \",\"numeroDocumento\":\"PV-0863/26-01/10\",\"dataVencimento\":\"2026-05-04T03:00:00.000Z\",\"vrSaldo\":4790,\"vrTotal\":4790,\"diasAtraso\":23},{\"tipo\":\"a_receber\",\"participanteNome\":\"SAFRA - Banco Safra S a [58‍.160‍.789‍/0001‑28] \",\"numeroDocumento\":\"PV-0838/26-01/01\",\"dataVencimento\":\"2026-05-04T03:00:00.000Z\",\"vrSaldo\":36321.46,\"vrTotal\":36321.46,\"diasAtraso\":23},{\"tipo\":\"a_receber\",\"participanteNome\":\"CRISTIANE KELLEN AMARAL [014‍.039‍.416‑88] \",\"numeroDocumento\":\"PV-0606/26-02/10\",\"dataVencimento\":\"2026-05-25T03:00:00.000Z\",\"vrSaldo\":16555.1,\"vrTotal\":16555.1,\"diasAtraso\":2},{\"tipo\":\"a_receber\",\"parti\n[...resultado truncado por exceder o limite de tamanho...]"
+      },
+      "finalMessageId": "11dbbf43-27d9-446e-b4d0-861b4f8895f8",
+      "finalMessage": "Segue uma amostra dos vencidos a receber de maior valor:\n\n- **Smartfit Escola de Ginastica e DANCa S. a [07.594.978/0646-56]** — **R$ 387.500,00** — vence em 03/05/2026 — **24 dias** de atraso\n- **Spe Opus 66 - Incorporação Opus 66 Spe Ltda [40.193.493/0001-48]** — **R$ 148.500,00** — vence em 16/04/2026 — **41 dias** de atraso\n- **Smartfit Escola de Ginastica e DANCa S. a [07.594.978/0646-56]** — **R$ 145.602,00** — vence em 04/05/2026 — **23 dias** de atraso\n- **Academia Center Fit Muriae Ltda [12.361.148/0001-30]** — **R$ 80.000,00** — vence em 18/05/2026 — **9 dias** de atraso\n- **SAFRA - Banco Safra S a [58.160.789/0001-28]** — **R$ 39.990,00** — vence em 29/04/2026 — **28 dias** de atraso\n- **SAFRA - Banco Safra S a [58.160.789/0001-28]** — **R$ 36.321,46** — vence em 04/05/2026 — **23 dias** de atraso\n- **Vexa Egeu Paros Spe Ltda [52.872.957/0001-21]** — **R$ 34.319,57** — vence em 23/05/2026 — **4 dias** de atraso\n- **Construtora Lins Irmaos Ltda [12.481.800/0001-50]** — **R$ 32.399,30** — vence em 02/05/2026 — **25 dias** de atraso\n- **Construtora Brascon Ltda [09.252.701/0001-92]** — **R$ 29.904,00** — vence em 29/04/2026 — **28 dias** de atraso\n- **CONDOMINIO ALTOS DO UMARIZAL [22.866.630/0001-86]** — **R$ 29.129,14** — vence em 19/05/2026 — **8 dias** de atraso",
+      "model": "gpt-5.4-mini",
+      "tokensInput": 20928,
+      "tokensOutput": 4949,
+      "durationMs": 28954,
+      "createdAt": "2026-05-27T03:38:56.030Z",
+      "primaryTool": "financeiro_titulos_vencidos"
+    },
+    {
+      "turnoId": "13174f68-18ec-44a7-b7be-5ac18be7a325",
+      "conversationId": "a0d97cdb-b739-4b5d-8b88-dec19b12a4a7",
+      "userMessageId": "5e053c0f-4e8d-49e2-bf16-cf79eaefddf8",
+      "userMessage": "Bancos com saldo negativo",
+      "toolMessageId": "f1af3678-f44f-4b44-bb6d-64d5b4420b1a",
+      "toolCalls": [
+        {
+          "id": "call_fEdEUe8uLYo9PPyrdU7inU6h",
+          "name": "financeiro_saldo_contas",
+          "arguments": {}
+        }
+      ],
+      "toolResults": {
+        "call_fEdEUe8uLYo9PPyrdU7inU6h": "{\"estado\":\"ok\",\"dados\":{\"contas\":[{\"bancoNome\":\"Itaú / Corrente / 1584 / 37236-9 / Cs Comércio - Matriz DF 35.156.509/0001-02\",\"tipo\":null,\"saldo\":72410.18},{\"bancoNome\":\"Itaú / Corrente / 1584 / 36410-1 / Ks Comércio - Matriz DF 34.461.908/0001-14\",\"tipo\":null,\"saldo\":875957.69},{\"bancoNome\":\"Itaú / Corrente / 0542 / 99596-4 / Jmf Comércio - Matriz DF 45.424.185/0001-08\",\"tipo\":null,\"saldo\":55112.86},{\"bancoNome\":\"Itaú / Corrente / 1584 / 55755-5 / Jht DF Comércio - Matriz DF 10.557.556/0001-37\",\"tipo\":null,\"saldo\":-1621472.15},{\"bancoNome\":\"Itaú / Corrente / 1584 / 19916-8 / JHT Brasília - Matriz DF 07.390.039/0001-01\",\"tipo\":null,\"saldo\":383686.12},{\"bancoNome\":\"Itaú / Corrente / 1584 / 36363-2 / Jht SP Comércio - Matriz DF 34.161.829/0001-98\",\"tipo\":null,\"saldo\":-9015013.75},{\"bancoNome\":\"Itaú / Corrente / 1584 / 24146-5 / Jds Comércio - Matriz DF 18.282.961/0001-00\",\"tipo\":null,\"saldo\":-15216088.79},{\"bancoNome\":\"Itaú / Corrente / 1584 / 35012-6 / Jib DF Comércio - Matriz DF 33.718.546/0001-31\",\"tipo\":null,\"saldo\":223107.55}],\"saldoTotal\":-24242300.29,\"_agregado\":{\"contagem\":8,\"agregado_saldo\":{\"soma\":-24242300.29,\"media\":-3030287.54,\"min\":-15216088.79,\"max\":875957.69,\"contagemValidos\":8}}},\"atualizadoEm\":\"2026-05-26T17:11:12.069Z\",\"atualizadoHa\":\"10h\",\"fonteStatus\":{\"status\":\"ok\",\"ultimaSyncEm\":\"2026-05-26T17:11:02.852Z\"},\"_DESTAQUE\":{\"contagemLinhas\":8},\"_INSTRUCAO\":\"Use os valores em _DESTAQUE como totais autoritativos. NUNCA declare 'lista veio cortada/incompleta/sem somatorio' se _DESTAQUE tem o total.\"}"
+      },
+      "finalMessageId": "13174f68-18ec-44a7-b7be-5ac18be7a325",
+      "finalMessage": "**3 contas bancárias** estão com saldo negativo, somando **R$ -25.852.574,69**.\n\n- **Itaú / Corrente / 1584 / 55755-5 / Jht DF Comércio - Matriz DF 10.557.556/0001-37**: **R$ -1.621.472,15**\n- **Itaú / Corrente / 1584 / 36363-2 / Jht SP Comércio - Matriz DF 34.161.829/0001-98**: **R$ -9.015.013,75**\n- **Itaú / Corrente / 1584 / 24146-5 / Jds Comércio - Matriz DF 18.282.961/0001-00**: **R$ -15.216.088,79**",
+      "model": "gpt-5.4-mini",
+      "tokensInput": 12525,
+      "tokensOutput": 672,
+      "durationMs": 4910,
+      "createdAt": "2026-05-27T03:34:04.317Z",
+      "primaryTool": "financeiro_saldo_contas"
+    },
+    {
+      "turnoId": "14035b91-3bb9-440d-995d-e43fcbc02833",
+      "conversationId": "d6c8d46e-ee65-45d9-a623-7bb8b275df21",
+      "userMessageId": "749246a8-d470-48bb-bf2d-b7454444290a",
+      "userMessage": "qual fornecedor?",
+      "toolMessageId": null,
+      "toolCalls": null,
+      "toolResults": null,
+      "finalMessageId": "14035b91-3bb9-440d-995d-e43fcbc02833",
+      "finalMessage": "Me informe o **nome** ou **CNPJ** do fornecedor que você quer consultar.",
+      "model": "gpt-5.4-mini",
+      "tokensInput": 11878,
+      "tokensOutput": 344,
+      "durationMs": 7724,
+      "createdAt": "2026-05-27T03:36:40.094Z",
+      "primaryTool": null
+    },
+    {
+      "turnoId": "19097732-fe81-48e3-9e7a-87b7ffa8b411",
+      "conversationId": "01c9b985-50d2-4ac3-8c46-54ce3fbb3e2d",
+      "userMessageId": "0f2cb27a-fdba-4343-921b-53777f010d8d",
+      "userMessage": "Estoque do produto inventado",
+      "toolMessageId": "56fad36f-3560-4def-9640-b47c3b65347a",
+      "toolCalls": [
+        {
+          "id": "call_5xET2jEaDCL3aTmv6SbqhCNo",
+          "name": "estoque_saldo_produto",
+          "arguments": {
+            "termo": "inventado"
+          }
+        }
+      ],
+      "toolResults": {
+        "call_5xET2jEaDCL3aTmv6SbqhCNo": "{\"estado\":\"vazio\",\"dados\":{\"kpis\":{\"totalProdutos\":0,\"produtosNegativos\":0,\"valorTotal\":0},\"linhas\":[]},\"atualizadoEm\":\"2026-05-26T17:25:09.971Z\",\"atualizadoHa\":\"10h\",\"fonteStatus\":{\"status\":\"ok\",\"ultimaSyncEm\":\"2026-05-26T17:10:46.709Z\"},\"_DESTAQUE\":{\"contagemLinhas\":0},\"_INSTRUCAO\":\"Use os valores em _DESTAQUE como totais autoritativos. NUNCA declare 'lista veio cortada/incompleta/sem somatorio' se _DESTAQUE tem o total.\"}"
+      },
+      "finalMessageId": "19097732-fe81-48e3-9e7a-87b7ffa8b411",
+      "finalMessage": "Não encontrei registros para esse critério.",
+      "model": "gpt-5.4-mini",
+      "tokensInput": 12073,
+      "tokensOutput": 565,
+      "durationMs": 6483,
+      "createdAt": "2026-05-27T03:34:50.323Z",
+      "primaryTool": "estoque_saldo_produto"
+    },
+    {
+      "turnoId": "1a1f19de-4c04-4fb7-9818-76917a03671b",
+      "conversationId": "cdff8768-e6fd-4699-b22d-f2d4f87306f7",
+      "userMessageId": "c1da1a4a-4dba-44b3-8dcd-7ffd05a73b71",
+      "userMessage": "Parceiros de São Paulo",
+      "toolMessageId": "81e2188b-42cd-4568-a18f-f068c288fac7",
+      "toolCalls": [
+        {
+          "id": "call_H29psWYKP8Qu1TwT0kCjQZGR",
+          "name": "cadastro_parceiros_por_uf",
+          "arguments": {
+            "apenasClientes": false
+          }
+        }
+      ],
+      "toolResults": {
+        "call_H29psWYKP8Qu1TwT0kCjQZGR": "{\"estado\":\"ok\",\"dados\":{\"linhas\":[{\"uf\":\"Distrito Federal (BR)\",\"quantidade\":2351},{\"uf\":\"Goiás (BR)\",\"quantidade\":620},{\"uf\":\"Bahia (BR)\",\"quantidade\":537},{\"uf\":\"Minas Gerais (BR)\",\"quantidade\":517},{\"uf\":null,\"quantidade\":459},{\"uf\":\"São Paulo (BR)\",\"quantidade\":404},{\"uf\":\"Ceará (BR)\",\"quantidade\":336},{\"uf\":\"Sergipe (BR)\",\"quantidade\":276},{\"uf\":\"Alagoas (BR)\",\"quantidade\":179},{\"uf\":\"Paraíba (BR)\",\"quantidade\":152},{\"uf\":\"Rio de Janeiro (BR)\",\"quantidade\":119},{\"uf\":\"Rio Grande do Norte (BR)\",\"quantidade\":111},{\"uf\":\"Piauí (BR)\",\"quantidade\":105},{\"uf\":\"Pará (BR)\",\"quantidade\":73},{\"uf\":\"Maranhão (BR)\",\"quantidade\":68},{\"uf\":\"Paraná (BR)\",\"quantidade\":47},{\"uf\":\"Pernambuco (BR)\",\"quantidade\":40},{\"uf\":\"Mato Grosso (BR)\",\"quantidade\":32},{\"uf\":\"Mato Grosso do Sul (BR)\",\"quantidade\":27},{\"uf\":\"Espírito Santo (BR)\",\"quantidade\":23},{\"uf\":\"Rio Grande do Sul (BR)\",\"quantidade\":22},{\"uf\":\"Santa Catarina (BR)\",\"quantidade\":22},{\"uf\":\"Tocantins (BR)\",\"quantidade\":20},{\"uf\":\"Amazonas (BR)\",\"quantidade\":10},{\"uf\":\"Rondônia (BR)\",\"quantidade\":9},{\"uf\":\"Acre (BR)\",\"quantidade\":5},{\"uf\":\"Roraima (BR)\",\"quantidade\":2},{\"uf\":\"Amapá (BR)\",\"quantidade\":1}],\"_agregado\":{\"contagem\":28,\"agregado_quantidade\":{\"soma\":6567,\"media\":234.54,\"min\":1,\"max\":2351,\"contagemValidos\":28}}},\"atualizadoEm\":\"2026-05-26T17:25:02.144Z\",\"atualizadoHa\":\"10h\",\"fonteStatus\":{\"status\":\"ok\",\"ultimaSyncEm\":\"2026-05-26T17:26:21.963Z\"},\"_DESTAQUE\":{\"contagemLinhas\":28},\"_INSTRUCAO\":\"Use os valores em _DESTAQUE como totais autoritativos. NUNCA declare 'lista veio cortada/incompleta/sem somatorio' se _DESTAQUE tem o total.\"}"
+      },
+      "finalMessageId": "1a1f19de-4c04-4fb7-9818-76917a03671b",
+      "finalMessage": "Em **São Paulo**, há **404 parceiros** cadastrados, considerando clientes, fornecedores e demais cadastros. **Atualizado há 10h.**",
+      "model": "gpt-5.4-mini",
+      "tokensInput": 12480,
+      "tokensOutput": 249,
+      "durationMs": 3094,
+      "createdAt": "2026-05-27T03:36:38.835Z",
+      "primaryTool": "cadastro_parceiros_por_uf"
+    },
+    {
+      "turnoId": "1bfd825d-40e8-40d8-8941-4f81dfebea2c",
+      "conversationId": "26ee4e0d-82a9-4095-8099-162d2932cf14",
+      "userMessageId": "e7eb1bf3-79b6-4ba5-bd8c-e3b2e3f7cc2a",
+      "userMessage": "Tem quanto de cabo de aço?",
+      "toolMessageId": "5edaa96d-1839-4e22-bc2c-7afa426a9e3b",
+      "toolCalls": [
+        {
+          "id": "call_ihY7FzWVn8rLVBOSm33JIOh0",
+          "name": "estoque_saldo_produto",
+          "arguments": {
+            "termo": "cabo de aço"
+          }
+        }
+      ],
+      "toolResults": {
+        "call_ihY7FzWVn8rLVBOSm33JIOh0": "{\"estado\":\"ok\",\"dados\":{\"kpis\":{\"totalProdutos\":18,\"produtosNegativos\":6,\"valorTotal\":14036.12},\"linhas\":[{\"produtoNome\":\"[1467] Cabo de Aço - CNYG186X19APR009\",\"familiaNome\":null,\"marcaNome\":null,\"saldoTotal\":951,\"valorTotal\":12390.53,\"numLocais\":2},{\"produtoNome\":\"[1000102647] Gotinha ou Gotão de Ponta de Cabo de Aço\",\"familiaNome\":null,\"marcaNome\":null,\"saldoTotal\":490,\"valorTotal\":1350.64,\"numLocais\":1},{\"produtoNome\":\"[1740] Gotão para Cabo de Aço\",\"familiaNome\":\"Astec\",\"marcaNome\":\"Astec\",\"saldoTotal\":48,\"valorTotal\":294.95,\"numLocais\":1},{\"produtoNome\":\"[0000055873] Terminal para Cabo de Aço Tipo Argola (Un) - 0000055873\",\"familiaNome\":\"Astec\",\"marcaNome\":null,\"saldoTotal\":-14,\"valorTotal\":0,\"numLocais\":1},{\"produtoNome\":\"[1000362270] Cabo de Aço Encapado com Terminais G7S71 - 1000302295\",\"familiaNome\":\"Astec\",\"marcaNome\":\"Matrix\",\"saldoTotal\":0,\"valorTotal\":0,\"numLocais\":1},{\"produtoNome\":\"[1000362287] Cabo de Aço Encapado com Terminais - 1000096763\",\"familiaNome\":\"Astec\",\"marcaNome\":\"Matrix\",\"saldoTotal\":0,\"valorTotal\":0,\"numLocais\":1},{\"produtoNome\":\"[1000463117] Alavanca de Ajuste de Freio com Cabo de Aço para Bicicleta - 1000463117\",\"familiaNome\":\"Astec\",\"marcaNome\":\"Astec\",\"saldoTotal\":-1,\"valorTotal\":0,\"numLocais\":1},{\"produtoNome\":\"[1509] Sistema para Cabo de Aco\",\"familiaNome\":null,\"marcaNome\":null,\"saldoTotal\":-1,\"valorTotal\":0,\"numLocais\":1},{\"produtoNome\":\"[1621] Terminal Rotular para Cabo de Aço\",\"familiaNome\":null,\"marcaNome\":null,\"saldoTotal\":-1,\"valorTotal\":0,\"numLocais\":1},{\"produtoNome\":\"[1643] Cabo de Aço Leg ST710\",\"familiaNome\":null,\"marcaNome\":null,\"saldoTotal\":0,\"valorTotal\":0,\"numLocais\":1},{\"produtoNome\":\"[2516] Bolinha para Cabo de Aço\",\"familiaNome\":null,\"marcaNome\":null,\"saldoTotal\":-4,\"valorTotal\":0,\"numLocais\":2},{\"produtoNome\":\"[2718] Cabo de Aco Encapado com Terminais VSS70\",\"familiaNome\":\"Padrão\",\"marcaNome\":\"Padrao\",\"saldoTotal\":0,\"valorTotal\":0,\"numLocais\":1},{\"produtoNome\":\"[81768] Cabo de Aco Encapado com Terminais\",\"familiaNome\":\"Padrão\",\"marcaNome\":\"Padrao\",\"saldoTotal\":0,\"valorTotal\":0,\"numLocais\":1},{\"produtoNome\":\"[81999] Cabo de Aço da Bike GR7\",\"familiaNome\":null,\"marcaNome\":null,\"saldoTotal\":0,\"valorTotal\":0,\"numLocais\":1},{\"produtoNome\":\"[82014] Cabo de Aço com Mais de 7 Fios G7-S70 Lag Press - 1000213946\",\"familiaNome\":\"Astec\",\"marcaNome\":\"Matrix\",\"saldoTotal\":0,\"valorTotal\":0,\"numLocais\":1},{\"produtoNome\":\"[82015] Cabo de Aco Encapado com Terminais G7-S70 Lag Press - 1000302303\",\"familiaNome\":\"Astec\",\"marcaNome\":\"Matrix\",\"saldoTotal\":0,\"valorTotal\":0,\"numLocais\":1},{\"produtoNome\":\"[CNYG186X19APR009] Cabo de Aço\",\"familiaNome\":null,\"marcaNome\":null,\"saldoTotal\":-61,\"valorTotal\":0,\"numLocais\":1},{\"produtoNome\":\"Polia para Cabo de Aço do Equipamento de Ginastica\",\"familiaNome\":\"Astec\",\"marcaNome\":\"Astec\",\"saldoTotal\":0,\"valorTotal\":0,\"numLocais\":0,\"semEstoqueCadastrado\":true,\"mensagemContexto\":\"produto cadastrado, sem linha de saldo\"}],\"ambiguidade\":{\"totalMatches\":18,\"layer\":\"exact\",\"topCandidates\":[{\"nome\":\"[1467] Cabo de Aço - CNYG186X19APR009\",\"context\":\"saldo 951\"},{\"nome\":\"[1000102647] Gotinha ou Gotão de Ponta de Cabo de Aço\",\"context\":\"saldo 490\"},{\"nome\":\"[1740] Gotão para Cabo de Aço\",\"context\":\"Astec · saldo 48\"},{\"nome\":\"[0000055873] Terminal para Cabo de Aço Tipo Argola (Un) - 0000055873\",\"context\":\"Astec · saldo -14\"},{\"nome\":\"[1000362270] Cabo de Aço Encapado com Terminais G7S71 - 1000302295\",\"context\":\"Astec · saldo 0\"}]},\"_agregado\":{\"contagem\":18,\"agregado_valorTotal\":{\"soma\":14036.12,\"media\":779.78,\"min\":0,\"max\":12390.53,\"contagemValidos\":18},\"agregado_saldoTotal\":{\"soma\":1407,\"media\":78.17,\"min\":-61,\"max\":951,\"contagemValidos\":18}}},\"atualizadoEm\":\"2026-05-26T17:25:09.971Z\",\"atualizadoHa\":\"10h\",\"fonteStatus\":{\"status\":\"ok\",\"ultimaSyncEm\":\"2026-05-26T17:10:46.709Z\"},\"_DESTAQUE\":{\"contagemLinhas\":18},\"_INSTRUCAO\":\"Use os valores em _DESTAQUE como totais autoritativos. NUNCA declare 'lista veio cortada/incompleta/sem somatorio' se _DESTAQUE tem o total.\"}"
+      },
+      "finalMessageId": "1bfd825d-40e8-40d8-8941-4f81dfebea2c",
+      "finalMessage": "A consulta retornou resultados para **18 itens** relacionados a “cabo de aço”. Os principais saldos encontrados foram **951**, **490** e **48** unidades; também há itens com saldo negativo e zerado.\n\n- **[1467] Cabo de Aço - CNYG186X19APR009** — saldo **951**\n- **[1000102647] Gotinha ou Gotão de Ponta de Cabo de Aço** — saldo **490**\n- **[1740] Gotão para Cabo de Aço** — saldo **48**\n- **[0000055873] Terminal para Cabo de Aço Tipo Argola (Un) - 0000055873** — saldo **-14**\n- **[1000362270] Cabo de Aço Encapado com Terminais G7S71 - 1000302295** — saldo **0**\n\n[[suggestions]]:Saldo do [1467] Cabo de Aço - CNYG186X19APR009|Saldo do [1000102647] Gotinha ou Gotão de Ponta de Cabo de Aço|Saldo do [1740] Gotão para Cabo de Aço",
+      "model": "gpt-5.4-mini",
+      "tokensInput": 13258,
+      "tokensOutput": 748,
+      "durationMs": 7349,
+      "createdAt": "2026-05-27T03:34:24.699Z",
+      "primaryTool": "estoque_saldo_produto"
+    },
+    {
+      "turnoId": "1bfffd1e-b615-4f67-b4ac-d99c3e0b3bfa",
+      "conversationId": "e83f9e04-4b66-43e6-b48d-33aea3ef6783",
+      "userMessageId": "a0811e86-f69e-4121-895a-f4b3103a16c7",
+      "userMessage": "fornecedores",
+      "toolMessageId": "7d016a2c-8ebc-4a23-b3b8-7f6d6c015270",
+      "toolCalls": [
+        {
+          "id": "call_AAfXabUoBNwpLd6HcgMQHavB",
+          "name": "cadastro_contar_parceiros",
+          "arguments": {}
+        }
+      ],
+      "toolResults": {
+        "call_AAfXabUoBNwpLd6HcgMQHavB": "{\"estado\":\"ok\",\"dados\":{\"totalParceiros\":6567,\"totalClientes\":6325,\"totalFornecedores\":754,\"totalEmpresas\":4398,\"totalPessoasFisicas\":2169,\"totalAtivos\":6567,\"totalInativos\":0,\"totalClientesAtivos\":6325,\"totalFornecedoresAtivos\":754},\"atualizadoEm\":\"2026-05-26T17:25:02.144Z\",\"atualizadoHa\":\"10h\",\"fonteStatus\":{\"status\":\"ok\",\"ultimaSyncEm\":\"2026-05-26T17:26:21.963Z\"},\"_DESTAQUE\":{\"totalEmpresas\":4398,\"totalClientes\":6325,\"totalFornecedores\":754,\"totalAtivos\":6567,\"totalInativos\":0,\"totalParceiros\":6567,\"totalPessoasFisicas\":2169,\"totalClientesAtivos\":6325,\"totalFornecedoresAtivos\":754,\"contagemLinhas\":0},\"_INSTRUCAO\":\"Use os valores em _DESTAQUE como totais autoritativos. NUNCA declare 'lista veio cortada/incompleta/sem somatorio' se _DESTAQUE tem o total.\"}"
+      },
+      "finalMessageId": "1bfffd1e-b615-4f67-b4ac-d99c3e0b3bfa",
+      "finalMessage": "Há **754 fornecedores** cadastrados, todos ativos, com dado atualizado há **10h**.",
+      "model": "gpt-5.4-mini",
+      "tokensInput": 12170,
+      "tokensOutput": 304,
+      "durationMs": 3893,
+      "createdAt": "2026-05-27T03:34:05.319Z",
+      "primaryTool": "cadastro_contar_parceiros"
+    },
+    {
+      "turnoId": "29a38b19-e03d-4d01-85d7-f22ad4bb80b8",
+      "conversationId": "66875145-925c-4f53-b360-65cd51ed33fe",
+      "userMessageId": "1be3085a-7f59-489e-b8ab-4aa4e7aa97fa",
+      "userMessage": "Saldo do PMB403 hoje",
+      "toolMessageId": "ab82e330-d93c-4958-98d1-cb933e280fc3",
+      "toolCalls": [
+        {
+          "id": "call_u3CWyq9P23IVv7ZSHtw3cH27",
+          "name": "estoque_saldo_produto",
+          "arguments": {
+            "termo": "PMB403"
+          }
+        }
+      ],
+      "toolResults": {
+        "call_u3CWyq9P23IVv7ZSHtw3cH27": "{\"estado\":\"ok\",\"dados\":{\"kpis\":{\"totalProdutos\":1,\"produtosNegativos\":0,\"valorTotal\":0},\"linhas\":[{\"produtoNome\":\"PMB403 - Puxador Corda\",\"familiaNome\":\"Acessórios\",\"marcaNome\":\"Rotha Fitness\",\"saldoTotal\":0,\"valorTotal\":0,\"numLocais\":0,\"semEstoqueCadastrado\":true,\"mensagemContexto\":\"produto cadastrado, sem linha de saldo\"}],\"_agregado\":{\"contagem\":1,\"agregado_valorTotal\":{\"soma\":0,\"media\":0,\"min\":0,\"max\":0,\"contagemValidos\":1},\"agregado_saldoTotal\":{\"soma\":0,\"media\":0,\"min\":0,\"max\":0,\"contagemValidos\":1}}},\"atualizadoEm\":\"2026-05-26T17:25:09.971Z\",\"atualizadoHa\":\"10h\",\"fonteStatus\":{\"status\":\"ok\",\"ultimaSyncEm\":\"2026-05-26T17:10:46.709Z\"},\"_DESTAQUE\":{\"contagemLinhas\":1},\"_INSTRUCAO\":\"Use os valores em _DESTAQUE como totais autoritativos. NUNCA declare 'lista veio cortada/incompleta/sem somatorio' se _DESTAQUE tem o total.\"}"
+      },
+      "finalMessageId": "29a38b19-e03d-4d01-85d7-f22ad4bb80b8",
+      "finalMessage": "Hoje, o **PMB403 - Puxador Corda** está com **0 unidades** e **R$ 0,00** de valor a custo. Ele está cadastrado, mas **sem linha de saldo**. Dado atualizado há **10h**.",
+      "model": "gpt-5.4-mini",
+      "tokensInput": 12210,
+      "tokensOutput": 285,
+      "durationMs": 4090,
+      "createdAt": "2026-05-27T03:37:19.302Z",
+      "primaryTool": "estoque_saldo_produto"
+    },
+    {
+      "turnoId": "2acb7c27-ff38-416e-9e25-c69052402544",
+      "conversationId": "5094555a-b9e0-4955-aab2-f4bde063fc97",
+      "userMessageId": "4cc94f1a-b3b9-43cb-bf91-e77890723c31",
+      "userMessage": "Quanto vai sair essa semana?",
+      "toolMessageId": "91f8ea46-2142-40d7-a583-97f2a16c18b1",
+      "toolCalls": [
+        {
+          "id": "call_WJsrrOQhWopeTUkvZUoVIwQt",
+          "name": "registrar_lacuna",
+          "arguments": {
+            "dominio": "financeiro",
+            "perguntaResumo": "Quanto vai sair essa semana? (saídas previstas de caixa na semana corrente)"
+          }
+        }
+      ],
+      "toolResults": {
+        "call_WJsrrOQhWopeTUkvZUoVIwQt": "{\"registrado\":true,\"respostaSugerida\":\"Essa informação não está disponível no ERP no momento. Posso te ajudar com outros dados de estoque, financeiro, fiscal, comercial, cadastros ou contábil.\",\"sugestoesRelacionadas\":[\"Faturamento esse mês\",\"Contas a receber em aberto\",\"Posição financeira atual\"]}"
+      },
+      "finalMessageId": "2acb7c27-ff38-416e-9e25-c69052402544",
+      "finalMessage": "Essa informação não está disponível no ERP no momento. Posso te ajudar com outros dados de estoque, financeiro, fiscal, comercial, cadastros ou contábil.",
+      "model": "gpt-5.4-mini",
+      "tokensInput": 12011,
+      "tokensOutput": 202,
+      "durationMs": 3954,
+      "createdAt": "2026-05-27T03:37:43.571Z",
+      "primaryTool": "registrar_lacuna"
+    },
+    {
+      "turnoId": "2bc3f9ee-4a82-49f8-82a7-13912d0bc23b",
+      "conversationId": "a54e3613-f38b-45d3-b0e2-dcccdb038220",
+      "userMessageId": "431b0fc2-fc5e-4859-b107-28658aa1d828",
+      "userMessage": "Parcelas que vencem hoje",
+      "toolMessageId": "590f33d4-06f7-469d-8589-3d248bde89ea",
+      "toolCalls": [
+        {
+          "id": "call_l9dLln7cfKUoB5vgOgWtH1Am",
+          "name": "comercial_parcelas_a_vencer",
+          "arguments": {
+            "ateDias": 1
+          }
+        }
+      ],
+      "toolResults": {
+        "call_l9dLln7cfKUoB5vgOgWtH1Am": "{\"estado\":\"ok\",\"dados\":{\"linhas\":[{\"pedidoId\":103,\"participanteNome\":null,\"numero\":\"4\",\"dataVencimento\":\"2026-05-27T03:00:00.000Z\",\"valor\":2577.89},{\"pedidoId\":1476,\"participanteNome\":null,\"numero\":\"01\",\"dataVencimento\":\"2026-05-27T03:00:00.000Z\",\"valor\":6000}],\"totalAVencer\":8577.89,\"aviso\":\"Parcelas de pedidos com vencimento a partir de hoje até N dias (padrão 30), não faturadas, ordenadas por data.\",\"_agregado\":{\"contagem\":2,\"agregado_valor\":{\"soma\":8577.89,\"media\":4288.95,\"min\":2577.89,\"max\":6000,\"contagemValidos\":2}}},\"atualizadoEm\":\"2026-05-26T17:23:52.941Z\",\"atualizadoHa\":\"10h\",\"fonteStatus\":{\"status\":\"ok\",\"ultimaSyncEm\":\"2026-05-26T17:26:20.882Z\"},\"_DESTAQUE\":{\"contagemLinhas\":2},\"_INSTRUCAO\":\"Use os valores em _DESTAQUE como totais autoritativos. NUNCA declare 'lista veio cortada/incompleta/sem somatorio' se _DESTAQUE tem o total.\"}"
+      },
+      "finalMessageId": "2bc3f9ee-4a82-49f8-82a7-13912d0bc23b",
+      "finalMessage": "Hoje vencem **2 parcelas**, somando **R$ 8.577,89** (atualizado há 10h).\n\n- Pedido **103** — parcela **4** — **R$ 2.577,89**\n- Pedido **1476** — parcela **01** — **R$ 6.000,00**",
+      "model": "gpt-5.4-mini",
+      "tokensInput": 12229,
+      "tokensOutput": 359,
+      "durationMs": 3407,
+      "createdAt": "2026-05-27T03:37:25.188Z",
+      "primaryTool": "comercial_parcelas_a_vencer"
+    },
+    {
+      "turnoId": "2c3eb5cf-1fac-4ec3-a2e1-dd11317bbf2c",
+      "conversationId": "59a5daab-9d6c-4aec-8c44-832e99f7d687",
+      "userMessageId": "2007d8a3-3dd6-4676-a62b-34f1e2b45ca1",
+      "userMessage": "O que temos do código 1000093102",
+      "toolMessageId": "a3ad287d-869f-4c20-931b-089770ad1e2d",
+      "toolCalls": [
+        {
+          "id": "call_5bdlc1g9PqwWT4yD9P9vbowK",
+          "name": "estoque_saldo_produto",
+          "arguments": {
+            "termo": "1000093102"
+          }
+        }
+      ],
+      "toolResults": {
+        "call_5bdlc1g9PqwWT4yD9P9vbowK": "{\"estado\":\"vazio\",\"dados\":{\"kpis\":{\"totalProdutos\":0,\"produtosNegativos\":0,\"valorTotal\":0},\"linhas\":[]},\"atualizadoEm\":\"2026-05-26T17:25:09.971Z\",\"atualizadoHa\":\"10h\",\"fonteStatus\":{\"status\":\"ok\",\"ultimaSyncEm\":\"2026-05-26T17:10:46.709Z\"},\"_DESTAQUE\":{\"contagemLinhas\":0},\"_INSTRUCAO\":\"Use os valores em _DESTAQUE como totais autoritativos. NUNCA declare 'lista veio cortada/incompleta/sem somatorio' se _DESTAQUE tem o total.\"}"
+      },
+      "finalMessageId": "2c3eb5cf-1fac-4ec3-a2e1-dd11317bbf2c",
+      "finalMessage": "Não encontrei registros para esse critério. O código **1000093102** não apareceu no estoque consultado.",
+      "model": "gpt-5.4-mini",
+      "tokensInput": 12079,
+      "tokensOutput": 570,
+      "durationMs": 5919,
+      "createdAt": "2026-05-27T03:38:18.805Z",
+      "primaryTool": "estoque_saldo_produto"
+    },
+    {
+      "turnoId": "2e08c7f4-1a2e-4268-ae7b-341a4eb92a89",
+      "conversationId": "36f0a3a2-5c89-4251-a2c6-78c128eb4a38",
+      "userMessageId": "f50e0ebd-eee0-4d23-8b70-fbe955d0ed6c",
+      "userMessage": "tá tudo certo no caixa?",
+      "toolMessageId": "425d8ae4-92ea-40fb-8a42-44e38a7bf83d",
+      "toolCalls": [
+        {
+          "id": "call_kkQlkwqpQ13f5TfVi5IJ5OwW",
+          "name": "financeiro_caixa_periodo",
+          "arguments": {
+            "periodoDe": "2026-05-01",
+            "periodoAte": "2026-05-27"
+          }
+        },
+        {
+          "id": "call_Lz3NdfcvQabeZDDlqBTGnS8g",
+          "name": "financeiro_saldo_contas",
+          "arguments": {}
+        }
+      ],
+      "toolResults": {
+        "call_Lz3NdfcvQabeZDDlqBTGnS8g": "{\"estado\":\"ok\",\"dados\":{\"contas\":[{\"bancoNome\":\"Itaú / Corrente / 1584 / 37236-9 / Cs Comércio - Matriz DF 35.156.509/0001-02\",\"tipo\":null,\"saldo\":72410.18},{\"bancoNome\":\"Itaú / Corrente / 1584 / 36410-1 / Ks Comércio - Matriz DF 34.461.908/0001-14\",\"tipo\":null,\"saldo\":875957.69},{\"bancoNome\":\"Itaú / Corrente / 0542 / 99596-4 / Jmf Comércio - Matriz DF 45.424.185/0001-08\",\"tipo\":null,\"saldo\":55112.86},{\"bancoNome\":\"Itaú / Corrente / 1584 / 55755-5 / Jht DF Comércio - Matriz DF 10.557.556/0001-37\",\"tipo\":null,\"saldo\":-1621472.15},{\"bancoNome\":\"Itaú / Corrente / 1584 / 19916-8 / JHT Brasília - Matriz DF 07.390.039/0001-01\",\"tipo\":null,\"saldo\":383686.12},{\"bancoNome\":\"Itaú / Corrente / 1584 / 36363-2 / Jht SP Comércio - Matriz DF 34.161.829/0001-98\",\"tipo\":null,\"saldo\":-9015013.75},{\"bancoNome\":\"Itaú / Corrente / 1584 / 24146-5 / Jds Comércio - Matriz DF 18.282.961/0001-00\",\"tipo\":null,\"saldo\":-15216088.79},{\"bancoNome\":\"Itaú / Corrente / 1584 / 35012-6 / Jib DF Comércio - Matriz DF 33.718.546/0001-31\",\"tipo\":null,\"saldo\":223107.55}],\"saldoTotal\":-24242300.29,\"_agregado\":{\"contagem\":8,\"agregado_saldo\":{\"soma\":-24242300.29,\"media\":-3030287.54,\"min\":-15216088.79,\"max\":875957.69,\"contagemValidos\":8}}},\"atualizadoEm\":\"2026-05-26T17:11:12.069Z\",\"atualizadoHa\":\"10h\",\"fonteStatus\":{\"status\":\"ok\",\"ultimaSyncEm\":\"2026-05-26T17:11:02.852Z\"},\"_DESTAQUE\":{\"contagemLinhas\":8},\"_INSTRUCAO\":\"Use os valores em _DESTAQUE como totais autoritativos. NUNCA declare 'lista veio cortada/incompleta/sem somatorio' se _DESTAQUE tem o total.\"}",
+        "call_kkQlkwqpQ13f5TfVi5IJ5OwW": "{\"estado\":\"ok\",\"dados\":{\"entrada\":13139706.090000078,\"saida\":18582222.670000054,\"saldo\":-5442516.579999976},\"atualizadoEm\":\"2026-05-26T17:23:50.320Z\",\"atualizadoHa\":\"10h\",\"fonteStatus\":{\"status\":\"ok\",\"ultimaSyncEm\":\"2026-05-26T17:26:15.109Z\"},\"_DESTAQUE\":{\"contagemLinhas\":0},\"_INSTRUCAO\":\"Use os valores em _DESTAQUE como totais autoritativos. NUNCA declare 'lista veio cortada/incompleta/sem somatorio' se _DESTAQUE tem o total.\"}"
+      },
+      "finalMessageId": "2e08c7f4-1a2e-4268-ae7b-341a4eb92a89",
+      "finalMessage": "Não. No mês corrente, o caixa realizado está **negativo em R$ 5.442.516,58**: entradas de **R$ 13.139.706,09** contra saídas de **R$ 18.582.222,67**. \nAlém disso, o saldo total das contas bancárias está em **-R$ 24.242.300,29**. Dados atualizados há **10h**.",
+      "model": "gpt-5.4-mini",
+      "tokensInput": 12751,
+      "tokensOutput": 503,
+      "durationMs": 8417,
+      "createdAt": "2026-05-27T03:38:01.567Z",
+      "primaryTool": "financeiro_caixa_periodo"
+    },
+    {
+      "turnoId": "2f8e9b73-93ad-4183-b2cc-989e938f135b",
+      "conversationId": "3e392501-cddf-4bdc-ae28-e8769200bb47",
+      "userMessageId": "ff1682e1-223f-432f-9114-fa33e511c837",
+      "userMessage": "Devedores principais",
+      "toolMessageId": "0bff052c-b7a7-4431-bec3-06dd8de1f8ed",
+      "toolCalls": [
+        {
+          "id": "call_xFZE72s1e2gqwL115VkznojT",
+          "name": "financeiro_contas_a_receber",
+          "arguments": {}
+        }
+      ],
+      "toolResults": {
+        "call_xFZE72s1e2gqwL115VkznojT": "{\"estado\":\"ok\",\"dados\":{\"titulos\":[{\"participanteNome\":\"Edificio Porto Farol [52‍.786‍.028‍/0001‑08] \",\"numeroDocumento\":\"PV-0462/26-09/15\",\"dataVencimento\":\"2026-12-14T03:00:00.000Z\",\"vrSaldo\":4458.28,\"vrTotal\":4458.28,\"diasAtraso\":0},{\"participanteNome\":\"Edificio Porto Farol [52‍.786‍.028‍/0001‑08] \",\"numeroDocumento\":\"PV-0462/26-10/15\",\"dataVencimento\":\"2027-01-13T03:00:00.000Z\",\"vrSaldo\":4458.28,\"vrTotal\":4458.28,\"diasAtraso\":0},{\"participanteNome\":\"Edificio Porto Farol [52‍.786‍.028‍/0001‑08] \",\"numeroDocumento\":\"PV-0462/26-11/15\",\"dataVencimento\":\"2027-02-12T03:00:00.000Z\",\"vrSaldo\":4458.28,\"vrTotal\":4458.28,\"diasAtraso\":0},{\"participanteNome\":\"Edificio Porto Farol [52‍.786‍.028‍/0001‑08] \",\"numeroDocumento\":\"PV-0462/26-12/15\",\"dataVencimento\":\"2027-03-15T03:00:00.000Z\",\"vrSaldo\":4458.28,\"vrTotal\":4458.28,\"diasAtraso\":0},{\"participanteNome\":\"Edificio Porto Farol [52‍.786‍.028‍/0001‑08] \",\"numeroDocumento\":\"PV-0462/26-13/15\",\"dataVencimento\":\"2027-04-13T03:00:00.000Z\",\"vrSaldo\":4458.28,\"vrTotal\":4458.28,\"diasAtraso\":0},{\"participanteNome\":\"Edificio Porto Farol [52‍.786‍.028‍/0001‑08] \",\"numeroDocumento\":\"PV-0462/26-14/15\",\"dataVencimento\":\"2027-05-13T03:00:00.000Z\",\"vrSaldo\":4458.28,\"vrTotal\":4458.28,\"diasAtraso\":0},{\"participanteNome\":\"Edificio Porto Farol [52‍.786‍.028‍/0001‑08] \",\"numeroDocumento\":\"PV-0462/26-15/15\",\"dataVencimento\":\"2027-06-14T03:00:00.000Z\",\"vrSaldo\":4458.24,\"vrTotal\":4458.24,\"diasAtraso\":0},{\"participanteNome\":\"Jht SP Comércio - Matriz DF 34.161.829/0001-98 - Jht SP Comércio de Produtos e Equipamentos Esportivos Ltda [34‍.161‍.829‍/0001‑98] \",\"numeroDocumento\":\"1-12851-1/1\",\"dataVencimento\":\"2026-06-17T03:00:00.000Z\",\"vrSaldo\":322236.75,\"vrTotal\":322236.75,\"diasAtraso\":0},{\"participanteNome\":\"Fabrica Ct Ceilandia - Fabrica Ct Ceilandia Ltda [62‍.499‍.293‍/0001‑50] \",\"numeroDocumento\":\"PV-0565/26-02/07\",\"dataVencimento\":\"2026-05-10T03:00:00.000Z\",\"vrSaldo\":4241.75,\"vrTotal\":4241.75,\"diasAtraso\":17},{\"participanteNome\":\"Fabrica Ct Ceilandia - Fabrica Ct Ceilandia Ltda [62‍.499‍.293‍/0001‑50] \",\"numeroDocumento\":\"PV-0565/26-03/07\",\"dataVencimento\":\"2026-06-10T03:00:00.000Z\",\"vrSaldo\":4241.75,\"vrTotal\":4241.75,\"diasAtraso\":0},{\"participanteNome\":\"Fabrica Ct Ceilandia - Fabrica Ct Ceilandia Ltda [62‍.499‍.293‍/0001‑50] \",\"numeroDocumento\":\"PV-0565/26-04/07\",\"dataVencimento\":\"2026-07-08T03:00:00.000Z\",\"vrSaldo\":4241.75,\"vrTotal\":4241.75,\"diasAtraso\":0},{\"participanteNome\":\"Fabrica Ct Ceilandia - Fabrica Ct Ceilandia Ltda [62‍.499‍.293‍/0001‑50] \",\"numeroDocumento\":\"PV-0565/26-05/07\",\"dataVencimento\":\"2026-08-07T03:00:00.000Z\",\"vrSaldo\":4241.75,\"vrTotal\":4241.75,\"diasAtraso\":0},{\"participanteNome\":\"Fabrica Ct Ceilandia - Fabrica Ct Ceilandia Ltda [62‍.499‍.293‍/0001‑50] \",\"numeroDocumento\":\"PV-0565/26-06/07\",\"dataVencimento\":\"2026-09-08T03:00:00.000Z\",\"vrSaldo\":4241.75,\"vrTotal\":4241.75,\"diasAtraso\":0},{\"participanteNome\":\"Fabrica Ct Ceilandia - Fabrica Ct Ceilandia Ltda [62‍.499‍.293‍/0001‑50] \",\"numeroDocumento\":\"PV-0565/26-07/07\",\"dataVencimento\":\"2026-10-06T03:00:00.000Z\",\"vrSaldo\":4241.73,\"vrTotal\":4241.73,\"diasAtraso\":0},{\"participanteNome\":\"Associacao Condominio Vale dos Passaros [13‍.186‍.845‍/0001‑65] \",\"numeroDocumento\":\"PV-0457/26-02/10\",\"dataVencimento\":\"2026-06-10T03:00:00.000Z\",\"vrSaldo\":33827.77,\"vrTotal\":33827.77,\"diasAtraso\":0},{\"participanteNome\":\"Associacao Condominio Vale dos Passaros [13‍.186‍.845‍/0001‑65] \",\"numeroDocumento\":\"PV-0457/26-03/10\",\"dataVencimento\":\"2026-07-10T03:00:00.000Z\",\"vrSaldo\":33827.77,\"vrTotal\":33827.77,\"diasAtraso\":0},{\"participanteNome\":\"Associacao Condominio Vale dos Passaros [13‍.186‍.845‍/0001‑65] \",\"numeroDocumento\":\"PV-0457/26-04/10\",\"dataVencimento\":\"2026-08-10T03:00:00.000Z\",\"vrSaldo\":33827.77,\"vrTotal\":33827.77,\"diasAtraso\":0},{\"participanteNome\":\"Associacao Condominio Vale dos Passaros [13‍.186‍.845‍/0001‑65] \",\"numeroDocumento\":\"PV-0457/26-05/10\",\"dataVencimento\":\"2026-09-10T03:00:00.000Z\",\"vrSaldo\":33827.77,\"vrTotal\":33827.77,\"diasAtraso\":0},{\"participanteNome\":\"Associacao Condominio Vale dos Passaros [13‍.186‍.845‍/0001‑65] \",\"numeroDocumento\":\"PV-0457/26-06/10\",\"dataVencimento\":\"2026-10-10T03:00:00.000Z\",\"vrSaldo\":33827.77,\"vrTotal\":33827.77,\"diasAtraso\":0},{\"participanteNome\":\"Associacao Condominio Vale dos Passaros [13‍.186‍.845‍/0001‑65] \",\"numeroDocumento\":\"PV-0457/26-07/10\",\"dataVencimento\":\"2026-11-10T03:00:00.000Z\",\"vrSaldo\":33827.77,\"vrTotal\":33827.77,\"diasAtraso\":0},{\"participanteNome\":\"Associacao Condominio Vale dos Passaros [13‍.186‍.845‍/0001‑65] \",\"numeroDocumento\":\"PV-0457/26-08/10\",\"dataVencimento\":\"2026-12-10T03:00:00.000Z\",\"vrSaldo\":33827.77,\"vrTotal\":33827.77,\"diasAtraso\":0},{\"participanteNome\":\"Associacao Condominio Vale dos Passaros [13‍.186‍.845‍/0001‑65] \",\"numeroDocumento\":\"PV-0457/26-09/10\",\"dataVencimento\":\"2027-01-10T03:00:00.000Z\",\"vrSaldo\":33827.77,\"vrTotal\":33827.77,\"diasAtraso\":0},{\"participanteNome\":\"Associacao Condominio Vale dos Passaros [13‍.186‍.845‍/0001‑65] \",\"numeroDocumento\":\"PV-0457/26-10/10\",\"dataVencimento\":\"2027-02-10T03:00:00.000Z\",\"vrSaldo\":33827.77,\"vrTotal\":33827.77,\"diasAtraso\":0},{\"participanteNome\":\"CONDOMINIO ESTRELAS DO MAR [10‍.624‍.805‍/0001‑60] \",\"numeroDocumento\":\"PV-0458/26-04/10\",\"dataVencimento\":\"2026-06-12T03:00:00.000Z\",\"vrSaldo\":5000,\"vrTotal\":5000,\"diasAtraso\":0},{\"participanteNome\":\"CONDOMINIO ESTRELAS DO MAR [10‍.624‍.805‍/0001‑60] \",\"numeroDocumento\":\"PV-0458/26-05/10\",\"dataVencimento\":\"2026-07-12T03:00:00.000Z\",\"vrSaldo\":5000,\"vrTotal\":5000,\"diasAtraso\":0},{\"participanteNome\":\"CONDOMINIO ESTRELAS DO MAR [10‍.624‍.805‍/0001‑60] \",\"numeroDocumento\":\"PV-0458/26-06/10\",\"dataVencimento\":\"2026-08-12T03:00:00.000Z\",\"vrSaldo\":5000,\"vrTotal\":5000,\"diasAtraso\":0},{\"participanteNome\":\"CONDOMINIO ESTRELAS DO MAR [10‍.624‍.805‍/0001‑60] \",\"numeroDocumento\":\"PV-0458/26-07/10\",\"dataVencimento\":\"2026-09-12T03:00:00.000Z\",\"vrSaldo\":5000,\"vrTotal\":5000,\"diasAtraso\":0},{\"participanteNome\":\"CONDOMINIO ESTRELAS DO MAR [10‍.624‍.805‍/0001‑60] \",\"numeroDocumento\":\"PV-0458/26-08/10\",\"dataVencimento\":\"2026-10-12T03:00:00.000Z\",\"vrSaldo\":5000,\"vrTotal\":5000,\"diasAtraso\":0},{\"participanteNome\":\"CONDOMINIO ESTRELAS DO MAR [10‍.624‍.805‍/0001‑60] \",\"numeroDocumento\":\"PV-0458/26-09/10\",\"dataVencimento\":\"2026-11-12T03:00:00.000Z\",\"vrSaldo\":5000,\"vrTotal\":5000,\"diasAtraso\":0},{\"participanteNome\":\"CONDOMINIO ESTRELAS DO MAR [10‍.624‍.805‍/0001‑60] \",\"numeroDocumento\":\"PV-0458/26-10/10\",\"dataVencimento\":\"2026-12-12T03:00:00.000Z\",\"vrSaldo\":5000,\"vrTotal\":5000,\"diasAtraso\":0},{\"participanteNome\":\"Edificio Porto Farol [52‍.786‍.028‍/0001‑08] \",\"numeroDocumento\":\"PV-0462/26-04/15\",\"dataVencimento\":\"2026-07-17T03:00:00.000Z\",\"vrSaldo\":4458.28,\"vrTotal\":4458.28,\"diasAtraso\":0},{\"participanteNome\":\"Edificio Porto Farol [52‍.786‍.028‍/0001‑08] \",\"numeroDocumento\":\"PV-0462/26-05/15\",\"dataVencimento\":\"2026-08-17T03:00:00.000Z\",\"vrSaldo\":4458.28,\"vrTotal\":4458.28,\"diasAtraso\":0},{\"participanteNome\":\"Edificio Porto Farol [52‍.786‍.028‍/0001‑08] \",\"numeroDocumento\":\"PV-0462/26-06/15\",\"dataVencimento\":\"2026-09-15T03:00:00.000Z\",\"vrSaldo\":4458.28,\"vrTotal\":4458.28,\"diasAtraso\":0},{\"participanteNome\":\"Edificio Porto Farol [52‍.786‍.028‍/0001‑08] \",\"numeroDocumento\":\"PV-0462/26-07/15\",\"dataVencimento\":\"2026-10-15T03:00:00.000Z\",\"vrSaldo\":4458.28,\"vrTotal\":4458.28,\"diasAtraso\":0},{\"participanteNome\":\"Edificio Porto Farol [52‍.786‍.028‍/0001‑08] \",\"numeroDocumento\":\"PV-0462/26-08/15\",\"dataVencimento\":\"2026-11-16T03:00:00.000Z\",\"vrSaldo\":4458.28,\"vrTotal\":4458.28,\"diasAtraso\":0},{\"participanteNome\":\"Smartfit Escola de Ginastica e DANCa S. a [07‍.594‍.978‍/0646‑56] \",\"numeroDocumento\":\"PV-0508/26-01/01\",\"dataVencimento\":\"2026-05-03T03:00:00.000Z\",\"vrSaldo\":387500,\"vrTotal\":387500,\"diasAtraso\":24},{\"participanteNome\":\"Construtora e Empreendimentos Peixoto Ltda [04‍.721‍.698‍/0001‑95] \",\"numeroDocumento\":\"PV-0436/26-03/06\",\"dataVencimento\":\"2026-05-30T03:00:00.000Z\",\"vrSaldo\":16666.67,\"vrTotal\":16666.67,\"diasAtraso\":0},{\"participanteNome\":\"Construtora e Empreendimentos Peixoto Ltda [04‍.721‍.698‍/0001‑95] \",\"numeroDocumento\":\"PV-0436/26-04/06\",\"dataVencimento\":\"2026-06-30T03:00:00.000Z\",\"vrSaldo\":16666.67,\"vrTotal\":16666.67,\"diasAtraso\":0},{\"participanteNome\":\"Construtora e Empreendimentos Peixoto Ltda [04‍.721‍.698‍/0001‑95] \",\"numeroDocumento\":\"PV-0436/26-05/06\",\"dataVencimento\":\"2026-07-30T03:00:00.000Z\",\"vrSaldo\":16666.67,\"vrTotal\":16666.67,\"diasAtraso\":0},{\"participanteNome\":\"Construtora e Empreendimentos Peixoto Ltda [04‍.721‍.698‍/0001‑95] \",\"numeroDocumento\":\"PV-0436/26-06/06\",\"dataVencimento\":\"2026-08-30T03:00:00.000Z\",\"vrSaldo\":16666.65,\"vrTotal\":16666.65,\"diasAtraso\":0},{\"participanteNome\":\"Associacao de Musica Abilio Coelho de Esporte e Lazer - Associacao de Musica Abilio Coelho de Esporte e Lazer - Amac [01‍.775‍.350‍/0001‑92] \",\"numeroDocumento\":\"PV-0463/26-01/15\",\"dataVencimento\":\"2026-04-20T03:00:00.000Z\",\"vrSaldo\":8085,\"vrTotal\":8085,\"diasAtraso\":37},{\"participanteNome\":\"Associacao de Musica Abilio Coelho de Esporte e Lazer - Associacao de Musica Abilio Coelho de Esporte e Lazer - Amac [01‍.775‍.350‍/0001‑92] \",\"numeroDocumento\":\"PV-0463/26-02/15\",\"dataVencimento\":\"2026-05-18T03:00:00.000Z\",\"vrSaldo\":8085,\"vrTotal\":8085,\"diasAtraso\":9},{\"participanteNome\":\"Associacao de Musica Abilio Coelho de Esporte e Lazer - Associacao de Musica Abilio Coelho de Esporte e Lazer - Amac [01‍.775‍.350‍/0001‑92] \",\"numeroDocumento\":\"PV-0463/26-03/15\",\"dataVencimento\":\"2026-06-17T03:00:00.000Z\",\"vrSaldo\":8085,\"vrTotal\":8085,\"diasAtraso\":0},{\"participanteNome\":\"Associacao de Musica Abilio Coelho de Esporte e Lazer - Associacao de Musica Abilio Coelho de Esporte e Lazer - Amac [01‍.775‍.350‍/0001‑92] \",\"numeroDocumento\":\"PV-0463/26-04/15\",\"dataVencimento\":\"2026-07-17T03:00:00.000Z\",\"vrSaldo\":8085,\"vrTotal\":8085,\"diasAtraso\":0},{\"participanteNome\":\"Associacao de Musica Abilio Coelho de Esporte e Lazer - Associacao de Musica Abilio Coelho de Esporte e Lazer - Amac [01‍.775‍.350‍/0001‑92] \",\"numeroDocumento\":\"PV-0463/26-05/15\",\"dataVencimento\":\"2026-08-17T03:00:00.000Z\",\"vrSaldo\":8085,\"vrTotal\":8085,\"diasAtraso\":0},{\"participanteNome\":\"Associacao de Musica Abilio Coelho de Esporte e Lazer - Associacao de Musica Abilio Coelho de Esporte e Lazer - Amac [01‍.775‍.350‍/0001‑92] \",\"numeroDocumento\":\"PV-0463/26-06/15\",\"dataVencimento\":\"2026-09-15T03:00:00.000Z\",\"vrSaldo\":8085,\"vrTotal\":8085,\"diasAtraso\":0},{\"participanteNome\":\"Associacao de Musica Abilio Coelho de Esporte e Lazer - Associacao de Musica Abilio Coelho de Esporte e Lazer - Amac [01‍.775‍.350‍/0001‑92] \",\"numeroDocumento\":\"PV-0463/26-07/15\",\"dataVencimento\":\"2026-10-15T03:00:00.000Z\",\"vrSaldo\":8085,\"vrTotal\":8085,\"diasAtraso\":0},{\"participanteNome\":\"Associacao de Musica Abilio Coelho de Esporte e Lazer - Associacao de Musica Abilio Coelho de Esporte e Lazer - Amac [01‍.775‍.350‍/0001‑92] \",\"numeroDocumento\":\"PV-0463/26-08/15\",\"dataVencimento\":\"2026-11-16T03:00:00.000Z\",\"vrSaldo\":8085,\"vrTotal\":8085,\"diasAtraso\":0},{\"participanteNome\":\"Associacao de Musica Abilio Coelho de Esporte e Lazer - Associacao de Musica Abilio Coelho de Esporte e Lazer - Amac [01‍.775‍.350‍/0001‑92] \",\"numeroDocumento\":\"PV-0463/26-09/15\",\"dataVencimento\":\"2026-12-14T03:00:00.000Z\",\"vrSaldo\":8085,\"vrTotal\":8085,\"diasAtraso\":0},{\"participanteNome\":\"Associacao de Musica Abilio Coelho de Esporte e Lazer - Associacao de Musica Abilio Coelho de Esporte e Lazer - Amac [01‍.775‍.350‍/0001‑92] \",\"numeroDocumento\":\"PV-0463/26-10/15\",\"dataVencimento\":\"2027-01-13T03:00:00.000Z\",\"vrSaldo\":8085,\"vrTotal\":8085,\"diasAtraso\":0},{\"participanteNome\":\"Associacao de Musica Abilio Coelho de Esporte e Lazer - Associacao de Musica Abilio Coelho de Esporte e Lazer - Amac [01‍.775‍.350‍/0001‑92] \",\"numeroDocumento\":\"PV-0463/26-11/15\",\"dataVencimento\":\"2027-02-12T03:00:00.000Z\",\"vrSaldo\":8085,\"vrTotal\":8085,\"diasAtraso\":0},{\"participanteNome\":\"Associacao de Musica Abilio Coelho de Esporte e Lazer - Associacao de Musica Abilio Coelho de Esporte e Lazer - Amac [01‍.775‍.350‍/0001‑92] \",\"numeroDocumento\":\"PV-0463/26-12/15\",\"dataVencimento\":\"2027-03-15T03:00:00.000Z\",\"vrSaldo\":8085,\"vrTotal\":8085,\"diasAtraso\":0},{\"participanteNome\":\"Associacao de Musica Abilio Coelho de Esporte e Lazer - Associacao de Musica Abilio Coelho de Esporte e Lazer - Amac [01‍.775‍.350‍/0001‑92] \",\"numeroDocumento\":\"PV-0463/26-13/15\",\"dataVencimento\":\"2027-04-13T03:00:00.000Z\",\"vrSaldo\":8085,\"vrTotal\":8085,\"diasAtraso\":0},{\"participanteNome\":\"Associacao de Musica Abilio Coelho de Esporte e Lazer - Associacao de Musica Abilio Coelho de Esporte e Lazer - Amac [01‍.775‍.350‍/0001‑92] \",\"numeroDocumento\":\"PV-0463/26-14/15\",\"dataVencimento\":\"2027-05-13T03:00:00.000Z\",\"vrSaldo\":8085,\"vrTotal\":8085,\"diasAtraso\":0},{\"participanteNome\":\"Associacao de Musica Abilio Coelho de Esporte e Lazer - Associacao de Musica Abilio Coelho de Esporte e Lazer - Amac [01‍.775‍.350‍/0001‑92] \",\"numeroDocumento\":\"PV-0463/26-15/15\",\"dataVencimento\":\"2027-06-14T03:00:00.000Z\",\"vrSaldo\":8085,\"vrTotal\":8085,\"diasAtraso\":0},{\"participanteNome\":\"Condominio do Edificio Yes - Condomnio do Edificio Yes [16‍.699‍.254‍/0001‑80] \",\"numeroDocumento\":\"PV-0548/26-01/02\",\"dataVencimento\":\"2026-04-20T03:00:00.000Z\",\"vrSaldo\":500.48,\"vrTotal\":500.48,\"diasAtraso\":37},{\"participanteNome\":\"Condominio do Edificio Yes - Condomnio do Edificio Yes [16‍.699‍.254‍/0001‑80] \",\"numeroDocumento\":\"PV-0548/26-02/02\",\"dataVencimento\":\"2026-05-19T03:00:00.000Z\",\"vrSaldo\":500.48,\"vrTotal\":500.48,\"diasAtraso\":8},{\"participanteNome\":\"Smartfit Escola de Ginastica e DANCa S. a [07‍.594‍.978‍/0646‑56] \",\"numeroDocumento\":\"1-4721-1/1\",\"dataVencimento\":\"2026-05-04T03:00:00.000Z\",\"vrSaldo\":145602,\"vrTotal\":145602,\"diasAtraso\":23},{\"participanteNome\":\"Intter 100 - Intter 100 Construcao e Incorporacao Ltda [39‍.324‍.468‍/0001‑77] \",\"numeroDocumento\":\"PV-0446/26-01/01\",\"dataVencimento\":\"2026-04-20T03:00:00.000Z\",\"vrSaldo\":1000.08,\"vrTotal\":1000.08,\"diasAtraso\":37},{\"participanteNome\":\"Intter 100 - Intter 100 Construcao e Incorporacao Ltda [39‍.324‍.468‍/0001‑77] \",\"numeroDocumento\":\"PV-0554/26-01/01\",\"dataVencimento\":\"2026-04-20T03:00:00.000Z\",\"vrSaldo\":1000.08,\"vrTotal\":1000.08,\"diasAtraso\":37},{\"participanteNome\":\"VILLA LOBOS - CONDOMINIO DO EDIFICIO VILLA LOBOS [02‍.706‍.627‍/0001‑98] \",\"numeroDocumento\":\"PV-0544/26-02/10\",\"dataVencimento\":\"2026-05-19T03:00:00.000Z\",\"vrSaldo\":996.8,\"vrTotal\":996.8,\"diasAtraso\":8},{\"participanteNome\":\"VILLA LOBOS - CONDOMINIO DO EDIFICIO VILLA LOBOS [02‍.706‍.627‍/0001‑98] \",\"numeroDocumento\":\"PV-0544/26-03/10\",\"dataVencimento\":\"2026-06-18T03:00:00.000Z\",\"vrSaldo\":996.8,\"vrTotal\":996.8,\"diasAtraso\":0},{\"participanteNome\":\"VILLA LOBOS - CONDOMINIO DO EDIFICIO VILLA LOBOS [02‍.706‍.627‍/0001‑98] \",\"numeroDocumento\":\"PV-0544/26-04/10\",\"dataVencimento\":\"2026-07-20T03:00:00.000Z\",\"vrSaldo\":996.8,\"vrTotal\":996.8,\"diasAtraso\":0},{\"participanteNome\":\"VILLA LOBOS - CONDOMINIO DO EDIFICIO VILLA LOBOS [02‍.706‍.627‍/0001‑98] \",\"numeroDocumento\":\"PV-0544/26-05/10\",\"dataVencimento\":\"2026-08-17T03:00:00.000Z\",\"vrSaldo\":996.8,\"vrTotal\":996.8,\"diasAtraso\":0},{\"participanteNome\":\"VILLA LOBOS - CONDOMINIO DO EDIFICIO VILLA LOBOS [02‍.706‍.627‍/0001‑98] \",\"numeroDocumento\":\"PV-0544/26-06/10\",\"dataVencimento\":\"2026-09-16T03:00:00.000Z\",\"vrSaldo\":996.8,\"vrTotal\":996.8,\"diasAtraso\":0},{\"participanteNome\":\"VILLA LOBOS - CONDOMINIO DO EDIFICIO VILLA LOBOS [02‍.706‍.627‍/0001‑98] \",\"numeroDocumento\":\"PV-0544/26-07/10\",\"dataVencimento\":\"2026-10-16T03:00:00.000Z\",\"vrSaldo\":996.8,\"vrTotal\":996.8,\"diasAtraso\":0},{\"participanteNome\":\"VILLA LOBOS - CONDOMINIO DO EDIFICIO VILLA LOBOS [02‍.706‍.627‍/0001‑98] \",\"numeroDocumento\":\"PV-0544/26-08/10\",\"dataVencimento\":\"2026-11-16T03:00:00.000Z\",\"vrSaldo\":996.8,\"vrTotal\":996.8,\"diasAtraso\":0},{\"participanteNome\":\"VILLA LOBOS - CONDOMINIO DO EDIFICIO VILLA LOBOS [02‍.706‍.627‍/0001‑98] \",\"numeroDocumento\":\"PV-0544/26-09/10\",\"dataVencimento\":\"2026-12-15T03:00:00.000Z\",\"vrSaldo\":996.8,\"vrTotal\":996.8,\"diasAtraso\":0},{\"participanteNome\":\"VILLA LOBOS - CONDOMINIO DO EDIFICIO VILLA LOBOS [02‍.706‍.627‍/0001‑98] \",\"numeroDocumento\":\"PV-0544/26-10/10\",\"dataVencimento\":\"2027-01-14T03:00:00.000Z\",\"vrSaldo\":996.8,\"vrTotal\":996.8,\"diasAtraso\":0},{\"participanteNome\":\"Jht DF Comércio - Matriz DF 10.557.556/0001-37 - Jht DF Comércio de Produtos e Equipamentos Esportivos Ltda [10‍.557‍.556‍/0001‑37] \",\"numeroDocumento\":\"1-12876-1/1\",\"dataVencimento\":\"2026-06-18T03:00:00.000Z\",\"vrSaldo\":156549.87,\"vrTotal\":156549.87,\"diasAtraso\":0},{\"participanteNome\":\"CONDOMINIO ALTOS DO UMARIZAL [22‍.866‍.630‍/0001‑86] \",\"numeroDocumento\":\"1-10410-2/12\",\"dataVencimento\":\"2026-05-19T03:00:00.000Z\",\"vrSaldo\":29129.14,\"vrTotal\":29129.14,\"diasAtraso\":8},{\"participanteNome\":\"CONDOMINIO ALTOS DO UMARIZAL [22‍.866‍.630‍/0001‑86] \",\"numeroDocumento\":\"1-10410-3/12\",\"dataVencimento\":\"2026-06-18T03:00:00.000Z\",\"vrSaldo\":29129.14,\"vrTotal\":29129.14,\"diasAtraso\":0},{\"participanteNome\":\"CONDOMINIO ALTOS DO UMARIZAL [22‍.866‍.630‍/0001‑86] \",\"numeroDocumento\":\"1-10410-4/12\",\"dataVencimento\":\"2026-07-20T03:00:00.000Z\",\"vrSaldo\":29129.14,\"vrTotal\":29129.14,\"diasAtraso\":0},{\"participanteNome\":\"CONDOMINIO ALTOS DO UMARIZAL [22‍.866‍.630‍/0001‑86] \",\"numeroDocumento\":\"1-10410-5/12\",\"dataVencimento\":\"2026-08-17T03:00:00.000Z\",\"vrSaldo\":29129.14,\"vrTotal\":29129.14,\"diasAtraso\":0},{\"participanteNome\":\"CONDOMINIO ALTOS DO UMARIZAL [22‍.866‍.630‍/0001‑86] \",\"numeroDocumento\":\"1-10410-6/12\",\"dataVencimento\":\"2026-09-16T03:00:00.000Z\",\"vrSaldo\":29129.14,\"vrTotal\":29129.14,\"diasAtraso\":0},{\"participanteNome\":\"CONDOMINIO ALTOS DO UMARIZAL [22‍.866‍.630‍/0001‑86] \",\"numeroDocumento\":\"1-10410-7/12\",\"dataVencimento\":\"2026-10-16T03:00:00.000Z\",\"vrSaldo\":29129.14,\"vrTotal\":29129.14,\"diasAtraso\":0},{\"participanteNome\":\"CONDOMINIO ALTOS DO UMARIZAL [22‍.866‍.630‍/0001‑86] \",\"numeroDocumento\":\"1-10410-8/12\",\"dataVencimento\":\"2026-11-16T03:00:00.000Z\",\"vrSaldo\":29129.14,\"vrTotal\":29129.14,\"diasAtraso\":0},{\"participanteNome\":\"CONDOMINIO ALTOS DO UMARIZAL [22‍.866‍.630‍/0001‑86] \",\"numeroDocumento\":\"1-10410-9/12\",\"dataVencimento\":\"2026-12-15T03:00:00.000Z\",\"vrSaldo\":29129.14,\"vrTotal\":29129.14,\"diasAtraso\":0},{\"participanteNome\":\"CONDOMINIO ALTOS DO UMARIZAL [22‍.866‍.630‍/0001‑86] \",\"numeroDocumento\":\"1-10410-10/12\",\"dataVencimento\":\"2027-01-14T03:00:00.000Z\",\"vrSaldo\":29129.14,\"vrTotal\":29129.14,\"diasAtraso\":0},{\"participanteNome\":\"CONDOMINIO ALTOS DO UMARIZAL [22‍.866‍.630‍/0001‑86] \",\"numeroDocumento\":\"1-10410-11/12\",\"dataVencimento\":\"2027-02-15T03:00:00.000Z\",\"vrSaldo\":29129.14,\"vrTotal\":29129.14,\"diasAtraso\":0},{\"participanteNome\":\"CONDOMINIO ALTOS DO UMARIZAL [22‍.866‍.630‍/0001‑86] \",\"numeroDocumento\":\"1-10410-12/12\",\"dataVencimento\":\"2027-03-15T03:00:00.000Z\",\"vrSaldo\":29129.14,\"vrTotal\":29129.14,\"diasAtraso\":0},{\"participanteNome\":\"Smartfit Escola de Ginastica e DANCa S. a [07‍.594‍.978‍/0646‑56] \",\"numeroDocumento\":\"PV-0523/26-01/01\",\"dataVencimento\":\"2026-05-04T03:00:00.000Z\",\"vrSaldo\":145602,\"vrTotal\":145602,\"diasAtraso\":23},{\"participanteNome\":\"Jht DF Comércio - Matriz DF 10.557.556/0001-37 - Jht DF Comércio de Produtos e Equipamentos Esportivos Ltda [10‍.557‍.556‍/0001‑37] \",\"numeroDocumento\":\"1-12864-1/1\",\"dataVencimento\":\"2026-06-18T03:00:00.000Z\",\"vrSaldo\":38668.41,\"vrTotal\":38668.41,\"diasAtraso\":0},{\"participanteNome\":\"CONDOMINIO DO EDIFICIO ATLANTA [11‍.693‍.472‍/0001‑93] \",\"numeroDocumento\":\"PV-0469/26-03/12\",\"dataVencimento\":\"2026-06-12T03:00:00.000Z\",\"vrSaldo\":1449.46,\"vrTotal\":1449.46,\"diasAtraso\":0},{\"participanteNome\":\"CONDOMINIO DO EDIFICIO ATLANTA [11‍.693‍.472‍/0001‑93] \",\"numeroDocumento\":\"PV-0469/26-04/12\",\"dataVencimento\":\"2026-07-12T03:00:00.000Z\",\"vrSaldo\":1449.46,\"vrTotal\":1449.46,\"diasAtraso\":0},{\"participanteNome\":\"CONDOMINIO DO EDIFICIO ATLANTA [11‍.693‍.472‍/0001‑93] \",\"numeroDocumento\":\"PV-0469/26-05/12\",\"dataVencimento\":\"2026-08-12T03:00:00.000Z\",\"vrSaldo\":1449.46,\"vrTotal\":1449.46,\"diasAtraso\":0},{\"participanteNome\":\"CONDOMINIO DO EDIFICIO ATLANTA [11‍.693‍.472‍/0001‑93] \",\"numeroDocumento\":\"PV-0469/26-06/12\",\"dataVencimento\":\"2026-09-12T03:00:00.000Z\",\"vrSaldo\":1449.46,\"vrTotal\":1449.46,\"diasAtraso\":0},{\"participanteNome\":\"CONDOMINIO DO EDIFICIO ATLANTA [11‍.693‍.472‍/0001‑93] \",\"numeroDocumento\":\"PV-0469/26-07/12\",\"dataVencimento\":\"2026-10-12T03:00:00.000Z\",\"vrSaldo\":1449.46,\"vrTotal\":1449.46,\"diasAtraso\":0},{\"participanteNome\":\"CONDOMINIO DO EDIFICIO ATLANTA [11‍.693‍.472‍/0001‑93] \",\"numeroDocumento\":\"PV-0469/26-08/12\",\"dataVencimento\":\"2026-11-12T03:00:00.000Z\",\"vrSaldo\":1449.46,\"vrTotal\":1449.46,\"diasAtraso\":0},{\"participanteNome\":\"CONDOMINIO DO EDIFICIO ATLANTA [11‍.693‍.472‍/0001‑93] \",\"numeroDocumento\":\"PV-0469/26-09/12\",\"dataVencimento\":\"2026-12-12T03:00:00.000Z\",\"vrSaldo\":1449.46,\"vrTotal\":1449.46,\"diasAtraso\":0},{\"participanteNome\":\"CONDOMINIO DO EDIFICIO ATLANTA [11‍.693‍.472‍/0001‑93] \",\"numeroDocumento\":\"PV-0469/26-10/12\",\"dataVencimento\":\"2027-01-12T03:00:00.000Z\",\"vrSaldo\":1449.46,\"vrTotal\":1449.46,\"diasAtraso\":0},{\"participanteNome\":\"CONDOMINIO DO EDIFICIO ATLANTA [11‍.693‍.472‍/0001‑93] \",\"numeroDocumento\":\"PV-0469/26-11/12\",\"dataVencimento\":\"2027-02-12T03:00:00.000Z\",\"vrSaldo\":1449.46,\"vrTotal\":1449.46,\"diasAtraso\":0},{\"participanteNome\":\"CONDOMINIO DO EDIFICIO ATLANTA [11‍.693‍.472‍/0001‑93] \",\"numeroDocumento\":\"PV-0469/26-12/12\",\"dataVencimento\":\"2027-03-12T03:00:00.000Z\",\"vrSaldo\":1449.46,\"vrTotal\":1449.46,\"diasAtraso\":0},{\"participanteNome\":\"Condominio do Edificio Margarida Marques [53‍.290‍.954‍/0001‑42] \",\"numeroDocumento\":\"PV-0533/26-01/01\",\"dataVencimento\":\"2026-04-18T03:00:00.000Z\",\"vrSaldo\":2250,\"vrTotal\":2250,\"diasAtraso\":39},{\"participanteNome\":\"CONDOMINIO RESIDENCIAL PARQUE DO ITATIAIA [08‍.516‍.149‍/0001‑30] \",\"numeroDocumento\":\"PV-0534/26-03/10\",\"dataVencimento\":\"2026-06-10T03:00:00.000Z\",\"vrSaldo\":504,\"vrTotal\":504,\"diasAtraso\":0},{\"participanteNome\":\"CONDOMINIO RESIDENCIAL PARQUE DO ITATIAIA [08‍.516‍.149‍/0001‑30] \",\"numeroDocumento\":\"PV-0534/26-04/10\",\"dataVencimento\":\"2026-07-10T03:00:00.000Z\",\"vrSaldo\":504,\"vrTotal\":504,\"diasAtraso\":0},{\"participanteNome\":\"CONDOMINIO RESIDENCIAL PARQUE DO ITATIAIA [08‍.516‍.149‍/0001‑30] \",\"numeroDocumento\":\"PV-0534/26-05/10\",\"dataVencimento\":\"2026-08-10T03:00:00.000Z\",\"vrSaldo\":504,\"vrTotal\":504,\"diasAtraso\":0},{\"participanteNome\":\"CONDOMINIO RESIDENCIAL PARQUE DO ITATIAIA [08‍.516‍.149‍/0001‑30] \",\"numeroDocumento\":\"PV-0534/26-06/10\",\"dataVencimento\":\"2026-09-10T03:00:00.000Z\",\"vrSaldo\":504,\"vrTotal\":504,\"diasAtraso\":0},{\"participanteNome\":\"CONDOMINIO RESIDENCIAL PARQUE DO ITATIAIA [08‍.516‍.149‍/0001‑30] \",\"numeroDocumento\":\"PV-0534/26-07/10\",\"dataVencimento\":\"2026-10-10T03:00:00.000Z\",\"vrSaldo\":504,\"vrTotal\":504,\"diasAtraso\":0},{\"participanteNome\":\"CONDOMINIO RESIDENCIAL PARQUE DO ITATIAIA [08‍.516‍.149‍/0001‑30] \",\"numeroDocumento\":\"PV-0534/26-08/10\",\"dataVencimento\":\"2026-11-10T03:00:00.000Z\",\"vrSaldo\":504,\"vrTotal\":504,\"diasAtraso\":0},{\"participanteNome\":\"CONDOMINIO RESIDENCIAL PARQUE DO ITATIAIA [08‍.516‍.149‍/0001‑30] \",\"numeroDocumento\":\"PV-0534/26-09/10\",\"dataVencimento\":\"2026-12-10T03:00:00.000Z\",\"vrSaldo\":504,\"vrTotal\":504,\"diasAtraso\":0},{\"participanteNome\":\"CONDOMINIO RESIDENCIAL PARQUE DO ITATIAIA [08‍.516‍.149‍/0001‑30] \",\"numeroDocumento\":\"PV-0534/26-10/10\",\"dataVencimento\":\"2027-01-04T03:00:00.000Z\",\"vrSaldo\":504,\"vrTotal\":504,\"diasAtraso\":0},{\"participanteNome\":\"GRAN PARK TOSCANA - ASSOCIACAO DO RESIDENCIAL GRAN PARK TOSCANA [20‍.442‍.837‍/0001‑06] \",\"numeroDocumento\":\"PV-0467/26-02/10\",\"dataVencimento\":\"2026-05-22T03:00:00.000Z\",\"vrSaldo\":579.27,\"vrTotal\":579.27,\"diasAtraso\":5},{\"participanteNome\":\"GRAN PARK TOSCANA - ASSOCIACAO DO RESIDENCIAL GRAN PARK TOSCANA [20‍.442‍.837‍/0001‑06] \",\"numeroDocumento\":\"PV-0467/26-03/10\n[...resultado truncado por exceder o limite de tamanho...]"
+      },
+      "finalMessageId": "2f8e9b73-93ad-4183-b2cc-989e938f135b",
+      "finalMessage": "Pelos títulos em aberto que apareceram, os maiores devedores são:\n\n- **Smartfit Escola de Ginastica e DANCa S. a [07.594.978/0646-56]** — **não consegui obter esse dado**\n- **Jht SP Comércio - Matriz DF [34.161.829/0001-98]** — **R$ 322.236,75**\n- **Associacao Condominio Vale dos Passaros [13.186.845/0001-65]** — **não consegui obter esse dado**\n- **CONDOMINIO ESTRELAS DO MAR [10.624.805/0001-60]** — **não consegui obter esse dado**\n- **Edificio Porto Farol [52.786.028/0001-08]** — **não consegui obter esse dado**\n- **Fabrica Ct Ceilandia [62.499.293/0001-50]** — **não consegui obter esse dado**\n- **Construtora e Empreendimentos Peixoto Ltda [04.721.698/0001-95]** — **não consegui obter esse dado**",
+      "model": "gpt-5.4-mini",
+      "tokensInput": 21205,
+      "tokensOutput": 4478,
+      "durationMs": 28512,
+      "createdAt": "2026-05-27T03:37:13.931Z",
+      "primaryTool": "financeiro_contas_a_receber"
+    },
+    {
+      "turnoId": "31f5c170-ed17-4a22-8353-10d090f17fe6",
+      "conversationId": "ecd53ea9-2966-457b-818f-e0b4a45b7bff",
+      "userMessageId": "9def85a2-2146-4f0f-adaf-d352bfe57278",
+      "userMessage": "Pedidos por estado",
+      "toolMessageId": "16f19e97-842a-4af5-b0d2-01af5d6b3a5d",
+      "toolCalls": [
+        {
+          "id": "call_WUIk264JyvZfT1yxcEwRaF57",
+          "name": "registrar_lacuna",
+          "arguments": {
+            "dominio": "comercial",
+            "perguntaResumo": "Pedidos por estado (quantidade e/ou valor, agrupado por UF)."
+          }
+        }
+      ],
+      "toolResults": {
+        "call_WUIk264JyvZfT1yxcEwRaF57": "{\"registrado\":true,\"respostaSugerida\":\"Essa informação não está disponível no ERP no momento. Posso te ajudar com outros dados de estoque, financeiro, fiscal, comercial, cadastros ou contábil.\",\"sugestoesRelacionadas\":[\"Faturamento esse mês\",\"Contas a receber em aberto\",\"Posição financeira atual\"]}"
+      },
+      "finalMessageId": "31f5c170-ed17-4a22-8353-10d090f17fe6",
+      "finalMessage": "Essa informação não está disponível no ERP no momento. Posso te ajudar com outros dados de estoque, financeiro, fiscal, comercial, cadastros ou contábil.",
+      "model": "gpt-5.4-mini",
+      "tokensInput": 12007,
+      "tokensOutput": 60,
+      "durationMs": 1141,
+      "createdAt": "2026-05-27T03:37:03.353Z",
+      "primaryTool": "registrar_lacuna"
+    },
+    {
+      "turnoId": "331be860-6ee0-4fe2-8e12-7dc38dd91932",
+      "conversationId": "4afd41c6-2a48-4ff2-bd20-c0f4e8902558",
+      "userMessageId": "50741f9a-2f9b-48c9-972b-61913fe503ef",
+      "userMessage": "Parceiros do interior de SP",
+      "toolMessageId": "7e7c5423-361e-48d4-bde7-ec2c88aef28b",
+      "toolCalls": [
+        {
+          "id": "call_Ds21rJgnIGm1L6s1VIf2lS7U",
+          "name": "registrar_lacuna",
+          "arguments": {
+            "dominio": "cadastros",
+            "perguntaResumo": "Listar parceiros do interior de São Paulo (UF SP, fora da capital)"
+          }
+        }
+      ],
+      "toolResults": {
+        "call_Ds21rJgnIGm1L6s1VIf2lS7U": "{\"registrado\":true,\"respostaSugerida\":\"Essa informação não está disponível no ERP no momento. Posso te ajudar com outros dados de estoque, financeiro, fiscal, comercial, cadastros ou contábil.\",\"sugestoesRelacionadas\":[\"Faturamento esse mês\",\"Contas a receber em aberto\",\"Posição financeira atual\"]}"
+      },
+      "finalMessageId": "331be860-6ee0-4fe2-8e12-7dc38dd91932",
+      "finalMessage": "Essa informação não está disponível no ERP no momento. Posso te ajudar com outros dados de estoque, financeiro, fiscal, comercial, cadastros ou contábil.",
+      "model": "gpt-5.4-mini",
+      "tokensInput": 12012,
+      "tokensOutput": 435,
+      "durationMs": 3956,
+      "createdAt": "2026-05-27T03:37:11.928Z",
+      "primaryTool": "registrar_lacuna"
+    },
+    {
+      "turnoId": "378f9da7-2019-41ad-bace-b309631974f3",
+      "conversationId": "eeb44000-b6b9-4442-b079-5b9e98b182aa",
+      "userMessageId": "0ebdfd01-35f1-4cec-97b4-d586f3284737",
+      "userMessage": "o cara da casa ferolla devolveu nota?",
+      "toolMessageId": "e8098d48-60f7-42f1-b4d5-e8e471da3097",
+      "toolCalls": [
+        {
+          "id": "call_0oiv0BYaVgtil3Ajeaje0sbv",
+          "name": "fiscal_notas_recebidas_por_fornecedor",
+          "arguments": {
+            "fornecedor": "Casa Ferolla"
+          }
+        }
+      ],
+      "toolResults": {
+        "call_0oiv0BYaVgtil3Ajeaje0sbv": "{\"estado\":\"ok\",\"dados\":{\"linhas\":[{\"participanteNome\":\"Casa Ferolla - Casa Ferolla Empreendimento Imobiliario Spe Ltda [42‍.834‍.550‍/0001‑56] \",\"quantidade\":3,\"valorTotal\":0}],\"totalAgregado\":{\"quantidade\":3,\"valorTotal\":0},\"totalFornecedoresDistintos\":1,\"aviso\":\"Agrupa notas fiscais de entrada (DF-e de fornecedores) por fornecedor, ordenado por valor recebido decrescente. `totalAgregado` soma todas as notas que casaram o filtro (use-o para 'quantas notas do fornecedor X'); `linhas` é o detalhamento por participante.\",\"_agregado\":{\"contagem\":1,\"agregado_valorTotal\":{\"soma\":0,\"media\":0,\"min\":0,\"max\":0,\"contagemValidos\":1},\"agregado_quantidade\":{\"soma\":3,\"media\":3,\"min\":3,\"max\":3,\"contagemValidos\":1}}},\"atualizadoEm\":\"2026-05-26T17:24:11.290Z\",\"atualizadoHa\":\"10h\",\"fonteStatus\":{\"status\":\"ok\",\"ultimaSyncEm\":\"2026-05-26T17:26:24.804Z\"},\"_DESTAQUE\":{\"totalAgregado\":{\"quantidade\":3,\"valorTotal\":0},\"contagemLinhas\":1},\"_INSTRUCAO\":\"Use os valores em _DESTAQUE como totais autoritativos. NUNCA declare 'lista veio cortada/incompleta/sem somatorio' se _DESTAQUE tem o total.\"}"
+      },
+      "finalMessageId": "378f9da7-2019-41ad-bace-b309631974f3",
+      "finalMessage": "Encontrei **3 notas** da **Casa Ferolla**, com **valor total de R$ 0,00** (atualizado há 10h).\n\nNão consigo afirmar só com esse resumo se foi devolução de mercadoria; o que dá para ver é que houve entrada de notas do fornecedor.",
+      "model": "gpt-5.4-mini",
+      "tokensInput": 12277,
+      "tokensOutput": 618,
+      "durationMs": 9173,
+      "createdAt": "2026-05-27T03:38:23.923Z",
+      "primaryTool": "fiscal_notas_recebidas_por_fornecedor"
+    },
+    {
+      "turnoId": "3c1e571e-bd81-4203-89b1-27998d2cccd7",
+      "conversationId": "2c4a9107-073b-4802-9ec6-e94635dc8143",
+      "userMessageId": "c7cfc2be-dccb-4949-b404-f7556eedfe59",
+      "userMessage": "clientes",
+      "toolMessageId": "ba7890c8-3c4d-48bc-8039-a5fe1714b8a6",
+      "toolCalls": [
+        {
+          "id": "call_nzV0ynFlqUIru4iYd94g3u8Y",
+          "name": "cadastro_contar_parceiros",
+          "arguments": {}
+        }
+      ],
+      "toolResults": {
+        "call_nzV0ynFlqUIru4iYd94g3u8Y": "{\"estado\":\"ok\",\"dados\":{\"totalParceiros\":6567,\"totalClientes\":6325,\"totalFornecedores\":754,\"totalEmpresas\":4398,\"totalPessoasFisicas\":2169,\"totalAtivos\":6567,\"totalInativos\":0,\"totalClientesAtivos\":6325,\"totalFornecedoresAtivos\":754},\"atualizadoEm\":\"2026-05-26T17:25:02.144Z\",\"atualizadoHa\":\"10h\",\"fonteStatus\":{\"status\":\"ok\",\"ultimaSyncEm\":\"2026-05-26T17:26:21.963Z\"},\"_DESTAQUE\":{\"totalEmpresas\":4398,\"totalClientes\":6325,\"totalFornecedores\":754,\"totalAtivos\":6567,\"totalInativos\":0,\"totalParceiros\":6567,\"totalPessoasFisicas\":2169,\"totalClientesAtivos\":6325,\"totalFornecedoresAtivos\":754,\"contagemLinhas\":0},\"_INSTRUCAO\":\"Use os valores em _DESTAQUE como totais autoritativos. NUNCA declare 'lista veio cortada/incompleta/sem somatorio' se _DESTAQUE tem o total.\"}"
+      },
+      "finalMessageId": "3c1e571e-bd81-4203-89b1-27998d2cccd7",
+      "finalMessage": "Você tem **6.325 clientes** cadastrados. Todos estão ativos.",
+      "model": "gpt-5.4-mini",
+      "tokensInput": 12168,
+      "tokensOutput": 43,
+      "durationMs": 11505,
+      "createdAt": "2026-05-27T03:38:40.288Z",
+      "primaryTool": "cadastro_contar_parceiros"
+    },
+    {
+      "turnoId": "3ebf183c-7b80-4b0a-bb2d-8b664c18959c",
+      "conversationId": "29c56943-31e6-4b3a-aba9-862bf492b7f7",
+      "userMessageId": "092fef26-e91c-4bbe-881e-da7457313428",
+      "userMessage": "Notas recebidas esta semana",
+      "toolMessageId": "0d144387-6a29-4198-8866-d6e84e3a136a",
+      "toolCalls": [
+        {
+          "id": "call_aYfMs1iLsFSvmIg2wUG3Jres",
+          "name": "fiscal_notas_recebidas",
+          "arguments": {
+            "periodoDe": "2026-05-25",
+            "periodoAte": "2026-05-31"
+          }
+        }
+      ],
+      "toolResults": {
+        "call_aYfMs1iLsFSvmIg2wUG3Jres": "{\"estado\":\"ok\",\"dados\":{\"linhas\":[{\"numero\":null,\"dataEmissao\":\"2026-05-25T03:00:00.000Z\",\"participanteNome\":\"Edificio Denver - Condominio do Edificio Denver [07‍.853‍.306‍/0001‑30] \",\"vrNf\":0},{\"numero\":null,\"dataEmissao\":\"2026-05-25T03:00:00.000Z\",\"participanteNome\":\"Mojuim Engenharia - Mojuim Engenharia e Transporte Ltda [24‍.250‍.973‍/0001‑47] \",\"vrNf\":0},{\"numero\":null,\"dataEmissao\":\"2026-05-25T03:00:00.000Z\",\"participanteNome\":\"Condominio Torre Lumiar [60‍.920‍.698‍/0001‑95] \",\"vrNf\":0},{\"numero\":null,\"dataEmissao\":\"2026-05-25T03:00:00.000Z\",\"participanteNome\":\"Sindiconline Portal, Serviços, Eventos e Marketing - Sindiconline Portal, Serviços, Eventos e Marketing Ltda [40‍.493‍.172‍/0001‑69] \",\"vrNf\":32500},{\"numero\":null,\"dataEmissao\":\"2026-05-25T03:00:00.000Z\",\"participanteNome\":\"Condominio Torre Lumiar [60‍.920‍.698‍/0001‑95] \",\"vrNf\":109253.64},{\"numero\":null,\"dataEmissao\":\"2026-05-25T03:00:00.000Z\",\"participanteNome\":\"Mojuim Engenharia - Mojuim Engenharia e Transporte Ltda [24‍.250‍.973‍/0001‑47] \",\"vrNf\":45581.7},{\"numero\":null,\"dataEmissao\":\"2026-05-25T03:00:00.000Z\",\"participanteNome\":\"Jds Comércio - Matriz DF 18.282.961/0001-00 - Jds Comércio de Produtos e Equipamentos Esportivos Ltda [18‍.282‍.961‍/0001‑00] \",\"vrNf\":4246.88},{\"numero\":null,\"dataEmissao\":\"2026-05-25T03:00:00.000Z\",\"participanteNome\":\"Jds Comércio - Matriz DF 18.282.961/0001-00 - Jds Comércio de Produtos e Equipamentos Esportivos Ltda [18‍.282‍.961‍/0001‑00] \",\"vrNf\":800424.6},{\"numero\":null,\"dataEmissao\":\"2026-05-25T03:00:00.000Z\",\"participanteNome\":\"Edificio Denver - Condominio do Edificio Denver [07‍.853‍.306‍/0001‑30] \",\"vrNf\":49000},{\"numero\":null,\"dataEmissao\":\"2026-05-25T03:00:00.000Z\",\"participanteNome\":\"Jds Comércio - Matriz DF 18.282.961/0001-00 - Jds Comércio de Produtos e Equipamentos Esportivos Ltda [18‍.282‍.961‍/0001‑00] \",\"vrNf\":150132.1},{\"numero\":null,\"dataEmissao\":\"2026-05-25T03:00:00.000Z\",\"participanteNome\":\"Jht SP Comércio - Matriz DF 34.161.829/0001-98 - Jht SP Comércio de Produtos e Equipamentos Esportivos Ltda [34‍.161‍.829‍/0001‑98] \",\"vrNf\":150132.1},{\"numero\":null,\"dataEmissao\":\"2026-05-25T03:00:00.000Z\",\"participanteNome\":\"CK ACADEMIA FITNESS.COM LTDA [65‍.108‍.585‍/0001‑03] \",\"vrNf\":0},{\"numero\":null,\"dataEmissao\":\"2026-05-25T03:00:00.000Z\",\"participanteNome\":\"Jds Comércio - Matriz DF 18.282.961/0001-00 - Jds Comércio de Produtos e Equipamentos Esportivos Ltda [18‍.282‍.961‍/0001‑00] \",\"vrNf\":640.21},{\"numero\":null,\"dataEmissao\":\"2026-05-25T03:00:00.000Z\",\"participanteNome\":\"Jds Comércio - Matriz DF 18.282.961/0001-00 - Jds Comércio de Produtos e Equipamentos Esportivos Ltda [18‍.282‍.961‍/0001‑00] \",\"vrNf\":3510.53},{\"numero\":null,\"dataEmissao\":\"2026-05-25T03:00:00.000Z\",\"participanteNome\":\"Jds Comércio - Matriz DF 18.282.961/0001-00 - Jds Comércio de Produtos e Equipamentos Esportivos Ltda [18‍.282‍.961‍/0001‑00] \",\"vrNf\":8849.48},{\"numero\":null,\"dataEmissao\":\"2026-05-25T03:00:00.000Z\",\"participanteNome\":\"Jds Comércio - Matriz DF 18.282.961/0001-00 - Jds Comércio de Produtos e Equipamentos Esportivos Ltda [18‍.282‍.961‍/0001‑00] \",\"vrNf\":590.1},{\"numero\":null,\"dataEmissao\":\"2026-05-25T03:00:00.000Z\",\"participanteNome\":\"Johnson Indústrial do Brasil Ltda [09‍.197‍.394‍/0001‑94] \",\"vrNf\":10282.13},{\"numero\":null,\"dataEmissao\":\"2026-05-25T03:00:00.000Z\",\"participanteNome\":\"Johnson Indústrial do Brasil Ltda [09‍.197‍.394‍/0001‑94] \",\"vrNf\":1350.65},{\"numero\":null,\"dataEmissao\":\"2026-05-26T03:00:00.000Z\",\"participanteNome\":\"Jds Comércio - Matriz DF 18.282.961/0001-00 - Jds Comércio de Produtos e Equipamentos Esportivos Ltda [18‍.282‍.961‍/0001‑00] \",\"vrNf\":4279.04},{\"numero\":null,\"dataEmissao\":\"2026-05-26T03:00:00.000Z\",\"participanteNome\":\"Jht SP Comércio - Matriz DF 34.161.829/0001-98 - Jht SP Comércio de Produtos e Equipamentos Esportivos Ltda [34‍.161‍.829‍/0001‑98] \",\"vrNf\":0}],\"totalNotas\":20,\"valorTotal\":1370773.1600000001,\"aviso\":\"Notas de entrada (entradaSaida='0') representam compras e devoluções recebidas pela empresa.\"},\"atualizadoEm\":\"2026-05-26T17:24:11.290Z\",\"atualizadoHa\":\"10h\",\"fonteStatus\":{\"status\":\"ok\",\"ultimaSyncEm\":\"2026-05-26T17:26:24.804Z\"},\"_DESTAQUE\":{\"valorTotal\":1370773.1600000001,\"totalNotas\":20,\"contagemLinhas\":20},\"_INSTRUCAO\":\"Use os valores em _DESTAQUE como totais autoritativos. NUNCA declare 'lista veio cortada/incompleta/sem somatorio' se _DESTAQUE tem o total.\"}"
+      },
+      "finalMessageId": "3ebf183c-7b80-4b0a-bb2d-8b664c18959c",
+      "finalMessage": "Nesta semana, foram **20 notas recebidas** somando **R$ 1.370.773,16** (atualizado há **10h**).\n\nExemplos da amostra:\n- **Jds Comércio** — **R$ 800.424,60**\n- **Condominio Torre Lumiar** — **R$ 109.253,64**\n- **Mojuim Engenharia** — **R$ 45.581,70**\n- **Sindiconline Portal** — **R$ 32.500,00**\n- **Johnson Indústrial do Brasil** — **R$ 10.282,13**",
+      "model": "gpt-5.4-mini",
+      "tokensInput": 13555,
+      "tokensOutput": 679,
+      "durationMs": 10388,
+      "createdAt": "2026-05-27T03:36:25.164Z",
+      "primaryTool": "fiscal_notas_recebidas"
+    },
+    {
+      "turnoId": "3fcebc83-9c3c-4413-9a63-362cb142f302",
+      "conversationId": "8b3e0024-3628-4c11-85de-ebb5f130f646",
+      "userMessageId": "58da9fff-3339-4940-97dd-670c19ee35db",
+      "userMessage": "Pedidos em rascunho",
+      "toolMessageId": "071d77df-8e2f-4f2e-85ef-29e0deeb196c",
+      "toolCalls": [
+        {
+          "id": "call_E21EuRRMlg0rlbEFOGmj8LeN",
+          "name": "comercial_pedidos_por_etapa",
+          "arguments": {}
+        }
+      ],
+      "toolResults": {
+        "call_E21EuRRMlg0rlbEFOGmj8LeN": "{\"estado\":\"ok\",\"dados\":{\"linhas\":[{\"etapaNome\":\"Devolução em solicitação\",\"etapaFinaliza\":false,\"quantidade\":1,\"valorTotal\":147.27},{\"etapaNome\":\"Em separação\",\"etapaFinaliza\":false,\"quantidade\":18,\"valorTotal\":16400},{\"etapaNome\":\"Cancelado\",\"etapaFinaliza\":false,\"quantidade\":7,\"valorTotal\":1736690.28},{\"etapaNome\":\"Confirmada\",\"etapaFinaliza\":true,\"quantidade\":70,\"valorTotal\":13326001.97},{\"etapaNome\":\"Confirmado\",\"etapaFinaliza\":true,\"quantidade\":70,\"valorTotal\":143411671.66999996},{\"etapaNome\":\"Emite NF Consumidor Final\",\"etapaFinaliza\":true,\"quantidade\":385,\"valorTotal\":35877557.679999985},{\"etapaNome\":\"Input financeiro\",\"etapaFinaliza\":false,\"quantidade\":97,\"valorTotal\":31365738.220000003},{\"etapaNome\":\"Fracionar\",\"etapaFinaliza\":false,\"quantidade\":43,\"valorTotal\":8163283.210000001},{\"etapaNome\":\"VF - Emite NF\",\"etapaFinaliza\":true,\"quantidade\":10,\"valorTotal\":1047869.26},{\"etapaNome\":\"Novo Fracionamento\",\"etapaFinaliza\":false,\"quantidade\":46,\"valorTotal\":15582398.690000003},{\"etapaNome\":\"Fracionamento concluído\",\"etapaFinaliza\":true,\"quantidade\":6,\"valorTotal\":240899.22999999998},{\"etapaNome\":\"GERA BOLETO\",\"etapaFinaliza\":false,\"quantidade\":119,\"valorTotal\":16021682.649999995},{\"etapaNome\":\"Em conferência\",\"etapaFinaliza\":false,\"quantidade\":5,\"valorTotal\":9750816.420000002},{\"etapaNome\":\"Em contagem\",\"etapaFinaliza\":false,\"quantidade\":9,\"valorTotal\":29444670.549999997},{\"etapaNome\":\"Aprovado\",\"etapaFinaliza\":false,\"quantidade\":34,\"valorTotal\":12057605.569999998},{\"etapaNome\":\"Emite NF\",\"etapaFinaliza\":true,\"quantidade\":71,\"valorTotal\":14460847.370000001},{\"etapaNome\":\"V.O - Emite NF\",\"etapaFinaliza\":false,\"quantidade\":1,\"valorTotal\":949540.25},{\"etapaNome\":\"Cancelada\",\"etapaFinaliza\":false,\"quantidade\":7,\"valorTotal\":1055982.74},{\"etapaNome\":\"Armazenagem  - NF CONFIRMA\",\"etapaFinaliza\":true,\"quantidade\":18,\"valorTotal\":4493792.14},{\"etapaNome\":\"Demonstração confirma\",\"etapaFinaliza\":true,\"quantidade\":46,\"valorTotal\":3071713.4200000004},{\"etapaNome\":\"Retorno Demonstração\",\"etapaFinaliza\":false,\"quantidade\":20,\"valorTotal\":980797.52},{\"etapaNome\":\"Concluída\",\"etapaFinaliza\":true,\"quantidade\":269,\"valorTotal\":6179658.840000009},{\"etapaNome\":\"Emite NF - Peças\",\"etapaFinaliza\":false,\"quantidade\":41,\"valorTotal\":31595},{\"etapaNome\":\"Em montagem\",\"etapaFinaliza\":false,\"quantidade\":15,\"valorTotal\":142220.99},{\"etapaNome\":\"Preview NF - Peças\",\"etapaFinaliza\":false,\"quantidade\":2,\"valorTotal\":4055},{\"etapaNome\":\"Emite NF Retorno Demo\",\"etapaFinaliza\":true,\"quantidade\":14,\"valorTotal\":1321339.49},{\"etapaNome\":\"Gera Boleto - Peças\",\"etapaFinaliza\":true,\"quantidade\":65,\"valorTotal\":79841},{\"etapaNome\":\"EMITE NF BONIFICAÇÃO\",\"etapaFinaliza\":true,\"quantidade\":1,\"valorTotal\":12504.66},{\"etapaNome\":\"Reserva de Estoque - DEFINE ARMAZEM\",\"etapaFinaliza\":false,\"quantidade\":5,\"valorTotal\":1726909.92},{\"etapaNome\":\"Emite NF - SIMPLES REMESSA\",\"etapaFinaliza\":true,\"quantidade\":7,\"valorTotal\":294245.86},{\"etapaNome\":\"Aprovação dono\",\"etapaFinaliza\":false,\"quantidade\":29,\"valorTotal\":7539047.29},{\"etapaNome\":\"[THIAGO] - Concluir movimentação de estoque\",\"etapaFinaliza\":true,\"quantidade\":6,\"valorTotal\":517188.06},{\"etapaNome\":\"Venda direta consumidor final\",\"etapaFinaliza\":false,\"quantidade\":7,\"valorTotal\":952502.98},{\"etapaNome\":\"Transf. DF x Sergipe confirma\",\"etapaFinaliza\":false,\"quantidade\":3,\"valorTotal\":88643.5},{\"etapaNome\":\"Retorno de Armazenagem - LR\",\"etapaFinaliza\":false,\"quantidade\":2,\"valorTotal\":1170571.74},{\"etapaNome\":\"Fracionar (Retorno armazenagem)\",\"etapaFinaliza\":false,\"quantidade\":2,\"valorTotal\":1514032.88},{\"etapaNome\":\"REMESSA DE BONIFICAÇÃO 5910/6910\",\"etapaFinaliza\":false,\"quantidade\":2,\"valorTotal\":4074.94},{\"etapaNome\":\"Reserva Estoque exposição/feira\",\"etapaFinaliza\":false,\"quantidade\":1,\"valorTotal\":42877.55},{\"etapaNome\":\"Em cotação/provisório\",\"etapaFinaliza\":false,\"quantidade\":2,\"valorTotal\":137211.6},{\"etapaNome\":\"Confirma reserva retorno demonstração\",\"etapaFinaliza\":false,\"quantidade\":1,\"valorTotal\":48000},{\"etapaNome\":\"AJUSTE FRACIONADO\",\"etapaFinaliza\":false,\"quantidade\":3,\"valorTotal\":1043666.99},{\"etapaNome\":\"P - Em digitação\",\"etapaFinaliza\":false,\"quantidade\":1,\"valorTotal\":98.95},{\"etapaNome\":\"BONIFICAÇÃO RESERVA ESTOQUE\",\"etapaFinaliza\":false,\"quantidade\":1,\"valorTotal\":316.54},{\"etapaNome\":\"Reserva de Estoque Demo\",\"etapaFinaliza\":false,\"quantidade\":1,\"valorTotal\":168442.46},{\"etapaNome\":\"VF - SEGUIR COM RESERVA/FRACIONAMENTO - 5117/6117\",\"etapaFinaliza\":false,\"quantidade\":4,\"valorTotal\":757180.5800000001},{\"etapaNome\":\"ESTOQUE ARMAZENAGEM RESERVA\",\"etapaFinaliza\":false,\"quantidade\":1,\"valorTotal\":4330963.59},{\"etapaNome\":\"Pedido demonstração\",\"etapaFinaliza\":false,\"quantidade\":3,\"valorTotal\":288026.51}],\"aviso\":\"Distribuição de pedidos por etapa do fluxo comercial. valorTotal usa vrProdutos (valor do pedido, independente de faturamento). etapaFinaliza=true indica etapa conclusiva.\",\"_agregado\":{\"contagem\":47,\"agregado_valorTotal\":{\"soma\":371451323.03,\"media\":7903219.64,\"min\":98.95,\"max\":143411671.67,\"contagemValidos\":47},\"agregado_quantidade\":{\"soma\":1571,\"media\":33.43,\"min\":1,\"max\":385,\"contagemValidos\":47}}},\"atualizadoEm\":\"2026-05-26T17:23:52.673Z\",\"atualizadoHa\":\"10h\",\"fonteStatus\":{\"status\":\"ok\",\"ultimaSyncEm\":\"2026-05-26T17:26:19.022Z\"},\"_DESTAQUE\":{\"contagemLinhas\":47},\"_INSTRUCAO\":\"Use os valores em _DESTAQUE como totais autoritativos. NUNCA declare 'lista veio cortada/incompleta/sem somatorio' se _DESTAQUE tem o total.\"}"
+      },
+      "finalMessageId": "3fcebc83-9c3c-4413-9a63-362cb142f302",
+      "finalMessage": "Se você está chamando de rascunho os pedidos ainda **não finalizados**, são **533 pedidos**, somando **R$ 147.116.192,38**. O estágio literal mais próximo de rascunho é **P - Em digitação**, com **1 pedido** de **R$ 98,95**.",
+      "model": "gpt-5.4-mini",
+      "tokensInput": 13668,
+      "tokensOutput": 4248,
+      "durationMs": 31760,
+      "createdAt": "2026-05-27T03:37:41.506Z",
+      "primaryTool": "comercial_pedidos_por_etapa"
+    },
+    {
+      "turnoId": "4022afd9-289d-48b9-be80-e60bbddec0fe",
+      "conversationId": "81c84d23-6bf7-45fc-9a25-af61815996af",
+      "userMessageId": "2f03f524-5a6f-459c-8c52-d3bbfc70bfb4",
+      "userMessage": "Pedidos em aberto no funil",
+      "toolMessageId": "71119dd5-a0c3-45bf-b2d8-794cfef47dad",
+      "toolCalls": [
+        {
+          "id": "call_fUshe2W6wjnYrZwE84uQxCkx",
+          "name": "comercial_pedidos_por_etapa",
+          "arguments": {}
+        }
+      ],
+      "toolResults": {
+        "call_fUshe2W6wjnYrZwE84uQxCkx": "{\"estado\":\"ok\",\"dados\":{\"linhas\":[{\"etapaNome\":\"Devolução em solicitação\",\"etapaFinaliza\":false,\"quantidade\":1,\"valorTotal\":147.27},{\"etapaNome\":\"Em separação\",\"etapaFinaliza\":false,\"quantidade\":18,\"valorTotal\":16400},{\"etapaNome\":\"Cancelado\",\"etapaFinaliza\":false,\"quantidade\":7,\"valorTotal\":1736690.28},{\"etapaNome\":\"Confirmada\",\"etapaFinaliza\":true,\"quantidade\":70,\"valorTotal\":13326001.97},{\"etapaNome\":\"Confirmado\",\"etapaFinaliza\":true,\"quantidade\":70,\"valorTotal\":143411671.66999996},{\"etapaNome\":\"Emite NF Consumidor Final\",\"etapaFinaliza\":true,\"quantidade\":385,\"valorTotal\":35877557.679999985},{\"etapaNome\":\"Input financeiro\",\"etapaFinaliza\":false,\"quantidade\":97,\"valorTotal\":31365738.220000003},{\"etapaNome\":\"Fracionar\",\"etapaFinaliza\":false,\"quantidade\":43,\"valorTotal\":8163283.210000001},{\"etapaNome\":\"VF - Emite NF\",\"etapaFinaliza\":true,\"quantidade\":10,\"valorTotal\":1047869.26},{\"etapaNome\":\"Novo Fracionamento\",\"etapaFinaliza\":false,\"quantidade\":46,\"valorTotal\":15582398.690000003},{\"etapaNome\":\"Fracionamento concluído\",\"etapaFinaliza\":true,\"quantidade\":6,\"valorTotal\":240899.22999999998},{\"etapaNome\":\"GERA BOLETO\",\"etapaFinaliza\":false,\"quantidade\":119,\"valorTotal\":16021682.649999995},{\"etapaNome\":\"Em conferência\",\"etapaFinaliza\":false,\"quantidade\":5,\"valorTotal\":9750816.420000002},{\"etapaNome\":\"Em contagem\",\"etapaFinaliza\":false,\"quantidade\":9,\"valorTotal\":29444670.549999997},{\"etapaNome\":\"Aprovado\",\"etapaFinaliza\":false,\"quantidade\":34,\"valorTotal\":12057605.569999998},{\"etapaNome\":\"Emite NF\",\"etapaFinaliza\":true,\"quantidade\":71,\"valorTotal\":14460847.370000001},{\"etapaNome\":\"V.O - Emite NF\",\"etapaFinaliza\":false,\"quantidade\":1,\"valorTotal\":949540.25},{\"etapaNome\":\"Cancelada\",\"etapaFinaliza\":false,\"quantidade\":7,\"valorTotal\":1055982.74},{\"etapaNome\":\"Armazenagem  - NF CONFIRMA\",\"etapaFinaliza\":true,\"quantidade\":18,\"valorTotal\":4493792.14},{\"etapaNome\":\"Demonstração confirma\",\"etapaFinaliza\":true,\"quantidade\":46,\"valorTotal\":3071713.4200000004},{\"etapaNome\":\"Retorno Demonstração\",\"etapaFinaliza\":false,\"quantidade\":20,\"valorTotal\":980797.52},{\"etapaNome\":\"Concluída\",\"etapaFinaliza\":true,\"quantidade\":269,\"valorTotal\":6179658.840000009},{\"etapaNome\":\"Emite NF - Peças\",\"etapaFinaliza\":false,\"quantidade\":41,\"valorTotal\":31595},{\"etapaNome\":\"Em montagem\",\"etapaFinaliza\":false,\"quantidade\":15,\"valorTotal\":142220.99},{\"etapaNome\":\"Preview NF - Peças\",\"etapaFinaliza\":false,\"quantidade\":2,\"valorTotal\":4055},{\"etapaNome\":\"Emite NF Retorno Demo\",\"etapaFinaliza\":true,\"quantidade\":14,\"valorTotal\":1321339.49},{\"etapaNome\":\"Gera Boleto - Peças\",\"etapaFinaliza\":true,\"quantidade\":65,\"valorTotal\":79841},{\"etapaNome\":\"EMITE NF BONIFICAÇÃO\",\"etapaFinaliza\":true,\"quantidade\":1,\"valorTotal\":12504.66},{\"etapaNome\":\"Reserva de Estoque - DEFINE ARMAZEM\",\"etapaFinaliza\":false,\"quantidade\":5,\"valorTotal\":1726909.92},{\"etapaNome\":\"Emite NF - SIMPLES REMESSA\",\"etapaFinaliza\":true,\"quantidade\":7,\"valorTotal\":294245.86},{\"etapaNome\":\"Aprovação dono\",\"etapaFinaliza\":false,\"quantidade\":29,\"valorTotal\":7539047.29},{\"etapaNome\":\"[THIAGO] - Concluir movimentação de estoque\",\"etapaFinaliza\":true,\"quantidade\":6,\"valorTotal\":517188.06},{\"etapaNome\":\"Venda direta consumidor final\",\"etapaFinaliza\":false,\"quantidade\":7,\"valorTotal\":952502.98},{\"etapaNome\":\"Transf. DF x Sergipe confirma\",\"etapaFinaliza\":false,\"quantidade\":3,\"valorTotal\":88643.5},{\"etapaNome\":\"Retorno de Armazenagem - LR\",\"etapaFinaliza\":false,\"quantidade\":2,\"valorTotal\":1170571.74},{\"etapaNome\":\"Fracionar (Retorno armazenagem)\",\"etapaFinaliza\":false,\"quantidade\":2,\"valorTotal\":1514032.88},{\"etapaNome\":\"REMESSA DE BONIFICAÇÃO 5910/6910\",\"etapaFinaliza\":false,\"quantidade\":2,\"valorTotal\":4074.94},{\"etapaNome\":\"Reserva Estoque exposição/feira\",\"etapaFinaliza\":false,\"quantidade\":1,\"valorTotal\":42877.55},{\"etapaNome\":\"Em cotação/provisório\",\"etapaFinaliza\":false,\"quantidade\":2,\"valorTotal\":137211.6},{\"etapaNome\":\"Confirma reserva retorno demonstração\",\"etapaFinaliza\":false,\"quantidade\":1,\"valorTotal\":48000},{\"etapaNome\":\"AJUSTE FRACIONADO\",\"etapaFinaliza\":false,\"quantidade\":3,\"valorTotal\":1043666.99},{\"etapaNome\":\"P - Em digitação\",\"etapaFinaliza\":false,\"quantidade\":1,\"valorTotal\":98.95},{\"etapaNome\":\"BONIFICAÇÃO RESERVA ESTOQUE\",\"etapaFinaliza\":false,\"quantidade\":1,\"valorTotal\":316.54},{\"etapaNome\":\"Reserva de Estoque Demo\",\"etapaFinaliza\":false,\"quantidade\":1,\"valorTotal\":168442.46},{\"etapaNome\":\"VF - SEGUIR COM RESERVA/FRACIONAMENTO - 5117/6117\",\"etapaFinaliza\":false,\"quantidade\":4,\"valorTotal\":757180.5800000001},{\"etapaNome\":\"ESTOQUE ARMAZENAGEM RESERVA\",\"etapaFinaliza\":false,\"quantidade\":1,\"valorTotal\":4330963.59},{\"etapaNome\":\"Pedido demonstração\",\"etapaFinaliza\":false,\"quantidade\":3,\"valorTotal\":288026.51}],\"aviso\":\"Distribuição de pedidos por etapa do fluxo comercial. valorTotal usa vrProdutos (valor do pedido, independente de faturamento). etapaFinaliza=true indica etapa conclusiva.\",\"_agregado\":{\"contagem\":47,\"agregado_valorTotal\":{\"soma\":371451323.03,\"media\":7903219.64,\"min\":98.95,\"max\":143411671.67,\"contagemValidos\":47},\"agregado_quantidade\":{\"soma\":1571,\"media\":33.43,\"min\":1,\"max\":385,\"contagemValidos\":47}}},\"atualizadoEm\":\"2026-05-26T17:23:52.673Z\",\"atualizadoHa\":\"10h\",\"fonteStatus\":{\"status\":\"ok\",\"ultimaSyncEm\":\"2026-05-26T17:26:19.022Z\"},\"_DESTAQUE\":{\"contagemLinhas\":47},\"_INSTRUCAO\":\"Use os valores em _DESTAQUE como totais autoritativos. NUNCA declare 'lista veio cortada/incompleta/sem somatorio' se _DESTAQUE tem o total.\"}"
+      },
+      "finalMessageId": "4022afd9-289d-48b9-be80-e60bbddec0fe",
+      "finalMessage": "No momento, considerando como em aberto só as etapas não concluídas do funil e excluindo canceladas, há **519 pedidos** somando **R$ 144.323.519,36** (atualizado há 10h).\n\n- **Input financeiro** — 97 pedidos, **R$ 31.365.738,22**\n- **Em contagem** — 9 pedidos, **R$ 29.444.670,55**\n- **GERA BOLETO** — 119 pedidos, **R$ 16.021.682,65**\n- **Novo Fracionamento** — 46 pedidos, **R$ 15.582.398,69**\n- **Aprovado** — 34 pedidos, **R$ 12.057.605,57**\n- **Em conferência** — 5 pedidos, **R$ 9.750.816,42**\n- **Fracionar** — 43 pedidos, **R$ 8.163.283,21**\n- **Aprovação dono** — 29 pedidos, **R$ 7.539.047,29**",
+      "model": "gpt-5.4-mini",
+      "tokensInput": 13668,
+      "tokensOutput": 5446,
+      "durationMs": 73912,
+      "createdAt": "2026-05-27T03:38:03.073Z",
+      "primaryTool": "comercial_pedidos_por_etapa"
+    },
+    {
+      "turnoId": "47161eeb-2bf2-46df-a88b-864d20fe15b3",
+      "conversationId": "ed35d098-ebd7-4854-8258-1dd9feab81a0",
+      "userMessageId": "cc2b3423-47c1-4a7a-bdcb-1f03a2368964",
+      "userMessage": "Quanto temos de mola espiral em aço no armazém?",
+      "toolMessageId": "22f3b5a1-719d-419a-a5e5-d50b1497a428",
+      "toolCalls": [
+        {
+          "id": "call_ARZ7uXM5OWaQJ0CiYJgdMeXR",
+          "name": "estoque_saldo_produto",
+          "arguments": {
+            "termo": "mola espiral em aço"
+          }
+        }
+      ],
+      "toolResults": {
+        "call_ARZ7uXM5OWaQJ0CiYJgdMeXR": "{\"estado\":\"ok\",\"dados\":{\"kpis\":{\"totalProdutos\":6,\"produtosNegativos\":0,\"valorTotal\":0},\"linhas\":[{\"produtoNome\":\"[2556] 1000202492 - Mola Espiral em Aco\",\"familiaNome\":\"Padrão\",\"marcaNome\":\"Padrao\",\"saldoTotal\":0,\"valorTotal\":0,\"numLocais\":1},{\"produtoNome\":\"Mola de Compressao em Espiral de Aco - 1000097423\",\"familiaNome\":\"Astec\",\"marcaNome\":\"Matrix\",\"saldoTotal\":0,\"valorTotal\":0,\"numLocais\":0,\"semEstoqueCadastrado\":true,\"mensagemContexto\":\"produto cadastrado, sem linha de saldo\"},{\"produtoNome\":\"Mola Espiral em Aco - 1000202491\",\"familiaNome\":\"Astec\",\"marcaNome\":\"Astec\",\"saldoTotal\":0,\"valorTotal\":0,\"numLocais\":0,\"semEstoqueCadastrado\":true,\"mensagemContexto\":\"produto cadastrado, sem linha de saldo\"},{\"produtoNome\":\"Mola Espiral em Aço Cromado - 1000097424\",\"familiaNome\":\"Astec\",\"marcaNome\":\"Matrix\",\"saldoTotal\":0,\"valorTotal\":0,\"numLocais\":0,\"semEstoqueCadastrado\":true,\"mensagemContexto\":\"produto cadastrado, sem linha de saldo\"},{\"produtoNome\":\"Mola Espiral em Aco W8000\",\"familiaNome\":\"Padrão\",\"marcaNome\":\"Padrao\",\"saldoTotal\":0,\"valorTotal\":0,\"numLocais\":0,\"semEstoqueCadastrado\":true,\"mensagemContexto\":\"produto cadastrado, sem linha de saldo\"},{\"produtoNome\":\"Mola Espiral em Fita de Aco - 1000092642\",\"familiaNome\":\"Astec\",\"marcaNome\":\"Matrix\",\"saldoTotal\":0,\"valorTotal\":0,\"numLocais\":0,\"semEstoqueCadastrado\":true,\"mensagemContexto\":\"produto cadastrado, sem linha de saldo\"}],\"ambiguidade\":{\"totalMatches\":6,\"layer\":\"exact\",\"topCandidates\":[{\"nome\":\"[2556] 1000202492 - Mola Espiral em Aco\",\"context\":\"Padrão · saldo 0\"},{\"nome\":\"Mola de Compressao em Espiral de Aco - 1000097423\",\"context\":\"Astec · saldo 0\"},{\"nome\":\"Mola Espiral em Aco - 1000202491\",\"context\":\"Astec · saldo 0\"},{\"nome\":\"Mola Espiral em Aço Cromado - 1000097424\",\"context\":\"Astec · saldo 0\"},{\"nome\":\"Mola Espiral em Aco W8000\",\"context\":\"Padrão · saldo 0\"}]},\"_agregado\":{\"contagem\":6,\"agregado_valorTotal\":{\"soma\":0,\"media\":0,\"min\":0,\"max\":0,\"contagemValidos\":6},\"agregado_saldoTotal\":{\"soma\":0,\"media\":0,\"min\":0,\"max\":0,\"contagemValidos\":6}}},\"atualizadoEm\":\"2026-05-26T17:25:09.971Z\",\"atualizadoHa\":\"10h\",\"fonteStatus\":{\"status\":\"ok\",\"ultimaSyncEm\":\"2026-05-26T17:10:46.709Z\"},\"_DESTAQUE\":{\"contagemLinhas\":6},\"_INSTRUCAO\":\"Use os valores em _DESTAQUE como totais autoritativos. NUNCA declare 'lista veio cortada/incompleta/sem somatorio' se _DESTAQUE tem o total.\"}"
+      },
+      "finalMessageId": "47161eeb-2bf2-46df-a88b-864d20fe15b3",
+      "finalMessage": "A consulta retornou resultados para **6 cadastros** parecidos com “mola espiral em aço”. Todos aparecem com saldo **0**.\n\n- **[2556] 1000202492 - Mola Espiral em Aco** — saldo 0\n- **Mola de Compressao em Espiral de Aco - 1000097423** — saldo 0\n- **Mola Espiral em Aco - 1000202491** — saldo 0\n- **Mola Espiral em Aço Cromado - 1000097424** — saldo 0\n- **Mola Espiral em Aco W8000** — saldo 0\n\n[[suggestions]]:Liste os 6 cadastros encontrados|Ver saldo de [2556] 1000202492|Buscar produtos com saldo zero no mês corrente",
+      "model": "gpt-5.4-mini",
+      "tokensInput": 12706,
+      "tokensOutput": 720,
+      "durationMs": 9292,
+      "createdAt": "2026-05-27T03:34:40.435Z",
+      "primaryTool": "estoque_saldo_produto"
+    },
+    {
+      "turnoId": "47722c0f-5f80-4b73-9511-b69627ce739a",
+      "conversationId": "a13ffdad-ec04-4dbb-b0e1-d8188c50b327",
+      "userMessageId": "13c9b261-4e23-4af0-ac2f-b3018bbc44de",
+      "userMessage": "Total de impostos do mês",
+      "toolMessageId": "01824ef5-aa83-4482-acb9-efb53593e5aa",
+      "toolCalls": [
+        {
+          "id": "call_laynxhf2QLlPSEVz20GH6REs",
+          "name": "fiscal_impostos_periodo",
+          "arguments": {
+            "periodoDe": "2026-05-01",
+            "periodoAte": "2026-05-27"
+          }
+        }
+      ],
+      "toolResults": {
+        "call_laynxhf2QLlPSEVz20GH6REs": "{\"estado\":\"ok\",\"dados\":{\"totalNotas\":1660,\"somaIbpt\":14155.5,\"somaIcmsProprio\":5922745.089999993,\"aviso\":\"O somaIbpt é a estimativa IBPT registrada no cabeçalho da nota fiscal (campo vr_ibpt). Para imposto exato item-a-item, consulte a tool fiscal_produtos_faturados. somaIcmsProprio é o ICMS próprio do cabeçalho (vr_icms_proprio).\"},\"atualizadoEm\":\"2026-05-26T17:24:11.290Z\",\"atualizadoHa\":\"10h\",\"fonteStatus\":{\"status\":\"ok\",\"ultimaSyncEm\":\"2026-05-26T17:26:24.804Z\"},\"_DESTAQUE\":{\"totalNotas\":1660,\"contagemLinhas\":0},\"_INSTRUCAO\":\"Use os valores em _DESTAQUE como totais autoritativos. NUNCA declare 'lista veio cortada/incompleta/sem somatorio' se _DESTAQUE tem o total.\"}"
+      },
+      "finalMessageId": "47722c0f-5f80-4b73-9511-b69627ce739a",
+      "finalMessage": "No mês corrente, considerando **IBPT estimado + ICMS próprio**, o total de impostos é **R$ 5.936.900,59** em **1.660** notas. \nDeste total, **R$ 14.155,50** são de IBPT e **R$ 5.922.745,09** de ICMS próprio, atualizado há **10h**.",
+      "model": "gpt-5.4-mini",
+      "tokensInput": 12166,
+      "tokensOutput": 560,
+      "durationMs": 8120,
+      "createdAt": "2026-05-27T03:37:58.099Z",
+      "primaryTool": "fiscal_impostos_periodo"
+    },
+    {
+      "turnoId": "4b714337-2969-4e67-ac84-f30df3be57bf",
+      "conversationId": "d9d2b491-1fae-4bf0-8038-19445c4bad8e",
+      "userMessageId": "c3b39bd0-5d05-4d63-bce0-bd6dea8bca78",
+      "userMessage": "Parceiro pelo CPF 123.456.789-00",
+      "toolMessageId": "d6107f5e-c7be-4868-a07f-81788031f328",
+      "toolCalls": [
+        {
+          "id": "call_yG3oWXx9m5swb8bUE2dW5qoI",
+          "name": "cadastro_buscar_parceiro",
+          "arguments": {
+            "termo": "12345678900"
+          }
+        }
+      ],
+      "toolResults": {
+        "call_yG3oWXx9m5swb8bUE2dW5qoI": "{\"estado\":\"vazio\",\"dados\":{\"linhas\":[]},\"atualizadoEm\":\"2026-05-26T17:25:02.144Z\",\"atualizadoHa\":\"10h\",\"fonteStatus\":{\"status\":\"ok\",\"ultimaSyncEm\":\"2026-05-26T17:26:21.963Z\"},\"_DESTAQUE\":{\"contagemLinhas\":0},\"_INSTRUCAO\":\"Use os valores em _DESTAQUE como totais autoritativos. NUNCA declare 'lista veio cortada/incompleta/sem somatorio' se _DESTAQUE tem o total.\"}"
+      },
+      "finalMessageId": "4b714337-2969-4e67-ac84-f30df3be57bf",
+      "finalMessage": "Não encontrei parceiro com o CPF **123.456.789-00**.",
+      "model": "gpt-5.4-mini",
+      "tokensInput": 12061,
+      "tokensOutput": 520,
+      "durationMs": 6882,
+      "createdAt": "2026-05-27T03:35:51.824Z",
+      "primaryTool": "cadastro_buscar_parceiro"
+    }
+  ]
+}

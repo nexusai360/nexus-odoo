@@ -1,0 +1,160 @@
+{
+  "totals": {
+    "CORRETO": 65,
+    "PARCIAL": 13,
+    "ERRADO": 13,
+    "FORA_DE_ESCOPO": 9
+  },
+  "patterns": {
+    "acerto_objetividade": 62,
+    "dado_inventado": 9,
+    "formato_quebrado": 6,
+    "pergunta_ignorada": 5,
+    "acerto_modelo": 11,
+    "resposta_truncada": 6,
+    "limitacao_real_declarada": 14,
+    "fluxo_tool_incompleto": 4,
+    "acerto_encadeamento": 4,
+    "tool_errada": 1,
+    "parametro_incompleto": 1,
+    "erro_data": 2,
+    "recusa_indevida": 3,
+    "pediu_clarificacao_desnecessaria": 2,
+    "entendeu_mal_termo": 3
+  },
+  "factual": {
+    "bate": 62,
+    "nao_bate": 17,
+    "nao_aplicavel": 21
+  },
+  "errados": [
+    {
+      "batch": "batch-0001",
+      "id": "0cf8e8cf",
+      "patterns": [
+        "dado_inventado",
+        "formato_quebrado",
+        "pergunta_ignorada"
+      ],
+      "razao": "Resposta inicia com 'Você tem razão. Refaço só com o que está no bloco bruto acima' como se estivesse corrigindo turno anterior inexistente. Não agrega por participante: cita Smartfit R$ 387.500 quando o agregado real é R$ 678.704 (4 títulos somados). Sobre CONDOMINIO ESTRELAS DO MAR cita R$ 35.000 (valor não bate com nenhum título individual — soma parcial não justificada). Pior: diz 'CONDOMINIO ALTOS DO UMARIZAL — não consegui obter esse dado' sendo que o dado está no toolResults (12 títulos somando R$ 320.420,54 — seria o 3º maior devedor). Inventou ranking e omitiu dado existente.",
+      "sugestao": "Adicionar regra: para 'devedores principais', agregar por participanteNome (somar vrSaldo) e ordenar decrescente. Nunca dizer 'não consegui obter' quando o dado está no resultado da tool."
+    },
+    {
+      "batch": "batch-0001",
+      "id": "176714be",
+      "patterns": [
+        "dado_inventado"
+      ],
+      "razao": "IA disse '519 pedidos abertos'. Somando etapas etapaFinaliza=false e excluindo 'Cancelado'/'Cancelada' (7+7=14), o total real é 526 pedidos abertos (não 519). Com cancelados seria 533. Número 519 não corresponde a nenhuma agregação válida do toolResults.",
+      "sugestao": "Adicionar regra: 'pedidos abertos' = soma de quantidade onde etapaFinaliza=false E nome ∉ {Cancelado, Cancelada}. Computar matemática explicitamente, não estimar."
+    },
+    {
+      "batch": "batch-0001",
+      "id": "40b42f21",
+      "patterns": [
+        "dado_inventado",
+        "fluxo_tool_incompleto"
+      ],
+      "razao": "Tool foi registrar_lacuna (que retornou redirecionar para financeiro_contas_a_receber/pagar). IA NÃO chamou a tool de a_pagar, mas mesmo assim respondeu 'R$ 1.352.659,18 em 22 títulos' e 'vencimento até 26/06/2026'. Esses números não estão em nenhum toolResults — foram inventados pelo modelo.",
+      "sugestao": "Adicionar regra: quando registrar_lacuna retornar {registrado:false, redirecionar:{tool}}, o agente DEVE chamar a tool indicada na próxima rodada. NUNCA responder com números sem origem em tool."
+    },
+    {
+      "batch": "0002",
+      "id": "5893f4aa",
+      "patterns": [
+        "fluxo_tool_incompleto",
+        "dado_inventado"
+      ],
+      "razao": "Pergunta pedia saldo atual dos top 10. Chamou apenas fiscal_produtos_faturados (sem estoque_saldo_produto). Mesmo assim afirmou saldos numéricos específicos (55 un, 27 un, 69 un, 52 un, 24 un, 59 un) que não vêm de nenhuma tool chamada — dados inventados.",
+      "sugestao": "Adicionar regra: 'top vendidos + saldo' exige encadear fiscal_produtos_faturados → estoque_saldo_produto para cada item; nunca declarar saldo sem chamar a tool de estoque."
+    },
+    {
+      "batch": "0002",
+      "id": "651909a7",
+      "patterns": [
+        "parametro_incompleto",
+        "erro_data"
+      ],
+      "razao": "Usuário pediu ICMS 'do mês' (corrente = maio/2026). A IA chamou fiscal_apuracao sem filtro de período e respondeu com abril/2026, declarando explicitamente 'abril/2026'. Período pedido ≠ período respondido.",
+      "sugestao": "Adicionar regra: quando o usuário diz 'do mês' sem qualificar, assumir mês corrente (1º dia até hoje) e passar como parâmetro de filtro à tool fiscal_apuracao."
+    },
+    {
+      "batch": "0002",
+      "id": "658698e5",
+      "patterns": [
+        "recusa_indevida",
+        "pergunta_ignorada"
+      ],
+      "razao": "Tool retornou dados completos: 50 produtos, saldo total 1.265 un, valor R$ 184.706,29, _DESTAQUE.contagemLinhas=50, _agregado.saldoTotal.soma=1265. A IA respondeu 'não consegui obter esse dado com precisão' mesmo com a resposta autoritativa disponível, violando a instrução de NUNCA declarar lista incompleta quando _DESTAQUE/agregado existe.",
+      "sugestao": "Adicionar regra: se o resultado da tool tem _DESTAQUE/_agregado.saldoTotal/_agregado.valorTotal, sempre reportar esses totais como autoritativos. Proibido dizer 'não consegui obter' nesse caso."
+    },
+    {
+      "batch": "0002",
+      "id": "90a80e36",
+      "patterns": [
+        "recusa_indevida",
+        "pergunta_ignorada"
+      ],
+      "razao": "Tool retornou lista com vrSaldo por participante. A IA listou nomes de fornecedores mas escreveu 'não consegui obter esse dado' em cada um, sem somar. Lista truncada não justifica não somar o que veio; bastava reportar 'top X parcial' como em T13.",
+      "sugestao": "Adicionar regra: quando a tool devolve titulos com vrSaldo+participanteNome, agrupar e somar por participante na resposta, mesmo que a lista esteja parcial; reportar como 'somatório no recorte retornado'."
+    },
+    {
+      "batch": "0002",
+      "id": "96aa9330",
+      "patterns": [
+        "recusa_indevida",
+        "pergunta_ignorada"
+      ],
+      "razao": "Tool retornou listagem de títulos com vrSaldo (mesma estrutura usada em T13). Em vez de somar ou pelo menos reportar parcial, respondeu 'não consegui obter esse dado com segurança'. Recusa indevida.",
+      "sugestao": "Adicionar regra: pergunta 'quanto temos em contas a X' exige somatório vrSaldo do retorno; se truncado, reportar soma parcial + contagem de títulos vistos."
+    },
+    {
+      "batch": "0003",
+      "id": "a8c9b8be",
+      "patterns": [
+        "dado_inventado",
+        "entendeu_mal_termo"
+      ],
+      "razao": "Pergunta era 'clientes inadimplentes' (a_receber). Mas vários valores citados divergem do toolResults: Smartfit foi declarado R$ 533.102,00, real R$ 678.704,00 (4 títulos, IA somou só 2). SAFRA declarado R$ 126.867,49, real R$ 154.585,14. Total geral declarado R$ 1.190.782,69, real a_receber vencido R$ 1.391.311,00. IA agregou parcialmente sem citar o critério.",
+      "sugestao": "Adicionar regra: ao agregar lista de títulos por participante, somar TODOS os títulos do mesmo CNPJ; declarar explicitamente o critério de soma e validar contra o total geral antes de responder."
+    },
+    {
+      "batch": "0003",
+      "id": "c640bdb8",
+      "patterns": [
+        "dado_inventado",
+        "formato_quebrado"
+      ],
+      "razao": "Declarou 'consulta veio truncada' violando a _INSTRUCAO do toolResults que proíbe esse texto quando _DESTAQUE traz total. Smartfit foi citado como R$ 533.102,00 (parcial) quando real é R$ 678.704,00. A tool retornou 103 títulos agregáveis e o cliente que mais deve seria Smartfit com o valor completo.",
+      "sugestao": "Reforçar regra do prompt: 'NUNCA usar a palavra truncada/cortada/incompleta quando _DESTAQUE existe; sempre agregar TODOS os títulos por CNPJ antes de declarar maior devedor'."
+    },
+    {
+      "batch": "0003",
+      "id": "c697d453",
+      "patterns": [
+        "dado_inventado"
+      ],
+      "razao": "IA declarou '170 notas' e '70 cadastros/filiais', mas o toolResults trouxe 30 linhas/cadastros somando 68 notas. Valor total R$ 4.659.800,34 confere, mas a contagem foi inventada (170 e 70).",
+      "sugestao": "Adicionar regra: ao reportar agregados de fiscal_notas_recebidas_por_fornecedor, somar quantidade EXATA das linhas e contar cadastros das linhas; nunca arredondar/inventar contagem."
+    },
+    {
+      "batch": "0003",
+      "id": "cab26a51",
+      "patterns": [
+        "dado_inventado"
+      ],
+      "razao": "Smartfit R$ 678.704,00 bate. Jht SP R$ 322.236,75 bate. Mas Vale dos Passaros foi citada como R$ 338.277,70, valor real é R$ 304.449,93. Diverge em ~R$ 33.827. Inventou número (ou somou linhas erradas).",
+      "sugestao": "Reforçar agregação por participanteNome: somar somente vrSaldo das linhas com o mesmo CNPJ; validar soma contra o total geral."
+    },
+    {
+      "batch": "0004",
+      "id": "fb017828",
+      "patterns": [
+        "dado_inventado",
+        "fluxo_tool_incompleto"
+      ],
+      "razao": "Tool registrar_lacuna retornou redirect para comercial_pedidos_por_vendedor, mas o agente NAO chamou essa tool no turno e mesmo assim respondeu '19 vendedores' com lista de 10 nomes. Nenhum desses dados vem do toolResults visivel deste turno.",
+      "sugestao": "Adicionar regra: ao receber redirecionamento de registrar_lacuna, obrigatoriamente executar a tool sugerida antes de responder, e nao inventar contagem ou nomes a partir de memoria."
+    }
+  ]
+}

@@ -1,0 +1,222 @@
+{
+  "batchId": "batch-0001",
+  "evaluatedAt": "2026-05-27T03:57:25Z",
+  "totals": {
+    "CORRETO": 17,
+    "PARCIAL": 4,
+    "ERRADO": 1,
+    "FORA_DE_ESCOPO": 3
+  },
+  "patterns": {
+    "acerto_objetividade": 16,
+    "acerto_modelo": 4,
+    "acerto_encadeamento": 1,
+    "parametro_incompleto": 3,
+    "limitacao_real_declarada": 3,
+    "placeholder_nao_substituido": 1,
+    "dado_inventado": 1,
+    "entendeu_mal_termo": 1
+  },
+  "turnos": [
+    {
+      "turnoId": "04168089-064e-4a15-8664-2b0f67eed4f8",
+      "status": "CORRETO",
+      "patterns": ["acerto_objetividade"],
+      "razao": "Tool certa, retornou 1 match exato, resposta direta com nome, cidade, UF, documento e freshness. Confirmação do cadastro pedida.",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "1037ce1e-8c84-4330-b018-21662ffc0d46",
+      "status": "CORRETO",
+      "patterns": ["acerto_objetividade", "acerto_modelo"],
+      "razao": "Top 10 corretos em ordem decrescente, ignorou linha com uf=null e ainda destacou os 459 sem UF como contexto. Números batem com a tool.",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "11dbbf43-27d9-446e-b4d0-861b4f8895f8",
+      "status": "PARCIAL",
+      "patterns": ["parametro_incompleto"],
+      "razao": "Usuário pediu 'a receber' mas a tool foi chamada sem o parâmetro tipo=a_receber, trazendo a_pagar misturado. A resposta filtrou bem só os a_receber e os valores listados batem com o toolResults, mas a chamada foi mais cara que o necessário.",
+      "sugestao_prompt": "Adicionar regra: 'quando usuário disser \"a receber\" ou \"a pagar\", passar tipo correspondente em financeiro_titulos_vencidos'.",
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "13174f68-18ec-44a7-b7be-5ac18be7a325",
+      "status": "CORRETO",
+      "patterns": ["acerto_objetividade", "acerto_modelo"],
+      "razao": "Filtrou as 3 contas negativas corretamente, soma confere com a verificação (-25.852.574,69) e cita cada conta com saldo exato.",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "14035b91-3bb9-440d-995d-e43fcbc02833",
+      "status": "CORRETO",
+      "patterns": ["acerto_objetividade"],
+      "razao": "Pergunta isolada 'qual fornecedor?' sem contexto prévio. Clarificação razoável pedindo nome ou CNPJ, com formato objetivo.",
+      "sugestao_prompt": null,
+      "correcao_factual": "nao_aplicavel"
+    },
+    {
+      "turnoId": "19097732-fe81-48e3-9e7a-87b7ffa8b411",
+      "status": "CORRETO",
+      "patterns": ["acerto_objetividade"],
+      "razao": "Tool retornou estado=vazio para 'produto inventado'. IA respondeu honestamente sem inventar.",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "1a1f19de-4c04-4fb7-9818-76917a03671b",
+      "status": "CORRETO",
+      "patterns": ["acerto_objetividade"],
+      "razao": "Quantidade de São Paulo (404) bate com o toolResults. Resposta enxuta com freshness.",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "1bfd825d-40e8-40d8-8941-4f81dfebea2c",
+      "status": "CORRETO",
+      "patterns": ["acerto_objetividade"],
+      "razao": "Listou top 5 com saldos batendo com o toolResults (951, 490, 48, -14, 0) e ofereceu suggestions úteis. 18 itens informados confere com totalProdutos.",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "1bfffd1e-b615-4f67-b4ac-d99c3e0b3bfa",
+      "status": "CORRETO",
+      "patterns": ["acerto_objetividade"],
+      "razao": "754 fornecedores ativos bate exatamente com totalFornecedoresAtivos.",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "29a38b19-e03d-4d01-85d7-f22ad4bb80b8",
+      "status": "CORRETO",
+      "patterns": ["acerto_objetividade"],
+      "razao": "Produto encontrado mas sem linha de saldo (semEstoqueCadastrado=true). Resposta destacou esse detalhe explicitamente.",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "2acb7c27-ff38-416e-9e25-c69052402544",
+      "status": "FORA_DE_ESCOPO",
+      "patterns": ["limitacao_real_declarada"],
+      "razao": "Saídas previstas/projeção de caixa não está no catálogo. Registrou lacuna e respondeu honestamente com sugestões alternativas.",
+      "sugestao_prompt": null,
+      "correcao_factual": "nao_aplicavel"
+    },
+    {
+      "turnoId": "2bc3f9ee-4a82-49f8-82a7-13912d0bc23b",
+      "status": "CORRETO",
+      "patterns": ["acerto_objetividade"],
+      "razao": "ateDias=1 captura vencimentos de hoje. 2 parcelas e total R$ 8.577,89 batem exatamente.",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "2c3eb5cf-1fac-4ec3-a2e1-dd11317bbf2c",
+      "status": "CORRETO",
+      "patterns": ["acerto_objetividade"],
+      "razao": "Código não encontrado, tool retornou vazio, resposta honesta citando explicitamente o código consultado.",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "2e08c7f4-1a2e-4268-ae7b-341a4eb92a89",
+      "status": "CORRETO",
+      "patterns": ["acerto_encadeamento", "acerto_modelo"],
+      "razao": "Encadeou financeiro_caixa_periodo + financeiro_saldo_contas para responder 'está tudo certo no caixa?'. Valores batem exatamente (entrada 13.139.706,09, saída 18.582.222,67, saldo -5.442.516,58, saldo bancário -24.242.300,29). Diagnóstico claro.",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "2f8e9b73-93ad-4183-b2cc-989e938f135b",
+      "status": "ERRADO",
+      "patterns": ["placeholder_nao_substituido", "dado_inventado"],
+      "razao": "Resposta lista nomes de devedores mas com texto literal 'não consegui obter esse dado' em vez dos valores agregados. Os títulos estão no toolResults; bastava somar por participante. Resultado é texto quebrado que não responde a pergunta.",
+      "sugestao_prompt": "Adicionar regra: 'para devedores principais, agregar vrSaldo por participanteNome e listar top N com soma; nunca escrever placeholder textual no lugar de valor calculável a partir do toolResults'.",
+      "correcao_factual": "nao_bate"
+    },
+    {
+      "turnoId": "31f5c170-ed17-4a22-8353-10d090f17fe6",
+      "status": "FORA_DE_ESCOPO",
+      "patterns": ["limitacao_real_declarada"],
+      "razao": "Pedidos agregados por UF não há tool dedicada. Registrou lacuna e respondeu honestamente.",
+      "sugestao_prompt": null,
+      "correcao_factual": "nao_aplicavel"
+    },
+    {
+      "turnoId": "331be860-6ee0-4fe2-8e12-7dc38dd91932",
+      "status": "FORA_DE_ESCOPO",
+      "patterns": ["limitacao_real_declarada"],
+      "razao": "Não há tool para distinguir capital vs interior. Registrou lacuna corretamente.",
+      "sugestao_prompt": null,
+      "correcao_factual": "nao_aplicavel"
+    },
+    {
+      "turnoId": "378f9da7-2019-41ad-bace-b309631974f3",
+      "status": "PARCIAL",
+      "patterns": ["entendeu_mal_termo"],
+      "razao": "Usuário perguntou 'devolveu nota' (saída/devolução, NF emitida pelo cliente), mas a IA usou fiscal_notas_recebidas_por_fornecedor (entrada). Reconheceu a limitação no final, mas a tool foi conceitualmente errada para detectar devolução.",
+      "sugestao_prompt": "Adicionar regra: 'pergunta sobre devolução de nota? Considerar consultar fiscal_notas_emitidas filtrando por natureza/CFOP de devolução, não só notas_recebidas'.",
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "3c1e571e-bd81-4203-89b1-27998d2cccd7",
+      "status": "CORRETO",
+      "patterns": ["acerto_objetividade"],
+      "razao": "6.325 clientes ativos bate exatamente com totalClientesAtivos.",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "3ebf183c-7b80-4b0a-bb2d-8b664c18959c",
+      "status": "CORRETO",
+      "patterns": ["acerto_objetividade"],
+      "razao": "20 notas e soma R$ 1.370.773,16 batem exatamente. Período correto (semana corrente). Amostra dos top 5 valida.",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "3fcebc83-9c3c-4413-9a63-362cb142f302",
+      "status": "PARCIAL",
+      "patterns": ["parametro_incompleto"],
+      "razao": "Pedido era 'em rascunho'. A etapa literal 'P - Em digitação' (1 pedido, R$ 98,95) é a resposta exata, e foi mencionada. Mas a IA também ofereceu agregado mais amplo (533 pedidos não finalizados) misturando conceitos. Confunde mais do que ajuda — 'rascunho' não é 'todo não finalizado'.",
+      "sugestao_prompt": "Adicionar regra: 'rascunho/draft = etapas com nome explícito de digitação/rascunho/provisório; não somar todas as não-finalizadas como rascunho'.",
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "4022afd9-289d-48b9-be80-e60bbddec0fe",
+      "status": "CORRETO",
+      "patterns": ["acerto_objetividade", "acerto_modelo"],
+      "razao": "Cálculo correto: 519 pedidos = não-finalizados (526) excluindo Cancelada (7); valor R$ 144.323.519,36 confere com soma manual. Top etapas listadas batem com toolResults.",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "47161eeb-2bf2-46df-a88b-864d20fe15b3",
+      "status": "PARCIAL",
+      "patterns": ["parametro_incompleto"],
+      "razao": "Tool não foi filtrada por armazém apesar de o usuário pedir 'no armazém'. Resultado fica genérico (6 cadastros, saldo 0). Resposta honesta mas perdeu o filtro pedido.",
+      "sugestao_prompt": "Adicionar regra: 'pergunta cita armazém? Se único armazém ou contexto óbvio, listar saldos por armazém; senão, perguntar qual armazém'.",
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "47722c0f-5f80-4b73-9511-b69627ce739a",
+      "status": "CORRETO",
+      "patterns": ["acerto_objetividade"],
+      "razao": "Total R$ 5.936.900,59 = IBPT (14.155,50) + ICMS próprio (5.922.745,09). Período correto (mês corrente). Decomposição clara.",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "4b714337-2969-4e67-ac84-f30df3be57bf",
+      "status": "CORRETO",
+      "patterns": ["acerto_objetividade"],
+      "razao": "CPF claramente fake (123.456.789-00). Tool retornou vazio, IA respondeu de forma honesta e citou o CPF consultado.",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    }
+  ]
+}
