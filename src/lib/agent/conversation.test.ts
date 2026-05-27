@@ -251,11 +251,11 @@ describe("reasoning history persistence (Onda 1)", () => {
 });
 
 // ============================================================================
-// Onda 1 Inteligencia — getLastNPairs + tool-results helpers.
+// Onda 1 Inteligencia , getLastNPairs + tool-results helpers.
 // ============================================================================
 
 describe("getLastNPairs", () => {
-  test("conversa simples (3 pares user->assistant) — retorna 3 em ordem DESC", async () => {
+  test("conversa simples (3 pares user->assistant) , retorna 3 em ordem DESC", async () => {
     const t = (n: number) => new Date(`2026-05-25T20:${n.toString().padStart(2, "0")}:00Z`);
     // Banco devolve DESC; mais recentes primeiro.
     prisma.message.findMany.mockResolvedValue([
@@ -300,7 +300,7 @@ describe("getLastNPairs", () => {
     expect(out).toHaveLength(1);
   });
 
-  test("conversa com menos pares do que pedido — retorna todos disponiveis", async () => {
+  test("conversa com menos pares do que pedido , retorna todos disponiveis", async () => {
     prisma.message.findMany.mockResolvedValue([
       { id: "a1", role: "assistant", content: "resp", toolCalls: null, createdAt: new Date() },
       { id: "u1", role: "user", content: "q", toolCalls: null, createdAt: new Date() },
@@ -309,7 +309,7 @@ describe("getLastNPairs", () => {
     expect(out).toHaveLength(1);
   });
 
-  test("conversa sem assistant final — retorna vazio", async () => {
+  test("conversa sem assistant final , retorna vazio", async () => {
     prisma.message.findMany.mockResolvedValue([
       { id: "u1", role: "user", content: "q", toolCalls: null, createdAt: new Date() },
     ]);

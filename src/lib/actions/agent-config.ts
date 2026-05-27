@@ -142,7 +142,7 @@ type AgentSettingsRow = {
  *
  * IMPORTANTE: quando `usesCodeDefaults === true`, retorna identityBase /
  * personality / tone / guardrails do CÓDIGO em vez do banco. Isso resolve
- * o drift dev/banco — dev edita identity-base.ts e a mudança REFLETE
+ * o drift dev/banco , dev edita identity-base.ts e a mudança REFLETE
  * imediatamente sem precisar de UPDATE manual. Auto-flip pra false só
  * quando admin SALVA via UI `/agente/prompt`.
  */
@@ -193,7 +193,7 @@ async function ensureGlobalSettings(): Promise<AgentSettingsData> {
   });
   if (existing) {
     // CRÍTICO: NÃO copiar IDENTITY_BASE/DEFAULT_* do código pro banco
-    // automaticamente. Isso era o BUG que causava drift dev/banco —
+    // automaticamente. Isso era o BUG que causava drift dev/banco ,
     // dev editava o código, banco continuava com versão antiga, agente
     // lia do banco. Agora a flag `usesCodeDefaults` resolve: quando
     // true, mapSettings retorna do código sem precisar copiar.
@@ -666,7 +666,7 @@ export async function createLlmConfig(input: {
  * Use quando o admin quer descartar customizações feitas via UI e voltar
  * a usar identityBase/personality/tone/guardrails do código. Marca a
  * flag `usesCodeDefaults = true` (campos do banco passam a ser ignorados
- * por mapSettings — ver agent-config.ts).
+ * por mapSettings , ver agent-config.ts).
  *
  * Os campos no banco NÃO são apagados (preserva histórico caso admin
  * queira reverter). Só a flag controla a fonte.

@@ -1,7 +1,7 @@
 /**
  * Função CANÔNICA de leitura do AgentSettings.
  *
- * Respeita a flag `usesCodeDefaults` — quando true (default), os campos
+ * Respeita a flag `usesCodeDefaults` , quando true (default), os campos
  * de prompt (identityBase/personality/tone/guardrails) são lidos do
  * CÓDIGO (IDENTITY_BASE, DEFAULT_PERSONALITY, DEFAULT_TONE,
  * DEFAULT_GUARDRAILS) em vez do banco.
@@ -10,7 +10,7 @@
  * direto via `prisma.agentSettings.findUnique`. Isso resolve o drift
  * dev/banco em definitivo: dev edita o código, mudança REFLETE
  * imediatamente em produção, agente, playground, prompt-preview, judges,
- * worker — sem precisar UPDATE manual no banco.
+ * worker , sem precisar UPDATE manual no banco.
  *
  * Quando admin SALVA via UI `/agente/prompt`, a flag vira false e o
  * banco vira fonte. Pra voltar pro default do código, usar a action

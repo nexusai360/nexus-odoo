@@ -393,7 +393,7 @@ function extractInstructions(messages: ChatMessage[]): {
  * Defensivos cumulativos:
  *  1. Strippa `id` interno (referencia a state nao-persistido com store:false)
  *     - sem isso a API retorna 404 "Item with id X not found".
- *  2. **Filtra items tipo "function_call"** — esses ja vem pelo conversation
+ *  2. **Filtra items tipo "function_call"** , esses ja vem pelo conversation
  *     tracking do run-agent (assistant.toolCalls -> mapMessagesToResponsesInput).
  *     Reinjetar pelo history duplicaria o function_call e/ou deixaria orfao
  *     (sem function_call_output, que role:"tool" nao persiste), gerando

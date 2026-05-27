@@ -135,7 +135,7 @@
 /* Violet-500 também (usado em ícones da sidebar) */
 :root:not(.dark) .text-violet-500 { color: #6d28d9; }
 
-/* Background /5 quase invisível no light mode — aumentar opacidade */
+/* Background /5 quase invisível no light mode , aumentar opacidade */
 :root:not(.dark) .bg-amber-500\/5 { background-color: rgba(245, 158, 11, 0.12); }
 :root:not(.dark) .bg-violet-500\/5 { background-color: rgba(139, 92, 246, 0.1); }
 :root:not(.dark) .bg-blue-500\/5 { background-color: rgba(59, 130, 246, 0.1); }
@@ -271,7 +271,7 @@ input[type="search"]::-webkit-search-decoration {
 /* Typing word-by-word: cada palavra nova entra com fade + leve slide-up.
    fill-mode forwards mantem opacity 1 apos termino; React re-render nao
    reanima palavras antigas (StreamingText skipa className quando settled). */
-/* Smooth streaming word-by-word — padrao Vercel Streamdown "slideUp"
+/* Smooth streaming word-by-word , padrao Vercel Streamdown "slideUp"
    (https://streamdown.ai/docs/animation). Mesmo padrao usado em
    producao por Anthropic, Vercel AI SDK, assistant-ui.
    - 150ms duracao (curto = nao fica "chunky" em batch de tokens)

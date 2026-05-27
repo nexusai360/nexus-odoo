@@ -140,7 +140,7 @@ describe("processTopicTaggingJob", () => {
     });
     prisma.message.count.mockResolvedValue(10);
     prisma.message.findMany.mockResolvedValue([{ content: "x" }]);
-    // Extractor devolve mesma tag (Fiscal:Faturamento — mais case)
+    // Extractor devolve mesma tag (Fiscal:Faturamento , mais case)
     extractTopics.mockResolvedValue({
       topic: "Faturamento",
       domain: "Fiscal",

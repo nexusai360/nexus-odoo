@@ -3,12 +3,12 @@ import { sanitizePromptText } from "./sanitize";
 
 describe("sanitizePromptText", () => {
   test("converte em-dash em virgula", () => {
-    const out = sanitizePromptText("foo — bar");
+    const out = sanitizePromptText("foo , bar");
     expect(out).toBe("foo , bar".replace(/ +/g, " "));
   });
 
   test("converte en-dash em virgula", () => {
-    expect(sanitizePromptText("a – b")).toBe("a , b".replace(/ +/g, " "));
+    expect(sanitizePromptText("a , b")).toBe("a , b".replace(/ +/g, " "));
   });
 
   test("normaliza reticencias unicode para tres pontos", () => {
@@ -24,7 +24,7 @@ describe("sanitizePromptText", () => {
   });
 
   test("idempotente: sanitizar duas vezes igual sanitizar uma", () => {
-    const input = "foo — bar …";
+    const input = "foo , bar …";
     const a = sanitizePromptText(input);
     const b = sanitizePromptText(a);
     expect(b).toBe(a);

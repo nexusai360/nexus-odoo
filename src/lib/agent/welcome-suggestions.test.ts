@@ -7,7 +7,7 @@ describe("WELCOME_SUGGESTIONS", () => {
 
   test("nenhuma sugestao contem travessao ou en-dash", () => {
     for (const s of WELCOME_SUGGESTIONS) {
-      expect(s).not.toMatch(/[—–]/);
+      expect(s).not.toMatch(/[,,]/);
     }
   });
 

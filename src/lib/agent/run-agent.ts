@@ -173,7 +173,7 @@ function normalizeReasoningEffort(
  * Carrega o singleton AgentSettings do banco (fallback alinhado com @default
  * do schema).
  *
- * CRÍTICO — flag usesCodeDefaults: quando true (default em instalações novas
+ * CRÍTICO , flag usesCodeDefaults: quando true (default em instalações novas
  * E após reset via UI), retorna IDENTITY_BASE/DEFAULT_PERSONALITY/DEFAULT_TONE/
  * DEFAULT_GUARDRAILS do CÓDIGO. Isso resolve o drift dev/banco: dev edita o
  * código e a mudança REFLETE imediatamente sem precisar UPDATE manual.
@@ -220,7 +220,7 @@ export async function runAgent(args: RunAgentInput): Promise<RunAgentResult> {
   });
 
   // Declarado fora do try pra ficar acessivel no catch externo
-  // (usado pelo trigger FALHA_TECNICA do /agente/qualidade — Onda 3a).
+  // (usado pelo trigger FALHA_TECNICA do /agente/qualidade , Onda 3a).
   let resolvedLlm:
     | {
         provider: import("./llm/types").LlmProvider;
@@ -360,7 +360,7 @@ export async function runAgent(args: RunAgentInput): Promise<RunAgentResult> {
 
     // Acumula TODOS os tool results do turno (across iteracoes) para guardrail
     // factual final. Auditoria 2026-05-26 mostrou 12 turnos ERRADO com
-    // `dado_inventado` — agente citava numeros que nao apareciam em nenhum
+    // `dado_inventado` , agente citava numeros que nao apareciam em nenhum
     // toolResult do turno.
     const allTurnToolResults: string[] = [];
 
@@ -486,14 +486,14 @@ export async function runAgent(args: RunAgentInput): Promise<RunAgentResult> {
 
         // GUARDRAIL FACTUAL (auditoria 2026-05-26 rodada 5):
         // Dois detectores ortogonais:
-        //  (a) findInventedValues — valores R$ que nao aparecem em nenhum
+        //  (a) findInventedValues , valores R$ que nao aparecem em nenhum
         //      toolResult. Threshold: dispara so se >=2 valores E >=50% dos
         //      R$ citados estao flagrados (evita falso positivo de
         //      agregacoes legitimas onde tool retorna linhas individuais e
         //      agente soma um total que nao existe literal no JSON).
         //      Validado contra rodada 4: FP=2.3% (5/214 CORRETO),
         //      TP=30.8% (4/13 ERRADO).
-        //  (b) detectsHallucinatedNonEmpty — TODAS as tools vieram vazias
+        //  (b) detectsHallucinatedNonEmpty , TODAS as tools vieram vazias
         //      mas resposta nao admite isso. Catch os piores casos de
         //      invento (#3694548f, #8185fe09). FP baixo.
         // Anexa toolResults brutos na correcao para o LLM defender
@@ -560,7 +560,7 @@ export async function runAgent(args: RunAgentInput): Promise<RunAgentResult> {
                   toolResultsBlob +
                   "\n\nREESCREVA sua resposta cumprindo:\n" +
                   "1. NAO adicione informacao que nao esteja explicitamente no bloco acima.\n" +
-                  "2. Para qualquer valor/nome/codigo que voce nao tem certeza de origem, NAO escreva — diga 'nao consegui obter esse dado'.\n" +
+                  "2. Para qualquer valor/nome/codigo que voce nao tem certeza de origem, NAO escreva , diga 'nao consegui obter esse dado'.\n" +
                   "3. Se as tools vieram vazias, declare isso de forma natural ('Nao encontrei...', 'A consulta nao retornou resultados...').\n" +
                   "4. Mantenha o tom, idioma e formato da resposta original.\n" +
                   "5. NAO chame novas tools. NAO peca clarificacao.\n",
@@ -650,7 +650,7 @@ export async function runAgent(args: RunAgentInput): Promise<RunAgentResult> {
 
       // Persistir assistant com toolCalls. Capturamos o id da Message criada
       // para fazer UPDATE de `toolResults` apos o loop de execucao (Onda 1
-      // Inteligencia, T1.7). Spec §3.2 — toolResults armazena
+      // Inteligencia, T1.7). Spec §3.2 , toolResults armazena
       // { [callId]: resultString }, fonte da verdade para o tool-replayer da
       // Frente A na Onda 2.
       const assistantMessageId = await persistAssistantMessageWithTools(
@@ -796,7 +796,7 @@ export async function runAgent(args: RunAgentInput): Promise<RunAgentResult> {
 
     // Onda 3a: trigger fire-and-forget FALHA_TECNICA pro /agente/qualidade.
     // Cria row separada do KPI normal (status=FALHA_TECNICA nao conta no
-    // % CORRETO). NAO buscar lastUserMsg via query — race condition se erro
+    // % CORRETO). NAO buscar lastUserMsg via query , race condition se erro
     // foi antes de persistMessage("user"). Spec §5.4.
     void (async () => {
       try {
@@ -843,12 +843,12 @@ export function findInventedValues(
 
   // Valores R$ apenas. Comparacao por PREFIXO ignorando os 2 ultimos digitos
   // (centavos) para tolerar precisao float: tool retorna 38064323.839999996,
-  // agente arredonda para R$ 38.064.323,84 — comparar so 38064323 evita
+  // agente arredonda para R$ 38.064.323,84 , comparar so 38064323 evita
   // falso positivo. R$ 0,00 e excluido (resultado valido de agregacao).
   // Extensoes para codigos/quantidades foram avaliadas e recuadas: a
   // igualdade literal nao funciona para agregados que o agente computa
   // (validacao 2026-05-26: 63% FP). A decisao de DISPARAR correcao usa
-  // threshold (>=2 valores E >=50% dos R$ inventados) — implementado no
+  // threshold (>=2 valores E >=50% dos R$ inventados) , implementado no
   // ponto de chamada em run-agent.ts.
   for (const m of message.matchAll(/R\$\s*([\d.,]+)/g)) {
     const raw = m[1];
