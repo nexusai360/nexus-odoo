@@ -98,7 +98,7 @@ export function ChartsBlock({
                 color: STATUS_COLOR.CORRETO,
               },
             ]}
-            height={260}
+            height={420}
             formatValue={formatPercent}
             xAxisLeftPadding={16}
             ariaLabel="Percentual de respostas CORRETAS por dia"
@@ -118,6 +118,7 @@ export function ChartsBlock({
         <CardContent>
           <DonutWithCenter
               data={donutData}
+              height={420}
               centerLabel="Total avaliado"
               centerValue={numberFmt.format(kpis.totalAvaliado)}
               formatValue={formatNumber}
@@ -145,9 +146,9 @@ export function ChartsBlock({
                 color: "#8b5cf6", // violet-500
               },
             ]}
-            height={260}
+            height={420}
             layout="horizontal"
-            yAxisWidth={180}
+            yAxisWidth={200}
             formatValue={formatNumber}
             showLegend={false}
             ariaLabel="Top 10 padrões diagnósticos mais frequentes"

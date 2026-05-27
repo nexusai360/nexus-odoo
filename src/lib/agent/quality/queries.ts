@@ -183,14 +183,18 @@ export async function getDistinctRodadas(
   const startIso = filters.periodStart.toISOString();
   const endIso = filters.periodEnd.toISOString();
   const rows = (await prisma.$queryRaw`
-    SELECT
-      regexp_replace(c.title, '\s.*$', '') AS marker,
-      COUNT(*)::int AS count
-    FROM conversation_quality_evaluations e
-    JOIN conversations c ON c.id = e.conversation_id
-    WHERE e.created_at >= ${startIso}::timestamptz
-      AND e.created_at <= ${endIso}::timestamptz
-      AND c.title LIKE '[AUDIT-%'
+    SELECT marker, COUNT(*)::int AS count
+    FROM (
+      SELECT
+        substring(c.title from position('[' in c.title) for (position(']' in c.title) - position('[' in c.title) + 1)) AS marker,
+        e.id AS eid
+      FROM conversation_quality_evaluations e
+      JOIN conversations c ON c.id = e.conversation_id
+      WHERE e.created_at >= ${startIso}::timestamptz
+        AND e.created_at <= ${endIso}::timestamptz
+        AND c.title LIKE '[AUDIT-%'
+    ) sub
+    WHERE marker LIKE '[AUDIT-%'
     GROUP BY marker
     ORDER BY marker DESC
   `) as Array<{ marker: string; count: number }>;
