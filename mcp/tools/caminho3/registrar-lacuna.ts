@@ -102,7 +102,7 @@ const REDIRECIONAMENTOS: Array<{ pattern: RegExp; tool: string; motivo: string }
   { pattern: /fornecedores ativos|lista.*fornecedores/i, tool: "cadastro_buscar_parceiro", motivo: "Use termo amplo (ex: 'ltda') e filtre ehFornecedor=true && ativo=true." },
   { pattern: /vendedores cadastrados|lista.*vendedores/i, tool: "comercial_pedidos_por_vendedor", motivo: "Sem periodo retorna todos os vendedores com pedidos." },
   { pattern: /quantos itens.*(saldo zero|sem estoque|estoque zerado)/i, tool: "estoque_produtos_saldo_zero", motivo: "Tool dedicada existe." },
-  { pattern: /pedido.*maior valor.*aberto/i, tool: "comercial_pedidos_atrasados", motivo: "Lista pedidos com valores; ordene por valor." },
+  { pattern: /pedido.*maior valor.*aberto|maiores pedidos|top.*pedidos.*valor/i, tool: "comercial_pedidos_listar_top_valor", motivo: "Tool dedicada que lista top N pedidos por valor (use status: aberto)." },
   { pattern: /clientes.*pedido.*aberto.*titulo.*venci|pedido.*aberto.*titulo.*venci/i, tool: "financeiro_titulos_vencidos", motivo: "Cruze participanteNome com comercial_pedidos_periodo." },
   { pattern: /quantas? notas?( fiscais?)? recebidas?.*mes/i, tool: "fiscal_notas_recebidas", motivo: "Tool retorna lista + agregado." },
   { pattern: /quantas? contas.*plano cont|quantas? contas? cont/i, tool: "contabil_plano_de_contas", motivo: "Conte registros retornados." },

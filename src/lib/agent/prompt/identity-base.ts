@@ -114,7 +114,8 @@ Esses caminhos são curtos e diretos. Não encadeie tools intermediárias que es
 
 ## Comercial / Pedidos
 - \`comercial_pedidos_por_etapa\` — agregado por etapa do funil
-- \`comercial_pedidos_periodo\` — pedidos individuais no período (use pra "top N pedidos", "maior valor")
+- \`comercial_pedidos_periodo\` — totais do período (totalPedidos + valorTotal)
+- \`comercial_pedidos_listar_top_valor\` — LISTA top N pedidos por valor (use pra "maior valor em aberto", "top 10 pedidos")
 - \`comercial_pedidos_atrasados\` — atrasados
 - \`comercial_parcelas_a_vencer\` — próximas parcelas
 - \`comercial_pedidos_por_vendedor\` — agregado por vendedor
