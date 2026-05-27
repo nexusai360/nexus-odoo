@@ -10,6 +10,7 @@
  */
 
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { createPortal } from "react-dom";
 import { motion, useReducedMotion } from "framer-motion";
 import {
   Activity,
@@ -277,22 +278,33 @@ export function ConsumoContent({ minDate: minDateIso }: ConsumoContentProps) {
   );
   const [page, setPage] = useState(0);
   const [pageSize, setPageSize] = useState<PageSize>(DEFAULT_PAGE_SIZE);
-  // Filtro global de provider (afeta KPIs, charts e tabela). Sincroniza com URL.
+  // Filtros globais (afetam KPIs, charts e tabela). Sincronizam com URL.
   const [globalProvider, setGlobalProvider] = useState<string | undefined>(
     undefined,
   );
+  const [globalModel, setGlobalModel] = useState<string | undefined>(undefined);
   const [filterProvider, setFilterProvider] = useState<string | undefined>(
     undefined,
   );
   const [filterModel, setFilterModel] = useState<string | undefined>();
-  // Filtro Ambiente (Agente Nex / Playground). Sincroniza com URL ?env=...
+  // Filtro Ambiente GLOBAL (Agente Nex / Playground). Sincroniza com URL
+  // ?env=... e cascateia para o filterAmbiente da tabela.
   const [ambiente, setAmbiente] = useState<Ambiente>("all");
+  // Filtro Ambiente LOCAL da tabela (espelha o global por padrao; usuario
+  // pode sobrepor diretamente no card "Historico de chamadas"). Mesmo
+  // comportamento dos filtros local de provider/model.
+  const [filterAmbiente, setFilterAmbiente] = useState<Ambiente>("all");
   // O estado inicial dos filtros vem da URL, mas só pode ser lido após a
   // montagem no client , ler window.location no primeiro render quebraria a
   // hidratação (o servidor não tem a query string).
   const [hydrated, setHydrated] = useState(false);
   const isPlaygroundFilter =
     ambiente === "all" ? null : ambiente === "playground";
+  // Variante por tabela: usa o filterAmbiente local (que segue o global por
+  // default). Mantemos separado para o histórico aceitar override próprio
+  // sem mexer nos KPIs/charts.
+  const isPlaygroundFilterTable =
+    filterAmbiente === "all" ? null : filterAmbiente === "playground";
   const [providers, setProviders] = useState<string[]>([]);
   const [modelsByProvider, setModelsByProvider] = useState<
     Record<string, string[]>
@@ -321,6 +333,7 @@ export function ConsumoContent({ minDate: minDateIso }: ConsumoContentProps) {
     pill,
     customRange,
     globalProvider,
+    globalModel,
     filterProvider,
     filterModel,
     ambiente,
@@ -408,6 +421,7 @@ export function ConsumoContent({ minDate: minDateIso }: ConsumoContentProps) {
       start: effectiveChartRange.start.toISOString(),
       end: effectiveChartRange.end.toISOString(),
       provider: globalProvider ?? null,
+      model: globalModel ?? null,
       isPlayground: isPlaygroundFilter,
     })
       .then((s) => {
@@ -423,7 +437,7 @@ export function ConsumoContent({ minDate: minDateIso }: ConsumoContentProps) {
       cancelled = true;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [chartReferenceDate, effectiveChartRange.start.getTime(), effectiveChartRange.end.getTime(), globalProvider, isPlaygroundFilter]);
+  }, [chartReferenceDate, effectiveChartRange.start.getTime(), effectiveChartRange.end.getTime(), globalProvider, globalModel, isPlaygroundFilter]);
 
   // Lê o estado inicial dos filtros da URL , só após a montagem no client,
   // para o primeiro render bater com o do servidor (evita hydration mismatch).
@@ -431,6 +445,8 @@ export function ConsumoContent({ minDate: minDateIso }: ConsumoContentProps) {
     const params = new URLSearchParams(window.location.search);
     const provider = params.get("provider") ?? undefined;
     if (provider) setGlobalProvider(provider);
+    const modelParam = params.get("model") ?? undefined;
+    if (modelParam) setGlobalModel(modelParam);
     const env = params.get("env");
     if (env === "playground" || env === "agente") setAmbiente(env);
     setHydrated(true);
@@ -446,6 +462,15 @@ export function ConsumoContent({ minDate: minDateIso }: ConsumoContentProps) {
     window.history.replaceState({}, "", url.toString());
   }, [globalProvider, hydrated]);
 
+  // Sincroniza filtro de Modelo global com URL (?model=...).
+  useEffect(() => {
+    if (!hydrated) return;
+    const url = new URL(window.location.href);
+    if (globalModel) url.searchParams.set("model", globalModel);
+    else url.searchParams.delete("model");
+    window.history.replaceState({}, "", url.toString());
+  }, [globalModel, hydrated]);
+
   // Sincroniza filtro Ambiente com URL (?env=...).
   useEffect(() => {
     if (!hydrated) return;
@@ -455,11 +480,21 @@ export function ConsumoContent({ minDate: minDateIso }: ConsumoContentProps) {
     window.history.replaceState({}, "", url.toString());
   }, [ambiente, hydrated]);
 
-  // Quando o filtro global muda, espelha no filtro da tabela e reseta o modelo.
+  // Quando os filtros globais mudam, espelha nos filtros da tabela.
+  // - globalProvider muda -> filterProvider segue, filterModel reseta
+  //   (modelo da tabela deixa de fazer sentido com novo provider).
+  // - globalModel muda -> filterModel segue (sobrepoe selecao local).
   useEffect(() => {
     setFilterProvider(globalProvider);
     setFilterModel(undefined);
   }, [globalProvider]);
+  useEffect(() => {
+    setFilterModel(globalModel);
+  }, [globalModel]);
+  // Ambiente global -> Ambiente local da tabela.
+  useEffect(() => {
+    setFilterAmbiente(ambiente);
+  }, [ambiente]);
 
   // Fetch stats + first page de details.
   useEffect(() => {
@@ -477,6 +512,7 @@ export function ConsumoContent({ minDate: minDateIso }: ConsumoContentProps) {
             start: startIso,
             end: endIso,
             provider: globalProvider ?? null,
+            model: globalModel ?? null,
             isPlayground: isPlaygroundFilter,
           }),
           fetchUsageDetails({
@@ -486,7 +522,7 @@ export function ConsumoContent({ minDate: minDateIso }: ConsumoContentProps) {
             offset: page * pageSize,
             provider: filterProvider ?? null,
             model: filterModel ?? null,
-            isPlayground: isPlaygroundFilter,
+            isPlayground: isPlaygroundFilterTable,
           }),
         ]);
         if (cancelled) return;
@@ -508,7 +544,7 @@ export function ConsumoContent({ minDate: minDateIso }: ConsumoContentProps) {
       cancelled = true;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [range.start.getTime(), range.end.getTime(), effectiveDetailsRange.start.getTime(), effectiveDetailsRange.end.getTime(), page, pageSize, globalProvider, filterProvider, filterModel, isPlaygroundFilter]);
+  }, [range.start.getTime(), range.end.getTime(), effectiveDetailsRange.start.getTime(), effectiveDetailsRange.end.getTime(), page, pageSize, globalProvider, globalModel, filterProvider, filterModel, isPlaygroundFilter, filterAmbiente]);
 
   // Fetch lista de providers no range (para filtros cascade).
   useEffect(() => {
@@ -669,6 +705,30 @@ export function ConsumoContent({ minDate: minDateIso }: ConsumoContentProps) {
     return map;
   }, [activeChartStats]);
 
+  // Opcoes do select global de modelo: respeita o provider global quando ha um;
+  // caso contrario, lista todos os modelos do periodo agrupados, com sufixo
+  // de provider para desambiguar. Cascade: trocar provider global zera o
+  // modelo global (ver onChange do CustomSelect de provider abaixo).
+  const globalModelOptions = useMemo<
+    Array<{ value: string; label: string; provider?: string }>
+  >(() => {
+    if (globalProvider) {
+      const list = modelsByProvider[globalProvider] ?? [];
+      return list.map((m) => ({ value: m, label: m, provider: globalProvider }));
+    }
+    const flat: Array<{ value: string; label: string; provider?: string }> = [];
+    for (const p of providers) {
+      for (const m of modelsByProvider[p] ?? []) {
+        flat.push({
+          value: m,
+          label: `${m} (${providerLabel(p)})`,
+          provider: p,
+        });
+      }
+    }
+    return flat;
+  }, [globalProvider, providers, modelsByProvider]);
+
   // KPIs e centro do donut sincronizam com o periodo navegado pelo grafico
   // (activeChartStats = chartStats ?? stats). Quando nao ha navegacao,
   // activeChartStats === stats e KPI exibe o periodo da pill.
@@ -766,10 +826,25 @@ export function ConsumoContent({ minDate: minDateIso }: ConsumoContentProps) {
             minDate={minDate}
           />
           <CustomSelect
+            value={ambiente}
+            onChange={(v) => setAmbiente(v as Ambiente)}
+            options={[
+              { value: "all", label: "Todos os ambientes" },
+              { value: "agente", label: "Agente Nex" },
+              { value: "playground", label: "Playground" },
+            ]}
+            triggerClassName="min-h-[36px] h-9 w-[200px]"
+            aria-label="Filtrar por ambiente (global)"
+          />
+          <CustomSelect
             value={globalProvider ?? "__all__"}
-            onChange={(v) =>
-              setGlobalProvider(v === "__all__" ? undefined : v)
-            }
+            onChange={(v) => {
+              const next = v === "__all__" ? undefined : v;
+              setGlobalProvider(next);
+              // Provider mudou no global: zera o modelo global (cascade),
+              // assim como o filtro local da tabela ja faz.
+              if (next !== globalProvider) setGlobalModel(undefined);
+            }}
             options={[
               { value: "__all__", label: "Todos os provedores" },
               ...providers.map((p) => ({
@@ -781,24 +856,34 @@ export function ConsumoContent({ minDate: minDateIso }: ConsumoContentProps) {
             aria-label="Filtrar por provedor (global)"
           />
           <CustomSelect
-            value={ambiente}
-            onChange={(v) => setAmbiente(v as Ambiente)}
+            value={globalModel ?? "__all__"}
+            onChange={(v) =>
+              setGlobalModel(v === "__all__" ? undefined : v)
+            }
             options={[
-              { value: "all", label: "Todos os ambientes" },
-              { value: "agente", label: "Agente Nex" },
-              { value: "playground", label: "Playground" },
+              { value: "__all__", label: "Todos os modelos" },
+              ...globalModelOptions.map((m) => ({
+                value: m.value,
+                label: m.label,
+              })),
             ]}
-            triggerClassName="min-h-[36px] h-9 w-[200px]"
-            aria-label="Filtrar por ambiente"
+            triggerClassName="min-h-[36px] h-9 w-[220px]"
+            aria-label="Filtrar por modelo (global)"
           />
         </div>
+      </div>
+
+      {/* Loading indicator renderizado via portal no `actions` slot do
+          PageHeader (alinhado ao titulo "Consumo do Agente Nex"), evitando
+          dividir espaco com a linha dos filtros. */}
+      <HeaderActionsPortal>
         {isLoading ? (
           <span className="inline-flex items-center gap-2 text-xs text-muted-foreground">
             <Loader2 className="h-4 w-4 animate-spin" aria-hidden />
             Atualizando…
           </span>
         ) : null}
-      </div>
+      </HeaderActionsPortal>
 
       {error ? (
         <Card className="border-destructive/40">
@@ -987,8 +1072,10 @@ export function ConsumoContent({ minDate: minDateIso }: ConsumoContentProps) {
           <UsageTableFilters
             providers={providers}
             modelsByProvider={modelsByProvider}
+            selectedAmbiente={filterAmbiente}
             selectedProvider={filterProvider}
             selectedModel={filterModel}
+            onAmbienteChange={(a) => setFilterAmbiente(a)}
             onProviderChange={(p) => setFilterProvider(p)}
             onModelChange={(m) => setFilterModel(m)}
           />
@@ -1247,6 +1334,19 @@ export function ConsumoContent({ minDate: minDateIso }: ConsumoContentProps) {
 // ---------------------------------------------------------------------------
 // Skeleton
 // ---------------------------------------------------------------------------
+
+// Portal helper para colocar conteudo dentro do `actions` slot do PageHeader
+// (alvo `#agente-consumo-header-actions`, declarado em page.tsx). Mounts ao
+// se montar; descomeca a renderizar quando o target existe no DOM, evitando
+// hydration mismatch.
+function HeaderActionsPortal({ children }: { children: React.ReactNode }) {
+  const [target, setTarget] = useState<HTMLElement | null>(null);
+  useEffect(() => {
+    setTarget(document.getElementById("agente-consumo-header-actions"));
+  }, []);
+  if (!target) return null;
+  return createPortal(children, target);
+}
 
 function ChartSkeleton({ height = 300 }: { height?: number }) {
   return (
