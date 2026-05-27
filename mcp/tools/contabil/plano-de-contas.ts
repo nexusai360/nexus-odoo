@@ -86,9 +86,15 @@ export const contabilPlanoDeContas: ToolEntry<Input, Output> = {
     );
     if (envelope.estado === "preparando") return envelope;
     const linhas = envelope.dados.linhas;
+    const totalNoBanco = envelope.dados.total; // count absoluto (nao truncado)
     return enriquecerEnvelope(envelope, "contabil_plano_de_contas", {
       destaque: {
-        totalContas: linhas.length,
+        // T-25 (Ronda 1): totalContas agora reflete o count absoluto do banco,
+        // nao o tamanho da fatia retornada. Resolve "Quantas contas temos no
+        // plano contabil?" sem precisar de tool nova.
+        totalContas: totalNoBanco,
+        contagem: totalNoBanco,
+        linhasExibidas: linhas.length,
         termo: input.termo ?? "",
         ...(linhas.length === 1
           ? {
@@ -96,6 +102,9 @@ export const contabilPlanoDeContas: ToolEntry<Input, Output> = {
               nome: linhas[0]?.nome ?? "",
             }
           : {}),
+      },
+      agregado: {
+        contagem: totalNoBanco,
       },
       listaTruncada: envelope.dados.truncado,
     });

@@ -36,6 +36,15 @@ function classify(t: Turno): { status: Status; razao: string; patterns: string[]
   const hasMonetario = /r\$/i.test(t.finalMessage || "");
   const toolNames = t.toolCalls.map((c) => c.name);
   const ehLacuna = toolNames.includes("registrar_lacuna");
+  // T-28 (Ronda 1): so eh lacuna PURA quando registrar_lacuna foi a UNICA tool
+  // (ou as outras tools sao apenas estruturais como detalhar_parceiro sem
+  // resultado factual). Se houve tool de dado factual (financeiro_*, fiscal_*,
+  // estoque_*, comercial_*, contabil_*, cadastro_*) ANTES do registrar_lacuna,
+  // o turno e ERRADO (lacuna prematura) ou CORRETO (resposta apesar da lacuna).
+  const TOOLS_FACTUAIS_REGEX = /^(financeiro|fiscal|estoque|comercial|contabil|cadastro)_/;
+  const toolsFactuais = toolNames.filter((n) => TOOLS_FACTUAIS_REGEX.test(n));
+  const ehLacunaPura = ehLacuna && toolsFactuais.length === 0;
+  const ehLacunaPrematura = ehLacuna && toolsFactuais.length > 0;
   const semTool = t.toolCalls.length === 0;
 
   const respostasNegativas =
@@ -43,12 +52,23 @@ function classify(t: Turno): { status: Status; razao: string; patterns: string[]
       msg,
     );
 
-  // Lacuna registrada + resposta honesta sobre nao ter dado
-  if (ehLacuna && respostasNegativas) {
+  // Lacuna PURA + resposta honesta = FORA_DO_ESCOPO legitimo.
+  if (ehLacunaPura && respostasNegativas) {
     return {
       status: "FORA_DO_ESCOPO",
-      razao: "Heuristica: registrar_lacuna chamado, resposta honesta sobre limitacao.",
+      razao: "Heuristica: registrar_lacuna unica tool + resposta honesta sobre limitacao.",
       patterns: ["limitacao_real_declarada"],
+    };
+  }
+
+  // Lacuna PREMATURA: houve tool factual antes, mas agente registrou lacuna.
+  // Se a resposta cita numero/dado: provavelmente CORRETO (deixa pro classifier
+  // adiante decidir). Se nao: ERRADO.
+  if (ehLacunaPrematura && respostasNegativas && !hasNumeros && !hasMonetario) {
+    return {
+      status: "ERRADO",
+      razao: "Heuristica: lacuna prematura (havia tool factual antes) + recusa sem dado.",
+      patterns: ["lacuna_prematura", "recusa_indevida"],
     };
   }
 

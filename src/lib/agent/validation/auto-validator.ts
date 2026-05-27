@@ -17,7 +17,7 @@
  * Feature flag: AgentSettings.autoValidatorMode (off|shadow|active).
  */
 
-export type ValidationFailReason = "V1" | "V2" | "V3" | "V4" | null;
+export type ValidationFailReason = "V1" | "V2" | "V3" | "V4" | "V5" | null;
 
 /**
  * Estrutura minima do resultado de uma tool tal qual chega ao validator.
@@ -317,6 +317,114 @@ function validateV4(ctx: ValidationContext): ValidationOutcome | null {
 }
 
 // ---------------------------------------------------------------------------
+// V5: anti-ignorou-_RESPOSTA
+// ---------------------------------------------------------------------------
+//
+// Caso da Ronda 1 (laudo R17+R18): tool retorna `_RESPOSTA` curado com numeros
+// e nomes, mas o LLM emite uma resposta independente que ignora completamente
+// o conteudo entregue. Ex: tool diz "Total em aberto a receber: R$ 1.234.567,89
+// em 42 titulos. Maior cliente: Smartfit (R$ 250.000)." e o LLM responde
+// "Nao consegui fechar o total com seguranca, a lista veio parcial."
+//
+// V5 mede overlap de tokens entre o _RESPOSTA da tool e a resposta do LLM.
+// Se < 25% dos tokens significativos do _RESPOSTA aparecem na resposta final,
+// e o _RESPOSTA tinha conteudo nao-trivial (>= 3 tokens significativos),
+// V5 falha.
+
+/** Token significativo: palavra >= 4 chars que nao e stopword PT-BR comum. */
+const STOPWORDS = new Set([
+  "para",
+  "pela",
+  "pelo",
+  "pelos",
+  "pelas",
+  "como",
+  "isso",
+  "esse",
+  "esta",
+  "este",
+  "essa",
+  "esses",
+  "essas",
+  "estes",
+  "estas",
+  "muito",
+  "muita",
+  "mais",
+  "menos",
+  "ainda",
+  "depois",
+  "antes",
+  "tambem",
+  "também",
+  "outro",
+  "outra",
+  "outros",
+  "outras",
+  "todo",
+  "toda",
+  "todos",
+  "todas",
+  "qual",
+  "quais",
+  "quanto",
+  "quanta",
+  "quantos",
+  "quantas",
+  "quando",
+  "onde",
+  "porque",
+  "porquê",
+]);
+
+function tokensSignificativos(texto: string): string[] {
+  // Remove pontuacao, normaliza minusculas, separa por whitespace.
+  const limpo = texto
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[̀-ͯ]/g, "") // strip diacriticos pra comparar "saldo" == "saldo"
+    .replace(/[^\p{L}\p{N}\s]/gu, " ");
+  return limpo
+    .split(/\s+/)
+    .filter((t) => t.length >= 4 && !STOPWORDS.has(t))
+    .filter((t, i, arr) => arr.indexOf(t) === i); // dedup
+}
+
+function temRespostaCuradaNaoTrivial(ctx: ValidationContext): {
+  resposta: string;
+  tokens: string[];
+} | null {
+  for (const tr of ctx.toolResults) {
+    const r = tr.dados?._RESPOSTA;
+    if (typeof r !== "string" || r.length < 20) continue;
+    const tokens = tokensSignificativos(r);
+    if (tokens.length >= 3) {
+      return { resposta: r, tokens };
+    }
+  }
+  return null;
+}
+
+function validateV5(ctx: ValidationContext): ValidationOutcome | null {
+  const curada = temRespostaCuradaNaoTrivial(ctx);
+  if (!curada) return null;
+  const tokensLLM = new Set(tokensSignificativos(ctx.llmResponse));
+  let overlap = 0;
+  for (const t of curada.tokens) {
+    if (tokensLLM.has(t)) overlap++;
+  }
+  const ratio = overlap / curada.tokens.length;
+  // Threshold conservador: < 25% de overlap = LLM ignorou _RESPOSTA.
+  if (ratio >= 0.25) return null;
+  return {
+    ok: false,
+    reason: "V5",
+    hint: `Voce ignorou o campo _RESPOSTA da tool, que ja vinha pronto com a resposta correta. Use o texto curado como base: "${curada.resposta}". Pode adaptar para fluir, mas mantenha numeros, nomes e fatos exatamente como vieram.`,
+    detalhe: `V5:ignorou_RESPOSTA:overlap_${Math.round(ratio * 100)}pct`,
+  };
+}
+
+// ---------------------------------------------------------------------------
 // Entry point
 // ---------------------------------------------------------------------------
 
@@ -325,6 +433,7 @@ export interface ValidatorFlags {
   v2Enabled?: boolean;
   v3Enabled?: boolean;
   v4Enabled?: boolean;
+  v5Enabled?: boolean;
 }
 
 const OK: ValidationOutcome = {
@@ -346,17 +455,23 @@ export function validateResponse(
   const v2On = flags.v2Enabled ?? true;
   const v3On = flags.v3Enabled ?? true;
   const v4On = flags.v4Enabled ?? true;
+  const v5On = flags.v5Enabled ?? true;
 
-  // Ordem deliberada: V1 (truncamento) -> V3 (recusa) -> V4 (placeholder em
-  // bullet) -> V2 (invencao numerica). V4 antes de V2 porque problema cosmetico
-  // de placeholder em bullet e mais especifico/util de capturar primeiro do que
-  // a deteccao numerica geral, que tende a ser mais ruidosa.
+  // Ordem deliberada: V1 (truncamento) -> V3 (recusa explicita) -> V5
+  // (ignorou _RESPOSTA, mais sutil) -> V4 (placeholder em bullet) -> V2
+  // (invencao numerica). V5 depois de V3 porque a recusa textual e mais
+  // facil de detectar; V5 captura casos onde a resposta nao parece recusa
+  // mas diverge completamente do _RESPOSTA curado.
   if (v1On) {
     const r = validateV1(ctx);
     if (r) return r;
   }
   if (v3On) {
     const r = validateV3(ctx);
+    if (r) return r;
+  }
+  if (v5On) {
+    const r = validateV5(ctx);
     if (r) return r;
   }
   if (v4On) {

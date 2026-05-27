@@ -250,7 +250,11 @@ const fmtContarParceiros: FormatadorCanonico = (env) => {
 };
 
 const fmtPlanoDeContas: FormatadorCanonico = (env) => {
+  // T-25 (Ronda 1): totalContas agora vem do count absoluto do banco
+  // (envelope.dados.total), nao do tamanho da fatia. Resolve
+  // "Quantas contas temos no plano contabil?" sem inventar.
   const n = Number(env._DESTAQUE?.totalContas ?? env.linhas.length);
+  const exibidas = Number(env._DESTAQUE?.linhasExibidas ?? env.linhas.length);
   const termo = env._DESTAQUE?.termo;
   if (n === 0)
     return termo
@@ -261,9 +265,13 @@ const fmtPlanoDeContas: FormatadorCanonico = (env) => {
     const nome = env._DESTAQUE?.nome ?? "";
     return `Conta ${codigo} ${nome}.`.trim();
   }
-  return termo
+  const cabeca = termo
     ? `${n} contas encontradas com termo '${termo}'.`
-    : `${n} contas no plano.`;
+    : `${n} contas no plano de contas.`;
+  if (exibidas > 0 && exibidas < n) {
+    return `${cabeca} Listando ${exibidas}.`;
+  }
+  return cabeca;
 };
 
 const fmtEstruturaConta: FormatadorCanonico = (env) => {

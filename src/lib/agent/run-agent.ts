@@ -653,6 +653,10 @@ export async function runAgent(args: RunAgentInput): Promise<RunAgentResult> {
                 v2Enabled: settingsRow?.validatorV2Enabled ?? true,
                 v3Enabled: settingsRow?.validatorV3Enabled ?? true,
                 v4Enabled: settingsRow?.validatorV4Enabled ?? true,
+                // V5 (Ronda 1): anti-ignorou_RESPOSTA. Default ativo; sem coluna
+                // dedicada no AgentSettings por enquanto (pode ser adicionada
+                // se precisar desligar em prod).
+                v5Enabled: true,
               },
             );
             if (!outcome.ok) {
