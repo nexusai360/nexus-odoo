@@ -35,8 +35,38 @@ function classify(t: Turno): { status: Status; razao: string; patterns: string[]
   const ehLacunaPrematura = ehLacuna && toolsFactuais.length > 0;
   const semTool = t.toolCalls.length === 0;
 
+  // T-30 (Ronda 1.5): distingue §10b/§12b cumpridas (CORRETO) de recusa real.
+  const respostaNaoHa =
+    /\bn[aã]o\s+h[áa]\s+\w/.test(msg) ||
+    /\bn[aã]o\s+encontrei\s+registros\b/.test(msg) ||
+    /\btotal\s+vencido:\s*r\$\s*0,?0?0?\b/.test(msg);
+  const respostaClarificacao =
+    /\bn[aã]o\s+entendi\s+sua\s+pergunta\b/.test(msg) ||
+    /\bvoc[êe]\s+quer\s+saber\s+sobre\b/.test(msg) ||
+    /\bvoc[êe]\s+quer\s+(o|a|os|as|ver|saber|confirmar)\b.*\bou\b/.test(msg);
+
   const respostasNegativas =
-    /n[aã]o (consegui|encontrei|tenho|est[áa]|h[áa]|temos)|fora do meu (escopo|alcance)|n[aã]o (dispon[íi]vel|posso|sei)/.test(msg);
+    !respostaNaoHa &&
+    !respostaClarificacao &&
+    (/n[aã]o (consegui|encontrei|tenho|est[áa]|temos)|fora do meu (escopo|alcance)|n[aã]o (dispon[íi]vel|posso|sei)/.test(msg) ||
+      /lista\s+veio\s+(truncad|cortad|parcial)/.test(msg) ||
+      /sem\s+o?\s*total\s+(consolidad|fechad)/.test(msg));
+
+  if (!semTool && respostaNaoHa && !respostasNegativas) {
+    return {
+      status: "CORRETO",
+      razao: "Heuristica: §10b cumprida (tool vazia traduzida como 'Nao ha X').",
+      patterns: ["acerto_estado_vazio"],
+    };
+  }
+
+  if (semTool && respostaClarificacao) {
+    return {
+      status: "CORRETO",
+      razao: "Heuristica: §12b cumprida (clarificacao para pergunta ambigua).",
+      patterns: ["acerto_clarificacao"],
+    };
+  }
 
   if (ehLacunaPura && respostasNegativas) {
     return {
@@ -62,6 +92,18 @@ function classify(t: Turno): { status: Status; razao: string; patterns: string[]
     };
   }
 
+  // T-30b: tool factual chamada + recusa explicita = ERRADO (tinha dado, nao usou).
+  const recusaExplicitaComDado =
+    /lista\s+veio\s+(truncad|cortad|parcial)/.test(msg) ||
+    /sem\s+o?\s*total\s+(consolidad|fechad)/.test(msg) ||
+    /n[aã]o\s+(consegui\s+(consolidar|fechar|separar|obter))/.test(msg);
+  if (toolsFactuais.length > 0 && recusaExplicitaComDado) {
+    return {
+      status: "ERRADO",
+      razao: "Heuristica: tool factual retornou dado mas resposta recusou explicitamente.",
+      patterns: ["recusa_com_dado"],
+    };
+  }
   if (!semTool && respostasNegativas) {
     return {
       status: "PARCIAL",

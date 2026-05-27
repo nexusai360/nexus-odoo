@@ -94,6 +94,9 @@ interface EvaluationsTableProps {
   baseFilters: FilterInputs;
   availableModels: string[];
   availablePatterns: string[];
+  /** Auto-numerador de rodadas (R8, R9, ...). Vindo do parent para
+   * compartilhar a mesma instancia de Map entre seletores e tabela. */
+  labelForRodada?: (marker: string | null | undefined) => string;
 }
 
 export function EvaluationsTable({
@@ -101,6 +104,7 @@ export function EvaluationsTable({
   baseFilters,
   availableModels,
   availablePatterns,
+  labelForRodada,
 }: EvaluationsTableProps) {
   const [data, setData] = useState<InitialData>(initialData);
   const [loading, setLoading] = useState(false);
@@ -252,7 +256,9 @@ export function EvaluationsTable({
                             className="border-border bg-muted/40 font-mono text-[11px] text-muted-foreground"
                             title={row.rodada}
                           >
-                            {markerToRodadaName(row.rodada)}
+                            {labelForRodada
+                              ? labelForRodada(row.rodada)
+                              : markerToRodadaName(row.rodada)}
                           </Badge>
                         ) : (
                           <span className="text-muted-foreground">,</span>

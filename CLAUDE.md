@@ -190,6 +190,8 @@ Ordem: **F0 → F1 → F2 → F3 → F4 → F5**. F3 e F4 podem ser paralelas ap
 
 10. **F4 entregue em ondas; F4 ≠ F5.** O escopo "todos os domínios" continua canônico (#9), mas a entrega é faseada: a F4 desenha a arquitetura completa do MCP e entrega a **onda 1 com estoque + financeiro** (arquitetura validada com 2 domínios reais de alto valor); os demais domínios entram em ondas seguintes. Fronteira firme: a **F4 é estritamente o servidor MCP** — servidor `@modelcontextprotocol/sdk` em TS (transporte Streamable HTTP), camada de fatos dos domínios da onda, catálogo de tools semânticas, RBAC 7 camadas, Caminho 3, contrato de identidade (`userId` da plataforma sempre; número de WhatsApp nunca chega ao MCP) e `McpAuditLog` de tool calls. O MCP é **stateless** — não guarda conversa. Tudo que é WhatsApp, log de conversas, personalização e banco vetorial é **F5** (ver §4). Decisão do usuário em 2026-05-17.
 
+11. **Rodadas de auditoria do Agente Nex são auto-numeradas (R8, R9, R10, ...).** PROIBIDO editar `KNOWN_MARKERS` / `LEGACY_MARKERS` à mão a cada bateria nova (já causou 4+ regressões com o linter/IDE revertendo). A função canônica é `buildRodadaNamesFromMarkers(allMarkers)` em `src/lib/agent/quality/rodada-labels.ts`: ordena os markers pelo timestamp embutido (`[AUDIT-POS-YYYY-MM-DDThh-mm-ss]`) e atribui RX sequencialmente a partir de R8. Toda UI/script que mostra nome de rodada **deve** usar essa função (ou o helper `labelFor` exposto em `qualidade-content.tsx`). Disparar uma R20, R30 ou R99 não exige edição de código. Decisão do usuário em 2026-05-27, após o bug ser relatado 4x.
+
 ---
 
 ## 6. Workflow por fase

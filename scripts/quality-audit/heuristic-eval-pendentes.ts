@@ -47,10 +47,44 @@ function classify(t: Turno): { status: Status; razao: string; patterns: string[]
   const ehLacunaPrematura = ehLacuna && toolsFactuais.length > 0;
   const semTool = t.toolCalls.length === 0;
 
+  // T-30 (Ronda 1.5): distinguir respostasNegativas (recusa indevida)
+  // de §10b cumprida ("nao ha X no periodo") e §12b cumprida (clarificacao).
+  // Sem essa distincao a heuristica conta vitorias como derrota.
+  const respostaNaoHa =
+    /\bn[aã]o\s+h[áa]\s+\w/.test(msg) || // "Nao ha despesa", "Nao ha titulos"
+    /\bn[aã]o\s+encontrei\s+registros\b/.test(msg) ||
+    /\btotal\s+vencido:\s*r\$\s*0,?0?0?\b/.test(msg); // "Total vencido: R$ 0,00 em 0 titulos"
+  const respostaClarificacao =
+    /\bn[aã]o\s+entendi\s+sua\s+pergunta\b/.test(msg) ||
+    /\bvoc[êe]\s+quer\s+saber\s+sobre\b/.test(msg) ||
+    /\bvoc[êe]\s+quer\s+(o|a|os|as|ver|saber|confirmar)\b.*\bou\b/.test(msg);
+
   const respostasNegativas =
-    /n[aã]o (consegui|encontrei|tenho|est[áa]|h[áa]|temos)|fora do meu (escopo|alcance)|n[aã]o (dispon[íi]vel|posso|sei)/.test(
+    !respostaNaoHa &&
+    !respostaClarificacao &&
+    (/n[aã]o (consegui|encontrei|tenho|est[áa]|temos)|fora do meu (escopo|alcance)|n[aã]o (dispon[íi]vel|posso|sei)/.test(
       msg,
-    );
+    ) ||
+      /lista\s+veio\s+(truncad|cortad|parcial)/.test(msg) ||
+      /sem\s+o?\s*total\s+(consolidad|fechad)/.test(msg));
+
+  // T-30: §10b cumprida = CORRETO (tool retornou vazio, agente disse "Nao ha X").
+  if (!semTool && respostaNaoHa && !respostasNegativas) {
+    return {
+      status: "CORRETO",
+      razao: "Heuristica: §10b cumprida (tool vazia traduzida como 'Nao ha X').",
+      patterns: ["acerto_estado_vazio"],
+    };
+  }
+
+  // T-30: §12b cumprida = CORRETO (pergunta ambigua/sem sentido, agente clarificou).
+  if (semTool && respostaClarificacao) {
+    return {
+      status: "CORRETO",
+      razao: "Heuristica: §12b cumprida (clarificacao para pergunta ambigua).",
+      patterns: ["acerto_clarificacao"],
+    };
+  }
 
   // Lacuna PURA + resposta honesta = FORA_DO_ESCOPO legitimo.
   if (ehLacunaPura && respostasNegativas) {
