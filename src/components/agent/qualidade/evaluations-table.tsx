@@ -37,6 +37,7 @@ import type {
   EvaluationRow,
 } from "@/lib/agent/quality/queries";
 import { cn } from "@/lib/utils";
+import { markerToRodadaName } from "@/lib/agent/quality/rodada-labels";
 import {
   EvaluationsTableFilters,
   type EvaluationsTableFiltersValue,
@@ -77,16 +78,6 @@ const dateTimeFmt = new Intl.DateTimeFormat("pt-BR", {
   minute: "2-digit",
 });
 const numberFmt = new Intl.NumberFormat("pt-BR");
-
-/** "[AUDIT-POS-2026-05-26T03-43-05]" -> "26/05 03:43" */
-function formatRodadaShortLabel(marker: string): string {
-  const m = marker.match(
-    /\[AUDIT-(?:[A-Z]+-)?(\d{4})-(\d{2})-(\d{2})T(\d{2})-(\d{2})/,
-  );
-  if (!m) return marker;
-  const [, , month, day, hour, min] = m;
-  return `${day}/${month} ${hour}:${min}`;
-}
 
 function truncate(text: string | null | undefined, max = 80): string {
   if (!text) return "";
@@ -220,10 +211,10 @@ export function EvaluationsTable({
             <TableHeader>
               <TableRow>
                 <TableHead className="w-[140px]">Data</TableHead>
+                <TableHead className="w-[90px]">Rodada</TableHead>
                 <TableHead>Pergunta</TableHead>
                 <TableHead>Resposta</TableHead>
                 <TableHead className="w-[130px]">Status</TableHead>
-                <TableHead className="w-[120px]">Rodada</TableHead>
                 <TableHead className="w-[140px]">Modelo</TableHead>
                 <TableHead className="w-[180px]">Padrão dominante</TableHead>
                 <TableHead className="w-[60px] text-right">Ações</TableHead>
@@ -253,6 +244,19 @@ export function EvaluationsTable({
                     >
                       <TableCell className="font-mono text-xs">
                         {dateTimeFmt.format(row.createdAt)}
+                      </TableCell>
+                      <TableCell className="text-xs">
+                        {row.rodada ? (
+                          <Badge
+                            variant="outline"
+                            className="border-border bg-muted/40 font-mono text-[11px] text-muted-foreground"
+                            title={row.rodada}
+                          >
+                            {markerToRodadaName(row.rodada)}
+                          </Badge>
+                        ) : (
+                          <span className="text-muted-foreground">,</span>
+                        )}
                       </TableCell>
                       <TableCell
                         className="max-w-[280px] truncate text-sm"
@@ -284,18 +288,6 @@ export function EvaluationsTable({
                             />
                           )}
                         </div>
-                      </TableCell>
-                      <TableCell className="text-xs text-muted-foreground">
-                        {row.rodada ? (
-                          <span
-                            className="font-mono"
-                            title={row.rodada}
-                          >
-                            {formatRodadaShortLabel(row.rodada)}
-                          </span>
-                        ) : (
-                          <span className="text-muted-foreground">,</span>
-                        )}
                       </TableCell>
                       <TableCell className="font-mono text-xs text-muted-foreground">
                         {row.model ?? ","}

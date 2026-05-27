@@ -121,16 +121,29 @@ export function EvaluationsTableFilters({
 
   return (
     <div className="flex flex-col gap-3 border-b border-border bg-muted/20 px-4 py-3 lg:flex-row lg:items-center">
-      <div className="relative flex-1 lg:max-w-sm">
-        <Search className="pointer-events-none absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-        <Input
-          type="search"
-          placeholder="Buscar em pergunta ou resposta…"
-          value={searchLocal}
-          onChange={(e) => setSearchLocal(e.target.value)}
-          className="pl-8"
-          aria-label="Buscar em pergunta ou resposta"
-        />
+      <div className="flex flex-1 items-center gap-2 lg:max-w-md">
+        <div className="relative flex-1">
+          <Search className="pointer-events-none absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+          <Input
+            type="search"
+            placeholder="Buscar em pergunta ou resposta…"
+            value={searchLocal}
+            onChange={(e) => setSearchLocal(e.target.value)}
+            className="pl-8"
+            aria-label="Buscar em pergunta ou resposta"
+          />
+        </div>
+        {hasAnyFilter(value) && (
+          <button
+            type="button"
+            onClick={clearAll}
+            className="inline-flex h-9 shrink-0 cursor-pointer items-center gap-1.5 rounded-lg border border-border bg-card px-3 text-xs font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-500"
+            aria-label="Limpar todos os filtros"
+          >
+            <X className="h-3.5 w-3.5" aria-hidden="true" />
+            Limpar
+          </button>
+        )}
       </div>
 
       <div className="flex flex-wrap items-center gap-2 lg:ml-auto">
@@ -159,17 +172,6 @@ export function EvaluationsTableFilters({
             ...availablePatterns.map((p) => ({ value: p, label: p })),
           ]}
         />
-        {hasAnyFilter(value) && (
-          <button
-            type="button"
-            onClick={clearAll}
-            className="inline-flex h-9 cursor-pointer items-center gap-1.5 rounded-lg border border-border bg-card px-3 text-xs font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-500"
-            aria-label="Limpar todos os filtros"
-          >
-            <X className="h-3.5 w-3.5" aria-hidden="true" />
-            Limpar
-          </button>
-        )}
       </div>
     </div>
   );
