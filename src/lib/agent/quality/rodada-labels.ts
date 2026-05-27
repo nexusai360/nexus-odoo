@@ -15,6 +15,7 @@ const KNOWN_MARKERS: Record<string, string> = {
   "[AUDIT-POS-2026-05-27T03-33-55]": "R15",
   "[AUDIT-POS-2026-05-27T04-13-16]": "R16",
   "[AUDIT-POS-2026-05-27T15-10-40]": "R17",
+  "[AUDIT-POS-2026-05-27T16-16-15]": "R18",
 };
 
 /**
