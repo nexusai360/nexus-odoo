@@ -593,26 +593,96 @@ export async function runAgent(args: RunAgentInput): Promise<RunAgentResult> {
           console.warn("[runAgent] guardrail factual skipped:", errGuard);
         }
 
-        // Onda 1.E (Nex >=90%): AutoValidator em modo shadow.
-        // Roda os 4 validadores (V1 anti-truncamento, V2 anti-invencao,
-        // V3 anti-recusa, V4 anti-placeholder). Modo shadow apenas LOGA o
-        // retryReason; nao retenta. Active mode (com retry) entra em PR
-        // separado apos coletar dados de FP rate em producao.
+        // Onda 1.E (Nex >=90%): AutoValidator com 3 modos.
+        // - off:    nao roda
+        // - shadow: roda V1-V4, loga retryReason, NAO retenta
+        // - active: roda V1-V4, dispara 1 retry corretivo se falhar (cap=1)
+        // Flag em AgentSettings.autoValidatorMode + validatorV{1..4}Enabled.
         // Spec: docs/superpowers/specs/2026-05-27-agente-nex-90pct-spec.md §3.1 A12
+        let autoValidatorRetryCount = 0;
+        let autoValidatorRetryReason: string | null = null;
+        let autoValidatorRetryDetail: string | null = null;
         try {
           const { validateResponse } = await import("./validation/auto-validator");
-          const outcome = validateResponse({
-            question: args.userMessage,
-            llmResponse: message,
-            toolResults: allTurnEnvelopes,
+          const settingsRow = await prisma.agentSettings.findUnique({
+            where: { id: "global" },
+            select: {
+              autoValidatorMode: true,
+              validatorV1Enabled: true,
+              validatorV2Enabled: true,
+              validatorV3Enabled: true,
+              validatorV4Enabled: true,
+            },
           });
-          if (!outcome.ok) {
-            console.warn(
-              `[autoValidator:shadow] ${outcome.reason} fired conversationId=${args.conversationId} detalhe=${outcome.detalhe}`,
+          const mode = settingsRow?.autoValidatorMode ?? "shadow";
+          if (mode !== "off") {
+            const outcome = validateResponse(
+              {
+                question: args.userMessage,
+                llmResponse: message,
+                toolResults: allTurnEnvelopes,
+              },
+              {
+                v1Enabled: settingsRow?.validatorV1Enabled ?? true,
+                v2Enabled: settingsRow?.validatorV2Enabled ?? true,
+                v3Enabled: settingsRow?.validatorV3Enabled ?? true,
+                v4Enabled: settingsRow?.validatorV4Enabled ?? true,
+              },
             );
+            if (!outcome.ok) {
+              autoValidatorRetryReason = outcome.reason;
+              autoValidatorRetryDetail = outcome.detalhe;
+              console.warn(
+                `[autoValidator:${mode}] ${outcome.reason} fired conversationId=${args.conversationId} detalhe=${outcome.detalhe}`,
+              );
+              if (mode === "active") {
+                // Active mode: 1 retry com hint corretivo, timeout 3s.
+                const retryStart = Date.now();
+                try {
+                  const retryMessages = [
+                    ...conversation,
+                    { role: "assistant" as const, content: message },
+                    {
+                      role: "user" as const,
+                      content:
+                        `AUTOVALIDATOR (${outcome.reason}): sua resposta anterior foi rejeitada.\n\n` +
+                        outcome.hint +
+                        "\n\nREESCREVA usando apenas o que esta nos toolResults deste turno. " +
+                        "Mantenha tom, idioma e formato. NAO chame novas tools. NAO peca clarificacao.",
+                    },
+                  ];
+                  const retryPromise = client.chat({
+                    messages: retryMessages,
+                    tools: undefined,
+                    temperature: 0,
+                    maxTokens: 1024,
+                    reasoningEffort: undefined,
+                  });
+                  // Timeout 3s para proteger SLA p95
+                  const timeoutPromise = new Promise<never>((_, rej) =>
+                    setTimeout(
+                      () => rej(new Error("auto-validator retry timeout 3s")),
+                      3000,
+                    ),
+                  );
+                  const retry = await Promise.race([retryPromise, timeoutPromise]);
+                  if (retry.message && retry.message.trim().length > 0) {
+                    message = retry.message;
+                    autoValidatorRetryCount = 1;
+                    console.warn(
+                      `[autoValidator:active] retry OK ${outcome.reason} dur=${Date.now() - retryStart}ms`,
+                    );
+                  }
+                } catch (errRetry) {
+                  console.warn(
+                    `[autoValidator:active] retry failed (${outcome.reason}): ${(errRetry as Error).message}. Aceitando resposta original.`,
+                  );
+                }
+              }
+            }
           }
         } catch (err) {
-          console.warn("[autoValidator] failed (shadow):", err);
+          console.warn("[autoValidator] failed (top-level):", err);
         }
 
         const assistantMessageId = await persistMessageAndReturnId(
@@ -634,6 +704,9 @@ export async function runAgent(args: RunAgentInput): Promise<RunAgentResult> {
               answerMessage: message,
               model: client.model,
               suggestions,
+              retryCount: autoValidatorRetryCount,
+              retryReason: autoValidatorRetryReason,
+              retryDetail: autoValidatorRetryDetail,
             });
           } catch (err) {
             console.warn(

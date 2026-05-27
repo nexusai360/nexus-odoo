@@ -33,6 +33,15 @@ export interface CreatePendingEvalArgs {
    * pra reconstituir o que o usuario realmente viu.
    */
   suggestions?: string[];
+  /**
+   * Onda 1.E (Nex >=90%): rastreamento do AutoValidator.
+   * - retryCount=0 + retryReason=null: passou de primeira.
+   * - retryCount=1 + retryReason=V1|V2|V3|V4: active mode, retry corretivo.
+   * - retryCount=0 + retryReason=V1|V2|V3|V4: shadow mode (logou, nao retentou).
+   */
+  retryCount?: number;
+  retryReason?: string | null;
+  retryDetail?: string | null;
 }
 
 export async function createPendingEval(
@@ -55,6 +64,9 @@ export async function createPendingEval(
       questionSnapshot: args.userMessage.slice(0, SNAPSHOT_CAP),
       answerSnapshot: args.answerMessage.slice(0, SNAPSHOT_CAP),
       suggestions: args.suggestions ?? [],
+      retryCount: args.retryCount ?? 0,
+      retryReason: args.retryReason ?? null,
+      retryDetail: args.retryDetail ?? null,
     },
   });
 }

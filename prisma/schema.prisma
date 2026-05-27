@@ -2402,6 +2402,18 @@ model AgentSettings {
   /// Aplicado deterministicamente em `extractSuggestions` e instruído no prompt.
   maxSuggestions    Int      @default(3) @map("max_suggestions")
 
+  /// AutoValidator (Onda 1.E do projeto Nex >=90%): valida a resposta final
+  /// do LLM antes de devolver ao usuário. 3 modos:
+  ///   off    = não roda
+  ///   shadow = roda V1-V4, loga retryReason, NÃO retenta
+  ///   active = roda V1-V4, dispara 1 retry com hint corretivo se falhar
+  /// Default: shadow (seguro). Promover para active após validar FP rate em log.
+  autoValidatorMode  String  @default("shadow") @map("auto_validator_mode")
+  validatorV1Enabled Boolean @default(true) @map("validator_v1_enabled")
+  validatorV2Enabled Boolean @default(true) @map("validator_v2_enabled")
+  validatorV3Enabled Boolean @default(true) @map("validator_v3_enabled")
+  validatorV4Enabled Boolean @default(true) @map("validator_v4_enabled")
+
   /// Modelo usado em chamadas internas de inteligencia (topic-extractor,
   /// contextual-suggester). Formato: "provider/model" ex. "anthropic/claude-haiku-4-5".
   /// NULL = default Haiku 4.5 via OpenRouter.
@@ -2721,6 +2733,14 @@ model ConversationQualityEvaluation {
   suggestions           String[] @default([])
   /// Preenchido apenas em FALHA_TECNICA. Cap 1000 chars.
   technicalError        String?  @map("technical_error")
+
+  /// AutoValidator (Onda 1.E): quantas vezes o validator disparou retry.
+  /// 0 = passou de primeira; 1 = passou após retry corretivo.
+  retryCount    Int     @default(0) @map("retry_count")
+  /// V1|V2|V3|V4|null. Validador que disparou (null se aceito de primeira).
+  retryReason   String? @map("retry_reason")
+  /// Detalhe categorizado, sem PII. Ex: "V2:numero_nao_derivado:moeda".
+  retryDetail   String? @map("retry_detail")
 
   conversation          Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
 
