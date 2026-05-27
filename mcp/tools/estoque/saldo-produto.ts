@@ -4,6 +4,7 @@ import { z } from "zod";
 import type { ToolEntry } from "../../catalog/types.js";
 import { querySaldoProduto } from "@/lib/reports/queries/estoque.js";
 import { withFreshness } from "../../lib/freshness.js";
+import { enriquecerEnvelope } from "../../lib/with-responder.js";
 import { humanizeName } from "@/lib/agent/text-normalize.js";
 
 const inputSchema = z.object({
@@ -32,6 +33,11 @@ const linha = z.object({
  * mais de um produto. O agente deve usar isso para perguntar ao usuario qual
  * dos candidatos ele quer, em vez de escolher arbitrariamente. Veja regra
  * em identity-base.ts secao [DESAMBIGUACAO].
+ *
+ * A9 (Onda 1.D): quando `termo` e numerico com >=7 digitos e nao houve
+ * match exato, o servidor seta `requiredExactMatch: true` para sinalizar
+ * ao agente que o codigo digitado nao foi encontrado tal qual (evita
+ * "Tem [1000362265]?" devolver outro produto similar).
  */
 const ambiguidade = z
   .object({
@@ -46,9 +52,11 @@ const ambiguidade = z
         }),
       )
       .max(5),
+    requiredExactMatch: z.boolean().optional(),
   })
   .optional();
 
+// Onda 1.B: envelope canonico aplicado.
 const dados = z.object({
   kpis: z.object({
     totalProdutos: z.number().int(),
@@ -57,6 +65,10 @@ const dados = z.object({
   }),
   linhas: z.array(linha),
   ambiguidade,
+  _RESPOSTA: z.string().optional(),
+  _listaTruncada: z.boolean().optional(),
+  _DESTAQUE: z.record(z.string(), z.union([z.string(), z.number()])).optional(),
+  _agregado: z.record(z.string(), z.number().optional()).optional(),
 });
 
 const fonteStatus = z.object({
@@ -70,12 +82,25 @@ const outputSchema = z.union([
     estado: z.enum(["ok", "vazio"]),
     dados,
     atualizadoEm: z.string(),
+    atualizadoHa: z.string(),
     fonteStatus,
   }),
 ]);
 
 type Input = z.infer<typeof inputSchema>;
 type Output = z.infer<typeof outputSchema>;
+
+/**
+ * A9 (Onda 1.D): codigos numericos longos (>=7 digitos) exigem match exato.
+ * Limiar definido por research R-1 sobre distribuicao em fato_produto:
+ *   codigos 1-5 digitos: 3327 SKUs curtos (aceitam fuzzy)
+ *   codigos 10-18 digitos: 384 codigos longos (rejeitam fuzzy)
+ * Limiar 7 isola os longos sem afetar os curtos.
+ */
+function exigeMatchExato(termo: string | undefined): boolean {
+  if (!termo) return false;
+  return /^\d{7,}$/.test(termo);
+}
 
 function shape(d: Awaited<ReturnType<typeof querySaldoProduto>>) {
   // Onda C v3: normaliza nomes vindos do Odoo (CAIXA ALTA) para Title Case
@@ -101,6 +126,7 @@ function shape(d: Awaited<ReturnType<typeof querySaldoProduto>>) {
         totalMatches: number;
         layer: "exact" | "fuzzy" | "none";
         topCandidates: { nome: string; context?: string }[];
+        requiredExactMatch?: boolean;
       }
     | undefined;
   if (d.buscaMeta && d.buscaMeta.totalMatches > 1) {
@@ -130,8 +156,36 @@ export const estoqueSaldoProduto: ToolEntry<Input, Output> = {
   inputSchemaShape: inputSchema.shape,
   inputSchema,
   outputSchema,
-  handler: (input, ctx) =>
-    withFreshness(ctx.prisma, ["fato_estoque_saldo", "fato_produto"], async () =>
-      shape(await querySaldoProduto(ctx.prisma, input)),
-    ),
+  handler: async (input, ctx) => {
+    const envelope = await withFreshness(
+      ctx.prisma,
+      ["fato_estoque_saldo", "fato_produto"],
+      async () => shape(await querySaldoProduto(ctx.prisma, input)),
+    );
+    if (envelope.estado === "preparando") return envelope;
+
+    // A9: quando termo numerico longo nao bateu exato, marca requiredExactMatch.
+    if (exigeMatchExato(input.termo) && envelope.dados.ambiguidade) {
+      const layer = envelope.dados.ambiguidade.layer;
+      if (layer !== "exact") {
+        envelope.dados.ambiguidade = {
+          ...envelope.dados.ambiguidade,
+          requiredExactMatch: true,
+        };
+      }
+    }
+
+    const k = envelope.dados.kpis;
+    return enriquecerEnvelope(envelope, "estoque_saldo_produto", {
+      destaque: {
+        totalProdutos: k.totalProdutos,
+        valorTotal: k.valorTotal,
+        produtosNegativos: k.produtosNegativos,
+      },
+      agregado: {
+        contagem: k.totalProdutos,
+        soma: k.valorTotal,
+      },
+    });
+  },
 };

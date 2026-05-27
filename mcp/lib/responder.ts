@@ -62,6 +62,19 @@ const fmtContasAPagar: FormatadorCanonico = (env) => {
   return cabeca + topStr;
 };
 
+const fmtSaldoProduto: FormatadorCanonico = (env) => {
+  const total = Number(env._DESTAQUE?.totalProdutos ?? 0);
+  const valor = Number(env._DESTAQUE?.valorTotal ?? 0);
+  const neg = Number(env._DESTAQUE?.produtosNegativos ?? 0);
+  if (total === 0) {
+    return "Nenhum produto encontrado para esse criterio.";
+  }
+  const partes: string[] = [];
+  partes.push(`${total} produto(s) encontrado(s), valor total ${formatBRL(valor)}.`);
+  if (neg > 0) partes.push(`${neg} com saldo negativo.`);
+  return partes.join(" ");
+};
+
 const fmtRegistrarLacuna: FormatadorCanonico = (env) => {
   const resp = String(env._DESTAQUE?.respostaSugerida ?? "");
   const dest = env._DESTAQUE as
@@ -92,11 +105,35 @@ const fmtGenerico: FormatadorCanonico = (env) => {
 // Registry
 // ---------------------------------------------------------------------------
 
+// Formatador comum aos 3 financeiros vencidos/receber/pagar pode reaproveitar
+// padroes — mas como cada um tem mensagem propria (cliente/fornecedor/etc),
+// mantemos especificos. Para titulos_vencidos, mensagem usa "vencido".
+const fmtTitulosVencidos: FormatadorCanonico = (env) => {
+  const total = Number(env._DESTAQUE?.totalVencido ?? 0);
+  const n = Number(env._DESTAQUE?.contagem ?? env.linhas.length);
+  const top = env.topPorParticipante?.[0];
+  const cabeca = `Total vencido: ${formatBRL(total)} em ${n} titulos.`;
+  const topStr = top
+    ? ` Maior atraso por participante: ${top.nome} (${formatBRL(top.soma)}).`
+    : "";
+  return cabeca + topStr;
+};
+
+const fmtFluxoCaixa: FormatadorCanonico = (env) => {
+  const real = Number(env._DESTAQUE?.realizadoTotal ?? 0);
+  const prev = Number(env._DESTAQUE?.previstoTotal ?? 0);
+  const n = Number(env._DESTAQUE?.contagemPeriodos ?? 0);
+  return `Fluxo de caixa (${n} periodos): realizado ${formatBRL(real)}, previsto ${formatBRL(prev)}.`;
+};
+
 const FORMATADORES: Record<string, FormatadorCanonico> = {
   financeiro_contas_a_receber: fmtContasAReceber,
   financeiro_contas_a_pagar: fmtContasAPagar,
+  financeiro_titulos_vencidos: fmtTitulosVencidos,
+  financeiro_fluxo_caixa: fmtFluxoCaixa,
+  estoque_saldo_produto: fmtSaldoProduto,
   registrar_lacuna: fmtRegistrarLacuna,
-  // PR2 preenche os demais 22 conforme cada tool e adaptada.
+  // PR2/3+: demais tools.
 };
 
 /**
