@@ -275,7 +275,7 @@ export function EvaluationsTable({
                         </div>
                       </TableCell>
                       <TableCell className="font-mono text-xs text-muted-foreground">
-                        {row.model ?? "—"}
+                        {row.model ?? ","}
                       </TableCell>
                       <TableCell>
                         {row.dominantPattern ? (

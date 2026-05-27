@@ -34,11 +34,13 @@ export function KpisBlock({ kpis, loading = false }: KpisBlockProps) {
   const percentLabel =
     kpis.percentCorreto !== null
       ? `${kpis.percentCorreto.toFixed(1)}%`
-      : "—";
+      : ",";
+  // Hints curtos, em minusculas e sem formula tecnica — padrao alinhado
+  // com o card "Fora de escopo" para ficar leve e legivel.
   const percentHint =
     kpis.percentCorreto !== null
-      ? "CORRETO / (CORRETO + PARCIAL + ERRADO + FORA_DO_ESCOPO)"
-      : "sem avaliações no período";
+      ? "acertos sobre avaliados"
+      : "sem avaliações";
 
   return (
     <div className="space-y-3" aria-busy={loading ? "true" : "false"}>
@@ -54,7 +56,7 @@ export function KpisBlock({ kpis, loading = false }: KpisBlockProps) {
           icon={Sigma}
           label="Total avaliado"
           value={numberFmt.format(kpis.totalAvaliado)}
-          hint="Exclui PENDENTE e FALHA_TECNICA"
+          hint="sem pendentes"
         />
         <KpiCard
           icon={CheckCircle2}
@@ -78,7 +80,7 @@ export function KpisBlock({ kpis, loading = false }: KpisBlockProps) {
           icon={MinusCircle}
           label="Fora de escopo"
           value={numberFmt.format(kpis.foraDoEscopo)}
-          hint="Pergunta fora do domínio (recusa correta)"
+          hint="recusa correta"
         />
       </div>
 

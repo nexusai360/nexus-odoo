@@ -10,7 +10,6 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 
-import { Card, CardContent } from "@/components/ui/card";
 import { CustomSelect } from "@/components/ui/custom-select";
 import { PeriodPills } from "@/components/reports/period-pills";
 import {
@@ -140,32 +139,32 @@ export function QualidadeContent({ minDate }: QualidadeContentProps) {
 
   return (
     <div className="space-y-5">
-      {/* Filtros de topo: periodo + modelo */}
-      <Card className="rounded-2xl border border-border bg-muted/30">
-        <CardContent className="flex flex-wrap items-center gap-3 p-4">
-          <PeriodPills
-            value={pill}
-            customRange={customRange}
-            onChange={(next, range) => {
-              setPill(next);
-              setCustomRange(range);
-            }}
-            minDate={minDateObj}
+      {/* Filtros de topo: periodo + modelo. Card removido para deixar o
+          bloco mais leve (estava muito grosso); fica como uma faixa
+          flat com flex. */}
+      <div className="flex flex-wrap items-center gap-3">
+        <PeriodPills
+          value={pill}
+          customRange={customRange}
+          onChange={(next, range) => {
+            setPill(next);
+            setCustomRange(range);
+          }}
+          minDate={minDateObj}
+        />
+        <div className="ml-auto">
+          <CustomSelect
+            value={model}
+            onChange={setModel}
+            triggerClassName="min-h-[36px] h-9 min-w-[180px]"
+            aria-label="Modelo do agente"
+            options={[
+              { value: "all", label: "Todos os modelos" },
+              ...models.map((m) => ({ value: m, label: m })),
+            ]}
           />
-          <div className="ml-auto">
-            <CustomSelect
-              value={model}
-              onChange={setModel}
-              triggerClassName="min-w-[180px]"
-              aria-label="Modelo do agente"
-              options={[
-                { value: "all", label: "Todos os modelos" },
-                ...models.map((m) => ({ value: m, label: m })),
-              ]}
-            />
-          </div>
-        </CardContent>
-      </Card>
+        </div>
+      </div>
 
       {/* KPIs */}
       {kpis ? (

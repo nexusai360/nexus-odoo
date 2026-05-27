@@ -33,7 +33,7 @@ const STATUS_COLOR: Record<
 const numberFmt = new Intl.NumberFormat("pt-BR");
 const formatNumber = (v: number) => numberFmt.format(v);
 const formatPercent = (v: number) =>
-  Number.isFinite(v) ? `${v.toFixed(1)}%` : "—";
+  Number.isFinite(v) ? `${v.toFixed(1)}%` : ",";
 
 interface ChartsBlockProps {
   dailyData: Array<{ date: string; percent: number | null; total: number }>;
@@ -82,7 +82,7 @@ export function ChartsBlock({
       aria-busy={loading ? "true" : "false"}
     >
       <Card className="rounded-2xl border border-border bg-muted/30">
-        <CardHeader>
+        <CardHeader className="pb-2">
           <CardTitle className="flex items-center gap-2 text-sm">
             <Activity className="h-4 w-4 text-violet-500" />
             % CORRETO por dia
@@ -98,8 +98,9 @@ export function ChartsBlock({
                 color: STATUS_COLOR.CORRETO,
               },
             ]}
-            height={260}
+            height={220}
             formatValue={formatPercent}
+            xAxisLeftPadding={16}
             ariaLabel="Percentual de respostas CORRETAS por dia"
             emptyMessage="Sem avaliações no período"
             emptyHint="Aguarde novas conversas serem avaliadas."
@@ -108,27 +109,29 @@ export function ChartsBlock({
       </Card>
 
       <Card className="rounded-2xl border border-border bg-muted/30">
-        <CardHeader>
+        <CardHeader className="pb-2">
           <CardTitle className="flex items-center gap-2 text-sm">
             <ChartPie className="h-4 w-4 text-violet-500" />
             Distribuição de status
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <DonutWithCenter
-            data={donutData}
-            centerLabel="Total avaliado"
-            centerValue={numberFmt.format(kpis.totalAvaliado)}
-            formatValue={formatNumber}
-            showPercentInTooltip
-            ariaLabel="Distribuição de avaliações por status"
-            emptyMessage="Sem avaliações no período"
-          />
+          <div className="h-[220px]">
+            <DonutWithCenter
+              data={donutData}
+              centerLabel="Total avaliado"
+              centerValue={numberFmt.format(kpis.totalAvaliado)}
+              formatValue={formatNumber}
+              showPercentInTooltip
+              ariaLabel="Distribuição de avaliações por status"
+              emptyMessage="Sem avaliações no período"
+            />
+          </div>
         </CardContent>
       </Card>
 
       <Card className="rounded-2xl border border-border bg-muted/30">
-        <CardHeader>
+        <CardHeader className="pb-2">
           <CardTitle className="flex items-center gap-2 text-sm">
             <BarChart3 className="h-4 w-4 text-violet-500" />
             Top 10 padrões
@@ -144,7 +147,7 @@ export function ChartsBlock({
                 color: "#8b5cf6", // violet-500
               },
             ]}
-            height={260}
+            height={220}
             layout="horizontal"
             yAxisWidth={180}
             formatValue={formatNumber}

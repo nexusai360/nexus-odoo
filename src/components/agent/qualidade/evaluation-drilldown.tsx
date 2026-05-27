@@ -192,7 +192,7 @@ export function EvaluationDrilldown({ evaluationId, onAdjusted }: Props) {
           </span>
         </div>
         <div className="text-xs text-muted-foreground">
-          Judge: {e.judgeModel ?? "—"} · {e.judgeVersion}
+          Judge: {e.judgeModel ?? ","} · {e.judgeVersion}
         </div>
       </div>
 

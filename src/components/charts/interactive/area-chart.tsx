@@ -65,6 +65,13 @@ export interface InteractiveAreaChartProps {
    * Útil para gráficos horários onde 24 labels ficam sobrepostos.
    */
   xAxisInterval?: number | "preserveStart" | "preserveEnd" | "preserveStartEnd";
+  /**
+   * Padding horizontal aplicado dentro do XAxis (em px). Default 0. Util
+   * pra dar respiro entre a coluna de labels do YAxis (esquerda) e o
+   * primeiro tick do XAxis, evitando a sensacao de "data colada na
+   * legenda vertical".
+   */
+  xAxisLeftPadding?: number;
 }
 
 const defaultFormat = (v: number) =>
@@ -120,6 +127,7 @@ export function InteractiveAreaChart({
   xAxisFontSize = 13,
   xAxisPadding = 12,
   xAxisInterval,
+  xAxisLeftPadding = 0,
 }: InteractiveAreaChartProps) {
   const prefersReducedMotion = useReducedMotion();
   const gradientId = useId();
@@ -212,6 +220,9 @@ export function InteractiveAreaChart({
             fontSize={xAxisFontSize}
             tickMargin={xAxisPadding}
             interval={xAxisInterval}
+            padding={
+              xAxisLeftPadding > 0 ? { left: xAxisLeftPadding } : undefined
+            }
           />
           <YAxis
             tickLine={false}
