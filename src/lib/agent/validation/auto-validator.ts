@@ -82,6 +82,39 @@ function temAgregadoDisponivel(ctx: ValidationContext): boolean {
   return false;
 }
 
+const REGEX_TOOL_FACTUAL =
+  /^(financeiro|fiscal|estoque|comercial|contabil|cadastro)_/;
+
+/**
+ * T-33 (Ronda 2): detecta "lacuna prematura" — turno chamou tool factual de
+ * dominio (financeiro_*, fiscal_*, etc) E em seguida chamou registrar_lacuna.
+ * Quando isso acontece, o LLM tinha o dado disponivel mas desistiu. O hint
+ * do retry deve mencionar a tool factual especifica para forcar reuso.
+ */
+function detectarLacunaPrematura(ctx: ValidationContext): {
+  ehLacunaPrematura: boolean;
+  toolsFactuais: string[];
+} {
+  const toolNames = ctx.toolResults.map((tr) => tr.toolName);
+  const usouLacuna = toolNames.includes("registrar_lacuna");
+  const toolsFactuais = toolNames.filter((n) => REGEX_TOOL_FACTUAL.test(n));
+  return { ehLacunaPrematura: usouLacuna && toolsFactuais.length > 0, toolsFactuais };
+}
+
+/** Anexa ao hint uma menção a tools factuais quando houve lacuna prematura. */
+function ampliarHintComLacuna(baseHint: string, ctx: ValidationContext): string {
+  const lac = detectarLacunaPrematura(ctx);
+  if (!lac.ehLacunaPrematura) return baseHint;
+  const unicas = [...new Set(lac.toolsFactuais)];
+  return (
+    baseHint +
+    `\n\nATENCAO: voce chamou ${unicas.join(", ")} ANTES de chamar registrar_lacuna. ` +
+    `Isso e' "lacuna prematura": o dado estava disponivel e voce desistiu. ` +
+    `Use o conteudo dessa(s) tool(s) (especialmente _RESPOSTA, _DESTAQUE, topPorParticipante, topMaiores) ` +
+    `para entregar a resposta sem registrar lacuna.`
+  );
+}
+
 function validateV1(ctx: ValidationContext): ValidationOutcome | null {
   if (!REGEX_V1_TRUNCAMENTO.test(ctx.llmResponse)) return null;
   if (!temAgregadoDisponivel(ctx)) return null;
@@ -291,10 +324,12 @@ function validateV3(ctx: ValidationContext): ValidationOutcome | null {
   if (!temAgregadoDisponivel(ctx)) return null;
   // Se a pergunta original menciona termo fora-de-escopo, recusa pode ser legitima.
   if (REGEX_FORA_ESCOPO.test(ctx.question)) return null;
+  const baseHint =
+    "Voce respondeu 'nao consegui obter' mas a tool ja retornou _RESPOSTA/_DESTAQUE/_agregado preenchidos. Use o campo _RESPOSTA da tool como base e entregue a informacao.";
   return {
     ok: false,
     reason: "V3",
-    hint: "Voce respondeu 'nao consegui obter' mas a tool ja retornou _RESPOSTA/_DESTAQUE/_agregado preenchidos. Use o campo _RESPOSTA da tool como base e entregue a informacao.",
+    hint: ampliarHintComLacuna(baseHint, ctx),
     detalhe: "V3:recusa_com_agregado",
   };
 }
@@ -444,10 +479,11 @@ function validateV5(ctx: ValidationContext): ValidationOutcome | null {
     const numsLLM = new Set(extrairNumerosRelevantes(ctx.llmResponse).map(normNum));
     const algumAparece = numsCurados.some((n) => numsLLM.has(n));
     if (!algumAparece) {
+      const baseHint = `O campo _RESPOSTA da tool trouxe os numeros prontos ("${curada.resposta}"), mas voce nao citou nenhum deles. Use o texto curado como base e mantenha os numeros exatamente como vieram.`;
       return {
         ok: false,
         reason: "V5",
-        hint: `O campo _RESPOSTA da tool trouxe os numeros prontos ("${curada.resposta}"), mas voce nao citou nenhum deles. Use o texto curado como base e mantenha os numeros exatamente como vieram.`,
+        hint: ampliarHintComLacuna(baseHint, ctx),
         detalhe: `V5b:numero_curado_ausente:${numsCurados.length}_curados_0_citados`,
       };
     }
@@ -461,10 +497,11 @@ function validateV5(ctx: ValidationContext): ValidationOutcome | null {
   }
   const ratio = overlap / curada.tokens.length;
   if (ratio >= 0.25) return null;
+  const baseHint = `Voce ignorou o campo _RESPOSTA da tool, que ja vinha pronto com a resposta correta. Use o texto curado como base: "${curada.resposta}". Pode adaptar para fluir, mas mantenha numeros, nomes e fatos exatamente como vieram.`;
   return {
     ok: false,
     reason: "V5",
-    hint: `Voce ignorou o campo _RESPOSTA da tool, que ja vinha pronto com a resposta correta. Use o texto curado como base: "${curada.resposta}". Pode adaptar para fluir, mas mantenha numeros, nomes e fatos exatamente como vieram.`,
+    hint: ampliarHintComLacuna(baseHint, ctx),
     detalhe: `V5:ignorou_RESPOSTA:overlap_${Math.round(ratio * 100)}pct`,
   };
 }

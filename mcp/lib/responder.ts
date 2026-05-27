@@ -169,11 +169,28 @@ const fmtNotasRecebidasPorFornecedor: FormatadorCanonico = (env) => {
 };
 
 const fmtApuracaoFiscal: FormatadorCanonico = (env) => {
-  const tipo = env._DESTAQUE?.tipo ?? "tributo";
-  const periodo = env._DESTAQUE?.periodo ?? "periodo informado";
-  const aRecolher = Number(env._DESTAQUE?.aRecolher ?? 0);
+  // T-34 (Ronda 2): formatador agora discrimina PIS/COFINS quando o usuario
+  // pediu PIS/COFINS especificamente, ou mostra todos os tributos somados.
+  const tipo = String(env._DESTAQUE?.tipo ?? "tributo");
+  const periodo = String(env._DESTAQUE?.periodo ?? "periodo informado");
+  const totalApur = Number(env._DESTAQUE?.totalApuracoes ?? 0);
+  const icms = Number(env._DESTAQUE?.icmsARecolher ?? env._DESTAQUE?.aRecolher ?? 0);
+  const ipi = Number(env._DESTAQUE?.ipiARecolher ?? 0);
+  const pis = Number(env._DESTAQUE?.pisARecolher ?? 0);
+  const cofins = Number(env._DESTAQUE?.cofinsARecolher ?? 0);
+  const pisCofins = Number(env._DESTAQUE?.pisCofinsARecolher ?? pis + cofins);
   const saldoCredor = Number(env._DESTAQUE?.saldoCredor ?? 0);
-  return `Apuracao ${tipo} (${periodo}): a recolher ${formatBRL(aRecolher)}, saldo credor ${formatBRL(saldoCredor)}.`;
+  if (totalApur === 0) return "Nao ha apuracao fiscal registrada para o periodo/criterio.";
+  // Caso PIS-COFINS: foco no tributo pedido.
+  if (/pis|cofins/i.test(tipo)) {
+    return `Apuracao PIS/COFINS (${periodo}): PIS a recolher ${formatBRL(pis)}, COFINS a recolher ${formatBRL(cofins)}. Total PIS+COFINS: ${formatBRL(pisCofins)}.`;
+  }
+  // Caso ICMS-IPI: foco em ICMS+IPI+saldo credor.
+  if (/icms|ipi/i.test(tipo)) {
+    return `Apuracao ICMS/IPI (${periodo}): ICMS a recolher ${formatBRL(icms)}, IPI a recolher ${formatBRL(ipi)}, saldo credor ${formatBRL(saldoCredor)}.`;
+  }
+  // Tipo desconhecido: mostra resumo geral.
+  return `Apuracao fiscal (${periodo}, ${totalApur} apuracoes): ICMS ${formatBRL(icms)}, IPI ${formatBRL(ipi)}, PIS ${formatBRL(pis)}, COFINS ${formatBRL(cofins)}. Saldo credor: ${formatBRL(saldoCredor)}.`;
 };
 
 const fmtPedidosPeriodo: FormatadorCanonico = (env) => {
