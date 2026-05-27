@@ -29,15 +29,11 @@ jobs:
         run: npm run typecheck
 
       - name: Testes
-        # --forceExit: alguns mocks (Redis/Prisma) deixam handles abertos
-        # e prendem o runner por dezenas de minutos no CI. Forca saida quando
-        # todas suites terminam.
+        # --forceExit: alguns mocks deixam handles abertos no CI.
         # --testTimeout: cap de 20s por teste individual.
-        # continue-on-error: 10 suites pre-existentes falham (tests fora de
-        # sincronia com refatoracoes recentes); nao bloqueia ate alguem
-        # revisar. Lint, type check e build continuam bloqueantes.
-        run: npx jest --forceExit --testTimeout=20000
-        continue-on-error: true
+        # --runInBand: evita race condition entre suites e2e que compartilham
+        # estado (denial-audit, integration). Mais lento mas determinístico.
+        run: npx jest --forceExit --testTimeout=20000 --runInBand
 
       - name: Build
         run: npm run build
