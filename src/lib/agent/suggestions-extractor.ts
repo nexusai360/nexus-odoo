@@ -11,8 +11,15 @@
  *    promove esses bullets para chips (cap 7).
  */
 
-/** Regex para extrair sufixo [[suggestions]]. */
-const SUGGESTIONS_RE = /(?:^|\n)\[\[suggestions\]\]:([^\n]+?)(?:\n|$)/;
+/** Regex para extrair sufixo [[suggestions]]. Aceita espaco ou newline antes. */
+const SUGGESTIONS_RE = /(?:\s|^)\[\[suggestions\]\]:([^\n]+?)(?:\n|$)/;
+/**
+ * Strip defensivo: se mesmo apos o extract principal sobrou alguma
+ * ocorrencia de "[[suggestions]]" no texto, corta a linha inteira.
+ * Trava final contra vazamento do canal pro usuario (regra adicional
+ * do usuario - 2026-05-27).
+ */
+const SUGGESTIONS_GUARD_RE = /\[\[suggestions\]\][^\n]*/g;
 /** Tamanho maximo de cada chip de sugestao. */
 export const MAX_SUGGESTION_LEN = 80;
 /**
@@ -143,6 +150,18 @@ export function extractSuggestions(
     .slice(0, limit);
   const suggestions =
     parsed.length > 0 ? parsed : FALLBACK_SUGGESTIONS.slice(0, limit);
-  const message = text.replace(match[0], "").trimEnd();
+  let message = text.replace(match[0], "").trimEnd();
+  message = message.replace(SUGGESTIONS_GUARD_RE, "").trimEnd();
   return { message, suggestions };
+}
+
+/**
+ * Strip defensivo de canal residual. Usar como ultima trava antes de devolver
+ * o texto ao usuario, mesmo apos extractSuggestions.
+ */
+export function stripCanalSuggestionsResidual(text: string): string {
+  return text
+    .replace(SUGGESTIONS_GUARD_RE, "")
+    .replace(/\n{3,}/g, "\n\n")
+    .trimEnd();
 }

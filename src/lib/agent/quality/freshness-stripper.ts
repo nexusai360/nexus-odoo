@@ -45,3 +45,29 @@ export function stripFreshnessPlaceholders(text: string): string {
   result = result.replace(/\s+([.,;:!?])/g, "$1");
   return result;
 }
+
+/**
+ * Strip de freshness textual real (ex.: "(atualizado há 22h)",
+ * "atualizado há 2 dias") do corpo da resposta.
+ *
+ * Decisao do usuario em 2026-05-27: a freshness eh dado interno (pra
+ * sync/log), nao deve aparecer ao usuario final na bubble. Era considerada
+ * "ruido". O envelope `atualizadoHa` continua disponivel para o LLM
+ * decidir se a info eh stale, mas nao deve ser impressa no texto.
+ */
+const FRESHNESS_TEXTUAL_PATTERNS: ReadonlyArray<RegExp> = [
+  // "(atualizado há 30s)" / "(atualizado há 2min)" / "(atualizado há 1h)" / "(atualizado há 3 dias)"
+  /\s*[\(\[]\s*atualizado\s+h[áa]\s+\d+\s*(?:s|min|h|hora|horas|dia|dias)\s*[\)\]]/gi,
+  // "atualizado há 30s" solto (sem parenteses)
+  /\s*[,;·]?\s*atualizado\s+h[áa]\s+\d+\s*(?:s|min|h|hora|horas|dia|dias)\b/gi,
+];
+
+export function stripFreshnessFromText(text: string): string {
+  let result = text;
+  for (const re of FRESHNESS_TEXTUAL_PATTERNS) {
+    result = result.replace(re, "");
+  }
+  result = result.replace(/[ \t]{2,}/g, " ");
+  result = result.replace(/\s+([.,;:!?])/g, "$1");
+  return result;
+}

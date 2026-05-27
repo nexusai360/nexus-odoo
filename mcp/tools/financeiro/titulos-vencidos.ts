@@ -11,6 +11,12 @@ import { enriquecerEnvelope } from "../../lib/with-responder.js";
 // inferido da pergunta. Sera obrigatorio em Onda 1.6 apos prompt v2 rolar.
 const inputSchema = z.object({
   tipo: z.enum(["a_receber", "a_pagar", "todos"]).optional(),
+  /** Onda 1.7 (2026-05-27): filtro de vencimento exato.
+   *  - "hoje": titulos que vencem hoje (data_vencimento = hoje)
+   *  - "ate_hoje" (default): titulos ja vencidos (data_vencimento <= hoje)
+   *  Resolve o caso "titulos vencidos hoje" que vinha incluindo atrasados.
+   */
+  janela: z.enum(["hoje", "ate_hoje"]).optional(),
 });
 
 // vrSaldo: valor correto a receber/pagar em aberto na fonte finan.lancamento.
@@ -95,6 +101,13 @@ export const financeiroTitulosVencidos: ToolEntry<Input, Output> = {
     let titulos = envelope.dados.titulos;
     if (input.tipo && input.tipo !== "todos") {
       titulos = titulos.filter((t) => t.tipo === input.tipo);
+    }
+    // Janela "hoje" = data_vencimento exatamente hoje (nao acumulado).
+    if (input.janela === "hoje") {
+      const todayIso = new Date().toISOString().slice(0, 10);
+      titulos = titulos.filter(
+        (t) => (t.dataVencimento ?? "").slice(0, 10) === todayIso,
+      );
     }
     const totalVencidoFiltrado = titulos.reduce((s, t) => s + t.vrSaldo, 0);
     const dadosFiltrados = {

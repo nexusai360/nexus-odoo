@@ -492,6 +492,32 @@ export async function runAgent(args: RunAgentInput): Promise<RunAgentResult> {
           console.warn("[runAgent] freshness stripper falhou:", err);
         }
 
+        // Trava defensiva (2026-05-27): mesmo apos extractSuggestions, garante
+        // que nenhum residual de "[[suggestions]]:..." vaza pro usuario na bubble.
+        try {
+          const { stripCanalSuggestionsResidual } = await import(
+            "./suggestions-extractor"
+          );
+          message = stripCanalSuggestionsResidual(message);
+        } catch (err) {
+          console.warn("[runAgent] strip canal suggestions falhou:", err);
+        }
+
+        // Strip de freshness textual "(atualizado ha X)" do corpo (regra de
+        // raiz - usuario nao quer ver tempo de atualizacao na resposta).
+        // Mantemos o dado no envelope `atualizadoHa` para uso interno;
+        // o LLM nao deve mais imprimir no texto humano.
+        try {
+          const { stripFreshnessFromText } = await import(
+            "./quality/freshness-stripper"
+          );
+          if (typeof stripFreshnessFromText === "function") {
+            message = stripFreshnessFromText(message);
+          }
+        } catch {
+          // Helper opcional; ignora se nao existir ainda.
+        }
+
         // GUARDRAIL FACTUAL (auditoria 2026-05-26 rodada 5):
         // Dois detectores ortogonais:
         //  (a) findInventedValues , valores R$ que nao aparecem em nenhum

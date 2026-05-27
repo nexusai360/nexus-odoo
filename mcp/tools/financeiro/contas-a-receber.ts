@@ -85,10 +85,18 @@ export const financeiroContasAReceber: ToolEntry<Input, Output> = {
         shape(await queryContasAReceber(ctx.prisma, input, new Date())),
     );
     if (envelope.estado === "preparando") return envelope;
+    // Onda 1.7 (regra usuario 2026-05-27): expor top maiores individuais
+    // para resolver "Top 10 maiores contas a receber" sem o LLM precisar
+    // ordenar manualmente.
+    const top10 = [...envelope.dados.titulos]
+      .sort((a, b) => b.vrSaldo - a.vrSaldo)
+      .slice(0, 10);
     return enriquecerEnvelope(envelope, "financeiro_contas_a_receber", {
       destaque: {
         totalAReceber: envelope.dados.totalAReceber,
         contagem: envelope.dados.titulos.length,
+        topMaiorValor: top10[0]?.vrSaldo ?? 0,
+        topMaiorParticipante: top10[0]?.participanteNome ?? "",
       },
       titulos: envelope.dados.titulos,
       agregado: {

@@ -136,7 +136,11 @@ function montarRespostaCompleta(resposta: string, sugestoes: string[]): string {
   const respPreenchida = respTrim.endsWith(":")
     ? respTrim.slice(0, -1) + ": " + inline + "."
     : respTrim + " " + inline + ".";
-  return respPreenchida + ` [[suggestions]]:${sugestoes.join("|")}`;
+  // NAO incluir "[[suggestions]]:" aqui (regra usuario 2026-05-27): o canal
+  // eh emitido pelo proprio LLM no fim conforme prompt; manter aqui causaria
+  // vazamento literal no texto do usuario. As sugestoes ficam disponiveis no
+  // campo `sugestoesRelacionadas` do envelope, separado.
+  return respPreenchida;
 }
 
 type Input = z.infer<typeof inputSchema>;

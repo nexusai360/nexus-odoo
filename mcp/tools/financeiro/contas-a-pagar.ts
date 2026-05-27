@@ -85,10 +85,15 @@ export const financeiroContasAPagar: ToolEntry<Input, Output> = {
       async () => shape(await queryContasAPagar(ctx.prisma, input, new Date())),
     );
     if (envelope.estado === "preparando") return envelope;
+    const top10 = [...envelope.dados.titulos]
+      .sort((a, b) => b.vrSaldo - a.vrSaldo)
+      .slice(0, 10);
     return enriquecerEnvelope(envelope, "financeiro_contas_a_pagar", {
       destaque: {
         totalAPagar: envelope.dados.totalAPagar,
         contagem: envelope.dados.titulos.length,
+        topMaiorValor: top10[0]?.vrSaldo ?? 0,
+        topMaiorParticipante: top10[0]?.participanteNome ?? "",
       },
       titulos: envelope.dados.titulos,
       agregado: {
