@@ -1,18 +1,38 @@
-# docker-compose.override.yml — ajustes APENAS para desenvolvimento local.
+# docker-compose.override.yml , ajustes APENAS para desenvolvimento local.
 # O Docker Compose carrega este arquivo automaticamente por cima do
-# docker-compose.yml. NÃO é usado em produção (Portainer usa só o
-# docker-compose.yml). Mantém o compose de produção limpo.
+# docker-compose.yml. NAO e usado em producao (Portainer usa so o
+# docker-compose.yml). Mantem o compose de producao limpo.
 #
-# Aqui publicamos a porta do MCP no host para permitir testes locais
-# (em produção a 3100 fica só na rede interna, atrás do Traefik).
+# O que este arquivo faz pra dev local:
+#  - publica a porta do MCP no host (3100) e configura o banco isolado
+#    nexus_odoo_l1;
+#  - adiciona `restart: unless-stopped` em mcp/worker/db/redis para que
+#    os containers VOLTEM SOZINHOS quando crasham, quando o Docker
+#    Desktop e reiniciado, ou quando a maquina e reiniciada. Sem essa
+#    politica os containers ficam parados ate alguem rodar
+#    `docker compose up -d` na mao;
+#  - o servico `app` NAO entra aqui (e roda fora do docker via
+#    `npm run dev` no host pra ter HMR). Se voce quiser app
+#    containerizado, sobe explicitamente com
+#    `docker compose up -d app`.
 
 services:
   mcp:
+    restart: unless-stopped
     ports:
       - "3100:3100"
-    # Dev local: o MCP lê do banco isolado desta branch (nexus_odoo_l1).
+    # Dev local: o MCP le do banco isolado desta branch (nexus_odoo_l1).
     environment:
       - MCP_DATABASE_URL=postgresql://nexus_mcp:${MCP_DB_PASSWORD}@db:5432/nexus_odoo_l1?schema=public
       - MCP_BI_DATABASE_URL=postgresql://nexus_mcp_bi:${MCP_BI_DB_PASSWORD}@db:5432/nexus_odoo_l1?schema=public
-      # Bateria de validação L3: rate limit alto (produção mantém o padrão 60).
+      # Bateria de validacao L3: rate limit alto (producao mantem o padrao 60).
       - MCP_RATE_LIMIT=100000
+
+  worker:
+    restart: unless-stopped
+
+  db:
+    restart: unless-stopped
+
+  redis:
+    restart: unless-stopped
