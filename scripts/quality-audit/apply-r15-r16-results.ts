@@ -19,7 +19,11 @@ import { readFileSync, readdirSync } from "fs";
 import { resolve } from "path";
 import { prisma } from "@/lib/prisma";
 
-const VALID = new Set(["CORRETO", "PARCIAL", "ERRADO", "FORA_DE_ESCOPO"]);
+const VALID = new Set(["CORRETO", "PARCIAL", "ERRADO", "FORA_DO_ESCOPO"]);
+// Normaliza variantes que subagentes podem ter usado.
+const STATUS_ALIAS: Record<string, string> = {
+  FORA_DE_ESCOPO: "FORA_DO_ESCOPO",
+};
 
 interface TurnoEval {
   turnoId: string;
@@ -46,7 +50,8 @@ async function applyBatch(label: string, turnos: TurnoEval[]) {
   let skipped = 0;
   let notFound = 0;
   for (const t of turnos) {
-    if (!VALID.has(t.status)) {
+    const status = STATUS_ALIAS[t.status] ?? t.status;
+    if (!VALID.has(status)) {
       console.warn(`  ! status invalido em ${t.turnoId}: ${t.status}`);
       skipped++;
       continue;
@@ -62,7 +67,7 @@ async function applyBatch(label: string, turnos: TurnoEval[]) {
     await prisma.conversationQualityEvaluation.update({
       where: { id: eval_.id },
       data: {
-        status: t.status,
+        status,
         patterns: t.patterns ?? [],
         razoes: t.razao ?? "",
         judgeVersion: `subagent-${label}`,

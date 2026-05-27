@@ -30,6 +30,7 @@ import type {
   EvaluationRow,
   QualityKpisV2,
 } from "@/lib/agent/quality/queries";
+import { markerToRodadaName } from "@/lib/agent/quality/rodada-labels";
 
 import { ChartsBlock } from "./charts-block";
 import { EvaluationsTable } from "./evaluations-table";
@@ -46,15 +47,6 @@ function isoLocalToDate(iso: string): Date {
   return new Date(y ?? 1970, (m ?? 1) - 1, d ?? 1, 0, 0, 0, 0);
 }
 
-/** Converte marker tipo "[AUDIT-POS-2026-05-26T03-43-05]" em "26/05 03:43" */
-function formatRodadaLabel(marker: string): string {
-  const m = marker.match(
-    /\[AUDIT-(?:[A-Z]+-)?(\d{4})-(\d{2})-(\d{2})T(\d{2})-(\d{2})/,
-  );
-  if (!m) return marker;
-  const [, , month, day, hour, min] = m;
-  return `${day}/${month} ${hour}:${min}`;
-}
 
 function rangeForPills(
   pill: PeriodKey,
@@ -214,7 +206,7 @@ export function QualidadeContent({ minDate }: QualidadeContentProps) {
               { value: "all", label: "Todas as rodadas" },
               ...rodadas.map((r) => ({
                 value: r.marker,
-                label: `${formatRodadaLabel(r.marker)} · ${r.count}`,
+                label: `${markerToRodadaName(r.marker)} · ${r.count}`,
               })),
             ]}
           />
