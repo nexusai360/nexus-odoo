@@ -270,7 +270,7 @@ export async function persistMessageAndReturnId(
  * tools).
  *
  * Mantemos `persistMessage` (`Promise<void>`) para nao quebrar mocks de
- * testes existentes — esta variante e opt-in.
+ * testes existentes , esta variante e opt-in.
  */
 export async function persistAssistantMessageWithTools(
   conversationId: string,
@@ -335,13 +335,13 @@ export async function updateMessageToolResults(
 }
 
 // ----------------------------------------------------------------------------
-// getLastNPairs — usado pela Frente C (sugestoes contextuais) na Onda 4.
+// getLastNPairs , usado pela Frente C (sugestoes contextuais) na Onda 4.
 // ----------------------------------------------------------------------------
 
 /**
  * Um "par" da conversa: a mensagem do usuario seguida da resposta final do
  * assistant. Mensagens intermediarias (role="tool" ou assistant com
- * toolCalls nao-vazio) sao ignoradas — entram no contexto interno do agente,
+ * toolCalls nao-vazio) sao ignoradas , entram no contexto interno do agente,
  * nao no contexto narrativo da conversa.
  *
  * Spec: docs/superpowers/specs/2026-05-25-agente-nex-inteligencia-design.md §5.5
@@ -409,7 +409,7 @@ export async function getLastNPairs(
       });
       assistantBuffer = null;
     }
-    // role "tool" ou assistant intermediario (com toolCalls) sao ignorados —
+    // role "tool" ou assistant intermediario (com toolCalls) sao ignorados ,
     // sao contexto interno entre o user e a resposta final.
   }
 

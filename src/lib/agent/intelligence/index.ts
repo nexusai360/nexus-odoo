@@ -17,7 +17,7 @@ export type { IntelligenceCaller } from "./reasoning-effort-policy";
 export { extractTopics } from "./topic-extractor";
 export type { TopicExtractionResult } from "./topic-extractor";
 
-// Frente A — analise retrospectiva (Onda 2).
+// Frente A , analise retrospectiva (Onda 2).
 export { replayToolCalls } from "./tool-replayer";
 export type { ReplayItem, ReplayResult } from "./tool-replayer";
 
@@ -29,7 +29,7 @@ export type { Cluster } from "./recommendation-clusterer";
 
 export { embed as embedText, EmbeddingUnavailable } from "./embeddings-client";
 
-// Frente C — continuidade contextual (Onda 4).
+// Frente C , continuidade contextual (Onda 4).
 export { suggestContinuation } from "./contextual-suggester";
 export type {
   SuggestContinuationInput,

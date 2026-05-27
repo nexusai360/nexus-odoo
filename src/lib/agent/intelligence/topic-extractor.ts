@@ -12,7 +12,7 @@
  * Spec: docs/superpowers/specs/2026-05-25-agente-nex-inteligencia-design.md §4.3
  */
 
-// Nao importar "server-only" — este modulo precisa rodar no worker tsx
+// Nao importar "server-only" , este modulo precisa rodar no worker tsx
 // (lesson 2026-05-25 15:45 sobre exchange-rate.ts).
 
 import { getActiveLlmConfig } from "@/lib/agent/llm/get-active-config";

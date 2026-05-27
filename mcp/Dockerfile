@@ -1,14 +1,14 @@
 # mcp/Dockerfile
-# Container do servidor MCP semântico — Node puro + tsx (4f-5).
+# Container do servidor MCP semântico , Node puro + tsx (4f-5).
 #
 # Não usa o Dockerfile raiz (Next.js): o MCP é Node puro, sem build Next.
-# NÃO faz `tsc --emit` — o runtime usa tsx que lê mcp/tsconfig.json diretamente
+# NÃO faz `tsc --emit` , o runtime usa tsx que lê mcp/tsconfig.json diretamente
 # para resolver aliases @/ em paths. A verificação de tipo é feita no estágio builder
-# via `npx tsc -p mcp/tsconfig.json` (noEmit — critério N1/C5).
+# via `npx tsc -p mcp/tsconfig.json` (noEmit , critério N1/C5).
 #
 # Estrutura copiada:
 #   mcp/        → código do servidor MCP
-#   src/        → código compartilhado (lib/, generated/prisma) — aliases @/
+#   src/        → código compartilhado (lib/, generated/prisma) , aliases @/
 #   prisma/     → schema Prisma e migrations
 #   package.json + package-lock.json → dependências
 
@@ -34,13 +34,13 @@ COPY src/ ./src/
 COPY mcp/ ./mcp/
 
 # Gerar Prisma client (necessário para os tipos em src/generated/prisma).
-# Prisma v7 lê prisma.config.ts (schema + generator output) — por isso ele é
+# Prisma v7 lê prisma.config.ts (schema + generator output) , por isso ele é
 # copiado acima. Verifica que o client foi de fato gerado antes de seguir.
 ENV DATABASE_URL="postgresql://dummy:dummy@localhost:5432/dummy"
 RUN npx prisma generate --schema prisma/schema.prisma \
     && test -f src/generated/prisma/client.ts
 
-# Verificação de tipo do MCP — tsconfig autônomo (N1):
+# Verificação de tipo do MCP , tsconfig autônomo (N1):
 #   • Não recompila src/**/*.tsx (sem jsx no mcp/tsconfig.json)
 #   • Resolve @/* via baseUrl+paths sem incluir src/ como raiz de compilação
 RUN npx tsc -p mcp/tsconfig.json --noEmit
@@ -65,7 +65,7 @@ COPY --from=builder --chown=mcpuser:nodejs /app/src ./src
 COPY --from=builder --chown=mcpuser:nodejs /app/mcp ./mcp
 COPY --from=builder --chown=mcpuser:nodejs /app/package.json ./package.json
 
-# Gerar o Prisma client diretamente no runner — garante que src/generated/prisma
+# Gerar o Prisma client diretamente no runner , garante que src/generated/prisma
 # exista na imagem final independentemente de cache de camadas multi-stage.
 ENV DATABASE_URL="postgresql://dummy:dummy@localhost:5432/dummy"
 RUN npx prisma generate --schema prisma/schema.prisma \

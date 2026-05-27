@@ -8,7 +8,7 @@
  *
  * `createTechnicalFailureEval`: chamado fire-and-forget no catch externo do
  * runAgent quando o turno falha tecnicamente (timeout, tool crash, etc).
- * NAO busca lastUserMsg via query — race condition se o erro foi antes do
+ * NAO busca lastUserMsg via query , race condition se o erro foi antes do
  * persistMessage("user") rodar. Usa args.userMessage direto e deixa
  * userMessageId nullable.
  *

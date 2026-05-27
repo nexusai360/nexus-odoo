@@ -1,7 +1,7 @@
 /**
  * Cliente de embeddings para a inteligencia do Agente Nex.
  *
- * Wrapper sobre `@/lib/agent/rag/embed` (F5 RAG) — mesma credencial OpenAI
+ * Wrapper sobre `@/lib/agent/rag/embed` (F5 RAG) , mesma credencial OpenAI
  * via `AppSetting.embedding_credential_id`, mesmo modelo
  * `text-embedding-3-small` (1536 dim). Justificativa: nao recriar o pipeline
  * de credenciais.

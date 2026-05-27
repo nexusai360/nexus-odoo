@@ -16,7 +16,7 @@ export function RecommendationActions({ id, status }: Props) {
   const [pending, startTransition] = useTransition();
 
   if (status !== "pending" && status !== "needs_more_review") {
-    return <span className="text-xs text-zinc-400">—</span>;
+    return <span className="text-xs text-zinc-400">,</span>;
   }
 
   function decide(decision: "accepted" | "rejected" | "needs_more_review") {

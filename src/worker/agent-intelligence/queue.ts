@@ -4,7 +4,7 @@
  * Tagging assincrono de topicos por conversa, fora do caminho critico do chat.
  * Spec: docs/superpowers/specs/2026-05-25-agente-nex-inteligencia-design.md §4
  *
- * REGRA: queue names sem `:` (lesson 2026-05-25 15:45 — BullMQ >= 5 proibe).
+ * REGRA: queue names sem `:` (lesson 2026-05-25 15:45 , BullMQ >= 5 proibe).
  */
 
 export const AGENT_TOPIC_TAGGING_QUEUE = "agent-topic-tagging";

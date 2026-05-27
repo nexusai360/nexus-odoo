@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 // mcp/auth/__tests__/api-key-lookup.test.ts
 import { lookupApiKey, lookupApiKeyWithReason } from "../api-key-lookup";
 import { mockPrisma } from "../../__tests__/mocks/prisma";
