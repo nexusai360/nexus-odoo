@@ -29,11 +29,14 @@ jobs:
         run: npm run typecheck
 
       - name: Testes
-        run: npm test
-        # TODO: 10 suites pre-existentes falham e bloqueavam o CI todo
-        # (tests fora de sincronia com refatoracoes recentes do prompt
-        # e da camada de sanitize). Marcado nao-bloqueante ate alguem
-        # revisar a suite. Lint, type check e build continuam bloqueantes.
+        # --forceExit: alguns mocks (Redis/Prisma) deixam handles abertos
+        # e prendem o runner por dezenas de minutos no CI. Forca saida quando
+        # todas suites terminam.
+        # --testTimeout: cap de 20s por teste individual.
+        # continue-on-error: 10 suites pre-existentes falham (tests fora de
+        # sincronia com refatoracoes recentes); nao bloqueia ate alguem
+        # revisar. Lint, type check e build continuam bloqueantes.
+        run: npx jest --forceExit --testTimeout=20000
         continue-on-error: true
 
       - name: Build
