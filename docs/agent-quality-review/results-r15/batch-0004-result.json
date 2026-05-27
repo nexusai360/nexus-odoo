@@ -1,0 +1,223 @@
+{
+  "batchId": "batch-0004",
+  "evaluatedAt": "2026-05-27T03:58:00.000Z",
+  "totals": {
+    "CORRETO": 17,
+    "PARCIAL": 2,
+    "ERRADO": 2,
+    "FORA_DE_ESCOPO": 4
+  },
+  "patterns": {
+    "acerto_objetividade": 17,
+    "acerto_encadeamento": 2,
+    "limitacao_real_declarada": 5,
+    "tool_errada": 1,
+    "formato_quebrado": 1,
+    "fluxo_tool_incompleto": 1,
+    "dado_inventado": 1,
+    "pergunta_ignorada": 1,
+    "recusa_indevida": 1
+  },
+  "turnos": [
+    {
+      "turnoId": "c46d6ce8-8110-480b-8c07-22aa183c86f2",
+      "status": "CORRETO",
+      "patterns": ["acerto_objetividade"],
+      "razao": "Tool certa, saldoTotal -24.242.300,29 bate com o agregado da tool, freshness 10h declarado.",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "c5b6d30a-6c22-41cd-becb-d54344b83221",
+      "status": "CORRETO",
+      "patterns": ["acerto_objetividade"],
+      "razao": "Contabil_plano_de_contas com termo 'ativo', 15 contas batem com _DESTAQUE; lista 10 primeiras com códigos e nomes corretos.",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "c69babd9-612a-4fae-b6d1-2b99dcd2d17b",
+      "status": "CORRETO",
+      "patterns": ["acerto_objetividade"],
+      "razao": "Saldo consolidado -24.242.300,29 em 8 contas bate; resposta enxuta.",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "ccdb196f-9a2f-4d5d-8efa-700304bde5bf",
+      "status": "CORRETO",
+      "patterns": ["acerto_objetividade"],
+      "razao": "totalFornecedores=754 bate com _DESTAQUE; resposta direta.",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "cebe4442-98f1-4b45-a7af-c23665edc54b",
+      "status": "CORRETO",
+      "patterns": ["acerto_objetividade"],
+      "razao": "2 contas retornadas, códigos 3.1.1 e 3.1.1.1 batem; ressalvou que só há estrutura, não movimentos.",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "d36c3984-7c9b-4add-96a9-a350a087087a",
+      "status": "FORA_DE_ESCOPO",
+      "patterns": ["limitacao_real_declarada"],
+      "razao": "Pergunta sobre projeção/meta sem dado de meta no ERP; usou registrar_lacuna corretamente.",
+      "sugestao_prompt": null,
+      "correcao_factual": "nao_aplicavel"
+    },
+    {
+      "turnoId": "d3f25352-138e-48b9-a039-55b16603576b",
+      "status": "CORRETO",
+      "patterns": ["acerto_objetividade"],
+      "razao": "Tool com período 27/05 a 27/05 retornou entrada=0/saída=0/saldo=0; resposta honesta com freshness 10h. Cache vem de ontem mas a tool foi chamada corretamente.",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "d95055d0-16ce-4797-9637-f90cf1cc54b8",
+      "status": "CORRETO",
+      "patterns": ["acerto_objetividade"],
+      "razao": "13 itens encontrados (bate com _DESTAQUE), saldo somado -1 bate com agregado; destaque para [82029] com saldo -1.",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "db19df6d-f9be-4d49-8653-a49fdab789a2",
+      "status": "CORRETO",
+      "patterns": ["acerto_objetividade"],
+      "razao": "Marcelo Milanezi tem o máximo (100 pedidos) e valor 21.134.820,57; ticket médio 211.348,21 calculado corretamente.",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "df8bd423-4469-47df-933d-350d5181ca56",
+      "status": "PARCIAL",
+      "patterns": ["tool_errada"],
+      "razao": "Usuário pediu 'vendedores cadastrados'; a IA usou comercial_pedidos_por_vendedor (só lista vendedores com pedidos). Lista 20 mas pode haver vendedores cadastrados sem pedidos não capturados.",
+      "sugestao_prompt": "Adicionar regra: 'Quando usuário pedir vendedores cadastrados (não pedidos), preferir tool de cadastros se existir; senão, esclarecer que a lista é só de vendedores com pedidos no ERP'.",
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "e490a8bb-b09f-4d8b-8f24-52167d075e59",
+      "status": "PARCIAL",
+      "patterns": ["limitacao_real_declarada", "formato_quebrado"],
+      "razao": "Saldo do 102 (16 un, R$ 258.370,44, 5 locais) bate; mas para a 2ª parte (notas saídas) usou registrar_lacuna e concatenou texto genérico no fim, sem deixar claro que a 1ª parte foi respondida e a 2ª recusada.",
+      "sugestao_prompt": "Adicionar regra: 'Em perguntas multi-parte com lacuna em uma parte, separar visualmente a parte respondida da parte sem dado, evitando concatenar texto de recusa logo após o dado real'.",
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "e584341f-60c5-4aca-b2ab-5edfd7f0199f",
+      "status": "CORRETO",
+      "patterns": ["acerto_objetividade"],
+      "razao": "Jht SP Comércio com 115 notas e R$ 10.788.423,82 bate com a tool; é tanto o de maior quantidade quanto o de maior valor.",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "e6add1f4-5ac5-471e-9e49-7aa7f1a66e79",
+      "status": "CORRETO",
+      "patterns": ["acerto_encadeamento", "acerto_objetividade"],
+      "razao": "Encadeou 4 tools (saldo contas, pedidos, faturamento, estoque); todos os valores resumidos batem: 38,07mi/775 notas, 483 pedidos/70,12mi, estoque 51,98mi/7 armazéns, saldo -24,24mi.",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "e83dfc00-e8a5-4c78-b2a6-2beadacf8d78",
+      "status": "CORRETO",
+      "patterns": ["acerto_objetividade"],
+      "razao": "6.567 parceiros, 6.325 clientes, 754 fornecedores, 4.398 empresas, 2.169 PF — todos batem com _DESTAQUE.",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "e8db263e-3b2c-4293-bbd9-8e780d4f9c35",
+      "status": "CORRETO",
+      "patterns": ["acerto_objetividade"],
+      "razao": "Top 5 clientes do mês com valores corretos: Jht SP 10,78mi, Jds 3,69mi, Smartfit 2,17mi, Jds Filial SP 1,72mi, SMF SLM 1,65mi — batem com a tool.",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "ea62392d-ff7e-4a78-bfb2-00f56c72e815",
+      "status": "CORRETO",
+      "patterns": ["acerto_objetividade"],
+      "razao": "Rart Equipamentos para Ginastica SLU encontrado, CNPJ BR-04.028.797/0001-96, Paiçandu/PR, cliente+fornecedor — tudo bate com a tool.",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "ed4da908-894a-4304-9bab-2ceaa5045652",
+      "status": "CORRETO",
+      "patterns": ["acerto_encadeamento", "acerto_objetividade"],
+      "razao": "Encadeou 5 chamadas de faturamento (jan-mai). Valores e variações percentuais conferidos: jan 47,64mi, fev 66,37mi (+39,3%), mar 22,61mi (-65,9%), abr 34,00mi (+50,3%), mai 38,07mi parcial (+12,0%); soma 208,69mi.",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "eee7496a-c60b-4150-ba65-d86d3a881f21",
+      "status": "ERRADO",
+      "patterns": ["recusa_indevida", "pergunta_ignorada"],
+      "razao": "A tool financeiro_contas_a_pagar retornou estado=ok com lista de títulos (vrSaldo, fornecedores), mas a IA respondeu 'não disponível no ERP'. Recusa indevida com dado em mãos.",
+      "sugestao_prompt": "Adicionar regra: 'Se uma tool retornou estado=ok com dados, NUNCA responder que a informação não está disponível; sintetizar os dados retornados'.",
+      "correcao_factual": "nao_bate"
+    },
+    {
+      "turnoId": "f12cf209-13db-4e8d-b14a-0a19e3563098",
+      "status": "FORA_DE_ESCOPO",
+      "patterns": ["limitacao_real_declarada"],
+      "razao": "Margem (preço x custo) não tem tool dedicada; registrar_lacuna usado corretamente.",
+      "sugestao_prompt": null,
+      "correcao_factual": "nao_aplicavel"
+    },
+    {
+      "turnoId": "f43ad0a4-c2d8-4a07-a86c-2a68e6246bb0",
+      "status": "CORRETO",
+      "patterns": ["acerto_objetividade"],
+      "razao": "12 itens, soma de saldos 62 (45+15+2+3+2-4-1=62) bate com agregado, valor R$ 53.261,03 bate com kpi.valorTotal; top 5 com saldos e valores corretos.",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "f5df9c53-4907-4132-9997-dabfdbc6b540",
+      "status": "ERRADO",
+      "patterns": ["dado_inventado", "fluxo_tool_incompleto"],
+      "razao": "Só chamou fiscal_faturamento_por_cliente, mas afirma 'R$ 322.236,75 a receber' — não há tool de contas a receber chamada. Valor inventado. Faltou encadear tool de contas a receber por cliente.",
+      "sugestao_prompt": "Adicionar regra: 'Pergunta sobre cliente + saldo a receber? Encadear fiscal_faturamento_por_cliente para identificar o cliente -> tool de contas a receber filtrada pelo parceiroId. Jamais inventar valor financeiro sem tool'.",
+      "correcao_factual": "nao_bate"
+    },
+    {
+      "turnoId": "f8425f2c-6b17-43eb-826c-e9092ad9d333",
+      "status": "CORRETO",
+      "patterns": ["acerto_objetividade"],
+      "razao": "775 notas e R$ 38.074.843,78 batem com _DESTAQUE; período correto (mês corrente até 27/05).",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "faa533ac-31e0-404d-9c16-7ec0d805f7d7",
+      "status": "FORA_DE_ESCOPO",
+      "patterns": ["limitacao_real_declarada"],
+      "razao": "Meta do mês não existe no ERP; registrar_lacuna usado.",
+      "sugestao_prompt": null,
+      "correcao_factual": "nao_aplicavel"
+    },
+    {
+      "turnoId": "fbef0944-1eba-445c-bb5e-2a54213e24e9",
+      "status": "CORRETO",
+      "patterns": ["acerto_objetividade"],
+      "razao": "775 notas e R$ 38.074.843,78 batem; mesmo resultado do T21 com pergunta mais informal.",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "fc22917e-725a-4d45-9571-bf3e538d51f3",
+      "status": "FORA_DE_ESCOPO",
+      "patterns": ["limitacao_real_declarada"],
+      "razao": "Usuário enviou placeholder 'CNPJ XX' sem valor real; pedir CNPJ completo é correto e necessário (não dá para assumir).",
+      "sugestao_prompt": null,
+      "correcao_factual": "nao_aplicavel"
+    }
+  ]
+}

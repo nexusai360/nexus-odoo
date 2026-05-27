@@ -1,0 +1,244 @@
+{
+  "totals": {
+    "CORRETO": 68,
+    "PARCIAL": 13,
+    "ERRADO": 4,
+    "FORA_DE_ESCOPO": 15
+  },
+  "patterns": {
+    "acerto_objetividade": 66,
+    "acerto_modelo": 8,
+    "parametro_incompleto": 3,
+    "limitacao_real_declarada": 17,
+    "acerto_encadeamento": 5,
+    "placeholder_nao_substituido": 1,
+    "dado_inventado": 5,
+    "entendeu_mal_termo": 1,
+    "fluxo_tool_incompleto": 2,
+    "resposta_truncada": 4,
+    "tool_errada": 2,
+    "formato_quebrado": 2,
+    "recusa_indevida": 1,
+    "pergunta_ignorada": 1
+  },
+  "factual": {
+    "bate": 73,
+    "nao_bate": 6,
+    "nao_aplicavel": 21
+  },
+  "sugestoes": {
+    "Adicionar regra: 'quando usuário disser \"a receber\" ou \"a pagar\", passar tipo correspondente em financeiro_titulos_vencidos'.": 1,
+    "Adicionar regra: 'para devedores principais, agregar vrSaldo por participanteNome e listar top N com soma; nunca escrever placeholder textual no lugar de valor calculável a partir do toolResults'.": 1,
+    "Adicionar regra: 'pergunta sobre devolução de nota? Considerar consultar fiscal_notas_emitidas filtrando por natureza/CFOP de devolução, não só notas_recebidas'.": 1,
+    "Adicionar regra: 'rascunho/draft = etapas com nome explícito de digitação/rascunho/provisório; não somar todas as não-finalizadas como rascunho'.": 1,
+    "Adicionar regra: 'pergunta cita armazém? Se único armazém ou contexto óbvio, listar saldos por armazém; senão, perguntar qual armazém'.": 1,
+    "Mapear 'transportadoras ativas' para tool dedicada (cadastro_listar_por_categoria + filtro ativo) ou registrar lacuna em vez de busca textual.": 1,
+    "Adicionar regra: 'Pergunta sobre cadastro completo de cliente? Apos cadastro_buscar_parceiro, se houver match unico ou top1 dominante, encadear cadastro_detalhar_parceiro para trazer dados completos'.": 1,
+    "Adicionar regra: 'Quando contas a receber retorna lista grande, usar financeiro_titulos_vencidos ou financeiro_top_devedores ao inves de inferir top devedor de amostra'.": 1,
+    "Adicionar regra: 'Pergunta lista de fornecedores? Usar tool cadastro_listar_parceiros com filtro ehFornecedor=true, e nao buscar por termo generico'.": 1,
+    "Adicionar regra: 'Quando tool retornar com estado=ok e _DESTAQUE/_agregado preenchido, NUNCA dizer nao consegui; usar contagemLinhas ou totalNotas como total autoritativo'.": 1,
+    "Adicionar regra: 'Se a tool de contas_a_pagar/receber retornar titulos, sempre somar vrSaldo localmente para apresentar o total, mesmo sem _agregado'.": 1,
+    "Adicionar regra: 'Quando registrar_lacuna retornar sugestoesRelacionadas, listar todas elas como bullets na resposta'.": 1,
+    "Adicionar regra: 'Quando contas_a_receber vier truncado sem total, listar os N maiores títulos disponíveis na resposta e avisar que o total exato exige consulta direcionada'.": 1,
+    "Adicionar regra: 'Em cadastro_parceiros_por_uf, distinguir entre total absoluto (agregado.soma) e total com UF informada (soma das linhas com uf != null)'.": 1,
+    "Adicionar regra: 'Quando usuário pedir vendedores cadastrados (não pedidos), preferir tool de cadastros se existir; senão, esclarecer que a lista é só de vendedores com pedidos no ERP'.": 1,
+    "Adicionar regra: 'Em perguntas multi-parte com lacuna em uma parte, separar visualmente a parte respondida da parte sem dado, evitando concatenar texto de recusa logo após o dado real'.": 1,
+    "Adicionar regra: 'Se uma tool retornou estado=ok com dados, NUNCA responder que a informação não está disponível; sintetizar os dados retornados'.": 1,
+    "Adicionar regra: 'Pergunta sobre cliente + saldo a receber? Encadear fiscal_faturamento_por_cliente para identificar o cliente -> tool de contas a receber filtrada pelo parceiroId. Jamais inventar valor financeiro sem tool'.": 1
+  },
+  "turnosErr": [
+    {
+      "batch": "batch-0001",
+      "turnoId": "11dbbf43-27d9-446e-b4d0-861b4f8895f8",
+      "status": "PARCIAL",
+      "patterns": [
+        "parametro_incompleto"
+      ],
+      "razao": "Usuário pediu 'a receber' mas a tool foi chamada sem o parâmetro tipo=a_receber, trazendo a_pagar misturado. A resposta filtrou bem só os a_receber e os valores listados batem com o toolResults, mas a chamada foi mais cara que o necessário.",
+      "sugestao_prompt": "Adicionar regra: 'quando usuário disser \"a receber\" ou \"a pagar\", passar tipo correspondente em financeiro_titulos_vencidos'.",
+      "correcao_factual": "bate"
+    },
+    {
+      "batch": "batch-0001",
+      "turnoId": "2f8e9b73-93ad-4183-b2cc-989e938f135b",
+      "status": "ERRADO",
+      "patterns": [
+        "placeholder_nao_substituido",
+        "dado_inventado"
+      ],
+      "razao": "Resposta lista nomes de devedores mas com texto literal 'não consegui obter esse dado' em vez dos valores agregados. Os títulos estão no toolResults; bastava somar por participante. Resultado é texto quebrado que não responde a pergunta.",
+      "sugestao_prompt": "Adicionar regra: 'para devedores principais, agregar vrSaldo por participanteNome e listar top N com soma; nunca escrever placeholder textual no lugar de valor calculável a partir do toolResults'.",
+      "correcao_factual": "nao_bate"
+    },
+    {
+      "batch": "batch-0001",
+      "turnoId": "378f9da7-2019-41ad-bace-b309631974f3",
+      "status": "PARCIAL",
+      "patterns": [
+        "entendeu_mal_termo"
+      ],
+      "razao": "Usuário perguntou 'devolveu nota' (saída/devolução, NF emitida pelo cliente), mas a IA usou fiscal_notas_recebidas_por_fornecedor (entrada). Reconheceu a limitação no final, mas a tool foi conceitualmente errada para detectar devolução.",
+      "sugestao_prompt": "Adicionar regra: 'pergunta sobre devolução de nota? Considerar consultar fiscal_notas_emitidas filtrando por natureza/CFOP de devolução, não só notas_recebidas'.",
+      "correcao_factual": "bate"
+    },
+    {
+      "batch": "batch-0001",
+      "turnoId": "3fcebc83-9c3c-4413-9a63-362cb142f302",
+      "status": "PARCIAL",
+      "patterns": [
+        "parametro_incompleto"
+      ],
+      "razao": "Pedido era 'em rascunho'. A etapa literal 'P - Em digitação' (1 pedido, R$ 98,95) é a resposta exata, e foi mencionada. Mas a IA também ofereceu agregado mais amplo (533 pedidos não finalizados) misturando conceitos. Confunde mais do que ajuda — 'rascunho' não é 'todo não finalizado'.",
+      "sugestao_prompt": "Adicionar regra: 'rascunho/draft = etapas com nome explícito de digitação/rascunho/provisório; não somar todas as não-finalizadas como rascunho'.",
+      "correcao_factual": "bate"
+    },
+    {
+      "batch": "batch-0001",
+      "turnoId": "47161eeb-2bf2-46df-a88b-864d20fe15b3",
+      "status": "PARCIAL",
+      "patterns": [
+        "parametro_incompleto"
+      ],
+      "razao": "Tool não foi filtrada por armazém apesar de o usuário pedir 'no armazém'. Resultado fica genérico (6 cadastros, saldo 0). Resposta honesta mas perdeu o filtro pedido.",
+      "sugestao_prompt": "Adicionar regra: 'pergunta cita armazém? Se único armazém ou contexto óbvio, listar saldos por armazém; senão, perguntar qual armazém'.",
+      "correcao_factual": "bate"
+    },
+    {
+      "batch": "0002",
+      "turnoId": "4d550a64-b604-4448-bcfb-17cfa30bbb3f",
+      "status": "PARCIAL",
+      "patterns": [
+        "limitacao_real_declarada"
+      ],
+      "razao": "Tool cadastro_buscar_parceiro retornou 14 nomes; resposta lista os nomes corretamente e declara honestamente que o status de ativo nao veio. Ainda assim a pergunta era 'ativas' e a tool generica nao traz esse filtro.",
+      "sugestao_prompt": "Mapear 'transportadoras ativas' para tool dedicada (cadastro_listar_por_categoria + filtro ativo) ou registrar lacuna em vez de busca textual.",
+      "correcao_factual": "bate"
+    },
+    {
+      "batch": "0002",
+      "turnoId": "5c11af6a-4362-4773-a7cd-084f995acfd4",
+      "status": "PARCIAL",
+      "patterns": [
+        "fluxo_tool_incompleto"
+      ],
+      "razao": "Tool retornou 10 filiais do Smartfit; resposta apenas lista, sem encadear cadastro_detalhar_parceiro para entregar o 'cadastro completo' pedido (endereco, contato, condicao de pagto etc.). Ficou em listagem rasa.",
+      "sugestao_prompt": "Adicionar regra: 'Pergunta sobre cadastro completo de cliente? Apos cadastro_buscar_parceiro, se houver match unico ou top1 dominante, encadear cadastro_detalhar_parceiro para trazer dados completos'.",
+      "correcao_factual": "bate"
+    },
+    {
+      "batch": "0002",
+      "turnoId": "5e80ee7b-2638-45a4-b9ad-8799ec12d485",
+      "status": "PARCIAL",
+      "patterns": [
+        "resposta_truncada",
+        "dado_inventado"
+      ],
+      "razao": "Resposta cita 'Smartfit R$ 533.102,00' como maior devedor. O nome Smartfit nao aparece nas primeiras paginas do toolResults visivel (predomina Edificio Porto Farol), e a propria IA admite que 'a listagem veio truncada'. Numero nao confirmavel contra a amostra disponivel.",
+      "sugestao_prompt": "Adicionar regra: 'Quando contas a receber retorna lista grande, usar financeiro_titulos_vencidos ou financeiro_top_devedores ao inves de inferir top devedor de amostra'.",
+      "correcao_factual": "nao_bate"
+    },
+    {
+      "batch": "0002",
+      "turnoId": "6171cf27-d08c-44ae-b358-dbdbfc0eb453",
+      "status": "ERRADO",
+      "patterns": [
+        "dado_inventado",
+        "tool_errada"
+      ],
+      "razao": "Pergunta era 'lista de fornecedores ativos'. Tool chamada (cadastro_buscar_parceiro com termo='.') nao retorna agregado de totais, retorna apenas linhas. Resposta declara '754 fornecedores ativos e 0 inativos' (numeros que so vem de cadastro_contar_parceiros, nao chamada aqui). Alem disso a tool nao filtra por fornecedor: a amostra mostra Matrizes/Filiais sem garantia de serem fornecedores.",
+      "sugestao_prompt": "Adicionar regra: 'Pergunta lista de fornecedores? Usar tool cadastro_listar_parceiros com filtro ehFornecedor=true, e nao buscar por termo generico'.",
+      "correcao_factual": "nao_bate"
+    },
+    {
+      "batch": "0002",
+      "turnoId": "7ae133c9-5de9-4fc0-aab6-45295324343c",
+      "status": "PARCIAL",
+      "patterns": [
+        "resposta_truncada"
+      ],
+      "razao": "fiscal_notas_emitidas retornou linhas com sucesso, mas a IA respondeu 'nao consegui obter o total exato agora' e parou. Resposta truncada e desistencia sem entregar o total que estaria no _agregado/_DESTAQUE da tool.",
+      "sugestao_prompt": "Adicionar regra: 'Quando tool retornar com estado=ok e _DESTAQUE/_agregado preenchido, NUNCA dizer nao consegui; usar contagemLinhas ou totalNotas como total autoritativo'.",
+      "correcao_factual": "nao_aplicavel"
+    },
+    {
+      "batch": "0002",
+      "turnoId": "84a30d9e-247f-496c-860a-4658036e3ae7",
+      "status": "PARCIAL",
+      "patterns": [
+        "resposta_truncada"
+      ],
+      "razao": "financeiro_contas_a_pagar retornou lista de titulos; IA desistiu dizendo 'nao consegui obter o total consolidado'. Provavelmente o _agregado/_DESTAQUE da tool tinha o total, e mesmo se nao, somar vrSaldo era trivial.",
+      "sugestao_prompt": "Adicionar regra: 'Se a tool de contas_a_pagar/receber retornar titulos, sempre somar vrSaldo localmente para apresentar o total, mesmo sem _agregado'.",
+      "correcao_factual": "nao_aplicavel"
+    },
+    {
+      "batch": "batch-0003",
+      "turnoId": "a44e16f2-f3a5-4168-9a3c-eab0df3164fe",
+      "status": "PARCIAL",
+      "patterns": [
+        "formato_quebrado"
+      ],
+      "razao": "Tool retornou lista grande e foi truncada por tamanho, sem campo de total agregado consolidado. Agente declarou honestamente que não conseguiu consolidar. Falha real é da tool não devolver total — não do agente. Resposta fica curta demais e sem nenhuma informação útil para o usuário.",
+      "sugestao_prompt": "Adicionar regra: 'Quando contas_a_receber vier truncado sem total, listar os N maiores títulos disponíveis na resposta e avisar que o total exato exige consulta direcionada'.",
+      "correcao_factual": "nao_aplicavel"
+    },
+    {
+      "batch": "batch-0003",
+      "turnoId": "b898e94e-9aaf-4505-84fb-a4aab6116a16",
+      "status": "PARCIAL",
+      "patterns": [
+        "dado_inventado"
+      ],
+      "razao": "Erro de leitura do toolResult: agregado_quantidade.soma é 6.325 (total geral, incluindo 270 sem UF), não '6.325 com UF informada'. O correto seria 6.055 com UF e 270 sem UF, total 6.325. A lista por UF está correta.",
+      "sugestao_prompt": "Adicionar regra: 'Em cadastro_parceiros_por_uf, distinguir entre total absoluto (agregado.soma) e total com UF informada (soma das linhas com uf != null)'.",
+      "correcao_factual": "nao_bate"
+    },
+    {
+      "batch": "batch-0004",
+      "turnoId": "df8bd423-4469-47df-933d-350d5181ca56",
+      "status": "PARCIAL",
+      "patterns": [
+        "tool_errada"
+      ],
+      "razao": "Usuário pediu 'vendedores cadastrados'; a IA usou comercial_pedidos_por_vendedor (só lista vendedores com pedidos). Lista 20 mas pode haver vendedores cadastrados sem pedidos não capturados.",
+      "sugestao_prompt": "Adicionar regra: 'Quando usuário pedir vendedores cadastrados (não pedidos), preferir tool de cadastros se existir; senão, esclarecer que a lista é só de vendedores com pedidos no ERP'.",
+      "correcao_factual": "bate"
+    },
+    {
+      "batch": "batch-0004",
+      "turnoId": "e490a8bb-b09f-4d8b-8f24-52167d075e59",
+      "status": "PARCIAL",
+      "patterns": [
+        "limitacao_real_declarada",
+        "formato_quebrado"
+      ],
+      "razao": "Saldo do 102 (16 un, R$ 258.370,44, 5 locais) bate; mas para a 2ª parte (notas saídas) usou registrar_lacuna e concatenou texto genérico no fim, sem deixar claro que a 1ª parte foi respondida e a 2ª recusada.",
+      "sugestao_prompt": "Adicionar regra: 'Em perguntas multi-parte com lacuna em uma parte, separar visualmente a parte respondida da parte sem dado, evitando concatenar texto de recusa logo após o dado real'.",
+      "correcao_factual": "bate"
+    },
+    {
+      "batch": "batch-0004",
+      "turnoId": "eee7496a-c60b-4150-ba65-d86d3a881f21",
+      "status": "ERRADO",
+      "patterns": [
+        "recusa_indevida",
+        "pergunta_ignorada"
+      ],
+      "razao": "A tool financeiro_contas_a_pagar retornou estado=ok com lista de títulos (vrSaldo, fornecedores), mas a IA respondeu 'não disponível no ERP'. Recusa indevida com dado em mãos.",
+      "sugestao_prompt": "Adicionar regra: 'Se uma tool retornou estado=ok com dados, NUNCA responder que a informação não está disponível; sintetizar os dados retornados'.",
+      "correcao_factual": "nao_bate"
+    },
+    {
+      "batch": "batch-0004",
+      "turnoId": "f5df9c53-4907-4132-9997-dabfdbc6b540",
+      "status": "ERRADO",
+      "patterns": [
+        "dado_inventado",
+        "fluxo_tool_incompleto"
+      ],
+      "razao": "Só chamou fiscal_faturamento_por_cliente, mas afirma 'R$ 322.236,75 a receber' — não há tool de contas a receber chamada. Valor inventado. Faltou encadear tool de contas a receber por cliente.",
+      "sugestao_prompt": "Adicionar regra: 'Pergunta sobre cliente + saldo a receber? Encadear fiscal_faturamento_por_cliente para identificar o cliente -> tool de contas a receber filtrada pelo parceiroId. Jamais inventar valor financeiro sem tool'.",
+      "correcao_factual": "nao_bate"
+    }
+  ]
+}
