@@ -5,6 +5,7 @@
   "description": "Plataforma de dados do ERP Odoo da Matrix Fitness Group, dashboard e MCP",
   "scripts": {
     "dev": "next dev",
+    "dev:fresh": "pkill -f 'next-server' 2>/dev/null; pkill -f 'next dev' 2>/dev/null; sleep 1; rm -rf .next && npx prisma generate && npm run dev",
     "build": "prisma generate && NODE_ENV=production next build",
     "start": "next start",
     "lint": "eslint",

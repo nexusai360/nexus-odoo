@@ -46,6 +46,25 @@ Ambas leem de um **banco interno (cache)** alimentado por sincronização perió
 
 ---
 
+## 2.2 Atalho de manutenção dev local: `npm run dev:fresh`
+
+> Quando o usuário disser **"atualiza a plataforma"**, **"coloca na última
+> versão"**, **"sobe o sistema atualizado"**, **"reinicia o dev"**,
+> **"limpa o cache do next"** ou variações ("a versão está velha",
+> "tá desatualizado"), execute o script:
+>
+> ```bash
+> npm run dev:fresh
+> ```
+>
+> O script (definido em `package.json`) faz:
+> 1. mata processos `next dev` / `next-server`;
+> 2. apaga `.next` (cache do Turbopack);
+> 3. roda `npx prisma generate` (caso schema tenha mudado);
+> 4. sobe `npm run dev` de novo.
+>
+> Rode com `nohup ... > /tmp/nexus-dev.log 2>&1 &` quando for em background.
+
 ## 2.1 REGRA DE RAIZ: rebuild de containers após mudança de código
 
 > **Inegociável.** A stack dev (`docker-compose.yml` + `docker-compose.override.yml`)
