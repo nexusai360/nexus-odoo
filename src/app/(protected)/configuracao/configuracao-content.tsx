@@ -65,6 +65,7 @@ interface SyncStateRow {
 const SYNC_TYPE_LABELS: Record<string, { label: string; description: string }> = {
   incremental: { label: "Incremental", description: "mudanças recentes" },
   snapshot: { label: "Completa", description: "espelho completo" },
+  estatico: { label: "Estático", description: "dados raros de mudar" },
   reconcile: { label: "Reconciliação", description: "remoções" },
 };
 
@@ -600,11 +601,12 @@ export function ConfiguracaoContent({ config, estado }: Props) {
           </Button>
         </CardHeader>
         <CardContent className="space-y-6">
-          <div className="grid gap-4 sm:grid-cols-3">
-            {FIELD_LABELS.map(([key, typeKey, label, helper]) => {
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+            {FIELD_LABELS.flatMap(([key, typeKey, label, helper]) => {
               const fieldInvalid = !isFieldValid(form[key]);
               const readable = minToReadable(form[key]);
-              return (
+              const exec = ultimasExecucoes.find((u) => u.typeKey === typeKey);
+              const editableCard = (
                 <div key={key} className="flex flex-col gap-1.5">
                   <Label htmlFor={key}>{label}</Label>
                   <div className="relative flex items-center">
@@ -635,21 +637,56 @@ export function ConfiguracaoContent({ config, estado }: Props) {
                   ) : (
                     <p className="text-xs text-muted-foreground">{helper}</p>
                   )}
-                  {/* Última execução , uma linha sutil sob cada campo. */}
-                  {(() => {
-                    const exec = ultimasExecucoes.find((u) => u.typeKey === typeKey);
-                    if (!exec) return null;
-                    return (
-                      <p className="text-[11px] text-muted-foreground/80">
-                        Última execução:{" "}
-                        <span className="tabular-nums">
-                          {exec.date ? formatDateTime(exec.date) : ","}
-                        </span>
-                      </p>
-                    );
-                  })()}
+                  {exec ? (
+                    <p className="text-[11px] text-muted-foreground/80">
+                      Última execução:{" "}
+                      <span className="tabular-nums">
+                        {exec.date ? formatDateTime(exec.date) : ","}
+                      </span>
+                    </p>
+                  ) : null}
                 </div>
               );
+              // Apos Completa (snapshot), insere card read-only do Estatico
+              // pra manter ordem: Incremental -> Completa -> Estatico -> Reconciliacao.
+              if (key === "snapshotIntervalMin") {
+                const execEst = latestDate(estado, "lastSnapshotAt");
+                const estaticoCard = (
+                  <div
+                    key="estatico-readonly"
+                    className="flex flex-col gap-1.5 opacity-80"
+                  >
+                    <Label>Estático</Label>
+                    <div className="relative flex items-center">
+                      <Input
+                        type="number"
+                        value={form.snapshotIntervalMin}
+                        readOnly
+                        disabled
+                        className="pr-12 cursor-not-allowed"
+                        aria-label="Estatico (compartilha com Completa)"
+                      />
+                      <span
+                        className="pointer-events-none absolute right-3 text-xs text-muted-foreground select-none"
+                        aria-hidden="true"
+                      >
+                        min
+                      </span>
+                    </div>
+                    <p className="text-xs text-muted-foreground">
+                      segue o intervalo da Completa (dados raros de mudar)
+                    </p>
+                    <p className="text-[11px] text-muted-foreground/80">
+                      Última execução:{" "}
+                      <span className="tabular-nums">
+                        {execEst ? formatDateTime(execEst) : ","}
+                      </span>
+                    </p>
+                  </div>
+                );
+                return [editableCard, estaticoCard];
+              }
+              return [editableCard];
             })}
           </div>
 

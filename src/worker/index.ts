@@ -168,9 +168,11 @@ directedSyncWorker.on("error", (err) => console.error("[directed-sync-worker] er
 
 // Guarda de sobreposição cluster-safe: lock no Redis com TTL (WR-01). Sobrevive
 // a restart e protege contra uma segunda réplica do worker rodando o mesmo
-// ciclo. TTL generoso (2h) cobre ciclos longos; se o worker morrer no meio, o
-// lock expira sozinho e o próximo ciclo destrava.
-const LOCK_TTL_MS = 2 * 60 * 60 * 1000;
+// ciclo. Reduzido de 2h para 15min: 2h mascarava lock zumbi (incremental
+// que travasse sem liberar prendia a fila por ate 2h). 15min eh folgado
+// pra ciclo honesto (incremental leva segundos; snapshot 1-2min), mas se
+// algo travar, o lock expira sozinho e a fila destrava sem intervencao.
+const LOCK_TTL_MS = 15 * 60 * 1000;
 const lockKey = (jobName: string) => `odoo-sync:lock:${jobName}`;
 
 /** Tenta adquirir o lock do ciclo. Retorna true se conseguiu. */
