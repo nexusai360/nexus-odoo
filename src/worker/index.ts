@@ -173,6 +173,11 @@ directedSyncWorker.on("error", (err) => console.error("[directed-sync-worker] er
 // pra ciclo honesto (incremental leva segundos; snapshot 1-2min), mas se
 // algo travar, o lock expira sozinho e a fila destrava sem intervencao.
 const LOCK_TTL_MS = 15 * 60 * 1000;
+// Hard timeout do rodarCiclo: se passar disso sem retornar (ex.: chamada
+// HTTP ao Tauga hangando sem timeout proprio), aborta. Pareado com o
+// LOCK_TTL_MS pra garantir que o lock sempre libera mesmo se algo
+// "ainda rodando" for mentira.
+const CYCLE_HARD_TIMEOUT_MS = 10 * 60 * 1000;
 const lockKey = (jobName: string) => `odoo-sync:lock:${jobName}`;
 
 /** Tenta adquirir o lock do ciclo. Retorna true se conseguiu. */
@@ -279,7 +284,23 @@ const worker = new Worker(
     }
     const inicio = Date.now();
     try {
-      await rodarCiclo(job.name);
+      // Race contra timeout duro: ciclo precisa terminar em
+      // CYCLE_HARD_TIMEOUT_MS. Se hangar (ex.: HTTP ao Tauga sem
+      // timeout), rejeita; o finally libera o lock pra fila destravar.
+      await Promise.race([
+        rodarCiclo(job.name),
+        new Promise<never>((_, reject) =>
+          setTimeout(
+            () =>
+              reject(
+                new Error(
+                  `ciclo "${job.name}" excedeu hard timeout de ${CYCLE_HARD_TIMEOUT_MS / 60_000}min`,
+                ),
+              ),
+            CYCLE_HARD_TIMEOUT_MS,
+          ),
+        ),
+      ]);
       console.log(`[worker] ciclo "${job.name}" concluído em ${Date.now() - inicio}ms`);
       // Self-healing: incremental bem-sucedido = Tauga vivo → drena pendentes.
       if (job.name === JOB_INCREMENTAL) {
