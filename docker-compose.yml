@@ -54,6 +54,11 @@ services:
       - ODOO_DB=${ODOO_DB}
       - ODOO_USERNAME=${ODOO_USERNAME}
       - ODOO_PASSWORD=${ODOO_PASSWORD}
+      # Heap V8 padrao (~2GB) estourava ao processar 5+ tabelas grandes
+      # em paralelo (sped.documento.item=214k, sped.documento=47k, etc).
+      # 4GB cobre com folga e evita "Ineffective mark-compacts near heap
+      # limit" que matava o worker em loop de restart.
+      - NODE_OPTIONS=--max-old-space-size=4096
     depends_on:
       - db
       - redis

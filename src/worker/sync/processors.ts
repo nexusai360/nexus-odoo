@@ -56,10 +56,14 @@ async function pool<T>(
   await Promise.all(runners);
 }
 
-/** Concorrencia do incremental: 5 tabelas em paralelo. Antes era
- *  sequencial (1) e 107 tabelas levavam ~20min no Tauga. Com 5 paralelos,
- *  cycle vai pra ~4-6min. Conservador pra nao bater rate limit do Tauga;
- *  se aguentar bem, subir pra 10. */
+/** Concorrencia do incremental: 5 tabelas em paralelo.
+ *  Jornada: sequencial(1) -> 5 -> 10 -> 5.
+ *  Com 10, o worker bateu OOM (FATAL "Ineffective mark-compacts near
+ *  heap limit") porque o pool carregava 10 tabelas pesadas em memoria
+ *  ao mesmo tempo (sped.documento.item=214k, sped.documento=47k, etc).
+ *  Heap default de 2GB nao aguentou. Voltamos pra 5 e subimos heap pra
+ *  4GB via NODE_OPTIONS no docker-compose.yml. Esperado: cycle ~5-8min,
+ *  estavel, sem OOM, sem restart loop. */
 const INCREMENTAL_CONCURRENCY = 5;
 
 export async function processIncrementalCycle(
