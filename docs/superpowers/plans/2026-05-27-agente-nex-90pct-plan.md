@@ -1,6 +1,6 @@
-# Agente Nex ≥90% Implementation Plan (v2)
+# Agente Nex ≥90% Implementation Plan (v3)
 
-> **Histórico:** v1 → review #1 (12 achados) → v2 (incorpora 3 CRIT + 5 HIGH + 4 MED). Review #2 pendente.
+> **Histórico:** v1 → review #1 (12 achados) → v2 → review #2 (8 achados) → v3 (incorpora 2 CRIT + 4 HIGH + 2 MED da review #2).
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
@@ -25,7 +25,8 @@ Este plano se decompõe em **11 PRs sequenciais** organizados em 4 ondas. Cada P
 | **PR1** | 1.A | Framework `envelope`/`periodo`/`responder`/`agrupador` + testes | 1-2 | — |
 | **PR2** | 1.B+1.C | Aplicar envelope+formatadores em **todas as 25 tools** (7 sub-tasks por domínio) — HIGH-F endereçado | 3-4 | PR1 + research R-1/R-2 |
 | PR3 | 1.D | A9 (match exato saldo), A10 fase 1, A13 (gate suave) | 1 | PR2 + R-3 |
-| **PR4a** | 1.E | Schema delta + AutoValidator standalone (módulo isolado, testes) — CRIT-C | 1-2 | PR3 |
+| **PR4-pre** | 1.E | Schema delta + migration + `prisma generate` (HIGH-γ v2) | 0.5 | PR3 |
+| **PR4a** | 1.E | AutoValidator standalone (módulo isolado, testes 281 CORRETO + 17 ERRADO) — CRIT-C v1 | 1-2 | PR4-pre |
 | **PR4b** | 1.E | Integração do AutoValidator no `run-agent.ts` | 1 | PR4a |
 | **PR4c** | 1.E | Briefing v3 + prompt mínimo (`_RESPOSTA`) + lock hash | 0.5 | PR4b |
 | PR5 | 1.5 | Promoção shadow→active + prompt fix `periodoNome` | 0.5 | shadow validado |
@@ -865,6 +866,20 @@ describe("calculosCanonicosPorTool", () => {
     expect(calculosCanonicosPorTool("tool_xyz")).toEqual([]);
   });
 });
+
+// CRIT-α v2: teste de contrato. SKIP em PR1, PR2 remove o .skip.
+describe.skip("contrato pré-PR2 (TOOLS_QUE_PRECISAM_FORMATADOR)", () => {
+  it("nenhuma tool da lista ainda usa fmtGenerico", async () => {
+    const { TOOLS_QUE_PRECISAM_FORMATADOR, formatadorPorTool, ehFormatadorGenerico } =
+      await import("./responder");
+    const faltam: string[] = [];
+    for (const tool of TOOLS_QUE_PRECISAM_FORMATADOR) {
+      const fmt = formatadorPorTool(tool);
+      if (ehFormatadorGenerico(fmt)) faltam.push(tool);
+    }
+    expect(faltam).toEqual([]);
+  });
+});
 ```
 
 - [ ] **Step 4.2: Rodar para confirmar falha**
@@ -1291,10 +1306,27 @@ PATTERN_TO_FIXES = {
     "tool_errada": ("F26,F27", "1+3", 55),
     "placeholder_nao_substituido": ("F18,F19", "1", 80),
     "limitacao_real_declarada": ("legitimo", "fora", 0),
-    "acerto_objetividade": ("legitimo", "fora", 0),
     "acerto_modelo": ("legitimo", "fora", 0),
     "acerto_encadeamento": ("legitimo", "fora", 0),
+    # CRIT-β v2: acerto_objetividade nao mapeia direto — depende do status.
+    # Quando o caso eh PARCIAL/ERRADO e tem acerto_objetividade, usa-se o
+    # proximo pattern negativo da lista. Tratado abaixo no codigo.
 }
+
+NEGATIVE_FALLBACK_PRIORITY = [
+    "dado_inventado",
+    "fluxo_tool_incompleto",
+    "resposta_truncada",
+    "recusa_indevida",
+    "entendeu_mal_termo",
+    "pergunta_ignorada",
+    "tool_errada",
+    "parametro_incompleto",
+    "formato_quebrado",
+    "erro_data",
+    "placeholder_nao_substituido",
+    "pediu_clarificacao_desnecessaria",
+]
 
 with open(IN) as f, open(OUT, "w", newline="") as out:
     w = csv.writer(out)
@@ -1306,8 +1338,20 @@ with open(IN) as f, open(OUT, "w", newline="") as out:
             continue
         c = json.loads(line)
         pats = c.get("patterns") or []
-        # principal = primeiro negativo, ou primeiro
-        princ = next((p for p in pats if not p.startswith("acerto") and p != "limitacao_real_declarada"), pats[0] if pats else "?")
+        status = c.get("status")
+        # CRIT-β v2: acerto_objetividade so eh "legitimo" quando status==FORA.
+        # Caso contrario, ignora e procura proximo pattern negativo.
+        if status == "FORA_DO_ESCOPO":
+            princ = next(
+                (p for p in pats if p in ("limitacao_real_declarada", "acerto_objetividade", "acerto_modelo", "acerto_encadeamento")),
+                pats[0] if pats else "?",
+            )
+        else:
+            # PARCIAL ou ERRADO: prioriza pattern negativo da lista
+            princ = next(
+                (p for p in NEGATIVE_FALLBACK_PRIORITY if p in pats),
+                next((p for p in pats if not p.startswith("acerto") and p != "limitacao_real_declarada"), pats[0] if pats else "?"),
+            )
         fixes, onda, prob = PATTERN_TO_FIXES.get(princ, ("?", "?", 0))
         w.writerow([
             c.get("evalId"),
