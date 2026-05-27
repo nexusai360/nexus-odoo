@@ -21,6 +21,7 @@ const prisma = new PrismaClient({ adapter });
 const MARKERS = {
   R17: "[AUDIT-POS-2026-05-27T15-10-40]",
   R18: "[AUDIT-POS-2026-05-27T16-16-15]",
+  R19: "[AUDIT-POS-2026-05-27T21-50-50]",
 };
 
 type DumpItem = {
