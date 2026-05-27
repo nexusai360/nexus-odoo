@@ -293,7 +293,7 @@ function RodadaMultiSelect({
             aria-label="Filtrar por rodada"
             aria-haspopup="listbox"
             aria-expanded={open}
-            className="flex h-9 min-w-[220px] cursor-pointer items-center justify-between gap-2 rounded-lg border border-border bg-card px-3 text-sm text-foreground transition-colors hover:border-muted-foreground/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-500"
+            className="flex h-9 w-[180px] cursor-pointer items-center justify-between gap-2 rounded-lg border border-border bg-card px-3 text-sm text-foreground transition-colors hover:border-muted-foreground/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-500"
           >
             <span className="truncate">{triggerLabel}</span>
             <ChevronDown
@@ -309,7 +309,7 @@ function RodadaMultiSelect({
       <PopoverContent
         align="end"
         sideOffset={4}
-        className="min-w-[260px] w-auto overflow-hidden p-1"
+        className="w-[200px] overflow-hidden p-1"
       >
         {options.length === 0 ? (
           <div className="px-3 py-2 text-xs text-muted-foreground">
