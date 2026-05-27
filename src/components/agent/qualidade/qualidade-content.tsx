@@ -8,10 +8,17 @@
  * inline. Server actions com gate super_admin.
  */
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { Check, ChevronDown, X } from "lucide-react";
 
 import { CustomSelect } from "@/components/ui/custom-select";
 import { PeriodPills } from "@/components/reports/period-pills";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import { cn } from "@/lib/utils";
 import {
   DEFAULT_TZ,
   getPeriodInTz,
@@ -71,7 +78,7 @@ export function QualidadeContent({ minDate }: QualidadeContentProps) {
   const [pill, setPill] = useState<PeriodKey>("mes_atual");
   const [customRange, setCustomRange] = useState<{ start: string; end: string }>();
   const [model, setModel] = useState<string>("all");
-  const [rodada, setRodada] = useState<string>("all");
+  const [selectedRodadas, setSelectedRodadas] = useState<string[]>([]);
 
   const [models, setModels] = useState<string[]>([]);
   const [rodadas, setRodadas] = useState<Array<{ marker: string; count: number }>>([]);
@@ -99,9 +106,9 @@ export function QualidadeContent({ minDate }: QualidadeContentProps) {
       periodStart: period.start.toISOString(),
       periodEnd: period.end.toISOString(),
       models: model === "all" ? undefined : [model],
-      rodadas: rodada === "all" ? undefined : [rodada],
+      rodadas: selectedRodadas.length > 0 ? selectedRodadas : undefined,
     }),
-    [period, model, rodada],
+    [period, model, selectedRodadas],
   );
 
   // Range completo do periodo (sem filtro de rodada) para popular o
@@ -131,9 +138,10 @@ export function QualidadeContent({ minDate }: QualidadeContentProps) {
     void fetchQualityDistinctRodadas(rangeFilters)
       .then((list) => {
         setRodadas(list);
-        if (rodada !== "all" && !list.some((r) => r.marker === rodada)) {
-          setRodada("all");
-        }
+        // Tira da selecao as rodadas que sumiram do periodo.
+        setSelectedRodadas((prev) =>
+          prev.filter((r) => list.some((opt) => opt.marker === r)),
+        );
       })
       .catch((err) => {
         console.error("[Qualidade] falha ao carregar rodadas:", err);
@@ -146,7 +154,7 @@ export function QualidadeContent({ minDate }: QualidadeContentProps) {
     try {
       const [k, ev, daily, patterns] = await Promise.all([
         fetchQualityKpis(baseFilters),
-        fetchQualityEvaluations(baseFilters, { page: 1, pageSize: 25 }),
+        fetchQualityEvaluations(baseFilters, { page: 1, pageSize: 50 }),
         fetchQualityDailyCorrectness(baseFilters),
         fetchQualityTopPatterns(baseFilters),
       ]);
@@ -197,18 +205,17 @@ export function QualidadeContent({ minDate }: QualidadeContentProps) {
               ...models.map((m) => ({ value: m, label: m })),
             ]}
           />
-          <CustomSelect
-            value={rodada}
-            onChange={setRodada}
-            triggerClassName="min-h-[36px] h-9 min-w-[220px]"
-            aria-label="Rodada (batch de auditoria)"
-            options={[
-              { value: "all", label: "Todas as rodadas" },
-              ...rodadas.map((r) => ({
-                value: r.marker,
-                label: `${markerToRodadaName(r.marker)} · ${r.count}`,
-              })),
-            ]}
+          <RodadaMultiSelect
+            options={rodadas}
+            selected={selectedRodadas}
+            onToggle={(marker) =>
+              setSelectedRodadas((prev) =>
+                prev.includes(marker)
+                  ? prev.filter((x) => x !== marker)
+                  : [...prev, marker],
+              )
+            }
+            onClear={() => setSelectedRodadas([])}
           />
         </div>
       </div>
@@ -252,5 +259,109 @@ export function QualidadeContent({ minDate }: QualidadeContentProps) {
         />
       )}
     </div>
+  );
+}
+
+/** Multi-select de rodadas com checkboxes + Badge (igual ao StatusMultiSelect). */
+function RodadaMultiSelect({
+  options,
+  selected,
+  onToggle,
+  onClear,
+}: {
+  options: Array<{ marker: string; count: number }>;
+  selected: string[];
+  onToggle: (marker: string) => void;
+  onClear: () => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const triggerRef = useRef<HTMLButtonElement>(null);
+  const triggerLabel =
+    selected.length === 0
+      ? "Todas as rodadas"
+      : selected.length === 1
+        ? markerToRodadaName(selected[0])
+        : `${selected.length} rodadas`;
+
+  return (
+    <Popover open={open} onOpenChange={setOpen}>
+      <PopoverTrigger
+        render={
+          <button
+            ref={triggerRef}
+            type="button"
+            aria-label="Filtrar por rodada"
+            aria-haspopup="listbox"
+            aria-expanded={open}
+            className="flex h-9 min-w-[220px] cursor-pointer items-center justify-between gap-2 rounded-lg border border-border bg-card px-3 text-sm text-foreground transition-colors hover:border-muted-foreground/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-500"
+          >
+            <span className="truncate">{triggerLabel}</span>
+            <ChevronDown
+              className={cn(
+                "h-4 w-4 shrink-0 text-muted-foreground transition-transform",
+                open && "rotate-180",
+              )}
+              aria-hidden="true"
+            />
+          </button>
+        }
+      />
+      <PopoverContent
+        align="end"
+        sideOffset={4}
+        className="min-w-[260px] w-auto overflow-hidden p-1"
+      >
+        {options.length === 0 ? (
+          <div className="px-3 py-2 text-xs text-muted-foreground">
+            Sem rodadas no período.
+          </div>
+        ) : (
+          <ul role="listbox" aria-label="Rodada" className="flex flex-col">
+            {options.map((opt) => {
+              const isOn = selected.includes(opt.marker);
+              return (
+                <li key={opt.marker} role="presentation">
+                  <button
+                    type="button"
+                    role="option"
+                    aria-selected={isOn}
+                    onClick={() => onToggle(opt.marker)}
+                    className="flex w-full cursor-pointer items-center gap-2 rounded-md px-2 py-1.5 text-left text-sm transition-colors hover:bg-accent"
+                  >
+                    <span
+                      className={cn(
+                        "flex h-4 w-4 shrink-0 items-center justify-center rounded border border-border bg-background transition-colors",
+                        isOn && "border-violet-500 bg-violet-500 text-white",
+                      )}
+                      aria-hidden
+                    >
+                      {isOn ? <Check className="h-3 w-3" /> : null}
+                    </span>
+                    <span className="inline-flex items-center rounded-full border border-border bg-muted/40 px-2 py-0.5 font-mono text-xs text-muted-foreground">
+                      {markerToRodadaName(opt.marker)}
+                    </span>
+                    <span className="ml-auto text-xs text-muted-foreground">
+                      {opt.count}
+                    </span>
+                  </button>
+                </li>
+              );
+            })}
+          </ul>
+        )}
+        {selected.length > 0 && (
+          <div className="mt-1 border-t border-border pt-1">
+            <button
+              type="button"
+              onClick={onClear}
+              className="flex w-full cursor-pointer items-center gap-2 rounded-md px-2 py-1.5 text-left text-xs text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+            >
+              <X className="h-3 w-3" aria-hidden />
+              Limpar seleção
+            </button>
+          </div>
+        )}
+      </PopoverContent>
+    </Popover>
   );
 }

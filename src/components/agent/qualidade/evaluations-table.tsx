@@ -44,7 +44,7 @@ import {
 } from "./evaluations-table-filters";
 import { EvaluationDrilldown } from "./evaluation-drilldown";
 
-const PAGE_SIZE_OPTIONS = [25, 50, 100] as const;
+const PAGE_SIZE_OPTIONS = [50, 100, 500] as const;
 type PageSize = (typeof PAGE_SIZE_OPTIONS)[number];
 
 const STATUS_LABEL: Record<EvalStatus, string> = {
@@ -105,7 +105,7 @@ export function EvaluationsTable({
   const [data, setData] = useState<InitialData>(initialData);
   const [loading, setLoading] = useState(false);
   const [page, setPage] = useState(1);
-  const [pageSize, setPageSize] = useState<PageSize>(25);
+  const [pageSize, setPageSize] = useState<PageSize>(50);
   const [expandedId, setExpandedId] = useState<string | null>(null);
 
   const [filters, setFilters] = useState<EvaluationsTableFiltersValue>({
