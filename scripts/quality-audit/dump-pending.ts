@@ -90,13 +90,46 @@ async function main() {
     evals.map(async (e) => {
       let toolCalls: unknown = null;
       let toolResults: unknown = null;
+      // BUG FIX: agrega tools de TODAS as assistant messages do turno
+      // (intermediarias tem tools, final nao tem).
       if (e.assistantMessageId) {
-        const msg = await prisma.message.findUnique({
+        const finalMsg = await prisma.message.findUnique({
           where: { id: e.assistantMessageId },
-          select: { toolCalls: true, toolResults: true },
+          select: { createdAt: true, conversationId: true },
         });
-        toolCalls = msg?.toolCalls ?? null;
-        toolResults = msg?.toolResults ?? null;
+        if (finalMsg) {
+          const lastUser = await prisma.message.findFirst({
+            where: {
+              conversationId: finalMsg.conversationId,
+              role: "user",
+              createdAt: { lt: finalMsg.createdAt },
+            },
+            orderBy: { createdAt: "desc" },
+            select: { createdAt: true },
+          });
+          const assistants = await prisma.message.findMany({
+            where: {
+              conversationId: finalMsg.conversationId,
+              role: "assistant",
+              createdAt: {
+                ...(lastUser ? { gt: lastUser.createdAt } : {}),
+                lte: finalMsg.createdAt,
+              },
+            },
+            orderBy: { createdAt: "asc" },
+            select: { toolCalls: true, toolResults: true },
+          });
+          const calls: unknown[] = [];
+          const results: unknown[] = [];
+          for (const m of assistants) {
+            if (Array.isArray(m.toolCalls)) calls.push(...(m.toolCalls as unknown[]));
+            else if (m.toolCalls != null) calls.push(m.toolCalls);
+            if (Array.isArray(m.toolResults)) results.push(...(m.toolResults as unknown[]));
+            else if (m.toolResults != null) results.push(m.toolResults);
+          }
+          toolCalls = calls.length > 0 ? calls : null;
+          toolResults = results.length > 0 ? results : null;
+        }
       }
       return {
         evaluationId: e.id,

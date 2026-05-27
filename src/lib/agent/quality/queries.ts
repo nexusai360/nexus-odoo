@@ -246,15 +246,52 @@ export async function getEvaluationDetail(
 
   if (!ev) return null;
 
+  // BUG FIX (2026-05-26): a Message linkada via assistantMessageId é a
+  // mensagem FINAL do turno (persistMessageAndReturnId, SEM toolCalls).
+  // As toolCalls vivem nas Messages assistant INTERMEDIARIAS do mesmo
+  // turno (persistAssistantMessageWithTools). Pra mostrar o que o agente
+  // realmente fez, agregamos TODAS as messages assistant entre a ultima
+  // user message anterior e a assistantMessageId final.
   let toolCalls: unknown = null;
   let toolResults: unknown = null;
   if (ev.assistantMessageId) {
-    const msg = await prisma.message.findUnique({
+    const finalMsg = await prisma.message.findUnique({
       where: { id: ev.assistantMessageId },
-      select: { toolCalls: true, toolResults: true },
+      select: { createdAt: true, conversationId: true },
     });
-    toolCalls = msg?.toolCalls ?? null;
-    toolResults = msg?.toolResults ?? null;
+    if (finalMsg) {
+      const lastUserBefore = await prisma.message.findFirst({
+        where: {
+          conversationId: finalMsg.conversationId,
+          role: "user",
+          createdAt: { lt: finalMsg.createdAt },
+        },
+        orderBy: { createdAt: "desc" },
+        select: { createdAt: true },
+      });
+      const assistantsTurno = await prisma.message.findMany({
+        where: {
+          conversationId: finalMsg.conversationId,
+          role: "assistant",
+          createdAt: {
+            ...(lastUserBefore ? { gt: lastUserBefore.createdAt } : {}),
+            lte: finalMsg.createdAt,
+          },
+        },
+        orderBy: { createdAt: "asc" },
+        select: { toolCalls: true, toolResults: true },
+      });
+      const calls: unknown[] = [];
+      const results: unknown[] = [];
+      for (const m of assistantsTurno) {
+        if (Array.isArray(m.toolCalls)) calls.push(...(m.toolCalls as unknown[]));
+        else if (m.toolCalls != null) calls.push(m.toolCalls);
+        if (Array.isArray(m.toolResults)) results.push(...(m.toolResults as unknown[]));
+        else if (m.toolResults != null) results.push(m.toolResults);
+      }
+      toolCalls = calls.length > 0 ? calls : null;
+      toolResults = results.length > 0 ? results : null;
+    }
   }
 
   return {
