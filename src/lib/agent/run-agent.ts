@@ -364,6 +364,14 @@ export async function runAgent(args: RunAgentInput): Promise<RunAgentResult> {
     // toolResult do turno.
     const allTurnToolResults: string[] = [];
 
+    // Onda 1.E (Onda Nex >=90%): coleta estruturada dos tool results para o
+    // AutoValidator. Cada item tem toolName + dados parseados (envelope canonico
+    // quando aplicavel). Default = shadow mode (so loga retryReason, nao retenta).
+    const allTurnEnvelopes: Array<{
+      toolName: string;
+      dados?: Record<string, unknown>;
+    }> = [];
+
     for (let i = 0; i < MAX_ITERATIONS; i++) {
       const iterStart = Date.now();
 
@@ -585,6 +593,28 @@ export async function runAgent(args: RunAgentInput): Promise<RunAgentResult> {
           console.warn("[runAgent] guardrail factual skipped:", errGuard);
         }
 
+        // Onda 1.E (Nex >=90%): AutoValidator em modo shadow.
+        // Roda os 4 validadores (V1 anti-truncamento, V2 anti-invencao,
+        // V3 anti-recusa, V4 anti-placeholder). Modo shadow apenas LOGA o
+        // retryReason; nao retenta. Active mode (com retry) entra em PR
+        // separado apos coletar dados de FP rate em producao.
+        // Spec: docs/superpowers/specs/2026-05-27-agente-nex-90pct-spec.md §3.1 A12
+        try {
+          const { validateResponse } = await import("./validation/auto-validator");
+          const outcome = validateResponse({
+            question: args.userMessage,
+            llmResponse: message,
+            toolResults: allTurnEnvelopes,
+          });
+          if (!outcome.ok) {
+            console.warn(
+              `[autoValidator:shadow] ${outcome.reason} fired conversationId=${args.conversationId} detalhe=${outcome.detalhe}`,
+            );
+          }
+        } catch (err) {
+          console.warn("[autoValidator] failed (shadow):", err);
+        }
+
         const assistantMessageId = await persistMessageAndReturnId(
           args.conversationId,
           "assistant",
@@ -783,6 +813,24 @@ export async function runAgent(args: RunAgentInput): Promise<RunAgentResult> {
       // Guardrail factual: acumula todos os results deste turno para
       // checagem antes do persist da mensagem final.
       allTurnToolResults.push(...Object.values(toolResultsMap));
+
+      // Onda 1.E: tambem coleta estruturado para AutoValidator. Cada tool result
+      // pode (ou nao) ter envelope canonico (campo `dados` com _RESPOSTA, etc).
+      for (const tc of result.toolCalls ?? []) {
+        const raw = toolResultsMap[tc.id];
+        if (!raw) continue;
+        try {
+          const parsed = JSON.parse(raw);
+          // Tool result do MCP vem como { estado, dados, ... } ou { estado: "preparando" }
+          const dados =
+            parsed && typeof parsed === "object" && "dados" in parsed
+              ? (parsed.dados as Record<string, unknown>)
+              : (parsed as Record<string, unknown>);
+          allTurnEnvelopes.push({ toolName: tc.name, dados });
+        } catch {
+          // resultado nao-JSON (raro); ignora pro validator
+        }
+      }
     }
 
     // Esgotou iterações
