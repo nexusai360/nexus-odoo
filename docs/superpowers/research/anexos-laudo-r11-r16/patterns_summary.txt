@@ -1,0 +1,97 @@
+# Patterns globais (todos os status PARCIAL/ERRADO/FORA_DO_ESCOPO)
+
+    46  limitacao_real_declarada
+    30  acerto_objetividade
+    21  fluxo_tool_incompleto
+    18  resposta_truncada
+    14  dado_inventado
+    10  entendeu_mal_termo
+     8  formato_quebrado
+     6  pergunta_ignorada
+     4  recusa_indevida
+     4  parametro_incompleto
+     3  pediu_clarificacao_desnecessaria
+     3  tool_errada
+     2  erro_data
+     1  placeholder_nao_substituido
+
+# Patterns por status
+
+
+## PARCIAL
+    20  acerto_objetividade
+    17  fluxo_tool_incompleto
+    15  resposta_truncada
+     9  entendeu_mal_termo
+     6  formato_quebrado
+     5  limitacao_real_declarada
+     3  pediu_clarificacao_desnecessaria
+     3  parametro_incompleto
+     2  dado_inventado
+     2  tool_errada
+     1  pergunta_ignorada
+     1  erro_data
+
+## ERRADO
+    12  dado_inventado
+     5  pergunta_ignorada
+     4  recusa_indevida
+     4  fluxo_tool_incompleto
+     2  formato_quebrado
+     1  tool_errada
+     1  placeholder_nao_substituido
+     1  entendeu_mal_termo
+     1  parametro_incompleto
+     1  erro_data
+
+## FORA_DO_ESCOPO
+    41  limitacao_real_declarada
+    10  acerto_objetividade
+     3  resposta_truncada
+
+# Patterns por rodada
+
+## R11
+     8  limitacao_real_declarada
+     8  fluxo_tool_incompleto
+     4  resposta_truncada
+     3  entendeu_mal_termo
+     2  acerto_objetividade
+
+## R12
+     9  limitacao_real_declarada
+     7  fluxo_tool_incompleto
+     4  resposta_truncada
+     3  entendeu_mal_termo
+     2  acerto_objetividade
+     1  pediu_clarificacao_desnecessaria
+
+## R13
+    26  acerto_objetividade
+
+## R15
+    17  limitacao_real_declarada
+     5  dado_inventado
+     4  resposta_truncada
+     3  parametro_incompleto
+     2  fluxo_tool_incompleto
+     2  tool_errada
+     2  formato_quebrado
+     1  recusa_indevida
+     1  pergunta_ignorada
+     1  placeholder_nao_substituido
+     1  entendeu_mal_termo
+
+## R16
+    12  limitacao_real_declarada
+     9  dado_inventado
+     6  formato_quebrado
+     6  resposta_truncada
+     5  pergunta_ignorada
+     4  fluxo_tool_incompleto
+     3  recusa_indevida
+     3  entendeu_mal_termo
+     2  erro_data
+     2  pediu_clarificacao_desnecessaria
+     1  parametro_incompleto
+     1  tool_errada

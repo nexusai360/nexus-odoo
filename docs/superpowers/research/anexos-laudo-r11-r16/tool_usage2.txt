@@ -1,0 +1,70 @@
+Casos sem tool: 7
+Casos com tool: 137
+
+Tools chamadas (em casos com erro):
+    69  registrar_lacuna
+    19  estoque_saldo_produto
+    12  financeiro_contas_a_receber
+     9  financeiro_contas_a_pagar
+     5  financeiro_titulos_vencidos
+     3  fiscal_notas_recebidas_por_fornecedor
+     3  contabil_plano_de_contas
+     3  estoque_produtos_parados
+     3  comercial_parcelas_a_vencer
+     3  bi_consulta_avancada
+     3  comercial_pedidos_por_etapa
+     2  estoque_top_movimentados
+     2  comercial_pedidos_periodo
+     2  cadastro_buscar_parceiro
+     2  comercial_pedidos_por_vendedor
+     1  comercial_pedidos_atrasados
+     1  fiscal_notas_recebidas
+     1  financeiro_fluxo_caixa
+     1  fiscal_faturamento_por_cliente
+     1  cadastro_contar_parceiros
+     1  fiscal_notas_emitidas
+     1  cadastro_parceiros_por_uf
+     1  fiscal_apuracao
+
+Por status:
+
+## PARCIAL
+    19  registrar_lacuna
+     8  estoque_saldo_produto
+     7  financeiro_contas_a_pagar
+     6  financeiro_contas_a_receber
+     6  __NENHUMA__
+     5  financeiro_titulos_vencidos
+     3  contabil_plano_de_contas
+     3  estoque_produtos_parados
+     3  comercial_parcelas_a_vencer
+     2  fiscal_notas_recebidas_por_fornecedor
+     2  comercial_pedidos_periodo
+     2  bi_consulta_avancada
+     2  comercial_pedidos_por_etapa
+     2  cadastro_buscar_parceiro
+     1  comercial_pedidos_atrasados
+     1  estoque_top_movimentados
+     1  fiscal_notas_recebidas
+     1  financeiro_fluxo_caixa
+     1  fiscal_faturamento_por_cliente
+     1  fiscal_notas_emitidas
+     1  cadastro_parceiros_por_uf
+     1  comercial_pedidos_por_vendedor
+
+## ERRADO
+    11  estoque_saldo_produto
+     6  financeiro_contas_a_receber
+     2  financeiro_contas_a_pagar
+     1  registrar_lacuna
+     1  cadastro_contar_parceiros
+     1  comercial_pedidos_por_etapa
+     1  bi_consulta_avancada
+     1  fiscal_notas_recebidas_por_fornecedor
+     1  comercial_pedidos_por_vendedor
+     1  fiscal_apuracao
+
+## FORA_DO_ESCOPO
+    49  registrar_lacuna
+     1  estoque_top_movimentados
+     1  __NENHUMA__
