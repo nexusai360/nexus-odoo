@@ -37,7 +37,7 @@ const LACUNAS_REAIS: Array<{
 }> = [
   {
     pattern: /vai (bater|fechar|atingir) (a )?meta|bater.*meta esse m[eê]s/i,
-    resposta: "Não temos cadastro de metas no ERP, então não consigo comparar contra meta. Posso te ajudar com indicadores reais do mês:",
+    resposta: "Infelizmente não tenho cadastro de metas pra comparar. Mas posso te ajudar com indicadores reais do mês:",
     sugestoes: ["Faturamento esse mês", "Comparativo mês vs mês anterior", "Top 5 clientes esse mês"],
   },
   {
@@ -184,7 +184,7 @@ export const registrarLacuna: ToolEntry<Input, Output> = {
       };
     }
     const respGenerica =
-      "Essa informação não está disponível no ERP no momento. Posso te ajudar com outros dados de estoque, financeiro, fiscal, comercial, cadastros ou contábil.";
+      "Infelizmente não tenho dados suficientes pra te responder sobre isso. Mas posso te ajudar com estoque, financeiro, fiscal, comercial, cadastros ou contábil.";
     const sugGenericas = [
       "Faturamento esse mês",
       "Contas a receber em aberto",

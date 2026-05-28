@@ -15,6 +15,10 @@ const inputSchema = z.object({
   limite: z.number().int().min(1).max(50).optional(),
   periodoDe: z.string().optional(),
   periodoAte: z.string().optional(),
+  ordenacao: z.enum(["valor_desc", "valor_asc", "data_asc", "data_desc"]).optional()
+    .describe("Default: valor_desc (maiores por valor). Use data_asc para 'pedido mais antigo em aberto'."),
+  clienteTermo: z.string().min(1).max(120).optional()
+    .describe("Filtra pedidos do cliente que casa com o termo (busca em participanteNome)."),
 });
 
 const linhaSchema = z.object({
@@ -60,6 +64,7 @@ type Output = z.infer<typeof outputSchema>;
 async function queryPedidosListarTopValor(prisma: PrismaClient, input: Input) {
   const status = input.status ?? "aberto";
   const limite = input.limite ?? 10;
+  const ordenacao = input.ordenacao ?? "valor_desc";
   const where: Record<string, unknown> = {};
   if (status === "aberto") where.etapaFinaliza = false;
   else if (status === "fechado") where.etapaFinaliza = true;
@@ -69,10 +74,22 @@ async function queryPedidosListarTopValor(prisma: PrismaClient, input: Input) {
       ...(input.periodoAte ? { lte: new Date(`${input.periodoAte}T23:59:59`) } : {}),
     };
   }
+  if (input.clienteTermo) {
+    where.participanteNome = { contains: input.clienteTermo, mode: "insensitive" };
+  }
+
+  const orderBy: Record<string, "asc" | "desc"> =
+    ordenacao === "valor_asc"
+      ? { vrProdutos: "asc" }
+      : ordenacao === "data_asc"
+        ? { dataOrcamento: "asc" }
+        : ordenacao === "data_desc"
+          ? { dataOrcamento: "desc" }
+          : { vrProdutos: "desc" };
 
   const rows = await prisma.fatoPedido.findMany({
     where,
-    orderBy: { vrProdutos: "desc" },
+    orderBy,
     take: limite,
     select: {
       odooId: true,
@@ -106,10 +123,11 @@ export const comercialPedidosListarTopValor: ToolEntry<Input, Output> = {
   id: "comercial_pedidos_listar_top_valor",
   dominio: "comercial",
   descricao:
-    "Lista os top N pedidos por VALOR (vrProdutos desc), opcionalmente filtrando " +
-    "por status (aberto/fechado/todos) e periodo. Use para 'pedido com maior valor " +
-    "em aberto', 'maiores pedidos', 'top 10 pedidos'. Retorna numero, participante, " +
-    "etapa, vendedor, data e valor de cada pedido + valorTotalListados.",
+    "Lista top N pedidos com filtros e ordenacao flexiveis. Use para: " +
+    "'pedido com maior valor em aberto' (default), 'pedido mais antigo em aberto' " +
+    "(ordenacao=data_asc), 'pedido mais recente' (ordenacao=data_desc), " +
+    "'pedido do cliente Smartfit' (clienteTermo=Smartfit). Aceita status " +
+    "(aberto/fechado/todos), periodo (DE/ATE) e limite (default 10).",
   inputSchemaShape: inputSchema.shape,
   inputSchema,
   outputSchema,

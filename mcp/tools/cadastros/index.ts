@@ -5,6 +5,7 @@ import type { ToolEntry } from "../../catalog/types.js";
 import { cadastroBuscarParceiro } from "./buscar-parceiro.js";
 import { cadastroContarParceiros } from "./contar-parceiros.js";
 import { cadastroParceirosPorUf } from "./parceiros-por-uf.js";
+import { cadastroParceirosPorCidade } from "./parceiros-por-cidade.js";
 import { cadastroDetalharParceiro } from "./detalhar-parceiro.js";
 import { cadastrosServicoBuscar } from "./servico-buscar.js";
 import { cadastrosServicoContar } from "./contar-servicos.js";
@@ -24,6 +25,7 @@ export const cadastrosTools: ToolEntry[] = [
   cadastroBuscarParceiro as ToolEntry,
   cadastroContarParceiros as ToolEntry,
   cadastroParceirosPorUf as ToolEntry,
+  cadastroParceirosPorCidade as ToolEntry,
   cadastroDetalharParceiro as ToolEntry,
   cadastrosServicoBuscar as ToolEntry,
   cadastrosServicoContar as ToolEntry,
