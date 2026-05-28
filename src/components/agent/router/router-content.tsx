@@ -39,22 +39,22 @@ export function RouterContent(props: Props) {
     <div className="space-y-6">
       <RouterKpisBlock kpis={props.kpis} />
 
-      <RouterEmbeddingCredential initial={props.embeddingCredential} />
-
       <div className="grid gap-4 lg:grid-cols-2">
         <RouterHistogramChart buckets={props.buckets} />
         <RouterLatencyChart points={props.latency} />
       </div>
 
-      <div className="grid gap-4 lg:grid-cols-3">
-        <div className="lg:col-span-2">
-          <RouterDiscordanciasTable rows={props.discordancias} />
-        </div>
+      {/* Zona de configuracao: credencial OpenAI e controles do router
+          ficam juntos abaixo dos charts, separados das metricas. */}
+      <div className="grid gap-4 lg:grid-cols-2">
+        <RouterEmbeddingCredential initial={props.embeddingCredential} />
         <RouterControls
           initial={props.settings}
           eligibility={props.eligibility}
         />
       </div>
+
+      <RouterDiscordanciasTable rows={props.discordancias} />
     </div>
   );
 }

@@ -10,7 +10,7 @@
  */
 
 import { useState, useTransition } from "react";
-import Link from "next/link";
+import { useRouter } from "next/navigation";
 import {
   AlertCircle,
   CheckCircle2,
@@ -26,7 +26,6 @@ import {
 } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { buttonVariants } from "@/components/ui/button-variants";
 import { CustomSelect } from "@/components/ui/custom-select";
 import {
   setEmbeddingCredential,
@@ -44,6 +43,7 @@ const dateFmt = new Intl.DateTimeFormat("pt-BR", {
 });
 
 export function RouterEmbeddingCredential({ initial }: Props) {
+  const router = useRouter();
   const [state, setState] = useState<EmbeddingCredentialStatus>(initial);
   const [selectedId, setSelectedId] = useState<string>(
     initial.active?.id ?? initial.options[0]?.id ?? "",
@@ -94,26 +94,22 @@ export function RouterEmbeddingCredential({ initial }: Props) {
       </CardHeader>
       <CardContent className="space-y-4">
         {state.options.length === 0 ? (
-          <div className="space-y-3">
-            <div className="flex items-start gap-2 rounded-lg border border-amber-500/30 bg-amber-500/5 p-3 text-sm">
-              <AlertCircle className="mt-0.5 h-4 w-4 shrink-0 text-amber-400" />
-              <div className="space-y-1 text-amber-100">
-                <p className="font-medium">
-                  Nenhuma chave OpenAI cadastrada.
-                </p>
-                <p className="text-xs text-amber-200/80">
-                  Cadastre uma chave OpenAI primeiro e volte aqui para
-                  selecionar.
-                </p>
-              </div>
-            </div>
-            <Link
-              href="/agente/chaves?provider=openai"
-              className={buttonVariants({ variant: "default" })}
+          // Mesmo padrao do llm-config-form.tsx quando provider nao tem chave:
+          // card pontilhado discreto com botao secundario "Nova chave de OpenAI".
+          <div className="flex flex-col gap-2 rounded-lg border border-dashed border-border bg-muted/20 px-3 py-3 sm:flex-row sm:items-center sm:justify-between">
+            <p className="text-xs text-muted-foreground">
+              Nenhuma chave cadastrada para OpenAI.
+            </p>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => router.push("/agente/chaves?provider=openai")}
+              className="cursor-pointer"
             >
-              <Plus className="mr-2 h-4 w-4" />
-              Criar chave de API OpenAI
-            </Link>
+              <KeyRound className="mr-1.5 h-3.5 w-3.5" />
+              Nova chave de OpenAI
+            </Button>
           </div>
         ) : (
           <>
@@ -176,6 +172,19 @@ export function RouterEmbeddingCredential({ initial }: Props) {
                     description: `····${c.last4} · cadastrada em ${dateFmt.format(c.createdAt)}`,
                   }))}
                   placeholder="Selecione a credencial"
+                  footer={(close) => (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        close();
+                        router.push("/agente/chaves?provider=openai");
+                      }}
+                      className="flex w-full cursor-pointer items-center gap-2 rounded-md px-3 py-2 text-left text-sm font-medium text-violet-600 transition-colors hover:bg-accent dark:text-violet-400"
+                    >
+                      <Plus className="h-4 w-4 shrink-0" />
+                      Nova chave de OpenAI
+                    </button>
+                  )}
                 />
                 <Button
                   type="button"
@@ -191,13 +200,6 @@ export function RouterEmbeddingCredential({ initial }: Props) {
                   )}
                   {state.active ? "Trocar credencial" : "Usar esta"}
                 </Button>
-                <Link
-                  href="/agente/chaves?provider=openai"
-                  className={buttonVariants({ variant: "outline" })}
-                >
-                  <Plus className="mr-2 h-4 w-4" />
-                  Criar nova
-                </Link>
               </div>
               <p className="text-xs text-muted-foreground">
                 A chave selecionada substitui imediatamente o uso atual
