@@ -1,0 +1,173 @@
+{
+  "total_modelos": 652,
+  "total_campos": 36532,
+  "total_xml_ids": 106899,
+  "total_selections": 6368,
+  "total_sequences": 73,
+  "total_crons": 38,
+  "total_server_actions": 43,
+  "prefixos_top20": [
+    [
+      "sped",
+      256
+    ],
+    [
+      "ir",
+      70
+    ],
+    [
+      "finan",
+      44
+    ],
+    [
+      "mail",
+      42
+    ],
+    [
+      "contabil",
+      29
+    ],
+    [
+      "res",
+      26
+    ],
+    [
+      "pedido",
+      26
+    ],
+    [
+      "rh",
+      19
+    ],
+    [
+      "relatorio",
+      19
+    ],
+    [
+      "estoque",
+      16
+    ],
+    [
+      "ks_dashboard_ninja",
+      13
+    ],
+    [
+      "base",
+      11
+    ],
+    [
+      "ks",
+      8
+    ],
+    [
+      "wms",
+      6
+    ],
+    [
+      "producao",
+      5
+    ],
+    [
+      "discuss",
+      5
+    ],
+    [
+      "hardware",
+      3
+    ],
+    [
+      "auditoria",
+      3
+    ],
+    [
+      "web_editor",
+      3
+    ],
+    [
+      "change",
+      3
+    ]
+  ],
+  "prefixos_customizados_detectados": {
+    "finan": 44,
+    "sped": 256,
+    "contabil": 29,
+    "pedido": 26,
+    "crm": 2,
+    "estoque": 16
+  },
+  "tipos_de_campo": [
+    [
+      "boolean",
+      11823
+    ],
+    [
+      "many2one",
+      11075
+    ],
+    [
+      "char",
+      4074
+    ],
+    [
+      "monetary",
+      2354
+    ],
+    [
+      "integer",
+      1464
+    ],
+    [
+      "one2many",
+      1263
+    ],
+    [
+      "datetime",
+      1054
+    ],
+    [
+      "selection",
+      989
+    ],
+    [
+      "many2many",
+      896
+    ],
+    [
+      "text",
+      450
+    ],
+    [
+      "binary",
+      447
+    ],
+    [
+      "date",
+      380
+    ],
+    [
+      "float",
+      139
+    ],
+    [
+      "html",
+      104
+    ],
+    [
+      "reference",
+      9
+    ],
+    [
+      "json",
+      4
+    ],
+    [
+      "many2one_reference",
+      4
+    ],
+    [
+      "serialized",
+      3
+    ]
+  ]
+}
