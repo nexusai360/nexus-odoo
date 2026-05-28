@@ -22,7 +22,7 @@ export const REPORT_DOMAINS: ReportDomainMeta[] = [
 
 const ALL_DOMAINS: ReportDomainId[] = REPORT_DOMAINS.map((d) => d.id);
 
-function seesAll(role: PlatformRole): boolean {
+export function seesAll(role: PlatformRole): boolean {
   return role === "super_admin" || role === "admin";
 }
 
