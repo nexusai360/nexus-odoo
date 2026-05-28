@@ -13,6 +13,7 @@ import { RouterHistogramChart } from "./router-histogram-chart";
 import { RouterLatencyChart } from "./router-latency-chart";
 import { RouterDiscordanciasTable } from "./router-discordancias-table";
 import { RouterControls } from "./router-controls";
+import { RouterEmbeddingCredential } from "./router-embedding-credential";
 import type {
   RouterKpis,
   RouterHistogramBucket,
@@ -21,6 +22,7 @@ import type {
   RouterEligibility,
 } from "@/lib/agent/router/queries";
 import type { RouterSettingsSnapshot } from "@/lib/actions/router-settings";
+import type { EmbeddingCredentialStatus } from "@/lib/actions/router-embedding-credential";
 
 interface Props {
   kpis: RouterKpis;
@@ -29,12 +31,15 @@ interface Props {
   discordancias: RouterDiscordanciaRow[];
   settings: RouterSettingsSnapshot;
   eligibility: RouterEligibility;
+  embeddingCredential: EmbeddingCredentialStatus;
 }
 
 export function RouterContent(props: Props) {
   return (
     <div className="space-y-6">
       <RouterKpisBlock kpis={props.kpis} />
+
+      <RouterEmbeddingCredential initial={props.embeddingCredential} />
 
       <div className="grid gap-4 lg:grid-cols-2">
         <RouterHistogramChart buckets={props.buckets} />

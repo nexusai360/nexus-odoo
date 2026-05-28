@@ -349,7 +349,14 @@ function RodadaMultiSelect({
             Sem origens no período.
           </div>
         ) : (
-          <ul role="listbox" aria-label="Origem" className="flex flex-col">
+          // Lista limitada a ~12 itens visíveis (rolagem interna), evita
+          // crescer indefinidamente quando acumula rodadas e origens novas.
+          // 12 * ~32px (itens) + 4px (padding) ≈ 388px de altura útil.
+          <ul
+            role="listbox"
+            aria-label="Origem"
+            className="flex max-h-[388px] flex-col overflow-y-auto"
+          >
             {options.map((opt) => {
               const isOn = selected.includes(opt.marker);
               return (

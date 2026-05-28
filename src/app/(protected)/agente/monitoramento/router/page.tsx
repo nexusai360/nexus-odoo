@@ -25,6 +25,7 @@ import {
   getRouterEligibleToActivate,
 } from "@/lib/agent/router/queries";
 import { getRouterSettings } from "@/lib/actions/router-settings";
+import { getEmbeddingCredentialStatus } from "@/lib/actions/router-embedding-credential";
 
 export const metadata = {
   title: "Monitoramento do Agente · Router | Matrix Fitness Group",
@@ -51,6 +52,7 @@ export default async function MonitoramentoRouterPage() {
     discordancias,
     settings,
     eligibility,
+    embeddingCredential,
   ] = await Promise.all([
     getRouterKpis(7),
     getRouterHistogram(7),
@@ -58,6 +60,7 @@ export default async function MonitoramentoRouterPage() {
     getRouterDiscordancias(50, 14),
     getRouterSettings(),
     getRouterEligibleToActivate(),
+    getEmbeddingCredentialStatus(),
   ]);
 
   return (
@@ -76,6 +79,7 @@ export default async function MonitoramentoRouterPage() {
           discordancias={discordancias}
           settings={settings ?? DEFAULT_SETTINGS}
           eligibility={eligibility}
+          embeddingCredential={embeddingCredential}
         />
       </div>
     </PageShell>
