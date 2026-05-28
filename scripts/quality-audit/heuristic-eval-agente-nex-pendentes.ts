@@ -137,27 +137,56 @@ async function main() {
       console.log(`  ${e.id}: sem assistantMessageId, pulando`);
       continue;
     }
-    const msg = await prisma.message.findUnique({
+    const finalMsg = await prisma.message.findUnique({
       where: { id: e.assistantMessageId },
-      select: { content: true, toolCalls: true, toolResults: true },
+      select: { content: true, createdAt: true, conversationId: true },
     });
-    if (!msg) {
+    if (!finalMsg) {
       console.log(`  ${e.id}: mensagem nao encontrada, pulando`);
       continue;
+    }
+    // CORRECAO (igual queries.ts getEvaluationDetail): tool_calls ficam nas
+    // mensagens assistant INTERMEDIARIAS do turno, nao na final. Agrega
+    // tudo entre a ultima user message anterior e a final.
+    const lastUserBefore = await prisma.message.findFirst({
+      where: {
+        conversationId: finalMsg.conversationId,
+        role: "user",
+        createdAt: { lt: finalMsg.createdAt },
+      },
+      orderBy: { createdAt: "desc" },
+      select: { createdAt: true },
+    });
+    const intermediarias = await prisma.message.findMany({
+      where: {
+        conversationId: finalMsg.conversationId,
+        role: "assistant",
+        createdAt: {
+          ...(lastUserBefore ? { gt: lastUserBefore.createdAt } : {}),
+          lte: finalMsg.createdAt,
+        },
+      },
+      orderBy: { createdAt: "asc" },
+      select: { toolCalls: true, toolResults: true },
+    });
+    const calls: { name: string; args: unknown }[] = [];
+    const results: Record<string, string> = {};
+    for (const m of intermediarias) {
+      if (Array.isArray(m.toolCalls)) {
+        calls.push(...(m.toolCalls as { name: string; args: unknown }[]));
+      }
+      if (m.toolResults && typeof m.toolResults === "object") {
+        Object.assign(results, m.toolResults as Record<string, string>);
+      }
     }
     const t: Turno = {
       evaluationId: e.id,
       conversationId: e.conversationId,
       channel: e.conversation?.channel ?? null,
       assistantMessageId: e.assistantMessageId,
-      finalMessage: msg.content ?? "",
-      toolCalls: Array.isArray(msg.toolCalls)
-        ? (msg.toolCalls as { name: string; args: unknown }[])
-        : [],
-      toolResults:
-        msg.toolResults && typeof msg.toolResults === "object"
-          ? (msg.toolResults as Record<string, string>)
-          : {},
+      finalMessage: finalMsg.content ?? "",
+      toolCalls: calls,
+      toolResults: results,
     };
     const c = classify(t);
     await prisma.conversationQualityEvaluation.update({
