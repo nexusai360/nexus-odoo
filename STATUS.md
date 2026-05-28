@@ -1,22 +1,22 @@
 # STATUS — nexus-odoo
 
-> **Ponto de retomada entre sessões.** Atualizado em 2026-05-28.
+> **Ponto de retomada entre sessões.** Atualizado em 2026-05-28 11:20.
 > Ao abrir uma sessão: ler **este arquivo** e o **`CLAUDE.md`**. Modo autônomo
 > é o padrão (ver `CLAUDE.md §6`).
 >
-> ## ⚠️ BRANCH ATUAL: `feat/agente-nex-95pct-ronda1` (PR #30 aberto)
-> **Ronda de qualidade do Agente Nex concluída** (R17 a R23): saiu de
-> **78,5% CORRETO** (baseline R17, 100 turnos) para **95,5% CORRETO real**
-> (R23, 290 turnos, +17pp acumulado). Meta de 95% atingida.
+> ## ✅ BRANCH ATUAL: `main` (Ronda Nex concluída e mergeada)
 >
-> PR #30: https://github.com/nexusai360/nexus-odoo/pull/30
-> Aguarda merge humano (não dispara deploy sem autorização).
+> **Ronda de qualidade do Agente Nex 100% entregue:**
+> - **PR #30 MERGEADO** em 2026-05-28 14:04 (commit `4d9c226`)
+> - **PR #31 MERGEADO** em 2026-05-28 14:15 (commit `d01c219`, hotfix lint travessões)
+> - Resultado: 78,5% → 95,5% CORRETO real (R17 → R23, 290 turnos)
+> - +17pp acumulado, meta 95% superada
 >
-> ### Pendências pós-merge (deploy manual em prod)
-> 1. Aplicar 2 migrations aditivas:
+> ### Pendências pós-merge (deploy manual em prod, ainda não feito)
+> 1. Aplicar 2 migrations aditivas (geradas neste ciclo):
 >    - `20260528010000_fato_parceiro_data_criacao` (coluna + índice)
 >    - `20260528020000_dim_empresa_grupo` (tabela seedada via regex + GRANT)
-> 2. Backfill em prod:
+> 2. Backfill em prod (mesmo SQL que rodei em dev):
 >    ```sql
 >    UPDATE fato_parceiro fp
 >       SET data_criacao = (rrp.data->>'create_date')::timestamp
@@ -27,19 +27,31 @@
 > 4. Smoke E2E pós-deploy: 5 perguntas reais (top 10 contas a receber,
 >    títulos vencidos hoje, quais notas, vai bater a meta, saldo total).
 >
-> ### Relatórios completos da rodada
-> - `docs/agent-quality-review/r19-relatorio.md` (Ronda 1)
-> - `docs/agent-quality-review/r20-relatorio.md` (Ronda 2)
-> - `docs/agent-quality-review/r22-relatorio.md` (Ronda 3)
-> - `docs/agent-quality-review/r23-relatorio.md` (R23 final, 95,5%)
-> - `docs/agent-quality-review/ronda5-plano.md` (R5: 7 tools novas + regra prompt)
-> - `docs/agent-quality-review/auditoria-manual-r17-r18.md` (raiz do trabalho)
+> ### Relatórios completos da rodada (em `docs/agent-quality-review/`)
+> - `auditoria-manual-r17-r18.md` (raiz do trabalho)
+> - `r19-relatorio.md` (Ronda 1, 84%)
+> - `r20-relatorio.md` (Ronda 2, 86%)
+> - `r22-relatorio.md` (Ronda 3, 94%)
+> - `r23-relatorio.md` (R23 final, 95,5%)
+> - `ronda5-plano.md` (R5: 7 tools novas + regra prompt anti-lacuna)
 >
-> ### Próxima sessão — quando retomar
-> - Se o PR #30 já foi mergeado: branch ativa = `main`. Limpar
->   `feat/agente-nex-95pct-ronda1` local + remoto. Atualizar este STATUS.md.
-> - Se não: ler `docs/agents/HISTORY.md` (última entrada 2026-05-28 09:30)
->   pra contexto + corpo do PR #30 pra resumo executivo.
+> ### Outro agente em paralelo
+> O agente `claude-router-catalogo-r1` está trabalhando em
+> `feat/router-catalogo-r1` (Router de Catálogo por embedding) desde
+> 2026-05-28 10:30. Ler `docs/agents/active/claude-router-catalogo-r1.md`
+> antes de mexer em qualquer coisa relacionada a catálogo MCP, embeddings
+> ou agente. **Não mexer em arquivos da branch dele** sem coordenar.
+>
+> ### Próxima sessão, quando retomar
+> - Branch ativa: `main` (PRs #30 e #31 já mergeados).
+> - Deploy em produção das migrations + backfill (item acima) está
+>   pendente, mas **não é bloqueante**: o código está rodando em prod
+>   desde 14:04 com schema antigo; só não vai responder "parceiros
+>   novos cadastrados esta semana" nem "quantas filiais temos" até as
+>   2 migrations rodarem em prod.
+> - Próxima frente provável: avaliar fechamento da Ronda nex como
+>   release / tag, ou começar trabalho novo (router de catálogo está
+>   em andamento por outro agente).
 
 ---
 
