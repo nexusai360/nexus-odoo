@@ -1,4 +1,4 @@
-/* eslint-disable no-travessao/no-travessao */
+ 
 import { sanitizePromptText } from "./sanitize";
 
 describe("sanitizePromptText", () => {
