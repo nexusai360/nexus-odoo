@@ -1,80 +1,99 @@
-# SPEC v1: RBAC v2 — Gating de telas e domínios do Agente Nex
+# SPEC v3: RBAC v2 — Gating de telas e domínios do Agente Nex
 
 > Sub-projeto: trava de telas por papel (defesa em profundidade) + realinhamento dos domínios do cadastro de usuário à realidade do Router R1 + amarração do Agente Nex aos `UserDomainAccess` do usuário logado, com fast-path de recusa via embedding (sem chamada ao LLM) quando a pergunta cai em domínio fora de acesso.
 
-- **Branch alvo:** `feat/rbac-v2-gating-e-dominios` (criar a partir de `main`, depois que o R1 atual mergear; até lá, base `feat/router-catalogo-r1`).
+- **Branch alvo:** `feat/rbac-v2-gating-e-dominios` (cria a partir de `main` quando o R1 mergear; até lá, base `feat/router-catalogo-r1`).
 - **Autor:** claude-revisao-usuarios-permissoes
 - **Data:** 2026-05-28
-- **Versão da spec:** v1 (a v2 e v3 sairão das duas reviews adversariais).
-- **Skill aplicada:** `superpowers:brainstorming` → modo autônomo total (usuário dispensou perguntas intermediárias em 2026-05-28 13:30).
+- **Versão:** v3 (após duas reviews adversariais). v1 e v2 vivem no histórico (§18).
+- **Skill:** `superpowers:brainstorming` → modo autônomo total (usuário dispensou perguntas em 2026-05-28 13:30).
 
 ---
 
 ## 1. Por que esta spec existe
 
-Hoje a plataforma já tem RBAC (4 papéis `super_admin`/`admin`/`manager`/`viewer` + flag `isOwner`) e um cadastro de domínios por usuário (`UserDomainAccess` apontando para `REPORT_DOMAINS`). Mas três problemas concretos:
+Hoje a plataforma tem RBAC (4 papéis `super_admin`/`admin`/`manager`/`viewer` + flag `isOwner`) e cadastro de domínios por usuário (`UserDomainAccess` apontando para `REPORT_DOMAINS`). Três problemas concretos:
 
-1. **Defesa em profundidade falha.** Só `/agente/*` e `/integracoes/*` rejeitam server-side quem não é super_admin. As demais telas administrativas (`/usuarios`, `/configuracao`) e `/relatorios` confiam apenas no filtro da sidebar (`filterNav`), que é UI. Quem digitar `/usuarios` na barra de endereço sendo `manager` recebe a página renderizada (mesmo que server actions abaixo rejeitem).
-2. **Cadastro de domínios desatualizado.** `REPORT_DOMAINS` lista 9 domínios (estoque, financeiro, fiscal, comercial, cadastros, contábil, rh, crm, producao), mas o Router R1 e o servidor MCP só implementam 7 (sem `rh` e `producao`). O cadastro pode conceder acesso a domínios fantasmas que não correspondem a tool nem a relatório.
-3. **Agente Nex ignora permissão de domínio.** O `filterCatalog` do Router R1 filtra o catálogo entregue ao LLM pelos domínios que o próprio Router escolheu (similaridade semântica da pergunta), mas **não cruza** com `UserDomainAccess` do usuário logado. Pior: a bolha do Nex (`AgentBubble` em `(protected)/layout.tsx`) hoje só aparece para `super_admin` e `admin` — `manager` e `viewer` não têm chat algum. A regra que o usuário pediu (Nex respeita os módulos concedidos) hoje simplesmente não existe.
+1. **Defesa em profundidade falha.** Só `/agente/*` e `/integracoes/*` rejeitam server-side quem não é super_admin. `/usuarios`, `/configuracao` e várias API routes confiam só no filtro da sidebar ou em checks parciais. Quem digitar a URL direto recebe a página.
+2. **Cadastro de domínios desatualizado.** `REPORT_DOMAINS` lista 9 domínios (incluindo `rh` e `producao`), mas Router R1 e servidor MCP só implementam 7. O cadastro pode conceder acesso a domínios fantasmas.
+3. **Agente Nex ignora `UserDomainAccess`.** `filterCatalog` corta por `pickedDomains` do Router (semântica da pergunta), mas não cruza com permissão do usuário. Pior: a bolha do Nex em `(protected)/layout.tsx` só aparece para `super_admin` e `admin`; `manager` e `viewer` não têm chat algum.
 
-A SPEC corrige os três problemas em um único sub-projeto porque eles são interdependentes: redefinir os domínios sem amarrar no agente seria gastar fôlego à toa; amarrar o agente sem realinhar os domínios deixaria buracos lógicos (conceder acesso a "rh" que não existe).
+A SPEC corrige os três em um único sub-projeto: redefinir domínios sem amarrar no agente desperdiça fôlego; amarrar o agente sem realinhar deixaria buracos lógicos.
 
-## 2. Decisões canônicas desta spec
+## 2. Decisões canônicas
 
-Decisões tomadas pelo Claude em modo autônomo, sustentadas pela perícia da §3. Ficam congeladas como "decisões da spec" — só mudam se uma review adversarial provar que estão erradas.
+Decisões em modo autônomo (usuário dispensou perguntas). Sustentadas pela perícia (§3). Congeladas, só mudam se review futura provar erradas.
 
-1. **Hierarquia de papéis NÃO muda.** Continua `super_admin > admin > manager > viewer`, com `isOwner` como flag complementar. Quem confirmou: usuário verbatim em 2026-05-28, "essas regras que você me mencionou e como você me descreveu, é isso mesmo, desse jeito tem que funcionar".
-2. **Domínios passam a espelhar 1:1 o vocabulário do Router R1.** `rh` e `producao` saem (e linhas em `UserDomainAccess` que apontavam para eles são deletadas). Os domínios reais ficam: `cadastros`, `comercial`, `contabil`, `crm`, `estoque`, `financeiro`, `fiscal`. O cadastro de usuário e o catálogo do Router falam exatamente a mesma língua.
-3. **Defesa em profundidade obrigatória em toda tela administrativa.** O filtro da sidebar (`filterNav`) é mantido como UX (não mostrar o que a pessoa não acessa), mas cada layout/rota administrativa ganha um gate server-side com `redirect("/dashboard")` quando o papel é insuficiente. O helper canônico é `requireMinRole(role)` em `src/lib/auth/require.ts` (novo arquivo).
-4. **O Agente Nex passa a ser disponível para todos os papéis autenticados**, com catálogo filtrado pelos domínios concedidos. `super_admin` e `admin` continuam vendo o catálogo inteiro (`seesAll`). `manager` e `viewer` veem o catálogo intersectado com `UserDomainAccess`. Usuário sem nenhum domínio concedido NÃO recebe bolha (volta o comportamento atual de "nada na bubble", mas agora baseado em `visibleDomains` vazio, não em papel).
-5. **Fast-path de recusa via embedding, sem LLM.** Quando o Router R1 detecta que a pergunta cai inteiramente em domínio(s) NÃO permitido(s) ao usuário, o turno é encerrado com mensagem padrão pré-fabricada, antes de chamar o LLM. Custo: 0 tokens. Latência: ~50ms (só embedding do Router).
-6. **Resposta padrão é template puro no MVP.** Texto humanizado, parametrizado pelos domínios negados e pelos domínios disponíveis ao usuário. Humanização adicional via LLM fica como follow-up (não entra neste sub-projeto). Filosofia do usuário: "código resolve o que dá; manda mastigado pro LLM".
-7. **Tools transversais ficam sempre disponíveis.** `caminho3` (BI livre) e `dominios-vazios` (responder "ainda não temos") já são `excludeFromFiltering: true` no Router. Continua assim. `caminho3` segue restrito a `super_admin`/`admin` no `run-agent.ts` (já é).
-8. **Histórico de conversa não é retroativo.** Mudança de permissão depois da conversa NÃO afeta mensagens passadas (auditoria limpa). Próximas perguntas passam a respeitar o novo estado.
-9. **Auditoria registra cada recusa.** Novo `AuditAction.agent_permission_denied` em `AuditLog`. Captura `userId`, `deniedDomains`, `askedSnippet` (primeiros 200 chars da pergunta), `routerDecisionId` (para correlacionar com `agent_router_decision`).
-10. **Migração de dados é manual via SQL com janela.** Drop dos enums `rh` e `producao` exige `DELETE` prévio em `UserDomainAccess`. Migration Prisma gera o DDL, mas a deleção das linhas é parte da mesma migration (SQL puro embutido).
-11. **Plugar MCPs, Integrações e Configuração permanecem `super_admin` only.** Não há mudança de política aqui, apenas formalização do gate via `requireMinRole`.
+1. **Hierarquia de papéis NÃO muda.** `super_admin > admin > manager > viewer`, com `isOwner` complementar. Confirmado pelo usuário em 2026-05-28: "essas regras desse jeito tem que funcionar".
+2. **Domínios espelham 1:1 o vocabulário do Router R1.** `rh` e `producao` saem. Domínios finais: `cadastros`, `comercial`, `contabil`, `crm`, `estoque`, `financeiro`, `fiscal`.
+3. **Defesa em profundidade obrigatória.** Todo gate vive em helper canônico (`requireMinRole`, `requireVisibleDomainsOrRedirect`). Sidebar `filterNav` segue como UX.
+4. **Nex disponível para todos os papéis autenticados com ≥1 domínio visível.** Super_admin/admin: catálogo inteiro (via `seesAll`). Manager/viewer: catálogo intersectado com `UserDomainAccess`.
+5. **Gate de permissão é camada DIFERENTE do shadow do Router R1.** O shadow do Router (`routerEnabled=false`) significa "observa sem filtrar por similaridade". O gate de permissão **sempre** corta tools de domínio fora do acesso. Em código: `filterCatalog` aplica duas camadas independentes em sequência.
+6. **Fast-path de recusa via embedding dispara sempre que o embedding rodou.** Independe de `routerEnabled`. Critério: `pickedDomains` não vazio E interseção com `userAllowedDomains` (ignorando `EXCLUDE_FROM_FILTERING`) é vazia. Custo: 0 tokens LLM. Latência alvo: < 200ms; teto < 500ms.
+7. **Resposta padrão é template puro no MVP.** Humanização via LLM fica como follow-up.
+8. **Tools transversais** (`caminho3`, `dominios-vazios`) ficam sempre no catálogo do LLM, mas `caminho3` vira parte explícita de `userAllowedDomains` (apenas super_admin/admin), não dependência implícita do `BI_ROLES` em `run-agent.ts`. Defesa única em vez de duas camadas mal coordenadas (correção da Review #2).
+9. **Histórico de conversa não é retroativo.** Mensagens passadas continuam visíveis mesmo após perda de acesso (decisão consciente: usuário já viu o conteúdo; mascarar retroativamente exigiria varrer mensagens a cada render).
+10. **Auditoria registra cada recusa.** Novo `AuditAction.agent_permission_denied`. `questionSnippet` truncado a 200 chars + CPF/CNPJ nus mascarados via regex.
+11. **Migration destrutiva de enum** com backup gerado por pré-flight + idempotência onde possível + rollback definido.
+12. **Migration nova de `AgentRouterDecision.outcome`.** Coluna `TEXT NULL`, valores documentados (§10).
+13. **Plugar MCPs, Integrações, Configuração permanecem `super_admin` only.** Sem mudança política; só formalização via `requireMinRole`.
+14. **Grep prévio obrigatório** de `'rh'`/`'producao'` em todo o repo. Resultado anexado ao PR.
+15. **Defesa em profundidade no run-agent: validar `toolName` antes de `session.callTool()`.** Mesmo que o LLM chute nome de tool fora do catálogo, `run-agent.ts` recusa a chamada e devolve `tool_result` de erro. Garantia contra alucinação de tool.
+16. **`/api/mcp` externo (clientes via ApiKey) está FORA do escopo.** RBAC dele é por `capability` do `ApiKey`, camada separada. Esta spec só cobre o cliente interno do Nex (run-agent → mcp-client).
 
 ## 3. Realidade atual (perícia 2026-05-28)
 
-Realidade vs. cadastro de domínios:
+### 3.1 Domínios cadastrados vs realidade
 
 | Domínio em `REPORT_DOMAINS` | Existe no Router R1? | Tem tools MCP? | Tem relatório? | Veredito |
 |---|---|---|---|---|
-| estoque | sim | sim (`mcp/tools/estoque`) | sim (6 relatórios) | mantém |
-| financeiro | sim | sim (`mcp/tools/financeiro`) | não (F4 onda 2 pendente) | mantém |
-| fiscal | sim | sim (`mcp/tools/fiscal`) | não (F4 onda 2) | mantém |
-| comercial | sim | sim (`mcp/tools/comercial`) | não | mantém |
-| cadastros | sim | sim (`mcp/tools/cadastros`) | não | mantém |
-| contabil | sim | sim (`mcp/tools/contabil`) | não | mantém |
-| crm | sim | sim (`mcp/tools/crm`) | não | mantém |
+| estoque | sim | sim | sim (6 relatórios) | mantém |
+| financeiro | sim | sim | não (F4 onda 2 pendente) | mantém |
+| fiscal | sim | sim | não | mantém |
+| comercial | sim | sim | não | mantém |
+| cadastros | sim | sim | não | mantém |
+| contabil | sim | sim | não | mantém |
+| crm | sim | sim | não | mantém |
 | rh | **NÃO** | apenas placeholder em `dominios-vazios` | não | **REMOVE** |
 | producao | **NÃO** | apenas placeholder em `dominios-vazios` | não | **REMOVE** |
 
-Mais 2 entradas no Router R1 (não são domínios de negócio, são escape hatch técnico, não vão pro cadastro):
-- `caminho3` (BI livre, super_admin/admin only)
-- `dominios-vazios` (responder "ainda não temos")
+Vocabulário Router R1 inclui também `caminho3` (BI livre) e `dominios-vazios` (responder "ainda não temos"). Não vão pro cadastro porque não são domínios de negócio.
 
-Rotas protegidas que existem e seu gate atual:
+### 3.2 Gate atual por rota
 
-| Rota | Papel mínimo conceitual | Gate hoje | Falta gate? |
+| Rota | Papel mínimo | Gate hoje | Ação |
 |---|---|---|---|
-| `/dashboard` | autenticado | só auth global | OK |
+| `/dashboard` | autenticado | só auth global | OK + adiciona banner para `?denied=...`/`?error=no_domains` |
 | `/perfil`, `/perfil/trocar-senha` | autenticado | só auth global | OK |
-| `/relatorios`, `/relatorios/[id]` | autenticado (conteúdo filtrado por domínio) | só auth global | OK estrutural, mas precisa gate quando `visibleDomains` é vazio |
-| `/usuarios` | admin+ | só sidebar | **falta** redirect server-side |
-| `/configuracao` | super_admin | só sidebar | **falta** redirect server-side |
-| `/integracoes` (e subrotas: `api`, `bi`, `canais`, `canais/whatsapp`, `servidor-mcp/*`, `webhooks`) | super_admin | `layout.tsx` já redireciona | OK |
-| `/agente` (e 8 sub-telas) | super_admin | `layout.tsx` já redireciona | OK |
+| `/relatorios` (listagem) | autenticado + ≥1 domínio | só auth global | **adiciona** layout com `requireVisibleDomainsOrRedirect` |
+| `/relatorios/[id]` | autenticado + domínio do relatório | `requireDomainAccess(report.dominio)` em `src/lib/reports/guard.ts` | OK (já existe) |
+| `/usuarios` | admin+ | só sidebar | **adiciona** layout com `requireMinRole("admin")` |
+| `/configuracao` | super_admin | só sidebar | **adiciona** layout com `requireMinRole("super_admin")` |
+| `/integracoes/*` | super_admin | `layout.tsx` inline | refatora para `requireMinRole("super_admin")` |
+| `/agente/*` | super_admin | `layout.tsx` inline | refatora para `requireMinRole("super_admin")` |
+
+### 3.3 Gate atual por API route
+
+| Endpoint | Gate hoje | Ação |
+|---|---|---|
+| `/api/agent/stream` | só auth + `PLAYGROUND_ROLES` quando `isPlayground=true` | **adiciona** `requireAgentAccessOrJson()`: 401 se sem auth, 403 se sem domínio visível |
+| `/api/agent/suggest-continuation` | só auth | **adiciona** mesmo gate |
+| `/api/agent/transcribe` | só auth | **adiciona** mesmo gate |
+| `/api/agent/playground/stream` | só auth + `PLAYGROUND_ROLES` | OK (super_admin/admin) |
+| `/api/agent/prompt-preview` | só auth + `ALLOWED_ROLES` (admin+) | OK |
+| `/api/admin/router/kill` | role-checked | OK |
+| `/api/user/theme` | só auth | OK |
+| `/api/integrations/whatsapp/inbound` | webhook externo (assinado) | fora do escopo |
+| `/api/mcp` (cliente externo via ApiKey) | capability do ApiKey | **fora do escopo desta spec** |
 
 ## 4. Catálogo unificado de domínios
 
-Após esta spec, `REPORT_DOMAINS` em `src/lib/reports/domains.ts` deixa de ser a fonte da verdade independente e passa a derivar do Router R1. Decisão técnica: como o enum `ReportDomain` é Prisma (precisa ser estático no schema), o caminho é alinhar manualmente os dois e adicionar um teste de coerência:
+`REPORT_DOMAINS` em `src/lib/reports/domains.ts` é mantido manualmente, espelhando o vocabulário do Router R1 (`DOMAINS` em `src/lib/agent/router/domain-vocabulary.ts`). Como o enum `ReportDomain` é Prisma (estático), a unificação é por convenção + teste de coerência.
 
+Mudanças:
 - Enum Prisma `ReportDomain` perde `rh` e `producao`.
-- `REPORT_DOMAINS` (UI labels) perde `rh` e `producao`.
-- Novo teste em `src/lib/reports/domains.test.ts` (ou `src/lib/agent/router/domain-vocabulary.test.ts`): garante que `REPORT_DOMAINS.map(d => d.id)` é subconjunto de `DOMAINS.map(d => d.domain)` (Router pode ter `caminho3`/`dominios-vazios` que cadastro não tem, mas todo domínio do cadastro precisa estar no Router).
+- `REPORT_DOMAINS` perde `rh` e `producao`.
+- Novo teste em `src/lib/reports/domains.test.ts` (ou adendo no `domain-vocabulary.test.ts`): todo id em `REPORT_DOMAINS` está em `DOMAINS.map(d => d.domain)`. Router pode ter `caminho3`/`dominios-vazios` extras; cadastro NÃO pode ter id estranho.
 
 Labels finais (pt-br humanizado, sem travessão):
 
@@ -88,50 +107,47 @@ Labels finais (pt-br humanizado, sem travessão):
 | financeiro | Financeiro |
 | fiscal | Fiscal |
 
-Ordem alfabética dos `id` (já é como está hoje minus `rh`/`producao`).
+Ordem alfabética dos `id`.
 
-## 5. Matriz de gating das telas
+## 5. Matriz de gating server-side
 
-Novo helper canônico: `requireMinRole(minRole: PlatformRole): Promise<AuthUser>` em `src/lib/auth/require.ts`. Funciona assim:
-
-```text
-const user = await requireMinRole("admin");
-// Se user.platformRole tem hierarquia >= admin, retorna user.
-// Caso contrário, redirect("/dashboard"). Se não autenticado, redirect("/login").
-```
-
-A hierarquia já existe em `PLATFORM_ROLE_HIERARCHY` (super_admin=4, admin=3, manager=2, viewer=1).
-
-Aplicação:
-
-| Rota | Layout/page que ganha gate | Helper |
-|---|---|---|
-| `/usuarios` | `src/app/(protected)/usuarios/page.tsx` (server component) ou novo `layout.tsx` | `await requireMinRole("admin")` |
-| `/configuracao` | `src/app/(protected)/configuracao/page.tsx` ou novo `layout.tsx` | `await requireMinRole("super_admin")` |
-| `/integracoes/*` | já tem layout próprio, **refatora para usar `requireMinRole`** | `await requireMinRole("super_admin")` |
-| `/agente/*` | já tem layout próprio, **refatora para usar `requireMinRole`** | `await requireMinRole("super_admin")` |
-| `/relatorios`, `/relatorios/[id]` | server component existente | `await requireDomainsOrRedirect()` (helper extra, ver §6) |
-
-Os layouts antigos do `/agente` e `/integracoes` deixam de ter código de redirect inline e passam a chamar o helper. Reduz duplicação e cria um único ponto de manutenção.
-
-## 6. Helpers de gating em `src/lib/auth/require.ts`
-
-Novo módulo. Três funções puras (testáveis sem Next):
+### 5.1 Helpers novos em `src/lib/auth/require.ts`
 
 - `requireAuth(): Promise<AuthUser>` — `redirect("/login")` se não autenticado.
-- `requireMinRole(min: PlatformRole, redirectTo = "/dashboard"): Promise<AuthUser>` — chama `requireAuth`, depois compara `PLATFORM_ROLE_HIERARCHY[user.platformRole] >= PLATFORM_ROLE_HIERARCHY[min]`. Falha → `redirect(redirectTo)`.
-- `requireExactRole(role: PlatformRole, redirectTo = "/dashboard"): Promise<AuthUser>` — versão estrita (usada pouco; mantém porque pode ser útil).
-- `requireDomainsOrRedirect(redirectTo = "/dashboard"): Promise<{ user: AuthUser; domains: ReportDomainId[] }>` — útil em `/relatorios`: chama `requireAuth`, busca `visibleDomains(user.platformRole, granted)`, se for vazio (manager/viewer sem domínio concedido), redireciona com toast/query param (`?error=no_domains`).
+- `requireMinRole(min: PlatformRole, redirectTo?: string): Promise<AuthUser>` — `requireAuth`, depois `PLATFORM_ROLE_HIERARCHY[user.platformRole] >= PLATFORM_ROLE_HIERARCHY[min]`. Falha → `redirect("${redirectTo ?? '/dashboard'}?denied=${min}")`.
+- `requireVisibleDomainsOrRedirect(redirectTo?: string): Promise<{ user: AuthUser; domains: ReportDomainId[] }>` — `requireAuth`, busca `visibleDomains(role, granted)`. Vazio → `redirect("${redirectTo ?? '/dashboard'}?error=no_domains")`.
+- `requireAgentAccessOrJson(): Promise<{ user: AuthUser; allowedDomains: Set<string> | "all" }>` — para API routes (sem `redirect`, responde JSON). Sem auth → `NextResponse.json({error:"Unauthorized"},{status:401})`. Sem domínio visível → `NextResponse.json({error:"AgentNotEnabled"},{status:403})`. Sucesso → objeto.
 
-Os helpers exigem `getCurrentUser()` (já existe em `src/lib/auth.ts`), `PLATFORM_ROLE_HIERARCHY` (já em `src/lib/constants/roles.ts`) e `redirect` (`next/navigation`).
+Removida da v1: `requireExactRole` (YAGNI; sem caso de uso).
 
-Cada helper recebe testes unitários cobrindo: hierarquia, fallback, mock de `redirect` (vitest spy).
+Cada helper recebe testes unitários cobrindo hierarquia, fallback, query param, mock de `redirect` (jest spy).
 
-## 7. Gate de domínios do Agente Nex
+### 5.2 Aplicação dos helpers
 
-### 7.1 `filterCatalog` ganha `allowedDomains`
+| Rota/Endpoint | Arquivo | Helper |
+|---|---|---|
+| `/usuarios` | novo `src/app/(protected)/usuarios/layout.tsx` | `await requireMinRole("admin")` |
+| `/configuracao` | novo `src/app/(protected)/configuracao/layout.tsx` | `await requireMinRole("super_admin")` |
+| `/integracoes/*` | `src/app/(protected)/integracoes/layout.tsx` refatora | `await requireMinRole("super_admin")` |
+| `/agente/*` | `src/app/(protected)/agente/layout.tsx` refatora | `await requireMinRole("super_admin")` |
+| `/relatorios` | novo `src/app/(protected)/relatorios/layout.tsx` | `await requireVisibleDomainsOrRedirect()` |
+| `/relatorios/[id]` | `src/app/(protected)/relatorios/[id]/page.tsx` (já existe) | mantém `requireDomainAccess(report.dominio)` |
+| `/api/agent/stream` | `src/app/api/agent/stream/route.ts` | `await requireAgentAccessOrJson()` antes de `runAgent` |
+| `/api/agent/suggest-continuation` | idem | idem |
+| `/api/agent/transcribe` | idem | idem |
 
-Assinatura nova de `filterCatalog`:
+### 5.3 Banner em `/dashboard` para denúncias silenciosas
+
+Novo componente `src/components/dashboard/access-denied-banner.tsx`. Lê `searchParams` (server component). Mostra toast/banner descartável quando vê `?denied=...` ou `?error=no_domains`. Sem banner, o redirect parece silencioso. Textos:
+- `denied=admin` → "Você não tem permissão para acessar Usuários."
+- `denied=super_admin` → "Você não tem permissão para acessar essa área."
+- `error=no_domains` → "Seu acesso aos relatórios ainda não foi configurado. Fale com seu administrador."
+
+## 6. Gate de domínios do Agente Nex
+
+### 6.1 `filterCatalog` ganha `userAllowedDomains`
+
+Assinatura nova:
 
 ```text
 filterCatalog({
@@ -142,35 +158,43 @@ filterCatalog({
 })
 ```
 
-Regras (em ordem):
+**Duas camadas independentes:**
 
-1. **`userAllowedDomains === "all"`** (super_admin, admin): comporta como hoje. Se `routerEnabled=false` ou fallback, catálogo inteiro. Senão, filtro por `pickedDomains + excludeFromFiltering + UNKNOWN_DOMAIN`.
-2. **`userAllowedDomains` é set não vazio** (manager/viewer com pelo menos 1 domínio):
-   - `effectiveAllowed = userAllowedDomains ∪ EXCLUDE_FROM_FILTERING ∪ UNKNOWN_DOMAIN`.
-   - Quando `routerEnabled=false` ou fallback: ainda corta pelo `effectiveAllowed`. O usuário NUNCA vê tool de domínio fora do acesso, independente do estado do router.
-   - Quando router ativo + sem fallback: `effective = (pickedDomains ∩ effectiveAllowed) ∪ EXCLUDE_FROM_FILTERING ∪ UNKNOWN_DOMAIN`.
-   - Se `pickedDomains` tem itens, **mas a interseção com `userAllowedDomains` é vazia** (sem nenhum domínio do usuário casando com a pergunta) → fast-path de recusa (§7.2).
-3. **`userAllowedDomains` é set vazio** (manager/viewer sem nenhum domínio concedido): a bolha do Nex nem aparece (`(protected)/layout.tsx` decide). Se cair em `/api/agent/stream` por força bruta (ex.: alguém colando curl), `runAgent` rejeita com `DENIED_NO_DOMAINS` antes de qualquer chamada de embedding ou LLM.
+**Camada A — Router R1 (existe hoje):**
+- Se `routerEnabled=false` ou fallback: passa `allTools` adiante.
+- Se ativo + sem fallback: corta por `pickedDomains ∪ EXCLUDE_FROM_FILTERING ∪ UNKNOWN_DOMAIN`.
 
-### 7.2 Fast-path de recusa sem LLM
+**Camada B — gate de permissão (novo, SEMPRE vale):**
+- Se `userAllowedDomains === "all"`: passa adiante.
+- Senão: corta toda tool cujo domínio NÃO está em `userAllowedDomains ∪ EXCLUDE_FROM_FILTERING ∪ UNKNOWN_DOMAIN`.
 
-Implementado em `src/lib/agent/run-agent.ts`, imediatamente após a chamada de `pickDomains`:
+**Resultado entregue ao LLM:** `camadaA(allTools) ∩ camadaB(allTools)`.
+
+`caminho3` vira parte explícita de `userAllowedDomains` quando o papel é admin/super_admin (computado pelo caller — `run-agent.ts`):
+
+```text
+function computeAllowedDomains(user: AuthUser, granted: ReportDomainId[]): Set<string> | "all" {
+  if (seesAll(user.platformRole)) return "all";
+  return new Set(granted); // manager/viewer: granted apenas. NÃO inclui caminho3.
+}
+```
+
+### 6.2 Fast-path de recusa sem LLM
+
+Implementado em `src/lib/agent/run-agent.ts`, logo após `pickDomains`:
 
 ```text
 if (userAllowedDomains !== "all"
-    && routerDecision.pickedDomains.length > 0
-    && !routerDecision.fallback.triggered) {
-  const intersected = routerDecision.pickedDomains.filter(d =>
-    userAllowedDomains.has(d) || EXCLUDE_FROM_FILTERING.has(d)
-  );
-  if (intersected.length === 0) {
-    const deniedDomains = routerDecision.pickedDomains.filter(d =>
-      !EXCLUDE_FROM_FILTERING.has(d)
-    );
+    && !routerDecision.fallback.triggered
+    && routerDecision.pickedDomains.length > 0) {
+  const nonTransversal = routerDecision.pickedDomains
+    .filter(d => !EXCLUDE_FROM_FILTERING.has(d));
+  const intersected = nonTransversal.filter(d => userAllowedDomains.has(d));
+  if (intersected.length === 0 && nonTransversal.length > 0) {
     return await respondPermissionDenied({
       conversationId,
       user,
-      deniedDomains,
+      deniedDomains: nonTransversal,
       availableDomains: [...userAllowedDomains],
       routerDecisionId,
       userQuestion: args.userMessage,
@@ -179,19 +203,42 @@ if (userAllowedDomains !== "all"
 }
 ```
 
-`respondPermissionDenied` é nova, vive em `src/lib/agent/permission-denial.ts`:
+`respondPermissionDenied` em `src/lib/agent/permission-denial.ts`:
+- Persiste mensagem do usuário (já é feito).
+- Persiste mensagem de assistant com o template (§6.4).
+- Loga em `AuditLog` com `action: "agent_permission_denied"`, `questionSnippet` sanitizado.
+- Atualiza `agent_router_decision.outcome = 'permission_denied'`.
+- Não chama LLM nem MCP.
+- Retorna `ChatResult` com `text`, `usage: { input: 0, output: 0, costKnown: true, costUsd: 0 }`.
 
-- Persiste a mensagem do usuário (já estava sendo persistida).
-- Persiste a mensagem de assistant com o texto do template (§7.3).
-- Loga em `AuditLog` com `action: "agent_permission_denied"`.
-- Atualiza o `agent_router_decision` correspondente com `outcome: "permission_denied"` (novo campo nullable em `AgentRouterDecision`).
-- Não chama LLM nem MCP. Retorna `ChatResult` com `text`, `usage: { input: 0, output: 0, ... costKnown: true, costUsd: 0 }`.
+### 6.3 Defesa adicional antes de `session.callTool()`
 
-Latência alvo: < 100ms (só I/O de banco + retorno).
+Mesmo que o LLM chute o nome de uma tool fora do catálogo entregue (alucinação), `run-agent.ts` valida antes de executar:
 
-### 7.3 Template da resposta padrão
+```text
+// Em run-agent, dentro do loop de tool calling:
+for (const toolCall of message.toolCalls) {
+  const domain = getToolDomain(toolCall.name);
+  const transversal = EXCLUDE_FROM_FILTERING.has(domain) || domain === UNKNOWN_DOMAIN;
+  const allowed =
+    userAllowedDomains === "all" || transversal || userAllowedDomains.has(domain);
+  if (!allowed) {
+    // Não chama; devolve tool_result de erro semântico.
+    toolResults.push({
+      toolCallId: toolCall.id,
+      content: `Acesso ao domínio "${domain}" não está liberado para o seu usuário.`,
+    });
+    continue;
+  }
+  // ... callTool normal.
+}
+```
 
-Template puro pt-br, sem travessão, definido em `src/lib/agent/permission-denial.ts`:
+Comportamento esperado: LLM vê o `tool_result` de erro e adapta a resposta. O `agent_permission_denied` NÃO é logado aqui (a defesa é só fail-safe; a métrica primária vem do fast-path da §6.2).
+
+### 6.4 Template da resposta padrão
+
+Template puro pt-br, sem travessão, em `src/lib/agent/permission-denial.ts`:
 
 ```text
 const TEMPLATE = ({ denied, available }) => `
@@ -205,60 +252,131 @@ ${available.length > 0
 `.trim();
 ```
 
-`formatDomainList` converte ids para labels humanizados (`["financeiro", "fiscal"]` → `"Financeiro e Fiscal"`; 3+ vira `"X, Y e Z"`). Usa `REPORT_DOMAINS` para o mapeamento.
+`formatDomainList(["financeiro", "fiscal"])` → `"Financeiro e Fiscal"`. 3+ vira `"X, Y e Z"`. Usa `REPORT_DOMAINS` para id → label.
 
-### 7.4 Bolha do Nex liberada para manager/viewer
+### 6.5 Bolha do Nex condicionada a `visibleDomains`
 
-`src/app/(protected)/layout.tsx` muda a condição `canUseAgent`:
-
-```text
-const granted = await getUserDomains(user.id);
-const visible = visibleDomains(user.platformRole, granted);
-const canUseAgent = visible.length > 0; // super_admin/admin: sempre true
-```
-
-A flag `bubbleEnabled` (`AgentSettings`) continua valendo como kill-switch global. `isSuperAdmin` na bolha continua sendo passado para os ajustes admin-only do chat panel.
-
-### 7.5 Tools transversais
-
-`EXCLUDE_FROM_FILTERING` no Router R1 já cobre `caminho3` e `dominios-vazios`. Esta spec mantém. `caminho3` continua filtrado adicionalmente em `run-agent.ts` por `BI_ROLES` (super_admin/admin). Sem mudança.
-
-Se aparecer tool com prefixo desconhecido (não casa com nenhum `KNOWN_DOMAIN`), `getToolDomain` retorna `_desconhecido` e a tool fica sempre disponível (já era). Mantém.
-
-## 8. Mudanças no cadastro de usuário
-
-Componentes afetados:
-
-- `src/components/users/access-step.tsx` — checkboxes dos domínios. Já lê `REPORT_DOMAINS` direto, então a remoção de `rh`/`producao` no `domains.ts` propaga sozinha. Adicionar microcopy explicativo: "Estes módulos definem o que o usuário pode ver em Relatórios e perguntar ao Agente Nex." (mudança mínima de UX que reflete o novo papel do cadastro).
-- `src/components/users/user-form-dialog.tsx` — sem mudança estrutural; é o consumidor.
-- `src/lib/actions/domain-access.ts` — `updateUserDomains` já valida via `grantableDomains` e `canEditUser`. Sem mudança lógica. Só ganha `audit_log` enriquecido (mas isso é cosmético, é o que já existe).
-- `src/lib/reports/domains.ts` — `REPORT_DOMAINS` perde 2 entradas; `visibleDomains` e `grantableDomains` não mudam (são puras).
-- `prisma/schema.prisma` — enum `ReportDomain` perde `rh` e `producao`.
-- `prisma/migrations/<timestamp>_drop_dominios_rh_producao` — DDL: deleta linhas em `UserDomainAccess` com domínio em (`rh`, `producao`), depois `ALTER TYPE report_domain RENAME TO report_domain_old; CREATE TYPE report_domain AS ENUM (...); ALTER TABLE ... USING ...::text::report_domain; DROP TYPE report_domain_old;`. Pattern de remoção de valor de enum em Postgres.
-
-## 9. Migração de dados
-
-A migração de enum no Postgres é destrutiva. Sequência:
-
-1. **Backup automático.** A migration grava em `docs/migrations/2026-05-28-rbac-v2-backup.sql` um snapshot das linhas que serão deletadas (`SELECT user_id, domain, granted_by_id FROM user_domain_access WHERE domain IN ('rh', 'producao')`). Arquivo entra no commit junto da migration.
-2. **`DELETE FROM user_domain_access WHERE domain IN ('rh', 'producao')`** dentro da migration.
-3. **Recriação do enum** (pattern Postgres descrito acima).
-4. **Audit log automático**: a migration insere um `audit_logs` com `action: "user_domains_changed"`, `target_id` = cada userId afetado, `details: { removed: ['rh'], reason: 'rbac_v2_alignment' }`. Garante rastreabilidade.
-
-Em produção, antes do merge: rodar `SELECT user_id, domain FROM user_domain_access WHERE domain IN ('rh', 'producao')` para saber se há impacto real. Se houver, comunicar usuários afetados (são manager/viewer com acesso fantasma — não perdem nada real).
-
-## 10. Auditoria e métricas
-
-Novo enum value:
+`src/app/(protected)/layout.tsx` muda:
 
 ```text
-enum AuditAction {
-  ...
-  agent_permission_denied
-}
+// Antes:
+const canUseAgent = user.platformRole === "super_admin" || user.platformRole === "admin";
+
+// Depois (com short-circuit):
+const canUseAgent = seesAll(user.platformRole)
+  ? true
+  : (await getUserDomains(user.id)).length > 0;
 ```
 
-Cada recusa do Nex gera uma linha. Detalhe:
+`seesAll` faz curto-circuito: super_admin/admin NÃO disparam query. Manager/viewer disparam 1 query indexada (`findMany` por `userId`). O segmento de layout não re-renderiza em navegação client-side; query roda só em hard nav. Sem cache em memória nesta spec (TTL stale após mudança de permissão).
+
+`bubbleEnabled` (`AgentSettings`) segue como kill-switch global.
+
+### 6.6 Comportamento em mistura de domínios
+
+Pergunta que casa com vários domínios, alguns permitidos outros não:
+- Fast-path NÃO dispara (interseção ≥ 1).
+- Camada B do `filterCatalog` corta as tools de domínio negado.
+- LLM responde com as tools disponíveis. Sem hint extra no system prompt (KISS).
+- Esperado: LLM articula tipo "sobre estoque vejo X; sobre financeiro não tenho dado para você." Aceitável como comportamento de MVP. Risco de alucinação de financeiro mitigado pela §6.3.
+
+### 6.7 Comportamento em tool com prefixo desconhecido
+
+`getToolDomain` retorna `UNKNOWN_DOMAIN` (`_desconhecido`). Camada B mantém (conservador). Teste novo alerta quando tool sem prefixo conhecido aparece (logger.warn em dev + asserção no teste de coerência).
+
+## 7. Mudanças no cadastro de usuário
+
+Componentes:
+- `src/components/users/access-step.tsx` — lê `REPORT_DOMAINS`, propaga sozinho. Adicionar microcopy: "Estes módulos definem o que o usuário pode ver em Relatórios e perguntar ao Agente Nex."
+- `src/components/users/user-form-dialog.tsx` — sem mudança estrutural.
+- `src/lib/actions/domain-access.ts` — `updateUserDomains` já valida; sem mudança lógica.
+- `src/lib/reports/domains.ts` — `REPORT_DOMAINS` perde 2 entradas.
+- `prisma/schema.prisma` — enum `ReportDomain` perde `rh`/`producao`; coluna nova `AgentRouterDecision.outcome TEXT NULL`; enum `AuditAction` ganha `agent_permission_denied`.
+- `prisma/migrations/<timestamp>_rbac_v2_alinhar_dominios_e_audit_router/migration.sql` — migration combinada (§8).
+
+## 8. Migração de dados
+
+### 8.1 Ordem de execução da Onda C (importante)
+
+1. **Grep prévio.** `grep -rEn "['\"]rh['\"]|['\"]producao['\"]" src/ mcp/ prisma/ --include="*.ts" --include="*.tsx" --include="*.sql"`. Lista anexada ao PR.
+2. **Refatorar referências hardcoded.** Cada hit decide-se: remover, virar constante (`DOMAIN_RH = 'rh'`), ou manter (migrations antigas: histórico, intocadas).
+3. **Editar `prisma/schema.prisma`**: remove valores do enum, adiciona coluna `outcome`, valor `agent_permission_denied` no `AuditAction`.
+4. **`prisma migrate dev --name rbac_v2`** — gera migration. Substituir o SQL gerado pelo manual da §8.2 (Prisma não sabe deletar valor de enum corretamente).
+5. **`prisma generate`** — atualiza client. TS reflete a mudança.
+6. **Atualizar `REPORT_DOMAINS`** em `src/lib/reports/domains.ts`.
+7. **`npm test` + `npm run typecheck`** — verde antes de prosseguir.
+
+### 8.2 SQL da migration
+
+```sql
+-- Pré-flight (script separado, NÃO faz parte da migration):
+-- scripts/2026-05-28-pre-flight-rbac-v2.sh roda em prod:
+-- SELECT user_id, domain, granted_by_id FROM user_domain_access
+-- WHERE domain IN ('rh', 'producao');
+-- Saída salva em docs/migrations/2026-05-28-rbac-v2-snapshot.txt (commitada).
+
+BEGIN;
+
+-- 1. AgentRouterDecision ganha outcome.
+ALTER TABLE "agent_router_decision"
+  ADD COLUMN IF NOT EXISTS "outcome" TEXT NULL;
+
+-- 2. AuditAction ganha agent_permission_denied.
+ALTER TYPE "AuditAction" ADD VALUE IF NOT EXISTS 'agent_permission_denied';
+
+-- 3. Deleta linhas órfãs de UserDomainAccess + audit interno.
+WITH deleted AS (
+  DELETE FROM "user_domain_access"
+  WHERE domain IN ('rh', 'producao')
+  RETURNING user_id, domain
+)
+INSERT INTO "audit_logs" (id, user_id, action, target_type, target_id, details, created_at)
+SELECT gen_random_uuid(), user_id, 'user_domains_changed', 'User', user_id::text,
+       jsonb_build_object('removed', jsonb_build_array(domain), 'reason', 'rbac_v2_alignment'),
+       NOW()
+FROM deleted;
+
+-- 4. Recria enum ReportDomain sem rh/producao.
+ALTER TYPE "ReportDomain" RENAME TO "ReportDomain_old";
+CREATE TYPE "ReportDomain" AS ENUM (
+  'cadastros', 'comercial', 'contabil', 'crm',
+  'estoque', 'financeiro', 'fiscal'
+);
+ALTER TABLE "user_domain_access"
+  ALTER COLUMN "domain" TYPE "ReportDomain"
+  USING "domain"::text::"ReportDomain";
+DROP TYPE "ReportDomain_old";
+
+COMMIT;
+```
+
+**Idempotência:**
+- Passos 1, 2 usam `IF NOT EXISTS` / `IF NOT EXISTS`.
+- Passo 3 (`DELETE WHERE domain IN`) é idempotente naturalmente.
+- Passo 4 NÃO é idempotente (vai falhar se rodado duas vezes — tipo já renomeado). Aceitável porque a migration roda 1x via `prisma migrate deploy`. Falha no meio é capturada pelo `BEGIN/COMMIT` (atomicidade).
+
+**Down (rollback):**
+```sql
+BEGIN;
+ALTER TYPE "ReportDomain" RENAME TO "ReportDomain_v2";
+CREATE TYPE "ReportDomain" AS ENUM (
+  'estoque','financeiro','fiscal','comercial','cadastros',
+  'contabil','rh','crm','producao'
+);
+ALTER TABLE "user_domain_access"
+  ALTER COLUMN "domain" TYPE "ReportDomain"
+  USING "domain"::text::"ReportDomain";
+DROP TYPE "ReportDomain_v2";
+ALTER TABLE "agent_router_decision" DROP COLUMN IF EXISTS "outcome";
+-- AuditAction.agent_permission_denied não é removível (Postgres limit; valor não usado se rollback).
+COMMIT;
+```
+
+## 9. Auditoria e métricas
+
+Novo enum value `AuditAction.agent_permission_denied`.
+
+Linha gerada:
 
 ```text
 {
@@ -269,105 +387,205 @@ Cada recusa do Nex gera uma linha. Detalhe:
   details: {
     deniedDomains: ["financeiro"],
     availableDomains: ["estoque", "comercial"],
-    questionSnippet: "primeiros 200 chars",
+    questionSnippet: sanitize(question, 200),
     routerVersion: "r1.0.0.0-<hash>",
   }
 }
 ```
 
-Métrica nova em `/agente/monitoramento`: card "Recusas por permissão", contagem em janelas (24h / 7d / 30d), drill-down por domínio negado. Implementação: nova query `getPermissionDenialStats(period)` em `src/lib/actions/agent-router.ts` (ou novo arquivo `agent-permission-denials.ts`). UI: novo componente em `src/components/agent/router/permission-denials-card.tsx`.
+`sanitize` em `src/lib/agent/permission-denial.ts`:
+1. Trunca a 200 chars.
+2. `.replace(/\b\d{11}\b/g, "[doc]")` — CPF nu.
+3. `.replace(/\b\d{14}\b/g, "[doc]")` — CNPJ nu.
 
-## 11. Edge cases
+CPF/CNPJ formatados (com pontos/hífen) NÃO são mascarados — decisão consciente de MVP (escopo expandiria muito). Anotado como risco aceito.
+
+Retention: igual ao restante de `audit_logs` (sem TTL ativo).
+
+### 9.1 Valores de `AgentRouterDecision.outcome`
+
+Documentado (enum-like via TEXT):
+
+| outcome | Quando gravado |
+|---|---|
+| `null` | linhas históricas pré-RBAC v2 |
+| `"ok"` | turno completou normalmente (LLM respondeu) |
+| `"permission_denied"` | fast-path de §6.2 disparou |
+| `"failed"` | exceção não tratada (futuro; fora desta spec) |
+
+Atualização em `run-agent.ts`: no fim do turno bem-sucedido, `updateDecision({ decisionId, outcome: "ok" })`. No fast-path, `respondPermissionDenied` já grava `"permission_denied"`. Default `null` por enquanto preserva histórico.
+
+### 9.2 Card "Recusas por permissão"
+
+`/agente/monitoramento` ganha card novo. Query `getPermissionDenialStats(period: "24h" | "7d" | "30d")` em `src/lib/actions/agent-permission-denials.ts`:
+
+```text
+{
+  total: number,
+  byDomain: Array<{ domain: string; count: number }>,
+  recent: Array<{
+    userId: string;
+    userName: string;
+    questionSnippet: string;
+    deniedDomains: string[];
+    timestamp: Date;
+  }>,
+}
+```
+
+Componente `src/components/agent/router/permission-denials-card.tsx`: KPI + bar chart de domínios + drill-down recente.
+
+## 10. Edge cases
 
 | Cenário | Comportamento |
 |---|---|
-| Owner com `platformRole = viewer` (improvável mas possível) | Owner é flag complementar. `seesAll(role)` ignora `isOwner` hoje. Mantém: owner não-super tem domínios concedidos como qualquer outro. Pode ser revisto fora desta spec. |
-| Manager sem nenhum domínio concedido | Bolha do Nex não aparece. `/relatorios` redireciona com `?error=no_domains`. |
-| Viewer sem nenhum domínio concedido | Mesmo do manager. |
-| Super_admin sem nenhum domínio (impossível por `seesAll`, mas...) | `seesAll` força `["all"]`. Não afeta. |
-| Usuário troca `platformRole` durante conversa em curso | Próxima requisição já pega o novo papel (stateless). Conversa em si continua salva. |
-| Usuário perde domínio durante conversa | Mesma coisa. Próxima mensagem respeita. Histórico fica. |
-| Router retorna `fallback.triggered = true` (mensagem trivial, embedding falhou) | Fast-path NÃO dispara. Catálogo intersecciona apenas com `userAllowedDomains` (item 2 da §7.1), LLM responde normalmente. |
-| Tool sem prefixo conhecido | Domínio = `_desconhecido`, sempre incluída. Mantém comportamento conservador atual. |
-| `caminho3` para viewer/manager | Continua não disponível (BI_ROLES). Não muda nada. |
-| Pergunta sobre vários domínios, alguns permitidos outros não | Não dispara fast-path. Filtra tools (manter só as permitidas) e LLM responde com o que tem. O prompt ganha hint opcional: "Tools indisponíveis ao usuário foram omitidas." (descreve, não vaza nomes). |
-| Usuário com `caminho3` desliga via kill-switch global do Router | Kill-switch desativa o filtro do Router (catálogo inteiro). Combinado com a regra "sempre corta por `userAllowedDomains`" do item 2 da §7.1, o usuário NÃO ganha tool fora do acesso. Defesa em profundidade preservada. |
+| Owner com `platformRole = viewer` | `seesAll(role)` ignora `isOwner`. Owner não-super tem domínios concedidos como qualquer outro. Revisão fora desta spec. |
+| Manager sem domínio | Bolha não aparece. `/relatorios` redireciona `?error=no_domains`. Banner exibe explicação. |
+| Viewer sem domínio | Igual. |
+| Super_admin sem domínio | `seesAll` força `"all"`. Sem mudança. |
+| Usuário troca papel durante conversa | Próxima request pega novo papel (stateless). |
+| Usuário perde domínio durante conversa | Próxima mensagem respeita. Histórico exibido permanece (decisão §2.9). |
+| Router fallback (`triggered=true`) | Fast-path NÃO dispara. Camada B do filterCatalog ainda corta. |
+| Tool sem prefixo conhecido (`UNKNOWN_DOMAIN`) | Mantida (conservador). Teste alerta se tool nova aparecer. |
+| `caminho3` para viewer/manager | NÃO disponível (não está em `userAllowedDomains` calculado). Sem dupla camada implícita. |
+| Pergunta mistura domínios permitidos/negados | Fast-path NÃO dispara. Filtra tools, LLM responde. Defesa §6.3 valida tool calls. |
+| Kill-switch do Router (`routerEnabled=false`) | Camada A não filtra; camada B sempre filtra. Defesa preservada. |
+| Embedding falha (`embed_failed`) | `pickedDomains=[]`; fast-path NÃO dispara; camada B corta. LLM responde. |
+| LLM chuta tool fora do catálogo (alucinação) | §6.3 captura; devolve `tool_result` de erro semântico. |
+| Layout `(protected)` para super_admin | Short-circuit: sem query de `getUserDomains`. |
+| Layout `(protected)` para manager/viewer | 1 query por hard nav. Aceitável. |
+| Mensagem do usuário tem CPF/CNPJ | `sanitize` mascara antes do `audit_logs`. |
+| Audit logs explodem com bot externo | Rate limit existente em `/api/agent/stream` segura. |
 
-## 12. Plano de testes
+## 11. Plano de testes
 
-### Unidade
-- `src/lib/auth/require.test.ts` — `requireMinRole`, `requireExactRole`, `requireDomainsOrRedirect` com mock de `redirect`.
-- `src/lib/agent/router/filter-catalog.test.ts` — adiciona casos com `userAllowedDomains`: `"all"`, set vazio, interseção parcial, interseção nula.
-- `src/lib/agent/permission-denial.test.ts` — template com 0/1/N domínios disponíveis, audit log gerado, costUsd zero.
-- `src/lib/reports/domains.test.ts` — `REPORT_DOMAINS` é subconjunto de Router `DOMAINS`.
+### 11.1 Unidade
+- `src/lib/auth/require.test.ts` — `requireAuth`, `requireMinRole`, `requireVisibleDomainsOrRedirect`, `requireAgentAccessOrJson`. Mocks: `getCurrentUser`, `redirect`, `NextResponse.json`. Cobre hierarquia, query param de denúncia, no_domains, 401, 403.
+- `src/lib/agent/router/filter-catalog.test.ts` — adiciona casos: `userAllowedDomains="all"`, set vazio, interseção parcial, interseção nula, fallback do Router, shadow + permissão (camadas independentes).
+- `src/lib/agent/permission-denial.test.ts` — template com 0/1/N domínios; `sanitize` mascara CPF/CNPJ nu; latência simulada < 200ms; `costUsd = 0`.
+- `src/lib/reports/domains.test.ts` — coerência: `REPORT_DOMAINS` ⊂ Router `DOMAINS`.
+- `src/lib/text-sanitize.test.ts` (ou inline) — regex de CPF/CNPJ nus.
 
-### Integração
-- `src/lib/agent/__tests__/run-agent-permission-denied.test.ts` — runAgent com viewer + domínio negado → não chama LLM, persiste mensagem, gera audit_log, atualiza router_decision.
-- `src/lib/agent/__tests__/run-agent-permission-allowed.test.ts` — viewer com financeiro concedido pergunta financeiro → catálogo intersectado, LLM chamado normalmente.
+### 11.2 Integração
+- `src/lib/agent/__tests__/run-agent-permission-denied.test.ts` — viewer com `{estoque}` pergunta financeiro → não chama LLM, persiste mensagem, gera audit_log, `router_decision.outcome = "permission_denied"`.
+- `src/lib/agent/__tests__/run-agent-permission-allowed.test.ts` — viewer com `{financeiro}` pergunta financeiro → catálogo intersectado, LLM chamado.
+- `src/lib/agent/__tests__/run-agent-shadow-still-gates.test.ts` — `routerEnabled=false`, viewer sem financeiro pergunta financeiro → tool não entra no catálogo do LLM (camada B funciona em shadow).
+- `src/lib/agent/__tests__/run-agent-hallucinated-tool.test.ts` — LLM chama tool fora do catálogo (forçado via mock) → §6.3 devolve `tool_result` de erro, sem callTool real.
 
-### E2E manual (verificação obrigatória pelo CLAUDE.md)
-- Subir dev (`npm run dev:fresh`), criar 4 usuários:
-  - `super_admin@matrix.local` (super_admin, sem domínios — herda todos)
-  - `admin@matrix.local` (admin, sem domínios — herda todos)
-  - `manager-est@matrix.local` (manager, só `estoque`)
-  - `viewer-nada@matrix.local` (viewer, sem nada)
-- Validações:
-  1. `viewer-nada` loga: bolha do Nex não aparece; `/relatorios` redireciona.
-  2. `manager-est` loga: bolha aparece; pergunta sobre estoque funciona; pergunta sobre financeiro recebe recusa instantânea (< 200ms), sem custo de LLM em `LlmUsage`.
-  3. `admin` digita `/agente/configuracao`: layout redireciona para `/dashboard` (refatorado pelo `requireMinRole`).
-  4. `manager-est` digita `/usuarios` na URL: redireciona para `/dashboard` (gate novo).
-  5. AuditLog tem 1 linha de `agent_permission_denied` por recusa.
-  6. `/agente/monitoramento` mostra contador de recusas.
-- Documentar passo a passo em `docs/superpowers/runs/2026-05-28-rbac-v2-e2e.md`.
+Setup: ts-jest (configurado em `jest.config.ts`). Prisma mockado por `jest.mock("@/lib/prisma")` no padrão dos testes existentes.
 
-## 13. Critérios de aceite (definition of done)
+### 11.3 E2E manual (verificação obrigatória)
 
-1. Toda tela administrativa tem gate server-side. Verificado por teste manual + grep no diff (cada `/usuarios`, `/configuracao`, `/integracoes`, `/agente` tem `requireMinRole` ou layout equivalente).
-2. `REPORT_DOMAINS` tem exatamente 7 entradas. Teste de coerência com Router R1 verde.
-3. Migration aplicada em dev sem erro; `SELECT COUNT(*) FROM user_domain_access WHERE domain IN ('rh', 'producao')` retorna 0 depois.
-4. Bolha do Nex aparece para manager/viewer com pelo menos 1 domínio; não aparece sem nenhum.
-5. Pergunta sobre domínio fora do acesso devolve mensagem padrão em < 200ms, sem incremento em `llm_usage`.
-6. `/agente/monitoramento` tem card "Recusas por permissão" com dados de teste.
-7. Sem regressão: bateria `npm test` 100% verde; `npm run typecheck` verde; baseline atual de testes (1968) mantido ou superior.
-8. Code review (`/gsd-code-review`) e UI review (`/gsd-ui-review`) sem severidade alta.
+Seed via script `scripts/seed-rbac-v2-test.ts` (TypeScript, Prisma puro):
+- `super_admin@matrix.local` (super_admin)
+- `admin@matrix.local` (admin)
+- `manager-est@matrix.local` (manager, só `estoque`)
+- `viewer-nada@matrix.local` (viewer, sem domínio)
 
-## 14. Não-objetivos (YAGNI explícito)
+Senha temporária padrão (gerada no script). `npm run dev:fresh` antes.
 
-- **Não** implementa humanização da mensagem de recusa via LLM (fica como follow-up).
-- **Não** retroativa histórico de conversa (mudança de permissão não muda passado).
-- **Não** mexe na lógica de `super_admin` vs `admin` para domínios (ambos continuam vendo tudo).
-- **Não** adiciona novos papéis (`super_admin`/`admin`/`manager`/`viewer` continua sendo o universo).
-- **Não** unifica `UserDomainAccess` com permissões granulares por relatório individual. O domínio continua sendo a granularidade.
-- **Não** implementa configuração admin "qual o texto da recusa por domínio". Template é estático no MVP.
-- **Não** mexe nos módulos do Odoo nem na F2 de ingestão (descoberta de dados continua separada).
-- **Não** abre tela nova para "ver minhas permissões": o `/perfil` poderia ganhar isso depois, mas não é desta spec.
-- **Não** implementa permissão por relatório individual (granularidade segue por domínio).
+Roteiro:
+1. `viewer-nada` loga: bolha NÃO aparece; `/relatorios` redireciona; banner "Seu acesso ainda não foi configurado".
+2. `manager-est` loga: bolha aparece; pergunta estoque funciona; pergunta financeiro → recusa < 500ms; `LlmUsage` sem incremento; AuditLog tem `agent_permission_denied`.
+3. `admin` digita `/agente/configuracao`: layout permite (super_admin only? não, admin não passa) → redireciona para `/dashboard?denied=super_admin`, banner.
+4. `manager-est` digita `/usuarios`: `/dashboard?denied=admin`, banner.
+5. `manager-est` digita `/configuracao`: `/dashboard?denied=super_admin`, banner.
+6. `manager-est` digita `/relatorios/saldo-produto` (estoque): renderiza OK.
+7. Como super_admin, mudar manager-est para ter financeiro também. Manager pergunta financeiro de novo: agora funciona (LLM chamado).
+8. `/agente/monitoramento` mostra card "Recusas por permissão" com contagem ≥ 1.
+9. AuditLog: queries SQL conferindo (`SELECT * FROM audit_logs WHERE action='agent_permission_denied' ORDER BY created_at DESC LIMIT 5`).
+10. `SELECT * FROM agent_router_decision WHERE outcome='permission_denied' LIMIT 5`.
+11. `SELECT COUNT(*) FROM user_domain_access WHERE domain IN ('rh','producao')` = 0.
+12. Regressão: super_admin perguntando qualquer coisa continua funcionando normal.
 
-## 15. Riscos e mitigações
+Evidências em `docs/superpowers/runs/2026-05-28-rbac-v2-e2e.md` (printscreens dos banners, queries SQL, recorte do `LlmUsage`, payloads de SSE).
+
+## 12. Critérios de aceite (definition of done)
+
+1. Toda tela administrativa e API route relevante tem gate server-side (`/usuarios`, `/configuracao`, `/integracoes`, `/agente`, `/relatorios`, `/api/agent/stream`, `/api/agent/suggest-continuation`, `/api/agent/transcribe`).
+2. `REPORT_DOMAINS` tem exatamente 7 entradas. Teste de coerência verde.
+3. Migration aplicada em dev sem erro; `outcome` em `agent_router_decision` existe; zero linhas `rh`/`producao` no fim.
+4. Bolha do Nex aparece para manager/viewer com ≥1 domínio; não aparece sem nenhum.
+5. Pergunta fora do acesso devolve mensagem padrão < 500ms (alvo 200ms), sem incremento em `llm_usage`.
+6. `/agente/monitoramento` tem card "Recusas por permissão" populado em E2E.
+7. Banners renderizam em `/dashboard` com texto humanizado quando query params batem.
+8. Sanitização CPF/CNPJ comprovada em teste unitário.
+9. Defesa §6.3 cobre alucinação de tool (teste integração).
+10. `npm test` 100% verde; `npm run typecheck` verde; baseline atual (1968 testes) mantido ou superior.
+11. `/gsd-code-review` e `/gsd-ui-review` sem severidade alta.
+12. Grep de `'rh'`/`'producao'` no PR description: zero ocorrências em código de produção (migrations antigas OK).
+13. `HISTORY.md` atualizado com cada commit relevante; active file deletado no fim.
+
+## 13. Não-objetivos (YAGNI explícito)
+
+- **Não** humaniza mensagem de recusa via LLM (follow-up).
+- **Não** retroage histórico de conversa.
+- **Não** muda `super_admin` vs `admin` para domínios.
+- **Não** adiciona papéis novos.
+- **Não** implementa permissão granular por relatório individual (continua por domínio).
+- **Não** abre UI admin para "configurar texto da recusa".
+- **Não** mexe nos módulos do Odoo nem na F2.
+- **Não** abre tela nova "minhas permissões".
+- **Não** cacheia `userAllowedDomains` em memória.
+- **Não** retira `caminho3` de admin/super_admin.
+- **Não** cobre `/api/mcp` externo (ApiKey-based, fora do escopo).
+- **Não** mascara CPF/CNPJ formatado (regex só pega nus). MVP aceitável.
+
+## 14. Riscos e mitigações
 
 | Risco | Mitigação |
 |---|---|
-| Migration de enum em prod trava se houver lock concorrente | Migration roda em janela; testar antes em staging; pattern de recriação de enum sequencial; rollback via `down.sql` (também gerado). |
-| Usuário existente perde acesso a `rh`/`producao` e reclama | Comunicação prévia: rodar `SELECT` em prod antes do merge, listar usuários afetados, comunicar que não havia funcionalidade ligada a esses domínios. |
-| Fast-path de recusa marca falso positivo (recusa pergunta legítima) | `pickedDomains` do Router já tem threshold + fallback. Se score baixo, fallback dispara e o fast-path não executa. Adicional: log `questionSnippet` permite auditar a recusa depois. |
-| LLM consegue chamar tool de domínio negado por nome direto (alucinação) | `filterCatalog` corta a tool do catálogo entregue ao LLM. Se LLM alucinar nome de tool, MCP retorna `unknown tool`. Defesa pelo dispatch. |
-| Helper `requireMinRole` quebra layouts existentes | Refator é gradual: `/agente` e `/integracoes` já têm o padrão inline; refator copia comportamento e adiciona testes. `/usuarios` e `/configuracao` são adições puras (não há código que possa quebrar). |
-| Audit logs explodem se LLM externo bombardear `/api/agent/stream` | Rate limit existente no endpoint segura; `agent_permission_denied` reusa a mesma proteção. |
+| Migration de enum trava em prod | Pré-flight + janela + rollback definido + atomicidade. |
+| Usuário perde acesso a `rh`/`producao` | Pré-flight lista no PR; sem funcionalidade real perdida. |
+| Fast-path falso positivo (recusa pergunta legítima) | Threshold + fallback do Router já filtram; `questionSnippet` em auditoria permite revisão. |
+| LLM alucina nome de tool | §6.3 captura antes de `callTool`. |
+| Tool nova sem prefixo conhecido | Teste de coerência detecta; logger.warn em dev. |
+| Sanitização incompleta de CPF/CNPJ formatado | Risco aceito como MVP; ofuscações deliberadas ficam fora. |
+| Hot path em `(protected)/layout.tsx` | Short-circuit `seesAll` evita query para super_admin/admin; manager/viewer aceita 1 query por hard nav. |
+| Rollback perde dados de `rh`/`producao` | Backup gerado pelo pré-flight; rollback documentado. |
+| Hardcode `'rh'`/`'producao'` em código novo entra depois e quebra TS | Grep prévio + Prisma generate atualizado expõem em compile time. |
+| `caminho3` vazado por dupla camada mal coordenada | §6.1 colocou `caminho3` em `userAllowedDomains` para admin/super_admin; viewer/manager nunca vê. Coordenação única. |
+| API route descoberta tarde | §3.3 lista todas; gate em todas as relevantes na Onda B. |
 
-## 16. Estimativa de esforço
+## 15. Estimativa de esforço
 
 | Onda | Escopo | Esforço relativo |
 |---|---|---|
-| A | Helper `requireMinRole` + testes | S |
-| B | Gate em `/usuarios` e `/configuracao` + refator de `/agente` e `/integracoes` | S |
-| C | `REPORT_DOMAINS` alinhado + migration + audit prévio | M |
-| D | `filterCatalog` com `allowedDomains` + testes | M |
-| E | `permission-denial.ts` + run-agent fast-path + bolha gate em (protected)/layout | M |
-| F | Card "Recusas por permissão" em `/agente/monitoramento` | M |
-| G | Testes integração + E2E manual + code/UI review + PR | M |
+| A | `src/lib/auth/require.ts` (4 helpers) + testes unit | S |
+| B | Gate em telas (`/usuarios`, `/configuracao`, `/relatorios/layout`) + refator (`/agente`, `/integracoes`) + gate em API routes (`/api/agent/stream`, `/suggest-continuation`, `/transcribe`) + banner `/dashboard` | M |
+| C | Grep + refator hardcoded + schema.prisma + migration + generate + REPORT_DOMAINS + testes coerência + pré-flight script | M |
+| D | `filterCatalog` ganha `userAllowedDomains` + `computeAllowedDomains` no run-agent + testes unit das camadas | M |
+| E | `permission-denial.ts` (template + sanitize + responder) + fast-path no run-agent + defesa §6.3 + bolha condicionada + atualização `outcome` no fim do turno feliz + testes integração | M |
+| F | Card "Recusas por permissão" (query + componente + integração com `/agente/monitoramento`) | M |
+| G | Seed E2E + roteiro manual + grep final + code review + UI review + PR | M |
 
-Total: ~7 ondas. Microtarefas saem do PLAN v1.
+Total: 7 ondas. Decomposição em microtarefas no PLAN v1.
+
+## 16. Documentos/saídas geradas durante o sub-projeto
+
+- `docs/superpowers/specs/2026-05-28-rbac-v2-gating-e-dominios-design.md` (esta spec, v3)
+- `docs/superpowers/plans/2026-05-28-rbac-v2-gating-e-dominios-plan.md` (próximo, v3 após 2 reviews)
+- `docs/superpowers/runs/2026-05-28-rbac-v2-e2e.md` (evidências E2E)
+- `docs/migrations/2026-05-28-rbac-v2-snapshot.txt` (pré-flight prod)
+- `scripts/2026-05-28-pre-flight-rbac-v2.sh` (pré-flight executor)
+- `scripts/seed-rbac-v2-test.ts` (seed dos 4 usuários de teste)
+- `prisma/migrations/<timestamp>_rbac_v2_alinhar_dominios_e_audit_router/` (SQL up + down)
 
 ## 17. Histórico de versões
 
-- v1 (2026-05-28): primeira versão. Capturou perícia, definiu catálogo unificado, matriz de gates, fast-path. Aguarda Review #1 adversarial.
+- **v1 (2026-05-28):** primeira versão; perícia, catálogo unificado, matriz de gates, fast-path.
+- **v2 (2026-05-28):** Review #1 aplicada (12 achados): separa shadow vs gate de permissão; fast-path independe de routerEnabled; `outcome` migration; grep prévio; remove `requireExactRole`; banner `/dashboard`; histórico exibido; sanitização CPF/CNPJ; idempotência da migration; latência alvo vs teto; reescreve §2.10; cache fica como follow-up.
+- **v3 (2026-05-28):** Review #2 aplicada (11 achados materiais):
+  1. `requireDomainAccess` já existia em `src/lib/reports/guard.ts` — não reinventa, apenas reutiliza para `/relatorios/[id]`.
+  2. Mapeamento completo das API routes do agente (§3.3) + helper `requireAgentAccessOrJson`.
+  3. Defesa §6.3 nova: validar `toolName` antes de `session.callTool()` (cobre alucinação de tool).
+  4. `caminho3` vira parte explícita de `userAllowedDomains` (admin/super_admin only) em `computeAllowedDomains` — fim da dupla camada implícita BI_ROLES vs EXCLUDE_FROM_FILTERING.
+  5. Short-circuit `seesAll` no `(protected)/layout.tsx` evita query para super_admin/admin.
+  6. Ordem da Onda C documentada (grep → refator → schema → migrate → generate → REPORT_DOMAINS).
+  7. Valores de `outcome` formalizados (§9.1) + atualização no fim do turno feliz.
+  8. Seed script (`scripts/seed-rbac-v2-test.ts`) explicitado.
+  9. `/api/mcp` externo (ApiKey) marcado FORA do escopo.
+  10. Comportamento de mistura de domínios (§6.6) documentado.
+  11. Jest setup confirmado (ts-jest, sem testcontainers); testes integração mockam Prisma no padrão atual.
+
+SPEC v3 é a definitiva. Próximo: PLAN v1 (sobre esta v3).
