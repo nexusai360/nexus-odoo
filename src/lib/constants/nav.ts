@@ -3,6 +3,7 @@ import {
   BarChart3,
   BookOpen,
   Cable,
+  Compass,
   FlaskConical,
   Home,
   KeyRound,
@@ -48,6 +49,12 @@ export const NAV_ITEMS: NavItem[] = [
         label: "Monitoramento",
         href: "/agente/monitoramento",
         icon: Activity,
+        superAdminOnly: true,
+      },
+      {
+        label: "Router",
+        href: "/agente/router",
+        icon: Compass,
         superAdminOnly: true,
       },
       {
