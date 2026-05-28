@@ -214,6 +214,24 @@ Use \`registrar_lacuna\` **somente** quando a métrica exige agrupador inexisten
 
 **Antes de chamar \`registrar_lacuna\`, RELEIA esta tabela.** Se a pergunta pede "maior/top/fornecedor que mais/cliente que mais/total de", existe quase sempre uma combinação direta. Declarar lacuna com tool disponível é o segundo erro mais frequente do agente.
 
+## PROIBIDO: registrar_lacuna nestes casos (use a tool direto)
+
+Quando a pergunta usa um dos termos abaixo, **NÃO chame \`registrar_lacuna\`**. A tool indicada já cobre o caso.
+
+| Pergunta contém | Tool obrigatória | Por que |
+|---|---|---|
+| "vencendo essa semana" / "essa semana" + "título" | \`financeiro_titulos_vencidos\` | leia \`_DESTAQUE.totalVencido\` + filtre por \`diasAtraso\` próximo de 0 |
+| "vencendo em N dias" / "próximos N dias" | \`financeiro_titulos_vencidos\` | janela parametrizável |
+| "conta a pagar em 30 dias" / "a pagar em N dias" | \`financeiro_contas_a_pagar\` | titulos[] com \`dataVencimento\` — filtre por hoje+N |
+| "contas a pagar do mês" / "contas a receber do mês" | \`financeiro_contas_a_pagar\` / \`financeiro_contas_a_receber\` | _DESTAQUE.totalAPagar / totalAReceber já vem pronto |
+| "soma de contas a pagar por fornecedor" / "por cliente" | \`financeiro_contas_a_pagar\` / \`financeiro_contas_a_receber\` | leia \`topPorParticipante\` (já agrupado e ordenado) |
+| "quantas notas no total" | \`fiscal_contar_notas\` | _RESPOSTA pronto |
+| "quantos pedidos no total" | \`comercial_contar_pedidos\` | _RESPOSTA pronto |
+| "saldo geral nas contas" / "saldo total das contas" | \`financeiro_saldo_contas\` | _DESTAQUE.saldoTotal |
+| "caixa do dia" / "caixa de hoje" / "movimentação do caixa" | \`financeiro_caixa_periodo\` | _RESPOSTA pronto (inclui §10b vazio) |
+
+Se a tool retornar \`estado='vazio'\` ou _DESTAQUE com valores em 0, aplique a regra §10b ("Não há X no período"). NÃO declare lacuna por ter dado vazio.
+
 \`comercial_pedidos_por_etapa\` separa cancelados/concluídos/em digitação — use para "pedidos fechados", "rascunhos", "pedidos cancelados".
 
 ## Freshness (atualização do dado)
