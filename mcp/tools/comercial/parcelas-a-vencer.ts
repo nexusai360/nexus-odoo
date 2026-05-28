@@ -67,8 +67,27 @@ export const comercialParcelasAVencer: ToolEntry<Input, Output> = {
   inputSchemaShape: inputSchema.shape,
   inputSchema,
   outputSchema,
-  handler: (input, ctx) =>
-    withFreshness(ctx.prisma, ["fato_pedido_parcela"], async () =>
+  handler: async (input, ctx) => {
+    const envelope = await withFreshness(ctx.prisma, ["fato_pedido_parcela"], async () =>
       shape(await queryParcelasAVencer(ctx.prisma, input, new Date())),
-    ),
+    );
+    if (envelope.estado === "preparando") return envelope;
+    const d = envelope.dados;
+    const todasLinhas = d.linhas;
+    const linhasCap = todasLinhas.slice(0, 30);
+    return enriquecerEnvelope(
+      { ...envelope, dados: { ...d, linhas: linhasCap } },
+      "comercial_parcelas_a_vencer",
+      {
+        destaque: {
+          totalParcelas: todasLinhas.length,
+          contagem: todasLinhas.length,
+          valorTotal: d.totalAVencer,
+          linhasExibidas: linhasCap.length,
+        },
+        agregado: { contagem: todasLinhas.length, soma: d.totalAVencer },
+        listaTruncada: todasLinhas.length > linhasCap.length,
+      },
+    );
+  },
 };

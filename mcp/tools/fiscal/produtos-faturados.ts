@@ -20,6 +20,9 @@ const linhaSchema = z.object({
 const dados = z.object({
   linhas: z.array(linhaSchema),
   aviso: z.string(),
+  _RESPOSTA: z.string().optional(),
+  _DESTAQUE: z.record(z.string(), z.union([z.string(), z.number()])).optional(),
+  _agregado: z.record(z.string(), z.number().optional()).optional(),
 });
 
 const fonteStatus = z.object({
@@ -57,8 +60,37 @@ export const fiscalProdutosFaturados: ToolEntry<Input, Output> = {
   inputSchemaShape: inputSchema.shape,
   inputSchema,
   outputSchema,
-  handler: (input, ctx) =>
-    withFreshness(ctx.prisma, ["fato_nota_fiscal_item"], async () =>
+  handler: async (input, ctx) => {
+    const envelope = await withFreshness(ctx.prisma, ["fato_nota_fiscal_item"], async () =>
       shape(await queryProdutosFaturados(ctx.prisma, input)),
-    ),
+    );
+    if (envelope.estado === "preparando") return envelope;
+    const d = envelope.dados;
+    const todasLinhas = d.linhas;
+    const linhasCap = todasLinhas.slice(0, 30);
+    const totalGeral = todasLinhas.reduce((s, l) => s + l.valorTotal, 0);
+    const totalQtd = todasLinhas.reduce((s, l) => s + Number(l.quantidadeTotal ?? 0), 0);
+    const top = todasLinhas[0];
+    const fmt = (n: number) => n.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
+    return {
+      ...envelope,
+      dados: {
+        ...d,
+        linhas: linhasCap,
+        _RESPOSTA: top
+          ? `Top produto faturado: ${top.produtoNome ?? "(sem nome)"} (${fmt(top.valorTotal)}). Total: ${todasLinhas.length} produtos, ${fmt(totalGeral)}, ${totalQtd} unidades.`
+          : "Nao ha produtos faturados no periodo.",
+        _DESTAQUE: {
+          totalProdutos: todasLinhas.length,
+          totalGeral,
+          totalQuantidade: totalQtd,
+          topProduto: top?.produtoNome ?? "",
+          valorTopProduto: top?.valorTotal ?? 0,
+          linhasExibidas: linhasCap.length,
+        },
+        _agregado: { contagem: todasLinhas.length, soma: totalGeral },
+        _listaTruncada: todasLinhas.length > linhasCap.length,
+      },
+    };
+  },
 };

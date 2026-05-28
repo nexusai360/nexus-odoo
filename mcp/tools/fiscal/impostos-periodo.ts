@@ -17,6 +17,9 @@ const dados = z.object({
   somaIbpt: z.number(),
   somaIcmsProprio: z.number(),
   aviso: z.string(),
+  _RESPOSTA: z.string().optional(),
+  _DESTAQUE: z.record(z.string(), z.union([z.string(), z.number()])).optional(),
+  _agregado: z.record(z.string(), z.number().optional()).optional(),
 });
 
 const fonteStatus = z.object({
@@ -56,8 +59,21 @@ export const fiscalImpostosPeriodo: ToolEntry<Input, Output> = {
   inputSchemaShape: inputSchema.shape,
   inputSchema,
   outputSchema,
-  handler: (input, ctx) =>
-    withFreshness(ctx.prisma, ["fato_nota_fiscal"], async () =>
+  handler: async (input, ctx) => {
+    const envelope = await withFreshness(ctx.prisma, ["fato_nota_fiscal"], async () =>
       shape(await queryImpostosPeriodo(ctx.prisma, input)),
-    ),
+    );
+    if (envelope.estado === "preparando") return envelope;
+    const d = envelope.dados;
+    const fmt = (n: number) => n.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
+    return {
+      ...envelope,
+      dados: {
+        ...d,
+        _RESPOSTA: `Impostos no periodo (${d.totalNotas} notas): IBPT (estimativa) ${fmt(d.somaIbpt)}, ICMS proprio ${fmt(d.somaIcmsProprio)}.`,
+        _DESTAQUE: { totalNotas: d.totalNotas, somaIbpt: d.somaIbpt, somaIcmsProprio: d.somaIcmsProprio },
+        _agregado: { contagem: d.totalNotas, soma: d.somaIbpt + d.somaIcmsProprio },
+      },
+    };
+  },
 };

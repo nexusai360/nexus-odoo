@@ -5,6 +5,7 @@ import { z } from "zod";
 import type { ToolEntry } from "../../catalog/types.js";
 import { queryContarNotas } from "@/lib/reports/queries/fiscal.js";
 import { withFreshness } from "../../lib/freshness.js";
+import { enriquecerEnvelope } from "../../lib/with-responder.js";
 
 const inputSchema = z.object({});
 
@@ -12,6 +13,9 @@ const dados = z.object({
   total: z.number().int(),
   totalEntrada: z.number().int(),
   totalSaida: z.number().int(),
+  _RESPOSTA: z.string().optional(),
+  _DESTAQUE: z.record(z.string(), z.union([z.string(), z.number()])).optional(),
+  _agregado: z.record(z.string(), z.number().optional()).optional(),
 });
 
 const fonteStatus = z.object({
@@ -42,8 +46,21 @@ export const fiscalContarNotas: ToolEntry<Input, Output> = {
   inputSchemaShape: inputSchema.shape,
   inputSchema,
   outputSchema,
-  handler: (_input, ctx) =>
-    withFreshness(ctx.prisma, ["fato_nota_fiscal"], () =>
+  handler: async (_input, ctx) => {
+    const envelope = await withFreshness(ctx.prisma, ["fato_nota_fiscal"], () =>
       queryContarNotas(ctx.prisma),
-    ),
+    );
+    if (envelope.estado === "preparando") return envelope;
+    const d = envelope.dados;
+    const resposta = `${d.total} notas fiscais no total: ${d.totalSaida} emitidas (saída) e ${d.totalEntrada} recebidas (entrada).`;
+    return {
+      ...envelope,
+      dados: {
+        ...d,
+        _RESPOSTA: resposta,
+        _DESTAQUE: { totalNotas: d.total, totalSaida: d.totalSaida, totalEntrada: d.totalEntrada },
+        _agregado: { contagem: d.total },
+      },
+    };
+  },
 };

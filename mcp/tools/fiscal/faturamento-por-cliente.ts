@@ -60,8 +60,31 @@ export const fiscalFaturamentoPorCliente: ToolEntry<Input, Output> = {
   inputSchemaShape: inputSchema.shape,
   inputSchema,
   outputSchema,
-  handler: (input, ctx) =>
-    withFreshness(ctx.prisma, ["fato_nota_fiscal"], async () =>
+  handler: async (input, ctx) => {
+    const envelope = await withFreshness(ctx.prisma, ["fato_nota_fiscal"], async () =>
       shape(await queryFaturamentoPorCliente(ctx.prisma, input)),
-    ),
+    );
+    if (envelope.estado === "preparando") return envelope;
+    const d = envelope.dados;
+    // T-38 (Ronda 3): cap + envelope canonico com topCliente.
+    const todasLinhas = d.linhas;
+    const linhasCap = todasLinhas.slice(0, 30);
+    const totalGeral = todasLinhas.reduce((s, l) => s + l.valorTotal, 0);
+    const top = todasLinhas[0];
+    return enriquecerEnvelope(
+      { ...envelope, dados: { ...d, linhas: linhasCap } },
+      "fiscal_faturamento_por_cliente",
+      {
+        destaque: {
+          totalClientes: todasLinhas.length,
+          totalGeral,
+          topCliente: top?.participanteNome ?? "",
+          valorTopCliente: top?.valorTotal ?? 0,
+          linhasExibidas: linhasCap.length,
+        },
+        agregado: { contagem: todasLinhas.length, soma: totalGeral },
+        listaTruncada: todasLinhas.length > linhasCap.length,
+      },
+    );
+  },
 };

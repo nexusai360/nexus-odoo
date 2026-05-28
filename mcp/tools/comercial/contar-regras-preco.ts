@@ -10,6 +10,9 @@ const inputSchema = z.object({});
 
 const dados = z.object({
   total: z.number().int(),
+  _RESPOSTA: z.string().optional(),
+  _DESTAQUE: z.record(z.string(), z.union([z.string(), z.number()])).optional(),
+  _agregado: z.record(z.string(), z.number().optional()).optional(),
 });
 
 const fonteStatus = z.object({
@@ -40,8 +43,20 @@ export const comercialContarRegrasPreco: ToolEntry<Input, Output> = {
   inputSchemaShape: inputSchema.shape,
   inputSchema,
   outputSchema,
-  handler: (_input, ctx) =>
-    withFreshness(ctx.prisma, ["fato_preco"], () =>
+  handler: async (_input, ctx) => {
+    const envelope = await withFreshness(ctx.prisma, ["fato_preco"], () =>
       queryContarRegrasPreco(ctx.prisma),
-    ),
+    );
+    if (envelope.estado === "preparando") return envelope;
+    const d = envelope.dados;
+    return {
+      ...envelope,
+      dados: {
+        ...d,
+        _RESPOSTA: `${d.total} regras de preco cadastradas (todas as tabelas).`,
+        _DESTAQUE: { totalRegras: d.total },
+        _agregado: { contagem: d.total },
+      },
+    };
+  },
 };

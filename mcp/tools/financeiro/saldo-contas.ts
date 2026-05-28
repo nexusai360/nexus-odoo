@@ -16,6 +16,9 @@ const dados = z.object({
     }),
   ),
   saldoTotal: z.number(),
+  _RESPOSTA: z.string().optional(),
+  _DESTAQUE: z.record(z.string(), z.union([z.string(), z.number()])).optional(),
+  _agregado: z.record(z.string(), z.number().optional()).optional(),
 });
 
 const fonteStatus = z.object({
@@ -43,8 +46,21 @@ export const financeiroSaldoContas: ToolEntry<Input, Output> = {
   inputSchemaShape: inputSchema.shape,
   inputSchema,
   outputSchema,
-  handler: (_input, ctx) =>
-    withFreshness(ctx.prisma, ["fato_financeiro_saldo"], async () =>
+  handler: async (_input, ctx) => {
+    const envelope = await withFreshness(ctx.prisma, ["fato_financeiro_saldo"], async () =>
       querySaldoContas(ctx.prisma),
-    ),
+    );
+    if (envelope.estado === "preparando") return envelope;
+    const d = envelope.dados;
+    const fmt = (n: number) => n.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
+    return {
+      ...envelope,
+      dados: {
+        ...d,
+        _RESPOSTA: `Saldo geral: ${fmt(d.saldoTotal)} em ${d.contas.length} contas/bancos.`,
+        _DESTAQUE: { saldoTotal: d.saldoTotal, totalContas: d.contas.length },
+        _agregado: { soma: d.saldoTotal, contagem: d.contas.length },
+      },
+    };
+  },
 };

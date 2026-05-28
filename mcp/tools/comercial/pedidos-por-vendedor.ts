@@ -61,8 +61,32 @@ export const comercialPedidosPorVendedor: ToolEntry<Input, Output> = {
   inputSchemaShape: inputSchema.shape,
   inputSchema,
   outputSchema,
-  handler: (input, ctx) =>
-    withFreshness(ctx.prisma, ["fato_pedido"], async () =>
+  handler: async (input, ctx) => {
+    const envelope = await withFreshness(ctx.prisma, ["fato_pedido"], async () =>
       shape(await queryPedidosPorVendedor(ctx.prisma, input)),
-    ),
+    );
+    if (envelope.estado === "preparando") return envelope;
+    const d = envelope.dados;
+    const todasLinhas = d.linhas;
+    const totalPedidos = todasLinhas.reduce((s, l) => s + Number(l.quantidade ?? 0), 0);
+    const valorTotal = todasLinhas.reduce((s, l) => s + Number(l.valorTotal ?? 0), 0);
+    const top = todasLinhas[0];
+    const ticketMedio = totalPedidos > 0 ? valorTotal / totalPedidos : 0;
+    return enriquecerEnvelope(
+      { ...envelope, dados: { ...d, linhas: todasLinhas.slice(0, 20) } },
+      "comercial_pedidos_por_vendedor",
+      {
+        destaque: {
+          totalVendedores: todasLinhas.length,
+          totalPedidos,
+          valorTotal,
+          ticketMedio,
+          topVendedor: top?.vendedorNome ?? "",
+          valorTopVendedor: top?.valorTotal ?? 0,
+        },
+        agregado: { contagem: totalPedidos, soma: valorTotal, media: ticketMedio },
+        listaTruncada: todasLinhas.length > 20,
+      },
+    );
+  },
 };

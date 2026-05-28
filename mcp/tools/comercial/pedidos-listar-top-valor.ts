@@ -113,8 +113,23 @@ export const comercialPedidosListarTopValor: ToolEntry<Input, Output> = {
   inputSchemaShape: inputSchema.shape,
   inputSchema,
   outputSchema,
-  handler: (input, ctx) =>
-    withFreshness(ctx.prisma, ["fato_pedido"], () =>
+  handler: async (input, ctx) => {
+    const envelope = await withFreshness(ctx.prisma, ["fato_pedido"], () =>
       queryPedidosListarTopValor(ctx.prisma, input),
-    ),
+    );
+    if (envelope.estado === "preparando") return envelope;
+    const d = envelope.dados as { linhas: Array<{ valorTotal: number; numero?: string; participanteNome?: string | null }>; valorTotalListados?: number };
+    const linhas = d.linhas ?? [];
+    const top = linhas[0];
+    return enriquecerEnvelope(envelope, "comercial_pedidos_listar_top_valor", {
+      destaque: {
+        totalListados: linhas.length,
+        valorTotalListados: d.valorTotalListados ?? linhas.reduce((s, l) => s + l.valorTotal, 0),
+        topPedido: top?.numero ?? "",
+        topParticipante: top?.participanteNome ?? "",
+        topValor: top?.valorTotal ?? 0,
+      },
+      agregado: { contagem: linhas.length, soma: d.valorTotalListados ?? 0 },
+    });
+  },
 };

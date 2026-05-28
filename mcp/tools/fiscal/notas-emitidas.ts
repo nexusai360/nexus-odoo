@@ -75,8 +75,29 @@ export const fiscalNotasEmitidas: ToolEntry<Input, Output> = {
   inputSchemaShape: inputSchema.shape,
   inputSchema,
   outputSchema,
-  handler: (input, ctx) =>
-    withFreshness(ctx.prisma, ["fato_nota_fiscal"], async () =>
+  handler: async (input, ctx) => {
+    const envelope = await withFreshness(ctx.prisma, ["fato_nota_fiscal"], async () =>
       shape(await queryNotasEmitidas(ctx.prisma, input)),
-    ),
+    );
+    if (envelope.estado === "preparando") return envelope;
+    const d = envelope.dados;
+    // T-38 (Ronda 3): cap em 30 linhas + envelope canonico. Antes a tool
+    // devolvia 7.7MB de linhas cruas e o LLM truncava sem total.
+    const todasLinhas = d.linhas;
+    const linhasCap = todasLinhas.slice(0, 30);
+    return enriquecerEnvelope(
+      { ...envelope, dados: { ...d, linhas: linhasCap } },
+      "fiscal_notas_emitidas",
+      {
+        destaque: {
+          totalNotas: d.totalNotas,
+          valorTotal: d.valorTotal,
+          contagem: d.totalNotas,
+          linhasExibidas: linhasCap.length,
+        },
+        agregado: { contagem: d.totalNotas, soma: d.valorTotal },
+        listaTruncada: todasLinhas.length > linhasCap.length,
+      },
+    );
+  },
 };

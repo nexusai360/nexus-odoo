@@ -25,6 +25,9 @@ const dados = z.object({
   totalGeral: z.number(),
   totalItens: z.number().int(),
   totalMarcas: z.number().int(),
+  _RESPOSTA: z.string().optional(),
+  _DESTAQUE: z.record(z.string(), z.union([z.string(), z.number()])).optional(),
+  _agregado: z.record(z.string(), z.number().optional()).optional(),
 });
 
 const fonteStatus = z.object({
@@ -96,8 +99,30 @@ export const fiscalFaturamentoPorMarca: ToolEntry<Input, Output> = {
   inputSchemaShape: inputSchema.shape,
   inputSchema,
   outputSchema,
-  handler: (input, ctx) =>
-    withFreshness(ctx.prisma, ["fato_nota_fiscal_item", "fato_produto"], () =>
+  handler: async (input, ctx) => {
+    const envelope = await withFreshness(ctx.prisma, ["fato_nota_fiscal_item", "fato_produto"], () =>
       queryFaturamentoPorMarca(ctx.prisma, input),
-    ),
+    );
+    if (envelope.estado === "preparando") return envelope;
+    const d = envelope.dados;
+    const fmt = (n: number) => n.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
+    const top = d.linhas[0];
+    return {
+      ...envelope,
+      dados: {
+        ...d,
+        _RESPOSTA: top
+          ? `Faturamento por marca: total ${fmt(d.totalGeral)} em ${d.totalMarcas} marcas. Top: ${top.marca ?? "(sem marca)"} ${fmt(top.valorTotal)}.`
+          : "Nao ha faturamento por marca no periodo.",
+        _DESTAQUE: {
+          totalGeral: d.totalGeral,
+          totalMarcas: d.totalMarcas,
+          totalItens: d.totalItens,
+          topMarca: top?.marca ?? "",
+          valorTopMarca: top?.valorTotal ?? 0,
+        },
+        _agregado: { contagem: d.totalMarcas, soma: d.totalGeral },
+      },
+    };
+  },
 };
