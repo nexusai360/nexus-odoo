@@ -105,7 +105,7 @@ const fmtGenerico: FormatadorCanonico = (env) => {
 // ---------------------------------------------------------------------------
 
 // Formatador comum aos 3 financeiros vencidos/receber/pagar pode reaproveitar
-// padroes — mas como cada um tem mensagem propria (cliente/fornecedor/etc),
+// padroes , mas como cada um tem mensagem propria (cliente/fornecedor/etc),
 // mantemos especificos. Para titulos_vencidos, mensagem usa "vencido".
 const fmtTitulosVencidos: FormatadorCanonico = (env) => {
   const total = Number(env._DESTAQUE?.totalVencido ?? 0);
