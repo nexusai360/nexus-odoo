@@ -1,710 +1,2048 @@
 {
-  "marker": "[AUDIT-POS-2026-05-27T15-10-40]",
-  "startedAt": "2026-05-27T15:10:40.381Z",
-  "elapsedSeconds": 433,
-  "total": 100,
-  "ok": 100,
-  "fail": 0,
+  "marker": "[AUDIT-POS-2026-05-28T10-12-30]",
+  "startedAt": "2026-05-28T10:12:30.372Z",
+  "elapsedSeconds": 867,
+  "total": 291,
+  "ok": 290,
+  "fail": 1,
   "results": [
     {
-      "conversationId": "2523476c-f25b-4eb7-aa50-91595e04b366",
-      "question": "Concentração do estoque por família",
-      "responseChars": 397,
+      "conversationId": "796813f8-03f9-4715-a69b-6a8d411906ce",
+      "question": "Sobrou alguma coisa do [102]?",
+      "responseChars": 54,
       "ok": true,
-      "durationMs": 47865
+      "durationMs": 47372
     },
     {
-      "conversationId": "47c797f4-860f-49da-83c3-82d0680f1d44",
-      "question": "Quero o saldo geral em valor financeiro",
-      "responseChars": 103,
+      "conversationId": "7bdab814-c305-4692-aa7d-49783e6b9e18",
+      "question": "Conta contas a pagar",
+      "responseChars": 239,
       "ok": true,
-      "durationMs": 47867
+      "durationMs": 89454
     },
     {
-      "conversationId": "43bc42a1-e25e-46d9-880c-3fc7a82c969c",
-      "question": "Pedidos em aberto no funil",
-      "responseChars": 782,
+      "conversationId": "b295e685-57ff-4c6e-89f7-61b674ed0f8c",
+      "question": "Faturamento de maio de 2026",
+      "responseChars": 121,
       "ok": true,
-      "durationMs": 89869
+      "durationMs": 47368
     },
     {
-      "conversationId": "b3474429-e422-484f-9f84-7f632cba4f62",
-      "question": "Pedido sem nota emitida ainda",
-      "responseChars": 243,
+      "conversationId": "78bd73f9-2c5f-433a-9ee5-35242d0c813b",
+      "question": "Vendedor com maior ticket médio",
+      "responseChars": 98,
       "ok": true,
-      "durationMs": 47866
+      "durationMs": 89458
     },
     {
-      "conversationId": "6d718969-fee6-49d0-a20c-5966d55c2e10",
-      "question": "Quantas notas recebemos do fornecedor [SMARTFIT]?",
-      "responseChars": 147,
+      "conversationId": "e8fb9b8b-b475-4ee2-9d9e-1c882cf70e94",
+      "question": "Quantos fornecedores temos cadastrados?",
+      "responseChars": 88,
       "ok": true,
-      "durationMs": 47864
+      "durationMs": 47371
     },
     {
-      "conversationId": "c63bbaff-f8d5-4476-9b3d-98f00b9164ea",
-      "question": "Top 5 produtos por margem (preço de venda vs custo)",
-      "responseChars": 153,
-      "ok": true,
-      "durationMs": 10072
-    },
-    {
-      "conversationId": "c73b1e70-f8b3-404f-b74d-b38824b57925",
-      "question": "Cadastro completo do cliente Smartfit",
-      "responseChars": 564,
-      "ok": true,
-      "durationMs": 17184
-    },
-    {
-      "conversationId": "f15a4659-173e-4363-9c5e-2146861f24f3",
-      "question": "Quantos itens temos com saldo zero?",
-      "responseChars": 101,
-      "ok": true,
-      "durationMs": 10707
-    },
-    {
-      "conversationId": "13b8415d-6353-4f64-a33e-42999a0e094a",
-      "question": "Notas fiscais com valor acima de R$ 10 mil esse mês",
-      "responseChars": 990,
-      "ok": true,
-      "durationMs": 40224
-    },
-    {
-      "conversationId": "7636da94-c796-4930-ae3f-20dbb67dd138",
-      "question": "Quem é o vendedor com mais pedidos?",
-      "responseChars": 205,
-      "ok": true,
-      "durationMs": 8137
-    },
-    {
-      "conversationId": "3693ed54-5fb1-4d86-a12d-6f098c27efaa",
-      "question": "Buscar fornecedor Icaro Rossas",
-      "responseChars": 115,
-      "ok": true,
-      "durationMs": 10760
-    },
-    {
-      "conversationId": "3c922964-ce09-4280-9f42-4d7c026e23d1",
-      "question": "Conta 2.1.1",
-      "responseChars": 402,
-      "ok": true,
-      "durationMs": 9794
-    },
-    {
-      "conversationId": "e719a132-b4d1-4c48-8d60-3e94e6f5424f",
-      "question": "Parceiros novos cadastrados esta semana",
-      "responseChars": 169,
-      "ok": true,
-      "durationMs": 5384
-    },
-    {
-      "conversationId": "719db4a0-a6b8-4655-a132-5995b8cdda91",
-      "question": "Produto mais vendido em quantidade e em valor",
-      "responseChars": 220,
-      "ok": true,
-      "durationMs": 21823
-    },
-    {
-      "conversationId": "b3fd499b-f063-44df-b0b2-88e9a7f9cd5d",
-      "question": "Estoque atual do GLUTE TRAINER",
-      "responseChars": 305,
-      "ok": true,
-      "durationMs": 12162
-    },
-    {
-      "conversationId": "8a7be155-bd21-483e-8601-b6ea19c68297",
-      "question": "Faturamento por marca esse mês",
-      "responseChars": 606,
-      "ok": true,
-      "durationMs": 12856
-    },
-    {
-      "conversationId": "811ad66d-786e-4c29-9c1d-6110aa316324",
-      "question": "Pedidos em entrega",
-      "responseChars": 299,
-      "ok": true,
-      "durationMs": 19038
-    },
-    {
-      "conversationId": "acc834cb-60b7-4360-98ae-58b0f2e7ac90",
-      "question": "Pedidos cancelados versus fechados esse mês",
-      "responseChars": 327,
-      "ok": true,
-      "durationMs": 37122
-    },
-    {
-      "conversationId": "7a7e8f7b-d64b-4809-96e5-aa2cf6acc276",
-      "question": "Faturamento por cliente esse mês",
-      "responseChars": 909,
-      "ok": true,
-      "durationMs": 15865
-    },
-    {
-      "conversationId": "dfd903a9-9838-4139-aa11-980b6d55bd86",
-      "question": "Top 10 maiores contas a receber abertas",
-      "responseChars": 274,
-      "ok": true,
-      "durationMs": 57867
-    },
-    {
-      "conversationId": "6a9550a9-973c-4e53-9bcf-0ee934f5b6d5",
-      "question": "Quantas filiais temos?",
-      "responseChars": 64,
-      "ok": true,
-      "durationMs": 10485
-    },
-    {
-      "conversationId": "5549ab01-6c72-49a5-8d3b-165e2db6209a",
-      "question": "Conta a receber em 30 dias",
-      "responseChars": 43,
-      "ok": true,
-      "durationMs": 57959
-    },
-    {
-      "conversationId": "345ef69a-1a37-47ca-8416-52a2df21c435",
-      "question": "Estrutura completa da conta de receita",
-      "responseChars": 825,
-      "ok": true,
-      "durationMs": 51702
-    },
-    {
-      "conversationId": "e0793d6e-a3c6-4746-92a2-9dfa2fa3a41c",
-      "question": "Qual o saldo do banco principal?",
-      "responseChars": 279,
-      "ok": true,
-      "durationMs": 12693
-    },
-    {
-      "conversationId": "3c7b79d1-2578-4a2f-87e7-8fe1e2b8cffd",
-      "question": "Devedores principais",
-      "responseChars": 43,
-      "ok": true,
-      "durationMs": 42073
-    },
-    {
-      "conversationId": "14a39e12-6c5a-4189-a8db-f61785de9a4a",
-      "question": "Parcelas a vencer essa semana",
-      "responseChars": 862,
-      "ok": true,
-      "durationMs": 29860
-    },
-    {
-      "conversationId": "3ac00dc8-4f86-4181-a020-3ce8e671c5fa",
-      "question": "tem [102] aqui ainda?",
-      "responseChars": 175,
-      "ok": true,
-      "durationMs": 5630
-    },
-    {
-      "conversationId": "d12d402c-0fd2-42c3-a2e6-4907188fc886",
-      "question": "Top 5 vendedores esse mês",
-      "responseChars": 343,
-      "ok": true,
-      "durationMs": 11686
-    },
-    {
-      "conversationId": "b3c3f0e9-01a4-426c-b8e2-656f23614e93",
-      "question": "Qual o saldo atual das contas?",
-      "responseChars": 91,
-      "ok": true,
-      "durationMs": 11155
-    },
-    {
-      "conversationId": "61518dd2-8202-45a5-beda-c40d038cb07d",
-      "question": "Faturamento do ano corrente",
-      "responseChars": 164,
-      "ok": true,
-      "durationMs": 8257
-    },
-    {
-      "conversationId": "b3fe0898-1984-450e-8138-90882e85fab9",
-      "question": "Notas emitidas para o cliente Smartfit Alphaville",
-      "responseChars": 231,
-      "ok": true,
-      "durationMs": 13326
-    },
-    {
-      "conversationId": "d11a55d1-706e-4af1-8134-a8403cc6989c",
-      "question": "Saldo geral em valor, separado por marca",
-      "responseChars": 663,
-      "ok": true,
-      "durationMs": 26064
-    },
-    {
-      "conversationId": "c764eef6-881e-4047-937e-fba923ece126",
-      "question": "Cliente João existe?",
-      "responseChars": 429,
-      "ok": true,
-      "durationMs": 17591
-    },
-    {
-      "conversationId": "886c9d5d-8f9c-40df-a398-014797954369",
-      "question": "Títulos vencidos hoje",
-      "responseChars": 1160,
-      "ok": true,
-      "durationMs": 35041
-    },
-    {
-      "conversationId": "19e8c2b0-c2e2-4092-ad77-cd9346ebb6b2",
-      "question": "Top 10 pedidos abertos por valor",
-      "responseChars": 806,
-      "ok": true,
-      "durationMs": 12697
-    },
-    {
-      "conversationId": "8327870f-2eaf-4544-a840-e5eac6d4da79",
-      "question": "Conta corrente principal qual o saldo?",
-      "responseChars": 351,
-      "ok": true,
-      "durationMs": 16029
-    },
-    {
-      "conversationId": "e7e88238-cec7-456a-ac47-9584104b567a",
-      "question": "Saldo geral consolidado",
-      "responseChars": 100,
-      "ok": true,
-      "durationMs": 16151
-    },
-    {
-      "conversationId": "4948a23f-1884-496d-b570-0252508d8ed5",
-      "question": "Tem cadastro do CONDOMINIO ESTRELAS DO MAR?",
-      "responseChars": 126,
-      "ok": true,
-      "durationMs": 10323
-    },
-    {
-      "conversationId": "abcedaa8-9248-480a-8d47-a2783e24cbc2",
-      "question": "Parcelas que vencem amanhã",
-      "responseChars": 179,
-      "ok": true,
-      "durationMs": 11509
-    },
-    {
-      "conversationId": "df004661-114c-42ea-9c81-969ac9bcc755",
-      "question": "Pedidos da última semana",
-      "responseChars": 97,
-      "ok": true,
-      "durationMs": 12795
-    },
-    {
-      "conversationId": "0bb710a1-a2e3-4fe7-8e92-2891ba0f4b98",
-      "question": "Pedidos em produção",
-      "responseChars": 559,
-      "ok": true,
-      "durationMs": 39217
-    },
-    {
-      "conversationId": "75d4b398-f98b-428b-9e70-045d23d7cf9f",
-      "question": "Tem alguma coisa estranha no faturamento desse mês?",
-      "responseChars": 421,
-      "ok": true,
-      "durationMs": 14666
-    },
-    {
-      "conversationId": "c58f4efa-52c3-4bf3-9031-e24c8edf9e35",
-      "question": "Quantas contas temos no plano contábil?",
-      "responseChars": 41,
-      "ok": true,
-      "durationMs": 28726
-    },
-    {
-      "conversationId": "7a49c9b3-5e48-4a7a-9512-1335fc522f1a",
-      "question": "Tem disco de musculação parado?",
-      "responseChars": 380,
-      "ok": true,
-      "durationMs": 19331
-    },
-    {
-      "conversationId": "4f0bee2c-8a86-4316-9d20-8b4a4dd009a8",
-      "question": "PIS/COFINS do mês",
-      "responseChars": 93,
-      "ok": true,
-      "durationMs": 11059
-    },
-    {
-      "conversationId": "402ee64c-9ff8-423e-867e-82bec96d983f",
-      "question": "Quantos pedidos foram fechados esse mês?",
-      "responseChars": 113,
-      "ok": true,
-      "durationMs": 57237
-    },
-    {
-      "conversationId": "2937bc22-947a-47eb-b106-8b19791fc811",
-      "question": "que cliente comprou maior nota esse mês?",
-      "responseChars": 235,
-      "ok": true,
-      "durationMs": 9881
-    },
-    {
-      "conversationId": "79b60c70-9032-4008-8c84-ff551745485e",
-      "question": "Resume o financeiro pra mim",
-      "responseChars": 348,
-      "ok": true,
-      "durationMs": 17584
-    },
-    {
-      "conversationId": "61e53ed4-4d8b-4482-9820-df7d19e14eb8",
-      "question": "Já vencidos a pagar",
-      "responseChars": 266,
-      "ok": true,
-      "durationMs": 9831
-    },
-    {
-      "conversationId": "643bed1c-268c-40a6-bf21-e9614624d901",
-      "question": "Pedidos cancelados esse mês",
-      "responseChars": 215,
-      "ok": true,
-      "durationMs": 51179
-    },
-    {
-      "conversationId": "3ce46810-25c8-463f-8f22-01aa56dd8ab6",
+      "conversationId": "7fdbf916-66a3-45fd-80b4-57de8e8f1b4e",
       "question": "Top 10 produtos mais vendidos e qual o saldo atual deles",
-      "responseChars": 43,
-      "ok": true,
-      "durationMs": 37988
+      "responseChars": 0,
+      "ok": false,
+      "error": "agent_failed",
+      "durationMs": 97167
     },
     {
-      "conversationId": "6345c4d9-ee03-4c7a-bbc3-c0d8d0b0a0ec",
-      "question": "quem tá devendo mais?",
-      "responseChars": 216,
+      "conversationId": "8359c507-66b1-4a59-adb2-02332d7e43ba",
+      "question": "Fluxo do dia",
+      "responseChars": 99,
       "ok": true,
-      "durationMs": 38289
+      "durationMs": 8854
     },
     {
-      "conversationId": "59076c1c-cc2f-46aa-95c1-e26890e47ed2",
-      "question": "Quanto custa nosso estoque parado?",
-      "responseChars": 82,
+      "conversationId": "fc371125-399a-4dd1-9036-12ac8b35e455",
+      "question": "Faturamento do mês passado",
+      "responseChars": 75,
       "ok": true,
-      "durationMs": 16667
+      "durationMs": 11708
     },
     {
-      "conversationId": "4c9cb45e-32ba-4bf6-8743-b6926c7dde08",
-      "question": "Faturamento por mês esse ano",
-      "responseChars": 346,
+      "conversationId": "4c479200-a52d-4b7e-8a05-01d743abe3ab",
+      "question": "Total a receber esse mês",
+      "responseChars": 271,
       "ok": true,
-      "durationMs": 10543
+      "durationMs": 21806
     },
     {
-      "conversationId": "db5f13ac-d0f2-4691-9c36-7b806a877c23",
-      "question": "Qual o nome da conta 1.1.4.1.02?",
+      "conversationId": "00e0b9b6-948d-4eb4-858d-660c8b6c18ef",
+      "question": "como tá o estoque dos halteres?",
+      "responseChars": 586,
+      "ok": true,
+      "durationMs": 12554
+    },
+    {
+      "conversationId": "08cf45d0-15fd-44f1-8921-a51621a00593",
+      "question": "tudo bem?",
       "responseChars": 84,
       "ok": true,
-      "durationMs": 13188
+      "durationMs": 6902
     },
     {
-      "conversationId": "c121e27c-0a03-4d51-a889-dfb4cbd1e6ce",
-      "question": "show, e do mês anterior?",
-      "responseChars": 142,
-      "ok": true,
-      "durationMs": 4835
-    },
-    {
-      "conversationId": "057046f7-a933-4131-8ed2-defd49086cd2",
-      "question": "Soma de contas a receber por cliente",
-      "responseChars": 714,
-      "ok": true,
-      "durationMs": 70001
-    },
-    {
-      "conversationId": "dc629824-5e69-49d0-b433-e65a334fdf4a",
-      "question": "Buscar cliente Smartfit Escola de Ginastica",
-      "responseChars": 568,
-      "ok": true,
-      "durationMs": 10543
-    },
-    {
-      "conversationId": "5f3fc03b-f52a-46d6-93d7-c56f06d9092f",
-      "question": "Quantos produtos não tem saldo cadastrado?",
-      "responseChars": 55,
-      "ok": true,
-      "durationMs": 7475
-    },
-    {
-      "conversationId": "93f418f0-e7f8-45f5-b151-765b6d555e9f",
-      "question": "Pedido faturado parcialmente",
-      "responseChars": 416,
-      "ok": true,
-      "durationMs": 35651
-    },
-    {
-      "conversationId": "53f7f1fa-002a-464d-a9e9-b9301638f228",
-      "question": "Vendedores cadastrados",
-      "responseChars": 416,
-      "ok": true,
-      "durationMs": 8689
-    },
-    {
-      "conversationId": "d2b9b3e4-6170-4af2-a92e-1cd27b21b746",
-      "question": "Liquidez imediata",
-      "responseChars": 191,
-      "ok": true,
-      "durationMs": 7382
-    },
-    {
-      "conversationId": "e9143bd4-58f8-45b5-97e6-5b2aef3ea112",
+      "conversationId": "be933cfd-c23f-4da5-a5de-6a95934c6326",
       "question": "Vendedor com mais pedidos e o ticket médio dele",
-      "responseChars": 250,
+      "responseChars": 180,
       "ok": true,
-      "durationMs": 11931
+      "durationMs": 14912
     },
     {
-      "conversationId": "2a2f88b3-81b1-4983-92b7-ef21e52fc535",
-      "question": "Estoque morto da empresa",
-      "responseChars": 558,
+      "conversationId": "3682e25a-66e9-4880-8112-365b70dc7dfa",
+      "question": "Buscar conta com 'aluguel' no nome",
+      "responseChars": 310,
       "ok": true,
-      "durationMs": 22711
+      "durationMs": 11413
     },
     {
-      "conversationId": "5b6dbbd9-82d5-45c3-897d-2b54e475bcd9",
-      "question": "tem alguém?",
-      "responseChars": 109,
+      "conversationId": "c9fbf87d-a28a-4e20-93f1-f91947f9a5c7",
+      "question": "Receita média diária mês",
+      "responseChars": 145,
       "ok": true,
-      "durationMs": 6991
+      "durationMs": 15732
     },
     {
-      "conversationId": "ce8856eb-3a2d-41b1-80d3-c602f03d1daa",
-      "question": "Cliente que mais deve",
-      "responseChars": 277,
+      "conversationId": "e9bb4c7e-6178-4879-be61-2494909a9301",
+      "question": "Saldo geral consolidado",
+      "responseChars": 58,
       "ok": true,
-      "durationMs": 17412
+      "durationMs": 9290
     },
     {
-      "conversationId": "98296624-c3fa-44fc-b92b-2616fcba3b3f",
-      "question": "Despesa do dia",
-      "responseChars": 64,
+      "conversationId": "67373f0c-2c01-47fb-b95b-dc844271ad86",
+      "question": "Saldo do MGPL78",
+      "responseChars": 230,
       "ok": true,
-      "durationMs": 9418
+      "durationMs": 11558
     },
     {
-      "conversationId": "023411f4-e419-45d5-931d-f2cd66c55207",
-      "question": "Receita prevista pra próxima semana",
-      "responseChars": 95,
+      "conversationId": "e7662264-6607-4a37-aeb3-2d0c0854c1e2",
+      "question": "Tem dinheiro pra pagar a folha?",
+      "responseChars": 162,
       "ok": true,
-      "durationMs": 24719
+      "durationMs": 15290
     },
     {
-      "conversationId": "05ac250f-b014-4ec1-8e17-1d99c12bd726",
-      "question": "Vai bater a meta esse mês?",
-      "responseChars": 153,
+      "conversationId": "abdfe5ca-0a5b-4159-961e-0e50887df557",
+      "question": "Faturamento pra rede de academias",
+      "responseChars": 244,
       "ok": true,
-      "durationMs": 9804
+      "durationMs": 24522
     },
     {
-      "conversationId": "b2462360-f373-4c28-9a57-ae12073db283",
-      "question": "Cadê os equipamentos PMB403?",
-      "responseChars": 130,
+      "conversationId": "24b14a04-8393-46d4-8673-d92da54e7f87",
+      "question": "Conta a receber em 30 dias",
+      "responseChars": 341,
       "ok": true,
-      "durationMs": 8099
+      "durationMs": 51831
     },
     {
-      "conversationId": "b8b3eebd-3677-41ff-911e-a415a6d33ec8",
+      "conversationId": "406a8833-b74e-4bbd-9199-3c4039083507",
+      "question": "Quantos parceiros são pessoa física?",
+      "responseChars": 112,
+      "ok": true,
+      "durationMs": 5972
+    },
+    {
+      "conversationId": "9f684ac0-4116-4eca-a328-eb10c6203e37",
+      "question": "produto pmb403 tem ainda?",
+      "responseChars": 127,
+      "ok": true,
+      "durationMs": 9409
+    },
+    {
+      "conversationId": "7568b846-9fbd-4f99-a861-9495054f7879",
+      "question": "Soma de contas a receber por cliente",
+      "responseChars": 1238,
+      "ok": true,
+      "durationMs": 25870
+    },
+    {
+      "conversationId": "a0308275-5b19-4330-9343-39c6d8b4188a",
+      "question": "quais notas?",
+      "responseChars": 117,
+      "ok": true,
+      "durationMs": 7314
+    },
+    {
+      "conversationId": "3757c507-1b58-4809-9e44-aea7d0bcdee4",
+      "question": "Pedidos com prazo estourado",
+      "responseChars": 112,
+      "ok": true,
+      "durationMs": 11725
+    },
+    {
+      "conversationId": "b0beefc9-c65d-41ad-aa8a-e59fc62bcfdc",
+      "question": "Buscar cliente Smartfit Escola de Ginastica",
+      "responseChars": 555,
+      "ok": true,
+      "durationMs": 10211
+    },
+    {
+      "conversationId": "dde75a5e-7160-45f8-9a3a-c430faf4dd4f",
+      "question": "Plano de contas do passivo",
+      "responseChars": 189,
+      "ok": true,
+      "durationMs": 7695
+    },
+    {
+      "conversationId": "a785da45-e950-48e5-a303-1555b514fd4b",
+      "question": "o cara da casa ferolla devolveu nota?",
+      "responseChars": 159,
+      "ok": true,
+      "durationMs": 15583
+    },
+    {
+      "conversationId": "84a7c792-5fed-4a5d-a572-26a4878d2a9d",
+      "question": "Parceiros sem documento cadastrado",
+      "responseChars": 156,
+      "ok": true,
+      "durationMs": 9493
+    },
+    {
+      "conversationId": "cabf105c-bbe5-4b9e-9bb1-73fb39b940fb",
       "question": "Quanto vai entrar essa semana?",
-      "responseChars": 109,
+      "responseChars": 114,
       "ok": true,
-      "durationMs": 13509
+      "durationMs": 22643
     },
     {
-      "conversationId": "eeaaca53-b0da-4988-9dd8-bfcccdcf2bde",
-      "question": "Vai ter halteres pra entrega amanhã?",
-      "responseChars": 155,
+      "conversationId": "ed2d40a8-04ef-4290-a797-366ab7eb658e",
+      "question": "Pedido do cliente Smartfit",
+      "responseChars": 1180,
       "ok": true,
-      "durationMs": 11553
+      "durationMs": 13762
     },
     {
-      "conversationId": "e0d8f3b9-d478-4a69-8f5f-27bcec74a022",
-      "question": "Cliente XPTOXYZ inexistente",
-      "responseChars": 103,
+      "conversationId": "69bce994-e7b3-4b56-b85e-5b86224c1136",
+      "question": "Tem alguma coisa estranha no faturamento desse mês?",
+      "responseChars": 497,
       "ok": true,
-      "durationMs": 10401
+      "durationMs": 21287
     },
     {
-      "conversationId": "11f988e5-7011-4b83-bc5f-0867955b1269",
-      "question": "Produto mais vendido em valor",
-      "responseChars": 182,
+      "conversationId": "e645f87d-4362-4e29-ba55-f300f0fbb75f",
+      "question": "vê pra mim o faturamento de maio",
+      "responseChars": 77,
       "ok": true,
-      "durationMs": 11635
+      "durationMs": 14995
     },
     {
-      "conversationId": "b822b372-6943-451d-833a-78b7528aac96",
-      "question": "Notas recebidas do fornecedor Rart Equipamentos",
+      "conversationId": "5fca3d04-10e0-4674-8459-d73ccde77cc4",
+      "question": "Status geral da operação",
+      "responseChars": 628,
+      "ok": true,
+      "durationMs": 23684
+    },
+    {
+      "conversationId": "1d094a4e-fdb2-423d-a636-610991dbcabc",
+      "question": "Saldo do produto de código completo 1000205039",
+      "responseChars": 134,
+      "ok": true,
+      "durationMs": 10861
+    },
+    {
+      "conversationId": "867b1b68-b32f-48eb-a6d6-abeb3a119daf",
+      "question": "Faturamento do ano corrente",
+      "responseChars": 79,
+      "ok": true,
+      "durationMs": 9193
+    },
+    {
+      "conversationId": "6f2aef36-fec5-4790-a886-6239461d4a37",
+      "question": "Valor total dos impostos pagos esse mês",
+      "responseChars": 154,
+      "ok": true,
+      "durationMs": 18614
+    },
+    {
+      "conversationId": "6bf2b7f3-aec1-4d26-a87d-2dd9c56baaf3",
+      "question": "Volume de pedidos por etapa",
+      "responseChars": 830,
+      "ok": true,
+      "durationMs": 23592
+    },
+    {
+      "conversationId": "ed40e16e-f640-4ca2-969e-b9123e333cdc",
+      "question": "Quanto faturamos no mês corrente?",
+      "responseChars": 65,
+      "ok": true,
+      "durationMs": 7331
+    },
+    {
+      "conversationId": "f059dff1-f727-4013-8417-5145f86e4f32",
+      "question": "Notas fiscais com valor acima de R$ 10 mil esse mês",
+      "responseChars": 243,
+      "ok": true,
+      "durationMs": 38266
+    },
+    {
+      "conversationId": "ba5daaa0-6400-4a97-974e-8cb59518340a",
+      "question": "Vendedores cadastrados",
+      "responseChars": 470,
+      "ok": true,
+      "durationMs": 7994
+    },
+    {
+      "conversationId": "555af6a6-1a7f-42b3-93e1-8c10acbd5b41",
+      "question": "Tem [1000362265] ainda?",
+      "responseChars": 127,
+      "ok": true,
+      "durationMs": 14648
+    },
+    {
+      "conversationId": "884b8002-62c2-4937-989d-0e1ae087005e",
+      "question": "Pedidos em rascunho",
+      "responseChars": 90,
+      "ok": true,
+      "durationMs": 13565
+    },
+    {
+      "conversationId": "6861f304-79fc-4bc7-a6c0-79bc2e5bf7ef",
+      "question": "Parceiros da Bahia",
+      "responseChars": 1012,
+      "ok": true,
+      "durationMs": 11344
+    },
+    {
+      "conversationId": "d8b0697e-eb1c-4fa0-b651-a6da6ebdc7ca",
+      "question": "Tem disco de musculação parado?",
+      "responseChars": 178,
+      "ok": true,
+      "durationMs": 12083
+    },
+    {
+      "conversationId": "43cf1127-8698-4105-89bd-09beed858d0f",
+      "question": "Resume o financeiro pra mim",
+      "responseChars": 395,
+      "ok": true,
+      "durationMs": 20042
+    },
+    {
+      "conversationId": "cc23c8ef-4ec3-4475-8338-d0dd32090211",
+      "question": "clientes",
       "responseChars": 120,
       "ok": true,
-      "durationMs": 9128
+      "durationMs": 4102
     },
     {
-      "conversationId": "46c7797c-579c-441b-b330-8dcaa7033429",
-      "question": "Parceiros sem documento cadastrado",
-      "responseChars": 153,
+      "conversationId": "e6e85a4e-f8b5-48e0-ae8a-e20231654f40",
+      "question": "Pedidos atrasados em mais de 7 dias",
+      "responseChars": 1006,
       "ok": true,
-      "durationMs": 18310
+      "durationMs": 19272
     },
     {
-      "conversationId": "e0fd9d3c-4ee2-4cf0-b777-f0401bfa07d5",
-      "question": "Fornecedor sem cadastro",
-      "responseChars": 163,
+      "conversationId": "9cf98b69-a8d1-42fd-ade0-23b4ef588cd6",
+      "question": "Qual o saldo total em estoque do produto [102] MGPL78 - GLUTE TRAINER MATRIX?",
+      "responseChars": 128,
       "ok": true,
-      "durationMs": 29112
+      "durationMs": 8826
     },
     {
-      "conversationId": "28f477b7-ba70-44cf-830f-f9256351503c",
-      "question": "Cliente que comprou mais notas esse mês",
-      "responseChars": 153,
+      "conversationId": "8242f428-f92b-40a0-bf51-951708c141b0",
+      "question": "Buscar parceiro Banda Chicabana",
+      "responseChars": 106,
       "ok": true,
-      "durationMs": 15918
+      "durationMs": 7045
     },
     {
-      "conversationId": "341f4261-e3ec-4e4d-92b6-83dc2739cad0",
-      "question": "Quanto paguei essa semana?",
-      "responseChars": 41,
+      "conversationId": "d3e3a295-db8a-494b-bdac-70d1a3360fc7",
+      "question": "Me mostra os 10 produtos com maior saldo em estoque hoje",
+      "responseChars": 839,
       "ok": true,
-      "durationMs": 12255
+      "durationMs": 23789
     },
     {
-      "conversationId": "41b2373c-b85b-400f-b9e7-5b01f028df76",
-      "question": "Faturamento pra rede de academias",
-      "responseChars": 153,
+      "conversationId": "4d2b0a15-672d-4045-ba51-df21939cd522",
+      "question": "Quero conferir o estoque de barras",
+      "responseChars": 599,
       "ok": true,
-      "durationMs": 11969
+      "durationMs": 8550
     },
     {
-      "conversationId": "7acdfb3b-48c5-45b9-a788-393ea41858df",
-      "question": "Parceiros do Rio de Janeiro",
-      "responseChars": 70,
+      "conversationId": "95c71c44-4177-4add-833b-ab1a75d00a9f",
+      "question": "Plano de contas resumido",
+      "responseChars": 646,
       "ok": true,
-      "durationMs": 22326
+      "durationMs": 17257
     },
     {
-      "conversationId": "a266f8e6-eaa4-4c37-be8f-f15efa7b2994",
-      "question": "tem algo errado nas contas?",
-      "responseChars": 448,
+      "conversationId": "3998cf34-4726-4868-8c26-b3e48033a36c",
+      "question": "Receita prevista pra próxima semana",
+      "responseChars": 81,
       "ok": true,
-      "durationMs": 15733
+      "durationMs": 21463
     },
     {
-      "conversationId": "cef785af-cb57-4259-8b6d-264766d3559b",
-      "question": "quais notas?",
-      "responseChars": 41,
+      "conversationId": "c02c9791-876b-4746-8c0d-2db808a355a8",
+      "question": "qual fornecedor?",
+      "responseChars": 135,
       "ok": true,
-      "durationMs": 12430
+      "durationMs": 7540
     },
     {
-      "conversationId": "317bb875-830f-45de-bc60-1afcbd9a26b3",
-      "question": "Onde estão concentrados os produtos por marca?",
-      "responseChars": 460,
-      "ok": true,
-      "durationMs": 10919
-    },
-    {
-      "conversationId": "c1f24f6f-4484-43e3-a868-e524a3c5274c",
-      "question": "Soma de contas a pagar por fornecedor",
-      "responseChars": 153,
-      "ok": true,
-      "durationMs": 46378
-    },
-    {
-      "conversationId": "0d46d622-ed4b-40d7-9376-d519f801c235",
-      "question": "Vendedor com maior ticket médio",
-      "responseChars": 361,
-      "ok": true,
-      "durationMs": 20215
-    },
-    {
-      "conversationId": "d37b9307-9a0c-485f-8a48-f64f75cd965d",
-      "question": "Notas recebidas do fornecedor Casa Ferolla",
-      "responseChars": 187,
+      "conversationId": "df044740-75bf-4d13-b451-c2cd15646198",
+      "question": "Produto 102 tem quantos em armazém?",
+      "responseChars": 54,
       "ok": true,
       "durationMs": 9679
     },
     {
-      "conversationId": "dac42e67-ec6c-429d-92b8-dc3e6c7ee181",
-      "question": "Pedidos atrasados em mais de 7 dias",
-      "responseChars": 1098,
+      "conversationId": "f5266852-a24c-442d-b687-f0e92b6c7e96",
+      "question": "Saldo geral em valor, separado por marca",
+      "responseChars": 665,
       "ok": true,
-      "durationMs": 16764
+      "durationMs": 26235
     },
     {
-      "conversationId": "bc35ea8e-b57d-4c80-9f32-9aeed8a81273",
-      "question": "Produto mais vendido em quantidade",
-      "responseChars": 189,
+      "conversationId": "3d8322c2-8b48-4998-905e-4c5145a0fbca",
+      "question": "Parceiros do Rio de Janeiro",
+      "responseChars": 802,
       "ok": true,
-      "durationMs": 47529
+      "durationMs": 9366
     },
     {
-      "conversationId": "3d55c4b7-2045-4b96-9928-719c6d812843",
-      "question": "Notas emitidas hoje e o faturamento total",
+      "conversationId": "f21b52f9-41eb-4dbb-9e25-d216467e46e4",
+      "question": "Notas recebidas do fornecedor Residencial Maua",
+      "responseChars": 74,
+      "ok": true,
+      "durationMs": 13763
+    },
+    {
+      "conversationId": "ad91cb7d-3303-464e-8dff-327809d73b51",
+      "question": "Quero ver o saldo dos puxadores",
+      "responseChars": 584,
+      "ok": true,
+      "durationMs": 15758
+    },
+    {
+      "conversationId": "088a6398-83ab-4421-aef2-ce8bac619f4a",
+      "question": "Pedidos em entrega",
+      "responseChars": 145,
+      "ok": true,
+      "durationMs": 9142
+    },
+    {
+      "conversationId": "55c28ed2-5bdc-44c0-806d-6b2be924e1cf",
+      "question": "Nota fiscal de entrada do fornecedor com CNPJ XX",
+      "responseChars": 109,
+      "ok": true,
+      "durationMs": 4293
+    },
+    {
+      "conversationId": "1d24ec06-af27-4988-a51a-10b4d346d592",
+      "question": "Conta 2.1.1",
+      "responseChars": 565,
+      "ok": true,
+      "durationMs": 14117
+    },
+    {
+      "conversationId": "1018193e-9f36-4d50-a803-aaa3d5843484",
+      "question": "entrada de hoje no caixa",
+      "responseChars": 29,
+      "ok": true,
+      "durationMs": 9906
+    },
+    {
+      "conversationId": "a6cd6462-1db7-4df3-b66f-a26c065796e7",
+      "question": "Quantos clientes temos por UF?",
+      "responseChars": 434,
+      "ok": true,
+      "durationMs": 12514
+    },
+    {
+      "conversationId": "360ba1ab-4a2f-4499-90b0-54695ce475eb",
+      "question": "Quanto faturamos hoje?",
+      "responseChars": 32,
+      "ok": true,
+      "durationMs": 6520
+    },
+    {
+      "conversationId": "372974cb-e6e4-4682-b6e6-333b0a7e72ce",
+      "question": "Fornecedor que mais devemos",
+      "responseChars": 235,
+      "ok": true,
+      "durationMs": 7246
+    },
+    {
+      "conversationId": "1a600866-63cc-402b-9683-a485a33605fb",
+      "question": "Como tá o cenário comercial?",
+      "responseChars": 397,
+      "ok": true,
+      "durationMs": 16128
+    },
+    {
+      "conversationId": "fed6cfda-783a-4c76-aff4-21fb1b2fdc7b",
+      "question": "quanto?",
       "responseChars": 92,
       "ok": true,
-      "durationMs": 5914
+      "durationMs": 4023
     },
     {
-      "conversationId": "92337290-7fae-49fc-91fe-bdf6cb4f3110",
-      "question": "Notas fiscais recebidas hoje",
-      "responseChars": 43,
+      "conversationId": "78c10dc8-3b44-4549-b65a-11f9afac9166",
+      "question": "Estrutura da conta 1.1.4",
+      "responseChars": 1007,
       "ok": true,
-      "durationMs": 5978
+      "durationMs": 17897
     },
     {
-      "conversationId": "c0bc41a0-f03d-4d33-9271-6ff54b1cbb5e",
-      "question": "Saldo do produto de código completo 1000205039",
-      "responseChars": 201,
+      "conversationId": "538ba00d-d27e-42d0-8434-79591be40b02",
+      "question": "qual cliente é o maior nosso?",
+      "responseChars": 253,
       "ok": true,
-      "durationMs": 4371
+      "durationMs": 11738
     },
     {
-      "conversationId": "8778cab2-69e8-4c5c-be94-ab54aa97b4a8",
-      "question": "Buscar parceiro com CNPJ 12345678",
-      "responseChars": 50,
+      "conversationId": "d08ec91c-ef44-47d3-b86f-c4e2555ed09e",
+      "question": "tô precisando do faturamento de hoje",
+      "responseChars": 32,
       "ok": true,
-      "durationMs": 8268
+      "durationMs": 21599
     },
     {
-      "conversationId": "a272ba26-a82b-4c73-8810-41deb28e8c1e",
-      "question": "Pedidos do vendedor João",
-      "responseChars": 262,
-      "ok": true,
-      "durationMs": 15627
-    },
-    {
-      "conversationId": "84a99e39-46f4-4428-a1fd-f3da688d6e1e",
-      "question": "Tem dinheiro pra pagar a folha?",
-      "responseChars": 143,
-      "ok": true,
-      "durationMs": 27237
-    },
-    {
-      "conversationId": "c32e4a35-80c2-44dd-a88a-84e4f7197d4f",
-      "question": "manda aí o saldo do estoque",
-      "responseChars": 91,
-      "ok": true,
-      "durationMs": 10109
-    },
-    {
-      "conversationId": "2f1083e4-02ac-4bba-8f42-faaa037cc003",
-      "question": "Cadê o estoque do pino de aço?",
-      "responseChars": 603,
-      "ok": true,
-      "durationMs": 13142
-    },
-    {
-      "conversationId": "c608954e-90b0-4a8d-89f3-4e8601692960",
-      "question": "Parceiro pelo CPF 123.456.789-00",
-      "responseChars": 43,
-      "ok": true,
-      "durationMs": 8914
-    },
-    {
-      "conversationId": "a7a5c91a-28a2-4962-ac66-68f9548b3fcc",
-      "question": "Quantos pedidos abertos temos?",
-      "responseChars": 229,
-      "ok": true,
-      "durationMs": 27892
-    },
-    {
-      "conversationId": "ca77469f-0310-4dd2-a3c8-cdefd409b314",
-      "question": "Quanto faturei comparado com a meta?",
+      "conversationId": "c4d178d7-2c41-4519-a321-d80dd6ac81b1",
+      "question": "Notas recebidas do fornecedor Rart Equipamentos",
       "responseChars": 153,
       "ok": true,
-      "durationMs": 6355
+      "durationMs": 12735
+    },
+    {
+      "conversationId": "904e5627-3c24-485e-b8e9-933ed02a3d16",
+      "question": "Faturamento desse mês e comparação com mês anterior",
+      "responseChars": 303,
+      "ok": true,
+      "durationMs": 16167
+    },
+    {
+      "conversationId": "559e9132-628c-4136-9a65-c24b9c5bc69c",
+      "question": "Procurar fornecedor X",
+      "responseChars": 86,
+      "ok": true,
+      "durationMs": 8522
+    },
+    {
+      "conversationId": "340f84aa-84ee-4df4-9bbf-f77131e922dc",
+      "question": "Inadimplência atual",
+      "responseChars": 212,
+      "ok": true,
+      "durationMs": 12333
+    },
+    {
+      "conversationId": "1db66011-4533-4b23-a112-75ce994c5700",
+      "question": "Pedidos da última semana",
+      "responseChars": 64,
+      "ok": true,
+      "durationMs": 12495
+    },
+    {
+      "conversationId": "516c509a-ce56-4ad9-9c9d-f6a32a396162",
+      "question": "Notas fiscais recebidas hoje",
+      "responseChars": 33,
+      "ok": true,
+      "durationMs": 11465
+    },
+    {
+      "conversationId": "1b1ff596-6d3d-42f5-9e5e-3d83c410fa3a",
+      "question": "show, e do mês anterior?",
+      "responseChars": 114,
+      "ok": true,
+      "durationMs": 5072
+    },
+    {
+      "conversationId": "4e690af0-f0fd-495d-a00e-cdf866d49a5b",
+      "question": "Parceiros novos cadastrados esta semana",
+      "responseChars": 48,
+      "ok": true,
+      "durationMs": 6945
+    },
+    {
+      "conversationId": "7db2567f-2a5d-4cb8-8815-14b74c17b8e6",
+      "question": "Despesa do dia",
+      "responseChars": 74,
+      "ok": true,
+      "durationMs": 11457
+    },
+    {
+      "conversationId": "9d3b42f8-6036-44b3-8067-a1ced5d9c0ab",
+      "question": "Quais produtos estão parados (sem movimentação) há mais de 90 dias?",
+      "responseChars": 1411,
+      "ok": true,
+      "durationMs": 13094
+    },
+    {
+      "conversationId": "6e981423-af36-40f4-a5d4-853081a95802",
+      "question": "Top 5 produtos mais movimentados no mês",
+      "responseChars": 43,
+      "ok": true,
+      "durationMs": 6633
+    },
+    {
+      "conversationId": "0b1775e2-69cf-4293-a1bd-5b93c74ba142",
+      "question": "Caixa mais bancos hoje",
+      "responseChars": 58,
+      "ok": true,
+      "durationMs": 8576
+    },
+    {
+      "conversationId": "169c3ac5-5a16-48a3-9742-57be762f0535",
+      "question": "Qual o saldo atual das contas?",
+      "responseChars": 69,
+      "ok": true,
+      "durationMs": 11967
+    },
+    {
+      "conversationId": "0aaf9b0e-76c1-4859-952e-7e7418af1f0b",
+      "question": "Notas fiscais emitidas hoje",
+      "responseChars": 32,
+      "ok": true,
+      "durationMs": 13060
+    },
+    {
+      "conversationId": "182f99e5-6d36-4e26-b2e5-03d7405063c7",
+      "question": "Saldo do PMB403 hoje",
+      "responseChars": 101,
+      "ok": true,
+      "durationMs": 7394
+    },
+    {
+      "conversationId": "5580165d-566e-4bfb-ba68-3b2cf0619b4d",
+      "question": "Diferença entre contas a receber e a pagar",
+      "responseChars": 248,
+      "ok": true,
+      "durationMs": 7108
+    },
+    {
+      "conversationId": "da1c4bde-7a66-43d1-aea9-470796796802",
+      "question": "Pedidos atrasados",
+      "responseChars": 85,
+      "ok": true,
+      "durationMs": 11143
+    },
+    {
+      "conversationId": "ccf68bdd-8523-4a43-942f-8a6e483518df",
+      "question": "Cliente XPTOXYZ inexistente",
+      "responseChars": 51,
+      "ok": true,
+      "durationMs": 10829
+    },
+    {
+      "conversationId": "802c8210-a54f-4b48-b522-8ce95b75400b",
+      "question": "Parcelas vencidas a receber",
+      "responseChars": 186,
+      "ok": true,
+      "durationMs": 12076
+    },
+    {
+      "conversationId": "fe82250e-41fb-4b6d-9384-d9a373308fa5",
+      "question": "Pedidos em aberto no funil",
+      "responseChars": 173,
+      "ok": true,
+      "durationMs": 14501
+    },
+    {
+      "conversationId": "b97480b1-ca6e-4188-849b-6f3221c0499b",
+      "question": "Faturamento bruto x líquido esse mês",
+      "responseChars": 278,
+      "ok": true,
+      "durationMs": 27724
+    },
+    {
+      "conversationId": "5cc473b1-f288-4630-9bb4-48e99f610906",
+      "question": "Tem pedido pra produção essa semana?",
+      "responseChars": 103,
+      "ok": true,
+      "durationMs": 10949
+    },
+    {
+      "conversationId": "03f05e27-1d20-465c-aeb3-3564506500e7",
+      "question": "Onde estão concentrados os produtos por marca?",
+      "responseChars": 465,
+      "ok": true,
+      "durationMs": 14151
+    },
+    {
+      "conversationId": "676522a5-a72c-4b87-88ea-4d5e4ea952a0",
+      "question": "Quantas notas recebemos do fornecedor [SMARTFIT]?",
+      "responseChars": 200,
+      "ok": true,
+      "durationMs": 15085
+    },
+    {
+      "conversationId": "2b43205a-242f-4ba0-96de-dbfc03812347",
+      "question": "Conta contas a receber",
+      "responseChars": 244,
+      "ok": true,
+      "durationMs": 8550
+    },
+    {
+      "conversationId": "46a40546-d516-4b5e-b12f-ae3729e574b3",
+      "question": "vai fechar meta esse mês?",
+      "responseChars": 184,
+      "ok": true,
+      "durationMs": 7450
+    },
+    {
+      "conversationId": "8995f91e-64ed-4435-b451-698c290b16eb",
+      "question": "saldo do produto",
+      "responseChars": 87,
+      "ok": true,
+      "durationMs": 9220
+    },
+    {
+      "conversationId": "d601a2ad-f352-4aa9-a7e7-79210430449e",
+      "question": "Quais produtos mais faturaram esse mês?",
+      "responseChars": 998,
+      "ok": true,
+      "durationMs": 10971
+    },
+    {
+      "conversationId": "61486740-f86e-4a20-ac47-64df5a0f71b5",
+      "question": "Total em aberto a pagar",
+      "responseChars": 65,
+      "ok": true,
+      "durationMs": 9786
+    },
+    {
+      "conversationId": "f4b0a963-2e99-48bc-96ea-0a6a578ece28",
+      "question": "Estrutura completa da conta de receita",
+      "responseChars": 595,
+      "ok": true,
+      "durationMs": 23041
+    },
+    {
+      "conversationId": "50b256ea-e878-40a4-b6d8-7299518d9e06",
+      "question": "Pedido com maior valor em aberto",
+      "responseChars": 160,
+      "ok": true,
+      "durationMs": 24196
+    },
+    {
+      "conversationId": "ece8bb55-c414-460b-b607-cd99a71a30f8",
+      "question": "Quantas notas fiscais recebemos esse mês?",
+      "responseChars": 79,
+      "ok": true,
+      "durationMs": 14470
+    },
+    {
+      "conversationId": "c019d070-0ca7-45c2-b1ef-1b6aad809299",
+      "question": "Posição financeira atual",
+      "responseChars": 203,
+      "ok": true,
+      "durationMs": 8479
+    },
+    {
+      "conversationId": "51e998ee-9cf3-43da-a99c-ed4d0e158bfb",
+      "question": "Total em aberto a receber",
+      "responseChars": 69,
+      "ok": true,
+      "durationMs": 10050
+    },
+    {
+      "conversationId": "4f1509c4-5aed-48ba-9395-01c423c802ac",
+      "question": "Faturamento dos últimos 7 dias",
+      "responseChars": 77,
+      "ok": true,
+      "durationMs": 5392
+    },
+    {
+      "conversationId": "a7d13741-db07-4293-8983-a5d1becd99dd",
+      "question": "Quanto temos do produto MOLA ESPIRAL?",
+      "responseChars": 597,
+      "ok": true,
+      "durationMs": 12452
+    },
+    {
+      "conversationId": "36d7e578-c887-435d-8a7d-f629eb05c0b2",
+      "question": "Lista de transportadoras ativas",
+      "responseChars": 587,
+      "ok": true,
+      "durationMs": 17240
+    },
+    {
+      "conversationId": "b51b72d8-967d-4b0b-9fd2-145412c4b45c",
+      "question": "Buscar fornecedor Icaro Rossas",
+      "responseChars": 134,
+      "ok": true,
+      "durationMs": 7318
+    },
+    {
+      "conversationId": "9d70f527-d1ef-4830-9e22-9fd4130dc2d1",
+      "question": "Conta corrente principal qual o saldo?",
+      "responseChars": 58,
+      "ok": true,
+      "durationMs": 9134
+    },
+    {
+      "conversationId": "1f214657-dfb7-4e91-a86e-6c6f7d1fba33",
+      "question": "Tem [1000362251] hoje no estoque?",
+      "responseChars": 43,
+      "ok": true,
+      "durationMs": 6712
+    },
+    {
+      "conversationId": "dbf287a7-7028-4337-be0d-e5cd11e56dde",
+      "question": "Parcelas que vencem amanhã",
+      "responseChars": 579,
+      "ok": true,
+      "durationMs": 16272
+    },
+    {
+      "conversationId": "2863b108-3b9f-4aac-ac3e-ed1c0bf74f14",
+      "question": "Estoque atual do GLUTE TRAINER",
+      "responseChars": 339,
+      "ok": true,
+      "durationMs": 8637
+    },
+    {
+      "conversationId": "2f2ab9ca-c46c-41f2-a466-35e2f5ffba9b",
+      "question": "Notas emitidas para o cliente Smartfit Alphaville",
+      "responseChars": 156,
+      "ok": true,
+      "durationMs": 14169
+    },
+    {
+      "conversationId": "7b202eca-083c-4aa5-8765-aa057308618b",
+      "question": "Top 10 estados com mais parceiros",
+      "responseChars": 333,
+      "ok": true,
+      "durationMs": 14856
+    },
+    {
+      "conversationId": "65b718a2-22d9-41d4-b877-f367d938b6b5",
+      "question": "Qual o nome da conta 1.1.4.1.02?",
+      "responseChars": 110,
+      "ok": true,
+      "durationMs": 9501
+    },
+    {
+      "conversationId": "dd3971f4-56c0-4908-906a-030dfdae30b6",
+      "question": "Tem produto sem movimento esse ano?",
+      "responseChars": 90,
+      "ok": true,
+      "durationMs": 23024
+    },
+    {
+      "conversationId": "4e6d0cec-1555-48c4-ac73-f6783254e2b3",
+      "question": "Quantas filiais temos?",
+      "responseChars": 156,
+      "ok": true,
+      "durationMs": 17881
+    },
+    {
+      "conversationId": "823b2d11-1ad5-4564-8c80-d77d68be1dd9",
+      "question": "Qual o saldo do FLEXORA EXTENSORA?",
+      "responseChars": 428,
+      "ok": true,
+      "durationMs": 10428
+    },
+    {
+      "conversationId": "04c553e9-e4d9-42e8-b4d8-2a960b69960c",
+      "question": "estoque",
+      "responseChars": 101,
+      "ok": true,
+      "durationMs": 3891
+    },
+    {
+      "conversationId": "18c047e2-2cde-4f8a-94a9-bfe7d91e3202",
+      "question": "Buscar parceiro com CNPJ 12345678",
+      "responseChars": 52,
+      "ok": true,
+      "durationMs": 8363
+    },
+    {
+      "conversationId": "662ac2e3-1d2e-4c15-8cb8-ef939f50f79f",
+      "question": "Bancos com saldo positivo",
+      "responseChars": 585,
+      "ok": true,
+      "durationMs": 13647
+    },
+    {
+      "conversationId": "3dc111e8-bc9e-41cd-bfe8-910fe59aacda",
+      "question": "Quanto faturamos pra Smartfit?",
+      "responseChars": 380,
+      "ok": true,
+      "durationMs": 67855
+    },
+    {
+      "conversationId": "c68ae6f4-90ef-4e8b-a0fe-d66ef4547971",
+      "question": "fala aí, vendi quanto hoje?",
+      "responseChars": 65,
+      "ok": true,
+      "durationMs": 3555
+    },
+    {
+      "conversationId": "2a30bf5c-cb2e-44bd-b81f-fa6ce409bc4b",
+      "question": "Buscar parceiro Smartfit",
+      "responseChars": 516,
+      "ok": true,
+      "durationMs": 13546
+    },
+    {
+      "conversationId": "76a1ecda-b234-436d-b8b9-5542f0512f34",
+      "question": "manda os top 5 produtos esse mês",
+      "responseChars": 552,
+      "ok": true,
+      "durationMs": 11825
+    },
+    {
+      "conversationId": "7a161dab-9832-4036-8746-e164e83b4b0d",
+      "question": "Receita do dia",
+      "responseChars": 77,
+      "ok": true,
+      "durationMs": 7838
+    },
+    {
+      "conversationId": "a03adade-706e-4bf6-b319-87c99f1376ee",
+      "question": "Quantos clientes ativos?",
+      "responseChars": 29,
+      "ok": true,
+      "durationMs": 5918
+    },
+    {
+      "conversationId": "41994b5c-8745-4a34-b85a-945484fef892",
+      "question": "Produtos do family pé na bola?",
+      "responseChars": 234,
+      "ok": true,
+      "durationMs": 21012
+    },
+    {
+      "conversationId": "832c3324-3534-441b-bdd9-c2dd1b09db6c",
+      "question": "PIS/COFINS do mês",
+      "responseChars": 72,
+      "ok": true,
+      "durationMs": 8054
+    },
+    {
+      "conversationId": "790b64d1-8268-4193-9ef0-b252c1105454",
+      "question": "Quantos itens temos com saldo zero?",
+      "responseChars": 38,
+      "ok": true,
+      "durationMs": 11102
+    },
+    {
+      "conversationId": "da917593-d345-4bc2-8495-f34407d296cc",
+      "question": "Conta contábil de aluguéis pagos antecipadamente",
+      "responseChars": 238,
+      "ok": true,
+      "durationMs": 10754
+    },
+    {
+      "conversationId": "d4e6c620-0fc0-4e4f-b10f-0eff9040b049",
+      "question": "Quanto custa nosso estoque parado?",
+      "responseChars": 80,
+      "ok": true,
+      "durationMs": 9809
+    },
+    {
+      "conversationId": "6ee4dd38-79e1-470e-91d6-2d14df33b670",
+      "question": "Cliente com pedido em aberto e contas a receber em atraso",
+      "responseChars": 178,
+      "ok": true,
+      "durationMs": 29572
+    },
+    {
+      "conversationId": "cfbe8fc5-38fb-4b68-b1f4-0709e352d59d",
+      "question": "Soma de contas a pagar por fornecedor",
+      "responseChars": 786,
+      "ok": true,
+      "durationMs": 13921
+    },
+    {
+      "conversationId": "ad29975f-7de0-4009-847d-ccd0cad55d9d",
+      "question": "O que temos do código 1000093102",
+      "responseChars": 43,
+      "ok": true,
+      "durationMs": 9435
+    },
+    {
+      "conversationId": "d03e46ee-b60e-4f88-a7cb-e524559ba321",
+      "question": "Quantos produtos não tem saldo cadastrado?",
+      "responseChars": 122,
+      "ok": true,
+      "durationMs": 13991
+    },
+    {
+      "conversationId": "f0faddf7-1af9-4b6b-978d-5647469ce450",
+      "question": "Títulos vencidos hoje",
+      "responseChars": 79,
+      "ok": true,
+      "durationMs": 8122
+    },
+    {
+      "conversationId": "e9240fb9-e53d-469f-ab42-e4edacd18fb4",
+      "question": "Cliente Casa Ferolla existe?",
+      "responseChars": 99,
+      "ok": true,
+      "durationMs": 8629
+    },
+    {
+      "conversationId": "4b107b06-960c-46fe-9b74-9e7dba2319ed",
+      "question": "Produto mais vendido em quantidade",
+      "responseChars": 141,
+      "ok": true,
+      "durationMs": 13163
+    },
+    {
+      "conversationId": "30157753-9127-4c8b-b40d-95c9b17632f7",
+      "question": "Pedido mais antigo em aberto",
+      "responseChars": 167,
+      "ok": true,
+      "durationMs": 8326
+    },
+    {
+      "conversationId": "7a4484e9-62a1-4b91-95a7-ce053e10a9f7",
+      "question": "que cliente comprou maior nota esse mês?",
+      "responseChars": 246,
+      "ok": true,
+      "durationMs": 14089
+    },
+    {
+      "conversationId": "e3d0ff59-3286-4b0e-9c49-622467e3901d",
+      "question": "Top 10 maiores contas a receber abertas",
+      "responseChars": 1506,
+      "ok": true,
+      "durationMs": 10732
+    },
+    {
+      "conversationId": "523f54df-0a06-4241-ad73-c9ba6a2844d9",
+      "question": "valeu, e do mês passado?",
+      "responseChars": 118,
+      "ok": true,
+      "durationMs": 5343
+    },
+    {
+      "conversationId": "f2387931-5d01-40a7-90ad-5851a95ed0eb",
+      "question": "Tem cadastro do CONDOMINIO ESTRELAS DO MAR?",
+      "responseChars": 122,
+      "ok": true,
+      "durationMs": 7101
+    },
+    {
+      "conversationId": "c55ea2b7-607e-494a-8d4e-69baea3c8007",
+      "question": "Plano de contas geral",
+      "responseChars": 547,
+      "ok": true,
+      "durationMs": 19605
+    },
+    {
+      "conversationId": "7ba307c6-f5e5-4778-b690-0891fd1d32d8",
+      "question": "Pedidos cancelados esse mês",
+      "responseChars": 136,
+      "ok": true,
+      "durationMs": 31338
+    },
+    {
+      "conversationId": "df2fec64-6fa1-4d7d-b98e-e5acb0c24f67",
+      "question": "Parcelas a vencer essa semana",
+      "responseChars": 65,
+      "ok": true,
+      "durationMs": 18125
+    },
+    {
+      "conversationId": "6f223f0c-24b0-4b14-a8df-62c76ee8bb2a",
+      "question": "qual conta?",
+      "responseChars": 105,
+      "ok": true,
+      "durationMs": 3954
+    },
+    {
+      "conversationId": "769aab44-8f8b-4ee5-a70b-05c22d72ba1d",
+      "question": "Vai bater a meta esse mês?",
+      "responseChars": 186,
+      "ok": true,
+      "durationMs": 10016
+    },
+    {
+      "conversationId": "b7faed23-7d88-4004-9927-0d13a05b5e42",
+      "question": "Parceiros de São Paulo",
+      "responseChars": 632,
+      "ok": true,
+      "durationMs": 13815
+    },
+    {
+      "conversationId": "2af3716b-c92f-4709-baf5-8871c18cb310",
+      "question": "Quanto temos de mola espiral em aço no armazém?",
+      "responseChars": 507,
+      "ok": true,
+      "durationMs": 13535
+    },
+    {
+      "conversationId": "6d2f8a1b-0843-4a7d-946d-9ddf5d95d696",
+      "question": "Nota fiscal de saída cancelada esse mês",
+      "responseChars": 86,
+      "ok": true,
+      "durationMs": 9052
+    },
+    {
+      "conversationId": "db569f84-c959-4e6b-8ade-47f0d3fea0ea",
+      "question": "vendas",
+      "responseChars": 79,
+      "ok": true,
+      "durationMs": 3365
+    },
+    {
+      "conversationId": "5c1ffdec-7819-4fe9-b2cc-26bcdd141569",
+      "question": "Pedido faturado parcialmente",
+      "responseChars": 157,
+      "ok": true,
+      "durationMs": 7720
+    },
+    {
+      "conversationId": "bead14fb-b84e-47d6-899e-c347bcc40d15",
+      "question": "Top 5 clientes que mais compraram este ano",
+      "responseChars": 495,
+      "ok": true,
+      "durationMs": 12248
+    },
+    {
+      "conversationId": "d41288e9-cc3e-451b-8c1b-591da3d2a65a",
+      "question": "Quanto faturei comparado com a meta?",
+      "responseChars": 156,
+      "ok": true,
+      "durationMs": 9055
+    },
+    {
+      "conversationId": "919dfdb3-e0eb-4d99-bc08-139ceb5e311a",
+      "question": "ICMS do mês",
+      "responseChars": 120,
+      "ok": true,
+      "durationMs": 24762
+    },
+    {
+      "conversationId": "1cad2b16-b000-41e8-955a-136057eabb5c",
+      "question": "quem comprou mais este mês?",
+      "responseChars": 251,
+      "ok": true,
+      "durationMs": 13711
+    },
+    {
+      "conversationId": "2176dd13-95e2-45d1-be0f-6dc98b64fef6",
+      "question": "Pedidos em aprovação",
+      "responseChars": 249,
+      "ok": true,
+      "durationMs": 12565
+    },
+    {
+      "conversationId": "ed0dcdbc-0e08-4bf0-a886-f7b63ec65a4c",
+      "question": "Total de impostos do mês",
+      "responseChars": 130,
+      "ok": true,
+      "durationMs": 3460
+    },
+    {
+      "conversationId": "7f59c614-fa9c-40ca-adcd-23d3c049d485",
+      "question": "Quero saber tudo sobre o produto 999999999 (que não existe)",
+      "responseChars": 43,
+      "ok": true,
+      "durationMs": 10172
+    },
+    {
+      "conversationId": "a75b51ee-1d23-4c1f-a6c6-c9064a21b63b",
+      "question": "Notas emitidas esta semana",
+      "responseChars": 75,
+      "ok": true,
+      "durationMs": 16705
+    },
+    {
+      "conversationId": "b29c1647-cced-4b05-8ed0-dbfa93579e41",
+      "question": "Tenho cliente vencendo título?",
+      "responseChars": 178,
+      "ok": true,
+      "durationMs": 13555
+    },
+    {
+      "conversationId": "0b29d89d-3633-40da-9388-dfba8ce3da05",
+      "question": "tem alguém?",
+      "responseChars": 107,
+      "ok": true,
+      "durationMs": 3001
+    },
+    {
+      "conversationId": "100beb71-c0a8-4b43-83e1-1ec9590a2f3a",
+      "question": "Buscar transportadora",
+      "responseChars": 355,
+      "ok": true,
+      "durationMs": 8228
+    },
+    {
+      "conversationId": "4b4d4568-fbcf-41e5-9a22-905f575f22eb",
+      "question": "tem [102] aqui ainda?",
+      "responseChars": 144,
+      "ok": true,
+      "durationMs": 8387
+    },
+    {
+      "conversationId": "04d69d35-e5b5-498b-ad45-388ecd62acdc",
+      "question": "Comparativo de faturamento por mês esse ano",
+      "responseChars": 358,
+      "ok": true,
+      "durationMs": 28116
+    },
+    {
+      "conversationId": "af4b88f1-57f6-4c9c-b2e4-6da07d7d98bb",
+      "question": "Quais clientes estão inadimplentes e o valor total devido?",
+      "responseChars": 1109,
+      "ok": true,
+      "durationMs": 9487
+    },
+    {
+      "conversationId": "b3cd940a-7439-419e-90c2-d33e742bb87a",
+      "question": "faturamento",
+      "responseChars": 82,
+      "ok": true,
+      "durationMs": 8630
+    },
+    {
+      "conversationId": "c3ad3f69-7290-47af-9410-4b3593f35efa",
+      "question": "Faturamento esse mês versus mês passado",
+      "responseChars": 166,
+      "ok": true,
+      "durationMs": 11542
+    },
+    {
+      "conversationId": "82af6c89-9753-4d3e-8d67-3b7b7268797c",
+      "question": "Movimentação de produtos no mês",
+      "responseChars": 53,
+      "ok": true,
+      "durationMs": 14981
+    },
+    {
+      "conversationId": "dfaa0c7c-671c-4169-9241-2ae19aa40b77",
+      "question": "Fluxo de caixa projetado para os próximos 30 dias",
+      "responseChars": 215,
+      "ok": true,
+      "durationMs": 13690
+    },
+    {
+      "conversationId": "e84851d3-5677-4b6d-a68a-e61af045a7e4",
+      "question": "Cadê os equipamentos PMB403?",
+      "responseChars": 97,
+      "ok": true,
+      "durationMs": 5756
+    },
+    {
+      "conversationId": "c6e664fe-42e8-4b10-88d5-e7ee16f78273",
+      "question": "Top 5 clientes que mais compraram esse mês",
+      "responseChars": 578,
+      "ok": true,
+      "durationMs": 19104
+    },
+    {
+      "conversationId": "3f5b6048-dfc8-4e07-bc37-9ab4c937b89a",
+      "question": "ei, quanto a gente faturou esse mês mesmo?",
+      "responseChars": 75,
+      "ok": true,
+      "durationMs": 4918
+    },
+    {
+      "conversationId": "04b0c627-c714-4a9d-aac0-0bfc1a3075ea",
+      "question": "Top 5 produtos por margem (preço de venda vs custo)",
+      "responseChars": 704,
+      "ok": true,
+      "durationMs": 25407
+    },
+    {
+      "conversationId": "e786ea91-56e8-4212-8687-a083f22b66ef",
+      "question": "Quanto recebi essa semana?",
+      "responseChars": 83,
+      "ok": true,
+      "durationMs": 13430
+    },
+    {
+      "conversationId": "555bca01-3ad1-4887-b922-1dbed3b57769",
+      "question": "Cliente que comprou mais notas esse mês",
+      "responseChars": 252,
+      "ok": true,
+      "durationMs": 10203
+    },
+    {
+      "conversationId": "772e732b-0d42-416b-a9c1-33fcae0d8f36",
+      "question": "Quanto vai sair essa semana?",
+      "responseChars": 51,
+      "ok": true,
+      "durationMs": 18437
+    },
+    {
+      "conversationId": "50ed4979-cea3-464f-aee4-17dcea9014b5",
+      "question": "Qual o cliente que mais compra e qual o saldo a receber dele?",
+      "responseChars": 164,
+      "ok": true,
+      "durationMs": 11727
+    },
+    {
+      "conversationId": "9750ed93-749a-4618-b87d-fee85f38254b",
+      "question": "qual produto?",
+      "responseChars": 105,
+      "ok": true,
+      "durationMs": 7496
+    },
+    {
+      "conversationId": "0d0f01ed-cf40-45d0-8a33-c9dd35610671",
+      "question": "Produto mais vendido em valor",
+      "responseChars": 168,
+      "ok": true,
+      "durationMs": 8517
+    },
+    {
+      "conversationId": "54e41a2c-0957-4fab-a4f0-058d337fecf8",
+      "question": "Quanto a empresa deve hoje?",
+      "responseChars": 79,
+      "ok": true,
+      "durationMs": 14060
+    },
+    {
+      "conversationId": "ecbe2aac-7338-42a2-af8c-5e03a264a3a0",
+      "question": "Notas emitidas hoje e o faturamento total",
+      "responseChars": 74,
+      "ok": true,
+      "durationMs": 8642
+    },
+    {
+      "conversationId": "940a92c3-912f-41c1-b161-54fb35d556d9",
+      "question": "Conta de receita de vendas",
+      "responseChars": 261,
+      "ok": true,
+      "durationMs": 10469
+    },
+    {
+      "conversationId": "bac30bbd-8c56-4924-a484-f00d78c00743",
+      "question": "Quantas unidades temos do produto 1000362251?",
+      "responseChars": 45,
+      "ok": true,
+      "durationMs": 8108
+    },
+    {
+      "conversationId": "61a922f5-53a5-496f-9f9f-7d82aa333645",
+      "question": "beleza e quanto eu tenho a receber?",
+      "responseChars": 244,
+      "ok": true,
+      "durationMs": 8457
+    },
+    {
+      "conversationId": "8d961733-fe06-46fb-9df6-db80891509c9",
+      "question": "Notas recebidas esta semana",
+      "responseChars": 123,
+      "ok": true,
+      "durationMs": 15191
+    },
+    {
+      "conversationId": "7958aa87-b462-4b0f-9f39-1ebd93f72698",
+      "question": "Quero ver entradas dos últimos 7 dias",
+      "responseChars": 104,
+      "ok": true,
+      "durationMs": 3921
+    },
+    {
+      "conversationId": "d5dd43b3-d25a-4550-86fe-7031ab02db75",
+      "question": "Notas recebidas do fornecedor Casa Ferolla",
+      "responseChars": 203,
+      "ok": true,
+      "durationMs": 10709
+    },
+    {
+      "conversationId": "904a9bcb-f1c0-4dd8-bdd1-5baf7f5aa419",
+      "question": "Quantos pedidos abertos temos?",
+      "responseChars": 85,
+      "ok": true,
+      "durationMs": 10292
+    },
+    {
+      "conversationId": "6fac885f-ea00-4593-94b3-9da385be143d",
+      "question": "Conta contábil 1.1.4.1.02.000004",
+      "responseChars": 259,
+      "ok": true,
+      "durationMs": 9548
+    },
+    {
+      "conversationId": "fa4f7fd3-27d1-4466-a336-3b6d518ccd2c",
+      "question": "Quais clientes têm pedido em aberto e título vencido",
+      "responseChars": 442,
+      "ok": true,
+      "durationMs": 24546
+    },
+    {
+      "conversationId": "202a0d2e-f349-49d3-9828-8b03a57be100",
+      "question": "Contas a pagar do mês",
+      "responseChars": 240,
+      "ok": true,
+      "durationMs": 13882
+    },
+    {
+      "conversationId": "5fb1b72b-132a-478e-8cf8-63d55de98339",
+      "question": "Top 10 pedidos abertos por valor",
+      "responseChars": 1658,
+      "ok": true,
+      "durationMs": 13468
+    },
+    {
+      "conversationId": "542de640-fcf8-4bb8-b491-fa7f9e348ee2",
+      "question": "Fornecedor com mais nota recebida esse mês e o valor total",
+      "responseChars": 324,
+      "ok": true,
+      "durationMs": 29624
+    },
+    {
+      "conversationId": "94de6d6d-9851-402d-a113-74b85ab34150",
+      "question": "Pedidos cancelados versus fechados esse mês",
+      "responseChars": 185,
+      "ok": true,
+      "durationMs": 8991
+    },
+    {
+      "conversationId": "43d64159-cc38-4f9b-9553-7a4e7bac9227",
+      "question": "Estoque morto da empresa",
+      "responseChars": 98,
+      "ok": true,
+      "durationMs": 12996
+    },
+    {
+      "conversationId": "16752a3f-d0f0-4254-acb7-b84779043c3f",
+      "question": "Pedidos atrasados e o que tem em estoque pra entregar",
+      "responseChars": 530,
+      "ok": true,
+      "durationMs": 26490
+    },
+    {
+      "conversationId": "253919d6-5c60-406c-9b2b-590e5455ed66",
+      "question": "Faturamento por cliente nos últimos 30 dias",
+      "responseChars": 1194,
+      "ok": true,
+      "durationMs": 16989
+    },
+    {
+      "conversationId": "cc06eba1-6812-4f94-8bf8-82c4e4b74321",
+      "question": "Cadê o estoque do pino de aço?",
+      "responseChars": 681,
+      "ok": true,
+      "durationMs": 11570
+    },
+    {
+      "conversationId": "9f240dfe-d57f-42ce-9bfa-00019213d81e",
+      "question": "Saldo de pino de aço fixação",
+      "responseChars": 351,
+      "ok": true,
+      "durationMs": 14135
+    },
+    {
+      "conversationId": "e0a2a1bb-484c-4e5c-837b-912926cecc20",
+      "question": "Qual o saldo do banco principal?",
+      "responseChars": 58,
+      "ok": true,
+      "durationMs": 18151
+    },
+    {
+      "conversationId": "80ce4d7c-4a2d-4555-9e5a-e034a3f97811",
+      "question": "cliente x deve quanto?",
+      "responseChars": 52,
+      "ok": true,
+      "durationMs": 5564
+    },
+    {
+      "conversationId": "c1aa538e-6012-4a0d-81c0-6fc784036dd9",
+      "question": "Quantos parceiros são pessoa jurídica?",
+      "responseChars": 73,
+      "ok": true,
+      "durationMs": 9743
+    },
+    {
+      "conversationId": "c7b50a37-b0c5-45ca-8140-d35a91cf1237",
+      "question": "Concentração do estoque por família",
+      "responseChars": 535,
+      "ok": true,
+      "durationMs": 16925
+    },
+    {
+      "conversationId": "29b773d6-a693-4214-9b18-10f744de7d93",
+      "question": "Caixa atual",
+      "responseChars": 58,
+      "ok": true,
+      "durationMs": 11180
+    },
+    {
+      "conversationId": "88d860b8-6f30-4b5f-9abf-6b470d4309f8",
+      "question": "Quem é o vendedor com mais pedidos?",
+      "responseChars": 145,
+      "ok": true,
+      "durationMs": 12655
+    },
+    {
+      "conversationId": "692d9a49-1e8c-4867-a4bf-109b2efd83d8",
+      "question": "tá tudo certo no caixa?",
+      "responseChars": 227,
+      "ok": true,
+      "durationMs": 9285
+    },
+    {
+      "conversationId": "4f747be0-5157-4eb4-a1b8-951f6b6628fa",
+      "question": "Vai ter halteres pra entrega amanhã?",
+      "responseChars": 235,
+      "ok": true,
+      "durationMs": 24822
+    },
+    {
+      "conversationId": "a43d409f-0355-4fe6-ad26-e202cb972fc0",
+      "question": "Já vencidos a pagar",
+      "responseChars": 146,
+      "ok": true,
+      "durationMs": 6806
+    },
+    {
+      "conversationId": "970f8ff6-0f45-46bd-856e-9588efb6d472",
+      "question": "Fornecedor que mais nos vendeu esse mês",
+      "responseChars": 309,
+      "ok": true,
+      "durationMs": 16798
+    },
+    {
+      "conversationId": "fd295d75-d6aa-43c4-843b-dde0f6c88d44",
+      "question": "Parceiros do interior de SP",
+      "responseChars": 602,
+      "ok": true,
+      "durationMs": 10870
+    },
+    {
+      "conversationId": "b610bad8-c07c-4b10-a508-c7bdc667a514",
+      "question": "Quanto paguei essa semana?",
+      "responseChars": 81,
+      "ok": true,
+      "durationMs": 11017
+    },
+    {
+      "conversationId": "05208c61-d30d-4571-a798-416313926227",
+      "question": "Buscar fornecedor Rart Equipamentos",
+      "responseChars": 161,
+      "ok": true,
+      "durationMs": 4132
+    },
+    {
+      "conversationId": "d1557d3d-6a5e-4535-b6d6-9a7f135c2fd6",
+      "question": "Cliente João existe?",
+      "responseChars": 409,
+      "ok": true,
+      "durationMs": 11506
+    },
+    {
+      "conversationId": "8ded522a-0605-44e1-bcd3-1c3871891153",
+      "question": "saída de hoje no caixa",
+      "responseChars": 44,
+      "ok": true,
+      "durationMs": 4011
+    },
+    {
+      "conversationId": "1d21c18d-e223-4407-8fc7-a3d35cadab6d",
+      "question": "Faturamento por região esse mês",
+      "responseChars": 695,
+      "ok": true,
+      "durationMs": 12638
+    },
+    {
+      "conversationId": "8bac8503-fc9d-4a20-a9db-8006a9715f73",
+      "question": "rapidão, me dá os pedidos de hoje",
+      "responseChars": 25,
+      "ok": true,
+      "durationMs": 19498
+    },
+    {
+      "conversationId": "e2ee2fb5-ab51-45af-8314-ffb4912d3a74",
+      "question": "Parcelas que vencem hoje",
+      "responseChars": 44,
+      "ok": true,
+      "durationMs": 8558
+    },
+    {
+      "conversationId": "a621905e-b273-49d9-b696-83976085bdba",
+      "question": "Tempo médio de fechamento do pedido",
+      "responseChars": 185,
+      "ok": true,
+      "durationMs": 12317
+    },
+    {
+      "conversationId": "7e94be09-d9a8-4f72-952d-c6bab8df4cf3",
+      "question": "Conta bancos qual o código?",
+      "responseChars": 288,
+      "ok": true,
+      "durationMs": 10792
+    },
+    {
+      "conversationId": "9cddb6dd-d744-495e-bf06-fb313546a13d",
+      "question": "Quanto sobrou na conta hoje?",
+      "responseChars": 62,
+      "ok": true,
+      "durationMs": 10198
+    },
+    {
+      "conversationId": "3ad8c783-92d2-4b34-91ae-0b98c4bafda7",
+      "question": "Quais armazéns têm o produto 102?",
+      "responseChars": 424,
+      "ok": true,
+      "durationMs": 13404
+    },
+    {
+      "conversationId": "e8b53797-6064-457a-b57d-178f7ee5a998",
+      "question": "Produto com maior giro nos últimos 90 dias",
+      "responseChars": 116,
+      "ok": true,
+      "durationMs": 17170
+    },
+    {
+      "conversationId": "3b6f8af5-b2c2-48af-9606-c24fdd78f1cc",
+      "question": "manda aí o saldo do estoque",
+      "responseChars": 136,
+      "ok": true,
+      "durationMs": 12641
+    },
+    {
+      "conversationId": "e7e85a63-95a6-4514-abef-43aa5954d1b0",
+      "question": "Cliente que mais deve",
+      "responseChars": 262,
+      "ok": true,
+      "durationMs": 9818
+    },
+    {
+      "conversationId": "b58ace68-a139-4727-a60b-7d4e5bab1c66",
+      "question": "fornecedores",
+      "responseChars": 126,
+      "ok": true,
+      "durationMs": 5259
+    },
+    {
+      "conversationId": "d0da1987-6697-4cb7-800b-336affc8e3e9",
+      "question": "Top 5 vendedores esse mês",
+      "responseChars": 378,
+      "ok": true,
+      "durationMs": 13375
+    },
+    {
+      "conversationId": "597a2e80-8bc6-4886-8571-0fd61561aece",
+      "question": "Plano de contas do ativo",
+      "responseChars": 856,
+      "ok": true,
+      "durationMs": 9611
+    },
+    {
+      "conversationId": "d0640caa-e6b3-4944-aca0-d0b3b295718d",
+      "question": "Fluxo de caixa do mês corrente",
+      "responseChars": 90,
+      "ok": true,
+      "durationMs": 9915
+    },
+    {
+      "conversationId": "264918f1-317f-4225-aa44-bd3a4548f715",
+      "question": "Saldo do produto 102 e quantas notas saíram dele esse mês",
+      "responseChars": 263,
+      "ok": true,
+      "durationMs": 22202
+    },
+    {
+      "conversationId": "46a14aad-b458-40ac-89e0-4300890b46dd",
+      "question": "quem tá devendo mais?",
+      "responseChars": 256,
+      "ok": true,
+      "durationMs": 14016
+    },
+    {
+      "conversationId": "b2675660-43e6-477d-9f66-ae0ee59965c6",
+      "question": "Conta de despesa com pessoal",
+      "responseChars": 288,
+      "ok": true,
+      "durationMs": 7824
+    },
+    {
+      "conversationId": "63f8a340-a6cd-4359-b4a0-88556264ff1b",
+      "question": "qual cliente?",
+      "responseChars": 154,
+      "ok": true,
+      "durationMs": 6720
+    },
+    {
+      "conversationId": "6d44f30d-a875-44bf-b389-8f091a6bf81d",
+      "question": "?",
+      "responseChars": 98,
+      "ok": true,
+      "durationMs": 4468
+    },
+    {
+      "conversationId": "0688483e-0cfa-4c57-83d4-1e189bfbe907",
+      "question": "Fornecedor sem cadastro",
+      "responseChars": 127,
+      "ok": true,
+      "durationMs": 9673
+    },
+    {
+      "conversationId": "0a269813-0285-48fc-a2a3-958b0294c813",
+      "question": "Pedido sem nota emitida ainda",
+      "responseChars": 156,
+      "ok": true,
+      "durationMs": 13911
+    },
+    {
+      "conversationId": "8a4f60bd-d983-405d-a795-6096c0bb1f4b",
+      "question": "Pedidos em entrega que estão atrasados",
+      "responseChars": 102,
+      "ok": true,
+      "durationMs": 12123
+    },
+    {
+      "conversationId": "faf6cf8a-ff85-4e5e-8e8f-c1d31524a504",
+      "question": "Conta a pagar em 30 dias",
+      "responseChars": 165,
+      "ok": true,
+      "durationMs": 45398
+    },
+    {
+      "conversationId": "338c0c33-48cf-4d18-9b71-3b23fddd0079",
+      "question": "olha aí a posição do caixa",
+      "responseChars": 71,
+      "ok": true,
+      "durationMs": 10793
+    },
+    {
+      "conversationId": "7911340e-9dba-4e72-b63b-52f89b88deba",
+      "question": "Quantas contas temos no plano contábil?",
+      "responseChars": 42,
+      "ok": true,
+      "durationMs": 6882
+    },
+    {
+      "conversationId": "821e4ecd-3291-4cd7-81d3-c3ad50aa78fd",
+      "question": "Quem precisa de cobrança hoje?",
+      "responseChars": 578,
+      "ok": true,
+      "durationMs": 31268
+    },
+    {
+      "conversationId": "de2afb74-32bb-4449-b5a0-0fe21359d464",
+      "question": "Faturamento por estado esse mês",
+      "responseChars": 786,
+      "ok": true,
+      "durationMs": 16571
+    },
+    {
+      "conversationId": "8fb146ea-c9cb-462c-8ce9-a76cd5ca59f7",
+      "question": "Produto mais vendido em quantidade e em valor",
+      "responseChars": 178,
+      "ok": true,
+      "durationMs": 18711
+    },
+    {
+      "conversationId": "47a99a70-6c9d-4910-8216-61e4a6f66d6e",
+      "question": "Devedores principais",
+      "responseChars": 477,
+      "ok": true,
+      "durationMs": 9736
+    },
+    {
+      "conversationId": "6b3fe41b-358c-4b88-8d86-807b5121ab00",
+      "question": "Cadastro completo do cliente Smartfit",
+      "responseChars": 579,
+      "ok": true,
+      "durationMs": 13726
+    },
+    {
+      "conversationId": "7ff2da00-9c27-470a-aea4-fd3ab2343545",
+      "question": "Liquidez imediata",
+      "responseChars": 69,
+      "ok": true,
+      "durationMs": 13853
+    },
+    {
+      "conversationId": "ae954f36-009c-46d9-9667-68c389e6d127",
+      "question": "Estou querendo saber quanto tem de halter em estoque",
+      "responseChars": 155,
+      "ok": true,
+      "durationMs": 12446
+    },
+    {
+      "conversationId": "0f54e951-c559-4304-b652-1bf3d67c8cd6",
+      "question": "Parceiro pelo CPF 123.456.789-00",
+      "responseChars": 55,
+      "ok": true,
+      "durationMs": 9702
+    },
+    {
+      "conversationId": "4ba021df-d9c4-404f-ba78-debace96f764",
+      "question": "Buscar conta com 'imposto' no nome",
+      "responseChars": 732,
+      "ok": true,
+      "durationMs": 11185
+    },
+    {
+      "conversationId": "3cd085f2-c53e-4944-bfb0-f8c4da041146",
+      "question": "Buscar cliente Dimensão Engenharia",
+      "responseChars": 112,
+      "ok": true,
+      "durationMs": 6405
+    },
+    {
+      "conversationId": "5c026501-598b-4637-9b02-271418c7cf06",
+      "question": "tem algo errado nas contas?",
+      "responseChars": 94,
+      "ok": true,
+      "durationMs": 4954
+    },
+    {
+      "conversationId": "40a8dd06-af12-43b3-9309-b447f8f652c3",
+      "question": "quanto faturou?",
+      "responseChars": 76,
+      "ok": true,
+      "durationMs": 10074
+    },
+    {
+      "conversationId": "dc4a1002-7e82-4d0b-a959-ca901ca9b6d6",
+      "question": "Já vencidos a receber",
+      "responseChars": 191,
+      "ok": true,
+      "durationMs": 11475
+    },
+    {
+      "conversationId": "645e0757-c7dd-457d-9bfd-1e8c5a223068",
+      "question": "Quanto temos em contas a receber em aberto?",
+      "responseChars": 69,
+      "ok": true,
+      "durationMs": 10596
+    },
+    {
+      "conversationId": "f4990fee-5a08-4d7a-9f48-1d5db744a086",
+      "question": "Faturamento por vendedor esse mês",
+      "responseChars": 757,
+      "ok": true,
+      "durationMs": 13631
+    },
+    {
+      "conversationId": "2c1292bc-74f2-4275-b484-d6471ca8a8c2",
+      "question": "Pedidos por vendedor esse mês",
+      "responseChars": 724,
+      "ok": true,
+      "durationMs": 13058
+    },
+    {
+      "conversationId": "b7f89bab-d541-4167-a689-4012beaca0b1",
+      "question": "Estoque do MGPL78 segregado por armazém",
+      "responseChars": 364,
+      "ok": true,
+      "durationMs": 8856
+    },
+    {
+      "conversationId": "f9533679-a9f5-42c7-a29e-60be97bc0d1d",
+      "question": "Lista os 20 produtos mais caros que temos parados",
+      "responseChars": 2441,
+      "ok": true,
+      "durationMs": 50642
+    },
+    {
+      "conversationId": "e39700de-ae07-4ac6-ac1c-1b8495370126",
+      "question": "Conta caixa qual o código?",
+      "responseChars": 384,
+      "ok": true,
+      "durationMs": 8301
+    },
+    {
+      "conversationId": "19cc2959-4487-4151-b2d0-b6d3e24c9398",
+      "question": "Cadastro do parceiro Millenium Resort",
+      "responseChars": 197,
+      "ok": true,
+      "durationMs": 10736
+    },
+    {
+      "conversationId": "7848db5d-bcf7-4b67-9443-a74bd6f06908",
+      "question": "Pedidos sem vendedor atribuído",
+      "responseChars": 55,
+      "ok": true,
+      "durationMs": 12237
+    },
+    {
+      "conversationId": "3a482fe5-d5a8-4cc0-8fa9-a6e17ed8bf5c",
+      "question": "Pedidos por estado",
+      "responseChars": 747,
+      "ok": true,
+      "durationMs": 10422
+    },
+    {
+      "conversationId": "1c3cf6c7-5604-41cd-8fb9-aefa57c02517",
+      "question": "Posição dos bancos hoje",
+      "responseChars": 546,
+      "ok": true,
+      "durationMs": 11793
+    },
+    {
+      "conversationId": "7b107415-8aee-471a-89a0-81e9dce4e8cd",
+      "question": "Quantos parceiros temos cadastrados?",
+      "responseChars": 118,
+      "ok": true,
+      "durationMs": 5181
+    },
+    {
+      "conversationId": "27207404-b4ad-44cb-b5b6-bfb8e020da15",
+      "question": "Bancos com saldo negativo",
+      "responseChars": 359,
+      "ok": true,
+      "durationMs": 17287
+    },
+    {
+      "conversationId": "899a5862-c8a5-4fa3-8fe9-e0b950c49995",
+      "question": "Quanto sobrou de cabo de aço esticado?",
+      "responseChars": 86,
+      "ok": true,
+      "durationMs": 13303
+    },
+    {
+      "conversationId": "d1155eaa-f35c-4d8a-8815-4e1ca6a38df9",
+      "question": "Qual armazém tem mais valor de estoque?",
+      "responseChars": 145,
+      "ok": true,
+      "durationMs": 6557
+    },
+    {
+      "conversationId": "c5d8c598-f8ca-4b5e-85e1-2b5c0f67907b",
+      "question": "Pedidos em produção",
+      "responseChars": 232,
+      "ok": true,
+      "durationMs": 23151
+    },
+    {
+      "conversationId": "24e3bac4-14e3-4990-b0e3-7d7692aab947",
+      "question": "Lista de fornecedores ativos",
+      "responseChars": 713,
+      "ok": true,
+      "durationMs": 57598
+    },
+    {
+      "conversationId": "038583fc-298d-4feb-94fe-3e76037eb420",
+      "question": "Quantas notas fiscais emitimos esse mês?",
+      "responseChars": 115,
+      "ok": true,
+      "durationMs": 10688
+    },
+    {
+      "conversationId": "75568287-a957-47dd-8f9d-5d58fd279bcd",
+      "question": "Saída de produtos da semana passada",
+      "responseChars": 43,
+      "ok": true,
+      "durationMs": 9886
+    },
+    {
+      "conversationId": "31fb5baf-9d22-44c2-918e-76db5864214f",
+      "question": "Estoque do produto inventado",
+      "responseChars": 45,
+      "ok": true,
+      "durationMs": 7550
+    },
+    {
+      "conversationId": "a58031a1-4bce-4efc-bc43-e264d3839c4a",
+      "question": "Top 10 maiores contas a pagar abertas",
+      "responseChars": 1874,
+      "ok": true,
+      "durationMs": 16574
+    },
+    {
+      "conversationId": "730e783b-84f4-4377-ba55-3223fcb6610c",
+      "question": "Cliente em atraso quem é?",
+      "responseChars": 499,
+      "ok": true,
+      "durationMs": 10879
+    },
+    {
+      "conversationId": "e402e7e2-2931-475e-a711-e34f10a360d0",
+      "question": "Quero o saldo geral em valor financeiro",
+      "responseChars": 58,
+      "ok": true,
+      "durationMs": 9074
+    },
+    {
+      "conversationId": "c360a869-3ad9-40ca-a561-c3d9509cd3cf",
+      "question": "Houve entrada de qual produto na última semana?",
+      "responseChars": 80,
+      "ok": true,
+      "durationMs": 12190
+    },
+    {
+      "conversationId": "3e75ea12-a9f8-4498-a0fb-aa05c1551725",
+      "question": "Qual o valor total do estoque em armazém?",
+      "responseChars": 90,
+      "ok": true,
+      "durationMs": 8299
+    },
+    {
+      "conversationId": "9fab5314-8646-45a5-99a8-024aaf51f577",
+      "question": "Faturamento por marca esse mês",
+      "responseChars": 640,
+      "ok": true,
+      "durationMs": 13045
+    },
+    {
+      "conversationId": "8329c0f1-d16f-4569-9e27-96d535a23a58",
+      "question": "Pedidos do vendedor João",
+      "responseChars": 230,
+      "ok": true,
+      "durationMs": 18301
+    },
+    {
+      "conversationId": "91d0f9d3-55d7-46d1-a11a-29748c0ecc75",
+      "question": "Está vencendo título essa semana?",
+      "responseChars": 232,
+      "ok": true,
+      "durationMs": 45082
+    },
+    {
+      "conversationId": "50c3d80c-7f40-4bfa-845c-977b8148ab02",
+      "question": "Faturamento por cliente esse mês",
+      "responseChars": 1052,
+      "ok": true,
+      "durationMs": 17487
+    },
+    {
+      "conversationId": "082a044f-3f6f-4b62-9037-7a60654f03c4",
+      "question": "Conta de impostos a recolher",
+      "responseChars": 94,
+      "ok": true,
+      "durationMs": 10266
+    },
+    {
+      "conversationId": "08f56160-f4b4-4a3d-8bf8-8b001e626a87",
+      "question": "Faturamento médio diário do mês",
+      "responseChars": 317,
+      "ok": true,
+      "durationMs": 12669
+    },
+    {
+      "conversationId": "c32d4fcd-87b0-4ae5-a5d6-14e305a56e4b",
+      "question": "Quantos pedidos foram fechados esse mês?",
+      "responseChars": 227,
+      "ok": true,
+      "durationMs": 43852
+    },
+    {
+      "conversationId": "b8689c50-3178-458d-b2c9-90b12cf86b77",
+      "question": "Produtos mais vendidos nos últimos 30 dias",
+      "responseChars": 1003,
+      "ok": true,
+      "durationMs": 12964
+    },
+    {
+      "conversationId": "64a68d1d-a7ab-4363-bb4a-7ee0c8de0dd2",
+      "question": "Faturamento por mês esse ano",
+      "responseChars": 100,
+      "ok": true,
+      "durationMs": 9099
+    },
+    {
+      "conversationId": "9699b3b1-b1c4-45fe-b235-47b7b9b920da",
+      "question": "Tem quanto de cabo de aço?",
+      "responseChars": 1045,
+      "ok": true,
+      "durationMs": 18723
+    },
+    {
+      "conversationId": "8da1a6c9-1e7d-4f2d-a942-54dc366962bb",
+      "question": "O que entrou e saiu de estoque hoje?",
+      "responseChars": 74,
+      "ok": true,
+      "durationMs": 8516
     }
   ]
 }

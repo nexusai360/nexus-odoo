@@ -97,8 +97,34 @@ export const fiscalNotasRecebidasPorFornecedor: ToolEntry<Input, Output> = {
   inputSchemaShape: inputSchema.shape,
   inputSchema,
   outputSchema,
-  handler: (input, ctx) =>
-    withFreshness(ctx.prisma, ["fato_nota_fiscal"], async () =>
+  handler: async (input, ctx) => {
+    const envelope = await withFreshness(ctx.prisma, ["fato_nota_fiscal"], async () =>
       shape(await queryNotasRecebidasPorFornecedor(ctx.prisma, input)),
-    ),
+    );
+    if (envelope.estado === "preparando") return envelope;
+    const d = envelope.dados;
+    const todasLinhas = d.linhas;
+    const linhasCap = todasLinhas.slice(0, 30);
+    const top = todasLinhas[0];
+    const fmt = (n: number) => n.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
+    return {
+      ...envelope,
+      dados: {
+        ...d,
+        linhas: linhasCap,
+        _RESPOSTA: top
+          ? `Notas recebidas por fornecedor: ${d.totalAgregado.quantidade} notas, ${fmt(d.totalAgregado.valorTotal)} em ${d.totalFornecedoresDistintos} fornecedores. Top: ${top.participanteNome ?? "(sem nome)"} ${fmt(top.valorTotal)}.`
+          : "Nao ha notas recebidas no periodo.",
+        _DESTAQUE: {
+          totalNotas: d.totalAgregado.quantidade,
+          valorTotal: d.totalAgregado.valorTotal,
+          totalFornecedores: d.totalFornecedoresDistintos,
+          topFornecedor: top?.participanteNome ?? "",
+          valorTopFornecedor: top?.valorTotal ?? 0,
+        },
+        _agregado: { contagem: d.totalAgregado.quantidade, soma: d.totalAgregado.valorTotal },
+        _listaTruncada: todasLinhas.length > linhasCap.length,
+      },
+    };
+  },
 };

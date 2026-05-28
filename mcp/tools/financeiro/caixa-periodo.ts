@@ -14,6 +14,9 @@ const dados = z.object({
   entrada: z.number(),
   saida: z.number(),
   saldo: z.number(),
+  _RESPOSTA: z.string().optional(),
+  _DESTAQUE: z.record(z.string(), z.union([z.string(), z.number()])).optional(),
+  _agregado: z.record(z.string(), z.number().optional()).optional(),
 });
 
 const fonteStatus = z.object({
@@ -48,8 +51,25 @@ export const financeiroCaixaPeriodo: ToolEntry<Input, Output> = {
   // período é um resultado válido e informativo , "entrada: 0, saida: 0,
   // saldo: 0" comunica que não houve movimentação, o que é diferente de
   // "nenhum dado disponível". Não passamos `isVazio` por intenção deliberada.
-  handler: (input, ctx) =>
-    withFreshness(ctx.prisma, ["fato_financeiro_movimento"], async () =>
+  handler: async (input, ctx) => {
+    const envelope = await withFreshness(ctx.prisma, ["fato_financeiro_movimento"], async () =>
       queryCaixaPeriodo(ctx.prisma, input),
-    ),
+    );
+    if (envelope.estado === "preparando") return envelope;
+    const d = envelope.dados;
+    const fmt = (n: number) => n.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
+    const resposta =
+      d.entrada === 0 && d.saida === 0
+        ? "Nao ha movimentacao de caixa no periodo."
+        : `Caixa do periodo: entradas ${fmt(d.entrada)}, saidas ${fmt(d.saida)}, saldo ${fmt(d.saldo)}.`;
+    return {
+      ...envelope,
+      dados: {
+        ...d,
+        _RESPOSTA: resposta,
+        _DESTAQUE: { entradaTotal: d.entrada, saidaTotal: d.saida, saldo: d.saldo },
+        _agregado: { soma: d.saldo },
+      },
+    };
+  },
 };

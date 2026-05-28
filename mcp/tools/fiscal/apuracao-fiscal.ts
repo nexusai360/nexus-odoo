@@ -71,13 +71,32 @@ export const fiscalApuracao: ToolEntry<Input, Output> = {
       queryApuracaoFiscal(ctx.prisma, input),
     );
     if (envelope.estado === "preparando") return envelope;
-    const linha0 = envelope.dados.linhas[0];
+    const linhas = envelope.dados.linhas;
+    // T-34 (Ronda 2): destaque com TODOS os tributos somados. Antes so ICMS
+    // estava no _DESTAQUE, fazendo "PIS/COFINS do mes" virar recusa porque
+    // _RESPOSTA ficava "a recolher R$ 0,00". Agora soma cada tributo entre
+    // todas as linhas e o formatador escolhe o que mostrar.
+    const totIcms = linhas.reduce((s, l) => s + Number(l.vrIcmsARecolher ?? 0), 0);
+    const totIpi = linhas.reduce((s, l) => s + Number(l.vrIpiARecolher ?? 0), 0);
+    const totPis = linhas.reduce((s, l) => s + Number(l.vrPisARecolher ?? 0), 0);
+    const totCofins = linhas.reduce((s, l) => s + Number(l.vrCofinsARecolher ?? 0), 0);
+    const totSaldoCredor = linhas.reduce((s, l) => s + Number(l.vrIcmsSaldoCredor ?? 0), 0);
+    const linha0 = linhas[0];
     return enriquecerEnvelope(envelope, "fiscal_apuracao", {
       destaque: {
-        tipo: String(linha0?.tipo ?? input.tipo ?? "tributo"),
+        tipo: String(input.tipo ?? linha0?.tipo ?? "tributo"),
         periodo: String(linha0?.dataFinal ?? ""),
-        aRecolher: Number(linha0?.vrIcmsARecolher ?? 0),
-        saldoCredor: Number(linha0?.vrIcmsSaldoCredor ?? 0),
+        // Mantem campos legados para nao quebrar formatadores existentes.
+        aRecolher: totIcms,
+        saldoCredor: totSaldoCredor,
+        // Novos campos com tributos discriminados.
+        icmsARecolher: totIcms,
+        ipiARecolher: totIpi,
+        pisARecolher: totPis,
+        cofinsARecolher: totCofins,
+        pisCofinsARecolher: totPis + totCofins,
+        totalGeralARecolher: totIcms + totIpi + totPis + totCofins,
+        totalApuracoes: linhas.length,
       },
       listaTruncada: envelope.dados.truncado,
     });

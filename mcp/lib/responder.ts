@@ -169,11 +169,28 @@ const fmtNotasRecebidasPorFornecedor: FormatadorCanonico = (env) => {
 };
 
 const fmtApuracaoFiscal: FormatadorCanonico = (env) => {
-  const tipo = env._DESTAQUE?.tipo ?? "tributo";
-  const periodo = env._DESTAQUE?.periodo ?? "periodo informado";
-  const aRecolher = Number(env._DESTAQUE?.aRecolher ?? 0);
+  // T-34 (Ronda 2): formatador agora discrimina PIS/COFINS quando o usuario
+  // pediu PIS/COFINS especificamente, ou mostra todos os tributos somados.
+  const tipo = String(env._DESTAQUE?.tipo ?? "tributo");
+  const periodo = String(env._DESTAQUE?.periodo ?? "periodo informado");
+  const totalApur = Number(env._DESTAQUE?.totalApuracoes ?? 0);
+  const icms = Number(env._DESTAQUE?.icmsARecolher ?? env._DESTAQUE?.aRecolher ?? 0);
+  const ipi = Number(env._DESTAQUE?.ipiARecolher ?? 0);
+  const pis = Number(env._DESTAQUE?.pisARecolher ?? 0);
+  const cofins = Number(env._DESTAQUE?.cofinsARecolher ?? 0);
+  const pisCofins = Number(env._DESTAQUE?.pisCofinsARecolher ?? pis + cofins);
   const saldoCredor = Number(env._DESTAQUE?.saldoCredor ?? 0);
-  return `Apuracao ${tipo} (${periodo}): a recolher ${formatBRL(aRecolher)}, saldo credor ${formatBRL(saldoCredor)}.`;
+  if (totalApur === 0) return "Nao ha apuracao fiscal registrada para o periodo/criterio.";
+  // Caso PIS-COFINS: foco no tributo pedido.
+  if (/pis|cofins/i.test(tipo)) {
+    return `Apuracao PIS/COFINS (${periodo}): PIS a recolher ${formatBRL(pis)}, COFINS a recolher ${formatBRL(cofins)}. Total PIS+COFINS: ${formatBRL(pisCofins)}.`;
+  }
+  // Caso ICMS-IPI: foco em ICMS+IPI+saldo credor.
+  if (/icms|ipi/i.test(tipo)) {
+    return `Apuracao ICMS/IPI (${periodo}): ICMS a recolher ${formatBRL(icms)}, IPI a recolher ${formatBRL(ipi)}, saldo credor ${formatBRL(saldoCredor)}.`;
+  }
+  // Tipo desconhecido: mostra resumo geral.
+  return `Apuracao fiscal (${periodo}, ${totalApur} apuracoes): ICMS ${formatBRL(icms)}, IPI ${formatBRL(ipi)}, PIS ${formatBRL(pis)}, COFINS ${formatBRL(cofins)}. Saldo credor: ${formatBRL(saldoCredor)}.`;
 };
 
 const fmtPedidosPeriodo: FormatadorCanonico = (env) => {
@@ -184,9 +201,24 @@ const fmtPedidosPeriodo: FormatadorCanonico = (env) => {
 };
 
 const fmtPedidosPorEtapa: FormatadorCanonico = (env) => {
-  const n = Number(env._DESTAQUE?.totalGeral ?? 0);
-  if (n === 0) return "Nenhum pedido encontrado.";
-  return `${n} pedidos distribuidos pelas etapas do funil (consulte linhas/etapas para detalhes).`;
+  // T-31 (Ronda 2): texto rico com categorias separadas. Resolve confusao
+  // do LLM entre "53 etapas" (linhas) e "1.597 pedidos" (quantidade total).
+  const total = Number(env._DESTAQUE?.totalPedidos ?? env._DESTAQUE?.totalGeral ?? 0);
+  if (total === 0) return "Nenhum pedido encontrado no fluxo comercial.";
+  const concluidos = Number(env._DESTAQUE?.pedidosConcluidos ?? 0);
+  const cancelados = Number(env._DESTAQUE?.pedidosCancelados ?? 0);
+  const rascunho = Number(env._DESTAQUE?.pedidosRascunho ?? 0);
+  const aberto = Number(env._DESTAQUE?.pedidosEmAberto ?? 0);
+  const valorTotal = Number(env._DESTAQUE?.valorTotal ?? 0);
+  const partes: string[] = [`${total} pedidos no fluxo comercial`];
+  if (valorTotal > 0) partes.push(`(${formatBRL(valorTotal)})`);
+  const detalhes: string[] = [];
+  if (concluidos > 0) detalhes.push(`${concluidos} concluidos`);
+  if (cancelados > 0) detalhes.push(`${cancelados} cancelados`);
+  if (rascunho > 0) detalhes.push(`${rascunho} em rascunho/digitacao`);
+  if (aberto > 0) detalhes.push(`${aberto} em aberto`);
+  const head = partes.join(" ");
+  return detalhes.length > 0 ? `${head}: ${detalhes.join(", ")}.` : `${head}.`;
 };
 
 const fmtPedidosAtrasados: FormatadorCanonico = (env) => {
@@ -250,7 +282,11 @@ const fmtContarParceiros: FormatadorCanonico = (env) => {
 };
 
 const fmtPlanoDeContas: FormatadorCanonico = (env) => {
+  // T-25 (Ronda 1): totalContas agora vem do count absoluto do banco
+  // (envelope.dados.total), nao do tamanho da fatia. Resolve
+  // "Quantas contas temos no plano contabil?" sem inventar.
   const n = Number(env._DESTAQUE?.totalContas ?? env.linhas.length);
+  const exibidas = Number(env._DESTAQUE?.linhasExibidas ?? env.linhas.length);
   const termo = env._DESTAQUE?.termo;
   if (n === 0)
     return termo
@@ -261,9 +297,13 @@ const fmtPlanoDeContas: FormatadorCanonico = (env) => {
     const nome = env._DESTAQUE?.nome ?? "";
     return `Conta ${codigo} ${nome}.`.trim();
   }
-  return termo
+  const cabeca = termo
     ? `${n} contas encontradas com termo '${termo}'.`
-    : `${n} contas no plano.`;
+    : `${n} contas no plano de contas.`;
+  if (exibidas > 0 && exibidas < n) {
+    return `${cabeca} Listando ${exibidas}.`;
+  }
+  return cabeca;
 };
 
 const fmtEstruturaConta: FormatadorCanonico = (env) => {
@@ -311,6 +351,20 @@ const fmtValorArmazem: FormatadorCanonico = (env) => {
   return `Valor total em estoque: ${formatBRL(valor)} em ${n} armazens.`;
 };
 
+const fmtEntradasSaidas: FormatadorCanonico = (env) => {
+  // T-32 (Ronda 2): texto pronto pro LLM. Quando ambos zero, dispara §10b
+  // ("Nao ha entradas/saidas no periodo").
+  const entrada = Number(env._DESTAQUE?.totalEntrada ?? 0);
+  const saida = Number(env._DESTAQUE?.totalSaida ?? 0);
+  const periodos = Number(env._DESTAQUE?.periodos ?? 0);
+  if (periodos === 0 || (entrada === 0 && saida === 0)) {
+    return "Nao ha entradas nem saidas de estoque no periodo.";
+  }
+  if (entrada === 0) return `Nao ha entradas no periodo. Saidas: ${saida} unidades.`;
+  if (saida === 0) return `Nao ha saidas no periodo. Entradas: ${entrada} unidades.`;
+  return `Entradas: ${entrada} unidades. Saidas: ${saida} unidades. Periodo de ${periodos} meses.`;
+};
+
 const FORMATADORES: Record<string, FormatadorCanonico> = {
   // financeiro
   financeiro_contas_a_receber: fmtContasAReceber,
@@ -330,6 +384,7 @@ const FORMATADORES: Record<string, FormatadorCanonico> = {
   estoque_produtos_parados: fmtProdutosParados,
   estoque_produtos_saldo_zero: fmtProdutosSaldoZero,
   estoque_valor_armazem: fmtValorArmazem,
+  estoque_entradas_saidas: fmtEntradasSaidas,
   // comercial
   comercial_pedidos_periodo: fmtPedidosPeriodo,
   comercial_pedidos_por_etapa: fmtPedidosPorEtapa,

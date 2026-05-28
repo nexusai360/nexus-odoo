@@ -57,6 +57,32 @@ export const cadastroBuscarParceiro: ToolEntry<Input, Output> = {
   inputSchema,
   outputSchema,
   handler: async (input, ctx) => {
+    // T-26 (Ronda 1): validacao de termo de busca para evitar lixo.
+    // Termo com menos de 2 caracteres uteis (apos strip de pontuacao/espaco)
+    // retorna lista vazia com aviso claro, em vez de fazer LIKE %.% e
+    // devolver 10 parceiros aleatorios.
+    const termoLimpo = (input.termo ?? "").replace(/[^\p{L}\p{N}]/gu, "").trim();
+    if (termoLimpo.length < 2) {
+      const envelope = await withFreshness(
+        ctx.prisma,
+        ["fato_parceiro"],
+        async () => ({ linhas: [] as Array<z.infer<typeof linhaSchema>> }),
+      );
+      if (envelope.estado === "preparando") return envelope;
+      // Forcar estado=vazio para o LLM tratar como "nao ha" via §10b.
+      const respostaVazia = `Termo de busca '${input.termo}' eh muito curto ou sem letras/numeros. Informe nome, CNPJ ou CPF (minimo 2 caracteres).`;
+      return enriquecerEnvelope(
+        { ...envelope, estado: "vazio" as const, dados: { linhas: [] } },
+        "cadastro_buscar_parceiro",
+        {
+          destaque: {
+            totalEncontrados: 0,
+            termo: input.termo,
+            avisoTermo: respostaVazia,
+          },
+        },
+      );
+    }
     const envelope = await withFreshness(
       ctx.prisma,
       ["fato_parceiro"],

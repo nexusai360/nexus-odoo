@@ -1,0 +1,138 @@
+// mcp/tools/financeiro/liquidez.ts
+// Tool MCP: financeiro_liquidez
+//
+// Resolve "Liquidez imediata", "indicador de liquidez", "saúde financeira",
+// "consigo pagar tudo agora?". Indicador = (saldo em caixa + contas a receber)
+// / contas a pagar.
+import { z } from "zod";
+import type { ToolEntry } from "../../catalog/types.js";
+import { withFreshness } from "../../lib/freshness.js";
+import type { PrismaClient } from "@/generated/prisma/client.js";
+
+const inputSchema = z.object({});
+
+const dados = z.object({
+  saldoEmCaixa: z.number(),
+  contasAReceber: z.number(),
+  contasAPagar: z.number(),
+  liquidezImediata: z.number(),
+  liquidezCorrente: z.number(),
+  status: z.enum(["saudavel", "atencao", "critico"]),
+  _RESPOSTA: z.string().optional(),
+  _DESTAQUE: z.record(z.string(), z.union([z.string(), z.number()])).optional(),
+  _agregado: z.record(z.string(), z.number().optional()).optional(),
+});
+
+const fonteStatus = z.object({
+  status: z.string(),
+  ultimaSyncEm: z.string().nullable(),
+});
+
+const outputSchema = z.union([
+  z.object({ estado: z.literal("preparando") }),
+  z.object({
+    estado: z.enum(["ok", "vazio"]),
+    dados,
+    atualizadoEm: z.string(),
+    atualizadoHa: z.string(),
+    fonteStatus,
+  }),
+]);
+
+type Input = z.infer<typeof inputSchema>;
+type Output = z.infer<typeof outputSchema>;
+
+async function queryLiquidez(prisma: PrismaClient) {
+  // 1. Saldo em caixa: soma de fato_financeiro_saldo
+  const saldoRows = await prisma.$queryRaw<Array<{ total: string | number }>>`
+    SELECT COALESCE(SUM(saldo), 0)::text AS total FROM fato_financeiro_saldo
+  `;
+  const saldoEmCaixa = Number(saldoRows[0]?.total ?? 0);
+
+  // 2. Contas a receber em aberto: soma de fato_financeiro_titulo a receber
+  const receberRows = await prisma.$queryRaw<Array<{ total: string | number }>>`
+    SELECT COALESCE(SUM(vr_saldo), 0)::text AS total
+    FROM fato_financeiro_titulo
+    WHERE tipo = 'a_receber' AND vr_saldo > 0
+  `;
+  const contasAReceber = Number(receberRows[0]?.total ?? 0);
+
+  // 3. Contas a pagar em aberto
+  const pagarRows = await prisma.$queryRaw<Array<{ total: string | number }>>`
+    SELECT COALESCE(SUM(vr_saldo), 0)::text AS total
+    FROM fato_financeiro_titulo
+    WHERE tipo = 'a_pagar' AND vr_saldo > 0
+  `;
+  const contasAPagar = Number(pagarRows[0]?.total ?? 0);
+
+  // 4. Calcular indicadores
+  // Liquidez imediata = saldo / contas a pagar
+  // Liquidez corrente = (saldo + a receber) / contas a pagar
+  const liquidezImediata = contasAPagar > 0 ? saldoEmCaixa / contasAPagar : 0;
+  const liquidezCorrente = contasAPagar > 0 ? (saldoEmCaixa + contasAReceber) / contasAPagar : 0;
+
+  // Classificacao didatica (referencia brasileira de boas praticas):
+  // liquidezImediata > 0.5 e corrente > 1.5 -> saudavel
+  // imediata > 0.2 ou corrente > 1.0       -> atencao
+  // resto                                  -> critico
+  let status: "saudavel" | "atencao" | "critico" = "critico";
+  if (liquidezImediata > 0.5 && liquidezCorrente > 1.5) status = "saudavel";
+  else if (liquidezImediata > 0.2 || liquidezCorrente > 1.0) status = "atencao";
+
+  return {
+    saldoEmCaixa,
+    contasAReceber,
+    contasAPagar,
+    liquidezImediata,
+    liquidezCorrente,
+    status,
+  };
+}
+
+export const financeiroLiquidez: ToolEntry<Input, Output> = {
+  id: "financeiro_liquidez",
+  dominio: "financeiro",
+  descricao:
+    "Indicadores de liquidez da empresa: saldo em caixa, contas a receber em aberto, " +
+    "contas a pagar em aberto, liquidez imediata (saldo/pagar) e liquidez corrente " +
+    "((saldo+receber)/pagar). Use para 'liquidez imediata', 'consigo pagar tudo', " +
+    "'saude financeira', 'indicador de liquidez'.",
+  inputSchemaShape: inputSchema.shape,
+  inputSchema,
+  outputSchema,
+  handler: async (_input, ctx) => {
+    const envelope = await withFreshness(
+      ctx.prisma,
+      ["fato_financeiro_saldo", "fato_financeiro_titulo"],
+      () => queryLiquidez(ctx.prisma),
+    );
+    if (envelope.estado === "preparando") return envelope;
+    const d = envelope.dados;
+    const fmt = (n: number) =>
+      n.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
+    const fmtRatio = (n: number) => n.toFixed(2);
+    const statusLabel =
+      d.status === "saudavel" ? "saudavel" :
+      d.status === "atencao" ? "em atencao" : "em situacao critica";
+    return {
+      ...envelope,
+      dados: {
+        ...d,
+        _RESPOSTA:
+          `Liquidez ${statusLabel}: imediata ${fmtRatio(d.liquidezImediata)} ` +
+          `(saldo ${fmt(d.saldoEmCaixa)} / a pagar ${fmt(d.contasAPagar)}), ` +
+          `corrente ${fmtRatio(d.liquidezCorrente)} ` +
+          `(saldo + a receber ${fmt(d.saldoEmCaixa + d.contasAReceber)} / a pagar ${fmt(d.contasAPagar)}).`,
+        _DESTAQUE: {
+          saldoEmCaixa: d.saldoEmCaixa,
+          contasAReceber: d.contasAReceber,
+          contasAPagar: d.contasAPagar,
+          liquidezImediata: d.liquidezImediata,
+          liquidezCorrente: d.liquidezCorrente,
+          status: d.status,
+        },
+        _agregado: { soma: d.saldoEmCaixa + d.contasAReceber - d.contasAPagar },
+      },
+    };
+  },
+};

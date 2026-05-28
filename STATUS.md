@@ -1,14 +1,45 @@
 # STATUS — nexus-odoo
 
-> **Ponto de retomada entre sessões.** Atualizado em 2026-05-21.
+> **Ponto de retomada entre sessões.** Atualizado em 2026-05-28.
 > Ao abrir uma sessão: ler **este arquivo** e o **`CLAUDE.md`**. Modo autônomo
 > é o padrão (ver `CLAUDE.md §6`).
 >
-> ## ⚠️ BRANCH ATUAL: `feat/f4-leitura-expansao`
-> Trabalho em curso: F4 Expansão da base de leitura (L1/L2/L3). A retomada
-> desta branch está em **`docs/HANDOFF-2026-05-21-f4-leitura-expansao.md`** —
-> ler esse handoff antes de seguir. O conteúdo abaixo é o estado da `main`
-> anterior a esta branch.
+> ## ⚠️ BRANCH ATUAL: `feat/agente-nex-95pct-ronda1` (PR #30 aberto)
+> **Ronda de qualidade do Agente Nex concluída** (R17 a R23): saiu de
+> **78,5% CORRETO** (baseline R17, 100 turnos) para **95,5% CORRETO real**
+> (R23, 290 turnos, +17pp acumulado). Meta de 95% atingida.
+>
+> PR #30: https://github.com/nexusai360/nexus-odoo/pull/30
+> Aguarda merge humano (não dispara deploy sem autorização).
+>
+> ### Pendências pós-merge (deploy manual em prod)
+> 1. Aplicar 2 migrations aditivas:
+>    - `20260528010000_fato_parceiro_data_criacao` (coluna + índice)
+>    - `20260528020000_dim_empresa_grupo` (tabela seedada via regex + GRANT)
+> 2. Backfill em prod:
+>    ```sql
+>    UPDATE fato_parceiro fp
+>       SET data_criacao = (rrp.data->>'create_date')::timestamp
+>      FROM raw_res_partner rrp
+>     WHERE fp.odoo_id = rrp.odoo_id AND rrp.data->>'create_date' IS NOT NULL;
+>    ```
+> 3. Verificar `GRANT SELECT ON dim_empresa_grupo TO nexus_mcp` em prod.
+> 4. Smoke E2E pós-deploy: 5 perguntas reais (top 10 contas a receber,
+>    títulos vencidos hoje, quais notas, vai bater a meta, saldo total).
+>
+> ### Relatórios completos da rodada
+> - `docs/agent-quality-review/r19-relatorio.md` (Ronda 1)
+> - `docs/agent-quality-review/r20-relatorio.md` (Ronda 2)
+> - `docs/agent-quality-review/r22-relatorio.md` (Ronda 3)
+> - `docs/agent-quality-review/r23-relatorio.md` (R23 final, 95,5%)
+> - `docs/agent-quality-review/ronda5-plano.md` (R5: 7 tools novas + regra prompt)
+> - `docs/agent-quality-review/auditoria-manual-r17-r18.md` (raiz do trabalho)
+>
+> ### Próxima sessão — quando retomar
+> - Se o PR #30 já foi mergeado: branch ativa = `main`. Limpar
+>   `feat/agente-nex-95pct-ronda1` local + remoto. Atualizar este STATUS.md.
+> - Se não: ler `docs/agents/HISTORY.md` (última entrada 2026-05-28 09:30)
+>   pra contexto + corpo do PR #30 pra resumo executivo.
 
 ---
 

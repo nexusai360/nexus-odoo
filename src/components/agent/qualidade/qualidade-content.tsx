@@ -37,7 +37,10 @@ import type {
   EvaluationRow,
   QualityKpisV2,
 } from "@/lib/agent/quality/queries";
-import { markerToRodadaName } from "@/lib/agent/quality/rodada-labels";
+import {
+  buildRodadaNamesFromMarkers,
+  markerToRodadaName,
+} from "@/lib/agent/quality/rodada-labels";
 
 import { ChartsBlock } from "./charts-block";
 import { EvaluationsTable } from "./evaluations-table";
@@ -82,6 +85,18 @@ export function QualidadeContent({ minDate }: QualidadeContentProps) {
 
   const [models, setModels] = useState<string[]>([]);
   const [rodadas, setRodadas] = useState<Array<{ marker: string; count: number }>>([]);
+  // T-29 (Ronda 1.5): auto-numeracao de rodadas (R8, R9, R10, ...) baseada
+  // na ordem cronologica do timestamp embutido no marker. Nenhuma rodada
+  // nova precisa de edicao manual em rodada-labels.ts.
+  const rodadaNameMap = useMemo(
+    () => buildRodadaNamesFromMarkers(rodadas.map((r) => r.marker)),
+    [rodadas],
+  );
+  const labelFor = useCallback(
+    (marker: string | null | undefined): string =>
+      !marker ? "" : rodadaNameMap.get(marker) ?? markerToRodadaName(marker),
+    [rodadaNameMap],
+  );
   const [kpis, setKpis] = useState<QualityKpisV2 | null>(null);
   const [evaluations, setEvaluations] = useState<{
     rows: EvaluationRow[];
@@ -208,6 +223,7 @@ export function QualidadeContent({ minDate }: QualidadeContentProps) {
           <RodadaMultiSelect
             options={rodadas}
             selected={selectedRodadas}
+            labelFor={labelFor}
             onToggle={(marker) =>
               setSelectedRodadas((prev) =>
                 prev.includes(marker)
@@ -256,6 +272,7 @@ export function QualidadeContent({ minDate }: QualidadeContentProps) {
           baseFilters={baseFilters}
           availableModels={models}
           availablePatterns={availablePatterns}
+          labelForRodada={labelFor}
         />
       )}
     </div>
@@ -266,11 +283,13 @@ export function QualidadeContent({ minDate }: QualidadeContentProps) {
 function RodadaMultiSelect({
   options,
   selected,
+  labelFor,
   onToggle,
   onClear,
 }: {
   options: Array<{ marker: string; count: number }>;
   selected: string[];
+  labelFor: (marker: string | null | undefined) => string;
   onToggle: (marker: string) => void;
   onClear: () => void;
 }) {
@@ -282,7 +301,7 @@ function RodadaMultiSelect({
     selected.length === 0
       ? "Todas as rodadas"
       : selected.length === 1
-        ? markerToRodadaName(selected[0])
+        ? labelFor(selected[0])
         : `${selected.length} rodadas`;
 
   if (!mounted) {
@@ -352,7 +371,7 @@ function RodadaMultiSelect({
                       {isOn ? <Check className="h-3 w-3" /> : null}
                     </span>
                     <span className="inline-flex items-center rounded-full border border-border bg-muted/40 px-2 py-0.5 font-mono text-xs text-muted-foreground">
-                      {markerToRodadaName(opt.marker)}
+                      {labelFor(opt.marker)}
                     </span>
                     <span className="ml-auto text-xs text-muted-foreground">
                       {opt.count}

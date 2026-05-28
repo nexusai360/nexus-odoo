@@ -70,8 +70,28 @@ export const fiscalNotasRecebidas: ToolEntry<Input, Output> = {
   inputSchemaShape: inputSchema.shape,
   inputSchema,
   outputSchema,
-  handler: (input, ctx) =>
-    withFreshness(ctx.prisma, ["fato_nota_fiscal"], async () =>
+  handler: async (input, ctx) => {
+    const envelope = await withFreshness(ctx.prisma, ["fato_nota_fiscal"], async () =>
       shape(await queryNotasRecebidas(ctx.prisma, input)),
-    ),
+    );
+    if (envelope.estado === "preparando") return envelope;
+    const d = envelope.dados;
+    // T-38 (Ronda 3): cap + envelope canonico.
+    const todasLinhas = d.linhas;
+    const linhasCap = todasLinhas.slice(0, 30);
+    return enriquecerEnvelope(
+      { ...envelope, dados: { ...d, linhas: linhasCap } },
+      "fiscal_notas_recebidas",
+      {
+        destaque: {
+          totalNotas: d.totalNotas,
+          valorTotal: d.valorTotal,
+          contagem: d.totalNotas,
+          linhasExibidas: linhasCap.length,
+        },
+        agregado: { contagem: d.totalNotas, soma: d.valorTotal },
+        listaTruncada: todasLinhas.length > linhasCap.length,
+      },
+    );
+  },
 };

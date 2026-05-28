@@ -8,6 +8,7 @@ import { financeiroFluxoCaixa } from "./fluxo-caixa.js";
 import { financeiroContasAReceber } from "./contas-a-receber.js";
 import { financeiroContasAPagar } from "./contas-a-pagar.js";
 import { financeiroTitulosVencidos } from "./titulos-vencidos.js";
+import { financeiroLiquidez } from "./liquidez.js";
 
 export const financeiroTools: ToolEntry[] = [
   financeiroSaldoContas as ToolEntry,
@@ -16,4 +17,5 @@ export const financeiroTools: ToolEntry[] = [
   financeiroContasAReceber as ToolEntry,
   financeiroContasAPagar as ToolEntry,
   financeiroTitulosVencidos as ToolEntry,
+  financeiroLiquidez as ToolEntry,
 ];

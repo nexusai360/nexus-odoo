@@ -1,0 +1,4566 @@
+{
+  "finan.alcada": {
+    "name": "Alçada",
+    "type": "Base Object",
+    "transient": false,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "producao.alteracao.materia.prima": {
+    "name": "Alteração de matéria-prima da lista de material",
+    "type": "Base Object",
+    "transient": false,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "backup.automatico": {
+    "name": "Backup automático",
+    "type": "Base Object",
+    "transient": false,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "sped.participante": {
+    "name": "Base para chaves PIX",
+    "type": "Base Object",
+    "transient": false,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "finan.lancamento": {
+    "name": "Base para código de barras de boleto",
+    "type": "Base Object",
+    "transient": false,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "sped.produto.caracteristica": {
+    "name": "Característica de Produtos",
+    "type": "Base Object",
+    "transient": false,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "sped.carta.correcao": {
+    "name": "Carta de Correção",
+    "type": "Base Object",
+    "transient": false,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "finan.carteira": {
+    "name": "Carteira de Boletos",
+    "type": "Base Object",
+    "transient": false,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "contabil.centro.custo": {
+    "name": "Centro de Custo",
+    "type": "Base Object",
+    "transient": false,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "finan.centro.resultado": {
+    "name": "Centro de Resultado",
+    "type": "Base Object",
+    "transient": false,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "finan.cheque": {
+    "name": "Cheques",
+    "type": "Base Object",
+    "transient": false,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "sped.produto.codigo.barras": {
+    "name": "Códigos de Barras de Produtos",
+    "type": "Base Object",
+    "transient": false,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "sped.condicao.pagamento": {
+    "name": "Condições de Pagamento",
+    "type": "Base Object",
+    "transient": false,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "finan.banco": {
+    "name": "Conta",
+    "type": "Base Object",
+    "transient": false,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "contabil.conta": {
+    "name": "Conta Contábil",
+    "type": "Base Object",
+    "transient": false,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "contabil.conta.referencial": {
+    "name": "Conta Contábil Referencial",
+    "type": "Base Object",
+    "transient": false,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "finan.conta": {
+    "name": "Conta Gerencial",
+    "type": "Base Object",
+    "transient": false,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "res.partner": {
+    "name": "Contact",
+    "type": "Base Object",
+    "transient": false,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "pedido.documento.reajuste": {
+    "name": "Contrato Reajuste",
+    "type": "Base Object",
+    "transient": false,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "pedido.documento.reajuste.item": {
+    "name": "Contrato Reajuste Item",
+    "type": "Base Object",
+    "transient": false,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "sped.produto.controle": {
+    "name": "Controle de Produtos",
+    "type": "Base Object",
+    "transient": false,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "pedido.documento.cotacao": {
+    "name": "Cotação",
+    "type": "Base Object",
+    "transient": false,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "crm.pipeline.etapa": {
+    "name": "CRM - Etapa do pipeline",
+    "type": "Base Object",
+    "transient": false,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "crm.pipeline": {
+    "name": "CRM - Pipeline",
+    "type": "Base Object",
+    "transient": false,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "contabil.demonstracao": {
+    "name": "Demonstração contábil",
+    "type": "Base Object",
+    "transient": false,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "finan.demonstracao": {
+    "name": "Demonstração financeira",
+    "type": "Base Object",
+    "transient": false,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "sped.produto.departamento": {
+    "name": "Departamento de Produtos",
+    "type": "Base Object",
+    "transient": false,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "discuss.channel": {
+    "name": "Discussion Channel",
+    "type": "Base Object",
+    "transient": false,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "sped.documento": {
+    "name": "Documentos Fiscais",
+    "type": "Base Object",
+    "transient": false,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "mail.thread.cc": {
+    "name": "Email CC management",
+    "type": "Base Object",
+    "transient": false,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "mail.thread": {
+    "name": "Email Thread",
+    "type": "Base Object",
+    "transient": false,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "sped.empresa": {
+    "name": "Empresas e filiais",
+    "type": "Base Object",
+    "transient": false,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "contabil.encerramento": {
+    "name": "Encerramento Contábil",
+    "type": "Base Object",
+    "transient": false,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "sped.endereco": {
+    "name": "Endereços de participantes",
+    "type": "Base Object",
+    "transient": false,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "estoque.local.endereco": {
+    "name": "Endereços dos produtos nos locais de estoque",
+    "type": "Base Object",
+    "transient": false,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "hardware.equipamento": {
+    "name": "Equipamentos - hardware",
+    "type": "Base Object",
+    "transient": false,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "hardware.estacao": {
+    "name": "Estação - hardware",
+    "type": "Base Object",
+    "transient": false,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "pedido.etapa": {
+    "name": "Etapa do Pedido",
+    "type": "Base Object",
+    "transient": false,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "wms.etapa": {
+    "name": "Etapa do WMS",
+    "type": "Base Object",
+    "transient": false,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "reinf.evento": {
+    "name": "Evento REINF",
+    "type": "Base Object",
+    "transient": false,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "sped.produto.familia": {
+    "name": "Família de Produtos",
+    "type": "Base Object",
+    "transient": false,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "pedido.faturamento": {
+    "name": "Faturamento de pedido/contrato",
+    "type": "Base Object",
+    "transient": false,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "finan.forma.pagamento": {
+    "name": "Forma de Pagamemento",
+    "type": "Base Object",
+    "transient": false,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "contabil.historico": {
+    "name": "Histórico",
+    "type": "Base Object",
+    "transient": false,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "finan.importa.contas.a.pagar": {
+    "name": "Importa contas a pagar",
+    "type": "Base Object",
+    "transient": false,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "sped.dfe.importacao": {
+    "name": "Importação DF-e",
+    "type": "Base Object",
+    "transient": false,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "estoque.norma.palete.item": {
+    "name": "Item das normas de palete",
+    "type": "Base Object",
+    "transient": false,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "sped.consulta.dfe.item": {
+    "name": "Item de Consulta DF-e",
+    "type": "Base Object",
+    "transient": false,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "contabil.demonstracao.item": {
+    "name": "Item de demonstração contábil",
+    "type": "Base Object",
+    "transient": false,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "contabil.lancamento.item": {
+    "name": "Item/Partida do Lançamento Contábil",
+    "type": "Base Object",
+    "transient": false,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "pedido.documento.cotacao.analise": {
+    "name": "Itens da cotação",
+    "type": "Base Object",
+    "transient": false,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "pedido.documento.cotacao.item": {
+    "name": "Itens da cotação",
+    "type": "Base Object",
+    "transient": false,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "contabil.operacao.item": {
+    "name": "Itens da Operação Contábil",
+    "type": "Base Object",
+    "transient": false,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "sped.operacao.item": {
+    "name": "Itens da Operação Fiscal",
+    "type": "Base Object",
+    "transient": false,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "contabil.lancamento": {
+    "name": "Lançamento Contábil",
+    "type": "Base Object",
+    "transient": false,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "contabil.depreciacao": {
+    "name": "Lançamento Depreciação Contábil",
+    "type": "Base Object",
+    "transient": false,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "sped.produto.lista.material": {
+    "name": "Lista de material",
+    "type": "Base Object",
+    "transient": false,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "estoque.local": {
+    "name": "Locais de Estoque",
+    "type": "Base Object",
+    "transient": false,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "sped.produto.lote.serie": {
+    "name": "Lote/Série(s) de Produtos",
+    "type": "Base Object",
+    "transient": false,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "sped.produto.lote.serie.conjugado": {
+    "name": "Lote/Série(s) de Produtos conjugados",
+    "type": "Base Object",
+    "transient": false,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "mail.blacklist": {
+    "name": "Mail Blacklist",
+    "type": "Base Object",
+    "transient": false,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "mail.thread.blacklist": {
+    "name": "Mail Blacklist mixin",
+    "type": "Base Object",
+    "transient": false,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "mail.thread.main.attachment": {
+    "name": "Mail Main Attachment management",
+    "type": "Base Object",
+    "transient": false,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "sped.produto.marca": {
+    "name": "Marca de Produtos",
+    "type": "Base Object",
+    "transient": false,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "sped.mdfe": {
+    "name": "MDF-e",
+    "type": "Base Object",
+    "transient": false,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "projeto.modelo": {
+    "name": "Modelo de projeto",
+    "type": "Base Object",
+    "transient": false,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "estoque.norma.palete": {
+    "name": "Normas de palete",
+    "type": "Base Object",
+    "transient": false,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "contabil.operacao": {
+    "name": "Operações Contábeis",
+    "type": "Base Object",
+    "transient": false,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "pedido.operacao": {
+    "name": "Operações de Pedido",
+    "type": "Base Object",
+    "transient": false,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "wms.operacao": {
+    "name": "Operações de WMS",
+    "type": "Base Object",
+    "transient": false,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "sped.operacao": {
+    "name": "Operações Fiscais",
+    "type": "Base Object",
+    "transient": false,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "sped.produto.parametro.qualidade": {
+    "name": "Parâmetro de qualidade do produto",
+    "type": "Base Object",
+    "transient": false,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "producao.parametro.qualidade": {
+    "name": "Parâmetros de qualidade",
+    "type": "Base Object",
+    "transient": false,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "pedido.documento": {
+    "name": "Pedido",
+    "type": "Base Object",
+    "transient": false,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "producao.processo": {
+    "name": "Processo de produção",
+    "type": "Base Object",
+    "transient": false,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "producao.centro.trabalho": {
+    "name": "Produção - Centro - Trabalho",
+    "type": "Base Object",
+    "transient": false,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "sped.produto": {
+    "name": "Produtos e serviços",
+    "type": "Base Object",
+    "transient": false,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "sped.produto.anvisa": {
+    "name": "Registro na ANVISA dos produtos",
+    "type": "Base Object",
+    "transient": false,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "auditoria.regra": {
+    "name": "Regra de auditoria",
+    "type": "Base Object",
+    "transient": false,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "contabil.executa.demonstracao": {
+    "name": "Relatório de Demonstracao contabilcera",
+    "type": "Base Object",
+    "transient": false,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "finan.executa.demonstracao": {
+    "name": "Relatório de Demonstracao Financera",
+    "type": "Base Object",
+    "transient": false,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "finan.remessa": {
+    "name": "Remessa Bancária",
+    "type": "Base Object",
+    "transient": false,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "estoque.requisito": {
+    "name": "Requisitos de Armazenagem",
+    "type": "Base Object",
+    "transient": false,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "finan.retorno": {
+    "name": "Retorno de Remessa Bancária",
+    "type": "Base Object",
+    "transient": false,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "rh.afastamento": {
+    "name": "RH - Afastamento",
+    "type": "Base Object",
+    "transient": false,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "rh.cargo": {
+    "name": "RH - Cargo",
+    "type": "Base Object",
+    "transient": false,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "rh.contrato": {
+    "name": "RH - Contrato de Trabalho",
+    "type": "Base Object",
+    "transient": false,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "rh.holerite": {
+    "name": "RH - Holerite",
+    "type": "Base Object",
+    "transient": false,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "rh.lote.holerite": {
+    "name": "RH - Lote de Holerite",
+    "type": "Base Object",
+    "transient": false,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "rh.modelo.calculo": {
+    "name": "RH - Modelo de Cálculo",
+    "type": "Base Object",
+    "transient": false,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "rh.ponto": {
+    "name": "RH - Ponto",
+    "type": "Base Object",
+    "transient": false,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "rh.rubrica": {
+    "name": "RH - Rubrica",
+    "type": "Base Object",
+    "transient": false,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "sped.alteracao.documento": {
+    "name": "SPED - Alteração de documentos",
+    "type": "Base Object",
+    "transient": false,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "sped.apuracao": {
+    "name": "SPED - Apuração",
+    "type": "Base Object",
+    "transient": false,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "sped.apuracao.auditoria": {
+    "name": "SPED - Auditoria de Apuração",
+    "type": "Base Object",
+    "transient": false,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "sped.apuracao.ecd": {
+    "name": "SPED Contábil - ECD",
+    "type": "Base Object",
+    "transient": false,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "sped.tabela.preco.regra": {
+    "name": "Tabela de Preço - Regra",
+    "type": "Base Object",
+    "transient": false,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "sped.tabela.preco": {
+    "name": "Tabela de Preços",
+    "type": "Base Object",
+    "transient": false,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "pedido.etapa.tempo": {
+    "name": "Tempo Etapa do Pedido",
+    "type": "Base Object",
+    "transient": false,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "finan.documento": {
+    "name": "Tipo de Documento",
+    "type": "Base Object",
+    "transient": false,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "estoque.tipo.palete": {
+    "name": "Tipos de palete",
+    "type": "Base Object",
+    "transient": false,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "sped.usuario": {
+    "name": "Usuários",
+    "type": "Base Object",
+    "transient": false,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "sped.produto.volume": {
+    "name": "Volumes dos produtos",
+    "type": "Base Object",
+    "transient": false,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "wms.documento": {
+    "name": "WMS Documento",
+    "type": "Base Object",
+    "transient": false,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "wms.documento.item": {
+    "name": "WMS Item de documento",
+    "type": "Base Object",
+    "transient": false,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "res.groups": {
+    "name": "Access Groups",
+    "type": "Base Object",
+    "transient": false,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "ir.actions.act_url": {
+    "name": "Action URL",
+    "type": "Base Object",
+    "transient": false,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "ir.actions.act_window": {
+    "name": "Action Window",
+    "type": "Base Object",
+    "transient": false,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "ir.actions.act_window_close": {
+    "name": "Action Window Close",
+    "type": "Base Object",
+    "transient": false,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "ir.actions.act_window.view": {
+    "name": "Action Window View",
+    "type": "Base Object",
+    "transient": false,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "ir.actions.actions": {
+    "name": "Actions",
+    "type": "Base Object",
+    "transient": false,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "mail.activity": {
+    "name": "Activity",
+    "type": "Base Object",
+    "transient": false,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "mail.activity.mixin": {
+    "name": "Activity Mixin",
+    "type": "Base Object",
+    "transient": false,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "mail.activity.plan": {
+    "name": "Activity Plan",
+    "type": "Base Object",
+    "transient": false,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "mail.activity.plan.template": {
+    "name": "Activity plan template",
+    "type": "Base Object",
+    "transient": false,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "mail.activity.schedule": {
+    "name": "Activity schedule plan Wizard",
+    "type": "Base Object",
+    "transient": true,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "mail.activity.type": {
+    "name": "Activity Type",
+    "type": "Base Object",
+    "transient": false,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "format.address.mixin": {
+    "name": "Address Format",
+    "type": "Base Object",
+    "transient": false,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "sped.documento.item.declaracao.importacao.adicao": {
+    "name": "Adições da Declaração de Importação do Item do Documento Fiscal",
+    "type": "Base Object",
+    "transient": false,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "ks_dashboard_ninja.arti_int": {
+    "name": "AI Dashboard",
+    "type": "Base Object",
+    "transient": true,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "ks_dashboard_ninja.ai_dashboard": {
+    "name": "AI Dashboard",
+    "type": "Base Object",
+    "transient": true,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "sped.cst.cibs": {
+    "name": "Alíquotas do CST",
+    "type": "Base Object",
+    "transient": false,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "sped.aliquota.icms.proprio": {
+    "name": "Alíquotas do ICMS próprio",
+    "type": "Base Object",
+    "transient": false,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "sped.aliquota.icms.st": {
+    "name": "Alíquotas do ICMS ST",
+    "type": "Base Object",
+    "transient": false,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "sped.aliquota.inss": {
+    "name": "Alíquotas do INSS",
+    "type": "Base Object",
+    "transient": false,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "sped.aliquota.ipi": {
+    "name": "Alíquotas do IPI",
+    "type": "Base Object",
+    "transient": false,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "sped.aliquota.irpf": {
+    "name": "Alíquotas do IRPF",
+    "type": "Base Object",
+    "transient": false,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "sped.aliquota.iss": {
+    "name": "Alíquotas do ISS",
+    "type": "Base Object",
+    "transient": false,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "sped.aliquota.pis.cofins": {
+    "name": "Alíquotas do PIS-COFINS",
+    "type": "Base Object",
+    "transient": false,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "sped.aliquota.simples.aliquota": {
+    "name": "Alíquotas do SIMPLES Nacional",
+    "type": "Base Object",
+    "transient": false,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "sped.aliquota.simples.anexo": {
+    "name": "Anexos do SIMPLES Nacional",
+    "type": "Base Object",
+    "transient": false,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "res.users.apikeys.description": {
+    "name": "API Key Description",
+    "type": "Base Object",
+    "transient": true,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "ir.module.category": {
+    "name": "Application",
+    "type": "Base Object",
+    "transient": false,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "sped.caminho.arquivo": {
+    "name": "Arquivo na pasta",
+    "type": "Base Object",
+    "transient": true,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "ir.asset": {
+    "name": "Asset",
+    "type": "Base Object",
+    "transient": false,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "web_editor.assets": {
+    "name": "Assets Utils",
+    "type": "Base Object",
+    "transient": false,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "hardware.atividade": {
+    "name": "Atividades - hardware",
+    "type": "Base Object",
+    "transient": false,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "ir.attachment": {
+    "name": "Attachment",
+    "type": "Base Object",
+    "transient": false,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "finan.lancamento.atualiza": {
+    "name": "Atualiza lançamento financeiro",
+    "type": "Base Object",
+    "transient": true,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "sped.atualizacao.preco": {
+    "name": "Atualização de Preços",
+    "type": "Base Object",
+    "transient": false,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "ir.autovacuum": {
+    "name": "Automatic Vacuum",
+    "type": "Base Object",
+    "transient": false,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "pedido.documento.avanca.etapa": {
+    "name": "Avança etapa de produção",
+    "type": "Base Object",
+    "transient": false,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "avatar.mixin": {
+    "name": "Avatar Mixin",
+    "type": "Base Object",
+    "transient": false,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "finan.baixa.lancamento": {
+    "name": "Baixa de Lançamentos do Financeiro",
+    "type": "Base Object",
+    "transient": false,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "res.bank": {
+    "name": "Bank",
+    "type": "Base Object",
+    "transient": false,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "res.partner.bank": {
+    "name": "Bank Accounts",
+    "type": "Base Object",
+    "transient": false,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "barcodes.barcode_events_mixin": {
+    "name": "Barcode Event Mixin",
+    "type": "Base Object",
+    "transient": false,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "barcode.nomenclature": {
+    "name": "Barcode Nomenclature",
+    "type": "Base Object",
+    "transient": false,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "barcode.rule": {
+    "name": "Barcode Rule",
+    "type": "Base Object",
+    "transient": false,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "base": {
+    "name": "Base",
+    "type": "Base Object",
+    "transient": false,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "sped.usuario.base": {
+    "name": "Base dos Usuários",
+    "type": "Base Object",
+    "transient": false,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "sped.documento.base": {
+    "name": "Base fiscal para os pedidos",
+    "type": "Base Object",
+    "transient": false,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "base_import.import": {
+    "name": "Base Import",
+    "type": "Base Object",
+    "transient": true,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "base_import.mapping": {
+    "name": "Base Import Mapping",
+    "type": "Base Object",
+    "transient": false,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "chaves.pix.base": {
+    "name": "Base para chaves PIX",
+    "type": "Base Object",
+    "transient": false,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "codigo.barras.boleto.conta.base": {
+    "name": "Base para código de barras de boleto",
+    "type": "Base Object",
+    "transient": false,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "sped.documento.duplicata": {
+    "name": "Base para código de barras de boleto",
+    "type": "Base Object",
+    "transient": false,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "sped.pessoa": {
+    "name": "Base para dados pessoais (participantes e endereços)",
+    "type": "Base Object",
+    "transient": false,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "sped.impressao": {
+    "name": "Base para impressos",
+    "type": "Base Object",
+    "transient": false,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "sped.base.modelo.impressao": {
+    "name": "Base para modelos de impressos",
+    "type": "Base Object",
+    "transient": false,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "sped.base": {
+    "name": "Base para moedas e outros métodos",
+    "type": "Base Object",
+    "transient": false,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "sped.registro.base": {
+    "name": "Base para os registros do SPED",
+    "type": "Base Object",
+    "transient": false,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "relatorio.executa.base": {
+    "name": "Base para tela de filtro de relatórios",
+    "type": "Base Object",
+    "transient": false,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "mail.shortcode": {
+    "name": "Canned Response / Shortcode",
+    "type": "Base Object",
+    "transient": false,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "sped.produto.caracteristica.arvore": {
+    "name": "Característica de Produtos - Árvore de Análise",
+    "type": "Base Object",
+    "transient": false,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "contabil.centro.custo.arvore": {
+    "name": "Centro de custo - Árvore de Análise",
+    "type": "Base Object",
+    "transient": false,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "finan.centro.resultado.arvore": {
+    "name": "Centro de resultado - Árvore de Análise",
+    "type": "Base Object",
+    "transient": false,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "sped.certificado": {
+    "name": "Certificado Digital",
+    "type": "Base Object",
+    "transient": false,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "sped.cest": {
+    "name": "CESTs",
+    "type": "Base Object",
+    "transient": false,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "sped.cfop": {
+    "name": "CFOPs",
+    "type": "Base Object",
+    "transient": false,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "chamado.mensagem": {
+    "name": "Chamado - mensagem",
+    "type": "Base Object",
+    "transient": false,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "chamado.cliente": {
+    "name": "Chamado do cliente",
+    "type": "Base Object",
+    "transient": false,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "change.password.wizard": {
+    "name": "Change Password Wizard",
+    "type": "Base Object",
+    "transient": true,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "discuss.channel.member": {
+    "name": "Channel Member",
+    "type": "Base Object",
+    "transient": false,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "ir.actions.client": {
+    "name": "Client Action",
+    "type": "Base Object",
+    "transient": false,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "sped.cnae": {
+    "name": "CNAEs",
+    "type": "Base Object",
+    "transient": false,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "sped.documento.item.ajuste.apuracao": {
+    "name": "Códigos de ajuste de apuração",
+    "type": "Base Object",
+    "transient": false,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "pedido.comissao": {
+    "name": "Comissão do Pedido",
+    "type": "Base Object",
+    "transient": false,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "bus.bus": {
+    "name": "Communication Bus",
+    "type": "Base Object",
+    "transient": false,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "res.company": {
+    "name": "Companies",
+    "type": "Base Object",
+    "transient": false,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "base.document.layout": {
+    "name": "Company Document Layout",
+    "type": "Base Object",
+    "transient": true,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "ir.property": {
+    "name": "Company Property",
+    "type": "Base Object",
+    "transient": false,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "pedido.operacao.condicao.comercial": {
+    "name": "Condição Comercial",
+    "type": "Base Object",
+    "transient": false,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "res.config": {
+    "name": "Config",
+    "type": "Base Object",
+    "transient": true,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "res.config.installer": {
+    "name": "Config Installer",
+    "type": "Base Object",
+    "transient": true,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "res.config.settings": {
+    "name": "Config Settings",
+    "type": "Base Object",
+    "transient": true,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "sped.configuracao.geral": {
+    "name": "Configuração Geral",
+    "type": "Base Object",
+    "transient": false,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "sped.configuracao.geral.base": {
+    "name": "Configuração Geral base",
+    "type": "Base Object",
+    "transient": false,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "ir.actions.todo": {
+    "name": "Configuration Wizards",
+    "type": "Base Object",
+    "transient": false,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "sped.consulta.dfe.item.confirmacao": {
+    "name": "Confirmação de Item de Consulta DF-e",
+    "type": "Base Object",
+    "transient": true,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "sped.consulta.dfe": {
+    "name": "Consulta DF-e",
+    "type": "Base Object",
+    "transient": false,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "finan.banco.arvore": {
+    "name": "Conta Bancária - Árvore de Análise",
+    "type": "Base Object",
+    "transient": false,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "contabil.conta.arvore": {
+    "name": "Conta Contábil - Árvore de Análise",
+    "type": "Base Object",
+    "transient": false,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "contabil.conta.centro.custo": {
+    "name": "Conta Contábil - Centros de Custo",
+    "type": "Base Object",
+    "transient": false,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "contabil.conta.centro.resultado": {
+    "name": "Conta Contábil - Centros de Resultado",
+    "type": "Base Object",
+    "transient": false,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "contabil.conta.cfop": {
+    "name": "Conta Contábil - De-Para por CFOP",
+    "type": "Base Object",
+    "transient": false,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "contabil.conta.referencial.arvore": {
+    "name": "Conta Contábil Referencial - Árvore de Análise",
+    "type": "Base Object",
+    "transient": false,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "finan.conta.arvore": {
+    "name": "Conta Gerencial - Árvore de Análise",
+    "type": "Base Object",
+    "transient": false,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "res.country": {
+    "name": "Country",
+    "type": "Base Object",
+    "transient": false,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "res.country.group": {
+    "name": "Country Group",
+    "type": "Base Object",
+    "transient": false,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "res.country.state": {
+    "name": "Country state",
+    "type": "Base Object",
+    "transient": false,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "wizard.ir.model.menu.create": {
+    "name": "Create Menu Wizard",
+    "type": "Base Object",
+    "transient": true,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "mail.notification.web.push": {
+    "name": "Cron data used for web push notification",
+    "type": "Base Object",
+    "transient": false,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "sped.cst.icms": {
+    "name": "CST do ICMS",
+    "type": "Base Object",
+    "transient": false,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "sped.cst.icms.sn": {
+    "name": "CST do ICMS - SIMPLES",
+    "type": "Base Object",
+    "transient": false,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "sped.cst.ipi": {
+    "name": "CST do IPI",
+    "type": "Base Object",
+    "transient": false,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "sped.cst.pis.cofins": {
+    "name": "CST do PIS-COFINS",
+    "type": "Base Object",
+    "transient": false,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "res.currency": {
+    "name": "Currency",
+    "type": "Base Object",
+    "transient": false,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "res.currency.rate": {
+    "name": "Currency Rate",
+    "type": "Base Object",
+    "transient": false,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "ir.ui.view.custom": {
+    "name": "Custom View",
+    "type": "Base Object",
+    "transient": false,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "ks.dashboard.wizard": {
+    "name": "Dashboard Creation Wizard",
+    "type": "Base Object",
+    "transient": true,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "ks.dashboard.delete.wizard": {
+    "name": "Dashboard Delete Wizard",
+    "type": "Base Object",
+    "transient": true,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "ks.dashboard.duplicate.wizard": {
+    "name": "Dashboard Duplicate Wizard",
+    "type": "Base Object",
+    "transient": true,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "ks_dashboard_ninja.board": {
+    "name": "Dashboard Ninja",
+    "type": "Base Object",
+    "transient": false,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "ks.dashboard.api": {
+    "name": "Dashboard Ninja API datatype",
+    "type": "Base Object",
+    "transient": false,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "ks_dashboard_ninja.child_board": {
+    "name": "Dashboard Ninja Child Board",
+    "type": "Base Object",
+    "transient": false,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "ks_dashboard_ninja.board_custom_filters": {
+    "name": "Dashboard Ninja Custom Filters",
+    "type": "Base Object",
+    "transient": false,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "ks_dashboard_ninja.board_defined_filters": {
+    "name": "Dashboard Ninja Defined Filters",
+    "type": "Base Object",
+    "transient": false,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "ks.dashboard.group.by": {
+    "name": "Dashboard Ninja Group By",
+    "type": "Base Object",
+    "transient": false,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "ks.dashboard.csv.group.by": {
+    "name": "Dashboard Ninja Group By",
+    "type": "Base Object",
+    "transient": false,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "ks_ninja_dashboard.item_action": {
+    "name": "Dashboard Ninja Item Actions",
+    "type": "Base Object",
+    "transient": true,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "ks_dashboard_ninja.item": {
+    "name": "Dashboard Ninja items",
+    "type": "Base Object",
+    "transient": false,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "ks_dashboard_ninja.item_action": {
+    "name": "Dashboard Ninja Items Action Lines",
+    "type": "Base Object",
+    "transient": false,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "ks_dashboard_ninja.item_goal": {
+    "name": "Dashboard Ninja Items Goal Lines",
+    "type": "Base Object",
+    "transient": false,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "ks_dashboard_item.multiplier": {
+    "name": "Dashboard Ninja Items Multiplier Lines",
+    "type": "Base Object",
+    "transient": false,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "ks_dashboard_ninja.kpi_mail": {
+    "name": "Dashboard Ninja Kpi mail",
+    "type": "Base Object",
+    "transient": false,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "ks.dashboard.new": {
+    "name": "Dashboard Ninja New",
+    "type": "Base Object",
+    "transient": false,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "ks.dashboard.csv.new": {
+    "name": "Dashboard Ninja New",
+    "type": "Base Object",
+    "transient": false,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "ks_dashboard_ninja.board_template": {
+    "name": "Dashboard Ninja Template",
+    "type": "Base Object",
+    "transient": false,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "decimal.precision": {
+    "name": "Decimal Precision",
+    "type": "Base Object",
+    "transient": false,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "sped.documento.item.declaracao.importacao": {
+    "name": "Declarações de Importação do Item do Documento Fiscal",
+    "type": "Base Object",
+    "transient": false,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "ir.default": {
+    "name": "Default Values",
+    "type": "Base Object",
+    "transient": false,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "pedido.defeito": {
+    "name": "Defeitos",
+    "type": "Base Object",
+    "transient": false,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "pedido.defeito.arvore": {
+    "name": "Defeitos - Árvore de Análise",
+    "type": "Base Object",
+    "transient": false,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "ir.demo": {
+    "name": "Demo",
+    "type": "Base Object",
+    "transient": true,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "ir.demo_failure": {
+    "name": "Demo failure",
+    "type": "Base Object",
+    "transient": true,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "ir.demo_failure.wizard": {
+    "name": "Demo Failure wizard",
+    "type": "Base Object",
+    "transient": true,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "sped.produto.departamento.arvore": {
+    "name": "Departamento de Produtos - Árvore de Análise",
+    "type": "Base Object",
+    "transient": false,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "sped.usuario.departamento": {
+    "name": "Departamento de Usuários",
+    "type": "Base Object",
+    "transient": false,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "sped.usuario.departamento.arvore": {
+    "name": "Departamento de Usuários - Árvore de Análise",
+    "type": "Base Object",
+    "transient": false,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "finan.dia.semana": {
+    "name": "Dia da semana",
+    "type": "Base Object",
+    "transient": false,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "finan.dia.mes": {
+    "name": "Dia do mês",
+    "type": "Base Object",
+    "transient": false,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "finan.dia.util": {
+    "name": "Dia útil",
+    "type": "Base Object",
+    "transient": false,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "mail.followers": {
+    "name": "Document Followers",
+    "type": "Base Object",
+    "transient": false,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "sped.documento.rateio": {
+    "name": "Documento do Lançamento Financeiro",
+    "type": "Base Object",
+    "transient": false,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "pedido.documento.rateio": {
+    "name": "Documento do Lançamento Financeiro",
+    "type": "Base Object",
+    "transient": false,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "sped.documento.referenciado": {
+    "name": "Documentos Referenciados no Documento Fiscal",
+    "type": "Base Object",
+    "transient": false,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "mail.alias": {
+    "name": "Email Aliases",
+    "type": "Base Object",
+    "transient": false,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "mail.alias.mixin": {
+    "name": "Email Aliases Mixin",
+    "type": "Base Object",
+    "transient": false,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "mail.alias.mixin.optional": {
+    "name": "Email Aliases Mixin (light)",
+    "type": "Base Object",
+    "transient": false,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "mail.compose.message": {
+    "name": "Email composition wizard",
+    "type": "Base Object",
+    "transient": true,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "mail.alias.domain": {
+    "name": "Email Domain",
+    "type": "Base Object",
+    "transient": false,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "mail.resend.message": {
+    "name": "Email resend wizard",
+    "type": "Base Object",
+    "transient": true,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "mail.template.preview": {
+    "name": "Email Template Preview",
+    "type": "Base Object",
+    "transient": true,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "mail.template": {
+    "name": "Email Templates",
+    "type": "Base Object",
+    "transient": false,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "base.enable.profiling.wizard": {
+    "name": "Enable profiling for some time",
+    "type": "Base Object",
+    "transient": true,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "sped.estado": {
+    "name": "Estados",
+    "type": "Base Object",
+    "transient": false,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "estoque.minimo.maximo": {
+    "name": "Estoque mínimo e máximo",
+    "type": "Base Object",
+    "transient": false,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "reinf.evento.item": {
+    "name": "Evento REINF - Item",
+    "type": "Base Object",
+    "transient": false,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "sped.exporta.documento.anexos": {
+    "name": "Exportar anexos dos documentos fiscais",
+    "type": "Base Object",
+    "transient": true,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "ir.exports": {
+    "name": "Exports",
+    "type": "Base Object",
+    "transient": false,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "ir.exports.line": {
+    "name": "Exports Line",
+    "type": "Base Object",
+    "transient": false,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "finan.banco.extrato": {
+    "name": "Extrato de Contas Bancárias",
+    "type": "Base Object",
+    "transient": false,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "estoque.extrato": {
+    "name": "Extrato de Movimentação de Estoque",
+    "type": "Base Object",
+    "transient": false,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "estoque.extrato.rastreabilidade": {
+    "name": "Extrato de Movimentação de Estoque por Rastreabilidade",
+    "type": "Base Object",
+    "transient": false,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "sped.produto.familia.arvore": {
+    "name": "Família de Produtos - Árvore de Análise",
+    "type": "Base Object",
+    "transient": false,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "sped.faturamento.simples": {
+    "name": "Faturamento acumulado do SIMPLES Nacional",
+    "type": "Base Object",
+    "transient": false,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "sped.feriado": {
+    "name": "Feriados",
+    "type": "Base Object",
+    "transient": false,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "ks_dashboard_ninja.fetch_key": {
+    "name": "Fetch API key",
+    "type": "Base Object",
+    "transient": true,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "html.field.history.mixin": {
+    "name": "Field html History",
+    "type": "Base Object",
+    "transient": false,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "ir.model.fields": {
+    "name": "Fields",
+    "type": "Base Object",
+    "transient": false,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "ir.fields.converter": {
+    "name": "Fields Converter",
+    "type": "Base Object",
+    "transient": false,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "ir.model.fields.selection": {
+    "name": "Fields Selection",
+    "type": "Base Object",
+    "transient": false,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "ir.binary": {
+    "name": "File streaming helper model for controllers",
+    "type": "Base Object",
+    "transient": false,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "ir.filters": {
+    "name": "Filters",
+    "type": "Base Object",
+    "transient": false,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "sped.participante.api": {
+    "name": "Finan cadastro de cliente com carteira bancaria",
+    "type": "Base Object",
+    "transient": false,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "finan.pix": {
+    "name": "Finan Pix",
+    "type": "Base Object",
+    "transient": false,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "finan.fluxo.caixa": {
+    "name": "Fluxo de caixa - lançamentos",
+    "type": "Base Object",
+    "transient": false,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "contabil.depreciacao.wizard": {
+    "name": "Gerar depreciacões do Patrimonio",
+    "type": "Base Object",
+    "transient": true,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "google.gmail.mixin": {
+    "name": "Google Gmail Mixin",
+    "type": "Base Object",
+    "transient": false,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "sped.grava.anexo": {
+    "name": "Grava Anexo",
+    "type": "Base Object",
+    "transient": false,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "mail.guest": {
+    "name": "Guest",
+    "type": "Base Object",
+    "transient": false,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "contabil.historico.arvore": {
+    "name": "Histórico - Árvore de Análise",
+    "type": "Base Object",
+    "transient": false,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "finan.banco.historico.fechamento": {
+    "name": "Histórico de Fechamento",
+    "type": "Base Object",
+    "transient": false,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "wms.documento.historico": {
+    "name": "Histório de Etapas da Operação de WMS",
+    "type": "Base Object",
+    "transient": false,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "pedido.documento.historico": {
+    "name": "Histório de Etapas do Pedido",
+    "type": "Base Object",
+    "transient": false,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "ir.http": {
+    "name": "HTTP Routing",
+    "type": "Base Object",
+    "transient": false,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "sped.ibptax": {
+    "name": "IBPTax",
+    "type": "Base Object",
+    "transient": false,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "sped.ibptax.nbs": {
+    "name": "IBPTax por NBS",
+    "type": "Base Object",
+    "transient": false,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "sped.ibptax.ncm": {
+    "name": "IBPTax por NCM",
+    "type": "Base Object",
+    "transient": false,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "sped.ibptax.servico": {
+    "name": "IBPTax por Serviço",
+    "type": "Base Object",
+    "transient": false,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "mail.ice.server": {
+    "name": "ICE server",
+    "type": "Base Object",
+    "transient": false,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "image.mixin": {
+    "name": "Image Mixin",
+    "type": "Base Object",
+    "transient": false,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "sped.produto.imagem": {
+    "name": "Imagens de Produtos",
+    "type": "Base Object",
+    "transient": false,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "ks_dashboard_ninja.import": {
+    "name": "Import Dashboard",
+    "type": "Base Object",
+    "transient": true,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "finan.importa.documento": {
+    "name": "Importa documento financeiro",
+    "type": "Base Object",
+    "transient": true,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "sped.tabela.preco.importacao": {
+    "name": "Importação de Tabela de Preços",
+    "type": "Base Object",
+    "transient": true,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "finan.importacao": {
+    "name": "Importação Financeira",
+    "type": "Base Object",
+    "transient": false,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "contabil.modelo.impressao": {
+    "name": "Impressos  (Contabilidade)",
+    "type": "Base Object",
+    "transient": false,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "sped.documento.modelo.impressao": {
+    "name": "Impressos  (Documento Fiscal)",
+    "type": "Base Object",
+    "transient": false,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "finan.modelo.impressao": {
+    "name": "Impressos  (Financeiro)",
+    "type": "Base Object",
+    "transient": false,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "sped.modelo.impressao": {
+    "name": "Impressos  (Fiscais)",
+    "type": "Base Object",
+    "transient": false,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "pedido.modelo.impressao": {
+    "name": "Impressos  (Pedido)",
+    "type": "Base Object",
+    "transient": false,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "rh.modelo.impressao": {
+    "name": "Impressos  (RH)",
+    "type": "Base Object",
+    "transient": false,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "wms.modelo.impressao": {
+    "name": "Impressos  (WMS)",
+    "type": "Base Object",
+    "transient": false,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "fetchmail.server": {
+    "name": "Incoming Mail Server",
+    "type": "Base Object",
+    "transient": false,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "res.partner.industry": {
+    "name": "Industry",
+    "type": "Base Object",
+    "transient": false,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "base.language.install": {
+    "name": "Install Language",
+    "type": "Base Object",
+    "transient": true,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "mail.wizard.invite": {
+    "name": "Invite wizard",
+    "type": "Base Object",
+    "transient": true,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "finan.alcada.item": {
+    "name": "Item da alçada",
+    "type": "Base Object",
+    "transient": false,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "sped.atualizacao.preco.item": {
+    "name": "Item da Atualização de Preço",
+    "type": "Base Object",
+    "transient": false,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "contabil.executa.demonstracao.item": {
+    "name": "Item da execucao da demonstração contabilceira",
+    "type": "Base Object",
+    "transient": false,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "finan.executa.demonstracao.item": {
+    "name": "Item da execucao da demonstração financeira",
+    "type": "Base Object",
+    "transient": false,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "sped.produto.lista.material.item": {
+    "name": "Item da Lista de material",
+    "type": "Base Object",
+    "transient": false,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "producao.alteracao.materia.prima.item": {
+    "name": "Item de alteração de matéria-prima da lista de material",
+    "type": "Base Object",
+    "transient": false,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "contabil.demonstracao.item.arvore": {
+    "name": "Item de demonstração contábil - Árvore de Análise",
+    "type": "Base Object",
+    "transient": false,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "finan.demonstracao.item": {
+    "name": "Item de demonstração financeira",
+    "type": "Base Object",
+    "transient": false,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "finan.demonstracao.item.arvore": {
+    "name": "Item de demonstração financeira - Árvore de Análise",
+    "type": "Base Object",
+    "transient": false,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "finan.importacao.item": {
+    "name": "Item de importação Financeira",
+    "type": "Base Object",
+    "transient": false,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "auditoria.log.item": {
+    "name": "Item de Log de auditoria",
+    "type": "Base Object",
+    "transient": false,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "projeto.modelo.item": {
+    "name": "Item de modelo de projeto",
+    "type": "Base Object",
+    "transient": false,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "finan.remessa.item": {
+    "name": "Item de Remessa Bancária",
+    "type": "Base Object",
+    "transient": false,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "finan.retorno.item": {
+    "name": "Item de Retorno de Remessa Bancária",
+    "type": "Base Object",
+    "transient": false,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "pedido.documento.avanca.etapa.item": {
+    "name": "Item do avança etapa de produção",
+    "type": "Base Object",
+    "transient": false,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "contabil.encerramento.item": {
+    "name": "Item do Encerramento Contábil",
+    "type": "Base Object",
+    "transient": false,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "finan.lancamento.item": {
+    "name": "Item do Lançamento Financeiro",
+    "type": "Base Object",
+    "transient": false,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "sped.documento.item.rateio": {
+    "name": "Item do Lançamento Financeiro",
+    "type": "Base Object",
+    "transient": false,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "sped.documento.item": {
+    "name": "Itens do Documento Fiscal",
+    "type": "Base Object",
+    "transient": false,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "contabil.depreciacao.gerencial": {
+    "name": "Lançamento Depreciação Gerencial",
+    "type": "Base Object",
+    "transient": false,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "base.language.export": {
+    "name": "Language Export",
+    "type": "Base Object",
+    "transient": true,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "base.language.import": {
+    "name": "Language Import",
+    "type": "Base Object",
+    "transient": true,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "res.lang": {
+    "name": "Languages",
+    "type": "Base Object",
+    "transient": false,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "leitura.codigo.barras": {
+    "name": "Leitura de código de barras em lote",
+    "type": "Base Object",
+    "transient": true,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "sped.produto.lista.material.arvore": {
+    "name": "Lista de Material - Árvore de Análise",
+    "type": "Base Object",
+    "transient": false,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "estoque.local.arvore": {
+    "name": "Local de Estoque - Árvore de Análise",
+    "type": "Base Object",
+    "transient": false,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "api.log": {
+    "name": "Log de API",
+    "type": "Base Object",
+    "transient": false,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "auditoria.log": {
+    "name": "Log de auditoria",
+    "type": "Base Object",
+    "transient": false,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "ir.logging": {
+    "name": "Logging",
+    "type": "Base Object",
+    "transient": false,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "contabil.lote.lancamento": {
+    "name": "Lote de Lançamento Contábil",
+    "type": "Base Object",
+    "transient": false,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "mail.composer.mixin": {
+    "name": "Mail Composer Mixin",
+    "type": "Base Object",
+    "transient": false,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "mail.gateway.allowed": {
+    "name": "Mail Gateway Allowed",
+    "type": "Base Object",
+    "transient": false,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "mail.render.mixin": {
+    "name": "Mail Render Mixin",
+    "type": "Base Object",
+    "transient": false,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "discuss.channel.rtc.session": {
+    "name": "Mail RTC session",
+    "type": "Base Object",
+    "transient": false,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "ir.mail_server": {
+    "name": "Mail Server",
+    "type": "Base Object",
+    "transient": false,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "mail.template.reset": {
+    "name": "Mail Template Reset",
+    "type": "Base Object",
+    "transient": true,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "mail.tracking.value": {
+    "name": "Mail Tracking Value",
+    "type": "Base Object",
+    "transient": false,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "sped.mdfe.percurso": {
+    "name": "MDF-e - Percurso",
+    "type": "Base Object",
+    "transient": false,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "ir.ui.menu": {
+    "name": "Menu",
+    "type": "Base Object",
+    "transient": false,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "base.partner.merge.line": {
+    "name": "Merge Partner Line",
+    "type": "Base Object",
+    "transient": true,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "base.partner.merge.automatic.wizard": {
+    "name": "Merge Partner Wizard",
+    "type": "Base Object",
+    "transient": true,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "mail.message": {
+    "name": "Message",
+    "type": "Base Object",
+    "transient": false,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "mail.notification": {
+    "name": "Message Notifications",
+    "type": "Base Object",
+    "transient": false,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "mail.message.reaction": {
+    "name": "Message Reaction",
+    "type": "Base Object",
+    "transient": false,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "mail.message.subtype": {
+    "name": "Message subtypes",
+    "type": "Base Object",
+    "transient": false,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "mail.message.translation": {
+    "name": "Message Translation",
+    "type": "Base Object",
+    "transient": false,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "discuss.voice.metadata": {
+    "name": "Metadata for voice attachments",
+    "type": "Base Object",
+    "transient": false,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "sped.pessoa.metodos": {
+    "name": "Métodos base para validação de dados pessoais",
+    "type": "Base Object",
+    "transient": false,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "mail.tracking.duration.mixin": {
+    "name": "Mixin to compute the time a record has spent in each value a many2one field can take",
+    "type": "Base Object",
+    "transient": false,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "ir.model.access": {
+    "name": "Model Access",
+    "type": "Base Object",
+    "transient": false,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "ir.model.constraint": {
+    "name": "Model Constraint",
+    "type": "Base Object",
+    "transient": false,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "ir.model.data": {
+    "name": "Model Data",
+    "type": "Base Object",
+    "transient": false,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "ir.model.inherit": {
+    "name": "Model Inheritance Tree",
+    "type": "Base Object",
+    "transient": false,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "sped.documento.modelo.fiscal": {
+    "name": "Modelos fiscais de documentos fiscais",
+    "type": "Base Object",
+    "transient": false,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "ir.model": {
+    "name": "Models",
+    "type": "Base Object",
+    "transient": false,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "ir.module.module": {
+    "name": "Module",
+    "type": "Base Object",
+    "transient": false,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "ir.module.module.dependency": {
+    "name": "Module dependency",
+    "type": "Base Object",
+    "transient": false,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "ir.module.module.exclusion": {
+    "name": "Module exclusion",
+    "type": "Base Object",
+    "transient": false,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "report.base.report_irmodulereference": {
+    "name": "Module Reference Report (base)",
+    "type": "Base Object",
+    "transient": false,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "base.module.uninstall": {
+    "name": "Module Uninstall",
+    "type": "Base Object",
+    "transient": true,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "averbeporto.monitor": {
+    "name": "Módulo destinado monitor de requisições Averbe Porto",
+    "type": "Base Object",
+    "transient": false,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "sped.moeda": {
+    "name": "Multi moeda",
+    "type": "Base Object",
+    "transient": false,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "sped.municipio": {
+    "name": "Municípios",
+    "type": "Base Object",
+    "transient": false,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "sped.natureza.operacao": {
+    "name": "Naturezas de Operação Fiscal",
+    "type": "Base Object",
+    "transient": false,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "sped.nbs": {
+    "name": "NBS",
+    "type": "Base Object",
+    "transient": false,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "sped.ncm": {
+    "name": "NCM",
+    "type": "Base Object",
+    "transient": false,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "sped.produto.parametro.qualidade.opcao": {
+    "name": "Opção para o parâmetro de qualidade do produto",
+    "type": "Base Object",
+    "transient": false,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "sped.operacao.mdfe": {
+    "name": "Operação Fiscal - MDF-e",
+    "type": "Base Object",
+    "transient": false,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "pedido.operacao.derivada": {
+    "name": "Operações de Pedido Derivadas",
+    "type": "Base Object",
+    "transient": false,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "mail.mail": {
+    "name": "Outgoing Mails",
+    "type": "Base Object",
+    "transient": false,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "finan.pagamento.divida": {
+    "name": "Pagamento de Dívida",
+    "type": "Base Object",
+    "transient": false,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "sped.documento.pagamento": {
+    "name": "Pagamentos do Documento Fiscal",
+    "type": "Base Object",
+    "transient": false,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "pedido.pagamento": {
+    "name": "Pagamentos do pedido",
+    "type": "Base Object",
+    "transient": false,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "sped.pais": {
+    "name": "Países",
+    "type": "Base Object",
+    "transient": false,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "report.paperformat": {
+    "name": "Paper Format Config",
+    "type": "Base Object",
+    "transient": false,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "sped.produto.lista.material.processo": {
+    "name": "Parâmetro de qualidade da Lista de material",
+    "type": "Base Object",
+    "transient": false,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "pedido.documento.parametro.qualidade": {
+    "name": "Parâmetro de qualidade do pedido",
+    "type": "Base Object",
+    "transient": false,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "pedido.parcela": {
+    "name": "Parcelas do pedido",
+    "type": "Base Object",
+    "transient": false,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "sped.participante.ie": {
+    "name": "Participantes - Inscrições Estaduais",
+    "type": "Base Object",
+    "transient": false,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "res.partner.category": {
+    "name": "Partner Tags",
+    "type": "Base Object",
+    "transient": false,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "res.partner.title": {
+    "name": "Partner Title",
+    "type": "Base Object",
+    "transient": false,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "mail.partner.device": {
+    "name": "Partner Web Push Device",
+    "type": "Base Object",
+    "transient": false,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "mail.resend.partner": {
+    "name": "Partner with additional information for mail resend",
+    "type": "Base Object",
+    "transient": true,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "res.users.identitycheck": {
+    "name": "Password Check Wizard",
+    "type": "Base Object",
+    "transient": true,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "sped.caminho": {
+    "name": "Pasta",
+    "type": "Base Object",
+    "transient": false,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "sped.caminho.base": {
+    "name": "Pasta base",
+    "type": "Base Object",
+    "transient": false,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "sped.documento.item.pcp": {
+    "name": "PCP do Item do Documento Fiscal",
+    "type": "Base Object",
+    "transient": false,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "sped.documento.item.pedido.atendido": {
+    "name": "Pedidos atendidos do Item do Documento Fiscal",
+    "type": "Base Object",
+    "transient": false,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "sped.participante.perfil": {
+    "name": "Perfil de Participantes",
+    "type": "Base Object",
+    "transient": false,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "sped.participante.perfil.arvore": {
+    "name": "Perfil de Participantes - Árvore de Análise",
+    "type": "Base Object",
+    "transient": false,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "sped.usuario.perfil": {
+    "name": "Perfil de Usuários",
+    "type": "Base Object",
+    "transient": false,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "pedido.documento.processo": {
+    "name": "Processo de produção do pedido",
+    "type": "Base Object",
+    "transient": false,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "ir.profile": {
+    "name": "Profiling results",
+    "type": "Base Object",
+    "transient": false,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "sped.protocolo.icms": {
+    "name": "Protocolos ICMS",
+    "type": "Base Object",
+    "transient": false,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "sped.protocolo.icms.aliquota": {
+    "name": "Protocolos ICMS - alíquotas",
+    "type": "Base Object",
+    "transient": false,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "sped.protocolo.icms.ncm": {
+    "name": "Protocolos ICMS - NCM e MVA",
+    "type": "Base Object",
+    "transient": false,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "ir.qweb": {
+    "name": "Qweb",
+    "type": "Base Object",
+    "transient": false,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "ir.qweb.field": {
+    "name": "Qweb Field",
+    "type": "Base Object",
+    "transient": false,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "ir.qweb.field.barcode": {
+    "name": "Qweb Field Barcode",
+    "type": "Base Object",
+    "transient": false,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "ir.qweb.field.contact": {
+    "name": "Qweb Field Contact",
+    "type": "Base Object",
+    "transient": false,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "ir.qweb.field.date": {
+    "name": "Qweb Field Date",
+    "type": "Base Object",
+    "transient": false,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "ir.qweb.field.datetime": {
+    "name": "Qweb Field Datetime",
+    "type": "Base Object",
+    "transient": false,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "ir.qweb.field.duration": {
+    "name": "Qweb Field Duration",
+    "type": "Base Object",
+    "transient": false,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "ir.qweb.field.float": {
+    "name": "Qweb Field Float",
+    "type": "Base Object",
+    "transient": false,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "ir.qweb.field.float_time": {
+    "name": "Qweb Field Float Time",
+    "type": "Base Object",
+    "transient": false,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "ir.qweb.field.html": {
+    "name": "Qweb Field HTML",
+    "type": "Base Object",
+    "transient": false,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "ir.qweb.field.image_url": {
+    "name": "Qweb Field Image",
+    "type": "Base Object",
+    "transient": false,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "ir.qweb.field.image": {
+    "name": "Qweb Field Image",
+    "type": "Base Object",
+    "transient": false,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "ir.qweb.field.integer": {
+    "name": "Qweb Field Integer",
+    "type": "Base Object",
+    "transient": false,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "ir.qweb.field.many2one": {
+    "name": "Qweb Field Many to One",
+    "type": "Base Object",
+    "transient": false,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "ir.qweb.field.many2many": {
+    "name": "Qweb field many2many",
+    "type": "Base Object",
+    "transient": false,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "ir.qweb.field.monetary": {
+    "name": "Qweb Field Monetary",
+    "type": "Base Object",
+    "transient": false,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "ir.qweb.field.qweb": {
+    "name": "Qweb Field qweb",
+    "type": "Base Object",
+    "transient": false,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "ir.qweb.field.relative": {
+    "name": "Qweb Field Relative",
+    "type": "Base Object",
+    "transient": false,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "ir.qweb.field.selection": {
+    "name": "Qweb Field Selection",
+    "type": "Base Object",
+    "transient": false,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "ir.qweb.field.text": {
+    "name": "Qweb Field Text",
+    "type": "Base Object",
+    "transient": false,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "ir.qweb.field.time": {
+    "name": "QWeb Field Time",
+    "type": "Base Object",
+    "transient": false,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "sped.documento.item.rastreabilidade": {
+    "name": "Rastreabilidade do Item do Documento Fiscal",
+    "type": "Base Object",
+    "transient": false,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "contabil.lancamento.item.rateio": {
+    "name": "Rateio do Item do Lançamento Contábil",
+    "type": "Base Object",
+    "transient": false,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "contabil.lancamento.rateio": {
+    "name": "Rateio do Lançamento Contábil",
+    "type": "Base Object",
+    "transient": false,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "finan.centro.resultado.rateio": {
+    "name": "Rateio por Centro de Resultado",
+    "type": "Base Object",
+    "transient": false,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "ir.rule": {
+    "name": "Record Rule",
+    "type": "Base Object",
+    "transient": false,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "sped.atualizacao.preco.regra": {
+    "name": "Regra de atualização de preços",
+    "type": "Base Object",
+    "transient": false,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "ir.model.relation": {
+    "name": "Relation Model",
+    "type": "Base Object",
+    "transient": false,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "relatorio.relatorio": {
+    "name": "Relatório",
+    "type": "Base Object",
+    "transient": false,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "relatorio.sql": {
+    "name": "Relatório - SQL adicional",
+    "type": "Base Object",
+    "transient": false,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "relatorio.executa": {
+    "name": "Relatório (execução)",
+    "type": "Base Object",
+    "transient": true,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "relatorio.executa.sped.apuracao": {
+    "name": "Relatório de Apurações Fiscais",
+    "type": "Base Object",
+    "transient": true,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "relatorio.executa.sped.documento": {
+    "name": "Relatório de Documentos Fiscais",
+    "type": "Base Object",
+    "transient": true,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "relatorio.executa.estoque.extrato": {
+    "name": "Relatório de Extrato de Estoque",
+    "type": "Base Object",
+    "transient": true,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "relatorio.executa.finan.banco.extrato": {
+    "name": "Relatório de Extratos Financeiros",
+    "type": "Base Object",
+    "transient": true,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "relatorio.executa.finan.fluxo.caixa": {
+    "name": "Relatório de Fluxo de Caixa",
+    "type": "Base Object",
+    "transient": true,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "relatorio.executa.sped.documento.item": {
+    "name": "Relatório de Itens de Documentos Fiscais",
+    "type": "Base Object",
+    "transient": true,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "relatorio.executa.finan.lancamento": {
+    "name": "Relatório de Lançamentos Financeiros",
+    "type": "Base Object",
+    "transient": true,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "relatorio.executa.contabil.lancamento": {
+    "name": "Relatório de Lançamentos Financeiros",
+    "type": "Base Object",
+    "transient": true,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "relatorio.executa.sped.produto.lista.material": {
+    "name": "Relatório de Listas de Material",
+    "type": "Base Object",
+    "transient": true,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "relatorio.executa.sped.produto.lote.serie": {
+    "name": "Relatório de Lotes/Séries",
+    "type": "Base Object",
+    "transient": true,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "relatorio.executa.finan.pagamento.divida": {
+    "name": "Relatório de Pagamentos de Dívidas",
+    "type": "Base Object",
+    "transient": true,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "relatorio.executa.pedido.documento": {
+    "name": "Relatório de Pedidos Diversos",
+    "type": "Base Object",
+    "transient": true,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "relatorio.executa.sped.produto": {
+    "name": "Relatório de Produtos",
+    "type": "Base Object",
+    "transient": true,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "relatorio.executa.finan.banco.saldo": {
+    "name": "Relatório de Saldos Financeiros",
+    "type": "Base Object",
+    "transient": true,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "relatorio.executa.rh.holerite.relatorio": {
+    "name": "Relatório RH Holerite",
+    "type": "Base Object",
+    "transient": true,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "mail.blacklist.remove": {
+    "name": "Remove email from blacklist wizard",
+    "type": "Base Object",
+    "transient": true,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "ir.actions.report": {
+    "name": "Report Action",
+    "type": "Base Object",
+    "transient": false,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "report.layout": {
+    "name": "Report Layout",
+    "type": "Base Object",
+    "transient": false,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "estoque.requisito.arvore": {
+    "name": "Requisito de Armazenagem - Árvore de Análise",
+    "type": "Base Object",
+    "transient": false,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "reset.view.arch.wizard": {
+    "name": "Reset View Architecture Wizard",
+    "type": "Base Object",
+    "transient": true,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "rh.cbo": {
+    "name": "RH - CBO",
+    "type": "Base Object",
+    "transient": false,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "rh.jornada": {
+    "name": "RH - Escala de Trabalho",
+    "type": "Base Object",
+    "transient": false,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "rh.contrato.ferias": {
+    "name": "RH - Férias - Período Aquisitivo",
+    "type": "Base Object",
+    "transient": false,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "rh.horario.trabalho": {
+    "name": "RH - Horário de Trabalho",
+    "type": "Base Object",
+    "transient": false,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "rh.lote.holerite.item": {
+    "name": "RH - Item do Lote de Holerite",
+    "type": "Base Object",
+    "transient": false,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "rh.holerite.item": {
+    "name": "RH - Item Holerite",
+    "type": "Base Object",
+    "transient": false,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "rh.natureza.rubrica": {
+    "name": "RH - Natureza das Rubricas",
+    "type": "Base Object",
+    "transient": false,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "rh.ponto.marcacao": {
+    "name": "RH - Ponto - Marcação",
+    "type": "Base Object",
+    "transient": true,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "rh.ponto.pausa": {
+    "name": "RH - Ponto - Pausa",
+    "type": "Base Object",
+    "transient": false,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "rh.tabela.cbo": {
+    "name": "rh.tabela.cbo",
+    "type": "Base Object",
+    "transient": false,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "estoque.saldo.hoje": {
+    "name": "Saldo (hoje) de Movimentação de Estoque",
+    "type": "Base Object",
+    "transient": false,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "estoque.saldo.hoje.duracao.dias": {
+    "name": "Saldo (hoje) de Movimentação de Estoque - Duração em dias",
+    "type": "Base Object",
+    "transient": false,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "estoque.saldo.rastreabilidade.hoje": {
+    "name": "Saldo (hoje) de Movimentação de Estoque por Rastreabilidade",
+    "type": "Base Object",
+    "transient": false,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "estoque.saldo": {
+    "name": "Saldo de Movimentação de Estoque",
+    "type": "Base Object",
+    "transient": false,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "estoque.saldo.rastreabilidade": {
+    "name": "Saldo de Movimentação de Estoque por Rastreabilidade",
+    "type": "Base Object",
+    "transient": false,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "finan.banco.saldo.hoje": {
+    "name": "Saldos (hoje) de Contas Bancárias",
+    "type": "Base Object",
+    "transient": false,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "finan.banco.saldo": {
+    "name": "Saldos de Contas Bancárias",
+    "type": "Base Object",
+    "transient": false,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "discuss.gif.favorite": {
+    "name": "Save favorite GIF from Tenor API",
+    "type": "Base Object",
+    "transient": false,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "ir.cron": {
+    "name": "Scheduled Actions",
+    "type": "Base Object",
+    "transient": false,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "mail.message.schedule": {
+    "name": "Scheduled Messages",
+    "type": "Base Object",
+    "transient": false,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "sped.participante.segmento": {
+    "name": "Segmento de Participantes",
+    "type": "Base Object",
+    "transient": false,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "sped.participante.segmento.arvore": {
+    "name": "Segmento de Participantes - Árvore de Análise",
+    "type": "Base Object",
+    "transient": false,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "ir.sequence": {
+    "name": "Sequence",
+    "type": "Base Object",
+    "transient": false,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "ir.sequence.date_range": {
+    "name": "Sequence Date Range",
+    "type": "Base Object",
+    "transient": false,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "ir.actions.server": {
+    "name": "Server Action",
+    "type": "Base Object",
+    "transient": false,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "sped.servico": {
+    "name": "Serviços (fiscal)",
+    "type": "Base Object",
+    "transient": false,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "res.users.apikeys.show": {
+    "name": "Show API Key",
+    "type": "Base Object",
+    "transient": false,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "sparse_fields.test": {
+    "name": "Sparse fields Test",
+    "type": "Base Object",
+    "transient": true,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "sped.apuracao.ajuste": {
+    "name": "SPED - Apuração Ajuste",
+    "type": "Base Object",
+    "transient": false,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "sped.apuracao.inventario": {
+    "name": "SPED - Inventário",
+    "type": "Base Object",
+    "transient": false,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "sped.apuracao.inventario.local": {
+    "name": "SPED - Inventário por local",
+    "type": "Base Object",
+    "transient": false,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "sped.apuracao.ipi": {
+    "name": "SPED - IPI",
+    "type": "Base Object",
+    "transient": false,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "sped.apuracao.auditoria.item": {
+    "name": "SPED - Item de Auditoria de Apuração",
+    "type": "Base Object",
+    "transient": false,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "sped.alteracao.documento.item": {
+    "name": "SPED - Itens de alteração de documentos",
+    "type": "Base Object",
+    "transient": false,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "sped.patrimonio.ciap": {
+    "name": "SPED - Patrimonio CIAP",
+    "type": "Base Object",
+    "transient": false,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "sped.registro.0000": {
+    "name": "SPED - Registro 0000",
+    "type": "Base Object",
+    "transient": false,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "sped.registro.0002": {
+    "name": "SPED - Registro 0002",
+    "type": "Base Object",
+    "transient": false,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "sped.registro.0005": {
+    "name": "SPED - Registro 0005",
+    "type": "Base Object",
+    "transient": false,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "sped.registro.0015": {
+    "name": "SPED - Registro 0015",
+    "type": "Base Object",
+    "transient": false,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "sped.registro.0100": {
+    "name": "SPED - Registro 0100",
+    "type": "Base Object",
+    "transient": false,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "sped.registro.0110": {
+    "name": "SPED - Registro 0110",
+    "type": "Base Object",
+    "transient": false,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "sped.registro.0140": {
+    "name": "SPED - Registro 0140",
+    "type": "Base Object",
+    "transient": false,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "sped.registro.0150": {
+    "name": "SPED - Registro 0150",
+    "type": "Base Object",
+    "transient": false,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "sped.registro.0190": {
+    "name": "SPED - Registro 0190",
+    "type": "Base Object",
+    "transient": false,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "sped.registro.0200": {
+    "name": "SPED - Registro 0200",
+    "type": "Base Object",
+    "transient": false,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "sped.registro.0210": {
+    "name": "SPED - Registro 0210",
+    "type": "Base Object",
+    "transient": false,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "sped.registro.0221": {
+    "name": "SPED - Registro 0221",
+    "type": "Base Object",
+    "transient": false,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "sped.registro.0300": {
+    "name": "SPED - Registro 0300",
+    "type": "Base Object",
+    "transient": false,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "sped.registro.0305": {
+    "name": "SPED - Registro 0305",
+    "type": "Base Object",
+    "transient": false,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "sped.registro.0400": {
+    "name": "SPED - Registro 0400",
+    "type": "Base Object",
+    "transient": false,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "sped.registro.0450": {
+    "name": "SPED - Registro 0450",
+    "type": "Base Object",
+    "transient": false,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "sped.registro.0500": {
+    "name": "SPED - Registro 0500",
+    "type": "Base Object",
+    "transient": false,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "sped.registro.0600": {
+    "name": "SPED - Registro 0600",
+    "type": "Base Object",
+    "transient": false,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "sped.registro.1100": {
+    "name": "SPED - Registro 1100",
+    "type": "Base Object",
+    "transient": false,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "sped.registro.1300": {
+    "name": "SPED - Registro 1300",
+    "type": "Base Object",
+    "transient": false,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "sped.registro.1500": {
+    "name": "SPED - Registro 1500",
+    "type": "Base Object",
+    "transient": false,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "sped.registro.1500.contribuicoes": {
+    "name": "SPED - Registro 1500 - Contribuições",
+    "type": "Base Object",
+    "transient": false,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "sped.registro.1600.icms": {
+    "name": "SPED - Registro 1600 - ICMS",
+    "type": "Base Object",
+    "transient": false,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "sped.registro.1700": {
+    "name": "SPED - Registro 1700",
+    "type": "Base Object",
+    "transient": false,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "sped.registro.1900.contribuicoes": {
+    "name": "SPED - Registro 1900 - Contribuicoes",
+    "type": "Base Object",
+    "transient": false,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "sped.registro.a010": {
+    "name": "SPED - Registro A010",
+    "type": "Base Object",
+    "transient": false,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "sped.registro.a100": {
+    "name": "SPED - Registro A100",
+    "type": "Base Object",
+    "transient": false,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "sped.registro.a170": {
+    "name": "SPED - Registro A170",
+    "type": "Base Object",
+    "transient": false,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "sped.registro.b020": {
+    "name": "SPED - Registro B020",
+    "type": "Base Object",
+    "transient": false,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "sped.registro.c010": {
+    "name": "SPED - Registro C010",
+    "type": "Base Object",
+    "transient": false,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "sped.registro.c100": {
+    "name": "SPED - Registro C100",
+    "type": "Base Object",
+    "transient": false,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "sped.registro.c101": {
+    "name": "SPED - Registro C101",
+    "type": "Base Object",
+    "transient": false,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "sped.registro.c110": {
+    "name": "SPED - Registro C110",
+    "type": "Base Object",
+    "transient": false,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "sped.registro.c112": {
+    "name": "SPED - Registro C112",
+    "type": "Base Object",
+    "transient": false,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "sped.registro.c113": {
+    "name": "SPED - Registro C113",
+    "type": "Base Object",
+    "transient": false,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "sped.registro.c115": {
+    "name": "SPED - Registro C115",
+    "type": "Base Object",
+    "transient": false,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "sped.registro.c116": {
+    "name": "SPED - Registro C116",
+    "type": "Base Object",
+    "transient": false,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "sped.registro.c120": {
+    "name": "SPED - Registro C120",
+    "type": "Base Object",
+    "transient": false,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "sped.registro.c170": {
+    "name": "SPED - Registro C170",
+    "type": "Base Object",
+    "transient": false,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "sped.registro.c175.contribuicoes": {
+    "name": "SPED - Registro C175 - Contribuições",
+    "type": "Base Object",
+    "transient": false,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "sped.registro.d190": {
+    "name": "SPED - Registro C190",
+    "type": "Base Object",
+    "transient": false,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "sped.registro.c190": {
+    "name": "SPED - Registro C190",
+    "type": "Base Object",
+    "transient": false,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "sped.registro.c191": {
+    "name": "SPED - Registro C191",
+    "type": "Base Object",
+    "transient": false,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "sped.registro.c500": {
+    "name": "SPED - Registro C500",
+    "type": "Base Object",
+    "transient": false,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "sped.registro.c501": {
+    "name": "SPED - Registro C501",
+    "type": "Base Object",
+    "transient": false,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "sped.registro.c505": {
+    "name": "SPED - Registro C505",
+    "type": "Base Object",
+    "transient": false,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "sped.registro.c590": {
+    "name": "SPED - Registro C590",
+    "type": "Base Object",
+    "transient": false,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "sped.registro.c800": {
+    "name": "SPED - Registro C800",
+    "type": "Base Object",
+    "transient": false,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "sped.registro.c810": {
+    "name": "SPED - Registro C810",
+    "type": "Base Object",
+    "transient": false,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "sped.registro.c850": {
+    "name": "SPED - Registro C850",
+    "type": "Base Object",
+    "transient": false,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "sped.registro.c860": {
+    "name": "SPED - Registro C860",
+    "type": "Base Object",
+    "transient": false,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "sped.registro.c870": {
+    "name": "SPED - Registro C870",
+    "type": "Base Object",
+    "transient": false,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "sped.registro.c890": {
+    "name": "SPED - Registro C890",
+    "type": "Base Object",
+    "transient": false,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "sped.registro.credito.contribuicoes": {
+    "name": "SPED - Registro Credito - Contribuições",
+    "type": "Base Object",
+    "transient": false,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "sped.registro.d010": {
+    "name": "SPED - Registro D010",
+    "type": "Base Object",
+    "transient": false,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "sped.registro.d100": {
+    "name": "SPED - Registro D100",
+    "type": "Base Object",
+    "transient": false,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "sped.registro.d101": {
+    "name": "SPED - Registro D101",
+    "type": "Base Object",
+    "transient": false,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "sped.registro.d105": {
+    "name": "SPED - Registro D105",
+    "type": "Base Object",
+    "transient": false,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "sped.registro.d500": {
+    "name": "SPED - Registro D500",
+    "type": "Base Object",
+    "transient": false,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "sped.registro.d590": {
+    "name": "SPED - Registro D590",
+    "type": "Base Object",
+    "transient": false,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "sped.registro.d700": {
+    "name": "SPED - Registro D700",
+    "type": "Base Object",
+    "transient": false,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "sped.registro.d730": {
+    "name": "SPED - Registro D730",
+    "type": "Base Object",
+    "transient": false,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "sped.registro.e100": {
+    "name": "SPED - Registro E100",
+    "type": "Base Object",
+    "transient": false,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "sped.registro.e110": {
+    "name": "SPED - Registro E110",
+    "type": "Base Object",
+    "transient": false,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "sped.registro.e111": {
+    "name": "SPED - Registro E111",
+    "type": "Base Object",
+    "transient": false,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "sped.registro.e113": {
+    "name": "SPED - Registro E113",
+    "type": "Base Object",
+    "transient": false,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "sped.registro.e116": {
+    "name": "SPED - Registro E116",
+    "type": "Base Object",
+    "transient": false,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "sped.registro.e200": {
+    "name": "SPED - Registro E200",
+    "type": "Base Object",
+    "transient": false,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "sped.registro.e210": {
+    "name": "SPED - Registro E210",
+    "type": "Base Object",
+    "transient": false,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "sped.registro.e220": {
+    "name": "SPED - Registro E220",
+    "type": "Base Object",
+    "transient": false,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "sped.registro.e240": {
+    "name": "SPED - Registro E240",
+    "type": "Base Object",
+    "transient": false,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "sped.registro.e250": {
+    "name": "SPED - Registro E250",
+    "type": "Base Object",
+    "transient": false,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "sped.registro.e300": {
+    "name": "SPED - Registro E300",
+    "type": "Base Object",
+    "transient": false,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "sped.registro.e310": {
+    "name": "SPED - Registro E310",
+    "type": "Base Object",
+    "transient": false,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "sped.registro.e311": {
+    "name": "SPED - Registro E311",
+    "type": "Base Object",
+    "transient": false,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "sped.registro.e316": {
+    "name": "SPED - Registro E316",
+    "type": "Base Object",
+    "transient": false,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "sped.registro.e500": {
+    "name": "SPED - Registro E500",
+    "type": "Base Object",
+    "transient": false,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "sped.registro.e510": {
+    "name": "SPED - Registro E510",
+    "type": "Base Object",
+    "transient": false,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "sped.registro.e520": {
+    "name": "SPED - Registro E520",
+    "type": "Base Object",
+    "transient": false,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "sped.registro.f010": {
+    "name": "SPED - Registro F010",
+    "type": "Base Object",
+    "transient": false,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "sped.registro.f100": {
+    "name": "SPED - Registro F100",
+    "type": "Base Object",
+    "transient": false,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "sped.registro.f120": {
+    "name": "SPED - Registro F120",
+    "type": "Base Object",
+    "transient": false,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "sped.registro.f550": {
+    "name": "SPED - Registro F550",
+    "type": "Base Object",
+    "transient": false,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "sped.registro.g110": {
+    "name": "SPED - Registro G110",
+    "type": "Base Object",
+    "transient": false,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "sped.registro.g125": {
+    "name": "SPED - Registro G125 ICMS CIAP",
+    "type": "Base Object",
+    "transient": false,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "sped.registro.g130": {
+    "name": "SPED - Registro G130",
+    "type": "Base Object",
+    "transient": false,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "sped.registro.g140": {
+    "name": "SPED - Registro G140",
+    "type": "Base Object",
+    "transient": false,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "sped.registro.h005": {
+    "name": "SPED - Registro H005",
+    "type": "Base Object",
+    "transient": false,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "sped.registro.h010": {
+    "name": "SPED - Registro H010",
+    "type": "Base Object",
+    "transient": false,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "sped.registro.k010": {
+    "name": "SPED - Registro K010",
+    "type": "Base Object",
+    "transient": false,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "sped.registro.k100": {
+    "name": "SPED - Registro K100",
+    "type": "Base Object",
+    "transient": false,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "sped.registro.k200": {
+    "name": "SPED - Registro K200",
+    "type": "Base Object",
+    "transient": false,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "sped.registro.k210": {
+    "name": "SPED - Registro K210",
+    "type": "Base Object",
+    "transient": false,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "sped.registro.k215": {
+    "name": "SPED - Registro K215",
+    "type": "Base Object",
+    "transient": false,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "sped.registro.k230": {
+    "name": "SPED - Registro K230",
+    "type": "Base Object",
+    "transient": false,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "sped.registro.k235": {
+    "name": "SPED - Registro K235",
+    "type": "Base Object",
+    "transient": false,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "sped.registro.k250": {
+    "name": "SPED - Registro K250",
+    "type": "Base Object",
+    "transient": false,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "sped.registro.k255": {
+    "name": "SPED - Registro K255",
+    "type": "Base Object",
+    "transient": false,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "sped.registro.m100": {
+    "name": "SPED - Registro M100",
+    "type": "Base Object",
+    "transient": false,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "sped.registro.m105": {
+    "name": "SPED - Registro M105",
+    "type": "Base Object",
+    "transient": false,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "sped.registro.m110": {
+    "name": "SPED - Registro M110",
+    "type": "Base Object",
+    "transient": false,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "sped.registro.m200": {
+    "name": "SPED - Registro M200",
+    "type": "Base Object",
+    "transient": false,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "sped.registro.m205": {
+    "name": "SPED - Registro M205",
+    "type": "Base Object",
+    "transient": false,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "sped.registro.m210": {
+    "name": "SPED - Registro M210",
+    "type": "Base Object",
+    "transient": false,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "sped.registro.m220": {
+    "name": "SPED - Registro M220",
+    "type": "Base Object",
+    "transient": false,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "sped.registro.m400": {
+    "name": "SPED - Registro M400",
+    "type": "Base Object",
+    "transient": false,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "sped.registro.m410": {
+    "name": "SPED - Registro M410",
+    "type": "Base Object",
+    "transient": false,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "sped.registro.m500": {
+    "name": "SPED - Registro M500",
+    "type": "Base Object",
+    "transient": false,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "sped.registro.m505": {
+    "name": "SPED - Registro M505",
+    "type": "Base Object",
+    "transient": false,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "sped.registro.m510": {
+    "name": "SPED - Registro M510",
+    "type": "Base Object",
+    "transient": false,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "sped.registro.m600": {
+    "name": "SPED - Registro M600",
+    "type": "Base Object",
+    "transient": false,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "sped.registro.m605": {
+    "name": "SPED - Registro M605",
+    "type": "Base Object",
+    "transient": false,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "sped.registro.m610": {
+    "name": "SPED - Registro M610",
+    "type": "Base Object",
+    "transient": false,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "sped.registro.m620": {
+    "name": "SPED - Registro M620",
+    "type": "Base Object",
+    "transient": false,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "sped.registro.m800": {
+    "name": "SPED - Registro M800",
+    "type": "Base Object",
+    "transient": false,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "sped.registro.m810": {
+    "name": "SPED - Registro M810",
+    "type": "Base Object",
+    "transient": false,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "sped.apuracao.tabela": {
+    "name": "SPED - Tabelas de código",
+    "type": "Base Object",
+    "transient": false,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "sped.pdv": {
+    "name": "sped.pdv",
+    "type": "Base Object",
+    "transient": false,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "mail.link.preview": {
+    "name": "Store link preview data",
+    "type": "Base Object",
+    "transient": false,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "ir.config_parameter": {
+    "name": "System Parameter",
+    "type": "Base Object",
+    "transient": false,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "finan.forma.condicao.taxa": {
+    "name": "Taxas sobre Forma e Condição de Pagamemento",
+    "type": "Base Object",
+    "transient": false,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "template.reset.mixin": {
+    "name": "Template Reset Mixin",
+    "type": "Base Object",
+    "transient": false,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "tempo.compra.participante": {
+    "name": "Tempos de compra por participante",
+    "type": "Base Object",
+    "transient": false,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "tempo.compra.participante.produto": {
+    "name": "Tempos de compra por participante e produto",
+    "type": "Base Object",
+    "transient": false,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "tempo.compra.produto": {
+    "name": "Tempos de compra por produto",
+    "type": "Base Object",
+    "transient": false,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "pedido.documento.historico.tempo": {
+    "name": "Tempos do Histórico de Etapas do Pedido",
+    "type": "Base Object",
+    "transient": false,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "sped.aliquota.simples.teto": {
+    "name": "Tetos do SIMPLES Nacional",
+    "type": "Base Object",
+    "transient": false,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "finan.tipo.faturamento": {
+    "name": "Tipo de Faturamento",
+    "type": "Base Object",
+    "transient": false,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "sped.produto.tipo": {
+    "name": "Tipos fiscais de produtos e serviços",
+    "type": "Base Object",
+    "transient": false,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "ks_to.do.description": {
+    "name": "to do description",
+    "type": "Base Object",
+    "transient": false,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "ks_to.do.headers": {
+    "name": "to do headers",
+    "type": "Base Object",
+    "transient": false,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "ir.cron.trigger": {
+    "name": "Triggered actions",
+    "type": "Base Object",
+    "transient": false,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "sped.unidade": {
+    "name": "Unidade de medida",
+    "type": "Base Object",
+    "transient": false,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "_unknown": {
+    "name": "Unknown",
+    "type": "Base Object",
+    "transient": false,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "base.module.update": {
+    "name": "Update Module",
+    "type": "Base Object",
+    "transient": true,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "base.module.upgrade": {
+    "name": "Upgrade Module",
+    "type": "Base Object",
+    "transient": true,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "res.users": {
+    "name": "User",
+    "type": "Base Object",
+    "transient": false,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "bus.presence": {
+    "name": "User Presence",
+    "type": "Base Object",
+    "transient": false,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "res.users.settings": {
+    "name": "User Settings",
+    "type": "Base Object",
+    "transient": false,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "res.users.settings.volumes": {
+    "name": "User Settings Volumes",
+    "type": "Base Object",
+    "transient": false,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "change.password.own": {
+    "name": "User, change own password wizard",
+    "type": "Base Object",
+    "transient": true,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "change.password.user": {
+    "name": "User, Change Password Wizard",
+    "type": "Base Object",
+    "transient": true,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "res.users.apikeys": {
+    "name": "Users API Keys",
+    "type": "Base Object",
+    "transient": false,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "res.users.deletion": {
+    "name": "Users Deletion Request",
+    "type": "Base Object",
+    "transient": false,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "res.users.log": {
+    "name": "Users Log",
+    "type": "Base Object",
+    "transient": false,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "sped.usuario.calendario.login": {
+    "name": "Usuários - calendário de logins",
+    "type": "Base Object",
+    "transient": false,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "sped.usuario.sessao": {
+    "name": "Usuários - sessões de logins",
+    "type": "Base Object",
+    "transient": false,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "sped.usuario.token": {
+    "name": "Usuários - tokens",
+    "type": "Base Object",
+    "transient": false,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "sped.produto.variante": {
+    "name": "Variantes dos produtos (visão no banco)",
+    "type": "Base Object",
+    "transient": false,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "sped.veiculo": {
+    "name": "Veículos",
+    "type": "Base Object",
+    "transient": false,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "ir.ui.view": {
+    "name": "View",
+    "type": "Base Object",
+    "transient": false,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "ir.ui.view.arvore": {
+    "name": "Visões - Árvore de Análise",
+    "type": "Base Object",
+    "transient": false,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "sped.documento.volume": {
+    "name": "Volumes do Documento Fiscal",
+    "type": "Base Object",
+    "transient": false,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "web_editor.converter.test.sub": {
+    "name": "Web Editor Converter Subtest",
+    "type": "Base Object",
+    "transient": false,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "web_editor.converter.test": {
+    "name": "Web Editor Converter Test",
+    "type": "Base Object",
+    "transient": false,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "api.webhook": {
+    "name": "Webhook API",
+    "type": "Base Object",
+    "transient": false,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "api.webhook.callback": {
+    "name": "Webhook API Callback",
+    "type": "Base Object",
+    "transient": false,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "ir.websocket": {
+    "name": "websocket message handling",
+    "type": "Base Object",
+    "transient": false,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "pedido.documento.producao.wizard": {
+    "name": "Wizard de produção",
+    "type": "Base Object",
+    "transient": true,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "finan.retorno.wizard": {
+    "name": "Wizard de Retorno de Remessa Bancária",
+    "type": "Base Object",
+    "transient": true,
+    "fields": [],
+    "xml_ids_count": 0
+  },
+  "sped.produto.ecommerce.wizard": {
+    "name": "Wizard Produto ecommerce",
+    "type": "Base Object",
+    "transient": true,
+    "fields": [],
+    "xml_ids_count": 0
+  }
+}

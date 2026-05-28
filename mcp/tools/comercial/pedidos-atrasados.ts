@@ -68,8 +68,30 @@ export const comercialPedidosAtrasados: ToolEntry<Input, Output> = {
   inputSchemaShape: inputSchema.shape,
   inputSchema,
   outputSchema,
-  handler: (_input, ctx) =>
-    withFreshness(ctx.prisma, ["fato_pedido", "fato_pedido_parcela"], async () =>
+  handler: async (_input, ctx) => {
+    const envelope = await withFreshness(ctx.prisma, ["fato_pedido", "fato_pedido_parcela"], async () =>
       shape(await queryPedidosAtrasados(ctx.prisma, new Date())),
-    ),
+    );
+    if (envelope.estado === "preparando") return envelope;
+    const d = envelope.dados;
+    const todasLinhas = d.linhas;
+    const linhasCap = todasLinhas.slice(0, 30);
+    const maxDias = todasLinhas.reduce((m: number, l: { diasAtraso?: number }) => Math.max(m, Number(l.diasAtraso ?? 0)), 0);
+    return enriquecerEnvelope(
+      { ...envelope, dados: { ...d, linhas: linhasCap } },
+      "comercial_pedidos_atrasados",
+      {
+        destaque: {
+          totalAtrasados: todasLinhas.length,
+          contagem: todasLinhas.length,
+          valorEmRisco: d.totalAtrasado,
+          valorTotal: d.totalAtrasado,
+          maxDias,
+          linhasExibidas: linhasCap.length,
+        },
+        agregado: { contagem: todasLinhas.length, soma: d.totalAtrasado },
+        listaTruncada: todasLinhas.length > linhasCap.length,
+      },
+    );
+  },
 };

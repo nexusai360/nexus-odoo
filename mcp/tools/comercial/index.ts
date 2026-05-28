@@ -13,6 +13,10 @@ import { comercialContarRegrasPreco } from "./contar-regras-preco.js";
 import { comercialPedidosListarTopValor } from "./pedidos-listar-top-valor.js";
 import { comercialVendedoresCadastrados } from "./vendedores-cadastrados.js";
 import { comercialPedidosSemVendedor } from "./pedidos-sem-vendedor.js";
+import { comercialProdutosPorMargem } from "./produtos-por-margem.js";
+import { comercialPedidosPorUf } from "./pedidos-por-uf.js";
+import { comercialProdutosPorFamilia } from "./produtos-por-familia.js";
+import { comercialTempoMedioFechamento } from "./tempo-medio-fechamento.js";
 
 export const comercialTools: ToolEntry[] = [
   comercialPedidosPeriodo as ToolEntry,
@@ -27,4 +31,8 @@ export const comercialTools: ToolEntry[] = [
   comercialPedidosListarTopValor as ToolEntry,
   comercialVendedoresCadastrados as ToolEntry,
   comercialPedidosSemVendedor as ToolEntry,
+  comercialProdutosPorMargem as ToolEntry,
+  comercialPedidosPorUf as ToolEntry,
+  comercialProdutosPorFamilia as ToolEntry,
+  comercialTempoMedioFechamento as ToolEntry,
 ];

@@ -1940,6 +1940,23 @@ model FatoNotaFiscalItem {
   @@map("fato_nota_fiscal_item")
 }
 
+/// R5.01 (Ronda 5): empresas do grupo Matrix Fitness Group (matriz/filial)
+/// extraidas de raw_res_company. Permite responder "quantas filiais temos",
+/// "quais empresas estao em SP", etc.
+model DimEmpresaGrupo {
+  odooId       Int      @id @map("odoo_id")
+  nome         String
+  cnpj         String?
+  tipo         String   // 'matriz' | 'filial'
+  uf           String?
+  ativo        Boolean  @default(true)
+  atualizadoEm DateTime @default(now()) @map("atualizado_em")
+
+  @@index([tipo])
+  @@index([uf])
+  @@map("dim_empresa_grupo")
+}
+
 model FatoParceiro {
   odooId       Int      @id @map("odoo_id")
   nome         String?
@@ -1955,11 +1972,16 @@ model FatoParceiro {
   email        String?
   telefone     String?
   ativo        Boolean  @default(true)
-  atualizadoEm DateTime @default(now()) @map("atualizado_em")
+  /// T-42 (Ronda 4): data de criacao do parceiro no Odoo (campo create_date).
+  /// Populada a partir de raw_res_partner.data->>'create_date'. Permite filtrar
+  /// "parceiros novos cadastrados esta semana/mes" via tool dedicada.
+  dataCriacao  DateTime? @map("data_criacao") @db.Timestamp(3)
+  atualizadoEm DateTime  @default(now()) @map("atualizado_em")
 
   @@index([uf])
   @@index([ehCliente])
   @@index([ehFornecedor])
+  @@index([dataCriacao])
   @@map("fato_parceiro")
 }
 

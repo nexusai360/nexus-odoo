@@ -1,0 +1,6 @@
+# JSONs normalizados sao derivados (regenerados por `python3 ingest.py`).
+# Nao versionar para nao inflar o repo.
+normalized/
+
+# Raw_sem_fato.json eh derivado do audit.py, regenerar com `python3 audit.py`.
+raw_sem_fato.json

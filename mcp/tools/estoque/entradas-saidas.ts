@@ -5,6 +5,7 @@ import { z } from "zod";
 import type { ToolEntry } from "../../catalog/types.js";
 import { queryEntradasSaidas } from "@/lib/reports/queries/estoque.js";
 import { withFreshness } from "../../lib/freshness.js";
+import { enriquecerEnvelope } from "../../lib/with-responder.js";
 
 const inputSchema = z.object({
   periodoDe: z.string().optional(),
@@ -14,6 +15,10 @@ const inputSchema = z.object({
 
 const dados = z.object({
   serie: z.array(z.object({ mes: z.string(), entrada: z.number(), saida: z.number() })),
+  _RESPOSTA: z.string().optional(),
+  _listaTruncada: z.boolean().optional(),
+  _DESTAQUE: z.record(z.string(), z.union([z.string(), z.number()])).optional(),
+  _agregado: z.record(z.string(), z.number().optional()).optional(),
 });
 
 const fonteStatus = z.object({
@@ -46,8 +51,22 @@ export const estoqueEntradasSaidas: ToolEntry<Input, Output> = {
   inputSchemaShape: inputSchema.shape,
   inputSchema,
   outputSchema,
-  handler: (input, ctx) =>
-    withFreshness(ctx.prisma, ["fato_estoque_movimento"], async () =>
+  handler: async (input, ctx) => {
+    const envelope = await withFreshness(ctx.prisma, ["fato_estoque_movimento"], async () =>
       shape(await queryEntradasSaidas(ctx.prisma, input)),
-    ),
+    );
+    if (envelope.estado === "preparando") return envelope;
+    // T-32 (Ronda 2): _DESTAQUE com totais de entrada/saida para o formatador
+    // gerar _RESPOSTA pronto. Resolve casos onde a serie e vazia ou tudo 0
+    // (vira "Nao ha entradas/saidas no periodo" via regra §10b).
+    const totalEntrada = envelope.dados.serie.reduce((s, r) => s + r.entrada, 0);
+    const totalSaida = envelope.dados.serie.reduce((s, r) => s + r.saida, 0);
+    return enriquecerEnvelope(envelope, "estoque_entradas_saidas", {
+      destaque: {
+        totalEntrada,
+        totalSaida,
+        periodos: envelope.dados.serie.length,
+      },
+    });
+  },
 };

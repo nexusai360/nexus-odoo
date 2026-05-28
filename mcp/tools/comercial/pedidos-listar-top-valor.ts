@@ -15,6 +15,12 @@ const inputSchema = z.object({
   limite: z.number().int().min(1).max(50).optional(),
   periodoDe: z.string().optional(),
   periodoAte: z.string().optional(),
+  ordenacao: z.enum(["valor_desc", "valor_asc", "data_asc", "data_desc"]).optional()
+    .describe("Default: valor_desc (maiores por valor). Use data_asc para 'pedido mais antigo em aberto'."),
+  clienteTermo: z.string().min(1).max(120).optional()
+    .describe("Filtra pedidos do cliente que casa com o termo (busca em participanteNome)."),
+  vendedorTermo: z.string().min(1).max(120).optional()
+    .describe("Filtra pedidos do vendedor que casa com o termo (busca em vendedorNome)."),
 });
 
 const linhaSchema = z.object({
@@ -60,6 +66,7 @@ type Output = z.infer<typeof outputSchema>;
 async function queryPedidosListarTopValor(prisma: PrismaClient, input: Input) {
   const status = input.status ?? "aberto";
   const limite = input.limite ?? 10;
+  const ordenacao = input.ordenacao ?? "valor_desc";
   const where: Record<string, unknown> = {};
   if (status === "aberto") where.etapaFinaliza = false;
   else if (status === "fechado") where.etapaFinaliza = true;
@@ -69,10 +76,25 @@ async function queryPedidosListarTopValor(prisma: PrismaClient, input: Input) {
       ...(input.periodoAte ? { lte: new Date(`${input.periodoAte}T23:59:59`) } : {}),
     };
   }
+  if (input.clienteTermo) {
+    where.participanteNome = { contains: input.clienteTermo, mode: "insensitive" };
+  }
+  if (input.vendedorTermo) {
+    where.vendedorNome = { contains: input.vendedorTermo, mode: "insensitive" };
+  }
+
+  const orderBy: Record<string, "asc" | "desc"> =
+    ordenacao === "valor_asc"
+      ? { vrProdutos: "asc" }
+      : ordenacao === "data_asc"
+        ? { dataOrcamento: "asc" }
+        : ordenacao === "data_desc"
+          ? { dataOrcamento: "desc" }
+          : { vrProdutos: "desc" };
 
   const rows = await prisma.fatoPedido.findMany({
     where,
-    orderBy: { vrProdutos: "desc" },
+    orderBy,
     take: limite,
     select: {
       odooId: true,
@@ -106,15 +128,61 @@ export const comercialPedidosListarTopValor: ToolEntry<Input, Output> = {
   id: "comercial_pedidos_listar_top_valor",
   dominio: "comercial",
   descricao:
-    "Lista os top N pedidos por VALOR (vrProdutos desc), opcionalmente filtrando " +
-    "por status (aberto/fechado/todos) e periodo. Use para 'pedido com maior valor " +
-    "em aberto', 'maiores pedidos', 'top 10 pedidos'. Retorna numero, participante, " +
-    "etapa, vendedor, data e valor de cada pedido + valorTotalListados.",
+    "Lista top N pedidos com filtros e ordenacao flexiveis. Use para: " +
+    "'pedido com maior valor em aberto' (default), 'pedido mais antigo em aberto' " +
+    "(ordenacao=data_asc), 'pedido mais recente' (ordenacao=data_desc), " +
+    "'pedido do cliente Smartfit' (clienteTermo=Smartfit). Aceita status " +
+    "(aberto/fechado/todos), periodo (DE/ATE) e limite (default 10).",
   inputSchemaShape: inputSchema.shape,
   inputSchema,
   outputSchema,
-  handler: (input, ctx) =>
-    withFreshness(ctx.prisma, ["fato_pedido"], () =>
+  handler: async (input, ctx) => {
+    const envelope = await withFreshness(ctx.prisma, ["fato_pedido"], () =>
       queryPedidosListarTopValor(ctx.prisma, input),
-    ),
+    );
+    if (envelope.estado === "preparando") return envelope;
+    const d = envelope.dados;
+    const linhas = d.linhas ?? [];
+    const top = linhas[0];
+    const ordenacao = input.ordenacao ?? "valor_desc";
+    const status = input.status ?? "aberto";
+    const fmt = (n: number) => n.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
+    const fmtData = (s: string | null | undefined) => (s ? s.slice(0, 10) : "(sem data)");
+    // T-41: _RESPOSTA gerado no handler com contexto da ordenacao + clienteTermo
+    let resposta = "";
+    if (linhas.length === 0) {
+      resposta = input.clienteTermo
+        ? `Nao ha pedidos do cliente '${input.clienteTermo}'.`
+        : input.vendedorTermo
+          ? `Nao ha pedidos do vendedor '${input.vendedorTermo}'.`
+          : "Nao ha pedidos para esse criterio.";
+    } else if (ordenacao === "data_asc") {
+      resposta = `Pedido mais antigo (status ${status}): ${top!.numero} de ${fmtData(top!.dataOrcamento)} — ${top!.participanteNome ?? "(sem cliente)"} — ${fmt(top!.valorTotal)}.${input.clienteTermo ? ` Filtro cliente='${input.clienteTermo}'.` : ""}`;
+    } else if (ordenacao === "data_desc") {
+      resposta = `Pedido mais recente (status ${status}): ${top!.numero} de ${fmtData(top!.dataOrcamento)} — ${top!.participanteNome ?? "(sem cliente)"} — ${fmt(top!.valorTotal)}.`;
+    } else {
+      const prefixo = input.clienteTermo ? `Top ${linhas.length} pedidos do cliente '${input.clienteTermo}'` : `Top ${linhas.length} pedidos por valor (${status})`;
+      resposta = `${prefixo}. Maior: ${top!.numero} ${top!.participanteNome ? `(${top!.participanteNome})` : ""} ${fmt(top!.valorTotal)}.`;
+    }
+    return {
+      ...envelope,
+      dados: {
+        ...d,
+        totalListados: linhas.length,
+        valorTotalListados: d.valorTotalListados ?? linhas.reduce((s, l) => s + l.valorTotal, 0),
+        _RESPOSTA: resposta,
+        _DESTAQUE: {
+          totalPedidos: linhas.length,
+          topPedido: top?.numero ?? "",
+          valorTopPedido: top?.valorTotal ?? 0,
+          topParticipante: top?.participanteNome ?? "",
+          ordenacao,
+          status,
+          ...(input.clienteTermo ? { clienteTermo: input.clienteTermo } : {}),
+          valorTotalListados: d.valorTotalListados ?? linhas.reduce((s, l) => s + l.valorTotal, 0),
+        },
+        _agregado: { contagem: linhas.length, soma: d.valorTotalListados ?? 0 },
+      },
+    };
+  },
 };

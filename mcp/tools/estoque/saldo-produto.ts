@@ -176,7 +176,19 @@ export const estoqueSaldoProduto: ToolEntry<Input, Output> = {
     }
 
     const k = envelope.dados.kpis;
-    return enriquecerEnvelope(envelope, "estoque_saldo_produto", {
+    // T-27 (Ronda 1): topMaiores por saldo (unidades) e topMaioresValor (R$).
+    // Resolve "10 produtos com maior saldo em estoque hoje" sem precisar
+    // de tool nova. Linhas vem ordenadas por valor desc; aqui geramos uma
+    // segunda visao por saldo desc para perguntas de unidade.
+    const topMaiores = [...envelope.dados.linhas]
+      .sort((a, b) => b.saldoTotal - a.saldoTotal)
+      .slice(0, 10)
+      .map((l) => ({
+        nome: l.produtoNome,
+        saldo: l.saldoTotal,
+        valor: l.valorTotal,
+      }));
+    const enriched = enriquecerEnvelope(envelope, "estoque_saldo_produto", {
       destaque: {
         totalProdutos: k.totalProdutos,
         valorTotal: k.valorTotal,
@@ -187,5 +199,9 @@ export const estoqueSaldoProduto: ToolEntry<Input, Output> = {
         soma: k.valorTotal,
       },
     });
+    if (enriched.estado !== "preparando") {
+      (enriched.dados as unknown as Record<string, unknown>)["topMaiores"] = topMaiores;
+    }
+    return enriched;
   },
 };

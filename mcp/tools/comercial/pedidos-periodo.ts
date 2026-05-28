@@ -61,8 +61,15 @@ export const comercialPedidosPeriodo: ToolEntry<Input, Output> = {
   inputSchemaShape: inputSchema.shape,
   inputSchema,
   outputSchema,
-  handler: (input, ctx) =>
-    withFreshness(ctx.prisma, ["fato_pedido"], async () =>
+  handler: async (input, ctx) => {
+    const envelope = await withFreshness(ctx.prisma, ["fato_pedido"], async () =>
       shape(await queryPedidosPeriodo(ctx.prisma, input)),
-    ),
+    );
+    if (envelope.estado === "preparando") return envelope;
+    const d = envelope.dados;
+    return enriquecerEnvelope(envelope, "comercial_pedidos_periodo", {
+      destaque: { totalPedidos: d.totalPedidos, valorTotal: d.valorTotal, contagem: d.totalPedidos },
+      agregado: { contagem: d.totalPedidos, soma: d.valorTotal },
+    });
+  },
 };

@@ -92,12 +92,67 @@ export {
 
 /**
  * Trunca o resultado de uma tool call para MAX_TOOL_RESULT_BYTES.
- * Appenda aviso de truncagem quando necessário.
+ *
+ * T-35 (Ronda 2 BUG RAIZ): a versao antiga truncava o JSON do INICIO,
+ * cortando os campos canonicos (_RESPOSTA, _DESTAQUE, _agregado, topMaiores,
+ * topPorParticipante) que ficam no FIM do objeto. Isso impedia o V5/V5b
+ * de detectar invencao numerica, porque o curado nem chegava ao validator
+ * — e o LLM nao via o total agregado, recusando com "nao consegui
+ * consolidar".
+ *
+ * Estrategia nova:
+ * 1. Tenta parsear o JSON. Se for envelope ({ estado, dados }) com lista
+ *    grande em `dados.titulos`/`dados.linhas`/`dados.serie`, encurta a
+ *    lista para os primeiros 30 itens (sample) e remonta o JSON com os
+ *    campos canonicos PRESERVADOS.
+ * 2. Se ainda nao couber, encurta mais ate caber.
+ * 3. Se nao for parseavel ou nao for envelope, fallback pra truncagem do
+ *    inicio (comportamento antigo, conservador).
  */
 function guardToolResult(result: string): string {
   const encoded = Buffer.byteLength(result, "utf8");
   if (encoded <= MAX_TOOL_RESULT_BYTES) return result;
-  // Calcula quantos bytes do início cabem dentro do limite
+
+  // Tentativa smart: encurta listas internas preservando campos canonicos.
+  try {
+    const parsed = JSON.parse(result);
+    if (parsed && typeof parsed === "object" && "estado" in parsed && "dados" in parsed) {
+      const dados = (parsed as { dados: Record<string, unknown> }).dados;
+      if (dados && typeof dados === "object") {
+        for (const listaKey of ["titulos", "linhas", "serie", "top"] as const) {
+          const v = dados[listaKey];
+          if (Array.isArray(v) && v.length > 30) {
+            (dados as Record<string, unknown>)[listaKey] = v.slice(0, 30);
+            (dados as Record<string, unknown>)._amostraReduzida = {
+              de: v.length,
+              para: 30,
+              motivo: "tool result excedeu limite; use _RESPOSTA, _DESTAQUE, _agregado, topMaiores ou topPorParticipante (preservados) para o total.",
+            };
+          }
+        }
+        const rebuilt = JSON.stringify(parsed);
+        if (Buffer.byteLength(rebuilt, "utf8") <= MAX_TOOL_RESULT_BYTES) {
+          return rebuilt;
+        }
+        // Ainda nao coube: encurta listas mais ate 10 itens.
+        for (const listaKey of ["titulos", "linhas", "serie", "top"] as const) {
+          const v = dados[listaKey];
+          if (Array.isArray(v) && v.length > 10) {
+            (dados as Record<string, unknown>)[listaKey] = v.slice(0, 10);
+          }
+        }
+        const rebuilt2 = JSON.stringify(parsed);
+        if (Buffer.byteLength(rebuilt2, "utf8") <= MAX_TOOL_RESULT_BYTES) {
+          return rebuilt2;
+        }
+      }
+    }
+  } catch {
+    // nao-JSON ou parse falhou; usa fallback abaixo
+  }
+
+  // Fallback (comportamento antigo): trunca do inicio. Nao preserva canonicos
+  // mas pelo menos nao quebra a chamada do LLM.
   const truncated = Buffer.from(result, "utf8")
     .slice(0, MAX_TOOL_RESULT_BYTES - Buffer.byteLength(TRUNCATION_NOTICE, "utf8"))
     .toString("utf8");
@@ -653,6 +708,10 @@ export async function runAgent(args: RunAgentInput): Promise<RunAgentResult> {
                 v2Enabled: settingsRow?.validatorV2Enabled ?? true,
                 v3Enabled: settingsRow?.validatorV3Enabled ?? true,
                 v4Enabled: settingsRow?.validatorV4Enabled ?? true,
+                // V5 (Ronda 1): anti-ignorou_RESPOSTA. Default ativo; sem coluna
+                // dedicada no AgentSettings por enquanto (pode ser adicionada
+                // se precisar desligar em prod).
+                v5Enabled: true,
               },
             );
             if (!outcome.ok) {
