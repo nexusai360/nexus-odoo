@@ -109,23 +109,24 @@ export const fiscalFaturamentoPorUf: ToolEntry<Input, Output> = {
     );
     if (envelope.estado === "preparando") return envelope;
     const d = envelope.dados;
-    const top = d.linhas[0];
+    // T-40: top REAL = primeira linha com uf preenchida (pula "(sem UF)")
+    const topReal = d.linhas.find((l) => l.uf !== null) ?? d.linhas[0];
     const fmt = (n: number) =>
       n.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
     return {
       ...envelope,
       dados: {
         ...d,
-        _RESPOSTA: top
-          ? `Faturamento por UF: ${fmt(d.totalGeral)} em ${d.totalNotas} notas, ${d.totalUfs} UFs. Top: ${top.uf ?? "(sem UF)"} ${fmt(top.valorTotal)}.`
+        _RESPOSTA: topReal
+          ? `Faturamento por UF: ${fmt(d.totalGeral)} em ${d.totalNotas} notas, ${d.totalUfs} UFs com UF identificada${d.notasSemUf > 0 ? ` + ${d.notasSemUf} notas sem UF` : ""}. Top: ${topReal.uf ?? "(sem UF)"} ${fmt(topReal.valorTotal)}.`
           : "Nao ha faturamento no periodo.",
         _DESTAQUE: {
           totalGeral: d.totalGeral,
           totalNotas: d.totalNotas,
           totalUfs: d.totalUfs,
           notasSemUf: d.notasSemUf,
-          topUf: top?.uf ?? "",
-          valorTopUf: top?.valorTotal ?? 0,
+          topUf: topReal?.uf ?? "",
+          valorTopUf: topReal?.valorTotal ?? 0,
         },
         _agregado: { contagem: d.totalNotas, soma: d.totalGeral },
       },

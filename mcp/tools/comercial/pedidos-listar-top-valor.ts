@@ -136,19 +136,46 @@ export const comercialPedidosListarTopValor: ToolEntry<Input, Output> = {
       queryPedidosListarTopValor(ctx.prisma, input),
     );
     if (envelope.estado === "preparando") return envelope;
-    const d = envelope.dados as { linhas: Array<{ valorTotal: number; numero?: string; participanteNome?: string | null }>; valorTotalListados?: number };
+    const d = envelope.dados;
     const linhas = d.linhas ?? [];
     const top = linhas[0];
-    return enriquecerEnvelope(envelope, "comercial_pedidos_listar_top_valor", {
-      destaque: {
-        // Nomes esperados pelo fmtPedidosListarTopValor do responder.ts.
-        totalPedidos: linhas.length,
-        topPedido: top?.numero ?? "",
-        valorTopPedido: top?.valorTotal ?? 0,
-        topParticipante: top?.participanteNome ?? "",
+    const ordenacao = input.ordenacao ?? "valor_desc";
+    const status = input.status ?? "aberto";
+    const fmt = (n: number) => n.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
+    const fmtData = (s: string | null | undefined) => (s ? s.slice(0, 10) : "(sem data)");
+    // T-41: _RESPOSTA gerado no handler com contexto da ordenacao + clienteTermo
+    let resposta = "";
+    if (linhas.length === 0) {
+      resposta = input.clienteTermo
+        ? `Nao ha pedidos do cliente '${input.clienteTermo}'.`
+        : "Nao ha pedidos para esse criterio.";
+    } else if (ordenacao === "data_asc") {
+      resposta = `Pedido mais antigo (status ${status}): ${top!.numero} de ${fmtData(top!.dataOrcamento)} — ${top!.participanteNome ?? "(sem cliente)"} — ${fmt(top!.valorTotal)}.${input.clienteTermo ? ` Filtro cliente='${input.clienteTermo}'.` : ""}`;
+    } else if (ordenacao === "data_desc") {
+      resposta = `Pedido mais recente (status ${status}): ${top!.numero} de ${fmtData(top!.dataOrcamento)} — ${top!.participanteNome ?? "(sem cliente)"} — ${fmt(top!.valorTotal)}.`;
+    } else {
+      const prefixo = input.clienteTermo ? `Top ${linhas.length} pedidos do cliente '${input.clienteTermo}'` : `Top ${linhas.length} pedidos por valor (${status})`;
+      resposta = `${prefixo}. Maior: ${top!.numero} ${top!.participanteNome ? `(${top!.participanteNome})` : ""} ${fmt(top!.valorTotal)}.`;
+    }
+    return {
+      ...envelope,
+      dados: {
+        ...d,
+        totalListados: linhas.length,
         valorTotalListados: d.valorTotalListados ?? linhas.reduce((s, l) => s + l.valorTotal, 0),
+        _RESPOSTA: resposta,
+        _DESTAQUE: {
+          totalPedidos: linhas.length,
+          topPedido: top?.numero ?? "",
+          valorTopPedido: top?.valorTotal ?? 0,
+          topParticipante: top?.participanteNome ?? "",
+          ordenacao,
+          status,
+          ...(input.clienteTermo ? { clienteTermo: input.clienteTermo } : {}),
+          valorTotalListados: d.valorTotalListados ?? linhas.reduce((s, l) => s + l.valorTotal, 0),
+        },
+        _agregado: { contagem: linhas.length, soma: d.valorTotalListados ?? 0 },
       },
-      agregado: { contagem: linhas.length, soma: d.valorTotalListados ?? 0 },
-    });
+    };
   },
 };

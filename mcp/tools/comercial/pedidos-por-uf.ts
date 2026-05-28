@@ -114,23 +114,28 @@ export const comercialPedidosPorUf: ToolEntry<Input, Output> = {
     );
     if (envelope.estado === "preparando") return envelope;
     const d = envelope.dados;
-    const top = d.linhas[0];
+    // T-40: top REAL = primeira linha com uf preenchida
+    const topReal = d.linhas.find((l) => l.uf !== null) ?? d.linhas[0];
+    const semUfLinha = d.linhas.find((l) => l.uf === null);
+    const semUfNota = semUfLinha
+      ? ` + ${semUfLinha.quantidade} sem UF`
+      : "";
     const fmt = (n: number) =>
       n.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
     return {
       ...envelope,
       dados: {
         ...d,
-        _RESPOSTA: top
-          ? `Pedidos por UF: ${d.totalPedidos} pedidos (${fmt(d.totalGeral)}) em ${d.totalUfs} UFs. Top: ${top.uf ?? "(sem UF)"} com ${top.quantidade} pedidos (${fmt(top.valorTotal)}).`
+        _RESPOSTA: topReal
+          ? `Pedidos por UF: ${d.totalPedidos} pedidos (${fmt(d.totalGeral)}) em ${d.totalUfs} UFs${semUfNota}. Top: ${topReal.uf ?? "(sem UF)"} com ${topReal.quantidade} pedidos (${fmt(topReal.valorTotal)}).`
           : "Nao ha pedidos no periodo.",
         _DESTAQUE: {
           totalPedidos: d.totalPedidos,
           totalGeral: d.totalGeral,
           totalUfs: d.totalUfs,
-          topUf: top?.uf ?? "",
-          quantidadeTopUf: top?.quantidade ?? 0,
-          valorTopUf: top?.valorTotal ?? 0,
+          topUf: topReal?.uf ?? "",
+          quantidadeTopUf: topReal?.quantidade ?? 0,
+          valorTopUf: topReal?.valorTotal ?? 0,
         },
         _agregado: { contagem: d.totalPedidos, soma: d.totalGeral },
       },
