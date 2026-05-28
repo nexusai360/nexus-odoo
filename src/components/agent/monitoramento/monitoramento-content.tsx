@@ -1,7 +1,7 @@
 "use client";
 
 /**
- * QualidadeContent , orchestrator client da tela /agente/qualidade.
+ * MonitoramentoContent , orchestrator client da tela /agente/qualidade.
  *
  * Padrao copiado de consumo-content.tsx: filtros (periodo + modelo) no
  * topo, KPI cards, gráficos lado a lado e tabela paginada com drill-down
@@ -49,7 +49,7 @@ import { AutoHeuristicConfig } from "./auto-heuristic-config";
 
 const TZ = DEFAULT_TZ;
 
-interface QualidadeContentProps {
+interface MonitoramentoContentProps {
   minDate: string;
   /** Intervalo (em minutos) atual da auditoria heuristica automatica.
    *  Lido do AgentSettings na page server-side, passado pro UI client. */
@@ -79,10 +79,10 @@ function rangeForPills(
   return getPeriodInTz(pill, TZ);
 }
 
-export function QualidadeContent({
+export function MonitoramentoContent({
   minDate,
   qualityHeuristicIntervalMinutes,
-}: QualidadeContentProps) {
+}: MonitoramentoContentProps) {
   const minDateObj = useMemo(() => new Date(minDate), [minDate]);
 
   const [pill, setPill] = useState<PeriodKey>("mes_atual");

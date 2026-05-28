@@ -10,11 +10,13 @@
  */
 
 import { useState, useTransition } from "react";
+import Link from "next/link";
 import {
   AlertCircle,
   CheckCircle2,
   KeyRound,
   Loader2,
+  Plus,
 } from "lucide-react";
 import {
   Card,
@@ -24,6 +26,7 @@ import {
 } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { buttonVariants } from "@/components/ui/button-variants";
 import { CustomSelect } from "@/components/ui/custom-select";
 import {
   setEmbeddingCredential,
@@ -91,18 +94,26 @@ export function RouterEmbeddingCredential({ initial }: Props) {
       </CardHeader>
       <CardContent className="space-y-4">
         {state.options.length === 0 ? (
-          <div className="flex items-start gap-2 rounded-lg border border-amber-500/30 bg-amber-500/5 p-3 text-sm">
-            <AlertCircle className="mt-0.5 h-4 w-4 shrink-0 text-amber-400" />
-            <div className="space-y-1 text-amber-100">
-              <p className="font-medium">
-                Nenhuma chave OpenAI cadastrada.
-              </p>
-              <p className="text-xs text-amber-200/80">
-                Acesse <em>Agente Nex → Chaves de API</em> e adicione uma
-                credencial do provider <strong>openai</strong>. Depois volte
-                aqui para selecionar.
-              </p>
+          <div className="space-y-3">
+            <div className="flex items-start gap-2 rounded-lg border border-amber-500/30 bg-amber-500/5 p-3 text-sm">
+              <AlertCircle className="mt-0.5 h-4 w-4 shrink-0 text-amber-400" />
+              <div className="space-y-1 text-amber-100">
+                <p className="font-medium">
+                  Nenhuma chave OpenAI cadastrada.
+                </p>
+                <p className="text-xs text-amber-200/80">
+                  Cadastre uma chave OpenAI primeiro e volte aqui para
+                  selecionar.
+                </p>
+              </div>
             </div>
+            <Link
+              href="/agente/chaves?provider=openai"
+              className={buttonVariants({ variant: "default" })}
+            >
+              <Plus className="mr-2 h-4 w-4" />
+              Criar chave de API OpenAI
+            </Link>
           </div>
         ) : (
           <>
@@ -180,10 +191,19 @@ export function RouterEmbeddingCredential({ initial }: Props) {
                   )}
                   {state.active ? "Trocar credencial" : "Usar esta"}
                 </Button>
+                <Link
+                  href="/agente/chaves?provider=openai"
+                  className={buttonVariants({ variant: "outline" })}
+                >
+                  <Plus className="mr-2 h-4 w-4" />
+                  Criar nova
+                </Link>
               </div>
               <p className="text-xs text-muted-foreground">
                 A chave selecionada substitui imediatamente o uso atual
-                (proximas chamadas de embedding usam ela).
+                (próximas chamadas de embedding usam ela). Use{" "}
+                <strong>Criar nova</strong> para abrir a tela de cadastro
+                já filtrada por <strong>OpenAI</strong>.
               </p>
             </div>
 
