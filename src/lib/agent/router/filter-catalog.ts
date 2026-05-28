@@ -18,7 +18,9 @@ const EXCLUDE_FROM_FILTERING: ReadonlySet<string> = new Set(
   DOMAINS.filter((d) => d.excludeFromFiltering).map((d) => d.domain),
 );
 
-export function filterCatalog(input: FilterCatalogInput): FilterCatalogOutput {
+export function filterCatalog<T extends CatalogTool>(
+  input: FilterCatalogInput<T>,
+): FilterCatalogOutput<T> {
   const { allTools, decision, routerEnabled } = input;
 
   // Caminho 1: shadow ou fallback -> catalogo inteiro.
@@ -69,7 +71,7 @@ export function filterCatalog(input: FilterCatalogInput): FilterCatalogOutput {
   };
 }
 
-function collectDomains(tools: CatalogTool[]): string[] {
+function collectDomains<T extends CatalogTool>(tools: T[]): string[] {
   const set = new Set<string>();
   for (const t of tools) set.add(getToolDomain(t.name));
   return Array.from(set).sort();

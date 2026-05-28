@@ -41,6 +41,11 @@ import { BI_SCHEMA_REFERENCE } from "./bi-schema-reference";
 import { progressLabel } from "./progress-labels";
 import { searchKb } from "./rag/search";
 import { EmbeddingUnavailable } from "./rag/embed";
+// R1 router de catalogo (sub-projeto do roadmap de cobertura completa).
+// Ver docs/superpowers/specs/2026-05-28-router-catalogo-design.md.
+import { pickDomains } from "./router/pick-domains";
+import { filterCatalog } from "./router/filter-catalog";
+import { createDecision, updateDecision } from "./router/log-decision";
 import type {
   ChatMessage,
   ChatUsage,
@@ -237,6 +242,8 @@ function normalizeReasoningEffort(
 async function loadAgentSettings() {
   const row = await prisma.agentSettings.findUnique({ where: { id: "global" } });
   const useCode = row?.usesCodeDefaults ?? true;
+  // R1 router de catalogo: env override (kill-switch nivel 3 do §16.3 da SPEC).
+  const routerForceDisable = process.env.ROUTER_FORCE_DISABLE === "true";
   return {
     identityBase: useCode
       ? (await import("@/lib/agent/prompt/identity-base")).IDENTITY_BASE
@@ -259,6 +266,12 @@ async function loadAgentSettings() {
     reasoningEffort: normalizeReasoningEffort(row?.reasoningEffort),
     reasoningCheckpoint: row?.reasoningCheckpoint ?? "OFF",
     maxSuggestions: row?.maxSuggestions ?? 3,
+    // R1 router de catalogo (sub-projeto do roadmap de cobertura completa).
+    routerEnabled: !routerForceDisable && ((row?.routerEnabled as boolean | undefined) ?? false),
+    routerThreshold: (row?.routerThreshold as number | undefined) ?? 0.55,
+    routerTopK: (row?.routerTopK as number | undefined) ?? 3,
+    routerRetryExpandBelow: (row?.routerRetryExpandBelow as number | undefined) ?? 0.7,
+    routerRetryEnabled: (row?.routerRetryEnabled as boolean | undefined) ?? false,
   };
 }
 
@@ -372,10 +385,39 @@ export async function runAgent(args: RunAgentInput): Promise<RunAgentResult> {
       return { ...t, name: seguro };
     };
     const mcpTools = mcpToolsRaw.map(sanearTool);
-    const tools = mcpToolsToProviderTools([
-      ...mcpTools,
-      ...(externalBundle?.tools ?? []).map(sanearTool),
-    ]);
+    const externalToolsSan = (externalBundle?.tools ?? []).map(sanearTool);
+    const allToolsBeforeRouter = [...mcpTools, ...externalToolsSan];
+
+    // R1 router de catalogo: filtra catalogo entregue ao LLM por similaridade
+    // semantica. Default shadow: nao filtra, so loga decisao. Ativacao gradual
+    // via AgentSettings.routerEnabled. Ver spec §5.
+    const routerDecision = await pickDomains(args.userMessage, {
+      threshold: agentSettings.routerThreshold,
+      topK: agentSettings.routerTopK,
+    });
+    const routerMode: "shadow" | "active" = agentSettings.routerEnabled
+      ? "active"
+      : "shadow";
+    const filteredCatalog = filterCatalog({
+      allTools: allToolsBeforeRouter,
+      decision: routerDecision,
+      routerEnabled: agentSettings.routerEnabled,
+    });
+    // Cria row de auditoria. Fire-and-forget no sentido: se persistencia falhar,
+    // turno continua com decisionId local (nao quebra).
+    const routerLog = await createDecision({
+      decision: routerDecision,
+      mode: routerMode,
+      catalogSizeOffered: filteredCatalog.tools.length,
+      catalogSizeFull: allToolsBeforeRouter.length,
+      userQuestion: args.userMessage,
+      conversationId: args.conversationId ?? null,
+      llmModelUsed: null,
+    });
+    const routerDecisionId = routerLog.decisionId;
+    const allTurnToolNames: string[] = [];
+
+    const tools = mcpToolsToProviderTools(filteredCatalog.tools);
 
     // Carregar histórico (últimas 20 msgs) e sanitizar pares tool_use/tool_result
     const rawHistory = await loadHistory(args.conversationId, 20);
@@ -826,6 +868,12 @@ export async function runAgent(args: RunAgentInput): Promise<RunAgentResult> {
         args.onEvent?.({ type: "done" });
         void start;
         await Promise.allSettled(usageWrites);
+        // R1 router: registra tools usadas no turno para auditoria do router.
+        // Fire-and-forget , erros nao bloqueiam o retorno.
+        void updateDecision(routerDecisionId, {
+          toolsUsed: allTurnToolNames,
+          catalogSizeOffered: filteredCatalog.tools.length,
+        });
         return { ok: true, message, suggestions, usage: totalUsage };
       }
 
@@ -988,6 +1036,9 @@ export async function runAgent(args: RunAgentInput): Promise<RunAgentResult> {
         } catch {
           // resultado nao-JSON (raro); ignora pro validator
         }
+        // R1 router: acumula nomes de tools chamadas no turno para auditoria
+        // da decisao do router via updateDecision (fire-and-forget no final).
+        allTurnToolNames.push(tc.name);
       }
     }
 

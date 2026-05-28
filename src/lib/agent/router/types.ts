@@ -28,25 +28,22 @@ export type RouterDecision = {
   routerVersion: string;
 };
 
-/** Forma minimalista de uma tool MCP que o agente recebe do servidor.
- *  Definicao real esta em mcp/catalog/types.ts (`ToolEntry`). Este shape
- *  serve apenas para tipar filter-catalog sem criar dep circular. */
-export type CatalogTool = {
-  name: string;
-  description?: string;
-};
+/** Shape minimo que uma tool precisa para passar pelo router (apenas o nome
+ *  e' relevante para o filtro). Generico para preservar o tipo real chamador
+ *  (`McpTool` no run-agent, etc). */
+export type CatalogTool = { name: string };
 
-/** Input de `filterCatalog`. */
-export type FilterCatalogInput = {
-  allTools: CatalogTool[];
+/** Input de `filterCatalog`, generico no tipo da tool. */
+export type FilterCatalogInput<T extends CatalogTool = CatalogTool> = {
+  allTools: T[];
   decision: RouterDecision;
   routerEnabled: boolean;
 };
 
 /** Output de `filterCatalog`. Quando `routerEnabled=false` ou fallback
  *  triggered, retorna `allTools` na integra. */
-export type FilterCatalogOutput = {
-  tools: CatalogTool[];
+export type FilterCatalogOutput<T extends CatalogTool = CatalogTool> = {
+  tools: T[];
   /** Diagnostico: quantas tools entraram, e a que dominios pertencem. */
   diagnostic: {
     totalIn: number;
