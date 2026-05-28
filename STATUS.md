@@ -1,6 +1,6 @@
 # STATUS — nexus-odoo
 
-> **Ponto de retomada entre sessões.** Atualizado em 2026-05-28 12:05.
+> **Ponto de retomada entre sessões.** Atualizado em 2026-05-28 13:00.
 > Ao abrir uma sessão: ler **este arquivo** e o **`CLAUDE.md`**. Modo autônomo
 > é o padrão (ver `CLAUDE.md §6`).
 >
@@ -10,24 +10,41 @@
 > 2026-05-28). Habilitador arquitetural das ondas de expansao do MCP. Spec/Plan
 > em `docs/superpowers/{specs,plans}/2026-05-28-router-catalogo-*`.
 >
-> ### Progresso atual (5 commits ahead de origin/main)
+> ### Progresso atual (11 commits ahead de origin/main, backend completo)
 > - **G0**: rebase + investigacao bateria R-X (`pnpm tsx scripts/quality-audit/03-run-test-questions.ts`) ✓
-> - **Wave A**: migration aplicada (5 colunas em agent_settings + tabela agent_router_decision), 5 modulos puros (vocabulary, tool-to-domain, question-normalize, types), 39/39 testes verdes ✓
-> - **Wave B**: motor completo (embed-domains race-safe, embed-question LRU 200, pick-domains regras 1-8, filter-catalog generico, log-decision fire-and-forget), 98/98 testes ✓
-> - **Wave C parcial**: C1 wire em `src/lib/agent/run-agent.ts` (shadow default, ROUTER_FORCE_DISABLE honrado, decisao logada por turno em AgentRouterDecision) ✓
+> - **Wave A**: migration aplicada (5 colunas em agent_settings + tabela agent_router_decision), 5 modulos puros (vocabulary, tool-to-domain, question-normalize, types), 39 testes ✓
+> - **Wave B**: motor completo (embed-domains race-safe, embed-question LRU 200, pick-domains regras 1-8, filter-catalog generico, log-decision fire-and-forget), 98 testes ✓
+> - **Wave C completa**: C1 wire em `src/lib/agent/run-agent.ts` (shadow default, ROUTER_FORCE_DISABLE honrado) + C2 `router-retry.ts` (helper isolado para auto-validator com 15 testes) + C3 integration tests (8 testes) ✓
+> - **Wave D backend**: `queries.ts` com 5 server queries (getRouterKpis, getRouterHistogram via width_bucket, getRouterDiscordancias, getRouterLatencyTimeseries, getRouterEligibleToActivate) + `router-settings.ts` server action com gate de seguranca + rate limit 10/min + audit ✓
+> - **Wave E parcial**: POST `/api/admin/router/kill` (kill-switch nivel 2) + `scripts/router/calibrate-against-batteries.ts` (calibragem offline contra 291 perguntas R8-R23) + `.env.example` documentando ROUTER_FORCE_DISABLE ✓
+> - **Fix bonus**: corrigida falha pre-existente em `src/worker/catalog/model-catalog.test.ts` (modelo `pedido.documento.historico.tempo` intencionalmente removido do catalogo) ✓
 >
-> ### Garantia preservada
-> - **Shadow mode default**: `routerEnabled=false` por padrao, LLM recebe catalogo inteiro. Zero impacto no 95,5% baseline da R23.
-> - **98 testes do router verdes** + 1944 outros testes do projeto verdes. 1 falha (`src/worker/catalog/model-catalog.test.ts`) e pre-existente em main (nao regressao do R1).
-> - **Migration aditiva**, GRANT SELECT idempotente para roles MCP, defaults conservadores.
+> ### Verificacoes feitas
+> - **tsc verde** em todo o monorepo.
+> - **1968 testes do projeto verdes** (4 suites skipped). Antes desta branch havia 1 falha; agora zero.
+> - **Migration aplicada** no Postgres dev local (`agent_router_decision` + 5 colunas em `agent_settings`).
+> - **Padrao de tool 100% preservado** (P2 do roadmap): zero tool MCP existente alterada.
+> - **Shadow mode default**: `routerEnabled=false`, LLM recebe catalogo inteiro. Zero impacto no 95,5% baseline da R23.
 >
-> ### Pendencias
-> - **C2**: `src/lib/agent/validation/router-retry.ts` + integracao com auto-validator (so dispara em active mode, baixa prioridade enquanto shadow).
-> - **C3**: testes integration end-to-end de Wave C.
-> - **Wave D**: aba `/admin/qualidade/router` (KPIs, histograma, discordancias, toggle, calibragem).
-> - **Wave E**: kill-switch endpoint + script `scripts/router/calibrate-against-batteries.ts`.
-> - **Wave F**: testes adicionais + benchmark `pickDurationMs`.
-> - **Wave G**: bateria R-X em shadow >= 95,5%, code review, UI review, PR contra main.
+> ### Pendencias para fechar R1
+> - **Wave D UI**: D1 ui-ux-pro-max planning + D4a-f componentes (RouterKpiCards, Histogram, LatencyChart, Discordancias, Controls, CalibrationButton) + D5 rota `/agente/monitoramento` aba Router + D6 ui-ux-pro-max review. Backend de queries ja pronto.
+> - **Wave E4**: handler do botao calibragem na UI (chama script E2).
+> - **Wave G**: rebuild containers (`app`, `mcp`, `worker` por causa do schema), rodar calibragem (precisa de credencial OpenAI embedding configurada em `AppSetting embedding_credential_id`), rodar bateria R-X em shadow contra baseline 95,5%, code review, UI review, PR contra main.
+>
+> ### Como retomar Wave G manualmente
+> ```bash
+> # 1. Rebuild containers (schema mudou)
+> docker compose build app mcp worker
+> docker compose up -d app mcp worker
+>
+> # 2. (Opcional) Calibragem offline contra perguntas historicas
+> pnpm tsx scripts/router/calibrate-against-batteries.ts
+> # -> docs/router-calibration-r1.md
+>
+> # 3. Bateria R-X em shadow
+> pnpm tsx scripts/quality-audit/03-run-test-questions.ts --limit 300
+> # -> aguarda execucao, depois compara contra baseline 95,5%
+> ```
 >
 > ## ✅ Ronda Nex anterior concluída e mergeada
 >
