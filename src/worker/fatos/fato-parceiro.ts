@@ -27,6 +27,9 @@ export interface FatoParceiroRow {
   email: string | null;
   telefone: string | null;
   ativo: boolean;
+  // T-42 (Ronda 4): data de criacao do parceiro (Odoo create_date) para
+  // permitir filtro "parceiros novos cadastrados esta semana/mes".
+  dataCriacao: Date | null;
   // NÃO inclui atualizadoEm , campo tem @default(now()) no schema
 }
 
@@ -50,6 +53,14 @@ export function mapParceiroRow(raw: Record<string, unknown>): FatoParceiroRow {
     // P-I8: phone com fallback para mobile
     telefone: phone ?? mobile,
     ativo: Boolean(raw.active),
+    // T-42: Odoo entrega como string ISO. Pode vir undefined em registros
+    // antigos sem create_date — fica null.
+    dataCriacao: typeof raw.create_date === "string"
+      ? (() => {
+          const d = new Date(raw.create_date);
+          return Number.isNaN(d.getTime()) ? null : d;
+        })()
+      : null,
   };
 }
 
