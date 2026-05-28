@@ -25,7 +25,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { prisma } from "@/lib/prisma";
-import { getCurrentUser } from "@/lib/auth";
+import { requireAgentAccessOrJson } from "@/lib/auth/require";
 import { checkRateLimit } from "@/lib/rate-limit";
 import { suggestContinuation } from "@/lib/agent/intelligence/contextual-suggester";
 
@@ -38,11 +38,10 @@ const RATE_LIMIT_MAX = 30;
 const RATE_LIMIT_WINDOW_SEC = 60;
 
 export async function POST(req: NextRequest): Promise<NextResponse> {
-  // Auth
-  const user = await getCurrentUser();
-  if (!user) {
-    return NextResponse.json({ error: "Nao autenticado" }, { status: 401 });
-  }
+  // RBAC v2: gate de acesso ao agente.
+  const access = await requireAgentAccessOrJson();
+  if (access instanceof NextResponse) return access;
+  const { user } = access;
 
   // Rate limit
   const rl = await checkRateLimit(
