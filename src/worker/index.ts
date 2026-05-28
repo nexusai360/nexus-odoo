@@ -39,6 +39,7 @@ export const JOB_CLEANUP_IDEMPOTENCY = "cleanup-idempotency";
 export const JOB_CLEANUP_MCP_IDEMPOTENCY = "cleanup-mcp-idempotency";
 export const JOB_CLEANUP_AUDIT_LOG = "cleanup-audit-log";
 export const JOB_REFRESH_USD_BRL = "refresh-usd-brl-ptax";
+export const JOB_AUTO_HEURISTIC = "quality-auto-heuristic";
 
 const REDIS_URL = process.env.REDIS_URL ?? "redis://localhost:6379";
 const connection = new IORedis(REDIS_URL, { maxRetriesPerRequest: null });
@@ -126,6 +127,22 @@ const maintenanceWorker = new Worker(
       );
       return result;
     }
+    if (job.name === JOB_AUTO_HEURISTIC) {
+      // Importacao dinamica evita carregar prisma client em paralelo no boot.
+      const { runAutoHeuristic } = await import(
+        "@/lib/agent/quality/auto-heuristic"
+      );
+      const result = await runAutoHeuristic();
+      if (result.processadas > 0) {
+        console.log(
+          `[maintenance] auto-heuristic: ${result.processadas} avaliacoes ` +
+            `processadas - CORRETO=${result.totals.CORRETO} ` +
+            `PARCIAL=${result.totals.PARCIAL} ERRADO=${result.totals.ERRADO} ` +
+            `FORA=${result.totals.FORA_DO_ESCOPO}`,
+        );
+      }
+      return result;
+    }
     return { ok: true };
   },
   { connection, concurrency: 1 },
@@ -193,6 +210,32 @@ async function liberarLock(jobName: string): Promise<void> {
 
 // Cache da última config aplicada , evita churn de upsertJobScheduler (WR-04).
 let ultimaConfigAplicada: Awaited<ReturnType<typeof readSyncConfig>> | null = null;
+// Cache do intervalo de auto-heuristica (minutos). null = ainda nao lido.
+let ultimoIntervaloAutoHeuristic: number | null = null;
+
+/** Le AgentSettings.quality_heuristic_interval_minutes e (re)agenda o
+ *  JOB_AUTO_HEURISTIC se mudou. Idempotente. Aplicado no JOB_CONFIG_CHECK
+ *  (a cada 60s), mesmo mecanismo que ja existia pra sync. */
+async function aplicarAgendamentoAutoHeuristic(): Promise<void> {
+  const row = await prisma.agentSettings.findUnique({
+    where: { id: "global" },
+    select: { qualityHeuristicIntervalMinutes: true },
+  });
+  const minutes = Math.max(
+    1,
+    Math.min(1440, row?.qualityHeuristicIntervalMinutes ?? 240),
+  );
+  if (ultimoIntervaloAutoHeuristic === minutes) return;
+  await maintenanceQueue.upsertJobScheduler(
+    JOB_AUTO_HEURISTIC,
+    { every: minutes * 60_000 },
+    { name: JOB_AUTO_HEURISTIC },
+  );
+  ultimoIntervaloAutoHeuristic = minutes;
+  console.log(
+    `[maintenance] auto-heuristic re-agendado: a cada ${minutes} min`,
+  );
+}
 
 /**
  * (Re)agenda os três ciclos de sync com os intervalos atuais da config.
@@ -275,6 +318,8 @@ const worker = new Worker(
     // O job de config-check relê a config e reaplica os intervalos.
     if (job.name === JOB_CONFIG_CHECK) {
       await aplicarAgendamento();
+      // Tambem reaplica intervalo da auto-heuristica (mesmo gatilho de 60s).
+      await aplicarAgendamentoAutoHeuristic();
       return { ok: true };
     }
     // Lock cluster-safe: se outro worker/ciclo já o detém, pula (WR-01).
@@ -386,6 +431,10 @@ async function bootstrap(): Promise<void> {
   );
   await maintenanceQueue.add(JOB_REFRESH_USD_BRL, {});
   console.log("[worker] cron de PTAX USD/BRL agendado (diário 18:30 BRT) + refresh inicial");
+
+  // Auto-heuristica de qualidade: agendamento inicial le AgentSettings.
+  // Mudancas pela UI sao detectadas em <= 60s via JOB_CONFIG_CHECK.
+  await aplicarAgendamentoAutoHeuristic();
 }
 
 bootstrap().catch((err) => console.error("[worker] falha no bootstrap:", err));

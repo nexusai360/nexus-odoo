@@ -40,7 +40,15 @@ export default async function MonitoramentoPage() {
   if (!user) redirect("/login");
   if (user.platformRole !== "super_admin") redirect("/dashboard");
 
-  const minDate = await getFirstEvalDate();
+  const [minDate, agentSettings] = await Promise.all([
+    getFirstEvalDate(),
+    prisma.agentSettings.findUnique({
+      where: { id: "global" },
+      select: { qualityHeuristicIntervalMinutes: true },
+    }),
+  ]);
+  const qualityHeuristicIntervalMinutes =
+    agentSettings?.qualityHeuristicIntervalMinutes ?? 240;
 
   return (
     <PageShell variant="form">
@@ -51,7 +59,10 @@ export default async function MonitoramentoPage() {
       />
       <MonitoramentoNav />
       <div className="mt-6">
-        <QualidadeContent minDate={minDate.toISOString()} />
+        <QualidadeContent
+          minDate={minDate.toISOString()}
+          qualityHeuristicIntervalMinutes={qualityHeuristicIntervalMinutes}
+        />
       </div>
     </PageShell>
   );

@@ -45,11 +45,15 @@ import {
 import { ChartsBlock } from "./charts-block";
 import { EvaluationsTable } from "./evaluations-table";
 import { KpisBlock } from "./kpis-block";
+import { AutoHeuristicConfig } from "./auto-heuristic-config";
 
 const TZ = DEFAULT_TZ;
 
 interface QualidadeContentProps {
   minDate: string;
+  /** Intervalo (em minutos) atual da auditoria heuristica automatica.
+   *  Lido do AgentSettings na page server-side, passado pro UI client. */
+  qualityHeuristicIntervalMinutes: number;
 }
 
 function isoLocalToDate(iso: string): Date {
@@ -75,7 +79,10 @@ function rangeForPills(
   return getPeriodInTz(pill, TZ);
 }
 
-export function QualidadeContent({ minDate }: QualidadeContentProps) {
+export function QualidadeContent({
+  minDate,
+  qualityHeuristicIntervalMinutes,
+}: QualidadeContentProps) {
   const minDateObj = useMemo(() => new Date(minDate), [minDate]);
 
   const [pill, setPill] = useState<PeriodKey>("mes_atual");
@@ -275,6 +282,9 @@ export function QualidadeContent({ minDate }: QualidadeContentProps) {
           labelForRodada={labelFor}
         />
       )}
+
+      {/* Configuracao da auditoria heuristica automatica (cron BullMQ). */}
+      <AutoHeuristicConfig initialMinutes={qualityHeuristicIntervalMinutes} />
     </div>
   );
 }

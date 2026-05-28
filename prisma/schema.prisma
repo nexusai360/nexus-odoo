@@ -2481,6 +2481,13 @@ model AgentSettings {
   /// seguro: liga so depois de validar shadow.
   routerRetryEnabled   Boolean @default(false) @map("router_retry_enabled")
 
+  /// Periodicidade (em minutos) do cron BullMQ que processa avaliacoes
+  /// PENDENTE via heuristica (sem custo de LLM). Range 1-1440 (24h).
+  /// Default 240 (4h). Configurado no painel /agente/monitoramento aba
+  /// Backtest. Mudancas sao aplicadas em ate 60s pelo JOB_CONFIG_CHECK
+  /// do worker (mesmo mecanismo do sync incremental).
+  qualityHeuristicIntervalMinutes Int @default(240) @map("quality_heuristic_interval_minutes")
+
   updatedAt         DateTime @updatedAt @map("updated_at")
 
   @@map("agent_settings")
