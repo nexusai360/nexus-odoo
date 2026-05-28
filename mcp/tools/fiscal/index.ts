@@ -15,6 +15,7 @@ import { fiscalCertificados } from "./certificados.js";
 import { fiscalReferenciaBuscar } from "./referencia-buscar.js";
 import { fiscalFaturamentoPorMarca } from "./faturamento-por-marca.js";
 import { fiscalFaturamentoMensalSerie } from "./faturamento-mensal-serie.js";
+import { fiscalFaturamentoPorUf } from "./faturamento-por-uf.js";
 
 export const fiscalTools: ToolEntry[] = [
   fiscalFaturamentoPeriodo as ToolEntry,
@@ -31,4 +32,5 @@ export const fiscalTools: ToolEntry[] = [
   fiscalReferenciaBuscar as ToolEntry,
   fiscalFaturamentoPorMarca as ToolEntry,
   fiscalFaturamentoMensalSerie as ToolEntry,
+  fiscalFaturamentoPorUf as ToolEntry,
 ];

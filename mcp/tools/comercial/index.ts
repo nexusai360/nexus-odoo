@@ -14,6 +14,7 @@ import { comercialPedidosListarTopValor } from "./pedidos-listar-top-valor.js";
 import { comercialVendedoresCadastrados } from "./vendedores-cadastrados.js";
 import { comercialPedidosSemVendedor } from "./pedidos-sem-vendedor.js";
 import { comercialProdutosPorMargem } from "./produtos-por-margem.js";
+import { comercialPedidosPorUf } from "./pedidos-por-uf.js";
 
 export const comercialTools: ToolEntry[] = [
   comercialPedidosPeriodo as ToolEntry,
@@ -29,4 +30,5 @@ export const comercialTools: ToolEntry[] = [
   comercialVendedoresCadastrados as ToolEntry,
   comercialPedidosSemVendedor as ToolEntry,
   comercialProdutosPorMargem as ToolEntry,
+  comercialPedidosPorUf as ToolEntry,
 ];
