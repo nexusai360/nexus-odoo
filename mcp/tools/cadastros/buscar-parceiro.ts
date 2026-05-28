@@ -61,7 +61,7 @@ export const cadastroBuscarParceiro: ToolEntry<Input, Output> = {
     // Termo com menos de 2 caracteres uteis (apos strip de pontuacao/espaco)
     // retorna lista vazia com aviso claro, em vez de fazer LIKE %.% e
     // devolver 10 parceiros aleatorios.
-    const termoLimpo = input.termo.replace(/[^\p{L}\p{N}]/gu, "").trim();
+    const termoLimpo = (input.termo ?? "").replace(/[^\p{L}\p{N}]/gu, "").trim();
     if (termoLimpo.length < 2) {
       const envelope = await withFreshness(
         ctx.prisma,
