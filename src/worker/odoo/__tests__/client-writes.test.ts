@@ -42,7 +42,7 @@ function makeClient(rpcResult: unknown) {
   return client;
 }
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
+ 
 function captureRpc(client: OdooClient): jest.Mock {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   return (client as any).rpc as jest.Mock;

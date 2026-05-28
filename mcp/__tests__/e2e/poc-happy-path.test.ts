@@ -34,19 +34,19 @@ const describeOrSkip = odooCredsAvailable ? describe : describe.skip;
 describeOrSkip("E2E POC , happy path com Odoo real", () => {
   it("cria parceiro via pipeline externo e grava audit", async () => {
     // Todos os imports de infra via jest.requireActual para evitar ESM issues
-    // eslint-disable-next-line @typescript-eslint/no-require-imports
+     
     const { PrismaClient } = jest.requireActual<typeof import("@/generated/prisma/client")>(
       "@/generated/prisma/client",
     );
-    // eslint-disable-next-line @typescript-eslint/no-require-imports
+     
     const { createTestApiKey, cleanupTestApiKey } = jest.requireActual<
       typeof import("../fixtures/api-key.js")
     >("../fixtures/api-key.js");
-    // eslint-disable-next-line @typescript-eslint/no-require-imports
+     
     const { cleanupPartnersByPrefix } = jest.requireActual<
       typeof import("../fixtures/odoo-cleanup.js")
     >("../fixtures/odoo-cleanup.js");
-    // eslint-disable-next-line @typescript-eslint/no-require-imports
+     
     const { clientFromEnv } = jest.requireActual<typeof import("@/worker/odoo/client.js")>(
       "@/worker/odoo/client.js",
     );
@@ -156,7 +156,7 @@ describeOrSkip("E2E POC , happy path com Odoo real", () => {
       }
     } finally {
       if (apiKeyId) {
-        // eslint-disable-next-line @typescript-eslint/no-require-imports
+         
         const { cleanupTestApiKey: cleanup } = jest.requireActual<
           typeof import("../fixtures/api-key.js")
         >("../fixtures/api-key.js");

@@ -1,4 +1,4 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
+ 
 // mcp/lib/migrations/migrate-scopes.ts
 // Migra dados de ApiKey.scopes (legado) → ApiKey.capabilities (F4 Onda 2).
 //
