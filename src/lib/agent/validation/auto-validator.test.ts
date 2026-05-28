@@ -199,9 +199,9 @@ describe("validateV3 (anti-recusa indevida)", () => {
 describe("validateV4 (anti-placeholder em bullet)", () => {
   it("dispara quando ha bullet com 'nao consegui obter esse dado'", () => {
     const llm = `Devedores principais:
-- Smartfit — R$ 387.500,00
-- Vale dos Passaros — nao consegui obter esse dado
-- Jds — R$ 322.236,75`;
+- Smartfit , R$ 387.500,00
+- Vale dos Passaros , nao consegui obter esse dado
+- Jds , R$ 322.236,75`;
     const out = validateResponse({
       question: "Devedores principais",
       llmResponse: llm,
@@ -286,10 +286,10 @@ describe("casos reais do laudo R11-R16", () => {
 
   it("[R15] 'Devedores principais' (placeholder em bullet)", () => {
     const llm = `Pelos titulos em aberto que apareceram, os maiores devedores sao:
-- Smartfit — R$ 387.500,00
-- Jds Comercio — R$ 322.236,75
-- Vale dos Passaros — nao consegui obter esse dado
-- CONDOMINIO ESTRELAS DO MAR — nao consegui obter esse dado`;
+- Smartfit , R$ 387.500,00
+- Jds Comercio , R$ 322.236,75
+- Vale dos Passaros , nao consegui obter esse dado
+- CONDOMINIO ESTRELAS DO MAR , nao consegui obter esse dado`;
     const out = validateResponse({
       question: "Devedores principais",
       llmResponse: llm,
