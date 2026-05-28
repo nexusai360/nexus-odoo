@@ -1,0 +1,92 @@
+{
+  "batchId": "0008",
+  "evaluatedAt": "2026-05-26T12:35:00.000Z",
+  "totals": {
+    "CORRETO": 4,
+    "PARCIAL": 4,
+    "ERRADO": 0,
+    "FORA_DE_ESCOPO": 1
+  },
+  "patterns": {
+    "pediu_clarificacao_desnecessaria": 3,
+    "acerto_objetividade": 2,
+    "acerto_modelo": 2,
+    "limitacao_real_declarada": 1,
+    "resposta_truncada": 1,
+    "fluxo_tool_incompleto": 1
+  },
+  "turnos": [
+    {
+      "turnoId": "f88896db-7464-477f-86a2-dd76a4841111",
+      "status": "PARCIAL",
+      "patterns": ["pediu_clarificacao_desnecessaria", "resposta_truncada"],
+      "razao": "Tool certa e valores citados batem com toolResults (Smartfit 387.500, Spe Opus 66 148.500 etc). Mas listou apenas top 5 sem consolidar somatório do que tinha em mãos, e pediu clarificacao sobre criterio quando 'inadimplentes' ja implica 'vencidos a receber' por padrao.",
+      "sugestao_prompt": "Adicionar regra: 'Pergunta sobre clientes inadimplentes' deve assumir default a_receber + diasAtraso>0 e SEMPRE consolidar somatorio dos titulos retornados antes de pedir clarificacao.",
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "f96559d4-97c9-4434-9060-e7e4dced0be9",
+      "status": "CORRETO",
+      "patterns": ["acerto_objetividade"],
+      "razao": "Tool certa (cadastro_buscar_parceiro com termo Joao), os 5 nomes/CNPJs citados batem 1:1 com toolResults, e perguntou qual confirmar de forma util.",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "f9ca767e-a935-46b4-bc17-f425bf3c6797",
+      "status": "PARCIAL",
+      "patterns": ["pediu_clarificacao_desnecessaria", "nao_usou_tool"],
+      "razao": "Pergunta tem ambiguidade real (pedido no funil vs titulo financeiro), mas o default natural seria pedido de venda em aberto. Poderia ter chamado tool de pedidos ja com default e oferecer ajuste.",
+      "sugestao_prompt": "Adicionar regra: 'pedido em aberto' assume default pedidos de venda em estagios nao finalizados, sem filtro de data; rodar tool e oferecer refinamento depois.",
+      "correcao_factual": "nao_aplicavel"
+    },
+    {
+      "turnoId": "fa70f3d8-9e45-4da2-b642-c725d6ff628d",
+      "status": "PARCIAL",
+      "patterns": ["pediu_clarificacao_desnecessaria"],
+      "razao": "Chamou tool certa e recebeu lista de titulos a receber. Em vez de somar vrSaldo dos titulos retornados, declarou que nao consegue e pediu 3 escolhas. Pergunta era objetiva (total em aberto a receber = soma carteira).",
+      "sugestao_prompt": "Adicionar regra: 'total em aberto a receber' = somar vrSaldo de TODOS os titulos do tipo a_receber retornados, citando se houve truncamento (quantos titulos somados).",
+      "correcao_factual": "nao_aplicavel"
+    },
+    {
+      "turnoId": "fafc9e43-036c-4736-b70f-ef900071e276",
+      "status": "FORA_DE_ESCOPO",
+      "patterns": ["limitacao_real_declarada"],
+      "razao": "Tempo medio de fechamento de pedido nao esta no catalogo. Chamou registrar_lacuna corretamente e ofereceu opcoes de criterio de fechamento.",
+      "sugestao_prompt": null,
+      "correcao_factual": "nao_aplicavel"
+    },
+    {
+      "turnoId": "fb190156-8c79-4f68-9a1b-ebb14740ae08",
+      "status": "CORRETO",
+      "patterns": ["acerto_objetividade"],
+      "razao": "Pergunta 'qual cliente?' sem qualquer contexto previo, clarificacao legitima e bem estruturada com 4 opcoes + pedido de periodo.",
+      "sugestao_prompt": null,
+      "correcao_factual": "nao_aplicavel"
+    },
+    {
+      "turnoId": "fd62b6df-9d3e-4ba2-aacd-53ddd9646f30",
+      "status": "CORRETO",
+      "patterns": ["acerto_modelo", "acerto_objetividade"],
+      "razao": "Tool certa, parametro extraido (codigo 1000205039), numeros citados batem com toolResults (4 unidades, 1 local, R$ 1.871,02) e freshness substituido corretamente (2 min).",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "fe750b8b-a0d3-4e26-af25-6fcfbb9f7083",
+      "status": "PARCIAL",
+      "patterns": ["pediu_clarificacao_desnecessaria", "nao_usou_tool"],
+      "razao": "Pergunta direta 'lista de fornecedores ativos' tem default obvio (listar ativos com paginacao/limite). Pediu se quer completa ou filtrada em vez de ja retornar amostra com contagem.",
+      "sugestao_prompt": "Adicionar regra: 'lista de X ativos' assume default sem filtro, retorna amostra (ex.: 20 primeiros) + contagem total, oferecendo refinamento depois.",
+      "correcao_factual": "nao_aplicavel"
+    },
+    {
+      "turnoId": "ffb8a4e9-bf6d-437b-92cb-7be66fd8b6b1",
+      "status": "CORRETO",
+      "patterns": ["acerto_modelo", "acerto_encadeamento"],
+      "razao": "Tool certa com termo halter, sintese rica e factualmente correta: 50 SKUs, valor R$ 190.761,56 batem com KPIs; saldo positivo/negativo/zero discriminados. Resposta enxuta e completa.",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    }
+  ]
+}

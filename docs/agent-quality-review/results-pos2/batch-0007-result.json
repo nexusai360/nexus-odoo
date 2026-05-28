@@ -1,0 +1,434 @@
+{
+  "batchId": "0007",
+  "evaluatedAt": "2026-05-26T04:45:51.840317+00:00",
+  "totals": {
+    "CORRETO": 18,
+    "PARCIAL": 19,
+    "ERRADO": 2,
+    "FORA_DE_ESCOPO": 1
+  },
+  "patterns": {
+    "acerto_objetividade": 18,
+    "acerto_encadeamento": 1,
+    "pediu_clarificacao_desnecessaria": 20,
+    "loop_clarificacao": 1,
+    "nao_usou_tool": 8,
+    "limitacao_real_declarada": 2,
+    "dado_inventado": 1,
+    "fluxo_tool_incompleto": 1
+  },
+  "turnos": [
+    {
+      "turnoId": "cfa575ad-27a2-42c3-a203-831cf8755dce",
+      "status": "CORRETO",
+      "patterns": [
+        "acerto_objetividade"
+      ],
+      "razao": "Tool certa (fiscal_faturamento_periodo abril), número 33.997.934,37 e 628 notas batem com toolResults.",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "cfcccce5-2df5-499b-8489-1cf154d835c1",
+      "status": "CORRETO",
+      "patterns": [
+        "acerto_encadeamento",
+        "acerto_objetividade"
+      ],
+      "razao": "Encadeou faturamento + notas_emitidas; valor 38.064.323,84 e 772 notas batem; analise honesta mencionando em digitação/rejeitadas que existem nos dados.",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "cfd1e674-840b-43a4-b159-841c4bd2ab91",
+      "status": "PARCIAL",
+      "patterns": [
+        "pediu_clarificacao_desnecessaria",
+        "loop_clarificacao"
+      ],
+      "razao": "Para \"tenho cliente vencendo título\" poderia ter assumido a_vencer próximos 30d como default e retornado o total, pedindo refinamento depois.",
+      "sugestao_prompt": "Adicionar regra: para \"vencendo título\" assumir default \"a vencer próximos 30 dias\" e chamar financeiro_contas_a_receber direto.",
+      "correcao_factual": "nao_aplicavel"
+    },
+    {
+      "turnoId": "d119f300-056f-484c-a429-0a9d1263a393",
+      "status": "CORRETO",
+      "patterns": [
+        "acerto_objetividade"
+      ],
+      "razao": "Pergunta isolada \"qual produto?\" é genuinamente vaga sem contexto; clarificação enxuta é apropriada.",
+      "sugestao_prompt": null,
+      "correcao_factual": "nao_aplicavel"
+    },
+    {
+      "turnoId": "d1fada14-01da-4d21-983e-6e72a8cda91c",
+      "status": "PARCIAL",
+      "patterns": [
+        "pediu_clarificacao_desnecessaria"
+      ],
+      "razao": "\"Top 5 produtos esse mês\" tem default razoável (mais faturados) e tool fiscal_produtos_faturados existe; podia ter chamado direto.",
+      "sugestao_prompt": "Adicionar regra: \"top produtos no mês\" assumir ranking por faturamento e chamar fiscal_produtos_faturados; oferecer alternativa depois.",
+      "correcao_factual": "nao_aplicavel"
+    },
+    {
+      "turnoId": "d4b3fc27-9ad0-48f1-aa46-4a25e1ab9ad7",
+      "status": "CORRETO",
+      "patterns": [
+        "acerto_objetividade"
+      ],
+      "razao": "\"E do mês passado?\" sem contexto de métrica anterior visível; clarificação razoável e curta.",
+      "sugestao_prompt": null,
+      "correcao_factual": "nao_aplicavel"
+    },
+    {
+      "turnoId": "d61a82f5-63fb-4dca-9462-4343d6dbbf66",
+      "status": "PARCIAL",
+      "patterns": [
+        "nao_usou_tool",
+        "pediu_clarificacao_desnecessaria"
+      ],
+      "razao": "Pergunta clara \"buscar conta com aluguel\"; contabil_plano_de_contas aceita termo. Devia ter chamado direto.",
+      "sugestao_prompt": "Adicionar regra: \"buscar conta com termo X\" -> chamar contabil_plano_de_contas(termo=X) imediatamente.",
+      "correcao_factual": "nao_aplicavel"
+    },
+    {
+      "turnoId": "d7854daa-f415-4691-898d-fa3513e3d900",
+      "status": "CORRETO",
+      "patterns": [
+        "acerto_objetividade"
+      ],
+      "razao": "Tool certa, top5 clientes com valores e quantidades batem exatamente com toolResults (Jht SP 10.784.144,78/114, Jds 3.694.452,52/31, Smartfit 2.176.946,16/6, Jds Filial SP 1.720.107,68/6, SMF SLM 1.653.098,41/4).",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "daf355bd-e96f-40c5-86b0-298fede536ae",
+      "status": "PARCIAL",
+      "patterns": [
+        "pediu_clarificacao_desnecessaria"
+      ],
+      "razao": "\"Posição do caixa\" tem default natural: saldo atual de contas. Podia chamar tool de saldo direto.",
+      "sugestao_prompt": "Adicionar regra: \"posição do caixa\" -> default saldo atual das contas, sem clarificação prévia.",
+      "correcao_factual": "nao_aplicavel"
+    },
+    {
+      "turnoId": "dd019852-7501-473a-9d5d-3bef8a349da5",
+      "status": "CORRETO",
+      "patterns": [
+        "acerto_objetividade"
+      ],
+      "razao": "Buscou parceiro Banda Chicabana; nome, CNPJ BR-07.930.542/0001-02, cidade Serrinha/Bahia, tipo Cliente batem exatamente com o toolResults.",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "dd85a3ec-52fc-48f1-84bf-0f7ab53f8eba",
+      "status": "PARCIAL",
+      "patterns": [
+        "pediu_clarificacao_desnecessaria"
+      ],
+      "razao": "Chamou a tool mas pediu clarificacao de escopo em vez de somar os títulos retornados. \"Total em aberto\" é claro: somar vrSaldo dos títulos.",
+      "sugestao_prompt": "Adicionar regra: \"total em aberto a receber\" -> somar vrSaldo de todos os títulos retornados e responder valor direto.",
+      "correcao_factual": "nao_aplicavel"
+    },
+    {
+      "turnoId": "df6c3ca7-889d-4aba-9d7c-16cd3a7f8a99",
+      "status": "PARCIAL",
+      "patterns": [
+        "pediu_clarificacao_desnecessaria"
+      ],
+      "razao": "\"ICMS do mês\" assume mês atual; agente pediu clarif. Pode não haver tool dedicada; mesmo assim ICMS próprio/recolhido podia ser tentativa.",
+      "sugestao_prompt": "Adicionar regra: para perguntas tributárias, tentar tool relevante com mês atual antes de clarificar.",
+      "correcao_factual": "nao_aplicavel"
+    },
+    {
+      "turnoId": "dfe6bba1-4a4c-457d-a7c4-3d0a05ba7fa8",
+      "status": "CORRETO",
+      "patterns": [
+        "acerto_objetividade"
+      ],
+      "razao": "Conta 1.1.4.1.02 = DESPESAS ANTECIPADAS FILIAL bate exatamente com o toolResults.",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "e0df7711-6428-468d-ba21-6a0b3a935416",
+      "status": "PARCIAL",
+      "patterns": [
+        "pediu_clarificacao_desnecessaria",
+        "nao_usou_tool"
+      ],
+      "razao": "Devia ter buscado vendedor \"João\" e pedidos no mês atual como default.",
+      "sugestao_prompt": "Adicionar regra: \"pedidos do vendedor X\" -> buscar vendedor por nome, mês atual default.",
+      "correcao_factual": "nao_aplicavel"
+    },
+    {
+      "turnoId": "e1f90dc7-e9cc-49e5-a546-65bc2ffafeb1",
+      "status": "CORRETO",
+      "patterns": [
+        "acerto_objetividade"
+      ],
+      "razao": "\"Status geral\" é vago e cobre múltiplos domínios; clarificação curta é apropriada.",
+      "sugestao_prompt": null,
+      "correcao_factual": "nao_aplicavel"
+    },
+    {
+      "turnoId": "e26a4e7f-7258-4975-8a60-61cec999a5fd",
+      "status": "PARCIAL",
+      "patterns": [
+        "pediu_clarificacao_desnecessaria"
+      ],
+      "razao": "\"Quanto vai sair essa semana\" tem default: saídas de caixa/pagamentos a vencer semana corrente.",
+      "sugestao_prompt": "Adicionar regra: \"vai sair essa semana\" -> default pagamentos a vencer (seg-dom semana atual).",
+      "correcao_factual": "nao_aplicavel"
+    },
+    {
+      "turnoId": "e59de880-cc7c-4296-b79d-6140e8af878b",
+      "status": "CORRETO",
+      "patterns": [
+        "acerto_objetividade"
+      ],
+      "razao": "\"Estoque parado\" depende de definição (dias sem movimento); clarificação curta é apropriada porque mexe com regra de negócio.",
+      "sugestao_prompt": null,
+      "correcao_factual": "nao_aplicavel"
+    },
+    {
+      "turnoId": "e659f81c-ef08-43ff-9916-5f3024dbab34",
+      "status": "PARCIAL",
+      "patterns": [
+        "pediu_clarificacao_desnecessaria",
+        "nao_usou_tool"
+      ],
+      "razao": "\"Plano de contas resumido\" podia ter chamado contabil_plano_de_contas com nível raso direto.",
+      "sugestao_prompt": "Adicionar regra: \"plano de contas resumido\" -> chamar tool com nível superior (1.x) primeiro, oferecer detalhar depois.",
+      "correcao_factual": "nao_aplicavel"
+    },
+    {
+      "turnoId": "e7bd7295-311e-46f5-9a49-5769ccf8d3c3",
+      "status": "CORRETO",
+      "patterns": [
+        "acerto_objetividade"
+      ],
+      "razao": "\"Resume o financeiro\" cobre múltiplas visões (saldo, fluxo, vencidos); clarificação curta apropriada.",
+      "sugestao_prompt": null,
+      "correcao_factual": "nao_aplicavel"
+    },
+    {
+      "turnoId": "e7fbeaf5-bc2d-4c03-94b9-f3222c88d183",
+      "status": "PARCIAL",
+      "patterns": [
+        "pediu_clarificacao_desnecessaria"
+      ],
+      "razao": "\"Conta a receber em 30 dias\" tem default razoável (a vencer próximos 30d). Podia chamar direto.",
+      "sugestao_prompt": "Adicionar regra: \"a receber em N dias\" -> default a vencer próximos N dias.",
+      "correcao_factual": "nao_aplicavel"
+    },
+    {
+      "turnoId": "e844f30b-c899-4008-b808-452d8924f039",
+      "status": "CORRETO",
+      "patterns": [
+        "acerto_objetividade"
+      ],
+      "razao": "Saudação respondida adequadamente, curta.",
+      "sugestao_prompt": null,
+      "correcao_factual": "nao_aplicavel"
+    },
+    {
+      "turnoId": "e8c9baa0-f1a6-4114-a486-6249f7af337c",
+      "status": "PARCIAL",
+      "patterns": [
+        "pediu_clarificacao_desnecessaria"
+      ],
+      "razao": "Tool retornou linhas; agente podia contar notas únicas (deduplicação por chave) ao invés de pedir clarif sobre documentos vs linhas.",
+      "sugestao_prompt": "Adicionar regra: \"quantas notas recebidas no mês\" -> contar linhas e informar com aviso de possível repetição.",
+      "correcao_factual": "nao_aplicavel"
+    },
+    {
+      "turnoId": "eac040f4-2adc-4c70-9e51-03991ad5d31a",
+      "status": "FORA_DE_ESCOPO",
+      "patterns": [
+        "limitacao_real_declarada"
+      ],
+      "razao": "Meta não é um dado disponível no cache; clarif sobre qual meta é razoável mas a limitação real é não haver dado de meta.",
+      "sugestao_prompt": null,
+      "correcao_factual": "nao_aplicavel"
+    },
+    {
+      "turnoId": "eaf21578-6852-488b-82eb-b133e3a9b6d7",
+      "status": "PARCIAL",
+      "patterns": [
+        "pediu_clarificacao_desnecessaria",
+        "nao_usou_tool"
+      ],
+      "razao": "\"Vendedor com mais pedidos\" tem default: mês atual; podia chamar tool de pedidos por vendedor direto.",
+      "sugestao_prompt": "Adicionar regra: \"vendedor com mais pedidos\" -> assumir mês atual e chamar tool de ranking.",
+      "correcao_factual": "nao_aplicavel"
+    },
+    {
+      "turnoId": "ec347997-3f09-4f23-8014-b12251eab32a",
+      "status": "PARCIAL",
+      "patterns": [
+        "pediu_clarificacao_desnecessaria"
+      ],
+      "razao": "\"Essa semana\" tem default razoável (semana corrente seg-dom). Podia chamar contas_a_receber direto.",
+      "sugestao_prompt": "Adicionar regra: \"essa semana\" -> default seg-dom atual; chamar tool sem perguntar.",
+      "correcao_factual": "nao_aplicavel"
+    },
+    {
+      "turnoId": "ecab01d4-97f1-43ac-8405-5a517b233a2c",
+      "status": "CORRETO",
+      "patterns": [
+        "acerto_objetividade"
+      ],
+      "razao": "Estrutura hierárquica 1.1.4 bate com toolResults (DESPESAS ANTECIPADAS, ramos 1.1.4.1 / matriz / filial e analíticas).",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "ecc04775-07da-4f6b-a552-1baa72e89dda",
+      "status": "ERRADO",
+      "patterns": [
+        "dado_inventado"
+      ],
+      "razao": "Comparou maio (38.064.323,84/772 notas - confere) com abril (R$ 31.485.649,15 / 520 notas) MAS NÃO houve toolCall para abril neste turno - apenas uma chamada para 2026-05-01 a 2026-05-26. Números de abril não vêm do toolResults; o turno 0 mostrou abril completo = 33.997.934,37 / 628. Valor citado é fabricado.",
+      "sugestao_prompt": "Adicionar regra: comparação entre períodos exige UMA tool call por período; nunca citar número de outro período sem chamar tool específica.",
+      "correcao_factual": "nao_bate"
+    },
+    {
+      "turnoId": "ed174603-0865-4d57-9f7b-684eb69719a9",
+      "status": "PARCIAL",
+      "patterns": [
+        "pediu_clarificacao_desnecessaria"
+      ],
+      "razao": "Pergunta combina dois domínios (pedidos abertos + títulos vencidos); clarificação parcialmente justificada mas defaults razoáveis existem.",
+      "sugestao_prompt": "Adicionar regra: cruzamento pedido+título vencido -> assumir \"hoje\" e listar interseção; refinar depois.",
+      "correcao_factual": "nao_aplicavel"
+    },
+    {
+      "turnoId": "ed9521fd-9202-40d2-8f09-ac66fd313eb7",
+      "status": "CORRETO",
+      "patterns": [
+        "acerto_objetividade"
+      ],
+      "razao": "Ano corrente 01/01-26/05/2026: 209.588.360,55 em 3.105 notas batem exatamente com toolResults.",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "ede5f005-6638-4779-a6c1-8e025de6342b",
+      "status": "CORRETO",
+      "patterns": [
+        "acerto_objetividade",
+        "limitacao_real_declarada"
+      ],
+      "razao": "Tool retornou estado=vazio para XPTOXYZ; resposta honesta de \"não encontrado\" é correta.",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "ee141b9d-c05e-417a-96e4-268071cfd133",
+      "status": "PARCIAL",
+      "patterns": [
+        "pediu_clarificacao_desnecessaria",
+        "nao_usou_tool"
+      ],
+      "razao": "\"Plano de contas do passivo\" tem default: chamar tool com termo=2 (passivo) e listar nível alto.",
+      "sugestao_prompt": "Adicionar regra: \"plano de contas do passivo\" -> chamar contabil_plano_de_contas(termo=\"2\"); refinar depois.",
+      "correcao_factual": "nao_aplicavel"
+    },
+    {
+      "turnoId": "ef6237fe-08e8-46ae-9681-03da2da36da9",
+      "status": "PARCIAL",
+      "patterns": [
+        "pediu_clarificacao_desnecessaria",
+        "nao_usou_tool"
+      ],
+      "razao": "\"Quanto faturamos pra Smartfit\" podia encadear buscar_parceiro(Smartfit) -> faturamento_por_cliente do mês.",
+      "sugestao_prompt": "Adicionar regra: \"faturamento para cliente X\" -> mês atual default, buscar parceiro + somar faturamento.",
+      "correcao_factual": "nao_aplicavel"
+    },
+    {
+      "turnoId": "ef93d801-3de9-4ae2-9ae4-e14af4074b79",
+      "status": "PARCIAL",
+      "patterns": [
+        "pediu_clarificacao_desnecessaria"
+      ],
+      "razao": "Pedidos cancelados vs fechados no mês atual é interpretável com defaults (canceladas=situacao cancelada, fechadas=situacao finalizada).",
+      "sugestao_prompt": "Adicionar regra: para comparativo cancelado vs fechado, assumir defaults de status e chamar tool de pedidos.",
+      "correcao_factual": "nao_aplicavel"
+    },
+    {
+      "turnoId": "f016449d-2c0b-41df-a82d-4722ed140716",
+      "status": "PARCIAL",
+      "patterns": [
+        "pediu_clarificacao_desnecessaria",
+        "nao_usou_tool"
+      ],
+      "razao": "\"Fornecedor com mais nota recebida esse mês\" tem default claro (ranking por quantidade no mês atual). Podia chamar direto.",
+      "sugestao_prompt": "Adicionar regra: \"fornecedor com mais notas\" -> default ranking quantidade mês atual.",
+      "correcao_factual": "nao_aplicavel"
+    },
+    {
+      "turnoId": "f0a077ab-43a2-44c6-ac5b-060681f17f8a",
+      "status": "ERRADO",
+      "patterns": [
+        "fluxo_tool_incompleto",
+        "nao_usou_tool",
+        "pediu_clarificacao_desnecessaria"
+      ],
+      "razao": "\"Notas recebidas do fornecedor Casa Ferolla\" tem fluxo claro: buscar_parceiro + fiscal_notas_recebidas filtrado. Nem chamou a primeira tool.",
+      "sugestao_prompt": "Adicionar regra: \"notas recebidas do fornecedor X\" -> encadear cadastro_buscar_parceiro -> fiscal_notas_recebidas com filtro, mês atual default.",
+      "correcao_factual": "nao_aplicavel"
+    },
+    {
+      "turnoId": "f2a9e825-e6e9-4e6f-ae39-e26f5c65f23d",
+      "status": "CORRETO",
+      "patterns": [
+        "acerto_objetividade"
+      ],
+      "razao": "Top 5 produtos faturados em 05/2026 com valores e quantidades batem exatamente com toolResults (T600X 17.799.740,65/1.104, C-ES-LED 4.069.004,42/116, VSVFT 3.418.370,59/114, etc).",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "f3bc3dfb-4ec0-4015-9430-5ce423618114",
+      "status": "PARCIAL",
+      "patterns": [
+        "pediu_clarificacao_desnecessaria"
+      ],
+      "razao": "Chamou contas_a_receber mas pediu clarif em vez de somar por cliente. \"Soma por cliente\" tem agregação clara.",
+      "sugestao_prompt": "Adicionar regra: \"soma de contas a receber por cliente\" -> agrupar por participanteNome e somar vrSaldo, ranking decrescente.",
+      "correcao_factual": "nao_aplicavel"
+    },
+    {
+      "turnoId": "f429cf55-ac52-42fe-a57f-61f8ad9ae1a1",
+      "status": "CORRETO",
+      "patterns": [
+        "acerto_objetividade"
+      ],
+      "razao": "Tool certa; valores citados (Smartfit 387.500, Opus 66 148.500, Smartfit 145.602, Center Fit 80.000, SAFRA 39.990) aparecem no toolResults; filtrou corretamente para tipo a_receber.",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "f4a319d3-74f3-4a3e-9dba-18e4cc20d62a",
+      "status": "CORRETO",
+      "patterns": [
+        "acerto_objetividade"
+      ],
+      "razao": "754 fornecedores bate exatamente com toolResults.totalFornecedores.",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "f4e911aa-ecf0-4d27-8372-ef827f8dc3f0",
+      "status": "CORRETO",
+      "patterns": [
+        "acerto_objetividade"
+      ],
+      "razao": "Top 5 vencidos a pagar (Jds 1.150.926,23/767d, 331.800/823d, 277.200/824d, 57.717,16/837d, 54.075/777d) presentes no toolResults; filtrou corretamente para tipo a_pagar.",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    }
+  ]
+}

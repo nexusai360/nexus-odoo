@@ -1,0 +1,342 @@
+{
+  "batchId": "0007",
+  "evaluatedAt": "2026-05-26T15:30:00.000Z",
+  "totals": {
+    "CORRETO": 22,
+    "PARCIAL": 4,
+    "ERRADO": 0,
+    "FORA_DE_ESCOPO": 14
+  },
+  "patterns": {
+    "acerto_objetividade": 18,
+    "acerto_encadeamento": 1,
+    "acerto_modelo": 2,
+    "pediu_clarificacao_desnecessaria": 7,
+    "limitacao_real_declarada": 5,
+    "parametro_incompleto": 2,
+    "fluxo_tool_incompleto": 2,
+    "tool_redundante": 1
+  },
+  "turnos": [
+    {
+      "turnoId": "daf43813-4c3b-412c-a814-8f4aaf0b2dd1",
+      "status": "PARCIAL",
+      "patterns": ["pediu_clarificacao_desnecessaria", "tool_redundante"],
+      "razao": "Já chamou financeiro_contas_a_receber e tinha os dados (titulos com vrSaldo e diasAtraso), mas em vez de responder, perguntou clarificação que poderia ter usado default (maior valor em aberto, por título).",
+      "sugestao_prompt": "Adicionar regra: 'Top X maiores contas a receber' assume default = maior vrSaldo por título; oferecer opção 'por participante' como sugestão, não bloquear resposta.",
+      "correcao_factual": "nao_aplicavel"
+    },
+    {
+      "turnoId": "db1290b2-9837-495b-b20f-fb3c2b7c3bd6",
+      "status": "CORRETO",
+      "patterns": ["acerto_objetividade", "acerto_modelo"],
+      "razao": "Interpretou 'sobrou alguma coisa do [102]?' como saldo, chamou tool com termo correto, respondeu enxuto e factual (16 un, 5 locais, R$ 258.370,44 batem com toolResults).",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "db9171e7-0c3d-4a90-a650-dc3ad33cbf61",
+      "status": "PARCIAL",
+      "patterns": ["pediu_clarificacao_desnecessaria", "nao_usou_tool"],
+      "razao": "Pergunta 'devedores principais' tem default natural (maior valor em aberto, total agora). Poderia ter chamado financeiro_contas_a_receber e respondido com top devedores.",
+      "sugestao_prompt": "Adicionar regra: 'devedores principais' = chamar financeiro_contas_a_receber e agrupar por participante somando vrSaldo, retornar top 10.",
+      "correcao_factual": "nao_aplicavel"
+    },
+    {
+      "turnoId": "dc3c3486-d969-4106-af6f-330ffc6176b1",
+      "status": "CORRETO",
+      "patterns": ["acerto_objetividade"],
+      "razao": "Tool correta, período mês corrente, top 20 ranking com valores que batem com toolResults (T600X R$ 17.739.542,30, 1101 un OK).",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "dd415159-53d0-49d0-b3e4-43f3dceadbce",
+      "status": "PARCIAL",
+      "patterns": ["fluxo_tool_incompleto"],
+      "razao": "Usuário pediu QUAIS armazéns têm o produto 102. A tool retornou agregado (5 locais) mas não a lista nominal. Resposta dá apenas 'em 5 locais' e oferece detalhar, sem entregar o que foi perguntado.",
+      "sugestao_prompt": "Adicionar regra: pergunta 'quais armazéns' requer detalhe por local; chamar estoque_saldo_produto com agrupamento por armazém (ou outra tool com breakdown) antes de responder.",
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "deef1c23-f750-4f4c-ac67-e988e8ade9cd",
+      "status": "PARCIAL",
+      "patterns": ["pediu_clarificacao_desnecessaria"],
+      "razao": "'Resume o financeiro' é ambíguo mas poderia ter trazido um snapshot padrão (saldo bancos + a receber + a pagar) em vez de menu de 3 opções.",
+      "sugestao_prompt": "Adicionar regra: 'resume o financeiro' = snapshot default com saldo bancário, total a receber em aberto, total a pagar em aberto, fluxo do mês corrente.",
+      "correcao_factual": "nao_aplicavel"
+    },
+    {
+      "turnoId": "df08f112-...-...",
+      "status": "CORRETO",
+      "patterns": ["acerto_objetividade"],
+      "razao": "Tool certa, total -R$ 24.279.062,13 com linhas detalhadas que batem com toolResults (8 contas listadas).",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "df76ab74",
+      "status": "CORRETO",
+      "patterns": ["acerto_objetividade", "acerto_modelo"],
+      "razao": "Encontrou 2 produtos com o termo, listou ambos com saldo e valor, e ofereceu consolidado. Resposta exemplar para ambiguidade real.",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "e13195e3",
+      "status": "CORRETO",
+      "patterns": ["acerto_objetividade"],
+      "razao": "Período da semana correto, 40 notas com breakdown por situação (18 autorizadas, 21 digitação, 1 rejeitada) batem com a granularidade do toolResults.",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "e13215a0",
+      "status": "CORRETO",
+      "patterns": ["acerto_objetividade"],
+      "razao": "170 notas, R$ 4.659.800,34 e 70 CNPJs batem exatamente com o _agregado do toolResults.",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "e137dbb2",
+      "status": "PARCIAL",
+      "patterns": ["pediu_clarificacao_desnecessaria"],
+      "razao": "Default razoável: 'títulos vencidos hoje' = contas a receber + a pagar com vencimento <= hoje. Poderia ter respondido direto.",
+      "sugestao_prompt": "Adicionar regra: 'títulos vencidos hoje' assume ambos (a receber e a pagar) com diasAtraso>=0, oferecer breakdown como sugestão.",
+      "correcao_factual": "nao_aplicavel"
+    },
+    {
+      "turnoId": "e21d4593",
+      "status": "CORRETO",
+      "patterns": ["acerto_objetividade"],
+      "razao": "Tool certa, saldo total e detalhamento por conta batem com toolResults (positivas e negativas separadas).",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "e2af3c96",
+      "status": "FORA_DE_ESCOPO",
+      "patterns": ["limitacao_real_declarada"],
+      "razao": "Pergunta 'quanto?' sem contexto prévio é genuinamente ambígua; clarificação razoável.",
+      "sugestao_prompt": null,
+      "correcao_factual": "nao_aplicavel"
+    },
+    {
+      "turnoId": "e2d0ece5",
+      "status": "CORRETO",
+      "patterns": ["acerto_objetividade"],
+      "razao": "Tool correta, Jds - Matriz DF com R$ 27.956.023,46 e 53,78% batem exatamente com toolResults. Resposta enxuta com sugestões úteis.",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "e37b2876",
+      "status": "PARCIAL",
+      "patterns": ["fluxo_tool_incompleto", "pediu_clarificacao_desnecessaria"],
+      "razao": "Usuário pediu segregação por armazém do MGPL78. Tool retornou agregado, agente listou ambos cadastros e pediu para escolher em vez de já trazer breakdown do [102] (claramente o pedido principal).",
+      "sugestao_prompt": "Adicionar regra: quando há código exato no termo, priorizar resposta para esse código e oferecer o relacionado como adicional.",
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "e41360c9",
+      "status": "PARCIAL",
+      "patterns": ["pediu_clarificacao_desnecessaria"],
+      "razao": "'Quanto a empresa deve hoje' tem default natural = total a pagar em aberto consolidado. Filtro por CNPJ é refinamento opcional, não bloqueio.",
+      "sugestao_prompt": "Adicionar regra: 'quanto deve' = total contas_a_pagar em aberto consolidado, oferecer recortes (vencidas, por CNPJ) como sugestões.",
+      "correcao_factual": "nao_aplicavel"
+    },
+    {
+      "turnoId": "e41e223f",
+      "status": "CORRETO",
+      "patterns": ["acerto_objetividade"],
+      "razao": "Tool correta, 12 contas listadas batem com toolResults, formato limpo com código + nome + tipo.",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "e59b6a43",
+      "status": "CORRETO",
+      "patterns": ["acerto_objetividade", "limitacao_real_declarada"],
+      "razao": "Tool retornou vazio, agente respondeu honestamente 'não encontrei'. Comportamento correto.",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "e61d4d5b",
+      "status": "CORRETO",
+      "patterns": ["acerto_objetividade"],
+      "razao": "Tool certa, 430 unidades e R$ 364.552,86 batem com _agregado; top 5 por valor batem com as primeiras linhas do toolResults.",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "e674a884",
+      "status": "FORA_DE_ESCOPO",
+      "patterns": ["limitacao_real_declarada"],
+      "razao": "Comparativo mensal exige consulta avançada (BI). Agente declarou honestamente e ofereceu alternativa via perfil admin.",
+      "sugestao_prompt": null,
+      "correcao_factual": "nao_aplicavel"
+    },
+    {
+      "turnoId": "e6f8c15b",
+      "status": "FORA_DE_ESCOPO",
+      "patterns": ["limitacao_real_declarada"],
+      "razao": "'Filiais' é ambíguo entre empresas Odoo, armazéns e unidades comerciais. Clarificação legítima.",
+      "sugestao_prompt": null,
+      "correcao_factual": "nao_aplicavel"
+    },
+    {
+      "turnoId": "e81fbdf4",
+      "status": "CORRETO",
+      "patterns": ["acerto_encadeamento", "acerto_modelo"],
+      "razao": "Encadeou 2 tools (comercial_pedidos_atrasados + estoque_produtos_parados) para responder pergunta composta. Listou pedidos atrasados com valores e dias.",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "e95ed519",
+      "status": "CORRETO",
+      "patterns": ["acerto_objetividade"],
+      "razao": "Tool correta, retornou vazio para CPF inexistente, agente respondeu honestamente.",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "e9a42158",
+      "status": "CORRETO",
+      "patterns": ["acerto_objetividade"],
+      "razao": "Conta 1.1.4.1.02 = DESPESAS ANTECIPADAS FILIAL bate exatamente com primeira linha do toolResults.",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "eadaa5bd",
+      "status": "FORA_DE_ESCOPO",
+      "patterns": ["limitacao_real_declarada"],
+      "razao": "'Despesa do dia' é genuinamente ambíguo entre saída de caixa realizada e contas a pagar do dia. Clarificação razoável.",
+      "sugestao_prompt": null,
+      "correcao_factual": "nao_aplicavel"
+    },
+    {
+      "turnoId": "eae8aab2",
+      "status": "CORRETO",
+      "patterns": ["acerto_encadeamento", "parametro_incompleto"],
+      "razao": "Chamou 2 tools úteis, deu resposta parcial honesta com saldo total e pediu refinamento metodológico legítimo (liquidez imediata pode ter 3 definições). Valor bate com toolResults.",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "eb9e7519",
+      "status": "CORRETO",
+      "patterns": ["acerto_objetividade"],
+      "razao": "Tool certa com período da semana, R$ 0,00 honesto.",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "ebee79d7",
+      "status": "CORRETO",
+      "patterns": ["acerto_objetividade"],
+      "razao": "1.570 pedidos e R$ 371.135.841,50 batem com _agregado; split conclusivas/não conclusivas e top etapas batem com toolResults.",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "ec232b87",
+      "status": "CORRETO",
+      "patterns": ["acerto_objetividade"],
+      "razao": "Período últimos 7 dias correto (20-26/05), tool e período batem.",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "ec9bc431",
+      "status": "FORA_DE_ESCOPO",
+      "patterns": ["limitacao_real_declarada"],
+      "razao": "'Saldo do estoque' tem default razoável (valor total a custo), porém agente ofereceu opções de granularidade que são pertinentes.",
+      "sugestao_prompt": "Considerar: 'saldo do estoque' sem qualificador = retornar KPI valor total + count produtos como snapshot default.",
+      "correcao_factual": "nao_aplicavel"
+    },
+    {
+      "turnoId": "ee181d7f",
+      "status": "CORRETO",
+      "patterns": ["acerto_objetividade"],
+      "razao": "Tool certa, JOHNSON 93,74% e R$ 48.728.712,12 com ranking completo.",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "ee280ffe",
+      "status": "FORA_DE_ESCOPO",
+      "patterns": ["limitacao_real_declarada"],
+      "razao": "'Vendas' isolado é genuinamente ambíguo (faturamento vs pedidos vs período). Clarificação legítima.",
+      "sugestao_prompt": null,
+      "correcao_factual": "nao_aplicavel"
+    },
+    {
+      "turnoId": "ef9d7f62",
+      "status": "PARCIAL",
+      "patterns": ["parametro_incompleto", "pediu_clarificacao_desnecessaria"],
+      "razao": "Pedido claro: top 20 produtos mais caros parados. Tool chamada sem parâmetros suficientes para ordenar; agente declara isso e pede clarificação que tinha default óbvio (maior valor total).",
+      "sugestao_prompt": "Adicionar regra: 'mais caros parados' = ordenar por valorTotal desc; chamar estoque_produtos_parados com ordenação explícita.",
+      "correcao_factual": "nao_aplicavel"
+    },
+    {
+      "turnoId": "f1efb1ae",
+      "status": "FORA_DE_ESCOPO",
+      "patterns": ["limitacao_real_declarada"],
+      "razao": "Faturamento por estado é gap real (tool não consolida por UF). Agente declarou honestamente e ofereceu alternativa.",
+      "sugestao_prompt": null,
+      "correcao_factual": "nao_aplicavel"
+    },
+    {
+      "turnoId": "f1fc0839",
+      "status": "CORRETO",
+      "patterns": ["acerto_objetividade"],
+      "razao": "Tool certa, 10 parceiros com CNPJ, cidade, UF e OdooId batem com toolResults.",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "f368f4eb",
+      "status": "FORA_DE_ESCOPO",
+      "patterns": ["limitacao_real_declarada"],
+      "razao": "'Giro' tem 3 definições legítimas (entrada, saída, soma); clarificação razoável.",
+      "sugestao_prompt": null,
+      "correcao_factual": "nao_aplicavel"
+    },
+    {
+      "turnoId": "f3e4268b",
+      "status": "CORRETO",
+      "patterns": ["acerto_objetividade"],
+      "razao": "3 contas negativas listadas com valores que batem com toolResults; somatório dos negativos calculado corretamente.",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "f509312f",
+      "status": "CORRETO",
+      "patterns": ["acerto_objetividade"],
+      "razao": "Tool certa com data de hoje, R$ 0,00 honesto.",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "f50e6ef0",
+      "status": "FORA_DE_ESCOPO",
+      "patterns": ["limitacao_real_declarada"],
+      "razao": "'Estoque' isolado é genuinamente ambíguo. Menu de 6 opções é clarificação legítima.",
+      "sugestao_prompt": null,
+      "correcao_factual": "nao_aplicavel"
+    },
+    {
+      "turnoId": "f856b677",
+      "status": "FORA_DE_ESCOPO",
+      "patterns": ["limitacao_real_declarada"],
+      "razao": "'Posição financeira atual' tem múltiplos recortes legítimos. Clarificação razoável.",
+      "sugestao_prompt": null,
+      "correcao_factual": "nao_aplicavel"
+    }
+  ]
+}

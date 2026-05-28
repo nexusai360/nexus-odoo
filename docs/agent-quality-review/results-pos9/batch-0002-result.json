@@ -1,0 +1,302 @@
+{
+  "batchId": "0002",
+  "evaluatedAt": "2026-05-26T17:10:00Z",
+  "totals": {
+    "CORRETO": 24,
+    "PARCIAL": 5,
+    "ERRADO": 6,
+    "FORA_DE_ESCOPO": 0
+  },
+  "patterns": {
+    "acerto_objetividade": 18,
+    "acerto_encadeamento": 3,
+    "acerto_modelo": 2,
+    "dado_inventado": 3,
+    "erro_data": 2,
+    "parametro_incompleto": 2,
+    "tool_redundante": 1,
+    "formato_quebrado": 1,
+    "resposta_truncada": 2,
+    "entendeu_mal_termo": 1,
+    "pergunta_ignorada": 1
+  },
+  "turnos": [
+    {
+      "turnoId": "4c121dbd-0a89-4f07-a6cb-8fe2e4dde9e9",
+      "status": "CORRETO",
+      "patterns": ["acerto_objetividade"],
+      "razao": "Tool certa com periodo da ultima semana (20-26/05). Tool retornou vazio e a IA declarou honestamente que nao houve entradas.",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "4ea18f74-565b-435f-94da-d39c3f9ef016",
+      "status": "CORRETO",
+      "patterns": ["acerto_objetividade"],
+      "razao": "Buscou parceiro com termo correto e respondeu honestamente que nao encontrou.",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "54cd5d4b-8ef8-49f1-8d57-28927ed6682d",
+      "status": "PARCIAL",
+      "patterns": ["resposta_truncada", "pergunta_ignorada"],
+      "razao": "Tool retornou lista completa de titulos com vrSaldo agregavel, mas a IA afirmou indevidamente que o retorno veio truncado e nao somou o total geral, frustrando a pergunta principal sobre quanto temos em aberto.",
+      "sugestao_prompt": "Adicionar regra: 'financeiro_contas_a_receber retorna titulos com vrSaldo; sempre somar todos os vrSaldo para responder total em aberto, nao declarar truncado sem evidencia'."
+    },
+    {
+      "turnoId": "553ea522-d362-4c9a-9d01-1e97238c448d",
+      "status": "CORRETO",
+      "patterns": ["acerto_objetividade", "acerto_modelo"],
+      "razao": "Tool certa, soma 16+2=18 unidades bate com valorTotal 280.370,46, contexto de marca/locais correto.",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "55421ee4-d40f-4958-ad63-b5b1d4a429b7",
+      "status": "ERRADO",
+      "patterns": ["dado_inventado"],
+      "razao": "bi_consulta_avancada retornou linhasRetornadas:0 (zero linhas), mas a IA listou 5 produtos com precos, custos e margens inteiramente inventados.",
+      "sugestao_prompt": "Adicionar regra: 'Se bi_consulta_avancada retorna linhasRetornadas:0 ou linhas vazias, NUNCA inventar resultado; declarar que a consulta nao retornou dados e propor reformulacao'.",
+      "correcao_factual": "nao_bate"
+    },
+    {
+      "turnoId": "55af12c4-60c0-4479-bbf7-50fa3941028f",
+      "status": "ERRADO",
+      "patterns": ["erro_data"],
+      "razao": "Hoje e 26/05/2026; 'amanha' = 27/05. A IA chamou ateDias=1 e listou parcelas com vencimento 26/05/2026 (hoje), e ainda escreveu 'amanha (26/05/2026)'. Erro de data factual.",
+      "sugestao_prompt": "Adicionar regra: 'amanha = hoje+1 dia. Para comercial_parcelas_a_vencer com vencimento exclusivamente amanha, filtrar/destacar dataVencimento = data atual + 1 dia, nao = hoje'.",
+      "correcao_factual": "nao_bate"
+    },
+    {
+      "turnoId": "59dd3aa1-f841-4a60-ba06-bb0988fb430c",
+      "status": "CORRETO",
+      "patterns": ["acerto_encadeamento", "acerto_objetividade"],
+      "razao": "Duas chamadas paralelas para mes corrente e mes passado, numeros e variacao percentual conferem com toolResults.",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "5c893d71-c340-4969-ad87-feab79ff8f00",
+      "status": "CORRETO",
+      "patterns": ["acerto_objetividade"],
+      "razao": "Periodo correto (ultimos 30 dias), top10 com nomes e valores que batem com toolResults.",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "65620d15-4bbb-4001-82a2-4472eea385da",
+      "status": "ERRADO",
+      "patterns": ["erro_data", "parametro_incompleto"],
+      "razao": "'Essa semana' implica semana corrente (25/05-31/05 ou 20/05-26/05), mas a IA usou 25/05-26/05 (2 dias). A resposta admite o recorte estranho mas nao corrige.",
+      "sugestao_prompt": "Adicionar regra: 'essa semana = semana corrente completa (segunda a domingo) ou ate o fim do periodo previsto; nunca limitar a 2 dias sem aviso explicito'.",
+      "correcao_factual": "nao_bate"
+    },
+    {
+      "turnoId": "668957c3-63ed-4522-bebc-6a732ea3eb95",
+      "status": "CORRETO",
+      "patterns": ["acerto_objetividade"],
+      "razao": "Tool certa para contas a pagar, identificou Jds como maior credor com numero do titulo, valor e dias de atraso que batem.",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "66bb5dc1-63eb-428f-acc1-4db6a6ea819c",
+      "status": "PARCIAL",
+      "patterns": ["entendeu_mal_termo"],
+      "razao": "Pergunta foi 'pedido com maior valor em aberto' (singular, individual), mas a IA respondeu agregando por etapa do funil. Nao identificou o pedido individual de maior valor.",
+      "sugestao_prompt": "Adicionar regra: 'pedido com maior valor = um pedido individual; usar tool que retorna linha por pedido (comercial_pedidos_top ou similar), nao agregado por etapa'.",
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "6a1532df-7389-4d14-a31c-53bc46c06f7b",
+      "status": "CORRETO",
+      "patterns": ["acerto_objetividade"],
+      "razao": "Filtrou tipo a_receber (mesmo a tool retornando a_pagar e a_receber misturados), 10 maiores listados batem com toolResults, dias de atraso calculados corretamente.",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "6ad9a1b6-bb26-45e3-8a1f-c54859943e29",
+      "status": "CORRETO",
+      "patterns": ["acerto_objetividade", "acerto_modelo"],
+      "razao": "Declarou honestamente que nao ha 'Joao' no ranking do periodo e listou top vendedores com numeros que batem com toolResults.",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "6d277b39-af7a-4c4a-85b7-5ef5b957821b",
+      "status": "CORRETO",
+      "patterns": ["acerto_objetividade"],
+      "razao": "Ranking por quantidade de notas, top correto, numeros batem com toolResults.",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "6f494e41-f573-49c7-aa0f-ebdc8b891325",
+      "status": "ERRADO",
+      "patterns": ["dado_inventado"],
+      "razao": "Tool contabil_plano_de_contas retornou estado vazio (linhas:[], total:0), mas a IA listou 7 contas especificas (codigos e nomes) inventadas. Mesmo que existam no plano real, nao foram retornadas pela tool neste turno.",
+      "sugestao_prompt": "Adicionar regra: 'Se contabil_plano_de_contas retorna estado vazio, retentar busca com termo mais amplo (ex: limite maior ou termo simplificado), nunca inventar codigos/nomes de contas'.",
+      "correcao_factual": "nao_bate"
+    },
+    {
+      "turnoId": "6fac89e4-eb4c-46c8-a1f3-beb3bdf62915",
+      "status": "CORRETO",
+      "patterns": ["acerto_objetividade"],
+      "razao": "7 variacoes encontradas, todas com saldo 0; a IA descreveu corretamente o cenario e a ambiguidade.",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "70bcf82b-d015-4194-9be4-65df32ab5c5d",
+      "status": "CORRETO",
+      "patterns": ["acerto_encadeamento", "acerto_objetividade"],
+      "razao": "Duas tools paralelas (caixa e fluxo), respondeu honestamente que nao esta certo, numeros batem com toolResults.",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "744cab74-0eed-4c1b-8b08-b792bf84eff4",
+      "status": "CORRETO",
+      "patterns": ["acerto_objetividade"],
+      "razao": "Periodo do dia correto, saida 0 bate com toolResults.",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "810f9f4e-463d-4aab-a9c5-8e1b284ab173",
+      "status": "CORRETO",
+      "patterns": ["acerto_objetividade"],
+      "razao": "Periodo do dia, totalNotas:0 e valorFaturado:0 batem com toolResults.",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "84e49dc7-fe78-4ae9-94e8-3a141305f7aa",
+      "status": "CORRETO",
+      "patterns": ["acerto_encadeamento", "acerto_objetividade"],
+      "razao": "Semana passada calculada corretamente (18-24/05), duas tools paralelas, ambas vazias, resposta honesta.",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "859b9dfc-d50c-4de6-86d9-70ee7fcc33e9",
+      "status": "CORRETO",
+      "patterns": ["acerto_objetividade"],
+      "razao": "Contexto da pergunta segue conversa anterior (notas do mes), listou amostra dos maiores com nomes/valores que batem com toolResults.",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "86760335-d8c1-4996-9c65-62dd847611fd",
+      "status": "PARCIAL",
+      "patterns": ["entendeu_mal_termo"],
+      "razao": "Pergunta sobre 'rede de academias' foi tratada filtrando manualmente 10 clientes do top geral. Sem categoria/segmento de cliente na tool, a interpretacao e fragil; resposta cita 'Smartfit', 'SMF...' mas o agregado de R$ 9,2M e 26 notas e baseado em selecao manual nao auditavel.",
+      "sugestao_prompt": "Adicionar regra: 'Quando pergunta envolver segmento/categoria de cliente nao disponivel na tool, declarar limitacao e perguntar se quer filtrar por nomes especificos, em vez de inferir categoria'.",
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "86acd919-f946-4853-93c0-c0a446cde5b0",
+      "status": "PARCIAL",
+      "patterns": ["tool_redundante"],
+      "razao": "Pergunta vaga 'estoque' foi atendida com saldo por armazem (otimo), mas tambem chamou estoque_top_movimentados sem o usuario pedir periodo de movimento. Resposta principal bate; tool extra foi desperdicio.",
+      "sugestao_prompt": "Adicionar regra: 'pergunta unica `estoque` sem qualificador = saldo atual por armazem; nao chamar estoque_top_movimentados sem pedido explicito de movimentacao'."
+    },
+    {
+      "turnoId": "891f799c-f765-4de1-a4f6-b62ba40635a7",
+      "status": "CORRETO",
+      "patterns": ["acerto_objetividade"],
+      "razao": "Cliente encontrado, dados batem com toolResults.",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "89264bf5-c7f1-4732-86fa-227a5cf1b67d",
+      "status": "CORRETO",
+      "patterns": ["acerto_objetividade", "acerto_modelo"],
+      "razao": "Top 10 estados batem exatamente com toolResults, total 6.567 e 28 UFs confere.",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "8b86913e-96c0-4d41-a365-ddcaf3d3ceb8",
+      "status": "CORRETO",
+      "patterns": ["acerto_objetividade"],
+      "razao": "Saldo total e por armazem batem perfeitamente com toolResults.",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "8fdfc72b-0c48-4454-ace1-d6cf31ebcfc3",
+      "status": "CORRETO",
+      "patterns": ["acerto_objetividade"],
+      "razao": "Buscou por termo numerico, retorno vazio, resposta honesta.",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "912282cf-320f-49f1-a710-69cbcae8241c",
+      "status": "CORRETO",
+      "patterns": ["acerto_objetividade"],
+      "razao": "Periodo da semana correto (25-31/05), previsto R$ 320.264,20 e realizado 0 batem com toolResults.",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "93c8fbe0-9cae-4abc-a589-2d9e15bd1337",
+      "status": "CORRETO",
+      "patterns": ["acerto_objetividade"],
+      "razao": "Concentracao por familia bate com toolResults, percentuais corretos.",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "97def28c-f4ce-42c8-88ad-676fdc039041",
+      "status": "CORRETO",
+      "patterns": ["acerto_objetividade"],
+      "razao": "Follow-up 'mes anterior' interpretado corretamente como abril/2026, numeros batem com toolResults.",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "998c1a4e-206b-49bf-8b0a-067aa61a2580",
+      "status": "CORRETO",
+      "patterns": ["acerto_objetividade"],
+      "razao": "Periodo correto (20-26/05), 79 notas e R$ 8.510.483,41 batem com toolResults.",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "9adabc09-7dff-4464-b177-fbf694acbf7d",
+      "status": "PARCIAL",
+      "patterns": ["formato_quebrado", "resposta_truncada"],
+      "razao": "Saldo total e exemplos batem com toolResults, mas a resposta cita um valor sem separador ('R$ 72410,18') e nao lista nominalmente as 8 contas, deixando o usuario com info incompleta para 'qual conta sobrou'.",
+      "sugestao_prompt": "Adicionar regra: 'formatar todos os valores monetarios com separador de milhar (R$ 72.410,18) e listar todas as contas quando o usuario pergunta saldo por conta'."
+    },
+    {
+      "turnoId": "9ae02213-a15f-4c66-9a04-3f85b9ba790d",
+      "status": "ERRADO",
+      "patterns": ["dado_inventado", "parametro_incompleto"],
+      "razao": "Para 3 produtos do top vendidos a IA disse 'nao localizado no retorno de saldo', mas chamou estoque_saldo_produto sem termo (busca generica). Pior: itens 4, 5, 7, 8 e 9 ([33], [1450], [200], [89], [258]) tem saldos citados que NAO aparecem no toolResults retornado (so itens [99], [391], [360], [200] aparecem; [200] bate). Numeros como 'estoque 540 un' para [99] bate, mas [1450] 27 un, [258] 24 un e [384] 59 un nao podem ser confirmados/inventados.",
+      "sugestao_prompt": "Adicionar regra: 'Para top N produtos + saldo, chamar estoque_saldo_produto com termo de cada produto individualmente (encadeamento), nao chamada generica que retorna so top global'.",
+      "correcao_factual": "nao_bate"
+    },
+    {
+      "turnoId": "9ec3e424-3bc8-473a-8356-9a8dbe082e02",
+      "status": "CORRETO",
+      "patterns": ["acerto_objetividade"],
+      "razao": "Follow-up 'qual conta' listou as 8 contas com saldos que batem com toolResults.",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "a14b6cca-589e-400a-b5ec-6ee0cba130f9",
+      "status": "CORRETO",
+      "patterns": ["acerto_objetividade"],
+      "razao": "Estrutura do plano de contas hierarquica condiz com toolResults (ATIVO, ATIVO CIRCULANTE, DISPONIBILIDADES etc.), com aviso correto sobre ausencia de movimentacao.",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    }
+  ]
+}

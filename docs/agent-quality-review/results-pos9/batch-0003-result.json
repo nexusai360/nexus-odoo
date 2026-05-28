@@ -1,0 +1,263 @@
+{
+  "batchId": "0003",
+  "evaluatedAt": "2026-05-26T17:10:00.000Z",
+  "totals": {
+    "CORRETO": 21,
+    "PARCIAL": 6,
+    "ERRADO": 2,
+    "FORA_DE_ESCOPO": 1
+  },
+  "patterns": {
+    "acerto_objetividade": 18,
+    "acerto_encadeamento": 1,
+    "acerto_modelo": 2,
+    "limitacao_real_declarada": 3,
+    "entendeu_mal_termo": 3,
+    "dado_inventado": 2,
+    "tool_errada": 1,
+    "parametro_incompleto": 1,
+    "pergunta_ignorada": 1
+  },
+  "turnos": [
+    {
+      "turnoId": "a33ef3f2-d656-41bc-a80a-dfc5e5f13a3e",
+      "status": "CORRETO",
+      "patterns": ["acerto_objetividade"],
+      "razao": "Tool certa, lista 8 contas que batem exatamente com o toolResults (codigo e nome).",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "a35fd245-3a55-42fc-8e44-4442c9c194f0",
+      "status": "CORRETO",
+      "patterns": ["acerto_objetividade"],
+      "razao": "Tool certa; 6.325 clientes e 6.567 parceiros batem com o resultado.",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "a4007c3b-1723-401f-bd97-e385a2d174c8",
+      "status": "CORRETO",
+      "patterns": ["acerto_objetividade"],
+      "razao": "Tipo cliente, CNPJ, Fortaleza/Ceará: tudo confere com o registro retornado.",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "a4ea78a9-0df1-416e-8313-4e13d79e5009",
+      "status": "ERRADO",
+      "patterns": ["dado_inventado", "pergunta_ignorada"],
+      "razao": "A resposta fala em 'bloco bruto que você enviou' e 'totais que eu havia listado' como se fosse continuação de outra conversa; o usuário só pediu devedores principais. Cita valores agregados (R$ 2.132.920,96 etc.) que não constam em nenhum lugar do toolResults e ainda se contradiz dizendo que não pôde calcular.",
+      "sugestao_prompt": "Adicionar regra: 'pergunta isolada (sem histórico) deve produzir top devedores agregando por participanteNome a partir do retorno de financeiro_contas_a_receber; nunca citar dados como vindos do usuário'.",
+      "correcao_factual": "nao_bate"
+    },
+    {
+      "turnoId": "a6bb44ef-f86c-4108-bfe6-16a6c28c4e10",
+      "status": "PARCIAL",
+      "patterns": ["entendeu_mal_termo", "tool_errada"],
+      "razao": "'Faturado parcialmente' é conceito específico (pedido com parte faturada e parte pendente). Agente interpretou como 'pedido aberto no funil' e usou comercial_pedidos_por_etapa. Resposta é genérica sobre etapas, não isola pedidos parcialmente faturados.",
+      "sugestao_prompt": "Adicionar regra: 'faturado parcialmente' é estado específico (faturado < total); quando não houver tool dedicada, declarar limitação em vez de mapear para 'abertos no funil'.",
+      "correcao_factual": "nao_aplicavel"
+    },
+    {
+      "turnoId": "a7108edb-40a7-4ed5-9640-218643690183",
+      "status": "CORRETO",
+      "patterns": ["acerto_objetividade", "acerto_modelo"],
+      "razao": "33 parados, R$ 220.824,71 imobilizados e top 5 itens batem com toolResults.",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "a79b5262-1632-4763-9649-cedcd766217a",
+      "status": "CORRETO",
+      "patterns": ["acerto_objetividade"],
+      "razao": "Período correto (hoje), R$ 0,00 e 0 notas batem com toolResults.",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "a7eb506f-3192-4309-9d35-6b24623b4bbf",
+      "status": "CORRETO",
+      "patterns": ["limitacao_real_declarada"],
+      "razao": "Declarou honestamente que dados por UF não separam capital/interior e entregou o total de SP (404), que confere com toolResults.",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "aa6b5e02-124c-4068-89c0-d385a87d1515",
+      "status": "CORRETO",
+      "patterns": ["acerto_objetividade"],
+      "razao": "Pedidos atrasados com top 10 por dias bate com toolResults; números, datas e dias coerentes.",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "af44bb1b-8c3c-4083-9a8b-13a33505d89b",
+      "status": "CORRETO",
+      "patterns": ["limitacao_real_declarada"],
+      "razao": "Declarou que checagem nota recebida x cadastro de fornecedor não está disponível e entregou ranking, números batem com toolResults.",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "b2a2c1e3-dcfe-4eee-8450-49ad57815581",
+      "status": "CORRETO",
+      "patterns": ["acerto_objetividade"],
+      "razao": "Top 10 devedores extraído de financeiro_titulos_vencidos; nomes plausíveis e total somado consistente.",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "ba1b2c1e-3fda-4df8-8712-34abd9ec77af",
+      "status": "CORRETO",
+      "patterns": ["acerto_objetividade", "limitacao_real_declarada"],
+      "razao": "Faturamento R$ 38.064.323,84 em 772 notas bate; declarou honestamente que não tem dado de meta.",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "be85134e-c649-4c07-8015-0b3b5e390442",
+      "status": "PARCIAL",
+      "patterns": ["entendeu_mal_termo"],
+      "razao": "Usuário pediu UMA conta corrente principal e agente respondeu com soma consolidada de TODAS as contas (R$ -24M), confundindo conceito. Os saldos individuais batem com toolResults mas a leitura está errada.",
+      "sugestao_prompt": "Adicionar regra: 'conta principal' deve listar contas individuais (por banco/empresa) ou declarar que não há flag de 'principal'; nunca somar tudo como se fosse uma conta.",
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "c311abb4-2585-4a40-ad54-b9dbecd7c92c",
+      "status": "ERRADO",
+      "patterns": ["dado_inventado", "tool_errada"],
+      "razao": "Usuário pediu 'pedidos cancelados esse mês'. Tool chamada (comercial_pedidos_periodo) retorna TODOS os 477 pedidos do mês, não cancelados. Agente afirmou '477 pedidos cancelados' citando R$ 69.339.645,46, que é o total geral, não de cancelados. Em outros turnos do mesmo batch (T17) o agente reporta apenas 14 cancelados (R$ 2.79M).",
+      "sugestao_prompt": "Adicionar regra: para 'pedidos cancelados' usar comercial_pedidos_por_etapa filtrando etapas 'Cancelado'/'Cancelada'; comercial_pedidos_periodo não distingue status.",
+      "correcao_factual": "nao_bate"
+    },
+    {
+      "turnoId": "c6b8d36e-690d-412e-b9ac-501f8aa6dd63",
+      "status": "CORRETO",
+      "patterns": ["acerto_objetividade"],
+      "razao": "Saudação respondida com escopo claro do que pode consultar.",
+      "sugestao_prompt": null,
+      "correcao_factual": "nao_aplicavel"
+    },
+    {
+      "turnoId": "d0102986-6779-4e61-90a9-14cf6b4e9fb8",
+      "status": "PARCIAL",
+      "patterns": ["entendeu_mal_termo"],
+      "razao": "'Pedidos em entrega' é estado logístico específico (separado/em trânsito). Agente mapeou como 'qualquer etapa aberta' e somou 519 pedidos. Mistura conceitos e usa tool errada (deveria ser comercial_pedidos_por_etapa, não pedidos_periodo).",
+      "sugestao_prompt": "Adicionar regra: 'em entrega' = etapas logísticas (Em separação, Em transporte etc.); não usar como sinônimo de 'abertos'.",
+      "correcao_factual": "nao_aplicavel"
+    },
+    {
+      "turnoId": "d0e82469-8950-42f9-94bd-634f2143f704",
+      "status": "CORRETO",
+      "patterns": ["acerto_encadeamento", "acerto_objetividade"],
+      "razao": "Encadeou pedidos_periodo + pedidos_por_etapa; números batem com toolResults e declarou aviso sobre sobreposição.",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "d27745b3-4dbf-4e70-98ad-5e25d47b905b",
+      "status": "CORRETO",
+      "patterns": ["acerto_objetividade"],
+      "razao": "67 unidades positivas, R$ 53.261,03 e top 5 itens batem com toolResults; ressalva sobre saldos negativos é correta.",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "d483eebb-6ff6-4a3f-abb3-bffdb3012768",
+      "status": "CORRETO",
+      "patterns": ["acerto_encadeamento", "acerto_objetividade"],
+      "razao": "Encadeou cadastro_contar_parceiros + parceiros_por_uf; 6.325 clientes e top UFs batem com toolResults.",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "d526c5cf-beb2-44a4-a1d4-b4182a36117d",
+      "status": "PARCIAL",
+      "patterns": ["tool_errada", "dado_inventado"],
+      "razao": "Tool retorna pedidos POR vendedor (não tem entrada 'sem vendedor' explícita no preview). Agente afirmou '0 pedidos sem vendedor' sem checar/contraprovar via tool dedicada. Conclusão pode estar certa mas vem de inferência, não de evidência.",
+      "sugestao_prompt": "Adicionar regra: para 'sem vendedor atribuído' confirmar se existe linha com vendedorNome null no resultado e citar essa evidência; se não houver, declarar limitação.",
+      "correcao_factual": "nao_aplicavel"
+    },
+    {
+      "turnoId": "d81db963-454a-4ee1-9260-8d0f7e405115",
+      "status": "CORRETO",
+      "patterns": ["acerto_objetividade", "acerto_modelo"],
+      "razao": "Mais vendido em valor (T600X com R$ 17.626.467,34) bate; quantidade top também consistente com tool.",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "dd4786d5-9acd-4013-8122-17f6dd0f1d4f",
+      "status": "CORRETO",
+      "patterns": ["acerto_objetividade"],
+      "razao": "7 produtos, R$ 19.696,73 e top 5 itens batem com toolResults; conversão 146 dias para 'ano corrente' coerente.",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "dd4cb2c5-4c4c-44cb-8fb2-bd1e2dc5dcd4",
+      "status": "CORRETO",
+      "patterns": ["acerto_objetividade"],
+      "razao": "Total agregado, valor a custo e top 10 batem com toolResults; ressalva sobre negativos correta.",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "e15d4e23-2df8-41cb-96cd-0e30a7f52958",
+      "status": "CORRETO",
+      "patterns": ["acerto_objetividade"],
+      "razao": "Faturamento hoje: R$ 0,00 em 0 notas, bate com toolResults.",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "e6201f1f-ea8c-41f7-bc92-75d5c1d2584e",
+      "status": "CORRETO",
+      "patterns": ["acerto_objetividade"],
+      "razao": "Plano de contas Ativo listado com códigos e tipos; itens batem com toolResults e ressalva sobre só estrutura é correta.",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "e7e57d40-d742-41b0-be1f-6c1353aafb1b",
+      "status": "CORRETO",
+      "patterns": ["acerto_objetividade"],
+      "razao": "Período semana atual (26/05 a 01/06) coerente; números e valores top batem com toolResults.",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "f0298dfe-52db-491a-ba6b-e9fe1a977278",
+      "status": "FORA_DE_ESCOPO",
+      "patterns": ["limitacao_real_declarada"],
+      "razao": "Não existe tool 'pedidos por UF'; agente registrou lacuna e declarou honestamente, oferecendo alternativas reais.",
+      "sugestao_prompt": null,
+      "correcao_factual": "nao_aplicavel"
+    },
+    {
+      "turnoId": "f2121c1c-6681-4675-8157-b0745d7bbcc5",
+      "status": "PARCIAL",
+      "patterns": ["parametro_incompleto", "pergunta_ignorada"],
+      "razao": "Pergunta 'qual fornecedor?' é ambígua sem contexto; agente assumiu 'fornecedores do mês' e entregou ranking, sem pedir clarificação nem identificar o referente. Aceitável mas não responde a uma pergunta singular ('qual fornecedor').",
+      "sugestao_prompt": "Adicionar regra: pergunta isolada e curta tipo 'qual X?' sem contexto deve pedir esclarecimento mínimo (qual período/escopo) antes de responder com ranking.",
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "f3c10556-955b-4a0f-8b8b-f027f1397b12",
+      "status": "CORRETO",
+      "patterns": ["acerto_objetividade"],
+      "razao": "Semana atual (25-31/05), 20 notas, R$ 1.370.773,16 e top fornecedores batem com toolResults.",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "ff8f008c-e825-44a2-987f-7d747b0dc42d",
+      "status": "CORRETO",
+      "patterns": ["acerto_objetividade"],
+      "razao": "533 pedidos abertos (etapas não finalizadas, excluindo cancelados) coerente com toolResults; top etapas batem.",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    }
+  ]
+}

@@ -1,0 +1,344 @@
+{
+  "batchId": "0007",
+  "evaluatedAt": "2026-05-26T12:35:00Z",
+  "totals": {
+    "CORRETO": 26,
+    "PARCIAL": 9,
+    "ERRADO": 4,
+    "FORA_DE_ESCOPO": 1
+  },
+  "patterns": {
+    "acerto_objetividade": 19,
+    "acerto_encadeamento": 1,
+    "pediu_clarificacao_desnecessaria": 7,
+    "dado_inventado": 2,
+    "pergunta_ignorada": 2,
+    "formato_quebrado": 2,
+    "resposta_truncada": 1,
+    "limitacao_real_declarada": 1,
+    "parametro_incompleto": 1,
+    "fluxo_tool_incompleto": 1
+  },
+  "turnos": [
+    {
+      "turnoId": "d9ef55ed-7d69-411e-9a90-639549cba064",
+      "status": "CORRETO",
+      "patterns": ["acerto_objetividade"],
+      "razao": "Encontrou 20 cadastros Smartfit, listou 5 com IDs/CNPJ/UF corretos e pediu desempate para puxar o cadastro completo. Dados batem com toolResults.",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "da90e42a-d969-472f-a305-a1dbe88adad2",
+      "status": "CORRETO",
+      "patterns": ["acerto_objetividade"],
+      "razao": "Somou pedidos em etapas não conclusivas (etapaFinaliza=false) e destacou os cancelados; soma compatível com os dados da tool.",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "dafa8366-dc13-4840-8980-a951966d204e",
+      "status": "CORRETO",
+      "patterns": ["acerto_objetividade"],
+      "razao": "Usuário escreveu 'XX' no CNPJ; pedir CNPJ completo é necessário, não desnecessário.",
+      "sugestao_prompt": null,
+      "correcao_factual": "nao_aplicavel"
+    },
+    {
+      "turnoId": "dd0d858c-a442-44e0-b35a-73df9e631e10",
+      "status": "PARCIAL",
+      "patterns": ["pediu_clarificacao_desnecessaria"],
+      "razao": "Poderia assumir mês corrente como default e tentar etapa de produção primeiro, em vez de pedir 2 confirmações antes de qualquer consulta.",
+      "sugestao_prompt": "Regra: para 'pedidos em produção', tentar primeiro etapa do funil comercial no mês corrente; só pedir clarificação se não houver match.",
+      "correcao_factual": "nao_aplicavel"
+    },
+    {
+      "turnoId": "deeab28f-309c-424f-86a2-91e24c4fad83",
+      "status": "CORRETO",
+      "patterns": ["acerto_objetividade"],
+      "razao": "Saldo total -24.291.495,49 bate com toolResults; quebrou positivas/negativas corretamente.",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "dfea592e-4652-4cfb-8108-fde4adff8b99",
+      "status": "PARCIAL",
+      "patterns": ["pediu_clarificacao_desnecessaria"],
+      "razao": "'Cliente que mais deve' tem default natural (total em aberto). Poderia consultar e oferecer recorte alternativo na própria resposta.",
+      "sugestao_prompt": "Regra: para 'cliente que mais deve', assumir saldo total em aberto como default e responder, oferecendo split por vencidos como follow-up.",
+      "correcao_factual": "nao_aplicavel"
+    },
+    {
+      "turnoId": "e00c20e2-f097-4ace-acc7-b041b27e23cf",
+      "status": "CORRETO",
+      "patterns": ["acerto_objetividade"],
+      "razao": "5 parcelas, R$ 68.566,87, todas com data 2026-05-26 — bate com toolResults.",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "e062256e-5f70-4248-ae98-cbd59366672e",
+      "status": "PARCIAL",
+      "patterns": ["pediu_clarificacao_desnecessaria"],
+      "razao": "Pediu 3 confirmações antes de consultar; defaults razoáveis (top 10 a receber em aberto) cabem.",
+      "sugestao_prompt": "Regra: para 'devedores principais', assumir top 10 por saldo a receber em aberto e responder; oferecer recorte por vencidos como next step.",
+      "correcao_factual": "nao_aplicavel"
+    },
+    {
+      "turnoId": "e0f4b619-1f02-430a-99a2-e479f205833c",
+      "status": "CORRETO",
+      "patterns": ["acerto_objetividade"],
+      "razao": "Pergunta sem identificador do produto; pedir o código/nome é legítimo.",
+      "sugestao_prompt": null,
+      "correcao_factual": "nao_aplicavel"
+    },
+    {
+      "turnoId": "e14422a7-cf85-498f-8875-a6d4550b4421",
+      "status": "CORRETO",
+      "patterns": ["acerto_objetividade"],
+      "razao": "Faturamento R$ 38.064.323,84 em 772 notas no mês corrente; bate exato com toolResults.",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "e167b7ca-aba9-4a24-882b-a81d047da983",
+      "status": "CORRETO",
+      "patterns": ["acerto_objetividade"],
+      "razao": "754 fornecedores bate exato com totalFornecedores do toolResults.",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "e275e0cb-a3df-44ef-855a-3022fab1f3f8",
+      "status": "CORRETO",
+      "patterns": ["acerto_objetividade"],
+      "razao": "Pergunta única 'estoque' é genérica demais; menu de opções é resposta apropriada.",
+      "sugestao_prompt": null,
+      "correcao_factual": "nao_aplicavel"
+    },
+    {
+      "turnoId": "e3128595-fe62-4f68-9099-70abbb697351",
+      "status": "CORRETO",
+      "patterns": ["acerto_objetividade"],
+      "razao": "Tool retornou vazio; resposta honesta '0 resultados'.",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "e34fd1d2-e766-411a-966b-f087863cdea2",
+      "status": "CORRETO",
+      "patterns": ["acerto_objetividade"],
+      "razao": "Termo 'conta' é ambíguo entre contábil e bancário; clarificação legítima.",
+      "sugestao_prompt": null,
+      "correcao_factual": "nao_aplicavel"
+    },
+    {
+      "turnoId": "e3be16a2-b60c-418d-acd8-26f16a756aa5",
+      "status": "PARCIAL",
+      "patterns": ["pediu_clarificacao_desnecessaria"],
+      "razao": "'Quanto vai sair essa semana' geralmente é saída de caixa prevista; poderia tentar default em vez de pedir 2 clarificações.",
+      "sugestao_prompt": "Regra: 'quanto vai sair' sem contexto = previsao de saida de caixa na semana corrente; assumir e responder.",
+      "correcao_factual": "nao_aplicavel"
+    },
+    {
+      "turnoId": "e3f54c9f-01be-4278-90be-8426f3b1bcd5",
+      "status": "PARCIAL",
+      "patterns": ["pediu_clarificacao_desnecessaria"],
+      "razao": "Pergunta 'O que temos do código X' poderia disparar busca de produto direta com retorno multi-faceta (saldo + cadastro) em vez de menu.",
+      "sugestao_prompt": "Regra: 'o que temos do código X' = buscar produto e retornar resumo (cadastro + saldo) num shot só.",
+      "correcao_factual": "nao_aplicavel"
+    },
+    {
+      "turnoId": "e4972102-1d75-4690-8982-203ce66ed6f8",
+      "status": "PARCIAL",
+      "patterns": ["pergunta_ignorada", "formato_quebrado"],
+      "razao": "Usuário pediu 'rascunho' especificamente; tool não tem etapa 'Rascunho' mas IA respondeu com totais genéricos (528) que não correspondem a rascunho. Resposta extensa e fora do escopo da pergunta.",
+      "sugestao_prompt": "Regra: se etapa pedida nao existe no resultado, declarar isso de cara e pedir confirmacao do termo, sem inventar agregados.",
+      "correcao_factual": "nao_bate"
+    },
+    {
+      "turnoId": "e61584bf-3dfe-4a43-ab23-6e6ad92cdcb3",
+      "status": "PARCIAL",
+      "patterns": ["pediu_clarificacao_desnecessaria"],
+      "razao": "'Volume de pedidos por etapa' poderia ser respondido com snapshot da tool comercial_pedidos_por_etapa (sem filtro de periodo) com quantidade+valor.",
+      "sugestao_prompt": "Regra: 'volume por etapa' sem periodo = snapshot atual da tool comercial_pedidos_por_etapa com quantidade e valor; periodo so se usuario pedir.",
+      "correcao_factual": "nao_aplicavel"
+    },
+    {
+      "turnoId": "e672b592-eb93-4fcf-9678-a9f0323eb07f",
+      "status": "ERRADO",
+      "patterns": ["dado_inventado"],
+      "razao": "Tool retornou estado=vazio (0 linhas). IA listou contas '3.1.1.1 RECEITA SOBRE VENDAS DE PRODUTOS' etc. sem fonte. Guardrail factual falhou aqui.",
+      "sugestao_prompt": "Regra: se contabil_plano_de_contas retorna vazio, responder que nao encontrou e sugerir variar o termo; NUNCA listar codigos de contas sem dado.",
+      "correcao_factual": "nao_bate"
+    },
+    {
+      "turnoId": "e83c8c24-60f3-46c6-9002-ed29c212bfc9",
+      "status": "PARCIAL",
+      "patterns": ["pediu_clarificacao_desnecessaria"],
+      "razao": "Trouxe dados (apuracoes 03/04 com 0,00 nao entregue), mas ainda pediu clarificacao de mes/tipo apos ja ter mostrado os numeros.",
+      "sugestao_prompt": "Regra: se ja chamou a tool, responder com os numeros e oferecer recorte opcional, nao pedir clarificacao antes de mostrar.",
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "e89f0e91-ac55-435e-8fa5-ca4efb2117fa",
+      "status": "PARCIAL",
+      "patterns": ["pediu_clarificacao_desnecessaria"],
+      "razao": "Tool retornou vazio para o mes corrente. IA poderia ter dito 'sem movimentacao registrada em maio' direto, sem pedir 2 confirmacoes.",
+      "sugestao_prompt": "Regra: se estoque_top_movimentados retorna vazio para o periodo perguntado, responder direto 'sem movimentacao no periodo' e sugerir ampliar para 90 dias.",
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "e919b481-b870-4f8a-a95e-579b4b118db1",
+      "status": "PARCIAL",
+      "patterns": ["pediu_clarificacao_desnecessaria", "pergunta_ignorada"],
+      "razao": "Tool retornou centenas de notas em maio, mas IA pediu confirmacao de criterio (emissao vs entrada) sem responder a contagem. Usuario perguntou 'quantas' e nao recebeu numero.",
+      "sugestao_prompt": "Regra: para 'quantas notas recebidas no mes' usar data de emissao como default, contar e responder; oferecer alternar para data de entrada como next step.",
+      "correcao_factual": "nao_bate"
+    },
+    {
+      "turnoId": "e98629ec-c3c4-4176-9aad-8f09c6970acc",
+      "status": "CORRETO",
+      "patterns": ["acerto_objetividade"],
+      "razao": "0 notas e R$ 0,00 em 26/05/2026 bate com toolResults.",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "ea4cba7e-159d-4fd6-b195-64effaaaccd2",
+      "status": "CORRETO",
+      "patterns": ["acerto_objetividade"],
+      "razao": "Listou 5 Smartfit com CNPJ e UF corretos do toolResults, pediu desempate.",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "ea980c21-3047-4a14-b870-1dceed96136c",
+      "status": "CORRETO",
+      "patterns": ["acerto_objetividade"],
+      "razao": "PMB403 Puxador Corda, sem linha de saldo, saldoTotal 0 - bate com semEstoqueCadastrado=true.",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "eb748a59-e515-414a-bc81-ac4bd4d6c80d",
+      "status": "CORRETO",
+      "patterns": ["acerto_objetividade"],
+      "razao": "Listou 5 maiores positivos corretamente e saldo total -24.291.495,49; numeros batem.",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "ee1a6da9-18c9-4383-8e9e-b7a971505b08",
+      "status": "PARCIAL",
+      "patterns": ["pediu_clarificacao_desnecessaria", "resposta_truncada"],
+      "razao": "Poderia assumir mes corrente; resposta termina em 'Sugestoes:' sem listar nada - parece truncada.",
+      "sugestao_prompt": "Regra: 'vendedor com mais pedidos' sem periodo = assumir mes corrente e responder.",
+      "correcao_factual": "nao_aplicavel"
+    },
+    {
+      "turnoId": "ee3a8b07-cf65-4fd4-8ef8-5965eedf8fc8",
+      "status": "CORRETO",
+      "patterns": ["acerto_objetividade"],
+      "razao": "Millenium Resort Residence, codigo 7820, CNPJ e cidade batem com toolResults.",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "ee9a671d-6146-462a-88cc-2fd8d0a56aca",
+      "status": "PARCIAL",
+      "patterns": ["formato_quebrado"],
+      "razao": "Numeros 50/4/R$184.706,29 batem, mas a resposta abre com 'voce tem razao eu nao deveria ter afirmado' fora de contexto, gerando confusao. Tom estranho.",
+      "sugestao_prompt": "Regra: nao iniciar resposta com auto-correcao se nao houve contradicao do usuario; ir direto ao dado.",
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "eeb0a2e2-7196-4cd3-9b87-0ee03b806ba9",
+      "status": "CORRETO",
+      "patterns": ["acerto_objetividade"],
+      "razao": "Tool retornou vazio; resposta direta 'sem saldo registrado'. Bate.",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "f0289d4e-32f0-4bcf-819b-e41f63aa1b4b",
+      "status": "CORRETO",
+      "patterns": ["acerto_objetividade"],
+      "razao": "Codigo [102] sozinho e ambiguo (produto/pedido/NF); pedir contexto e legitimo.",
+      "sugestao_prompt": null,
+      "correcao_factual": "nao_aplicavel"
+    },
+    {
+      "turnoId": "f0a3961c-5d02-4ab9-9f03-a65e83100dd1",
+      "status": "FORA_DE_ESCOPO",
+      "patterns": ["limitacao_real_declarada"],
+      "razao": "Estoque morto exige criterio de dias e formato; clarificacao e necessaria (nao ha tool unica que retorne 'morto' por default).",
+      "sugestao_prompt": null,
+      "correcao_factual": "nao_aplicavel"
+    },
+    {
+      "turnoId": "f2fc7dca-b896-4a3a-8151-50ae604d1ef7",
+      "status": "ERRADO",
+      "patterns": ["pergunta_ignorada", "dado_inventado"],
+      "razao": "Tool retornou 22 produtos incluindo [102] MGPL78 com saldoTotal=16 e valorTotal=258.370,44. IA disse 'nao consegui obter os dados de forma confiavel' - dado estava ali. Falha grave de leitura do toolResult.",
+      "sugestao_prompt": "Regra: sempre escanear o array linhas[] do toolResult procurando match exato pelo codigo perguntado antes de declarar 'sem dados'.",
+      "correcao_factual": "nao_bate"
+    },
+    {
+      "turnoId": "f44fabfd-af42-48aa-924b-a961b16f551b",
+      "status": "CORRETO",
+      "patterns": ["acerto_objetividade"],
+      "razao": "13 itens, 1 com saldo -1, 12 sem linha de saldo - bate com toolResults.",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "f46a567c-4a21-4630-bace-fcd2b852476f",
+      "status": "CORRETO",
+      "patterns": ["acerto_objetividade", "acerto_encadeamento"],
+      "razao": "Periodo semana corrente, 19 notas, valor 1.415.494,12 e principais fornecedores batem com toolResults.",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "f4a6155f-b936-44ea-b4d5-98477000fca1",
+      "status": "ERRADO",
+      "patterns": ["fluxo_tool_incompleto", "pediu_clarificacao_desnecessaria"],
+      "razao": "Usuario pediu 'por mes esse ano' mas a IA chamou tool com periodo unico jan-mai e retornou agregado anual + pediu permissao admin desnecessaria. Deveria ter encadeado 5 chamadas mensais.",
+      "sugestao_prompt": "Regra: 'faturamento por mes' = encadear fiscal_faturamento_periodo por mes (jan, fev, mar, ...) e montar tabela; nunca pedir permissao admin sem motivo.",
+      "correcao_factual": "nao_bate"
+    },
+    {
+      "turnoId": "f5846f62-775f-44c5-9fe6-8256a7fa3be1",
+      "status": "CORRETO",
+      "patterns": ["acerto_objetividade"],
+      "razao": "Jds Comercio Matriz DF, 186 notas, R$ 15.285.312,50 - bate exato com a primeira linha do toolResults.",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "f5edc7a4-23d4-40b9-a243-acfcbe999b11",
+      "status": "CORRETO",
+      "patterns": ["acerto_objetividade"],
+      "razao": "Top 5 vendedores com nomes, quantidades e valores corretos do toolResults.",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "f7d4d6f6-fa10-4097-be52-5496e1d89360",
+      "status": "PARCIAL",
+      "patterns": ["parametro_incompleto"],
+      "razao": "Pergunta 'conta bancos qual o codigo' e ambigua; resposta razoavel ao listar 3 exemplos e pedir o tipo de codigo. Trouxe dado real mas poderia ter ido direto com lista completa de agencias+contas.",
+      "sugestao_prompt": "Regra: quando o usuario pergunta 'codigo da conta', listar todas as 8 com agencia+conta de uma vez ao inves de 3 amostras.",
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "f7f927c9-54d2-4007-9215-10c7a80a0441",
+      "status": "CORRETO",
+      "patterns": ["acerto_objetividade"],
+      "razao": "Resposta honesta 'nao' com saldo total -24.291.495,49 e R$ 1.596.338,18 positivos - tudo bate.",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    }
+  ]
+}

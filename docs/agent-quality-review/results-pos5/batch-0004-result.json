@@ -1,0 +1,343 @@
+{
+  "batchId": "0004",
+  "evaluatedAt": "2026-05-26T12:30:00.000Z",
+  "totals": {
+    "CORRETO": 20,
+    "PARCIAL": 13,
+    "ERRADO": 2,
+    "FORA_DE_ESCOPO": 5
+  },
+  "patterns": {
+    "pediu_clarificacao_desnecessaria": 11,
+    "acerto_objetividade": 14,
+    "acerto_encadeamento": 1,
+    "limitacao_real_declarada": 5,
+    "pergunta_ignorada": 2,
+    "entendeu_mal_termo": 1,
+    "parametro_incompleto": 1,
+    "fluxo_tool_incompleto": 1,
+    "dado_inventado": 0
+  },
+  "turnos": [
+    {
+      "turnoId": "70729032-bbc7-4126-9b78-f81913c67ec3",
+      "status": "PARCIAL",
+      "patterns": ["pediu_clarificacao_desnecessaria"],
+      "razao": "Pergunta direta sobre pedido mais antigo em aberto. Poderia ter assumido defaults razoaveis (em aberto no funil + data do pedido) e respondido.",
+      "sugestao_prompt": "Adicionar default: 'pedido mais antigo em aberto' = nao finalizado no funil, ordenado por data do pedido (ascendente).",
+      "correcao_factual": "nao_aplicavel"
+    },
+    {
+      "turnoId": "71b613fa-555f-48a9-a507-0761247cb381",
+      "status": "PARCIAL",
+      "patterns": ["pergunta_ignorada"],
+      "razao": "Usuario pediu 'a receber' mas o titulo de maior valor citado primeiro (R$ 387.500 Smartfit) esta correto; outros sao a_receber. Porem, a tool trouxe a_pagar e a_receber misturados, e a resposta nao filtrou explicitamente nem totalizou apenas a_receber.",
+      "sugestao_prompt": "Quando usuario pedir 'a receber', filtrar tipo=a_receber e apresentar total filtrado.",
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "74396526-d300-493b-844c-74909f817b34",
+      "status": "PARCIAL",
+      "patterns": ["pediu_clarificacao_desnecessaria"],
+      "razao": "Pergunta 'faturamento' poderia ter sido respondida com default mes corrente + total.",
+      "sugestao_prompt": "Default para 'faturamento' sem qualificador: total do mes corrente via fiscal_faturamento_periodo.",
+      "correcao_factual": "nao_aplicavel"
+    },
+    {
+      "turnoId": "745bff81-7a7b-45ed-aee3-95d8f58d73ac",
+      "status": "FORA_DE_ESCOPO",
+      "patterns": ["limitacao_real_declarada", "pediu_clarificacao_desnecessaria"],
+      "razao": "Apuracao de impostos a recolher nao parece ser tool existente; agente pede clarificacao em vez de declarar limitacao.",
+      "sugestao_prompt": "Se apuracao fiscal nao existe no catalogo, declarar limitacao imediatamente em vez de pedir periodo.",
+      "correcao_factual": "nao_aplicavel"
+    },
+    {
+      "turnoId": "7529c857-7b50-44fe-bb05-27d784bc37f4",
+      "status": "CORRETO",
+      "patterns": ["acerto_objetividade"],
+      "razao": "Tool certa, resposta enxuta e correta: Jds-Matriz DF com R$ 27.870.168,52 e 53,69% batem com toolResults.",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "765de41d-e4ef-4571-b888-308cba936640",
+      "status": "PARCIAL",
+      "patterns": ["pediu_clarificacao_desnecessaria"],
+      "razao": "Default razoavel: ultimos 7 dias, lista das principais entradas.",
+      "sugestao_prompt": "Default 'ultima semana' = ultimos 7 dias corridos; trazer top 20 por padrao.",
+      "correcao_factual": "nao_aplicavel"
+    },
+    {
+      "turnoId": "780de640-e74c-44e8-962d-fe443e988d45",
+      "status": "PARCIAL",
+      "patterns": ["pediu_clarificacao_desnecessaria"],
+      "razao": "Registrou lacuna mas ainda pediu clarificacao de periodo. Como a metrica nao existe, deveria simplesmente declarar limitacao.",
+      "sugestao_prompt": "Se registrou_lacuna, encerrar com 'nao tenho essa metrica' em vez de pedir mais detalhes.",
+      "correcao_factual": "nao_aplicavel"
+    },
+    {
+      "turnoId": "786ad4f4-d3c7-4616-bf91-0a62caaba644",
+      "status": "PARCIAL",
+      "patterns": ["pediu_clarificacao_desnecessaria"],
+      "razao": "Top 10 produtos com maior saldo: poderia assumir 'por quantidade' como default e responder.",
+      "sugestao_prompt": "Default 'maior saldo' = por quantidade fisica; oferecer alternancia em followup.",
+      "correcao_factual": "nao_aplicavel"
+    },
+    {
+      "turnoId": "78c5f477-829f-4928-bc84-e36da1744a48",
+      "status": "PARCIAL",
+      "patterns": ["pediu_clarificacao_desnecessaria"],
+      "razao": "'Saldo do estoque' poderia ser respondido direto com valor total + breve detalhamento por armazem.",
+      "sugestao_prompt": "Default 'saldo do estoque' = valor total + resumo por armazem; sem perguntar.",
+      "correcao_factual": "nao_aplicavel"
+    },
+    {
+      "turnoId": "795d01ef-d85f-42ca-88ee-4c359f37a99c",
+      "status": "FORA_DE_ESCOPO",
+      "patterns": ["limitacao_real_declarada"],
+      "razao": "Registrou lacuna e respondeu honestamente que nao tem a metrica.",
+      "sugestao_prompt": null,
+      "correcao_factual": "nao_aplicavel"
+    },
+    {
+      "turnoId": "7c21931a-d1e4-4622-999d-35b43477bdef",
+      "status": "CORRETO",
+      "patterns": ["acerto_objetividade"],
+      "razao": "Top 10 UFs batem com toolResults; ordenacao e quantidades corretas.",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "7dab063f-f07c-4a33-b206-5220f0d40612",
+      "status": "CORRETO",
+      "patterns": ["acerto_objetividade"],
+      "razao": "Top 10 produtos faturados em 05/2026: numeros e quantidades batem com toolResults.",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "7f2c5a5c-5c2d-476c-a56d-6a50bf214bb2",
+      "status": "CORRETO",
+      "patterns": ["acerto_objetividade"],
+      "razao": "4.396 empresas (PJ) de 6.565 total batem com toolResults.",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "80b7b71c-2cea-4266-917d-3e8f9a7c13f5",
+      "status": "CORRETO",
+      "patterns": ["acerto_objetividade"],
+      "razao": "Hoje (26/05) = 0 notas, R$ 0 bate com toolResults.",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "812745ce-41cc-4558-8679-f1abbb4cec09",
+      "status": "CORRETO",
+      "patterns": ["acerto_objetividade"],
+      "razao": "3 contas negativas: Jds -15.239.562,47, Jht SP -9.026.799,05, Jht DF -1.621.472,15 batem exato.",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "81499a70-435d-4bd2-9387-678bd3122960",
+      "status": "PARCIAL",
+      "patterns": ["pediu_clarificacao_desnecessaria"],
+      "razao": "'Parceiros de SP' admite default: lista resumida com contagem.",
+      "sugestao_prompt": "Default 'parceiros de X' = contagem + amostra de nomes.",
+      "correcao_factual": "nao_aplicavel"
+    },
+    {
+      "turnoId": "821b58d3-7d67-4494-9021-0d9184d4980d",
+      "status": "PARCIAL",
+      "patterns": ["pediu_clarificacao_desnecessaria"],
+      "razao": "'Cenario comercial' poderia ser respondido com resumo geral default (mes atual, funil + atrasos).",
+      "sugestao_prompt": "Default 'cenario comercial' = resumo do mes atual com volume + etapas + atrasos.",
+      "correcao_factual": "nao_aplicavel"
+    },
+    {
+      "turnoId": "82914a15-090a-490c-a261-572f857a1a2b",
+      "status": "FORA_DE_ESCOPO",
+      "patterns": ["limitacao_real_declarada"],
+      "razao": "Registrou lacuna de margem e ofereceu alternativas; limitacao real.",
+      "sugestao_prompt": null,
+      "correcao_factual": "nao_aplicavel"
+    },
+    {
+      "turnoId": "83fbf30a-086c-4215-84a6-723f1669f079",
+      "status": "CORRETO",
+      "patterns": ["acerto_objetividade"],
+      "razao": "[102] MGPL78 com 16 unidades em 5 locais e R$ 258.370,44 batem com toolResults.",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "857cdb57-4924-4b84-b2b4-a3faaf317130",
+      "status": "CORRETO",
+      "patterns": ["acerto_objetividade", "limitacao_real_declarada"],
+      "razao": "Reportou honestamente 'cadastrado, sem linha de saldo' como veio na tool.",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "8717a3b5-628e-467b-b433-b91ffc062614",
+      "status": "PARCIAL",
+      "patterns": ["pediu_clarificacao_desnecessaria"],
+      "razao": "'fornecedores' isolado poderia retornar lista/total padrao.",
+      "sugestao_prompt": "Default 'fornecedores' = contagem total + top por compras no mes.",
+      "correcao_factual": "nao_aplicavel"
+    },
+    {
+      "turnoId": "877df725-8cb3-4222-ba81-e5a0a5fb71c8",
+      "status": "CORRETO",
+      "patterns": ["acerto_objetividade"],
+      "razao": "Saldo consolidado -R$ 24.291.495,49 e principais contas batem com toolResults.",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "87e04bca-9d3b-43d2-a03f-9bf686078f0c",
+      "status": "CORRETO",
+      "patterns": ["acerto_objetividade"],
+      "razao": "Notas canceladas de 05/2026: amostra com valores que batem com toolResults; total declarado coerente.",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "887397d1-dc0e-458c-8fd2-8e9bab59a892",
+      "status": "CORRETO",
+      "patterns": ["acerto_objetividade"],
+      "razao": "Filtrou a_pagar vencidos, totalizou R$ 2.179.017,80 e destacou concentracao em Jds Comercio; maiores valores batem.",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "8a57eba7-1108-4859-ad67-5546a493ffe9",
+      "status": "CORRETO",
+      "patterns": ["acerto_objetividade"],
+      "razao": "Top 5 clientes em ultimos 30 dias batem exatos com toolResults.",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "8d056868-f758-4ab3-8287-1d208a27d3e3",
+      "status": "CORRETO",
+      "patterns": ["acerto_objetividade"],
+      "razao": "Casa Ferolla, CNPJ 42.834.550/0001-56, Belo Horizonte/MG batem com toolResults.",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "8e2387cc-c2be-4808-93a5-5751f9f9b5ac",
+      "status": "CORRETO",
+      "patterns": ["acerto_objetividade"],
+      "razao": "Faturamento mes atual R$ 38.064.323,84 em 772 notas e top clientes batem com toolResults.",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "8e74c80a-5884-45a1-ad3c-e02482837f9c",
+      "status": "PARCIAL",
+      "patterns": ["pediu_clarificacao_desnecessaria"],
+      "razao": "'Cliente que comprou mais notas esse mes' admite defaults (notas de saida + quantidade).",
+      "sugestao_prompt": "Default 'comprou mais notas' = nossas notas de saida, ordenadas por quantidade.",
+      "correcao_factual": "nao_aplicavel"
+    },
+    {
+      "turnoId": "8f28d2e4-029e-4f05-a09b-036989530976",
+      "status": "PARCIAL",
+      "patterns": ["pediu_clarificacao_desnecessaria"],
+      "razao": "Sem conversation history visivel, pedir clarificacao e razoavel; ainda assim 'mes anterior' = abril/2026 ja foi inferido.",
+      "sugestao_prompt": null,
+      "correcao_factual": "nao_aplicavel"
+    },
+    {
+      "turnoId": "8f4bdd42-ab66-4ec8-8bf8-105c71e14566",
+      "status": "CORRETO",
+      "patterns": ["acerto_objetividade"],
+      "razao": "Previsto 05/2026 R$ 775.381,45 e 06/2026 R$ 17.646.265,00 batem; declarou realizado 0 honestamente.",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "90175611-75c3-4ba0-a70b-c4b5b1602a06",
+      "status": "FORA_DE_ESCOPO",
+      "patterns": ["limitacao_real_declarada"],
+      "razao": "Registrou lacuna e ofereceu alternativas; limitacao honesta.",
+      "sugestao_prompt": null,
+      "correcao_factual": "nao_aplicavel"
+    },
+    {
+      "turnoId": "9117415d-9abd-45fc-a433-a3553b7c72a2",
+      "status": "PARCIAL",
+      "patterns": ["pediu_clarificacao_desnecessaria"],
+      "razao": "'vendas' poderia ter sido respondido com faturamento do mes corrente como default.",
+      "sugestao_prompt": "Default 'vendas' = faturamento do mes atual; oferecer drill no followup.",
+      "correcao_factual": "nao_aplicavel"
+    },
+    {
+      "turnoId": "91b24240-fb78-4169-9c73-2ec3d50938a3",
+      "status": "CORRETO",
+      "patterns": ["acerto_objetividade", "acerto_encadeamento"],
+      "razao": "Usou array 'marca' do toolResult: MATRIX 87,86%, VISION 5,05%, etc. Total R$ 51.905.967,53 bate exato.",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "92442d96-f1dc-4a71-9cf7-f6ba2440a187",
+      "status": "CORRETO",
+      "patterns": ["acerto_objetividade"],
+      "razao": "Total 44 parcelas R$ 595.449,38 e maiores batem com toolResults; pediu confirmacao de intervalo de forma legitima.",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "92d7c6af-c8ed-4fad-a428-f1834b7d498d",
+      "status": "ERRADO",
+      "patterns": ["entendeu_mal_termo", "fluxo_tool_incompleto"],
+      "razao": "Pergunta sobre clientes inadimplentes deveria filtrar tipo=a_receber. Resposta cita 'Jds Comercio' (que esta na lista como a_pagar, ou seja, fornecedor/relacionada) como inadimplente, confundindo tipos. Alem disso parece responder a um followup nao visivel ('voce esta certo, nao consegui obter...').",
+      "sugestao_prompt": "Para inadimplencia, filtrar exclusivamente tipo=a_receber e agrupar por cliente com total devido.",
+      "correcao_factual": "nao_bate"
+    },
+    {
+      "turnoId": "94db370d-a80e-4528-985e-4179caff86cf",
+      "status": "CORRETO",
+      "patterns": ["acerto_objetividade"],
+      "razao": "R$ 38.064.323,84 em 772 notas; media R$ 1.464.012,46/dia em 26 dias bate (38.064.323,84/26 = 1.464.012,46).",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "95b62509-5b86-452e-a118-b2d53c89e30d",
+      "status": "CORRETO",
+      "patterns": ["acerto_objetividade"],
+      "razao": "Top 5 parcelas atrasadas batem exato com toolResults.",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "95de1904-23a4-4483-abc6-f10f9a3ede52",
+      "status": "PARCIAL",
+      "patterns": ["pediu_clarificacao_desnecessaria"],
+      "razao": "'Cliente em atraso' admite default (financeiro a receber); pediu clarificacao.",
+      "sugestao_prompt": "Default 'cliente em atraso' = titulos a_receber vencidos agrupados por cliente.",
+      "correcao_factual": "nao_aplicavel"
+    },
+    {
+      "turnoId": "9646e9f2-59d8-49d3-bd06-737994a51d9a",
+      "status": "ERRADO",
+      "patterns": ["tool_errada", "pergunta_ignorada"],
+      "razao": "Pergunta era faturamento por regiao. Chamou fiscal_faturamento_por_cliente (tool errada para o agregado solicitado) e ainda assim nao apresentou nada; pediu clarificacao e mencionou 'autorizar admin' indevidamente.",
+      "sugestao_prompt": "Se nao existe tool por regiao/UF, declarar limitacao via registrar_lacuna em vez de chamar tool errada.",
+      "correcao_factual": "nao_aplicavel"
+    },
+    {
+      "turnoId": "97be6b7d-25b4-4058-aff7-29a99237832d",
+      "status": "PARCIAL",
+      "patterns": ["pediu_clarificacao_desnecessaria"],
+      "razao": "Pedido com maior valor em aberto admite default (pedido de venda, todos os periodos).",
+      "sugestao_prompt": "Default 'maior pedido em aberto' = maior pedido de venda nao faturado.",
+      "correcao_factual": "nao_aplicavel"
+    }
+  ]
+}

@@ -1,0 +1,92 @@
+{
+  "batchId": "0008",
+  "evaluatedAt": "2026-05-26T12:30:00.000Z",
+  "totals": {
+    "CORRETO": 6,
+    "PARCIAL": 2,
+    "ERRADO": 0,
+    "FORA_DE_ESCOPO": 1
+  },
+  "patterns": {
+    "acerto_objetividade": 5,
+    "acerto_encadeamento": 1,
+    "limitacao_real_declarada": 1,
+    "resposta_truncada": 1,
+    "formato_quebrado": 1,
+    "pediu_clarificacao_desnecessaria": 1
+  },
+  "turnos": [
+    {
+      "turnoId": "f80f07a3-36fb-4c53-acc1-b7fa15b91a5f",
+      "status": "CORRETO",
+      "patterns": ["acerto_objetividade"],
+      "razao": "Identificou ambiguidade real (2 matches) e pediu desambiguacao antes de segregar por armazem. Numeros (16 un, R$ 258.370,44, 5 locais) batem com toolResults.",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "f8e7d81c-473c-4893-be47-5ec753bf4224",
+      "status": "PARCIAL",
+      "patterns": ["resposta_truncada"],
+      "razao": "Tool retornou muitas linhas e a resposta declarou honestamente que veio truncada, nao calculou o total. Valores citados como top (R$ 285.202,08 pedido 2036, R$ 148.500 pedido 784, R$ 80.649,51 pedido 502, R$ 66.800 pedido 1585, R$ 53.000 pedido 1583) batem com toolResults, mas usuario sai sem o total pedido.",
+      "sugestao_prompt": "Adicionar regra: quando comercial_parcelas_a_vencer retornar muitas linhas, somar o campo valor de todas elas antes de responder (a soma cabe no contexto mesmo que a lista nao caiba na resposta).",
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "f9bb6122-7b04-4cf0-93e0-77a1e7c6e98c",
+      "status": "CORRETO",
+      "patterns": ["acerto_objetividade"],
+      "razao": "Saldo total -R$ 24.291.495,49 e principais positivos/negativos batem exatamente com toolResults.",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "fa2444e7-8e58-4f2b-bd27-3040752594af",
+      "status": "CORRETO",
+      "patterns": ["acerto_encadeamento", "acerto_objetividade"],
+      "razao": "Encadeou duas buscas (alug + antecip), filtrou as 2 contas exatas (Matriz e Filial) e pediu desambiguacao util. Codigos batem com toolResults.",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "fa88d3e6-4089-4807-b264-030966eb478c",
+      "status": "PARCIAL",
+      "patterns": ["formato_quebrado"],
+      "razao": "Resposta comeca com 'Nao.' contraditorio com o restante (que mostra estoque positivo). Frase 'nao encontrei dados vazios' e confusa. Numeros (BA53 com 45, BA43 com 15) batem, mas a abertura prejudica a leitura.",
+      "sugestao_prompt": "Adicionar regra: nao responder 'Nao'/'Sim' quando a pergunta exige juizo (entrega amanha) que nao foi efetivamente checada. Reformular dizendo que ha saldo X mas a confirmacao de disponibilidade para entrega depende de saidas previstas.",
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "fac19f92-9b02-4d6a-aea4-c1728dc6f5c4",
+      "status": "CORRETO",
+      "patterns": ["acerto_objetividade"],
+      "razao": "Periodo correto (semana corrente 25-31/05/2026), valor R$ 0,00 bate com toolResults (saida=0).",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "fc6fc73e-97ac-4377-8ab9-95dce4134536",
+      "status": "CORRETO",
+      "patterns": ["acerto_objetividade"],
+      "razao": "Nome, documento e cidade/UF batem exatamente com toolResults.",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "febe8e76-d32c-436c-bcf5-b1da4802dfa3",
+      "status": "FORA_DE_ESCOPO",
+      "patterns": ["limitacao_real_declarada"],
+      "razao": "Nao existe tool de listagem de vendedores cadastrados; agente registrou lacuna e ofereceu alternativas. Limitacao honesta.",
+      "sugestao_prompt": null,
+      "correcao_factual": "nao_aplicavel"
+    },
+    {
+      "turnoId": "ffdd1127-88eb-4b0a-bbe0-61f4a045a85b",
+      "status": "PARCIAL",
+      "patterns": ["pediu_clarificacao_desnecessaria"],
+      "razao": "Listou as 3 contas raiz do passivo (PASSIVO, 2.1, 2.2) que batem com toolResults, mas usuario pediu 'plano de contas do passivo' e provavelmente queria a arvore expandida. Ofereceu detalhar em seguida em vez de ja trazer as filhas com limite alto.",
+      "sugestao_prompt": "Adicionar regra: para 'plano de contas do <grupo>', expandir a arvore (limite maior ou chamada para filhas) ao inves de devolver so o nivel raiz.",
+      "correcao_factual": "bate"
+    }
+  ]
+}

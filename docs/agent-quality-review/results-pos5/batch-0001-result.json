@@ -1,0 +1,344 @@
+{
+  "batchId": "0001",
+  "evaluatedAt": "2026-05-26T12:30:00.000Z",
+  "totals": {
+    "CORRETO": 18,
+    "PARCIAL": 4,
+    "ERRADO": 2,
+    "FORA_DE_ESCOPO": 16
+  },
+  "patterns": {
+    "acerto_objetividade": 12,
+    "acerto_encadeamento": 2,
+    "pediu_clarificacao_desnecessaria": 14,
+    "limitacao_real_declarada": 3,
+    "dado_inventado": 1,
+    "parametro_incompleto": 2,
+    "tool_errada": 1,
+    "fluxo_tool_incompleto": 1,
+    "loop_clarificacao": 1,
+    "acerto_modelo": 1
+  },
+  "turnos": [
+    {
+      "turnoId": "00f7fefa-015f-4c03-b589-210214d38b80",
+      "status": "ERRADO",
+      "patterns": ["dado_inventado", "parametro_incompleto"],
+      "razao": "Tool retornou MCP error (validation) e nada de dado. Mesmo assim, a IA inventou '6 produtos encontrados', '1 com saldo 0', '5 sem linha' e citou códigos específicos. Tudo inventado.",
+      "sugestao_prompt": "Reforçar: se toolResult contém 'MCP error' ou validation error, não inventar dados; explicar que a consulta falhou e tentar novamente com parâmetros válidos.",
+      "correcao_factual": "nao_bate"
+    },
+    {
+      "turnoId": "011208b8-ac94-4db0-b575-0048bee1f682",
+      "status": "CORRETO",
+      "patterns": ["acerto_objetividade"],
+      "razao": "Tool certa, período correto, valores realizado/previsto batem com o toolResult.",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "01a2794c-d1a7-4b05-94eb-9e21d4cf88b7",
+      "status": "PARCIAL",
+      "patterns": ["pediu_clarificacao_desnecessaria"],
+      "razao": "Poderia ter assumido mês corrente e resumo como defaults; pediu duas clarificações.",
+      "sugestao_prompt": "Quando pergunta sobre 'pedidos sem nota': assumir mês corrente + resumo como defaults e oferecer detalhamento opcional.",
+      "correcao_factual": "nao_aplicavel"
+    },
+    {
+      "turnoId": "02007ee3-cb07-4bba-92cb-3e8216ac74ba",
+      "status": "CORRETO",
+      "patterns": ["acerto_objetividade"],
+      "razao": "Trouxe bruto correto e pediu clarificação legítima sobre definição de líquido (é ambíguo no contexto contábil).",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "0278bc5e-44c6-48b1-bce5-52ae3a8f3aa7",
+      "status": "PARCIAL",
+      "patterns": ["pediu_clarificacao_desnecessaria"],
+      "razao": "Filiais é termo ambíguo, mas poderia ter trazido as duas contagens em paralelo.",
+      "sugestao_prompt": "Para termos ambíguos como 'filiais', oferecer ambas as contagens (CNPJs + armazéns) ao invés de só pedir clarificação.",
+      "correcao_factual": "nao_aplicavel"
+    },
+    {
+      "turnoId": "040cdf95-2d62-43e4-9d98-22ab66a70ff6",
+      "status": "PARCIAL",
+      "patterns": ["pediu_clarificacao_desnecessaria"],
+      "razao": "Poderia ter chamado a tool contas_a_pagar com default 'todas em aberto' e oferecido recorte adicional.",
+      "sugestao_prompt": "Quando usuário diz 'conta contas a pagar', assumir 'em aberto' como default e trazer total + recortes (vencidas vs a vencer).",
+      "correcao_factual": "nao_aplicavel"
+    },
+    {
+      "turnoId": "056157c8-ef59-47a0-81ca-55d07e96d5c6",
+      "status": "CORRETO",
+      "patterns": ["acerto_objetividade"],
+      "razao": "Tool vazia, resposta honesta confirmando ausência de movimentação no dia.",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "072a62d7-07e7-4d52-896e-4e08c2cd9808",
+      "status": "CORRETO",
+      "patterns": ["acerto_objetividade"],
+      "razao": "Saudação ambígua respondida com apresentação e menu de opções.",
+      "sugestao_prompt": null,
+      "correcao_factual": "nao_aplicavel"
+    },
+    {
+      "turnoId": "076727f7-62ab-498a-bb1a-6143bec1b16c",
+      "status": "FORA_DE_ESCOPO",
+      "patterns": ["pediu_clarificacao_desnecessaria"],
+      "razao": "Pergunta legitimamente ambígua sobre cruzamento; clarificação razoável.",
+      "sugestao_prompt": null,
+      "correcao_factual": "nao_aplicavel"
+    },
+    {
+      "turnoId": "083fefa8-60b7-4ccd-b123-456db9b166b6",
+      "status": "PARCIAL",
+      "patterns": ["pediu_clarificacao_desnecessaria", "fluxo_tool_incompleto"],
+      "razao": "Poderia ter encadeado cadastro_buscar_parceiro + fiscal_notas_recebidas com default 'últimos 30 dias' ao invés de pedir período.",
+      "sugestao_prompt": "Quando usuário pede 'notas do fornecedor X', encadear busca de parceiro + notas com default últimos 30 dias.",
+      "correcao_factual": "nao_aplicavel"
+    },
+    {
+      "turnoId": "0853c991-4d6d-4fc2-a356-d012c9489e98",
+      "status": "FORA_DE_ESCOPO",
+      "patterns": ["pediu_clarificacao_desnecessaria"],
+      "razao": "Smartfit tem múltiplos cadastros; clarificação é defensável, mas poderia ter listado os cadastros primeiro.",
+      "sugestao_prompt": "Quando há múltiplos cadastros para termo genérico, listar primeiro e pedir escolha (não pedir CNPJ no escuro).",
+      "correcao_factual": "nao_aplicavel"
+    },
+    {
+      "turnoId": "09b596be-7455-428f-ac0c-e56ab3361b28",
+      "status": "CORRETO",
+      "patterns": ["acerto_objetividade", "acerto_modelo"],
+      "razao": "Ranking completo, todos os valores batem com o toolResult, formato limpo.",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "0ae44c6f-f8f6-49e8-8b22-51b8234f2db2",
+      "status": "FORA_DE_ESCOPO",
+      "patterns": ["pediu_clarificacao_desnecessaria"],
+      "razao": "Distinção 'estimativa do mês x apuração a recolher' é tecnicamente relevante; clarificação justificável.",
+      "sugestao_prompt": null,
+      "correcao_factual": "nao_aplicavel"
+    },
+    {
+      "turnoId": "0e6d3f2a-d53a-4d3d-b3e5-f2a4721a0bfc",
+      "status": "CORRETO",
+      "patterns": ["acerto_objetividade"],
+      "razao": "Tool retornou lista longa; resposta selecionou top destaques e atrasados >30 dias, todos verificados no toolResult.",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "0e776652-857b-4b92-a0f9-1bf7f49b6e04",
+      "status": "FORA_DE_ESCOPO",
+      "patterns": ["pediu_clarificacao_desnecessaria"],
+      "razao": "'Pedidos por estado' é ambíguo (UF vs status do pedido); clarificação válida.",
+      "sugestao_prompt": null,
+      "correcao_factual": "nao_aplicavel"
+    },
+    {
+      "turnoId": "0f196e37-20a0-4b38-85fb-8acda93d3baa",
+      "status": "CORRETO",
+      "patterns": ["acerto_encadeamento", "acerto_objetividade"],
+      "razao": "Encadeou notas_emitidas + faturamento_periodo no mesmo dia; ambos zerados confirmados.",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "0fdbf07e-014f-42ba-acf7-e0f7b2fdb208",
+      "status": "CORRETO",
+      "patterns": ["acerto_objetividade"],
+      "razao": "Tool certa, valores IBPT e ICMS batem com toolResult.",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "10196714-8971-4106-805a-364062be0a86",
+      "status": "CORRETO",
+      "patterns": ["acerto_objetividade"],
+      "razao": "Tool certa, documento e UF/cidade batem com toolResult.",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "118a65cb-c029-4516-abe6-9271016b6152",
+      "status": "FORA_DE_ESCOPO",
+      "patterns": ["pediu_clarificacao_desnecessaria"],
+      "razao": "'Status geral' é amplo; clarificação razoável dado escopo aberto.",
+      "sugestao_prompt": null,
+      "correcao_factual": "nao_aplicavel"
+    },
+    {
+      "turnoId": "1292558b",
+      "status": "PARCIAL",
+      "patterns": ["pediu_clarificacao_desnecessaria"],
+      "razao": "Tool ok, listou as contas correspondendo ao toolResult, mas pediu clarificação de qual é 'principal' ao invés de assumir maior saldo positivo.",
+      "sugestao_prompt": "Para 'conta principal', considerar default = maior saldo positivo ou da matriz e oferecer ajuste.",
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "12a242dd",
+      "status": "FORA_DE_ESCOPO",
+      "patterns": ["limitacao_real_declarada"],
+      "razao": "Não há tool de segmentação PF/PJ; registrou lacuna e declarou honestamente.",
+      "sugestao_prompt": null,
+      "correcao_factual": "nao_aplicavel"
+    },
+    {
+      "turnoId": "12d5d61e",
+      "status": "FORA_DE_ESCOPO",
+      "patterns": ["pediu_clarificacao_desnecessaria"],
+      "razao": "Clarificação razoável (sintética vs analítica é distinção contábil real).",
+      "sugestao_prompt": null,
+      "correcao_factual": "nao_aplicavel"
+    },
+    {
+      "turnoId": "140385a7",
+      "status": "FORA_DE_ESCOPO",
+      "patterns": ["pediu_clarificacao_desnecessaria"],
+      "razao": "Interior de SP exige definição clara; clarificação justificável.",
+      "sugestao_prompt": null,
+      "correcao_factual": "nao_aplicavel"
+    },
+    {
+      "turnoId": "14dc6586",
+      "status": "CORRETO",
+      "patterns": ["acerto_objetividade"],
+      "razao": "Tool certa, KPIs (33 produtos, R$ 220.824,71) batem; top items conferem.",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "16669f01",
+      "status": "FORA_DE_ESCOPO",
+      "patterns": ["pediu_clarificacao_desnecessaria"],
+      "razao": "Caixa vs estoque é ambiguidade real; clarificação válida.",
+      "sugestao_prompt": null,
+      "correcao_factual": "nao_aplicavel"
+    },
+    {
+      "turnoId": "1759f3e7",
+      "status": "FORA_DE_ESCOPO",
+      "patterns": ["pediu_clarificacao_desnecessaria"],
+      "razao": "Vencendo vs vencidos é distinção real; clarificação razoável.",
+      "sugestao_prompt": null,
+      "correcao_factual": "nao_aplicavel"
+    },
+    {
+      "turnoId": "177b6e6a",
+      "status": "PARCIAL",
+      "patterns": ["tool_errada", "pediu_clarificacao_desnecessaria"],
+      "razao": "Para comparativo mensal deveria usar fiscal_faturamento_periodo por mês (ou tool de série), não fiscal_notas_emitidas (que retorna linha-a-linha). Mesmo assim pediu clarificação sem entregar nada.",
+      "sugestao_prompt": "Para 'comparativo por mês', chamar fiscal_faturamento_periodo iterando meses, não listar notas individuais.",
+      "correcao_factual": "nao_aplicavel"
+    },
+    {
+      "turnoId": "17ed5df5",
+      "status": "CORRETO",
+      "patterns": ["acerto_objetividade"],
+      "razao": "Tool certa; respondeu fielmente o contexto 'cadastrado sem linha de saldo'.",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "18e65bca",
+      "status": "CORRETO",
+      "patterns": ["acerto_objetividade", "limitacao_real_declarada"],
+      "razao": "Reconheceu que tem valor de pedido (não faturamento por NF), registrou lacuna e trouxe ranking que bate com toolResult.",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "1aa4bc00",
+      "status": "CORRETO",
+      "patterns": ["acerto_objetividade"],
+      "razao": "Tool certa, período últimos 30d correto, valores e nomes batem.",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "1bea8a4d",
+      "status": "CORRETO",
+      "patterns": ["acerto_objetividade"],
+      "razao": "Top produtos parados batem com toolResult em valor, qtd e dias.",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "1e3991bf",
+      "status": "FORA_DE_ESCOPO",
+      "patterns": ["pediu_clarificacao_desnecessaria"],
+      "razao": "Estoque vs financeiro é ambiguidade real para 'saldo geral em valor'.",
+      "sugestao_prompt": null,
+      "correcao_factual": "nao_aplicavel"
+    },
+    {
+      "turnoId": "1f2fbd79",
+      "status": "FORA_DE_ESCOPO",
+      "patterns": ["pediu_clarificacao_desnecessaria"],
+      "razao": "'Quais notas?' sem contexto requer clarificação obrigatória.",
+      "sugestao_prompt": null,
+      "correcao_factual": "nao_aplicavel"
+    },
+    {
+      "turnoId": "1f804f91",
+      "status": "CORRETO",
+      "patterns": ["acerto_objetividade", "acerto_modelo"],
+      "razao": "Tool certa, período correto, valor e contagem batem.",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "1fb989af",
+      "status": "CORRETO",
+      "patterns": ["acerto_objetividade"],
+      "razao": "Tool retornou vazio; resposta honesta sem inventar.",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "20062dce",
+      "status": "FORA_DE_ESCOPO",
+      "patterns": ["pediu_clarificacao_desnecessaria"],
+      "razao": "Tipo de parceiro e formato é ambíguo; clarificação válida.",
+      "sugestao_prompt": null,
+      "correcao_factual": "nao_aplicavel"
+    },
+    {
+      "turnoId": "226b47d1",
+      "status": "ERRADO",
+      "patterns": ["formato_quebrado", "loop_clarificacao"],
+      "razao": "Resposta começa com 'Nao vou repetir a resposta anterior' (texto vazado de prompt/contexto). Sugestões [[suggestions]] truncadas dentro do texto. Apesar dos números baterem, formato quebrado e fala fora de personagem.",
+      "sugestao_prompt": "Suprimir saídas de raciocínio meta ('não vou repetir...'); blocos [[suggestions]] devem ser separados da finalMessage.",
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "243e6d3e",
+      "status": "CORRETO",
+      "patterns": ["acerto_objetividade"],
+      "razao": "Tool certa, ranking de mais atrasados bate com toolResult.",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "259fd493",
+      "status": "FORA_DE_ESCOPO",
+      "patterns": ["pediu_clarificacao_desnecessaria"],
+      "razao": "'Movimentação de produtos' tem múltiplos cortes; clarificação razoável.",
+      "sugestao_prompt": null,
+      "correcao_factual": "nao_aplicavel"
+    },
+    {
+      "turnoId": "25f2bd3a",
+      "status": "FORA_DE_ESCOPO",
+      "patterns": ["pediu_clarificacao_desnecessaria"],
+      "razao": "'Qual cliente?' sem contexto; clarificação obrigatória.",
+      "sugestao_prompt": null,
+      "correcao_factual": "nao_aplicavel"
+    }
+  ]
+}

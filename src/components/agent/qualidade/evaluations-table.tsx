@@ -37,7 +37,10 @@ import type {
   EvaluationRow,
 } from "@/lib/agent/quality/queries";
 import { cn } from "@/lib/utils";
-import { markerToRodadaName } from "@/lib/agent/quality/rodada-labels";
+import {
+  channelToOrigem,
+  markerToRodadaName,
+} from "@/lib/agent/quality/rodada-labels";
 import {
   EvaluationsTableFilters,
   type EvaluationsTableFiltersValue,
@@ -215,7 +218,7 @@ export function EvaluationsTable({
             <TableHeader>
               <TableRow>
                 <TableHead className="w-[140px]">Data</TableHead>
-                <TableHead className="w-[90px]">Rodada</TableHead>
+                <TableHead className="w-[130px]">Origem</TableHead>
                 <TableHead>Pergunta</TableHead>
                 <TableHead>Resposta</TableHead>
                 <TableHead className="w-[130px]">Status</TableHead>
@@ -250,19 +253,31 @@ export function EvaluationsTable({
                         {dateTimeFmt.format(row.createdAt)}
                       </TableCell>
                       <TableCell className="text-xs">
-                        {row.rodada ? (
-                          <Badge
-                            variant="outline"
-                            className="border-border bg-muted/40 font-mono text-[11px] text-muted-foreground"
-                            title={row.rodada}
-                          >
-                            {labelForRodada
-                              ? labelForRodada(row.rodada)
-                              : markerToRodadaName(row.rodada)}
-                          </Badge>
-                        ) : (
-                          <span className="text-muted-foreground">,</span>
-                        )}
+                        {(() => {
+                          // Origem = rodada de auditoria (se conversa tem
+                          // marker AUDIT-POS) OU virtual derivada do channel
+                          // (in_app/whatsapp -> Agente Nex, playground ->
+                          // Playground).
+                          const origemMarker =
+                            row.rodada ?? channelToOrigem(row.channel);
+                          if (!origemMarker) {
+                            return (
+                              <span className="text-muted-foreground">,</span>
+                            );
+                          }
+                          const label = labelForRodada
+                            ? labelForRodada(origemMarker)
+                            : markerToRodadaName(origemMarker);
+                          return (
+                            <Badge
+                              variant="outline"
+                              className="border-border bg-muted/40 font-mono text-[11px] text-muted-foreground"
+                              title={origemMarker}
+                            >
+                              {label}
+                            </Badge>
+                          );
+                        })()}
                       </TableCell>
                       <TableCell
                         className="max-w-[280px] truncate text-sm"

@@ -1,0 +1,863 @@
+{
+  "batchId": "0006",
+  "createdAt": "2026-05-26T15:26:44.709Z",
+  "turnos": [
+    {
+      "turnoId": "bafcd3e8-7e15-4c25-9ed8-93d0f33b9943",
+      "conversationId": "e8e0a749-99ed-49c0-9671-32d1ffa6ef81",
+      "userMessageId": "5c5d4824-a0fe-4226-98c5-d599ae82cec0",
+      "userMessage": "Parceiros novos cadastrados esta semana",
+      "toolMessageId": "ce2ce780-fee8-43cc-83cd-56480016735f",
+      "toolCalls": [
+        {
+          "id": "call_gVoKm7TyiBVop7kXw5lITJnc",
+          "name": "registrar_lacuna",
+          "arguments": {
+            "dominio": "cadastros",
+            "perguntaResumo": "Quantidade de parceiros novos cadastrados nesta semana"
+          }
+        }
+      ],
+      "toolResults": {
+        "call_gVoKm7TyiBVop7kXw5lITJnc": "{\"registrado\":true}"
+      },
+      "finalMessageId": "bafcd3e8-7e15-4c25-9ed8-93d0f33b9943",
+      "finalMessage": "No momento eu não tenho disponível um indicador pronto para **contar “parceiros novos” cadastrados nesta semana (seg a dom)** por data de cadastro.\n\nSe você quiser, eu posso:\n- trazer **quantos parceiros existem no total**\n- mostrar a **distribuição por UF dos clientes**\n- ou **buscar** um parceiro específico por nome/CNPJ/CPF",
+      "model": "gpt-5.4-nano",
+      "tokensInput": 10190,
+      "tokensOutput": 571,
+      "durationMs": 4521,
+      "createdAt": "2026-05-26T15:23:52.158Z",
+      "primaryTool": "registrar_lacuna"
+    },
+    {
+      "turnoId": "bcc10fc7-07ae-4d83-b5f6-e388a96f941a",
+      "conversationId": "d1a06e62-6e54-4c25-999c-3870c2006c7a",
+      "userMessageId": "2eee056b-42f8-4193-a721-f8b414b337cd",
+      "userMessage": "Tenho cliente vencendo título?",
+      "toolMessageId": null,
+      "toolCalls": null,
+      "toolResults": null,
+      "finalMessageId": "bcc10fc7-07ae-4d83-b5f6-e388a96f941a",
+      "finalMessage": "Para te responder certo, preciso só de 2 detalhes:\n\n1) Qual é o **cliente** (nome ou **CNPJ/CPF**)?\n2) Você quer **títulos vencidos** (atrasados) ou **a vencer** (vencendo nos próximos dias)? Se for a vencer, qual janela: **7, 30 ou 60 dias**?",
+      "model": "gpt-5.4-nano",
+      "tokensInput": 10132,
+      "tokensOutput": 358,
+      "durationMs": 3725,
+      "createdAt": "2026-05-26T15:24:40.876Z",
+      "primaryTool": null
+    },
+    {
+      "turnoId": "bcdb49eb-146e-42c9-82e9-9735133db8a1",
+      "conversationId": "627a803f-795a-449d-a6cd-9c263cf434a6",
+      "userMessageId": "af6df669-a1e2-4ccd-b8b8-9180757b9f3b",
+      "userMessage": "Quantos pedidos foram fechados esse mês?",
+      "toolMessageId": null,
+      "toolCalls": null,
+      "toolResults": null,
+      "finalMessageId": "bcdb49eb-146e-42c9-82e9-9735133db8a1",
+      "finalMessage": "Pra eu te passar o número certo: “**pedidos fechados**” é o quê no seu processo?\n\n1) **Pedidos com etapa finalizada/encerrada no funil**  \n2) **Pedidos já faturados (com nota fiscal emitida)**  \n3) **Pedidos entregues/baixados** (se vocês usam esse status como “fechado”)\n\nE “**esse mês**” é **mês atual (01 até hoje)**, correto?",
+      "model": "gpt-5.4-nano",
+      "tokensInput": 10135,
+      "tokensOutput": 1143,
+      "durationMs": 15174,
+      "createdAt": "2026-05-26T15:23:10.618Z",
+      "primaryTool": null
+    },
+    {
+      "turnoId": "bdf29130-3faa-4248-b090-697a8ccb3be4",
+      "conversationId": "5840f884-ca43-43e0-9f81-43677a9766b3",
+      "userMessageId": "a8e69274-f797-4b50-a80e-251017498a27",
+      "userMessage": "Parceiros da Bahia",
+      "toolMessageId": null,
+      "toolCalls": null,
+      "toolResults": null,
+      "finalMessageId": "bdf29130-3faa-4248-b090-697a8ccb3be4",
+      "finalMessage": "Para eu te passar o número/lista certinha dos **parceiros da Bahia (BA)**, preciso só confirmar 2 pontos:\n\n1) Você quer **clientes**, **fornecedores**, **empresas** ou **todos**?  \n2) Quer **quantidade** (total) ou a **lista com os nomes**?",
+      "model": "gpt-5.4-nano",
+      "tokensInput": 10130,
+      "tokensOutput": 374,
+      "durationMs": 6250,
+      "createdAt": "2026-05-26T15:24:54.801Z",
+      "primaryTool": null
+    },
+    {
+      "turnoId": "be717d63-e43f-4964-a3dc-747d3c0f0376",
+      "conversationId": "0fb43b9c-ba34-48e2-87d9-1bd2db925fd9",
+      "userMessageId": "a8ca4a88-f8c1-4a87-b4ec-0033e69a90b0",
+      "userMessage": "Produto mais vendido em valor",
+      "toolMessageId": null,
+      "toolCalls": null,
+      "toolResults": null,
+      "finalMessageId": "be717d63-e43f-4964-a3dc-747d3c0f0376",
+      "finalMessage": "Para eu te trazer o **produto mais vendido em valor**, preciso só confirmar 2 pontos:\n\n1) **Qual período** você quer? (ex.: mês atual, últimos 30 dias, ou um intervalo)  \n2) “Mais vendido” é **pelo faturamento em notas fiscais de saída autorizadas** (valor R$ da venda) ou quer “valor” de **movimentação de estoque**?",
+      "model": "gpt-5.4-nano",
+      "tokensInput": 10131,
+      "tokensOutput": 358,
+      "durationMs": 3063,
+      "createdAt": "2026-05-26T15:20:42.911Z",
+      "primaryTool": null
+    },
+    {
+      "turnoId": "bf175e7b-601b-4a25-96cc-5484730b7861",
+      "conversationId": "0487415d-e98c-422a-8c45-f31f5e05d765",
+      "userMessageId": "b8f4836c-9087-4aef-8026-57a0c3cfa027",
+      "userMessage": "quem tá devendo mais?",
+      "toolMessageId": null,
+      "toolCalls": null,
+      "toolResults": null,
+      "finalMessageId": "bf175e7b-601b-4a25-96cc-5484730b7861",
+      "finalMessage": "Pra eu te dizer “quem tá devendo mais”, preciso alinhar duas coisas:\n\n1) Você quer saber de **quem está devendo pra Matrix** (**contas a receber**) ou **quem a Matrix está devendo** (**contas a pagar**)?\n2) “Mais” é por **maior valor total em aberto** ou só **vencidos/atrasados**?",
+      "model": "gpt-5.4-nano",
+      "tokensInput": 10132,
+      "tokensOutput": 403,
+      "durationMs": 8694,
+      "createdAt": "2026-05-26T15:25:34.361Z",
+      "primaryTool": null
+    },
+    {
+      "turnoId": "bf98c335-7b70-4035-b9a5-a22b744c3467",
+      "conversationId": "1958b3de-aaa0-4736-af92-0c79cd00424a",
+      "userMessageId": "5c831196-b9e7-48a5-bf78-102f0113d93d",
+      "userMessage": "Estrutura completa da conta de receita",
+      "toolMessageId": null,
+      "toolCalls": null,
+      "toolResults": null,
+      "finalMessageId": "bf98c335-7b70-4035-b9a5-a22b744c3467",
+      "finalMessage": "Sou o assistente de operação da Matrix Fitness Group.\n\nPara eu te trazer a “estrutura completa da conta de receita”, preciso que você me informe qual é a conta exata no plano:\n\n1) Qual é o código ou o nome da conta de receita? (ex.: “3.01.00 Receita de Vendas” ou “Receita de Vendas”)\n2) “Completa” pra você é a árvore toda (todos os níveis) ou só os **filhos diretos** dessa conta?",
+      "model": "gpt-5.4-nano",
+      "tokensInput": 10133,
+      "tokensOutput": 411,
+      "durationMs": 5266,
+      "createdAt": "2026-05-26T15:23:55.453Z",
+      "primaryTool": null
+    },
+    {
+      "turnoId": "c17d383c-8630-45f5-9a33-f2e4d79ce4bc",
+      "conversationId": "dac4ed41-6798-40f4-a470-79717ed0e48d",
+      "userMessageId": "498361b9-ac8e-4da9-b1b0-803de1480593",
+      "userMessage": "Nota fiscal de entrada do fornecedor com CNPJ XX",
+      "toolMessageId": null,
+      "toolCalls": null,
+      "toolResults": null,
+      "finalMessageId": "c17d383c-8630-45f5-9a33-f2e4d79ce4bc",
+      "finalMessage": "Para eu te trazer **as notas fiscais de entrada** do fornecedor com **CNPJ XX**, preciso só de 3 confirmações:\n\n1) Qual é o **CNPJ completo** (sem máscara ou com máscara, tanto faz)?  \n2) De qual **período** você quer (mês atual, últimos 30 dias, ou intervalo de datas)?  \n3) Você quer **a lista das notas** (nº/serie/data/valor) ou **apenas resumo** (quantidade e **valor total**)?",
+      "model": "gpt-5.4-nano",
+      "tokensInput": 10136,
+      "tokensOutput": 497,
+      "durationMs": 9057,
+      "createdAt": "2026-05-26T15:21:09.398Z",
+      "primaryTool": null
+    },
+    {
+      "turnoId": "c1f877d7-80ce-49af-9106-c86249204c91",
+      "conversationId": "ab795b73-4204-4c28-a1ae-2a05721b73c0",
+      "userMessageId": "ed7110f1-d439-433c-b8a9-4e1b05d91642",
+      "userMessage": "Plano de contas resumido",
+      "toolMessageId": null,
+      "toolCalls": null,
+      "toolResults": null,
+      "finalMessageId": "c1f877d7-80ce-49af-9106-c86249204c91",
+      "finalMessage": "Sou o assistente de operação da Matrix Fitness Group.  \n\nQuando você diz “plano de contas resumido”, você quer qual formato?\n- Apenas **contas sintéticas** (ex.: nível 1/2) — visão bem compacta\n- **Sintéticas + principais subgrupos** (ex.: até um nível abaixo)\n- Filtrar por **termo** (ex.: Ativo, Passivo, Receitas, Despesas)",
+      "model": "gpt-5.4-nano",
+      "tokensInput": 10131,
+      "tokensOutput": 377,
+      "durationMs": 5566,
+      "createdAt": "2026-05-26T15:25:01.274Z",
+      "primaryTool": null
+    },
+    {
+      "turnoId": "c21e8cbb-f1f0-43ee-8ee6-dc62e68cb89a",
+      "conversationId": "44dc2d3a-baaf-4457-91b1-d840378a00a7",
+      "userMessageId": "1fe84700-ef3d-4279-ad23-93e335f648e2",
+      "userMessage": "Pedidos em entrega que estão atrasados",
+      "toolMessageId": "d9383e4b-fa21-40d8-ac74-dbb2c4b4d248",
+      "toolCalls": [
+        {
+          "id": "call_VQsnAViCIx62bxoCQ07m5HO3",
+          "name": "comercial_pedidos_atrasados",
+          "arguments": {}
+        }
+      ],
+      "toolResults": {
+        "call_VQsnAViCIx62bxoCQ07m5HO3": "{\"estado\":\"ok\",\"dados\":{\"linhas\":[{\"pedidoId\":270,\"participanteNome\":null,\"numero\":\"1\",\"dataVencimento\":\"2024-12-30T03:00:00.000Z\",\"valor\":206765,\"diasAtraso\":512},{\"pedidoId\":266,\"participanteNome\":null,\"numero\":\"1\",\"dataVencimento\":\"2025-01-27T03:00:00.000Z\",\"valor\":274729.33,\"diasAtraso\":484},{\"pedidoId\":273,\"participanteNome\":null,\"numero\":\"1\",\"dataVencimento\":\"2025-02-25T03:00:00.000Z\",\"valor\":339390.4,\"diasAtraso\":455},{\"pedidoId\":274,\"participanteNome\":null,\"numero\":\"1\",\"dataVencimento\":\"2025-03-07T03:00:00.000Z\",\"valor\":59000,\"diasAtraso\":445},{\"pedidoId\":274,\"participanteNome\":null,\"numero\":\"2\",\"dataVencimento\":\"2025-04-07T03:00:00.000Z\",\"valor\":59000,\"diasAtraso\":414},{\"pedidoId\":276,\"participanteNome\":null,\"numero\":\"1\",\"dataVencimento\":\"2025-04-28T03:00:00.000Z\",\"valor\":11266.67,\"diasAtraso\":393},{\"pedidoId\":274,\"participanteNome\":null,\"numero\":\"3\",\"dataVencimento\":\"2025-05-06T03:00:00.000Z\",\"valor\":59000,\"diasAtraso\":385},{\"pedidoId\":276,\"participanteNome\":null,\"numero\":\"2\",\"dataVencimento\":\"2025-05-26T03:00:00.000Z\",\"valor\":11266.67,\"diasAtraso\":365},{\"pedidoId\":274,\"participanteNome\":null,\"numero\":\"4\",\"dataVencimento\":\"2025-06-05T03:00:00.000Z\",\"valor\":59000,\"diasAtraso\":355},{\"pedidoId\":276,\"participanteNome\":null,\"numero\":\"3\",\"dataVencimento\":\"2025-06-25T03:00:00.000Z\",\"valor\":11266.67,\"diasAtraso\":335},{\"pedidoId\":274,\"participanteNome\":null,\"numero\":\"5\",\"dataVencimento\":\"2025-07-07T03:00:00.000Z\",\"valor\":59000,\"diasAtraso\":323},{\"pedidoId\":276,\"participanteNome\":null,\"numero\":\"4\",\"dataVencimento\":\"2025-07-25T03:00:00.000Z\",\"valor\":11266.67,\"diasAtraso\":305},{\"pedidoId\":279,\"participanteNome\":null,\"numero\":\"1\",\"dataVencimento\":\"2025-07-25T03:00:00.000Z\",\"valor\":70452.06,\"diasAtraso\":305},{\"pedidoId\":276,\"participanteNome\":null,\"numero\":\"5\",\"dataVencimento\":\"2025-08-25T03:00:00.000Z\",\"valor\":11266.67,\"diasAtraso\":274},{\"pedidoId\":279,\"participanteNome\":null,\"numero\":\"2\",\"dataVencimento\":\"2025-08-25T03:00:00.000Z\",\"valor\":70452.06,\"diasAtraso\":274},{\"pedidoId\":276,\"participanteNome\":null,\"numero\":\"6\",\"dataVencimento\":\"2025-09-23T03:00:00.000Z\",\"valor\":11266.67,\"diasAtraso\":245},{\"pedidoId\":279,\"participanteNome\":null,\"numero\":\"3\",\"dataVencimento\":\"2025-09-23T03:00:00.000Z\",\"valor\":70452.06,\"diasAtraso\":245},{\"pedidoId\":377,\"participanteNome\":null,\"numero\":\"1\",\"dataVencimento\":\"2025-09-29T03:00:00.000Z\",\"valor\":726.61,\"diasAtraso\":239},{\"pedidoId\":276,\"participanteNome\":null,\"numero\":\"7\",\"dataVencimento\":\"2025-10-23T03:00:00.000Z\",\"valor\":11266.67,\"diasAtraso\":215},{\"pedidoId\":279,\"participanteNome\":null,\"numero\":\"4\",\"dataVencimento\":\"2025-10-23T03:00:00.000Z\",\"valor\":70452.06,\"diasAtraso\":215},{\"pedidoId\":290,\"participanteNome\":null,\"numero\":\"1\",\"dataVencimento\":\"2025-10-30T03:00:00.000Z\",\"valor\":35714.29,\"diasAtraso\":208},{\"pedidoId\":291,\"participanteNome\":null,\"numero\":\"2\",\"dataVencimento\":\"2025-11-03T03:00:00.000Z\",\"valor\":25416.67,\"diasAtraso\":204},{\"pedidoId\":291,\"participanteNome\":null,\"numero\":\"1\",\"dataVencimento\":\"2025-11-03T03:00:00.000Z\",\"valor\":25416.67,\"diasAtraso\":204},{\"pedidoId\":395,\"participanteNome\":null,\"numero\":\"1\",\"dataVencimento\":\"2025-11-21T03:00:00.000Z\",\"valor\":146648.04,\"diasAtraso\":186},{\"pedidoId\":276,\"participanteNome\":null,\"numero\":\"8\",\"dataVencimento\":\"2025-11-24T03:00:00.000Z\",\"valor\":11266.67,\"diasAtraso\":183},{\"pedidoId\":279,\"participanteNome\":null,\"numero\":\"5\",\"dataVencimento\":\"2025-11-24T03:00:00.000Z\",\"valor\":70452.04,\"diasAtraso\":183},{\"pedidoId\":290,\"participanteNome\":null,\"numero\":\"2\",\"dataVencimento\":\"2025-12-01T03:00:00.000Z\",\"valor\":35714.29,\"diasAtraso\":176},{\"pedidoId\":291,\"participanteNome\":null,\"numero\":\"4\",\"dataVencimento\":\"2025-12-02T03:00:00.000Z\",\"valor\":25416.67,\"diasAtraso\":175},{\"pedidoId\":291,\"participanteNome\":null,\"numero\":\"3\",\"dataVencimento\":\"2025-12-02T03:00:00.000Z\",\"valor\":25416.67,\"diasAtraso\":175},{\"pedidoId\":276,\"participanteNome\":null,\"numero\":\"9\",\"dataVencimento\":\"2025-12-22T03:00:00.000Z\",\"valor\":11266.67,\"diasAtraso\":155},{\"pedidoId\":395,\"participanteNome\":null,\"numero\":\"2\",\"dataVencimento\":\"2025-12-22T03:00:00.000Z\",\"valor\":146648.04,\"diasAtraso\":155},{\"pedidoId\":268,\"participanteNome\":null,\"numero\":\"1\",\"dataVencimento\":\"2025-12-26T03:00:00.000Z\",\"valor\":20000,\"diasAtraso\":151},{\"pedidoId\":296,\"participanteNome\":null,\"numero\":\"1\",\"dataVencimento\":\"2025-12-26T03:00:00.000Z\",\"valor\":150000,\"diasAtraso\":151},{\"pedidoId\":290,\"participanteNome\":null,\"numero\":\"3\",\"dataVencimento\":\"2025-12-29T03:00:00.000Z\",\"valor\":35714.29,\"diasAtraso\":148},{\"pedidoId\":291,\"participanteNome\":null,\"numero\":\"5\",\"dataVencimento\":\"2026-01-02T03:00:00.000Z\",\"valor\":25416.67,\"diasAtraso\":144},{\"pedidoId\":291,\"participanteNome\":null,\"numero\":\"6\",\"dataVencimento\":\"2026-01-02T03:00:00.000Z\",\"valor\":25416.67,\"diasAtraso\":144},{\"pedidoId\":297,\"participanteNome\":null,\"numero\":\"2\",\"dataVencimento\":\"2026-01-02T03:00:00.000Z\",\"valor\":15601.86,\"diasAtraso\":144},{\"pedidoId\":297,\"participanteNome\":null,\"numero\":\"1\",\"dataVencimento\":\"2026-01-02T03:00:00.000Z\",\"valor\":15601.86,\"diasAtraso\":144},{\"pedidoId\":395,\"participanteNome\":null,\"numero\":\"3\",\"dataVencimento\":\"2026-01-19T03:00:00.000Z\",\"valor\":146648.04,\"diasAtraso\":127},{\"pedidoId\":276,\"participanteNome\":null,\"numero\":\"10\",\"dataVencimento\":\"2026-01-21T03:00:00.000Z\",\"valor\":11266.67,\"diasAtraso\":125},{\"pedidoId\":311,\"participanteNome\":null,\"numero\":\"1\",\"dataVencimento\":\"2026-01-21T03:00:00.000Z\",\"valor\":179768.89,\"diasAtraso\":125},{\"pedidoId\":311,\"participanteNome\":null,\"numero\":\"2\",\"dataVencimento\":\"2026-01-21T03:00:00.000Z\",\"valor\":179768.89,\"diasAtraso\":125},{\"pedidoId\":268,\"participanteNome\":null,\"numero\":\"2\",\"dataVencimento\":\"2026-01-26T03:00:00.000Z\",\"valor\":20000,\"diasAtraso\":120},{\"pedidoId\":296,\"participanteNome\":null,\"numero\":\"2\",\"dataVencimento\":\"2026-01-26T03:00:00.000Z\",\"valor\":150000,\"diasAtraso\":120},{\"pedidoId\":290,\"participanteNome\":null,\"numero\":\"4\",\"dataVencimento\":\"2026-01-28T03:00:00.000Z\",\"valor\":35714.29,\"diasAtraso\":118},{\"pedidoId\":291,\"participanteNome\":null,\"numero\":\"8\",\"dataVencimento\":\"2026-02-02T03:00:00.000Z\",\"valor\":25416.67,\"diasAtraso\":113},{\"pedidoId\":291,\"participanteNome\":null,\"numero\":\"7\",\"dataVencimento\":\"2026-02-02T03:00:00.000Z\",\"valor\":25416.67,\"diasAtraso\":113},{\"pedidoId\":297,\"participanteNome\":null,\"numero\":\"4\",\"dataVencimento\":\"2026-02-02T03:00:00.000Z\",\"valor\":15601.83,\"diasAtraso\":113},{\"pedidoId\":297,\"participanteNome\":null,\"numero\":\"3\",\"dataVencimento\":\"2026-02-02T03:00:00.000Z\",\"valor\":15601.83,\"diasAtraso\":113},{\"pedidoId\":381,\"participanteNome\":null,\"numero\":\"1\",\"dataVencimento\":\"2026-02-02T03:00:00.000Z\",\"valor\":127500,\"diasAtraso\":113},{\"pedidoId\":313,\"participanteNome\":null,\"numero\":\"1\",\"dataVencimento\":\"2026-02-09T03:00:00.000Z\",\"valor\":14043.94,\"diasAtraso\":106},{\"pedidoId\":387,\"participanteNome\":null,\"numero\":\"1\",\"dataVencimento\":\"2026-02-11T03:00:00.000Z\",\"valor\":5079,\"diasAtraso\":104},{\"pedidoId\":395,\"participanteNome\":null,\"numero\":\"4\",\"dataVencimento\":\"2026-02-18T03:00:00.000Z\",\"valor\":146648.04,\"diasAtraso\":97},{\"pedidoId\":276,\"participanteNome\":null,\"numero\":\"11\",\"dataVencimento\":\"2026-02-20T03:00:00.000Z\",\"valor\":11266.67,\"diasAtraso\":95},{\"pedidoId\":311,\"participanteNome\":null,\"numero\":\"3\",\"dataVencimento\":\"2026-02-20T03:00:00.000Z\",\"valor\":179768.89,\"diasAtraso\":95},{\"pedidoId\":311,\"participanteNome\":null,\"numero\":\"4\",\"dataVencimento\":\"2026-02-20T03:00:00.000Z\",\"valor\":179768.89,\"diasAtraso\":95},{\"pedidoId\":296,\"participanteNome\":null,\"numero\":\"3\",\"dataVencimento\":\"2026-02-23T03:00:00.000Z\",\"valor\":150000,\"diasAtraso\":92},{\"pedidoId\":268,\"participanteNome\":null,\"numero\":\"3\",\"dataVencimento\":\"2026-02-24T03:00:00.000Z\",\"valor\":20000,\"diasAtraso\":91},{\"pedidoId\":103,\"participanteNome\":null,\"numero\":\"1\",\"dataVencimento\":\"2026-02-26T03:00:00.000Z\",\"valor\":2577.91,\"diasAtraso\":89},{\"pedidoId\":290,\"participanteNome\":null,\"numero\":\"5\",\"dataVencimento\":\"2026-02-27T03:00:00.000Z\",\"valor\":35714.29,\"diasAtraso\":88},{\"pedidoId\":354,\"participanteNome\":null,\"numero\":\"1\",\"dataVencimento\":\"2026-02-27T03:00:00.000Z\",\"valor\":630000,\"diasAtraso\":88},{\"pedidoId\":354,\"participanteNome\":null,\"numero\":\"2\",\"dataVencimento\":\"2026-02-27T03:00:00.000Z\",\"valor\":630000,\"diasAtraso\":88},{\"pedidoId\":291,\"participanteNome\":null,\"numero\":\"10\",\"dataVencimento\":\"2026-03-02T03:00:00.000Z\",\"valor\":25416.67,\"diasAtraso\":85},{\"pedidoId\":291,\"participanteNome\":null,\"numero\":\"9\",\"dataVencimento\":\"2026-03-02T03:00:00.000Z\",\"valor\":25416.67,\"diasAtraso\":85},{\"pedidoId\":297,\"participanteNome\":null,\"numero\":\"6\",\"dataVencimento\":\"2026-03-02T03:00:00.000Z\",\"valor\":15601.83,\"diasAtraso\":85},{\"pedidoId\":297,\"participanteNome\":null,\"numero\":\"5\",\"dataVencimento\":\"2026-03-02T03:00:00.000Z\",\"valor\":15601.83,\"diasAtraso\":85},{\"pedidoId\":326,\"participanteNome\":null,\"numero\":\"1\",\"dataVencimento\":\"2026-03-02T03:00:00.000Z\",\"valor\":3876.03,\"diasAtraso\":85},{\"pedidoId\":381,\"participanteNome\":null,\"numero\":\"2\",\"dataVencimento\":\"2026-03-03T03:00:00.000Z\",\"valor\":127500,\"diasAtraso\":84},{\"pedidoId\":329,\"participanteNome\":null,\"numero\":\"1\",\"dataVencimento\":\"2026-03-04T03:00:00.000Z\",\"valor\":29904,\"diasAtraso\":83},{\"pedidoId\":313,\"participanteNome\":null,\"numero\":\"2\",\"dataVencimento\":\"2026-03-10T03:00:00.000Z\",\"valor\":14043.94,\"diasAtraso\":77},{\"pedidoId\":338,\"participanteNome\":null,\"numero\":\"1\",\"dataVencimento\":\"2026-03-13T03:00:00.000Z\",\"valor\":73023.73,\"diasAtraso\":74},{\"pedidoId\":338,\"participanteNome\":null,\"numero\":\"2\",\"dataVencimento\":\"2026-03-13T03:00:00.000Z\",\"valor\":73023.73,\"diasAtraso\":74},{\"pedidoId\":368,\"participanteNome\":null,\"numero\":\"1\",\"dataVencimento\":\"2026-03-13T03:00:00.000Z\",\"valor\":591604,\"diasAtraso\":74},{\"pedidoId\":339,\"participanteNome\":null,\"numero\":\"1\",\"dataVencimento\":\"2026-03-20T03:00:00.000Z\",\"valor\":12000,\"diasAtraso\":67},{\"pedidoId\":339,\"participanteNome\":null,\"numero\":\"2\",\"dataVencimento\":\"2026-03-20T03:00:00.000Z\",\"valor\":12000,\"diasAtraso\":67},{\"pedidoId\":267,\"participanteNome\":null,\"numero\":\"1\",\"dataVencimento\":\"2026-03-23T03:00:00.000Z\",\"valor\":3746.69,\"diasAtraso\":64},{\"pedidoId\":276,\"participanteNome\":null,\"numero\":\"12\",\"dataVencimento\":\"2026-03-23T03:00:00.000Z\",\"valor\":11266.67,\"diasAtraso\":64},{\"pedidoId\":324,\"participanteNome\":null,\"numero\":\"01\",\"dataVencimento\":\"2026-03-23T03:00:00.000Z\",\"valor\":20000,\"diasAtraso\":64},{\"pedidoId\":324,\"participanteNome\":null,\"numero\":\"02\",\"dataVencimento\":\"2026-03-23T03:00:00.000Z\",\"valor\":20000,\"diasAtraso\":64},{\"pedidoId\":507,\"participanteNome\":null,\"numero\":\"1\",\"dataVencimento\":\"2026-03-24T03:00:00.000Z\",\"valor\":80000,\"diasAtraso\":63},{\"pedidoId\":296,\"participanteNome\":null,\"numero\":\"4\",\"dataVencimento\":\"2026-03-25T03:00:00.000Z\",\"valor\":150000,\"diasAtraso\":62},{\"pedidoId\":268,\"participanteNome\":null,\"numero\":\"4\",\"dataVencimento\":\"2026-03-26T03:00:00.000Z\",\"valor\":20000,\"diasAtraso\":61},{\"pedidoId\":349,\"participanteNome\":null,\"numero\":\"1\",\"dataVencimento\":\"2026-03-27T03:00:00.000Z\",\"valor\":21000,\"diasAtraso\":60},{\"pedidoId\":349,\"participanteNome\":null,\"numero\":\"2\",\"dataVencimento\":\"2026-03-27T03:00:00.000Z\",\"valor\":21000,\"diasAtraso\":60},{\"pedidoId\":576,\"participanteNome\":null,\"numero\":\"1\",\"dataVencimento\":\"2026-03-28T03:00:00.000Z\",\"valor\":120202.34,\"diasAtraso\":59},{\"pedidoId\":103,\"participanteNome\":null,\"numero\":\"2\",\"dataVencimento\":\"2026-03-30T03:00:00.000Z\",\"valor\":2577.89,\"diasAtraso\":57},{\"pedidoId\":290,\"participanteNome\":null,\"numero\":\"6\",\"dataVencimento\":\"2026-03-30T03:00:00.000Z\",\"valor\":35714.29,\"diasAtraso\":57},{\"pedidoId\":355,\"participanteNome\":null,\"numero\":\"02\",\"dataVencimento\":\"2026-03-30T03:00:00.000Z\",\"valor\":55625,\"diasAtraso\":57},{\"pedidoId\":355,\"participanteNome\":null,\"numero\":\"01\",\"dataVencimento\":\"2026-03-30T03:00:00.000Z\",\"valor\":55625,\"diasAtraso\":57},{\"pedidoId\":326,\"participanteNome\":null,\"numero\":\"2\",\"dataVencimento\":\"2026-03-30T03:00:00.000Z\",\"valor\":3876.03,\"diasAtraso\":57},{\"pedidoId\":567,\"participanteNome\":null,\"numero\":\"01\",\"dataVencimento\":\"2026-03-30T03:00:00.000Z\",\"valor\":30000,\"diasAtraso\":57},{\"pedidoId\":556,\"participanteNome\":null,\"numero\":\"1\",\"dataVencimento\":\"2026-03-30T03:00:00.000Z\",\"valor\":40000,\"diasAtraso\":57},{\"pedidoId\":841,\"participanteNome\":null,\"numero\":\"1\",\"dataVencimento\":\"2026-03-30T03:00:00.000Z\",\"valor\":20000,\"diasAtraso\":57},{\"pedidoId\":838,\"participanteNome\":null,\"numero\":\"01\",\"dataVencimento\":\"2026-03-30T03:00:00.000Z\",\"valor\":20000,\"diasAtraso\":57},{\"pedidoId\":478,\"participanteNome\":null,\"numero\":\"1\",\"dataVencimento\":\"2026-03-31T03:00:00.000Z\",\"valor\":9202.5,\"diasAtraso\":56},{\"pedidoId\":570,\"participanteNome\":null,\"numero\":\"1\",\"dataVencimento\":\"2026-03-31T03:00:00.000Z\",\"valor\":47500,\"diasAtraso\":56},{\"pedidoId\":616,\"participanteNome\":null,\"numero\":\"01\",\"dataVencimento\":\"2026-03-31T03:00:00.000Z\",\"valor\":16876.42,\"diasAtraso\":56},{\"pedidoId\":841,\"participanteNome\":null,\"numero\":\"2\",\"dataVencimento\":\"2026-03-31T03:00:00.000Z\",\"valor\":20000,\"diasAtraso\":56},{\"pedidoId\":291,\"participanteNome\":null,\"numero\":\"11\",\"dataVencimento\":\"2026-04-01T03:00:00.000Z\",\"valor\":25416.65,\"diasAtraso\":55},{\"pedidoId\":291,\"participanteNome\":null,\"numero\":\"12\",\"dataVencimento\":\"2026-04-01T03:00:00.000Z\",\"valor\":25416.65,\"diasAtraso\":55},{\"pedidoId\":297,\"participanteNome\":null,\"numero\":\"8\",\"dataVencimento\":\"2026-04-01T03:00:00.000Z\",\"valor\":15601.83,\"diasAtraso\":55},{\"pedidoId\":297,\"participanteNome\":null,\"numero\":\"7\",\"dataVencimento\":\"2026-04-01T03:00:00.000Z\",\"valor\":15601.83,\"diasAtraso\":55},{\"pedidoId\":829,\"participanteNome\":null,\"numero\":\"2\",\"dataVencimento\":\"2026-04-01T03:00:00.000Z\",\"valor\":58502,\"diasAtraso\":55},{\"pedidoId\":829,\"participanteNome\":null,\"numero\":\"3\",\"dataVencimento\":\"2026-04-01T03:00:00.000Z\",\"valor\":82132,\"diasAtraso\":55},{\"pedidoId\":833,\"participanteNome\":null,\"numero\":\"1\",\"dataVencimento\":\"2026-04-01T03:00:00.000Z\",\"valor\":27570,\"diasAtraso\":55},{\"pedidoId\":833,\"participanteNome\":null,\"numero\":\"2\",\"dataVencimento\":\"2026-04-01T03:00:00.000Z\",\"valor\":58502,\"diasAtraso\":55},{\"pedidoId\":833,\"participanteNome\":null,\"numero\":\"3\",\"dataVencimento\":\"2026-04-01T03:00:00.000Z\",\"valor\":82132,\"diasAtraso\":55},{\"pedidoId\":839,\"participanteNome\":null,\"numero\":\"1\",\"dataVencimento\":\"2026-04-01T03:00:00.000Z\",\"valor\":32560,\"diasAtraso\":55},{\"pedidoId\":823,\"participanteNome\":null,\"numero\":\"3\",\"dataVencimento\":\"2026-04-01T03:00:00.000Z\",\"valor\":27570,\"diasAtraso\":55},{\"pedidoId\":823,\"participanteNome\":null,\"numero\":\"1\",\"dataVencimento\":\"2026-04-01T03:00:00.000Z\",\"valor\":58502,\"diasAtraso\":55},{\"pedidoId\":823,\"participanteNome\":null,\"numero\":\"2\",\"dataVencimento\":\"2026-04-01T03:00:00.000Z\",\"valor\":82132,\"diasAtraso\":55},{\"pedidoId\":826,\"participanteNome\":null,\"numero\":\"1\",\"dataVencimento\":\"2026-04-01T03:00:00.000Z\",\"valor\":27570,\"diasAtraso\":55},{\"pedidoId\":826,\"participanteNome\":null,\"numero\":\"2\",\"dataVencimento\":\"2026-04-01T03:00:00.000Z\",\"valor\":58502,\"diasAtraso\":55},{\"pedidoId\":829,\"participanteNome\":null,\"numero\":\"1\",\"dataVencimento\":\"2026-04-01T03:00:00.000Z\",\"valor\":27570,\"diasAtraso\":55},{\"pedidoId\":888,\"participanteNome\":null,\"numero\":\"1\",\"dataVencimento\":\"2026-04-01T03:00:00.000Z\",\"valor\":206479.36,\"diasAtraso\":55},{\"pedidoId\":264,\"participanteNome\":null,\"numero\":\"1\",\"dataVencimento\":\"2026-04-02T03:00:00.000Z\",\"valor\":146018.63,\"diasAtraso\":54},{\"pedidoId\":572,\"participanteNome\":null,\"numero\":\"01\",\"dataVencimento\":\"2026-04-02T03:00:00.000Z\",\"valor\":32399.35,\"diasAtraso\":54},{\"pedidoId\":766,\"participanteNome\":null,\"numero\":\"01\",\"dataVencimento\":\"2026-04-02T03:00:00.000Z\",\"valor\":22741.23,\"diasAtraso\":54},{\"pedidoId\":860,\"participanteNome\":null,\"numero\":\"1\",\"dataVencimento\":\"2026-04-02T03:00:00.000Z\",\"valor\":27570,\"diasAtraso\":54},{\"pedidoId\":860,\"participanteNome\":null,\"numero\":\"2\",\"dataVencimento\":\"2026-04-02T03:00:00.000Z\",\"valor\":58502,\"diasAtraso\":54},{\"pedidoId\":986,\"participanteNome\":null,\"numero\":\"1\",\"dataVencimento\":\"2026-04-02T03:00:00.000Z\",\"valor\":60000,\"diasAtraso\":54},{\"pedidoId\":501,\"participanteNome\":null,\"numero\":\"1\",\"dataVencimento\":\"2026-04-05T03:00:00.000Z\",\"valor\":21500,\"diasAtraso\":51},{\"pedidoId\":602,\"participanteNome\":null,\"numero\":\"1\",\"dataVencimento\":\"2026-04-05T03:00:00.000Z\",\"valor\":197,\"diasAtraso\":51},{\"pedidoId\":841,\"participanteNome\":null,\"numero\":\"3\",\"dataVencimento\":\"2026-04-06T03:00:00.000Z\",\"valor\":10000,\"diasAtraso\":50},{\"pedidoId\":329,\"participanteNome\":null,\"numero\":\"2\",\"dataVencimento\":\"2026-04-06T03:00:00.000Z\",\"valor\":29904,\"diasAtraso\":50},{\"pedidoId\":1020,\"participanteNome\":null,\"numero\":\"1\",\"dataVencimento\":\"2026-04-07T03:00:00.000Z\",\"valor\":2056,\"diasAtraso\":49},{\"pedidoId\":1125,\"participanteNome\":null,\"numero\":\"1\",\"dataVencimento\":\"2026-04-08T03:00:00.000Z\",\"valor\":33000,\"diasAtraso\":48},{\"pedidoId\":313,\"participanteNome\":null,\"numero\":\"3\",\"dataVencimento\":\"2026-04-09T03:00:00.000Z\",\"valor\":14043.94,\"diasAtraso\":47},{\"pedidoId\":533,\"participanteNome\":null,\"numero\":\"1\",\"dataVencimento\":\"2026-04-09T03:00:00.000Z\",\"valor\":4241.75,\"diasAtraso\":47},{\"pedidoId\":506,\"participanteNome\":null,\"numero\":\"01\",\"dataVencimento\":\"2026-04-09T03:00:00.000Z\",\"valor\":504,\"diasAtraso\":47},{\"pedidoId\":448,\"participanteNome\":null,\"numero\":\"01\",\"dataVencimento\":\"2026-04-09T03:00:00.000Z\",\"valor\":2800,\"diasAtraso\":47},{\"pedidoId\":1154,\"participanteNome\":null,\"numero\":\"1\",\"dataVencimento\":\"2026-04-09T03:00:00.000Z\",\"valor\":11950,\"diasAtraso\":47},{\"pedidoId\":615,\"participanteNome\":null,\"numero\":\"1\",\"dataVencimento\":\"2026-04-10T03:00:00.000Z\",\"valor\":40000,\"diasAtraso\":46},{\"pedidoId\":627,\"participanteNome\":null,\"numero\":\"1\",\"dataVencimento\":\"2026-04-10T03:00:00.000Z\",\"valor\":730,\"diasAtraso\":46},{\"pedidoId\":628,\"participanteNome\":null,\"numero\":\"1\",\"dataVencimento\":\"2026-04-10T03:00:00.000Z\",\"valor\":610,\"diasAtraso\":46},{\"pedidoId\":631,\"participanteNome\":null,\"numero\":\"1\",\"dataVencimento\":\"2026-04-10T03:00:00.000Z\",\"valor\":19000,\"diasAtraso\":46},{\"pedidoId\":655,\"participanteNome\":null,\"numero\":\"1\",\"dataVencimento\":\"2026-04-10T03:00:00.000Z\",\"valor\":275,\"diasAtraso\":46},{\"pedidoId\":657,\"participanteNome\":null,\"numero\":\"1\",\"dataVencimento\":\"2026-04-10T03:00:00.000Z\",\"valor\":790,\"diasAtraso\":46},{\"pedidoId\":659,\"participanteNome\":null,\"numero\":\"1\",\"dataVencimento\":\"2026-04-10T03:00:00.000Z\",\"valor\":120,\"diasAtraso\":46},{\"pedidoId\":660,\"participanteNome\":null,\"numero\":\"1\",\"dataVencimento\":\"2026-04-10T03:00:00.000Z\",\"valor\":175,\"diasAtraso\":46},{\"pedidoId\":662,\"participanteNome\":null,\"numero\":\"1\",\"dataVencimento\":\"2026-04-10T03:00:00.000Z\",\"valor\":160,\"diasAtraso\":46},{\"pedidoId\":663,\"participanteNome\":null,\"numero\":\"1\",\"dataVencimento\":\"2026-04-10T03:00:00.000Z\",\"valor\":125,\"diasAtraso\":46},{\"pedidoId\":541,\"participanteNome\":null,\"numero\":\"01\",\"dataVencimento\":\"2026-04-10T03:00:00.000Z\",\"valor\":19458.72,\"diasAtraso\":46},{\"pedidoId\":737,\"participanteNome\":null,\"numero\":\"1\",\"dataVencimento\":\"2026-04-10T03:00:00.000Z\",\"valor\":440,\"diasAtraso\":46},{\"pedidoId\":744,\"participanteNome\":null,\"numero\":\"1\",\"dataVencimento\":\"2026-04-10T03:00:00.000Z\",\"valor\":2030,\"diasAtraso\":46},{\"pedidoId\":1155,\"participanteNome\":null,\"numero\":\"1\",\"dataVencimento\":\"2026-04-10T03:00:00.000Z\",\"valor\":1240,\"diasAtraso\":46},{\"pedidoId\":773,\"participanteNome\":null,\"numero\":\"1\",\"dataVencimento\":\"2026-04-10T03:00:00.000Z\",\"valor\":560,\"diasAtraso\":46},{\"pedidoId\":782,\"participanteNome\":null,\"numero\":\"1\",\"dataVencimento\":\"2026-04-10T03:00:00.000Z\",\"valor\":670,\"diasAtraso\":46},{\"pedidoId\":502,\"participanteNome\":null,\"numero\":\"1\",\"dataVencimento\":\"2026-04-10T03:00:00.000Z\",\"valor\":80649.51,\"diasAtraso\":46},{\"pedidoId\":986,\"participanteNome\":null,\"numero\":\"2\",\"dataVencimento\":\"2026-04-10T03:00:00.000Z\",\"valor\":140000,\"diasAtraso\":46},{\"pedidoId\":779,\"participanteNome\":null,\"numero\":\"01\",\"dataVencimento\":\"2026-04-10T03:00:00.000Z\",\"valor\":8841.19,\"diasAtraso\":46},{\"pedidoId\":1127,\"participanteNome\":null,\"numero\":\"01\",\"dataVencimento\":\"2026-04-10T03:00:00.000Z\",\"valor\":30000,\"diasAtraso\":46},{\"pedidoId\":512,\"participanteNome\":null,\"numero\":\"1\",\"dataVencimento\":\"2026-04-10T03:00:00.000Z\",\"valor\":240000,\"diasAtraso\":46},{\"pedidoId\":653,\"participanteNome\":null,\"numero\":\"1\",\"dataVencimento\":\"2026-04-10T03:00:00.000Z\",\"valor\":1040,\"diasAtraso\":46},{\"pedidoId\":265,\"participanteNome\":null,\"numero\":\"1\",\"dataVencimento\":\"2026-04-13T03:00:00.000Z\",\"valor\":86069.26,\"diasAtraso\":43},{\"pedidoId\":278,\"participanteNome\":null,\"numero\":\"1\",\"dataVencimento\":\"2026-04-13T03:00:00.000Z\",\"valor\":31666.67,\"diasAtraso\":43},{\"pedidoId\":300,\"participanteNome\":null,\"numero\":\"01\",\"dataVencimento\":\"2026-04-13T03:00:00.000Z\",\"valor\":25518.72,\"diasAtraso\":43},{\"pedidoId\":374,\"participanteNome\":null,\"numero\":\"1\",\"dataVencimento\":\"2026-04-13T03:00:00.000Z\",\"valor\":147.27,\"diasAtraso\":43},{\"pedidoId\":465,\"participanteNome\":null,\"numero\":\"01\",\"dataVencimento\":\"2026-04-13T03:00:00.000Z\",\"valor\":6000,\"diasAtraso\":43},{\"pedidoId\":519,\"participanteNome\":null,\"numero\":\"01\",\"dataVencimento\":\"2026-04-13T03:00:00.000Z\",\"valor\":2458.61,\"diasAtraso\":43},{\"pedidoId\":325,\"participanteNome\":null,\"numero\":\"1\",\"dataVencimento\":\"2026-04-13T03:00:00.000Z\",\"valor\":150000,\"diasAtraso\":43},{\"pedidoId\":888,\"participanteNome\":null,\"numero\":\"2\",\"dataVencimento\":\"2026-04-14T03:00:00.000Z\",\"valor\":206479.36,\"diasAtraso\":42},{\"pedidoId\":478,\"participanteNome\":null,\"numero\":\"2\",\"dataVencimento\":\"2026-04-15T03:00:00.000Z\",\"valor\":1840.5,\"diasAtraso\":41},{\"pedidoId\":1136,\"participanteNome\":null,\"numero\":\"1\",\"dataVencimento\":\"2026-04-15T03:00:00.000Z\",\"valor\":200,\"diasAtraso\":41},{\"pedidoId\":1147,\"participanteNome\":null,\"numero\":\"1\",\"dataVencimento\":\"2026-04-15T03:00:00.000Z\",\"valor\":460,\"diasAtraso\":41},{\"pedidoId\":844,\"participanteNome\":null,\"numero\":\"1\",\"dataVencimento\":\"2026-04-15T03:00:00.000Z\",\"valor\":51000,\"diasAtraso\":41},{\"pedidoId\":858,\"participanteNome\":null,\"numero\":\"01\",\"dataVencimento\":\"2026-04-15T03:00:00.000Z\",\"valor\":6700,\"diasAtraso\":41},{\"pedidoId\":991,\"participanteNome\":null,\"numero\":\"1\",\"dataVencimento\":\"2026-04-15T03:00:00.000Z\",\"valor\":4000,\"diasAtraso\":41},{\"pedidoId\":1160,\"participanteNome\":null,\"numero\":\"1\",\"dataVencimento\":\"2026-04-15T03:00:00.000Z\",\"valor\":1000,\"diasAtraso\":41},{\"pedidoId\":1079,\"participanteNome\":null,\"numero\":\"01\",\"dataVencimento\":\"2026-04-15T03:00:00.000Z\",\"valor\":5201.17,\"diasAtraso\":41},{\"pedidoId\":1161,\"participanteNome\":null,\"numero\":\"1\",\"dataVencimento\":\"2026-04-15T03:00:00.000Z\",\"valor\":830,\"diasAtraso\":41},{\"pedidoId\":1107,\"participanteNome\":null,\"numero\":\"1\",\"dataVencimento\":\"2026-04-15T03:00:00.000Z\",\"valor\":160,\"diasAtraso\":41},{\"pedidoId\":1116,\"participanteNome\":null,\"numero\":\"1\",\"dataVencimento\":\"2026-04-15T03:00:00.000Z\",\"valor\":75,\"diasAtraso\":41},{\"pedidoId\":1119,\"participanteNome\":null,\"numero\":\"1\",\"dataVencimento\":\"2026-04-15T03:00:00.000Z\",\"valor\":670,\"diasAtraso\":41},{\"pedidoId\":1131,\"participanteNome\":null,\"numero\":\"1\",\"dataVencimento\":\"2026-04-15T03:00:00.000Z\",\"valor\":450,\"diasAtraso\":41},{\"pedidoId\":1146,\"participanteNome\":null,\"numero\":\"1\",\"dataVencimento\":\"2026-04-15T03:00:00.000Z\",\"valor\":250,\"diasAtraso\":41},{\"pedidoId\":1163,\"participanteNome\":null,\"numero\":\"1\",\"dataVencimento\":\"2026-04-15T03:00:00.000Z\",\"valor\":60,\"diasAtraso\":41},{\"pedidoId\":1164,\"participanteNome\":null,\"numero\":\"1\",\"dataVencimento\":\"2026-04-15T03:00:00.000Z\",\"valor\":155,\"diasAtraso\":41},{\"pedidoId\":1166,\"participanteNome\":null,\"numero\":\"1\",\"dataVencimento\":\"2026-04-15T03:00:00.000Z\",\"valor\":600,\"diasAtraso\":41},{\"pedidoId\":1166,\"participanteNome\":null,\"numero\":\"2\",\"dataVencimento\":\"2026-04-15T03:00:00.000Z\",\"valor\":600,\"diasAtraso\":41},{\"pedidoId\":1177,\"participanteNome\":null,\"numero\":\"1\",\"dataVencimento\":\"2026-04-15T03:00:00.000Z\",\"valor\":1549.68,\"diasAtraso\":41},{\"pedidoId\":430,\"participanteNome\":null,\"numero\":\"01\",\"dataVencimento\":\"2026-04-16T03:00:00.000Z\",\"valor\":24846.54,\"diasAtraso\":40},{\"pedidoId\":431,\"participanteNome\":null,\"numero\":\"01\",\"dataVencimento\":\"2026-04-16T03:00:00.000Z\",\"valor\":4054.59,\"diasAtraso\":40},{\"pedidoId\":444,\"participanteNome\":null,\"numero\":\"1\",\"dataVencimento\":\"2026-04-16T03:00:00.000Z\",\"valor\":401434.46,\"diasAtraso\":40},{\"pedidoId\":444,\"participanteNome\":null,\"numero\":\"2\",\"dataVencimento\":\"2026-04-16T03:00:00.000Z\",\"valor\":401434.46,\"diasAtraso\":40},{\"pedidoId\":1266,\"participanteNome\":null,\"numero\":\"01\",\"dataVencimento\":\"2026-04-17T03:00:00.000Z\",\"valor\":22500,\"diasAtraso\":39},{\"pedidoId\":422,\"participanteNome\":null,\"numero\":\"01\",\"dataVencimento\":\"2026-04-18T03:00:00.000Z\",\"valor\":53646.2,\"diasAtraso\":38},{\"pedidoId\":777,\"participanteNome\":null,\"numero\":\"01\",\"dataVencimento\":\"2026-04-19T03:00:00.000Z\",\"valor\":4000,\"diasAtraso\":37},{\"pedidoId\":339,\"participanteNome\":null,\"numero\":\"3\",\"dataVencimento\":\"2026-04-20T03:00:00.000Z\",\"valor\"\n[...resultado truncado por exceder o limite de tamanho...]"
+      },
+      "finalMessageId": "c21e8cbb-f1f0-43ee-8ee6-dc62e68cb89a",
+      "finalMessage": "Sou o assistente de operação da **Matrix Fitness Group**.\n\nEncontrei **parcelas de pedidos em entrega atrasadas**. Como a lista é grande, segue **os 10 mais atrasados** (maior nº de dias em atraso):\n\n- **Pedido 270** (parcela 1) — **30/12/2024** | **512 dias** | **R$ 206.765,00**\n- **Pedido 266** (parcela 1) — **27/01/2025** | **484 dias** | **R$ 274.729,33**\n- **Pedido 273** (parcela 1) — **25/02/2025** | **455 dias** | **R$ 339.390,40**\n- **Pedido 274** (parcela 1) — **07/03/2025** | **445 dias** | **R$ 59.000,00**\n- **Pedido 274** (parcela 2) — **07/04/2025** | **414 dias** | **R$ 59.000,00**\n- **Pedido 276** (parcela 1) — **28/04/2025** | **393 dias** | **R$ 11.266,67**\n- **Pedido 274** (parcela 3) — **06/05/2025** | **385 dias** | **R$ 59.000,00**\n- **Pedido 276** (parcela 2) — **26/05/2025** | **365 dias** | **R$ 11.266,67**\n- **Pedido 274** (parcela 4) — **05/06/2025** | **355 dias** | **R$ 59.000,00**\n- **Pedido 276** (parcela 3) — **25/06/2025** | **335 dias** | **R$ 11.266,67**",
+      "model": "gpt-5.4-nano",
+      "tokensInput": 19428,
+      "tokensOutput": 2838,
+      "durationMs": 20482,
+      "createdAt": "2026-05-26T15:24:18.244Z",
+      "primaryTool": "comercial_pedidos_atrasados"
+    },
+    {
+      "turnoId": "c2fe6580-61c3-4d16-a492-f014d734167d",
+      "conversationId": "0152e544-a247-41c3-9ee5-75238bab2384",
+      "userMessageId": "5446af07-4f37-4a1e-8e18-27e1865e0065",
+      "userMessage": "Pedidos por estado",
+      "toolMessageId": null,
+      "toolCalls": null,
+      "toolResults": null,
+      "finalMessageId": "c2fe6580-61c3-4d16-a492-f014d734167d",
+      "finalMessage": "Quando você diz **“pedidos por estado”**, você quer dizer **UF do cliente (participante)** (ex.: SP, MG) ou **estado do pedido** (ex.: aberto, em negociação, faturado)?\n\nE para **qual período** você quer o levantamento (mês atual, últimos 30 dias ou intervalo de datas)?",
+      "model": "gpt-5.4-nano",
+      "tokensInput": 10129,
+      "tokensOutput": 380,
+      "durationMs": 8698,
+      "createdAt": "2026-05-26T15:22:11.274Z",
+      "primaryTool": null
+    },
+    {
+      "turnoId": "c3de7887-476a-47b6-8229-d102f37b439d",
+      "conversationId": "36fc9854-7985-49d7-b649-4b9136235aa3",
+      "userMessageId": "d890b6fb-ea3a-47dd-98ed-9406f3a3d131",
+      "userMessage": "Notas fiscais emitidas hoje",
+      "toolMessageId": "8902a956-ecab-4892-a28e-d95ebc76d2d2",
+      "toolCalls": [
+        {
+          "id": "call_pxD4FQ6vD37QxCHnjRD55akr",
+          "name": "fiscal_notas_emitidas",
+          "arguments": {
+            "periodoDe": "2026-05-26",
+            "periodoAte": "2026-05-26"
+          }
+        }
+      ],
+      "toolResults": {
+        "call_pxD4FQ6vD37QxCHnjRD55akr": "{\"estado\":\"vazio\",\"dados\":{\"linhas\":[],\"totalNotas\":0,\"valorTotal\":0,\"aviso\":\"Lista notas fiscais de saída (entradaSaida='1'). Filtre situacaoNfe para restringir por status (ex.: 'autorizada', 'cancelada').\"},\"atualizadoEm\":\"2026-05-26T15:24:05.267Z\",\"atualizadoHa\":\"1min\",\"fonteStatus\":{\"status\":\"ok\",\"ultimaSyncEm\":\"2026-05-26T15:23:24.148Z\"}}"
+      },
+      "finalMessageId": "c3de7887-476a-47b6-8229-d102f37b439d",
+      "finalMessage": "Hoje (**26/05/2026**) não há **notas fiscais emitidas** registradas no sistema (total **0** e valor **R$ 0,00**).",
+      "model": "gpt-5.4-nano",
+      "tokensInput": 10306,
+      "tokensOutput": 78,
+      "durationMs": 3189,
+      "createdAt": "2026-05-26T15:25:37.136Z",
+      "primaryTool": "fiscal_notas_emitidas"
+    },
+    {
+      "turnoId": "c50cdef1-0a33-4672-8340-6372f09dfa81",
+      "conversationId": "edf97845-aeea-4581-9a93-1e9e4ba69991",
+      "userMessageId": "02694579-d9f6-4d1b-a9b2-2779db947f25",
+      "userMessage": "Pedidos em aprovação",
+      "toolMessageId": null,
+      "toolCalls": null,
+      "toolResults": null,
+      "finalMessageId": "c50cdef1-0a33-4672-8340-6372f09dfa81",
+      "finalMessage": "Para eu te passar o número certo de **pedidos em aprovação**, preciso só de 2 confirmações:\n\n1) **De qual período** você quer a contagem?  \n- [[suggestions]]: “Pedidos em aprovação na semana atual”|“Pedidos em aprovação no mês atual”|“Pedidos em aprovação nos últimos 30 dias”\n\n2) Você está falando da **etapa do fluxo comercial “em aprovação”** (pedidos aguardando aprovação comercial), certo?",
+      "model": "gpt-5.4-nano",
+      "tokensInput": 10129,
+      "tokensOutput": 301,
+      "durationMs": 2755,
+      "createdAt": "2026-05-26T15:25:03.652Z",
+      "primaryTool": null
+    },
+    {
+      "turnoId": "c516b5f0-96ff-468e-af9f-f2910b10d96d",
+      "conversationId": "13a60593-9568-4dfb-aa42-6c115e258347",
+      "userMessageId": "988bc640-7f13-4cd2-aa85-0f8a772efd63",
+      "userMessage": "Top 10 estados com mais parceiros",
+      "toolMessageId": null,
+      "toolCalls": null,
+      "toolResults": null,
+      "finalMessageId": "c516b5f0-96ff-468e-af9f-f2910b10d96d",
+      "finalMessage": "Para eu te trazer o **Top 10 por UF** certinho, só preciso confirmar uma coisa: você quer considerar **todos os parceiros (clientes + fornecedores + empresas)** ou **apenas clientes**?",
+      "model": "gpt-5.4-nano",
+      "tokensInput": 10133,
+      "tokensOutput": 191,
+      "durationMs": 2586,
+      "createdAt": "2026-05-26T15:24:14.928Z",
+      "primaryTool": null
+    },
+    {
+      "turnoId": "c596f1d4-c8d2-4c86-a7d1-91b59cb02510",
+      "conversationId": "b85934c8-ee25-4f90-969c-82e261a4c60d",
+      "userMessageId": "8f90fe0e-ca0d-40af-b4f6-df3b6c36880b",
+      "userMessage": "Faturamento por vendedor esse mês",
+      "toolMessageId": "8c584bec-e6aa-4786-8a16-6eafb55a6494",
+      "toolCalls": [
+        {
+          "id": "call_uRJ9Ca63vNp7LeX2HbUDUXIB",
+          "name": "comercial_pedidos_por_vendedor",
+          "arguments": {
+            "periodoDe": "2026-05-01",
+            "periodoAte": "2026-05-26"
+          }
+        }
+      ],
+      "toolResults": {
+        "call_uRJ9Ca63vNp7LeX2HbUDUXIB": "{\"estado\":\"ok\",\"dados\":{\"linhas\":[{\"vendedorNome\":\"Marcelo Milanezi\",\"quantidade\":100,\"valorTotal\":21134820.570000008},{\"vendedorNome\":\"Jonatas Soares\",\"quantidade\":71,\"valorTotal\":11106092.06},{\"vendedorNome\":\"Thiago Nóbrega [048‍.906‍.661‑50] \",\"quantidade\":21,\"valorTotal\":9495916.72},{\"vendedorNome\":\"Luccas Freitas\",\"quantidade\":65,\"valorTotal\":7142517.82},{\"vendedorNome\":\"Icaro Victor Lucena\",\"quantidade\":4,\"valorTotal\":5654404.42},{\"vendedorNome\":\"Weverton Moura\",\"quantidade\":86,\"valorTotal\":4505038.890000001},{\"vendedorNome\":\"Mariane Trindade - Mariane\",\"quantidade\":22,\"valorTotal\":2594086.610000001},{\"vendedorNome\":\"Rafael Santos\",\"quantidade\":17,\"valorTotal\":2278680.5699999994},{\"vendedorNome\":\"Tuany Fernanda\",\"quantidade\":29,\"valorTotal\":2067470.67},{\"vendedorNome\":\"Mateus Alves\",\"quantidade\":11,\"valorTotal\":2055911.5100000002},{\"vendedorNome\":\"Leonardo Perrelli\",\"quantidade\":6,\"valorTotal\":632979.38},{\"vendedorNome\":\"Anderson Rafael\",\"quantidade\":7,\"valorTotal\":234097.05},{\"vendedorNome\":\"Patricia Olegario\",\"quantidade\":2,\"valorTotal\":223649.19},{\"vendedorNome\":\"Romullo Santos\",\"quantidade\":1,\"valorTotal\":179113},{\"vendedorNome\":\"Cristiane Benevides\",\"quantidade\":35,\"valorTotal\":34867}],\"aviso\":\"Ranking de pedidos por vendedor, ordenado por valor total decrescente. valorTotal usa vrProdutos (valor do pedido, independente de faturamento).\",\"_agregado\":{\"contagem\":15,\"agregado_valorTotal\":{\"soma\":69339645.46,\"media\":4622643.03,\"min\":34867,\"max\":21134820.57,\"contagemValidos\":15},\"agregado_quantidade\":{\"soma\":477,\"media\":31.8,\"min\":1,\"max\":100,\"contagemValidos\":15}}},\"atualizadoEm\":\"2026-05-26T15:23:51.279Z\",\"atualizadoHa\":\"1min\",\"fonteStatus\":{\"status\":\"ok\",\"ultimaSyncEm\":\"2026-05-26T15:23:18.646Z\"}}"
+      },
+      "finalMessageId": "c596f1d4-c8d2-4c86-a7d1-91b59cb02510",
+      "finalMessage": "Sou o assistente de operação da Matrix Fitness Group.\n\nNo período **01/05/2026 a 26/05/2026**, o ranking de vendedores por **valor total dos pedidos (valor dos produtos)** ficou assim (15 vendedores / **477 pedidos** / **R$ 69.339.645,46**):\n\n- **Marcelo Milanezi**: **100** pedidos — **R$ 21.134.820,57**\n- **Jonatas Soares**: **71** pedidos — **R$ 11.106.092,06**\n- **Thiago Nóbrega**: **21** pedidos — **R$ 9.495.916,72**\n- **Luccas Freitas**: **65** pedidos — **R$ 7.142.517,82**\n- **Icaro Victor Lucena**: **4** pedidos — **R$ 5.654.404,42**\n\nObservação: este “faturamento” por vendedor aqui é o **valor dos pedidos**, não necessariamente o faturamento fiscal das **NFs autorizadas**.",
+      "model": "gpt-5.4-nano",
+      "tokensInput": 10746,
+      "tokensOutput": 1095,
+      "durationMs": 8350,
+      "createdAt": "2026-05-26T15:25:17.154Z",
+      "primaryTool": "comercial_pedidos_por_vendedor"
+    },
+    {
+      "turnoId": "c65b13e4-3c58-475e-8fef-e0f8b5ead366",
+      "conversationId": "7e298531-151d-4391-a0e5-7706e24103c1",
+      "userMessageId": "e616be42-960e-452d-b95b-19c044fd7b67",
+      "userMessage": "Notas recebidas do fornecedor Residencial Maua",
+      "toolMessageId": "48957fdf-64b9-4e5a-aa9e-b811765b6695",
+      "toolCalls": [
+        {
+          "id": "call_IYRU0zTiR7eli3y7I3JDL063",
+          "name": "fiscal_notas_recebidas_por_fornecedor",
+          "arguments": {
+            "limite": 10,
+            "fornecedor": "Residencial Maua"
+          }
+        }
+      ],
+      "toolResults": {
+        "call_IYRU0zTiR7eli3y7I3JDL063": "{\"estado\":\"ok\",\"dados\":{\"linhas\":[{\"participanteNome\":\"Residencial Maua [59‍.081‍.175‍/0001‑13] \",\"quantidade\":3,\"valorTotal\":165667.8}],\"totalAgregado\":{\"quantidade\":3,\"valorTotal\":165667.8},\"totalFornecedoresDistintos\":1,\"aviso\":\"Agrupa notas fiscais de entrada (DF-e de fornecedores) por fornecedor, ordenado por valor recebido decrescente. `totalAgregado` soma todas as notas que casaram o filtro (use-o para 'quantas notas do fornecedor X'); `linhas` é o detalhamento por participante.\",\"_agregado\":{\"contagem\":1,\"agregado_valorTotal\":{\"soma\":165667.8,\"media\":165667.8,\"min\":165667.8,\"max\":165667.8,\"contagemValidos\":1},\"agregado_quantidade\":{\"soma\":3,\"media\":3,\"min\":3,\"max\":3,\"contagemValidos\":1}}},\"atualizadoEm\":\"2026-05-26T15:24:05.267Z\",\"atualizadoHa\":\"39s\",\"fonteStatus\":{\"status\":\"ok\",\"ultimaSyncEm\":\"2026-05-26T15:23:24.148Z\"}}"
+      },
+      "finalMessageId": "c65b13e4-3c58-475e-8fef-e0f8b5ead366",
+      "finalMessage": "Do fornecedor **Residencial Maua**, constam **1 nota fiscal** recebida, totalizando **R$ 165.667,80** e **3 unidades**.",
+      "model": "gpt-5.4-nano",
+      "tokensInput": 10464,
+      "tokensOutput": 88,
+      "durationMs": 2109,
+      "createdAt": "2026-05-26T15:24:46.787Z",
+      "primaryTool": "fiscal_notas_recebidas_por_fornecedor"
+    },
+    {
+      "turnoId": "c6c8809e-2df3-4632-8021-0839252068cb",
+      "conversationId": "0f8ae66c-55da-4a0f-9086-1d3dc57d6686",
+      "userMessageId": "402f74e3-0ad8-469f-98d0-5d2aa622f1c8",
+      "userMessage": "Faturamento médio diário do mês",
+      "toolMessageId": null,
+      "toolCalls": null,
+      "toolResults": null,
+      "finalMessageId": "c6c8809e-2df3-4632-8021-0839252068cb",
+      "finalMessage": "Para eu calcular certinho: **qual mês** você quer dizer com “do mês”? (posso considerar **o mês atual** ou outro mês/ano).  \nEu vou usar **faturamento de notas fiscais de saída autorizadas** e dividir pelo **nº de dias do mês**.",
+      "model": "gpt-5.4-nano",
+      "tokensInput": 10133,
+      "tokensOutput": 521,
+      "durationMs": 9508,
+      "createdAt": "2026-05-26T15:21:14.888Z",
+      "primaryTool": null
+    },
+    {
+      "turnoId": "c6fb7a38-d12b-4aed-9d32-4940b3a8cd68",
+      "conversationId": "d6a74f02-9ab0-4795-a186-fd9e90545242",
+      "userMessageId": "b4b7228a-5168-4a55-b52b-8909b7551093",
+      "userMessage": "Pedidos em aberto no funil",
+      "toolMessageId": "31aaf2b6-1c83-4c40-b700-ebda465396e2",
+      "toolCalls": [
+        {
+          "id": "call_qOPxTLnlF4gtGO19cTxUjWCY",
+          "name": "comercial_pedidos_por_etapa",
+          "arguments": {}
+        }
+      ],
+      "toolResults": {
+        "call_qOPxTLnlF4gtGO19cTxUjWCY": "{\"estado\":\"ok\",\"dados\":{\"linhas\":[{\"etapaNome\":\"Devolução em solicitação\",\"etapaFinaliza\":false,\"quantidade\":1,\"valorTotal\":147.27},{\"etapaNome\":\"Em separação\",\"etapaFinaliza\":false,\"quantidade\":18,\"valorTotal\":16400},{\"etapaNome\":\"Cancelado\",\"etapaFinaliza\":false,\"quantidade\":7,\"valorTotal\":1736690.28},{\"etapaNome\":\"Confirmada\",\"etapaFinaliza\":true,\"quantidade\":70,\"valorTotal\":13326001.97},{\"etapaNome\":\"Confirmado\",\"etapaFinaliza\":true,\"quantidade\":70,\"valorTotal\":143411671.66999996},{\"etapaNome\":\"Emite NF Consumidor Final\",\"etapaFinaliza\":true,\"quantidade\":385,\"valorTotal\":35877557.679999985},{\"etapaNome\":\"Input financeiro\",\"etapaFinaliza\":false,\"quantidade\":97,\"valorTotal\":31365738.220000003},{\"etapaNome\":\"Fracionar\",\"etapaFinaliza\":false,\"quantidade\":43,\"valorTotal\":8163283.210000001},{\"etapaNome\":\"VF - Emite NF\",\"etapaFinaliza\":true,\"quantidade\":10,\"valorTotal\":1047869.26},{\"etapaNome\":\"Novo Fracionamento\",\"etapaFinaliza\":false,\"quantidade\":46,\"valorTotal\":15582398.690000003},{\"etapaNome\":\"Fracionamento concluído\",\"etapaFinaliza\":true,\"quantidade\":6,\"valorTotal\":240899.22999999998},{\"etapaNome\":\"GERA BOLETO\",\"etapaFinaliza\":false,\"quantidade\":119,\"valorTotal\":16021682.649999995},{\"etapaNome\":\"Em conferência\",\"etapaFinaliza\":false,\"quantidade\":5,\"valorTotal\":9750816.420000002},{\"etapaNome\":\"Em contagem\",\"etapaFinaliza\":false,\"quantidade\":9,\"valorTotal\":29444670.549999997},{\"etapaNome\":\"Aprovado\",\"etapaFinaliza\":false,\"quantidade\":31,\"valorTotal\":11291544.87},{\"etapaNome\":\"Emite NF\",\"etapaFinaliza\":true,\"quantidade\":71,\"valorTotal\":14460847.370000001},{\"etapaNome\":\"V.O - Emite NF\",\"etapaFinaliza\":false,\"quantidade\":1,\"valorTotal\":949540.25},{\"etapaNome\":\"Cancelada\",\"etapaFinaliza\":false,\"quantidade\":7,\"valorTotal\":1055982.74},{\"etapaNome\":\"Armazenagem  - NF CONFIRMA\",\"etapaFinaliza\":true,\"quantidade\":18,\"valorTotal\":4493792.14},{\"etapaNome\":\"Demonstração confirma\",\"etapaFinaliza\":true,\"quantidade\":46,\"valorTotal\":3071713.4200000004},{\"etapaNome\":\"Retorno Demonstração\",\"etapaFinaliza\":false,\"quantidade\":20,\"valorTotal\":980797.52},{\"etapaNome\":\"Concluída\",\"etapaFinaliza\":true,\"quantidade\":269,\"valorTotal\":6179658.840000009},{\"etapaNome\":\"Emite NF - Peças\",\"etapaFinaliza\":false,\"quantidade\":41,\"valorTotal\":31595},{\"etapaNome\":\"Em montagem\",\"etapaFinaliza\":false,\"quantidade\":15,\"valorTotal\":142220.99},{\"etapaNome\":\"Preview NF - Peças\",\"etapaFinaliza\":false,\"quantidade\":2,\"valorTotal\":4055},{\"etapaNome\":\"Emite NF Retorno Demo\",\"etapaFinaliza\":true,\"quantidade\":14,\"valorTotal\":1321339.49},{\"etapaNome\":\"Gera Boleto - Peças\",\"etapaFinaliza\":true,\"quantidade\":65,\"valorTotal\":79841},{\"etapaNome\":\"EMITE NF BONIFICAÇÃO\",\"etapaFinaliza\":true,\"quantidade\":1,\"valorTotal\":12504.66},{\"etapaNome\":\"Reserva de Estoque - DEFINE ARMAZEM\",\"etapaFinaliza\":false,\"quantidade\":5,\"valorTotal\":1726909.92},{\"etapaNome\":\"Emite NF - SIMPLES REMESSA\",\"etapaFinaliza\":true,\"quantidade\":7,\"valorTotal\":294245.86},{\"etapaNome\":\"Aprovação dono\",\"etapaFinaliza\":false,\"quantidade\":29,\"valorTotal\":7539047.29},{\"etapaNome\":\"[THIAGO] - Concluir movimentação de estoque\",\"etapaFinaliza\":true,\"quantidade\":6,\"valorTotal\":517188.06},{\"etapaNome\":\"Venda direta consumidor final\",\"etapaFinaliza\":false,\"quantidade\":7,\"valorTotal\":952502.98},{\"etapaNome\":\"Transf. DF x Sergipe confirma\",\"etapaFinaliza\":false,\"quantidade\":3,\"valorTotal\":88643.5},{\"etapaNome\":\"Retorno de Armazenagem - LR\",\"etapaFinaliza\":false,\"quantidade\":2,\"valorTotal\":1170571.74},{\"etapaNome\":\"Fracionar (Retorno armazenagem)\",\"etapaFinaliza\":false,\"quantidade\":2,\"valorTotal\":1514032.88},{\"etapaNome\":\"REMESSA DE BONIFICAÇÃO 5910/6910\",\"etapaFinaliza\":false,\"quantidade\":2,\"valorTotal\":4074.94},{\"etapaNome\":\"Reserva Estoque exposição/feira\",\"etapaFinaliza\":false,\"quantidade\":1,\"valorTotal\":42877.55},{\"etapaNome\":\"Em cotação/provisório\",\"etapaFinaliza\":false,\"quantidade\":2,\"valorTotal\":137211.6},{\"etapaNome\":\"Confirma reserva retorno demonstração\",\"etapaFinaliza\":false,\"quantidade\":1,\"valorTotal\":48000},{\"etapaNome\":\"AJUSTE FRACIONADO\",\"etapaFinaliza\":false,\"quantidade\":3,\"valorTotal\":1043666.99},{\"etapaNome\":\"P - Em digitação\",\"etapaFinaliza\":false,\"quantidade\":1,\"valorTotal\":98.95},{\"etapaNome\":\"BONIFICAÇÃO RESERVA ESTOQUE\",\"etapaFinaliza\":false,\"quantidade\":1,\"valorTotal\":316.54},{\"etapaNome\":\"Reserva de Estoque Demo\",\"etapaFinaliza\":false,\"quantidade\":1,\"valorTotal\":168442.46},{\"etapaNome\":\"VF - SEGUIR COM RESERVA/FRACIONAMENTO - 5117/6117\",\"etapaFinaliza\":false,\"quantidade\":4,\"valorTotal\":757180.5800000001},{\"etapaNome\":\"ESTOQUE ARMAZENAGEM RESERVA\",\"etapaFinaliza\":false,\"quantidade\":1,\"valorTotal\":4330963.59},{\"etapaNome\":\"Pedido demonstração\",\"etapaFinaliza\":false,\"quantidade\":3,\"valorTotal\":288026.51},{\"etapaNome\":\"Aguardando Autorização\",\"etapaFinaliza\":false,\"quantidade\":2,\"valorTotal\":450579.17000000004}],\"aviso\":\"Distribuição de pedidos por etapa do fluxo comercial. valorTotal usa vrProdutos (valor do pedido, independente de faturamento). etapaFinaliza=true indica etapa conclusiva.\",\"_agregado\":{\"contagem\":48,\"agregado_valorTotal\":{\"soma\":371135841.5,\"media\":7731996.7,\"min\":98.95,\"max\":143411671.67,\"contagemValidos\":48},\"agregado_quantidade\":{\"soma\":1570,\"media\":32.71,\"min\":1,\"max\":385,\"contagemValidos\":48}}},\"atualizadoEm\":\"2026-05-26T15:20:52.800Z\",\"atualizadoHa\":\"2min\",\"fonteStatus\":{\"status\":\"ok\",\"ultimaSyncEm\":\"2026-05-26T15:20:18.835Z\"}}"
+      },
+      "finalMessageId": "c6fb7a38-d12b-4aed-9d32-4940b3a8cd68",
+      "finalMessage": "No funil, há **532 pedidos em etapas ainda não concluídas**, somando **R$ 146.800.710,85** (valor de produtos) — incluindo também etapas como **“Cancelado/Cancelada”** que ainda estão no fluxo.  \nMaiores concentrações por valor:\n- **Input financeiro**: 97 pedidos — **R$ 31.365.738,22**\n- **Em contagem**: 9 pedidos — **R$ 29.444.670,55**\n- **GERA BOLETO**: 119 pedidos — **R$ 16.021.682,65**\n- **Novo Fracionamento**: 46 pedidos — **R$ 15.582.398,69**\n- **Aprovado**: 31 pedidos — **R$ 11.291.544,87**",
+      "model": "gpt-5.4-nano",
+      "tokensInput": 11890,
+      "tokensOutput": 4017,
+      "durationMs": 25925,
+      "createdAt": "2026-05-26T15:23:27.515Z",
+      "primaryTool": "comercial_pedidos_por_etapa"
+    },
+    {
+      "turnoId": "c740b838-f097-4d4e-a1be-125c37f7c4e4",
+      "conversationId": "1bd8285d-6bb0-4dd0-9b00-40fcfb5f3137",
+      "userMessageId": "77a062c5-bc75-407c-8ac6-71912b69cefe",
+      "userMessage": "Parceiros sem documento cadastrado",
+      "toolMessageId": "bfe5b947-f91f-42ff-84df-f134d4036495",
+      "toolCalls": [
+        {
+          "id": "call_zYUP7jJCRzRFKLLigLY9JLuJ",
+          "name": "registrar_lacuna",
+          "arguments": {
+            "dominio": "cadastros",
+            "perguntaResumo": "Listar parceiros (clientes/fornecedores/empresas) que não possuem documento cadastrado."
+          }
+        }
+      ],
+      "toolResults": {
+        "call_zYUP7jJCRzRFKLLigLY9JLuJ": "{\"registrado\":true}"
+      },
+      "finalMessageId": "c740b838-f097-4d4e-a1be-125c37f7c4e4",
+      "finalMessage": "Esse relatório (“parceiros sem documento cadastrado”) não está disponível nas consultas atuais de cadastros. Posso levantar alternativas relacionadas, como:\n- lista de parceiros por UF\n- contagem total de parceiros por tipo\n- buscar parceiros por nome/CNPJ para identificar os que faltam documento",
+      "model": "gpt-5.4-nano",
+      "tokensInput": 10200,
+      "tokensOutput": 91,
+      "durationMs": 1851,
+      "createdAt": "2026-05-26T15:23:11.629Z",
+      "primaryTool": "registrar_lacuna"
+    },
+    {
+      "turnoId": "c8425bdf-8363-4621-bd18-ccebd0d48f6a",
+      "conversationId": "f5bcf0c3-f3cd-4847-b961-814e6e8f8d72",
+      "userMessageId": "6d96f455-1c79-4770-9e85-ddb5315bcb72",
+      "userMessage": "Estrutura da conta 1.1.4",
+      "toolMessageId": "2075bb76-864b-42b2-a96e-4c3f88cfa46d",
+      "toolCalls": [
+        {
+          "id": "call_1UmDRN6qIir5RcOwGGgUbikl",
+          "name": "contabil_plano_de_contas",
+          "arguments": {
+            "termo": "1.1.4",
+            "limite": 20
+          }
+        }
+      ],
+      "toolResults": {
+        "call_1UmDRN6qIir5RcOwGGgUbikl": "{\"estado\":\"ok\",\"dados\":{\"linhas\":[{\"odooId\":2128,\"codigo\":\"1.1.1.4\",\"nome\":\"APLICAÇÕES DE LIQUIDEZ IMEDIATA\",\"tipo\":\"S\",\"contaPaiNome\":\"1.1.1 - ATIVO / ATIVO CIRCULANTE / DISPONIBILIDADES [D]\"},{\"odooId\":2129,\"codigo\":\"1.1.1.4.01\",\"nome\":\"APLICAÇÕES DE LIQUIDEZ IMEDIATA MATRIZ\",\"tipo\":\"S\",\"contaPaiNome\":\"1.1.1.4 - ATIVO / ATIVO CIRCULANTE / DISPONIBILIDADES / APLICAÇÕES DE LIQUIDEZ IMEDIATA [C]\"},{\"odooId\":2130,\"codigo\":\"1.1.1.4.01.000001\",\"nome\":\"APLICAÇÕES MATRIZ\",\"tipo\":\"A\",\"contaPaiNome\":\"1.1.1.4.01 - ATIVO / ATIVO CIRCULANTE / DISPONIBILIDADES / APLICAÇÕES DE LIQUIDEZ IMEDIATA / APLICAÇÕES DE LIQUIDEZ IMEDIATA MATRIZ [C]\"},{\"odooId\":2131,\"codigo\":\"1.1.1.4.02\",\"nome\":\"APLICAÇÕES DE LIQUIDEZ IMEDIATA FILIAL\",\"tipo\":\"S\",\"contaPaiNome\":\"1.1.1.4 - ATIVO / ATIVO CIRCULANTE / DISPONIBILIDADES / APLICAÇÕES DE LIQUIDEZ IMEDIATA [C]\"},{\"odooId\":2132,\"codigo\":\"1.1.1.4.02.000001\",\"nome\":\"APLICAÇÕES FILIAL\",\"tipo\":\"A\",\"contaPaiNome\":\"1.1.1.4.02 - ATIVO / ATIVO CIRCULANTE / DISPONIBILIDADES / APLICAÇÕES DE LIQUIDEZ IMEDIATA / APLICAÇÕES DE LIQUIDEZ IMEDIATA FILIAL [C]\"},{\"odooId\":2230,\"codigo\":\"1.1.4\",\"nome\":\"DESPESAS ANTECIPADAS\",\"tipo\":\"S\",\"contaPaiNome\":\"1.1 - ATIVO / ATIVO CIRCULANTE [D]\"},{\"odooId\":2231,\"codigo\":\"1.1.4.1\",\"nome\":\"DESPESAS DO EXERCÍCIO SEGUINTE ANTECIPADAS\",\"tipo\":\"S\",\"contaPaiNome\":\"1.1.4 - ATIVO / ATIVO CIRCULANTE / DESPESAS ANTECIPADAS [C]\"},{\"odooId\":2232,\"codigo\":\"1.1.4.1.01\",\"nome\":\"DESPESAS ANTECIPADAS MATRIZ\",\"tipo\":\"S\",\"contaPaiNome\":\"1.1.4.1 - ATIVO / ATIVO CIRCULANTE / DESPESAS ANTECIPADAS / DESPESAS DO EXERCÍCIO SEGUINTE ANTECIPADAS [C]\"},{\"odooId\":2233,\"codigo\":\"1.1.4.1.01.000001\",\"nome\":\"PRÊMIOS DE SEGUROS A APROPRIAR MATRIZ\",\"tipo\":\"A\",\"contaPaiNome\":\"1.1.4.1.01 - ATIVO / ATIVO CIRCULANTE / DESPESAS ANTECIPADAS / DESPESAS DO EXERCÍCIO SEGUINTE ANTECIPADAS / DESPESAS ANTECIPADAS MATRIZ [C]\"},{\"odooId\":2234,\"codigo\":\"1.1.4.1.01.000002\",\"nome\":\"ASSINATURAS E ANUIDADES A APROPRIAR MATRIZ\",\"tipo\":\"A\",\"contaPaiNome\":\"1.1.4.1.01 - ATIVO / ATIVO CIRCULANTE / DESPESAS ANTECIPADAS / DESPESAS DO EXERCÍCIO SEGUINTE ANTECIPADAS / DESPESAS ANTECIPADAS MATRIZ [C]\"},{\"odooId\":2235,\"codigo\":\"1.1.4.1.01.000003\",\"nome\":\"COMISSÕES E PRÊMIOS PAGOS ANTECIPADAMENTE MATRIZ\",\"tipo\":\"A\",\"contaPaiNome\":\"1.1.4.1.01 - ATIVO / ATIVO CIRCULANTE / DESPESAS ANTECIPADAS / DESPESAS DO EXERCÍCIO SEGUINTE ANTECIPADAS / DESPESAS ANTECIPADAS MATRIZ [C]\"},{\"odooId\":2236,\"codigo\":\"1.1.4.1.01.000004\",\"nome\":\"ALUGUÉIS PAGOS ANTECIPADAMENTE MATRIZ\",\"tipo\":\"A\",\"contaPaiNome\":\"1.1.4.1.01 - ATIVO / ATIVO CIRCULANTE / DESPESAS ANTECIPADAS / DESPESAS DO EXERCÍCIO SEGUINTE ANTECIPADAS / DESPESAS ANTECIPADAS MATRIZ [C]\"},{\"odooId\":2237,\"codigo\":\"1.1.4.1.01.000005\",\"nome\":\"SEGURO DE VEICULOS MATRIZ\",\"tipo\":\"A\",\"contaPaiNome\":\"1.1.4.1.01 - ATIVO / ATIVO CIRCULANTE / DESPESAS ANTECIPADAS / DESPESAS DO EXERCÍCIO SEGUINTE ANTECIPADAS / DESPESAS ANTECIPADAS MATRIZ [C]\"},{\"odooId\":2238,\"codigo\":\"1.1.4.1.02\",\"nome\":\"DESPESAS ANTECIPADAS FILIAL\",\"tipo\":\"S\",\"contaPaiNome\":\"1.1.4.1 - ATIVO / ATIVO CIRCULANTE / DESPESAS ANTECIPADAS / DESPESAS DO EXERCÍCIO SEGUINTE ANTECIPADAS [C]\"},{\"odooId\":2239,\"codigo\":\"1.1.4.1.02.000001\",\"nome\":\"PRÊMIOS DE SEGUROS A APROPRIAR FILIAL\",\"tipo\":\"A\",\"contaPaiNome\":\"1.1.4.1.02 - ATIVO / ATIVO CIRCULANTE / DESPESAS ANTECIPADAS / DESPESAS DO EXERCÍCIO SEGUINTE ANTECIPADAS / DESPESAS ANTECIPADAS FILIAL [C]\"},{\"odooId\":2240,\"codigo\":\"1.1.4.1.02.000002\",\"nome\":\"ASSINATURAS E ANUIDADES A APROPRIAR FILIAL\",\"tipo\":\"A\",\"contaPaiNome\":\"1.1.4.1.02 - ATIVO / ATIVO CIRCULANTE / DESPESAS ANTECIPADAS / DESPESAS DO EXERCÍCIO SEGUINTE ANTECIPADAS / DESPESAS ANTECIPADAS FILIAL [C]\"},{\"odooId\":2241,\"codigo\":\"1.1.4.1.02.000003\",\"nome\":\"COMISSÕES E PRÊMIOS PAGOS ANTECIPADAMENTE FILIAL\",\"tipo\":\"A\",\"contaPaiNome\":\"1.1.4.1.02 - ATIVO / ATIVO CIRCULANTE / DESPESAS ANTECIPADAS / DESPESAS DO EXERCÍCIO SEGUINTE ANTECIPADAS / DESPESAS ANTECIPADAS FILIAL [C]\"},{\"odooId\":2242,\"codigo\":\"1.1.4.1.02.000004\",\"nome\":\"ALUGUÉIS PAGOS ANTECIPADAMENTE FILIAL\",\"tipo\":\"A\",\"contaPaiNome\":\"1.1.4.1.02 - ATIVO / ATIVO CIRCULANTE / DESPESAS ANTECIPADAS / DESPESAS DO EXERCÍCIO SEGUINTE ANTECIPADAS / DESPESAS ANTECIPADAS FILIAL [C]\"},{\"odooId\":2243,\"codigo\":\"1.1.4.1.02.000005\",\"nome\":\"SEGURO DE VEICULOS FILIAL\",\"tipo\":\"A\",\"contaPaiNome\":\"1.1.4.1.02 - ATIVO / ATIVO CIRCULANTE / DESPESAS ANTECIPADAS / DESPESAS DO EXERCÍCIO SEGUINTE ANTECIPADAS / DESPESAS ANTECIPADAS FILIAL [C]\"},{\"odooId\":2486,\"codigo\":\"2.1.1.4\",\"nome\":\"EMPPRESTIMOS E FINANCIAMENTOS\",\"tipo\":\"S\",\"contaPaiNome\":\"2.1.1. - PASSIVO / PASSIVO CIRCULANTE / EXIGÍVEL A CURTO PRAZO [C]\"}],\"total\":53,\"truncado\":true,\"aviso\":\"ATENÇÃO: não há lançamento/movimento contábil no Odoo da Matrix Fitness Group , este domínio expõe apenas a estrutura do plano de contas (contas sintéticas e analíticas). Mostrando 20 de 53 contas , refine com o parâmetro \\\"termo\\\" ou aumente \\\"limite\\\".\"},\"atualizadoEm\":\"2026-05-26T15:22:02.426Z\",\"atualizadoHa\":\"2min\",\"fonteStatus\":{\"status\":\"ok\",\"ultimaSyncEm\":\"2026-05-26T15:23:10.589Z\"}}"
+      },
+      "finalMessageId": "c8425bdf-8363-4621-bd18-ccebd0d48f6a",
+      "finalMessage": "A **conta 1.1.4 – DESPESAS ANTECIPADAS** está estruturada assim:\n\n- **1.1.4.1 – DESPESAS DO EXERCÍCIO SEGUINTE ANTECIPADAS**\n  - **1.1.4.1.01 – DESPESAS ANTECIPADAS MATRIZ**\n    - **1.1.4.1.01.000001 – PRÊMIOS DE SEGUROS A APROPRIAR MATRIZ**\n    - **1.1.4.1.01.000002 – ASSINATURAS E ANUIDADES A APROPRIAR MATRIZ**\n    - **1.1.4.1.01.000003 – COMISSÕES E PRÊMIOS PAGOS ANTECIPADAMENTE MATRIZ**\n    - **1.1.4.1.01.000004 – ALUGUÉIS PAGOS ANTECIPADAMENTE MATRIZ**\n    - **1.1.4.1.01.000005 – SEGURO DE VEICULOS MATRIZ**\n  - **1.1.4.1.02 – DESPESAS ANTECIPADAS FILIAL**\n    - **1.1.4.1.02.000001 – PRÊMIOS DE SEGUROS A APROPRIAR FILIAL**\n    - **1.1.4.1.02.000002 – ASSINATURAS E ANUIDADES A APROPRIAR FILIAL**\n    - **1.1.4.1.02.000003 – COMISSÕES E PRÊMIOS PAGOS ANTECIPADAMENTE FILIAL**\n    - **1.1.4.1.02.000004 – ALUGUÉIS PAGOS ANTECIPADAMENTE FILIAL**\n    - **1.1.4.1.02.000005 – SEGURO DE VEICULOS FILIAL**",
+      "model": "gpt-5.4-nano",
+      "tokensInput": 12481,
+      "tokensOutput": 696,
+      "durationMs": 5728,
+      "createdAt": "2026-05-26T15:24:10.058Z",
+      "primaryTool": "contabil_plano_de_contas"
+    },
+    {
+      "turnoId": "c8fef011-28c5-4acd-8329-0cffaf2e0793",
+      "conversationId": "d7e3e86b-6144-4ce4-b4f5-f10826ed6284",
+      "userMessageId": "f9d58d72-ae21-4730-8480-e37f8d50cf5d",
+      "userMessage": "Fluxo do dia",
+      "toolMessageId": null,
+      "toolCalls": null,
+      "toolResults": null,
+      "finalMessageId": "c8fef011-28c5-4acd-8329-0cffaf2e0793",
+      "finalMessage": "Quando você diz **“fluxo do dia”**, você quer qual destes acompanhamentos de hoje (**26/05/2026**)?\n\n- **Fluxo de caixa** (realizado vs. previsto)\n- **Estoque** (entradas e saídas do dia)\n- **Pedidos/comercial** (quantidade e etapas do funil no dia)\n- **Faturamento fiscal** (notas fiscais emitidas autorizadas no dia)",
+      "model": "gpt-5.4-nano",
+      "tokensInput": 10130,
+      "tokensOutput": 322,
+      "durationMs": 2605,
+      "createdAt": "2026-05-26T15:23:41.321Z",
+      "primaryTool": null
+    },
+    {
+      "turnoId": "c9b30e44-10e1-4ec2-9f7a-344859bb1bbf",
+      "conversationId": "b8d59412-21b3-46d3-9302-84f1800d4bde",
+      "userMessageId": "01d9c7af-d52a-4f8d-ba73-a384944b1caa",
+      "userMessage": "Quem é o vendedor com mais pedidos?",
+      "toolMessageId": null,
+      "toolCalls": null,
+      "toolResults": null,
+      "finalMessageId": "c9b30e44-10e1-4ec2-9f7a-344859bb1bbf",
+      "finalMessage": "Para te dizer **quem é o vendedor com mais pedidos**, preciso só do **período** (a liderança muda conforme o intervalo).\n\nQual você quer consultar?",
+      "model": "gpt-5.4-nano",
+      "tokensInput": 10134,
+      "tokensOutput": 224,
+      "durationMs": 2674,
+      "createdAt": "2026-05-26T15:23:58.461Z",
+      "primaryTool": null
+    },
+    {
+      "turnoId": "c9e10152-7a6b-45da-a2ac-2306420e93ce",
+      "conversationId": "a8d870f9-5a4d-4cf4-a305-56ee204da335",
+      "userMessageId": "0d0449bb-bfec-4c1b-ac8d-20df505eaa05",
+      "userMessage": "Conta contábil de aluguéis pagos antecipadamente",
+      "toolMessageId": "0afe48c4-2efe-4576-9daa-7a840b97a288",
+      "toolCalls": [
+        {
+          "id": "call_bca4GCwVSnpC2Rc20Ir6bn5v",
+          "name": "contabil_plano_de_contas",
+          "arguments": {
+            "termo": "aluguel",
+            "limite": 50
+          }
+        }
+      ],
+      "toolResults": {
+        "call_bca4GCwVSnpC2Rc20Ir6bn5v": "{\"estado\":\"ok\",\"dados\":{\"linhas\":[{\"odooId\":2471,\"codigo\":\"2.1.1.3.05.000004\",\"nome\":\"IRRF S/ ALUGUEL (3208) A RECOLHER\",\"tipo\":\"A\",\"contaPaiNome\":\"2.1.1.3.05 - PASSIVO / PASSIVO CIRCULANTE / EXIGÍVEL A CURTO PRAZO / OBRIGAÇÕES FISCAIS / OBRIGAÇÕES FISCAIS RETIDOS NA FONTE [C]\"},{\"odooId\":2863,\"codigo\":\"4.2.1.2.02.000001\",\"nome\":\"D.A - ALUGUEL\",\"tipo\":\"A\",\"contaPaiNome\":\"4.2.1.2.02 - CUSTOS/ DESPESAS / RESULTADOS OPERACIONAIS / DESPESAS DAS OPERAÇÕES CONTINUADAS / OCUPAÇÃO [C]\"},{\"odooId\":3002,\"codigo\":\"4.2.4.1.01.000004\",\"nome\":\"RECEITA ALUGUEL BENS E DIREITOS DO INVESTIMENTOS\",\"tipo\":\"A\",\"contaPaiNome\":\"4.2.4.1.01 - CUSTOS/ DESPESAS / RESULTADOS OPERACIONAIS / RESULTADOS DAS OPERAÇÕES DESCONTINUADAS / OUTRAS RECEITAS E DESPESAS DESCONTINUADAS / OUTRAS RECEITAS OPERAÇÕES DESCONTINUADAS [C]\"},{\"odooId\":3003,\"codigo\":\"4.2.4.1.01.000005\",\"nome\":\"RECEITA ALUGUEL BENS E DIREITOS DO IMOBILIZADO\",\"tipo\":\"A\",\"contaPaiNome\":\"4.2.4.1.01 - CUSTOS/ DESPESAS / RESULTADOS OPERACIONAIS / RESULTADOS DAS OPERAÇÕES DESCONTINUADAS / OUTRAS RECEITAS E DESPESAS DESCONTINUADAS / OUTRAS RECEITAS OPERAÇÕES DESCONTINUADAS [C]\"}],\"total\":4,\"truncado\":false,\"aviso\":\"ATENÇÃO: não há lançamento/movimento contábil no Odoo da Matrix Fitness Group , este domínio expõe apenas a estrutura do plano de contas (contas sintéticas e analíticas).\"},\"atualizadoEm\":\"2026-05-26T15:22:02.426Z\",\"atualizadoHa\":\"32s\",\"fonteStatus\":{\"status\":\"ok\",\"ultimaSyncEm\":\"2026-05-26T15:20:10.675Z\"}}"
+      },
+      "finalMessageId": "c9e10152-7a6b-45da-a2ac-2306420e93ce",
+      "finalMessage": "Sou o assistente de operação da Matrix Fitness Group.\n\nPara **aluguéis pagos antecipadamente**, as contas contábeis são:\n\n- **1.1.4.1.01.000004** — **ALUGUÉIS PAGOS ANTECIPADAMENTE MATRIZ**\n- **1.1.4.1.02.000004** — **ALUGUÉIS PAGOS ANTECIPADAMENTE FILIAL**",
+      "model": "gpt-5.4-nano",
+      "tokensInput": 12311,
+      "tokensOutput": 495,
+      "durationMs": 5388,
+      "createdAt": "2026-05-26T15:22:42.666Z",
+      "primaryTool": "contabil_plano_de_contas"
+    },
+    {
+      "turnoId": "ca22443d-865c-4d5f-9243-77db00d9898c",
+      "conversationId": "98964c37-5338-4a5b-80dd-80f82eb273bc",
+      "userMessageId": "0d8a5e80-45ed-451c-ba09-b57dfa17d789",
+      "userMessage": "Buscar transportadora",
+      "toolMessageId": null,
+      "toolCalls": null,
+      "toolResults": null,
+      "finalMessageId": "ca22443d-865c-4d5f-9243-77db00d9898c",
+      "finalMessage": "Sou o assistente de operação da Matrix Fitness Group.\n\nPara buscar a **transportadora**, me diga por favor **o nome (ou parte do nome) ou o CNPJ** dela.  \nVocê quer a busca considerando **todas as transportadoras do cadastro** (clientes e fornecedores) ou apenas **fornecedores**?",
+      "model": "gpt-5.4-nano",
+      "tokensInput": 10129,
+      "tokensOutput": 222,
+      "durationMs": 2635,
+      "createdAt": "2026-05-26T15:23:03.331Z",
+      "primaryTool": null
+    },
+    {
+      "turnoId": "ca68251d-11e0-445e-aa4f-51f35411506d",
+      "conversationId": "b0e10c36-f00e-478f-a28f-0b74f3d65e6d",
+      "userMessageId": "02477dc6-0e39-4e42-8a01-81d839196fb1",
+      "userMessage": "tudo bem?",
+      "toolMessageId": null,
+      "toolCalls": null,
+      "toolResults": null,
+      "finalMessageId": "ca68251d-11e0-445e-aa4f-51f35411506d",
+      "finalMessage": "Tudo bem! 😊  \nEm que eu posso te ajudar na Matrix hoje (estoque, financeiro, fiscal, pedidos ou cadastros)?",
+      "model": "gpt-5.4-nano",
+      "tokensInput": 10130,
+      "tokensOutput": 57,
+      "durationMs": 1430,
+      "createdAt": "2026-05-26T15:22:08.833Z",
+      "primaryTool": null
+    },
+    {
+      "turnoId": "cab80bf0-a917-4582-ad7c-f6976ff2bd3e",
+      "conversationId": "a05e1e58-eb4b-4feb-a3aa-1c7ea046657c",
+      "userMessageId": "32b55a2f-6460-4f89-945e-ce743bf375b5",
+      "userMessage": "Quem precisa de cobrança hoje?",
+      "toolMessageId": null,
+      "toolCalls": null,
+      "toolResults": null,
+      "finalMessageId": "cab80bf0-a917-4582-ad7c-f6976ff2bd3e",
+      "finalMessage": "Para eu te dizer **quem precisa de cobrança hoje**, preciso confirmar 2 pontos rápidos:\n\n1) “cobrança” é **financeiro (títulos a receber vencidos/atrasados)** ou **comercial (parcelas/pedidos atrasados)**?  \n2) “hoje” significa **vencidos hoje (atraso = 0)** ou **tudo que já está vencido até hoje (atraso > 0)**?",
+      "model": "gpt-5.4-nano",
+      "tokensInput": 10132,
+      "tokensOutput": 816,
+      "durationMs": 6109,
+      "createdAt": "2026-05-26T15:21:49.916Z",
+      "primaryTool": null
+    },
+    {
+      "turnoId": "ccbd347f-7d8e-4e09-ba4f-64dfa80ba1f7",
+      "conversationId": "9fbfdc87-f8d4-4137-8856-f4d4ad073ef5",
+      "userMessageId": "25e00032-2987-4efa-9d34-7aa4759e1ca5",
+      "userMessage": "ICMS do mês",
+      "toolMessageId": "260769c9-c44d-4aee-b44d-9396aff9ef23",
+      "toolCalls": [
+        {
+          "id": "call_z5bpAQjKsNPrKdH5zTHkBf8E",
+          "name": "fiscal_apuracao",
+          "arguments": {
+            "tipo": "ICMS-IPI",
+            "limite": 50
+          }
+        }
+      ],
+      "toolResults": {
+        "call_z5bpAQjKsNPrKdH5zTHkBf8E": "{\"estado\":\"ok\",\"dados\":{\"linhas\":[{\"odooId\":6,\"empresaNome\":\"Jds Comércio - Matriz DF 18.282.961/0001-00\",\"dataInicial\":\"2026-04-01\",\"dataFinal\":\"2026-04-30\",\"tipo\":\"ICMS-IPI\",\"entregue\":false,\"regimeTributario\":null,\"vrIcmsARecolher\":0,\"vrIcmsSaldoCredor\":0,\"vrIpiARecolher\":0,\"vrPisARecolher\":0,\"vrCofinsARecolher\":0},{\"odooId\":7,\"empresaNome\":\"Jds Comércio - Filial SP 18.282.961/0003-63\",\"dataInicial\":\"2026-04-01\",\"dataFinal\":\"2026-04-30\",\"tipo\":\"ICMS-IPI\",\"entregue\":false,\"regimeTributario\":null,\"vrIcmsARecolher\":0,\"vrIcmsSaldoCredor\":0,\"vrIpiARecolher\":0,\"vrPisARecolher\":0,\"vrCofinsARecolher\":0},{\"odooId\":8,\"empresaNome\":\"Jds Comércio - Filial SE 18.282.961/0004-44\",\"dataInicial\":\"2026-04-01\",\"dataFinal\":\"2026-04-30\",\"tipo\":\"ICMS-IPI\",\"entregue\":false,\"regimeTributario\":null,\"vrIcmsARecolher\":0,\"vrIcmsSaldoCredor\":0,\"vrIpiARecolher\":0,\"vrPisARecolher\":0,\"vrCofinsARecolher\":0},{\"odooId\":4,\"empresaNome\":\"Jds Comércio - Filial SE 18.282.961/0004-44\",\"dataInicial\":\"2026-03-01\",\"dataFinal\":\"2026-03-31\",\"tipo\":\"ICMS-IPI\",\"entregue\":false,\"regimeTributario\":null,\"vrIcmsARecolher\":0,\"vrIcmsSaldoCredor\":0,\"vrIpiARecolher\":0,\"vrPisARecolher\":0,\"vrCofinsARecolher\":0},{\"odooId\":1,\"empresaNome\":\"Jds Comércio - Matriz DF 18.282.961/0001-00\",\"dataInicial\":\"2026-03-01\",\"dataFinal\":\"2026-03-31\",\"tipo\":\"ICMS-IPI\",\"entregue\":false,\"regimeTributario\":null,\"vrIcmsARecolher\":0,\"vrIcmsSaldoCredor\":0,\"vrIpiARecolher\":0,\"vrPisARecolher\":0,\"vrCofinsARecolher\":0},{\"odooId\":5,\"empresaNome\":\"Jds Comércio - Filial SP 18.282.961/0003-63\",\"dataInicial\":\"2026-03-01\",\"dataFinal\":\"2026-03-31\",\"tipo\":\"ICMS-IPI\",\"entregue\":false,\"regimeTributario\":null,\"vrIcmsARecolher\":0,\"vrIcmsSaldoCredor\":0,\"vrIpiARecolher\":0,\"vrPisARecolher\":0,\"vrCofinsARecolher\":0},{\"odooId\":2,\"empresaNome\":\"Jds Comércio - Matriz DF 18.282.961/0001-00\",\"dataInicial\":\"2026-03-01\",\"dataFinal\":\"2026-03-31\",\"tipo\":\"ICMS-IPI\",\"entregue\":false,\"regimeTributario\":null,\"vrIcmsARecolher\":0,\"vrIcmsSaldoCredor\":0,\"vrIpiARecolher\":0,\"vrPisARecolher\":0,\"vrCofinsARecolher\":0},{\"odooId\":3,\"empresaNome\":\"Jds Comércio - Matriz DF 18.282.961/0001-00\",\"dataInicial\":\"2026-03-01\",\"dataFinal\":\"2026-03-31\",\"tipo\":\"ICMS-IPI\",\"entregue\":false,\"regimeTributario\":null,\"vrIcmsARecolher\":0,\"vrIcmsSaldoCredor\":0,\"vrIpiARecolher\":0,\"vrPisARecolher\":0,\"vrCofinsARecolher\":0}],\"total\":8,\"truncado\":false},\"atualizadoEm\":\"2026-05-26T15:19:01.950Z\",\"atualizadoHa\":\"2min\",\"fonteStatus\":{\"status\":\"ok\",\"ultimaSyncEm\":\"2026-05-26T15:20:37.546Z\"}}"
+      },
+      "finalMessageId": "ccbd347f-7d8e-4e09-ba4f-64dfa80ba1f7",
+      "finalMessage": "Para **05/2026 (mês atual)**, **não consta apuração de ICMS-IPI registrada ainda** no sistema.  \nAs últimas apurações disponíveis são **04/2026** e **03/2026** (todas as empresas): **ICMS a recolher R$ 0,00** e **saldo credor R$ 0,00**.",
+      "model": "gpt-5.4-nano",
+      "tokensInput": 11196,
+      "tokensOutput": 1602,
+      "durationMs": 14799,
+      "createdAt": "2026-05-26T15:21:38.001Z",
+      "primaryTool": "fiscal_apuracao"
+    },
+    {
+      "turnoId": "ccc1cfaa-6c82-4018-ad2f-3e643202dc90",
+      "conversationId": "38f9546f-1378-424c-b6b5-1725b41e4b12",
+      "userMessageId": "a0483c11-f89a-4f05-87ec-33b37a605cb2",
+      "userMessage": "Cliente com pedido em aberto e contas a receber em atraso",
+      "toolMessageId": null,
+      "toolCalls": null,
+      "toolResults": null,
+      "finalMessageId": "ccc1cfaa-6c82-4018-ad2f-3e643202dc90",
+      "finalMessage": "Pra eu te trazer a lista certa, preciso só confirmar 2 pontos:\n\n1) Você quer **todos os clientes** ou um **cliente específico** (nome ou CNPJ)?  \n2) O que você considera **“pedido em aberto”**:\n- pedidos **não finalizados** (em andamento/abertos no funil), ou\n- **parcelas de pedidos vencidas e não faturadas**?\n\nMe diga essas duas respostas que eu gero a relação de clientes com **contas a receber em atraso** junto dos **pedidos em aberto**.",
+      "model": "gpt-5.4-nano",
+      "tokensInput": 10137,
+      "tokensOutput": 797,
+      "durationMs": 7462,
+      "createdAt": "2026-05-26T15:20:39.806Z",
+      "primaryTool": null
+    },
+    {
+      "turnoId": "cceebba3-c040-4e76-beda-217eadf59e07",
+      "conversationId": "15c593e3-dc01-42b5-8f71-9d7aa21b0aaf",
+      "userMessageId": "cb2de2c4-e025-4204-9ef0-60b85e560a06",
+      "userMessage": "Quantos clientes ativos?",
+      "toolMessageId": "2187d40f-6a98-4c6a-9d98-d0f0da649985",
+      "toolCalls": [
+        {
+          "id": "call_IpVlkmlWmJxNdt0s5ZC08IMo",
+          "name": "cadastro_contar_parceiros",
+          "arguments": {}
+        },
+        {
+          "id": "call_M3stdiz6gYI9iQ852GHDhhbN",
+          "name": "registrar_lacuna",
+          "arguments": {
+            "dominio": "Cadastros / Parceiros",
+            "perguntaResumo": "Contagem de clientes ativos"
+          }
+        }
+      ],
+      "toolResults": {
+        "call_IpVlkmlWmJxNdt0s5ZC08IMo": "{\"estado\":\"ok\",\"dados\":{\"totalParceiros\":6566,\"totalClientes\":6324,\"totalFornecedores\":754,\"totalEmpresas\":4397},\"atualizadoEm\":\"2026-05-26T15:22:02.293Z\",\"atualizadoHa\":\"2min\",\"fonteStatus\":{\"status\":\"ok\",\"ultimaSyncEm\":\"2026-05-26T15:23:21.414Z\"}}",
+        "call_M3stdiz6gYI9iQ852GHDhhbN": "{\"registrado\":true}"
+      },
+      "finalMessageId": "cceebba3-c040-4e76-beda-217eadf59e07",
+      "finalMessage": "Hoje constam **6.324 clientes cadastrados**.  \nQuando você diz “ativos”, é **ativos no cadastro (status/flag ativo)** ou **ativos por movimentação (compraram/ venderam)**?",
+      "model": "gpt-5.4-nano",
+      "tokensInput": 10325,
+      "tokensOutput": 560,
+      "durationMs": 5648,
+      "createdAt": "2026-05-26T15:23:56.251Z",
+      "primaryTool": "cadastro_contar_parceiros"
+    },
+    {
+      "turnoId": "cea1d397-02ca-487e-ae09-9777eb813c7e",
+      "conversationId": "f74dc9ed-e33c-473d-b138-886b51983688",
+      "userMessageId": "2c171738-bc6f-496e-b55e-f7732e33e97b",
+      "userMessage": "Produtos do family pé na bola?",
+      "toolMessageId": null,
+      "toolCalls": null,
+      "toolResults": null,
+      "finalMessageId": "cea1d397-02ca-487e-ae09-9777eb813c7e",
+      "finalMessage": "Sou o assistente de operação da Matrix Fitness Group.\n\nPara eu te passar certo: quando você diz “family **pé na bola**”, você quer a **família do cadastro** (categoria) “Pé na Bola” ou quer que eu procure “pé na bola” **no nome do produto**? E você quer só a **lista de produtos** ou também o **saldo atual em estoque (unidades e valor a custo)**?",
+      "model": "gpt-5.4-nano",
+      "tokensInput": 10133,
+      "tokensOutput": 581,
+      "durationMs": 4614,
+      "createdAt": "2026-05-26T15:22:05.527Z",
+      "primaryTool": null
+    },
+    {
+      "turnoId": "ceb928d8-a6de-4e4e-9e30-bdbd0233c8fc",
+      "conversationId": "504c635d-c8ec-453f-b60c-d5b599cbc463",
+      "userMessageId": "20dd1f40-de2a-48b3-b464-3b424c42cf88",
+      "userMessage": "Notas emitidas para o cliente Smartfit Alphaville",
+      "toolMessageId": "6cc6efd8-c223-46c9-815e-5e0bfc1cb1bf",
+      "toolCalls": [
+        {
+          "id": "call_WOYetI65Dmew2qNI0LNQ2itj",
+          "name": "cadastro_buscar_parceiro",
+          "arguments": {
+            "termo": "Smartfit Alphaville",
+            "limite": 5
+          }
+        }
+      ],
+      "toolResults": {
+        "call_WOYetI65Dmew2qNI0LNQ2itj": "{\"estado\":\"ok\",\"dados\":{\"linhas\":[{\"odooId\":16197,\"nome\":\"SMARTFIT ALPHAVILLE PARALELA\",\"documento\":\"BR-07.594.978/0768-24\",\"ehCliente\":true,\"ehFornecedor\":false,\"uf\":\"Bahia (BR)\",\"cidade\":\"Salvador\"}]},\"atualizadoEm\":\"2026-05-26T15:19:00.179Z\",\"atualizadoHa\":\"2min\",\"fonteStatus\":{\"status\":\"ok\",\"ultimaSyncEm\":\"2026-05-26T15:20:21.658Z\"}}"
+      },
+      "finalMessageId": "ceb928d8-a6de-4e4e-9e30-bdbd0233c8fc",
+      "finalMessage": "Para eu te listar certo, preciso de 2 confirmações:\n\n1) É do cliente **SMARTFIT ALPHAVILLE PARALELA** (doc **BR-07.594.978/0768-24**) mesmo?  \n2) Qual período você quer: **mês atual**, **últimos 30 dias** ou **intervalo** (de/até)? E quer **somente autorizadas** ou **todas as situações**?",
+      "model": "gpt-5.4-nano",
+      "tokensInput": 10313,
+      "tokensOutput": 766,
+      "durationMs": 8327,
+      "createdAt": "2026-05-26T15:20:42.621Z",
+      "primaryTool": "cadastro_buscar_parceiro"
+    },
+    {
+      "turnoId": "cfe077e2-1045-4287-9789-da653f05aba9",
+      "conversationId": "e233527f-ccc9-4c36-99c7-b7ec0ba3013a",
+      "userMessageId": "03a6fa4d-f704-4db4-a6a3-a8ef046c0ef3",
+      "userMessage": "Pedidos atrasados",
+      "toolMessageId": "5bd8d92f-d822-405c-b3e6-c69b5f7dc180",
+      "toolCalls": [
+        {
+          "id": "call_xdBGv5axxU5emuFeGlkou9kY",
+          "name": "comercial_pedidos_atrasados",
+          "arguments": {}
+        }
+      ],
+      "toolResults": {
+        "call_xdBGv5axxU5emuFeGlkou9kY": "{\"estado\":\"ok\",\"dados\":{\"linhas\":[{\"pedidoId\":270,\"participanteNome\":null,\"numero\":\"1\",\"dataVencimento\":\"2024-12-30T03:00:00.000Z\",\"valor\":206765,\"diasAtraso\":512},{\"pedidoId\":266,\"participanteNome\":null,\"numero\":\"1\",\"dataVencimento\":\"2025-01-27T03:00:00.000Z\",\"valor\":274729.33,\"diasAtraso\":484},{\"pedidoId\":273,\"participanteNome\":null,\"numero\":\"1\",\"dataVencimento\":\"2025-02-25T03:00:00.000Z\",\"valor\":339390.4,\"diasAtraso\":455},{\"pedidoId\":274,\"participanteNome\":null,\"numero\":\"1\",\"dataVencimento\":\"2025-03-07T03:00:00.000Z\",\"valor\":59000,\"diasAtraso\":445},{\"pedidoId\":274,\"participanteNome\":null,\"numero\":\"2\",\"dataVencimento\":\"2025-04-07T03:00:00.000Z\",\"valor\":59000,\"diasAtraso\":414},{\"pedidoId\":276,\"participanteNome\":null,\"numero\":\"1\",\"dataVencimento\":\"2025-04-28T03:00:00.000Z\",\"valor\":11266.67,\"diasAtraso\":393},{\"pedidoId\":274,\"participanteNome\":null,\"numero\":\"3\",\"dataVencimento\":\"2025-05-06T03:00:00.000Z\",\"valor\":59000,\"diasAtraso\":385},{\"pedidoId\":276,\"participanteNome\":null,\"numero\":\"2\",\"dataVencimento\":\"2025-05-26T03:00:00.000Z\",\"valor\":11266.67,\"diasAtraso\":365},{\"pedidoId\":274,\"participanteNome\":null,\"numero\":\"4\",\"dataVencimento\":\"2025-06-05T03:00:00.000Z\",\"valor\":59000,\"diasAtraso\":355},{\"pedidoId\":276,\"participanteNome\":null,\"numero\":\"3\",\"dataVencimento\":\"2025-06-25T03:00:00.000Z\",\"valor\":11266.67,\"diasAtraso\":335},{\"pedidoId\":274,\"participanteNome\":null,\"numero\":\"5\",\"dataVencimento\":\"2025-07-07T03:00:00.000Z\",\"valor\":59000,\"diasAtraso\":323},{\"pedidoId\":276,\"participanteNome\":null,\"numero\":\"4\",\"dataVencimento\":\"2025-07-25T03:00:00.000Z\",\"valor\":11266.67,\"diasAtraso\":305},{\"pedidoId\":279,\"participanteNome\":null,\"numero\":\"1\",\"dataVencimento\":\"2025-07-25T03:00:00.000Z\",\"valor\":70452.06,\"diasAtraso\":305},{\"pedidoId\":276,\"participanteNome\":null,\"numero\":\"5\",\"dataVencimento\":\"2025-08-25T03:00:00.000Z\",\"valor\":11266.67,\"diasAtraso\":274},{\"pedidoId\":279,\"participanteNome\":null,\"numero\":\"2\",\"dataVencimento\":\"2025-08-25T03:00:00.000Z\",\"valor\":70452.06,\"diasAtraso\":274},{\"pedidoId\":276,\"participanteNome\":null,\"numero\":\"6\",\"dataVencimento\":\"2025-09-23T03:00:00.000Z\",\"valor\":11266.67,\"diasAtraso\":245},{\"pedidoId\":279,\"participanteNome\":null,\"numero\":\"3\",\"dataVencimento\":\"2025-09-23T03:00:00.000Z\",\"valor\":70452.06,\"diasAtraso\":245},{\"pedidoId\":377,\"participanteNome\":null,\"numero\":\"1\",\"dataVencimento\":\"2025-09-29T03:00:00.000Z\",\"valor\":726.61,\"diasAtraso\":239},{\"pedidoId\":276,\"participanteNome\":null,\"numero\":\"7\",\"dataVencimento\":\"2025-10-23T03:00:00.000Z\",\"valor\":11266.67,\"diasAtraso\":215},{\"pedidoId\":279,\"participanteNome\":null,\"numero\":\"4\",\"dataVencimento\":\"2025-10-23T03:00:00.000Z\",\"valor\":70452.06,\"diasAtraso\":215},{\"pedidoId\":290,\"participanteNome\":null,\"numero\":\"1\",\"dataVencimento\":\"2025-10-30T03:00:00.000Z\",\"valor\":35714.29,\"diasAtraso\":208},{\"pedidoId\":291,\"participanteNome\":null,\"numero\":\"2\",\"dataVencimento\":\"2025-11-03T03:00:00.000Z\",\"valor\":25416.67,\"diasAtraso\":204},{\"pedidoId\":291,\"participanteNome\":null,\"numero\":\"1\",\"dataVencimento\":\"2025-11-03T03:00:00.000Z\",\"valor\":25416.67,\"diasAtraso\":204},{\"pedidoId\":395,\"participanteNome\":null,\"numero\":\"1\",\"dataVencimento\":\"2025-11-21T03:00:00.000Z\",\"valor\":146648.04,\"diasAtraso\":186},{\"pedidoId\":276,\"participanteNome\":null,\"numero\":\"8\",\"dataVencimento\":\"2025-11-24T03:00:00.000Z\",\"valor\":11266.67,\"diasAtraso\":183},{\"pedidoId\":279,\"participanteNome\":null,\"numero\":\"5\",\"dataVencimento\":\"2025-11-24T03:00:00.000Z\",\"valor\":70452.04,\"diasAtraso\":183},{\"pedidoId\":290,\"participanteNome\":null,\"numero\":\"2\",\"dataVencimento\":\"2025-12-01T03:00:00.000Z\",\"valor\":35714.29,\"diasAtraso\":176},{\"pedidoId\":291,\"participanteNome\":null,\"numero\":\"4\",\"dataVencimento\":\"2025-12-02T03:00:00.000Z\",\"valor\":25416.67,\"diasAtraso\":175},{\"pedidoId\":291,\"participanteNome\":null,\"numero\":\"3\",\"dataVencimento\":\"2025-12-02T03:00:00.000Z\",\"valor\":25416.67,\"diasAtraso\":175},{\"pedidoId\":276,\"participanteNome\":null,\"numero\":\"9\",\"dataVencimento\":\"2025-12-22T03:00:00.000Z\",\"valor\":11266.67,\"diasAtraso\":155},{\"pedidoId\":395,\"participanteNome\":null,\"numero\":\"2\",\"dataVencimento\":\"2025-12-22T03:00:00.000Z\",\"valor\":146648.04,\"diasAtraso\":155},{\"pedidoId\":268,\"participanteNome\":null,\"numero\":\"1\",\"dataVencimento\":\"2025-12-26T03:00:00.000Z\",\"valor\":20000,\"diasAtraso\":151},{\"pedidoId\":296,\"participanteNome\":null,\"numero\":\"1\",\"dataVencimento\":\"2025-12-26T03:00:00.000Z\",\"valor\":150000,\"diasAtraso\":151},{\"pedidoId\":290,\"participanteNome\":null,\"numero\":\"3\",\"dataVencimento\":\"2025-12-29T03:00:00.000Z\",\"valor\":35714.29,\"diasAtraso\":148},{\"pedidoId\":291,\"participanteNome\":null,\"numero\":\"5\",\"dataVencimento\":\"2026-01-02T03:00:00.000Z\",\"valor\":25416.67,\"diasAtraso\":144},{\"pedidoId\":291,\"participanteNome\":null,\"numero\":\"6\",\"dataVencimento\":\"2026-01-02T03:00:00.000Z\",\"valor\":25416.67,\"diasAtraso\":144},{\"pedidoId\":297,\"participanteNome\":null,\"numero\":\"2\",\"dataVencimento\":\"2026-01-02T03:00:00.000Z\",\"valor\":15601.86,\"diasAtraso\":144},{\"pedidoId\":297,\"participanteNome\":null,\"numero\":\"1\",\"dataVencimento\":\"2026-01-02T03:00:00.000Z\",\"valor\":15601.86,\"diasAtraso\":144},{\"pedidoId\":395,\"participanteNome\":null,\"numero\":\"3\",\"dataVencimento\":\"2026-01-19T03:00:00.000Z\",\"valor\":146648.04,\"diasAtraso\":127},{\"pedidoId\":276,\"participanteNome\":null,\"numero\":\"10\",\"dataVencimento\":\"2026-01-21T03:00:00.000Z\",\"valor\":11266.67,\"diasAtraso\":125},{\"pedidoId\":311,\"participanteNome\":null,\"numero\":\"1\",\"dataVencimento\":\"2026-01-21T03:00:00.000Z\",\"valor\":179768.89,\"diasAtraso\":125},{\"pedidoId\":311,\"participanteNome\":null,\"numero\":\"2\",\"dataVencimento\":\"2026-01-21T03:00:00.000Z\",\"valor\":179768.89,\"diasAtraso\":125},{\"pedidoId\":268,\"participanteNome\":null,\"numero\":\"2\",\"dataVencimento\":\"2026-01-26T03:00:00.000Z\",\"valor\":20000,\"diasAtraso\":120},{\"pedidoId\":296,\"participanteNome\":null,\"numero\":\"2\",\"dataVencimento\":\"2026-01-26T03:00:00.000Z\",\"valor\":150000,\"diasAtraso\":120},{\"pedidoId\":290,\"participanteNome\":null,\"numero\":\"4\",\"dataVencimento\":\"2026-01-28T03:00:00.000Z\",\"valor\":35714.29,\"diasAtraso\":118},{\"pedidoId\":291,\"participanteNome\":null,\"numero\":\"8\",\"dataVencimento\":\"2026-02-02T03:00:00.000Z\",\"valor\":25416.67,\"diasAtraso\":113},{\"pedidoId\":291,\"participanteNome\":null,\"numero\":\"7\",\"dataVencimento\":\"2026-02-02T03:00:00.000Z\",\"valor\":25416.67,\"diasAtraso\":113},{\"pedidoId\":297,\"participanteNome\":null,\"numero\":\"4\",\"dataVencimento\":\"2026-02-02T03:00:00.000Z\",\"valor\":15601.83,\"diasAtraso\":113},{\"pedidoId\":297,\"participanteNome\":null,\"numero\":\"3\",\"dataVencimento\":\"2026-02-02T03:00:00.000Z\",\"valor\":15601.83,\"diasAtraso\":113},{\"pedidoId\":381,\"participanteNome\":null,\"numero\":\"1\",\"dataVencimento\":\"2026-02-02T03:00:00.000Z\",\"valor\":127500,\"diasAtraso\":113},{\"pedidoId\":313,\"participanteNome\":null,\"numero\":\"1\",\"dataVencimento\":\"2026-02-09T03:00:00.000Z\",\"valor\":14043.94,\"diasAtraso\":106},{\"pedidoId\":387,\"participanteNome\":null,\"numero\":\"1\",\"dataVencimento\":\"2026-02-11T03:00:00.000Z\",\"valor\":5079,\"diasAtraso\":104},{\"pedidoId\":395,\"participanteNome\":null,\"numero\":\"4\",\"dataVencimento\":\"2026-02-18T03:00:00.000Z\",\"valor\":146648.04,\"diasAtraso\":97},{\"pedidoId\":276,\"participanteNome\":null,\"numero\":\"11\",\"dataVencimento\":\"2026-02-20T03:00:00.000Z\",\"valor\":11266.67,\"diasAtraso\":95},{\"pedidoId\":311,\"participanteNome\":null,\"numero\":\"3\",\"dataVencimento\":\"2026-02-20T03:00:00.000Z\",\"valor\":179768.89,\"diasAtraso\":95},{\"pedidoId\":311,\"participanteNome\":null,\"numero\":\"4\",\"dataVencimento\":\"2026-02-20T03:00:00.000Z\",\"valor\":179768.89,\"diasAtraso\":95},{\"pedidoId\":296,\"participanteNome\":null,\"numero\":\"3\",\"dataVencimento\":\"2026-02-23T03:00:00.000Z\",\"valor\":150000,\"diasAtraso\":92},{\"pedidoId\":268,\"participanteNome\":null,\"numero\":\"3\",\"dataVencimento\":\"2026-02-24T03:00:00.000Z\",\"valor\":20000,\"diasAtraso\":91},{\"pedidoId\":103,\"participanteNome\":null,\"numero\":\"1\",\"dataVencimento\":\"2026-02-26T03:00:00.000Z\",\"valor\":2577.91,\"diasAtraso\":89},{\"pedidoId\":290,\"participanteNome\":null,\"numero\":\"5\",\"dataVencimento\":\"2026-02-27T03:00:00.000Z\",\"valor\":35714.29,\"diasAtraso\":88},{\"pedidoId\":354,\"participanteNome\":null,\"numero\":\"1\",\"dataVencimento\":\"2026-02-27T03:00:00.000Z\",\"valor\":630000,\"diasAtraso\":88},{\"pedidoId\":354,\"participanteNome\":null,\"numero\":\"2\",\"dataVencimento\":\"2026-02-27T03:00:00.000Z\",\"valor\":630000,\"diasAtraso\":88},{\"pedidoId\":291,\"participanteNome\":null,\"numero\":\"10\",\"dataVencimento\":\"2026-03-02T03:00:00.000Z\",\"valor\":25416.67,\"diasAtraso\":85},{\"pedidoId\":291,\"participanteNome\":null,\"numero\":\"9\",\"dataVencimento\":\"2026-03-02T03:00:00.000Z\",\"valor\":25416.67,\"diasAtraso\":85},{\"pedidoId\":297,\"participanteNome\":null,\"numero\":\"6\",\"dataVencimento\":\"2026-03-02T03:00:00.000Z\",\"valor\":15601.83,\"diasAtraso\":85},{\"pedidoId\":297,\"participanteNome\":null,\"numero\":\"5\",\"dataVencimento\":\"2026-03-02T03:00:00.000Z\",\"valor\":15601.83,\"diasAtraso\":85},{\"pedidoId\":326,\"participanteNome\":null,\"numero\":\"1\",\"dataVencimento\":\"2026-03-02T03:00:00.000Z\",\"valor\":3876.03,\"diasAtraso\":85},{\"pedidoId\":381,\"participanteNome\":null,\"numero\":\"2\",\"dataVencimento\":\"2026-03-03T03:00:00.000Z\",\"valor\":127500,\"diasAtraso\":84},{\"pedidoId\":329,\"participanteNome\":null,\"numero\":\"1\",\"dataVencimento\":\"2026-03-04T03:00:00.000Z\",\"valor\":29904,\"diasAtraso\":83},{\"pedidoId\":313,\"participanteNome\":null,\"numero\":\"2\",\"dataVencimento\":\"2026-03-10T03:00:00.000Z\",\"valor\":14043.94,\"diasAtraso\":77},{\"pedidoId\":338,\"participanteNome\":null,\"numero\":\"1\",\"dataVencimento\":\"2026-03-13T03:00:00.000Z\",\"valor\":73023.73,\"diasAtraso\":74},{\"pedidoId\":338,\"participanteNome\":null,\"numero\":\"2\",\"dataVencimento\":\"2026-03-13T03:00:00.000Z\",\"valor\":73023.73,\"diasAtraso\":74},{\"pedidoId\":368,\"participanteNome\":null,\"numero\":\"1\",\"dataVencimento\":\"2026-03-13T03:00:00.000Z\",\"valor\":591604,\"diasAtraso\":74},{\"pedidoId\":339,\"participanteNome\":null,\"numero\":\"1\",\"dataVencimento\":\"2026-03-20T03:00:00.000Z\",\"valor\":12000,\"diasAtraso\":67},{\"pedidoId\":339,\"participanteNome\":null,\"numero\":\"2\",\"dataVencimento\":\"2026-03-20T03:00:00.000Z\",\"valor\":12000,\"diasAtraso\":67},{\"pedidoId\":267,\"participanteNome\":null,\"numero\":\"1\",\"dataVencimento\":\"2026-03-23T03:00:00.000Z\",\"valor\":3746.69,\"diasAtraso\":64},{\"pedidoId\":276,\"participanteNome\":null,\"numero\":\"12\",\"dataVencimento\":\"2026-03-23T03:00:00.000Z\",\"valor\":11266.67,\"diasAtraso\":64},{\"pedidoId\":324,\"participanteNome\":null,\"numero\":\"01\",\"dataVencimento\":\"2026-03-23T03:00:00.000Z\",\"valor\":20000,\"diasAtraso\":64},{\"pedidoId\":324,\"participanteNome\":null,\"numero\":\"02\",\"dataVencimento\":\"2026-03-23T03:00:00.000Z\",\"valor\":20000,\"diasAtraso\":64},{\"pedidoId\":507,\"participanteNome\":null,\"numero\":\"1\",\"dataVencimento\":\"2026-03-24T03:00:00.000Z\",\"valor\":80000,\"diasAtraso\":63},{\"pedidoId\":296,\"participanteNome\":null,\"numero\":\"4\",\"dataVencimento\":\"2026-03-25T03:00:00.000Z\",\"valor\":150000,\"diasAtraso\":62},{\"pedidoId\":268,\"participanteNome\":null,\"numero\":\"4\",\"dataVencimento\":\"2026-03-26T03:00:00.000Z\",\"valor\":20000,\"diasAtraso\":61},{\"pedidoId\":349,\"participanteNome\":null,\"numero\":\"1\",\"dataVencimento\":\"2026-03-27T03:00:00.000Z\",\"valor\":21000,\"diasAtraso\":60},{\"pedidoId\":349,\"participanteNome\":null,\"numero\":\"2\",\"dataVencimento\":\"2026-03-27T03:00:00.000Z\",\"valor\":21000,\"diasAtraso\":60},{\"pedidoId\":576,\"participanteNome\":null,\"numero\":\"1\",\"dataVencimento\":\"2026-03-28T03:00:00.000Z\",\"valor\":120202.34,\"diasAtraso\":59},{\"pedidoId\":103,\"participanteNome\":null,\"numero\":\"2\",\"dataVencimento\":\"2026-03-30T03:00:00.000Z\",\"valor\":2577.89,\"diasAtraso\":57},{\"pedidoId\":290,\"participanteNome\":null,\"numero\":\"6\",\"dataVencimento\":\"2026-03-30T03:00:00.000Z\",\"valor\":35714.29,\"diasAtraso\":57},{\"pedidoId\":355,\"participanteNome\":null,\"numero\":\"02\",\"dataVencimento\":\"2026-03-30T03:00:00.000Z\",\"valor\":55625,\"diasAtraso\":57},{\"pedidoId\":355,\"participanteNome\":null,\"numero\":\"01\",\"dataVencimento\":\"2026-03-30T03:00:00.000Z\",\"valor\":55625,\"diasAtraso\":57},{\"pedidoId\":326,\"participanteNome\":null,\"numero\":\"2\",\"dataVencimento\":\"2026-03-30T03:00:00.000Z\",\"valor\":3876.03,\"diasAtraso\":57},{\"pedidoId\":567,\"participanteNome\":null,\"numero\":\"01\",\"dataVencimento\":\"2026-03-30T03:00:00.000Z\",\"valor\":30000,\"diasAtraso\":57},{\"pedidoId\":556,\"participanteNome\":null,\"numero\":\"1\",\"dataVencimento\":\"2026-03-30T03:00:00.000Z\",\"valor\":40000,\"diasAtraso\":57},{\"pedidoId\":841,\"participanteNome\":null,\"numero\":\"1\",\"dataVencimento\":\"2026-03-30T03:00:00.000Z\",\"valor\":20000,\"diasAtraso\":57},{\"pedidoId\":838,\"participanteNome\":null,\"numero\":\"01\",\"dataVencimento\":\"2026-03-30T03:00:00.000Z\",\"valor\":20000,\"diasAtraso\":57},{\"pedidoId\":478,\"participanteNome\":null,\"numero\":\"1\",\"dataVencimento\":\"2026-03-31T03:00:00.000Z\",\"valor\":9202.5,\"diasAtraso\":56},{\"pedidoId\":570,\"participanteNome\":null,\"numero\":\"1\",\"dataVencimento\":\"2026-03-31T03:00:00.000Z\",\"valor\":47500,\"diasAtraso\":56},{\"pedidoId\":616,\"participanteNome\":null,\"numero\":\"01\",\"dataVencimento\":\"2026-03-31T03:00:00.000Z\",\"valor\":16876.42,\"diasAtraso\":56},{\"pedidoId\":841,\"participanteNome\":null,\"numero\":\"2\",\"dataVencimento\":\"2026-03-31T03:00:00.000Z\",\"valor\":20000,\"diasAtraso\":56},{\"pedidoId\":291,\"participanteNome\":null,\"numero\":\"11\",\"dataVencimento\":\"2026-04-01T03:00:00.000Z\",\"valor\":25416.65,\"diasAtraso\":55},{\"pedidoId\":291,\"participanteNome\":null,\"numero\":\"12\",\"dataVencimento\":\"2026-04-01T03:00:00.000Z\",\"valor\":25416.65,\"diasAtraso\":55},{\"pedidoId\":297,\"participanteNome\":null,\"numero\":\"8\",\"dataVencimento\":\"2026-04-01T03:00:00.000Z\",\"valor\":15601.83,\"diasAtraso\":55},{\"pedidoId\":297,\"participanteNome\":null,\"numero\":\"7\",\"dataVencimento\":\"2026-04-01T03:00:00.000Z\",\"valor\":15601.83,\"diasAtraso\":55},{\"pedidoId\":829,\"participanteNome\":null,\"numero\":\"2\",\"dataVencimento\":\"2026-04-01T03:00:00.000Z\",\"valor\":58502,\"diasAtraso\":55},{\"pedidoId\":829,\"participanteNome\":null,\"numero\":\"3\",\"dataVencimento\":\"2026-04-01T03:00:00.000Z\",\"valor\":82132,\"diasAtraso\":55},{\"pedidoId\":833,\"participanteNome\":null,\"numero\":\"1\",\"dataVencimento\":\"2026-04-01T03:00:00.000Z\",\"valor\":27570,\"diasAtraso\":55},{\"pedidoId\":833,\"participanteNome\":null,\"numero\":\"2\",\"dataVencimento\":\"2026-04-01T03:00:00.000Z\",\"valor\":58502,\"diasAtraso\":55},{\"pedidoId\":833,\"participanteNome\":null,\"numero\":\"3\",\"dataVencimento\":\"2026-04-01T03:00:00.000Z\",\"valor\":82132,\"diasAtraso\":55},{\"pedidoId\":839,\"participanteNome\":null,\"numero\":\"1\",\"dataVencimento\":\"2026-04-01T03:00:00.000Z\",\"valor\":32560,\"diasAtraso\":55},{\"pedidoId\":823,\"participanteNome\":null,\"numero\":\"3\",\"dataVencimento\":\"2026-04-01T03:00:00.000Z\",\"valor\":27570,\"diasAtraso\":55},{\"pedidoId\":823,\"participanteNome\":null,\"numero\":\"1\",\"dataVencimento\":\"2026-04-01T03:00:00.000Z\",\"valor\":58502,\"diasAtraso\":55},{\"pedidoId\":823,\"participanteNome\":null,\"numero\":\"2\",\"dataVencimento\":\"2026-04-01T03:00:00.000Z\",\"valor\":82132,\"diasAtraso\":55},{\"pedidoId\":826,\"participanteNome\":null,\"numero\":\"1\",\"dataVencimento\":\"2026-04-01T03:00:00.000Z\",\"valor\":27570,\"diasAtraso\":55},{\"pedidoId\":826,\"participanteNome\":null,\"numero\":\"2\",\"dataVencimento\":\"2026-04-01T03:00:00.000Z\",\"valor\":58502,\"diasAtraso\":55},{\"pedidoId\":829,\"participanteNome\":null,\"numero\":\"1\",\"dataVencimento\":\"2026-04-01T03:00:00.000Z\",\"valor\":27570,\"diasAtraso\":55},{\"pedidoId\":888,\"participanteNome\":null,\"numero\":\"1\",\"dataVencimento\":\"2026-04-01T03:00:00.000Z\",\"valor\":206479.36,\"diasAtraso\":55},{\"pedidoId\":264,\"participanteNome\":null,\"numero\":\"1\",\"dataVencimento\":\"2026-04-02T03:00:00.000Z\",\"valor\":146018.63,\"diasAtraso\":54},{\"pedidoId\":572,\"participanteNome\":null,\"numero\":\"01\",\"dataVencimento\":\"2026-04-02T03:00:00.000Z\",\"valor\":32399.35,\"diasAtraso\":54},{\"pedidoId\":766,\"participanteNome\":null,\"numero\":\"01\",\"dataVencimento\":\"2026-04-02T03:00:00.000Z\",\"valor\":22741.23,\"diasAtraso\":54},{\"pedidoId\":860,\"participanteNome\":null,\"numero\":\"1\",\"dataVencimento\":\"2026-04-02T03:00:00.000Z\",\"valor\":27570,\"diasAtraso\":54},{\"pedidoId\":860,\"participanteNome\":null,\"numero\":\"2\",\"dataVencimento\":\"2026-04-02T03:00:00.000Z\",\"valor\":58502,\"diasAtraso\":54},{\"pedidoId\":986,\"participanteNome\":null,\"numero\":\"1\",\"dataVencimento\":\"2026-04-02T03:00:00.000Z\",\"valor\":60000,\"diasAtraso\":54},{\"pedidoId\":501,\"participanteNome\":null,\"numero\":\"1\",\"dataVencimento\":\"2026-04-05T03:00:00.000Z\",\"valor\":21500,\"diasAtraso\":51},{\"pedidoId\":602,\"participanteNome\":null,\"numero\":\"1\",\"dataVencimento\":\"2026-04-05T03:00:00.000Z\",\"valor\":197,\"diasAtraso\":51},{\"pedidoId\":841,\"participanteNome\":null,\"numero\":\"3\",\"dataVencimento\":\"2026-04-06T03:00:00.000Z\",\"valor\":10000,\"diasAtraso\":50},{\"pedidoId\":329,\"participanteNome\":null,\"numero\":\"2\",\"dataVencimento\":\"2026-04-06T03:00:00.000Z\",\"valor\":29904,\"diasAtraso\":50},{\"pedidoId\":1020,\"participanteNome\":null,\"numero\":\"1\",\"dataVencimento\":\"2026-04-07T03:00:00.000Z\",\"valor\":2056,\"diasAtraso\":49},{\"pedidoId\":1125,\"participanteNome\":null,\"numero\":\"1\",\"dataVencimento\":\"2026-04-08T03:00:00.000Z\",\"valor\":33000,\"diasAtraso\":48},{\"pedidoId\":313,\"participanteNome\":null,\"numero\":\"3\",\"dataVencimento\":\"2026-04-09T03:00:00.000Z\",\"valor\":14043.94,\"diasAtraso\":47},{\"pedidoId\":533,\"participanteNome\":null,\"numero\":\"1\",\"dataVencimento\":\"2026-04-09T03:00:00.000Z\",\"valor\":4241.75,\"diasAtraso\":47},{\"pedidoId\":506,\"participanteNome\":null,\"numero\":\"01\",\"dataVencimento\":\"2026-04-09T03:00:00.000Z\",\"valor\":504,\"diasAtraso\":47},{\"pedidoId\":448,\"participanteNome\":null,\"numero\":\"01\",\"dataVencimento\":\"2026-04-09T03:00:00.000Z\",\"valor\":2800,\"diasAtraso\":47},{\"pedidoId\":1154,\"participanteNome\":null,\"numero\":\"1\",\"dataVencimento\":\"2026-04-09T03:00:00.000Z\",\"valor\":11950,\"diasAtraso\":47},{\"pedidoId\":615,\"participanteNome\":null,\"numero\":\"1\",\"dataVencimento\":\"2026-04-10T03:00:00.000Z\",\"valor\":40000,\"diasAtraso\":46},{\"pedidoId\":627,\"participanteNome\":null,\"numero\":\"1\",\"dataVencimento\":\"2026-04-10T03:00:00.000Z\",\"valor\":730,\"diasAtraso\":46},{\"pedidoId\":628,\"participanteNome\":null,\"numero\":\"1\",\"dataVencimento\":\"2026-04-10T03:00:00.000Z\",\"valor\":610,\"diasAtraso\":46},{\"pedidoId\":631,\"participanteNome\":null,\"numero\":\"1\",\"dataVencimento\":\"2026-04-10T03:00:00.000Z\",\"valor\":19000,\"diasAtraso\":46},{\"pedidoId\":655,\"participanteNome\":null,\"numero\":\"1\",\"dataVencimento\":\"2026-04-10T03:00:00.000Z\",\"valor\":275,\"diasAtraso\":46},{\"pedidoId\":657,\"participanteNome\":null,\"numero\":\"1\",\"dataVencimento\":\"2026-04-10T03:00:00.000Z\",\"valor\":790,\"diasAtraso\":46},{\"pedidoId\":659,\"participanteNome\":null,\"numero\":\"1\",\"dataVencimento\":\"2026-04-10T03:00:00.000Z\",\"valor\":120,\"diasAtraso\":46},{\"pedidoId\":660,\"participanteNome\":null,\"numero\":\"1\",\"dataVencimento\":\"2026-04-10T03:00:00.000Z\",\"valor\":175,\"diasAtraso\":46},{\"pedidoId\":662,\"participanteNome\":null,\"numero\":\"1\",\"dataVencimento\":\"2026-04-10T03:00:00.000Z\",\"valor\":160,\"diasAtraso\":46},{\"pedidoId\":663,\"participanteNome\":null,\"numero\":\"1\",\"dataVencimento\":\"2026-04-10T03:00:00.000Z\",\"valor\":125,\"diasAtraso\":46},{\"pedidoId\":541,\"participanteNome\":null,\"numero\":\"01\",\"dataVencimento\":\"2026-04-10T03:00:00.000Z\",\"valor\":19458.72,\"diasAtraso\":46},{\"pedidoId\":737,\"participanteNome\":null,\"numero\":\"1\",\"dataVencimento\":\"2026-04-10T03:00:00.000Z\",\"valor\":440,\"diasAtraso\":46},{\"pedidoId\":744,\"participanteNome\":null,\"numero\":\"1\",\"dataVencimento\":\"2026-04-10T03:00:00.000Z\",\"valor\":2030,\"diasAtraso\":46},{\"pedidoId\":1155,\"participanteNome\":null,\"numero\":\"1\",\"dataVencimento\":\"2026-04-10T03:00:00.000Z\",\"valor\":1240,\"diasAtraso\":46},{\"pedidoId\":773,\"participanteNome\":null,\"numero\":\"1\",\"dataVencimento\":\"2026-04-10T03:00:00.000Z\",\"valor\":560,\"diasAtraso\":46},{\"pedidoId\":782,\"participanteNome\":null,\"numero\":\"1\",\"dataVencimento\":\"2026-04-10T03:00:00.000Z\",\"valor\":670,\"diasAtraso\":46},{\"pedidoId\":502,\"participanteNome\":null,\"numero\":\"1\",\"dataVencimento\":\"2026-04-10T03:00:00.000Z\",\"valor\":80649.51,\"diasAtraso\":46},{\"pedidoId\":986,\"participanteNome\":null,\"numero\":\"2\",\"dataVencimento\":\"2026-04-10T03:00:00.000Z\",\"valor\":140000,\"diasAtraso\":46},{\"pedidoId\":779,\"participanteNome\":null,\"numero\":\"01\",\"dataVencimento\":\"2026-04-10T03:00:00.000Z\",\"valor\":8841.19,\"diasAtraso\":46},{\"pedidoId\":1127,\"participanteNome\":null,\"numero\":\"01\",\"dataVencimento\":\"2026-04-10T03:00:00.000Z\",\"valor\":30000,\"diasAtraso\":46},{\"pedidoId\":512,\"participanteNome\":null,\"numero\":\"1\",\"dataVencimento\":\"2026-04-10T03:00:00.000Z\",\"valor\":240000,\"diasAtraso\":46},{\"pedidoId\":653,\"participanteNome\":null,\"numero\":\"1\",\"dataVencimento\":\"2026-04-10T03:00:00.000Z\",\"valor\":1040,\"diasAtraso\":46},{\"pedidoId\":265,\"participanteNome\":null,\"numero\":\"1\",\"dataVencimento\":\"2026-04-13T03:00:00.000Z\",\"valor\":86069.26,\"diasAtraso\":43},{\"pedidoId\":278,\"participanteNome\":null,\"numero\":\"1\",\"dataVencimento\":\"2026-04-13T03:00:00.000Z\",\"valor\":31666.67,\"diasAtraso\":43},{\"pedidoId\":300,\"participanteNome\":null,\"numero\":\"01\",\"dataVencimento\":\"2026-04-13T03:00:00.000Z\",\"valor\":25518.72,\"diasAtraso\":43},{\"pedidoId\":374,\"participanteNome\":null,\"numero\":\"1\",\"dataVencimento\":\"2026-04-13T03:00:00.000Z\",\"valor\":147.27,\"diasAtraso\":43},{\"pedidoId\":465,\"participanteNome\":null,\"numero\":\"01\",\"dataVencimento\":\"2026-04-13T03:00:00.000Z\",\"valor\":6000,\"diasAtraso\":43},{\"pedidoId\":519,\"participanteNome\":null,\"numero\":\"01\",\"dataVencimento\":\"2026-04-13T03:00:00.000Z\",\"valor\":2458.61,\"diasAtraso\":43},{\"pedidoId\":325,\"participanteNome\":null,\"numero\":\"1\",\"dataVencimento\":\"2026-04-13T03:00:00.000Z\",\"valor\":150000,\"diasAtraso\":43},{\"pedidoId\":888,\"participanteNome\":null,\"numero\":\"2\",\"dataVencimento\":\"2026-04-14T03:00:00.000Z\",\"valor\":206479.36,\"diasAtraso\":42},{\"pedidoId\":478,\"participanteNome\":null,\"numero\":\"2\",\"dataVencimento\":\"2026-04-15T03:00:00.000Z\",\"valor\":1840.5,\"diasAtraso\":41},{\"pedidoId\":1136,\"participanteNome\":null,\"numero\":\"1\",\"dataVencimento\":\"2026-04-15T03:00:00.000Z\",\"valor\":200,\"diasAtraso\":41},{\"pedidoId\":1147,\"participanteNome\":null,\"numero\":\"1\",\"dataVencimento\":\"2026-04-15T03:00:00.000Z\",\"valor\":460,\"diasAtraso\":41},{\"pedidoId\":844,\"participanteNome\":null,\"numero\":\"1\",\"dataVencimento\":\"2026-04-15T03:00:00.000Z\",\"valor\":51000,\"diasAtraso\":41},{\"pedidoId\":858,\"participanteNome\":null,\"numero\":\"01\",\"dataVencimento\":\"2026-04-15T03:00:00.000Z\",\"valor\":6700,\"diasAtraso\":41},{\"pedidoId\":991,\"participanteNome\":null,\"numero\":\"1\",\"dataVencimento\":\"2026-04-15T03:00:00.000Z\",\"valor\":4000,\"diasAtraso\":41},{\"pedidoId\":1160,\"participanteNome\":null,\"numero\":\"1\",\"dataVencimento\":\"2026-04-15T03:00:00.000Z\",\"valor\":1000,\"diasAtraso\":41},{\"pedidoId\":1079,\"participanteNome\":null,\"numero\":\"01\",\"dataVencimento\":\"2026-04-15T03:00:00.000Z\",\"valor\":5201.17,\"diasAtraso\":41},{\"pedidoId\":1161,\"participanteNome\":null,\"numero\":\"1\",\"dataVencimento\":\"2026-04-15T03:00:00.000Z\",\"valor\":830,\"diasAtraso\":41},{\"pedidoId\":1107,\"participanteNome\":null,\"numero\":\"1\",\"dataVencimento\":\"2026-04-15T03:00:00.000Z\",\"valor\":160,\"diasAtraso\":41},{\"pedidoId\":1116,\"participanteNome\":null,\"numero\":\"1\",\"dataVencimento\":\"2026-04-15T03:00:00.000Z\",\"valor\":75,\"diasAtraso\":41},{\"pedidoId\":1119,\"participanteNome\":null,\"numero\":\"1\",\"dataVencimento\":\"2026-04-15T03:00:00.000Z\",\"valor\":670,\"diasAtraso\":41},{\"pedidoId\":1131,\"participanteNome\":null,\"numero\":\"1\",\"dataVencimento\":\"2026-04-15T03:00:00.000Z\",\"valor\":450,\"diasAtraso\":41},{\"pedidoId\":1146,\"participanteNome\":null,\"numero\":\"1\",\"dataVencimento\":\"2026-04-15T03:00:00.000Z\",\"valor\":250,\"diasAtraso\":41},{\"pedidoId\":1163,\"participanteNome\":null,\"numero\":\"1\",\"dataVencimento\":\"2026-04-15T03:00:00.000Z\",\"valor\":60,\"diasAtraso\":41},{\"pedidoId\":1164,\"participanteNome\":null,\"numero\":\"1\",\"dataVencimento\":\"2026-04-15T03:00:00.000Z\",\"valor\":155,\"diasAtraso\":41},{\"pedidoId\":1166,\"participanteNome\":null,\"numero\":\"1\",\"dataVencimento\":\"2026-04-15T03:00:00.000Z\",\"valor\":600,\"diasAtraso\":41},{\"pedidoId\":1166,\"participanteNome\":null,\"numero\":\"2\",\"dataVencimento\":\"2026-04-15T03:00:00.000Z\",\"valor\":600,\"diasAtraso\":41},{\"pedidoId\":1177,\"participanteNome\":null,\"numero\":\"1\",\"dataVencimento\":\"2026-04-15T03:00:00.000Z\",\"valor\":1549.68,\"diasAtraso\":41},{\"pedidoId\":430,\"participanteNome\":null,\"numero\":\"01\",\"dataVencimento\":\"2026-04-16T03:00:00.000Z\",\"valor\":24846.54,\"diasAtraso\":40},{\"pedidoId\":431,\"participanteNome\":null,\"numero\":\"01\",\"dataVencimento\":\"2026-04-16T03:00:00.000Z\",\"valor\":4054.59,\"diasAtraso\":40},{\"pedidoId\":444,\"participanteNome\":null,\"numero\":\"1\",\"dataVencimento\":\"2026-04-16T03:00:00.000Z\",\"valor\":401434.46,\"diasAtraso\":40},{\"pedidoId\":444,\"participanteNome\":null,\"numero\":\"2\",\"dataVencimento\":\"2026-04-16T03:00:00.000Z\",\"valor\":401434.46,\"diasAtraso\":40},{\"pedidoId\":1266,\"participanteNome\":null,\"numero\":\"01\",\"dataVencimento\":\"2026-04-17T03:00:00.000Z\",\"valor\":22500,\"diasAtraso\":39},{\"pedidoId\":422,\"participanteNome\":null,\"numero\":\"01\",\"dataVencimento\":\"2026-04-18T03:00:00.000Z\",\"valor\":53646.2,\"diasAtraso\":38},{\"pedidoId\":777,\"participanteNome\":null,\"numero\":\"01\",\"dataVencimento\":\"2026-04-19T03:00:00.000Z\",\"valor\":4000,\"diasAtraso\":37},{\"pedidoId\":339,\"participanteNome\":null,\"numero\":\"3\",\"dataVencimento\":\"2026-04-20T03:00:00.000Z\",\"valor\"\n[...resultado truncado por exceder o limite de tamanho...]"
+      },
+      "finalMessageId": "cfe077e2-1045-4287-9789-da653f05aba9",
+      "finalMessage": "Sou o assistente de operação da Matrix Fitness Group.\n\nEncontrei **pedidos atrasados** bem antigos (amostra dos mais atrasados; o cliente não veio preenchido neste retorno):\n- **512 dias** (venc. **30/12/2024**) — **R$ 206.765,00**\n- **484 dias** (venc. **27/01/2025**) — **R$ 274.729,33**\n- **455 dias** (venc. **25/02/2025**) — **R$ 339.390,40**\n- **445 dias** (venc. **07/03/2025**) — **R$ 59.000,00**\n- **414 dias** (venc. **07/04/2025**) — **R$ 59.000,00**\n\nA lista completa é grande — você quer que eu traga um **resumo por faixas de atraso** (ex. 0-30 / 31-60 / 61-90 / 90+) ou foque em **>180 dias**?",
+      "model": "gpt-5.4-nano",
+      "tokensInput": 19424,
+      "tokensOutput": 2167,
+      "durationMs": 27914,
+      "createdAt": "2026-05-26T15:21:26.690Z",
+      "primaryTool": "comercial_pedidos_atrasados"
+    },
+    {
+      "turnoId": "cfe325f5-ec84-4258-ba28-a594608c19c3",
+      "conversationId": "a5eee3ec-c0ef-4549-91af-427345f0a6b4",
+      "userMessageId": "ceeaf6b0-69dc-457a-9872-8dc076a5e9f9",
+      "userMessage": "como tá o estoque dos halteres?",
+      "toolMessageId": "35323a97-a574-438e-bf2f-603609b48fd1",
+      "toolCalls": [
+        {
+          "id": "call_EvuvSpE5AAzl5DwmbUqqL8va",
+          "name": "estoque_saldo_produto",
+          "arguments": {
+            "termo": "halteres"
+          }
+        }
+      ],
+      "toolResults": {
+        "call_EvuvSpE5AAzl5DwmbUqqL8va": "{\"estado\":\"ok\",\"dados\":{\"kpis\":{\"totalProdutos\":12,\"produtosNegativos\":2,\"valorTotal\":53261.03},\"linhas\":[{\"produtoNome\":\"[1025] BA53 - Torre Halteres 10 Pares Preto\",\"familiaNome\":\"Acessórios\",\"marcaNome\":\"Bodyart\",\"saldoTotal\":45,\"valorTotal\":33229.69,\"numLocais\":3},{\"produtoNome\":\"[81909] BA43 - Torre P/ Halteres 5 Pares Preto\",\"familiaNome\":\"Acessórios\",\"marcaNome\":\"Bodyart\",\"saldoTotal\":15,\"valorTotal\":12535.5,\"numLocais\":2},{\"produtoNome\":\"[2013] T20HL - Torre Halteres Sextavado Chão Preto Laser\",\"familiaNome\":\"Acessórios\",\"marcaNome\":\"Equilibrio\",\"saldoTotal\":2,\"valorTotal\":3440,\"numLocais\":1},{\"produtoNome\":\"[996] AS6214P - Suporte para Halteres (Dumbbell Rack) - First\",\"familiaNome\":\"Acessórios\",\"marcaNome\":\"Ahead\",\"saldoTotal\":3,\"valorTotal\":3355,\"numLocais\":2},{\"produtoNome\":\"[607] SP012 - Suporte para Halteres Triangulo 01Á10KG\",\"familiaNome\":null,\"marcaNome\":null,\"saldoTotal\":2,\"valorTotal\":700.84,\"numLocais\":1},{\"produtoNome\":\"[1026] BA29 - Torre Halteres Sextavados 10 Pares Preto\",\"familiaNome\":\"Acessórios\",\"marcaNome\":\"Bodyart\",\"saldoTotal\":0,\"valorTotal\":0,\"numLocais\":2},{\"produtoNome\":\"[2660] KITINJETINOX1A10 - Kit Halteres Sextavado Injetado Premium C/ Peg. INOX 01 a 10 KG (10 Pares) S/ Torre\",\"familiaNome\":\"Acessórios\",\"marcaNome\":\"Rotha Fitness\",\"saldoTotal\":-4,\"valorTotal\":0,\"numLocais\":4},{\"produtoNome\":\"[606] SP011 - Suporte para Halteres Torre\",\"familiaNome\":\"Longlife\",\"marcaNome\":\"Longlife Pro\",\"saldoTotal\":0,\"valorTotal\":0,\"numLocais\":2},{\"produtoNome\":\"[952] AS2102Z1 - Kit Halteres Sextavados 10 Pares S/ Torre - 1 a 10KG (110KG) - Variação 1KG\",\"familiaNome\":\"Acessórios\",\"marcaNome\":\"Ahead\",\"saldoTotal\":-1,\"valorTotal\":0,\"numLocais\":3},{\"produtoNome\":\"[997] Asi-049 - Suporte para Halteres (Dumbbell Rack) - Intense\",\"familiaNome\":\"Acessórios\",\"marcaNome\":\"Ahead\",\"saldoTotal\":0,\"valorTotal\":0,\"numLocais\":1},{\"produtoNome\":\"SP016 - Suporte para Halteres\",\"familiaNome\":\"Longlife\",\"marcaNome\":\"Longlife Pro\",\"saldoTotal\":0,\"valorTotal\":0,\"numLocais\":0,\"semEstoqueCadastrado\":true,\"mensagemContexto\":\"produto cadastrado, sem linha de saldo\"},{\"produtoNome\":\"T20HT - Torre para 20 Halteres Tubular Preto\",\"familiaNome\":\"Acessórios\",\"marcaNome\":\"Equilibrio\",\"saldoTotal\":0,\"valorTotal\":0,\"numLocais\":0,\"semEstoqueCadastrado\":true,\"mensagemContexto\":\"produto cadastrado, sem linha de saldo\"}],\"ambiguidade\":{\"totalMatches\":12,\"layer\":\"exact\",\"topCandidates\":[{\"nome\":\"[1025] BA53 - Torre Halteres 10 Pares Preto\",\"context\":\"Acessórios · saldo 45\"},{\"nome\":\"[81909] BA43 - Torre P/ Halteres 5 Pares Preto\",\"context\":\"Acessórios · saldo 15\"},{\"nome\":\"[2013] T20HL - Torre Halteres Sextavado Chão Preto Laser\",\"context\":\"Acessórios · saldo 2\"},{\"nome\":\"[996] AS6214P - Suporte para Halteres (Dumbbell Rack) - First\",\"context\":\"Acessórios · saldo 3\"},{\"nome\":\"[607] SP012 - Suporte para Halteres Triangulo 01Á10KG\",\"context\":\"saldo 2\"}]},\"_agregado\":{\"contagem\":12,\"agregado_valorTotal\":{\"soma\":53261.03,\"media\":4438.42,\"min\":0,\"max\":33229.69,\"contagemValidos\":12},\"agregado_saldoTotal\":{\"soma\":62,\"media\":5.17,\"min\":-4,\"max\":45,\"contagemValidos\":12}}},\"atualizadoEm\":\"2026-05-26T15:22:11.716Z\",\"atualizadoHa\":\"14s\",\"fonteStatus\":{\"status\":\"ok\",\"ultimaSyncEm\":\"2026-05-26T15:10:36.557Z\"}}"
+      },
+      "finalMessageId": "cfe325f5-ec84-4258-ba28-a594608c19c3",
+      "finalMessage": "Encontrei **12 produtos** com “halteres”. Somando tudo que está com linha de saldo: **62 unidades** e **R$ 53.261,03** (a custo).\n\n- **Com saldo positivo**\n  - **[1025] BA53 - Torre Halteres 10 Pares Preto**: **45 un** (**R$ 33.229,69**)\n  - **[81909] BA43 - Torre P/ Halteres 5 Pares Preto**: **15 un** (**R$ 12.535,50**)\n  - **[996] AS6214P - Suporte para Halteres (Dumbbell Rack) - First**: **3 un** (**R$ 3.355,00**)\n  - **[2013] T20HL - Torre Halteres Sextavado Chão Preto Laser**: **2 un** (**R$ 3.440,00**)\n  - **[607] SP012 - Suporte para Halteres Triangulo 01Á10KG**: **2 un** (**R$ 700,84**)\n- **Saldo zero (com linha de saldo registrada)**\n  - **[1026] BA29 - Torre Halteres Sextavados 10 Pares Preto**: **0 un**\n  - **[606] SP011 - Suporte para Halteres Torre**: **0 un**\n  - **[997] Asi-049 - Suporte para Halteres (Dumbbell Rack) - Intense**: **0 un**\n- **Saldo negativo (atenção)**\n  - **[2660] KITINJETINOX1A10**: **-4 un**\n  - **[952] AS2102Z1**: **-1 un**\n- **Está no cadastro, sem linha de saldo registrada**\n  - **SP016 - Suporte para Halteres**\n  - **T20HT - Torre para 20 Halteres Tubular Preto**\n\nPara eu te passar “como tá” certinho, qual deles você quer (por **código/nome**), o **BA53**, **BA43** ou outro?",
+      "model": "gpt-5.4-nano",
+      "tokensInput": 11225,
+      "tokensOutput": 1982,
+      "durationMs": 15597,
+      "createdAt": "2026-05-26T15:22:41.745Z",
+      "primaryTool": "estoque_saldo_produto"
+    },
+    {
+      "turnoId": "d2b736f7-737e-4aeb-ac4e-4a3b45be5410",
+      "conversationId": "705fc047-4bdc-4005-b6b3-02d397b995c0",
+      "userMessageId": "5e04914d-be79-4e63-bd3b-dbd8a4f16d86",
+      "userMessage": "Inadimplência atual",
+      "toolMessageId": null,
+      "toolCalls": null,
+      "toolResults": null,
+      "finalMessageId": "d2b736f7-737e-4aeb-ac4e-4a3b45be5410",
+      "finalMessage": "Sou o assistente de operação da Matrix Fitness Group.\n\nQuando você diz **inadimplência atual**, você quer olhar para:\n1) **A receber** (atraso de clientes — contas vencidas e não pagas)  \n2) **A pagar** (atraso com fornecedores — contas vencidas e não pagas)  \n3) **As duas** (a receber e a pagar)\n\nResponda só com **1, 2 ou 3**.",
+      "model": "gpt-5.4-nano",
+      "tokensInput": 10131,
+      "tokensOutput": 550,
+      "durationMs": 6127,
+      "createdAt": "2026-05-26T15:24:15.068Z",
+      "primaryTool": null
+    },
+    {
+      "turnoId": "d38ec7d3-aa48-4c9e-bf70-03aefd25fbe7",
+      "conversationId": "ff956447-f125-45a4-ad1f-ea649a93894b",
+      "userMessageId": "2048d240-a188-4af9-89a6-edef5c109a7f",
+      "userMessage": "olha aí a posição do caixa",
+      "toolMessageId": "e9314e98-5851-4317-8f5a-cc09039742b4",
+      "toolCalls": [
+        {
+          "id": "call_yb5XASl6wH3BLjYVQA1768fL",
+          "name": "financeiro_saldo_contas",
+          "arguments": {}
+        }
+      ],
+      "toolResults": {
+        "call_yb5XASl6wH3BLjYVQA1768fL": "{\"estado\":\"ok\",\"dados\":{\"contas\":[{\"bancoNome\":\"Itaú / Corrente / 1584 / 37236-9 / Cs Comércio - Matriz DF 35.156.509/0001-02\",\"tipo\":null,\"saldo\":72410.18},{\"bancoNome\":\"Itaú / Corrente / 1584 / 36410-1 / Ks Comércio - Matriz DF 34.461.908/0001-14\",\"tipo\":null,\"saldo\":875957.69},{\"bancoNome\":\"Itaú / Corrente / 0542 / 99596-4 / Jmf Comércio - Matriz DF 45.424.185/0001-08\",\"tipo\":null,\"saldo\":55112.86},{\"bancoNome\":\"Itaú / Corrente / 1584 / 24146-5 / Jds Comércio - Matriz DF 18.282.961/0001-00\",\"tipo\":null,\"saldo\":-15239562.47},{\"bancoNome\":\"Itaú / Corrente / 1584 / 35012-6 / Jib DF Comércio - Matriz DF 33.718.546/0001-31\",\"tipo\":null,\"saldo\":221604.69},{\"bancoNome\":\"Itaú / Corrente / 1584 / 36363-2 / Jht SP Comércio - Matriz DF 34.161.829/0001-98\",\"tipo\":null,\"saldo\":-9026799.05},{\"bancoNome\":\"Itaú / Corrente / 1584 / 55755-5 / Jht DF Comércio - Matriz DF 10.557.556/0001-37\",\"tipo\":null,\"saldo\":-1621472.15},{\"bancoNome\":\"Itaú / Corrente / 1584 / 19916-8 / JHT Brasília - Matriz DF 07.390.039/0001-01\",\"tipo\":null,\"saldo\":383686.12}],\"saldoTotal\":-24279062.13},\"atualizadoEm\":\"2026-05-26T15:11:00.890Z\",\"atualizadoHa\":\"12min\",\"fonteStatus\":{\"status\":\"ok\",\"ultimaSyncEm\":\"2026-05-26T15:10:51.755Z\"}}"
+      },
+      "finalMessageId": "d38ec7d3-aa48-4c9e-bf70-03aefd25fbe7",
+      "finalMessage": "A **posição do caixa** (saldo atual nas contas) está em **R$ -24.279.062,13**.\n\nPrincipais saldos:\n- **+ R$ 875.957,69** (Itaú / Corrente / 36410-1)\n- **+ R$ 72410,18** (Itaú / Corrente / 1584 / 37236-9)\n- **- R$ 15.239.562,47** (Itaú / Corrente / 1584 / 24146-5)\n- **- R$ 9.026.799,05** (Itaú / Corrente / 1584 / 36363-2)",
+      "model": "gpt-5.4-nano",
+      "tokensInput": 10660,
+      "tokensOutput": 195,
+      "durationMs": 3116,
+      "createdAt": "2026-05-26T15:22:44.576Z",
+      "primaryTool": "financeiro_saldo_contas"
+    },
+    {
+      "turnoId": "d4c72436-a0f8-4d40-88db-503c75aa57d3",
+      "conversationId": "58afa71d-84d8-4678-9d2f-8a16665d42a7",
+      "userMessageId": "31d64308-c962-4a1c-a55f-936d11828b0a",
+      "userMessage": "Quantos parceiros temos cadastrados?",
+      "toolMessageId": "4978b7bf-bf55-40c7-8b38-d66450b8e62e",
+      "toolCalls": [
+        {
+          "id": "call_rKg1KDdPTK3ZELujPGhrRDoe",
+          "name": "cadastro_contar_parceiros",
+          "arguments": {}
+        }
+      ],
+      "toolResults": {
+        "call_rKg1KDdPTK3ZELujPGhrRDoe": "{\"estado\":\"ok\",\"dados\":{\"totalParceiros\":6566,\"totalClientes\":6324,\"totalFornecedores\":754,\"totalEmpresas\":4397},\"atualizadoEm\":\"2026-05-26T15:22:02.293Z\",\"atualizadoHa\":\"2min\",\"fonteStatus\":{\"status\":\"ok\",\"ultimaSyncEm\":\"2026-05-26T15:23:21.414Z\"}}"
+      },
+      "finalMessageId": "d4c72436-a0f8-4d40-88db-503c75aa57d3",
+      "finalMessage": "Temos **6.566 parceiros** cadastrados no total, sendo **6.324 clientes**, **754 fornecedores** e **4.397 empresas**.",
+      "model": "gpt-5.4-nano",
+      "tokensInput": 10259,
+      "tokensOutput": 63,
+      "durationMs": 1972,
+      "createdAt": "2026-05-26T15:24:18.934Z",
+      "primaryTool": "cadastro_contar_parceiros"
+    },
+    {
+      "turnoId": "d65b57a4-a43d-4555-b713-2c6d0a243eb2",
+      "conversationId": "bc81bea7-72c3-4238-ace7-a0d5ef088831",
+      "userMessageId": "345d515c-0d7d-407e-9a79-91c328c0be2e",
+      "userMessage": "Produto mais vendido em quantidade",
+      "toolMessageId": null,
+      "toolCalls": null,
+      "toolResults": null,
+      "finalMessageId": "d65b57a4-a43d-4555-b713-2c6d0a243eb2",
+      "finalMessage": "Para te dizer o **produto mais vendido em quantidade**, preciso de um detalhe: **qual período** você quer considerar?",
+      "model": "gpt-5.4-nano",
+      "tokensInput": 10131,
+      "tokensOutput": 332,
+      "durationMs": 6067,
+      "createdAt": "2026-05-26T15:23:58.545Z",
+      "primaryTool": null
+    },
+    {
+      "turnoId": "d68b6d6c-ecc6-4141-997a-d1159a41c122",
+      "conversationId": "4d723e9a-3039-4daa-9418-aa9fa6812a5e",
+      "userMessageId": "3fc60328-2667-4a19-8d2a-f12c6a926b31",
+      "userMessage": "qual fornecedor?",
+      "toolMessageId": null,
+      "toolCalls": null,
+      "toolResults": null,
+      "finalMessageId": "d68b6d6c-ecc6-4141-997a-d1159a41c122",
+      "finalMessage": "Sou o assistente de operação da Matrix Fitness Group.\n\nQuando você diz “qual fornecedor?”, em qual contexto você quer?  \n1) Buscar um fornecedor por **nome/CNPJ/CPF**  \n2) Ver os **principais fornecedores** pelas **notas de entrada (compras)** em um **período**  \n3) Ver fornecedores com **contas a pagar** **em aberto** ou **vencidas** (informar período, se for o caso)",
+      "model": "gpt-5.4-nano",
+      "tokensInput": 10129,
+      "tokensOutput": 484,
+      "durationMs": 6720,
+      "createdAt": "2026-05-26T15:25:46.080Z",
+      "primaryTool": null
+    },
+    {
+      "turnoId": "d6df57da-75b9-49ec-9a98-2f67301a2461",
+      "conversationId": "187532ad-f4f3-466b-89d0-8154e403ffd0",
+      "userMessageId": "d5418d0f-7ae7-4005-8c3a-2347d6b688cb",
+      "userMessage": "Buscar parceiro com CNPJ 12345678",
+      "toolMessageId": "9e390ce0-70cd-413f-80e1-c986b98dc00d",
+      "toolCalls": [
+        {
+          "id": "call_RTtI2DXZFPwNEoUnicmqv2rI",
+          "name": "cadastro_buscar_parceiro",
+          "arguments": {
+            "termo": "12345678",
+            "limite": 5
+          }
+        }
+      ],
+      "toolResults": {
+        "call_RTtI2DXZFPwNEoUnicmqv2rI": "{\"estado\":\"vazio\",\"dados\":{\"linhas\":[]},\"atualizadoEm\":\"2026-05-26T15:19:00.179Z\",\"atualizadoHa\":\"2min\",\"fonteStatus\":{\"status\":\"ok\",\"ultimaSyncEm\":\"2026-05-26T15:20:21.658Z\"}}"
+      },
+      "finalMessageId": "d6df57da-75b9-49ec-9a98-2f67301a2461",
+      "finalMessage": "Não encontrei nenhum **parceiro** cadastrado com **CNPJ/CPF contendo “12345678”**.\n\nPode confirmar se esse é o **número completo** (somente dígitos, sem pontos/traço) ou se quer que eu busque por **nome** do parceiro?",
+      "model": "gpt-5.4-nano",
+      "tokensInput": 10252,
+      "tokensOutput": 221,
+      "durationMs": 2722,
+      "createdAt": "2026-05-26T15:21:20.962Z",
+      "primaryTool": "cadastro_buscar_parceiro"
+    },
+    {
+      "turnoId": "da24b9e9-80c0-4f41-ab58-f297501baab0",
+      "conversationId": "9f4a9007-d88a-4835-a363-619071cbf941",
+      "userMessageId": "530fea2d-2fea-49f9-9e37-01deab17d341",
+      "userMessage": "Quanto vai sair essa semana?",
+      "toolMessageId": null,
+      "toolCalls": null,
+      "toolResults": null,
+      "finalMessageId": "da24b9e9-80c0-4f41-ab58-f297501baab0",
+      "finalMessage": "Sou o assistente de operação da Matrix Fitness Group.\n\nQuando você diz “vai sair essa semana”, você está falando de qual “saída”?\n- **Saída de caixa** (dinheiro que sai do caixa) **realizado** e/ou **previsto**\n- **Contas a pagar** (o que vence/paga na semana)\n- **Notas fiscais de saída** (quantas e o valor que será faturado/emitido)\n\nMe confirme também se “essa semana” é **semana atual (seg a dom)**.",
+      "model": "gpt-5.4-nano",
+      "tokensInput": 10132,
+      "tokensOutput": 341,
+      "durationMs": 4093,
+      "createdAt": "2026-05-26T15:20:50.222Z",
+      "primaryTool": null
+    }
+  ]
+}

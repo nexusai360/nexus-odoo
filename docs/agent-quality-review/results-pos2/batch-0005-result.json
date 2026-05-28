@@ -1,0 +1,432 @@
+{
+  "batchId": "0005",
+  "evaluatedAt": "2026-05-26T04:45:13.794912+00:00",
+  "totals": {
+    "CORRETO": 13,
+    "PARCIAL": 26,
+    "ERRADO": 0,
+    "FORA_DE_ESCOPO": 1
+  },
+  "patterns": {
+    "pediu_clarificacao_desnecessaria": 26,
+    "acerto_modelo": 4,
+    "acerto_objetividade": 13,
+    "limitacao_real_declarada": 1,
+    "fluxo_tool_incompleto": 3,
+    "acerto_encadeamento": 1
+  },
+  "factual": {
+    "bate": 14,
+    "total_com_toolResults": 19
+  },
+  "turnos": [
+    {
+      "turnoId": "91c8f420-d244-40b8-8898-361be09a2479",
+      "status": "PARCIAL",
+      "patterns": [
+        "pediu_clarificacao_desnecessaria"
+      ],
+      "razao": "Pergunta 'vendi quanto hoje' tem default razoavel (faturamento de hoje). Pediu clarificacao entre faturamento e qtd de pedidos antes de chamar tool.",
+      "sugestao_prompt": "Adicionar regra: 'vendi/vendeu' por padrao = faturamento de vendas no periodo; chamar comercial_pedidos_periodo ou fiscal_faturamento_periodo com data corrente.",
+      "correcao_factual": "nao_aplicavel"
+    },
+    {
+      "turnoId": "949249a7-562e-40d4-beb2-bef58a19270b",
+      "status": "PARCIAL",
+      "patterns": [
+        "pediu_clarificacao_desnecessaria"
+      ],
+      "razao": "Periodo (mes corrente) e escopo (todos os impostos) sao defaults razoaveis. Pediu confirmacao em vez de retornar com defaults e oferecer ajuste.",
+      "sugestao_prompt": "Adicionar regra: 'impostos a recolher' sem periodo = mes corrente; sem tipo = todos (ICMS, IPI, PIS, COFINS).",
+      "correcao_factual": "nao_aplicavel"
+    },
+    {
+      "turnoId": "96319869-2edb-4761-9b5e-f66457ac0dfc",
+      "status": "CORRETO",
+      "patterns": [
+        "acerto_modelo",
+        "acerto_objetividade"
+      ],
+      "razao": "Tool certa com faixaDias=90; KPIs (33 produtos, R$ 220.824,71) e top 5 linhas batem com toolResults.",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "9781525e-5c53-442c-8a19-14032d62d08a",
+      "status": "PARCIAL",
+      "patterns": [
+        "pediu_clarificacao_desnecessaria"
+      ],
+      "razao": "Tres interpretacoes plausiveis, mas defaultar para plano de contas (mais comum) e oferecer alternativa seria mais util.",
+      "sugestao_prompt": "Adicionar regra: 'codigo conta bancos' sem detalhe = consultar plano de contas (contabil_plano_de_contas termo='bancos').",
+      "correcao_factual": "nao_aplicavel"
+    },
+    {
+      "turnoId": "97fef056-f324-4382-8ac7-f5a32ebf45e7",
+      "status": "PARCIAL",
+      "patterns": [
+        "pediu_clarificacao_desnecessaria"
+      ],
+      "razao": "'Parcelas que vencem hoje' e ambigua entre receber/pagar, mas o agente podia trazer ambos e categorizar.",
+      "sugestao_prompt": "Adicionar regra: 'parcelas que vencem hoje' sem direcao = trazer a receber + a pagar agrupados.",
+      "correcao_factual": "nao_aplicavel"
+    },
+    {
+      "turnoId": "9946c96b-429f-4107-9f3b-b4c6e4826d78",
+      "status": "PARCIAL",
+      "patterns": [
+        "pediu_clarificacao_desnecessaria"
+      ],
+      "razao": "Pergunta diagnostica vaga ('algo errado'). Clarificacao razoavel mas poderia rodar varredura padrao (vencidos, saldos negativos).",
+      "sugestao_prompt": "Adicionar regra: 'algo errado nas contas' = trigger de diagnostico (rodar financeiro_titulos_vencidos + financeiro_saldo_contas com flag de anomalia).",
+      "correcao_factual": "nao_aplicavel"
+    },
+    {
+      "turnoId": "9a7d1ea8-f158-4220-aa2a-ad9659d22821",
+      "status": "PARCIAL",
+      "patterns": [
+        "pediu_clarificacao_desnecessaria"
+      ],
+      "razao": "Defaults razoaveis (mes corrente, qtd+R$). Pediu confirmacao em vez de chamar comercial_pedidos_por_etapa direto.",
+      "sugestao_prompt": "Adicionar regra: 'volume de X por Y' sem periodo = mes corrente, e sempre devolver qtd + R$.",
+      "correcao_factual": "nao_aplicavel"
+    },
+    {
+      "turnoId": "9ad77cd1-0864-4584-909e-457223438aa0",
+      "status": "CORRETO",
+      "patterns": [
+        "acerto_objetividade"
+      ],
+      "razao": "Tool certa, resposta direta com valor total R$ 51.936.174,80 batendo com toolResults.dados.kpis.valorTotal.",
+      "sugestao_prompt": "Sugestao: incluir breakdown por armazem ja que tool retorna; resposta ficou curta demais.",
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "9b3100f0-7464-4451-ab72-eeccb6088bd0",
+      "status": "PARCIAL",
+      "patterns": [
+        "pediu_clarificacao_desnecessaria"
+      ],
+      "razao": "'Itens com saldo zero' tem default razoavel = produtos com saldo 0 no estoque.",
+      "sugestao_prompt": "Adicionar regra: 'saldo zero/zerado' por padrao = estoque (produtos com saldoTotal=0).",
+      "correcao_factual": "nao_aplicavel"
+    },
+    {
+      "turnoId": "9b6f6517-a042-46a2-854d-0b50d123c4cf",
+      "status": "PARCIAL",
+      "patterns": [
+        "pediu_clarificacao_desnecessaria"
+      ],
+      "razao": "Defaults possiveis (mes corrente, todos os funis). Clarificacao desnecessaria antes de chamar tool de pipeline.",
+      "sugestao_prompt": "Adicionar regra: 'pedidos em aberto no funil' = mes corrente + todos estagios; chamar comercial_pedidos_por_etapa direto.",
+      "correcao_factual": "nao_aplicavel"
+    },
+    {
+      "turnoId": "9c8010f3-9e9d-455e-a95d-0be4c3e24a18",
+      "status": "CORRETO",
+      "patterns": [
+        "acerto_modelo",
+        "acerto_objetividade"
+      ],
+      "razao": "Tool certa (apenasClientes=true), lista completa de 28 UFs + 270 sem UF, todos batem com toolResults.linhas.",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "9cce9b47-df39-4dad-8f33-d1063e774e95",
+      "status": "CORRETO",
+      "patterns": [
+        "acerto_objetividade"
+      ],
+      "razao": "Saldo total -R$ 24.291.495,49 e principais saldos por conta batem com toolResults.dados.",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "9f38b6ee-860d-4b78-9028-9b02002107c2",
+      "status": "FORA_DE_ESCOPO",
+      "patterns": [
+        "limitacao_real_declarada"
+      ],
+      "razao": "Registrou lacuna (registrar_lacuna) honestamente; nao existe tool de parceiros sem documento. Informou totais de parceiros como contexto.",
+      "sugestao_prompt": null,
+      "correcao_factual": "nao_aplicavel"
+    },
+    {
+      "turnoId": "a12d88fa-2946-4e19-bd29-c87c8c62f79c",
+      "status": "PARCIAL",
+      "patterns": [
+        "pediu_clarificacao_desnecessaria",
+        "fluxo_tool_incompleto"
+      ],
+      "razao": "Chamou financeiro_contas_a_receber mas em vez de devolver top 10, pediu clarificacao. Desperdicio de tool call.",
+      "sugestao_prompt": "Adicionar regra: 'top N maiores contas a receber' = ordenar por vrSaldo desc e devolver primeiros N; assumir todos em aberto (vencidos + a vencer).",
+      "correcao_factual": "nao_aplicavel"
+    },
+    {
+      "turnoId": "a1583947-30f8-4009-816d-6676e2c0f6bc",
+      "status": "PARCIAL",
+      "patterns": [
+        "pediu_clarificacao_desnecessaria"
+      ],
+      "razao": "Regiao por UF e o default obvio. Periodo (mes corrente) idem. Clarificacao desnecessaria.",
+      "sugestao_prompt": "Adicionar regra: 'faturamento por regiao' = UF do cliente + mes corrente; chamar fiscal_faturamento_por_uf direto.",
+      "correcao_factual": "nao_aplicavel"
+    },
+    {
+      "turnoId": "a38daab7-429c-449f-8933-e03ea65f9aff",
+      "status": "PARCIAL",
+      "patterns": [
+        "pediu_clarificacao_desnecessaria"
+      ],
+      "razao": "Pergunta concreta com encadeamento natural (top cliente -> saldo a receber). Podia executar em duas tools.",
+      "sugestao_prompt": "Adicionar regra: 'cliente que mais compra' = top 1 de comercial_pedidos_por_cliente periodo padrao; encadear financeiro_contas_a_receber com filtro.",
+      "correcao_factual": "nao_aplicavel"
+    },
+    {
+      "turnoId": "a3b73cf3-8b16-4f6c-9278-c8e19cbb1b40",
+      "status": "PARCIAL",
+      "patterns": [
+        "pediu_clarificacao_desnecessaria"
+      ],
+      "razao": "'Vendedores cadastrados' tem default razoavel = lista de vendedores ativos.",
+      "sugestao_prompt": "Adicionar regra: 'vendedores cadastrados' = listar com qtd e ultimo pedido (sem confirmacao).",
+      "correcao_factual": "nao_aplicavel"
+    },
+    {
+      "turnoId": "a5e8a9df-5db5-4a4a-8ede-526b32988ceb",
+      "status": "PARCIAL",
+      "patterns": [
+        "pediu_clarificacao_desnecessaria"
+      ],
+      "razao": "Default obvio = todos os parceiros. Tool cadastro_parceiros_por_uf serve direto.",
+      "sugestao_prompt": "Adicionar regra: 'top N estados com mais parceiros' = chamar cadastro_parceiros_por_uf sem filtro e devolver top N.",
+      "correcao_factual": "nao_aplicavel"
+    },
+    {
+      "turnoId": "a7229613-1e6d-454e-a503-49662519ee31",
+      "status": "PARCIAL",
+      "patterns": [
+        "pediu_clarificacao_desnecessaria",
+        "fluxo_tool_incompleto"
+      ],
+      "razao": "Chamou financeiro_titulos_vencidos mas pediu clarificacao em vez de responder. Default = clientes (titulos a receber).",
+      "sugestao_prompt": "Adicionar regra: 'inadimplentes' por padrao = clientes (a receber); consolidar por cliente; somar saldo em aberto.",
+      "correcao_factual": "nao_aplicavel"
+    },
+    {
+      "turnoId": "a7232057-4759-4f4e-880b-9c84011fd58a",
+      "status": "CORRETO",
+      "patterns": [
+        "acerto_objetividade"
+      ],
+      "razao": "Tool certa, retornou 20 linhas; resposta cita 16 clientes (consistente com filtro ehCliente=true nas linhas). Top 5 batem.",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "a898f584-7962-46c2-b3d5-d31fdd7e6014",
+      "status": "CORRETO",
+      "patterns": [
+        "acerto_objetividade"
+      ],
+      "razao": "12 produtos, R$ 54.295,16 valor total e top 3 batem com toolResults.kpis e linhas.",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "a8ed8bff-dfcd-4cbb-a753-657d4510b0c0",
+      "status": "CORRETO",
+      "patterns": [
+        "acerto_objetividade"
+      ],
+      "razao": "Tool certa, contagem 10 parceiros bate; clientes listados (Joao Cordeiro, Ampliare Joao Pessoa, etc) batem com toolResults.linhas.",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "abda460b-17c2-4492-9e3b-4049568ed0e3",
+      "status": "PARCIAL",
+      "patterns": [
+        "pediu_clarificacao_desnecessaria"
+      ],
+      "razao": "'Maio' sem ano = ano corrente (2026) por default. Clarificacao desnecessaria.",
+      "sugestao_prompt": "Adicionar regra: mes sem ano = ano corrente; so confirmar se ambiguidade for material.",
+      "correcao_factual": "nao_aplicavel"
+    },
+    {
+      "turnoId": "abf6c445-5309-4844-aedf-1ee0cac58559",
+      "status": "PARCIAL",
+      "patterns": [
+        "pediu_clarificacao_desnecessaria"
+      ],
+      "razao": "'Total a receber esse mes' tem default = soma de titulos a receber em aberto no mes corrente.",
+      "sugestao_prompt": "Adicionar regra: 'total a receber esse mes' = financeiro_contas_a_receber filtro mes corrente, somar vrSaldo.",
+      "correcao_factual": "nao_aplicavel"
+    },
+    {
+      "turnoId": "ac34e1d8-efcf-4975-9a73-c74a2e27a3c0",
+      "status": "PARCIAL",
+      "patterns": [
+        "pediu_clarificacao_desnecessaria"
+      ],
+      "razao": "Encontrou 40 itens; em vez de devolver soma agregada, pediu clarificacao. Devia ter dado total e top 5.",
+      "sugestao_prompt": "Adicionar regra: 'quanto sobrou de X' com varios SKUs = somar saldoTotal de todos e listar top 5 ordenados por saldo desc.",
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "ac6afa61-391a-4832-9259-011e7d85b602",
+      "status": "CORRETO",
+      "patterns": [
+        "acerto_objetividade"
+      ],
+      "razao": "Conta 2.1.1 nao existe; agente deu opcao mais proxima (1.2.1.1) com lista, bate com toolResults.",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "acc332a6-fdf7-492c-90c9-100971d1c374",
+      "status": "CORRETO",
+      "patterns": [
+        "acerto_modelo",
+        "acerto_objetividade"
+      ],
+      "razao": "Periodo mes corrente correto; vendedores e valores batem com toolResults.linhas.",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "ad2ced1d-e5c2-4ad0-855c-5986aeca8a64",
+      "status": "CORRETO",
+      "patterns": [
+        "acerto_modelo",
+        "acerto_objetividade"
+      ],
+      "razao": "Soma 947.455,06 + 19.350.362,08 = 20.297.817,14 confere. Periodo correto (26/05 a 25/06).",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "ae2b45b1-c2f2-4bc3-a0f1-122257a6b17c",
+      "status": "CORRETO",
+      "patterns": [
+        "acerto_encadeamento",
+        "acerto_objetividade"
+      ],
+      "razao": "Encadeou financeiro_caixa_periodo + financeiro_saldo_contas; numeros (caixa 0, bancos -R$ 24.291.495,49, 8 contas) batem.",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "ae332a2e-9a61-40e8-a257-eb5b29ebf1d6",
+      "status": "PARCIAL",
+      "patterns": [
+        "pediu_clarificacao_desnecessaria"
+      ],
+      "razao": "'Entradas dos ultimos 7 dias' tem default = recebimentos financeiros (entradas de caixa).",
+      "sugestao_prompt": "Adicionar regra: 'entradas' financeiro = financeiro_caixa_periodo entrada; ja chamar com periodo informado.",
+      "correcao_factual": "nao_aplicavel"
+    },
+    {
+      "turnoId": "aef1d4da-f548-4700-887e-0dd25368206c",
+      "status": "PARCIAL",
+      "patterns": [
+        "pediu_clarificacao_desnecessaria"
+      ],
+      "razao": "Pergunta isolada 'qual fornecedor' sem contexto justifica clarificacao, mas resposta tinha que dar suporte mais util (oferecer top fornecedores).",
+      "sugestao_prompt": "Adicionar regra: 'qual fornecedor' sem contexto = oferecer top fornecedores por valor de compra ou pedir CNPJ/nome.",
+      "correcao_factual": "nao_aplicavel"
+    },
+    {
+      "turnoId": "b012ed27-a1b0-456a-b197-3ad705cdf34d",
+      "status": "PARCIAL",
+      "patterns": [
+        "pediu_clarificacao_desnecessaria"
+      ],
+      "razao": "'Plano de contas geral' tem default = listar sinteticas nivel 1 e 2; podia ter trazido direto.",
+      "sugestao_prompt": "Adicionar regra: 'plano de contas geral' = chamar contabil_plano_de_contas sem termo, devolver primeiros niveis.",
+      "correcao_factual": "nao_aplicavel"
+    },
+    {
+      "turnoId": "b087b69e-15d2-4db4-a9f2-4aa2b2b5e56e",
+      "status": "PARCIAL",
+      "patterns": [
+        "pediu_clarificacao_desnecessaria"
+      ],
+      "razao": "Pediu periodo e definicao de meta; meta pode nao existir no cache, deveria ter checado primeiro.",
+      "sugestao_prompt": "Adicionar regra: 'comparado com meta' = consultar se ha cadastro de metas; se nao houver, declarar limitacao em vez de pedir clarificacao.",
+      "correcao_factual": "nao_aplicavel"
+    },
+    {
+      "turnoId": "b129bb96-b45d-4763-990a-02f8096da17e",
+      "status": "CORRETO",
+      "patterns": [
+        "acerto_objetividade"
+      ],
+      "razao": "Tool retornou vazio para CPF 123.456.789-00 (claramente ficticio); resposta honesta.",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "b1665cde-8ee8-47b8-ae0c-24ea66666818",
+      "status": "PARCIAL",
+      "patterns": [
+        "pediu_clarificacao_desnecessaria"
+      ],
+      "razao": "'Conta contas a pagar' = contar/listar contas a pagar em aberto. Default razoavel.",
+      "sugestao_prompt": "Adicionar regra: 'conta contas a pagar' = financeiro_contas_a_pagar agrupado, devolver total e qtd.",
+      "correcao_factual": "nao_aplicavel"
+    },
+    {
+      "turnoId": "b1afc6f5-8dbb-4704-a251-d30e31fe85e6",
+      "status": "CORRETO",
+      "patterns": [
+        "acerto_objetividade"
+      ],
+      "razao": "Numeros dos pedidos atrasados (512 dias R$ 206.765, 484 dias R$ 274.729,33, etc) batem com primeiras linhas de toolResults.",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "b1bdb1a3-b16c-4059-845f-2aca9a1e533a",
+      "status": "PARCIAL",
+      "patterns": [
+        "pediu_clarificacao_desnecessaria",
+        "fluxo_tool_incompleto"
+      ],
+      "razao": "Chamou financeiro_contas_a_pagar mas pediu clarificacao sem devolver soma. Default = todos abertos.",
+      "sugestao_prompt": "Adicionar regra: 'total em aberto a pagar' = somar vrSaldo de todos os titulos abertos; oferecer breakdown se util.",
+      "correcao_factual": "nao_aplicavel"
+    },
+    {
+      "turnoId": "b3110949-9406-4ff0-92c0-7a20d135fb0a",
+      "status": "PARCIAL",
+      "patterns": [
+        "pediu_clarificacao_desnecessaria"
+      ],
+      "razao": "Chamou fiscal_apuracao retornou vazio; em vez de declarar limitacao clara, pediu confirmacao de mes (que ja era implicito = mes atual).",
+      "sugestao_prompt": "Adicionar regra: 'PIS/COFINS do mes' = mes corrente; se tool retorna vazio, declarar 'nao ha apuracao registrada para X/YYYY'.",
+      "correcao_factual": "nao_aplicavel"
+    },
+    {
+      "turnoId": "b3b7782a-980a-4cf1-8d49-96e779a050d7",
+      "status": "PARCIAL",
+      "patterns": [
+        "pediu_clarificacao_desnecessaria"
+      ],
+      "razao": "'Receita do dia' = faturamento de hoje por default.",
+      "sugestao_prompt": "Adicionar regra: 'receita do dia' = fiscal_faturamento_periodo(hoje, hoje); informar e oferecer breakdown.",
+      "correcao_factual": "nao_aplicavel"
+    },
+    {
+      "turnoId": "b4968185-b1e1-41c7-aaef-3ac0ff45e197",
+      "status": "PARCIAL",
+      "patterns": [
+        "pediu_clarificacao_desnecessaria"
+      ],
+      "razao": "'Por estado' = UF do cliente; 'esse mes' = mes corrente. Defaults claros.",
+      "sugestao_prompt": "Adicionar regra: 'faturamento por estado esse mes' = chamar fiscal_faturamento_por_uf periodo=mes corrente direto.",
+      "correcao_factual": "nao_aplicavel"
+    }
+  ]
+}

@@ -1,5 +1,6 @@
 /**
- * /agente/router , dashboard do R1 router de catalogo.
+ * /agente/monitoramento/router — aba Router do painel Monitoramento do
+ * Agente Nex.
  *
  * Gate: super_admin (alinhado com /agente/monitoramento).
  * Server Component: busca KPIs/histograma/latencia/discordancias/settings/
@@ -9,9 +10,10 @@
  */
 
 import { redirect } from "next/navigation";
-import { Compass } from "lucide-react";
+import { Activity } from "lucide-react";
 
 import { RouterContent } from "@/components/agent/router/router-content";
+import { MonitoramentoNav } from "@/components/agent/monitoramento-nav";
 import { PageHeader } from "@/components/page-header";
 import { PageShell } from "@/components/layout/page-shell";
 import { getCurrentUser } from "@/lib/auth";
@@ -25,7 +27,7 @@ import {
 import { getRouterSettings } from "@/lib/actions/router-settings";
 
 export const metadata = {
-  title: "Router do Agente | Matrix Fitness Group",
+  title: "Monitoramento do Agente · Router | Matrix Fitness Group",
 };
 export const dynamic = "force-dynamic";
 
@@ -37,7 +39,7 @@ const DEFAULT_SETTINGS = {
   routerRetryEnabled: false,
 };
 
-export default async function RouterPage() {
+export default async function MonitoramentoRouterPage() {
   const user = await getCurrentUser();
   if (!user) redirect("/login");
   if (user.platformRole !== "super_admin") redirect("/dashboard");
@@ -61,10 +63,11 @@ export default async function RouterPage() {
   return (
     <PageShell variant="form">
       <PageHeader
-        icon={Compass}
-        title="Router do Agente Nex"
-        subtitle="Filtragem semantica do catalogo de tools por dominio. Sub-projeto R1 do roadmap de cobertura completa do Odoo."
+        icon={Activity}
+        title="Monitoramento do Agente Nex"
+        subtitle="Desempenho semântico das respostas por modelo e período. Avaliação on-demand via Claude Code."
       />
+      <MonitoramentoNav />
       <div className="mt-6">
         <RouterContent
           kpis={kpis}

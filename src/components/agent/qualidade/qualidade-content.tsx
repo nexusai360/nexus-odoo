@@ -299,10 +299,10 @@ function RodadaMultiSelect({
   useEffect(() => setMounted(true), []);
   const triggerLabel =
     selected.length === 0
-      ? "Todas as rodadas"
+      ? "Todas as origens"
       : selected.length === 1
         ? labelFor(selected[0])
-        : `${selected.length} rodadas`;
+        : `${selected.length} origens`;
 
   if (!mounted) {
     return (
@@ -323,7 +323,7 @@ function RodadaMultiSelect({
           <button
             ref={triggerRef}
             type="button"
-            aria-label="Filtrar por rodada"
+            aria-label="Filtrar por origem"
             aria-haspopup="listbox"
             aria-expanded={open}
             className="flex h-9 w-[180px] cursor-pointer items-center justify-between gap-2 rounded-lg border border-border bg-card px-3 text-sm text-foreground transition-colors hover:border-muted-foreground/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-500"
@@ -346,10 +346,10 @@ function RodadaMultiSelect({
       >
         {options.length === 0 ? (
           <div className="px-3 py-2 text-xs text-muted-foreground">
-            Sem rodadas no período.
+            Sem origens no período.
           </div>
         ) : (
-          <ul role="listbox" aria-label="Rodada" className="flex flex-col">
+          <ul role="listbox" aria-label="Origem" className="flex flex-col">
             {options.map((opt) => {
               const isOn = selected.includes(opt.marker);
               return (

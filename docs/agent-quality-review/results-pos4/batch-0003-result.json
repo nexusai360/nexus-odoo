@@ -1,0 +1,428 @@
+{
+  "batchId": "0003",
+  "evaluatedAt": "2026-05-26T06:12:56.041091+00:00",
+  "totals": {
+    "CORRETO": 30,
+    "PARCIAL": 7,
+    "ERRADO": 2,
+    "FORA_DE_ESCOPO": 1
+  },
+  "patterns": {
+    "acerto_objetividade": 29,
+    "limitacao_real_declarada": 2,
+    "entendeu_mal_termo": 3,
+    "parametro_incompleto": 3,
+    "pediu_clarificacao_desnecessaria": 1,
+    "resposta_truncada": 1,
+    "fluxo_tool_incompleto": 1,
+    "dado_inventado": 2,
+    "acerto_encadeamento": 1,
+    "acerto_modelo": 1
+  },
+  "turnos": [
+    {
+      "turnoId": "42d79db9-fce6-4b3a-b9cb-0590e25b19e3",
+      "status": "CORRETO",
+      "patterns": [
+        "acerto_objetividade"
+      ],
+      "razao": "Tool e período corretos (mês corrente, situacaoNfe=cancelada). Lista de 6 notas e total batem com o toolResults.",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "43fc7e7c-f21b-4965-a98f-a536d1b2fda7",
+      "status": "CORRETO",
+      "patterns": [
+        "limitacao_real_declarada",
+        "acerto_objetividade"
+      ],
+      "razao": "Trouxe faturamento real (R$ 38.064.323,84 / 772 NFs) e declarou honestamente que não tem acesso a meta. Limitação real.",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "4452cbec-4d83-4397-89b4-fe2a0cb8c979",
+      "status": "CORRETO",
+      "patterns": [
+        "acerto_objetividade"
+      ],
+      "razao": "Identificou a conta CAIXA com código exato (1.1.1.1.01.000001) e odooId (2110) batendo com o toolResults.",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "44f671eb-fe7c-452f-8d14-5649fa89f612",
+      "status": "CORRETO",
+      "patterns": [
+        "acerto_objetividade"
+      ],
+      "razao": "Período semana corrente correto; valores previsto/realizado batem com a série retornada.",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "45b9eb79-81bc-4a3a-8c6d-cb974f5b5ac1",
+      "status": "CORRETO",
+      "patterns": [
+        "acerto_objetividade"
+      ],
+      "razao": "Trouxe ICMS próprio (R$ 6.190.933,40) e nº de notas (1.650) batendo com o toolResults; sinalizou a natureza da estimativa.",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "4667bd68-567a-4f87-a06b-82a285accb9b",
+      "status": "CORRETO",
+      "patterns": [
+        "acerto_objetividade"
+      ],
+      "razao": "Tool retornou estado=vazio para o dia 26/05; resposta honesta de '0 entradas e 0 saídas'.",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "4713b0e4-0a98-4ba9-9e38-cf654114feaa",
+      "status": "CORRETO",
+      "patterns": [
+        "acerto_objetividade"
+      ],
+      "razao": "Interpretou rascunho=não finalizado de forma transparente; total 533/R$ 146.417.209,82 bate exatamente com a soma das etapas não finaliza.",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "492d790b-27f5-4977-9aac-bb3562c74956",
+      "status": "CORRETO",
+      "patterns": [
+        "acerto_objetividade"
+      ],
+      "razao": "Trouxe nº de notas, total e principais nomes da semana, todos presentes no toolResults.",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "4b4b7076-1c2a-40d4-9744-da68991baf1d",
+      "status": "CORRETO",
+      "patterns": [
+        "acerto_objetividade"
+      ],
+      "razao": "Identificou exatamente o fornecedor Rart Equipamentos com CNPJ, UF e cidade idênticos ao toolResults.",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "4bc55d8a-f7db-4b05-9b6f-0179f5feb91c",
+      "status": "CORRETO",
+      "patterns": [
+        "acerto_objetividade"
+      ],
+      "razao": "Agrupou as linhas Smartfit do relatório por cliente; números citados (R$ 5.099.181,72 / 21 notas) e nomes de unidades constam no toolResults.",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "4bcb6072-14d0-4e0d-9c7d-06c7dcba352b",
+      "status": "CORRETO",
+      "patterns": [
+        "acerto_objetividade"
+      ],
+      "razao": "Totais (1.571 pedidos, 1.038 finalizadas, 533 não finalizadas) e top 5 batem com soma das etapas.",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "4bdf5efe-eff5-4414-a38c-251d9bfeca27",
+      "status": "CORRETO",
+      "patterns": [
+        "acerto_objetividade"
+      ],
+      "razao": "Filtrou a_receber com diasAtraso>0 corretamente; documentos e valores citados (387.500, 148.500, 145.602, 80.000) constam no toolResults com tipo a_receber.",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "4d027012-99f4-4dd9-b9ce-288b60acd933",
+      "status": "PARCIAL",
+      "patterns": [
+        "entendeu_mal_termo"
+      ],
+      "razao": "A pergunta é sobre 'aluguel pago antecipadamente' (conta do ativo, despesas antecipadas), mas o agente apontou 4.2.1.2.02.000001 D.A-ALUGUEL, que é despesa do exercício, não despesa antecipada. Faltou refinar o termo da busca.",
+      "sugestao_prompt": "Adicionar regra: 'pago antecipadamente' implica buscar termo 'antecipa' no plano de contas (grupo 1.1.4).",
+      "correcao_factual": "nao_bate"
+    },
+    {
+      "turnoId": "4d7f5673-0d1f-4079-850c-7c1478a588bf",
+      "status": "CORRETO",
+      "patterns": [
+        "acerto_objetividade"
+      ],
+      "razao": "Tool retornou vazio para o código; resposta honesta indicando ausência de saldo.",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "4deacb30-e9cc-4f5c-8be3-3a4e09e915bd",
+      "status": "PARCIAL",
+      "patterns": [
+        "parametro_incompleto"
+      ],
+      "razao": "A tool entrega parcelas em atraso sem filtrar por etapa 'em entrega'. O agente reportou como se fossem pedidos em entrega, mas a tool não distingue etapa; faltou nuance.",
+      "sugestao_prompt": "Adicionar regra: quando o usuário citar etapa (em entrega/produção), confirmar se a tool aceita filtro de etapa ou ressaltar limitação.",
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "4f2fed16-4a3d-483b-bcf7-026051934890",
+      "status": "CORRETO",
+      "patterns": [
+        "acerto_objetividade"
+      ],
+      "razao": "Ranking de vendedores e valores batem exatamente com toolResults.",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "4f60e4df-942c-4ff9-8447-449199ef8d41",
+      "status": "CORRETO",
+      "patterns": [
+        "acerto_objetividade"
+      ],
+      "razao": "Listagem dos cadastros Smartfit com OdooId, CNPJ e cidade batem; agente avisou que há limite de 20.",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "4f65b0d5-6d27-404a-abfd-b115d26bbbc8",
+      "status": "CORRETO",
+      "patterns": [
+        "acerto_objetividade"
+      ],
+      "razao": "IBPT, ICMS próprio e total de notas batem exatamente com o toolResults.",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "50ab3890-4687-4816-bb65-69be0cab7ad1",
+      "status": "PARCIAL",
+      "patterns": [
+        "pediu_clarificacao_desnecessaria",
+        "parametro_incompleto"
+      ],
+      "razao": "Agente tratou 'X' como termo literal de busca; o usuário provavelmente usou 'X' como variável genérica. Resposta tecnicamente válida mas tema mal-interpretado.",
+      "sugestao_prompt": "Adicionar regra: 'X' sozinho como termo de busca é provavelmente placeholder; pedir o nome real.",
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "50dcc4ea-ba9e-4ce7-9225-2959ba0a2575",
+      "status": "CORRETO",
+      "patterns": [
+        "acerto_objetividade"
+      ],
+      "razao": "Faturamento e nº de notas batem exatamente.",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "5126114c-469d-487c-b64e-f0440275a3db",
+      "status": "PARCIAL",
+      "patterns": [
+        "parametro_incompleto",
+        "entendeu_mal_termo"
+      ],
+      "razao": "Tool retorna pedidos agregados por etapa sem filtro de data/semana; o agente apresentou o agregado como 'semana atual', o que não bate com o que o cache contém. Também a definição de 'produção' foi assumida sem confirmar.",
+      "sugestao_prompt": "Adicionar regra: comercial_pedidos_por_etapa não filtra por semana; sinalizar quando o período é um corte que a tool não suporta.",
+      "correcao_factual": "nao_bate"
+    },
+    {
+      "turnoId": "521cc6b2-02db-4fac-a238-168bdd369d31",
+      "status": "PARCIAL",
+      "patterns": [
+        "resposta_truncada"
+      ],
+      "razao": "Apresentou amostra sem total agregado; usuário pediu o total a receber em 30 dias e ficou sem o número final.",
+      "sugestao_prompt": "Adicionar regra: ao listar parcelas a vencer, somar o total agregado mesmo se a listagem for truncada.",
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "531c0c62-1e61-4826-8177-7b2497c0556b",
+      "status": "CORRETO",
+      "patterns": [
+        "acerto_objetividade"
+      ],
+      "razao": "537 parceiros em BA bate com o toolResults; comparativo com outras UFs também bate.",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "538e7389-251d-4b2d-8f00-1f7dd148538f",
+      "status": "CORRETO",
+      "patterns": [
+        "acerto_objetividade"
+      ],
+      "razao": "Tool retornou 0 notas autorizadas hoje; resposta honesta com a ressalva de notas canceladas/entrada.",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "53a4aa1c-1302-472a-92e4-f7151bcaccf5",
+      "status": "PARCIAL",
+      "patterns": [
+        "fluxo_tool_incompleto"
+      ],
+      "razao": "Apenas 1 tool chamada (mês corrente), mas a resposta cita valores do mês anterior (R$ 33.997.934,37/628) sem rastreio em toolResults. Possível dado de contexto não comprovado.",
+      "sugestao_prompt": "Adicionar regra: comparação mês a mês exige 2 chamadas à tool (mês corrente E mês anterior).",
+      "correcao_factual": "nao_aplicavel"
+    },
+    {
+      "turnoId": "5461d238-e7ee-44b3-af29-2f0930620192",
+      "status": "CORRETO",
+      "patterns": [
+        "acerto_objetividade"
+      ],
+      "razao": "Média diária próxima do cálculo correto (38.064.323,84/26 ≈ 1.464.012); diferença mínima de arredondamento.",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "55e0b18d-5b90-4db7-a922-1c9daabbd419",
+      "status": "CORRETO",
+      "patterns": [
+        "acerto_objetividade"
+      ],
+      "razao": "Média diária calculada a partir do faturamento e nº de notas reais. Diferença pequena de denominador (dias corridos exatos).",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "56f56dbc-a6f5-41f9-8c06-053f2d5ad90c",
+      "status": "CORRETO",
+      "patterns": [
+        "acerto_objetividade"
+      ],
+      "razao": "Notas listadas com valores acima de R$ 10 mil batem com o toolResults (271.745 SMF DOM, 219.198 Jht SP).",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "58db65a1-ae76-4d36-b71a-6463d908d0cc",
+      "status": "CORRETO",
+      "patterns": [
+        "acerto_objetividade"
+      ],
+      "razao": "Saldo total e desagregação positivos/negativos batem com o toolResults; cálculo consistente.",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "58dfab92-5ffb-4578-946a-255f2be607ec",
+      "status": "CORRETO",
+      "patterns": [
+        "acerto_objetividade"
+      ],
+      "razao": "Pergunta conceitual respondida corretamente sem necessidade de tool.",
+      "sugestao_prompt": null,
+      "correcao_factual": "nao_aplicavel"
+    },
+    {
+      "turnoId": "5a2af261-365b-4c76-9721-2b304f647b27",
+      "status": "ERRADO",
+      "patterns": [
+        "dado_inventado"
+      ],
+      "razao": "Agente apresentou 'Smartfit R$ 533.102' e 'total R$ 547.505,30' que não batem com o toolResults: a soma a_receber Smartfit em maio é R$ 678.704 e o total maio supera R$ 720 mil. Números agrupados de forma incorreta.",
+      "sugestao_prompt": "Adicionar regra: ao agregar contas a receber por mês, somar explicitamente vrSaldo das linhas no período e listar todas, não estimar.",
+      "correcao_factual": "nao_bate"
+    },
+    {
+      "turnoId": "5a41d902-2917-4c06-b62d-df7c0f8f1370",
+      "status": "CORRETO",
+      "patterns": [
+        "acerto_objetividade"
+      ],
+      "razao": "Estrutura sintética/analítica de 1.1.4 (DESPESAS ANTECIPADAS) corresponde ao plano e está presente no toolResults.",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "5a88d858-8936-414c-8aea-b597903e7a6b",
+      "status": "CORRETO",
+      "patterns": [
+        "acerto_objetividade"
+      ],
+      "razao": "Período 7 dias correto e 45 parcelas batem com o toolResults; quebra por dia também consistente.",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "5a9f675b-7e0e-4ea2-940d-3bd4b2f03a54",
+      "status": "FORA_DE_ESCOPO",
+      "patterns": [
+        "limitacao_real_declarada"
+      ],
+      "razao": "Métrica não existe; agente registrou lacuna e ofereceu alternativa. Limitação real e honesta.",
+      "sugestao_prompt": null,
+      "correcao_factual": "nao_aplicavel"
+    },
+    {
+      "turnoId": "5aa9a230-b9f6-4272-85f0-649dd819c1b6",
+      "status": "CORRETO",
+      "patterns": [
+        "acerto_encadeamento",
+        "acerto_modelo"
+      ],
+      "razao": "Encadeou cadastro_contar_parceiros e cadastro_parceiros_por_uf corretamente; 6.323 clientes e top UFs (DF 2.323, GO 617, BA 531) batem.",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "5b43db17-ff03-4cc3-b8d5-a542bca758e4",
+      "status": "CORRETO",
+      "patterns": [
+        "acerto_objetividade"
+      ],
+      "razao": "Top produtos faturados e seus valores batem com o toolResults.",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "5c6d7aa6-3d0b-4e76-8296-f4104de8ffd3",
+      "status": "CORRETO",
+      "patterns": [
+        "acerto_objetividade"
+      ],
+      "razao": "Somou Cancelado+Cancelada (7+6=13, R$ 2.792.673,02), comparou com finalizadas (1.038, R$ 224.337.161,01); todos os valores batem.",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "5d7b3ca1-1f26-4b2e-b90d-4116feca1ab7",
+      "status": "CORRETO",
+      "patterns": [
+        "acerto_objetividade"
+      ],
+      "razao": "119 parceiros em RJ bate com o toolResults; assunção (clientes+fornecedores+empresas) explicitada.",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "5e6b830d-2033-404e-8f5f-de21525e7dfb",
+      "status": "ERRADO",
+      "patterns": [
+        "dado_inventado"
+      ],
+      "razao": "Agente cita 'Jds Comércio R$ 322.236,75 venc 17/06/2026' que não existe no toolResults; soma dos 5 maiores citada (R$ 2.344.989,23) não bate com top5 real (R$ 1.878.868,38).",
+      "sugestao_prompt": "Adicionar regra: para 'quanto a empresa deve', somar TODOS os saldos a_pagar em aberto e listar somente itens presentes no toolResults.",
+      "correcao_factual": "nao_bate"
+    },
+    {
+      "turnoId": "5e76096c-aee4-44cd-92d5-9aa264cf56fa",
+      "status": "PARCIAL",
+      "patterns": [
+        "entendeu_mal_termo"
+      ],
+      "razao": "Interpretou 'faturado parcialmente' como etapas de emissão de NF/Peças, mas isso não significa parcialmente faturado; também a soma citada (45/R$ 985.289,20) tem pequeno desvio do conferido (44/R$ 985.190).",
+      "sugestao_prompt": "Adicionar regra: 'faturado parcialmente' não é uma etapa do funil; ressaltar limitação ou pedir definição.",
+      "correcao_factual": "nao_bate"
+    }
+  ]
+}

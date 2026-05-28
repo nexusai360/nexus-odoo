@@ -1,0 +1,345 @@
+{
+  "batchId": "0003",
+  "evaluatedAt": "2026-05-26T05:20:00.000Z",
+  "totals": {
+    "CORRETO": 14,
+    "PARCIAL": 21,
+    "ERRADO": 4,
+    "FORA_DE_ESCOPO": 1
+  },
+  "patterns": {
+    "pediu_clarificacao_desnecessaria": 19,
+    "loop_clarificacao": 2,
+    "dado_inventado": 2,
+    "fluxo_tool_incompleto": 3,
+    "nao_usou_tool": 17,
+    "limitacao_real_declarada": 2,
+    "acerto_objetividade": 11,
+    "acerto_modelo": 2,
+    "resposta_truncada": 2,
+    "parametro_incompleto": 1,
+    "recusa_indevida": 1
+  },
+  "turnos": [
+    {
+      "turnoId": "41296ea3-2c75-4c0a-8f99-672eb1c89243",
+      "status": "PARCIAL",
+      "patterns": ["resposta_truncada", "pediu_clarificacao_desnecessaria"],
+      "razao": "A tool retornou ok com lista grande de titulos, mas o agente declarou que o retorno veio truncado e nao somou o total. Deveria ter somado os vrSaldo e devolvido o total geral, oferecendo o recorte como opcional.",
+      "sugestao_prompt": "Regra: financeiro_contas_a_receber com estado=ok sempre somar vrSaldo dos titulos retornados e apresentar total geral antes de pedir recorte.",
+      "correcao_factual": "nao_aplicavel"
+    },
+    {
+      "turnoId": "41396ab1-701a-4d27-b8ea-a463fc708f17",
+      "status": "CORRETO",
+      "patterns": ["acerto_objetividade"],
+      "razao": "Extraiu codigo PMB403 da pergunta, chamou tool certa, respondeu objetivo: saldo 0 confere com toolResults.",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "423a10da-ab78-4781-be1f-2f4e0e411069",
+      "status": "CORRETO",
+      "patterns": ["acerto_objetividade", "acerto_modelo"],
+      "razao": "Ano corrente bem interpretado (01/01 ate hoje), valor R$ 209.588.360,55 e 3.105 notas batem com toolResults.",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "43f4f64c-b80d-4785-b8da-cee06c78ef68",
+      "status": "CORRETO",
+      "patterns": ["acerto_objetividade"],
+      "razao": "754 fornecedores bate com totalFornecedores no toolResults.",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "44b5e9e2-56d6-46f6-8e21-30f0dddb8264",
+      "status": "PARCIAL",
+      "patterns": ["pediu_clarificacao_desnecessaria", "nao_usou_tool"],
+      "razao": "Pergunta curta 'fluxo do dia' poderia assumir default razoavel (fluxo de caixa do dia). Em vez disso, abriu menu de 4 opcoes.",
+      "sugestao_prompt": "Regra: 'fluxo do dia' = default fluxo de caixa realizado de hoje; chamar tool diretamente e oferecer alternativas no rodape.",
+      "correcao_factual": "nao_aplicavel"
+    },
+    {
+      "turnoId": "4520fad7-b9dd-4a2d-8c70-f69b2ff05366",
+      "status": "PARCIAL",
+      "patterns": ["pediu_clarificacao_desnecessaria", "nao_usou_tool"],
+      "razao": "Sem contexto anterior, a pergunta 'qual produto?' justifica clarificacao mas o agente exagera nas 4 opcoes. Aceitavel pedir, mas longo demais.",
+      "sugestao_prompt": null,
+      "correcao_factual": "nao_aplicavel"
+    },
+    {
+      "turnoId": "45a4ac18-9ae9-4cab-979e-661e00ebdbe6",
+      "status": "ERRADO",
+      "patterns": ["dado_inventado"],
+      "razao": "O toolResults so retorna valorFaturado bruto. O agente inventou valores de ICMS proprio (R$ 6.190.933,40) e IBPT (R$ 2.252,45) e ate calculou um liquido (R$ 31.871.137,99) que nao tem fonte nenhuma.",
+      "sugestao_prompt": "Regra: jamais citar impostos especificos (ICMS, IBPT, PIS, COFINS) se a tool nao retornar; informar que precisa de fiscal_apuracao ou que o calculo nao esta disponivel.",
+      "correcao_factual": "nao_bate"
+    },
+    {
+      "turnoId": "47f89aea-c439-4db9-9341-29f2238d657f",
+      "status": "ERRADO",
+      "patterns": ["recusa_indevida", "fluxo_tool_incompleto"],
+      "razao": "Devolveu o total mas recusou faturamento por mes alegando precisar perfil admin/super_admin sem motivo. O caminho seria 5 chamadas de fiscal_faturamento_periodo (uma por mes).",
+      "sugestao_prompt": "Regra: 'faturamento por mes esse ano' = encadear N chamadas de fiscal_faturamento_periodo por mes, sem pedir confirmacao de perfil.",
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "48e27da1-9f20-4dd1-a044-6da380aa353d",
+      "status": "PARCIAL",
+      "patterns": ["pediu_clarificacao_desnecessaria", "nao_usou_tool"],
+      "razao": "Podia chamar cadastro_contar_parceiros direto e responder com totalClientes (6.323), oferecendo recorte ativo/inativo depois.",
+      "sugestao_prompt": "Regra: 'clientes ativos' = chamar cadastro_contar_parceiros e devolver totalClientes; se a tool tiver filtro ativo, usar default ativo=true.",
+      "correcao_factual": "nao_aplicavel"
+    },
+    {
+      "turnoId": "49bba9e5-9535-4691-ac02-f2f3d2fae690",
+      "status": "PARCIAL",
+      "patterns": ["pediu_clarificacao_desnecessaria", "nao_usou_tool"],
+      "razao": "'Contas a pagar do mes' deveria assumir mes atual + em aberto. Em vez de chamar tool, pediu 2 confirmacoes.",
+      "sugestao_prompt": "Regra: 'contas a pagar do mes' = mes atual + em aberto; chamar tool com defaults e oferecer alternativas no fim.",
+      "correcao_factual": "nao_aplicavel"
+    },
+    {
+      "turnoId": "4a045fb9-c0b2-46d3-bdb2-b8f65baf3d8f",
+      "status": "PARCIAL",
+      "patterns": ["pediu_clarificacao_desnecessaria", "nao_usou_tool"],
+      "razao": "Tempo medio de fechamento exige clarificacao razoavel de janela e definicao, mas as 3 perguntas combinadas viraram um interrogatorio. Poderia assumir defaults.",
+      "sugestao_prompt": null,
+      "correcao_factual": "nao_aplicavel"
+    },
+    {
+      "turnoId": "4ac39932-612c-49bc-8589-d82a9dc0e4df",
+      "status": "CORRETO",
+      "patterns": ["acerto_objetividade"],
+      "razao": "Tool certa, periodo hoje, estado=vazio, resposta honesta com 0 notas.",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "4b80433e-f1d9-4a68-b59e-169bdd4d3750",
+      "status": "FORA_DE_ESCOPO",
+      "patterns": ["limitacao_real_declarada"],
+      "razao": "cadastro_contar_parceiros nao expoe contagem PF vs PJ. Agente declarou limitacao real e ofereceu o que tem.",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "4cdc476d-b844-474d-bab3-e10a022075e0",
+      "status": "PARCIAL",
+      "patterns": ["loop_clarificacao", "nao_usou_tool"],
+      "razao": "Pergunta 'quais notas?' sem contexto justifica pedir info, mas 3 confirmacoes em sequencia e muito.",
+      "sugestao_prompt": null,
+      "correcao_factual": "nao_aplicavel"
+    },
+    {
+      "turnoId": "4cf63837-e430-4fa3-b8c6-59998127aafe",
+      "status": "ERRADO",
+      "patterns": ["fluxo_tool_incompleto", "nao_usou_tool"],
+      "razao": "Pergunta direta sobre notas recebidas do fornecedor X. Caminho: cadastro_buscar_parceiro(Casa Ferolla) -> fiscal_notas_recebidas_por_fornecedor com default ultimos 30 dias. Em vez disso pediu 2 confirmacoes.",
+      "sugestao_prompt": "Regra: 'notas recebidas do fornecedor X' = encadear cadastro_buscar_parceiro -> fiscal_notas_recebidas; default ultimos 30 dias.",
+      "correcao_factual": "nao_aplicavel"
+    },
+    {
+      "turnoId": "4e561318-0df8-43d2-897d-f2b76c99e3dd",
+      "status": "PARCIAL",
+      "patterns": ["resposta_truncada"],
+      "razao": "Tool retornou ok mas agente declarou retorno parcial e nao somou total geral. Listou maiores titulos corretamente conferindo com a porcao visivel do toolResults.",
+      "sugestao_prompt": "Regra: financeiro_contas_a_pagar com estado=ok sempre somar vrSaldo e informar total agregado antes de pedir recorte.",
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "4e56d4ec-a46d-455a-b71f-4a1e79cd0c66",
+      "status": "PARCIAL",
+      "patterns": ["pediu_clarificacao_desnecessaria", "nao_usou_tool"],
+      "razao": "'Pedidos em aprovacao' deveria assumir status 'em aprovacao' do funil e periodo atual.",
+      "sugestao_prompt": "Regra: 'pedidos em aprovacao' = etapa 'em aprovacao' + abertos agora; chamar tool com default.",
+      "correcao_factual": "nao_aplicavel"
+    },
+    {
+      "turnoId": "4edd2a9a-2063-4607-9754-758d89e7a6a3",
+      "status": "CORRETO",
+      "patterns": ["acerto_objetividade"],
+      "razao": "Produto inexistente, tool vazio, resposta honesta.",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "4fb696c5-b125-4e82-9614-8d26f6f21608",
+      "status": "PARCIAL",
+      "patterns": ["pediu_clarificacao_desnecessaria", "nao_usou_tool"],
+      "razao": "Default razoavel: pedido mais antigo em aberto por data de orcamento. Pediu 2 confirmacoes.",
+      "sugestao_prompt": null,
+      "correcao_factual": "nao_aplicavel"
+    },
+    {
+      "turnoId": "4fc31211-e4c7-4033-ab8d-476e32bcd194",
+      "status": "PARCIAL",
+      "patterns": ["pediu_clarificacao_desnecessaria", "nao_usou_tool"],
+      "razao": "'Maior cliente' = top 1 por faturamento no ano corrente como default razoavel.",
+      "sugestao_prompt": "Regra: 'maior cliente' = top cliente por faturamento no ano corrente; chamar tool de ranking com default.",
+      "correcao_factual": "nao_aplicavel"
+    },
+    {
+      "turnoId": "50866113-d45a-4c46-9d13-6f6584be332d",
+      "status": "CORRETO",
+      "patterns": ["acerto_objetividade", "acerto_modelo"],
+      "razao": "Estrutura hierarquica de 1.1.4 montada coerentemente com as linhas retornadas pela tool.",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "50c7c424-3b3b-4ff7-9ff8-db7634ac088e",
+      "status": "PARCIAL",
+      "patterns": ["pediu_clarificacao_desnecessaria", "nao_usou_tool"],
+      "razao": "'Total a receber esse mes' tem default obvio (vencimentos do mes corrente). Em vez disso pediu confirmacao.",
+      "sugestao_prompt": "Regra: 'total a receber esse mes' = vencimentos do mes corrente; chamar tool direta.",
+      "correcao_factual": "nao_aplicavel"
+    },
+    {
+      "turnoId": "50e09bb9-1f9e-4363-916f-4408710b623d",
+      "status": "PARCIAL",
+      "patterns": ["pediu_clarificacao_desnecessaria", "nao_usou_tool"],
+      "razao": "Default razoavel: contagem de parceiros por UF=SP. Poderia chamar direto.",
+      "sugestao_prompt": null,
+      "correcao_factual": "nao_aplicavel"
+    },
+    {
+      "turnoId": "514b2c48-7e06-4454-bb9d-c4f247c2345c",
+      "status": "PARCIAL",
+      "patterns": ["pediu_clarificacao_desnecessaria", "nao_usou_tool"],
+      "razao": "'Comparativo de faturamento por mes esse ano' = encadear chamadas mes a mes (jan a maio/2026) por default. Pediu confirmacao.",
+      "sugestao_prompt": "Regra: 'comparativo por mes esse ano' = encadear fiscal_faturamento_periodo por mes do ano corrente sem perguntar.",
+      "correcao_factual": "nao_aplicavel"
+    },
+    {
+      "turnoId": "54596471-927e-47e6-8f36-37abbd127264",
+      "status": "CORRETO",
+      "patterns": ["acerto_objetividade"],
+      "razao": "Buscou parceiro, achou 1 (Icaro Rossas Lucena, CPF, Aracaju/SE) e citou exatamente o que a tool retornou.",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "5467e2aa-bf0b-46ac-96cc-1237abf795e2",
+      "status": "PARCIAL",
+      "patterns": ["resposta_truncada"],
+      "razao": "Pegou top devedores pelos maiores titulos exibidos no toolResults (Smartfit 387.500, Jht SP 322.236,75, etc) que conferem com o JSON visivel. Faltou agregar por participante (devedor) e dar total geral.",
+      "sugestao_prompt": "Regra: 'devedores principais' = agregar vrSaldo por participanteNome e ordenar desc; nao listar parcelas individuais como se fossem devedores.",
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "5558ea13-442b-49a5-9139-6cfcbac44fb5",
+      "status": "CORRETO",
+      "patterns": ["acerto_objetividade"],
+      "razao": "Resposta conceitual correta para diferenca entre contas a receber e contas a pagar.",
+      "sugestao_prompt": null,
+      "correcao_factual": "nao_aplicavel"
+    },
+    {
+      "turnoId": "56d2a8d3-940f-44b8-801b-d26bcbfd381b",
+      "status": "PARCIAL",
+      "patterns": ["pediu_clarificacao_desnecessaria", "nao_usou_tool"],
+      "razao": "'Despesa do dia' = pagamentos efetivados hoje como default. Em vez disso, expos 3 opcoes.",
+      "sugestao_prompt": null,
+      "correcao_factual": "nao_aplicavel"
+    },
+    {
+      "turnoId": "573bb889-17ab-4de1-b72a-b79a750705f0",
+      "status": "PARCIAL",
+      "patterns": ["pediu_clarificacao_desnecessaria", "nao_usou_tool", "parametro_incompleto"],
+      "razao": "Codigo 1000093102 e claramente de produto (aparece em outro turno como produto). Podia chamar estoque_saldo_produto direto.",
+      "sugestao_prompt": "Regra: codigos numericos longos = produto por default; chamar estoque_saldo_produto antes de pedir confirmacao.",
+      "correcao_factual": "nao_aplicavel"
+    },
+    {
+      "turnoId": "5747ee2a-3c4d-4765-87b9-97ecdeb78d79",
+      "status": "PARCIAL",
+      "patterns": ["loop_clarificacao", "nao_usou_tool"],
+      "razao": "3 confirmacoes pedidas para 'lista de fornecedores ativos'. Podia chamar tool com default (lista completa de fornecedores ativos).",
+      "sugestao_prompt": null,
+      "correcao_factual": "nao_aplicavel"
+    },
+    {
+      "turnoId": "5846a97f-0724-405e-b60e-06a838c2b603",
+      "status": "CORRETO",
+      "patterns": ["acerto_objetividade"],
+      "razao": "Tool fiscal_apuracao com estado=vazio; resposta honesta de que nao ha apuracao registrada no mes.",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "58584a2e-1c29-47d0-8a9e-9521a6624349",
+      "status": "PARCIAL",
+      "patterns": ["pediu_clarificacao_desnecessaria", "nao_usou_tool"],
+      "razao": "'Faturamento de maio' com data atual 26/05/2026 = maio/2026 por default; pedir confirmacao do ano e desnecessario.",
+      "sugestao_prompt": "Regra: nome de mes sem ano = ano corrente; faturamento default = autorizadas saida.",
+      "correcao_factual": "nao_aplicavel"
+    },
+    {
+      "turnoId": "59361986-cbf3-4554-8542-63909f377b20",
+      "status": "PARCIAL",
+      "patterns": ["pediu_clarificacao_desnecessaria", "nao_usou_tool"],
+      "razao": "'Pedido com maior valor em aberto' = ranking de pedidos abertos por valor; assumir default e chamar.",
+      "sugestao_prompt": null,
+      "correcao_factual": "nao_aplicavel"
+    },
+    {
+      "turnoId": "5dba1918-c673-4783-a929-8ffc1c8b6ea4",
+      "status": "PARCIAL",
+      "patterns": ["pediu_clarificacao_desnecessaria", "nao_usou_tool"],
+      "razao": "'Pedidos com prazo estourado' = pedidos abertos com data prevista < hoje (default). Pediu 2 confirmacoes.",
+      "sugestao_prompt": null,
+      "correcao_factual": "nao_aplicavel"
+    },
+    {
+      "turnoId": "5ee1da0d-bd3a-4391-82bf-62bab8bbd58f",
+      "status": "PARCIAL",
+      "patterns": ["pediu_clarificacao_desnecessaria", "nao_usou_tool"],
+      "razao": "'Saida de hoje no caixa' = saida realizada de hoje como default. Pediu 2 confirmacoes em vez de chamar tool.",
+      "sugestao_prompt": "Regra: 'saida do caixa hoje' = realizado de hoje; chamar tool de fluxo de caixa com default.",
+      "correcao_factual": "nao_aplicavel"
+    },
+    {
+      "turnoId": "602994d4-bf9b-4496-9ad0-7a3e7ab0858d",
+      "status": "PARCIAL",
+      "patterns": ["pediu_clarificacao_desnecessaria", "nao_usou_tool"],
+      "razao": "'Pedidos cancelados esse mes' = quantidade + valor por default. Apresentou menu numerado.",
+      "sugestao_prompt": null,
+      "correcao_factual": "nao_aplicavel"
+    },
+    {
+      "turnoId": "608a4871-66c2-4872-a8b4-19eebb1b8408",
+      "status": "PARCIAL",
+      "patterns": ["pediu_clarificacao_desnecessaria", "nao_usou_tool"],
+      "razao": "Default razoavel: titulos a receber vencendo na semana atual. Pediu 2 confirmacoes.",
+      "sugestao_prompt": null,
+      "correcao_factual": "nao_aplicavel"
+    },
+    {
+      "turnoId": "60c5f088-b4a8-48e8-b274-bd2acb42eeef",
+      "status": "CORRETO",
+      "patterns": ["acerto_objetividade", "acerto_modelo"],
+      "razao": "Dois produtos retornados na busca, saldo 0 em ambos, resposta enxuta e confere com toolResults.",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "610ff058-14d9-4bcd-ac16-e184bc4a213c",
+      "status": "CORRETO",
+      "patterns": ["acerto_objetividade"],
+      "razao": "Conta 1.1.4.1.02 = DESPESAS ANTECIPADAS FILIAL confere com toolResults.",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "62d59c6c-0889-4cf9-b34e-9816f3a2e924",
+      "status": "CORRETO",
+      "patterns": ["acerto_objetividade"],
+      "razao": "Estrutura sintetica do passivo (2, 2.1, 2.2) confere com as 3 linhas no toolResults.",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    }
+  ]
+}

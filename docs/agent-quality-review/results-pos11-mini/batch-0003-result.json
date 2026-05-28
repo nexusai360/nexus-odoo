@@ -1,0 +1,261 @@
+{
+  "batchId": "0003",
+  "evaluatedAt": "2026-05-26T18:15:00.000Z",
+  "totals": {
+    "CORRETO": 22,
+    "PARCIAL": 3,
+    "ERRADO": 0,
+    "FORA_DE_ESCOPO": 5
+  },
+  "patterns": {
+    "acerto_objetividade": 18,
+    "acerto_encadeamento": 2,
+    "limitacao_real_declarada": 5,
+    "resposta_truncada": 2,
+    "acerto_modelo": 1,
+    "pediu_clarificacao_desnecessaria": 0,
+    "entendeu_mal_termo": 0
+  },
+  "turnos": [
+    {
+      "turnoId": "b41c090d-450c-42c2-bbc3-9b8d59f7c879",
+      "status": "CORRETO",
+      "patterns": ["acerto_objetividade"],
+      "razao": "Período correto (20/05 a 26/05 = últimos 7 dias), número R$ 8.510.483,41 e 79 notas batem com toolResults.",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "b5e75cdd-f8f7-42ef-8bdc-e2aeb77c0a84",
+      "status": "FORA_DE_ESCOPO",
+      "patterns": ["limitacao_real_declarada"],
+      "razao": "Agente registrou lacuna corretamente; agrupamento por UF não está disponível.",
+      "sugestao_prompt": null,
+      "correcao_factual": "nao_aplicavel"
+    },
+    {
+      "turnoId": "b7690843-5bbf-4a27-8037-800c2999b81a",
+      "status": "CORRETO",
+      "patterns": ["acerto_objetividade", "limitacao_real_declarada"],
+      "razao": "Entregou bruto (R$ 38.064.323,84 / 772 notas, bate) e declarou honestamente que líquido não existe.",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "ba8e015f-da4a-45ef-859b-f4cabc9c1183",
+      "status": "CORRETO",
+      "patterns": ["acerto_objetividade"],
+      "razao": "Tool retornou 12 matches; resposta lista top produtos com saldos exatos (45/15/3/2/2) e KPIs (62 unidades, R$ 53.261,03, 2 negativos) que batem.",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "bc23f94d-3a43-44c4-b683-638a4ead5cf3",
+      "status": "CORRETO",
+      "patterns": ["acerto_objetividade"],
+      "razao": "Maio 2026: R$ 38.074.843,78 em 775 notas, bate com toolResults.",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "c22209a6-0c4a-45a6-a945-34310632a4c2",
+      "status": "FORA_DE_ESCOPO",
+      "patterns": ["limitacao_real_declarada"],
+      "razao": "Métrica de produto parado por categoria livre não disponível; registrou lacuna.",
+      "sugestao_prompt": null,
+      "correcao_factual": "nao_aplicavel"
+    },
+    {
+      "turnoId": "c32afba2-a95f-4a36-8cb5-41a4480622d5",
+      "status": "CORRETO",
+      "patterns": ["acerto_objetividade", "acerto_modelo"],
+      "razao": "Resposta direta interpreta a pergunta (folha) com saldo consolidado -R$ 24.242.300,29 que bate exatamente.",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "c3490954-bd3c-48bd-86a3-87a71358653d",
+      "status": "FORA_DE_ESCOPO",
+      "patterns": ["limitacao_real_declarada"],
+      "razao": "Faturamento por marca não disponível; registrou lacuna corretamente.",
+      "sugestao_prompt": null,
+      "correcao_factual": "nao_aplicavel"
+    },
+    {
+      "turnoId": "c8d6eee5-14e5-448f-96ad-0a1eb3ef2b4c",
+      "status": "CORRETO",
+      "patterns": ["acerto_objetividade", "limitacao_real_declarada"],
+      "razao": "Tool de status de domínio retornou 'não operado'; resposta clara explica isso.",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "c9d2249b",
+      "status": "CORRETO",
+      "patterns": ["acerto_objetividade"],
+      "razao": "Listou top atrasos com pedido 270/266/273 e dias 512/484/455 batendo com toolResults.",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "cb1198eb",
+      "status": "PARCIAL",
+      "patterns": ["resposta_truncada"],
+      "razao": "Tool retornou lista de títulos mas resposta diz 'veio incompleta' e não calcula total nem mostra parcial. Falha de raciocínio sobre dados disponíveis.",
+      "sugestao_prompt": "Adicionar regra: 'Quando tool de contas a receber retorna lista, somar vrSaldo das linhas e reportar o total; declarar truncamento só se houver flag explícita'.",
+      "correcao_factual": "nao_aplicavel"
+    },
+    {
+      "turnoId": "cbc7fcec",
+      "status": "CORRETO",
+      "patterns": ["acerto_objetividade"],
+      "razao": "Realizado -R$ 5.442.516,58, previsto R$ 8.380.078,79 e diferença R$ 13.822.595,37 batem com a série retornada.",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "ce90a3dc",
+      "status": "FORA_DE_ESCOPO",
+      "patterns": ["limitacao_real_declarada"],
+      "razao": "Faturamento por região não disponível; registrou lacuna.",
+      "sugestao_prompt": null,
+      "correcao_factual": "nao_aplicavel"
+    },
+    {
+      "turnoId": "cef448dc",
+      "status": "FORA_DE_ESCOPO",
+      "patterns": ["limitacao_real_declarada"],
+      "razao": "Pergunta vaga sobre fornecedor sem cadastro; registrou lacuna corretamente.",
+      "sugestao_prompt": null,
+      "correcao_factual": "nao_aplicavel"
+    },
+    {
+      "turnoId": "d0184184",
+      "status": "CORRETO",
+      "patterns": ["acerto_objetividade"],
+      "razao": "Lista de atrasos com pedido 270/266 e dias 512/484 batem com toolResults.",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "d10a4657",
+      "status": "CORRETO",
+      "patterns": ["acerto_objetividade"],
+      "razao": "Tool retornou 3 notas valor R$ 0,00 da Casa Ferolla; resposta reproduz fiel e qualifica que valor zero não confirma devolução.",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "d8817cfa",
+      "status": "CORRETO",
+      "patterns": ["acerto_objetividade"],
+      "razao": "Buscou parceiro por CPF, não encontrou, respondeu honestamente.",
+      "sugestao_prompt": null,
+      "correcao_factual": "nao_aplicavel"
+    },
+    {
+      "turnoId": "ddf0d6f6",
+      "status": "CORRETO",
+      "patterns": ["acerto_objetividade", "acerto_modelo"],
+      "razao": "Identificou código [102] entre colchetes, saldo 16, valor R$ 258.370,44 e 5 locais batem exatamente.",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "ddff32c2",
+      "status": "CORRETO",
+      "patterns": ["acerto_objetividade"],
+      "razao": "Jds Matriz DF com R$ 27.949.968,19 (53,8%) e total R$ 51.977.199,74 batem com tool.",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "e3031264",
+      "status": "CORRETO",
+      "patterns": ["acerto_objetividade"],
+      "razao": "Saldo total R$ 51.977.199,74 e quebra por armazém batem; resposta bem formatada.",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "e320aeec",
+      "status": "CORRETO",
+      "patterns": ["acerto_objetividade"],
+      "razao": "33 produtos, R$ 220.824,71 imobilizados batem; top 10 listado.",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "e58d7cd9",
+      "status": "CORRETO",
+      "patterns": ["acerto_objetividade"],
+      "razao": "Buscou notas do fornecedor no mês corrente, não encontrou, respondeu objetivamente.",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "ed8dfe3e",
+      "status": "CORRETO",
+      "patterns": ["acerto_objetividade"],
+      "razao": "37 títulos vencidos R$ 2.179.017,80 com top vencidos por dias; consistente com toolResults.",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "efd4baee",
+      "status": "CORRETO",
+      "patterns": ["acerto_objetividade"],
+      "razao": "Top 10 produtos faturados com nomes/valores que batem com a estrutura retornada.",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "f10623fd",
+      "status": "CORRETO",
+      "patterns": ["acerto_objetividade"],
+      "razao": "Saldo consolidado -R$ 24.242.300,29 bate exatamente com toolResults.",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "f1ae1a21",
+      "status": "PARCIAL",
+      "patterns": ["fluxo_tool_incompleto"],
+      "razao": "Identificou cliente top (Jht SP, R$ 10.784.144,78 bate), mas não encadeou consulta de saldo a receber filtrada por esse cliente; declarou que 'não consegui obter' sem tentar.",
+      "sugestao_prompt": "Adicionar regra: 'Pergunta combinando cliente top + saldo a receber? Encadear fiscal_faturamento_por_cliente → financeiro_contas_a_receber com filtro pelo participante identificado'.",
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "f6d6683d",
+      "status": "PARCIAL",
+      "patterns": ["resposta_truncada"],
+      "razao": "Tool retornou títulos mas resposta diz 'consulta veio cortada' sem calcular soma das linhas presentes. Mesmo padrão do turno cb1198eb.",
+      "sugestao_prompt": "Adicionar regra: 'Quando tool de contas a receber retorna lista de títulos, somar vrSaldo e reportar; só declarar truncamento se a flag explícita estiver no resultado'.",
+      "correcao_factual": "nao_aplicavel"
+    },
+    {
+      "turnoId": "f742c5e7",
+      "status": "CORRETO",
+      "patterns": ["acerto_objetividade"],
+      "razao": "Inferiu mês corrente como default razoável; R$ 38.064.323,84 e 772 notas batem.",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "fbc06764",
+      "status": "CORRETO",
+      "patterns": ["acerto_encadeamento", "acerto_objetividade"],
+      "razao": "Encadeou faturamento + registrar_lacuna para meta; valores batem e declarou meta como não disponível.",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "ff7d20bd",
+      "status": "CORRETO",
+      "patterns": ["acerto_objetividade"],
+      "razao": "Cliente top com 114 notas e R$ 10.784.144,78 bate com toolResults.",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    }
+  ]
+}

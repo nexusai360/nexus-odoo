@@ -1,0 +1,340 @@
+{
+  "batchId": "0006",
+  "evaluatedAt": "2026-05-26T04:50:00.000Z",
+  "totals": {
+    "CORRETO": 28,
+    "PARCIAL": 11,
+    "ERRADO": 0,
+    "FORA_DE_ESCOPO": 1
+  },
+  "patterns": {
+    "acerto_objetividade": 8,
+    "acerto_modelo": 2,
+    "pediu_clarificacao_desnecessaria": 6,
+    "nao_usou_tool": 4,
+    "fluxo_tool_incompleto": 2,
+    "limitacao_real_declarada": 1
+  },
+  "turnos": [
+    {
+      "turnoId": "b49a36fc-c2e1-4a1b-992b-77c17f735cf0",
+      "status": "CORRETO",
+      "patterns": ["acerto_objetividade", "acerto_modelo"],
+      "razao": "Tool certa (fiscal_faturamento_por_cliente), período correto (últimos 30 dias 26/04 a 26/05). Top 10 listado bate exatamente com toolResults (Jht SP Matriz R$11.163.529,61 qtd 129, Jds Matriz R$3.736.256,64 qtd 34, etc).",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "b55b49f8-4559-47c6-95ca-d6020ca8ed21",
+      "status": "CORRETO",
+      "patterns": [],
+      "razao": "Clarificação legítima: 'saldo geral em valor financeiro' é ambíguo entre estoque a custo vs saldo bancário. Apresentou 2 opções claras.",
+      "sugestao_prompt": null,
+      "correcao_factual": "nao_aplicavel"
+    },
+    {
+      "turnoId": "b55eec3e-18f7-42d0-b282-f8aeea5bb7a5",
+      "status": "CORRETO",
+      "patterns": [],
+      "razao": "Pergunta 'fornecedor sem cadastro' é genuinamente ambígua (3 cenários possíveis). Clarificação proposta é objetiva.",
+      "sugestao_prompt": null,
+      "correcao_factual": "nao_aplicavel"
+    },
+    {
+      "turnoId": "b56674e5-053e-4e35-8c0b-30b0a7f369dd",
+      "status": "PARCIAL",
+      "patterns": ["pediu_clarificacao_desnecessaria"],
+      "razao": "'Top 5 que mais compraram esse mês' tem defaults razoáveis (por valor, mês até hoje) que poderiam ter sido assumidos e a tool fiscal_faturamento_por_cliente chamada direto. Excesso de clarificação.",
+      "sugestao_prompt": "Adicionar regra: 'mês corrente' = mês até hoje por default; 'mais compraram' = por valor (R$) por default.",
+      "correcao_factual": "nao_aplicavel"
+    },
+    {
+      "turnoId": "b7a7eee6-e5e2-43a5-a6f7-d4810e5a0981",
+      "status": "PARCIAL",
+      "patterns": ["pediu_clarificacao_desnecessaria"],
+      "razao": "Pergunta de 1 palavra 'faturamento' tem default razoável (mês atual). Podia ter chamado fiscal_faturamento_periodo com mês corrente e oferecido alternativas na resposta.",
+      "sugestao_prompt": "Regra: termo isolado 'faturamento' → assumir mês corrente, retornar número e oferecer mudar período.",
+      "correcao_factual": "nao_aplicavel"
+    },
+    {
+      "turnoId": "b8701bdd-e467-41d4-9307-015d913bd4a1",
+      "status": "PARCIAL",
+      "patterns": ["fluxo_tool_incompleto", "pediu_clarificacao_desnecessaria"],
+      "razao": "Tool certa para saldo (16 un, R$258.370,44 bate com toolResults). Mas a 2ª parte da pergunta ('quantas notas saíram dele esse mês') não foi atendida nem encadeada; pediu clarif desnecessária entre nº de NF e qtd de unidades.",
+      "sugestao_prompt": "Regra: pergunta composta saldo+notas de um produto → encadear estoque_saldo_produto + fiscal_notas_por_produto sem pedir clarif.",
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "b987e031-54e5-4162-ace6-0af8a3393822",
+      "status": "CORRETO",
+      "patterns": [],
+      "razao": "'Conta a pagar em 30 dias' é genuinamente ambíguo (vencidas vs a vencer). Clarificação razoável.",
+      "sugestao_prompt": null,
+      "correcao_factual": "nao_aplicavel"
+    },
+    {
+      "turnoId": "ba6ae2d3-75a2-4a3b-a11a-663bb78e9373",
+      "status": "PARCIAL",
+      "patterns": ["nao_usou_tool", "pediu_clarificacao_desnecessaria"],
+      "razao": "Devia ter chamado cadastro_buscar_parceiro com termo 'Millenium Resort' e mostrado os resultados. Pediu clarif sem tentar primeiro.",
+      "sugestao_prompt": "Regra: 'cadastro do parceiro X' → chamar cadastro_buscar_parceiro com X direto; só clarificar se houver múltiplos matches.",
+      "correcao_factual": "nao_aplicavel"
+    },
+    {
+      "turnoId": "ba8f571b-9def-4259-872d-143a67b8b2a2",
+      "status": "FORA_DE_ESCOPO",
+      "patterns": ["limitacao_real_declarada"],
+      "razao": "Não há tool para listar transportadoras ativas. Registrou a lacuna e respondeu honestamente.",
+      "sugestao_prompt": null,
+      "correcao_factual": "nao_aplicavel"
+    },
+    {
+      "turnoId": "bc076da5-9991-496b-bbb3-1690ce7a88ec",
+      "status": "CORRETO",
+      "patterns": ["acerto_objetividade", "acerto_modelo"],
+      "razao": "Tool certa (financeiro_saldo_contas). Filtrou só positivos: 5 contas listadas batem (72410.18 + 875957.69 + 55112.86 + 371252.76 + 221604.69 = 1.596.338,18). Total bate.",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "bc133595-e7b2-468e-aa60-f7fae6652e45",
+      "status": "CORRETO",
+      "patterns": [],
+      "razao": "'Estoque morto' precisa de threshold de dias para ser parametrizado. Clarificação legítima.",
+      "sugestao_prompt": null,
+      "correcao_factual": "nao_aplicavel"
+    },
+    {
+      "turnoId": "bcc18d06-3820-4e52-9e2d-3fa09ad1f419",
+      "status": "CORRETO",
+      "patterns": [],
+      "razao": "Pediu período e detalhamento; mencionou limitação por perfil. Clarificação razoável.",
+      "sugestao_prompt": null,
+      "correcao_factual": "nao_aplicavel"
+    },
+    {
+      "turnoId": "bd89dcd6-c8ae-44e7-bd6e-9fa0b8ad78dd",
+      "status": "CORRETO",
+      "patterns": [],
+      "razao": "'Fluxo do dia' é genuinamente ambíguo (caixa, estoque, saldo). Clarificação objetiva com 3 opções.",
+      "sugestao_prompt": null,
+      "correcao_factual": "nao_aplicavel"
+    },
+    {
+      "turnoId": "bebd6186-a80e-40e1-b368-131913f14708",
+      "status": "PARCIAL",
+      "patterns": ["nao_usou_tool", "pediu_clarificacao_desnecessaria"],
+      "razao": "'Tem [102] aqui ainda?' — código entre colchetes claramente sugere produto. Devia ter chamado estoque_saldo_produto({termo: '102'}) direto e respondido com saldo. Pediu 3 clarif sem tentar.",
+      "sugestao_prompt": "Regra: código entre colchetes [N] → assumir produto e chamar estoque_saldo_produto antes de clarificar.",
+      "correcao_factual": "nao_aplicavel"
+    },
+    {
+      "turnoId": "bfd2b28c-48b3-4f23-aa1b-2698e5832e04",
+      "status": "CORRETO",
+      "patterns": [],
+      "razao": "Usuário usou placeholder 'XX' no CNPJ; clarif é obrigatória.",
+      "sugestao_prompt": null,
+      "correcao_factual": "nao_aplicavel"
+    },
+    {
+      "turnoId": "c025dce0-b4a8-42b3-ab06-dfe8ad5f3365",
+      "status": "CORRETO",
+      "patterns": [],
+      "razao": "'Fornecedores' em 1 palavra é vago. Clarif com 5 opções razoáveis.",
+      "sugestao_prompt": null,
+      "correcao_factual": "nao_aplicavel"
+    },
+    {
+      "turnoId": "c0ec06e7-31d4-4bb4-9b8d-af0270db68b4",
+      "status": "CORRETO",
+      "patterns": [],
+      "razao": "Pergunta multi-domínio (comercial+fiscal); 3 confirmações pertinentes.",
+      "sugestao_prompt": null,
+      "correcao_factual": "nao_aplicavel"
+    },
+    {
+      "turnoId": "c1a13d0c-5cf6-455e-b395-57250b373551",
+      "status": "CORRETO",
+      "patterns": [],
+      "razao": "Pergunta cruza pedidos atrasados e estoque; clarif legítima sobre definições e escopo.",
+      "sugestao_prompt": null,
+      "correcao_factual": "nao_aplicavel"
+    },
+    {
+      "turnoId": "c269cfbd-0965-4884-abe7-74815cba1132",
+      "status": "CORRETO",
+      "patterns": [],
+      "razao": "'Total de impostos do mês' precisa definir qual apuração (ICMS-IPI/PIS-COFINS/IBPT). Clarif legítima.",
+      "sugestao_prompt": null,
+      "correcao_factual": "nao_aplicavel"
+    },
+    {
+      "turnoId": "c3165b65-058c-4490-817c-c52825ff6b66",
+      "status": "CORRETO",
+      "patterns": [],
+      "razao": "'Parceiros de São Paulo' é ambíguo (UF vs município, tipo, contagem vs lista). Clarif objetiva.",
+      "sugestao_prompt": null,
+      "correcao_factual": "nao_aplicavel"
+    },
+    {
+      "turnoId": "c3a84f5c-e3bf-4fec-b630-7dbcf1a70282",
+      "status": "PARCIAL",
+      "patterns": ["pediu_clarificacao_desnecessaria"],
+      "razao": "'Quantos parceiros são pessoa física' tem default óbvio (CPF, todos os tipos). Podia ter tentado e oferecido recorte.",
+      "sugestao_prompt": "Regra: 'pessoa física' = CPF; default = todos os tipos de parceiro.",
+      "correcao_factual": "nao_aplicavel"
+    },
+    {
+      "turnoId": "c3f31aef-1d73-4a40-9557-d3638da61dd2",
+      "status": "CORRETO",
+      "patterns": [],
+      "razao": "Termo 'produto inventado' não identifica registro. Pediu nome/código corretamente.",
+      "sugestao_prompt": null,
+      "correcao_factual": "nao_aplicavel"
+    },
+    {
+      "turnoId": "c4496f9d-1236-42ea-9750-103705ca0c2e",
+      "status": "CORRETO",
+      "patterns": [],
+      "razao": "'Quanto?' sem contexto exige clarificação.",
+      "sugestao_prompt": null,
+      "correcao_factual": "nao_aplicavel"
+    },
+    {
+      "turnoId": "c496364d-d76f-4a83-8403-94813b64e1a6",
+      "status": "CORRETO",
+      "patterns": ["acerto_objetividade"],
+      "razao": "Tool certa, 2 produtos retornados, ambos saldo 0; resposta bate com toolResults (Juncao de Aco 022479-C e Pino de Aco 1000093102, ambos Astec/Matrix).",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "c4fe842f-6863-425f-b687-85405b3790fb",
+      "status": "CORRETO",
+      "patterns": ["acerto_objetividade"],
+      "razao": "Tool certa, período correto (hoje), estado='vazio' refletido honestamente.",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "c53a9cf1-529d-47e0-bb65-d05d859e1f76",
+      "status": "CORRETO",
+      "patterns": [],
+      "razao": "'Quanto vai entrar essa semana' é ambíguo entre caixa/estoque/AR. Clarif legítima.",
+      "sugestao_prompt": null,
+      "correcao_factual": "nao_aplicavel"
+    },
+    {
+      "turnoId": "c5d2c60d-1ff9-4fde-9beb-fa55e33ab7cc",
+      "status": "CORRETO",
+      "patterns": ["acerto_objetividade", "acerto_modelo"],
+      "razao": "Tool certa, período correto (20-26/05), R$8.510.483,41 em 79 notas bate exatamente com toolResults.",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "c712f391-adc4-4308-9b8f-beb45e234a6e",
+      "status": "PARCIAL",
+      "patterns": ["pediu_clarificacao_desnecessaria"],
+      "razao": "Podia ter chamado estoque_saldo_produto({termo: 'barra'}) e mostrado resultados antes de pedir clarif.",
+      "sugestao_prompt": "Regra: termo descritivo de produto → chamar estoque_saldo_produto direto; só clarificar se ambíguo após resultado.",
+      "correcao_factual": "nao_aplicavel"
+    },
+    {
+      "turnoId": "c76ccba5-7ac5-4445-ba09-b1c6e9996263",
+      "status": "CORRETO",
+      "patterns": [],
+      "razao": "'Meta' não existe como dado no ERP; pediu indicador e valor. Clarif honesta.",
+      "sugestao_prompt": null,
+      "correcao_factual": "nao_aplicavel"
+    },
+    {
+      "turnoId": "c7809ea9-ba64-4092-8660-8ca7aedb4778",
+      "status": "PARCIAL",
+      "patterns": ["nao_usou_tool"],
+      "razao": "Devia ter chamado cadastro_buscar_parceiro com 'Smartfit Alphaville' para identificar antes de pedir CNPJ.",
+      "sugestao_prompt": "Regra: nome de cliente citado → buscar parceiro primeiro; só pedir CNPJ se ambíguo.",
+      "correcao_factual": "nao_aplicavel"
+    },
+    {
+      "turnoId": "c789a02a-af83-4c1f-9b70-196e47094a87",
+      "status": "PARCIAL",
+      "patterns": ["fluxo_tool_incompleto"],
+      "razao": "Chamou fiscal_faturamento_periodo (bruto bate: R$38.064.323,84 / 772 notas) mas a pergunta 'bruto x líquido' não foi atendida; faltou tool/cálculo de líquido (descontos/devoluções).",
+      "sugestao_prompt": "Regra: 'bruto x líquido' → assumir definição padrão (líquido = bruto - devoluções) e entregar ambos, oferecer outras regras.",
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "c78b4411-b15f-4fe5-8f15-c9eed9ac93a4",
+      "status": "CORRETO",
+      "patterns": [],
+      "razao": "Clarificação objetiva sobre tipo e formato. Razoável.",
+      "sugestao_prompt": null,
+      "correcao_factual": "nao_aplicavel"
+    },
+    {
+      "turnoId": "c811eaa3-5688-4749-b7fc-2392fe2a6a76",
+      "status": "CORRETO",
+      "patterns": ["acerto_objetividade", "acerto_modelo"],
+      "razao": "Tool certa, saldo 0 do PMB403 - Puxador Corda (Rotha Fitness, Acessórios) bate com toolResults.",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "c8bfbd8a-794c-46f4-a0a6-aa614394ad1b",
+      "status": "CORRETO",
+      "patterns": [],
+      "razao": "'Saldo geral consolidado' é genuinamente ambíguo. Clarif com 3 opções legítima.",
+      "sugestao_prompt": null,
+      "correcao_factual": "nao_aplicavel"
+    },
+    {
+      "turnoId": "c923a577-e860-4ca0-aaa4-bccbc33e1f8f",
+      "status": "CORRETO",
+      "patterns": [],
+      "razao": "'Tá tudo certo no caixa?' precisa de recorte e definição. Clarif legítima.",
+      "sugestao_prompt": null,
+      "correcao_factual": "nao_aplicavel"
+    },
+    {
+      "turnoId": "ccb72907-5bbb-4ad8-8aff-bde516d8fe3a",
+      "status": "CORRETO",
+      "patterns": [],
+      "razao": "'Family pé na bola' é termo não óbvio (família vs busca textual). Clarif razoável.",
+      "sugestao_prompt": null,
+      "correcao_factual": "nao_aplicavel"
+    },
+    {
+      "turnoId": "cd3ced56-cbe3-4c78-bc78-562736f19a7d",
+      "status": "CORRETO",
+      "patterns": ["acerto_objetividade"],
+      "razao": "Tool certa (contabil_plano_de_contas), termo 'Ativo'. Estrutura listada (1, 1.1, 1.2, 1.2.3, 1.2.4.1 etc) bate com toolResults; ignorou linhas de DRE/PL que escapam do filtro semântico, o que é correto.",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "cdb4faf7-b763-4c00-9848-4a9a9d0dd072",
+      "status": "PARCIAL",
+      "patterns": ["nao_usou_tool"],
+      "razao": "Podia ter buscado 'Casa Ferolla' como parceiro e listado devoluções diretamente; pediu 3 clarif sem tentar tool.",
+      "sugestao_prompt": "Regra: 'cliente X devolveu?' → buscar parceiro + listar notas de devolução por default; clarificar só se ambíguo.",
+      "correcao_factual": "nao_aplicavel"
+    },
+    {
+      "turnoId": "ce2976c4-b8fa-4680-88f1-fb3ad2452bda",
+      "status": "CORRETO",
+      "patterns": [],
+      "razao": "'Ticket médio' precisa de período e base de cálculo. Clarif legítima.",
+      "sugestao_prompt": null,
+      "correcao_factual": "nao_aplicavel"
+    },
+    {
+      "turnoId": "cf23c459-e098-4046-b39d-bc4ca29946b1",
+      "status": "CORRETO",
+      "patterns": [],
+      "razao": "Pergunta '?' sem conteúdo. Menu de opções é resposta apropriada.",
+      "sugestao_prompt": null,
+      "correcao_factual": "nao_aplicavel"
+    }
+  ]
+}

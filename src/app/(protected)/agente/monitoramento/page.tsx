@@ -12,6 +12,7 @@ import { redirect } from "next/navigation";
 import { Activity } from "lucide-react";
 
 import { QualidadeContent } from "@/components/agent/qualidade/qualidade-content";
+import { MonitoramentoNav } from "@/components/agent/monitoramento-nav";
 import { PageHeader } from "@/components/page-header";
 import { PageShell } from "@/components/layout/page-shell";
 import { getCurrentUser } from "@/lib/auth";
@@ -48,7 +49,10 @@ export default async function MonitoramentoPage() {
         title="Monitoramento do Agente Nex"
         subtitle="Desempenho semântico das respostas por modelo e período. Avaliação on-demand via Claude Code."
       />
-      <QualidadeContent minDate={minDate.toISOString()} />
+      <MonitoramentoNav />
+      <div className="mt-6">
+        <QualidadeContent minDate={minDate.toISOString()} />
+      </div>
     </PageShell>
   );
 }

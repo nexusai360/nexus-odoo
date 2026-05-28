@@ -1,0 +1,304 @@
+{
+  "batchId": "0001",
+  "evaluatedAt": "2026-05-26T17:30:00.000Z",
+  "totals": {
+    "CORRETO": 23,
+    "PARCIAL": 9,
+    "ERRADO": 3,
+    "FORA_DE_ESCOPO": 0
+  },
+  "patterns": {
+    "acerto_objetividade": 19,
+    "acerto_encadeamento": 2,
+    "acerto_modelo": 2,
+    "fluxo_tool_incompleto": 4,
+    "dado_inventado": 3,
+    "limitacao_real_declarada": 4,
+    "entendeu_mal_termo": 2,
+    "parametro_incompleto": 1,
+    "tool_errada": 1,
+    "erro_data": 1
+  },
+  "turnos": [
+    {
+      "turnoId": "00a85577-4ff4-4758-b920-51e80a887cf1",
+      "status": "CORRETO",
+      "patterns": ["acerto_objetividade"],
+      "razao": "Tool e periodo corretos. Top 10 clientes batem com os valores do toolResults (Jht SP R$10.784.144,78, Jds R$3.694.452,52 etc).",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "00bf9dc2-104c-44e3-813b-e8f322a45888",
+      "status": "PARCIAL",
+      "patterns": ["fluxo_tool_incompleto", "limitacao_real_declarada"],
+      "razao": "Pergunta era 'pedido mais antigo em aberto' (sem restricao de periodo). Filtrou pelo mes corrente e nao usou tool capaz de listar pedidos individuais. Admitiu nao conseguir, mas deu apenas agregado.",
+      "sugestao_prompt": "Adicionar regra: 'pedido mais antigo' nao restringir a mes corrente; usar tool de listagem por etapa nao-conclusiva ordenada por data.",
+      "correcao_factual": "nao_aplicavel"
+    },
+    {
+      "turnoId": "04cbae06-4f6e-4209-9c2e-6d8e4d2548f6",
+      "status": "CORRETO",
+      "patterns": ["acerto_objetividade"],
+      "razao": "Tool certa com termo; toolResult vazio; resposta honesta de 0 unidades.",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "065ba4fb-fc27-4950-9f8f-fb930fa51c59",
+      "status": "ERRADO",
+      "patterns": ["dado_inventado"],
+      "razao": "toolResults mostra apenas KPIs agregados (saldoTotal=16 em 5 locais). A resposta cita 3 armazens com distribuicao detalhada (9, 4, 3 unidades) que NAO aparecem no JSON retornado pela tool. Dado inventado.",
+      "sugestao_prompt": "Adicionar regra: nao detalhar distribuicao por local se a tool nao retornou linhas por local; declarar apenas o total e numero de locais.",
+      "correcao_factual": "nao_bate"
+    },
+    {
+      "turnoId": "07dc1a64-2d9a-4a79-9b9a-da5e5c75485e",
+      "status": "CORRETO",
+      "patterns": ["acerto_objetividade", "acerto_modelo"],
+      "razao": "Confirmou existencia, dados batem (id 11721, CNPJ, BH/MG).",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "08182afc-99b3-426d-86f2-4c347981cccd",
+      "status": "CORRETO",
+      "patterns": ["acerto_encadeamento", "acerto_objetividade"],
+      "razao": "Encadeou faturamento + notas emitidas, identificou pontos atipicos (em_digitacao R$0, rejeitada) com dados que batem com o JSON.",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "10b75cb8-b899-4ebe-b7ad-5aa6db178799",
+      "status": "CORRETO",
+      "patterns": ["acerto_objetividade"],
+      "razao": "Saldo consolidado bate (-24.242.300,29) e listagem positiva/negativa coerente com toolResult.",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "1137909b-ab9a-4a8a-8d18-58bd23d78514",
+      "status": "PARCIAL",
+      "patterns": ["limitacao_real_declarada"],
+      "razao": "Top movimentados veio vazio; agente substituiu por proxy de saldo (nao e o que foi pedido). Foi honesto mas entregou proxy enviesado.",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "135f745e-f873-473f-b78c-383b2ac8fa1d",
+      "status": "CORRETO",
+      "patterns": ["acerto_objetividade"],
+      "razao": "7 correspondencias e saldo 0 batem com toolResults.",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "16bf9e49-eced-4571-8d9d-e8823fdbe5b7",
+      "status": "PARCIAL",
+      "patterns": ["fluxo_tool_incompleto"],
+      "razao": "Pergunta exige cruzar clientes com pedidos em aberto + AR atrasado. Os pedidos em atraso vieram sem nome, agente nao tentou cruzar por participante (parceiro). Entregou listas separadas.",
+      "sugestao_prompt": "Adicionar regra: cruzar pedidos_atrasados.participanteId com contas_a_receber para gerar lista unica de clientes em duplo atraso.",
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "19db5231-bc14-4483-836c-240a3b6bb90b",
+      "status": "PARCIAL",
+      "patterns": ["fluxo_tool_incompleto"],
+      "razao": "Pediu 'resume o financeiro' e respondeu apenas com caixa do periodo, sem AR, AP, saldos bancarios. Resumo curto demais para o escopo.",
+      "sugestao_prompt": "Regra: 'resume o financeiro' encadeia caixa_periodo + saldo_contas + contas_a_receber + contas_a_pagar.",
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "203637d4-32df-4141-951a-a65c0c592cec",
+      "status": "CORRETO",
+      "patterns": ["acerto_objetividade"],
+      "razao": "Filtra apenas bancos positivos; total R$1.610.274,40 e 5 contas batem com a soma do toolResult.",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "204daeb1-7e30-4eef-8698-555dec58af64",
+      "status": "CORRETO",
+      "patterns": ["acerto_objetividade"],
+      "razao": "Codigo 1.1.1.1.01.000001 CAIXA bate com toolResult (odooId 2110).",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "24695f40-6e3c-429b-8d9a-f89102b51932",
+      "status": "PARCIAL",
+      "patterns": ["entendeu_mal_termo", "tool_errada"],
+      "razao": "Pergunta era 'vendedores cadastrados' (cadastro de usuarios), respondeu por pedidos do mes. Registrou lacuna mas entregou substituto enviesado sem deixar claro que filtra so quem teve pedido em maio.",
+      "sugestao_prompt": "Regra: 'vendedores cadastrados' sem periodo retornar lista do cadastro; somente filtrar por periodo se o usuario pediu.",
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "259cfb28-66c9-463c-9a68-6ddc7bd38e43",
+      "status": "ERRADO",
+      "patterns": ["erro_data"],
+      "razao": "'Essa semana' deveria ser segunda a domingo (25-31/05) ou ultimos 7 dias. Filtrou apenas 25-26/05 (2 dias), perdendo o resto da semana. Resposta R$0 nao reflete semana real.",
+      "sugestao_prompt": "Regra: 'essa semana' = segunda a domingo da semana corrente, nao 'hoje menos 1'.",
+      "correcao_factual": "nao_bate"
+    },
+    {
+      "turnoId": "25bba435-88a2-4aa1-800b-5cca060292b7",
+      "status": "PARCIAL",
+      "patterns": ["limitacao_real_declarada"],
+      "razao": "Honesto sobre nao separar capital/interior, mas devolveu apenas total SP (404) sem nem tentar refinar por cidade.",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "26d0719a-3cc1-4752-8855-ed7a7f362a52",
+      "status": "CORRETO",
+      "patterns": ["acerto_objetividade"],
+      "razao": "Pino de Aco 1000093102 sem saldo cadastrado; resposta bate com toolResult.",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "2b049363-fd13-4410-ac35-58b0885e1175",
+      "status": "CORRETO",
+      "patterns": ["acerto_objetividade"],
+      "razao": "Top 5 vendedores batem (Marcelo R$21.134.820,57, Jonatas R$11.106.092,06, etc).",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "2c3d34b6-e96e-48a6-b342-0675be85b470",
+      "status": "CORRETO",
+      "patterns": ["acerto_objetividade"],
+      "razao": "Periodo mes passado (abril/2026) correto, R$33.997.934,37 em 628 notas bate.",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "2cac4931-5b84-4fbf-91ab-1f63af095306",
+      "status": "CORRETO",
+      "patterns": ["acerto_objetividade"],
+      "razao": "Ano corrente R$209.588.360,55 em 3.105 notas bate.",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "31266f43-f046-4df0-8c9c-2c2ef31e65a8",
+      "status": "CORRETO",
+      "patterns": ["acerto_objetividade", "acerto_modelo"],
+      "razao": "Identificou Marcelo (100 pedidos), ticket medio 211.348,21 correto. Numero total 477 e R$69.339.645,46 batem (de outra tool comercial agregada).",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "32448cbc-b347-4454-8a12-c569a120832f",
+      "status": "CORRETO",
+      "patterns": ["acerto_objetividade"],
+      "razao": "Hoje (26/05) faturou R$0 em 0 notas bate com toolResult.",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "33d1a503-dfbb-4144-a8c1-9152ff1bf853",
+      "status": "PARCIAL",
+      "patterns": ["limitacao_real_declarada"],
+      "razao": "Filtragem acima de 10k feita em cima da amostra truncada (so 10 maiores); admitiu limite de visualizacao. Valores citados batem mas e amostra parcial.",
+      "sugestao_prompt": "Regra: ao filtrar por valor, ou solicitar maior limite na tool ou avisar explicitamente que e amostra do top.",
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "378b0607-507f-48fa-af95-22a681313621",
+      "status": "CORRETO",
+      "patterns": ["acerto_objetividade"],
+      "razao": "Entrada/saida/saldo R$0 batem com toolResult.",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "3aee1666-ec76-4203-a907-944798a16438",
+      "status": "CORRETO",
+      "patterns": ["acerto_objetividade"],
+      "razao": "PMB403 Puxador Corda sem saldo bate com toolResult.",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "3b31c252-d44a-48d3-97d4-d89340aa8de2",
+      "status": "CORRETO",
+      "patterns": ["acerto_objetividade"],
+      "razao": "Encontrou parceiro Icaro Rossas Lucena com CPF e cidade que batem.",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "3c8c9c3b-b09f-4f57-a1c2-e15526f38ffa",
+      "status": "CORRETO",
+      "patterns": ["acerto_objetividade"],
+      "razao": "33 produtos parados, R$220.824,71 imobilizado batem; listagem por produto/local coerente.",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "3dbf4f1c-9f38-49a9-ac33-a2bee649e8b9",
+      "status": "PARCIAL",
+      "patterns": ["limitacao_real_declarada"],
+      "razao": "Admitiu lista truncada e nao deu total geral. Devolveu top 10 que parece coerente com fragmentos do JSON.",
+      "sugestao_prompt": "Regra: quando contas_a_receber retorna sem total agregado, computar somatorio das linhas e apresentar como 'na amostra retornada'.",
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "402a46b6-169a-4c21-81ea-efc4a305a0cc",
+      "status": "PARCIAL",
+      "patterns": ["fluxo_tool_incompleto", "parametro_incompleto"],
+      "razao": "Pediu 'por mes esse ano' e chamou fiscal_faturamento_periodo de uma vez (jan-mai), entregando so total. Faltou chamar 5 vezes (uma por mes) ou tool de agregacao mensal.",
+      "sugestao_prompt": "Regra: 'por mes' implica multiplas chamadas de periodo (uma por mes) ou tool de serie mensal; nunca um unico periodo agregado.",
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "431faf1c-ec5c-47c7-8252-2200684e9fe3",
+      "status": "CORRETO",
+      "patterns": ["acerto_objetividade"],
+      "razao": "Listou 8 contas contabeis com 'banco' batem com toolResult.",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "43e37e77-b20f-4da7-b5c7-ba89f4845477",
+      "status": "CORRETO",
+      "patterns": ["acerto_objetividade"],
+      "razao": "Top 5 clientes batem com toolResult.",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "4b3f9150-cc59-4b42-af74-2da7726e7bc7",
+      "status": "CORRETO",
+      "patterns": ["acerto_encadeamento", "acerto_objetividade"],
+      "razao": "Encadeou saida+entrada em 90 dias; Top giro [1497] PISO BLACK PREMIUM 2.264 un bate.",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "4b9c3bba-e495-4ca5-af08-669002c3c75c",
+      "status": "CORRETO",
+      "patterns": ["acerto_objetividade"],
+      "razao": "Saldo consolidado -24.242.300,29 e listagem por conta batem.",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "4e2c5c16-5b65-4533-bf9f-af1aeff089e2",
+      "status": "ERRADO",
+      "patterns": ["dado_inventado", "entendeu_mal_termo"],
+      "razao": "Tool retornou apenas agregado (totalPedidos=477, valorTotal). Resposta cita 'pedidoId 354 com R$ 630.000,00 (parcela 1)' que NAO aparece neste toolResult - dado vindo de turno anterior ou inventado. Tambem confundiu 'pedido em aberto' com 'pedidos do mes'.",
+      "sugestao_prompt": "Regra: nunca citar pedidoId/valor de parcela sem tool especifica retornando-os; 'maior em aberto' exige tool de listagem ordenada por valor.",
+      "correcao_factual": "nao_bate"
+    },
+    {
+      "turnoId": "5007b39e-f0de-4ad5-974b-e55fe0d9842c",
+      "status": "ERRADO",
+      "patterns": ["dado_inventado", "fluxo_tool_incompleto"],
+      "razao": "Tool unica retornou so total agregado; agente faz auto-retratacao citando 'antes' que reportou cancelados/fechados - implica que havia dado fabricado em turno anterior. Nao encadeou tool de pedidos_por_etapa para responder.",
+      "sugestao_prompt": "Regra: 'cancelados versus fechados' exige pedidos_por_etapa com agrupamento por etapaFinaliza/Cancelado; nao responder de cabeca.",
+      "correcao_factual": "nao_bate"
+    }
+  ]
+}

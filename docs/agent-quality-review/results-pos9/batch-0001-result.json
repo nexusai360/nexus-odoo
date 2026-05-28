@@ -1,0 +1,305 @@
+{
+  "batchId": "0001",
+  "evaluatedAt": "2026-05-26T17:10:00.000Z",
+  "totals": {
+    "CORRETO": 22,
+    "PARCIAL": 4,
+    "ERRADO": 8,
+    "FORA_DE_ESCOPO": 1
+  },
+  "patterns": {
+    "acerto_objetividade": 18,
+    "acerto_modelo": 4,
+    "dado_inventado": 8,
+    "entendeu_mal_termo": 2,
+    "pergunta_ignorada": 1,
+    "formato_quebrado": 2,
+    "gramatica_plural": 1,
+    "limitacao_real_declarada": 1,
+    "fluxo_tool_incompleto": 1,
+    "parametro_incompleto": 1,
+    "resposta_truncada": 1
+  },
+  "turnos": [
+    {
+      "turnoId": "0555fb61-be75-4614-8613-9ca0ec6c001a",
+      "status": "CORRETO",
+      "patterns": ["acerto_objetividade"],
+      "razao": "Tool certa, resposta direta com ID, documento e cidade do parceiro Casa Ferolla.",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "069dfa46-290c-4654-8256-ae7c05b4831b",
+      "status": "PARCIAL",
+      "patterns": ["formato_quebrado"],
+      "razao": "Resposta inicia com 'Você tem razão' como se fosse resposta a um turno anterior, sem haver contexto. Os números (40 produtos, 1.406 un, R$ 14.096,18) batem com tool, mas o framing inicial confunde o usuário.",
+      "sugestao_prompt": "Adicionar regra: 'Não começar resposta com retratação se não houver turno anterior na conversa'.",
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "0a251e2f-1156-4b46-bce9-1e3b532057a2",
+      "status": "CORRETO",
+      "patterns": ["acerto_objetividade", "acerto_modelo"],
+      "razao": "Tool com período correto (hoje), resposta direta com entradas, saídas e saldo zerados.",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "0b191e9d-7838-4e3e-b259-0322819b2a60",
+      "status": "CORRETO",
+      "patterns": ["acerto_objetividade"],
+      "razao": "Encontrou Millenium Resort Residence e respondeu com CNPJ, papel (cliente/fornecedor) e localidade.",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "0d5daedf-b3ba-473e-961b-e1a0df2e83eb",
+      "status": "CORRETO",
+      "patterns": ["acerto_objetividade", "acerto_modelo"],
+      "razao": "Assumiu mês corrente, ranking por valor de saída, top 10 com números exatos do tool result.",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "122a83ce-c733-45a5-8ad9-ea8bf460e5a0",
+      "status": "CORRETO",
+      "patterns": ["acerto_objetividade"],
+      "razao": "Busca vazia, IA respondeu honestamente que não encontrou fornecedor com o termo.",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "1233c073-8737-4a4e-b28a-282940c351ac",
+      "status": "ERRADO",
+      "patterns": ["dado_inventado", "parametro_incompleto"],
+      "razao": "Tool retornou erro de validação (fornecedor vazio). IA inventou top 10 fornecedores com nomes, CNPJs e valores (Jds Comercio R$ 15.285.312,50 etc), sem nenhum dado real retornado.",
+      "sugestao_prompt": "Adicionar regra: 'Se tool retornar erro de validacao, declarar erro e nao apresentar dados. Para fiscal_notas_recebidas_por_fornecedor, omitir parametro fornecedor (nao mandar string vazia)'.",
+      "correcao_factual": "nao_bate"
+    },
+    {
+      "turnoId": "12c8469d-2810-45b8-8815-37bd78684328",
+      "status": "CORRETO",
+      "patterns": ["acerto_objetividade"],
+      "razao": "Identificou as 2 contas analiticas certas (matriz e filial) de alugueis pagos antecipadamente com codigos e IDs corretos do tool result.",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "12eff69b-4798-4011-aa01-202b5d2ce2d4",
+      "status": "PARCIAL",
+      "patterns": ["limitacao_real_declarada"],
+      "razao": "Tool nao retorna apuracao especifica de PIS/COFINS, IA declarou honestamente e mostrou metricas adjacentes (IBPT, ICMS) disponiveis no retorno.",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "13f8286c-ba05-42fe-9aa2-1e9aab2a8d81",
+      "status": "CORRETO",
+      "patterns": ["acerto_objetividade"],
+      "razao": "Periodo correto (30 dias), top 10 com numeros que batem com tool result.",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "157774df-2d49-4693-b1cd-beff2ab32f4d",
+      "status": "CORRETO",
+      "patterns": ["acerto_objetividade"],
+      "razao": "Identificou as 3 contas negativas e seus valores corretos. Total -25.852.574,69 confere com soma das 3 contas negativas.",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "15d66d35-4007-43bb-ad90-a6c51067e441",
+      "status": "CORRETO",
+      "patterns": ["acerto_objetividade"],
+      "razao": "Identificou o match direto [82029] com saldo -1, com nota sobre os outros 12 sem linha de saldo.",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "174806b6-45cf-4454-9d93-fdd80a608c9e",
+      "status": "CORRETO",
+      "patterns": ["acerto_objetividade"],
+      "razao": "5 contas positivas com valores corretos e total R$ 1.608.771,54 confere.",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "189f651b-86e8-4cd0-911c-196f8315fbf4",
+      "status": "ERRADO",
+      "patterns": ["dado_inventado"],
+      "razao": "Tool retornou apenas totalPedidos=83 e valorTotal=10.346.297,45 (agregado). IA inventou ranking de 10 vendedores com nomes e valores especificos (Marcelo Milanezi, Luccas Freitas etc), nada disso vem do tool.",
+      "sugestao_prompt": "Adicionar regra: 'Se tool comercial_pedidos_periodo so retornar agregado, nao inventar ranking por vendedor. Chamar comercial_pedidos_por_vendedor para esse detalhe'.",
+      "correcao_factual": "nao_bate"
+    },
+    {
+      "turnoId": "1e713f36-3888-4e93-98cf-5a7bf72b563a",
+      "status": "CORRETO",
+      "patterns": ["acerto_objetividade"],
+      "razao": "Usou bi_consulta_avancada, retornou 13 filiais (empresa_id distintos) que bate com o tool result.",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "208e8f3b-dae1-48be-86d0-90d1e45441ba",
+      "status": "PARCIAL",
+      "patterns": ["entendeu_mal_termo"],
+      "razao": "Pergunta diz 'banco principal' (singular). IA somou todas as 8 contas Itau e respondeu R$ -24.243.803,15. 'Principal' geralmente significa a maior conta ou a conta unica da empresa principal, nao soma de todas.",
+      "sugestao_prompt": "Adicionar regra: 'Quando usuario pedir banco principal, perguntar qual empresa ou listar opcoes; nao somar todas as contas'.",
+      "correcao_factual": "nao_bate"
+    },
+    {
+      "turnoId": "20e651d2-6a56-4d96-9a82-40f244ebf0ae",
+      "status": "ERRADO",
+      "patterns": ["dado_inventado"],
+      "razao": "Busca por 'cliente x' veio vazia. IA respondeu corretamente que nao encontrou, mas depois inventou 'como referencia' nomes e valores especificos (Smartfit R$ 387.500,00 com 23 dias atraso, Jht SP R$ 322.236,75 etc), sem ter chamado tool de contas a receber.",
+      "sugestao_prompt": "Adicionar regra: 'Se tool retornou vazio, nao adicionar dados de referencia inventados. Resposta termina no nao encontrei'.",
+      "correcao_factual": "nao_bate"
+    },
+    {
+      "turnoId": "212efb6f-378f-46aa-872a-d48b66028665",
+      "status": "CORRETO",
+      "patterns": ["acerto_objetividade"],
+      "razao": "Faturamento hoje R$ 0,00 em 0 notas autorizadas, bate com tool result.",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "2220e644-b2fd-4413-8464-5efecdd434e8",
+      "status": "ERRADO",
+      "patterns": ["pergunta_ignorada", "gramatica_plural", "formato_quebrado", "resposta_truncada"],
+      "razao": "Pergunta era soma de contas a pagar por fornecedor. IA respondeu como se estivesse se retratando ('voce tem razao'), citou 'R$ 115.0926,23' (formatacao errada), nao agregou por fornecedor, alegou retorno truncado quando o tool retornou dados validos.",
+      "sugestao_prompt": "Adicionar regra: 'Para perguntas de agregacao por fornecedor, somar os vrSaldo dos titulos agrupando por participanteNome e ordenar desc'.",
+      "correcao_factual": "nao_bate"
+    },
+    {
+      "turnoId": "23736eb6-a00f-4c4f-b336-72fa96f125a6",
+      "status": "CORRETO",
+      "patterns": ["acerto_objetividade"],
+      "razao": "Busca por CPF inexistente, IA respondeu honestamente que nao encontrou.",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "241a2b50-d05a-4ad8-9f00-133c0191e466",
+      "status": "PARCIAL",
+      "patterns": ["entendeu_mal_termo"],
+      "razao": "Pergunta era concentracao por marca, IA respondeu por marca (correto), mas titulou 'produtos por marca' e listou apenas marcas. Resposta adequada mas o titulo 'marcas' substituindo 'produtos por marca' poderia ser mais claro. Numeros batem.",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "24b3fb4e-ba50-45ca-a991-452ba81514f7",
+      "status": "CORRETO",
+      "patterns": ["acerto_objetividade", "acerto_encadeamento"],
+      "razao": "Entendeu 'mes passado' como abril/2026, periodo correto, R$ 33.997.934,37 em 628 notas confere com tool.",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "25246041-55ed-45ad-8f46-0ab4c8fbb968",
+      "status": "ERRADO",
+      "patterns": ["dado_inventado", "tool_errada"],
+      "razao": "Pediram top 10 pedidos abertos. IA chamou comercial_pedidos_periodo que so retorna agregado. Mesmo assim inventou 10 pedidos com numeros (PV-1723/26 etc), clientes, vendedores e valores especificos. Deveria ter usado tool de listagem detalhada.",
+      "sugestao_prompt": "Adicionar regra: 'Para top N pedidos com detalhes, usar tool de listagem detalhada. Se nao existir, declarar limitacao e nao inventar'.",
+      "correcao_factual": "nao_bate"
+    },
+    {
+      "turnoId": "27ed3f95-99d6-4e80-863c-50794607e0e0",
+      "status": "CORRETO",
+      "patterns": ["acerto_objetividade"],
+      "razao": "Top 5 produtos com numeros corretos do tool result, total R$ 30.289.267,99 confere.",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "2b540a1e-1a93-40f1-8047-148d797ee297",
+      "status": "CORRETO",
+      "patterns": ["acerto_objetividade"],
+      "razao": "Tool retornou vazio para hoje, IA respondeu honestamente 0 entradas e 0 saidas.",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "2e50c842-da69-4ee5-bbb5-8e1e1df053a4",
+      "status": "CORRETO",
+      "patterns": ["acerto_objetividade"],
+      "razao": "Termo inexistente, IA respondeu nao encontrei corretamente.",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "336e5238-438f-4fcf-bb4d-8dca1ad0f193",
+      "status": "ERRADO",
+      "patterns": ["dado_inventado", "entendeu_mal_termo"],
+      "razao": "Pergunta era 'cliente em atraso' (a_receber). Tool retornou apenas titulos tipo a_pagar no inicio do array (truncado). IA inventou clientes a_receber especificos (Smartfit Escola R$ 678.704,00 etc) que nao apareciam nos dados visiveis do tool result.",
+      "sugestao_prompt": "Adicionar regra: 'Para cliente em atraso, filtrar titulos por tipo=a_receber explicitamente. Nao misturar com a_pagar'.",
+      "correcao_factual": "nao_bate"
+    },
+    {
+      "turnoId": "33a08218-dac6-4638-9914-28e15f0ad675",
+      "status": "CORRETO",
+      "patterns": ["acerto_objetividade"],
+      "razao": "Tool com filtro 'cancelada' retornou 6 notas e R$ 22.624,09. IA listou cada uma com data, serie, cliente e valor, tudo bate.",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "34e01085-22bf-4891-884d-0f2e667434e0",
+      "status": "PARCIAL",
+      "patterns": ["dado_inventado"],
+      "razao": "Top etapas batem com tool result, mas IA cita 'Emite NF — 71 pedidos | R$ 14.460.847,37' que nao aparece nos dados visiveis (so 'VF - Emite NF' com 10 pedidos). Possivelmente esta na parte truncada, beneficio da duvida parcial. Totais 1.571 e R$ 371M batem com agregado esperado.",
+      "sugestao_prompt": null,
+      "correcao_factual": "nao_aplicavel"
+    },
+    {
+      "turnoId": "3e7c3a84-3fa4-44d4-9820-bb15ecd6d87e",
+      "status": "CORRETO",
+      "patterns": ["acerto_objetividade", "acerto_modelo"],
+      "razao": "Top 10 pedidos atrasados com valores e dias de atraso que batem exatamente com tool result.",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "3fe13a93-1faa-4a3c-ba26-a046b92d8d0e",
+      "status": "CORRETO",
+      "patterns": ["acerto_objetividade"],
+      "razao": "Saldo por marca top 10 com valores e percentuais corretos, total R$ 52M coerente.",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "4025e6eb-7cbf-4324-a381-0d1c03e771ed",
+      "status": "FORA_DE_ESCOPO",
+      "patterns": ["limitacao_real_declarada"],
+      "razao": "Tool cadastro_contar_parceiros retorna totalEmpresas=4398 que a IA usou. Nao ha campo especifico para PJ (CNPJ); 'empresas' e o melhor proxy disponivel. Resposta honesta, mas o conceito PJ != necessariamente totalEmpresas.",
+      "sugestao_prompt": "Adicionar regra: 'Esclarecer que totalEmpresas e proxy para PJ baseado em flag empresa do Odoo; nao distingue CPF/CNPJ por si'.",
+      "correcao_factual": "nao_aplicavel"
+    },
+    {
+      "turnoId": "49940c78-2098-49c5-bb7d-0972b229f6e6",
+      "status": "CORRETO",
+      "patterns": ["acerto_objetividade", "acerto_modelo"],
+      "razao": "Combinou caixa (R$ 0) + bancos (R$ -24.243.803,15), listou 8 contas com valores corretos.",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "4b4d7168-5cfe-4d31-9978-8c66a19dfd92",
+      "status": "ERRADO",
+      "patterns": ["dado_inventado", "fluxo_tool_incompleto"],
+      "razao": "Pergunta era pedidos fechados ESSE MES. Tool comercial_pedidos_por_etapa nao filtra por periodo (retorna acumulado). IA somou etapas finalizadoras 1038 / R$ 224M sem filtro de mes corrente. Nao chamou tool de pedidos do periodo.",
+      "sugestao_prompt": "Adicionar regra: 'Para pedidos fechados no mes, usar comercial_pedidos_periodo com periodoDe/Ate ou cruzar com etapas finalizadoras filtrando dataPedido'.",
+      "correcao_factual": "nao_bate"
+    },
+    {
+      "turnoId": "4bdb1a44-d27c-4b50-aec8-fcafa76902a3",
+      "status": "CORRETO",
+      "patterns": ["acerto_objetividade"],
+      "razao": "Tool retornou vazio para periodo dos ultimos 7 dias, IA respondeu honestamente.",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    }
+  ]
+}

@@ -1,0 +1,304 @@
+{
+  "batchId": "0002",
+  "evaluatedAt": "2026-05-26T18:10:00Z",
+  "totals": {
+    "CORRETO": 25,
+    "PARCIAL": 6,
+    "ERRADO": 1,
+    "FORA_DE_ESCOPO": 3
+  },
+  "patterns": {
+    "acerto_objetividade": 24,
+    "acerto_encadeamento": 1,
+    "acerto_modelo": 1,
+    "limitacao_real_declarada": 4,
+    "resposta_truncada": 3,
+    "formato_quebrado": 1,
+    "tool_errada": 2,
+    "dado_inventado": 1,
+    "parametro_incompleto": 1,
+    "fluxo_tool_incompleto": 1
+  },
+  "turnos": [
+    {
+      "turnoId": "617acc83-f3ec-45e6-8066-4bead703e181",
+      "status": "CORRETO",
+      "patterns": ["acerto_objetividade"],
+      "razao": "Tool retornou estado=vazio para o periodo 7 dias; resposta honesta e enxuta.",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "6338ab60-c9e9-4811-8415-8652c885ed40",
+      "status": "CORRETO",
+      "patterns": ["acerto_objetividade"],
+      "razao": "Pergunta conceitual respondida sem necessidade de tool, explicacao correta.",
+      "sugestao_prompt": null,
+      "correcao_factual": "nao_aplicavel"
+    },
+    {
+      "turnoId": "6338bbd9-e3ff-4970-a539-cc8cf3d15488",
+      "status": "CORRETO",
+      "patterns": ["acerto_objetividade"],
+      "razao": "Produto PMB403 retornado sem linha de saldo (semEstoqueCadastrado=true); IA respondeu fielmente.",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "63882b06-33ec-4c06-aebc-b7930b449f80",
+      "status": "CORRETO",
+      "patterns": ["acerto_objetividade"],
+      "razao": "Parceiro Icaro Rossas Lucena encontrado; nome, documento e localidade batem com o resultado da tool.",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "63c2a3dc-00e1-4fd8-a533-f0bacdfd3366",
+      "status": "FORA_DE_ESCOPO",
+      "patterns": ["limitacao_real_declarada"],
+      "razao": "Metrica de pedido mais antigo em aberto nao esta no catalogo; lacuna registrada corretamente.",
+      "sugestao_prompt": null,
+      "correcao_factual": "nao_aplicavel"
+    },
+    {
+      "turnoId": "677f22ff-59ad-4dac-b324-c1a735f853c7",
+      "status": "CORRETO",
+      "patterns": ["acerto_objetividade"],
+      "razao": "Codigo 1.1.1.1.01.000001 da conta analitica CAIXA bate com a tool.",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "6ba29392-97b1-4788-bf40-ac112c045166",
+      "status": "CORRETO",
+      "patterns": ["acerto_objetividade"],
+      "razao": "Saldo consolidado -R$ 24.242.300,29 e contas negativas/positivas refletem o resultado da tool.",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "6e2cccbf-9c2f-4dd1-8499-86fae1c13547",
+      "status": "CORRETO",
+      "patterns": ["acerto_encadeamento", "acerto_modelo"],
+      "razao": "Encadeou 7 tools para status geral; todos os numeros citados (772 notas, R$ 38M faturamento, R$ 69M pedidos, caixa -R$ 5,4M, contas -R$ 24M, estoque R$ 52M) batem com os toolResults.",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "6e3d889c-d9b0-4bc1-8dff-99ed73c0b93b",
+      "status": "PARCIAL",
+      "patterns": ["parametro_incompleto"],
+      "razao": "Usuario pediu conta 2.1.1 (passivo) mas tool retornou contas 1.2.1.x; IA admitiu nao encontrar mas listou contas irrelevantes (ativo) sem nova busca refinada.",
+      "sugestao_prompt": "Quando termo da busca eh codigo contabil exato e o retorno nao contiver o prefixo, refazer com filtro estrito de codigo ou registrar limitacao em vez de listar contas de outro ramo.",
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "70adcc0f-0b86-425e-b8cf-bee4da72eecd",
+      "status": "CORRETO",
+      "patterns": ["acerto_objetividade"],
+      "razao": "5 contas positivas listadas com valores que batem com o resultado da tool (Ks R$ 875.957,69, JHT Brasilia R$ 383.686,12 etc).",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "72c29a4e-30f2-4f7c-bfb2-ee119be2e7dd",
+      "status": "CORRETO",
+      "patterns": ["acerto_objetividade"],
+      "razao": "Faturamento de hoje R$ 0,00 bate com totalNotas=0 da tool.",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "74d3189c-57a0-4132-a04e-311ab29297e6",
+      "status": "CORRETO",
+      "patterns": ["acerto_objetividade"],
+      "razao": "Valor total R$ 51.977.199,74 em 7 armazens e percentual 53,8% do Jds Matriz DF batem com a tool.",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "759894c9-1133-4721-b6bc-b26ca4b7fb7a",
+      "status": "FORA_DE_ESCOPO",
+      "patterns": ["limitacao_real_declarada"],
+      "razao": "Pedidos sem vendedor atribuido nao esta no catalogo; lacuna registrada corretamente.",
+      "sugestao_prompt": null,
+      "correcao_factual": "nao_aplicavel"
+    },
+    {
+      "turnoId": "78fdd2b6-79ba-421e-96ec-bbe674c18781",
+      "status": "CORRETO",
+      "patterns": ["acerto_objetividade"],
+      "razao": "Produto 1000205039 com 4 unidades e R$ 1.871,02 em 1 local bate com tool.",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "792211ce-2f7f-4db3-ae44-cd23a2aa7d6b",
+      "status": "CORRETO",
+      "patterns": ["acerto_objetividade"],
+      "razao": "Tool retornou vazio para notas recebidas de hoje; resposta honesta.",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "7a1286dc-70f3-4b6e-9aba-bcb5a40ea918",
+      "status": "PARCIAL",
+      "patterns": ["resposta_truncada"],
+      "razao": "Tool retornou lista de titulos mas IA nao consolidou o total e disse 'veio cortada'. O dado existe; a IA deveria ter somado vrSaldo.",
+      "sugestao_prompt": "Quando financeiro_contas_a_pagar retornar lista, somar vrSaldo de todos os titulos no campo 'titulos' e responder com total consolidado, em vez de declarar truncamento.",
+      "correcao_factual": "nao_aplicavel"
+    },
+    {
+      "turnoId": "7a3b0e18-408b-4495-bbb8-1428cc64e618",
+      "status": "CORRETO",
+      "patterns": ["acerto_objetividade"],
+      "razao": "Top 10 saldos (Painel LED MX 730, T600X 540, CX Painel 243, Climbmill 219) batem com a tool.",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "7bc1169f-0149-4cd6-a96e-bc6c334266f3",
+      "status": "ERRADO",
+      "patterns": ["fluxo_tool_incompleto", "dado_inventado"],
+      "razao": "Saldo 16 unidades bate, mas a IA afirmou '11 unidades faturadas no mes' sem chamar tool de fiscal_produtos_faturados nem ter esse numero em toolResults. Numero inventado.",
+      "sugestao_prompt": "Quando pergunta combinar saldo + quantas notas saindo do produto, encadear estoque_saldo_produto + fiscal_produtos_faturados (filtrando pelo produto) antes de responder; proibir citar quantidades sem tool que as forneca.",
+      "correcao_factual": "nao_bate"
+    },
+    {
+      "turnoId": "7e6641dd-a547-423e-8c07-45f248ff053f",
+      "status": "CORRETO",
+      "patterns": ["acerto_objetividade"],
+      "razao": "Saida prevista R$ 320.264,20 e realizado R$ 0,00 batem com previsto/realizado do fluxo de caixa.",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "847142d6-a3d8-4a24-82c4-94ecc68fc320",
+      "status": "CORRETO",
+      "patterns": ["acerto_objetividade"],
+      "razao": "10 cadastros Smartfit listados com cidade/UF batem com tool; pediu CNPJ ou cidade para desambiguar de forma util.",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "87cc838e-7607-4308-8dbd-4eb9ba1390aa",
+      "status": "CORRETO",
+      "patterns": ["acerto_objetividade"],
+      "razao": "Saldo consolidado -R$ 24.242.300,29 com listagem das maiores positivas e negativas bate com tool.",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "8dd3d874-61ab-4505-9b68-8e5fb46a398d",
+      "status": "CORRETO",
+      "patterns": ["acerto_objetividade"],
+      "razao": "Top 20 produtos parados agrupados por produto, valores plausíveis e ordenacao correta; resposta explicita a regra de agregacao.",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "8e0bc04e-dff9-4d28-b975-8373f859223f",
+      "status": "CORRETO",
+      "patterns": ["acerto_objetividade"],
+      "razao": "Recusou conceito de 'banco principal' (nao existe no dado) e deu o consolidado e top positivas, todos batem com tool.",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "8fb504b7-6c2a-44b8-9484-a58473c7abc0",
+      "status": "CORRETO",
+      "patterns": ["acerto_objetividade"],
+      "razao": "Conta 1.1.4.1.02.000004 ALUGUEIS PAGOS ANTECIPADAMENTE FILIAL bate exatamente com tool.",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "90130910-b362-49ed-b616-742ef589a943",
+      "status": "PARCIAL",
+      "patterns": ["tool_errada"],
+      "razao": "Usuario pediu 'faturamento por vendedor' mas IA chamou comercial_pedidos_por_vendedor (pedidos != faturamento). A IA admitiu o desvio mas nao chamou tool de faturamento por vendedor.",
+      "sugestao_prompt": "Quando pergunta usar 'faturamento' + 'vendedor', priorizar tool fiscal de faturamento por vendedor se existir; se nao existir, registrar lacuna em vez de cair em pedidos por vendedor sem alerta forte.",
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "90b2c3f7-bba8-4b6b-b690-a95be542b055",
+      "status": "CORRETO",
+      "patterns": ["acerto_objetividade"],
+      "razao": "Pedidos por vendedor: 15 vendedores, 477 pedidos, R$ 69.339.645,46; top 10 batem com tool.",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "952a4891-8d9a-42cb-b2e8-f66e6910949a",
+      "status": "PARCIAL",
+      "patterns": ["resposta_truncada"],
+      "razao": "Tool retornou os titulos com vrSaldo; IA nao consolidou e declarou 'retorno grande demais', sem entregar o total pedido.",
+      "sugestao_prompt": "Adicionar regra: tool de contas a pagar sempre permite somar vrSaldo do array titulos; nao declarar truncamento, sempre apresentar total consolidado.",
+      "correcao_factual": "nao_aplicavel"
+    },
+    {
+      "turnoId": "9b3ca3e2-53cf-4555-bea4-86a58412bf22",
+      "status": "PARCIAL",
+      "patterns": ["tool_errada", "limitacao_real_declarada"],
+      "razao": "Usuario pediu pedidos em ENTREGA atrasados; tool retornou parcelas de titulos atrasados (financeiro). IA admitiu o desvio mas entregou outra coisa.",
+      "sugestao_prompt": "Pergunta com 'em entrega/expedicao' deve disparar tool de status logistico do pedido; se nao existir, registrar lacuna em vez de listar atrasos financeiros sem relacao com entrega.",
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "9db66e71-de97-4477-9ce7-db3380817d01",
+      "status": "CORRETO",
+      "patterns": ["acerto_objetividade"],
+      "razao": "Produto mais vendido [99] T600X com 1.097 unidades e R$ 17.626.467,34 bate com tool.",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "a1a5210d-c35d-4484-a842-91509f73baaa",
+      "status": "PARCIAL",
+      "patterns": ["resposta_truncada", "formato_quebrado"],
+      "razao": "Pergunta vaga 'quais notas?' e IA listou apenas amostras com 'veio bem longa e cortada' sem totais nem filtros claros; entregou parcial e sem estrutura util.",
+      "sugestao_prompt": "Para pergunta ampla 'quais notas', responder com contagem + valor total por situacao (autorizada, em_digitacao, etc) usando agregacao do toolResult, em vez de listar 4-5 exemplos sem totais.",
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "a203ca57-063f-44e3-8039-6f114d492fd8",
+      "status": "CORRETO",
+      "patterns": ["acerto_objetividade"],
+      "razao": "Estoque morto 1.262 produtos parados e R$ 51.977.199,74 imobilizados batem com tool; cita itens com dias parados condizentes.",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "a4eb9c28-5d64-419b-95e0-e8082f7650d8",
+      "status": "CORRETO",
+      "patterns": ["acerto_objetividade"],
+      "razao": "Faturamento de hoje R$ 0,00 / 0 notas bate com tool.",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "ab8ffa61-0b5d-41a0-8c31-7b3a98eeb74b",
+      "status": "FORA_DE_ESCOPO",
+      "patterns": ["limitacao_real_declarada"],
+      "razao": "Cadastros novos da semana nao esta no catalogo; lacuna registrada.",
+      "sugestao_prompt": null,
+      "correcao_factual": "nao_aplicavel"
+    },
+    {
+      "turnoId": "abeef94d-bcd1-40fb-aa14-97e5fa6f185d",
+      "status": "CORRETO",
+      "patterns": ["acerto_objetividade"],
+      "razao": "Tool estoque_top_movimentados retornou estado=vazio; resposta honesta de que nao ha dado.",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "b05eabc2-f65e-4a92-9064-2190906bc35d",
+      "status": "CORRETO",
+      "patterns": ["acerto_objetividade"],
+      "razao": "Marcelo Milanezi 100 pedidos R$ 21.134.820,57 bate com tool.",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    }
+  ]
+}
