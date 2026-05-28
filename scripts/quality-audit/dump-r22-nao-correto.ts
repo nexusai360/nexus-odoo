@@ -35,9 +35,9 @@ async function main() {
     ORDER BY e.status, e.created_at
   `;
 
-  console.log(`R21 nao-CORRETO: ${evals.length}`);
+  console.log(`R22 nao-CORRETO: ${evals.length}`);
 
-  const md: string[] = ["# Auditoria R21 (nao-CORRETO)", "", `Marker: ${MARKER}`, `Total: ${evals.length}`, ""];
+  const md: string[] = ["# Auditoria R22 (nao-CORRETO)", "", `Marker: ${MARKER}`, `Total: ${evals.length}`, ""];
   let n = 0;
   for (const ev of evals) {
     n++;
@@ -94,8 +94,8 @@ async function main() {
     md.push("");
   }
 
-  writeFileSync("/tmp/r21-nao-correto.md", md.join("\n"));
-  console.log("Dump em: /tmp/r21-nao-correto.md");
+  writeFileSync("/tmp/r22-nao-correto.md", md.join("\n"));
+  console.log("Dump em: /tmp/r22-nao-correto.md");
   await prisma.$disconnect();
 }
 

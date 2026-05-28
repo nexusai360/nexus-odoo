@@ -1,4 +1,4 @@
-# R21 — Relatorio pos-Ronda 3
+# R22 — Relatorio pos-Ronda 3
 
 **Data:** 2026-05-28
 **Marker:** `[AUDIT-POS-2026-05-28T03-20-54]`
@@ -27,7 +27,7 @@
 **10 turnos reclassificados** (heuristica nao reconhece §10b/§12b/ambiguidade/parcial honesto).
 
 ### AutoValidator
-| | R17 | R18 | R19 | R20 | **R21** |
+| | R17 | R18 | R19 | R20 | **R22** |
 |---|---|---|---|---|---|
 | V2 fired | 35 | 23 | 25 | 26 | **8** |
 | V3 fired | 6 | 9 | 3 | 4 | **4** |
@@ -40,7 +40,7 @@ guardToolResult smart + regra "PROIBIDO registrar_lacuna") funcionaram.
 
 ---
 
-## 2. Evolucao completa R17 -> R21
+## 2. Evolucao completa R17 -> R22
 
 | Rodada | CORRETO real | Delta | Ondas aplicadas |
 |---|---|---|---|
@@ -48,9 +48,10 @@ guardToolResult smart + regra "PROIBIDO registrar_lacuna") funcionaram.
 | R18 | ~74% | -4,5pp | regra §10b + topMaiores |
 | R19 | 84% | +5,5pp | Ronda 1 (TS-2/3/4 + 7 mapeamentos + V5 + §12b) |
 | R20 | 86% | +2pp | Ronda 2 (V5b + apuracao + pedidos_por_etapa + entradas_saidas) |
-| **R21** | **94%** | **+8pp** | **Ronda 3 (smoke test + 14 tools + guardToolResult + PROIBIDO registrar_lacuna)** |
+| R21 | 100% (20 turnos, sanity-check) | — | Ronda 3 parcial — sample pequeno |
+| **R22** | **94%** | **+8pp vs R20** | **Ronda 3 full (smoke test + 14 tools + guardToolResult + PROIBIDO registrar_lacuna)** |
 
-**Delta total R17 -> R21: +15,5pp (78,5% -> 94%)**.
+**Delta total R17 -> R22: +15,5pp (78,5% -> 94%)**.
 
 ---
 
@@ -72,7 +73,7 @@ agora — esses 2 turnos sao 2pp; se virarem CORRETO o painel sobe pra
 
 ---
 
-## 4. Vitorias verificadas da Ronda 3 (em R21)
+## 4. Vitorias verificadas da Ronda 3 (em R22)
 
 - **Bug raiz do `guardToolResult`** resolvido: V5 disparou 8x e o retry
   corrigiu. Antes (R20) ficava silencioso porque o `_RESPOSTA` era
@@ -101,12 +102,12 @@ Cada uma e ~30min de trabalho. Vai dar 96-98% real.
 
 ## 6. Estado da branch
 
-`feat/agente-nex-95pct-ronda1` @ `bcee9ae` (+ esse commit do R21)
+`feat/agente-nex-95pct-ronda1` @ `bcee9ae` (+ esse commit do R22)
 
 **Validacoes:**
 - TypeScript verde
 - 374/374 testes (incl. validator 23/23)
 - Smoke test passou (37 OK + 6 GRANDE + 7 SEM_RESPOSTA + 0 ERRO)
-- R21-mini 100% + R21 full 94% confirmam funcionamento
+- R22-mini 100% + R22 full 94% confirmam funcionamento
 
 R22 (se houver) aguarda autorizacao explicita.
