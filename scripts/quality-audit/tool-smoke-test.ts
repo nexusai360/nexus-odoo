@@ -88,6 +88,8 @@ async function main() {
         contabil_estrutura_conta: { odooId: await sampleContaId() },
         cadastro_detalhar_parceiro: { odooId: await sampleParceiroId() },
         crm_lead_detail: { odooId: 1 },
+        fiscal_notas_emitidas_por_cliente: { clienteTermo: "Smartfit" },
+        fiscal_notas_emitidas_por_produto: { produtoTermo: "esteira" },
       };
       const inputCandidatos: Array<Record<string, unknown>> = [
         idsDeAmostra[entry.id] ?? {},

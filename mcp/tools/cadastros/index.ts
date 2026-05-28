@@ -8,6 +8,8 @@ import { cadastroParceirosPorUf } from "./parceiros-por-uf.js";
 import { cadastroParceirosPorCidade } from "./parceiros-por-cidade.js";
 import { cadastroCidadesListar } from "./cidades-listar.js";
 import { cadastroParceirosNovos } from "./parceiros-novos.js";
+import { cadastroParceirosSemDocumento } from "./parceiros-sem-documento.js";
+import { cadastroFiliaisListar } from "./filiais-listar.js";
 import { cadastroDetalharParceiro } from "./detalhar-parceiro.js";
 import { cadastrosServicoBuscar } from "./servico-buscar.js";
 import { cadastrosServicoContar } from "./contar-servicos.js";
@@ -30,6 +32,8 @@ export const cadastrosTools: ToolEntry[] = [
   cadastroParceirosPorCidade as ToolEntry,
   cadastroCidadesListar as ToolEntry,
   cadastroParceirosNovos as ToolEntry,
+  cadastroParceirosSemDocumento as ToolEntry,
+  cadastroFiliaisListar as ToolEntry,
   cadastroDetalharParceiro as ToolEntry,
   cadastrosServicoBuscar as ToolEntry,
   cadastrosServicoContar as ToolEntry,

@@ -214,6 +214,21 @@ Use \`registrar_lacuna\` **somente** quando a métrica exige agrupador inexisten
 
 **Antes de chamar \`registrar_lacuna\`, RELEIA esta tabela.** Se a pergunta pede "maior/top/fornecedor que mais/cliente que mais/total de", existe quase sempre uma combinação direta. Declarar lacuna com tool disponível é o segundo erro mais frequente do agente.
 
+## REGRA CRÍTICA: lacuna prematura é PROIBIDA (regra absoluta)
+
+Se você JÁ CHAMOU uma tool de domínio neste turno (\`financeiro_*\`, \`fiscal_*\`, \`estoque_*\`, \`comercial_*\`, \`contabil_*\`, \`cadastro_*\`), **NUNCA chame \`registrar_lacuna\` em seguida no mesmo turno**.
+
+A tool factual já te entregou dados. Use o \`_RESPOSTA\` / \`_DESTAQUE\` / \`_agregado\` / linhas dela como base.
+
+- Se a tool factual retornou **vazio**: aplique §10b ("Não há X no período/critério") — NÃO declare lacuna.
+- Se a tool factual retornou **dados mas você queria mais filtros**: AGREGUE/FILTRE o que tem com base no resultado entregue, ou responda a parte que conseguiu cobrir e seja honesto sobre o que faltou (PARCIAL honesto é melhor que lacuna prematura).
+- Se a tool factual **errou ou retornou estado=erro**: aí sim pode usar \`registrar_lacuna\` (caso raro).
+
+**Exemplo do que NUNCA fazer:**
+- Pergunta: "Está vencendo título essa semana?"
+- ❌ ERRADO: chamar \`financeiro_titulos_vencidos\` E em seguida \`registrar_lacuna\` → resposta de lacuna.
+- ✅ CERTO: chamar \`financeiro_titulos_vencidos\`, ler \`_DESTAQUE.totalVencido\` e \`linhas\`, responder com os títulos que vencem essa semana (ou §10b se vazio).
+
 ## PROIBIDO: registrar_lacuna nestes casos (use a tool direto)
 
 Quando a pergunta usa um dos termos abaixo, **NÃO chame \`registrar_lacuna\`**. A tool indicada já cobre o caso.

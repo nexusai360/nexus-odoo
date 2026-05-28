@@ -19,6 +19,8 @@ const inputSchema = z.object({
     .describe("Default: valor_desc (maiores por valor). Use data_asc para 'pedido mais antigo em aberto'."),
   clienteTermo: z.string().min(1).max(120).optional()
     .describe("Filtra pedidos do cliente que casa com o termo (busca em participanteNome)."),
+  vendedorTermo: z.string().min(1).max(120).optional()
+    .describe("Filtra pedidos do vendedor que casa com o termo (busca em vendedorNome)."),
 });
 
 const linhaSchema = z.object({
@@ -76,6 +78,9 @@ async function queryPedidosListarTopValor(prisma: PrismaClient, input: Input) {
   }
   if (input.clienteTermo) {
     where.participanteNome = { contains: input.clienteTermo, mode: "insensitive" };
+  }
+  if (input.vendedorTermo) {
+    where.vendedorNome = { contains: input.vendedorTermo, mode: "insensitive" };
   }
 
   const orderBy: Record<string, "asc" | "desc"> =
@@ -148,7 +153,9 @@ export const comercialPedidosListarTopValor: ToolEntry<Input, Output> = {
     if (linhas.length === 0) {
       resposta = input.clienteTermo
         ? `Nao ha pedidos do cliente '${input.clienteTermo}'.`
-        : "Nao ha pedidos para esse criterio.";
+        : input.vendedorTermo
+          ? `Nao ha pedidos do vendedor '${input.vendedorTermo}'.`
+          : "Nao ha pedidos para esse criterio.";
     } else if (ordenacao === "data_asc") {
       resposta = `Pedido mais antigo (status ${status}): ${top!.numero} de ${fmtData(top!.dataOrcamento)} — ${top!.participanteNome ?? "(sem cliente)"} — ${fmt(top!.valorTotal)}.${input.clienteTermo ? ` Filtro cliente='${input.clienteTermo}'.` : ""}`;
     } else if (ordenacao === "data_desc") {
