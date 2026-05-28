@@ -114,6 +114,7 @@ const FINANCEIRO_IDS = [
   "financeiro_contas_a_receber",
   "financeiro_contas_a_pagar",
   "financeiro_titulos_vencidos",
+  "financeiro_liquidez",
 ];
 
 const COMERCIAL_IDS = [
@@ -129,6 +130,8 @@ const COMERCIAL_IDS = [
   "comercial_pedidos_listar_top_valor",
   "comercial_vendedores_cadastrados",
   "comercial_pedidos_sem_vendedor",
+  "comercial_produtos_por_margem",
+  "comercial_pedidos_por_uf",
 ];
 
 const FISCAL_IDS = [
@@ -146,11 +149,13 @@ const FISCAL_IDS = [
   "fiscal_certificados",
   "referencia_buscar",
   "fiscal_faturamento_mensal_serie",
+  "fiscal_faturamento_por_uf",
 ];
 
 const CADASTROS_IDS = [
   "cadastro_buscar_parceiro",
   "cadastro_parceiros_por_uf",
+  "cadastro_parceiros_por_cidade",
   "cadastro_contar_parceiros",
   "cadastro_detalhar_parceiro",
   "servico_buscar",
@@ -189,10 +194,10 @@ const TODOS_IDS = [
 // ─── 1. Assertiva de catálogo completo (achado N6) ────────────────────────────
 
 describe("Catálogo completo , rede de proteção N6", () => {
-  it("super_admin recebe EXATAMENTE 55 tools", () => {
+  it("super_admin recebe EXATAMENTE 60 tools", () => {
     const user = { userId: "u", role: "super_admin" as const, domains: ["estoque", "financeiro"] } as unknown as Parameters<typeof visibleTools>[1];
     const tools = visibleTools(catalogo, user);
-    expect(tools).toHaveLength(55);
+    expect(tools).toHaveLength(60);
   });
 
   it("super_admin recebe o conjunto exato de IDs", () => {
@@ -215,7 +220,7 @@ describe("Catálogo completo , rede de proteção N6", () => {
     //   9) cadastros.res_partner.update
     // Write tools nao aparecem em visibleTools (modo interno); sao liberadas
     // so no modo externo por capability da chave de API.
-    expect(catalogo).toHaveLength(64);
+    expect(catalogo).toHaveLength(69);
   });
 });
 
@@ -227,17 +232,17 @@ describe("Catálogo filtrado por perfil", () => {
     return visibleTools(catalogo, user).map((t) => t.id);
   }
 
-  it("super_admin vê todas as 55 tools", () => {
+  it("super_admin vê todas as 60 tools", () => {
     const ids = tools("super_admin", ["estoque", "financeiro"]);
-    expect(ids).toHaveLength(55);
+    expect(ids).toHaveLength(60);
     for (const id of TODOS_IDS) {
       expect(ids).toContain(id);
     }
   });
 
-  it("admin vê todas as 55 tools", () => {
+  it("admin vê todas as 60 tools", () => {
     const ids = tools("admin", ["estoque", "financeiro"]);
-    expect(ids).toHaveLength(55);
+    expect(ids).toHaveLength(60);
   });
 
   it("manager com estoque+financeiro vê estoque+financeiro+sempreVisivel (sem bi_consulta_avancada)", () => {
@@ -247,8 +252,8 @@ describe("Catálogo filtrado por perfil", () => {
     for (const id of ESTOQUE_IDS) expect(ids).toContain(id);
     for (const id of FINANCEIRO_IDS) expect(ids).toContain(id);
     for (const id of DOMINIOS_VAZIOS_IDS) expect(ids).toContain(id);
-    // 6 estoque + 6 financeiro + registrar_lacuna + 3 domínios-vazios = 16
-    expect(ids).toHaveLength(18);
+    // 8 estoque + 7 financeiro + registrar_lacuna + 3 domínios-vazios = 19
+    expect(ids).toHaveLength(19);
   });
 
   it("viewer com apenas estoque vê só tools de estoque + sempreVisivel", () => {
@@ -269,8 +274,8 @@ describe("Catálogo filtrado por perfil", () => {
     for (const id of FINANCEIRO_IDS) expect(ids).toContain(id);
     for (const id of ESTOQUE_IDS) expect(ids).not.toContain(id);
     for (const id of DOMINIOS_VAZIOS_IDS) expect(ids).toContain(id);
-    // 6 financeiro + registrar_lacuna + 3 domínios-vazios = 10
-    expect(ids).toHaveLength(10);
+    // 7 financeiro + registrar_lacuna + 3 domínios-vazios = 11
+    expect(ids).toHaveLength(11);
   });
 
   it("viewer sem domínio vê registrar_lacuna + 3 domínios-vazios (sempreVisivel)", () => {
@@ -284,7 +289,7 @@ describe("Catálogo filtrado por perfil", () => {
   // ─── Onda B: comercial , assertivas de perfil (R2-I1) ────────────────────────
   // Usa apenas perfis existentes no fixture (não estende o mapa de mocks).
 
-  it("admin vê as 9 tools de comercial (RBAC camada 1 , vê tudo)", () => {
+  it("admin vê as 14 tools de comercial (RBAC camada 1 , vê tudo)", () => {
     const ids = tools("admin", ["estoque", "financeiro"]);
     for (const id of COMERCIAL_IDS) {
       expect(ids).toContain(id);
@@ -301,7 +306,7 @@ describe("Catálogo filtrado por perfil", () => {
   // ─── Onda D: cadastros , assertivas de perfil (R2-I1) ────────────────────────
   // Usa apenas perfis existentes no fixture (não estende o mapa de mocks).
 
-  it("admin vê as 6 tools de cadastros (RBAC camada 1 , vê tudo)", () => {
+  it("admin vê as 8 tools de cadastros (RBAC camada 1 , vê tudo)", () => {
     const ids = tools("admin", ["estoque", "financeiro"]);
     for (const id of CADASTROS_IDS) {
       expect(ids).toContain(id);
@@ -349,7 +354,7 @@ describe("Catálogo filtrado por perfil", () => {
   });
 
   // viewer-comercial: vê comercial + domínios-vazios; NÃO vê fiscal/cadastros/contabil
-  it("viewer COM domínio comercial vê as 9 tools de comercial", () => {
+  it("viewer COM domínio comercial vê as 14 tools de comercial", () => {
     const ids = tools("viewer", ["comercial"]);
     for (const id of COMERCIAL_IDS) {
       expect(ids).toContain(id);
@@ -534,7 +539,7 @@ describe("Servidor HTTP real , protocolo Streamable HTTP end-to-end", () => {
     const result = extractRpcResult(body);
     const tools = result?.tools as Array<{ name: string }> | undefined;
     expect(tools).toBeDefined();
-    expect(tools!).toHaveLength(55);
+    expect(tools!).toHaveLength(60);
 
     const names = tools!.map((t) => t.name).sort();
     expect(names).toEqual([...TODOS_IDS].sort());
@@ -559,7 +564,7 @@ describe("Servidor HTTP real , protocolo Streamable HTTP end-to-end", () => {
     expect(names).toContain("registrar_lacuna");
     for (const id of DOMINIOS_VAZIOS_IDS) expect(names).toContain(id);
     // 6 estoque + 6 financeiro + registrar_lacuna + 3 domínios-vazios = 16
-    expect(names).toHaveLength(18);
+    expect(names).toHaveLength(19);
   });
 
   it("viewer (estoque): tools/list via HTTP retorna só estoque + registrar_lacuna", async () => {

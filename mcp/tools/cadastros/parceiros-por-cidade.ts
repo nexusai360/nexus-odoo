@@ -9,7 +9,8 @@ import { withFreshness } from "../../lib/freshness.js";
 import type { PrismaClient } from "@/generated/prisma/client.js";
 
 const inputSchema = z.object({
-  uf: z.string().length(2).describe("UF (sigla 2 letras, ex: SP, RJ)").optional(),
+  uf: z.string().min(2).max(40).optional()
+    .describe("UF: sigla (SP, RJ) OU nome completo (Sao Paulo, Rio de Janeiro). Case-insensitive."),
   cidade: z.string().min(2).max(120).optional()
     .describe("Filtra por cidade especifica (LIKE case-insensitive)"),
   zona: z.enum(["capital", "interior", "todas"]).optional()
@@ -68,6 +69,20 @@ const CAPITAIS: Record<string, string> = {
   SP: "SAO PAULO", SE: "ARACAJU", TO: "PALMAS",
 };
 
+// T-39 (Ronda 4): mapeamento sigla -> nome completo COM acentos no banco.
+// fato_parceiro.uf vem como "São Paulo (BR)" (com acentos), não "SP".
+// Prisma contains mode insensitive NAO faz unaccent, entao usamos o nome
+// exato com acentos pra casar.
+const SIGLA_PARA_NOME: Record<string, string> = {
+  AC: "Acre", AL: "Alagoas", AP: "Amapá", AM: "Amazonas",
+  BA: "Bahia", CE: "Ceará", DF: "Distrito Federal", ES: "Espírito Santo",
+  GO: "Goiás", MA: "Maranhão", MT: "Mato Grosso", MS: "Mato Grosso do Sul",
+  MG: "Minas Gerais", PA: "Pará", PB: "Paraíba", PR: "Paraná",
+  PE: "Pernambuco", PI: "Piauí", RJ: "Rio de Janeiro", RN: "Rio Grande do Norte",
+  RS: "Rio Grande do Sul", RO: "Rondônia", RR: "Roraima", SC: "Santa Catarina",
+  SP: "São Paulo", SE: "Sergipe", TO: "Tocantins",
+};
+
 function norm(s: string): string {
   return s
     .normalize("NFD")
@@ -76,11 +91,38 @@ function norm(s: string): string {
     .trim();
 }
 
+/**
+ * Converte input do usuario (sigla "SP" OU "Sao Paulo" OU "sao paulo") em
+ * substring que casa com fato_parceiro.uf ("Sao Paulo (BR)").
+ * Retorna a sigla original tambem para encontrar capital.
+ */
+function resolverUf(input: string | undefined): { sigla: string | null; filtroLike: string } {
+  if (!input) return { sigla: null, filtroLike: "" };
+  const inputNorm = norm(input);
+  // Caso 1: sigla 2 chars
+  if (input.length === 2 && SIGLA_PARA_NOME[input.toUpperCase()]) {
+    const sigla = input.toUpperCase();
+    return { sigla, filtroLike: SIGLA_PARA_NOME[sigla] };
+  }
+  // Caso 2: nome completo — achar a sigla correspondente
+  for (const [sigla, nome] of Object.entries(SIGLA_PARA_NOME)) {
+    if (norm(nome) === inputNorm) {
+      return { sigla, filtroLike: nome };
+    }
+  }
+  // Caso 3: input nao reconhecido — usa como esta (LIKE)
+  return { sigla: null, filtroLike: input };
+}
+
 async function queryParceirosPorCidade(prisma: PrismaClient, input: Input) {
   const limite = input.limite ?? 30;
   const apenasClientes = input.apenasClientes ?? false;
   const where: Record<string, unknown> = { ativo: true };
-  if (input.uf) where.uf = input.uf.toUpperCase();
+  const ufResolvida = resolverUf(input.uf);
+  if (ufResolvida.filtroLike) {
+    // fato_parceiro.uf vem como "Sao Paulo (BR)" — usa contains.
+    where.uf = { contains: ufResolvida.filtroLike, mode: "insensitive" };
+  }
   if (apenasClientes) where.ehCliente = true;
   if (input.cidade) {
     where.cidade = { contains: input.cidade, mode: "insensitive" };
@@ -104,17 +146,31 @@ async function queryParceirosPorCidade(prisma: PrismaClient, input: Input) {
   });
 
   const zona = input.zona ?? "todas";
+  // T-39: fato_parceiro.uf vem por extenso ("Sao Paulo (BR)"); pra detectar
+  // capital, mapeamos o NOME do estado de volta pra sigla, depois consultamos CAPITAIS.
+  function siglaDaUf(ufFull: string | null | undefined): string | null {
+    if (!ufFull) return null;
+    if (ufResolvida.sigla) return ufResolvida.sigla; // input do usuario garantiu
+    const sem = norm(ufFull).replace(/\s*\(BR\)\s*$/i, "").trim();
+    for (const [sigla, nome] of Object.entries(SIGLA_PARA_NOME)) {
+      if (norm(nome) === sem) return sigla;
+    }
+    return null;
+  }
   let filtrados = todos;
   if (zona === "capital") {
     filtrados = todos.filter((p) => {
-      if (!p.uf || !p.cidade) return false;
-      const cap = CAPITAIS[p.uf.toUpperCase()];
+      if (!p.cidade) return false;
+      const sigla = siglaDaUf(p.uf);
+      if (!sigla) return false;
+      const cap = CAPITAIS[sigla];
       return cap && norm(p.cidade) === cap;
     });
   } else if (zona === "interior") {
     filtrados = todos.filter((p) => {
-      if (!p.uf || !p.cidade) return false;
-      const cap = CAPITAIS[p.uf.toUpperCase()];
+      if (!p.cidade) return false;
+      const sigla = siglaDaUf(p.uf);
+      const cap = sigla ? CAPITAIS[sigla] : null;
       return !cap || norm(p.cidade) !== cap;
     });
   }
