@@ -1,140 +1,47 @@
 # AGENTS.md
 
-## Coordenação multi-agente (REGRA ABSOLUTA)
+## Coordenação multi-agente — vale o protocolo GLOBAL
 
-> **Há ≥ 2 sessões Claude trabalhando neste repositório simultaneamente em features distintas.**
-> Sem este protocolo: conflito de merge, sobrescrita de trabalho, commits que quebram o build, deploys empilhando.
+Este projeto roda múltiplas sessões Claude em paralelo. O protocolo de coordenação **NÃO mora mais aqui**; ele é global e está em `~/.claude/CLAUDE.md` (sincronizado a partir de `~/ai-instructions/master.md`), aplicado a todos os repos git do usuário.
 
-### Protocolo completo
+**Resumo operacional:**
 
-O protocolo detalhado está em **`docs/agents/_README.md`**. Resumo aqui — e os arquivos que materializam:
+- Cada agente trabalha em uma **worktree git dedicada** dentro de `branches/<nome-da-branch>/`.
+- A **pasta principal** (raiz do repo) fica permanentemente em `main` e é a "view" que roda no `localhost:3000`.
+- O script global `agente` (`~/bin/agente`) orquestra:
+  - `agente start <branch>` — cria worktree em `branches/<branch>/`, roda `npm ci`, faz symlink do `.env.local`, gera Prisma client.
+  - `agente end [<branch>]` — pusha pendentes e remove a worktree.
+  - `agente list` — lista worktrees do projeto.
+  - `agente status` — mostra onde estamos (principal vs worktree).
+- Hook `~/.config/git/hooks/pre-commit` (global) **bloqueia** commits em branch errada (pasta principal != `main`, ou worktree `branches/<X>/` != branch `<X>`). Em projetos com husky, o `agente start` injeta automaticamente a chamada ao hook global no `.husky/pre-commit`.
 
-- **`docs/agents/active/<agent-id>.md`** — quem está trabalhando agora (1 arquivo por agente; criado no início, deletado no fim).
-- **`docs/agents/HISTORY.md`** — log append-only do que foi feito (1 linha por commit relevante).
-- **Este `AGENTS.md`** — checklist obrigatório (abaixo).
+**Regras inegociáveis (resumo, ver detalhes em `~/.claude/CLAUDE.md`):**
 
-### Início da sessão (obrigatório)
+1. Antes de tocar em arquivo no projeto: rodar `agente status`. Se estiver na pasta principal e o trabalho não é sobre `main`, rode `agente start <branch>` e migre para a worktree.
+2. Claude nomeia a branch por padrão (formato `<tipo>/<descrição-curta-kebab>`). O usuário trabalha em modo passivo; se quiser renomear, ele aciona e Claude troca o nome da branch, da pasta e de qualquer referência junto.
+3. Comandos git destrutivos (`reset --hard`, `push --force`, `rebase`, `merge`, `branch -D`, `worktree remove --force`, `gh pr merge`) exigem confirmação explícita.
+4. Encerramento de sessão: usuário fala "encerra", "troca de sessão", "finaliza essa branch" ou variação → Claude pergunta literalmente "Posso rodar `agente end <branch>` agora? Isso vai pushar pendentes e deletar `branches/<branch>/`." e executa só com sim.
+5. PRs e merges para `main` sempre com confirmação explícita.
+6. `branches/` está no `.gitignore` (local e global) — nunca comitar.
 
-1. **`npm run sync`** — comando único que mostra: branch atual, distância da `origin/main`, top 5 commits novos em `main`, agentes ativos lendo `docs/agents/active/`, últimas 3 entradas do `HISTORY.md`. **Só informa, não altera nada.** Substitui os passos 2-5 abaixo na maioria dos casos.
-2. (Detalhe, se quiser ir mais fundo) `git log --oneline HEAD..origin/main` (commits remotos novos) e `git log --oneline -10` (atividade recente).
-3. (Detalhe) `ls docs/agents/active/` — quais agentes estão ativos.
-4. Para cada `docs/agents/active/<other-agent>.md` ALHEIO: ler, entender o tópico do outro, identificar arquivos compartilhados.
-5. (Detalhe) `tail -30 docs/agents/HISTORY.md` — atividade recente registrada.
-6. Se o `sync` apontou que sua branch está atrás: `git pull --rebase origin main` (ou rebase contra branch alvo).
-7. **Criar `docs/agents/active/<meu-agent-id>.md`** descrevendo o que vou fazer (formato no `_README.md`).
+## Convenções específicas deste projeto
 
-### Antes de QUALQUER mudança em arquivo
+- **Pasta principal**: `/Users/joaovitorzanini/Developer/Claude Code/Nexus AI/Clientes/Matrix Fitness Group/API e MCP Odoo/` (sempre em `main`).
+- **Worktrees ativas**: `branches/<nome>/` (gitignored).
+- **`HISTORY.md`** (em `docs/agents/HISTORY.md`): continua valendo como registro append-only por commit relevante. Mantenha.
+- **Containers**: só uma instância de `docker compose` pode rodar por vez (mesmas portas). O lugar canônico é a pasta principal. Worktrees rodam testes (`jest`, `tsc`, `prisma generate`), não servem o app.
+- **Rebuild de containers**: quando o código que um container consome mudar, rebuilde. Mapa de impacto em `CLAUDE.md §2.1`.
 
-- Se ainda não criei `docs/agents/active/<meu-id>.md` — criar AGORA.
-- Verificar se outro `active/*.md` declarou o mesmo arquivo na seção "Arquivos compartilhados que VOU modificar". Se sim → **PARAR e coordenar**.
+## O que NÃO é mais usado neste projeto
 
-### Antes de mexer em arquivo compartilhado
+- `docs/agents/active/<id>.md` — modelo antigo de active files. Substituído pela própria existência da worktree.
+- Lista de "arquivos compartilhados que vou modificar" no active file. Substituída pelo isolamento de worktree (cada agente edita só na sua, ponto).
+- Checklists locais de início/fim de sessão que duplicavam o protocolo. Vão pro CLAUDE.md global.
 
-Estes arquivos têm alta probabilidade de conflito porque várias features tocam neles:
+## Quando o protocolo global NÃO se aplica aqui
 
-- `package.json` (versão, dependências)
-- `STATUS.md`
-- `CLAUDE.md`
-- `AGENTS.md`
-- `prisma/schema.prisma`
-- `prisma/migrations/`
-- `src/lib/queue.ts` (se existir) / `src/worker/index.ts`
-- `src/components/layout/sidebar.tsx`
-- `src/components/integracoes/` (estrutura do menu Integrações)
-- `src/components/agent/` (UI do Agente Nex)
-- `src/mcp/` (servidor MCP — F4)
-- `.env.example`
+Quase nunca. Se você precisar trabalhar direto na pasta principal sem worktree (caso raro: hotfix urgente em `main` mesmo, edição de arquivo de doc isolado, etc.), o pre-commit hook só vai deixar passar se a branch da pasta principal for `main`. Para qualquer outra coisa, vá pra worktree.
 
-### REGRA DE RAIZ: rebuild de containers após mudar código
+## Em caso de dúvida
 
-> Cada container dev (`app`, `mcp`, `worker`) **não usa volume mount**:
-> alterações no host só chegam após `docker compose build <svc>` +
-> `up -d <svc>`. Mapa de impacto código→container completo em
-> `CLAUDE.md §2.1` e em `docs/runbooks/rebuild-containers.md`.
-> **Resumo:** mudou `mcp/**` ou `src/lib/reports/queries/**` ⇒ rebuild
-> `mcp`. Mudou `prisma/schema.prisma` ⇒ rebuild todos. Mudou `src/**`
-> ⇒ rebuild `app`. **Pular esse passo = feature entregue que não roda.**
-> Sempre que rebuildar, registre em `HISTORY.md` (`scope=infra`).
-
-Antes de tocar um deles:
-
-1. `git log -3 --oneline -- <arquivo>` — ver quem mexeu recente.
-2. Se commit muito recente (< 30 min), provável que outro agente esteja trabalhando nesse arquivo agora. Avaliar:
-   - Se a mudança é independente: pode prosseguir.
-   - Se há sobreposição: **PARAR**, esperar o outro agente terminar (até 1h) ou pivotar.
-3. Se vai bumpar versão (`package.json`): leia o número atual antes — pode ter sido bumpado por outro agente.
-
-### Antes de commitar
-
-1. **`npm run sync`** — confirma que ninguém pushou algo novo enquanto você trabalhava.
-2. Se o `sync` mostrou commits novos em `main`:
-   - `git pull --rebase origin main` (ou rebase contra branch alvo se não for `main`).
-   - Resolver conflitos manualmente (não force-push).
-   - Re-rodar `npm run typecheck` e `npm test`.
-3. Stage **APENAS** os arquivos que você modificou para a sua feature. **Nunca** `git add -A` ou `git add .` — pega trabalho dos outros.
-4. Se aparecer untracked file que não é seu: deixar quieto. Outro agente vai commitar.
-5. **`git commit`** dispara o pre-commit hook (husky + lint-staged) — roda eslint nos arquivos staged. Se bloquear por lint, arrume o arquivo. **Saída de emergência:** `git commit --no-verify` pula a checagem (use raramente, só quando souber por que).
-6. **Append uma linha em `docs/agents/HISTORY.md`** quando o commit é "relevante" (bump de versão, migration, mudança em arquivo compartilhado, novo spec/plan, fix urgente). Formato no `_README.md`.
-
-### Antes de PUSH (deploy automático na main)
-
-> Push em `main` dispara CI → ghcr.io → Portainer redeploy. Múltiplos pushes em sequência empilham builds (~5 min cada) e o último ganha. Cuidado.
-
-> Para branches de feature (ex.: `feat/f4-onda2-*`), CI roda mas não há deploy. Pode push livremente.
-
-1. **`npm run sync`** — última checagem se outro agente pushou algo enquanto você terminava o commit.
-2. `gh run list --limit 5` — verificar se há build queued/in-progress.
-3. Se há build de outro agente em curso na `main`:
-   - Esperar terminar OU
-   - Confirmar que o seu push não conflita com o que está sendo deployado.
-4. Verificar status atual de produção (`/api/health`) — não pushar `main` se já está caindo.
-5. Push.
-6. (Opcional) `gh run watch <id>` pra acompanhar.
-
-### Fim da sessão
-
-- **Deletar `docs/agents/active/<meu-id>.md`** — sinaliza pros outros que terminou.
-- Última entrada em `HISTORY.md` se ainda não foi.
-
-### Conflito de spec/plan
-
-- Cada feature deve ter spec/plan próprio em `docs/superpowers/{specs,plans}/YYYY-MM-DD-<topico>-design.md`.
-- Antes de iniciar: listar `docs/superpowers/specs/` e ver se há feature em progresso (data recente, `_design.md` mas sem `plans/...` correspondente, ou `plans/...` sem implementação completa).
-- Se há overlap conceitual entre features (ex.: dois agentes mexendo no Dashboard), **escolher um**: o que tem spec mais antiga geralmente continua, o outro espera ou pivota.
-
-### Como saber em que outros agentes estão trabalhando
-
-Sinais que indicam trabalho em paralelo:
-
-- `git status`: arquivos modificados (sem staged) que você não tocou.
-- `git log --oneline -10`: commits muito recentes (< 30 min) com hash diferente do seu.
-- `docs/superpowers/specs/`: arquivos `*-design.md` recentes não escritos por você.
-- `docs/agents/active/`: arquivos `<agent-id>.md` que não são seus.
-- `package.json` versão bumpada quando você não bumpou.
-
-Se identificar o tópico de outro agente (ex.: "Playground F5.5", "F4 Onda 2 MCP Escrita"):
-
-- **Não toque nos arquivos da feature dele**, mesmo se parece simples.
-- Use os commits/specs dele como contexto pra evitar duplicação.
-- Se sua feature **depende** de algo que ele está fazendo: pause sua execução, anote o ponto, retome quando ele commitar e push.
-
-### Em caso de dúvida: PERGUNTAR ao João
-
-Se não está claro se uma mudança vai colidir com trabalho de outro agente — pergunta. É barato. Conflito de merge é caro.
-
----
-
-## Onde buscar mais contexto
-
-- **`CLAUDE.md`** — workflow e contexto canônico do projeto.
-- **`STATUS.md`** — ponto de retomada (o que já foi feito, próxima ação).
-- **`docs/superpowers/specs/`** — specs de features.
-- **`docs/superpowers/plans/`** — planos de execução.
-- **`docs/agents/_README.md`** — protocolo detalhado de multi-agente.
-- **`docs/agents/HISTORY.md`** — atividade recente registrada.
-
----
-
-## Inspiração
-
-Este protocolo foi adaptado do projeto irmão `nexus-insights` (mesma empresa, mesmo cliente), onde rotineiramente rodam 2-3 sessões Claude em paralelo. As regras foram batidas em produção lá.
+`agente status` na pasta atual responde em 1 segundo.
