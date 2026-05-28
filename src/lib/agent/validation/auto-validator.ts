@@ -9,10 +9,10 @@
  * Laudo: docs/superpowers/research/2026-05-27-laudo-agente-nex-r11-r16.md §2
  *
  * 4 validadores:
- *   V1 anti-truncamento  — rejeita "veio truncado" quando ha agregado
- *   V2 anti-invencao     — verifica numeros citados contra toolResults
- *   V3 anti-recusa       — rejeita "nao consegui obter" quando ha _RESPOSTA
- *   V4 anti-placeholder  — rejeita bullets com "nao consegui obter esse dado"
+ *   V1 anti-truncamento  , rejeita "veio truncado" quando ha agregado
+ *   V2 anti-invencao     , verifica numeros citados contra toolResults
+ *   V3 anti-recusa       , rejeita "nao consegui obter" quando ha _RESPOSTA
+ *   V4 anti-placeholder  , rejeita bullets com "nao consegui obter esse dado"
  *
  * Feature flag: AgentSettings.autoValidatorMode (off|shadow|active).
  */

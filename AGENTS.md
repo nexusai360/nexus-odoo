@@ -15,12 +15,12 @@ O protocolo detalhado está em **`docs/agents/_README.md`**. Resumo aqui — e o
 
 ### Início da sessão (obrigatório)
 
-1. `git fetch origin main && git status` — pegar o estado mais recente do remoto.
-2. `git log --oneline HEAD..origin/main` (commits remotos novos) e `git log --oneline -10` (atividade recente).
-3. `ls docs/agents/active/` — quais agentes estão ativos.
+1. **`npm run sync`** — comando único que mostra: branch atual, distância da `origin/main`, top 5 commits novos em `main`, agentes ativos lendo `docs/agents/active/`, últimas 3 entradas do `HISTORY.md`. **Só informa, não altera nada.** Substitui os passos 2-5 abaixo na maioria dos casos.
+2. (Detalhe, se quiser ir mais fundo) `git log --oneline HEAD..origin/main` (commits remotos novos) e `git log --oneline -10` (atividade recente).
+3. (Detalhe) `ls docs/agents/active/` — quais agentes estão ativos.
 4. Para cada `docs/agents/active/<other-agent>.md` ALHEIO: ler, entender o tópico do outro, identificar arquivos compartilhados.
-5. `tail -30 docs/agents/HISTORY.md` — atividade recente registrada.
-6. Se houver mudanças remotas: `git pull --rebase origin main`.
+5. (Detalhe) `tail -30 docs/agents/HISTORY.md` — atividade recente registrada.
+6. Se o `sync` apontou que sua branch está atrás: `git pull --rebase origin main` (ou rebase contra branch alvo).
 7. **Criar `docs/agents/active/<meu-agent-id>.md`** descrevendo o que vou fazer (formato no `_README.md`).
 
 ### Antes de QUALQUER mudança em arquivo
@@ -66,14 +66,15 @@ Antes de tocar um deles:
 
 ### Antes de commitar
 
-1. **`git fetch origin main`** de novo.
-2. Se há commits remotos novos durante seu trabalho:
+1. **`npm run sync`** — confirma que ninguém pushou algo novo enquanto você trabalhava.
+2. Se o `sync` mostrou commits novos em `main`:
    - `git pull --rebase origin main` (ou rebase contra branch alvo se não for `main`).
    - Resolver conflitos manualmente (não force-push).
    - Re-rodar `npm run typecheck` e `npm test`.
 3. Stage **APENAS** os arquivos que você modificou para a sua feature. **Nunca** `git add -A` ou `git add .` — pega trabalho dos outros.
 4. Se aparecer untracked file que não é seu: deixar quieto. Outro agente vai commitar.
-5. **Append uma linha em `docs/agents/HISTORY.md`** quando o commit é "relevante" (bump de versão, migration, mudança em arquivo compartilhado, novo spec/plan, fix urgente). Formato no `_README.md`.
+5. **`git commit`** dispara o pre-commit hook (husky + lint-staged) — roda eslint nos arquivos staged. Se bloquear por lint, arrume o arquivo. **Saída de emergência:** `git commit --no-verify` pula a checagem (use raramente, só quando souber por que).
+6. **Append uma linha em `docs/agents/HISTORY.md`** quando o commit é "relevante" (bump de versão, migration, mudança em arquivo compartilhado, novo spec/plan, fix urgente). Formato no `_README.md`.
 
 ### Antes de PUSH (deploy automático na main)
 
@@ -81,13 +82,14 @@ Antes de tocar um deles:
 
 > Para branches de feature (ex.: `feat/f4-onda2-*`), CI roda mas não há deploy. Pode push livremente.
 
-1. `gh run list --limit 5` — verificar se há build queued/in-progress.
-2. Se há build de outro agente em curso na `main`:
+1. **`npm run sync`** — última checagem se outro agente pushou algo enquanto você terminava o commit.
+2. `gh run list --limit 5` — verificar se há build queued/in-progress.
+3. Se há build de outro agente em curso na `main`:
    - Esperar terminar OU
    - Confirmar que o seu push não conflita com o que está sendo deployado.
-3. Verificar status atual de produção (`/api/health`) — não pushar `main` se já está caindo.
-4. Push.
-5. (Opcional) `gh run watch <id>` pra acompanhar.
+4. Verificar status atual de produção (`/api/health`) — não pushar `main` se já está caindo.
+5. Push.
+6. (Opcional) `gh run watch <id>` pra acompanhar.
 
 ### Fim da sessão
 

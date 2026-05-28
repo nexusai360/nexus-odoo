@@ -12,6 +12,11 @@ Três peças, todas em arquivos **separados por agente** para minimizar conflito
 
 ---
 
+## Ferramentas de apoio (não bloqueantes)
+
+- **`npm run sync`** , mostra: em que branch este checkout está, quantos commits atrás da `main`, quem mais está ativo (lê `docs/agents/active/`), últimas 3 entradas do `HISTORY.md`. **Não altera nada.** Use no início de cada sessão e quando quiser saber se algo mudou na main.
+- **Pre-commit hook (husky)** , quando você faz `git commit`, o eslint roda nos arquivos staged. Bloqueia se tiver erro de lint (em-dash, `any` solto etc.). Custa ~2-3s. **Saída de emergência:** `git commit --no-verify -m "..."` pula a checagem (use só quando souber o que está fazendo).
+
 ## Peça 1: `docs/agents/active/` (work-in-progress)
 
 ### Início da sessão (obrigatório)
