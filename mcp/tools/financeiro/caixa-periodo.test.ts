@@ -43,7 +43,9 @@ describe("financeiro_caixa_periodo", () => {
     const result = await financeiroCaixaPeriodo.handler({}, ctx);
     expect(result).toMatchObject({ estado: "ok" });
     if (result.estado !== "preparando") {
-      expect(result.dados).toEqual({ entrada: 1000, saida: 400, saldo: 600 });
+      // T-38 (Ronda 3): dados agora inclui _RESPOSTA/_DESTAQUE/_agregado.
+      // Validamos apenas os campos factuais.
+      expect(result.dados).toMatchObject({ entrada: 1000, saida: 400, saldo: 600 });
     }
   });
 

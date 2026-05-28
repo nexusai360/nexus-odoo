@@ -123,11 +123,12 @@ export const comercialPedidosListarTopValor: ToolEntry<Input, Output> = {
     const top = linhas[0];
     return enriquecerEnvelope(envelope, "comercial_pedidos_listar_top_valor", {
       destaque: {
-        totalListados: linhas.length,
-        valorTotalListados: d.valorTotalListados ?? linhas.reduce((s, l) => s + l.valorTotal, 0),
+        // Nomes esperados pelo fmtPedidosListarTopValor do responder.ts.
+        totalPedidos: linhas.length,
         topPedido: top?.numero ?? "",
+        valorTopPedido: top?.valorTotal ?? 0,
         topParticipante: top?.participanteNome ?? "",
-        topValor: top?.valorTotal ?? 0,
+        valorTotalListados: d.valorTotalListados ?? linhas.reduce((s, l) => s + l.valorTotal, 0),
       },
       agregado: { contagem: linhas.length, soma: d.valorTotalListados ?? 0 },
     });
