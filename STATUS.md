@@ -12,20 +12,22 @@
 > - Resultado: 78,5% → 95,5% CORRETO real (R17 → R23, 290 turnos)
 > - +17pp acumulado, meta 95% superada
 >
-> ### Pendências pós-merge (deploy manual em prod, ainda não feito)
-> 1. Aplicar 2 migrations aditivas (geradas neste ciclo):
->    - `20260528010000_fato_parceiro_data_criacao` (coluna + índice)
->    - `20260528020000_dim_empresa_grupo` (tabela seedada via regex + GRANT)
-> 2. Backfill em prod (mesmo SQL que rodei em dev):
->    ```sql
->    UPDATE fato_parceiro fp
->       SET data_criacao = (rrp.data->>'create_date')::timestamp
->      FROM raw_res_partner rrp
->     WHERE fp.odoo_id = rrp.odoo_id AND rrp.data->>'create_date' IS NOT NULL;
->    ```
-> 3. Verificar `GRANT SELECT ON dim_empresa_grupo TO nexus_mcp` em prod.
-> 4. Smoke E2E pós-deploy: 5 perguntas reais (top 10 contas a receber,
->    títulos vencidos hoje, quais notas, vai bater a meta, saldo total).
+> ### Tudo aplicado no ambiente local (único existente)
+> Projeto ainda não tem produção. Tudo abaixo já está rodando no
+> ambiente local (Postgres `nexus_odoo_l1` via Docker compose):
+> - Migration `20260528010000_fato_parceiro_data_criacao` aplicada
+>   (coluna + índice).
+> - Migration `20260528020000_dim_empresa_grupo` aplicada (tabela com
+>   18 empresas do grupo Matrix seedadas via regex + GRANT já incluído).
+> - Backfill rodado: 6576/6576 parceiros com `data_criacao` populada
+>   (datas entre 2025-04-11 e 2026-05-27).
+> - Smoke E2E executado: `validate-novas-tools.ts` 16/16 OK contra SQL
+>   direto. Smoke test geral: 49 OK / 0 ERRO em 65 tools.
+>
+> Quando o projeto for pra produção (Portainer + ghcr.io conforme
+> arquitetura prevista no CLAUDE.md §3), o `docker/entrypoint.sh` já
+> roda `prisma migrate deploy` automaticamente no boot do container
+> `app`. Só o backfill é manual e único (script SQL acima preserva).
 >
 > ### Relatórios completos da rodada (em `docs/agent-quality-review/`)
 > - `auditoria-manual-r17-r18.md` (raiz do trabalho)
@@ -43,10 +45,10 @@
 > ou agente. **Não mexer em arquivos da branch dele** sem coordenar.
 >
 > ### Próxima sessão, quando retomar
-> - Branch ativa: `main` (PRs #30 e #31 já mergeados).
-> - Deploy em produção das migrations + backfill (item acima) está
->   pendente, mas **não é bloqueante**: o código está rodando em prod
->   desde 14:04 com schema antigo; só não vai responder "parceiros
+> - Branch ativa: `main` (PRs #30 + #31 + #32 mergeados).
+> - Não há pendência operacional. Ambiente local tem tudo aplicado.
+> - **NÃO existe produção ainda** (corrigido em 2026-05-28 11:30 após
+>   confusão na sessão anterior). Antigo: "parceiros
 >   novos cadastrados esta semana" nem "quantas filiais temos" até as
 >   2 migrations rodarem em prod.
 > - Próxima frente provável: avaliar fechamento da Ronda nex como
