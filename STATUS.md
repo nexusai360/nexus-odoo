@@ -1,10 +1,35 @@
 # STATUS — nexus-odoo
 
-> **Ponto de retomada entre sessões.** Atualizado em 2026-05-28 11:20.
+> **Ponto de retomada entre sessões.** Atualizado em 2026-05-28 12:05.
 > Ao abrir uma sessão: ler **este arquivo** e o **`CLAUDE.md`**. Modo autônomo
 > é o padrão (ver `CLAUDE.md §6`).
 >
-> ## ✅ BRANCH ATUAL: `main` (Ronda Nex concluída e mergeada)
+> ## 🔄 BRANCH ATIVA: `feat/router-catalogo-r1` (Sub-projeto R1 do roadmap)
+>
+> **Router de catalogo por embedding** em andamento (Caminho C do brainstorm
+> 2026-05-28). Habilitador arquitetural das ondas de expansao do MCP. Spec/Plan
+> em `docs/superpowers/{specs,plans}/2026-05-28-router-catalogo-*`.
+>
+> ### Progresso atual (5 commits ahead de origin/main)
+> - **G0**: rebase + investigacao bateria R-X (`pnpm tsx scripts/quality-audit/03-run-test-questions.ts`) ✓
+> - **Wave A**: migration aplicada (5 colunas em agent_settings + tabela agent_router_decision), 5 modulos puros (vocabulary, tool-to-domain, question-normalize, types), 39/39 testes verdes ✓
+> - **Wave B**: motor completo (embed-domains race-safe, embed-question LRU 200, pick-domains regras 1-8, filter-catalog generico, log-decision fire-and-forget), 98/98 testes ✓
+> - **Wave C parcial**: C1 wire em `src/lib/agent/run-agent.ts` (shadow default, ROUTER_FORCE_DISABLE honrado, decisao logada por turno em AgentRouterDecision) ✓
+>
+> ### Garantia preservada
+> - **Shadow mode default**: `routerEnabled=false` por padrao, LLM recebe catalogo inteiro. Zero impacto no 95,5% baseline da R23.
+> - **98 testes do router verdes** + 1944 outros testes do projeto verdes. 1 falha (`src/worker/catalog/model-catalog.test.ts`) e pre-existente em main (nao regressao do R1).
+> - **Migration aditiva**, GRANT SELECT idempotente para roles MCP, defaults conservadores.
+>
+> ### Pendencias
+> - **C2**: `src/lib/agent/validation/router-retry.ts` + integracao com auto-validator (so dispara em active mode, baixa prioridade enquanto shadow).
+> - **C3**: testes integration end-to-end de Wave C.
+> - **Wave D**: aba `/admin/qualidade/router` (KPIs, histograma, discordancias, toggle, calibragem).
+> - **Wave E**: kill-switch endpoint + script `scripts/router/calibrate-against-batteries.ts`.
+> - **Wave F**: testes adicionais + benchmark `pickDurationMs`.
+> - **Wave G**: bateria R-X em shadow >= 95,5%, code review, UI review, PR contra main.
+>
+> ## ✅ Ronda Nex anterior concluída e mergeada
 >
 > **Ronda de qualidade do Agente Nex 100% entregue:**
 > - **PR #30 MERGEADO** em 2026-05-28 14:04 (commit `4d9c226`)
