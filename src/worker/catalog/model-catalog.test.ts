@@ -34,6 +34,18 @@ const MODELOS_L1B = new Set([
   "sped.aliquota.simples.teto",
 ]);
 
+// Modelos que existem em discovery/output/modelos (varredura F0 historica)
+// mas foram INTENCIONALMENTE removidos do MODEL_CATALOG. Excluir do "noDisco"
+// para que a comparacao bata. Documentar SEMPRE o motivo + data no comentario
+// inline em src/worker/catalog/model-catalog.ts.
+const MODELOS_REMOVIDOS = new Set([
+  // pedido.documento.historico.tempo: removido em 2026-05-25 — eh view (sem
+  // coluna `id`), sync incremental falha com "ERRO: coluna id nao existe".
+  // Nao tem fato consumidor; raw orfa. Comentario fonte em
+  // src/worker/catalog/model-catalog.ts L44-L48.
+  "pedido.documento.historico.tempo",
+]);
+
 describe("model-catalog", () => {
   it("tem 113 modelos", () => {
     expect(MODEL_CATALOG).toHaveLength(113);
@@ -50,7 +62,11 @@ describe("model-catalog", () => {
       const arquivos = fs
         .readdirSync(discoveryDir)
         .filter((f) => f.endsWith(".json"));
-      const noDisco = new Set(arquivos.map((f) => f.replace(/\.json$/, "")));
+      const noDisco = new Set(
+        arquivos
+          .map((f) => f.replace(/\.json$/, ""))
+          .filter((m) => !MODELOS_REMOVIDOS.has(m)),
+      );
       const noCatalogo = new Set(
         MODEL_CATALOG.map((m) => m.odooModel).filter(
           (m) => !MODELOS_L1A.has(m) && !MODELOS_L1C.has(m) && !MODELOS_L1B.has(m),
