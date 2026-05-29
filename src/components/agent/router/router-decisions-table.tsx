@@ -27,6 +27,7 @@ import {
 } from "@/components/ui/table";
 import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
+import { CustomSelect } from "@/components/ui/custom-select";
 import { PageJumpNavigator } from "@/components/agent/consumo/page-jump-navigator";
 import type { RouterDecisionRow } from "@/lib/agent/router/queries";
 
@@ -108,6 +109,17 @@ export function RouterDecisionsTable({ rows, total, page, pageSize }: Props) {
   const goToPage = (next: number) => {
     const params = new URLSearchParams(searchParams.toString());
     params.set("page", String(Math.min(Math.max(0, next), totalPages - 1)));
+    startTransition(() => {
+      router.push(`${pathname}?${params.toString()}`, { scroll: false });
+    });
+  };
+
+  const changePageSize = (nextSize: number) => {
+    // Ancora na 1a linha atual (nao volta pra pagina 1 ao mudar o tamanho).
+    const firstRow = page * pageSize;
+    const params = new URLSearchParams(searchParams.toString());
+    params.set("ps", String(nextSize));
+    params.set("page", String(Math.floor(firstRow / nextSize)));
     startTransition(() => {
       router.push(`${pathname}?${params.toString()}`, { scroll: false });
     });
@@ -217,16 +229,16 @@ export function RouterDecisionsTable({ rows, total, page, pageSize }: Props) {
             {/* Paginacao */}
             <div
               className={cn(
-                "flex flex-wrap items-center justify-between gap-3 border-t border-border px-4 py-3",
+                "grid grid-cols-1 items-center gap-3 border-t border-border px-4 py-3 sm:grid-cols-3",
                 pending && "opacity-70",
               )}
             >
-              <p className="text-xs text-muted-foreground tabular-nums">
+              <p className="text-xs text-muted-foreground tabular-nums justify-self-start">
                 Mostrando {startIdx}
                 {"-"}
                 {endIdx} de {total}
               </p>
-              <div className="flex items-center gap-2">
+              <div className="flex items-center justify-center gap-2">
                 <button
                   type="button"
                   aria-label="Página anterior"
@@ -251,6 +263,18 @@ export function RouterDecisionsTable({ rows, total, page, pageSize }: Props) {
                 >
                   <ChevronRight className="h-4 w-4" aria-hidden />
                 </button>
+              </div>
+              <div className="justify-self-end">
+                <CustomSelect
+                  value={String(pageSize)}
+                  onChange={(v) => changePageSize(Number(v))}
+                  options={[50, 100, 500].map((n) => ({
+                    value: String(n),
+                    label: `${n} por página`,
+                  }))}
+                  triggerClassName="h-8 min-h-[34px] w-[140px] text-xs"
+                  aria-label="Itens por página"
+                />
               </div>
             </div>
           </>

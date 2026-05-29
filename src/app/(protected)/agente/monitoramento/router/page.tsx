@@ -32,7 +32,8 @@ import { getEmbeddingCredentialStatus } from "@/lib/actions/router-embedding-cre
 import { getPeriodInTz, type PeriodKey } from "@/lib/datetime-core";
 
 const TZ = "America/Sao_Paulo";
-const ROUTER_PAGE_SIZE = 50;
+const ROUTER_PAGE_SIZES = [50, 100, 500];
+const DEFAULT_ROUTER_PAGE_SIZE = 50;
 const VALID_PKS: PeriodKey[] = [
   "hoje",
   "semana_atual",
@@ -84,6 +85,7 @@ export default async function MonitoramentoRouterPage({
     ce?: string;
     modos?: string;
     page?: string;
+    ps?: string;
   }>;
 }) {
   const user = await getCurrentUser();
@@ -98,6 +100,9 @@ export default async function MonitoramentoRouterPage({
     ? sp.modos.split(",").filter(Boolean)
     : [];
   const page = Number(sp.page) >= 0 ? Math.floor(Number(sp.page)) : 0;
+  const pageSize = ROUTER_PAGE_SIZES.includes(Number(sp.ps))
+    ? Number(sp.ps)
+    : DEFAULT_ROUTER_PAGE_SIZE;
 
   // minDate = primeira decisao registrada (para o "Personalizado" e "Tudo").
   const earliest = await getRouterEarliestDecision();
@@ -124,7 +129,7 @@ export default async function MonitoramentoRouterPage({
     getRouterKpis(filter),
     getRouterHistogram(filter),
     getRouterLatencyTimeseries(filter),
-    getRouterDecisions(filter, page, ROUTER_PAGE_SIZE),
+    getRouterDecisions(filter, page, pageSize),
     getRouterSettings(),
     getRouterEligibleToActivate(),
     getEmbeddingCredentialStatus(),
@@ -155,7 +160,7 @@ export default async function MonitoramentoRouterPage({
           decisions={decisionsPage.rows}
           decisionsTotal={decisionsPage.total}
           page={page}
-          pageSize={ROUTER_PAGE_SIZE}
+          pageSize={pageSize}
           settings={settings ?? DEFAULT_SETTINGS}
           eligibility={eligibility}
           embeddingCredential={embeddingCredential}
