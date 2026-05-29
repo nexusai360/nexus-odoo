@@ -2371,8 +2371,13 @@ model LlmUsage {
   userId         String?  @map("user_id") @db.Uuid
   // Credencial (chave de API) usada — permite somar o consumo por chave (A4).
   credentialId   String?  @map("credential_id") @db.Uuid
-  // Tipo da requisição para a tag de Consumo (G11): texto/imagem/audio/arquivo.
+  // Tipo da requisição para a tag de Consumo (G11): texto/imagem/audio/arquivo/embedding.
   requestKind    String   @default("texto") @map("request_kind")
+  /// Origem da chamada para a tag "Origem" do menu de consumo. NULL em linhas
+  /// antigas (derivam de isPlayground: Agente Nex / Playground). Valores novos:
+  /// "router" (router de catalogo em producao) e "router_calibracao" (rodadas
+  /// de calibragem offline). Permite distinguir gasto do router no historico.
+  origin         String?  @map("origin")
   createdAt      DateTime @default(now()) @map("created_at")
 
   @@index([createdAt])

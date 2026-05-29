@@ -5,7 +5,7 @@
 // Pequena duplicacao em race de mesma pergunta concorrente e' aceitavel
 // (custo ~$0.000002 por colisao).
 
-import { embed } from "../rag/embed";
+import { embed, type EmbedUsageContext } from "../rag/embed";
 import { hashKey, normalize } from "./question-normalize";
 
 /** LRU minimalista baseado em Map. Map em JS preserva ordem de insercao, o
@@ -61,8 +61,13 @@ export type EmbedQuestionResult = {
 };
 
 /** Embeda a pergunta do usuario via cache LRU.
- *  Lookup pela chave SHA1 16 chars do `normalize(q)`. */
-export async function embedQuestion(question: string): Promise<EmbedQuestionResult> {
+ *  Lookup pela chave SHA1 16 chars do `normalize(q)`.
+ *  `usageCtx` (opcional) faz a chamada aparecer no menu de consumo. So conta
+ *  custo quando ha cache miss (uma chamada real de embedding). */
+export async function embedQuestion(
+  question: string,
+  usageCtx?: EmbedUsageContext,
+): Promise<EmbedQuestionResult> {
   const qNorm = normalize(question);
   const key = hashKey(qNorm);
 
@@ -71,7 +76,7 @@ export async function embedQuestion(question: string): Promise<EmbedQuestionResu
     return { vector: cached, cacheHit: true };
   }
 
-  const vector = await embed(qNorm);
+  const vector = await embed(qNorm, usageCtx ? { usage: usageCtx } : undefined);
   cache.set(key, vector);
   return { vector, cacheHit: false };
 }

@@ -134,7 +134,7 @@ describe("runCalibration", () => {
     expect(r.latencyP95).toBe(40);
   });
 
-  it("marca promotable=false quando Top-1 < 85%", async () => {
+  it("marca promotable=false quando Top-1 < 95%", async () => {
     const r = await runCalibration({ writeReport: false });
     expect(r.promotable).toBe(false);
     expect(r.reportPath).toBeNull();

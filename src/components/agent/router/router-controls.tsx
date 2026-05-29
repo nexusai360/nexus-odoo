@@ -221,7 +221,7 @@ export function RouterControls({ initial, eligibility }: Props) {
               <DialogDescription className="space-y-2">
                 <span className="block">
                   O router atual nao bate o criterio recomendado (Top-1
-                  &gt;= 85% em 7 dias com &gt;= 200 decisoes). Ativar
+                  &gt;= 95% em 7 dias com &gt;= 200 decisoes). Ativar
                   agora pode degradar a qualidade do agente Nex.
                 </span>
                 <span className="block">Motivo do gate:</span>

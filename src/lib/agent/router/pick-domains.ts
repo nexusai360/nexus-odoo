@@ -13,6 +13,7 @@ import { getDomainVectors } from "./embed-domains";
 import { embedQuestion } from "./embed-question";
 import { normalize } from "./question-normalize";
 import type { RouterDecision, RouterSettings } from "./types";
+import type { EmbedUsageContext } from "../rag/embed";
 
 /** Versao maior.menor.patch do codigo do router. Atualizar quando
  *  comportamento mudar de forma significativa (afeta routerVersion no log). */
@@ -56,6 +57,7 @@ function isTrivial(question: string): boolean {
 /** Embed da pergunta com timeout duro. Retorna `null` em caso de erro. */
 async function safeEmbedQuestion(
   question: string,
+  usageCtx?: EmbedUsageContext,
 ): Promise<number[] | null> {
   try {
     const timeout = new Promise<never>((_, reject) =>
@@ -64,10 +66,12 @@ async function safeEmbedQuestion(
         EMBED_TIMEOUT_MS,
       ),
     );
-    const result = await Promise.race([embedQuestion(question), timeout]);
+    const result = await Promise.race([
+      embedQuestion(question, usageCtx),
+      timeout,
+    ]);
     return result.vector;
   } catch (err) {
-    // eslint-disable-next-line no-console
     console.warn("[router:pick] embed failed", { error: String(err) });
     return null;
   }
@@ -89,6 +93,7 @@ function buildDecision(
 export async function pickDomains(
   question: string,
   settings: RouterSettings,
+  usageCtx?: EmbedUsageContext,
 ): Promise<RouterDecision> {
   const startedAt = Date.now();
 
@@ -104,7 +109,7 @@ export async function pickDomains(
   }
 
   // Regra 2: embedda pergunta (com timeout). Fallback se falhar.
-  const qVector = await safeEmbedQuestion(question);
+  const qVector = await safeEmbedQuestion(question, usageCtx);
   if (qVector === null) {
     return buildDecision({
       pickedDomains: [],
@@ -120,7 +125,6 @@ export async function pickDomains(
   try {
     domainVectors = await getDomainVectors();
   } catch (err) {
-    // eslint-disable-next-line no-console
     console.warn("[router:pick] domain vectors failed", {
       error: String(err),
     });

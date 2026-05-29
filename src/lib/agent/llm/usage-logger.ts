@@ -43,8 +43,15 @@ export interface LogUsageArgs {
   responseChars?: number;
   /** Chave de API usada , atribui o consumo à chave e atualiza o saldo. */
   credentialId?: string;
-  /** Tipo da requisição: texto | imagem | audio | arquivo (default: texto). */
-  requestKind?: "texto" | "imagem" | "audio" | "arquivo";
+  /** Tipo da requisição: texto | imagem | audio | arquivo | embedding (default: texto). */
+  requestKind?: "texto" | "imagem" | "audio" | "arquivo" | "embedding";
+  /**
+   * Origem da chamada para a tag "Origem" do consumo. Quando ausente, o front
+   * deriva de isPlayground (Agente Nex / Playground). Valores explicitos:
+   * "router" (router de catalogo em producao), "router_calibracao" (rodadas
+   * de calibragem offline).
+   */
+  origin?: string;
 }
 
 /**
@@ -105,6 +112,7 @@ export async function logUsage(args: LogUsageArgs): Promise<void> {
         isPlayground: args.isPlayground ?? false,
         credentialId: args.credentialId ?? null,
         requestKind: args.requestKind ?? "texto",
+        origin: args.origin ?? null,
       },
     });
 

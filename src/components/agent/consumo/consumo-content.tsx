@@ -179,12 +179,25 @@ const REQUEST_KIND_STYLES: Record<string, string> = {
   imagem: "bg-sky-500/10 text-sky-700 dark:text-sky-300",
   audio: "bg-violet-500/10 text-violet-700 dark:text-violet-300",
   arquivo: "bg-emerald-500/10 text-emerald-700 dark:text-emerald-300",
+  embedding: "bg-amber-500/10 text-amber-700 dark:text-amber-300",
 };
 const REQUEST_KIND_LABELS: Record<string, string> = {
   texto: "Texto",
   imagem: "Imagem",
   audio: "Áudio",
   arquivo: "Arquivo",
+  embedding: "Embedding",
+};
+
+// Coluna "Origem" , quando a linha tem `origin` explícito (router), usa este
+// mapa; senão cai no derivado de isPlayground (Agente Nex / Playground).
+const ORIGIN_STYLES: Record<string, string> = {
+  router: "bg-indigo-500/10 text-indigo-700 dark:text-indigo-300",
+  router_calibracao: "bg-fuchsia-500/10 text-fuchsia-700 dark:text-fuchsia-300",
+};
+const ORIGIN_LABELS: Record<string, string> = {
+  router: "Router",
+  router_calibracao: "Router (calibragem)",
 };
 
 // ---------------------------------------------------------------------------
@@ -1183,12 +1196,18 @@ export function ConsumoContent({ minDate: minDateIso }: ConsumoContentProps) {
                           <span
                             className={cn(
                               "inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-medium",
-                              row.isPlayground
-                                ? "bg-amber-500/10 text-amber-700 dark:text-amber-300"
-                                : "bg-violet-500/10 text-violet-700 dark:text-violet-300",
+                              row.origin && ORIGIN_STYLES[row.origin]
+                                ? ORIGIN_STYLES[row.origin]
+                                : row.isPlayground
+                                  ? "bg-amber-500/10 text-amber-700 dark:text-amber-300"
+                                  : "bg-violet-500/10 text-violet-700 dark:text-violet-300",
                             )}
                           >
-                            {row.isPlayground ? "Playground" : "Agente Nex"}
+                            {row.origin && ORIGIN_LABELS[row.origin]
+                              ? ORIGIN_LABELS[row.origin]
+                              : row.isPlayground
+                                ? "Playground"
+                                : "Agente Nex"}
                           </span>
                         </TableCell>
                         <TableCell>{providerLabel(row.provider)}</TableCell>

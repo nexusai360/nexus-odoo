@@ -22,6 +22,7 @@
 import { readFileSync, writeFileSync } from "fs";
 import { resolve } from "path";
 import { pickDomains } from "@/lib/agent/router/pick-domains";
+import { ROUTER_PROMOTION_MIN_TOP1 } from "@/lib/agent/router/constants";
 
 // Dominios da bateria que NAO sao dominios do MCP. Sao categorias semanticas.
 // Mapeamos para a interpretacao mais razoavel para fim de avaliacao.
@@ -46,6 +47,12 @@ export interface CalibrationOptions {
    * embeddings da OpenAI).
    */
   concurrency?: number;
+  /**
+   * Quando definido, cada embedding da calibragem vira uma linha de consumo
+   * (LlmUsage) com esta origem (ex.: "router_calibracao"). Default: não loga
+   * (mantém o histórico de consumo limpo durante o tuning).
+   */
+  logUsageOrigin?: string;
 }
 
 export interface CalibrationDomainStat {
@@ -74,7 +81,7 @@ export interface CalibrationResult {
   perDomain: CalibrationDomainStat[];
   /** Caminho do relatorio salvo, ou null se writeReport=false / falha de IO. */
   reportPath: string | null;
-  /** Criterio de promocao do PLAN v3 §11.3: Top-1 >= 85%. */
+  /** Criterio de promocao: Top-1 >= meta (95%, ver constants.ts). */
   promotable: boolean;
   /** ISO timestamp de quando a calibragem terminou. */
   generatedAt: string;
@@ -220,7 +227,13 @@ export async function runCalibration(
       const i = next++;
       if (i >= questions.length) return;
       const q = questions[i]!;
-      const decision = await pickDomains(q.question, { threshold, topK });
+      const decision = await pickDomains(
+        q.question,
+        { threshold, topK },
+        options.logUsageOrigin
+          ? { origin: options.logUsageOrigin }
+          : undefined,
+      );
       const top1 = decision.pickedDomains[0];
       const mappable = isLabelMappable(q.domain);
       const top1Correct = mappable ? top1 === q.domain : null;
@@ -294,7 +307,7 @@ export async function runCalibration(
     latencyP99: percentile(durations, 99),
     perDomain,
     reportPath: null,
-    promotable: top1Accuracy >= 0.85,
+    promotable: top1Accuracy >= ROUTER_PROMOTION_MIN_TOP1,
     generatedAt: new Date().toISOString(),
   };
 

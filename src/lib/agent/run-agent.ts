@@ -391,10 +391,21 @@ export async function runAgent(args: RunAgentInput): Promise<RunAgentResult> {
     // R1 router de catalogo: filtra catalogo entregue ao LLM por similaridade
     // semantica. Default shadow: nao filtra, so loga decisao. Ativacao gradual
     // via AgentSettings.routerEnabled. Ver spec §5.
-    const routerDecision = await pickDomains(args.userMessage, {
-      threshold: agentSettings.routerThreshold,
-      topK: agentSettings.routerTopK,
-    });
+    const routerDecision = await pickDomains(
+      args.userMessage,
+      {
+        threshold: agentSettings.routerThreshold,
+        topK: agentSettings.routerTopK,
+      },
+      // Telemetria: a chamada de embedding do router aparece no menu de
+      // consumo com origem "router" (so conta custo em cache miss).
+      {
+        origin: "router",
+        conversationId: args.conversationId,
+        userId: args.userId,
+        isPlayground: args.isPlayground,
+      },
+    );
     const routerMode: "shadow" | "active" = agentSettings.routerEnabled
       ? "active"
       : "shadow";

@@ -3,12 +3,14 @@
 /**
  * R1 router de catalogo: KPI cards da aba /agente/router.
  *
- * Top-1 (verde quando >= 85%), Top-K mais restrito, fallback %, latencia p95.
+ * Top-1 (verde quando >= 95%, meta de ativacao), Top-K mais restrito,
+ * fallback %, latencia p95.
  */
 
 import { Crosshair, Layers, Activity, Clock4 } from "lucide-react";
 import { KpiCard } from "@/components/reports/kpi-card";
 import type { RouterKpis } from "@/lib/agent/router/queries";
+import { ROUTER_PROMOTION_MIN_TOP1_PCT } from "@/lib/agent/router/constants";
 
 interface Props {
   kpis: RouterKpis;
@@ -16,7 +18,7 @@ interface Props {
 
 export function RouterKpisBlock({ kpis }: Props) {
   const top1Tone =
-    kpis.top1AccPct >= 85
+    kpis.top1AccPct >= ROUTER_PROMOTION_MIN_TOP1_PCT
       ? "success"
       : kpis.top1AccPct >= 70
         ? "warning"

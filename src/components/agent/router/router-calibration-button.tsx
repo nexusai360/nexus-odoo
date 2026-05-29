@@ -6,7 +6,7 @@
  * Dispara POST /api/admin/router/calibrate, que roda pickDomains contra as 291
  * perguntas das rodadas R8-R23 (~30s, sem LLM de chat). Ao terminar, mostra os
  * KPIs do ultimo run (Top-1, Top-K, fallbacks, latencia p95) e um selo de
- * aprovacao quando Top-1 >= 85% (criterio de promocao do PLAN v3 §11.3).
+ * aprovacao quando Top-1 >= 95% (meta de ativacao, ver constants.ts).
  *
  * Spec: docs/superpowers/specs/2026-05-28-router-catalogo-design.md §10.1.7.
  */
@@ -133,8 +133,8 @@ export function RouterCalibrationButton() {
               )}
               <span>
                 {result.promotable
-                  ? "Apto para ativacao: Top-1 atingiu o minimo de 85%."
-                  : "Abaixo do minimo de 85% no Top-1. Ajustar domain-vocabulary e recalibrar."}
+                  ? "Apto para ativacao: Top-1 atingiu o minimo de 95%."
+                  : "Abaixo do minimo de 95% no Top-1. Ajustar domain-vocabulary e recalibrar."}
               </span>
             </div>
 

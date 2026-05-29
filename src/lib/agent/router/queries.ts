@@ -13,6 +13,10 @@
 // incompletos.
 
 import { prisma } from "@/lib/prisma";
+import {
+  ROUTER_PROMOTION_MIN_TOP1_PCT,
+  ROUTER_PROMOTION_MIN_DECISIONS,
+} from "@/lib/agent/router/constants";
 
 const IN_FLIGHT_WINDOW_SECONDS = 60;
 
@@ -261,9 +265,10 @@ export async function getRouterLatencyTimeseries(
     }));
 }
 
-/** D2e: o router pode ser ativado com seguranca? Gate da SPEC v3 §10.1.6:
- *  - Top-1 acerto >= 85% nos ultimos 7 dias, OU
- *  - >= 200 decisoes em shadow com Top-1 >= 85%. */
+/** D2e: o router pode ser ativado com seguranca? Gate da SPEC v3 §10.1.6
+ *  (meta elevada para 95% por decisao do usuario, 2026-05-28):
+ *  - Top-1 acerto >= 95% nos ultimos 7 dias, OU
+ *  - >= 200 decisoes em shadow com Top-1 >= 95%. */
 export async function getRouterEligibleToActivate(): Promise<RouterEligibility> {
   const kpis = await getRouterKpis(7);
   if (kpis.totalDecisoes === 0) {
@@ -273,16 +278,16 @@ export async function getRouterEligibleToActivate(): Promise<RouterEligibility> 
         "Nenhuma decisao registrada. Mantenha o router em shadow ate acumular dado.",
     };
   }
-  if (kpis.totalDecisoes < 200) {
+  if (kpis.totalDecisoes < ROUTER_PROMOTION_MIN_DECISIONS) {
     return {
-      eligible: kpis.top1AccPct >= 85,
-      reason: `${kpis.totalDecisoes} decisoes (< 200). Top-1 atual ${kpis.top1AccPct}%. Recomendado: 200+ decisoes com Top-1 >= 85%.`,
+      eligible: kpis.top1AccPct >= ROUTER_PROMOTION_MIN_TOP1_PCT,
+      reason: `${kpis.totalDecisoes} decisoes (< ${ROUTER_PROMOTION_MIN_DECISIONS}). Top-1 atual ${kpis.top1AccPct}%. Recomendado: ${ROUTER_PROMOTION_MIN_DECISIONS}+ decisoes com Top-1 >= ${ROUTER_PROMOTION_MIN_TOP1_PCT}%.`,
     };
   }
-  if (kpis.top1AccPct < 85) {
+  if (kpis.top1AccPct < ROUTER_PROMOTION_MIN_TOP1_PCT) {
     return {
       eligible: false,
-      reason: `Top-1 ${kpis.top1AccPct}% < 85%. Ajustar domain-vocabulary.ts e re-validar antes de ativar.`,
+      reason: `Top-1 ${kpis.top1AccPct}% < ${ROUTER_PROMOTION_MIN_TOP1_PCT}%. Ajustar domain-vocabulary.ts e re-validar antes de ativar.`,
     };
   }
   return {
