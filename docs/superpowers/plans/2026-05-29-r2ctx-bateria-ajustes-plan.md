@@ -60,3 +60,22 @@ T8, T9, T3, T4, T1/T2 (quick, baixo risco) -> T5, T6 (pesquisa de catálogo) -> 
 
 ## Verificação final
 `tsc` + `eslint` + `jest` + `next build`; rebuild containers; validação visual; atualizar PR #37.
+
+## Status (2026-05-29)
+- [x] T1 ApiKeySelect estilo igual ao LLM config (bg-card, chave selecionada branca)
+- [x] T2 Cor das caixas Provedor/Modelo/Chave iguais
+- [x] T3 Tier badge nos modelos do Router
+- [x] T4 Construcao da pergunta = so modelos de chat
+- [ ] T5 PESQUISA: modelos de transcricao de audio (incluir reais no catalogo c/ tier+preco)
+- [ ] T6 PESQUISA: provedores de audio/anexo = (tem chave) ∩ (tem modelo da capability); incluir modelos reais de OpenRouter (audio/visao) no catalogo
+- [ ] T7 Embeddings multi-provedor: pesquisar modelos de embedding por provedor; provedor selecionavel = (tem chave) ∩ (tem embedding); ATENCAO BACKEND: embed() e OpenAI-only + fonte unica RAG + vetores de dominio precisam casar modelo/dimensao. Antes de liberar no UI, habilitar embed() multi-provider de verdade OU constranger; re-embeddar vetores de dominio ao trocar modelo. NAO liberar opcao que o backend nao executa (blast radius alto: agente+RAG+router).
+- [x] T8 Slider fluido (persiste no release)
+- [x] T9 Remover bloco de credencial de embedding do painel Monitoramento
+- [x] T10 Titulo "Configuracao do Router"
+- [x] T11 Zero redondo sem risquinho (minPointSize 0 p/ value=0; Router + Consumo)
+
+### Handoff T5/T6/T7 (proxima sessao)
+Comecar por mapear capability real por provedor (audio: transcricao; embedding) e expandir o
+catalogo (`src/lib/agent/llm/catalog.ts`) so com modelos REAIS. Depois ajustar os filtros de
+provedor (ja sao capability ∩ credencial) , so faltam os modelos no catalogo. T7 exige decisao de
+backend de embedding antes de expor provedores no UI.
