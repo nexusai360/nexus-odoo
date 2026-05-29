@@ -28,6 +28,34 @@ describe("tipoErroRpc", () => {
   it("erro desconhecido (não-Odoo) -> transitorio", () => {
     expect(tipoErroRpc(new Error("network"))).toBe("transitorio");
   });
+
+  // O OdooClient embrulha faults mapeados num OdooError genérico após retries
+  // (descoberto no E2E do R2): a mensagem embrulhada carrega o texto do servidor.
+  it("OdooError embrulhado de acesso ('not allowed') -> acesso_negado", () => {
+    expect(
+      tipoErroRpc(
+        new OdooError(
+          "object.execute_kw falhou após 3 tentativas: You are not allowed to access 'sped.pessoa'",
+        ),
+      ),
+    ).toBe("acesso_negado");
+  });
+  it("OdooError embrulhado de inexistente -> abstract", () => {
+    expect(
+      tipoErroRpc(new OdooError('falhou após 3 tentativas: O registro "rh.cargo" não existe')),
+    ).toBe("abstract");
+    expect(
+      tipoErroRpc(new OdooError('falhou após 3 tentativas: ERRO: relação "x" não existe')),
+    ).toBe("abstract");
+    expect(
+      tipoErroRpc(new OdooError('falhou após 3 tentativas: O registro “rh.cargo” não foi encontrado')),
+    ).toBe("abstract");
+  });
+  it("OdooError embrulhado de rede pura -> transitorio", () => {
+    expect(
+      tipoErroRpc(new OdooError("falhou após 3 tentativas: The operation was aborted")),
+    ).toBe("transitorio");
+  });
 });
 
 describe("classificarComErro", () => {
