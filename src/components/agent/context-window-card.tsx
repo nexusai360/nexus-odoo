@@ -8,6 +8,7 @@
  * vivem no ResourcesToggles (reusa updateAgentResources).
  */
 
+import { useEffect, useState } from "react";
 import { History } from "lucide-react";
 import { ResourceCard } from "@/components/agent/resource-card";
 import { RangeSlider } from "@/components/ui/range-slider";
@@ -36,6 +37,9 @@ export function ContextWindowCard({
   onSizeChange,
   onIncludeSystemChange,
 }: ContextWindowCardProps) {
+  // Valor "ao vivo" do slider durante o arrasto (fluido). Persiste so no commit.
+  const [liveSize, setLiveSize] = useState(size);
+  useEffect(() => setLiveSize(size), [size]);
   return (
     <ResourceCard
       id="janela-contexto"
@@ -56,10 +60,11 @@ export function ContextWindowCard({
               Quantidade de mensagens
             </span>
             <RangeSlider
-              value={size}
+              value={liveSize}
               min={10}
               max={50}
-              onChange={onSizeChange}
+              onChange={setLiveSize}
+              onCommit={onSizeChange}
               disabled={loading}
               unitLabel="msgs"
               aria-label="Quantidade de mensagens da janela de contexto"

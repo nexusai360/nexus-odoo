@@ -10,7 +10,10 @@ import { cn } from "@/lib/utils";
 
 interface RangeSliderProps {
   value: number;
+  /** Atualizacao continua durante o arrasto (fluido, sem persistir). */
   onChange: (value: number) => void;
+  /** Disparado ao SOLTAR (release/teclado): hora de persistir. */
+  onCommit?: (value: number) => void;
   min: number;
   max: number;
   step?: number;
@@ -23,6 +26,7 @@ interface RangeSliderProps {
 export function RangeSlider({
   value,
   onChange,
+  onCommit,
   min,
   max,
   step = 1,
@@ -30,6 +34,7 @@ export function RangeSlider({
   unitLabel,
   "aria-label": ariaLabel,
 }: RangeSliderProps) {
+  const commit = (raw: string) => onCommit?.(Number(raw));
   return (
     <div className="flex items-center gap-3">
       <input
@@ -40,7 +45,11 @@ export function RangeSlider({
         value={value}
         disabled={disabled}
         aria-label={ariaLabel}
+        // Arrasto fluido: atualiza so o estado local (indicador) sem persistir.
         onChange={(e) => onChange(Number(e.target.value))}
+        // Persiste so ao soltar (mouse/touch) ou ao terminar a navegacao por teclado.
+        onPointerUp={(e) => commit((e.target as HTMLInputElement).value)}
+        onKeyUp={(e) => commit((e.target as HTMLInputElement).value)}
         className={cn(
           "h-2 flex-1 cursor-pointer appearance-none rounded-full bg-muted accent-violet-600",
           "disabled:cursor-not-allowed disabled:opacity-50",

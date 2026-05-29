@@ -131,7 +131,7 @@ export function RouterConfigCard({
       collapsible
       defaultCollapsed={cp === "OFF"}
       icon={<Route className={`h-4 w-4 ${checkpointIconClass(cp)}`} aria-hidden />}
-      title="Configuração de Router"
+      title="Configuração do Router"
       subtitle="Quando o embedding não classifica a pergunta (fallback), um modelo barato a reescreve com contexto e o router tenta de novo. As pílulas controlam essa reformulação; o embedding é sempre usado pelo router."
       checkpoint={cp}
       onCheckpointChange={(next) => {
