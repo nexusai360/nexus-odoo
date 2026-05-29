@@ -7,6 +7,10 @@ jest.mock("@/lib/prisma", () => ({
     message: { create: jest.fn(), findMany: jest.fn() },
     conversation: { findFirst: jest.fn(), findUnique: jest.fn(), create: jest.fn() },
     agentSettings: { findUnique: jest.fn().mockResolvedValue(null) },
+    // RBAC v2 camada B: o gate de dominio do run-agent consulta os dominios
+    // concedidos. O fixture concede "estoque" para que o operator possa exercer
+    // a tool de estoque dos testes de tool-calling.
+    userDomainAccess: { findMany: jest.fn() },
   },
 }));
 
@@ -116,6 +120,7 @@ function makeMcpSession(toolResult = "Resultado da tool") {
 beforeEach(() => {
   jest.clearAllMocks();
   prisma.user.findUnique.mockResolvedValue({ id: "user-1", platformRole: "operator", isActive: true });
+  prisma.userDomainAccess.findMany.mockResolvedValue([{ domain: "estoque" }]);
   prisma.message.create.mockResolvedValue({});
   prisma.message.findMany.mockResolvedValue([]);
   prisma.conversation.findUnique.mockResolvedValue({ id: "conv-1", userId: "user-1" });
