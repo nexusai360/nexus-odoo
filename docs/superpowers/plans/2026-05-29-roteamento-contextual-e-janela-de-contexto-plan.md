@@ -1,8 +1,32 @@
 # Roteamento Contextual + Janela de Contexto + Migração de Config , Implementation Plan
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) ou superpowers:executing-plans para implementar task-a-task. Steps usam checkbox (`- [ ]`).
-> **PLAN v1.** Spec: `docs/superpowers/specs/2026-05-29-roteamento-contextual-e-janela-de-contexto-design.md` (v3).
+> **PLAN v3 (final, vai para execução).** Spec: `docs/superpowers/specs/2026-05-29-roteamento-contextual-e-janela-de-contexto-design.md` (v3).
 > Regras de raiz: pt-br, **sem em dash**; TDD; commits frequentes; toda UI via `ui-ux-pro-max`; Opus sempre; rebuild de containers após tocar `src/lib/agent/**`/schema (CLAUDE.md §2.1).
+
+## Histórico de review do plano
+
+### Review #1 (v1 -> v2)
+
+| # | Achado | Resolução |
+|---|---|---|
+| P1.1 | **Telemetria invertida:** re-embedding marcado como `router_reformulacao` e chamada LLM de reformulação sem log. | P4 passa a logar o **chat** de reformulação como `router_reformulacao` (via `logUsage`); P6.1 loga o **re-embedding** como `router`. |
+| P1.2 | P6.1 usa `resolveReformLlm` antes de defini-lo (P6.2). | P6.2 reordenado para **antes** de P6.1. |
+| P1.3 | Cast cego `as CheckpointState` sobre o enum Prisma `FeatureCheckpoint`. | P3.1: usar o valor do enum Prisma direto (mesmas strings OFF/PLAYGROUND/PRODUCTION) e tipar `resolveContextWindow` por união de string literal, sem depender do tipo da UI. |
+| P1.4 | Origem do sufixo mascarado das chaves não especificada. | P8.5 (nova): derivar o `maskedSuffix` server-side em `configuracao/page.tsx` (decrypt -> últimos 4) num helper, sem expor a chave. |
+| P1.5 | Falta task de Backtest (spec §5.1). | P11.2 (nova): investigação dirigida + verificação de retrocompat do Backtest. |
+| P1.6 | `contextWindowSize` clampado só na leitura. | P7.1: clamp 10..50 também na escrita (Zod). |
+
+### Review #2 (v2 -> v3)
+
+| # | Achado | Resolução |
+|---|---|---|
+| P2.1 | `logUsage` precisa de tokens do chat de reformulação; faltava dizer como obter. | P4: usar o `usage` retornado por `client.chat` (campos `tokensInput/Output/costUsd`) e passar a `logUsage` com `origin:"router_reformulacao"`, `conversationId`, `userId`, `isPlayground`. |
+| P2.2 | Mock de `agentSettings` nos testes existentes do run-agent vai quebrar sem os campos novos. | P3.1 Step 6 e P6.1 Step 4: atualizar os fixtures/mocks de `agentSettings` com os defaults novos (`contextWindow*`, `routerReform*`, `routerEmbeddingModel`) numa única factory de teste reutilizada. |
+| P2.3 | Editar credencial de embedding no bloco novo precisa escrever na MESMA fonte que `embed()` lê (AppSetting), senão diverge do RAG. | P10.1 Step 3: reusar a server action existente de `actions/router-embedding-credential.ts` (que já grava o AppSetting), não criar caminho novo. Teste de fumaça: trocar credencial no bloco e confirmar que `embed()` resolve a nova. |
+| P2.4 | "Acessar painel do router" descrito de forma confusa. | P10.1: é um `Link`/botão secundário simples (ícone `ArrowUpRight`), não relacionado a `ApiKeySelect`. |
+
+Critério de saída: nenhum achado material novo; ordem de tasks, telemetria, tipos e fontes de dado fechados.
 
 **Goal:** Tornar o router de catálogo contextual (3 camadas: embedding -> LLM de reformulação só no fallback -> re-embedding), expor a janela de contexto da resposta como configuração, e migrar a config do router (credencial de embedding + construção da pergunta) para a tela de Configuração, com telemetria completa.
 
@@ -154,10 +178,11 @@ if (opts?.includeSystem === false) {
 - [ ] **Step 3: implementar**
 
 ```ts
-import type { CheckpointState } from "@/components/ui/feature-checkpoint";
+// Tipo local (mesmas strings do enum Prisma FeatureCheckpoint), sem acoplar à UI.
+export type ContextCheckpoint = "OFF" | "PLAYGROUND" | "PRODUCTION";
 const MIN = 10, MAX = 50;
 export function resolveContextWindow(
-  cfg: { checkpoint: CheckpointState; size: number; includeSystem: boolean },
+  cfg: { checkpoint: ContextCheckpoint; size: number; includeSystem: boolean },
   ctx: { isPlayground: boolean },
 ): { budget: number; includeSystem: boolean } {
   const clamp = Math.max(MIN, Math.min(MAX, cfg.size || 20));
@@ -175,7 +200,7 @@ export function resolveContextWindow(
 ```ts
 const cw = resolveContextWindow(
   {
-    checkpoint: agentSettings.contextWindowCheckpoint as CheckpointState,
+    checkpoint: agentSettings.contextWindowCheckpoint, // FeatureCheckpoint, mesmas strings de ContextCheckpoint
     size: agentSettings.contextWindowSize,
     includeSystem: agentSettings.contextWindowIncludeSystem,
   },
@@ -216,7 +241,7 @@ export interface ReformulateInput {
 export interface ReformulateResult { reformulated: string | null; used: boolean; }
 export async function reformulateQuestion(input: ReformulateInput): Promise<ReformulateResult>;
 ```
-Lógica: se `!conversationId` -> `{null,false}`. `const pairs = await getLastNPairs(conversationId, input.nPairs)`; se vazio -> `{null,false}`. Monta histórico (formato "Par i: Usuario/Agente", cronológico asc, slices 400/600). `client.chat` com SYSTEM_PROMPT (§4.1 da spec), `temperature:0`, `maxTokens:120`, `reasoningEffort` mínimo, `Promise.race` com timeout 2500ms. Saída: 1ª linha não vazia, trim, sem aspas/markdown. Se igual à pergunta atual (normalizada) -> ainda retorna o texto mas `used` reflete que rodou. Em erro/timeout -> `{null,false}`. NÃO loga consumo aqui (o caller passa contexto de usage ao client; ver Task P6).
+Lógica: se `!conversationId` -> `{null,false}`. `const pairs = await getLastNPairs(conversationId, input.nPairs)`; se vazio -> `{null,false}`. Monta histórico (formato "Par i: Usuario/Agente", cronológico asc, slices 400/600). `const res = await client.chat({ messages, temperature:0, maxTokens:120, reasoningEffort: minimo })` dentro de `Promise.race` com timeout 2500ms. **Telemetria (P1.1/P2.1):** após o chat, logar o consumo com `logUsage({ origin:"router_reformulacao", conversationId, userId: input.userId, isPlayground: input.isPlayground, tokensInput: res.usage.tokensInput, tokensOutput: res.usage.tokensOutput, costUsd: res.usage.costUsd, model: input.llm.model })` (fire-and-forget, não bloqueia). Saída: 1ª linha não vazia de `res.message`, trim, sem aspas/markdown. Em erro/timeout -> `{null,false}`. A assinatura ganha `userId?: string; isPlayground?: boolean` para a telemetria. Conferir os campos exatos de `logUsage` em `src/lib/agent/llm/usage-logger.ts` no Step de implementação e ajustar nomes.
 
 - [ ] **Step 4: ver passar** , Run: `npx jest contextualize 2>&1 | tail -6` , Expected: PASS.
 
@@ -247,6 +272,8 @@ Lógica: se `!conversationId` -> `{null,false}`. `const pairs = await getLastNPa
 ---
 
 ## Fase P6 , Integração 3 camadas no runAgent (§4.2) + RBAC na decisão final
+
+> **Ordem (P1.2): executar a Task P6.2 (resolver do LLM) ANTES da P6.1**, pois P6.1 chama `resolveReformLlm`.
 
 ### Task P6.1: substituir o trecho de roteamento por 3 camadas
 
@@ -279,11 +306,14 @@ if (decisaoL1.fallback.triggered && reformActive && agentSettings.routerEnabled)
     const r = await reformulateQuestion({
       conversationId: args.conversationId, currentQuestion: args.userMessage,
       nPairs: agentSettings.routerReformNPairs, llm: reformLlm,
+      userId: args.userId, isPlayground: args.isPlayground,
     });
     if (r.reformulated) {
       reformulated = r.reformulated;
+      // Re-embedding (Camada 3) loga como "router" (a chamada LLM de reformulacao
+      // ja foi logada como "router_reformulacao" dentro de reformulateQuestion).
       decisaoFinal = await pickDomains(reformulated, settings, {
-        origin: "router_reformulacao", conversationId: args.conversationId, userId: args.userId, isPlayground: args.isPlayground,
+        origin: "router", conversationId: args.conversationId, userId: args.userId, isPlayground: args.isPlayground,
       });
     }
   }
@@ -325,7 +355,7 @@ Depois trocar TODAS as referências de `routerDecision` no fast-path (461-483) e
 - Modify: `src/lib/actions/agent-config.ts`
 - Test: `src/lib/actions/agent-config.test.ts` (se existir)
 
-- [ ] **Step 1: teste** , `updateAgentResources` aceita e grava `contextWindowCheckpoint/Size/IncludeSystem`; nova `updateRouterConfig({ routerReformCheckpoint, routerReformProvider, routerReformModel, routerReformCredentialId, routerReformNPairs, routerEmbeddingModel })` grava e valida (size não se aplica aqui; nPairs clamp 1..10). Zod nos inputs.
+- [ ] **Step 1: teste** , `updateAgentResources` aceita e grava `contextWindowCheckpoint/Size/IncludeSystem`, com **clamp 10..50 no `contextWindowSize` na escrita** (P1.6) via Zod (`z.number().int().min(10).max(50)` ou clamp explícito). Nova `updateRouterConfig({ routerReformCheckpoint, routerReformProvider, routerReformModel, routerReformCredentialId, routerReformNPairs, routerEmbeddingModel })` grava e valida (nPairs clamp 1..10). Zod nos inputs.
 - [ ] **Step 2-4:** ver falhar / implementar / ver passar. Reusar o padrão de validação/persistência já presente no arquivo.
 - [ ] **Step 5: commit** , `git commit -am "feat(config): persistencia de janela de contexto e router config"`
 
@@ -372,6 +402,18 @@ Depois trocar TODAS as referências de `routerDecision` no fast-path (461-483) e
 - [ ] **Step 1: teste** , `listEmbeddingModels("openai")` retorna só modelos de embedding (ex.: text-embedding-3-large/small); outros provedores retornam seus modelos de embedding ou vazio.
 - [ ] **Step 2-5:** ver falhar / implementar (filtrar o catálogo por capability "embedding") / ver passar / commit.
 
+### Task P8.5: helper de sufixo mascarado das credenciais (P1.4)
+
+**Files:**
+- Modify: `src/app/(protected)/agente/configuracao/page.tsx` (ou um helper server em `src/lib/agent/llm/credentials.ts`)
+- Test: `src/lib/agent/llm/credentials.test.ts` (se aplicável)
+
+- [ ] **Step 1: investigar** , conferir se `LlmCredential` já guarda um hint (ex.: `last4`) ou se a chave é só `encryptedKey`. Se houver hint, usar; senão, derivar server-side: `decrypt(encryptedKey)` -> últimos 4 chars -> `maskedSuffix`.
+- [ ] **Step 2: helper** , `buildCredentialOptions(credentials): { id, label, maskedSuffix }[]` retornando o sufixo `••••XXXX`. NUNCA enviar a chave inteira ao client.
+- [ ] **Step 3: teste** , dado credencial com chave `sk-...DFYA`, `maskedSuffix === "••••DFYA"`.
+- [ ] **Step 4:** ver passar; usar esse helper para montar `credentialsByProvider` na page (consumido por `ApiKeySelect` e pelo retrofit de áudio/anexo).
+- [ ] **Step 5: commit** , `git commit -am "feat(config): helper de sufixo mascarado das credenciais"`
+
 ---
 
 ## Fase P9 , Bloco "Janela de contexto"
@@ -404,7 +446,7 @@ Depois trocar TODAS as referências de `routerDecision` no fast-path (461-483) e
 - [ ] **Step 1:** `RouterConfigCard` usa `ResourceCard` (ícone `Route`/`Network`, título "Configuração de Router", checkpoint = `routerReformCheckpoint`). Conteúdo: dois `FieldBlock`-groups com heading secundário:
   - **Construção da pergunta:** Provedor (`CustomSelect`) / Modelo (`SearchableSelect`, modelos de chat) / Chave (`ApiKeySelect`). Persiste via `updateRouterConfig`.
   - **Embeddings:** Provedor / Modelo (`listEmbeddingModels`) / Chave (`ApiKeySelect`). A credencial edita a MESMA fonte do RAG (action de `actions/router-embedding-credential.ts`); o modelo grava `routerEmbeddingModel`.
-  - Rodapé: botão `ApiKeySelect`-independente "Acessar painel do router" (`Link` para a rota do painel, determinada no Step 2).
+  - Rodapé: botão secundário simples "Acessar painel do router" (`Link` com ícone `ArrowUpRight` da Lucide, estilo consistente com os links secundários da tela, ex. o "Nova chave" de `NoCredentialsCta`), apontando para a rota do painel (Step 2).
 - [ ] **Step 2: rota do atalho** , inspecionar `src/app/(protected)/agente/monitoramento/router/page.tsx` para a rota/aba exata; usar `Link href="/agente/monitoramento/router"` (ou querystring de aba se aplicável).
 - [ ] **Step 3:** typecheck. Confirmar que editar a credencial de embedding aqui reflete no resolver de `embed()` (mesma fonte). 
 - [ ] **Step 4: rebuild app + verificação visual.**
@@ -436,6 +478,16 @@ Depois trocar TODAS as referências de `routerDecision` no fast-path (461-483) e
 - [ ] **Step 2:** na tabela, quando `usedReformulation`, mostrar badge "reformulada" e a pergunta reformulada (tooltip/segunda linha com a original).
 - [ ] **Step 3:** typecheck + verificação no painel (Fase P12).
 - [ ] **Step 4: commit** , `git commit -am "feat(router): painel exibe reformulacao na tabela de requisicoes"`
+
+### Task P11.2: retrocompatibilidade do Backtest (spec §5.1)
+
+**Files:**
+- Investigar: componentes/queries do Backtest do router (em `src/components/agent/router/` e `src/lib/agent/router/queries.ts`).
+
+- [ ] **Step 1: investigação dirigida** , localizar onde o Backtest lê decisões/conversas e o que ele computa.
+- [ ] **Step 2:** confirmar que os campos novos (nullable) não quebram o Backtest e que ele reflete o **domínio final** (decisão Camada 3 quando houve reformulação). Ajustar select/tipo se necessário.
+- [ ] **Step 3:** rodar o Backtest após a migration; conferir sem erro e domínio final correto.
+- [ ] **Step 4: commit** (se houve mudança) , `git commit -am "fix(router): backtest retrocompat com campos de reformulacao"`
 
 ---
 
