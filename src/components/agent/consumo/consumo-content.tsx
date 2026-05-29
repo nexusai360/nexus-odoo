@@ -342,7 +342,9 @@ export function ConsumoContent({ minDate: minDateIso }: ConsumoContentProps) {
     [pill, customRange, minDate],
   );
 
-  // Reseta paginação ao trocar período / filtros / pageSize.
+  // Reseta paginação ao trocar período / filtros. NAO inclui pageSize: ao
+  // mudar itens por pagina, o handler ancora na 1a linha atual (nao volta pra
+  // pagina 1).
   useEffect(() => {
     setPage(0);
   }, [
@@ -353,7 +355,6 @@ export function ConsumoContent({ minDate: minDateIso }: ConsumoContentProps) {
     filterProvider,
     filterModel,
     ambiente,
-    pageSize,
   ]);
 
   // Reset navegação do gráfico ao trocar pill.
@@ -1335,7 +1336,11 @@ export function ConsumoContent({ minDate: minDateIso }: ConsumoContentProps) {
                   onChange={(v) => {
                     const next = Number(v) as PageSize;
                     if (PAGE_SIZE_OPTIONS.includes(next)) {
+                      // Mantem o usuario ancorado na 1a linha da pagina atual
+                      // (nao volta pra pagina 1 ao mudar o page size).
+                      const firstRow = page * pageSize;
                       setPageSize(next);
+                      setPage(Math.floor(firstRow / next));
                     }
                   }}
                   options={PAGE_SIZE_OPTIONS.map((n) => ({
