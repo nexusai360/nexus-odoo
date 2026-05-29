@@ -1,10 +1,28 @@
 # STATUS — nexus-odoo
 
-> **Ponto de retomada entre sessões.** Atualizado em 2026-05-28 21:45.
-> Ao abrir uma sessão: ler **este arquivo** e o **`CLAUDE.md`**. Modo autônomo
-> é o padrão (ver `CLAUDE.md §6`).
+> **Ponto de retomada entre sessões.** Atualizado em 2026-05-29 (troca de sessão).
+> Ao abrir: ler **este arquivo**, o **`CLAUDE.md`** e
+> **`.agente-handoff.md`** (na raiz desta worktree). Modo autônomo é o padrão (`CLAUDE.md §6`).
 >
-> ## 🔄 BRANCH ATIVA: `feat/router-catalogo-r1` (Sub-projeto R1 do roadmap)
+> ## 🔄 BRANCH ATIVA: `feat/router-ativacao-r2`
+>
+> **R1 mergeado** (PR #36). **R2-ctx entregue/mergeado** (PR #37): roteamento
+> contextual 3 camadas (embedding -> reformulação LLM gated no fallback ->
+> re-embedding), janela de contexto configurável (10-50 + filtro de papéis),
+> bloco "Configuração do Router" na tela de Configuração (credencial de embedding
+> migrada do Monitoramento), ApiKeySelect com sufixo mascarado, + bateria de
+> ajustes de UI (slider fluido, tier badges, zero sem risquinho, OpenRouter em
+> anexo). Reform e router seguem **OFF/shadow** até o gate de validação ao vivo.
+>
+> **PRÓXIMA ETAPA (roadmap): R2 , Discovery enxuto** (`search_count` + 3 baldes),
+> insumo das ondas O1..O5. Metodologia completa (SPEC v1->v3, PLAN v1->v3,
+> execução) na MESMA branch `feat/router-ativacao-r2`. Depois: O1 (SPED Fiscal
+> piloto), O2 financeiro, etc. (backlog de 10 tasks no histórico da conversa).
+>
+> ---
+> ### Histórico R1 (feat/router-catalogo-r1) , arquivado abaixo
+>
+> ## 🔄 (arquivado) `feat/router-catalogo-r1` (Sub-projeto R1 do roadmap)
 >
 > **Router de catalogo por embedding** em andamento (Caminho C do brainstorm
 > 2026-05-28). Habilitador arquitetural das ondas de expansao do MCP. Spec/Plan
