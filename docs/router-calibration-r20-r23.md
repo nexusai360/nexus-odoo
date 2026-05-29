@@ -6,11 +6,11 @@
 > Registros gravados no painel: 511 (mode=calibracao_R-X)
 
 ## Acumulado por instancia mapeavel (todas as ocorrencias nas 4 rodadas)
-- **Top-K:** 98.2% (374/381)
-- **Top-1:** 86.4% (329/381)
-- **Fallbacks:** 7/381 (1.8%)
+- **Top-K:** 99.7% (380/381)
+- **Top-1:** 87.9% (335/381)
+- **Fallbacks:** 1/381 (0.3%)
 
 ## Por pergunta unica mapeavel
-- **Top-K:** 98.1% (212/216)
-- **Top-1:** 88.0% (190/216)
-- **Fallbacks:** 4/216
+- **Top-K:** 99.5% (215/216)
+- **Top-1:** 89.4% (193/216)
+- **Fallbacks:** 1/216
