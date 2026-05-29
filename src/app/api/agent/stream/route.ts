@@ -12,7 +12,7 @@
  *   data: {"type":"error","error":"..."}
  */
 
-import { requireAgentAccessOrJson } from "@/lib/auth/require";
+import { getCurrentUser } from "@/lib/auth";
 import { runAgent } from "@/lib/agent/run-agent";
 import { createConversation, assertConversationOwned } from "@/lib/agent/conversation";
 import type { AgentEvent } from "@/lib/agent/run-agent";
@@ -27,13 +27,13 @@ function sseEvent(data: Record<string, unknown>): Uint8Array {
 }
 
 export async function POST(req: Request): Promise<Response> {
-  // RBAC v2: gate de acesso ao agente.
-  // 401 sem auth; 403 AgentNotEnabled sem domínio visível (manager/viewer
-  // sem nenhum UserDomainAccess concedido). super_admin/admin recebem
-  // `allowedDomains="all"` via short-circuit `seesAll` sem query extra.
-  const access = await requireAgentAccessOrJson();
-  if (access instanceof Response) return access;
-  const { user } = access;
+  const user = await getCurrentUser();
+  if (!user) {
+    return new Response(JSON.stringify({ error: "Não autenticado" }), {
+      status: 401,
+      headers: { "Content-Type": "application/json" },
+    });
+  }
 
   let body: {
     conversationId?: string;

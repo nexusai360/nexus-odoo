@@ -9,7 +9,7 @@
  * - Rota: /api/agent/transcribe.
  */
 
-import { requireAgentAccessOrJson } from "@/lib/auth/require";
+import { getCurrentUser } from "@/lib/auth";
 import { transcribeAudio } from "@/lib/agent/transcribe";
 import { logUsage } from "@/lib/agent/llm/usage-logger";
 
@@ -17,10 +17,10 @@ export const runtime = "nodejs";
 export const maxDuration = 60;
 
 export async function POST(req: Request): Promise<Response> {
-  // RBAC v2: gate de acesso ao agente.
-  const access = await requireAgentAccessOrJson();
-  if (access instanceof Response) return access;
-  const { user } = access;
+  const user = await getCurrentUser();
+  if (!user) {
+    return Response.json({ ok: false, error: "Não autenticado" }, { status: 401 });
+  }
 
   let audio: Blob | null = null;
   let language = "pt";
