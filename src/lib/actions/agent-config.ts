@@ -93,8 +93,24 @@ const UpdateResourcesSchema = z.object({
   reasoningCheckpoint: z.enum(CHECKPOINT_VALUES).optional(),
   /** Máximo de sugestões clicáveis (1..5). */
   maxSuggestions: z.number().int().min(1).max(5).optional(),
+  /** R2-ctx: janela de contexto da resposta. */
+  contextWindowCheckpoint: z.enum(CHECKPOINT_VALUES).optional(),
+  /** Trava dura 10..50 na escrita. */
+  contextWindowSize: z.number().int().min(10).max(50).optional(),
+  contextWindowIncludeSystem: z.boolean().optional(),
 });
 export type UpdateAgentResourcesInput = z.infer<typeof UpdateResourcesSchema>;
+
+/** R2-ctx: configuração do router (Construção da pergunta + modelo de embedding). */
+const UpdateRouterConfigSchema = z.object({
+  routerReformCheckpoint: z.enum(CHECKPOINT_VALUES),
+  routerReformProvider: z.string().nullable().optional(),
+  routerReformModel: z.string().nullable().optional(),
+  routerReformCredentialId: z.string().nullable().optional(),
+  routerReformNPairs: z.number().int().min(1).max(10).optional(),
+  routerEmbeddingModel: z.string().nullable().optional(),
+});
+export type UpdateRouterConfigInput = z.infer<typeof UpdateRouterConfigSchema>;
 
 /** Verifica se o usuário tem permissão (admin ou super_admin). */
 async function requireAdminOrAbove(): Promise<
@@ -394,6 +410,15 @@ export async function updateAgentResources(
     if (d.reasoningCheckpoint) {
       payload.reasoningCheckpoint = d.reasoningCheckpoint;
     }
+    if (d.contextWindowCheckpoint) {
+      payload.contextWindowCheckpoint = d.contextWindowCheckpoint;
+    }
+    if (d.contextWindowSize !== undefined) {
+      payload.contextWindowSize = d.contextWindowSize;
+    }
+    if (d.contextWindowIncludeSystem !== undefined) {
+      payload.contextWindowIncludeSystem = d.contextWindowIncludeSystem;
+    }
 
     await prisma.agentSettings.upsert({
       where: { id: "global" },
@@ -418,6 +443,7 @@ export async function updateAgentResources(
 
     revalidatePath("/agente");
     revalidatePath("/agente/prompt");
+    revalidatePath("/agente/configuracao");
 
     return { success: true };
   } catch (err) {
@@ -425,6 +451,67 @@ export async function updateAgentResources(
     return {
       success: false,
       error: err instanceof Error ? err.message : "Erro ao atualizar recursos",
+    };
+  }
+}
+
+/**
+ * R2-ctx: atualiza a configuração do Router (bloco "Configuração de Router").
+ * Construção da pergunta (Camada 2): provider/model/credencial + checkpoint +
+ * nº de pares. Modelo de embedding do router (a credencial de embedding em si
+ * é editada na ação de credencial de embedding, fonte única do RAG).
+ */
+export async function updateRouterConfig(
+  input: UpdateRouterConfigInput,
+): Promise<ActionResult> {
+  try {
+    const auth = await requireAdminOrAbove();
+    if (!auth.ok) return { success: false, error: auth.error };
+
+    const parsed = UpdateRouterConfigSchema.safeParse(input);
+    if (!parsed.success) {
+      return { success: false, error: "Dados de configuração do router inválidos" };
+    }
+    const d = parsed.data;
+
+    const payload: Record<string, unknown> = {
+      routerReformCheckpoint: d.routerReformCheckpoint,
+    };
+    if (d.routerReformProvider !== undefined) payload.routerReformProvider = d.routerReformProvider;
+    if (d.routerReformModel !== undefined) payload.routerReformModel = d.routerReformModel;
+    if (d.routerReformCredentialId !== undefined) payload.routerReformCredentialId = d.routerReformCredentialId;
+    if (d.routerReformNPairs !== undefined) payload.routerReformNPairs = d.routerReformNPairs;
+    if (d.routerEmbeddingModel !== undefined) payload.routerEmbeddingModel = d.routerEmbeddingModel;
+
+    await prisma.agentSettings.upsert({
+      where: { id: "global" },
+      create: {
+        id: "global",
+        personality: "",
+        tone: "",
+        guardrails: [],
+        terminology: {},
+        ...payload,
+      },
+      update: payload,
+    });
+
+    void logAudit({
+      userId: auth.userId,
+      action: "agent_settings_updated",
+      targetType: "AgentSettings",
+      targetId: "global",
+      details: { kind: "router_config" },
+    });
+
+    revalidatePath("/agente/configuracao");
+
+    return { success: true };
+  } catch (err) {
+    console.error("[updateRouterConfig]", err);
+    return {
+      success: false,
+      error: err instanceof Error ? err.message : "Erro ao atualizar config do router",
     };
   }
 }

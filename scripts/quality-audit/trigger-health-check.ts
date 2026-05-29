@@ -15,6 +15,8 @@
  * Exit code: 0 se saudavel, 1 se anomalia detectada.
  */
 
+// Primeiro import: carrega .env.local antes de @/lib/prisma (ver load-env.ts).
+import "./load-env";
 import "dotenv/config";
 import { config as loadDotenv } from "dotenv";
 import { resolve as resolvePath } from "path";

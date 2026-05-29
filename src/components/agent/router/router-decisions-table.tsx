@@ -314,10 +314,24 @@ export function RouterDecisionsTable({
                         </span>
                       </TableCell>
                       <TableCell
-                        className="max-w-[320px] truncate text-sm"
-                        title={r.userQuestion}
+                        className="max-w-[320px] text-sm"
+                        title={
+                          r.usedReformulation && r.reformulatedQuestion
+                            ? `Original: ${r.userQuestion}\nReformulada: ${r.reformulatedQuestion}`
+                            : r.userQuestion
+                        }
                       >
-                        {r.userQuestion}
+                        <div className="truncate">{r.userQuestion}</div>
+                        {r.usedReformulation && r.reformulatedQuestion ? (
+                          <div className="mt-0.5 flex items-center gap-1.5">
+                            <span className="rounded bg-violet-500/15 px-1.5 py-0.5 text-[10px] font-medium text-violet-700 dark:text-violet-300">
+                              reformulada
+                            </span>
+                            <span className="truncate text-xs text-muted-foreground">
+                              {r.reformulatedQuestion}
+                            </span>
+                          </div>
+                        ) : null}
                       </TableCell>
                       <TableCell>
                         <div className="flex flex-wrap gap-1">

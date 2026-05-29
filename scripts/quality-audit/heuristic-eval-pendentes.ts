@@ -13,6 +13,8 @@
  * remover ruido visual no painel. judgeVersion fica marcado como
  * "heuristica-v1" pra reavaliar depois se necessario.
  */
+// Primeiro import: carrega .env.local antes de @/lib/prisma (ver load-env.ts).
+import "./load-env";
 import "dotenv/config";
 import { config as loadDotenv } from "dotenv";
 import { resolve as resolvePath } from "path";

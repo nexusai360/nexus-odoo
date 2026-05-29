@@ -386,8 +386,11 @@ export function InteractiveBarChart({
                 maxBarSize={72}
                 // Risquinho minimo: valores > 0 muito pequenos (ex.: custo de
                 // embedding < 1 centavo) renderizam ao menos 2px, em vez de
-                // sumir. Nao afeta barras normais.
-                minPointSize={2}
+                // sumir. Zero redondo NAO ganha risquinho (fica vazio). Nao
+                // afeta barras normais.
+                minPointSize={(value: number | undefined | null) =>
+                  value != null && value > 0 ? 2 : 0
+                }
                 fillOpacity={dim ? 0.4 : 1}
                 isAnimationActive={!prefersReducedMotion}
                 animationBegin={0}

@@ -604,10 +604,35 @@ export function listAudioModels(provider: LlmProvider): ModelEntry[] {
   return sortModels(MODELS.filter((m) => m.provider === provider && m.audio));
 }
 
+/** Famílias OpenRouter conhecidamente multimodais (aceitam imagem). OpenRouter
+ *  proxia modelos de varios provedores; a visão e' por modelo subjacente. Usamos
+ *  um allowlist conservador por padrao de id (familias documentadas como vision).
+ */
+const OPENROUTER_VISION_RE =
+  /(gemini|gpt-4o|gemma-3|llama-4|pixtral|claude-3\.5|claude-(sonnet|opus)-4|qwen[\w-]*vl)/i;
+
+/** True se o modelo entende imagem (flag explicita OU familia vision do OpenRouter). */
+export function modelHasVision(m: ModelEntry): boolean {
+  return Boolean(m.vision) || (m.provider === "openrouter" && OPENROUTER_VISION_RE.test(m.id));
+}
+
 /** Modelos de um provider que entendem imagem (visão multimodal), ordenados. */
 export function listVisionModels(provider: LlmProvider): ModelEntry[] {
-  return sortModels(MODELS.filter((m) => m.provider === provider && m.vision));
+  return sortModels(MODELS.filter((m) => m.provider === provider && modelHasVision(m)));
 }
+
+/** Modelos de embedding de um provider (use === "embedding"), ordenados.
+ *  Usado pelo sub-bloco Embeddings da Configuração de Router (R2-ctx). */
+export function listEmbeddingModels(provider: LlmProvider): ModelEntry[] {
+  return sortModels(
+    MODELS.filter((m) => m.provider === provider && m.use === "embedding"),
+  );
+}
+
+/** Provedores que têm ao menos um modelo de embedding. */
+export const PROVIDERS_WITH_EMBEDDING: LlmProvider[] = (
+  ["openai", "anthropic", "gemini", "openrouter"] as LlmProvider[]
+).filter((p) => MODELS.some((m) => m.provider === p && m.use === "embedding"));
 
 /** Provedores que têm ao menos um modelo de áudio. */
 export const PROVIDERS_WITH_AUDIO: LlmProvider[] = (
@@ -617,7 +642,7 @@ export const PROVIDERS_WITH_AUDIO: LlmProvider[] = (
 /** Provedores que têm ao menos um modelo de visão. */
 export const PROVIDERS_WITH_VISION: LlmProvider[] = (
   ["openai", "anthropic", "gemini", "openrouter"] as LlmProvider[]
-).filter((p) => MODELS.some((m) => m.provider === p && m.vision));
+).filter((p) => MODELS.some((m) => m.provider === p && modelHasVision(m)));
 
 /** Linha de descrição "preço · para que serve" para o select de modelo. */
 export function modelDescription(m: ModelEntry): string {

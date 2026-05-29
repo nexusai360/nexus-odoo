@@ -308,6 +308,12 @@ export type RouterDecisionRow = {
   mode: string;
   /** true quando nenhum dominio chamado/esperado esta entre os escolhidos. */
   discordante: boolean;
+  /** R2-ctx: a Camada 2 (LLM) reformulou a pergunta neste turno. */
+  usedReformulation: boolean;
+  /** R2-ctx: pergunta reformulada (null se nao houve reformulacao). */
+  reformulatedQuestion: string | null;
+  /** R2-ctx: a Camada 1 (embedding cru) caiu em fallback. */
+  originalFallback: boolean;
 };
 
 export type RouterDecisionsPage = {
@@ -390,6 +396,9 @@ export async function getRouterDecisions(
         topScore: true,
         fallbackTriggered: true,
         mode: true,
+        usedReformulation: true,
+        reformulatedQuestion: true,
+        originalFallback: true,
       },
       orderBy: { createdAt: "desc" },
       take: pageSize,
@@ -410,6 +419,9 @@ export async function getRouterDecisions(
       topScore: r.topScore,
       fallbackTriggered: r.fallbackTriggered,
       mode: r.mode,
+      usedReformulation: r.usedReformulation,
+      reformulatedQuestion: r.reformulatedQuestion,
+      originalFallback: r.originalFallback,
       // Discordante so faz sentido quando ha dominio esperado/chamado.
       discordante:
         r.toolsDomains.length > 0 &&

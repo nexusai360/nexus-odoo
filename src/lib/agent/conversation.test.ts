@@ -163,6 +163,31 @@ describe("loadHistory", () => {
     expect(history).toEqual([]);
     expect(prisma.message.findMany).not.toHaveBeenCalled();
   });
+
+  test("includeSystem padrão (true) mantém todos os papéis", async () => {
+    prisma.message.findMany.mockResolvedValue([
+      { id: "m3", role: "tool", content: "{...}", toolCalls: null },
+      { id: "m2", role: "assistant", content: "resposta", toolCalls: [{ id: "c1", name: "x", arguments: {} }] },
+      { id: "m1", role: "user", content: "quanto faturei?", toolCalls: null },
+    ]);
+    const out = await loadHistory("conv-1", 10);
+    expect(out.map((m) => m.role)).toEqual(["user", "assistant", "tool"]);
+    // toolCalls preservados no modo default
+    expect(out.find((m) => m.id === "m2")?.toolCalls).not.toBeNull();
+  });
+
+  test("includeSystem=false remove tool e toolCalls, mantém user + assistant texto", async () => {
+    prisma.message.findMany.mockResolvedValue([
+      { id: "m4", role: "assistant", content: "resposta final", toolCalls: null },
+      { id: "m3", role: "tool", content: "{...}", toolCalls: null },
+      { id: "m2", role: "assistant", content: "", toolCalls: [{ id: "c1", name: "x", arguments: {} }] },
+      { id: "m1", role: "user", content: "quanto faturei?", toolCalls: null },
+    ]);
+    const out = await loadHistory("conv-1", 10, { includeSystem: false });
+    expect(out.map((m) => m.role)).toEqual(["user", "assistant"]);
+    expect(out.every((m) => m.toolCalls == null)).toBe(true);
+    expect(out[1].content).toBe("resposta final");
+  });
 });
 
 describe("persistMessage", () => {

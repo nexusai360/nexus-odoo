@@ -160,6 +160,7 @@ export async function assertConversationOwned(
 export async function loadHistory(
   conversationId: string,
   budget: number = DEFAULT_HISTORY_BUDGET,
+  opts?: { includeSystem?: boolean },
 ): Promise<HistoryMessage[]> {
   if (budget <= 0) return [];
 
@@ -178,6 +179,25 @@ export async function loadHistory(
 
   // Inverter para ordem cronológica (mais antigas primeiro)
   messages.reverse();
+
+  // R2-ctx: modo "Usuário + IA" (includeSystem=false). Remove mensagens de
+  // ferramenta e tira as toolCalls das mensagens do assistant (descartando as
+  // que eram só chamada de tool, sem texto), pra não deixar referências de
+  // tool órfãs que quebrariam a API. O default (true) preserva tudo como antes.
+  if (opts?.includeSystem === false) {
+    return messages
+      .filter((m) => m.role !== "tool")
+      .filter(
+        (m) =>
+          m.role !== "assistant" || (m.content != null && m.content.trim().length > 0),
+      )
+      .map((m) => ({
+        id: m.id,
+        role: m.role as MessageRole,
+        content: m.content,
+        toolCalls: null,
+      }));
+  }
 
   return messages.map((m) => ({
     id: m.id,
