@@ -1,15 +1,14 @@
-import { redirect } from "next/navigation";
 import type { ReactNode } from "react";
-import { getCurrentUser } from "@/lib/auth";
+import { requireMinRole } from "@/lib/auth/require";
 
 /**
  * Layout do menu Integrações.
- * Gate: apenas super_admin tem acesso. Qualquer outro papel é redirecionado.
+ * Gate: apenas super_admin. Outros papéis recebem `?denied=super_admin` em
+ * `/dashboard`, onde o banner explica.
+ *
+ * RBAC v2: padronizado via `requireMinRole`.
  */
 export default async function IntegracoesLayout({ children }: { children: ReactNode }) {
-  const user = await getCurrentUser();
-  if (!user) redirect("/login");
-  if (user.platformRole !== "super_admin") redirect("/dashboard");
-
+  await requireMinRole("super_admin");
   return <>{children}</>;
 }

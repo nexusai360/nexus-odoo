@@ -168,3 +168,105 @@ describe("filterCatalog: filtragem efetiva", () => {
     expect(out.diagnostic.domainsRepresented).toContain("caminho3");
   });
 });
+
+// RBAC v2: camada B do gate de permissão (SPEC §6.1).
+describe("filterCatalog: camada B (RBAC v2, userAllowedDomains)", () => {
+  it("userAllowedDomains='all' não corta nada (super_admin/admin)", () => {
+    const out = filterCatalog({
+      allTools: TOOLS,
+      decision: buildDecision({ pickedDomains: ["financeiro"] }),
+      routerEnabled: true,
+      userAllowedDomains: "all",
+    });
+    // camada A já cortou; camada B não corta nada a mais
+    expect(out.tools).toEqual(
+      filterCatalog({
+        allTools: TOOLS,
+        decision: buildDecision({ pickedDomains: ["financeiro"] }),
+        routerEnabled: true,
+      }).tools,
+    );
+    expect(out.diagnostic.permissionFilteredOut).toBe(0);
+  });
+
+  it("userAllowedDomains com 1 domínio + router ativo → intersecção", () => {
+    const out = filterCatalog({
+      allTools: TOOLS,
+      decision: buildDecision({ pickedDomains: ["financeiro", "fiscal"] }),
+      routerEnabled: true,
+      userAllowedDomains: new Set(["financeiro"]),
+    });
+    const names = out.tools.map((t) => t.name);
+    // financeiro entra (router pickou E user tem)
+    expect(names).toContain("financeiro_saldo");
+    // fiscal NÃO entra (router pickou MAS user NÃO tem)
+    expect(names).not.toContain("fiscal_notas_emitidas");
+    // caminho3 entra sempre (EXCLUDE_FROM_FILTERING)
+    expect(names).toContain("caminho3_bi_consulta");
+    // unknown sempre passa (conservador)
+    expect(names).toContain("tool_misteriosa");
+    expect(out.diagnostic.permissionFilteredOut).toBeGreaterThan(0);
+  });
+
+  it("userAllowedDomains vazio + router ativo → só EXCLUDE_FROM_FILTERING + UNKNOWN", () => {
+    const out = filterCatalog({
+      allTools: TOOLS,
+      decision: buildDecision({ pickedDomains: ["financeiro"] }),
+      routerEnabled: true,
+      userAllowedDomains: new Set(),
+    });
+    const names = out.tools.map((t) => t.name);
+    expect(names).toContain("caminho3_bi_consulta"); // escape hatch
+    expect(names).toContain("tool_misteriosa"); // unknown
+    expect(names).not.toContain("financeiro_saldo");
+  });
+
+  it("router em shadow (routerEnabled=false) + userAllowedDomains corta SOZINHO", () => {
+    // Sem a camada B, shadow = todas as tools passam.
+    // Com a camada B, shadow ainda corta por permissão do usuário.
+    const out = filterCatalog({
+      allTools: TOOLS,
+      decision: buildDecision({ pickedDomains: ["financeiro"] }),
+      routerEnabled: false,
+      userAllowedDomains: new Set(["estoque"]),
+    });
+    const names = out.tools.map((t) => t.name);
+    expect(names).toContain("estoque_saldo");
+    expect(names).toContain("caminho3_bi_consulta");
+    expect(names).toContain("tool_misteriosa");
+    expect(names).not.toContain("financeiro_saldo");
+    expect(names).not.toContain("fiscal_notas_emitidas");
+    // diagnostic.filtered=false (camada A não cortou), mas permissionFilteredOut>0
+    expect(out.diagnostic.filtered).toBe(false);
+    expect(out.diagnostic.permissionFilteredOut).toBeGreaterThan(0);
+  });
+
+  it("router em fallback + userAllowedDomains corta sozinho", () => {
+    const out = filterCatalog({
+      allTools: TOOLS,
+      decision: buildDecision({
+        pickedDomains: [],
+        fallback: { triggered: true, reason: "msg_trivial" },
+      }),
+      routerEnabled: true,
+      userAllowedDomains: new Set(["cadastros"]),
+    });
+    const names = out.tools.map((t) => t.name);
+    expect(names).toContain("cadastros_clientes");
+    expect(names).not.toContain("financeiro_saldo");
+    expect(out.diagnostic.filtered).toBe(false);
+    expect(out.diagnostic.permissionFilteredOut).toBeGreaterThan(0);
+  });
+
+  it("userAllowedDomains não definido → backwards-compat (sem corte da camada B)", () => {
+    const out = filterCatalog({
+      allTools: TOOLS,
+      decision: buildDecision({ pickedDomains: ["financeiro"] }),
+      routerEnabled: true,
+      // userAllowedDomains omitido
+    });
+    const names = out.tools.map((t) => t.name);
+    expect(names).toContain("financeiro_saldo");
+    expect(out.diagnostic.permissionFilteredOut).toBe(0);
+  });
+});

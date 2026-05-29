@@ -44,8 +44,11 @@ import { EmbeddingUnavailable } from "./rag/embed";
 // R1 router de catalogo (sub-projeto do roadmap de cobertura completa).
 // Ver docs/superpowers/specs/2026-05-28-router-catalogo-design.md.
 import { pickDomains } from "./router/pick-domains";
-import { filterCatalog } from "./router/filter-catalog";
+import { filterCatalog, EXCLUDE_FROM_FILTERING } from "./router/filter-catalog";
 import { createDecision, updateDecision } from "./router/log-decision";
+import { getToolDomain, UNKNOWN_DOMAIN } from "./router/tool-to-domain";
+import { respondPermissionDenied } from "./permission-denial";
+import { seesAll } from "@/lib/reports/domains";
 import type {
   ChatMessage,
   ChatUsage,
@@ -322,8 +325,10 @@ export async function runAgent(args: RunAgentInput): Promise<RunAgentResult> {
     // Garantir ownership da conversa
     await assertConversationOwned(args.conversationId, args.userId);
 
-    // Construir cliente LLM
-    const client = buildLlmClient(resolvedLlm.provider, resolvedLlm.apiKey, resolvedLlm.model);
+    // O cliente LLM e construido APOS o fast-path de recusa (SPEC §6.2): no
+    // caminho de permission-denied nenhum cliente LLM e instanciado nem
+    // chamado (custo zero). Ver `const client = buildLlmClient(...)` abaixo do
+    // bloco do fast-path.
 
     // Carregar PlatformRole do usuário para BI schema (G7)
     const userRecord = await prisma.user.findUnique({
@@ -332,6 +337,30 @@ export async function runAgent(args: RunAgentInput): Promise<RunAgentResult> {
     });
     const platformRole = userRecord?.platformRole ?? null;
     const biSchema = platformRole && BI_ROLES.has(platformRole) ? BI_SCHEMA_REFERENCE : undefined;
+
+    // RBAC v2 (SPEC §6.1): camada B do gate de permissão. Quando super_admin
+    // ou admin, retorna "all" sem query (short-circuit seesAll). Para os
+    // demais, busca os domínios concedidos em UserDomainAccess.
+    // Usa prisma direto (não getUserDomains de @/lib/actions/) para evitar
+    // puxar a cadeia de next-auth no contexto do worker.
+    // try/catch defensivo: mocks de teste antigos podem não exporem
+    // userDomainAccess; fallback para set vazio mantém compatibilidade.
+    let userAllowedDomains: Set<string> | "all";
+    if (platformRole && seesAll(platformRole)) {
+      userAllowedDomains = "all";
+    } else if (platformRole) {
+      try {
+        const granted = await prisma.userDomainAccess.findMany({
+          where: { userId: args.userId },
+          select: { domain: true },
+        });
+        userAllowedDomains = new Set(granted.map((g) => g.domain));
+      } catch {
+        userAllowedDomains = new Set();
+      }
+    } else {
+      userAllowedDomains = new Set();
+    }
 
     // Carregar AgentSettings do banco
     const agentSettings = await loadAgentSettings();
@@ -409,23 +438,64 @@ export async function runAgent(args: RunAgentInput): Promise<RunAgentResult> {
     const routerMode: "shadow" | "active" = agentSettings.routerEnabled
       ? "active"
       : "shadow";
-    const filteredCatalog = filterCatalog({
-      allTools: allToolsBeforeRouter,
-      decision: routerDecision,
-      routerEnabled: agentSettings.routerEnabled,
-    });
-    // Cria row de auditoria. Fire-and-forget no sentido: se persistencia falhar,
-    // turno continua com decisionId local (nao quebra).
+    // RBAC v2: createDecision precede filterCatalog para que routerDecisionId
+    // já esteja disponível para o fast-path de recusa (Onda E).
+    // catalogSizeOffered é registrado como 0 e atualizado abaixo via updateDecision.
     const routerLog = await createDecision({
       decision: routerDecision,
       mode: routerMode,
-      catalogSizeOffered: filteredCatalog.tools.length,
+      catalogSizeOffered: 0,
       catalogSizeFull: allToolsBeforeRouter.length,
       userQuestion: args.userMessage,
       conversationId: args.conversationId ?? null,
       llmModelUsed: null,
     });
     const routerDecisionId = routerLog.decisionId;
+
+    // RBAC v2 (SPEC §6.2): fast-path de recusa SEM LLM. Quando a pergunta cai
+    // inteiramente em dominio(s) fora do acesso do usuario (e o router teve
+    // confianca , sem fallback), respondemos com template e custo zero.
+    // So dispara quando ha 1+ dominio nao-transversal detectado E nenhum deles
+    // intersecta o acesso do usuario. Mistura de dominios (interseção >= 1)
+    // NAO dispara: cai no filterCatalog + LLM (SPEC §6.6).
+    if (
+      userAllowedDomains !== "all" &&
+      !routerDecision.fallback.triggered &&
+      routerDecision.pickedDomains.length > 0
+    ) {
+      const nonTransversal = routerDecision.pickedDomains.filter(
+        (d) => !EXCLUDE_FROM_FILTERING.has(d),
+      );
+      const intersected = nonTransversal.filter((d) =>
+        (userAllowedDomains as Set<string>).has(d),
+      );
+      if (intersected.length === 0 && nonTransversal.length > 0) {
+        // O bloco finally (fim da funcao) fecha session + externalBundle.
+        return await respondPermissionDenied({
+          conversationId: args.conversationId,
+          userId: args.userId,
+          deniedDomains: nonTransversal,
+          availableDomains: [...userAllowedDomains],
+          routerDecisionId,
+          userQuestion: args.userMessage,
+        });
+      }
+    }
+
+    // Passou o fast-path: agora sim instanciamos o cliente LLM.
+    const client = buildLlmClient(resolvedLlm.provider, resolvedLlm.apiKey, resolvedLlm.model);
+
+    const filteredCatalog = filterCatalog({
+      allTools: allToolsBeforeRouter,
+      decision: routerDecision,
+      routerEnabled: agentSettings.routerEnabled,
+      userAllowedDomains,
+    });
+    // Atualiza catalogSizeOffered após o filtro real (camadas A + B do RBAC v2).
+    await updateDecision({
+      decisionId: routerDecisionId,
+      catalogSizeOffered: filteredCatalog.tools.length,
+    });
     const allTurnToolNames: string[] = [];
 
     const tools = mcpToolsToProviderTools(filteredCatalog.tools);
@@ -884,6 +954,8 @@ export async function runAgent(args: RunAgentInput): Promise<RunAgentResult> {
         void updateDecision(routerDecisionId, {
           toolsUsed: allTurnToolNames,
           catalogSizeOffered: filteredCatalog.tools.length,
+          // RBAC v2: turno concluído com sucesso (LLM respondeu).
+          outcome: "ok",
         });
         return { ok: true, message, suggestions, usage: totalUsage };
       }
@@ -916,6 +988,38 @@ export async function runAgent(args: RunAgentInput): Promise<RunAgentResult> {
         "./session-cache"
       );
       for (const tc of result.toolCalls) {
+        // RBAC v2 (SPEC §6.3): defesa em profundidade. Mesmo que o LLM chute
+        // (alucine) uma tool de dominio fora do catalogo filtrado, NAO a
+        // executamos , devolvemos um tool_result de erro semantico para o LLM
+        // adaptar a resposta. Tools transversais (caminho3) e de prefixo
+        // desconhecido passam (conservador). Esta defesa NAO gera audit_log
+        // (a metrica primaria de recusa vem do fast-path da §6.2).
+        const tcDomain = getToolDomain(tc.name);
+        const tcTransversal =
+          EXCLUDE_FROM_FILTERING.has(tcDomain) || tcDomain === UNKNOWN_DOMAIN;
+        const tcAllowed =
+          userAllowedDomains === "all" ||
+          tcTransversal ||
+          userAllowedDomains.has(tcDomain);
+        if (!tcAllowed) {
+          const negado = `Acesso ao domínio "${tcDomain}" não está liberado para o seu usuário.`;
+          args.onEvent?.({
+            type: "tool_result",
+            toolName: tc.name,
+            truncated: false,
+            label: progressLabel(tc.name),
+            toolCallId: tc.id,
+          });
+          conversation.push({
+            role: "tool",
+            toolCallId: tc.id,
+            toolName: tc.name,
+            content: negado,
+          });
+          toolResultsMap[tc.id] = negado;
+          continue;
+        }
+
         args.onEvent?.({
           type: "tool_call",
           toolName: tc.name,

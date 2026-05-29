@@ -7,6 +7,8 @@ import { getPublicAgentFlags } from "@/lib/actions/agent-config";
 import { getPublicActiveLlmConfig } from "@/lib/agent/llm/get-active-config";
 import { getPersonalizedWelcomeSuggestions } from "@/lib/agent/personalized-suggestions";
 import { pickWelcomeByRole } from "@/lib/agent/welcome-suggestions";
+import { seesAll } from "@/lib/reports/domains";
+import { getUserDomains } from "@/lib/actions/domain-access";
 
 export default async function ProtectedLayout({
   children,
@@ -23,10 +25,15 @@ export default async function ProtectedLayout({
     avatarUrl: user.avatarUrl,
   };
 
-  // A bubble do agente é exclusiva de super_admin e admin, e só aparece
-  // quando o toggle "Agente Nex ativo" está ligado (AgentSettings.bubbleEnabled).
-  const canUseAgent =
-    user.platformRole === "super_admin" || user.platformRole === "admin";
+  // RBAC v2 (SPEC §6.5): a bubble do agente aparece para quem CONSEGUE usar o
+  // Nex. super_admin/admin veem tudo (short-circuit seesAll, sem query).
+  // manager/viewer/operator so veem a bubble se tiverem ao menos um dominio
+  // concedido (UserDomainAccess); sem dominio, perguntar ao Nex so geraria
+  // recusa, entao a bubble some. bubbleEnabled (AgentSettings) segue como
+  // kill-switch global mais abaixo.
+  const canUseAgent = seesAll(user.platformRole)
+    ? true
+    : (await getUserDomains(user.id)).length > 0;
 
   // Resolve audioInputEnabled: toggle ligado + provider OpenAI ativo.
   const [flags, activeLlm] = await Promise.all([

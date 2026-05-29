@@ -13,10 +13,23 @@ import { Activity } from "lucide-react";
 
 import { MonitoramentoContent } from "@/components/agent/monitoramento/monitoramento-content";
 import { MonitoramentoNav } from "@/components/agent/monitoramento-nav";
+import { PermissionDenialsCard } from "@/components/agent/router/permission-denials-card";
 import { PageHeader } from "@/components/page-header";
 import { PageShell } from "@/components/layout/page-shell";
 import { getCurrentUser } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import {
+  getPermissionDenialStats,
+  type DenialPeriod,
+} from "@/lib/actions/agent-permission-denials";
+
+const DENIAL_PERIODS: DenialPeriod[] = ["24h", "7d", "30d"];
+
+function parseDenialPeriod(value: string | undefined): DenialPeriod {
+  return DENIAL_PERIODS.includes(value as DenialPeriod)
+    ? (value as DenialPeriod)
+    : "7d";
+}
 
 export const metadata = {
   title: "Monitoramento do Agente | Matrix Fitness Group",
@@ -35,17 +48,24 @@ async function getFirstEvalDate(): Promise<Date> {
   return d;
 }
 
-export default async function MonitoramentoPage() {
+export default async function MonitoramentoPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ denialsPeriod?: string }>;
+}) {
   const user = await getCurrentUser();
   if (!user) redirect("/login");
   if (user.platformRole !== "super_admin") redirect("/dashboard");
 
-  const [minDate, agentSettings] = await Promise.all([
+  const denialPeriod = parseDenialPeriod((await searchParams).denialsPeriod);
+
+  const [minDate, agentSettings, denialStats] = await Promise.all([
     getFirstEvalDate(),
     prisma.agentSettings.findUnique({
       where: { id: "global" },
       select: { qualityHeuristicIntervalMinutes: true },
     }),
+    getPermissionDenialStats(denialPeriod),
   ]);
   const qualityHeuristicIntervalMinutes =
     agentSettings?.qualityHeuristicIntervalMinutes ?? 240;
@@ -63,6 +83,9 @@ export default async function MonitoramentoPage() {
           minDate={minDate.toISOString()}
           qualityHeuristicIntervalMinutes={qualityHeuristicIntervalMinutes}
         />
+      </div>
+      <div className="mt-6">
+        <PermissionDenialsCard stats={denialStats} period={denialPeriod} />
       </div>
     </PageShell>
   );

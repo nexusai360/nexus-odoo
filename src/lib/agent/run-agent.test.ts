@@ -7,6 +7,10 @@ jest.mock("@/lib/prisma", () => ({
     message: { create: jest.fn(), findMany: jest.fn() },
     conversation: { findFirst: jest.fn(), findUnique: jest.fn(), create: jest.fn() },
     agentSettings: { findUnique: jest.fn().mockResolvedValue(null) },
+    // RBAC v2 camada B: o gate de dominio do run-agent consulta os dominios
+    // concedidos. O fixture concede "estoque" para que o operator possa exercer
+    // a tool de estoque dos testes de tool-calling.
+    userDomainAccess: { findMany: jest.fn() },
   },
 }));
 
@@ -116,6 +120,7 @@ function makeMcpSession(toolResult = "Resultado da tool") {
 beforeEach(() => {
   jest.clearAllMocks();
   prisma.user.findUnique.mockResolvedValue({ id: "user-1", platformRole: "operator", isActive: true });
+  prisma.userDomainAccess.findMany.mockResolvedValue([{ domain: "estoque" }]);
   prisma.message.create.mockResolvedValue({});
   prisma.message.findMany.mockResolvedValue([]);
   prisma.conversation.findUnique.mockResolvedValue({ id: "conv-1", userId: "user-1" });
@@ -216,6 +221,41 @@ describe("runAgent", () => {
     expect(result.ok).toBe(true);
     expect(session.callTool).toHaveBeenCalledWith("estoque_saldo_produto", { produto: "Bicicleta" });
     expect(session.close).toHaveBeenCalled();
+  });
+
+  test("RBAC v2: admin (userAllowedDomains='all') executa tool sem crash na defesa §6.3", async () => {
+    // Regressao: a defesa §6.3 faz `userAllowedDomains === "all" || ... || userAllowedDomains.has(d)`.
+    // Para super_admin/admin (= "all") o short-circuit NAO pode chegar no .has()
+    // (string nao tem .has). Este teste exercita o loop de tool com role "all".
+    prisma.user.findUnique.mockResolvedValue({ id: "user-admin", platformRole: "admin", isActive: true });
+    const client = makeClient([
+      {
+        message: "Vou verificar...",
+        toolCalls: [{ id: "tc1", name: "financeiro_saldo_bancario", arguments: {} }],
+      },
+      { message: "Saldo conferido." },
+    ]);
+    buildLlmClient.mockReturnValue(client);
+    const session = {
+      listTools: jest.fn().mockResolvedValue([
+        { name: "financeiro_saldo_bancario", description: "Saldo", inputSchema: { type: "object", properties: {} } },
+      ]),
+      callTool: jest.fn().mockResolvedValue("Saldo: R$ 0"),
+      close: jest.fn().mockResolvedValue(undefined),
+    };
+    createMcpSession.mockResolvedValue(session);
+
+    const result = await runAgent({
+      conversationId: "conv-1",
+      userId: "user-admin",
+      userMessage: "Qual o saldo?",
+      channel: "in_app",
+      isPlayground: false,
+    });
+
+    expect(result.ok).toBe(true);
+    // admin ve tudo: a tool de financeiro deve ser executada (sem TypeError).
+    expect(session.callTool).toHaveBeenCalledWith("financeiro_saldo_bancario", {});
   });
 
   test("MAX_ITERATIONS excedido → retorna ok=false", async () => {

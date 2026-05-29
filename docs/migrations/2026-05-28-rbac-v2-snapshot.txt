@@ -1,0 +1,2 @@
+Pré-flight RBAC v2 (rh/producao) — rodado em 2026-05-29T01:30:37Z
+0 rows

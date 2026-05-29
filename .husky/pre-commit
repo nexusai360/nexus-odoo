@@ -1,1 +1,7 @@
+# Protocolo multi-agente (worktrees) — bloqueia commits em branch errada.
+# Hook global em ~/.config/git/hooks/pre-commit.
+if [ -x "$HOME/.config/git/hooks/pre-commit" ]; then
+  "$HOME/.config/git/hooks/pre-commit" "$@" || exit 1
+fi
+
 npx lint-staged

@@ -61,3 +61,4 @@ docs/agent-quality-review/results/
 # Multi-agente worktrees (protocolo agente)
 /branches/
 .agente-branch
+.agente-handoff.md

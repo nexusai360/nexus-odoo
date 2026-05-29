@@ -14,8 +14,9 @@ import { rawDelegateKey } from "../src/worker/jobs";
 import type { ReportDomain } from "../src/generated/prisma/client";
 
 const RELATORIO = "docs/superpowers/research/2026-05-22-l2-relatorio.md";
+// RBAC v2: 7 domínios após drop de rh/producao (alinhado com Router R1).
 const TODOS_DOMINIOS: ReportDomain[] = [
-  "estoque", "financeiro", "fiscal", "comercial", "cadastros", "contabil", "rh", "crm", "producao",
+  "estoque", "financeiro", "fiscal", "comercial", "cadastros", "contabil", "crm",
 ];
 
 // ─── ctx de teste (super_admin, todos os domínios) ───────────────────────────
