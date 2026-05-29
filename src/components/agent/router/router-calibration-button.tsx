@@ -76,7 +76,7 @@ export function RouterCalibrationButton() {
         <p className="text-xs text-muted-foreground">
           Roda o seletor de dominios contra as 291 perguntas das rodadas
           historicas (R8 a R23) e mede a acuracia sem chamar o LLM de chat.
-          Leva cerca de 30 segundos e custa centavos em embeddings.
+          Leva um a dois minutos e custa centavos em embeddings.
         </p>
 
         <Button onClick={run} disabled={running} className="w-full sm:w-auto">
@@ -98,8 +98,8 @@ export function RouterCalibrationButton() {
             className="text-xs text-muted-foreground"
             aria-live="polite"
           >
-            Gerando embeddings das 291 perguntas. Isso pode levar ate um
-            minuto, nao feche a aba.
+            Gerando embeddings das 291 perguntas. Isso pode levar um a dois
+            minutos, nao feche a aba.
           </p>
         )}
 

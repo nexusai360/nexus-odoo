@@ -39,6 +39,13 @@ export interface CalibrationOptions {
   writeReport?: boolean;
   /** Callback de progresso (a cada pergunta processada). */
   onProgress?: (processed: number, total: number) => void;
+  /**
+   * Quantas perguntas embedar em paralelo. Cada pergunta faz 1 chamada de
+   * embedding (~1-3s). Sequencial, 291 perguntas levam minutos e estouram o
+   * timeout do handler HTTP. Default 8 (seguro para os limites de RPM de
+   * embeddings da OpenAI).
+   */
+  concurrency?: number;
 }
 
 export interface CalibrationDomainStat {
@@ -195,34 +202,52 @@ export async function runCalibration(
   const topK = options.topK ?? 3;
   const limit = options.limit ?? null;
   const writeReport = options.writeReport ?? true;
+  const concurrency = Math.max(1, options.concurrency ?? 8);
 
   let questions = loadQuestions();
   if (limit) {
     questions = questions.slice(0, limit);
   }
 
-  const rows: CalibrationRow[] = [];
+  // Resultado por indice (preserva determinismo independente da ordem de
+  // conclusao). Workers consomem uma fila compartilhada de indices.
+  const rows: CalibrationRow[] = new Array(questions.length);
+  let next = 0;
   let processed = 0;
-  for (const q of questions) {
-    processed++;
-    options.onProgress?.(processed, questions.length);
-    const decision = await pickDomains(q.question, { threshold, topK });
-    const top1 = decision.pickedDomains[0];
-    const mappable = isLabelMappable(q.domain);
-    const top1Correct = mappable ? top1 === q.domain : null;
-    const inTopK = mappable ? decision.pickedDomains.includes(q.domain) : null;
-    rows.push({
-      labeledDomain: q.domain,
-      question: q.question,
-      pickedDomains: decision.pickedDomains,
-      topScore: decision.topScore,
-      fallbackTriggered: decision.fallback.triggered,
-      fallbackReason: decision.fallback.reason,
-      top1Correct,
-      inTopK,
-      pickDurationMs: decision.pickDurationMs,
-    });
+
+  async function worker(): Promise<void> {
+    for (;;) {
+      const i = next++;
+      if (i >= questions.length) return;
+      const q = questions[i]!;
+      const decision = await pickDomains(q.question, { threshold, topK });
+      const top1 = decision.pickedDomains[0];
+      const mappable = isLabelMappable(q.domain);
+      const top1Correct = mappable ? top1 === q.domain : null;
+      const inTopK = mappable
+        ? decision.pickedDomains.includes(q.domain)
+        : null;
+      rows[i] = {
+        labeledDomain: q.domain,
+        question: q.question,
+        pickedDomains: decision.pickedDomains,
+        topScore: decision.topScore,
+        fallbackTriggered: decision.fallback.triggered,
+        fallbackReason: decision.fallback.reason,
+        top1Correct,
+        inTopK,
+        pickDurationMs: decision.pickDurationMs,
+      };
+      processed++;
+      options.onProgress?.(processed, questions.length);
+    }
   }
+
+  await Promise.all(
+    Array.from({ length: Math.min(concurrency, questions.length) }, () =>
+      worker(),
+    ),
+  );
 
   // Estatisticas globais.
   const mappableRows = rows.filter((r) => r.top1Correct !== null);

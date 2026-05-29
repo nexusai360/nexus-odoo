@@ -4,9 +4,10 @@
  * Spec: docs/superpowers/specs/2026-05-28-router-catalogo-design.md §10.1.7.
  * Plan: docs/superpowers/plans/2026-05-28-router-catalogo-plan.md §E4.
  *
- * POST dispara runCalibration inline (foreground, ~30s, ~$0.003 em embeddings).
- * Roda pickDomains contra as 291 perguntas das rodadas R8-R23 e retorna os KPIs
- * (Top-1, Top-K, fallbacks, latencia) mais o flag de promocao (Top-1 >= 85%).
+ * POST dispara runCalibration inline (foreground, ~1-2min, ~$0.003 em
+ * embeddings). Roda pickDomains contra as 291 perguntas das rodadas R8-R23 (com
+ * concorrencia 8 nos embeddings) e retorna os KPIs (Top-1, Top-K, fallbacks,
+ * latencia) mais o flag de promocao (Top-1 >= 85%).
  *
  * Gate: apenas super_admin (mesma postura do kill-switch). NAO chama LLM de
  * chat, mas gera embeddings, entao exige credencial de embedding configurada.
@@ -21,8 +22,9 @@ import { logAudit } from "@/lib/audit";
 import { checkRateLimit } from "@/lib/rate-limit";
 import { runCalibration } from "@/lib/agent/router/calibrate";
 
-// Calibragem pode levar ~30s. Garante que o runtime nao corte antes.
-export const maxDuration = 120;
+// Calibragem roda 291 embeddings (concorrencia 8): ~1-2min no caso tipico,
+// mais em rede lenta. Folga generosa para o runtime nao cortar antes.
+export const maxDuration = 300;
 
 export async function POST(req: NextRequest): Promise<NextResponse> {
   const user = await getCurrentUser();
