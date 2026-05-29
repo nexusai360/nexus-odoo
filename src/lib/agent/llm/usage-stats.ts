@@ -88,8 +88,11 @@ export interface UsageDetailRow {
   errorMessage: string | null;
   isPlayground: boolean;
   conversationId: string | null;
-  /** Tipo da requisição: texto | imagem | audio | arquivo (Task G11). */
+  /** Tipo da requisição: texto | imagem | audio | arquivo | embedding. */
   requestKind: string;
+  /** Origem explícita da chamada (router, router_calibracao). null = deriva
+   *  de isPlayground (Agente Nex / Playground). */
+  origin: string | null;
   /** Tokens de raciocinio internos (OpenAI/Gemini/OpenRouter). null
    *  para providers que nao expoem (ex.: Anthropic) ou modelos legados. */
   reasoningTokens: number | null;
@@ -332,8 +335,8 @@ export async function getUsageStats(args: {
 // getUsageDetails
 // ---------------------------------------------------------------------------
 
-const DEFAULT_LIMIT = 25;
-const MAX_LIMIT = 200;
+const DEFAULT_LIMIT = 50;
+const MAX_LIMIT = 500;
 
 /**
  * Lista paginada de chamadas individuais ao LLM no período.
@@ -394,6 +397,7 @@ export async function getUsageDetails(args: {
         isPlayground: true,
         conversationId: true,
         requestKind: true,
+        origin: true,
         reasoningTokens: true,
         toolCallsCount: true,
         toolNames: true,
@@ -434,6 +438,7 @@ export async function getUsageDetails(args: {
     isPlayground: r.isPlayground,
     conversationId: r.conversationId ?? null,
     requestKind: r.requestKind ?? "texto",
+    origin: r.origin ?? null,
     reasoningTokens:
       r.reasoningTokens == null ? null : toNum(r.reasoningTokens),
     toolCallsCount:

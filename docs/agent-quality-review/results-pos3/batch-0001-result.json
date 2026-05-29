@@ -1,0 +1,341 @@
+{
+  "batchId": "0001",
+  "evaluatedAt": "2026-05-26T05:16:00.000Z",
+  "totals": {
+    "CORRETO": 15,
+    "PARCIAL": 6,
+    "ERRADO": 0,
+    "FORA_DE_ESCOPO": 19
+  },
+  "patterns": {
+    "acerto_objetividade": 10,
+    "acerto_encadeamento": 1,
+    "pediu_clarificacao_desnecessaria": 18,
+    "fluxo_tool_incompleto": 4,
+    "parametro_incompleto": 2,
+    "limitacao_real_declarada": 3,
+    "nao_usou_tool": 1
+  },
+  "turnos": [
+    {
+      "turnoId": "00c00bf6-2ce3-4fa6-8e1f-4cd10c910feb",
+      "status": "PARCIAL",
+      "patterns": ["fluxo_tool_incompleto"],
+      "razao": "Pediu 'cadastro completo' mas a IA listou 5 e pediu para escolher, sem trazer cadastro completo de nenhum. Nomes/docs batem com toolResults.",
+      "sugestao_prompt": "Quando o usuário pedir 'cadastro completo' e a busca retornar múltiplos, mostrar lista + ja oferecer cadastro completo do primeiro ou pedir desambiguação curta.",
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "01420e45-76bc-49aa-a6a1-07567b280260",
+      "status": "FORA_DE_ESCOPO",
+      "patterns": ["limitacao_real_declarada"],
+      "razao": "Meta da empresa não é dado disponível no cache; pediu definição de meta legitimamente.",
+      "sugestao_prompt": null,
+      "correcao_factual": "nao_aplicavel"
+    },
+    {
+      "turnoId": "02aaed2d-e5b8-4013-81b7-899ff9c53f3e",
+      "status": "CORRETO",
+      "patterns": ["acerto_objetividade"],
+      "razao": "Pergunta ambígua entre estoque e financeiro; desambiguação enxuta e necessária.",
+      "sugestao_prompt": null,
+      "correcao_factual": "nao_aplicavel"
+    },
+    {
+      "turnoId": "0308e6c5-bfbb-4d3a-b93f-39cd283cc241",
+      "status": "FORA_DE_ESCOPO",
+      "patterns": ["limitacao_real_declarada"],
+      "razao": "Não há tool para listar parceiros sem documento; registrou lacuna e respondeu honestamente.",
+      "sugestao_prompt": null,
+      "correcao_factual": "nao_aplicavel"
+    },
+    {
+      "turnoId": "0382e1ef-df0a-4c7d-b4b6-32ab7b145436",
+      "status": "CORRETO",
+      "patterns": ["acerto_objetividade"],
+      "razao": "Tool certa, período certo (hoje), número R$ 0,00 bate com toolResults.entrada=0.",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "0391670e-6b7d-4212-a601-be3e808b85b6",
+      "status": "CORRETO",
+      "patterns": ["acerto_objetividade"],
+      "razao": "Listou 5 dos 10 com CNPJ/cidade/odooId, todos batem com toolResults. Pergunta era 'buscar'.",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "04231b8c-1484-4072-94fd-05d8aca27fa7",
+      "status": "CORRETO",
+      "patterns": ["acerto_objetividade"],
+      "razao": "Produto 'inventado' é literal; pediu nome real corretamente.",
+      "sugestao_prompt": null,
+      "correcao_factual": "nao_aplicavel"
+    },
+    {
+      "turnoId": "04982d42-9b50-4788-8def-c84f6710f020",
+      "status": "CORRETO",
+      "patterns": ["acerto_objetividade"],
+      "razao": "Confirmou existência, CNPJ e cidade conferem com toolResults.",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "04c637a1-5000-4580-808b-40f1c25c839a",
+      "status": "CORRETO",
+      "patterns": ["acerto_objetividade"],
+      "razao": "Saldo total -24.291.495,49 e maiores saldos conferem com toolResults.",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "04db3b8e-e129-4ca0-bc31-e9b5ffc43cb8",
+      "status": "CORRETO",
+      "patterns": ["acerto_objetividade"],
+      "razao": "Pergunta de uma palavra; desambiguação adequada.",
+      "sugestao_prompt": null,
+      "correcao_factual": "nao_aplicavel"
+    },
+    {
+      "turnoId": "069fa23b-3d44-4db4-94ed-1d08a86f4d6a",
+      "status": "FORA_DE_ESCOPO",
+      "patterns": ["limitacao_real_declarada"],
+      "razao": "Ambiguidade caixa/estoque + realizado/previsto justifica clarificação.",
+      "sugestao_prompt": null,
+      "correcao_factual": "nao_aplicavel"
+    },
+    {
+      "turnoId": "06d5f05e-dd01-4b0b-bd1d-3863cdd02b57",
+      "status": "FORA_DE_ESCOPO",
+      "patterns": ["limitacao_real_declarada"],
+      "razao": "Domínio de produção provavelmente fora do escopo atual; clarificou opções.",
+      "sugestao_prompt": null,
+      "correcao_factual": "nao_aplicavel"
+    },
+    {
+      "turnoId": "076d69d6-068b-4688-bb02-ea4443b91cc2",
+      "status": "CORRETO",
+      "patterns": ["acerto_objetividade"],
+      "razao": "Top fornecedor (Jds 186 notas R$15.285.312,50) e total (451 notas R$21.075.616,52) batem exatos.",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "0b8dfbe8-4cec-4731-8f27-cea038129496",
+      "status": "PARCIAL",
+      "patterns": ["pediu_clarificacao_desnecessaria"],
+      "razao": "'Cobrança hoje' tem default razoável: títulos vencidos+hoje. Podia ter respondido com default.",
+      "sugestao_prompt": "Para 'cobrança hoje', assumir default 'vencidos+vencendo hoje' e oferecer refinamento depois.",
+      "correcao_factual": "nao_aplicavel"
+    },
+    {
+      "turnoId": "0d3ebc16-71da-45b1-9698-f186553a631e",
+      "status": "FORA_DE_ESCOPO",
+      "patterns": ["limitacao_real_declarada"],
+      "razao": "Faturamento por marca não tem tool; registrou lacuna e clarificou.",
+      "sugestao_prompt": null,
+      "correcao_factual": "nao_aplicavel"
+    },
+    {
+      "turnoId": "0e03f04e-1498-4fd8-a628-036e5f70cca1",
+      "status": "CORRETO",
+      "patterns": ["acerto_objetividade"],
+      "razao": "Termo ambíguo, 40 matches; trouxe top 3 com saldos que batem com toolResults e pediu desambiguação.",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "1038a4a5-c944-4f71-8b05-6be4a89ab036",
+      "status": "CORRETO",
+      "patterns": ["acerto_objetividade"],
+      "razao": "R$ 38.064.323,84 e 772 notas batem com toolResults; período mês corrente correto.",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "105f468e-21eb-428b-853b-b5e30aa46f7e",
+      "status": "PARCIAL",
+      "patterns": ["pediu_clarificacao_desnecessaria", "fluxo_tool_incompleto"],
+      "razao": "Já chamou tool e tem dados, mas em vez de responder pediu 3 clarificações; podia ter dado default (pedidos sem etapa 'Emite NF' atualmente).",
+      "sugestao_prompt": "Quando já houver dados de comercial_pedidos_por_etapa, responder com agregado das etapas pré-NF como default e oferecer refinamento.",
+      "correcao_factual": "nao_aplicavel"
+    },
+    {
+      "turnoId": "1086c512-81da-4e09-ad02-f7bc5dacc91e",
+      "status": "PARCIAL",
+      "patterns": ["pediu_clarificacao_desnecessaria", "nao_usou_tool"],
+      "razao": "'Conta com imposto no nome' geralmente é conta contábil; podia ter tentado a busca direta antes.",
+      "sugestao_prompt": "Para 'buscar conta', tentar primeiro plano de contas e, se vazio, oferecer bancárias.",
+      "correcao_factual": "nao_aplicavel"
+    },
+    {
+      "turnoId": "117882b6-1de3-47fb-b385-bd5694707138",
+      "status": "CORRETO",
+      "patterns": ["acerto_objetividade"],
+      "razao": "170 notas e R$4.659.800,34 batem exatos com totalAgregado.",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "11ec2da3-3e92-42d5-97ba-d4a31e4d5dfa",
+      "status": "FORA_DE_ESCOPO",
+      "patterns": ["limitacao_real_declarada"],
+      "razao": "Ticket médio por vendedor exige clarificação de período e granularidade.",
+      "sugestao_prompt": null,
+      "correcao_factual": "nao_aplicavel"
+    },
+    {
+      "turnoId": "11eea41a-be5b-4d0c-864f-5b89be79ad81",
+      "status": "FORA_DE_ESCOPO",
+      "patterns": ["pediu_clarificacao_desnecessaria"],
+      "razao": "Estoque parado depende de dias-corte; aceitável pedir.",
+      "sugestao_prompt": "Adotar default 90 dias para 'estoque parado' e oferecer ajuste.",
+      "correcao_factual": "nao_aplicavel"
+    },
+    {
+      "turnoId": "120577ab-19b9-4ab7-9e18-7a50b5c94012",
+      "status": "FORA_DE_ESCOPO",
+      "patterns": ["pediu_clarificacao_desnecessaria"],
+      "razao": "Pergunta truncada ('Conta contas a receber'); clarificou opções.",
+      "sugestao_prompt": null,
+      "correcao_factual": "nao_aplicavel"
+    },
+    {
+      "turnoId": "120df532-da44-4bce-83b7-1c64893749fd",
+      "status": "FORA_DE_ESCOPO",
+      "patterns": ["pediu_clarificacao_desnecessaria"],
+      "razao": "'Resume o financeiro' é amplo; clarificou visões e período razoavelmente.",
+      "sugestao_prompt": "Para 'resume o financeiro', oferecer default automático (saldo contas + a receber + a pagar + caixa do mês) e exibir.",
+      "correcao_factual": "nao_aplicavel"
+    },
+    {
+      "turnoId": "1220fcfe-f60c-4b8f-a275-f4c5608dffc7",
+      "status": "FORA_DE_ESCOPO",
+      "patterns": ["pediu_clarificacao_desnecessaria"],
+      "razao": "Ambiguidade nota individual vs total; clarificou.",
+      "sugestao_prompt": null,
+      "correcao_factual": "nao_aplicavel"
+    },
+    {
+      "turnoId": "12dc7b65-3ea2-41df-8143-632224d225f2",
+      "status": "FORA_DE_ESCOPO",
+      "patterns": ["pediu_clarificacao_desnecessaria"],
+      "razao": "Mensagem de uma palavra; pediu visão e período.",
+      "sugestao_prompt": null,
+      "correcao_factual": "nao_aplicavel"
+    },
+    {
+      "turnoId": "13499939-6e96-4e1b-8cd0-885a7c26fb32",
+      "status": "FORA_DE_ESCOPO",
+      "patterns": ["limitacao_real_declarada"],
+      "razao": "Sem dado da folha (valor) é impossível comparar; pediu valor.",
+      "sugestao_prompt": null,
+      "correcao_factual": "nao_aplicavel"
+    },
+    {
+      "turnoId": "160d34b1-614b-4f5c-81d5-7027d5229060",
+      "status": "FORA_DE_ESCOPO",
+      "patterns": ["pediu_clarificacao_desnecessaria"],
+      "razao": "Smartfit tem múltiplos cadastros, exigiu CNPJ e período.",
+      "sugestao_prompt": null,
+      "correcao_factual": "nao_aplicavel"
+    },
+    {
+      "turnoId": "18b64b7d-a021-4a8a-bcdc-c8ca251e5369",
+      "status": "PARCIAL",
+      "patterns": ["pediu_clarificacao_desnecessaria"],
+      "razao": "'Última semana' admite default (últimos 7 dias) sem precisar de 2 confirmações.",
+      "sugestao_prompt": "Default 'última semana'=últimos 7 dias corridos; consultar tool e oferecer refinamento.",
+      "correcao_factual": "nao_aplicavel"
+    },
+    {
+      "turnoId": "1949b242-1d09-43f0-a8f2-fae29af8bcb8",
+      "status": "FORA_DE_ESCOPO",
+      "patterns": ["pediu_clarificacao_desnecessaria"],
+      "razao": "Pergunta ambígua ('Fornecedor sem cadastro'); clarificou opções.",
+      "sugestao_prompt": null,
+      "correcao_factual": "nao_aplicavel"
+    },
+    {
+      "turnoId": "19cbe309-cd1a-41bc-a5fe-30105e1d9571",
+      "status": "CORRETO",
+      "patterns": ["acerto_objetividade"],
+      "razao": "Saldo 0 confirmado por toolResults (semEstoqueCadastrado).",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "1b0a5cdb-ab27-46bf-898b-9418f0dbc29b",
+      "status": "CORRETO",
+      "patterns": ["acerto_objetividade"],
+      "razao": "Saudação social; resposta apropriada com oferta de menu.",
+      "sugestao_prompt": null,
+      "correcao_factual": "nao_aplicavel"
+    },
+    {
+      "turnoId": "1b120a61-1413-4845-b39e-6af4e0cc8a35",
+      "status": "CORRETO",
+      "patterns": ["acerto_objetividade"],
+      "razao": "Documento e cidade batem exatos com toolResults.",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "1cdba623-ffd6-4155-941e-86e61f2367b6",
+      "status": "PARCIAL",
+      "patterns": ["tool_errada", "parametro_incompleto"],
+      "razao": "Usuário pediu 'conta com aluguel no nome', provavelmente conta contábil; tool chamada foi de saldo de contas bancárias. Resposta tecnicamente correta para essa tool, mas tool errada para a intenção.",
+      "sugestao_prompt": "Para 'buscar conta com X no nome' sem qualificador, priorizar plano de contas; só usar contas bancárias se usuário explicitar banco/saldo.",
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "1e73e5ce-00bb-4cc0-be0e-1e074c4840a9",
+      "status": "CORRETO",
+      "patterns": ["acerto_encadeamento", "acerto_objetividade"],
+      "razao": "Duas tools em paralelo, números (38.064.323,84 e 33.997.934,37) batem; comparação +11,97% calculada correta.",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "1ecf9acc-5462-4265-b7d4-b91aedef796e",
+      "status": "FORA_DE_ESCOPO",
+      "patterns": ["limitacao_real_declarada"],
+      "razao": "Sem tool para 'transportadoras ativas'; registrou lacuna e respondeu honestamente.",
+      "sugestao_prompt": null,
+      "correcao_factual": "nao_aplicavel"
+    },
+    {
+      "turnoId": "1fad727d-5786-443b-805e-369e98673d4c",
+      "status": "CORRETO",
+      "patterns": ["acerto_objetividade"],
+      "razao": "Saldo 1 do item principal e demais 0 batem com toolResults.",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "1fc354e4-fe4c-4da4-92a7-6a129ec74554",
+      "status": "FORA_DE_ESCOPO",
+      "patterns": ["pediu_clarificacao_desnecessaria"],
+      "razao": "'Saldo do estoque' é ambíguo (total/produto/armazém); clarificou.",
+      "sugestao_prompt": "Default: valor total a custo + linha por armazém; oferecer refinamento por produto.",
+      "correcao_factual": "nao_aplicavel"
+    },
+    {
+      "turnoId": "20293d87-2b20-41a2-9044-d59002353602",
+      "status": "FORA_DE_ESCOPO",
+      "patterns": ["limitacao_real_declarada"],
+      "razao": "Estrutura completa de conta contábil precisa de identificação; clarificou.",
+      "sugestao_prompt": null,
+      "correcao_factual": "nao_aplicavel"
+    },
+    {
+      "turnoId": "2041291d-b25a-47fa-a533-c932d1ccbcf3",
+      "status": "FORA_DE_ESCOPO",
+      "patterns": ["pediu_clarificacao_desnecessaria"],
+      "razao": "Ambiguidade 'em 30 dias' (a vencer vs vencidas); clarificou.",
+      "sugestao_prompt": "Default 'em 30 dias' = próximos 30 dias a vencer.",
+      "correcao_factual": "nao_aplicavel"
+    }
+  ]
+}

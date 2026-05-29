@@ -1,0 +1,89 @@
+{
+  "batchId": "0008",
+  "evaluatedAt": "2026-05-26T05:20:00Z",
+  "totals": {
+    "CORRETO": 0,
+    "PARCIAL": 3,
+    "ERRADO": 6,
+    "FORA_DE_ESCOPO": 0
+  },
+  "patterns": {
+    "pediu_clarificacao_desnecessaria": 9,
+    "nao_usou_tool": 9,
+    "loop_clarificacao": 3
+  },
+  "turnos": [
+    {
+      "turnoId": "fa633681-88d6-4caf-9b4d-34d4fd2892e3",
+      "status": "PARCIAL",
+      "patterns": ["pediu_clarificacao_desnecessaria", "nao_usou_tool"],
+      "razao": "Pediu cliente e periodo, mas poderia ter assumido mes corrente como default e usado cadastro_buscar_parceiro com termo 'rede academias' para localizar. Pelo menos a pergunta de qual cliente e legitima.",
+      "sugestao_prompt": "Regra: para faturamento por cliente, assumir mes corrente como default e tentar buscar parceiro pelo termo dado antes de pedir CNPJ.",
+      "correcao_factual": "nao_aplicavel"
+    },
+    {
+      "turnoId": "fa9a827d-071d-41ca-8e42-83634b6d2aac",
+      "status": "PARCIAL",
+      "patterns": ["pediu_clarificacao_desnecessaria", "nao_usou_tool"],
+      "razao": "Usuario disse 'cliente x' como placeholder generico; perguntar nome e legitimo, mas perguntar 'aberto vs vencido' e excessivo, deveria mostrar ambos por default.",
+      "sugestao_prompt": "Regra: ao perguntar divida de cliente, mostrar em aberto e vencido juntos por default sem pedir distincao.",
+      "correcao_factual": "nao_aplicavel"
+    },
+    {
+      "turnoId": "faf80fc6-0d57-43ca-a791-0edddd777811",
+      "status": "ERRADO",
+      "patterns": ["pediu_clarificacao_desnecessaria", "nao_usou_tool", "loop_clarificacao"],
+      "razao": "Pergunta clara: receita prevista proxima semana. Devia assumir contas a receber a vencer em 7 dias corridos a partir de hoje e responder. Em vez disso pediu 2 confirmacoes triviais.",
+      "sugestao_prompt": "Regra: 'receita prevista' = parcelas a receber a vencer; 'proxima semana' = proximos 7 dias corridos. Responder direto.",
+      "correcao_factual": "nao_aplicavel"
+    },
+    {
+      "turnoId": "fb3f9ad7-0255-455a-b588-116a01fbf502",
+      "status": "ERRADO",
+      "patterns": ["pediu_clarificacao_desnecessaria", "nao_usou_tool", "loop_clarificacao"],
+      "razao": "Pediu 3 confirmacoes para 'Top 10 pedidos abertos por valor' quando o default razoavel e: pedidos nao faturados, valor total do pedido, sem filtro de periodo (pedidos em aberto agora). Tambem mencionou restricao 'admin/super_admin' sem justificar.",
+      "sugestao_prompt": "Regra: 'pedidos abertos' = pedidos nao faturados em status aberto; ordenar por valor total do pedido; nao perguntar periodo.",
+      "correcao_factual": "nao_aplicavel"
+    },
+    {
+      "turnoId": "fc2f6555-3993-4c4c-a251-3f2d9db68e3c",
+      "status": "ERRADO",
+      "patterns": ["pediu_clarificacao_desnecessaria", "nao_usou_tool"],
+      "razao": "Devia ter chamado estoque_buscar_produto com termo 'halter' e mostrado lista ou somatorio, em vez de pedir confirmacao previa do termo.",
+      "sugestao_prompt": "Regra: para saldo por nome generico, chamar busca de produto primeiro e mostrar resultados; so pedir clarificacao se a busca retornar ambiguidade.",
+      "correcao_factual": "nao_aplicavel"
+    },
+    {
+      "turnoId": "fc3bd3e1-0b1b-4287-ad26-485129c169c5",
+      "status": "PARCIAL",
+      "patterns": ["pediu_clarificacao_desnecessaria", "nao_usou_tool"],
+      "razao": "Distincao UF cliente vs UF emitente e legitima, mas poderia ter respondido com UF do destinatario por default e oferecido alternativa. Pelo menos confirmou periodo (mes corrente).",
+      "sugestao_prompt": "Regra: faturamento por estado = UF do destinatario por default; oferecer UF emitente como alternativa apos mostrar dados.",
+      "correcao_factual": "nao_aplicavel"
+    },
+    {
+      "turnoId": "fdcda581-71cd-4477-bf20-ee5cf4d72316",
+      "status": "ERRADO",
+      "patterns": ["pediu_clarificacao_desnecessaria", "nao_usou_tool"],
+      "razao": "'Top 5 produtos esse mes' tem default obvio: top por valor faturado no mes. Em vez de responder, ofereceu menu de 3 opcoes.",
+      "sugestao_prompt": "Regra: 'top N produtos' por default = top por valor faturado no mes corrente; mostrar e oferecer alternativa de saidas/entradas em rodape.",
+      "correcao_factual": "nao_aplicavel"
+    },
+    {
+      "turnoId": "ff1b24df-59cb-42a4-9a03-4897e75561a8",
+      "status": "ERRADO",
+      "patterns": ["pediu_clarificacao_desnecessaria", "nao_usou_tool"],
+      "razao": "'Pedidos atrasados' tem leitura natural: pedidos com prazo vencido. Devia listar direto. Em vez disso pediu cenario e recorte.",
+      "sugestao_prompt": "Regra: 'pedidos atrasados' = pedidos com data prevista vencida ainda nao concluidos; responder direto sem pedir recorte.",
+      "correcao_factual": "nao_aplicavel"
+    },
+    {
+      "turnoId": "ff863edb-d3c6-4f02-872f-89d6e93c51a9",
+      "status": "ERRADO",
+      "patterns": ["pediu_clarificacao_desnecessaria", "nao_usou_tool", "loop_clarificacao"],
+      "razao": "Pergunta 'tenho cliente vencendo titulo?' admite resposta direta: listar clientes com titulos a vencer nos proximos 7 dias. Pediu 3 confirmacoes desnecessarias.",
+      "sugestao_prompt": "Regra: 'titulos vencendo' = contas a receber a vencer nos proximos 7 dias por default; responder direto.",
+      "correcao_factual": "nao_aplicavel"
+    }
+  ]
+}

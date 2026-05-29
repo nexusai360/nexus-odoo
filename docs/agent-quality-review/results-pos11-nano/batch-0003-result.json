@@ -1,0 +1,241 @@
+{
+  "batchId": "0003",
+  "evaluatedAt": "2026-05-26T18:15:00.000Z",
+  "totals": {
+    "CORRETO": 13,
+    "PARCIAL": 10,
+    "ERRADO": 3,
+    "FORA_DE_ESCOPO": 1
+  },
+  "patterns": {
+    "acerto_objetividade": 9,
+    "acerto_modelo": 2,
+    "pergunta_ignorada": 2,
+    "entendeu_mal_termo": 3,
+    "dado_inventado": 2,
+    "resposta_truncada": 4,
+    "fluxo_tool_incompleto": 2,
+    "tool_errada": 2,
+    "limitacao_real_declarada": 2,
+    "parametro_incompleto": 1,
+    "formato_quebrado": 1
+  },
+  "turnos": [
+    {
+      "turnoId": "c107a2c6-f9c3-42a9-8042-a367d0fd2c4e",
+      "status": "CORRETO",
+      "patterns": ["acerto_objetividade"],
+      "razao": "Tool certa (financeiro_caixa_periodo) com periodoDe=periodoAte=hoje. Resultado entrada/saida/saldo todos 0, resposta direta e bate exatamente.",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "c2e02ee8-0d5d-495c-b186-a4405dc64ebf",
+      "status": "PARCIAL",
+      "patterns": ["resposta_truncada"],
+      "razao": "Chamou a tool certa e listou top atrasados, mas declarou que 'não consegui obter o total completo' quando a tool retornou linhas suficientes para somar. Faltou agregação do total.",
+      "sugestao_prompt": "Adicionar regra: 'Quando comercial_pedidos_atrasados retorna linhas, somar valorTotal e contar parcelas antes de pedir desculpas por volume.'",
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "c5e7cf7f-3485-43f5-8d9b-97e43c97187c",
+      "status": "PARCIAL",
+      "patterns": ["resposta_truncada"],
+      "razao": "Chamou financeiro_contas_a_receber e listou exemplos, mas disse 'sem valor agregado' e não somou. A pergunta era explicitamente pelo total em aberto.",
+      "sugestao_prompt": "Adicionar regra: 'Pergunta por total de contas a receber? Somar valor das linhas retornadas (ou usar campo de agregado) antes de listar exemplos.'",
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "c84379a6-3eeb-4b0e-b290-e749463723c1",
+      "status": "PARCIAL",
+      "patterns": ["entendeu_mal_termo"],
+      "razao": "Encadeou pedidos_atrasados + estoque_concentracao, mas 'o que tem em estoque pra entregar' não casa com concentracao por familia/marca. Faltou cruzamento entre produtos dos pedidos atrasados e saldo disponivel.",
+      "sugestao_prompt": "Adicionar regra: 'Pedido atrasado + estoque pra entregar? Tentar estoque_saldo_produto dos itens dos pedidos atrasados, não concentracao por familia.'",
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "cab74802-4366-456e-bdb5-3c1883377b9e",
+      "status": "ERRADO",
+      "patterns": ["tool_errada", "pergunta_ignorada"],
+      "razao": "Pergunta era 'vendedores cadastrados' (cadastro estatico), mas usou comercial_pedidos_por_vendedor filtrado pelo mes corrente. Retornou 15 vendedores com pedidos em maio, nao a lista de cadastrados.",
+      "sugestao_prompt": "Adicionar regra: 'Pergunta sobre cadastro de vendedores (sem periodo) deve usar tool de cadastro de usuarios/vendedores, nao pedidos_por_vendedor com periodo.'",
+      "correcao_factual": "nao_bate"
+    },
+    {
+      "turnoId": "ceab9acd-c96c-48ca-9e1e-bf3bff6b2e04",
+      "status": "PARCIAL",
+      "patterns": ["fluxo_tool_incompleto", "entendeu_mal_termo"],
+      "razao": "So chamou comercial_pedidos_atrasados e disse que nome veio em branco; usou dados de contexto previo para listar clientes de contas a receber, em vez de chamar financeiro_contas_a_receber neste turno. Mistura pedido com titulo.",
+      "sugestao_prompt": "Adicionar regra: 'Pergunta sobre cliente + titulo vencido deve encadear financeiro_contas_a_receber neste turno, nao confiar em contexto anterior.'",
+      "correcao_factual": "nao_aplicavel"
+    },
+    {
+      "turnoId": "cec0db61-856c-44ca-b25d-34684c27c6ed",
+      "status": "PARCIAL",
+      "patterns": ["resposta_truncada"],
+      "razao": "Usuario pediu top 20, agente entregou top 10 sem justificar. Tool retornou 1.262 itens (segundo o agente), entao havia material para 20.",
+      "sugestao_prompt": "Adicionar regra: 'Respeitar limite N pedido pelo usuario; se passar limite=N para a tool, listar N completos.'",
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "cef9502b-1b94-47bf-8fcd-afd1f962002d",
+      "status": "PARCIAL",
+      "patterns": ["resposta_truncada"],
+      "razao": "Listou exemplos mas declarou nao conseguir somar total. Pergunta era 'conta contas a pagar' (provavel intencao: total/contagem).",
+      "sugestao_prompt": "Adicionar regra: 'Pergunta com verbo conta/contar + categoria financeira deve trazer total agregado, nao so listagem.'",
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "cfbc63ad-01fc-4465-bed8-9ed56ba24f82",
+      "status": "PARCIAL",
+      "patterns": ["entendeu_mal_termo"],
+      "razao": "Pergunta era 'conta corrente PRINCIPAL', resposta deu o total de TODAS as contas correntes (-24.242.300,29). Nao identificou qual e a principal entre as 8 contas.",
+      "sugestao_prompt": "Adicionar regra: 'Pergunta por conta principal/especifica deve listar contas individualmente ou pedir clarificacao, nao agregar tudo como se fosse uma so.'",
+      "correcao_factual": "nao_bate"
+    },
+    {
+      "turnoId": "d275febf-54bc-424e-a704-1f56009a35a9",
+      "status": "CORRETO",
+      "patterns": ["acerto_objetividade"],
+      "razao": "Buscou no plano de contas pelo termo correto, listou as principais e avisou que e estrutura (sem saldos). Resposta util.",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "db865d18-d0a1-415e-bf57-9c48afb42bc6",
+      "status": "CORRETO",
+      "patterns": ["acerto_objetividade"],
+      "razao": "Interpretou 'caixa atual' como saldo bancario e listou as 8 contas com seus saldos. Total -24.242.300,29 bate com saldoTotal.",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "de4fe945-408f-4cf7-ab7a-40a57fcfe4bb",
+      "status": "ERRADO",
+      "patterns": ["dado_inventado"],
+      "razao": "Tool retornou estado=vazio e linhasLen=0, mas a resposta lista 5 contas com codigos e nomes especificos. Inventou estrutura contabil completa.",
+      "sugestao_prompt": "Adicionar regra: 'Se contabil_plano_de_contas retorna vazio, dizer que nao encontrou; jamais listar contas hipoteticas como se fossem reais.'",
+      "correcao_factual": "nao_bate"
+    },
+    {
+      "turnoId": "e222facf-2efa-498f-a1c3-756fe3cc2b39",
+      "status": "CORRETO",
+      "patterns": ["acerto_objetividade"],
+      "razao": "Periodo semanal correto, distinguiu realizado de projetado. Resposta direta e honesta sobre granularidade do projetado.",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "e7190dd6-6493-4633-865a-7dc5c4d3d2d1",
+      "status": "CORRETO",
+      "patterns": ["acerto_objetividade", "acerto_modelo"],
+      "razao": "Identificou produto pelo codigo, retornou nome, familia, marca e saldo zero exato. Tudo bate com a tool.",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "eac59419-891e-42cb-b420-ce0e16cf0b67",
+      "status": "CORRETO",
+      "patterns": ["acerto_objetividade"],
+      "razao": "Tool correta, numero 754 bate exatamente com totalFornecedores.",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "ec262cad-ee1c-4489-9ce5-fe002a9bac63",
+      "status": "FORA_DE_ESCOPO",
+      "patterns": ["limitacao_real_declarada", "tool_errada"],
+      "razao": "Usou comercial_pedidos_periodo (so traz agregado totalPedidos+valorTotal), nao da para extrair 'mais antigo em aberto'. Declarou limitacao honestamente. Tool errada na escolha, mas a limitacao do catalogo e real.",
+      "sugestao_prompt": "Adicionar regra: 'Pergunta por pedido mais antigo em aberto pede tool que liste pedidos ordenados por data + status; nao tentar com pedidos_periodo (so agregado).'",
+      "correcao_factual": "nao_aplicavel"
+    },
+    {
+      "turnoId": "ecb44206-ef3f-4c28-b32a-0d0b189c332f",
+      "status": "CORRETO",
+      "patterns": ["acerto_objetividade", "acerto_modelo"],
+      "razao": "Periodo correto (mes cheio 01-31/05), valor 38.074.843,78 e 775 notas batem exatamente com a tool.",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "ed152556-dce8-405d-bb7f-b0796604363b",
+      "status": "CORRETO",
+      "patterns": ["acerto_objetividade"],
+      "razao": "Tool certa, resposta direta com cliente e valor da maior nota do mes. Numero internamente consistente; sem dados visiveis no summary mas formato coerente.",
+      "sugestao_prompt": null,
+      "correcao_factual": "nao_aplicavel"
+    },
+    {
+      "turnoId": "ed7a0e12-2824-48c0-8889-d0c57949eafc",
+      "status": "CORRETO",
+      "patterns": ["acerto_objetividade"],
+      "razao": "Tool certa com termo 'imposto', limite 20, retornou 12 contas (mostrou 10). Codigos e nomes batem com a tool.",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "f422df78-542c-40ed-b012-9b39fd259b8d",
+      "status": "CORRETO",
+      "patterns": ["acerto_objetividade"],
+      "razao": "Valor total 51.977.199,74 bate, lista 7 armazens com valores percentuais consistentes.",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "f4897b08-d521-48f8-bdfd-bb712f98f327",
+      "status": "CORRETO",
+      "patterns": ["acerto_objetividade"],
+      "razao": "limite=5 passado corretamente, top 5 batem exatamente em nome, quantidade e valor. Soma dos 5 informada.",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "f4f05ecc-d553-4c45-a765-f5a879d7d067",
+      "status": "PARCIAL",
+      "patterns": ["resposta_truncada", "formato_quebrado"],
+      "razao": "Listou 10 exemplos mas avisou que 'numero da NF nao veio preenchido' e nao deu total. Pergunta era ampla ('quais notas?'); resposta incompleta.",
+      "sugestao_prompt": "Adicionar regra: 'Pergunta quais notas? deve trazer contagem por situacao e total faturado antes da listagem de exemplos.'",
+      "correcao_factual": "nao_aplicavel"
+    },
+    {
+      "turnoId": "f666f94a-8299-4efd-b259-6adccd8670ae",
+      "status": "PARCIAL",
+      "patterns": ["limitacao_real_declarada", "tool_errada"],
+      "razao": "Pedido faturado parcialmente nao tem etapa direta; usou pedidos_por_etapa e mostrou etapas de NF como aproximacao, declarando limitacao. Aproximacao razoavel mas nao responde a pergunta.",
+      "sugestao_prompt": "Adicionar regra: 'Faturamento parcial precisa cruzar pedido com NFs emitidas vs valor pedido; sem essa tool, declarar limitacao sem aproximacoes que confundem.'",
+      "correcao_factual": "nao_aplicavel"
+    },
+    {
+      "turnoId": "fa8fa386-f875-48d6-a5e7-019b9156caf1",
+      "status": "PARCIAL",
+      "patterns": ["pergunta_ignorada"],
+      "razao": "Pergunta era 'maior ticket medio', a tool retorna quantidade e valorTotal por vendedor (ticket medio = valor/qtde, calculo trivial). Agente recusou o calculo e listou ranking por valor total.",
+      "sugestao_prompt": "Adicionar regra: 'Ticket medio = valorTotal / quantidade. Calcular e ordenar quando o usuario pedir ticket medio, em vez de declarar que nao da para confirmar.'",
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "feba924e-03f5-48f4-9dff-4b853b08fc60",
+      "status": "ERRADO",
+      "patterns": ["pergunta_ignorada", "dado_inventado"],
+      "razao": "Tool retornou 50 linhas com puxadores reais (saldos, valores), mas resposta declara 'nao retornou resultados de forma verificavel'. Ignorou completamente o resultado da tool.",
+      "sugestao_prompt": "Adicionar regra: 'Quando estoque_saldo_produto retorna linhas, listar saldos por produto; nao alegar ausencia de dados quando dados existem.'",
+      "correcao_factual": "nao_bate"
+    },
+    {
+      "turnoId": "fefa6d4d-8536-4d1c-922e-06f6e5f096aa",
+      "status": "CORRETO",
+      "patterns": ["acerto_objetividade"],
+      "razao": "Tools retornaram estado=vazio (0 itens e 0 unidades). Resposta honesta refletindo o vazio do cache. Sugestoes uteis de fallback.",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "ff69c38a-9b74-4510-8952-69871fd5b5f9",
+      "status": "CORRETO",
+      "patterns": ["acerto_objetividade"],
+      "razao": "Periodo mes corrente correto, valor 38.064.323,84 e 772 notas batem exatamente com a tool.",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    }
+  ]
+}

@@ -15,20 +15,45 @@
 /** Origem da numeracao: marker do R8 (primeira rodada catalogada). */
 const RODADA_ZERO = 8;
 
+/** Marcadores virtuais (nao-AUDIT) para origens vindas do uso real do
+ *  agente. Permitem filtrar conversas in_app/whatsapp/playground na mesma
+ *  estrutura do filtro de rodada (uma coluna so de "Origem"). */
+export const ORIGEM_AGENTE_NEX = "__origem:agente-nex";
+export const ORIGEM_PLAYGROUND = "__origem:playground";
+
+export const ORIGEM_LABELS: Record<string, string> = {
+  [ORIGEM_AGENTE_NEX]: "Agente Nex",
+  [ORIGEM_PLAYGROUND]: "Playground",
+};
+
+/** Channels do Prisma `AgentChannel` enum que viram cada origem. */
+const AGENTE_NEX_CHANNELS = new Set(["whatsapp", "in_app"]);
+const PLAYGROUND_CHANNELS = new Set(["playground"]);
+
+/** Dado um channel, devolve a origem virtual canonica. null se desconhecido. */
+export function channelToOrigem(
+  channel: string | null | undefined,
+): string | null {
+  if (!channel) return null;
+  if (AGENTE_NEX_CHANNELS.has(channel)) return ORIGEM_AGENTE_NEX;
+  if (PLAYGROUND_CHANNELS.has(channel)) return ORIGEM_PLAYGROUND;
+  return null;
+}
+
 /** Cache estatico para a versao legada (chamada por marker unico). */
 const LEGACY_MARKERS: Record<string, string> = {
-  "[AUDIT-POS-2026-05-26T17-21-31]": "R8",
-  "[AUDIT-POS-2026-05-26T18-01-27]": "R9",
-  "[AUDIT-POS-2026-05-26T18-05-49]": "R10",
-  "[AUDIT-POS-2026-05-26T21-58-49]": "R11",
-  "[AUDIT-POS-2026-05-26T22-44-49]": "R12",
-  "[AUDIT-POS-2026-05-27T01-32-20]": "R13",
-  "[AUDIT-POS-2026-05-27T02-47-42]": "R14",
-  "[AUDIT-POS-2026-05-27T03-33-55]": "R15",
-  "[AUDIT-POS-2026-05-27T04-13-16]": "R16",
-  "[AUDIT-POS-2026-05-27T15-10-40]": "R17",
-  "[AUDIT-POS-2026-05-27T16-16-15]": "R18",
-  "[AUDIT-POS-2026-05-27T21-50-50]": "R19",
+  "[AUDIT-POS-2026-05-26T17-21-31]": "Rodada 8",
+  "[AUDIT-POS-2026-05-26T18-01-27]": "Rodada 9",
+  "[AUDIT-POS-2026-05-26T18-05-49]": "Rodada 10",
+  "[AUDIT-POS-2026-05-26T21-58-49]": "Rodada 11",
+  "[AUDIT-POS-2026-05-26T22-44-49]": "Rodada 12",
+  "[AUDIT-POS-2026-05-27T01-32-20]": "Rodada 13",
+  "[AUDIT-POS-2026-05-27T02-47-42]": "Rodada 14",
+  "[AUDIT-POS-2026-05-27T03-33-55]": "Rodada 15",
+  "[AUDIT-POS-2026-05-27T04-13-16]": "Rodada 16",
+  "[AUDIT-POS-2026-05-27T15-10-40]": "Rodada 17",
+  "[AUDIT-POS-2026-05-27T16-16-15]": "Rodada 18",
+  "[AUDIT-POS-2026-05-27T21-50-50]": "Rodada 19",
 };
 
 /** Extrai timestamp ISO do marker para ordenacao. Retorna null se invalido. */
@@ -70,24 +95,29 @@ export function buildRodadaNamesFromMarkers(
 
   const result = new Map<string, string>();
   for (let i = 0; i < ordenados.length; i++) {
-    result.set(ordenados[i].marker, `R${RODADA_ZERO + i}`);
+    result.set(ordenados[i].marker, `Rodada ${RODADA_ZERO + i}`);
   }
   // Markers sem timestamp parseavel: fallback estatico.
   for (const marker of markers) {
     if (result.has(marker)) continue;
+    // Origens virtuais (Agente Nex, Playground) tem label proprio.
+    if (marker in ORIGEM_LABELS) {
+      result.set(marker, ORIGEM_LABELS[marker]!);
+      continue;
+    }
     result.set(marker, fallbackFromMarker(marker));
   }
   return result;
 }
 
-/** Fallback "R-DD/MM HH:MM" para markers sem ordenacao possivel. */
+/** Fallback "Rodada DD/MM HH:MM" para markers sem ordenacao possivel. */
 function fallbackFromMarker(marker: string): string {
   const m = marker.match(
     /\[AUDIT-(?:[A-Z]+-)?(\d{4})-(\d{2})-(\d{2})T(\d{2})-(\d{2})/,
   );
   if (!m) return marker;
   const [, , month, day, hour, min] = m;
-  return `R-${day}/${month} ${hour}:${min}`;
+  return `Rodada ${day}/${month} ${hour}:${min}`;
 }
 
 /**
@@ -102,5 +132,6 @@ function fallbackFromMarker(marker: string): string {
 export function markerToRodadaName(marker: string | null | undefined): string {
   if (!marker) return ",";
   if (LEGACY_MARKERS[marker]) return LEGACY_MARKERS[marker];
+  if (marker in ORIGEM_LABELS) return ORIGEM_LABELS[marker]!;
   return fallbackFromMarker(marker);
 }

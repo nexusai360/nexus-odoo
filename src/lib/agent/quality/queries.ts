@@ -54,6 +54,9 @@ export interface EvaluationRow {
    *  pelo harness scripts/quality-audit/03-run-test-questions.ts. null
    *  para conversas in-app/playground normais. */
   rodada: string | null;
+  /** Channel do Prisma `AgentChannel`. Quando rodada=null, usado para
+   *  derivar a origem virtual (Agente Nex vs Playground). */
+  channel: string | null;
 }
 
 export interface EvaluationFilters {
@@ -64,7 +67,10 @@ export interface EvaluationFilters {
   patterns?: string[];
   search?: string;
   /** Filtro por rodada/batch (Conversation.title). Lista de markers
-   *  ex.: ["[AUDIT-POS-2026-05-26T03-43-05]", ...]. */
+   *  ex.: ["[AUDIT-POS-2026-05-26T03-43-05]", ...] ou markers virtuais de
+   *  origem (`__origem:agente-nex`, `__origem:playground`). Renomeado
+   *  conceitualmente para "origens" mas mantemos o campo `rodadas` para
+   *  compatibilidade com a API atual. */
   rodadas?: string[];
 }
 
@@ -144,7 +150,7 @@ export async function listEvaluations(
         questionSnapshot: true,
         answerSnapshot: true,
         humanStatus: true,
-        conversation: { select: { title: true } },
+        conversation: { select: { title: true, channel: true } },
       },
     }),
     prisma.conversationQualityEvaluation.count({ where }),
@@ -163,6 +169,7 @@ export async function listEvaluations(
       humanStatus: r.humanStatus,
       dominantPattern: r.patterns[0] ?? null,
       rodada: extractRodadaMarker(r.conversation?.title ?? null),
+      channel: (r.conversation?.channel as string | null) ?? null,
     })),
     total,
   };
@@ -175,14 +182,18 @@ function extractRodadaMarker(title: string | null): string | null {
   return m ? m[0] : null;
 }
 
-/** Lista markers de rodada distintos no periodo. Cada marker corresponde
- *  a um batch do harness `scripts/quality-audit/03-run-test-questions.ts`. */
+/** Lista markers de origem distintos no periodo:
+ *  - Markers de rodada (`[AUDIT-POS-...]`) gerados pelo harness
+ *    `scripts/quality-audit/03-run-test-questions.ts`.
+ *  - Markers virtuais (`__origem:agente-nex`, `__origem:playground`)
+ *    representando conversas do agente em uso real (in_app/whatsapp e
+ *    playground respectivamente). Sao incluidos com count > 0 apenas. */
 export async function getDistinctRodadas(
   filters: EvaluationFilters,
 ): Promise<Array<{ marker: string; count: number }>> {
   const startIso = filters.periodStart.toISOString();
   const endIso = filters.periodEnd.toISOString();
-  const rows = (await prisma.$queryRaw`
+  const auditRows = (await prisma.$queryRaw`
     SELECT marker, COUNT(*)::int AS count
     FROM (
       SELECT
@@ -198,7 +209,38 @@ export async function getDistinctRodadas(
     GROUP BY marker
     ORDER BY marker DESC
   `) as Array<{ marker: string; count: number }>;
-  return rows;
+
+  // Origens virtuais: conta avaliacoes em conversas SEM marker de auditoria
+  // agrupadas por channel. Garante que so aparecem na lista quando ha
+  // dado real (count > 0).
+  const virtualRows = (await prisma.$queryRaw`
+    SELECT c.channel AS channel, COUNT(*)::int AS count
+    FROM conversation_quality_evaluations e
+    JOIN conversations c ON c.id = e.conversation_id
+    WHERE e.created_at >= ${startIso}::timestamptz
+      AND e.created_at <= ${endIso}::timestamptz
+      AND (c.title IS NULL OR c.title NOT LIKE '[AUDIT-%')
+    GROUP BY c.channel
+  `) as Array<{ channel: string; count: number }>;
+
+  let agenteNexCount = 0;
+  let playgroundCount = 0;
+  for (const r of virtualRows) {
+    if (r.channel === "in_app" || r.channel === "whatsapp") {
+      agenteNexCount += r.count;
+    } else if (r.channel === "playground") {
+      playgroundCount += r.count;
+    }
+  }
+
+  const out: Array<{ marker: string; count: number }> = [...auditRows];
+  if (agenteNexCount > 0) {
+    out.unshift({ marker: "__origem:agente-nex", count: agenteNexCount });
+  }
+  if (playgroundCount > 0) {
+    out.unshift({ marker: "__origem:playground", count: playgroundCount });
+  }
+  return out;
 }
 
 export async function getDistinctModels(): Promise<string[]> {
@@ -292,7 +334,7 @@ export async function getEvaluationDetail(
       judgeVersion: true,
       technicalError: true,
       suggestions: true,
-      conversation: { select: { title: true } },
+      conversation: { select: { title: true, channel: true } },
     },
   });
 
@@ -361,6 +403,7 @@ export async function getEvaluationDetail(
       humanReviewedAt: ev.humanReviewedAt,
       dominantPattern: ev.patterns[0] ?? null,
       rodada: extractRodadaMarker(ev.conversation?.title ?? null),
+      channel: (ev.conversation?.channel as string | null) ?? null,
       razoes: ev.razoes,
       judgeModel: ev.judgeModel,
       judgeVersion: ev.judgeVersion,
@@ -397,13 +440,39 @@ function buildWhere(filters: EvaluationFilters) {
     ];
   }
   if (filters.rodadas && filters.rodadas.length > 0) {
-    // O title da Conversation comeca com o marker entre colchetes
-    // ("[AUDIT-POS-...]"). Como cada chamada usa o mesmo marker como
-    // prefixo, filtramos por title que comeca com qualquer um dos
-    // markers selecionados.
-    where.conversation = {
-      OR: filters.rodadas.map((r) => ({ title: { startsWith: r } })),
-    };
+    // Origens podem ser markers de rodada de auditoria (`[AUDIT-POS-...]`)
+    // ou markers virtuais (`__origem:agente-nex`, `__origem:playground`).
+    // Cada bucket aplica filtro distinto sobre a Conversation.
+    const auditMarkers = filters.rodadas.filter((r) => r.startsWith("[AUDIT"));
+    const wantsAgenteNex = filters.rodadas.includes("__origem:agente-nex");
+    const wantsPlayground = filters.rodadas.includes("__origem:playground");
+    const ors: Array<Record<string, unknown>> = [];
+    for (const marker of auditMarkers) {
+      ors.push({ title: { startsWith: marker } });
+    }
+    if (wantsAgenteNex) {
+      // Conversas vindas do agente em uso real: in_app + whatsapp, e cujo
+      // title NAO carrega um marker de rodada de auditoria.
+      ors.push({
+        channel: { in: ["in_app", "whatsapp"] },
+        OR: [
+          { title: null },
+          { NOT: { title: { startsWith: "[AUDIT" } } },
+        ],
+      });
+    }
+    if (wantsPlayground) {
+      ors.push({
+        channel: "playground",
+        OR: [
+          { title: null },
+          { NOT: { title: { startsWith: "[AUDIT" } } },
+        ],
+      });
+    }
+    if (ors.length > 0) {
+      where.conversation = { OR: ors };
+    }
   }
   return where;
 }

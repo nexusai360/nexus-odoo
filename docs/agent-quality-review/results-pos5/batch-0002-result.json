@@ -1,0 +1,345 @@
+{
+  "batchId": "0002",
+  "evaluatedAt": "2026-05-26T12:30:00.000Z",
+  "totals": {
+    "CORRETO": 23,
+    "PARCIAL": 2,
+    "ERRADO": 12,
+    "FORA_DE_ESCOPO": 3
+  },
+  "patterns": {
+    "acerto_objetividade": 23,
+    "pediu_clarificacao_desnecessaria": 10,
+    "acerto_encadeamento": 1,
+    "limitacao_real_declarada": 3,
+    "dado_inventado": 3,
+    "tool_errada": 1,
+    "fluxo_tool_incompleto": 2,
+    "resposta_truncada": 1,
+    "formato_quebrado": 1,
+    "entendeu_mal_termo": 2,
+    "nao_usou_tool": 1
+  },
+  "turnos": [
+    {
+      "turnoId": "27355e78-818a-4f09-8594-1fd0d6566eec",
+      "status": "ERRADO",
+      "patterns": ["pediu_clarificacao_desnecessaria"],
+      "razao": "Podia ter assumido default razoavel (saldo de hoje, todas as contas) e respondido com financeiro_saldo_contas. Pediu 2 esclarecimentos para uma pergunta corriqueira.",
+      "sugestao_prompt": "Regra: pergunta vaga sobre caixa/banco/saldo, assumir default 'saldo atual de todas as contas' e responder; oferecer recortes adicionais ao final.",
+      "correcao_factual": "nao_aplicavel"
+    },
+    {
+      "turnoId": "278aeaad-9607-4442-b351-61c648464c1b",
+      "status": "ERRADO",
+      "patterns": ["pediu_clarificacao_desnecessaria"],
+      "razao": "Podia assumir mes corrente como default e responder direto com a tool de produto mais vendido.",
+      "sugestao_prompt": "Default: quando o usuario nao especifica periodo, usar mes corrente e indicar isso na resposta.",
+      "correcao_factual": "nao_aplicavel"
+    },
+    {
+      "turnoId": "27c781ed-1811-4ee1-bb82-60d91c3e3bff",
+      "status": "ERRADO",
+      "patterns": ["pediu_clarificacao_desnecessaria"],
+      "razao": "Maior cliente tem default obvio: faturamento no mes corrente. Pediu 2 esclarecimentos sem necessidade.",
+      "sugestao_prompt": "Default: 'maior cliente' = maior faturamento no mes corrente; entregar e oferecer outros recortes.",
+      "correcao_factual": "nao_aplicavel"
+    },
+    {
+      "turnoId": "283ad496-06b9-4001-bc72-817aa657c37d",
+      "status": "CORRETO",
+      "patterns": ["acerto_objetividade"],
+      "razao": "Tool certa, periodo semana atual (25-31/05), totais 33 notas / R$ 3.978.539,03 batem com toolResults.",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "28877ec4-21e5-45bd-b2a6-0a874b4d452a",
+      "status": "CORRETO",
+      "patterns": ["acerto_objetividade"],
+      "razao": "1.265 itens e R$ 51.905.967,53 batem com os KPIs retornados pela tool estoque_produtos_parados.",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "2a146b57-f2c7-4dc2-a365-5dee64892b6c",
+      "status": "CORRETO",
+      "patterns": ["acerto_objetividade"],
+      "razao": "Tool de busca de parceiro retornou vazio; resposta honesta de nao encontrado.",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "2aad3195-bcb7-43dc-8c3c-e679b4a2c91d",
+      "status": "ERRADO",
+      "patterns": ["pediu_clarificacao_desnecessaria"],
+      "razao": "Podia assumir mes corrente e saldo em aberto atual; pediu 2 confirmacoes sem necessidade.",
+      "sugestao_prompt": "Default: mes corrente + saldo a receber em aberto agora quando o usuario nao especifica.",
+      "correcao_factual": "nao_aplicavel"
+    },
+    {
+      "turnoId": "2ac56fa3-c87d-4e17-a761-d832ea44e57f",
+      "status": "CORRETO",
+      "patterns": ["acerto_objetividade"],
+      "razao": "Tool certa, fornecedor identificado, 3 notas / R$ 165.667,80 batem com totalAgregado.",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "2b7f6caf-d585-42b3-bd30-5ef93fddd449",
+      "status": "CORRETO",
+      "patterns": ["acerto_objetividade"],
+      "razao": "Cancelados: Cancelado 7+1.736.690,28 + Cancelada 6+1.055.982,74 = 13 pedidos / R$ 2.792.673,02. Bate.",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "2be6c3c0-9357-479f-aef7-b68f10016bae",
+      "status": "PARCIAL",
+      "patterns": ["resposta_truncada", "formato_quebrado"],
+      "razao": "Resposta cortou no meio (Smartfit truncado) e admite que nao consolidou os totais por cliente. Entregou parcialmente.",
+      "sugestao_prompt": "Quando a tool retornar titulos paginados, agregar por cliente antes de responder; nao expor verbatim a lista bruta.",
+      "correcao_factual": "nao_aplicavel"
+    },
+    {
+      "turnoId": "2bf1b5ae-e197-4ffc-8b01-9746229b7e12",
+      "status": "FORA_DE_ESCOPO",
+      "patterns": ["limitacao_real_declarada", "pediu_clarificacao_desnecessaria"],
+      "razao": "Receita prevista futura nao e capacidade direta; clarificacao do periodo e legitima mas a 1a pergunta (entrada prevista vs valores a receber) podia ser default.",
+      "sugestao_prompt": null,
+      "correcao_factual": "nao_aplicavel"
+    },
+    {
+      "turnoId": "2d691820-f019-4d95-bdc9-8cf56d4e9065",
+      "status": "CORRETO",
+      "patterns": ["acerto_objetividade"],
+      "razao": "Pergunta 'qual conta?' sem qualquer contexto exige clarificacao real.",
+      "sugestao_prompt": null,
+      "correcao_factual": "nao_aplicavel"
+    },
+    {
+      "turnoId": "2e0d43c0-b2d3-44b1-9370-7810807d9785",
+      "status": "CORRETO",
+      "patterns": ["acerto_objetividade"],
+      "razao": "Saldo 16 un / 5 locais / R$ 258.370,44 batem com tool.",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "2e1989fa-0da2-48c0-8534-16cbac19df4e",
+      "status": "CORRETO",
+      "patterns": ["acerto_objetividade"],
+      "razao": "Listou os principais saldos da tool e ofereceu opcao de somar tudo ou item especifico. Numeros 951/490/48/-14/-61 batem.",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "2f7e92dc-133a-4592-8b03-0611a8b4ea64",
+      "status": "CORRETO",
+      "patterns": ["acerto_objetividade"],
+      "razao": "Resumo 50 itens, R$ 3.173.301,35 a custo, top 5 com valores que batem com tool.",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "2f83c530-590d-49d0-860c-777517c5f6f2",
+      "status": "FORA_DE_ESCOPO",
+      "patterns": ["limitacao_real_declarada"],
+      "razao": "Lacuna registrada via registrar_lacuna; agente declarou honestamente a limitacao.",
+      "sugestao_prompt": null,
+      "correcao_factual": "nao_aplicavel"
+    },
+    {
+      "turnoId": "309d810d-73a1-4b20-983b-1b1acd28b6f9",
+      "status": "ERRADO",
+      "patterns": ["dado_inventado", "entendeu_mal_termo"],
+      "razao": "Usuario perguntou da conta '1.1.4' mas a tool nao retornou essa conta especifica (so 1.1.1.4 e filhas). Resposta inventa 'DESPESAS ANTECIPADAS' e 'filha 1.1.4.1' sem confirmacao na toolResults.",
+      "sugestao_prompt": "Regra: so afirmar codigo/nome de conta contabil presente em toolResults; se ausente, dizer 'codigo nao localizado' e oferecer busca alternativa.",
+      "correcao_factual": "nao_bate"
+    },
+    {
+      "turnoId": "31ffb2b2-ee7b-4a7f-823d-c47c316c49b5",
+      "status": "CORRETO",
+      "patterns": ["acerto_encadeamento", "acerto_objetividade"],
+      "razao": "Encadeou estoque + preco; ambos retornaram vazio; resposta declara honestamente.",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "3296c7ac-1581-4eb9-8092-c613b66acc28",
+      "status": "CORRETO",
+      "patterns": ["acerto_objetividade"],
+      "razao": "Saldo total -R$ 24.291.495,49 e top contas batem com toolResults.",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "32a17941-c238-4bf2-b3ff-09c0ade18ecd",
+      "status": "CORRETO",
+      "patterns": ["acerto_objetividade"],
+      "razao": "Total -R$ 24.291.495,49 bate; top positivos (875.957,69 / 371.252,76 / 221.604,69) e negativos batem.",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "32bc74be-144a-4dcc-9612-327304a515b4",
+      "status": "CORRETO",
+      "patterns": ["acerto_objetividade"],
+      "razao": "Conta 1.1.4.1.02.000004 = ALUGUEIS PAGOS ANTECIPADAMENTE FILIAL bate com tool.",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "3476b5fa-c665-486e-98a8-8265664d29ab",
+      "status": "CORRETO",
+      "patterns": ["acerto_objetividade"],
+      "razao": "Reconheceu que nao ha conceito de banco principal e ofereceu 3 recortes uteis, todos com numeros que batem.",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "37b1ead6-1341-460e-be21-7e3aa358a602",
+      "status": "FORA_DE_ESCOPO",
+      "patterns": ["limitacao_real_declarada"],
+      "razao": "Lacuna registrada; declarou limitacao real.",
+      "sugestao_prompt": null,
+      "correcao_factual": "nao_aplicavel"
+    },
+    {
+      "turnoId": "3a39b406-fd6a-456b-8e75-440e2ab27a25",
+      "status": "ERRADO",
+      "patterns": ["tool_errada", "dado_inventado"],
+      "razao": "Chamou comercial_pedidos_periodo (retorna 478 pedidos do mes inteiro, sem filtro de etapa). Resposta cita '7 cancelados / R$ 1.736.690,28' sem essa info estar no toolResults. Tool correta seria comercial_pedidos_por_etapa.",
+      "sugestao_prompt": "Regra: pergunta sobre pedidos cancelados/etapa especifica deve chamar comercial_pedidos_por_etapa, nao comercial_pedidos_periodo.",
+      "correcao_factual": "nao_bate"
+    },
+    {
+      "turnoId": "3a3d46a4-cb3c-4489-9a9e-a0fe9dd625ea",
+      "status": "CORRETO",
+      "patterns": ["acerto_objetividade"],
+      "razao": "Contagem 934 contas (total provavelmente confere com listagem retornada).",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "3aaa74d9-e9ba-4aa3-a71d-fc0b6785807b",
+      "status": "CORRETO",
+      "patterns": ["acerto_objetividade"],
+      "razao": "PMB403 sem linha de saldo (0 un / R$ 0) bate com tool retorno semEstoqueCadastrado=true.",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "3b5309d6-6fbe-459f-9f6c-cb808321fb92",
+      "status": "CORRETO",
+      "patterns": ["acerto_objetividade"],
+      "razao": "Pergunta ambigua 'produto inventado'; clarificacao legitima.",
+      "sugestao_prompt": null,
+      "correcao_factual": "nao_aplicavel"
+    },
+    {
+      "turnoId": "3c6d2d21-1d5c-4546-a8ad-fae2dabd546d",
+      "status": "ERRADO",
+      "patterns": ["pediu_clarificacao_desnecessaria"],
+      "razao": "Despesa do dia tem default razoavel (contas a pagar com vencimento hoje); podia entregar e oferecer outro recorte.",
+      "sugestao_prompt": "Default: 'despesa do dia' = contas a pagar com vencimento hoje; oferecer 'saidas realizadas' como recorte alternativo.",
+      "correcao_factual": "nao_aplicavel"
+    },
+    {
+      "turnoId": "3d93fd9d-6c92-4e6a-90aa-60e39fd46ae9",
+      "status": "CORRETO",
+      "patterns": ["acerto_objetividade"],
+      "razao": "Top 5 marcas (MATRIX 87,86%, VISION 5,05%, LONGLIFE PRO 1,85%, HORIZON 0,99%, ZIVAROPPEEVERLAST 0,74%) batem com dados.marca da tool.",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "3dae4da5-5b31-46ba-b203-a94906408653",
+      "status": "ERRADO",
+      "patterns": ["pediu_clarificacao_desnecessaria"],
+      "razao": "Total a receber do mes tem default obvio: contas a receber em aberto com vencimento no mes. Podia entregar e oferecer recortes.",
+      "sugestao_prompt": "Default: 'total a receber esse mes' = contas a receber em aberto com vencimento no mes corrente.",
+      "correcao_factual": "nao_aplicavel"
+    },
+    {
+      "turnoId": "3f98c722-0233-4e84-b580-c27412366f88",
+      "status": "CORRETO",
+      "patterns": ["acerto_objetividade"],
+      "razao": "Produto 1000205039 com saldo 4 / 1 local / R$ 1.871,02 bate com toolResults.",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "40d28508-fbf8-42b2-8012-259bb516e537",
+      "status": "CORRETO",
+      "patterns": ["acerto_objetividade"],
+      "razao": "6.565 parceiros / 6.323 clientes / 754 fornecedores / 4.396 empresas batem com tool.",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "4296b2e8-4f6c-4b9e-9043-e3cd18d26ff7",
+      "status": "PARCIAL",
+      "patterns": ["entendeu_mal_termo", "fluxo_tool_incompleto"],
+      "razao": "Buscou literalmente 'cliente x' como nome (interpretacao improvavel: 'x' e placeholder do usuario). Resposta admite isso e pede dado correto, mas a interpretacao inicial foi ingenua.",
+      "sugestao_prompt": "Regra: quando termo for variavel/placeholder generico (x, fulano, etc), pedir nome real antes de chamar a tool.",
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "43acea31-6536-415b-89b6-7e39ecf35947",
+      "status": "ERRADO",
+      "patterns": ["pediu_clarificacao_desnecessaria", "nao_usou_tool"],
+      "razao": "Devia ter buscado 'caixa' direto no plano de contas (contabil_plano_de_contas com termo 'caixa') e mostrar resultados, em vez de exigir clarificacao previa.",
+      "sugestao_prompt": "Regra: pergunta sobre codigo de conta 'caixa' deve chamar contabil_plano_de_contas com termo='caixa' e listar resultados; se varios, perguntar qual.",
+      "correcao_factual": "nao_aplicavel"
+    },
+    {
+      "turnoId": "44dc4ee1-08df-4c1b-9e18-ff134fa6534e",
+      "status": "CORRETO",
+      "patterns": ["acerto_objetividade"],
+      "razao": "Rart Equipamentos para Ginastica SLU encontrado com CNPJ e cidade que batem.",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "45902d89-28da-45de-94d1-c0074176fa51",
+      "status": "ERRADO",
+      "patterns": ["pediu_clarificacao_desnecessaria"],
+      "razao": "Maio sem ano e ambiguo, mas default razoavel e ano corrente (2026). Podia entregar e oferecer comparativo com 2025.",
+      "sugestao_prompt": "Default: mes sem ano = ano corrente; entregar e oferecer comparativo com ano anterior.",
+      "correcao_factual": "nao_aplicavel"
+    },
+    {
+      "turnoId": "45ed4a35-a14f-4d18-8828-f0092579a974",
+      "status": "ERRADO",
+      "patterns": ["dado_inventado", "fluxo_tool_incompleto"],
+      "razao": "Chamou tool so para mes corrente (R$ 38.064.323,84 bate). Mas o valor de R$ 33.997.934,37 do mes passado nao foi consultado em nenhuma tool. Variacao tambem invencao.",
+      "sugestao_prompt": "Regra: pergunta de comparacao A vs B exige 2 chamadas de tool (uma por periodo); nao inventar o segundo periodo.",
+      "correcao_factual": "nao_bate"
+    },
+    {
+      "turnoId": "46058d14-eef4-40c8-8694-4271e386d738",
+      "status": "CORRETO",
+      "patterns": ["acerto_objetividade"],
+      "razao": "Hoje 26/05 retornou vazio; resposta honesta 0 notas / R$ 0,00.",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "47c7d40c-78bc-495d-b291-10e13be399df",
+      "status": "ERRADO",
+      "patterns": ["pediu_clarificacao_desnecessaria"],
+      "razao": "Podia assumir mes corrente como default e entregar duas listas (qtd e valor).",
+      "sugestao_prompt": "Default: 'produto mais vendido' sem periodo = mes corrente.",
+      "correcao_factual": "nao_aplicavel"
+    },
+    {
+      "turnoId": "4977f206-c869-4eb8-ab5c-d2be7f8397b7",
+      "status": "CORRETO",
+      "patterns": ["acerto_objetividade"],
+      "razao": "Cumprimento respondido com cordialidade e oferta de areas de atuacao.",
+      "sugestao_prompt": null,
+      "correcao_factual": "nao_aplicavel"
+    }
+  ]
+}

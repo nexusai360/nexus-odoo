@@ -50,6 +50,7 @@ import {
 } from "@/components/charts/interactive";
 import { CHART_COLORS, getColorByIndex } from "@/components/charts/colors";
 import { cn } from "@/lib/utils";
+import { PageJumpNavigator } from "@/components/agent/consumo/page-jump-navigator";
 import {
   fetchDistinctModels,
   fetchDistinctProviders,
@@ -82,9 +83,9 @@ import { UsageTableFilters } from "./usage-table-filters";
 // ---------------------------------------------------------------------------
 
 const TZ = "America/Sao_Paulo";
-const PAGE_SIZE_OPTIONS = [25, 50, 100] as const;
+const PAGE_SIZE_OPTIONS = [50, 100, 500] as const;
 type PageSize = (typeof PAGE_SIZE_OPTIONS)[number];
-const DEFAULT_PAGE_SIZE: PageSize = 25;
+const DEFAULT_PAGE_SIZE: PageSize = 50;
 
 type Ambiente = "all" | "agente" | "playground";
 
@@ -125,19 +126,20 @@ function rangeForPills(
 // ---------------------------------------------------------------------------
 
 const numberFmt = new Intl.NumberFormat("pt-BR");
-// Moeda "bruta" para a tabela: 2 a 6 casas decimais (exibe valores muito
-// pequenos sem perder precisão).
+// Moeda "bruta" para a tabela: 2 a 10 casas decimais (exibe valores muito
+// pequenos, como custos de embedding ~1e-7, sem zerar). O Intl corta os zeros
+// a direita ate o minimo (2), entao custos normais continuam com 2-6 casas.
 const usdRawFmt = new Intl.NumberFormat("en-US", {
   style: "currency",
   currency: "USD",
   minimumFractionDigits: 2,
-  maximumFractionDigits: 6,
+  maximumFractionDigits: 10,
 });
 const brlRawFmt = new Intl.NumberFormat("pt-BR", {
   style: "currency",
   currency: "BRL",
   minimumFractionDigits: 2,
-  maximumFractionDigits: 6,
+  maximumFractionDigits: 10,
 });
 const dateTimeFmt = new Intl.DateTimeFormat("pt-BR", {
   timeZone: TZ,
@@ -179,12 +181,26 @@ const REQUEST_KIND_STYLES: Record<string, string> = {
   imagem: "bg-sky-500/10 text-sky-700 dark:text-sky-300",
   audio: "bg-violet-500/10 text-violet-700 dark:text-violet-300",
   arquivo: "bg-emerald-500/10 text-emerald-700 dark:text-emerald-300",
+  embedding: "bg-amber-500/10 text-amber-700 dark:text-amber-300",
 };
 const REQUEST_KIND_LABELS: Record<string, string> = {
   texto: "Texto",
   imagem: "Imagem",
   audio: "Áudio",
   arquivo: "Arquivo",
+  embedding: "Embedding",
+};
+
+// Coluna "Origem" , quando a linha tem `origin` explícito (router), usa este
+// mapa; senão cai no derivado de isPlayground (Agente Nex / Playground).
+const ORIGIN_STYLES: Record<string, string> = {
+  router: "bg-indigo-500/10 text-indigo-700 dark:text-indigo-300",
+  // Linhas antigas de calibragem tambem aparecem so como "Router".
+  router_calibracao: "bg-indigo-500/10 text-indigo-700 dark:text-indigo-300",
+};
+const ORIGIN_LABELS: Record<string, string> = {
+  router: "Router",
+  router_calibracao: "Router",
 };
 
 // ---------------------------------------------------------------------------
@@ -326,7 +342,9 @@ export function ConsumoContent({ minDate: minDateIso }: ConsumoContentProps) {
     [pill, customRange, minDate],
   );
 
-  // Reseta paginação ao trocar período / filtros / pageSize.
+  // Reseta paginação ao trocar período / filtros. NAO inclui pageSize: ao
+  // mudar itens por pagina, o handler ancora na 1a linha atual (nao volta pra
+  // pagina 1).
   useEffect(() => {
     setPage(0);
   }, [
@@ -337,7 +355,6 @@ export function ConsumoContent({ minDate: minDateIso }: ConsumoContentProps) {
     filterProvider,
     filterModel,
     ambiente,
-    pageSize,
   ]);
 
   // Reset navegação do gráfico ao trocar pill.
@@ -1183,12 +1200,18 @@ export function ConsumoContent({ minDate: minDateIso }: ConsumoContentProps) {
                           <span
                             className={cn(
                               "inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-medium",
-                              row.isPlayground
-                                ? "bg-amber-500/10 text-amber-700 dark:text-amber-300"
-                                : "bg-violet-500/10 text-violet-700 dark:text-violet-300",
+                              row.origin && ORIGIN_STYLES[row.origin]
+                                ? ORIGIN_STYLES[row.origin]
+                                : row.isPlayground
+                                  ? "bg-amber-500/10 text-amber-700 dark:text-amber-300"
+                                  : "bg-violet-500/10 text-violet-700 dark:text-violet-300",
                             )}
                           >
-                            {row.isPlayground ? "Playground" : "Agente Nex"}
+                            {row.origin && ORIGIN_LABELS[row.origin]
+                              ? ORIGIN_LABELS[row.origin]
+                              : row.isPlayground
+                                ? "Playground"
+                                : "Agente Nex"}
                           </span>
                         </TableCell>
                         <TableCell>{providerLabel(row.provider)}</TableCell>
@@ -1272,7 +1295,8 @@ export function ConsumoContent({ minDate: minDateIso }: ConsumoContentProps) {
           {detailsTotal > 0 ? (
             <div className="mt-4 flex flex-col items-center justify-between gap-3 border-t border-border pt-4 sm:flex-row">
               <p className="text-xs text-muted-foreground tabular-nums">
-                Mostrando {numberFmt.format(rangeStartIdx)},
+                Mostrando {numberFmt.format(rangeStartIdx)}
+                {"-"}
                 {numberFmt.format(rangeEndIdx)} de{" "}
                 {numberFmt.format(detailsTotal)}
               </p>
@@ -1287,9 +1311,12 @@ export function ConsumoContent({ minDate: minDateIso }: ConsumoContentProps) {
                 >
                   <ChevronLeft className="h-4 w-4" aria-hidden />
                 </button>
-                <span className="text-xs text-muted-foreground tabular-nums">
-                  Página {page + 1} de {totalPages}
-                </span>
+                <PageJumpNavigator
+                  page={page}
+                  totalPages={totalPages}
+                  onJump={handlePageChange}
+                  disabled={isLoading}
+                />
                 <button
                   type="button"
                   aria-label="Próxima página"
@@ -1309,7 +1336,11 @@ export function ConsumoContent({ minDate: minDateIso }: ConsumoContentProps) {
                   onChange={(v) => {
                     const next = Number(v) as PageSize;
                     if (PAGE_SIZE_OPTIONS.includes(next)) {
+                      // Mantem o usuario ancorado na 1a linha da pagina atual
+                      // (nao volta pra pagina 1 ao mudar o page size).
+                      const firstRow = page * pageSize;
                       setPageSize(next);
+                      setPage(Math.floor(firstRow / next));
                     }
                   }}
                   options={PAGE_SIZE_OPTIONS.map((n) => ({

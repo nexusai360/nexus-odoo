@@ -146,7 +146,7 @@ async function main() {
   const totals: Record<string, number> = { CORRETO: 0, PARCIAL: 0, ERRADO: 0, FORA_DO_ESCOPO: 0 };
   for (const p of pendentes) {
     let finalMessage = "";
-    let toolCalls: Array<{ name: string; args: unknown }> = [];
+    const toolCalls: Array<{ name: string; args: unknown }> = [];
     if (p.assistant_message_id) {
       const a = await prisma.message.findUnique({
         where: { id: p.assistant_message_id },

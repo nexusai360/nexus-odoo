@@ -3,7 +3,7 @@
  *
  * Gate: super_admin (layout do grupo /agente).
  * Server Component: busca a data minima (1ª eval registrada) e passa pro
- * client. Toda interatividade vive no QualidadeContent.
+ * client. Toda interatividade vive no MonitoramentoContent.
  *
  * Spec: docs/superpowers/specs/2026-05-26-agente-qualidade-design.md
  */
@@ -11,7 +11,8 @@
 import { redirect } from "next/navigation";
 import { Activity } from "lucide-react";
 
-import { QualidadeContent } from "@/components/agent/qualidade/qualidade-content";
+import { MonitoramentoContent } from "@/components/agent/monitoramento/monitoramento-content";
+import { MonitoramentoNav } from "@/components/agent/monitoramento-nav";
 import { PageHeader } from "@/components/page-header";
 import { PageShell } from "@/components/layout/page-shell";
 import { getCurrentUser } from "@/lib/auth";
@@ -39,7 +40,15 @@ export default async function MonitoramentoPage() {
   if (!user) redirect("/login");
   if (user.platformRole !== "super_admin") redirect("/dashboard");
 
-  const minDate = await getFirstEvalDate();
+  const [minDate, agentSettings] = await Promise.all([
+    getFirstEvalDate(),
+    prisma.agentSettings.findUnique({
+      where: { id: "global" },
+      select: { qualityHeuristicIntervalMinutes: true },
+    }),
+  ]);
+  const qualityHeuristicIntervalMinutes =
+    agentSettings?.qualityHeuristicIntervalMinutes ?? 240;
 
   return (
     <PageShell variant="form">
@@ -48,7 +57,13 @@ export default async function MonitoramentoPage() {
         title="Monitoramento do Agente Nex"
         subtitle="Desempenho semântico das respostas por modelo e período. Avaliação on-demand via Claude Code."
       />
-      <QualidadeContent minDate={minDate.toISOString()} />
+      <MonitoramentoNav />
+      <div className="mt-6">
+        <MonitoramentoContent
+          minDate={minDate.toISOString()}
+          qualityHeuristicIntervalMinutes={qualityHeuristicIntervalMinutes}
+        />
+      </div>
     </PageShell>
   );
 }

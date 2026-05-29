@@ -1,0 +1,262 @@
+{
+  "batchId": "0003",
+  "evaluatedAt": "2026-05-26T16:34:00.000Z",
+  "totals": {
+    "CORRETO": 13,
+    "PARCIAL": 12,
+    "ERRADO": 3,
+    "FORA_DE_ESCOPO": 2
+  },
+  "patterns": {
+    "pediu_clarificacao_desnecessaria": 10,
+    "acerto_objetividade": 9,
+    "loop_clarificacao": 1,
+    "acerto_encadeamento": 1,
+    "dado_inventado": 3,
+    "limitacao_real_declarada": 2,
+    "fluxo_tool_incompleto": 1,
+    "nao_usou_tool": 4
+  },
+  "turnos": [
+    {
+      "turnoId": "b0762915-9177-43c4-9a81-9784975cde81",
+      "status": "PARCIAL",
+      "patterns": ["pediu_clarificacao_desnecessaria", "nao_usou_tool"],
+      "razao": "Mes corrente e default razoavel; 'movimentados' soma entradas+saidas tambem e default tipico. Pediu 2 clarificacoes antes de chamar tool.",
+      "sugestao_prompt": "Adicionar regra: 'Top produtos movimentados no mes' assume mes corrente e soma entradas+saidas como default; executar tool e mostrar resultado.",
+      "correcao_factual": "nao_aplicavel"
+    },
+    {
+      "turnoId": "b1a2f484-ba74-4d2c-b722-7183f32712e9",
+      "status": "PARCIAL",
+      "patterns": ["pediu_clarificacao_desnecessaria", "nao_usou_tool"],
+      "razao": "Semana passada (seg-dom) e default obvio; criterio quantidade tambem. Pediu 3 clarificacoes antes de chamar tool.",
+      "sugestao_prompt": "Adicionar regra: 'saida produtos semana passada' assume seg-dom anterior, criterio quantidade, todos armazens; executar direto.",
+      "correcao_factual": "nao_aplicavel"
+    },
+    {
+      "turnoId": "b345dafb-bd8e-421f-bad1-11f1f81f7f11",
+      "status": "PARCIAL",
+      "patterns": ["pediu_clarificacao_desnecessaria", "loop_clarificacao"],
+      "razao": "Chamou tool e ja tem os dados. Em vez de agregar e responder com saldo total por cliente (interpretacao default), pediu clarificacao apos a tool ter rodado.",
+      "sugestao_prompt": "Adicionar regra: 'cliente que mais deve' = somar vrSaldo por participanteNome e responder top 1; se quiser detalhar atraso, oferecer como complemento.",
+      "correcao_factual": "nao_aplicavel"
+    },
+    {
+      "turnoId": "b34ced9f-d553-4088-823a-5a25fd63332c",
+      "status": "CORRETO",
+      "patterns": ["acerto_objetividade"],
+      "razao": "Tool certa (comercial_parcelas_a_vencer ateDias=1), 6 parcelas e R$ 69.200,23 batem com toolResults.",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "b8afceae-2e87-4f29-b4e9-e7283083a40b",
+      "status": "CORRETO",
+      "patterns": ["acerto_objetividade"],
+      "razao": "Tool certa, encontrou 1 parceiro e dados conferem (Banda Chicabana, BR-07.930.542/0001-02, Serrinha/BA).",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "ba5a6b48-db96-41c7-9477-a6f20b741a82",
+      "status": "CORRETO",
+      "patterns": ["acerto_objetividade"],
+      "razao": "5 registros encontrados, 4 clientes + 1 nao cliente conforme toolResults. Resposta enxuta e correta.",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "bd968b7d-c877-46d7-995a-281318c2c54b",
+      "status": "CORRETO",
+      "patterns": ["acerto_objetividade"],
+      "razao": "Tool certa com faixaDias 146 (jan-hoje). 7 produtos parados e R$ 19.696,73 batem; resposta destacou 3 principais.",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "be401506-2bac-4c8c-8fa0-b6e789567180",
+      "status": "CORRETO",
+      "patterns": ["acerto_objetividade"],
+      "razao": "Tool certa, nome 'DESPESAS ANTECIPADAS FILIAL' bate exatamente com toolResults.",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "c0639a40-0585-4947-9aa7-9e51701febae",
+      "status": "ERRADO",
+      "patterns": ["dado_inventado"],
+      "razao": "Tool retornou saldoTotal=16 e numLocais=5 sem breakdown por armazem. Resposta INVENTOU detalhamento por armazem (4 Filial SE, 3 Filial SP, 9 Matriz DF) e ainda citou locais 'Demonstracao' e 'Jht SP' inexistentes no toolResults.",
+      "sugestao_prompt": "Adicionar regra: se 'por armazem' for pedido mas tool retornar apenas saldoTotal/numLocais, declarar limitacao em vez de inventar distribuicao.",
+      "correcao_factual": "nao_bate"
+    },
+    {
+      "turnoId": "c3513b2d-e535-41ea-a667-301442fbff66",
+      "status": "ERRADO",
+      "patterns": ["dado_inventado"],
+      "razao": "Tool retornou estado:vazio com 0 linhas; resposta inventou 5 contas (4.2.1.1.01, 4.2.1.2.01 etc.) que nao constam em toolResults.",
+      "sugestao_prompt": "Adicionar regra: se contabil_plano_de_contas retornar estado:vazio, declarar 'nao encontrei' em vez de fabricar codigos contabeis.",
+      "correcao_factual": "nao_bate"
+    },
+    {
+      "turnoId": "c4033b1e-3083-495c-bc3e-f0f67cd39925",
+      "status": "PARCIAL",
+      "patterns": ["pediu_clarificacao_desnecessaria", "nao_usou_tool"],
+      "razao": "Pergunta direta sobre liquidez; poderia ter chamado tool de saldo financeiro/caixa para folha do mes atual como default.",
+      "sugestao_prompt": "Adicionar regra: 'tem dinheiro pra pagar X' assume mes corrente e saldo atual; executar tool e oferecer detalhe se necessario.",
+      "correcao_factual": "nao_aplicavel"
+    },
+    {
+      "turnoId": "c568f0b4-d695-444d-af6b-3b16882d14c5",
+      "status": "CORRETO",
+      "patterns": ["acerto_objetividade"],
+      "razao": "Usuario nao informou produto. Pedido de codigo/nome legitimo, nao tem como inferir.",
+      "sugestao_prompt": null,
+      "correcao_factual": "nao_aplicavel"
+    },
+    {
+      "turnoId": "c8897a2a-3585-42b0-8be1-0010816c85aa",
+      "status": "PARCIAL",
+      "patterns": ["pediu_clarificacao_desnecessaria", "nao_usou_tool"],
+      "razao": "'Top 5 produtos esse mes' tem default razoavel: vendidos por valor faturado. Pediu duas clarificacoes em vez de assumir.",
+      "sugestao_prompt": "Adicionar regra: 'top 5 produtos esse mes' assume vendas faturadas no mes corrente como default.",
+      "correcao_factual": "nao_aplicavel"
+    },
+    {
+      "turnoId": "c9cabc89-3497-49d6-846e-d9e9d240673f",
+      "status": "CORRETO",
+      "patterns": ["acerto_objetividade", "acerto_modelo"],
+      "razao": "Tool certa com periodo do mes corrente, 15 vendedores e R$ 70.117.774,77 batem; lista completa e enxuta.",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "ce246217-489c-4e34-becb-835beb7a086e",
+      "status": "PARCIAL",
+      "patterns": ["pediu_clarificacao_desnecessaria", "nao_usou_tool"],
+      "razao": "Default razoavel: listar top produtos com entrada nos ultimos 7 dias. Pediu clarificacao desnecessaria.",
+      "sugestao_prompt": "Adicionar regra: 'qual produto entrou ultima semana' assume top entradas dos ultimos 7 dias como default.",
+      "correcao_factual": "nao_aplicavel"
+    },
+    {
+      "turnoId": "d038dded-ac78-4cc1-a3b9-3b5d8775ef91",
+      "status": "CORRETO",
+      "patterns": ["acerto_encadeamento", "acerto_objetividade", "acerto_modelo"],
+      "razao": "Encadeou 2 tools (mes corrente + abril). Numeros batem (R$ 38.064.323,84 / R$ 33.997.934,37) e calculou variacao +11,96%.",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "d6f16faa-2dd6-4918-8173-3b8f260e5a12",
+      "status": "FORA_DE_ESCOPO",
+      "patterns": ["limitacao_real_declarada"],
+      "razao": "Tool retornou dominio nao operado (0 registros); resposta honesta e ofereceu alternativa via funil.",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "d7f9d3ef-5dd1-4923-a01e-1738a231e7f2",
+      "status": "FORA_DE_ESCOPO",
+      "patterns": ["limitacao_real_declarada"],
+      "razao": "Sem tool de margem direta; registrou lacuna corretamente e ofereceu alternativa.",
+      "sugestao_prompt": null,
+      "correcao_factual": "nao_aplicavel"
+    },
+    {
+      "turnoId": "da8a1faf-990d-4c2e-90b6-61a10fe12faf",
+      "status": "PARCIAL",
+      "patterns": ["pediu_clarificacao_desnecessaria", "nao_usou_tool"],
+      "razao": "Default razoavel: listar pedidos com faturamento parcial no mes corrente. Pediu 2 clarificacoes antes.",
+      "sugestao_prompt": "Adicionar regra: 'pedido faturado parcialmente' assume mes corrente e interpretacao 1 (algumas parcelas faturadas).",
+      "correcao_factual": "nao_aplicavel"
+    },
+    {
+      "turnoId": "dc9ea636-a081-4e65-85d7-50e6f5d1fb0d",
+      "status": "PARCIAL",
+      "patterns": ["pediu_clarificacao_desnecessaria"],
+      "razao": "Codigo ambiguo, mas poderia ter tentado buscar como produto primeiro (default mais comum) e oferecer alternativas se vazio.",
+      "sugestao_prompt": "Adicionar regra: 'codigo numerico desconhecido' tenta buscar como produto primeiro; se vazio, oferece outras categorias.",
+      "correcao_factual": "nao_aplicavel"
+    },
+    {
+      "turnoId": "dce515b9-7a4f-42b3-9ac2-7995557c4e05",
+      "status": "PARCIAL",
+      "patterns": ["entendeu_mal_termo"],
+      "razao": "Tool certa e numeros agregados batem (etapaFinaliza=false), mas incluiu 'Cancelado/Cancelada' como em aberto, o que e incoerente com a logica de funil.",
+      "sugestao_prompt": "Adicionar regra: para 'pedidos em aberto', excluir etapas 'Cancelado/Cancelada' mesmo com etapaFinaliza=false.",
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "e132355f-1844-48a1-a95b-6a25004e3f18",
+      "status": "CORRETO",
+      "patterns": ["acerto_objetividade"],
+      "razao": "Sem identificador do produto, pedido de clarificacao legitimo.",
+      "sugestao_prompt": null,
+      "correcao_factual": "nao_aplicavel"
+    },
+    {
+      "turnoId": "e3e39f98-fd1a-4c5b-87a6-69b56dfee1d5",
+      "status": "PARCIAL",
+      "patterns": ["pediu_clarificacao_desnecessaria"],
+      "razao": "Tool chamada corretamente; poderia ter agregado soma por CNPJ direto (interpretacao default de 'fornecedor que mais devemos') em vez de citar maior titulo individual e perguntar.",
+      "sugestao_prompt": "Adicionar regra: 'fornecedor que mais devemos' = somar vrSaldo por CNPJ e responder top 1 com total; nao perguntar entre maior titulo vs total.",
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "e65a373e-b2f5-450a-b9d9-79597ae7a4b0",
+      "status": "CORRETO",
+      "patterns": ["acerto_objetividade"],
+      "razao": "Tool certa, resposta honesta refletindo semEstoqueCadastrado=true. Bate.",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "e73feaac-7fc0-4d1a-bdb6-cf535d18911f",
+      "status": "PARCIAL",
+      "patterns": ["pediu_clarificacao_desnecessaria", "nao_usou_tool"],
+      "razao": "Defaults razoaveis (mes corrente, notas fiscais autorizadas). Pediu 2 clarificacoes.",
+      "sugestao_prompt": "Adicionar regra: 'produto mais vendido' assume mes corrente + base notas fiscais autorizadas como default.",
+      "correcao_factual": "nao_aplicavel"
+    },
+    {
+      "turnoId": "ea019ae8-e25a-4270-84c3-d9956526518c",
+      "status": "PARCIAL",
+      "patterns": ["pediu_clarificacao_desnecessaria"],
+      "razao": "'Saldo geral consolidado' e ambiguo entre estoque e financeiro, mas poderia ter retornado ambos como visao inicial.",
+      "sugestao_prompt": "Adicionar regra: 'saldo geral consolidado' sem area definida = retornar estoque + financeiro juntos em resumo.",
+      "correcao_factual": "nao_aplicavel"
+    },
+    {
+      "turnoId": "ea5c3a99-4a64-4778-bc75-20b72b9a5e63",
+      "status": "ERRADO",
+      "patterns": ["dado_inventado", "fluxo_tool_incompleto"],
+      "razao": "So chamou comercial_pedidos_atrasados. Resposta inventou numeros de estoque ('R$ 52.024.675,45', '1.796 produtos', '124 negativos', 'T600X 540 un. R$ 5.817.924,29' etc.) sem chamar tool de estoque.",
+      "sugestao_prompt": "Adicionar regra: pergunta sobre 'pedidos atrasados + estoque pra entregar' exige encadear tool de pedidos + tool de estoque; proibir citar numeros sem chamada de tool correspondente.",
+      "correcao_factual": "nao_bate"
+    },
+    {
+      "turnoId": "effafb29-20fa-4513-b08c-0d29b030ece3",
+      "status": "PARCIAL",
+      "patterns": ["pediu_clarificacao_desnecessaria", "nao_usou_tool"],
+      "razao": "Poderia ter retornado contagem de empresas/CNPJs como default e oferecido armazens como complemento.",
+      "sugestao_prompt": "Adicionar regra: 'quantas filiais' assume empresas/CNPJ como default; mencionar armazens como complemento.",
+      "correcao_factual": "nao_aplicavel"
+    },
+    {
+      "turnoId": "fad31238-08e0-4a7a-bd0e-6031a59edde7",
+      "status": "CORRETO",
+      "patterns": ["acerto_objetividade"],
+      "razao": "Pergunta unica 'quanto?' sem contexto previo; clarificacao inevitavel.",
+      "sugestao_prompt": null,
+      "correcao_factual": "nao_aplicavel"
+    },
+    {
+      "turnoId": "febcd6ed-78d3-42ed-bd79-719b72d2b619",
+      "status": "CORRETO",
+      "patterns": ["acerto_objetividade"],
+      "razao": "Tool certa, 1 fornecedor encontrado, dados batem (Rart Equipamentos, BR-04.028.797/0001-96, Paicandu/PR).",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    }
+  ]
+}

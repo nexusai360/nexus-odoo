@@ -1,0 +1,100 @@
+{
+  "batchId": "0008",
+  "evaluatedAt": "2026-05-26T03:10:00-03:00",
+  "totals": {
+    "CORRETO": 6,
+    "PARCIAL": 3,
+    "ERRADO": 0,
+    "FORA_DE_ESCOPO": 1
+  },
+  "patterns": {
+    "acerto_objetividade": 4,
+    "acerto_encadeamento": 1,
+    "tool_errada": 1,
+    "resposta_truncada": 2,
+    "pergunta_ignorada": 1,
+    "limitacao_real_declarada": 1
+  },
+  "turnos": [
+    {
+      "turnoId": "f526a794-e75f-4986-9f4e-28ca2993cb38",
+      "status": "CORRETO",
+      "patterns": ["acerto_objetividade"],
+      "razao": "Tool certa para o mes corrente. Top 3 clientes e valores batem exatamente com toolResults (10.784.144,78; 3.694.452,52; 2.176.946,16).",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "f68532d3-2943-4779-b675-bbc591fc6ddb",
+      "status": "CORRETO",
+      "patterns": ["acerto_objetividade"],
+      "razao": "Identificou 7 variacoes, todas com saldo 0; distinguiu corretamente '1 com linha de saldo' vs '6 cadastrados sem linha'. Bate com toolResults.",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "f7def6d9-999d-4d91-a6cf-ce8c785da9d8",
+      "status": "CORRETO",
+      "patterns": ["acerto_encadeamento", "acerto_objetividade"],
+      "razao": "Encadeou duas chamadas de fiscal_faturamento_periodo (mes corrente e mes passado). Valores 38.064.323,84/772 e 33.997.934,37/628 batem; delta calculado corretamente.",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "f870b67c",
+      "status": "PARCIAL",
+      "patterns": ["tool_errada"],
+      "razao": "Escolheu bi_consulta_avancada com SQL que retornou 0 linhas, quando podia ter encadeado fiscal_faturamento_periodo por mes (estrategia que comprovadamente funciona, vide turno 2). Resposta 'sem dados' contradiz a realidade.",
+      "sugestao_prompt": "Adicionar regra: 'Comparativo mensal de faturamento intra-ano deve usar fiscal_faturamento_periodo encadeado por mes, nao bi_consulta_avancada'.",
+      "correcao_factual": "nao_bate"
+    },
+    {
+      "turnoId": "f9f4aa5c",
+      "status": "CORRETO",
+      "patterns": ["acerto_objetividade"],
+      "razao": "Tool certa, montou hierarquia legivel das contas de receita a partir do plano de contas retornado. Codigos e nomes citados batem com toolResults.",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "fb70b050",
+      "status": "PARCIAL",
+      "patterns": ["resposta_truncada", "pergunta_ignorada"],
+      "razao": "A tool fiscal_notas_recebidas retornou linhas; cabia contar (len(linhas)). Em vez disso a IA declarou 'truncado, nao consigo garantir contagem' e nao respondeu o numero pedido.",
+      "sugestao_prompt": "Adicionar regra: 'Para perguntas de contagem, contar len(linhas) do toolResults antes de declarar truncamento; pedir resumo so se a tool sinalizar truncado=true'.",
+      "correcao_factual": "nao_bate"
+    },
+    {
+      "turnoId": "fbe10bab",
+      "status": "CORRETO",
+      "patterns": ["acerto_objetividade"],
+      "razao": "Saldo 4 unidades em 1 local e valor R$ 1.871,02 batem exatamente com toolResults.",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "fcc68d09",
+      "status": "PARCIAL",
+      "patterns": ["resposta_truncada"],
+      "razao": "Pergunta era 'soma por fornecedor', tool retornou titulos completos, IA somou alguns mas desistiu de somar Jds Comercio alegando 'trecho truncado'. Deveria agregar todos os titulos do toolResults.",
+      "sugestao_prompt": "Adicionar regra: 'Para soma por entidade, agregar todos os titulos do toolResults sem assumir truncamento parcial; se tool retornou estado=ok, todos os dados estao presentes'.",
+      "correcao_factual": "nao_bate"
+    },
+    {
+      "turnoId": "fcc6a67f",
+      "status": "FORA_DE_ESCOPO",
+      "patterns": ["limitacao_real_declarada"],
+      "razao": "Nao existe tool de faturamento agregado por UF; IA declarou a limitacao, registrou lacuna e ofereceu alternativa (faturamento por cliente). Comportamento ideal para gap de produto.",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "fe99c096",
+      "status": "CORRETO",
+      "patterns": ["acerto_objetividade"],
+      "razao": "Tool certa, valor 754 fornecedores bate com toolResults.dados.totalFornecedores. Resposta enxuta e correta.",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    }
+  ]
+}

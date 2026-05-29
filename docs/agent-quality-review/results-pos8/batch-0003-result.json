@@ -1,0 +1,248 @@
+{
+  "batchId": "0003",
+  "evaluatedAt": "2026-05-26T16:50:00.000Z",
+  "totals": {
+    "CORRETO": 18,
+    "PARCIAL": 7,
+    "ERRADO": 2,
+    "FORA_DE_ESCOPO": 1
+  },
+  "patterns": {
+    "acerto_objetividade": 15,
+    "acerto_encadeamento": 5,
+    "limitacao_real_declarada": 4,
+    "resposta_truncada": 5,
+    "entendeu_mal_termo": 4,
+    "formato_quebrado": 1,
+    "dado_inventado": 2,
+    "pergunta_ignorada": 1,
+    "tool_errada": 1,
+    "acerto_modelo": 1
+  },
+  "turnos": [
+    {
+      "turnoId": "bcb3f2c5-de88-49df-a63a-ec1ec051fdad",
+      "status": "CORRETO",
+      "patterns": ["acerto_objetividade", "acerto_modelo"],
+      "razao": "Tool certa, periodo correto (mes corrente), R$ 38.064.323,84 e 772 notas batem com toolResults. Resposta direta, sem rodeio.",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "c23bc56c-b0b1-4eef-8a1f-0f3367a2312c",
+      "status": "CORRETO",
+      "patterns": ["acerto_encadeamento", "acerto_objetividade"],
+      "razao": "Pergunta de uma palavra 'vendas', agente encadeou faturamento + pedidos, valores batem (R$ 38.064.323,84 fat e R$ 69.339.645,46 pedidos).",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "c2c83e60-f528-477c-ad03-f3fff6a4d71b",
+      "status": "CORRETO",
+      "patterns": ["acerto_objetividade"],
+      "razao": "Tool agrega por UF, filtrou Rio de Janeiro = 119 parceiros, valor confirmado no toolResults.",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "c696c9cf-f586-4530-a976-66d2ddf25ce7",
+      "status": "PARCIAL",
+      "patterns": ["resposta_truncada", "limitacao_real_declarada"],
+      "razao": "Declarou honestamente que nao consegue fechar o total porque o retorno veio truncado. Mostrou apenas top 10 e soma parcial. O usuario sai sem o total real de contas a receber.",
+      "sugestao_prompt": "Quando o retorno truncar, encadear segunda chamada com paginacao ou pedir agregacao total ao inves de listar titulos.",
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "c98760aa-897b-4be6-a538-c5411e149d6d",
+      "status": "CORRETO",
+      "patterns": ["acerto_encadeamento", "acerto_objetividade"],
+      "razao": "Encadeou estoque_saldo_produto (16 un) + fiscal_produtos_faturados (11 un, R$ 217.771,37). Ambos valores batem com toolResults. Reconheceu limitacao de contagem de NFs.",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "c9a46bac-2f90-413a-85b6-8efbe724b0f2",
+      "status": "CORRETO",
+      "patterns": ["acerto_objetividade"],
+      "razao": "Tool correta, 3 contas do passivo retornadas batem com toolResults. Resposta direta com oferta de detalhamento.",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "ccc0f656-20b9-488f-b077-336a913f80b3",
+      "status": "CORRETO",
+      "patterns": ["acerto_encadeamento"],
+      "razao": "Top 10 vendidos R$ 40.234.349,79 e cruzamento com saldo (540 un T600X, 219 [1451], 730 [1464]) batem com toolResults.",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "d345e87b-20f2-4fc7-9726-ba4ac3c77325",
+      "status": "CORRETO",
+      "patterns": ["acerto_objetividade"],
+      "razao": "Encontrou exato CONDOMINIO ESTRELAS DO MAR em Fortaleza/CE com CNPJ correto, dados batem.",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "d589ac94-0c28-4cb4-87ad-630ef826f77a",
+      "status": "CORRETO",
+      "patterns": ["acerto_objetividade", "limitacao_real_declarada"],
+      "razao": "Chamou tool com filtro fornecedor e periodo, estado=vazio, respondeu honestamente '0 notas'.",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "da93bbdf-b74a-48d4-8bec-753b5b16310e",
+      "status": "CORRETO",
+      "patterns": ["acerto_encadeamento"],
+      "razao": "Encadeou caixa + saldo_contas. Caixa (-R$ 5,4M) e saldo total (-R$ 24,2M) batem com toolResults.",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "dc533bc1-21c8-48aa-875e-8cedb9f669b8",
+      "status": "CORRETO",
+      "patterns": ["acerto_objetividade"],
+      "razao": "totalEmpresas=4398 bate. Explicitou a interpretacao (empresa no cadastro).",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "ddb4ebcd-ef20-4611-b5ac-b891438a58d4",
+      "status": "PARCIAL",
+      "patterns": ["resposta_truncada"],
+      "razao": "Retorno truncado, mostrou top 10 e total parcial. Honesto mas usuario nao tem total real de vencidos a receber.",
+      "sugestao_prompt": "Quando truncar, chamar tool com agregado ao inves de listar todos os titulos.",
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "de23e3b4-1741-426a-b2d3-9ec64768d2d3",
+      "status": "CORRETO",
+      "patterns": ["acerto_objetividade"],
+      "razao": "Buscou 'João', retornou 10 registros, 9 marcados como clientes, esclareceu que 'João' exato nao existe. Lista bate com toolResults.",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "dea690c9-d78f-402d-be93-80768200e26f",
+      "status": "CORRETO",
+      "patterns": ["acerto_objetividade"],
+      "razao": "Pergunta vaga 'tem alguem?', interpretou bem como verificacao de existencia de parceiros, retornou contagem total (6.567) que bate com toolResults.",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "deaee321-5cee-45ae-a0f1-0f2056c6c8cd",
+      "status": "CORRETO",
+      "patterns": ["acerto_objetividade"],
+      "razao": "Saldo geral -R$ 24.243.803,15 confere com soma das 8 contas no toolResults. Detalhou conta a conta corretamente.",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "e1e7303a-3a83-4930-a4ce-f13233bb07fb",
+      "status": "CORRETO",
+      "patterns": ["acerto_objetividade"],
+      "razao": "13 produtos com 'pino de aço', saldo -1 no item negativo, demais sem estoque, tudo bate com toolResults.",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "e41e3e7b-54ca-4203-930a-f7a9c0cd5b97",
+      "status": "PARCIAL",
+      "patterns": ["resposta_truncada", "entendeu_mal_termo"],
+      "razao": "Usuario pediu 'vencidos hoje' (data atual), agente retornou todos vencidos (incluindo 2019, 2025). Mostrou top 10 e total parcial. Nao filtrou pela data de hoje.",
+      "sugestao_prompt": "Adicionar regra: 'vencidos hoje' filtra titulos com dataVencimento == data corrente, nao todos vencidos.",
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "e4b2030c-b717-4e7b-815d-9cb18a7af240",
+      "status": "PARCIAL",
+      "patterns": ["entendeu_mal_termo", "formato_quebrado"],
+      "razao": "Usuario pediu saldo do 'banco principal' (singular), agente respondeu consolidado das 8 contas. Alem disso lista contem typo de formato 'Itaú / Corrente / 1584 / 1584 / 37236-9' (numero duplicado).",
+      "sugestao_prompt": "Quando o usuario pede 'banco principal' no singular, retornar o de maior saldo ou listar para escolha, nao consolidar.",
+      "correcao_factual": "nao_bate"
+    },
+    {
+      "turnoId": "e612d39d-2de2-409e-8ab0-d3bd411e42a5",
+      "status": "ERRADO",
+      "patterns": ["entendeu_mal_termo", "dado_inventado"],
+      "razao": "Usuario pediu pedidos para producao 'essa semana'. Agente chamou comercial_pedidos_por_etapa sem filtro de periodo, somou 47 etapas (nao pedidos) e R$ 371M afirmando ser 'na semana atual'. Nao filtrou semana e confundiu 'etapas' com 'pedidos'.",
+      "sugestao_prompt": "Adicionar regra: pergunta com filtro temporal (essa semana/hoje/mes) requer periodoDe/Ate explicitos nas tools que aceitam. Distinguir 'etapas' (linhas de agregacao) de 'pedidos' (quantidade dentro de cada etapa).",
+      "correcao_factual": "nao_bate"
+    },
+    {
+      "turnoId": "e6abb98b-1802-43fc-af09-38365b3676ab",
+      "status": "ERRADO",
+      "patterns": ["dado_inventado", "pergunta_ignorada"],
+      "razao": "Tool retornou estado=ok com 50 produtos e R$ 188.746,02. Agente alucinou afirmando que 'todas as tools retornaram vazio' e recusou listar. Bug critico: ignorou o resultado real.",
+      "sugestao_prompt": "Reforcar regra: nunca declarar 'vazio' quando toolResults.estado='ok'. Ler dados antes de afirmar ausencia.",
+      "correcao_factual": "nao_bate"
+    },
+    {
+      "turnoId": "e758a15c-0b91-4f29-8efd-9c8f1f80fc84",
+      "status": "CORRETO",
+      "patterns": ["acerto_objetividade"],
+      "razao": "6 produtos de 'mola espiral em aco', todos com saldo 0, dados batem com toolResults. Resposta clara sobre 'sem estoque cadastrado'.",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "ea6026e4-7594-405c-8e0a-28a4299b4b70",
+      "status": "CORRETO",
+      "patterns": ["acerto_encadeamento", "limitacao_real_declarada"],
+      "razao": "Reconheceu lacuna (sem tool de vendedores cadastrados), registrou via registrar_lacuna e ofereceu workaround com vendedores que fizeram pedidos no mes. 15 vendedores e R$ 69.339.645,46 batem.",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "ed172e00-37fe-4726-a8fb-d08125eaff36",
+      "status": "PARCIAL",
+      "patterns": ["entendeu_mal_termo", "tool_errada"],
+      "razao": "Usuario pediu 'faturamento por vendedor' mas agente usou comercial_pedidos_por_vendedor (valor de pedidos, nao de NF emitida). Numeros batem com a tool chamada, mas a tool nao mede faturamento real.",
+      "sugestao_prompt": "Quando o usuario pede 'faturamento por X', priorizar tools fiscais (NF emitida) e nao comerciais (pedido). Se nao houver fiscal por vendedor, deixar isso explicito.",
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "ed89fafe-54d8-43cc-94a1-66e554691346",
+      "status": "PARCIAL",
+      "patterns": ["resposta_truncada"],
+      "razao": "Top 10 por saldo: dois itens citados ([1467] CABO DE AÇO 951un, [1000102647] GOTINHA 490un) nao verificaveis no toolResults truncado (tool retorna ordenado por valor, nao por saldo, e veio cortado). Soma 3.923 un parece plausivel mas nao confirmavel.",
+      "sugestao_prompt": "Quando o usuario pede 'maior saldo' (ordem nao-default), chamar tool com ordenacao especifica ao inves de reordenar resultado parcial.",
+      "correcao_factual": "nao_aplicavel"
+    },
+    {
+      "turnoId": "f4ff9e6d-635f-41eb-9d4c-20eba6b93238",
+      "status": "FORA_DE_ESCOPO",
+      "patterns": ["limitacao_real_declarada"],
+      "razao": "Tool retornou estado=vazio para movimentacao do mes. Agente declarou honestamente que nao ha registros no periodo.",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "f92f5028-b908-424e-8ba3-010853ed3d40",
+      "status": "CORRETO",
+      "patterns": ["acerto_objetividade"],
+      "razao": "Termo 'cliente x' generico, tool retornou vazio, agente declarou honestamente que nao encontrou.",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "faf4548e-c745-4d19-979e-1a5d979ffae0",
+      "status": "CORRETO",
+      "patterns": ["acerto_objetividade"],
+      "razao": "Estoque parado R$ 52.018.867,17 e 1.262 itens batem com kpis do toolResults. Top 10 amostral coerente.",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "feded3cb-e88d-44e9-978b-a25a0174f130",
+      "status": "PARCIAL",
+      "patterns": ["resposta_truncada"],
+      "razao": "Tool retornou ok com 37 produtos e R$ 32.263,94. Agente confirmou os agregados mas recusou listar Top 10 por defesa excessiva ('eu nao deveria ter apresentado valores'). Usuario sai sem a lista que pediu.",
+      "sugestao_prompt": "Quando a tool retorna ok com dados, listar os itens. Nao se recusar por inseguranca - apenas mostrar o que veio no toolResults.",
+      "correcao_factual": "bate"
+    }
+  ]
+}

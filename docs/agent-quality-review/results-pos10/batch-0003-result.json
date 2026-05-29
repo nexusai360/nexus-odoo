@@ -1,0 +1,248 @@
+{
+  "batchId": "0003",
+  "evaluatedAt": "2026-05-26T17:30:00.000Z",
+  "totals": {
+    "CORRETO": 16,
+    "PARCIAL": 6,
+    "ERRADO": 4,
+    "FORA_DE_ESCOPO": 2
+  },
+  "patterns": {
+    "acerto_objetividade": 11,
+    "acerto_encadeamento": 4,
+    "limitacao_real_declarada": 2,
+    "dado_inventado": 2,
+    "tool_errada": 2,
+    "parametro_incompleto": 3,
+    "entendeu_mal_termo": 2,
+    "erro_data": 2,
+    "pergunta_ignorada": 3,
+    "resposta_truncada": 1
+  },
+  "turnos": [
+    {
+      "turnoId": "c0b5504a-228d-43eb-a783-8e5ad13314c6",
+      "status": "CORRETO",
+      "patterns": ["acerto_objetividade"],
+      "razao": "Tool correta com faixaDias=146 (janela do ano corrente). Total 7 produtos e R$ 19.696,73 batem com toolResults; lista detalhada confere item a item.",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "c321f096-8003-4142-8127-57e39b75b516",
+      "status": "CORRETO",
+      "patterns": ["acerto_objetividade"],
+      "razao": "Tool cadastro_contar_parceiros retornou os 4 totais que a resposta cita (6.567, 6.325, 754, 4.398). Resposta enxuta e completa.",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "c34d7b98-86b7-4b0c-aa48-e4905a5e7c21",
+      "status": "CORRETO",
+      "patterns": ["acerto_encadeamento", "acerto_objetividade"],
+      "razao": "Interpretou 'algo errado' como saldos negativos + títulos vencidos e encadeou as 2 tools. Valores citados batem com toolResults (saldo total -24.242.300,29 e contas negativas listadas).",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "c38f069e-4403-4fa3-9856-947a4074fced",
+      "status": "CORRETO",
+      "patterns": ["acerto_objetividade"],
+      "razao": "Faturamento R$ 38.064.323,84 / 26 dias = R$ 1.464.012,46 (bate). Período correto e cálculo coerente.",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "c3fdf624-b17f-40b2-a0e9-a0aba9dd4297",
+      "status": "CORRETO",
+      "patterns": ["acerto_objetividade"],
+      "razao": "Termo 'puxador' aplicado corretamente. Total 50 produtos e R$ 364.552,86 batem; top 10 listado confere com toolResults.",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "c41f12f6-d6a5-4ee8-be53-0aff1c542e7c",
+      "status": "CORRETO",
+      "patterns": ["acerto_objetividade"],
+      "razao": "Período do ano corrente (01/01 a 26/05/2026) e top 5 listados batem com toolResults. Soma R$ 115.497.006,51 confere com os 5 primeiros valores.",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "c68a2428-ef27-4a2f-9482-83a7819c9cfe",
+      "status": "CORRETO",
+      "patterns": ["acerto_objetividade"],
+      "razao": "Definiu 'em aberto' como etapas não finalizadas e listou as maiores. Valores batem com toolResults por etapa.",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "cb21513f-576e-4dd5-bfb5-f67c69441b34",
+      "status": "CORRETO",
+      "patterns": ["acerto_objetividade"],
+      "razao": "Janela 20-26/05/2026 corresponde a 'última semana'. 83 pedidos e R$ 10.346.297,45 batem com toolResults.",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "cce412dd-ea82-4388-9548-7fd0d91a668e",
+      "status": "CORRETO",
+      "patterns": ["acerto_objetividade"],
+      "razao": "Valor total R$ 51.977.199,74 e percentuais por armazém batem com toolResults.",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "d14613b1-5a98-466a-949a-ca1a26623e6c",
+      "status": "FORA_DE_ESCOPO",
+      "patterns": ["limitacao_real_declarada"],
+      "razao": "Não há tool para listar filiais/unidades. Agente registrou lacuna e declarou honestamente.",
+      "sugestao_prompt": null,
+      "correcao_factual": "nao_aplicavel"
+    },
+    {
+      "turnoId": "d1efcd06-e25f-47e6-b807-1ba1a77abc12",
+      "status": "PARCIAL",
+      "patterns": ["pergunta_ignorada", "tool_errada"],
+      "razao": "Pedido era estoque segregado por armazém, mas estoque_saldo_produto agrega por produto (só numLocais). Não usou tool de detalhamento por local; respondeu apenas o agregado.",
+      "sugestao_prompt": "Adicionar regra: 'quando pergunta pedir segregação por armazém/local, usar estoque_saldo_produto_por_local em vez de estoque_saldo_produto'.",
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "d4343392-2882-489f-ba4f-23a0f2176a26",
+      "status": "ERRADO",
+      "patterns": ["tool_errada", "parametro_incompleto", "dado_inventado"],
+      "razao": "Pergunta era sobre pedidos do cliente Smartfit, mas chamou comercial_pedidos_periodo sem filtro de cliente (retornou só agregado de 477 pedidos do mês). Os 10 linhas e R$ 5.256.872,72 atribuídos a Smartfit não aparecem no toolResults dessa chamada.",
+      "sugestao_prompt": "Adicionar regra: 'pergunta menciona cliente nominado? Encadear cadastro_buscar_parceiro -> fiscal_faturamento_por_cliente (filtro pelo participanteId) ou comercial_pedidos_por_cliente, nunca pedidos_periodo solto'.",
+      "correcao_factual": "nao_bate"
+    },
+    {
+      "turnoId": "d9793e64-8872-4128-bfe4-347005939e5b",
+      "status": "PARCIAL",
+      "patterns": ["parametro_incompleto"],
+      "razao": "Bruto correto. Para o líquido chamou fiscal_impostos_periodo sem período (retornou 47.140 notas acumuladas, não o mês). Acabou admitindo que não consegue calcular líquido, sem usar o dado retornado.",
+      "sugestao_prompt": "Adicionar regra: 'fiscal_impostos_periodo exige periodoDe/periodoAte; sempre passar a mesma janela usada em fiscal_faturamento_periodo'.",
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "d988f11f-e27c-4383-966a-5937b5cde39b",
+      "status": "ERRADO",
+      "patterns": ["entendeu_mal_termo", "dado_inventado"],
+      "razao": "Usuário perguntou pelo código [1000362265], mas o toolResults retornou um produto diferente ('Mola Espiral em Aço Cromado - 1000097424'). Agente tratou como se fosse o produto buscado em vez de declarar que o código não foi encontrado.",
+      "sugestao_prompt": "Adicionar regra: 'quando termo é código numérico entre colchetes/exato, conferir se o produto retornado tem esse código no nome; se não, declarar codigo nao encontrado em vez de mostrar o match aproximado'.",
+      "correcao_factual": "nao_bate"
+    },
+    {
+      "turnoId": "dae46d56-0b95-41f6-bdbd-e8edb4c90ec4",
+      "status": "ERRADO",
+      "patterns": ["erro_data", "parametro_incompleto"],
+      "razao": "Chamou fiscal_impostos_periodo sem periodoDe/periodoAte; o IBPT R$ 56.207.859,52 retornado é acumulado (47.140 notas), não do mês. Resposta atribui esse valor ao 'mês corrente', o que é factualmente errado.",
+      "sugestao_prompt": "Adicionar regra: 'fiscal_impostos_periodo sem periodoDe retorna acumulado; nunca apresentar como mês. Sempre passar periodoDe e periodoAte alinhados à intencao da pergunta'.",
+      "correcao_factual": "nao_bate"
+    },
+    {
+      "turnoId": "e2ac3556-21e4-4f5a-94cb-8ee2191c58c1",
+      "status": "CORRETO",
+      "patterns": ["acerto_objetividade"],
+      "razao": "Tool retornou estado=vazio para o filtro de Residencial Maua no mês; agente declarou honestamente 0 notas.",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "e673fcb2-ddcd-44e9-b76e-1021e87d8c6b",
+      "status": "PARCIAL",
+      "patterns": ["pergunta_ignorada", "tool_errada"],
+      "razao": "Não há tool retornando UF; agente entregou só o total e declarou que não tem quebra por estado. Faltou pelo menos tentar uma tool de geografia ou registrar lacuna.",
+      "sugestao_prompt": "Adicionar regra: 'pergunta por UF/região sem tool dedicada? Registrar lacuna em vez de respondes só o agregado'.",
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "e88ac270-71ab-4a1b-a9ef-cbd4778867c1",
+      "status": "CORRETO",
+      "patterns": ["acerto_objetividade"],
+      "razao": "Encontrou 2 produtos cadastrados sem linha de saldo; resposta reflete o toolResults fielmente.",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "ea668803-ab0c-478e-a648-873a0c962ad1",
+      "status": "ERRADO",
+      "patterns": ["entendeu_mal_termo"],
+      "razao": "ToolResults mostra totalAgregado.quantidade=64 (são 64 notas, R$ 197.203). Agente escreveu '1 nota' confundindo 'totalFornecedoresDistintos=1' com quantidade de notas; depois cita '64 un' como se fosse unidades, não notas.",
+      "sugestao_prompt": "Adicionar regra: 'em fiscal_notas_recebidas_por_fornecedor, o campo quantidade no linhas/totalAgregado conta notas, não unidades; ao narrar usar quantidade como numero de notas'.",
+      "correcao_factual": "nao_bate"
+    },
+    {
+      "turnoId": "eb8fcb7e-b490-4242-a776-4d8e4254a4a6",
+      "status": "CORRETO",
+      "patterns": ["acerto_objetividade"],
+      "razao": "754 fornecedores bate com toolResults. Resposta direta.",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "eb98eab0-af6f-4b45-a595-44485d40a0c8",
+      "status": "FORA_DE_ESCOPO",
+      "patterns": ["limitacao_real_declarada"],
+      "razao": "Não há tool para listar parceiros sem CPF/CNPJ; agente registrou lacuna e declarou honestamente.",
+      "sugestao_prompt": null,
+      "correcao_factual": "nao_aplicavel"
+    },
+    {
+      "turnoId": "ed3eda8e-3bce-4568-9b70-f89f4ff6f73a",
+      "status": "ERRADO",
+      "patterns": ["erro_data"],
+      "razao": "Usuário pediu 'amanhã' (27/05/2026), mas ateDias=1 incluiu hoje e todas as parcelas listadas vencem em 26/05/2026. Resposta diz 'vencem amanhã (26/05/2026)' confundindo hoje com amanhã.",
+      "sugestao_prompt": "Adicionar regra: 'amanhã = data de hoje + 1; chamar comercial_parcelas_a_vencer com filtro de data exata = amanhã, não ateDias=1'.",
+      "correcao_factual": "nao_bate"
+    },
+    {
+      "turnoId": "ee04f02d-a1c4-4fd3-99ad-94777e0d2220",
+      "status": "CORRETO",
+      "patterns": ["acerto_objetividade"],
+      "razao": "Localizou as 2 contas (Matriz e Filial) com os códigos corretos do plano de contas. Bate com toolResults.",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "ee4e1b78-4c9f-4343-949e-e9277e71f2a5",
+      "status": "PARCIAL",
+      "patterns": ["pergunta_ignorada"],
+      "razao": "Não conseguiu emparelhar preço de venda com custo; entregou fallback de top por custo. Honesto, mas não respondeu o que foi pedido (margem).",
+      "sugestao_prompt": "Adicionar regra: 'top por margem exige join produto.preco_venda x produto.custo medio; criar/usar tool dedicada estoque_top_margem em vez de cair em fallback de custo'.",
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "f1f598d9-fe1f-47bb-b5fe-e3ff759f7582",
+      "status": "PARCIAL",
+      "patterns": ["pergunta_ignorada"],
+      "razao": "Sem tool de UF, agente fez proxy via nomes dos clientes (extraindo 'SP'/'DF' do textual). Resposta é heurística frágil, não verdadeira segmentação por região.",
+      "sugestao_prompt": "Adicionar regra: 'sem tool de UF, registrar lacuna em vez de inferir UF a partir do nome do participante (gera resultado enganoso)'.",
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "f25180f4-7332-4e27-99f6-7a2136d8c959",
+      "status": "CORRETO",
+      "patterns": ["acerto_encadeamento", "acerto_objetividade"],
+      "razao": "Encadeou financeiro_saldo_contas + financeiro_caixa_periodo. Saldo total -24.242.300,29 e caixa do mês batem com toolResults.",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "f2bc8d9e-b440-455b-8c2b-27dc4acbbccf",
+      "status": "CORRETO",
+      "patterns": ["acerto_encadeamento", "acerto_objetividade"],
+      "razao": "Encadeou pedidos_periodo + pedidos_por_etapa. 477 pedidos do mês e funil consolidado batem com toolResults.",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "f6f71edc-760e-4713-8a6b-3140c9b74f93",
+      "status": "PARCIAL",
+      "patterns": ["resposta_truncada"],
+      "razao": "Soma dos 10 títulos exibidos bate (R$ 762.465,89), mas agente reconhece truncamento do retorno; ficou faltando o total real a pagar.",
+      "sugestao_prompt": "Adicionar regra: 'quando financeiro_titulos_vencidos truncar, chamar com paginacao/limite maior ou usar tool agregada para o saldo a pagar total'.",
+      "correcao_factual": "bate"
+    }
+  ]
+}

@@ -1,0 +1,304 @@
+{
+  "batchId": "0002",
+  "evaluatedAt": "2026-05-26T17:30:00.000Z",
+  "totals": {
+    "CORRETO": 24,
+    "PARCIAL": 5,
+    "ERRADO": 3,
+    "FORA_DE_ESCOPO": 3
+  },
+  "patterns": {
+    "acerto_objetividade": 18,
+    "acerto_encadeamento": 2,
+    "acerto_modelo": 4,
+    "limitacao_real_declarada": 3,
+    "entendeu_mal_termo": 2,
+    "dado_inventado": 2,
+    "pergunta_ignorada": 1,
+    "formato_quebrado": 1,
+    "resposta_truncada": 2,
+    "parametro_incompleto": 1
+  },
+  "turnos": [
+    {
+      "turnoId": "50e7e03a-9fe4-4ecf-91ea-963a19357a18",
+      "status": "PARCIAL",
+      "patterns": ["entendeu_mal_termo"],
+      "razao": "Usuario pediu 'Conta 2.1.1' (PASSIVO CIRCULANTE). Tool retornou matches por substring '2.1.1' que pegou principalmente '1.2.1.1' (ATIVO). Agente percebeu e avisou, mas nao filtrou para retornar exatamente a conta 2.1.1.",
+      "sugestao_prompt": "Adicionar regra: quando usuario informa codigo de conta, priorizar match exato (codigo='X') antes de substring, e se o termo for ambiguo, pedir clarificacao curta.",
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "52623ccb-5ff0-4da9-9bde-27ac80ddd0c4",
+      "status": "CORRETO",
+      "patterns": ["acerto_objetividade"],
+      "razao": "Tool correta para 'Receita do dia', periodo 26/05/2026, retornou totalNotas=0 e valorFaturado=0. Resposta direta e honesta.",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "52b69e63-7d5c-48fd-af48-3609cd9143ef",
+      "status": "FORA_DE_ESCOPO",
+      "patterns": ["limitacao_real_declarada"],
+      "razao": "Lead time de pedido nao esta no catalogo. Agente registrou lacuna e declarou limitacao honestamente.",
+      "sugestao_prompt": null,
+      "correcao_factual": "nao_aplicavel"
+    },
+    {
+      "turnoId": "5424b806-36a4-4abc-a97f-f91b937eaa60",
+      "status": "PARCIAL",
+      "patterns": ["resposta_truncada"],
+      "razao": "Tool retornou OK mas resposta admite que nao conseguiu somar o total geral por truncamento da listagem. Entrega apenas top 10. Limitacao tecnica de pagina/truncamento que prejudicou a resposta.",
+      "sugestao_prompt": "Adicionar regra: quando listagem vier paginada/truncada, chamar a tool em modo de agregacao ou somar apenas o que veio, declarando explicitamente.",
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "55114299-b516-43df-935b-043b40c9cc56",
+      "status": "CORRETO",
+      "patterns": ["acerto_objetividade", "acerto_modelo"],
+      "razao": "Periodo correto (proximos 7 dias a partir de 26/05/2026), valor e quantidade batem com tool. Listagem ordenada e contextualizada.",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "596b853a-f64b-416f-8ae4-1cbef2856427",
+      "status": "CORRETO",
+      "patterns": ["acerto_objetividade"],
+      "razao": "Tool correta para 'estoque morto'. KPIs batem (33 produtos, R$ 220.824,71). Premissa de 90+ dias declarada.",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "5a5acea3-f3b3-4c75-931d-0aeba245d91f",
+      "status": "CORRETO",
+      "patterns": ["acerto_objetividade"],
+      "razao": "Premissa razoavel ('Aprovacao dono' + 'Aprovado'). Somas batem: 29+34=63 pedidos, 7.539.047,29+12.057.605,57=19.596.652,86.",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "5fbb1250-1630-4229-a4b1-118d8dc7ea50",
+      "status": "CORRETO",
+      "patterns": ["acerto_objetividade", "acerto_modelo"],
+      "razao": "Linguagem coloquial entendida ('esse mes mesmo?'). Periodo correto (01/05 a 26/05), valor R$ 38.064.323,84 e 772 notas batem com tool.",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "62375ecb-ab31-4567-b89b-054a9508eb0c",
+      "status": "CORRETO",
+      "patterns": ["acerto_objetividade"],
+      "razao": "Tool correta, busca por CPF retornou vazio. Resposta direta e honesta.",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "67430348-5fb4-4440-a64d-da9f5a886293",
+      "status": "PARCIAL",
+      "patterns": ["entendeu_mal_termo"],
+      "razao": "Usuario perguntou sobre 'pedido pra producao essa semana'. Agente trouxe panorama amplo do funil sem filtrar pelo periodo da semana corrente e sem identificar a etapa 'producao' especificamente. Resposta dispersa.",
+      "sugestao_prompt": "Adicionar regra: quando usuario mencionar 'producao', filtrar etapas relacionadas a producao (PCP/fabricacao) e aplicar filtro de data se 'essa semana'.",
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "6b629bd0-25b5-470f-b002-962065cc7488",
+      "status": "ERRADO",
+      "patterns": ["dado_inventado", "formato_quebrado"],
+      "razao": "Resposta declara '47 pedidos' no panorama, mas listagem mostra 70+385+97+9+119+46+71+70+34+5 = muito mais que 47. Numero nao corresponde aos dados da tool nem soma dos itens listados.",
+      "sugestao_prompt": "Adicionar regra: ao apresentar total agregado, somar exatamente as quantidades retornadas pela tool antes de afirmar.",
+      "correcao_factual": "nao_bate"
+    },
+    {
+      "turnoId": "6db1fdbe-423e-4f8e-989d-7bcec12e066b",
+      "status": "CORRETO",
+      "patterns": ["acerto_objetividade"],
+      "razao": "Periodo correto (01/05 a 31/05/2026), 774 notas e R$ 38.074.442,88 batem com tool.",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "7f52233c-caf7-4a0b-a9c6-3cb152e0c910",
+      "status": "PARCIAL",
+      "patterns": ["resposta_truncada"],
+      "razao": "Tool retornou OK. Agente apresentou top 10 com soma R$ 1.188.438,89 mas alertou que lista pode estar incompleta. Atende parcialmente o pedido de 'top 10'.",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "7fa7180f-3f41-48b6-aee3-199b27e34f57",
+      "status": "FORA_DE_ESCOPO",
+      "patterns": ["limitacao_real_declarada"],
+      "razao": "Quantidade de PF/PJ por CPF nao esta no catalogo. Agente registrou lacuna e ofereceu o que tinha (totais por tipo).",
+      "sugestao_prompt": null,
+      "correcao_factual": "nao_aplicavel"
+    },
+    {
+      "turnoId": "81e62115-7962-4d06-a2d0-d9ee9429b1d6",
+      "status": "CORRETO",
+      "patterns": ["acerto_objetividade"],
+      "razao": "Tool correta, saldo liquido negativo computado a partir dos saldos das contas. Premissa declarada.",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "83391c08-0f0a-4a55-b34d-fbd3fd1ce698",
+      "status": "CORRETO",
+      "patterns": ["acerto_objetividade"],
+      "razao": "Periodo correto (20/05 a 26/05), tool retornou vazio para entradas, resposta direta.",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "86876fa1-88b6-4e15-9156-cd43fb26ef68",
+      "status": "CORRETO",
+      "patterns": ["acerto_objetividade"],
+      "razao": "Plano de contas resumido em estrutura hierarquica enxuta, atende ao pedido.",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "8a893d81-f56e-4748-826b-4bab1f2094fb",
+      "status": "CORRETO",
+      "patterns": ["acerto_objetividade"],
+      "razao": "Termo isolado 'faturamento' interpretado como mes corrente. Numeros batem com tool (38.064.323,84 / 772).",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "8c10686f-6a7c-4fe5-8618-faa1a1fdcf9f",
+      "status": "ERRADO",
+      "patterns": ["dado_inventado", "pergunta_ignorada"],
+      "razao": "Ranking por quantidade deveria ser Marcelo(100), Weverton(86), Jonatas(71). Agente listou Jonatas em 2o (71) e Weverton em 3o (86), invertendo a ordem por quantidade declarada como criterio.",
+      "sugestao_prompt": "Adicionar regra: ao apresentar 'top por quantidade', ordenar pela quantidade efetiva (DESC), nao pela ordem em que vem do agregador.",
+      "correcao_factual": "nao_bate"
+    },
+    {
+      "turnoId": "8fe6d9d0-cf5a-45c6-9ec1-b8767f71d8a0",
+      "status": "CORRETO",
+      "patterns": ["acerto_objetividade"],
+      "razao": "Premissa de 'fechados=etapaFinaliza=true' explicada, periodo do mes corrente, totais agregados retornados.",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "95d1ed50-3aa7-4ff2-bac3-01a8204d169c",
+      "status": "PARCIAL",
+      "patterns": ["resposta_truncada"],
+      "razao": "Top 10 apresentado com aviso explicito de truncamento. Soma dos 10 (R$ 2.956.170,87) confere. Limitacao real reconhecida.",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "9d10b7fa-c27d-439b-b597-93dcf5287561",
+      "status": "CORRETO",
+      "patterns": ["acerto_objetividade"],
+      "razao": "Honesta sobre truncamento, apresenta os 10 primeiros com aviso. Atende o pedido amplo 'Conta contas a pagar'.",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "a4a9d000-1e62-473c-9ed0-54ba61c29e84",
+      "status": "CORRETO",
+      "patterns": ["acerto_objetividade"],
+      "razao": "Tool correta, mes corrente, top 10 com nomes e valores que batem (T600X R$ 17.626.467,34 / 1.097 un).",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "a7d675bc-ef64-405e-b193-20b379a62c50",
+      "status": "CORRETO",
+      "patterns": ["acerto_objetividade"],
+      "razao": "Premissa de inadimplencia=titulos vencidos clientes. Smartfit R$ 387.500,00 com 23 dias de atraso bate com tool. Aviso de lista incompleta honesto.",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "af4aca53-3cc3-4882-ad4d-20d5817fb735",
+      "status": "PARCIAL",
+      "patterns": ["resposta_truncada", "parametro_incompleto"],
+      "razao": "Pergunta vaga ('quais notas?'). Agente assumiu mes corrente e devolveu exemplos por nao conseguir listar tudo. Aceitavel, mas resposta segmentada por situacao seria mais util.",
+      "sugestao_prompt": "Adicionar regra: para perguntas amplas de 'notas?', oferecer agregacao por situacao (autorizadas/rejeitadas/etc) antes de listar exemplos.",
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "b1fac587-dd37-484f-b282-1280ff7df425",
+      "status": "CORRETO",
+      "patterns": ["acerto_objetividade"],
+      "razao": "Tool correta, top 10 mes corrente, Jht SP R$ 10.784.144,78 / 114 un bate com dados.",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "b319837d-7552-4601-af3e-07bea022f095",
+      "status": "CORRETO",
+      "patterns": ["acerto_objetividade"],
+      "razao": "Previsto 30 dias somou 775.381,45+17.681.594,80=18.456.976,25, bate com tool. Periodo correto.",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "b7c7089b-27d7-4d6c-84e3-fd384d5de958",
+      "status": "CORRETO",
+      "patterns": ["acerto_objetividade"],
+      "razao": "Produto identificado pelo codigo completo. Saldo 4 un, R$ 1.871,02, 1 local: bate com tool.",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "ba9231e4-33d9-4f85-acd1-253268a7e3e9",
+      "status": "CORRETO",
+      "patterns": ["acerto_objetividade"],
+      "razao": "Fluxo do dia 26/05, tool retornou zeros, resposta direta com premissa de hoje/realizado.",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "bbf3631e-1cfc-4dc5-827f-e0e5ff5c6d8e",
+      "status": "CORRETO",
+      "patterns": ["acerto_objetividade"],
+      "razao": "Filtrou discos/anilhas do estoque parado, ofereceu totais e exemplos. Atende pergunta especifica de domain knowledge.",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "bcf364a0-a49e-4883-957b-c694eec94318",
+      "status": "CORRETO",
+      "patterns": ["acerto_objetividade"],
+      "razao": "Mes corrente, realizado R$ -5.442.516,58 e previsto R$ 8.380.078,79 batem. Diferenca calculada corretamente.",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "bd4fd67b-3ab1-4f36-99ce-863c01ec76e3",
+      "status": "CORRETO",
+      "patterns": ["acerto_encadeamento", "acerto_modelo"],
+      "razao": "Pergunta composta resolvida com encadeamento: cliente que mais compra (Jht SP) + saldo a receber dele. Numeros batem.",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "bd5c1c8e-e207-420e-b8f0-178bf0f6fe24",
+      "status": "CORRETO",
+      "patterns": ["acerto_objetividade", "acerto_modelo"],
+      "razao": "Premissa de rank por quantidade de notas, mes corrente, Jht SP com 114 notas R$ 10.784.144,78 bate com tool.",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "bfac63b0-b229-4197-b7c9-bb62d708a707",
+      "status": "CORRETO",
+      "patterns": ["acerto_objetividade"],
+      "razao": "Produto PMB403 identificado, sem saldo cadastrado, resposta honesta com semEstoqueCadastrado=true do tool.",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "c0231eea-8b85-4ca0-b4ef-ddf4f585ca18",
+      "status": "CORRETO",
+      "patterns": ["acerto_objetividade"],
+      "razao": "Tool correta para movimentacao hoje, retorno vazio, resposta direta.",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    }
+  ]
+}

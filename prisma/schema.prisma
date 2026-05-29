@@ -2269,6 +2269,8 @@ model Conversation {
   updatedAt DateTime     @updatedAt @map("updated_at")
   messages  Message[]
   qualityEvaluations ConversationQualityEvaluation[]
+  /// R1 router de catalogo: decisoes do router por turno desta conversa.
+  routerDecisions    AgentRouterDecision[]
 
   @@index([userId, updatedAt])
   @@map("conversations")
@@ -2287,6 +2289,8 @@ model Message {
   /// Spec: docs/superpowers/specs/2026-05-25-agente-nex-inteligencia-design.md §3.2.
   toolResults    Json?        @map("tool_results")
   createdAt      DateTime     @default(now()) @map("created_at")
+  /// R1 router de catalogo: decisao do router associada a este turno.
+  routerDecisions AgentRouterDecision[]
 
   @@index([conversationId, createdAt])
   @@map("messages")
@@ -2342,9 +2346,9 @@ model LlmUsage {
   model          String
   tokensInput    Int      @map("tokens_input")
   tokensOutput   Int      @map("tokens_output")
-  costUsd        Decimal? @map("cost_usd") @db.Decimal(12, 6)
+  costUsd        Decimal? @map("cost_usd") @db.Decimal(18, 10)
   costKnown      Boolean  @default(true) @map("cost_known")
-  costBrl        Decimal? @map("cost_brl") @db.Decimal(14, 6)
+  costBrl        Decimal? @map("cost_brl") @db.Decimal(20, 10)
   usdToBrlRate   Decimal? @map("usd_to_brl_rate") @db.Decimal(10, 4)
   rateSpread     Decimal? @map("rate_spread") @db.Decimal(6, 4)
   rateStale      Boolean  @default(false) @map("rate_stale")
@@ -2367,8 +2371,13 @@ model LlmUsage {
   userId         String?  @map("user_id") @db.Uuid
   // Credencial (chave de API) usada — permite somar o consumo por chave (A4).
   credentialId   String?  @map("credential_id") @db.Uuid
-  // Tipo da requisição para a tag de Consumo (G11): texto/imagem/audio/arquivo.
+  // Tipo da requisição para a tag de Consumo (G11): texto/imagem/audio/arquivo/embedding.
   requestKind    String   @default("texto") @map("request_kind")
+  /// Origem da chamada para a tag "Origem" do menu de consumo. NULL em linhas
+  /// antigas (derivam de isPlayground: Agente Nex / Playground). Valores novos:
+  /// "router" (router de catalogo em producao) e "router_calibracao" (rodadas
+  /// de calibragem offline). Permite distinguir gasto do router no historico.
+  origin         String?  @map("origin")
   createdAt      DateTime @default(now()) @map("created_at")
 
   @@index([createdAt])
@@ -2461,9 +2470,84 @@ model AgentSettings {
   /// Credencial (chave de API) usada pelo modelo dedicado de imagem.
   imageCredentialId String?  @map("image_credential_id") @db.Uuid
 
+  /// R1 router de catalogo (sub-projeto do roadmap de cobertura completa).
+  /// Ver docs/superpowers/specs/2026-05-28-router-catalogo-design.md.
+  /// FALSE (default): modo shadow — calcula decisao mas nao filtra catalogo.
+  /// TRUE: filtra catalogo entregue ao LLM por similaridade semantica.
+  routerEnabled        Boolean @default(false) @map("router_enabled")
+  /// Threshold minimo de cosine similarity para incluir dominio (regra 5).
+  routerThreshold      Float   @default(0.30) @map("router_threshold")
+  /// Quantos dominios sao escolhidos no topo (regra 5).
+  routerTopK           Int     @default(3) @map("router_top_k")
+  /// Em modo ativo, se V1-V5 detectar Caminho 3a e topScore < este threshold,
+  /// dispara retry expandindo catalogo para o inteiro (uso do motor existente).
+  routerRetryExpandBelow Float @default(0.70) @map("router_retry_expand_below")
+  /// Habilita o retry expandido descrito acima. Default false para rollout
+  /// seguro: liga so depois de validar shadow.
+  routerRetryEnabled   Boolean @default(false) @map("router_retry_enabled")
+
+  /// Periodicidade (em minutos) do cron BullMQ que processa avaliacoes
+  /// PENDENTE via heuristica (sem custo de LLM). Range 1-1440 (24h).
+  /// Default 240 (4h). Configurado no painel /agente/monitoramento aba
+  /// Backtest. Mudancas sao aplicadas em ate 60s pelo JOB_CONFIG_CHECK
+  /// do worker (mesmo mecanismo do sync incremental).
+  qualityHeuristicIntervalMinutes Int @default(240) @map("quality_heuristic_interval_minutes")
+
   updatedAt         DateTime @updatedAt @map("updated_at")
 
   @@map("agent_settings")
+}
+
+/// R1 router de catalogo (sub-projeto do roadmap de cobertura completa do Odoo).
+/// Ver docs/superpowers/specs/2026-05-28-router-catalogo-design.md §6.
+/// Cada turno do agente Nex gera uma linha aqui: o que o router decidiu, o que
+/// foi de fato chamado (tools), e em qual modo (shadow vs active). Permite
+/// auditar acerto top-1 sem afetar o comportamento atual do Nex.
+model AgentRouterDecision {
+  id                  String   @id @default(cuid())
+  createdAt           DateTime @default(now()) @map("created_at")
+
+  /// Contexto do turno. Opcionais porque a row e' criada antes da persistencia
+  /// da Message no banco.
+  conversationId      String?       @map("conversation_id") @db.Uuid
+  conversation        Conversation? @relation(fields: [conversationId], references: [id], onDelete: SetNull)
+  messageId           String?       @map("message_id") @db.Uuid
+  message             Message?      @relation(fields: [messageId], references: [id], onDelete: SetNull)
+
+  /// Entrada.
+  userQuestion        String   @map("user_question") @db.Text
+  questionTokenCount  Int?     @map("question_token_count")
+
+  /// Saida do router. `scores` e' Json {dominio: score}. `topScore` denormalizado
+  /// para facilitar queries de histograma (width_bucket). Em fallbacks tipo
+  /// msg_trivial ou embed_failed, `scores` = {} e `topScore` = null.
+  pickedDomains       String[] @default([]) @map("picked_domains")
+  scores              Json     @default("{}")
+  topScore            Float?   @map("top_score")
+  fallbackTriggered   Boolean  @default(false) @map("fallback_triggered")
+  /// "msg_trivial" | "embed_failed" | "score_baixo" | null. Pode ganhar sufixo
+  /// "+retry_v5_expanded" quando o retry V1-V5 expandiu o catalogo.
+  fallbackReason      String?  @map("fallback_reason")
+  /// Formato: "r1.<major>.<minor>.<patch>-<vocab_hash8>". Permite cruzar com
+  /// VOCABULARY_VERSION.
+  routerVersion       String   @map("router_version")
+
+  /// O que aconteceu no turno. `mode`: "shadow" | "active" | "calibracao_R-X"
+  /// | "test" | "e2e".
+  mode                String
+  catalogSizeOffered  Int      @default(0) @map("catalog_size_offered")
+  catalogSizeFull     Int      @default(0) @map("catalog_size_full")
+  toolsActuallyUsed   String[] @default([]) @map("tools_actually_used")
+  toolsDomains        String[] @default([]) @map("tools_domains")
+  llmModelUsed        String?  @map("llm_model_used")
+  /// Tempo da chamada pickDomains, nao do turno todo. Alarmavel quando p95 >
+  /// 200ms.
+  pickDurationMs      Int?     @map("pick_duration_ms")
+
+  @@index([createdAt, mode])
+  @@index([conversationId])
+  @@index([routerVersion])
+  @@map("agent_router_decision")
 }
 
 /// Overrides do catálogo de modelos LLM. Modelos novos descobertos pelo botão

@@ -57,3 +57,7 @@ docker-compose.production.yml
 # Auditoria de qualidade (4914 arquivos de batch + result)
 docs/agent-quality-review/batches/
 docs/agent-quality-review/results/
+
+# Multi-agente worktrees (protocolo agente)
+/branches/
+.agente-branch

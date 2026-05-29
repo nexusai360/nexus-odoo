@@ -232,3 +232,63 @@ incremental só puxa por `write_date` e nunca remove/repuxa linhas antigas
 perdidas no backfill. O ciclo de **reconcile** (24h) fecharia o gap; o
 `f4l-ingest.ts` roda só snapshot+incremental, sem reconcile. Não é bug de
 tool. Ação: rodar um reconcile, ou aceitar o gap de ~1% como ruído de janela.
+
+---
+
+## ~~R9 — Router de catálogo (R1): calibração e meta de ativação~~ RESOLVIDO
+
+**Resolvido em 2026-05-28 23:10:** modelo large@0.30 + tuning de vocabulário
+(forceIncludeOn) levaram a **cobertura Top-K a 98-99%** (meta 95% batida);
+gate de ativação agora incide sobre Top-K (allInTopKPct), não Top-1.
+Telemetria de embedding no menu de consumo + precisão de custo corrigida.
+Multidomínio validado. Histórico abaixo.
+
+---
+
+### R9 (original) — threshold default 0.55 mal calibrado
+
+**Aberto desde:** 2026-05-28 (calibragem offline da Wave G, executada de
+verdade pela primeira vez contra as 291 perguntas R8-R23).
+
+A calibragem (`scripts/router/calibrate-against-batteries.ts`,
+`runCalibration`) revelou que o **threshold default 0.55** faz o router cair em
+**fallback em 84% das perguntas** (245/291) e acertar só **16,2% de Top-1**. Não
+é bug de scoring: a distribuição de cosseno do `text-embedding-3` entre pergunta
+e descrição de domínio fica majoritariamente abaixo de 0.55. Sweep completo
+(topK=3, dataset 291, 216 mapeáveis):
+
+| threshold | Top-1 | Top-K | Fallbacks |
+|---|---:|---:|---:|
+| 0.35 | **63,9%** | **75,9%** | 52 |
+| 0.40 | 59,3% | 67,6% | 86 |
+| 0.45 | 42,1% | 48,1% | 147 |
+| 0.50 | 25,5% | 27,3% | 209 |
+| 0.55 (default atual) | 16,2% | 16,7% | 245 |
+
+### Atualização 2026-05-28 22:35 (threshold + modelo resolvidos; gap restante)
+
+Duas correções aplicadas (commits `8501e6e`, `ebdd066`):
+1. **Threshold default 0.55 -> 0.30** (schema + run-agent + linha `global`).
+2. **Modelo small -> large** (`text-embedding-3-large`/3072) só no router (o
+   `embed()` default segue small/1536 porque o RAG da F5 tem pgvector(1536)).
+   A/B comprovou o ganho:
+
+| modelo @ threshold | Top-1 | Top-K | Fallbacks |
+|---|---:|---:|---:|
+| small @ 0.35 | 63,9% | 75,9% | 52 |
+| large @ 0.20 | 78,2% | 93,5% | 9 |
+| **large @ 0.30 (produção)** | **77,3%** | **92,1%** | 15 |
+
+Meta de ativação também elevada de 85% para **95%** por decisão do usuário
+(`constants.ts ROUTER_PROMOTION_MIN_TOP1`).
+
+**Gap restante para fechar o R9:** Top-1 plateou em ~78% com large (teto do
+vocabulário atual, não do threshold). Para chegar a 95% de Top-1 é preciso
+enriquecer `domain-vocabulary.ts`. **Questão de metrica em aberto (decisão do
+usuário):** o router entrega top-K domínios ao LLM, então o Top-K (~92%, perto
+de 95%) é o que de fato determina se o LLM recebe a ferramenta certa; o Top-1
+é mais rígido do que o necessário. Definir se o gate de 95% incide sobre Top-1
+(exige tuning pesado de vocabulário, talvez inalcançável) ou Top-K (quase lá).
+
+**Implicação:** nenhuma de produção, **o router segue em shadow** e o gate
+bloqueia a ativação enquanto não bater a meta.

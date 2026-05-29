@@ -1,0 +1,101 @@
+{
+  "batchId": "0008",
+  "evaluatedAt": "2026-05-26T04:45:00.000Z",
+  "totals": {
+    "CORRETO": 5,
+    "PARCIAL": 3,
+    "ERRADO": 2,
+    "FORA_DE_ESCOPO": 0
+  },
+  "patterns": {
+    "pediu_clarificacao_desnecessaria": 3,
+    "fluxo_tool_incompleto": 1,
+    "nao_usou_tool": 1,
+    "dado_inventado": 1,
+    "acerto_objetividade": 3,
+    "acerto_modelo": 1,
+    "parametro_incompleto": 1
+  },
+  "turnos": [
+    {
+      "turnoId": "f68c5243-a1ea-4ae5-80bd-046f99bfd659",
+      "status": "PARCIAL",
+      "patterns": ["pediu_clarificacao_desnecessaria"],
+      "razao": "Pergunta era curta mas tinha default razoavel (lista de contas a receber em aberto). Em vez disso o agente abriu menu de 4 opcoes sem chamar tool.",
+      "sugestao_prompt": "Adicionar regra: 'Pergunta vaga sobre contas a receber? Default = listar titulos em aberto e pedir refinamento DEPOIS de mostrar dado.'",
+      "correcao_factual": "nao_aplicavel"
+    },
+    {
+      "turnoId": "f74e4fa0-3187-4d5b-a89c-56a1ddfafad2",
+      "status": "PARCIAL",
+      "patterns": ["parametro_incompleto", "pediu_clarificacao_desnecessaria"],
+      "razao": "Usuario pediu 'por mes' (serie mensal) mas a tool foi chamada como periodo unico jan-mai. Numero do total bate (R$ 209.588.360,55, 3.105 notas), porem o agente nao entregou o que foi pedido (quebra por mes) e ainda pediu clarificacao sobre perfil que e bizarra.",
+      "sugestao_prompt": "Adicionar regra: 'Pergunta com palavra-chave por mes/mensal/mes-a-mes? Chamar fiscal_faturamento_periodo iterando 12 meses ou usar tool de serie temporal, nao agregado unico.'",
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "f75cf3dc-3928-409c-b010-c003e4db8d33",
+      "status": "CORRETO",
+      "patterns": ["acerto_objetividade"],
+      "razao": "10 matches genuinos; agente listou top com saldos visiveis (item [81871] com 1un confere) e pediu refinamento. Numero bate com toolResults.",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "f9caf178-ee21-48ce-a4ff-9c9e24db4c0e",
+      "status": "CORRETO",
+      "patterns": ["acerto_objetividade"],
+      "razao": "Pergunta conceitual, nao requer tool. Resposta enxuta e correta.",
+      "sugestao_prompt": null,
+      "correcao_factual": "nao_aplicavel"
+    },
+    {
+      "turnoId": "fa8ba188-58fd-4442-a6cc-c5913a852e64",
+      "status": "ERRADO",
+      "patterns": ["nao_usou_tool", "pediu_clarificacao_desnecessaria"],
+      "razao": "Pergunta clara sobre ranking de clientes (notas de saida autorizadas e default obvio). Agente nao chamou tool nenhuma e ficou pedindo clarificacao sobre entrada/saida que e inferivel.",
+      "sugestao_prompt": "Adicionar regra: 'Quem comprou/cliente top + notas/vendas? Default = notas de saida autorizadas no mes corrente; chamar tool de ranking direto.'",
+      "correcao_factual": "nao_aplicavel"
+    },
+    {
+      "turnoId": "fb5fdc87-ac02-467a-8bc3-2e876fd6a09e",
+      "status": "CORRETO",
+      "patterns": ["acerto_objetividade"],
+      "razao": "Tool certa, ambos itens listados batem (16un/R$258.370,44 e 0un). Pedir desempate e adequado.",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "fe9148c8-f4e3-4328-8ced-c072f85270cc",
+      "status": "PARCIAL",
+      "patterns": ["pediu_clarificacao_desnecessaria"],
+      "razao": "Pergunta razoavelmente clara (cliente em atraso = titulo a receber vencido, default mais comum). Em vez de ja listar, abriu menu.",
+      "sugestao_prompt": "Adicionar regra: 'Cliente em atraso (sem qualificador)? Default = contas a receber vencidas > 0 dias; mostrar lista e oferecer filtro depois.'",
+      "correcao_factual": "nao_aplicavel"
+    },
+    {
+      "turnoId": "fedddc66-9f1d-4657-b693-1a1c0c93d927",
+      "status": "CORRETO",
+      "patterns": ["acerto_modelo", "acerto_objetividade"],
+      "razao": "Pergunta especifica com codigo; tool retornou exatamente um item; resposta enxuta com 16un, R$258.370,44 em 5 locais. Bate 100% com toolResults.",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "fef8a122-c7d7-4e41-b0b2-a1a4670dd13c",
+      "status": "CORRETO",
+      "patterns": ["acerto_objetividade"],
+      "razao": "Codigo da conta, nome e conta-pai citados batem exatamente com toolResults.",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "ff64928b-164c-4312-84ae-671e4b423b98",
+      "status": "ERRADO",
+      "patterns": ["dado_inventado"],
+      "razao": "Total de 32 notas e valor R$ 3.978.539,03 batem. Mas a quebra por status esta errada: o agente disse '16 autorizadas, 1 rejeitada, 15 em digitacao'. Contando o array de toolResults: 14 autorizadas, 1 rejeitada, 17 em digitacao. Numeros inventados.",
+      "sugestao_prompt": "Adicionar regra: 'Ao quebrar resultados por situacao/status, contar item a item do JSON, nunca estimar.'",
+      "correcao_factual": "nao_bate"
+    }
+  ]
+}

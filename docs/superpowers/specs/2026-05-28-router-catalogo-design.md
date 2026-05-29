@@ -1,21 +1,21 @@
-# SPEC v2: R1, Router de catalogo por embedding
+# SPEC v3: R1, Router de catalogo por embedding
 
 > **Sub-projeto R1 do roadmap de cobertura completa do Odoo.** Ver
 > `docs/superpowers/specs/2026-05-28-roadmap-cobertura-completa-odoo.md` para
 > contexto canonico.
 >
-> Status: **v2 (apos review adversarial #1)**. Diff em
-> `docs/superpowers/research/2026-05-28-router-r1-review-v1-to-v2.md`.
-> Proximas versoes: v3 (apos review adversarial #2).
+> Status: **v3 (apos review adversarial #2, definitiva para PLAN)**.
+> Revisoes: v1 → v2 (review #1, doc em research/), v2 → v3 (review #2, doc
+> em research/). Todas as open questions resolvidas.
 
 ---
 
 ## 1. Contexto e objetivo
 
-O agente Nex hoje opera com **79 tools** em 9 dominios, atingindo **95,5%**
-de qualidade na bateria R23 (290 turnos). O modelo padrao do agente e
-`gpt-5.4-nano`, que recebe o catalogo completo de tools a cada turno como
-parametro `tools` da Responses API.
+O agente Nex hoje opera com **79 tools** em 9 dominios, atingindo
+**95,5%** de qualidade na bateria R23 (290 turnos). O modelo padrao do
+agente e' `gpt-5.4-nano`, que recebe o catalogo completo de tools a cada
+turno como parametro `tools` da Responses API da OpenAI.
 
 A medida que o roadmap de cobertura completa avanca (ondas O1..ON),
 projetamos o catalogo crescer para **130-200 tools**. Empiricamente,
@@ -29,7 +29,7 @@ modelos nano e mini comecam a degradar a selecao de tool perto de
 **Objetivo deste sub-projeto:** entregar um router de catalogo que filtra
 quais tools sao expostas ao LLM em cada turno, baseado em similaridade
 semantica entre a pergunta do usuario e descricoes em linguagem natural
-de cada dominio. O router e habilitador arquitetural das ondas seguintes,
+de cada dominio. O router e' habilitador arquitetural das ondas seguintes,
 **nao tem valor de produto direto para o usuario final**.
 
 **Meta de sucesso:** apos R1 entregue, o catalogo entregue ao LLM tem em
@@ -42,9 +42,10 @@ qualidade do Nex** medida pela bateria R-X (baseline 95,5%).
 
 ### Dentro do escopo
 
-- Modulo novo `src/lib/agent/router/` com 6 componentes (vocabulary,
+- Modulo novo `src/lib/agent/router/` com 7 componentes (vocabulary,
   embed-domains, pick-domains, filter-catalog, log-decision,
-  tool-to-domain).
+  tool-to-domain, question-normalize).
+- Cache LRU em memoria de embeddings de perguntas (200 entradas).
 - Migration aditiva Prisma criando a tabela `AgentRouterDecision` e
   acrescentando 4 colunas em `AppSetting` (routerEnabled,
   routerThreshold, routerTopK, routerRetryExpandBelow).
@@ -52,25 +53,33 @@ qualidade do Nex** medida pela bateria R-X (baseline 95,5%).
   o router antes do `mcpToolsToProviderTools`.
 - Aba "Router (shadow)" em `/admin/qualidade` (super_admin only) com
   KPIs, histograma de scores, tabela de discordancias, toggle de
-  ativacao e endpoint de kill-switch.
+  ativacao, controles de threshold, botao de calibragem e endpoint
+  de kill-switch.
+- Endpoint admin `/api/admin/router/kill` para desligamento de
+  emergencia.
 - Integracao opcional com o validator V1-V5 existente (expansao de
   catalogo em retry quando router pode ter filtrado errado).
+- Script `scripts/router/calibrate-against-batteries.ts` que roda a
+  pergunta de cada turno da R8..R23 contra o router e calcula taxa de
+  acerto, salva relatorio em `docs/router-calibration-r1.md`.
 - Testes unitarios e de integracao.
 - Bateria de qualidade R-X (proxima rodada apos R23) inteira em modo
   shadow para validar zero regressao.
 
 ### Fora do escopo
 
-- Discovery enxuto (Sub-projeto R2): produz a lista de baldes A/B/C, fica
-  para o proximo sub-projeto.
+- Discovery enxuto (Sub-projeto R2): produz a lista de baldes A/B/C,
+  fica para o proximo sub-projeto.
 - Expansao real de tools (Ondas O1..ON): so comeca apos R1 mergeado.
 - Mudancas em tools existentes, fatos existentes, prompts existentes do
   Nex.
 - Servidor MCP (`mcp/`): nao recebe nenhuma alteracao. R1 vive 100% no
   lado do agente Next.js.
 - F5 (WhatsApp), F6 (construtor de relatorios), F4 Onda 2 (escrita).
-- Calibragem automatica do vocabulario (sera manual no PLAN, baseada nas
-  perguntas das rodadas R8-R23 + R-X em shadow).
+- TTL/cleanup automatico de `AgentRouterDecision` (entra na proxima
+  onda, fora deste R1).
+- Auto-promocao de shadow para ativo: super_admin sempre decide
+  manualmente.
 
 ---
 
@@ -79,11 +88,11 @@ qualidade do Nex** medida pela bateria R-X (baseline 95,5%).
 - **P1, aditivo:** zero tool, fato, prompt, tabela existente alterada.
 - **P2, padrao de tool inalterado:** R1 nao toca em tool nenhuma.
 - **P3, V1-V5 cobre:** validator existente nao precisa ser refeito; a
-  integracao com R1 e opcional e aproveita o motor de retry ja em
+  integracao com R1 e' opcional e aproveita o motor de retry ja em
   producao.
-- **P4, qualidade gatilho:** R1 nao sobe para `main` se a proxima bateria
-  R-X em shadow nao mantiver baseline >= 95,5%.
-- **P5, uma onda por vez:** R1 e sub-projeto unico, branch unica
+- **P4, qualidade gatilho:** R1 nao sobe para `main` se a proxima
+  bateria R-X em shadow nao mantiver baseline >= 95,5%.
+- **P5, uma onda por vez:** R1 e' sub-projeto unico, branch unica
   `feat/router-catalogo-r1`.
 - **P9, reusar embeddings:** R1 usa `src/lib/agent/rag/embed.ts`, ja em
   producao, ja com observabilidade e cache.
@@ -107,13 +116,14 @@ mensagem do usuario
 │  2. monta sistema prompt                        │
 │  3. NOVO: chama router.pickDomains(question)   │
 │  4. NOVO: log decisao em AgentRouterDecision   │
+│           (cria row, fire-and-forget)          │
 │  5. busca tools do MCP (como hoje)             │
 │  6. NOVO: filter-catalog aplica filtro segundo │
 │           routerEnabled (shadow vs active)     │
 │  7. chama LLM com catalogo (filtrado ou nao)   │
 │  8. V1-V5 audita resposta (como hoje)          │
-│  9. NOVO: atualiza AgentRouterDecision com as  │
-│           tools finalmente chamadas no turno   │
+│  9. NOVO: atualiza row em AgentRouterDecision  │
+│           com as tools finalmente chamadas     │
 └────────────────────────────────────────────────┘
       │
       ▼
@@ -127,14 +137,16 @@ servidor MCP (`mcp/`) e os fatos (`fato_*`) nao sao tocados.
 
 | Arquivo | Responsabilidade |
 |---|---|
-| `src/lib/agent/router/domain-vocabulary.ts` | Fonte unica da verdade do vocabulario. 9 entradas hoje, uma por dominio MCP. Inclui stop-list de saudacoes. |
+| `src/lib/agent/router/domain-vocabulary.ts` | Fonte unica da verdade do vocabulario. 9 entradas hoje, uma por dominio MCP. Inclui stop-list de saudacoes e VOCABULARY_VERSION. |
 | `src/lib/agent/router/embed-domains.ts` | Lazy-load: na primeira chamada, embeda todas as descricoes e cacheia em memoria do processo. Reembeda se vocabulary mudar (hash). |
-| `src/lib/agent/router/pick-domains.ts` | Funcao pura `(question, allDomains) => RouterDecision`. Aplica as regras 1-8 da secao 8. |
-| `src/lib/agent/router/filter-catalog.ts` | Recebe lista de tools MCP + RouterDecision, devolve lista filtrada. Trata garantias (`caminho3` sempre, etc.). |
-| `src/lib/agent/router/log-decision.ts` | Persiste decisao em `AgentRouterDecision`. Fire-and-forget para nao bloquear o turno. |
-| `src/lib/agent/router/tool-to-domain.ts` | Mapa explicito `toolName -> domain`. Resolve ambiguidade (ver §4.3). |
+| `src/lib/agent/router/embed-question.ts` | Embeda a pergunta do usuario via `rag/embed.ts`, com cache LRU de 200 entradas. |
+| `src/lib/agent/router/question-normalize.ts` | Normaliza pergunta antes de cache lookup ou embedding (trim, lowercase, collapse spaces, remove zero-width chars). |
+| `src/lib/agent/router/pick-domains.ts` | Funcao pura `(question, ctx) => RouterDecision`. Aplica regras 1-8 da secao 8. |
+| `src/lib/agent/router/filter-catalog.ts` | Recebe lista de tools MCP + RouterDecision, devolve lista filtrada. Trata garantias. |
+| `src/lib/agent/router/log-decision.ts` | Persiste decisao em `AgentRouterDecision`. Fire-and-forget para nao bloquear o turno. Cria row + UPDATE posterior. |
+| `src/lib/agent/router/tool-to-domain.ts` | Mapa explicito `toolName -> domain`. Resolve ambiguidade. |
 
-Total estimado: ~500 linhas de codigo de producao + ~700 de testes.
+Total estimado: ~600 linhas de codigo de producao + ~800 de testes.
 
 ### 4.3 Definicao formal de "dominio da tool"
 
@@ -143,7 +155,7 @@ Cada tool MCP exposta pelo catalogo tem um `name` (ex:
 ordem:
 
 1. Se o nome esta no mapa explicito `TOOL_TO_DOMAIN_OVERRIDE` em
-   `tool-to-domain.ts`, usar o valor mapeado (case especial e ouro).
+   `tool-to-domain.ts`, usar o valor mapeado (caso especial e ouro).
 2. Senao, dominio = primeiro segmento antes do primeiro `_`
    (`fiscal_notas...` → `fiscal`).
 3. Validar contra o set de dominios conhecidos em
@@ -155,6 +167,41 @@ O mapa explicito cobre os casos onde o path em `mcp/tools/<dir>/*` nao
 bate com o prefixo do nome (ex: tools de `mcp/tools/caminho3/` que
 podem ter nomes nao prefixados como `bi_consulta_avancada`).
 
+### 4.4 Modelo de embedding
+
+R1 reusa `src/lib/agent/rag/embed.ts`, ja em producao para RAG. Em
+particular:
+
+- **Modelo:** `text-embedding-3-small` da OpenAI.
+- **Dimensoes:** 1536.
+- **Latencia tipica:** 50-150ms por chamada (acima dos 30-80ms
+  estimados na v1).
+- **Custo:** $0.02 por 1M tokens, ~$0.00001 por pergunta media.
+- **Storage em memoria:** 9 dominios * 1536 floats * 4 bytes = ~55 KB,
+  insignificante.
+- **Suporte multilingual:** razoavel em pt-br mas nao otimo. Aceitavel
+  para o uso semantico de classificacao por dominio.
+
+A latencia revisada (50-150ms) e' integrada na regra 2 (timeout 3s) e
+no monitoramento (`pickDurationMs`).
+
+### 4.5 Cache LRU de embeddings de perguntas
+
+`embed-question.ts` mantem cache LRU em memoria do processo:
+
+- **Tamanho:** 200 entradas.
+- **Chave:** hash da pergunta normalizada (via `question-normalize.ts`).
+- **Valor:** vetor de 1536 floats.
+- **Politica:** least-recently-used; ejeta a entrada mais antiga quando
+  cheio.
+- **Lifetime:** processo (perde no rebuild ou restart).
+
+**Beneficio:** usuario que envia mesma pergunta no playground 2x nao
+paga embed duas vezes; perguntas repetidas de batch ficam baratas.
+
+**Risco:** entre containers em HA, cada um tem seu cache. Aceitavel
+(sem replica de leitura em producao hoje).
+
 ---
 
 ## 5. Fluxo do turno
@@ -164,19 +211,20 @@ podem ter nomes nao prefixados como `bi_consulta_avancada`).
 ```
 1. usuario envia pergunta
 2. run-agent.ts roda fluxo normal
-3. chama router.pickDomains(question)
-   ├─ embeda pergunta (reusa rag/embed.ts, ~30-80ms)
+3. chama router.pickDomains(question, ctx)
+   ├─ normaliza pergunta (question-normalize.ts)
+   ├─ embed (cache hit OU rag/embed.ts, ~50-150ms)
    ├─ cosine vs 9 vetores pre-computados de dominio
    └─ devolve RouterDecision {pickedDomains, scores, fallback,
                               pickDurationMs}
-4. log-decision.log(decision)  [fire-and-forget, nao bloqueia]
+4. log-decision.create(decision) → row em AgentRouterDecision
+   (mode = "shadow"). Fire-and-forget, nao bloqueia.
 5. catalogo entregue ao LLM = INTEIRO (nao filtra de fato)
 6. LLM responde, possivelmente chamando 1+ tools, V1-V5 audita
-7. log-decision.update(decisionId, toolsActuallyUsed)
+7. log-decision.update(decisionId, toolsActuallyUsed, toolsDomains)
    ├─ extrai todas as tools chamadas do turno (pode ser 0, 1, ou N)
    ├─ deriva dominio de cada tool via tool-to-domain.ts
-   └─ atualiza row com toolsActuallyUsed (String[]) +
-                       toolsDomains (String[])
+   └─ atualiza row (fire-and-forget se falhar, loga warn).
 ```
 
 Resultado: zero impacto no comportamento atual do Nex. Apenas dados
@@ -205,13 +253,25 @@ Identico a 5.1, exceto:
 
 O agente Nex chama frequentemente 2-4 tools por turno. Implicacoes:
 
-- `toolsActuallyUsed` e `toolsDomains` sao arrays (ver §6.1).
-- KPI primario (top-1): conta como acerto se **qualquer** tool chamada
-  esta no dominio top-1 de `pickedDomains`.
-- KPI secundario (todas no top-K): conta como acerto so se **todas** as
-  tools chamadas estao em algum dominio de `pickedDomains`.
-- Discordancia: turno onde nenhuma tool chamada esta em
+- `toolsActuallyUsed` e `toolsDomains` sao arrays.
+- **KPI primario (top-1):** turno conta como acerto se **qualquer** tool
+  chamada esta no dominio top-1 de `pickedDomains`.
+- **KPI secundario (todas no top-K):** turno conta como acerto so se
+  **todas** as tools chamadas estao em algum dominio de `pickedDomains`.
+- **Discordancia:** turno onde nenhuma tool chamada esta em
   `pickedDomains`. Esses sao os candidatos a calibrar vocabulario.
+
+### 5.4 Race conditions
+
+A row de `AgentRouterDecision` e' criada no passo 4 e atualizada no
+passo 7. Se o turno cai entre 4 e 7 (LLM timeout, container restart):
+- Row fica com `toolsActuallyUsed = []` para sempre.
+- Dashboard que filtra KPI top-1 ignora rows com
+  `toolsActuallyUsed = []` **E** `createdAt < now() - 60s` (timeout
+  heuristico). Rows recentes podem ainda estar em flight.
+
+Em ambiente de multi-container (HA), `decisionId` (cuid) garante
+unicidade global. Update e' por ID. Sem conflito.
 
 ---
 
@@ -235,16 +295,16 @@ model AgentRouterDecision {
   questionTokenCount  Int?
 
   // saida do router
-  pickedDomains       String[]
-  scores              Json
+  pickedDomains       String[] @default([])
+  scores              Json     @default("{}")  // pode ser {} em fallbacks 1 e 2
   fallbackTriggered   Boolean  @default(false)
-  fallbackReason      String?
+  fallbackReason      String?  // "msg_trivial" | "embed_failed" | "score_baixo" | null
   routerVersion       String
 
   // o que aconteceu no turno
-  mode                String   // "shadow" | "active" | "calibracao_R-X"
-  catalogSizeOffered  Int      // qtas tools foram pro LLM
-  catalogSizeFull     Int      // qtas tools existiam ao todo
+  mode                String   // ver §6.2 lista canonica
+  catalogSizeOffered  Int      @default(0) // qtas tools foram pro LLM
+  catalogSizeFull     Int      @default(0) // qtas tools existiam ao todo
   toolsActuallyUsed   String[] @default([])
   toolsDomains        String[] @default([])
   llmModelUsed        String?
@@ -257,7 +317,16 @@ model AgentRouterDecision {
 }
 ```
 
-### 6.2 AppSetting (tabela existente, 4 colunas novas)
+### 6.2 Lista canonica de `mode`
+
+- `"shadow"`: producao em modo shadow (default).
+- `"active"`: producao em modo ativo.
+- `"calibracao_R-X"`: rodada offline contra perguntas de uma bateria
+  historica. Nao mistura com producao.
+- `"test"`: ambiente de testes Jest. Permite filtrar fora do painel.
+- `"e2e"`: testes end-to-end automatizados.
+
+### 6.3 AppSetting (tabela existente, 4 colunas novas)
 
 ```prisma
 model AppSetting {
@@ -269,13 +338,14 @@ model AppSetting {
 }
 ```
 
-### 6.3 Migration
+### 6.4 Migration
 
 `prisma/migrations/2026XXXXXXXXXX_router_catalogo/migration.sql` aditiva
 pura. GRANT SELECT idempotente para roles `nexus_mcp_*` ja consolidado
-pelo projeto.
+pelo projeto. Migration roda nas 3 stacks (dev local, staging, prod) e
+e' idempotente (re-execucao nao quebra).
 
-### 6.4 Relacoes inversas
+### 6.5 Relacoes inversas
 
 Conversation e Message ganham relacao inversa `routerDecisions
 AgentRouterDecision[]`. Modificacao minima dos models existentes (so a
@@ -302,12 +372,15 @@ export const SAUDACOES_STOP_LIST = [
   "obrigado", "obrigada", "valeu", "ok", "okay", "sim", "nao", "talvez",
   "tudo bem", "tudo certo", "blz", "beleza",
 ];
+
+// Hash da concatenacao das descriptions (8 chars).
+export const VOCABULARY_VERSION: string;
 ```
 
 ### 7.2 Descricoes canonicas (9 entradas)
 
-> **Importante:** o texto da `description` e' o que vira embedding. Escrita
-> em portugues brasileiro do usuario final, nao do desenvolvedor.
+> **Importante:** o texto da `description` e' o que vira embedding.
+> Escrita em portugues brasileiro do usuario final, nao do desenvolvedor.
 > Mencionar termos que o usuario realmente digita.
 
 **cadastros**
@@ -342,14 +415,15 @@ ativo".
 **crm**
 ```
 Funil de vendas, pipeline, oportunidades em aberto, leads, etapas do
-funil, atividades de vendedor, conversao de oportunidade em pedido, taxa
-de fechamento, perdas. Perguntas tipicas: "quantas oportunidades estao
-paradas?", "qual vendedor converte mais?", "leads novos esse mes",
+funil, atividades de vendedor, conversao de oportunidade em pedido,
+taxa de fechamento, perdas. Perguntas tipicas: "quantas oportunidades
+estao paradas?", "qual vendedor converte mais?", "leads novos esse mes",
 "funil de vendas".
 ```
-> Nota: hoje 0 tools em `mcp/tools/crm/`. Mantem entrada para o router ja
-> reconhecer o tema. Quando onda CRM (Sub-projeto O2) entregar tools,
-> a entrada ja existe.
+> Nota: hoje 0 tools em `mcp/tools/crm/`. Mantem entrada para o router
+> ja reconhecer o tema. Quando onda CRM (Sub-projeto O2) entregar tools,
+> a entrada ja existe. filter-catalog ignora silenciosamente dominio
+> sem tools.
 
 **dominios-vazios**
 ```
@@ -364,9 +438,9 @@ diretamente.
 **estoque**
 ```
 Saldo de estoque, posicao por local, movimentacao, extrato de entrada e
-saida, locais (depositos, armazens), lote, serie, rastreabilidade, produto
-parado (sem giro), tempo em estoque, duracao em dias, divergencia de
-inventario. Perguntas tipicas: "qual o saldo do produto X?",
+saida, locais (depositos, armazens), lote, serie, rastreabilidade,
+produto parado (sem giro), tempo em estoque, duracao em dias, divergencia
+de inventario. Perguntas tipicas: "qual o saldo do produto X?",
 "movimentacao de estoque ontem", "produtos parados ha mais de 30 dias",
 "posicao por deposito".
 ```
@@ -407,12 +481,22 @@ dado.
 
 `domain-vocabulary.ts` exporta `VOCABULARY_VERSION` = hash SHA256 das
 descricoes concatenadas (truncado em 8 chars). Embed-domains invalida o
-cache em memoria quando o hash muda. `AgentRouterDecision.routerVersion`
-guarda esse hash + versao do codigo (ex: `"r1.0.0-a3f7b2"`), para
-analise comparativa entre versoes do vocabulario.
+cache em memoria quando o hash muda (verificacao a cada chamada de
+`pickDomains`).
 
-Mudanca de description exige rebuild do container `app` (decisao
-aceita, ver §13 B3).
+`AgentRouterDecision.routerVersion` guarda formato:
+```
+r1.<major>.<minor>.<patch>-<vocab_hash>
+```
+- Major/minor/patch controlados manualmente no arquivo
+  `src/lib/agent/router/version.ts` (ex: `"r1.0.0"`).
+- vocab_hash gerado automaticamente do conteudo das descriptions.
+- Exemplo final: `"r1.0.0-a3f7b2c8"`.
+
+**Decisao definitiva H:** mudanca de description exige rebuild do
+container `app`. Razoes: (a) arquivo TS importado; (b) embeddings caros
+para hot-reload; (c) cache em memoria; (d) producao roda container
+imutavel. Documentado e nao se oferece alternativa.
 
 ---
 
@@ -420,30 +504,39 @@ aceita, ver §13 B3).
 
 A funcao `pickDomains(question, ctx)` aplica em ordem:
 
-1. **Pergunta trivial:** se `question.trim().length < 10` OU se todas as
-   palavras de `question.toLowerCase().trim().split(/\s+/)` estao na
-   `SAUDACOES_STOP_LIST` → fallback. Razao: saudacoes nao merecem custo
-   de embedding. `fallback.reason = "msg_trivial"`.
+1. **Pergunta trivial:** se `question.trim().length < 10` OU se todas
+   as palavras de `question.toLowerCase().trim().split(/\s+/)` estao na
+   `SAUDACOES_STOP_LIST` → fallback. `fallback.reason = "msg_trivial"`.
+   `scores` = `{}`.
 
-2. **Embed falha:** se `rag/embed.ts` retorna erro ou timeout > 3s →
-   fallback. `fallback.reason = "embed_failed"`. Loga warn no console.
+2. **Embed falha:** chamar `embed-question.ts`. Se retorna erro ou
+   timeout > 3s → fallback. `fallback.reason = "embed_failed"`. `scores`
+   = `{}`. Loga warn no console.
+
+2.5. **Question normalize:** antes do embedding (e antes do cache
+   lookup), `question-normalize.ts` aplica: `trim`, `toLowerCase`,
+   collapse multiplos espacos em um, remove zero-width chars (`​`),
+   remove quebras de linha.
 
 3. **Computa scores:** para cada dominio, `cosineSimilarity(qVec,
-   domainVec)`. Salva todos em `scores`.
+   domainVec)`. Salva todos em `scores`. Em fallbacks 1 e 2, `scores`
+   permanece `{}`.
 
-4. **Selecao top-K:** ordena por score desc, pega ate `routerTopK`
-   (default 3) com `score >= routerThreshold` (default 0.55).
+4. **forceIncludeOn (early):** para cada dominio com regex configurado,
+   se algum regex casa com `question` (apos normalize), adiciona o
+   dominio ao set final independentemente de score. Esses entram antes
+   do top-K, **com prioridade** (porque se o usuario digitou "CNPJ
+   12.345...", queremos cadastros mesmo que score seja baixo).
 
-5. **Fallback de score:** se selecao vazia → fallback.
-   `fallback.reason = "score_baixo"`. Catalogo inteiro.
+5. **Selecao top-K:** ordena dominios por score desc, pega ate
+   `routerTopK` (default 3) com `score >= routerThreshold` (default
+   0.55). Acrescenta ao set final.
 
-6. **Garantia `excludeFromFiltering`:** adiciona `caminho3` (e outros
+6. **Fallback de score:** se set final esta vazio apos passos 4 e 5 →
+   fallback. `fallback.reason = "score_baixo"`. Catalogo inteiro.
+
+7. **Garantia `excludeFromFiltering`:** adiciona `caminho3` (e outros
    marcados) ao set final, mesmo que nao tenha pontuado.
-
-7. **Garantia `forceIncludeOn`:** para cada dominio com regex
-   configurado, se algum regex casa com `question`, adiciona o dominio
-   mesmo se fora do top-K. Regex devem usar `\b` para evitar falso
-   positivo (ex: `\bcnpj\b` nao casa em "racnpjao").
 
 8. **Decisao final:** retorna `RouterDecision` com `pickedDomains` (set
    resultante), `scores` (todos), `fallback` (booleano + reason),
@@ -453,9 +546,9 @@ A funcao `pickDomains(question, ctx)` aplica em ordem:
 
 ## 9. Integracao com V1-V5 (apenas em modo ativo)
 
-O validator existente em `src/lib/agent/validation/auto-validator.ts` ja
-roda V1-V4 em shadow mode e pode disparar 1 retry corretivo em active
-mode. R1 aproveita esse motor sem inventar caminho novo:
+O validator existente em `src/lib/agent/validation/auto-validator.ts`
+ja roda V1-V4 em shadow mode e pode disparar 1 retry corretivo em
+active mode. R1 aproveita esse motor sem inventar caminho novo:
 
 ```
 LLM responde (com tools chamadas ou nao)
@@ -499,47 +592,54 @@ range 0.30 a 0.95). Logs do retry vao para
 
 ### 10.1 Painel `/admin/qualidade` ganha aba "Router (shadow)"
 
-Pre-requisitos: super_admin, layout via `ui-ux-pro-max`.
+Pre-requisitos: super_admin, layout via `ui-ux-pro-max`. Acesso valida
+sessao via middleware existente de `/admin/*`.
 
 **Conteudo da aba:**
 
 1. **KPI big number:** taxa de acerto top-1 nos ultimos 7 dias.
-   Definicao: `count(decisions WHERE pickedDomains[0] IN toolsDomains
-   AND toolsActuallyUsed[0] IS NOT NULL) / count(decisions WHERE
-   toolsActuallyUsed nao vazio)`.
+   Definicao: `count(decisions WHERE pickedDomains[0] esta em
+   toolsDomains AND toolsActuallyUsed nao vazio) / count(decisions
+   WHERE toolsActuallyUsed nao vazio AND createdAt < now() - 60s)`.
+   O filtro `createdAt < now() - 60s` ignora rows em flight.
    Considera turnos multi-tool: acerto se **qualquer** tool chamada esta
    no dominio top-1.
 
 2. **KPI secundario (mais restrito):** % de turnos onde **todas** as
    tools chamadas estao em algum dominio de `pickedDomains`.
 
-3. **Histograma:** distribuicao de `scores[topo]` em 10 buckets de 0.1.
-   Ideal: bimodal (alto para perguntas direcionadas, baixo para vagas).
-   Ruim: achatado (router nao discrimina).
+3. **Histograma:** distribuicao de `scores[topo]` em 10 buckets fixos
+   ([0.0-0.1], [0.1-0.2], ..., [0.9-1.0]). Ideal: bimodal (alto para
+   perguntas direcionadas, baixo para vagas).
 
-4. **Tabela de discordancias:** ultimas 50 decisoes onde
+4. **Latencia:** p50, p95 e p99 de `pickDurationMs` ao longo do tempo
+   (grafico de linha 7 dias).
+
+5. **Tabela de discordancias:** ultimas 50 decisoes onde
    `toolsActuallyUsed` nao vazio E nenhuma `toolsDomains` esta em
    `pickedDomains`. Colunas: pergunta, dominios escolhidos pelo router,
    dominios das tools de fato chamadas, scores, data. **Esses sao os
    candidatos a calibrar a description do dominio.**
 
-5. **Controles:**
-   - Toggle `routerEnabled` (off=shadow, on=active). **Gate de seguranca:**
-     o toggle so pode virar `on` se a aba mostrar KPI top-1 >= 85% nos
-     ultimos 7 dias OU >= 200 decisoes em shadow com KPI top-1 >= 85%.
-     Tentativa de ativar antes disso mostra dialogo de confirmacao
-     forte com bypass de super_admin.
+6. **Controles:**
+   - Toggle `routerEnabled` (off=shadow, on=active). **Gate de
+     seguranca:** o toggle so pode virar `on` se a aba mostrar KPI
+     top-1 >= 85% nos ultimos 7 dias OU >= 200 decisoes em shadow com
+     KPI top-1 >= 85%. Tentativa de ativar antes disso mostra dialogo
+     de confirmacao forte com bypass de super_admin.
    - Input numerico `routerThreshold` (range 0.30 a 0.90, step 0.05).
    - Input numerico `routerTopK` (range 1 a 6).
-   - Input numerico `routerRetryExpandBelow` (range 0.30 a 0.95,
-     step 0.05).
+   - Input numerico `routerRetryExpandBelow` (range 0.30 a 0.95, step
+     0.05).
    - Mudancas auditadas em `AuditLog` com action `setting_updated`
      (enum existente).
 
-6. **Botao "Rodar contra bateria R-X":** executa offline as perguntas
-   das rodadas R8..R23 contra o router atual (sem chamar LLM, so
-   embedding + score), produz relatorio em `AgentRouterDecision` com
-   `mode = "calibracao_R-X"` para nao misturar com producao.
+7. **Botao "Rodar calibragem contra rodadas R8-R23":** executa offline
+   as ~290 perguntas das rodadas historicas contra o router atual (sem
+   chamar LLM, so embed + score), produz relatorio em
+   `AgentRouterDecision` com `mode = "calibracao_R-X"`. UI mostra
+   progresso (10-30s para 290 perguntas). Custo: ~$0.003 (290
+   embeddings).
 
 ### 10.2 Telemetria interna
 
@@ -551,8 +651,8 @@ Pre-requisitos: super_admin, layout via `ui-ux-pro-max`.
 
 ### 10.3 Promocao para ativo
 
-Manual. Painel impede ativacao prematura via gate de seguranca (10.1.5).
-Criterio sugerido para o usuario decidir:
+Manual. Painel impede ativacao prematura via gate de seguranca (10.1.6).
+Criterio sugerido:
 - Taxa de acerto top-1 >= 90% sustentada por 7 dias, OU
 - Pelo menos 200 decisoes registradas em shadow com taxa >= 85%, OU
 - Usuario decide manualmente (precisa confirmar dialogo).
@@ -568,10 +668,11 @@ Nao ha promocao automatica. Toggle e' do super_admin.
 - `pick-domains.test.ts` (cap ~30 testes):
   - Regra 1: pergunta < 10 chars; pergunta toda em saudacoes; mix.
   - Regra 2: mock de embed que falha com timeout.
-  - Regras 3-5: vetores ortogonais e correlacionados, varios thresholds.
-  - Regra 6: `caminho3` sempre presente.
-  - Regra 7: regex de `forceIncludeOn` casando com `\b` e nao casando
-    sem `\b`.
+  - Regra 2.5: normalize: collapse spaces, zero-width chars.
+  - Regras 3-6: vetores ortogonais e correlacionados, varios thresholds.
+  - Regra 4 (`forceIncludeOn` early): regex casando com `\b` e nao
+    casando sem `\b`.
+  - Regra 7: `caminho3` sempre presente.
   - Edge: vocabulary vazio (nao deve crashar, retorna fallback).
   - Edge: question vazio (regra 1 cobre).
 
@@ -591,6 +692,14 @@ Nao ha promocao automatica. Toggle e' do super_admin.
 - `embed-domains.test.ts` (cap ~8 testes):
   - Cache: 2 chamadas seguidas batem 1x no embed.
   - Hash diferente invalida cache.
+
+- `embed-question.test.ts` (cap ~12 testes):
+  - LRU cache: hit, miss, eviction.
+  - Cache key sensitive a normalize (vagar trim/lowercase).
+  - Cache size enforced.
+
+- `question-normalize.test.ts` (cap ~10 testes):
+  - trim, lowercase, collapse spaces, zero-width removal.
 
 ### 11.2 Integration
 
@@ -615,12 +724,25 @@ Nao ha promocao automatica. Toggle e' do super_admin.
   - Active mode, pergunta que cai em `crm` (sem tools), valida que
     catalogo nao tem set vazio e continua com outros dominios.
 
-### 11.3 Regressao
+- `mcp/__tests__/router-kill-endpoint.test.ts`:
+  - Sem sessao super_admin → 403.
+  - Com sessao → 200, AppSetting.routerEnabled = false, AuditLog row
+    criada.
+
+### 11.3 Regressao e benchmark
 
 - **Bateria R-X (proxima rodada apos R23) inteira** rodada com R1 em
   shadow, baseline >= 95,5% preservado. Bloqueia merge se cair.
 - Smoke test de tools (`scripts/quality-audit/tool-smoke-test.ts`)
   continua verde.
+- **Benchmark de embedding obrigatorio antes de merge:** medir
+  `pickDurationMs` em 100 perguntas reais consecutivas, reportar p50,
+  p95, p99. Threshold de saude: p95 < 200ms. Se p95 > 200ms,
+  investigar antes de merge.
+- **Calibragem inicial obrigatoria:** rodar
+  `scripts/router/calibrate-against-batteries.ts` antes do PR final,
+  reportar acerto top-1 nas perguntas das rodadas R8-R23. Threshold de
+  promocao: >= 85%. Se < 85%, ajustar descriptions e re-rodar.
 
 ---
 
@@ -628,7 +750,7 @@ Nao ha promocao automatica. Toggle e' do super_admin.
 
 1. tsc verde no monorepo inteiro.
 2. ESLint verde no monorepo (sem regressao de warnings).
-3. Todos os testes unitarios verdes (cap esperado: ~60 novos + os
+3. Todos os testes unitarios verdes (cap esperado: ~85 novos + os
    existentes).
 4. Todos os testes de integracao verdes.
 5. Migration aplicavel localmente sem erro, idempotente.
@@ -636,11 +758,13 @@ Nao ha promocao automatica. Toggle e' do super_admin.
    - `prisma/schema.prisma` mudou → rebuild de `app`, `mcp`, `worker`.
    - `src/lib/agent/run-agent.ts` mudou → rebuild `app`.
    - Registrar em `HISTORY.md` com `scope=infra`.
-7. Bateria R-X (proxima rodada) >= 95,5%.
-8. Painel `/admin/qualidade` aba "Router (shadow)" funcional (verificado
-   em dev local apos rebuild containers).
-9. Code review (`/gsd-code-review`) sem achados criticos.
-10. UI review (`/gsd-ui-review`) na aba nova sem achados criticos.
+7. Bateria R-X (proxima rodada) em shadow >= 95,5%.
+8. Benchmark de `pickDurationMs` p95 < 200ms.
+9. Calibragem nas rodadas R8-R23: top-1 >= 85%.
+10. Painel `/admin/qualidade` aba "Router (shadow)" funcional (verificado
+    em dev local apos rebuild containers).
+11. Code review (`/gsd-code-review`) sem achados criticos.
+12. UI review (`/gsd-ui-review`) na aba nova sem achados criticos.
 
 ---
 
@@ -648,52 +772,51 @@ Nao ha promocao automatica. Toggle e' do super_admin.
 
 | Risco | Probabilidade | Impacto | Mitigacao |
 |---|---|---|---|
-| Embedding rate limit / latencia alta atrapalha UX | Media | Medio | timeout 3s na regra 2; fallback expoe catalogo inteiro; cache de embeddings de dominios em memoria evita re-embed; logar `pickDurationMs`. |
-| Vocabulario inicial mal calibrado, router filtra errado | Alta | Alto | shadow mode obrigatorio antes de ativar; calibragem offline contra R8-R23 entra no PLAN como tarefa obrigatoria; dashboard de discordancias mostra ajustes a fazer; gate de seguranca no toggle (>= 85% antes de ativar). |
-| Custo extra de chamadas de embedding | Baixa | Baixo | rag/embed.ts ja cobra apenas a pergunta do usuario (1 embed por turno), domain vectors sao pre-computados uma vez. Benchmark a confirmar no PLAN (item M1 da review). |
-| `AgentRouterDecision` cresce demais | Media | Baixo | TTL 90 dias por cron de cleanup (entra na proxima onda, fora deste escopo R1). Por enquanto, indice em createdAt cobre queries do painel. |
-| Migration quebra producao no merge | Baixa | Alto | Migration estritamente aditiva, idempotencia validada, GRANT SELECT explicito, runbook de aplicacao em `docs/runbooks/`. |
+| Embedding rate limit / latencia alta atrapalha UX | Media | Medio | timeout 3s na regra 2; fallback expoe catalogo inteiro; cache de embeddings de dominios em memoria evita re-embed; cache LRU de perguntas; alarme em pickDurationMs p95. |
+| Vocabulario inicial mal calibrado, router filtra errado | Alta | Alto | shadow mode obrigatorio antes de ativar; calibragem offline obrigatoria contra R8-R23 antes de merge; dashboard de discordancias mostra ajustes; gate de seguranca no toggle (>= 85%). |
+| Custo extra de chamadas de embedding | Baixa | Baixo | `text-embedding-3-small` custa ~$0.00001 por pergunta. 10k turnos/mes = $0.10. Negligenciavel. Cache LRU reduz mais. |
+| `AgentRouterDecision` cresce demais | Media | Baixo | 1000 turnos/dia * 90 dias * 2KB = ~180MB. Aceitavel. TTL/cleanup entra em onda futura. |
+| Migration quebra producao no merge | Baixa | Alto | Migration estritamente aditiva, idempotencia validada, GRANT SELECT explicito. |
 | Conflito multi-agente em run-agent.ts | Alta | Medio | active/*.md declarando o arquivo; commit cirurgico de 30 linhas; rebase antes do push. |
-| Regressao no Nex em shadow (latencia +30-80ms perceptivel) | Media | Medio | Shadow log e fire-and-forget; nao bloqueia turno. Medir p95 antes e depois. |
-| `crm` selecionado pelo router mas sem tool no MCP | Alta (no inicio) | Baixo | filter-catalog ignora silenciosamente dominio sem tools (warn dev). Quando onda O2 entregar tools de CRM, comportamento corrige automaticamente. |
-| Modo ativo regredindo qualidade em producao | Baixa | Alto | Kill-switch (ver §16): toggle pode voltar a false em < 5s; endpoint admin de emergencia caso painel quebre. |
+| Regressao no Nex em shadow (latencia +50-150ms perceptivel) | Media | Medio | Shadow log e' fire-and-forget; embed da pergunta e' sincrono mas em paralelo com outras preparacoes; medir p95 antes e depois. |
+| `crm` selecionado mas sem tool | Alta (no inicio) | Baixo | filter-catalog ignora silenciosamente, warn dev. Quando onda O2 corrigir, automatico. |
+| Modo ativo regredindo qualidade em producao | Baixa | Alto | Kill-switch (§16): toggle volta a false em < 5s; endpoint admin de emergencia; env var override. |
+| Open question D ou H reabertas | Baixa | Baixo | Definitiva nesta v3. Mudancas exigem nova SPEC (R1.1). |
 
 ---
 
-## 14. Open questions resolvidas (v1 → v2)
+## 14. Open questions (todas resolvidas em v3)
 
-- A. Vocabulario completo: RESOLVIDO §7.2 com prose canonica.
+- A. Vocabulario completo: RESOLVIDO §7.2 com prosa canonica.
 - B. Definicao formal de "dominio da tool": RESOLVIDO §4.3.
 - C. Pergunta vaga em modo ativo: RESOLVIDO §13 (cai em fallback,
   comportamento esperado).
-- E. Logging granular: RESOLVIDO §6.1 + M4 da review (scores Json
-  aceitavel por agora).
+- D. **Cache de embedding de pergunta:** RESOLVIDO §4.5. LRU em memoria,
+  200 entradas, chave normalizada.
+- E. Logging granular: RESOLVIDO §6.1 (scores Json aceitavel).
 - F. Compatibilidade com Caminho 3c: RESOLVIDO §7.2 (`caminho3`
   excludeFromFiltering=true).
 - G. Dominio que nao existe no MCP: RESOLVIDO §5.2.
-- I. `forceIncludeOn` agressivo: RESOLVIDO §7.2 (regex com `\b`).
-- J. Sanity check antes de toggle: RESOLVIDO §10.1.5 (gate de seguranca).
-
-## 14b. Open questions ainda em aberto (atacar em v3)
-
-- D. **Cache de embedding da pergunta** ainda aberto. Vale embedar duas
-  vezes a mesma pergunta? Tradeoff custo vs complexidade.
-- H. **Versionamento de vocabulario em runtime** aceitavel exigir
-  rebuild? Confirmar em v3.
+- H. **Versionamento de vocabulario em runtime:** RESOLVIDO §7.3.
+  Mudanca exige rebuild do container app, sem alternativa.
+- I. `forceIncludeOn` agressivo: RESOLVIDO §7.2 (regex com `\b`) e
+  §8 regra 4 (early check).
+- J. Sanity check antes de toggle: RESOLVIDO §10.1.6 (gate de
+  seguranca).
 
 ---
 
 ## 15. Proximos passos apos esta SPEC
 
-1. **SPEC v3:** review critica adversarial #2, ainda mais profunda. Saida:
-   versao final neste mesmo arquivo.
-2. **PLAN v1 → v2 → v3:** decomposicao da SPEC v3 em tarefas atomicas.
-3. **Execucao:** Superpowers (TDD inline, modelo Opus 4.7), ondas
+1. **PLAN v1:** decomposicao em tarefas atomicas (writing-plans).
+2. **PLAN v2:** review critica adversarial #1.
+3. **PLAN v3:** review critica adversarial #2.
+4. **Execucao:** Superpowers (TDD inline, modelo Opus 4.7), ondas
    pequenas, commits atomicos.
-4. **Verificacao:** bateria R-X em shadow + smoke + verificacao manual
+5. **Verificacao:** bateria R-X em shadow + smoke + verificacao manual
    no painel.
-5. **Code review e UI review.**
-6. **PR aberto, avaliado por mim, merge gated pelo usuario.**
+6. **Code review e UI review.**
+7. **PR aberto, avaliado por mim, merge gated pelo usuario.**
 
 ---
 
@@ -706,8 +829,8 @@ desligar. O kill-switch tem 3 niveis:
 
 Super_admin entra em `/admin/qualidade` aba "Router (shadow)" e desliga
 `routerEnabled`. Propagacao: proximo turno usa catalogo inteiro. Tempo:
-< 5s (leitura de AppSetting e per-request no agente Next.js, nao
-cacheada no app dev).
+< 5s (leitura de AppSetting per-request no agente Next.js, nao
+cacheada).
 
 ### 16.2 Nivel 2: endpoint admin de emergencia
 
@@ -715,11 +838,15 @@ Se o painel quebrar (bug de UI), endpoint dedicado:
 
 ```
 POST /api/admin/router/kill
-Authorization: Bearer <super_admin_session>
+Headers: cookies de sessao (NextAuth)
 Body: { reason: string }
 ```
 
-Faz UPDATE direto em `AppSetting.routerEnabled = false`, audita em
+Autenticacao: usa o middleware existente de `/admin/*` que valida
+sessao + role super_admin. Sem Bearer token (a app nao usa Bearer fora
+do /api/mcp publico).
+
+Acao: UPDATE em `AppSetting.routerEnabled = false`, audita em
 `AuditLog` com `setting_updated`. Retorna 200 com novo estado.
 
 ### 16.3 Nivel 3: env var de override (fallback duro)

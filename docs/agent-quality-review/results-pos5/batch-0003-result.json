@@ -1,0 +1,342 @@
+{
+  "batchId": "0003",
+  "evaluatedAt": "2026-05-26T09:30:00-03:00",
+  "totals": {
+    "CORRETO": 22,
+    "PARCIAL": 14,
+    "ERRADO": 2,
+    "FORA_DE_ESCOPO": 2
+  },
+  "patterns": {
+    "acerto_objetividade": 14,
+    "acerto_encadeamento": 1,
+    "limitacao_real_declarada": 2,
+    "dado_inventado": 1,
+    "fluxo_tool_incompleto": 1,
+    "pediu_clarificacao_desnecessaria": 12,
+    "resposta_truncada": 3,
+    "parametro_incompleto": 1
+  },
+  "turnos": [
+    {
+      "turnoId": "4a4b7aaa-fee3-441a-8996-664a6baa52c2",
+      "status": "PARCIAL",
+      "patterns": ["resposta_truncada", "pediu_clarificacao_desnecessaria"],
+      "razao": "Tool retornou ok com lista completa de titulos, mas agente disse que veio truncada e nao somou; pediu clarificacao 'todos vs vencidos' quando podia ter entregue ambos.",
+      "sugestao_prompt": "Quando financeiro_contas_a_pagar retornar 'ok', somar vrSaldo e responder total geral + total vencidos (diasAtraso>0), sem pedir clarificacao.",
+      "correcao_factual": "nao_aplicavel"
+    },
+    {
+      "turnoId": "4adcec47-ca28-471c-b9d0-51b2d4888390",
+      "status": "CORRETO",
+      "patterns": ["acerto_objetividade"],
+      "razao": "Tool certa, nome/documento/cidade batem com toolResults.",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "4c597490-2811-4909-9824-ab23db9f3c7a",
+      "status": "CORRETO",
+      "patterns": ["acerto_objetividade"],
+      "razao": "Saldos positivos listados batem com toolResults (72.410,18 + 875.957,69 + 55.112,86 + 371.252,76 + 221.604,69 = 1.596.338,18).",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "4d317844-877c-4913-a98d-4ba5deafad03",
+      "status": "CORRETO",
+      "patterns": ["acerto_objetividade"],
+      "razao": "Codigos e nomes do plano de contas Ativo batem com toolResults; aviso sobre estrutura sem lancamentos respeitado.",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "4df4d428-82b4-42f0-8895-bab5c53677a4",
+      "status": "CORRETO",
+      "patterns": ["acerto_objetividade"],
+      "razao": "Periodo correto, 772 notas e R$ 38.064.323,84 batem com toolResults.",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "4e74b592-dd98-4986-95e6-f82731731457",
+      "status": "CORRETO",
+      "patterns": ["acerto_objetividade"],
+      "razao": "Concentracao por familia bate com toolResults (JOHNSON 93,86%, ACESSORIOS 3,47% etc.).",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "50d616be-168f-4a72-beef-bdbe11b2388c",
+      "status": "PARCIAL",
+      "patterns": ["pediu_clarificacao_desnecessaria"],
+      "razao": "Pergunta clara sobre notas recebidas de fornecedor; podia ter chamado fiscal_notas_recebidas_por_fornecedor com periodo default (mes atual) ao inves de pedir 2 clarificacoes.",
+      "sugestao_prompt": "Para 'notas recebidas do fornecedor X', usar default periodo=mes atual e total consolidado; pedir refinamento apenas apos entregar primeira resposta.",
+      "correcao_factual": "nao_aplicavel"
+    },
+    {
+      "turnoId": "5147c819-6196-4f3d-9ae8-baf7c1c2a86f",
+      "status": "CORRETO",
+      "patterns": ["acerto_objetividade"],
+      "razao": "Periodo hoje (26/05/2026), entrada/saida/saldo R$ 0,00 batem com toolResults.",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "5182dbf0-44a9-4b4b-9449-9840fbb10bef",
+      "status": "PARCIAL",
+      "patterns": ["pediu_clarificacao_desnecessaria"],
+      "razao": "Podia assumir 'semana calendario anterior' como default e entregar total + top com nota de assumiu default.",
+      "sugestao_prompt": "Assumir 'semana passada' = seg-dom anterior e entregar total + top 20; permitir ajuste depois.",
+      "correcao_factual": "nao_aplicavel"
+    },
+    {
+      "turnoId": "51cc6356-3288-4473-be23-b5687dc5264f",
+      "status": "ERRADO",
+      "patterns": ["dado_inventado"],
+      "razao": "Tool retornou estado='vazio' com top=[] e totalProdutos=0, mas resposta lista 5 produtos especificos com unidades. Numeros inventados.",
+      "sugestao_prompt": "Quando estoque_top_movimentados retornar 'vazio', NUNCA fabricar lista. Responder 'sem dados no periodo' e oferecer mudar criterio.",
+      "correcao_factual": "nao_bate"
+    },
+    {
+      "turnoId": "52cb3c3f-2cbf-4fe2-b18a-d20438682de7",
+      "status": "CORRETO",
+      "patterns": ["acerto_objetividade"],
+      "razao": "Pergunta extremamente vaga ('qual fornecedor?') sem contexto previo; clarificacao com 3 opcoes objetivas e default sugerido e legitima.",
+      "sugestao_prompt": null,
+      "correcao_factual": "nao_aplicavel"
+    },
+    {
+      "turnoId": "532aeda6-3064-4f2a-8158-61fad502fbcb",
+      "status": "PARCIAL",
+      "patterns": ["fluxo_tool_incompleto", "parametro_incompleto"],
+      "razao": "Chamou estoque_saldo_produto e estoque_produtos_parados mas usou termo generico; com 23 resultados, podia ter cruzado os codigos com os 1265 parados ao inves de pedir codigo.",
+      "sugestao_prompt": "Quando estoque_saldo_produto retorna multiplos e usuario perguntou 'tem X parado?', cruzar produtoNome com estoque_produtos_parados e responder quantos dos X estao parados.",
+      "correcao_factual": "nao_aplicavel"
+    },
+    {
+      "turnoId": "5490ec43-af6b-4a69-8c64-7ff919e1e204",
+      "status": "FORA_DE_ESCOPO",
+      "patterns": ["limitacao_real_declarada"],
+      "razao": "Nao ha tool dedicada de transportadoras ativas; registrou lacuna e ofereceu busca por nome. Limitacao real declarada.",
+      "sugestao_prompt": null,
+      "correcao_factual": "nao_aplicavel"
+    },
+    {
+      "turnoId": "54d6bb88-6c16-448b-87fe-efa2fd5c0bc0",
+      "status": "CORRETO",
+      "patterns": ["acerto_objetividade"],
+      "razao": "7 produtos, todos com saldo 0, listados conforme toolResults.",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "55830e9a-bb63-487b-8f9b-708c3dee681c",
+      "status": "CORRETO",
+      "patterns": ["acerto_objetividade"],
+      "razao": "MGPL78: 16 un em 5 locais, R$ 258.370,44, batem com toolResults.",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "56480b6e-0607-405a-9ece-6e36e6484053",
+      "status": "CORRETO",
+      "patterns": ["acerto_objetividade"],
+      "razao": "Banda Chicabana: nome, CNPJ, cidade/UF, ehCliente batem com toolResults.",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "5688ae55-3390-4c5a-a9d0-1d34fff92564",
+      "status": "PARCIAL",
+      "patterns": ["pediu_clarificacao_desnecessaria"],
+      "razao": "'Conta a pagar em 30 dias' = vencimento nos proximos 30 dias e interpretacao default; podia ter entregue e oferecer alternativas.",
+      "sugestao_prompt": "Para 'em N dias', assumir 'vencem nos proximos N dias' como default e entregar resposta antes de pedir refinamento.",
+      "correcao_factual": "nao_aplicavel"
+    },
+    {
+      "turnoId": "56dd2091-f4c6-4d0c-9c62-21bcaf33ce2a",
+      "status": "CORRETO",
+      "patterns": ["acerto_objetividade"],
+      "razao": "Pergunta literal 'fornecedor X' sem identificador; pedir nome/CNPJ e legitimo.",
+      "sugestao_prompt": null,
+      "correcao_factual": "nao_aplicavel"
+    },
+    {
+      "turnoId": "596f586f-f21a-478d-8acf-7ddbd0d8d04b",
+      "status": "PARCIAL",
+      "patterns": ["tool_redundante", "resposta_truncada"],
+      "razao": "Chamou estoque_concentracao desnecessariamente (pergunta era pedidos atrasados + estoque para entregar, nao concentracao por familia); resposta truncou no meio do quinto pedido.",
+      "sugestao_prompt": "Para 'pedidos atrasados + estoque pra entregar', cruzar comercial_pedidos_atrasados (itens) com estoque_saldo_produto dos produtos do pedido, nao concentracao geral.",
+      "correcao_factual": "nao_bate"
+    },
+    {
+      "turnoId": "5deafa8b-9fdf-47cf-a73e-15c8ee7ee26a",
+      "status": "PARCIAL",
+      "patterns": ["resposta_truncada"],
+      "razao": "Lista bate com toolResults mas resposta cortou no meio da listagem dos UFs (Pernambuco 40 e nao terminou).",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "5e4b6ed9-437c-48dc-8e99-4350593731cb",
+      "status": "PARCIAL",
+      "patterns": ["pediu_clarificacao_desnecessaria"],
+      "razao": "Podia assumir mes atual e quantidade+valor como default e entregar.",
+      "sugestao_prompt": "Para 'pedidos em aprovacao' default = mes atual, retornar quantidade e valor.",
+      "correcao_factual": "nao_aplicavel"
+    },
+    {
+      "turnoId": "5f49c69d-8040-4150-b8b2-588d4c181fc6",
+      "status": "PARCIAL",
+      "patterns": ["pediu_clarificacao_desnecessaria"],
+      "razao": "'Maior nota esse mes' = maior NF unica e interpretacao mais natural; 'esse mes' obviamente 05/2026.",
+      "sugestao_prompt": "Assumir 'maior nota = maior NF unica' e mes atual; entregar e oferecer alternativa.",
+      "correcao_factual": "nao_aplicavel"
+    },
+    {
+      "turnoId": "5f55c645-c856-47fa-a3de-80ffde8c6a17",
+      "status": "CORRETO",
+      "patterns": ["acerto_objetividade"],
+      "razao": "Palavra unica 'clientes', clarificacao com 3 opcoes objetivas e legitima.",
+      "sugestao_prompt": null,
+      "correcao_factual": "nao_aplicavel"
+    },
+    {
+      "turnoId": "60a3fa40-7094-45a8-b1ce-a779d9563b4e",
+      "status": "PARCIAL",
+      "patterns": ["pediu_clarificacao_desnecessaria"],
+      "razao": "Podia entregar top devedores clientes (default) por valor em aberto e oferecer fornecedores como alternativa.",
+      "sugestao_prompt": "Para 'quem ta devendo mais' default = clientes em atraso por valor; oferecer fornecedores depois.",
+      "correcao_factual": "nao_aplicavel"
+    },
+    {
+      "turnoId": "61b108af-56f3-490b-9bf9-91e8bbe4b4f3",
+      "status": "FORA_DE_ESCOPO",
+      "patterns": ["limitacao_real_declarada"],
+      "razao": "Tempo medio de fechamento de pedido nao e capacidade atual; registrou lacuna e pediu refinamento do conceito.",
+      "sugestao_prompt": null,
+      "correcao_factual": "nao_aplicavel"
+    },
+    {
+      "turnoId": "61d74159-5d71-4e3c-90c7-0f84a95bd7c1",
+      "status": "PARCIAL",
+      "patterns": ["pediu_clarificacao_desnecessaria"],
+      "razao": "Ja chamou fiscal_notas_emitidas com periodo correto mas em vez de filtrar valor>10mil e responder, pediu clarificacao sobre situacao. Default razoavel = autorizadas.",
+      "sugestao_prompt": "Para 'notas acima de X reais', assumir somente autorizadas como default e filtrar vrNf>X direto.",
+      "correcao_factual": "nao_aplicavel"
+    },
+    {
+      "turnoId": "62ce3b09-99e0-415e-947b-dbd4b3a45a49",
+      "status": "CORRETO",
+      "patterns": ["acerto_objetividade"],
+      "razao": "Ambiguidade real conta contabil vs bancaria; clarificacao curta legitima.",
+      "sugestao_prompt": null,
+      "correcao_factual": "nao_aplicavel"
+    },
+    {
+      "turnoId": "635e0270-6297-4079-80ff-9ee71f5a2194",
+      "status": "PARCIAL",
+      "patterns": ["pediu_clarificacao_desnecessaria"],
+      "razao": "Podia assumir mes atual e valor faturado como default.",
+      "sugestao_prompt": "Para 'produto mais vendido em valor' default = mes atual + valor faturado.",
+      "correcao_factual": "nao_aplicavel"
+    },
+    {
+      "turnoId": "6391c1bb-8370-42d1-9ae4-29db97173d10",
+      "status": "PARCIAL",
+      "patterns": ["pediu_clarificacao_desnecessaria"],
+      "razao": "Registrou lacuna mas pediu clarificacao quando 'aberto' = etapa nao finalizada e default obvio e 'sem periodo' para titulo de capa.",
+      "sugestao_prompt": "Para 'top N pedidos abertos' default = etapa nao finalizada, sem periodo; entregar e oferecer refinamento.",
+      "correcao_factual": "nao_aplicavel"
+    },
+    {
+      "turnoId": "66e15114-74c2-4fc5-bd4f-87732e75d2fa",
+      "status": "PARCIAL",
+      "patterns": ["pediu_clarificacao_desnecessaria"],
+      "razao": "Podia entregar a receber+a pagar com vencimento amanha (27/05) e oferecer recorte.",
+      "sugestao_prompt": "Para 'parcelas que vencem amanha' default = ambos (receber+pagar) com vencimento na data; resumir e oferecer drill-down.",
+      "correcao_factual": "nao_aplicavel"
+    },
+    {
+      "turnoId": "66fb97c2-eebc-4e58-bd97-3db1fbac1b17",
+      "status": "PARCIAL",
+      "patterns": ["pediu_clarificacao_desnecessaria"],
+      "razao": "'Titulos vencidos hoje' = titulos com vencimento na data; default razoavel sem precisar clarificar lado financeiro.",
+      "sugestao_prompt": "Para 'titulos vencidos hoje' default = ambos os lados, vencimento=hoje; entregar antes de refinar.",
+      "correcao_factual": "nao_aplicavel"
+    },
+    {
+      "turnoId": "67e28df6-7260-4632-a85e-3d1b37b7d185",
+      "status": "CORRETO",
+      "patterns": ["acerto_objetividade"],
+      "razao": "Tool certa, 20 resultados; agente listou os primeiros e pediu refinamento por ID/UF/CNPJ, comportamento adequado para muitas matches.",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "68bdaae7-d6bc-4725-89b9-f548f965e611",
+      "status": "CORRETO",
+      "patterns": ["acerto_objetividade"],
+      "razao": "Pergunta '?' sem conteudo; pedido de orientacao e legitimo.",
+      "sugestao_prompt": null,
+      "correcao_factual": "nao_aplicavel"
+    },
+    {
+      "turnoId": "68c1ac60-b482-4c04-86cc-d257864ceb2e",
+      "status": "PARCIAL",
+      "patterns": ["pediu_clarificacao_desnecessaria"],
+      "razao": "Default obvio: mes atual + autorizadas. Podia entregar e oferecer ajuste.",
+      "sugestao_prompt": "Para 'quanto faturou' default = mes atual + notas autorizadas; entregar antes de refinar.",
+      "correcao_factual": "nao_aplicavel"
+    },
+    {
+      "turnoId": "69e133fa-70ab-4fea-aeaa-ced5232fc255",
+      "status": "CORRETO",
+      "patterns": ["acerto_objetividade"],
+      "razao": "Pergunta coloquial com nome ambiguo ('Casa Ferolla' vs 'Ferolla'), tipo de devolucao e papel; tres clarificacoes legitimas.",
+      "sugestao_prompt": null,
+      "correcao_factual": "nao_aplicavel"
+    },
+    {
+      "turnoId": "69e3ab0d-4558-44bc-af72-797af3b834a0",
+      "status": "CORRETO",
+      "patterns": ["acerto_objetividade"],
+      "razao": "170 notas e R$ 4.659.800,34 conferem com toolResults agregados; 70 cadastros consistente.",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "6c409c22-a6fa-4e88-954a-0941dc70103a",
+      "status": "CORRETO",
+      "patterns": ["acerto_objetividade"],
+      "razao": "477 pedidos cadastrados no mes batem com toolResults; agente honesto sobre nao ter criterio de 'fechado' definido.",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "6c59fbaa-32a7-46f1-9df5-d581faa068eb",
+      "status": "PARCIAL",
+      "patterns": ["pediu_clarificacao_desnecessaria"],
+      "razao": "Default razoavel: 'giro' = saidas; podia entregar e oferecer alternativas.",
+      "sugestao_prompt": "Para 'maior giro' default = saidas no periodo; entregar antes de refinar.",
+      "correcao_factual": "nao_aplicavel"
+    },
+    {
+      "turnoId": "6c9bb051-df85-4aef-897f-4295c61d4f9a",
+      "status": "PARCIAL",
+      "patterns": ["pediu_clarificacao_desnecessaria"],
+      "razao": "Default obvio: valor faturado em notas autorizadas; podia entregar direto.",
+      "sugestao_prompt": "Para 'top clientes que mais compraram' default = valor faturado em notas autorizadas do mes; entregar e oferecer alternativa.",
+      "correcao_factual": "nao_aplicavel"
+    },
+    {
+      "turnoId": "6d84e0c1-2089-4587-b4b6-ae503c1a4b7a",
+      "status": "CORRETO",
+      "patterns": ["acerto_objetividade"],
+      "razao": "Pergunta cruzada complexa (pedido aberto + titulo vencido) com 3 ambiguidades reais; clarificacao curta legitima.",
+      "sugestao_prompt": null,
+      "correcao_factual": "nao_aplicavel"
+    }
+  ]
+}

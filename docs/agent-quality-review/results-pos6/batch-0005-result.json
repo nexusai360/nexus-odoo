@@ -1,0 +1,344 @@
+{
+  "batchId": "0005",
+  "evaluatedAt": "2026-05-26T15:30:00.000Z",
+  "totals": {
+    "CORRETO": 17,
+    "PARCIAL": 17,
+    "ERRADO": 2,
+    "FORA_DE_ESCOPO": 4
+  },
+  "patterns": {
+    "acerto_objetividade": 17,
+    "acerto_encadeamento": 1,
+    "pediu_clarificacao_desnecessaria": 20,
+    "nao_usou_tool": 11,
+    "limitacao_real_declarada": 3,
+    "tool_errada": 1,
+    "dado_inventado": 2,
+    "entendeu_mal_termo": 1,
+    "fluxo_tool_incompleto": 1,
+    "parametro_incompleto": 1
+  },
+  "turnos": [
+    {
+      "turnoId": "9400aeee-adc2-41c3-93c2-c1765e3a79b1",
+      "status": "CORRETO",
+      "patterns": ["acerto_encadeamento", "acerto_objetividade"],
+      "razao": "Encadeou duas chamadas de fiscal_faturamento_periodo para comparar mês corrente vs mês anterior. Valores (R$ 38.074.442,88 / 774 notas; R$ 33.997.934,37 / 628 notas) batem com toolResults.",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "94cc20ad-8dbd-40ad-8f7d-e3e9d1ea9047",
+      "status": "CORRETO",
+      "patterns": ["acerto_objetividade"],
+      "razao": "Identificou que o produto está cadastrado mas sem linha de saldo, exatamente o que a tool retornou (semEstoqueCadastrado=true, saldoTotal=0).",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "96513d12-8f8f-4333-89e9-187627ad024a",
+      "status": "PARCIAL",
+      "patterns": ["pediu_clarificacao_desnecessaria"],
+      "razao": "A tool retornou centenas de notas de entrada do mês corrente; o agente podia ter contado e respondido (a pergunta era simples 'quantas'), em vez disso alegou 'retorno incompleto' e pediu critério.",
+      "sugestao_prompt": "Adicionar regra: 'Quando fiscal_notas_recebidas retornar lista com itens válidos, responder a contagem total (len(linhas)) por padrão e oferecer filtro de valor > 0 depois.'",
+      "correcao_factual": "nao_aplicavel"
+    },
+    {
+      "turnoId": "96ce8814-bcff-4d3b-8963-ea3720a73860",
+      "status": "CORRETO",
+      "patterns": ["acerto_objetividade"],
+      "razao": "fiscal_apuracao retornou estado=vazio; o agente respondeu honestamente que não encontrou apuração de PIS/COFINS para 05/2026 e ofereceu outra competência.",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "96d9f217-6c5e-4b35-bbd5-fb2489c32d22",
+      "status": "PARCIAL",
+      "patterns": ["pediu_clarificacao_desnecessaria", "nao_usou_tool"],
+      "razao": "Usuário pediu 'saldo do produto' sem especificar produto. Pedir clarificação é razoável, mas poderia oferecer um default (top 20 produtos por valor) ao invés de só perguntar.",
+      "sugestao_prompt": "Adicionar regra: quando faltar identificador de produto, sugerir 'quer ver top 20 por valor de estoque?' como alternativa antes de bloquear.",
+      "correcao_factual": "nao_aplicavel"
+    },
+    {
+      "turnoId": "97f3d50b-7fec-4f85-9676-b1c1a8689057",
+      "status": "PARCIAL",
+      "patterns": ["pediu_clarificacao_desnecessaria", "nao_usou_tool"],
+      "razao": "Pergunta sobre 'pedido para produção essa semana' é interpretável com default razoável (etapa Produção, criação na semana atual). Pediu clarificação em vez de assumir e responder.",
+      "sugestao_prompt": "Adicionar regra: 'semana' implica semana atual (segunda-domingo) e 'pra produção' implica etapa atual = Produção, por padrão.",
+      "correcao_factual": "nao_aplicavel"
+    },
+    {
+      "turnoId": "9959d0c4-13de-4e5d-a345-225cda8650a7",
+      "status": "PARCIAL",
+      "patterns": ["pediu_clarificacao_desnecessaria", "nao_usou_tool"],
+      "razao": "Última semana e top entradas têm defaults razoáveis (últimos 7 dias corridos + top 20). Pediu clarificação evitável.",
+      "sugestao_prompt": "Adicionar default: 'última semana' = últimos 7 dias corridos; 'que produto entrou' = top 20 por quantidade.",
+      "correcao_factual": "nao_aplicavel"
+    },
+    {
+      "turnoId": "9be5fd5c-0e84-45c3-8320-aa483182f42e",
+      "status": "CORRETO",
+      "patterns": ["acerto_objetividade"],
+      "razao": "Tool fiscal_faturamento_por_cliente retornou ranking; agente listou os top 5 corretamente; nomes e valores (R$ 10.784.144,78 etc.) batem com toolResults.",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "9d01f57c-d51e-45e5-9cb1-55e7877dcbb1",
+      "status": "PARCIAL",
+      "patterns": ["pediu_clarificacao_desnecessaria", "nao_usou_tool"],
+      "razao": "Usuário disse 'fornecedor X' literalmente como placeholder; pedir nome real é correto, mas poderia ter explicado que 'X' parece marcador genérico e pedido o nome real diretamente.",
+      "sugestao_prompt": null,
+      "correcao_factual": "nao_aplicavel"
+    },
+    {
+      "turnoId": "9d08476c-4ee1-462f-9a79-d2fab5cf68a8",
+      "status": "PARCIAL",
+      "patterns": ["pediu_clarificacao_desnecessaria", "nao_usou_tool"],
+      "razao": "'Faturamento por região esse mês' tem default (UF) razoável. Poderia ter chamado a tool com UF e mostrado, oferecendo alternativa depois.",
+      "sugestao_prompt": "Adicionar default: 'região' = UF do destinatário; chamar fiscal_faturamento_por_uf direto.",
+      "correcao_factual": "nao_aplicavel"
+    },
+    {
+      "turnoId": "9d754bca-858f-4c53-ba4b-83aedc4d3bce",
+      "status": "PARCIAL",
+      "patterns": ["pediu_clarificacao_desnecessaria"],
+      "razao": "Chamou financeiro_contas_a_pagar e em seguida pediu clarificação (em aberto vs vencidos, lista vs top10). Poderia ter mostrado a consolidação direta e oferecido drill-down depois.",
+      "sugestao_prompt": "Adicionar regra: 'soma por X' = exibir top 10 por X com total agregado, oferecendo 'quer ver completo?' como follow-up.",
+      "correcao_factual": "nao_aplicavel"
+    },
+    {
+      "turnoId": "9dc1dcad-346d-446a-8bb4-06a3f43eb5f2",
+      "status": "CORRETO",
+      "patterns": ["acerto_objetividade"],
+      "razao": "Valores citados (IBPT R$ 2.252,45; ICMS R$ 5.922.745,09; 1.656 notas) batem exatamente com toolResults.",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "9e578395-c79a-4cc2-957e-c8c248121222",
+      "status": "FORA_DE_ESCOPO",
+      "patterns": ["limitacao_real_declarada", "pediu_clarificacao_desnecessaria"],
+      "razao": "Top por margem (preço venda vs custo) provavelmente exige cruzar tools; a clarificação é honesta sobre a complexidade do cálculo.",
+      "sugestao_prompt": null,
+      "correcao_factual": "nao_aplicavel"
+    },
+    {
+      "turnoId": "a0dd56b0-e134-4f4d-99c8-e06179cbe2d2",
+      "status": "CORRETO",
+      "patterns": ["acerto_objetividade"],
+      "razao": "Identificou o produto PMB403 (Puxador Corda), sem saldo registrado; bate exatamente com toolResults (0 locais, valorTotal 0, semEstoqueCadastrado true).",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "a1835e01-666e-43a0-8a83-fd681956406e",
+      "status": "CORRETO",
+      "patterns": ["acerto_objetividade"],
+      "razao": "Faturamento mês corrente R$ 38.064.323,84 em 772 notas bate com toolResults; período corretamente fechado em 26/05/2026 (hoje).",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "a27c70d3-8773-488e-9c59-52e8066bf9f3",
+      "status": "FORA_DE_ESCOPO",
+      "patterns": ["limitacao_real_declarada", "pediu_clarificacao_desnecessaria"],
+      "razao": "Meta comercial não está no cache; agente declarou honestamente e ofereceu fluxo de caixa previsto como alternativa.",
+      "sugestao_prompt": null,
+      "correcao_factual": "nao_aplicavel"
+    },
+    {
+      "turnoId": "a2ada288-a8a4-4668-9c23-c131703c28fa",
+      "status": "CORRETO",
+      "patterns": ["acerto_objetividade"],
+      "razao": "Retornou 7 produtos com MOLA ESPIRAL, separando o que tem linha de saldo do que não tem; bate com toolResults (ambiguidade, linhas).",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "a5187f02-bbac-4cf9-b2f7-6e6fdd03e1f5",
+      "status": "ERRADO",
+      "patterns": ["tool_errada", "dado_inventado"],
+      "razao": "Usuário pediu conta com 'aluguel' no nome (plano contábil). Agente chamou financeiro_saldo_contas (saldos bancários) que NÃO retornou contas de aluguel; ainda assim citou 4 códigos (2.1.1.3.05.000004 etc.) que não estão em toolResults. Dado inventado.",
+      "sugestao_prompt": "Adicionar regra: 'buscar conta por nome' sempre usar contabil_plano_de_contas com termo, nunca financeiro_saldo_contas (que é saldo bancário).",
+      "correcao_factual": "nao_bate"
+    },
+    {
+      "turnoId": "a69c2eff-7a07-401e-b3ff-172ccde2351b",
+      "status": "CORRETO",
+      "patterns": ["acerto_objetividade"],
+      "razao": "Interpretou 'rascunho' como pedidos não concluídos e citou etapas reais (Input financeiro 97 / R$ 31.365.738,22; Em contagem 9 / R$ 29.444.670,55; GERA BOLETO 119 / R$ 16.021.682,65) que batem com toolResults.",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "a70d35d3-de24-43b2-9f00-9400c8731099",
+      "status": "CORRETO",
+      "patterns": ["acerto_objetividade"],
+      "razao": "Listou as 5 contas relacionadas a despesa com pessoal; códigos e nomes batem com toolResults.",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "a88b22ed-5ef3-4bb4-9d66-5a45aa087a89",
+      "status": "CORRETO",
+      "patterns": ["acerto_objetividade"],
+      "razao": "Tool retornou estado=vazio; agente respondeu honestamente que não encontrou linha de saldo para o produto.",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "aa197a29-61f5-4bbb-b858-61fcf8428a0d",
+      "status": "PARCIAL",
+      "patterns": ["pediu_clarificacao_desnecessaria", "nao_usou_tool"],
+      "razao": "'Quanto sobrou na conta hoje?' permite default razoável (saldo total bancário). Poderia ter chamado financeiro_saldo_contas e mostrado total + por conta.",
+      "sugestao_prompt": "Adicionar default: 'saldo na conta' = chamar financeiro_saldo_contas e mostrar saldoTotal + breakdown por conta.",
+      "correcao_factual": "nao_aplicavel"
+    },
+    {
+      "turnoId": "ab1e4565-c3a4-4bca-a6e4-0188be87a91f",
+      "status": "PARCIAL",
+      "patterns": ["pediu_clarificacao_desnecessaria", "nao_usou_tool"],
+      "razao": "Receita média diária do mês tem default (mês corrente, faturamento de saídas autorizadas). Podia ter calculado direto.",
+      "sugestao_prompt": "Adicionar default: 'mês' = mês corrente; 'receita' = faturamento autorizado; calcular como valorFaturado / dias_no_periodo.",
+      "correcao_factual": "nao_aplicavel"
+    },
+    {
+      "turnoId": "ac7f742f-81d8-4e32-b809-b9f1d21dcbe7",
+      "status": "CORRETO",
+      "patterns": ["acerto_objetividade"],
+      "razao": "Listou códigos de contas bancárias; códigos e nomes batem com toolResults (BANCO CONTA MOVIMENTO MATRIZ 1.1.1.20.1 etc.).",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "ad0f9d92-f4d3-4e6c-89ad-fb4ed1c51f8b",
+      "status": "FORA_DE_ESCOPO",
+      "patterns": ["limitacao_real_declarada"],
+      "razao": "Não há tool para listar transportadoras ativas; agente registrou lacuna corretamente e declarou limitação.",
+      "sugestao_prompt": null,
+      "correcao_factual": "nao_aplicavel"
+    },
+    {
+      "turnoId": "ad34fef8-3da4-425a-a2bc-9cfaa0575aaf",
+      "status": "PARCIAL",
+      "patterns": ["pediu_clarificacao_desnecessaria", "nao_usou_tool"],
+      "razao": "'[102]' poderia ser interpretado como código de produto por padrão (formato entre colchetes é comum). Pediu clarificação em vez de tentar estoque_saldo_produto direto.",
+      "sugestao_prompt": "Adicionar regra: termo entre colchetes [N] = código de produto; chamar estoque_saldo_produto com esse termo por padrão.",
+      "correcao_factual": "nao_aplicavel"
+    },
+    {
+      "turnoId": "af964545-3408-4edc-aca3-d4c5380f0a7b",
+      "status": "PARCIAL",
+      "patterns": ["pediu_clarificacao_desnecessaria", "nao_usou_tool"],
+      "razao": "Podia ter buscado vendedor João via cadastro_buscar_parceiro e oferecido as opções; em vez disso pediu sobrenome upfront.",
+      "sugestao_prompt": "Adicionar regra: 'vendedor X' sem mais info = buscar parceiros com termo X e oferecer escolha entre os encontrados.",
+      "correcao_factual": "nao_aplicavel"
+    },
+    {
+      "turnoId": "afeebfa0-b6ed-4a04-9344-bf5b7e562c92",
+      "status": "PARCIAL",
+      "patterns": ["pediu_clarificacao_desnecessaria"],
+      "razao": "'Mais compraram' tem default razoável (valor faturado). 'Este ano' = ano corrente (01/01 - hoje) também é default óbvio.",
+      "sugestao_prompt": "Adicionar default: 'mais compraram' = por valor faturado; 'este ano' = 01/01/anoCorrente até hoje.",
+      "correcao_factual": "nao_aplicavel"
+    },
+    {
+      "turnoId": "b118143c-8311-40dd-8707-fa10e5e318b7",
+      "status": "PARCIAL",
+      "patterns": ["pediu_clarificacao_desnecessaria"],
+      "razao": "'Receita do dia' tem default forte: faturamento de notas de saída autorizadas hoje. Podia responder e oferecer caixa como alternativa.",
+      "sugestao_prompt": "Adicionar default: 'receita' = faturamento de saídas autorizadas; 'do dia' = hoje. Responder com esse default e oferecer caixa como variante.",
+      "correcao_factual": "nao_aplicavel"
+    },
+    {
+      "turnoId": "b26e1c33-9efc-4a43-9d22-0fae5ba1a530",
+      "status": "FORA_DE_ESCOPO",
+      "patterns": ["pediu_clarificacao_desnecessaria"],
+      "razao": "Mensagem ambígua de uma palavra ('clientes'); pedir desambiguação com menu de opções é razoável.",
+      "sugestao_prompt": null,
+      "correcao_factual": "nao_aplicavel"
+    },
+    {
+      "turnoId": "b391f3c2-86d3-410b-895f-3698e7080b0b",
+      "status": "PARCIAL",
+      "patterns": ["pediu_clarificacao_desnecessaria"],
+      "razao": "Chamou financeiro_contas_a_pagar mas pediu confirmação de escopo em vez de responder total em aberto + oferecer breakdown.",
+      "sugestao_prompt": "Adicionar regra: 'total em aberto a pagar' = somar tudo em aberto (vencidos + a vencer) por padrão, e oferecer só vencidos como detalhe.",
+      "correcao_factual": "nao_aplicavel"
+    },
+    {
+      "turnoId": "b3b3885e-9190-4956-8962-12117a012af9",
+      "status": "PARCIAL",
+      "patterns": ["pediu_clarificacao_desnecessaria", "nao_usou_tool"],
+      "razao": "Pergunta tinha 'cliente XPTOXYZ inexistente' (nome explícito). Bastava chamar cadastro_buscar_parceiro com 'XPTOXYZ' e reportar que não existe.",
+      "sugestao_prompt": "Adicionar regra: quando usuário menciona nome de cliente explicitamente, chamar cadastro_buscar_parceiro com esse termo antes de pedir mais info.",
+      "correcao_factual": "nao_aplicavel"
+    },
+    {
+      "turnoId": "b44dfdf0-ed40-48fd-804a-27af749ec5b3",
+      "status": "PARCIAL",
+      "patterns": ["pediu_clarificacao_desnecessaria", "nao_usou_tool"],
+      "razao": "'Pedido faturado parcialmente' interpretável com default (mês atual, resumo por etapa).",
+      "sugestao_prompt": "Adicionar default: 'pedido faturado parcialmente' = mês atual + resumo de etapas com faturamento parcial.",
+      "correcao_factual": "nao_aplicavel"
+    },
+    {
+      "turnoId": "b56dd3d0-3cb0-437a-bcfd-3c1ca463d15d",
+      "status": "CORRETO",
+      "patterns": ["acerto_objetividade"],
+      "razao": "PMB403 - Puxador Corda no cadastro sem linha de saldo; bate exatamente com toolResults.",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "b699a7ce-2e35-4d83-95ae-20e79dbc3c4e",
+      "status": "ERRADO",
+      "patterns": ["entendeu_mal_termo", "dado_inventado"],
+      "razao": "ToolResults mostram pedidoId=270, 266, 273, 274 com numero='1','1','1','1','2' (numero = número da parcela). O agente listou 'Pedido 1 / Parcela 1' tratando o número da parcela como pedidoId. Os pedidos reais (270, 266, 273, 274) não aparecem na resposta.",
+      "sugestao_prompt": "Adicionar regra: em comercial_pedidos_atrasados, 'numero' é o número da parcela; o identificador do pedido é pedidoId. Exibir pedidoId como 'Pedido N'.",
+      "correcao_factual": "nao_bate"
+    },
+    {
+      "turnoId": "b79ff8d6-891b-4a76-8cc8-ab7af540854f",
+      "status": "PARCIAL",
+      "patterns": ["fluxo_tool_incompleto", "pediu_clarificacao_desnecessaria"],
+      "razao": "Tool retornou títulos por participante; agente podia ter agregado (sum por participanteNome) e mostrado top 20 direto, em vez de pedir 'top 20 ou completo?'. Pulou a agregação esperada.",
+      "sugestao_prompt": "Adicionar regra: 'soma por cliente' = agregar por participanteNome no próprio handler antes de responder; mostrar top 20 por padrão.",
+      "correcao_factual": "nao_aplicavel"
+    },
+    {
+      "turnoId": "b912511a-b76e-41aa-b6ce-2ab968133f2a",
+      "status": "CORRETO",
+      "patterns": ["acerto_objetividade"],
+      "razao": "Casa Ferolla encontrado, CNPJ BR-42.834.550/0001-56, Belo Horizonte/MG; bate exatamente com toolResults.",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "b9e432f9-bc4b-4e34-8f03-2e6c955f1160",
+      "status": "CORRETO",
+      "patterns": ["acerto_objetividade"],
+      "razao": "Faturamento do ano corrente R$ 209.588.360,55 em 3.105 notas bate com toolResults; período fechado em 26/05/2026.",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "b9e44fdf-85f8-4fad-84e7-4d77dbadd1f5",
+      "status": "CORRETO",
+      "patterns": ["acerto_objetividade"],
+      "razao": "Tool retornou estado=vazio (serie=[]); agente respondeu honestamente que não há registros hoje.",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "ba4366b8-70f9-4781-87db-ae2cc02146bb",
+      "status": "CORRETO",
+      "patterns": ["acerto_objetividade", "parametro_incompleto"],
+      "razao": "Saída R$ 0,00 bate com toolResults (saida=0). Período '25/05/2026 a 31/05/2026' bate com chamada. Pequena ressalva: hoje é 26/05, então a semana até 31/05 inclui dias futuros; teria sido melhor fechar em 26/05.",
+      "sugestao_prompt": "Adicionar regra: 'essa semana' = início da semana até HOJE, nunca até data futura.",
+      "correcao_factual": "bate"
+    }
+  ]
+}

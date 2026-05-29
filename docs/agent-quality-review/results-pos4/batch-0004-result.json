@@ -1,0 +1,414 @@
+{
+  "batchId": "0004",
+  "evaluatedAt": "2026-05-26T06:10:32.030153+00:00",
+  "totals": {
+    "CORRETO": 31,
+    "PARCIAL": 8,
+    "ERRADO": 1,
+    "FORA_DE_ESCOPO": 0
+  },
+  "patterns": {
+    "acerto_objetividade": 28,
+    "tool_errada": 1,
+    "resposta_truncada": 5,
+    "formato_quebrado": 1,
+    "acerto_encadeamento": 1,
+    "dado_inventado": 1
+  },
+  "turnos": [
+    {
+      "turnoId": "5edaefd3-cc47-41b6-a400-5b856cce7614",
+      "status": "CORRETO",
+      "patterns": [
+        "acerto_objetividade"
+      ],
+      "razao": "Tool certa, sem args (todos armazéns), número R$ 51.936.174,80 bate com toolResults.valorTotal.",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "5f10a7dd-8f73-4352-a565-70caf8a8a550",
+      "status": "CORRETO",
+      "patterns": [
+        "acerto_objetividade"
+      ],
+      "razao": "Período correto (próximos 30 dias), previsto 947.455,06 + 19.350.362,08 = 20.297.817,14 bate.",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "5faa5972-6c84-4474-bdf1-fbe3a815ff17",
+      "status": "PARCIAL",
+      "patterns": [
+        "acerto_objetividade"
+      ],
+      "razao": "Tool certa e quantidade (3 notas) bate, mas valorTotal=0 é dado suspeito sobre 'devolução' não tratado; agente confunde 'notas de entrada' com 'devolução' sem questionar.",
+      "sugestao_prompt": "Quando totalAgregado.valorTotal=0 com quantidade>0, sinalizar como dado parcial e sugerir tool específica de devoluções.",
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "608b743d-c707-42dd-a4b8-e762b34deb5e",
+      "status": "CORRETO",
+      "patterns": [
+        "acerto_objetividade"
+      ],
+      "razao": "Saldo 0 bate; explicou diferença entre cadastrados sem saldo e com linha de saldo.",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "61d51565-6638-4743-bc2c-26f184d62cf0",
+      "status": "CORRETO",
+      "patterns": [
+        "acerto_objetividade"
+      ],
+      "razao": "Período mês corrente correto, 772 notas e R$ 38.064.323,84 batem com toolResults.",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "66dd8c16-f3c3-416e-aac3-d1cd8b50a7f5",
+      "status": "PARCIAL",
+      "patterns": [
+        "tool_errada"
+      ],
+      "razao": "Chamou registrar_lacuna mas o turno 18 prova que cadastro_buscar_parceiro retorna transportadoras. Declarou fora de catálogo indevidamente.",
+      "sugestao_prompt": "Adicionar regra: antes de registrar lacuna em 'lista de transportadoras', tentar cadastro_buscar_parceiro com termo 'transporte'/'transportadora'.",
+      "correcao_factual": "nao_aplicavel"
+    },
+    {
+      "turnoId": "6953bddb-bb9d-4715-b716-d7dabf74250e",
+      "status": "CORRETO",
+      "patterns": [
+        "acerto_objetividade"
+      ],
+      "razao": "Dimensão Engenharia encontrada, nome/doc/cidade batem.",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "6a7bbc66-9b62-4bbf-8084-846d2c25b6df",
+      "status": "CORRETO",
+      "patterns": [],
+      "razao": "Estado vazio; resposta honesta de 0 movimentação na última semana.",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "6a8da5b1-6f7b-48a5-8b08-ebda5da8b447",
+      "status": "CORRETO",
+      "patterns": [
+        "acerto_objetividade"
+      ],
+      "razao": "Total 50 com saldo, valor R$ 365.992,82 bate; top 5 lista produtos do toolResults.",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "6adbe479-6902-44ee-9590-2def51ac56bc",
+      "status": "CORRETO",
+      "patterns": [
+        "acerto_objetividade"
+      ],
+      "razao": "PMB403 cadastrado sem linha de saldo, 0 unidades bate.",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "6bad6ffa-1546-4627-80dd-c867ab8efc2d",
+      "status": "CORRETO",
+      "patterns": [
+        "acerto_objetividade"
+      ],
+      "razao": "Faturamento de hoje R$ 0 em 0 notas bate.",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "6bb4e546-70c0-43a6-a767-9b43ba651944",
+      "status": "CORRETO",
+      "patterns": [
+        "acerto_objetividade"
+      ],
+      "razao": "Etapas e valores listados batem com toolResults; agregação 'em aberto' coerente.",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "6c2bb173-8ebb-4c0b-8bec-6a6e5dd18c44",
+      "status": "CORRETO",
+      "patterns": [
+        "acerto_objetividade"
+      ],
+      "razao": "Saldos por conta batem; total consolidado coerente com soma dos valores.",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "6d495da2-897a-4aa7-bf1d-2cca16737b2d",
+      "status": "CORRETO",
+      "patterns": [
+        "acerto_objetividade"
+      ],
+      "razao": "754 fornecedores bate com toolResults.totalFornecedores.",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "6de48e0e-3ae2-4b14-81a4-5884e6998bc3",
+      "status": "PARCIAL",
+      "patterns": [
+        "resposta_truncada"
+      ],
+      "razao": "Listou maiores títulos mas não trouxe o total agregado pedido implícito; resposta cortou no meio (último item incompleto).",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "6f1fdfb9-3a83-49be-8a4e-3d2f2d7688b4",
+      "status": "CORRETO",
+      "patterns": [
+        "acerto_objetividade"
+      ],
+      "razao": "Valor imobilizado R$ 51.936.174,80 e 1.315 produtos batem.",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "6f2c8b16-d963-4f8d-a95c-26966ef86557",
+      "status": "PARCIAL",
+      "patterns": [
+        "resposta_truncada"
+      ],
+      "razao": "Não consolidou total por cliente pedido; resposta admite truncamento. Faltou agregar.",
+      "sugestao_prompt": "Adicionar regra: quando a tool retorna lista grande, agregar localmente por participante antes de responder 'por cliente'.",
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "6fcc86b1-8934-4c9b-9e33-b55513117790",
+      "status": "CORRETO",
+      "patterns": [
+        "acerto_objetividade"
+      ],
+      "razao": "Produto sem linha de saldo, 0 unidades bate.",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "7066a12b-b82e-48a5-bec0-1f6aee0a300c",
+      "status": "CORRETO",
+      "patterns": [
+        "acerto_objetividade"
+      ],
+      "razao": "13 parceiros encontrados, 5 listados batem com toolResults.",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "70e89396-b067-490f-9beb-4db50b534f12",
+      "status": "CORRETO",
+      "patterns": [
+        "acerto_objetividade"
+      ],
+      "razao": "Halteres: valor R$ 54.295,16 e 12 itens batem. Top com saldos coerentes.",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "71f9277e-92cc-4b50-b320-9076ae2608b0",
+      "status": "CORRETO",
+      "patterns": [
+        "acerto_objetividade"
+      ],
+      "razao": "7 dias correto, 79 notas R$ 8.510.483,41 batem.",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "7459d18d-d92a-4d19-b3f6-4fc41ffbdfb5",
+      "status": "CORRETO",
+      "patterns": [
+        "acerto_objetividade"
+      ],
+      "razao": "Smartfit: encontrou 16, listou 5 com IDs Odoo corretos.",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "74a2c6b2-f144-44ae-ae05-5d79a846ef0d",
+      "status": "CORRETO",
+      "patterns": [
+        "acerto_objetividade"
+      ],
+      "razao": "Pedidos por vendedor batem com toolResults; ranking por valor.",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "75f1023d-5d36-40c3-bb8d-45ab04a60a0f",
+      "status": "CORRETO",
+      "patterns": [],
+      "razao": "Vazio honesto: 0 notas do fornecedor Residencial Maua no período.",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "7640ad3e-1415-4f05-bb48-21c80d848ec2",
+      "status": "CORRETO",
+      "patterns": [
+        "acerto_objetividade"
+      ],
+      "razao": "12 contas com 'imposto' encontradas; códigos listados batem com toolResults.",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "7726bc80-d85e-4d36-8e60-5cacf3108a59",
+      "status": "CORRETO",
+      "patterns": [
+        "acerto_objetividade"
+      ],
+      "razao": "Cabo de aço: 40 produtos, top 5 com saldos corretos.",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "77a0e5fe-9038-426a-81ae-15779b941073",
+      "status": "CORRETO",
+      "patterns": [
+        "acerto_objetividade"
+      ],
+      "razao": "CONDOMINIO ESTRELAS DO MAR: ID 16234, doc e cidade batem.",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "77f6ccd9-e439-4105-b50f-bad2e02748a4",
+      "status": "PARCIAL",
+      "patterns": [
+        "formato_quebrado"
+      ],
+      "razao": "Saldos bancários batem, mas nome de conta saiu com 'Itaú / Corrente / 1584 / 1584 / 1584 / 1584 / 37236-9' (repetição de '1584' - bug de formatação).",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "782aa74a-ca7f-481e-be6a-13c0113ca84b",
+      "status": "PARCIAL",
+      "patterns": [
+        "resposta_truncada"
+      ],
+      "razao": "Admite que não trouxe total agregado; respondeu só lista parcial.",
+      "sugestao_prompt": "Quando o usuário pede 'total', agregar via soma da lista antes de responder, mesmo que tool retorne só linhas.",
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "78ab118f-2c2c-455e-abc2-590a78b2dcf9",
+      "status": "PARCIAL",
+      "patterns": [
+        "resposta_truncada"
+      ],
+      "razao": "Listou maiores inadimplentes mas não computou 'valor total devido' pedido explicitamente.",
+      "sugestao_prompt": "Pergunta 'valor total devido' exige soma agregada das linhas a_receber; calcular antes de responder.",
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "791fb80c-8bf0-4320-9e44-895c310dc0b4",
+      "status": "CORRETO",
+      "patterns": [
+        "acerto_objetividade"
+      ],
+      "razao": "Pedidos atrasados listados com IDs, datas e valores batem.",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "7a832e5e-8acd-4dd2-abfd-1c1bc32ce259",
+      "status": "PARCIAL",
+      "patterns": [
+        "resposta_truncada"
+      ],
+      "razao": "Admitiu não trazer o total em R$ pedido; respondeu só 3 valores.",
+      "sugestao_prompt": "Quando o usuário pede 'total em aberto', somar localmente vrSaldo das linhas retornadas.",
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "7e85988f-e1de-4e72-9959-44334110b9e6",
+      "status": "CORRETO",
+      "patterns": [
+        "acerto_objetividade"
+      ],
+      "razao": "Pino de Aco 1000093102: 0 saldo, cadastrado, bate.",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "7e9ad58f-edbc-4860-bbe0-d1bde0e6637f",
+      "status": "CORRETO",
+      "patterns": [
+        "acerto_encadeamento"
+      ],
+      "razao": "Top 20 mais caros parados, valores batem; ordenou corretamente.",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "7f0616ad-b074-4446-bda8-1b8ff76ae69a",
+      "status": "CORRETO",
+      "patterns": [
+        "acerto_objetividade"
+      ],
+      "razao": "Títulos vencidos a pagar listados com valores e dias de atraso batendo.",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "7f831d4a-fd6f-4e8b-9bda-b7c61c4d3ae6",
+      "status": "CORRETO",
+      "patterns": [
+        "acerto_objetividade"
+      ],
+      "razao": "Top 5 clientes do mês: Jht SP R$ 10.784.144,78, Jds R$ 3.694.452,52 batem.",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "7fa1556c-67b9-49eb-be8a-6c40813771cf",
+      "status": "CORRETO",
+      "patterns": [
+        "acerto_objetividade"
+      ],
+      "razao": "Flexora Extensora: 10 itens, 1 com saldo (R$ 490) bate com toolResults.",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "80180ab8-d220-447b-85e0-aa7d8c842a92",
+      "status": "CORRETO",
+      "patterns": [],
+      "razao": "Termo XPTOXYZ vazio; resposta honesta de não encontrado.",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "8185fe09-d0e6-4033-9491-77f1900ab3c6",
+      "status": "ERRADO",
+      "patterns": [
+        "dado_inventado"
+      ],
+      "razao": "bi_consulta_avancada retornou linhas=[] (0 linhas), mas resposta inventa '405 clientes com pedido em aberto', '0 atrasados', '0 ambos'. Dado totalmente inventado sobre resultado vazio.",
+      "sugestao_prompt": "Quando bi_consulta_avancada retorna linhasRetornadas=0, responder explicitamente que a consulta não trouxe dados, nunca preencher números.",
+      "correcao_factual": "nao_bate"
+    },
+    {
+      "turnoId": "852ce36f-9800-4b3b-9f7c-4c0f07f74f77",
+      "status": "CORRETO",
+      "patterns": [
+        "acerto_objetividade"
+      ],
+      "razao": "SQL retornou total_filiais=16; resposta bate.",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    }
+  ]
+}

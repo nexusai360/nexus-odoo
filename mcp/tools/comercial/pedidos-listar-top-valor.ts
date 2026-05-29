@@ -157,9 +157,9 @@ export const comercialPedidosListarTopValor: ToolEntry<Input, Output> = {
           ? `Nao ha pedidos do vendedor '${input.vendedorTermo}'.`
           : "Nao ha pedidos para esse criterio.";
     } else if (ordenacao === "data_asc") {
-      resposta = `Pedido mais antigo (status ${status}): ${top!.numero} de ${fmtData(top!.dataOrcamento)} — ${top!.participanteNome ?? "(sem cliente)"} — ${fmt(top!.valorTotal)}.${input.clienteTermo ? ` Filtro cliente='${input.clienteTermo}'.` : ""}`;
+      resposta = `Pedido mais antigo (status ${status}): ${top!.numero} de ${fmtData(top!.dataOrcamento)}, ${top!.participanteNome ?? "(sem cliente)"}, ${fmt(top!.valorTotal)}.${input.clienteTermo ? ` Filtro cliente='${input.clienteTermo}'.` : ""}`;
     } else if (ordenacao === "data_desc") {
-      resposta = `Pedido mais recente (status ${status}): ${top!.numero} de ${fmtData(top!.dataOrcamento)} — ${top!.participanteNome ?? "(sem cliente)"} — ${fmt(top!.valorTotal)}.`;
+      resposta = `Pedido mais recente (status ${status}): ${top!.numero} de ${fmtData(top!.dataOrcamento)}, ${top!.participanteNome ?? "(sem cliente)"}, ${fmt(top!.valorTotal)}.`;
     } else {
       const prefixo = input.clienteTermo ? `Top ${linhas.length} pedidos do cliente '${input.clienteTermo}'` : `Top ${linhas.length} pedidos por valor (${status})`;
       resposta = `${prefixo}. Maior: ${top!.numero} ${top!.participanteNome ? `(${top!.participanteNome})` : ""} ${fmt(top!.valorTotal)}.`;

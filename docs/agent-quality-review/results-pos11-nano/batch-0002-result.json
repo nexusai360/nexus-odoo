@@ -1,0 +1,380 @@
+{
+  "batchId": "0002",
+  "evaluatedAt": "2026-05-26T18:11:17.325Z",
+  "totals": {
+    "CORRETO": 18,
+    "PARCIAL": 7,
+    "ERRADO": 10,
+    "FORA_DE_ESCOPO": 0
+  },
+  "patterns": {
+    "placeholder_nao_substituido": 13,
+    "dado_inventado": 17,
+    "acerto_objetividade": 18
+  },
+  "turnos": [
+    {
+      "turnoId": "66c8c681-152b-4bf2-a92c-312b66f4cc4a",
+      "status": "ERRADO",
+      "patterns": [
+        "placeholder_nao_substituido",
+        "dado_inventado"
+      ],
+      "razao": "Placeholder não substituído na resposta final.",
+      "sugestao_prompt": null,
+      "correcao_factual": "nao_bate"
+    },
+    {
+      "turnoId": "674d38ac-a6e0-4e45-9101-56be054d1edc",
+      "status": "PARCIAL",
+      "patterns": [
+        "placeholder_nao_substituido"
+      ],
+      "razao": "Placeholder não substituído na resposta final.",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "6b12c324-d96b-4a93-9a9b-f28e023371bd",
+      "status": "CORRETO",
+      "patterns": [
+        "acerto_objetividade"
+      ],
+      "razao": "Tool adequada chamada e resposta consistente com toolResults.",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "71f1aad9-60f0-45b1-bc61-ba79992ab033",
+      "status": "PARCIAL",
+      "patterns": [
+        "placeholder_nao_substituido"
+      ],
+      "razao": "Placeholder não substituído na resposta final.",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "72020913-c2c9-445b-b7df-3159d008dc8d",
+      "status": "CORRETO",
+      "patterns": [
+        "acerto_objetividade"
+      ],
+      "razao": "Tool adequada chamada e resposta consistente com toolResults.",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "75e0e89d-4b4d-4669-8c68-bebb283465a9",
+      "status": "PARCIAL",
+      "patterns": [
+        "placeholder_nao_substituido"
+      ],
+      "razao": "Placeholder não substituído na resposta final.",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "7641c90e-0ca8-45e4-89e5-7d543860dfd4",
+      "status": "ERRADO",
+      "patterns": [
+        "dado_inventado",
+        "dado_inventado"
+      ],
+      "razao": "Números citados na resposta não batem com toolResults.",
+      "sugestao_prompt": null,
+      "correcao_factual": "nao_bate"
+    },
+    {
+      "turnoId": "79cc6053-ba03-4a39-a251-b853ac571f83",
+      "status": "PARCIAL",
+      "patterns": [
+        "placeholder_nao_substituido"
+      ],
+      "razao": "Placeholder não substituído na resposta final.",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "79ed0966-9428-4ba6-a58a-c6fb82042f71",
+      "status": "CORRETO",
+      "patterns": [
+        "acerto_objetividade"
+      ],
+      "razao": "Tool adequada chamada e resposta consistente com toolResults.",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "82d196b1-af66-4e97-a32a-dff374cc3fd7",
+      "status": "CORRETO",
+      "patterns": [
+        "acerto_objetividade"
+      ],
+      "razao": "Tool adequada chamada e resposta consistente com toolResults.",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "8523cc09-3f5e-402c-ba4b-b4fd6f104d69",
+      "status": "CORRETO",
+      "patterns": [
+        "acerto_objetividade"
+      ],
+      "razao": "Tool adequada chamada e resposta consistente com toolResults.",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "85d9df5f-eae3-42d1-a7af-2e3cf10d4861",
+      "status": "CORRETO",
+      "patterns": [
+        "acerto_objetividade"
+      ],
+      "razao": "Tool adequada chamada e resposta consistente com toolResults.",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "85ddfac6-b972-49cb-b4f8-b0af9ca5759e",
+      "status": "CORRETO",
+      "patterns": [
+        "acerto_objetividade"
+      ],
+      "razao": "Tool adequada chamada e resposta consistente com toolResults.",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "8827ed93-421f-4e80-af38-0475ed90315f",
+      "status": "ERRADO",
+      "patterns": [
+        "dado_inventado"
+      ],
+      "razao": "Tool retornou vazio mas resposta cita dados.",
+      "sugestao_prompt": null,
+      "correcao_factual": "nao_bate"
+    },
+    {
+      "turnoId": "88dd3c8d-4033-4548-b945-a9273ab4a85b",
+      "status": "CORRETO",
+      "patterns": [
+        "acerto_objetividade"
+      ],
+      "razao": "Tool adequada chamada e resposta consistente com toolResults.",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "8bc8f788-d9db-4f10-af5f-61d6b4fde289",
+      "status": "CORRETO",
+      "patterns": [
+        "acerto_objetividade"
+      ],
+      "razao": "Tool adequada chamada e resposta consistente com toolResults.",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "92658d41-7a0c-4202-beee-e94994a9584b",
+      "status": "ERRADO",
+      "patterns": [
+        "dado_inventado",
+        "dado_inventado"
+      ],
+      "razao": "Números citados na resposta não batem com toolResults.",
+      "sugestao_prompt": null,
+      "correcao_factual": "nao_bate"
+    },
+    {
+      "turnoId": "934aa7cf-214f-480b-9fa8-f6e6ae217de1",
+      "status": "CORRETO",
+      "patterns": [
+        "acerto_objetividade"
+      ],
+      "razao": "Tool adequada chamada e resposta consistente com toolResults.",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "9603d382-295f-4092-8856-d5aa12d0d164",
+      "status": "ERRADO",
+      "patterns": [
+        "placeholder_nao_substituido",
+        "dado_inventado",
+        "dado_inventado"
+      ],
+      "razao": "Placeholder não substituído na resposta final.",
+      "sugestao_prompt": null,
+      "correcao_factual": "nao_bate"
+    },
+    {
+      "turnoId": "98480f49-4488-4276-b722-e93ed7fd4b98",
+      "status": "ERRADO",
+      "patterns": [
+        "placeholder_nao_substituido",
+        "dado_inventado",
+        "dado_inventado"
+      ],
+      "razao": "Placeholder não substituído na resposta final.",
+      "sugestao_prompt": null,
+      "correcao_factual": "nao_bate"
+    },
+    {
+      "turnoId": "9a6dc74f-6b31-41fb-beae-15619a645dfa",
+      "status": "ERRADO",
+      "patterns": [
+        "placeholder_nao_substituido",
+        "dado_inventado",
+        "dado_inventado"
+      ],
+      "razao": "Placeholder não substituído na resposta final.",
+      "sugestao_prompt": null,
+      "correcao_factual": "nao_bate"
+    },
+    {
+      "turnoId": "9af2e809-b993-4547-8a60-6b88ce2c2a9c",
+      "status": "CORRETO",
+      "patterns": [
+        "acerto_objetividade"
+      ],
+      "razao": "Tool adequada chamada e resposta consistente com toolResults.",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "9b994e48-7101-4341-8761-6e214263c907",
+      "status": "PARCIAL",
+      "patterns": [
+        "placeholder_nao_substituido"
+      ],
+      "razao": "Placeholder não substituído na resposta final.",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "9da5ffdf-5b25-4229-ba9c-d74faad7aa1b",
+      "status": "CORRETO",
+      "patterns": [
+        "acerto_objetividade"
+      ],
+      "razao": "Tool adequada chamada e resposta consistente com toolResults.",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "a04f8378-2ced-4a49-b006-709ebf64a803",
+      "status": "CORRETO",
+      "patterns": [
+        "acerto_objetividade"
+      ],
+      "razao": "Tool adequada chamada e resposta consistente com toolResults.",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "a120fb24-3e2f-4d80-8ce4-75e6f352686e",
+      "status": "ERRADO",
+      "patterns": [
+        "placeholder_nao_substituido",
+        "dado_inventado"
+      ],
+      "razao": "Placeholder não substituído na resposta final.",
+      "sugestao_prompt": null,
+      "correcao_factual": "nao_bate"
+    },
+    {
+      "turnoId": "a408be68-22dc-472d-a27b-a774c5bf15a5",
+      "status": "CORRETO",
+      "patterns": [
+        "acerto_objetividade"
+      ],
+      "razao": "Tool adequada chamada e resposta consistente com toolResults.",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "a52e1aad-6b5f-4ce0-a8cc-441d1f7663f6",
+      "status": "CORRETO",
+      "patterns": [
+        "acerto_objetividade"
+      ],
+      "razao": "Tool adequada chamada e resposta consistente com toolResults.",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "af987d1f-f7e4-496b-bcbc-457a61e9657c",
+      "status": "CORRETO",
+      "patterns": [
+        "acerto_objetividade"
+      ],
+      "razao": "Tool adequada chamada e resposta consistente com toolResults.",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "b360f5bd-6c0a-4ee5-b45a-716794dd76cf",
+      "status": "CORRETO",
+      "patterns": [
+        "acerto_objetividade"
+      ],
+      "razao": "Tool adequada chamada e resposta consistente com toolResults.",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "b4855f27-6623-4712-b159-3570340e50bd",
+      "status": "ERRADO",
+      "patterns": [
+        "placeholder_nao_substituido",
+        "dado_inventado",
+        "dado_inventado"
+      ],
+      "razao": "Placeholder não substituído na resposta final.",
+      "sugestao_prompt": null,
+      "correcao_factual": "nao_bate"
+    },
+    {
+      "turnoId": "bb37d8aa-52f2-4310-a9eb-dfb2f11c5c27",
+      "status": "PARCIAL",
+      "patterns": [
+        "placeholder_nao_substituido"
+      ],
+      "razao": "Placeholder não substituído na resposta final.",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "bc1fde48-e5b3-4a3f-8b01-31dedcc71340",
+      "status": "CORRETO",
+      "patterns": [
+        "acerto_objetividade"
+      ],
+      "razao": "Tool adequada chamada e resposta consistente com toolResults.",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "bfa515f4-182c-4a8b-8ae6-9519661812fb",
+      "status": "PARCIAL",
+      "patterns": [
+        "placeholder_nao_substituido"
+      ],
+      "razao": "Placeholder não substituído na resposta final.",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "c00827ec-c961-4a1a-99b0-697bf9351630",
+      "status": "ERRADO",
+      "patterns": [
+        "dado_inventado",
+        "dado_inventado"
+      ],
+      "razao": "Números citados na resposta não batem com toolResults.",
+      "sugestao_prompt": null,
+      "correcao_factual": "nao_bate"
+    }
+  ]
+}

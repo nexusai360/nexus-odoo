@@ -32,7 +32,8 @@ export type ModelUse =
   | "áudio"
   | "raciocínio"
   | "raciocínio profundo"
-  | "busca";
+  | "busca"
+  | "embedding";
 
 /** Níveis de esforço de raciocínio (thinking), do menor ao maior. */
 /**
@@ -133,6 +134,11 @@ const OPENAI: ModelEntry[] = [
   { id: "gpt-4o-transcribe",      provider: "openai", label: "GPT-4o Transcribe",      tier: "low", use: "áudio", audio: true, released: "2025-03", pricing: { inputPerMTok: 6.0, outputPerMTok: 10.0 } },
   { id: "gpt-4o-mini-transcribe", provider: "openai", label: "GPT-4o mini Transcribe", tier: "low", use: "áudio", audio: true, released: "2025-03", pricing: { inputPerMTok: 3.0, outputPerMTok: 5.0 } },
   { id: "whisper-1",           provider: "openai", label: "Whisper-1",        tier: "low",     use: "áudio", audio: true, released: "2022-09", pricing: { inputPerMTok: 0, outputPerMTok: 0, perMinuteUsd: 0.006 } },
+  // Embedding (router de catalogo R1) , so cobra input, sem output. Fora do
+  // seletor de modelo do chat (use="embedding" e' filtrado em listModels), mas
+  // entra no catalogo para calculo de custo e graficos do menu de consumo.
+  { id: "text-embedding-3-small", provider: "openai", label: "Text Embedding 3 Small", tier: "low", use: "embedding", released: "2024-01", pricing: { inputPerMTok: 0.02, outputPerMTok: 0 } },
+  { id: "text-embedding-3-large", provider: "openai", label: "Text Embedding 3 Large", tier: "low", use: "embedding", released: "2024-01", pricing: { inputPerMTok: 0.13, outputPerMTok: 0 } },
 ];
 
 // ─── Anthropic ────────────────────────────────────────────────────────────────
@@ -567,7 +573,9 @@ export function listModels(
   provider: LlmProvider,
   opts: { includeLegacy?: boolean } = {},
 ): ModelEntry[] {
-  const all = MODELS.filter((m) => m.provider === provider && m.use !== "áudio");
+  const all = MODELS.filter(
+    (m) => m.provider === provider && m.use !== "áudio" && m.use !== "embedding",
+  );
   const filtered = opts.includeLegacy ? all : all.filter((m) => !isLegacyModel(m));
   return provider === "openrouter"
     ? sortOpenrouterModels(filtered)
@@ -654,7 +662,9 @@ export function calculateCost(
   ) {
     const cost = (extras.durationMs / 60_000) * pricing.perMinuteUsd;
     return {
-      costUsd: Math.round(cost * 1_000_000) / 1_000_000,
+      // 10 casas decimais: custos de embedding por chamada sao da ordem de
+      // 1e-7 USD e zerariam com 6 casas. Modelos de chat nao sao afetados.
+      costUsd: Math.round(cost * 1e10) / 1e10,
       costKnown: true,
     };
   }
@@ -664,7 +674,9 @@ export function calculateCost(
     1_000_000;
 
   return {
-    costUsd: Math.round(cost * 1_000_000) / 1_000_000,
+    // 10 casas decimais (ver branch de audio): preserva custos minusculos de
+    // embedding que zerariam com 6 casas.
+    costUsd: Math.round(cost * 1e10) / 1e10,
     costKnown: true,
   };
 }

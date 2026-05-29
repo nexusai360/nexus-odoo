@@ -1,10 +1,74 @@
 # STATUS — nexus-odoo
 
-> **Ponto de retomada entre sessões.** Atualizado em 2026-05-28 11:20.
+> **Ponto de retomada entre sessões.** Atualizado em 2026-05-28 21:45.
 > Ao abrir uma sessão: ler **este arquivo** e o **`CLAUDE.md`**. Modo autônomo
 > é o padrão (ver `CLAUDE.md §6`).
 >
-> ## ✅ BRANCH ATUAL: `main` (Ronda Nex concluída e mergeada)
+> ## 🔄 BRANCH ATIVA: `feat/router-catalogo-r1` (Sub-projeto R1 do roadmap)
+>
+> **Router de catalogo por embedding** em andamento (Caminho C do brainstorm
+> 2026-05-28). Habilitador arquitetural das ondas de expansao do MCP. Spec/Plan
+> em `docs/superpowers/{specs,plans}/2026-05-28-router-catalogo-*`.
+>
+> ### Progresso atual (11 commits ahead de origin/main, backend completo)
+> - **G0**: rebase + investigacao bateria R-X (`pnpm tsx scripts/quality-audit/03-run-test-questions.ts`) ✓
+> - **Wave A**: migration aplicada (5 colunas em agent_settings + tabela agent_router_decision), 5 modulos puros (vocabulary, tool-to-domain, question-normalize, types), 39 testes ✓
+> - **Wave B**: motor completo (embed-domains race-safe, embed-question LRU 200, pick-domains regras 1-8, filter-catalog generico, log-decision fire-and-forget), 98 testes ✓
+> - **Wave C completa**: C1 wire em `src/lib/agent/run-agent.ts` (shadow default, ROUTER_FORCE_DISABLE honrado) + C2 `router-retry.ts` (helper isolado para auto-validator com 15 testes) + C3 integration tests (8 testes) ✓
+> - **Wave D backend**: `queries.ts` com 5 server queries (getRouterKpis, getRouterHistogram via width_bucket, getRouterDiscordancias, getRouterLatencyTimeseries, getRouterEligibleToActivate) + `router-settings.ts` server action com gate de seguranca + rate limit 10/min + audit ✓
+> - **Wave E parcial**: POST `/api/admin/router/kill` (kill-switch nivel 2) + `scripts/router/calibrate-against-batteries.ts` (calibragem offline contra 291 perguntas R8-R23) + `.env.example` documentando ROUTER_FORCE_DISABLE ✓
+> - **Fix bonus**: corrigida falha pre-existente em `src/worker/catalog/model-catalog.test.ts` (modelo `pedido.documento.historico.tempo` intencionalmente removido do catalogo) ✓
+>
+> ### Verificacoes feitas
+> - **tsc verde** em todo o monorepo.
+> - **1968 testes do projeto verdes** (4 suites skipped). Antes desta branch havia 1 falha; agora zero.
+> - **Migration aplicada** no Postgres dev local (`agent_router_decision` + 5 colunas em `agent_settings`).
+> - **Padrao de tool 100% preservado** (P2 do roadmap): zero tool MCP existente alterada.
+> - **Shadow mode default**: `routerEnabled=false`, LLM recebe catalogo inteiro. Zero impacto no 95,5% baseline da R23.
+>
+> ### Sessao 2026-05-28 21:45 (continuacao)
+> - **Descontaminacao RBAC v2**: o commit `f9ef264` tinha empacotado o gating do
+>   RBAC v2 (layouts + rotas que importam `@/lib/auth/require`, modulo que so
+>   existe na branch `feat/rbac-v2-gating-e-dominios`), deixando o **tsc da branch
+>   vermelho**. Revertidos/removidos os 11 arquivos de gating; tsc verde de novo.
+>   Mantida toda a UI legitima do router. Commit `3c1bd38`.
+> - **Wave D4f + E4 entregues**: `RouterCalibrationButton` (botao de processo
+>   longo + KPIs + selo de aprovacao) + rota `POST /api/admin/router/calibrate`
+>   (gate super_admin, rate limit 3/5min, audit) + nucleo `calibrate.ts`
+>   (`runCalibration`, reusado por CLI e rota). 6 testes novos. Commit `6e448fa`.
+> - **CLI de calibragem corrigido**: env carregada antes do prisma (preload
+>   `scripts/router/load-env.ts`); calibragem com **concorrencia 8** (full run
+>   ~1-2min). Commits `51f4e8c`, `a1c47db`.
+> - **Calibragem rodada de verdade** (achado R9 no RADAR): no threshold default
+>   **0.55 o router cai em fallback 84% das vezes (Top-1 16,2%)**. Sweep mostra
+>   0.35 como melhor ponto (Top-1 63,9% / Top-K 75,9%). Nao e bug de scoring, e
+>   threshold mal calibrado. Relatorio em `docs/router-calibration-r1.md`.
+>
+> ### Pendencias para fechar R1
+> - **R9 (decisao do usuario)**: baixar o threshold default 0.55 -> ~0.35
+>   (mudanca de `AgentSettings.routerThreshold` + linha `global`). Mesmo a 0.35,
+>   Top-1 63,9% < gate de 85%: enriquecer `domain-vocabulary.ts` e re-rodar.
+> - **Wave G**: rebuild containers (`app`, `mcp`, `worker` por causa do schema),
+>   rodar **bateria R-X em shadow contra baseline 95,5%** (valida que o router em
+>   shadow nao regride o agente), code review, UI review, **PR contra main (pede
+>   aval do usuario)**.
+>
+> ### Como retomar Wave G manualmente
+> ```bash
+> # 1. Rebuild containers (schema mudou)
+> docker compose build app mcp worker
+> docker compose up -d app mcp worker
+>
+> # 2. (Opcional) Calibragem offline contra perguntas historicas
+> pnpm tsx scripts/router/calibrate-against-batteries.ts
+> # -> docs/router-calibration-r1.md
+>
+> # 3. Bateria R-X em shadow
+> pnpm tsx scripts/quality-audit/03-run-test-questions.ts --limit 300
+> # -> aguarda execucao, depois compara contra baseline 95,5%
+> ```
+>
+> ## ✅ Ronda Nex anterior concluída e mergeada
 >
 > **Ronda de qualidade do Agente Nex 100% entregue:**
 > - **PR #30 MERGEADO** em 2026-05-28 14:04 (commit `4d9c226`)

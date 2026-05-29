@@ -1,0 +1,306 @@
+{
+  "batchId": "0001",
+  "evaluatedAt": "2026-05-26T16:45:00.000Z",
+  "totals": {
+    "CORRETO": 20,
+    "PARCIAL": 7,
+    "ERRADO": 6,
+    "FORA_DE_ESCOPO": 2
+  },
+  "patterns": {
+    "acerto_objetividade": 21,
+    "acerto_encadeamento": 3,
+    "acerto_modelo": 2,
+    "limitacao_real_declarada": 4,
+    "dado_inventado": 5,
+    "fluxo_tool_incompleto": 2,
+    "pergunta_ignorada": 2,
+    "entendeu_mal_termo": 2,
+    "parametro_incompleto": 1,
+    "formato_quebrado": 2,
+    "erro_data": 1,
+    "nao_usou_tool": 1
+  },
+  "turnos": [
+    {
+      "turnoId": "00d4d636-253f-4bdf-97ce-8acf9c6f375c",
+      "status": "ERRADO",
+      "patterns": ["dado_inventado", "fluxo_tool_incompleto"],
+      "razao": "Apenas 1 tool call (mês corrente). Os números do mês anterior (R$ 31.485.649,15 em 520 notas) não vêm de nenhum toolResults — foram inventados. Faltou a segunda chamada para 2026-04-01/2026-04-30.",
+      "sugestao_prompt": "Reforçar: comparação mês×mês exige DUAS chamadas a fiscal_faturamento_periodo, uma por período. Proibido inferir valores históricos sem tool.",
+      "correcao_factual": "nao_bate"
+    },
+    {
+      "turnoId": "00eb032c-c15c-4fa6-8ede-81d4316ad46c",
+      "status": "CORRETO",
+      "patterns": ["acerto_objetividade"],
+      "razao": "Tool certa com período de hoje, resposta direta refletindo R$ 0/0 notas.",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "0189cb25-34dc-4ac2-860b-a6ae1b90beae",
+      "status": "CORRETO",
+      "patterns": ["acerto_encadeamento", "acerto_objetividade"],
+      "razao": "Encadeou financeiro_saldo_contas + financeiro_caixa_periodo. Soma de bancos -24.243.803,15 confere com somatório das contas. Caixa do dia R$ 0 confere.",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "05dc2c6b-e406-4af2-8774-7166949fa5b8",
+      "status": "CORRETO",
+      "patterns": ["limitacao_real_declarada", "acerto_objetividade"],
+      "razao": "Reconheceu que não há agregação por marca, registrou lacuna e entregou alternativa útil (top produtos). Valores conferem com toolResults.",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "0709bad5-de9a-4372-ae20-bfdd91a1958c",
+      "status": "ERRADO",
+      "patterns": ["parametro_incompleto", "erro_data"],
+      "razao": "Usuário pediu 'esse mês' mas a tool foi chamada sem periodoDe/periodoAte, retornando 47.138 notas (acumulado total). IA mesmo assim rotulou como 'mês corrente'. Os valores citados não correspondem ao mês.",
+      "sugestao_prompt": "Reforçar: 'esse mês/mês corrente' SEMPRE exige periodoDe=primeiro dia e periodoAte=hoje em fiscal_impostos_periodo.",
+      "correcao_factual": "nao_bate"
+    },
+    {
+      "turnoId": "073cdda3-cabo-aco",
+      "status": "PARCIAL",
+      "patterns": ["dado_inventado"],
+      "razao": "kpis.totalProdutos=18 e valorTotal=14036.12 conferem. Mas IA disse '1.407 unidades' como total — esse número não está nos kpis (não há campo de soma de saldoTotal). Pode ser cálculo manual mas não há garantia de coerência com itens não retornados.",
+      "sugestao_prompt": "Quando totalizar saldo, usar somente o campo kpis.saldoTotal; se não existir, declarar 'top N itens' sem somar.",
+      "correcao_factual": "nao_bate"
+    },
+    {
+      "turnoId": "093538e8-pagou-semana",
+      "status": "CORRETO",
+      "patterns": ["acerto_objetividade"],
+      "razao": "Período da semana correto (25-26), tool certa, valores R$0 batem com toolResults.",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "0accc95c-faturamos-hoje",
+      "status": "CORRETO",
+      "patterns": ["acerto_objetividade"],
+      "razao": "Tool certa para hoje, resposta enxuta com R$ 0/0 notas que confere.",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "0e726aee-smartfit-cadastro",
+      "status": "CORRETO",
+      "patterns": ["acerto_objetividade"],
+      "razao": "Buscou parceiro Smartfit, retornou linhas com nome/documento/cidade/UF batendo com toolResults.",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "0f97943e-fat-regiao",
+      "status": "CORRETO",
+      "patterns": ["limitacao_real_declarada"],
+      "razao": "Reconheceu que não há agregação por região, registrou lacuna e ofereceu alternativa (top clientes). Valores conferem.",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "1353cda5-top5-ano",
+      "status": "CORRETO",
+      "patterns": ["acerto_objetividade"],
+      "razao": "Período ano corrente correto, top 5 clientes com valores batendo com toolResults.",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "18e4bc62-aluguel-conta",
+      "status": "CORRETO",
+      "patterns": ["acerto_objetividade"],
+      "razao": "Buscou plano de contas com termo aluguel, listou 4 contas que batem com toolResults.",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "19c52c2f-notas-smartfit",
+      "status": "CORRETO",
+      "patterns": ["acerto_objetividade"],
+      "razao": "Filtrou por fornecedor SMARTFIT no mês, somou 21 notas. valorTotal=R$0 reflete o que a tool retornou (todas com valor 0).",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "1d61b675-quem-deve-mais",
+      "status": "ERRADO",
+      "patterns": ["pergunta_ignorada", "formato_quebrado"],
+      "razao": "Resposta menciona 'minha resposta anterior' e 'trecho que você colou' — mas é a primeira mensagem do turno. A IA citou contexto inexistente. Listou alguns valores mas formato é confuso e não responde diretamente 'quem deve mais'.",
+      "sugestao_prompt": "Proibir referência a 'sua mensagem anterior'/'trecho colado' em respostas — o usuário não cola dados. Quando a tool retornar titulos, ordenar por vrSaldo desc e responder direto.",
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "1e7777eb-icms-mes",
+      "status": "CORRETO",
+      "patterns": ["acerto_objetividade"],
+      "razao": "Período do mês correto, ICMS próprio R$ 5.922.745,09 em 1645 notas bate exatamente com toolResults.",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "1eba22ba-fat-medio-diario",
+      "status": "CORRETO",
+      "patterns": ["acerto_objetividade", "acerto_modelo"],
+      "razao": "Calculou média diária 38.064.323,84/26 = R$ 1.464.012,46 corretamente a partir do valor da tool. Exemplo modelo de cálculo derivado.",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "1fae632b-recebi-semana",
+      "status": "CORRETO",
+      "patterns": ["acerto_objetividade"],
+      "razao": "Período semana correto, entrada R$ 0 confere.",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "2830594b-millenium",
+      "status": "CORRETO",
+      "patterns": ["acerto_objetividade"],
+      "razao": "1 parceiro encontrado com nome/documento/UF batendo exatamente.",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "2a7d07b1-buscar-smartfit",
+      "status": "CORRETO",
+      "patterns": ["acerto_objetividade"],
+      "razao": "Listou top 10 dos 50 parceiros, dados conferem.",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "2a9bd69c-vendedor-ticket",
+      "status": "CORRETO",
+      "patterns": ["acerto_objetividade", "acerto_encadeamento"],
+      "razao": "Calculou ticket médio (valorTotal/quantidade) corretamente. Icaro Victor Lucena com R$ 5.654.404,42/4 = R$ 1.413.601,11 derivado da tool.",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "2dfeaf20-quantos-parceiros",
+      "status": "CORRETO",
+      "patterns": ["acerto_objetividade"],
+      "razao": "6.567 parceiros, 6.325 clientes, 754 fornecedores, 4.398 empresas — bate exatamente com toolResults.",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "3294040e-receber-cliente",
+      "status": "ERRADO",
+      "patterns": ["pergunta_ignorada", "formato_quebrado"],
+      "razao": "Resposta refere-se a 'minha resposta anterior' e 'seu bloco' inexistentes. Não agregou por cliente como pedido — listou alguns títulos individuais. Não respondeu à pergunta de soma por cliente.",
+      "sugestao_prompt": "Proibir referência a contexto anterior inexistente. Para 'soma por cliente', agrupar titulos por participanteNome e somar vrSaldo.",
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "32ddb9b3-aluguel-antecip",
+      "status": "FORA_DE_ESCOPO",
+      "patterns": ["limitacao_real_declarada"],
+      "razao": "Tool retornou vazio para 'aluguel antecip', IA declarou honestamente não encontrado e ofereceu sugestões alternativas.",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "3382cc7a-saida-caixa-hoje",
+      "status": "CORRETO",
+      "patterns": ["acerto_objetividade"],
+      "razao": "Período de hoje correto, valores R$ 0 conferem.",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "33e04d11-produto-inexistente",
+      "status": "FORA_DE_ESCOPO",
+      "patterns": ["limitacao_real_declarada"],
+      "razao": "Produto não existe, tool retornou vazio, IA respondeu honestamente.",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "374e7880-halteres-amanha",
+      "status": "PARCIAL",
+      "patterns": ["dado_inventado"],
+      "razao": "Tool retornou 12 itens com valorTotal R$ 53.261,03 mas IA disse '67 unidades em 5 itens'. O 53.261,03 confere (kpi), mas '67 unidades em 5 itens' não bate — totalProdutos é 12. A soma de 67 parece manual sobre top 5.",
+      "sugestao_prompt": "Quando citar totais, usar kpis.totalProdutos não a contagem do top exibido. Se somar unidades manualmente, deixar claro 'top N'.",
+      "correcao_factual": "nao_bate"
+    },
+    {
+      "turnoId": "376d9570-fornecedores",
+      "status": "ERRADO",
+      "patterns": ["dado_inventado"],
+      "razao": "Tool retornou totalParceiros=6567 mas IA escreveu '7.567 parceiros'. Erro numérico claro.",
+      "sugestao_prompt": "Validar transcrição numérica — proibir alterar dígitos do toolResults.",
+      "correcao_factual": "nao_bate"
+    },
+    {
+      "turnoId": "3dbda71e-cliente-saldo",
+      "status": "PARCIAL",
+      "patterns": ["fluxo_tool_incompleto"],
+      "razao": "Identificou o top cliente corretamente mas declarou não ter obtido o saldo a receber sem sequer chamar a tool financeira. Era encadeamento óbvio.",
+      "sugestao_prompt": "Regra: 'cliente que mais compra E saldo a receber' = encadear fiscal_faturamento_por_cliente → financeiro_contas_a_receber filtrado pelo participante.",
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "3dd33dd5-top5-produtos",
+      "status": "CORRETO",
+      "patterns": ["acerto_objetividade"],
+      "razao": "Top 5 produtos no mês corrente com valores e quantidades batendo com toolResults.",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "3de9cb47-pe-na-bola",
+      "status": "PARCIAL",
+      "patterns": ["entendeu_mal_termo", "nao_usou_tool"],
+      "razao": "Usuário disse 'family pé na bola' (família/categoria). IA buscou via estoque_saldo_produto por nome — não buscou em tool de famílias/categorias. Resultado vazio pode ser falso negativo.",
+      "sugestao_prompt": "Quando usuário disser 'family/família X', tentar tool de famílias/categorias antes de buscar por nome de produto.",
+      "correcao_factual": "nao_aplicavel"
+    },
+    {
+      "turnoId": "3e791f02-pedidos-rascunho",
+      "status": "PARCIAL",
+      "patterns": ["entendeu_mal_termo"],
+      "razao": "Rascunho no Odoo é uma etapa específica (draft). IA generalizou para 'todas etapas não finalizadas exceto cancelado', distorcendo o conceito. Disse a assumpção, mas a interpretação está errada.",
+      "sugestao_prompt": "Rascunho/draft = etapa específica do funil de vendas Odoo (state=draft), não todas as não-finalizadas.",
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "41a2c332-fat-mes-vs-passado",
+      "status": "CORRETO",
+      "patterns": ["acerto_encadeamento", "acerto_objetividade", "acerto_modelo"],
+      "razao": "Duas chamadas a fiscal_faturamento_periodo (mês corrente e mês passado), variação calculada corretamente. Exemplo modelo do que o turno 1 deveria ter feito.",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "4d6b0512-quanto",
+      "status": "CORRETO",
+      "patterns": ["acerto_objetividade"],
+      "razao": "Pergunta curta, IA assumiu faturamento mês corrente (default razoável) e respondeu com valor da tool.",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    },
+    {
+      "turnoId": "4d76b056-contas-pagar",
+      "status": "PARCIAL",
+      "patterns": ["dado_inventado", "formato_quebrado"],
+      "razao": "Declarou que recebeu 'lista grande truncada' e fez somatório apenas dos 10 primeiros (R$ 762.465,89). Tool retorna lista completa; somar só top 10 induz a número parcial sem agregado real do retorno.",
+      "sugestao_prompt": "Não chamar de 'truncada' a lista normal da tool — usar kpis agregados quando existirem. Se a tool não dá total, declarar explicitamente.",
+      "correcao_factual": "nao_aplicavel"
+    },
+    {
+      "turnoId": "4ea3b785-flexora-extensora",
+      "status": "CORRETO",
+      "patterns": ["acerto_objetividade"],
+      "razao": "10 itens encontrados, saldo total R$ 490 em 1 unidade bate com kpis. Esclareceu que demais itens têm saldo 0.",
+      "sugestao_prompt": null,
+      "correcao_factual": "bate"
+    }
+  ]
+}
