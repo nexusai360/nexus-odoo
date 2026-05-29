@@ -2346,9 +2346,9 @@ model LlmUsage {
   model          String
   tokensInput    Int      @map("tokens_input")
   tokensOutput   Int      @map("tokens_output")
-  costUsd        Decimal? @map("cost_usd") @db.Decimal(12, 6)
+  costUsd        Decimal? @map("cost_usd") @db.Decimal(18, 10)
   costKnown      Boolean  @default(true) @map("cost_known")
-  costBrl        Decimal? @map("cost_brl") @db.Decimal(14, 6)
+  costBrl        Decimal? @map("cost_brl") @db.Decimal(20, 10)
   usdToBrlRate   Decimal? @map("usd_to_brl_rate") @db.Decimal(10, 4)
   rateSpread     Decimal? @map("rate_spread") @db.Decimal(6, 4)
   rateStale      Boolean  @default(false) @map("rate_stale")

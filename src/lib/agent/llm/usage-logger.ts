@@ -83,9 +83,10 @@ export async function logUsage(args: LogUsageArgs): Promise<void> {
     rateSpread = Number(rateResult.spread.toFixed(4));
     rateStale = rateResult.stale;
 
-    // costBrl só calculado quando o custo é conhecido
+    // costBrl só calculado quando o custo é conhecido. 10 casas decimais para
+    // preservar custos minusculos de embedding (ver calculateCost).
     if (costKnown && costUsd !== null) {
-      costBrl = Number((costUsd * rateResult.rate).toFixed(6));
+      costBrl = Number((costUsd * rateResult.rate).toFixed(10));
     }
 
     await prisma.llmUsage.create({

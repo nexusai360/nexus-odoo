@@ -1,6 +1,6 @@
 # R1 Router de catalogo, relatorio de calibragem
 
-> Gerado em 2026-05-29T00:34:15.559Z
+> Gerado em 2026-05-29T01:28:07.083Z
 > Settings: threshold=0.55, topK=3, dataset=291 perguntas
 
 ## KPIs globais
@@ -8,7 +8,7 @@
 - **Top-1 acerto:** 16.2% (35/216)
 - **Top-K acerto (label em pickedDomains):** 16.7% (36/216)
 - **Fallbacks:** 245/291 (84.2%)
-- **Latencia pickDurationMs:** p50=445ms, p95=2078ms, p99=4672ms
+- **Latencia pickDurationMs:** p50=432ms, p95=1117ms, p99=4678ms
 
 ## Por dominio (so dominios MCP mapeaveis)
 
@@ -28,7 +28,7 @@ Candidatos a ajustar `domain-vocabulary.ts`.
 | Label | Pergunta | Picked | TopScore |
 |---|---|---|---:|
 | estoque | Qual o saldo total em estoque do produto [102] MGPL78 - GLUTE TRAINER MATRIX? | (fallback) | 0.51 |
-| estoque | Quanto temos de mola espiral em aço no armazém? | (fallback) | n/a |
+| estoque | Quanto temos de mola espiral em aço no armazém? | (fallback) | 0.29 |
 | estoque | Quantas unidades temos do produto 1000362251? | (fallback) | 0.34 |
 | estoque | Qual o valor total do estoque em armazém? | (fallback) | 0.55 |
 | estoque | Houve entrada de qual produto na última semana? | (fallback) | 0.49 |

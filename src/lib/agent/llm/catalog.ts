@@ -662,7 +662,9 @@ export function calculateCost(
   ) {
     const cost = (extras.durationMs / 60_000) * pricing.perMinuteUsd;
     return {
-      costUsd: Math.round(cost * 1_000_000) / 1_000_000,
+      // 10 casas decimais: custos de embedding por chamada sao da ordem de
+      // 1e-7 USD e zerariam com 6 casas. Modelos de chat nao sao afetados.
+      costUsd: Math.round(cost * 1e10) / 1e10,
       costKnown: true,
     };
   }
@@ -672,7 +674,9 @@ export function calculateCost(
     1_000_000;
 
   return {
-    costUsd: Math.round(cost * 1_000_000) / 1_000_000,
+    // 10 casas decimais (ver branch de audio): preserva custos minusculos de
+    // embedding que zerariam com 6 casas.
+    costUsd: Math.round(cost * 1e10) / 1e10,
     costKnown: true,
   };
 }
