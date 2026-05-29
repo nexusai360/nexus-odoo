@@ -1,6 +1,6 @@
 # Roteamento contextual do Router + Janela de contexto configurável + migração de config
 
-> SPEC v2, 2026-05-29. Sub-projeto R2-ctx (entra antes/junto do R2 Discovery).
+> SPEC v3 (final, vai para o plano), 2026-05-29. Sub-projeto R2-ctx (entra antes/junto do R2 Discovery).
 > Modo autônomo: SPEC v1 -> review #1 -> v2 -> review #2 -> v3 -> PLAN ... -> execução.
 > Frontend obrigatoriamente via `ui-ux-pro-max`, mantendo a identidade dos blocos existentes.
 
@@ -19,6 +19,17 @@
 | R1.5 | Faltava o resolver do modelo de reformulação, timeout, algoritmo do modo "sem sistema" e concretude do Backtest. | §4.4 (resolver + timeout 2.5s alinhado ao sugeridor), §6.1 (algoritmo do filtro de papéis), §5.1 (Backtest: investigação dirigida no plano + contrato mínimo). |
 
 Critério de saída do review #1: achados materiais endereçados; nenhum buraco de segurança/ordem em aberto. Segue para review #2.
+
+### Review #2 (v2 -> v3): achados materiais aplicados
+
+| # | Achado (gap restante na v2) | Resolução na v3 |
+|---|---|---|
+| R2.1 | **Ordem real no `run-agent`:** `pickDomains` roda ANTES de `loadHistory` e ANTES de persistir a mensagem atual. A reformulação precisa do contexto, mas a mensagem atual ainda não está no banco. | §4.2 nota de ordem: `reformulateQuestion` usa `getLastNPairs(conversationId)` (turnos **anteriores**, já persistidos) + a **pergunta atual em memória** (`args.userMessage`), antes de persistir. Não depende de `loadHistory`. |
+| R2.2 | `loadHistory` "lendo o `agent_settings`" acoplaria DB e dificultaria teste. | §6: `runAgent` (que já tem `agentSettings` carregado) **resolve** `budget` + `includeSystem` + checkpoint e os passa como **parâmetros** para `loadHistory`. `loadHistory` continua puro/testável. Clamp 10..50 no resolver. |
+| R2.3 | Pílulas do bloco "Configuração de Router" gatilham o bloco todo, mas o sub-bloco Embeddings não tem liga/desliga (é o motor base). | §8.2: as pílulas do bloco gatilham a **Construção da pergunta** (Camada 2). O sub-bloco Embeddings é **config-only** (sempre usado pelo router base, governado no Monitoramento), rotulado como tal. Sem toggle próprio. |
+| R2.4 | Faltava fixar copy pt-br/sem em dash e a rota do atalho. | §8: toda copy em pt-br, **sem em dash**. Rota do atalho determinada no plano inspecionando o roteamento da página de Monitoramento (querystring/estado de aba). |
+
+Critério de saída do review #2: nenhum achado material novo; ordem de execução, acoplamento e semântica de UI fechados. **v3 é a versão que vai para o plano.**
 
 ---
 
@@ -127,6 +138,13 @@ evita responder a uma paráfrase que distorça a intenção.
 reformulada para um domínio proibido e entregaria tools fora do acesso. A checagem em `decisaoFinal`
 fecha isso.
 
+**Nota de ordem (R2.1):** no `run-agent.ts` atual, `pickDomains` (linha ~423) roda **antes** de
+`loadHistory` (~504) e **antes** de `persistMessage` da pergunta atual (~513). Logo,
+`reformulateQuestion` monta o contexto com `getLastNPairs(conversationId, N)` (os turnos **anteriores**,
+já no banco) somados à **pergunta atual em memória** (`args.userMessage`, ainda não persistida). Não
+depende de `loadHistory`. Em conversa nova (sem pares anteriores), pula a Camada 2 (não há o que
+contextualizar) e segue com a decisão da Camada 1.
+
 ### 4.3 Interação com shadow/active (resolve R1.4)
 
 - **Router em shadow (`routerEnabled=false`):** o catálogo não é filtrado (agente vê tudo). A Camada 2/3
@@ -184,7 +202,9 @@ ler os valores efetivos do `AgentSettings`, resolvidos em `runAgent` conforme a 
 - `contextWindowIncludeSystem` (bool, default `true`):
   - `true` (atual): todos os papéis (`user`, `assistant`, `tool`), comportamento de hoje.
   - `false`: só `user` + assistant **final** (texto). Exclui `role=tool` e assistant-só-com-`toolCalls`. **Cuidado:** ao remover tools, é preciso **limpar referências de tool nas mensagens do assistant** que sobrarem, senão a API quebra (hoje `sanitizeHistoryPairs` trata pares incompletos; o modo "sem sistema" exige um passo de limpeza explícito). Detalhe que vai para o plano com teste dedicado.
-- `contextWindowCheckpoint` (`FeatureCheckpoint`, default `PRODUCTION`): controla onde a janela configurada vale. `OFF` = sem histórico (turno isolado); `PLAYGROUND` = só playground; `PRODUCTION` = bubble + WhatsApp + playground. `runAgent` resolve via `args.isPlayground`.
+- `contextWindowCheckpoint` (`FeatureCheckpoint`, default `PRODUCTION`): controla onde a janela configurada vale. `OFF` = sem histórico (turno isolado, `budget=0`, `loadHistory` já retorna `[]`); `PLAYGROUND` = só playground; `PRODUCTION` = bubble + WhatsApp + playground. `runAgent` resolve via `args.isPlayground`.
+
+**Resolução (R2.2):** `runAgent` já carrega `agentSettings`. Ele **resolve** o efetivo (`budget` com clamp 10..50, `includeSystem`, e se a janela se aplica à superfície atual pelo checkpoint) e **passa como parâmetros** para `loadHistory(conversationId, budget, { includeSystem })`. `loadHistory` permanece puro (sem ler settings nem DB de config), o que mantém os testes simples. Fora do escopo do checkpoint (ex.: `OFF`, ou `PLAYGROUND` numa chamada de produção), `budget=0`.
 
 Como `loadHistory` tem **um único call site** e as 3 superfícies passam por `runAgent`, ligar a config aqui é **implacável**: um ponto de mudança cobre tudo.
 
@@ -244,7 +264,7 @@ o risco de "perder credencial ativa" some.
 
 ## 8. Frontend (Configuração do Agente Nex) — via `ui-ux-pro-max`
 
-Princípio mestre: **consistência** com os blocos existentes (mesmo chrome: ícone Lucide + título + descrição curta + pílulas Desativado/Playground/Produção no topo direito). Sem emoji. Tokens semânticos, foco visível, contraste AA, estados disabled claros, dark mode paritário.
+Princípio mestre: **consistência** com os blocos existentes (mesmo chrome: ícone Lucide + título + descrição curta + pílulas Desativado/Playground/Produção no topo direito). Sem emoji. Tokens semânticos, foco visível, contraste AA, estados disabled claros, dark mode paritário. Toda copy em pt-br, **sem em dash**. A construção visual concreta de cada componente novo passa pela skill `ui-ux-pro-max` na execução.
 
 ### 8.1 Bloco "Janela de contexto" (abaixo de "Sugestões na Bubble")
 - Chrome padrão + pílulas (`contextWindowCheckpoint`).
