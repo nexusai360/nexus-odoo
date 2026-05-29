@@ -162,10 +162,14 @@ async function main(): Promise<void> {
         catalogSizeFull: 0,
         userQuestion: inst.q,
         conversationId: inst.convId,
-        // Dominio esperado (label da rodada) so para mapeaveis; o painel usa
-        // toolsDomains para computar cobertura. Nao-mapeaveis ficam vazios.
-        toolsActuallyUsed: inst.mappable ? [inst.label!] : [],
-        toolsDomains: inst.mappable ? [inst.label!] : [],
+        // "Tool chamada" (toolsDomains) no painel: para perguntas mapeaveis usa
+        // o dominio esperado (label da rodada), que permite medir discordancia.
+        // Para nao-mapeaveis (informais/edge/mistas, sem dominio esperado) usa o
+        // que o router de fato roteou, evitando celula vazia ("-") no painel.
+        // Fallback real (sem dominio escolhido) fica vazio: a coluna "Router
+        // escolhida" ja sinaliza "fallback".
+        toolsActuallyUsed: inst.mappable ? [inst.label!] : pickedOf(norm(inst.q)),
+        toolsDomains: inst.mappable ? [inst.label!] : pickedOf(norm(inst.q)),
       });
       if (res.persisted) persisted++; else failed++;
       if ((persisted + failed) % 50 === 0) console.log(`[rounds] gravados ${persisted + failed}/${instances.length}`);
