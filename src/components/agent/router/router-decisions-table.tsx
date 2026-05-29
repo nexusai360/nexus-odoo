@@ -37,7 +37,7 @@ import type { RouterDecisionRow } from "@/lib/agent/router/queries";
 // de serem escondidas: sao rotas de verdade, so tinham nome tecnico.
 const DOMAIN_DISPLAY: Record<string, string> = {
   caminho3: "BI avançado",
-  "dominios-vazios": "Cobertura",
+  "dominios-vazios": "cobertura",
 };
 function displayDomain(d: string): string {
   return DOMAIN_DISPLAY[d] ?? d;
@@ -158,7 +158,7 @@ export function RouterDecisionsTable({
     <Card>
       <CardHeader>
         <CardTitle className="flex items-center gap-2 text-base">
-          Requisições do router
+          Requisições do Router
         </CardTitle>
         <p className="text-xs text-muted-foreground">
           Todas as decisões no período e origem filtrados. Linhas em destaque
@@ -170,7 +170,7 @@ export function RouterDecisionsTable({
             <Search className="pointer-events-none absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
             <Input
               type="search"
-              placeholder="Buscar na pergunta…"
+              placeholder="Busca avançada…"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               onKeyDown={(e) => {
