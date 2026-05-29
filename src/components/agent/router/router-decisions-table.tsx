@@ -172,6 +172,21 @@ export function RouterDecisionsTable({
     });
   };
 
+  const anyFilter =
+    searchQuery !== "" || toolsFilter.length > 0 || pickedFilter.length > 0;
+
+  const clearAll = () => {
+    setSearch("");
+    const params = new URLSearchParams(searchParams.toString());
+    params.delete("q");
+    params.delete("tools");
+    params.delete("picked");
+    params.set("page", "0");
+    startTransition(() => {
+      router.push(`${pathname}?${params.toString()}`, { scroll: false });
+    });
+  };
+
   const goToPage = (next: number) => {
     const params = new URLSearchParams(searchParams.toString());
     params.set("page", String(Math.min(Math.max(0, next), totalPages - 1)));
@@ -205,47 +220,47 @@ export function RouterDecisionsTable({
           são discordâncias (o domínio chamado/esperado ficou fora do que o
           router escolheu), candidatas a calibrar `domain-vocabulary.ts`.
         </p>
-        <div className="mt-2 flex max-w-md items-center gap-2">
-          <div className="relative flex-1">
-            <Search className="pointer-events-none absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-            <Input
-              type="search"
-              placeholder="Busca avançada…"
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === "Enter") applySearch(search);
-              }}
-              className="pl-8"
-              aria-label="Buscar na pergunta"
+        <div className="mt-2 flex flex-col gap-3 lg:flex-row lg:items-center">
+          <div className="flex flex-1 items-center gap-2 lg:max-w-md">
+            <div className="relative flex-1">
+              <Search className="pointer-events-none absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+              <Input
+                type="search"
+                placeholder="Busca avançada…"
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") applySearch(search);
+                }}
+                className="pl-8"
+                aria-label="Busca avançada na tabela"
+              />
+            </div>
+            {anyFilter ? (
+              <button
+                type="button"
+                onClick={clearAll}
+                className="inline-flex h-9 shrink-0 cursor-pointer items-center gap-1.5 rounded-lg border border-border bg-card px-3 text-xs font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-500"
+                aria-label="Limpar todos os filtros"
+              >
+                <X className="h-3.5 w-3.5" aria-hidden />
+                Limpar
+              </button>
+            ) : null}
+          </div>
+          <div className="flex flex-wrap items-center gap-2 lg:ml-auto">
+            <DomainMultiSelect
+              label="Router escolhida"
+              selected={pickedFilter}
+              onChange={(v) => applyMulti("picked", v)}
+            />
+            <DomainMultiSelect
+              label="Tool chamada"
+              selected={toolsFilter}
+              onChange={(v) => applyMulti("tools", v)}
+              colored
             />
           </div>
-          {searchQuery ? (
-            <button
-              type="button"
-              onClick={() => {
-                setSearch("");
-                applySearch("");
-              }}
-              className="inline-flex h-9 shrink-0 cursor-pointer items-center gap-1.5 rounded-lg border border-border bg-card px-3 text-xs font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
-              aria-label="Limpar busca"
-            >
-              <X className="h-3.5 w-3.5" aria-hidden />
-              Limpar
-            </button>
-          ) : null}
-        </div>
-        <div className="mt-2 flex flex-wrap items-center gap-2">
-          <DomainMultiSelect
-            label="Router escolhida"
-            selected={pickedFilter}
-            onChange={(v) => applyMulti("picked", v)}
-          />
-          <DomainMultiSelect
-            label="Tool chamada"
-            selected={toolsFilter}
-            onChange={(v) => applyMulti("tools", v)}
-          />
         </div>
       </CardHeader>
       <CardContent className="p-0">
@@ -397,18 +412,20 @@ function DomainMultiSelect({
   label,
   selected,
   onChange,
+  colored = false,
 }: {
   label: string;
   selected: string[];
   onChange: (next: string[]) => void;
+  colored?: boolean;
 }) {
   const [open, setOpen] = useState(false);
   const trigger =
     selected.length === 0
       ? label
       : selected.length === 1
-        ? `${label}: ${displayDomain(selected[0])}`
-        : `${label}: ${selected.length}`;
+        ? displayDomain(selected[0])
+        : `${selected.length} selecionadas`;
   const toggle = (d: string) =>
     onChange(
       selected.includes(d)
@@ -463,7 +480,18 @@ function DomainMultiSelect({
                   >
                     {isOn ? <Check className="h-3 w-3" /> : null}
                   </span>
-                  <span className="text-foreground">{displayDomain(d)}</span>
+                  <span
+                    className={cn(
+                      "inline-flex items-center rounded-full border px-2 py-0.5 text-xs font-medium transition-colors",
+                      isOn
+                        ? colored
+                          ? toneFor(d)
+                          : "border-border bg-muted/40 text-foreground"
+                        : "border-border bg-background text-muted-foreground",
+                    )}
+                  >
+                    {displayDomain(d)}
+                  </span>
                 </button>
               </li>
             );
