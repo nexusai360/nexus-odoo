@@ -14,10 +14,23 @@
 > ajustes de UI (slider fluido, tier badges, zero sem risquinho, OpenRouter em
 > anexo). Reform e router seguem **OFF/shadow** até o gate de validação ao vivo.
 >
-> **PRÓXIMA ETAPA (roadmap): R2 , Discovery enxuto** (`search_count` + 3 baldes),
-> insumo das ondas O1..O5. Metodologia completa (SPEC v1->v3, PLAN v1->v3,
-> execução) na MESMA branch `feat/router-ativacao-r2`. Depois: O1 (SPED Fiscal
-> piloto), O2 financeiro, etc. (backlog de 10 tasks no histórico da conversa).
+> **R2 Discovery enxuto ENTREGUE** (mesma branch, metodologia completa SPEC
+> v1->v3 + PLAN v1->v3 com 2 reviews adversariais cada). Classificou os 652
+> modelos da Tauga em 3 baldes via `search_count` (uid 11 quase-admin):
+> **A=90, B=268, C=294, nao_class=0** (partição exata). Lógica pura testada em
+> `src/lib/discovery/baldes/` (37 testes) + CLI `npm run discovery:baldes`
+> (`scripts/discovery/baldes/run.ts`). Artefatos: `discovery/odoo-schema/baldes.json`
+> + `docs/discovery/2026-05-29-baldes.md` (insumo das ondas). Ground-truth do censo
+> confere (sped.tabela.preco.regra 11864, sped.consulta.dfe.item 4780 em A; crm em
+> B sem_sinal). Achado E2E: o `OdooClient` embrulha faults após retries, então
+> `error-kind` separa acesso/inexistente por mensagem (pt-BR/en).
+>
+> **PRÓXIMA ETAPA (roadmap): O1 , Onda piloto SPED Fiscal** sobre o `baldes.json`
+> (DF-e, notas recebidas, inscrições; foco no Balde A do `sped`). Metodologia
+> completa, branch própria (`feat/onda-sped-fiscal-expansao` conforme roadmap §6).
+> Cada onda entrega raw_* + fato_* + tools no padrão canônico + testes +
+> vocabulário do Router + bateria R-X >= 95,5%. Depois O2 (CRM), O3 (Pedido),
+> O4 (Financeiro), O5 (Contábil).
 >
 > ---
 > ### Histórico R1 (feat/router-catalogo-r1) , arquivado abaixo
