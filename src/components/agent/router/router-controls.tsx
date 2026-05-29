@@ -212,11 +212,14 @@ export function RouterControls({ initial, eligibility }: Props) {
         {/* Rodape: aviso de alteracoes nao salvas + botao Salvar (fosco quando
             nao ha alteracao, ativo quando ha). */}
         <div className="flex flex-wrap items-center justify-between gap-2 border-t border-border pt-4">
-          <p className="text-xs text-muted-foreground">
-            {dirty
-              ? "Existem alterações não salvas. Clique em Salvar para aplicar."
-              : "Tudo salvo."}
-          </p>
+          {dirty ? (
+            <p className="text-xs text-amber-400">
+              Você tem alterações não salvas. Clique em &quot;Salvar&quot; para
+              aplicar.
+            </p>
+          ) : (
+            <span />
+          )}
           <Button
             type="button"
             onClick={handleSave}

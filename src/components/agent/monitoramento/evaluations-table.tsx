@@ -370,35 +370,31 @@ export function EvaluationsTable({
             {"-"}
             {numberFmt.format(showingTo)} de {numberFmt.format(data.total)}
           </div>
-          <div className="flex items-center justify-center gap-1">
-            <Button
+          <div className="flex items-center justify-center gap-2">
+            <button
               type="button"
-              variant="ghost"
-              size="sm"
-              className="h-8 w-8 p-0"
               disabled={page <= 1 || loading}
               onClick={() => handlePage(page - 1)}
               aria-label="Página anterior"
+              className="inline-flex h-8 w-8 cursor-pointer items-center justify-center rounded-md border border-border text-foreground transition-colors hover:bg-muted disabled:cursor-not-allowed disabled:opacity-40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
             >
-              <ChevronLeft className="h-4 w-4" />
-            </Button>
+              <ChevronLeft className="h-4 w-4" aria-hidden />
+            </button>
             <PageJumpNavigator
               page={page - 1}
               totalPages={totalPages}
               onJump={(idx) => handlePage(idx + 1)}
               disabled={loading}
             />
-            <Button
+            <button
               type="button"
-              variant="ghost"
-              size="sm"
-              className="h-8 w-8 p-0"
               disabled={page >= totalPages || loading}
               onClick={() => handlePage(page + 1)}
               aria-label="Próxima página"
+              className="inline-flex h-8 w-8 cursor-pointer items-center justify-center rounded-md border border-border text-foreground transition-colors hover:bg-muted disabled:cursor-not-allowed disabled:opacity-40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
             >
-              <ChevronRight className="h-4 w-4" />
-            </Button>
+              <ChevronRight className="h-4 w-4" aria-hidden />
+            </button>
           </div>
           <div className="justify-self-end">
             <CustomSelect
