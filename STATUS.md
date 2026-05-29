@@ -1,6 +1,6 @@
 # STATUS — nexus-odoo
 
-> **Ponto de retomada entre sessões.** Atualizado em 2026-05-28 13:00.
+> **Ponto de retomada entre sessões.** Atualizado em 2026-05-28 21:45.
 > Ao abrir uma sessão: ler **este arquivo** e o **`CLAUDE.md`**. Modo autônomo
 > é o padrão (ver `CLAUDE.md §6`).
 >
@@ -26,10 +26,32 @@
 > - **Padrao de tool 100% preservado** (P2 do roadmap): zero tool MCP existente alterada.
 > - **Shadow mode default**: `routerEnabled=false`, LLM recebe catalogo inteiro. Zero impacto no 95,5% baseline da R23.
 >
+> ### Sessao 2026-05-28 21:45 (continuacao)
+> - **Descontaminacao RBAC v2**: o commit `f9ef264` tinha empacotado o gating do
+>   RBAC v2 (layouts + rotas que importam `@/lib/auth/require`, modulo que so
+>   existe na branch `feat/rbac-v2-gating-e-dominios`), deixando o **tsc da branch
+>   vermelho**. Revertidos/removidos os 11 arquivos de gating; tsc verde de novo.
+>   Mantida toda a UI legitima do router. Commit `3c1bd38`.
+> - **Wave D4f + E4 entregues**: `RouterCalibrationButton` (botao de processo
+>   longo + KPIs + selo de aprovacao) + rota `POST /api/admin/router/calibrate`
+>   (gate super_admin, rate limit 3/5min, audit) + nucleo `calibrate.ts`
+>   (`runCalibration`, reusado por CLI e rota). 6 testes novos. Commit `6e448fa`.
+> - **CLI de calibragem corrigido**: env carregada antes do prisma (preload
+>   `scripts/router/load-env.ts`); calibragem com **concorrencia 8** (full run
+>   ~1-2min). Commits `51f4e8c`, `a1c47db`.
+> - **Calibragem rodada de verdade** (achado R9 no RADAR): no threshold default
+>   **0.55 o router cai em fallback 84% das vezes (Top-1 16,2%)**. Sweep mostra
+>   0.35 como melhor ponto (Top-1 63,9% / Top-K 75,9%). Nao e bug de scoring, e
+>   threshold mal calibrado. Relatorio em `docs/router-calibration-r1.md`.
+>
 > ### Pendencias para fechar R1
-> - **Wave D UI**: D1 ui-ux-pro-max planning + D4a-f componentes (RouterKpiCards, Histogram, LatencyChart, Discordancias, Controls, CalibrationButton) + D5 rota `/agente/monitoramento` aba Router + D6 ui-ux-pro-max review. Backend de queries ja pronto.
-> - **Wave E4**: handler do botao calibragem na UI (chama script E2).
-> - **Wave G**: rebuild containers (`app`, `mcp`, `worker` por causa do schema), rodar calibragem (precisa de credencial OpenAI embedding configurada em `AppSetting embedding_credential_id`), rodar bateria R-X em shadow contra baseline 95,5%, code review, UI review, PR contra main.
+> - **R9 (decisao do usuario)**: baixar o threshold default 0.55 -> ~0.35
+>   (mudanca de `AgentSettings.routerThreshold` + linha `global`). Mesmo a 0.35,
+>   Top-1 63,9% < gate de 85%: enriquecer `domain-vocabulary.ts` e re-rodar.
+> - **Wave G**: rebuild containers (`app`, `mcp`, `worker` por causa do schema),
+>   rodar **bateria R-X em shadow contra baseline 95,5%** (valida que o router em
+>   shadow nao regride o agente), code review, UI review, **PR contra main (pede
+>   aval do usuario)**.
 >
 > ### Como retomar Wave G manualmente
 > ```bash
