@@ -66,7 +66,7 @@ export function ApiKeySelect({
         disabled={disabled}
         onClick={() => setOpen((v) => !v)}
         className={cn(
-          "flex h-10 w-full items-center justify-between gap-2 rounded-lg border border-border bg-background px-3 text-sm text-foreground transition-colors hover:bg-muted/50",
+          "flex w-full items-center justify-between gap-2 rounded-lg border border-border bg-card px-3 py-2 text-sm text-foreground cursor-pointer transition-all duration-200 hover:border-muted-foreground/30",
           "disabled:cursor-not-allowed disabled:opacity-50",
         )}
       >
@@ -100,8 +100,8 @@ export function ApiKeySelect({
                       setOpen(false);
                     }}
                     className={cn(
-                      "flex w-full items-center justify-between gap-2 rounded-md px-3 py-2 text-left text-sm transition-colors hover:bg-muted",
-                      isActive ? "text-violet-700 dark:text-violet-300" : "text-foreground",
+                      "flex w-full items-center justify-between gap-2 rounded-md px-3 py-2 text-left text-sm text-foreground transition-colors hover:bg-muted",
+                      isActive && "bg-muted/60",
                     )}
                   >
                     <span className="truncate">{optionText(o)}</span>
