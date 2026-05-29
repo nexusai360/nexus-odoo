@@ -1,25 +1,25 @@
 # R1 Router de catalogo, relatorio de calibragem
 
-> Gerado em 2026-05-29T01:28:07.083Z
-> Settings: threshold=0.55, topK=3, dataset=291 perguntas
+> Gerado em 2026-05-29T01:31:46.431Z
+> Settings: threshold=0.25, topK=3, dataset=291 perguntas
 
 ## KPIs globais
 
-- **Top-1 acerto:** 16.2% (35/216)
-- **Top-K acerto (label em pickedDomains):** 16.7% (36/216)
-- **Fallbacks:** 245/291 (84.2%)
-- **Latencia pickDurationMs:** p50=432ms, p95=1117ms, p99=4678ms
+- **Top-1 acerto:** 77.8% (168/216)
+- **Top-K acerto (label em pickedDomains):** 93.1% (201/216)
+- **Fallbacks:** 9/291 (3.1%)
+- **Latencia pickDurationMs:** p50=544ms, p95=1211ms, p99=6444ms
 
 ## Por dominio (so dominios MCP mapeaveis)
 
 | Dominio | Total | Top-1 | Top-K |
 |---|---:|---:|---:|
-| cadastros | 32 | 9.4% | 9.4% |
-| comercial | 33 | 30.3% | 30.3% |
-| contabil | 20 | 25.0% | 30.0% |
-| estoque | 46 | 13.0% | 13.0% |
-| financeiro | 45 | 13.3% | 13.3% |
-| fiscal | 40 | 12.5% | 12.5% |
+| cadastros | 32 | 96.9% | 96.9% |
+| comercial | 33 | 75.8% | 97.0% |
+| contabil | 20 | 65.0% | 85.0% |
+| estoque | 46 | 82.6% | 95.7% |
+| financeiro | 45 | 84.4% | 95.6% |
+| fiscal | 40 | 57.5% | 85.0% |
 
 ## Discordancias (label fora do top-K), top 30
 
@@ -27,36 +27,21 @@ Candidatos a ajustar `domain-vocabulary.ts`.
 
 | Label | Pergunta | Picked | TopScore |
 |---|---|---|---:|
-| estoque | Qual o saldo total em estoque do produto [102] MGPL78 - GLUTE TRAINER MATRIX? | (fallback) | 0.51 |
-| estoque | Quanto temos de mola espiral em aço no armazém? | (fallback) | 0.29 |
-| estoque | Quantas unidades temos do produto 1000362251? | (fallback) | 0.34 |
-| estoque | Qual o valor total do estoque em armazém? | (fallback) | 0.55 |
-| estoque | Houve entrada de qual produto na última semana? | (fallback) | 0.49 |
-| estoque | Top 5 produtos mais movimentados no mês | (fallback) | 0.47 |
-| estoque | Qual o saldo do FLEXORA EXTENSORA? | (fallback) | 0.36 |
-| estoque | Estou querendo saber quanto tem de halter em estoque | (fallback) | 0.46 |
-| estoque | Quero conferir o estoque de barras | (fallback) | 0.49 |
-| estoque | Cadê os equipamentos PMB403? | (fallback) | 0.29 |
-| estoque | Tem quanto de cabo de aço? | (fallback) | 0.26 |
-| estoque | Concentração do estoque por família | (fallback) | 0.45 |
-| estoque | Produto 102 tem quantos em armazém? | (fallback) | 0.42 |
-| estoque | Quero ver o saldo dos puxadores | (fallback) | 0.44 |
-| estoque | Quantos itens temos com saldo zero? | (fallback) | 0.51 |
-| estoque | Vai ter halteres pra entrega amanhã? | (fallback) | 0.28 |
-| estoque | Cadê o estoque do pino de aço? | (fallback) | 0.41 |
-| estoque | Tem disco de musculação parado? | (fallback) | 0.30 |
-| estoque | Saldo do PMB403 hoje | (fallback) | 0.40 |
-| estoque | Saldo de pino de aço fixação | (fallback) | 0.31 |
-| estoque | O que temos do código 1000093102 | (fallback) | 0.37 |
-| estoque | Estoque atual do GLUTE TRAINER | (fallback) | 0.32 |
-| estoque | Tem [1000362265] ainda? | (fallback) | 0.34 |
-| estoque | Quanto sobrou de cabo de aço esticado? | (fallback) | 0.26 |
-| estoque | Tem produto sem movimento esse ano? | (fallback) | 0.41 |
-| estoque | Quero ver entradas dos últimos 7 dias | (fallback) | 0.39 |
-| estoque | Saída de produtos da semana passada | (fallback) | 0.47 |
-| estoque | Movimentação de produtos no mês | (fallback) | 0.53 |
-| estoque | Onde estão concentrados os produtos por marca? | (fallback) | 0.40 |
-| estoque | Produtos do family pé na bola? | (fallback) | 0.32 |
+| estoque | Tem quanto de cabo de aço? | (fallback) | 0.24 |
+| estoque | O que temos do código 1000093102 | cadastros, fiscal, dominios-vazios, caminho3 | 0.42 |
+| financeiro | Quanto vai sair essa semana? | comercial, fiscal, estoque, dominios-vazios, caminho3 | 0.31 |
+| financeiro | Fornecedor que mais devemos | cadastros, fiscal, comercial, dominios-vazios, caminho3 | 0.40 |
+| fiscal | Quantas notas recebemos do fornecedor [SMARTFIT]? | (fallback) | n/a |
+| fiscal | Top 5 clientes que mais compraram esse mês | comercial, cadastros, crm, dominios-vazios, caminho3 | 0.44 |
+| fiscal | Top 5 clientes que mais compraram este ano | comercial, cadastros, crm, dominios-vazios, caminho3 | 0.43 |
+| fiscal | Produtos mais vendidos nos últimos 30 dias | comercial, estoque, crm, dominios-vazios, caminho3 | 0.48 |
+| fiscal | Produto mais vendido em valor | comercial, crm, estoque, dominios-vazios, caminho3 | 0.51 |
+| fiscal | Produto mais vendido em quantidade | comercial, estoque, crm, dominios-vazios, caminho3 | 0.51 |
+| comercial | Parcelas que vencem amanhã | financeiro, fiscal, estoque, dominios-vazios, caminho3 | 0.38 |
+| cadastros | Buscar fornecedor Icaro Rossas | (fallback) | n/a |
+| contabil | Conta de receita de vendas | financeiro, comercial, fiscal, dominios-vazios, caminho3 | 0.49 |
+| contabil | Buscar conta com 'aluguel' no nome | financeiro, cadastros, caminho3, dominios-vazios | 0.34 |
+| contabil | Buscar conta com 'imposto' no nome | fiscal, financeiro, cadastros, dominios-vazios, caminho3 | 0.40 |
 
 ## Categorias nao mapeaveis (semanticas, nao de dominio)
 

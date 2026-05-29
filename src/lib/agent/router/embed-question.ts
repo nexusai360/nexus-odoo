@@ -6,6 +6,7 @@
 // (custo ~$0.000002 por colisao).
 
 import { embed, type EmbedUsageContext } from "../rag/embed";
+import { getRouterEmbeddingConfig } from "./constants";
 import { hashKey, normalize } from "./question-normalize";
 
 /** LRU minimalista baseado em Map. Map em JS preserva ordem de insercao, o
@@ -76,7 +77,12 @@ export async function embedQuestion(
     return { vector: cached, cacheHit: true };
   }
 
-  const vector = await embed(qNorm, usageCtx ? { usage: usageCtx } : undefined);
+  const { model, dimensions } = getRouterEmbeddingConfig();
+  const vector = await embed(qNorm, {
+    model,
+    dimensions,
+    usage: usageCtx,
+  });
   cache.set(key, vector);
   return { vector, cacheHit: false };
 }

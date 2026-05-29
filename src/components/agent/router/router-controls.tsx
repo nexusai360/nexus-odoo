@@ -111,11 +111,12 @@ export function RouterControls({ initial, eligibility }: Props) {
             Threshold: {state.routerThreshold.toFixed(2)}
           </Label>
           <p className="text-xs text-muted-foreground">
-            Score minimo para um dominio entrar no top-K (0.30 a 0.90).
+            Score minimo para um dominio entrar no top-K (0.15 a 0.90). Com o
+            modelo large, o ponto calibrado fica em torno de 0.30.
           </p>
           <Input
             type="number"
-            min={0.3}
+            min={0.15}
             max={0.9}
             step={0.05}
             value={state.routerThreshold}

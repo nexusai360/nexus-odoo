@@ -268,7 +268,7 @@ async function loadAgentSettings() {
     maxSuggestions: row?.maxSuggestions ?? 3,
     // R1 router de catalogo (sub-projeto do roadmap de cobertura completa).
     routerEnabled: !routerForceDisable && ((row?.routerEnabled as boolean | undefined) ?? false),
-    routerThreshold: (row?.routerThreshold as number | undefined) ?? 0.55,
+    routerThreshold: (row?.routerThreshold as number | undefined) ?? 0.30,
     routerTopK: (row?.routerTopK as number | undefined) ?? 3,
     routerRetryExpandBelow: (row?.routerRetryExpandBelow as number | undefined) ?? 0.7,
     routerRetryEnabled: (row?.routerRetryEnabled as boolean | undefined) ?? false,

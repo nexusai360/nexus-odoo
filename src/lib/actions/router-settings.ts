@@ -24,7 +24,7 @@ import { getRouterEligibleToActivate } from "@/lib/agent/router/queries";
 
 const updateInputSchema = z.object({
   routerEnabled: z.boolean().optional(),
-  routerThreshold: z.number().min(0.3).max(0.9).optional(),
+  routerThreshold: z.number().min(0.15).max(0.9).optional(),
   routerTopK: z.number().int().min(1).max(6).optional(),
   routerRetryExpandBelow: z.number().min(0.3).max(0.95).optional(),
   routerRetryEnabled: z.boolean().optional(),

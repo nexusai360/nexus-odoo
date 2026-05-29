@@ -8,6 +8,7 @@
 // Storage em memoria do processo: 9 dominios x 1536 floats x 4 bytes ~= 55 KB.
 
 import { embed } from "../rag/embed";
+import { getRouterEmbeddingConfig } from "./constants";
 import {
   DOMAINS,
   computeVocabularyHash,
@@ -23,9 +24,12 @@ let pendingPromise: Promise<DomainVectors> | null = null;
 /** Sequencial em vez de batch porque `embed()` aceita 1 texto por chamada.
  *  Tempo total de cold start: ~9 x 100ms = ~1s. So acontece 1x por processo. */
 async function embedAllDomains(): Promise<DomainVectors> {
+  const { model, dimensions } = getRouterEmbeddingConfig();
   const out: DomainVectors = {};
   for (const d of DOMAINS) {
-    out[d.domain] = await embed(d.description);
+    // Mesmo modelo/dimensao da pergunta (embed-question), senao o cosseno
+    // fica sem sentido. Sem usageCtx: o warm de dominios e' 1x por processo.
+    out[d.domain] = await embed(d.description, { model, dimensions });
   }
   return out;
 }

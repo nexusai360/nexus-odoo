@@ -2476,7 +2476,7 @@ model AgentSettings {
   /// TRUE: filtra catalogo entregue ao LLM por similaridade semantica.
   routerEnabled        Boolean @default(false) @map("router_enabled")
   /// Threshold minimo de cosine similarity para incluir dominio (regra 5).
-  routerThreshold      Float   @default(0.55) @map("router_threshold")
+  routerThreshold      Float   @default(0.30) @map("router_threshold")
   /// Quantos dominios sao escolhidos no topo (regra 5).
   routerTopK           Int     @default(3) @map("router_top_k")
   /// Em modo ativo, se V1-V5 detectar Caminho 3a e topScore < este threshold,
