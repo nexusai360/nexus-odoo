@@ -9,9 +9,22 @@
 
 import { useRouter, useSearchParams, usePathname } from "next/navigation";
 import { useState, useTransition } from "react";
-import { AlertTriangle, ChevronLeft, ChevronRight, Search, X } from "lucide-react";
+import {
+  AlertTriangle,
+  Check,
+  ChevronDown,
+  ChevronLeft,
+  ChevronRight,
+  Search,
+  X,
+} from "lucide-react";
 
 import { Input } from "@/components/ui/input";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
 
 import {
   Card,
@@ -73,7 +86,22 @@ interface Props {
   page: number;
   pageSize: number;
   searchQuery: string;
+  toolsFilter: string[];
+  pickedFilter: string[];
 }
+
+// Dominios filtraveis (negocio + rotas internas com nome amigavel).
+const FILTERABLE_DOMAINS = [
+  "estoque",
+  "financeiro",
+  "fiscal",
+  "comercial",
+  "cadastros",
+  "contabil",
+  "crm",
+  "caminho3",
+  "dominios-vazios",
+];
 
 // Mesmo formato da coluna Data da tabela de avaliacoes do Backtest.
 const dateTimeFmt = new Intl.DateTimeFormat("pt-BR", {
@@ -114,12 +142,24 @@ export function RouterDecisionsTable({
   page,
   pageSize,
   searchQuery,
+  toolsFilter,
+  pickedFilter,
 }: Props) {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const [pending, startTransition] = useTransition();
   const [search, setSearch] = useState(searchQuery);
+
+  const applyMulti = (key: string, values: string[]) => {
+    const params = new URLSearchParams(searchParams.toString());
+    if (values.length > 0) params.set(key, values.join(","));
+    else params.delete(key);
+    params.set("page", "0");
+    startTransition(() => {
+      router.push(`${pathname}?${params.toString()}`, { scroll: false });
+    });
+  };
   const totalPages = Math.max(1, Math.ceil(total / pageSize));
 
   const applySearch = (value: string) => {
@@ -194,6 +234,18 @@ export function RouterDecisionsTable({
               Limpar
             </button>
           ) : null}
+        </div>
+        <div className="mt-2 flex flex-wrap items-center gap-2">
+          <DomainMultiSelect
+            label="Router escolhida"
+            selected={pickedFilter}
+            onChange={(v) => applyMulti("picked", v)}
+          />
+          <DomainMultiSelect
+            label="Tool chamada"
+            selected={toolsFilter}
+            onChange={(v) => applyMulti("tools", v)}
+          />
         </div>
       </CardHeader>
       <CardContent className="p-0">
@@ -336,5 +388,100 @@ export function RouterDecisionsTable({
         )}
       </CardContent>
     </Card>
+  );
+}
+
+/** Multi-select de dominio com checkboxes (padrao StatusMultiSelect do
+ *  Backtest). Filtra em tempo real ao marcar/desmarcar. */
+function DomainMultiSelect({
+  label,
+  selected,
+  onChange,
+}: {
+  label: string;
+  selected: string[];
+  onChange: (next: string[]) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const trigger =
+    selected.length === 0
+      ? label
+      : selected.length === 1
+        ? `${label}: ${displayDomain(selected[0])}`
+        : `${label}: ${selected.length}`;
+  const toggle = (d: string) =>
+    onChange(
+      selected.includes(d)
+        ? selected.filter((x) => x !== d)
+        : [...selected, d],
+    );
+
+  return (
+    <Popover open={open} onOpenChange={setOpen}>
+      <PopoverTrigger
+        render={
+          <button
+            type="button"
+            aria-label={`Filtrar por ${label}`}
+            aria-expanded={open}
+            className="flex h-9 min-w-[170px] cursor-pointer items-center justify-between gap-2 rounded-lg border border-border bg-card px-3 text-sm text-foreground transition-colors hover:border-muted-foreground/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-500"
+          >
+            <span className="truncate">{trigger}</span>
+            <ChevronDown
+              className={cn(
+                "h-4 w-4 shrink-0 text-muted-foreground transition-transform",
+                open && "rotate-180",
+              )}
+              aria-hidden
+            />
+          </button>
+        }
+      />
+      <PopoverContent
+        align="start"
+        sideOffset={4}
+        className="min-w-[200px] w-auto overflow-hidden p-1"
+      >
+        <ul role="listbox" aria-label={label} className="flex flex-col">
+          {FILTERABLE_DOMAINS.map((d) => {
+            const isOn = selected.includes(d);
+            return (
+              <li key={d} role="presentation">
+                <button
+                  type="button"
+                  role="option"
+                  aria-selected={isOn}
+                  onClick={() => toggle(d)}
+                  className="flex w-full cursor-pointer items-center gap-2 rounded-md px-2 py-1.5 text-left text-sm transition-colors hover:bg-accent"
+                >
+                  <span
+                    className={cn(
+                      "flex h-4 w-4 shrink-0 items-center justify-center rounded border border-border bg-background transition-colors",
+                      isOn && "border-violet-500 bg-violet-500 text-white",
+                    )}
+                    aria-hidden
+                  >
+                    {isOn ? <Check className="h-3 w-3" /> : null}
+                  </span>
+                  <span className="text-foreground">{displayDomain(d)}</span>
+                </button>
+              </li>
+            );
+          })}
+        </ul>
+        {selected.length > 0 && (
+          <div className="mt-1 border-t border-border pt-1">
+            <button
+              type="button"
+              onClick={() => onChange([])}
+              className="flex w-full cursor-pointer items-center gap-2 rounded-md px-2 py-1.5 text-left text-xs text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+            >
+              <X className="h-3 w-3" aria-hidden />
+              Limpar seleção
+            </button>
+          </div>
+        )}
+      </PopoverContent>
+    </Popover>
   );
 }

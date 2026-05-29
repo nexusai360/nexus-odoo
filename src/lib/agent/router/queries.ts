@@ -84,6 +84,10 @@ export type RouterFilter = {
   modes?: string[];
   /** Busca livre na pergunta (so aplicada na tabela de decisoes). */
   q?: string;
+  /** Filtra por dominios chamados/esperados (toolsDomains hasSome). */
+  tools?: string[];
+  /** Filtra por dominios escolhidos pelo router (pickedDomains hasSome). */
+  picked?: string[];
 };
 
 /** Range default: ultimos 7 dias ate agora. */
@@ -328,9 +332,17 @@ export async function getRouterDecisions(
 ): Promise<RouterDecisionsPage> {
   const where: ReturnType<typeof buildBaseWhere> & {
     userQuestion?: { contains: string; mode: "insensitive" };
+    toolsDomains?: { hasSome: string[] };
+    pickedDomains?: { hasSome: string[] };
   } = buildBaseWhere(filter);
   if (filter.q && filter.q.trim()) {
     where.userQuestion = { contains: filter.q.trim(), mode: "insensitive" };
+  }
+  if (filter.tools && filter.tools.length > 0) {
+    where.toolsDomains = { hasSome: filter.tools };
+  }
+  if (filter.picked && filter.picked.length > 0) {
+    where.pickedDomains = { hasSome: filter.picked };
   }
   const [rows, total] = await Promise.all([
     prisma.agentRouterDecision.findMany({

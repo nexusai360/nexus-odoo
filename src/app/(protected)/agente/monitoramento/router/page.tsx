@@ -87,6 +87,8 @@ export default async function MonitoramentoRouterPage({
     page?: string;
     ps?: string;
     q?: string;
+    tools?: string;
+    picked?: string;
   }>;
 }) {
   const user = await getCurrentUser();
@@ -113,11 +115,15 @@ export default async function MonitoramentoRouterPage({
     new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
   const range = resolveRange(pk, sp.cs, sp.ce, minDate);
   const q = sp.q ?? "";
+  const tools = sp.tools ? sp.tools.split(",").filter(Boolean) : [];
+  const picked = sp.picked ? sp.picked.split(",").filter(Boolean) : [];
   const filter: RouterFilter = {
     start: range.start,
     end: range.end,
     modes: modos.length > 0 ? modos : undefined,
     q: q || undefined,
+    tools: tools.length > 0 ? tools : undefined,
+    picked: picked.length > 0 ? picked : undefined,
   };
 
   const [
@@ -165,6 +171,8 @@ export default async function MonitoramentoRouterPage({
           page={page}
           pageSize={pageSize}
           searchQuery={q}
+          toolsFilter={tools}
+          pickedFilter={picked}
           settings={settings ?? DEFAULT_SETTINGS}
           eligibility={eligibility}
           embeddingCredential={embeddingCredential}

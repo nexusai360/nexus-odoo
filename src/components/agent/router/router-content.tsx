@@ -34,6 +34,8 @@ interface Props {
   page: number;
   pageSize: number;
   searchQuery: string;
+  toolsFilter: string[];
+  pickedFilter: string[];
   settings: RouterSettingsSnapshot;
   eligibility: RouterEligibility;
   embeddingCredential: EmbeddingCredentialStatus;
@@ -67,6 +69,8 @@ export function RouterContent(props: Props) {
         page={props.page}
         pageSize={props.pageSize}
         searchQuery={props.searchQuery}
+        toolsFilter={props.toolsFilter}
+        pickedFilter={props.pickedFilter}
       />
     </div>
   );

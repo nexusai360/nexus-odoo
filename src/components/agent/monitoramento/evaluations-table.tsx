@@ -400,12 +400,11 @@ export function EvaluationsTable({
               <ChevronRight className="h-4 w-4" />
             </Button>
           </div>
-          <div className="flex items-center gap-2 justify-self-end">
-            <span className="text-muted-foreground">Por página:</span>
+          <div className="justify-self-end">
             <CustomSelect
               value={String(pageSize)}
               onChange={handlePageSize}
-              triggerClassName="h-8 min-h-[34px] w-[100px] text-xs"
+              triggerClassName="h-8 min-h-[34px] w-[140px] text-xs"
               aria-label="Itens por página"
               options={PAGE_SIZE_OPTIONS.map((n) => ({
                 value: String(n),
