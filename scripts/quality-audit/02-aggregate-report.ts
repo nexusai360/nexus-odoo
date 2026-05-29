@@ -8,6 +8,8 @@
  * Spec: docs/agent-quality-review/AUDIT-SPEC.md §10
  */
 
+// Primeiro import: carrega .env.local antes de @/lib/prisma (ver load-env.ts).
+import "./load-env";
 import { config as loadDotenv } from "dotenv";
 import { resolve as resolvePath } from "path";
 loadDotenv({ path: resolvePath(process.cwd(), ".env.local"), override: true });

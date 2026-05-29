@@ -3,6 +3,8 @@
  * Smoke E2E pos-Bloco A: 5 perguntas representativas dos 5 fixes.
  * Spec: docs/superpowers/research/2026-05-27-pos-r17-review-plano.md §Bloco B
  */
+// Primeiro import: carrega .env.local antes de @/lib/prisma (ver load-env.ts).
+import "./load-env";
 import "dotenv/config";
 import { config as loadDotenv } from "dotenv";
 import { resolve as resolvePath } from "path";
