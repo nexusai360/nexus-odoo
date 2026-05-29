@@ -19,6 +19,10 @@ import Link from "next/link";
 import { Image as ImageIcon, KeyRound, MessageSquare, Mic } from "lucide-react";
 import { ReasoningCard } from "@/components/agent/reasoning-card";
 import { ResourceCard } from "@/components/agent/resource-card";
+import { ContextWindowCard } from "@/components/agent/context-window-card";
+import { RouterConfigCard } from "@/components/agent/router-config-card";
+import { ApiKeySelect } from "@/components/ui/api-key-select";
+import type { ModelEntry as ModelEntryType } from "@/lib/agent/llm/catalog";
 import { toast } from "sonner";
 import {
   checkpointIconClass,
@@ -43,6 +47,8 @@ import type { LlmProvider, ReasoningEffort } from "@/lib/agent/llm/types";
 export interface CredentialOption {
   id: string;
   label: string;
+  /** R2-ctx: sufixo mascarado da chave (ex.: "••••DFYA") para o ApiKeySelect. */
+  maskedSuffix?: string | null;
 }
 
 interface ResourcesTogglesProps {
@@ -67,11 +73,31 @@ interface ResourcesTogglesProps {
     reasoningEffort: string | null;
     reasoningCheckpoint: CheckpointState;
     maxSuggestions: number;
+    /** R2-ctx: janela de contexto. */
+    contextWindowCheckpoint: CheckpointState;
+    contextWindowSize: number;
+    contextWindowIncludeSystem: boolean;
   };
   /** G6 , credenciais cadastradas, agrupadas por provedor. */
   credentialsByProvider?: Record<string, CredentialOption[]>;
   /** Id do modelo de produção ativo , determina o suporte a raciocínio. */
   activeModelId: string;
+  /** R2-ctx: config do bloco "Configuração de Router". */
+  routerConfig: {
+    routerReformCheckpoint: CheckpointState;
+    routerReformProvider: string | null;
+    routerReformModel: string | null;
+    routerReformCredentialId: string | null;
+    routerReformNPairs: number;
+    routerEmbeddingModel: string | null;
+  };
+  /** Provedores de chat com credencial (para a Construção da pergunta). */
+  reformProviders?: LlmProvider[];
+  /** Modelos de chat por provedor (catálogo efetivo). */
+  chatModelsByProvider?: Record<string, ModelEntryType[]>;
+  /** Embeddings (fonte única do RAG): chave ativa + opções. */
+  embeddingActiveId?: string | null;
+  embeddingOptions?: Array<{ id: string; label: string; maskedSuffix?: string | null }>;
 }
 
 const DEFAULT_AUDIO_MODEL = "gpt-4o-mini-transcribe";
@@ -89,6 +115,11 @@ export function ResourcesToggles({
   initial,
   credentialsByProvider = {},
   activeModelId,
+  routerConfig,
+  reformProviders = [],
+  chatModelsByProvider = {},
+  embeddingActiveId = null,
+  embeddingOptions = [],
 }: ResourcesTogglesProps) {
   const router = useRouter();
   const [, startTransition] = useTransition();
@@ -170,9 +201,15 @@ export function ResourcesToggles({
   const [maxSuggestions, setMaxSuggestions] = useState<number>(
     initial.maxSuggestions ?? 3,
   );
+  // R2-ctx: janela de contexto.
+  const [ctxCp, setCtxCp] = useState<CheckpointState>(initial.contextWindowCheckpoint);
+  const [ctxSize, setCtxSize] = useState<number>(initial.contextWindowSize ?? 20);
+  const [ctxIncludeSystem, setCtxIncludeSystem] = useState<boolean>(
+    initial.contextWindowIncludeSystem ?? true,
+  );
 
   const [pending, setPending] = useState<
-    "audio" | "image" | "suggestions" | "reasoning" | null
+    "audio" | "image" | "suggestions" | "reasoning" | "context" | null
   >(null);
 
   function persistResources(
@@ -189,8 +226,11 @@ export function ResourcesToggles({
       reasoningEffort: ReasoningEffort | null;
       reasoningCheckpoint: CheckpointState;
       maxSuggestions: number;
+      contextWindowCheckpoint: CheckpointState;
+      contextWindowSize: number;
+      contextWindowIncludeSystem: boolean;
     }>,
-    label: "audio" | "image" | "suggestions" | "reasoning",
+    label: "audio" | "image" | "suggestions" | "reasoning" | "context",
   ) {
     setPending(label);
     startTransition(async () => {
@@ -217,6 +257,12 @@ export function ResourcesToggles({
             : reasoningEffort || null,
         reasoningCheckpoint: next.reasoningCheckpoint ?? reasoningCp,
         maxSuggestions: next.maxSuggestions ?? maxSuggestions,
+        contextWindowCheckpoint: next.contextWindowCheckpoint ?? ctxCp,
+        contextWindowSize: next.contextWindowSize ?? ctxSize,
+        contextWindowIncludeSystem:
+          next.contextWindowIncludeSystem !== undefined
+            ? next.contextWindowIncludeSystem
+            : ctxIncludeSystem,
       });
       setPending(null);
       if (!result.success) {
@@ -320,17 +366,16 @@ export function ResourcesToggles({
                 />
               </FieldBlock>
               <FieldBlock label="Chave de API">
-                <CustomSelect
+                <ApiKeySelect
                   aria-label="Chave de API de áudio"
                   value={audioCredentialId}
                   onChange={(v) => {
                     setAudioCredentialId(v);
                     persistResources({ audioCredentialId: v || null }, "audio");
                   }}
-                  options={audioCreds.map((c) => ({
-                    value: c.id,
-                    label: c.label,
-                  }))}
+                  options={audioCreds}
+                  provider={audioProvider || "openai"}
+                  providerLabel={audioProvider ? PROVIDER_META[audioProvider as LlmProvider].label : "OpenAI"}
                 />
               </FieldBlock>
             </div>
@@ -400,17 +445,16 @@ export function ResourcesToggles({
                 />
               </FieldBlock>
               <FieldBlock label="Chave de API">
-                <CustomSelect
+                <ApiKeySelect
                   aria-label="Chave de API de imagem"
                   value={imageCredentialId}
                   onChange={(v) => {
                     setImageCredentialId(v);
                     persistResources({ imageCredentialId: v || null }, "image");
                   }}
-                  options={imageCreds.map((c) => ({
-                    value: c.id,
-                    label: c.label,
-                  }))}
+                  options={imageCreds}
+                  provider={imageProvider || "openai"}
+                  providerLabel={imageProvider ? PROVIDER_META[imageProvider as LlmProvider].label : "OpenAI"}
                 />
               </FieldBlock>
             </div>
@@ -482,6 +526,35 @@ export function ResourcesToggles({
         ) : null}
       </ResourceCard>
 
+      {/* R2-ctx: Janela de contexto */}
+      <ContextWindowCard
+        checkpoint={ctxCp}
+        size={ctxSize}
+        includeSystem={ctxIncludeSystem}
+        loading={pending === "context"}
+        onCheckpointChange={(cp) => {
+          setCtxCp(cp);
+          persistResources({ contextWindowCheckpoint: cp }, "context");
+        }}
+        onSizeChange={(size) => {
+          setCtxSize(size);
+          persistResources({ contextWindowSize: size }, "context");
+        }}
+        onIncludeSystemChange={(inc) => {
+          setCtxIncludeSystem(inc);
+          persistResources({ contextWindowIncludeSystem: inc }, "context");
+        }}
+      />
+
+      {/* R2-ctx: Configuração de Router */}
+      <RouterConfigCard
+        initial={routerConfig}
+        reformProviders={reformProviders}
+        credentialsByProvider={credentialsByProvider}
+        chatModelsByProvider={chatModelsByProvider}
+        embeddingActiveId={embeddingActiveId}
+        embeddingOptions={embeddingOptions}
+      />
     </div>
   );
 }

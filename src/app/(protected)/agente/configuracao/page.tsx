@@ -29,6 +29,7 @@ import { getCurrentUser } from "@/lib/auth";
 import { listCredentials } from "@/lib/agent/llm/credentials";
 import { getPublicActiveLlmConfig } from "@/lib/agent/llm/get-active-config";
 import { getAgentSettings } from "@/lib/actions/agent-config";
+import { getEmbeddingCredentialStatus } from "@/lib/actions/router-embedding-credential";
 import { prisma } from "@/lib/prisma";
 import { loadEffectiveModelsByProvider } from "@/lib/agent/llm/effective-catalog";
 import type { ModelEntry } from "@/lib/agent/llm/catalog";
@@ -68,6 +69,26 @@ export default async function Page() {
 
   const settings = settingsResult.success ? settingsResult.data : null;
 
+  // R2-ctx: campos novos lidos direto do prisma (fora do DTO AgentSettingsData)
+  // + status da credencial de embedding (fonte única do RAG).
+  const [routerRow, embeddingStatus] = await Promise.all([
+    prisma.agentSettings.findUnique({
+      where: { id: "global" },
+      select: {
+        contextWindowCheckpoint: true,
+        contextWindowSize: true,
+        contextWindowIncludeSystem: true,
+        routerReformCheckpoint: true,
+        routerReformProvider: true,
+        routerReformModel: true,
+        routerReformCredentialId: true,
+        routerReformNPairs: true,
+        routerEmbeddingModel: true,
+      },
+    }),
+    getEmbeddingCredentialStatus().catch(() => ({ active: null, options: [], needsBootstrap: false })),
+  ]);
+
   const bubbleEnabled = settings ? settings.bubbleEnabled : true;
   const whatsappEnabled = settings ? settings.whatsappEnabled : true;
   const isConfigured = activeConfig != null;
@@ -75,9 +96,19 @@ export default async function Page() {
   const credentialsByProvider: Record<string, CredentialOption[]> = {};
   for (const c of credentials) {
     const list = credentialsByProvider[c.provider] ?? [];
-    list.push({ id: c.id, label: c.label });
+    list.push({
+      id: c.id,
+      label: c.label,
+      maskedSuffix: c.last4 ? `••••${c.last4}` : null,
+    });
     credentialsByProvider[c.provider] = list;
   }
+  const reformProviders = Object.keys(credentialsByProvider) as LlmProvider[];
+  const embeddingOptions = embeddingStatus.options.map((o) => ({
+    id: o.id,
+    label: o.label,
+    maskedSuffix: o.last4 ? `••••${o.last4}` : null,
+  }));
 
   const initialResources = {
     personality: settings?.personality ?? "",
@@ -99,6 +130,18 @@ export default async function Page() {
     reasoningEffort: settings?.reasoningEffort ?? null,
     reasoningCheckpoint: settings?.reasoningCheckpoint ?? "OFF",
     maxSuggestions: settings?.maxSuggestions ?? 3,
+    contextWindowCheckpoint: routerRow?.contextWindowCheckpoint ?? "PRODUCTION",
+    contextWindowSize: routerRow?.contextWindowSize ?? 20,
+    contextWindowIncludeSystem: routerRow?.contextWindowIncludeSystem ?? true,
+  } as const;
+
+  const routerConfig = {
+    routerReformCheckpoint: routerRow?.routerReformCheckpoint ?? "OFF",
+    routerReformProvider: routerRow?.routerReformProvider ?? null,
+    routerReformModel: routerRow?.routerReformModel ?? null,
+    routerReformCredentialId: routerRow?.routerReformCredentialId ?? null,
+    routerReformNPairs: routerRow?.routerReformNPairs ?? 5,
+    routerEmbeddingModel: routerRow?.routerEmbeddingModel ?? null,
   } as const;
 
   const activeModelId = activeConfig?.model ?? "";
@@ -155,6 +198,11 @@ export default async function Page() {
               initial={initialResources}
               credentialsByProvider={credentialsByProvider}
               activeModelId={activeModelId}
+              routerConfig={routerConfig}
+              reformProviders={reformProviders}
+              chatModelsByProvider={modelsByProvider}
+              embeddingActiveId={embeddingStatus.active?.id ?? null}
+              embeddingOptions={embeddingOptions}
             />
           </CardContent>
         </Card>

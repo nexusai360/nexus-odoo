@@ -609,6 +609,19 @@ export function listVisionModels(provider: LlmProvider): ModelEntry[] {
   return sortModels(MODELS.filter((m) => m.provider === provider && m.vision));
 }
 
+/** Modelos de embedding de um provider (use === "embedding"), ordenados.
+ *  Usado pelo sub-bloco Embeddings da Configuração de Router (R2-ctx). */
+export function listEmbeddingModels(provider: LlmProvider): ModelEntry[] {
+  return sortModels(
+    MODELS.filter((m) => m.provider === provider && m.use === "embedding"),
+  );
+}
+
+/** Provedores que têm ao menos um modelo de embedding. */
+export const PROVIDERS_WITH_EMBEDDING: LlmProvider[] = (
+  ["openai", "anthropic", "gemini", "openrouter"] as LlmProvider[]
+).filter((p) => MODELS.some((m) => m.provider === p && m.use === "embedding"));
+
 /** Provedores que têm ao menos um modelo de áudio. */
 export const PROVIDERS_WITH_AUDIO: LlmProvider[] = (
   ["openai", "anthropic", "gemini", "openrouter"] as LlmProvider[]
