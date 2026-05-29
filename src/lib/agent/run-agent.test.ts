@@ -223,6 +223,41 @@ describe("runAgent", () => {
     expect(session.close).toHaveBeenCalled();
   });
 
+  test("RBAC v2: admin (userAllowedDomains='all') executa tool sem crash na defesa §6.3", async () => {
+    // Regressao: a defesa §6.3 faz `userAllowedDomains === "all" || ... || userAllowedDomains.has(d)`.
+    // Para super_admin/admin (= "all") o short-circuit NAO pode chegar no .has()
+    // (string nao tem .has). Este teste exercita o loop de tool com role "all".
+    prisma.user.findUnique.mockResolvedValue({ id: "user-admin", platformRole: "admin", isActive: true });
+    const client = makeClient([
+      {
+        message: "Vou verificar...",
+        toolCalls: [{ id: "tc1", name: "financeiro_saldo_bancario", arguments: {} }],
+      },
+      { message: "Saldo conferido." },
+    ]);
+    buildLlmClient.mockReturnValue(client);
+    const session = {
+      listTools: jest.fn().mockResolvedValue([
+        { name: "financeiro_saldo_bancario", description: "Saldo", inputSchema: { type: "object", properties: {} } },
+      ]),
+      callTool: jest.fn().mockResolvedValue("Saldo: R$ 0"),
+      close: jest.fn().mockResolvedValue(undefined),
+    };
+    createMcpSession.mockResolvedValue(session);
+
+    const result = await runAgent({
+      conversationId: "conv-1",
+      userId: "user-admin",
+      userMessage: "Qual o saldo?",
+      channel: "in_app",
+      isPlayground: false,
+    });
+
+    expect(result.ok).toBe(true);
+    // admin ve tudo: a tool de financeiro deve ser executada (sem TypeError).
+    expect(session.callTool).toHaveBeenCalledWith("financeiro_saldo_bancario", {});
+  });
+
   test("MAX_ITERATIONS excedido → retorna ok=false", async () => {
     // Tool calls sempre, nunca resposta final
     const client = makeClient([
