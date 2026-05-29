@@ -335,8 +335,8 @@ export async function getUsageStats(args: {
 // getUsageDetails
 // ---------------------------------------------------------------------------
 
-const DEFAULT_LIMIT = 25;
-const MAX_LIMIT = 200;
+const DEFAULT_LIMIT = 50;
+const MAX_LIMIT = 500;
 
 /**
  * Lista paginada de chamadas individuais ao LLM no período.

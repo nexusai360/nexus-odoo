@@ -79,6 +79,7 @@ const dateTimeFmt = new Intl.DateTimeFormat("pt-BR", {
   year: "2-digit",
   hour: "2-digit",
   minute: "2-digit",
+  second: "2-digit",
 });
 const numberFmt = new Intl.NumberFormat("pt-BR");
 

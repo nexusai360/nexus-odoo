@@ -50,6 +50,7 @@ import {
 } from "@/components/charts/interactive";
 import { CHART_COLORS, getColorByIndex } from "@/components/charts/colors";
 import { cn } from "@/lib/utils";
+import { PageJumpNavigator } from "@/components/agent/consumo/page-jump-navigator";
 import {
   fetchDistinctModels,
   fetchDistinctProviders,
@@ -82,9 +83,9 @@ import { UsageTableFilters } from "./usage-table-filters";
 // ---------------------------------------------------------------------------
 
 const TZ = "America/Sao_Paulo";
-const PAGE_SIZE_OPTIONS = [25, 50, 100] as const;
+const PAGE_SIZE_OPTIONS = [50, 100, 500] as const;
 type PageSize = (typeof PAGE_SIZE_OPTIONS)[number];
-const DEFAULT_PAGE_SIZE: PageSize = 25;
+const DEFAULT_PAGE_SIZE: PageSize = 50;
 
 type Ambiente = "all" | "agente" | "playground";
 
@@ -1309,9 +1310,12 @@ export function ConsumoContent({ minDate: minDateIso }: ConsumoContentProps) {
                 >
                   <ChevronLeft className="h-4 w-4" aria-hidden />
                 </button>
-                <span className="text-xs text-muted-foreground tabular-nums">
-                  Página {page + 1} de {totalPages}
-                </span>
+                <PageJumpNavigator
+                  page={page}
+                  totalPages={totalPages}
+                  onJump={handlePageChange}
+                  disabled={isLoading}
+                />
                 <button
                   type="button"
                   aria-label="Próxima página"
