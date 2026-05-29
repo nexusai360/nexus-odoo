@@ -7,17 +7,18 @@ jest.mock("../../rag/embed", () => ({
 }));
 
 // eslint-disable-next-line @typescript-eslint/no-require-imports
-const {
-  embedQuestion,
-  __resetQuestionCache,
-  getQuestionCacheSize,
-  getQuestionCacheCapacity,
-} = require("../embed-question") as {
+const embedQuestionModule = require("../embed-question") as {
   embedQuestion: (q: string) => Promise<{ vector: number[]; cacheHit: boolean }>;
   __resetQuestionCache: () => void;
   getQuestionCacheSize: () => number;
   getQuestionCacheCapacity: () => number;
 };
+const {
+  embedQuestion,
+  __resetQuestionCache,
+  getQuestionCacheSize,
+  getQuestionCacheCapacity,
+} = embedQuestionModule;
 
 const STUB_VEC = (n: number): number[] => Array.from({ length: 8 }, () => n);
 

@@ -26,8 +26,37 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { cn } from "@/lib/utils";
+import { Badge } from "@/components/ui/badge";
 import { PageJumpNavigator } from "@/components/agent/consumo/page-jump-navigator";
 import type { RouterDecisionRow } from "@/lib/agent/router/queries";
+
+// Dominios internos de encanamento (escape hatches sempre presentes no
+// catalogo). Nao sao dominios de negocio, entao nao aparecem como tag.
+const INTERNAL_DOMAINS = new Set(["caminho3", "dominios-vazios"]);
+
+// Cores por dominio para a coluna "Tool chamada" (paleta do status, sem
+// vermelho, que passaria sensacao de erro).
+const DOMAIN_TONE: Record<string, string> = {
+  estoque: "bg-sky-500/10 text-sky-700 border-sky-500/30 dark:text-sky-300",
+  financeiro:
+    "bg-emerald-500/10 text-emerald-700 border-emerald-500/30 dark:text-emerald-300",
+  fiscal:
+    "bg-violet-500/10 text-violet-700 border-violet-500/30 dark:text-violet-300",
+  comercial:
+    "bg-amber-500/10 text-amber-700 border-amber-500/30 dark:text-amber-300",
+  cadastros:
+    "bg-teal-500/10 text-teal-700 border-teal-500/30 dark:text-teal-300",
+  contabil:
+    "bg-indigo-500/10 text-indigo-700 border-indigo-500/30 dark:text-indigo-300",
+  crm: "bg-fuchsia-500/10 text-fuchsia-700 border-fuchsia-500/30 dark:text-fuchsia-300",
+};
+
+function toneFor(domain: string): string {
+  return (
+    DOMAIN_TONE[domain] ??
+    "bg-slate-500/10 text-slate-700 border-slate-500/30 dark:text-slate-300"
+  );
+}
 
 interface Props {
   rows: RouterDecisionRow[];
@@ -47,12 +76,25 @@ const dateTimeFmt = new Intl.DateTimeFormat("pt-BR", {
   second: "2-digit",
 });
 
-/** Tag de dominio no padrao neutro (mesmo visual nas duas colunas). */
-function DomainTag({ children }: { children: React.ReactNode }) {
+/** Tag da coluna "Router escolhida": mesmo estilo da coluna Origem do
+ *  Backtest (outline muted font-mono). */
+function PickedTag({ children }: { children: React.ReactNode }) {
   return (
-    <span className="inline-flex items-center rounded-full border border-border bg-muted/50 px-2 py-0.5 text-[11px] font-medium text-foreground">
+    <Badge
+      variant="outline"
+      className="border-border bg-muted/40 font-mono text-[11px] text-muted-foreground"
+    >
       {children}
-    </span>
+    </Badge>
+  );
+}
+
+/** Tag da coluna "Tool chamada": colorida por dominio (paleta de status). */
+function ToolTag({ domain }: { domain: string }) {
+  return (
+    <Badge variant="outline" className={cn("border text-[11px]", toneFor(domain))}>
+      {domain}
+    </Badge>
   );
 }
 
@@ -101,7 +143,12 @@ export function RouterDecisionsTable({ rows, total, page, pageSize }: Props) {
                     <TableHead>Pergunta</TableHead>
                     <TableHead>Router escolhida</TableHead>
                     <TableHead>Tool chamada</TableHead>
-                    <TableHead className="w-[80px] text-right">Score</TableHead>
+                    <TableHead
+                      className="w-[90px] text-right"
+                      title="Confiança do match (0 a 1): similaridade entre a pergunta e o domínio top. Abaixo do corte vira fallback."
+                    >
+                      Score (confiança)
+                    </TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -128,13 +175,17 @@ export function RouterDecisionsTable({ rows, total, page, pageSize }: Props) {
                       </TableCell>
                       <TableCell>
                         <div className="flex flex-wrap gap-1">
-                          {r.pickedDomains.length === 0 ? (
-                            <DomainTag>fallback</DomainTag>
-                          ) : (
-                            r.pickedDomains.map((d) => (
-                              <DomainTag key={d}>{d}</DomainTag>
-                            ))
-                          )}
+                          {(() => {
+                            const visible = r.pickedDomains.filter(
+                              (d) => !INTERNAL_DOMAINS.has(d),
+                            );
+                            if (visible.length === 0) {
+                              return <PickedTag>fallback</PickedTag>;
+                            }
+                            return visible.map((d) => (
+                              <PickedTag key={d}>{d}</PickedTag>
+                            ));
+                          })()}
                         </div>
                       </TableCell>
                       <TableCell>
@@ -145,9 +196,7 @@ export function RouterDecisionsTable({ rows, total, page, pageSize }: Props) {
                             </span>
                           ) : (
                             r.toolsDomains.map((d, i) => (
-                              <DomainTag key={`${r.id}-${i}-${d}`}>
-                                {d}
-                              </DomainTag>
+                              <ToolTag key={`${r.id}-${i}-${d}`} domain={d} />
                             ))
                           )}
                         </div>

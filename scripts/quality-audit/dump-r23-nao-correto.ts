@@ -43,7 +43,7 @@ async function main() {
     n++;
     let pergunta = "";
     let resposta = "";
-    let toolCalls: Array<{ name: string; input: unknown; result: unknown }> = [];
+    const toolCalls: Array<{ name: string; input: unknown; result: unknown }> = [];
     if (ev.user_message_id) {
       const u = await prisma.message.findUnique({ where: { id: ev.user_message_id }, select: { content: true } });
       pergunta = u?.content ?? "";

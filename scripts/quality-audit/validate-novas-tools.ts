@@ -1,4 +1,5 @@
 #!/usr/bin/env tsx
+/* eslint-disable @typescript-eslint/no-explicit-any -- script de auditoria one-off; handlers das tools sao acessados via cast dinamico */
 /**
  * Validacao extensiva das 6 tools criadas/estendidas:
  * - cadastro_parceiros_por_cidade
