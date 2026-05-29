@@ -232,3 +232,44 @@ incremental só puxa por `write_date` e nunca remove/repuxa linhas antigas
 perdidas no backfill. O ciclo de **reconcile** (24h) fecharia o gap; o
 `f4l-ingest.ts` roda só snapshot+incremental, sem reconcile. Não é bug de
 tool. Ação: rodar um reconcile, ou aceitar o gap de ~1% como ruído de janela.
+
+---
+
+## R9 — Router de catálogo (R1): threshold default 0.55 mal calibrado (MÉDIO)
+
+**Aberto desde:** 2026-05-28 (calibragem offline da Wave G, executada de
+verdade pela primeira vez contra as 291 perguntas R8-R23).
+
+A calibragem (`scripts/router/calibrate-against-batteries.ts`,
+`runCalibration`) revelou que o **threshold default 0.55** faz o router cair em
+**fallback em 84% das perguntas** (245/291) e acertar só **16,2% de Top-1**. Não
+é bug de scoring: a distribuição de cosseno do `text-embedding-3` entre pergunta
+e descrição de domínio fica majoritariamente abaixo de 0.55. Sweep completo
+(topK=3, dataset 291, 216 mapeáveis):
+
+| threshold | Top-1 | Top-K | Fallbacks |
+|---|---:|---:|---:|
+| 0.35 | **63,9%** | **75,9%** | 52 |
+| 0.40 | 59,3% | 67,6% | 86 |
+| 0.45 | 42,1% | 48,1% | 147 |
+| 0.50 | 25,5% | 27,3% | 209 |
+| 0.55 (default atual) | 16,2% | 16,7% | 245 |
+
+Curva monotônica: quanto menor o threshold, melhor a acurácia e menos fallback,
+sendo 0.35 o melhor ponto testado. O relatório canônico vive em
+`docs/router-calibration-r1.md` (gerado no default 0.55).
+
+**Implicação:** nenhuma de produção, **o router está em shadow mode** e o gate
+de ativação (Top-1 >= 85% em 7 dias com >= 200 decisões) bloqueia corretamente
+a ativação enquanto o número não sobe. Mas como está, ativá-lo seria quase um
+no-op (cai pro catálogo inteiro 84% das vezes).
+
+**Ação (duas frentes, decisão do usuário):**
+1. **Threshold:** baixar o default de 0.55 para ~0.35. É o admin que ajusta via
+   painel (campo Threshold em RouterControls), mas o default de fábrica
+   (`AgentSettings.routerThreshold` no schema + linha `global` no banco) deveria
+   refletir o ponto calibrado. Mudança barata e segura (router segue em shadow).
+2. **Vocabulário:** mesmo no melhor threshold (0.35), Top-1 = 63,9% segue abaixo
+   do gate de 85%. Chegar a 85% exige enriquecer `domain-vocabulary.ts`
+   (descrições/sinônimos mais representativos por domínio) e re-rodar a
+   calibragem. Esforço de tuning, follow-up dedicado.
