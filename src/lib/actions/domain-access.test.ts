@@ -41,7 +41,7 @@ describe("getMyDomains", () => {
     mockGetCurrentUser.mockResolvedValue({ id: "a1", platformRole: "super_admin" } as never);
     expect(await getMyDomains()).toEqual([
       "estoque", "financeiro", "fiscal", "comercial",
-      "cadastros", "contabil", "rh", "crm", "producao",
+      "cadastros", "contabil", "crm",
     ]);
     expect(mockPrisma.userDomainAccess.findMany).not.toHaveBeenCalled();
   });

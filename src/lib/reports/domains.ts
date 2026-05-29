@@ -8,6 +8,9 @@ export interface ReportDomainMeta {
   label: string;
 }
 
+// RBAC v2: 7 domínios alinhados com o vocabulário do Router R1.
+// Mudanças aqui exigem mudança simétrica em src/lib/agent/router/domain-vocabulary.ts.
+// Teste de coerência em src/lib/reports/domains.test.ts.
 export const REPORT_DOMAINS: ReportDomainMeta[] = [
   { id: "estoque", label: "Estoque" },
   { id: "financeiro", label: "Financeiro" },
@@ -15,9 +18,7 @@ export const REPORT_DOMAINS: ReportDomainMeta[] = [
   { id: "comercial", label: "Comercial" },
   { id: "cadastros", label: "Cadastros" },
   { id: "contabil", label: "Contábil" },
-  { id: "rh", label: "RH" },
   { id: "crm", label: "CRM" },
-  { id: "producao", label: "Produção" },
 ];
 
 const ALL_DOMAINS: ReportDomainId[] = REPORT_DOMAINS.map((d) => d.id);

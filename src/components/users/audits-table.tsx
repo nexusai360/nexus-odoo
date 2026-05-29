@@ -45,6 +45,8 @@ const ACTION_LABELS: Record<AuditAction, string> = {
   api_key_created: "API key criada",
   api_key_revoked: "API key revogada",
   whatsapp_channel_updated: "Canal WhatsApp atualizado",
+  // RBAC v2 — recusa do Agente Nex por permissão de domínio (fast-path sem LLM).
+  agent_permission_denied: "Pergunta ao Agente Nex negada (sem acesso ao domínio)",
 };
 
 function getActionBadgeClasses(action: AuditAction): string {

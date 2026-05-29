@@ -21,9 +21,9 @@ describe("AccessStep", () => {
         grantable={["estoque", "financeiro", "fiscal", "comercial"]}
       />,
     );
-    // AccessStep renderiza um checkbox por domínio de REPORT_DOMAINS (9),
+    // AccessStep renderiza um checkbox por domínio de REPORT_DOMAINS (7 após RBAC v2),
     // independentemente de quantos estão em `grantable`.
-    expect(screen.getAllByRole("checkbox")).toHaveLength(9);
+    expect(screen.getAllByRole("checkbox")).toHaveLength(7);
   });
   it("desabilita os domínios não concedíveis", () => {
     render(

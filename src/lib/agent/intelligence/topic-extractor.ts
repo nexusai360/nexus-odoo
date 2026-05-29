@@ -22,7 +22,7 @@ import { getReasoningEffortForCaller } from "./reasoning-effort-policy";
 export interface TopicExtractionResult {
   /** Topico principal da mensagem (ex.: "estoque", "faturamento", "produto", "outros"). */
   topic: string;
-  /** Dominio de negocio (ex.: "comercial", "fiscal", "estoque", "rh"). */
+  /** Dominio de negocio (ex.: "comercial", "fiscal", "estoque", "cadastros"). */
   domain: string;
   /** Lista de palavras-chave relevantes; cap 4 keywords. */
   keywords: string[];
@@ -35,13 +35,13 @@ const FALLBACK: TopicExtractionResult = {
 };
 
 const SYSTEM_PROMPT = `Voce e um classificador de mensagens de usuarios de um sistema de gestao ERP.
-A empresa atua em estoque, fiscal, comercial, financeiro, RH, producao.
+A empresa atua em estoque, fiscal, comercial, financeiro, cadastros, contabil, crm.
 
 Sua tarefa: dado uma ou mais mensagens do usuario, retornar JSON com:
 - topic: 1-3 palavras lowercase descrevendo o assunto principal
   (ex.: "saldo de produto", "faturamento mensal", "contas a receber").
 - domain: dominio de negocio. Valores aceitos:
-  estoque | fiscal | comercial | financeiro | rh | producao | outros.
+  cadastros | comercial | contabil | crm | estoque | financeiro | fiscal | outros.
 - keywords: ate 4 palavras-chave (substantivos lowercase, sem pontuacao).
 
 Responda APENAS o JSON, sem texto adicional. Exemplo:
@@ -119,13 +119,16 @@ function parseJsonResponse(raw: string): TopicExtractionResult | null {
   }
 }
 
+// Alinhado com REPORT_DOMAINS (RBAC v2): 7 domínios reais + "outros" como fallback.
+// Mantido em sincronia com src/lib/reports/domains.ts via teste de coerência.
 const KNOWN_DOMAINS = new Set([
-  "estoque",
-  "fiscal",
+  "cadastros",
   "comercial",
+  "contabil",
+  "crm",
+  "estoque",
   "financeiro",
-  "rh",
-  "producao",
+  "fiscal",
   "outros",
 ]);
 

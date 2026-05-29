@@ -1,0 +1,36 @@
+src/generated/prisma/enums.ts:130:  rh: 'rh',
+src/generated/prisma/enums.ts:132:  producao: 'producao'
+src/lib/agent/intelligence/topic-extractor.ts:25:  /** Dominio de negocio (ex.: "comercial", "fiscal", "estoque", "rh"). */
+src/lib/agent/intelligence/topic-extractor.ts:127:  "rh",
+src/lib/agent/intelligence/topic-extractor.ts:128:  "producao",
+src/lib/__tests__/mcp-capability-levels.test.ts:29:      "producao",
+src/lib/__tests__/mcp-capability-levels.test.ts:30:      "rh",
+src/lib/actions/mcp-api-keys-types.ts:16:  "producao",
+src/lib/actions/mcp-api-keys-types.ts:17:  "rh",
+src/lib/reports/domains.ts:18:  { id: "rh", label: "RH" },
+src/lib/reports/domains.ts:20:  { id: "producao", label: "Produção" },
+src/lib/actions/domain-access.test.ts:44:      "cadastros", "contabil", "rh", "crm", "producao",
+src/lib/reports/domains.test.ts:5:  "cadastros", "contabil", "rh", "crm", "producao",
+mcp/tools/dominios-vazios/rh-status-dominio.ts:10:  dominio: z.literal("rh"),
+mcp/tools/dominios-vazios/rh-status-dominio.ts:28:    dominio: "rh" as const,
+mcp/tools/dominios-vazios/producao-status-dominio.ts:10:  dominio: z.literal("producao"),
+mcp/tools/dominios-vazios/producao-status-dominio.ts:28:    dominio: "producao" as const,
+mcp/tools/dominios-vazios/producao-status-dominio.test.ts:26:      dominio: "producao",
+mcp/tools/dominios-vazios/rh-status-dominio.test.ts:26:      dominio: "rh",
+prisma/migrations/20260518105922_f4completo_enum_dominios/migration.sql:11:ALTER TYPE "ReportDomain" ADD VALUE 'rh';
+prisma/migrations/20260518105922_f4completo_enum_dominios/migration.sql:13:ALTER TYPE "ReportDomain" ADD VALUE 'producao';
+
+# Classificação (C1 da Onda C da SPEC v3 §8.1)
+
+| Caminho | Tipo | Tratamento |
+|---|---|---|
+| src/generated/prisma/enums.ts | gerado | auto-regenera após `prisma generate` (C5). Sem ação manual |
+| src/lib/agent/intelligence/topic-extractor.ts | produção | REFATORAR: KNOWN_DOMAINS perde rh/producao, ganha cadastros/contabil/crm que faltavam |
+| src/lib/__tests__/mcp-capability-levels.test.ts | teste de MCP | MANTÉM (testa MCP_MODULES, escopo separado do enum ReportDomain) |
+| src/lib/actions/mcp-api-keys-types.ts MCP_MODULES | produção (MCP) | MANTÉM (módulos do MCP externo via ApiKey — SPEC v3 §2.16 marcou FORA do escopo) |
+| src/lib/reports/domains.ts | produção | C6: remove rh/producao |
+| src/lib/actions/domain-access.test.ts | teste | REFATORAR: lista 9 → 7 |
+| src/lib/reports/domains.test.ts | teste | REFATORAR: lista 9 → 7 + adiciona teste de coerência com Router R1 (C7) |
+| mcp/tools/dominios-vazios/{rh,producao}-status-dominio.ts | tool stub | MANTÉM (responde "ainda não temos" ao agente — não conflita com ReportDomain) |
+| mcp/tools/dominios-vazios/{rh,producao}-status-dominio.test.ts | teste | MANTÉM |
+| prisma/migrations/20260518.../migration.sql | migration histórica | NÃO TOCAR (histórico imutável) |

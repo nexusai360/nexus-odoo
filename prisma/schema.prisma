@@ -49,6 +49,8 @@ enum AuditAction {
   api_key_created
   api_key_revoked
   whatsapp_channel_updated
+  // RBAC v2 — recusa do Agente Nex por permissão de domínio (fast-path sem LLM).
+  agent_permission_denied
 }
 
 // F5 — enums do agente e integrações
@@ -96,46 +98,44 @@ enum WebhookDirection {
 }
 
 enum ReportDomain {
+  cadastros
+  comercial
+  contabil
+  crm
   estoque
   financeiro
   fiscal
-  comercial
-  cadastros
-  contabil
-  rh
-  crm
-  producao
 }
 
 model User {
-  id                  String               @id @default(uuid()) @db.Uuid
-  email               String               @unique
-  password            String
-  name                String
-  platformRole        PlatformRole         @default(viewer) @map("platform_role")
-  isOwner             Boolean              @default(false) @map("is_owner")
-  isActive            Boolean              @default(true) @map("is_active")
-  mustChangePassword  Boolean              @default(true) @map("must_change_password")
-  passwordChangedAt   DateTime?            @map("password_changed_at")
-  avatarUrl           String?              @map("avatar_url")
-  theme               Theme                @default(system)
-  emailVerifiedAt     DateTime?            @map("email_verified_at")
-  lastLoginAt         DateTime?            @map("last_login_at")
-  lastLoginIp         String?              @map("last_login_ip")
-  createdAt           DateTime             @default(now()) @map("created_at")
-  updatedAt           DateTime             @updatedAt @map("updated_at")
-  createdById         String?              @map("created_by_id") @db.Uuid
-  createdBy           User?                @relation("UserCreator", fields: [createdById], references: [id])
-  createdUsers        User[]               @relation("UserCreator")
-  audits              AuditLog[]
-  passwordResetTokens PasswordResetToken[]
-  emailChangeTokens   EmailChangeToken[]
-  domainAccess        UserDomainAccess[]   @relation("UserDomainAccess")
-  reportPresets       ReportPreset[]
+  id                     String                  @id @default(uuid()) @db.Uuid
+  email                  String                  @unique
+  password               String
+  name                   String
+  platformRole           PlatformRole            @default(viewer) @map("platform_role")
+  isOwner                Boolean                 @default(false) @map("is_owner")
+  isActive               Boolean                 @default(true) @map("is_active")
+  mustChangePassword     Boolean                 @default(true) @map("must_change_password")
+  passwordChangedAt      DateTime?               @map("password_changed_at")
+  avatarUrl              String?                 @map("avatar_url")
+  theme                  Theme                   @default(system)
+  emailVerifiedAt        DateTime?               @map("email_verified_at")
+  lastLoginAt            DateTime?               @map("last_login_at")
+  lastLoginIp            String?                 @map("last_login_ip")
+  createdAt              DateTime                @default(now()) @map("created_at")
+  updatedAt              DateTime                @updatedAt @map("updated_at")
+  createdById            String?                 @map("created_by_id") @db.Uuid
+  createdBy              User?                   @relation("UserCreator", fields: [createdById], references: [id])
+  createdUsers           User[]                  @relation("UserCreator")
+  audits                 AuditLog[]
+  passwordResetTokens    PasswordResetToken[]
+  emailChangeTokens      EmailChangeToken[]
+  domainAccess           UserDomainAccess[]      @relation("UserDomainAccess")
+  reportPresets          ReportPreset[]
   // F5
-  conversations       Conversation[]
-  whatsappNumbers     UserWhatsappNumber[]
-  playgroundSessions  PlaygroundSession[]
+  conversations          Conversation[]
+  whatsappNumbers        UserWhatsappNumber[]
+  playgroundSessions     PlaygroundSession[]
   // F4.5 — Agente Nex Inteligencia
   agentProfile           UserAgentProfile?
   suggestionInteractions SuggestionInteraction[]
@@ -155,7 +155,7 @@ model ReportPreset {
   nome         String
   searchParams String   @map("search_params")
   favorito     Boolean  @default(false)
-  criadoEm    DateTime @default(now()) @map("criado_em")
+  criadoEm     DateTime @default(now()) @map("criado_em")
   atualizadoEm DateTime @updatedAt @map("atualizado_em")
 
   @@index([userId, reportId])
@@ -1769,7 +1769,7 @@ model FatoFinanceiroSaldo {
   bancoNome      String?   @map("banco_nome")
   tipo           String?
   dataReferencia DateTime? @map("data_referencia")
-  saldoAnterior  Decimal   @default(0) @db.Decimal(18, 2) @map("saldo_anterior")
+  saldoAnterior  Decimal   @default(0) @map("saldo_anterior") @db.Decimal(18, 2)
   entrada        Decimal   @default(0) @db.Decimal(18, 2)
   saida          Decimal   @default(0) @db.Decimal(18, 2)
   saldo          Decimal   @default(0) @db.Decimal(18, 2)
@@ -1791,9 +1791,9 @@ model FatoFinanceiroMovimento {
   entrada             Decimal   @default(0) @db.Decimal(18, 2)
   saida               Decimal   @default(0) @db.Decimal(18, 2)
   valor               Decimal   @default(0) @db.Decimal(18, 2)
-  entradaPrevista     Decimal   @default(0) @db.Decimal(18, 2) @map("entrada_prevista")
-  saidaPrevista       Decimal   @default(0) @db.Decimal(18, 2) @map("saida_prevista")
-  valorPrevisto       Decimal   @default(0) @db.Decimal(18, 2) @map("valor_previsto")
+  entradaPrevista     Decimal   @default(0) @map("entrada_prevista") @db.Decimal(18, 2)
+  saidaPrevista       Decimal   @default(0) @map("saida_prevista") @db.Decimal(18, 2)
+  valorPrevisto       Decimal   @default(0) @map("valor_previsto") @db.Decimal(18, 2)
   atualizadoEm        DateTime  @default(now()) @map("atualizado_em")
 
   @@index([data])
@@ -1816,12 +1816,12 @@ model FatoFinanceiroTitulo {
   dataPagamento    DateTime? @map("data_pagamento")
   situacao         String?
   situacaoSimples  String?   @map("situacao_simples")
-  vrDocumento      Decimal   @default(0) @db.Decimal(18, 2) @map("vr_documento")
-  vrSaldo          Decimal   @default(0) @db.Decimal(18, 2) @map("vr_saldo")
-  vrTotal          Decimal   @default(0) @db.Decimal(18, 2) @map("vr_total")
-  vrJuros          Decimal   @default(0) @db.Decimal(18, 2) @map("vr_juros")
-  vrMulta          Decimal   @default(0) @db.Decimal(18, 2) @map("vr_multa")
-  vrDesconto       Decimal   @default(0) @db.Decimal(18, 2) @map("vr_desconto")
+  vrDocumento      Decimal   @default(0) @map("vr_documento") @db.Decimal(18, 2)
+  vrSaldo          Decimal   @default(0) @map("vr_saldo") @db.Decimal(18, 2)
+  vrTotal          Decimal   @default(0) @map("vr_total") @db.Decimal(18, 2)
+  vrJuros          Decimal   @default(0) @map("vr_juros") @db.Decimal(18, 2)
+  vrMulta          Decimal   @default(0) @map("vr_multa") @db.Decimal(18, 2)
+  vrDesconto       Decimal   @default(0) @map("vr_desconto") @db.Decimal(18, 2)
   atualizadoEm     DateTime  @default(now()) @map("atualizado_em")
 
   @@index([dataVencimento])
@@ -1850,8 +1850,8 @@ model FatoPedido {
   dataAprovacao    DateTime? @map("data_aprovacao")
   dataValidade     DateTime? @map("data_validade")
   dataPrevista     DateTime? @map("data_prevista")
-  vrProdutos       Decimal   @default(0) @db.Decimal(18, 2) @map("vr_produtos")
-  vrNf             Decimal   @default(0) @db.Decimal(18, 2) @map("vr_nf")
+  vrProdutos       Decimal   @default(0) @map("vr_produtos") @db.Decimal(18, 2)
+  vrNf             Decimal   @default(0) @map("vr_nf") @db.Decimal(18, 2)
   atualizadoEm     DateTime  @default(now()) @map("atualizado_em")
 
   @@index([dataOrcamento])
@@ -1868,10 +1868,10 @@ model FatoPedidoParcela {
   participanteNome   String?   @map("participante_nome")
   dataVencimento     DateTime? @map("data_vencimento")
   valor              Decimal   @default(0) @db.Decimal(18, 2)
-  vrJuros            Decimal   @default(0) @db.Decimal(18, 2) @map("vr_juros")
-  vrMulta            Decimal   @default(0) @db.Decimal(18, 2) @map("vr_multa")
-  vrDesconto         Decimal   @default(0) @db.Decimal(18, 2) @map("vr_desconto")
-  vrDocumento        Decimal   @default(0) @db.Decimal(18, 2) @map("vr_documento")
+  vrJuros            Decimal   @default(0) @map("vr_juros") @db.Decimal(18, 2)
+  vrMulta            Decimal   @default(0) @map("vr_multa") @db.Decimal(18, 2)
+  vrDesconto         Decimal   @default(0) @map("vr_desconto") @db.Decimal(18, 2)
+  vrDocumento        Decimal   @default(0) @map("vr_documento") @db.Decimal(18, 2)
   formaPagamentoNome String?   @map("forma_pagamento_nome")
   parcelaFaturada    Boolean   @default(false) @map("parcela_faturada")
   finanLancamentoId  Int?      @map("finan_lancamento_id")
@@ -1901,12 +1901,12 @@ model FatoNotaFiscal {
   dataEmissao          DateTime? @map("data_emissao")
   dataEntradaSaida     DateTime? @map("data_entrada_saida")
   dataAutorizacao      DateTime? @map("data_autorizacao")
-  vrNf                 Decimal   @default(0) @db.Decimal(18, 2) @map("vr_nf")
-  vrProdutos           Decimal   @default(0) @db.Decimal(18, 2) @map("vr_produtos")
-  vrFatura             Decimal   @default(0) @db.Decimal(18, 2) @map("vr_fatura")
-  vrIbpt               Decimal   @default(0) @db.Decimal(18, 2) @map("vr_ibpt")
-  vrIcmsProprio        Decimal   @default(0) @db.Decimal(18, 2) @map("vr_icms_proprio")
-  vrDesconto           Decimal   @default(0) @db.Decimal(18, 2) @map("vr_desconto")
+  vrNf                 Decimal   @default(0) @map("vr_nf") @db.Decimal(18, 2)
+  vrProdutos           Decimal   @default(0) @map("vr_produtos") @db.Decimal(18, 2)
+  vrFatura             Decimal   @default(0) @map("vr_fatura") @db.Decimal(18, 2)
+  vrIbpt               Decimal   @default(0) @map("vr_ibpt") @db.Decimal(18, 2)
+  vrIcmsProprio        Decimal   @default(0) @map("vr_icms_proprio") @db.Decimal(18, 2)
+  vrDesconto           Decimal   @default(0) @map("vr_desconto") @db.Decimal(18, 2)
   atualizadoEm         DateTime  @default(now()) @map("atualizado_em")
 
   @@index([dataEmissao])
@@ -1923,12 +1923,12 @@ model FatoNotaFiscalItem {
   cfopId          Int?      @map("cfop_id")
   cfopNome        String?   @map("cfop_nome")
   quantidade      Decimal   @default(0) @db.Decimal(18, 2)
-  vrUnitario      Decimal   @default(0) @db.Decimal(18, 2) @map("vr_unitario")
-  vrProdutos      Decimal   @default(0) @db.Decimal(18, 2) @map("vr_produtos")
-  vrNf            Decimal   @default(0) @db.Decimal(18, 2) @map("vr_nf")
-  vrIcmsProprio   Decimal   @default(0) @db.Decimal(18, 2) @map("vr_icms_proprio")
-  vrPisProprio    Decimal   @default(0) @db.Decimal(18, 2) @map("vr_pis_proprio")
-  vrCofinsProprio Decimal   @default(0) @db.Decimal(18, 2) @map("vr_cofins_proprio")
+  vrUnitario      Decimal   @default(0) @map("vr_unitario") @db.Decimal(18, 2)
+  vrProdutos      Decimal   @default(0) @map("vr_produtos") @db.Decimal(18, 2)
+  vrNf            Decimal   @default(0) @map("vr_nf") @db.Decimal(18, 2)
+  vrIcmsProprio   Decimal   @default(0) @map("vr_icms_proprio") @db.Decimal(18, 2)
+  vrPisProprio    Decimal   @default(0) @map("vr_pis_proprio") @db.Decimal(18, 2)
+  vrCofinsProprio Decimal   @default(0) @map("vr_cofins_proprio") @db.Decimal(18, 2)
   // Desnormalizados da nota-mãe (achado N8) — filtragem por período sem join.
   dataEmissao     DateTime? @map("data_emissao")
   entradaSaida    String?   @map("entrada_saida")
@@ -1947,7 +1947,7 @@ model DimEmpresaGrupo {
   odooId       Int      @id @map("odoo_id")
   nome         String
   cnpj         String?
-  tipo         String   // 'matriz' | 'filial'
+  tipo         String // 'matriz' | 'filial'
   uf           String?
   ativo        Boolean  @default(true)
   atualizadoEm DateTime @default(now()) @map("atualizado_em")
@@ -1958,20 +1958,20 @@ model DimEmpresaGrupo {
 }
 
 model FatoParceiro {
-  odooId       Int      @id @map("odoo_id")
+  odooId       Int       @id @map("odoo_id")
   nome         String?
-  nomeCompleto String?  @map("nome_completo")
+  nomeCompleto String?   @map("nome_completo")
   documento    String?
-  ehCliente    Boolean  @default(false) @map("eh_cliente")
-  ehFornecedor Boolean  @default(false) @map("eh_fornecedor")
-  ehEmpresa    Boolean  @default(false) @map("eh_empresa")
+  ehCliente    Boolean   @default(false) @map("eh_cliente")
+  ehFornecedor Boolean   @default(false) @map("eh_fornecedor")
+  ehEmpresa    Boolean   @default(false) @map("eh_empresa")
   cidade       String?
   uf           String?
   pais         String?
   cep          String?
   email        String?
   telefone     String?
-  ativo        Boolean  @default(true)
+  ativo        Boolean   @default(true)
   /// T-42 (Ronda 4): data de criacao do parceiro no Odoo (campo create_date).
   /// Populada a partir de raw_res_partner.data->>'create_date'. Permite filtrar
   /// "parceiros novos cadastrados esta semana/mes" via tool dedicada.
@@ -1989,29 +1989,29 @@ model FatoParceiro {
 /// Fonte primaria de busca: cobre cadastro inteiro independente de saldo.
 /// Saldo continua em fato_estoque_saldo; join por produto_id <-> odoo_id.
 model FatoProduto {
-  odooId             Int       @id @map("odoo_id")
-  nome               String
-  codigo             String?
-  codigoUnico        String?   @map("codigo_unico")
-  codigoBarras       String?   @map("codigo_barras")
-  ativo              Boolean   @default(true)
-  tipo               String?
-  marcaId            Int?      @map("marca_id")
-  marcaNome          String?   @map("marca_nome")
-  familiaId          Int?      @map("familia_id")
-  familiaNome        String?   @map("familia_nome")
-  unidadeNome        String?   @map("unidade_nome")
-  ncmCodigo          String?   @map("ncm_codigo")
-  controlaEstoque    Boolean   @default(false) @map("controla_estoque")
-  permiteVenda       Boolean   @default(true)  @map("permite_venda")
-  permiteCompra      Boolean   @default(true)  @map("permite_compra")
-  precoCusto         Decimal?  @map("preco_custo") @db.Decimal(14, 4)
-  precoVenda         Decimal?  @map("preco_venda") @db.Decimal(14, 4)
-  pesoLiquido        Decimal?  @map("peso_liquido") @db.Decimal(10, 4)
-  pesoBruto          Decimal?  @map("peso_bruto") @db.Decimal(10, 4)
-  criadoEm           DateTime? @map("criado_em")
-  atualizadoEmOdoo   DateTime? @map("atualizado_em_odoo")
-  atualizadoEm       DateTime  @default(now()) @map("atualizado_em")
+  odooId           Int       @id @map("odoo_id")
+  nome             String
+  codigo           String?
+  codigoUnico      String?   @map("codigo_unico")
+  codigoBarras     String?   @map("codigo_barras")
+  ativo            Boolean   @default(true)
+  tipo             String?
+  marcaId          Int?      @map("marca_id")
+  marcaNome        String?   @map("marca_nome")
+  familiaId        Int?      @map("familia_id")
+  familiaNome      String?   @map("familia_nome")
+  unidadeNome      String?   @map("unidade_nome")
+  ncmCodigo        String?   @map("ncm_codigo")
+  controlaEstoque  Boolean   @default(false) @map("controla_estoque")
+  permiteVenda     Boolean   @default(true) @map("permite_venda")
+  permiteCompra    Boolean   @default(true) @map("permite_compra")
+  precoCusto       Decimal?  @map("preco_custo") @db.Decimal(14, 4)
+  precoVenda       Decimal?  @map("preco_venda") @db.Decimal(14, 4)
+  pesoLiquido      Decimal?  @map("peso_liquido") @db.Decimal(10, 4)
+  pesoBruto        Decimal?  @map("peso_bruto") @db.Decimal(10, 4)
+  criadoEm         DateTime? @map("criado_em")
+  atualizadoEmOdoo DateTime? @map("atualizado_em_odoo")
+  atualizadoEm     DateTime  @default(now()) @map("atualizado_em")
 
   @@index([ativo])
   @@index([codigo])
@@ -2063,7 +2063,7 @@ model FatoPreco {
   precoBase        String?   @map("preco_base")
   valor            Decimal?  @db.Decimal(18, 4)
   aliquota         Decimal?  @db.Decimal(9, 4)
-  quantidadeMinima Decimal   @default(0) @db.Decimal(18, 4) @map("quantidade_minima")
+  quantidadeMinima Decimal   @default(0) @map("quantidade_minima") @db.Decimal(18, 4)
   dataInicial      DateTime? @map("data_inicial")
   dataFinal        DateTime? @map("data_final")
   atualizadoEm     DateTime  @default(now()) @map("atualizado_em")
@@ -2081,7 +2081,7 @@ model FatoServico {
   codigoFormatado  String?  @map("codigo_formatado")
   descricao        String
   codigoTributacao String?  @map("codigo_tributacao")
-  alInssRetido     Decimal  @default(0) @db.Decimal(9, 4) @map("al_inss_retido")
+  alInssRetido     Decimal  @default(0) @map("al_inss_retido") @db.Decimal(9, 4)
   atualizadoEm     DateTime @default(now()) @map("atualizado_em")
 
   @@index([codigo])
@@ -2097,11 +2097,11 @@ model FatoApuracao {
   tipo              String?
   entregue          Boolean   @default(false)
   regimeTributario  String?   @map("regime_tributario")
-  vrIcmsARecolher   Decimal   @default(0) @db.Decimal(18, 2) @map("vr_icms_a_recolher")
-  vrIcmsSaldoCredor Decimal   @default(0) @db.Decimal(18, 2) @map("vr_icms_saldo_credor")
-  vrIpiARecolher    Decimal   @default(0) @db.Decimal(18, 2) @map("vr_ipi_a_recolher")
-  vrPisARecolher    Decimal   @default(0) @db.Decimal(18, 2) @map("vr_pis_a_recolher")
-  vrCofinsARecolher Decimal   @default(0) @db.Decimal(18, 2) @map("vr_cofins_a_recolher")
+  vrIcmsARecolher   Decimal   @default(0) @map("vr_icms_a_recolher") @db.Decimal(18, 2)
+  vrIcmsSaldoCredor Decimal   @default(0) @map("vr_icms_saldo_credor") @db.Decimal(18, 2)
+  vrIpiARecolher    Decimal   @default(0) @map("vr_ipi_a_recolher") @db.Decimal(18, 2)
+  vrPisARecolher    Decimal   @default(0) @map("vr_pis_a_recolher") @db.Decimal(18, 2)
+  vrCofinsARecolher Decimal   @default(0) @map("vr_cofins_a_recolher") @db.Decimal(18, 2)
   atualizadoEm      DateTime  @default(now()) @map("atualizado_em")
 
   @@index([dataInicial])
@@ -2168,26 +2168,26 @@ model McpAuditLog {
   criadoEm   DateTime @default(now()) @map("criado_em")
 
   // NOVOS — F4 Onda 2 (opcionais)
-  apiKeyId       String?   @map("api_key_id") @db.Uuid
-  apiKey         ApiKey?   @relation(fields: [apiKeyId], references: [id])
-  authMode       String?   @map("auth_mode")
+  apiKeyId       String? @map("api_key_id") @db.Uuid
+  apiKey         ApiKey? @relation(fields: [apiKeyId], references: [id])
+  authMode       String? @map("auth_mode")
   operation      String?
   module         String?
   action         String?
   capability     String?
-  eventName      String?   @map("event_name")
-  requestId      String?   @map("request_id")
-  idempotencyKey String?   @map("idempotency_key")
+  eventName      String? @map("event_name")
+  requestId      String? @map("request_id")
+  idempotencyKey String? @map("idempotency_key")
   payload        Json?
   result         Json?
-  snapshotBefore Json?     @map("snapshot_before")
-  snapshotAfter  Json?     @map("snapshot_after")
+  snapshotBefore Json?   @map("snapshot_before")
+  snapshotAfter  Json?   @map("snapshot_after")
   status         String?
-  httpStatus     Int?      @map("http_status")
-  errorCode      String?   @map("error_code")
-  errorMessage   String?   @map("error_message")
-  ipAddress      String?   @map("ip_address")
-  userAgent      String?   @map("user_agent")
+  httpStatus     Int?    @map("http_status")
+  errorCode      String? @map("error_code")
+  errorMessage   String? @map("error_message")
+  ipAddress      String? @map("ip_address")
+  userAgent      String? @map("user_agent")
 
   @@index([userId, criadoEm])
   @@index([apiKeyId, criadoEm(sort: Desc)])
@@ -2202,15 +2202,15 @@ model McpAuditLog {
 /// Idempotency tracking para writes externas (F4 Onda 2).
 /// PK composta (apiKeyId, key) isola Idempotency-Key por canal sem colisão.
 model McpIdempotencyRecord {
-  apiKeyId        String   @map("api_key_id") @db.Uuid
-  key             String
-  toolId          String   @map("tool_id")
-  payloadHash     String   @map("payload_hash")
-  result          Json
-  status          String
-  httpStatus      Int      @map("http_status")
-  expiresAt       DateTime @map("expires_at")
-  createdAt       DateTime @default(now()) @map("created_at")
+  apiKeyId    String   @map("api_key_id") @db.Uuid
+  key         String
+  toolId      String   @map("tool_id")
+  payloadHash String   @map("payload_hash")
+  result      Json
+  status      String
+  httpStatus  Int      @map("http_status")
+  expiresAt   DateTime @map("expires_at")
+  createdAt   DateTime @default(now()) @map("created_at")
 
   @@id([apiKeyId, key])
   @@index([expiresAt])
@@ -2247,27 +2247,27 @@ model UserWhatsappNumber {
 /// Conversa de agente (WhatsApp, in-app ou playground).
 /// Agrupamento: WhatsApp → automático (< 24h); in-app/playground → explícito.
 model Conversation {
-  id        String       @id @default(uuid()) @db.Uuid
-  userId    String       @map("user_id") @db.Uuid
-  user      User         @relation(fields: [userId], references: [id], onDelete: Cascade)
-  channel   AgentChannel
-  title     String?
+  id                 String                          @id @default(uuid()) @db.Uuid
+  userId             String                          @map("user_id") @db.Uuid
+  user               User                            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  channel            AgentChannel
+  title              String?
   /// Historico opaco de raciocinio por iteracao (Anthropic blocks, Gemini parts,
   /// OpenRouter reasoning_details, OpenAI reasoning items). Array crescente,
   /// capado em 20 iteracoes ou 50KB serialized. Cada item: { provider, data }.
-  reasoningHistory Json    @default("[]") @map("reasoning_history")
+  reasoningHistory   Json                            @default("[]") @map("reasoning_history")
   /// Tags de topico/dominio derivadas das mensagens do usuario na conversa.
   /// Populado pelo job assincrono `agent-topic-tagging` (Onda 1 Inteligencia).
   /// Cap 5 tags. Ex.: ["estoque", "keyword:saldo", "produto:mola_espiral"].
-  topicTags        String[] @default([]) @map("topic_tags")
+  topicTags          String[]                        @default([]) @map("topic_tags")
   /// Versao do algoritmo de tagging. Incrementar forca re-tag em backfill.
-  topicTagsVersion Int      @default(0) @map("topic_tags_version")
+  topicTagsVersion   Int                             @default(0) @map("topic_tags_version")
   /// Quando foi tagueado pela ultima vez. Usado para decidir re-tag a cada
   /// 10 mensagens novas.
-  topicTagsAt      DateTime? @map("topic_tags_at")
-  createdAt DateTime     @default(now()) @map("created_at")
-  updatedAt DateTime     @updatedAt @map("updated_at")
-  messages  Message[]
+  topicTagsAt        DateTime?                       @map("topic_tags_at")
+  createdAt          DateTime                        @default(now()) @map("created_at")
+  updatedAt          DateTime                        @updatedAt @map("updated_at")
+  messages           Message[]
   qualityEvaluations ConversationQualityEvaluation[]
   /// R1 router de catalogo: decisoes do router por turno desta conversa.
   routerDecisions    AgentRouterDecision[]
@@ -2278,17 +2278,17 @@ model Conversation {
 
 /// Mensagem de conversa (user, assistant ou tool).
 model Message {
-  id             String       @id @default(uuid()) @db.Uuid
-  conversationId String       @map("conversation_id") @db.Uuid
-  conversation   Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
-  role           MessageRole
-  content        String
-  toolCalls      Json?        @map("tool_calls")
+  id              String                @id @default(uuid()) @db.Uuid
+  conversationId  String                @map("conversation_id") @db.Uuid
+  conversation    Conversation          @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  role            MessageRole
+  content         String
+  toolCalls       Json?                 @map("tool_calls")
   /// Resultados das tool calls deste turno, em formato canonico cross-provider
   /// (Array<{ name, args, result }>). NULL em mensagens pre-Onda 1 Inteligencia.
   /// Spec: docs/superpowers/specs/2026-05-25-agente-nex-inteligencia-design.md §3.2.
-  toolResults    Json?        @map("tool_results")
-  createdAt      DateTime     @default(now()) @map("created_at")
+  toolResults     Json?                 @map("tool_results")
+  createdAt       DateTime              @default(now()) @map("created_at")
   /// R1 router de catalogo: decisao do router associada a este turno.
   routerDecisions AgentRouterDecision[]
 
@@ -2298,14 +2298,14 @@ model Message {
 
 /// Credencial de API de LLM — chave cifrada com AES-256.
 model LlmCredential {
-  id              String    @id @default(uuid()) @db.Uuid
+  id              String      @id @default(uuid()) @db.Uuid
   provider        String
   label           String
-  encryptedApiKey String    @map("encrypted_api_key")
+  encryptedApiKey String      @map("encrypted_api_key")
   last4           String
-  createdAt       DateTime  @default(now()) @map("created_at")
-  updatedAt       DateTime  @updatedAt @map("updated_at")
-  createdById     String?   @map("created_by_id") @db.Uuid
+  createdAt       DateTime    @default(now()) @map("created_at")
+  updatedAt       DateTime    @updatedAt @map("updated_at")
+  createdById     String?     @map("created_by_id") @db.Uuid
   configs         LlmConfig[]
 
   /// Saldo/crédito da conta do provedor para esta chave.
@@ -2359,7 +2359,7 @@ model LlmUsage {
   isPlayground   Boolean  @default(false) @map("is_playground")
   /// Tokens de raciocinio internos (subset conceitual de tokens_output).
   /// OpenAI/Gemini/OpenRouter expoem; Anthropic nao (fica NULL).
-  reasoningTokens Int?    @map("reasoning_tokens")
+  reasoningTokens Int?     @map("reasoning_tokens")
   /// Contagem de tool calls disparadas nesta iteracao. NULL em linhas
   /// antigas pre-instrumentacao; 0 quando o modelo respondeu direto
   /// sem chamar tool. Usado no drill-down de /agente/consumo.
@@ -2368,7 +2368,7 @@ model LlmUsage {
   /// requisitadas pelo modelo. Array vazio quando nenhuma tool foi
   /// chamada; NULL em linhas antigas pre-instrumentacao.
   toolNames       String[] @map("tool_names")
-  userId         String?  @map("user_id") @db.Uuid
+  userId          String?  @map("user_id") @db.Uuid
   // Credencial (chave de API) usada — permite somar o consumo por chave (A4).
   credentialId   String?  @map("credential_id") @db.Uuid
   // Tipo da requisição para a tag de Consumo (G11): texto/imagem/audio/arquivo/embedding.
@@ -2388,13 +2388,13 @@ model LlmUsage {
 
 /// Configuração do agente — singleton (id="global").
 model AgentSettings {
-  id                String   @id @default("global")
-  identityBase      String?  @map("identity_base")
-  personality       String   @default("")
-  tone              String   @default("")
-  guardrails        Json     @default("[]")
-  terminology       Json     @default("{}")
-  advancedOverride  String?  @map("advanced_override")
+  id                 String  @id @default("global")
+  identityBase       String? @map("identity_base")
+  personality        String  @default("")
+  tone               String  @default("")
+  guardrails         Json    @default("[]")
+  terminology        Json    @default("{}")
+  advancedOverride   String? @map("advanced_override")
   suggestionsEnabled Boolean @default(true) @map("suggestions_enabled")
 
   /// **CONTROLE DE FONTE DA VERDADE PRO PROMPT** (resolve drift dev/banco):
@@ -2407,18 +2407,18 @@ model AgentSettings {
   ///
   /// Auto-flip pra FALSE quando admin SALVA via UI.
   /// Pra voltar a TRUE: botão "Voltar ao padrão do sistema" na UI.
-  usesCodeDefaults  Boolean  @default(true) @map("uses_code_defaults")
+  usesCodeDefaults Boolean @default(true) @map("uses_code_defaults")
 
   /// Exibição da bolha flutuante do Agente Nex nas páginas autenticadas.
-  bubbleEnabled     Boolean  @default(true) @map("bubble_enabled")
+  bubbleEnabled Boolean @default(true) @map("bubble_enabled")
 
   /// Habilita o Agente Nex no canal WhatsApp (F5). Independente de bubble.
-  whatsappEnabled   Boolean  @default(true) @map("whatsapp_enabled")
+  whatsappEnabled Boolean @default(true) @map("whatsapp_enabled")
 
   /// Checkpoints de 3 estados (OFF/PLAYGROUND/PRODUCTION).
-  audioCheckpoint   FeatureCheckpoint @default(OFF) @map("audio_checkpoint")
-  imageCheckpoint   FeatureCheckpoint @default(OFF) @map("image_checkpoint")
-  kbCheckpoint      FeatureCheckpoint @default(PRODUCTION) @map("kb_checkpoint")
+  audioCheckpoint       FeatureCheckpoint @default(OFF) @map("audio_checkpoint")
+  imageCheckpoint       FeatureCheckpoint @default(OFF) @map("image_checkpoint")
+  kbCheckpoint          FeatureCheckpoint @default(PRODUCTION) @map("kb_checkpoint")
   /// Checkpoint das sugestões clicáveis (substitui suggestionsEnabled — B3).
   suggestionsCheckpoint FeatureCheckpoint @default(PRODUCTION) @map("suggestions_checkpoint")
 
@@ -2427,11 +2427,11 @@ model AgentSettings {
   reasoningCheckpoint FeatureCheckpoint @default(OFF) @map("reasoning_checkpoint")
   /// Profundidade de raciocínio dos modelos reasoning (ex.: GPT-5.x).
   /// null = usa o default do provider. Valores: minimal | low | medium | high.
-  reasoningEffort   String?  @map("reasoning_effort")
+  reasoningEffort     String?           @map("reasoning_effort")
 
   /// Máximo de sugestões clicáveis que o agente pode mostrar por resposta.
   /// Aplicado deterministicamente em `extractSuggestions` e instruído no prompt.
-  maxSuggestions    Int      @default(3) @map("max_suggestions")
+  maxSuggestions Int @default(3) @map("max_suggestions")
 
   /// AutoValidator (Onda 1.E do projeto Nex >=90%): valida a resposta final
   /// do LLM antes de devolver ao usuário. 3 modos:
@@ -2448,10 +2448,10 @@ model AgentSettings {
   /// Modelo usado em chamadas internas de inteligencia (topic-extractor,
   /// contextual-suggester). Formato: "provider/model" ex. "anthropic/claude-haiku-4-5".
   /// NULL = default Haiku 4.5 via OpenRouter.
-  intelligenceModel String?  @map("intelligence_model")
+  intelligenceModel      String?           @map("intelligence_model")
   /// Modelo do juiz de qualidade (Frente A da inteligencia). NULL = Gemini 2.5
   /// Pro thinking via OpenRouter (fallback: Opus 4.7).
-  qualityJudgeModel String?  @map("quality_judge_model")
+  qualityJudgeModel      String?           @map("quality_judge_model")
   /// Checkpoint das frentes B/C/D da inteligencia (welcome personalizado,
   /// sugestoes contextuais, bullets-pergunta para chips). Default OFF para
   /// rollout controlado. Frente A (analise retrospectiva) e admin-only e
@@ -2459,32 +2459,32 @@ model AgentSettings {
   intelligenceCheckpoint FeatureCheckpoint @default(OFF) @map("intelligence_checkpoint")
 
   /// Modelo dedicado de transcrição de áudio (independente do modelo de produção).
-  audioProvider     String?  @map("audio_provider")
-  audioModel        String?  @map("audio_model")
+  audioProvider     String? @map("audio_provider")
+  audioModel        String? @map("audio_model")
   /// Credencial (chave de API) usada pelo modelo dedicado de áudio.
-  audioCredentialId String?  @map("audio_credential_id") @db.Uuid
+  audioCredentialId String? @map("audio_credential_id") @db.Uuid
 
   /// Modelo dedicado de entendimento de imagem (independente do modelo de produção).
-  imageProvider     String?  @map("image_provider")
-  imageModel        String?  @map("image_model")
+  imageProvider     String? @map("image_provider")
+  imageModel        String? @map("image_model")
   /// Credencial (chave de API) usada pelo modelo dedicado de imagem.
-  imageCredentialId String?  @map("image_credential_id") @db.Uuid
+  imageCredentialId String? @map("image_credential_id") @db.Uuid
 
   /// R1 router de catalogo (sub-projeto do roadmap de cobertura completa).
   /// Ver docs/superpowers/specs/2026-05-28-router-catalogo-design.md.
   /// FALSE (default): modo shadow — calcula decisao mas nao filtra catalogo.
   /// TRUE: filtra catalogo entregue ao LLM por similaridade semantica.
-  routerEnabled        Boolean @default(false) @map("router_enabled")
+  routerEnabled          Boolean @default(false) @map("router_enabled")
   /// Threshold minimo de cosine similarity para incluir dominio (regra 5).
-  routerThreshold      Float   @default(0.30) @map("router_threshold")
+  routerThreshold        Float   @default(0.30) @map("router_threshold")
   /// Quantos dominios sao escolhidos no topo (regra 5).
-  routerTopK           Int     @default(3) @map("router_top_k")
+  routerTopK             Int     @default(3) @map("router_top_k")
   /// Em modo ativo, se V1-V5 detectar Caminho 3a e topScore < este threshold,
   /// dispara retry expandindo catalogo para o inteiro (uso do motor existente).
-  routerRetryExpandBelow Float @default(0.70) @map("router_retry_expand_below")
+  routerRetryExpandBelow Float   @default(0.70) @map("router_retry_expand_below")
   /// Habilita o retry expandido descrito acima. Default false para rollout
   /// seguro: liga so depois de validar shadow.
-  routerRetryEnabled   Boolean @default(false) @map("router_retry_enabled")
+  routerRetryEnabled     Boolean @default(false) @map("router_retry_enabled")
 
   /// Periodicidade (em minutos) do cron BullMQ que processa avaliacoes
   /// PENDENTE via heuristica (sem custo de LLM). Range 1-1440 (24h).
@@ -2493,7 +2493,7 @@ model AgentSettings {
   /// do worker (mesmo mecanismo do sync incremental).
   qualityHeuristicIntervalMinutes Int @default(240) @map("quality_heuristic_interval_minutes")
 
-  updatedAt         DateTime @updatedAt @map("updated_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
 
   @@map("agent_settings")
 }
@@ -2504,45 +2504,53 @@ model AgentSettings {
 /// foi de fato chamado (tools), e em qual modo (shadow vs active). Permite
 /// auditar acerto top-1 sem afetar o comportamento atual do Nex.
 model AgentRouterDecision {
-  id                  String   @id @default(cuid())
-  createdAt           DateTime @default(now()) @map("created_at")
+  id        String   @id @default(cuid())
+  createdAt DateTime @default(now()) @map("created_at")
 
   /// Contexto do turno. Opcionais porque a row e' criada antes da persistencia
   /// da Message no banco.
-  conversationId      String?       @map("conversation_id") @db.Uuid
-  conversation        Conversation? @relation(fields: [conversationId], references: [id], onDelete: SetNull)
-  messageId           String?       @map("message_id") @db.Uuid
-  message             Message?      @relation(fields: [messageId], references: [id], onDelete: SetNull)
+  conversationId String?       @map("conversation_id") @db.Uuid
+  conversation   Conversation? @relation(fields: [conversationId], references: [id], onDelete: SetNull)
+  messageId      String?       @map("message_id") @db.Uuid
+  message        Message?      @relation(fields: [messageId], references: [id], onDelete: SetNull)
 
   /// Entrada.
-  userQuestion        String   @map("user_question") @db.Text
-  questionTokenCount  Int?     @map("question_token_count")
+  userQuestion       String @map("user_question") @db.Text
+  questionTokenCount Int?   @map("question_token_count")
 
   /// Saida do router. `scores` e' Json {dominio: score}. `topScore` denormalizado
   /// para facilitar queries de histograma (width_bucket). Em fallbacks tipo
   /// msg_trivial ou embed_failed, `scores` = {} e `topScore` = null.
-  pickedDomains       String[] @default([]) @map("picked_domains")
-  scores              Json     @default("{}")
-  topScore            Float?   @map("top_score")
-  fallbackTriggered   Boolean  @default(false) @map("fallback_triggered")
+  pickedDomains     String[] @default([]) @map("picked_domains")
+  scores            Json     @default("{}")
+  topScore          Float?   @map("top_score")
+  fallbackTriggered Boolean  @default(false) @map("fallback_triggered")
   /// "msg_trivial" | "embed_failed" | "score_baixo" | null. Pode ganhar sufixo
   /// "+retry_v5_expanded" quando o retry V1-V5 expandiu o catalogo.
-  fallbackReason      String?  @map("fallback_reason")
+  fallbackReason    String?  @map("fallback_reason")
   /// Formato: "r1.<major>.<minor>.<patch>-<vocab_hash8>". Permite cruzar com
   /// VOCABULARY_VERSION.
-  routerVersion       String   @map("router_version")
+  routerVersion     String   @map("router_version")
 
   /// O que aconteceu no turno. `mode`: "shadow" | "active" | "calibracao_R-X"
   /// | "test" | "e2e".
-  mode                String
-  catalogSizeOffered  Int      @default(0) @map("catalog_size_offered")
-  catalogSizeFull     Int      @default(0) @map("catalog_size_full")
-  toolsActuallyUsed   String[] @default([]) @map("tools_actually_used")
-  toolsDomains        String[] @default([]) @map("tools_domains")
-  llmModelUsed        String?  @map("llm_model_used")
+  mode               String
+  catalogSizeOffered Int      @default(0) @map("catalog_size_offered")
+  catalogSizeFull    Int      @default(0) @map("catalog_size_full")
+  toolsActuallyUsed  String[] @default([]) @map("tools_actually_used")
+  toolsDomains       String[] @default([]) @map("tools_domains")
+  llmModelUsed       String?  @map("llm_model_used")
   /// Tempo da chamada pickDomains, nao do turno todo. Alarmavel quando p95 >
   /// 200ms.
-  pickDurationMs      Int?     @map("pick_duration_ms")
+  pickDurationMs     Int?     @map("pick_duration_ms")
+
+  /// RBAC v2: desfecho do turno do ponto de vista do router/permissão.
+  /// Valores esperados (TEXT, não enum por extensibilidade):
+  ///   - "ok"                  → turno completou normalmente (LLM respondeu)
+  ///   - "permission_denied"   → fast-path de recusa disparou (sem LLM)
+  ///   - "failed"              → exceção não tratada (futuro)
+  /// Default null preserva linhas históricas pré-RBAC v2.
+  outcome String? @db.Text
 
   @@index([createdAt, mode])
   @@index([conversationId])
@@ -2554,24 +2562,25 @@ model AgentRouterDecision {
 /// "atualizar" (ou pelo script CLI) ficam aqui; o catálogo efetivo em runtime
 /// é o merge de catalog.ts (base) + esta tabela. Tabela vazia = usa só a base.
 model LlmModelEntry {
-  id                 String   @id
-  provider           String
-  label              String
-  tier               String
-  pricingInput       Float?   @map("pricing_input")
-  pricingOutput      Float?   @map("pricing_output")
-  pricingPerMinute   Float?   @map("pricing_per_minute")
-  modelUse           String?  @map("model_use")
-  audio              Boolean  @default(false)
-  vision             Boolean  @default(false)
-  reasoningLevels    Json?    @map("reasoning_levels")
-  released           String?
-  notes              String?
-  source             String   @default("sync")
+  id               String    @id
+  provider         String
+  label            String
+  tier             String
+  pricingInput     Float?    @map("pricing_input")
+  pricingOutput    Float?    @map("pricing_output")
+  pricingPerMinute Float?    @map("pricing_per_minute")
+  modelUse         String?   @map("model_use")
+  audio            Boolean   @default(false)
+  vision           Boolean   @default(false)
+  reasoningLevels  Json?     @map("reasoning_levels")
+  released         String?
+  notes            String?
+  source           String    @default("sync")
   /// Quando o modelo some do catalogo upstream, marca o instante;
   /// permite manter selecao do usuario e exibir banner de deprecated.
-  deprecatedAt       DateTime? @map("deprecated_at")
-  updatedAt          DateTime @updatedAt @map("updated_at")
+  deprecatedAt     DateTime? @map("deprecated_at")
+  updatedAt        DateTime  @updatedAt @map("updated_at")
+
   @@index([provider])
   @@map("llm_model_entry")
 }
@@ -2579,15 +2588,15 @@ model LlmModelEntry {
 /// Documento da base de conhecimento do agente.
 /// A coluna embedding vector(1536) é adicionada via SQL raw na migration (pgvector, onda 7).
 model KbDocument {
-  id            String            @id @default(uuid()) @db.Uuid
+  id            String                       @id @default(uuid()) @db.Uuid
   name          String
-  kind          KbKind            @default(TXT)
-  sourceUrl     String?           @map("source_url")
-  extractedText String            @map("extracted_text")
-  charCount     Int               @map("char_count")
+  kind          KbKind                       @default(TXT)
+  sourceUrl     String?                      @map("source_url")
+  extractedText String                       @map("extracted_text")
+  charCount     Int                          @map("char_count")
   /// Checkpoint do documento: OFF, PLAYGROUND ou PRODUCTION.
-  checkpoint    FeatureCheckpoint @default(PRODUCTION)
-  createdAt     DateTime          @default(now()) @map("created_at")
+  checkpoint    FeatureCheckpoint            @default(PRODUCTION)
+  createdAt     DateTime                     @default(now()) @map("created_at")
   /// Embedding pgvector(1536) para RAG. Tipo sem suporte nativo no Prisma —
   /// declarado com `Unsupported` para que `prisma migrate dev` NÃO o derrube.
   /// O índice HNSW vive em migration raw (Prisma não modela índice de vetor).
@@ -2600,28 +2609,28 @@ model KbDocument {
 /// Cada sessão tem provedor/modelo próprios, snapshot de prompt editável
 /// e histórico de mensagens com custo acumulado. Independente da produção.
 model PlaygroundSession {
-  id             String   @id @default(uuid()) @db.Uuid
-  userId         String   @map("user_id") @db.Uuid
-  user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  id             String    @id @default(uuid()) @db.Uuid
+  userId         String    @map("user_id") @db.Uuid
+  user           User      @relation(fields: [userId], references: [id], onDelete: Cascade)
   title          String?
   provider       String
   model          String
   /// Chave de API usada nesta sessão (D2) — desacopla da config global.
-  credentialId   String?  @map("credential_id") @db.Uuid
+  credentialId   String?   @map("credential_id") @db.Uuid
   /// Conversa (canal playground) usada pelo runAgent para histórico/contexto.
   /// Criada sob demanda na primeira mensagem da sessão.
-  conversationId String?  @map("conversation_id") @db.Uuid
+  conversationId String?   @map("conversation_id") @db.Uuid
   /// Snapshot do prompt da sessão: { identityBase, personality, tone, guardrails }.
   /// Inicia como cópia da produção; editável sem afetar produção.
-  promptSnapshot Json     @map("prompt_snapshot")
-  costUsd        Decimal  @default(0) @map("cost_usd") @db.Decimal(14, 6)
-  costBrl        Decimal  @default(0) @map("cost_brl") @db.Decimal(14, 6)
-  createdAt      DateTime @default(now()) @map("created_at")
-  updatedAt      DateTime @updatedAt @map("updated_at")
+  promptSnapshot Json      @map("prompt_snapshot")
+  costUsd        Decimal   @default(0) @map("cost_usd") @db.Decimal(14, 6)
+  costBrl        Decimal   @default(0) @map("cost_brl") @db.Decimal(14, 6)
+  createdAt      DateTime  @default(now()) @map("created_at")
+  updatedAt      DateTime  @updatedAt @map("updated_at")
   /// Preenchido quando a sessão é arquivada ("Nova sessão").
   archivedAt     DateTime? @map("archived_at")
 
-  messages       PlaygroundMessage[]
+  messages PlaygroundMessage[]
 
   @@index([userId, updatedAt(sort: Desc)])
   @@map("playground_sessions")
@@ -2629,20 +2638,20 @@ model PlaygroundSession {
 
 /// Mensagem de uma sessão de playground.
 model PlaygroundMessage {
-  id        String            @id @default(uuid()) @db.Uuid
-  sessionId String            @map("session_id") @db.Uuid
-  session   PlaygroundSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
-  role      MessageRole
-  content   String
-  toolCalls Json?             @map("tool_calls")
-  costUsd   Decimal?          @map("cost_usd") @db.Decimal(12, 6)
+  id          String            @id @default(uuid()) @db.Uuid
+  sessionId   String            @map("session_id") @db.Uuid
+  session     PlaygroundSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  role        MessageRole
+  content     String
+  toolCalls   Json?             @map("tool_calls")
+  costUsd     Decimal?          @map("cost_usd") @db.Decimal(12, 6)
   /// Provedor que gerou esta mensagem (D5) — registra por turn.
-  provider    String?  @map("provider")
+  provider    String?           @map("provider")
   /// Modelo que gerou esta mensagem (D5).
-  model       String?  @map("model")
+  model       String?           @map("model")
   /// Tipo de requisição (D5/G11): texto, audio, imagem, arquivo.
-  requestKind String?  @map("request_kind")
-  createdAt DateTime          @default(now()) @map("created_at")
+  requestKind String?           @map("request_kind")
+  createdAt   DateTime          @default(now()) @map("created_at")
 
   @@index([sessionId, createdAt])
   @@map("playground_messages")
@@ -2735,7 +2744,7 @@ model ApiKey {
   tenantId            String?   @map("tenant_id") @db.Uuid
   allowedOrigins      Json      @default("[]") @map("allowed_origins")
 
-  auditLogs           McpAuditLog[]
+  auditLogs McpAuditLog[]
 
   @@index([active, revokedAt, expiresAt])
   @@index([tenantId, active])
@@ -2770,19 +2779,19 @@ model ProcessedWhatsappMessage {
 /// 10 mensagens novas do usuario). Guarda apenas derivados (topicos, keywords) —
 /// nenhuma frase original do usuario.
 model UserAgentProfile {
-  userId              String   @id @map("user_id") @db.Uuid
+  userId            String    @id @map("user_id") @db.Uuid
   /// [{topic, score, lastSeenAt}], ordenado por score (recencia x frequencia).
-  topTopics           Json     @default("[]") @map("top_topics")
+  topTopics         Json      @default("[]") @map("top_topics")
   /// [{keyword, score}].
-  topKeywords         Json     @default("[]") @map("top_keywords")
-  preferredDomains    String[] @default([]) @map("preferred_domains")
-  messageCount        Int      @default(0) @map("message_count")
-  lastInteractionAt   DateTime? @map("last_interaction_at")
-  profileBuiltAt      DateTime? @map("profile_built_at")
+  topKeywords       Json      @default("[]") @map("top_keywords")
+  preferredDomains  String[]  @default([]) @map("preferred_domains")
+  messageCount      Int       @default(0) @map("message_count")
+  lastInteractionAt DateTime? @map("last_interaction_at")
+  profileBuiltAt    DateTime? @map("profile_built_at")
   /// Versao do algoritmo de construcao. Incrementar forca rebuild.
-  version             Int      @default(1)
+  version           Int       @default(1)
 
-  user                User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([lastInteractionAt])
   @@map("user_agent_profiles")
@@ -2792,63 +2801,63 @@ model UserAgentProfile {
 /// Uma linha por `assistantMessageId`. Juiz default Gemini 2.5 Pro thinking via
 /// OpenRouter (configuravel em AgentSettings.qualityJudgeModel).
 model ConversationQualityEvaluation {
-  id                    String   @id @default(uuid()) @db.Uuid
-  conversationId        String   @map("conversation_id") @db.Uuid
+  id                 String   @id @default(uuid()) @db.Uuid
+  conversationId     String   @map("conversation_id") @db.Uuid
   /// Nullable + sem @unique: pra FALHA_TECNICA (turno que nem gerou
   /// assistant message). Em rows normais, segue 1:1 com Message.
-  assistantMessageId    String?  @map("assistant_message_id") @db.Uuid
-  judgeModel            String?  @map("judge_model")
-  judgeVersion          String   @map("judge_version")
-  razoes                String   @default("")
-  flags                 String[] @default([])
-  toolsReexecuted       Json?    @map("tools_reexecuted")
-  createdAt             DateTime @default(now()) @map("created_at")
+  assistantMessageId String?  @map("assistant_message_id") @db.Uuid
+  judgeModel         String?  @map("judge_model")
+  judgeVersion       String   @map("judge_version")
+  razoes             String   @default("")
+  flags              String[] @default([])
+  toolsReexecuted    Json?    @map("tools_reexecuted")
+  createdAt          DateTime @default(now()) @map("created_at")
 
   /// @deprecated escala 1-5 da versao antiga (4.914 rows historicas)
   aderencia             Int?
   /// @deprecated escala 1-5 da versao antiga
-  correcaoFactual       Int?     @map("correcao_factual")
+  correcaoFactual       Int?                         @map("correcao_factual")
   /// @deprecated escala 1-5 da versao antiga
-  escolhaDeTools        Int?     @map("escolha_de_tools")
+  escolhaDeTools        Int?                         @map("escolha_de_tools")
   /// @deprecated escala 1-5 da versao antiga
   clareza               Int?
   /// @deprecated movido pra novo fluxo (PromptRecommendation)
-  recomendacaoPrompt    String?  @map("recomendacao_prompt")
+  recomendacaoPrompt    String?                      @map("recomendacao_prompt")
   /// @deprecated pgvector embedding pra clusterizacao antiga
   recomendacaoEmbedding Unsupported("vector(1536)")? @map("recomendacao_embedding")
 
   /// Review humano opcional: super_admin pode sobrescrever status do judge
   /// via UI /agente/qualidade (drill-down "Ajustar manualmente").
-  humanStatus           String?  @map("human_status")
-  humanReviewedBy       String?  @map("human_reviewed_by") @db.Uuid
-  humanReviewedAt       DateTime? @map("human_reviewed_at")
+  humanStatus     String?   @map("human_status")
+  humanReviewedBy String?   @map("human_reviewed_by") @db.Uuid
+  humanReviewedAt DateTime? @map("human_reviewed_at")
 
   /// Novo sistema /agente/qualidade. Status discreto + taxonomia de patterns.
-  status                String   @default("PENDENTE")
-  patterns              String[] @default([])
+  status           String   @default("PENDENTE")
+  patterns         String[] @default([])
   /// Modelo do AGENTE que gerou a resposta (ex: gpt-5.4-nano).
   /// Permite filtrar KPI por modelo na UI.
-  model                 String?
-  userMessageId         String?  @map("user_message_id") @db.Uuid
+  model            String?
+  userMessageId    String?  @map("user_message_id") @db.Uuid
   /// Cap 4000 chars. Snapshot pra preservar contexto se Message for deletada.
-  questionSnapshot      String?  @map("question_snapshot")
-  answerSnapshot        String?  @map("answer_snapshot")
+  questionSnapshot String?  @map("question_snapshot")
+  answerSnapshot   String?  @map("answer_snapshot")
   /// Chips de sugestao oferecidos ao usuario logo apos a resposta
   /// (bolinhas roxas da bubble). Snapshot do array final, ja apos
   /// extracao do canal [[suggestions]] / bullet-questions.
-  suggestions           String[] @default([])
+  suggestions      String[] @default([])
   /// Preenchido apenas em FALHA_TECNICA. Cap 1000 chars.
-  technicalError        String?  @map("technical_error")
+  technicalError   String?  @map("technical_error")
 
   /// AutoValidator (Onda 1.E): quantas vezes o validator disparou retry.
   /// 0 = passou de primeira; 1 = passou após retry corretivo.
-  retryCount    Int     @default(0) @map("retry_count")
+  retryCount  Int     @default(0) @map("retry_count")
   /// V1|V2|V3|V4|null. Validador que disparou (null se aceito de primeira).
-  retryReason   String? @map("retry_reason")
+  retryReason String? @map("retry_reason")
   /// Detalhe categorizado, sem PII. Ex: "V2:numero_nao_derivado:moeda".
-  retryDetail   String? @map("retry_detail")
+  retryDetail String? @map("retry_detail")
 
-  conversation          Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  conversation Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
 
   @@index([conversationId])
   @@index([status, createdAt])
@@ -2864,16 +2873,16 @@ model ConversationQualityEvaluation {
 /// `/agente/inteligencia`. Aceitacao NAO automatiza mudanca de prompt — abre
 /// caminho para PR manual no `identity-base.ts`.
 model PromptRecommendation {
-  id              String   @id @default(uuid()) @db.Uuid
-  clusterKey      String   @unique @map("cluster_key")
-  consolidatedText String  @map("consolidated_text")
-  occurrences     Int      @default(1)
+  id               String    @id @default(uuid()) @db.Uuid
+  clusterKey       String    @unique @map("cluster_key")
+  consolidatedText String    @map("consolidated_text")
+  occurrences      Int       @default(1)
   /// pending | accepted | rejected | needs_more_review
-  status          String   @default("pending")
-  decidedAt       DateTime? @map("decided_at")
-  decidedBy       String?  @map("decided_by") @db.Uuid
-  createdAt       DateTime @default(now()) @map("created_at")
-  updatedAt       DateTime @updatedAt @map("updated_at")
+  status           String    @default("pending")
+  decidedAt        DateTime? @map("decided_at")
+  decidedBy        String?   @map("decided_by") @db.Uuid
+  createdAt        DateTime  @default(now()) @map("created_at")
+  updatedAt        DateTime  @updatedAt @map("updated_at")
 
   @@index([status])
   @@map("prompt_recommendations")
@@ -2883,17 +2892,17 @@ model PromptRecommendation {
 /// detectar dedup (action="dedup_dropped") e fallback (action="fallback_timeout").
 /// TTL 90 dias via cron `agent-intelligence-cleanup` semanal.
 model SuggestionInteraction {
-  id              String   @id @default(uuid()) @db.Uuid
-  userId          String   @map("user_id") @db.Uuid
-  conversationId  String?  @map("conversation_id") @db.Uuid
-  chipText        String   @map("chip_text")
+  id             String   @id @default(uuid()) @db.Uuid
+  userId         String   @map("user_id") @db.Uuid
+  conversationId String?  @map("conversation_id") @db.Uuid
+  chipText       String   @map("chip_text")
   /// welcome | contextual | bullet_extracted
-  chipSource      String   @map("chip_source")
+  chipSource     String   @map("chip_source")
   /// impressed | clicked | dedup_dropped | fallback_timeout
-  action          String
-  createdAt       DateTime @default(now()) @map("created_at")
+  action         String
+  createdAt      DateTime @default(now()) @map("created_at")
 
-  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId, createdAt])
   @@index([chipSource, createdAt])
