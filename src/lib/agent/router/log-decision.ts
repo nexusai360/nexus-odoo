@@ -32,6 +32,12 @@ export type CreateDecisionInput = {
    *  e e' preenchido depois por updateDecision. */
   toolsActuallyUsed?: string[];
   toolsDomains?: string[];
+  /** R2-ctx: a Camada 1 (embedding da pergunta crua) caiu em fallback. */
+  originalFallback?: boolean;
+  /** R2-ctx: a Camada 2 (LLM) rodou e produziu uma pergunta reformulada. */
+  usedReformulation?: boolean;
+  /** R2-ctx: pergunta reformulada usada no re-embedding (Camada 3). */
+  reformulatedQuestion?: string | null;
 };
 
 export type CreateDecisionResult = {
@@ -66,6 +72,9 @@ export async function createDecision(
         pickDurationMs: input.decision.pickDurationMs,
         conversationId: input.conversationId ?? null,
         messageId: input.messageId ?? null,
+        originalFallback: input.originalFallback ?? false,
+        usedReformulation: input.usedReformulation ?? false,
+        reformulatedQuestion: input.reformulatedQuestion ?? null,
       },
       select: { id: true },
     });
