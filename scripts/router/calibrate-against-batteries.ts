@@ -18,9 +18,9 @@
  *   pnpm tsx scripts/router/calibrate-against-batteries.ts --limit 50
  */
 
-import { config as loadDotenv } from "dotenv";
-import { resolve as resolvePath } from "path";
-loadDotenv({ path: resolvePath(process.cwd(), ".env.local"), override: true });
+// Carrega .env.local antes de @/lib/prisma (inicializa o client no import).
+// Precisa ser o PRIMEIRO import. Ver scripts/router/load-env.ts.
+import "./load-env";
 
 import { runCalibration } from "@/lib/agent/router/calibrate";
 
