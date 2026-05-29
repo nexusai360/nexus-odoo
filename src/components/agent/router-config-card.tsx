@@ -20,6 +20,7 @@ import { ResourceCard } from "@/components/agent/resource-card";
 import { CustomSelect } from "@/components/ui/custom-select";
 import { SearchableSelect } from "@/components/ui/searchable-select";
 import { ApiKeySelect, type ApiKeyOption } from "@/components/ui/api-key-select";
+import { TierBadge } from "@/components/ui/tier-badge";
 import {
   checkpointIconClass,
   type CheckpointState,
@@ -56,7 +57,17 @@ interface RouterConfigCardProps {
 }
 
 function modelOptions(models: ModelEntry[]) {
-  return models.map((m) => ({ value: m.id, label: m.label, notes: modelDescription(m) }));
+  return models.map((m) => ({
+    value: m.id,
+    label: m.label,
+    notes: modelDescription(m),
+    endAdornment: <TierBadge tier={m.tier} />,
+  }));
+}
+
+/** So modelos de conversacao: exclui embedding e audio (transcricao). */
+function isChatModel(m: ModelEntry): boolean {
+  return m.use !== "embedding" && m.use !== "áudio" && !m.audio;
 }
 
 export function RouterConfigCard({
@@ -81,7 +92,9 @@ export function RouterConfigCard({
     initial.routerEmbeddingModel ?? "text-embedding-3-large",
   );
 
-  const chatModels = reformProvider ? chatModelsByProvider[reformProvider] ?? [] : [];
+  const chatModels = reformProvider
+    ? (chatModelsByProvider[reformProvider] ?? []).filter(isChatModel)
+    : [];
   const reformCreds = reformProvider ? credentialsByProvider[reformProvider] ?? [] : [];
   const embeddingModels = listEmbeddingModels(EMBEDDING_PROVIDER);
 
