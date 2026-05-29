@@ -255,21 +255,30 @@ e descrição de domínio fica majoritariamente abaixo de 0.55. Sweep completo
 | 0.50 | 25,5% | 27,3% | 209 |
 | 0.55 (default atual) | 16,2% | 16,7% | 245 |
 
-Curva monotônica: quanto menor o threshold, melhor a acurácia e menos fallback,
-sendo 0.35 o melhor ponto testado. O relatório canônico vive em
-`docs/router-calibration-r1.md` (gerado no default 0.55).
+### Atualização 2026-05-28 22:35 (threshold + modelo resolvidos; gap restante)
 
-**Implicação:** nenhuma de produção, **o router está em shadow mode** e o gate
-de ativação (Top-1 >= 85% em 7 dias com >= 200 decisões) bloqueia corretamente
-a ativação enquanto o número não sobe. Mas como está, ativá-lo seria quase um
-no-op (cai pro catálogo inteiro 84% das vezes).
+Duas correções aplicadas (commits `8501e6e`, `ebdd066`):
+1. **Threshold default 0.55 -> 0.30** (schema + run-agent + linha `global`).
+2. **Modelo small -> large** (`text-embedding-3-large`/3072) só no router (o
+   `embed()` default segue small/1536 porque o RAG da F5 tem pgvector(1536)).
+   A/B comprovou o ganho:
 
-**Ação (duas frentes, decisão do usuário):**
-1. **Threshold:** baixar o default de 0.55 para ~0.35. É o admin que ajusta via
-   painel (campo Threshold em RouterControls), mas o default de fábrica
-   (`AgentSettings.routerThreshold` no schema + linha `global` no banco) deveria
-   refletir o ponto calibrado. Mudança barata e segura (router segue em shadow).
-2. **Vocabulário:** mesmo no melhor threshold (0.35), Top-1 = 63,9% segue abaixo
-   do gate de 85%. Chegar a 85% exige enriquecer `domain-vocabulary.ts`
-   (descrições/sinônimos mais representativos por domínio) e re-rodar a
-   calibragem. Esforço de tuning, follow-up dedicado.
+| modelo @ threshold | Top-1 | Top-K | Fallbacks |
+|---|---:|---:|---:|
+| small @ 0.35 | 63,9% | 75,9% | 52 |
+| large @ 0.20 | 78,2% | 93,5% | 9 |
+| **large @ 0.30 (produção)** | **77,3%** | **92,1%** | 15 |
+
+Meta de ativação também elevada de 85% para **95%** por decisão do usuário
+(`constants.ts ROUTER_PROMOTION_MIN_TOP1`).
+
+**Gap restante para fechar o R9:** Top-1 plateou em ~78% com large (teto do
+vocabulário atual, não do threshold). Para chegar a 95% de Top-1 é preciso
+enriquecer `domain-vocabulary.ts`. **Questão de metrica em aberto (decisão do
+usuário):** o router entrega top-K domínios ao LLM, então o Top-K (~92%, perto
+de 95%) é o que de fato determina se o LLM recebe a ferramenta certa; o Top-1
+é mais rígido do que o necessário. Definir se o gate de 95% incide sobre Top-1
+(exige tuning pesado de vocabulário, talvez inalcançável) ou Top-K (quase lá).
+
+**Implicação:** nenhuma de produção, **o router segue em shadow** e o gate
+bloqueia a ativação enquanto não bater a meta.
