@@ -3,15 +3,14 @@
 /**
  * R1 router de catalogo: controles do admin.
  *
- * Inclui toggle (com gate de seguranca via dialog de bypass),
- * threshold, topK, retry expand threshold.
- *
- * Server action `updateRouterSettings` valida tudo no servidor inclusive
- * o gate.
+ * Edicao em rascunho local: o usuario mexe nos campos e so persiste ao clicar
+ * em "Salvar" (botao desabilitado/fosco quando nao ha alteracao). Ativar o
+ * router sem elegibilidade passa pelo dialog de bypass do gate.
  */
 
-import { useState, useTransition } from "react";
+import { useMemo, useState, useTransition } from "react";
 import { Loader2, Settings, ShieldAlert } from "lucide-react";
+import { toast } from "sonner";
 import {
   Card,
   CardContent,
@@ -41,26 +40,52 @@ interface Props {
   eligibility: RouterEligibility;
 }
 
+function sameSettings(
+  a: RouterSettingsSnapshot,
+  b: RouterSettingsSnapshot,
+): boolean {
+  return (
+    a.routerEnabled === b.routerEnabled &&
+    a.routerThreshold === b.routerThreshold &&
+    a.routerTopK === b.routerTopK &&
+    a.routerRetryExpandBelow === b.routerRetryExpandBelow &&
+    a.routerRetryEnabled === b.routerRetryEnabled
+  );
+}
+
 export function RouterControls({ initial, eligibility }: Props) {
-  const [state, setState] = useState<RouterSettingsSnapshot>(initial);
+  // baseline = ultimo estado salvo; draft = edicao em andamento.
+  const [baseline, setBaseline] = useState<RouterSettingsSnapshot>(initial);
+  const [draft, setDraft] = useState<RouterSettingsSnapshot>(initial);
   const [pending, startTransition] = useTransition();
-  const [feedback, setFeedback] = useState<string | null>(null);
   const [pendingActivation, setPendingActivation] = useState(false);
 
-  const apply = (
-    patch: Partial<RouterSettingsSnapshot> & { bypassGate?: boolean },
-  ) => {
+  const dirty = useMemo(() => !sameSettings(draft, baseline), [draft, baseline]);
+
+  const set = (patch: Partial<RouterSettingsSnapshot>) =>
+    setDraft((d) => ({ ...d, ...patch }));
+
+  const commit = (bypassGate: boolean) => {
     startTransition(async () => {
-      setFeedback(null);
-      const res = await updateRouterSettings(patch);
+      const res = await updateRouterSettings({ ...draft, bypassGate });
       if (res.ok) {
-        setState(res.settings);
-        setFeedback("Salvo.");
+        setBaseline(res.settings);
+        setDraft(res.settings);
         setPendingActivation(false);
+        toast.success("Configuração salva.");
       } else {
-        setFeedback(res.error);
+        toast.error(res.error);
       }
     });
+  };
+
+  const handleSave = () => {
+    // Ativar sem elegibilidade -> confirma no dialog antes de salvar.
+    if (draft.routerEnabled && !baseline.routerEnabled && !eligibility.eligible) {
+      setPendingActivation(true);
+      return;
+    }
+    commit(false);
   };
 
   return (
@@ -68,8 +93,11 @@ export function RouterControls({ initial, eligibility }: Props) {
       <CardHeader>
         <CardTitle className="flex items-center gap-2 text-base">
           <Settings className="h-4 w-4 text-violet-400" />
-          Configuracao
+          Configuração
         </CardTitle>
+        <p className="text-xs text-muted-foreground">
+          Parâmetros do router de catálogo do Agente Nex.
+        </p>
       </CardHeader>
       <CardContent className="space-y-5">
         {/* Toggle principal */}
@@ -77,55 +105,46 @@ export function RouterControls({ initial, eligibility }: Props) {
           <div>
             <Label className="text-sm font-medium">Router ativo</Label>
             <p className="text-xs text-muted-foreground">
-              Off = shadow (catalogo inteiro). On = filtra catalogo por
-              dominio.
+              Off = shadow (catálogo inteiro). On = filtra por domínio.
             </p>
-            <p className="mt-1 text-xs text-muted-foreground">
+            <p
+              className="mt-1 truncate text-xs"
+              title={eligibility.reason}
+            >
               {eligibility.eligible ? (
                 <span className="text-emerald-400">
-                  ✓ Elegivel: {eligibility.reason}
+                  ✓ Elegível para ativação
                 </span>
               ) : (
-                <span className="text-amber-400">
-                  ⚠ {eligibility.reason}
-                </span>
+                <span className="text-amber-400">⚠ Ainda não elegível</span>
               )}
             </p>
           </div>
           <Switch
-            checked={state.routerEnabled}
+            checked={draft.routerEnabled}
             disabled={pending}
-            onCheckedChange={(next) => {
-              if (next && !eligibility.eligible) {
-                setPendingActivation(true);
-                return;
-              }
-              apply({ routerEnabled: next });
-            }}
+            onCheckedChange={(next) => set({ routerEnabled: next })}
           />
         </div>
 
         {/* Threshold */}
         <div className="grid gap-2">
           <Label className="text-sm font-medium">
-            Threshold: {state.routerThreshold.toFixed(2)}
+            Threshold: {draft.routerThreshold.toFixed(2)}
           </Label>
           <p className="text-xs text-muted-foreground">
-            Score minimo para um dominio entrar no top-K (0.15 a 0.90). Com o
-            modelo large, o ponto calibrado fica em torno de 0.30.
+            Score mínimo para um domínio entrar no top-K (0.15 a 0.90).
           </p>
           <Input
             type="number"
             min={0.15}
             max={0.9}
             step={0.05}
-            value={state.routerThreshold}
+            value={draft.routerThreshold}
             disabled={pending}
-            onBlur={(e) => {
+            onChange={(e) => {
               const v = Number(e.target.value);
-              if (!Number.isNaN(v) && v !== state.routerThreshold) {
-                apply({ routerThreshold: v });
-              }
+              if (!Number.isNaN(v)) set({ routerThreshold: v });
             }}
             className="max-w-[140px]"
           />
@@ -133,24 +152,20 @@ export function RouterControls({ initial, eligibility }: Props) {
 
         {/* TopK */}
         <div className="grid gap-2">
-          <Label className="text-sm font-medium">
-            Top-K: {state.routerTopK}
-          </Label>
+          <Label className="text-sm font-medium">Top-K: {draft.routerTopK}</Label>
           <p className="text-xs text-muted-foreground">
-            Quantos dominios entram no catalogo (1 a 6).
+            Quantos domínios entram no catálogo (1 a 6).
           </p>
           <Input
             type="number"
             min={1}
             max={6}
             step={1}
-            value={state.routerTopK}
+            value={draft.routerTopK}
             disabled={pending}
-            onBlur={(e) => {
+            onChange={(e) => {
               const v = Number(e.target.value);
-              if (!Number.isNaN(v) && v !== state.routerTopK) {
-                apply({ routerTopK: v });
-              }
+              if (!Number.isNaN(v)) set({ routerTopK: v });
             }}
             className="max-w-[140px]"
           />
@@ -159,28 +174,21 @@ export function RouterControls({ initial, eligibility }: Props) {
         {/* Retry threshold */}
         <div className="grid gap-2">
           <Label className="text-sm font-medium">
-            Retry expand threshold: {state.routerRetryExpandBelow.toFixed(2)}
+            Retry expand threshold: {draft.routerRetryExpandBelow.toFixed(2)}
           </Label>
           <p className="text-xs text-muted-foreground">
-            Em active mode, dispara retry com catalogo inteiro quando o
-            validator V1-V5 detecta &quot;sem metrica&quot; E topScore
-            menor que este valor.
+            Em active, refaz com catálogo inteiro quando falta métrica.
           </p>
           <Input
             type="number"
             min={0.3}
             max={0.95}
             step={0.05}
-            value={state.routerRetryExpandBelow}
+            value={draft.routerRetryExpandBelow}
             disabled={pending}
-            onBlur={(e) => {
+            onChange={(e) => {
               const v = Number(e.target.value);
-              if (
-                !Number.isNaN(v) &&
-                v !== state.routerRetryExpandBelow
-              ) {
-                apply({ routerRetryExpandBelow: v });
-              }
+              if (!Number.isNaN(v)) set({ routerRetryExpandBelow: v });
             }}
             className="max-w-[140px]"
           />
@@ -191,25 +199,33 @@ export function RouterControls({ initial, eligibility }: Props) {
           <div>
             <Label className="text-sm font-medium">Retry expandido</Label>
             <p className="text-xs text-muted-foreground">
-              Habilita o retry corretivo com catalogo inteiro (default
-              off).
+              Habilita o retry corretivo com catálogo inteiro (default off).
             </p>
           </div>
           <Switch
-            checked={state.routerRetryEnabled}
+            checked={draft.routerRetryEnabled}
             disabled={pending}
-            onCheckedChange={(v) => apply({ routerRetryEnabled: v })}
+            onCheckedChange={(v) => set({ routerRetryEnabled: v })}
           />
         </div>
 
-        {pending && (
-          <div className="flex items-center gap-2 text-xs text-muted-foreground">
-            <Loader2 className="h-3 w-3 animate-spin" /> Salvando...
-          </div>
-        )}
-        {feedback && (
-          <div className="text-xs text-muted-foreground">{feedback}</div>
-        )}
+        {/* Rodape: aviso de alteracoes nao salvas + botao Salvar (fosco quando
+            nao ha alteracao, ativo quando ha). */}
+        <div className="flex flex-wrap items-center justify-between gap-2 border-t border-border pt-4">
+          <p className="text-xs text-muted-foreground">
+            {dirty
+              ? "Existem alterações não salvas. Clique em Salvar para aplicar."
+              : "Tudo salvo."}
+          </p>
+          <Button
+            type="button"
+            onClick={handleSave}
+            disabled={!dirty || pending}
+          >
+            {pending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+            Salvar
+          </Button>
+        </div>
 
         {/* Dialog de bypass do gate */}
         <Dialog open={pendingActivation} onOpenChange={setPendingActivation}>
@@ -217,12 +233,12 @@ export function RouterControls({ initial, eligibility }: Props) {
             <DialogHeader>
               <DialogTitle className="flex items-center gap-2">
                 <ShieldAlert className="h-5 w-5 text-amber-400" />
-                Ativar router sem o gate de seguranca?
+                Ativar router sem o gate de segurança?
               </DialogTitle>
               <DialogDescription className="space-y-2">
                 <span className="block">
-                  O router atual nao bate o criterio recomendado (Top-1
-                  &gt;= 95% em 7 dias com &gt;= 200 decisoes). Ativar
+                  O router atual não bate o critério recomendado (cobertura
+                  Top-K &gt;= 95% em 7 dias com &gt;= 200 decisões). Ativar
                   agora pode degradar a qualidade do agente Nex.
                 </span>
                 <span className="block">Motivo do gate:</span>
@@ -230,7 +246,7 @@ export function RouterControls({ initial, eligibility }: Props) {
                   {eligibility.reason}
                 </span>
                 <span className="block">
-                  Voce confirma a ativacao em modo super_admin?
+                  Você confirma a ativação em modo super_admin?
                 </span>
               </DialogDescription>
             </DialogHeader>
@@ -243,15 +259,11 @@ export function RouterControls({ initial, eligibility }: Props) {
               </Button>
               <Button
                 variant="destructive"
-                onClick={() =>
-                  apply({ routerEnabled: true, bypassGate: true })
-                }
+                onClick={() => commit(true)}
                 disabled={pending}
               >
-                {pending && (
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                )}
-                Confirmar ativacao
+                {pending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                Confirmar e salvar
               </Button>
             </DialogFooter>
           </DialogContent>
