@@ -22,7 +22,7 @@
 import { readFileSync, writeFileSync } from "fs";
 import { resolve } from "path";
 import { pickDomains } from "@/lib/agent/router/pick-domains";
-import { ROUTER_PROMOTION_MIN_TOP1 } from "@/lib/agent/router/constants";
+import { ROUTER_PROMOTION_MIN_COVERAGE } from "@/lib/agent/router/constants";
 
 // Dominios da bateria que NAO sao dominios do MCP. Sao categorias semanticas.
 // Mapeamos para a interpretacao mais razoavel para fim de avaliacao.
@@ -81,7 +81,9 @@ export interface CalibrationResult {
   perDomain: CalibrationDomainStat[];
   /** Caminho do relatorio salvo, ou null se writeReport=false / falha de IO. */
   reportPath: string | null;
-  /** Criterio de promocao: Top-1 >= meta (95%, ver constants.ts). */
+  /** Criterio de promocao: cobertura Top-K >= meta (95%, ver constants.ts).
+   *  Top-K (label entre os pickedDomains) e' a metrica de ativacao; Top-1
+   *  fica como indicador secundario. */
   promotable: boolean;
   /** ISO timestamp de quando a calibragem terminou. */
   generatedAt: string;
@@ -307,7 +309,7 @@ export async function runCalibration(
     latencyP99: percentile(durations, 99),
     perDomain,
     reportPath: null,
-    promotable: top1Accuracy >= ROUTER_PROMOTION_MIN_TOP1,
+    promotable: topKAccuracy >= ROUTER_PROMOTION_MIN_COVERAGE,
     generatedAt: new Date().toISOString(),
   };
 

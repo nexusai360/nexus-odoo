@@ -10,17 +10,19 @@
 import { Crosshair, Layers, Activity, Clock4 } from "lucide-react";
 import { KpiCard } from "@/components/reports/kpi-card";
 import type { RouterKpis } from "@/lib/agent/router/queries";
-import { ROUTER_PROMOTION_MIN_TOP1_PCT } from "@/lib/agent/router/constants";
+import { ROUTER_PROMOTION_MIN_COVERAGE_PCT } from "@/lib/agent/router/constants";
 
 interface Props {
   kpis: RouterKpis;
 }
 
 export function RouterKpisBlock({ kpis }: Props) {
-  const top1Tone =
-    kpis.top1AccPct >= ROUTER_PROMOTION_MIN_TOP1_PCT
+  // A metrica de ativacao e' a cobertura Top-K (todas as tools no top-K), nao
+  // o Top-1. O tom verde/meta vai no card de cobertura; Top-1 e' secundario.
+  const coverageTone =
+    kpis.allInTopKPct >= ROUTER_PROMOTION_MIN_COVERAGE_PCT
       ? "success"
-      : kpis.top1AccPct >= 70
+      : kpis.allInTopKPct >= 80
         ? "warning"
         : "danger";
   const latP95Tone =
@@ -33,17 +35,17 @@ export function RouterKpisBlock({ kpis }: Props) {
   return (
     <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
       <KpiCard
+        icon={Layers}
+        label="Cobertura Top-K"
+        value={`${kpis.allInTopKPct.toFixed(1)}%`}
+        hint={`meta ${ROUTER_PROMOTION_MIN_COVERAGE_PCT}% para ativar`}
+        tone={coverageTone}
+      />
+      <KpiCard
         icon={Crosshair}
         label="Top-1 acerto"
         value={`${kpis.top1AccPct.toFixed(1)}%`}
-        hint={`em ${kpis.totalDecisoes} decisoes`}
-        tone={top1Tone}
-      />
-      <KpiCard
-        icon={Layers}
-        label="Top-K (todas)"
-        value={`${kpis.allInTopKPct.toFixed(1)}%`}
-        hint="todas as tools no top-K"
+        hint={`secundario · ${kpis.totalDecisoes} decisoes`}
         tone="default"
       />
       <KpiCard

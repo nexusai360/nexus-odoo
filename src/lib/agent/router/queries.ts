@@ -14,7 +14,7 @@
 
 import { prisma } from "@/lib/prisma";
 import {
-  ROUTER_PROMOTION_MIN_TOP1_PCT,
+  ROUTER_PROMOTION_MIN_COVERAGE_PCT,
   ROUTER_PROMOTION_MIN_DECISIONS,
 } from "@/lib/agent/router/constants";
 
@@ -266,9 +266,12 @@ export async function getRouterLatencyTimeseries(
 }
 
 /** D2e: o router pode ser ativado com seguranca? Gate da SPEC v3 §10.1.6
- *  (meta elevada para 95% por decisao do usuario, 2026-05-28):
- *  - Top-1 acerto >= 95% nos ultimos 7 dias, OU
- *  - >= 200 decisoes em shadow com Top-1 >= 95%. */
+ *  (meta elevada para 95% por decisao do usuario, 2026-05-28).
+ *  Metrica: cobertura Top-K (allInTopKPct) = % de turnos onde TODAS as tools
+ *  usadas estavam em algum dominio entregue ao LLM. E' o que de fato importa,
+ *  inclusive em perguntas multi-dominio: a IA so responde certo se recebeu as
+ *  ferramentas de todos os dominios que a pergunta tocou.
+ *  - allInTopKPct >= 95% nos ultimos 7 dias, com >= 200 decisoes. */
 export async function getRouterEligibleToActivate(): Promise<RouterEligibility> {
   const kpis = await getRouterKpis(7);
   if (kpis.totalDecisoes === 0) {
@@ -280,18 +283,18 @@ export async function getRouterEligibleToActivate(): Promise<RouterEligibility> 
   }
   if (kpis.totalDecisoes < ROUTER_PROMOTION_MIN_DECISIONS) {
     return {
-      eligible: kpis.top1AccPct >= ROUTER_PROMOTION_MIN_TOP1_PCT,
-      reason: `${kpis.totalDecisoes} decisoes (< ${ROUTER_PROMOTION_MIN_DECISIONS}). Top-1 atual ${kpis.top1AccPct}%. Recomendado: ${ROUTER_PROMOTION_MIN_DECISIONS}+ decisoes com Top-1 >= ${ROUTER_PROMOTION_MIN_TOP1_PCT}%.`,
+      eligible: kpis.allInTopKPct >= ROUTER_PROMOTION_MIN_COVERAGE_PCT,
+      reason: `${kpis.totalDecisoes} decisoes (< ${ROUTER_PROMOTION_MIN_DECISIONS}). Cobertura Top-K atual ${kpis.allInTopKPct}%. Recomendado: ${ROUTER_PROMOTION_MIN_DECISIONS}+ decisoes com cobertura >= ${ROUTER_PROMOTION_MIN_COVERAGE_PCT}%.`,
     };
   }
-  if (kpis.top1AccPct < ROUTER_PROMOTION_MIN_TOP1_PCT) {
+  if (kpis.allInTopKPct < ROUTER_PROMOTION_MIN_COVERAGE_PCT) {
     return {
       eligible: false,
-      reason: `Top-1 ${kpis.top1AccPct}% < ${ROUTER_PROMOTION_MIN_TOP1_PCT}%. Ajustar domain-vocabulary.ts e re-validar antes de ativar.`,
+      reason: `Cobertura Top-K ${kpis.allInTopKPct}% < ${ROUTER_PROMOTION_MIN_COVERAGE_PCT}%. Ajustar domain-vocabulary.ts e re-validar antes de ativar.`,
     };
   }
   return {
     eligible: true,
-    reason: `Top-1 ${kpis.top1AccPct}% com ${kpis.totalDecisoes} decisoes nos ultimos 7 dias. Apto para ativacao.`,
+    reason: `Cobertura Top-K ${kpis.allInTopKPct}% com ${kpis.totalDecisoes} decisoes nos ultimos 7 dias. Apto para ativacao.`,
   };
 }
