@@ -22,6 +22,7 @@
     "worker": "tsx --env-file=.env.local src/worker/index.ts",
     "mcp": "tsx --env-file=.env.local mcp/index.ts",
     "gen:mcp-catalog": "tsx scripts/gen-mcp-catalog-snapshot.ts",
+    "discovery:baldes": "tsx --env-file=.env.local scripts/discovery/baldes/run.ts",
     "audit:tools": "tsx scripts/audit-mcp-tools.ts",
     "cleanup:llm-models": "tsx --env-file=.env.local scripts/cleanup-llm-model-entry.ts",
     "prepare": "husky",

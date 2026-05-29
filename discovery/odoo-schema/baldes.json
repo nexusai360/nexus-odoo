@@ -1,0 +1,5811 @@
+{
+  "gerado_em": "2026-05-29T17:52:45.031Z",
+  "fonte_schema": "discovery/odoo-schema/schema.json",
+  "rodou_sob_uid": 11,
+  "thresholds": {
+    "balde_a_min": 51,
+    "balde_b_max": 50
+  },
+  "totais": {
+    "A": 90,
+    "B": 268,
+    "C": 294,
+    "nao_classificados": 0,
+    "total": 652
+  },
+  "por_dominio": {
+    "finan": {
+      "A": 7,
+      "B": 29,
+      "C": 8,
+      "nao_classificados": 0
+    },
+    "sped": {
+      "A": 60,
+      "B": 165,
+      "C": 31,
+      "nao_classificados": 0
+    },
+    "producao": {
+      "A": 0,
+      "B": 5,
+      "C": 0,
+      "nao_classificados": 0
+    },
+    "backup": {
+      "A": 0,
+      "B": 0,
+      "C": 1,
+      "nao_classificados": 0
+    },
+    "contabil": {
+      "A": 2,
+      "B": 20,
+      "C": 7,
+      "nao_classificados": 0
+    },
+    "res": {
+      "A": 5,
+      "B": 14,
+      "C": 7,
+      "nao_classificados": 0
+    },
+    "pedido": {
+      "A": 6,
+      "B": 17,
+      "C": 3,
+      "nao_classificados": 0
+    },
+    "crm": {
+      "A": 0,
+      "B": 2,
+      "C": 0,
+      "nao_classificados": 0
+    },
+    "discuss": {
+      "A": 0,
+      "B": 0,
+      "C": 5,
+      "nao_classificados": 0
+    },
+    "mail": {
+      "A": 0,
+      "B": 0,
+      "C": 42,
+      "nao_classificados": 0
+    },
+    "hardware": {
+      "A": 0,
+      "B": 0,
+      "C": 3,
+      "nao_classificados": 0
+    },
+    "estoque": {
+      "A": 8,
+      "B": 6,
+      "C": 2,
+      "nao_classificados": 0
+    },
+    "wms": {
+      "A": 0,
+      "B": 5,
+      "C": 1,
+      "nao_classificados": 0
+    },
+    "reinf": {
+      "A": 0,
+      "B": 2,
+      "C": 0,
+      "nao_classificados": 0
+    },
+    "auditoria": {
+      "A": 2,
+      "B": 1,
+      "C": 0,
+      "nao_classificados": 0
+    },
+    "projeto": {
+      "A": 0,
+      "B": 0,
+      "C": 2,
+      "nao_classificados": 0
+    },
+    "rh": {
+      "A": 0,
+      "B": 0,
+      "C": 19,
+      "nao_classificados": 0
+    },
+    "ir": {
+      "A": 0,
+      "B": 0,
+      "C": 70,
+      "nao_classificados": 0
+    },
+    "format": {
+      "A": 0,
+      "B": 0,
+      "C": 1,
+      "nao_classificados": 0
+    },
+    "ks_dashboard_ninja": {
+      "A": 0,
+      "B": 0,
+      "C": 13,
+      "nao_classificados": 0
+    },
+    "web_editor": {
+      "A": 0,
+      "B": 0,
+      "C": 3,
+      "nao_classificados": 0
+    },
+    "avatar": {
+      "A": 0,
+      "B": 0,
+      "C": 1,
+      "nao_classificados": 0
+    },
+    "barcode": {
+      "A": 0,
+      "B": 0,
+      "C": 2,
+      "nao_classificados": 0
+    },
+    "base": {
+      "A": 0,
+      "B": 0,
+      "C": 11,
+      "nao_classificados": 0
+    },
+    "base_import": {
+      "A": 0,
+      "B": 0,
+      "C": 2,
+      "nao_classificados": 0
+    },
+    "chaves": {
+      "A": 0,
+      "B": 0,
+      "C": 1,
+      "nao_classificados": 0
+    },
+    "codigo": {
+      "A": 0,
+      "B": 0,
+      "C": 1,
+      "nao_classificados": 0
+    },
+    "relatorio": {
+      "A": 0,
+      "B": 2,
+      "C": 17,
+      "nao_classificados": 0
+    },
+    "chamado": {
+      "A": 0,
+      "B": 0,
+      "C": 2,
+      "nao_classificados": 0
+    },
+    "change": {
+      "A": 0,
+      "B": 0,
+      "C": 3,
+      "nao_classificados": 0
+    },
+    "bus": {
+      "A": 0,
+      "B": 0,
+      "C": 2,
+      "nao_classificados": 0
+    },
+    "wizard": {
+      "A": 0,
+      "B": 0,
+      "C": 1,
+      "nao_classificados": 0
+    },
+    "ks": {
+      "A": 0,
+      "B": 0,
+      "C": 8,
+      "nao_classificados": 0
+    },
+    "ks_ninja_dashboard": {
+      "A": 0,
+      "B": 0,
+      "C": 1,
+      "nao_classificados": 0
+    },
+    "ks_dashboard_item": {
+      "A": 0,
+      "B": 0,
+      "C": 1,
+      "nao_classificados": 0
+    },
+    "decimal": {
+      "A": 0,
+      "B": 0,
+      "C": 1,
+      "nao_classificados": 0
+    },
+    "html": {
+      "A": 0,
+      "B": 0,
+      "C": 1,
+      "nao_classificados": 0
+    },
+    "google": {
+      "A": 0,
+      "B": 0,
+      "C": 1,
+      "nao_classificados": 0
+    },
+    "barcodes": {
+      "A": 0,
+      "B": 0,
+      "C": 1,
+      "nao_classificados": 0
+    },
+    "image": {
+      "A": 0,
+      "B": 0,
+      "C": 1,
+      "nao_classificados": 0
+    },
+    "fetchmail": {
+      "A": 0,
+      "B": 0,
+      "C": 1,
+      "nao_classificados": 0
+    },
+    "leitura": {
+      "A": 0,
+      "B": 0,
+      "C": 1,
+      "nao_classificados": 0
+    },
+    "api": {
+      "A": 0,
+      "B": 0,
+      "C": 3,
+      "nao_classificados": 0
+    },
+    "report": {
+      "A": 0,
+      "B": 0,
+      "C": 3,
+      "nao_classificados": 0
+    },
+    "averbeporto": {
+      "A": 0,
+      "B": 0,
+      "C": 1,
+      "nao_classificados": 0
+    },
+    "reset": {
+      "A": 0,
+      "B": 0,
+      "C": 1,
+      "nao_classificados": 0
+    },
+    "sparse_fields": {
+      "A": 0,
+      "B": 0,
+      "C": 1,
+      "nao_classificados": 0
+    },
+    "template": {
+      "A": 0,
+      "B": 0,
+      "C": 1,
+      "nao_classificados": 0
+    },
+    "tempo": {
+      "A": 0,
+      "B": 0,
+      "C": 3,
+      "nao_classificados": 0
+    },
+    "ks_to": {
+      "A": 0,
+      "B": 0,
+      "C": 2,
+      "nao_classificados": 0
+    },
+    "_unknown": {
+      "A": 0,
+      "B": 0,
+      "C": 1,
+      "nao_classificados": 0
+    }
+  },
+  "modelos": {
+    "finan.alcada": {
+      "dominio": "finan",
+      "descricao": "Alçada",
+      "balde": "B",
+      "count": 0,
+      "transient": false,
+      "motivo": "baixo_volume_dominio_negocio",
+      "previsao_ativacao": "instalado_sem_uso"
+    },
+    "sped.carta.correcao": {
+      "dominio": "sped",
+      "descricao": "Carta de Correção",
+      "balde": "B",
+      "count": 12,
+      "transient": false,
+      "motivo": "baixo_volume_dominio_negocio",
+      "previsao_ativacao": "em_uso"
+    },
+    "producao.alteracao.materia.prima": {
+      "dominio": "producao",
+      "descricao": "Alteração de matéria-prima da lista de material",
+      "balde": "B",
+      "count": 0,
+      "transient": false,
+      "motivo": "baixo_volume_dominio_negocio",
+      "previsao_ativacao": "instalado_sem_uso"
+    },
+    "finan.lancamento": {
+      "dominio": "finan",
+      "descricao": "Base para código de barras de boleto",
+      "balde": "A",
+      "count": 10015,
+      "transient": false,
+      "motivo": "volume_acima_threshold"
+    },
+    "backup.automatico": {
+      "dominio": "backup",
+      "descricao": "Backup automático",
+      "balde": "C",
+      "count": 0,
+      "transient": false,
+      "motivo": "baixo_volume_nao_negocio"
+    },
+    "sped.produto.caracteristica": {
+      "dominio": "sped",
+      "descricao": "Característica de Produtos",
+      "balde": "B",
+      "count": 0,
+      "transient": false,
+      "motivo": "baixo_volume_dominio_negocio",
+      "previsao_ativacao": "instalado_sem_uso"
+    },
+    "sped.participante": {
+      "dominio": "sped",
+      "descricao": "Base para chaves PIX",
+      "balde": "A",
+      "count": 6550,
+      "transient": false,
+      "motivo": "volume_acima_threshold"
+    },
+    "finan.carteira": {
+      "dominio": "finan",
+      "descricao": "Carteira de Boletos",
+      "balde": "B",
+      "count": 11,
+      "transient": false,
+      "motivo": "baixo_volume_dominio_negocio",
+      "previsao_ativacao": "em_uso"
+    },
+    "contabil.centro.custo": {
+      "dominio": "contabil",
+      "descricao": "Centro de Custo",
+      "balde": "B",
+      "count": 0,
+      "transient": false,
+      "motivo": "baixo_volume_dominio_negocio",
+      "previsao_ativacao": "instalado_sem_uso"
+    },
+    "finan.centro.resultado": {
+      "dominio": "finan",
+      "descricao": "Centro de Resultado",
+      "balde": "B",
+      "count": 24,
+      "transient": false,
+      "motivo": "baixo_volume_dominio_negocio",
+      "previsao_ativacao": "em_uso"
+    },
+    "finan.cheque": {
+      "dominio": "finan",
+      "descricao": "Cheques",
+      "balde": "B",
+      "count": 0,
+      "transient": false,
+      "motivo": "baixo_volume_dominio_negocio",
+      "previsao_ativacao": "instalado_sem_uso"
+    },
+    "sped.produto.codigo.barras": {
+      "dominio": "sped",
+      "descricao": "Códigos de Barras de Produtos",
+      "balde": "B",
+      "count": 0,
+      "transient": false,
+      "motivo": "baixo_volume_dominio_negocio",
+      "previsao_ativacao": "instalado_sem_uso"
+    },
+    "sped.condicao.pagamento": {
+      "dominio": "sped",
+      "descricao": "Condições de Pagamento",
+      "balde": "A",
+      "count": 108,
+      "transient": false,
+      "motivo": "volume_acima_threshold"
+    },
+    "finan.banco": {
+      "dominio": "finan",
+      "descricao": "Conta",
+      "balde": "B",
+      "count": 11,
+      "transient": false,
+      "motivo": "baixo_volume_dominio_negocio",
+      "previsao_ativacao": "em_uso"
+    },
+    "contabil.conta": {
+      "dominio": "contabil",
+      "descricao": "Conta Contábil",
+      "balde": "A",
+      "count": 934,
+      "transient": false,
+      "motivo": "volume_acima_threshold"
+    },
+    "contabil.conta.referencial": {
+      "dominio": "contabil",
+      "descricao": "Conta Contábil Referencial",
+      "balde": "A",
+      "count": 2216,
+      "transient": false,
+      "motivo": "volume_acima_threshold"
+    },
+    "res.partner": {
+      "dominio": "res",
+      "descricao": "Contact",
+      "balde": "A",
+      "count": 6582,
+      "transient": false,
+      "motivo": "volume_acima_threshold"
+    },
+    "finan.conta": {
+      "dominio": "finan",
+      "descricao": "Conta Gerencial",
+      "balde": "A",
+      "count": 66,
+      "transient": false,
+      "motivo": "volume_acima_threshold"
+    },
+    "pedido.documento.reajuste": {
+      "dominio": "pedido",
+      "descricao": "Contrato Reajuste",
+      "balde": "B",
+      "count": 1,
+      "transient": false,
+      "motivo": "baixo_volume_dominio_negocio",
+      "previsao_ativacao": "em_uso"
+    },
+    "pedido.documento.reajuste.item": {
+      "dominio": "pedido",
+      "descricao": "Contrato Reajuste Item",
+      "balde": "B",
+      "count": 0,
+      "transient": false,
+      "motivo": "baixo_volume_dominio_negocio",
+      "previsao_ativacao": "instalado_sem_uso"
+    },
+    "sped.produto.controle": {
+      "dominio": "sped",
+      "descricao": "Controle de Produtos",
+      "balde": "B",
+      "count": 7,
+      "transient": false,
+      "motivo": "baixo_volume_dominio_negocio",
+      "previsao_ativacao": "em_uso"
+    },
+    "crm.pipeline": {
+      "dominio": "crm",
+      "descricao": "CRM - Pipeline",
+      "balde": "B",
+      "count": 0,
+      "transient": false,
+      "motivo": "baixo_volume_dominio_negocio",
+      "previsao_ativacao": "sem_sinal"
+    },
+    "discuss.channel": {
+      "dominio": "discuss",
+      "descricao": "Discussion Channel",
+      "balde": "C",
+      "count": null,
+      "transient": false,
+      "motivo": "prefixo_ui_infra"
+    },
+    "crm.pipeline.etapa": {
+      "dominio": "crm",
+      "descricao": "CRM - Etapa do pipeline",
+      "balde": "B",
+      "count": 0,
+      "transient": false,
+      "motivo": "baixo_volume_dominio_negocio",
+      "previsao_ativacao": "sem_sinal"
+    },
+    "mail.thread.cc": {
+      "dominio": "mail",
+      "descricao": "Email CC management",
+      "balde": "C",
+      "count": null,
+      "transient": false,
+      "motivo": "prefixo_ui_infra"
+    },
+    "mail.thread": {
+      "dominio": "mail",
+      "descricao": "Email Thread",
+      "balde": "C",
+      "count": null,
+      "transient": false,
+      "motivo": "prefixo_ui_infra"
+    },
+    "pedido.documento.cotacao": {
+      "dominio": "pedido",
+      "descricao": "Cotação",
+      "balde": "B",
+      "count": 0,
+      "transient": false,
+      "motivo": "baixo_volume_dominio_negocio",
+      "previsao_ativacao": "instalado_sem_uso"
+    },
+    "contabil.demonstracao": {
+      "dominio": "contabil",
+      "descricao": "Demonstração contábil",
+      "balde": "B",
+      "count": 0,
+      "transient": false,
+      "motivo": "baixo_volume_dominio_negocio",
+      "previsao_ativacao": "instalado_sem_uso"
+    },
+    "finan.demonstracao": {
+      "dominio": "finan",
+      "descricao": "Demonstração financeira",
+      "balde": "B",
+      "count": 0,
+      "transient": false,
+      "motivo": "baixo_volume_dominio_negocio",
+      "previsao_ativacao": "instalado_sem_uso"
+    },
+    "sped.produto.departamento": {
+      "dominio": "sped",
+      "descricao": "Departamento de Produtos",
+      "balde": "B",
+      "count": 0,
+      "transient": false,
+      "motivo": "baixo_volume_dominio_negocio",
+      "previsao_ativacao": "instalado_sem_uso"
+    },
+    "hardware.equipamento": {
+      "dominio": "hardware",
+      "descricao": "Equipamentos - hardware",
+      "balde": "C",
+      "count": null,
+      "transient": false,
+      "motivo": "prefixo_ui_infra"
+    },
+    "hardware.estacao": {
+      "dominio": "hardware",
+      "descricao": "Estação - hardware",
+      "balde": "C",
+      "count": null,
+      "transient": false,
+      "motivo": "prefixo_ui_infra"
+    },
+    "contabil.encerramento": {
+      "dominio": "contabil",
+      "descricao": "Encerramento Contábil",
+      "balde": "B",
+      "count": 0,
+      "transient": false,
+      "motivo": "baixo_volume_dominio_negocio",
+      "previsao_ativacao": "instalado_sem_uso"
+    },
+    "sped.empresa": {
+      "dominio": "sped",
+      "descricao": "Empresas e filiais",
+      "balde": "B",
+      "count": 18,
+      "transient": false,
+      "motivo": "baixo_volume_dominio_negocio",
+      "previsao_ativacao": "em_uso"
+    },
+    "sped.endereco": {
+      "dominio": "sped",
+      "descricao": "Endereços de participantes",
+      "balde": "B",
+      "count": 18,
+      "transient": false,
+      "motivo": "baixo_volume_dominio_negocio",
+      "previsao_ativacao": "em_uso"
+    },
+    "sped.documento": {
+      "dominio": "sped",
+      "descricao": "Documentos Fiscais",
+      "balde": "A",
+      "count": 47336,
+      "transient": false,
+      "motivo": "volume_acima_threshold"
+    },
+    "estoque.local.endereco": {
+      "dominio": "estoque",
+      "descricao": "Endereços dos produtos nos locais de estoque",
+      "balde": "B",
+      "count": 0,
+      "transient": false,
+      "motivo": "baixo_volume_dominio_negocio",
+      "previsao_ativacao": "instalado_sem_uso"
+    },
+    "pedido.etapa": {
+      "dominio": "pedido",
+      "descricao": "Etapa do Pedido",
+      "balde": "A",
+      "count": 203,
+      "transient": false,
+      "motivo": "volume_acima_threshold"
+    },
+    "wms.etapa": {
+      "dominio": "wms",
+      "descricao": "Etapa do WMS",
+      "balde": "B",
+      "count": 0,
+      "transient": false,
+      "motivo": "baixo_volume_dominio_negocio",
+      "previsao_ativacao": "sem_sinal"
+    },
+    "sped.produto.familia": {
+      "dominio": "sped",
+      "descricao": "Família de Produtos",
+      "balde": "B",
+      "count": 9,
+      "transient": false,
+      "motivo": "baixo_volume_dominio_negocio",
+      "previsao_ativacao": "em_uso"
+    },
+    "reinf.evento": {
+      "dominio": "reinf",
+      "descricao": "Evento REINF",
+      "balde": "B",
+      "count": 0,
+      "transient": false,
+      "motivo": "baixo_volume_dominio_negocio",
+      "previsao_ativacao": "sem_sinal"
+    },
+    "pedido.faturamento": {
+      "dominio": "pedido",
+      "descricao": "Faturamento de pedido/contrato",
+      "balde": "B",
+      "count": 1,
+      "transient": false,
+      "motivo": "baixo_volume_dominio_negocio",
+      "previsao_ativacao": "em_uso"
+    },
+    "finan.forma.pagamento": {
+      "dominio": "finan",
+      "descricao": "Forma de Pagamemento",
+      "balde": "B",
+      "count": 44,
+      "transient": false,
+      "motivo": "baixo_volume_dominio_negocio",
+      "previsao_ativacao": "em_uso"
+    },
+    "contabil.historico": {
+      "dominio": "contabil",
+      "descricao": "Histórico",
+      "balde": "B",
+      "count": 0,
+      "transient": false,
+      "motivo": "baixo_volume_dominio_negocio",
+      "previsao_ativacao": "instalado_sem_uso"
+    },
+    "estoque.norma.palete.item": {
+      "dominio": "estoque",
+      "descricao": "Item das normas de palete",
+      "balde": "B",
+      "count": 0,
+      "transient": false,
+      "motivo": "baixo_volume_dominio_negocio",
+      "previsao_ativacao": "instalado_sem_uso"
+    },
+    "finan.importa.contas.a.pagar": {
+      "dominio": "finan",
+      "descricao": "Importa contas a pagar",
+      "balde": "B",
+      "count": 0,
+      "transient": false,
+      "motivo": "baixo_volume_dominio_negocio",
+      "previsao_ativacao": "instalado_sem_uso"
+    },
+    "sped.dfe.importacao": {
+      "dominio": "sped",
+      "descricao": "Importação DF-e",
+      "balde": "A",
+      "count": 211,
+      "transient": false,
+      "motivo": "volume_acima_threshold"
+    },
+    "sped.consulta.dfe.item": {
+      "dominio": "sped",
+      "descricao": "Item de Consulta DF-e",
+      "balde": "A",
+      "count": 4780,
+      "transient": false,
+      "motivo": "volume_acima_threshold"
+    },
+    "contabil.demonstracao.item": {
+      "dominio": "contabil",
+      "descricao": "Item de demonstração contábil",
+      "balde": "B",
+      "count": 0,
+      "transient": false,
+      "motivo": "baixo_volume_dominio_negocio",
+      "previsao_ativacao": "instalado_sem_uso"
+    },
+    "contabil.lancamento.item": {
+      "dominio": "contabil",
+      "descricao": "Item/Partida do Lançamento Contábil",
+      "balde": "B",
+      "count": 0,
+      "transient": false,
+      "motivo": "baixo_volume_dominio_negocio",
+      "previsao_ativacao": "instalado_sem_uso"
+    },
+    "pedido.documento.cotacao.analise": {
+      "dominio": "pedido",
+      "descricao": "Itens da cotação",
+      "balde": "B",
+      "count": 0,
+      "transient": false,
+      "motivo": "baixo_volume_dominio_negocio",
+      "previsao_ativacao": "instalado_sem_uso"
+    },
+    "contabil.operacao.item": {
+      "dominio": "contabil",
+      "descricao": "Itens da Operação Contábil",
+      "balde": "B",
+      "count": 0,
+      "transient": false,
+      "motivo": "baixo_volume_dominio_negocio",
+      "previsao_ativacao": "instalado_sem_uso"
+    },
+    "pedido.documento.cotacao.item": {
+      "dominio": "pedido",
+      "descricao": "Itens da cotação",
+      "balde": "B",
+      "count": 0,
+      "transient": false,
+      "motivo": "baixo_volume_dominio_negocio",
+      "previsao_ativacao": "instalado_sem_uso"
+    },
+    "sped.operacao.item": {
+      "dominio": "sped",
+      "descricao": "Itens da Operação Fiscal",
+      "balde": "A",
+      "count": 234,
+      "transient": false,
+      "motivo": "volume_acima_threshold"
+    },
+    "contabil.lancamento": {
+      "dominio": "contabil",
+      "descricao": "Lançamento Contábil",
+      "balde": "B",
+      "count": 0,
+      "transient": false,
+      "motivo": "baixo_volume_dominio_negocio",
+      "previsao_ativacao": "instalado_sem_uso"
+    },
+    "mail.blacklist": {
+      "dominio": "mail",
+      "descricao": "Mail Blacklist",
+      "balde": "C",
+      "count": null,
+      "transient": false,
+      "motivo": "prefixo_ui_infra"
+    },
+    "mail.thread.blacklist": {
+      "dominio": "mail",
+      "descricao": "Mail Blacklist mixin",
+      "balde": "C",
+      "count": null,
+      "transient": false,
+      "motivo": "prefixo_ui_infra"
+    },
+    "mail.thread.main.attachment": {
+      "dominio": "mail",
+      "descricao": "Mail Main Attachment management",
+      "balde": "C",
+      "count": null,
+      "transient": false,
+      "motivo": "prefixo_ui_infra"
+    },
+    "contabil.depreciacao": {
+      "dominio": "contabil",
+      "descricao": "Lançamento Depreciação Contábil",
+      "balde": "B",
+      "count": 0,
+      "transient": false,
+      "motivo": "baixo_volume_dominio_negocio",
+      "previsao_ativacao": "instalado_sem_uso"
+    },
+    "estoque.local": {
+      "dominio": "estoque",
+      "descricao": "Locais de Estoque",
+      "balde": "A",
+      "count": 357,
+      "transient": false,
+      "motivo": "volume_acima_threshold"
+    },
+    "sped.produto.lista.material": {
+      "dominio": "sped",
+      "descricao": "Lista de material",
+      "balde": "A",
+      "count": 133,
+      "transient": false,
+      "motivo": "volume_acima_threshold"
+    },
+    "sped.produto.lote.serie": {
+      "dominio": "sped",
+      "descricao": "Lote/Série(s) de Produtos",
+      "balde": "A",
+      "count": 7631,
+      "transient": false,
+      "motivo": "volume_acima_threshold"
+    },
+    "sped.produto.lote.serie.conjugado": {
+      "dominio": "sped",
+      "descricao": "Lote/Série(s) de Produtos conjugados",
+      "balde": "B",
+      "count": 0,
+      "transient": false,
+      "motivo": "baixo_volume_dominio_negocio",
+      "previsao_ativacao": "instalado_sem_uso"
+    },
+    "sped.produto.marca": {
+      "dominio": "sped",
+      "descricao": "Marca de Produtos",
+      "balde": "B",
+      "count": 31,
+      "transient": false,
+      "motivo": "baixo_volume_dominio_negocio",
+      "previsao_ativacao": "em_uso"
+    },
+    "sped.mdfe": {
+      "dominio": "sped",
+      "descricao": "MDF-e",
+      "balde": "B",
+      "count": 0,
+      "transient": false,
+      "motivo": "baixo_volume_dominio_negocio",
+      "previsao_ativacao": "instalado_sem_uso"
+    },
+    "contabil.operacao": {
+      "dominio": "contabil",
+      "descricao": "Operações Contábeis",
+      "balde": "B",
+      "count": 0,
+      "transient": false,
+      "motivo": "baixo_volume_dominio_negocio",
+      "previsao_ativacao": "instalado_sem_uso"
+    },
+    "estoque.norma.palete": {
+      "dominio": "estoque",
+      "descricao": "Normas de palete",
+      "balde": "B",
+      "count": 0,
+      "transient": false,
+      "motivo": "baixo_volume_dominio_negocio",
+      "previsao_ativacao": "instalado_sem_uso"
+    },
+    "pedido.operacao": {
+      "dominio": "pedido",
+      "descricao": "Operações de Pedido",
+      "balde": "A",
+      "count": 119,
+      "transient": false,
+      "motivo": "volume_acima_threshold"
+    },
+    "wms.operacao": {
+      "dominio": "wms",
+      "descricao": "Operações de WMS",
+      "balde": "B",
+      "count": 0,
+      "transient": false,
+      "motivo": "baixo_volume_dominio_negocio",
+      "previsao_ativacao": "sem_sinal"
+    },
+    "sped.operacao": {
+      "dominio": "sped",
+      "descricao": "Operações Fiscais",
+      "balde": "A",
+      "count": 115,
+      "transient": false,
+      "motivo": "volume_acima_threshold"
+    },
+    "sped.produto.parametro.qualidade": {
+      "dominio": "sped",
+      "descricao": "Parâmetro de qualidade do produto",
+      "balde": "B",
+      "count": 0,
+      "transient": false,
+      "motivo": "baixo_volume_dominio_negocio",
+      "previsao_ativacao": "instalado_sem_uso"
+    },
+    "producao.parametro.qualidade": {
+      "dominio": "producao",
+      "descricao": "Parâmetros de qualidade",
+      "balde": "B",
+      "count": 0,
+      "transient": false,
+      "motivo": "baixo_volume_dominio_negocio",
+      "previsao_ativacao": "instalado_sem_uso"
+    },
+    "pedido.documento": {
+      "dominio": "pedido",
+      "descricao": "Pedido",
+      "balde": "A",
+      "count": 1644,
+      "transient": false,
+      "motivo": "volume_acima_threshold"
+    },
+    "producao.processo": {
+      "dominio": "producao",
+      "descricao": "Processo de produção",
+      "balde": "B",
+      "count": 1,
+      "transient": false,
+      "motivo": "baixo_volume_dominio_negocio",
+      "previsao_ativacao": "em_uso"
+    },
+    "producao.centro.trabalho": {
+      "dominio": "producao",
+      "descricao": "Produção - Centro - Trabalho",
+      "balde": "B",
+      "count": 0,
+      "transient": false,
+      "motivo": "baixo_volume_dominio_negocio",
+      "previsao_ativacao": "instalado_sem_uso"
+    },
+    "sped.produto.anvisa": {
+      "dominio": "sped",
+      "descricao": "Registro na ANVISA dos produtos",
+      "balde": "B",
+      "count": 0,
+      "transient": false,
+      "motivo": "baixo_volume_dominio_negocio",
+      "previsao_ativacao": "instalado_sem_uso"
+    },
+    "auditoria.regra": {
+      "dominio": "auditoria",
+      "descricao": "Regra de auditoria",
+      "balde": "B",
+      "count": 15,
+      "transient": false,
+      "motivo": "baixo_volume_dominio_negocio",
+      "previsao_ativacao": "em_uso"
+    },
+    "sped.produto": {
+      "dominio": "sped",
+      "descricao": "Produtos e serviços",
+      "balde": "A",
+      "count": 3794,
+      "transient": false,
+      "motivo": "volume_acima_threshold"
+    },
+    "contabil.executa.demonstracao": {
+      "dominio": "contabil",
+      "descricao": "Relatório de Demonstracao contabilcera",
+      "balde": "B",
+      "count": 0,
+      "transient": false,
+      "motivo": "baixo_volume_dominio_negocio",
+      "previsao_ativacao": "instalado_sem_uso"
+    },
+    "finan.executa.demonstracao": {
+      "dominio": "finan",
+      "descricao": "Relatório de Demonstracao Financera",
+      "balde": "B",
+      "count": 0,
+      "transient": false,
+      "motivo": "baixo_volume_dominio_negocio",
+      "previsao_ativacao": "instalado_sem_uso"
+    },
+    "finan.retorno": {
+      "dominio": "finan",
+      "descricao": "Retorno de Remessa Bancária",
+      "balde": "B",
+      "count": 8,
+      "transient": false,
+      "motivo": "baixo_volume_dominio_negocio",
+      "previsao_ativacao": "em_uso"
+    },
+    "finan.remessa": {
+      "dominio": "finan",
+      "descricao": "Remessa Bancária",
+      "balde": "B",
+      "count": 7,
+      "transient": false,
+      "motivo": "baixo_volume_dominio_negocio",
+      "previsao_ativacao": "em_uso"
+    },
+    "estoque.requisito": {
+      "dominio": "estoque",
+      "descricao": "Requisitos de Armazenagem",
+      "balde": "B",
+      "count": 0,
+      "transient": false,
+      "motivo": "baixo_volume_dominio_negocio",
+      "previsao_ativacao": "instalado_sem_uso"
+    },
+    "projeto.modelo": {
+      "dominio": "projeto",
+      "descricao": "Modelo de projeto",
+      "balde": "C",
+      "count": null,
+      "transient": false,
+      "motivo": "acesso_negado"
+    },
+    "rh.afastamento": {
+      "dominio": "rh",
+      "descricao": "RH - Afastamento",
+      "balde": "C",
+      "count": null,
+      "transient": false,
+      "motivo": "abstract_ou_inexistente"
+    },
+    "rh.cargo": {
+      "dominio": "rh",
+      "descricao": "RH - Cargo",
+      "balde": "C",
+      "count": null,
+      "transient": false,
+      "motivo": "abstract_ou_inexistente"
+    },
+    "rh.holerite": {
+      "dominio": "rh",
+      "descricao": "RH - Holerite",
+      "balde": "C",
+      "count": null,
+      "transient": false,
+      "motivo": "abstract_ou_inexistente"
+    },
+    "rh.lote.holerite": {
+      "dominio": "rh",
+      "descricao": "RH - Lote de Holerite",
+      "balde": "C",
+      "count": null,
+      "transient": false,
+      "motivo": "abstract_ou_inexistente"
+    },
+    "rh.contrato": {
+      "dominio": "rh",
+      "descricao": "RH - Contrato de Trabalho",
+      "balde": "C",
+      "count": null,
+      "transient": false,
+      "motivo": "abstract_ou_inexistente"
+    },
+    "sped.apuracao": {
+      "dominio": "sped",
+      "descricao": "SPED - Apuração",
+      "balde": "B",
+      "count": 8,
+      "transient": false,
+      "motivo": "baixo_volume_dominio_negocio",
+      "previsao_ativacao": "em_uso"
+    },
+    "sped.alteracao.documento": {
+      "dominio": "sped",
+      "descricao": "SPED - Alteração de documentos",
+      "balde": "B",
+      "count": 0,
+      "transient": false,
+      "motivo": "baixo_volume_dominio_negocio",
+      "previsao_ativacao": "instalado_sem_uso"
+    },
+    "sped.apuracao.ecd": {
+      "dominio": "sped",
+      "descricao": "SPED Contábil - ECD",
+      "balde": "B",
+      "count": 0,
+      "transient": false,
+      "motivo": "baixo_volume_dominio_negocio",
+      "previsao_ativacao": "instalado_sem_uso"
+    },
+    "sped.tabela.preco.regra": {
+      "dominio": "sped",
+      "descricao": "Tabela de Preço - Regra",
+      "balde": "A",
+      "count": 11864,
+      "transient": false,
+      "motivo": "volume_acima_threshold"
+    },
+    "sped.tabela.preco": {
+      "dominio": "sped",
+      "descricao": "Tabela de Preços",
+      "balde": "B",
+      "count": 15,
+      "transient": false,
+      "motivo": "baixo_volume_dominio_negocio",
+      "previsao_ativacao": "em_uso"
+    },
+    "pedido.etapa.tempo": {
+      "dominio": "pedido",
+      "descricao": "Tempo Etapa do Pedido",
+      "balde": "B",
+      "count": 0,
+      "transient": false,
+      "motivo": "baixo_volume_dominio_negocio",
+      "previsao_ativacao": "instalado_sem_uso"
+    },
+    "finan.documento": {
+      "dominio": "finan",
+      "descricao": "Tipo de Documento",
+      "balde": "B",
+      "count": 9,
+      "transient": false,
+      "motivo": "baixo_volume_dominio_negocio",
+      "previsao_ativacao": "em_uso"
+    },
+    "estoque.tipo.palete": {
+      "dominio": "estoque",
+      "descricao": "Tipos de palete",
+      "balde": "B",
+      "count": 0,
+      "transient": false,
+      "motivo": "baixo_volume_dominio_negocio",
+      "previsao_ativacao": "instalado_sem_uso"
+    },
+    "sped.usuario": {
+      "dominio": "sped",
+      "descricao": "Usuários",
+      "balde": "B",
+      "count": 40,
+      "transient": false,
+      "motivo": "baixo_volume_dominio_negocio",
+      "previsao_ativacao": "em_uso"
+    },
+    "sped.produto.volume": {
+      "dominio": "sped",
+      "descricao": "Volumes dos produtos",
+      "balde": "A",
+      "count": 1036,
+      "transient": false,
+      "motivo": "volume_acima_threshold"
+    },
+    "wms.documento": {
+      "dominio": "wms",
+      "descricao": "WMS Documento",
+      "balde": "B",
+      "count": 0,
+      "transient": false,
+      "motivo": "baixo_volume_dominio_negocio",
+      "previsao_ativacao": "sem_sinal"
+    },
+    "wms.documento.item": {
+      "dominio": "wms",
+      "descricao": "WMS Item de documento",
+      "balde": "B",
+      "count": 0,
+      "transient": false,
+      "motivo": "baixo_volume_dominio_negocio",
+      "previsao_ativacao": "sem_sinal"
+    },
+    "ir.actions.act_url": {
+      "dominio": "ir",
+      "descricao": "Action URL",
+      "balde": "C",
+      "count": null,
+      "transient": false,
+      "motivo": "prefixo_ui_infra"
+    },
+    "ir.actions.act_window": {
+      "dominio": "ir",
+      "descricao": "Action Window",
+      "balde": "C",
+      "count": null,
+      "transient": false,
+      "motivo": "prefixo_ui_infra"
+    },
+    "ir.actions.act_window_close": {
+      "dominio": "ir",
+      "descricao": "Action Window Close",
+      "balde": "C",
+      "count": null,
+      "transient": false,
+      "motivo": "prefixo_ui_infra"
+    },
+    "ir.actions.act_window.view": {
+      "dominio": "ir",
+      "descricao": "Action Window View",
+      "balde": "C",
+      "count": null,
+      "transient": false,
+      "motivo": "prefixo_ui_infra"
+    },
+    "ir.actions.actions": {
+      "dominio": "ir",
+      "descricao": "Actions",
+      "balde": "C",
+      "count": null,
+      "transient": false,
+      "motivo": "prefixo_ui_infra"
+    },
+    "mail.activity": {
+      "dominio": "mail",
+      "descricao": "Activity",
+      "balde": "C",
+      "count": null,
+      "transient": false,
+      "motivo": "prefixo_ui_infra"
+    },
+    "mail.activity.mixin": {
+      "dominio": "mail",
+      "descricao": "Activity Mixin",
+      "balde": "C",
+      "count": null,
+      "transient": false,
+      "motivo": "sufixo_tecnico"
+    },
+    "mail.activity.plan": {
+      "dominio": "mail",
+      "descricao": "Activity Plan",
+      "balde": "C",
+      "count": null,
+      "transient": false,
+      "motivo": "prefixo_ui_infra"
+    },
+    "mail.activity.plan.template": {
+      "dominio": "mail",
+      "descricao": "Activity plan template",
+      "balde": "C",
+      "count": null,
+      "transient": false,
+      "motivo": "prefixo_ui_infra"
+    },
+    "mail.activity.schedule": {
+      "dominio": "mail",
+      "descricao": "Activity schedule plan Wizard",
+      "balde": "C",
+      "count": null,
+      "transient": true,
+      "motivo": "transient"
+    },
+    "mail.activity.type": {
+      "dominio": "mail",
+      "descricao": "Activity Type",
+      "balde": "C",
+      "count": null,
+      "transient": false,
+      "motivo": "prefixo_ui_infra"
+    },
+    "format.address.mixin": {
+      "dominio": "format",
+      "descricao": "Address Format",
+      "balde": "C",
+      "count": null,
+      "transient": false,
+      "motivo": "sufixo_tecnico"
+    },
+    "sped.documento.item.declaracao.importacao.adicao": {
+      "dominio": "sped",
+      "descricao": "Adições da Declaração de Importação do Item do Documento Fiscal",
+      "balde": "B",
+      "count": 0,
+      "transient": false,
+      "motivo": "baixo_volume_dominio_negocio",
+      "previsao_ativacao": "instalado_sem_uso"
+    },
+    "ks_dashboard_ninja.arti_int": {
+      "dominio": "ks_dashboard_ninja",
+      "descricao": "AI Dashboard",
+      "balde": "C",
+      "count": null,
+      "transient": true,
+      "motivo": "transient"
+    },
+    "ks_dashboard_ninja.ai_dashboard": {
+      "dominio": "ks_dashboard_ninja",
+      "descricao": "AI Dashboard",
+      "balde": "C",
+      "count": null,
+      "transient": true,
+      "motivo": "transient"
+    },
+    "res.groups": {
+      "dominio": "res",
+      "descricao": "Access Groups",
+      "balde": "A",
+      "count": 248,
+      "transient": false,
+      "motivo": "volume_acima_threshold"
+    },
+    "sped.cst.cibs": {
+      "dominio": "sped",
+      "descricao": "Alíquotas do CST",
+      "balde": "A",
+      "count": 159,
+      "transient": false,
+      "motivo": "volume_acima_threshold"
+    },
+    "sped.aliquota.icms.proprio": {
+      "dominio": "sped",
+      "descricao": "Alíquotas do ICMS próprio",
+      "balde": "B",
+      "count": 17,
+      "transient": false,
+      "motivo": "baixo_volume_dominio_negocio",
+      "previsao_ativacao": "em_uso"
+    },
+    "sped.aliquota.icms.st": {
+      "dominio": "sped",
+      "descricao": "Alíquotas do ICMS ST",
+      "balde": "B",
+      "count": 15,
+      "transient": false,
+      "motivo": "baixo_volume_dominio_negocio",
+      "previsao_ativacao": "em_uso"
+    },
+    "sped.aliquota.inss": {
+      "dominio": "sped",
+      "descricao": "Alíquotas do INSS",
+      "balde": "B",
+      "count": 7,
+      "transient": false,
+      "motivo": "baixo_volume_dominio_negocio",
+      "previsao_ativacao": "em_uso"
+    },
+    "sped.aliquota.ipi": {
+      "dominio": "sped",
+      "descricao": "Alíquotas do IPI",
+      "balde": "A",
+      "count": 63,
+      "transient": false,
+      "motivo": "volume_acima_threshold"
+    },
+    "sped.aliquota.irpf": {
+      "dominio": "sped",
+      "descricao": "Alíquotas do IRPF",
+      "balde": "B",
+      "count": 5,
+      "transient": false,
+      "motivo": "baixo_volume_dominio_negocio",
+      "previsao_ativacao": "em_uso"
+    },
+    "sped.aliquota.iss": {
+      "dominio": "sped",
+      "descricao": "Alíquotas do ISS",
+      "balde": "B",
+      "count": 3,
+      "transient": false,
+      "motivo": "baixo_volume_dominio_negocio",
+      "previsao_ativacao": "em_uso"
+    },
+    "sped.aliquota.pis.cofins": {
+      "dominio": "sped",
+      "descricao": "Alíquotas do PIS-COFINS",
+      "balde": "B",
+      "count": 18,
+      "transient": false,
+      "motivo": "baixo_volume_dominio_negocio",
+      "previsao_ativacao": "em_uso"
+    },
+    "sped.aliquota.simples.aliquota": {
+      "dominio": "sped",
+      "descricao": "Alíquotas do SIMPLES Nacional",
+      "balde": "B",
+      "count": 30,
+      "transient": false,
+      "motivo": "baixo_volume_dominio_negocio",
+      "previsao_ativacao": "em_uso"
+    },
+    "res.users.apikeys.description": {
+      "dominio": "res",
+      "descricao": "API Key Description",
+      "balde": "C",
+      "count": null,
+      "transient": true,
+      "motivo": "transient"
+    },
+    "ir.module.category": {
+      "dominio": "ir",
+      "descricao": "Application",
+      "balde": "C",
+      "count": null,
+      "transient": false,
+      "motivo": "prefixo_ui_infra"
+    },
+    "sped.caminho.arquivo": {
+      "dominio": "sped",
+      "descricao": "Arquivo na pasta",
+      "balde": "C",
+      "count": null,
+      "transient": true,
+      "motivo": "transient"
+    },
+    "ir.asset": {
+      "dominio": "ir",
+      "descricao": "Asset",
+      "balde": "C",
+      "count": null,
+      "transient": false,
+      "motivo": "prefixo_ui_infra"
+    },
+    "web_editor.assets": {
+      "dominio": "web_editor",
+      "descricao": "Assets Utils",
+      "balde": "C",
+      "count": null,
+      "transient": false,
+      "motivo": "prefixo_ui_infra"
+    },
+    "hardware.atividade": {
+      "dominio": "hardware",
+      "descricao": "Atividades - hardware",
+      "balde": "C",
+      "count": null,
+      "transient": false,
+      "motivo": "prefixo_ui_infra"
+    },
+    "ir.attachment": {
+      "dominio": "ir",
+      "descricao": "Attachment",
+      "balde": "C",
+      "count": null,
+      "transient": false,
+      "motivo": "prefixo_ui_infra"
+    },
+    "finan.lancamento.atualiza": {
+      "dominio": "finan",
+      "descricao": "Atualiza lançamento financeiro",
+      "balde": "C",
+      "count": null,
+      "transient": true,
+      "motivo": "transient"
+    },
+    "sped.aliquota.simples.anexo": {
+      "dominio": "sped",
+      "descricao": "Anexos do SIMPLES Nacional",
+      "balde": "B",
+      "count": 5,
+      "transient": false,
+      "motivo": "baixo_volume_dominio_negocio",
+      "previsao_ativacao": "em_uso"
+    },
+    "ir.autovacuum": {
+      "dominio": "ir",
+      "descricao": "Automatic Vacuum",
+      "balde": "C",
+      "count": null,
+      "transient": false,
+      "motivo": "prefixo_ui_infra"
+    },
+    "sped.atualizacao.preco": {
+      "dominio": "sped",
+      "descricao": "Atualização de Preços",
+      "balde": "B",
+      "count": 3,
+      "transient": false,
+      "motivo": "baixo_volume_dominio_negocio",
+      "previsao_ativacao": "em_uso"
+    },
+    "avatar.mixin": {
+      "dominio": "avatar",
+      "descricao": "Avatar Mixin",
+      "balde": "C",
+      "count": null,
+      "transient": false,
+      "motivo": "sufixo_tecnico"
+    },
+    "pedido.documento.avanca.etapa": {
+      "dominio": "pedido",
+      "descricao": "Avança etapa de produção",
+      "balde": "B",
+      "count": 0,
+      "transient": false,
+      "motivo": "baixo_volume_dominio_negocio",
+      "previsao_ativacao": "instalado_sem_uso"
+    },
+    "finan.baixa.lancamento": {
+      "dominio": "finan",
+      "descricao": "Baixa de Lançamentos do Financeiro",
+      "balde": "B",
+      "count": 3,
+      "transient": false,
+      "motivo": "baixo_volume_dominio_negocio",
+      "previsao_ativacao": "em_uso"
+    },
+    "res.bank": {
+      "dominio": "res",
+      "descricao": "Bank",
+      "balde": "B",
+      "count": 0,
+      "transient": false,
+      "motivo": "baixo_volume_dominio_negocio",
+      "previsao_ativacao": "instalado_sem_uso"
+    },
+    "res.partner.bank": {
+      "dominio": "res",
+      "descricao": "Bank Accounts",
+      "balde": "B",
+      "count": 0,
+      "transient": false,
+      "motivo": "baixo_volume_dominio_negocio",
+      "previsao_ativacao": "instalado_sem_uso"
+    },
+    "barcode.nomenclature": {
+      "dominio": "barcode",
+      "descricao": "Barcode Nomenclature",
+      "balde": "C",
+      "count": 1,
+      "transient": false,
+      "motivo": "baixo_volume_nao_negocio"
+    },
+    "barcode.rule": {
+      "dominio": "barcode",
+      "descricao": "Barcode Rule",
+      "balde": "C",
+      "count": 1,
+      "transient": false,
+      "motivo": "baixo_volume_nao_negocio"
+    },
+    "base": {
+      "dominio": "base",
+      "descricao": "Base",
+      "balde": "C",
+      "count": null,
+      "transient": false,
+      "motivo": "prefixo_ui_infra"
+    },
+    "sped.usuario.base": {
+      "dominio": "sped",
+      "descricao": "Base dos Usuários",
+      "balde": "C",
+      "count": null,
+      "transient": false,
+      "motivo": "sufixo_tecnico"
+    },
+    "sped.documento.base": {
+      "dominio": "sped",
+      "descricao": "Base fiscal para os pedidos",
+      "balde": "C",
+      "count": null,
+      "transient": false,
+      "motivo": "sufixo_tecnico"
+    },
+    "base_import.import": {
+      "dominio": "base_import",
+      "descricao": "Base Import",
+      "balde": "C",
+      "count": null,
+      "transient": true,
+      "motivo": "transient"
+    },
+    "base_import.mapping": {
+      "dominio": "base_import",
+      "descricao": "Base Import Mapping",
+      "balde": "C",
+      "count": null,
+      "transient": false,
+      "motivo": "prefixo_ui_infra"
+    },
+    "chaves.pix.base": {
+      "dominio": "chaves",
+      "descricao": "Base para chaves PIX",
+      "balde": "C",
+      "count": null,
+      "transient": false,
+      "motivo": "sufixo_tecnico"
+    },
+    "codigo.barras.boleto.conta.base": {
+      "dominio": "codigo",
+      "descricao": "Base para código de barras de boleto",
+      "balde": "C",
+      "count": null,
+      "transient": false,
+      "motivo": "sufixo_tecnico"
+    },
+    "sped.documento.duplicata": {
+      "dominio": "sped",
+      "descricao": "Base para código de barras de boleto",
+      "balde": "A",
+      "count": 21356,
+      "transient": false,
+      "motivo": "volume_acima_threshold"
+    },
+    "rh.modelo.calculo": {
+      "dominio": "rh",
+      "descricao": "RH - Modelo de Cálculo",
+      "balde": "C",
+      "count": null,
+      "transient": false,
+      "motivo": "abstract_ou_inexistente"
+    },
+    "sped.impressao": {
+      "dominio": "sped",
+      "descricao": "Base para impressos",
+      "balde": "C",
+      "count": null,
+      "transient": false,
+      "motivo": "sufixo_tecnico"
+    },
+    "sped.base.modelo.impressao": {
+      "dominio": "sped",
+      "descricao": "Base para modelos de impressos",
+      "balde": "C",
+      "count": null,
+      "transient": false,
+      "motivo": "sufixo_tecnico"
+    },
+    "sped.base": {
+      "dominio": "sped",
+      "descricao": "Base para moedas e outros métodos",
+      "balde": "C",
+      "count": null,
+      "transient": false,
+      "motivo": "sufixo_tecnico"
+    },
+    "sped.registro.base": {
+      "dominio": "sped",
+      "descricao": "Base para os registros do SPED",
+      "balde": "C",
+      "count": null,
+      "transient": false,
+      "motivo": "sufixo_tecnico"
+    },
+    "relatorio.executa.base": {
+      "dominio": "relatorio",
+      "descricao": "Base para tela de filtro de relatórios",
+      "balde": "C",
+      "count": null,
+      "transient": false,
+      "motivo": "sufixo_tecnico"
+    },
+    "mail.shortcode": {
+      "dominio": "mail",
+      "descricao": "Canned Response / Shortcode",
+      "balde": "C",
+      "count": null,
+      "transient": false,
+      "motivo": "prefixo_ui_infra"
+    },
+    "sped.produto.caracteristica.arvore": {
+      "dominio": "sped",
+      "descricao": "Característica de Produtos - Árvore de Análise",
+      "balde": "C",
+      "count": null,
+      "transient": false,
+      "motivo": "sufixo_tecnico"
+    },
+    "contabil.centro.custo.arvore": {
+      "dominio": "contabil",
+      "descricao": "Centro de custo - Árvore de Análise",
+      "balde": "C",
+      "count": null,
+      "transient": false,
+      "motivo": "sufixo_tecnico"
+    },
+    "finan.centro.resultado.arvore": {
+      "dominio": "finan",
+      "descricao": "Centro de resultado - Árvore de Análise",
+      "balde": "C",
+      "count": null,
+      "transient": false,
+      "motivo": "sufixo_tecnico"
+    },
+    "sped.certificado": {
+      "dominio": "sped",
+      "descricao": "Certificado Digital",
+      "balde": "B",
+      "count": 11,
+      "transient": false,
+      "motivo": "baixo_volume_dominio_negocio",
+      "previsao_ativacao": "em_uso"
+    },
+    "sped.cest": {
+      "dominio": "sped",
+      "descricao": "CESTs",
+      "balde": "A",
+      "count": 924,
+      "transient": false,
+      "motivo": "volume_acima_threshold"
+    },
+    "rh.ponto": {
+      "dominio": "rh",
+      "descricao": "RH - Ponto",
+      "balde": "C",
+      "count": null,
+      "transient": false,
+      "motivo": "abstract_ou_inexistente"
+    },
+    "sped.cfop": {
+      "dominio": "sped",
+      "descricao": "CFOPs",
+      "balde": "A",
+      "count": 604,
+      "transient": false,
+      "motivo": "volume_acima_threshold"
+    },
+    "chamado.mensagem": {
+      "dominio": "chamado",
+      "descricao": "Chamado - mensagem",
+      "balde": "C",
+      "count": 0,
+      "transient": false,
+      "motivo": "baixo_volume_nao_negocio"
+    },
+    "change.password.wizard": {
+      "dominio": "change",
+      "descricao": "Change Password Wizard",
+      "balde": "C",
+      "count": null,
+      "transient": true,
+      "motivo": "transient"
+    },
+    "discuss.channel.member": {
+      "dominio": "discuss",
+      "descricao": "Channel Member",
+      "balde": "C",
+      "count": null,
+      "transient": false,
+      "motivo": "prefixo_ui_infra"
+    },
+    "ir.actions.client": {
+      "dominio": "ir",
+      "descricao": "Client Action",
+      "balde": "C",
+      "count": null,
+      "transient": false,
+      "motivo": "prefixo_ui_infra"
+    },
+    "rh.rubrica": {
+      "dominio": "rh",
+      "descricao": "RH - Rubrica",
+      "balde": "C",
+      "count": null,
+      "transient": false,
+      "motivo": "abstract_ou_inexistente"
+    },
+    "sped.apuracao.auditoria": {
+      "dominio": "sped",
+      "descricao": "SPED - Auditoria de Apuração",
+      "balde": "C",
+      "count": null,
+      "transient": false,
+      "motivo": "acesso_negado"
+    },
+    "sped.cnae": {
+      "dominio": "sped",
+      "descricao": "CNAEs",
+      "balde": "A",
+      "count": 1301,
+      "transient": false,
+      "motivo": "volume_acima_threshold"
+    },
+    "bus.bus": {
+      "dominio": "bus",
+      "descricao": "Communication Bus",
+      "balde": "C",
+      "count": null,
+      "transient": false,
+      "motivo": "prefixo_ui_infra"
+    },
+    "sped.documento.item.ajuste.apuracao": {
+      "dominio": "sped",
+      "descricao": "Códigos de ajuste de apuração",
+      "balde": "B",
+      "count": 0,
+      "transient": false,
+      "motivo": "baixo_volume_dominio_negocio",
+      "previsao_ativacao": "instalado_sem_uso"
+    },
+    "base.document.layout": {
+      "dominio": "base",
+      "descricao": "Company Document Layout",
+      "balde": "C",
+      "count": null,
+      "transient": true,
+      "motivo": "transient"
+    },
+    "ir.property": {
+      "dominio": "ir",
+      "descricao": "Company Property",
+      "balde": "C",
+      "count": null,
+      "transient": false,
+      "motivo": "prefixo_ui_infra"
+    },
+    "pedido.comissao": {
+      "dominio": "pedido",
+      "descricao": "Comissão do Pedido",
+      "balde": "B",
+      "count": 0,
+      "transient": false,
+      "motivo": "baixo_volume_dominio_negocio",
+      "previsao_ativacao": "instalado_sem_uso"
+    },
+    "res.config": {
+      "dominio": "res",
+      "descricao": "Config",
+      "balde": "C",
+      "count": null,
+      "transient": true,
+      "motivo": "transient"
+    },
+    "res.config.installer": {
+      "dominio": "res",
+      "descricao": "Config Installer",
+      "balde": "C",
+      "count": null,
+      "transient": true,
+      "motivo": "transient"
+    },
+    "res.config.settings": {
+      "dominio": "res",
+      "descricao": "Config Settings",
+      "balde": "C",
+      "count": null,
+      "transient": true,
+      "motivo": "transient"
+    },
+    "res.company": {
+      "dominio": "res",
+      "descricao": "Companies",
+      "balde": "B",
+      "count": 20,
+      "transient": false,
+      "motivo": "baixo_volume_dominio_negocio",
+      "previsao_ativacao": "em_uso"
+    },
+    "sped.configuracao.geral.base": {
+      "dominio": "sped",
+      "descricao": "Configuração Geral base",
+      "balde": "C",
+      "count": null,
+      "transient": false,
+      "motivo": "sufixo_tecnico"
+    },
+    "ir.actions.todo": {
+      "dominio": "ir",
+      "descricao": "Configuration Wizards",
+      "balde": "C",
+      "count": null,
+      "transient": false,
+      "motivo": "prefixo_ui_infra"
+    },
+    "sped.consulta.dfe.item.confirmacao": {
+      "dominio": "sped",
+      "descricao": "Confirmação de Item de Consulta DF-e",
+      "balde": "C",
+      "count": null,
+      "transient": true,
+      "motivo": "transient"
+    },
+    "pedido.operacao.condicao.comercial": {
+      "dominio": "pedido",
+      "descricao": "Condição Comercial",
+      "balde": "B",
+      "count": 0,
+      "transient": false,
+      "motivo": "baixo_volume_dominio_negocio",
+      "previsao_ativacao": "instalado_sem_uso"
+    },
+    "finan.banco.arvore": {
+      "dominio": "finan",
+      "descricao": "Conta Bancária - Árvore de Análise",
+      "balde": "C",
+      "count": null,
+      "transient": false,
+      "motivo": "sufixo_tecnico"
+    },
+    "contabil.conta.arvore": {
+      "dominio": "contabil",
+      "descricao": "Conta Contábil - Árvore de Análise",
+      "balde": "C",
+      "count": null,
+      "transient": false,
+      "motivo": "sufixo_tecnico"
+    },
+    "sped.configuracao.geral": {
+      "dominio": "sped",
+      "descricao": "Configuração Geral",
+      "balde": "B",
+      "count": 1,
+      "transient": false,
+      "motivo": "baixo_volume_dominio_negocio",
+      "previsao_ativacao": "em_uso"
+    },
+    "sped.consulta.dfe": {
+      "dominio": "sped",
+      "descricao": "Consulta DF-e",
+      "balde": "B",
+      "count": 35,
+      "transient": false,
+      "motivo": "baixo_volume_dominio_negocio",
+      "previsao_ativacao": "em_uso"
+    },
+    "contabil.conta.centro.resultado": {
+      "dominio": "contabil",
+      "descricao": "Conta Contábil - Centros de Resultado",
+      "balde": "B",
+      "count": 0,
+      "transient": false,
+      "motivo": "baixo_volume_dominio_negocio",
+      "previsao_ativacao": "instalado_sem_uso"
+    },
+    "contabil.conta.referencial.arvore": {
+      "dominio": "contabil",
+      "descricao": "Conta Contábil Referencial - Árvore de Análise",
+      "balde": "C",
+      "count": null,
+      "transient": false,
+      "motivo": "sufixo_tecnico"
+    },
+    "finan.conta.arvore": {
+      "dominio": "finan",
+      "descricao": "Conta Gerencial - Árvore de Análise",
+      "balde": "C",
+      "count": null,
+      "transient": false,
+      "motivo": "sufixo_tecnico"
+    },
+    "contabil.conta.cfop": {
+      "dominio": "contabil",
+      "descricao": "Conta Contábil - De-Para por CFOP",
+      "balde": "B",
+      "count": 0,
+      "transient": false,
+      "motivo": "baixo_volume_dominio_negocio",
+      "previsao_ativacao": "instalado_sem_uso"
+    },
+    "contabil.conta.centro.custo": {
+      "dominio": "contabil",
+      "descricao": "Conta Contábil - Centros de Custo",
+      "balde": "B",
+      "count": 0,
+      "transient": false,
+      "motivo": "baixo_volume_dominio_negocio",
+      "previsao_ativacao": "instalado_sem_uso"
+    },
+    "res.country": {
+      "dominio": "res",
+      "descricao": "Country",
+      "balde": "A",
+      "count": 250,
+      "transient": false,
+      "motivo": "volume_acima_threshold"
+    },
+    "wizard.ir.model.menu.create": {
+      "dominio": "wizard",
+      "descricao": "Create Menu Wizard",
+      "balde": "C",
+      "count": null,
+      "transient": true,
+      "motivo": "transient"
+    },
+    "mail.notification.web.push": {
+      "dominio": "mail",
+      "descricao": "Cron data used for web push notification",
+      "balde": "C",
+      "count": null,
+      "transient": false,
+      "motivo": "prefixo_ui_infra"
+    },
+    "res.country.group": {
+      "dominio": "res",
+      "descricao": "Country Group",
+      "balde": "B",
+      "count": 6,
+      "transient": false,
+      "motivo": "baixo_volume_dominio_negocio",
+      "previsao_ativacao": "em_uso"
+    },
+    "res.country.state": {
+      "dominio": "res",
+      "descricao": "Country state",
+      "balde": "A",
+      "count": 1750,
+      "transient": false,
+      "motivo": "volume_acima_threshold"
+    },
+    "sped.cst.icms": {
+      "dominio": "sped",
+      "descricao": "CST do ICMS",
+      "balde": "B",
+      "count": 15,
+      "transient": false,
+      "motivo": "baixo_volume_dominio_negocio",
+      "previsao_ativacao": "em_uso"
+    },
+    "sped.cst.icms.sn": {
+      "dominio": "sped",
+      "descricao": "CST do ICMS - SIMPLES",
+      "balde": "B",
+      "count": 10,
+      "transient": false,
+      "motivo": "baixo_volume_dominio_negocio",
+      "previsao_ativacao": "em_uso"
+    },
+    "sped.cst.ipi": {
+      "dominio": "sped",
+      "descricao": "CST do IPI",
+      "balde": "B",
+      "count": 14,
+      "transient": false,
+      "motivo": "baixo_volume_dominio_negocio",
+      "previsao_ativacao": "em_uso"
+    },
+    "sped.cst.pis.cofins": {
+      "dominio": "sped",
+      "descricao": "CST do PIS-COFINS",
+      "balde": "B",
+      "count": 33,
+      "transient": false,
+      "motivo": "baixo_volume_dominio_negocio",
+      "previsao_ativacao": "em_uso"
+    },
+    "ir.ui.view.custom": {
+      "dominio": "ir",
+      "descricao": "Custom View",
+      "balde": "C",
+      "count": null,
+      "transient": false,
+      "motivo": "prefixo_ui_infra"
+    },
+    "ks.dashboard.wizard": {
+      "dominio": "ks",
+      "descricao": "Dashboard Creation Wizard",
+      "balde": "C",
+      "count": null,
+      "transient": true,
+      "motivo": "transient"
+    },
+    "ks.dashboard.delete.wizard": {
+      "dominio": "ks",
+      "descricao": "Dashboard Delete Wizard",
+      "balde": "C",
+      "count": null,
+      "transient": true,
+      "motivo": "transient"
+    },
+    "ks.dashboard.duplicate.wizard": {
+      "dominio": "ks",
+      "descricao": "Dashboard Duplicate Wizard",
+      "balde": "C",
+      "count": null,
+      "transient": true,
+      "motivo": "transient"
+    },
+    "ks_dashboard_ninja.board": {
+      "dominio": "ks_dashboard_ninja",
+      "descricao": "Dashboard Ninja",
+      "balde": "C",
+      "count": null,
+      "transient": false,
+      "motivo": "prefixo_ui_infra"
+    },
+    "ks.dashboard.api": {
+      "dominio": "ks",
+      "descricao": "Dashboard Ninja API datatype",
+      "balde": "C",
+      "count": null,
+      "transient": false,
+      "motivo": "prefixo_ui_infra"
+    },
+    "ks_dashboard_ninja.child_board": {
+      "dominio": "ks_dashboard_ninja",
+      "descricao": "Dashboard Ninja Child Board",
+      "balde": "C",
+      "count": null,
+      "transient": false,
+      "motivo": "prefixo_ui_infra"
+    },
+    "ks_dashboard_ninja.board_custom_filters": {
+      "dominio": "ks_dashboard_ninja",
+      "descricao": "Dashboard Ninja Custom Filters",
+      "balde": "C",
+      "count": null,
+      "transient": false,
+      "motivo": "prefixo_ui_infra"
+    },
+    "ks_dashboard_ninja.board_defined_filters": {
+      "dominio": "ks_dashboard_ninja",
+      "descricao": "Dashboard Ninja Defined Filters",
+      "balde": "C",
+      "count": null,
+      "transient": false,
+      "motivo": "prefixo_ui_infra"
+    },
+    "ks.dashboard.group.by": {
+      "dominio": "ks",
+      "descricao": "Dashboard Ninja Group By",
+      "balde": "C",
+      "count": null,
+      "transient": false,
+      "motivo": "prefixo_ui_infra"
+    },
+    "ks.dashboard.csv.group.by": {
+      "dominio": "ks",
+      "descricao": "Dashboard Ninja Group By",
+      "balde": "C",
+      "count": null,
+      "transient": false,
+      "motivo": "prefixo_ui_infra"
+    },
+    "ks_ninja_dashboard.item_action": {
+      "dominio": "ks_ninja_dashboard",
+      "descricao": "Dashboard Ninja Item Actions",
+      "balde": "C",
+      "count": null,
+      "transient": true,
+      "motivo": "transient"
+    },
+    "ks_dashboard_ninja.item": {
+      "dominio": "ks_dashboard_ninja",
+      "descricao": "Dashboard Ninja items",
+      "balde": "C",
+      "count": null,
+      "transient": false,
+      "motivo": "prefixo_ui_infra"
+    },
+    "ks_dashboard_ninja.item_action": {
+      "dominio": "ks_dashboard_ninja",
+      "descricao": "Dashboard Ninja Items Action Lines",
+      "balde": "C",
+      "count": null,
+      "transient": false,
+      "motivo": "prefixo_ui_infra"
+    },
+    "ks_dashboard_ninja.item_goal": {
+      "dominio": "ks_dashboard_ninja",
+      "descricao": "Dashboard Ninja Items Goal Lines",
+      "balde": "C",
+      "count": null,
+      "transient": false,
+      "motivo": "prefixo_ui_infra"
+    },
+    "res.currency": {
+      "dominio": "res",
+      "descricao": "Currency",
+      "balde": "A",
+      "count": 119,
+      "transient": false,
+      "motivo": "volume_acima_threshold"
+    },
+    "ks_dashboard_ninja.kpi_mail": {
+      "dominio": "ks_dashboard_ninja",
+      "descricao": "Dashboard Ninja Kpi mail",
+      "balde": "C",
+      "count": null,
+      "transient": false,
+      "motivo": "prefixo_ui_infra"
+    },
+    "ks.dashboard.new": {
+      "dominio": "ks",
+      "descricao": "Dashboard Ninja New",
+      "balde": "C",
+      "count": null,
+      "transient": false,
+      "motivo": "prefixo_ui_infra"
+    },
+    "ks.dashboard.csv.new": {
+      "dominio": "ks",
+      "descricao": "Dashboard Ninja New",
+      "balde": "C",
+      "count": null,
+      "transient": false,
+      "motivo": "prefixo_ui_infra"
+    },
+    "ks_dashboard_ninja.board_template": {
+      "dominio": "ks_dashboard_ninja",
+      "descricao": "Dashboard Ninja Template",
+      "balde": "C",
+      "count": null,
+      "transient": false,
+      "motivo": "prefixo_ui_infra"
+    },
+    "res.currency.rate": {
+      "dominio": "res",
+      "descricao": "Currency Rate",
+      "balde": "B",
+      "count": 0,
+      "transient": false,
+      "motivo": "baixo_volume_dominio_negocio",
+      "previsao_ativacao": "instalado_sem_uso"
+    },
+    "ks_dashboard_item.multiplier": {
+      "dominio": "ks_dashboard_item",
+      "descricao": "Dashboard Ninja Items Multiplier Lines",
+      "balde": "C",
+      "count": 0,
+      "transient": false,
+      "motivo": "baixo_volume_nao_negocio"
+    },
+    "ir.default": {
+      "dominio": "ir",
+      "descricao": "Default Values",
+      "balde": "C",
+      "count": null,
+      "transient": false,
+      "motivo": "prefixo_ui_infra"
+    },
+    "decimal.precision": {
+      "dominio": "decimal",
+      "descricao": "Decimal Precision",
+      "balde": "C",
+      "count": 5,
+      "transient": false,
+      "motivo": "baixo_volume_nao_negocio"
+    },
+    "pedido.defeito.arvore": {
+      "dominio": "pedido",
+      "descricao": "Defeitos - Árvore de Análise",
+      "balde": "C",
+      "count": null,
+      "transient": false,
+      "motivo": "sufixo_tecnico"
+    },
+    "ir.demo": {
+      "dominio": "ir",
+      "descricao": "Demo",
+      "balde": "C",
+      "count": null,
+      "transient": true,
+      "motivo": "transient"
+    },
+    "ir.demo_failure": {
+      "dominio": "ir",
+      "descricao": "Demo failure",
+      "balde": "C",
+      "count": null,
+      "transient": true,
+      "motivo": "transient"
+    },
+    "ir.demo_failure.wizard": {
+      "dominio": "ir",
+      "descricao": "Demo Failure wizard",
+      "balde": "C",
+      "count": null,
+      "transient": true,
+      "motivo": "transient"
+    },
+    "sped.produto.departamento.arvore": {
+      "dominio": "sped",
+      "descricao": "Departamento de Produtos - Árvore de Análise",
+      "balde": "C",
+      "count": null,
+      "transient": false,
+      "motivo": "sufixo_tecnico"
+    },
+    "sped.documento.item.declaracao.importacao": {
+      "dominio": "sped",
+      "descricao": "Declarações de Importação do Item do Documento Fiscal",
+      "balde": "B",
+      "count": 8,
+      "transient": false,
+      "motivo": "baixo_volume_dominio_negocio",
+      "previsao_ativacao": "em_uso"
+    },
+    "sped.usuario.departamento.arvore": {
+      "dominio": "sped",
+      "descricao": "Departamento de Usuários - Árvore de Análise",
+      "balde": "C",
+      "count": null,
+      "transient": false,
+      "motivo": "sufixo_tecnico"
+    },
+    "pedido.defeito": {
+      "dominio": "pedido",
+      "descricao": "Defeitos",
+      "balde": "B",
+      "count": 0,
+      "transient": false,
+      "motivo": "baixo_volume_dominio_negocio",
+      "previsao_ativacao": "instalado_sem_uso"
+    },
+    "sped.usuario.departamento": {
+      "dominio": "sped",
+      "descricao": "Departamento de Usuários",
+      "balde": "B",
+      "count": 12,
+      "transient": false,
+      "motivo": "baixo_volume_dominio_negocio",
+      "previsao_ativacao": "em_uso"
+    },
+    "finan.dia.semana": {
+      "dominio": "finan",
+      "descricao": "Dia da semana",
+      "balde": "B",
+      "count": 5,
+      "transient": false,
+      "motivo": "baixo_volume_dominio_negocio",
+      "previsao_ativacao": "em_uso"
+    },
+    "mail.followers": {
+      "dominio": "mail",
+      "descricao": "Document Followers",
+      "balde": "C",
+      "count": null,
+      "transient": false,
+      "motivo": "prefixo_ui_infra"
+    },
+    "finan.dia.mes": {
+      "dominio": "finan",
+      "descricao": "Dia do mês",
+      "balde": "B",
+      "count": 30,
+      "transient": false,
+      "motivo": "baixo_volume_dominio_negocio",
+      "previsao_ativacao": "em_uso"
+    },
+    "finan.dia.util": {
+      "dominio": "finan",
+      "descricao": "Dia útil",
+      "balde": "B",
+      "count": 5,
+      "transient": false,
+      "motivo": "baixo_volume_dominio_negocio",
+      "previsao_ativacao": "em_uso"
+    },
+    "sped.documento.rateio": {
+      "dominio": "sped",
+      "descricao": "Documento do Lançamento Financeiro",
+      "balde": "B",
+      "count": 1,
+      "transient": false,
+      "motivo": "baixo_volume_dominio_negocio",
+      "previsao_ativacao": "em_uso"
+    },
+    "mail.alias": {
+      "dominio": "mail",
+      "descricao": "Email Aliases",
+      "balde": "C",
+      "count": null,
+      "transient": false,
+      "motivo": "prefixo_ui_infra"
+    },
+    "mail.alias.mixin": {
+      "dominio": "mail",
+      "descricao": "Email Aliases Mixin",
+      "balde": "C",
+      "count": null,
+      "transient": false,
+      "motivo": "sufixo_tecnico"
+    },
+    "mail.alias.mixin.optional": {
+      "dominio": "mail",
+      "descricao": "Email Aliases Mixin (light)",
+      "balde": "C",
+      "count": null,
+      "transient": false,
+      "motivo": "prefixo_ui_infra"
+    },
+    "mail.compose.message": {
+      "dominio": "mail",
+      "descricao": "Email composition wizard",
+      "balde": "C",
+      "count": null,
+      "transient": true,
+      "motivo": "transient"
+    },
+    "mail.alias.domain": {
+      "dominio": "mail",
+      "descricao": "Email Domain",
+      "balde": "C",
+      "count": null,
+      "transient": false,
+      "motivo": "prefixo_ui_infra"
+    },
+    "mail.resend.message": {
+      "dominio": "mail",
+      "descricao": "Email resend wizard",
+      "balde": "C",
+      "count": null,
+      "transient": true,
+      "motivo": "transient"
+    },
+    "mail.template.preview": {
+      "dominio": "mail",
+      "descricao": "Email Template Preview",
+      "balde": "C",
+      "count": null,
+      "transient": true,
+      "motivo": "transient"
+    },
+    "mail.template": {
+      "dominio": "mail",
+      "descricao": "Email Templates",
+      "balde": "C",
+      "count": null,
+      "transient": false,
+      "motivo": "prefixo_ui_infra"
+    },
+    "base.enable.profiling.wizard": {
+      "dominio": "base",
+      "descricao": "Enable profiling for some time",
+      "balde": "C",
+      "count": null,
+      "transient": true,
+      "motivo": "transient"
+    },
+    "pedido.documento.rateio": {
+      "dominio": "pedido",
+      "descricao": "Documento do Lançamento Financeiro",
+      "balde": "B",
+      "count": 1,
+      "transient": false,
+      "motivo": "baixo_volume_dominio_negocio",
+      "previsao_ativacao": "em_uso"
+    },
+    "sped.documento.referenciado": {
+      "dominio": "sped",
+      "descricao": "Documentos Referenciados no Documento Fiscal",
+      "balde": "A",
+      "count": 2709,
+      "transient": false,
+      "motivo": "volume_acima_threshold"
+    },
+    "sped.estado": {
+      "dominio": "sped",
+      "descricao": "Estados",
+      "balde": "B",
+      "count": 28,
+      "transient": false,
+      "motivo": "baixo_volume_dominio_negocio",
+      "previsao_ativacao": "em_uso"
+    },
+    "sped.exporta.documento.anexos": {
+      "dominio": "sped",
+      "descricao": "Exportar anexos dos documentos fiscais",
+      "balde": "C",
+      "count": null,
+      "transient": true,
+      "motivo": "transient"
+    },
+    "ir.exports": {
+      "dominio": "ir",
+      "descricao": "Exports",
+      "balde": "C",
+      "count": null,
+      "transient": false,
+      "motivo": "prefixo_ui_infra"
+    },
+    "ir.exports.line": {
+      "dominio": "ir",
+      "descricao": "Exports Line",
+      "balde": "C",
+      "count": null,
+      "transient": false,
+      "motivo": "prefixo_ui_infra"
+    },
+    "estoque.minimo.maximo": {
+      "dominio": "estoque",
+      "descricao": "Estoque mínimo e máximo",
+      "balde": "B",
+      "count": 0,
+      "transient": false,
+      "motivo": "baixo_volume_dominio_negocio",
+      "previsao_ativacao": "instalado_sem_uso"
+    },
+    "reinf.evento.item": {
+      "dominio": "reinf",
+      "descricao": "Evento REINF - Item",
+      "balde": "B",
+      "count": 0,
+      "transient": false,
+      "motivo": "baixo_volume_dominio_negocio",
+      "previsao_ativacao": "sem_sinal"
+    },
+    "finan.banco.extrato": {
+      "dominio": "finan",
+      "descricao": "Extrato de Contas Bancárias",
+      "balde": "A",
+      "count": 1591,
+      "transient": false,
+      "motivo": "volume_acima_threshold"
+    },
+    "sped.produto.familia.arvore": {
+      "dominio": "sped",
+      "descricao": "Família de Produtos - Árvore de Análise",
+      "balde": "C",
+      "count": null,
+      "transient": false,
+      "motivo": "sufixo_tecnico"
+    },
+    "estoque.extrato": {
+      "dominio": "estoque",
+      "descricao": "Extrato de Movimentação de Estoque",
+      "balde": "A",
+      "count": 15556,
+      "transient": false,
+      "motivo": "volume_acima_threshold"
+    },
+    "estoque.extrato.rastreabilidade": {
+      "dominio": "estoque",
+      "descricao": "Extrato de Movimentação de Estoque por Rastreabilidade",
+      "balde": "A",
+      "count": 25352,
+      "transient": false,
+      "motivo": "volume_acima_threshold"
+    },
+    "ks_dashboard_ninja.fetch_key": {
+      "dominio": "ks_dashboard_ninja",
+      "descricao": "Fetch API key",
+      "balde": "C",
+      "count": null,
+      "transient": true,
+      "motivo": "transient"
+    },
+    "html.field.history.mixin": {
+      "dominio": "html",
+      "descricao": "Field html History",
+      "balde": "C",
+      "count": null,
+      "transient": false,
+      "motivo": "sufixo_tecnico"
+    },
+    "ir.model.fields": {
+      "dominio": "ir",
+      "descricao": "Fields",
+      "balde": "C",
+      "count": null,
+      "transient": false,
+      "motivo": "prefixo_ui_infra"
+    },
+    "ir.fields.converter": {
+      "dominio": "ir",
+      "descricao": "Fields Converter",
+      "balde": "C",
+      "count": null,
+      "transient": false,
+      "motivo": "prefixo_ui_infra"
+    },
+    "ir.model.fields.selection": {
+      "dominio": "ir",
+      "descricao": "Fields Selection",
+      "balde": "C",
+      "count": null,
+      "transient": false,
+      "motivo": "prefixo_ui_infra"
+    },
+    "ir.binary": {
+      "dominio": "ir",
+      "descricao": "File streaming helper model for controllers",
+      "balde": "C",
+      "count": null,
+      "transient": false,
+      "motivo": "prefixo_ui_infra"
+    },
+    "ir.filters": {
+      "dominio": "ir",
+      "descricao": "Filters",
+      "balde": "C",
+      "count": null,
+      "transient": false,
+      "motivo": "prefixo_ui_infra"
+    },
+    "sped.faturamento.simples": {
+      "dominio": "sped",
+      "descricao": "Faturamento acumulado do SIMPLES Nacional",
+      "balde": "B",
+      "count": 5,
+      "transient": false,
+      "motivo": "baixo_volume_dominio_negocio",
+      "previsao_ativacao": "em_uso"
+    },
+    "sped.feriado": {
+      "dominio": "sped",
+      "descricao": "Feriados",
+      "balde": "A",
+      "count": 611,
+      "transient": false,
+      "motivo": "volume_acima_threshold"
+    },
+    "sped.participante.api": {
+      "dominio": "sped",
+      "descricao": "Finan cadastro de cliente com carteira bancaria",
+      "balde": "B",
+      "count": 0,
+      "transient": false,
+      "motivo": "baixo_volume_dominio_negocio",
+      "previsao_ativacao": "instalado_sem_uso"
+    },
+    "contabil.depreciacao.wizard": {
+      "dominio": "contabil",
+      "descricao": "Gerar depreciacões do Patrimonio",
+      "balde": "C",
+      "count": null,
+      "transient": true,
+      "motivo": "transient"
+    },
+    "google.gmail.mixin": {
+      "dominio": "google",
+      "descricao": "Google Gmail Mixin",
+      "balde": "C",
+      "count": null,
+      "transient": false,
+      "motivo": "sufixo_tecnico"
+    },
+    "finan.pix": {
+      "dominio": "finan",
+      "descricao": "Finan Pix",
+      "balde": "B",
+      "count": 0,
+      "transient": false,
+      "motivo": "baixo_volume_dominio_negocio",
+      "previsao_ativacao": "instalado_sem_uso"
+    },
+    "mail.guest": {
+      "dominio": "mail",
+      "descricao": "Guest",
+      "balde": "C",
+      "count": null,
+      "transient": false,
+      "motivo": "prefixo_ui_infra"
+    },
+    "contabil.historico.arvore": {
+      "dominio": "contabil",
+      "descricao": "Histórico - Árvore de Análise",
+      "balde": "C",
+      "count": null,
+      "transient": false,
+      "motivo": "sufixo_tecnico"
+    },
+    "barcodes.barcode_events_mixin": {
+      "dominio": "barcodes",
+      "descricao": "Barcode Event Mixin",
+      "balde": "C",
+      "count": null,
+      "transient": false,
+      "motivo": "acesso_negado"
+    },
+    "finan.fluxo.caixa": {
+      "dominio": "finan",
+      "descricao": "Fluxo de caixa - lançamentos",
+      "balde": "A",
+      "count": 16834,
+      "transient": false,
+      "motivo": "volume_acima_threshold"
+    },
+    "finan.banco.historico.fechamento": {
+      "dominio": "finan",
+      "descricao": "Histórico de Fechamento",
+      "balde": "B",
+      "count": 0,
+      "transient": false,
+      "motivo": "baixo_volume_dominio_negocio",
+      "previsao_ativacao": "instalado_sem_uso"
+    },
+    "ir.http": {
+      "dominio": "ir",
+      "descricao": "HTTP Routing",
+      "balde": "C",
+      "count": null,
+      "transient": false,
+      "motivo": "prefixo_ui_infra"
+    },
+    "wms.documento.historico": {
+      "dominio": "wms",
+      "descricao": "Histório de Etapas da Operação de WMS",
+      "balde": "B",
+      "count": 0,
+      "transient": false,
+      "motivo": "baixo_volume_dominio_negocio",
+      "previsao_ativacao": "sem_sinal"
+    },
+    "pedido.documento.historico": {
+      "dominio": "pedido",
+      "descricao": "Histório de Etapas do Pedido",
+      "balde": "A",
+      "count": 9173,
+      "transient": false,
+      "motivo": "volume_acima_threshold"
+    },
+    "sped.ibptax": {
+      "dominio": "sped",
+      "descricao": "IBPTax",
+      "balde": "B",
+      "count": 0,
+      "transient": false,
+      "motivo": "baixo_volume_dominio_negocio",
+      "previsao_ativacao": "instalado_sem_uso"
+    },
+    "sped.ibptax.nbs": {
+      "dominio": "sped",
+      "descricao": "IBPTax por NBS",
+      "balde": "B",
+      "count": 0,
+      "transient": false,
+      "motivo": "baixo_volume_dominio_negocio",
+      "previsao_ativacao": "instalado_sem_uso"
+    },
+    "mail.ice.server": {
+      "dominio": "mail",
+      "descricao": "ICE server",
+      "balde": "C",
+      "count": null,
+      "transient": false,
+      "motivo": "prefixo_ui_infra"
+    },
+    "image.mixin": {
+      "dominio": "image",
+      "descricao": "Image Mixin",
+      "balde": "C",
+      "count": null,
+      "transient": false,
+      "motivo": "sufixo_tecnico"
+    },
+    "sped.ibptax.ncm": {
+      "dominio": "sped",
+      "descricao": "IBPTax por NCM",
+      "balde": "B",
+      "count": 0,
+      "transient": false,
+      "motivo": "baixo_volume_dominio_negocio",
+      "previsao_ativacao": "instalado_sem_uso"
+    },
+    "ks_dashboard_ninja.import": {
+      "dominio": "ks_dashboard_ninja",
+      "descricao": "Import Dashboard",
+      "balde": "C",
+      "count": null,
+      "transient": true,
+      "motivo": "transient"
+    },
+    "finan.importa.documento": {
+      "dominio": "finan",
+      "descricao": "Importa documento financeiro",
+      "balde": "C",
+      "count": null,
+      "transient": true,
+      "motivo": "transient"
+    },
+    "sped.tabela.preco.importacao": {
+      "dominio": "sped",
+      "descricao": "Importação de Tabela de Preços",
+      "balde": "C",
+      "count": null,
+      "transient": true,
+      "motivo": "transient"
+    },
+    "sped.ibptax.servico": {
+      "dominio": "sped",
+      "descricao": "IBPTax por Serviço",
+      "balde": "B",
+      "count": 0,
+      "transient": false,
+      "motivo": "baixo_volume_dominio_negocio",
+      "previsao_ativacao": "instalado_sem_uso"
+    },
+    "contabil.modelo.impressao": {
+      "dominio": "contabil",
+      "descricao": "Impressos  (Contabilidade)",
+      "balde": "C",
+      "count": null,
+      "transient": false,
+      "motivo": "sufixo_tecnico"
+    },
+    "sped.documento.modelo.impressao": {
+      "dominio": "sped",
+      "descricao": "Impressos  (Documento Fiscal)",
+      "balde": "C",
+      "count": null,
+      "transient": false,
+      "motivo": "sufixo_tecnico"
+    },
+    "finan.modelo.impressao": {
+      "dominio": "finan",
+      "descricao": "Impressos  (Financeiro)",
+      "balde": "C",
+      "count": null,
+      "transient": false,
+      "motivo": "sufixo_tecnico"
+    },
+    "sped.modelo.impressao": {
+      "dominio": "sped",
+      "descricao": "Impressos  (Fiscais)",
+      "balde": "C",
+      "count": null,
+      "transient": false,
+      "motivo": "sufixo_tecnico"
+    },
+    "pedido.modelo.impressao": {
+      "dominio": "pedido",
+      "descricao": "Impressos  (Pedido)",
+      "balde": "C",
+      "count": null,
+      "transient": false,
+      "motivo": "sufixo_tecnico"
+    },
+    "rh.modelo.impressao": {
+      "dominio": "rh",
+      "descricao": "Impressos  (RH)",
+      "balde": "C",
+      "count": null,
+      "transient": false,
+      "motivo": "sufixo_tecnico"
+    },
+    "wms.modelo.impressao": {
+      "dominio": "wms",
+      "descricao": "Impressos  (WMS)",
+      "balde": "C",
+      "count": null,
+      "transient": false,
+      "motivo": "sufixo_tecnico"
+    },
+    "sped.produto.imagem": {
+      "dominio": "sped",
+      "descricao": "Imagens de Produtos",
+      "balde": "B",
+      "count": 0,
+      "transient": false,
+      "motivo": "baixo_volume_dominio_negocio",
+      "previsao_ativacao": "instalado_sem_uso"
+    },
+    "finan.importacao": {
+      "dominio": "finan",
+      "descricao": "Importação Financeira",
+      "balde": "B",
+      "count": 1,
+      "transient": false,
+      "motivo": "baixo_volume_dominio_negocio",
+      "previsao_ativacao": "em_uso"
+    },
+    "base.language.install": {
+      "dominio": "base",
+      "descricao": "Install Language",
+      "balde": "C",
+      "count": null,
+      "transient": true,
+      "motivo": "transient"
+    },
+    "mail.wizard.invite": {
+      "dominio": "mail",
+      "descricao": "Invite wizard",
+      "balde": "C",
+      "count": null,
+      "transient": true,
+      "motivo": "transient"
+    },
+    "fetchmail.server": {
+      "dominio": "fetchmail",
+      "descricao": "Incoming Mail Server",
+      "balde": "C",
+      "count": 0,
+      "transient": false,
+      "motivo": "baixo_volume_nao_negocio"
+    },
+    "sped.pessoa": {
+      "dominio": "sped",
+      "descricao": "Base para dados pessoais (participantes e endereços)",
+      "balde": "C",
+      "count": null,
+      "transient": false,
+      "motivo": "acesso_negado"
+    },
+    "res.partner.industry": {
+      "dominio": "res",
+      "descricao": "Industry",
+      "balde": "B",
+      "count": 21,
+      "transient": false,
+      "motivo": "baixo_volume_dominio_negocio",
+      "previsao_ativacao": "em_uso"
+    },
+    "finan.alcada.item": {
+      "dominio": "finan",
+      "descricao": "Item da alçada",
+      "balde": "B",
+      "count": 0,
+      "transient": false,
+      "motivo": "baixo_volume_dominio_negocio",
+      "previsao_ativacao": "instalado_sem_uso"
+    },
+    "sped.atualizacao.preco.item": {
+      "dominio": "sped",
+      "descricao": "Item da Atualização de Preço",
+      "balde": "A",
+      "count": 10452,
+      "transient": false,
+      "motivo": "volume_acima_threshold"
+    },
+    "contabil.executa.demonstracao.item": {
+      "dominio": "contabil",
+      "descricao": "Item da execucao da demonstração contabilceira",
+      "balde": "B",
+      "count": 0,
+      "transient": false,
+      "motivo": "baixo_volume_dominio_negocio",
+      "previsao_ativacao": "instalado_sem_uso"
+    },
+    "contabil.demonstracao.item.arvore": {
+      "dominio": "contabil",
+      "descricao": "Item de demonstração contábil - Árvore de Análise",
+      "balde": "C",
+      "count": null,
+      "transient": false,
+      "motivo": "sufixo_tecnico"
+    },
+    "finan.executa.demonstracao.item": {
+      "dominio": "finan",
+      "descricao": "Item da execucao da demonstração financeira",
+      "balde": "B",
+      "count": 0,
+      "transient": false,
+      "motivo": "baixo_volume_dominio_negocio",
+      "previsao_ativacao": "instalado_sem_uso"
+    },
+    "finan.demonstracao.item.arvore": {
+      "dominio": "finan",
+      "descricao": "Item de demonstração financeira - Árvore de Análise",
+      "balde": "C",
+      "count": null,
+      "transient": false,
+      "motivo": "sufixo_tecnico"
+    },
+    "producao.alteracao.materia.prima.item": {
+      "dominio": "producao",
+      "descricao": "Item de alteração de matéria-prima da lista de material",
+      "balde": "B",
+      "count": 0,
+      "transient": false,
+      "motivo": "baixo_volume_dominio_negocio",
+      "previsao_ativacao": "instalado_sem_uso"
+    },
+    "finan.demonstracao.item": {
+      "dominio": "finan",
+      "descricao": "Item de demonstração financeira",
+      "balde": "B",
+      "count": 0,
+      "transient": false,
+      "motivo": "baixo_volume_dominio_negocio",
+      "previsao_ativacao": "instalado_sem_uso"
+    },
+    "finan.importacao.item": {
+      "dominio": "finan",
+      "descricao": "Item de importação Financeira",
+      "balde": "B",
+      "count": 0,
+      "transient": false,
+      "motivo": "baixo_volume_dominio_negocio",
+      "previsao_ativacao": "instalado_sem_uso"
+    },
+    "sped.produto.lista.material.item": {
+      "dominio": "sped",
+      "descricao": "Item da Lista de material",
+      "balde": "A",
+      "count": 430,
+      "transient": false,
+      "motivo": "volume_acima_threshold"
+    },
+    "finan.remessa.item": {
+      "dominio": "finan",
+      "descricao": "Item de Remessa Bancária",
+      "balde": "B",
+      "count": 1,
+      "transient": false,
+      "motivo": "baixo_volume_dominio_negocio",
+      "previsao_ativacao": "em_uso"
+    },
+    "auditoria.log.item": {
+      "dominio": "auditoria",
+      "descricao": "Item de Log de auditoria",
+      "balde": "A",
+      "count": 13958096,
+      "transient": false,
+      "motivo": "volume_acima_threshold"
+    },
+    "finan.retorno.item": {
+      "dominio": "finan",
+      "descricao": "Item de Retorno de Remessa Bancária",
+      "balde": "B",
+      "count": 42,
+      "transient": false,
+      "motivo": "baixo_volume_dominio_negocio",
+      "previsao_ativacao": "em_uso"
+    },
+    "pedido.documento.avanca.etapa.item": {
+      "dominio": "pedido",
+      "descricao": "Item do avança etapa de produção",
+      "balde": "B",
+      "count": 0,
+      "transient": false,
+      "motivo": "baixo_volume_dominio_negocio",
+      "previsao_ativacao": "instalado_sem_uso"
+    },
+    "chamado.cliente": {
+      "dominio": "chamado",
+      "descricao": "Chamado do cliente",
+      "balde": "C",
+      "count": null,
+      "transient": false,
+      "motivo": "acesso_negado"
+    },
+    "contabil.encerramento.item": {
+      "dominio": "contabil",
+      "descricao": "Item do Encerramento Contábil",
+      "balde": "B",
+      "count": 0,
+      "transient": false,
+      "motivo": "baixo_volume_dominio_negocio",
+      "previsao_ativacao": "instalado_sem_uso"
+    },
+    "finan.lancamento.item": {
+      "dominio": "finan",
+      "descricao": "Item do Lançamento Financeiro",
+      "balde": "A",
+      "count": 9663,
+      "transient": false,
+      "motivo": "volume_acima_threshold"
+    },
+    "base.language.export": {
+      "dominio": "base",
+      "descricao": "Language Export",
+      "balde": "C",
+      "count": null,
+      "transient": true,
+      "motivo": "transient"
+    },
+    "base.language.import": {
+      "dominio": "base",
+      "descricao": "Language Import",
+      "balde": "C",
+      "count": null,
+      "transient": true,
+      "motivo": "transient"
+    },
+    "sped.documento.item.rateio": {
+      "dominio": "sped",
+      "descricao": "Item do Lançamento Financeiro",
+      "balde": "A",
+      "count": 73,
+      "transient": false,
+      "motivo": "volume_acima_threshold"
+    },
+    "leitura.codigo.barras": {
+      "dominio": "leitura",
+      "descricao": "Leitura de código de barras em lote",
+      "balde": "C",
+      "count": null,
+      "transient": true,
+      "motivo": "transient"
+    },
+    "sped.produto.lista.material.arvore": {
+      "dominio": "sped",
+      "descricao": "Lista de Material - Árvore de Análise",
+      "balde": "C",
+      "count": null,
+      "transient": false,
+      "motivo": "sufixo_tecnico"
+    },
+    "estoque.local.arvore": {
+      "dominio": "estoque",
+      "descricao": "Local de Estoque - Árvore de Análise",
+      "balde": "C",
+      "count": null,
+      "transient": false,
+      "motivo": "sufixo_tecnico"
+    },
+    "api.log": {
+      "dominio": "api",
+      "descricao": "Log de API",
+      "balde": "C",
+      "count": null,
+      "transient": false,
+      "motivo": "prefixo_ui_infra"
+    },
+    "contabil.depreciacao.gerencial": {
+      "dominio": "contabil",
+      "descricao": "Lançamento Depreciação Gerencial",
+      "balde": "B",
+      "count": 0,
+      "transient": false,
+      "motivo": "baixo_volume_dominio_negocio",
+      "previsao_ativacao": "instalado_sem_uso"
+    },
+    "ir.logging": {
+      "dominio": "ir",
+      "descricao": "Logging",
+      "balde": "C",
+      "count": null,
+      "transient": false,
+      "motivo": "prefixo_ui_infra"
+    },
+    "sped.documento.item": {
+      "dominio": "sped",
+      "descricao": "Itens do Documento Fiscal",
+      "balde": "A",
+      "count": 215162,
+      "transient": false,
+      "motivo": "volume_acima_threshold"
+    },
+    "mail.composer.mixin": {
+      "dominio": "mail",
+      "descricao": "Mail Composer Mixin",
+      "balde": "C",
+      "count": null,
+      "transient": false,
+      "motivo": "sufixo_tecnico"
+    },
+    "mail.gateway.allowed": {
+      "dominio": "mail",
+      "descricao": "Mail Gateway Allowed",
+      "balde": "C",
+      "count": null,
+      "transient": false,
+      "motivo": "prefixo_ui_infra"
+    },
+    "mail.render.mixin": {
+      "dominio": "mail",
+      "descricao": "Mail Render Mixin",
+      "balde": "C",
+      "count": null,
+      "transient": false,
+      "motivo": "sufixo_tecnico"
+    },
+    "discuss.channel.rtc.session": {
+      "dominio": "discuss",
+      "descricao": "Mail RTC session",
+      "balde": "C",
+      "count": null,
+      "transient": false,
+      "motivo": "prefixo_ui_infra"
+    },
+    "ir.mail_server": {
+      "dominio": "ir",
+      "descricao": "Mail Server",
+      "balde": "C",
+      "count": null,
+      "transient": false,
+      "motivo": "prefixo_ui_infra"
+    },
+    "mail.template.reset": {
+      "dominio": "mail",
+      "descricao": "Mail Template Reset",
+      "balde": "C",
+      "count": null,
+      "transient": true,
+      "motivo": "transient"
+    },
+    "mail.tracking.value": {
+      "dominio": "mail",
+      "descricao": "Mail Tracking Value",
+      "balde": "C",
+      "count": null,
+      "transient": false,
+      "motivo": "prefixo_ui_infra"
+    },
+    "res.lang": {
+      "dominio": "res",
+      "descricao": "Languages",
+      "balde": "B",
+      "count": 1,
+      "transient": false,
+      "motivo": "baixo_volume_dominio_negocio",
+      "previsao_ativacao": "em_uso"
+    },
+    "ir.ui.menu": {
+      "dominio": "ir",
+      "descricao": "Menu",
+      "balde": "C",
+      "count": null,
+      "transient": false,
+      "motivo": "prefixo_ui_infra"
+    },
+    "base.partner.merge.line": {
+      "dominio": "base",
+      "descricao": "Merge Partner Line",
+      "balde": "C",
+      "count": null,
+      "transient": true,
+      "motivo": "transient"
+    },
+    "base.partner.merge.automatic.wizard": {
+      "dominio": "base",
+      "descricao": "Merge Partner Wizard",
+      "balde": "C",
+      "count": null,
+      "transient": true,
+      "motivo": "transient"
+    },
+    "mail.message": {
+      "dominio": "mail",
+      "descricao": "Message",
+      "balde": "C",
+      "count": null,
+      "transient": false,
+      "motivo": "prefixo_ui_infra"
+    },
+    "mail.notification": {
+      "dominio": "mail",
+      "descricao": "Message Notifications",
+      "balde": "C",
+      "count": null,
+      "transient": false,
+      "motivo": "prefixo_ui_infra"
+    },
+    "mail.message.reaction": {
+      "dominio": "mail",
+      "descricao": "Message Reaction",
+      "balde": "C",
+      "count": null,
+      "transient": false,
+      "motivo": "prefixo_ui_infra"
+    },
+    "mail.message.subtype": {
+      "dominio": "mail",
+      "descricao": "Message subtypes",
+      "balde": "C",
+      "count": null,
+      "transient": false,
+      "motivo": "prefixo_ui_infra"
+    },
+    "mail.message.translation": {
+      "dominio": "mail",
+      "descricao": "Message Translation",
+      "balde": "C",
+      "count": null,
+      "transient": false,
+      "motivo": "prefixo_ui_infra"
+    },
+    "discuss.voice.metadata": {
+      "dominio": "discuss",
+      "descricao": "Metadata for voice attachments",
+      "balde": "C",
+      "count": null,
+      "transient": false,
+      "motivo": "prefixo_ui_infra"
+    },
+    "sped.pessoa.metodos": {
+      "dominio": "sped",
+      "descricao": "Métodos base para validação de dados pessoais",
+      "balde": "C",
+      "count": null,
+      "transient": false,
+      "motivo": "sufixo_tecnico"
+    },
+    "mail.tracking.duration.mixin": {
+      "dominio": "mail",
+      "descricao": "Mixin to compute the time a record has spent in each value a many2one field can take",
+      "balde": "C",
+      "count": null,
+      "transient": false,
+      "motivo": "sufixo_tecnico"
+    },
+    "ir.model.access": {
+      "dominio": "ir",
+      "descricao": "Model Access",
+      "balde": "C",
+      "count": null,
+      "transient": false,
+      "motivo": "prefixo_ui_infra"
+    },
+    "ir.model.constraint": {
+      "dominio": "ir",
+      "descricao": "Model Constraint",
+      "balde": "C",
+      "count": null,
+      "transient": false,
+      "motivo": "prefixo_ui_infra"
+    },
+    "ir.model.data": {
+      "dominio": "ir",
+      "descricao": "Model Data",
+      "balde": "C",
+      "count": null,
+      "transient": false,
+      "motivo": "prefixo_ui_infra"
+    },
+    "ir.model.inherit": {
+      "dominio": "ir",
+      "descricao": "Model Inheritance Tree",
+      "balde": "C",
+      "count": null,
+      "transient": false,
+      "motivo": "prefixo_ui_infra"
+    },
+    "auditoria.log": {
+      "dominio": "auditoria",
+      "descricao": "Log de auditoria",
+      "balde": "A",
+      "count": 318851,
+      "transient": false,
+      "motivo": "volume_acima_threshold"
+    },
+    "ir.model": {
+      "dominio": "ir",
+      "descricao": "Models",
+      "balde": "C",
+      "count": null,
+      "transient": false,
+      "motivo": "prefixo_ui_infra"
+    },
+    "ir.module.module": {
+      "dominio": "ir",
+      "descricao": "Module",
+      "balde": "C",
+      "count": null,
+      "transient": false,
+      "motivo": "prefixo_ui_infra"
+    },
+    "ir.module.module.dependency": {
+      "dominio": "ir",
+      "descricao": "Module dependency",
+      "balde": "C",
+      "count": null,
+      "transient": false,
+      "motivo": "prefixo_ui_infra"
+    },
+    "ir.module.module.exclusion": {
+      "dominio": "ir",
+      "descricao": "Module exclusion",
+      "balde": "C",
+      "count": null,
+      "transient": false,
+      "motivo": "prefixo_ui_infra"
+    },
+    "report.base.report_irmodulereference": {
+      "dominio": "report",
+      "descricao": "Module Reference Report (base)",
+      "balde": "C",
+      "count": null,
+      "transient": false,
+      "motivo": "prefixo_ui_infra"
+    },
+    "base.module.uninstall": {
+      "dominio": "base",
+      "descricao": "Module Uninstall",
+      "balde": "C",
+      "count": null,
+      "transient": true,
+      "motivo": "transient"
+    },
+    "contabil.lote.lancamento": {
+      "dominio": "contabil",
+      "descricao": "Lote de Lançamento Contábil",
+      "balde": "B",
+      "count": 0,
+      "transient": false,
+      "motivo": "baixo_volume_dominio_negocio",
+      "previsao_ativacao": "instalado_sem_uso"
+    },
+    "sped.mdfe.percurso": {
+      "dominio": "sped",
+      "descricao": "MDF-e - Percurso",
+      "balde": "B",
+      "count": 0,
+      "transient": false,
+      "motivo": "baixo_volume_dominio_negocio",
+      "previsao_ativacao": "instalado_sem_uso"
+    },
+    "sped.documento.modelo.fiscal": {
+      "dominio": "sped",
+      "descricao": "Modelos fiscais de documentos fiscais",
+      "balde": "B",
+      "count": 30,
+      "transient": false,
+      "motivo": "baixo_volume_dominio_negocio",
+      "previsao_ativacao": "em_uso"
+    },
+    "averbeporto.monitor": {
+      "dominio": "averbeporto",
+      "descricao": "Módulo destinado monitor de requisições Averbe Porto",
+      "balde": "C",
+      "count": 47,
+      "transient": false,
+      "motivo": "baixo_volume_nao_negocio"
+    },
+    "sped.municipio": {
+      "dominio": "sped",
+      "descricao": "Municípios",
+      "balde": "A",
+      "count": 5829,
+      "transient": false,
+      "motivo": "volume_acima_threshold"
+    },
+    "sped.natureza.operacao": {
+      "dominio": "sped",
+      "descricao": "Naturezas de Operação Fiscal",
+      "balde": "A",
+      "count": 104,
+      "transient": false,
+      "motivo": "volume_acima_threshold"
+    },
+    "sped.nbs": {
+      "dominio": "sped",
+      "descricao": "NBS",
+      "balde": "A",
+      "count": 920,
+      "transient": false,
+      "motivo": "volume_acima_threshold"
+    },
+    "sped.ncm": {
+      "dominio": "sped",
+      "descricao": "NCM",
+      "balde": "A",
+      "count": 12032,
+      "transient": false,
+      "motivo": "volume_acima_threshold"
+    },
+    "sped.produto.parametro.qualidade.opcao": {
+      "dominio": "sped",
+      "descricao": "Opção para o parâmetro de qualidade do produto",
+      "balde": "B",
+      "count": 0,
+      "transient": false,
+      "motivo": "baixo_volume_dominio_negocio",
+      "previsao_ativacao": "instalado_sem_uso"
+    },
+    "mail.mail": {
+      "dominio": "mail",
+      "descricao": "Outgoing Mails",
+      "balde": "C",
+      "count": null,
+      "transient": false,
+      "motivo": "prefixo_ui_infra"
+    },
+    "sped.operacao.mdfe": {
+      "dominio": "sped",
+      "descricao": "Operação Fiscal - MDF-e",
+      "balde": "B",
+      "count": 0,
+      "transient": false,
+      "motivo": "baixo_volume_dominio_negocio",
+      "previsao_ativacao": "instalado_sem_uso"
+    },
+    "pedido.operacao.derivada": {
+      "dominio": "pedido",
+      "descricao": "Operações de Pedido Derivadas",
+      "balde": "B",
+      "count": 46,
+      "transient": false,
+      "motivo": "baixo_volume_dominio_negocio",
+      "previsao_ativacao": "em_uso"
+    },
+    "finan.pagamento.divida": {
+      "dominio": "finan",
+      "descricao": "Pagamento de Dívida",
+      "balde": "A",
+      "count": 1672,
+      "transient": false,
+      "motivo": "volume_acima_threshold"
+    },
+    "sped.documento.pagamento": {
+      "dominio": "sped",
+      "descricao": "Pagamentos do Documento Fiscal",
+      "balde": "A",
+      "count": 36382,
+      "transient": false,
+      "motivo": "volume_acima_threshold"
+    },
+    "report.paperformat": {
+      "dominio": "report",
+      "descricao": "Paper Format Config",
+      "balde": "C",
+      "count": null,
+      "transient": false,
+      "motivo": "prefixo_ui_infra"
+    },
+    "pedido.pagamento": {
+      "dominio": "pedido",
+      "descricao": "Pagamentos do pedido",
+      "balde": "B",
+      "count": 0,
+      "transient": false,
+      "motivo": "baixo_volume_dominio_negocio",
+      "previsao_ativacao": "instalado_sem_uso"
+    },
+    "sped.pais": {
+      "dominio": "sped",
+      "descricao": "Países",
+      "balde": "A",
+      "count": 242,
+      "transient": false,
+      "motivo": "volume_acima_threshold"
+    },
+    "sped.produto.lista.material.processo": {
+      "dominio": "sped",
+      "descricao": "Parâmetro de qualidade da Lista de material",
+      "balde": "B",
+      "count": 1,
+      "transient": false,
+      "motivo": "baixo_volume_dominio_negocio",
+      "previsao_ativacao": "em_uso"
+    },
+    "pedido.documento.parametro.qualidade": {
+      "dominio": "pedido",
+      "descricao": "Parâmetro de qualidade do pedido",
+      "balde": "B",
+      "count": 0,
+      "transient": false,
+      "motivo": "baixo_volume_dominio_negocio",
+      "previsao_ativacao": "instalado_sem_uso"
+    },
+    "pedido.parcela": {
+      "dominio": "pedido",
+      "descricao": "Parcelas do pedido",
+      "balde": "A",
+      "count": 2429,
+      "transient": false,
+      "motivo": "volume_acima_threshold"
+    },
+    "sped.participante.ie": {
+      "dominio": "sped",
+      "descricao": "Participantes - Inscrições Estaduais",
+      "balde": "B",
+      "count": 0,
+      "transient": false,
+      "motivo": "baixo_volume_dominio_negocio",
+      "previsao_ativacao": "instalado_sem_uso"
+    },
+    "mail.partner.device": {
+      "dominio": "mail",
+      "descricao": "Partner Web Push Device",
+      "balde": "C",
+      "count": null,
+      "transient": false,
+      "motivo": "prefixo_ui_infra"
+    },
+    "mail.resend.partner": {
+      "dominio": "mail",
+      "descricao": "Partner with additional information for mail resend",
+      "balde": "C",
+      "count": null,
+      "transient": true,
+      "motivo": "transient"
+    },
+    "res.users.identitycheck": {
+      "dominio": "res",
+      "descricao": "Password Check Wizard",
+      "balde": "C",
+      "count": null,
+      "transient": true,
+      "motivo": "transient"
+    },
+    "res.partner.category": {
+      "dominio": "res",
+      "descricao": "Partner Tags",
+      "balde": "B",
+      "count": 0,
+      "transient": false,
+      "motivo": "baixo_volume_dominio_negocio",
+      "previsao_ativacao": "instalado_sem_uso"
+    },
+    "sped.caminho.base": {
+      "dominio": "sped",
+      "descricao": "Pasta base",
+      "balde": "C",
+      "count": null,
+      "transient": false,
+      "motivo": "sufixo_tecnico"
+    },
+    "res.partner.title": {
+      "dominio": "res",
+      "descricao": "Partner Title",
+      "balde": "B",
+      "count": 5,
+      "transient": false,
+      "motivo": "baixo_volume_dominio_negocio",
+      "previsao_ativacao": "em_uso"
+    },
+    "sped.documento.item.pcp": {
+      "dominio": "sped",
+      "descricao": "PCP do Item do Documento Fiscal",
+      "balde": "B",
+      "count": 0,
+      "transient": false,
+      "motivo": "baixo_volume_dominio_negocio",
+      "previsao_ativacao": "instalado_sem_uso"
+    },
+    "sped.documento.item.pedido.atendido": {
+      "dominio": "sped",
+      "descricao": "Pedidos atendidos do Item do Documento Fiscal",
+      "balde": "B",
+      "count": 0,
+      "transient": false,
+      "motivo": "baixo_volume_dominio_negocio",
+      "previsao_ativacao": "instalado_sem_uso"
+    },
+    "sped.participante.perfil.arvore": {
+      "dominio": "sped",
+      "descricao": "Perfil de Participantes - Árvore de Análise",
+      "balde": "C",
+      "count": null,
+      "transient": false,
+      "motivo": "sufixo_tecnico"
+    },
+    "sped.participante.perfil": {
+      "dominio": "sped",
+      "descricao": "Perfil de Participantes",
+      "balde": "B",
+      "count": 1,
+      "transient": false,
+      "motivo": "baixo_volume_dominio_negocio",
+      "previsao_ativacao": "em_uso"
+    },
+    "sped.usuario.perfil": {
+      "dominio": "sped",
+      "descricao": "Perfil de Usuários",
+      "balde": "B",
+      "count": 15,
+      "transient": false,
+      "motivo": "baixo_volume_dominio_negocio",
+      "previsao_ativacao": "em_uso"
+    },
+    "ir.profile": {
+      "dominio": "ir",
+      "descricao": "Profiling results",
+      "balde": "C",
+      "count": null,
+      "transient": false,
+      "motivo": "prefixo_ui_infra"
+    },
+    "pedido.documento.processo": {
+      "dominio": "pedido",
+      "descricao": "Processo de produção do pedido",
+      "balde": "B",
+      "count": 0,
+      "transient": false,
+      "motivo": "baixo_volume_dominio_negocio",
+      "previsao_ativacao": "instalado_sem_uso"
+    },
+    "sped.protocolo.icms": {
+      "dominio": "sped",
+      "descricao": "Protocolos ICMS",
+      "balde": "B",
+      "count": 2,
+      "transient": false,
+      "motivo": "baixo_volume_dominio_negocio",
+      "previsao_ativacao": "em_uso"
+    },
+    "sped.protocolo.icms.aliquota": {
+      "dominio": "sped",
+      "descricao": "Protocolos ICMS - alíquotas",
+      "balde": "A",
+      "count": 729,
+      "transient": false,
+      "motivo": "volume_acima_threshold"
+    },
+    "ir.qweb": {
+      "dominio": "ir",
+      "descricao": "Qweb",
+      "balde": "C",
+      "count": null,
+      "transient": false,
+      "motivo": "prefixo_ui_infra"
+    },
+    "ir.qweb.field": {
+      "dominio": "ir",
+      "descricao": "Qweb Field",
+      "balde": "C",
+      "count": null,
+      "transient": false,
+      "motivo": "prefixo_ui_infra"
+    },
+    "ir.qweb.field.barcode": {
+      "dominio": "ir",
+      "descricao": "Qweb Field Barcode",
+      "balde": "C",
+      "count": null,
+      "transient": false,
+      "motivo": "prefixo_ui_infra"
+    },
+    "ir.qweb.field.contact": {
+      "dominio": "ir",
+      "descricao": "Qweb Field Contact",
+      "balde": "C",
+      "count": null,
+      "transient": false,
+      "motivo": "prefixo_ui_infra"
+    },
+    "ir.qweb.field.date": {
+      "dominio": "ir",
+      "descricao": "Qweb Field Date",
+      "balde": "C",
+      "count": null,
+      "transient": false,
+      "motivo": "prefixo_ui_infra"
+    },
+    "ir.qweb.field.datetime": {
+      "dominio": "ir",
+      "descricao": "Qweb Field Datetime",
+      "balde": "C",
+      "count": null,
+      "transient": false,
+      "motivo": "prefixo_ui_infra"
+    },
+    "ir.qweb.field.duration": {
+      "dominio": "ir",
+      "descricao": "Qweb Field Duration",
+      "balde": "C",
+      "count": null,
+      "transient": false,
+      "motivo": "prefixo_ui_infra"
+    },
+    "ir.qweb.field.float": {
+      "dominio": "ir",
+      "descricao": "Qweb Field Float",
+      "balde": "C",
+      "count": null,
+      "transient": false,
+      "motivo": "prefixo_ui_infra"
+    },
+    "ir.qweb.field.float_time": {
+      "dominio": "ir",
+      "descricao": "Qweb Field Float Time",
+      "balde": "C",
+      "count": null,
+      "transient": false,
+      "motivo": "prefixo_ui_infra"
+    },
+    "ir.qweb.field.html": {
+      "dominio": "ir",
+      "descricao": "Qweb Field HTML",
+      "balde": "C",
+      "count": null,
+      "transient": false,
+      "motivo": "prefixo_ui_infra"
+    },
+    "ir.qweb.field.image_url": {
+      "dominio": "ir",
+      "descricao": "Qweb Field Image",
+      "balde": "C",
+      "count": null,
+      "transient": false,
+      "motivo": "prefixo_ui_infra"
+    },
+    "ir.qweb.field.image": {
+      "dominio": "ir",
+      "descricao": "Qweb Field Image",
+      "balde": "C",
+      "count": null,
+      "transient": false,
+      "motivo": "prefixo_ui_infra"
+    },
+    "ir.qweb.field.integer": {
+      "dominio": "ir",
+      "descricao": "Qweb Field Integer",
+      "balde": "C",
+      "count": null,
+      "transient": false,
+      "motivo": "prefixo_ui_infra"
+    },
+    "ir.qweb.field.many2one": {
+      "dominio": "ir",
+      "descricao": "Qweb Field Many to One",
+      "balde": "C",
+      "count": null,
+      "transient": false,
+      "motivo": "prefixo_ui_infra"
+    },
+    "ir.qweb.field.many2many": {
+      "dominio": "ir",
+      "descricao": "Qweb field many2many",
+      "balde": "C",
+      "count": null,
+      "transient": false,
+      "motivo": "prefixo_ui_infra"
+    },
+    "ir.qweb.field.monetary": {
+      "dominio": "ir",
+      "descricao": "Qweb Field Monetary",
+      "balde": "C",
+      "count": null,
+      "transient": false,
+      "motivo": "prefixo_ui_infra"
+    },
+    "ir.qweb.field.qweb": {
+      "dominio": "ir",
+      "descricao": "Qweb Field qweb",
+      "balde": "C",
+      "count": null,
+      "transient": false,
+      "motivo": "prefixo_ui_infra"
+    },
+    "ir.qweb.field.relative": {
+      "dominio": "ir",
+      "descricao": "Qweb Field Relative",
+      "balde": "C",
+      "count": null,
+      "transient": false,
+      "motivo": "prefixo_ui_infra"
+    },
+    "ir.qweb.field.selection": {
+      "dominio": "ir",
+      "descricao": "Qweb Field Selection",
+      "balde": "C",
+      "count": null,
+      "transient": false,
+      "motivo": "prefixo_ui_infra"
+    },
+    "ir.qweb.field.text": {
+      "dominio": "ir",
+      "descricao": "Qweb Field Text",
+      "balde": "C",
+      "count": null,
+      "transient": false,
+      "motivo": "prefixo_ui_infra"
+    },
+    "ir.qweb.field.time": {
+      "dominio": "ir",
+      "descricao": "QWeb Field Time",
+      "balde": "C",
+      "count": null,
+      "transient": false,
+      "motivo": "prefixo_ui_infra"
+    },
+    "sped.protocolo.icms.ncm": {
+      "dominio": "sped",
+      "descricao": "Protocolos ICMS - NCM e MVA",
+      "balde": "B",
+      "count": 0,
+      "transient": false,
+      "motivo": "baixo_volume_dominio_negocio",
+      "previsao_ativacao": "instalado_sem_uso"
+    },
+    "sped.documento.item.rastreabilidade": {
+      "dominio": "sped",
+      "descricao": "Rastreabilidade do Item do Documento Fiscal",
+      "balde": "A",
+      "count": 38747,
+      "transient": false,
+      "motivo": "volume_acima_threshold"
+    },
+    "contabil.lancamento.item.rateio": {
+      "dominio": "contabil",
+      "descricao": "Rateio do Item do Lançamento Contábil",
+      "balde": "B",
+      "count": 0,
+      "transient": false,
+      "motivo": "baixo_volume_dominio_negocio",
+      "previsao_ativacao": "instalado_sem_uso"
+    },
+    "contabil.lancamento.rateio": {
+      "dominio": "contabil",
+      "descricao": "Rateio do Lançamento Contábil",
+      "balde": "B",
+      "count": 0,
+      "transient": false,
+      "motivo": "baixo_volume_dominio_negocio",
+      "previsao_ativacao": "instalado_sem_uso"
+    },
+    "ir.rule": {
+      "dominio": "ir",
+      "descricao": "Record Rule",
+      "balde": "C",
+      "count": null,
+      "transient": false,
+      "motivo": "prefixo_ui_infra"
+    },
+    "finan.centro.resultado.rateio": {
+      "dominio": "finan",
+      "descricao": "Rateio por Centro de Resultado",
+      "balde": "B",
+      "count": 0,
+      "transient": false,
+      "motivo": "baixo_volume_dominio_negocio",
+      "previsao_ativacao": "instalado_sem_uso"
+    },
+    "ir.model.relation": {
+      "dominio": "ir",
+      "descricao": "Relation Model",
+      "balde": "C",
+      "count": null,
+      "transient": false,
+      "motivo": "prefixo_ui_infra"
+    },
+    "sped.grava.anexo": {
+      "dominio": "sped",
+      "descricao": "Grava Anexo",
+      "balde": "C",
+      "count": null,
+      "transient": false,
+      "motivo": "acesso_negado"
+    },
+    "sped.atualizacao.preco.regra": {
+      "dominio": "sped",
+      "descricao": "Regra de atualização de preços",
+      "balde": "B",
+      "count": 2,
+      "transient": false,
+      "motivo": "baixo_volume_dominio_negocio",
+      "previsao_ativacao": "em_uso"
+    },
+    "relatorio.executa": {
+      "dominio": "relatorio",
+      "descricao": "Relatório (execução)",
+      "balde": "C",
+      "count": null,
+      "transient": true,
+      "motivo": "transient"
+    },
+    "relatorio.executa.sped.apuracao": {
+      "dominio": "relatorio",
+      "descricao": "Relatório de Apurações Fiscais",
+      "balde": "C",
+      "count": null,
+      "transient": true,
+      "motivo": "transient"
+    },
+    "relatorio.executa.sped.documento": {
+      "dominio": "relatorio",
+      "descricao": "Relatório de Documentos Fiscais",
+      "balde": "C",
+      "count": null,
+      "transient": true,
+      "motivo": "transient"
+    },
+    "relatorio.executa.estoque.extrato": {
+      "dominio": "relatorio",
+      "descricao": "Relatório de Extrato de Estoque",
+      "balde": "C",
+      "count": null,
+      "transient": true,
+      "motivo": "transient"
+    },
+    "relatorio.executa.finan.banco.extrato": {
+      "dominio": "relatorio",
+      "descricao": "Relatório de Extratos Financeiros",
+      "balde": "C",
+      "count": null,
+      "transient": true,
+      "motivo": "transient"
+    },
+    "relatorio.executa.finan.fluxo.caixa": {
+      "dominio": "relatorio",
+      "descricao": "Relatório de Fluxo de Caixa",
+      "balde": "C",
+      "count": null,
+      "transient": true,
+      "motivo": "transient"
+    },
+    "relatorio.executa.sped.documento.item": {
+      "dominio": "relatorio",
+      "descricao": "Relatório de Itens de Documentos Fiscais",
+      "balde": "C",
+      "count": null,
+      "transient": true,
+      "motivo": "transient"
+    },
+    "relatorio.executa.finan.lancamento": {
+      "dominio": "relatorio",
+      "descricao": "Relatório de Lançamentos Financeiros",
+      "balde": "C",
+      "count": null,
+      "transient": true,
+      "motivo": "transient"
+    },
+    "relatorio.executa.contabil.lancamento": {
+      "dominio": "relatorio",
+      "descricao": "Relatório de Lançamentos Financeiros",
+      "balde": "C",
+      "count": null,
+      "transient": true,
+      "motivo": "transient"
+    },
+    "relatorio.executa.sped.produto.lista.material": {
+      "dominio": "relatorio",
+      "descricao": "Relatório de Listas de Material",
+      "balde": "C",
+      "count": null,
+      "transient": true,
+      "motivo": "transient"
+    },
+    "relatorio.executa.sped.produto.lote.serie": {
+      "dominio": "relatorio",
+      "descricao": "Relatório de Lotes/Séries",
+      "balde": "C",
+      "count": null,
+      "transient": true,
+      "motivo": "transient"
+    },
+    "relatorio.executa.finan.pagamento.divida": {
+      "dominio": "relatorio",
+      "descricao": "Relatório de Pagamentos de Dívidas",
+      "balde": "C",
+      "count": null,
+      "transient": true,
+      "motivo": "transient"
+    },
+    "relatorio.executa.pedido.documento": {
+      "dominio": "relatorio",
+      "descricao": "Relatório de Pedidos Diversos",
+      "balde": "C",
+      "count": null,
+      "transient": true,
+      "motivo": "transient"
+    },
+    "relatorio.executa.sped.produto": {
+      "dominio": "relatorio",
+      "descricao": "Relatório de Produtos",
+      "balde": "C",
+      "count": null,
+      "transient": true,
+      "motivo": "transient"
+    },
+    "relatorio.executa.finan.banco.saldo": {
+      "dominio": "relatorio",
+      "descricao": "Relatório de Saldos Financeiros",
+      "balde": "C",
+      "count": null,
+      "transient": true,
+      "motivo": "transient"
+    },
+    "relatorio.executa.rh.holerite.relatorio": {
+      "dominio": "relatorio",
+      "descricao": "Relatório RH Holerite",
+      "balde": "C",
+      "count": null,
+      "transient": true,
+      "motivo": "transient"
+    },
+    "mail.blacklist.remove": {
+      "dominio": "mail",
+      "descricao": "Remove email from blacklist wizard",
+      "balde": "C",
+      "count": null,
+      "transient": true,
+      "motivo": "transient"
+    },
+    "ir.actions.report": {
+      "dominio": "ir",
+      "descricao": "Report Action",
+      "balde": "C",
+      "count": null,
+      "transient": false,
+      "motivo": "prefixo_ui_infra"
+    },
+    "report.layout": {
+      "dominio": "report",
+      "descricao": "Report Layout",
+      "balde": "C",
+      "count": null,
+      "transient": false,
+      "motivo": "prefixo_ui_infra"
+    },
+    "estoque.requisito.arvore": {
+      "dominio": "estoque",
+      "descricao": "Requisito de Armazenagem - Árvore de Análise",
+      "balde": "C",
+      "count": null,
+      "transient": false,
+      "motivo": "sufixo_tecnico"
+    },
+    "reset.view.arch.wizard": {
+      "dominio": "reset",
+      "descricao": "Reset View Architecture Wizard",
+      "balde": "C",
+      "count": null,
+      "transient": true,
+      "motivo": "transient"
+    },
+    "relatorio.relatorio": {
+      "dominio": "relatorio",
+      "descricao": "Relatório",
+      "balde": "B",
+      "count": 44,
+      "transient": false,
+      "motivo": "baixo_volume_dominio_negocio",
+      "previsao_ativacao": "em_uso"
+    },
+    "relatorio.sql": {
+      "dominio": "relatorio",
+      "descricao": "Relatório - SQL adicional",
+      "balde": "B",
+      "count": 0,
+      "transient": false,
+      "motivo": "baixo_volume_dominio_negocio",
+      "previsao_ativacao": "instalado_sem_uso"
+    },
+    "projeto.modelo.item": {
+      "dominio": "projeto",
+      "descricao": "Item de modelo de projeto",
+      "balde": "C",
+      "count": null,
+      "transient": false,
+      "motivo": "acesso_negado"
+    },
+    "sped.moeda": {
+      "dominio": "sped",
+      "descricao": "Multi moeda",
+      "balde": "C",
+      "count": null,
+      "transient": false,
+      "motivo": "acesso_negado"
+    },
+    "sped.caminho": {
+      "dominio": "sped",
+      "descricao": "Pasta",
+      "balde": "C",
+      "count": null,
+      "transient": false,
+      "motivo": "abstract_ou_inexistente"
+    },
+    "rh.cbo": {
+      "dominio": "rh",
+      "descricao": "RH - CBO",
+      "balde": "C",
+      "count": null,
+      "transient": false,
+      "motivo": "abstract_ou_inexistente"
+    },
+    "rh.jornada": {
+      "dominio": "rh",
+      "descricao": "RH - Escala de Trabalho",
+      "balde": "C",
+      "count": null,
+      "transient": false,
+      "motivo": "abstract_ou_inexistente"
+    },
+    "rh.ponto.marcacao": {
+      "dominio": "rh",
+      "descricao": "RH - Ponto - Marcação",
+      "balde": "C",
+      "count": null,
+      "transient": true,
+      "motivo": "transient"
+    },
+    "rh.contrato.ferias": {
+      "dominio": "rh",
+      "descricao": "RH - Férias - Período Aquisitivo",
+      "balde": "C",
+      "count": null,
+      "transient": false,
+      "motivo": "abstract_ou_inexistente"
+    },
+    "rh.horario.trabalho": {
+      "dominio": "rh",
+      "descricao": "RH - Horário de Trabalho",
+      "balde": "C",
+      "count": null,
+      "transient": false,
+      "motivo": "abstract_ou_inexistente"
+    },
+    "estoque.saldo.hoje": {
+      "dominio": "estoque",
+      "descricao": "Saldo (hoje) de Movimentação de Estoque",
+      "balde": "A",
+      "count": 3458,
+      "transient": false,
+      "motivo": "volume_acima_threshold"
+    },
+    "estoque.saldo.hoje.duracao.dias": {
+      "dominio": "estoque",
+      "descricao": "Saldo (hoje) de Movimentação de Estoque - Duração em dias",
+      "balde": "A",
+      "count": 3458,
+      "transient": false,
+      "motivo": "volume_acima_threshold"
+    },
+    "estoque.saldo.rastreabilidade.hoje": {
+      "dominio": "estoque",
+      "descricao": "Saldo (hoje) de Movimentação de Estoque por Rastreabilidade",
+      "balde": "A",
+      "count": 4917,
+      "transient": false,
+      "motivo": "volume_acima_threshold"
+    },
+    "estoque.saldo": {
+      "dominio": "estoque",
+      "descricao": "Saldo de Movimentação de Estoque",
+      "balde": "A",
+      "count": 9911,
+      "transient": false,
+      "motivo": "volume_acima_threshold"
+    },
+    "rh.lote.holerite.item": {
+      "dominio": "rh",
+      "descricao": "RH - Item do Lote de Holerite",
+      "balde": "C",
+      "count": null,
+      "transient": false,
+      "motivo": "abstract_ou_inexistente"
+    },
+    "estoque.saldo.rastreabilidade": {
+      "dominio": "estoque",
+      "descricao": "Saldo de Movimentação de Estoque por Rastreabilidade",
+      "balde": "A",
+      "count": 21549,
+      "transient": false,
+      "motivo": "volume_acima_threshold"
+    },
+    "finan.banco.saldo.hoje": {
+      "dominio": "finan",
+      "descricao": "Saldos (hoje) de Contas Bancárias",
+      "balde": "B",
+      "count": 9,
+      "transient": false,
+      "motivo": "baixo_volume_dominio_negocio",
+      "previsao_ativacao": "em_uso"
+    },
+    "discuss.gif.favorite": {
+      "dominio": "discuss",
+      "descricao": "Save favorite GIF from Tenor API",
+      "balde": "C",
+      "count": null,
+      "transient": false,
+      "motivo": "prefixo_ui_infra"
+    },
+    "ir.cron": {
+      "dominio": "ir",
+      "descricao": "Scheduled Actions",
+      "balde": "C",
+      "count": null,
+      "transient": false,
+      "motivo": "prefixo_ui_infra"
+    },
+    "mail.message.schedule": {
+      "dominio": "mail",
+      "descricao": "Scheduled Messages",
+      "balde": "C",
+      "count": null,
+      "transient": false,
+      "motivo": "prefixo_ui_infra"
+    },
+    "finan.banco.saldo": {
+      "dominio": "finan",
+      "descricao": "Saldos de Contas Bancárias",
+      "balde": "A",
+      "count": 238,
+      "transient": false,
+      "motivo": "volume_acima_threshold"
+    },
+    "sped.participante.segmento.arvore": {
+      "dominio": "sped",
+      "descricao": "Segmento de Participantes - Árvore de Análise",
+      "balde": "C",
+      "count": null,
+      "transient": false,
+      "motivo": "sufixo_tecnico"
+    },
+    "ir.sequence": {
+      "dominio": "ir",
+      "descricao": "Sequence",
+      "balde": "C",
+      "count": null,
+      "transient": false,
+      "motivo": "prefixo_ui_infra"
+    },
+    "ir.sequence.date_range": {
+      "dominio": "ir",
+      "descricao": "Sequence Date Range",
+      "balde": "C",
+      "count": null,
+      "transient": false,
+      "motivo": "prefixo_ui_infra"
+    },
+    "ir.actions.server": {
+      "dominio": "ir",
+      "descricao": "Server Action",
+      "balde": "C",
+      "count": null,
+      "transient": false,
+      "motivo": "prefixo_ui_infra"
+    },
+    "sped.participante.segmento": {
+      "dominio": "sped",
+      "descricao": "Segmento de Participantes",
+      "balde": "B",
+      "count": 8,
+      "transient": false,
+      "motivo": "baixo_volume_dominio_negocio",
+      "previsao_ativacao": "em_uso"
+    },
+    "sped.servico": {
+      "dominio": "sped",
+      "descricao": "Serviços (fiscal)",
+      "balde": "A",
+      "count": 336,
+      "transient": false,
+      "motivo": "volume_acima_threshold"
+    },
+    "sparse_fields.test": {
+      "dominio": "sparse_fields",
+      "descricao": "Sparse fields Test",
+      "balde": "C",
+      "count": null,
+      "transient": true,
+      "motivo": "transient"
+    },
+    "sped.apuracao.ajuste": {
+      "dominio": "sped",
+      "descricao": "SPED - Apuração Ajuste",
+      "balde": "B",
+      "count": 0,
+      "transient": false,
+      "motivo": "baixo_volume_dominio_negocio",
+      "previsao_ativacao": "instalado_sem_uso"
+    },
+    "sped.apuracao.inventario": {
+      "dominio": "sped",
+      "descricao": "SPED - Inventário",
+      "balde": "A",
+      "count": 3252,
+      "transient": false,
+      "motivo": "volume_acima_threshold"
+    },
+    "rh.holerite.item": {
+      "dominio": "rh",
+      "descricao": "RH - Item Holerite",
+      "balde": "C",
+      "count": null,
+      "transient": false,
+      "motivo": "abstract_ou_inexistente"
+    },
+    "sped.apuracao.inventario.local": {
+      "dominio": "sped",
+      "descricao": "SPED - Inventário por local",
+      "balde": "A",
+      "count": 3252,
+      "transient": false,
+      "motivo": "volume_acima_threshold"
+    },
+    "sped.apuracao.ipi": {
+      "dominio": "sped",
+      "descricao": "SPED - IPI",
+      "balde": "B",
+      "count": 0,
+      "transient": false,
+      "motivo": "baixo_volume_dominio_negocio",
+      "previsao_ativacao": "instalado_sem_uso"
+    },
+    "sped.alteracao.documento.item": {
+      "dominio": "sped",
+      "descricao": "SPED - Itens de alteração de documentos",
+      "balde": "B",
+      "count": 0,
+      "transient": false,
+      "motivo": "baixo_volume_dominio_negocio",
+      "previsao_ativacao": "instalado_sem_uso"
+    },
+    "sped.patrimonio.ciap": {
+      "dominio": "sped",
+      "descricao": "SPED - Patrimonio CIAP",
+      "balde": "B",
+      "count": 0,
+      "transient": false,
+      "motivo": "baixo_volume_dominio_negocio",
+      "previsao_ativacao": "instalado_sem_uso"
+    },
+    "sped.registro.0000": {
+      "dominio": "sped",
+      "descricao": "SPED - Registro 0000",
+      "balde": "B",
+      "count": 17,
+      "transient": false,
+      "motivo": "baixo_volume_dominio_negocio",
+      "previsao_ativacao": "em_uso"
+    },
+    "sped.registro.0002": {
+      "dominio": "sped",
+      "descricao": "SPED - Registro 0002",
+      "balde": "B",
+      "count": 0,
+      "transient": false,
+      "motivo": "baixo_volume_dominio_negocio",
+      "previsao_ativacao": "instalado_sem_uso"
+    },
+    "sped.registro.0005": {
+      "dominio": "sped",
+      "descricao": "SPED - Registro 0005",
+      "balde": "B",
+      "count": 18,
+      "transient": false,
+      "motivo": "baixo_volume_dominio_negocio",
+      "previsao_ativacao": "em_uso"
+    },
+    "sped.registro.0015": {
+      "dominio": "sped",
+      "descricao": "SPED - Registro 0015",
+      "balde": "B",
+      "count": 0,
+      "transient": false,
+      "motivo": "baixo_volume_dominio_negocio",
+      "previsao_ativacao": "instalado_sem_uso"
+    },
+    "rh.natureza.rubrica": {
+      "dominio": "rh",
+      "descricao": "RH - Natureza das Rubricas",
+      "balde": "C",
+      "count": null,
+      "transient": false,
+      "motivo": "abstract_ou_inexistente"
+    },
+    "sped.registro.0100": {
+      "dominio": "sped",
+      "descricao": "SPED - Registro 0100",
+      "balde": "A",
+      "count": 6118,
+      "transient": false,
+      "motivo": "volume_acima_threshold"
+    },
+    "sped.registro.0110": {
+      "dominio": "sped",
+      "descricao": "SPED - Registro 0110",
+      "balde": "B",
+      "count": 18,
+      "transient": false,
+      "motivo": "baixo_volume_dominio_negocio",
+      "previsao_ativacao": "em_uso"
+    },
+    "rh.ponto.pausa": {
+      "dominio": "rh",
+      "descricao": "RH - Ponto - Pausa",
+      "balde": "C",
+      "count": null,
+      "transient": false,
+      "motivo": "abstract_ou_inexistente"
+    },
+    "rh.tabela.cbo": {
+      "dominio": "rh",
+      "descricao": "rh.tabela.cbo",
+      "balde": "C",
+      "count": null,
+      "transient": false,
+      "motivo": "abstract_ou_inexistente"
+    },
+    "sped.registro.0140": {
+      "dominio": "sped",
+      "descricao": "SPED - Registro 0140",
+      "balde": "B",
+      "count": 17,
+      "transient": false,
+      "motivo": "baixo_volume_dominio_negocio",
+      "previsao_ativacao": "em_uso"
+    },
+    "sped.registro.0150": {
+      "dominio": "sped",
+      "descricao": "SPED - Registro 0150",
+      "balde": "A",
+      "count": 6525,
+      "transient": false,
+      "motivo": "volume_acima_threshold"
+    },
+    "sped.registro.0190": {
+      "dominio": "sped",
+      "descricao": "SPED - Registro 0190",
+      "balde": "A",
+      "count": 73,
+      "transient": false,
+      "motivo": "volume_acima_threshold"
+    },
+    "sped.registro.0200": {
+      "dominio": "sped",
+      "descricao": "SPED - Registro 0200",
+      "balde": "A",
+      "count": 8569,
+      "transient": false,
+      "motivo": "volume_acima_threshold"
+    },
+    "sped.registro.0210": {
+      "dominio": "sped",
+      "descricao": "SPED - Registro 0210",
+      "balde": "A",
+      "count": 154,
+      "transient": false,
+      "motivo": "volume_acima_threshold"
+    },
+    "sped.registro.0221": {
+      "dominio": "sped",
+      "descricao": "SPED - Registro 0221",
+      "balde": "A",
+      "count": 8402,
+      "transient": false,
+      "motivo": "volume_acima_threshold"
+    },
+    "sped.registro.0300": {
+      "dominio": "sped",
+      "descricao": "SPED - Registro 0300",
+      "balde": "B",
+      "count": 0,
+      "transient": false,
+      "motivo": "baixo_volume_dominio_negocio",
+      "previsao_ativacao": "instalado_sem_uso"
+    },
+    "sped.registro.0305": {
+      "dominio": "sped",
+      "descricao": "SPED - Registro 0305",
+      "balde": "B",
+      "count": 0,
+      "transient": false,
+      "motivo": "baixo_volume_dominio_negocio",
+      "previsao_ativacao": "instalado_sem_uso"
+    },
+    "sped.registro.0400": {
+      "dominio": "sped",
+      "descricao": "SPED - Registro 0400",
+      "balde": "A",
+      "count": 104,
+      "transient": false,
+      "motivo": "volume_acima_threshold"
+    },
+    "sped.registro.0450": {
+      "dominio": "sped",
+      "descricao": "SPED - Registro 0450",
+      "balde": "B",
+      "count": 0,
+      "transient": false,
+      "motivo": "baixo_volume_dominio_negocio",
+      "previsao_ativacao": "instalado_sem_uso"
+    },
+    "sped.registro.0500": {
+      "dominio": "sped",
+      "descricao": "SPED - Registro 0500",
+      "balde": "A",
+      "count": 934,
+      "transient": false,
+      "motivo": "volume_acima_threshold"
+    },
+    "sped.registro.0600": {
+      "dominio": "sped",
+      "descricao": "SPED - Registro 0600",
+      "balde": "B",
+      "count": 5,
+      "transient": false,
+      "motivo": "baixo_volume_dominio_negocio",
+      "previsao_ativacao": "em_uso"
+    },
+    "sped.registro.1100": {
+      "dominio": "sped",
+      "descricao": "SPED - Registro 1100",
+      "balde": "B",
+      "count": 0,
+      "transient": false,
+      "motivo": "baixo_volume_dominio_negocio",
+      "previsao_ativacao": "instalado_sem_uso"
+    },
+    "sped.registro.1300": {
+      "dominio": "sped",
+      "descricao": "SPED - Registro 1300",
+      "balde": "B",
+      "count": 0,
+      "transient": false,
+      "motivo": "baixo_volume_dominio_negocio",
+      "previsao_ativacao": "instalado_sem_uso"
+    },
+    "sped.registro.1500": {
+      "dominio": "sped",
+      "descricao": "SPED - Registro 1500",
+      "balde": "B",
+      "count": 0,
+      "transient": false,
+      "motivo": "baixo_volume_dominio_negocio",
+      "previsao_ativacao": "instalado_sem_uso"
+    },
+    "sped.registro.1600.icms": {
+      "dominio": "sped",
+      "descricao": "SPED - Registro 1600 - ICMS",
+      "balde": "B",
+      "count": 0,
+      "transient": false,
+      "motivo": "baixo_volume_dominio_negocio",
+      "previsao_ativacao": "instalado_sem_uso"
+    },
+    "sped.registro.1700": {
+      "dominio": "sped",
+      "descricao": "SPED - Registro 1700",
+      "balde": "B",
+      "count": 0,
+      "transient": false,
+      "motivo": "baixo_volume_dominio_negocio",
+      "previsao_ativacao": "instalado_sem_uso"
+    },
+    "sped.registro.1900.contribuicoes": {
+      "dominio": "sped",
+      "descricao": "SPED - Registro 1900 - Contribuicoes",
+      "balde": "B",
+      "count": 0,
+      "transient": false,
+      "motivo": "baixo_volume_dominio_negocio",
+      "previsao_ativacao": "instalado_sem_uso"
+    },
+    "sped.registro.a010": {
+      "dominio": "sped",
+      "descricao": "SPED - Registro A010",
+      "balde": "B",
+      "count": 18,
+      "transient": false,
+      "motivo": "baixo_volume_dominio_negocio",
+      "previsao_ativacao": "em_uso"
+    },
+    "sped.registro.a100": {
+      "dominio": "sped",
+      "descricao": "SPED - Registro A100",
+      "balde": "A",
+      "count": 355,
+      "transient": false,
+      "motivo": "volume_acima_threshold"
+    },
+    "sped.registro.a170": {
+      "dominio": "sped",
+      "descricao": "SPED - Registro A170",
+      "balde": "A",
+      "count": 359,
+      "transient": false,
+      "motivo": "volume_acima_threshold"
+    },
+    "sped.registro.b020": {
+      "dominio": "sped",
+      "descricao": "SPED - Registro B020",
+      "balde": "A",
+      "count": 2990,
+      "transient": false,
+      "motivo": "volume_acima_threshold"
+    },
+    "sped.registro.c010": {
+      "dominio": "sped",
+      "descricao": "SPED - Registro C010",
+      "balde": "B",
+      "count": 18,
+      "transient": false,
+      "motivo": "baixo_volume_dominio_negocio",
+      "previsao_ativacao": "em_uso"
+    },
+    "sped.registro.c100": {
+      "dominio": "sped",
+      "descricao": "SPED - Registro C100",
+      "balde": "A",
+      "count": 1668,
+      "transient": false,
+      "motivo": "volume_acima_threshold"
+    },
+    "sped.registro.c101": {
+      "dominio": "sped",
+      "descricao": "SPED - Registro C101",
+      "balde": "A",
+      "count": 171,
+      "transient": false,
+      "motivo": "volume_acima_threshold"
+    },
+    "sped.registro.c110": {
+      "dominio": "sped",
+      "descricao": "SPED - Registro C110",
+      "balde": "B",
+      "count": 27,
+      "transient": false,
+      "motivo": "baixo_volume_dominio_negocio",
+      "previsao_ativacao": "em_uso"
+    },
+    "sped.registro.c112": {
+      "dominio": "sped",
+      "descricao": "SPED - Registro C112",
+      "balde": "B",
+      "count": 0,
+      "transient": false,
+      "motivo": "baixo_volume_dominio_negocio",
+      "previsao_ativacao": "instalado_sem_uso"
+    },
+    "sped.registro.c113": {
+      "dominio": "sped",
+      "descricao": "SPED - Registro C113",
+      "balde": "B",
+      "count": 29,
+      "transient": false,
+      "motivo": "baixo_volume_dominio_negocio",
+      "previsao_ativacao": "em_uso"
+    },
+    "sped.registro.c115": {
+      "dominio": "sped",
+      "descricao": "SPED - Registro C115",
+      "balde": "B",
+      "count": 0,
+      "transient": false,
+      "motivo": "baixo_volume_dominio_negocio",
+      "previsao_ativacao": "instalado_sem_uso"
+    },
+    "sped.registro.c116": {
+      "dominio": "sped",
+      "descricao": "SPED - Registro C116",
+      "balde": "B",
+      "count": 0,
+      "transient": false,
+      "motivo": "baixo_volume_dominio_negocio",
+      "previsao_ativacao": "instalado_sem_uso"
+    },
+    "sped.registro.c120": {
+      "dominio": "sped",
+      "descricao": "SPED - Registro C120",
+      "balde": "B",
+      "count": 4,
+      "transient": false,
+      "motivo": "baixo_volume_dominio_negocio",
+      "previsao_ativacao": "em_uso"
+    },
+    "sped.registro.c170": {
+      "dominio": "sped",
+      "descricao": "SPED - Registro C170",
+      "balde": "A",
+      "count": 7805,
+      "transient": false,
+      "motivo": "volume_acima_threshold"
+    },
+    "sped.registro.c175.contribuicoes": {
+      "dominio": "sped",
+      "descricao": "SPED - Registro C175 - Contribuições",
+      "balde": "B",
+      "count": 0,
+      "transient": false,
+      "motivo": "baixo_volume_dominio_negocio",
+      "previsao_ativacao": "instalado_sem_uso"
+    },
+    "sped.registro.d190": {
+      "dominio": "sped",
+      "descricao": "SPED - Registro C190",
+      "balde": "B",
+      "count": 13,
+      "transient": false,
+      "motivo": "baixo_volume_dominio_negocio",
+      "previsao_ativacao": "em_uso"
+    },
+    "sped.registro.c190": {
+      "dominio": "sped",
+      "descricao": "SPED - Registro C190",
+      "balde": "A",
+      "count": 1647,
+      "transient": false,
+      "motivo": "volume_acima_threshold"
+    },
+    "sped.registro.c191": {
+      "dominio": "sped",
+      "descricao": "SPED - Registro C191",
+      "balde": "B",
+      "count": 12,
+      "transient": false,
+      "motivo": "baixo_volume_dominio_negocio",
+      "previsao_ativacao": "em_uso"
+    },
+    "res.users.apikeys.show": {
+      "dominio": "res",
+      "descricao": "Show API Key",
+      "balde": "C",
+      "count": null,
+      "transient": false,
+      "motivo": "abstract_ou_inexistente"
+    },
+    "sped.registro.c500": {
+      "dominio": "sped",
+      "descricao": "SPED - Registro C500",
+      "balde": "B",
+      "count": 0,
+      "transient": false,
+      "motivo": "baixo_volume_dominio_negocio",
+      "previsao_ativacao": "instalado_sem_uso"
+    },
+    "sped.registro.c501": {
+      "dominio": "sped",
+      "descricao": "SPED - Registro C501",
+      "balde": "B",
+      "count": 0,
+      "transient": false,
+      "motivo": "baixo_volume_dominio_negocio",
+      "previsao_ativacao": "instalado_sem_uso"
+    },
+    "sped.registro.c505": {
+      "dominio": "sped",
+      "descricao": "SPED - Registro C505",
+      "balde": "B",
+      "count": 0,
+      "transient": false,
+      "motivo": "baixo_volume_dominio_negocio",
+      "previsao_ativacao": "instalado_sem_uso"
+    },
+    "sped.registro.c590": {
+      "dominio": "sped",
+      "descricao": "SPED - Registro C590",
+      "balde": "B",
+      "count": 0,
+      "transient": false,
+      "motivo": "baixo_volume_dominio_negocio",
+      "previsao_ativacao": "instalado_sem_uso"
+    },
+    "sped.registro.c800": {
+      "dominio": "sped",
+      "descricao": "SPED - Registro C800",
+      "balde": "B",
+      "count": 0,
+      "transient": false,
+      "motivo": "baixo_volume_dominio_negocio",
+      "previsao_ativacao": "instalado_sem_uso"
+    },
+    "sped.registro.c810": {
+      "dominio": "sped",
+      "descricao": "SPED - Registro C810",
+      "balde": "B",
+      "count": 0,
+      "transient": false,
+      "motivo": "baixo_volume_dominio_negocio",
+      "previsao_ativacao": "instalado_sem_uso"
+    },
+    "sped.registro.c850": {
+      "dominio": "sped",
+      "descricao": "SPED - Registro C850",
+      "balde": "B",
+      "count": 0,
+      "transient": false,
+      "motivo": "baixo_volume_dominio_negocio",
+      "previsao_ativacao": "instalado_sem_uso"
+    },
+    "sped.registro.c860": {
+      "dominio": "sped",
+      "descricao": "SPED - Registro C860",
+      "balde": "B",
+      "count": 0,
+      "transient": false,
+      "motivo": "baixo_volume_dominio_negocio",
+      "previsao_ativacao": "instalado_sem_uso"
+    },
+    "sped.registro.c870": {
+      "dominio": "sped",
+      "descricao": "SPED - Registro C870",
+      "balde": "B",
+      "count": 0,
+      "transient": false,
+      "motivo": "baixo_volume_dominio_negocio",
+      "previsao_ativacao": "instalado_sem_uso"
+    },
+    "sped.registro.c890": {
+      "dominio": "sped",
+      "descricao": "SPED - Registro C890",
+      "balde": "B",
+      "count": 0,
+      "transient": false,
+      "motivo": "baixo_volume_dominio_negocio",
+      "previsao_ativacao": "instalado_sem_uso"
+    },
+    "sped.registro.credito.contribuicoes": {
+      "dominio": "sped",
+      "descricao": "SPED - Registro Credito - Contribuições",
+      "balde": "B",
+      "count": 0,
+      "transient": false,
+      "motivo": "baixo_volume_dominio_negocio",
+      "previsao_ativacao": "instalado_sem_uso"
+    },
+    "sped.registro.d010": {
+      "dominio": "sped",
+      "descricao": "SPED - Registro D010",
+      "balde": "B",
+      "count": 18,
+      "transient": false,
+      "motivo": "baixo_volume_dominio_negocio",
+      "previsao_ativacao": "em_uso"
+    },
+    "sped.registro.d100": {
+      "dominio": "sped",
+      "descricao": "SPED - Registro D100",
+      "balde": "B",
+      "count": 13,
+      "transient": false,
+      "motivo": "baixo_volume_dominio_negocio",
+      "previsao_ativacao": "em_uso"
+    },
+    "sped.registro.d101": {
+      "dominio": "sped",
+      "descricao": "SPED - Registro D101",
+      "balde": "B",
+      "count": 3,
+      "transient": false,
+      "motivo": "baixo_volume_dominio_negocio",
+      "previsao_ativacao": "em_uso"
+    },
+    "sped.registro.d105": {
+      "dominio": "sped",
+      "descricao": "SPED - Registro D105",
+      "balde": "B",
+      "count": 3,
+      "transient": false,
+      "motivo": "baixo_volume_dominio_negocio",
+      "previsao_ativacao": "em_uso"
+    },
+    "sped.registro.d500": {
+      "dominio": "sped",
+      "descricao": "SPED - Registro D500",
+      "balde": "B",
+      "count": 0,
+      "transient": false,
+      "motivo": "baixo_volume_dominio_negocio",
+      "previsao_ativacao": "instalado_sem_uso"
+    },
+    "sped.registro.d700": {
+      "dominio": "sped",
+      "descricao": "SPED - Registro D700",
+      "balde": "B",
+      "count": 0,
+      "transient": false,
+      "motivo": "baixo_volume_dominio_negocio",
+      "previsao_ativacao": "instalado_sem_uso"
+    },
+    "sped.registro.d730": {
+      "dominio": "sped",
+      "descricao": "SPED - Registro D730",
+      "balde": "B",
+      "count": 0,
+      "transient": false,
+      "motivo": "baixo_volume_dominio_negocio",
+      "previsao_ativacao": "instalado_sem_uso"
+    },
+    "sped.registro.e100": {
+      "dominio": "sped",
+      "descricao": "SPED - Registro E100",
+      "balde": "B",
+      "count": 8,
+      "transient": false,
+      "motivo": "baixo_volume_dominio_negocio",
+      "previsao_ativacao": "em_uso"
+    },
+    "sped.apuracao.auditoria.item": {
+      "dominio": "sped",
+      "descricao": "SPED - Item de Auditoria de Apuração",
+      "balde": "C",
+      "count": null,
+      "transient": false,
+      "motivo": "acesso_negado"
+    },
+    "sped.registro.d590": {
+      "dominio": "sped",
+      "descricao": "SPED - Registro D590",
+      "balde": "B",
+      "count": 0,
+      "transient": false,
+      "motivo": "baixo_volume_dominio_negocio",
+      "previsao_ativacao": "instalado_sem_uso"
+    },
+    "sped.registro.e110": {
+      "dominio": "sped",
+      "descricao": "SPED - Registro E110",
+      "balde": "B",
+      "count": 8,
+      "transient": false,
+      "motivo": "baixo_volume_dominio_negocio",
+      "previsao_ativacao": "em_uso"
+    },
+    "sped.registro.e111": {
+      "dominio": "sped",
+      "descricao": "SPED - Registro E111",
+      "balde": "B",
+      "count": 0,
+      "transient": false,
+      "motivo": "baixo_volume_dominio_negocio",
+      "previsao_ativacao": "instalado_sem_uso"
+    },
+    "sped.registro.e113": {
+      "dominio": "sped",
+      "descricao": "SPED - Registro E113",
+      "balde": "B",
+      "count": 0,
+      "transient": false,
+      "motivo": "baixo_volume_dominio_negocio",
+      "previsao_ativacao": "instalado_sem_uso"
+    },
+    "sped.registro.e116": {
+      "dominio": "sped",
+      "descricao": "SPED - Registro E116",
+      "balde": "B",
+      "count": 0,
+      "transient": false,
+      "motivo": "baixo_volume_dominio_negocio",
+      "previsao_ativacao": "instalado_sem_uso"
+    },
+    "sped.registro.e200": {
+      "dominio": "sped",
+      "descricao": "SPED - Registro E200",
+      "balde": "B",
+      "count": 0,
+      "transient": false,
+      "motivo": "baixo_volume_dominio_negocio",
+      "previsao_ativacao": "instalado_sem_uso"
+    },
+    "sped.registro.e210": {
+      "dominio": "sped",
+      "descricao": "SPED - Registro E210",
+      "balde": "B",
+      "count": 0,
+      "transient": false,
+      "motivo": "baixo_volume_dominio_negocio",
+      "previsao_ativacao": "instalado_sem_uso"
+    },
+    "sped.registro.e220": {
+      "dominio": "sped",
+      "descricao": "SPED - Registro E220",
+      "balde": "B",
+      "count": 0,
+      "transient": false,
+      "motivo": "baixo_volume_dominio_negocio",
+      "previsao_ativacao": "instalado_sem_uso"
+    },
+    "sped.registro.e250": {
+      "dominio": "sped",
+      "descricao": "SPED - Registro E250",
+      "balde": "B",
+      "count": 0,
+      "transient": false,
+      "motivo": "baixo_volume_dominio_negocio",
+      "previsao_ativacao": "instalado_sem_uso"
+    },
+    "sped.registro.e300": {
+      "dominio": "sped",
+      "descricao": "SPED - Registro E300",
+      "balde": "B",
+      "count": 0,
+      "transient": false,
+      "motivo": "baixo_volume_dominio_negocio",
+      "previsao_ativacao": "instalado_sem_uso"
+    },
+    "sped.registro.e240": {
+      "dominio": "sped",
+      "descricao": "SPED - Registro E240",
+      "balde": "B",
+      "count": 0,
+      "transient": false,
+      "motivo": "baixo_volume_dominio_negocio",
+      "previsao_ativacao": "instalado_sem_uso"
+    },
+    "sped.registro.e310": {
+      "dominio": "sped",
+      "descricao": "SPED - Registro E310",
+      "balde": "B",
+      "count": 0,
+      "transient": false,
+      "motivo": "baixo_volume_dominio_negocio",
+      "previsao_ativacao": "instalado_sem_uso"
+    },
+    "sped.registro.e311": {
+      "dominio": "sped",
+      "descricao": "SPED - Registro E311",
+      "balde": "B",
+      "count": 0,
+      "transient": false,
+      "motivo": "baixo_volume_dominio_negocio",
+      "previsao_ativacao": "instalado_sem_uso"
+    },
+    "sped.registro.e316": {
+      "dominio": "sped",
+      "descricao": "SPED - Registro E316",
+      "balde": "B",
+      "count": 0,
+      "transient": false,
+      "motivo": "baixo_volume_dominio_negocio",
+      "previsao_ativacao": "instalado_sem_uso"
+    },
+    "sped.registro.e500": {
+      "dominio": "sped",
+      "descricao": "SPED - Registro E500",
+      "balde": "B",
+      "count": 8,
+      "transient": false,
+      "motivo": "baixo_volume_dominio_negocio",
+      "previsao_ativacao": "em_uso"
+    },
+    "sped.registro.e510": {
+      "dominio": "sped",
+      "descricao": "SPED - Registro E510",
+      "balde": "B",
+      "count": 0,
+      "transient": false,
+      "motivo": "baixo_volume_dominio_negocio",
+      "previsao_ativacao": "instalado_sem_uso"
+    },
+    "sped.registro.e520": {
+      "dominio": "sped",
+      "descricao": "SPED - Registro E520",
+      "balde": "B",
+      "count": 8,
+      "transient": false,
+      "motivo": "baixo_volume_dominio_negocio",
+      "previsao_ativacao": "em_uso"
+    },
+    "sped.registro.f010": {
+      "dominio": "sped",
+      "descricao": "SPED - Registro F010",
+      "balde": "B",
+      "count": 18,
+      "transient": false,
+      "motivo": "baixo_volume_dominio_negocio",
+      "previsao_ativacao": "em_uso"
+    },
+    "sped.registro.f100": {
+      "dominio": "sped",
+      "descricao": "SPED - Registro F100",
+      "balde": "B",
+      "count": 0,
+      "transient": false,
+      "motivo": "baixo_volume_dominio_negocio",
+      "previsao_ativacao": "instalado_sem_uso"
+    },
+    "sped.registro.f550": {
+      "dominio": "sped",
+      "descricao": "SPED - Registro F550",
+      "balde": "B",
+      "count": 0,
+      "transient": false,
+      "motivo": "baixo_volume_dominio_negocio",
+      "previsao_ativacao": "instalado_sem_uso"
+    },
+    "sped.registro.g110": {
+      "dominio": "sped",
+      "descricao": "SPED - Registro G110",
+      "balde": "B",
+      "count": 8,
+      "transient": false,
+      "motivo": "baixo_volume_dominio_negocio",
+      "previsao_ativacao": "em_uso"
+    },
+    "sped.registro.g125": {
+      "dominio": "sped",
+      "descricao": "SPED - Registro G125 ICMS CIAP",
+      "balde": "B",
+      "count": 0,
+      "transient": false,
+      "motivo": "baixo_volume_dominio_negocio",
+      "previsao_ativacao": "instalado_sem_uso"
+    },
+    "sped.registro.g130": {
+      "dominio": "sped",
+      "descricao": "SPED - Registro G130",
+      "balde": "B",
+      "count": 0,
+      "transient": false,
+      "motivo": "baixo_volume_dominio_negocio",
+      "previsao_ativacao": "instalado_sem_uso"
+    },
+    "sped.registro.g140": {
+      "dominio": "sped",
+      "descricao": "SPED - Registro G140",
+      "balde": "B",
+      "count": 0,
+      "transient": false,
+      "motivo": "baixo_volume_dominio_negocio",
+      "previsao_ativacao": "instalado_sem_uso"
+    },
+    "sped.registro.h005": {
+      "dominio": "sped",
+      "descricao": "SPED - Registro H005",
+      "balde": "B",
+      "count": 8,
+      "transient": false,
+      "motivo": "baixo_volume_dominio_negocio",
+      "previsao_ativacao": "em_uso"
+    },
+    "sped.registro.h010": {
+      "dominio": "sped",
+      "descricao": "SPED - Registro H010",
+      "balde": "B",
+      "count": 0,
+      "transient": false,
+      "motivo": "baixo_volume_dominio_negocio",
+      "previsao_ativacao": "instalado_sem_uso"
+    },
+    "sped.registro.k010": {
+      "dominio": "sped",
+      "descricao": "SPED - Registro K010",
+      "balde": "B",
+      "count": 8,
+      "transient": false,
+      "motivo": "baixo_volume_dominio_negocio",
+      "previsao_ativacao": "em_uso"
+    },
+    "sped.registro.k100": {
+      "dominio": "sped",
+      "descricao": "SPED - Registro K100",
+      "balde": "B",
+      "count": 8,
+      "transient": false,
+      "motivo": "baixo_volume_dominio_negocio",
+      "previsao_ativacao": "em_uso"
+    },
+    "sped.registro.k200": {
+      "dominio": "sped",
+      "descricao": "SPED - Registro K200",
+      "balde": "A",
+      "count": 3252,
+      "transient": false,
+      "motivo": "volume_acima_threshold"
+    },
+    "sped.registro.k210": {
+      "dominio": "sped",
+      "descricao": "SPED - Registro K210",
+      "balde": "B",
+      "count": 0,
+      "transient": false,
+      "motivo": "baixo_volume_dominio_negocio",
+      "previsao_ativacao": "instalado_sem_uso"
+    },
+    "sped.registro.k215": {
+      "dominio": "sped",
+      "descricao": "SPED - Registro K215",
+      "balde": "A",
+      "count": 890,
+      "transient": false,
+      "motivo": "volume_acima_threshold"
+    },
+    "sped.registro.k230": {
+      "dominio": "sped",
+      "descricao": "SPED - Registro K230",
+      "balde": "A",
+      "count": 207,
+      "transient": false,
+      "motivo": "volume_acima_threshold"
+    },
+    "sped.registro.k235": {
+      "dominio": "sped",
+      "descricao": "SPED - Registro K235",
+      "balde": "A",
+      "count": 890,
+      "transient": false,
+      "motivo": "volume_acima_threshold"
+    },
+    "sped.registro.k250": {
+      "dominio": "sped",
+      "descricao": "SPED - Registro K250",
+      "balde": "B",
+      "count": 0,
+      "transient": false,
+      "motivo": "baixo_volume_dominio_negocio",
+      "previsao_ativacao": "instalado_sem_uso"
+    },
+    "sped.registro.k255": {
+      "dominio": "sped",
+      "descricao": "SPED - Registro K255",
+      "balde": "A",
+      "count": 1036,
+      "transient": false,
+      "motivo": "volume_acima_threshold"
+    },
+    "sped.registro.m100": {
+      "dominio": "sped",
+      "descricao": "SPED - Registro M100",
+      "balde": "B",
+      "count": 0,
+      "transient": false,
+      "motivo": "baixo_volume_dominio_negocio",
+      "previsao_ativacao": "instalado_sem_uso"
+    },
+    "sped.registro.m105": {
+      "dominio": "sped",
+      "descricao": "SPED - Registro M105",
+      "balde": "B",
+      "count": 0,
+      "transient": false,
+      "motivo": "baixo_volume_dominio_negocio",
+      "previsao_ativacao": "instalado_sem_uso"
+    },
+    "sped.registro.m110": {
+      "dominio": "sped",
+      "descricao": "SPED - Registro M110",
+      "balde": "B",
+      "count": 0,
+      "transient": false,
+      "motivo": "baixo_volume_dominio_negocio",
+      "previsao_ativacao": "instalado_sem_uso"
+    },
+    "sped.registro.m200": {
+      "dominio": "sped",
+      "descricao": "SPED - Registro M200",
+      "balde": "B",
+      "count": 8,
+      "transient": false,
+      "motivo": "baixo_volume_dominio_negocio",
+      "previsao_ativacao": "em_uso"
+    },
+    "sped.registro.m205": {
+      "dominio": "sped",
+      "descricao": "SPED - Registro M205",
+      "balde": "B",
+      "count": 8,
+      "transient": false,
+      "motivo": "baixo_volume_dominio_negocio",
+      "previsao_ativacao": "em_uso"
+    },
+    "sped.registro.m210": {
+      "dominio": "sped",
+      "descricao": "SPED - Registro M210",
+      "balde": "B",
+      "count": 0,
+      "transient": false,
+      "motivo": "baixo_volume_dominio_negocio",
+      "previsao_ativacao": "instalado_sem_uso"
+    },
+    "sped.registro.m220": {
+      "dominio": "sped",
+      "descricao": "SPED - Registro M220",
+      "balde": "B",
+      "count": 0,
+      "transient": false,
+      "motivo": "baixo_volume_dominio_negocio",
+      "previsao_ativacao": "instalado_sem_uso"
+    },
+    "sped.registro.m400": {
+      "dominio": "sped",
+      "descricao": "SPED - Registro M400",
+      "balde": "B",
+      "count": 0,
+      "transient": false,
+      "motivo": "baixo_volume_dominio_negocio",
+      "previsao_ativacao": "instalado_sem_uso"
+    },
+    "sped.registro.1500.contribuicoes": {
+      "dominio": "sped",
+      "descricao": "SPED - Registro 1500 - Contribuições",
+      "balde": "C",
+      "count": null,
+      "transient": false,
+      "motivo": "acesso_negado"
+    },
+    "sped.registro.m410": {
+      "dominio": "sped",
+      "descricao": "SPED - Registro M410",
+      "balde": "B",
+      "count": 0,
+      "transient": false,
+      "motivo": "baixo_volume_dominio_negocio",
+      "previsao_ativacao": "instalado_sem_uso"
+    },
+    "sped.registro.m500": {
+      "dominio": "sped",
+      "descricao": "SPED - Registro M500",
+      "balde": "B",
+      "count": 0,
+      "transient": false,
+      "motivo": "baixo_volume_dominio_negocio",
+      "previsao_ativacao": "instalado_sem_uso"
+    },
+    "sped.registro.m505": {
+      "dominio": "sped",
+      "descricao": "SPED - Registro M505",
+      "balde": "B",
+      "count": 0,
+      "transient": false,
+      "motivo": "baixo_volume_dominio_negocio",
+      "previsao_ativacao": "instalado_sem_uso"
+    },
+    "sped.registro.m510": {
+      "dominio": "sped",
+      "descricao": "SPED - Registro M510",
+      "balde": "B",
+      "count": 0,
+      "transient": false,
+      "motivo": "baixo_volume_dominio_negocio",
+      "previsao_ativacao": "instalado_sem_uso"
+    },
+    "sped.registro.m600": {
+      "dominio": "sped",
+      "descricao": "SPED - Registro M600",
+      "balde": "B",
+      "count": 8,
+      "transient": false,
+      "motivo": "baixo_volume_dominio_negocio",
+      "previsao_ativacao": "em_uso"
+    },
+    "sped.registro.m605": {
+      "dominio": "sped",
+      "descricao": "SPED - Registro M605",
+      "balde": "B",
+      "count": 8,
+      "transient": false,
+      "motivo": "baixo_volume_dominio_negocio",
+      "previsao_ativacao": "em_uso"
+    },
+    "sped.registro.m610": {
+      "dominio": "sped",
+      "descricao": "SPED - Registro M610",
+      "balde": "B",
+      "count": 0,
+      "transient": false,
+      "motivo": "baixo_volume_dominio_negocio",
+      "previsao_ativacao": "instalado_sem_uso"
+    },
+    "sped.registro.m620": {
+      "dominio": "sped",
+      "descricao": "SPED - Registro M620",
+      "balde": "B",
+      "count": 0,
+      "transient": false,
+      "motivo": "baixo_volume_dominio_negocio",
+      "previsao_ativacao": "instalado_sem_uso"
+    },
+    "mail.link.preview": {
+      "dominio": "mail",
+      "descricao": "Store link preview data",
+      "balde": "C",
+      "count": null,
+      "transient": false,
+      "motivo": "prefixo_ui_infra"
+    },
+    "ir.config_parameter": {
+      "dominio": "ir",
+      "descricao": "System Parameter",
+      "balde": "C",
+      "count": null,
+      "transient": false,
+      "motivo": "prefixo_ui_infra"
+    },
+    "sped.registro.m800": {
+      "dominio": "sped",
+      "descricao": "SPED - Registro M800",
+      "balde": "B",
+      "count": 0,
+      "transient": false,
+      "motivo": "baixo_volume_dominio_negocio",
+      "previsao_ativacao": "instalado_sem_uso"
+    },
+    "template.reset.mixin": {
+      "dominio": "template",
+      "descricao": "Template Reset Mixin",
+      "balde": "C",
+      "count": null,
+      "transient": false,
+      "motivo": "sufixo_tecnico"
+    },
+    "sped.registro.m810": {
+      "dominio": "sped",
+      "descricao": "SPED - Registro M810",
+      "balde": "B",
+      "count": 0,
+      "transient": false,
+      "motivo": "baixo_volume_dominio_negocio",
+      "previsao_ativacao": "instalado_sem_uso"
+    },
+    "sped.apuracao.tabela": {
+      "dominio": "sped",
+      "descricao": "SPED - Tabelas de código",
+      "balde": "A",
+      "count": 11237,
+      "transient": false,
+      "motivo": "volume_acima_threshold"
+    },
+    "sped.pdv": {
+      "dominio": "sped",
+      "descricao": "sped.pdv",
+      "balde": "B",
+      "count": 0,
+      "transient": false,
+      "motivo": "baixo_volume_dominio_negocio",
+      "previsao_ativacao": "instalado_sem_uso"
+    },
+    "finan.forma.condicao.taxa": {
+      "dominio": "finan",
+      "descricao": "Taxas sobre Forma e Condição de Pagamemento",
+      "balde": "B",
+      "count": 0,
+      "transient": false,
+      "motivo": "baixo_volume_dominio_negocio",
+      "previsao_ativacao": "instalado_sem_uso"
+    },
+    "tempo.compra.participante": {
+      "dominio": "tempo",
+      "descricao": "Tempos de compra por participante",
+      "balde": "C",
+      "count": 0,
+      "transient": false,
+      "motivo": "baixo_volume_nao_negocio"
+    },
+    "tempo.compra.participante.produto": {
+      "dominio": "tempo",
+      "descricao": "Tempos de compra por participante e produto",
+      "balde": "C",
+      "count": 0,
+      "transient": false,
+      "motivo": "baixo_volume_nao_negocio"
+    },
+    "tempo.compra.produto": {
+      "dominio": "tempo",
+      "descricao": "Tempos de compra por produto",
+      "balde": "C",
+      "count": 0,
+      "transient": false,
+      "motivo": "baixo_volume_nao_negocio"
+    },
+    "pedido.documento.historico.tempo": {
+      "dominio": "pedido",
+      "descricao": "Tempos do Histórico de Etapas do Pedido",
+      "balde": "A",
+      "count": 9173,
+      "transient": false,
+      "motivo": "volume_acima_threshold"
+    },
+    "sped.aliquota.simples.teto": {
+      "dominio": "sped",
+      "descricao": "Tetos do SIMPLES Nacional",
+      "balde": "B",
+      "count": 6,
+      "transient": false,
+      "motivo": "baixo_volume_dominio_negocio",
+      "previsao_ativacao": "em_uso"
+    },
+    "ir.cron.trigger": {
+      "dominio": "ir",
+      "descricao": "Triggered actions",
+      "balde": "C",
+      "count": null,
+      "transient": false,
+      "motivo": "prefixo_ui_infra"
+    },
+    "finan.tipo.faturamento": {
+      "dominio": "finan",
+      "descricao": "Tipo de Faturamento",
+      "balde": "B",
+      "count": 1,
+      "transient": false,
+      "motivo": "baixo_volume_dominio_negocio",
+      "previsao_ativacao": "em_uso"
+    },
+    "sped.produto.tipo": {
+      "dominio": "sped",
+      "descricao": "Tipos fiscais de produtos e serviços",
+      "balde": "B",
+      "count": 12,
+      "transient": false,
+      "motivo": "baixo_volume_dominio_negocio",
+      "previsao_ativacao": "em_uso"
+    },
+    "base.module.update": {
+      "dominio": "base",
+      "descricao": "Update Module",
+      "balde": "C",
+      "count": null,
+      "transient": true,
+      "motivo": "transient"
+    },
+    "base.module.upgrade": {
+      "dominio": "base",
+      "descricao": "Upgrade Module",
+      "balde": "C",
+      "count": null,
+      "transient": true,
+      "motivo": "transient"
+    },
+    "ks_to.do.description": {
+      "dominio": "ks_to",
+      "descricao": "to do description",
+      "balde": "C",
+      "count": 0,
+      "transient": false,
+      "motivo": "baixo_volume_nao_negocio"
+    },
+    "bus.presence": {
+      "dominio": "bus",
+      "descricao": "User Presence",
+      "balde": "C",
+      "count": null,
+      "transient": false,
+      "motivo": "prefixo_ui_infra"
+    },
+    "res.users.settings": {
+      "dominio": "res",
+      "descricao": "User Settings",
+      "balde": "C",
+      "count": null,
+      "transient": false,
+      "motivo": "sufixo_tecnico"
+    },
+    "ks_to.do.headers": {
+      "dominio": "ks_to",
+      "descricao": "to do headers",
+      "balde": "C",
+      "count": 0,
+      "transient": false,
+      "motivo": "baixo_volume_nao_negocio"
+    },
+    "change.password.own": {
+      "dominio": "change",
+      "descricao": "User, change own password wizard",
+      "balde": "C",
+      "count": null,
+      "transient": true,
+      "motivo": "transient"
+    },
+    "change.password.user": {
+      "dominio": "change",
+      "descricao": "User, Change Password Wizard",
+      "balde": "C",
+      "count": null,
+      "transient": true,
+      "motivo": "transient"
+    },
+    "sped.unidade": {
+      "dominio": "sped",
+      "descricao": "Unidade de medida",
+      "balde": "A",
+      "count": 73,
+      "transient": false,
+      "motivo": "volume_acima_threshold"
+    },
+    "res.users.settings.volumes": {
+      "dominio": "res",
+      "descricao": "User Settings Volumes",
+      "balde": "B",
+      "count": 0,
+      "transient": false,
+      "motivo": "baixo_volume_dominio_negocio",
+      "previsao_ativacao": "instalado_sem_uso"
+    },
+    "res.users.apikeys": {
+      "dominio": "res",
+      "descricao": "Users API Keys",
+      "balde": "B",
+      "count": 0,
+      "transient": false,
+      "motivo": "baixo_volume_dominio_negocio",
+      "previsao_ativacao": "instalado_sem_uso"
+    },
+    "res.users.deletion": {
+      "dominio": "res",
+      "descricao": "Users Deletion Request",
+      "balde": "B",
+      "count": 0,
+      "transient": false,
+      "motivo": "baixo_volume_dominio_negocio",
+      "previsao_ativacao": "instalado_sem_uso"
+    },
+    "res.users": {
+      "dominio": "res",
+      "descricao": "User",
+      "balde": "B",
+      "count": 41,
+      "transient": false,
+      "motivo": "baixo_volume_dominio_negocio",
+      "previsao_ativacao": "em_uso"
+    },
+    "res.users.log": {
+      "dominio": "res",
+      "descricao": "Users Log",
+      "balde": "B",
+      "count": 0,
+      "transient": false,
+      "motivo": "baixo_volume_dominio_negocio",
+      "previsao_ativacao": "instalado_sem_uso"
+    },
+    "sped.usuario.calendario.login": {
+      "dominio": "sped",
+      "descricao": "Usuários - calendário de logins",
+      "balde": "B",
+      "count": 0,
+      "transient": false,
+      "motivo": "baixo_volume_dominio_negocio",
+      "previsao_ativacao": "instalado_sem_uso"
+    },
+    "sped.usuario.sessao": {
+      "dominio": "sped",
+      "descricao": "Usuários - sessões de logins",
+      "balde": "A",
+      "count": 1687,
+      "transient": false,
+      "motivo": "volume_acima_threshold"
+    },
+    "ir.ui.view": {
+      "dominio": "ir",
+      "descricao": "View",
+      "balde": "C",
+      "count": null,
+      "transient": false,
+      "motivo": "prefixo_ui_infra"
+    },
+    "ir.ui.view.arvore": {
+      "dominio": "ir",
+      "descricao": "Visões - Árvore de Análise",
+      "balde": "C",
+      "count": null,
+      "transient": false,
+      "motivo": "sufixo_tecnico"
+    },
+    "sped.usuario.token": {
+      "dominio": "sped",
+      "descricao": "Usuários - tokens",
+      "balde": "B",
+      "count": 0,
+      "transient": false,
+      "motivo": "baixo_volume_dominio_negocio",
+      "previsao_ativacao": "instalado_sem_uso"
+    },
+    "web_editor.converter.test.sub": {
+      "dominio": "web_editor",
+      "descricao": "Web Editor Converter Subtest",
+      "balde": "C",
+      "count": null,
+      "transient": false,
+      "motivo": "prefixo_ui_infra"
+    },
+    "web_editor.converter.test": {
+      "dominio": "web_editor",
+      "descricao": "Web Editor Converter Test",
+      "balde": "C",
+      "count": null,
+      "transient": false,
+      "motivo": "prefixo_ui_infra"
+    },
+    "api.webhook": {
+      "dominio": "api",
+      "descricao": "Webhook API",
+      "balde": "C",
+      "count": null,
+      "transient": false,
+      "motivo": "prefixo_ui_infra"
+    },
+    "api.webhook.callback": {
+      "dominio": "api",
+      "descricao": "Webhook API Callback",
+      "balde": "C",
+      "count": null,
+      "transient": false,
+      "motivo": "prefixo_ui_infra"
+    },
+    "ir.websocket": {
+      "dominio": "ir",
+      "descricao": "websocket message handling",
+      "balde": "C",
+      "count": null,
+      "transient": false,
+      "motivo": "prefixo_ui_infra"
+    },
+    "pedido.documento.producao.wizard": {
+      "dominio": "pedido",
+      "descricao": "Wizard de produção",
+      "balde": "C",
+      "count": null,
+      "transient": true,
+      "motivo": "transient"
+    },
+    "finan.retorno.wizard": {
+      "dominio": "finan",
+      "descricao": "Wizard de Retorno de Remessa Bancária",
+      "balde": "C",
+      "count": null,
+      "transient": true,
+      "motivo": "transient"
+    },
+    "sped.produto.ecommerce.wizard": {
+      "dominio": "sped",
+      "descricao": "Wizard Produto ecommerce",
+      "balde": "C",
+      "count": null,
+      "transient": true,
+      "motivo": "transient"
+    },
+    "sped.produto.variante": {
+      "dominio": "sped",
+      "descricao": "Variantes dos produtos (visão no banco)",
+      "balde": "A",
+      "count": 3794,
+      "transient": false,
+      "motivo": "volume_acima_threshold"
+    },
+    "sped.veiculo": {
+      "dominio": "sped",
+      "descricao": "Veículos",
+      "balde": "B",
+      "count": 1,
+      "transient": false,
+      "motivo": "baixo_volume_dominio_negocio",
+      "previsao_ativacao": "em_uso"
+    },
+    "sped.documento.volume": {
+      "dominio": "sped",
+      "descricao": "Volumes do Documento Fiscal",
+      "balde": "A",
+      "count": 18906,
+      "transient": false,
+      "motivo": "volume_acima_threshold"
+    },
+    "sped.registro.f120": {
+      "dominio": "sped",
+      "descricao": "SPED - Registro F120",
+      "balde": "C",
+      "count": null,
+      "transient": false,
+      "motivo": "acesso_negado"
+    },
+    "_unknown": {
+      "dominio": "_unknown",
+      "descricao": "Unknown",
+      "balde": "C",
+      "count": null,
+      "transient": false,
+      "motivo": "acesso_negado"
+    }
+  },
+  "nao_classificados": []
+}
