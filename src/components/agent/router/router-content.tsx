@@ -11,15 +11,15 @@
 import { RouterKpisBlock } from "./router-kpis-block";
 import { RouterHistogramChart } from "./router-histogram-chart";
 import { RouterLatencyChart } from "./router-latency-chart";
-import { RouterDiscordanciasTable } from "./router-discordancias-table";
 import { RouterControls } from "./router-controls";
 import { RouterEmbeddingCredential } from "./router-embedding-credential";
 import { RouterCalibrationButton } from "./router-calibration-button";
+import { RouterDecisionsTable } from "./router-decisions-table";
 import type {
   RouterKpis,
   RouterHistogramBucket,
   RouterLatencyPoint,
-  RouterDiscordanciaRow,
+  RouterDecisionRow,
   RouterEligibility,
 } from "@/lib/agent/router/queries";
 import type { RouterSettingsSnapshot } from "@/lib/actions/router-settings";
@@ -29,7 +29,10 @@ interface Props {
   kpis: RouterKpis;
   buckets: RouterHistogramBucket[];
   latency: RouterLatencyPoint[];
-  discordancias: RouterDiscordanciaRow[];
+  decisions: RouterDecisionRow[];
+  decisionsTotal: number;
+  page: number;
+  pageSize: number;
   settings: RouterSettingsSnapshot;
   eligibility: RouterEligibility;
   embeddingCredential: EmbeddingCredentialStatus;
@@ -57,7 +60,12 @@ export function RouterContent(props: Props) {
 
       <RouterCalibrationButton />
 
-      <RouterDiscordanciasTable rows={props.discordancias} />
+      <RouterDecisionsTable
+        rows={props.decisions}
+        total={props.decisionsTotal}
+        page={props.page}
+        pageSize={props.pageSize}
+      />
     </div>
   );
 }

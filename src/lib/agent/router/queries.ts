@@ -22,7 +22,6 @@ const IN_FLIGHT_WINDOW_SECONDS = 60;
 
 /** KPI consolidado do router nos ultimos N dias. */
 export type RouterKpis = {
-  periodoDias: number;
   totalDecisoes: number;
   /** Top-1 acerto: % de turnos onde o dominio top-1 do router foi de fato
    *  chamado por alguma das tools usadas. */
@@ -77,17 +76,30 @@ export type RouterEligibility = {
 
 /** Helper: cutoff para considerar uma row "completa" (toolsActuallyUsed
  *  preenchido OU createdAt mais velho que 60s). */
-function buildBaseWhere(periodoDias: number, modes?: string[]) {
+/** Filtro do painel do router: range de datas (casa com PeriodPills, inclusive
+ *  "Personalizado") + modos opcionais (multi-select de origem). */
+export type RouterFilter = {
+  start: Date;
+  end: Date;
+  modes?: string[];
+};
+
+/** Range default: ultimos 7 dias ate agora. */
+export function defaultRouterFilter(): RouterFilter {
+  const end = new Date();
+  const start = new Date(end.getTime() - 7 * 24 * 60 * 60 * 1000);
+  return { start, end };
+}
+
+function buildBaseWhere(filter: RouterFilter) {
   const where: {
-    createdAt: { gte: Date };
+    createdAt: { gte: Date; lte: Date };
     mode?: { in: string[] };
   } = {
-    createdAt: {
-      gte: new Date(Date.now() - periodoDias * 24 * 60 * 60 * 1000),
-    },
+    createdAt: { gte: filter.start, lte: filter.end },
   };
-  if (modes && modes.length > 0) {
-    where.mode = { in: modes };
+  if (filter.modes && filter.modes.length > 0) {
+    where.mode = { in: filter.modes };
   }
   return where;
 }
@@ -103,11 +115,8 @@ function percentile(values: number[], p: number): number {
 }
 
 /** D2a: KPIs globais do router para o periodo. */
-export async function getRouterKpis(
-  periodoDias = 7,
-  modes?: string[],
-): Promise<RouterKpis> {
-  const baseWhere = buildBaseWhere(periodoDias, modes);
+export async function getRouterKpis(filter: RouterFilter): Promise<RouterKpis> {
+  const baseWhere = buildBaseWhere(filter);
 
   // Rows com toolsActuallyUsed nao vazio E createdAt antigo o suficiente.
   const completedRows = await prisma.agentRouterDecision.findMany({
@@ -152,7 +161,6 @@ export async function getRouterKpis(
   }
 
   return {
-    periodoDias,
     totalDecisoes,
     top1AccPct:
       totalDecisoes > 0
@@ -176,17 +184,15 @@ export async function getRouterKpis(
 
 /** D2b: histograma de topScore via width_bucket (Postgres builtin). */
 export async function getRouterHistogram(
-  periodoDias = 7,
-  modes?: string[],
+  filter: RouterFilter,
 ): Promise<RouterHistogramBucket[]> {
   // Excecao §0 do PLAN v3: width_bucket nao e' mapeado pelo Prisma client.
-  const sinceIso = new Date(
-    Date.now() - periodoDias * 24 * 60 * 60 * 1000,
-  ).toISOString();
   // Filtro de modo: quando informado usa-os; senao todos os modos relevantes
   // (inclui calibracao para o painel ter dado mesmo sem trafego de producao).
   const modeList =
-    modes && modes.length > 0 ? modes : ["shadow", "active", "calibracao"];
+    filter.modes && filter.modes.length > 0
+      ? filter.modes
+      : ["shadow", "active", "calibracao"];
   const raw = await prisma.$queryRawUnsafe<
     Array<{ bucket: number; qty: number | bigint }>
   >(
@@ -194,13 +200,15 @@ export async function getRouterHistogram(
     SELECT width_bucket(top_score::float, 0, 1, 10) AS bucket,
            count(*) AS qty
     FROM agent_router_decision
-    WHERE mode = ANY($2::text[])
-      AND created_at > $1::timestamp
+    WHERE mode = ANY($3::text[])
+      AND created_at >= $1::timestamp
+      AND created_at <= $2::timestamp
       AND top_score IS NOT NULL
     GROUP BY bucket
     ORDER BY bucket;
     `,
-    sinceIso,
+    filter.start.toISOString(),
+    filter.end.toISOString(),
     modeList,
   );
 
@@ -221,13 +229,12 @@ export async function getRouterHistogram(
 /** D2c: ultimas N discordancias (tools chamadas fora de pickedDomains).
  *  Candidatos a calibrar domain-vocabulary. */
 export async function getRouterDiscordancias(
+  filter: RouterFilter,
   limit = 50,
-  periodoDias = 14,
-  modes?: string[],
 ): Promise<RouterDiscordanciaRow[]> {
   const rows = await prisma.agentRouterDecision.findMany({
     where: {
-      ...buildBaseWhere(periodoDias, modes),
+      ...buildBaseWhere(filter),
       NOT: { toolsActuallyUsed: { isEmpty: true } },
     },
     select: {
@@ -253,12 +260,11 @@ export async function getRouterDiscordancias(
 
 /** D2d: serie temporal de latencia p50/p95/p99 por dia. */
 export async function getRouterLatencyTimeseries(
-  periodoDias = 7,
-  modes?: string[],
+  filter: RouterFilter,
 ): Promise<RouterLatencyPoint[]> {
   const rows = await prisma.agentRouterDecision.findMany({
     where: {
-      ...buildBaseWhere(periodoDias, modes),
+      ...buildBaseWhere(filter),
       pickDurationMs: { not: null },
     },
     select: { createdAt: true, pickDurationMs: true },
@@ -283,6 +289,83 @@ export async function getRouterLatencyTimeseries(
     }));
 }
 
+/** Linha da tabela de TODAS as decisoes do router (nao so discordancias). */
+export type RouterDecisionRow = {
+  id: string;
+  createdAt: Date;
+  userQuestion: string;
+  pickedDomains: string[];
+  toolsActuallyUsed: string[];
+  toolsDomains: string[];
+  topScore: number | null;
+  fallbackTriggered: boolean;
+  mode: string;
+  /** true quando nenhum dominio chamado/esperado esta entre os escolhidos. */
+  discordante: boolean;
+};
+
+export type RouterDecisionsPage = {
+  rows: RouterDecisionRow[];
+  total: number;
+};
+
+/** Data da primeira decisao registrada (para minDate do PeriodPills/"Tudo"). */
+export async function getRouterEarliestDecision(): Promise<Date | null> {
+  const row = await prisma.agentRouterDecision.findFirst({
+    orderBy: { createdAt: "asc" },
+    select: { createdAt: true },
+  });
+  return row?.createdAt ?? null;
+}
+
+/** Tabela paginada de todas as decisoes do router no filtro (D2c v2). */
+export async function getRouterDecisions(
+  filter: RouterFilter,
+  page = 0,
+  pageSize = 50,
+): Promise<RouterDecisionsPage> {
+  const where = buildBaseWhere(filter);
+  const [rows, total] = await Promise.all([
+    prisma.agentRouterDecision.findMany({
+      where,
+      select: {
+        id: true,
+        createdAt: true,
+        userQuestion: true,
+        pickedDomains: true,
+        toolsActuallyUsed: true,
+        toolsDomains: true,
+        topScore: true,
+        fallbackTriggered: true,
+        mode: true,
+      },
+      orderBy: { createdAt: "desc" },
+      take: pageSize,
+      skip: page * pageSize,
+    }),
+    prisma.agentRouterDecision.count({ where }),
+  ]);
+
+  return {
+    total,
+    rows: rows.map((r) => ({
+      id: r.id,
+      createdAt: r.createdAt,
+      userQuestion: r.userQuestion,
+      pickedDomains: r.pickedDomains,
+      toolsActuallyUsed: r.toolsActuallyUsed,
+      toolsDomains: r.toolsDomains,
+      topScore: r.topScore,
+      fallbackTriggered: r.fallbackTriggered,
+      mode: r.mode,
+      // Discordante so faz sentido quando ha dominio esperado/chamado.
+      discordante:
+        r.toolsDomains.length > 0 &&
+        !r.toolsDomains.some((d) => r.pickedDomains.includes(d)),
+    })),
+  };
+}
+
 /** D2e: o router pode ser ativado com seguranca? Gate da SPEC v3 §10.1.6
  *  (meta elevada para 95% por decisao do usuario, 2026-05-28).
  *  Metrica: cobertura Top-K (allInTopKPct) = % de turnos onde TODAS as tools
@@ -291,7 +374,8 @@ export async function getRouterLatencyTimeseries(
  *  ferramentas de todos os dominios que a pergunta tocou.
  *  - allInTopKPct >= 95% nos ultimos 7 dias, com >= 200 decisoes. */
 export async function getRouterEligibleToActivate(): Promise<RouterEligibility> {
-  const kpis = await getRouterKpis(7);
+  // O gate olha sempre os ultimos 7 dias, independente do filtro do painel.
+  const kpis = await getRouterKpis(defaultRouterFilter());
   if (kpis.totalDecisoes === 0) {
     return {
       eligible: false,
