@@ -82,6 +82,8 @@ export type RouterFilter = {
   start: Date;
   end: Date;
   modes?: string[];
+  /** Busca livre na pergunta (so aplicada na tabela de decisoes). */
+  q?: string;
 };
 
 /** Range default: ultimos 7 dias ate agora. */
@@ -324,7 +326,12 @@ export async function getRouterDecisions(
   page = 0,
   pageSize = 50,
 ): Promise<RouterDecisionsPage> {
-  const where = buildBaseWhere(filter);
+  const where: ReturnType<typeof buildBaseWhere> & {
+    userQuestion?: { contains: string; mode: "insensitive" };
+  } = buildBaseWhere(filter);
+  if (filter.q && filter.q.trim()) {
+    where.userQuestion = { contains: filter.q.trim(), mode: "insensitive" };
+  }
   const [rows, total] = await Promise.all([
     prisma.agentRouterDecision.findMany({
       where,

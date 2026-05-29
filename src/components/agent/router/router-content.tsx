@@ -33,6 +33,7 @@ interface Props {
   decisionsTotal: number;
   page: number;
   pageSize: number;
+  searchQuery: string;
   settings: RouterSettingsSnapshot;
   eligibility: RouterEligibility;
   embeddingCredential: EmbeddingCredentialStatus;
@@ -65,6 +66,7 @@ export function RouterContent(props: Props) {
         total={props.decisionsTotal}
         page={props.page}
         pageSize={props.pageSize}
+        searchQuery={props.searchQuery}
       />
     </div>
   );

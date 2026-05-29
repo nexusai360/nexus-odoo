@@ -86,6 +86,7 @@ export default async function MonitoramentoRouterPage({
     modos?: string;
     page?: string;
     ps?: string;
+    q?: string;
   }>;
 }) {
   const user = await getCurrentUser();
@@ -111,10 +112,12 @@ export default async function MonitoramentoRouterPage({
     // eslint-disable-next-line react-hooks/purity -- server component, hora atual e' esperada
     new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
   const range = resolveRange(pk, sp.cs, sp.ce, minDate);
+  const q = sp.q ?? "";
   const filter: RouterFilter = {
     start: range.start,
     end: range.end,
     modes: modos.length > 0 ? modos : undefined,
+    q: q || undefined,
   };
 
   const [
@@ -161,6 +164,7 @@ export default async function MonitoramentoRouterPage({
           decisionsTotal={decisionsPage.total}
           page={page}
           pageSize={pageSize}
+          searchQuery={q}
           settings={settings ?? DEFAULT_SETTINGS}
           eligibility={eligibility}
           embeddingCredential={embeddingCredential}

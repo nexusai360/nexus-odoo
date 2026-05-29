@@ -8,8 +8,10 @@
  */
 
 import { useRouter, useSearchParams, usePathname } from "next/navigation";
-import { useTransition } from "react";
-import { AlertTriangle, ChevronLeft, ChevronRight } from "lucide-react";
+import { useState, useTransition } from "react";
+import { AlertTriangle, ChevronLeft, ChevronRight, Search, X } from "lucide-react";
+
+import { Input } from "@/components/ui/input";
 
 import {
   Card,
@@ -70,6 +72,7 @@ interface Props {
   total: number;
   page: number;
   pageSize: number;
+  searchQuery: string;
 }
 
 // Mesmo formato da coluna Data da tabela de avaliacoes do Backtest.
@@ -105,12 +108,29 @@ function ToolTag({ domain }: { domain: string }) {
   );
 }
 
-export function RouterDecisionsTable({ rows, total, page, pageSize }: Props) {
+export function RouterDecisionsTable({
+  rows,
+  total,
+  page,
+  pageSize,
+  searchQuery,
+}: Props) {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const [pending, startTransition] = useTransition();
+  const [search, setSearch] = useState(searchQuery);
   const totalPages = Math.max(1, Math.ceil(total / pageSize));
+
+  const applySearch = (value: string) => {
+    const params = new URLSearchParams(searchParams.toString());
+    if (value.trim()) params.set("q", value.trim());
+    else params.delete("q");
+    params.set("page", "0");
+    startTransition(() => {
+      router.push(`${pathname}?${params.toString()}`, { scroll: false });
+    });
+  };
 
   const goToPage = (next: number) => {
     const params = new URLSearchParams(searchParams.toString());
@@ -145,6 +165,36 @@ export function RouterDecisionsTable({ rows, total, page, pageSize }: Props) {
           são discordâncias (o domínio chamado/esperado ficou fora do que o
           router escolheu), candidatas a calibrar `domain-vocabulary.ts`.
         </p>
+        <div className="mt-2 flex max-w-md items-center gap-2">
+          <div className="relative flex-1">
+            <Search className="pointer-events-none absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+            <Input
+              type="search"
+              placeholder="Buscar na pergunta…"
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") applySearch(search);
+              }}
+              className="pl-8"
+              aria-label="Buscar na pergunta"
+            />
+          </div>
+          {searchQuery ? (
+            <button
+              type="button"
+              onClick={() => {
+                setSearch("");
+                applySearch("");
+              }}
+              className="inline-flex h-9 shrink-0 cursor-pointer items-center gap-1.5 rounded-lg border border-border bg-card px-3 text-xs font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+              aria-label="Limpar busca"
+            >
+              <X className="h-3.5 w-3.5" aria-hidden />
+              Limpar
+            </button>
+          ) : null}
+        </div>
       </CardHeader>
       <CardContent className="p-0">
         {rows.length === 0 ? (
@@ -177,7 +227,7 @@ export function RouterDecisionsTable({ rows, total, page, pageSize }: Props) {
                         r.discordante && "bg-amber-500/5",
                       )}
                     >
-                      <TableCell className="text-xs text-muted-foreground tabular-nums whitespace-nowrap">
+                      <TableCell className="font-mono text-xs whitespace-nowrap">
                         <span className="inline-flex items-center gap-1.5">
                           {r.discordante ? (
                             <AlertTriangle
@@ -188,7 +238,10 @@ export function RouterDecisionsTable({ rows, total, page, pageSize }: Props) {
                           {dateTimeFmt.format(r.createdAt)}
                         </span>
                       </TableCell>
-                      <TableCell className="max-w-[320px] truncate text-sm">
+                      <TableCell
+                        className="max-w-[320px] truncate text-sm"
+                        title={r.userQuestion}
+                      >
                         {r.userQuestion}
                       </TableCell>
                       <TableCell>
