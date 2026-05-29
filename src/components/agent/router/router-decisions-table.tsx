@@ -31,9 +31,15 @@ import { CustomSelect } from "@/components/ui/custom-select";
 import { PageJumpNavigator } from "@/components/agent/consumo/page-jump-navigator";
 import type { RouterDecisionRow } from "@/lib/agent/router/queries";
 
-// Dominios internos de encanamento (escape hatches sempre presentes no
-// catalogo). Nao sao dominios de negocio, entao nao aparecem como tag.
-const INTERNAL_DOMAINS = new Set(["caminho3", "dominios-vazios"]);
+// Rotas internas (sempre presentes no catalogo) ganham nome amigavel em vez
+// de serem escondidas: sao rotas de verdade, so tinham nome tecnico.
+const DOMAIN_DISPLAY: Record<string, string> = {
+  caminho3: "BI avançado",
+  "dominios-vazios": "Cobertura",
+};
+function displayDomain(d: string): string {
+  return DOMAIN_DISPLAY[d] ?? d;
+}
 
 // Cores por dominio para a coluna "Tool chamada" (paleta do status, sem
 // vermelho, que passaria sensacao de erro).
@@ -94,7 +100,7 @@ function PickedTag({ children }: { children: React.ReactNode }) {
 function ToolTag({ domain }: { domain: string }) {
   return (
     <Badge variant="outline" className={cn("border text-[11px]", toneFor(domain))}>
-      {domain}
+      {DOMAIN_DISPLAY[domain] ?? domain}
     </Badge>
   );
 }
@@ -156,10 +162,10 @@ export function RouterDecisionsTable({ rows, total, page, pageSize }: Props) {
                     <TableHead>Router escolhida</TableHead>
                     <TableHead>Tool chamada</TableHead>
                     <TableHead
-                      className="w-[90px] text-right"
-                      title="Confiança do match (0 a 1): similaridade entre a pergunta e o domínio top. Abaixo do corte vira fallback."
+                      className="w-[110px] text-right"
+                      title="Similaridade (cosseno) entre a pergunta e o domínio mais próximo. Neste modelo de embedding, 0,40-0,60 já é um bom match (raramente passa de 0,7). O acerto alto vem do ranking relativo (o domínio certo é o mais próximo) e das regras de palavra-chave, não do valor absoluto."
                     >
-                      Score (confiança)
+                      Similaridade
                     </TableHead>
                   </TableRow>
                 </TableHeader>
@@ -187,17 +193,13 @@ export function RouterDecisionsTable({ rows, total, page, pageSize }: Props) {
                       </TableCell>
                       <TableCell>
                         <div className="flex flex-wrap gap-1">
-                          {(() => {
-                            const visible = r.pickedDomains.filter(
-                              (d) => !INTERNAL_DOMAINS.has(d),
-                            );
-                            if (visible.length === 0) {
-                              return <PickedTag>fallback</PickedTag>;
-                            }
-                            return visible.map((d) => (
-                              <PickedTag key={d}>{d}</PickedTag>
-                            ));
-                          })()}
+                          {r.pickedDomains.length === 0 ? (
+                            <PickedTag>fallback</PickedTag>
+                          ) : (
+                            r.pickedDomains.map((d) => (
+                              <PickedTag key={d}>{displayDomain(d)}</PickedTag>
+                            ))
+                          )}
                         </div>
                       </TableCell>
                       <TableCell>
