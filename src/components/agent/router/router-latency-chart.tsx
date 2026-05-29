@@ -22,19 +22,26 @@ interface Props {
 }
 
 export function RouterLatencyChart({ points }: Props) {
-  const data = points.map((p) => ({
+  const mapped = points.map((p) => ({
     name: p.day,
     p50: p.p50,
     p95: p.p95,
     p99: p.p99,
   }));
+  // Com um unico dia de dados, o recharts renderiza um ponto solto em vez de
+  // linha. Prefixamos uma base em zero para a serie virar uma linha "do zero
+  // ate o valor atual", evitando os pontinhos.
+  const data =
+    mapped.length === 1
+      ? [{ name: "", p50: 0, p95: 0, p99: 0 }, ...mapped]
+      : mapped;
 
   return (
     <Card>
       <CardHeader>
         <CardTitle className="flex items-center gap-2 text-base">
           <Activity className="h-4 w-4 text-emerald-400" />
-          Latencia pickDomains (7 dias)
+          Latencia pickDomains (ms)
         </CardTitle>
       </CardHeader>
       <CardContent>

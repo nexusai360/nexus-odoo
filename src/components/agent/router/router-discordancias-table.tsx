@@ -100,7 +100,11 @@ export function RouterDiscordanciasTable({ rows }: Props) {
                       </div>
                     </TableCell>
                     <TableCell className="text-right text-xs tabular-nums">
-                      {r.topScore !== null ? r.topScore.toFixed(2) : "—"}
+                      {r.topScore !== null ? (
+                        r.topScore.toFixed(2)
+                      ) : (
+                        <span className="text-muted-foreground">n/d</span>
+                      )}
                     </TableCell>
                   </TableRow>
                 ))}
