@@ -77,12 +77,19 @@ export type RouterEligibility = {
 
 /** Helper: cutoff para considerar uma row "completa" (toolsActuallyUsed
  *  preenchido OU createdAt mais velho que 60s). */
-function buildBaseWhere(periodoDias: number) {
-  return {
+function buildBaseWhere(periodoDias: number, modes?: string[]) {
+  const where: {
+    createdAt: { gte: Date };
+    mode?: { in: string[] };
+  } = {
     createdAt: {
       gte: new Date(Date.now() - periodoDias * 24 * 60 * 60 * 1000),
     },
   };
+  if (modes && modes.length > 0) {
+    where.mode = { in: modes };
+  }
+  return where;
 }
 
 function percentile(values: number[], p: number): number {
@@ -96,8 +103,11 @@ function percentile(values: number[], p: number): number {
 }
 
 /** D2a: KPIs globais do router para o periodo. */
-export async function getRouterKpis(periodoDias = 7): Promise<RouterKpis> {
-  const baseWhere = buildBaseWhere(periodoDias);
+export async function getRouterKpis(
+  periodoDias = 7,
+  modes?: string[],
+): Promise<RouterKpis> {
+  const baseWhere = buildBaseWhere(periodoDias, modes);
 
   // Rows com toolsActuallyUsed nao vazio E createdAt antigo o suficiente.
   const completedRows = await prisma.agentRouterDecision.findMany({
@@ -167,11 +177,16 @@ export async function getRouterKpis(periodoDias = 7): Promise<RouterKpis> {
 /** D2b: histograma de topScore via width_bucket (Postgres builtin). */
 export async function getRouterHistogram(
   periodoDias = 7,
+  modes?: string[],
 ): Promise<RouterHistogramBucket[]> {
   // Excecao §0 do PLAN v3: width_bucket nao e' mapeado pelo Prisma client.
   const sinceIso = new Date(
     Date.now() - periodoDias * 24 * 60 * 60 * 1000,
   ).toISOString();
+  // Filtro de modo: quando informado usa-os; senao todos os modos relevantes
+  // (inclui calibracao para o painel ter dado mesmo sem trafego de producao).
+  const modeList =
+    modes && modes.length > 0 ? modes : ["shadow", "active", "calibracao"];
   const raw = await prisma.$queryRawUnsafe<
     Array<{ bucket: number; qty: number | bigint }>
   >(
@@ -179,13 +194,14 @@ export async function getRouterHistogram(
     SELECT width_bucket(top_score::float, 0, 1, 10) AS bucket,
            count(*) AS qty
     FROM agent_router_decision
-    WHERE mode IN ('shadow', 'active')
+    WHERE mode = ANY($2::text[])
       AND created_at > $1::timestamp
       AND top_score IS NOT NULL
     GROUP BY bucket
     ORDER BY bucket;
     `,
     sinceIso,
+    modeList,
   );
 
   // Garante 10 buckets na saida (mesmo os com qty=0).
@@ -207,10 +223,11 @@ export async function getRouterHistogram(
 export async function getRouterDiscordancias(
   limit = 50,
   periodoDias = 14,
+  modes?: string[],
 ): Promise<RouterDiscordanciaRow[]> {
   const rows = await prisma.agentRouterDecision.findMany({
     where: {
-      ...buildBaseWhere(periodoDias),
+      ...buildBaseWhere(periodoDias, modes),
       NOT: { toolsActuallyUsed: { isEmpty: true } },
     },
     select: {
@@ -237,10 +254,11 @@ export async function getRouterDiscordancias(
 /** D2d: serie temporal de latencia p50/p95/p99 por dia. */
 export async function getRouterLatencyTimeseries(
   periodoDias = 7,
+  modes?: string[],
 ): Promise<RouterLatencyPoint[]> {
   const rows = await prisma.agentRouterDecision.findMany({
     where: {
-      ...buildBaseWhere(periodoDias),
+      ...buildBaseWhere(periodoDias, modes),
       pickDurationMs: { not: null },
     },
     select: { createdAt: true, pickDurationMs: true },

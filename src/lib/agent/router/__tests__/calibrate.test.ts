@@ -56,6 +56,14 @@ jest.mock("../pick-domains", () => ({
   pickDomains: (q: string) => mockPick(q),
 }));
 
+// Evita puxar prisma (import.meta) e isola a gravacao de decisao da calibragem.
+jest.mock("../log-decision", () => ({
+  createDecision: jest.fn(async () => ({
+    decisionId: "test",
+    persisted: true,
+  })),
+}));
+
 jest.mock("fs", () => ({
   readFileSync: () => JSON.stringify(DATASET),
   writeFileSync: jest.fn(),

@@ -13,6 +13,7 @@ import { redirect } from "next/navigation";
 import { Activity } from "lucide-react";
 
 import { RouterContent } from "@/components/agent/router/router-content";
+import { RouterFilters } from "@/components/agent/router/router-filters";
 import { MonitoramentoNav } from "@/components/agent/monitoramento-nav";
 import { PageHeader } from "@/components/page-header";
 import { PageShell } from "@/components/layout/page-shell";
@@ -40,10 +41,20 @@ const DEFAULT_SETTINGS = {
   routerRetryEnabled: false,
 };
 
-export default async function MonitoramentoRouterPage() {
+export default async function MonitoramentoRouterPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ periodo?: string; modo?: string }>;
+}) {
   const user = await getCurrentUser();
   if (!user) redirect("/login");
   if (user.platformRole !== "super_admin") redirect("/dashboard");
+
+  const sp = await searchParams;
+  const periodo = Number(sp.periodo) > 0 ? Number(sp.periodo) : 7;
+  const modo = sp.modo ?? "todos";
+  // "todos" -> sem filtro de modo (todas as origens). Caso contrario, restringe.
+  const modes = modo === "todos" ? undefined : [modo];
 
   const [
     kpis,
@@ -54,10 +65,10 @@ export default async function MonitoramentoRouterPage() {
     eligibility,
     embeddingCredential,
   ] = await Promise.all([
-    getRouterKpis(7),
-    getRouterHistogram(7),
-    getRouterLatencyTimeseries(7),
-    getRouterDiscordancias(50, 14),
+    getRouterKpis(periodo, modes),
+    getRouterHistogram(periodo, modes),
+    getRouterLatencyTimeseries(periodo, modes),
+    getRouterDiscordancias(50, periodo, modes),
     getRouterSettings(),
     getRouterEligibleToActivate(),
     getEmbeddingCredentialStatus(),
@@ -71,7 +82,10 @@ export default async function MonitoramentoRouterPage() {
         subtitle="Desempenho semântico das respostas por modelo e período. Avaliação on-demand via Claude Code."
       />
       <MonitoramentoNav />
-      <div className="mt-6">
+      <div className="mt-6 flex justify-end">
+        <RouterFilters periodo={String(periodo)} modo={modo} />
+      </div>
+      <div className="mt-4">
         <RouterContent
           kpis={kpis}
           buckets={buckets}

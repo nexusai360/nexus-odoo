@@ -22,17 +22,20 @@ import type { UsageDetailRow } from "@/lib/agent/llm/usage-stats";
 import { cn } from "@/lib/utils";
 
 const numberFmt = new Intl.NumberFormat("pt-BR");
+// Ate 10 casas decimais para nao zerar custos minusculos (embedding ~1e-7);
+// o Intl corta zeros a direita ate o minimo, entao custos normais ficam com
+// 2-6 casas.
 const usdFmt = new Intl.NumberFormat("en-US", {
   style: "currency",
   currency: "USD",
-  minimumFractionDigits: 6,
-  maximumFractionDigits: 6,
+  minimumFractionDigits: 2,
+  maximumFractionDigits: 10,
 });
 const brlFmt = new Intl.NumberFormat("pt-BR", {
   style: "currency",
   currency: "BRL",
-  minimumFractionDigits: 4,
-  maximumFractionDigits: 6,
+  minimumFractionDigits: 2,
+  maximumFractionDigits: 10,
 });
 const percentFmt = new Intl.NumberFormat("pt-BR", {
   style: "percent",
@@ -258,16 +261,17 @@ function CostBreakdownBlock({ row }: { row: UsageDetailRow }) {
 
   const costUsd = row.costUsd ?? 0;
   // Cascata: USD * PTAX = base; +spread -> base banco; +IOF -> final.
+  // 10 casas para nao zerar custos minusculos (embedding ~1e-7).
   const subtotalBase =
-    commercialRate != null ? +(costUsd * commercialRate).toFixed(6) : null;
+    commercialRate != null ? +(costUsd * commercialRate).toFixed(10) : null;
   const bankAmount =
-    subtotalBase != null ? +(subtotalBase * BANK_SPREAD_RATE).toFixed(6) : null;
+    subtotalBase != null ? +(subtotalBase * BANK_SPREAD_RATE).toFixed(10) : null;
   const afterSpread =
     subtotalBase != null && bankAmount != null
-      ? +(subtotalBase + bankAmount).toFixed(6)
+      ? +(subtotalBase + bankAmount).toFixed(10)
       : null;
   const iofAmount =
-    afterSpread != null ? +(afterSpread * IOF_RATE).toFixed(6) : null;
+    afterSpread != null ? +(afterSpread * IOF_RATE).toFixed(10) : null;
 
   return (
     <div>

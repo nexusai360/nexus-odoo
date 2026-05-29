@@ -29,16 +29,24 @@ type CliArgs = {
   topK: number;
   limit: number | null;
   logUsage: boolean;
+  logDecisions: boolean;
 };
 
 function parseArgs(argv: string[]): CliArgs {
-  const args: CliArgs = { threshold: 0.55, topK: 3, limit: null, logUsage: false };
+  const args: CliArgs = {
+    threshold: 0.55,
+    topK: 3,
+    limit: null,
+    logUsage: false,
+    logDecisions: false,
+  };
   for (let i = 2; i < argv.length; i++) {
     const a = argv[i];
     if (a === "--threshold") args.threshold = parseFloat(argv[++i] ?? "0.55");
     else if (a === "--topK") args.topK = parseInt(argv[++i] ?? "3", 10);
     else if (a === "--limit") args.limit = parseInt(argv[++i] ?? "0", 10);
     else if (a === "--log-usage") args.logUsage = true;
+    else if (a === "--log-decisions") args.logDecisions = true;
   }
   return args;
 }
@@ -54,7 +62,8 @@ async function main(): Promise<void> {
     topK: args.topK,
     limit: args.limit,
     writeReport: true,
-    logUsageOrigin: args.logUsage ? "router_calibracao" : undefined,
+    logUsageOrigin: args.logUsage ? "router" : undefined,
+    logDecisions: args.logDecisions,
     onProgress: (processed, total) => {
       if (processed === 1) console.log(`[calibrate] dataset: ${total} perguntas`);
       if (processed % 20 === 0) console.log(`[calibrate] ${processed}/${total}`);

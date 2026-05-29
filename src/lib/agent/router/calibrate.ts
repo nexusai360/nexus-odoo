@@ -22,6 +22,7 @@
 import { readFileSync, writeFileSync } from "fs";
 import { resolve } from "path";
 import { pickDomains } from "@/lib/agent/router/pick-domains";
+import { createDecision } from "@/lib/agent/router/log-decision";
 import { ROUTER_PROMOTION_MIN_COVERAGE } from "@/lib/agent/router/constants";
 
 // Dominios da bateria que NAO sao dominios do MCP. Sao categorias semanticas.
@@ -49,10 +50,17 @@ export interface CalibrationOptions {
   concurrency?: number;
   /**
    * Quando definido, cada embedding da calibragem vira uma linha de consumo
-   * (LlmUsage) com esta origem (ex.: "router_calibracao"). Default: não loga
-   * (mantém o histórico de consumo limpo durante o tuning).
+   * (LlmUsage) com esta origem (ex.: "router"). Default: não loga (mantém o
+   * histórico de consumo limpo durante o tuning).
    */
   logUsageOrigin?: string;
+  /**
+   * Quando true, grava cada decisão (mapeável) em AgentRouterDecision
+   * (mode=calibracao) para aparecer no painel de monitoramento. Separado de
+   * logUsageOrigin: a varredura de um modelo so para medir custo nao deve
+   * poluir o painel com decisoes que nao sao da config de producao.
+   */
+  logDecisions?: boolean;
 }
 
 export interface CalibrationDomainStat {
@@ -253,6 +261,23 @@ export async function runCalibration(
         inTopK,
         pickDurationMs: decision.pickDurationMs,
       };
+
+      // Grava a decisao em AgentRouterDecision para o painel de monitoramento
+      // (mode=calibracao). So perguntas mapeaveis (com dominio esperado real):
+      // o dominio do label vira o "toolsDomains" esperado, permitindo o painel
+      // computar Top-1/cobertura. Fire-and-forget.
+      if (options.logDecisions && mappable) {
+        await createDecision({
+          decision,
+          mode: "calibracao",
+          catalogSizeOffered: 0,
+          catalogSizeFull: 0,
+          userQuestion: q.question,
+          toolsActuallyUsed: [q.domain],
+          toolsDomains: [q.domain],
+        }).catch(() => undefined);
+      }
+
       processed++;
       options.onProgress?.(processed, questions.length);
     }

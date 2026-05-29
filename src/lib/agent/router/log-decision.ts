@@ -9,7 +9,13 @@ import { prisma } from "@/lib/prisma";
 import { getToolDomains } from "./tool-to-domain";
 import type { RouterDecision } from "./types";
 
-export type LogMode = "shadow" | "active" | "calibracao_R-X" | "test" | "e2e";
+export type LogMode =
+  | "shadow"
+  | "active"
+  | "calibracao"
+  | "calibracao_R-X"
+  | "test"
+  | "e2e";
 
 export type CreateDecisionInput = {
   decision: RouterDecision;
@@ -21,6 +27,11 @@ export type CreateDecisionInput = {
   messageId?: string | null;
   llmModelUsed?: string | null;
   questionTokenCount?: number | null;
+  /** Para calibragem offline: tools/dominios "esperados" (o label da bateria),
+   *  ja que nao ha LLM chamando tools de verdade. Em producao fica vazio aqui
+   *  e e' preenchido depois por updateDecision. */
+  toolsActuallyUsed?: string[];
+  toolsDomains?: string[];
 };
 
 export type CreateDecisionResult = {
@@ -49,8 +60,8 @@ export async function createDecision(
         mode: input.mode,
         catalogSizeOffered: input.catalogSizeOffered,
         catalogSizeFull: input.catalogSizeFull,
-        toolsActuallyUsed: [],
-        toolsDomains: [],
+        toolsActuallyUsed: input.toolsActuallyUsed ?? [],
+        toolsDomains: input.toolsDomains ?? [],
         llmModelUsed: input.llmModelUsed ?? null,
         pickDurationMs: input.decision.pickDurationMs,
         conversationId: input.conversationId ?? null,

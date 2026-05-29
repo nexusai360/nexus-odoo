@@ -125,19 +125,20 @@ function rangeForPills(
 // ---------------------------------------------------------------------------
 
 const numberFmt = new Intl.NumberFormat("pt-BR");
-// Moeda "bruta" para a tabela: 2 a 6 casas decimais (exibe valores muito
-// pequenos sem perder precisão).
+// Moeda "bruta" para a tabela: 2 a 10 casas decimais (exibe valores muito
+// pequenos, como custos de embedding ~1e-7, sem zerar). O Intl corta os zeros
+// a direita ate o minimo (2), entao custos normais continuam com 2-6 casas.
 const usdRawFmt = new Intl.NumberFormat("en-US", {
   style: "currency",
   currency: "USD",
   minimumFractionDigits: 2,
-  maximumFractionDigits: 6,
+  maximumFractionDigits: 10,
 });
 const brlRawFmt = new Intl.NumberFormat("pt-BR", {
   style: "currency",
   currency: "BRL",
   minimumFractionDigits: 2,
-  maximumFractionDigits: 6,
+  maximumFractionDigits: 10,
 });
 const dateTimeFmt = new Intl.DateTimeFormat("pt-BR", {
   timeZone: TZ,
@@ -193,11 +194,12 @@ const REQUEST_KIND_LABELS: Record<string, string> = {
 // mapa; senão cai no derivado de isPlayground (Agente Nex / Playground).
 const ORIGIN_STYLES: Record<string, string> = {
   router: "bg-indigo-500/10 text-indigo-700 dark:text-indigo-300",
-  router_calibracao: "bg-fuchsia-500/10 text-fuchsia-700 dark:text-fuchsia-300",
+  // Linhas antigas de calibragem tambem aparecem so como "Router".
+  router_calibracao: "bg-indigo-500/10 text-indigo-700 dark:text-indigo-300",
 };
 const ORIGIN_LABELS: Record<string, string> = {
   router: "Router",
-  router_calibracao: "Router (calibragem)",
+  router_calibracao: "Router",
 };
 
 // ---------------------------------------------------------------------------
@@ -1291,7 +1293,8 @@ export function ConsumoContent({ minDate: minDateIso }: ConsumoContentProps) {
           {detailsTotal > 0 ? (
             <div className="mt-4 flex flex-col items-center justify-between gap-3 border-t border-border pt-4 sm:flex-row">
               <p className="text-xs text-muted-foreground tabular-nums">
-                Mostrando {numberFmt.format(rangeStartIdx)},
+                Mostrando {numberFmt.format(rangeStartIdx)}
+                {"-"}
                 {numberFmt.format(rangeEndIdx)} de{" "}
                 {numberFmt.format(detailsTotal)}
               </p>
