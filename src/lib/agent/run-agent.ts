@@ -44,6 +44,7 @@ import { EmbeddingUnavailable } from "./rag/embed";
 // R1 router de catalogo (sub-projeto do roadmap de cobertura completa).
 // Ver docs/superpowers/specs/2026-05-28-router-catalogo-design.md.
 import { pickDomains } from "./router/pick-domains";
+import { resolveContextWindow, type ContextCheckpoint } from "./context-window";
 import { filterCatalog, EXCLUDE_FROM_FILTERING } from "./router/filter-catalog";
 import { createDecision, updateDecision } from "./router/log-decision";
 import { getToolDomain, UNKNOWN_DOMAIN } from "./router/tool-to-domain";
@@ -275,6 +276,17 @@ async function loadAgentSettings() {
     routerTopK: (row?.routerTopK as number | undefined) ?? 3,
     routerRetryExpandBelow: (row?.routerRetryExpandBelow as number | undefined) ?? 0.7,
     routerRetryEnabled: (row?.routerRetryEnabled as boolean | undefined) ?? false,
+    // R2-ctx: roteamento contextual (Camada 2) + escolha de modelo de embedding.
+    routerReformCheckpoint: (row?.routerReformCheckpoint as string | undefined) ?? "OFF",
+    routerReformProvider: row?.routerReformProvider ?? null,
+    routerReformModel: row?.routerReformModel ?? null,
+    routerReformCredentialId: row?.routerReformCredentialId ?? null,
+    routerReformNPairs: (row?.routerReformNPairs as number | undefined) ?? 5,
+    routerEmbeddingModel: row?.routerEmbeddingModel ?? null,
+    // R2-ctx: janela de contexto da resposta.
+    contextWindowCheckpoint: (row?.contextWindowCheckpoint as string | undefined) ?? "PRODUCTION",
+    contextWindowSize: (row?.contextWindowSize as number | undefined) ?? 20,
+    contextWindowIncludeSystem: (row?.contextWindowIncludeSystem as boolean | undefined) ?? true,
   };
 }
 
@@ -500,8 +512,20 @@ export async function runAgent(args: RunAgentInput): Promise<RunAgentResult> {
 
     const tools = mcpToolsToProviderTools(filteredCatalog.tools);
 
-    // Carregar histórico (últimas 20 msgs) e sanitizar pares tool_use/tool_result
-    const rawHistory = await loadHistory(args.conversationId, 20);
+    // Carregar histórico e sanitizar pares tool_use/tool_result. R2-ctx: a
+    // janela (quantas msgs + se inclui sistema/tools) vem do AgentSettings,
+    // resolvida por superfície/checkpoint. Default preserva 20 msgs/todos papéis.
+    const cw = resolveContextWindow(
+      {
+        checkpoint: agentSettings.contextWindowCheckpoint as ContextCheckpoint,
+        size: agentSettings.contextWindowSize,
+        includeSystem: agentSettings.contextWindowIncludeSystem,
+      },
+      { isPlayground: Boolean(args.isPlayground) },
+    );
+    const rawHistory = await loadHistory(args.conversationId, cw.budget, {
+      includeSystem: cw.includeSystem,
+    });
     const sanitizedHistory = sanitizeHistoryPairs(rawHistory);
     const historyMessages: ChatMessage[] = sanitizedHistory.map((m) => ({
       role: m.role as "user" | "assistant" | "tool",
