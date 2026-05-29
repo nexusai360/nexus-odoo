@@ -28,6 +28,7 @@ import { readFileSync, writeFileSync } from "fs";
 import { resolve } from "path";
 import { prisma } from "@/lib/prisma";
 import { pickDomains } from "@/lib/agent/router/pick-domains";
+import { createDecision } from "@/lib/agent/router/log-decision";
 import { DOMAIN_LABEL_ALIAS } from "@/lib/agent/router/calibrate";
 
 // R20-R23 na numeracao real do time (legacy-forward). R23 = bateria de 291
@@ -43,18 +44,34 @@ interface Args {
   markers: string[];
   threshold: number;
   topK: number;
+  /** Grava 1 AgentRouterDecision por conversa (mode=calibracao_R-X) para
+   *  aparecer na tabela Requisicoes do Router no painel de monitoramento. */
+  log: boolean;
+  /** Antes de gravar, apaga decisoes calibracao_R-X anteriores (idempotente).
+   *  So apaga linhas sinteticas DESTE modo, nunca conversas/respostas reais. */
+  reset: boolean;
 }
 
 function parseArgs(argv: string[]): Args {
-  const args: Args = { markers: DEFAULT_MARKERS, threshold: 0.3, topK: 3 };
+  const args: Args = {
+    markers: DEFAULT_MARKERS,
+    threshold: 0.3,
+    topK: 3,
+    log: false,
+    reset: false,
+  };
   for (let i = 2; i < argv.length; i++) {
     const a = argv[i];
     if (a === "--markers") args.markers = (argv[++i] ?? "").split(",").filter(Boolean);
     else if (a === "--threshold") args.threshold = parseFloat(argv[++i] ?? "0.3");
     else if (a === "--topK") args.topK = parseInt(argv[++i] ?? "3", 10);
+    else if (a === "--log") args.log = true;
+    else if (a === "--reset") args.reset = true;
   }
   return args;
 }
+
+const LOG_MODE = "calibracao_R-X" as const;
 
 function norm(s: string): string {
   return s.trim().toLowerCase().replace(/\s+/g, " ");
@@ -100,44 +117,79 @@ async function main(): Promise<void> {
     if (!firstByConv.has(m.conversationId)) firstByConv.set(m.conversationId, m.content);
   }
 
-  // Instancias (cada conversa = 1 instancia) com rotulo, so mapeaveis.
-  interface Inst { q: string; label: string }
+  // Uma "instancia" por conversa (cada conversa daquelas rodadas). Guardamos
+  // TODAS (mapeaveis ou nao) para que TODOS os registros aparecam no painel;
+  // metricas Top-K usam so as mapeaveis (com dominio esperado).
+  type Decision = Awaited<ReturnType<typeof pickDomains>>;
+  interface Inst { convId: string; q: string; label: string | null; mappable: boolean }
   const instances: Inst[] = [];
-  let unlabeled = 0;
-  for (const content of firstByConv.values()) {
-    const label = labelOf.get(norm(content));
-    if (!label) { unlabeled++; continue; }
-    if (!isMappable(label)) continue; // categorias semanticas nao contam
-    instances.push({ q: content, label });
+  for (const [convId, content] of firstByConv.entries()) {
+    const label = labelOf.get(norm(content)) ?? null;
+    instances.push({ convId, q: content, label, mappable: label !== null && isMappable(label) });
   }
+  const unlabeled = instances.filter((i) => i.label === null).length;
 
-  // Perguntas unicas mapeaveis -> 1 embedding cada.
+  // Embedding por pergunta UNICA (todas), com cache da decisao completa.
   const uniqueQs = [...new Set(instances.map((i) => norm(i.q)))];
-  const pickByQ = new Map<string, string[]>(); // norm(q) -> pickedDomains
+  const decByQ = new Map<string, Decision>();
   let processed = 0;
   for (const inst of instances) {
     const key = norm(inst.q);
-    if (pickByQ.has(key)) continue;
+    if (decByQ.has(key)) continue;
     const decision = await pickDomains(inst.q, { threshold: args.threshold, topK: args.topK });
-    pickByQ.set(key, decision.fallback.triggered ? [] : decision.pickedDomains);
+    decByQ.set(key, decision);
     processed++;
     if (processed % 25 === 0) console.log(`[rounds] ${processed}/${uniqueQs.length} perguntas unicas`);
   }
+  const pickedOf = (key: string): string[] => {
+    const d = decByQ.get(key)!;
+    return d.fallback.triggered ? [] : d.pickedDomains;
+  };
 
-  // Acumulado por INSTANCIA (faithful ao pedido: todas as perguntas das rodadas).
+  // Grava TODOS os registros no painel (1 por conversa), modo calibracao_R-X.
+  if (args.log) {
+    if (args.reset) {
+      const del = await prisma.agentRouterDecision.deleteMany({ where: { mode: LOG_MODE } });
+      console.log(`[rounds] --reset: ${del.count} decisoes calibracao_R-X antigas removidas`);
+    }
+    let persisted = 0, failed = 0;
+    for (const inst of instances) {
+      const decision = decByQ.get(norm(inst.q))!;
+      const res = await createDecision({
+        decision,
+        mode: LOG_MODE,
+        catalogSizeOffered: 0,
+        catalogSizeFull: 0,
+        userQuestion: inst.q,
+        conversationId: inst.convId,
+        // Dominio esperado (label da rodada) so para mapeaveis; o painel usa
+        // toolsDomains para computar cobertura. Nao-mapeaveis ficam vazios.
+        toolsActuallyUsed: inst.mappable ? [inst.label!] : [],
+        toolsDomains: inst.mappable ? [inst.label!] : [],
+      });
+      if (res.persisted) persisted++; else failed++;
+      if ((persisted + failed) % 50 === 0) console.log(`[rounds] gravados ${persisted + failed}/${instances.length}`);
+    }
+    console.log(`[rounds] persistidos ${persisted}/${instances.length} (falhas: ${failed}) no painel (mode=${LOG_MODE})`);
+    if (failed > 0) throw new Error(`${failed} registros NAO persistiram no painel`);
+  }
+
+  // Metricas Top-K so sobre instancias MAPEAVEIS (com dominio esperado).
+  const mappableInsts = instances.filter((i) => i.mappable);
   let instTop1 = 0, instTopK = 0, instFallback = 0;
-  for (const inst of instances) {
-    const picked = pickByQ.get(norm(inst.q))!;
+  for (const inst of mappableInsts) {
+    const picked = pickedOf(norm(inst.q));
     if (picked.length === 0) { instFallback++; continue; }
     if (picked[0] === inst.label) instTop1++;
-    if (picked.includes(inst.label)) instTopK++;
+    if (picked.includes(inst.label!)) instTopK++;
   }
-  // Por pergunta unica.
-  let uTop1 = 0, uTopK = 0, uFallback = 0;
+  // Por pergunta unica mapeavel.
+  const mappableUnique = [...new Set(mappableInsts.map((i) => norm(i.q)))];
   const labelByQ = new Map<string, string>();
-  for (const inst of instances) labelByQ.set(norm(inst.q), inst.label);
-  for (const key of uniqueQs) {
-    const picked = pickByQ.get(key)!;
+  for (const inst of mappableInsts) labelByQ.set(norm(inst.q), inst.label!);
+  let uTop1 = 0, uTopK = 0, uFallback = 0;
+  for (const key of mappableUnique) {
+    const picked = pickedOf(key);
     const label = labelByQ.get(key)!;
     if (picked.length === 0) { uFallback++; continue; }
     if (picked[0] === label) uTop1++;
@@ -150,17 +202,18 @@ async function main(): Promise<void> {
   out.push("");
   out.push(`> Rodadas (markers): ${args.markers.join(", ")}`);
   out.push(`> Settings: threshold=${args.threshold}, topK=${args.topK}`);
-  out.push(`> Conversas: ${convs.length} | instancias mapeaveis: ${instances.length} | perguntas unicas mapeaveis: ${uniqueQs.length} | sem rotulo: ${unlabeled}`);
+  out.push(`> Conversas: ${convs.length} | total instancias: ${instances.length} | instancias mapeaveis: ${mappableInsts.length} | perguntas unicas mapeaveis: ${mappableUnique.length} | sem rotulo: ${unlabeled}`);
+  if (args.log) out.push(`> Registros gravados no painel: ${instances.length} (mode=${LOG_MODE})`);
   out.push("");
-  out.push("## Acumulado por instancia (todas as ocorrencias nas 4 rodadas)");
-  out.push(`- **Top-K:** ${pct(instTopK, instances.length)}% (${instTopK}/${instances.length})`);
-  out.push(`- **Top-1:** ${pct(instTop1, instances.length)}% (${instTop1}/${instances.length})`);
-  out.push(`- **Fallbacks:** ${instFallback}/${instances.length} (${pct(instFallback, instances.length)}%)`);
+  out.push("## Acumulado por instancia mapeavel (todas as ocorrencias nas 4 rodadas)");
+  out.push(`- **Top-K:** ${pct(instTopK, mappableInsts.length)}% (${instTopK}/${mappableInsts.length})`);
+  out.push(`- **Top-1:** ${pct(instTop1, mappableInsts.length)}% (${instTop1}/${mappableInsts.length})`);
+  out.push(`- **Fallbacks:** ${instFallback}/${mappableInsts.length} (${pct(instFallback, mappableInsts.length)}%)`);
   out.push("");
-  out.push("## Por pergunta unica");
-  out.push(`- **Top-K:** ${pct(uTopK, uniqueQs.length)}% (${uTopK}/${uniqueQs.length})`);
-  out.push(`- **Top-1:** ${pct(uTop1, uniqueQs.length)}% (${uTop1}/${uniqueQs.length})`);
-  out.push(`- **Fallbacks:** ${uFallback}/${uniqueQs.length}`);
+  out.push("## Por pergunta unica mapeavel");
+  out.push(`- **Top-K:** ${pct(uTopK, mappableUnique.length)}% (${uTopK}/${mappableUnique.length})`);
+  out.push(`- **Top-1:** ${pct(uTop1, mappableUnique.length)}% (${uTop1}/${mappableUnique.length})`);
+  out.push(`- **Fallbacks:** ${uFallback}/${mappableUnique.length}`);
   const report = out.join("\n");
 
   console.log("\n" + report + "\n");
