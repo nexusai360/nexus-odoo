@@ -52,8 +52,15 @@ function parseArgs(argv: string[]): CliArgs {
   for (let i = 2; i < argv.length; i++) {
     const a = argv[i];
     if (a === "--dry-run") args.dryRun = true;
-    else if (a === "--limit") args.limit = parseInt(argv[++i] ?? "0", 10);
-    else if (a === "--only") args.only = (argv[++i] ?? "").split(",").filter(Boolean);
+    else if (a === "--limit") {
+      const n = parseInt(argv[++i] ?? "", 10);
+      // --limit sem valor numérico é ignorado (passe completo), nunca vira 0
+      // silencioso (que classificaria zero modelo). Code review R2.
+      args.limit = Number.isNaN(n) ? null : n;
+    } else if (a === "--only") {
+      const lista = (argv[++i] ?? "").split(",").filter(Boolean);
+      args.only = lista.length ? lista : null;
+    }
   }
   return args;
 }

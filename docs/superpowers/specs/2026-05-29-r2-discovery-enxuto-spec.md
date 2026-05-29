@@ -178,9 +178,19 @@ Tauga responde em pt-BR, match por substring inglês quebraria):
 | Falha de rede/timeout (`HttpClientError`/`AbortError`/erro de fetch após retries) | (à parte) | `erro_rpc` transitório, entra em `nao_classificados`; não polui A/B/C | `null` |
 
 A lista `nao_classificados` aparece no JSON e no relatório, com instrução de
-re-rodar só esses modelos via `--only` (idempotência: §6). A distinção por TIPO
-(não por mensagem) usa o que o `OdooClient` já lança (`errors.ts`): `OdooAccessError`,
-`OdooRpcFault`, `HttpClientError`, etc.
+re-rodar só esses modelos via `--only` (idempotência: §6).
+
+**Addendum do E2E (achado de execução, regra de raiz §6 [9]):** o `OdooClient`
+**embrulha** faults mapeados (`OdooAccessError`, `OdooMissingError`, ...) num
+`OdooError` genérico "falhou após N tentativas: <msg do servidor>", porque o
+retry loop só re-lança `OdooRpcFault`/`HttpClientError` de imediato e os demais
+são re-tentados e, no fim, embrulhados (perdendo o tipo). Sem tocar no client
+compartilhado (P1 do roadmap), o `tipoErroRpc` faz híbrido: tipo primeiro
+(`OdooAccessError`, pool/unavailable) e, para o `OdooError` genérico, inspeção da
+mensagem embrulhada cobrindo pt-BR e en (`isAccessError`; "não existe"/"não foi
+encontrado"/"does not exist"/"not found"/...). Isso zerou os 31 (depois 17)
+`nao_classificados` da primeira rodada, que eram acesso-negado e modelos `rh.*`
+inexistentes, não timeouts.
 
 ---
 
@@ -256,6 +266,11 @@ Relatório legível:
   fonte única da verdade é o `modelos`, agregados são sempre derivados).
 - Flag `--dry-run`: roda o RPC e imprime totais no stdout sem escrever arquivos.
 - Flag `--limit N`: classifica só os N primeiros modelos (para smoke test rápido).
+  `--limit` sem valor numérico é ignorado (vira passe completo), nunca um `0`
+  silencioso (code review R2).
+- `--only` pressupõe os **mesmos thresholds** da rodada anterior: serve para
+  re-rodar os `nao_classificados`, não para recalibrar o threshold (se o
+  threshold mudar, rode o passe completo para reclassificar tudo).
 
 ---
 
