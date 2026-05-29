@@ -1,8 +1,24 @@
 # Roteamento contextual do Router + Janela de contexto configurável + migração de config
 
-> SPEC v1, 2026-05-29. Sub-projeto R2-ctx (entra antes/junto do R2 Discovery).
-> Modo autônomo após aprovação: SPEC v1 -> v2 -> v3 -> PLAN v1 -> v2 -> v3 -> execução.
+> SPEC v2, 2026-05-29. Sub-projeto R2-ctx (entra antes/junto do R2 Discovery).
+> Modo autônomo: SPEC v1 -> review #1 -> v2 -> review #2 -> v3 -> PLAN ... -> execução.
 > Frontend obrigatoriamente via `ui-ux-pro-max`, mantendo a identidade dos blocos existentes.
+
+---
+
+## 0. Histórico de versões e achados de review
+
+### Review #1 (v1 -> v2): achados materiais aplicados
+
+| # | Achado (gap real na v1) | Resolução na v2 |
+|---|---|---|
+| R1.1 | **Segurança:** o fast-path de recusa RBAC v2 (`run-agent.ts`) roda sobre a decisão da Camada 1 e só dispara sem fallback. Com 3 camadas, o re-embedding (Camada 3) pode escolher um domínio fora do acesso do usuário sem passar pela checagem de permissão. | §4.2: a checagem RBAC (fast-path de recusa e `filterCatalog`) roda **sobre a decisão FINAL** (Camada 3 quando houve reformulação; senão Camada 1). |
+| R1.2 | Ordem de `createDecision`/`updateDecision` indefinida com 3 camadas (hoje cria antes do `filterCatalog` para ter `routerDecisionId`). | §4.2 + §5: **uma** linha por turno. Cria após decidir qual decisão é a final; os campos de origem (`originalFallback`, `usedReformulation`, `reformulatedQuestion`) preservam a Camada 1. `routerDecisionId` continua disponível para o fast-path porque a criação precede o `filterCatalog` final. |
+| R1.3 | Credencial de embedding com duas verdades (AppSetting `embedding_credential_id` do RAG vs campo novo). | §7.1: **fonte única**. O bloco Embeddings edita a MESMA credencial que router+RAG já usam (o `AppSetting`/resolver atual); `routerEmbeddingModel` guarda só a escolha de modelo. Sem campo de credencial duplicado. |
+| R1.4 | Não dizia o que a Camada 2 faz quando o router está em **shadow** (catálogo não é filtrado). | §4.3: em shadow, a Camada 2 pode rodar para **logar/calibrar** mas não altera o catálogo (não há filtro). Em active, altera de fato. Gating por `routerEnabled` + checkpoint. |
+| R1.5 | Faltava o resolver do modelo de reformulação, timeout, algoritmo do modo "sem sistema" e concretude do Backtest. | §4.4 (resolver + timeout 2.5s alinhado ao sugeridor), §6.1 (algoritmo do filtro de papéis), §5.1 (Backtest: investigação dirigida no plano + contrato mínimo). |
+
+Critério de saída do review #1: achados materiais endereçados; nenhum buraco de segurança/ordem em aberto. Segue para review #2.
 
 ---
 
@@ -80,6 +96,55 @@ Reescreva APENAS a última pergunta numa versão **autossuficiente e curta**, re
 markdown. Devolva só a pergunta reformulada em uma linha. Se a pergunta já é autossuficiente,
 devolva-a como está." Saída: 1 linha, mín. tokens. Modelo barato configurável (default sugerido GPT-5.4-nano).
 
+### 4.2 Ordem de execução e RBAC (resolve R1.1 e R1.2)
+
+Sequência exata dentro de `runAgent`, substituindo o trecho atual (`pickDomains` -> `createDecision` -> fast-path RBAC -> `filterCatalog`):
+
+```
+1. decisaoL1 = pickDomains(perguntaCrua)
+2. decisaoFinal = decisaoL1
+   perguntaParaResposta = perguntaCrua   (a resposta do agente NUNCA usa a reformulada; ver nota)
+3. SE decisaoL1.fallback.triggered E reformAtiva(superficie) E getLastNPairs>0:
+      reformulada = reformulateQuestion(...)
+      SE reformulada != null:
+         decisaoL3 = pickDomains(reformulada)
+         decisaoFinal = decisaoL3
+4. createDecision(decisaoFinal, mode, originalFallback=decisaoL1.fallback.triggered,
+                  usedReformulation=(reformulada!=null), reformulatedQuestion=reformulada)
+      -> routerDecisionId
+5. fast-path RBAC v2 roda sobre **decisaoFinal** (não a L1)
+6. filterCatalog(decisaoFinal, routerEnabled, userAllowedDomains)
+7. agente responde com o catálogo filtrado + histórico (perguntaCrua + janela de contexto)
+```
+
+**Nota crítica (R1.1):** a reformulação serve **só para rotear** (escolher tools). A pergunta que o
+agente responde continua sendo a **pergunta crua do usuário** + a janela de contexto (§6). Não
+trocamos a fala do usuário; só usamos a reformulada como chave de classificação do catálogo. Isso
+evita responder a uma paráfrase que distorça a intenção.
+
+**RBAC (R1.1):** como o fast-path de recusa decide com base nos domínios escolhidos, ele DEVE usar
+`decisaoFinal`. Caso contrário, uma pergunta que cai em fallback (hoje não dispara o fast-path) seria
+reformulada para um domínio proibido e entregaria tools fora do acesso. A checagem em `decisaoFinal`
+fecha isso.
+
+### 4.3 Interação com shadow/active (resolve R1.4)
+
+- **Router em shadow (`routerEnabled=false`):** o catálogo não é filtrado (agente vê tudo). A Camada 2/3
+  pode rodar para **logar** a decisão contextual (calibragem/telemetria), mas não muda o comportamento.
+  Para não gastar LLM à toa em shadow, a Camada 2 em shadow é **opcional** e controlada por flag de
+  calibragem (default: não chama LLM em shadow; só Camada 1 loga). Em **active**, a Camada 2 altera o
+  catálogo de fato.
+- **Checkpoint da Construção da pergunta (`routerReformCheckpoint`)** decide a superfície; `routerEnabled`
+  decide se o efeito é real (active) ou só log (shadow).
+
+### 4.4 Resolver do modelo de reformulação e timeout (resolve R1.5)
+
+- Config resolvida de `AgentSettings.routerReform{Provider,Model,CredentialId}` via helper análogo a
+  `getActiveLlmConfig` (`get-reform-config.ts` ou reuso parametrizado). Se não configurado e a feature
+  estiver ON, faz fallback para o LLM ativo do projeto (como o sugeridor faz) e loga aviso.
+- **Timeout 2.5s** (alinhado a `contextual-suggester.ts`). Em timeout/erro -> `null` -> mantém Camada 1.
+- `reasoningEffort` mínimo (tarefa rápida), `maxTokens` baixo (a saída é uma linha).
+
 ---
 
 ## 5. Telemetria e painéis (requisito de primeira classe)
@@ -99,6 +164,15 @@ Cada turno que passa pela Camada 2/3 gera **chamadas adicionais** que precisam a
 
 Sem essa amarração, o painel mente sobre o que aconteceu no turno; por isso é bloqueante para a entrega.
 
+### 5.1 Contrato mínimo do Backtest (resolve R1.5)
+
+O Backtest hoje lê decisões/conversas para reavaliar. Contrato mínimo desta feature: o Backtest **não
+pode quebrar** com os campos novos (nullable) e deve refletir o **domínio final** (Camada 3 quando
+houve reformulação). Exibir a reformulação no Backtest é desejável, não bloqueante. O plano faz uma
+**investigação dirigida** do Backtest (arquivos, query, colunas) antes de tocar, com uma task própria
+para garantir retrocompatibilidade. Critério: rodar o Backtest após a migration sem erro e com o
+domínio final correto.
+
 ---
 
 ## 6. Janela de contexto (backend: `loadHistory` configurável)
@@ -113,6 +187,20 @@ ler os valores efetivos do `AgentSettings`, resolvidos em `runAgent` conforme a 
 - `contextWindowCheckpoint` (`FeatureCheckpoint`, default `PRODUCTION`): controla onde a janela configurada vale. `OFF` = sem histórico (turno isolado); `PLAYGROUND` = só playground; `PRODUCTION` = bubble + WhatsApp + playground. `runAgent` resolve via `args.isPlayground`.
 
 Como `loadHistory` tem **um único call site** e as 3 superfícies passam por `runAgent`, ligar a config aqui é **implacável**: um ponto de mudança cobre tudo.
+
+### 6.1 Algoritmo do filtro de papéis (modo "Usuário + IA", resolve R1.5)
+
+Quando `includeSystem=false`, `loadHistory` deve devolver um histórico **válido para a API** (sem
+referências de tool órfãs):
+1. Buscar as últimas `budget` mensagens (todos os papéis), como hoje.
+2. Descartar `role = "tool"`.
+3. Para `role = "assistant"` que tenha `toolCalls`, **remover o campo `toolCalls`** (mantendo o texto
+   final, se houver) ou descartar a mensagem se ela não tiver texto (era só chamada de tool).
+4. Resultado: sequência só de `user` + `assistant` (texto), sem `tool_use`/`tool_result` pendentes.
+5. `sanitizeHistoryPairs` continua rodando depois como salvaguarda.
+
+Quando `includeSystem=true` (default), comportamento atual intacto. Teste dedicado cobre: conversa com
+tool calls em ambos os modos não gera payload inválido (sem 400 da API).
 
 ---
 
@@ -133,15 +221,24 @@ routerReformModel         String?           @map("router_reform_model")
 routerReformCredentialId  String?  @db.Uuid @map("router_reform_credential_id")
 routerReformNPairs        Int               @default(5)         @map("router_reform_n_pairs")
 
-// Embeddings do router (migra a credencial do Monitoramento)
-routerEmbeddingProvider     String? @map("router_embedding_provider")
-routerEmbeddingModel        String? @map("router_embedding_model")
-routerEmbeddingCredentialId String? @db.Uuid @map("router_embedding_credential_id")
+// Embeddings do router: SÓ a escolha de modelo. A credencial continua na
+// fonte única compartilhada com o RAG (ver §7.1), sem campo duplicado.
+routerEmbeddingProvider String? @map("router_embedding_provider")
+routerEmbeddingModel    String? @map("router_embedding_model")
 ```
 
-Observação: a credencial de embedding hoje é resolvida via `AppSetting embedding_credential_id` (usada por router e RAG). A migração precisa **mapear o valor atual** para os campos novos sem perder a credencial ativa (passo de data-migration no plano). O embedding do RAG continua funcionando (decidir no plano se compartilha o mesmo campo ou mantém o AppSetting como fonte; default: o bloco edita a mesma fonte que o router/embed já usa, para não criar duas verdades).
-
 `AgentSettings.routerReformCheckpoint` default **OFF**: a Camada 2 entra desligada e só liga após a validação empírica (§9). Os blocos da UI permitem ligar.
+
+### 7.1 Fonte única da credencial de embedding (resolve R1.3)
+
+A credencial de embedding hoje é resolvida via `AppSetting embedding_credential_id` (usada por router
+**e** RAG). Para **não criar duas verdades**, o bloco Embeddings da UI **edita exatamente essa fonte**
+(o mesmo `AppSetting`/resolver que `embed()` já consome). Não há `routerEmbeddingCredentialId` separado.
+Consequência: trocar a credencial no bloco afeta router e RAG juntos, que é o comportamento atual do
+painel de Monitoramento (a migração só move a UI de lugar, não duplica o dado). `routerEmbeddingModel`
+guarda apenas a escolha de modelo (ex.: `text-embedding-3-large`), também já existente hoje na config
+do embedding. A migração da UI é, portanto, **sem data-migration de credencial** (a fonte é a mesma);
+o risco de "perder credencial ativa" some.
 
 ---
 
@@ -203,8 +300,8 @@ Antes de ligar a Camada 2 em produção, medir com a harness existente, estendid
 
 - **Latência:** Camada 2 adiciona uma chamada LLM em série antes da resposta, só na cauda de fallback; modelo barato + gating mantêm baixo. Medir p95.
 - **Modo "sem sistema" da janela:** remover mensagens de tool exige limpar referências no assistant; risco de 400 da API se malfeito. Teste dedicado.
-- **Migração da credencial de embedding:** não perder a credencial ativa; data-migration cuidadosa + verificação.
-- **Duas verdades de credencial de embedding** (AppSetting vs novo campo): decidir fonte única no plano.
+- **Credencial de embedding (resolvido R1.3):** fonte única compartilhada com o RAG; a UI só muda de lugar, sem data-migration de credencial. Risco residual: a UI precisa ler/gravar exatamente a mesma fonte que `embed()` usa (verificar no plano).
+- **RBAC com 3 camadas (resolvido R1.1):** o fast-path roda sobre a decisão final; teste de segurança dedicado garante que reformulação não vaza tools fora do acesso.
 - **Telemetria incompleta:** se as chamadas extras não logarem, o Consumo subfatura e o painel mente. Bloqueante.
 
 ---
