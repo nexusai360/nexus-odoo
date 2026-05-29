@@ -14,6 +14,7 @@ import { RouterLatencyChart } from "./router-latency-chart";
 import { RouterDiscordanciasTable } from "./router-discordancias-table";
 import { RouterControls } from "./router-controls";
 import { RouterEmbeddingCredential } from "./router-embedding-credential";
+import { RouterCalibrationButton } from "./router-calibration-button";
 import type {
   RouterKpis,
   RouterHistogramBucket,
@@ -53,6 +54,8 @@ export function RouterContent(props: Props) {
           eligibility={props.eligibility}
         />
       </div>
+
+      <RouterCalibrationButton />
 
       <RouterDiscordanciasTable rows={props.discordancias} />
     </div>
