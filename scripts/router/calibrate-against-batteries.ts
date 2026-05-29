@@ -72,11 +72,11 @@ async function main(): Promise<void> {
 
   if (result.promotable) {
     console.log(
-      "\n[calibrate] OK Top-1 >= 95%, apto para ativacao em painel admin.",
+      "\n[calibrate] OK cobertura Top-K >= 95%, apto para ativacao em painel admin.",
     );
   } else {
     console.log(
-      "\n[calibrate] X Top-1 < 95%, ajustar domain-vocabulary.ts e re-rodar.",
+      "\n[calibrate] X cobertura Top-K < 95%, ajustar domain-vocabulary.ts e re-rodar.",
     );
   }
 }

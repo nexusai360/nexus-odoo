@@ -60,28 +60,41 @@ export const DOMAINS: ReadonlyArray<DomainEntry> = [
       /\bcnpj\b/i,
       /\bcpf\b/i,
       /\binscri[cç][aã]o estadual\b/i,
+      /\btransportadora/i,
+      /buscar (cliente|fornecedor|vendedor|parceiro|transportadora|filial)/i,
     ],
   },
   {
     domain: "comercial",
     description:
-      "Pedidos de venda, propostas, cotacoes, vendas fechadas, faturamento por pedido, devolucoes, produtos vendidos por familia, top pedidos por valor, tempo medio de fechamento, ticket medio, vendedor responsavel pelo pedido. Perguntas tipicas: quais os pedidos abertos, top 10 pedidos do mes, qual o ticket medio, tempo medio para fechar pedido.",
+      "Pedidos de venda, propostas, cotacoes, vendas fechadas, faturamento por pedido, devolucoes, produtos vendidos por familia, top pedidos por valor, parcelas do pedido, tempo medio de fechamento, ticket medio, vendedor responsavel pelo pedido. Perguntas tipicas: quais os pedidos abertos, top 10 pedidos do mes, qual o ticket medio, parcelas que vencem, tempo medio para fechar pedido.",
     examples: [
       "quais os pedidos abertos?",
       "top 10 pedidos do mes",
       "qual o ticket medio?",
       "tempo medio para fechar pedido",
     ],
+    forceIncludeOn: [/\bpedido(s)? de venda/i, /\bparcela(s)?\b/i],
   },
   {
     domain: "contabil",
     description:
-      "Plano de contas, lancamentos contabeis, balancete, demonstracao de resultado (DRE), contas referenciais, centros de custo contabeis, conta gerencial. Perguntas tipicas: qual conta contabil X, lancamentos do mes em conta Y, como foi o resultado contabil, plano de contas ativo.",
+      "Plano de contas, lancamentos contabeis, balancete, demonstracao de resultado (DRE), contas referenciais, centros de custo contabeis, conta gerencial, conta de receita, conta de despesa, buscar conta pelo nome (ex: conta com 'aluguel' ou 'imposto' no nome). Perguntas tipicas: qual conta contabil X, buscar conta com aluguel no nome, conta de receita de vendas, lancamentos do mes em conta Y, como foi o resultado contabil, plano de contas ativo.",
     examples: [
       "qual conta contabil 1.01.01?",
-      "lancamentos do mes em conta receita",
-      "como foi o resultado contabil?",
+      "buscar conta com 'aluguel' no nome",
+      "conta de receita de vendas",
       "plano de contas ativo",
+    ],
+    forceIncludeOn: [
+      /plano de contas/i,
+      /conta cont[aá]bil/i,
+      /conta(s)? de (receita|despesa)/i,
+      /conta gerencial/i,
+      /\bbalancete\b/i,
+      /\bdre\b/i,
+      /buscar conta/i,
+      /conta com .+ no nome/i,
     ],
   },
   {
@@ -105,34 +118,62 @@ export const DOMAINS: ReadonlyArray<DomainEntry> = [
   {
     domain: "estoque",
     description:
-      "Saldo de estoque, posicao por local, movimentacao, extrato de entrada e saida, locais (depositos, armazens), lote, serie, rastreabilidade, produto parado (sem giro), tempo em estoque, duracao em dias, divergencia de inventario. Perguntas tipicas: qual o saldo do produto X, movimentacao de estoque ontem, produtos parados ha mais de 30 dias, posicao por deposito.",
+      "Saldo de estoque, quanto temos ou quanto sobrou de um material, peca ou produto (cabos, discos, molas, pecas, equipamentos de academia), posicao por local, movimentacao, extrato de entrada e saida, locais (depositos, armazens), lote, serie, rastreabilidade, produto parado (sem giro), tempo em estoque, duracao em dias, busca de item por codigo de produto, divergencia de inventario. Perguntas tipicas: qual o saldo do produto X, tem quanto de cabo de aco, quanto sobrou de disco, o que temos do codigo 1000093102, produtos parados ha mais de 30 dias, posicao por deposito.",
     examples: [
       "qual o saldo do produto mola espiral?",
-      "movimentacao de estoque ontem",
+      "tem quanto de cabo de aco?",
+      "o que temos do codigo 1000093102",
       "produtos parados ha mais de 30 dias",
-      "posicao por deposito",
+    ],
+    forceIncludeOn: [
+      /\bem estoque\b/i,
+      /quanto (de |tem|temos|sobrou|resta|restam|ainda tem|ainda temos)/i,
+      /\bsobrou\b/i,
+      /\bparado(s)?\b/i,
+      /sem giro/i,
+      /\bc[oó]digo\s*\d/i,
+      /\bdep[oó]sito\b/i,
     ],
   },
   {
     domain: "financeiro",
     description:
-      "Contas a pagar, contas a receber, saldo bancario, fluxo de caixa, titulos vencidos, pagamentos efetuados, recebimentos, liquidez, posicao de caixa, carteiras, bancos cadastrados, baixa de titulo, formas de pagamento, centros de resultado financeiro. Perguntas tipicas: quanto temos a receber, fluxo de caixa do mes, titulos vencidos, saldo no banco X.",
+      "Contas a pagar, contas a receber, quanto devemos a fornecedores, quanto vai sair ou entrar no caixa na semana, saldo bancario, fluxo de caixa, titulos vencidos ou a vencer, pagamentos efetuados, recebimentos, liquidez, posicao de caixa, carteiras, bancos cadastrados, baixa de titulo, formas de pagamento, centros de resultado financeiro. Perguntas tipicas: quanto temos a receber, quanto vai sair essa semana, fornecedor que mais devemos, fluxo de caixa do mes, titulos vencidos, saldo no banco X.",
     examples: [
       "quanto temos a receber?",
-      "fluxo de caixa do mes",
+      "quanto vai sair essa semana?",
+      "fornecedor que mais devemos",
       "titulos vencidos",
-      "saldo no banco Itau",
+    ],
+    forceIncludeOn: [
+      /a (pagar|receber)/i,
+      /\bdevemos\b/i,
+      /\bvencid/i,
+      /\bvencem\b/i,
+      /\ba vencer\b/i,
+      /fluxo de caixa/i,
+      /\bvai (sair|entrar)\b/i,
     ],
   },
   {
     domain: "fiscal",
     description:
-      "Notas fiscais emitidas pela empresa, notas recebidas dos fornecedores (DF-e), NCM, CFOP, CEST, CST, aliquotas de ICMS, IPI, PIS, COFINS, ISS, NFe, MDF-e (manifesto de transporte), carta de correcao, devolucao, cancelamento, faturamento por marca, por produto, por cliente, situacao da nota (autorizada, cancelada, denegada). Perguntas tipicas: quais notas fiscais saimos hoje, faturamento por marca, notas recebidas do fornecedor X, ICMS da operacao Y.",
+      "Notas fiscais emitidas pela empresa, notas recebidas dos fornecedores (DF-e), NCM, CFOP, CEST, CST, aliquotas de ICMS, IPI, PIS, COFINS, ISS, NFe, MDF-e (manifesto de transporte), carta de correcao, devolucao, cancelamento, faturamento por marca, por produto, por cliente, produtos mais vendidos, itens mais vendidos em valor ou quantidade, clientes que mais compraram (ranking de vendas via notas fiscais), situacao da nota (autorizada, cancelada, denegada). Perguntas tipicas: quais notas fiscais saimos hoje, faturamento por marca, produtos mais vendidos no mes, top 5 clientes que mais compraram, nota fiscal de entrada do fornecedor com CNPJ X, ICMS da operacao Y.",
     examples: [
       "quais notas fiscais saimos hoje?",
+      "produtos mais vendidos nos ultimos 30 dias",
+      "top 5 clientes que mais compraram este ano",
       "faturamento por marca em maio",
-      "notas recebidas do fornecedor X",
-      "ICMS da operacao de venda",
+    ],
+    forceIncludeOn: [
+      /\bnotas? fiscai?s?\b/i,
+      /\bnf-?e\b/i,
+      /\bcfop\b/i,
+      /\bncm\b/i,
+      /mais vendid/i,
+      /mais compr/i,
+      /produto(s)? mais/i,
+      /\bfaturamento\b/i,
     ],
   },
   {
