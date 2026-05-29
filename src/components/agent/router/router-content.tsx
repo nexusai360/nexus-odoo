@@ -12,7 +12,6 @@ import { RouterKpisBlock } from "./router-kpis-block";
 import { RouterHistogramChart } from "./router-histogram-chart";
 import { RouterLatencyChart } from "./router-latency-chart";
 import { RouterControls } from "./router-controls";
-import { RouterEmbeddingCredential } from "./router-embedding-credential";
 import { RouterCalibrationButton } from "./router-calibration-button";
 import { RouterDecisionsTable } from "./router-decisions-table";
 import type {
@@ -51,15 +50,13 @@ export function RouterContent(props: Props) {
         <RouterLatencyChart points={props.latency} />
       </div>
 
-      {/* Zona de configuracao: credencial OpenAI e controles do router
-          ficam juntos abaixo dos charts, separados das metricas. */}
-      <div className="grid gap-4 lg:grid-cols-2">
-        <RouterEmbeddingCredential initial={props.embeddingCredential} />
-        <RouterControls
-          initial={props.settings}
-          eligibility={props.eligibility}
-        />
-      </div>
+      {/* Zona de configuracao: parametros do router (tuning). A credencial de
+          embedding foi movida para a tela de Configuracao do Agente Nex
+          (R2-ctx), entao aqui fica so o bloco de Configuracao. */}
+      <RouterControls
+        initial={props.settings}
+        eligibility={props.eligibility}
+      />
 
       <RouterCalibrationButton />
 
