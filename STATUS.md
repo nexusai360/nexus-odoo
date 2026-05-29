@@ -25,12 +25,31 @@
 > B sem_sinal). Achado E2E: o `OdooClient` embrulha faults após retries, então
 > `error-kind` separa acesso/inexistente por mensagem (pt-BR/en).
 >
-> **PRÓXIMA ETAPA (roadmap): O1 , Onda piloto SPED Fiscal** sobre o `baldes.json`
-> (DF-e, notas recebidas, inscrições; foco no Balde A do `sped`). Metodologia
-> completa, branch própria (`feat/onda-sped-fiscal-expansao` conforme roadmap §6).
-> Cada onda entrega raw_* + fato_* + tools no padrão canônico + testes +
-> vocabulário do Router + bateria R-X >= 95,5%. Depois O2 (CRM), O3 (Pedido),
-> O4 (Financeiro), O5 (Contábil).
+> **R2 MERGEADO na main (PR #38).** Branch segue viva: decisão do usuário é fazer
+> **o roadmap inteiro nesta MESMA branch `feat/router-ativacao-r2`** (sem novas
+> worktrees; só troca de sessão por contexto). PRs por onda, merge gated pelo
+> usuário (ele autorizou abrir+mergear acompanhando o CI).
+>
+> **EM CURSO: O1 , Onda piloto SPED Fiscal.** Feito até aqui:
+> - SPEC v1: `docs/superpowers/specs/2026-05-29-o1-sped-fiscal-spec.md`.
+> - Review #1 (genuína, auditou as 13 tools fiscais): `docs/superpowers/reviews/2026-05-29-o1-spec-review-1.md`.
+>
+> **PRÓXIMA AÇÃO (retomar O1 aqui):**
+> 1. Aplicar review #1 -> **SPEC v2** (cortar lookup_ncm/cfop, que já existem via
+>    `fiscal_referencia_buscar`; resolver o gap de `raw_sped_consulta_dfe_item`
+>    (não existe: migration nova OU extrair do JSONB de `raw_sped_dfe_importacao`);
+>    especificar models `FatoDfe`/`FatoDfeItem`/`FatoDuplicata`; renomear dfe_* ;
+>    validar campo de manifestação; sequência de rebuild).
+> 2. Review #2 -> SPEC v3. Depois PLAN v1->v3, execução TDD (raw/fato/builders/
+>    tools no padrão `fato-nota-fiscal.ts` + `mcp/tools/fiscal/notas-recebidas.ts`),
+>    migration (AVISAR antes: Postgres dev compartilhado; rodar `agente schema-changed`),
+>    rebuild `worker`+`mcp`, E2E contra dado real, bateria R-X >= 95,5%, code review,
+>    PR, merge gated.
+>
+> **Escopo provável do piloto (pós-v2):** DF-e importados (período, por fornecedor,
+> itens, pendentes-de-manifestação) + duplicatas/boletos (a vencer, por cliente).
+> Referência NCM/CFOP/CEST sai (já coberta). Depois: O2 CRM, O3 Pedido, O4
+> Financeiro, O5 Contábil.
 >
 > ---
 > ### Histórico R1 (feat/router-catalogo-r1) , arquivado abaixo
