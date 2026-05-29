@@ -2486,6 +2486,30 @@ model AgentSettings {
   /// seguro: liga so depois de validar shadow.
   routerRetryEnabled     Boolean @default(false) @map("router_retry_enabled")
 
+  /// R2-ctx: roteamento contextual (Camada 2). Quando o embedding cai em
+  /// fallback, uma LLM barata reformula a pergunta com os ultimos N pares e o
+  /// router re-embedda a versao enriquecida. Nasce OFF: liga apos validar.
+  /// Ver docs/superpowers/specs/2026-05-29-roteamento-contextual-e-janela-de-contexto-design.md.
+  routerReformCheckpoint   FeatureCheckpoint @default(OFF) @map("router_reform_checkpoint")
+  routerReformProvider     String?           @map("router_reform_provider")
+  routerReformModel        String?           @map("router_reform_model")
+  routerReformCredentialId String?  @db.Uuid @map("router_reform_credential_id")
+  /// Quantos pares (user -> resposta final) entram no contexto da reformulacao.
+  routerReformNPairs       Int               @default(5) @map("router_reform_n_pairs")
+  /// Escolha de modelo de embedding do router. A CREDENCIAL continua na fonte
+  /// unica compartilhada com o RAG (AppSetting embedding_credential_id); aqui
+  /// guardamos so o nome do modelo (ex.: text-embedding-3-large).
+  routerEmbeddingModel     String?           @map("router_embedding_model")
+
+  /// R2-ctx: janela de contexto da resposta do agente (loadHistory). Default
+  /// preserva o comportamento atual (20 mensagens, todos os papeis).
+  /// OFF = sem historico; PLAYGROUND = so playground; PRODUCTION = bubble +
+  /// WhatsApp + playground. Tamanho com trava 10..50 aplicada em runtime.
+  contextWindowCheckpoint    FeatureCheckpoint @default(PRODUCTION) @map("context_window_checkpoint")
+  contextWindowSize          Int               @default(20) @map("context_window_size")
+  /// true = inclui mensagens de sistema/tool no historico; false = so user + IA.
+  contextWindowIncludeSystem Boolean           @default(true) @map("context_window_include_system")
+
   /// Periodicidade (em minutos) do cron BullMQ que processa avaliacoes
   /// PENDENTE via heuristica (sem custo de LLM). Range 1-1440 (24h).
   /// Default 240 (4h). Configurado no painel /agente/monitoramento aba
@@ -2551,6 +2575,18 @@ model AgentRouterDecision {
   ///   - "failed"              → exceção não tratada (futuro)
   /// Default null preserva linhas históricas pré-RBAC v2.
   outcome String? @db.Text
+
+  /// R2-ctx: roteamento contextual (3 camadas). Quando a Camada 1 (embedding da
+  /// pergunta crua) cai em fallback e a Construcao da pergunta esta ativa, uma
+  /// LLM reformula e o router re-embedda. Estes campos preservam a origem:
+  ///   originalFallback     = a Camada 1 caiu em fallback (gatilho).
+  ///   usedReformulation    = a Camada 2 (LLM) rodou e produziu pergunta nova.
+  ///   reformulatedQuestion = a pergunta enriquecida usada no re-embedding.
+  /// A decisao gravada (pickedDomains/scores) e' a FINAL (Camada 3 quando houve
+  /// reformulacao). Defaults preservam linhas historicas.
+  originalFallback     Boolean @default(false) @map("original_fallback")
+  usedReformulation    Boolean @default(false) @map("used_reformulation")
+  reformulatedQuestion String? @map("reformulated_question") @db.Text
 
   @@index([createdAt, mode])
   @@index([conversationId])
