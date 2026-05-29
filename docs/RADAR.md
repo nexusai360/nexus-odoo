@@ -235,7 +235,17 @@ tool. Ação: rodar um reconcile, ou aceitar o gap de ~1% como ruído de janela.
 
 ---
 
-## R9 — Router de catálogo (R1): threshold default 0.55 mal calibrado (MÉDIO)
+## ~~R9 — Router de catálogo (R1): calibração e meta de ativação~~ RESOLVIDO
+
+**Resolvido em 2026-05-28 23:10:** modelo large@0.30 + tuning de vocabulário
+(forceIncludeOn) levaram a **cobertura Top-K a 98-99%** (meta 95% batida);
+gate de ativação agora incide sobre Top-K (allInTopKPct), não Top-1.
+Telemetria de embedding no menu de consumo + precisão de custo corrigida.
+Multidomínio validado. Histórico abaixo.
+
+---
+
+### R9 (original) — threshold default 0.55 mal calibrado
 
 **Aberto desde:** 2026-05-28 (calibragem offline da Wave G, executada de
 verdade pela primeira vez contra as 291 perguntas R8-R23).
