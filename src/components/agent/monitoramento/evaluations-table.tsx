@@ -20,6 +20,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { CustomSelect } from "@/components/ui/custom-select";
+import { PageJumpNavigator } from "@/components/agent/consumo/page-jump-navigator";
 import {
   Table,
   TableBody,
@@ -180,8 +181,10 @@ export function EvaluationsTable({
   const handlePageSize = (v: string) => {
     const next = Number.parseInt(v, 10) as PageSize;
     if (!PAGE_SIZE_OPTIONS.includes(next)) return;
+    // Mantem a posicao: ancora na 1a linha atual (nao volta pra pagina 1).
+    const firstRow = (page - 1) * pageSize;
     setPageSize(next);
-    setPage(1);
+    setPage(Math.floor(firstRow / next) + 1);
     void refetch(1, next);
   };
 
@@ -360,53 +363,55 @@ export function EvaluationsTable({
           </Table>
         </div>
 
-        {/* Paginacao */}
-        <div className="flex flex-wrap items-center justify-between gap-3 border-t border-border px-4 py-3 text-xs">
-          <div className="text-muted-foreground">
-            Mostrando {numberFmt.format(showingFrom)} , {numberFmt.format(showingTo)}{" "}
-            de {numberFmt.format(data.total)}
+        {/* Paginacao: 3 zonas (Mostrando | navegador centralizado | por pagina) */}
+        <div className="grid grid-cols-1 items-center gap-3 border-t border-border px-4 py-3 text-xs sm:grid-cols-3">
+          <div className="text-muted-foreground justify-self-start">
+            Mostrando {numberFmt.format(showingFrom)}
+            {"-"}
+            {numberFmt.format(showingTo)} de {numberFmt.format(data.total)}
           </div>
-          <div className="flex items-center gap-3">
-            <div className="flex items-center gap-2">
-              <span className="text-muted-foreground">Por página:</span>
-              <CustomSelect
-                value={String(pageSize)}
-                onChange={handlePageSize}
-                triggerClassName="h-7 text-xs"
-                aria-label="Itens por página"
-                options={PAGE_SIZE_OPTIONS.map((n) => ({
-                  value: String(n),
-                  label: String(n),
-                }))}
-              />
-            </div>
-            <div className="flex items-center gap-1">
-              <Button
-                type="button"
-                variant="ghost"
-                size="sm"
-                className="h-7 w-7 p-0"
-                disabled={page <= 1 || loading}
-                onClick={() => handlePage(page - 1)}
-                aria-label="Página anterior"
-              >
-                <ChevronLeft className="h-4 w-4" />
-              </Button>
-              <span className="px-2 text-muted-foreground">
-                {page} / {totalPages}
-              </span>
-              <Button
-                type="button"
-                variant="ghost"
-                size="sm"
-                className="h-7 w-7 p-0"
-                disabled={page >= totalPages || loading}
-                onClick={() => handlePage(page + 1)}
-                aria-label="Próxima página"
-              >
-                <ChevronRight className="h-4 w-4" />
-              </Button>
-            </div>
+          <div className="flex items-center justify-center gap-1">
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              className="h-8 w-8 p-0"
+              disabled={page <= 1 || loading}
+              onClick={() => handlePage(page - 1)}
+              aria-label="Página anterior"
+            >
+              <ChevronLeft className="h-4 w-4" />
+            </Button>
+            <PageJumpNavigator
+              page={page - 1}
+              totalPages={totalPages}
+              onJump={(idx) => handlePage(idx + 1)}
+              disabled={loading}
+            />
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              className="h-8 w-8 p-0"
+              disabled={page >= totalPages || loading}
+              onClick={() => handlePage(page + 1)}
+              aria-label="Próxima página"
+            >
+              <ChevronRight className="h-4 w-4" />
+            </Button>
+          </div>
+          <div className="flex items-center gap-2 justify-self-end">
+            <span className="text-muted-foreground">Por página:</span>
+            <CustomSelect
+              value={String(pageSize)}
+              onChange={handlePageSize}
+              triggerClassName="h-8 min-h-[34px] w-[100px] text-xs"
+              aria-label="Itens por página"
+              options={PAGE_SIZE_OPTIONS.map((n) => ({
+                value: String(n),
+                label: `${n} por página`,
+              }))}
+            />
           </div>
         </div>
       </CardContent>
