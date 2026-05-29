@@ -334,9 +334,42 @@ export async function getRouterDecisions(
     userQuestion?: { contains: string; mode: "insensitive" };
     toolsDomains?: { hasSome: string[] };
     pickedDomains?: { hasSome: string[] };
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    OR?: any[];
   } = buildBaseWhere(filter);
   if (filter.q && filter.q.trim()) {
-    where.userQuestion = { contains: filter.q.trim(), mode: "insensitive" };
+    // Busca avancada/global: pergunta + modo + dominios (escolhidos e chamados)
+    // cujo nome/rotulo casa com o termo.
+    const q = filter.q.trim();
+    const ql = q.toLowerCase();
+    const LABELS: Record<string, string> = {
+      caminho3: "bi avançado",
+      "dominios-vazios": "cobertura",
+    };
+    const ALL = [
+      "estoque",
+      "financeiro",
+      "fiscal",
+      "comercial",
+      "cadastros",
+      "contabil",
+      "crm",
+      "caminho3",
+      "dominios-vazios",
+    ];
+    const candidates = ALL.filter(
+      (d) => d.includes(ql) || (LABELS[d] ?? "").includes(ql),
+    );
+    where.OR = [
+      { userQuestion: { contains: q, mode: "insensitive" } },
+      { mode: { contains: q, mode: "insensitive" } },
+      ...(candidates.length > 0
+        ? [
+            { pickedDomains: { hasSome: candidates } },
+            { toolsDomains: { hasSome: candidates } },
+          ]
+        : []),
+    ];
   }
   if (filter.tools && filter.tools.length > 0) {
     where.toolsDomains = { hasSome: filter.tools };

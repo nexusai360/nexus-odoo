@@ -8,7 +8,7 @@
  */
 
 import { useRouter, useSearchParams, usePathname } from "next/navigation";
-import { useState, useTransition } from "react";
+import { useEffect, useState, useTransition } from "react";
 import {
   AlertTriangle,
   Check,
@@ -171,6 +171,14 @@ export function RouterDecisionsTable({
       router.push(`${pathname}?${params.toString()}`, { scroll: false });
     });
   };
+
+  // Busca em tempo real (debounce 350ms): aplica conforme digito, sem Enter.
+  useEffect(() => {
+    if (search.trim() === searchQuery) return;
+    const t = setTimeout(() => applySearch(search), 350);
+    return () => clearTimeout(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [search]);
 
   const anyFilter =
     searchQuery !== "" || toolsFilter.length > 0 || pickedFilter.length > 0;
