@@ -46,6 +46,7 @@ import { EmbeddingUnavailable } from "./rag/embed";
 import { pickDomains } from "./router/pick-domains";
 import { filterCatalog } from "./router/filter-catalog";
 import { createDecision, updateDecision } from "./router/log-decision";
+import { seesAll } from "@/lib/reports/domains";
 import type {
   ChatMessage,
   ChatUsage,
@@ -333,6 +334,30 @@ export async function runAgent(args: RunAgentInput): Promise<RunAgentResult> {
     const platformRole = userRecord?.platformRole ?? null;
     const biSchema = platformRole && BI_ROLES.has(platformRole) ? BI_SCHEMA_REFERENCE : undefined;
 
+    // RBAC v2 (SPEC §6.1): camada B do gate de permissão. Quando super_admin
+    // ou admin, retorna "all" sem query (short-circuit seesAll). Para os
+    // demais, busca os domínios concedidos em UserDomainAccess.
+    // Usa prisma direto (não getUserDomains de @/lib/actions/) para evitar
+    // puxar a cadeia de next-auth no contexto do worker.
+    // try/catch defensivo: mocks de teste antigos podem não exporem
+    // userDomainAccess; fallback para set vazio mantém compatibilidade.
+    let userAllowedDomains: Set<string> | "all";
+    if (platformRole && seesAll(platformRole)) {
+      userAllowedDomains = "all";
+    } else if (platformRole) {
+      try {
+        const granted = await prisma.userDomainAccess.findMany({
+          where: { userId: args.userId },
+          select: { domain: true },
+        });
+        userAllowedDomains = new Set(granted.map((g) => g.domain));
+      } catch {
+        userAllowedDomains = new Set();
+      }
+    } else {
+      userAllowedDomains = new Set();
+    }
+
     // Carregar AgentSettings do banco
     const agentSettings = await loadAgentSettings();
 
@@ -409,23 +434,30 @@ export async function runAgent(args: RunAgentInput): Promise<RunAgentResult> {
     const routerMode: "shadow" | "active" = agentSettings.routerEnabled
       ? "active"
       : "shadow";
-    const filteredCatalog = filterCatalog({
-      allTools: allToolsBeforeRouter,
-      decision: routerDecision,
-      routerEnabled: agentSettings.routerEnabled,
-    });
-    // Cria row de auditoria. Fire-and-forget no sentido: se persistencia falhar,
-    // turno continua com decisionId local (nao quebra).
+    // RBAC v2: createDecision precede filterCatalog para que routerDecisionId
+    // já esteja disponível para o fast-path de recusa (Onda E).
+    // catalogSizeOffered é registrado como 0 e atualizado abaixo via updateDecision.
     const routerLog = await createDecision({
       decision: routerDecision,
       mode: routerMode,
-      catalogSizeOffered: filteredCatalog.tools.length,
+      catalogSizeOffered: 0,
       catalogSizeFull: allToolsBeforeRouter.length,
       userQuestion: args.userMessage,
       conversationId: args.conversationId ?? null,
       llmModelUsed: null,
     });
     const routerDecisionId = routerLog.decisionId;
+    const filteredCatalog = filterCatalog({
+      allTools: allToolsBeforeRouter,
+      decision: routerDecision,
+      routerEnabled: agentSettings.routerEnabled,
+      userAllowedDomains,
+    });
+    // Atualiza catalogSizeOffered após o filtro real (camadas A + B do RBAC v2).
+    await updateDecision({
+      decisionId: routerDecisionId,
+      catalogSizeOffered: filteredCatalog.tools.length,
+    });
     const allTurnToolNames: string[] = [];
 
     const tools = mcpToolsToProviderTools(filteredCatalog.tools);
@@ -884,6 +916,8 @@ export async function runAgent(args: RunAgentInput): Promise<RunAgentResult> {
         void updateDecision(routerDecisionId, {
           toolsUsed: allTurnToolNames,
           catalogSizeOffered: filteredCatalog.tools.length,
+          // RBAC v2: turno concluído com sucesso (LLM respondeu).
+          outcome: "ok",
         });
         return { ok: true, message, suggestions, usage: totalUsage };
       }

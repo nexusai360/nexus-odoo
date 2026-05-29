@@ -89,25 +89,39 @@ export async function createDecision(
 }
 
 export type UpdateDecisionInput = {
-  toolsUsed: string[];
+  toolsUsed?: string[];
   catalogSizeOffered?: number;
+  /** RBAC v2: desfecho do turno. "ok" | "permission_denied" | "failed". */
+  outcome?: "ok" | "permission_denied" | "failed";
 };
 
 /** Atualiza row apos LLM responder, registrando quais tools foram chamadas.
- *  Fire-and-forget: nao quebra o turno em caso de erro. */
+ *  Fire-and-forget: nao quebra o turno em caso de erro.
+ *  RBAC v2: aceita chamadas com apenas `outcome` ou apenas `catalogSizeOffered`. */
 export async function updateDecision(
-  decisionId: string,
-  input: UpdateDecisionInput,
+  decisionIdOrInput: string | (UpdateDecisionInput & { decisionId: string }),
+  maybeInput?: UpdateDecisionInput,
 ): Promise<void> {
+  // Aceita 2 formas: updateDecision(id, input) ou updateDecision({decisionId, ...input}).
+  const decisionId =
+    typeof decisionIdOrInput === "string" ? decisionIdOrInput : decisionIdOrInput.decisionId;
+  const input: UpdateDecisionInput =
+    typeof decisionIdOrInput === "string"
+      ? (maybeInput ?? {})
+      : decisionIdOrInput;
   try {
-    const toolsDomains = getToolDomains(input.toolsUsed);
+    const toolsDomains = input.toolsUsed ? getToolDomains(input.toolsUsed) : undefined;
     await prisma.agentRouterDecision.update({
       where: { id: decisionId },
       data: {
-        toolsActuallyUsed: input.toolsUsed,
-        toolsDomains,
+        ...(input.toolsUsed !== undefined
+          ? { toolsActuallyUsed: input.toolsUsed, toolsDomains }
+          : {}),
         ...(input.catalogSizeOffered !== undefined
           ? { catalogSizeOffered: input.catalogSizeOffered }
+          : {}),
+        ...(input.outcome !== undefined
+          ? { outcome: input.outcome }
           : {}),
       },
     });

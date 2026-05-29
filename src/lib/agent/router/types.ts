@@ -33,15 +33,25 @@ export type RouterDecision = {
  *  (`McpTool` no run-agent, etc). */
 export type CatalogTool = { name: string };
 
-/** Input de `filterCatalog`, generico no tipo da tool. */
+/** Input de `filterCatalog`, generico no tipo da tool.
+ *
+ *  RBAC v2 (SPEC §6.1): camada B com `userAllowedDomains`. Quando ausente
+ *  ou `"all"`: backwards-compat (sem corte por permissão). */
 export type FilterCatalogInput<T extends CatalogTool = CatalogTool> = {
   allTools: T[];
   decision: RouterDecision;
   routerEnabled: boolean;
+  /** RBAC v2: conjunto de domínios que o usuário logado pode ver
+   *  (`UserDomainAccess`). Quando `"all"`, super_admin/admin (sem corte).
+   *  Quando `Set<string>`, corta toda tool cujo domínio não está no set
+   *  (exceto `EXCLUDE_FROM_FILTERING` e `UNKNOWN_DOMAIN`, que passam sempre).
+   *  Camada B é aplicada SEMPRE, independente do shadow do Router. */
+  userAllowedDomains?: Set<string> | "all";
 };
 
 /** Output de `filterCatalog`. Quando `routerEnabled=false` ou fallback
- *  triggered, retorna `allTools` na integra. */
+ *  triggered, a camada A não filtra. A camada B do RBAC v2 ainda corta
+ *  por `userAllowedDomains` se presente. */
 export type FilterCatalogOutput<T extends CatalogTool = CatalogTool> = {
   tools: T[];
   /** Diagnostico: quantas tools entraram, e a que dominios pertencem. */
@@ -49,7 +59,10 @@ export type FilterCatalogOutput<T extends CatalogTool = CatalogTool> = {
     totalIn: number;
     totalOut: number;
     domainsRepresented: string[];
+    /** True quando a camada A do Router cortou tools. */
     filtered: boolean;
+    /** RBAC v2: quantas tools foram cortadas pela camada B (gate de permissão). */
+    permissionFilteredOut: number;
   };
 };
 
