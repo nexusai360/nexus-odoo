@@ -19,6 +19,7 @@ import { rebuildFatoCartaCorrecao } from "./fato-carta-correcao";
 import { rebuildFatoCertificado } from "./fato-certificado";
 import { rebuildFatoReferencia } from "./fato-referencia";
 import { rebuildFatoProduto } from "./fato-produto";
+import { rebuildFatoDfe } from "./fato-dfe";
 
 export interface FatoBuilderEntry {
   nome: string;
@@ -49,6 +50,8 @@ export const FATO_BUILDERS: FatoBuilderEntry[] = [
   // pegar produtos novos rapidamente; truncate+insert do builder garante
   // consistencia com raw_sped_produto.
   { nome: "fato_produto", cycle: "incremental", run: rebuildFatoProduto },
+  // O1 (onda DF-e): notas de fornecedores capturadas eletronicamente.
+  { nome: "fato_dfe", cycle: "incremental", run: rebuildFatoDfe },
 ];
 
 /**
