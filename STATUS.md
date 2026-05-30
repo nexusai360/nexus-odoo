@@ -58,7 +58,19 @@
 > (CLAUDE.md §6/§11, sem trabalho fake): O2 é documentação + verificação, **sem
 > schema/raw/fato/tool novos**; "CRM real" fica gated pela ativação do módulo na
 > Matrix (P8). Spec: `docs/superpowers/specs/2026-05-30-o2-crm-spec.md` v2 + review.
-> **O3 (Pedido) , SPEC v3 FECHADA** (`docs/superpowers/specs/2026-05-30-o3-pedido-spec.md`
+> **O3 (Pedido) IMPLEMENTADO E VERIFICADO (histórico de etapas).** `FatoPedidoHistorico`
+> (de `raw_pedido_documento_historico`, já no catálogo) + builder `fato-pedido-historico.ts`
+> (saneia `tempo_etapa` negativo via GREATEST) + 2 tools comerciais
+> (`comercial_pedido_historico_etapas`, `comercial_pedido_travados_por_etapa` ,
+> processo/fluxo, não financeiro). Catálogo 71->73; BI_SCHEMA_REFERENCE + vocab Router.
+> Migration `o3_pedido_historico` (só 1 fato) aplicada via workaround de drift.
+> **E2E dado real:** fato 9175 linhas, **0 negativos** (saneado), pedido 821 = 30
+> eventos/7 dias/6 etapas (bate com a review), 14 travados >90 dias (mais antigo 130
+> dias). Suíte 2109 verde. **Gate pendente:** bateria R-X ao vivo. PR aberto.
+>
+> ---
+>
+> ### O3 (Pedido) , SPEC v3 FECHADA (`docs/superpowers/specs/2026-05-30-o3-pedido-spec.md`
 > + review com introspecção ao vivo em `reviews/2026-05-30-o3-pedido-review.md`).
 > Achado: F4 já cobre pedido (17 tools + `fato_pedido`/`fato_pedido_parcela`); a visão
 > do roadmap (cotação/proposta) é Balde B vazio (não operado). **Único gap Balde A real:**
