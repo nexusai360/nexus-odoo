@@ -1,5 +1,5 @@
 // mcp/tools/fiscal/index.ts
-// Índice do domínio fiscal. Exporta o array de tools (6 tools , C.12).
+// Índice do domínio fiscal. Exporta o array de tools (20 tools).
 import type { ToolEntry } from "../../catalog/types.js";
 import { fiscalFaturamentoPeriodo } from "./faturamento-periodo.js";
 import { fiscalNotasEmitidas } from "./notas-emitidas.js";
@@ -18,6 +18,9 @@ import { fiscalFaturamentoMensalSerie } from "./faturamento-mensal-serie.js";
 import { fiscalFaturamentoPorUf } from "./faturamento-por-uf.js";
 import { fiscalNotasEmitidasPorCliente } from "./notas-emitidas-por-cliente.js";
 import { fiscalNotasEmitidasPorProduto } from "./notas-emitidas-por-produto.js";
+import { fiscalDfeImportadosPeriodo } from "./dfe-importados-periodo.js";
+import { fiscalDfePorFornecedor } from "./dfe-por-fornecedor.js";
+import { fiscalDfePendentesManifestacao } from "./dfe-pendentes-manifestacao.js";
 
 export const fiscalTools: ToolEntry[] = [
   fiscalFaturamentoPeriodo as ToolEntry,
@@ -37,4 +40,8 @@ export const fiscalTools: ToolEntry[] = [
   fiscalFaturamentoPorUf as ToolEntry,
   fiscalNotasEmitidasPorCliente as ToolEntry,
   fiscalNotasEmitidasPorProduto as ToolEntry,
+  // O1 (onda DF-e de entrada)
+  fiscalDfeImportadosPeriodo as ToolEntry,
+  fiscalDfePorFornecedor as ToolEntry,
+  fiscalDfePendentesManifestacao as ToolEntry,
 ];
