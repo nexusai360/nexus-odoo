@@ -158,7 +158,7 @@ export const DOMAINS: ReadonlyArray<DomainEntry> = [
   {
     domain: "fiscal",
     description:
-      "Notas fiscais emitidas pela empresa, notas recebidas dos fornecedores (DF-e), NCM, CFOP, CEST, CST, aliquotas de ICMS, IPI, PIS, COFINS, ISS, NFe, MDF-e (manifesto de transporte), carta de correcao, devolucao, cancelamento, faturamento por marca, por produto, por cliente, produtos mais vendidos, itens mais vendidos em valor ou quantidade, clientes que mais compraram (ranking de vendas via notas fiscais), situacao da nota (autorizada, cancelada, denegada). Perguntas tipicas: quais notas fiscais saimos hoje, faturamento por marca, produtos mais vendidos no mes, top 5 clientes que mais compraram, nota fiscal de entrada do fornecedor com CNPJ X, ICMS da operacao Y.",
+      "Notas fiscais emitidas pela empresa, notas recebidas dos fornecedores (DF-e), DF-e importados via manifestacao do destinatario (notas de fornecedores capturadas eletronicamente, distintas dos documentos proprios), DF-e pendentes de manifestacao (a manifestar), compras eletronicas por fornecedor, NCM, CFOP, CEST, CST, aliquotas de ICMS, IPI, PIS, COFINS, ISS, NFe, MDF-e (manifesto de transporte), carta de correcao, devolucao, cancelamento, faturamento por marca, por produto, por cliente, produtos mais vendidos, itens mais vendidos em valor ou quantidade, clientes que mais compraram (ranking de vendas via notas fiscais), situacao da nota (autorizada, cancelada, denegada). Perguntas tipicas: quais notas fiscais saimos hoje, quais DF-e/notas de fornecedores chegaram no mes, DF-e pendentes de manifestacao, de quais fornecedores chegaram DF-e, faturamento por marca, produtos mais vendidos no mes, top 5 clientes que mais compraram, nota fiscal de entrada do fornecedor com CNPJ X, ICMS da operacao Y.",
     examples: [
       "quais notas fiscais saimos hoje?",
       "produtos mais vendidos nos ultimos 30 dias",
@@ -174,6 +174,11 @@ export const DOMAINS: ReadonlyArray<DomainEntry> = [
       /mais compr/i,
       /produto(s)? mais/i,
       /\bfaturamento\b/i,
+      /\bdf-?e\b/i,
+      /manifesta[cç][aã]o/i,
+      /notas? de fornecedor/i,
+      /notas? importadas?/i,
+      /compras? eletr[oô]nicas?/i,
     ],
   },
   {
