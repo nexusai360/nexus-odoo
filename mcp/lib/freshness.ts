@@ -45,6 +45,8 @@ export const FATO_FONTE: Record<string, { model: string; mode: "snapshot" | "inc
   fato_dfe:                  { model: "sped.consulta.dfe.item",    mode: "incremental" },
   // O3 , historico de etapas do pedido
   fato_pedido_historico:     { model: "pedido.documento.historico", mode: "incremental" },
+  // O4 , itens do lancamento financeiro (DRE gerencial)
+  fato_financeiro_lancamento_item: { model: "finan.lancamento.item", mode: "incremental" },
   // F4 L1a , expansão da base de leitura
   fato_preco:                { model: "sped.tabela.preco.regra",   mode: "incremental" },
   fato_servico:              { model: "sped.servico",              mode: "incremental" },

@@ -1841,6 +1841,34 @@ model FatoFinanceiroTitulo {
   @@map("fato_financeiro_titulo")
 }
 
+/// O4 (onda Financeiro): itens do lancamento financeiro (rateio por conta
+/// gerencial e centro de resultado). Fonte: raw_finan_lancamento_item. Permite a
+/// DRE gerencial ("quanto por conta gerencial"), que as tools de total agregado
+/// nao respondem. `tipo` e herdado do lancamento pai (finan.lancamento) no builder.
+model FatoFinanceiroLancamentoItem {
+  odooId                Int       @id @map("odoo_id")
+  lancamentoId          Int?      @map("lancamento_id")
+  tipo                  String    @default("")
+  contaId               Int?      @map("conta_id")
+  contaNome             String?   @map("conta_nome")
+  centroResultadoId     Int?      @map("centro_resultado_id")
+  centroResultadoNome   String?   @map("centro_resultado_nome")
+  descricao             String?
+  pedidoId              Int?      @map("pedido_id")
+  vrDocumento           Decimal   @default(0) @map("vr_documento") @db.Decimal(18, 2)
+  vrTotal               Decimal   @default(0) @map("vr_total") @db.Decimal(18, 2)
+  vrSaldo               Decimal   @default(0) @map("vr_saldo") @db.Decimal(18, 2)
+  vrPagoTotal           Decimal   @default(0) @map("vr_pago_total") @db.Decimal(18, 2)
+  dataDocumento         DateTime? @map("data_documento")
+  atualizadoEm          DateTime  @default(now()) @map("atualizado_em")
+
+  @@index([contaId])
+  @@index([centroResultadoId])
+  @@index([tipo])
+  @@index([dataDocumento])
+  @@map("fato_financeiro_lancamento_item")
+}
+
 // ─── F4 completo — Fatos dos novos domínios ──────────────────────────────────
 
 model FatoPedido {
