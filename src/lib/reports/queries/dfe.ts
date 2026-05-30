@@ -104,7 +104,9 @@ export async function queryDfePorFornecedor(
   for (const r of rows) {
     const digits = (r.cnpjFornecedor ?? "").replace(/\D/g, "");
     if (alvoDoc && !digits.includes(alvoDoc)) continue;
-    const key = r.cnpjFornecedor ?? "(sem cnpj)";
+    // Agrega pelos DÍGITOS do CNPJ (imune a variação de máscara: "18.282.961/0001-00"
+    // e "18282961000100" são o mesmo fornecedor). Exibe o valor formatado da 1ª ocorrência.
+    const key = digits || "(sem cnpj)";
     const v = Number(r.vrNf);
     const existing = map.get(key);
     if (existing) {
