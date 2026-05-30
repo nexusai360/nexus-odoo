@@ -83,7 +83,6 @@ export const fiscalDfePorFornecedor: ToolEntry<Input, Output> = {
     const todasLinhas = d.linhas;
     const linhasCap = todasLinhas.slice(0, 30);
     const top = todasLinhas[0];
-    const fmt = (n: number) => n.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
     return {
       ...envelope,
       dados: {

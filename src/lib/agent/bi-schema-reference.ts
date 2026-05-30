@@ -213,6 +213,28 @@ TABLE fato_nota_fiscal_item (
   atualizado_em     TIMESTAMPTZ
 );
 
+-- ─── FISCAL / DF-e DE ENTRADA (O1) ───────────────────────────────────────────
+-- Notas de fornecedores capturadas eletronicamente (manifestacao do
+-- destinatario). 1 linha = 1 DF-e. Distinto de fato_nota_fiscal (docs proprios).
+-- Agregue por cnpj_fornecedor (fornecedor_id costuma ser NULL). vr_nf as vezes 0.
+-- manifestacao IS NULL/'' = pendente de manifestacao.
+TABLE fato_dfe (
+  odoo_id          INT PRIMARY KEY,
+  chave            TEXT,
+  numero           TEXT,
+  modelo           TEXT,
+  cnpj_fornecedor  TEXT,
+  fornecedor_id    INT,
+  fornecedor_nome  TEXT,
+  vr_nf            NUMERIC(18,2),
+  data_emissao     TIMESTAMPTZ,
+  data_recebimento TIMESTAMPTZ,
+  manifestacao     TEXT,
+  pode_manifestar  BOOLEAN,
+  consulta_id      INT,
+  atualizado_em    TIMESTAMPTZ
+);
+
 -- ─── CADASTROS / PARCEIROS ───────────────────────────────────────────────────
 
 -- Parceiros (clientes, fornecedores, empresas)
