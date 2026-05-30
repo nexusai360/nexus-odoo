@@ -160,6 +160,9 @@ export const DOMAINS: ReadonlyArray<DomainEntry> = [
       /\ba vencer\b/i,
       /fluxo de caixa/i,
       /\bvai (sair|entrar)\b/i,
+      /resultado por conta/i,
+      /por conta gerencial/i,
+      /(despesas?|receitas?) por conta/i,
     ],
   },
   {

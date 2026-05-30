@@ -116,6 +116,28 @@ TABLE fato_financeiro_titulo (
   atualizado_em     TIMESTAMPTZ
 );
 
+-- ─── FINANCEIRO / ITENS DO LANCAMENTO (O4, DRE gerencial) ──────────────────
+-- Rateio por conta gerencial (conta_nome) e centro de resultado. tipo herdado
+-- do lancamento pai: a_receber/recebimento = receita; a_pagar/pagamento = despesa.
+-- Use para "quanto por conta gerencial". vr_total = valor do item.
+TABLE fato_financeiro_lancamento_item (
+  odoo_id               INT PRIMARY KEY,
+  lancamento_id         INT,
+  tipo                  TEXT,
+  conta_id              INT,
+  conta_nome            TEXT,
+  centro_resultado_id   INT,
+  centro_resultado_nome TEXT,
+  descricao             TEXT,
+  pedido_id             INT,
+  vr_documento          NUMERIC(18,2),
+  vr_total              NUMERIC(18,2),
+  vr_saldo              NUMERIC(18,2),
+  vr_pago_total         NUMERIC(18,2),
+  data_documento        TIMESTAMPTZ,
+  atualizado_em         TIMESTAMPTZ
+);
+
 -- ─── COMERCIAL / PEDIDOS ─────────────────────────────────────────────────────
 
 -- Pedidos de venda
