@@ -58,19 +58,24 @@
 > (CLAUDE.md §6/§11, sem trabalho fake): O2 é documentação + verificação, **sem
 > schema/raw/fato/tool novos**; "CRM real" fica gated pela ativação do módulo na
 > Matrix (P8). Spec: `docs/superpowers/specs/2026-05-30-o2-crm-spec.md` v2 + review.
-> **O3 (Pedido) EM CURSO , SPEC v1 escrita** (`docs/superpowers/specs/2026-05-30-o3-pedido-spec.md`).
-> Achado: a F4 já cobre pedido com 17 tools comerciais + `fato_pedido`/`fato_pedido_parcela`;
-> a visão do roadmap (cotação/proposta) aponta para Balde B vazio (`pedido.documento.cotacao*`
-> 0 registros, não operado). O **único gap de Balde A real** é
-> `pedido.documento.historico` (9.173 registros, histórico de mudança de etapas, raw
-> existe mas SEM fato). Escopo O3 = `FatoPedidoHistorico` + 1-2 tools (tempo em cada
-> etapa / pedidos travados na etapa) + vocab Router.
+> **O3 (Pedido) , SPEC v3 FECHADA** (`docs/superpowers/specs/2026-05-30-o3-pedido-spec.md`
+> + review com introspecção ao vivo em `reviews/2026-05-30-o3-pedido-review.md`).
+> Achado: F4 já cobre pedido (17 tools + `fato_pedido`/`fato_pedido_parcela`); a visão
+> do roadmap (cotação/proposta) é Balde B vazio (não operado). **Único gap Balde A real:**
+> `pedido.documento.historico` (9.173 reg, log de transição de etapas, raw + catálogo
+> JÁ existem, SEM fato). Escopo travado: `FatoPedidoHistorico` (shape real:
+> pedidoId, etapaId, etapaTipo, dataEntrada=data_ultima_etapa, dataProxima,
+> tempoEtapaDias=GREATEST(tempo_etapa,0) , **204 negativos saneados no builder**,
+> usuarioId) + 2 tools (`pedido_historico_etapas`, `pedido_travados_por_etapa` ,
+> processo/fluxo, não financeiro).
 >
-> **PRÓXIMA AÇÃO O3:** review #1/#2 da SPEC -> v3 -> PLAN v1->v3 -> execução (migration
-> de `fato_pedido_historico`, builder `fato-pedido-historico.ts` no padrão do O1
-> `fato-dfe.ts`, tools em `mcp/tools/comercial/`, E2E dado real, rebuild pasta
-> principal, bateria R-X, PR gated). Padrões prontos: builder/tool/registro idênticos
-> ao O1 (ver `docs/superpowers/plans/2026-05-30-o1-sped-fiscal-dfe.md` como template).
+> **PRÓXIMA AÇÃO O3 = EXECUÇÃO** (PLAN v1->v3 opcional dado o shape já travado, depois
+> build): migration SÓ do `fato_pedido_historico` (raw já existe, então é 1 tabela de
+> fato; workaround de drift se preciso, AVISAR antes); builder `fato-pedido-historico.ts`
+> no padrão `fato-dfe.ts` (O1); 2 tools em `mcp/tools/comercial/` no padrão das tools
+> DF-e do O1; registry + FATO_FONTE + integration counts + vocab Router + BI_SCHEMA_REFERENCE;
+> E2E dado real; rebuild pasta principal; bateria R-X; PR gated. Template completo: o
+> O1 (`docs/superpowers/plans/2026-05-30-o1-sped-fiscal-dfe.md` + commits da onda DF-e).
 > NÃO iniciar a migration com contexto curto.
 >
 > **Depois: O4 (Financeiro)** , 25 modelos `finan.*` faltantes (Balde A/B a auditar
