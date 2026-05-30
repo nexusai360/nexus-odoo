@@ -1,5 +1,12 @@
 # Plano de execução: Balde B pré-ativação (construir tools antes do dado)
 
+> **Versão:** v3 (2026-05-30). Aplica os dois reviews adversariais
+> (`reviews/2026-05-30-balde-b-plan-reviews.md`, BB-1..BB-7). Mudanças-chave: build é
+> ESTRUTURAL (a semântica de campos incertos só fecha na ativação); E2E contra dado
+> real vira GATE DE ATIVAÇÃO obrigatório (não de build), com tool oculta até validar;
+> priorização é PROPOSTA a confirmar com o usuário sobre quais módulos a Matrix vai
+> realmente operar no Odoo; filtrar transient/wizard antes de cada fato.
+
 > **Decisão do usuário (2026-05-30):** construir AGORA as tools dos domínios Balde B
 > (CRM, contábil e demais sem registro), para ficarem prontas quando a Matrix começar
 > a operar/popular esses módulos. Alinhado ao P8 do roadmap ("construir Balde B antes
@@ -34,7 +41,35 @@
    mas com esforço proporcional , a SPEC já parte deste mapa, então tende a ser SPEC
    única + 1 review aterrada no `fields_get`, como o O4.
 
-## 1. Priorização (ordem de execução proposta)
+## 0.1 Resolução da tensão P8 × regra-de-raiz §6[9] (review BB-4, BB-1)
+
+A regra §6[9] exige E2E contra dado real e proíbe entregar tool só com TS/jest. Tool
+Balde B tem 0 registros, então NÃO cumpre isso no build. Resolução explícita:
+
+- Pré-build Balde B é categoria **"estrutural / não validado contra dado real"**.
+- O **E2E real é GATE DE ATIVAÇÃO** (não de build). Cada fato/tool Balde B nasce com
+  um **checklist de ativação** que precisa ser cumprido quando os primeiros registros
+  reais chegarem, ANTES de a tool ser confiável/visível:
+  1. Re-rodar R2 (`npm run discovery:baldes`) , o modelo deve subir para Balde A.
+  2. `searchRead(limit 3)` real , conferir a SEMÂNTICA dos campos marcados incertos
+     (débito/crédito, sinal, tipo, FK do pai) contra a amostra; ajustar o builder.
+  3. Build do fato contra o dado real + E2E das tools (números coerentes).
+  4. Calibrar o vocabulário do Router + bateria R-X.
+  5. Só então liberar a tool (sair de oculta).
+- Até a ativação, a tool Balde B fica **oculta por padrão** (`sempreVisivel:false`, fora
+  do catálogo visível em produção) ou marcada "estrutural, aguardando dado" , não
+  entrega resposta potencialmente errada ao usuário/agente.
+- Campos de **semântica incerta** (que 0 registros não revelam) são mapeados de forma
+  defensiva e anotados `// CONFIRMAR na ativação contra amostra real`.
+
+## 1. Priorização (PROPOSTA , confirmar com o usuário quais módulos vão ativar)
+
+> **Review BB-3:** `instalado_sem_uso` não garante ativação , a Matrix pode operar
+> contabilidade/CRM em outro sistema. Antes de investir nas 7 ondas, **confirmar com o
+> usuário/contador quais módulos serão realmente operados no Odoo**. A ordem abaixo é
+> proposta; B1 (contábil) só é #1 se confirmado que a contabilidade será lançada no Odoo.
+> Alternativa de menor risco: deixar a ESTRUTURA pronta (este plano) e construir cada
+> onda rápido na ativação (o padrão O1/O3/O4 + R2 re-rodado já são velozes).
 
 Critério: valor de produto × probabilidade de ativação (`instalado_sem_uso` > `sem_sinal`)
 × tamanho. Cada item vira uma "onda B-x" com branch/PR próprios (ou na mesma branch,
@@ -105,8 +140,11 @@ modelos, se existirem como modelo).
 
 ## 3. Checklist por onda B-x (reusar)
 
-- [ ] `fields_get` do(s) modelo(s) (estrutura real dos campos) , script tsx temporário.
+- [ ] `fields_get` do(s) modelo(s) + **filtrar transient/wizard/abstract** (review BB-2:
+      descartar `.wizard`/`.executa`/`.arvore`/`.modelo.impressao`/`transient` , reusar
+      critérios do R2 `classify.ts`). Só vira fato o que for tabela de dado de verdade.
 - [ ] SPEC curta aterrada no fields_get + 1 review (overlap vs o que já existe).
+- [ ] Marcar campos de semântica incerta (BB-1) com `// CONFIRMAR na ativação`.
 - [ ] Migration aditiva do(s) fato(s).
 - [ ] Modelo(s) raw novo(s) no `MODEL_CATALOG` (aparecem no painel).
 - [ ] Builder(s) + teste pareado.
