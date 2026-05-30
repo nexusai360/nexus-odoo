@@ -58,7 +58,26 @@
 > (CLAUDE.md §6/§11, sem trabalho fake): O2 é documentação + verificação, **sem
 > schema/raw/fato/tool novos**; "CRM real" fica gated pela ativação do módulo na
 > Matrix (P8). Spec: `docs/superpowers/specs/2026-05-30-o2-crm-spec.md` v2 + review.
-> **Próxima onda: O3 (Pedido)** , tem dado real (Balde A no `pedido.*`).
+> **O3 (Pedido) EM CURSO , SPEC v1 escrita** (`docs/superpowers/specs/2026-05-30-o3-pedido-spec.md`).
+> Achado: a F4 já cobre pedido com 17 tools comerciais + `fato_pedido`/`fato_pedido_parcela`;
+> a visão do roadmap (cotação/proposta) aponta para Balde B vazio (`pedido.documento.cotacao*`
+> 0 registros, não operado). O **único gap de Balde A real** é
+> `pedido.documento.historico` (9.173 registros, histórico de mudança de etapas, raw
+> existe mas SEM fato). Escopo O3 = `FatoPedidoHistorico` + 1-2 tools (tempo em cada
+> etapa / pedidos travados na etapa) + vocab Router.
+>
+> **PRÓXIMA AÇÃO O3:** review #1/#2 da SPEC -> v3 -> PLAN v1->v3 -> execução (migration
+> de `fato_pedido_historico`, builder `fato-pedido-historico.ts` no padrão do O1
+> `fato-dfe.ts`, tools em `mcp/tools/comercial/`, E2E dado real, rebuild pasta
+> principal, bateria R-X, PR gated). Padrões prontos: builder/tool/registro idênticos
+> ao O1 (ver `docs/superpowers/plans/2026-05-30-o1-sped-fiscal-dfe.md` como template).
+> NÃO iniciar a migration com contexto curto.
+>
+> **Depois: O4 (Financeiro)** , 25 modelos `finan.*` faltantes (Balde A/B a auditar
+> vs os fatos financeiros já existentes), **O5 (Contábil)** , exige input do contador
+> da Matrix antes de codar (roadmap). Padrão de achado das ondas até aqui: muito do
+> "expansão" já está coberto pela F4 ou aponta para modelos vazios; cada onda começa
+> auditando cobertura real vs Balde A antes de construir (evita trabalho fake).
 >
 > ---
 >
