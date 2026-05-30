@@ -17,6 +17,8 @@ import { comercialProdutosPorMargem } from "./produtos-por-margem.js";
 import { comercialPedidosPorUf } from "./pedidos-por-uf.js";
 import { comercialProdutosPorFamilia } from "./produtos-por-familia.js";
 import { comercialTempoMedioFechamento } from "./tempo-medio-fechamento.js";
+import { comercialPedidoHistoricoEtapas } from "./pedido-historico-etapas.js";
+import { comercialPedidoTravadosPorEtapa } from "./pedido-travados-por-etapa.js";
 
 export const comercialTools: ToolEntry[] = [
   comercialPedidosPeriodo as ToolEntry,
@@ -35,4 +37,7 @@ export const comercialTools: ToolEntry[] = [
   comercialPedidosPorUf as ToolEntry,
   comercialProdutosPorFamilia as ToolEntry,
   comercialTempoMedioFechamento as ToolEntry,
+  // O3 (onda Pedido , histórico de etapas)
+  comercialPedidoHistoricoEtapas as ToolEntry,
+  comercialPedidoTravadosPorEtapa as ToolEntry,
 ];

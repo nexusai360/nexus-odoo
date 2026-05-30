@@ -67,14 +67,21 @@ export const DOMAINS: ReadonlyArray<DomainEntry> = [
   {
     domain: "comercial",
     description:
-      "Pedidos de venda, propostas, cotacoes, vendas fechadas, faturamento por pedido, devolucoes, produtos vendidos por familia, top pedidos por valor, parcelas do pedido, tempo medio de fechamento, ticket medio, vendedor responsavel pelo pedido. Perguntas tipicas: quais os pedidos abertos, top 10 pedidos do mes, qual o ticket medio, parcelas que vencem, tempo medio para fechar pedido.",
+      "Pedidos de venda, propostas, cotacoes, vendas fechadas, faturamento por pedido, devolucoes, produtos vendidos por familia, top pedidos por valor, parcelas do pedido, tempo medio de fechamento, ticket medio, vendedor responsavel pelo pedido, historico de etapas do pedido, tempo gasto em cada etapa, pedidos parados/travados no fluxo de etapas (processo, nao financeiro). Perguntas tipicas: quais os pedidos abertos, top 10 pedidos do mes, qual o ticket medio, parcelas que vencem, tempo medio para fechar pedido, quanto tempo o pedido X ficou em cada etapa, quais pedidos estao travados ha mais de N dias numa etapa.",
     examples: [
       "quais os pedidos abertos?",
       "top 10 pedidos do mes",
-      "qual o ticket medio?",
-      "tempo medio para fechar pedido",
+      "quanto tempo o pedido 821 ficou em cada etapa?",
+      "quais pedidos estao travados numa etapa?",
     ],
-    forceIncludeOn: [/\bpedido(s)? de venda/i, /\bparcela(s)?\b/i],
+    forceIncludeOn: [
+      /\bpedido(s)? de venda/i,
+      /\bparcela(s)?\b/i,
+      /tempo.{0,40}\betapa/i,
+      /hist[oó]rico.{0,20}\betapas?/i,
+      /pedido(s)?.{0,20}(parado|travado)/i,
+      /(parado|travado)(s)?.{0,15}(no|na)?.{0,5}(fluxo|etapa)/i,
+    ],
   },
   {
     domain: "contabil",

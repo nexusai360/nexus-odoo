@@ -22,3 +22,16 @@ describe("vocabulário fiscal , termos de DF-e (O1)", () => {
     expect(fiscal!.description).toMatch(/manifesta/i);
   });
 });
+
+const comercial = DOMAINS.find((d) => d.domain === "comercial");
+
+describe("vocabulário comercial , termos de histórico de etapas (O3)", () => {
+  it("forceIncludeOn casa os termos de histórico/travado de etapa", () => {
+    const patterns = comercial!.forceIncludeOn ?? [];
+    const casa = (texto: string) => patterns.some((re) => re.test(texto));
+    expect(casa("quanto tempo o pedido ficou na etapa?")).toBe(true);
+    expect(casa("historico de etapas do pedido 821")).toBe(true);
+    expect(casa("quais pedidos estao travados numa etapa?")).toBe(true);
+    expect(casa("pedido parado no fluxo")).toBe(true);
+  });
+});

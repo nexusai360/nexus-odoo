@@ -50,7 +50,55 @@
 > painel é data-driven do `MODEL_CATALOG`+`SyncState` (só raw, sem aba de fatos),
 > então registrar o modelo no catálogo + sync basta.
 >
-> **O1 IMPLEMENTADO E VERIFICADO (DF-e de entrada).** Entregue nesta branch:
+> **O1 MERGEADO (PR #39).** **O2 (CRM) CONCLUÍDO , achado honesto:** o CRM
+> transacional NÃO EXISTE neste Odoo (varredura dos 652 modelos: só `crm.pipeline`
+> e `crm.pipeline.etapa`, ambos config com 0 registros, `sem_sinal`; nenhum
+> lead/oportunidade/funil/vendedor). A F4 já cobre com honestidade via
+> `crm_status_dominio` ("módulo existe, não operado", teste verde). Decisão
+> (CLAUDE.md §6/§11, sem trabalho fake): O2 é documentação + verificação, **sem
+> schema/raw/fato/tool novos**; "CRM real" fica gated pela ativação do módulo na
+> Matrix (P8). Spec: `docs/superpowers/specs/2026-05-30-o2-crm-spec.md` v2 + review.
+> **O3 (Pedido) IMPLEMENTADO E VERIFICADO (histórico de etapas).** `FatoPedidoHistorico`
+> (de `raw_pedido_documento_historico`, já no catálogo) + builder `fato-pedido-historico.ts`
+> (saneia `tempo_etapa` negativo via GREATEST) + 2 tools comerciais
+> (`comercial_pedido_historico_etapas`, `comercial_pedido_travados_por_etapa` ,
+> processo/fluxo, não financeiro). Catálogo 71->73; BI_SCHEMA_REFERENCE + vocab Router.
+> Migration `o3_pedido_historico` (só 1 fato) aplicada via workaround de drift.
+> **E2E dado real:** fato 9175 linhas, **0 negativos** (saneado), pedido 821 = 30
+> eventos/7 dias/6 etapas (bate com a review), 14 travados >90 dias (mais antigo 130
+> dias). Suíte 2109 verde. **Gate pendente:** bateria R-X ao vivo. PR aberto.
+>
+> ---
+>
+> ### O3 (Pedido) , SPEC v3 FECHADA (`docs/superpowers/specs/2026-05-30-o3-pedido-spec.md`
+> + review com introspecção ao vivo em `reviews/2026-05-30-o3-pedido-review.md`).
+> Achado: F4 já cobre pedido (17 tools + `fato_pedido`/`fato_pedido_parcela`); a visão
+> do roadmap (cotação/proposta) é Balde B vazio (não operado). **Único gap Balde A real:**
+> `pedido.documento.historico` (9.173 reg, log de transição de etapas, raw + catálogo
+> JÁ existem, SEM fato). Escopo travado: `FatoPedidoHistorico` (shape real:
+> pedidoId, etapaId, etapaTipo, dataEntrada=data_ultima_etapa, dataProxima,
+> tempoEtapaDias=GREATEST(tempo_etapa,0) , **204 negativos saneados no builder**,
+> usuarioId) + 2 tools (`pedido_historico_etapas`, `pedido_travados_por_etapa` ,
+> processo/fluxo, não financeiro).
+>
+> **PRÓXIMA AÇÃO O3 = EXECUÇÃO** (PLAN v1->v3 opcional dado o shape já travado, depois
+> build): migration SÓ do `fato_pedido_historico` (raw já existe, então é 1 tabela de
+> fato; workaround de drift se preciso, AVISAR antes); builder `fato-pedido-historico.ts`
+> no padrão `fato-dfe.ts` (O1); 2 tools em `mcp/tools/comercial/` no padrão das tools
+> DF-e do O1; registry + FATO_FONTE + integration counts + vocab Router + BI_SCHEMA_REFERENCE;
+> E2E dado real; rebuild pasta principal; bateria R-X; PR gated. Template completo: o
+> O1 (`docs/superpowers/plans/2026-05-30-o1-sped-fiscal-dfe.md` + commits da onda DF-e).
+> NÃO iniciar a migration com contexto curto.
+>
+> **Depois: O4 (Financeiro)** , 25 modelos `finan.*` faltantes (Balde A/B a auditar
+> vs os fatos financeiros já existentes), **O5 (Contábil)** , exige input do contador
+> da Matrix antes de codar (roadmap). Padrão de achado das ondas até aqui: muito do
+> "expansão" já está coberto pela F4 ou aponta para modelos vazios; cada onda começa
+> auditando cobertura real vs Balde A antes de construir (evita trabalho fake).
+>
+> ---
+>
+> ### O1 IMPLEMENTADO E VERIFICADO (DF-e de entrada). Entregue nesta branch:
 > raw `sped.consulta.dfe.item` no MODEL_CATALOG (painel **113->114, status ok,
 > 6288 registros**); `FatoDfe` + builder `fato-dfe.ts` (registry + FATO_FONTE);
 > 3 tools (`fiscal_dfe_importados_periodo`, `fiscal_dfe_por_fornecedor`,

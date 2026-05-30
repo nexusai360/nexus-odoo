@@ -20,6 +20,7 @@ import { rebuildFatoCertificado } from "./fato-certificado";
 import { rebuildFatoReferencia } from "./fato-referencia";
 import { rebuildFatoProduto } from "./fato-produto";
 import { rebuildFatoDfe } from "./fato-dfe";
+import { rebuildFatoPedidoHistorico } from "./fato-pedido-historico";
 
 export interface FatoBuilderEntry {
   nome: string;
@@ -52,6 +53,8 @@ export const FATO_BUILDERS: FatoBuilderEntry[] = [
   { nome: "fato_produto", cycle: "incremental", run: rebuildFatoProduto },
   // O1 (onda DF-e): notas de fornecedores capturadas eletronicamente.
   { nome: "fato_dfe", cycle: "incremental", run: rebuildFatoDfe },
+  // O3 (onda Pedido): historico de transicao de etapas do pedido.
+  { nome: "fato_pedido_historico", cycle: "incremental", run: rebuildFatoPedidoHistorico },
 ];
 
 /**
