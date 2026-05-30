@@ -50,7 +50,19 @@
 > painel é data-driven do `MODEL_CATALOG`+`SyncState` (só raw, sem aba de fatos),
 > então registrar o modelo no catálogo + sync basta.
 >
-> **O1 IMPLEMENTADO E VERIFICADO (DF-e de entrada).** Entregue nesta branch:
+> **O1 MERGEADO (PR #39).** **O2 (CRM) CONCLUÍDO , achado honesto:** o CRM
+> transacional NÃO EXISTE neste Odoo (varredura dos 652 modelos: só `crm.pipeline`
+> e `crm.pipeline.etapa`, ambos config com 0 registros, `sem_sinal`; nenhum
+> lead/oportunidade/funil/vendedor). A F4 já cobre com honestidade via
+> `crm_status_dominio` ("módulo existe, não operado", teste verde). Decisão
+> (CLAUDE.md §6/§11, sem trabalho fake): O2 é documentação + verificação, **sem
+> schema/raw/fato/tool novos**; "CRM real" fica gated pela ativação do módulo na
+> Matrix (P8). Spec: `docs/superpowers/specs/2026-05-30-o2-crm-spec.md` v2 + review.
+> **Próxima onda: O3 (Pedido)** , tem dado real (Balde A no `pedido.*`).
+>
+> ---
+>
+> ### O1 IMPLEMENTADO E VERIFICADO (DF-e de entrada). Entregue nesta branch:
 > raw `sped.consulta.dfe.item` no MODEL_CATALOG (painel **113->114, status ok,
 > 6288 registros**); `FatoDfe` + builder `fato-dfe.ts` (registry + FATO_FONTE);
 > 3 tools (`fiscal_dfe_importados_periodo`, `fiscal_dfe_por_fornecedor`,
