@@ -30,26 +30,32 @@
 > worktrees; só troca de sessão por contexto). PRs por onda, merge gated pelo
 > usuário (ele autorizou abrir+mergear acompanhando o CI).
 >
-> **EM CURSO: O1 , Onda piloto SPED Fiscal.** Feito até aqui:
-> - SPEC v1: `docs/superpowers/specs/2026-05-29-o1-sped-fiscal-spec.md`.
-> - Review #1 (genuína, auditou as 13 tools fiscais): `docs/superpowers/reviews/2026-05-29-o1-spec-review-1.md`.
+> **EM CURSO: O1 , Onda piloto SPED Fiscal (DF-e de entrada). SPEC FECHADA (v3).**
+> - SPEC v1->v2->v3: `docs/superpowers/specs/2026-05-29-o1-sped-fiscal-spec.md`.
+> - Review #1 (auditou 13 tools fiscais): `reviews/2026-05-29-o1-spec-review-1.md`.
+> - Review #2 (aterrada no dado real via JSON-RPC, corrigiu o piloto inteiro):
+>   `reviews/2026-05-30-o1-spec-review-2.md`.
 >
-> **PRÓXIMA AÇÃO (retomar O1 aqui):**
-> 1. Aplicar review #1 -> **SPEC v2** (cortar lookup_ncm/cfop, que já existem via
->    `fiscal_referencia_buscar`; resolver o gap de `raw_sped_consulta_dfe_item`
->    (não existe: migration nova OU extrair do JSONB de `raw_sped_dfe_importacao`);
->    especificar models `FatoDfe`/`FatoDfeItem`/`FatoDuplicata`; renomear dfe_* ;
->    validar campo de manifestação; sequência de rebuild).
-> 2. Review #2 -> SPEC v3. Depois PLAN v1->v3, execução TDD (raw/fato/builders/
->    tools no padrão `fato-nota-fiscal.ts` + `mcp/tools/fiscal/notas-recebidas.ts`),
->    migration (AVISAR antes: Postgres dev compartilhado; rodar `agente schema-changed`),
->    rebuild `worker`+`mcp`, E2E contra dado real, bateria R-X >= 95,5%, code review,
->    PR, merge gated.
+> **Escopo travado (aterrado no dado real):** fonte `sped.consulta.dfe.item` (6.288
+> regs, 1 linha=1 DF-e). Entrega: **1 raw novo** (`sped.consulta.dfe.item` ->
+> `raw_sped_consulta_dfe_item`, entra no MODEL_CATALOG e no painel "Estado da
+> ingestão" 113->114), **1 fato novo** `FatoDfe` (agrega por `cnpj_cpf`; `vr_nf`
+> às vezes 0), **3 tools** (`dfe_importados_periodo`, `dfe_por_fornecedor`,
+> `dfe_pendentes_manifestacao`; `manifestacao` char: 621 "conhecido"/5.667 vazio).
+> Cortados no review #2: FatoDfeItem (sem produto), duplicatas (redundante c/
+> financeiro), referência NCM/CFOP (já existe).
 >
-> **Escopo provável do piloto (pós-v2):** DF-e importados (período, por fornecedor,
-> itens, pendentes-de-manifestação) + duplicatas/boletos (a vencer, por cliente).
-> Referência NCM/CFOP/CEST sai (já coberta). Depois: O2 CRM, O3 Pedido, O4
-> Financeiro, O5 Contábil.
+> **REQUISITO do usuário (2026-05-30):** todo modelo/fato novo tem que aparecer no
+> painel "Ver estado da ingestão" (`/configuracao`) com status ok. Confirmado: o
+> painel é data-driven do `MODEL_CATALOG`+`SyncState` (só raw, sem aba de fatos),
+> então registrar o modelo no catálogo + sync basta.
+>
+> **PRÓXIMA AÇÃO (retomar O1 aqui): PLAN v1->v2->v3** sobre a SPEC v3, depois
+> execução TDD. Padrões canônicos a seguir: builder `src/worker/fatos/fato-nota-fiscal.ts`,
+> tool `mcp/tools/fiscal/notas-recebidas.ts`, registro em `src/worker/catalog/model-catalog.ts`.
+> Migration AVISAR antes (Postgres dev compartilhado) + `agente schema-changed`.
+> Rebuild `worker`+`mcp`, E2E dado real, bateria R-X >= 95,5%, code review, PR, merge gated.
+> Depois: O2 CRM, O3 Pedido, O4 Financeiro, O5 Contábil.
 >
 > ---
 > ### Histórico R1 (feat/router-catalogo-r1) , arquivado abaixo
