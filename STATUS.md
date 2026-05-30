@@ -50,11 +50,19 @@
 > painel é data-driven do `MODEL_CATALOG`+`SyncState` (só raw, sem aba de fatos),
 > então registrar o modelo no catálogo + sync basta.
 >
-> **PRÓXIMA AÇÃO (retomar O1 aqui): PLAN v1->v2->v3** sobre a SPEC v3, depois
-> execução TDD. Padrões canônicos a seguir: builder `src/worker/fatos/fato-nota-fiscal.ts`,
-> tool `mcp/tools/fiscal/notas-recebidas.ts`, registro em `src/worker/catalog/model-catalog.ts`.
-> Migration AVISAR antes (Postgres dev compartilhado) + `agente schema-changed`.
-> Rebuild `worker`+`mcp`, E2E dado real, bateria R-X >= 95,5%, code review, PR, merge gated.
+> **PLAN FECHADO (v3):** `docs/superpowers/plans/2026-05-30-o1-sped-fiscal-dfe.md`
+> (2 reviews em `reviews/2026-05-30-o1-plan-reviews.md`). 12 tasks TDD, sem
+> placeholders, com o dossiê de padrões reais embutido (raw shape `data Json`/
+> `odooWriteDate`; builder `fato-nota-fiscal.ts` + registry `FATO_BUILDERS`; tool
+> `ToolEntry`+`withFreshness`+`FATO_FONTE`; bumps de contagem model-catalog 113->114
+> e integration 68->71/77->80; vocab Router). Decisões abertas resolvidas na Task 0
+> (inspeção do raw real): cycle, critério de manifestação, `consultaId` (lote, não empresa).
+>
+> **PRÓXIMA AÇÃO (retomar O1 aqui): EXECUÇÃO do PLAN v3**, Task 0 -> 11. ATENÇÃO:
+> a Task 1 roda migration no Postgres dev compartilhado , AVISAR o usuário antes e
+> usar o workaround de drift (PR1-2) se `migrate dev` pedir reset. Não começar a
+> execução com contexto curto (migration pela metade = pior caso). Rebuild
+> `worker`+`mcp`, E2E dado real, bateria R-X, code review, PR (merge gated).
 > Depois: O2 CRM, O3 Pedido, O4 Financeiro, O5 Contábil.
 >
 > ---
