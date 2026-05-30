@@ -77,10 +77,10 @@ export const DOMAINS: ReadonlyArray<DomainEntry> = [
     forceIncludeOn: [
       /\bpedido(s)? de venda/i,
       /\bparcela(s)?\b/i,
-      /tempo (em|na|gasto na?) etapa/i,
-      /hist[oó]rico (de|das) etapas?/i,
-      /pedido(s)? (parado|travado)/i,
-      /travado(s)? (no|na) (fluxo|etapa)/i,
+      /tempo.{0,40}\betapa/i,
+      /hist[oó]rico.{0,20}\betapas?/i,
+      /pedido(s)?.{0,20}(parado|travado)/i,
+      /(parado|travado)(s)?.{0,15}(no|na)?.{0,5}(fluxo|etapa)/i,
     ],
   },
   {
