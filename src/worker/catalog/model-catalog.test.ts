@@ -46,9 +46,13 @@ const MODELOS_REMOVIDOS = new Set([
   "pedido.documento.historico.tempo",
 ]);
 
+// Modelo acrescentado na onda O1 (DF-e). Entrou via sondagem `fields_get`, não
+// pela varredura F0, então não tem arquivo em discovery/output/modelos.
+const MODELOS_O1 = new Set(["sped.consulta.dfe.item"]);
+
 describe("model-catalog", () => {
-  it("tem 113 modelos", () => {
-    expect(MODEL_CATALOG).toHaveLength(113);
+  it("tem 114 modelos", () => {
+    expect(MODEL_CATALOG).toHaveLength(114);
   });
 
   // discovery/output/ é gitignored (saídas brutas locais , ver .gitignore).
@@ -69,7 +73,11 @@ describe("model-catalog", () => {
       );
       const noCatalogo = new Set(
         MODEL_CATALOG.map((m) => m.odooModel).filter(
-          (m) => !MODELOS_L1A.has(m) && !MODELOS_L1C.has(m) && !MODELOS_L1B.has(m),
+          (m) =>
+            !MODELOS_L1A.has(m) &&
+            !MODELOS_L1C.has(m) &&
+            !MODELOS_L1B.has(m) &&
+            !MODELOS_O1.has(m),
         ),
       );
       expect(noCatalogo).toEqual(noDisco);

@@ -1,5 +1,5 @@
 // Gerado a partir de discovery/output/modelos/ , F2.
-// 107 incremental | 5 snapshot | 2 estatico.
+// 108 incremental | 5 snapshot | 2 estatico.
 export type SyncMode = "incremental" | "snapshot" | "estatico";
 
 export interface CatalogEntry {
@@ -60,6 +60,8 @@ export const MODEL_CATALOG: readonly CatalogEntry[] = [
   { odooModel: "sped.atualizacao.preco.item", mode: "incremental" },
   { odooModel: "sped.atualizacao.preco.regra", mode: "incremental" },
   { odooModel: "sped.dfe.importacao", mode: "incremental" },
+  // O1 (onda DF-e): 1 linha = 1 DF-e de fornecedor capturado eletronicamente.
+  { odooModel: "sped.consulta.dfe.item", mode: "incremental" },
   { odooModel: "sped.documento", mode: "incremental" },
   { odooModel: "sped.documento.duplicata", mode: "incremental" },
   { odooModel: "sped.documento.item", mode: "incremental" },
