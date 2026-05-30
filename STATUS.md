@@ -25,12 +25,59 @@
 > B sem_sinal). Achado E2E: o `OdooClient` embrulha faults após retries, então
 > `error-kind` separa acesso/inexistente por mensagem (pt-BR/en).
 >
-> **PRÓXIMA ETAPA (roadmap): O1 , Onda piloto SPED Fiscal** sobre o `baldes.json`
-> (DF-e, notas recebidas, inscrições; foco no Balde A do `sped`). Metodologia
-> completa, branch própria (`feat/onda-sped-fiscal-expansao` conforme roadmap §6).
-> Cada onda entrega raw_* + fato_* + tools no padrão canônico + testes +
-> vocabulário do Router + bateria R-X >= 95,5%. Depois O2 (CRM), O3 (Pedido),
-> O4 (Financeiro), O5 (Contábil).
+> **R2 MERGEADO na main (PR #38).** Branch segue viva: decisão do usuário é fazer
+> **o roadmap inteiro nesta MESMA branch `feat/router-ativacao-r2`** (sem novas
+> worktrees; só troca de sessão por contexto). PRs por onda, merge gated pelo
+> usuário (ele autorizou abrir+mergear acompanhando o CI).
+>
+> **EM CURSO: O1 , Onda piloto SPED Fiscal (DF-e de entrada). SPEC FECHADA (v3).**
+> - SPEC v1->v2->v3: `docs/superpowers/specs/2026-05-29-o1-sped-fiscal-spec.md`.
+> - Review #1 (auditou 13 tools fiscais): `reviews/2026-05-29-o1-spec-review-1.md`.
+> - Review #2 (aterrada no dado real via JSON-RPC, corrigiu o piloto inteiro):
+>   `reviews/2026-05-30-o1-spec-review-2.md`.
+>
+> **Escopo travado (aterrado no dado real):** fonte `sped.consulta.dfe.item` (6.288
+> regs, 1 linha=1 DF-e). Entrega: **1 raw novo** (`sped.consulta.dfe.item` ->
+> `raw_sped_consulta_dfe_item`, entra no MODEL_CATALOG e no painel "Estado da
+> ingestão" 113->114), **1 fato novo** `FatoDfe` (agrega por `cnpj_cpf`; `vr_nf`
+> às vezes 0), **3 tools** (`dfe_importados_periodo`, `dfe_por_fornecedor`,
+> `dfe_pendentes_manifestacao`; `manifestacao` char: 621 "conhecido"/5.667 vazio).
+> Cortados no review #2: FatoDfeItem (sem produto), duplicatas (redundante c/
+> financeiro), referência NCM/CFOP (já existe).
+>
+> **REQUISITO do usuário (2026-05-30):** todo modelo/fato novo tem que aparecer no
+> painel "Ver estado da ingestão" (`/configuracao`) com status ok. Confirmado: o
+> painel é data-driven do `MODEL_CATALOG`+`SyncState` (só raw, sem aba de fatos),
+> então registrar o modelo no catálogo + sync basta.
+>
+> **O1 IMPLEMENTADO E VERIFICADO (DF-e de entrada).** Entregue nesta branch:
+> raw `sped.consulta.dfe.item` no MODEL_CATALOG (painel **113->114, status ok,
+> 6288 registros**); `FatoDfe` + builder `fato-dfe.ts` (registry + FATO_FONTE);
+> 3 tools (`fiscal_dfe_importados_periodo`, `fiscal_dfe_por_fornecedor`,
+> `fiscal_dfe_pendentes_manifestacao`, catálogo 71 tools); query layer `dfe.ts`;
+> vocabulário Router; `fato_dfe` no BI_SCHEMA_REFERENCE (Caminho 3c). Migration
+> aplicada via workaround de drift (PR1-2). **Verificação:** tsc/eslint verdes,
+> suíte 2127 testes (37 novos do R2 + os do O1), **E2E contra dado real**: 6288
+> linhas, `pendentes_manifestacao=5667` (bate com ground-truth), `por_fornecedor`
+> 368 fornecedores, vrNf total R$100M. Code review aplicado (1 fix: agrega por
+> dígitos do CNPJ; demais achados refutados contra o dado). PR aberto.
+> **Gate pendente:** bateria R-X ao vivo (>= 95,5%) , validação do agente, roda
+> contra o código mergeado/no ambiente do usuário.
+>
+> **PLAN FECHADO (v3):** `docs/superpowers/plans/2026-05-30-o1-sped-fiscal-dfe.md`
+> (2 reviews em `reviews/2026-05-30-o1-plan-reviews.md`). 12 tasks TDD, sem
+> placeholders, com o dossiê de padrões reais embutido (raw shape `data Json`/
+> `odooWriteDate`; builder `fato-nota-fiscal.ts` + registry `FATO_BUILDERS`; tool
+> `ToolEntry`+`withFreshness`+`FATO_FONTE`; bumps de contagem model-catalog 113->114
+> e integration 68->71/77->80; vocab Router). Decisões abertas resolvidas na Task 0
+> (inspeção do raw real): cycle, critério de manifestação, `consultaId` (lote, não empresa).
+>
+> **PRÓXIMA AÇÃO (retomar O1 aqui): EXECUÇÃO do PLAN v3**, Task 0 -> 11. ATENÇÃO:
+> a Task 1 roda migration no Postgres dev compartilhado , AVISAR o usuário antes e
+> usar o workaround de drift (PR1-2) se `migrate dev` pedir reset. Não começar a
+> execução com contexto curto (migration pela metade = pior caso). Rebuild
+> `worker`+`mcp`, E2E dado real, bateria R-X, code review, PR (merge gated).
+> Depois: O2 CRM, O3 Pedido, O4 Financeiro, O5 Contábil.
 >
 > ---
 > ### Histórico R1 (feat/router-catalogo-r1) , arquivado abaixo

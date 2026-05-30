@@ -828,6 +828,18 @@ model RawSpedDfeImportacao {
   @@map("raw_sped_dfe_importacao")
 }
 
+model RawSpedConsultaDfeItem {
+  odooId        Int       @id @map("odoo_id")
+  data          Json
+  odooWriteDate DateTime? @map("odoo_write_date")
+  syncedAt      DateTime  @default(now()) @map("synced_at")
+  rawDeleted    Boolean   @default(false) @map("raw_deleted")
+
+  @@index([odooWriteDate])
+  @@index([rawDeleted])
+  @@map("raw_sped_consulta_dfe_item")
+}
+
 model RawSpedDocumento {
   odooId        Int       @id @map("odoo_id")
   data          Json
@@ -1938,6 +1950,32 @@ model FatoNotaFiscalItem {
   @@index([produtoId])
   @@index([dataEmissao])
   @@map("fato_nota_fiscal_item")
+}
+
+/// O1 (onda SPED Fiscal): DF-e de entrada , notas de fornecedores capturadas
+/// eletronicamente (manifestacao do destinatario). Fonte: sped.consulta.dfe.item
+/// (1 linha = 1 DF-e). Distinto de fato_nota_fiscal (documentos proprios).
+/// Agregacao por cnpjFornecedor (participante_id costuma vir nulo); vrNf pode ser 0.
+model FatoDfe {
+  odooId          Int       @id @map("odoo_id")
+  chave           String?
+  numero          String?
+  modelo          String?
+  cnpjFornecedor  String?   @map("cnpj_fornecedor")
+  fornecedorId    Int?      @map("fornecedor_id")
+  fornecedorNome  String?   @map("fornecedor_nome")
+  vrNf            Decimal   @default(0) @map("vr_nf") @db.Decimal(18, 2)
+  dataEmissao     DateTime? @map("data_emissao")
+  dataRecebimento DateTime? @map("data_recebimento")
+  manifestacao    String?
+  podeManifestar  Boolean   @default(false) @map("pode_manifestar")
+  consultaId      Int?      @map("consulta_id")
+  atualizadoEm    DateTime  @default(now()) @map("atualizado_em")
+
+  @@index([dataEmissao])
+  @@index([cnpjFornecedor])
+  @@index([manifestacao])
+  @@map("fato_dfe")
 }
 
 /// R5.01 (Ronda 5): empresas do grupo Matrix Fitness Group (matriz/filial)
