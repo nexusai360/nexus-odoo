@@ -43,6 +43,8 @@ export const FATO_FONTE: Record<string, { model: string; mode: "snapshot" | "inc
   fato_nota_fiscal_item:     { model: "sped.documento.item",       mode: "incremental" },
   // O1 , DF-e de entrada (notas de fornecedores capturadas eletronicamente)
   fato_dfe:                  { model: "sped.consulta.dfe.item",    mode: "incremental" },
+  // O3 , historico de etapas do pedido
+  fato_pedido_historico:     { model: "pedido.documento.historico", mode: "incremental" },
   // F4 L1a , expansão da base de leitura
   fato_preco:                { model: "sped.tabela.preco.regra",   mode: "incremental" },
   fato_servico:              { model: "sped.servico",              mode: "incremental" },
