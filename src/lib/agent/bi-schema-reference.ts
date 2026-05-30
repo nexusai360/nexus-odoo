@@ -162,6 +162,26 @@ TABLE fato_pedido_parcela (
   atualizado_em        TIMESTAMPTZ
 );
 
+-- ─── COMERCIAL / HISTÓRICO DE ETAPAS DO PEDIDO (O3) ──────────────────────────
+-- Log append-only: 1 linha = 1 mudanca de etapa (etapa de destino). Para "tempo
+-- em cada etapa" some tempo_etapa_dias agrupando por etapa_id. Loops de
+-- retrabalho geram varias linhas no mesmo etapa_id. tempo_etapa_dias ja saneado
+-- (>= 0). "Travado no fluxo" = ultimo evento (maior data_entrada) por pedido_id
+-- ha mais de N dias , criterio de PROCESSO, nao financeiro (esse e fato_pedido_parcela).
+TABLE fato_pedido_historico (
+  odoo_id          INT PRIMARY KEY,
+  pedido_id        INT,
+  etapa_id         INT,
+  etapa_nome       TEXT,
+  etapa_tipo       TEXT,
+  data_entrada     TIMESTAMPTZ,
+  data_proxima     TIMESTAMPTZ,
+  tempo_etapa_dias INT,
+  usuario_id       INT,
+  criado_em        TIMESTAMPTZ,
+  atualizado_em    TIMESTAMPTZ
+);
+
 -- ─── FISCAL / NOTAS FISCAIS ──────────────────────────────────────────────────
 
 -- Notas fiscais (cabeçalho)

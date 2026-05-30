@@ -1,0 +1,84 @@
+// mcp/tools/comercial/pedido-travados-por-etapa.ts
+// Tool MCP: comercial_pedido_travados_por_etapa
+import { z } from "zod";
+import type { ToolEntry } from "../../catalog/types.js";
+import { queryPedidoTravadosPorEtapa } from "@/lib/reports/queries/pedido-historico.js";
+import { withFreshness } from "../../lib/freshness.js";
+
+const inputSchema = z.object({
+  diasMin: z.number().int().min(1).max(3650).optional().describe("Mínimo de dias parado (default 30)."),
+  limite: z.number().int().min(1).max(200).optional(),
+});
+
+const linhaSchema = z.object({
+  pedidoId: z.number().int().nullable(),
+  etapaNome: z.string().nullable(),
+  dataEntrada: z.string().nullable(),
+  diasParado: z.number().int(),
+});
+
+const dados = z.object({
+  linhas: z.array(linhaSchema),
+  totalTravados: z.number().int(),
+  diasMin: z.number().int(),
+  aviso: z.string(),
+  _RESPOSTA: z.string().optional(),
+  _listaTruncada: z.boolean().optional(),
+  _DESTAQUE: z.record(z.string(), z.union([z.string(), z.number()])).optional(),
+  _agregado: z.record(z.string(), z.number().optional()).optional(),
+});
+const fonteStatus = z.object({ status: z.string(), ultimaSyncEm: z.string().nullable() });
+const outputSchema = z.union([
+  z.object({ estado: z.literal("preparando") }),
+  z.object({ estado: z.enum(["ok", "vazio"]), dados, atualizadoEm: z.string(), atualizadoHa: z.string(), fonteStatus }),
+]);
+type Input = z.infer<typeof inputSchema>;
+type Output = z.infer<typeof outputSchema>;
+
+function shape(d: Awaited<ReturnType<typeof queryPedidoTravadosPorEtapa>>) {
+  return {
+    ...d,
+    aviso:
+      "Pedidos parados no FLUXO de etapas (processo): o último evento de etapa " +
+      "está há mais de `diasMin` dias sem avançar. É travamento de PROCESSO, NÃO " +
+      "inadimplência financeira (para parcela vencida use comercial_pedidos_atrasados).",
+  };
+}
+
+export const comercialPedidoTravadosPorEtapa: ToolEntry<Input, Output> = {
+  id: "comercial_pedido_travados_por_etapa",
+  dominio: "comercial",
+  descricao:
+    "Pedidos travados no fluxo de etapas (parados há > N dias na etapa atual, " +
+    "critério de PROCESSO, não financeiro). Use para 'quais pedidos estão " +
+    "parados/travados numa etapa', 'pedidos sem avançar há X dias'. Para " +
+    "inadimplência (parcela vencida) use comercial_pedidos_atrasados. Aceita " +
+    "`diasMin` (default 30).",
+  inputSchemaShape: inputSchema.shape,
+  inputSchema,
+  outputSchema,
+  handler: async (input, ctx) => {
+    const envelope = await withFreshness(ctx.prisma, ["fato_pedido_historico"], async () =>
+      shape(await queryPedidoTravadosPorEtapa(ctx.prisma, input)),
+    );
+    if (envelope.estado === "preparando") return envelope;
+    const d = envelope.dados;
+    const todasLinhas = d.linhas;
+    const linhasCap = todasLinhas.slice(0, 30);
+    const top = todasLinhas[0];
+    return {
+      ...envelope,
+      dados: {
+        ...d,
+        linhas: linhasCap,
+        _RESPOSTA:
+          d.totalTravados > 0
+            ? `${d.totalTravados} pedidos parados há mais de ${d.diasMin} dias no fluxo de etapas. Mais antigo: pedido ${top?.pedidoId} (${top?.diasParado} dias em ${top?.etapaNome ?? "(sem etapa)"}).`
+            : `Nenhum pedido parado há mais de ${d.diasMin} dias no fluxo.`,
+        _DESTAQUE: { totalTravados: d.totalTravados, diasMin: d.diasMin, maisAntigoDias: top?.diasParado ?? 0 },
+        _agregado: { contagem: d.totalTravados },
+        _listaTruncada: todasLinhas.length > linhasCap.length,
+      },
+    };
+  },
+};
