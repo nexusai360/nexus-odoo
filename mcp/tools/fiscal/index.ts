@@ -21,6 +21,8 @@ import { fiscalNotasEmitidasPorProduto } from "./notas-emitidas-por-produto.js";
 import { fiscalDfeImportadosPeriodo } from "./dfe-importados-periodo.js";
 import { fiscalDfePorFornecedor } from "./dfe-por-fornecedor.js";
 import { fiscalDfePendentesManifestacao } from "./dfe-pendentes-manifestacao.js";
+import { fiscalMdfeManifestos } from "./mdfe-manifestos.js";
+import { fiscalReinfEventos } from "./reinf-eventos.js";
 
 export const fiscalTools: ToolEntry[] = [
   fiscalFaturamentoPeriodo as ToolEntry,
@@ -44,4 +46,7 @@ export const fiscalTools: ToolEntry[] = [
   fiscalDfeImportadosPeriodo as ToolEntry,
   fiscalDfePorFornecedor as ToolEntry,
   fiscalDfePendentesManifestacao as ToolEntry,
+  // B2 (onda fiscal complementar)
+  fiscalMdfeManifestos as ToolEntry,
+  fiscalReinfEventos as ToolEntry,
 ];

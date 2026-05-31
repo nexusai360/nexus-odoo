@@ -13,6 +13,12 @@ export interface CatalogEntry {
 export const MODEL_CATALOG: readonly CatalogEntry[] = [
   { odooModel: "contabil.conta", mode: "incremental" },
   { odooModel: "contabil.conta.referencial", mode: "incremental" },
+  // B1 (onda contábil): cabeçalho e partidas do lançamento (0 reg hoje; estruturais).
+  { odooModel: "contabil.lancamento", mode: "incremental" },
+  { odooModel: "contabil.lancamento.item", mode: "incremental" },
+  // B2 (onda fiscal complementar): MDF-e + REINF (0 reg hoje; estruturais).
+  { odooModel: "sped.mdfe", mode: "incremental" },
+  { odooModel: "reinf.evento", mode: "incremental" },
   { odooModel: "estoque.extrato", mode: "snapshot" },
   { odooModel: "estoque.extrato.rastreabilidade", mode: "incremental" },
   { odooModel: "estoque.local", mode: "incremental" },

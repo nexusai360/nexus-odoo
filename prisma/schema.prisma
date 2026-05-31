@@ -312,6 +312,58 @@ model RawContabilContaReferencial {
   @@map("raw_contabil_conta_referencial")
 }
 
+// B1 (onda contábil): cabeçalho e partidas do lançamento contábil (0 reg hoje;
+// estrutural, populam quando a Matrix operar contabilidade no Odoo).
+model RawContabilLancamento {
+  odooId        Int       @id @map("odoo_id")
+  data          Json
+  odooWriteDate DateTime? @map("odoo_write_date")
+  syncedAt      DateTime  @default(now()) @map("synced_at")
+  rawDeleted    Boolean   @default(false) @map("raw_deleted")
+
+  @@index([odooWriteDate])
+  @@index([rawDeleted])
+  @@map("raw_contabil_lancamento")
+}
+
+model RawContabilLancamentoItem {
+  odooId        Int       @id @map("odoo_id")
+  data          Json
+  odooWriteDate DateTime? @map("odoo_write_date")
+  syncedAt      DateTime  @default(now()) @map("synced_at")
+  rawDeleted    Boolean   @default(false) @map("raw_deleted")
+
+  @@index([odooWriteDate])
+  @@index([rawDeleted])
+  @@map("raw_contabil_lancamento_item")
+}
+
+// B2 (onda fiscal complementar): raw do MDF-e (sped.mdfe). Estrutural (0 reg hoje).
+model RawSpedMdfe {
+  odooId        Int       @id @map("odoo_id")
+  data          Json
+  odooWriteDate DateTime? @map("odoo_write_date")
+  syncedAt      DateTime  @default(now()) @map("synced_at")
+  rawDeleted    Boolean   @default(false) @map("raw_deleted")
+
+  @@index([odooWriteDate])
+  @@index([rawDeleted])
+  @@map("raw_sped_mdfe")
+}
+
+// B2 (onda fiscal complementar): raw do evento REINF (reinf.evento). Estrutural.
+model RawReinfEvento {
+  odooId        Int       @id @map("odoo_id")
+  data          Json
+  odooWriteDate DateTime? @map("odoo_write_date")
+  syncedAt      DateTime  @default(now()) @map("synced_at")
+  rawDeleted    Boolean   @default(false) @map("raw_deleted")
+
+  @@index([odooWriteDate])
+  @@index([rawDeleted])
+  @@map("raw_reinf_evento")
+}
+
 model RawEstoqueExtrato {
   odooId        Int       @id @map("odoo_id")
   data          Json
@@ -1846,21 +1898,21 @@ model FatoFinanceiroTitulo {
 /// DRE gerencial ("quanto por conta gerencial"), que as tools de total agregado
 /// nao respondem. `tipo` e herdado do lancamento pai (finan.lancamento) no builder.
 model FatoFinanceiroLancamentoItem {
-  odooId                Int       @id @map("odoo_id")
-  lancamentoId          Int?      @map("lancamento_id")
-  tipo                  String    @default("")
-  contaId               Int?      @map("conta_id")
-  contaNome             String?   @map("conta_nome")
-  centroResultadoId     Int?      @map("centro_resultado_id")
-  centroResultadoNome   String?   @map("centro_resultado_nome")
-  descricao             String?
-  pedidoId              Int?      @map("pedido_id")
-  vrDocumento           Decimal   @default(0) @map("vr_documento") @db.Decimal(18, 2)
-  vrTotal               Decimal   @default(0) @map("vr_total") @db.Decimal(18, 2)
-  vrSaldo               Decimal   @default(0) @map("vr_saldo") @db.Decimal(18, 2)
-  vrPagoTotal           Decimal   @default(0) @map("vr_pago_total") @db.Decimal(18, 2)
-  dataDocumento         DateTime? @map("data_documento")
-  atualizadoEm          DateTime  @default(now()) @map("atualizado_em")
+  odooId              Int       @id @map("odoo_id")
+  lancamentoId        Int?      @map("lancamento_id")
+  tipo                String    @default("")
+  contaId             Int?      @map("conta_id")
+  contaNome           String?   @map("conta_nome")
+  centroResultadoId   Int?      @map("centro_resultado_id")
+  centroResultadoNome String?   @map("centro_resultado_nome")
+  descricao           String?
+  pedidoId            Int?      @map("pedido_id")
+  vrDocumento         Decimal   @default(0) @map("vr_documento") @db.Decimal(18, 2)
+  vrTotal             Decimal   @default(0) @map("vr_total") @db.Decimal(18, 2)
+  vrSaldo             Decimal   @default(0) @map("vr_saldo") @db.Decimal(18, 2)
+  vrPagoTotal         Decimal   @default(0) @map("vr_pago_total") @db.Decimal(18, 2)
+  dataDocumento       DateTime? @map("data_documento")
+  atualizadoEm        DateTime  @default(now()) @map("atualizado_em")
 
   @@index([contaId])
   @@index([centroResultadoId])
@@ -2133,6 +2185,120 @@ model FatoContaContabil {
   @@index([natureza])
   @@index([contaPaiId])
   @@map("fato_conta_contabil")
+}
+
+// B1 (onda contábil): plano REFERENCIAL SPED (de-para fiscal), 2216 reg reais.
+// Distinto de FatoContaContabil (plano de contas da empresa).
+model FatoContabilContaReferencial {
+  odooId          Int      @id @map("odoo_id")
+  codigo          String
+  nome            String?
+  nomeCompleto    String?  @map("nome_completo")
+  natureza        String?
+  tipo            String?
+  nivel           Int?
+  parentPath      String?  @map("parent_path")
+  contaSuperiorId Int?     @map("conta_superior_id")
+  atualizadoEm    DateTime @default(now()) @map("atualizado_em")
+
+  @@index([codigo])
+  @@index([natureza])
+  @@map("fato_contabil_conta_referencial")
+}
+
+// B1 (onda contábil): cabeçalho do lançamento contábil. Estrutural (0 reg hoje).
+model FatoContabilLancamento {
+  odooId         Int       @id @map("odoo_id")
+  codigo         String?
+  tipo           String?
+  dataLancamento DateTime? @map("data_lancamento")
+  valor          Decimal   @default(0) @db.Decimal(18, 2)
+  valorDebito    Decimal   @default(0) @map("valor_debito") @db.Decimal(18, 2)
+  valorCredito   Decimal   @default(0) @map("valor_credito") @db.Decimal(18, 2)
+  empresaId      Int?      @map("empresa_id")
+  atualizadoEm   DateTime  @default(now()) @map("atualizado_em")
+
+  @@index([dataLancamento])
+  @@map("fato_contabil_lancamento")
+}
+
+// B1 (onda contábil): partidas/itens do lançamento (coração da contabilidade).
+// Estrutural (0 reg hoje). Denormaliza contaNatureza (de fato_conta_contabil) e
+// lancamentoTipo (do cabeçalho) para razão/balancete/resultado/centro de custo.
+model FatoContabilLancamentoItem {
+  odooId          Int       @id @map("odoo_id")
+  lancamentoId    Int?      @map("lancamento_id")
+  lancamentoTipo  String?   @map("lancamento_tipo")
+  contaId         Int?      @map("conta_id")
+  contaCodigo     String?   @map("conta_codigo")
+  contaNome       String?   @map("conta_nome")
+  contaNatureza   String?   @map("conta_natureza")
+  centroCustoId   Int?      @map("centro_custo_id")
+  centroCustoNome String?   @map("centro_custo_nome")
+  natureza        String?
+  valor           Decimal   @default(0) @db.Decimal(18, 2)
+  valorDebito     Decimal   @default(0) @map("valor_debito") @db.Decimal(18, 2)
+  valorCredito    Decimal   @default(0) @map("valor_credito") @db.Decimal(18, 2)
+  dataLancamento  DateTime? @map("data_lancamento")
+  historico       String?
+  atualizadoEm    DateTime  @default(now()) @map("atualizado_em")
+
+  @@index([dataLancamento])
+  @@index([contaId])
+  @@index([contaNatureza])
+  @@index([centroCustoId])
+  @@index([lancamentoId])
+  @@map("fato_contabil_lancamento_item")
+}
+
+// B2 (onda fiscal complementar): fato do MDF-e (manifesto de transporte).
+// Estrutural (0 reg hoje); popula quando a Matrix operar MDF-e no Odoo.
+model FatoMdfe {
+  odooId                   Int       @id @map("odoo_id")
+  chave                    String?
+  numero                   String?
+  situacaoMdfe             String?   @map("situacao_mdfe")
+  situacaoFiscal           String?   @map("situacao_fiscal")
+  tipoEmissao              String?   @map("tipo_emissao")
+  empresaId                Int?      @map("empresa_id")
+  empresaCnpj              String?   @map("empresa_cnpj")
+  dataEmissao              DateTime? @map("data_emissao")
+  dataAutorizacao          DateTime? @map("data_autorizacao")
+  dataEncerramento         DateTime? @map("data_encerramento")
+  dataCancelamento         DateTime? @map("data_cancelamento")
+  protocoloAutorizacao     String?   @map("protocolo_autorizacao")
+  municipioCarregamento    String?   @map("municipio_carregamento")
+  municipioDescarregamento String?   @map("municipio_descarregamento")
+  pesoBruto                Decimal   @default(0) @map("peso_bruto") @db.Decimal(18, 3)
+  pesoCarga                Decimal   @default(0) @map("peso_carga") @db.Decimal(18, 2)
+  vrNf                     Decimal   @default(0) @map("vr_nf") @db.Decimal(18, 2)
+  atualizadoEm             DateTime  @default(now()) @map("atualizado_em")
+
+  @@index([dataEmissao])
+  @@index([empresaId])
+  @@index([situacaoMdfe])
+  @@map("fato_mdfe")
+}
+
+// B2 (onda fiscal complementar): fato do evento REINF (obrigação acessória).
+// Estrutural (0 reg hoje).
+model FatoReinfEvento {
+  odooId                Int       @id @map("odoo_id")
+  chave                 String?
+  tipo                  String?
+  situacao              String?
+  protocoloTransmissao  String?   @map("protocolo_transmissao")
+  empresaId             Int?      @map("empresa_id")
+  empresaCnpjRaiz       String?   @map("empresa_cnpj_raiz")
+  dataEvento            DateTime? @map("data_evento")
+  dataInicial           DateTime? @map("data_inicial")
+  dataFinal             DateTime? @map("data_final")
+  atualizadoEm          DateTime  @default(now()) @map("atualizado_em")
+
+  @@index([dataEvento])
+  @@index([empresaId])
+  @@index([tipo])
+  @@map("fato_reinf_evento")
 }
 
 /// F4 L1a — preço por regra de tabela de preço (achatado de sped.tabela.preco.regra).
@@ -2430,23 +2596,23 @@ model LlmConfig {
 /// costUsd = null quando costKnown = false (modelo sem preço no catálogo).
 /// costBrl calculado com cotação versionada; rateStale=true se cotação falhou.
 model LlmUsage {
-  id             String   @id @default(uuid()) @db.Uuid
-  conversationId String?  @map("conversation_id") @db.Uuid
-  provider       String
-  model          String
-  tokensInput    Int      @map("tokens_input")
-  tokensOutput   Int      @map("tokens_output")
-  costUsd        Decimal? @map("cost_usd") @db.Decimal(18, 10)
-  costKnown      Boolean  @default(true) @map("cost_known")
-  costBrl        Decimal? @map("cost_brl") @db.Decimal(20, 10)
-  usdToBrlRate   Decimal? @map("usd_to_brl_rate") @db.Decimal(10, 4)
-  rateSpread     Decimal? @map("rate_spread") @db.Decimal(6, 4)
-  rateStale      Boolean  @default(false) @map("rate_stale")
-  promptChars    Int?     @map("prompt_chars")
-  responseChars  Int?     @map("response_chars")
-  durationMs     Int?     @map("duration_ms")
-  errorMessage   String?  @map("error_message")
-  isPlayground   Boolean  @default(false) @map("is_playground")
+  id              String   @id @default(uuid()) @db.Uuid
+  conversationId  String?  @map("conversation_id") @db.Uuid
+  provider        String
+  model           String
+  tokensInput     Int      @map("tokens_input")
+  tokensOutput    Int      @map("tokens_output")
+  costUsd         Decimal? @map("cost_usd") @db.Decimal(18, 10)
+  costKnown       Boolean  @default(true) @map("cost_known")
+  costBrl         Decimal? @map("cost_brl") @db.Decimal(20, 10)
+  usdToBrlRate    Decimal? @map("usd_to_brl_rate") @db.Decimal(10, 4)
+  rateSpread      Decimal? @map("rate_spread") @db.Decimal(6, 4)
+  rateStale       Boolean  @default(false) @map("rate_stale")
+  promptChars     Int?     @map("prompt_chars")
+  responseChars   Int?     @map("response_chars")
+  durationMs      Int?     @map("duration_ms")
+  errorMessage    String?  @map("error_message")
+  isPlayground    Boolean  @default(false) @map("is_playground")
   /// Tokens de raciocinio internos (subset conceitual de tokens_output).
   /// OpenAI/Gemini/OpenRouter expoem; Anthropic nao (fica NULL).
   reasoningTokens Int?     @map("reasoning_tokens")
@@ -2460,15 +2626,15 @@ model LlmUsage {
   toolNames       String[] @map("tool_names")
   userId          String?  @map("user_id") @db.Uuid
   // Credencial (chave de API) usada — permite somar o consumo por chave (A4).
-  credentialId   String?  @map("credential_id") @db.Uuid
+  credentialId    String?  @map("credential_id") @db.Uuid
   // Tipo da requisição para a tag de Consumo (G11): texto/imagem/audio/arquivo/embedding.
-  requestKind    String   @default("texto") @map("request_kind")
+  requestKind     String   @default("texto") @map("request_kind")
   /// Origem da chamada para a tag "Origem" do menu de consumo. NULL em linhas
   /// antigas (derivam de isPlayground: Agente Nex / Playground). Valores novos:
   /// "router" (router de catalogo em producao) e "router_calibracao" (rodadas
   /// de calibragem offline). Permite distinguir gasto do router no historico.
-  origin         String?  @map("origin")
-  createdAt      DateTime @default(now()) @map("created_at")
+  origin          String?  @map("origin")
+  createdAt       DateTime @default(now()) @map("created_at")
 
   @@index([createdAt])
   @@index([provider, model, createdAt])
@@ -2583,7 +2749,7 @@ model AgentSettings {
   routerReformCheckpoint   FeatureCheckpoint @default(OFF) @map("router_reform_checkpoint")
   routerReformProvider     String?           @map("router_reform_provider")
   routerReformModel        String?           @map("router_reform_model")
-  routerReformCredentialId String?  @db.Uuid @map("router_reform_credential_id")
+  routerReformCredentialId String?           @map("router_reform_credential_id") @db.Uuid
   /// Quantos pares (user -> resposta final) entram no contexto da reformulacao.
   routerReformNPairs       Int               @default(5) @map("router_reform_n_pairs")
   /// Escolha de modelo de embedding do router. A CREDENCIAL continua na fonte

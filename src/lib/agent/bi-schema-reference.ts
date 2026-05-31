@@ -316,6 +316,92 @@ TABLE fato_conta_contabil (
   atualizado_em        TIMESTAMPTZ
 );
 
+-- ─── CONTÁBIL , MOVIMENTO (B1) ───────────────────────────────────────────────
+-- Plano REFERENCIAL SPED (de-para fiscal, 2216 contas). Distinto do plano da empresa.
+TABLE fato_contabil_conta_referencial (
+  odoo_id           INT PRIMARY KEY,
+  codigo            TEXT,         -- código hierárquico (ex.: 1.01.01)
+  nome              TEXT,
+  nome_completo     TEXT,
+  natureza          TEXT,         -- 01=Ativo,02=Passivo,03=PL,04=Resultado,05=Compensação,09=Outras
+  tipo              TEXT,         -- A (analítica) | S (sintética)
+  nivel             INT,
+  parent_path       TEXT,
+  conta_superior_id INT,
+  atualizado_em     TIMESTAMPTZ
+);
+
+-- Cabeçalho do lançamento contábil. Estrutural (0 reg ate a contabilidade ser operada).
+TABLE fato_contabil_lancamento (
+  odoo_id          INT PRIMARY KEY,
+  codigo           TEXT,
+  tipo             TEXT,          -- N=Normal, E=Encerramento, X=Extemporâneo
+  data_lancamento  TIMESTAMPTZ,
+  valor            NUMERIC(18,2),
+  valor_debito     NUMERIC(18,2),
+  valor_credito    NUMERIC(18,2),
+  empresa_id       INT,
+  atualizado_em    TIMESTAMPTZ
+);
+
+-- Partidas do lançamento (base de razão/balancete/resultado). Estrutural (0 reg).
+TABLE fato_contabil_lancamento_item (
+  odoo_id           INT PRIMARY KEY,
+  lancamento_id     INT,          -- FK lógica para fato_contabil_lancamento
+  lancamento_tipo   TEXT,         -- tipo do cabeçalho (excluir E=Encerramento no resultado)
+  conta_id          INT,          -- FK lógica para fato_conta_contabil
+  conta_codigo      TEXT,
+  conta_nome        TEXT,
+  conta_natureza    TEXT,         -- natureza da conta (04=Resultado p/ resultado por natureza)
+  centro_custo_id   INT,
+  centro_custo_nome TEXT,
+  natureza          TEXT,         -- D (débito) | C (crédito)
+  valor             NUMERIC(18,2),
+  valor_debito      NUMERIC(18,2),
+  valor_credito     NUMERIC(18,2),
+  data_lancamento   TIMESTAMPTZ,
+  historico         TEXT,
+  atualizado_em     TIMESTAMPTZ
+);
+
+-- ─── FISCAL COMPLEMENTAR , MDF-e + REINF (B2) ────────────────────────────────
+-- Estruturais (0 reg ate os modulos serem operados). Tools respondem "nao operado".
+TABLE fato_mdfe (
+  odoo_id                   INT PRIMARY KEY,
+  chave                     TEXT,
+  numero                    TEXT,
+  situacao_mdfe             TEXT,
+  situacao_fiscal           TEXT,
+  tipo_emissao              TEXT,
+  empresa_id                INT,
+  empresa_cnpj              TEXT,
+  data_emissao              TIMESTAMPTZ,
+  data_autorizacao          TIMESTAMPTZ,
+  data_encerramento         TIMESTAMPTZ,
+  data_cancelamento         TIMESTAMPTZ,
+  protocolo_autorizacao     TEXT,
+  municipio_carregamento    TEXT,
+  municipio_descarregamento TEXT,
+  peso_bruto                NUMERIC(18,3),
+  peso_carga                NUMERIC(18,2),
+  vr_nf                     NUMERIC(18,2),
+  atualizado_em             TIMESTAMPTZ
+);
+
+TABLE fato_reinf_evento (
+  odoo_id              INT PRIMARY KEY,
+  chave                TEXT,
+  tipo                 TEXT,
+  situacao             TEXT,
+  protocolo_transmissao TEXT,
+  empresa_id           INT,
+  empresa_cnpj_raiz    TEXT,
+  data_evento          TIMESTAMPTZ,
+  data_inicial         TIMESTAMPTZ,
+  data_final           TIMESTAMPTZ,
+  atualizado_em        TIMESTAMPTZ
+);
+
 -- ─── PREÇOS (F4 L1a) ─────────────────────────────────────────────────────────
 
 -- Regras de preço das tabelas de preço (uma linha por regra)

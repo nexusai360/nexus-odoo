@@ -151,6 +151,64 @@
       "examples": []
     },
     {
+      "id": "estoque_produtos_saldo_zero",
+      "operation": "read",
+      "module": "estoque",
+      "descricao": "Conta produtos com saldo total zero (e opcionalmente negativos) consolidado em todos os armazens. Retorna `totalProdutos`, `totalZerados`, `totalNegativos` + amostra de produtos. Use para perguntas tipo: 'quantos itens com saldo zero?', 'produtos sem estoque', 'itens negativos'.",
+      "capability": null,
+      "sensitive": false,
+      "addedInVersion": null,
+      "inputSchemaKeys": [
+        "incluirNegativos",
+        "familiaId",
+        "armazemId",
+        "limite"
+      ],
+      "inputSchemaFields": [
+        {
+          "name": "incluirNegativos",
+          "type": "boolean",
+          "optional": true
+        },
+        {
+          "name": "familiaId",
+          "type": "integer",
+          "optional": true
+        },
+        {
+          "name": "armazemId",
+          "type": "integer",
+          "optional": true
+        },
+        {
+          "name": "limite",
+          "type": "integer",
+          "optional": true
+        }
+      ],
+      "examples": []
+    },
+    {
+      "id": "estoque_locais_por_produto",
+      "operation": "read",
+      "module": "estoque",
+      "descricao": "Lista todos os armazens/locais onde um produto tem saldo, com saldo por local. Use para 'quais armazens tem o produto X', 'onde esta o saldo de Y'. Aceita termo (nome ou codigo).",
+      "capability": null,
+      "sensitive": false,
+      "addedInVersion": null,
+      "inputSchemaKeys": [
+        "termo"
+      ],
+      "inputSchemaFields": [
+        {
+          "name": "termo",
+          "type": "string",
+          "optional": false
+        }
+      ],
+      "examples": []
+    },
+    {
       "id": "financeiro_saldo_contas",
       "operation": "read",
       "module": "financeiro",
@@ -258,12 +316,89 @@
       "id": "financeiro_titulos_vencidos",
       "operation": "read",
       "module": "financeiro",
-      "descricao": "Todos os títulos vencidos e não pagos (a receber e a pagar), com dias de atraso.",
+      "descricao": "Titulos vencidos e nao pagos. Aceita filtro tipo=a_receber|a_pagar|todos (default todos).",
+      "capability": null,
+      "sensitive": false,
+      "addedInVersion": null,
+      "inputSchemaKeys": [
+        "tipo",
+        "janela"
+      ],
+      "inputSchemaFields": [
+        {
+          "name": "tipo",
+          "type": "enum",
+          "optional": true,
+          "enumValues": [
+            "a_receber",
+            "a_pagar",
+            "todos"
+          ]
+        },
+        {
+          "name": "janela",
+          "type": "enum",
+          "optional": true,
+          "enumValues": [
+            "hoje",
+            "ate_hoje"
+          ]
+        }
+      ],
+      "examples": []
+    },
+    {
+      "id": "financeiro_liquidez",
+      "operation": "read",
+      "module": "financeiro",
+      "descricao": "Indicadores de liquidez da empresa: saldo em caixa, contas a receber em aberto, contas a pagar em aberto, liquidez imediata (saldo/pagar) e liquidez corrente ((saldo+receber)/pagar). Use para 'liquidez imediata', 'consigo pagar tudo', 'saude financeira', 'indicador de liquidez'.",
       "capability": null,
       "sensitive": false,
       "addedInVersion": null,
       "inputSchemaKeys": [],
       "inputSchemaFields": [],
+      "examples": []
+    },
+    {
+      "id": "financeiro_resultado_por_conta",
+      "operation": "read",
+      "module": "financeiro",
+      "descricao": "Resultado gerencial (DRE simplificada) por conta gerencial: receitas e despesas agrupadas por conta, com total e resultado (receita - despesa). Use para 'quanto gastei/recebi por conta', 'principais despesas por conta', 'DRE gerencial'. Filtros: período (periodoDe/periodoAte AAAA-MM-DD) e natureza (receita|despesa).",
+      "capability": null,
+      "sensitive": false,
+      "addedInVersion": null,
+      "inputSchemaKeys": [
+        "periodoDe",
+        "periodoAte",
+        "natureza",
+        "limite"
+      ],
+      "inputSchemaFields": [
+        {
+          "name": "periodoDe",
+          "type": "string",
+          "optional": true
+        },
+        {
+          "name": "periodoAte",
+          "type": "string",
+          "optional": true
+        },
+        {
+          "name": "natureza",
+          "type": "enum",
+          "optional": true,
+          "enumValues": [
+            "receita",
+            "despesa"
+          ]
+        },
+        {
+          "name": "limite",
+          "type": "integer",
+          "optional": true
+        }
+      ],
       "examples": []
     },
     {
@@ -412,7 +547,7 @@
       "id": "preco_produto",
       "operation": "read",
       "module": "comercial",
-      "descricao": "Regras de preço de um produto nas tabelas de preço: valor, operação (fixo, valor, margem, markup, desconto), preço-base, vigência e quantidade mínima. Busca por `termo` no nome do produto (passe o nome do produto ou o código que aparece entre colchetes no nome).",
+      "descricao": "Regras de preço de um PRODUTO específico. Retorna as regras em todas as tabelas onde o produto aparece: valor, operação (fixo, valor, margem, markup, desconto), preço-base, vigência e quantidade mínima. Use quando perguntam o PREÇO ou REGRA DE PREÇO de um produto. Parâmetro `termo` aceita nome OU código entre colchetes. NÃO use para: listar uma tabela inteira (use `preco_tabela`), pedidos (use `comercial_pedidos_periodo`), saldo em estoque (use `estoque_saldo_produto`).",
       "capability": null,
       "sensitive": false,
       "addedInVersion": null,
@@ -438,7 +573,7 @@
       "id": "preco_tabela",
       "operation": "read",
       "module": "comercial",
-      "descricao": "Regras de uma tabela de preço pelo seu id: lista as regras (por produto, família ou participante) com valor, operação e vigência.",
+      "descricao": "Regras de UMA TABELA DE PREÇO específica (identificada por `tabelaId`). Lista todas as regras da tabela (por produto, família ou participante) com valor, operação e vigência. NÃO use para: preço de um produto específico (use `preco_produto`).",
       "capability": null,
       "sensitive": false,
       "addedInVersion": null,
@@ -482,6 +617,294 @@
       "addedInVersion": null,
       "inputSchemaKeys": [],
       "inputSchemaFields": [],
+      "examples": []
+    },
+    {
+      "id": "comercial_pedidos_listar_top_valor",
+      "operation": "read",
+      "module": "comercial",
+      "descricao": "Lista top N pedidos com filtros e ordenacao flexiveis. Use para: 'pedido com maior valor em aberto' (default), 'pedido mais antigo em aberto' (ordenacao=data_asc), 'pedido mais recente' (ordenacao=data_desc), 'pedido do cliente Smartfit' (clienteTermo=Smartfit). Aceita status (aberto/fechado/todos), periodo (DE/ATE) e limite (default 10).",
+      "capability": null,
+      "sensitive": false,
+      "addedInVersion": null,
+      "inputSchemaKeys": [
+        "status",
+        "limite",
+        "periodoDe",
+        "periodoAte",
+        "ordenacao",
+        "clienteTermo",
+        "vendedorTermo"
+      ],
+      "inputSchemaFields": [
+        {
+          "name": "status",
+          "type": "enum",
+          "optional": true,
+          "enumValues": [
+            "aberto",
+            "fechado",
+            "todos"
+          ]
+        },
+        {
+          "name": "limite",
+          "type": "integer",
+          "optional": true
+        },
+        {
+          "name": "periodoDe",
+          "type": "string",
+          "optional": true
+        },
+        {
+          "name": "periodoAte",
+          "type": "string",
+          "optional": true
+        },
+        {
+          "name": "ordenacao",
+          "type": "enum",
+          "optional": true,
+          "enumValues": [
+            "valor_desc",
+            "valor_asc",
+            "data_asc",
+            "data_desc"
+          ]
+        },
+        {
+          "name": "clienteTermo",
+          "type": "string",
+          "optional": true
+        },
+        {
+          "name": "vendedorTermo",
+          "type": "string",
+          "optional": true
+        }
+      ],
+      "examples": []
+    },
+    {
+      "id": "comercial_vendedores_cadastrados",
+      "operation": "read",
+      "module": "comercial",
+      "descricao": "Lista vendedores distintos que aparecem em pedidos (histórico completo), ordenados por quantidade de pedidos. Use para 'vendedores cadastrados', 'lista de vendedores'. Sem filtro de período.",
+      "capability": null,
+      "sensitive": false,
+      "addedInVersion": null,
+      "inputSchemaKeys": [],
+      "inputSchemaFields": [],
+      "examples": []
+    },
+    {
+      "id": "comercial_pedidos_sem_vendedor",
+      "operation": "read",
+      "module": "comercial",
+      "descricao": "Lista pedidos sem vendedor atribuido (vendedor_id IS NULL). Aceita filtro de periodo. Use para 'pedidos sem vendedor', 'pedidos órfãos', 'pedidos sem responsável'.",
+      "capability": null,
+      "sensitive": false,
+      "addedInVersion": null,
+      "inputSchemaKeys": [
+        "periodoDe",
+        "periodoAte",
+        "limite"
+      ],
+      "inputSchemaFields": [
+        {
+          "name": "periodoDe",
+          "type": "string",
+          "optional": true
+        },
+        {
+          "name": "periodoAte",
+          "type": "string",
+          "optional": true
+        },
+        {
+          "name": "limite",
+          "type": "integer",
+          "optional": true
+        }
+      ],
+      "examples": []
+    },
+    {
+      "id": "comercial_produtos_por_margem",
+      "operation": "read",
+      "module": "comercial",
+      "descricao": "Lista top N produtos por margem (preco_venda vs preco_custo do cadastro). Use para 'top produtos por margem', 'maior margem', 'menor margem', 'produto com mais lucro por unidade'. Aceita ordenacao=maior|menor (default maior), limite (default 10) e termo (opcional, filtra por nome).",
+      "capability": null,
+      "sensitive": false,
+      "addedInVersion": null,
+      "inputSchemaKeys": [
+        "ordenacao",
+        "limite",
+        "termo"
+      ],
+      "inputSchemaFields": [
+        {
+          "name": "ordenacao",
+          "type": "enum",
+          "optional": true,
+          "enumValues": [
+            "maior",
+            "menor"
+          ]
+        },
+        {
+          "name": "limite",
+          "type": "integer",
+          "optional": true
+        },
+        {
+          "name": "termo",
+          "type": "string",
+          "optional": true
+        }
+      ],
+      "examples": []
+    },
+    {
+      "id": "comercial_pedidos_por_uf",
+      "operation": "read",
+      "module": "comercial",
+      "descricao": "Pedidos agrupados por UF do cliente. Use para 'pedidos por estado', 'pedidos por UF', 'qual estado mais compra'. Aceita status (aberto/fechado/todos) e periodo. Default: todos os pedidos cadastrados.",
+      "capability": null,
+      "sensitive": false,
+      "addedInVersion": null,
+      "inputSchemaKeys": [
+        "periodoDe",
+        "periodoAte",
+        "status",
+        "limite"
+      ],
+      "inputSchemaFields": [
+        {
+          "name": "periodoDe",
+          "type": "string",
+          "optional": true
+        },
+        {
+          "name": "periodoAte",
+          "type": "string",
+          "optional": true
+        },
+        {
+          "name": "status",
+          "type": "enum",
+          "optional": true,
+          "enumValues": [
+            "aberto",
+            "fechado",
+            "todos"
+          ]
+        },
+        {
+          "name": "limite",
+          "type": "integer",
+          "optional": true
+        }
+      ],
+      "examples": []
+    },
+    {
+      "id": "comercial_produtos_por_familia",
+      "operation": "read",
+      "module": "comercial",
+      "descricao": "Lista produtos por familia. Sem 'familiaTermo': agrupa todas as familias com count. Com 'familiaTermo' (ex: 'acessorios', 'life fitness'): lista produtos dessa familia. Use para 'produtos da familia X', 'quais familias temos', 'produtos de acessorios'.",
+      "capability": null,
+      "sensitive": false,
+      "addedInVersion": null,
+      "inputSchemaKeys": [
+        "familiaTermo",
+        "limite"
+      ],
+      "inputSchemaFields": [
+        {
+          "name": "familiaTermo",
+          "type": "string",
+          "optional": true
+        },
+        {
+          "name": "limite",
+          "type": "integer",
+          "optional": true
+        }
+      ],
+      "examples": []
+    },
+    {
+      "id": "comercial_tempo_medio_fechamento",
+      "operation": "read",
+      "module": "comercial",
+      "descricao": "Tempo medio de fechamento dos pedidos (dataAprovacao - dataOrcamento em dias) sobre pedidos concluidos (etapa_finaliza=true). Retorna media, mediana, min e max. Use para 'tempo medio de fechamento', 'quanto tempo leva pra fechar um pedido'.",
+      "capability": null,
+      "sensitive": false,
+      "addedInVersion": null,
+      "inputSchemaKeys": [
+        "periodoDe",
+        "periodoAte"
+      ],
+      "inputSchemaFields": [
+        {
+          "name": "periodoDe",
+          "type": "string",
+          "optional": true
+        },
+        {
+          "name": "periodoAte",
+          "type": "string",
+          "optional": true
+        }
+      ],
+      "examples": []
+    },
+    {
+      "id": "comercial_pedido_historico_etapas",
+      "operation": "read",
+      "module": "comercial",
+      "descricao": "Histórico de etapas de um pedido específico: sequência de transições e tempo (em dias) gasto em cada etapa, incluindo retrabalho (passagens repetidas). Use para 'quanto tempo o pedido X ficou em cada etapa', 'histórico de etapas do pedido X'. Requer `pedidoId` (odoo_id do pedido).",
+      "capability": null,
+      "sensitive": false,
+      "addedInVersion": null,
+      "inputSchemaKeys": [
+        "pedidoId"
+      ],
+      "inputSchemaFields": [
+        {
+          "name": "pedidoId",
+          "type": "integer",
+          "optional": false
+        }
+      ],
+      "examples": []
+    },
+    {
+      "id": "comercial_pedido_travados_por_etapa",
+      "operation": "read",
+      "module": "comercial",
+      "descricao": "Pedidos travados no fluxo de etapas (parados há > N dias na etapa atual, critério de PROCESSO, não financeiro). Use para 'quais pedidos estão parados/travados numa etapa', 'pedidos sem avançar há X dias'. Para inadimplência (parcela vencida) use comercial_pedidos_atrasados. Aceita `diasMin` (default 30).",
+      "capability": null,
+      "sensitive": false,
+      "addedInVersion": null,
+      "inputSchemaKeys": [
+        "diasMin",
+        "limite"
+      ],
+      "inputSchemaFields": [
+        {
+          "name": "diasMin",
+          "type": "integer",
+          "optional": true
+        },
+        {
+          "name": "limite",
+          "type": "integer",
+          "optional": true
+        }
+      ],
       "examples": []
     },
     {
@@ -826,6 +1249,274 @@
       "examples": []
     },
     {
+      "id": "fiscal_faturamento_por_marca",
+      "operation": "read",
+      "module": "fiscal",
+      "descricao": "Faturamento agrupado por MARCA do produto (notas de saida autorizadas). Retorna top N marcas com quantidade de itens e valor total + totalGeral. Use para 'faturamento por marca', 'qual marca vende mais', 'top marcas'.",
+      "capability": null,
+      "sensitive": false,
+      "addedInVersion": null,
+      "inputSchemaKeys": [
+        "periodoDe",
+        "periodoAte",
+        "limite"
+      ],
+      "inputSchemaFields": [
+        {
+          "name": "periodoDe",
+          "type": "string",
+          "optional": true
+        },
+        {
+          "name": "periodoAte",
+          "type": "string",
+          "optional": true
+        },
+        {
+          "name": "limite",
+          "type": "integer",
+          "optional": true
+        }
+      ],
+      "examples": []
+    },
+    {
+      "id": "fiscal_faturamento_mensal_serie",
+      "operation": "read",
+      "module": "fiscal",
+      "descricao": "Serie mes a mes de faturamento do ano informado (default: ano corrente). Itera fiscal_faturamento_periodo para cada mes 01..mes_corrente. Use para perguntas tipo 'comparativo mensal', 'faturamento por mes esse ano'.",
+      "capability": null,
+      "sensitive": false,
+      "addedInVersion": null,
+      "inputSchemaKeys": [
+        "ano"
+      ],
+      "inputSchemaFields": [
+        {
+          "name": "ano",
+          "type": "integer",
+          "optional": true
+        }
+      ],
+      "examples": []
+    },
+    {
+      "id": "fiscal_faturamento_por_uf",
+      "operation": "read",
+      "module": "fiscal",
+      "descricao": "Faturamento agrupado por estado (UF do cliente da nota), ordenado por valor descendente. Use para 'faturamento por estado / por UF / por regiao' (regiao = conjunto de UFs). Agrega notas de saida autorizadas no periodo (default mes corrente).",
+      "capability": null,
+      "sensitive": false,
+      "addedInVersion": null,
+      "inputSchemaKeys": [
+        "periodoDe",
+        "periodoAte",
+        "limite"
+      ],
+      "inputSchemaFields": [
+        {
+          "name": "periodoDe",
+          "type": "string",
+          "optional": true
+        },
+        {
+          "name": "periodoAte",
+          "type": "string",
+          "optional": true
+        },
+        {
+          "name": "limite",
+          "type": "integer",
+          "optional": true
+        }
+      ],
+      "examples": []
+    },
+    {
+      "id": "fiscal_notas_emitidas_por_cliente",
+      "operation": "read",
+      "module": "fiscal",
+      "descricao": "Notas fiscais de saida emitidas para um cliente especifico (filtra participanteNome via clienteTermo). Use para 'notas emitidas para Smartfit', 'NF do cliente X esse mes'. Aceita periodo e situacao.",
+      "capability": null,
+      "sensitive": false,
+      "addedInVersion": null,
+      "inputSchemaKeys": [
+        "clienteTermo",
+        "periodoDe",
+        "periodoAte",
+        "situacaoNfe",
+        "limite"
+      ],
+      "inputSchemaFields": [
+        {
+          "name": "clienteTermo",
+          "type": "string",
+          "optional": false
+        },
+        {
+          "name": "periodoDe",
+          "type": "string",
+          "optional": true
+        },
+        {
+          "name": "periodoAte",
+          "type": "string",
+          "optional": true
+        },
+        {
+          "name": "situacaoNfe",
+          "type": "string",
+          "optional": true
+        },
+        {
+          "name": "limite",
+          "type": "integer",
+          "optional": true
+        }
+      ],
+      "examples": []
+    },
+    {
+      "id": "fiscal_notas_emitidas_por_produto",
+      "operation": "read",
+      "module": "fiscal",
+      "descricao": "Notas fiscais de saida que contem um produto especifico (filtro via produtoTermo, busca por nome ou codigo). Agrega quantidade e valor por nota. Use para 'quantas notas sairam do produto X esse mes'.",
+      "capability": null,
+      "sensitive": false,
+      "addedInVersion": null,
+      "inputSchemaKeys": [
+        "produtoTermo",
+        "periodoDe",
+        "periodoAte",
+        "limite"
+      ],
+      "inputSchemaFields": [
+        {
+          "name": "produtoTermo",
+          "type": "string",
+          "optional": false
+        },
+        {
+          "name": "periodoDe",
+          "type": "string",
+          "optional": true
+        },
+        {
+          "name": "periodoAte",
+          "type": "string",
+          "optional": true
+        },
+        {
+          "name": "limite",
+          "type": "integer",
+          "optional": true
+        }
+      ],
+      "examples": []
+    },
+    {
+      "id": "fiscal_dfe_importados_periodo",
+      "operation": "read",
+      "module": "fiscal",
+      "descricao": "DF-e importados (notas de fornecedores capturadas eletronicamente, via manifestação do destinatário) no período. Use para 'quais notas/DF-e de fornecedores chegaram'. Distinto de notas recebidas próprias. Filtro de período periodoDe/periodoAte (AAAA-MM-DD).",
+      "capability": null,
+      "sensitive": false,
+      "addedInVersion": null,
+      "inputSchemaKeys": [
+        "periodoDe",
+        "periodoAte",
+        "limite"
+      ],
+      "inputSchemaFields": [
+        {
+          "name": "periodoDe",
+          "type": "string",
+          "optional": true
+        },
+        {
+          "name": "periodoAte",
+          "type": "string",
+          "optional": true
+        },
+        {
+          "name": "limite",
+          "type": "integer",
+          "optional": true
+        }
+      ],
+      "examples": []
+    },
+    {
+      "id": "fiscal_dfe_por_fornecedor",
+      "operation": "read",
+      "module": "fiscal",
+      "descricao": "DF-e (notas de fornecedores capturadas eletronicamente) agrupados por fornecedor (CNPJ/CPF), ordenados por quantidade. Use para 'de quais fornecedores chegaram DF-e' ou 'quantas notas do fornecedor X'. Passe `documento` (CNPJ/CPF) para um fornecedor específico. Filtro de período.",
+      "capability": null,
+      "sensitive": false,
+      "addedInVersion": null,
+      "inputSchemaKeys": [
+        "documento",
+        "periodoDe",
+        "periodoAte",
+        "limite"
+      ],
+      "inputSchemaFields": [
+        {
+          "name": "documento",
+          "type": "string",
+          "optional": true
+        },
+        {
+          "name": "periodoDe",
+          "type": "string",
+          "optional": true
+        },
+        {
+          "name": "periodoAte",
+          "type": "string",
+          "optional": true
+        },
+        {
+          "name": "limite",
+          "type": "integer",
+          "optional": true
+        }
+      ],
+      "examples": []
+    },
+    {
+      "id": "fiscal_dfe_pendentes_manifestacao",
+      "operation": "read",
+      "module": "fiscal",
+      "descricao": "DF-e (notas de fornecedores) pendentes de manifestação do destinatário (sem ciência/confirmação registrada). Use para 'quais DF-e estão pendentes de manifestação' ou 'notas de fornecedor a manifestar'. Filtro de período.",
+      "capability": null,
+      "sensitive": false,
+      "addedInVersion": null,
+      "inputSchemaKeys": [
+        "periodoDe",
+        "periodoAte",
+        "limite"
+      ],
+      "inputSchemaFields": [
+        {
+          "name": "periodoDe",
+          "type": "string",
+          "optional": true
+        },
+        {
+          "name": "periodoAte",
+          "type": "string",
+          "optional": true
+        },
+        {
+          "name": "limite",
+          "type": "integer",
+          "optional": true
+        }
+      ],
+      "examples": []
+    },
+    {
       "id": "cadastro_buscar_parceiro",
       "operation": "read",
       "module": "cadastros",
@@ -855,7 +1546,7 @@
       "id": "cadastro_contar_parceiros",
       "operation": "read",
       "module": "cadastros",
-      "descricao": "Contagem total de parceiros cadastrados, segmentada por tipo: clientes, fornecedores e empresas.",
+      "descricao": "Contagem segmentada de parceiros cadastrados. Retorna: `totalParceiros`, `totalClientes`, `totalFornecedores`, `totalEmpresas` (PJ), `totalPessoasFisicas` (PF), `totalAtivos`, `totalInativos`, `totalClientesAtivos`, `totalFornecedoresAtivos`. Use para perguntas tipo 'quantos clientes', 'quantos fornecedores', 'quantos PF/PJ', 'quantos ativos', 'fornecedores ativos'.",
       "capability": null,
       "sensitive": false,
       "addedInVersion": null,
@@ -879,6 +1570,229 @@
           "name": "apenasClientes",
           "type": "boolean",
           "optional": true
+        }
+      ],
+      "examples": []
+    },
+    {
+      "id": "cadastro_parceiros_por_cidade",
+      "operation": "read",
+      "module": "cadastros",
+      "descricao": "Lista parceiros filtrando por UF + cidade + zona (capital/interior/todas). Use para 'parceiros do interior de SP' (uf=SP, zona=interior), 'clientes da capital' (uf=SP, zona=capital, apenasClientes=true), 'parceiros de Brasilia' (cidade=Brasilia). Default: todas zonas, todos parceiros.",
+      "capability": null,
+      "sensitive": false,
+      "addedInVersion": null,
+      "inputSchemaKeys": [
+        "uf",
+        "cidade",
+        "zona",
+        "apenasClientes",
+        "limite"
+      ],
+      "inputSchemaFields": [
+        {
+          "name": "uf",
+          "type": "string",
+          "optional": true
+        },
+        {
+          "name": "cidade",
+          "type": "string",
+          "optional": true
+        },
+        {
+          "name": "zona",
+          "type": "enum",
+          "optional": true,
+          "enumValues": [
+            "capital",
+            "interior",
+            "todas"
+          ]
+        },
+        {
+          "name": "apenasClientes",
+          "type": "boolean",
+          "optional": true
+        },
+        {
+          "name": "limite",
+          "type": "integer",
+          "optional": true
+        }
+      ],
+      "examples": []
+    },
+    {
+      "id": "cadastro_cidades_listar",
+      "operation": "read",
+      "module": "cadastros",
+      "descricao": "Lista cidades distintas presentes no cadastro de parceiros, agrupadas por UF + cidade com a quantidade de parceiros em cada uma. Use para 'quais cidades temos', 'cidades de SP', 'temos parceiros em Campinas?'. Filtra por UF (sigla ou nome). Mapeamento dinamico: vem do banco, sem lista hardcoded.",
+      "capability": null,
+      "sensitive": false,
+      "addedInVersion": null,
+      "inputSchemaKeys": [
+        "uf",
+        "limite"
+      ],
+      "inputSchemaFields": [
+        {
+          "name": "uf",
+          "type": "string",
+          "optional": true
+        },
+        {
+          "name": "limite",
+          "type": "integer",
+          "optional": true
+        }
+      ],
+      "examples": []
+    },
+    {
+      "id": "cadastro_parceiros_novos",
+      "operation": "read",
+      "module": "cadastros",
+      "descricao": "Lista parceiros novos cadastrados no periodo informado (data_criacao = campo create_date do Odoo). Use para 'parceiros novos cadastrados esta semana', 'clientes novos esse mes', 'quem cadastramos ontem'. Aceita periodoNome (essa_semana default, mes_corrente, ontem, hoje, etc) ou periodoDe/periodoAte explicitos, e tipo (clientes/fornecedores/todos).",
+      "capability": null,
+      "sensitive": false,
+      "addedInVersion": null,
+      "inputSchemaKeys": [
+        "periodoNome",
+        "periodoDe",
+        "periodoAte",
+        "tipo",
+        "limite"
+      ],
+      "inputSchemaFields": [
+        {
+          "name": "periodoNome",
+          "type": "enum",
+          "optional": true,
+          "enumValues": [
+            "hoje",
+            "ontem",
+            "essa_semana",
+            "semana_passada",
+            "mes_corrente",
+            "mes_anterior",
+            "ultimos_7_dias",
+            "ultimos_30_dias",
+            "ano_corrente"
+          ]
+        },
+        {
+          "name": "periodoDe",
+          "type": "string",
+          "optional": true
+        },
+        {
+          "name": "periodoAte",
+          "type": "string",
+          "optional": true
+        },
+        {
+          "name": "tipo",
+          "type": "enum",
+          "optional": true,
+          "enumValues": [
+            "clientes",
+            "fornecedores",
+            "todos"
+          ]
+        },
+        {
+          "name": "limite",
+          "type": "integer",
+          "optional": true
+        }
+      ],
+      "examples": []
+    },
+    {
+      "id": "cadastro_parceiros_sem_documento",
+      "operation": "read",
+      "module": "cadastros",
+      "descricao": "Lista parceiros ativos SEM documento (CNPJ/CPF) cadastrado. Use para 'parceiros sem documento', 'clientes sem CNPJ', 'cadastros incompletos'. Filtra por tipo (clientes/fornecedores/todos).",
+      "capability": null,
+      "sensitive": false,
+      "addedInVersion": null,
+      "inputSchemaKeys": [
+        "tipo",
+        "limite"
+      ],
+      "inputSchemaFields": [
+        {
+          "name": "tipo",
+          "type": "enum",
+          "optional": true,
+          "enumValues": [
+            "clientes",
+            "fornecedores",
+            "todos"
+          ]
+        },
+        {
+          "name": "limite",
+          "type": "integer",
+          "optional": true
+        }
+      ],
+      "examples": []
+    },
+    {
+      "id": "cadastro_filiais_listar",
+      "operation": "read",
+      "module": "cadastros",
+      "descricao": "Lista empresas do grupo Matrix Fitness Group: matrizes e filiais com CNPJ, tipo e UF. Use para 'quantas filiais temos', 'quais empresas do grupo', 'filiais em SP', 'tem matriz no DF?'. Filtra por tipo (matriz/filial/todas) e UF.",
+      "capability": null,
+      "sensitive": false,
+      "addedInVersion": null,
+      "inputSchemaKeys": [
+        "tipo",
+        "uf",
+        "limite"
+      ],
+      "inputSchemaFields": [
+        {
+          "name": "tipo",
+          "type": "enum",
+          "optional": true,
+          "enumValues": [
+            "matriz",
+            "filial",
+            "todas"
+          ]
+        },
+        {
+          "name": "uf",
+          "type": "string",
+          "optional": true
+        },
+        {
+          "name": "limite",
+          "type": "integer",
+          "optional": true
+        }
+      ],
+      "examples": []
+    },
+    {
+      "id": "cadastro_detalhar_parceiro",
+      "operation": "read",
+      "module": "cadastros",
+      "descricao": "Retorna o cadastro completo de um parceiro a partir do odooId: nome, documento, papel (cliente/fornecedor/empresa), email, telefone, endereco, ativo. Use depois de cadastro_buscar_parceiro quando o usuario pediu 'cadastro completo' de um cliente especifico.",
+      "capability": null,
+      "sensitive": false,
+      "addedInVersion": null,
+      "inputSchemaKeys": [
+        "odooId"
+      ],
+      "inputSchemaFields": [
+        {
+          "name": "odooId",
+          "type": "integer",
+          "optional": false
         }
       ],
       "examples": []
@@ -1583,6 +2497,178 @@
       "examples": []
     },
     {
+      "id": "contabil_saldo_conta",
+      "operation": "read",
+      "module": "contabil",
+      "descricao": "Saldo contábil por conta no período (balancete): para cada conta, soma de débitos, soma de créditos e saldo (débito menos crédito). Filtre por termo (código/nome da conta) e por período (dataInicio/dataFim, formato AAAA-MM-DD). NOTA: a contabilidade ainda não é operada no Odoo da Matrix (sem lançamentos); responde automaticamente quando os lançamentos forem lançados.",
+      "capability": null,
+      "sensitive": false,
+      "addedInVersion": null,
+      "inputSchemaKeys": [
+        "termo",
+        "dataInicio",
+        "dataFim",
+        "limite"
+      ],
+      "inputSchemaFields": [
+        {
+          "name": "termo",
+          "type": "string",
+          "optional": true
+        },
+        {
+          "name": "dataInicio",
+          "type": "string",
+          "optional": true
+        },
+        {
+          "name": "dataFim",
+          "type": "string",
+          "optional": true
+        },
+        {
+          "name": "limite",
+          "type": "integer",
+          "optional": true
+        }
+      ],
+      "examples": []
+    },
+    {
+      "id": "contabil_movimento_conta",
+      "operation": "read",
+      "module": "contabil",
+      "descricao": "Razão de uma conta contábil: lista as partidas (itens de lançamento) de uma conta no período, com data, histórico, débito e crédito. Informe contaId ou contaCodigo; filtre por período (dataInicio/dataFim, AAAA-MM-DD). NOTA: a contabilidade ainda não é operada no Odoo da Matrix (sem lançamentos); responde automaticamente quando os lançamentos forem lançados.",
+      "capability": null,
+      "sensitive": false,
+      "addedInVersion": null,
+      "inputSchemaKeys": [
+        "contaId",
+        "contaCodigo",
+        "dataInicio",
+        "dataFim",
+        "limite"
+      ],
+      "inputSchemaFields": [
+        {
+          "name": "contaId",
+          "type": "integer",
+          "optional": true
+        },
+        {
+          "name": "contaCodigo",
+          "type": "string",
+          "optional": true
+        },
+        {
+          "name": "dataInicio",
+          "type": "string",
+          "optional": true
+        },
+        {
+          "name": "dataFim",
+          "type": "string",
+          "optional": true
+        },
+        {
+          "name": "limite",
+          "type": "integer",
+          "optional": true
+        }
+      ],
+      "examples": []
+    },
+    {
+      "id": "contabil_resultado_por_natureza",
+      "operation": "read",
+      "module": "contabil",
+      "descricao": "Resultado do período pelas contas de natureza Resultado (04): receita (créditos), despesa (débitos) e resultado (receita menos despesa), excluindo lançamentos de encerramento. Filtre por período (dataInicio/dataFim, AAAA-MM-DD). Não é uma DRE estruturada por linha. NOTA: a contabilidade ainda não é operada no Odoo da Matrix (sem lançamentos); responde automaticamente quando os lançamentos forem lançados.",
+      "capability": null,
+      "sensitive": false,
+      "addedInVersion": null,
+      "inputSchemaKeys": [
+        "dataInicio",
+        "dataFim"
+      ],
+      "inputSchemaFields": [
+        {
+          "name": "dataInicio",
+          "type": "string",
+          "optional": true
+        },
+        {
+          "name": "dataFim",
+          "type": "string",
+          "optional": true
+        }
+      ],
+      "examples": []
+    },
+    {
+      "id": "contabil_centro_custo",
+      "operation": "read",
+      "module": "contabil",
+      "descricao": "Saldo contábil por centro de custo no período: para cada centro de custo, soma de débitos, créditos e saldo. Filtre por período (dataInicio/dataFim, AAAA-MM-DD). NOTA: a contabilidade ainda não é operada no Odoo da Matrix (sem lançamentos); responde automaticamente quando os lançamentos forem lançados.",
+      "capability": null,
+      "sensitive": false,
+      "addedInVersion": null,
+      "inputSchemaKeys": [
+        "dataInicio",
+        "dataFim",
+        "limite"
+      ],
+      "inputSchemaFields": [
+        {
+          "name": "dataInicio",
+          "type": "string",
+          "optional": true
+        },
+        {
+          "name": "dataFim",
+          "type": "string",
+          "optional": true
+        },
+        {
+          "name": "limite",
+          "type": "integer",
+          "optional": true
+        }
+      ],
+      "examples": []
+    },
+    {
+      "id": "contabil_conta_referencial",
+      "operation": "read",
+      "module": "contabil",
+      "descricao": "Plano de contas referencial do SPED (de-para padronizado da Receita Federal): código, nome, natureza (01 a 09) e nível hierárquico. Filtre por natureza e/ou termo (código/nome). Este é dado real e disponível agora.",
+      "capability": null,
+      "sensitive": false,
+      "addedInVersion": null,
+      "inputSchemaKeys": [
+        "natureza",
+        "termo",
+        "limite"
+      ],
+      "inputSchemaFields": [
+        {
+          "name": "natureza",
+          "type": "string",
+          "optional": true
+        },
+        {
+          "name": "termo",
+          "type": "string",
+          "optional": true
+        },
+        {
+          "name": "limite",
+          "type": "integer",
+          "optional": true
+        }
+      ],
+      "examples": []
+    },
+    {
       "id": "rh_status_dominio",
       "operation": "read",
       "module": "outros",
@@ -1728,6 +2814,6 @@
       ]
     }
   ],
-  "count": 56,
-  "generatedAt": "2026-05-24T07:38:06.584Z"
+  "count": 88,
+  "generatedAt": "2026-05-31T04:45:59.681Z"
 }
