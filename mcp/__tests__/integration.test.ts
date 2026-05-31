@@ -217,10 +217,10 @@ const TODOS_IDS = [
 // ─── 1. Assertiva de catálogo completo (achado N6) ────────────────────────────
 
 describe("Catálogo completo , rede de proteção N6", () => {
-  it("super_admin recebe EXATAMENTE 79 tools", () => {
+  it("super_admin recebe EXATAMENTE 81 tools", () => {
     const user = { userId: "u", role: "super_admin" as const, domains: ["estoque", "financeiro"] } as unknown as Parameters<typeof visibleTools>[1];
     const tools = visibleTools(catalogo, user);
-    expect(tools).toHaveLength(79);
+    expect(tools).toHaveLength(81);
   });
 
   it("super_admin recebe o conjunto exato de IDs", () => {
@@ -231,7 +231,7 @@ describe("Catálogo completo , rede de proteção N6", () => {
   });
 
   it("catálogo bruto (antes do filtro) tem exatamente 88 entradas", () => {
-    // 79 tools de leitura + 9 write tools:
+    // 81 tools de leitura + 9 write tools:
     //   1) crm.res_partner.create
     //   2) cadastros.mail_activity.complete
     //   3) cadastros.mail_activity.create
@@ -243,7 +243,7 @@ describe("Catálogo completo , rede de proteção N6", () => {
     //   9) cadastros.res_partner.update
     // Write tools nao aparecem em visibleTools (modo interno); sao liberadas
     // so no modo externo por capability da chave de API.
-    expect(catalogo).toHaveLength(88);
+    expect(catalogo).toHaveLength(90);
   });
 });
 
@@ -255,17 +255,17 @@ describe("Catálogo filtrado por perfil", () => {
     return visibleTools(catalogo, user).map((t) => t.id);
   }
 
-  it("super_admin vê todas as 79 tools", () => {
+  it("super_admin vê todas as 81 tools", () => {
     const ids = tools("super_admin", ["estoque", "financeiro"]);
-    expect(ids).toHaveLength(79);
+    expect(ids).toHaveLength(81);
     for (const id of TODOS_IDS) {
       expect(ids).toContain(id);
     }
   });
 
-  it("admin vê todas as 79 tools", () => {
+  it("admin vê todas as 81 tools", () => {
     const ids = tools("admin", ["estoque", "financeiro"]);
-    expect(ids).toHaveLength(79);
+    expect(ids).toHaveLength(81);
   });
 
   it("manager com estoque+financeiro vê estoque+financeiro+sempreVisivel (sem bi_consulta_avancada)", () => {
@@ -275,8 +275,8 @@ describe("Catálogo filtrado por perfil", () => {
     for (const id of ESTOQUE_IDS) expect(ids).toContain(id);
     for (const id of FINANCEIRO_IDS) expect(ids).toContain(id);
     for (const id of DOMINIOS_VAZIOS_IDS) expect(ids).toContain(id);
-    // 8 estoque + 7 financeiro + registrar_lacuna + 3 domínios-vazios = 19
-    expect(ids).toHaveLength(22);
+    // manager sem capability fiscal: as 2 tools B2 (MDF-e/REINF) não aparecem aqui.
+    expect(ids).toHaveLength(20);
   });
 
   it("viewer com apenas estoque vê só tools de estoque + sempreVisivel", () => {
@@ -548,7 +548,7 @@ describe("Servidor HTTP real , protocolo Streamable HTTP end-to-end", () => {
 
   // ── 5b. tools/list via HTTP , catálogo filtrado por perfil ────────────────
 
-  it("super_admin: tools/list via HTTP retorna 79 tools com os IDs corretos", async () => {
+  it("super_admin: tools/list via HTTP retorna 81 tools com os IDs corretos", async () => {
     const sid = await initializeSession(testServer.baseUrl, "user-super-admin");
 
     const { status, body } = await mcpRequest(
@@ -562,7 +562,7 @@ describe("Servidor HTTP real , protocolo Streamable HTTP end-to-end", () => {
     const result = extractRpcResult(body);
     const tools = result?.tools as Array<{ name: string }> | undefined;
     expect(tools).toBeDefined();
-    expect(tools!).toHaveLength(79);
+    expect(tools!).toHaveLength(81);
 
     const names = tools!.map((t) => t.name).sort();
     expect(names).toEqual([...TODOS_IDS].sort());
@@ -587,7 +587,7 @@ describe("Servidor HTTP real , protocolo Streamable HTTP end-to-end", () => {
     expect(names).toContain("registrar_lacuna");
     for (const id of DOMINIOS_VAZIOS_IDS) expect(names).toContain(id);
     // 8 estoque + 7 financeiro + registrar_lacuna + 3 domínios-vazios = 19
-    expect(names).toHaveLength(22);
+    expect(names).toHaveLength(20);
   });
 
   it("viewer (estoque): tools/list via HTTP retorna só estoque + registrar_lacuna", async () => {

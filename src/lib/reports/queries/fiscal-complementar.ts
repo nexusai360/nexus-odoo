@@ -175,3 +175,118 @@ export async function queryCertificados(
   ]);
   return { linhas: rows.map(toCertificadoLinha), total };
 }
+
+// ---------------------------------------------------------------------------
+// MDF-e (manifesto de transporte) , B2 estrutural (fato_mdfe)
+// ---------------------------------------------------------------------------
+
+/** Intervalo de datas a partir de "AAAA-MM-DD" (início e fim inclusivos). */
+function rangeData(de?: string, ate?: string): { gte?: Date; lte?: Date } | undefined {
+  const r: { gte?: Date; lte?: Date } = {};
+  if (de) r.gte = new Date(`${de}T00:00:00.000Z`);
+  if (ate) r.lte = new Date(`${ate}T23:59:59.999Z`);
+  return r.gte || r.lte ? r : undefined;
+}
+
+export interface MdfeLinha {
+  odooId: number;
+  chave: string | null;
+  numero: string | null;
+  situacaoMdfe: string | null;
+  empresaCnpj: string | null;
+  dataEmissao: string | null;
+  municipioCarregamento: string | null;
+  municipioDescarregamento: string | null;
+  vrNf: number;
+}
+
+/** Conta total de MDF-e no fato (independe de filtro). Serve à resposta
+ * honesta "não operado" enquanto o módulo não emite manifestos. */
+export async function fatoMdfeCount(prisma: PrismaClient): Promise<number> {
+  return prisma.fatoMdfe.count();
+}
+
+/** Lista MDF-e no período (mais recente primeiro), filtrando por data de
+ * emissão e situação. */
+export async function queryMdfeManifestos(
+  prisma: PrismaClient,
+  filtros: { periodoDe?: string; periodoAte?: string; situacao?: string; limite?: number },
+): Promise<{ linhas: MdfeLinha[]; total: number; truncado: boolean }> {
+  const limite = filtros.limite ?? 100;
+  const periodo = rangeData(filtros.periodoDe, filtros.periodoAte);
+  const where = {
+    ...(periodo ? { dataEmissao: periodo } : {}),
+    ...(filtros.situacao ? { situacaoMdfe: filtros.situacao } : {}),
+  };
+  const [rows, total] = await Promise.all([
+    prisma.fatoMdfe.findMany({ where, orderBy: { dataEmissao: "desc" }, take: limite }),
+    prisma.fatoMdfe.count({ where }),
+  ]);
+  const linhas: MdfeLinha[] = rows.map((r) => ({
+    odooId: r.odooId,
+    chave: r.chave,
+    numero: r.numero,
+    situacaoMdfe: r.situacaoMdfe,
+    empresaCnpj: r.empresaCnpj,
+    dataEmissao: dia(r.dataEmissao),
+    municipioCarregamento: r.municipioCarregamento,
+    municipioDescarregamento: r.municipioDescarregamento,
+    vrNf: r.vrNf.toNumber(),
+  }));
+  return { linhas, total, truncado: total > rows.length };
+}
+
+// ---------------------------------------------------------------------------
+// REINF (eventos de obrigação acessória) , B2 estrutural (fato_reinf_evento)
+// ---------------------------------------------------------------------------
+
+export interface ReinfLinha {
+  odooId: number;
+  chave: string | null;
+  tipo: string | null;
+  situacao: string | null;
+  protocoloTransmissao: string | null;
+  empresaCnpjRaiz: string | null;
+  dataEvento: string | null;
+}
+
+/** Conta total de eventos REINF no fato (independe de filtro). Serve à
+ * resposta honesta "não operado". */
+export async function fatoReinfCount(prisma: PrismaClient): Promise<number> {
+  return prisma.fatoReinfEvento.count();
+}
+
+/** Lista eventos REINF no período (mais recente primeiro), filtrando por data
+ * do evento, tipo e situação. */
+export async function queryReinfEventos(
+  prisma: PrismaClient,
+  filtros: {
+    periodoDe?: string;
+    periodoAte?: string;
+    tipo?: string;
+    situacao?: string;
+    limite?: number;
+  },
+): Promise<{ linhas: ReinfLinha[]; total: number; truncado: boolean }> {
+  const limite = filtros.limite ?? 100;
+  const periodo = rangeData(filtros.periodoDe, filtros.periodoAte);
+  const where = {
+    ...(periodo ? { dataEvento: periodo } : {}),
+    ...(filtros.tipo ? { tipo: filtros.tipo } : {}),
+    ...(filtros.situacao ? { situacao: filtros.situacao } : {}),
+  };
+  const [rows, total] = await Promise.all([
+    prisma.fatoReinfEvento.findMany({ where, orderBy: { dataEvento: "desc" }, take: limite }),
+    prisma.fatoReinfEvento.count({ where }),
+  ]);
+  const linhas: ReinfLinha[] = rows.map((r) => ({
+    odooId: r.odooId,
+    chave: r.chave,
+    tipo: r.tipo,
+    situacao: r.situacao,
+    protocoloTransmissao: r.protocoloTransmissao,
+    empresaCnpjRaiz: r.empresaCnpjRaiz,
+    dataEvento: dia(r.dataEvento),
+  }));
+  return { linhas, total, truncado: total > rows.length };
+}

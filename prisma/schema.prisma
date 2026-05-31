@@ -338,6 +338,32 @@ model RawContabilLancamentoItem {
   @@map("raw_contabil_lancamento_item")
 }
 
+// B2 (onda fiscal complementar): raw do MDF-e (sped.mdfe). Estrutural (0 reg hoje).
+model RawSpedMdfe {
+  odooId        Int       @id @map("odoo_id")
+  data          Json
+  odooWriteDate DateTime? @map("odoo_write_date")
+  syncedAt      DateTime  @default(now()) @map("synced_at")
+  rawDeleted    Boolean   @default(false) @map("raw_deleted")
+
+  @@index([odooWriteDate])
+  @@index([rawDeleted])
+  @@map("raw_sped_mdfe")
+}
+
+// B2 (onda fiscal complementar): raw do evento REINF (reinf.evento). Estrutural.
+model RawReinfEvento {
+  odooId        Int       @id @map("odoo_id")
+  data          Json
+  odooWriteDate DateTime? @map("odoo_write_date")
+  syncedAt      DateTime  @default(now()) @map("synced_at")
+  rawDeleted    Boolean   @default(false) @map("raw_deleted")
+
+  @@index([odooWriteDate])
+  @@index([rawDeleted])
+  @@map("raw_reinf_evento")
+}
+
 model RawEstoqueExtrato {
   odooId        Int       @id @map("odoo_id")
   data          Json
@@ -2223,6 +2249,56 @@ model FatoContabilLancamentoItem {
   @@index([centroCustoId])
   @@index([lancamentoId])
   @@map("fato_contabil_lancamento_item")
+}
+
+// B2 (onda fiscal complementar): fato do MDF-e (manifesto de transporte).
+// Estrutural (0 reg hoje); popula quando a Matrix operar MDF-e no Odoo.
+model FatoMdfe {
+  odooId                   Int       @id @map("odoo_id")
+  chave                    String?
+  numero                   String?
+  situacaoMdfe             String?   @map("situacao_mdfe")
+  situacaoFiscal           String?   @map("situacao_fiscal")
+  tipoEmissao              String?   @map("tipo_emissao")
+  empresaId                Int?      @map("empresa_id")
+  empresaCnpj              String?   @map("empresa_cnpj")
+  dataEmissao              DateTime? @map("data_emissao")
+  dataAutorizacao          DateTime? @map("data_autorizacao")
+  dataEncerramento         DateTime? @map("data_encerramento")
+  dataCancelamento         DateTime? @map("data_cancelamento")
+  protocoloAutorizacao     String?   @map("protocolo_autorizacao")
+  municipioCarregamento    String?   @map("municipio_carregamento")
+  municipioDescarregamento String?   @map("municipio_descarregamento")
+  pesoBruto                Decimal   @default(0) @map("peso_bruto") @db.Decimal(18, 3)
+  pesoCarga                Decimal   @default(0) @map("peso_carga") @db.Decimal(18, 2)
+  vrNf                     Decimal   @default(0) @map("vr_nf") @db.Decimal(18, 2)
+  atualizadoEm             DateTime  @default(now()) @map("atualizado_em")
+
+  @@index([dataEmissao])
+  @@index([empresaId])
+  @@index([situacaoMdfe])
+  @@map("fato_mdfe")
+}
+
+// B2 (onda fiscal complementar): fato do evento REINF (obrigação acessória).
+// Estrutural (0 reg hoje).
+model FatoReinfEvento {
+  odooId                Int       @id @map("odoo_id")
+  chave                 String?
+  tipo                  String?
+  situacao              String?
+  protocoloTransmissao  String?   @map("protocolo_transmissao")
+  empresaId             Int?      @map("empresa_id")
+  empresaCnpjRaiz       String?   @map("empresa_cnpj_raiz")
+  dataEvento            DateTime? @map("data_evento")
+  dataInicial           DateTime? @map("data_inicial")
+  dataFinal             DateTime? @map("data_final")
+  atualizadoEm          DateTime  @default(now()) @map("atualizado_em")
+
+  @@index([dataEvento])
+  @@index([empresaId])
+  @@index([tipo])
+  @@map("fato_reinf_evento")
 }
 
 /// F4 L1a — preço por regra de tabela de preço (achatado de sped.tabela.preco.regra).
