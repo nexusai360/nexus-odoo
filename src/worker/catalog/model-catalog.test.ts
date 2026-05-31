@@ -52,8 +52,8 @@ const MODELOS_O1 = new Set(["sped.consulta.dfe.item"]);
 const MODELOS_B1 = new Set(["contabil.lancamento", "contabil.lancamento.item"]);
 
 describe("model-catalog", () => {
-  it("tem 116 modelos", () => {
-    expect(MODEL_CATALOG).toHaveLength(116);
+  it("tem 119 modelos", () => {
+    expect(MODEL_CATALOG).toHaveLength(119);
   });
 
   // discovery/output/ é gitignored (saídas brutas locais , ver .gitignore).

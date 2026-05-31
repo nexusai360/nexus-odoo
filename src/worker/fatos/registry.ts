@@ -61,6 +61,11 @@ export const FATO_BUILDERS: FatoBuilderEntry[] = [
   { nome: "fato_pedido_historico", cycle: "incremental", run: rebuildFatoPedidoHistorico },
   // O4 (onda Financeiro): itens do lancamento (DRE gerencial por conta).
   { nome: "fato_financeiro_lancamento_item", cycle: "incremental", run: rebuildFatoFinanceiroLancamentoItem },
+  // B1 (onda contábil). Ordem: cabeçalho antes do item (o item lê o tipo do
+  // cabeçalho e a natureza de fato_conta_contabil, ambos buildados antes).
+  { nome: "fato_contabil_conta_referencial", cycle: "incremental", run: rebuildFatoContabilContaReferencial },
+  { nome: "fato_contabil_lancamento", cycle: "incremental", run: rebuildFatoContabilLancamento },
+  { nome: "fato_contabil_lancamento_item", cycle: "incremental", run: rebuildFatoContabilLancamentoItem },
 ];
 
 /**
