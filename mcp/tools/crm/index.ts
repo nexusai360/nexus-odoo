@@ -3,9 +3,12 @@
 import type { ToolEntry } from "../../catalog/types.js";
 import { crmResPartnerGet } from "./res-partner-get.js";
 import { crmResPartnerCreate } from "./res-partner-create.js";
+import { crmPipelineFunis } from "./pipeline-funis.js";
 
 export const crmTools: ToolEntry[] = [
   crmResPartnerGet as ToolEntry,
+  // B7 , funil de CRM (config, estrutural)
+  crmPipelineFunis as ToolEntry,
   // Write tool , discriminada em runtime por `operation: "write"` (isWriteToolEntry).
   // O modo interno (Agente Nex) não a enxerga: visibleTools filtra por `dominio`,
   // que write tools não têm. O modo externo a libera por capability da chave.

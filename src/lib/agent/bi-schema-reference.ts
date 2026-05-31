@@ -624,4 +624,22 @@ TABLE fato_estoque_min_max (
   quantidade_minima NUMERIC,
   quantidade_maxima NUMERIC
 );
+
+-- ─── CRM + AUDITORIA (B7) ────────────────────────────────────────────────────
+-- Funil de CRM (config, 0 reg; CRM transacional inexistente).
+TABLE fato_crm_pipeline (
+  odoo_id  INT PRIMARY KEY,
+  numero   INT,
+  nome     TEXT,
+  tipo     TEXT,
+  ativo    BOOLEAN
+);
+
+-- Regras de auditoria (15 reg). auditoria.log/.item (alto volume) NÃO cacheados.
+TABLE fato_auditoria_regra (
+  odoo_id  INT PRIMARY KEY,
+  nome     TEXT,
+  ativa    BOOLEAN,
+  dias     NUMERIC
+);
 `.trim();

@@ -81,6 +81,9 @@ export const FATO_FONTE: Record<string, { model: string; mode: "snapshot" | "inc
   fato_producao_processo:          { model: "producao.processo",          mode: "incremental" },
   // B6 (estoque avançado)
   fato_estoque_min_max:            { model: "estoque.minimo.maximo",       mode: "incremental" },
+  // B7 (CRM + auditoria)
+  fato_crm_pipeline:               { model: "crm.pipeline",               mode: "incremental" },
+  fato_auditoria_regra:            { model: "auditoria.regra",            mode: "incremental" },
 };
 
 // ---------------------------------------------------------------------------

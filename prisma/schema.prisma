@@ -3475,3 +3475,53 @@ model FatoEstoqueMinMax {
   @@index([localId])
   @@map("fato_estoque_min_max")
 }
+
+// ─── B7 — CRM (limitado) + Auditoria ─────────────────────────────────────────
+model RawCrmPipeline {
+  odooId        Int       @id @map("odoo_id")
+  data          Json
+  odooWriteDate DateTime? @map("odoo_write_date")
+  syncedAt      DateTime  @default(now()) @map("synced_at")
+  rawDeleted    Boolean   @default(false) @map("raw_deleted")
+
+  @@index([odooWriteDate])
+  @@index([rawDeleted])
+  @@map("raw_crm_pipeline")
+}
+
+model RawAuditoriaRegra {
+  odooId        Int       @id @map("odoo_id")
+  data          Json
+  odooWriteDate DateTime? @map("odoo_write_date")
+  syncedAt      DateTime  @default(now()) @map("synced_at")
+  rawDeleted    Boolean   @default(false) @map("raw_deleted")
+
+  @@index([odooWriteDate])
+  @@index([rawDeleted])
+  @@map("raw_auditoria_regra")
+}
+
+// Funil de CRM (config). Estrutural (0 reg; CRM transacional inexistente, ver O2).
+model FatoCrmPipeline {
+  odooId       Int      @id @map("odoo_id")
+  numero       Int?
+  nome         String?
+  tipo         String?
+  ativo        Boolean  @default(false)
+  atualizadoEm DateTime @default(now()) @map("atualizado_em")
+
+  @@index([ativo])
+  @@map("fato_crm_pipeline")
+}
+
+// Regras de auditoria (15 reg reais). nome, se ativa, janela em dias.
+model FatoAuditoriaRegra {
+  odooId       Int      @id @map("odoo_id")
+  nome         String?
+  ativa        Boolean  @default(false)
+  dias         Decimal  @default(0) @db.Decimal(18, 2)
+  atualizadoEm DateTime @default(now()) @map("atualizado_em")
+
+  @@index([ativa])
+  @@map("fato_auditoria_regra")
+}

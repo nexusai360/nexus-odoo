@@ -27,6 +27,10 @@ export const MODEL_CATALOG: readonly CatalogEntry[] = [
   { odooModel: "pedido.comissao", mode: "incremental" },
   // B6 (estoque avançado): mín/máx (0 reg hoje; estrutural).
   { odooModel: "estoque.minimo.maximo", mode: "incremental" },
+  // B7 (CRM + auditoria): crm.pipeline (0) + auditoria.regra (15). NÃO inclui
+  // auditoria.log/.item (313k/14MI) , volume fora de escopo do cache.
+  { odooModel: "crm.pipeline", mode: "incremental" },
+  { odooModel: "auditoria.regra", mode: "incremental" },
   { odooModel: "estoque.extrato", mode: "snapshot" },
   { odooModel: "estoque.extrato.rastreabilidade", mode: "incremental" },
   { odooModel: "estoque.local", mode: "incremental" },
