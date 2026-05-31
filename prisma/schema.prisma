@@ -1846,21 +1846,21 @@ model FatoFinanceiroTitulo {
 /// DRE gerencial ("quanto por conta gerencial"), que as tools de total agregado
 /// nao respondem. `tipo` e herdado do lancamento pai (finan.lancamento) no builder.
 model FatoFinanceiroLancamentoItem {
-  odooId                Int       @id @map("odoo_id")
-  lancamentoId          Int?      @map("lancamento_id")
-  tipo                  String    @default("")
-  contaId               Int?      @map("conta_id")
-  contaNome             String?   @map("conta_nome")
-  centroResultadoId     Int?      @map("centro_resultado_id")
-  centroResultadoNome   String?   @map("centro_resultado_nome")
-  descricao             String?
-  pedidoId              Int?      @map("pedido_id")
-  vrDocumento           Decimal   @default(0) @map("vr_documento") @db.Decimal(18, 2)
-  vrTotal               Decimal   @default(0) @map("vr_total") @db.Decimal(18, 2)
-  vrSaldo               Decimal   @default(0) @map("vr_saldo") @db.Decimal(18, 2)
-  vrPagoTotal           Decimal   @default(0) @map("vr_pago_total") @db.Decimal(18, 2)
-  dataDocumento         DateTime? @map("data_documento")
-  atualizadoEm          DateTime  @default(now()) @map("atualizado_em")
+  odooId              Int       @id @map("odoo_id")
+  lancamentoId        Int?      @map("lancamento_id")
+  tipo                String    @default("")
+  contaId             Int?      @map("conta_id")
+  contaNome           String?   @map("conta_nome")
+  centroResultadoId   Int?      @map("centro_resultado_id")
+  centroResultadoNome String?   @map("centro_resultado_nome")
+  descricao           String?
+  pedidoId            Int?      @map("pedido_id")
+  vrDocumento         Decimal   @default(0) @map("vr_documento") @db.Decimal(18, 2)
+  vrTotal             Decimal   @default(0) @map("vr_total") @db.Decimal(18, 2)
+  vrSaldo             Decimal   @default(0) @map("vr_saldo") @db.Decimal(18, 2)
+  vrPagoTotal         Decimal   @default(0) @map("vr_pago_total") @db.Decimal(18, 2)
+  dataDocumento       DateTime? @map("data_documento")
+  atualizadoEm        DateTime  @default(now()) @map("atualizado_em")
 
   @@index([contaId])
   @@index([centroResultadoId])
@@ -2430,23 +2430,23 @@ model LlmConfig {
 /// costUsd = null quando costKnown = false (modelo sem preço no catálogo).
 /// costBrl calculado com cotação versionada; rateStale=true se cotação falhou.
 model LlmUsage {
-  id             String   @id @default(uuid()) @db.Uuid
-  conversationId String?  @map("conversation_id") @db.Uuid
-  provider       String
-  model          String
-  tokensInput    Int      @map("tokens_input")
-  tokensOutput   Int      @map("tokens_output")
-  costUsd        Decimal? @map("cost_usd") @db.Decimal(18, 10)
-  costKnown      Boolean  @default(true) @map("cost_known")
-  costBrl        Decimal? @map("cost_brl") @db.Decimal(20, 10)
-  usdToBrlRate   Decimal? @map("usd_to_brl_rate") @db.Decimal(10, 4)
-  rateSpread     Decimal? @map("rate_spread") @db.Decimal(6, 4)
-  rateStale      Boolean  @default(false) @map("rate_stale")
-  promptChars    Int?     @map("prompt_chars")
-  responseChars  Int?     @map("response_chars")
-  durationMs     Int?     @map("duration_ms")
-  errorMessage   String?  @map("error_message")
-  isPlayground   Boolean  @default(false) @map("is_playground")
+  id              String   @id @default(uuid()) @db.Uuid
+  conversationId  String?  @map("conversation_id") @db.Uuid
+  provider        String
+  model           String
+  tokensInput     Int      @map("tokens_input")
+  tokensOutput    Int      @map("tokens_output")
+  costUsd         Decimal? @map("cost_usd") @db.Decimal(18, 10)
+  costKnown       Boolean  @default(true) @map("cost_known")
+  costBrl         Decimal? @map("cost_brl") @db.Decimal(20, 10)
+  usdToBrlRate    Decimal? @map("usd_to_brl_rate") @db.Decimal(10, 4)
+  rateSpread      Decimal? @map("rate_spread") @db.Decimal(6, 4)
+  rateStale       Boolean  @default(false) @map("rate_stale")
+  promptChars     Int?     @map("prompt_chars")
+  responseChars   Int?     @map("response_chars")
+  durationMs      Int?     @map("duration_ms")
+  errorMessage    String?  @map("error_message")
+  isPlayground    Boolean  @default(false) @map("is_playground")
   /// Tokens de raciocinio internos (subset conceitual de tokens_output).
   /// OpenAI/Gemini/OpenRouter expoem; Anthropic nao (fica NULL).
   reasoningTokens Int?     @map("reasoning_tokens")
@@ -2460,15 +2460,15 @@ model LlmUsage {
   toolNames       String[] @map("tool_names")
   userId          String?  @map("user_id") @db.Uuid
   // Credencial (chave de API) usada — permite somar o consumo por chave (A4).
-  credentialId   String?  @map("credential_id") @db.Uuid
+  credentialId    String?  @map("credential_id") @db.Uuid
   // Tipo da requisição para a tag de Consumo (G11): texto/imagem/audio/arquivo/embedding.
-  requestKind    String   @default("texto") @map("request_kind")
+  requestKind     String   @default("texto") @map("request_kind")
   /// Origem da chamada para a tag "Origem" do menu de consumo. NULL em linhas
   /// antigas (derivam de isPlayground: Agente Nex / Playground). Valores novos:
   /// "router" (router de catalogo em producao) e "router_calibracao" (rodadas
   /// de calibragem offline). Permite distinguir gasto do router no historico.
-  origin         String?  @map("origin")
-  createdAt      DateTime @default(now()) @map("created_at")
+  origin          String?  @map("origin")
+  createdAt       DateTime @default(now()) @map("created_at")
 
   @@index([createdAt])
   @@index([provider, model, createdAt])
@@ -2583,7 +2583,7 @@ model AgentSettings {
   routerReformCheckpoint   FeatureCheckpoint @default(OFF) @map("router_reform_checkpoint")
   routerReformProvider     String?           @map("router_reform_provider")
   routerReformModel        String?           @map("router_reform_model")
-  routerReformCredentialId String?  @db.Uuid @map("router_reform_credential_id")
+  routerReformCredentialId String?           @map("router_reform_credential_id") @db.Uuid
   /// Quantos pares (user -> resposta final) entram no contexto da reformulacao.
   routerReformNPairs       Int               @default(5) @map("router_reform_n_pairs")
   /// Escolha de modelo de embedding do router. A CREDENCIAL continua na fonte
