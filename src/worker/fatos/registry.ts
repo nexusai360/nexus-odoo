@@ -68,6 +68,10 @@ export const FATO_BUILDERS: FatoBuilderEntry[] = [
   { nome: "fato_contabil_conta_referencial", cycle: "incremental", run: rebuildFatoContabilContaReferencial },
   { nome: "fato_contabil_lancamento", cycle: "incremental", run: rebuildFatoContabilLancamento },
   { nome: "fato_contabil_lancamento_item", cycle: "incremental", run: rebuildFatoContabilLancamentoItem },
+  // B2 (onda fiscal complementar). Estruturais: hoje 0 linhas (MDF-e/REINF não
+  // operados no Odoo). Registrados para auto-buildarem quando passarem a operar.
+  { nome: "fato_mdfe", cycle: "incremental", run: rebuildFatoMdfe },
+  { nome: "fato_reinf_evento", cycle: "incremental", run: rebuildFatoReinfEvento },
 ];
 
 /**
