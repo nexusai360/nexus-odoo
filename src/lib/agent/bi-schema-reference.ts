@@ -601,4 +601,14 @@ TABLE fato_comissao (
   al_comissao       NUMERIC,
   vr_comissao       NUMERIC
 );
+
+-- ─── PRODUÇÃO (B5) ───────────────────────────────────────────────────────────
+-- Processos de produção (producao.processo, 1 reg hoje).
+TABLE fato_producao_processo (
+  odoo_id    INT PRIMARY KEY,
+  ordem      INT,
+  nome       TEXT,
+  descricao  TEXT,
+  tempo      NUMERIC
+);
 `.trim();

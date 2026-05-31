@@ -77,6 +77,8 @@ export const FATO_FONTE: Record<string, { model: string; mode: "snapshot" | "inc
   // B4 (comercial: cotação + comissão)
   fato_cotacao:                    { model: "pedido.documento.cotacao",   mode: "incremental" },
   fato_comissao:                   { model: "pedido.comissao",            mode: "incremental" },
+  // B5 (produção)
+  fato_producao_processo:          { model: "producao.processo",          mode: "incremental" },
 };
 
 // ---------------------------------------------------------------------------

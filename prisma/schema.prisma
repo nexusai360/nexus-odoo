@@ -3433,3 +3433,16 @@ model FatoComissao {
   @@index([participanteId])
   @@map("fato_comissao")
 }
+
+// ─── B5 — Produção (estrutural; producao.processo já tem raw, 1 reg hoje) ─────
+model FatoProducaoProcesso {
+  odooId       Int      @id @map("odoo_id")
+  ordem        Int?
+  nome         String?
+  descricao    String?
+  tempo        Decimal  @default(0) @db.Decimal(18, 2)
+  atualizadoEm DateTime @default(now()) @map("atualizado_em")
+
+  @@index([ordem])
+  @@map("fato_producao_processo")
+}

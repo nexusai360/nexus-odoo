@@ -70,6 +70,8 @@ export const FATO_CATALOG: readonly FatoCatalogEntry[] = [
   // B4 , Comercial / cotação + comissão
   { nome: "fato_cotacao", dominio: "Comercial", modo: "incremental", fonte: "pedido.documento.cotacao" },
   { nome: "fato_comissao", dominio: "Comercial", modo: "incremental", fonte: "pedido.comissao" },
+  // B5 , Produção
+  { nome: "fato_producao_processo", dominio: "Produção", modo: "incremental", fonte: "producao.processo" },
 ];
 
 /**

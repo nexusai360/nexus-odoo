@@ -32,7 +32,10 @@ interface QResult { linhas: unknown[]; total: number; truncado: boolean }
 
 export function makeHonestTool<I extends Record<string, unknown>>(opts: {
   id: string;
-  dominio: ReportDomain;
+  /** Domínio RBAC. Omitir junto com sempreVisivel para tools sem domínio. */
+  dominio?: ReportDomain;
+  /** Visível a todas as roles (uso: domínios fora do enum RBAC, ex. produção). */
+  sempreVisivel?: boolean;
   descricao: string;
   /** Nome do fato (chave em FATO_FONTE) para o envelope de freshness. */
   fato: string;
@@ -46,7 +49,8 @@ export function makeHonestTool<I extends Record<string, unknown>>(opts: {
   const zObject = z.object(opts.inputShape);
   return ({
     id: opts.id,
-    dominio: opts.dominio,
+    ...(opts.dominio ? { dominio: opts.dominio } : {}),
+    ...(opts.sempreVisivel ? { sempreVisivel: true } : {}),
     descricao: opts.descricao,
     inputSchemaShape: opts.inputShape,
     inputSchema: zObject as unknown as z.ZodType<I>,

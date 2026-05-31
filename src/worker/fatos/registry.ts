@@ -35,6 +35,7 @@ import { rebuildFatoCheque } from "./fato-cheque";
 import { rebuildFatoPix } from "./fato-pix";
 import { rebuildFatoCotacao } from "./fato-cotacao";
 import { rebuildFatoComissao } from "./fato-comissao";
+import { rebuildFatoProducaoProcesso } from "./fato-producao-processo";
 
 export interface FatoBuilderEntry {
   nome: string;
@@ -90,6 +91,8 @@ export const FATO_BUILDERS: FatoBuilderEntry[] = [
   // B4 (comercial: cotação + comissão). Estruturais (0 reg hoje; auto-ativam).
   { nome: "fato_cotacao", cycle: "incremental", run: rebuildFatoCotacao },
   { nome: "fato_comissao", cycle: "incremental", run: rebuildFatoComissao },
+  // B5 (produção). producao.processo (1 reg hoje).
+  { nome: "fato_producao_processo", cycle: "incremental", run: rebuildFatoProducaoProcesso },
 ];
 
 /**
