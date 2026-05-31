@@ -493,4 +493,153 @@ TABLE fato_referencia (
   codigo    TEXT,
   descricao TEXT
 );
+
+-- ─── FINANCEIRO , COBRANÇA BANCÁRIA (B3) ─────────────────────────────────────
+-- Baixas/pagamentos de cobrança (item do retorno bancário). Grão rico.
+TABLE fato_retorno_item (
+  odoo_id                  INT PRIMARY KEY,
+  retorno_id               INT,
+  situacao                 TEXT,
+  nosso_numero             TEXT,
+  data_pagamento           TIMESTAMPTZ,
+  vr_documento             NUMERIC,
+  vr_juros                 NUMERIC,
+  vr_multa                 NUMERIC,
+  vr_desconto              NUMERIC,
+  vr_tarifas               NUMERIC,
+  vr_baixado               NUMERIC,
+  vr_total                 NUMERIC,
+  divida_numero            TEXT,
+  divida_participante_id   INT,
+  divida_participante_nome TEXT,
+  divida_data_vencimento   TIMESTAMPTZ,
+  divida_situacao          TEXT,
+  banco_id                 INT,
+  banco_nome               TEXT
+);
+
+-- Retorno bancário (cabeçalho do arquivo).
+TABLE fato_retorno_bancario (
+  odoo_id          INT PRIMARY KEY,
+  tipo             TEXT,
+  banco_id         INT,
+  banco_nome       TEXT,
+  numero           TEXT,
+  data             TIMESTAMPTZ,
+  total_entradas   NUMERIC,
+  total_saidas     NUMERIC,
+  saldo            NUMERIC,
+  caixa_fechado    BOOLEAN
+);
+
+-- Remessa bancária gerada (enviada ao banco).
+TABLE fato_remessa_bancaria (
+  odoo_id          INT PRIMARY KEY,
+  tipo             TEXT,
+  banco_id         INT,
+  banco_nome       TEXT,
+  numero           TEXT,
+  data             TIMESTAMPTZ,
+  data_pagamento   TIMESTAMPTZ,
+  confirmada       BOOLEAN
+);
+
+-- Carteira de cobrança (config de boleto por banco). SEM credenciais.
+TABLE fato_carteira_cobranca (
+  odoo_id        INT PRIMARY KEY,
+  nome           TEXT,
+  banco_id       INT,
+  banco_nome     TEXT,
+  carteira       TEXT,
+  tipo_carteira  TEXT,
+  beneficiario   TEXT,
+  convenio       TEXT
+);
+
+-- Cheques (estrutural, 0 reg ate operar).
+TABLE fato_cheque (
+  odoo_id          INT PRIMARY KEY,
+  numero           TEXT,
+  banco            TEXT,
+  titular_nome     TEXT,
+  data             TIMESTAMPTZ,
+  valor            NUMERIC,
+  participante_id  INT
+);
+
+-- PIX (estrutural, 0 reg ate operar).
+TABLE fato_pix (
+  odoo_id     INT PRIMARY KEY,
+  txid        TEXT,
+  metodo      TEXT,
+  status      TEXT,
+  data        TIMESTAMPTZ,
+  vr_tarifas  NUMERIC
+);
+
+-- ─── COMERCIAL , COTAÇÃO + COMISSÃO (B4) ─────────────────────────────────────
+-- Cotações/propostas (estrutural, 0 reg ate operar). eh_compra: true=compra.
+TABLE fato_cotacao (
+  odoo_id              INT PRIMARY KEY,
+  numero               TEXT,
+  status               TEXT,
+  eh_compra            BOOLEAN,
+  empresa_id           INT,
+  operacao_id          INT,
+  operacao_nome        TEXT,
+  usuario_aprovador_id INT,
+  centro_resultado_id  INT
+);
+
+-- Comissão por pedido/vendedor (estrutural, 0 reg ate operar).
+TABLE fato_comissao (
+  odoo_id           INT PRIMARY KEY,
+  pedido_id         INT,
+  participante_id   INT,
+  participante_nome TEXT,
+  bc_comissao       NUMERIC,
+  al_comissao       NUMERIC,
+  vr_comissao       NUMERIC
+);
+
+-- ─── PRODUÇÃO (B5) ───────────────────────────────────────────────────────────
+-- Processos de produção (producao.processo, 1 reg hoje).
+TABLE fato_producao_processo (
+  odoo_id    INT PRIMARY KEY,
+  ordem      INT,
+  nome       TEXT,
+  descricao  TEXT,
+  tempo      NUMERIC
+);
+
+-- ─── ESTOQUE AVANÇADO , MÍN/MÁX (B6) ─────────────────────────────────────────
+-- Parâmetros de estoque mínimo/máximo por produto/local (estrutural, 0 reg hoje).
+TABLE fato_estoque_min_max (
+  odoo_id           INT PRIMARY KEY,
+  produto_id        INT,
+  produto_nome      TEXT,
+  local_id          INT,
+  local_nome        TEXT,
+  unidade_nome      TEXT,
+  quantidade_minima NUMERIC,
+  quantidade_maxima NUMERIC
+);
+
+-- ─── CRM + AUDITORIA (B7) ────────────────────────────────────────────────────
+-- Funil de CRM (config, 0 reg; CRM transacional inexistente).
+TABLE fato_crm_pipeline (
+  odoo_id  INT PRIMARY KEY,
+  numero   INT,
+  nome     TEXT,
+  tipo     TEXT,
+  ativo    BOOLEAN
+);
+
+-- Regras de auditoria (15 reg). auditoria.log/.item (alto volume) NÃO cacheados.
+TABLE fato_auditoria_regra (
+  odoo_id  INT PRIMARY KEY,
+  nome     TEXT,
+  ativa    BOOLEAN,
+  dias     NUMERIC
+);
 `.trim();

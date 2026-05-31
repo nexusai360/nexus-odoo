@@ -10,6 +10,7 @@ import { estoqueProdutosParados } from "./produtos-parados.js";
 import { estoqueConcentracao } from "./concentracao.js";
 import { estoqueProdutosSaldoZero } from "./produtos-saldo-zero.js";
 import { estoqueLocaisPorProduto } from "./locais-por-produto.js";
+import { estoqueMinimoMaximo } from "./minimo-maximo.js";
 
 export const estoqueTools: ToolEntry[] = [
   estoqueSaldoProduto as ToolEntry,
@@ -20,4 +21,6 @@ export const estoqueTools: ToolEntry[] = [
   estoqueConcentracao as ToolEntry,
   estoqueProdutosSaldoZero as ToolEntry,
   estoqueLocaisPorProduto as ToolEntry,
+  // B6 , estoque mín/máx
+  estoqueMinimoMaximo as ToolEntry,
 ];

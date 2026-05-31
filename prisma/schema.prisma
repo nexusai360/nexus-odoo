@@ -3200,3 +3200,328 @@ model SuggestionInteraction {
   @@index([chipSource, createdAt])
   @@map("suggestion_interactions")
 }
+
+// ─── B3 — Financeiro / cobrança bancária (raws novos) ────────────────────────
+// remessa/retorno(.item)/carteira já têm raw (ondas anteriores). Aqui só os
+// raws novos: finan.cheque/finan.pix existem com 0 reg (estruturais, auto-ativam).
+model RawFinanCheque {
+  odooId        Int       @id @map("odoo_id")
+  data          Json
+  odooWriteDate DateTime? @map("odoo_write_date")
+  syncedAt      DateTime  @default(now()) @map("synced_at")
+  rawDeleted    Boolean   @default(false) @map("raw_deleted")
+
+  @@index([odooWriteDate])
+  @@index([rawDeleted])
+  @@map("raw_finan_cheque")
+}
+
+model RawFinanPix {
+  odooId        Int       @id @map("odoo_id")
+  data          Json
+  odooWriteDate DateTime? @map("odoo_write_date")
+  syncedAt      DateTime  @default(now()) @map("synced_at")
+  rawDeleted    Boolean   @default(false) @map("raw_deleted")
+
+  @@index([odooWriteDate])
+  @@index([rawDeleted])
+  @@map("raw_finan_pix")
+}
+
+// ─── B3 — Financeiro / cobrança bancária (fatos) ─────────────────────────────
+model FatoRemessaBancaria {
+  odooId          Int       @id @map("odoo_id")
+  tipo            String?
+  bancoId         Int?      @map("banco_id")
+  bancoNome       String?   @map("banco_nome")
+  cnpjCpfRaiz     String?   @map("cnpj_cpf_raiz")
+  carteiraId      Int?      @map("carteira_id")
+  numero          String?
+  data            DateTime?
+  dataPagamento   DateTime? @map("data_pagamento")
+  confirmada      Boolean   @default(false)
+  dataConfirmacao DateTime? @map("data_confirmacao")
+  atualizadoEm    DateTime  @default(now()) @map("atualizado_em")
+
+  @@index([data])
+  @@index([bancoId])
+  @@index([confirmada])
+  @@map("fato_remessa_bancaria")
+}
+
+model FatoRetornoBancario {
+  odooId         Int       @id @map("odoo_id")
+  tipo           String?
+  bancoId        Int?      @map("banco_id")
+  bancoNome      String?   @map("banco_nome")
+  cnpjCpfRaiz    String?   @map("cnpj_cpf_raiz")
+  carteiraId     Int?      @map("carteira_id")
+  numero         String?
+  data           DateTime?
+  totalEntradas  Decimal   @default(0) @map("total_entradas") @db.Decimal(18, 2)
+  totalSaidas    Decimal   @default(0) @map("total_saidas") @db.Decimal(18, 2)
+  saldo          Decimal   @default(0) @db.Decimal(18, 2)
+  dataInicialOfx DateTime? @map("data_inicial_ofx")
+  dataFinalOfx   DateTime? @map("data_final_ofx")
+  caixaFechado   Boolean   @default(false) @map("caixa_fechado")
+  atualizadoEm   DateTime  @default(now()) @map("atualizado_em")
+
+  @@index([data])
+  @@index([bancoId])
+  @@map("fato_retorno_bancario")
+}
+
+model FatoRetornoItem {
+  odooId                Int       @id @map("odoo_id")
+  retornoId             Int?      @map("retorno_id")
+  situacao              String?
+  nossoNumero           String?   @map("nosso_numero")
+  numero                String?
+  tipo                  String?
+  dataRegistro          DateTime? @map("data_registro")
+  dataPagamento         DateTime? @map("data_pagamento")
+  dataCreditoDebito     DateTime? @map("data_credito_debito")
+  dataBaixa             DateTime? @map("data_baixa")
+  vrDocumento           Decimal   @default(0) @map("vr_documento") @db.Decimal(18, 2)
+  vrJuros               Decimal   @default(0) @map("vr_juros") @db.Decimal(18, 2)
+  vrMulta               Decimal   @default(0) @map("vr_multa") @db.Decimal(18, 2)
+  vrDesconto            Decimal   @default(0) @map("vr_desconto") @db.Decimal(18, 2)
+  vrTarifas             Decimal   @default(0) @map("vr_tarifas") @db.Decimal(18, 2)
+  vrBaixado             Decimal   @default(0) @map("vr_baixado") @db.Decimal(18, 2)
+  vrTotal               Decimal   @default(0) @map("vr_total") @db.Decimal(18, 2)
+  dividaNumero          String?   @map("divida_numero")
+  dividaParticipanteId  Int?      @map("divida_participante_id")
+  dividaParticipanteNome String?  @map("divida_participante_nome")
+  dividaDataVencimento  DateTime? @map("divida_data_vencimento")
+  dividaSituacao        String?   @map("divida_situacao")
+  motivoRejeicao        String?   @map("motivo_rejeicao")
+  bancoId               Int?      @map("banco_id")
+  bancoNome             String?   @map("banco_nome")
+  atualizadoEm          DateTime  @default(now()) @map("atualizado_em")
+
+  @@index([retornoId])
+  @@index([dataPagamento])
+  @@index([situacao])
+  @@index([dividaParticipanteId])
+  @@map("fato_retorno_item")
+}
+
+// SEM credenciais de banco (tokens/certificados/segredos excluídos por allow-list).
+model FatoCarteiraCobranca {
+  odooId            Int      @id @map("odoo_id")
+  nome              String?
+  bancoId           Int?     @map("banco_id")
+  bancoNome         String?  @map("banco_nome")
+  banco             String?
+  carteira          String?
+  tipoCarteira      String?  @map("tipo_carteira")
+  beneficiario      String?
+  convenio          String?
+  modalidade        String?
+  alJuros           Decimal  @default(0) @map("al_juros") @db.Decimal(18, 4)
+  alMulta           Decimal  @default(0) @map("al_multa") @db.Decimal(18, 4)
+  alDesconto        Decimal  @default(0) @map("al_desconto") @db.Decimal(18, 4)
+  taxaEmissao       Decimal  @default(0) @map("taxa_emissao") @db.Decimal(18, 2)
+  diasProtesto      Int?     @map("dias_protesto")
+  diasNegativacao   Int?     @map("dias_negativacao")
+  proximoNossoNumero String? @map("proximo_nosso_numero")
+  proximaRemessa    Int?     @map("proxima_remessa")
+  atualizadoEm      DateTime @default(now()) @map("atualizado_em")
+
+  @@index([bancoId])
+  @@map("fato_carteira_cobranca")
+}
+
+// Estrutural (0 reg hoje); auto-ativa quando a Matrix operar cheques.
+model FatoCheque {
+  odooId         Int       @id @map("odoo_id")
+  codigo         String?
+  codigoBarras   String?   @map("codigo_barras")
+  banco          String?
+  agencia        String?
+  conta          String?
+  numero         String?
+  titularNome    String?   @map("titular_nome")
+  titularCnpjCpf String?   @map("titular_cnpj_cpf")
+  data           DateTime?
+  dataEntrada    DateTime? @map("data_entrada")
+  dataPreDatado  DateTime? @map("data_pre_datado")
+  valor          Decimal   @default(0) @db.Decimal(18, 2)
+  empresaId      Int?      @map("empresa_id")
+  cnpjCpf        String?   @map("cnpj_cpf")
+  participanteId Int?      @map("participante_id")
+  participanteNome String? @map("participante_nome")
+  atualizadoEm   DateTime  @default(now()) @map("atualizado_em")
+
+  @@index([data])
+  @@index([participanteId])
+  @@map("fato_cheque")
+}
+
+// Estrutural (0 reg hoje); auto-ativa quando a Matrix operar PIX.
+model FatoPix {
+  odooId       Int       @id @map("odoo_id")
+  txid         String?
+  metodo       String?
+  dataHora     DateTime? @map("data_hora")
+  data         DateTime?
+  status       String?
+  vrTarifas    Decimal   @default(0) @map("vr_tarifas") @db.Decimal(18, 2)
+  lancamentoId Int?      @map("lancamento_id")
+  atualizadoEm DateTime  @default(now()) @map("atualizado_em")
+
+  @@index([data])
+  @@index([status])
+  @@map("fato_pix")
+}
+
+// ─── B4 — Comercial / cotação + comissão (estruturais, 0 reg hoje) ───────────
+model RawPedidoDocumentoCotacao {
+  odooId        Int       @id @map("odoo_id")
+  data          Json
+  odooWriteDate DateTime? @map("odoo_write_date")
+  syncedAt      DateTime  @default(now()) @map("synced_at")
+  rawDeleted    Boolean   @default(false) @map("raw_deleted")
+
+  @@index([odooWriteDate])
+  @@index([rawDeleted])
+  @@map("raw_pedido_documento_cotacao")
+}
+
+model RawPedidoComissao {
+  odooId        Int       @id @map("odoo_id")
+  data          Json
+  odooWriteDate DateTime? @map("odoo_write_date")
+  syncedAt      DateTime  @default(now()) @map("synced_at")
+  rawDeleted    Boolean   @default(false) @map("raw_deleted")
+
+  @@index([odooWriteDate])
+  @@index([rawDeleted])
+  @@map("raw_pedido_comissao")
+}
+
+// Cotações/propostas (funil de cotação). Auto-ativa quando operado.
+model FatoCotacao {
+  odooId            Int      @id @map("odoo_id")
+  numero            String?
+  status            String?
+  ehCompra          Boolean  @default(false) @map("eh_compra")
+  empresaId         Int?     @map("empresa_id")
+  operacaoId        Int?     @map("operacao_id")
+  operacaoNome      String?  @map("operacao_nome")
+  usuarioAprovadorId Int?    @map("usuario_aprovador_id")
+  centroResultadoId Int?     @map("centro_resultado_id")
+  atualizadoEm      DateTime @default(now()) @map("atualizado_em")
+
+  @@index([status])
+  @@index([empresaId])
+  @@map("fato_cotacao")
+}
+
+// Comissão por pedido/vendedor. Auto-ativa quando operado.
+model FatoComissao {
+  odooId            Int      @id @map("odoo_id")
+  pedidoId          Int?     @map("pedido_id")
+  participanteId    Int?     @map("participante_id")
+  participanteNome  String?  @map("participante_nome")
+  bcComissao        Decimal  @default(0) @map("bc_comissao") @db.Decimal(18, 2)
+  alComissao        Decimal  @default(0) @map("al_comissao") @db.Decimal(18, 4)
+  vrComissao        Decimal  @default(0) @map("vr_comissao") @db.Decimal(18, 2)
+  atualizadoEm      DateTime @default(now()) @map("atualizado_em")
+
+  @@index([pedidoId])
+  @@index([participanteId])
+  @@map("fato_comissao")
+}
+
+// ─── B5 — Produção (estrutural; producao.processo já tem raw, 1 reg hoje) ─────
+model FatoProducaoProcesso {
+  odooId       Int      @id @map("odoo_id")
+  ordem        Int?
+  nome         String?
+  descricao    String?
+  tempo        Decimal  @default(0) @db.Decimal(18, 2)
+  atualizadoEm DateTime @default(now()) @map("atualizado_em")
+
+  @@index([ordem])
+  @@map("fato_producao_processo")
+}
+
+// ─── B6 — Estoque avançado / mín-máx (estrutural, 0 reg hoje) ─────────────────
+model RawEstoqueMinimoMaximo {
+  odooId        Int       @id @map("odoo_id")
+  data          Json
+  odooWriteDate DateTime? @map("odoo_write_date")
+  syncedAt      DateTime  @default(now()) @map("synced_at")
+  rawDeleted    Boolean   @default(false) @map("raw_deleted")
+
+  @@index([odooWriteDate])
+  @@index([rawDeleted])
+  @@map("raw_estoque_minimo_maximo")
+}
+
+model FatoEstoqueMinMax {
+  odooId          Int      @id @map("odoo_id")
+  produtoId       Int?     @map("produto_id")
+  produtoNome     String?  @map("produto_nome")
+  localId         Int?     @map("local_id")
+  localNome       String?  @map("local_nome")
+  unidadeNome     String?  @map("unidade_nome")
+  quantidadeMinima Decimal @default(0) @map("quantidade_minima") @db.Decimal(18, 3)
+  quantidadeMaxima Decimal @default(0) @map("quantidade_maxima") @db.Decimal(18, 3)
+  atualizadoEm    DateTime @default(now()) @map("atualizado_em")
+
+  @@index([produtoId])
+  @@index([localId])
+  @@map("fato_estoque_min_max")
+}
+
+// ─── B7 — CRM (limitado) + Auditoria ─────────────────────────────────────────
+model RawCrmPipeline {
+  odooId        Int       @id @map("odoo_id")
+  data          Json
+  odooWriteDate DateTime? @map("odoo_write_date")
+  syncedAt      DateTime  @default(now()) @map("synced_at")
+  rawDeleted    Boolean   @default(false) @map("raw_deleted")
+
+  @@index([odooWriteDate])
+  @@index([rawDeleted])
+  @@map("raw_crm_pipeline")
+}
+
+model RawAuditoriaRegra {
+  odooId        Int       @id @map("odoo_id")
+  data          Json
+  odooWriteDate DateTime? @map("odoo_write_date")
+  syncedAt      DateTime  @default(now()) @map("synced_at")
+  rawDeleted    Boolean   @default(false) @map("raw_deleted")
+
+  @@index([odooWriteDate])
+  @@index([rawDeleted])
+  @@map("raw_auditoria_regra")
+}
+
+// Funil de CRM (config). Estrutural (0 reg; CRM transacional inexistente, ver O2).
+model FatoCrmPipeline {
+  odooId       Int      @id @map("odoo_id")
+  numero       Int?
+  nome         String?
+  tipo         String?
+  ativo        Boolean  @default(false)
+  atualizadoEm DateTime @default(now()) @map("atualizado_em")
+
+  @@index([ativo])
+  @@map("fato_crm_pipeline")
+}
+
+// Regras de auditoria (15 reg reais). nome, se ativa, janela em dias.
+model FatoAuditoriaRegra {
+  odooId       Int      @id @map("odoo_id")
+  nome         String?
+  ativa        Boolean  @default(false)
+  dias         Decimal  @default(0) @db.Decimal(18, 2)
+  atualizadoEm DateTime @default(now()) @map("atualizado_em")
+
+  @@index([ativa])
+  @@map("fato_auditoria_regra")
+}

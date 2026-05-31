@@ -19,6 +19,8 @@ import { cadastrosTools } from "../tools/cadastros/index.js"; // onda D , 3 tool
 import { contabilTools } from "../tools/contabil/index.js";   // onda E , 2 tools
 import { dominiosVaziosTools } from "../tools/dominios-vazios/index.js"; // onda F , 3 tools
 import { crmTools } from "../tools/crm/index.js"; // Bloco J , crm read + write tools
+import { producaoTools } from "../tools/producao/index.js"; // B5 , processos de produção (sempreVisivel)
+import { auditoriaTools } from "../tools/auditoria/index.js"; // B7 , regras de auditoria (sempreVisivel)
 
 export const catalogo: ToolEntry[] = [
   ...estoqueTools,
@@ -30,4 +32,6 @@ export const catalogo: ToolEntry[] = [
   ...contabilTools,
   ...dominiosVaziosTools,
   ...crmTools,
+  ...producaoTools,
+  ...auditoriaTools,
 ];

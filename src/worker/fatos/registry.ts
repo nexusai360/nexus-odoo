@@ -27,6 +27,18 @@ import { rebuildFatoContabilLancamento } from "./fato-contabil-lancamento";
 import { rebuildFatoContabilLancamentoItem } from "./fato-contabil-lancamento-item";
 import { rebuildFatoMdfe } from "./fato-mdfe";
 import { rebuildFatoReinfEvento } from "./fato-reinf-evento";
+import { rebuildFatoRetornoItem } from "./fato-retorno-item";
+import { rebuildFatoRetornoBancario } from "./fato-retorno-bancario";
+import { rebuildFatoRemessaBancaria } from "./fato-remessa-bancaria";
+import { rebuildFatoCarteiraCobranca } from "./fato-carteira-cobranca";
+import { rebuildFatoCheque } from "./fato-cheque";
+import { rebuildFatoPix } from "./fato-pix";
+import { rebuildFatoCotacao } from "./fato-cotacao";
+import { rebuildFatoComissao } from "./fato-comissao";
+import { rebuildFatoProducaoProcesso } from "./fato-producao-processo";
+import { rebuildFatoEstoqueMinMax } from "./fato-estoque-minimo-maximo";
+import { rebuildFatoCrmPipeline } from "./fato-crm-pipeline";
+import { rebuildFatoAuditoriaRegra } from "./fato-auditoria-regra";
 
 export interface FatoBuilderEntry {
   nome: string;
@@ -72,6 +84,23 @@ export const FATO_BUILDERS: FatoBuilderEntry[] = [
   // operados no Odoo). Registrados para auto-buildarem quando passarem a operar.
   { nome: "fato_mdfe", cycle: "incremental", run: rebuildFatoMdfe },
   { nome: "fato_reinf_evento", cycle: "incremental", run: rebuildFatoReinfEvento },
+  // B3 (cobrança bancária). retorno.item depende do raw já sincronizado.
+  { nome: "fato_retorno_item", cycle: "incremental", run: rebuildFatoRetornoItem },
+  { nome: "fato_retorno_bancario", cycle: "incremental", run: rebuildFatoRetornoBancario },
+  { nome: "fato_remessa_bancaria", cycle: "incremental", run: rebuildFatoRemessaBancaria },
+  { nome: "fato_carteira_cobranca", cycle: "incremental", run: rebuildFatoCarteiraCobranca },
+  { nome: "fato_cheque", cycle: "incremental", run: rebuildFatoCheque },
+  { nome: "fato_pix", cycle: "incremental", run: rebuildFatoPix },
+  // B4 (comercial: cotação + comissão). Estruturais (0 reg hoje; auto-ativam).
+  { nome: "fato_cotacao", cycle: "incremental", run: rebuildFatoCotacao },
+  { nome: "fato_comissao", cycle: "incremental", run: rebuildFatoComissao },
+  // B5 (produção). producao.processo (1 reg hoje).
+  { nome: "fato_producao_processo", cycle: "incremental", run: rebuildFatoProducaoProcesso },
+  // B6 (estoque avançado). estoque.minimo.maximo (0 reg hoje; auto-ativa).
+  { nome: "fato_estoque_min_max", cycle: "incremental", run: rebuildFatoEstoqueMinMax },
+  // B7 (CRM + auditoria). crm.pipeline (0 reg); auditoria.regra (15 reg reais).
+  { nome: "fato_crm_pipeline", cycle: "incremental", run: rebuildFatoCrmPipeline },
+  { nome: "fato_auditoria_regra", cycle: "incremental", run: rebuildFatoAuditoriaRegra },
 ];
 
 /**

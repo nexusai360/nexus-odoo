@@ -19,6 +19,18 @@ export const MODEL_CATALOG: readonly CatalogEntry[] = [
   // B2 (onda fiscal complementar): MDF-e + REINF (0 reg hoje; estruturais).
   { odooModel: "sped.mdfe", mode: "incremental" },
   { odooModel: "reinf.evento", mode: "incremental" },
+  // B3 (cobrança bancária): cheque/pix novos (0 reg hoje; estruturais).
+  { odooModel: "finan.cheque", mode: "incremental" },
+  { odooModel: "finan.pix", mode: "incremental" },
+  // B4 (comercial): cotação/comissão (0 reg hoje; estruturais).
+  { odooModel: "pedido.documento.cotacao", mode: "incremental" },
+  { odooModel: "pedido.comissao", mode: "incremental" },
+  // B6 (estoque avançado): mín/máx (0 reg hoje; estrutural).
+  { odooModel: "estoque.minimo.maximo", mode: "incremental" },
+  // B7 (CRM + auditoria): crm.pipeline (0) + auditoria.regra (15). NÃO inclui
+  // auditoria.log/.item (313k/14MI) , volume fora de escopo do cache.
+  { odooModel: "crm.pipeline", mode: "incremental" },
+  { odooModel: "auditoria.regra", mode: "incremental" },
   { odooModel: "estoque.extrato", mode: "snapshot" },
   { odooModel: "estoque.extrato.rastreabilidade", mode: "incremental" },
   { odooModel: "estoque.local", mode: "incremental" },

@@ -60,6 +60,23 @@ export const FATO_CATALOG: readonly FatoCatalogEntry[] = [
   { nome: "fato_parceiro", dominio: "Cadastros", modo: "incremental", fonte: "res.partner" },
   // Produtos
   { nome: "fato_produto", dominio: "Produtos", modo: "incremental", fonte: "sped.produto" },
+  // B3 , Financeiro / cobrança bancária
+  { nome: "fato_retorno_item", dominio: "Financeiro", modo: "incremental", fonte: "finan.retorno.item" },
+  { nome: "fato_retorno_bancario", dominio: "Financeiro", modo: "incremental", fonte: "finan.retorno" },
+  { nome: "fato_remessa_bancaria", dominio: "Financeiro", modo: "incremental", fonte: "finan.remessa" },
+  { nome: "fato_carteira_cobranca", dominio: "Financeiro", modo: "incremental", fonte: "finan.carteira" },
+  { nome: "fato_cheque", dominio: "Financeiro", modo: "incremental", fonte: "finan.cheque" },
+  { nome: "fato_pix", dominio: "Financeiro", modo: "incremental", fonte: "finan.pix" },
+  // B4 , Comercial / cotação + comissão
+  { nome: "fato_cotacao", dominio: "Comercial", modo: "incremental", fonte: "pedido.documento.cotacao" },
+  { nome: "fato_comissao", dominio: "Comercial", modo: "incremental", fonte: "pedido.comissao" },
+  // B5 , Produção
+  { nome: "fato_producao_processo", dominio: "Produção", modo: "incremental", fonte: "producao.processo" },
+  // B6 , Estoque avançado
+  { nome: "fato_estoque_min_max", dominio: "Estoque", modo: "incremental", fonte: "estoque.minimo.maximo" },
+  // B7 , CRM + Auditoria
+  { nome: "fato_crm_pipeline", dominio: "CRM", modo: "incremental", fonte: "crm.pipeline" },
+  { nome: "fato_auditoria_regra", dominio: "Auditoria", modo: "incremental", fonte: "auditoria.regra" },
 ];
 
 /**
