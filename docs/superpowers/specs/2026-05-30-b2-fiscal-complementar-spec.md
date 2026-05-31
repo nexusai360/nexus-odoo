@@ -20,15 +20,34 @@ Balde B estrutural legítimo (pré-build honesto, igual ao lançamento contábil
 "inexistentes". O `sped.consulta.dfe` tem só 35 reg de controle de NSU (empresa, último NSU
 consultado, modelo) , baixo valor de negócio.
 
-### 1.1 Campos (categorias confirmadas; mapeamento fino na Task 0 da execução)
+### 1.1 Campos REAIS confirmados via `fields_get` ao vivo (nomes exatos , usar estes)
 - `sped.consulta.dfe` (35): `empresa_id`→sped.empresa, `modelo`(sel 55=NF-e/57=CT-e/03=NFS-e),
   `ultimo_nsu`(char), `item_ids`→sped.consulta.dfe.item. (Já há o `.item` no O1 = `fato_dfe`.)
-- `sped.mdfe` (0, 39 campos relevantes): cabeçalho do manifesto , chave, número, série, modelo,
-  emitente, datas (emissão/início viagem), UF início/fim, status/situação, protocolo, valor da
-  carga, peso, placa/veículo, municípios. **Mapear no fields_get real na Task 0.**
-- `reinf.evento` (0, 40 campos rel.): cabeçalho do evento REINF , tipo de evento, período de
-  apuração, status/situação, protocolo, datas, empresa. **Task 0.**
-- `reinf.evento.item` (0, 32 campos rel.): linhas do evento , valores, base, retenções. **Task 0.**
+- **`sped.mdfe`** (0 reg): `chave`(char), `numero`(**float** → mapear String), `situacao_mdfe`(sel),
+  `situacao_fiscal`(sel), `tipo_emissao_mdfe`(sel), `empresa_id`→sped.empresa,
+  `empresa_cnpj_cpf`(char), `empresa_participante_id`→sped.participante,
+  `data_emissao`/`data_autorizacao`/`data_encerramento`/`data_cancelamento`(date) (+ variantes
+  `data_hora_*` datetime), `protocolo_autorizacao`/`protocolo_cancelamento`/
+  `protocolo_encerramento`(char), `municipio_carregamento_id`/`municipio_descarregamento_id`→
+  sped.municipio (+ `*_ids` m2m), `peso_bruto`(float), `peso_carga`(monetary), `vr_nf`(monetary).
+  **NÃO existe `serie`/`uf_inicio`/`uf_fim`/`placa` como campo direto** (a v desta SPEC que os
+  citava estava errada). Carga/UF de transporte ficam em modelos filhos não cobertos aqui.
+- **`reinf.evento`** (0 reg): `chave`(char), `tipo`(sel `R-1000`/`R-1050`/`R-1070`/...),
+  `tipo_federal`(sel `R-4010`/`R-4020`/...), `tipo_inss`(sel), `situacao`(sel `em_digitacao`/
+  `a_enviar`/`enviado`/`rejeitado`), `protocolo_transmissao`(char), `empresa_id`→sped.empresa,
+  `empresa_cnpj_cpf_raiz`(char), `data_evento`/`data_inicial`/`data_final`(date),
+  `data_hora_evento`/`data_hora_autorizacao`(datetime).
+- **`reinf.evento.item`** (0 reg): `evento_id`→reinf.evento, `documento_id`→sped.documento,
+  `modelo`(sel RPA/ND/NC/FL/...), `tipo`(sel R-1000...), `tipo_retencao`(sel INSS/FEDERAL),
+  `tipo_servico`(sel), `empresa_id`, `data_emissao`/`data_inicial`/`data_final`(date). (Item:
+  avaliar se vira fato , decisão Task 0.)
+
+> Schema dos fatos B2 (a recriar na execução, com ESTES nomes): `FatoMdfe`(odooId, chave,
+> numero String, situacaoMdfe, situacaoFiscal, tipoEmissao, empresaId, empresaCnpj, dataEmissao,
+> dataAutorizacao, dataEncerramento, dataCancelamento, protocoloAutorizacao,
+> municipioCarregamento via relNome, municipioDescarregamento via relNome, pesoBruto Decimal,
+> pesoCarga Decimal, vrNf Decimal); `FatoReinfEvento`(odooId, chave, tipo, situacao,
+> protocoloTransmissao, empresaId, empresaCnpjRaiz, dataEvento, dataInicial, dataFinal).
 
 ## 2. Escopo da onda (estrutural, honesto)
 
