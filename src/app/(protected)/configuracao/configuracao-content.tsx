@@ -27,6 +27,8 @@ import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { CustomSelect } from "@/components/ui/custom-select";
+import { SegmentedControl } from "@/components/ui/segmented-control";
+import { modeloDominio, type FatoModo } from "@/lib/fatos-catalog";
 import {
   Popover,
   PopoverContent,
@@ -69,6 +71,17 @@ const SYNC_TYPE_LABELS: Record<string, { label: string; description: string }> =
   reconcile: { label: "Reconciliação", description: "remoções" },
 };
 
+// Local row type da camada de fatos (espelha getFatosState; type-only)
+interface FatoStateRow {
+  nome: string;
+  dominio: string;
+  modo: FatoModo;
+  fonte: string;
+  recordCount: number;
+  ultimoBuildAt: Date | null;
+  status: "ok" | "rodando";
+}
+
 interface Config {
   incrementalIntervalMin: number;
   snapshotIntervalMin: number;
@@ -78,6 +91,7 @@ interface Config {
 interface Props {
   config: Config;
   estado: SyncStateRow[];
+  fatos: FatoStateRow[];
 }
 
 const FIELD_LABELS: [keyof Config, string, string, string][] = [
@@ -124,6 +138,7 @@ function formatDateTime(date: Date | null): string {
     year: "numeric",
     hour: "2-digit",
     minute: "2-digit",
+    second: "2-digit",
   }).format(new Date(date));
 }
 
@@ -162,23 +177,49 @@ function lastSyncAt(row: SyncStateRow): Date | null {
   return row.lastIncrementalAt ?? row.lastSnapshotAt ?? row.lastReconcileAt;
 }
 
-function EstadoModal({ estado, open, onOpenChange }: {
+function EstadoModal({ estado, fatos, open, onOpenChange }: {
   estado: SyncStateRow[];
+  fatos: FatoStateRow[];
   open: boolean;
   onOpenChange: (open: boolean) => void;
 }) {
-  // Filtros locais
+  // Aba ativa: Modelos (camada de ingestão/raw) x Fatos (camada derivada)
+  const [tab, setTab] = useState<"modelos" | "fatos">("modelos");
+  // Filtros locais (compartilhados; resetados ao trocar de aba)
   const [modeFilter, setModeFilter] = useState<string>("all");
   const [statusFilter, setStatusFilter] = useState<StatusKey[]>([]);
+  const [grupoFilter, setGrupoFilter] = useState<string>("all");
   // Ordenacao (3-click: asc -> desc -> null) - default: ultimaSync desc
   const [sortKey, setSortKey] = useState<SortKey>("ultimaSync");
   const [sortDir, setSortDir] = useState<SortDir>("desc");
 
+  const isModelos = tab === "modelos";
+
+  const changeTab = (t: string) => {
+    const next = t === "fatos" ? "fatos" : "modelos";
+    if (next === tab) return;
+    setTab(next);
+    setModeFilter("all");
+    setStatusFilter([]);
+    setGrupoFilter("all");
+    setSortKey("ultimaSync");
+    setSortDir("desc");
+  };
+
+  // Modos e grupos disponíveis na aba ativa (data-driven)
   const modes = useMemo(() => {
     const set = new Set<string>();
-    for (const r of estado) set.add(r.mode);
+    if (isModelos) for (const r of estado) set.add(r.mode);
+    else for (const f of fatos) set.add(f.modo);
     return Array.from(set).sort();
-  }, [estado]);
+  }, [isModelos, estado, fatos]);
+
+  const grupos = useMemo(() => {
+    const set = new Set<string>();
+    if (isModelos) for (const r of estado) set.add(modeloDominio(r.model));
+    else for (const f of fatos) set.add(f.dominio);
+    return Array.from(set).sort();
+  }, [isModelos, estado, fatos]);
 
   const toggleSort = (key: SortKey) => {
     if (sortKey !== key) {
@@ -189,13 +230,13 @@ function EstadoModal({ estado, open, onOpenChange }: {
     setSortDir((d) => (d === "asc" ? "desc" : d === "desc" ? null : "asc"));
   };
 
-  const visible = useMemo(() => {
+  const visibleModelos = useMemo(() => {
     let rows = estado.slice();
     if (modeFilter !== "all") rows = rows.filter((r) => r.mode === modeFilter);
     if (statusFilter.length > 0)
-      rows = rows.filter((r) =>
-        statusFilter.includes(r.lastStatus as StatusKey),
-      );
+      rows = rows.filter((r) => statusFilter.includes(r.lastStatus as StatusKey));
+    if (grupoFilter !== "all")
+      rows = rows.filter((r) => modeloDominio(r.model) === grupoFilter);
     if (sortDir !== null) {
       const dirSign = sortDir === "asc" ? 1 : -1;
       rows.sort((a, b) => {
@@ -208,17 +249,48 @@ function EstadoModal({ estado, open, onOpenChange }: {
       });
     }
     return rows;
-  }, [estado, modeFilter, statusFilter, sortKey, sortDir]);
+  }, [estado, modeFilter, statusFilter, grupoFilter, sortKey, sortDir]);
 
-  const okCount = estado.filter((s) => s.lastStatus === "ok").length;
-  const semAcesso = estado.filter((s) => s.lastStatus === "sem_acesso").length;
-  const erro = estado.filter((s) => s.lastStatus === "erro").length;
+  const visibleFatos = useMemo(() => {
+    let rows = fatos.slice();
+    if (modeFilter !== "all") rows = rows.filter((r) => r.modo === modeFilter);
+    if (statusFilter.length > 0)
+      rows = rows.filter((r) => statusFilter.includes(r.status as StatusKey));
+    if (grupoFilter !== "all") rows = rows.filter((r) => r.dominio === grupoFilter);
+    if (sortDir !== null) {
+      const dirSign = sortDir === "asc" ? 1 : -1;
+      rows.sort((a, b) => {
+        const av = getFatoSortValue(a, sortKey);
+        const bv = getFatoSortValue(b, sortKey);
+        if (av === bv) return 0;
+        if (av === null) return 1;
+        if (bv === null) return -1;
+        return av < bv ? -1 * dirSign : 1 * dirSign;
+      });
+    }
+    return rows;
+  }, [fatos, modeFilter, statusFilter, grupoFilter, sortKey, sortDir]);
+
+  // Resumo (descrição) por aba
+  const totalCount = isModelos ? estado.length : fatos.length;
+  const okCount = isModelos
+    ? estado.filter((s) => s.lastStatus === "ok").length
+    : fatos.filter((f) => f.status === "ok").length;
+  const semAcesso = isModelos
+    ? estado.filter((s) => s.lastStatus === "sem_acesso").length
+    : 0;
+  const erro = isModelos ? estado.filter((s) => s.lastStatus === "erro").length : 0;
+  const preparando = isModelos ? 0 : fatos.filter((f) => f.status === "rodando").length;
+  const visibleCount = isModelos ? visibleModelos.length : visibleFatos.length;
+  const unidade = isModelos ? "modelos" : "fatos";
 
   const clearFilters = () => {
     setModeFilter("all");
     setStatusFilter([]);
+    setGrupoFilter("all");
   };
-  const hasActiveFilters = modeFilter !== "all" || statusFilter.length > 0;
+  const hasActiveFilters =
+    modeFilter !== "all" || statusFilter.length > 0 || grupoFilter !== "all";
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -226,21 +298,34 @@ function EstadoModal({ estado, open, onOpenChange }: {
         <DialogHeader>
           <DialogTitle>Estado da ingestão</DialogTitle>
           <DialogDescription>
-            {estado.length} modelos
+            {totalCount} {unidade}
             {okCount > 0 && ` · ${okCount} ok`}
+            {preparando > 0 && ` · ${preparando} preparando`}
             {semAcesso > 0 && ` · ${semAcesso} sem acesso`}
             {erro > 0 && ` · ${erro} com erro`}
-            {hasActiveFilters &&
-              ` · mostrando ${visible.length} apos filtros`}
+            {hasActiveFilters && ` · mostrando ${visibleCount} apos filtros`}
           </DialogDescription>
         </DialogHeader>
+
+        {/* Abas: Modelos (ingestão) x Fatos (derivados do cache) */}
+        <div className="pb-1">
+          <SegmentedControl
+            value={tab}
+            onChange={changeTab}
+            aria-label="Camada"
+            options={[
+              { value: "modelos", label: "Modelos" },
+              { value: "fatos", label: "Fatos" },
+            ]}
+          />
+        </div>
 
         {/* Filtros */}
         <div className="flex flex-wrap items-center gap-2 pb-2">
           <CustomSelect
             value={modeFilter}
             onChange={setModeFilter}
-            triggerClassName="min-h-[36px] h-9 min-w-[180px]"
+            triggerClassName="min-h-[36px] h-9 min-w-[160px]"
             aria-label="Filtrar por modo"
             options={[
               { value: "all", label: "Todos os modos" },
@@ -259,6 +344,16 @@ function EstadoModal({ estado, open, onOpenChange }: {
             }
             onClear={() => setStatusFilter([])}
           />
+          <CustomSelect
+            value={grupoFilter}
+            onChange={setGrupoFilter}
+            triggerClassName="min-h-[36px] h-9 min-w-[160px]"
+            aria-label={isModelos ? "Filtrar por grupo" : "Filtrar por domínio"}
+            options={[
+              { value: "all", label: isModelos ? "Todos os grupos" : "Todos os domínios" },
+              ...grupos.map((g) => ({ value: g, label: g })),
+            ]}
+          />
           {hasActiveFilters && (
             <button
               type="button"
@@ -272,93 +367,115 @@ function EstadoModal({ estado, open, onOpenChange }: {
           )}
         </div>
 
-        {estado.length === 0 ? (
+        {isModelos ? (
+          estado.length === 0 ? (
+            <div
+              className="flex flex-col items-center justify-center py-16 text-muted-foreground"
+              role="status"
+            >
+              <Database className="mb-3 h-12 w-12 text-muted-foreground/60" aria-hidden="true" />
+              <p className="text-sm">Nenhum modelo sincronizado ainda.</p>
+            </div>
+          ) : (
+            <div className="overflow-y-auto overflow-x-auto flex-1 -mx-4 px-4">
+              <Table>
+                <TableHeader>
+                  <TableRow className="hover:bg-transparent">
+                    <SortableHead label="Modelo" sortKey="model" activeKey={sortKey} dir={sortDir} onToggle={toggleSort} />
+                    <SortableHead label="Modo" sortKey="mode" activeKey={sortKey} dir={sortDir} onToggle={toggleSort} />
+                    <SortableHead label="Status" sortKey="status" activeKey={sortKey} dir={sortDir} onToggle={toggleSort} />
+                    <SortableHead label="Registros" sortKey="registros" activeKey={sortKey} dir={sortDir} onToggle={toggleSort} />
+                    <SortableHead label="Última sync" sortKey="ultimaSync" activeKey={sortKey} dir={sortDir} onToggle={toggleSort} />
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {visibleModelos.length === 0 ? (
+                    <TableRow>
+                      <TableCell colSpan={5} className="py-10 text-center text-xs text-muted-foreground">
+                        Nenhum modelo encontrado com os filtros atuais.
+                      </TableCell>
+                    </TableRow>
+                  ) : (
+                    visibleModelos.map((s) => (
+                      <TableRow key={s.model} className="border-border hover:bg-muted/30">
+                        <TableCell className="font-mono text-xs text-foreground">
+                          <div>{s.model}</div>
+                          {s.lastStatus === "erro" && s.lastError && (
+                            <div className="text-xs text-muted-foreground mt-0.5 max-w-[320px] truncate" title={s.lastError}>
+                              {s.lastError}
+                            </div>
+                          )}
+                        </TableCell>
+                        <TableCell className="text-xs text-muted-foreground">
+                          {SYNC_TYPE_LABELS[s.mode]?.label ?? s.mode}
+                        </TableCell>
+                        <TableCell>
+                          <Badge variant="outline" className={`text-xs ${getStatusBadgeClasses(s.lastStatus)}`}>
+                            {getStatusLabel(s.lastStatus)}
+                          </Badge>
+                        </TableCell>
+                        <TableCell className="text-xs tabular-nums text-muted-foreground">
+                          {s.recordCount.toLocaleString("pt-BR")}
+                        </TableCell>
+                        <TableCell className="text-xs text-muted-foreground tabular-nums">
+                          {formatDateTime(lastSyncAt(s))}
+                        </TableCell>
+                      </TableRow>
+                    ))
+                  )}
+                </TableBody>
+              </Table>
+            </div>
+          )
+        ) : fatos.length === 0 ? (
           <div
             className="flex flex-col items-center justify-center py-16 text-muted-foreground"
             role="status"
           >
             <Database className="mb-3 h-12 w-12 text-muted-foreground/60" aria-hidden="true" />
-            <p className="text-sm">Nenhum modelo sincronizado ainda.</p>
+            <p className="text-sm">Nenhum fato disponível ainda.</p>
           </div>
         ) : (
           <div className="overflow-y-auto overflow-x-auto flex-1 -mx-4 px-4">
             <Table>
               <TableHeader>
                 <TableRow className="hover:bg-transparent">
-                  <SortableHead
-                    label="Modelo"
-                    sortKey="model"
-                    activeKey={sortKey}
-                    dir={sortDir}
-                    onToggle={toggleSort}
-                  />
-                  <SortableHead
-                    label="Modo"
-                    sortKey="mode"
-                    activeKey={sortKey}
-                    dir={sortDir}
-                    onToggle={toggleSort}
-                  />
-                  <SortableHead
-                    label="Status"
-                    sortKey="status"
-                    activeKey={sortKey}
-                    dir={sortDir}
-                    onToggle={toggleSort}
-                  />
-                  <SortableHead
-                    label="Registros"
-                    sortKey="registros"
-                    activeKey={sortKey}
-                    dir={sortDir}
-                    onToggle={toggleSort}
-                  />
-                  <SortableHead
-                    label="Última sync"
-                    sortKey="ultimaSync"
-                    activeKey={sortKey}
-                    dir={sortDir}
-                    onToggle={toggleSort}
-                  />
+                  <SortableHead label="Fato" sortKey="model" activeKey={sortKey} dir={sortDir} onToggle={toggleSort} />
+                  <SortableHead label="Modo" sortKey="mode" activeKey={sortKey} dir={sortDir} onToggle={toggleSort} />
+                  <SortableHead label="Status" sortKey="status" activeKey={sortKey} dir={sortDir} onToggle={toggleSort} />
+                  <SortableHead label="Registros" sortKey="registros" activeKey={sortKey} dir={sortDir} onToggle={toggleSort} />
+                  <SortableHead label="Última sync" sortKey="ultimaSync" activeKey={sortKey} dir={sortDir} onToggle={toggleSort} />
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {visible.length === 0 ? (
+                {visibleFatos.length === 0 ? (
                   <TableRow>
-                    <TableCell
-                      colSpan={5}
-                      className="py-10 text-center text-xs text-muted-foreground"
-                    >
-                      Nenhum modelo encontrado com os filtros atuais.
+                    <TableCell colSpan={5} className="py-10 text-center text-xs text-muted-foreground">
+                      Nenhum fato encontrado com os filtros atuais.
                     </TableCell>
                   </TableRow>
                 ) : (
-                  visible.map((s) => (
-                    <TableRow key={s.model} className="border-border hover:bg-muted/30">
+                  visibleFatos.map((f) => (
+                    <TableRow key={f.nome} className="border-border hover:bg-muted/30">
                       <TableCell className="font-mono text-xs text-foreground">
-                        <div>{s.model}</div>
-                        {s.lastStatus === "erro" && s.lastError && (
-                          <div className="text-xs text-muted-foreground mt-0.5 max-w-[320px] truncate" title={s.lastError}>
-                            {s.lastError}
-                          </div>
-                        )}
+                        <div>{f.nome}</div>
+                        <div className="text-[11px] text-muted-foreground mt-0.5">
+                          via {f.fonte}
+                        </div>
                       </TableCell>
                       <TableCell className="text-xs text-muted-foreground">
-                        {SYNC_TYPE_LABELS[s.mode]?.label ?? s.mode}
+                        {SYNC_TYPE_LABELS[f.modo]?.label ?? f.modo}
                       </TableCell>
                       <TableCell>
-                        <Badge
-                          variant="outline"
-                          className={`text-xs ${getStatusBadgeClasses(s.lastStatus)}`}
-                        >
-                          {getStatusLabel(s.lastStatus)}
+                        <Badge variant="outline" className={`text-xs ${getStatusBadgeClasses(f.status)}`}>
+                          {f.status === "ok" ? "ok" : "preparando"}
                         </Badge>
                       </TableCell>
                       <TableCell className="text-xs tabular-nums text-muted-foreground">
-                        {s.recordCount.toLocaleString("pt-BR")}
+                        {f.recordCount.toLocaleString("pt-BR")}
                       </TableCell>
                       <TableCell className="text-xs text-muted-foreground tabular-nums">
-                        {formatDateTime(lastSyncAt(s))}
+                        {formatDateTime(f.ultimoBuildAt)}
                       </TableCell>
                     </TableRow>
                   ))
@@ -389,6 +506,21 @@ function getSortValue(
       const d = lastSyncAt(row);
       return d ? new Date(d).getTime() : null;
     }
+  }
+}
+
+function getFatoSortValue(row: FatoStateRow, key: SortKey): string | number | null {
+  switch (key) {
+    case "model":
+      return row.nome;
+    case "mode":
+      return row.modo;
+    case "status":
+      return row.status;
+    case "registros":
+      return row.recordCount;
+    case "ultimaSync":
+      return row.ultimoBuildAt ? new Date(row.ultimoBuildAt).getTime() : null;
   }
 }
 
@@ -538,7 +670,7 @@ function latestDate(estado: SyncStateRow[], field: keyof Pick<SyncStateRow, "las
   return max;
 }
 
-export function ConfiguracaoContent({ config, estado }: Props) {
+export function ConfiguracaoContent({ config, estado, fatos }: Props) {
   const [form, setForm] = useState<Config>(config);
   const [pending, startTransition] = useTransition();
   const [estadoOpen, setEstadoOpen] = useState(false);
@@ -698,6 +830,7 @@ export function ConfiguracaoContent({ config, estado }: Props) {
 
       <EstadoModal
         estado={estado}
+        fatos={fatos}
         open={estadoOpen}
         onOpenChange={setEstadoOpen}
       />

@@ -4,6 +4,7 @@ import { prisma } from "@/lib/prisma";
 import { getCurrentUser } from "@/lib/auth";
 import { logAudit } from "@/lib/audit";
 import { syncConfigSchema, syncIntervalValueSchema } from "@/lib/validations/sync-config";
+import { FATO_CATALOG, type FatoModo } from "@/lib/fatos-catalog";
 
 const KEY_OF = {
   incrementalIntervalMin: "sync.incremental_interval_min",
@@ -103,6 +104,61 @@ export async function getSyncState() {
   );
 
   return rowsWithLiveCount;
+}
+
+export interface FatoStateRow {
+  nome: string;
+  dominio: string;
+  modo: FatoModo;
+  fonte: string;
+  recordCount: number;
+  ultimoBuildAt: Date | null;
+  /** "ok" = já reconstruído ao menos uma vez; "rodando" = ainda não buildado. */
+  status: "ok" | "rodando";
+}
+
+/**
+ * Estado da camada de fatos (derivada). Espelha getSyncState, mas para os
+ * fato_*: usa o FATO_CATALOG como lista canônica, conta cada tabela ao vivo e
+ * lê o último build de fato_build_state. Um fato sem registro em
+ * fato_build_state nunca foi construído pelo worker → status "rodando".
+ *
+ * Segurança: o nome da tabela vem do FATO_CATALOG (constantes fixas), não de
+ * input do usuário → sem superfície de injeção em $queryRawUnsafe.
+ */
+export async function getFatosState(): Promise<FatoStateRow[]> {
+  const me = await getCurrentUser();
+  if (!me || me.platformRole !== "super_admin") {
+    throw new Error("Acesso negado");
+  }
+
+  const builds = await prisma.fatoBuildState.findMany();
+  const buildPorFato = new Map(builds.map((b) => [b.fato, b.ultimoBuildAt]));
+
+  return Promise.all(
+    FATO_CATALOG.map(async (f) => {
+      let recordCount = 0;
+      try {
+        const result = await prisma.$queryRawUnsafe<[{ count: bigint }]>(
+          `SELECT COUNT(*) AS count FROM "${f.nome}"`,
+        );
+        recordCount = Number(result[0]?.count ?? 0);
+      } catch {
+        // Tabela ainda não existe (migration não aplicada) → 0 sem quebrar.
+        recordCount = 0;
+      }
+      const ultimoBuildAt = buildPorFato.get(f.nome) ?? null;
+      return {
+        nome: f.nome,
+        dominio: f.dominio,
+        modo: f.modo,
+        fonte: f.fonte,
+        recordCount,
+        ultimoBuildAt,
+        status: ultimoBuildAt ? ("ok" as const) : ("rodando" as const),
+      };
+    }),
+  );
 }
 
 export async function updateSyncConfig(input: unknown) {

@@ -1,7 +1,7 @@
 import { redirect } from "next/navigation";
 import { Settings } from "lucide-react";
 import { getCurrentUser } from "@/lib/auth";
-import { getSyncConfig, getSyncState } from "@/lib/actions/sync-config";
+import { getSyncConfig, getSyncState, getFatosState } from "@/lib/actions/sync-config";
 import { PageShell } from "@/components/layout/page-shell";
 import { PageHeader } from "@/components/page-header";
 import { ConfiguracaoContent } from "./configuracao-content";
@@ -14,7 +14,11 @@ export default async function ConfiguracaoPage() {
   if (!user) redirect("/login");
   if (user.platformRole !== "super_admin") redirect("/dashboard");
 
-  const [config, estado] = await Promise.all([getSyncConfig(), getSyncState()]);
+  const [config, estado, fatos] = await Promise.all([
+    getSyncConfig(),
+    getSyncState(),
+    getFatosState(),
+  ]);
 
   return (
     <PageShell variant="narrow">
@@ -23,7 +27,7 @@ export default async function ConfiguracaoPage() {
         title="Configuração"
         subtitle="Configure os intervalos de sincronização e acompanhe o estado da ingestão"
       />
-      <ConfiguracaoContent config={config} estado={estado} />
+      <ConfiguracaoContent config={config} estado={estado} fatos={fatos} />
     </PageShell>
   );
 }
