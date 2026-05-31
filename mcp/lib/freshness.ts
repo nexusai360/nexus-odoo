@@ -64,9 +64,6 @@ export const FATO_FONTE: Record<string, { model: string; mode: "snapshot" | "inc
   fato_contabil_conta_referencial: { model: "contabil.conta.referencial", mode: "incremental" },
   fato_contabil_lancamento:        { model: "contabil.lancamento",        mode: "incremental" },
   fato_contabil_lancamento_item:   { model: "contabil.lancamento.item",   mode: "incremental" },
-  // B2 (onda fiscal complementar)
-  fato_mdfe:                       { model: "sped.mdfe",                  mode: "incremental" },
-  fato_reinf_evento:               { model: "reinf.evento",              mode: "incremental" },
 };
 
 // ---------------------------------------------------------------------------

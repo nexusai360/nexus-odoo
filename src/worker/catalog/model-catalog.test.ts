@@ -50,11 +50,10 @@ const MODELOS_REMOVIDOS = new Set([
 // pela varredura F0, então não tem arquivo em discovery/output/modelos.
 const MODELOS_O1 = new Set(["sped.consulta.dfe.item"]);
 const MODELOS_B1 = new Set(["contabil.lancamento", "contabil.lancamento.item"]);
-const MODELOS_B2 = new Set(["sped.mdfe", "reinf.evento"]);
 
 describe("model-catalog", () => {
-  it("tem 118 modelos", () => {
-    expect(MODEL_CATALOG).toHaveLength(118);
+  it("tem 116 modelos", () => {
+    expect(MODEL_CATALOG).toHaveLength(116);
   });
 
   // discovery/output/ é gitignored (saídas brutas locais , ver .gitignore).
