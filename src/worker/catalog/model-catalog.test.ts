@@ -49,10 +49,11 @@ const MODELOS_REMOVIDOS = new Set([
 // Modelo acrescentado na onda O1 (DF-e). Entrou via sondagem `fields_get`, não
 // pela varredura F0, então não tem arquivo em discovery/output/modelos.
 const MODELOS_O1 = new Set(["sped.consulta.dfe.item"]);
+const MODELOS_B1 = new Set(["contabil.lancamento", "contabil.lancamento.item"]);
 
 describe("model-catalog", () => {
-  it("tem 114 modelos", () => {
-    expect(MODEL_CATALOG).toHaveLength(114);
+  it("tem 116 modelos", () => {
+    expect(MODEL_CATALOG).toHaveLength(116);
   });
 
   // discovery/output/ é gitignored (saídas brutas locais , ver .gitignore).
