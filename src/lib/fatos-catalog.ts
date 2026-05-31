@@ -60,6 +60,13 @@ export const FATO_CATALOG: readonly FatoCatalogEntry[] = [
   { nome: "fato_parceiro", dominio: "Cadastros", modo: "incremental", fonte: "res.partner" },
   // Produtos
   { nome: "fato_produto", dominio: "Produtos", modo: "incremental", fonte: "sped.produto" },
+  // B3 , Financeiro / cobrança bancária
+  { nome: "fato_retorno_item", dominio: "Financeiro", modo: "incremental", fonte: "finan.retorno.item" },
+  { nome: "fato_retorno_bancario", dominio: "Financeiro", modo: "incremental", fonte: "finan.retorno" },
+  { nome: "fato_remessa_bancaria", dominio: "Financeiro", modo: "incremental", fonte: "finan.remessa" },
+  { nome: "fato_carteira_cobranca", dominio: "Financeiro", modo: "incremental", fonte: "finan.carteira" },
+  { nome: "fato_cheque", dominio: "Financeiro", modo: "incremental", fonte: "finan.cheque" },
+  { nome: "fato_pix", dominio: "Financeiro", modo: "incremental", fonte: "finan.pix" },
 ];
 
 /**

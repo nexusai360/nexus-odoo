@@ -493,4 +493,87 @@ TABLE fato_referencia (
   codigo    TEXT,
   descricao TEXT
 );
+
+-- ─── FINANCEIRO , COBRANÇA BANCÁRIA (B3) ─────────────────────────────────────
+-- Baixas/pagamentos de cobrança (item do retorno bancário). Grão rico.
+TABLE fato_retorno_item (
+  odoo_id                  INT PRIMARY KEY,
+  retorno_id               INT,
+  situacao                 TEXT,
+  nosso_numero             TEXT,
+  data_pagamento           TIMESTAMPTZ,
+  vr_documento             NUMERIC,
+  vr_juros                 NUMERIC,
+  vr_multa                 NUMERIC,
+  vr_desconto              NUMERIC,
+  vr_tarifas               NUMERIC,
+  vr_baixado               NUMERIC,
+  vr_total                 NUMERIC,
+  divida_numero            TEXT,
+  divida_participante_id   INT,
+  divida_participante_nome TEXT,
+  divida_data_vencimento   TIMESTAMPTZ,
+  divida_situacao          TEXT,
+  banco_id                 INT,
+  banco_nome               TEXT
+);
+
+-- Retorno bancário (cabeçalho do arquivo).
+TABLE fato_retorno_bancario (
+  odoo_id          INT PRIMARY KEY,
+  tipo             TEXT,
+  banco_id         INT,
+  banco_nome       TEXT,
+  numero           TEXT,
+  data             TIMESTAMPTZ,
+  total_entradas   NUMERIC,
+  total_saidas     NUMERIC,
+  saldo            NUMERIC,
+  caixa_fechado    BOOLEAN
+);
+
+-- Remessa bancária gerada (enviada ao banco).
+TABLE fato_remessa_bancaria (
+  odoo_id          INT PRIMARY KEY,
+  tipo             TEXT,
+  banco_id         INT,
+  banco_nome       TEXT,
+  numero           TEXT,
+  data             TIMESTAMPTZ,
+  data_pagamento   TIMESTAMPTZ,
+  confirmada       BOOLEAN
+);
+
+-- Carteira de cobrança (config de boleto por banco). SEM credenciais.
+TABLE fato_carteira_cobranca (
+  odoo_id        INT PRIMARY KEY,
+  nome           TEXT,
+  banco_id       INT,
+  banco_nome     TEXT,
+  carteira       TEXT,
+  tipo_carteira  TEXT,
+  beneficiario   TEXT,
+  convenio       TEXT
+);
+
+-- Cheques (estrutural, 0 reg ate operar).
+TABLE fato_cheque (
+  odoo_id          INT PRIMARY KEY,
+  numero           TEXT,
+  banco            TEXT,
+  titular_nome     TEXT,
+  data             TIMESTAMPTZ,
+  valor            NUMERIC,
+  participante_id  INT
+);
+
+-- PIX (estrutural, 0 reg ate operar).
+TABLE fato_pix (
+  odoo_id     INT PRIMARY KEY,
+  txid        TEXT,
+  metodo      TEXT,
+  status      TEXT,
+  data        TIMESTAMPTZ,
+  vr_tarifas  NUMERIC
+);
 `.trim();

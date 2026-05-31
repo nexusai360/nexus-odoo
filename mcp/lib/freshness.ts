@@ -67,6 +67,13 @@ export const FATO_FONTE: Record<string, { model: string; mode: "snapshot" | "inc
   // B2 (onda fiscal complementar)
   fato_mdfe:                       { model: "sped.mdfe",                  mode: "incremental" },
   fato_reinf_evento:               { model: "reinf.evento",              mode: "incremental" },
+  // B3 (cobrança bancária)
+  fato_retorno_item:               { model: "finan.retorno.item",         mode: "incremental" },
+  fato_retorno_bancario:           { model: "finan.retorno",              mode: "incremental" },
+  fato_remessa_bancaria:           { model: "finan.remessa",              mode: "incremental" },
+  fato_carteira_cobranca:          { model: "finan.carteira",             mode: "incremental" },
+  fato_cheque:                     { model: "finan.cheque",               mode: "incremental" },
+  fato_pix:                        { model: "finan.pix",                  mode: "incremental" },
 };
 
 // ---------------------------------------------------------------------------

@@ -27,6 +27,12 @@ import { rebuildFatoContabilLancamento } from "./fato-contabil-lancamento";
 import { rebuildFatoContabilLancamentoItem } from "./fato-contabil-lancamento-item";
 import { rebuildFatoMdfe } from "./fato-mdfe";
 import { rebuildFatoReinfEvento } from "./fato-reinf-evento";
+import { rebuildFatoRetornoItem } from "./fato-retorno-item";
+import { rebuildFatoRetornoBancario } from "./fato-retorno-bancario";
+import { rebuildFatoRemessaBancaria } from "./fato-remessa-bancaria";
+import { rebuildFatoCarteiraCobranca } from "./fato-carteira-cobranca";
+import { rebuildFatoCheque } from "./fato-cheque";
+import { rebuildFatoPix } from "./fato-pix";
 
 export interface FatoBuilderEntry {
   nome: string;
@@ -72,6 +78,13 @@ export const FATO_BUILDERS: FatoBuilderEntry[] = [
   // operados no Odoo). Registrados para auto-buildarem quando passarem a operar.
   { nome: "fato_mdfe", cycle: "incremental", run: rebuildFatoMdfe },
   { nome: "fato_reinf_evento", cycle: "incremental", run: rebuildFatoReinfEvento },
+  // B3 (cobrança bancária). retorno.item depende do raw já sincronizado.
+  { nome: "fato_retorno_item", cycle: "incremental", run: rebuildFatoRetornoItem },
+  { nome: "fato_retorno_bancario", cycle: "incremental", run: rebuildFatoRetornoBancario },
+  { nome: "fato_remessa_bancaria", cycle: "incremental", run: rebuildFatoRemessaBancaria },
+  { nome: "fato_carteira_cobranca", cycle: "incremental", run: rebuildFatoCarteiraCobranca },
+  { nome: "fato_cheque", cycle: "incremental", run: rebuildFatoCheque },
+  { nome: "fato_pix", cycle: "incremental", run: rebuildFatoPix },
 ];
 
 /**
