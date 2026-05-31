@@ -611,4 +611,17 @@ TABLE fato_producao_processo (
   descricao  TEXT,
   tempo      NUMERIC
 );
+
+-- ─── ESTOQUE AVANÇADO , MÍN/MÁX (B6) ─────────────────────────────────────────
+-- Parâmetros de estoque mínimo/máximo por produto/local (estrutural, 0 reg hoje).
+TABLE fato_estoque_min_max (
+  odoo_id           INT PRIMARY KEY,
+  produto_id        INT,
+  produto_nome      TEXT,
+  local_id          INT,
+  local_nome        TEXT,
+  unidade_nome      TEXT,
+  quantidade_minima NUMERIC,
+  quantidade_maxima NUMERIC
+);
 `.trim();

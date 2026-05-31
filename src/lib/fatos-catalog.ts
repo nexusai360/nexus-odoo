@@ -72,6 +72,8 @@ export const FATO_CATALOG: readonly FatoCatalogEntry[] = [
   { nome: "fato_comissao", dominio: "Comercial", modo: "incremental", fonte: "pedido.comissao" },
   // B5 , Produção
   { nome: "fato_producao_processo", dominio: "Produção", modo: "incremental", fonte: "producao.processo" },
+  // B6 , Estoque avançado
+  { nome: "fato_estoque_min_max", dominio: "Estoque", modo: "incremental", fonte: "estoque.minimo.maximo" },
 ];
 
 /**

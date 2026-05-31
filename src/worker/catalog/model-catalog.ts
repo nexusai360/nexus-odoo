@@ -25,6 +25,8 @@ export const MODEL_CATALOG: readonly CatalogEntry[] = [
   // B4 (comercial): cotação/comissão (0 reg hoje; estruturais).
   { odooModel: "pedido.documento.cotacao", mode: "incremental" },
   { odooModel: "pedido.comissao", mode: "incremental" },
+  // B6 (estoque avançado): mín/máx (0 reg hoje; estrutural).
+  { odooModel: "estoque.minimo.maximo", mode: "incremental" },
   { odooModel: "estoque.extrato", mode: "snapshot" },
   { odooModel: "estoque.extrato.rastreabilidade", mode: "incremental" },
   { odooModel: "estoque.local", mode: "incremental" },

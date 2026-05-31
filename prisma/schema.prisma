@@ -3446,3 +3446,32 @@ model FatoProducaoProcesso {
   @@index([ordem])
   @@map("fato_producao_processo")
 }
+
+// ─── B6 — Estoque avançado / mín-máx (estrutural, 0 reg hoje) ─────────────────
+model RawEstoqueMinimoMaximo {
+  odooId        Int       @id @map("odoo_id")
+  data          Json
+  odooWriteDate DateTime? @map("odoo_write_date")
+  syncedAt      DateTime  @default(now()) @map("synced_at")
+  rawDeleted    Boolean   @default(false) @map("raw_deleted")
+
+  @@index([odooWriteDate])
+  @@index([rawDeleted])
+  @@map("raw_estoque_minimo_maximo")
+}
+
+model FatoEstoqueMinMax {
+  odooId          Int      @id @map("odoo_id")
+  produtoId       Int?     @map("produto_id")
+  produtoNome     String?  @map("produto_nome")
+  localId         Int?     @map("local_id")
+  localNome       String?  @map("local_nome")
+  unidadeNome     String?  @map("unidade_nome")
+  quantidadeMinima Decimal @default(0) @map("quantidade_minima") @db.Decimal(18, 3)
+  quantidadeMaxima Decimal @default(0) @map("quantidade_maxima") @db.Decimal(18, 3)
+  atualizadoEm    DateTime @default(now()) @map("atualizado_em")
+
+  @@index([produtoId])
+  @@index([localId])
+  @@map("fato_estoque_min_max")
+}
