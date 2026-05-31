@@ -85,12 +85,38 @@ Ambas leem de um **banco interno (cache)** alimentado por sincronização perió
 > | `src/**` exceto os acima | `app` |
 > | `next.config.ts`, `tsconfig.json`, `package.json` | `app` (e `mcp` se afetar import resolvido lá) |
 >
-> **Comando padrão** (dev local):
+> **⚠️ ARMADILHA CRÍTICA , o `worker` NÃO tem `build:` próprio (2026-05-31).**
+> No `docker-compose.yml`, só `app` e `mcp` têm `build:`. O **`worker` apenas roda
+> a imagem `nexus-odoo:local`, que é construída pelo serviço `app`**. Consequência:
+> `docker compose build worker` e `docker compose up -d --build worker` são
+> **no-op** , reusam a imagem antiga e o worker fica com **catálogo/builders
+> velhos** (foi exatamente o bug que deixou modelos novos "parados", sem sync, por
+> horas). **Para atualizar o código do worker, rebuilde o `app`:**
+>
+> ```bash
+> # Atualiza o WORKER (e o app): rebuildar a imagem nexus-odoo:local via `app`
+> docker compose build app
+> docker compose up -d --force-recreate worker   # (e app, se estiver rodando em container)
+>
+> # MCP tem build próprio:
+> docker compose up -d --build mcp
+> ```
+>
+> **Verificação obrigatória do rebuild** (não confiar no "Built"): confira a data
+> da IMAGEM e o catálogo DENTRO do container:
+> ```bash
+> docker image inspect nexus-odoo:local --format '{{.Created}}'   # tem que ser AGORA
+> docker exec nexus-odoo-worker-1 grep -cE "odooModel:" src/worker/catalog/model-catalog.ts
+> ```
+> Se a data da imagem for antiga, o build não pegou , use `docker compose build app`
+> (não `worker`).
+>
+> **Comando padrão genérico** (demais serviços):
 >
 > ```bash
 > docker compose build <serviço>
 > docker compose up -d <serviço>
-> # ou faz os dois de uma vez:
+> # ou faz os dois de uma vez (NÃO vale para worker , ver armadilha acima):
 > docker compose up -d --build <serviço>
 > ```
 >
