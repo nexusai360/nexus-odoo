@@ -25,6 +25,8 @@ import { rebuildFatoFinanceiroLancamentoItem } from "./fato-financeiro-lancament
 import { rebuildFatoContabilContaReferencial } from "./fato-contabil-conta-referencial";
 import { rebuildFatoContabilLancamento } from "./fato-contabil-lancamento";
 import { rebuildFatoContabilLancamentoItem } from "./fato-contabil-lancamento-item";
+import { rebuildFatoMdfe } from "./fato-mdfe";
+import { rebuildFatoReinfEvento } from "./fato-reinf-evento";
 
 export interface FatoBuilderEntry {
   nome: string;

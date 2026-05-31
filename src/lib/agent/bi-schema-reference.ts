@@ -364,6 +364,44 @@ TABLE fato_contabil_lancamento_item (
   atualizado_em     TIMESTAMPTZ
 );
 
+-- ─── FISCAL COMPLEMENTAR , MDF-e + REINF (B2) ────────────────────────────────
+-- Estruturais (0 reg ate os modulos serem operados). Tools respondem "nao operado".
+TABLE fato_mdfe (
+  odoo_id                   INT PRIMARY KEY,
+  chave                     TEXT,
+  numero                    TEXT,
+  situacao_mdfe             TEXT,
+  situacao_fiscal           TEXT,
+  tipo_emissao              TEXT,
+  empresa_id                INT,
+  empresa_cnpj              TEXT,
+  data_emissao              TIMESTAMPTZ,
+  data_autorizacao          TIMESTAMPTZ,
+  data_encerramento         TIMESTAMPTZ,
+  data_cancelamento         TIMESTAMPTZ,
+  protocolo_autorizacao     TEXT,
+  municipio_carregamento    TEXT,
+  municipio_descarregamento TEXT,
+  peso_bruto                NUMERIC(18,3),
+  peso_carga                NUMERIC(18,2),
+  vr_nf                     NUMERIC(18,2),
+  atualizado_em             TIMESTAMPTZ
+);
+
+TABLE fato_reinf_evento (
+  odoo_id              INT PRIMARY KEY,
+  chave                TEXT,
+  tipo                 TEXT,
+  situacao             TEXT,
+  protocolo_transmissao TEXT,
+  empresa_id           INT,
+  empresa_cnpj_raiz    TEXT,
+  data_evento          TIMESTAMPTZ,
+  data_inicial         TIMESTAMPTZ,
+  data_final           TIMESTAMPTZ,
+  atualizado_em        TIMESTAMPTZ
+);
+
 -- ─── PREÇOS (F4 L1a) ─────────────────────────────────────────────────────────
 
 -- Regras de preço das tabelas de preço (uma linha por regra)

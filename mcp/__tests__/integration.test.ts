@@ -160,6 +160,9 @@ const FISCAL_IDS = [
   "fiscal_dfe_importados_periodo",
   "fiscal_dfe_por_fornecedor",
   "fiscal_dfe_pendentes_manifestacao",
+  // B2 (onda fiscal complementar)
+  "fiscal_mdfe_manifestos",
+  "fiscal_reinf_eventos",
 ];
 
 const CADASTROS_IDS = [
@@ -267,7 +270,7 @@ describe("Catálogo filtrado por perfil", () => {
     for (const id of FINANCEIRO_IDS) expect(ids).toContain(id);
     for (const id of DOMINIOS_VAZIOS_IDS) expect(ids).toContain(id);
     // 8 estoque + 7 financeiro + registrar_lacuna + 3 domínios-vazios = 19
-    expect(ids).toHaveLength(20);
+    expect(ids).toHaveLength(22);
   });
 
   it("viewer com apenas estoque vê só tools de estoque + sempreVisivel", () => {
@@ -578,7 +581,7 @@ describe("Servidor HTTP real , protocolo Streamable HTTP end-to-end", () => {
     expect(names).toContain("registrar_lacuna");
     for (const id of DOMINIOS_VAZIOS_IDS) expect(names).toContain(id);
     // 8 estoque + 7 financeiro + registrar_lacuna + 3 domínios-vazios = 19
-    expect(names).toHaveLength(20);
+    expect(names).toHaveLength(22);
   });
 
   it("viewer (estoque): tools/list via HTTP retorna só estoque + registrar_lacuna", async () => {
