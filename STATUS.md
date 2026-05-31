@@ -1,10 +1,45 @@
 # STATUS — nexus-odoo
 
-> **Ponto de retomada entre sessões.** Atualizado em 2026-05-29 (troca de sessão).
-> Ao abrir: ler **este arquivo**, o **`CLAUDE.md`** e
-> **`.agente-handoff.md`** (na raiz desta worktree). Modo autônomo é o padrão (`CLAUDE.md §6`).
->
-> ## 🔄 BRANCH ATIVA: `feat/router-ativacao-r2`
+> **Ponto de retomada entre sessões.** Atualizado em **2026-05-31** (Balde B concluído).
+> Ao abrir: ler **este arquivo**, o **`CLAUDE.md`** e **`.agente-handoff.md`**.
+> Modo autônomo é o padrão (`CLAUDE.md §6`).
+
+## ✅ ROADMAP DE COBERTURA (R1→O5 + Balde B) , CONCLUÍDO E MERGEADO (2026-05-31)
+
+Roadmap canônico: `docs/superpowers/specs/2026-05-28-roadmap-cobertura-completa-odoo.md`.
+Tudo na `main`. Snapshot atual: **~93 tools visíveis, 39 fatos, 125 modelos (raw)**
+(antes: 79/20/114).
+
+- **R1** router de catálogo por embedding , mergeado (PR #36).
+- **R2** discovery enxuto (3 baldes A/B/C) , mergeado (PR #38).
+- **O1** SPED Fiscal / DF-e , mergeado (PR #39).
+- **O2** CRM , concluído (achado honesto: CRM transacional inexistente neste Odoo).
+- **O3** Pedido (histórico/etapas) , mergeado (PR #40).
+- **O4** Financeiro (DRE gerencial / lançamento item) , mergeado (PR #41).
+- **O5/Balde B B1** Contábil (referencial real + lançamento estrutural) , PR #42.
+- **Balde B B2-B7** (PR #42/#43): fiscal complementar (MDF-e/REINF), cobrança
+  bancária (B3, dado real), comercial cotação/comissão (B4), produção (B5),
+  estoque avançado/mín-máx (B6), CRM funil + auditoria.regra (B7, 15 regras reais).
+  Todas com SPEC v1→v3 + PLAN v1→v3, E2E contra cache real, padrão honesto
+  (count==0 → "não operado", auto-ativa).
+
+**Pendências reais (não é "build", é gate/opcional):**
+1. **Gate de validação ao vivo R-X ≥ 95,5%** (P4 do roadmap): router/reformulação
+   seguem **OFF/shadow** até essa bateria passar. É o "ativação do router"
+   (nome da branch) , único item que fecha o roadmap de fato.
+2. **ON+1 opcional:** `relatorio.*` (0 no catálogo) e resto de `sped.*` , decisão
+   do usuário se vale modelar.
+3. **Fora do escopo deste roadmap:** F5 (WhatsApp+Agente), F6 (construtor),
+   F4 Onda 2 (escrita), F3 (dashboard de relatórios).
+
+**Infra (fix de raiz 2026-05-31):** `prisma.config.ts` carrega `.env.local`
+(`migrate deploy` funciona); e o **worker não tem `build:` próprio → rebuildar via
+`app`** (`docker compose build app`), documentado em `CLAUDE.md §2.1`. Era a causa
+do worker rodar catálogo velho e modelos novos ficarem sem sync.
+
+---
+
+> ## 🔄 (histórico) BRANCH `feat/router-ativacao-r2`
 >
 > **R1 mergeado** (PR #36). **R2-ctx entregue/mergeado** (PR #37): roteamento
 > contextual 3 camadas (embedding -> reformulação LLM gated no fallback ->
