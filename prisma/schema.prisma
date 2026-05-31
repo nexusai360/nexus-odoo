@@ -312,6 +312,32 @@ model RawContabilContaReferencial {
   @@map("raw_contabil_conta_referencial")
 }
 
+// B1 (onda contábil): cabeçalho e partidas do lançamento contábil (0 reg hoje;
+// estrutural, populam quando a Matrix operar contabilidade no Odoo).
+model RawContabilLancamento {
+  odooId        Int       @id @map("odoo_id")
+  data          Json
+  odooWriteDate DateTime? @map("odoo_write_date")
+  syncedAt      DateTime  @default(now()) @map("synced_at")
+  rawDeleted    Boolean   @default(false) @map("raw_deleted")
+
+  @@index([odooWriteDate])
+  @@index([rawDeleted])
+  @@map("raw_contabil_lancamento")
+}
+
+model RawContabilLancamentoItem {
+  odooId        Int       @id @map("odoo_id")
+  data          Json
+  odooWriteDate DateTime? @map("odoo_write_date")
+  syncedAt      DateTime  @default(now()) @map("synced_at")
+  rawDeleted    Boolean   @default(false) @map("raw_deleted")
+
+  @@index([odooWriteDate])
+  @@index([rawDeleted])
+  @@map("raw_contabil_lancamento_item")
+}
+
 model RawEstoqueExtrato {
   odooId        Int       @id @map("odoo_id")
   data          Json
@@ -2133,6 +2159,70 @@ model FatoContaContabil {
   @@index([natureza])
   @@index([contaPaiId])
   @@map("fato_conta_contabil")
+}
+
+// B1 (onda contábil): plano REFERENCIAL SPED (de-para fiscal), 2216 reg reais.
+// Distinto de FatoContaContabil (plano de contas da empresa).
+model FatoContabilContaReferencial {
+  odooId          Int      @id @map("odoo_id")
+  codigo          String
+  nome            String?
+  nomeCompleto    String?  @map("nome_completo")
+  natureza        String?
+  tipo            String?
+  nivel           Int?
+  parentPath      String?  @map("parent_path")
+  contaSuperiorId Int?     @map("conta_superior_id")
+  atualizadoEm    DateTime @default(now()) @map("atualizado_em")
+
+  @@index([codigo])
+  @@index([natureza])
+  @@map("fato_contabil_conta_referencial")
+}
+
+// B1 (onda contábil): cabeçalho do lançamento contábil. Estrutural (0 reg hoje).
+model FatoContabilLancamento {
+  odooId         Int       @id @map("odoo_id")
+  codigo         String?
+  tipo           String?
+  dataLancamento DateTime? @map("data_lancamento")
+  valor          Decimal   @default(0) @db.Decimal(18, 2)
+  valorDebito    Decimal   @default(0) @map("valor_debito") @db.Decimal(18, 2)
+  valorCredito   Decimal   @default(0) @map("valor_credito") @db.Decimal(18, 2)
+  empresaId      Int?      @map("empresa_id")
+  atualizadoEm   DateTime  @default(now()) @map("atualizado_em")
+
+  @@index([dataLancamento])
+  @@map("fato_contabil_lancamento")
+}
+
+// B1 (onda contábil): partidas/itens do lançamento (coração da contabilidade).
+// Estrutural (0 reg hoje). Denormaliza contaNatureza (de fato_conta_contabil) e
+// lancamentoTipo (do cabeçalho) para razão/balancete/resultado/centro de custo.
+model FatoContabilLancamentoItem {
+  odooId          Int       @id @map("odoo_id")
+  lancamentoId    Int?      @map("lancamento_id")
+  lancamentoTipo  String?   @map("lancamento_tipo")
+  contaId         Int?      @map("conta_id")
+  contaCodigo     String?   @map("conta_codigo")
+  contaNome       String?   @map("conta_nome")
+  contaNatureza   String?   @map("conta_natureza")
+  centroCustoId   Int?      @map("centro_custo_id")
+  centroCustoNome String?   @map("centro_custo_nome")
+  natureza        String?
+  valor           Decimal   @default(0) @db.Decimal(18, 2)
+  valorDebito     Decimal   @default(0) @map("valor_debito") @db.Decimal(18, 2)
+  valorCredito    Decimal   @default(0) @map("valor_credito") @db.Decimal(18, 2)
+  dataLancamento  DateTime? @map("data_lancamento")
+  historico       String?
+  atualizadoEm    DateTime  @default(now()) @map("atualizado_em")
+
+  @@index([dataLancamento])
+  @@index([contaId])
+  @@index([contaNatureza])
+  @@index([centroCustoId])
+  @@index([lancamentoId])
+  @@map("fato_contabil_lancamento_item")
 }
 
 /// F4 L1a — preço por regra de tabela de preço (achatado de sped.tabela.preco.regra).
