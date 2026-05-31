@@ -74,6 +74,9 @@ export const FATO_FONTE: Record<string, { model: string; mode: "snapshot" | "inc
   fato_carteira_cobranca:          { model: "finan.carteira",             mode: "incremental" },
   fato_cheque:                     { model: "finan.cheque",               mode: "incremental" },
   fato_pix:                        { model: "finan.pix",                  mode: "incremental" },
+  // B4 (comercial: cotação + comissão)
+  fato_cotacao:                    { model: "pedido.documento.cotacao",   mode: "incremental" },
+  fato_comissao:                   { model: "pedido.comissao",            mode: "incremental" },
 };
 
 // ---------------------------------------------------------------------------

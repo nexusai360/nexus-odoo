@@ -3374,3 +3374,62 @@ model FatoPix {
   @@index([status])
   @@map("fato_pix")
 }
+
+// ─── B4 — Comercial / cotação + comissão (estruturais, 0 reg hoje) ───────────
+model RawPedidoDocumentoCotacao {
+  odooId        Int       @id @map("odoo_id")
+  data          Json
+  odooWriteDate DateTime? @map("odoo_write_date")
+  syncedAt      DateTime  @default(now()) @map("synced_at")
+  rawDeleted    Boolean   @default(false) @map("raw_deleted")
+
+  @@index([odooWriteDate])
+  @@index([rawDeleted])
+  @@map("raw_pedido_documento_cotacao")
+}
+
+model RawPedidoComissao {
+  odooId        Int       @id @map("odoo_id")
+  data          Json
+  odooWriteDate DateTime? @map("odoo_write_date")
+  syncedAt      DateTime  @default(now()) @map("synced_at")
+  rawDeleted    Boolean   @default(false) @map("raw_deleted")
+
+  @@index([odooWriteDate])
+  @@index([rawDeleted])
+  @@map("raw_pedido_comissao")
+}
+
+// Cotações/propostas (funil de cotação). Auto-ativa quando operado.
+model FatoCotacao {
+  odooId            Int      @id @map("odoo_id")
+  numero            String?
+  status            String?
+  ehCompra          Boolean  @default(false) @map("eh_compra")
+  empresaId         Int?     @map("empresa_id")
+  operacaoId        Int?     @map("operacao_id")
+  operacaoNome      String?  @map("operacao_nome")
+  usuarioAprovadorId Int?    @map("usuario_aprovador_id")
+  centroResultadoId Int?     @map("centro_resultado_id")
+  atualizadoEm      DateTime @default(now()) @map("atualizado_em")
+
+  @@index([status])
+  @@index([empresaId])
+  @@map("fato_cotacao")
+}
+
+// Comissão por pedido/vendedor. Auto-ativa quando operado.
+model FatoComissao {
+  odooId            Int      @id @map("odoo_id")
+  pedidoId          Int?     @map("pedido_id")
+  participanteId    Int?     @map("participante_id")
+  participanteNome  String?  @map("participante_nome")
+  bcComissao        Decimal  @default(0) @map("bc_comissao") @db.Decimal(18, 2)
+  alComissao        Decimal  @default(0) @map("al_comissao") @db.Decimal(18, 4)
+  vrComissao        Decimal  @default(0) @map("vr_comissao") @db.Decimal(18, 2)
+  atualizadoEm      DateTime @default(now()) @map("atualizado_em")
+
+  @@index([pedidoId])
+  @@index([participanteId])
+  @@map("fato_comissao")
+}

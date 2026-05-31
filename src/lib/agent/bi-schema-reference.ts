@@ -576,4 +576,29 @@ TABLE fato_pix (
   data        TIMESTAMPTZ,
   vr_tarifas  NUMERIC
 );
+
+-- ─── COMERCIAL , COTAÇÃO + COMISSÃO (B4) ─────────────────────────────────────
+-- Cotações/propostas (estrutural, 0 reg ate operar). eh_compra: true=compra.
+TABLE fato_cotacao (
+  odoo_id              INT PRIMARY KEY,
+  numero               TEXT,
+  status               TEXT,
+  eh_compra            BOOLEAN,
+  empresa_id           INT,
+  operacao_id          INT,
+  operacao_nome        TEXT,
+  usuario_aprovador_id INT,
+  centro_resultado_id  INT
+);
+
+-- Comissão por pedido/vendedor (estrutural, 0 reg ate operar).
+TABLE fato_comissao (
+  odoo_id           INT PRIMARY KEY,
+  pedido_id         INT,
+  participante_id   INT,
+  participante_nome TEXT,
+  bc_comissao       NUMERIC,
+  al_comissao       NUMERIC,
+  vr_comissao       NUMERIC
+);
 `.trim();

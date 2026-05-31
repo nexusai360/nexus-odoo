@@ -143,6 +143,8 @@ const COMERCIAL_IDS = [
   "comercial_tempo_medio_fechamento",
   "comercial_pedido_historico_etapas",
   "comercial_pedido_travados_por_etapa",
+  "comercial_cotacoes",
+  "comercial_comissoes",
 ];
 
 const FISCAL_IDS = [
@@ -223,10 +225,10 @@ const TODOS_IDS = [
 // ─── 1. Assertiva de catálogo completo (achado N6) ────────────────────────────
 
 describe("Catálogo completo , rede de proteção N6", () => {
-  it("super_admin recebe EXATAMENTE 87 tools", () => {
+  it("super_admin recebe EXATAMENTE 89 tools", () => {
     const user = { userId: "u", role: "super_admin" as const, domains: ["estoque", "financeiro"] } as unknown as Parameters<typeof visibleTools>[1];
     const tools = visibleTools(catalogo, user);
-    expect(tools).toHaveLength(87);
+    expect(tools).toHaveLength(89);
   });
 
   it("super_admin recebe o conjunto exato de IDs", () => {
@@ -249,7 +251,7 @@ describe("Catálogo completo , rede de proteção N6", () => {
     //   9) cadastros.res_partner.update
     // Write tools nao aparecem em visibleTools (modo interno); sao liberadas
     // so no modo externo por capability da chave de API.
-    expect(catalogo).toHaveLength(96);
+    expect(catalogo).toHaveLength(98);
   });
 });
 
@@ -261,17 +263,17 @@ describe("Catálogo filtrado por perfil", () => {
     return visibleTools(catalogo, user).map((t) => t.id);
   }
 
-  it("super_admin vê todas as 87 tools", () => {
+  it("super_admin vê todas as 89 tools", () => {
     const ids = tools("super_admin", ["estoque", "financeiro"]);
-    expect(ids).toHaveLength(87);
+    expect(ids).toHaveLength(89);
     for (const id of TODOS_IDS) {
       expect(ids).toContain(id);
     }
   });
 
-  it("admin vê todas as 87 tools", () => {
+  it("admin vê todas as 89 tools", () => {
     const ids = tools("admin", ["estoque", "financeiro"]);
-    expect(ids).toHaveLength(87);
+    expect(ids).toHaveLength(89);
   });
 
   it("manager com estoque+financeiro vê estoque+financeiro+sempreVisivel (sem bi_consulta_avancada)", () => {
@@ -554,7 +556,7 @@ describe("Servidor HTTP real , protocolo Streamable HTTP end-to-end", () => {
 
   // ── 5b. tools/list via HTTP , catálogo filtrado por perfil ────────────────
 
-  it("super_admin: tools/list via HTTP retorna 87 tools com os IDs corretos", async () => {
+  it("super_admin: tools/list via HTTP retorna 89 tools com os IDs corretos", async () => {
     const sid = await initializeSession(testServer.baseUrl, "user-super-admin");
 
     const { status, body } = await mcpRequest(
@@ -568,7 +570,7 @@ describe("Servidor HTTP real , protocolo Streamable HTTP end-to-end", () => {
     const result = extractRpcResult(body);
     const tools = result?.tools as Array<{ name: string }> | undefined;
     expect(tools).toBeDefined();
-    expect(tools!).toHaveLength(87);
+    expect(tools!).toHaveLength(89);
 
     const names = tools!.map((t) => t.name).sort();
     expect(names).toEqual([...TODOS_IDS].sort());

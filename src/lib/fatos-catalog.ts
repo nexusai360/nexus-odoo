@@ -67,6 +67,9 @@ export const FATO_CATALOG: readonly FatoCatalogEntry[] = [
   { nome: "fato_carteira_cobranca", dominio: "Financeiro", modo: "incremental", fonte: "finan.carteira" },
   { nome: "fato_cheque", dominio: "Financeiro", modo: "incremental", fonte: "finan.cheque" },
   { nome: "fato_pix", dominio: "Financeiro", modo: "incremental", fonte: "finan.pix" },
+  // B4 , Comercial / cotação + comissão
+  { nome: "fato_cotacao", dominio: "Comercial", modo: "incremental", fonte: "pedido.documento.cotacao" },
+  { nome: "fato_comissao", dominio: "Comercial", modo: "incremental", fonte: "pedido.comissao" },
 ];
 
 /**
