@@ -184,9 +184,7 @@ async function loadTurnosPendentes(markerPattern: string): Promise<Turno[]> {
 
 async function main() {
   const markers = [
-    "[AUDIT-POS-2026-05-26T17-21-31]",
-    "[AUDIT-POS-2026-05-26T18-01-27]",
-    "[AUDIT-POS-2026-05-26T18-05-49]",
+    "[AUDIT-POS-2026-05-31T18-18-13]", // R24
   ];
   let totalOk = 0;
   for (const marker of markers) {
