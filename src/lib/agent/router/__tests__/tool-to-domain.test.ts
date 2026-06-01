@@ -50,9 +50,9 @@ describe("tool-to-domain: getToolDomain()", () => {
     expect(getToolDomain("toolxyz")).toBe(UNKNOWN_DOMAIN);
   });
 
-  it("override map vazio nao quebra (regra 1 nao aplica)", () => {
-    // Confirma que TOOL_TO_DOMAIN_OVERRIDE comecca vazio.
-    expect(Object.keys(TOOL_TO_DOMAIN_OVERRIDE)).toHaveLength(0);
+  it("override map mapeia registrar_lacuna -> dominios-vazios", () => {
+    expect(TOOL_TO_DOMAIN_OVERRIDE.registrar_lacuna).toBe("dominios-vazios");
+    expect(getToolDomain("registrar_lacuna")).toBe("dominios-vazios");
   });
 
   it("retorna UNKNOWN_DOMAIN para string vazia", () => {

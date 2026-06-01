@@ -18,8 +18,12 @@ export const UNKNOWN_DOMAIN = "_desconhecido";
  *  inicialmente; popular quando aparecer tool nao-prefixada (ex: tools de
  *  `mcp/tools/caminho3/` que comecam com `bi_`). */
 export const TOOL_TO_DOMAIN_OVERRIDE: Readonly<Record<string, string>> = {
-  // exemplo (descomentar quando relevante):
-  // "bi_consulta_avancada": "caminho3",
+  // Meta-tool de cobertura: o agente chama `registrar_lacuna` quando a pergunta
+  // nao tem dado/tool de negocio (registra a lacuna). Sem override caía em
+  // `_desconhecido` (feio na coluna "Tool chamada" e contava como falsa
+  // discordancia). Mapeado para `dominios-vazios` (rotulado "cobertura" na UI),
+  // que e' excludeFromFiltering (sempre ofertado) -> concordante por natureza.
+  registrar_lacuna: "dominios-vazios",
 };
 
 /** Aliases de prefixo: quando o prefixo da tool nao casa 1:1 com o nome do
@@ -30,6 +34,9 @@ export const TOOL_TO_DOMAIN_OVERRIDE: Readonly<Record<string, string>> = {
  *  (camada B), ja que `_desconhecido` e' sempre mantido no catalogo. */
 const PREFIX_ALIAS: Readonly<Record<string, string>> = {
   cadastro: "cadastros",
+  // Familia preco_* (preco_produto, preco_tabela, preco_venda, preco_custo,
+  // preco_contar_regras) vive em mcp/tools/comercial/ -> dominio comercial.
+  preco: "comercial",
 };
 
 /** Retorna o dominio canonico da tool, ou UNKNOWN_DOMAIN se nao reconhecido. */
