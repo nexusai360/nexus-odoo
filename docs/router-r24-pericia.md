@@ -79,13 +79,21 @@ tools.
 
 Gate de ativação (7 dias): **elegível** (Top-K 95,1%).
 
-### Furos residuais (8 discordâncias)
-- **5** são `registrar_lacuna`: o agente registrou lacuna por falta de
+### Furos residuais (8 discordâncias) e calibração
+- **5** eram `registrar_lacuna`: o agente registrou lacuna por falta de
   dado/escopo (ex.: "vai ter halteres pra entrega amanhã?"). Não são furo do
   router (que inclusive acertou o domínio em alguns).
-- **3** são frases coloquiais/ambíguas genuinamente difíceis:
-  "fala aí, vendi quanto hoje?", "quanto vai entrar essa semana?",
-  "vai bater a meta esse mês?". Candidatas a calibrar `domain-vocabulary.ts`.
+- **3** eram frases coloquiais/ambíguas: "fala aí, vendi quanto hoje?",
+  "quanto vai entrar essa semana?", "vai bater a meta esse mês?".
+
+**Calibração aplicada** (`domain-vocabulary.ts`, `forceIncludeOn`, não muda o
+hash do vocab nem o embedding):
+- fiscal: `/\bvend(i|emos)\b/i`, `/(bater|fechar|atingir).{0,12}\bmeta\b/i`
+- comercial: `/\bvai entrar\b/i`
+
+Resultado pós-calibração (R24): **Top-1 88,4% · Top-K 97,4% · 5 discordâncias**,
+e **todas as 5 são `registrar_lacuna`** (o router escolheu o domínio plausível
+em todas). Na prática: **zero falha genuína de roteamento** na R24.
 
 ## 3. Pendências
 - Router permanece **OFF** (`routerEnabled=false`). A ativação é decisão

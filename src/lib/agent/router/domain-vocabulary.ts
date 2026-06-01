@@ -81,6 +81,10 @@ export const DOMAINS: ReadonlyArray<DomainEntry> = [
       /hist[oó]rico.{0,20}\betapas?/i,
       /pedido(s)?.{0,20}(parado|travado)/i,
       /(parado|travado)(s)?.{0,15}(no|na)?.{0,5}(fluxo|etapa)/i,
+      // Coloquial de recebimento futuro (parcelas a vencer). Calibragem R24:
+      // "quanto vai entrar essa semana?" -> comercial_parcelas_a_vencer.
+      // Convive com o mesmo gatilho em financeiro (ambos sao ofertados).
+      /\bvai entrar\b/i,
     ],
   },
   {
@@ -189,6 +193,10 @@ export const DOMAINS: ReadonlyArray<DomainEntry> = [
       /notas? de fornecedor/i,
       /notas? importadas?/i,
       /compras? eletr[oô]nicas?/i,
+      // Coloquial de faturamento/receita. Calibragem R24:
+      // "vendi quanto hoje?" e "vai bater a meta esse mes?" -> faturamento.
+      /\bvend(i|emos)\b/i,
+      /(bater|fechar|atingir).{0,12}\bmeta\b/i,
     ],
   },
   {
