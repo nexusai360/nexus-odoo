@@ -15,6 +15,20 @@
 /** Origem da numeracao: marker do R8 (primeira rodada catalogada). */
 const RODADA_ZERO = 8;
 
+/**
+ * Ancora da numeracao oficial: o marker do R8.
+ *
+ * REGRA DE RAIZ (pericia 2026-06-01): "rodada" e' SO o que disparou o LLM no
+ * backtest. Os ~10 markers AUDIT-POS anteriores a este (manha de 26/05) sao
+ * testes/dev de pre-catalogo (ZERO avaliacoes de qualidade), nao rodadas. Sem
+ * esta ancora, `buildRodadaNamesFromMarkers` contava esses testes como rodadas
+ * e empurrava a numeracao toda pra frente (a rodada recente virava "R34" em vez
+ * de "R24"). Ancorando em R8, a sequencia fecha R8..R24 e bate com a tabela
+ * legada (R8-R19), com o calibrate-rounds (R20-R23) e com a expectativa do time.
+ */
+export const R8_ANCHOR_MARKER = "[AUDIT-POS-2026-05-26T17-21-31]";
+const R8_ANCHOR_TS = Date.UTC(2026, 4, 26, 17, 21, 31);
+
 /** Marcadores virtuais (nao-AUDIT) para origens vindas do uso real do
  *  agente. Permitem filtrar conversas in_app/whatsapp/playground na mesma
  *  estrutura do filtro de rodada (uma coluna so de "Origem"). */
@@ -88,16 +102,19 @@ function extractTimestamp(marker: string): number | null {
 export function buildRodadaNamesFromMarkers(
   markers: ReadonlyArray<string>,
 ): Map<string, string> {
+  // So contam como rodada os markers a partir da ancora R8 (ver R8_ANCHOR_MARKER).
+  // Markers anteriores sao testes/dev de pre-catalogo e recebem rotulo "Teste".
   const ordenados = [...new Set(markers)]
     .map((marker) => ({ marker, ts: extractTimestamp(marker) }))
     .filter((x): x is { marker: string; ts: number } => x.ts !== null)
+    .filter((x) => x.ts >= R8_ANCHOR_TS)
     .sort((a, b) => a.ts - b.ts);
 
   const result = new Map<string, string>();
   for (let i = 0; i < ordenados.length; i++) {
     result.set(ordenados[i].marker, `Rodada ${RODADA_ZERO + i}`);
   }
-  // Markers sem timestamp parseavel: fallback estatico.
+  // Markers nao numerados: origens virtuais, pre-R8 (teste) ou sem timestamp.
   for (const marker of markers) {
     if (result.has(marker)) continue;
     // Origens virtuais (Agente Nex, Playground) tem label proprio.
@@ -105,9 +122,25 @@ export function buildRodadaNamesFromMarkers(
       result.set(marker, ORIGEM_LABELS[marker]!);
       continue;
     }
+    const ts = extractTimestamp(marker);
+    if (ts !== null && ts < R8_ANCHOR_TS) {
+      // Pre-catalogo: teste/dev, nao rodada oficial.
+      result.set(marker, testeLabelFromMarker(marker));
+      continue;
+    }
     result.set(marker, fallbackFromMarker(marker));
   }
   return result;
+}
+
+/** Rotulo de marker de teste/dev de pre-catalogo (anterior ao R8). */
+function testeLabelFromMarker(marker: string): string {
+  const m = marker.match(
+    /\[AUDIT-(?:[A-Z]+-)?(\d{4})-(\d{2})-(\d{2})T(\d{2})-(\d{2})/,
+  );
+  if (!m) return `Teste ${marker}`;
+  const [, , month, day, hour, min] = m;
+  return `Teste ${day}/${month} ${hour}:${min}`;
 }
 
 /** Fallback "Rodada DD/MM HH:MM" para markers sem ordenacao possivel. */

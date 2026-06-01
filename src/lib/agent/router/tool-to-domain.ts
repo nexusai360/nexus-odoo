@@ -22,14 +22,25 @@ export const TOOL_TO_DOMAIN_OVERRIDE: Readonly<Record<string, string>> = {
   // "bi_consulta_avancada": "caminho3",
 };
 
+/** Aliases de prefixo: quando o prefixo da tool nao casa 1:1 com o nome do
+ *  dominio. Caso real (pericia 2026-06-01): as tools sao `cadastro_*`
+ *  (singular) mas o dominio em KNOWN_DOMAINS e' `cadastros` (plural). Sem este
+ *  alias, TODA tool cadastro_* virava `_desconhecido`, o que (a) inflava
+ *  falsas discordancias na avaliacao do router e (b) furava o RBAC por dominio
+ *  (camada B), ja que `_desconhecido` e' sempre mantido no catalogo. */
+const PREFIX_ALIAS: Readonly<Record<string, string>> = {
+  cadastro: "cadastros",
+};
+
 /** Retorna o dominio canonico da tool, ou UNKNOWN_DOMAIN se nao reconhecido. */
 export function getToolDomain(toolName: string): string {
   // Regra 1: override explicito.
   if (toolName in TOOL_TO_DOMAIN_OVERRIDE) {
     return TOOL_TO_DOMAIN_OVERRIDE[toolName]!;
   }
-  // Regra 2: prefixo antes do primeiro `_`.
-  const prefix = toolName.split("_")[0] ?? "";
+  // Regra 2: prefixo antes do primeiro `_` (com alias singular->plural).
+  const rawPrefix = toolName.split("_")[0] ?? "";
+  const prefix = PREFIX_ALIAS[rawPrefix] ?? rawPrefix;
   // Regra 3: valida contra KNOWN_DOMAINS.
   if (KNOWN_DOMAINS.has(prefix)) {
     return prefix;

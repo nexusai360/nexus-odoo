@@ -243,6 +243,31 @@ export async function getDistinctRodadas(
   return out;
 }
 
+/**
+ * Retorna TODOS os markers de rodada de auditoria existentes, sem filtro de
+ * periodo. Usado para construir a numeracao canonica (R8, R9, ...) via
+ * `buildRodadaNamesFromMarkers`: a numeracao precisa ser GLOBAL para ficar
+ * estavel entre as views (semana/mes/tudo). Se construirmos o mapa so com os
+ * markers do periodo selecionado, a rodada recente vira "Rodada 8" no recorte
+ * curto (era o bug do rotulador).
+ */
+export async function getAllRodadaMarkers(): Promise<string[]> {
+  // So markers de rodadas REAIS de backtest: aquelas que tem avaliacao de
+  // qualidade. Os ~10 markers de teste/dev de pre-catalogo (manha de 26/05)
+  // nao tem nenhuma avaliacao e, portanto, sao naturalmente excluidos da
+  // numeracao (ver pericia 2026-06-01 e R8_ANCHOR_MARKER em rodada-labels.ts).
+  const rows = (await prisma.$queryRaw`
+    SELECT DISTINCT
+      substring(c.title from position('[' in c.title) for (position(']' in c.title) - position('[' in c.title) + 1)) AS marker
+    FROM conversations c
+    JOIN conversation_quality_evaluations e ON e.conversation_id = c.id
+    WHERE c.title LIKE '[AUDIT-%'
+  `) as Array<{ marker: string | null }>;
+  return rows
+    .map((r) => r.marker)
+    .filter((m): m is string => !!m && m.startsWith("[AUDIT-"));
+}
+
 export async function getDistinctModels(): Promise<string[]> {
   const rows = await prisma.conversationQualityEvaluation.findMany({
     where: { model: { not: null } },

@@ -29,6 +29,15 @@ describe("tool-to-domain: getToolDomain()", () => {
     expect(getToolDomain("cadastros_clientes_listar")).toBe("cadastros");
   });
 
+  // Tools REAIS sao 'cadastro_*' (singular), mas o dominio e' 'cadastros'
+  // (plural). Alias de prefixo garante o mapeamento (pericia 2026-06-01).
+  it("derives 'cadastros' from real tool 'cadastro_contar_parceiros' (singular)", () => {
+    expect(getToolDomain("cadastro_contar_parceiros")).toBe("cadastros");
+  });
+  it("derives 'cadastros' from 'cadastro_buscar_parceiro'", () => {
+    expect(getToolDomain("cadastro_buscar_parceiro")).toBe("cadastros");
+  });
+
   it("derives 'caminho3' from 'caminho3_bi_consulta_avancada'", () => {
     expect(getToolDomain("caminho3_bi_consulta_avancada")).toBe("caminho3");
   });
