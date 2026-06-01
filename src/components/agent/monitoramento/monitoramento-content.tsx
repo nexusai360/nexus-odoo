@@ -25,6 +25,7 @@ import {
   type PeriodKey,
 } from "@/lib/datetime-core";
 import {
+  fetchAllRodadaMarkers,
   fetchQualityDailyCorrectness,
   fetchQualityDistinctModels,
   fetchQualityDistinctRodadas,
@@ -92,12 +93,16 @@ export function MonitoramentoContent({
 
   const [models, setModels] = useState<string[]>([]);
   const [rodadas, setRodadas] = useState<Array<{ marker: string; count: number }>>([]);
-  // T-29 (Ronda 1.5): auto-numeracao de rodadas (R8, R9, R10, ...) baseada
-  // na ordem cronologica do timestamp embutido no marker. Nenhuma rodada
-  // nova precisa de edicao manual em rodada-labels.ts.
+  // Numeracao de rodadas (R8, R9, ...) baseada na ordem cronologica do
+  // timestamp embutido no marker. CRITICO: o mapa e construido a partir de
+  // TODOS os markers existentes (`allRodadaMarkers`, sem filtro de periodo),
+  // nao dos markers do recorte atual. Caso contrario a rodada recente vira
+  // "Rodada 8" nas views semana/mes (so ela cai no periodo) e R24 no "tudo".
+  // Nenhuma rodada nova precisa de edicao manual em rodada-labels.ts.
+  const [allRodadaMarkers, setAllRodadaMarkers] = useState<string[]>([]);
   const rodadaNameMap = useMemo(
-    () => buildRodadaNamesFromMarkers(rodadas.map((r) => r.marker)),
-    [rodadas],
+    () => buildRodadaNamesFromMarkers(allRodadaMarkers),
+    [allRodadaMarkers],
   );
   const labelFor = useCallback(
     (marker: string | null | undefined): string =>
@@ -149,6 +154,16 @@ export function MonitoramentoContent({
       .then(setModels)
       .catch((err) => {
         console.error("[Qualidade] falha ao carregar modelos:", err);
+      });
+  }, []);
+
+  // Carrega TODOS os markers de rodada uma vez (sem filtro de periodo) para
+  // a numeracao global das rodadas ficar estavel entre as views.
+  useEffect(() => {
+    void fetchAllRodadaMarkers()
+      .then(setAllRodadaMarkers)
+      .catch((err) => {
+        console.error("[Qualidade] falha ao carregar markers de rodada:", err);
       });
   }, []);
 

@@ -14,6 +14,7 @@ import {
   getDailyCorrectness,
   getDistinctPatterns,
   getDistinctRodadas,
+  getAllRodadaMarkers,
   getEvaluationDetail,
   type EvalStatus,
   type EvaluationFilters,
@@ -84,4 +85,10 @@ export async function fetchQualityEvaluationDetail(id: string) {
 export async function fetchQualityDistinctRodadas(f: FilterInputs) {
   await gate();
   return getDistinctRodadas(toFilters(f));
+}
+
+/** Todos os markers de rodada (sem filtro de periodo) para numeracao global. */
+export async function fetchAllRodadaMarkers() {
+  await gate();
+  return getAllRodadaMarkers();
 }
