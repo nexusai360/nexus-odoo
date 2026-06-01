@@ -26,6 +26,11 @@ import {
 
 const IN_FLIGHT_WINDOW_SECONDS = 60;
 
+/** Pseudo-dominio para a coluna/filtro "Tool chamada": turno em que o agente
+ *  NAO chamou nenhuma tool (saudacao, esclarecimento, resposta conversacional).
+ *  Exibido como "Conversa" na UI. Nao e' um dominio real do catalogo. */
+export const NO_TOOL_DOMAIN = "conversa";
+
 /** KPI consolidado do router nos ultimos N dias. */
 export type RouterKpis = {
   totalDecisoes: number;
@@ -452,7 +457,17 @@ export async function getRouterDecisions(
     ];
   }
   if (filter.tools && filter.tools.length > 0) {
-    where.toolsDomains = { hasSome: filter.tools };
+    // "conversa" (NO_TOOL_DOMAIN): turno sem nenhuma tool (saudacao/esclareci-
+    // mento). Como nao e' um dominio real, vira `toolsActuallyUsed isEmpty`.
+    if (filter.tools.includes(NO_TOOL_DOMAIN)) {
+      const reais = filter.tools.filter((t) => t !== NO_TOOL_DOMAIN);
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const or: any[] = [{ toolsActuallyUsed: { isEmpty: true } }];
+      if (reais.length > 0) or.push({ toolsDomains: { hasSome: reais } });
+      where.AND = [...(where.AND ?? []), { OR: or }];
+    } else {
+      where.toolsDomains = { hasSome: filter.tools };
+    }
   }
   if (filter.picked && filter.picked.length > 0) {
     where.pickedDomains = { hasSome: filter.picked };
