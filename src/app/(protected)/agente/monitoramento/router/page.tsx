@@ -23,12 +23,20 @@ import {
   getRouterHistogram,
   getRouterLatencyTimeseries,
   getRouterDecisions,
+  getRouterDistinctOrigens,
   getRouterEligibleToActivate,
   getRouterEarliestDecision,
   type RouterFilter,
 } from "@/lib/agent/router/queries";
 import { getRouterSettings } from "@/lib/actions/router-settings";
 import { getEmbeddingCredentialStatus } from "@/lib/actions/router-embedding-credential";
+import { getAllRodadaMarkers } from "@/lib/agent/quality/queries";
+import {
+  buildRodadaNamesFromMarkers,
+  ORIGEM_AGENTE_NEX,
+  ORIGEM_PLAYGROUND,
+  ORIGEM_CALIBRAGEM,
+} from "@/lib/agent/quality/rodada-labels";
 import { getPeriodInTz, type PeriodKey } from "@/lib/datetime-core";
 
 const TZ = "America/Sao_Paulo";
@@ -83,7 +91,7 @@ export default async function MonitoramentoRouterPage({
     pk?: string;
     cs?: string;
     ce?: string;
-    modos?: string;
+    origens?: string;
     page?: string;
     ps?: string;
     q?: string;
@@ -99,8 +107,8 @@ export default async function MonitoramentoRouterPage({
   const pk: PeriodKey = VALID_PKS.includes(sp.pk as PeriodKey)
     ? (sp.pk as PeriodKey)
     : "semana_atual";
-  const modos = sp.modos
-    ? sp.modos.split(",").filter(Boolean)
+  const origens = sp.origens
+    ? sp.origens.split(",").filter(Boolean)
     : [];
   const page = Number(sp.page) >= 0 ? Math.floor(Number(sp.page)) : 0;
   const pageSize = ROUTER_PAGE_SIZES.includes(Number(sp.ps))
@@ -120,10 +128,16 @@ export default async function MonitoramentoRouterPage({
   const filter: RouterFilter = {
     start: range.start,
     end: range.end,
-    modes: modos.length > 0 ? modos : undefined,
+    origens: origens.length > 0 ? origens : undefined,
     q: q || undefined,
     tools: tools.length > 0 ? tools : undefined,
     picked: picked.length > 0 ? picked : undefined,
+  };
+
+  // Filtro de origem (sem o recorte de origem, para listar todas do periodo).
+  const origensFilter: RouterFilter = {
+    start: range.start,
+    end: range.end,
   };
 
   const [
@@ -131,6 +145,8 @@ export default async function MonitoramentoRouterPage({
     buckets,
     latency,
     decisionsPage,
+    origensList,
+    rodadaMarkers,
     settings,
     eligibility,
     embeddingCredential,
@@ -139,10 +155,24 @@ export default async function MonitoramentoRouterPage({
     getRouterHistogram(filter),
     getRouterLatencyTimeseries(filter),
     getRouterDecisions(filter, page, pageSize),
+    getRouterDistinctOrigens(origensFilter),
+    getAllRodadaMarkers(),
     getRouterSettings(),
     getRouterEligibleToActivate(),
     getEmbeddingCredentialStatus(),
   ]);
+
+  // Label map global (numeracao R8..R24 estavel) + virtuais. Convertido para
+  // objeto simples para cruzar a fronteira server->client.
+  const labelMapObj: Record<string, string> = Object.fromEntries(
+    buildRodadaNamesFromMarkers([
+      ...rodadaMarkers,
+      ...origensList.map((o) => o.marker),
+      ORIGEM_AGENTE_NEX,
+      ORIGEM_PLAYGROUND,
+      ORIGEM_CALIBRAGEM,
+    ]),
+  );
 
   return (
     <PageShell variant="form">
@@ -157,7 +187,9 @@ export default async function MonitoramentoRouterPage({
           pk={pk}
           customStart={sp.cs}
           customEnd={sp.ce}
-          modos={modos}
+          origens={origens}
+          origensOptions={origensList}
+          labelMap={labelMapObj}
           minDateIso={minDate.toISOString()}
         />
       </div>
@@ -173,6 +205,7 @@ export default async function MonitoramentoRouterPage({
           searchQuery={q}
           toolsFilter={tools}
           pickedFilter={picked}
+          labelMap={labelMapObj}
           settings={settings ?? DEFAULT_SETTINGS}
           eligibility={eligibility}
           embeddingCredential={embeddingCredential}

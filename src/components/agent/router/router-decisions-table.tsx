@@ -88,6 +88,8 @@ interface Props {
   searchQuery: string;
   toolsFilter: string[];
   pickedFilter: string[];
+  /** marker -> label legivel de origem (rodada/virtual). */
+  labelMap: Record<string, string>;
 }
 
 // Dominios filtraveis (negocio + rotas internas com nome amigavel).
@@ -144,6 +146,7 @@ export function RouterDecisionsTable({
   searchQuery,
   toolsFilter,
   pickedFilter,
+  labelMap,
 }: Props) {
   const router = useRouter();
   const pathname = usePathname();
@@ -283,6 +286,7 @@ export function RouterDecisionsTable({
                 <TableHeader>
                   <TableRow>
                     <TableHead className="w-[150px]">Data</TableHead>
+                    <TableHead className="w-[120px]">Origem</TableHead>
                     <TableHead>Pergunta</TableHead>
                     <TableHead>Router escolhida</TableHead>
                     <TableHead>Tool chamada</TableHead>
@@ -312,6 +316,19 @@ export function RouterDecisionsTable({
                           ) : null}
                           {dateTimeFmt.format(r.createdAt)}
                         </span>
+                      </TableCell>
+                      <TableCell className="text-xs">
+                        {r.origemMarker ? (
+                          <Badge
+                            variant="outline"
+                            className="border-border bg-muted/40 font-mono text-[11px] text-muted-foreground"
+                            title={r.origemMarker}
+                          >
+                            {labelMap[r.origemMarker] ?? r.origemMarker}
+                          </Badge>
+                        ) : (
+                          <span className="text-muted-foreground">-</span>
+                        )}
                       </TableCell>
                       <TableCell
                         className="max-w-[320px] text-sm"
