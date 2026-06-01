@@ -38,6 +38,8 @@ interface Props {
   settings: RouterSettingsSnapshot;
   eligibility: RouterEligibility;
   embeddingCredential: EmbeddingCredentialStatus;
+  /** marker -> label legivel de origem (rodada/virtual) para a tabela. */
+  labelMap: Record<string, string>;
 }
 
 export function RouterContent(props: Props) {
@@ -68,6 +70,7 @@ export function RouterContent(props: Props) {
         searchQuery={props.searchQuery}
         toolsFilter={props.toolsFilter}
         pickedFilter={props.pickedFilter}
+        labelMap={props.labelMap}
       />
     </div>
   );

@@ -106,7 +106,17 @@ async function main() {
     if (!q) continue;
     (byQ.get(q) ?? byQ.set(q, []).get(q)!).push(id);
   }
-  const canonical: Array<{ convId: string; q: string }> = [];
+  // Verdade-base por pergunta = UNIAO das tools usadas em TODAS as conversas
+  // daquela pergunta (inclui reruns). Evita falso "-" quando a conversa
+  // canonica (avaliada) nao usou tool mas um rerun usou. So fica vazio quando
+  // NENHUMA execucao da pergunta usou tool (saudacao/trivial).
+  const toolsByQuestion = new Map<string, Set<string>>();
+  for (const [q, ids] of byQ.entries()) {
+    const set = new Set<string>();
+    for (const id of ids) for (const t of toolsByConv.get(id) ?? []) set.add(t);
+    toolsByQuestion.set(q, set);
+  }
+  const canonical: Array<{ convId: string; q: string; qNorm: string }> = [];
   for (const [q, ids] of byQ.entries()) {
     const best = ids.sort((a, b) => {
       const ea = hasEval.has(a) ? 1 : 0, eb = hasEval.has(b) ? 1 : 0;
@@ -116,7 +126,7 @@ async function main() {
       if (ta !== tb) return tb - ta;
       return (createdAtById.get(b)?.getTime() ?? 0) - (createdAtById.get(a)?.getTime() ?? 0);
     })[0];
-    canonical.push({ convId: best, q: firstQById.get(best) ?? q });
+    canonical.push({ convId: best, q: firstQById.get(best) ?? q, qNorm: q });
   }
   console.log(`Conversas R24: ${convIds.length} | perguntas unicas (canonicas): ${canonical.length}`);
 
@@ -134,13 +144,13 @@ async function main() {
     convId: string; q: string; decision: Awaited<ReturnType<typeof pickDomains>>;
     realTools: string[]; realDomains: string[];
   }> = [];
-  for (const { convId, q } of canonical) {
+  for (const { convId, q, qNorm } of canonical) {
     let decision = await pickDomains(q, { threshold, topK });
     // Retry 1x em timeout de embed: nao queremos artefato de latencia no dado.
     if (decision.fallback.triggered && decision.fallback.reason === "embed_failed") {
       decision = await pickDomains(q, { threshold, topK });
     }
-    const realTools = [...(toolsByConv.get(convId) ?? new Set<string>())];
+    const realTools = [...(toolsByQuestion.get(qNorm) ?? new Set<string>())];
     const realDomains = realTools.length > 0 ? [...new Set(getToolDomains(realTools))] : [];
     toCreate.push({ convId, q, decision, realTools, realDomains });
 

@@ -48,9 +48,14 @@ import type { RouterDecisionRow } from "@/lib/agent/router/queries";
 
 // Rotas internas (sempre presentes no catalogo) ganham nome amigavel em vez
 // de serem escondidas: sao rotas de verdade, so tinham nome tecnico.
+// Pseudo-dominio: turno sem tool (saudacao/esclarecimento). Mantido em sincronia
+// com NO_TOOL_DOMAIN em src/lib/agent/router/queries.ts.
+const NO_TOOL_DOMAIN = "conversa";
+
 const DOMAIN_DISPLAY: Record<string, string> = {
   caminho3: "BI avançado",
   "dominios-vazios": "cobertura",
+  [NO_TOOL_DOMAIN]: "Conversa",
 };
 function displayDomain(d: string): string {
   return DOMAIN_DISPLAY[d] ?? d;
@@ -71,6 +76,9 @@ const DOMAIN_TONE: Record<string, string> = {
   contabil:
     "bg-indigo-500/10 text-indigo-700 border-indigo-500/30 dark:text-indigo-300",
   crm: "bg-fuchsia-500/10 text-fuchsia-700 border-fuchsia-500/30 dark:text-fuchsia-300",
+  // "Conversa" (sem tool): tom neutro, distinto dos dominios de negocio.
+  [NO_TOOL_DOMAIN]:
+    "bg-zinc-500/10 text-zinc-600 border-zinc-500/30 dark:text-zinc-400",
 };
 
 function toneFor(domain: string): string {
@@ -88,6 +96,8 @@ interface Props {
   searchQuery: string;
   toolsFilter: string[];
   pickedFilter: string[];
+  /** marker -> label legivel de origem (rodada/virtual). */
+  labelMap: Record<string, string>;
 }
 
 // Dominios filtraveis (negocio + rotas internas com nome amigavel).
@@ -144,6 +154,7 @@ export function RouterDecisionsTable({
   searchQuery,
   toolsFilter,
   pickedFilter,
+  labelMap,
 }: Props) {
   const router = useRouter();
   const pathname = usePathname();
@@ -267,6 +278,9 @@ export function RouterDecisionsTable({
               selected={toolsFilter}
               onChange={(v) => applyMulti("tools", v)}
               colored
+              // "Conversa" so faz sentido para a tool de fato chamada (turno sem
+              // tool), nao para o dominio escolhido pelo router.
+              domains={[...FILTERABLE_DOMAINS, NO_TOOL_DOMAIN]}
             />
           </div>
         </div>
@@ -283,6 +297,7 @@ export function RouterDecisionsTable({
                 <TableHeader>
                   <TableRow>
                     <TableHead className="w-[150px]">Data</TableHead>
+                    <TableHead className="w-[120px]">Origem</TableHead>
                     <TableHead>Pergunta</TableHead>
                     <TableHead>Router escolhida</TableHead>
                     <TableHead>Tool chamada</TableHead>
@@ -312,6 +327,19 @@ export function RouterDecisionsTable({
                           ) : null}
                           {dateTimeFmt.format(r.createdAt)}
                         </span>
+                      </TableCell>
+                      <TableCell className="text-xs">
+                        {r.origemMarker ? (
+                          <Badge
+                            variant="outline"
+                            className="border-border bg-muted/40 font-mono text-[11px] text-muted-foreground"
+                            title={r.origemMarker}
+                          >
+                            {labelMap[r.origemMarker] ?? r.origemMarker}
+                          </Badge>
+                        ) : (
+                          <span className="text-muted-foreground">-</span>
+                        )}
                       </TableCell>
                       <TableCell
                         className="max-w-[320px] text-sm"
@@ -347,9 +375,7 @@ export function RouterDecisionsTable({
                       <TableCell>
                         <div className="flex flex-wrap gap-1">
                           {r.toolsDomains.length === 0 ? (
-                            <span className="text-xs text-muted-foreground">
-                              -
-                            </span>
+                            <ToolTag domain={NO_TOOL_DOMAIN} />
                           ) : (
                             r.toolsDomains.map((d, i) => (
                               <ToolTag key={`${r.id}-${i}-${d}`} domain={d} />
@@ -435,11 +461,13 @@ function DomainMultiSelect({
   selected,
   onChange,
   colored = false,
+  domains = FILTERABLE_DOMAINS,
 }: {
   label: string;
   selected: string[];
   onChange: (next: string[]) => void;
   colored?: boolean;
+  domains?: string[];
 }) {
   const [open, setOpen] = useState(false);
   const trigger =
@@ -482,7 +510,7 @@ function DomainMultiSelect({
         className="min-w-[200px] w-auto overflow-hidden p-1"
       >
         <ul role="listbox" aria-label={label} className="flex flex-col">
-          {FILTERABLE_DOMAINS.map((d) => {
+          {domains.map((d) => {
             const isOn = selected.includes(d);
             return (
               <li key={d} role="presentation">

@@ -17,8 +17,19 @@ import {
   ROUTER_PROMOTION_MIN_COVERAGE_PCT,
   ROUTER_PROMOTION_MIN_DECISIONS,
 } from "@/lib/agent/router/constants";
+import {
+  ORIGEM_AGENTE_NEX,
+  ORIGEM_PLAYGROUND,
+  ORIGEM_CALIBRAGEM,
+  channelToOrigem,
+} from "@/lib/agent/quality/rodada-labels";
 
 const IN_FLIGHT_WINDOW_SECONDS = 60;
+
+/** Pseudo-dominio para a coluna/filtro "Tool chamada": turno em que o agente
+ *  NAO chamou nenhuma tool (saudacao, esclarecimento, resposta conversacional).
+ *  Exibido como "Conversa" na UI. Nao e' um dominio real do catalogo. */
+export const NO_TOOL_DOMAIN = "conversa";
 
 /** KPI consolidado do router nos ultimos N dias. */
 export type RouterKpis = {
@@ -77,11 +88,14 @@ export type RouterEligibility = {
 /** Helper: cutoff para considerar uma row "completa" (toolsActuallyUsed
  *  preenchido OU createdAt mais velho que 60s). */
 /** Filtro do painel do router: range de datas (casa com PeriodPills, inclusive
- *  "Personalizado") + modos opcionais (multi-select de origem). */
+ *  "Personalizado") + origens opcionais (multi-select de rodada/virtual). */
 export type RouterFilter = {
   start: Date;
   end: Date;
-  modes?: string[];
+  /** Origens selecionadas (igual ao Backtest): markers de rodada
+   *  `[AUDIT-POS-...]` e/ou origens virtuais (`__origem:agente-nex`,
+   *  `__origem:playground`, `__origem:calibragem`). */
+  origens?: string[];
   /** Busca livre na pergunta (so aplicada na tabela de decisoes). */
   q?: string;
   /** Filtra por dominios chamados/esperados (toolsDomains hasSome). */
@@ -89,6 +103,47 @@ export type RouterFilter = {
   /** Filtra por dominios escolhidos pelo router (pickedDomains hasSome). */
   picked?: string[];
 };
+
+/** Traduz a selecao de origens num clause Prisma (OR) sobre a conversa.
+ *  null quando nada selecionado (sem filtro). */
+function buildOrigemClause(
+  origens: string[] | undefined,
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+): any | null {
+  if (!origens || origens.length === 0) return null;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const ors: any[] = [];
+  for (const o of origens) {
+    if (o === ORIGEM_AGENTE_NEX) {
+      ors.push({ conversation: { channel: { in: ["in_app", "whatsapp"] } } });
+    } else if (o === ORIGEM_PLAYGROUND) {
+      ors.push({ conversation: { channel: "playground" } });
+    } else if (o === ORIGEM_CALIBRAGEM) {
+      ors.push({ conversationId: null });
+    } else {
+      // marker de rodada [AUDIT-POS-...]
+      ors.push({ conversation: { title: { contains: o } } });
+    }
+  }
+  return { OR: ors };
+}
+
+/** Origem (rodada ou virtual) de uma linha, a partir do title/channel da
+ *  conversa. Mesma logica do Backtest. */
+function rowOrigem(
+  title: string | null | undefined,
+  channel: string | null | undefined,
+  conversationId: string | null | undefined,
+): string | null {
+  if (title) {
+    const m = title.match(/\[AUDIT-[^\]]*\]/);
+    if (m) return m[0];
+  }
+  const virtual = channelToOrigem(channel);
+  if (virtual) return virtual;
+  if (!conversationId) return ORIGEM_CALIBRAGEM;
+  return null;
+}
 
 /** Range default: ultimos 7 dias ate agora. */
 export function defaultRouterFilter(): RouterFilter {
@@ -100,13 +155,13 @@ export function defaultRouterFilter(): RouterFilter {
 function buildBaseWhere(filter: RouterFilter) {
   const where: {
     createdAt: { gte: Date; lte: Date };
-    mode?: { in: string[] };
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    AND?: any[];
   } = {
     createdAt: { gte: filter.start, lte: filter.end },
   };
-  if (filter.modes && filter.modes.length > 0) {
-    where.mode = { in: filter.modes };
-  }
+  const origem = buildOrigemClause(filter.origens);
+  if (origem) where.AND = [origem];
   return where;
 }
 
@@ -188,45 +243,34 @@ export async function getRouterKpis(filter: RouterFilter): Promise<RouterKpis> {
   };
 }
 
-/** D2b: histograma de topScore via width_bucket (Postgres builtin). */
+/** D2b: histograma de topScore em 10 buckets (0.0-0.1 ... 0.9-1.0).
+ *  Em Prisma (nao raw SQL) para honrar o filtro de origem via relacao. */
 export async function getRouterHistogram(
   filter: RouterFilter,
 ): Promise<RouterHistogramBucket[]> {
-  // Excecao §0 do PLAN v3: width_bucket nao e' mapeado pelo Prisma client.
-  // Filtro de modo: quando informado usa-os; senao todos os modos relevantes
-  // (inclui calibracao para o painel ter dado mesmo sem trafego de producao).
-  const modeList =
-    filter.modes && filter.modes.length > 0
-      ? filter.modes
-      : ["shadow", "active", "calibracao"];
-  const raw = await prisma.$queryRawUnsafe<
-    Array<{ bucket: number; qty: number | bigint }>
-  >(
-    `
-    SELECT width_bucket(top_score::float, 0, 1, 10) AS bucket,
-           count(*) AS qty
-    FROM agent_router_decision
-    WHERE mode = ANY($3::text[])
-      AND created_at >= $1::timestamp
-      AND created_at <= $2::timestamp
-      AND top_score IS NOT NULL
-    GROUP BY bucket
-    ORDER BY bucket;
-    `,
-    filter.start.toISOString(),
-    filter.end.toISOString(),
-    modeList,
-  );
+  const rows = await prisma.agentRouterDecision.findMany({
+    where: { ...buildBaseWhere(filter), topScore: { not: null } },
+    select: { topScore: true },
+  });
 
-  // Garante 10 buckets na saida (mesmo os com qty=0).
+  const counts = new Array<number>(10).fill(0);
+  for (const r of rows) {
+    const s = r.topScore;
+    if (s === null || s === undefined) continue;
+    // bucket 1..10; width_bucket-like (clamp em [0,1]).
+    let idx = Math.floor(Math.max(0, Math.min(0.9999999, s)) * 10);
+    if (idx < 0) idx = 0;
+    if (idx > 9) idx = 9;
+    counts[idx] += 1;
+  }
+
   const buckets: RouterHistogramBucket[] = [];
   for (let i = 1; i <= 10; i++) {
-    const match = raw.find((r) => Number(r.bucket) === i);
     buckets.push({
       bucketIdx: i,
       bucketStart: (i - 1) / 10,
       bucketEnd: i / 10,
-      qty: match ? Number(match.qty) : 0,
+      qty: counts[i - 1] ?? 0,
     });
   }
   return buckets;
@@ -314,6 +358,11 @@ export type RouterDecisionRow = {
   reformulatedQuestion: string | null;
   /** R2-ctx: a Camada 1 (embedding cru) caiu em fallback. */
   originalFallback: boolean;
+  /** Origem da decisao: marker de rodada `[AUDIT-POS-...]` ou origem virtual
+   *  (`__origem:agente-nex` / `__origem:playground` / `__origem:calibragem`).
+   *  null quando nao mapeavel. O label legivel ("Rodada 24") e' resolvido na UI
+   *  via buildRodadaNamesFromMarkers. */
+  origemMarker: string | null;
 };
 
 export type RouterDecisionsPage = {
@@ -328,6 +377,36 @@ export async function getRouterEarliestDecision(): Promise<Date | null> {
     select: { createdAt: true },
   });
   return row?.createdAt ?? null;
+}
+
+/** Origens distintas (rodadas + virtuais) das decisoes do router no periodo,
+ *  com contagem. Espelha getDistinctRodadas do Backtest, mas sobre
+ *  agent_router_decision. Usado para popular o filtro de Origem. */
+export async function getRouterDistinctOrigens(
+  filter: RouterFilter,
+): Promise<Array<{ marker: string; count: number }>> {
+  const startIso = filter.start.toISOString();
+  const endIso = filter.end.toISOString();
+  const rows = (await prisma.$queryRaw`
+    SELECT origem AS marker, COUNT(*)::int AS count
+    FROM (
+      SELECT
+        CASE
+          WHEN c.title LIKE '[AUDIT-%' THEN
+            substring(c.title from position('[' in c.title) for (position(']' in c.title) - position('[' in c.title) + 1))
+          WHEN c.channel IN ('in_app','whatsapp') THEN '__origem:agente-nex'
+          WHEN c.channel = 'playground' THEN '__origem:playground'
+          ELSE '__origem:calibragem'
+        END AS origem
+      FROM agent_router_decision d
+      LEFT JOIN conversations c ON c.id = d.conversation_id
+      WHERE d.created_at >= ${startIso}::timestamptz
+        AND d.created_at <= ${endIso}::timestamptz
+    ) sub
+    GROUP BY origem
+    ORDER BY origem DESC
+  `) as Array<{ marker: string; count: number }>;
+  return rows;
 }
 
 /** Tabela paginada de todas as decisoes do router no filtro (D2c v2). */
@@ -378,7 +457,17 @@ export async function getRouterDecisions(
     ];
   }
   if (filter.tools && filter.tools.length > 0) {
-    where.toolsDomains = { hasSome: filter.tools };
+    // "conversa" (NO_TOOL_DOMAIN): turno sem nenhuma tool (saudacao/esclareci-
+    // mento). Como nao e' um dominio real, vira `toolsActuallyUsed isEmpty`.
+    if (filter.tools.includes(NO_TOOL_DOMAIN)) {
+      const reais = filter.tools.filter((t) => t !== NO_TOOL_DOMAIN);
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const or: any[] = [{ toolsActuallyUsed: { isEmpty: true } }];
+      if (reais.length > 0) or.push({ toolsDomains: { hasSome: reais } });
+      where.AND = [...(where.AND ?? []), { OR: or }];
+    } else {
+      where.toolsDomains = { hasSome: filter.tools };
+    }
   }
   if (filter.picked && filter.picked.length > 0) {
     where.pickedDomains = { hasSome: filter.picked };
@@ -399,6 +488,8 @@ export async function getRouterDecisions(
         usedReformulation: true,
         reformulatedQuestion: true,
         originalFallback: true,
+        conversationId: true,
+        conversation: { select: { title: true, channel: true } },
       },
       orderBy: { createdAt: "desc" },
       take: pageSize,
@@ -422,6 +513,11 @@ export async function getRouterDecisions(
       usedReformulation: r.usedReformulation,
       reformulatedQuestion: r.reformulatedQuestion,
       originalFallback: r.originalFallback,
+      origemMarker: rowOrigem(
+        r.conversation?.title,
+        r.conversation?.channel,
+        r.conversationId,
+      ),
       // Discordante so faz sentido quando ha dominio esperado/chamado.
       discordante:
         r.toolsDomains.length > 0 &&

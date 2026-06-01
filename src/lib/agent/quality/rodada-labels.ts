@@ -34,10 +34,14 @@ const R8_ANCHOR_TS = Date.UTC(2026, 4, 26, 17, 21, 31);
  *  estrutura do filtro de rodada (uma coluna so de "Origem"). */
 export const ORIGEM_AGENTE_NEX = "__origem:agente-nex";
 export const ORIGEM_PLAYGROUND = "__origem:playground";
+/** Origem virtual do Router: decisoes da calibragem por anchor-set (sem
+ *  conversa associada). So aparece na aba Router. */
+export const ORIGEM_CALIBRAGEM = "__origem:calibragem";
 
 export const ORIGEM_LABELS: Record<string, string> = {
   [ORIGEM_AGENTE_NEX]: "Agente Nex",
   [ORIGEM_PLAYGROUND]: "Playground",
+  [ORIGEM_CALIBRAGEM]: "Calibragem",
 };
 
 /** Channels do Prisma `AgentChannel` enum que viram cada origem. */
