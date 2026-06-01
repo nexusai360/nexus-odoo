@@ -169,3 +169,9 @@
 - Rodada de qualidade disparada (291 perguntas, gpt-5.4-mini). 1ª tentativa estourou quota OpenAI (97 falhas); re-rodado após recarga → 291/291. Auto-numerada como R24 (R24 antiga, travada de 1 eval, apagada). Score 99,0% (288 CORRETO / 2 ERRADO / 1 PARCIAL) — qualidade de RESPOSTA.
 - Achado: 2 ERRADO = router NÃO roteou pra tool (toolCalls=null → fallback "não consegui"); 1 PARCIAL = JSON cru não formatado. Router ativado e DESATIVADO de volta (routerEnabled=false) — roteamento tem furos a corrigir antes do ON.
 - PENDENTE (próxima sessão): (1) bug rotulador legado (R8 vs R24 nas views semana/mês → migrar p/ buildRodadaNamesFromMarkers); (2) review/fix do roteamento no-tool; (3) re-validar e ativar router.
+
+## 2026-06-01 — Perícia numeração R8→R24 + reavaliação real do Router na R24
+- commit=d1b20f8 | scope=fix+test+docs | Perícia (docs/router-r24-pericia.md): 27 markers AUDIT; os 10 da manhã de 26/05 sem avaliação = testes pré-catálogo que inflavam a numeração (recente virava R34). Ancorado R8 em 2026-05-26T17-21-31 → fecha R8→R24 (bate com tabela legada, calibrate-rounds R20-R23 e time). Recente de 31/05 = R24.
+- Numeração: buildRodadaNamesFromMarkers ancora R8 (pré-R8 viram "Teste"); getAllRodadaMarkers conta só markers com avaliação; monitoramento-content usa conjunto GLOBAL (corrige R8 em semana/mês vs R24 no tudo). Teste rodada-labels.test.ts.
+- Router R24: reevaluate-r24.ts cria 291 decisões calibracao_R-X com verdade-base = tools REAIS (vocab atual aefb1bb6, dedup dos 97 reruns). BUG achado: tools cadastro_* (singular) viravam _desconhecido (domínio é cadastros, plural) → falsas discordâncias + furo RBAC camada B. Fix: PREFIX_ALIAS cadastro→cadastros. Top-K 85%→96,3%, discordâncias 38→8 (5 são registrar_lacuna, 3 frases coloquiais). Gate: elegível.
+- Router permanece OFF (ativação = decisão humana). Suíte 2179 verde, tsc limpo.
