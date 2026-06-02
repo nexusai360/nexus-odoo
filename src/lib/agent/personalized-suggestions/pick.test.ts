@@ -5,6 +5,22 @@ describe("pickPersonalizedQuestions", () => {
     expect(pickPersonalizedQuestions([], [], 3)).toEqual([]);
   });
 
+  test("filtra tools de dominio sem acesso quando allowedDomains e fornecido", () => {
+    const allTime = [
+      { toolName: "fiscal_faturamento_periodo", count: 50 }, // fiscal: bloqueado
+      { toolName: "estoque_saldo_produto", count: 30 }, // estoque: permitido
+    ];
+    const out = pickPersonalizedQuestions(allTime, [], 3, ["estoque"]);
+    expect(out).toEqual(["Qual o saldo de estoque dos produtos mais movimentados?"]);
+    expect(out.some((q) => /faturamos/i.test(q))).toBe(false);
+  });
+
+  test("sem allowedDomains nao filtra (comportamento legado)", () => {
+    const allTime = [{ toolName: "fiscal_faturamento_periodo", count: 50 }];
+    const out = pickPersonalizedQuestions(allTime, [], 3);
+    expect(out).toEqual(["Quanto faturamos no mês corrente?"]);
+  });
+
   test("1 slot all-time + 2 slots recentes", () => {
     const allTime = [
       { toolName: "fiscal_faturamento_periodo", count: 50 },

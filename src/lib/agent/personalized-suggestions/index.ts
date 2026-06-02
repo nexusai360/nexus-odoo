@@ -9,6 +9,7 @@
 
 import "server-only";
 
+import type { ReportDomain } from "@/generated/prisma/client";
 import { prisma } from "@/lib/prisma";
 import { redis } from "@/lib/redis";
 import { aggregateToolUsage } from "./aggregate";
@@ -17,19 +18,24 @@ import { pickPersonalizedQuestions } from "./pick";
 const RECENT_WINDOW_DAYS = 28;
 const CACHE_TTL_SECONDS = 5 * 60;
 
-function cacheKey(userId: string, max: number): string {
-  // v2 introduzido em 2026-05-24 19:30 para invalidar caches antigos.
-  return `nex:welcome-suggestions:${userId}:v2:${max}`;
+function cacheKey(userId: string, max: number, domainsTag: string): string {
+  // v3 (2026-06-02): inclui dominios permitidos para o cache respeitar o
+  // filtro por dominio da tool. v2 era so userId+max.
+  return `nex:welcome-suggestions:${userId}:v3:${max}:${domainsTag}`;
 }
 
 export async function getPersonalizedWelcomeSuggestions(
   userId: string | null | undefined,
   maxSuggestions: number,
+  allowedDomains?: ReportDomain[],
 ): Promise<string[]> {
   if (!userId) return [];
   const safeMax = Math.min(Math.max(1, maxSuggestions || 3), 5);
 
-  const key = cacheKey(userId, safeMax);
+  const domainsTag = allowedDomains
+    ? [...allowedDomains].sort().join(",") || "none"
+    : "all";
+  const key = cacheKey(userId, safeMax, domainsTag);
 
   // Try cache first (best effort).
   try {
@@ -49,7 +55,7 @@ export async function getPersonalizedWelcomeSuggestions(
       aggregateToolUsage(prisma, userId, null),
       aggregateToolUsage(prisma, userId, RECENT_WINDOW_DAYS),
     ]);
-    const out = pickPersonalizedQuestions(allTime, recent, safeMax);
+    const out = pickPersonalizedQuestions(allTime, recent, safeMax, allowedDomains);
 
     try {
       await redis.set(key, JSON.stringify(out), "EX", CACHE_TTL_SECONDS);
@@ -71,12 +77,12 @@ export async function invalidatePersonalizedWelcomeCache(
   userId: string | null | undefined,
 ): Promise<void> {
   if (!userId) return;
-  // Limpa todas as variantes de max (1..5) sem precisar saber qual esta ativa.
-  for (const max of [1, 2, 3, 4, 5]) {
-    try {
-      await redis.del(cacheKey(userId, max));
-    } catch {
-      // best-effort
-    }
+  // Limpa todas as variantes (max e dominios) do usuario sem precisar saber
+  // quais estao ativas. Best-effort: keyspace por usuario e pequeno.
+  try {
+    const keys = await redis.keys(`nex:welcome-suggestions:${userId}:v3:*`);
+    if (keys.length > 0) await redis.del(...keys);
+  } catch {
+    // best-effort
   }
 }
