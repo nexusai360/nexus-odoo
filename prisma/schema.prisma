@@ -2523,12 +2523,16 @@ model Conversation {
   topicTagsAt        DateTime?                       @map("topic_tags_at")
   createdAt          DateTime                        @default(now()) @map("created_at")
   updatedAt          DateTime                        @updatedAt @map("updated_at")
+  /// Quando a conversa foi encerrada/arquivada pelo usuario ("Limpar sessao").
+  /// null = ativa. Arquivadas nao reabrem, mas permanecem para auditoria/export.
+  endedAt            DateTime?                       @map("ended_at")
   messages           Message[]
   qualityEvaluations ConversationQualityEvaluation[]
   /// R1 router de catalogo: decisoes do router por turno desta conversa.
   routerDecisions    AgentRouterDecision[]
 
   @@index([userId, updatedAt])
+  @@index([userId, channel, endedAt, updatedAt])
   @@map("conversations")
 }
 
