@@ -11,6 +11,8 @@
  * fallback (`WELCOME_SUGGESTIONS`) cobre o vazio.
  */
 
+import type { ReportDomain } from "@/generated/prisma/client";
+
 export const TOOL_TO_QUESTION: Readonly<Record<string, string>> = {
   // Estoque
   estoque_saldo_produto: "Qual o saldo de estoque dos produtos mais movimentados?",
@@ -61,3 +63,40 @@ export const TOOL_TO_QUESTION: Readonly<Record<string, string>> = {
 export function questionForTool(toolName: string): string | null {
   return TOOL_TO_QUESTION[toolName] ?? null;
 }
+
+/**
+ * Dominio de negocio (RBAC v2, enum ReportDomain) de cada tool que tem
+ * pergunta no welcome. Fonte da verdade para curar/filtrar sugestoes pelos
+ * dominios permitidos do usuario. Toda chave de TOOL_TO_QUESTION deve ter
+ * entrada aqui (garantido por teste). crm fica de fora: nao ha tool de crm.
+ */
+export const TOOL_DOMAIN: Readonly<Record<string, ReportDomain>> = {
+  estoque_saldo_produto: "estoque",
+  estoque_top_movimentados: "estoque",
+  estoque_entradas_saidas: "estoque",
+  estoque_produtos_parados: "estoque",
+  estoque_concentracao: "estoque",
+  estoque_valor_armazem: "estoque",
+  financeiro_saldo_contas: "financeiro",
+  financeiro_caixa_periodo: "financeiro",
+  financeiro_fluxo_caixa: "financeiro",
+  financeiro_contas_a_receber: "financeiro",
+  financeiro_contas_a_pagar: "financeiro",
+  financeiro_titulos_vencidos: "financeiro",
+  fiscal_faturamento_periodo: "fiscal",
+  fiscal_faturamento_por_cliente: "fiscal",
+  fiscal_notas_emitidas: "fiscal",
+  fiscal_notas_recebidas: "fiscal",
+  fiscal_impostos_periodo: "fiscal",
+  fiscal_produtos_faturados: "fiscal",
+  comercial_pedidos_por_etapa: "comercial",
+  comercial_pedidos_atrasados: "comercial",
+  comercial_pedidos_periodo: "comercial",
+  comercial_parcelas_a_vencer: "comercial",
+  comercial_pedidos_por_vendedor: "comercial",
+  cadastro_buscar_parceiro: "cadastros",
+  cadastro_parceiros_por_uf: "cadastros",
+  cadastro_contar_parceiros: "cadastros",
+  contabil_plano_de_contas: "contabil",
+  contabil_estrutura_conta: "contabil",
+};
