@@ -381,6 +381,107 @@ export async function getRouterEarliestDecision(): Promise<Date | null> {
   return row?.createdAt ?? null;
 }
 
+/** Detalhe de uma decisao do router para o drill-down (lazy, on-expand). */
+export type RouterDecisionDetail = {
+  id: string;
+  createdAt: Date;
+  userQuestion: string;
+  pickedDomains: string[];
+  toolsActuallyUsed: string[];
+  toolsDomains: string[];
+  scores: Array<{ domain: string; score: number }>;
+  topScore: number | null;
+  threshold: number | null;
+  fallbackTriggered: boolean;
+  fallbackReason: string | null;
+  discordante: boolean;
+  usedReformulation: boolean;
+  reformulatedQuestion: string | null;
+  originalFallback: boolean;
+  routerVersion: string;
+  pickDurationMs: number | null;
+  mode: string;
+  /** Resposta final do agente naquela conversa (ultimo assistant sem tool_calls). */
+  finalAnswer: string | null;
+};
+
+export async function getRouterDecisionDetail(
+  id: string,
+): Promise<RouterDecisionDetail | null> {
+  const d = await prisma.agentRouterDecision.findUnique({
+    where: { id },
+    select: {
+      id: true,
+      createdAt: true,
+      userQuestion: true,
+      pickedDomains: true,
+      toolsActuallyUsed: true,
+      toolsDomains: true,
+      scores: true,
+      topScore: true,
+      fallbackTriggered: true,
+      fallbackReason: true,
+      usedReformulation: true,
+      reformulatedQuestion: true,
+      originalFallback: true,
+      routerVersion: true,
+      pickDurationMs: true,
+      mode: true,
+      conversationId: true,
+    },
+  });
+  if (!d) return null;
+
+  // scores: Json {dominio: score} -> array ordenado desc.
+  const scoresObj = (d.scores ?? {}) as Record<string, number>;
+  const scores = Object.entries(scoresObj)
+    .map(([domain, score]) => ({ domain, score: Number(score) }))
+    .sort((a, b) => b.score - a.score);
+
+  // Threshold ativo (para marcar quem passou no drill-down).
+  const settings = await prisma.agentSettings.findFirst({
+    select: { routerThreshold: true },
+  });
+
+  // Resposta final do agente: ultimo assistant sem tool_calls na conversa.
+  let finalAnswer: string | null = null;
+  if (d.conversationId) {
+    const finals = await prisma.$queryRaw<Array<{ content: string }>>`
+      SELECT content FROM messages
+      WHERE conversation_id = ${d.conversationId}::uuid
+        AND role = 'assistant'
+        AND (tool_calls IS NULL OR jsonb_array_length(tool_calls) = 0)
+      ORDER BY created_at DESC
+      LIMIT 1
+    `;
+    finalAnswer = finals[0]?.content ?? null;
+  }
+
+  return {
+    id: d.id,
+    createdAt: d.createdAt,
+    userQuestion: d.userQuestion,
+    pickedDomains: d.pickedDomains,
+    toolsActuallyUsed: d.toolsActuallyUsed,
+    toolsDomains: d.toolsDomains,
+    scores,
+    topScore: d.topScore,
+    threshold: settings?.routerThreshold ?? null,
+    fallbackTriggered: d.fallbackTriggered,
+    fallbackReason: d.fallbackReason,
+    discordante:
+      d.toolsDomains.length > 0 &&
+      !d.toolsDomains.some((x) => d.pickedDomains.includes(x)),
+    usedReformulation: d.usedReformulation,
+    reformulatedQuestion: d.reformulatedQuestion,
+    originalFallback: d.originalFallback,
+    routerVersion: d.routerVersion,
+    pickDurationMs: d.pickDurationMs,
+    mode: d.mode,
+    finalAnswer,
+  };
+}
+
 /** Origens distintas (rodadas + virtuais) das decisoes do router no periodo,
  *  com contagem. Espelha getDistinctRodadas do Backtest, mas sobre
  *  agent_router_decision. Usado para popular o filtro de Origem. */

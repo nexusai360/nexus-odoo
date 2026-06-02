@@ -8,7 +8,7 @@
  */
 
 import { useRouter, useSearchParams, usePathname } from "next/navigation";
-import { useEffect, useState, useTransition } from "react";
+import { Fragment, useEffect, useState, useTransition } from "react";
 import {
   AlertTriangle,
   Check,
@@ -45,6 +45,7 @@ import { Badge } from "@/components/ui/badge";
 import { CustomSelect } from "@/components/ui/custom-select";
 import { PageJumpNavigator } from "@/components/agent/consumo/page-jump-navigator";
 import type { RouterDecisionRow } from "@/lib/agent/router/queries";
+import { RouterDecisionDrilldown } from "./router-decision-drilldown";
 
 // Rotas internas (sempre presentes no catalogo) ganham nome amigavel em vez
 // de serem escondidas: sao rotas de verdade, so tinham nome tecnico.
@@ -161,6 +162,7 @@ export function RouterDecisionsTable({
   const searchParams = useSearchParams();
   const [pending, startTransition] = useTransition();
   const [search, setSearch] = useState(searchQuery);
+  const [expandedId, setExpandedId] = useState<string | null>(null);
 
   const applyMulti = (key: string, values: string[]) => {
     const params = new URLSearchParams(searchParams.toString());
@@ -310,11 +312,17 @@ export function RouterDecisionsTable({
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {rows.map((r) => (
+                  {rows.map((r) => {
+                    const isOpen = expandedId === r.id;
+                    return (
+                    <Fragment key={r.id}>
                     <TableRow
-                      key={r.id}
+                      onClick={() => setExpandedId(isOpen ? null : r.id)}
+                      aria-expanded={isOpen}
                       className={cn(
+                        "cursor-pointer transition-colors hover:bg-muted/40",
                         r.discordante && "bg-amber-500/5",
+                        isOpen && "bg-muted/50",
                       )}
                     >
                       <TableCell className="font-mono text-xs whitespace-nowrap">
@@ -391,7 +399,16 @@ export function RouterDecisionsTable({
                         )}
                       </TableCell>
                     </TableRow>
-                  ))}
+                    {isOpen && (
+                      <TableRow className="hover:bg-transparent">
+                        <TableCell colSpan={6} className="p-0">
+                          <RouterDecisionDrilldown id={r.id} />
+                        </TableCell>
+                      </TableRow>
+                    )}
+                    </Fragment>
+                    );
+                  })}
                 </TableBody>
               </Table>
             </div>
