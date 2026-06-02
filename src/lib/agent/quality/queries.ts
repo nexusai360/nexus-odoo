@@ -301,30 +301,48 @@ export async function getDistinctPatterns(
 /** Timeseries de % CORRETO por dia, no periodo. */
 export async function getDailyCorrectness(
   filters: EvaluationFilters,
-): Promise<Array<{ date: string; percent: number | null; total: number }>> {
+): Promise<
+  Array<{ date: string; percent: number | null; total: number; marker: string | null }>
+> {
   const rows = await prisma.conversationQualityEvaluation.findMany({
     where: buildWhere(filters),
-    select: { createdAt: true, status: true },
+    select: {
+      createdAt: true,
+      status: true,
+      conversation: { select: { title: true } },
+    },
   });
-  const byDay = new Map<string, { corretos: number; total: number }>();
+  const byDay = new Map<
+    string,
+    { corretos: number; total: number; marker: string | null; markerAt: number }
+  >();
   for (const r of rows) {
     // Bucket por DIA no fuso de Brasilia (UTC-3), nao UTC. Sem isso, avaliacoes
     // entre 21h e 00h BRT caem no dia seguinte (UTC) e o grafico fica errado.
     // en-CA garante o formato YYYY-MM-DD (sortavel).
     const key = formatDateInTz(r.createdAt, DEFAULT_TZ, "en-CA");
-    const cur = byDay.get(key) ?? { corretos: 0, total: 0 };
+    const cur =
+      byDay.get(key) ?? { corretos: 0, total: 0, marker: null, markerAt: 0 };
     if (["CORRETO", "PARCIAL", "ERRADO", "FORA_DO_ESCOPO"].includes(r.status)) {
       cur.total++;
       if (r.status === "CORRETO") cur.corretos++;
+    }
+    // Marker da rodada do dia: o AUDIT-POS mais recente daquele dia.
+    const title = r.conversation?.title ?? "";
+    const m = title.match(/\[AUDIT-[^\]]*\]/);
+    if (m && r.createdAt.getTime() >= cur.markerAt) {
+      cur.marker = m[0];
+      cur.markerAt = r.createdAt.getTime();
     }
     byDay.set(key, cur);
   }
   return [...byDay.entries()]
     .sort(([a], [b]) => a.localeCompare(b))
-    .map(([date, { corretos, total }]) => ({
+    .map(([date, { corretos, total, marker }]) => ({
       date,
       percent: total > 0 ? (corretos / total) * 100 : null,
       total,
+      marker,
     }));
 }
 

@@ -36,13 +36,20 @@ const formatPercent = (v: number) =>
   Number.isFinite(v) ? `${v.toFixed(1)}%` : ",";
 
 interface ChartsBlockProps {
-  dailyData: Array<{ date: string; percent: number | null; total: number }>;
+  dailyData: Array<{
+    date: string;
+    percent: number | null;
+    total: number;
+    marker?: string | null;
+  }>;
   kpis: QualityKpisV2;
   topPatterns: Array<{ pattern: string; count: number }>;
   loading?: boolean;
   /** Fim do periodo selecionado (ISO). A serie diaria e' estendida (carry-
    *  forward) ate min(hoje BRT, fim do periodo), para mostrar o dia atual. */
   periodEnd: string;
+  /** Resolve o nome da rodada a partir do marker (ex.: "Rodada 24"). */
+  labelForRodada?: (marker: string | null | undefined) => string;
 }
 
 /** Chave YYYY-MM-DD em America/Sao_Paulo (en-CA = ISO). */
@@ -77,12 +84,18 @@ function addDayKey(key: string, days: number): string {
  * Dias antes do 1o percentual conhecido ficam null (sem ponto).
  */
 export function fillForwardDaily(
-  rows: Array<{ date: string; percent: number | null; total: number }>,
+  rows: Array<{
+    date: string;
+    percent: number | null;
+    total: number;
+    marker?: string | null;
+  }>,
   untilKey?: string,
 ): Array<{
   date: string;
   percent: number | null;
   total: number;
+  marker: string | null;
   carriedForward: boolean;
 }> {
   if (rows.length === 0) return [];
@@ -96,6 +109,7 @@ export function fillForwardDaily(
     date: string;
     percent: number | null;
     total: number;
+    marker: string | null;
     carriedForward: boolean;
   }> = [];
   let last: number | null = null;
@@ -104,12 +118,19 @@ export function fillForwardDaily(
     const temTeste = !!row && row.total > 0 && row.percent !== null;
     if (temTeste) {
       last = row!.percent;
-      out.push({ ...row!, carriedForward: false });
+      out.push({
+        date: key,
+        percent: row!.percent,
+        total: row!.total,
+        marker: row!.marker ?? null,
+        carriedForward: false,
+      });
     } else {
       out.push({
         date: key,
         percent: last,
         total: row?.total ?? 0,
+        marker: null,
         carriedForward: last !== null,
       });
     }
@@ -123,6 +144,7 @@ export function ChartsBlock({
   topPatterns,
   loading = false,
   periodEnd,
+  labelForRodada,
 }: ChartsBlockProps) {
   // Estende a serie ate min(hoje, fim do periodo) em BRT (carry-forward).
   const todayKey = dayKeyBrt(new Date());
@@ -134,9 +156,14 @@ export function ChartsBlock({
     .filter((d) => d.percent !== null)
     .map((d) => ({
       name: formatDayLabel(d.date),
-      tooltipLabel: d.carriedForward
-        ? `${d.date} (sem teste no dia, mantém último)`
-        : d.date,
+      tooltipLabel: d.date,
+      // 2a linha do tooltip: rodada do dia ou aviso de dia sem rodada.
+      tooltipFooter:
+        !d.carriedForward && d.marker
+          ? labelForRodada
+            ? labelForRodada(d.marker)
+            : d.marker
+          : "Não houve rodada",
       "% Correto": d.percent ?? 0,
     }));
 

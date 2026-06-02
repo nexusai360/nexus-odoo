@@ -76,9 +76,8 @@ export function RouterDecisionDrilldown({ id }: { id: string }) {
   const maxScore = detail.scores[0]?.score ?? 1;
 
   return (
-    // sticky left-0 + largura contida: o painel nao acompanha o scroll
-    // horizontal da tabela (evita "barras gigantes" e rolagem lateral).
-    <div className="sticky left-0 w-[min(100%,46rem)] max-w-[calc(100vw-3rem)] space-y-5 bg-muted/20 px-4 py-5">
+    // Largura total da celula (tabela agora e' table-fixed e nao rola lateral).
+    <div className="w-full space-y-5 bg-muted/20 px-4 py-5">
       {/* Veredito */}
       <div>
         {verdito === "discordancia" ? (

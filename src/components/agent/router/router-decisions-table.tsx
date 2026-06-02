@@ -294,17 +294,17 @@ export function RouterDecisionsTable({
           </div>
         ) : (
           <>
-            <div className="overflow-x-auto">
-              <Table>
+            <div className="w-full">
+              <Table className="w-full table-fixed">
                 <TableHeader>
                   <TableRow>
-                    <TableHead className="w-[150px]">Data</TableHead>
-                    <TableHead className="w-[120px]">Origem</TableHead>
+                    <TableHead className="w-[120px]">Data</TableHead>
+                    <TableHead className="w-[104px]">Origem</TableHead>
                     <TableHead>Pergunta</TableHead>
-                    <TableHead>Router escolhida</TableHead>
-                    <TableHead>Tool chamada</TableHead>
+                    <TableHead className="w-[200px]">Router escolhida</TableHead>
+                    <TableHead className="w-[124px]">Tool chamada</TableHead>
                     <TableHead
-                      className="w-[110px] text-right"
+                      className="w-[92px] text-right"
                       title="Similaridade (cosseno) entre a pergunta e o domínio mais próximo. Neste modelo de embedding, 0,40-0,60 já é um bom match (raramente passa de 0,7). O acerto alto vem do ranking relativo (o domínio certo é o mais próximo) e das regras de palavra-chave, não do valor absoluto."
                     >
                       Similaridade
@@ -350,7 +350,7 @@ export function RouterDecisionsTable({
                         )}
                       </TableCell>
                       <TableCell
-                        className="max-w-[320px] text-sm"
+                        className="text-sm"
                         title={
                           r.usedReformulation && r.reformulatedQuestion
                             ? `Original: ${r.userQuestion}\nReformulada: ${r.reformulatedQuestion}`
