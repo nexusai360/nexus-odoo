@@ -50,12 +50,12 @@ import type { RouterDecisionRow } from "@/lib/agent/router/queries";
 // de serem escondidas: sao rotas de verdade, so tinham nome tecnico.
 // Pseudo-dominio: turno sem tool (saudacao/esclarecimento). Mantido em sincronia
 // com NO_TOOL_DOMAIN em src/lib/agent/router/queries.ts.
-const NO_TOOL_DOMAIN = "conversa";
+const NO_TOOL_DOMAIN = "chat";
 
 const DOMAIN_DISPLAY: Record<string, string> = {
   caminho3: "BI avançado",
   "dominios-vazios": "cobertura",
-  [NO_TOOL_DOMAIN]: "Conversa",
+  [NO_TOOL_DOMAIN]: "chat",
 };
 function displayDomain(d: string): string {
   return DOMAIN_DISPLAY[d] ?? d;

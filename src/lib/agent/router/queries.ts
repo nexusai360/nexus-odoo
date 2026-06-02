@@ -23,13 +23,14 @@ import {
   ORIGEM_CALIBRAGEM,
   channelToOrigem,
 } from "@/lib/agent/quality/rodada-labels";
+import { formatDateInTz, DEFAULT_TZ } from "@/lib/datetime-core";
 
 const IN_FLIGHT_WINDOW_SECONDS = 60;
 
 /** Pseudo-dominio para a coluna/filtro "Tool chamada": turno em que o agente
  *  NAO chamou nenhuma tool (saudacao, esclarecimento, resposta conversacional).
- *  Exibido como "Conversa" na UI. Nao e' um dominio real do catalogo. */
-export const NO_TOOL_DOMAIN = "conversa";
+ *  Exibido como "chat" na UI (minusculo, padrao das tools). Nao e' dominio real. */
+export const NO_TOOL_DOMAIN = "chat";
 
 /** KPI consolidado do router nos ultimos N dias. */
 export type RouterKpis = {
@@ -322,7 +323,8 @@ export async function getRouterLatencyTimeseries(
 
   const byDay = new Map<string, number[]>();
   for (const r of rows) {
-    const day = r.createdAt.toISOString().slice(0, 10);
+    // Dia em America/Sao_Paulo (UTC-3), nao UTC (en-CA = YYYY-MM-DD sortavel).
+    const day = formatDateInTz(r.createdAt, DEFAULT_TZ, "en-CA");
     if (!byDay.has(day)) byDay.set(day, []);
     if (r.pickDurationMs !== null) {
       byDay.get(day)!.push(r.pickDurationMs);

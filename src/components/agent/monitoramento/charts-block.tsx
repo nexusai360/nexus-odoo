@@ -48,17 +48,48 @@ function formatDayLabel(iso: string): string {
   return `${String(d).padStart(2, "0")}/${String(m).padStart(2, "0")}`;
 }
 
+/**
+ * Carry-forward do percentual diario: dias SEM teste (percent null ou total 0)
+ * herdam o ultimo percentual conhecido, em vez de cair para 0. Assim a linha
+ * "segura" o ultimo aproveitamento ate haver uma nova rodada que o altere.
+ * Dias iniciais sem nenhum percentual previo ficam null (sem ponto).
+ */
+export function fillForwardDaily(
+  rows: Array<{ date: string; percent: number | null; total: number }>,
+): Array<{
+  date: string;
+  percent: number | null;
+  total: number;
+  carriedForward: boolean;
+}> {
+  let last: number | null = null;
+  return rows.map((d) => {
+    const temTeste = d.total > 0 && d.percent !== null;
+    if (temTeste) {
+      last = d.percent;
+      return { ...d, carriedForward: false };
+    }
+    return { ...d, percent: last, carriedForward: last !== null };
+  });
+}
+
 export function ChartsBlock({
   dailyData,
   kpis,
   topPatterns,
   loading = false,
 }: ChartsBlockProps) {
-  const areaData = dailyData.map((d) => ({
-    name: formatDayLabel(d.date),
-    tooltipLabel: d.date,
-    "% Correto": d.percent ?? 0,
-  }));
+  const filledDaily = fillForwardDaily(dailyData);
+  const areaData = filledDaily
+    // Pula dias iniciais sem percentual previo (linha so comeca no 1o teste).
+    .filter((d) => d.percent !== null)
+    .map((d) => ({
+      name: formatDayLabel(d.date),
+      tooltipLabel: d.carriedForward
+        ? `${d.date} (sem teste no dia, mantém último)`
+        : d.date,
+      "% Correto": d.percent ?? 0,
+    }));
 
   const donutData = [
     { name: "CORRETO", value: kpis.corretos, color: STATUS_COLOR.CORRETO },
@@ -85,7 +116,7 @@ export function ChartsBlock({
         <CardHeader>
           <CardTitle className="flex items-center gap-2 text-sm">
             <Activity className="h-4 w-4 text-violet-500" />
-            % CORRETO por dia
+            % Correto por dia
           </CardTitle>
         </CardHeader>
         <CardContent>
@@ -94,14 +125,14 @@ export function ChartsBlock({
             series={[
               {
                 key: "% Correto",
-                label: "% CORRETO",
+                label: "% Correto",
                 color: STATUS_COLOR.CORRETO,
               },
             ]}
             height={420}
             formatValue={formatPercent}
             xAxisLeftPadding={16}
-            ariaLabel="Percentual de respostas CORRETAS por dia"
+            ariaLabel="Percentual de respostas corretas por dia"
             emptyMessage="Sem avaliações no período"
             emptyHint="Aguarde novas conversas serem avaliadas."
           />

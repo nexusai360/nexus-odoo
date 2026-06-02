@@ -6,6 +6,7 @@
 
 import "server-only";
 import { prisma } from "@/lib/prisma";
+import { formatDateInTz, DEFAULT_TZ } from "@/lib/datetime-core";
 
 // ---------------------------------------------------------------------------
 // Tipos publicos
@@ -307,7 +308,10 @@ export async function getDailyCorrectness(
   });
   const byDay = new Map<string, { corretos: number; total: number }>();
   for (const r of rows) {
-    const key = r.createdAt.toISOString().slice(0, 10);
+    // Bucket por DIA no fuso de Brasilia (UTC-3), nao UTC. Sem isso, avaliacoes
+    // entre 21h e 00h BRT caem no dia seguinte (UTC) e o grafico fica errado.
+    // en-CA garante o formato YYYY-MM-DD (sortavel).
+    const key = formatDateInTz(r.createdAt, DEFAULT_TZ, "en-CA");
     const cur = byDay.get(key) ?? { corretos: 0, total: 0 };
     if (["CORRETO", "PARCIAL", "ERRADO", "FORA_DO_ESCOPO"].includes(r.status)) {
       cur.total++;

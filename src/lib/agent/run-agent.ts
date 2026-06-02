@@ -13,6 +13,11 @@
  */
 
 import { prisma } from "@/lib/prisma";
+import {
+  formatDateTimeInTz,
+  DEFAULT_TZ,
+  DEFAULT_LOCALE,
+} from "@/lib/datetime-core";
 import { buildLlmClient } from "./llm/get-client";
 import { getActiveLlmConfig } from "./llm/get-active-config";
 import { logUsage } from "./llm/usage-logger";
@@ -407,13 +412,18 @@ export async function runAgent(args: RunAgentInput): Promise<RunAgentResult> {
         : {}),
       advancedOverride: args.promptOverride ?? agentSettings.advancedOverride,
     };
-    const systemPrompt = composeSystemPrompt(
+    const systemPromptBase = composeSystemPrompt(
       promptCfg,
       kbSnippets,
       undefined,
       biSchema,
       args.source ?? (args.isPlayground ? "playground" : "bubble"),
     );
+    // Injeta a data/hora atual em America/Sao_Paulo (UTC-3) no topo do prompt.
+    // Sem isso, o modelo nao tem ancora de "hoje" e pode assumir a data UTC
+    // (a virada de dia UTC acontece as 21h BRT), bugando "hoje"/"mes corrente".
+    const agoraBrt = formatDateTimeInTz(new Date(), DEFAULT_TZ, DEFAULT_LOCALE);
+    const systemPrompt = `Data e hora atuais (America/Sao_Paulo, UTC-3): ${agoraBrt}. Use SEMPRE esta data para resolver "hoje", "ontem", "amanha", "mes corrente", "essa semana" e "este ano".\n\n${systemPromptBase}`;
 
     // Carregar tools do MCP interno + dos MCPs externos plugados.
     // Nomes com caracteres fora de [a-zA-Z0-9_-] (ex.: `crm.res_partner.get`)
