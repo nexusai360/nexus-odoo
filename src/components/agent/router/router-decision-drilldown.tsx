@@ -76,8 +76,9 @@ export function RouterDecisionDrilldown({ id }: { id: string }) {
   const maxScore = detail.scores[0]?.score ?? 1;
 
   return (
-    // Largura total da celula (tabela agora e' table-fixed e nao rola lateral).
-    <div className="w-full space-y-5 bg-muted/20 px-4 py-5">
+    // overflow-hidden + break-words: nada vaza para a lateral (sem rolagem
+    // horizontal). A largura e' travada pelo wrapper (panelWidth) na tabela.
+    <div className="w-full space-y-5 overflow-hidden break-words bg-muted/20 px-6 py-5">
       {/* Veredito */}
       <div>
         {verdito === "discordancia" ? (
@@ -195,7 +196,7 @@ export function RouterDecisionDrilldown({ id }: { id: string }) {
             roxo). Neste modelo de embedding, 0,40–0,60 já é um bom match; o que
             importa é o ranking relativo, não o valor absoluto.
           </p>
-          <div className="space-y-1">
+          <div className="max-w-2xl space-y-1">
             {detail.scores.map((s) => {
               const passou =
                 detail.threshold !== null && s.score >= detail.threshold;
