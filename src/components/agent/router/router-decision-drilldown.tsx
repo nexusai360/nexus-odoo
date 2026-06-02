@@ -76,7 +76,9 @@ export function RouterDecisionDrilldown({ id }: { id: string }) {
   const maxScore = detail.scores[0]?.score ?? 1;
 
   return (
-    <div className="space-y-5 bg-muted/20 px-4 py-5">
+    // sticky left-0 + largura contida: o painel nao acompanha o scroll
+    // horizontal da tabela (evita "barras gigantes" e rolagem lateral).
+    <div className="sticky left-0 w-[min(100%,46rem)] max-w-[calc(100vw-3rem)] space-y-5 bg-muted/20 px-4 py-5">
       {/* Veredito */}
       <div>
         {verdito === "discordancia" ? (
@@ -84,19 +86,20 @@ export function RouterDecisionDrilldown({ id }: { id: string }) {
             <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-amber-500" />
             <div className="text-sm">
               <p className="font-medium text-amber-700 dark:text-amber-300">
-                Discordância de roteamento
+                Roteamento divergente (oportunidade de calibragem)
               </p>
               <p className="text-muted-foreground">
-                Nenhum domínio realmente usado pelo agente (
-                {detail.toolsDomains.map(displayDomain).join(", ")}) estava entre
-                os escolhidos pelo router (
+                A ferramenta usada pelo agente foi de{" "}
+                <strong>{detail.toolsDomains.map(displayDomain).join(", ")}</strong>,
+                mas o router teria ofertado{" "}
                 {detail.pickedDomains.length === 0
-                  ? "fallback"
+                  ? "o catálogo inteiro (fallback)"
                   : detail.pickedDomains.map(displayDomain).join(", ")}
-                ). Com o router filtrando o catálogo, a IA poderia não receber a
-                ferramenta certa. Candidata a calibrar{" "}
-                <code>domain-vocabulary.ts</code> ou a Construção de pergunta
-                (reformulação).
+                . No modo <strong>{detail.mode}</strong> isto não bloqueia a
+                resposta (o catálogo não foi cortado); é um sinal de que, com o
+                router filtrando, este domínio poderia faltar. Ação: calibrar{" "}
+                <code>domain-vocabulary.ts</code> (sinônimos do domínio) ou ativar
+                a Construção de pergunta para follow-ups curtos como este.
               </p>
             </div>
           </div>
@@ -178,9 +181,20 @@ export function RouterDecisionDrilldown({ id }: { id: string }) {
       {/* Scores por dominio */}
       {detail.scores.length > 0 && (
         <div>
-          <p className="mb-2 text-xs font-medium text-muted-foreground">
-            Similaridade por domínio (threshold{" "}
-            {detail.threshold !== null ? detail.threshold.toFixed(2) : "?"})
+          <div className="mb-1 flex items-baseline justify-between gap-2">
+            <p className="text-xs font-medium text-foreground">
+              Similaridade por domínio
+            </p>
+            <span className="text-[11px] text-muted-foreground">
+              threshold{" "}
+              {detail.threshold !== null ? detail.threshold.toFixed(2) : "?"}
+            </span>
+          </div>
+          <p className="mb-2 text-[11px] leading-snug text-muted-foreground">
+            Proximidade semântica (cosseno) entre a pergunta e cada domínio. O
+            router oferta os domínios com similaridade ≥ threshold (barras em
+            roxo). Neste modelo de embedding, 0,40–0,60 já é um bom match; o que
+            importa é o ranking relativo, não o valor absoluto.
           </p>
           <div className="space-y-1">
             {detail.scores.map((s) => {
@@ -188,22 +202,25 @@ export function RouterDecisionDrilldown({ id }: { id: string }) {
                 detail.threshold !== null && s.score >= detail.threshold;
               const escolhido = detail.pickedDomains.includes(s.domain);
               return (
-                <div key={s.domain} className="flex items-center gap-2 text-xs">
-                  <span className="w-28 shrink-0 font-mono text-muted-foreground">
+                <div
+                  key={s.domain}
+                  className="grid grid-cols-[6rem_1fr_2.5rem] items-center gap-2 text-xs"
+                >
+                  <span className="truncate font-mono text-muted-foreground">
                     {displayDomain(s.domain)}
                   </span>
-                  <div className="relative h-2 flex-1 overflow-hidden rounded bg-muted">
+                  <div className="relative h-1.5 overflow-hidden rounded bg-muted">
                     <div
                       className={cn(
                         "absolute inset-y-0 left-0 rounded",
-                        escolhido ? "bg-violet-500" : "bg-muted-foreground/40",
+                        escolhido ? "bg-violet-500" : "bg-muted-foreground/30",
                       )}
                       style={{ width: `${(s.score / maxScore) * 100}%` }}
                     />
                   </div>
                   <span
                     className={cn(
-                      "w-12 shrink-0 text-right tabular-nums",
+                      "text-right tabular-nums",
                       passou ? "text-foreground" : "text-muted-foreground",
                     )}
                   >

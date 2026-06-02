@@ -102,6 +102,9 @@ interface EvaluationsTableProps {
   /** Auto-numerador de rodadas (R8, R9, ...). Vindo do parent para
    * compartilhar a mesma instancia de Map entre seletores e tabela. */
   labelForRodada?: (marker: string | null | undefined) => string;
+  /** Acao opcional renderizada a direita do titulo "Avaliacoes" (ex.: botao
+   *  "Avaliar pendentes" em ambiente local). */
+  headerAction?: React.ReactNode;
 }
 
 export function EvaluationsTable({
@@ -110,6 +113,7 @@ export function EvaluationsTable({
   availableModels,
   availablePatterns,
   labelForRodada,
+  headerAction,
 }: EvaluationsTableProps) {
   const [data, setData] = useState<InitialData>(initialData);
   const [loading, setLoading] = useState(false);
@@ -198,16 +202,19 @@ export function EvaluationsTable({
   return (
     <Card className="overflow-hidden rounded-2xl border border-border bg-muted/30">
       <CardHeader>
-        <CardTitle className="flex items-center gap-2 text-sm">
-          <History className="h-4 w-4 text-violet-500" />
-          Avaliações
-          {loading && (
-            <Loader2
-              className="h-3.5 w-3.5 animate-spin text-muted-foreground"
-              aria-label="Carregando"
-            />
-          )}
-        </CardTitle>
+        <div className="flex items-center justify-between gap-3">
+          <CardTitle className="flex items-center gap-2 text-sm">
+            <History className="h-4 w-4 text-violet-500" />
+            Avaliações
+            {loading && (
+              <Loader2
+                className="h-3.5 w-3.5 animate-spin text-muted-foreground"
+                aria-label="Carregando"
+              />
+            )}
+          </CardTitle>
+          {headerAction}
+        </div>
       </CardHeader>
       <CardContent className="p-0">
         <EvaluationsTableFilters
