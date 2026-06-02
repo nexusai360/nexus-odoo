@@ -17,7 +17,7 @@
  */
 
 import { motion, useReducedMotion } from "framer-motion";
-import { ChevronDown, Download, Loader2, LogOut, Mic, MoreVertical, Send, Sparkles, Trash2, X } from "lucide-react";
+import { ChevronDown, Download, Loader2, Mic, MoreVertical, Send, Sparkles, Trash2, X } from "lucide-react";
 import * as React from "react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
@@ -30,6 +30,7 @@ import { MessageInput } from "./message-input";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { getConversationMessages } from "@/lib/actions/conversation-messages";
 import { exportConversationReport } from "@/lib/actions/agent-conversation-export";
+import { archiveActiveConversation } from "@/lib/actions/active-conversation";
 import { WELCOME_SUGGESTIONS } from "@/lib/agent/welcome-suggestions";
 
 interface ChatPanelProps {
@@ -631,12 +632,20 @@ export function ChatPanel({
     [handleSend],
   );
 
-  const handleClear = React.useCallback(() => {
+  // "Limpar sessao": arquiva a conversa atual no banco (endedAt, nao deleta),
+  // zera a UI e devolve ao welcome. O FAB (onEndSession) esquece o id para a
+  // proxima mensagem criar conversa nova.
+  const handleClearSession = React.useCallback(async () => {
+    setMenuOpen(false);
+    const cid = conversationIdRef.current;
+    if (cid) {
+      await archiveActiveConversation(cid);
+    }
     abortRef.current?.abort();
     setMessages([]);
-    setMenuOpen(false);
     conversationIdRef.current = null;
-  }, []);
+    onEndSession?.();
+  }, [onEndSession]);
 
   // Transcreve o áudio gravado e envia o texto resultante como pergunta.
   const handleSendAudio = React.useCallback(
@@ -730,15 +739,6 @@ export function ChatPanel({
                 className="absolute top-full right-0 z-10 mt-1.5 w-48 overflow-hidden rounded-lg border border-border bg-card shadow-lg"
                 onMouseLeave={() => setMenuOpen(false)}
               >
-                <button
-                  type="button"
-                  role="menuitem"
-                  onClick={handleClear}
-                  className="flex w-full cursor-pointer items-center gap-2 px-3 py-2 text-left text-sm text-foreground transition-colors hover:bg-muted"
-                >
-                  <Trash2 className="h-3.5 w-3.5 text-muted-foreground" />
-                  Limpar histórico
-                </button>
                 {isSuperAdmin ? (
                   <button
                     type="button"
@@ -768,27 +768,25 @@ export function ChatPanel({
                       a.click();
                       a.remove();
                       URL.revokeObjectURL(url);
-                      toast.success("Relatório baixado.");
+                      toast.success("Conversa baixada.");
                     }}
-                    className="flex w-full cursor-pointer items-center gap-2 border-t border-border/50 px-3 py-2 text-left text-sm text-foreground transition-colors hover:bg-muted"
+                    className="flex w-full cursor-pointer items-center gap-2 px-3 py-2 text-left text-sm text-foreground transition-colors hover:bg-muted focus-visible:bg-muted focus-visible:outline-none"
                   >
                     <Download className="h-3.5 w-3.5 text-muted-foreground" />
-                    Baixar relatório (.txt)
+                    Baixar conversa (.txt)
                   </button>
                 ) : null}
                 {onEndSession ? (
                   <button
                     type="button"
                     role="menuitem"
-                    onClick={() => {
-                      setMenuOpen(false);
-                      handleClear();
-                      onEndSession();
-                    }}
-                    className="flex w-full cursor-pointer items-center gap-2 border-t border-border/50 px-3 py-2 text-left text-sm text-foreground transition-colors hover:bg-muted"
+                    onClick={handleClearSession}
+                    className={`flex w-full cursor-pointer items-center gap-2 px-3 py-2 text-left text-sm text-foreground transition-colors hover:bg-destructive/10 hover:text-destructive focus-visible:bg-destructive/10 focus-visible:text-destructive focus-visible:outline-none${
+                      isSuperAdmin ? " border-t border-border/50" : ""
+                    }`}
                   >
-                    <LogOut className="h-3.5 w-3.5 text-muted-foreground" />
-                    Encerrar sessão
+                    <Trash2 className="h-3.5 w-3.5" />
+                    Limpar sessão
                   </button>
                 ) : null}
               </div>
