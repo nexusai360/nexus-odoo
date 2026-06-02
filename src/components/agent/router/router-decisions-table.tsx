@@ -8,7 +8,7 @@
  */
 
 import { useRouter, useSearchParams, usePathname } from "next/navigation";
-import { Fragment, useEffect, useState, useTransition } from "react";
+import { Fragment, useEffect, useRef, useState, useTransition } from "react";
 import {
   AlertTriangle,
   Check,
@@ -163,6 +163,20 @@ export function RouterDecisionsTable({
   const [pending, startTransition] = useTransition();
   const [search, setSearch] = useState(searchQuery);
   const [expandedId, setExpandedId] = useState<string | null>(null);
+  // Largura visivel da area da tabela. O painel de drill-down usa exatamente
+  // essa largura (sticky left), entao ocupa toda a tela e NUNCA gera rolagem
+  // horizontal, independente da largura natural da tabela.
+  const scrollRef = useRef<HTMLDivElement>(null);
+  const [panelWidth, setPanelWidth] = useState<number | undefined>(undefined);
+  useEffect(() => {
+    const el = scrollRef.current;
+    if (!el) return;
+    const measure = () => setPanelWidth(el.clientWidth);
+    measure();
+    const ro = new ResizeObserver(measure);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
 
   const applyMulti = (key: string, values: string[]) => {
     const params = new URLSearchParams(searchParams.toString());
@@ -294,17 +308,17 @@ export function RouterDecisionsTable({
           </div>
         ) : (
           <>
-            <div className="w-full">
-              <Table className="w-full table-fixed">
+            <div className="overflow-x-auto" ref={scrollRef}>
+              <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead className="w-[120px]">Data</TableHead>
-                    <TableHead className="w-[104px]">Origem</TableHead>
+                    <TableHead className="w-[150px]">Data</TableHead>
+                    <TableHead className="w-[120px]">Origem</TableHead>
                     <TableHead>Pergunta</TableHead>
-                    <TableHead className="w-[200px]">Router escolhida</TableHead>
-                    <TableHead className="w-[124px]">Tool chamada</TableHead>
+                    <TableHead>Router escolhida</TableHead>
+                    <TableHead>Tool chamada</TableHead>
                     <TableHead
-                      className="w-[92px] text-right"
+                      className="w-[110px] text-right"
                       title="Similaridade (cosseno) entre a pergunta e o domínio mais próximo. Neste modelo de embedding, 0,40-0,60 já é um bom match (raramente passa de 0,7). O acerto alto vem do ranking relativo (o domínio certo é o mais próximo) e das regras de palavra-chave, não do valor absoluto."
                     >
                       Similaridade
@@ -350,7 +364,7 @@ export function RouterDecisionsTable({
                         )}
                       </TableCell>
                       <TableCell
-                        className="text-sm"
+                        className="max-w-[320px] text-sm"
                         title={
                           r.usedReformulation && r.reformulatedQuestion
                             ? `Original: ${r.userQuestion}\nReformulada: ${r.reformulatedQuestion}`
@@ -402,7 +416,12 @@ export function RouterDecisionsTable({
                     {isOpen && (
                       <TableRow className="hover:bg-transparent">
                         <TableCell colSpan={6} className="p-0">
-                          <RouterDecisionDrilldown id={r.id} />
+                          <div
+                            className="sticky left-0"
+                            style={panelWidth ? { width: panelWidth } : undefined}
+                          >
+                            <RouterDecisionDrilldown id={r.id} />
+                          </div>
                         </TableCell>
                       </TableRow>
                     )}
