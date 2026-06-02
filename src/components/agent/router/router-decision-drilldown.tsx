@@ -76,9 +76,9 @@ export function RouterDecisionDrilldown({ id }: { id: string }) {
   const maxScore = detail.scores[0]?.score ?? 1;
 
   return (
-    // overflow-hidden + break-words: nada vaza para a lateral (sem rolagem
-    // horizontal). A largura e' travada pelo wrapper (panelWidth) na tabela.
-    <div className="w-full space-y-5 overflow-hidden break-words bg-muted/20 px-6 py-5">
+    // Renderizado FORA do scroller da tabela (largura normal do card), entao o
+    // texto quebra linha naturalmente com break-words , sem corte nem rolagem.
+    <div className="w-full space-y-5 break-words">
       {/* Veredito */}
       <div>
         {verdito === "discordancia" ? (
