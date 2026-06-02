@@ -129,6 +129,15 @@ describe("assertConversationOwned", () => {
     });
     await expect(assertConversationOwned("conv-1", "user-1")).rejects.toThrow(/acesso negado/i);
   });
+
+  test("lança quando conversa está arquivada (endedAt)", async () => {
+    prisma.conversation.findUnique.mockResolvedValue({
+      id: "conv-1",
+      userId: "user-1",
+      endedAt: new Date(),
+    });
+    await expect(assertConversationOwned("conv-1", "user-1")).rejects.toThrow(/encerrada/i);
+  });
 });
 
 describe("loadHistory", () => {

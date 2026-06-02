@@ -98,6 +98,8 @@ export async function getOrCreateWhatsappConversation(
     where: {
       userId,
       channel: "whatsapp",
+      // Conversa arquivada ("Limpar sessao") nao e reaproveitada na janela.
+      endedAt: null,
       updatedAt: { gte: cutoff },
     },
     orderBy: { updatedAt: "desc" },
@@ -136,7 +138,7 @@ export async function assertConversationOwned(
 ): Promise<void> {
   const conv = await prisma.conversation.findUnique({
     where: { id: conversationId },
-    select: { userId: true },
+    select: { userId: true, endedAt: true },
   });
 
   if (!conv) {
@@ -147,6 +149,13 @@ export async function assertConversationOwned(
     throw new Error(
       `Acesso negado: conversa ${conversationId} não pertence ao usuário ${userId}`,
     );
+  }
+
+  // Conversa arquivada ("Limpar sessao") e terminal: nao aceita novos turnos.
+  // Bloqueia tanto a rota de stream quanto o run-agent de reabrir uma sessao
+  // que o usuario ja limpou (ex.: aba orfa com o id antigo em memoria).
+  if (conv.endedAt) {
+    throw new Error(`Conversa encerrada: ${conversationId}`);
   }
 }
 

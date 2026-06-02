@@ -39,9 +39,10 @@ export async function getConversationMessages(
     return { ok: false, error: "Acesso negado" };
   }
 
-  // Busca as últimas 100 mensagens em ordem cronológica
+  // Busca as últimas 100 mensagens em ordem cronológica. A bubble nunca
+  // recarrega uma conversa arquivada ("Limpar sessao"): filtra endedAt null.
   const messages = await prisma.message.findMany({
-    where: { conversationId },
+    where: { conversationId, conversation: { endedAt: null } },
     orderBy: { createdAt: "asc" },
     select: {
       id: true,
