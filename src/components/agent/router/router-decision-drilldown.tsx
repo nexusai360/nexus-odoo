@@ -83,7 +83,7 @@ export function RouterDecisionDrilldown({ id }: { id: string }) {
         {verdito === "discordancia" ? (
           <div className="flex items-start gap-2 rounded-lg border border-amber-500/30 bg-amber-500/5 p-3">
             <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-amber-500" />
-            <div className="text-sm">
+            <div className="min-w-0 flex-1 text-sm">
               <p className="font-medium text-amber-700 dark:text-amber-300">
                 Roteamento divergente (oportunidade de calibragem)
               </p>
@@ -105,7 +105,7 @@ export function RouterDecisionDrilldown({ id }: { id: string }) {
         ) : verdito === "chat" ? (
           <div className="flex items-start gap-2 rounded-lg border border-zinc-500/30 bg-zinc-500/5 p-3">
             <MessageSquare className="mt-0.5 h-4 w-4 shrink-0 text-zinc-500" />
-            <div className="text-sm">
+            <div className="min-w-0 flex-1 text-sm">
               <p className="font-medium text-zinc-600 dark:text-zinc-300">
                 Turno conversacional (sem tool)
               </p>
@@ -119,7 +119,7 @@ export function RouterDecisionDrilldown({ id }: { id: string }) {
         ) : (
           <div className="flex items-start gap-2 rounded-lg border border-emerald-500/30 bg-emerald-500/5 p-3">
             <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-emerald-500" />
-            <div className="text-sm">
+            <div className="min-w-0 flex-1 text-sm">
               <p className="font-medium text-emerald-700 dark:text-emerald-300">
                 Roteamento concordante
               </p>
