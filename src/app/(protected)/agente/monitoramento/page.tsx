@@ -18,6 +18,7 @@ import { PageHeader } from "@/components/page-header";
 import { PageShell } from "@/components/layout/page-shell";
 import { getCurrentUser } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { isLocalRuntime } from "@/lib/env-local";
 import {
   getPermissionDenialStats,
   type DenialPeriod,
@@ -82,6 +83,7 @@ export default async function MonitoramentoPage({
         <MonitoramentoContent
           minDate={minDate.toISOString()}
           qualityHeuristicIntervalMinutes={qualityHeuristicIntervalMinutes}
+          isLocalRuntime={isLocalRuntime()}
         />
       </div>
       <div className="mt-6">
