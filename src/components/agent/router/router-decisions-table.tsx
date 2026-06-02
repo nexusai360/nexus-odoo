@@ -363,7 +363,7 @@ export function RouterDecisionsTable({
                         )}
                       </TableCell>
                       <TableCell
-                        className="max-w-[320px] text-sm"
+                        className="max-w-[220px] text-sm"
                         title={
                           r.usedReformulation && r.reformulatedQuestion
                             ? `Original: ${r.userQuestion}\nReformulada: ${r.reformulatedQuestion}`
