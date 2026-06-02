@@ -8,7 +8,7 @@
  */
 
 import { useRouter, useSearchParams, usePathname } from "next/navigation";
-import { useEffect, useState, useTransition } from "react";
+import { Fragment, useEffect, useState, useTransition } from "react";
 import {
   AlertTriangle,
   Check,
@@ -163,7 +163,6 @@ export function RouterDecisionsTable({
   const [pending, startTransition] = useTransition();
   const [search, setSearch] = useState(searchQuery);
   const [expandedId, setExpandedId] = useState<string | null>(null);
-  const expandedRow = rows.find((r) => r.id === expandedId) ?? null;
 
   const applyMulti = (key: string, values: string[]) => {
     const params = new URLSearchParams(searchParams.toString());
@@ -295,29 +294,6 @@ export function RouterDecisionsTable({
           </div>
         ) : (
           <>
-            {expandedRow && (
-              <div className="border-b border-border px-5 py-5">
-                <div className="mb-3 flex items-start justify-between gap-3">
-                  <div className="min-w-0">
-                    <p className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
-                      Detalhe da requisição
-                    </p>
-                    <p className="mt-0.5 break-words text-sm font-medium text-foreground">
-                      {expandedRow.userQuestion}
-                    </p>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => setExpandedId(null)}
-                    aria-label="Fechar detalhe"
-                    className="shrink-0 rounded-md p-1 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
-                  >
-                    <X className="h-4 w-4" aria-hidden />
-                  </button>
-                </div>
-                <RouterDecisionDrilldown id={expandedRow.id} />
-              </div>
-            )}
             <div className="overflow-x-auto">
               <Table>
                 <TableHeader>
@@ -339,8 +315,8 @@ export function RouterDecisionsTable({
                   {rows.map((r) => {
                     const isOpen = expandedId === r.id;
                     return (
+                    <Fragment key={r.id}>
                     <TableRow
-                      key={r.id}
                       onClick={() => setExpandedId(isOpen ? null : r.id)}
                       aria-expanded={isOpen}
                       className={cn(
@@ -423,6 +399,16 @@ export function RouterDecisionsTable({
                         )}
                       </TableCell>
                     </TableRow>
+                    {isOpen && (
+                      <TableRow className="hover:bg-transparent">
+                        <TableCell colSpan={6} className="border-t-0 bg-muted/20 p-5">
+                          <div className="min-w-0">
+                            <RouterDecisionDrilldown id={r.id} />
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    )}
+                    </Fragment>
                     );
                   })}
                 </TableBody>
