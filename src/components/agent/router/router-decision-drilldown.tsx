@@ -78,7 +78,7 @@ export function RouterDecisionDrilldown({ id }: { id: string }) {
   return (
     // Renderizado FORA do scroller da tabela (largura normal do card), entao o
     // texto quebra linha naturalmente com break-words , sem corte nem rolagem.
-    <div className="w-full space-y-5 break-words">
+    <div className="w-full max-w-4xl space-y-5 break-words [overflow-wrap:anywhere]">
       {/* Veredito */}
       <div>
         {verdito === "discordancia" ? (
@@ -89,17 +89,15 @@ export function RouterDecisionDrilldown({ id }: { id: string }) {
                 Roteamento divergente (oportunidade de calibragem)
               </p>
               <p className="text-muted-foreground">
-                A ferramenta usada pelo agente foi de{" "}
-                <strong>{detail.toolsDomains.map(displayDomain).join(", ")}</strong>,
-                mas o router teria ofertado{" "}
+                O agente usou{" "}
+                <strong>{detail.toolsDomains.map(displayDomain).join(", ")}</strong>
+                , fora do que o router ofertou (
                 {detail.pickedDomains.length === 0
-                  ? "o catálogo inteiro (fallback)"
+                  ? "fallback"
                   : detail.pickedDomains.map(displayDomain).join(", ")}
-                . No modo <strong>{detail.mode}</strong> isto não bloqueia a
-                resposta (o catálogo não foi cortado); é um sinal de que, com o
-                router filtrando, este domínio poderia faltar. Ação: calibrar{" "}
-                <code>domain-vocabulary.ts</code> (sinônimos do domínio) ou ativar
-                a Construção de pergunta para follow-ups curtos como este.
+                ). Em modo <strong>{detail.mode}</strong> não bloqueia a resposta;
+                só sinaliza que, com o router filtrando, esse domínio poderia
+                faltar. Calibrar o vocabulário do domínio resolve.
               </p>
             </div>
           </div>
@@ -191,10 +189,9 @@ export function RouterDecisionDrilldown({ id }: { id: string }) {
             </span>
           </div>
           <p className="mb-2 text-[11px] leading-snug text-muted-foreground">
-            Proximidade semântica (cosseno) entre a pergunta e cada domínio. O
-            router oferta os domínios com similaridade ≥ threshold (barras em
-            roxo). Neste modelo de embedding, 0,40–0,60 já é um bom match; o que
-            importa é o ranking relativo, não o valor absoluto.
+            Proximidade (cosseno) da pergunta com cada domínio. O router oferta
+            os que passam do threshold (barras em roxo). Vale o ranking, não o
+            valor absoluto.
           </p>
           <div className="max-w-2xl space-y-1">
             {detail.scores.map((s) => {
