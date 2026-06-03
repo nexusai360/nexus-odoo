@@ -9,7 +9,14 @@
  */
 
 import { useEffect, useState } from "react";
-import { AlertTriangle, CheckCircle2, Loader2, MessageSquare } from "lucide-react";
+import {
+  AlertTriangle,
+  Bot,
+  CheckCircle2,
+  Loader2,
+  MessageSquare,
+  User as UserIcon,
+} from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
@@ -251,17 +258,32 @@ export function RouterDecisionDrilldown({ id }: { id: string }) {
         {detail.originalFallback && <span>Camada 1 caiu em fallback</span>}
       </div>
 
-      {/* Resposta final do agente */}
-      {detail.finalAnswer && (
-        <div>
-          <p className="mb-1 text-xs font-medium text-muted-foreground">
-            Resposta do agente
-          </p>
-          <div className="rounded-lg border border-border bg-background p-3 text-sm">
-            <MarkdownSnapshot content={detail.finalAnswer} />
+      {/* Pergunta do usuario + Resposta do agente (estilo backtest: icone +
+          label). A pergunta aqui aparece COMPLETA, ja que saiu da tabela. */}
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+        <section className="space-y-1.5">
+          <h4 className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+            <UserIcon className="h-3.5 w-3.5" /> Pergunta
+          </h4>
+          <div className="rounded-lg border border-border bg-background px-3 py-2 text-sm">
+            {detail.userQuestion ? (
+              <MarkdownSnapshot content={detail.userQuestion} />
+            ) : (
+              <span className="text-muted-foreground">(vazio)</span>
+            )}
           </div>
-        </div>
-      )}
+        </section>
+        {detail.finalAnswer && (
+          <section className="space-y-1.5">
+            <h4 className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+              <Bot className="h-3.5 w-3.5" /> Resposta
+            </h4>
+            <div className="rounded-lg border border-border bg-background px-3 py-2 text-sm">
+              <MarkdownSnapshot content={detail.finalAnswer} />
+            </div>
+          </section>
+        )}
+      </div>
     </div>
   );
 }

@@ -131,7 +131,7 @@ function PickedTag({ children }: { children: React.ReactNode }) {
   return (
     <Badge
       variant="outline"
-      className="border-border bg-muted/40 font-mono text-[11px] text-muted-foreground"
+      className="shrink-0 whitespace-nowrap border-border bg-muted/40 font-mono text-[11px] text-muted-foreground"
     >
       {children}
     </Badge>
@@ -299,12 +299,15 @@ export function RouterDecisionsTable({
                 <TableHeader>
                   <TableRow>
                     <TableHead className="w-[150px]">Data</TableHead>
-                    <TableHead className="w-[120px]">Origem</TableHead>
-                    <TableHead>Pergunta</TableHead>
+                    <TableHead className="w-[110px]">Origem</TableHead>
+                    {/* Pergunta saiu da tabela (fica abreviada e ilegivel); a
+                        pergunta completa agora vive no drill-down. Sem ela, esta
+                        coluna ganha a largura que faltava para caber 5 tags numa
+                        linha so. */}
                     <TableHead>Router escolhida</TableHead>
-                    <TableHead>Tool chamada</TableHead>
+                    <TableHead className="w-[150px]">Tool chamada</TableHead>
                     <TableHead
-                      className="w-[110px] text-right"
+                      className="w-[84px] text-right"
                       title="Similaridade (cosseno) entre a pergunta e o domínio mais próximo. Neste modelo de embedding, 0,40-0,60 já é um bom match (raramente passa de 0,7). O acerto alto vem do ranking relativo (o domínio certo é o mais próximo) e das regras de palavra-chave, não do valor absoluto."
                     >
                       Similaridade
@@ -349,28 +352,11 @@ export function RouterDecisionsTable({
                           <span className="text-muted-foreground">-</span>
                         )}
                       </TableCell>
-                      <TableCell
-                        className="max-w-[320px] text-sm"
-                        title={
-                          r.usedReformulation && r.reformulatedQuestion
-                            ? `Original: ${r.userQuestion}\nReformulada: ${r.reformulatedQuestion}`
-                            : r.userQuestion
-                        }
-                      >
-                        <div className="truncate">{r.userQuestion}</div>
-                        {r.usedReformulation && r.reformulatedQuestion ? (
-                          <div className="mt-0.5 flex items-center gap-1.5">
-                            <span className="rounded bg-violet-500/15 px-1.5 py-0.5 text-[10px] font-medium text-violet-700 dark:text-violet-300">
-                              reformulada
-                            </span>
-                            <span className="truncate text-xs text-muted-foreground">
-                              {r.reformulatedQuestion}
-                            </span>
-                          </div>
-                        ) : null}
-                      </TableCell>
                       <TableCell>
-                        <div className="flex flex-wrap gap-1">
+                        {/* flex-nowrap: as tags do router ficam SEMPRE numa
+                            linha so (sem a coluna Pergunta, ha largura de
+                            sobra). Cada tag nao encolhe nem quebra. */}
+                        <div className="flex flex-nowrap items-center gap-1">
                           {r.pickedDomains.length === 0 ? (
                             <PickedTag>fallback</PickedTag>
                           ) : (
@@ -406,7 +392,7 @@ export function RouterDecisionsTable({
                             vaza pela direita. A tabela ja cabe no card, entao o
                             td tem a largura visivel e o texto quebra na caixa. */}
                         <TableCell
-                          colSpan={6}
+                          colSpan={5}
                           className="whitespace-normal p-0"
                         >
                           <div className="bg-muted/20 p-5">
