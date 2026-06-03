@@ -172,15 +172,12 @@ export function RouterDecisionDrilldown({ id }: { id: string }) {
       {/* Scores por dominio */}
       {detail.scores.length > 0 && (
         <div>
-          <div className="mb-1 flex items-baseline justify-between gap-2">
-            <p className="text-xs font-medium text-foreground">
-              Similaridade por domínio
-            </p>
-            <span className="text-[11px] text-muted-foreground">
-              threshold{" "}
-              {detail.threshold !== null ? detail.threshold.toFixed(2) : "?"}
+          <p className="mb-1 text-xs font-medium text-foreground">
+            Similaridade por domínio
+            <span className="ml-2 font-normal text-muted-foreground">
+              (threshold {detail.threshold !== null ? detail.threshold.toFixed(2) : "?"})
             </span>
-          </div>
+          </p>
           <p className="mb-2 text-[11px] leading-snug text-muted-foreground">
             Proximidade (cosseno) da pergunta com cada domínio. O router oferta
             os que passam do threshold (barras em roxo). Vale o ranking, não o
