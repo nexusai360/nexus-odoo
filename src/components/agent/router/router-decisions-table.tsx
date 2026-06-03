@@ -8,7 +8,7 @@
  */
 
 import { useRouter, useSearchParams, usePathname } from "next/navigation";
-import { Fragment, useEffect, useRef, useState, useTransition } from "react";
+import { Fragment, useEffect, useState, useTransition } from "react";
 import {
   AlertTriangle,
   Check,
@@ -163,19 +163,6 @@ export function RouterDecisionsTable({
   const [pending, startTransition] = useTransition();
   const [search, setSearch] = useState(searchQuery);
   const [expandedId, setExpandedId] = useState<string | null>(null);
-  // Largura visivel do card (NAO rola). O painel inline usa exatamente essa
-  // largura (sticky left-0) -> abre abaixo da linha SEM gerar rolagem lateral.
-  const widthRef = useRef<HTMLDivElement>(null);
-  const [panelWidth, setPanelWidth] = useState<number>();
-  useEffect(() => {
-    const el = widthRef.current;
-    if (!el) return;
-    const measure = () => setPanelWidth(el.clientWidth);
-    measure();
-    const ro = new ResizeObserver(measure);
-    ro.observe(el);
-    return () => ro.disconnect();
-  }, []);
 
   const applyMulti = (key: string, values: string[]) => {
     const params = new URLSearchParams(searchParams.toString());
@@ -307,7 +294,7 @@ export function RouterDecisionsTable({
           </div>
         ) : (
           <>
-            <div ref={widthRef}>
+            <div className="[container-type:inline-size]">
               <Table>
                 <TableHeader>
                   <TableRow>
@@ -415,10 +402,7 @@ export function RouterDecisionsTable({
                     {isOpen && (
                       <TableRow className="hover:bg-transparent">
                         <TableCell colSpan={6} className="p-0">
-                          <div
-                            className="sticky left-0 bg-muted/20 p-5"
-                            style={panelWidth ? { width: panelWidth } : undefined}
-                          >
+                          <div className="sticky left-0 w-[100cqw] bg-muted/20 p-5">
                             <RouterDecisionDrilldown id={r.id} />
                           </div>
                         </TableCell>
