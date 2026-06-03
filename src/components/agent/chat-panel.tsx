@@ -882,7 +882,7 @@ export function ChatPanel({
   const innerContent = (
     <>
       {/* Header */}
-      <header className="flex items-center justify-between gap-2 border-b border-border bg-background/60 px-4 py-3">
+      <header className="relative z-40 flex items-center justify-between gap-2 border-b border-border bg-background/60 px-4 py-3">
           <div className="flex items-center gap-2.5">
             <div className="relative flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-violet-600 to-violet-500 text-white shadow-md shadow-violet-600/40">
               <Sparkles className="h-4.5 w-4.5" strokeWidth={2.25} />
