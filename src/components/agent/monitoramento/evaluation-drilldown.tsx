@@ -192,13 +192,17 @@ export function EvaluationDrilldown({ evaluationId, onAdjusted }: Props) {
           </span>
         </div>
         <div className="text-xs text-muted-foreground">
-          Judge: {e.judgeModel ?? ","} · {e.judgeVersion}
+          {/* judgeModel so existe quando um LLM julgou; o judge heuristico
+              (regras, sem LLM) deixa esse campo nulo. Antes caia num ","
+              solto. Mostra o modelo so quando ha. */}
+          Judge: {e.judgeModel ? `${e.judgeModel} · ` : ""}
+          {e.judgeVersion}
         </div>
       </div>
 
       {/* Pergunta e resposta */}
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-        <section className="space-y-1.5">
+        <section className="min-w-0 space-y-1.5">
           <h4 className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
             <UserIcon className="h-3.5 w-3.5" /> Pergunta
           </h4>
@@ -210,7 +214,7 @@ export function EvaluationDrilldown({ evaluationId, onAdjusted }: Props) {
             )}
           </div>
         </section>
-        <section className="space-y-1.5">
+        <section className="min-w-0 space-y-1.5">
           <h4 className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
             <Bot className="h-3.5 w-3.5" /> Resposta
           </h4>

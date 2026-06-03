@@ -260,8 +260,8 @@ export function EvaluationsTable({
                       )}
                       onClick={() => setExpandedId(isOpen ? null : row.id)}
                     >
-                      <TableCell className="font-mono text-xs">
-                        {dateTimeFmt.format(row.createdAt)}
+                      <TableCell className="font-mono text-xs whitespace-nowrap">
+                        {dateTimeFmt.format(row.createdAt).replace(",", "")}
                       </TableCell>
                       <TableCell className="text-xs">
                         {(() => {
@@ -355,7 +355,10 @@ export function EvaluationsTable({
                     </TableRow>
                     {isOpen && (
                       <TableRow className="bg-muted/10">
-                        <TableCell colSpan={8} className="p-0">
+                        {/* whitespace-normal: o td herda whitespace-nowrap do
+                            TableCell; sem isso a resposta da IA nao quebra e
+                            vaza pela direita do componente. */}
+                        <TableCell colSpan={8} className="whitespace-normal p-0">
                           <EvaluationDrilldown
                             evaluationId={row.id}
                             onAdjusted={handleAdjusted}

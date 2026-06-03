@@ -73,7 +73,7 @@ const DOMAIN_TONE: Record<string, string> = {
   comercial:
     "bg-amber-500/10 text-amber-700 border-amber-500/30 dark:text-amber-300",
   cadastros:
-    "bg-teal-500/10 text-teal-700 border-teal-500/30 dark:text-teal-300",
+    "bg-orange-500/10 text-orange-700 border-orange-500/30 dark:text-orange-300",
   contabil:
     "bg-indigo-500/10 text-indigo-700 border-indigo-500/30 dark:text-indigo-300",
   crm: "bg-fuchsia-500/10 text-fuchsia-700 border-fuchsia-500/30 dark:text-fuchsia-300",
@@ -300,10 +300,12 @@ export function RouterDecisionsTable({
                   <TableRow>
                     <TableHead className="w-[150px]">Data</TableHead>
                     <TableHead className="w-[110px]">Origem</TableHead>
-                    {/* Pergunta saiu da tabela (fica abreviada e ilegivel); a
-                        pergunta completa agora vive no drill-down. Sem ela, esta
-                        coluna ganha a largura que faltava para caber 5 tags numa
+                    {/* Pergunta volta como referencia (qual linha abrir), porem
+                        ESTREITA e com reticencias cedo (w-[200px]). A versao
+                        completa vive no drill-down. Router escolhida fica como a
+                        unica coluna flexivel -> sobra largura para as 5 tags numa
                         linha so. */}
+                    <TableHead className="w-[200px]">Pergunta</TableHead>
                     <TableHead>Router escolhida</TableHead>
                     <TableHead className="w-[150px]">Tool chamada</TableHead>
                     <TableHead
@@ -336,7 +338,7 @@ export function RouterDecisionsTable({
                               aria-label="Discordância"
                             />
                           ) : null}
-                          {dateTimeFmt.format(r.createdAt)}
+                          {dateTimeFmt.format(r.createdAt).replace(",", "")}
                         </span>
                       </TableCell>
                       <TableCell className="text-xs">
@@ -352,10 +354,30 @@ export function RouterDecisionsTable({
                           <span className="text-muted-foreground">-</span>
                         )}
                       </TableCell>
+                      <TableCell
+                        className="w-[200px] max-w-[200px] text-sm"
+                        title={
+                          r.usedReformulation && r.reformulatedQuestion
+                            ? `Original: ${r.userQuestion}\nReformulada: ${r.reformulatedQuestion}`
+                            : r.userQuestion
+                        }
+                      >
+                        <div className="truncate">{r.userQuestion}</div>
+                        {r.usedReformulation && r.reformulatedQuestion ? (
+                          <div className="mt-0.5 flex items-center gap-1.5">
+                            <span className="rounded bg-violet-500/15 px-1.5 py-0.5 text-[10px] font-medium text-violet-700 dark:text-violet-300">
+                              reformulada
+                            </span>
+                            <span className="truncate text-xs text-muted-foreground">
+                              {r.reformulatedQuestion}
+                            </span>
+                          </div>
+                        ) : null}
+                      </TableCell>
                       <TableCell>
                         {/* flex-nowrap: as tags do router ficam SEMPRE numa
-                            linha so (sem a coluna Pergunta, ha largura de
-                            sobra). Cada tag nao encolhe nem quebra. */}
+                            linha so. Pergunta agora e' bounded (w-200px), entao
+                            esta coluna flexivel ainda recebe largura de sobra. */}
                         <div className="flex flex-nowrap items-center gap-1">
                           {r.pickedDomains.length === 0 ? (
                             <PickedTag>fallback</PickedTag>
@@ -392,7 +414,7 @@ export function RouterDecisionsTable({
                             vaza pela direita. A tabela ja cabe no card, entao o
                             td tem a largura visivel e o texto quebra na caixa. */}
                         <TableCell
-                          colSpan={5}
+                          colSpan={6}
                           className="whitespace-normal p-0"
                         >
                           <div className="bg-muted/20 p-5">

@@ -261,7 +261,7 @@ export function RouterDecisionDrilldown({ id }: { id: string }) {
       {/* Pergunta do usuario + Resposta do agente (estilo backtest: icone +
           label). A pergunta aqui aparece COMPLETA, ja que saiu da tabela. */}
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-        <section className="space-y-1.5">
+        <section className="min-w-0 space-y-1.5">
           <h4 className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
             <UserIcon className="h-3.5 w-3.5" /> Pergunta
           </h4>
@@ -274,7 +274,7 @@ export function RouterDecisionDrilldown({ id }: { id: string }) {
           </div>
         </section>
         {detail.finalAnswer && (
-          <section className="space-y-1.5">
+          <section className="min-w-0 space-y-1.5">
             <h4 className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
               <Bot className="h-3.5 w-3.5" /> Resposta
             </h4>
