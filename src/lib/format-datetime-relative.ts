@@ -7,6 +7,28 @@ export function formatRelativeDateTime(value: Date | string | null | undefined):
   return formatFullDateTime(value);
 }
 
+// Rotulo de DIA para a tag flutuante de navegacao no chat:
+//   hoje        -> "Hoje"
+//   ontem       -> "Ontem"
+//   mais antigo -> "dd/mm/yyyy" (sem dia da semana, por pedido do usuario)
+// Comparacao por data de calendario local (zera horas), nao por 24h corridas.
+export function formatDayLabel(value: Date | string | null | undefined): string {
+  if (!value) return "";
+  const d = value instanceof Date ? value : new Date(value);
+  if (Number.isNaN(d.getTime())) return "";
+  const startOfDay = (x: Date) =>
+    new Date(x.getFullYear(), x.getMonth(), x.getDate()).getTime();
+  const today = startOfDay(new Date());
+  const that = startOfDay(d);
+  const diffDays = Math.round((today - that) / 86_400_000);
+  if (diffDays <= 0) return "Hoje";
+  if (diffDays === 1) return "Ontem";
+  const dd = String(d.getDate()).padStart(2, "0");
+  const mm = String(d.getMonth() + 1).padStart(2, "0");
+  const yyyy = String(d.getFullYear());
+  return `${dd}/${mm}/${yyyy}`;
+}
+
 // Formato fixo para os logs/relatorios (.txt): sempre dd/mm/yyyy  ·  hh:mm
 // (mesmo separador da bubble para consistencia visual).
 export function formatFullDateTime(value: Date | string | null | undefined): string {
