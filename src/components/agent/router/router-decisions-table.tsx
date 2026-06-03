@@ -363,14 +363,14 @@ export function RouterDecisionsTable({
                         )}
                       </TableCell>
                       <TableCell
-                        className="max-w-[220px] text-sm"
+                        className="max-w-[320px] text-sm"
                         title={
                           r.usedReformulation && r.reformulatedQuestion
                             ? `Original: ${r.userQuestion}\nReformulada: ${r.reformulatedQuestion}`
                             : r.userQuestion
                         }
                       >
-                        <div className="w-[240px] truncate">{r.userQuestion}</div>
+                        <div className="truncate">{r.userQuestion}</div>
                         {r.usedReformulation && r.reformulatedQuestion ? (
                           <div className="mt-0.5 flex items-center gap-1.5">
                             <span className="rounded bg-violet-500/15 px-1.5 py-0.5 text-[10px] font-medium text-violet-700 dark:text-violet-300">
@@ -383,7 +383,7 @@ export function RouterDecisionsTable({
                         ) : null}
                       </TableCell>
                       <TableCell>
-                        <div className="flex w-[188px] flex-wrap gap-1">
+                        <div className="flex flex-wrap gap-1">
                           {r.pickedDomains.length === 0 ? (
                             <PickedTag>fallback</PickedTag>
                           ) : (
@@ -394,7 +394,7 @@ export function RouterDecisionsTable({
                         </div>
                       </TableCell>
                       <TableCell>
-                        <div className="flex w-[124px] flex-wrap gap-1">
+                        <div className="flex flex-wrap gap-1">
                           {r.toolsDomains.length === 0 ? (
                             <ToolTag domain={NO_TOOL_DOMAIN} />
                           ) : (
