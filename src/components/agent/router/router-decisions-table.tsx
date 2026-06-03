@@ -8,7 +8,13 @@
  */
 
 import { useRouter, useSearchParams, usePathname } from "next/navigation";
-import { Fragment, useEffect, useState, useTransition } from "react";
+import {
+  Fragment,
+  useCallback,
+  useEffect,
+  useState,
+  useTransition,
+} from "react";
 import {
   AlertTriangle,
   Check,
@@ -163,6 +169,20 @@ export function RouterDecisionsTable({
   const [pending, startTransition] = useTransition();
   const [search, setSearch] = useState(searchQuery);
   const [expandedId, setExpandedId] = useState<string | null>(null);
+  const [panelWidth, setPanelWidth] = useState<number>();
+  // Mede a largura VISIVEL via callback ref (roda no mount, garantido). O painel
+  // inline usa essa largura (sticky left-0) -> abre abaixo da linha sem rolagem.
+  const measureRef = useCallback((node: HTMLDivElement | null) => {
+    if (node) setPanelWidth(node.clientWidth);
+  }, []);
+  useEffect(() => {
+    const onResize = () => {
+      const el = document.getElementById("router-decisions-width");
+      if (el) setPanelWidth(el.clientWidth);
+    };
+    window.addEventListener("resize", onResize);
+    return () => window.removeEventListener("resize", onResize);
+  }, []);
 
   const applyMulti = (key: string, values: string[]) => {
     const params = new URLSearchParams(searchParams.toString());
@@ -294,7 +314,7 @@ export function RouterDecisionsTable({
           </div>
         ) : (
           <>
-            <div className="overflow-x-auto">
+            <div ref={measureRef} id="router-decisions-width">
               <Table>
                 <TableHeader>
                   <TableRow>
@@ -402,7 +422,10 @@ export function RouterDecisionsTable({
                     {isOpen && (
                       <TableRow className="hover:bg-transparent">
                         <TableCell colSpan={6} className="p-0">
-                          <div className="sticky left-0 max-w-[min(1080px,calc(100vw-300px))] bg-muted/20 p-5">
+                          <div
+                            className="sticky left-0 bg-muted/20 p-5"
+                            style={panelWidth ? { width: panelWidth } : undefined}
+                          >
                             <RouterDecisionDrilldown id={r.id} />
                           </div>
                         </TableCell>
