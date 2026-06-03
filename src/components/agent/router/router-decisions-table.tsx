@@ -294,7 +294,7 @@ export function RouterDecisionsTable({
           </div>
         ) : (
           <>
-            <div className="[container-type:inline-size]">
+            <div className="overflow-x-auto">
               <Table>
                 <TableHeader>
                   <TableRow>
@@ -402,7 +402,7 @@ export function RouterDecisionsTable({
                     {isOpen && (
                       <TableRow className="hover:bg-transparent">
                         <TableCell colSpan={6} className="p-0">
-                          <div className="sticky left-0 w-[100cqw] bg-muted/20 p-5">
+                          <div className="sticky left-0 max-w-[min(1080px,calc(100vw-300px))] bg-muted/20 p-5">
                             <RouterDecisionDrilldown id={r.id} />
                           </div>
                         </TableCell>
