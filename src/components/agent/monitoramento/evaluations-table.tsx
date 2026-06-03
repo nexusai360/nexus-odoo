@@ -228,7 +228,12 @@ export function EvaluationsTable({
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead className="w-[140px]">Data</TableHead>
+                <TableHead
+                  className="w-[140px]"
+                  title="Horário de Brasília (Brasil, UTC-3)"
+                >
+                  Data
+                </TableHead>
                 <TableHead className="w-[130px]">Origem</TableHead>
                 <TableHead>Pergunta</TableHead>
                 <TableHead>Resposta</TableHead>

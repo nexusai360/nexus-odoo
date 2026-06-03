@@ -298,7 +298,12 @@ export function RouterDecisionsTable({
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead className="w-[150px]">Data</TableHead>
+                    <TableHead
+                      className="w-[150px]"
+                      title="Horário de Brasília (Brasil, UTC-3)"
+                    >
+                      Data
+                    </TableHead>
                     <TableHead className="w-[110px]">Origem</TableHead>
                     {/* Pergunta volta como referencia (qual linha abrir), porem
                         ESTREITA e com reticencias cedo (w-[200px]). A versao

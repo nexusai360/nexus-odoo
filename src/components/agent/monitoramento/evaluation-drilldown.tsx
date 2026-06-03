@@ -24,7 +24,6 @@ import { toast } from "sonner";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { CustomSelect } from "@/components/ui/custom-select";
 import { Textarea } from "@/components/ui/textarea";
 import { adjustEvaluation } from "@/lib/actions/agent-quality";
 import { fetchQualityEvaluationDetail } from "@/lib/actions/quality-fetch";
@@ -58,14 +57,26 @@ const dateTimeFmt = new Intl.DateTimeFormat("pt-BR", {
   timeZone: "America/Sao_Paulo",
   day: "2-digit",
   month: "2-digit",
-  year: "numeric",
+  year: "2-digit",
   hour: "2-digit",
   minute: "2-digit",
+  second: "2-digit",
 });
+// Sufixo padrao de fuso: a plataforma opera no horario de Brasilia (UTC-3).
+const TZ_LABEL = "(Brasil, UTC-3)";
 // Horario da plataforma = Brasilia (UTC-3). O formatter ja resolve o fuso via
 // timeZone; aqui so removemos a virgula entre data e hora.
 function fmtBRT(d: Date): string {
   return dateTimeFmt.format(d).replace(",", "");
+}
+// Reescreve o marcador "[AJUSTE HUMANO <iso-utc>]" das razoes para o horario
+// de Brasilia com segundos e rotulo de fuso (o ISO e' gravado em UTC no banco).
+function humanizeRazoes(razoes: string): string {
+  return razoes.replace(/\[AJUSTE HUMANO ([^\]]+)\]/g, (full, iso: string) => {
+    const d = new Date(iso);
+    if (Number.isNaN(d.getTime())) return full;
+    return `[AJUSTE HUMANO ${fmtBRT(d)} ${TZ_LABEL}]`;
+  });
 }
 
 type Detail = NonNullable<
@@ -217,7 +228,7 @@ export function EvaluationDrilldown({ evaluationId, onAdjusted }: Props) {
             </Badge>
           )}
           <span className="text-xs text-muted-foreground">
-            {fmtBRT(e.createdAt)} (BRT)
+            {fmtBRT(e.createdAt)} {TZ_LABEL}
           </span>
         </div>
         <div className="text-xs text-muted-foreground">
@@ -367,7 +378,7 @@ export function EvaluationDrilldown({ evaluationId, onAdjusted }: Props) {
           )}
           {e.razoes && (
             <div className="whitespace-pre-wrap rounded-lg border border-border bg-background px-3 py-2 text-sm">
-              {e.razoes}
+              {humanizeRazoes(e.razoes)}
             </div>
           )}
         </section>
@@ -379,19 +390,38 @@ export function EvaluationDrilldown({ evaluationId, onAdjusted }: Props) {
           <h4 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
             Ajuste manual
           </h4>
+          {/* Seletor como TAGS coloridas (cor de cada status). A selecionada
+              fica cheia + anel violeta; as demais esmaecidas. */}
+          <div
+            role="radiogroup"
+            aria-label="Novo status"
+            className="flex flex-wrap items-center gap-1.5"
+          >
+            {(
+              ["CORRETO", "PARCIAL", "ERRADO", "FORA_DO_ESCOPO"] as const
+            ).map((s) => {
+              const on = adjustStatus === s;
+              return (
+                <button
+                  key={s}
+                  type="button"
+                  role="radio"
+                  aria-checked={on}
+                  onClick={() => setAdjustStatus(s)}
+                  className={cn(
+                    "cursor-pointer rounded-full border px-3 py-1 text-xs font-medium transition-all",
+                    STATUS_TONE[s],
+                    on
+                      ? "opacity-100 ring-2 ring-violet-500 ring-offset-1 ring-offset-background"
+                      : "opacity-45 hover:opacity-80",
+                  )}
+                >
+                  {STATUS_LABEL[s]}
+                </button>
+              );
+            })}
+          </div>
           <div className="flex flex-wrap items-center gap-2">
-            <CustomSelect
-              value={adjustStatus}
-              onChange={(v) => setAdjustStatus(v as EvalStatus)}
-              triggerClassName="min-w-[160px]"
-              aria-label="Novo status"
-              options={[
-                { value: "CORRETO", label: "Correto" },
-                { value: "PARCIAL", label: "Parcial" },
-                { value: "ERRADO", label: "Errado" },
-                { value: "FORA_DO_ESCOPO", label: "Fora de escopo" },
-              ]}
-            />
             <Textarea
               value={adjustReason}
               onChange={(ev) => setAdjustReason(ev.target.value)}
@@ -416,7 +446,7 @@ export function EvaluationDrilldown({ evaluationId, onAdjusted }: Props) {
           </div>
           {e.humanReviewedAt && (
             <p className="text-[11px] text-muted-foreground">
-              Último ajuste em {fmtBRT(e.humanReviewedAt)} (BRT, UTC-3).
+              Último ajuste em {fmtBRT(e.humanReviewedAt)} {TZ_LABEL}.
             </p>
           )}
         </section>
