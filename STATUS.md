@@ -509,3 +509,5 @@ registrada em 2026-05-18); F4 ≠ F5 (WhatsApp/conversas/personalização são F
 - Specs/plans/reviews/research em `docs/superpowers/`. Workflow canônico e
   decisões: `CLAUDE.md`. Ideia da F6: `docs/ideias/2026-05-16-construtor-relatorios.md`.
 - Modelagem de fatos: `docs/fatos-modelagem.md`. Git: `docs/git-workflow.md`.
+
+> **Retomada (2026-06-03):** pendência única = drill-down do Router (banner não quebra texto). Ver docs/agents/HANDOFF-2026-06-03-router-drilldown.md.

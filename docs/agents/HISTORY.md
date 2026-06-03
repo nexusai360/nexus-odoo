@@ -176,3 +176,7 @@
 - Router R24: reevaluate-r24.ts cria 291 decisões calibracao_R-X com verdade-base = tools REAIS (vocab atual aefb1bb6, dedup dos 97 reruns). BUG achado: tools cadastro_* (singular) viravam _desconhecido (domínio é cadastros, plural) → falsas discordâncias + furo RBAC camada B. Fix: PREFIX_ALIAS cadastro→cadastros. Top-K 85%→96,3%, discordâncias 38→8 (5 são registrar_lacuna, 3 frases coloquiais). Gate: elegível.
 - Router permanece OFF (ativação = decisão humana). Suíte 2179 verde, tsc limpo.
 - Calibração dos 3 furos coloquiais via forceIncludeOn (fiscal: vendi/bater meta; comercial: vai entrar). Não muda hash do vocab. R24 pós-calibração: Top-1 88,4% / Top-K 97,4% / 5 discordâncias (todas registrar_lacuna = sem furo real do router). Gate elegível (95,3%/7d). Router segue OFF por decisão do usuário (ativar depois).
+
+## 2026-06-03 , Monitoramento UI (Backtest+Router) , sessão pausada (troca)
+- Mergeados #45-#48: numeração R8->R24, fuso BRT, gráfico carry-forward, aba Router (Origem/filtro/tag chat/drill-down), botão avaliar pendentes via Claude Code (sem GPT), reavaliação R24 + fix tool->dominio, router ATIVO.
+- PENDENTE (único): drill-down do Router , banner "Roteamento divergente" não quebra texto dentro da caixa (painel inline herda largura da tabela > viewport). Raiz e solução (render FORA do scroller, abrindo abaixo da linha) em docs/agents/HANDOFF-2026-06-03-router-drilldown.md. NÃO mexer na formatação das linhas. Atenção ao SSR stale (rm .next só com processos mortos).
