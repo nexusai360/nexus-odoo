@@ -613,6 +613,10 @@ export async function runAgent(args: RunAgentInput): Promise<RunAgentResult> {
     // `dado_inventado` , agente citava numeros que nao apareciam em nenhum
     // toolResult do turno.
     const allTurnToolResults: string[] = [];
+    // Nomes de todas as tools chamadas neste turno (qualquer iteracao). Usado
+    // pela rede de seguranca de gap: saber se `registrar_lacuna` ja foi
+    // chamada antes de auto-registrar uma recusa.
+    const turnToolNames = new Set<string>();
 
     // Onda 1.E (Onda Nex >=90%): coleta estruturada dos tool results para o
     // AutoValidator. Cada item tem toolName + dados parseados (envelope canonico
@@ -727,6 +731,66 @@ export async function runAgent(args: RunAgentInput): Promise<RunAgentResult> {
           const fb = extractSuggestions(result.message, agentSettings.maxSuggestions);
           message = fb.message;
           suggestions = fb.suggestions;
+        }
+
+        // TRAVAS das sugestoes (suggestion-filter): (1) nunca sugerir uma
+        // pergunta que JA foi feita nesta conversa (clicada ou digitada);
+        // (2) nunca sugerir um GAP conhecido (feature_requests). Independe do
+        // usuario: os gaps sao globais. Falha aqui nao derruba a resposta.
+        try {
+          const [askedRows, gapRows] = await Promise.all([
+            prisma.message.findMany({
+              where: { conversationId: args.conversationId, role: "user" },
+              select: { content: true },
+              orderBy: { createdAt: "desc" },
+              take: 50,
+            }),
+            prisma.featureRequest.findMany({
+              select: { perguntaResumo: true },
+              orderBy: { criadoEm: "desc" },
+              take: 400,
+            }),
+          ]);
+          const { filterSuggestions } = await import("./suggestion-filter");
+          suggestions = filterSuggestions(suggestions, {
+            asked: askedRows.map((r) => r.content),
+            gaps: gapRows.map((r) => r.perguntaResumo),
+          });
+        } catch (err) {
+          console.warn("[runAgent] suggestion-filter falhou:", err);
+        }
+
+        // REDE DE SEGURANCA de gap (independe do usuario): se a IA recusou com
+        // o template de "sem dados / fora do escopo" e NAO chamou
+        // `registrar_lacuna` neste turno, registra o gap em feature_requests.
+        // Assim toda pergunta sem-resposta entra no quadro e deixa de aparecer
+        // como sugestao (trava 2). Conservador: so o template + dedup por texto.
+        try {
+          const refusalRe =
+            /n[ãa]o tenho dados suficientes|fora do (meu )?escopo|n[ãa]o (consigo|tenho como|tenho dados para) (te )?responder|n[ãa]o (tenho|possuo) (essa informa|essa métrica|essa metrica)/i;
+          if (
+            refusalRe.test(message) &&
+            !turnToolNames.has("registrar_lacuna")
+          ) {
+            const resumo = args.userMessage.trim().slice(0, 300);
+            if (resumo.length > 0) {
+              const exists = await prisma.featureRequest.findFirst({
+                where: { perguntaResumo: resumo },
+                select: { id: true },
+              });
+              if (!exists) {
+                await prisma.featureRequest.create({
+                  data: {
+                    userId: args.userId,
+                    perguntaResumo: resumo,
+                    dominio: null,
+                  },
+                });
+              }
+            }
+          }
+        } catch (err) {
+          console.warn("[runAgent] safety-net gap log falhou:", err);
         }
 
         // STRIPPER DEFENSIVO de placeholder freshness "Xs" (Onda A1, audit
@@ -1210,6 +1274,7 @@ export async function runAgent(args: RunAgentInput): Promise<RunAgentResult> {
       // Onda 1.E: tambem coleta estruturado para AutoValidator. Cada tool result
       // pode (ou nao) ter envelope canonico (campo `dados` com _RESPOSTA, etc).
       for (const tc of result.toolCalls ?? []) {
+        turnToolNames.add(tc.name);
         const raw = toolResultsMap[tc.id];
         if (!raw) continue;
         try {

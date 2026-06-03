@@ -91,5 +91,34 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     maxChips: body.maxChips,
   });
 
+  // Mesmas travas das sugestoes (suggestion-filter): nao repetir o que ja foi
+  // perguntado nesta conversa, nem sugerir gaps conhecidos (feature_requests).
+  if (Array.isArray(result.chips) && result.chips.length > 0) {
+    try {
+      const [askedRows, gapRows] = await Promise.all([
+        prisma.message.findMany({
+          where: { conversationId: body.conversationId, role: "user" },
+          select: { content: true },
+          orderBy: { createdAt: "desc" },
+          take: 50,
+        }),
+        prisma.featureRequest.findMany({
+          select: { perguntaResumo: true },
+          orderBy: { criadoEm: "desc" },
+          take: 400,
+        }),
+      ]);
+      const { filterSuggestions } = await import(
+        "@/lib/agent/suggestion-filter"
+      );
+      result.chips = filterSuggestions(result.chips, {
+        asked: askedRows.map((r) => r.content),
+        gaps: gapRows.map((r) => r.perguntaResumo),
+      });
+    } catch (err) {
+      console.warn("[suggest-continuation] suggestion-filter falhou:", err);
+    }
+  }
+
   return NextResponse.json(result);
 }
