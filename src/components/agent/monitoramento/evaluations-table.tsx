@@ -303,23 +303,39 @@ export function EvaluationsTable({
                         {truncate(row.answerSnapshot)}
                       </TableCell>
                       <TableCell>
-                        <div className="flex items-center gap-1">
-                          <Badge
-                            variant="outline"
-                            className={cn(
-                              "border text-[11px]",
-                              STATUS_TONE[row.status],
-                            )}
-                          >
-                            {STATUS_LABEL[row.status]}
-                          </Badge>
-                          {row.humanStatus && (
-                            <ShieldCheck
-                              className="h-3 w-3 text-emerald-500"
-                              aria-label="Ajustado manualmente"
-                            />
-                          )}
-                        </div>
+                        {(() => {
+                          // Status efetivo = ajuste humano sobrescreve o
+                          // veredito automatico. A tag mostra o efetivo; o
+                          // shield + tooltip preservam o original (auditavel).
+                          const human = row.humanStatus as EvalStatus | null;
+                          const eff = human ?? row.status;
+                          return (
+                            <div
+                              className="flex items-center gap-1"
+                              title={
+                                human
+                                  ? `Veredito automático: ${STATUS_LABEL[row.status]} → ajuste humano: ${STATUS_LABEL[eff]}`
+                                  : undefined
+                              }
+                            >
+                              <Badge
+                                variant="outline"
+                                className={cn(
+                                  "border text-[11px]",
+                                  STATUS_TONE[eff],
+                                )}
+                              >
+                                {STATUS_LABEL[eff]}
+                              </Badge>
+                              {human && (
+                                <ShieldCheck
+                                  className="h-3 w-3 text-emerald-500"
+                                  aria-label={`Ajustado manualmente (era ${STATUS_LABEL[row.status]})`}
+                                />
+                              )}
+                            </div>
+                          );
+                        })()}
                       </TableCell>
                       <TableCell className="font-mono text-xs text-muted-foreground">
                         {row.model ?? ","}

@@ -62,6 +62,11 @@ const dateTimeFmt = new Intl.DateTimeFormat("pt-BR", {
   hour: "2-digit",
   minute: "2-digit",
 });
+// Horario da plataforma = Brasilia (UTC-3). O formatter ja resolve o fuso via
+// timeZone; aqui so removemos a virgula entre data e hora.
+function fmtBRT(d: Date): string {
+  return dateTimeFmt.format(d).replace(",", "");
+}
 
 type Detail = NonNullable<
   Awaited<ReturnType<typeof fetchQualityEvaluationDetail>>
@@ -91,13 +96,16 @@ export function EvaluationDrilldown({ evaluationId, onAdjusted }: Props) {
         setError("Avaliação não encontrada.");
       } else {
         setDetail(d);
+        // O seletor de ajuste parte do status EFETIVO (humanStatus ?? status),
+        // pra refletir o ajuste anterior em vez de voltar pro veredito automatico.
+        const eff = (d.evaluation.humanStatus ?? d.evaluation.status) as string;
         if (
-          d.evaluation.status === "CORRETO" ||
-          d.evaluation.status === "PARCIAL" ||
-          d.evaluation.status === "ERRADO" ||
-          d.evaluation.status === "FORA_DO_ESCOPO"
+          eff === "CORRETO" ||
+          eff === "PARCIAL" ||
+          eff === "ERRADO" ||
+          eff === "FORA_DO_ESCOPO"
         ) {
-          setAdjustStatus(d.evaluation.status);
+          setAdjustStatus(eff);
         }
       }
     } catch (err) {
@@ -169,26 +177,47 @@ export function EvaluationDrilldown({ evaluationId, onAdjusted }: Props) {
       {/* Cabecalho do drill-down */}
       <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border/60 pb-3">
         <div className="flex flex-wrap items-center gap-2">
-          <Badge
-            variant="outline"
-            className={cn("border", STATUS_TONE[e.status])}
-          >
-            {STATUS_LABEL[e.status]}
-          </Badge>
-          {e.humanStatus && (
-            <Badge variant="outline" className="border-emerald-500/40">
-              <ShieldCheck className="mr-1 h-3 w-3" />
-              Ajustado:{" "}
-              {STATUS_LABEL[e.humanStatus as EvalStatus] ?? e.humanStatus}
-            </Badge>
-          )}
+          {(() => {
+            // Status efetivo: o ajuste humano sobrescreve o veredito
+            // automatico. A tag principal mostra o efetivo; quando houve
+            // ajuste, deixamos explicito "antes (riscado) -> agora".
+            const human = e.humanStatus as EvalStatus | null;
+            const eff = human ?? e.status;
+            const mudou = human != null && human !== e.status;
+            return (
+              <>
+                <Badge
+                  variant="outline"
+                  className={cn("border", STATUS_TONE[eff])}
+                >
+                  {STATUS_LABEL[eff]}
+                </Badge>
+                {mudou && (
+                  <span
+                    className="inline-flex items-center gap-1 text-xs text-muted-foreground"
+                    title="Ajuste humano sobrescreveu o veredito automático"
+                  >
+                    <ShieldCheck className="h-3.5 w-3.5 text-emerald-500" />
+                    Ajuste humano:
+                    <span className="line-through">
+                      {STATUS_LABEL[e.status]}
+                    </span>
+                    <span aria-hidden>→</span>
+                    <span className="font-medium text-foreground">
+                      {STATUS_LABEL[eff]}
+                    </span>
+                  </span>
+                )}
+              </>
+            );
+          })()}
           {e.model && (
             <Badge variant="ghost" className="font-mono text-[11px]">
               {e.model}
             </Badge>
           )}
           <span className="text-xs text-muted-foreground">
-            {dateTimeFmt.format(e.createdAt)}
+            {fmtBRT(e.createdAt)} (BRT)
           </span>
         </div>
         <div className="text-xs text-muted-foreground">
@@ -387,7 +416,7 @@ export function EvaluationDrilldown({ evaluationId, onAdjusted }: Props) {
           </div>
           {e.humanReviewedAt && (
             <p className="text-[11px] text-muted-foreground">
-              Último ajuste em {dateTimeFmt.format(e.humanReviewedAt)}.
+              Último ajuste em {fmtBRT(e.humanReviewedAt)} (BRT, UTC-3).
             </p>
           )}
         </section>

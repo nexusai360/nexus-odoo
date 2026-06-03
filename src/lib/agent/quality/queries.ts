@@ -103,10 +103,13 @@ export async function getRawCounts(
   filters: EvaluationFilters,
 ): Promise<RawEvalCounts> {
   const where = buildWhere(filters);
-  const grouped = await prisma.conversationQualityEvaluation.groupBy({
-    by: ["status"],
+  // Status EFETIVO: o ajuste humano (human_status) sobrescreve o veredito
+  // automatico (heuristica/LLM). Por isso nao da pra usar groupBy("status")
+  // puro , o ajuste manual precisa ser contabilizado nos KPIs. Buscamos os
+  // dois campos e agregamos pelo efetivo. O filtro de periodo limita o volume.
+  const rows = await prisma.conversationQualityEvaluation.findMany({
     where,
-    _count: { _all: true },
+    select: { status: true, humanStatus: true },
   });
 
   const counts: RawEvalCounts = {
@@ -117,9 +120,9 @@ export async function getRawCounts(
     PENDENTE: 0,
     FALHA_TECNICA: 0,
   };
-  for (const row of grouped) {
-    const s = row.status as EvalStatus;
-    if (s in counts) counts[s] = row._count._all;
+  for (const row of rows) {
+    const s = (row.humanStatus ?? row.status) as EvalStatus;
+    if (s in counts) counts[s] += 1;
   }
   return counts;
 }
@@ -309,6 +312,7 @@ export async function getDailyCorrectness(
     select: {
       createdAt: true,
       status: true,
+      humanStatus: true,
       conversation: { select: { title: true } },
     },
   });
@@ -323,9 +327,11 @@ export async function getDailyCorrectness(
     const key = formatDateInTz(r.createdAt, DEFAULT_TZ, "en-CA");
     const cur =
       byDay.get(key) ?? { corretos: 0, total: 0, marker: null, markerAt: 0 };
-    if (["CORRETO", "PARCIAL", "ERRADO", "FORA_DO_ESCOPO"].includes(r.status)) {
+    // Status efetivo: ajuste humano sobrescreve o veredito automatico.
+    const eff = r.humanStatus ?? r.status;
+    if (["CORRETO", "PARCIAL", "ERRADO", "FORA_DO_ESCOPO"].includes(eff)) {
       cur.total++;
-      if (r.status === "CORRETO") cur.corretos++;
+      if (eff === "CORRETO") cur.corretos++;
     }
     // Marker da rodada do dia: o AUDIT-POS mais recente daquele dia.
     const title = r.conversation?.title ?? "";

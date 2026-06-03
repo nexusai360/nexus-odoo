@@ -305,7 +305,7 @@ export function RouterDecisionsTable({
                         completa vive no drill-down. Router escolhida fica como a
                         unica coluna flexivel -> sobra largura para as 5 tags numa
                         linha so. */}
-                    <TableHead className="w-[200px]">Pergunta</TableHead>
+                    <TableHead className="w-[280px]">Pergunta</TableHead>
                     <TableHead>Router escolhida</TableHead>
                     <TableHead className="w-[150px]">Tool chamada</TableHead>
                     <TableHead
@@ -355,7 +355,7 @@ export function RouterDecisionsTable({
                         )}
                       </TableCell>
                       <TableCell
-                        className="w-[200px] max-w-[200px] text-sm"
+                        className="w-[280px] max-w-[280px] text-sm"
                         title={
                           r.usedReformulation && r.reformulatedQuestion
                             ? `Original: ${r.userQuestion}\nReformulada: ${r.reformulatedQuestion}`
