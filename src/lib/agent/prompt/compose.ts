@@ -116,6 +116,17 @@ export function composeSystemPrompt(
         "\n- Numeros em formato brasileiro (1.234,56) e datas dd/mm/aaaa." +
         "\n- Quando oferecer sugestoes de continuidade, termine a mensagem com a linha exata 'Voce tambem pode perguntar:' seguida de ate 3 opcoes numeradas (1, 2, 3) em linhas proprias. Sem usar o canal [[suggestions]] (o WhatsApp nao renderiza chips clicaveis; o usuario responde com o numero).",
     );
+  } else {
+    // Chat in-app (bubble/suggestion/playground): a UI renderiza markdown.
+    // Instrucao explicita para SEMPRE destacar os valores-chave, senao o
+    // modelo tende a responder em texto plano (regressao reportada).
+    parts.push(
+      "\n\n## Formatacao da resposta (chat in-app)" +
+        "\n- Use **negrito** (markdown, dois asteriscos) para DESTACAR o que responde a pergunta: montantes em R$, quantidades, percentuais, datas e prazos, nomes de cliente/produto e o resultado principal. Ex.: \"faturamos **R$ 1.751.612,33** em **186 notas**\" ou \"o maior cliente foi **Zoe Fit** com **R$ 637.171,47**\"." +
+        "\n- Use *italico* (um asterisco) para nuance/observacao leve (ex.: *aproximado*, *parcial*, *somente saidas*)." +
+        "\n- NAO exagere: destaque so os termos que importam (o numero/condicao da resposta), nunca a frase inteira." +
+        "\n- Numeros em formato brasileiro (1.234,56) e datas dd/mm/aaaa.",
+    );
   }
 
   if (cfg.personality.trim()) {
@@ -180,7 +191,7 @@ export function composeSystemPrompt(
   if (cfg.suggestionsEnabled) {
     const maxSugg = Math.min(Math.max(1, cfg.maxSuggestions ?? 3), 5);
     parts.push(
-      `\n\n## Sugestoes de pergunta (HABILITADAS, USE SEMPRE QUE POSSIVEL)\nApos responder, inclua **exatamente uma linha em branco seguida de uma linha no formato abaixo**:\n\`[[suggestions]]:Pergunta 1|Pergunta 2|Pergunta 3\`\n\nRegras:\n- Inclua ate **${maxSugg} sugestoes** na grande maioria das respostas (o maximo esta configurado em ${maxSugg}; nunca passe disso).\n- Cada sugestao precisa ser uma **pergunta completa e objetiva**, que voce consiga responder direto sem nova clarificacao. Nunca use "Quer ver tal coisa?" ou "Posso te mostrar X?".\n- Inclua os parametros obvios na propria sugestao (periodo, tipo de registro, escopo). Ex.: "Liste contas a receber em aberto em ${"05/2026"}" em vez de "Quer a lista de contas a receber?".\n- Cubra todas as fatias naturais do dado quando a resposta abrir opcoes: tudo, somente em aberto, somente vencidos quando for divida, somente do periodo em foco. Nao omita a fatia obvia.\n- Cada sugestao: <= 80 caracteres, sem \`|\` no texto, sem repetir o que ja esta no corpo da resposta.\n- Omita o bloco apenas quando nao existir follow-up natural.\n- Quando a resposta for uma pergunta de desambiguacao, as sugestoes DEVEM resolver a ambiguidade: ofereca as opcoes concretas (cada registro que casou pelo nome, ou os sentidos possiveis da metrica). E o caso de maior prioridade para incluir sugestoes, respeitando o teto de ${maxSugg}.`,
+      `\n\n## Sugestoes de pergunta (HABILITADAS, USE SEMPRE QUE POSSIVEL)\nApos responder, inclua **exatamente uma linha em branco seguida de uma linha no formato abaixo**:\n\`[[suggestions]]:Pergunta 1|Pergunta 2|Pergunta 3\`\n\nRegras:\n- Inclua ate **${maxSugg} sugestoes** na grande maioria das respostas (o maximo esta configurado em ${maxSugg}; nunca passe disso).\n- Cada sugestao precisa ser uma **pergunta completa e objetiva**, que voce consiga responder direto sem nova clarificacao. Nunca use "Quer ver tal coisa?" ou "Posso te mostrar X?".\n- Inclua os parametros obvios na propria sugestao (periodo, tipo de registro, escopo). Ex.: "Liste contas a receber em aberto em ${"05/2026"}" em vez de "Quer a lista de contas a receber?".\n- Cubra todas as fatias naturais do dado quando a resposta abrir opcoes: tudo, somente em aberto, somente vencidos quando for divida, somente do periodo em foco. Nao omita a fatia obvia.\n- Cada sugestao: <= 80 caracteres, sem \`|\` no texto, sem repetir o que ja esta no corpo da resposta.\n- PROIBIDO oferecer continuacao no CORPO da resposta. Nunca termine com convites do tipo "Se quiser, eu tambem posso te mostrar:", "Posso listar...", "Quer que eu...", nem com bullets/topicos de opcoes de proximo passo. O corpo termina no dado/resposta. TODA sugestao de proximo passo vai EXCLUSIVAMENTE na linha [[suggestions]] (que vira chips clicaveis na tela); repetir a oferta no corpo e redundante e proibido.\n- Omita o bloco apenas quando nao existir follow-up natural.\n- Quando a resposta for uma pergunta de desambiguacao, as sugestoes DEVEM resolver a ambiguidade: ofereca as opcoes concretas (cada registro que casou pelo nome, ou os sentidos possiveis da metrica). E o caso de maior prioridade para incluir sugestoes, respeitando o teto de ${maxSugg}.`,
     );
   }
 
