@@ -78,59 +78,52 @@ export function RouterDecisionDrilldown({ id }: { id: string }) {
   return (
     // Renderizado FORA do scroller da tabela (largura normal do card), entao o
     // texto quebra linha naturalmente com break-words , sem corte nem rolagem.
-    <div className="w-full max-w-4xl space-y-5 break-words [overflow-wrap:anywhere]">
-      {/* Veredito */}
-      <div>
-        {verdito === "discordancia" ? (
-          <div className="flex items-start gap-2 rounded-lg border border-amber-500/30 bg-amber-500/5 p-3">
-            <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-amber-500" />
-            <div className="min-w-0 flex-1 text-sm">
-              <p className="font-medium text-amber-700 dark:text-amber-300">
-                Roteamento divergente (oportunidade de calibragem)
-              </p>
-              <p className="text-muted-foreground">
-                O agente usou{" "}
-                <strong>{detail.toolsDomains.map(displayDomain).join(", ")}</strong>
-                , fora do que o router ofertou (
-                {detail.pickedDomains.length === 0
-                  ? "fallback"
-                  : detail.pickedDomains.map(displayDomain).join(", ")}
-                ). Em modo <strong>{detail.mode}</strong> não bloqueia a resposta;
-                só sinaliza que, com o router filtrando, esse domínio poderia
-                faltar. Calibrar o vocabulário do domínio resolve.
-              </p>
-            </div>
-          </div>
-        ) : verdito === "chat" ? (
-          <div className="flex items-start gap-2 rounded-lg border border-zinc-500/30 bg-zinc-500/5 p-3">
-            <MessageSquare className="mt-0.5 h-4 w-4 shrink-0 text-zinc-500" />
-            <div className="min-w-0 flex-1 text-sm">
-              <p className="font-medium text-zinc-600 dark:text-zinc-300">
-                Turno conversacional (sem tool)
-              </p>
-              <p className="text-muted-foreground">
-                O agente respondeu sem acionar nenhuma ferramenta (saudação,
-                follow-up ou pedido de esclarecimento). O router ainda registrou
-                a decisão, mas não houve tool a comparar.
-              </p>
-            </div>
-          </div>
-        ) : (
-          <div className="flex items-start gap-2 rounded-lg border border-emerald-500/30 bg-emerald-500/5 p-3">
-            <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-emerald-500" />
-            <div className="min-w-0 flex-1 text-sm">
-              <p className="font-medium text-emerald-700 dark:text-emerald-300">
-                Roteamento concordante
-              </p>
-              <p className="text-muted-foreground">
-                O router ofereceu o domínio que o agente de fato usou (
-                {detail.toolsDomains.map(displayDomain).join(", ")}). Se estivesse
-                ativo filtrando, a IA teria recebido a ferramenta correta.
-              </p>
-            </div>
-          </div>
-        )}
-      </div>
+    <div className="w-full space-y-5 [overflow-wrap:anywhere]">
+      {/* Veredito , banner em BLOCO (a frase e' <p> de bloco, quebra linha
+          dentro da caixa, que cresce na vertical; ocupa a largura toda). */}
+      {verdito === "discordancia" ? (
+        <div className="rounded-lg border border-amber-500/30 bg-amber-500/5 p-4">
+          <p className="mb-1 flex items-center gap-2 text-sm font-medium text-amber-700 dark:text-amber-300">
+            <AlertTriangle className="h-4 w-4 shrink-0" />
+            Roteamento divergente (oportunidade de calibragem)
+          </p>
+          <p className="text-sm text-muted-foreground">
+            O agente usou{" "}
+            <strong>{detail.toolsDomains.map(displayDomain).join(", ")}</strong>,
+            fora do que o router ofertou (
+            {detail.pickedDomains.length === 0
+              ? "fallback"
+              : detail.pickedDomains.map(displayDomain).join(", ")}
+            ). Em modo <strong>{detail.mode}</strong> não bloqueia a resposta; só
+            sinaliza que, com o router filtrando, esse domínio poderia faltar.
+            Calibrar o vocabulário do domínio resolve.
+          </p>
+        </div>
+      ) : verdito === "chat" ? (
+        <div className="rounded-lg border border-zinc-500/30 bg-zinc-500/5 p-4">
+          <p className="mb-1 flex items-center gap-2 text-sm font-medium text-zinc-600 dark:text-zinc-300">
+            <MessageSquare className="h-4 w-4 shrink-0" />
+            Turno conversacional (sem tool)
+          </p>
+          <p className="text-sm text-muted-foreground">
+            O agente respondeu sem acionar nenhuma ferramenta (saudação,
+            follow-up ou pedido de esclarecimento). O router registrou a decisão,
+            mas não houve tool a comparar.
+          </p>
+        </div>
+      ) : (
+        <div className="rounded-lg border border-emerald-500/30 bg-emerald-500/5 p-4">
+          <p className="mb-1 flex items-center gap-2 text-sm font-medium text-emerald-700 dark:text-emerald-300">
+            <CheckCircle2 className="h-4 w-4 shrink-0" />
+            Roteamento concordante
+          </p>
+          <p className="text-sm text-muted-foreground">
+            O router ofereceu o domínio que o agente de fato usou (
+            {detail.toolsDomains.map(displayDomain).join(", ")}). Com o router
+            ativo, a IA teria recebido a ferramenta correta.
+          </p>
+        </div>
+      )}
 
       {/* Router escolheu vs Tool chamada */}
       <div className="grid gap-4 sm:grid-cols-2">
@@ -193,7 +186,7 @@ export function RouterDecisionDrilldown({ id }: { id: string }) {
             os que passam do threshold (barras em roxo). Vale o ranking, não o
             valor absoluto.
           </p>
-          <div className="max-w-2xl space-y-1">
+          <div className="mx-auto max-w-2xl space-y-1">
             {detail.scores.map((s) => {
               const passou =
                 detail.threshold !== null && s.score >= detail.threshold;
@@ -247,7 +240,7 @@ export function RouterDecisionDrilldown({ id }: { id: string }) {
       )}
 
       {/* Metadados */}
-      <div className="flex flex-wrap gap-x-6 gap-y-1 text-xs text-muted-foreground">
+      <div className="mx-auto flex max-w-2xl flex-wrap justify-center gap-x-6 gap-y-1 text-xs text-muted-foreground">
         <span>
           Similaridade top:{" "}
           {detail.topScore !== null ? detail.topScore.toFixed(2) : "-"}
