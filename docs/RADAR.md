@@ -16,11 +16,11 @@
 Bubble (coluna Conversa) passou a mostrar o mesmo, derivado de
 `createdAt(assistant final) − createdAt(user)` (proxy fiel do wall-clock).
 
-**Pedido do usuário:** no **Backtest** (aba Monitoramento), hoje o drill-down de
-cada linha de avaliação **não mostra o tempo daquela resposta**, e não há um
-KPI/gráfico de **tempo médio das respostas**. Construir:
-1. tempo por avaliação no drill-down da `evaluations-table`;
-2. um KPI/gráfico de tempo médio (e talvez p50/p95) no topo do Backtest.
+**Pedido do usuário:** no **Backtest** (aba Monitoramento), o drill-down de cada
+linha de avaliação não mostrava o tempo, e não há KPI/gráfico de tempo médio.
+1. ~~tempo por avaliação no drill-down da `evaluations-table`~~ **FEITO**
+   (commit `1b83b88`: `getEvaluationDetail.durationMs` + `Clock` no cabeçalho);
+2. **PENDENTE:** um KPI/gráfico de tempo médio (e talvez p50/p95) no topo do Backtest.
 
 **A decidir:** fonte exata (somar `LlmUsage.durationMs` por turno vs proxy por
 `createdAt`), atribuição LlmUsage→mensagem (hoje LlmUsage só tem
