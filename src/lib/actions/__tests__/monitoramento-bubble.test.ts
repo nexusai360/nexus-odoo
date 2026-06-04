@@ -239,6 +239,26 @@ describe("getBubbleSessionMessages", () => {
     expect(prisma.message.findMany).not.toHaveBeenCalled();
   });
 
+  test("durationMs do turno = assistant final − user que abriu (anexa na final)", async () => {
+    (prisma.conversation.findUnique as jest.Mock).mockResolvedValue({ id: "c1" });
+    (prisma.message.findMany as jest.Mock).mockResolvedValue([
+      { id: "u1", role: "user", content: "p", kind: "text", toolCalls: null, createdAt: new Date("2026-06-01T10:00:00Z") },
+      { id: "a1", role: "assistant", content: "", kind: "text", toolCalls: [{ name: "estoque_modelo" }], createdAt: new Date("2026-06-01T10:00:02Z") },
+      { id: "a2", role: "assistant", content: "final", kind: "text", toolCalls: null, createdAt: new Date("2026-06-01T10:00:05Z") },
+    ]);
+    mockEvals([]);
+    mockFeedbacks([]);
+
+    const res = await getBubbleSessionMessages("c1");
+    if (!res.ok) throw new Error("esperado ok");
+    const byId = new Map(res.messages.map((m) => [m.id, m]));
+    // turno: u1(10:00:00) -> a2(10:00:05) = 5000ms, anexado na assistant FINAL
+    expect(byId.get("a2")!.durationMs).toBe(5000);
+    // a intermediária e o user não carregam duração
+    expect(byId.get("a1")!.durationMs).toBeUndefined();
+    expect(byId.get("u1")!.durationMs).toBeUndefined();
+  });
+
   test("Map do juiz: terminal (status), humanStatus sobrescreve, sem-row vira null", async () => {
     (prisma.conversation.findUnique as jest.Mock).mockResolvedValue({ id: "c1" });
     (prisma.message.findMany as jest.Mock).mockResolvedValue([

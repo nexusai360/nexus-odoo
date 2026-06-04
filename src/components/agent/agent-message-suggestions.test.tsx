@@ -115,7 +115,7 @@ describe("AgentMessage (sugestões na bolha)", () => {
     expect(screen.getByText("faltou listar os negativos")).toBeDefined();
   });
 
-  test("perícia vira chip rotulado clicável (monitorPericia)", () => {
+  test("perícia vira chip clicável só com ícone + status (sem a palavra Perícia)", () => {
     render(
       <AgentMessage
         role="assistant"
@@ -124,9 +124,12 @@ describe("AgentMessage (sugestões na bolha)", () => {
         monitorPericia={{ label: "Correto", color: "#10b981", href: "/x?eval=1" }}
       />,
     );
-    expect(screen.getByText("Perícia")).toBeDefined();
+    // a palavra "Perícia" NÃO aparece como texto (só ícone + status)
+    expect(screen.queryByText("Perícia")).toBeNull();
     expect(screen.getByText("Correto")).toBeDefined();
-    expect(screen.getByRole("link")).toHaveProperty("href");
+    // o nome completo vive no title (acessível)
+    const link = screen.getByRole("link");
+    expect(link).toHaveProperty("href");
   });
 
   test("singular: 1 sugestão", () => {

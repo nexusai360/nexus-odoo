@@ -617,7 +617,8 @@ function AssistantSuggestionsBlock({
         aria-expanded={expanded}
         aria-controls={listId}
         className={cn(
-          "flex min-h-[18px] w-full items-center gap-2 text-left text-[13px] font-medium leading-none",
+          // Mesma fonte do header "Raciocínio" (text-xs): consistência visual.
+          "flex min-h-[18px] w-full items-center gap-2 text-left text-xs font-medium leading-none",
           "cursor-pointer text-foreground/85 transition-colors hover:text-foreground",
         )}
       >
@@ -787,13 +788,15 @@ function PericiaChip({
   color: string;
   href?: string;
 }) {
+  // Só o ícone (balança = perícia) + o status. A palavra "Perícia" sai; o
+  // ícone é o mesmo usado nas colunas, então já comunica o eixo.
   const inner = (
     <span
+      title={`Perícia: ${label}`}
       className="inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[10px] font-semibold"
       style={{ color, borderColor: `${color}66`, background: `${color}1f` }}
     >
       <Scale className="h-3 w-3" aria-hidden />
-      <span className="uppercase tracking-wide opacity-70">Perícia</span>
       <span>{label}</span>
     </span>
   );

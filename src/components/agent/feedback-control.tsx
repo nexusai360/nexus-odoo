@@ -11,7 +11,8 @@
  */
 
 import * as React from "react";
-import { Gauge, Check, X, Contrast, Ghost, Send } from "lucide-react";
+import { Gauge, Check, X, Ghost, Send } from "lucide-react";
+import { PartialIcon } from "./partial-icon";
 import { motion, AnimatePresence, useReducedMotion } from "framer-motion";
 import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip";
 
@@ -50,7 +51,7 @@ const OPTS: Opt[] = [
   {
     rating: "PARCIAL",
     label: "Parcial",
-    Icon: Contrast,
+    Icon: PartialIcon,
     color: "#f59e0b",
     field: true,
     orient: "o que acertou, o que errou e qual era a resposta certa.",

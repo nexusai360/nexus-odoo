@@ -212,6 +212,8 @@ export type BubbleSessionMessageDto = ConversationMessageDto & {
   suggestions?: string[];
   clickedSuggestion?: string;
   evaluation?: { id: string; status: string } | null;
+  /** Duração do turno em ms (wall-clock), anexada na assistant final. */
+  durationMs?: number;
 };
 
 /**
@@ -274,31 +276,43 @@ export async function getBubbleSessionMessages(
     },
   });
 
-  // STEPS por turno (range-merge igual ao getEvaluationDetail):
-  // a trilha de cada turno é a soma dos toolCalls de todas as mensagens
-  // assistant entre o último user e a assistant final daquele turno. A
-  // trilha agregada é anexada apenas na assistant final.
+  // STEPS + DURAÇÃO por turno (range-merge igual ao getEvaluationDetail):
+  // a trilha de cada turno é a soma dos toolCalls das mensagens assistant entre
+  // o último user e a assistant final. A trilha (e a duração) são anexadas só
+  // na assistant final. Duração = wall-clock do turno = createdAt(assistant
+  // final) − createdAt(user que abriu o turno). É o proxy fiel do "X.Xs" da
+  // bubble viva (que mede doneAt−startedAt); o valor exato por iteração vive em
+  // LlmUsage.durationMs (ver RADAR: KPI de tempo médio no Backtest).
   const stepsByMsgId = new Map<string, { label: string }[]>();
+  const durationByMsgId = new Map<string, number>();
   let accCalls: unknown[] = [];
   let lastAssistantId: string | null = null;
+  let lastAssistantAt: Date | null = null;
+  let turnStartAt: Date | null = null;
+  const closeTurn = () => {
+    if (lastAssistantId && accCalls.length > 0) {
+      stepsByMsgId.set(lastAssistantId, stepsFromToolCalls(accCalls));
+    }
+    if (lastAssistantId && turnStartAt && lastAssistantAt) {
+      const ms = +lastAssistantAt - +turnStartAt;
+      if (ms > 0) durationByMsgId.set(lastAssistantId, ms);
+    }
+  };
   for (const m of messages) {
     if (m.role === "user") {
-      // Fecha o turno anterior: a última assistant vista recebe a trilha.
-      if (lastAssistantId && accCalls.length > 0) {
-        stepsByMsgId.set(lastAssistantId, stepsFromToolCalls(accCalls));
-      }
+      closeTurn();
       accCalls = [];
       lastAssistantId = null;
+      lastAssistantAt = null;
+      turnStartAt = m.createdAt; // este user abre o próximo turno
     } else if (m.role === "assistant") {
       if (Array.isArray(m.toolCalls)) accCalls.push(...(m.toolCalls as unknown[]));
       else if (m.toolCalls != null) accCalls.push(m.toolCalls);
       lastAssistantId = m.id;
+      lastAssistantAt = m.createdAt;
     }
   }
-  // Fecha o último turno em aberto.
-  if (lastAssistantId && accCalls.length > 0) {
-    stepsByMsgId.set(lastAssistantId, stepsFromToolCalls(accCalls));
-  }
+  closeTurn(); // fecha o último turno em aberto
 
   // JUIZ + SUGESTÕES por mensagem assistant.
   const evals = await prisma.conversationQualityEvaluation.findMany({
@@ -339,6 +353,7 @@ export async function getBubbleSessionMessages(
   // Monta o DTO base por mensagem.
   const out: BubbleSessionMessageDto[] = messages.map((m) => {
     const steps = stepsByMsgId.get(m.id) ?? [];
+    const durationMs = durationByMsgId.get(m.id);
     const ev = evalByMsg.get(m.id) ?? null;
     const fb = fbByMsg.get(m.id) ?? null;
     return {
@@ -347,6 +362,7 @@ export async function getBubbleSessionMessages(
       content: m.content,
       createdAt: m.createdAt.toISOString(),
       kind: m.kind,
+      ...(typeof durationMs === "number" ? { durationMs } : {}),
       ...(steps.length > 0 ? { steps } : {}),
       ...(ev && ev.suggestions.length > 0 ? { suggestions: ev.suggestions } : {}),
       evaluation: ev ? { id: ev.id, status: ev.statusEfetivo } : null,

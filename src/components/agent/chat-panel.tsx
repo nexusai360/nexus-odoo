@@ -1063,7 +1063,7 @@ export function ChatPanel({
               suggestions={welcomeSuggestionsForUi}
             />
           ) : (
-            <div ref={contentRef} className="space-y-3">
+            <div ref={contentRef} className="space-y-4">
               {messages.map((m, idx) => {
                 // Onda C v2: nao deve mais existir UiMessage com role "progress"
                 // (steps vivem dentro da bolha do assistant desde o primeiro

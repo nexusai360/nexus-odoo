@@ -10,7 +10,7 @@
  */
 
 import * as React from "react";
-import { ChevronDown } from "lucide-react";
+import { ChevronDown, Gauge, Scale } from "lucide-react";
 import { motion, useReducedMotion } from "framer-motion";
 import {
   listBubbleCollaborators,
@@ -61,45 +61,52 @@ function RoleBadge({ role }: { role: string }) {
   );
 }
 
-// Contagens coloridas (não-zero) de um eixo. Compartilhado entre os dois eixos.
+// Contagens coloridas (não-zero) de um eixo, num agrupador sutil para separar
+// visualmente do percentual (em vez de números soltos).
 function CountChips({ counts }: { counts: RatingCounts }) {
   const order: UserFeedbackRating[] = ["CORRETO", "PARCIAL", "ERRADO", "ALUCINOU"];
+  const any = order.some((r) => counts[r] > 0);
+  if (!any) return null;
   return (
-    <>
+    <span className="flex items-center gap-1 rounded bg-muted/60 px-1.5 py-px text-[10px]">
       {order.map((r) =>
         counts[r] > 0 ? (
           <span
             key={r}
-            title={RATING_META[r].label}
+            title={`${RATING_META[r].label}: ${counts[r]}`}
             style={{ color: RATING_META[r].color }}
-            className="tabular-nums"
+            className="font-semibold tabular-nums"
           >
             {counts[r]}
           </span>
         ) : null,
       )}
-    </>
+    </span>
   );
 }
 
-// Uma métrica rotulada: "Avaliação 75% 1 1" (ou "—" sem classificações).
+// Uma métrica: ícone (eixo) + percentual em destaque + contagens agrupadas.
+// O ícone substitui a palavra (Gauge=Avaliação do usuário, Scale=Perícia da
+// plataforma); o title traz o nome completo.
 function Metric({
-  label,
+  Icon,
+  title,
   pct,
   counts,
 }: {
-  label: string;
+  Icon: React.ElementType;
+  title: string;
   pct: number | null;
   counts: RatingCounts;
 }) {
   return (
-    <span className="flex items-center gap-1 whitespace-nowrap">
-      <span className="text-muted-foreground">{label}</span>
+    <span className="flex items-center gap-1.5 whitespace-nowrap" title={title}>
+      <Icon className="h-3.5 w-3.5 shrink-0 text-muted-foreground" aria-hidden />
       {pct === null ? (
-        <span className="text-muted-foreground/50">—</span>
+        <span className="text-[11px] text-muted-foreground/50">sem dados</span>
       ) : (
         <>
-          <b className="font-semibold text-foreground">{pct}%</b>
+          <b className="text-[12px] font-bold tabular-nums text-foreground">{pct}%</b>
           <CountChips counts={counts} />
         </>
       )}
@@ -107,7 +114,7 @@ function Metric({
   );
 }
 
-// Par de métricas: AVALIAÇÃO (usuário) + PERÍCIA (plataforma), numa linha só.
+// Par de métricas numa linha: AVALIAÇÃO (Gauge) | PERÍCIA (Scale), com divisória.
 function MetricsPair({
   avaliacaoPct,
   avaliacaoCounts,
@@ -120,9 +127,20 @@ function MetricsPair({
   periciaCounts: RatingCounts;
 }) {
   return (
-    <div className="flex flex-wrap items-center gap-x-3 gap-y-0.5 text-[11px] leading-tight">
-      <Metric label="Avaliação" pct={avaliacaoPct} counts={avaliacaoCounts} />
-      <Metric label="Perícia" pct={periciaPct} counts={periciaCounts} />
+    <div className="flex flex-wrap items-center gap-x-2.5 gap-y-1">
+      <Metric
+        Icon={Gauge}
+        title="Avaliação (voto do usuário)"
+        pct={avaliacaoPct}
+        counts={avaliacaoCounts}
+      />
+      <span aria-hidden className="h-3.5 w-px shrink-0 bg-border" />
+      <Metric
+        Icon={Scale}
+        title="Perícia (avaliação da plataforma)"
+        pct={periciaPct}
+        counts={periciaCounts}
+      />
     </div>
   );
 }

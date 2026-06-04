@@ -5,7 +5,8 @@
  */
 
 import type { ElementType } from "react";
-import { Check, Contrast, X, Ghost } from "lucide-react";
+import { Check, X, Ghost } from "lucide-react";
+import { PartialIcon } from "./partial-icon";
 
 export type UserFeedbackRating = "CORRETO" | "PARCIAL" | "ERRADO" | "ALUCINOU";
 
@@ -14,7 +15,8 @@ export const RATING_META: Record<
   { label: string; color: string; Icon: ElementType }
 > = {
   CORRETO: { label: "Correto", color: "#10b981", Icon: Check },
-  PARCIAL: { label: "Parcial", color: "#f59e0b", Icon: Contrast },
+  // Parcial usa o ícone validado em feedback-v4 (meia-lua preenchida).
+  PARCIAL: { label: "Parcial", color: "#f59e0b", Icon: PartialIcon },
   ERRADO: { label: "Errado", color: "#ef4444", Icon: X },
   ALUCINOU: { label: "Alucinou", color: "#8b5cf6", Icon: Ghost },
 };

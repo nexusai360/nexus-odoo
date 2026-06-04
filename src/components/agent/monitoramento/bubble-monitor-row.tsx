@@ -43,6 +43,7 @@ export type MonitorMessage = {
   createdAt: string;
   kind?: string;
   steps?: { label: string }[];
+  durationMs?: number;
   suggestions?: string[];
   clickedSuggestion?: string;
   evaluation?: { id: string; status: string } | null;
@@ -82,6 +83,7 @@ export function BubbleMonitorRow({ msg }: { msg: MonitorMessage }) {
         steps={steps.length > 0 ? steps : undefined}
         stepsCollapsed={stepsCollapsed}
         onToggleSteps={() => setStepsCollapsed((v) => !v)}
+        durationMs={msg.durationMs}
         reveal={false}
         streaming={false}
         suggestions={msg.suggestions}
