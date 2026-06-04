@@ -372,6 +372,10 @@ export async function getEvaluationDetail(
   };
   toolCalls: unknown;
   toolResults: unknown;
+  /** Duração do turno (wall-clock) em ms: assistant final − user que abriu. */
+  durationMs: number | null;
+  /** AVALIAÇÃO do usuário (voto na bubble) desta resposta, se houve. */
+  userFeedback: { rating: string; comment: string | null } | null;
 } | null> {
   const ev = await prisma.conversationQualityEvaluation.findUnique({
     where: { id },
@@ -407,6 +411,7 @@ export async function getEvaluationDetail(
   // user message anterior e a assistantMessageId final.
   let toolCalls: unknown = null;
   let toolResults: unknown = null;
+  let durationMs: number | null = null;
   if (ev.assistantMessageId) {
     const finalMsg = await prisma.message.findUnique({
       where: { id: ev.assistantMessageId },
@@ -422,6 +427,13 @@ export async function getEvaluationDetail(
         orderBy: { createdAt: "desc" },
         select: { createdAt: true },
       });
+      // Duração do turno = wall-clock entre o user que abriu e a assistant
+      // final (mesmo proxy do monitoramento Bubble). Bate com o "X.Xs" da
+      // bubble viva. O valor exato por iteração vive em LlmUsage.durationMs.
+      if (lastUserBefore) {
+        const ms = +finalMsg.createdAt - +lastUserBefore.createdAt;
+        if (ms > 0) durationMs = ms;
+      }
       const assistantsTurno = await prisma.message.findMany({
         where: {
           conversationId: finalMsg.conversationId,
@@ -447,7 +459,20 @@ export async function getEvaluationDetail(
     }
   }
 
+  // AVALIAÇÃO do usuário (voto na bubble) desta resposta, se houve. A unique
+  // [assistantMessageId, userId] garante 1 voto por dono; findFirst basta.
+  let userFeedback: { rating: string; comment: string | null } | null = null;
+  if (ev.assistantMessageId) {
+    const fb = await prisma.messageFeedback.findFirst({
+      where: { assistantMessageId: ev.assistantMessageId },
+      select: { rating: true, comment: true },
+    });
+    if (fb) userFeedback = { rating: fb.rating, comment: fb.comment };
+  }
+
   return {
+    durationMs,
+    userFeedback,
     evaluation: {
       id: ev.id,
       createdAt: ev.createdAt,
