@@ -6,9 +6,11 @@
 jest.mock("@/lib/auth/require", () => ({ requireMinRole: jest.fn() }));
 jest.mock("@/lib/prisma", () => ({
   prisma: {
-    conversation: { groupBy: jest.fn(), findMany: jest.fn() },
+    conversation: { groupBy: jest.fn(), findMany: jest.fn(), findUnique: jest.fn() },
     user: { findMany: jest.fn() },
-    messageFeedback: { groupBy: jest.fn() },
+    message: { findMany: jest.fn() },
+    messageFeedback: { groupBy: jest.fn(), findMany: jest.fn() },
+    conversationQualityEvaluation: { findMany: jest.fn() },
   },
 }));
 
@@ -16,6 +18,7 @@ import {
   computeAccuracy,
   listBubbleCollaborators,
   listBubbleSessions,
+  getBubbleSessionMessages,
 } from "../monitoramento-bubble";
 import { requireMinRole } from "@/lib/auth/require";
 import { prisma } from "@/lib/prisma";
@@ -128,5 +131,161 @@ describe("listBubbleSessions", () => {
     expect(c2.endedAt).toBe(new Date("2026-06-02").toISOString());
     expect(c2.ratingCounts).toEqual({ CORRETO: 1, PARCIAL: 1, ERRADO: 0, ALUCINOU: 0 });
     expect(c2.accuracyPct).toBe(75);
+  });
+});
+
+describe("getBubbleSessionMessages", () => {
+  function mockEvals(rows: unknown[]) {
+    (prisma.conversationQualityEvaluation.findMany as jest.Mock).mockResolvedValue(rows);
+  }
+  function mockFeedbacks(rows: unknown[]) {
+    (prisma.messageFeedback.findMany as jest.Mock).mockResolvedValue(rows);
+  }
+
+  test("super_admin lê conversa de qualquer dono (sem trava de propriedade)", async () => {
+    (prisma.conversation.findUnique as jest.Mock).mockResolvedValue({ id: "cX" });
+    (prisma.message.findMany as jest.Mock).mockResolvedValue([
+      { id: "m1", role: "user", content: "oi", kind: "text", toolCalls: null, createdAt: new Date("2026-06-01T10:00:00Z") },
+      { id: "m2", role: "assistant", content: "olá", kind: "text", toolCalls: null, createdAt: new Date("2026-06-01T10:00:01Z") },
+    ]);
+    mockEvals([]);
+    mockFeedbacks([]);
+
+    const res = await getBubbleSessionMessages("cX");
+    expect(res.ok).toBe(true);
+    if (!res.ok) throw new Error("esperado ok");
+    // a action NUNCA chama findUnique com userId atual nem filtra por dono
+    expect(prisma.conversation.findUnique).toHaveBeenCalledWith({
+      where: { id: "cX" },
+      select: { id: true },
+    });
+    // findMany de mensagens não filtra endedAt (lê arquivadas)
+    expect(prisma.message.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({ where: { conversationId: "cX" } }),
+    );
+    expect(res.messages.map((m) => m.id)).toEqual(["m1", "m2"]);
+  });
+
+  test("conversa inexistente retorna ok:false", async () => {
+    (prisma.conversation.findUnique as jest.Mock).mockResolvedValue(null);
+    const res = await getBubbleSessionMessages("nope");
+    expect(res).toEqual({ ok: false, error: "Conversa não encontrada" });
+    expect(prisma.message.findMany).not.toHaveBeenCalled();
+  });
+
+  test("Map do juiz: terminal (status), humanStatus sobrescreve, sem-row vira null", async () => {
+    (prisma.conversation.findUnique as jest.Mock).mockResolvedValue({ id: "c1" });
+    (prisma.message.findMany as jest.Mock).mockResolvedValue([
+      { id: "a1", role: "assistant", content: "r1", kind: "text", toolCalls: null, createdAt: new Date("2026-06-01T10:00:00Z") },
+      { id: "a2", role: "assistant", content: "r2", kind: "text", toolCalls: null, createdAt: new Date("2026-06-01T10:00:01Z") },
+      { id: "a3", role: "assistant", content: "r3", kind: "text", toolCalls: null, createdAt: new Date("2026-06-01T10:00:02Z") },
+    ]);
+    mockEvals([
+      { id: "e1", assistantMessageId: "a1", status: "APROVADO", humanStatus: null, suggestions: [] },
+      { id: "e2", assistantMessageId: "a2", status: "PENDENTE", humanStatus: "REPROVADO", suggestions: [] },
+    ]);
+    mockFeedbacks([]);
+
+    const res = await getBubbleSessionMessages("c1");
+    if (!res.ok) throw new Error("esperado ok");
+    const byId = new Map(res.messages.map((m) => [m.id, m]));
+    expect(byId.get("a1")!.evaluation).toEqual({ id: "e1", status: "APROVADO" });
+    // humanStatus tem prioridade sobre status do judge
+    expect(byId.get("a2")!.evaluation).toEqual({ id: "e2", status: "REPROVADO" });
+    // sem linha no Map → null
+    expect(byId.get("a3")!.evaluation).toBeNull();
+  });
+
+  test("steps agregados no range-merge do turno (anexa na assistant final)", async () => {
+    (prisma.conversation.findUnique as jest.Mock).mockResolvedValue({ id: "c1" });
+    (prisma.message.findMany as jest.Mock).mockResolvedValue([
+      { id: "u1", role: "user", content: "pergunta", kind: "text", toolCalls: null, createdAt: new Date("2026-06-01T10:00:00Z") },
+      { id: "a1", role: "assistant", content: "", kind: "text", toolCalls: [{ name: "estoque_modelo" }], createdAt: new Date("2026-06-01T10:00:01Z") },
+      { id: "a2", role: "assistant", content: "resposta final", kind: "text", toolCalls: null, createdAt: new Date("2026-06-01T10:00:02Z") },
+    ]);
+    mockEvals([]);
+    mockFeedbacks([]);
+
+    const res = await getBubbleSessionMessages("c1");
+    if (!res.ok) throw new Error("esperado ok");
+    const byId = new Map(res.messages.map((m) => [m.id, m]));
+    // a intermediária não carrega steps; a final do turno carrega a trilha
+    expect(byId.get("a1")!.steps).toBeUndefined();
+    expect(byId.get("a2")!.steps).toHaveLength(1);
+  });
+
+  test("feedback do dono é anexado por mensagem assistant", async () => {
+    (prisma.conversation.findUnique as jest.Mock).mockResolvedValue({ id: "c1" });
+    (prisma.message.findMany as jest.Mock).mockResolvedValue([
+      { id: "a1", role: "assistant", content: "r1", kind: "text", toolCalls: null, createdAt: new Date("2026-06-01T10:00:00Z") },
+    ]);
+    mockEvals([]);
+    mockFeedbacks([
+      { assistantMessageId: "a1", rating: "CORRETO", comment: "bom" },
+    ]);
+
+    const res = await getBubbleSessionMessages("c1");
+    if (!res.ok) throw new Error("esperado ok");
+    expect(prisma.messageFeedback.findMany).toHaveBeenCalledWith({
+      where: { conversationId: "c1" },
+      select: { assistantMessageId: true, rating: true, comment: true },
+    });
+    expect(res.messages[0].feedback).toEqual({ rating: "CORRETO", comment: "bom" });
+  });
+
+  test("clicada derivada: próxima user == sugestão marca clickedSuggestion", async () => {
+    (prisma.conversation.findUnique as jest.Mock).mockResolvedValue({ id: "c1" });
+    (prisma.message.findMany as jest.Mock).mockResolvedValue([
+      { id: "a1", role: "assistant", content: "r1", kind: "text", toolCalls: null, createdAt: new Date("2026-06-01T10:00:00Z") },
+      { id: "u1", role: "user", content: "  Ver estoque  ", kind: "text", toolCalls: null, createdAt: new Date("2026-06-01T10:00:01Z") },
+    ]);
+    mockEvals([
+      { id: "e1", assistantMessageId: "a1", status: "APROVADO", humanStatus: null, suggestions: ["Ver estoque", "Ver financeiro"] },
+    ]);
+    mockFeedbacks([]);
+
+    const res = await getBubbleSessionMessages("c1");
+    if (!res.ok) throw new Error("esperado ok");
+    const a1 = res.messages.find((m) => m.id === "a1")!;
+    expect(a1.suggestions).toEqual(["Ver estoque", "Ver financeiro"]);
+    expect(a1.clickedSuggestion).toBe("Ver estoque");
+  });
+
+  test("clicada derivada: sugestões repetidas marca a PRIMEIRA igual", async () => {
+    (prisma.conversation.findUnique as jest.Mock).mockResolvedValue({ id: "c1" });
+    (prisma.message.findMany as jest.Mock).mockResolvedValue([
+      { id: "a1", role: "assistant", content: "r1", kind: "text", toolCalls: null, createdAt: new Date("2026-06-01T10:00:00Z") },
+      { id: "u1", role: "user", content: "Ver estoque", kind: "text", toolCalls: null, createdAt: new Date("2026-06-01T10:00:01Z") },
+    ]);
+    mockEvals([
+      { id: "e1", assistantMessageId: "a1", status: "APROVADO", humanStatus: null, suggestions: ["Ver estoque", "Ver estoque"] },
+    ]);
+    mockFeedbacks([]);
+
+    const res = await getBubbleSessionMessages("c1");
+    if (!res.ok) throw new Error("esperado ok");
+    // find retorna a primeira ocorrência (mesmo valor, mas garante semântica)
+    expect(res.messages.find((m) => m.id === "a1")!.clickedSuggestion).toBe("Ver estoque");
+  });
+
+  test("clicada derivada: última assistant sem próximo user fica sem clicada", async () => {
+    (prisma.conversation.findUnique as jest.Mock).mockResolvedValue({ id: "c1" });
+    (prisma.message.findMany as jest.Mock).mockResolvedValue([
+      { id: "u1", role: "user", content: "oi", kind: "text", toolCalls: null, createdAt: new Date("2026-06-01T10:00:00Z") },
+      { id: "a1", role: "assistant", content: "r1", kind: "text", toolCalls: null, createdAt: new Date("2026-06-01T10:00:01Z") },
+    ]);
+    mockEvals([
+      { id: "e1", assistantMessageId: "a1", status: "APROVADO", humanStatus: null, suggestions: ["Ver estoque"] },
+    ]);
+    mockFeedbacks([]);
+
+    const res = await getBubbleSessionMessages("c1");
+    if (!res.ok) throw new Error("esperado ok");
+    expect(res.messages.find((m) => m.id === "a1")!.clickedSuggestion).toBeUndefined();
+  });
+
+  test("requireMinRole gateia: propaga quando lança", async () => {
+    (requireMinRole as jest.Mock).mockRejectedValue(new Error("denied"));
+    await expect(getBubbleSessionMessages("c1")).rejects.toThrow("denied");
   });
 });

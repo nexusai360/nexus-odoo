@@ -10,6 +10,8 @@
 
 import { prisma } from "@/lib/prisma";
 import { requireMinRole } from "@/lib/auth/require";
+import { progressLabel } from "@/lib/agent/progress-labels";
+import type { ConversationMessageDto } from "@/lib/actions/conversation-messages";
 
 export type RatingCounts = {
   CORRETO: number;
@@ -163,4 +165,180 @@ export async function listBubbleSessions(userId: string): Promise<SessionRow[]> 
       isActive: c.endedAt === null,
     };
   });
+}
+
+/**
+ * Mensagem de uma sessão da bubble vista pelo super_admin no monitoramento.
+ * Extende o DTO compartilhado com metadados de leitura (kind), sugestões
+ * oferecidas, qual sugestão foi clicada e o veredito do juiz.
+ */
+export type BubbleSessionMessageDto = ConversationMessageDto & {
+  kind: string;
+  suggestions?: string[];
+  clickedSuggestion?: string;
+  evaluation?: { id: string; status: string } | null;
+};
+
+/**
+ * Reconstroi os rótulos da trilha "Raciocinio" a partir do toolCalls
+ * persistido. Réplica fiel de stepsFromToolCalls de conversation-messages
+ * (não exportado lá). Defensivo contra formatos legados/null.
+ */
+function stepsFromToolCalls(toolCalls: unknown): { label: string }[] {
+  if (!Array.isArray(toolCalls)) return [];
+  const out: { label: string }[] = [];
+  for (const item of toolCalls) {
+    const name =
+      item && typeof item === "object"
+        ? (item as { name?: unknown }).name
+        : undefined;
+    if (typeof name === "string" && name.length > 0) {
+      out.push({ label: progressLabel(name) });
+    }
+  }
+  return out;
+}
+
+/**
+ * Lê o histórico completo de uma conversa da bubble para o super_admin
+ * monitorar. Diferente de getConversationMessages (que trava por dono e
+ * filtra arquivadas), aqui o super_admin lê QUALQUER conversa, inclusive
+ * arquivadas (sem filtro endedAt). Leitura exclusiva do cache interno.
+ *
+ * Agrega os steps por turno replicando o range-merge de getEvaluationDetail:
+ * os toolCalls vivem nas mensagens assistant intermediárias; aqui anexamos
+ * a trilha agregada na mensagem assistant FINAL de cada turno.
+ */
+export async function getBubbleSessionMessages(
+  conversationId: string,
+): Promise<
+  | { ok: true; messages: BubbleSessionMessageDto[] }
+  | { ok: false; error: string }
+> {
+  await requireMinRole("super_admin");
+
+  const conv = await prisma.conversation.findUnique({
+    where: { id: conversationId },
+    select: { id: true },
+  });
+  if (!conv) {
+    return { ok: false, error: "Conversa não encontrada" };
+  }
+
+  const messages = await prisma.message.findMany({
+    where: { conversationId },
+    orderBy: { createdAt: "asc" },
+    take: 1000,
+    select: {
+      id: true,
+      role: true,
+      content: true,
+      kind: true,
+      toolCalls: true,
+      createdAt: true,
+    },
+  });
+
+  // STEPS por turno (range-merge igual ao getEvaluationDetail):
+  // a trilha de cada turno é a soma dos toolCalls de todas as mensagens
+  // assistant entre o último user e a assistant final daquele turno. A
+  // trilha agregada é anexada apenas na assistant final.
+  const stepsByMsgId = new Map<string, { label: string }[]>();
+  let accCalls: unknown[] = [];
+  let lastAssistantId: string | null = null;
+  for (const m of messages) {
+    if (m.role === "user") {
+      // Fecha o turno anterior: a última assistant vista recebe a trilha.
+      if (lastAssistantId && accCalls.length > 0) {
+        stepsByMsgId.set(lastAssistantId, stepsFromToolCalls(accCalls));
+      }
+      accCalls = [];
+      lastAssistantId = null;
+    } else if (m.role === "assistant") {
+      if (Array.isArray(m.toolCalls)) accCalls.push(...(m.toolCalls as unknown[]));
+      else if (m.toolCalls != null) accCalls.push(m.toolCalls);
+      lastAssistantId = m.id;
+    }
+  }
+  // Fecha o último turno em aberto.
+  if (lastAssistantId && accCalls.length > 0) {
+    stepsByMsgId.set(lastAssistantId, stepsFromToolCalls(accCalls));
+  }
+
+  // JUIZ + SUGESTÕES por mensagem assistant.
+  const evals = await prisma.conversationQualityEvaluation.findMany({
+    where: { conversationId, assistantMessageId: { not: null } },
+    select: {
+      id: true,
+      assistantMessageId: true,
+      status: true,
+      humanStatus: true,
+      suggestions: true,
+    },
+  });
+  const evalByMsg = new Map<
+    string,
+    { id: string; statusEfetivo: string; suggestions: string[] }
+  >();
+  for (const e of evals) {
+    if (!e.assistantMessageId) continue;
+    evalByMsg.set(e.assistantMessageId, {
+      id: e.id,
+      statusEfetivo: e.humanStatus ?? e.status,
+      suggestions: Array.isArray(e.suggestions) ? e.suggestions : [],
+    });
+  }
+
+  // FEEDBACK do dono (todos os votos da conversa são do dono).
+  const feedbacks = await prisma.messageFeedback.findMany({
+    where: { conversationId },
+    select: { assistantMessageId: true, rating: true, comment: true },
+  });
+  const fbByMsg = new Map(
+    feedbacks.map((f) => [
+      f.assistantMessageId,
+      { rating: f.rating, comment: f.comment },
+    ]),
+  );
+
+  // Monta o DTO base por mensagem.
+  const out: BubbleSessionMessageDto[] = messages.map((m) => {
+    const steps = stepsByMsgId.get(m.id) ?? [];
+    const ev = evalByMsg.get(m.id) ?? null;
+    const fb = fbByMsg.get(m.id) ?? null;
+    return {
+      id: m.id,
+      role: m.role as ConversationMessageDto["role"],
+      content: m.content,
+      createdAt: m.createdAt.toISOString(),
+      kind: m.kind,
+      ...(steps.length > 0 ? { steps } : {}),
+      ...(ev && ev.suggestions.length > 0 ? { suggestions: ev.suggestions } : {}),
+      evaluation: ev ? { id: ev.id, status: ev.statusEfetivo } : null,
+      ...(fb ? { feedback: fb } : {}),
+    };
+  });
+
+  // CLICADA DERIVADA: para cada assistant com sugestões, olha a PRÓXIMA
+  // mensagem user; se o conteúdo dela casar (trim) com alguma sugestão,
+  // marca a PRIMEIRA sugestão igual como clickedSuggestion.
+  for (let i = 0; i < out.length; i++) {
+    const msg = out[i];
+    if (msg.role !== "assistant" || !msg.suggestions) continue;
+    let nextUser: BubbleSessionMessageDto | null = null;
+    for (let j = i + 1; j < out.length; j++) {
+      if (out[j].role === "user") {
+        nextUser = out[j];
+        break;
+      }
+    }
+    if (!nextUser) continue;
+    const clicked = nextUser.content.trim();
+    const match = msg.suggestions.find((s) => s.trim() === clicked);
+    if (match !== undefined) {
+      msg.clickedSuggestion = match;
+    }
+  }
+
+  return { ok: true, messages: out };
 }
