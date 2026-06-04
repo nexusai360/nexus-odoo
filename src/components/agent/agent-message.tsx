@@ -20,11 +20,13 @@ import {
   Copy,
   Database,
   Lightbulb,
+  Scale,
   Search,
   Loader2,
   Sparkles,
 } from "lucide-react";
 import * as React from "react";
+import Link from "next/link";
 import { cn } from "@/lib/utils";
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import { AudioPlayer } from "@/components/agent/audio-player";
@@ -90,20 +92,21 @@ export interface AgentMessageProps {
    * (que usa a barra de sugestões clicável separada) não é afetada.
    */
   suggestions?: string[];
-  /** B2. Qual sugestão o usuário clicou (marcada como "usada" no bloco). */
+  /** B2. Qual sugestão o usuário clicou (distinção só por contraste de cor). */
   clickedSuggestion?: string;
   /**
-   * B2 (monitoramento). Conteúdo no rodapé DENTRO da bolha, abaixo das
-   * sugestões (ex.: a tag de veredito do juiz). Slot genérico para não acoplar
-   * o AgentMessage à lógica de deep-link do monitor.
+   * B2 (monitoramento). PERÍCIA: veredito interno da plataforma (juiz) sobre
+   * esta resposta. Renderiza um chip rotulado no rodapé da bolha (eixo
+   * plataforma), clicável pro Backtest via `href`. Cor/label vêm prontos do
+   * monitor para não acoplar o AgentMessage ao enum de status.
    */
-  footer?: React.ReactNode;
+  monitorPericia?: { label: string; color: string; href?: string } | null;
   /**
-   * B2 (monitoramento, read-only). Voto do usuário exibido como badge de canto
-   * (igual ao FeedbackControl da bubble viva, mas sem interação). Quando
-   * presente, mostra o ícone+cor da classificação no canto inferior direito.
+   * B2 (monitoramento). AVALIAÇÃO: voto do usuário, badge de canto inferior
+   * direito (igual ao FeedbackControl da bubble viva). Quando há `comment`,
+   * o badge vira clicável e revela o texto escrito pelo usuário.
    */
-  monitorVote?: { rating: FeedbackRating } | null;
+  monitorVote?: { rating: FeedbackRating; comment?: string | null } | null;
 }
 
 export function AgentMessage({
@@ -127,7 +130,7 @@ export function AgentMessage({
   onSubmitFeedback,
   suggestions,
   clickedSuggestion,
-  footer,
+  monitorPericia,
   monitorVote,
 }: AgentMessageProps) {
   if (role === "loading") return <LoadingBubble />;
@@ -216,19 +219,21 @@ export function AgentMessage({
               clickedSuggestion={clickedSuggestion}
             />
           ) : null}
-          {footer ? <div className="mt-2">{footer}</div> : null}
-          {createdAt && !streaming ? (
-            <div
-              className={cn(
-                // pr-7: reserva espaco para o badge de canto (voto/feedback)
-                // que mora em -right-2 -bottom-2, senao a data fica por baixo
-                // dele. Vale pra bolha do user e da IA.
-                "mt-1 pr-7 text-[10px] tabular-nums text-muted-foreground/70",
-                "text-right",
-              )}
-              suppressHydrationWarning
-            >
-              {formatRelativeDateTime(createdAt)}
+          {monitorPericia || (createdAt && !streaming) ? (
+            <div className="mt-2 flex items-center gap-2">
+              {monitorPericia ? <PericiaChip {...monitorPericia} /> : null}
+              {createdAt && !streaming ? (
+                <div
+                  className={cn(
+                    // pr-3.5: reserva o minimo para o badge de canto (voto) nao
+                    // cobrir a data. Vale pra bolha do user e da IA.
+                    "ml-auto pr-3.5 text-[10px] tabular-nums text-muted-foreground/70",
+                  )}
+                  suppressHydrationWarning
+                >
+                  {formatRelativeDateTime(createdAt)}
+                </div>
+              ) : null}
             </div>
           ) : null}
         </BubbleSurface>
@@ -245,7 +250,12 @@ export function AgentMessage({
             onSubmit={(rating, comment) => onSubmitFeedback(rating, comment)}
           />
         ) : null}
-        {monitorVote ? <MonitorVoteBadge rating={monitorVote.rating} /> : null}
+        {monitorVote ? (
+          <MonitorVoteBadge
+            rating={monitorVote.rating}
+            comment={monitorVote.comment ?? null}
+          />
+        ) : null}
       </div>
     </BubbleWrapper>
   );
@@ -580,11 +590,10 @@ function AssistantTrailBlock({
 /* -------------------------------------------------------------------------- */
 
 // Espelha o AssistantTrailBlock (mesma linguagem visual do "Raciocínio"):
-// header colapsável com chevron + "Sugestões · N", abre pra baixo numa lista
-// de chips. A lâmpada SÓ aparece quando alguma sugestão foi clicada, e nesse
-// caso vem ACESA (preenchida em violeta, contorno claro); quando ninguém
-// clicou, fica só o texto. O chip clicado ganha o selo "usada" (Check + texto,
-// nao so cor, conforme ui-ux-pro-max color-not-only). Colapso interno.
+// header colapsável com chevron + "Sugestões · N". A lâmpada (ícone outline)
+// aparece SÓ quando alguma sugestão foi clicada nesta mensagem; ausência do
+// ícone = ninguém clicou. O chip clicado se distingue apenas pelo contraste
+// de cor (sem selo de texto). Colapso interno.
 function AssistantSuggestionsBlock({
   suggestions,
   clickedSuggestion,
@@ -616,11 +625,11 @@ function AssistantSuggestionsBlock({
           <Chevron className="h-3.5 w-3.5 text-muted-foreground" />
         </span>
         {hasClicked ? (
-          // Lâmpada ACESA: alguém clicou numa sugestão. Preenchida em violeta
-          // com contorno claro (efeito contrário do contorno vazado).
+          // Presença da lâmpada = o usuário clicou numa das sugestões nesta
+          // mensagem. Mesmo ícone outline de sempre.
           <span className="inline-flex h-3.5 w-3.5 shrink-0 items-center justify-center">
             <Lightbulb
-              className="h-3.5 w-3.5 fill-violet-500 text-violet-200"
+              className="h-3.5 w-3.5 text-violet-400"
               aria-label="Uma sugestão foi clicada"
             />
           </span>
@@ -657,20 +666,16 @@ function AssistantSuggestionsBlock({
                     transition={
                       reduce ? { duration: 0 } : { duration: 0.15, ease: EASE }
                     }
+                    title={clicked ? "Sugestão clicada pelo usuário" : undefined}
                     className={cn(
-                      "flex items-center gap-2 self-start rounded-2xl border px-3 py-1.5 text-[13px] leading-snug [overflow-wrap:anywhere]",
+                      "self-start rounded-2xl border px-3 py-1.5 text-[13px] leading-snug [overflow-wrap:anywhere]",
+                      // A clicada se distingue só pelo contraste de cor (preenchida).
                       clicked
-                        ? "border-violet-400/70 bg-violet-600/30 text-foreground"
+                        ? "border-violet-400/70 bg-violet-600/35 font-medium text-foreground"
                         : "border-violet-500/30 bg-violet-500/10 text-foreground/90",
                     )}
                   >
-                    <span>{s}</span>
-                    {clicked ? (
-                      <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-violet-500 px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wide text-white">
-                        <Check className="h-2.5 w-2.5" aria-hidden />
-                        usada
-                      </span>
-                    ) : null}
+                    {s}
                   </motion.li>
                 );
               })}
@@ -770,20 +775,122 @@ function ToolBubble({ name }: { name: string }) {
   );
 }
 
-// B2 (monitoramento, read-only). Badge de canto do voto do usuário, igual ao
-// estado "escolhido" do FeedbackControl da bubble viva (mesmo ícone/cor/posição),
-// mas sem interação. Fica sempre visível (não depende de hover).
-function MonitorVoteBadge({ rating }: { rating: FeedbackRating }) {
+// B2 (monitoramento). PERÍCIA: chip rotulado do veredito interno (juiz) no
+// rodapé da bolha. Cor/label prontos. Clicável pro Backtest quando há href.
+// Eixo "plataforma", distinto do voto do usuário (badge de canto).
+function PericiaChip({
+  label,
+  color,
+  href,
+}: {
+  label: string;
+  color: string;
+  href?: string;
+}) {
+  const inner = (
+    <span
+      className="inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[10px] font-semibold"
+      style={{ color, borderColor: `${color}66`, background: `${color}1f` }}
+    >
+      <Scale className="h-3 w-3" aria-hidden />
+      <span className="uppercase tracking-wide opacity-70">Perícia</span>
+      <span>{label}</span>
+    </span>
+  );
+  if (!href) return inner;
+  return (
+    <Link
+      href={href}
+      title="Ver esta perícia no Backtest"
+      className="inline-flex transition-opacity hover:opacity-80"
+    >
+      {inner}
+    </Link>
+  );
+}
+
+// B2 (monitoramento). AVALIAÇÃO: badge de canto do voto do usuário, igual ao
+// estado "escolhido" do FeedbackControl da bubble viva (mesmo ícone/cor/posição).
+// Quando o usuário escreveu um comentário, o badge ganha um ponto indicador e
+// vira clicável: o clique abre um cartão com o texto (senão não há o que abrir,
+// e o admin nem perde o clique).
+function MonitorVoteBadge({
+  rating,
+  comment,
+}: {
+  rating: FeedbackRating;
+  comment: string | null;
+}) {
   const meta = RATING_META[rating];
   const Icon = meta.Icon;
+  const hasComment = Boolean(comment && comment.trim().length > 0);
+  const [open, setOpen] = React.useState(false);
+  const rootRef = React.useRef<HTMLDivElement>(null);
+
+  React.useEffect(() => {
+    if (!open) return;
+    const onDown = (e: PointerEvent) => {
+      if (rootRef.current && !rootRef.current.contains(e.target as Node)) {
+        setOpen(false);
+      }
+    };
+    document.addEventListener("pointerdown", onDown);
+    return () => document.removeEventListener("pointerdown", onDown);
+  }, [open]);
+
+  const badgeStyle = { background: meta.color, borderColor: meta.color };
+  const baseCls =
+    "absolute -right-2 -bottom-2 flex h-6 w-6 items-center justify-center rounded-md border text-white shadow-sm";
+
   return (
-    <div
-      aria-label={`Voto do usuário: ${meta.label}`}
-      title={`Voto do usuário: ${meta.label}`}
-      style={{ background: meta.color, borderColor: meta.color }}
-      className="absolute -right-2 -bottom-2 flex h-6 w-6 items-center justify-center rounded-md border text-white shadow-sm"
-    >
-      <Icon className="h-3 w-3" />
+    <div ref={rootRef}>
+      {hasComment ? (
+        <button
+          type="button"
+          aria-label={`Avaliação do usuário: ${meta.label}. Tem comentário, clique para ver.`}
+          title="Ver comentário do usuário"
+          onClick={() => setOpen((v) => !v)}
+          style={badgeStyle}
+          className={cn(baseCls, "cursor-pointer")}
+        >
+          <Icon className="h-3 w-3" />
+          {/* Ponto indicador: existe comentário escrito. */}
+          <span className="absolute -right-1 -top-1 h-2 w-2 rounded-full border border-background bg-foreground" />
+        </button>
+      ) : (
+        <div
+          aria-label={`Avaliação do usuário: ${meta.label}`}
+          title={`Avaliação do usuário: ${meta.label}`}
+          style={badgeStyle}
+          className={baseCls}
+        >
+          <Icon className="h-3 w-3" />
+        </div>
+      )}
+
+      <AnimatePresence>
+        {open && hasComment ? (
+          <motion.div
+            initial={{ opacity: 0, y: 6, scale: 0.96 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: 6, scale: 0.96 }}
+            transition={{ duration: 0.16, ease: [0.16, 1, 0.3, 1] }}
+            className="absolute right-0 top-full z-20 mt-2 w-60 rounded-lg border border-border bg-popover p-2.5 shadow-xl"
+          >
+            <div
+              className="mb-1 flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-wide"
+              style={{ color: meta.color }}
+            >
+              <Icon className="h-3 w-3" />
+              {meta.label}
+              <span className="text-muted-foreground/70">· comentário</span>
+            </div>
+            <p className="text-xs leading-snug text-foreground [overflow-wrap:anywhere]">
+              {comment}
+            </p>
+          </motion.div>
+        ) : null}
+      </AnimatePresence>
     </div>
   );
 }

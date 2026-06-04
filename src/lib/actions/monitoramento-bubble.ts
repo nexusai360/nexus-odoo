@@ -14,9 +14,20 @@ import { progressLabel } from "@/lib/agent/progress-labels";
 import type { ConversationMessageDto } from "@/lib/actions/conversation-messages";
 import {
   computeAccuracy,
+  periciaBucket,
   zeroCounts,
   type RatingCounts,
 } from "./monitoramento-bubble-helpers";
+
+/** Par de métricas mostrado em cada card: AVALIAÇÃO (usuário) + PERÍCIA (plataforma). */
+export type QualityPair = {
+  /** Votos do usuário (MessageFeedback). */
+  avaliacaoCounts: RatingCounts;
+  avaliacaoPct: number | null;
+  /** Vereditos do juiz (ConversationQualityEvaluation, status efetivo). */
+  periciaCounts: RatingCounts;
+  periciaPct: number | null;
+};
 
 export type Collaborator = {
   userId: string;
@@ -26,9 +37,7 @@ export type Collaborator = {
   role: string;
   sessionCount: number;
   hasActiveSession: boolean;
-  ratingCounts: RatingCounts;
-  accuracyPct: number | null;
-};
+} & QualityPair;
 
 export type SessionRow = {
   conversationId: string;
@@ -36,10 +45,8 @@ export type SessionRow = {
   startedAt: string;
   endedAt: string | null;
   messageCount: number;
-  ratingCounts: RatingCounts;
-  accuracyPct: number | null;
   isActive: boolean;
-};
+} & QualityPair;
 
 /**
  * Lista os colaboradores que conversaram com o Nex na bubble (in_app),
@@ -70,21 +77,40 @@ export async function listBubbleCollaborators(): Promise<Collaborator[]> {
   });
   const userById = new Map(users.map((u) => [u.id, u]));
 
+  // AVALIAÇÃO (usuário): votos por usuário.
   const votes = await prisma.messageFeedback.groupBy({
     by: ["userId", "rating"],
     where: { conversation: { channel: "in_app" } },
     _count: { _all: true },
   });
-  const countsByUser = new Map<string, RatingCounts>();
+  const avalByUser = new Map<string, RatingCounts>();
   for (const v of votes) {
-    const rc = countsByUser.get(v.userId) ?? zeroCounts();
+    const rc = avalByUser.get(v.userId) ?? zeroCounts();
     rc[v.rating as keyof RatingCounts] += v._count._all;
-    countsByUser.set(v.userId, rc);
+    avalByUser.set(v.userId, rc);
+  }
+
+  // PERÍCIA (plataforma): vereditos do juiz por usuário (status efetivo =
+  // ajuste humano sobrescreve o automático), colapsados nos 4 baldes.
+  const evals = await prisma.conversationQualityEvaluation.findMany({
+    where: { conversation: { channel: "in_app" } },
+    select: { status: true, humanStatus: true, conversation: { select: { userId: true } } },
+  });
+  const periciaByUser = new Map<string, RatingCounts>();
+  for (const e of evals) {
+    const uid = e.conversation?.userId;
+    if (!uid) continue;
+    const bucket = periciaBucket(e.humanStatus ?? e.status);
+    if (!bucket) continue;
+    const rc = periciaByUser.get(uid) ?? zeroCounts();
+    rc[bucket] += 1;
+    periciaByUser.set(uid, rc);
   }
 
   const rows = grouped.map((g) => {
     const u = userById.get(g.userId);
-    const ratingCounts = countsByUser.get(g.userId) ?? zeroCounts();
+    const avaliacaoCounts = avalByUser.get(g.userId) ?? zeroCounts();
+    const periciaCounts = periciaByUser.get(g.userId) ?? zeroCounts();
     return {
       userId: g.userId,
       name: u?.name ?? "",
@@ -92,8 +118,10 @@ export async function listBubbleCollaborators(): Promise<Collaborator[]> {
       role: u?.platformRole ?? "viewer",
       sessionCount: g._count._all,
       hasActiveSession: activeIds.has(g.userId),
-      ratingCounts,
-      accuracyPct: computeAccuracy(ratingCounts),
+      avaliacaoCounts,
+      avaliacaoPct: computeAccuracy(avaliacaoCounts),
+      periciaCounts,
+      periciaPct: computeAccuracy(periciaCounts),
       lastActivity: g._max.updatedAt,
     };
   });
@@ -125,30 +153,48 @@ export async function listBubbleSessions(userId: string): Promise<SessionRow[]> 
     },
   });
 
+  // AVALIAÇÃO (usuário): votos por conversa.
   const votes = await prisma.messageFeedback.groupBy({
     by: ["conversationId", "rating"],
     where: { conversation: { userId, channel: "in_app" } },
     _count: { _all: true },
   });
-  const countsByConv = new Map<string, RatingCounts>();
+  const avalByConv = new Map<string, RatingCounts>();
   for (const v of votes) {
-    const rc = countsByConv.get(v.conversationId) ?? zeroCounts();
+    const rc = avalByConv.get(v.conversationId) ?? zeroCounts();
     rc[v.rating as keyof RatingCounts] += v._count._all;
-    countsByConv.set(v.conversationId, rc);
+    avalByConv.set(v.conversationId, rc);
+  }
+
+  // PERÍCIA (plataforma): vereditos do juiz por conversa (status efetivo).
+  const evals = await prisma.conversationQualityEvaluation.findMany({
+    where: { conversation: { userId, channel: "in_app" } },
+    select: { status: true, humanStatus: true, conversationId: true },
+  });
+  const periciaByConv = new Map<string, RatingCounts>();
+  for (const e of evals) {
+    const bucket = periciaBucket(e.humanStatus ?? e.status);
+    if (!bucket) continue;
+    const rc = periciaByConv.get(e.conversationId) ?? zeroCounts();
+    rc[bucket] += 1;
+    periciaByConv.set(e.conversationId, rc);
   }
 
   const total = conversations.length;
 
   return conversations.map((c, pos) => {
-    const ratingCounts = countsByConv.get(c.id) ?? zeroCounts();
+    const avaliacaoCounts = avalByConv.get(c.id) ?? zeroCounts();
+    const periciaCounts = periciaByConv.get(c.id) ?? zeroCounts();
     return {
       conversationId: c.id,
       index: total - pos,
       startedAt: c.createdAt.toISOString(),
       endedAt: c.endedAt ? c.endedAt.toISOString() : null,
       messageCount: c._count.messages,
-      ratingCounts,
-      accuracyPct: computeAccuracy(ratingCounts),
+      avaliacaoCounts,
+      avaliacaoPct: computeAccuracy(avaliacaoCounts),
+      periciaCounts,
+      periciaPct: computeAccuracy(periciaCounts),
       // Só a conversa MAIS RECENTE sem encerramento conta como "ativa" (a sessão
       // viva). As demais sem endedAt são sessões passadas nunca arquivadas.
       isActive: pos === 0 && c.endedAt === null,

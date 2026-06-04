@@ -39,14 +39,19 @@ describe("computeAccuracy", () => {
       computeAccuracy({ CORRETO: 1, PARCIAL: 0, ERRADO: 0, ALUCINOU: 0 }),
     ).toBe(100);
   });
-  test("apenas parcial retorna 50", () => {
+  test("apenas parcial retorna 0 (parcial não conta como acerto)", () => {
     expect(
       computeAccuracy({ CORRETO: 0, PARCIAL: 2, ERRADO: 0, ALUCINOU: 0 }),
-    ).toBe(50);
+    ).toBe(0);
   });
   test("correto + errado retorna 50", () => {
     expect(
       computeAccuracy({ CORRETO: 1, PARCIAL: 0, ERRADO: 1, ALUCINOU: 0 }),
+    ).toBe(50);
+  });
+  test("correto + parcial retorna 50 (1 certo de 2 classificações)", () => {
+    expect(
+      computeAccuracy({ CORRETO: 1, PARCIAL: 1, ERRADO: 0, ALUCINOU: 0 }),
     ).toBe(50);
   });
 });
@@ -68,6 +73,7 @@ describe("filtro de canal exclui replay/backtest (raiz do dado poluído)", () =>
     (prisma.conversation.findMany as jest.Mock).mockResolvedValue([]);
     (prisma.user.findMany as jest.Mock).mockResolvedValue([]);
     (prisma.messageFeedback.groupBy as jest.Mock).mockResolvedValue([]);
+    (prisma.conversationQualityEvaluation.findMany as jest.Mock).mockResolvedValue([]);
 
     await listBubbleCollaborators();
 
@@ -89,6 +95,7 @@ describe("filtro de canal exclui replay/backtest (raiz do dado poluído)", () =>
   test("listBubbleSessions só lista channel in_app do usuário", async () => {
     (prisma.conversation.findMany as jest.Mock).mockResolvedValue([]);
     (prisma.messageFeedback.groupBy as jest.Mock).mockResolvedValue([]);
+    (prisma.conversationQualityEvaluation.findMany as jest.Mock).mockResolvedValue([]);
 
     await listBubbleSessions("u1");
 
@@ -115,6 +122,14 @@ describe("listBubbleCollaborators", () => {
       { userId: "u1", rating: "CORRETO", _count: { _all: 2 } },
       { userId: "u1", rating: "ERRADO", _count: { _all: 2 } },
     ]);
+    // PERÍCIA: juiz aprovou 3 e marcou 1 fora de escopo (=> alucinou) para u1.
+    (prisma.conversationQualityEvaluation.findMany as jest.Mock).mockResolvedValue([
+      { status: "CORRETO", humanStatus: null, conversation: { userId: "u1" } },
+      { status: "CORRETO", humanStatus: null, conversation: { userId: "u1" } },
+      { status: "ERRADO", humanStatus: "CORRETO", conversation: { userId: "u1" } },
+      { status: "FORA_DO_ESCOPO", humanStatus: null, conversation: { userId: "u1" } },
+      { status: "PENDENTE", humanStatus: null, conversation: { userId: "u1" } },
+    ]);
 
     const res = await listBubbleCollaborators();
 
@@ -125,15 +140,21 @@ describe("listBubbleCollaborators", () => {
     expect(u1.name).toBe("Ana");
     expect(u1.sessionCount).toBe(3);
     expect(u1.hasActiveSession).toBe(false);
-    expect(u1.ratingCounts).toEqual({ CORRETO: 2, PARCIAL: 0, ERRADO: 2, ALUCINOU: 0 });
-    expect(u1.accuracyPct).toBe(50);
+    // AVALIAÇÃO (usuário): 2 certo, 2 errado => 2/4 = 50%
+    expect(u1.avaliacaoCounts).toEqual({ CORRETO: 2, PARCIAL: 0, ERRADO: 2, ALUCINOU: 0 });
+    expect(u1.avaliacaoPct).toBe(50);
+    // PERÍCIA (juiz, status efetivo): 3 certo (1 via ajuste humano) + 1 alucinou;
+    // PENDENTE é não-terminal e não conta. 3/4 = 75%
+    expect(u1.periciaCounts).toEqual({ CORRETO: 3, PARCIAL: 0, ERRADO: 0, ALUCINOU: 1 });
+    expect(u1.periciaPct).toBe(75);
     // @ts-expect-error lastActivity não deve vazar no tipo público
     expect(u1.lastActivity).toBeUndefined();
 
     const u2 = res.find((r) => r.userId === "u2")!;
     expect(u2.hasActiveSession).toBe(true);
-    expect(u2.ratingCounts).toEqual({ CORRETO: 0, PARCIAL: 0, ERRADO: 0, ALUCINOU: 0 });
-    expect(u2.accuracyPct).toBeNull();
+    expect(u2.avaliacaoCounts).toEqual({ CORRETO: 0, PARCIAL: 0, ERRADO: 0, ALUCINOU: 0 });
+    expect(u2.avaliacaoPct).toBeNull();
+    expect(u2.periciaPct).toBeNull();
   });
 });
 
@@ -148,6 +169,10 @@ describe("listBubbleSessions", () => {
       { conversationId: "c2", rating: "CORRETO", _count: { _all: 1 } },
       { conversationId: "c2", rating: "PARCIAL", _count: { _all: 1 } },
     ]);
+    // PERÍCIA: c2 com 1 parcial do juiz.
+    (prisma.conversationQualityEvaluation.findMany as jest.Mock).mockResolvedValue([
+      { status: "PARCIAL", humanStatus: null, conversationId: "c2" },
+    ]);
 
     const res = await listBubbleSessions("u1");
 
@@ -160,13 +185,18 @@ describe("listBubbleSessions", () => {
     expect(c3.endedAt).toBeNull();
     expect(c3.startedAt).toBe(new Date("2026-06-03").toISOString());
     expect(c3.messageCount).toBe(5);
-    expect(c3.accuracyPct).toBeNull();
+    expect(c3.avaliacaoPct).toBeNull();
+    expect(c3.periciaPct).toBeNull();
 
     const c2 = res[1];
     expect(c2.isActive).toBe(false);
     expect(c2.endedAt).toBe(new Date("2026-06-02").toISOString());
-    expect(c2.ratingCounts).toEqual({ CORRETO: 1, PARCIAL: 1, ERRADO: 0, ALUCINOU: 0 });
-    expect(c2.accuracyPct).toBe(75);
+    // AVALIAÇÃO: 1 certo + 1 parcial => 1/2 = 50%
+    expect(c2.avaliacaoCounts).toEqual({ CORRETO: 1, PARCIAL: 1, ERRADO: 0, ALUCINOU: 0 });
+    expect(c2.avaliacaoPct).toBe(50);
+    // PERÍCIA: 1 parcial => 0/1 = 0%
+    expect(c2.periciaCounts).toEqual({ CORRETO: 0, PARCIAL: 1, ERRADO: 0, ALUCINOU: 0 });
+    expect(c2.periciaPct).toBe(0);
   });
 });
 

@@ -3,9 +3,10 @@
 /**
  * B2. Monitoramento das conversas (read-only, super_admin), 3 colunas JUNTAS
  * num painel único (colaboradores | sessões | conversa), divididas só por
- * borda interna (sem gaps). Reusa AgentMessage (via BubbleMonitorRow) e o
- * design system do monitoramento. A coluna 3 espelha a bubble viva: tag de
- * data flutuante fixa no topo + FAB de descer.
+ * borda interna. Colaboradores e Sessões têm a MESMA largura (homogêneas) e os
+ * cards a mesma altura; a Conversa fica com o resto. Cada card mostra DOIS
+ * eixos de qualidade: AVALIAÇÃO (usuário) e PERÍCIA (plataforma/juiz). A coluna
+ * 3 espelha a bubble viva: tag de data flutuante no topo + FAB de descer.
  */
 
 import * as React from "react";
@@ -60,58 +61,68 @@ function RoleBadge({ role }: { role: string }) {
   );
 }
 
-// Versão de uma linha do Summary para o card compacto de colaborador: separador
-// "·" + "{pct}%" + contagens coloridas. Silencioso quando não há avaliações.
-function CompactSummary({ counts, pct }: { counts: RatingCounts; pct: number | null }) {
-  const total = counts.CORRETO + counts.PARCIAL + counts.ERRADO + counts.ALUCINOU;
-  if (total === 0) return null;
+// Contagens coloridas (não-zero) de um eixo. Compartilhado entre os dois eixos.
+function CountChips({ counts }: { counts: RatingCounts }) {
   const order: UserFeedbackRating[] = ["CORRETO", "PARCIAL", "ERRADO", "ALUCINOU"];
   return (
-    <span className="flex min-w-0 items-center gap-1 truncate">
-      <span aria-hidden className="text-muted-foreground/50">
-        ·
-      </span>
-      <span className="font-semibold text-foreground">{pct}%</span>
-      <span className="flex items-center gap-1">
-        {order.map((r) =>
-          counts[r] > 0 ? (
-            <span
-              key={r}
-              title={RATING_META[r].label}
-              style={{ color: RATING_META[r].color }}
-              className="tabular-nums"
-            >
-              {counts[r]}
-            </span>
-          ) : null,
-        )}
-      </span>
+    <>
+      {order.map((r) =>
+        counts[r] > 0 ? (
+          <span
+            key={r}
+            title={RATING_META[r].label}
+            style={{ color: RATING_META[r].color }}
+            className="tabular-nums"
+          >
+            {counts[r]}
+          </span>
+        ) : null,
+      )}
+    </>
+  );
+}
+
+// Uma métrica rotulada: "Avaliação 75% 1 1" (ou "—" sem classificações).
+function Metric({
+  label,
+  pct,
+  counts,
+}: {
+  label: string;
+  pct: number | null;
+  counts: RatingCounts;
+}) {
+  return (
+    <span className="flex items-center gap-1 whitespace-nowrap">
+      <span className="text-muted-foreground">{label}</span>
+      {pct === null ? (
+        <span className="text-muted-foreground/50">—</span>
+      ) : (
+        <>
+          <b className="font-semibold text-foreground">{pct}%</b>
+          <CountChips counts={counts} />
+        </>
+      )}
     </span>
   );
 }
 
-function Summary({ counts, pct }: { counts: RatingCounts; pct: number | null }) {
-  const total = counts.CORRETO + counts.PARCIAL + counts.ERRADO + counts.ALUCINOU;
-  if (total === 0)
-    return <span className="text-[11px] text-muted-foreground">sem avaliações</span>;
-  const order: UserFeedbackRating[] = ["CORRETO", "PARCIAL", "ERRADO", "ALUCINOU"];
+// Par de métricas: AVALIAÇÃO (usuário) + PERÍCIA (plataforma), numa linha só.
+function MetricsPair({
+  avaliacaoPct,
+  avaliacaoCounts,
+  periciaPct,
+  periciaCounts,
+}: {
+  avaliacaoPct: number | null;
+  avaliacaoCounts: RatingCounts;
+  periciaPct: number | null;
+  periciaCounts: RatingCounts;
+}) {
   return (
-    <div className="flex items-center gap-2 text-[11px]">
-      <span className="font-semibold text-foreground">{pct}% acerto</span>
-      <span className="flex items-center gap-1.5">
-        {order.map((r) =>
-          counts[r] > 0 ? (
-            <span
-              key={r}
-              title={RATING_META[r].label}
-              style={{ color: RATING_META[r].color }}
-              className="tabular-nums"
-            >
-              {counts[r]}
-            </span>
-          ) : null,
-        )}
-      </span>
+    <div className="flex flex-wrap items-center gap-x-3 gap-y-0.5 text-[11px] leading-tight">
+      <Metric label="Avaliação" pct={avaliacaoPct} counts={avaliacaoCounts} />
+      <Metric label="Perícia" pct={periciaPct} counts={periciaCounts} />
     </div>
   );
 }
@@ -124,11 +135,12 @@ function fmtRange(startedAt: string, endedAt: string | null): string {
 }
 
 // Painel único: as 3 colunas dividem o mesmo card, separadas só por borda
-// interna (sem gap). Cada coluna é uma seção com header + área rolável.
+// interna. Colaboradores e Sessões têm a MESMA largura; Conversa fica com o resto.
 const PANEL =
   "flex h-[72vh] flex-col overflow-hidden rounded-xl border border-border bg-card shadow-sm lg:flex-row";
 const SECTION = "flex min-h-0 min-w-0 flex-1 flex-col";
 const DIVIDER = "border-b border-border lg:border-b-0 lg:border-r";
+const SIDE_COL = "lg:w-[300px] lg:flex-none";
 const HEAD =
   "shrink-0 border-b border-border px-3 py-2 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground";
 
@@ -140,8 +152,6 @@ export function BubbleMonitor() {
   const [messages, setMessages] = React.useState<MonitorMessage[] | null>(null);
   const convScrollRef = React.useRef<HTMLDivElement>(null);
   const [showScrollFab, setShowScrollFab] = React.useState(false);
-  // Tag de data flutuante (igual à bubble viva): registra o DOM de cada linha
-  // e mostra o dia da mensagem no topo do viewport, trocando ao rolar.
   const rowRefs = React.useRef<Map<string, HTMLElement>>(new Map());
   const [dateLabel, setDateLabel] = React.useState("");
 
@@ -224,8 +234,6 @@ export function BubbleMonitor() {
             ? (r.messages.filter(
                 (m) =>
                   m.role !== "tool" &&
-                  // Descarta mensagens vazias (sem texto e sem áudio): ruído de
-                  // turnos interrompidos/falhos que apareciam como bolha em branco.
                   (m.content.trim().length > 0 || m.kind === "audio"),
               ) as MonitorMessage[])
             : [],
@@ -237,9 +245,9 @@ export function BubbleMonitor() {
   return (
     <div className={PANEL}>
       {/* Coluna 1: colaboradores */}
-      <div className={cn(SECTION, DIVIDER, "lg:w-[240px] lg:flex-none")}>
+      <div className={cn(SECTION, DIVIDER, SIDE_COL)}>
         <div className={HEAD}>Colaboradores</div>
-        <div className="flex-1 overflow-y-auto p-1.5">
+        <div className="flex-1 overflow-y-auto p-2">
           {collabs === null ? (
             <Skeletons />
           ) : collabs.length === 0 ? (
@@ -250,31 +258,40 @@ export function BubbleMonitor() {
                 key={c.userId}
                 onClick={() => setUserId(c.userId)}
                 className={cn(
-                  "mb-0.5 flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left transition-colors",
+                  "mb-1 w-full rounded-md p-2 text-left transition-colors",
                   userId === c.userId ? "bg-muted" : "hover:bg-muted/60",
                 )}
               >
-                <Avatar name={c.name} url={c.avatarUrl} />
-                <div className="min-w-0 flex-1">
-                  <div className="flex items-center gap-1.5">
-                    <span className="truncate text-[13px] font-medium text-foreground">
-                      {c.name}
-                    </span>
-                    <span
-                      title={c.hasActiveSession ? "Sessão ativa" : "Sem sessão ativa"}
-                      className={cn(
-                        "h-1.5 w-1.5 shrink-0 rounded-full",
-                        c.hasActiveSession ? "bg-emerald-500" : "bg-muted-foreground/40",
-                      )}
-                    />
+                <div className="flex items-center gap-2">
+                  <Avatar name={c.name} url={c.avatarUrl} />
+                  <div className="min-w-0 flex-1">
+                    <div className="flex items-center gap-1.5">
+                      <span className="truncate text-[13px] font-medium text-foreground">
+                        {c.name}
+                      </span>
+                      <span
+                        title={c.hasActiveSession ? "Sessão ativa" : "Sem sessão ativa"}
+                        className={cn(
+                          "h-1.5 w-1.5 shrink-0 rounded-full",
+                          c.hasActiveSession ? "bg-emerald-500" : "bg-muted-foreground/40",
+                        )}
+                      />
+                    </div>
+                    <div className="mt-0.5 flex items-center gap-1.5">
+                      <RoleBadge role={c.role} />
+                      <span className="shrink-0 text-[11px] text-muted-foreground">
+                        {c.sessionCount} {c.sessionCount === 1 ? "sessão" : "sessões"}
+                      </span>
+                    </div>
                   </div>
-                  <div className="mt-0.5 flex items-center gap-1.5">
-                    <RoleBadge role={c.role} />
-                    <span className="shrink-0 text-[11px] text-muted-foreground">
-                      {c.sessionCount} {c.sessionCount === 1 ? "sessão" : "sessões"}
-                    </span>
-                    <CompactSummary counts={c.ratingCounts} pct={c.accuracyPct} />
-                  </div>
+                </div>
+                <div className="mt-1.5">
+                  <MetricsPair
+                    avaliacaoPct={c.avaliacaoPct}
+                    avaliacaoCounts={c.avaliacaoCounts}
+                    periciaPct={c.periciaPct}
+                    periciaCounts={c.periciaCounts}
+                  />
                 </div>
               </button>
             ))
@@ -283,7 +300,7 @@ export function BubbleMonitor() {
       </div>
 
       {/* Coluna 2: sessões */}
-      <div className={cn(SECTION, DIVIDER, "lg:w-[280px] lg:flex-none")}>
+      <div className={cn(SECTION, DIVIDER, SIDE_COL)}>
         <div className={HEAD}>Sessões</div>
         <div className="flex-1 overflow-y-auto p-2">
           {!userId ? (
@@ -310,10 +327,16 @@ export function BubbleMonitor() {
                     </span>
                   ) : null}
                 </div>
-                <div className="text-[11px] text-muted-foreground">{fmtRange(s.startedAt, s.endedAt)}</div>
-                <div className="mt-0.5 flex items-center gap-2">
-                  <span className="text-[11px] text-muted-foreground">{s.messageCount} msgs</span>
-                  <Summary counts={s.ratingCounts} pct={s.accuracyPct} />
+                <div className="text-[11px] text-muted-foreground">
+                  {fmtRange(s.startedAt, s.endedAt)} · {s.messageCount} msgs
+                </div>
+                <div className="mt-1">
+                  <MetricsPair
+                    avaliacaoPct={s.avaliacaoPct}
+                    avaliacaoCounts={s.avaliacaoCounts}
+                    periciaPct={s.periciaPct}
+                    periciaCounts={s.periciaCounts}
+                  />
                 </div>
               </button>
             ))
@@ -327,7 +350,7 @@ export function BubbleMonitor() {
         <div
           ref={convScrollRef}
           onScroll={onConvScroll}
-          className="flex-1 space-y-3 overflow-y-auto p-4"
+          className="flex-1 space-y-4 overflow-y-auto p-4"
         >
           {!sessionId ? (
             <Empty>Escolha uma sessão.</Empty>
@@ -346,10 +369,7 @@ export function BubbleMonitor() {
           )}
         </div>
 
-        {/* Tag de data FLUTUANTE fixa no topo (igual à bubble viva): mesmo
-            material translúcido e mesmo espaçamento, troca o rótulo ao rolar. */}
         <FloatingDateTag label={messages && messages.length > 0 ? dateLabel : ""} />
-
         <ScrollToBottomFab visible={showScrollFab} onClick={scrollConvToBottom} />
       </div>
     </div>
@@ -376,9 +396,7 @@ function FloatingDateTag({ label }: { label: string }) {
   );
 }
 
-// FAB de descer na conversa, espelhando o da bubble viva (chat-panel):
-// mesma cor/material (violet-500/20 + ring + backdrop-blur), aparece com
-// fade+slide quando o usuário rolou pra cima.
+// FAB de descer na conversa, espelhando o da bubble viva (chat-panel).
 function ScrollToBottomFab({
   visible,
   onClick,

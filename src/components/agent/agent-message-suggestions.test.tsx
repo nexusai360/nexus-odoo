@@ -37,7 +37,7 @@ describe("AgentMessage (sugestões na bolha)", () => {
     expect(screen.getByText("Ver financeiro")).toBeDefined();
   });
 
-  test("a sugestão clicada ganha o selo 'usada'; as demais não", async () => {
+  test("a sugestão clicada é distinguida só por título/contraste (sem selo de texto)", async () => {
     const user = userEvent.setup();
     render(
       <AgentMessage
@@ -50,22 +50,13 @@ describe("AgentMessage (sugestões na bolha)", () => {
     );
     await user.click(screen.getByRole("button", { name: /Sugestões ·/ }));
 
-    // selo "usada" aparece exatamente uma vez (na clicada)
-    expect(screen.getAllByText("usada")).toHaveLength(1);
-  });
-
-  test("sem clickedSuggestion, nenhum selo 'usada'", async () => {
-    const user = userEvent.setup();
-    render(
-      <AgentMessage
-        role="assistant"
-        content="r"
-        reveal={false}
-        suggestions={["A", "B"]}
-      />,
-    );
-    await user.click(screen.getByRole("button", { name: /Sugestões ·/ }));
+    // não há mais selo textual "usada"
     expect(screen.queryByText("usada")).toBeNull();
+    // a clicada carrega o title indicador (acessibilidade), as demais não
+    expect(screen.getByText("Ver estoque").getAttribute("title")).toBe(
+      "Sugestão clicada pelo usuário",
+    );
+    expect(screen.getByText("Ver financeiro").getAttribute("title")).toBeNull();
   });
 
   test("lâmpada só aparece quando alguma sugestão foi clicada", () => {
@@ -93,7 +84,7 @@ describe("AgentMessage (sugestões na bolha)", () => {
     expect(screen.getByLabelText("Uma sugestão foi clicada")).toBeDefined();
   });
 
-  test("voto do usuário vira badge de canto (monitorVote)", () => {
+  test("voto do usuário vira badge de canto (monitorVote), sem comentário", () => {
     render(
       <AgentMessage
         role="assistant"
@@ -102,7 +93,40 @@ describe("AgentMessage (sugestões na bolha)", () => {
         monitorVote={{ rating: "CORRETO" }}
       />,
     );
-    expect(screen.getByLabelText("Voto do usuário: Correto")).toBeDefined();
+    expect(screen.getByLabelText("Avaliação do usuário: Correto")).toBeDefined();
+  });
+
+  test("voto com comentário: badge vira clicável e revela o texto", async () => {
+    const user = userEvent.setup();
+    render(
+      <AgentMessage
+        role="assistant"
+        content="r"
+        reveal={false}
+        monitorVote={{ rating: "PARCIAL", comment: "faltou listar os negativos" }}
+      />,
+    );
+    const badge = screen.getByRole("button", {
+      name: /Avaliação do usuário: Parcial\. Tem comentário/,
+    });
+    // comentário escondido até clicar
+    expect(screen.queryByText("faltou listar os negativos")).toBeNull();
+    await user.click(badge);
+    expect(screen.getByText("faltou listar os negativos")).toBeDefined();
+  });
+
+  test("perícia vira chip rotulado clicável (monitorPericia)", () => {
+    render(
+      <AgentMessage
+        role="assistant"
+        content="r"
+        reveal={false}
+        monitorPericia={{ label: "Correto", color: "#10b981", href: "/x?eval=1" }}
+      />,
+    );
+    expect(screen.getByText("Perícia")).toBeDefined();
+    expect(screen.getByText("Correto")).toBeDefined();
+    expect(screen.getByRole("link")).toHaveProperty("href");
   });
 
   test("singular: 1 sugestão", () => {
