@@ -61,6 +61,14 @@ const OPTS: Opt[] = [
 
 const byRating = (r: FeedbackRating) => OPTS.find((o) => o.rating === r)!;
 
+// Realce (tint) por cor no hover de cada ícone da paleta (espelha o feedback-v4).
+const TINT: Record<FeedbackRating, string> = {
+  CORRETO: "hover:bg-emerald-500/15 hover:border-emerald-500/40",
+  PARCIAL: "hover:bg-amber-500/15 hover:border-amber-500/40",
+  ERRADO: "hover:bg-red-500/15 hover:border-red-500/40",
+  ALUCINOU: "hover:bg-violet-500/15 hover:border-violet-500/40",
+};
+
 export interface FeedbackControlProps {
   current: { rating: FeedbackRating; comment: string | null } | null;
   onSubmit: (rating: FeedbackRating, comment?: string) => Promise<void> | void;
@@ -163,7 +171,7 @@ export function FeedbackControl({ current, onSubmit }: FeedbackControlProps) {
                       animate={{ opacity: 1, scale: 1 }}
                       transition={{ delay: (OPTS.length - 1 - i) * 0.04 }}
                       style={{ color: o.color }}
-                      className="flex h-[30px] w-[30px] items-center justify-center rounded-lg border border-transparent transition-transform hover:scale-110"
+                      className={`flex h-[30px] w-[30px] items-center justify-center rounded-lg border border-transparent transition-all hover:scale-110 ${TINT[o.rating]}`}
                     />
                   }
                 >

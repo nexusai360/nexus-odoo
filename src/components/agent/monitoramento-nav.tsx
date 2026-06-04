@@ -7,6 +7,7 @@ import { cn } from "@/lib/utils";
 const TABS = [
   { label: "Backtest", href: "/agente/monitoramento" },
   { label: "Router", href: "/agente/monitoramento/router" },
+  { label: "Bubble", href: "/agente/monitoramento/bubble" },
 ] as const;
 
 /**
