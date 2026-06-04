@@ -214,3 +214,24 @@
 - Schema: enums UserFeedbackRating + MessageFeedbackAction; models message_feedback (voto vigente, último vale) + message_feedback_event (histórico append-only p/ B3); coluna agent_settings.feedback_checkpoint. Migration ADITIVA manual (drift do router não revertido). `agente schema-changed` emitido.
 - Server action submitMessageFeedback (cache interno, ActionResult, auth+autorização in_app+checkpoint, idempotência, transação) + 10 testes mock (10/10). dbMessageId real propagado runAgent->done SSE->UI (gate de erro). Checkpoint na cadeia completa (types/read/write) + card de admin em /agente/configuracao. Timestamp da IA movido p/ direita.
 - Verificação: tsc 0, eslint 0, jest 10/10, tabelas no DB OK. Pendente (validação humana/UI): rebuild containers, ligar checkpoint em PRODUÇÃO, E2E no browser (votar->reload->trocar voto). B2 (aba Bubble de monitoramento) e B3 (aba Aprendizado) são próximas fases.
+
+## 2026-06-04 , B2: aba Bubble de monitoramento (feat/agente-nex-bubble-ux)
+- Metodologia §6 completa: SPEC v1->v2->v3 (2 reviews + correção do usuário: sugestões já
+  persistidas em ConversationQualityEvaluation.suggestions, sem coluna nova) e PLAN v1->v2->v3
+  (2 reviews). Execução do backend via subagent-driven-development (implementer por task).
+- Backend (commitado, tsc 0 / jest 17/17): EvalStatusBadge extraído (reuso Backtest+Bubble);
+  Message.kind (text|audio) + persist kind=audio (meta.isAudio, 5 saltos); 3 actions
+  (listBubbleCollaborators/listBubbleSessions/getBubbleSessionMessages, super_admin, read-only,
+  juiz+voto-do-dono+sugestões+clicada derivada, % = (CORRETO+0.5*PARCIAL)/totalVotos).
+- UI parcial (inline, ui-ux-pro-max): aba /agente/monitoramento/bubble, 3 colunas
+  (bubble-monitor + bubble-monitor-row reusando AgentMessage envelopado). "Raciocínio · N
+  tools" (era "etapas") na bubble E na aba. Sessão ativa = só a mais recente. Conversa abre no fim.
+- Fix de build: computeAccuracy/RatingCounts movidos p/ monitoramento-bubble-helpers (arquivo
+  "use server" só exporta async).
+- DIAGNÓSTICO do dado poluído: backtest/replay de qualidade grava conversas no canal in_app
+  (4248 de 1 user; 802 calibração mode=calibracao_R-X; 3445 sem decision; ~1 real). Sem
+  marcador no banco que distinga replay de real. CONSERTAR NA ORIGEM (canal próprio/flag).
+- PENDÊNCIAS detalhadas no STATUS.md (seção 2026-06-04 PONTO DE RETOMADA): raiz do in_app
+  poluído, sugestões dentro da bolha c/ chevron+indicador de clicada, layout 3 colunas
+  (compactar/separar), tag de data translúcida, FAB de descer, mensagem vazia, feedback vs v4,
+  deep-link Backtest (B2 Fatia 4), e B3 inteiro (aba Aprendizado). NÃO mergear/PR.

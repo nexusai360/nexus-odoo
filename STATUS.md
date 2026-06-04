@@ -4,6 +4,63 @@
 > Ao abrir: ler **este arquivo**, o **`CLAUDE.md`** e **`.agente-handoff.md`**.
 > Modo autônomo é o padrão (`CLAUDE.md §6`).
 
+## 2026-06-04 , PONTO DE RETOMADA (branch `feat/agente-nex-bubble-ux`)
+
+Projeto "Monitoramento Bubble + Aprendizado", fatiado em **B1 (feedback na bubble)**,
+**B2 (aba Bubble de monitoramento)**, **B3 (aba Aprendizado)**. Metodologia CLAUDE.md §6
+seguida à risca (spec v1→v2→v3 com 2 reviews; plan v1→v2→v3 com 2 reviews; execução do
+B2 via `subagent-driven-development`; UI inline com `ui-ux-pro-max`). Specs/plans em
+`docs/superpowers/{specs,plans}/2026-06-04-b1-*` e `-b2-*`.
+
+### Feito (commitado, tsc 0 / jest verde / no ar em localhost:3000 via `agente up`)
+- **B1 COMPLETO:** `FeedbackControl` na bubble (4 votos: correto/parcial/errado/alucinou +
+  comentário), `MessageFeedback`+`MessageFeedbackEvent` (histórico), `feedbackCheckpoint`
+  (ligado em PRODUCTION no DB de dev), card de admin em `/agente/configuracao` (posição:
+  depois de Anexo, antes de Sugestões), timestamp da IA à direita, propagação do
+  `dbMessageId` (runAgent→done→UI), 10 testes. Ajuste de tint no hover da paleta.
+- **B2 BACKEND COMPLETO:** `EvalStatusBadge` extraído; `Message.kind` (text|audio, migration
+  aditiva) + persist de `kind=audio` (meta.isAudio, 5 saltos); actions
+  `listBubbleCollaborators`/`listBubbleSessions`/`getBubbleSessionMessages` (super_admin,
+  read-only, juiz+voto+sugestões+clicada derivada) , 17 testes.
+- **B2 UI PARCIAL:** aba "Bubble" em `/agente/monitoramento/bubble`, 3 colunas
+  (`bubble-monitor.tsx` + `bubble-monitor-row.tsx`), reusa `AgentMessage`. "Raciocínio · N
+  tools" (era "etapas") na bubble E na aba. Sessão ativa = só a mais recente. Conversa abre
+  no fim.
+
+### PENDÊNCIAS (lista do usuário, 2026-06-04 madrugada , fazer na ordem de valor)
+1. **RAIZ do dado poluído (alta prioridade):** o **backtest/replay de qualidade grava
+   conversas no canal `in_app`** (4248 conversas de 1 user: 802 calibração `mode=calibracao_R-X`,
+   3445 sem router decision, ~1 real). Não há marcador no banco que distinga replay de real.
+   CONSERTAR NA ORIGEM: o replay/backtest deve usar canal próprio (ex.: `backtest`) ou flag,
+   pra a aba Bubble mostrar só conversas reais. Rastrear onde o replay cria a conversa
+   (provavelmente em `src/lib/agent/quality/*` ou scripts de rodada).
+2. **Sugestões DENTRO da bolha:** hoje estão soltas embaixo. Têm que ficar dentro da bolha
+   com **chevron igual ao Raciocínio** (abre pra baixo), e **indicador claro de qual foi
+   clicada** (tag "usada"/destaque), sem ter que caçar. Provavelmente exige prop nova no
+   `AgentMessage` (gated, sem quebrar a bubble viva).
+3. **Layout 3 colunas:** está "colado", cards de colaborador grandes , compactar, separar
+   visualmente colaboradores/sessões/conversa (usar `ui-ux-pro-max`).
+4. **Tag de data** na coluna 3: deixar no mesmo estilo translúcido da bubble (a flutuante),
+   não a chapada atual.
+5. **Setinha de descer** na conversa quando rolar pra cima (igual à bubble); o
+   scroll-to-bottom no abrir já está feito, falta o FAB de descer.
+6. **Mensagem "vazia"** (01/06 21:30 sem conteúdo) , investigar/filtrar.
+7. **Feedback vs `feedback-v4`:** o usuário disse que ficou "bem diferente" do mockup
+   validado , pedir print/descrição específica e alinhar (já apliquei só o tint do hover).
+8. **B2 Fatia 4 , deep-link Backtest:** clicar a tag do juiz na coluna 3 abrir a linha no
+   Backtest via `?eval=` (plano já tem: linha sintética + `initialExpandedId`). NÃO feito.
+9. **B3 inteiro , aba "Aprendizado":** não iniciado. Cruzar feedback do usuário ×
+   avaliação do juiz + classificar/localizar erro no código + perícia/autocorreção.
+   Requisitos ricos do usuário na conversa (votação alimenta autoaprendizado; campo de texto
+   no voto negativo já existe no B1; cruzar tudo e gerar correções).
+
+### Como retomar
+- `agente status`/`agente list` (outra worktree ativa: `feat-router-ativacao-r2`).
+- Dev: `agente up` (porta 3000). Checkpoint de feedback já em PRODUCTION.
+- NÃO mergear/PR sem o usuário pedir. Seguir CLAUDE.md §6 (specs/plans já prontos).
+
+---
+
 ## 2026-06-03 , Monitoramento + Qualidade do Agente Nex (branch `feat/router-ativacao-r2`)
 
 Polimento da aba de Monitoramento (Backtest + Router) e **redesenho do cron de
