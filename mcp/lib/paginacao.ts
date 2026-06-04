@@ -72,6 +72,9 @@ export function montarPaginacaoMeta(
     mostrando:
       total === 0 || retornados === 0 ? `0 de ${total}` : `${inicio}-${fim} de ${total}`,
     temMais,
-    proximoOffset: temMais ? offset + limit : null,
+    // offset + retornados (nao offset + limit): aponta para o primeiro item
+    // ainda nao visto. Robusto mesmo se a tool filtrar/deduplicar a pagina
+    // depois de paginar (retornados < limit no meio do fluxo) , nunca pula item.
+    proximoOffset: temMais ? offset + retornados : null,
   };
 }

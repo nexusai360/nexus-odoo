@@ -16,7 +16,7 @@ export interface MontarConversaArgs {
   historyMessages: ChatMessage[];
   /** Pergunta atual do usuario. */
   userMessage: string;
-  /** Ex.: "quarta-feira, 2026-06-03". Granularidade de dia (sem hora/segundos). */
+  /** Ex.: "quarta-feira, 03/06/2026" (locale pt-BR). Granularidade de dia. */
   agoraBrt: string;
 }
 
