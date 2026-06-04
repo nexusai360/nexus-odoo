@@ -27,37 +27,49 @@ B2 via `subagent-driven-development`; UI inline com `ui-ux-pro-max`). Specs/plan
   tools" (era "etapas") na bubble E na aba. Sessão ativa = só a mais recente. Conversa abre
   no fim.
 
-### PENDÊNCIAS (lista do usuário, 2026-06-04 madrugada , fazer na ordem de valor)
-1. **RAIZ do dado poluído (alta prioridade):** o **backtest/replay de qualidade grava
-   conversas no canal `in_app`** (4248 conversas de 1 user: 802 calibração `mode=calibracao_R-X`,
-   3445 sem router decision, ~1 real). Não há marcador no banco que distinga replay de real.
-   CONSERTAR NA ORIGEM: o replay/backtest deve usar canal próprio (ex.: `backtest`) ou flag,
-   pra a aba Bubble mostrar só conversas reais. Rastrear onde o replay cria a conversa
-   (provavelmente em `src/lib/agent/quality/*` ou scripts de rodada).
-2. **Sugestões DENTRO da bolha:** hoje estão soltas embaixo. Têm que ficar dentro da bolha
-   com **chevron igual ao Raciocínio** (abre pra baixo), e **indicador claro de qual foi
-   clicada** (tag "usada"/destaque), sem ter que caçar. Provavelmente exige prop nova no
-   `AgentMessage` (gated, sem quebrar a bubble viva).
-3. **Layout 3 colunas:** está "colado", cards de colaborador grandes , compactar, separar
-   visualmente colaboradores/sessões/conversa (usar `ui-ux-pro-max`).
-4. **Tag de data** na coluna 3: deixar no mesmo estilo translúcido da bubble (a flutuante),
-   não a chapada atual.
-5. **Setinha de descer** na conversa quando rolar pra cima (igual à bubble); o
-   scroll-to-bottom no abrir já está feito, falta o FAB de descer.
-6. **Mensagem "vazia"** (01/06 21:30 sem conteúdo) , investigar/filtrar.
-7. **Feedback vs `feedback-v4`:** o usuário disse que ficou "bem diferente" do mockup
-   validado , pedir print/descrição específica e alinhar (já apliquei só o tint do hover).
-8. **B2 Fatia 4 , deep-link Backtest:** clicar a tag do juiz na coluna 3 abrir a linha no
-   Backtest via `?eval=` (plano já tem: linha sintética + `initialExpandedId`). NÃO feito.
-9. **B3 inteiro , aba "Aprendizado":** não iniciado. Cruzar feedback do usuário ×
-   avaliação do juiz + classificar/localizar erro no código + perícia/autocorreção.
-   Requisitos ricos do usuário na conversa (votação alimenta autoaprendizado; campo de texto
-   no voto negativo já existe no B1; cruzar tudo e gerar correções).
+### PENDÊNCIAS , TODAS RESOLVIDAS (2026-06-04 tarde, modo autônomo)
+Tudo abaixo entregue, commitado, tsc 0 / suíte 2386 verde / no ar via `agente up`.
+1. **RAIZ do dado poluído , FEITO.** Canal estrutural `backtest` (enum aditivo +
+   backfill: 4145 conversas `[AUDIT`/`[SMOKE` movidas de in_app→backtest). Scripts
+   quality-audit gravam em `backtest`. Aba Bubble (filtra in_app) ficou só com as
+   103 reais. `ORIGEM_BACKTEST` no monitoramento. Commit `34cac33`.
+2. **Sugestões dentro da bolha , FEITO** (e iterado): bloco colapsável com chevron
+   igual ao Raciocínio; clicada distinguida só por contraste (sem tag "usada"); a
+   lâmpada (ícone original) só aparece quando alguém clicou. Fonte = "Raciocínio".
+3. **3 colunas , FEITO:** painel único, colunas Colaboradores=Sessões homogêneas
+   (300px), Conversa menor; cards homogêneos.
+4. **Tag de data , FEITO:** flutuante fixa no topo da conversa, material translúcido
+   igual à bubble viva, troca ao rolar.
+5. **FAB de descer , FEITO** (espelha a bubble viva).
+6. **Mensagem vazia , FEITO** (filtrada: sem texto e sem áudio).
+7. **Feedback vs feedback-v4 , FEITO:** ícone "Parcial" resgatado do mockup validado
+   (meia-lua preenchida, `PartialIcon`), no monitor e na bubble viva. Voto = badge de
+   canto; comentário do usuário revela ao clicar (com indicador).
+8. **B2 Fatia 4 , deep-link Backtest , FEITO:** `?eval=` abre a linha (linha sintética
+   + `initialExpandedId` + scrollIntoView). Commit `104bde1`.
+9. **B3 aba "Aprendizado" , FEITO** (v1): cruza Avaliação×Perícia por `assistantMessageId`
+   (matriz 4×4 + KPIs + discordâncias priorizadas + padrões de erro + comentários
+   negativos, com deep-link pro Backtest). Commit `fdb896e`.
+   Spec: `docs/superpowers/specs/2026-06-04-b3-aprendizado-design.md`.
+
+### Métricas Avaliação × Perícia (decisão do usuário)
+- **Avaliação** = voto do usuário (`MessageFeedback`). **Perícia** = avaliação da
+  plataforma/juiz (`ConversationQualityEvaluation`, status efetivo).
+- **% acerto = certos / total de classificações** (parcial NÃO vale meio ponto).
+  `FORA_DO_ESCOPO==ALUCINOU`; `FALHA_TECNICA`=erro; `PENDENTE` não conta.
+- Ícones: Gauge=Avaliação, Scale=Perícia (substituem as palavras nos cards).
+
+### DEFERIDO (ondas futuras, em RADAR)
+- **B3.2 Autocorreção:** gerar correções de código a partir dos sinais. Unbounded,
+  precisa design próprio.
+- **KPI de tempo médio no Backtest:** tempo por linha no drill-down + gráfico de média.
+  Tempo já existe (`LlmUsage.durationMs`; o monitor já mostra por turno via proxy
+  `createdAt`). Ver `docs/RADAR.md` (R-tempo).
 
 ### Como retomar
-- `agente status`/`agente list` (outra worktree ativa: `feat-router-ativacao-r2`).
-- Dev: `agente up` (porta 3000). Checkpoint de feedback já em PRODUCTION.
-- NÃO mergear/PR sem o usuário pedir. Seguir CLAUDE.md §6 (specs/plans já prontos).
+- `agente status`/`agente list` (outra worktree: `feat-router-ativacao-r2`).
+- Dev: `agente up` (porta 3000). Checkpoint de feedback em PRODUCTION.
+- NÃO mergear/PR sem o usuário pedir. Tudo na branch `feat/agente-nex-bubble-ux` (PR #51).
 
 ---
 

@@ -235,3 +235,28 @@
   poluído, sugestões dentro da bolha c/ chevron+indicador de clicada, layout 3 colunas
   (compactar/separar), tag de data translúcida, FAB de descer, mensagem vazia, feedback vs v4,
   deep-link Backtest (B2 Fatia 4), e B3 inteiro (aba Aprendizado). NÃO mergear/PR.
+
+## 2026-06-04 (tarde) , B2 polish + B2 Fatia 4 + B3 (modo autônomo)
+- branch=feat/agente-nex-bubble-ux scope=feature summary=fechou TODAS as pendências do B2/B3.
+- **P1 raiz do dado poluído** (34cac33): canal `backtest` (enum aditivo + backfill de 4145
+  conversas [AUDIT/[SMOKE de in_app→backtest); scripts quality-audit gravam em backtest;
+  ORIGEM_BACKTEST; aba Bubble ficou só com as 103 reais.
+- **P2 sugestões na bolha** + iterações: chevron igual ao Raciocínio; clicada por contraste;
+  lâmpada (ícone original) só quando clicou; fonte = Raciocínio.
+- **P3-P7 polish** (be11f9d, 0561473, d892b14, e5c4486): colunas juntas e homogêneas
+  (Colaboradores=Sessões 300px, Conversa menor); cards homogêneos; tag de data flutuante
+  translúcida; FAB de descer; mensagem vazia filtrada; nível de acesso do colaborador;
+  veredito(perícia) + voto(avaliação) DENTRO da bolha (perícia=chip Scale só ícone;
+  avaliação=badge de canto com reveal de comentário); ícone Parcial resgatado do feedback-v4
+  (PartialIcon, meia-lua preenchida) no monitor e na bubble viva; tempo do turno no
+  Raciocínio do monitor (proxy createdAt, bate com a bubble viva); fonte Sugestões=Raciocínio;
+  espaçamento +4px; timestamp afastado só pela metade.
+- **Métricas**: Avaliação(usuário)+Perícia(plataforma) em cada card, fórmula certos/total;
+  ícones Gauge/Scale substituem as palavras.
+- **P8 deep-link Backtest** (104bde1): ?eval= abre a linha (linha sintética + initialExpandedId
+  + scrollIntoView).
+- **P9 B3 aba Aprendizado** (fdb896e): cruzamento Avaliação×Perícia por assistantMessageId
+  (matriz 4×4 + KPIs + discordâncias priorizadas + padrões de erro + comentários negativos,
+  deep-link pro Backtest). Helpers+action testados. Spec b3-aprendizado-design.md.
+- **Schema**: migration aditiva (AgentChannel += backtest) + backfill; `agente schema-changed`
+  disparado. Suíte 2386 verde, tsc 0. Deferido: B3.2 autocorreção e KPI tempo médio (RADAR).
