@@ -12,6 +12,7 @@
  * - Sessão MCP fechada em finally (B1).
  */
 
+import { createHash } from "node:crypto";
 import { prisma } from "@/lib/prisma";
 import {
   formatDateInTz,
@@ -430,6 +431,11 @@ export async function runAgent(args: RunAgentInput): Promise<RunAgentResult> {
       weekday: "long",
     });
     const systemPrompt = systemPromptBase;
+    // Alavanca 1: chave estavel de cache de prompt, derivada da versao do
+    // system (mesmo prefixo => mesma chave => melhor roteamento de cache).
+    const promptCacheKey =
+      "nex-sys-" +
+      createHash("sha1").update(systemPromptBase).digest("hex").slice(0, 12);
 
     // Carregar tools do MCP interno + dos MCPs externos plugados.
     // Nomes com caracteres fora de [a-zA-Z0-9_-] (ex.: `crm.res_partner.get`)
@@ -672,6 +678,7 @@ export async function runAgent(args: RunAgentInput): Promise<RunAgentResult> {
         onToken,
         reasoningEffort: effortForRequest,
         reasoningHistory,
+        promptCacheKey,
       });
 
       // Acumular o contexto opaco para o proximo turno e para persistencia.

@@ -52,6 +52,39 @@ describe("OpenAIClient , MOCK key", () => {
   });
 });
 
+describe("prompt_cache_key (alavanca 1)", () => {
+  test("inclui prompt_cache_key no body da Responses API quando fornecido", async () => {
+    mockFetch.mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        output: [{ type: "message", content: [{ type: "output_text", text: "ok" }] }],
+        usage: { input_tokens: 10, output_tokens: 2, input_tokens_details: { cached_tokens: 0 } },
+      }),
+    });
+    const client = new OpenAIClient("sk-test", "gpt-5.4-mini");
+    await client.chat({
+      messages: [{ role: "user", content: "oi" }],
+      promptCacheKey: "nex-sys-abc123",
+    });
+    const body = JSON.parse(mockFetch.mock.calls[0][1].body as string);
+    expect(body.prompt_cache_key).toBe("nex-sys-abc123");
+  });
+
+  test("sem promptCacheKey, o campo nao vai no body", async () => {
+    mockFetch.mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        output: [{ type: "message", content: [{ type: "output_text", text: "ok" }] }],
+        usage: { input_tokens: 10, output_tokens: 2 },
+      }),
+    });
+    const client = new OpenAIClient("sk-test", "gpt-5.4-mini");
+    await client.chat({ messages: [{ role: "user", content: "oi" }] });
+    const body = JSON.parse(mockFetch.mock.calls[0][1].body as string);
+    expect(body.prompt_cache_key).toBeUndefined();
+  });
+});
+
 describe("isReasoningModel", () => {
   test("modelos GPT-5.x são reasoning", () => {
     expect(isReasoningModel("gpt-5.5")).toBe(true);

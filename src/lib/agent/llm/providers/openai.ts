@@ -299,6 +299,11 @@ export class OpenAIClient implements ProviderClient {
     if (typeof request.maxTokens === "number") {
       respBody.max_output_tokens = request.maxTokens;
     }
+    // Alavanca 1: dica de roteamento de cache de prompt. Estavel entre chamadas
+    // com o mesmo prefixo (system) => melhora a taxa de acerto do cache.
+    if (request.promptCacheKey) {
+      respBody.prompt_cache_key = request.promptCacheKey;
+    }
 
     const timeoutMs = cap?.requestTimeoutMs ?? DEFAULT_TIMEOUT_MS;
     let rRes: Response;

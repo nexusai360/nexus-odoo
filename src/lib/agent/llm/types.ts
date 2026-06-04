@@ -139,6 +139,12 @@ export interface ChatRequest {
    * formato exigido pelo provider.
    */
   reasoningHistory?: ReasoningContext[];
+  /**
+   * Dica de roteamento de cache de prompt (alavanca 1). Provider usa para
+   * aumentar a taxa de acerto do cache (OpenAI: `prompt_cache_key`). Deve ser
+   * estavel entre chamadas com o mesmo prefixo (ex.: hash da versao do system).
+   */
+  promptCacheKey?: string;
 }
 
 export interface ProviderClient {
