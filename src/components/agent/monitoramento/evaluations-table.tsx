@@ -13,7 +13,6 @@ import {
   ChevronUp,
   History,
   Loader2,
-  ShieldCheck,
 } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
@@ -47,31 +46,10 @@ import {
   type EvaluationsTableFiltersValue,
 } from "./evaluations-table-filters";
 import { EvaluationDrilldown } from "./evaluation-drilldown";
+import { EvalStatusBadge } from "@/components/agent/quality/eval-status-badge";
 
 const PAGE_SIZE_OPTIONS = [50, 100, 500] as const;
 type PageSize = (typeof PAGE_SIZE_OPTIONS)[number];
-
-const STATUS_LABEL: Record<EvalStatus, string> = {
-  CORRETO: "Correto",
-  PARCIAL: "Parcial",
-  ERRADO: "Errado",
-  FORA_DO_ESCOPO: "Fora de escopo",
-  PENDENTE: "Pendente",
-  FALHA_TECNICA: "Falha técnica",
-};
-
-const STATUS_TONE: Record<EvalStatus, string> = {
-  CORRETO:
-    "bg-emerald-500/10 text-emerald-700 border-emerald-500/30 dark:text-emerald-300",
-  PARCIAL:
-    "bg-amber-500/10 text-amber-700 border-amber-500/30 dark:text-amber-300",
-  ERRADO: "bg-red-500/10 text-red-700 border-red-500/30 dark:text-red-300",
-  FORA_DO_ESCOPO:
-    "bg-slate-500/10 text-slate-700 border-slate-500/30 dark:text-slate-300",
-  PENDENTE: "bg-sky-500/10 text-sky-700 border-sky-500/30 dark:text-sky-300",
-  FALHA_TECNICA:
-    "bg-violet-500/10 text-violet-700 border-violet-500/30 dark:text-violet-300",
-};
 
 const dateTimeFmt = new Intl.DateTimeFormat("pt-BR", {
   timeZone: "America/Sao_Paulo",
@@ -308,39 +286,10 @@ export function EvaluationsTable({
                         {truncate(row.answerSnapshot)}
                       </TableCell>
                       <TableCell>
-                        {(() => {
-                          // Status efetivo = ajuste humano sobrescreve o
-                          // veredito automatico. A tag mostra o efetivo; o
-                          // shield + tooltip preservam o original (auditavel).
-                          const human = row.humanStatus as EvalStatus | null;
-                          const eff = human ?? row.status;
-                          return (
-                            <div
-                              className="flex items-center gap-1"
-                              title={
-                                human
-                                  ? `Veredito automático: ${STATUS_LABEL[row.status]} → ajuste humano: ${STATUS_LABEL[eff]}`
-                                  : undefined
-                              }
-                            >
-                              <Badge
-                                variant="outline"
-                                className={cn(
-                                  "border text-[11px]",
-                                  STATUS_TONE[eff],
-                                )}
-                              >
-                                {STATUS_LABEL[eff]}
-                              </Badge>
-                              {human && (
-                                <ShieldCheck
-                                  className="h-3 w-3 text-emerald-500"
-                                  aria-label={`Ajustado manualmente (era ${STATUS_LABEL[row.status]})`}
-                                />
-                              )}
-                            </div>
-                          );
-                        })()}
+                        <EvalStatusBadge
+                          status={row.status}
+                          humanStatus={row.humanStatus as EvalStatus | null}
+                        />
                       </TableCell>
                       <TableCell className="font-mono text-xs text-muted-foreground">
                         {row.model ?? ","}
