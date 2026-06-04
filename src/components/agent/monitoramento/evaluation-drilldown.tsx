@@ -24,6 +24,7 @@ import { toast } from "sonner";
 
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { CustomSelect } from "@/components/ui/custom-select";
 import { Textarea } from "@/components/ui/textarea";
 import { adjustEvaluation } from "@/lib/actions/agent-quality";
 import { fetchQualityEvaluationDetail } from "@/lib/actions/quality-fetch";
@@ -390,38 +391,30 @@ export function EvaluationDrilldown({ evaluationId, onAdjusted }: Props) {
           <h4 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
             Ajuste manual
           </h4>
-          {/* Seletor como TAGS coloridas (cor de cada status). A selecionada
-              fica cheia + anel violeta; as demais esmaecidas. */}
-          <div
-            role="radiogroup"
-            aria-label="Novo status"
-            className="flex flex-wrap items-center gap-1.5"
-          >
-            {(
-              ["CORRETO", "PARCIAL", "ERRADO", "FORA_DO_ESCOPO"] as const
-            ).map((s) => {
-              const on = adjustStatus === s;
-              return (
-                <button
-                  key={s}
-                  type="button"
-                  role="radio"
-                  aria-checked={on}
-                  onClick={() => setAdjustStatus(s)}
-                  className={cn(
-                    "cursor-pointer rounded-full border px-3 py-1 text-xs font-medium transition-all",
-                    STATUS_TONE[s],
-                    on
-                      ? "opacity-100 ring-2 ring-violet-500 ring-offset-1 ring-offset-background"
-                      : "opacity-45 hover:opacity-80",
-                  )}
-                >
-                  {STATUS_LABEL[s]}
-                </button>
-              );
-            })}
-          </div>
           <div className="flex flex-wrap items-center gap-2">
+            {/* Dropdown (lista suspensa), porem cada opcao e' a TAG colorida do
+                status , nao texto puro. */}
+            <CustomSelect
+              value={adjustStatus}
+              onChange={(v) => setAdjustStatus(v as EvalStatus)}
+              triggerClassName="min-w-[170px]"
+              aria-label="Novo status"
+              options={(
+                ["CORRETO", "PARCIAL", "ERRADO", "FORA_DO_ESCOPO"] as const
+              ).map((s) => ({
+                value: s,
+                label: (
+                  <span
+                    className={cn(
+                      "inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-medium",
+                      STATUS_TONE[s],
+                    )}
+                  >
+                    {STATUS_LABEL[s]}
+                  </span>
+                ),
+              }))}
+            />
             <Textarea
               value={adjustReason}
               onChange={(ev) => setAdjustReason(ev.target.value)}
