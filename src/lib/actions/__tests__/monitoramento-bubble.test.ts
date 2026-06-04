@@ -15,11 +15,11 @@ jest.mock("@/lib/prisma", () => ({
 }));
 
 import {
-  computeAccuracy,
   listBubbleCollaborators,
   listBubbleSessions,
   getBubbleSessionMessages,
 } from "../monitoramento-bubble";
+import { computeAccuracy } from "../monitoramento-bubble-helpers";
 import { requireMinRole } from "@/lib/auth/require";
 import { prisma } from "@/lib/prisma";
 

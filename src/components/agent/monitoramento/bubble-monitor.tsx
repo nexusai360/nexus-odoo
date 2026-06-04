@@ -13,8 +13,8 @@ import {
   getBubbleSessionMessages,
   type Collaborator,
   type SessionRow,
-  type RatingCounts,
 } from "@/lib/actions/monitoramento-bubble";
+import type { RatingCounts } from "@/lib/actions/monitoramento-bubble-helpers";
 import { BubbleMonitorRow, type MonitorMessage } from "./bubble-monitor-row";
 import { RATING_META, type UserFeedbackRating } from "@/components/agent/rating-meta";
 import { formatDayLabel } from "@/lib/format-datetime-relative";

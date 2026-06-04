@@ -12,13 +12,11 @@ import { prisma } from "@/lib/prisma";
 import { requireMinRole } from "@/lib/auth/require";
 import { progressLabel } from "@/lib/agent/progress-labels";
 import type { ConversationMessageDto } from "@/lib/actions/conversation-messages";
-
-export type RatingCounts = {
-  CORRETO: number;
-  PARCIAL: number;
-  ERRADO: number;
-  ALUCINOU: number;
-};
+import {
+  computeAccuracy,
+  zeroCounts,
+  type RatingCounts,
+} from "./monitoramento-bubble-helpers";
 
 export type Collaborator = {
   userId: string;
@@ -40,20 +38,6 @@ export type SessionRow = {
   accuracyPct: number | null;
   isActive: boolean;
 };
-
-function zeroCounts(): RatingCounts {
-  return { CORRETO: 0, PARCIAL: 0, ERRADO: 0, ALUCINOU: 0 };
-}
-
-/**
- * Acurácia ponderada: acertos valem 1, parciais valem 0.5; erros e alucinações
- * valem 0. Sem votos, retorna null (não há base para calcular).
- */
-export function computeAccuracy(rc: RatingCounts): number | null {
-  const total = rc.CORRETO + rc.PARCIAL + rc.ERRADO + rc.ALUCINOU;
-  if (total === 0) return null;
-  return Math.round((100 * (rc.CORRETO + 0.5 * rc.PARCIAL)) / total);
-}
 
 /**
  * Lista os colaboradores que conversaram com o Nex na bubble (in_app),
