@@ -62,6 +62,42 @@ describe("requireMinRole gateia as actions", () => {
   });
 });
 
+describe("filtro de canal exclui replay/backtest (raiz do dado poluído)", () => {
+  test("listBubbleCollaborators só agrega channel in_app", async () => {
+    (prisma.conversation.groupBy as jest.Mock).mockResolvedValue([]);
+    (prisma.conversation.findMany as jest.Mock).mockResolvedValue([]);
+    (prisma.user.findMany as jest.Mock).mockResolvedValue([]);
+    (prisma.messageFeedback.groupBy as jest.Mock).mockResolvedValue([]);
+
+    await listBubbleCollaborators();
+
+    expect(prisma.conversation.groupBy).toHaveBeenCalledWith(
+      expect.objectContaining({ where: { channel: "in_app" } }),
+    );
+    // sessão ativa também restrita a in_app (backtest nunca conta como ativa)
+    expect(prisma.conversation.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({ where: { channel: "in_app", endedAt: null } }),
+    );
+    // votos só de conversas in_app
+    expect(prisma.messageFeedback.groupBy).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { conversation: { channel: "in_app" } },
+      }),
+    );
+  });
+
+  test("listBubbleSessions só lista channel in_app do usuário", async () => {
+    (prisma.conversation.findMany as jest.Mock).mockResolvedValue([]);
+    (prisma.messageFeedback.groupBy as jest.Mock).mockResolvedValue([]);
+
+    await listBubbleSessions("u1");
+
+    expect(prisma.conversation.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({ where: { userId: "u1", channel: "in_app" } }),
+    );
+  });
+});
+
 describe("listBubbleCollaborators", () => {
   test("monta colaboradores com sessão ativa, votos e acurácia, ordenados por atividade", async () => {
     (prisma.conversation.groupBy as jest.Mock).mockResolvedValue([

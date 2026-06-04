@@ -58,6 +58,10 @@ enum AgentChannel {
   whatsapp
   in_app
   playground
+  // B2/raiz do dado: conversas geradas por replay/backtest/calibração de
+  // qualidade (scripts quality-audit). Canal estrutural próprio para não
+  // poluir o monitoramento Bubble (que mostra só conversa real in_app).
+  backtest
 }
 
 enum MessageRole {

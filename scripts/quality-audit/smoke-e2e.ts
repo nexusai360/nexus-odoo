@@ -34,7 +34,7 @@ async function main() {
 
   for (const p of PERGUNTAS) {
     const conv = await prisma.conversation.create({
-      data: { userId: user.id, channel: "in_app", title: `${marker} ${p.q.slice(0, 60)}` },
+      data: { userId: user.id, channel: "backtest", title: `${marker} ${p.q.slice(0, 60)}` },
       select: { id: true },
     });
     const t0 = Date.now();
@@ -43,7 +43,7 @@ async function main() {
         conversationId: conv.id,
         userId: user.id,
         userMessage: p.q,
-        channel: "in_app",
+        channel: "backtest",
         isPlayground: false,
       });
       const dur = Date.now() - t0;

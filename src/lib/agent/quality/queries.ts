@@ -229,11 +229,14 @@ export async function getDistinctRodadas(
 
   let agenteNexCount = 0;
   let playgroundCount = 0;
+  let backtestCount = 0;
   for (const r of virtualRows) {
     if (r.channel === "in_app" || r.channel === "whatsapp") {
       agenteNexCount += r.count;
     } else if (r.channel === "playground") {
       playgroundCount += r.count;
+    } else if (r.channel === "backtest") {
+      backtestCount += r.count;
     }
   }
 
@@ -243,6 +246,9 @@ export async function getDistinctRodadas(
   }
   if (playgroundCount > 0) {
     out.unshift({ marker: "__origem:playground", count: playgroundCount });
+  }
+  if (backtestCount > 0) {
+    out.unshift({ marker: "__origem:backtest", count: backtestCount });
   }
   return out;
 }
@@ -499,6 +505,7 @@ function buildWhere(filters: EvaluationFilters) {
     const auditMarkers = filters.rodadas.filter((r) => r.startsWith("[AUDIT"));
     const wantsAgenteNex = filters.rodadas.includes("__origem:agente-nex");
     const wantsPlayground = filters.rodadas.includes("__origem:playground");
+    const wantsBacktest = filters.rodadas.includes("__origem:backtest");
     const ors: Array<Record<string, unknown>> = [];
     for (const marker of auditMarkers) {
       ors.push({ title: { startsWith: marker } });
@@ -517,6 +524,18 @@ function buildWhere(filters: EvaluationFilters) {
     if (wantsPlayground) {
       ors.push({
         channel: "playground",
+        OR: [
+          { title: null },
+          { NOT: { title: { startsWith: "[AUDIT" } } },
+        ],
+      });
+    }
+    if (wantsBacktest) {
+      // Conversas de replay/calibração no canal estrutural backtest. As que
+      // ainda carregam marker [AUDIT viram rodada (auditMarkers acima); aqui
+      // só as demais (ex.: [SMOKE) caem no bucket Backtest.
+      ors.push({
+        channel: "backtest",
         OR: [
           { title: null },
           { NOT: { title: { startsWith: "[AUDIT" } } },
