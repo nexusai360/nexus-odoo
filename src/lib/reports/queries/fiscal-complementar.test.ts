@@ -28,7 +28,8 @@ describe("queryCertificados", () => {
     expect(result.linhas[0]?.proprietario).toBe("JMF");
     expect(result.linhas[0]?.dataFimValidade).toBe("2027-05-12");
     const call = (mockPrisma.fatoCertificado.findMany as jest.Mock).mock.calls[0][0];
-    expect(call.orderBy).toEqual({ dataFimValidade: "asc" });
+    // Alavanca 2b: orderBy estavel com desempate por odooId.
+    expect(call.orderBy).toEqual([{ dataFimValidade: "asc" }, { odooId: "asc" }]);
   });
 
   it("tolera datas nulas", async () => {

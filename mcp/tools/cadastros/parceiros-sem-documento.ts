@@ -3,11 +3,16 @@
 import { z } from "zod";
 import type { ToolEntry } from "../../catalog/types.js";
 import { withFreshness } from "../../lib/freshness.js";
+import {
+  paginacaoInputShape,
+  resolverPaginacao,
+  montarPaginacaoMeta,
+} from "../../lib/paginacao.js";
 import type { PrismaClient } from "@/generated/prisma/client.js";
 
 const inputSchema = z.object({
   tipo: z.enum(["clientes", "fornecedores", "todos"]).optional().describe("Default: todos"),
-  limite: z.number().int().min(1).max(100).optional(),
+  ...paginacaoInputShape,
 });
 
 const linhaSchema = z.object({
@@ -26,6 +31,8 @@ const dados = z.object({
   _RESPOSTA: z.string().optional(),
   _DESTAQUE: z.record(z.string(), z.union([z.string(), z.number()])).optional(),
   _agregado: z.record(z.string(), z.number().optional()).optional(),
+  _listaTruncada: z.boolean().optional(),
+  _PAGINACAO: z.any().optional(),
 });
 
 const fonteStatus = z.object({ status: z.string(), ultimaSyncEm: z.string().nullable() });
@@ -44,7 +51,7 @@ type Input = z.infer<typeof inputSchema>;
 type Output = z.infer<typeof outputSchema>;
 
 async function query(prisma: PrismaClient, input: Input) {
-  const limite = input.limite ?? 30;
+  const { limit, offset } = resolverPaginacao(input);
   const tipo = input.tipo ?? "todos";
   const where: Record<string, unknown> = {
     ativo: true,
@@ -56,8 +63,11 @@ async function query(prisma: PrismaClient, input: Input) {
     prisma.fatoParceiro.findMany({
       where,
       select: { odooId: true, nome: true, cidade: true, uf: true, ehCliente: true, ehFornecedor: true },
-      take: limite,
-      orderBy: { nome: "asc" },
+      // Ordenacao estavel + desempate por odooId: garante que "os proximos"
+      // nao repitam nem pulem item entre paginas (alavanca 2b).
+      orderBy: [{ nome: "asc" }, { odooId: "asc" }],
+      take: limit,
+      skip: offset,
     }),
     prisma.fatoParceiro.count({ where }),
   ]);
@@ -78,6 +88,13 @@ export const cadastroParceirosSemDocumento: ToolEntry<Input, Output> = {
     const envelope = await withFreshness(ctx.prisma, ["fato_parceiro"], () => query(ctx.prisma, input));
     if (envelope.estado === "preparando") return envelope;
     const d = envelope.dados;
+    const { limit, offset } = resolverPaginacao(input);
+    const paginacao = montarPaginacaoMeta(
+      d.totalEncontrados,
+      offset,
+      limit,
+      d.linhasExibidas,
+    );
     const tipoLabel = input.tipo === "clientes" ? "clientes" : input.tipo === "fornecedores" ? "fornecedores" : "parceiros";
     return {
       ...envelope,
@@ -88,6 +105,8 @@ export const cadastroParceirosSemDocumento: ToolEntry<Input, Output> = {
           : `${d.totalEncontrados} ${tipoLabel} ativos sem documento (CNPJ/CPF). Listando ${d.linhasExibidas}.`,
         _DESTAQUE: { totalEncontrados: d.totalEncontrados, linhasExibidas: d.linhasExibidas, tipo: tipoLabel },
         _agregado: { contagem: d.totalEncontrados },
+        _listaTruncada: paginacao.temMais,
+        _PAGINACAO: paginacao,
       },
     };
   },

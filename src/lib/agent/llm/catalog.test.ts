@@ -57,6 +57,22 @@ describe("catalog , fonte única de modelos e pricing", () => {
     expect(result.costUsd).toBeGreaterThan(0);
   });
 
+  test("calculateCost aplica preco reduzido na fracao cacheada (alavanca 1)", () => {
+    const semCache = calculateCost("gpt-5.4-mini", 20000, 800).costUsd!;
+    const comCache = calculateCost("gpt-5.4-mini", 20000, 800, {
+      cachedInputTokens: 18000,
+    }).costUsd!;
+    expect(comCache).toBeLessThan(semCache);
+    // 18000 tokens passam de 0.25 para 0.025 USD/Mtok (0.1x) => economia previsivel.
+    const economiaEsperada = (18000 * (0.25 - 0.025)) / 1_000_000;
+    expect(semCache - comCache).toBeCloseTo(economiaEsperada, 10);
+  });
+
+  test("calculateCost: cache cap em tokensInput (nao fica negativo)", () => {
+    const r = calculateCost("gpt-5.4-mini", 100, 0, { cachedInputTokens: 999 });
+    expect(r.costUsd!).toBeGreaterThanOrEqual(0);
+  });
+
   test("calculateCost retorna costKnown=false quando pricing é null (BUG 2 corrigido)", () => {
     // Encontrar um modelo sem pricing, ou mockar com um id desconhecido
     const modelWithoutPricing = MODELS.find((m) => m.pricing === null);

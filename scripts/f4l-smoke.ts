@@ -7,7 +7,7 @@ import { queryPrecoProduto, queryPrecoTabela } from "../src/lib/reports/queries/
 import { queryServicoBuscar, queryServicoListar } from "../src/lib/reports/queries/servicos";
 
 async function main(): Promise<void> {
-  const pp = await queryPrecoProduto(prisma, { limite: 3 });
+  const pp = await queryPrecoProduto(prisma, { limit: 3 });
   console.log(`preco_produto -> ${pp.total} regras de produto; amostra:`);
   console.log("  " + JSON.stringify(pp.linhas[0] ?? null));
 
@@ -20,11 +20,11 @@ async function main(): Promise<void> {
     console.log(`preco_tabela(${tabela.tabelaId}) -> "${pt.tabelaNome}", ${pt.total} regras`);
   }
 
-  const sb = await queryServicoBuscar(prisma, { termo: "program", limite: 3 });
+  const sb = await queryServicoBuscar(prisma, { termo: "program", limit: 3, offset: 0 });
   console.log(`servico_buscar("program") -> ${sb.total} resultados:`);
-  for (const l of sb.linhas) console.log(`  ${l.codigoFormatado ?? l.codigo} — ${l.descricao}`);
+  for (const l of sb.linhas) console.log(`  ${l.codigoFormatado ?? l.codigo}: ${l.descricao}`);
 
-  const sl = await queryServicoListar(prisma, { limite: 2 });
+  const sl = await queryServicoListar(prisma, { limit: 2, offset: 0 });
   console.log(`servico_listar -> ${sl.total} serviços no catálogo`);
 
   await prisma.$disconnect();

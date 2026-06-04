@@ -20,7 +20,7 @@ import type { PrismaClient } from "@/generated/prisma/client";
  * ocultar silenciosamente que há mais contas do que as retornadas. */
 export async function queryPlanoDeContas(
   prisma: PrismaClient,
-  filtros: { termo?: string; limite?: number },
+  filtros: { termo?: string; limit: number; offset: number },
 ): Promise<{
   linhas: {
     odooId: number;
@@ -32,7 +32,7 @@ export async function queryPlanoDeContas(
   total: number;
   truncado: boolean;
 }> {
-  const limite = filtros.limite ?? 250;
+  const { limit, offset } = filtros;
   // F5 FIX: busca tokenizada (AND de palavras). Antes "impostos a recolher"
   // nao achava "OUTROS IMPOSTOS E TAXAS A RECOLHER" porque contains literal.
   const STOPWORDS = new Set(["a", "as", "de", "do", "da", "dos", "das", "e", "o", "os", "para", "pra", "no", "na", "nos", "nas", "que", "por"]);
@@ -62,12 +62,14 @@ export async function queryPlanoDeContas(
         tipo: true,
         contaPaiNome: true,
       },
-      orderBy: { codigo: "asc" },
-      take: limite,
+      // Ordenacao estavel + desempate por odooId para paginacao (alavanca 2b).
+      orderBy: [{ codigo: "asc" }, { odooId: "asc" }],
+      take: limit,
+      skip: offset,
     }),
     prisma.fatoContaContabil.count({ where }),
   ]);
-  return { linhas, total, truncado: total > linhas.length };
+  return { linhas, total, truncado: offset + linhas.length < total };
 }
 
 // ---------------------------------------------------------------------------
@@ -237,12 +239,12 @@ export interface MovimentoContaLinha {
  * ordenadas por data. Aceita `contaId` (preferencial) ou `contaCodigo`. */
 export async function queryMovimentoConta(
   prisma: PrismaClient,
-  filtros: { contaId?: number; contaCodigo?: string; dataInicio?: string; dataFim?: string; limite?: number },
+  filtros: { contaId?: number; contaCodigo?: string; dataInicio?: string; dataFim?: string; limit: number; offset: number },
 ): Promise<{ linhas: MovimentoContaLinha[]; total: number; truncado: boolean }> {
   const where = periodoWhere(filtros);
   if (filtros.contaId != null) where.contaId = filtros.contaId;
   else if (filtros.contaCodigo) where.contaCodigo = filtros.contaCodigo;
-  const limite = filtros.limite ?? 250;
+  const { limit, offset } = filtros;
   const [partidas, total] = await Promise.all([
     prisma.fatoContabilLancamentoItem.findMany({
       where,
@@ -257,8 +259,10 @@ export async function queryMovimentoConta(
         valorDebito: true,
         valorCredito: true,
       },
+      // Ordenacao estavel + desempate por odooId para paginacao (alavanca 2b).
       orderBy: [{ dataLancamento: "asc" }, { odooId: "asc" }],
-      take: limite,
+      take: limit,
+      skip: offset,
     }),
     prisma.fatoContabilLancamentoItem.count({ where }),
   ]);
@@ -273,7 +277,7 @@ export async function queryMovimentoConta(
     debito: num(p.valorDebito),
     credito: num(p.valorCredito),
   }));
-  return { linhas, total, truncado: total > linhas.length };
+  return { linhas, total, truncado: filtros.offset + linhas.length < total };
 }
 
 // ---------------------------------------------------------------------------

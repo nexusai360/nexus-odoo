@@ -49,6 +49,12 @@ export interface AgentMessageProps {
    */
   streaming?: boolean;
   /**
+   * Habilita o efeito de digitacao (typewriter). True SO para a resposta
+   * gerada AO VIVO nesta interacao. Mensagens carregadas do historico vem com
+   * reveal=false e aparecem prontas (sem re-digitar ao reabrir a bubble).
+   */
+  reveal?: boolean;
+  /**
    * Trilha de pensamento absorvida na bolha do assistente (Onda C do
    * Renascimento). Quando presente, renderiza header colapsável acima do
    * conteúdo da mensagem com o resumo das tools consultadas.
@@ -63,6 +69,9 @@ export interface AgentMessageProps {
   /** Timestamp de envio para exibir no rodapé da bolha. Quando ausente,
    *  o rodapé fica oculto (histórico legado sem stamp). */
   createdAt?: string | Date | null;
+  /** Chamado quando a digitacao (typewriter) termina de revelar a resposta
+   *  inteira. So dispara para mensagens com reveal=true. */
+  onRevealComplete?: () => void;
 }
 
 export function AgentMessage({
@@ -73,11 +82,13 @@ export function AgentMessage({
   audioBlobUrl,
   durationSeconds,
   streaming = false,
+  reveal = false,
   steps,
   stepsCollapsed = true,
   onToggleSteps,
   durationMs,
   createdAt,
+  onRevealComplete,
 }: AgentMessageProps) {
   if (role === "loading") return <LoadingBubble />;
   if (role === "tool") return <ToolBubble name={toolName ?? "tool"} />;
@@ -88,19 +99,19 @@ export function AgentMessage({
   if (kind === "audio") {
     return (
       <div className="group/msg flex w-full justify-end">
-        <div className="relative flex max-w-[85%] flex-col gap-1.5">
+        <div className="relative flex max-w-[80%] flex-col gap-1.5">
           {audioBlobUrl ? (
             <AudioPlayer
               src={audioBlobUrl}
               durationSeconds={durationSeconds}
             />
           ) : (
-            <div className="rounded-2xl bg-muted px-3 py-2 text-xs text-muted-foreground">
+            <div className="rounded-xl bg-muted px-3 py-2 text-xs text-muted-foreground">
               (áudio expirado)
             </div>
           )}
           {content && (
-            <div className="rounded-2xl bg-violet-600/15 px-3 py-1.5 text-xs text-muted-foreground">
+            <div className="rounded-xl bg-violet-600/15 px-3 py-1.5 text-xs text-muted-foreground">
               {content}
             </div>
           )}
@@ -119,46 +130,60 @@ export function AgentMessage({
     !isUser && (streaming || (Array.isArray(steps) && steps.length > 0));
   return (
     <BubbleWrapper isUser={isUser}>
-      <BubbleSurface
-        isUser={isUser}
-        // fastGrow=true quando typewriter ativo (streaming AND content
-        // > 0): bolha cresce com transition 100ms para acompanhar char
-        // a char sem clipar. Fora desse caso (trail "Pensando" / steps
-        // entrando / mensagem do user): 1.1s para o efeito suave.
-        fastGrow={!isUser && streaming && content.length > 0}
-      >
-        {showTrail ? (
-          <AssistantTrailBlock
-            steps={steps ?? []}
-            streaming={streaming}
-            collapsed={stepsCollapsed}
-            onToggle={onToggleSteps}
-            durationMs={durationMs}
-          />
-        ) : null}
-        <AssistantBodyReveal hasContent={content.length > 0}>
-          {isUser ? (
-            // Mensagem do usuario: NUNCA tem typewriter, vai completa.
-            // Quando ele aperta Enter ou clica numa sugestao, a frase ja
-            // existe inteira; animar seria artificio sem sentido.
-            <span className="whitespace-pre-wrap">{content}</span>
-          ) : (
-            <TypewriterBody content={content} streaming={streaming} />
-          )}
-        </AssistantBodyReveal>
-        {createdAt && !streaming ? (
-          <div
-            className={cn(
-              "mt-1 text-[10px] tabular-nums text-muted-foreground/70",
-              isUser ? "text-right" : "text-left",
+      {/* Wrapper relativo SEM overflow: ancora o CopyButton no canto da
+          bolha sem ser clipado pelo overflow:hidden do BubbleSurface (que
+          existe para a animacao de altura). max-w mora aqui agora; o
+          BubbleSurface preenche este wrapper (max-w-full). */}
+      <div className="relative max-w-[80%]">
+        <BubbleSurface
+          isUser={isUser}
+          // fastGrow=true quando typewriter ativo (streaming AND content
+          // > 0): bolha cresce com transition 100ms para acompanhar char
+          // a char sem clipar. Fora desse caso (trail "Pensando" / steps
+          // entrando / mensagem do user): 1.1s para o efeito suave.
+          fastGrow={!isUser && streaming && content.length > 0}
+        >
+          {showTrail ? (
+            <AssistantTrailBlock
+              steps={steps ?? []}
+              streaming={streaming}
+              collapsed={stepsCollapsed}
+              onToggle={onToggleSteps}
+              durationMs={durationMs}
+            />
+          ) : null}
+          <AssistantBodyReveal hasContent={content.length > 0}>
+            {isUser ? (
+              // Mensagem do usuario: NUNCA tem typewriter, vai completa.
+              // Quando ele aperta Enter ou clica numa sugestao, a frase ja
+              // existe inteira; animar seria artificio sem sentido.
+              <span className="whitespace-pre-wrap">{content}</span>
+            ) : reveal ? (
+              // So a resposta gerada AO VIVO digita. Historico (reveal=false)
+              // renderiza markdown direto, sem re-digitar ao reabrir a bubble.
+              <TypewriterBody
+                content={content}
+                streaming={streaming}
+                onComplete={onRevealComplete}
+              />
+            ) : (
+              <MarkdownLite content={content} />
             )}
-            suppressHydrationWarning
-          >
-            {formatRelativeDateTime(createdAt)}
-          </div>
-        ) : null}
+          </AssistantBodyReveal>
+          {createdAt && !streaming ? (
+            <div
+              className={cn(
+                "mt-1 text-[10px] tabular-nums text-muted-foreground/70",
+                isUser ? "text-right" : "text-left",
+              )}
+              suppressHydrationWarning
+            >
+              {formatRelativeDateTime(createdAt)}
+            </div>
+          ) : null}
+        </BubbleSurface>
         <CopyButton text={content} />
-      </BubbleSurface>
+      </div>
     </BubbleWrapper>
   );
 }
@@ -190,56 +215,26 @@ function BubbleSurface({
   enableLayout?: boolean;
   fastGrow?: boolean;
 }) {
-  // Estrategia: HEIGHT anima via motion.div + RO (funcionou ja
-  // confirmado pelo user). WIDTH anima via CSS transition + interpolate-size
-  // na classe .nex-bubble-grow (Chrome 129+, Safari 18+; degrada para
-  // instant em browsers mais velhos). Sem squish de texto (no constraint
-  // de width vindo do motion.div).
-  const reduce = useReducedMotion();
-  const innerRef = React.useRef<HTMLDivElement>(null);
-  const [height, setHeight] = React.useState<number | "auto">("auto");
-
-  React.useEffect(() => {
-    const el = innerRef.current;
-    if (!el) return;
-    const measure = (entries: ResizeObserverEntry[]) => {
-      const h = entries[0]?.contentRect.height ?? el.offsetHeight;
-      // +20 = padding total (py-2.5 = 20px) ja que contentRect e do
-      // content-box.
-      const total = h + 20;
-      setHeight((prev) => (prev === total ? prev : total));
-    };
-    const ro = new ResizeObserver(measure);
-    ro.observe(el);
-    return () => ro.disconnect();
-  }, []);
-
+  // Altura NATURAL (sem animacao de height + sem overflow:hidden). A versao
+  // antiga animava `height` por 1.1s com overflowY:hidden, o que clipava o
+  // texto recem-digitado e fazia a janela "nao acompanhar" o reveal (o scroll
+  // so seguia quando a altura animada alcancava o conteudo, 1.1s depois). Com
+  // altura auto a bolha cresce em tempo real junto com o texto: sem clip, sem
+  // lag, e o stick-to-bottom do ChatPanel segue o crescimento na hora. As
+  // animacoes de "expansao suave" continuam vindo dos filhos (reveal do corpo
+  // e abertura da trilha), nao do container.
   return (
-    <motion.div
-      animate={{ height }}
-      transition={
-        reduce
-          ? { duration: 0 }
-          : { duration: 1.1, ease: [0.22, 1, 0.36, 1] }
-      }
+    <div
       className={cn(
-        // nex-bubble-grow: transition CSS de width 1.1s + interpolate-size
-        // (em globals.css) faz width animar suave de auto pra auto.
-        "nex-bubble-grow relative max-w-[85%] rounded-2xl px-3.5 text-sm leading-relaxed",
+        // rounded-lg: quinas menos arredondadas (pedido do usuario).
+        "relative w-fit max-w-full rounded-xl px-3 text-sm leading-relaxed",
         isUser
           ? "bg-violet-600/15 text-foreground"
           : "bg-muted text-foreground",
       )}
-      // overflowY hidden clipa height durante animacao; X visivel evita
-      // qualquer clipping horizontal de texto (typewriter etc).
-      style={{ overflowY: "hidden", overflowX: "visible" }}
     >
-      {/* innerRef mede content height. Tem o padding vertical (py-2.5).
-          Width nao e constrained aqui - vem natural. */}
-      <div ref={innerRef} className="py-2.5">
-        {children}
-      </div>
-    </motion.div>
+      <div className="py-2">{children}</div>
+    </div>
   );
 }
 
@@ -268,7 +263,7 @@ function BubbleWrapper({
       transition={
         reduce
           ? { duration: 0 }
-          : { opacity: { duration: 0.45, ease: [0.16, 1, 0.3, 1] } }
+          : { opacity: { duration: 0.22, ease: [0.16, 1, 0.3, 1] } }
       }
       className={cn(
         "group/msg flex w-full",
@@ -391,9 +386,9 @@ function AssistantTrailBlock({
                 reduce
                   ? { duration: 0 }
                   : {
-                      duration: 0.5,
+                      duration: 0.22,
                       ease: EASE,
-                      filter: { duration: 0.4 },
+                      filter: { duration: 0.18 },
                     }
               }
               className="absolute inset-0 block truncate"
@@ -420,15 +415,11 @@ function AssistantTrailBlock({
               reduce
                 ? { duration: 0 }
                 : {
-                    // Recolhimento orquestrado: 0.7s para a altura, 0.5s
-                    // para opacity (some 200ms antes de zerar height).
-                    // Esses tempos casam com o delay+duracao do
-                    // BodyReveal (250ms delay + 400ms fade) - quando o
-                    // trail termina de sumir, o body acabou de aparecer.
-                    // Alinhado ao mesmo timing da bolha (650ms expo-out)
-                    // para a transicao trail->trail+body ser homogenea.
-                    height: { duration: 1.1, ease: [0.22, 1, 0.36, 1] },
-                    opacity: { duration: 0.85, ease: [0.22, 1, 0.36, 1] },
+                    // Feedback imediato: abrir/fechar o "Raciocinio" responde
+                    // na hora (~160ms), sem o arrasto antigo de 1.1s que
+                    // deformava os componentes durante a reorganizacao.
+                    height: { duration: 0.16, ease: [0.22, 1, 0.36, 1] },
+                    opacity: { duration: 0.12, ease: "easeOut" },
                   }
             }
             style={{ overflow: "hidden" }}
@@ -448,20 +439,12 @@ function AssistantTrailBlock({
                     // BubbleSurface.motion.layout="size" (interpola entre
                     // tamanhos). Aqui so a opacity + slide subtil pra
                     // sensacao de "se materializando" sem susto.
-                    initial={reduce ? false : { opacity: 0, y: -6 }}
+                    initial={reduce ? false : { opacity: 0, y: -4 }}
                     animate={{ opacity: 1, y: 0 }}
-                    // Sincronia com a expansao da bolha (motion.layout 650ms):
-                    // delay 325ms (50% da expansao) + duracao 325ms = linha
-                    // termina exatamente quando a bolha termina de crescer.
-                    // Mais lenta apos feedback "tudo muito rapido".
+                    // Entrada rapida (~150ms, sem delay) para o passo aparecer
+                    // junto com a expansao instantanea da bolha.
                     transition={
-                      reduce
-                        ? { duration: 0 }
-                        : {
-                            duration: 0.55,
-                            delay: 0.55,
-                            ease: [0.22, 1, 0.36, 1],
-                          }
+                      reduce ? { duration: 0 } : { duration: 0.15, ease: "easeOut" }
                     }
                     className="flex items-center gap-1.5 text-[11px]"
                   >
@@ -562,8 +545,8 @@ function AssistantBodyReveal({
         reduce
           ? { duration: 0 }
           : {
-              duration: 0.4,
-              delay: 0.25,
+              duration: 0.2,
+              delay: 0.04,
               ease: [0.16, 1, 0.3, 1] as const,
             }
       }
@@ -580,7 +563,7 @@ function AssistantBodyReveal({
 function LoadingBubble() {
   return (
     <div className="flex w-full justify-start">
-      <div className="flex items-center gap-2 rounded-2xl bg-muted px-3.5 py-2.5 text-sm text-muted-foreground">
+      <div className="flex items-center gap-2 rounded-xl bg-muted px-3.5 py-2.5 text-sm text-muted-foreground">
         <span className="flex gap-1" aria-hidden="true">
           <Dot delay={0} />
           <Dot delay={0.15} />
@@ -721,7 +704,9 @@ function splitBlocks(input: string): Block[] {
 
 function renderInline(text: string): React.ReactNode {
   const nodes: React.ReactNode[] = [];
-  const regex = /(\*\*[^*]+\*\*|`[^`]+`)/g;
+  // Ordem importa: **negrito** antes de *italico*; _italico_ e `codigo`.
+  const regex =
+    /(\*\*[^*]+\*\*|\*[^*\s][^*]*\*|_[^_\s][^_]*_|`[^`]+`)/g;
   let lastIndex = 0;
   let match: RegExpExecArray | null;
   let key = 0;
@@ -737,7 +722,7 @@ function renderInline(text: string): React.ReactNode {
           {token.slice(2, -2)}
         </strong>,
       );
-    } else {
+    } else if (token.startsWith("`")) {
       nodes.push(
         <code
           key={key++}
@@ -745,6 +730,13 @@ function renderInline(text: string): React.ReactNode {
         >
           {token.slice(1, -1)}
         </code>,
+      );
+    } else {
+      // *italico* ou _italico_
+      nodes.push(
+        <em key={key++} className="italic text-foreground/90">
+          {token.slice(1, -1)}
+        </em>,
       );
     }
     lastIndex = match.index + token.length;
@@ -798,9 +790,11 @@ function AnimatedDots() {
 function TypewriterBody({
   content,
   streaming,
+  onComplete,
 }: {
   content: string;
   streaming: boolean;
+  onComplete?: () => void;
 }) {
   const tokens = React.useMemo(() => content.split(/(\s+)/), [content]);
   const [visibleCount, setVisibleCount] = React.useState(0);
@@ -846,16 +840,30 @@ function TypewriterBody({
   }, [reduce]);
 
   const caughtUp = visibleCount >= tokens.length;
-  // Done: swap para MarkdownLite (bolds, listas, code formatam).
-  // Antes exigia `caughtUp && !streaming`, mas, na primeira resposta de
-  // cada conversa, o RAF as vezes nao concluia o catch-up antes de done
-  // (visibleCount ficava aquem de tokens.length apos o conteudo final
-  // chegar de uma vez no evento done), deixando o usuario com texto
-  // plano sem formatacao. Trocamos para `!streaming`: assim que o
-  // backend sinaliza done, a UI renderiza ja formatado. As respostas
-  // seguintes ja vinham OK porque o RAF concluia a tempo - aqui
-  // garantimos consistencia entre o primeiro turno e os demais.
-  if (!streaming) {
+  // Avisa o pai quando a digitacao terminou (texto inteiro revelado + backend
+  // concluido). O ChatPanel usa isso para so entao mostrar os chips de sugestao
+  // e para parar o auto-scroll. Dispara uma unica vez.
+  const revealDone = caughtUp && !streaming;
+  const firedRef = React.useRef(false);
+  React.useEffect(() => {
+    if (revealDone && !firedRef.current) {
+      firedRef.current = true;
+      onComplete?.();
+    }
+  }, [revealDone, onComplete]);
+  // Swap para MarkdownLite (bolds, listas, code) so quando o texto FOI
+  // revelado por inteiro (caughtUp) E o backend terminou (!streaming).
+  //
+  // Por que nao `!streaming` puro: muitos providers (OpenAI, Gemini,
+  // OpenRouter) nao emitem tokens incrementais , a resposta chega inteira no
+  // evento `done` com streaming:false. Com `!streaming` o texto aparecia de
+  // uma vez (sem digitacao). Com `caughtUp && !streaming`, o RAF revela
+  // palavra por palavra mesmo nesse caso (efeito de digitacao client-side,
+  // identico ao Claude.ai), formatando markdown so ao terminar. Para o
+  // Anthropic (que ja streama), o comportamento e o mesmo de antes.
+  // reduce-motion: o RAF preenche tudo de imediato -> caughtUp na hora ->
+  // sem digitacao falsa.
+  if (caughtUp && !streaming) {
     return <MarkdownLite content={content} />;
   }
 

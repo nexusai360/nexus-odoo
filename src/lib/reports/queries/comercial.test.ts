@@ -152,6 +152,9 @@ describe("queryPedidosAtrasados", () => {
             parcelaFaturada: false,
           },
         ]),
+        count: jest.fn().mockResolvedValue(2),
+        aggregate: jest.fn().mockResolvedValue({ _sum: { valor: 300 } }),
+        findFirst: jest.fn().mockResolvedValue({ dataVencimento: new Date("2024-03-01T00:00:00") }),
       },
     } as unknown as import("@/generated/prisma/client").PrismaClient;
 
@@ -168,6 +171,9 @@ describe("queryPedidosAtrasados", () => {
     const mockPrisma = {
       fatoPedidoParcela: {
         findMany: jest.fn().mockResolvedValue([]),
+        count: jest.fn().mockResolvedValue(0),
+        aggregate: jest.fn().mockResolvedValue({ _sum: { valor: null } }),
+        findFirst: jest.fn().mockResolvedValue(null),
       },
     } as unknown as import("@/generated/prisma/client").PrismaClient;
 
@@ -188,6 +194,9 @@ describe("queryPedidosAtrasados", () => {
     const mockPrisma = {
       fatoPedidoParcela: {
         findMany: jest.fn().mockResolvedValue([]),
+        count: jest.fn().mockResolvedValue(0),
+        aggregate: jest.fn().mockResolvedValue({ _sum: { valor: null } }),
+        findFirst: jest.fn().mockResolvedValue(null),
       },
     } as unknown as import("@/generated/prisma/client").PrismaClient;
 
@@ -220,6 +229,8 @@ describe("queryParcelasAVencer", () => {
             valor: "150.00",
           },
         ]),
+        count: jest.fn().mockResolvedValue(2),
+        aggregate: jest.fn().mockResolvedValue({ _sum: { valor: 450 } }),
       },
     } as unknown as import("@/generated/prisma/client").PrismaClient;
 
@@ -234,6 +245,9 @@ describe("queryParcelasAVencer", () => {
     const mockPrisma = {
       fatoPedidoParcela: {
         findMany: jest.fn().mockResolvedValue([]),
+        count: jest.fn().mockResolvedValue(0),
+        aggregate: jest.fn().mockResolvedValue({ _sum: { valor: null } }),
+        findFirst: jest.fn().mockResolvedValue(null),
       },
     } as unknown as import("@/generated/prisma/client").PrismaClient;
 
@@ -254,6 +268,9 @@ describe("queryParcelasAVencer", () => {
     const mockPrisma = {
       fatoPedidoParcela: {
         findMany: jest.fn().mockResolvedValue([]),
+        count: jest.fn().mockResolvedValue(0),
+        aggregate: jest.fn().mockResolvedValue({ _sum: { valor: null } }),
+        findFirst: jest.fn().mockResolvedValue(null),
       },
     } as unknown as import("@/generated/prisma/client").PrismaClient;
 
@@ -269,6 +286,9 @@ describe("queryParcelasAVencer", () => {
     const mockPrisma = {
       fatoPedidoParcela: {
         findMany: jest.fn().mockResolvedValue([]),
+        count: jest.fn().mockResolvedValue(0),
+        aggregate: jest.fn().mockResolvedValue({ _sum: { valor: null } }),
+        findFirst: jest.fn().mockResolvedValue(null),
       },
     } as unknown as import("@/generated/prisma/client").PrismaClient;
 

@@ -3,6 +3,11 @@
 import { z } from "zod";
 import type { ToolEntry } from "../../catalog/types.js";
 import { withFreshness } from "../../lib/freshness.js";
+import {
+  paginacaoInputShape,
+  resolverPaginacao,
+  montarPaginacaoMeta,
+} from "../../lib/paginacao.js";
 import type { PrismaClient } from "@/generated/prisma/client.js";
 
 const inputSchema = z.object({
@@ -10,7 +15,7 @@ const inputSchema = z.object({
   periodoDe: z.string().optional(),
   periodoAte: z.string().optional(),
   situacaoNfe: z.string().optional().describe("Ex: 'autorizada'. Sem filtro = todas."),
-  limite: z.number().int().min(1).max(50).optional(),
+  ...paginacaoInputShape,
 });
 
 const linhaSchema = z.object({
@@ -28,6 +33,8 @@ const dados = z.object({
   valorTotal: z.number(),
   linhasExibidas: z.number().int(),
   _RESPOSTA: z.string().optional(),
+  _listaTruncada: z.boolean().optional(),
+  _PAGINACAO: z.any().optional(),
   _DESTAQUE: z.record(z.string(), z.union([z.string(), z.number()])).optional(),
   _agregado: z.record(z.string(), z.number().optional()).optional(),
 });
@@ -48,7 +55,7 @@ type Input = z.infer<typeof inputSchema>;
 type Output = z.infer<typeof outputSchema>;
 
 async function query(prisma: PrismaClient, input: Input) {
-  const limite = input.limite ?? 30;
+  const { limit, offset } = resolverPaginacao(input);
   const where: Record<string, unknown> = {
     entradaSaida: "1",
     participanteNome: { contains: input.clienteTermo, mode: "insensitive" as const },
@@ -64,8 +71,10 @@ async function query(prisma: PrismaClient, input: Input) {
     prisma.fatoNotaFiscal.findMany({
       where,
       select: { numero: true, serie: true, dataEmissao: true, participanteNome: true, situacaoNfe: true, vrNf: true },
-      orderBy: { dataEmissao: "desc" },
-      take: limite,
+      // Ordenacao estavel + desempate por odooId (alavanca 2b).
+      orderBy: [{ dataEmissao: "desc" }, { odooId: "asc" }],
+      take: limit,
+      skip: offset,
     }),
     prisma.fatoNotaFiscal.count({ where }),
     prisma.fatoNotaFiscal.aggregate({ where, _sum: { vrNf: true } }),
@@ -96,9 +105,11 @@ export const fiscalNotasEmitidasPorCliente: ToolEntry<Input, Output> = {
   inputSchema,
   outputSchema,
   handler: async (input, ctx) => {
+    const { limit, offset } = resolverPaginacao(input);
     const envelope = await withFreshness(ctx.prisma, ["fato_nota_fiscal"], () => query(ctx.prisma, input));
     if (envelope.estado === "preparando") return envelope;
     const d = envelope.dados;
+    const paginacao = montarPaginacaoMeta(d.totalNotas, offset, limit, d.linhasExibidas);
     const fmt = (n: number) => n.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
     return {
       ...envelope,
@@ -114,6 +125,8 @@ export const fiscalNotasEmitidasPorCliente: ToolEntry<Input, Output> = {
           linhasExibidas: d.linhasExibidas,
         },
         _agregado: { contagem: d.totalNotas, soma: d.valorTotal },
+        _listaTruncada: paginacao.temMais,
+        _PAGINACAO: paginacao,
       },
     };
   },

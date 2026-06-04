@@ -78,6 +78,9 @@ describe("queryNotasEmitidas", () => {
             vrNf: "1000.00",
           },
         ]),
+        // Alavanca 2b: totalNotas vem do count e valorTotal do aggregate.
+        count: jest.fn().mockResolvedValue(1),
+        aggregate: jest.fn().mockResolvedValue({ _sum: { vrNf: "1000.00" } }),
       },
     } as unknown as Parameters<typeof queryNotasEmitidas>[0];
 
@@ -96,6 +99,8 @@ describe("queryNotasEmitidas", () => {
     const mockPrisma = {
       fatoNotaFiscal: {
         findMany: jest.fn().mockResolvedValue([]),
+        count: jest.fn().mockResolvedValue(0),
+        aggregate: jest.fn().mockResolvedValue({ _sum: { vrNf: null } }),
       },
     } as unknown as Parameters<typeof queryNotasEmitidas>[0];
 
@@ -108,6 +113,8 @@ describe("queryNotasEmitidas", () => {
     const mockPrisma = {
       fatoNotaFiscal: {
         findMany: jest.fn().mockResolvedValue([]),
+        count: jest.fn().mockResolvedValue(0),
+        aggregate: jest.fn().mockResolvedValue({ _sum: { vrNf: null } }),
       },
     } as unknown as Parameters<typeof queryNotasEmitidas>[0];
 
@@ -130,6 +137,9 @@ describe("queryNotasRecebidas", () => {
             vrNf: "3000.00",
           },
         ]),
+        // Alavanca 2b: totalNotas vem do count e valorTotal do aggregate.
+        count: jest.fn().mockResolvedValue(1),
+        aggregate: jest.fn().mockResolvedValue({ _sum: { vrNf: "3000.00" } }),
       },
     } as unknown as Parameters<typeof queryNotasRecebidas>[0];
 
@@ -146,6 +156,8 @@ describe("queryNotasRecebidas", () => {
     const mockPrisma = {
       fatoNotaFiscal: {
         findMany: jest.fn().mockResolvedValue([]),
+        count: jest.fn().mockResolvedValue(0),
+        aggregate: jest.fn().mockResolvedValue({ _sum: { vrNf: null } }),
       },
     } as unknown as Parameters<typeof queryNotasRecebidas>[0];
 
@@ -237,7 +249,7 @@ describe("queryProdutosFaturados", () => {
       },
     } as unknown as Parameters<typeof queryProdutosFaturados>[0];
 
-    const result = await queryProdutosFaturados(mockPrisma, { limite: 5 });
+    const result = await queryProdutosFaturados(mockPrisma, { limit: 5 });
     expect(result.linhas).toHaveLength(2);
     // ordenado por valorTotal desc: Esteira (10000) antes de Bike (1500)
     expect(result.linhas[0]?.produtoNome).toBe("Esteira Profissional");
@@ -262,9 +274,11 @@ describe("queryProdutosFaturados", () => {
       },
     } as unknown as Parameters<typeof queryProdutosFaturados>[0];
 
-    const result = await queryProdutosFaturados(mockPrisma, { limite: 2 });
+    const result = await queryProdutosFaturados(mockPrisma, { limit: 2 });
     expect(result.linhas).toHaveLength(2);
     expect(result.linhas[0]?.produtoNome).toBe("Produto A");
+    // Alavanca 2b: total = produtos distintos (independente da pagina).
+    expect(result.total).toBe(3);
   });
 
   it("aplica filtro de período na relação com fatoNotaFiscal", async () => {
@@ -306,10 +320,10 @@ describe("queryNotasRecebidasPorFornecedor", () => {
 
     const result = await queryNotasRecebidasPorFornecedor(mockPrisma, {
       fornecedor: "Fornecedor X",
-      limite: 1,
+      limit: 1,
     });
 
-    // limite=1 corta as linhas exibidas, mas o agregado soma tudo que casou.
+    // limit=1 corta as linhas exibidas, mas o agregado soma tudo que casou.
     expect(result.linhas).toHaveLength(1);
     expect(result.totalAgregado.quantidade).toBe(3);
     expect(result.totalAgregado.valorTotal).toBeCloseTo(1800);

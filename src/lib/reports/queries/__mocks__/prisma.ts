@@ -16,6 +16,7 @@ export function createMockContext() {
     fatoProdutoParado: {
       findMany: jest.fn(),
       count: jest.fn(),
+      aggregate: jest.fn(),
     },
     fatoBuildState: {
       findUnique: jest.fn(),

@@ -6,9 +6,10 @@ import { TourProvider } from "@/components/tour/tour-provider";
 import { getPublicAgentFlags } from "@/lib/actions/agent-config";
 import { getPublicActiveLlmConfig } from "@/lib/agent/llm/get-active-config";
 import { getPersonalizedWelcomeSuggestions } from "@/lib/agent/personalized-suggestions";
-import { pickWelcomeByRole } from "@/lib/agent/welcome-suggestions";
-import { seesAll } from "@/lib/reports/domains";
+import { pickWelcomeByDomains } from "@/lib/agent/welcome-suggestions";
+import { seesAll, REPORT_DOMAINS, type ReportDomainId } from "@/lib/reports/domains";
 import { getUserDomains } from "@/lib/actions/domain-access";
+import { getActiveConversationId } from "@/lib/actions/active-conversation";
 
 export default async function ProtectedLayout({
   children,
@@ -31,9 +32,12 @@ export default async function ProtectedLayout({
   // concedido (UserDomainAccess); sem dominio, perguntar ao Nex so geraria
   // recusa, entao a bubble some. bubbleEnabled (AgentSettings) segue como
   // kill-switch global mais abaixo.
-  const canUseAgent = seesAll(user.platformRole)
-    ? true
-    : (await getUserDomains(user.id)).length > 0;
+  // Resolve os dominios permitidos UMA vez: reusados para o gate da bubble, a
+  // ancora de sugestoes por dominio e o filtro das personalizadas (RBAC v2).
+  const allowedDomains: ReportDomainId[] = seesAll(user.platformRole)
+    ? REPORT_DOMAINS.map((d) => d.id)
+    : await getUserDomains(user.id);
+  const canUseAgent = seesAll(user.platformRole) || allowedDomains.length > 0;
 
   // Resolve audioInputEnabled: toggle ligado + provider OpenAI ativo.
   const [flags, activeLlm] = await Promise.all([
@@ -45,23 +49,28 @@ export default async function ProtectedLayout({
   // Anexo (clip) na bubble: liberado só com o checkpoint de imagem em PRODUÇÃO.
   const imageInputEnabled = flags.imageInputEnabled === true;
 
-  // Sugestoes na bubble: ancora obrigatoria por role + complemento personalizado.
-  // Pedido do usuario em 2026-05-24 19:24: faturamento/produto mais vendido/
-  // financeiro devem SEMPRE aparecer mesmo quando ha historico que aponte
-  // para outras tools. O historico ENRIQUECE, nao SUBSTITUI as ancoras.
+  // Sugestoes na bubble: ancora por DOMINIO PERMITIDO + complemento personalizado.
+  // A ancora agora vem de pickWelcomeByDomains (curada pelos dominios do RBAC v2:
+  // quem ve faturamento recebe perguntas de fiscal, quem ve estoque recebe de
+  // estoque), e as personalizadas sao filtradas pelo mesmo conjunto de dominios
+  // (nada vaza dominio sem acesso). O historico ENRIQUECE, nao SUBSTITUI.
   //
   // Estrategia:
-  //   - ancora 0 sempre primeiro (faturamento para gestor)
+  //   - ancora 0 sempre primeiro
   //   - personalizadas ocupam ate floor(max/2) slots
   //   - resto da ancora completa ate o teto, dedupado
   let welcomeSet: string[] = [];
   if (canUseAgent) {
-    const ancora = pickWelcomeByRole(user.platformRole);
     const max = flags.maxSuggestions ?? 3;
+    const ancora = pickWelcomeByDomains(allowedDomains, user.platformRole, max);
     const personalizadasMax = Math.max(0, Math.floor(max / 2));
     const personalized =
       personalizadasMax > 0
-        ? await getPersonalizedWelcomeSuggestions(user.id, personalizadasMax)
+        ? await getPersonalizedWelcomeSuggestions(
+            user.id,
+            personalizadasMax,
+            allowedDomains,
+          )
         : [];
 
     const out: string[] = [];
@@ -79,6 +88,14 @@ export default async function ProtectedLayout({
     welcomeSet = out;
   }
 
+  // Persistencia cross-login: resolve a conversa in_app ativa do usuario para a
+  // bubble restaurar o historico ao abrir (mesmo apos F5/logout). So consulta
+  // quando a bubble vai aparecer.
+  const bubbleVisible = canUseAgent && flags.bubbleEnabled;
+  const active = bubbleVisible ? await getActiveConversationId() : null;
+  const initialConversationId =
+    active && active.ok ? active.conversationId : null;
+
   return (
     <TourProvider>
       <div className="flex h-screen overflow-hidden bg-background">
@@ -86,13 +103,14 @@ export default async function ProtectedLayout({
         <main className="flex-1 overflow-y-auto overscroll-contain">
           <div className="pt-16 pb-8 sm:pt-8">{children}</div>
         </main>
-        {canUseAgent && flags.bubbleEnabled ? (
+        {bubbleVisible ? (
           <AgentBubble
             audioInputEnabled={audioInputEnabled}
             imageInputEnabled={imageInputEnabled}
             maxSuggestions={flags.maxSuggestions}
             personalizedWelcome={welcomeSet}
             isSuperAdmin={user.platformRole === "super_admin"}
+            initialConversationId={initialConversationId}
           />
         ) : null}
       </div>

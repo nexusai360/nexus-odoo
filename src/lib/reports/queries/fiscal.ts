@@ -32,7 +32,7 @@ export async function queryFaturamentoPeriodo(
 
 export async function queryNotasEmitidas(
   prisma: PrismaClient,
-  filtros: { periodoDe?: string; periodoAte?: string; situacaoNfe?: string },
+  filtros: { periodoDe?: string; periodoAte?: string; situacaoNfe?: string; limit?: number; offset?: number },
 ): Promise<{
   linhas: {
     numero: string | null;
@@ -56,11 +56,22 @@ export async function queryNotasEmitidas(
       : {};
 
   const situacaoWhere = filtros.situacaoNfe ? { situacaoNfe: filtros.situacaoNfe } : {};
+  const where = { entradaSaida: "1", ...situacaoWhere, ...periodoWhere };
 
-  const rows = await prisma.fatoNotaFiscal.findMany({
-    where: { entradaSaida: "1", ...situacaoWhere, ...periodoWhere },
-    select: { numero: true, serie: true, dataEmissao: true, situacaoNfe: true, participanteNome: true, vrNf: true },
-  });
+  // Alavanca 2b: paginação via take/skip; `totalNotas` é o count real e
+  // `valorTotal` soma TODO o recorte (aggregate), estável entre páginas.
+  const [rows, totalNotas, agg] = await Promise.all([
+    prisma.fatoNotaFiscal.findMany({
+      where,
+      select: { numero: true, serie: true, dataEmissao: true, situacaoNfe: true, participanteNome: true, vrNf: true },
+      // Ordenação estável + desempate por odooId (alavanca 2b).
+      orderBy: [{ dataEmissao: "desc" }, { odooId: "asc" }],
+      take: filtros.limit,
+      skip: filtros.offset,
+    }),
+    prisma.fatoNotaFiscal.count({ where }),
+    prisma.fatoNotaFiscal.aggregate({ where, _sum: { vrNf: true } }),
+  ]);
 
   const linhas = rows.map((r) => ({
     numero: r.numero,
@@ -71,13 +82,12 @@ export async function queryNotasEmitidas(
     vrNf: Number(r.vrNf),
   }));
 
-  const valorTotal = linhas.reduce((acc, r) => acc + r.vrNf, 0);
-  return { linhas, totalNotas: linhas.length, valorTotal };
+  return { linhas, totalNotas, valorTotal: Number(agg._sum.vrNf ?? 0) };
 }
 
 export async function queryNotasRecebidas(
   prisma: PrismaClient,
-  filtros: { periodoDe?: string; periodoAte?: string },
+  filtros: { periodoDe?: string; periodoAte?: string; limit?: number; offset?: number },
 ): Promise<{
   linhas: {
     numero: string | null;
@@ -97,11 +107,22 @@ export async function queryNotasRecebidas(
           },
         }
       : {};
+  const where = { entradaSaida: "0", ...periodoWhere };
 
-  const rows = await prisma.fatoNotaFiscal.findMany({
-    where: { entradaSaida: "0", ...periodoWhere },
-    select: { numero: true, dataEmissao: true, participanteNome: true, vrNf: true },
-  });
+  // Alavanca 2b: paginação via take/skip; `totalNotas` é o count real e
+  // `valorTotal` soma TODO o recorte (aggregate), estável entre páginas.
+  const [rows, totalNotas, agg] = await Promise.all([
+    prisma.fatoNotaFiscal.findMany({
+      where,
+      select: { numero: true, dataEmissao: true, participanteNome: true, vrNf: true },
+      // Ordenação estável + desempate por odooId (alavanca 2b).
+      orderBy: [{ dataEmissao: "desc" }, { odooId: "asc" }],
+      take: filtros.limit,
+      skip: filtros.offset,
+    }),
+    prisma.fatoNotaFiscal.count({ where }),
+    prisma.fatoNotaFiscal.aggregate({ where, _sum: { vrNf: true } }),
+  ]);
 
   const linhas = rows.map((r) => ({
     numero: r.numero,
@@ -110,8 +131,7 @@ export async function queryNotasRecebidas(
     vrNf: Number(r.vrNf),
   }));
 
-  const valorTotal = linhas.reduce((acc, r) => acc + r.vrNf, 0);
-  return { linhas, totalNotas: linhas.length, valorTotal };
+  return { linhas, totalNotas, valorTotal: Number(agg._sum.vrNf ?? 0) };
 }
 
 export async function queryImpostosPeriodo(
@@ -138,11 +158,19 @@ export async function queryImpostosPeriodo(
   return { totalNotas: rows.length, somaIbpt, somaIcmsProprio };
 }
 
+/** Faturamento agregado por cliente.
+ * Alavanca 2b , EXCEÇÃO de paginação em memória: a agregação por cliente é
+ * feita em memória, então não há take/skip no SQL. Ordenamos o conjunto de
+ * forma estável (valor desc, depois o nome como desempate) e fatiamos
+ * [offset, offset+limit). `total` é o número de clientes distintos (todos os
+ * grupos), independente da página. */
 export async function queryFaturamentoPorCliente(
   prisma: PrismaClient,
-  filtros: { periodoDe?: string; periodoAte?: string },
+  filtros: { periodoDe?: string; periodoAte?: string; limit?: number; offset?: number },
 ): Promise<{
   linhas: { participanteNome: string | null; quantidade: number; valorTotal: number }[];
+  total: number;
+  valorGeral: number;
 }> {
   const periodoWhere =
     filtros.periodoDe && filtros.periodoAte
@@ -161,6 +189,7 @@ export async function queryFaturamentoPorCliente(
 
   // Agregação em memória por participanteNome
   const map = new Map<string | null, { quantidade: number; valorTotal: number }>();
+  let valorGeral = 0;
   for (const r of rows) {
     const key = r.participanteNome;
     const existing = map.get(key);
@@ -170,23 +199,33 @@ export async function queryFaturamentoPorCliente(
     } else {
       map.set(key, { quantidade: 1, valorTotal: Number(r.vrNf) });
     }
+    valorGeral += Number(r.vrNf);
   }
 
-  const linhas = [...map.entries()]
+  const ordenados = [...map.entries()]
     .map(([participanteNome, v]) => ({ participanteNome, ...v }))
-    .sort((a, b) => b.valorTotal - a.valorTotal);
+    // Desempate estável pelo nome do participante (após valor desc).
+    .sort((a, b) => b.valorTotal - a.valorTotal || (a.participanteNome ?? "").localeCompare(b.participanteNome ?? ""));
 
-  return { linhas };
+  const offset = filtros.offset ?? 0;
+  const limit = filtros.limit ?? 30;
+  return { linhas: ordenados.slice(offset, offset + limit), total: map.size, valorGeral };
 }
 
+/** Produtos mais faturados.
+ * Alavanca 2b , EXCEÇÃO de paginação em memória: agrega itens por produtoNome
+ * em memória; ordena estável (valor desc, depois nome) e fatia
+ * [offset, offset+limit). `total` = produtos distintos; `valorGeral` é a soma
+ * de todo o recorte. */
 export async function queryProdutosFaturados(
   prisma: PrismaClient,
-  filtros: { periodoDe?: string; periodoAte?: string; limite?: number },
+  filtros: { periodoDe?: string; periodoAte?: string; limit?: number; offset?: number },
 ): Promise<{
   linhas: { produtoNome: string | null; quantidadeTotal: number; valorTotal: number }[];
+  total: number;
+  valorGeral: number;
+  quantidadeGeral: number;
 }> {
-  const limite = filtros.limite ?? 20;
-
   const periodoWhere =
     filtros.periodoDe && filtros.periodoAte
       ? {
@@ -213,26 +252,36 @@ export async function queryProdutosFaturados(
 
   // Agregação em memória por produtoNome
   const map = new Map<string | null, { quantidadeTotal: number; valorTotal: number }>();
+  let valorGeral = 0;
+  let quantidadeGeral = 0;
   for (const r of rows) {
     const key = r.produtoNome;
+    const q = Number(r.quantidade ?? 0);
+    const v = Number(r.vrProdutos ?? 0);
     const existing = map.get(key);
     if (existing) {
-      existing.quantidadeTotal += Number(r.quantidade ?? 0);
-      existing.valorTotal += Number(r.vrProdutos ?? 0);
+      existing.quantidadeTotal += q;
+      existing.valorTotal += v;
     } else {
-      map.set(key, {
-        quantidadeTotal: Number(r.quantidade ?? 0),
-        valorTotal: Number(r.vrProdutos ?? 0),
-      });
+      map.set(key, { quantidadeTotal: q, valorTotal: v });
     }
+    valorGeral += v;
+    quantidadeGeral += q;
   }
 
-  const linhas = [...map.entries()]
+  const ordenados = [...map.entries()]
     .map(([produtoNome, v]) => ({ produtoNome, ...v }))
-    .sort((a, b) => b.valorTotal - a.valorTotal)
-    .slice(0, limite);
+    // Desempate estável pelo nome do produto (após valor desc).
+    .sort((a, b) => b.valorTotal - a.valorTotal || (a.produtoNome ?? "").localeCompare(b.produtoNome ?? ""));
 
-  return { linhas };
+  const offset = filtros.offset ?? 0;
+  const limit = filtros.limit ?? 30;
+  return {
+    linhas: ordenados.slice(offset, offset + limit),
+    total: map.size,
+    valorGeral,
+    quantidadeGeral,
+  };
 }
 
 // ---------------------------------------------------------------------------
@@ -255,13 +304,15 @@ export async function queryProdutosFaturados(
  * `totalFornecedoresDistintos` é quantos participantes casaram o filtro. */
 export async function queryNotasRecebidasPorFornecedor(
   prisma: PrismaClient,
-  filtros: { periodoDe?: string; periodoAte?: string; fornecedor?: string; documento?: string; limite?: number },
+  filtros: { periodoDe?: string; periodoAte?: string; fornecedor?: string; documento?: string; limit?: number; offset?: number },
 ): Promise<{
   linhas: { participanteNome: string | null; quantidade: number; valorTotal: number }[];
   totalAgregado: { quantidade: number; valorTotal: number };
   totalFornecedoresDistintos: number;
 }> {
-  const limite = filtros.limite ?? 30;
+  // Alavanca 2b , EXCEÇÃO de paginação em memória: agregação por fornecedor é
+  // feita em memória; ordena estável (valor desc, depois nome) e fatia
+  // [offset, offset+limit). `totalFornecedoresDistintos` = todos os grupos.
   const fornecedorWhere = filtros.fornecedor
     ? { participanteNome: { contains: filtros.fornecedor, mode: "insensitive" as const } }
     : {};
@@ -308,12 +359,15 @@ export async function queryNotasRecebidasPorFornecedor(
     }
   }
 
-  const linhas = [...map.entries()]
+  const ordenados = [...map.entries()]
     .map(([participanteNome, v]) => ({ participanteNome, ...v }))
-    .sort((a, b) => b.valorTotal - a.valorTotal)
-    .slice(0, limite);
+    // Desempate estável pelo nome do participante (após valor desc).
+    .sort((a, b) => b.valorTotal - a.valorTotal || (a.participanteNome ?? "").localeCompare(b.participanteNome ?? ""));
+  const offset = filtros.offset ?? 0;
+  const limit = filtros.limit ?? 30;
+  const linhas = ordenados.slice(offset, offset + limit);
 
-  // Agregado sobre TODAS as linhas que casaram (não só as `limite` exibidas).
+  // Agregado sobre TODAS as linhas que casaram (não só as exibidas).
   const totalAgregado = rows.reduce(
     (acc, r) => ({ quantidade: acc.quantidade + 1, valorTotal: acc.valorTotal + Number(r.vrNf) }),
     { quantidade: 0, valorTotal: 0 },

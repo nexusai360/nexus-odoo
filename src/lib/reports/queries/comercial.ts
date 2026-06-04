@@ -96,33 +96,54 @@ export async function queryPedidosPorVendedor(
   }
   const linhas = [...map.entries()]
     .map(([vendedorNome, v]) => ({ vendedorNome, ...v }))
-    .sort((a, b) => b.valorTotal - a.valorTotal);
+    // Ordenacao ESTAVEL: valorTotal desc + desempate por vendedorNome, para que
+    // a paginacao em memoria (slice no handler) nao repita nem pule vendedor.
+    .sort(
+      (a, b) =>
+        b.valorTotal - a.valorTotal ||
+        (a.vendedorNome ?? "").localeCompare(b.vendedorNome ?? ""),
+    );
   return { linhas };
 }
 
 export async function queryPedidosAtrasados(
   prisma: PrismaClient,
   hoje: Date,
-): Promise<{ linhas: { pedidoId: number | null; participanteNome: string | null; numero: string | null; dataVencimento: Date | null; valor: number; diasAtraso: number }[]; totalAtrasado: number }> {
+  paginacao?: { limit?: number; offset?: number },
+): Promise<{ linhas: { pedidoId: number | null; participanteNome: string | null; numero: string | null; dataVencimento: Date | null; valor: number; diasAtraso: number }[]; totalAtrasado: number; totalEncontrados: number; maxDiasAtraso: number }> {
   // Normaliza para início do dia local , parcelas gravadas como T00:00:00 não
   // devem ser contadas como atrasadas se vencem HOJE. Mesmo padrão de
   // queryTitulosVencidos (financeiro.ts:230).
   const inicioDoDia = new Date(hoje.getFullYear(), hoje.getMonth(), hoje.getDate());
-  const rows = await prisma.fatoPedidoParcela.findMany({
-    where: {
-      dataVencimento: { lt: inicioDoDia },
-      parcelaFaturada: false,
-    },
-    select: {
-      pedidoId: true,
-      participanteNome: true,
-      numero: true,
-      dataVencimento: true,
-      valor: true,
-    },
-    orderBy: { dataVencimento: "asc" }, // mais antigo primeiro (maior atraso)
-    take: 200,                           // cap: evita payload gigante; acima de 200 linhas a tool perde utilidade semântica
-  });
+  const where = {
+    dataVencimento: { lt: inicioDoDia },
+    parcelaFaturada: false,
+  };
+  // Alavanca 2b: paginacao via take/skip no SQL. orderBy por dataVencimento
+  // (mais antigo primeiro = maior atraso) + desempate por odooId.
+  const [rows, totalEncontrados, somaAgg, maisAntiga] = await Promise.all([
+    prisma.fatoPedidoParcela.findMany({
+      where,
+      select: {
+        pedidoId: true,
+        participanteNome: true,
+        numero: true,
+        dataVencimento: true,
+        valor: true,
+      },
+      orderBy: [{ dataVencimento: "asc" }, { odooId: "asc" }],
+      take: paginacao?.limit,
+      skip: paginacao?.offset,
+    }),
+    prisma.fatoPedidoParcela.count({ where }),
+    prisma.fatoPedidoParcela.aggregate({ where, _sum: { valor: true } }),
+    // Parcela mais antiga = maior atraso (independente da pagina), para _DESTAQUE.
+    prisma.fatoPedidoParcela.findFirst({
+      where,
+      select: { dataVencimento: true },
+      orderBy: [{ dataVencimento: "asc" }],
+    }),
+  ]);
   const linhas = rows.map((r) => ({
     pedidoId: r.pedidoId,
     participanteNome: r.participanteNome,
@@ -131,35 +152,46 @@ export async function queryPedidosAtrasados(
     valor: Number(r.valor),
     diasAtraso: diasAtraso(r.dataVencimento, inicioDoDia),
   }));
-  const totalAtrasado = linhas.reduce((acc, l) => acc + l.valor, 0);
-  return { linhas, totalAtrasado };
+  // totalAtrasado e maxDias consideram TODO o recorte, nao so a pagina.
+  const totalAtrasado = Number(somaAgg._sum.valor ?? 0);
+  const maxDiasAtraso = maisAntiga ? diasAtraso(maisAntiga.dataVencimento, inicioDoDia) : 0;
+  return { linhas, totalAtrasado, totalEncontrados, maxDiasAtraso };
 }
 
 export async function queryParcelasAVencer(
   prisma: PrismaClient,
-  filtros: { ateDias?: number },
+  filtros: { ateDias?: number; limit?: number; offset?: number },
   hoje: Date,
-): Promise<{ linhas: { pedidoId: number | null; participanteNome: string | null; numero: string | null; dataVencimento: Date | null; valor: number }[]; totalAVencer: number }> {
+): Promise<{ linhas: { pedidoId: number | null; participanteNome: string | null; numero: string | null; dataVencimento: Date | null; valor: number }[]; totalAVencer: number; totalEncontrados: number }> {
   // Normaliza para início do dia local , parcelas que vencem HOJE (gravadas como
   // T00:00:00) devem ser incluídas em "a vencer". Mesmo padrão de
   // queryTitulosVencidos (financeiro.ts:230).
   const inicioDoDia = new Date(hoje.getFullYear(), hoje.getMonth(), hoje.getDate());
   const ateDias = filtros.ateDias ?? 30;
   const limite = new Date(inicioDoDia.getTime() + ateDias * 24 * 60 * 60 * 1000);
-  const rows = await prisma.fatoPedidoParcela.findMany({
-    where: {
-      dataVencimento: { gte: inicioDoDia, lte: limite },
-      parcelaFaturada: false,
-    },
-    select: {
-      pedidoId: true,
-      participanteNome: true,
-      numero: true,
-      dataVencimento: true,
-      valor: true,
-    },
-    orderBy: { dataVencimento: "asc" },
-  });
+  const where = {
+    dataVencimento: { gte: inicioDoDia, lte: limite },
+    parcelaFaturada: false,
+  };
+  // Alavanca 2b: paginacao via take/skip no SQL. orderBy estavel com desempate
+  // por odooId para que "os proximos" nao repitam nem pulem parcela.
+  const [rows, totalEncontrados, somaAgg] = await Promise.all([
+    prisma.fatoPedidoParcela.findMany({
+      where,
+      select: {
+        pedidoId: true,
+        participanteNome: true,
+        numero: true,
+        dataVencimento: true,
+        valor: true,
+      },
+      orderBy: [{ dataVencimento: "asc" }, { odooId: "asc" }],
+      take: filtros.limit,
+      skip: filtros.offset,
+    }),
+    prisma.fatoPedidoParcela.count({ where }),
+    prisma.fatoPedidoParcela.aggregate({ where, _sum: { valor: true } }),
+  ]);
   const linhas = rows.map((r) => ({
     pedidoId: r.pedidoId,
     participanteNome: r.participanteNome,
@@ -167,6 +199,7 @@ export async function queryParcelasAVencer(
     dataVencimento: r.dataVencimento,
     valor: Number(r.valor),
   }));
-  const totalAVencer = linhas.reduce((acc, l) => acc + l.valor, 0);
-  return { linhas, totalAVencer };
+  // totalAVencer e a soma de TODAS as parcelas do recorte (nao so da pagina).
+  const totalAVencer = Number(somaAgg._sum.valor ?? 0);
+  return { linhas, totalAVencer, totalEncontrados };
 }

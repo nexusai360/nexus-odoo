@@ -45,7 +45,12 @@ describe("queryBuscarParceiro", () => {
           where?: { documento?: unknown; odooId?: { in?: number[] } };
         };
         if (a.where?.documento) return Promise.resolve(opts.documentoLinhas ?? []);
-        if (a.where?.odooId?.in) return Promise.resolve(opts.linhas ?? []);
+        const ids = a.where?.odooId?.in;
+        if (ids) {
+          // Honra o filtro IN: so devolve as linhas cujos ids foram pedidos
+          // (espelha o comportamento real do Prisma para a fatia da pagina).
+          return Promise.resolve((opts.linhas ?? []).filter((l) => ids.includes(l.odooId)));
+        }
         return Promise.resolve(opts.linhas ?? []);
       }),
     };
@@ -75,30 +80,39 @@ describe("queryBuscarParceiro", () => {
       ],
     });
 
-    const result = await queryBuscarParceiro(mock, { termo: "Fitness" });
+    const result = await queryBuscarParceiro(mock, { termo: "Fitness", limit: 10, offset: 0 });
     expect(result.linhas).toHaveLength(1);
     expect(result.linhas[0].odooId).toBe(1001);
     expect(result.linhas[0].nome).toBe("Empresa Fitness SA");
     expect(result.linhas[0].ehCliente).toBe(true);
     expect(result.linhas[0].uf).toBe("DF");
+    expect(result.total).toBe(1);
   });
 
-  it("aplica limite padrão de 20 no fallback por documento", async () => {
+  it("fallback por documento usa cap defensivo de 50", async () => {
     const { mock, findManyCalls } = makeMockPrisma({});
-    await queryBuscarParceiro(mock, { termo: "X" });
+    await queryBuscarParceiro(mock, { termo: "X", limit: 10, offset: 0 });
     const docCall = findManyCalls.find(
       (c) => (c as { where?: { documento?: unknown } }).where?.documento,
     ) as { take?: number } | undefined;
-    expect(docCall?.take).toBe(20);
+    expect(docCall?.take).toBe(50);
   });
 
-  it("respeita limite customizado no fallback por documento", async () => {
-    const { mock, findManyCalls } = makeMockPrisma({});
-    await queryBuscarParceiro(mock, { termo: "X", limite: 5 });
-    const docCall = findManyCalls.find(
-      (c) => (c as { where?: { documento?: unknown } }).where?.documento,
-    ) as { take?: number } | undefined;
-    expect(docCall?.take).toBe(5);
+  it("EXCECAO fuzzy: fatia [offset, offset+limit) em memoria e total = conjunto encontrado", async () => {
+    // 3 ids vindos do fuzzy de nome; pagina de 2 a partir do offset 1.
+    const { mock } = makeMockPrisma({
+      nomeIds: [30, 10, 20],
+      linhas: [
+        { odooId: 10, nome: "A", documento: null, ehCliente: true, ehFornecedor: false, uf: null, cidade: null },
+        { odooId: 20, nome: "B", documento: null, ehCliente: true, ehFornecedor: false, uf: null, cidade: null },
+        { odooId: 30, nome: "C", documento: null, ehCliente: true, ehFornecedor: false, uf: null, cidade: null },
+      ],
+    });
+    const result = await queryBuscarParceiro(mock, { termo: "X", limit: 2, offset: 1 });
+    // total reflete o conjunto inteiro encontrado (3), nao a pagina.
+    expect(result.total).toBe(3);
+    // ids ordenados de forma estavel (asc): [10,20,30]; offset 1 + limit 2 => ids 20 e 30.
+    expect(result.linhas.map((l) => l.odooId)).toEqual([20, 30]);
   });
 });
 

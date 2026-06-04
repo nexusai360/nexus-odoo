@@ -107,19 +107,21 @@ function toCartaLinha(r: CartaRow): CartaCorrecaoLinha {
  * documento fiscal corrigido). Ordena da mais recente para a mais antiga. */
 export async function queryCartaCorrecao(
   prisma: PrismaClient,
-  filtros: { documentoId?: number; limite?: number },
+  filtros: { documentoId?: number; limit?: number; offset?: number },
 ): Promise<{ linhas: CartaCorrecaoLinha[]; total: number; truncado: boolean }> {
-  const limite = filtros.limite ?? 100;
   const where = filtros.documentoId != null ? { documentoId: filtros.documentoId } : {};
+  // Alavanca 2b: paginação via take/skip + desempate estável por odooId.
   const [rows, total] = await Promise.all([
     prisma.fatoCartaCorrecao.findMany({
       where,
-      orderBy: { dataAutorizacao: "desc" },
-      take: limite,
+      orderBy: [{ dataAutorizacao: "desc" }, { odooId: "asc" }],
+      take: filtros.limit,
+      skip: filtros.offset,
     }),
     prisma.fatoCartaCorrecao.count({ where }),
   ]);
-  return { linhas: rows.map(toCartaLinha), total, truncado: total > rows.length };
+  const offset = filtros.offset ?? 0;
+  return { linhas: rows.map(toCartaLinha), total, truncado: offset + rows.length < total };
 }
 
 // ---------------------------------------------------------------------------
@@ -165,15 +167,22 @@ function toCertificadoLinha(r: CertificadoRow): CertificadoLinha {
 }
 
 /** Lista os certificados digitais cadastrados, do que vence primeiro para o
- * que vence por último. Volume baixo (~11): sem paginação. */
+ * que vence por último. Volume baixo (~11), mas paginado por consistência
+ * (alavanca 2b): take/skip + desempate estável por odooId. */
 export async function queryCertificados(
   prisma: PrismaClient,
-): Promise<{ linhas: CertificadoLinha[]; total: number }> {
+  filtros: { limit?: number; offset?: number } = {},
+): Promise<{ linhas: CertificadoLinha[]; total: number; truncado: boolean }> {
   const [rows, total] = await Promise.all([
-    prisma.fatoCertificado.findMany({ orderBy: { dataFimValidade: "asc" } }),
+    prisma.fatoCertificado.findMany({
+      orderBy: [{ dataFimValidade: "asc" }, { odooId: "asc" }],
+      take: filtros.limit,
+      skip: filtros.offset,
+    }),
     prisma.fatoCertificado.count(),
   ]);
-  return { linhas: rows.map(toCertificadoLinha), total };
+  const offset = filtros.offset ?? 0;
+  return { linhas: rows.map(toCertificadoLinha), total, truncado: offset + rows.length < total };
 }
 
 // ---------------------------------------------------------------------------
@@ -210,18 +219,24 @@ export async function fatoMdfeCount(prisma: PrismaClient): Promise<number> {
  * emissão e situação. */
 export async function queryMdfeManifestos(
   prisma: PrismaClient,
-  filtros: { periodoDe?: string; periodoAte?: string; situacao?: string; limite?: number },
+  filtros: { periodoDe?: string; periodoAte?: string; situacao?: string; limit?: number; offset?: number },
 ): Promise<{ linhas: MdfeLinha[]; total: number; truncado: boolean }> {
-  const limite = filtros.limite ?? 100;
   const periodo = rangeData(filtros.periodoDe, filtros.periodoAte);
   const where = {
     ...(periodo ? { dataEmissao: periodo } : {}),
     ...(filtros.situacao ? { situacaoMdfe: filtros.situacao } : {}),
   };
+  // Alavanca 2b: paginação via take/skip + desempate estável por odooId.
   const [rows, total] = await Promise.all([
-    prisma.fatoMdfe.findMany({ where, orderBy: { dataEmissao: "desc" }, take: limite }),
+    prisma.fatoMdfe.findMany({
+      where,
+      orderBy: [{ dataEmissao: "desc" }, { odooId: "asc" }],
+      take: filtros.limit,
+      skip: filtros.offset,
+    }),
     prisma.fatoMdfe.count({ where }),
   ]);
+  const offset = filtros.offset ?? 0;
   const linhas: MdfeLinha[] = rows.map((r) => ({
     odooId: r.odooId,
     chave: r.chave,
@@ -233,7 +248,7 @@ export async function queryMdfeManifestos(
     municipioDescarregamento: r.municipioDescarregamento,
     vrNf: r.vrNf.toNumber(),
   }));
-  return { linhas, total, truncado: total > rows.length };
+  return { linhas, total, truncado: offset + rows.length < total };
 }
 
 // ---------------------------------------------------------------------------
@@ -265,20 +280,27 @@ export async function queryReinfEventos(
     periodoAte?: string;
     tipo?: string;
     situacao?: string;
-    limite?: number;
+    limit?: number;
+    offset?: number;
   },
 ): Promise<{ linhas: ReinfLinha[]; total: number; truncado: boolean }> {
-  const limite = filtros.limite ?? 100;
   const periodo = rangeData(filtros.periodoDe, filtros.periodoAte);
   const where = {
     ...(periodo ? { dataEvento: periodo } : {}),
     ...(filtros.tipo ? { tipo: filtros.tipo } : {}),
     ...(filtros.situacao ? { situacao: filtros.situacao } : {}),
   };
+  // Alavanca 2b: paginação via take/skip + desempate estável por odooId.
   const [rows, total] = await Promise.all([
-    prisma.fatoReinfEvento.findMany({ where, orderBy: { dataEvento: "desc" }, take: limite }),
+    prisma.fatoReinfEvento.findMany({
+      where,
+      orderBy: [{ dataEvento: "desc" }, { odooId: "asc" }],
+      take: filtros.limit,
+      skip: filtros.offset,
+    }),
     prisma.fatoReinfEvento.count({ where }),
   ]);
+  const offset = filtros.offset ?? 0;
   const linhas: ReinfLinha[] = rows.map((r) => ({
     odooId: r.odooId,
     chave: r.chave,
@@ -288,5 +310,5 @@ export async function queryReinfEventos(
     empresaCnpjRaiz: r.empresaCnpjRaiz,
     dataEvento: dia(r.dataEvento),
   }));
-  return { linhas, total, truncado: total > rows.length };
+  return { linhas, total, truncado: offset + rows.length < total };
 }

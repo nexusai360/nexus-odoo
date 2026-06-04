@@ -21,6 +21,7 @@ import {
 } from "./responder.js";
 import { topPorParticipante, type TopParticipante } from "./agrupador.js";
 import type { FreshnessEnvelope } from "./freshness.js";
+import type { PaginacaoMeta } from "./paginacao.js";
 
 export interface EnvelopeExtras {
   _RESPOSTA: string;
@@ -30,6 +31,8 @@ export interface EnvelopeExtras {
   _agregado?: { soma?: number; contagem?: number; media?: number };
   /** T-22: texto pronto sobre truncamento quando linhas exibidas < total. */
   _AVISO_TRUNCAMENTO?: string;
+  /** Alavanca 2b: metadados de paginacao (total, mostrando, temMais, proximoOffset). */
+  _PAGINACAO?: PaginacaoMeta;
 }
 
 export interface EnriquecerOptions {
@@ -41,6 +44,9 @@ export interface EnriquecerOptions {
   listaTruncada?: boolean;
   /** Agregados pre-computados (soma/contagem/media). */
   agregado?: { soma?: number; contagem?: number; media?: number };
+  /** Alavanca 2b: paginacao. Quando presente, deriva _listaTruncada=temMais e
+   *  gera _AVISO_TRUNCAMENTO orientando o usuario a pedir os proximos. */
+  paginacao?: PaginacaoMeta;
 }
 
 /**
@@ -53,7 +59,9 @@ export function calcularExtras(
 ): EnvelopeExtras {
   const destaque = options.destaque;
   const titulos = options.titulos ?? [];
-  const listaTruncada = options.listaTruncada ?? false;
+  // Alavanca 2b: paginacao tem precedencia na decisao de truncamento.
+  const listaTruncada =
+    (options.listaTruncada ?? false) || (options.paginacao?.temMais ?? false);
 
   const top = titulos.length > 0 ? topPorParticipante(titulos, 10) : undefined;
 
@@ -65,9 +73,13 @@ export function calcularExtras(
   const totalConhecido = Number(destaque?.contagem ?? destaque?.totalProdutos ?? destaque?.totalPedidos ?? 0);
   const linhasExibidas = titulos.length;
   const truncadoAuto = listaTruncada || (totalConhecido > 0 && linhasExibidas > 0 && totalConhecido > linhasExibidas);
-  const avisoTruncamento = truncadoAuto && totalConhecido > linhasExibidas
-    ? `Encontrei ${totalConhecido}, listando ${linhasExibidas}. Se quiser ver mais, é só pedir.`
-    : undefined;
+  // Alavanca 2b: quando ha paginacao com mais paginas, o aviso usa os metadados
+  // de paginacao e orienta a pedir os proximos. Senao, mantem o aviso T-22.
+  const avisoTruncamento = options.paginacao?.temMais
+    ? `Mostrando ${options.paginacao.mostrando}. Peca "os proximos" para ver mais.`
+    : truncadoAuto && totalConhecido > linhasExibidas
+      ? `Encontrei ${totalConhecido}, listando ${linhasExibidas}. Se quiser ver mais, é só pedir.`
+      : undefined;
 
   const fmt: FormatadorCanonico = formatadorPorTool(toolName);
   // O formatador espera um envelope-like. Montamos um stub com os campos
@@ -93,6 +105,7 @@ export function calcularExtras(
     ...(top ? { topPorParticipante: top } : {}),
     ...(options.agregado ? { _agregado: options.agregado } : {}),
     ...(avisoTruncamento ? { _AVISO_TRUNCAMENTO: avisoTruncamento } : {}),
+    ...(options.paginacao ? { _PAGINACAO: options.paginacao } : {}),
   } as EnvelopeExtras;
 }
 

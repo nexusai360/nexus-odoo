@@ -21,9 +21,17 @@ export interface ModelPricing {
   inputPerMTok: number;
   /** Custo de tokens de output em USD por 1.000.000 de tokens. */
   outputPerMTok: number;
+  /** Custo de tokens de input servidos do cache de prompt (USD/1M). Quando
+   *  ausente, o billing assume 0.1x do input (desconto padrao da OpenAI para a
+   *  familia GPT-5). So se aplica quando o provider reporta tokens cacheados. */
+  inputCachedPerMTok?: number;
   /** Custo em USD/minuto de áudio (modelos de transcrição). */
   perMinuteUsd?: number;
 }
+
+/** Fator padrao do input cacheado quando o modelo nao declara
+ *  `inputCachedPerMTok` (desconto de 90% da OpenAI: cache read = 0.1x input). */
+export const DEFAULT_CACHED_INPUT_FACTOR = 0.1;
 
 /** Para que serve o modelo , usado na linha de descrição do select. */
 export type ModelUse =
@@ -670,7 +678,7 @@ export function calculateCost(
   modelId: string,
   tokensInput: number,
   tokensOutput: number,
-  extras?: { durationMs?: number },
+  extras?: { durationMs?: number; cachedInputTokens?: number },
 ): CostResult {
   const entry = getModel(modelId);
   if (!entry || entry.pricing === null) {
@@ -694,8 +702,17 @@ export function calculateCost(
     };
   }
 
+  // Fracao cacheada do input custa menos (alavanca 1, prompt caching). O
+  // restante do input custa o preco cheio. Cap em tokensInput por seguranca.
+  const cached = Math.min(Math.max(extras?.cachedInputTokens ?? 0, 0), tokensInput);
+  const naoCacheado = tokensInput - cached;
+  const inputCachedPerMTok =
+    pricing.inputCachedPerMTok ?? pricing.inputPerMTok * DEFAULT_CACHED_INPUT_FACTOR;
+
   const cost =
-    (tokensInput * pricing.inputPerMTok + tokensOutput * pricing.outputPerMTok) /
+    (naoCacheado * pricing.inputPerMTok +
+      cached * inputCachedPerMTok +
+      tokensOutput * pricing.outputPerMTok) /
     1_000_000;
 
   return {

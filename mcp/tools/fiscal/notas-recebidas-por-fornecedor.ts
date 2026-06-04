@@ -5,6 +5,7 @@ import type { ToolEntry } from "../../catalog/types.js";
 import { queryNotasRecebidasPorFornecedor } from "@/lib/reports/queries/fiscal.js";
 import { withFreshness } from "../../lib/freshness.js";
 import { enriquecerEnvelope } from "../../lib/with-responder.js";
+import { paginacaoInputShape, resolverPaginacao, montarPaginacaoMeta } from "../../lib/paginacao.js";
 
 const inputSchema = z.object({
   /** Filtra por nome do fornecedor (busca parcial). Use para perguntas
@@ -27,7 +28,7 @@ const inputSchema = z.object({
     .describe("CNPJ/CPF do fornecedor. Identifica o fornecedor sem ambiguidade."),
   periodoDe: z.string().optional().describe("Início do período, AAAA-MM-DD."),
   periodoAte: z.string().optional().describe("Fim do período, AAAA-MM-DD."),
-  limite: z.number().int().min(1).max(200).optional(),
+  ...paginacaoInputShape,
 });
 
 const linhaSchema = z.object({
@@ -46,6 +47,7 @@ const dados = z.object({
   aviso: z.string(),
   _RESPOSTA: z.string().optional(),
   _listaTruncada: z.boolean().optional(),
+  _PAGINACAO: z.any().optional(),
   _DESTAQUE: z.record(z.string(), z.union([z.string(), z.number()])).optional(),
   _agregado: z.record(z.string(), z.number().optional()).optional(),
 
@@ -98,20 +100,20 @@ export const fiscalNotasRecebidasPorFornecedor: ToolEntry<Input, Output> = {
   inputSchema,
   outputSchema,
   handler: async (input, ctx) => {
+    const { limit, offset } = resolverPaginacao(input);
     const envelope = await withFreshness(ctx.prisma, ["fato_nota_fiscal"], async () =>
-      shape(await queryNotasRecebidasPorFornecedor(ctx.prisma, input)),
+      shape(await queryNotasRecebidasPorFornecedor(ctx.prisma, { ...input, limit, offset })),
     );
     if (envelope.estado === "preparando") return envelope;
     const d = envelope.dados;
-    const todasLinhas = d.linhas;
-    const linhasCap = todasLinhas.slice(0, 30);
-    const top = todasLinhas[0];
+    // total = numero de fornecedores distintos (a lista cresce por grupo).
+    const paginacao = montarPaginacaoMeta(d.totalFornecedoresDistintos, offset, limit, d.linhas.length);
+    const top = d.linhas[0];
     const fmt = (n: number) => n.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
     return {
       ...envelope,
       dados: {
         ...d,
-        linhas: linhasCap,
         _RESPOSTA: top
           ? `Notas recebidas por fornecedor: ${d.totalAgregado.quantidade} notas, ${fmt(d.totalAgregado.valorTotal)} em ${d.totalFornecedoresDistintos} fornecedores. Top: ${top.participanteNome ?? "(sem nome)"} ${fmt(top.valorTotal)}.`
           : "Nao ha notas recebidas no periodo.",
@@ -123,7 +125,8 @@ export const fiscalNotasRecebidasPorFornecedor: ToolEntry<Input, Output> = {
           valorTopFornecedor: top?.valorTotal ?? 0,
         },
         _agregado: { contagem: d.totalAgregado.quantidade, soma: d.totalAgregado.valorTotal },
-        _listaTruncada: todasLinhas.length > linhasCap.length,
+        _listaTruncada: paginacao.temMais,
+        _PAGINACAO: paginacao,
       },
     };
   },
