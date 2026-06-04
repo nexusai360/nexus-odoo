@@ -387,23 +387,6 @@ export function ResourcesToggles({
         )}
       </ResourceCard>
 
-      {/* B1. Feedback do usuário */}
-      <ResourceCard
-        id="feedback"
-        icon={
-          <Gauge className={`h-4 w-4 ${checkpointIconClass(feedbackCp)}`} aria-hidden />
-        }
-        title="Feedback do usuário"
-        subtitle="Botão de avaliação (correto/parcial/errado/alucinou) na resposta da IA, com comentário opcional. PRODUÇÃO libera no chat in-app; OFF desativa."
-        checkpoint={feedbackCp}
-        onCheckpointChange={(cp) => {
-          setFeedbackCp(cp);
-          persistResources({ feedbackCheckpoint: cp }, "feedback");
-        }}
-        loading={pending === "feedback"}
-        ariaLabel="Estado do feedback do usuário"
-      />
-
       {/* Entrada de imagem */}
       <ResourceCard
         id="anexo"
@@ -482,6 +465,23 @@ export function ResourcesToggles({
           )
         )}
       </ResourceCard>
+
+      {/* B1. Feedback do usuário , depois do anexo, antes das sugestões */}
+      <ResourceCard
+        id="feedback"
+        icon={
+          <Gauge className={`h-4 w-4 ${checkpointIconClass(feedbackCp)}`} aria-hidden />
+        }
+        title="Feedback do usuário"
+        subtitle="Botão de avaliação (correto/parcial/errado/alucinou) na resposta da IA, com comentário opcional. PRODUÇÃO libera no chat in-app; OFF desativa."
+        checkpoint={feedbackCp}
+        onCheckpointChange={(cp) => {
+          setFeedbackCp(cp);
+          persistResources({ feedbackCheckpoint: cp }, "feedback");
+        }}
+        loading={pending === "feedback"}
+        ariaLabel="Estado do feedback do usuário"
+      />
 
       {/* Sugestões na Bubble: cobre as iniciais (welcome quando a conversa
           comeca) e as de continuidade no fim de cada resposta. WhatsApp nao
