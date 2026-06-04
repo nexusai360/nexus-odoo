@@ -1,3 +1,10 @@
+> ✅ **RESOLVIDO em 2026-06-03** (commit 0ccce22). Causa-raiz real: o `style={panelWidth}`
+> inline causava divergência de hidratação (server `undefined` vs client número) e o `<td>`
+> herdava `whitespace-nowrap` do TableCell. Fix: removida a medição JS (panelWidth/
+> measureRef/id) e `whitespace-normal` no td , o painel inline já tem a largura visível e
+> o texto quebra na caixa, sem mexer na formatação das linhas. Documento mantido como
+> registro histórico do caminho percorrido.
+
 # Handoff , Monitoramento do Agente Nex (Backtest + Router) , 2026-06-03
 
 Branch: `feat/router-ativacao-r2` (manter aberta). Dev local na :3000 servindo esta branch.

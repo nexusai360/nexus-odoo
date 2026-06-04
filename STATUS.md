@@ -1,8 +1,41 @@
 # STATUS — nexus-odoo
 
-> **Ponto de retomada entre sessões.** Atualizado em **2026-05-31** (Balde B concluído).
+> **Ponto de retomada entre sessões.** Atualizado em **2026-06-03** (Monitoramento/Qualidade).
 > Ao abrir: ler **este arquivo**, o **`CLAUDE.md`** e **`.agente-handoff.md`**.
 > Modo autônomo é o padrão (`CLAUDE.md §6`).
+
+## 2026-06-03 , Monitoramento + Qualidade do Agente Nex (branch `feat/router-ativacao-r2`)
+
+Polimento da aba de Monitoramento (Backtest + Router) e **redesenho do cron de
+avaliação automática**. Tudo verificado (tsc + suíte 2183 verde). Em PR para a `main`.
+
+- **Drill-down do Router (pendência do handoff RESOLVIDA):** banner "Roteamento
+  divergente" agora quebra dentro da caixa. Raiz dupla: `style={panelWidth}` inline
+  causava divergência de hidratação + `<td>` herdava `whitespace-nowrap`. Removida a
+  medição JS; `whitespace-normal` no td. Linhas da tabela intactas.
+- **Resposta da IA não vaza mais** (backtest + router): `whitespace-normal` no td +
+  `MarkdownSnapshot` com `overflow-wrap:break-word` e NBSP em moeda/unidade (quebra só
+  nos espaços do nome, nunca no meio do valor).
+- **Datas no horário de Brasília**, sem vírgula, com segundos e sufixo padrão
+  **`(Brasil, UTC-3)`**; razões reescrevem o `[AJUSTE HUMANO]` (gravado em UTC) para BRT.
+- **Ajuste humano vira status efetivo** (`humanStatus ?? status`): conta nos KPIs e no
+  gráfico de % correto; coluna Status e drill-down mostram "antes→agora". Seletor de
+  ajuste é dropdown com **tags coloridas**.
+- **Tabela Router:** coluna Pergunta estreita (280px), "Router escolhida" com 5 tags
+  numa linha só, `cadastros` em laranja; Pergunta completa + Resposta no drill-down.
+- **Cron de avaliação automática REDESENHADO:** a heurística sem LLM
+  (`heuristica-agente-nex-v1`) foi **aposentada**. A avaliação automática agora roda
+  **host-side via Claude Code headless** (`src/instrumentation.ts` +
+  `judge-scheduler.ts` + `claude-judge-runner.ts`), **local-only** (o worker/container
+  não enxerga o CLI `claude`), com lock compartilhado com o botão "Avaliar pendentes",
+  lendo o intervalo de `AgentSettings` (default 240min), sem disparar no boot.
+  **Em docker, atualizar o worker exige `docker compose build app` + recreate worker.**
+- **Re-julgamento das 12 classificadas pela heurística** (Claude Code Opus, conferindo
+  contra o cache real): **11 CORRETO + 1 PARCIAL**. Única falha real: itens negativos de
+  esteira respondidos com os maiores por valor (`docs/RADAR.md` / memória 8504).
+
+> **Ainda pendente do roadmap (inalterado):** o gate de validação ao vivo do router
+> (item 1 abaixo). O router segue OFF/shadow por decisão do usuário.
 
 ## ✅ ROADMAP DE COBERTURA (R1→O5 + Balde B) , CONCLUÍDO E MERGEADO (2026-05-31)
 

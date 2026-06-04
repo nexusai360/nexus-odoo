@@ -6,6 +6,30 @@
 > clicado (ambiente local), e também o que o Claude desta sessão deve seguir se o
 > usuário pedir "avalie os pendentes" no terminal.
 
+## Quem dispara o juízo (3 caminhos, todos rodam ESTE playbook)
+
+1. **Botão "Avaliar pendentes"** (super_admin, ambiente local) , `evaluatePendentesAction`.
+2. **Cron automático host-side** , `src/instrumentation.ts` agenda
+   `src/lib/agent/quality/judge-scheduler.ts`, que a cada intervalo
+   (`AgentSettings.qualityHeuristicIntervalMinutes`, default 240min) dispara o mesmo
+   juízo. **Local-only** (o worker/container não enxerga o CLI `claude`; por isso vive
+   no processo do Next). Não dispara no boot.
+3. **Manual no terminal** , o usuário pede "avalie os pendentes".
+
+Os caminhos 1 e 2 compartilham `src/lib/agent/quality/claude-judge-runner.ts`
+(`triggerClaudeJudge`), com **lock in-process** , nunca dois juízos ao mesmo tempo.
+
+> **A heurística sem LLM (`heuristica-agente-nex-v1`) foi APOSENTADA.** Não há mais
+> classificação automática por regras. Para re-julgar avaliações que ficaram com aquele
+> `judgeVersion`, use `scripts/quality-audit/reset-heuristic-to-pending.ts --apply`
+> (volta a PENDENTE, preservando as com ajuste humano) e dispare o juízo.
+
+## Ancoragem temporal (REGRA DE RAIZ ao julgar)
+
+"Mês corrente", "hoje", "esta semana" referem-se à data da **requisição**
+(`evaluation.createdAt`), NÃO à data em que você está julgando. Ex.: uma pergunta de
+28/05 sobre "mês corrente" = **maio**. Resolver isso errado gera falso-ERRADO.
+
 ## Passos
 
 1. Dump dos pendentes:
