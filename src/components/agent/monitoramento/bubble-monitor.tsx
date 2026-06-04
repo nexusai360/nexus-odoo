@@ -7,6 +7,7 @@
  */
 
 import * as React from "react";
+import { ChevronDown } from "lucide-react";
 import {
   listBubbleCollaborators,
   listBubbleSessions,
@@ -58,6 +59,37 @@ function Summary({ counts, pct }: { counts: RatingCounts; pct: number | null }) 
   );
 }
 
+// Versão de uma linha do Summary para o card compacto de colaborador: separador
+// "·" + "{pct}%" + contagens coloridas. Silencioso quando não há avaliações
+// (o card já mostra a contagem de sessões).
+function CompactSummary({ counts, pct }: { counts: RatingCounts; pct: number | null }) {
+  const total = counts.CORRETO + counts.PARCIAL + counts.ERRADO + counts.ALUCINOU;
+  if (total === 0) return null;
+  const order: UserFeedbackRating[] = ["CORRETO", "PARCIAL", "ERRADO", "ALUCINOU"];
+  return (
+    <span className="flex min-w-0 items-center gap-1 truncate">
+      <span aria-hidden className="text-muted-foreground/50">
+        ·
+      </span>
+      <span className="font-semibold text-foreground">{pct}%</span>
+      <span className="flex items-center gap-1">
+        {order.map((r) =>
+          counts[r] > 0 ? (
+            <span
+              key={r}
+              title={RATING_META[r].label}
+              style={{ color: RATING_META[r].color }}
+              className="tabular-nums"
+            >
+              {counts[r]}
+            </span>
+          ) : null,
+        )}
+      </span>
+    </span>
+  );
+}
+
 function fmtRange(startedAt: string, endedAt: string | null): string {
   const s = new Date(startedAt);
   const d = (x: Date) =>
@@ -65,8 +97,10 @@ function fmtRange(startedAt: string, endedAt: string | null): string {
   return `${d(s)} ${endedAt ? "ate " + d(new Date(endedAt)) : "ate agora"}`;
 }
 
-const COL = "flex h-[68vh] flex-col overflow-hidden rounded-lg border border-border bg-card";
-const HEAD = "border-b border-border px-3 py-2 text-xs font-semibold text-muted-foreground";
+const COL =
+  "flex h-[68vh] flex-col overflow-hidden rounded-xl border border-border bg-card shadow-sm";
+const HEAD =
+  "border-b border-border px-3 py-2 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground";
 
 export function BubbleMonitor() {
   const [collabs, setCollabs] = React.useState<Collaborator[] | null>(null);
@@ -75,6 +109,7 @@ export function BubbleMonitor() {
   const [sessionId, setSessionId] = React.useState<string | null>(null);
   const [messages, setMessages] = React.useState<MonitorMessage[] | null>(null);
   const convScrollRef = React.useRef<HTMLDivElement>(null);
+  const [showScrollFab, setShowScrollFab] = React.useState(false);
 
   React.useEffect(() => {
     void listBubbleCollaborators().then(setCollabs).catch(() => setCollabs([]));
@@ -84,8 +119,25 @@ export function BubbleMonitor() {
   React.useEffect(() => {
     if (messages && convScrollRef.current) {
       convScrollRef.current.scrollTop = convScrollRef.current.scrollHeight;
+      setShowScrollFab(false);
     }
   }, [messages]);
+
+  // FAB de descer: aparece quando o usuário rolou pra cima (longe do fim),
+  // igual à bubble viva. Some quando está colado no fim (margem de 120px).
+  const onConvScroll = React.useCallback(() => {
+    const el = convScrollRef.current;
+    if (!el) return;
+    const distanceFromBottom = el.scrollHeight - el.scrollTop - el.clientHeight;
+    setShowScrollFab(distanceFromBottom > 120);
+  }, []);
+
+  const scrollConvToBottom = React.useCallback(() => {
+    const el = convScrollRef.current;
+    if (!el) return;
+    el.scrollTo({ top: el.scrollHeight, behavior: "smooth" });
+    setShowScrollFab(false);
+  }, []);
 
   React.useEffect(() => {
     if (!userId) {
@@ -107,16 +159,29 @@ export function BubbleMonitor() {
     }
     setMessages(null);
     void getBubbleSessionMessages(sessionId)
-      .then((r) => setMessages(r.ok ? (r.messages.filter((m) => m.role !== "tool") as MonitorMessage[]) : []))
+      .then((r) =>
+        setMessages(
+          r.ok
+            ? (r.messages.filter(
+                (m) =>
+                  m.role !== "tool" &&
+                  // Descarta mensagens vazias (sem texto e sem áudio): ruído de
+                  // turnos interrompidos/falhos que apareciam como bolha em
+                  // branco no monitoramento.
+                  (m.content.trim().length > 0 || m.kind === "audio"),
+              ) as MonitorMessage[])
+            : [],
+        ),
+      )
       .catch(() => setMessages([]));
   }, [sessionId]);
 
   return (
-    <div className="grid grid-cols-1 gap-3 lg:grid-cols-[260px_300px_1fr]">
+    <div className="grid grid-cols-1 gap-4 lg:grid-cols-[240px_280px_1fr]">
       {/* Coluna 1: colaboradores */}
       <div className={COL}>
         <div className={HEAD}>Colaboradores</div>
-        <div className="flex-1 overflow-y-auto p-2">
+        <div className="flex-1 overflow-y-auto p-1.5">
           {collabs === null ? (
             <Skeletons />
           ) : collabs.length === 0 ? (
@@ -127,26 +192,30 @@ export function BubbleMonitor() {
                 key={c.userId}
                 onClick={() => setUserId(c.userId)}
                 className={cn(
-                  "mb-1 flex w-full items-center gap-2.5 rounded-md p-2 text-left transition-colors",
+                  "mb-0.5 flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left transition-colors",
                   userId === c.userId ? "bg-muted" : "hover:bg-muted/60",
                 )}
               >
                 <Avatar name={c.name} url={c.avatarUrl} />
                 <div className="min-w-0 flex-1">
                   <div className="flex items-center gap-1.5">
-                    <span className="truncate text-sm font-medium text-foreground">{c.name}</span>
+                    <span className="truncate text-[13px] font-medium text-foreground">
+                      {c.name}
+                    </span>
                     <span
                       title={c.hasActiveSession ? "Sessão ativa" : "Sem sessão ativa"}
                       className={cn(
-                        "h-2 w-2 shrink-0 rounded-full",
+                        "h-1.5 w-1.5 shrink-0 rounded-full",
                         c.hasActiveSession ? "bg-emerald-500" : "bg-muted-foreground/40",
                       )}
                     />
                   </div>
-                  <div className="text-[11px] text-muted-foreground">
-                    {c.sessionCount} {c.sessionCount === 1 ? "sessão" : "sessões"}
+                  <div className="flex items-center gap-1.5 text-[11px] text-muted-foreground">
+                    <span className="shrink-0">
+                      {c.sessionCount} {c.sessionCount === 1 ? "sessão" : "sessões"}
+                    </span>
+                    <CompactSummary counts={c.ratingCounts} pct={c.accuracyPct} />
                   </div>
-                  <Summary counts={c.ratingCounts} pct={c.accuracyPct} />
                 </div>
               </button>
             ))
@@ -194,9 +263,13 @@ export function BubbleMonitor() {
       </div>
 
       {/* Coluna 3: conversa */}
-      <div className={COL}>
+      <div className={cn(COL, "relative")}>
         <div className={HEAD}>Conversa</div>
-        <div ref={convScrollRef} className="flex-1 space-y-3 overflow-y-auto p-4">
+        <div
+          ref={convScrollRef}
+          onScroll={onConvScroll}
+          className="flex-1 space-y-3 overflow-y-auto p-4"
+        >
           {!sessionId ? (
             <Empty>Escolha uma sessão.</Empty>
           ) : messages === null ? (
@@ -207,8 +280,41 @@ export function BubbleMonitor() {
             <Conversation messages={messages} />
           )}
         </div>
+        <ScrollToBottomFab visible={showScrollFab} onClick={scrollConvToBottom} />
       </div>
     </div>
+  );
+}
+
+// FAB de descer na conversa, espelhando o da bubble viva (chat-panel):
+// mesma cor/material (violet-500/20 + ring + backdrop-blur), aparece com
+// fade+slide quando o usuário rolou pra cima.
+function ScrollToBottomFab({
+  visible,
+  onClick,
+}: {
+  visible: boolean;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      aria-label="Ir para o fim da conversa"
+      aria-hidden={!visible}
+      tabIndex={visible ? 0 : -1}
+      className={cn(
+        "absolute bottom-4 right-4 z-30 flex h-9 w-9 items-center justify-center rounded-full",
+        "bg-violet-500/20 text-violet-200 shadow-sm ring-1 ring-violet-400/25 backdrop-blur-md",
+        "transition-all duration-200 hover:bg-violet-500/45 hover:text-white hover:ring-violet-400/50",
+        "focus-visible:ring-2 focus-visible:ring-violet-400/50 focus-visible:outline-none",
+        visible
+          ? "translate-y-0 cursor-pointer opacity-100"
+          : "pointer-events-none translate-y-2 opacity-0",
+      )}
+    >
+      <ChevronDown className="h-4 w-4" />
+    </button>
   );
 }
 
@@ -223,7 +329,9 @@ function Conversation({ messages }: { messages: MonitorMessage[] }) {
           <React.Fragment key={m.id}>
             {showSep ? (
               <div className="my-2 flex justify-center">
-                <span className="rounded-full bg-violet-500/15 px-3 py-1 text-[11px] font-bold text-violet-300">
+                {/* Mesmo material translúcido da tag flutuante da bubble viva
+                    (ring + backdrop-blur + shadow), não a versão chapada. */}
+                <span className="rounded-full bg-violet-500/15 px-3 py-1 text-[11px] font-bold text-violet-200 shadow-sm ring-1 ring-violet-400/25 backdrop-blur-md">
                   {day}
                 </span>
               </div>
