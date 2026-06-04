@@ -14,10 +14,11 @@
 
 import { prisma } from "@/lib/prisma";
 import {
-  formatDateTimeInTz,
+  formatDateInTz,
   DEFAULT_TZ,
   DEFAULT_LOCALE,
 } from "@/lib/datetime-core";
+import { montarConversa } from "./prompt/montar-conversa";
 import { buildLlmClient } from "./llm/get-client";
 import { getActiveLlmConfig } from "./llm/get-active-config";
 import { logUsage } from "./llm/usage-logger";
@@ -419,11 +420,16 @@ export async function runAgent(args: RunAgentInput): Promise<RunAgentResult> {
       biSchema,
       args.source ?? (args.isPlayground ? "playground" : "bubble"),
     );
-    // Injeta a data/hora atual em America/Sao_Paulo (UTC-3) no topo do prompt.
-    // Sem isso, o modelo nao tem ancora de "hoje" e pode assumir a data UTC
-    // (a virada de dia UTC acontece as 21h BRT), bugando "hoje"/"mes corrente".
-    const agoraBrt = formatDateTimeInTz(new Date(), DEFAULT_TZ, DEFAULT_LOCALE);
-    const systemPrompt = `Data e hora atuais (America/Sao_Paulo, UTC-3): ${agoraBrt}. Use SEMPRE esta data para resolver "hoje", "ontem", "amanha", "mes corrente", "essa semana" e "este ano".\n\n${systemPromptBase}`;
+    // Otimizacao de custo (alavanca 1): a data NAO vai mais no topo do prompt.
+    // O cache da OpenAI desconta a porcao PREFIXO identica entre chamadas; com a
+    // data (que muda) no topo, nada do system ficava cacheavel. Agora o
+    // systemPrompt e' so o base (prefixo estavel) e a data entra como item de
+    // input logo antes da pergunta, via montarConversa(). Granularidade de dia
+    // (dia da semana + data), sem hora/segundos.
+    const agoraBrt = formatDateInTz(new Date(), DEFAULT_TZ, DEFAULT_LOCALE, {
+      weekday: "long",
+    });
+    const systemPrompt = systemPromptBase;
 
     // Carregar tools do MCP interno + dos MCPs externos plugados.
     // Nomes com caracteres fora de [a-zA-Z0-9_-] (ex.: `crm.res_partner.get`)
@@ -584,12 +590,14 @@ export async function runAgent(args: RunAgentInput): Promise<RunAgentResult> {
     // Persistir mensagem do usuário
     await persistMessage(args.conversationId, "user", args.userMessage);
 
-    // Montar conversa inicial
-    const conversation: ChatMessage[] = [
-      { role: "system", content: systemPrompt },
-      ...historyMessages,
-      { role: "user", content: args.userMessage },
-    ];
+    // Montar conversa inicial. A data atual entra como item de input antes da
+    // pergunta (fora do prefixo cacheavel), via montarConversa().
+    const { conversation } = montarConversa({
+      systemPromptBase: systemPrompt,
+      historyMessages,
+      userMessage: args.userMessage,
+      agoraBrt,
+    });
 
     const totalUsage: ChatUsage = { tokensInput: 0, tokensOutput: 0, costUsd: 0 };
     const start = Date.now();
