@@ -25,6 +25,8 @@ export interface AreaChartData {
   isFuture?: boolean;
   /** Rotulo opcional para o tooltip (cai em `name` se ausente). */
   tooltipLabel?: string;
+  /** Linha auxiliar opcional no rodape do tooltip (ex.: "Rodada 24"). */
+  tooltipFooter?: string;
   [key: string]: string | number | boolean | null | undefined;
 }
 
@@ -255,6 +257,7 @@ export function InteractiveAreaChart({
                   active={props.active}
                   payload={props.payload as ChartTooltipPayloadItem[] | undefined}
                   label={entry?.tooltipLabel ?? String(props.label ?? "")}
+                  footer={entry?.tooltipFooter}
                   formatValue={formatValue}
                 />
               );

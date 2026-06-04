@@ -336,6 +336,7 @@ export function MonitoramentoContent({
           topPatterns={topPatterns}
           loading={loading}
           periodEnd={period.end.toISOString()}
+          labelForRodada={labelFor}
         />
       )}
 

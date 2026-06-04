@@ -128,20 +128,15 @@ const maintenanceWorker = new Worker(
       return result;
     }
     if (job.name === JOB_AUTO_HEURISTIC) {
-      // Importacao dinamica evita carregar prisma client em paralelo no boot.
-      const { runAutoHeuristic } = await import(
-        "@/lib/agent/quality/auto-heuristic"
+      // APOSENTADO: a classificacao automatica por heuristica (sem LLM) foi
+      // desligada. A avaliacao automatica agora e' feita pelo Claude Code
+      // headless, host-side (src/lib/agent/quality/judge-scheduler.ts), porque
+      // o worker (container) nao enxerga o CLI `claude` do host. Mantido como
+      // no-op para o caso de um job repetivel legado ainda disparar do Redis.
+      console.log(
+        "[maintenance] auto-heuristic IGNORADO (aposentado , avaliacao agora via Claude Code host-side)",
       );
-      const result = await runAutoHeuristic();
-      if (result.processadas > 0) {
-        console.log(
-          `[maintenance] auto-heuristic: ${result.processadas} avaliacoes ` +
-            `processadas - CORRETO=${result.totals.CORRETO} ` +
-            `PARCIAL=${result.totals.PARCIAL} ERRADO=${result.totals.ERRADO} ` +
-            `FORA=${result.totals.FORA_DO_ESCOPO}`,
-        );
-      }
-      return result;
+      return { ok: true, skipped: "auto-heuristic-aposentado" };
     }
     return { ok: true };
   },
@@ -217,23 +212,19 @@ let ultimoIntervaloAutoHeuristic: number | null = null;
  *  JOB_AUTO_HEURISTIC se mudou. Idempotente. Aplicado no JOB_CONFIG_CHECK
  *  (a cada 60s), mesmo mecanismo que ja existia pra sync. */
 async function aplicarAgendamentoAutoHeuristic(): Promise<void> {
-  const row = await prisma.agentSettings.findUnique({
-    where: { id: "global" },
-    select: { qualityHeuristicIntervalMinutes: true },
-  });
-  const minutes = Math.max(
-    1,
-    Math.min(1440, row?.qualityHeuristicIntervalMinutes ?? 240),
-  );
-  if (ultimoIntervaloAutoHeuristic === minutes) return;
-  await maintenanceQueue.upsertJobScheduler(
-    JOB_AUTO_HEURISTIC,
-    { every: minutes * 60_000 },
-    { name: JOB_AUTO_HEURISTIC },
-  );
-  ultimoIntervaloAutoHeuristic = minutes;
+  // O cron heuristico (sem LLM) foi APOSENTADO. A avaliacao automatica agora
+  // roda host-side via Claude Code (judge-scheduler.ts), que o worker/container
+  // nao consegue disparar. Aqui apenas garantimos a remocao do scheduler antigo
+  // (uma vez), pra nenhum job repetivel legado continuar reclassificando.
+  if (ultimoIntervaloAutoHeuristic === -1) return;
+  try {
+    await maintenanceQueue.removeJobScheduler(JOB_AUTO_HEURISTIC);
+  } catch {
+    // ok se nao existir
+  }
+  ultimoIntervaloAutoHeuristic = -1;
   console.log(
-    `[maintenance] auto-heuristic re-agendado: a cada ${minutes} min`,
+    "[maintenance] auto-heuristic DESLIGADO (avaliacao agora via Claude Code host-side)",
   );
 }
 

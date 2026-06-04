@@ -228,7 +228,12 @@ export function EvaluationsTable({
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead className="w-[140px]">Data</TableHead>
+                <TableHead
+                  className="w-[140px]"
+                  title="Horário de Brasília (Brasil, UTC-3)"
+                >
+                  Data
+                </TableHead>
                 <TableHead className="w-[130px]">Origem</TableHead>
                 <TableHead>Pergunta</TableHead>
                 <TableHead>Resposta</TableHead>
@@ -260,8 +265,8 @@ export function EvaluationsTable({
                       )}
                       onClick={() => setExpandedId(isOpen ? null : row.id)}
                     >
-                      <TableCell className="font-mono text-xs">
-                        {dateTimeFmt.format(row.createdAt)}
+                      <TableCell className="font-mono text-xs whitespace-nowrap">
+                        {dateTimeFmt.format(row.createdAt).replace(",", "")}
                       </TableCell>
                       <TableCell className="text-xs">
                         {(() => {
@@ -303,23 +308,39 @@ export function EvaluationsTable({
                         {truncate(row.answerSnapshot)}
                       </TableCell>
                       <TableCell>
-                        <div className="flex items-center gap-1">
-                          <Badge
-                            variant="outline"
-                            className={cn(
-                              "border text-[11px]",
-                              STATUS_TONE[row.status],
-                            )}
-                          >
-                            {STATUS_LABEL[row.status]}
-                          </Badge>
-                          {row.humanStatus && (
-                            <ShieldCheck
-                              className="h-3 w-3 text-emerald-500"
-                              aria-label="Ajustado manualmente"
-                            />
-                          )}
-                        </div>
+                        {(() => {
+                          // Status efetivo = ajuste humano sobrescreve o
+                          // veredito automatico. A tag mostra o efetivo; o
+                          // shield + tooltip preservam o original (auditavel).
+                          const human = row.humanStatus as EvalStatus | null;
+                          const eff = human ?? row.status;
+                          return (
+                            <div
+                              className="flex items-center gap-1"
+                              title={
+                                human
+                                  ? `Veredito automático: ${STATUS_LABEL[row.status]} → ajuste humano: ${STATUS_LABEL[eff]}`
+                                  : undefined
+                              }
+                            >
+                              <Badge
+                                variant="outline"
+                                className={cn(
+                                  "border text-[11px]",
+                                  STATUS_TONE[eff],
+                                )}
+                              >
+                                {STATUS_LABEL[eff]}
+                              </Badge>
+                              {human && (
+                                <ShieldCheck
+                                  className="h-3 w-3 text-emerald-500"
+                                  aria-label={`Ajustado manualmente (era ${STATUS_LABEL[row.status]})`}
+                                />
+                              )}
+                            </div>
+                          );
+                        })()}
                       </TableCell>
                       <TableCell className="font-mono text-xs text-muted-foreground">
                         {row.model ?? ","}
@@ -355,7 +376,10 @@ export function EvaluationsTable({
                     </TableRow>
                     {isOpen && (
                       <TableRow className="bg-muted/10">
-                        <TableCell colSpan={8} className="p-0">
+                        {/* whitespace-normal: o td herda whitespace-nowrap do
+                            TableCell; sem isso a resposta da IA nao quebra e
+                            vaza pela direita do componente. */}
+                        <TableCell colSpan={8} className="whitespace-normal p-0">
                           <EvaluationDrilldown
                             evaluationId={row.id}
                             onAdjusted={handleAdjusted}

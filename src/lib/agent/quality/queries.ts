@@ -103,10 +103,13 @@ export async function getRawCounts(
   filters: EvaluationFilters,
 ): Promise<RawEvalCounts> {
   const where = buildWhere(filters);
-  const grouped = await prisma.conversationQualityEvaluation.groupBy({
-    by: ["status"],
+  // Status EFETIVO: o ajuste humano (human_status) sobrescreve o veredito
+  // automatico (heuristica/LLM). Por isso nao da pra usar groupBy("status")
+  // puro , o ajuste manual precisa ser contabilizado nos KPIs. Buscamos os
+  // dois campos e agregamos pelo efetivo. O filtro de periodo limita o volume.
+  const rows = await prisma.conversationQualityEvaluation.findMany({
     where,
-    _count: { _all: true },
+    select: { status: true, humanStatus: true },
   });
 
   const counts: RawEvalCounts = {
@@ -117,9 +120,9 @@ export async function getRawCounts(
     PENDENTE: 0,
     FALHA_TECNICA: 0,
   };
-  for (const row of grouped) {
-    const s = row.status as EvalStatus;
-    if (s in counts) counts[s] = row._count._all;
+  for (const row of rows) {
+    const s = (row.humanStatus ?? row.status) as EvalStatus;
+    if (s in counts) counts[s] += 1;
   }
   return counts;
 }
@@ -301,30 +304,51 @@ export async function getDistinctPatterns(
 /** Timeseries de % CORRETO por dia, no periodo. */
 export async function getDailyCorrectness(
   filters: EvaluationFilters,
-): Promise<Array<{ date: string; percent: number | null; total: number }>> {
+): Promise<
+  Array<{ date: string; percent: number | null; total: number; marker: string | null }>
+> {
   const rows = await prisma.conversationQualityEvaluation.findMany({
     where: buildWhere(filters),
-    select: { createdAt: true, status: true },
+    select: {
+      createdAt: true,
+      status: true,
+      humanStatus: true,
+      conversation: { select: { title: true } },
+    },
   });
-  const byDay = new Map<string, { corretos: number; total: number }>();
+  const byDay = new Map<
+    string,
+    { corretos: number; total: number; marker: string | null; markerAt: number }
+  >();
   for (const r of rows) {
     // Bucket por DIA no fuso de Brasilia (UTC-3), nao UTC. Sem isso, avaliacoes
     // entre 21h e 00h BRT caem no dia seguinte (UTC) e o grafico fica errado.
     // en-CA garante o formato YYYY-MM-DD (sortavel).
     const key = formatDateInTz(r.createdAt, DEFAULT_TZ, "en-CA");
-    const cur = byDay.get(key) ?? { corretos: 0, total: 0 };
-    if (["CORRETO", "PARCIAL", "ERRADO", "FORA_DO_ESCOPO"].includes(r.status)) {
+    const cur =
+      byDay.get(key) ?? { corretos: 0, total: 0, marker: null, markerAt: 0 };
+    // Status efetivo: ajuste humano sobrescreve o veredito automatico.
+    const eff = r.humanStatus ?? r.status;
+    if (["CORRETO", "PARCIAL", "ERRADO", "FORA_DO_ESCOPO"].includes(eff)) {
       cur.total++;
-      if (r.status === "CORRETO") cur.corretos++;
+      if (eff === "CORRETO") cur.corretos++;
+    }
+    // Marker da rodada do dia: o AUDIT-POS mais recente daquele dia.
+    const title = r.conversation?.title ?? "";
+    const m = title.match(/\[AUDIT-[^\]]*\]/);
+    if (m && r.createdAt.getTime() >= cur.markerAt) {
+      cur.marker = m[0];
+      cur.markerAt = r.createdAt.getTime();
     }
     byDay.set(key, cur);
   }
   return [...byDay.entries()]
     .sort(([a], [b]) => a.localeCompare(b))
-    .map(([date, { corretos, total }]) => ({
+    .map(([date, { corretos, total, marker }]) => ({
       date,
       percent: total > 0 ? (corretos / total) * 100 : null,
       total,
+      marker,
     }));
 }
 

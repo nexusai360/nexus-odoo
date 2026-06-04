@@ -18,6 +18,18 @@ import { Fragment, useMemo, type ReactNode } from "react";
 
 type Block = { type: "p"; text: string } | { type: "ul"; items: string[] };
 
+// Mantem valores e unidades coladas (NBSP) para a quebra de linha cair sempre
+// nos espacos do NOME, nunca no meio de um valor. Ex.: "R$ 3.404,00" e
+// "19 un." viram tokens inquebáveis; ja "Esteira Matrix Fitness" quebra
+// normalmente nos espacos. O numero em si (504.164,92) nao tem espaco, entao
+// com overflow-wrap:break-word nunca racha no meio.
+const NBSP = " ";
+function protectValues(text: string): string {
+  return text
+    .replace(/R\$\s+(?=\d)/g, `R$${NBSP}`)
+    .replace(/(\d)\s+(un\.?|unidades?)\b/gi, `$1${NBSP}$2`);
+}
+
 function splitBlocks(input: string): Block[] {
   const lines = input.split(/\r?\n/);
   const blocks: Block[] = [];
@@ -103,20 +115,22 @@ function renderInline(text: string): ReactNode {
 export function MarkdownSnapshot({ content }: { content: string }) {
   const blocks = useMemo(() => splitBlocks(content), [content]);
   return (
-    <div className="space-y-2 text-sm [overflow-wrap:anywhere]">
+    // break-word (nao 'anywhere'): quebra nos espacos e so racha uma palavra
+    // se ela sozinha estourar a linha; numeros/codigos curtos ficam inteiros.
+    <div className="space-y-2 text-sm [overflow-wrap:break-word]">
       {blocks.map((block, i) => {
         if (block.type === "ul") {
           return (
             <ul key={i} className="ml-4 list-disc space-y-1">
               {block.items.map((item, j) => (
-                <li key={j}>{renderInline(item)}</li>
+                <li key={j}>{renderInline(protectValues(item))}</li>
               ))}
             </ul>
           );
         }
         return (
           <p key={i} className="whitespace-pre-wrap leading-relaxed">
-            <Fragment>{renderInline(block.text)}</Fragment>
+            <Fragment>{renderInline(protectValues(block.text))}</Fragment>
           </p>
         );
       })}

@@ -58,10 +58,27 @@ const dateTimeFmt = new Intl.DateTimeFormat("pt-BR", {
   timeZone: "America/Sao_Paulo",
   day: "2-digit",
   month: "2-digit",
-  year: "numeric",
+  year: "2-digit",
   hour: "2-digit",
   minute: "2-digit",
+  second: "2-digit",
 });
+// Sufixo padrao de fuso: a plataforma opera no horario de Brasilia (UTC-3).
+const TZ_LABEL = "(Brasil, UTC-3)";
+// Horario da plataforma = Brasilia (UTC-3). O formatter ja resolve o fuso via
+// timeZone; aqui so removemos a virgula entre data e hora.
+function fmtBRT(d: Date): string {
+  return dateTimeFmt.format(d).replace(",", "");
+}
+// Reescreve o marcador "[AJUSTE HUMANO <iso-utc>]" das razoes para o horario
+// de Brasilia com segundos e rotulo de fuso (o ISO e' gravado em UTC no banco).
+function humanizeRazoes(razoes: string): string {
+  return razoes.replace(/\[AJUSTE HUMANO ([^\]]+)\]/g, (full, iso: string) => {
+    const d = new Date(iso);
+    if (Number.isNaN(d.getTime())) return full;
+    return `[AJUSTE HUMANO ${fmtBRT(d)} ${TZ_LABEL}]`;
+  });
+}
 
 type Detail = NonNullable<
   Awaited<ReturnType<typeof fetchQualityEvaluationDetail>>
@@ -91,13 +108,16 @@ export function EvaluationDrilldown({ evaluationId, onAdjusted }: Props) {
         setError("Avaliação não encontrada.");
       } else {
         setDetail(d);
+        // O seletor de ajuste parte do status EFETIVO (humanStatus ?? status),
+        // pra refletir o ajuste anterior em vez de voltar pro veredito automatico.
+        const eff = (d.evaluation.humanStatus ?? d.evaluation.status) as string;
         if (
-          d.evaluation.status === "CORRETO" ||
-          d.evaluation.status === "PARCIAL" ||
-          d.evaluation.status === "ERRADO" ||
-          d.evaluation.status === "FORA_DO_ESCOPO"
+          eff === "CORRETO" ||
+          eff === "PARCIAL" ||
+          eff === "ERRADO" ||
+          eff === "FORA_DO_ESCOPO"
         ) {
-          setAdjustStatus(d.evaluation.status);
+          setAdjustStatus(eff);
         }
       }
     } catch (err) {
@@ -169,36 +189,61 @@ export function EvaluationDrilldown({ evaluationId, onAdjusted }: Props) {
       {/* Cabecalho do drill-down */}
       <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border/60 pb-3">
         <div className="flex flex-wrap items-center gap-2">
-          <Badge
-            variant="outline"
-            className={cn("border", STATUS_TONE[e.status])}
-          >
-            {STATUS_LABEL[e.status]}
-          </Badge>
-          {e.humanStatus && (
-            <Badge variant="outline" className="border-emerald-500/40">
-              <ShieldCheck className="mr-1 h-3 w-3" />
-              Ajustado:{" "}
-              {STATUS_LABEL[e.humanStatus as EvalStatus] ?? e.humanStatus}
-            </Badge>
-          )}
+          {(() => {
+            // Status efetivo: o ajuste humano sobrescreve o veredito
+            // automatico. A tag principal mostra o efetivo; quando houve
+            // ajuste, deixamos explicito "antes (riscado) -> agora".
+            const human = e.humanStatus as EvalStatus | null;
+            const eff = human ?? e.status;
+            const mudou = human != null && human !== e.status;
+            return (
+              <>
+                <Badge
+                  variant="outline"
+                  className={cn("border", STATUS_TONE[eff])}
+                >
+                  {STATUS_LABEL[eff]}
+                </Badge>
+                {mudou && (
+                  <span
+                    className="inline-flex items-center gap-1 text-xs text-muted-foreground"
+                    title="Ajuste humano sobrescreveu o veredito automático"
+                  >
+                    <ShieldCheck className="h-3.5 w-3.5 text-emerald-500" />
+                    Ajuste humano:
+                    <span className="line-through">
+                      {STATUS_LABEL[e.status]}
+                    </span>
+                    <span aria-hidden>→</span>
+                    <span className="font-medium text-foreground">
+                      {STATUS_LABEL[eff]}
+                    </span>
+                  </span>
+                )}
+              </>
+            );
+          })()}
           {e.model && (
             <Badge variant="ghost" className="font-mono text-[11px]">
               {e.model}
             </Badge>
           )}
           <span className="text-xs text-muted-foreground">
-            {dateTimeFmt.format(e.createdAt)}
+            {fmtBRT(e.createdAt)} {TZ_LABEL}
           </span>
         </div>
         <div className="text-xs text-muted-foreground">
-          Judge: {e.judgeModel ?? ","} · {e.judgeVersion}
+          {/* judgeModel so existe quando um LLM julgou; o judge heuristico
+              (regras, sem LLM) deixa esse campo nulo. Antes caia num ","
+              solto. Mostra o modelo so quando ha. */}
+          Judge: {e.judgeModel ? `${e.judgeModel} · ` : ""}
+          {e.judgeVersion}
         </div>
       </div>
 
       {/* Pergunta e resposta */}
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-        <section className="space-y-1.5">
+        <section className="min-w-0 space-y-1.5">
           <h4 className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
             <UserIcon className="h-3.5 w-3.5" /> Pergunta
           </h4>
@@ -210,7 +255,7 @@ export function EvaluationDrilldown({ evaluationId, onAdjusted }: Props) {
             )}
           </div>
         </section>
-        <section className="space-y-1.5">
+        <section className="min-w-0 space-y-1.5">
           <h4 className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
             <Bot className="h-3.5 w-3.5" /> Resposta
           </h4>
@@ -334,7 +379,7 @@ export function EvaluationDrilldown({ evaluationId, onAdjusted }: Props) {
           )}
           {e.razoes && (
             <div className="whitespace-pre-wrap rounded-lg border border-border bg-background px-3 py-2 text-sm">
-              {e.razoes}
+              {humanizeRazoes(e.razoes)}
             </div>
           )}
         </section>
@@ -347,17 +392,28 @@ export function EvaluationDrilldown({ evaluationId, onAdjusted }: Props) {
             Ajuste manual
           </h4>
           <div className="flex flex-wrap items-center gap-2">
+            {/* Dropdown (lista suspensa), porem cada opcao e' a TAG colorida do
+                status , nao texto puro. */}
             <CustomSelect
               value={adjustStatus}
               onChange={(v) => setAdjustStatus(v as EvalStatus)}
-              triggerClassName="min-w-[160px]"
+              triggerClassName="min-w-[170px]"
               aria-label="Novo status"
-              options={[
-                { value: "CORRETO", label: "Correto" },
-                { value: "PARCIAL", label: "Parcial" },
-                { value: "ERRADO", label: "Errado" },
-                { value: "FORA_DO_ESCOPO", label: "Fora de escopo" },
-              ]}
+              options={(
+                ["CORRETO", "PARCIAL", "ERRADO", "FORA_DO_ESCOPO"] as const
+              ).map((s) => ({
+                value: s,
+                label: (
+                  <span
+                    className={cn(
+                      "inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-medium",
+                      STATUS_TONE[s],
+                    )}
+                  >
+                    {STATUS_LABEL[s]}
+                  </span>
+                ),
+              }))}
             />
             <Textarea
               value={adjustReason}
@@ -383,7 +439,7 @@ export function EvaluationDrilldown({ evaluationId, onAdjusted }: Props) {
           </div>
           {e.humanReviewedAt && (
             <p className="text-[11px] text-muted-foreground">
-              Último ajuste em {dateTimeFmt.format(e.humanReviewedAt)}.
+              Último ajuste em {fmtBRT(e.humanReviewedAt)} {TZ_LABEL}.
             </p>
           )}
         </section>
