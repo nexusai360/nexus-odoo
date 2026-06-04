@@ -192,6 +192,8 @@ export interface RunAgentInput {
   userMessage: string;
   channel: AgentChannel;
   isPlayground: boolean;
+  /** Entrada veio de voz (transcricao); persiste kind="audio" na msg do usuario. */
+  isAudio?: boolean;
   /** Callback para eventos de progresso (streaming in-app). */
   onEvent?: (evt: AgentEvent) => void;
   /** Override de prompt bruto (substitui todo o system prompt). */
@@ -601,7 +603,7 @@ export async function runAgent(args: RunAgentInput): Promise<RunAgentResult> {
     }));
 
     // Persistir mensagem do usuário
-    await persistMessage(args.conversationId, "user", args.userMessage);
+    await persistMessage(args.conversationId, "user", args.userMessage, undefined, args.isAudio ? "audio" : undefined);
 
     // Montar conversa inicial. A data atual entra como item de input antes da
     // pergunta (fora do prefixo cacheavel), via montarConversa().

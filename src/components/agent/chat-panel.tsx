@@ -482,7 +482,7 @@ export function ChatPanel({
   }, [reduceMotion]);
 
   const handleSend = React.useCallback(
-    async (text: string, opts?: { source?: "bubble" | "suggestion" }) => {
+    async (text: string, opts?: { source?: "bubble" | "suggestion"; isAudio?: boolean }) => {
       const trimmed = text.trim();
       if (!trimmed || pending) return;
 
@@ -544,7 +544,7 @@ export function ChatPanel({
           body: JSON.stringify({
             message: trimmed,
             conversationId: conversationIdRef.current ?? undefined,
-            meta: { source: opts?.source ?? "bubble" },
+            meta: { source: opts?.source ?? "bubble", isAudio: opts?.isAudio },
           }),
           signal: controller.signal,
         });
@@ -907,7 +907,7 @@ export function ChatPanel({
           toast.error("Não conseguimos entender o áudio.");
           return;
         }
-        void handleSend(text);
+        void handleSend(text, { isAudio: true });
       } catch (err) {
         toast.error(
           `Falha ao transcrever: ${err instanceof Error ? err.message : String(err)}`,

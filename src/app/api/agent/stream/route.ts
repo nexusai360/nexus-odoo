@@ -42,6 +42,7 @@ export async function POST(req: Request): Promise<Response> {
     channel?: string;
     meta?: {
       source?: "bubble" | "suggestion" | "whatsapp" | "playground";
+      isAudio?: boolean;
     };
   };
   try {
@@ -151,6 +152,7 @@ export async function POST(req: Request): Promise<Response> {
           userMessage: body.message!.trim(),
           channel,
           isPlayground,
+          isAudio: body.meta?.isAudio,
           onEvent,
           source:
             body.meta?.source ?? (isPlayground ? "playground" : "bubble"),

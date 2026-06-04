@@ -225,12 +225,14 @@ export async function loadHistory(
  * @param role            Papel da mensagem (user | assistant | tool).
  * @param content         Texto da mensagem.
  * @param toolCalls       Tool calls da mensagem assistant (opcional).
+ * @param kind            Tipo da entrada (ex.: "audio" quando veio de voz).
  */
 export async function persistMessage(
   conversationId: string,
   role: MessageRole,
   content: string,
   toolCalls?: ToolCall[],
+  kind?: string,
 ): Promise<void> {
   await prisma.message.create({
     data: {
@@ -238,6 +240,7 @@ export async function persistMessage(
       role,
       content,
       toolCalls: toolCalls ? JSON.parse(JSON.stringify(toolCalls)) : undefined,
+      ...(kind ? { kind } : {}),
     },
   });
 
