@@ -9,7 +9,7 @@
  */
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Check, ChevronDown, Loader2, Sparkles, X } from "lucide-react";
+import { Check, ChevronDown, Gavel, Loader2, X } from "lucide-react";
 import { toast } from "sonner";
 
 import { CustomSelect } from "@/components/ui/custom-select";
@@ -282,24 +282,6 @@ export function MonitoramentoContent({
           }}
           minDate={minDateObj}
         />
-        {isLocalRuntime && (
-          <button
-            type="button"
-            onClick={handleEvaluatePendentes}
-            disabled={evaluating || (kpis?.pendentes ?? 0) === 0}
-            className="inline-flex h-9 cursor-pointer items-center gap-2 rounded-lg bg-violet-600 px-3 text-sm font-medium text-white shadow-sm transition-colors hover:bg-violet-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-400 disabled:cursor-not-allowed disabled:opacity-50"
-            title="Avalia as avaliações pendentes via LLM-judge (só no ambiente local)"
-          >
-            {evaluating ? (
-              <Loader2 className="h-4 w-4 animate-spin" aria-hidden />
-            ) : (
-              <Sparkles className="h-4 w-4" aria-hidden />
-            )}
-            {evaluating
-              ? "Avaliando…"
-              : `Avaliar pendentes${kpis?.pendentes ? ` (${kpis.pendentes})` : ""}`}
-          </button>
-        )}
         <div className="ml-auto flex items-center gap-2">
           <CustomSelect
             value={model}
@@ -353,6 +335,8 @@ export function MonitoramentoContent({
           kpis={kpis}
           topPatterns={topPatterns}
           loading={loading}
+          periodEnd={period.end.toISOString()}
+          labelForRodada={labelFor}
         />
       )}
 
@@ -364,6 +348,26 @@ export function MonitoramentoContent({
           availableModels={models}
           availablePatterns={availablePatterns}
           labelForRodada={labelFor}
+          headerAction={
+            isLocalRuntime ? (
+              <button
+                type="button"
+                onClick={handleEvaluatePendentes}
+                disabled={evaluating || (kpis?.pendentes ?? 0) === 0}
+                className="inline-flex h-8 cursor-pointer items-center gap-2 rounded-lg bg-violet-600 px-3 text-xs font-medium text-white shadow-sm transition-colors hover:bg-violet-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-400 disabled:cursor-not-allowed disabled:opacity-50"
+                title="Avalia os pendentes pelo próprio Claude Code (só no ambiente local)"
+              >
+                {evaluating ? (
+                  <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden />
+                ) : (
+                  <Gavel className="h-3.5 w-3.5" aria-hidden />
+                )}
+                {evaluating
+                  ? "Avaliando…"
+                  : `Avaliar pendentes${kpis?.pendentes ? ` (${kpis.pendentes})` : ""}`}
+              </button>
+            ) : undefined
+          }
         />
       )}
 

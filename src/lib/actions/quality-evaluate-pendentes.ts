@@ -7,10 +7,9 @@
  * local (NODE_ENV != production) e para super_admin. Em producao recusa.
  */
 
-import { spawn } from "node:child_process";
 import { getCurrentUser } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
-import { isLocalRuntime } from "@/lib/env-local";
+import { triggerClaudeJudge } from "@/lib/agent/quality/claude-judge-runner";
 
 async function gateSuperAdmin() {
   const user = await getCurrentUser();
@@ -27,35 +26,15 @@ export async function countPendentes(): Promise<number> {
   });
 }
 
-/** Dispara o LLM-judge em background. Retorna a contagem inicial de pendentes.
- *  Idempotente: o script so toca status PENDENTE. */
+/** Dispara o juízo dos pendentes pelo PRÓPRIO Claude Code (headless, sem GPT).
+ *  So em runtime local (a maquina do operador tem o CLI `claude` autenticado).
+ *  Mesma maquina usada pelo cron host-side (judge-scheduler.ts), com o mesmo
+ *  lock in-process , nunca dois judges ao mesmo tempo. */
 export async function evaluatePendentesAction(): Promise<{
   started: boolean;
   pendentes: number;
   reason?: string;
 }> {
   await gateSuperAdmin();
-  if (!isLocalRuntime()) {
-    return { started: false, pendentes: 0, reason: "Disponível apenas em ambiente local." };
-  }
-  const pendentes = await prisma.conversationQualityEvaluation.count({
-    where: { status: "PENDENTE" },
-  });
-  if (pendentes === 0) return { started: false, pendentes: 0 };
-
-  // Roda o script destacado; o proprio processo do dev server tem .env.local,
-  // DATABASE_URL e a credencial LLM. stdout/err vao para /tmp para inspecao.
-  const child = spawn(
-    "npx",
-    ["tsx", "scripts/quality-audit/evaluate-pendentes.ts"],
-    {
-      cwd: process.cwd(),
-      detached: true,
-      stdio: "ignore",
-      env: process.env,
-    },
-  );
-  child.unref();
-
-  return { started: true, pendentes };
+  return triggerClaudeJudge({ source: "botao-avaliar-pendentes" });
 }

@@ -22,6 +22,19 @@ describe("fillForwardDaily", () => {
     expect(out[2]).toMatchObject({ percent: 80, carriedForward: true });
   });
 
+  it("estende ate untilKey (hoje) com carry-forward , vira linha, nao ponto", () => {
+    const out = fillForwardDaily(
+      [{ date: "2026-06-01", percent: 100, total: 5 }],
+      "2026-06-03",
+    );
+    expect(out.map((d) => d.date)).toEqual([
+      "2026-06-01",
+      "2026-06-02",
+      "2026-06-03",
+    ]);
+    expect(out[2]).toMatchObject({ percent: 100, carriedForward: true });
+  });
+
   it("dias iniciais sem percentual previo ficam null", () => {
     const out = fillForwardDaily([
       { date: "2026-06-01", percent: null, total: 0 },

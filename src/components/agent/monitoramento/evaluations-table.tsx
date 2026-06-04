@@ -102,6 +102,9 @@ interface EvaluationsTableProps {
   /** Auto-numerador de rodadas (R8, R9, ...). Vindo do parent para
    * compartilhar a mesma instancia de Map entre seletores e tabela. */
   labelForRodada?: (marker: string | null | undefined) => string;
+  /** Acao opcional renderizada a direita do titulo "Avaliacoes" (ex.: botao
+   *  "Avaliar pendentes" em ambiente local). */
+  headerAction?: React.ReactNode;
 }
 
 export function EvaluationsTable({
@@ -110,6 +113,7 @@ export function EvaluationsTable({
   availableModels,
   availablePatterns,
   labelForRodada,
+  headerAction,
 }: EvaluationsTableProps) {
   const [data, setData] = useState<InitialData>(initialData);
   const [loading, setLoading] = useState(false);
@@ -198,16 +202,19 @@ export function EvaluationsTable({
   return (
     <Card className="overflow-hidden rounded-2xl border border-border bg-muted/30">
       <CardHeader>
-        <CardTitle className="flex items-center gap-2 text-sm">
-          <History className="h-4 w-4 text-violet-500" />
-          Avaliações
-          {loading && (
-            <Loader2
-              className="h-3.5 w-3.5 animate-spin text-muted-foreground"
-              aria-label="Carregando"
-            />
-          )}
-        </CardTitle>
+        <div className="flex items-center justify-between gap-3">
+          <CardTitle className="flex items-center gap-2 text-sm">
+            <History className="h-4 w-4 text-violet-500" />
+            Avaliações
+            {loading && (
+              <Loader2
+                className="h-3.5 w-3.5 animate-spin text-muted-foreground"
+                aria-label="Carregando"
+              />
+            )}
+          </CardTitle>
+          {headerAction}
+        </div>
       </CardHeader>
       <CardContent className="p-0">
         <EvaluationsTableFilters
@@ -221,7 +228,12 @@ export function EvaluationsTable({
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead className="w-[140px]">Data</TableHead>
+                <TableHead
+                  className="w-[140px]"
+                  title="Horário de Brasília (Brasil, UTC-3)"
+                >
+                  Data
+                </TableHead>
                 <TableHead className="w-[130px]">Origem</TableHead>
                 <TableHead>Pergunta</TableHead>
                 <TableHead>Resposta</TableHead>
@@ -253,8 +265,8 @@ export function EvaluationsTable({
                       )}
                       onClick={() => setExpandedId(isOpen ? null : row.id)}
                     >
-                      <TableCell className="font-mono text-xs">
-                        {dateTimeFmt.format(row.createdAt)}
+                      <TableCell className="font-mono text-xs whitespace-nowrap">
+                        {dateTimeFmt.format(row.createdAt).replace(",", "")}
                       </TableCell>
                       <TableCell className="text-xs">
                         {(() => {
@@ -296,23 +308,39 @@ export function EvaluationsTable({
                         {truncate(row.answerSnapshot)}
                       </TableCell>
                       <TableCell>
-                        <div className="flex items-center gap-1">
-                          <Badge
-                            variant="outline"
-                            className={cn(
-                              "border text-[11px]",
-                              STATUS_TONE[row.status],
-                            )}
-                          >
-                            {STATUS_LABEL[row.status]}
-                          </Badge>
-                          {row.humanStatus && (
-                            <ShieldCheck
-                              className="h-3 w-3 text-emerald-500"
-                              aria-label="Ajustado manualmente"
-                            />
-                          )}
-                        </div>
+                        {(() => {
+                          // Status efetivo = ajuste humano sobrescreve o
+                          // veredito automatico. A tag mostra o efetivo; o
+                          // shield + tooltip preservam o original (auditavel).
+                          const human = row.humanStatus as EvalStatus | null;
+                          const eff = human ?? row.status;
+                          return (
+                            <div
+                              className="flex items-center gap-1"
+                              title={
+                                human
+                                  ? `Veredito automático: ${STATUS_LABEL[row.status]} → ajuste humano: ${STATUS_LABEL[eff]}`
+                                  : undefined
+                              }
+                            >
+                              <Badge
+                                variant="outline"
+                                className={cn(
+                                  "border text-[11px]",
+                                  STATUS_TONE[eff],
+                                )}
+                              >
+                                {STATUS_LABEL[eff]}
+                              </Badge>
+                              {human && (
+                                <ShieldCheck
+                                  className="h-3 w-3 text-emerald-500"
+                                  aria-label={`Ajustado manualmente (era ${STATUS_LABEL[row.status]})`}
+                                />
+                              )}
+                            </div>
+                          );
+                        })()}
                       </TableCell>
                       <TableCell className="font-mono text-xs text-muted-foreground">
                         {row.model ?? ","}
@@ -348,7 +376,10 @@ export function EvaluationsTable({
                     </TableRow>
                     {isOpen && (
                       <TableRow className="bg-muted/10">
-                        <TableCell colSpan={8} className="p-0">
+                        {/* whitespace-normal: o td herda whitespace-nowrap do
+                            TableCell; sem isso a resposta da IA nao quebra e
+                            vaza pela direita do componente. */}
+                        <TableCell colSpan={8} className="whitespace-normal p-0">
                           <EvaluationDrilldown
                             evaluationId={row.id}
                             onAdjusted={handleAdjusted}

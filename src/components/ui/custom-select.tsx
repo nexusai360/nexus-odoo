@@ -11,7 +11,9 @@ import { cn } from "@/lib/utils";
 
 export interface SelectOption {
   value: string;
-  label: string;
+  /** Texto OU conteúdo custom (ex.: uma tag colorida) renderizado na lista e
+   *  no trigger. string continua valendo (é um ReactNode). */
+  label: React.ReactNode;
   description?: string;
   icon?: React.ReactNode;
   /** Opção visível porém não selecionável (cinza, sem clique). */

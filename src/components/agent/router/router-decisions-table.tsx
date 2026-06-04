@@ -73,7 +73,7 @@ const DOMAIN_TONE: Record<string, string> = {
   comercial:
     "bg-amber-500/10 text-amber-700 border-amber-500/30 dark:text-amber-300",
   cadastros:
-    "bg-teal-500/10 text-teal-700 border-teal-500/30 dark:text-teal-300",
+    "bg-orange-500/10 text-orange-700 border-orange-500/30 dark:text-orange-300",
   contabil:
     "bg-indigo-500/10 text-indigo-700 border-indigo-500/30 dark:text-indigo-300",
   crm: "bg-fuchsia-500/10 text-fuchsia-700 border-fuchsia-500/30 dark:text-fuchsia-300",
@@ -131,7 +131,7 @@ function PickedTag({ children }: { children: React.ReactNode }) {
   return (
     <Badge
       variant="outline"
-      className="border-border bg-muted/40 font-mono text-[11px] text-muted-foreground"
+      className="shrink-0 whitespace-nowrap border-border bg-muted/40 font-mono text-[11px] text-muted-foreground"
     >
       {children}
     </Badge>
@@ -294,17 +294,27 @@ export function RouterDecisionsTable({
           </div>
         ) : (
           <>
-            <div className="overflow-x-auto">
+            <div>
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead className="w-[150px]">Data</TableHead>
-                    <TableHead className="w-[120px]">Origem</TableHead>
-                    <TableHead>Pergunta</TableHead>
-                    <TableHead>Router escolhida</TableHead>
-                    <TableHead>Tool chamada</TableHead>
                     <TableHead
-                      className="w-[110px] text-right"
+                      className="w-[150px]"
+                      title="Horário de Brasília (Brasil, UTC-3)"
+                    >
+                      Data
+                    </TableHead>
+                    <TableHead className="w-[110px]">Origem</TableHead>
+                    {/* Pergunta volta como referencia (qual linha abrir), porem
+                        ESTREITA e com reticencias cedo (w-[200px]). A versao
+                        completa vive no drill-down. Router escolhida fica como a
+                        unica coluna flexivel -> sobra largura para as 5 tags numa
+                        linha so. */}
+                    <TableHead className="w-[280px]">Pergunta</TableHead>
+                    <TableHead>Router escolhida</TableHead>
+                    <TableHead className="w-[150px]">Tool chamada</TableHead>
+                    <TableHead
+                      className="w-[84px] text-right"
                       title="Similaridade (cosseno) entre a pergunta e o domínio mais próximo. Neste modelo de embedding, 0,40-0,60 já é um bom match (raramente passa de 0,7). O acerto alto vem do ranking relativo (o domínio certo é o mais próximo) e das regras de palavra-chave, não do valor absoluto."
                     >
                       Similaridade
@@ -333,7 +343,7 @@ export function RouterDecisionsTable({
                               aria-label="Discordância"
                             />
                           ) : null}
-                          {dateTimeFmt.format(r.createdAt)}
+                          {dateTimeFmt.format(r.createdAt).replace(",", "")}
                         </span>
                       </TableCell>
                       <TableCell className="text-xs">
@@ -350,7 +360,7 @@ export function RouterDecisionsTable({
                         )}
                       </TableCell>
                       <TableCell
-                        className="max-w-[320px] text-sm"
+                        className="w-[280px] max-w-[280px] text-sm"
                         title={
                           r.usedReformulation && r.reformulatedQuestion
                             ? `Original: ${r.userQuestion}\nReformulada: ${r.reformulatedQuestion}`
@@ -370,7 +380,10 @@ export function RouterDecisionsTable({
                         ) : null}
                       </TableCell>
                       <TableCell>
-                        <div className="flex flex-wrap gap-1">
+                        {/* flex-nowrap: as tags do router ficam SEMPRE numa
+                            linha so. Pergunta agora e' bounded (w-200px), entao
+                            esta coluna flexivel ainda recebe largura de sobra. */}
+                        <div className="flex flex-nowrap items-center gap-1">
                           {r.pickedDomains.length === 0 ? (
                             <PickedTag>fallback</PickedTag>
                           ) : (
@@ -401,8 +414,17 @@ export function RouterDecisionsTable({
                     </TableRow>
                     {isOpen && (
                       <TableRow className="hover:bg-transparent">
-                        <TableCell colSpan={6} className="p-0">
-                          <RouterDecisionDrilldown id={r.id} />
+                        {/* whitespace-normal: o <td> herda whitespace-nowrap do
+                            TableCell; sem isso o texto do banner nao quebra e
+                            vaza pela direita. A tabela ja cabe no card, entao o
+                            td tem a largura visivel e o texto quebra na caixa. */}
+                        <TableCell
+                          colSpan={6}
+                          className="whitespace-normal p-0"
+                        >
+                          <div className="bg-muted/20 p-5">
+                            <RouterDecisionDrilldown id={r.id} />
+                          </div>
                         </TableCell>
                       </TableRow>
                     )}

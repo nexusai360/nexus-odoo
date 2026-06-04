@@ -36,10 +36,30 @@ const formatPercent = (v: number) =>
   Number.isFinite(v) ? `${v.toFixed(1)}%` : ",";
 
 interface ChartsBlockProps {
-  dailyData: Array<{ date: string; percent: number | null; total: number }>;
+  dailyData: Array<{
+    date: string;
+    percent: number | null;
+    total: number;
+    marker?: string | null;
+  }>;
   kpis: QualityKpisV2;
   topPatterns: Array<{ pattern: string; count: number }>;
   loading?: boolean;
+  /** Fim do periodo selecionado (ISO). A serie diaria e' estendida (carry-
+   *  forward) ate min(hoje BRT, fim do periodo), para mostrar o dia atual. */
+  periodEnd: string;
+  /** Resolve o nome da rodada a partir do marker (ex.: "Rodada 24"). */
+  labelForRodada?: (marker: string | null | undefined) => string;
+}
+
+/** Chave YYYY-MM-DD em America/Sao_Paulo (en-CA = ISO). */
+function dayKeyBrt(d: Date): string {
+  return new Intl.DateTimeFormat("en-CA", {
+    timeZone: "America/Sao_Paulo",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).format(d);
 }
 
 function formatDayLabel(iso: string): string {
@@ -48,29 +68,74 @@ function formatDayLabel(iso: string): string {
   return `${String(d).padStart(2, "0")}/${String(m).padStart(2, "0")}`;
 }
 
+/** Soma N dias a uma chave YYYY-MM-DD (em UTC, evita drift de fuso). */
+function addDayKey(key: string, days: number): string {
+  const [y, m, d] = key.split("-").map((n) => parseInt(n, 10));
+  const dt = new Date(Date.UTC(y, m - 1, d + days));
+  return `${dt.getUTCFullYear()}-${String(dt.getUTCMonth() + 1).padStart(2, "0")}-${String(dt.getUTCDate()).padStart(2, "0")}`;
+}
+
 /**
- * Carry-forward do percentual diario: dias SEM teste (percent null ou total 0)
- * herdam o ultimo percentual conhecido, em vez de cair para 0. Assim a linha
- * "segura" o ultimo aproveitamento ate haver uma nova rodada que o altere.
- * Dias iniciais sem nenhum percentual previo ficam null (sem ponto).
+ * Constroi a serie diaria CONTINUA (um ponto por dia de calendario) do 1o dia
+ * com avaliacao ate `untilKey` (hoje, em BRT), aplicando carry-forward: dias
+ * SEM teste herdam o ultimo percentual conhecido em vez de cair para 0. Assim:
+ *  - um unico dia de teste vira uma LINHA ate hoje (nao um ponto isolado);
+ *  - o dia atual reflete o ultimo aproveitamento ("ainda em 100%").
+ * Dias antes do 1o percentual conhecido ficam null (sem ponto).
  */
 export function fillForwardDaily(
-  rows: Array<{ date: string; percent: number | null; total: number }>,
+  rows: Array<{
+    date: string;
+    percent: number | null;
+    total: number;
+    marker?: string | null;
+  }>,
+  untilKey?: string,
 ): Array<{
   date: string;
   percent: number | null;
   total: number;
+  marker: string | null;
   carriedForward: boolean;
 }> {
+  if (rows.length === 0) return [];
+  const byDate = new Map(rows.map((r) => [r.date, r]));
+  const startKey = rows[0].date;
+  const lastRowKey = rows[rows.length - 1].date;
+  const endKey =
+    untilKey && untilKey > lastRowKey ? untilKey : lastRowKey;
+
+  const out: Array<{
+    date: string;
+    percent: number | null;
+    total: number;
+    marker: string | null;
+    carriedForward: boolean;
+  }> = [];
   let last: number | null = null;
-  return rows.map((d) => {
-    const temTeste = d.total > 0 && d.percent !== null;
+  for (let key = startKey; key <= endKey; key = addDayKey(key, 1)) {
+    const row = byDate.get(key);
+    const temTeste = !!row && row.total > 0 && row.percent !== null;
     if (temTeste) {
-      last = d.percent;
-      return { ...d, carriedForward: false };
+      last = row!.percent;
+      out.push({
+        date: key,
+        percent: row!.percent,
+        total: row!.total,
+        marker: row!.marker ?? null,
+        carriedForward: false,
+      });
+    } else {
+      out.push({
+        date: key,
+        percent: last,
+        total: row?.total ?? 0,
+        marker: null,
+        carriedForward: last !== null,
+      });
     }
-    return { ...d, percent: last, carriedForward: last !== null };
-  });
+  }
+  return out;
 }
 
 export function ChartsBlock({
@@ -78,16 +143,27 @@ export function ChartsBlock({
   kpis,
   topPatterns,
   loading = false,
+  periodEnd,
+  labelForRodada,
 }: ChartsBlockProps) {
-  const filledDaily = fillForwardDaily(dailyData);
+  // Estende a serie ate min(hoje, fim do periodo) em BRT (carry-forward).
+  const todayKey = dayKeyBrt(new Date());
+  const periodEndKey = dayKeyBrt(new Date(periodEnd));
+  const untilKey = periodEndKey < todayKey ? periodEndKey : todayKey;
+  const filledDaily = fillForwardDaily(dailyData, untilKey);
   const areaData = filledDaily
     // Pula dias iniciais sem percentual previo (linha so comeca no 1o teste).
     .filter((d) => d.percent !== null)
     .map((d) => ({
       name: formatDayLabel(d.date),
-      tooltipLabel: d.carriedForward
-        ? `${d.date} (sem teste no dia, mantém último)`
-        : d.date,
+      tooltipLabel: d.date,
+      // 2a linha do tooltip: rodada do dia ou aviso de dia sem rodada.
+      tooltipFooter:
+        !d.carriedForward && d.marker
+          ? labelForRodada
+            ? labelForRodada(d.marker)
+            : d.marker
+          : "Não houve rodada",
       "% Correto": d.percent ?? 0,
     }));
 

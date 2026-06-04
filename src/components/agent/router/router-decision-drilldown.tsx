@@ -9,7 +9,14 @@
  */
 
 import { useEffect, useState } from "react";
-import { AlertTriangle, CheckCircle2, Loader2, MessageSquare } from "lucide-react";
+import {
+  AlertTriangle,
+  Bot,
+  CheckCircle2,
+  Loader2,
+  MessageSquare,
+  User as UserIcon,
+} from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
@@ -76,60 +83,54 @@ export function RouterDecisionDrilldown({ id }: { id: string }) {
   const maxScore = detail.scores[0]?.score ?? 1;
 
   return (
-    <div className="space-y-5 bg-muted/20 px-4 py-5">
-      {/* Veredito */}
-      <div>
-        {verdito === "discordancia" ? (
-          <div className="flex items-start gap-2 rounded-lg border border-amber-500/30 bg-amber-500/5 p-3">
-            <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-amber-500" />
-            <div className="text-sm">
-              <p className="font-medium text-amber-700 dark:text-amber-300">
-                Discordância de roteamento
-              </p>
-              <p className="text-muted-foreground">
-                Nenhum domínio realmente usado pelo agente (
-                {detail.toolsDomains.map(displayDomain).join(", ")}) estava entre
-                os escolhidos pelo router (
-                {detail.pickedDomains.length === 0
-                  ? "fallback"
-                  : detail.pickedDomains.map(displayDomain).join(", ")}
-                ). Com o router filtrando o catálogo, a IA poderia não receber a
-                ferramenta certa. Candidata a calibrar{" "}
-                <code>domain-vocabulary.ts</code> ou a Construção de pergunta
-                (reformulação).
-              </p>
-            </div>
-          </div>
-        ) : verdito === "chat" ? (
-          <div className="flex items-start gap-2 rounded-lg border border-zinc-500/30 bg-zinc-500/5 p-3">
-            <MessageSquare className="mt-0.5 h-4 w-4 shrink-0 text-zinc-500" />
-            <div className="text-sm">
-              <p className="font-medium text-zinc-600 dark:text-zinc-300">
-                Turno conversacional (sem tool)
-              </p>
-              <p className="text-muted-foreground">
-                O agente respondeu sem acionar nenhuma ferramenta (saudação,
-                follow-up ou pedido de esclarecimento). O router ainda registrou
-                a decisão, mas não houve tool a comparar.
-              </p>
-            </div>
-          </div>
-        ) : (
-          <div className="flex items-start gap-2 rounded-lg border border-emerald-500/30 bg-emerald-500/5 p-3">
-            <CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-emerald-500" />
-            <div className="text-sm">
-              <p className="font-medium text-emerald-700 dark:text-emerald-300">
-                Roteamento concordante
-              </p>
-              <p className="text-muted-foreground">
-                O router ofereceu o domínio que o agente de fato usou (
-                {detail.toolsDomains.map(displayDomain).join(", ")}). Se estivesse
-                ativo filtrando, a IA teria recebido a ferramenta correta.
-              </p>
-            </div>
-          </div>
-        )}
-      </div>
+    // Renderizado FORA do scroller da tabela (largura normal do card), entao o
+    // texto quebra linha naturalmente com break-words , sem corte nem rolagem.
+    <div className="w-full space-y-5 [overflow-wrap:anywhere]">
+      {/* Veredito , banner em BLOCO (a frase e' <p> de bloco, quebra linha
+          dentro da caixa, que cresce na vertical; ocupa a largura toda). */}
+      {verdito === "discordancia" ? (
+        <div className="rounded-lg border border-amber-500/30 bg-amber-500/5 p-4">
+          <p className="mb-1 flex items-center gap-2 text-sm font-medium text-amber-700 dark:text-amber-300">
+            <AlertTriangle className="h-4 w-4 shrink-0" />
+            Roteamento divergente (oportunidade de calibragem)
+          </p>
+          <p className="text-sm text-muted-foreground">
+            O agente usou{" "}
+            <strong>{detail.toolsDomains.map(displayDomain).join(", ")}</strong>,
+            fora do que o router ofertou (
+            {detail.pickedDomains.length === 0
+              ? "fallback"
+              : detail.pickedDomains.map(displayDomain).join(", ")}
+            ). Em modo <strong>{detail.mode}</strong> não bloqueia a resposta; só
+            sinaliza que, com o router filtrando, esse domínio poderia faltar.
+            Calibrar o vocabulário do domínio resolve.
+          </p>
+        </div>
+      ) : verdito === "chat" ? (
+        <div className="rounded-lg border border-zinc-500/30 bg-zinc-500/5 p-4">
+          <p className="mb-1 flex items-center gap-2 text-sm font-medium text-zinc-600 dark:text-zinc-300">
+            <MessageSquare className="h-4 w-4 shrink-0" />
+            Turno conversacional (sem tool)
+          </p>
+          <p className="text-sm text-muted-foreground">
+            O agente respondeu sem acionar nenhuma ferramenta (saudação,
+            follow-up ou pedido de esclarecimento). O router registrou a decisão,
+            mas não houve tool a comparar.
+          </p>
+        </div>
+      ) : (
+        <div className="rounded-lg border border-emerald-500/30 bg-emerald-500/5 p-4">
+          <p className="mb-1 flex items-center gap-2 text-sm font-medium text-emerald-700 dark:text-emerald-300">
+            <CheckCircle2 className="h-4 w-4 shrink-0" />
+            Roteamento concordante
+          </p>
+          <p className="text-sm text-muted-foreground">
+            O router ofereceu o domínio que o agente de fato usou (
+            {detail.toolsDomains.map(displayDomain).join(", ")}). Com o router
+            ativo, a IA teria recebido a ferramenta correta.
+          </p>
+        </div>
+      )}
 
       {/* Router escolheu vs Tool chamada */}
       <div className="grid gap-4 sm:grid-cols-2">
@@ -178,32 +179,42 @@ export function RouterDecisionDrilldown({ id }: { id: string }) {
       {/* Scores por dominio */}
       {detail.scores.length > 0 && (
         <div>
-          <p className="mb-2 text-xs font-medium text-muted-foreground">
-            Similaridade por domínio (threshold{" "}
-            {detail.threshold !== null ? detail.threshold.toFixed(2) : "?"})
+          <p className="mb-1 text-xs font-medium text-foreground">
+            Similaridade por domínio
+            <span className="ml-2 font-normal text-muted-foreground">
+              (threshold {detail.threshold !== null ? detail.threshold.toFixed(2) : "?"})
+            </span>
           </p>
-          <div className="space-y-1">
+          <p className="mb-2 text-[11px] leading-snug text-muted-foreground">
+            Proximidade (cosseno) da pergunta com cada domínio. O router oferta
+            os que passam do threshold (barras em roxo). Vale o ranking, não o
+            valor absoluto.
+          </p>
+          <div className="mx-auto max-w-2xl space-y-1">
             {detail.scores.map((s) => {
               const passou =
                 detail.threshold !== null && s.score >= detail.threshold;
               const escolhido = detail.pickedDomains.includes(s.domain);
               return (
-                <div key={s.domain} className="flex items-center gap-2 text-xs">
-                  <span className="w-28 shrink-0 font-mono text-muted-foreground">
+                <div
+                  key={s.domain}
+                  className="grid grid-cols-[6rem_1fr_2.5rem] items-center gap-2 text-xs"
+                >
+                  <span className="truncate font-mono text-muted-foreground">
                     {displayDomain(s.domain)}
                   </span>
-                  <div className="relative h-2 flex-1 overflow-hidden rounded bg-muted">
+                  <div className="relative h-1.5 overflow-hidden rounded bg-muted">
                     <div
                       className={cn(
                         "absolute inset-y-0 left-0 rounded",
-                        escolhido ? "bg-violet-500" : "bg-muted-foreground/40",
+                        escolhido ? "bg-violet-500" : "bg-muted-foreground/30",
                       )}
                       style={{ width: `${(s.score / maxScore) * 100}%` }}
                     />
                   </div>
                   <span
                     className={cn(
-                      "w-12 shrink-0 text-right tabular-nums",
+                      "text-right tabular-nums",
                       passou ? "text-foreground" : "text-muted-foreground",
                     )}
                   >
@@ -233,7 +244,7 @@ export function RouterDecisionDrilldown({ id }: { id: string }) {
       )}
 
       {/* Metadados */}
-      <div className="flex flex-wrap gap-x-6 gap-y-1 text-xs text-muted-foreground">
+      <div className="mx-auto flex max-w-2xl flex-wrap justify-center gap-x-6 gap-y-1 text-xs text-muted-foreground">
         <span>
           Similaridade top:{" "}
           {detail.topScore !== null ? detail.topScore.toFixed(2) : "-"}
@@ -247,17 +258,32 @@ export function RouterDecisionDrilldown({ id }: { id: string }) {
         {detail.originalFallback && <span>Camada 1 caiu em fallback</span>}
       </div>
 
-      {/* Resposta final do agente */}
-      {detail.finalAnswer && (
-        <div>
-          <p className="mb-1 text-xs font-medium text-muted-foreground">
-            Resposta do agente
-          </p>
-          <div className="rounded-lg border border-border bg-background p-3 text-sm">
-            <MarkdownSnapshot content={detail.finalAnswer} />
+      {/* Pergunta do usuario + Resposta do agente (estilo backtest: icone +
+          label). A pergunta aqui aparece COMPLETA, ja que saiu da tabela. */}
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+        <section className="min-w-0 space-y-1.5">
+          <h4 className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+            <UserIcon className="h-3.5 w-3.5" /> Pergunta
+          </h4>
+          <div className="rounded-lg border border-border bg-background px-3 py-2 text-sm">
+            {detail.userQuestion ? (
+              <MarkdownSnapshot content={detail.userQuestion} />
+            ) : (
+              <span className="text-muted-foreground">(vazio)</span>
+            )}
           </div>
-        </div>
-      )}
+        </section>
+        {detail.finalAnswer && (
+          <section className="min-w-0 space-y-1.5">
+            <h4 className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+              <Bot className="h-3.5 w-3.5" /> Resposta
+            </h4>
+            <div className="rounded-lg border border-border bg-background px-3 py-2 text-sm">
+              <MarkdownSnapshot content={detail.finalAnswer} />
+            </div>
+          </section>
+        )}
+      </div>
     </div>
   );
 }
