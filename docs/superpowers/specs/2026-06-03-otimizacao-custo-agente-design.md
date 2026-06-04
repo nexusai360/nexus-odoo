@@ -1,8 +1,21 @@
-# Otimização de custo do Agente Nex , Design (SPEC v1)
+# Otimização de custo do Agente Nex , Design (SPEC v3)
 
 > Data: 2026-06-03
 > Branch: `feat/agente-nex-bubble-ux`
-> Status: rascunho para revisão
+> Status: revisada (2 passes adversariais aplicados) , pronta para plano
+
+## Histórico de revisão
+
+- **v1**: rascunho inicial das 3 alavancas.
+- **v2** (review #1, lacunas e premissas): data injetada como item de input
+  (não nas `instructions`) para deixar o prefixo 100% estável; migração Prisma
+  para tokens cacheados; preço de input cacheado no catálogo de modelos;
+  classificação das tools de listagem por tamanho potencial (paginar só listas
+  que podem crescer); reconciliação com o `truncado`/`makeHonestTool` existente.
+- **v3** (review #2, granularidade e integração): nota sobre dado mudar entre
+  páginas (janela de sync); `COUNT` sobre a mesma cláusula `WHERE` da query;
+  ordenação estável auditada por tool; teto de `limit`; fallback de caching
+  quando o provider não expõe `cached_tokens`.
 
 ## 1. Problema
 
@@ -68,28 +81,40 @@ do system fica cacheável** , nem entre a 1ª e a 2ª chamada da mesma pergunta
 ### 4.3 Mudanças
 
 1. **Reordenar o prompt para um prefixo estável.** A data atual sai do topo do
-   system. Estrutura alvo:
-   - **Prefixo estável (cacheável):** system base (regras `identity-base`) +
-     catálogo de tools.
-   - **Sufixo variável:** data atual + histórico + pergunta do usuário.
-   A data passa a ser injetada como a última linha do bloco de sistema (após o
-   `systemPromptBase`) ou como mensagem de contexto imediatamente antes da
-   pergunta , o que preservar melhor o prefixo no provider em uso.
-2. **Granularidade de dia, não de segundo.** A data injetada usa o dia
-   (`2026-06-03`) em vez de data+hora+segundos, reduzindo a frequência de
-   invalidação. (Se alguma regra precisar de hora, avaliar manter hora mas fora
-   do prefixo; default: só o dia.)
+   system. **Decisão (v2):** a data deixa de ser concatenada ao `systemPrompt` e
+   passa a ser **um item de input próprio** (mensagem `developer`/`user`),
+   posicionado **imediatamente antes da pergunta do usuário**, depois do
+   histórico. Assim as `instructions` (regras `identity-base`) ficam **100%
+   estáveis** e cacheáveis byte a byte, e só o item curto de data varia.
+   Estrutura alvo:
+   - **Prefixo estável (cacheável):** system base (`identity-base`) + catálogo
+     de tools.
+   - **Sufixo variável:** histórico + item de data atual + pergunta do usuário.
+2. **Granularidade de dia, não de segundo.** O item de data usa o dia
+   (`2026-06-03`, mais dia da semana) em vez de data+hora+segundos. Como a data
+   está fora do prefixo cacheável, a granularidade afeta só a legibilidade; o
+   cache do prefixo não depende mais dela. Se alguma regra precisar de hora,
+   incluir no mesmo item de input (segue fora do prefixo).
 3. **Ler `cached_tokens` no provider OpenAI.** Em `openai.ts`, ler
    `usage.input_tokens_details.cached_tokens` (Responses API) e
    `usage.prompt_tokens_details.cached_tokens` (chat completions) e propagar o
-   valor.
-4. **Refletir o custo real no billing e no menu de consumo.** O `usage-logger` /
-   `billing` passam a registrar tokens cacheados e a calcular o custo com o
-   preço de input cacheado para essa fração. O menu de consumo deixa de
+   valor. **Fallback (v3):** se o campo não vier (modelo/endpoint que não expõe),
+   tratar como `0` , o custo cai para o comportamento atual (sem desconto), sem
+   quebrar.
+4. **Persistir tokens cacheados (migração Prisma).** A tabela de uso ganha uma
+   coluna `tokens_cached_input` (default 0). Migração via `prisma migrate dev`
+   (aciona protocolo de schema entre worktrees: `agente schema-changed` + sugerir
+   merge). O `usage-logger` grava o valor.
+5. **Preço de input cacheado no catálogo de modelos.** `calculateCost` passa a
+   considerar o preço de input cacheado por modelo (fração do input normal,
+   conforme tabela do provider). Custo = `(input - cached) * preçoIn +
+   cached * preçoInCached + output * preçoOut`. O menu de consumo deixa de
    superestimar.
-5. **`prompt_cache_key` estável.** Definir uma chave estável por versão de
-   system + superfície (ex.: hash do system base) para melhorar o roteamento de
-   cache na Responses API.
+6. **`prompt_cache_key` estável.** Definir uma chave estável por versão de system
+   (ex.: hash curto do `identity-base`) para melhorar o roteamento de cache na
+   Responses API. Verificar na doc do provider se o parâmetro é suportado no
+   endpoint em uso; se não for, o caching automático por prefixo continua valendo
+   (a chave é só uma dica de roteamento).
 
 ### 4.4 Fora de escopo da alavanca 1
 
@@ -136,20 +161,44 @@ terceirizada , terceirizá-la é o que geraria bug.
 - Um helper que, dado `total` e a lista da página, monta os metadados
   canônicos: `{ total, mostrando: "1-10", temMais: boolean, proximoOffset: number | null }`.
 
-**Adoção explícita nas ~58 tools de listagem (uma a uma):**
+**Classificação prévia (v2) , paginar só o que pode crescer.** Antes de tocar,
+classificar as ~58 tools de lista em três baldes:
 
-- A tool aceita `limit`/`offset` no input.
+- **Lista grande** (produtos, parceiros, pedidos, notas, DF-e...): podem ter
+  centenas/milhares de linhas. **Recebem paginação completa** (`limit=10`).
+- **Lista pequena por natureza** (filiais, UFs, contas contábeis, etapas,
+  certificados...): dezenas no máximo. **Recebem `limit` com default maior**
+  (ex.: 50) ou ficam sem trava se o teto natural já é baixo , paginar em 10
+  seria ruído. Decisão por tool no plano.
+- **Número agregado (~38):** sem paginação.
+
+**Adoção explícita nas tools de lista grande (uma a uma):**
+
+- A tool aceita `limit`/`offset` no input (fragmento Zod compartilhado).
 - A query aplica `LIMIT`/`OFFSET` **no SQL** (Prisma), não fatiando array em
   memória , traz só a página do banco.
-- A tool faz um `COUNT` para o `total` real.
-- A tool garante um `ORDER BY` **estável** (a ordenação semântica dela: margem,
-  data, valor, nome...), pré-requisito para paginação determinística.
+- A tool faz um `COUNT` para o `total` real, usando **a mesma cláusula `WHERE`**
+  da query da página (senão `total` e página divergem).
+- A tool garante um `ORDER BY` **estável e determinístico** (a ordenação
+  semântica dela: margem, data, valor, nome...), com desempate por chave única
+  (ex.: id) , pré-requisito para "os próximos 10" não repetir nem pular. Auditar
+  quais tools já têm `ORDER BY` e quais precisam ganhar.
 - A tool retorna a página + os metadados da engrenagem central.
 
-**As 6 tools via `makeHonestTool`** ganham a paginação pelo factory (uma edição
-central) , o envelope já tem `linhas`/`total`/`truncado`.
+**As tools via `makeHonestTool`** ganham a paginação pelo factory (uma edição
+central). **Reconciliação (v2):** o campo `truncado`/`_listaTruncada` atual do
+envelope é **substituído/derivado** pelos novos metadados (`temMais`), evitando
+dois conceitos paralelos de "tem mais dado". O factory passa a aplicar
+`limit`/`offset` na função `query` que cada tool fornece.
 
 **Tools de número agregado (~38):** não recebem paginação.
+
+**Nota (v3) , dado mudando entre páginas.** O cache é repovoado pelo worker
+(incremental a cada ~3min). Se uma sync ocorrer entre a página 1 e a página 2, o
+`offset` pode pular/repetir uma linha na fronteira. É aceitável para o caso de
+uso (usuário pagina em segundos; ordenação estável com desempate por id reduz o
+efeito). Não justifica keyset pagination agora; reavaliar só se virar problema
+real.
 
 ### 6.4 Como o agente pede "os próximos" (MCP stateless)
 
