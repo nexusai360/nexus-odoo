@@ -327,7 +327,7 @@ function AssistantTrailBlock({
   const headerLabel =
     streaming || running
       ? "Pensando"
-      : `Raciocínio · ${total}${total === 1 ? " etapa" : " etapas"}${durationLabel}`;
+      : `Raciocínio · ${total}${total === 1 ? " tool" : " tools"}${durationLabel}`;
   const expanded = streaming || !collapsed;
   const Chevron = expanded ? ChevronDown : ChevronRight;
   const showThinking = streaming || running;

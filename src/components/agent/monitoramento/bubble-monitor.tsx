@@ -74,10 +74,18 @@ export function BubbleMonitor() {
   const [sessions, setSessions] = React.useState<SessionRow[] | null>(null);
   const [sessionId, setSessionId] = React.useState<string | null>(null);
   const [messages, setMessages] = React.useState<MonitorMessage[] | null>(null);
+  const convScrollRef = React.useRef<HTMLDivElement>(null);
 
   React.useEffect(() => {
     void listBubbleCollaborators().then(setCollabs).catch(() => setCollabs([]));
   }, []);
+
+  // Ao carregar a sessão, abre já no fim (mensagem mais recente embaixo).
+  React.useEffect(() => {
+    if (messages && convScrollRef.current) {
+      convScrollRef.current.scrollTop = convScrollRef.current.scrollHeight;
+    }
+  }, [messages]);
 
   React.useEffect(() => {
     if (!userId) {
@@ -188,7 +196,7 @@ export function BubbleMonitor() {
       {/* Coluna 3: conversa */}
       <div className={COL}>
         <div className={HEAD}>Conversa</div>
-        <div className="flex-1 space-y-3 overflow-y-auto p-4">
+        <div ref={convScrollRef} className="flex-1 space-y-3 overflow-y-auto p-4">
           {!sessionId ? (
             <Empty>Escolha uma sessão.</Empty>
           ) : messages === null ? (

@@ -146,7 +146,9 @@ export async function listBubbleSessions(userId: string): Promise<SessionRow[]> 
       messageCount: c._count.messages,
       ratingCounts,
       accuracyPct: computeAccuracy(ratingCounts),
-      isActive: c.endedAt === null,
+      // Só a conversa MAIS RECENTE sem encerramento conta como "ativa" (a sessão
+      // viva). As demais sem endedAt são sessões passadas nunca arquivadas.
+      isActive: pos === 0 && c.endedAt === null,
     };
   });
 }
