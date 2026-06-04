@@ -19,6 +19,7 @@ import {
   ChevronRight,
   Copy,
   Database,
+  Lightbulb,
   Search,
   Loader2,
   Sparkles,
@@ -81,6 +82,15 @@ export interface AgentMessageProps {
   feedback?: { rating: FeedbackRating; comment: string | null } | null;
   /** B1. Submete o voto (otimismo fica no chat-panel). */
   onSubmitFeedback?: (rating: FeedbackRating, comment?: string) => Promise<void> | void;
+  /**
+   * B2 (monitoramento, read-only). Sugestões que o agente ofereceu nesta
+   * resposta, exibidas DENTRO da bolha num bloco colapsável com chevron igual
+   * ao "Raciocínio". Gated: só renderiza quando presente, então a bubble viva
+   * (que usa a barra de sugestões clicável separada) não é afetada.
+   */
+  suggestions?: string[];
+  /** B2. Qual sugestão o usuário clicou (marcada como "usada" no bloco). */
+  clickedSuggestion?: string;
 }
 
 export function AgentMessage({
@@ -102,6 +112,8 @@ export function AgentMessage({
   dbMessageId,
   feedback,
   onSubmitFeedback,
+  suggestions,
+  clickedSuggestion,
 }: AgentMessageProps) {
   if (role === "loading") return <LoadingBubble />;
   if (role === "tool") return <ToolBubble name={toolName ?? "tool"} />;
@@ -183,6 +195,12 @@ export function AgentMessage({
               <MarkdownLite content={content} />
             )}
           </AssistantBodyReveal>
+          {!isUser && Array.isArray(suggestions) && suggestions.length > 0 ? (
+            <AssistantSuggestionsBlock
+              suggestions={suggestions}
+              clickedSuggestion={clickedSuggestion}
+            />
+          ) : null}
           {createdAt && !streaming ? (
             <div
               className={cn(
@@ -529,6 +547,104 @@ function AssistantTrailBlock({
                   </motion.li>
                 ))}
               </AnimatePresence>
+            </ul>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
+  );
+}
+
+/* -------------------------------------------------------------------------- */
+/* Sugestões absorvidas na bolha (B2 monitoramento, read-only)                 */
+/* -------------------------------------------------------------------------- */
+
+// Espelha o AssistantTrailBlock (mesma linguagem visual do "Raciocínio"):
+// header colapsável com chevron + ícone + "Sugestões · N", abre pra baixo
+// numa lista de chips. O chip que o usuário clicou ganha o selo "usada"
+// (Check + texto, nao so cor, conforme ui-ux-pro-max color-not-only). Estado
+// de colapso interno (default fechado), igual ao Raciocínio apos done.
+function AssistantSuggestionsBlock({
+  suggestions,
+  clickedSuggestion,
+}: {
+  suggestions: string[];
+  clickedSuggestion?: string;
+}) {
+  const reduce = useReducedMotion();
+  const [expanded, setExpanded] = React.useState(false);
+  const total = suggestions.length;
+  const Chevron = expanded ? ChevronDown : ChevronRight;
+  const EASE = [0.16, 1, 0.3, 1] as const;
+  const listId = React.useId();
+
+  return (
+    <div className="mt-2">
+      <button
+        type="button"
+        onClick={() => setExpanded((v) => !v)}
+        aria-expanded={expanded}
+        aria-controls={listId}
+        className={cn(
+          "flex min-h-[18px] w-full items-center gap-2 text-left text-xs font-medium leading-none",
+          "cursor-pointer text-foreground/85 transition-colors hover:text-foreground",
+        )}
+      >
+        <span className="inline-flex h-3.5 w-3.5 shrink-0 items-center justify-center">
+          <Chevron className="h-3.5 w-3.5 text-muted-foreground" />
+        </span>
+        <span className="inline-flex h-3.5 w-3.5 shrink-0 items-center justify-center">
+          <Lightbulb className="h-3.5 w-3.5 text-violet-500/70" aria-hidden />
+        </span>
+        <span className="flex-1 truncate">
+          {`Sugestões · ${total}${total === 1 ? " sugestão" : " sugestões"}`}
+        </span>
+      </button>
+      <AnimatePresence initial={false}>
+        {expanded && (
+          <motion.div
+            key="suggestions-body"
+            initial={reduce ? false : { height: 0, opacity: 0 }}
+            animate={{ height: "auto", opacity: 1 }}
+            exit={reduce ? { opacity: 0 } : { height: 0, opacity: 0 }}
+            transition={
+              reduce
+                ? { duration: 0 }
+                : {
+                    height: { duration: 0.16, ease: [0.22, 1, 0.36, 1] },
+                    opacity: { duration: 0.12, ease: "easeOut" },
+                  }
+            }
+            style={{ overflow: "hidden" }}
+          >
+            <ul id={listId} className="mt-1.5 flex flex-col gap-1.5 pl-5">
+              {suggestions.map((s, i) => {
+                const clicked = s === clickedSuggestion;
+                return (
+                  <motion.li
+                    key={i}
+                    initial={reduce ? false : { opacity: 0, y: -4 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={
+                      reduce ? { duration: 0 } : { duration: 0.15, ease: EASE }
+                    }
+                    className={cn(
+                      "flex items-center gap-2 self-start rounded-2xl border px-3 py-1.5 text-[11px] [overflow-wrap:anywhere]",
+                      clicked
+                        ? "border-violet-400/60 bg-violet-600/25 text-foreground"
+                        : "border-violet-500/25 bg-violet-500/5 text-foreground/70",
+                    )}
+                  >
+                    <span>{s}</span>
+                    {clicked ? (
+                      <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-violet-500/90 px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wide text-white">
+                        <Check className="h-2.5 w-2.5" aria-hidden />
+                        usada
+                      </span>
+                    ) : null}
+                  </motion.li>
+                );
+              })}
             </ul>
           </motion.div>
         )}

@@ -2,20 +2,20 @@
 
 /**
  * B2. Linha de mensagem na coluna 3 do monitoramento (read-only).
- * Envelopa o AgentMessage (INTOCADO, sem feedback interativo) e adiciona, por
- * fora, os badges de monitoramento: avaliação do juiz (clicável pro Backtest),
- * voto do usuário (B1), selo de áudio e a setinha de sugestões.
+ * Envelopa o AgentMessage (que agora renderiza as sugestões DENTRO da bolha,
+ * com chevron igual ao Raciocínio e selo "usada") e adiciona, por fora, os
+ * badges de monitoramento: avaliação do juiz (clicável pro Backtest), voto do
+ * usuário (B1) e selo de áudio.
  */
 
 import * as React from "react";
 import Link from "next/link";
-import { Mic, ChevronRight, ChevronDown } from "lucide-react";
+import { Mic } from "lucide-react";
 import { AgentMessage } from "@/components/agent/agent-message";
 import type { ProgressStep } from "@/components/agent/progress-trail";
 import { EvalStatusBadge } from "@/components/agent/quality/eval-status-badge";
 import type { EvalStatus } from "@/lib/agent/quality/queries";
 import { RATING_META, type UserFeedbackRating } from "@/components/agent/rating-meta";
-import { cn } from "@/lib/utils";
 
 const TERMINAL: EvalStatus[] = [
   "CORRETO",
@@ -40,7 +40,6 @@ export type MonitorMessage = {
 
 export function BubbleMonitorRow({ msg }: { msg: MonitorMessage }) {
   const [stepsCollapsed, setStepsCollapsed] = React.useState(true);
-  const [showSug, setShowSug] = React.useState(false);
   const isUser = msg.role === "user";
   const isAudio = msg.kind === "audio";
 
@@ -62,6 +61,8 @@ export function BubbleMonitorRow({ msg }: { msg: MonitorMessage }) {
         onToggleSteps={() => setStepsCollapsed((v) => !v)}
         reveal={false}
         streaming={false}
+        suggestions={msg.suggestions}
+        clickedSuggestion={msg.clickedSuggestion}
       />
 
       {isUser && isAudio ? (
@@ -97,44 +98,6 @@ export function BubbleMonitorRow({ msg }: { msg: MonitorMessage }) {
               voto: {RATING_META[msg.feedback.rating].label}
             </span>
           ) : null}
-
-          {msg.suggestions && msg.suggestions.length > 0 ? (
-            <button
-              type="button"
-              onClick={() => setShowSug((v) => !v)}
-              className="inline-flex items-center gap-1 text-[11px] text-muted-foreground transition-colors hover:text-foreground"
-              aria-expanded={showSug}
-            >
-              {showSug ? (
-                <ChevronDown className="h-3 w-3" />
-              ) : (
-                <ChevronRight className="h-3 w-3" />
-              )}
-              Sugestões
-            </button>
-          ) : null}
-        </div>
-      ) : null}
-
-      {!isUser && showSug && msg.suggestions ? (
-        <div className="mt-1.5 flex flex-col items-start gap-1.5">
-          {msg.suggestions.map((s, i) => {
-            const clicked = s === msg.clickedSuggestion;
-            return (
-              <span
-                key={i}
-                className={cn(
-                  "rounded-2xl border px-3 py-1.5 text-xs",
-                  clicked
-                    ? "border-violet-500/70 bg-violet-600/30 text-violet-100"
-                    : "border-violet-500/40 bg-violet-500/5 text-violet-300",
-                )}
-              >
-                {s}
-                {clicked ? "  (clicada)" : ""}
-              </span>
-            );
-          })}
         </div>
       ) : null}
     </div>
