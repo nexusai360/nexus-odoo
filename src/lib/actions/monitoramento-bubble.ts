@@ -22,6 +22,8 @@ export type Collaborator = {
   userId: string;
   name: string;
   avatarUrl: string | null;
+  /** Papel de plataforma (nível de acesso) do colaborador. */
+  role: string;
   sessionCount: number;
   hasActiveSession: boolean;
   ratingCounts: RatingCounts;
@@ -64,7 +66,7 @@ export async function listBubbleCollaborators(): Promise<Collaborator[]> {
   const userIds = grouped.map((g) => g.userId);
   const users = await prisma.user.findMany({
     where: { id: { in: userIds } },
-    select: { id: true, name: true, avatarUrl: true },
+    select: { id: true, name: true, avatarUrl: true, platformRole: true },
   });
   const userById = new Map(users.map((u) => [u.id, u]));
 
@@ -87,6 +89,7 @@ export async function listBubbleCollaborators(): Promise<Collaborator[]> {
       userId: g.userId,
       name: u?.name ?? "",
       avatarUrl: u?.avatarUrl ?? null,
+      role: u?.platformRole ?? "viewer",
       sessionCount: g._count._all,
       hasActiveSession: activeIds.has(g.userId),
       ratingCounts,

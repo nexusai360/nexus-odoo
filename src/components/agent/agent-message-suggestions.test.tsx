@@ -68,6 +68,43 @@ describe("AgentMessage (sugestões na bolha)", () => {
     expect(screen.queryByText("usada")).toBeNull();
   });
 
+  test("lâmpada só aparece quando alguma sugestão foi clicada", () => {
+    const { rerender } = render(
+      <AgentMessage
+        role="assistant"
+        content="r"
+        reveal={false}
+        suggestions={["A", "B"]}
+      />,
+    );
+    // ninguém clicou: sem lâmpada acesa
+    expect(screen.queryByLabelText("Uma sugestão foi clicada")).toBeNull();
+
+    rerender(
+      <AgentMessage
+        role="assistant"
+        content="r"
+        reveal={false}
+        suggestions={["A", "B"]}
+        clickedSuggestion="A"
+      />,
+    );
+    // alguém clicou: lâmpada acesa presente
+    expect(screen.getByLabelText("Uma sugestão foi clicada")).toBeDefined();
+  });
+
+  test("voto do usuário vira badge de canto (monitorVote)", () => {
+    render(
+      <AgentMessage
+        role="assistant"
+        content="r"
+        reveal={false}
+        monitorVote={{ rating: "CORRETO" }}
+      />,
+    );
+    expect(screen.getByLabelText("Voto do usuário: Correto")).toBeDefined();
+  });
+
   test("singular: 1 sugestão", () => {
     render(
       <AgentMessage

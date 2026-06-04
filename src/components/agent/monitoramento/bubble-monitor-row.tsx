@@ -2,10 +2,10 @@
 
 /**
  * B2. Linha de mensagem na coluna 3 do monitoramento (read-only).
- * Envelopa o AgentMessage (que agora renderiza as sugestões DENTRO da bolha,
- * com chevron igual ao Raciocínio e selo "usada") e adiciona, por fora, os
- * badges de monitoramento: avaliação do juiz (clicável pro Backtest), voto do
- * usuário (B1) e selo de áudio.
+ * O AgentMessage agora absorve TUDO dentro da bolha: sugestões (chevron igual
+ * ao Raciocínio), o veredito do juiz no rodapé (slot `footer`, clicável pro
+ * Backtest) e o voto do usuário como badge de canto (igual à bubble viva).
+ * Por fora só sobra o selo de áudio nas mensagens do usuário.
  */
 
 import * as React from "react";
@@ -15,7 +15,8 @@ import { AgentMessage } from "@/components/agent/agent-message";
 import type { ProgressStep } from "@/components/agent/progress-trail";
 import { EvalStatusBadge } from "@/components/agent/quality/eval-status-badge";
 import type { EvalStatus } from "@/lib/agent/quality/queries";
-import { RATING_META, type UserFeedbackRating } from "@/components/agent/rating-meta";
+import type { UserFeedbackRating } from "@/components/agent/rating-meta";
+import type { FeedbackRating } from "@/components/agent/feedback-control";
 
 const TERMINAL: EvalStatus[] = [
   "CORRETO",
@@ -49,6 +50,24 @@ export function BubbleMonitorRow({ msg }: { msg: MonitorMessage }) {
     state: "done" as const,
   }));
 
+  // Veredito do juiz no rodapé da bolha. Quando terminal, vira link pro Backtest
+  // (deep-link via ?eval=). Quando ainda não-terminal, badge estático.
+  const ev = msg.evaluation;
+  const footer =
+    !isUser && ev ? (
+      TERMINAL.includes(ev.status as EvalStatus) ? (
+        <Link
+          href={`/agente/monitoramento?eval=${ev.id}`}
+          className="inline-flex transition-opacity hover:opacity-80"
+          title="Ver esta avaliação no Backtest"
+        >
+          <EvalStatusBadge status={ev.status as EvalStatus} />
+        </Link>
+      ) : (
+        <EvalStatusBadge status={ev.status as EvalStatus} />
+      )
+    ) : null;
+
   return (
     <div className="w-full">
       <AgentMessage
@@ -63,6 +82,12 @@ export function BubbleMonitorRow({ msg }: { msg: MonitorMessage }) {
         streaming={false}
         suggestions={msg.suggestions}
         clickedSuggestion={msg.clickedSuggestion}
+        footer={footer}
+        monitorVote={
+          !isUser && msg.feedback
+            ? { rating: msg.feedback.rating as FeedbackRating }
+            : null
+        }
       />
 
       {isUser && isAudio ? (
@@ -70,34 +95,6 @@ export function BubbleMonitorRow({ msg }: { msg: MonitorMessage }) {
           <span className="inline-flex items-center gap-1 rounded-full border border-border bg-background px-2 py-0.5 text-[10px] text-muted-foreground">
             <Mic className="h-3 w-3" /> áudio transcrito
           </span>
-        </div>
-      ) : null}
-
-      {!isUser ? (
-        <div className="mt-1 flex flex-wrap items-center gap-2">
-          {msg.evaluation ? (
-            TERMINAL.includes(msg.evaluation.status as EvalStatus) ? (
-              <Link
-                href={`/agente/monitoramento?eval=${msg.evaluation.id}`}
-                className="transition-opacity hover:opacity-80"
-                title="Ver esta avaliação no Backtest"
-              >
-                <EvalStatusBadge status={msg.evaluation.status as EvalStatus} />
-              </Link>
-            ) : (
-              <EvalStatusBadge status={msg.evaluation.status as EvalStatus} />
-            )
-          ) : null}
-
-          {msg.feedback ? (
-            <span
-              title={msg.feedback.comment ?? "Voto do usuário"}
-              style={{ background: RATING_META[msg.feedback.rating].color }}
-              className="inline-flex items-center rounded-md px-1.5 py-0.5 text-[10px] font-medium text-white"
-            >
-              voto: {RATING_META[msg.feedback.rating].label}
-            </span>
-          ) : null}
         </div>
       ) : null}
     </div>

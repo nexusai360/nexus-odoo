@@ -1,13 +1,16 @@
 "use client";
 
 /**
- * B2. Monitoramento das conversas (read-only, super_admin), 3 colunas:
- * colaboradores -> sessões -> conversa fiel à bubble. Reusa AgentMessage
- * (via BubbleMonitorRow) e o design system do monitoramento.
+ * B2. Monitoramento das conversas (read-only, super_admin), 3 colunas JUNTAS
+ * num painel único (colaboradores | sessões | conversa), divididas só por
+ * borda interna (sem gaps). Reusa AgentMessage (via BubbleMonitorRow) e o
+ * design system do monitoramento. A coluna 3 espelha a bubble viva: tag de
+ * data flutuante fixa no topo + FAB de descer.
  */
 
 import * as React from "react";
 import { ChevronDown } from "lucide-react";
+import { motion, useReducedMotion } from "framer-motion";
 import {
   listBubbleCollaborators,
   listBubbleSessions,
@@ -21,6 +24,13 @@ import { RATING_META, type UserFeedbackRating } from "@/components/agent/rating-
 import { formatDayLabel } from "@/lib/format-datetime-relative";
 import { cn } from "@/lib/utils";
 
+const ROLE_LABELS: Record<string, string> = {
+  super_admin: "Super admin",
+  admin: "Administrador",
+  manager: "Gerente",
+  viewer: "Visualizador",
+};
+
 function Avatar({ name, url }: { name: string; url: string | null }) {
   if (url)
     // eslint-disable-next-line @next/next/no-img-element
@@ -30,6 +40,53 @@ function Avatar({ name, url }: { name: string; url: string | null }) {
     <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-violet-600/20 text-xs font-semibold text-violet-300">
       {initial}
     </div>
+  );
+}
+
+function RoleBadge({ role }: { role: string }) {
+  const label = ROLE_LABELS[role] ?? role;
+  const isSuper = role === "super_admin";
+  return (
+    <span
+      className={cn(
+        "inline-flex shrink-0 items-center rounded px-1 py-px text-[9px] font-medium uppercase tracking-wide",
+        isSuper
+          ? "bg-violet-500/20 text-violet-300"
+          : "bg-muted text-muted-foreground",
+      )}
+    >
+      {label}
+    </span>
+  );
+}
+
+// Versão de uma linha do Summary para o card compacto de colaborador: separador
+// "·" + "{pct}%" + contagens coloridas. Silencioso quando não há avaliações.
+function CompactSummary({ counts, pct }: { counts: RatingCounts; pct: number | null }) {
+  const total = counts.CORRETO + counts.PARCIAL + counts.ERRADO + counts.ALUCINOU;
+  if (total === 0) return null;
+  const order: UserFeedbackRating[] = ["CORRETO", "PARCIAL", "ERRADO", "ALUCINOU"];
+  return (
+    <span className="flex min-w-0 items-center gap-1 truncate">
+      <span aria-hidden className="text-muted-foreground/50">
+        ·
+      </span>
+      <span className="font-semibold text-foreground">{pct}%</span>
+      <span className="flex items-center gap-1">
+        {order.map((r) =>
+          counts[r] > 0 ? (
+            <span
+              key={r}
+              title={RATING_META[r].label}
+              style={{ color: RATING_META[r].color }}
+              className="tabular-nums"
+            >
+              {counts[r]}
+            </span>
+          ) : null,
+        )}
+      </span>
+    </span>
   );
 }
 
@@ -59,37 +116,6 @@ function Summary({ counts, pct }: { counts: RatingCounts; pct: number | null }) 
   );
 }
 
-// Versão de uma linha do Summary para o card compacto de colaborador: separador
-// "·" + "{pct}%" + contagens coloridas. Silencioso quando não há avaliações
-// (o card já mostra a contagem de sessões).
-function CompactSummary({ counts, pct }: { counts: RatingCounts; pct: number | null }) {
-  const total = counts.CORRETO + counts.PARCIAL + counts.ERRADO + counts.ALUCINOU;
-  if (total === 0) return null;
-  const order: UserFeedbackRating[] = ["CORRETO", "PARCIAL", "ERRADO", "ALUCINOU"];
-  return (
-    <span className="flex min-w-0 items-center gap-1 truncate">
-      <span aria-hidden className="text-muted-foreground/50">
-        ·
-      </span>
-      <span className="font-semibold text-foreground">{pct}%</span>
-      <span className="flex items-center gap-1">
-        {order.map((r) =>
-          counts[r] > 0 ? (
-            <span
-              key={r}
-              title={RATING_META[r].label}
-              style={{ color: RATING_META[r].color }}
-              className="tabular-nums"
-            >
-              {counts[r]}
-            </span>
-          ) : null,
-        )}
-      </span>
-    </span>
-  );
-}
-
 function fmtRange(startedAt: string, endedAt: string | null): string {
   const s = new Date(startedAt);
   const d = (x: Date) =>
@@ -97,10 +123,14 @@ function fmtRange(startedAt: string, endedAt: string | null): string {
   return `${d(s)} ${endedAt ? "ate " + d(new Date(endedAt)) : "ate agora"}`;
 }
 
-const COL =
-  "flex h-[68vh] flex-col overflow-hidden rounded-xl border border-border bg-card shadow-sm";
+// Painel único: as 3 colunas dividem o mesmo card, separadas só por borda
+// interna (sem gap). Cada coluna é uma seção com header + área rolável.
+const PANEL =
+  "flex h-[72vh] flex-col overflow-hidden rounded-xl border border-border bg-card shadow-sm lg:flex-row";
+const SECTION = "flex min-h-0 min-w-0 flex-1 flex-col";
+const DIVIDER = "border-b border-border lg:border-b-0 lg:border-r";
 const HEAD =
-  "border-b border-border px-3 py-2 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground";
+  "shrink-0 border-b border-border px-3 py-2 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground";
 
 export function BubbleMonitor() {
   const [collabs, setCollabs] = React.useState<Collaborator[] | null>(null);
@@ -110,27 +140,55 @@ export function BubbleMonitor() {
   const [messages, setMessages] = React.useState<MonitorMessage[] | null>(null);
   const convScrollRef = React.useRef<HTMLDivElement>(null);
   const [showScrollFab, setShowScrollFab] = React.useState(false);
+  // Tag de data flutuante (igual à bubble viva): registra o DOM de cada linha
+  // e mostra o dia da mensagem no topo do viewport, trocando ao rolar.
+  const rowRefs = React.useRef<Map<string, HTMLElement>>(new Map());
+  const [dateLabel, setDateLabel] = React.useState("");
 
   React.useEffect(() => {
     void listBubbleCollaborators().then(setCollabs).catch(() => setCollabs([]));
   }, []);
 
-  // Ao carregar a sessão, abre já no fim (mensagem mais recente embaixo).
+  const recomputeDateLabel = React.useCallback(() => {
+    const scrollEl = convScrollRef.current;
+    if (!scrollEl) return;
+    const list = messages ?? [];
+    if (list.length === 0) {
+      setDateLabel("");
+      return;
+    }
+    const topEdge = scrollEl.getBoundingClientRect().top;
+    let label = "";
+    for (const m of list) {
+      const el = rowRefs.current.get(m.id);
+      if (!el) continue;
+      const r = el.getBoundingClientRect();
+      if (r.top - topEdge <= 16) label = formatDayLabel(m.createdAt);
+      else break;
+    }
+    if (!label) {
+      const first = list[0];
+      if (first) label = formatDayLabel(first.createdAt);
+    }
+    setDateLabel((prev) => (prev === label ? prev : label));
+  }, [messages]);
+
+  // Ao carregar a sessão, abre já no fim e recalcula a tag de data.
   React.useEffect(() => {
     if (messages && convScrollRef.current) {
       convScrollRef.current.scrollTop = convScrollRef.current.scrollHeight;
       setShowScrollFab(false);
+      recomputeDateLabel();
     }
-  }, [messages]);
+  }, [messages, recomputeDateLabel]);
 
-  // FAB de descer: aparece quando o usuário rolou pra cima (longe do fim),
-  // igual à bubble viva. Some quando está colado no fim (margem de 120px).
   const onConvScroll = React.useCallback(() => {
     const el = convScrollRef.current;
     if (!el) return;
     const distanceFromBottom = el.scrollHeight - el.scrollTop - el.clientHeight;
     setShowScrollFab(distanceFromBottom > 120);
-  }, []);
+    recomputeDateLabel();
+  }, [recomputeDateLabel]);
 
   const scrollConvToBottom = React.useCallback(() => {
     const el = convScrollRef.current;
@@ -158,6 +216,7 @@ export function BubbleMonitor() {
       return;
     }
     setMessages(null);
+    rowRefs.current.clear();
     void getBubbleSessionMessages(sessionId)
       .then((r) =>
         setMessages(
@@ -166,8 +225,7 @@ export function BubbleMonitor() {
                 (m) =>
                   m.role !== "tool" &&
                   // Descarta mensagens vazias (sem texto e sem áudio): ruído de
-                  // turnos interrompidos/falhos que apareciam como bolha em
-                  // branco no monitoramento.
+                  // turnos interrompidos/falhos que apareciam como bolha em branco.
                   (m.content.trim().length > 0 || m.kind === "audio"),
               ) as MonitorMessage[])
             : [],
@@ -177,9 +235,9 @@ export function BubbleMonitor() {
   }, [sessionId]);
 
   return (
-    <div className="grid grid-cols-1 gap-4 lg:grid-cols-[240px_280px_1fr]">
+    <div className={PANEL}>
       {/* Coluna 1: colaboradores */}
-      <div className={COL}>
+      <div className={cn(SECTION, DIVIDER, "lg:w-[240px] lg:flex-none")}>
         <div className={HEAD}>Colaboradores</div>
         <div className="flex-1 overflow-y-auto p-1.5">
           {collabs === null ? (
@@ -210,8 +268,9 @@ export function BubbleMonitor() {
                       )}
                     />
                   </div>
-                  <div className="flex items-center gap-1.5 text-[11px] text-muted-foreground">
-                    <span className="shrink-0">
+                  <div className="mt-0.5 flex items-center gap-1.5">
+                    <RoleBadge role={c.role} />
+                    <span className="shrink-0 text-[11px] text-muted-foreground">
                       {c.sessionCount} {c.sessionCount === 1 ? "sessão" : "sessões"}
                     </span>
                     <CompactSummary counts={c.ratingCounts} pct={c.accuracyPct} />
@@ -224,7 +283,7 @@ export function BubbleMonitor() {
       </div>
 
       {/* Coluna 2: sessões */}
-      <div className={COL}>
+      <div className={cn(SECTION, DIVIDER, "lg:w-[280px] lg:flex-none")}>
         <div className={HEAD}>Sessões</div>
         <div className="flex-1 overflow-y-auto p-2">
           {!userId ? (
@@ -263,7 +322,7 @@ export function BubbleMonitor() {
       </div>
 
       {/* Coluna 3: conversa */}
-      <div className={cn(COL, "relative")}>
+      <div className={cn(SECTION, "relative")}>
         <div className={HEAD}>Conversa</div>
         <div
           ref={convScrollRef}
@@ -277,11 +336,42 @@ export function BubbleMonitor() {
           ) : messages.length === 0 ? (
             <Empty>Sessão sem mensagens.</Empty>
           ) : (
-            <Conversation messages={messages} />
+            <Conversation
+              messages={messages}
+              registerRef={(id, el) => {
+                if (el) rowRefs.current.set(id, el);
+                else rowRefs.current.delete(id);
+              }}
+            />
           )}
         </div>
+
+        {/* Tag de data FLUTUANTE fixa no topo (igual à bubble viva): mesmo
+            material translúcido e mesmo espaçamento, troca o rótulo ao rolar. */}
+        <FloatingDateTag label={messages && messages.length > 0 ? dateLabel : ""} />
+
         <ScrollToBottomFab visible={showScrollFab} onClick={scrollConvToBottom} />
       </div>
+    </div>
+  );
+}
+
+function FloatingDateTag({ label }: { label: string }) {
+  const reduce = useReducedMotion();
+  if (!label) return null;
+  return (
+    <div className="pointer-events-none absolute left-1/2 top-[44px] z-30 -translate-x-1/2">
+      <span className="block rounded-full bg-violet-500/15 px-3 py-1 text-[11px] font-bold text-violet-200 shadow-sm ring-1 ring-violet-400/25 backdrop-blur-md">
+        <motion.span
+          key={label}
+          initial={reduce ? false : { opacity: 0, y: 6 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={reduce ? { duration: 0 } : { duration: 0.2, ease: [0.16, 1, 0.3, 1] }}
+          className="block whitespace-nowrap"
+        >
+          {label}
+        </motion.span>
+      </span>
     </div>
   );
 }
@@ -318,28 +408,20 @@ function ScrollToBottomFab({
   );
 }
 
-function Conversation({ messages }: { messages: MonitorMessage[] }) {
+function Conversation({
+  messages,
+  registerRef,
+}: {
+  messages: MonitorMessage[];
+  registerRef: (id: string, el: HTMLElement | null) => void;
+}) {
   return (
     <>
-      {messages.map((m, i) => {
-        const day = formatDayLabel(m.createdAt);
-        const prevDay = i > 0 ? formatDayLabel(messages[i - 1]!.createdAt) : null;
-        const showSep = day !== prevDay;
-        return (
-          <React.Fragment key={m.id}>
-            {showSep ? (
-              <div className="my-2 flex justify-center">
-                {/* Mesmo material translúcido da tag flutuante da bubble viva
-                    (ring + backdrop-blur + shadow), não a versão chapada. */}
-                <span className="rounded-full bg-violet-500/15 px-3 py-1 text-[11px] font-bold text-violet-200 shadow-sm ring-1 ring-violet-400/25 backdrop-blur-md">
-                  {day}
-                </span>
-              </div>
-            ) : null}
-            <BubbleMonitorRow msg={m} />
-          </React.Fragment>
-        );
-      })}
+      {messages.map((m) => (
+        <div key={m.id} ref={(el) => registerRef(m.id, el)}>
+          <BubbleMonitorRow msg={m} />
+        </div>
+      ))}
     </>
   );
 }

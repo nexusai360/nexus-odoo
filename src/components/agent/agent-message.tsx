@@ -29,6 +29,7 @@ import { cn } from "@/lib/utils";
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import { AudioPlayer } from "@/components/agent/audio-player";
 import { FeedbackControl, type FeedbackRating } from "./feedback-control";
+import { RATING_META } from "./rating-meta";
 import type { ProgressStep } from "./progress-trail";
 import { formatRelativeDateTime } from "@/lib/format-datetime-relative";
 
@@ -91,6 +92,18 @@ export interface AgentMessageProps {
   suggestions?: string[];
   /** B2. Qual sugestão o usuário clicou (marcada como "usada" no bloco). */
   clickedSuggestion?: string;
+  /**
+   * B2 (monitoramento). Conteúdo no rodapé DENTRO da bolha, abaixo das
+   * sugestões (ex.: a tag de veredito do juiz). Slot genérico para não acoplar
+   * o AgentMessage à lógica de deep-link do monitor.
+   */
+  footer?: React.ReactNode;
+  /**
+   * B2 (monitoramento, read-only). Voto do usuário exibido como badge de canto
+   * (igual ao FeedbackControl da bubble viva, mas sem interação). Quando
+   * presente, mostra o ícone+cor da classificação no canto inferior direito.
+   */
+  monitorVote?: { rating: FeedbackRating } | null;
 }
 
 export function AgentMessage({
@@ -114,6 +127,8 @@ export function AgentMessage({
   onSubmitFeedback,
   suggestions,
   clickedSuggestion,
+  footer,
+  monitorVote,
 }: AgentMessageProps) {
   if (role === "loading") return <LoadingBubble />;
   if (role === "tool") return <ToolBubble name={toolName ?? "tool"} />;
@@ -201,10 +216,14 @@ export function AgentMessage({
               clickedSuggestion={clickedSuggestion}
             />
           ) : null}
+          {footer ? <div className="mt-2">{footer}</div> : null}
           {createdAt && !streaming ? (
             <div
               className={cn(
-                "mt-1 text-[10px] tabular-nums text-muted-foreground/70",
+                // pr-7: reserva espaco para o badge de canto (voto/feedback)
+                // que mora em -right-2 -bottom-2, senao a data fica por baixo
+                // dele. Vale pra bolha do user e da IA.
+                "mt-1 pr-7 text-[10px] tabular-nums text-muted-foreground/70",
                 "text-right",
               )}
               suppressHydrationWarning
@@ -226,6 +245,7 @@ export function AgentMessage({
             onSubmit={(rating, comment) => onSubmitFeedback(rating, comment)}
           />
         ) : null}
+        {monitorVote ? <MonitorVoteBadge rating={monitorVote.rating} /> : null}
       </div>
     </BubbleWrapper>
   );
@@ -560,10 +580,11 @@ function AssistantTrailBlock({
 /* -------------------------------------------------------------------------- */
 
 // Espelha o AssistantTrailBlock (mesma linguagem visual do "Raciocínio"):
-// header colapsável com chevron + ícone + "Sugestões · N", abre pra baixo
-// numa lista de chips. O chip que o usuário clicou ganha o selo "usada"
-// (Check + texto, nao so cor, conforme ui-ux-pro-max color-not-only). Estado
-// de colapso interno (default fechado), igual ao Raciocínio apos done.
+// header colapsável com chevron + "Sugestões · N", abre pra baixo numa lista
+// de chips. A lâmpada SÓ aparece quando alguma sugestão foi clicada, e nesse
+// caso vem ACESA (preenchida em violeta, contorno claro); quando ninguém
+// clicou, fica só o texto. O chip clicado ganha o selo "usada" (Check + texto,
+// nao so cor, conforme ui-ux-pro-max color-not-only). Colapso interno.
 function AssistantSuggestionsBlock({
   suggestions,
   clickedSuggestion,
@@ -574,6 +595,7 @@ function AssistantSuggestionsBlock({
   const reduce = useReducedMotion();
   const [expanded, setExpanded] = React.useState(false);
   const total = suggestions.length;
+  const hasClicked = Boolean(clickedSuggestion);
   const Chevron = expanded ? ChevronDown : ChevronRight;
   const EASE = [0.16, 1, 0.3, 1] as const;
   const listId = React.useId();
@@ -586,16 +608,23 @@ function AssistantSuggestionsBlock({
         aria-expanded={expanded}
         aria-controls={listId}
         className={cn(
-          "flex min-h-[18px] w-full items-center gap-2 text-left text-xs font-medium leading-none",
+          "flex min-h-[18px] w-full items-center gap-2 text-left text-[13px] font-medium leading-none",
           "cursor-pointer text-foreground/85 transition-colors hover:text-foreground",
         )}
       >
         <span className="inline-flex h-3.5 w-3.5 shrink-0 items-center justify-center">
           <Chevron className="h-3.5 w-3.5 text-muted-foreground" />
         </span>
-        <span className="inline-flex h-3.5 w-3.5 shrink-0 items-center justify-center">
-          <Lightbulb className="h-3.5 w-3.5 text-violet-500/70" aria-hidden />
-        </span>
+        {hasClicked ? (
+          // Lâmpada ACESA: alguém clicou numa sugestão. Preenchida em violeta
+          // com contorno claro (efeito contrário do contorno vazado).
+          <span className="inline-flex h-3.5 w-3.5 shrink-0 items-center justify-center">
+            <Lightbulb
+              className="h-3.5 w-3.5 fill-violet-500 text-violet-200"
+              aria-label="Uma sugestão foi clicada"
+            />
+          </span>
+        ) : null}
         <span className="flex-1 truncate">
           {`Sugestões · ${total}${total === 1 ? " sugestão" : " sugestões"}`}
         </span>
@@ -629,15 +658,15 @@ function AssistantSuggestionsBlock({
                       reduce ? { duration: 0 } : { duration: 0.15, ease: EASE }
                     }
                     className={cn(
-                      "flex items-center gap-2 self-start rounded-2xl border px-3 py-1.5 text-[11px] [overflow-wrap:anywhere]",
+                      "flex items-center gap-2 self-start rounded-2xl border px-3 py-1.5 text-[13px] leading-snug [overflow-wrap:anywhere]",
                       clicked
-                        ? "border-violet-400/60 bg-violet-600/25 text-foreground"
-                        : "border-violet-500/25 bg-violet-500/5 text-foreground/70",
+                        ? "border-violet-400/70 bg-violet-600/30 text-foreground"
+                        : "border-violet-500/30 bg-violet-500/10 text-foreground/90",
                     )}
                   >
                     <span>{s}</span>
                     {clicked ? (
-                      <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-violet-500/90 px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wide text-white">
+                      <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-violet-500 px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wide text-white">
                         <Check className="h-2.5 w-2.5" aria-hidden />
                         usada
                       </span>
@@ -737,6 +766,24 @@ function ToolBubble({ name }: { name: string }) {
           Consultou MCP · <span className="font-mono">{name}</span>
         </span>
       </div>
+    </div>
+  );
+}
+
+// B2 (monitoramento, read-only). Badge de canto do voto do usuário, igual ao
+// estado "escolhido" do FeedbackControl da bubble viva (mesmo ícone/cor/posição),
+// mas sem interação. Fica sempre visível (não depende de hover).
+function MonitorVoteBadge({ rating }: { rating: FeedbackRating }) {
+  const meta = RATING_META[rating];
+  const Icon = meta.Icon;
+  return (
+    <div
+      aria-label={`Voto do usuário: ${meta.label}`}
+      title={`Voto do usuário: ${meta.label}`}
+      style={{ background: meta.color, borderColor: meta.color }}
+      className="absolute -right-2 -bottom-2 flex h-6 w-6 items-center justify-center rounded-md border text-white shadow-sm"
+    >
+      <Icon className="h-3 w-3" />
     </div>
   );
 }
