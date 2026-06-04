@@ -27,6 +27,7 @@ import * as React from "react";
 import { cn } from "@/lib/utils";
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import { AudioPlayer } from "@/components/agent/audio-player";
+import { FeedbackControl, type FeedbackRating } from "./feedback-control";
 import type { ProgressStep } from "./progress-trail";
 import { formatRelativeDateTime } from "@/lib/format-datetime-relative";
 
@@ -72,6 +73,14 @@ export interface AgentMessageProps {
   /** Chamado quando a digitacao (typewriter) termina de revelar a resposta
    *  inteira. So dispara para mensagens com reveal=true. */
   onRevealComplete?: () => void;
+  /** B1. Habilita o controle de feedback (checkpoint PRODUCTION). */
+  feedbackEnabled?: boolean;
+  /** B1. Id real (de banco) da Message; ausente => controle nao renderiza. */
+  dbMessageId?: string;
+  /** B1. Voto vigente do usuario sobre esta resposta. */
+  feedback?: { rating: FeedbackRating; comment: string | null } | null;
+  /** B1. Submete o voto (otimismo fica no chat-panel). */
+  onSubmitFeedback?: (rating: FeedbackRating, comment?: string) => Promise<void> | void;
 }
 
 export function AgentMessage({
@@ -89,6 +98,10 @@ export function AgentMessage({
   durationMs,
   createdAt,
   onRevealComplete,
+  feedbackEnabled = false,
+  dbMessageId,
+  feedback,
+  onSubmitFeedback,
 }: AgentMessageProps) {
   if (role === "loading") return <LoadingBubble />;
   if (role === "tool") return <ToolBubble name={toolName ?? "tool"} />;
@@ -174,7 +187,7 @@ export function AgentMessage({
             <div
               className={cn(
                 "mt-1 text-[10px] tabular-nums text-muted-foreground/70",
-                isUser ? "text-right" : "text-left",
+                "text-right",
               )}
               suppressHydrationWarning
             >
@@ -183,6 +196,18 @@ export function AgentMessage({
           ) : null}
         </BubbleSurface>
         <CopyButton text={content} />
+        {!isUser &&
+        kind === "text" &&
+        !streaming &&
+        content.length > 0 &&
+        feedbackEnabled &&
+        dbMessageId &&
+        onSubmitFeedback ? (
+          <FeedbackControl
+            current={feedback ?? null}
+            onSubmit={(rating, comment) => onSubmitFeedback(rating, comment)}
+          />
+        ) : null}
       </div>
     </BubbleWrapper>
   );
