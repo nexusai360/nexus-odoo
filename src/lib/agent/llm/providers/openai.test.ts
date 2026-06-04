@@ -1,4 +1,29 @@
-import { OpenAIClient, isReasoningModel } from "./openai";
+import { OpenAIClient, isReasoningModel, parseOpenAiUsage } from "./openai";
+
+describe("parseOpenAiUsage", () => {
+  test("le cached_tokens da Responses API", () => {
+    const u = parseOpenAiUsage({
+      input_tokens: 20000,
+      output_tokens: 800,
+      input_tokens_details: { cached_tokens: 18000 },
+    });
+    expect(u).toEqual({ tokensInput: 20000, tokensOutput: 800, tokensCachedInput: 18000 });
+  });
+
+  test("le cached_tokens do chat completions", () => {
+    const u = parseOpenAiUsage({
+      prompt_tokens: 100,
+      completion_tokens: 10,
+      prompt_tokens_details: { cached_tokens: 64 },
+    });
+    expect(u).toEqual({ tokensInput: 100, tokensOutput: 10, tokensCachedInput: 64 });
+  });
+
+  test("fallback: cached ausente ou usage nulo => 0", () => {
+    expect(parseOpenAiUsage({ input_tokens: 100, output_tokens: 10 }).tokensCachedInput).toBe(0);
+    expect(parseOpenAiUsage(undefined)).toEqual({ tokensInput: 0, tokensOutput: 0, tokensCachedInput: 0 });
+  });
+});
 
 const mockFetch = jest.fn();
 global.fetch = mockFetch as unknown as typeof fetch;

@@ -53,6 +53,9 @@ export interface ChatMessage {
 export interface ChatUsage {
   tokensInput: number;
   tokensOutput: number;
+  /** Tokens de input servidos do cache de prompt do provider (default 0).
+   *  Custam fracao do input normal; usado pelo billing para nao superestimar. */
+  tokensCachedInput?: number;
   /** Custo em USD (pode ser 0 quando costKnown=false , ver LlmUsage). */
   costUsd: number;
 }

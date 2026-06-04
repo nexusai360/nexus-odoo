@@ -18,6 +18,35 @@ import type {
   ToolDefinition,
 } from "../types";
 
+/** Usage cru da OpenAI: Responses API usa input_tokens/output_tokens; chat
+ *  completions usa prompt_tokens/completion_tokens. Tokens cacheados vem em
+ *  *_tokens_details.cached_tokens (alavanca 1, prompt caching). */
+export interface OpenAiUsageRaw {
+  input_tokens?: number;
+  output_tokens?: number;
+  prompt_tokens?: number;
+  completion_tokens?: number;
+  input_tokens_details?: { cached_tokens?: number };
+  prompt_tokens_details?: { cached_tokens?: number };
+}
+
+/** Normaliza o usage dos dois endpoints, extraindo tokens cacheados (default 0
+ *  quando o provider nao expoe , degrada sem quebrar). */
+export function parseOpenAiUsage(u: OpenAiUsageRaw | undefined | null): {
+  tokensInput: number;
+  tokensOutput: number;
+  tokensCachedInput: number;
+} {
+  const usage = u ?? {};
+  const tokensInput = usage.input_tokens ?? usage.prompt_tokens ?? 0;
+  const tokensOutput = usage.output_tokens ?? usage.completion_tokens ?? 0;
+  const tokensCachedInput =
+    usage.input_tokens_details?.cached_tokens ??
+    usage.prompt_tokens_details?.cached_tokens ??
+    0;
+  return { tokensInput, tokensOutput, tokensCachedInput };
+}
+
 const OPENAI_API_URL = "https://api.openai.com/v1/chat/completions";
 const OPENAI_RESPONSES_URL = "https://api.openai.com/v1/responses";
 
@@ -210,14 +239,17 @@ export class OpenAIClient implements ProviderClient {
       return { id: tc.id, name: tc.function.name, arguments: parsed };
     });
 
-    const tokensInput = data.usage?.prompt_tokens ?? 0;
-    const tokensOutput = data.usage?.completion_tokens ?? 0;
-    const { costUsd } = calculateCost(this.model, tokensInput, tokensOutput);
+    const { tokensInput, tokensOutput, tokensCachedInput } = parseOpenAiUsage(
+      data.usage,
+    );
+    const { costUsd } = calculateCost(this.model, tokensInput, tokensOutput, {
+      cachedInputTokens: tokensCachedInput,
+    });
 
     return {
       message: choice.message.content ?? "",
       toolCalls: toolCalls && toolCalls.length > 0 ? toolCalls : undefined,
-      usage: { tokensInput, tokensOutput, costUsd: costUsd ?? 0 },
+      usage: { tokensInput, tokensOutput, tokensCachedInput, costUsd: costUsd ?? 0 },
     };
   }
 
@@ -305,6 +337,7 @@ export class OpenAIClient implements ProviderClient {
       usage?: {
         input_tokens?: number;
         output_tokens?: number;
+        input_tokens_details?: { cached_tokens?: number };
         output_tokens_details?: { reasoning_tokens?: number };
       };
     };
@@ -347,10 +380,12 @@ export class OpenAIClient implements ProviderClient {
       }
     }
 
-    const tIn = rData.usage?.input_tokens ?? 0;
-    const tOut = rData.usage?.output_tokens ?? 0;
+    const { tokensInput: tIn, tokensOutput: tOut, tokensCachedInput: tCached } =
+      parseOpenAiUsage(rData.usage);
     const rTokens = rData.usage?.output_tokens_details?.reasoning_tokens;
-    const { costUsd } = calculateCost(this.model, tIn, tOut);
+    const { costUsd } = calculateCost(this.model, tIn, tOut, {
+      cachedInputTokens: tCached,
+    });
 
     const reasoningContext: ReasoningContext | undefined =
       reasoningItems.length > 0
@@ -360,7 +395,7 @@ export class OpenAIClient implements ProviderClient {
     return {
       message: text,
       toolCalls: toolCalls.length > 0 ? toolCalls : undefined,
-      usage: { tokensInput: tIn, tokensOutput: tOut, costUsd: costUsd ?? 0 },
+      usage: { tokensInput: tIn, tokensOutput: tOut, tokensCachedInput: tCached, costUsd: costUsd ?? 0 },
       reasoningTokens: typeof rTokens === "number" ? rTokens : undefined,
       reasoningContext,
       streamed: false,
