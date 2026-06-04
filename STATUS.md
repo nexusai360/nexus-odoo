@@ -1,8 +1,41 @@
 # STATUS — nexus-odoo
 
-> **Ponto de retomada entre sessões.** Atualizado em **2026-06-03** (Monitoramento/Qualidade).
+> **Ponto de retomada entre sessões.** Atualizado em **2026-06-03** (Otimização de custo + reconciliação de banco).
 > Ao abrir: ler **este arquivo**, o **`CLAUDE.md`** e **`.agente-handoff.md`**.
 > Modo autônomo é o padrão (`CLAUDE.md §6`).
+
+## 2026-06-03 , Otimização de custo do Agente Nex + reconciliação do banco (PR #51, MERGEADO)
+
+Branch `feat/agente-nex-bubble-ux`. Frente de redução de custo por pergunta do
+agente + correção de um drift de banco pré-existente. Verificado (tsc raiz+mcp,
+suíte 2331 verde, smoke E2E real, code review por 2 revisores Opus) e **mergeado
+na `main` com CI verde**.
+
+- **Alavanca 1 , prompt caching da OpenAI:** corrigido bug que zerava o cache (a
+  data ficava no topo do system prompt, mudava a cada segundo). Agora a data vai
+  como item de input antes da pergunta (`montarConversa`), deixando o prefixo
+  system estável e cacheável. Provider lê `cached_tokens` (Responses+chat); billing
+  precifica input cacheado a 0.1x (menu de consumo deixa de superestimar); coluna
+  `tokens_cached_input`; `prompt_cache_key` estável por hash do system.
+- **Alavanca 2a , janela de histórico:** 12 mensagens, confirmada em produção (sem
+  mudança de código).
+- **Alavanca 2b , paginação:** engrenagem `mcp/lib/paginacao.ts` + `_PAGINACAO` no
+  envelope; ~37 tools de lista grande com `limit`/`offset` no SQL (10 por vez),
+  `orderBy` estável + desempate por id, `count` no mesmo `where`. Fuzzy/agregadas
+  como exceção documentada (slice estável). Prompt (12c-bis) ensina a listar 10 e
+  pedir "os próximos" via `proximoOffset` (stateless: offset no histórico).
+- **Reconciliação de drift schema<->migrations (IMPORTANTE):** várias frentes
+  (qualidade, validators, monitoramento, sugestões) editaram o `schema.prisma` via
+  `prisma db push` no dev sem gerar migration. Como produção roda `migrate deploy`
+  (ver `docker/entrypoint.sh`), essas colunas/índices **não existiam em produção**.
+  Criada `20260603150000_reconcilia_schema_drift` (gerada por `migrate diff
+  --from-migrations --to-schema`), validada em shadow limpo: após ela,
+  `migrate diff` = **"No difference detected"**. O próximo deploy alinha produção.
+  Dropa 3 colunas renomeadas em `conversation_quality_evaluations` (auditoria
+  interna). **Lição: usar `migrate dev`, não `db push`, para mudanças de schema.**
+- **Pós-merge na main:** o redeploy do Portainer roda `migrate deploy` (aplica a
+  reconciliação em prod) e o entrypoint sobe a app. Containers locais (`mcp`/worker)
+  rebuildam quando o usuário validar na bubble.
 
 ## 2026-06-03 , Monitoramento + Qualidade do Agente Nex (branch `feat/router-ativacao-r2`)
 
