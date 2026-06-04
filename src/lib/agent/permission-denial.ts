@@ -100,12 +100,13 @@ export async function respondPermissionDenied(
       content: args.userQuestion,
     },
   });
-  await prisma.message.create({
+  const assistantMsg = await prisma.message.create({
     data: {
       conversationId: args.conversationId,
       role: "assistant",
       content: message,
     },
+    select: { id: true },
   });
 
   // 3. Auditoria da recusa (snippet sanitizado).
@@ -132,6 +133,8 @@ export async function respondPermissionDenied(
   return {
     ok: true,
     message,
+    // B1. Id real da Message do assistant (recusa também é avaliável).
+    messageId: assistantMsg.id,
     suggestions: [],
     usage: { tokensInput: 0, tokensOutput: 0, costUsd: 0 },
   };

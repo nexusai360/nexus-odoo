@@ -223,7 +223,14 @@ export interface RunAgentInput {
 }
 
 export type RunAgentResult =
-  | { ok: true; message: string; suggestions: string[]; usage: ChatUsage }
+  | {
+      ok: true;
+      message: string;
+      suggestions: string[];
+      usage: ChatUsage;
+      /** B1. Id real (de banco) da Message do assistant (resposta final). */
+      messageId: string;
+    }
   | { ok: false; error: string };
 
 /** Valida o reasoningEffort vindo do banco; valor inválido ou ausente vira null. */
@@ -1111,7 +1118,14 @@ export async function runAgent(args: RunAgentInput): Promise<RunAgentResult> {
           // RBAC v2: turno concluído com sucesso (LLM respondeu).
           outcome: "ok",
         });
-        return { ok: true, message, suggestions, usage: totalUsage };
+        return {
+          ok: true,
+          message,
+          suggestions,
+          usage: totalUsage,
+          // B1. Id real da Message do assistant (resposta final), para o feedback.
+          messageId: assistantMessageId,
+        };
       }
 
       // Adiciona assistant com tool_calls

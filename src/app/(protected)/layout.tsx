@@ -107,6 +107,7 @@ export default async function ProtectedLayout({
           <AgentBubble
             audioInputEnabled={audioInputEnabled}
             imageInputEnabled={imageInputEnabled}
+            feedbackEnabled={flags.feedbackInputEnabled}
             maxSuggestions={flags.maxSuggestions}
             personalizedWelcome={welcomeSet}
             isSuperAdmin={user.platformRole === "super_admin"}

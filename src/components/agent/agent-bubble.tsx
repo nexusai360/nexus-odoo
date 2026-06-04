@@ -36,6 +36,9 @@ interface AgentBubbleProps {
    * no checkpoint de imagem: só PRODUÇÃO libera na bubble.
    */
   imageInputEnabled?: boolean;
+  /** B1. Quando true, libera o controle de feedback nas respostas da IA.
+   *  Resolvido no layout pelo checkpoint de feedback (só PRODUÇÃO). */
+  feedbackEnabled?: boolean;
   /**
    * Limite de sugestões clicáveis (welcome + follow-up) configurado pelo
    * super_admin em /agente/comportamento. Default 3, hard cap 5.
@@ -62,6 +65,7 @@ interface AgentBubbleProps {
 export function AgentBubble({
   audioInputEnabled = false,
   imageInputEnabled = false,
+  feedbackEnabled = false,
   maxSuggestions = 3,
   personalizedWelcome = [],
   isSuperAdmin = false,
@@ -171,6 +175,7 @@ export function AgentBubble({
           onClose={() => setOpen(false)}
           audioInputEnabled={audioInputEnabled}
           imageInputEnabled={imageInputEnabled}
+          feedbackEnabled={feedbackEnabled}
           maxSuggestions={maxSuggestions}
           personalizedWelcome={personalizedWelcome}
           isSuperAdmin={isSuperAdmin}

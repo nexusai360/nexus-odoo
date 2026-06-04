@@ -32,6 +32,7 @@ import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip
 import { getConversationMessages } from "@/lib/actions/conversation-messages";
 import { exportConversationReport } from "@/lib/actions/agent-conversation-export";
 import { archiveActiveConversation } from "@/lib/actions/active-conversation";
+import { submitMessageFeedback } from "@/lib/actions/message-feedback";
 import { WELCOME_SUGGESTIONS } from "@/lib/agent/welcome-suggestions";
 
 interface ChatPanelProps {
@@ -41,6 +42,8 @@ interface ChatPanelProps {
   audioInputEnabled?: boolean;
   /** Quando true exibe o anexo (clip). Gated pelo checkpoint de imagem. */
   imageInputEnabled?: boolean;
+  /** B1. Quando true, exibe o controle de feedback nas respostas da IA. */
+  feedbackEnabled?: boolean;
   /** conversationId atual (null = novo). Após primeira msg, recebe o id criado. */
   conversationId?: string | null;
   onConversationCreated?: (id: string) => void;
@@ -89,6 +92,13 @@ interface UiMessage {
   revealDone?: boolean;
   /** Timestamp da mensagem para rodapé "dd/mm hh:mm" na bolha. */
   createdAt?: string;
+  /** B1. Id real (de banco) da Message do assistant; gate do controle de feedback. */
+  dbMessageId?: string;
+  /** B1. Voto vigente do usuário sobre esta resposta. */
+  feedback?: {
+    rating: "CORRETO" | "PARCIAL" | "ERRADO" | "ALUCINOU";
+    comment: string | null;
+  } | null;
 }
 
 type SseEvent =
@@ -96,7 +106,7 @@ type SseEvent =
   | { type: "token"; delta: string }
   | { type: "tool_call"; label: string; toolName?: string; toolCallId?: string }
   | { type: "tool_result"; label: string; truncated: boolean; toolName?: string; toolCallId?: string }
-  | { type: "done"; conversationId: string; message: string; suggestions: string[] }
+  | { type: "done"; conversationId: string; message: string; suggestions: string[]; messageId: string }
   | { type: "error"; error: string };
 
 export function ChatPanel({
@@ -104,6 +114,7 @@ export function ChatPanel({
   onClose,
   audioInputEnabled = false,
   imageInputEnabled = false,
+  feedbackEnabled = false,
   conversationId: externalConvId,
   onConversationCreated,
   onEndSession,
@@ -290,6 +301,9 @@ export function ChatPanel({
           role: m.role as AgentMessageRole,
           content: m.content,
           createdAt: m.createdAt,
+          // B1. id real do DB (para o feedback) + voto vigente reexibido.
+          dbMessageId: m.id,
+          ...(m.feedback ? { feedback: m.feedback } : {}),
           ...(allSteps.length > 0
             ? {
                 steps: allSteps.map((s, i) => ({
@@ -687,6 +701,7 @@ export function ChatPanel({
                       startedAt: m.startedAt ?? doneAt,
                       doneAt,
                       createdAt: m.createdAt ?? new Date(doneAt).toISOString(),
+                      dbMessageId: evt.messageId,
                     };
                   }
                   return m;
@@ -706,6 +721,7 @@ export function ChatPanel({
                     startedAt: doneAt,
                     doneAt,
                     createdAt: new Date(doneAt).toISOString(),
+                    dbMessageId: evt.messageId,
                   },
                 ];
               });
@@ -823,6 +839,50 @@ export function ChatPanel({
     setSessionHintSnoozeUntil(0); // reseta o gatilho do aviso de sessao
     onEndSession?.();
   }, [onEndSession]);
+
+  // B1. Submete o voto do usuario (otimista): aplica local na hora, reconcilia
+  // com o retorno canonico da action em sucesso, reverte + toast em erro.
+  const handleSubmitFeedback = React.useCallback(
+    async (
+      uiId: string,
+      dbId: string,
+      rating: "CORRETO" | "PARCIAL" | "ERRADO" | "ALUCINOU",
+      comment?: string,
+    ) => {
+      let prev: UiMessage["feedback"] = null;
+      setMessages((cur) =>
+        cur.map((m) => {
+          if (m.id !== uiId) return m;
+          prev = m.feedback ?? null;
+          const optimistic =
+            rating === m.feedback?.rating
+              ? { rating, comment: comment ?? m.feedback?.comment ?? null }
+              : { rating, comment: comment ?? null };
+          return { ...m, feedback: optimistic };
+        }),
+      );
+      const res = await submitMessageFeedback({
+        assistantMessageId: dbId,
+        rating,
+        comment,
+      });
+      if (!res.success) {
+        setMessages((cur) =>
+          cur.map((m) => (m.id === uiId ? { ...m, feedback: prev } : m)),
+        );
+        toast.error("Não foi possível salvar a avaliação.");
+        return;
+      }
+      setMessages((cur) =>
+        cur.map((m) =>
+          m.id === uiId
+            ? { ...m, feedback: { rating: res.data.rating, comment: res.data.comment } }
+            : m,
+        ),
+      );
+    },
+    [],
+  );
 
   // Transcreve o áudio gravado e envia o texto resultante como pergunta.
   const handleSendAudio = React.useCallback(
@@ -1043,6 +1103,20 @@ export function ChatPanel({
                             x.id === m.id ? { ...x, revealDone: true } : x,
                           ),
                         )
+                      }
+                      feedbackEnabled={feedbackEnabled}
+                      dbMessageId={m.dbMessageId}
+                      feedback={m.feedback}
+                      onSubmitFeedback={
+                        m.dbMessageId
+                          ? (rating, comment) =>
+                              handleSubmitFeedback(
+                                m.id,
+                                m.dbMessageId!,
+                                rating,
+                                comment,
+                              )
+                          : undefined
                       }
                       onToggleSteps={() => {
                         // Desliga o auto-snap durante o toggle: assim a

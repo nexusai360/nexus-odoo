@@ -162,6 +162,8 @@ export async function POST(req: Request): Promise<Response> {
             conversationId,
             message: result.message,
             suggestions: result.suggestions,
+            // B1. Id real da Message do assistant, para o feedback do usuário.
+            messageId: result.messageId,
           });
         } else {
           emit({ type: "error", error: result.error });
