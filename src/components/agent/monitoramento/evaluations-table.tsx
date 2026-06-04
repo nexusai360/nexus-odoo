@@ -5,7 +5,7 @@
  * drill-down inline. Padrao baseado em usage-table de /agente/consumo.
  */
 
-import { Fragment, useCallback, useEffect, useState } from "react";
+import { Fragment, useCallback, useEffect, useRef, useState } from "react";
 import {
   ChevronDown,
   ChevronLeft,
@@ -30,6 +30,7 @@ import {
 } from "@/components/ui/table";
 import {
   fetchQualityEvaluations,
+  fetchQualityEvaluationDetail,
   type FilterInputs,
 } from "@/lib/actions/quality-fetch";
 import type {
@@ -83,6 +84,10 @@ interface EvaluationsTableProps {
   /** Acao opcional renderizada a direita do titulo "Avaliacoes" (ex.: botao
    *  "Avaliar pendentes" em ambiente local). */
   headerAction?: React.ReactNode;
+  /** Deep-link (?eval=): abre a linha desta avaliacao ao montar. Se a linha
+   *  nao estiver na pagina atual, busca o detalhe e injeta uma linha sintetica
+   *  no topo. Vem da aba Bubble (chip de pericia). */
+  initialExpandedId?: string;
 }
 
 export function EvaluationsTable({
@@ -92,12 +97,20 @@ export function EvaluationsTable({
   availablePatterns,
   labelForRodada,
   headerAction,
+  initialExpandedId,
 }: EvaluationsTableProps) {
   const [data, setData] = useState<InitialData>(initialData);
   const [loading, setLoading] = useState(false);
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState<PageSize>(50);
-  const [expandedId, setExpandedId] = useState<string | null>(null);
+  const [expandedId, setExpandedId] = useState<string | null>(
+    initialExpandedId ?? null,
+  );
+  // Linha sintetica do deep-link (?eval=): a avaliacao linkada pode nao estar
+  // na pagina/filtro atual, entao buscamos o detalhe e a injetamos no topo.
+  const [syntheticRow, setSyntheticRow] = useState<EvaluationRow | null>(null);
+  const deepLinkDoneRef = useRef(false);
+  const expandedRowRef = useRef<HTMLTableRowElement>(null);
 
   const [filters, setFilters] = useState<EvaluationsTableFiltersValue>({
     search: "",
@@ -111,6 +124,56 @@ export function EvaluationsTable({
     setData(initialData);
     setPage(1);
   }, [initialData]);
+
+  // Deep-link (?eval=): ao montar, se a avaliacao linkada nao estiver entre as
+  // linhas carregadas, busca o detalhe e injeta uma linha sintetica no topo.
+  // Roda uma unica vez (deepLinkDoneRef).
+  useEffect(() => {
+    if (!initialExpandedId || deepLinkDoneRef.current) return;
+    deepLinkDoneRef.current = true;
+    const present = initialData.rows.some((r) => r.id === initialExpandedId);
+    if (present) return;
+    let cancelled = false;
+    void fetchQualityEvaluationDetail(initialExpandedId)
+      .then((detail) => {
+        if (cancelled || !detail?.evaluation) return;
+        const ev = detail.evaluation;
+        // Constroi uma EvaluationRow minima a partir do detalhe.
+        setSyntheticRow({
+          id: ev.id,
+          createdAt: new Date(ev.createdAt),
+          conversationId: ev.conversationId,
+          status: ev.status,
+          patterns: ev.patterns,
+          model: ev.model,
+          questionSnapshot: ev.questionSnapshot,
+          answerSnapshot: ev.answerSnapshot,
+          dominantPattern: ev.dominantPattern,
+          humanStatus: ev.humanStatus,
+          rodada: ev.rodada,
+          channel: ev.channel,
+        });
+      })
+      .catch(() => {
+        // Avaliacao inexistente/sem permissao: ignora silenciosamente.
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [initialExpandedId, initialData.rows]);
+
+  // Rola a linha expandida do deep-link para a vista quando ela aparece.
+  useEffect(() => {
+    if (initialExpandedId && expandedId === initialExpandedId && expandedRowRef.current) {
+      expandedRowRef.current.scrollIntoView({ behavior: "smooth", block: "center" });
+    }
+  }, [initialExpandedId, expandedId, syntheticRow]);
+
+  // Linhas exibidas: linha sintetica do deep-link no topo (deduplicada), depois
+  // as linhas da pagina atual.
+  const displayRows: EvaluationRow[] = syntheticRow
+    ? [syntheticRow, ...data.rows.filter((r) => r.id !== syntheticRow.id)]
+    : data.rows;
 
   const buildInputs = useCallback((): FilterInputs => {
     const inputs: FilterInputs = {
@@ -222,7 +285,7 @@ export function EvaluationsTable({
               </TableRow>
             </TableHeader>
             <TableBody>
-              {data.rows.length === 0 && !loading && (
+              {displayRows.length === 0 && !loading && (
                 <TableRow>
                   <TableCell
                     colSpan={8}
@@ -232,11 +295,12 @@ export function EvaluationsTable({
                   </TableCell>
                 </TableRow>
               )}
-              {data.rows.map((row) => {
+              {displayRows.map((row) => {
                 const isOpen = expandedId === row.id;
                 return (
                   <Fragment key={row.id}>
                     <TableRow
+                      ref={isOpen && row.id === initialExpandedId ? expandedRowRef : undefined}
                       className={cn(
                         "cursor-pointer transition-colors hover:bg-muted/40",
                         isOpen && "bg-muted/40",
