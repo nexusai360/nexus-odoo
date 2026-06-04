@@ -2606,6 +2606,9 @@ model LlmUsage {
   model           String
   tokensInput     Int      @map("tokens_input")
   tokensOutput    Int      @map("tokens_output")
+  /// Tokens de input servidos do cache de prompt do provider (alavanca 1).
+  /// Custam fracao do input normal; subset conceitual de tokens_input.
+  tokensCachedInput Int    @default(0) @map("tokens_cached_input")
   costUsd         Decimal? @map("cost_usd") @db.Decimal(18, 10)
   costKnown       Boolean  @default(true) @map("cost_known")
   costBrl         Decimal? @map("cost_brl") @db.Decimal(20, 10)

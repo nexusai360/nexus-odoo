@@ -681,6 +681,8 @@ export async function runAgent(args: RunAgentInput): Promise<RunAgentResult> {
 
       totalUsage.tokensInput += result.usage.tokensInput;
       totalUsage.tokensOutput += result.usage.tokensOutput;
+      totalUsage.tokensCachedInput =
+        (totalUsage.tokensCachedInput ?? 0) + (result.usage.tokensCachedInput ?? 0);
       totalUsage.costUsd += result.usage.costUsd ?? 0;
 
       // Registrar uso desta iteração (aguardado antes do return , ver usageWrites)
@@ -691,6 +693,7 @@ export async function runAgent(args: RunAgentInput): Promise<RunAgentResult> {
         credentialId: resolvedLlm.credentialId ?? undefined,
         tokensInput: result.usage.tokensInput,
         tokensOutput: result.usage.tokensOutput,
+        tokensCachedInput: result.usage.tokensCachedInput ?? 0,
         reasoningTokens: result.reasoningTokens ?? null,
         toolCallsCount: result.toolCalls?.length ?? 0,
         toolNames: result.toolCalls?.map((t) => t.name) ?? [],
