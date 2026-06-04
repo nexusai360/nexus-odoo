@@ -36,16 +36,23 @@ export async function fatoBaixaCount(prisma: PrismaClient): Promise<number> {
 }
 export async function queryBaixasCobranca(
   prisma: PrismaClient,
-  filtros: { periodoDe?: string; periodoAte?: string; situacao?: string; limite?: number },
+  filtros: { periodoDe?: string; periodoAte?: string; situacao?: string; limit: number; offset: number },
 ): Promise<{ linhas: BaixaLinha[]; total: number; truncado: boolean }> {
-  const limite = filtros.limite ?? 100;
+  const { limit, offset } = filtros;
   const periodo = rangeData(filtros.periodoDe, filtros.periodoAte);
   const where = {
     ...(periodo ? { dataPagamento: periodo } : {}),
     ...(filtros.situacao ? { situacao: filtros.situacao } : {}),
   };
   const [rows, total] = await Promise.all([
-    prisma.fatoRetornoItem.findMany({ where, orderBy: { dataPagamento: "desc" }, take: limite }),
+    // Ordenacao estavel + desempate por odooId: "os proximos" nao repetem
+    // nem pulam item entre paginas (alavanca 2b).
+    prisma.fatoRetornoItem.findMany({
+      where,
+      orderBy: [{ dataPagamento: "desc" }, { odooId: "asc" }],
+      take: limit,
+      skip: offset,
+    }),
     prisma.fatoRetornoItem.count({ where }),
   ]);
   const linhas: BaixaLinha[] = rows.map((r) => ({
@@ -62,7 +69,7 @@ export async function queryBaixasCobranca(
     vrBaixado: r.vrBaixado.toNumber(),
     vrTotal: r.vrTotal.toNumber(),
   }));
-  return { linhas, total, truncado: total > rows.length };
+  return { linhas, total, truncado: offset + rows.length < total };
 }
 
 // ── Retornos bancários (finan.retorno) ──────────────────────────────────────
@@ -81,13 +88,18 @@ export async function fatoRetornoCount(prisma: PrismaClient): Promise<number> {
 }
 export async function queryRetornosProcessados(
   prisma: PrismaClient,
-  filtros: { periodoDe?: string; periodoAte?: string; limite?: number },
+  filtros: { periodoDe?: string; periodoAte?: string; limit: number; offset: number },
 ): Promise<{ linhas: RetornoLinha[]; total: number; truncado: boolean }> {
-  const limite = filtros.limite ?? 100;
+  const { limit, offset } = filtros;
   const periodo = rangeData(filtros.periodoDe, filtros.periodoAte);
   const where = periodo ? { data: periodo } : {};
   const [rows, total] = await Promise.all([
-    prisma.fatoRetornoBancario.findMany({ where, orderBy: { data: "desc" }, take: limite }),
+    prisma.fatoRetornoBancario.findMany({
+      where,
+      orderBy: [{ data: "desc" }, { odooId: "asc" }],
+      take: limit,
+      skip: offset,
+    }),
     prisma.fatoRetornoBancario.count({ where }),
   ]);
   const linhas: RetornoLinha[] = rows.map((r) => ({
@@ -100,7 +112,7 @@ export async function queryRetornosProcessados(
     totalSaidas: r.totalSaidas.toNumber(),
     saldo: r.saldo.toNumber(),
   }));
-  return { linhas, total, truncado: total > rows.length };
+  return { linhas, total, truncado: offset + rows.length < total };
 }
 
 // ── Remessas geradas (finan.remessa) ────────────────────────────────────────
@@ -117,13 +129,18 @@ export async function fatoRemessaCount(prisma: PrismaClient): Promise<number> {
 }
 export async function queryRemessasGeradas(
   prisma: PrismaClient,
-  filtros: { periodoDe?: string; periodoAte?: string; limite?: number },
+  filtros: { periodoDe?: string; periodoAte?: string; limit: number; offset: number },
 ): Promise<{ linhas: RemessaLinha[]; total: number; truncado: boolean }> {
-  const limite = filtros.limite ?? 100;
+  const { limit, offset } = filtros;
   const periodo = rangeData(filtros.periodoDe, filtros.periodoAte);
   const where = periodo ? { data: periodo } : {};
   const [rows, total] = await Promise.all([
-    prisma.fatoRemessaBancaria.findMany({ where, orderBy: { data: "desc" }, take: limite }),
+    prisma.fatoRemessaBancaria.findMany({
+      where,
+      orderBy: [{ data: "desc" }, { odooId: "asc" }],
+      take: limit,
+      skip: offset,
+    }),
     prisma.fatoRemessaBancaria.count({ where }),
   ]);
   const linhas: RemessaLinha[] = rows.map((r) => ({
@@ -134,7 +151,7 @@ export async function queryRemessasGeradas(
     data: dia(r.data),
     confirmada: r.confirmada,
   }));
-  return { linhas, total, truncado: total > rows.length };
+  return { linhas, total, truncado: offset + rows.length < total };
 }
 
 // ── Carteiras de cobrança (finan.carteira) ──────────────────────────────────
@@ -152,8 +169,17 @@ export async function fatoCarteiraCount(prisma: PrismaClient): Promise<number> {
 }
 export async function queryCarteirasCobranca(
   prisma: PrismaClient,
-): Promise<{ linhas: CarteiraLinha[]; total: number }> {
-  const rows = await prisma.fatoCarteiraCobranca.findMany({ orderBy: { nome: "asc" } });
+  filtros: { limit: number; offset: number },
+): Promise<{ linhas: CarteiraLinha[]; total: number; truncado: boolean }> {
+  const { limit, offset } = filtros;
+  const [rows, total] = await Promise.all([
+    prisma.fatoCarteiraCobranca.findMany({
+      orderBy: [{ nome: "asc" }, { odooId: "asc" }],
+      take: limit,
+      skip: offset,
+    }),
+    prisma.fatoCarteiraCobranca.count(),
+  ]);
   const linhas: CarteiraLinha[] = rows.map((r) => ({
     odooId: r.odooId,
     nome: r.nome,
@@ -163,7 +189,7 @@ export async function queryCarteirasCobranca(
     beneficiario: r.beneficiario,
     convenio: r.convenio,
   }));
-  return { linhas, total: rows.length };
+  return { linhas, total, truncado: offset + rows.length < total };
 }
 
 // ── Cheques (finan.cheque) , estrutural ─────────────────────────────────────
@@ -180,13 +206,18 @@ export async function fatoChequeCount(prisma: PrismaClient): Promise<number> {
 }
 export async function queryCheques(
   prisma: PrismaClient,
-  filtros: { periodoDe?: string; periodoAte?: string; limite?: number },
+  filtros: { periodoDe?: string; periodoAte?: string; limit: number; offset: number },
 ): Promise<{ linhas: ChequeLinha[]; total: number; truncado: boolean }> {
-  const limite = filtros.limite ?? 100;
+  const { limit, offset } = filtros;
   const periodo = rangeData(filtros.periodoDe, filtros.periodoAte);
   const where = periodo ? { data: periodo } : {};
   const [rows, total] = await Promise.all([
-    prisma.fatoCheque.findMany({ where, orderBy: { data: "desc" }, take: limite }),
+    prisma.fatoCheque.findMany({
+      where,
+      orderBy: [{ data: "desc" }, { odooId: "asc" }],
+      take: limit,
+      skip: offset,
+    }),
     prisma.fatoCheque.count({ where }),
   ]);
   const linhas: ChequeLinha[] = rows.map((r) => ({
@@ -197,7 +228,7 @@ export async function queryCheques(
     data: dia(r.data),
     valor: r.valor.toNumber(),
   }));
-  return { linhas, total, truncado: total > rows.length };
+  return { linhas, total, truncado: offset + rows.length < total };
 }
 
 // ── PIX (finan.pix) , estrutural ────────────────────────────────────────────
@@ -214,13 +245,18 @@ export async function fatoPixCount(prisma: PrismaClient): Promise<number> {
 }
 export async function queryPixRecebidos(
   prisma: PrismaClient,
-  filtros: { periodoDe?: string; periodoAte?: string; limite?: number },
+  filtros: { periodoDe?: string; periodoAte?: string; limit: number; offset: number },
 ): Promise<{ linhas: PixLinha[]; total: number; truncado: boolean }> {
-  const limite = filtros.limite ?? 100;
+  const { limit, offset } = filtros;
   const periodo = rangeData(filtros.periodoDe, filtros.periodoAte);
   const where = periodo ? { data: periodo } : {};
   const [rows, total] = await Promise.all([
-    prisma.fatoPix.findMany({ where, orderBy: { data: "desc" }, take: limite }),
+    prisma.fatoPix.findMany({
+      where,
+      orderBy: [{ data: "desc" }, { odooId: "asc" }],
+      take: limit,
+      skip: offset,
+    }),
     prisma.fatoPix.count({ where }),
   ]);
   const linhas: PixLinha[] = rows.map((r) => ({
@@ -231,5 +267,5 @@ export async function queryPixRecebidos(
     data: dia(r.data),
     vrTarifas: r.vrTarifas.toNumber(),
   }));
-  return { linhas, total, truncado: total > rows.length };
+  return { linhas, total, truncado: offset + rows.length < total };
 }

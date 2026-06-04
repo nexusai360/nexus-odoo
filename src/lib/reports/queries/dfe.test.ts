@@ -6,8 +6,17 @@ import {
 import type { PrismaClient } from "@/generated/prisma/client";
 
 function mkPrisma(rows: unknown[]): PrismaClient {
+  // Alavanca 2b: queries por linha agora usam count (total) + aggregate (soma).
+  const soma = (rows as Array<{ vrNf?: unknown }>).reduce(
+    (s, r) => s + Number(r.vrNf ?? 0),
+    0,
+  );
   return {
-    fatoDfe: { findMany: jest.fn().mockResolvedValue(rows) },
+    fatoDfe: {
+      findMany: jest.fn().mockResolvedValue(rows),
+      count: jest.fn().mockResolvedValue(rows.length),
+      aggregate: jest.fn().mockResolvedValue({ _sum: { vrNf: soma } }),
+    },
   } as unknown as PrismaClient;
 }
 

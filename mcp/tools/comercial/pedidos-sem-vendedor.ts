@@ -8,11 +8,16 @@ import { z } from "zod";
 import type { ToolEntry } from "../../catalog/types.js";
 import { withFreshness } from "../../lib/freshness.js";
 import { enriquecerEnvelope } from "../../lib/with-responder.js";
+import {
+  paginacaoInputShape,
+  resolverPaginacao,
+  montarPaginacaoMeta,
+} from "../../lib/paginacao.js";
 
 const inputSchema = z.object({
   periodoDe: z.string().optional(),
   periodoAte: z.string().optional(),
-  limite: z.number().int().min(1).max(200).optional(),
+  ...paginacaoInputShape,
 });
 
 const linhaSchema = z.object({
@@ -32,6 +37,7 @@ const dados = z.object({
   _listaTruncada: z.boolean().optional(),
   _DESTAQUE: z.record(z.string(), z.union([z.string(), z.number()])).optional(),
   _agregado: z.record(z.string(), z.number().optional()).optional(),
+  _PAGINACAO: z.any().optional(),
 });
 
 const fonteStatus = z.object({
@@ -64,11 +70,11 @@ export const comercialPedidosSemVendedor: ToolEntry<Input, Output> = {
   inputSchema,
   outputSchema,
   handler: async (input, ctx) => {
+    const { limit, offset } = resolverPaginacao(input);
     const envelope = await withFreshness(
       ctx.prisma,
       ["fato_pedido"],
       async () => {
-        const limite = input.limite ?? 50;
         const where: Record<string, unknown> = { vendedorId: null };
         if (input.periodoDe || input.periodoAte) {
           const dataOrcamento: Record<string, Date> = {};
@@ -76,20 +82,27 @@ export const comercialPedidosSemVendedor: ToolEntry<Input, Output> = {
           if (input.periodoAte) dataOrcamento.lte = new Date(input.periodoAte);
           where.dataOrcamento = dataOrcamento;
         }
-        const rows = await ctx.prisma.fatoPedido.findMany({
-          where,
-          take: limite,
-          orderBy: { dataOrcamento: "desc" },
-          select: {
-            odooId: true,
-            numero: true,
-            participanteNome: true,
-            etapaNome: true,
-            dataOrcamento: true,
-            vrNf: true,
-          },
-        });
-        const total = await ctx.prisma.fatoPedido.count({ where });
+        // Alavanca 2b: paginacao via take/skip + orderBy estavel (dataOrcamento
+        // desc + desempate por odooId). valorTotal e a soma de TODO o recorte
+        // (aggregate), nao so da pagina.
+        const [rows, total, somaAgg] = await Promise.all([
+          ctx.prisma.fatoPedido.findMany({
+            where,
+            take: limit,
+            skip: offset,
+            orderBy: [{ dataOrcamento: "desc" }, { odooId: "asc" }],
+            select: {
+              odooId: true,
+              numero: true,
+              participanteNome: true,
+              etapaNome: true,
+              dataOrcamento: true,
+              vrNf: true,
+            },
+          }),
+          ctx.prisma.fatoPedido.count({ where }),
+          ctx.prisma.fatoPedido.aggregate({ where, _sum: { vrNf: true } }),
+        ]);
         const linhas = rows.map((r) => ({
           odooId: r.odooId,
           numero: r.numero,
@@ -98,12 +111,18 @@ export const comercialPedidosSemVendedor: ToolEntry<Input, Output> = {
           dataOrcamento: r.dataOrcamento ? r.dataOrcamento.toISOString() : null,
           valor: Number(r.vrNf ?? 0),
         }));
-        const valorTotal = linhas.reduce((s, l) => s + l.valor, 0);
+        const valorTotal = Number(somaAgg._sum.vrNf ?? 0);
         return { linhas, totalPedidos: total, valorTotal };
       },
       (d) => d.totalPedidos === 0,
     );
     if (envelope.estado === "preparando") return envelope;
+    const paginacao = montarPaginacaoMeta(
+      envelope.dados.totalPedidos,
+      offset,
+      limit,
+      envelope.dados.linhas.length,
+    );
     return enriquecerEnvelope(envelope, "comercial_pedidos_sem_vendedor", {
       destaque: {
         totalPedidos: envelope.dados.totalPedidos,
@@ -113,6 +132,7 @@ export const comercialPedidosSemVendedor: ToolEntry<Input, Output> = {
         soma: envelope.dados.valorTotal,
         contagem: envelope.dados.totalPedidos,
       },
+      paginacao,
     });
   },
 };

@@ -6,6 +6,11 @@
 import { z } from "zod";
 import type { ToolEntry } from "../../catalog/types.js";
 import { withFreshness } from "../../lib/freshness.js";
+import {
+  paginacaoInputShape,
+  resolverPaginacao,
+  montarPaginacaoMeta,
+} from "../../lib/paginacao.js";
 import type { PrismaClient } from "@/generated/prisma/client.js";
 
 const inputSchema = z.object({
@@ -16,7 +21,7 @@ const inputSchema = z.object({
   zona: z.enum(["capital", "interior", "todas"]).optional()
     .describe("Default: todas. 'capital' = somente capital da UF. 'interior' = todas exceto capital."),
   apenasClientes: z.boolean().optional(),
-  limite: z.number().int().min(1).max(100).optional(),
+  ...paginacaoInputShape,
 });
 
 const linhaSchema = z.object({
@@ -37,6 +42,7 @@ const dados = z.object({
   _listaTruncada: z.boolean().optional(),
   _DESTAQUE: z.record(z.string(), z.union([z.string(), z.number()])).optional(),
   _agregado: z.record(z.string(), z.number().optional()).optional(),
+  _PAGINACAO: z.any().optional(),
 });
 
 const fonteStatus = z.object({
@@ -115,7 +121,7 @@ function resolverUf(input: string | undefined): { sigla: string | null; filtroLi
 }
 
 async function queryParceirosPorCidade(prisma: PrismaClient, input: Input) {
-  const limite = input.limite ?? 30;
+  const { limit, offset } = resolverPaginacao(input);
   const apenasClientes = input.apenasClientes ?? false;
   const where: Record<string, unknown> = { ativo: true };
   const ufResolvida = resolverUf(input.uf);
@@ -175,10 +181,16 @@ async function queryParceirosPorCidade(prisma: PrismaClient, input: Input) {
     });
   }
 
-  const linhasCap = filtrados.slice(0, limite);
+  // EXCECAO DE PAGINACAO (alavanca 2b): o filtro de zona (capital/interior)
+  // exige comparar cidade com unaccent em memoria, entao nao da pra paginar
+  // via take/skip no SQL. Ordenamos o conjunto filtrado de forma ESTAVEL
+  // (por odooId) e fatiamos [offset, offset+limit) em memoria; total =
+  // tamanho do conjunto filtrado.
+  const ordenados = [...filtrados].sort((a, b) => a.odooId - b.odooId);
+  const linhasCap = ordenados.slice(offset, offset + limit);
   return {
     linhas: linhasCap,
-    totalEncontrados: filtrados.length,
+    totalEncontrados: ordenados.length,
     linhasExibidas: linhasCap.length,
   };
 }
@@ -200,6 +212,13 @@ export const cadastroParceirosPorCidade: ToolEntry<Input, Output> = {
     );
     if (envelope.estado === "preparando") return envelope;
     const d = envelope.dados;
+    const { limit, offset } = resolverPaginacao(input);
+    const paginacao = montarPaginacaoMeta(
+      d.totalEncontrados,
+      offset,
+      limit,
+      d.linhasExibidas,
+    );
     const zona = input.zona ?? "todas";
     const ufLabel = input.uf ? input.uf.toUpperCase() : "todas as UFs";
     const zonaLabel = zona === "capital" ? "na capital" : zona === "interior" ? "no interior" : "";
@@ -221,7 +240,8 @@ export const cadastroParceirosPorCidade: ToolEntry<Input, Output> = {
           zona,
         },
         _agregado: { contagem: d.totalEncontrados },
-        _listaTruncada: d.totalEncontrados > d.linhasExibidas,
+        _listaTruncada: paginacao.temMais,
+        _PAGINACAO: paginacao,
       },
     };
   },

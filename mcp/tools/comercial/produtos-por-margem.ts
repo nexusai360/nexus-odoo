@@ -7,12 +7,17 @@
 import { z } from "zod";
 import type { ToolEntry } from "../../catalog/types.js";
 import { withFreshness } from "../../lib/freshness.js";
+import {
+  paginacaoInputShape,
+  resolverPaginacao,
+  montarPaginacaoMeta,
+} from "../../lib/paginacao.js";
 import type { PrismaClient } from "@/generated/prisma/client.js";
 
 const inputSchema = z.object({
   ordenacao: z.enum(["maior", "menor"]).optional().describe("Default: maior margem"),
-  limite: z.number().int().min(1).max(50).optional(),
   termo: z.string().min(1).max(120).optional().describe("Filtro por nome do produto (opcional)"),
+  ...paginacaoInputShape,
 });
 
 const linhaSchema = z.object({
@@ -26,11 +31,14 @@ const linhaSchema = z.object({
 const dados = z.object({
   linhas: z.array(linhaSchema),
   totalProdutosComMargem: z.number().int(),
+  totalFiltrado: z.number().int().optional(),
   produtosSemPreco: z.number().int(),
   aviso: z.string(),
   _RESPOSTA: z.string().optional(),
+  _listaTruncada: z.boolean().optional(),
   _DESTAQUE: z.record(z.string(), z.union([z.string(), z.number()])).optional(),
   _agregado: z.record(z.string(), z.number().optional()).optional(),
+  _PAGINACAO: z.any().optional(),
 });
 
 const fonteStatus = z.object({
@@ -53,6 +61,7 @@ type Input = z.infer<typeof inputSchema>;
 type Output = z.infer<typeof outputSchema>;
 
 interface Row {
+  odoo_id: number;
   nome: string | null;
   preco_custo: string | number;
   preco_venda: string | number;
@@ -61,22 +70,26 @@ interface Row {
 
 async function queryProdutosPorMargem(prisma: PrismaClient, input: Input) {
   const ordenacao = input.ordenacao ?? "maior";
-  const limite = input.limite ?? 10;
+  const { limit, offset } = resolverPaginacao(input);
   const ordem = ordenacao === "maior" ? "DESC" : "ASC";
   const filtroTermo = input.termo
     ? `AND LOWER(nome) LIKE '%' || LOWER($1) || '%'`
     : "";
   const params: unknown[] = input.termo ? [input.termo] : [];
+  // Alavanca 2b: paginacao via LIMIT/OFFSET no SQL. ORDER BY estavel: margem_pct
+  // + desempate por odoo_id, senao produtos com mesma margem repetem/pulam entre
+  // paginas. limit/offset ja vem saneado por resolverPaginacao (numeros, teto 50).
   const sql = `
-    SELECT nome,
+    SELECT odoo_id,
+           nome,
            preco_custo,
            preco_venda,
            ((preco_venda - preco_custo) / NULLIF(preco_custo, 0)) * 100 AS margem_pct
     FROM fato_produto
     WHERE preco_custo > 0 AND preco_venda > 0
       ${filtroTermo}
-    ORDER BY margem_pct ${ordem}
-    LIMIT ${limite}
+    ORDER BY margem_pct ${ordem}, odoo_id ASC
+    LIMIT ${limit} OFFSET ${offset}
   `;
   const rows = await prisma.$queryRawUnsafe<Row[]>(sql, ...params);
 
@@ -86,6 +99,12 @@ async function queryProdutosPorMargem(prisma: PrismaClient, input: Input) {
   const cntSem = await prisma.$queryRaw<Array<{ n: bigint }>>`
     SELECT COUNT(*)::bigint AS n FROM fato_produto WHERE preco_custo = 0 OR preco_venda = 0 OR preco_custo IS NULL OR preco_venda IS NULL
   `;
+  // total que CASA com o recorte da lista (inclui filtro de termo), base da paginacao.
+  const cntFiltrado = await prisma.$queryRawUnsafe<Array<{ n: bigint }>>(
+    `SELECT COUNT(*)::bigint AS n FROM fato_produto
+     WHERE preco_custo > 0 AND preco_venda > 0 ${filtroTermo}`,
+    ...params,
+  );
 
   const linhas = rows.map((r) => {
     const custo = Number(r.preco_custo);
@@ -104,6 +123,7 @@ async function queryProdutosPorMargem(prisma: PrismaClient, input: Input) {
   return {
     linhas,
     totalProdutosComMargem: Number(cntCom[0]?.n ?? 0),
+    totalFiltrado: Number(cntFiltrado[0]?.n ?? 0),
     produtosSemPreco: Number(cntSem[0]?.n ?? 0),
     aviso:
       "Margem calculada como (preco_venda - preco_custo) / preco_custo * 100. " +
@@ -117,8 +137,8 @@ export const comercialProdutosPorMargem: ToolEntry<Input, Output> = {
   descricao:
     "Lista top N produtos por margem (preco_venda vs preco_custo do cadastro). " +
     "Use para 'top produtos por margem', 'maior margem', 'menor margem', 'produto " +
-    "com mais lucro por unidade'. Aceita ordenacao=maior|menor (default maior), " +
-    "limite (default 10) e termo (opcional, filtra por nome).",
+    "com mais lucro por unidade'. Aceita ordenacao=maior|menor (default maior) " +
+    "e termo (opcional, filtra por nome). Paginado: 10 por vez (limit/offset).",
   inputSchemaShape: inputSchema.shape,
   inputSchema,
   outputSchema,
@@ -128,6 +148,9 @@ export const comercialProdutosPorMargem: ToolEntry<Input, Output> = {
     );
     if (envelope.estado === "preparando") return envelope;
     const d = envelope.dados;
+    const { limit, offset } = resolverPaginacao(input);
+    const total = d.totalFiltrado ?? d.totalProdutosComMargem;
+    const paginacao = montarPaginacaoMeta(total, offset, limit, d.linhas.length);
     const top = d.linhas[0];
     const fmt = (n: number) =>
       n.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
@@ -149,6 +172,8 @@ export const comercialProdutosPorMargem: ToolEntry<Input, Output> = {
         _agregado: {
           contagem: d.totalProdutosComMargem,
         },
+        _listaTruncada: paginacao.temMais,
+        _PAGINACAO: paginacao,
       },
     };
   },

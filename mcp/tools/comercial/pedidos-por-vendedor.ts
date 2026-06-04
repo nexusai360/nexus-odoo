@@ -5,10 +5,16 @@ import type { ToolEntry } from "../../catalog/types.js";
 import { queryPedidosPorVendedor } from "@/lib/reports/queries/comercial.js";
 import { withFreshness } from "../../lib/freshness.js";
 import { enriquecerEnvelope } from "../../lib/with-responder.js";
+import {
+  paginacaoInputShape,
+  resolverPaginacao,
+  montarPaginacaoMeta,
+} from "../../lib/paginacao.js";
 
 const inputSchema = z.object({
   periodoDe: z.string().optional(),
   periodoAte: z.string().optional(),
+  ...paginacaoInputShape,
 });
 
 // array "linhas" → ARRAY_KEYS_PRIORITY detecta vazio sem isVazio custom (P-M1)
@@ -25,6 +31,7 @@ const dados = z.object({
   _listaTruncada: z.boolean().optional(),
   _DESTAQUE: z.record(z.string(), z.union([z.string(), z.number()])).optional(),
   _agregado: z.record(z.string(), z.number().optional()).optional(),
+  _PAGINACAO: z.any().optional(),
 
 });
 
@@ -62,18 +69,25 @@ export const comercialPedidosPorVendedor: ToolEntry<Input, Output> = {
   inputSchema,
   outputSchema,
   handler: async (input, ctx) => {
+    const { limit, offset } = resolverPaginacao(input);
     const envelope = await withFreshness(ctx.prisma, ["fato_pedido"], async () =>
       shape(await queryPedidosPorVendedor(ctx.prisma, input)),
     );
     if (envelope.estado === "preparando") return envelope;
     const d = envelope.dados;
     const todasLinhas = d.linhas;
+    // Aggregados sobre TODO o ranking (independem da pagina).
     const totalPedidos = todasLinhas.reduce((s, l) => s + Number(l.quantidade ?? 0), 0);
     const valorTotal = todasLinhas.reduce((s, l) => s + Number(l.valorTotal ?? 0), 0);
     const top = todasLinhas[0];
     const ticketMedio = totalPedidos > 0 ? valorTotal / totalPedidos : 0;
+    // Alavanca 2b , EXCECAO de paginacao em memoria: o ranking vem agregado em
+    // memoria (group by vendedor), ordenado de forma estavel pela query. Aqui
+    // so fatiamos [offset, offset+limit). total = numero de vendedores.
+    const paginacao = montarPaginacaoMeta(todasLinhas.length, offset, limit, Math.min(limit, Math.max(0, todasLinhas.length - offset)));
+    const pagina = todasLinhas.slice(offset, offset + limit);
     return enriquecerEnvelope(
-      { ...envelope, dados: { ...d, linhas: todasLinhas.slice(0, 20) } },
+      { ...envelope, dados: { ...d, linhas: pagina } },
       "comercial_pedidos_por_vendedor",
       {
         destaque: {
@@ -85,7 +99,7 @@ export const comercialPedidosPorVendedor: ToolEntry<Input, Output> = {
           valorTopVendedor: top?.valorTotal ?? 0,
         },
         agregado: { contagem: totalPedidos, soma: valorTotal, media: ticketMedio },
-        listaTruncada: todasLinhas.length > 20,
+        paginacao,
       },
     );
   },

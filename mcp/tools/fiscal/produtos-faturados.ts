@@ -4,11 +4,16 @@ import { z } from "zod";
 import type { ToolEntry } from "../../catalog/types.js";
 import { queryProdutosFaturados } from "@/lib/reports/queries/fiscal.js";
 import { withFreshness } from "../../lib/freshness.js";
+import {
+  paginacaoInputShape,
+  resolverPaginacao,
+  montarPaginacaoMeta,
+} from "../../lib/paginacao.js";
 
 const inputSchema = z.object({
   periodoDe: z.string().optional(),
   periodoAte: z.string().optional(),
-  limite: z.number().int().min(1).max(100).optional().default(20),
+  ...paginacaoInputShape,
 });
 
 const linhaSchema = z.object({
@@ -19,8 +24,13 @@ const linhaSchema = z.object({
 
 const dados = z.object({
   linhas: z.array(linhaSchema),
+  total: z.number().int(),
+  valorGeral: z.number(),
+  quantidadeGeral: z.number(),
   aviso: z.string(),
   _RESPOSTA: z.string().optional(),
+  _listaTruncada: z.boolean().optional(),
+  _PAGINACAO: z.any().optional(),
   _DESTAQUE: z.record(z.string(), z.union([z.string(), z.number()])).optional(),
   _agregado: z.record(z.string(), z.number().optional()).optional(),
 });
@@ -46,6 +56,9 @@ type Output = z.infer<typeof outputSchema>;
 function shape(d: Awaited<ReturnType<typeof queryProdutosFaturados>>) {
   return {
     linhas: d.linhas,
+    total: d.total,
+    valorGeral: d.valorGeral,
+    quantidadeGeral: d.quantidadeGeral,
     aviso:
       "Agrupa itens de notas de saída (entradaSaida='1') por produto, " +
       "ordenado por valor total descendente. Notas de entrada não são consideradas.",
@@ -61,35 +74,34 @@ export const fiscalProdutosFaturados: ToolEntry<Input, Output> = {
   inputSchema,
   outputSchema,
   handler: async (input, ctx) => {
+    const { limit, offset } = resolverPaginacao(input);
     const envelope = await withFreshness(ctx.prisma, ["fato_nota_fiscal_item"], async () =>
-      shape(await queryProdutosFaturados(ctx.prisma, input)),
+      shape(await queryProdutosFaturados(ctx.prisma, { ...input, limit, offset })),
     );
     if (envelope.estado === "preparando") return envelope;
     const d = envelope.dados;
-    const todasLinhas = d.linhas;
-    const linhasCap = todasLinhas.slice(0, 30);
-    const totalGeral = todasLinhas.reduce((s, l) => s + l.valorTotal, 0);
-    const totalQtd = todasLinhas.reduce((s, l) => s + Number(l.quantidadeTotal ?? 0), 0);
-    const top = todasLinhas[0];
+    // Alavanca 2b: paginacao em memoria por produto (total = produtos distintos).
+    const paginacao = montarPaginacaoMeta(d.total, offset, limit, d.linhas.length);
+    const top = d.linhas[0];
     const fmt = (n: number) => n.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
     return {
       ...envelope,
       dados: {
         ...d,
-        linhas: linhasCap,
         _RESPOSTA: top
-          ? `Top produto faturado: ${top.produtoNome ?? "(sem nome)"} (${fmt(top.valorTotal)}). Total: ${todasLinhas.length} produtos, ${fmt(totalGeral)}, ${totalQtd} unidades.`
+          ? `Top produto faturado: ${top.produtoNome ?? "(sem nome)"} (${fmt(top.valorTotal)}). Total: ${d.total} produtos, ${fmt(d.valorGeral)}, ${d.quantidadeGeral} unidades.`
           : "Nao ha produtos faturados no periodo.",
         _DESTAQUE: {
-          totalProdutos: todasLinhas.length,
-          totalGeral,
-          totalQuantidade: totalQtd,
+          totalProdutos: d.total,
+          totalGeral: d.valorGeral,
+          totalQuantidade: d.quantidadeGeral,
           topProduto: top?.produtoNome ?? "",
           valorTopProduto: top?.valorTotal ?? 0,
-          linhasExibidas: linhasCap.length,
+          linhasExibidas: d.linhas.length,
         },
-        _agregado: { contagem: todasLinhas.length, soma: totalGeral },
-        _listaTruncada: todasLinhas.length > linhasCap.length,
+        _agregado: { contagem: d.total, soma: d.valorGeral },
+        _listaTruncada: paginacao.temMais,
+        _PAGINACAO: paginacao,
       },
     };
   },

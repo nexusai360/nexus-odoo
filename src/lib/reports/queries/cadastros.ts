@@ -19,10 +19,17 @@ import {
  * - Tenta nome + nome_completo via busca fuzzy universal (tokenizacao AND
  *   + unaccent + fallback pg_trgm).
  * - Documento (CNPJ/CPF) entra como fallback final via match parcial direto
- *   (numeros nao se beneficiam de fuzzy mas vale match parcial). */
+ *   (numeros nao se beneficiam de fuzzy mas vale match parcial).
+ *
+ * EXCECAO DE PAGINACAO (alavanca 2b): esta busca UNE ids de varios caminhos
+ * (nome curto + nome completo + documento), entao limit/offset nao podem ir
+ * direto pro SQL como take/skip. O conjunto encontrado e fechado primeiro
+ * (cada caminho ja vem capado em ~50 pelo fuzzy interno), ordenado de forma
+ * ESTAVEL por odooId, e a fatia [offset, offset+limit) e feita em memoria.
+ * `total` = tamanho do conjunto encontrado. */
 export async function queryBuscarParceiro(
   prisma: PrismaClient,
-  filtros: { termo: string; limite?: number },
+  filtros: { termo: string; limit: number; offset: number },
 ): Promise<{
   linhas: {
     odooId: number;
@@ -33,14 +40,15 @@ export async function queryBuscarParceiro(
     uf: string | null;
     cidade: string | null;
   }[];
+  total: number;
 }> {
-  const limite = filtros.limite ?? 20;
+  const { limit, offset } = filtros;
   const termo = filtros.termo.trim();
 
-  if (!termo) return { linhas: [] };
+  if (!termo) return { linhas: [], total: 0 };
 
-  // Une ids dos dois caminhos (nome curto + nome completo) sem perder ordem
-  // relativa de relevancia (Set preserva ordem de insercao em JS).
+  // Une ids dos dois caminhos (nome curto + nome completo). Cada caminho ja
+  // vem capado em ~50 pelo fuzzy interno.
   const [idsByNome, idsByFull] = await Promise.all([
     searchPartnerIdsByName(prisma, termo),
     searchPartnerIdsByFullName(prisma, termo),
@@ -49,23 +57,29 @@ export async function queryBuscarParceiro(
 
   // Fallback documento: numeros e formatos com pontuacao. Match parcial
   // ILIKE direto cobre os casos tipicos (so digitos, so pontos, ou parcial).
-  if (idSet.size < limite) {
-    const restante = limite - idSet.size;
-    const porDocumento = await prisma.fatoParceiro.findMany({
-      where: {
-        documento: { contains: termo, mode: "insensitive" },
-        odooId: { notIn: Array.from(idSet) },
-      },
-      select: { odooId: true },
-      take: restante,
-    });
-    for (const r of porDocumento) idSet.add(r.odooId);
-  }
+  // Cap defensivo de 50 alinhado aos demais caminhos.
+  const porDocumento = await prisma.fatoParceiro.findMany({
+    where: {
+      documento: { contains: termo, mode: "insensitive" },
+      odooId: { notIn: Array.from(idSet) },
+    },
+    select: { odooId: true },
+    take: 50,
+  });
+  for (const r of porDocumento) idSet.add(r.odooId);
 
-  if (idSet.size === 0) return { linhas: [] };
+  if (idSet.size === 0) return { linhas: [], total: 0 };
 
-  const linhas = await prisma.fatoParceiro.findMany({
-    where: { odooId: { in: Array.from(idSet).slice(0, limite) } },
+  // Ordena os ids de forma estavel (asc) e fatia a pagina em memoria. Fetch
+  // so dos ids da pagina mantem o payload enxuto.
+  const idsOrdenados = Array.from(idSet).sort((a, b) => a - b);
+  const total = idsOrdenados.length;
+  const idsDaPagina = idsOrdenados.slice(offset, offset + limit);
+
+  if (idsDaPagina.length === 0) return { linhas: [], total };
+
+  const rows = await prisma.fatoParceiro.findMany({
+    where: { odooId: { in: idsDaPagina } },
     select: {
       odooId: true,
       nome: true,
@@ -76,7 +90,9 @@ export async function queryBuscarParceiro(
       cidade: true,
     },
   });
-  return { linhas };
+  // findMany IN nao garante ordem; reordena pela mesma chave estavel.
+  const linhas = rows.sort((a, b) => a.odooId - b.odooId);
+  return { linhas, total };
 }
 
 // ---------------------------------------------------------------------------

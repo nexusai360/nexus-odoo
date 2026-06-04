@@ -5,12 +5,17 @@ import { z } from "zod";
 import type { ToolEntry } from "../../catalog/types.js";
 import { queryMdfeManifestos, fatoMdfeCount } from "@/lib/reports/queries/fiscal-complementar.js";
 import { withFreshness } from "../../lib/freshness.js";
+import {
+  paginacaoInputShape,
+  resolverPaginacao,
+  montarPaginacaoMeta,
+} from "../../lib/paginacao.js";
 
 const inputSchema = z.object({
   periodoDe: z.string().optional().describe("Início, AAAA-MM-DD"),
   periodoAte: z.string().optional().describe("Fim, AAAA-MM-DD"),
   situacao: z.string().optional().describe("Situação do MDF-e (ex.: autorizado, cancelado, encerrado)"),
-  limite: z.number().int().min(1).max(200).optional(),
+  ...paginacaoInputShape,
 });
 
 const linhaSchema = z.object({
@@ -32,6 +37,7 @@ const dados = z.object({
   aviso: z.string(),
   _RESPOSTA: z.string().optional(),
   _listaTruncada: z.boolean().optional(),
+  _PAGINACAO: z.any().optional(),
   _DESTAQUE: z.record(z.string(), z.union([z.string(), z.number()])).optional(),
   _agregado: z.record(z.string(), z.number().optional()).optional(),
 });
@@ -65,14 +71,16 @@ export const fiscalMdfeManifestos: ToolEntry<Input, Output> = {
   inputSchema,
   outputSchema,
   handler: async (input, ctx) => {
+    const { limit, offset } = resolverPaginacao(input);
     const total = await fatoMdfeCount(ctx.prisma);
     const envelope = await withFreshness(ctx.prisma, ["fato_mdfe"], async () => {
-      const r = await queryMdfeManifestos(ctx.prisma, input);
+      const r = await queryMdfeManifestos(ctx.prisma, { ...input, limit, offset });
       return { linhas: r.linhas, total: r.total, truncado: r.truncado, aviso: "" };
     });
     if (envelope.estado === "preparando") return envelope;
     const d = envelope.dados;
     const valorTotal = d.linhas.reduce((s, l) => s + l.vrNf, 0);
+    const paginacao = montarPaginacaoMeta(d.total, offset, limit, d.linhas.length);
     return {
       ...envelope,
       dados: {
@@ -85,7 +93,8 @@ export const fiscalMdfeManifestos: ToolEntry<Input, Output> = {
               : "Sem MDF-e nesse recorte (período/situação).",
         _DESTAQUE: { totalMdfe: d.total, valorNotas: valorTotal },
         _agregado: { contagem: d.total, soma: valorTotal },
-        _listaTruncada: d.truncado,
+        _listaTruncada: paginacao.temMais,
+        _PAGINACAO: paginacao,
       },
     };
   },

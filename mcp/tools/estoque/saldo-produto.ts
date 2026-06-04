@@ -5,6 +5,11 @@ import type { ToolEntry } from "../../catalog/types.js";
 import { querySaldoProduto } from "@/lib/reports/queries/estoque.js";
 import { withFreshness } from "../../lib/freshness.js";
 import { enriquecerEnvelope } from "../../lib/with-responder.js";
+import {
+  paginacaoInputShape,
+  resolverPaginacao,
+  montarPaginacaoMeta,
+} from "../../lib/paginacao.js";
 import { humanizeName } from "@/lib/agent/text-normalize.js";
 
 const inputSchema = z.object({
@@ -13,6 +18,7 @@ const inputSchema = z.object({
   /** Filtra por nome do produto (busca parcial) , use para perguntas sobre
    * o saldo de um produto específico. Aceita o nome ou o código do produto. */
   termo: z.string().min(1).max(120).optional(),
+  ...paginacaoInputShape,
 });
 
 const linha = z.object({
@@ -69,6 +75,7 @@ const dados = z.object({
   _listaTruncada: z.boolean().optional(),
   _DESTAQUE: z.record(z.string(), z.union([z.string(), z.number()])).optional(),
   _agregado: z.record(z.string(), z.number().optional()).optional(),
+  _PAGINACAO: z.any().optional(),
 });
 
 const fonteStatus = z.object({
@@ -157,6 +164,7 @@ export const estoqueSaldoProduto: ToolEntry<Input, Output> = {
   inputSchema,
   outputSchema,
   handler: async (input, ctx) => {
+    const { limit, offset } = resolverPaginacao(input);
     const envelope = await withFreshness(
       ctx.prisma,
       ["fato_estoque_saldo", "fato_produto"],
@@ -179,7 +187,8 @@ export const estoqueSaldoProduto: ToolEntry<Input, Output> = {
     // T-27 (Ronda 1): topMaiores por saldo (unidades) e topMaioresValor (R$).
     // Resolve "10 produtos com maior saldo em estoque hoje" sem precisar
     // de tool nova. Linhas vem ordenadas por valor desc; aqui geramos uma
-    // segunda visao por saldo desc para perguntas de unidade.
+    // segunda visao por saldo desc para perguntas de unidade. Calculado
+    // sobre o conjunto COMPLETO, antes de fatiar a pagina (alavanca 2b).
     const topMaiores = [...envelope.dados.linhas]
       .sort((a, b) => b.saldoTotal - a.saldoTotal)
       .slice(0, 10)
@@ -188,6 +197,21 @@ export const estoqueSaldoProduto: ToolEntry<Input, Output> = {
         saldo: l.saldoTotal,
         valor: l.valorTotal,
       }));
+
+    // Alavanca 2b: a lista de produtos pode ser grande (consulta sem termo).
+    // Excecao documentada: as linhas ja vem agregadas/ordenadas em memoria
+    // (querySaldoProduto), entao fatiamos [offset, offset+limit) aqui; total
+    // = total de produtos do recorte (kpis.totalProdutos). KPIs, ambiguidade
+    // e topMaiores permanecem sobre o conjunto completo.
+    const totalLinhas = envelope.dados.linhas.length;
+    const paginacao = montarPaginacaoMeta(
+      totalLinhas,
+      offset,
+      limit,
+      Math.max(0, Math.min(limit, totalLinhas - offset)),
+    );
+    envelope.dados.linhas = envelope.dados.linhas.slice(offset, offset + limit);
+
     const enriched = enriquecerEnvelope(envelope, "estoque_saldo_produto", {
       destaque: {
         totalProdutos: k.totalProdutos,
@@ -198,6 +222,7 @@ export const estoqueSaldoProduto: ToolEntry<Input, Output> = {
         contagem: k.totalProdutos,
         soma: k.valorTotal,
       },
+      paginacao,
     });
     if (enriched.estado !== "preparando") {
       (enriched.dados as unknown as Record<string, unknown>)["topMaiores"] = topMaiores;

@@ -6,6 +6,11 @@ import { z, type ZodRawShape } from "zod";
 import type { ToolEntry } from "../../catalog/types.js";
 import { withFreshness } from "../../lib/freshness.js";
 import {
+  paginacaoInputShape,
+  resolverPaginacao,
+  montarPaginacaoMeta,
+} from "../../lib/paginacao.js";
+import {
   queryBaixasCobranca, fatoBaixaCount,
   queryRetornosProcessados, fatoRetornoCount,
   queryRemessasGeradas, fatoRemessaCount,
@@ -22,6 +27,7 @@ const dadosSchema = z.object({
   truncado: z.boolean(),
   _RESPOSTA: z.string().optional(),
   _listaTruncada: z.boolean().optional(),
+  _PAGINACAO: z.any().optional(),
   _agregado: z.record(z.string(), z.number().optional()).optional(),
 });
 const outputSchema = z.union([
@@ -39,7 +45,7 @@ type Output = z.infer<typeof outputSchema>;
 const periodoShape = {
   periodoDe: z.string().optional().describe("Início, AAAA-MM-DD"),
   periodoAte: z.string().optional().describe("Fim, AAAA-MM-DD"),
-  limite: z.number().int().min(1).max(200).optional(),
+  ...paginacaoInputShape,
 };
 
 interface QResult { linhas: unknown[]; total: number; truncado: boolean }
@@ -51,7 +57,7 @@ function makeTool<I extends Record<string, unknown>>(opts: {
   naoOperado: string;
   inputShape: ZodRawShape;
   count: (p: PrismaClient) => Promise<number>;
-  query: (p: PrismaClient, input: I) => Promise<QResult>;
+  query: (p: PrismaClient, input: I & { limit: number; offset: number }) => Promise<QResult>;
   resumoOk: (total: number) => string;
 }): ToolEntry<I, Output> {
   const zObject = z.object(opts.inputShape);
@@ -64,13 +70,16 @@ function makeTool<I extends Record<string, unknown>>(opts: {
     inputSchema,
     outputSchema,
     handler: async (input: I, ctx: { prisma: PrismaClient }) => {
+      // Alavanca 2b: resolve paginacao (limit/offset) e injeta no input da query.
+      const { limit, offset } = resolverPaginacao(input as { limit?: number; offset?: number });
       const total = await opts.count(ctx.prisma);
       const envelope = await withFreshness(ctx.prisma, [opts.fato], async () => {
-        const r = await opts.query(ctx.prisma, input);
+        const r = await opts.query(ctx.prisma, { ...input, limit, offset });
         return { linhas: r.linhas, total: r.total, truncado: r.truncado };
       });
       if (envelope.estado === "preparando") return envelope;
       const d = envelope.dados;
+      const paginacao = montarPaginacaoMeta(d.total, offset, limit, d.linhas.length);
       return {
         ...envelope,
         dados: {
@@ -82,7 +91,8 @@ function makeTool<I extends Record<string, unknown>>(opts: {
                 ? opts.resumoOk(d.total)
                 : "Sem registros nesse recorte.",
           _agregado: { contagem: d.total },
-          _listaTruncada: d.truncado,
+          _listaTruncada: paginacao.temMais,
+          _PAGINACAO: paginacao,
         },
       };
     },
@@ -136,12 +146,9 @@ export const financeiroCarteirasCobranca = makeTool({
     "tipo, beneficiário e convênio. Não expõe credenciais de banco. Sem filtro de período.",
   fato: "fato_carteira_cobranca",
   naoOperado: "Não há carteiras de cobrança cadastradas no Odoo ainda.",
-  inputShape: { limite: z.number().int().min(1).max(200).optional() },
+  inputShape: { ...paginacaoInputShape },
   count: fatoCarteiraCount,
-  query: async (p) => {
-    const r = await queryCarteirasCobranca(p);
-    return { linhas: r.linhas, total: r.total, truncado: false };
-  },
+  query: (p, i) => queryCarteirasCobranca(p, i),
   resumoOk: (n) => `${n} carteiras de cobrança cadastradas.`,
 });
 

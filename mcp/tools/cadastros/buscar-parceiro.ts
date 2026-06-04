@@ -5,10 +5,15 @@ import type { ToolEntry } from "../../catalog/types.js";
 import { queryBuscarParceiro } from "@/lib/reports/queries/cadastros.js";
 import { withFreshness } from "../../lib/freshness.js";
 import { enriquecerEnvelope } from "../../lib/with-responder.js";
+import {
+  paginacaoInputShape,
+  resolverPaginacao,
+  montarPaginacaoMeta,
+} from "../../lib/paginacao.js";
 
 const inputSchema = z.object({
   termo: z.string().min(1),
-  limite: z.number().int().positive().optional(),
+  ...paginacaoInputShape,
 });
 
 const linhaSchema = z.object({
@@ -24,10 +29,13 @@ const linhaSchema = z.object({
 // Onda 1.C: envelope canonico
 const dados = z.object({
   linhas: z.array(linhaSchema),
+  total: z.number().int().optional(),
   _RESPOSTA: z.string().optional(),
   _listaTruncada: z.boolean().optional(),
   _DESTAQUE: z.record(z.string(), z.union([z.string(), z.number()])).optional(),
   _agregado: z.record(z.string(), z.number().optional()).optional(),
+  _PAGINACAO: z.any().optional(),
+  _AVISO_TRUNCAMENTO: z.string().optional(),
 });
 
 const fonteStatus = z.object({
@@ -83,21 +91,29 @@ export const cadastroBuscarParceiro: ToolEntry<Input, Output> = {
         },
       );
     }
+    const { limit, offset } = resolverPaginacao(input);
     const envelope = await withFreshness(
       ctx.prisma,
       ["fato_parceiro"],
       async () => {
-        const result = await queryBuscarParceiro(ctx.prisma, input);
-        return { linhas: result.linhas };
+        const result = await queryBuscarParceiro(ctx.prisma, {
+          termo: input.termo,
+          limit,
+          offset,
+        });
+        return { linhas: result.linhas, total: result.total };
       },
     );
     if (envelope.estado === "preparando") return envelope;
     const linhas = envelope.dados.linhas;
+    const total = envelope.dados.total;
+    const paginacao = montarPaginacaoMeta(total, offset, limit, linhas.length);
     return enriquecerEnvelope(envelope, "cadastro_buscar_parceiro", {
+      paginacao,
       destaque: {
-        totalEncontrados: linhas.length,
+        totalEncontrados: total,
         termo: input.termo,
-        ...(linhas.length === 1
+        ...(total === 1
           ? {
               parceiroNome: linhas[0]?.nome ?? "",
               documento: linhas[0]?.documento ?? "",

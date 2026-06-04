@@ -4,11 +4,16 @@ import { z } from "zod";
 import type { ToolEntry } from "../../catalog/types.js";
 import { queryDfePendentesManifestacao } from "@/lib/reports/queries/dfe.js";
 import { withFreshness } from "../../lib/freshness.js";
+import {
+  paginacaoInputShape,
+  resolverPaginacao,
+  montarPaginacaoMeta,
+} from "../../lib/paginacao.js";
 
 const inputSchema = z.object({
   periodoDe: z.string().optional().describe("Início do período, AAAA-MM-DD."),
   periodoAte: z.string().optional().describe("Fim do período, AAAA-MM-DD."),
-  limite: z.number().int().min(1).max(200).optional(),
+  ...paginacaoInputShape,
 });
 
 const linhaSchema = z.object({
@@ -29,6 +34,7 @@ const dados = z.object({
   aviso: z.string(),
   _RESPOSTA: z.string().optional(),
   _listaTruncada: z.boolean().optional(),
+  _PAGINACAO: z.any().optional(),
   _DESTAQUE: z.record(z.string(), z.union([z.string(), z.number()])).optional(),
   _agregado: z.record(z.string(), z.number().optional()).optional(),
 });
@@ -72,25 +78,25 @@ export const fiscalDfePendentesManifestacao: ToolEntry<Input, Output> = {
   inputSchema,
   outputSchema,
   handler: async (input, ctx) => {
+    const { limit, offset } = resolverPaginacao(input);
     const envelope = await withFreshness(ctx.prisma, ["fato_dfe"], async () =>
-      shape(await queryDfePendentesManifestacao(ctx.prisma, input)),
+      shape(await queryDfePendentesManifestacao(ctx.prisma, { ...input, limit, offset })),
     );
     if (envelope.estado === "preparando") return envelope;
     const d = envelope.dados;
-    const todasLinhas = d.linhas;
-    const linhasCap = todasLinhas.slice(0, 30);
+    const paginacao = montarPaginacaoMeta(d.totalPendentes, offset, limit, d.linhas.length);
     return {
       ...envelope,
       dados: {
         ...d,
-        linhas: linhasCap,
         _RESPOSTA:
           d.totalPendentes > 0
             ? `${d.totalPendentes} DF-e pendentes de manifestação no período.`
             : "Nenhum DF-e pendente de manifestação no período.",
         _DESTAQUE: { pendentes: d.totalPendentes },
         _agregado: { contagem: d.totalPendentes },
-        _listaTruncada: todasLinhas.length > linhasCap.length,
+        _listaTruncada: paginacao.temMais,
+        _PAGINACAO: paginacao,
       },
     };
   },

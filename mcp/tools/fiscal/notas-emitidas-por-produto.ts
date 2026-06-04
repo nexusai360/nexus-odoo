@@ -3,13 +3,18 @@
 import { z } from "zod";
 import type { ToolEntry } from "../../catalog/types.js";
 import { withFreshness } from "../../lib/freshness.js";
+import {
+  paginacaoInputShape,
+  resolverPaginacao,
+  montarPaginacaoMeta,
+} from "../../lib/paginacao.js";
 import type { PrismaClient } from "@/generated/prisma/client.js";
 
 const inputSchema = z.object({
   produtoTermo: z.string().min(2).max(120).describe("Nome ou codigo do produto."),
   periodoDe: z.string().optional(),
   periodoAte: z.string().optional(),
-  limite: z.number().int().min(1).max(50).optional(),
+  ...paginacaoInputShape,
 });
 
 const linhaSchema = z.object({
@@ -27,6 +32,8 @@ const dados = z.object({
   valorTotal: z.number(),
   linhasExibidas: z.number().int(),
   _RESPOSTA: z.string().optional(),
+  _listaTruncada: z.boolean().optional(),
+  _PAGINACAO: z.any().optional(),
   _DESTAQUE: z.record(z.string(), z.union([z.string(), z.number()])).optional(),
   _agregado: z.record(z.string(), z.number().optional()).optional(),
 });
@@ -55,16 +62,23 @@ interface Row {
 }
 
 async function query(prisma: PrismaClient, input: Input) {
-  const limite = input.limite ?? 30;
+  const { limit, offset } = resolverPaginacao(input);
   const filtroPer = input.periodoDe && input.periodoAte
     ? `AND nf.data_emissao BETWEEN $2::timestamp AND $3::timestamp`
     : "";
-  const params: unknown[] = [`%${input.produtoTermo}%`];
+  // Parametros base (produto + periodo), usados pela query de total. A query
+  // paginada acrescenta LIMIT/OFFSET ao final em `params`.
+  const baseParams: unknown[] = [`%${input.produtoTermo}%`];
   if (input.periodoDe && input.periodoAte) {
-    params.push(`${input.periodoDe}T00:00:00`, `${input.periodoAte}T23:59:59`);
+    baseParams.push(`${input.periodoDe}T00:00:00`, `${input.periodoAte}T23:59:59`);
   }
+  // Alavanca 2b: LIMIT/OFFSET como parametros (posicoes apos os ja usados).
+  const pLimit = baseParams.length + 1;
+  const pOffset = baseParams.length + 2;
+  const params: unknown[] = [...baseParams, limit, offset];
 
-  // Agrega por nota
+  // Agrega por nota. ORDER BY estavel com desempate por nf.odoo_id para que
+  // "os proximos" nao repitam nem pulem nota entre paginas.
   const rows = await prisma.$queryRawUnsafe<Row[]>(
     `SELECT nf.numero,
             nf.data_emissao,
@@ -78,8 +92,8 @@ async function query(prisma: PrismaClient, input: Input) {
          AND (LOWER(p.nome) ILIKE LOWER($1) OR p.odoo_id::text = $1)
          ${filtroPer}
        GROUP BY nf.odoo_id, nf.numero, nf.data_emissao, nf.participante_nome
-       ORDER BY nf.data_emissao DESC
-       LIMIT ${limite}`,
+       ORDER BY nf.data_emissao DESC, nf.odoo_id ASC
+       LIMIT $${pLimit} OFFSET $${pOffset}`,
     ...params,
   );
 
@@ -93,7 +107,7 @@ async function query(prisma: PrismaClient, input: Input) {
        WHERE nf.entrada_saida = '1'
          AND (LOWER(p.nome) ILIKE LOWER($1) OR p.odoo_id::text = $1)
          ${filtroPer}`,
-    ...params,
+    ...baseParams,
   );
   const t = totRows[0];
 
@@ -123,9 +137,11 @@ export const fiscalNotasEmitidasPorProduto: ToolEntry<Input, Output> = {
   inputSchema,
   outputSchema,
   handler: async (input, ctx) => {
+    const { limit, offset } = resolverPaginacao(input);
     const envelope = await withFreshness(ctx.prisma, ["fato_nota_fiscal", "fato_nota_fiscal_item", "fato_produto"], () => query(ctx.prisma, input));
     if (envelope.estado === "preparando") return envelope;
     const d = envelope.dados;
+    const paginacao = montarPaginacaoMeta(d.totalNotas, offset, limit, d.linhasExibidas);
     const fmt = (n: number) => n.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
     return {
       ...envelope,
@@ -142,6 +158,8 @@ export const fiscalNotasEmitidasPorProduto: ToolEntry<Input, Output> = {
           linhasExibidas: d.linhasExibidas,
         },
         _agregado: { contagem: d.totalNotas, soma: d.valorTotal },
+        _listaTruncada: paginacao.temMais,
+        _PAGINACAO: paginacao,
       },
     };
   },

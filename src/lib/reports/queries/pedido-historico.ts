@@ -68,7 +68,7 @@ export async function queryPedidoHistoricoEtapas(
  */
 export async function queryPedidoTravadosPorEtapa(
   prisma: PrismaClient,
-  filtros: { diasMin?: number; limite?: number; agora?: Date },
+  filtros: { diasMin?: number; limit?: number; offset?: number; agora?: Date },
 ): Promise<{
   linhas: { pedidoId: number | null; etapaNome: string | null; dataEntrada: string | null; diasParado: number }[];
   totalTravados: number;
@@ -91,7 +91,11 @@ export async function queryPedidoTravadosPorEtapa(
   }
 
   const MS_DIA = 86_400_000;
-  const linhas = [...ultimo.entries()]
+  // Alavanca 2b , EXCECAO de paginacao em memoria: a lista nasce de uma
+  // agregacao em memoria (ultimo evento por pedido), entao nao da para usar
+  // take/skip no SQL. Ordenamos de forma ESTAVEL (diasParado desc + desempate
+  // por pedidoId asc) e fatiamos [offset, offset+limit). total = conjunto todo.
+  const todos = [...ultimo.entries()]
     .map(([pedidoId, v]) => ({
       pedidoId,
       etapaNome: v.etapaNome,
@@ -99,11 +103,13 @@ export async function queryPedidoTravadosPorEtapa(
       diasParado: v.dataEntrada ? Math.floor((agora.getTime() - v.dataEntrada.getTime()) / MS_DIA) : 0,
     }))
     .filter((l) => l.diasParado > diasMin)
-    .sort((a, b) => b.diasParado - a.diasParado);
+    .sort((a, b) => b.diasParado - a.diasParado || (a.pedidoId ?? 0) - (b.pedidoId ?? 0));
 
+  const offset = filtros.offset ?? 0;
+  const limit = filtros.limit ?? 50;
   return {
-    linhas: linhas.slice(0, filtros.limite ?? 50),
-    totalTravados: linhas.length,
+    linhas: todos.slice(offset, offset + limit),
+    totalTravados: todos.length,
     diasMin,
   };
 }

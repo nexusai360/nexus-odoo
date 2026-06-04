@@ -5,13 +5,18 @@ import { z } from "zod";
 import type { ToolEntry } from "../../catalog/types.js";
 import { queryReinfEventos, fatoReinfCount } from "@/lib/reports/queries/fiscal-complementar.js";
 import { withFreshness } from "../../lib/freshness.js";
+import {
+  paginacaoInputShape,
+  resolverPaginacao,
+  montarPaginacaoMeta,
+} from "../../lib/paginacao.js";
 
 const inputSchema = z.object({
   periodoDe: z.string().optional().describe("Início, AAAA-MM-DD"),
   periodoAte: z.string().optional().describe("Fim, AAAA-MM-DD"),
   tipo: z.string().optional().describe("Tipo do evento REINF (ex.: R-4020, R-2010)"),
   situacao: z.string().optional().describe("Situação (ex.: enviado, rejeitado, a_enviar)"),
-  limite: z.number().int().min(1).max(200).optional(),
+  ...paginacaoInputShape,
 });
 
 const linhaSchema = z.object({
@@ -31,6 +36,7 @@ const dados = z.object({
   aviso: z.string(),
   _RESPOSTA: z.string().optional(),
   _listaTruncada: z.boolean().optional(),
+  _PAGINACAO: z.any().optional(),
   _DESTAQUE: z.record(z.string(), z.union([z.string(), z.number()])).optional(),
   _agregado: z.record(z.string(), z.number().optional()).optional(),
 });
@@ -64,13 +70,15 @@ export const fiscalReinfEventos: ToolEntry<Input, Output> = {
   inputSchema,
   outputSchema,
   handler: async (input, ctx) => {
+    const { limit, offset } = resolverPaginacao(input);
     const total = await fatoReinfCount(ctx.prisma);
     const envelope = await withFreshness(ctx.prisma, ["fato_reinf_evento"], async () => {
-      const r = await queryReinfEventos(ctx.prisma, input);
+      const r = await queryReinfEventos(ctx.prisma, { ...input, limit, offset });
       return { linhas: r.linhas, total: r.total, truncado: r.truncado, aviso: "" };
     });
     if (envelope.estado === "preparando") return envelope;
     const d = envelope.dados;
+    const paginacao = montarPaginacaoMeta(d.total, offset, limit, d.linhas.length);
     return {
       ...envelope,
       dados: {
@@ -83,7 +91,8 @@ export const fiscalReinfEventos: ToolEntry<Input, Output> = {
               : "Sem eventos REINF nesse recorte (período/tipo/situação).",
         _DESTAQUE: { totalEventos: d.total },
         _agregado: { contagem: d.total },
-        _listaTruncada: d.truncado,
+        _listaTruncada: paginacao.temMais,
+        _PAGINACAO: paginacao,
       },
     };
   },
