@@ -29,6 +29,13 @@ describe("composeSystemPrompt", () => {
     expect(result).toContain("Odoo");
   });
 
+  test("instrui paginacao: 10 por vez e uso de proximoOffset (alavanca 2b)", () => {
+    const result = composeSystemPrompt(baseConfig, []);
+    expect(result).toContain("_PAGINACAO");
+    expect(result).toContain("proximoOffset");
+    expect(result).toMatch(/no máximo 10 itens/i);
+  });
+
   test("identityBase do DB tem prioridade sobre hardcoded", () => {
     const cfg: AgentPromptConfig = {
       ...baseConfig,
