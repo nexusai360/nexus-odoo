@@ -2567,6 +2567,7 @@ model Message {
   /// (Array<{ name, args, result }>). NULL em mensagens pre-Onda 1 Inteligencia.
   /// Spec: docs/superpowers/specs/2026-05-25-agente-nex-inteligencia-design.md §3.2.
   toolResults     Json?                 @map("tool_results")
+  kind            String                @default("text") @map("kind")
   createdAt       DateTime              @default(now()) @map("created_at")
   /// R1 router de catalogo: decisao do router associada a este turno.
   routerDecisions AgentRouterDecision[]
