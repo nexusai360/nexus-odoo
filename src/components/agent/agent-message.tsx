@@ -827,7 +827,11 @@ function MonitorVoteBadge({
   const meta = RATING_META[rating];
   const Icon = meta.Icon;
   const hasComment = Boolean(comment && comment.trim().length > 0);
+  // `open` = fixado por clique (permanece). `hover` = temporário enquanto o
+  // mouse está sobre o badge. Visível = um ou outro.
   const [open, setOpen] = React.useState(false);
+  const [hover, setHover] = React.useState(false);
+  const showComment = hasComment && (open || hover);
   const rootRef = React.useRef<HTMLDivElement>(null);
 
   React.useEffect(() => {
@@ -853,6 +857,8 @@ function MonitorVoteBadge({
           aria-label={`Avaliação do usuário: ${meta.label}. Tem comentário, clique para ver.`}
           title="Ver comentário do usuário"
           onClick={() => setOpen((v) => !v)}
+          onMouseEnter={() => setHover(true)}
+          onMouseLeave={() => setHover(false)}
           style={badgeStyle}
           className={cn(baseCls, "cursor-pointer")}
         >
@@ -872,13 +878,15 @@ function MonitorVoteBadge({
       )}
 
       <AnimatePresence>
-        {open && hasComment ? (
+        {showComment ? (
           <motion.div
-            initial={{ opacity: 0, y: 6, scale: 0.96 }}
+            initial={{ opacity: 0, y: 6, scale: 0.98 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={{ opacity: 0, y: 6, scale: 0.96 }}
+            exit={{ opacity: 0, y: 6, scale: 0.98 }}
             transition={{ duration: 0.16, ease: [0.16, 1, 0.3, 1] }}
-            className="absolute right-0 top-full z-20 mt-2 w-60 rounded-lg border border-border bg-popover p-2.5 shadow-xl"
+            // Largura cheia da bolha (left-0 right-0): puxa pra esquerda e fica
+            // mais baixo verticalmente, melhor de ler.
+            className="absolute inset-x-0 top-full z-20 mt-2 rounded-lg border border-border bg-popover p-2.5 shadow-xl"
           >
             <div
               className="mb-1 flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-wide"

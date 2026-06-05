@@ -201,11 +201,13 @@ export function BubbleMonitor() {
     setDateLabel((prev) => (prev === label ? prev : label));
   }, [messages]);
 
-  // Ao carregar a sessão, abre já no fim e recalcula a tag de data.
+  // Ao carregar a sessão, abre no INÍCIO (mensagem mais antiga no topo); o
+  // usuário rola pra baixo (ou usa o FAB de descer). Recalcula a tag de data.
   React.useEffect(() => {
-    if (messages && convScrollRef.current) {
-      convScrollRef.current.scrollTop = convScrollRef.current.scrollHeight;
-      setShowScrollFab(false);
+    const el = convScrollRef.current;
+    if (messages && el) {
+      el.scrollTop = 0;
+      setShowScrollFab(el.scrollHeight - el.clientHeight > 120);
       recomputeDateLabel();
     }
   }, [messages, recomputeDateLabel]);
