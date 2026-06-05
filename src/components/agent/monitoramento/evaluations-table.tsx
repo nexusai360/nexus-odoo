@@ -279,9 +279,9 @@ export function EvaluationsTable({
                 <TableHead>Pergunta</TableHead>
                 <TableHead>Resposta</TableHead>
                 <TableHead className="w-[130px]">Status</TableHead>
-                <TableHead className="w-[140px]">Modelo</TableHead>
-                <TableHead className="w-[180px]">Padrão dominante</TableHead>
-                <TableHead className="w-[60px] text-right">Ações</TableHead>
+                <TableHead className="w-[120px]">Modelo</TableHead>
+                <TableHead className="w-[140px]">Padrão dominante</TableHead>
+                <TableHead className="w-[56px] text-right">Ações</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
