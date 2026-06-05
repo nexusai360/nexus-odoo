@@ -10,7 +10,7 @@
  */
 
 import * as React from "react";
-import { ChevronDown, Gauge, Scale } from "lucide-react";
+import { ChevronDown, ChevronLeft, ChevronRight, Gauge, Scale } from "lucide-react";
 import { motion, useReducedMotion } from "framer-motion";
 import {
   listBubbleCollaborators,
@@ -158,11 +158,69 @@ const PANEL =
   "flex h-[72vh] flex-col overflow-hidden rounded-xl border border-border bg-card shadow-sm lg:flex-row";
 const SECTION = "flex min-h-0 min-w-0 flex-1 flex-col";
 const DIVIDER = "border-b border-border lg:border-b-0 lg:border-r";
-const SIDE_COL = "lg:w-[350px] lg:flex-none";
+const SIDE_COL = "lg:w-[330px] lg:flex-none";
 const HEAD =
   "shrink-0 border-b border-border px-3 py-2 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground";
+// Tira/largura quando recolhida (faixa estreita só com o título vertical).
+const SIDE_COLLAPSED = "lg:w-9 lg:flex-none";
+
+/**
+ * Coluna lateral recolhível (Colaboradores / Sessões). Recolhida vira uma faixa
+ * estreita com o título na vertical + chevron pra reabrir; expandida tem o
+ * header com o botão de recolher. A Conversa (flex-1) cresce sozinha quando uma
+ * lateral encolhe.
+ */
+function SideColumn({
+  title,
+  collapsed,
+  onToggle,
+  children,
+}: {
+  title: string;
+  collapsed: boolean;
+  onToggle: () => void;
+  children: React.ReactNode;
+}) {
+  if (collapsed) {
+    return (
+      <div className={cn(SECTION, DIVIDER, SIDE_COLLAPSED)}>
+        <button
+          type="button"
+          onClick={onToggle}
+          title={`Expandir ${title}`}
+          aria-label={`Expandir ${title}`}
+          className="flex h-full w-full cursor-pointer flex-col items-center gap-2 py-2 text-muted-foreground transition-colors hover:bg-muted/50 hover:text-foreground"
+        >
+          <ChevronRight className="h-4 w-4 shrink-0" />
+          <span className="text-[11px] font-semibold uppercase tracking-wide [writing-mode:vertical-rl]">
+            {title}
+          </span>
+        </button>
+      </div>
+    );
+  }
+  return (
+    <div className={cn(SECTION, DIVIDER, SIDE_COL)}>
+      <div className={cn(HEAD, "flex items-center justify-between gap-2")}>
+        <span>{title}</span>
+        <button
+          type="button"
+          onClick={onToggle}
+          title={`Recolher ${title}`}
+          aria-label={`Recolher ${title}`}
+          className="-mr-1 inline-flex h-5 w-5 shrink-0 cursor-pointer items-center justify-center rounded text-muted-foreground/70 transition-colors hover:bg-muted hover:text-foreground"
+        >
+          <ChevronLeft className="h-4 w-4" />
+        </button>
+      </div>
+      {children}
+    </div>
+  );
+}
 
 export function BubbleMonitor() {
+  const [collabCollapsed, setCollabCollapsed] = React.useState(false);
+  const [sessionsCollapsed, setSessionsCollapsed] = React.useState(false);
   const [collabs, setCollabs] = React.useState<Collaborator[] | null>(null);
   const [userId, setUserId] = React.useState<string | null>(null);
   const [sessions, setSessions] = React.useState<SessionRow[] | null>(null);
@@ -264,9 +322,12 @@ export function BubbleMonitor() {
 
   return (
     <div className={PANEL}>
-      {/* Coluna 1: colaboradores */}
-      <div className={cn(SECTION, DIVIDER, SIDE_COL)}>
-        <div className={HEAD}>Colaboradores</div>
+      {/* Coluna 1: colaboradores (recolhível) */}
+      <SideColumn
+        title="Colaboradores"
+        collapsed={collabCollapsed}
+        onToggle={() => setCollabCollapsed((v) => !v)}
+      >
         <div className="flex-1 overflow-y-auto p-2">
           {collabs === null ? (
             <Skeletons />
@@ -317,11 +378,14 @@ export function BubbleMonitor() {
             ))
           )}
         </div>
-      </div>
+      </SideColumn>
 
-      {/* Coluna 2: sessões */}
-      <div className={cn(SECTION, DIVIDER, SIDE_COL)}>
-        <div className={HEAD}>Sessões</div>
+      {/* Coluna 2: sessões (recolhível) */}
+      <SideColumn
+        title="Sessões"
+        collapsed={sessionsCollapsed}
+        onToggle={() => setSessionsCollapsed((v) => !v)}
+      >
         <div className="flex-1 overflow-y-auto p-2">
           {!userId ? (
             <Empty>Escolha um colaborador.</Empty>
@@ -363,7 +427,7 @@ export function BubbleMonitor() {
             ))
           )}
         </div>
-      </div>
+      </SideColumn>
 
       {/* Coluna 3: conversa */}
       <div className={cn(SECTION, "relative")}>
