@@ -103,8 +103,8 @@ function JsonNode({
       </div>
       {open && (
         <>
-          {/* Linha-guia de indentação (violeta tracejado, visível). */}
-          <div className="ml-[7px] border-l border-dashed border-violet-400/40 pl-3">
+          {/* Linha-guia de indentação (cinza claro tracejado, visível). */}
+          <div className="ml-[7px] border-l border-dashed border-zinc-400/40 pl-3">
             {entries.map(([k, v], i) => (
               <JsonNode
                 key={k}
@@ -285,12 +285,12 @@ export function JsonCodeFold({ data }: { data: unknown }) {
             {r.n}
           </span>
           <div className="flex min-w-0 flex-1 items-start pl-2">
-            {/* Guias de indentação (violeta tracejado, visíveis mas sutis). */}
+            {/* Guias de indentação (cinza claro tracejado, visíveis mas sutis). */}
             {Array.from({ length: r.depth }).map((_, i) => (
               <span
                 key={i}
                 aria-hidden
-                className="mr-[9px] w-3.5 shrink-0 self-stretch border-l border-dashed border-violet-400/40"
+                className="mr-[9px] w-3.5 shrink-0 self-stretch border-l border-dashed border-zinc-400/40"
               />
             ))}
             {r.foldable ? (
