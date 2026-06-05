@@ -2589,7 +2589,7 @@ model MessageFeedback {
   assistantMessageId String             @map("assistant_message_id") @db.Uuid
   userId             String             @map("user_id") @db.Uuid
   rating             UserFeedbackRating
-  comment            String?            @db.VarChar(100)
+  comment            String?            @db.VarChar(150)
   createdAt          DateTime           @default(now()) @map("created_at")
   updatedAt          DateTime           @updatedAt @map("updated_at")
 
@@ -2609,7 +2609,7 @@ model MessageFeedbackEvent {
   id         String                @id @default(uuid()) @db.Uuid
   feedbackId String                @map("feedback_id") @db.Uuid
   rating     UserFeedbackRating
-  comment    String?               @db.VarChar(100)
+  comment    String?               @db.VarChar(150)
   action     MessageFeedbackAction
   createdAt  DateTime              @default(now()) @map("created_at")
 

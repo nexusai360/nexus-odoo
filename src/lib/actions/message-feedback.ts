@@ -19,7 +19,7 @@ const RATINGS = ["CORRETO", "PARCIAL", "ERRADO", "ALUCINOU"] as const;
 const InputSchema = z.object({
   assistantMessageId: z.string().uuid(),
   rating: z.enum(RATINGS),
-  comment: z.string().trim().max(100).optional(),
+  comment: z.string().trim().max(150).optional(),
 });
 
 type Data = {

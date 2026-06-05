@@ -112,8 +112,8 @@ test("checkpoint != PRODUCTION recusa", async () => {
   expect(res.success).toBe(false);
 });
 
-test("comment > 100 e recusado (zod)", async () => {
-  const res = await submitMessageFeedback({ assistantMessageId: MSG, rating: "ERRADO", comment: "x".repeat(101) });
+test("comment > 150 e recusado (zod)", async () => {
+  const res = await submitMessageFeedback({ assistantMessageId: MSG, rating: "ERRADO", comment: "x".repeat(151) });
   expect(res.success).toBe(false);
 });
 

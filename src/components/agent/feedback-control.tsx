@@ -135,7 +135,7 @@ export function FeedbackControl({
 
   function autosize(el: HTMLTextAreaElement) {
     el.style.height = "30px";
-    el.style.height = Math.min(el.scrollHeight, 46) + "px";
+    el.style.height = Math.min(el.scrollHeight, 128) + "px";
   }
 
   const chosenOpt = chosen ? byRating(chosen) : null;
@@ -162,6 +162,13 @@ export function FeedbackControl({
           className="absolute -right-2 -bottom-2 flex h-6 w-6 cursor-pointer items-center justify-center rounded-md border text-white shadow-sm"
         >
           <chosenOpt.Icon className="h-3 w-3" />
+          {/* Pontinho branco: indica que existe um comentário escrito no voto. */}
+          {current?.comment ? (
+            <span
+              aria-hidden
+              className="absolute -top-1 -right-1 h-2 w-2 rounded-full bg-white ring-1 ring-black/20"
+            />
+          ) : null}
         </button>
       )}
 
@@ -250,14 +257,14 @@ export function FeedbackControl({
               <textarea
                 ref={taRef}
                 value={text}
-                maxLength={100}
-                rows={1}
+                maxLength={150}
+                rows={2}
                 placeholder={fieldOpt.ph}
                 onChange={(e) => {
                   setText(e.target.value);
                   autosize(e.target);
                 }}
-                className="h-[30px] max-h-[46px] flex-1 resize-none rounded-lg border border-border bg-muted/40 px-2.5 py-1.5 text-xs text-foreground outline-none focus:border-violet-500"
+                className="h-[48px] max-h-[128px] flex-1 resize-none rounded-lg border border-border bg-muted/40 px-2.5 py-1.5 text-xs leading-snug text-foreground outline-none focus:border-violet-500"
               />
               <button
                 type="button"
@@ -269,7 +276,7 @@ export function FeedbackControl({
               </button>
             </div>
             <div className="mt-1 pr-9 text-right text-[9px] tabular-nums text-muted-foreground/70">
-              {text.length}/100
+              {text.length}/150
             </div>
           </motion.div>
         )}
