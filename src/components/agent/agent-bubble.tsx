@@ -72,6 +72,9 @@ export function AgentBubble({
   initialConversationId = null,
 }: AgentBubbleProps = {}) {
   const [open, setOpen] = React.useState(false);
+  // Tela expandida: a bubble lateral vira um modal central grande. Vive aqui
+  // (não no ChatPanel) pra persistir entre re-renders; reseta ao fechar.
+  const [expanded, setExpanded] = React.useState(false);
   // O conversationId vive AQUI (no FAB), e não no ChatPanel: assim ele
   // sobrevive ao unmount do painel quando o usuário fecha a bubble pelo "X" e
   // o histórico é restaurado na próxima abertura. Inicia com a conversa ativa
@@ -172,7 +175,12 @@ export function AgentBubble({
       {open ? (
         <ChatPanel
           open={open}
-          onClose={() => setOpen(false)}
+          onClose={() => {
+            setExpanded(false);
+            setOpen(false);
+          }}
+          expanded={expanded}
+          onToggleExpand={() => setExpanded((v) => !v)}
           audioInputEnabled={audioInputEnabled}
           imageInputEnabled={imageInputEnabled}
           feedbackEnabled={feedbackEnabled}

@@ -85,6 +85,10 @@ export interface AgentMessageProps {
   feedback?: { rating: FeedbackRating; comment: string | null } | null;
   /** B1. Submete o voto (otimismo fica no chat-panel). */
   onSubmitFeedback?: (rating: FeedbackRating, comment?: string) => Promise<void> | void;
+  /** Remove o voto vigente (volta a "sem voto"). */
+  onRemoveFeedback?: () => Promise<void> | void;
+  /** Avisa quando o campo de comentário do voto abre/fecha (esconder sugestões). */
+  onFeedbackFieldOpenChange?: (open: boolean) => void;
   /**
    * B2 (monitoramento, read-only). Sugestões que o agente ofereceu nesta
    * resposta, exibidas DENTRO da bolha num bloco colapsável com chevron igual
@@ -128,6 +132,8 @@ export function AgentMessage({
   dbMessageId,
   feedback,
   onSubmitFeedback,
+  onRemoveFeedback,
+  onFeedbackFieldOpenChange,
   suggestions,
   clickedSuggestion,
   monitorPericia,
@@ -271,6 +277,8 @@ export function AgentMessage({
           <FeedbackControl
             current={feedback ?? null}
             onSubmit={(rating, comment) => onSubmitFeedback(rating, comment)}
+            onRemove={onRemoveFeedback}
+            onFieldOpenChange={onFeedbackFieldOpenChange}
           />
         ) : null}
         {monitorVote ? (
@@ -679,7 +687,7 @@ function AssistantSuggestionsBlock({
             }
             style={{ overflow: "hidden" }}
           >
-            <ul id={listId} className="mt-1.5 flex flex-col gap-1.5 pl-5">
+            <ul id={listId} className="mt-2 flex flex-col gap-2 pl-5">
               {suggestions.map((s, i) => {
                 const clicked = s === clickedSuggestion;
                 return (

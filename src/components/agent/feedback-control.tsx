@@ -11,7 +11,7 @@
  */
 
 import * as React from "react";
-import { Gauge, Check, X, Ghost, Send } from "lucide-react";
+import { Gauge, Check, X, Ghost, Send, Plus } from "lucide-react";
 import { PartialIcon } from "./partial-icon";
 import { motion, AnimatePresence, useReducedMotion } from "framer-motion";
 import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip";
@@ -73,18 +73,45 @@ const TINT: Record<FeedbackRating, string> = {
 export interface FeedbackControlProps {
   current: { rating: FeedbackRating; comment: string | null } | null;
   onSubmit: (rating: FeedbackRating, comment?: string) => Promise<void> | void;
+  /** Remove o voto (volta a "sem voto"). Disparado ao clicar no voto já
+   *  selecionado na paleta (toggle-off). */
+  onRemove?: () => Promise<void> | void;
+  /** Avisa o pai quando o campo de comentário abre/fecha (pra esconder as
+   *  sugestões enquanto o usuário digita). */
+  onFieldOpenChange?: (open: boolean) => void;
 }
 
-export function FeedbackControl({ current, onSubmit }: FeedbackControlProps) {
+export function FeedbackControl({
+  current,
+  onSubmit,
+  onRemove,
+  onFieldOpenChange,
+}: FeedbackControlProps) {
   const reduce = useReducedMotion();
   const [open, setOpen] = React.useState(false);
   const [chosen, setChosen] = React.useState<FeedbackRating | null>(current?.rating ?? null);
   const [fieldFor, setFieldFor] = React.useState<FeedbackRating | null>(null);
   const [text, setText] = React.useState("");
+  // Hover no badge: mostra o card com o comentário (igual ao monitor).
+  const [hover, setHover] = React.useState(false);
   const rootRef = React.useRef<HTMLDivElement>(null);
   const taRef = React.useRef<HTMLTextAreaElement>(null);
 
+  // SINCRONIZAÇÃO do pulso entre TODAS as respostas não votadas: cada gatilho
+  // calcula um animation-delay negativo = -(agora % período). Como o período é
+  // o mesmo (2s) e a fase fica ancorada ao mesmo relógio, todas pulsam juntas,
+  // na mesma cadência, independentemente de quando cada mensagem apareceu.
+  const [pulseDelay, setPulseDelay] = React.useState("0ms");
+  React.useEffect(() => {
+    const PULSE_MS = 2000;
+    setPulseDelay(`${-(performance.now() % PULSE_MS)}ms`);
+  }, []);
+
   React.useEffect(() => setChosen(current?.rating ?? null), [current?.rating]);
+  // Notifica o pai sobre o campo de edição aberto (some/volta as sugestões).
+  React.useEffect(() => {
+    onFieldOpenChange?.(fieldFor !== null);
+  }, [fieldFor, onFieldOpenChange]);
 
   // Click-away: fecha paleta e campo.
   React.useEffect(() => {
@@ -100,6 +127,14 @@ export function FeedbackControl({ current, onSubmit }: FeedbackControlProps) {
   }, [open, fieldFor]);
 
   function pick(r: FeedbackRating) {
+    // Toggle-off: clicar no voto JÁ selecionado remove o voto (volta a "sem voto").
+    if (r === chosen) {
+      setChosen(null);
+      setFieldFor(null);
+      setOpen(false);
+      void onRemove?.();
+      return;
+    }
     setChosen(r);
     setOpen(false);
     void onSubmit(r); // voto otimista, sem comentário
@@ -118,9 +153,20 @@ export function FeedbackControl({ current, onSubmit }: FeedbackControlProps) {
     setFieldFor(null);
   }
 
+  // Abre o campo de comentário JÁ PREENCHIDO com o comentário atual, pra editar
+  // (a partir do card de hover). Só faz sentido para votos que aceitam comentário.
+  function startEdit() {
+    if (!chosen || !byRating(chosen).field) return;
+    setOpen(false);
+    setHover(false);
+    setText(current?.comment ?? "");
+    setFieldFor(chosen);
+    setTimeout(() => taRef.current?.focus(), 180);
+  }
+
   function autosize(el: HTMLTextAreaElement) {
     el.style.height = "30px";
-    el.style.height = Math.min(el.scrollHeight, 46) + "px";
+    el.style.height = Math.min(el.scrollHeight, 128) + "px";
   }
 
   const chosenOpt = chosen ? byRating(chosen) : null;
@@ -132,21 +178,42 @@ export function FeedbackControl({ current, onSubmit }: FeedbackControlProps) {
       {!chosenOpt ? (
         <button
           type="button"
-          aria-label="Avaliar resposta"
+          aria-label="Avaliar resposta (clique para votar)"
+          title="Avalie esta resposta"
           onClick={() => setOpen((v) => !v)}
-          className="absolute -right-2 -bottom-2 flex h-6 w-6 cursor-pointer items-center justify-center rounded-md border border-border bg-background text-muted-foreground opacity-0 shadow-sm transition-opacity hover:text-foreground group-hover/msg:opacity-100 focus-visible:opacity-100 focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
+          // GATILHO (sem voto): ÍCONE fixo no canto (-right-2, onde estava
+          // alinhado) e o texto "Avalie" à DIREITA dele, na margem direita da
+          // resposta. Ancorado pelo ícone: left-full posiciona no canto e o
+          // -ml puxa o ícone pra sobrepor a borda como antes; "Avalie" segue à
+          // direita. Pulso NO PAI: ícone e texto piscam JUNTOS (mesma fase).
+          style={{ animationDelay: pulseDelay }}
+          className="nex-vote-pulse group/vote absolute -bottom-1.5 left-full -ml-[19px] flex cursor-pointer items-center gap-1.5 hover:[animation-play-state:paused] focus-visible:outline-none"
         >
-          <Gauge className="h-3 w-3" />
+          <span className="flex h-[27px] w-[27px] items-center justify-center rounded-md border border-violet-400/60 bg-violet-500/15 text-violet-600 shadow-sm transition-colors group-hover/vote:bg-violet-500/35 group-hover/vote:text-violet-700 dark:text-violet-300">
+            <Gauge className="h-3.5 w-3.5" strokeWidth={2.25} />
+          </span>
+          <span className="select-none text-[11px] font-semibold tracking-wide text-violet-600 dark:text-violet-300">
+            Avalie
+          </span>
         </button>
       ) : (
         <button
           type="button"
           aria-label={`Avaliação: ${chosenOpt.label}. Clique para alterar.`}
           onClick={() => setOpen((v) => !v)}
+          onMouseEnter={() => setHover(true)}
+          onMouseLeave={() => setHover(false)}
           style={{ background: chosenOpt.color, borderColor: chosenOpt.color }}
           className="absolute -right-2 -bottom-2 flex h-6 w-6 cursor-pointer items-center justify-center rounded-md border text-white shadow-sm"
         >
           <chosenOpt.Icon className="h-3 w-3" />
+          {/* Pontinho branco: indica que existe um comentário escrito no voto. */}
+          {current?.comment ? (
+            <span
+              aria-hidden
+              className="absolute -top-1 -right-1 h-2 w-2 rounded-full bg-white ring-1 ring-black/20"
+            />
+          ) : null}
         </button>
       )}
 
@@ -160,40 +227,115 @@ export function FeedbackControl({ current, onSubmit }: FeedbackControlProps) {
             transition={{ duration: 0.2, ease: [0.16, 1, 0.3, 1] }}
             className="absolute -bottom-2.5 right-5 z-10 flex items-center gap-0.5 rounded-[10px] border border-border bg-popover p-1 shadow-xl"
           >
-            {OPTS.map((o, i) => (
-              <Tooltip key={o.rating}>
-                <TooltipTrigger
-                  render={
-                    <motion.button
-                      type="button"
-                      aria-label={o.label}
-                      onClick={() => pick(o.rating)}
-                      initial={reduce ? false : { opacity: 0, scale: 0.6 }}
-                      animate={{ opacity: 1, scale: 1 }}
-                      transition={{ delay: (OPTS.length - 1 - i) * 0.04 }}
-                      style={{ color: o.color }}
-                      className={`flex h-[30px] w-[30px] items-center justify-center rounded-lg border border-transparent transition-all hover:scale-110 ${TINT[o.rating]}`}
-                    />
-                  }
-                >
-                  <o.Icon className="h-4 w-4" />
-                </TooltipTrigger>
-                <TooltipContent>{o.label}</TooltipContent>
-              </Tooltip>
-            ))}
+            {OPTS.map((o, i) => {
+              const selected = o.rating === chosen;
+              return (
+                <Tooltip key={o.rating}>
+                  <TooltipTrigger
+                    render={
+                      <motion.button
+                        type="button"
+                        aria-label={o.label}
+                        aria-pressed={selected}
+                        onClick={() => pick(o.rating)}
+                        initial={reduce ? false : { opacity: 0, scale: 0.6 }}
+                        animate={{ opacity: 1, scale: 1 }}
+                        transition={{ delay: (OPTS.length - 1 - i) * 0.04 }}
+                        // Selecionado: fundo sólido na cor + ícone branco (mostra
+                        // o voto vigente). Não selecionado: ícone colorido + tint
+                        // no hover.
+                        style={
+                          selected
+                            ? { background: o.color, color: "#fff" }
+                            : { color: o.color }
+                        }
+                        className={`flex h-[30px] w-[30px] items-center justify-center rounded-lg border transition-all hover:scale-110 ${
+                          selected
+                            ? "border-transparent ring-2 ring-white/25"
+                            : `border-transparent ${TINT[o.rating]}`
+                        }`}
+                      />
+                    }
+                  >
+                    <o.Icon className="h-4 w-4" />
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    {selected ? `${o.label} · clique para remover` : o.label}
+                  </TooltipContent>
+                </Tooltip>
+              );
+            })}
           </motion.div>
         )}
       </AnimatePresence>
 
-      {/* campo de comentário (sanfona) */}
+      {/* card de hover: mostra o comentário escrito (igual ao monitor). Some
+          enquanto a paleta ou o campo de edição estão abertos. */}
+      <AnimatePresence>
+        {chosenOpt &&
+        hover &&
+        !open &&
+        !fieldFor &&
+        (current?.comment || chosenOpt.field) ? (
+          <motion.div
+            initial={reduce ? false : { opacity: 0, y: 6, scale: 0.98 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: 6, scale: 0.98 }}
+            transition={{ duration: 0.16, ease: [0.16, 1, 0.3, 1] }}
+            onMouseEnter={() => setHover(true)}
+            onMouseLeave={() => setHover(false)}
+            className="absolute inset-x-0 top-full z-20 mt-2 rounded-lg border border-border bg-popover p-2.5 shadow-xl"
+          >
+            <div
+              className="mb-1 flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-wide"
+              style={{ color: chosenOpt.color }}
+            >
+              <chosenOpt.Icon className="h-3 w-3" />
+              {chosenOpt.label}
+              <span className="text-muted-foreground/70">
+                {current?.comment ? "· comentário" : "· sem comentário"}
+              </span>
+              {current?.comment ? (
+                <button
+                  type="button"
+                  onClick={startEdit}
+                  className="ml-auto rounded px-1.5 py-0.5 text-[10px] font-medium normal-case text-violet-600 hover:bg-violet-500/10 dark:text-violet-300"
+                >
+                  Editar
+                </button>
+              ) : null}
+            </div>
+            {current?.comment ? (
+              <p className="text-xs leading-snug text-foreground [overflow-wrap:anywhere]">
+                {current.comment}
+              </p>
+            ) : (
+              // Sem comentário: botão "Adicionar" centralizado pra abrir o campo.
+              <button
+                type="button"
+                onClick={startEdit}
+                className="mx-auto mt-0.5 flex cursor-pointer items-center gap-1.5 text-xs font-medium text-violet-600 transition-colors hover:text-violet-700 dark:text-violet-300"
+              >
+                <span className="flex h-[18px] w-[18px] items-center justify-center rounded-full bg-violet-500/15">
+                  <Plus className="h-3 w-3" />
+                </span>
+                adicionar
+              </button>
+            )}
+          </motion.div>
+        ) : null}
+      </AnimatePresence>
+
+      {/* campo de comentário: popover absoluto abaixo da bolha (não empurra o
+          layout , antes ele jogava o badge pra baixo do botão enviar). */}
       <AnimatePresence>
         {fieldOpt && (
           <motion.div
-            initial={reduce ? false : { opacity: 0, height: 0 }}
-            animate={{ opacity: 1, height: "auto" }}
-            exit={{ opacity: 0, height: 0 }}
-            transition={{ duration: 0.24, ease: [0.16, 1, 0.3, 1] }}
-            className="mt-2 overflow-hidden border-t border-border pt-2"
+            initial={reduce ? false : { opacity: 0, y: 6, scale: 0.98 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: 6, scale: 0.98 }}
+            transition={{ duration: 0.2, ease: [0.16, 1, 0.3, 1] }}
+            className="absolute inset-x-0 top-full z-20 mt-2 rounded-lg border border-border bg-popover p-2.5 shadow-xl"
           >
             <div className="mb-1.5 flex items-start gap-1.5 text-[11px] leading-snug text-muted-foreground">
               <span
@@ -218,14 +360,21 @@ export function FeedbackControl({ current, onSubmit }: FeedbackControlProps) {
               <textarea
                 ref={taRef}
                 value={text}
-                maxLength={100}
-                rows={1}
+                maxLength={150}
+                rows={2}
                 placeholder={fieldOpt.ph}
                 onChange={(e) => {
                   setText(e.target.value);
                   autosize(e.target);
                 }}
-                className="h-[30px] max-h-[46px] flex-1 resize-none rounded-lg border border-border bg-muted/40 px-2.5 py-1.5 text-xs text-foreground outline-none focus:border-violet-500"
+                onKeyDown={(e) => {
+                  // Enter envia; Shift+Enter quebra linha.
+                  if (e.key === "Enter" && !e.shiftKey) {
+                    e.preventDefault();
+                    send();
+                  }
+                }}
+                className="h-[48px] max-h-[128px] flex-1 resize-none rounded-lg border border-border bg-muted/40 px-2.5 py-1.5 text-xs leading-snug text-foreground outline-none focus:border-violet-500"
               />
               <button
                 type="button"
@@ -237,7 +386,7 @@ export function FeedbackControl({ current, onSubmit }: FeedbackControlProps) {
               </button>
             </div>
             <div className="mt-1 pr-9 text-right text-[9px] tabular-nums text-muted-foreground/70">
-              {text.length}/100
+              {text.length}/150
             </div>
           </motion.div>
         )}

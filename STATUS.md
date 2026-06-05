@@ -4,6 +4,16 @@
 > Ao abrir: ler **este arquivo**, o **`CLAUDE.md`** e **`.agente-handoff.md`**.
 > Modo autônomo é o padrão (`CLAUDE.md §6`).
 
+## 2026-06-05 (leva 3) , PONTO DE RETOMADA (branch `feat/agente-nex-bubble-ux`)
+
+Ajustes de UX da bubble do Nex (tudo local, sem produção). `tsc 0 / 2386 testes / eslint 0`.
+
+- **Bubble expande em modal central** (botão Maximize2 no header, backdrop, transição via framer `layout`); recolhe pelo backdrop, fecha pelo X.
+- **Voto do usuário reformulado:** voto vigente fica selecionado na paleta; clicar nele de novo remove (toggle-off, action `removeMessageFeedback`); campo de comentário virou popover (corrige o badge que caía); card no hover mostra o comentário com botão **Editar**, ou **adicionar** quando não há comentário (pontinho branco indica comentário); sugestões somem ao editar; comentário até **150 chars** (coluna `VarChar(150)` aplicada via `ALTER` direto , `prisma migrate` quis resetar o banco por drift pré-existente, NÃO resetei; sem migration file, só local); **Enter envia / Shift+Enter quebra linha**.
+- **Gatilho de voto (não votado):** quadrado violeta 27px + texto "Avalie" à direita, com **pulso unificado no botão pai** (ícone+texto piscam juntos, fase ancorada ao relógio = sincronizado entre todas as não votadas; `drop-shadow`), pausa no hover; some ao votar.
+- **Regra TEMPORÁRIA** (`src/lib/constants/temp-rules.ts` → `USUARIOS_SUPER_ADMIN_ONLY=true`): oculta o menu "Usuários" e bloqueia `/usuarios` para todos exceto super_admin. **Reverter:** trocar a flag para `false`.
+- **UX:** header da bubble só "Online"; espaço mensagem→1ª sugestão padronizado em 8px (bubble + monitor).
+
 ## 2026-06-05 (leva 2) , PONTO DE RETOMADA (branch `feat/agente-nex-bubble-ux`)
 
 Sessão longa de UX da bubble + monitoramento ao vivo + **reforma do sistema de

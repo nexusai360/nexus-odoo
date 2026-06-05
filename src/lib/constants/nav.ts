@@ -15,6 +15,7 @@ import {
 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import type { PlatformRole } from "@/generated/prisma/client";
+import { USUARIOS_SUPER_ADMIN_ONLY } from "@/lib/constants/temp-rules";
 
 type NavSection = "admin";
 
@@ -93,7 +94,10 @@ export const NAV_ITEMS: NavItem[] = [
     href: "/usuarios",
     icon: Users,
     section: "admin",
-    visibleTo: ["super_admin", "admin"],
+    // Regra temporária (ver temp-rules.ts): quando ligada, só super_admin vê.
+    visibleTo: USUARIOS_SUPER_ADMIN_ONLY
+      ? ["super_admin"]
+      : ["super_admin", "admin"],
   },
   {
     label: "Integrações",

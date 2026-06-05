@@ -39,7 +39,9 @@ export function SuggestionsBar({
       aria-label="Sugestões clicáveis"
       // Stack vertical alinhada a esquerda (pedido usuario 2026-05-25 02:00):
       // chips em coluna, um por linha, todos colados na borda esquerda.
-      className="flex flex-col items-start gap-2 px-1 pt-1"
+      // Espaço da mensagem da IA até a 1ª sugestão = espaço entre sugestões
+      // (gap-2 = 8px). Padronizado (mesma medida no monitor).
+      className="flex flex-col items-start gap-2 px-1 pt-2"
     >
       {final.map((s, i) => (
         <motion.button
