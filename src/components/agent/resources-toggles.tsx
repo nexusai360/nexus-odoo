@@ -16,7 +16,7 @@
 import { useEffect, useMemo, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { Image as ImageIcon, KeyRound, MessageSquare, Mic } from "lucide-react";
+import { Gauge, Image as ImageIcon, KeyRound, MessageSquare, Mic } from "lucide-react";
 import { ReasoningCard } from "@/components/agent/reasoning-card";
 import { ResourceCard } from "@/components/agent/resource-card";
 import { ContextWindowCard } from "@/components/agent/context-window-card";
@@ -63,6 +63,7 @@ interface ResourcesTogglesProps {
     suggestionsCheckpoint: CheckpointState;
     audioCheckpoint: CheckpointState;
     imageCheckpoint: CheckpointState;
+    feedbackCheckpoint: CheckpointState;
     kbCheckpoint: CheckpointState;
     audioProvider: string | null;
     audioModel: string | null;
@@ -146,6 +147,7 @@ export function ResourcesToggles({
 
   const [audioCp, setAudioCp] = useState<CheckpointState>(initial.audioCheckpoint);
   const [imageCp, setImageCp] = useState<CheckpointState>(initial.imageCheckpoint);
+  const [feedbackCp, setFeedbackCp] = useState<CheckpointState>(initial.feedbackCheckpoint);
   const [suggestionsCp, setSuggestionsCp] = useState<CheckpointState>(
     initial.suggestionsCheckpoint,
   );
@@ -209,13 +211,14 @@ export function ResourcesToggles({
   );
 
   const [pending, setPending] = useState<
-    "audio" | "image" | "suggestions" | "reasoning" | "context" | null
+    "audio" | "image" | "feedback" | "suggestions" | "reasoning" | "context" | null
   >(null);
 
   function persistResources(
     next: Partial<{
       audioCheckpoint: CheckpointState;
       imageCheckpoint: CheckpointState;
+      feedbackCheckpoint: CheckpointState;
       suggestionsCheckpoint: CheckpointState;
       audioProvider: string;
       audioModel: string;
@@ -230,13 +233,14 @@ export function ResourcesToggles({
       contextWindowSize: number;
       contextWindowIncludeSystem: boolean;
     }>,
-    label: "audio" | "image" | "suggestions" | "reasoning" | "context",
+    label: "audio" | "image" | "feedback" | "suggestions" | "reasoning" | "context",
   ) {
     setPending(label);
     startTransition(async () => {
       const result = await updateAgentResources({
         audioCheckpoint: next.audioCheckpoint ?? audioCp,
         imageCheckpoint: next.imageCheckpoint ?? imageCp,
+        feedbackCheckpoint: next.feedbackCheckpoint ?? feedbackCp,
         kbCheckpoint: initial.kbCheckpoint,
         suggestionsCheckpoint: next.suggestionsCheckpoint ?? suggestionsCp,
         audioProvider: next.audioProvider ?? audioProvider ?? null,
@@ -461,6 +465,23 @@ export function ResourcesToggles({
           )
         )}
       </ResourceCard>
+
+      {/* B1. Feedback do usuário , depois do anexo, antes das sugestões */}
+      <ResourceCard
+        id="feedback"
+        icon={
+          <Gauge className={`h-4 w-4 ${checkpointIconClass(feedbackCp)}`} aria-hidden />
+        }
+        title="Feedback do usuário"
+        subtitle="Botão de avaliação (correto/parcial/errado/alucinou) na resposta da IA, com comentário opcional. PRODUÇÃO libera no chat in-app; OFF desativa."
+        checkpoint={feedbackCp}
+        onCheckpointChange={(cp) => {
+          setFeedbackCp(cp);
+          persistResources({ feedbackCheckpoint: cp }, "feedback");
+        }}
+        loading={pending === "feedback"}
+        ariaLabel="Estado do feedback do usuário"
+      />
 
       {/* Sugestões na Bubble: cobre as iniciais (welcome quando a conversa
           comeca) e as de continuidade no fim de cada resposta. WhatsApp nao

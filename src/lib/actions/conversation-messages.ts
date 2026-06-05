@@ -19,6 +19,11 @@ export interface ConversationMessageDto {
   /** Trilha de "Raciocinio" reconstruida do toolResults persistido (labels das
    *  tools consultadas). Vazio quando a mensagem nao consultou tools. */
   steps?: { label: string }[];
+  /** B1. Voto vigente do usuario atual sobre esta resposta (null/ausente = sem voto). */
+  feedback?: {
+    rating: "CORRETO" | "PARCIAL" | "ERRADO" | "ALUCINOU";
+    comment: string | null;
+  } | null;
 }
 
 /**
@@ -78,16 +83,30 @@ export async function getConversationMessages(
     },
   });
 
+  // B1. Voto vigente do usuário atual por mensagem desta conversa.
+  const feedbacks = await prisma.messageFeedback.findMany({
+    where: { conversationId, userId: user.id },
+    select: { assistantMessageId: true, rating: true, comment: true },
+  });
+  const fbByMsg = new Map(
+    feedbacks.map((f) => [
+      f.assistantMessageId,
+      { rating: f.rating, comment: f.comment },
+    ]),
+  );
+
   return {
     ok: true,
     messages: messages.map((m) => {
       const steps = stepsFromToolCalls(m.toolCalls);
+      const fb = fbByMsg.get(m.id) ?? null;
       return {
         id: m.id,
         role: m.role as ConversationMessageDto["role"],
         content: m.content,
         createdAt: m.createdAt.toISOString(),
         ...(steps.length > 0 ? { steps } : {}),
+        ...(fb ? { feedback: fb } : {}),
       };
     }),
   };

@@ -207,3 +207,74 @@
 - Cron de avaliação automática REDESENHADO (f3aa0ab): a heurística sem LLM (judgeVersion=heuristica-agente-nex-v1) foi APOSENTADA. Agora a avaliação automática roda host-side via Claude Code headless (instrumentation.ts + judge-scheduler.ts + claude-judge-runner.ts, lock in-process compartilhado com o botão), local-only (o worker/container não enxerga o CLI claude), lê o intervalo de AgentSettings (default 240min), não dispara no boot. Worker: JOB_AUTO_HEURISTIC vira no-op e descadastra o scheduler antigo. NOTA: quem usa docker precisa `docker compose build app` + recreate worker.
 - Re-julgamento das 12 avaliações que a heurística tinha classificado (script reset-heuristic-to-pending.ts → PENDENTE; pendentes-io.ts; juízo inline pelo Claude Code Opus conferindo contra o cache real): 11 CORRETO + 1 PARCIAL. A 13ª (com ajuste humano) foi preservada. Achado-chave: a maioria reconciliava com o banco (29/05 teve R$80,3M num dia; Zoe Fit tinha nota de 01/06 de R$637.171,47). 2 que eu marquei ERRADO por engano (conferi contra junho) eram de 28/05 → "mês corrente" = maio (835 notas/R$42,1M no cache) → corrigidas para CORRETO. A única falha real (PARCIAL): pergunta de itens negativos de esteira respondida com os maiores por valor.
 - Verificação: tsc limpo, eslint verde, suíte 2183 verde.
+
+## 2026-06-04 , B1: Feedback do usuário na bubble (feat/agente-nex-bubble-ux)
+- Metodologia CLAUDE.md §6 completa: brainstorm (companion visual, feedback-v4) -> SPEC v1->v2->v3 (2 reviews adversariais genuínas) -> PLAN v1->v2->v3 (2 reviews) -> execução TDD. Specs/plan em docs/superpowers/{specs,plans}/2026-06-04-b1-*.
+- Captura do voto do usuário (correto/parcial/errado/alucinou + comentário <=100) na resposta da IA, hover-only, design system real da bubble. Gatilho Gauge, alucinou Ghost, paleta direita->esquerda, badge sólido, campo sanfona. FeedbackControl novo (src/components/agent/feedback-control.tsx).
+- Schema: enums UserFeedbackRating + MessageFeedbackAction; models message_feedback (voto vigente, último vale) + message_feedback_event (histórico append-only p/ B3); coluna agent_settings.feedback_checkpoint. Migration ADITIVA manual (drift do router não revertido). `agente schema-changed` emitido.
+- Server action submitMessageFeedback (cache interno, ActionResult, auth+autorização in_app+checkpoint, idempotência, transação) + 10 testes mock (10/10). dbMessageId real propagado runAgent->done SSE->UI (gate de erro). Checkpoint na cadeia completa (types/read/write) + card de admin em /agente/configuracao. Timestamp da IA movido p/ direita.
+- Verificação: tsc 0, eslint 0, jest 10/10, tabelas no DB OK. Pendente (validação humana/UI): rebuild containers, ligar checkpoint em PRODUÇÃO, E2E no browser (votar->reload->trocar voto). B2 (aba Bubble de monitoramento) e B3 (aba Aprendizado) são próximas fases.
+
+## 2026-06-04 , B2: aba Bubble de monitoramento (feat/agente-nex-bubble-ux)
+- Metodologia §6 completa: SPEC v1->v2->v3 (2 reviews + correção do usuário: sugestões já
+  persistidas em ConversationQualityEvaluation.suggestions, sem coluna nova) e PLAN v1->v2->v3
+  (2 reviews). Execução do backend via subagent-driven-development (implementer por task).
+- Backend (commitado, tsc 0 / jest 17/17): EvalStatusBadge extraído (reuso Backtest+Bubble);
+  Message.kind (text|audio) + persist kind=audio (meta.isAudio, 5 saltos); 3 actions
+  (listBubbleCollaborators/listBubbleSessions/getBubbleSessionMessages, super_admin, read-only,
+  juiz+voto-do-dono+sugestões+clicada derivada, % = (CORRETO+0.5*PARCIAL)/totalVotos).
+- UI parcial (inline, ui-ux-pro-max): aba /agente/monitoramento/bubble, 3 colunas
+  (bubble-monitor + bubble-monitor-row reusando AgentMessage envelopado). "Raciocínio · N
+  tools" (era "etapas") na bubble E na aba. Sessão ativa = só a mais recente. Conversa abre no fim.
+- Fix de build: computeAccuracy/RatingCounts movidos p/ monitoramento-bubble-helpers (arquivo
+  "use server" só exporta async).
+- DIAGNÓSTICO do dado poluído: backtest/replay de qualidade grava conversas no canal in_app
+  (4248 de 1 user; 802 calibração mode=calibracao_R-X; 3445 sem decision; ~1 real). Sem
+  marcador no banco que distinga replay de real. CONSERTAR NA ORIGEM (canal próprio/flag).
+- PENDÊNCIAS detalhadas no STATUS.md (seção 2026-06-04 PONTO DE RETOMADA): raiz do in_app
+  poluído, sugestões dentro da bolha c/ chevron+indicador de clicada, layout 3 colunas
+  (compactar/separar), tag de data translúcida, FAB de descer, mensagem vazia, feedback vs v4,
+  deep-link Backtest (B2 Fatia 4), e B3 inteiro (aba Aprendizado). NÃO mergear/PR.
+
+## 2026-06-04 (tarde) , B2 polish + B2 Fatia 4 + B3 (modo autônomo)
+- branch=feat/agente-nex-bubble-ux scope=feature summary=fechou TODAS as pendências do B2/B3.
+- **P1 raiz do dado poluído** (34cac33): canal `backtest` (enum aditivo + backfill de 4145
+  conversas [AUDIT/[SMOKE de in_app→backtest); scripts quality-audit gravam em backtest;
+  ORIGEM_BACKTEST; aba Bubble ficou só com as 103 reais.
+- **P2 sugestões na bolha** + iterações: chevron igual ao Raciocínio; clicada por contraste;
+  lâmpada (ícone original) só quando clicou; fonte = Raciocínio.
+- **P3-P7 polish** (be11f9d, 0561473, d892b14, e5c4486): colunas juntas e homogêneas
+  (Colaboradores=Sessões 300px, Conversa menor); cards homogêneos; tag de data flutuante
+  translúcida; FAB de descer; mensagem vazia filtrada; nível de acesso do colaborador;
+  veredito(perícia) + voto(avaliação) DENTRO da bolha (perícia=chip Scale só ícone;
+  avaliação=badge de canto com reveal de comentário); ícone Parcial resgatado do feedback-v4
+  (PartialIcon, meia-lua preenchida) no monitor e na bubble viva; tempo do turno no
+  Raciocínio do monitor (proxy createdAt, bate com a bubble viva); fonte Sugestões=Raciocínio;
+  espaçamento +4px; timestamp afastado só pela metade.
+- **Métricas**: Avaliação(usuário)+Perícia(plataforma) em cada card, fórmula certos/total;
+  ícones Gauge/Scale substituem as palavras.
+- **P8 deep-link Backtest** (104bde1): ?eval= abre a linha (linha sintética + initialExpandedId
+  + scrollIntoView).
+- **P9 B3 aba Aprendizado** (fdb896e): cruzamento Avaliação×Perícia por assistantMessageId
+  (matriz 4×4 + KPIs + discordâncias priorizadas + padrões de erro + comentários negativos,
+  deep-link pro Backtest). Helpers+action testados. Spec b3-aprendizado-design.md.
+- **Schema**: migration aditiva (AgentChannel += backtest) + backfill; `agente schema-changed`
+  disparado. Suíte 2386 verde, tsc 0. Deferido: B3.2 autocorreção e KPI tempo médio (RADAR).
+
+## 2026-06-05 , drill-down Backtest redesenhado + editor JSON + polish Bubble + sync main
+- branch=feat/agente-nex-bubble-ux scope=feature.
+- Drill-down (`evaluation-drilldown.tsx`) redesenhado: meta bar (pericia + lapis de ajuste
+  com transicao + modelo + tempo) e 2 colunas conversa|analise; avaliacao do usuario em
+  secao propria (cor oficial); pericia so razoes do juiz; historico de ajustes colapsavel.
+- Editor JSON novo (`json-viewer.tsx`): arvore colapsavel + colchetes clicaveis + deepParse
+  de JSON-em-string; modal expandir travado na largura do drill-down com numeracao de linha,
+  fold e guias cinza-claro.
+- `getEvaluationDetail.durationMs` + `userFeedback` (tempo + avaliacao no drill-down).
+- EvalStatusBadge: escudo verde -> lapis.
+- Aba Bubble: 2 metricas por card (avaliacao+pericia, Gauge/Scale); conversa abre no topo +
+  FAB; comentario do voto hover+click largura cheia; sessoes encerradas com fim derivado;
+  data ano2dig+segundos; colunas Colaboradores/Sessoes recolhiveis (330px).
+- Tabela Backtest: colunas reduzidas p/ caber 100%.
+- Merge: PR #51 ja mergeado antes; esta leva (51 commits) sincronizada com origin/main
+  (merge, conflito so no STATUS.md resolvido) -> abrir PR NOVO. Outra branch router-ativacao-r2
+  e do outro agente (nao mergear por aqui).

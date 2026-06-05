@@ -42,6 +42,7 @@ export async function POST(req: Request): Promise<Response> {
     channel?: string;
     meta?: {
       source?: "bubble" | "suggestion" | "whatsapp" | "playground";
+      isAudio?: boolean;
     };
   };
   try {
@@ -151,6 +152,7 @@ export async function POST(req: Request): Promise<Response> {
           userMessage: body.message!.trim(),
           channel,
           isPlayground,
+          isAudio: body.meta?.isAudio,
           onEvent,
           source:
             body.meta?.source ?? (isPlayground ? "playground" : "bubble"),
@@ -162,6 +164,8 @@ export async function POST(req: Request): Promise<Response> {
             conversationId,
             message: result.message,
             suggestions: result.suggestions,
+            // B1. Id real da Message do assistant, para o feedback do usuário.
+            messageId: result.messageId,
           });
         } else {
           emit({ type: "error", error: result.error });

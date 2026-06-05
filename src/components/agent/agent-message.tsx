@@ -19,14 +19,19 @@ import {
   ChevronRight,
   Copy,
   Database,
+  Lightbulb,
+  Scale,
   Search,
   Loader2,
   Sparkles,
 } from "lucide-react";
 import * as React from "react";
+import Link from "next/link";
 import { cn } from "@/lib/utils";
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import { AudioPlayer } from "@/components/agent/audio-player";
+import { FeedbackControl, type FeedbackRating } from "./feedback-control";
+import { RATING_META } from "./rating-meta";
 import type { ProgressStep } from "./progress-trail";
 import { formatRelativeDateTime } from "@/lib/format-datetime-relative";
 
@@ -72,6 +77,36 @@ export interface AgentMessageProps {
   /** Chamado quando a digitacao (typewriter) termina de revelar a resposta
    *  inteira. So dispara para mensagens com reveal=true. */
   onRevealComplete?: () => void;
+  /** B1. Habilita o controle de feedback (checkpoint PRODUCTION). */
+  feedbackEnabled?: boolean;
+  /** B1. Id real (de banco) da Message; ausente => controle nao renderiza. */
+  dbMessageId?: string;
+  /** B1. Voto vigente do usuario sobre esta resposta. */
+  feedback?: { rating: FeedbackRating; comment: string | null } | null;
+  /** B1. Submete o voto (otimismo fica no chat-panel). */
+  onSubmitFeedback?: (rating: FeedbackRating, comment?: string) => Promise<void> | void;
+  /**
+   * B2 (monitoramento, read-only). Sugestões que o agente ofereceu nesta
+   * resposta, exibidas DENTRO da bolha num bloco colapsável com chevron igual
+   * ao "Raciocínio". Gated: só renderiza quando presente, então a bubble viva
+   * (que usa a barra de sugestões clicável separada) não é afetada.
+   */
+  suggestions?: string[];
+  /** B2. Qual sugestão o usuário clicou (distinção só por contraste de cor). */
+  clickedSuggestion?: string;
+  /**
+   * B2 (monitoramento). PERÍCIA: veredito interno da plataforma (juiz) sobre
+   * esta resposta. Renderiza um chip rotulado no rodapé da bolha (eixo
+   * plataforma), clicável pro Backtest via `href`. Cor/label vêm prontos do
+   * monitor para não acoplar o AgentMessage ao enum de status.
+   */
+  monitorPericia?: { label: string; color: string; href?: string } | null;
+  /**
+   * B2 (monitoramento). AVALIAÇÃO: voto do usuário, badge de canto inferior
+   * direito (igual ao FeedbackControl da bubble viva). Quando há `comment`,
+   * o badge vira clicável e revela o texto escrito pelo usuário.
+   */
+  monitorVote?: { rating: FeedbackRating; comment?: string | null } | null;
 }
 
 export function AgentMessage({
@@ -89,6 +124,14 @@ export function AgentMessage({
   durationMs,
   createdAt,
   onRevealComplete,
+  feedbackEnabled = false,
+  dbMessageId,
+  feedback,
+  onSubmitFeedback,
+  suggestions,
+  clickedSuggestion,
+  monitorPericia,
+  monitorVote,
 }: AgentMessageProps) {
   if (role === "loading") return <LoadingBubble />;
   if (role === "tool") return <ToolBubble name={toolName ?? "tool"} />;
@@ -170,19 +213,49 @@ export function AgentMessage({
               <MarkdownLite content={content} />
             )}
           </AssistantBodyReveal>
-          {createdAt && !streaming ? (
-            <div
-              className={cn(
-                "mt-1 text-[10px] tabular-nums text-muted-foreground/70",
-                isUser ? "text-right" : "text-left",
-              )}
-              suppressHydrationWarning
-            >
-              {formatRelativeDateTime(createdAt)}
+          {!isUser && Array.isArray(suggestions) && suggestions.length > 0 ? (
+            <AssistantSuggestionsBlock
+              suggestions={suggestions}
+              clickedSuggestion={clickedSuggestion}
+            />
+          ) : null}
+          {monitorPericia || (createdAt && !streaming) ? (
+            <div className="mt-2 flex items-center gap-2">
+              {monitorPericia ? <PericiaChip {...monitorPericia} /> : null}
+              {createdAt && !streaming ? (
+                <div
+                  className={cn(
+                    // pr-3.5: reserva o minimo para o badge de canto (voto) nao
+                    // cobrir a data. Vale pra bolha do user e da IA.
+                    "ml-auto pr-3.5 text-[10px] tabular-nums text-muted-foreground/70",
+                  )}
+                  suppressHydrationWarning
+                >
+                  {formatRelativeDateTime(createdAt)}
+                </div>
+              ) : null}
             </div>
           ) : null}
         </BubbleSurface>
         <CopyButton text={content} />
+        {!isUser &&
+        kind === "text" &&
+        !streaming &&
+        content.length > 0 &&
+        feedbackEnabled &&
+        dbMessageId &&
+        onSubmitFeedback ? (
+          <FeedbackControl
+            current={feedback ?? null}
+            onSubmit={(rating, comment) => onSubmitFeedback(rating, comment)}
+          />
+        ) : null}
+        {monitorVote ? (
+          <MonitorVoteBadge
+            rating={monitorVote.rating}
+            comment={monitorVote.comment ?? null}
+          />
+        ) : null}
       </div>
     </BubbleWrapper>
   );
@@ -302,7 +375,7 @@ function AssistantTrailBlock({
   const headerLabel =
     streaming || running
       ? "Pensando"
-      : `Raciocínio · ${total}${total === 1 ? " etapa" : " etapas"}${durationLabel}`;
+      : `Raciocínio · ${total}${total === 1 ? " tool" : " tools"}${durationLabel}`;
   const expanded = streaming || !collapsed;
   const Chevron = expanded ? ChevronDown : ChevronRight;
   const showThinking = streaming || running;
@@ -512,6 +585,109 @@ function AssistantTrailBlock({
   );
 }
 
+/* -------------------------------------------------------------------------- */
+/* Sugestões absorvidas na bolha (B2 monitoramento, read-only)                 */
+/* -------------------------------------------------------------------------- */
+
+// Espelha o AssistantTrailBlock (mesma linguagem visual do "Raciocínio"):
+// header colapsável com chevron + "Sugestões · N". A lâmpada (ícone outline)
+// aparece SÓ quando alguma sugestão foi clicada nesta mensagem; ausência do
+// ícone = ninguém clicou. O chip clicado se distingue apenas pelo contraste
+// de cor (sem selo de texto). Colapso interno.
+function AssistantSuggestionsBlock({
+  suggestions,
+  clickedSuggestion,
+}: {
+  suggestions: string[];
+  clickedSuggestion?: string;
+}) {
+  const reduce = useReducedMotion();
+  const [expanded, setExpanded] = React.useState(false);
+  const total = suggestions.length;
+  const hasClicked = Boolean(clickedSuggestion);
+  const Chevron = expanded ? ChevronDown : ChevronRight;
+  const EASE = [0.16, 1, 0.3, 1] as const;
+  const listId = React.useId();
+
+  return (
+    <div className="mt-2">
+      <button
+        type="button"
+        onClick={() => setExpanded((v) => !v)}
+        aria-expanded={expanded}
+        aria-controls={listId}
+        className={cn(
+          // Mesma fonte do header "Raciocínio" (text-xs): consistência visual.
+          "flex min-h-[18px] w-full items-center gap-2 text-left text-xs font-medium leading-none",
+          "cursor-pointer text-foreground/85 transition-colors hover:text-foreground",
+        )}
+      >
+        <span className="inline-flex h-3.5 w-3.5 shrink-0 items-center justify-center">
+          <Chevron className="h-3.5 w-3.5 text-muted-foreground" />
+        </span>
+        {hasClicked ? (
+          // Presença da lâmpada = o usuário clicou numa das sugestões nesta
+          // mensagem. Mesmo ícone outline de sempre.
+          <span className="inline-flex h-3.5 w-3.5 shrink-0 items-center justify-center">
+            <Lightbulb
+              className="h-3.5 w-3.5 text-violet-400"
+              aria-label="Uma sugestão foi clicada"
+            />
+          </span>
+        ) : null}
+        <span className="flex-1 truncate">
+          {`Sugestões · ${total}${total === 1 ? " sugestão" : " sugestões"}`}
+        </span>
+      </button>
+      <AnimatePresence initial={false}>
+        {expanded && (
+          <motion.div
+            key="suggestions-body"
+            initial={reduce ? false : { height: 0, opacity: 0 }}
+            animate={{ height: "auto", opacity: 1 }}
+            exit={reduce ? { opacity: 0 } : { height: 0, opacity: 0 }}
+            transition={
+              reduce
+                ? { duration: 0 }
+                : {
+                    height: { duration: 0.16, ease: [0.22, 1, 0.36, 1] },
+                    opacity: { duration: 0.12, ease: "easeOut" },
+                  }
+            }
+            style={{ overflow: "hidden" }}
+          >
+            <ul id={listId} className="mt-1.5 flex flex-col gap-1.5 pl-5">
+              {suggestions.map((s, i) => {
+                const clicked = s === clickedSuggestion;
+                return (
+                  <motion.li
+                    key={i}
+                    initial={reduce ? false : { opacity: 0, y: -4 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={
+                      reduce ? { duration: 0 } : { duration: 0.15, ease: EASE }
+                    }
+                    title={clicked ? "Sugestão clicada pelo usuário" : undefined}
+                    className={cn(
+                      "self-start rounded-2xl border px-3 py-1.5 text-[13px] leading-snug [overflow-wrap:anywhere]",
+                      // A clicada se distingue só pelo contraste de cor (preenchida).
+                      clicked
+                        ? "border-violet-400/70 bg-violet-600/35 font-medium text-foreground"
+                        : "border-violet-500/30 bg-violet-500/10 text-foreground/90",
+                    )}
+                  >
+                    {s}
+                  </motion.li>
+                );
+              })}
+            </ul>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
+  );
+}
+
 // Reveal do corpo da resposta: so monta quando o primeiro token chega; quando
 // monta, fade-in com delay curto para entrar DEPOIS que a trilha terminou de
 // recolher. Sequencia a "historia" da bolha: pensando -> consultando ->
@@ -596,6 +772,136 @@ function ToolBubble({ name }: { name: string }) {
           Consultou MCP · <span className="font-mono">{name}</span>
         </span>
       </div>
+    </div>
+  );
+}
+
+// B2 (monitoramento). PERÍCIA: chip rotulado do veredito interno (juiz) no
+// rodapé da bolha. Cor/label prontos. Clicável pro Backtest quando há href.
+// Eixo "plataforma", distinto do voto do usuário (badge de canto).
+function PericiaChip({
+  label,
+  color,
+  href,
+}: {
+  label: string;
+  color: string;
+  href?: string;
+}) {
+  // Só o ícone (balança = perícia) + o status. A palavra "Perícia" sai; o
+  // ícone é o mesmo usado nas colunas, então já comunica o eixo.
+  const inner = (
+    <span
+      title={`Perícia: ${label}`}
+      className="inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[10px] font-semibold"
+      style={{ color, borderColor: `${color}66`, background: `${color}1f` }}
+    >
+      <Scale className="h-3 w-3" aria-hidden />
+      <span>{label}</span>
+    </span>
+  );
+  if (!href) return inner;
+  return (
+    <Link
+      href={href}
+      title="Ver esta perícia no Backtest"
+      className="inline-flex transition-opacity hover:opacity-80"
+    >
+      {inner}
+    </Link>
+  );
+}
+
+// B2 (monitoramento). AVALIAÇÃO: badge de canto do voto do usuário, igual ao
+// estado "escolhido" do FeedbackControl da bubble viva (mesmo ícone/cor/posição).
+// Quando o usuário escreveu um comentário, o badge ganha um ponto indicador e
+// vira clicável: o clique abre um cartão com o texto (senão não há o que abrir,
+// e o admin nem perde o clique).
+function MonitorVoteBadge({
+  rating,
+  comment,
+}: {
+  rating: FeedbackRating;
+  comment: string | null;
+}) {
+  const meta = RATING_META[rating];
+  const Icon = meta.Icon;
+  const hasComment = Boolean(comment && comment.trim().length > 0);
+  // `open` = fixado por clique (permanece). `hover` = temporário enquanto o
+  // mouse está sobre o badge. Visível = um ou outro.
+  const [open, setOpen] = React.useState(false);
+  const [hover, setHover] = React.useState(false);
+  const showComment = hasComment && (open || hover);
+  const rootRef = React.useRef<HTMLDivElement>(null);
+
+  React.useEffect(() => {
+    if (!open) return;
+    const onDown = (e: PointerEvent) => {
+      if (rootRef.current && !rootRef.current.contains(e.target as Node)) {
+        setOpen(false);
+      }
+    };
+    document.addEventListener("pointerdown", onDown);
+    return () => document.removeEventListener("pointerdown", onDown);
+  }, [open]);
+
+  const badgeStyle = { background: meta.color, borderColor: meta.color };
+  const baseCls =
+    "absolute -right-2 -bottom-2 flex h-6 w-6 items-center justify-center rounded-md border text-white shadow-sm";
+
+  return (
+    <div ref={rootRef}>
+      {hasComment ? (
+        <button
+          type="button"
+          aria-label={`Avaliação do usuário: ${meta.label}. Tem comentário, clique para ver.`}
+          title="Ver comentário do usuário"
+          onClick={() => setOpen((v) => !v)}
+          onMouseEnter={() => setHover(true)}
+          onMouseLeave={() => setHover(false)}
+          style={badgeStyle}
+          className={cn(baseCls, "cursor-pointer")}
+        >
+          <Icon className="h-3 w-3" />
+          {/* Ponto indicador: existe comentário escrito. */}
+          <span className="absolute -right-1 -top-1 h-2 w-2 rounded-full border border-background bg-foreground" />
+        </button>
+      ) : (
+        <div
+          aria-label={`Avaliação do usuário: ${meta.label}`}
+          title={`Avaliação do usuário: ${meta.label}`}
+          style={badgeStyle}
+          className={baseCls}
+        >
+          <Icon className="h-3 w-3" />
+        </div>
+      )}
+
+      <AnimatePresence>
+        {showComment ? (
+          <motion.div
+            initial={{ opacity: 0, y: 6, scale: 0.98 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: 6, scale: 0.98 }}
+            transition={{ duration: 0.16, ease: [0.16, 1, 0.3, 1] }}
+            // Largura cheia da bolha (left-0 right-0): puxa pra esquerda e fica
+            // mais baixo verticalmente, melhor de ler.
+            className="absolute inset-x-0 top-full z-20 mt-2 rounded-lg border border-border bg-popover p-2.5 shadow-xl"
+          >
+            <div
+              className="mb-1 flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-wide"
+              style={{ color: meta.color }}
+            >
+              <Icon className="h-3 w-3" />
+              {meta.label}
+              <span className="text-muted-foreground/70">· comentário</span>
+            </div>
+            <p className="text-xs leading-snug text-foreground [overflow-wrap:anywhere]">
+              {comment}
+            </p>
+          </motion.div>
+        ) : null}
+      </AnimatePresence>
     </div>
   );
 }

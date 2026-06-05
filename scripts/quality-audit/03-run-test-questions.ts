@@ -80,11 +80,12 @@ async function runQuestion(
   durationMs: number;
 }> {
   const t0 = Date.now();
-  // Cria conversa nova in-app com titulo marcado.
+  // Cria conversa de replay no canal estrutural `backtest` (nao polui o
+  // monitoramento Bubble, que mostra so conversa real in_app).
   const conv = await prisma.conversation.create({
     data: {
       userId,
-      channel: "in_app",
+      channel: "backtest",
       title: `${marker} ${question.slice(0, 80)}`,
     },
     select: { id: true },
@@ -95,7 +96,7 @@ async function runQuestion(
       conversationId: conv.id,
       userId,
       userMessage: question,
-      channel: "in_app",
+      channel: "backtest",
       isPlayground: false,
     });
 

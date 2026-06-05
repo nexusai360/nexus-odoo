@@ -1,9 +1,11 @@
 import { describe, it, expect } from "@jest/globals";
 import {
   buildRodadaNamesFromMarkers,
+  channelToOrigem,
   R8_ANCHOR_MARKER,
   ORIGEM_AGENTE_NEX,
   ORIGEM_PLAYGROUND,
+  ORIGEM_BACKTEST,
 } from "./rodada-labels";
 
 // Markers reais da pericia 2026-06-01 (ordem cronologica).
@@ -59,5 +61,27 @@ describe("buildRodadaNamesFromMarkers", () => {
     const map = buildRodadaNamesFromMarkers([R8, ORIGEM_AGENTE_NEX, ORIGEM_PLAYGROUND]);
     expect(map.get(ORIGEM_AGENTE_NEX)).toBe("Agente Nex");
     expect(map.get(ORIGEM_PLAYGROUND)).toBe("Playground");
+  });
+
+  it("rotula a origem Backtest", () => {
+    const map = buildRodadaNamesFromMarkers([R8, ORIGEM_BACKTEST]);
+    expect(map.get(ORIGEM_BACKTEST)).toBe("Backtest");
+  });
+});
+
+describe("channelToOrigem", () => {
+  it("in_app e whatsapp viram Agente Nex", () => {
+    expect(channelToOrigem("in_app")).toBe(ORIGEM_AGENTE_NEX);
+    expect(channelToOrigem("whatsapp")).toBe(ORIGEM_AGENTE_NEX);
+  });
+  it("playground vira Playground", () => {
+    expect(channelToOrigem("playground")).toBe(ORIGEM_PLAYGROUND);
+  });
+  it("backtest vira Backtest (replay fora do uso real)", () => {
+    expect(channelToOrigem("backtest")).toBe(ORIGEM_BACKTEST);
+  });
+  it("null/desconhecido vira null", () => {
+    expect(channelToOrigem(null)).toBeNull();
+    expect(channelToOrigem("xpto")).toBeNull();
   });
 });

@@ -63,6 +63,9 @@ interface MonitoramentoContentProps {
   /** True quando o app roda localmente (dev). Habilita o botao de avaliar
    *  pendentes (LLM-judge), que so faz sentido na maquina local. */
   isLocalRuntime: boolean;
+  /** Deep-link (?eval=) vindo da aba Bubble: abre a linha desta avaliacao na
+   *  tabela do Backtest ao montar. */
+  initialEvalId?: string;
 }
 
 function isoLocalToDate(iso: string): Date {
@@ -92,6 +95,7 @@ export function MonitoramentoContent({
   minDate,
   qualityHeuristicIntervalMinutes,
   isLocalRuntime,
+  initialEvalId,
 }: MonitoramentoContentProps) {
   const minDateObj = useMemo(() => new Date(minDate), [minDate]);
 
@@ -348,6 +352,7 @@ export function MonitoramentoContent({
           availableModels={models}
           availablePatterns={availablePatterns}
           labelForRodada={labelFor}
+          initialExpandedId={initialEvalId}
           headerAction={
             isLocalRuntime ? (
               <button

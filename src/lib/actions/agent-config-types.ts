@@ -25,6 +25,7 @@ export interface AgentSettingsData {
   whatsappEnabled: boolean;
   audioCheckpoint: FeatureCheckpoint;
   imageCheckpoint: FeatureCheckpoint;
+  feedbackCheckpoint: FeatureCheckpoint;
   kbCheckpoint: FeatureCheckpoint;
   audioProvider: string | null;
   audioModel: string | null;
@@ -62,6 +63,8 @@ export interface PublicAgentFlags {
   /** true se a entrada de imagem está ativa em produção. */
   imageInputEnabled: boolean;
   imageInPlayground: boolean;
+  /** true se o feedback do usuário está ativo em produção (B1). */
+  feedbackInputEnabled: boolean;
   /** true se a base de conhecimento está ativa em produção. */
   kbEnabled: boolean;
   kbInPlayground: boolean;

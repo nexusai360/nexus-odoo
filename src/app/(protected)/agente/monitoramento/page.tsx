@@ -52,13 +52,15 @@ async function getFirstEvalDate(): Promise<Date> {
 export default async function MonitoramentoPage({
   searchParams,
 }: {
-  searchParams: Promise<{ denialsPeriod?: string }>;
+  searchParams: Promise<{ denialsPeriod?: string; eval?: string }>;
 }) {
   const user = await getCurrentUser();
   if (!user) redirect("/login");
   if (user.platformRole !== "super_admin") redirect("/dashboard");
 
-  const denialPeriod = parseDenialPeriod((await searchParams).denialsPeriod);
+  const sp = await searchParams;
+  const denialPeriod = parseDenialPeriod(sp.denialsPeriod);
+  const initialEvalId = typeof sp.eval === "string" ? sp.eval : undefined;
 
   const [minDate, agentSettings, denialStats] = await Promise.all([
     getFirstEvalDate(),
@@ -84,6 +86,7 @@ export default async function MonitoramentoPage({
           minDate={minDate.toISOString()}
           qualityHeuristicIntervalMinutes={qualityHeuristicIntervalMinutes}
           isLocalRuntime={isLocalRuntime()}
+          initialEvalId={initialEvalId}
         />
       </div>
       <div className="mt-6">

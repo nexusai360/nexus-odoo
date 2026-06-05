@@ -229,11 +229,14 @@ export async function getDistinctRodadas(
 
   let agenteNexCount = 0;
   let playgroundCount = 0;
+  let backtestCount = 0;
   for (const r of virtualRows) {
     if (r.channel === "in_app" || r.channel === "whatsapp") {
       agenteNexCount += r.count;
     } else if (r.channel === "playground") {
       playgroundCount += r.count;
+    } else if (r.channel === "backtest") {
+      backtestCount += r.count;
     }
   }
 
@@ -243,6 +246,9 @@ export async function getDistinctRodadas(
   }
   if (playgroundCount > 0) {
     out.unshift({ marker: "__origem:playground", count: playgroundCount });
+  }
+  if (backtestCount > 0) {
+    out.unshift({ marker: "__origem:backtest", count: backtestCount });
   }
   return out;
 }
@@ -366,6 +372,10 @@ export async function getEvaluationDetail(
   };
   toolCalls: unknown;
   toolResults: unknown;
+  /** Duração do turno (wall-clock) em ms: assistant final − user que abriu. */
+  durationMs: number | null;
+  /** AVALIAÇÃO do usuário (voto na bubble) desta resposta, se houve. */
+  userFeedback: { rating: string; comment: string | null } | null;
 } | null> {
   const ev = await prisma.conversationQualityEvaluation.findUnique({
     where: { id },
@@ -401,6 +411,7 @@ export async function getEvaluationDetail(
   // user message anterior e a assistantMessageId final.
   let toolCalls: unknown = null;
   let toolResults: unknown = null;
+  let durationMs: number | null = null;
   if (ev.assistantMessageId) {
     const finalMsg = await prisma.message.findUnique({
       where: { id: ev.assistantMessageId },
@@ -416,6 +427,13 @@ export async function getEvaluationDetail(
         orderBy: { createdAt: "desc" },
         select: { createdAt: true },
       });
+      // Duração do turno = wall-clock entre o user que abriu e a assistant
+      // final (mesmo proxy do monitoramento Bubble). Bate com o "X.Xs" da
+      // bubble viva. O valor exato por iteração vive em LlmUsage.durationMs.
+      if (lastUserBefore) {
+        const ms = +finalMsg.createdAt - +lastUserBefore.createdAt;
+        if (ms > 0) durationMs = ms;
+      }
       const assistantsTurno = await prisma.message.findMany({
         where: {
           conversationId: finalMsg.conversationId,
@@ -441,7 +459,20 @@ export async function getEvaluationDetail(
     }
   }
 
+  // AVALIAÇÃO do usuário (voto na bubble) desta resposta, se houve. A unique
+  // [assistantMessageId, userId] garante 1 voto por dono; findFirst basta.
+  let userFeedback: { rating: string; comment: string | null } | null = null;
+  if (ev.assistantMessageId) {
+    const fb = await prisma.messageFeedback.findFirst({
+      where: { assistantMessageId: ev.assistantMessageId },
+      select: { rating: true, comment: true },
+    });
+    if (fb) userFeedback = { rating: fb.rating, comment: fb.comment };
+  }
+
   return {
+    durationMs,
+    userFeedback,
     evaluation: {
       id: ev.id,
       createdAt: ev.createdAt,
@@ -499,6 +530,7 @@ function buildWhere(filters: EvaluationFilters) {
     const auditMarkers = filters.rodadas.filter((r) => r.startsWith("[AUDIT"));
     const wantsAgenteNex = filters.rodadas.includes("__origem:agente-nex");
     const wantsPlayground = filters.rodadas.includes("__origem:playground");
+    const wantsBacktest = filters.rodadas.includes("__origem:backtest");
     const ors: Array<Record<string, unknown>> = [];
     for (const marker of auditMarkers) {
       ors.push({ title: { startsWith: marker } });
@@ -517,6 +549,18 @@ function buildWhere(filters: EvaluationFilters) {
     if (wantsPlayground) {
       ors.push({
         channel: "playground",
+        OR: [
+          { title: null },
+          { NOT: { title: { startsWith: "[AUDIT" } } },
+        ],
+      });
+    }
+    if (wantsBacktest) {
+      // Conversas de replay/calibração no canal estrutural backtest. As que
+      // ainda carregam marker [AUDIT viram rodada (auditMarkers acima); aqui
+      // só as demais (ex.: [SMOKE) caem no bucket Backtest.
+      ors.push({
+        channel: "backtest",
         OR: [
           { title: null },
           { NOT: { title: { startsWith: "[AUDIT" } } },
