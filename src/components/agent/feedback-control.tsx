@@ -323,6 +323,13 @@ export function FeedbackControl({
                   setText(e.target.value);
                   autosize(e.target);
                 }}
+                onKeyDown={(e) => {
+                  // Enter envia; Shift+Enter quebra linha.
+                  if (e.key === "Enter" && !e.shiftKey) {
+                    e.preventDefault();
+                    send();
+                  }
+                }}
                 className="h-[48px] max-h-[128px] flex-1 resize-none rounded-lg border border-border bg-muted/40 px-2.5 py-1.5 text-xs leading-snug text-foreground outline-none focus:border-violet-500"
               />
               <button
