@@ -7,7 +7,7 @@
  * ShieldCheck com o original preservado no title/aria-label (auditavel).
  */
 
-import { ShieldCheck } from "lucide-react";
+import { Pencil } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
 import type { EvalStatus } from "@/lib/agent/quality/queries";
@@ -61,8 +61,8 @@ export function EvalStatusBadge({ status, humanStatus }: EvalStatusBadgeProps) {
         {EVAL_STATUS_LABEL[eff]}
       </Badge>
       {human && (
-        <ShieldCheck
-          className="h-3 w-3 text-emerald-500"
+        <Pencil
+          className="h-3 w-3 text-violet-400"
           aria-label={`Ajustado manualmente (era ${EVAL_STATUS_LABEL[status]})`}
         />
       )}

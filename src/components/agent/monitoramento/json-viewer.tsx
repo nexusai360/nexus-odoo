@@ -146,6 +146,95 @@ export function JsonViewer({
   );
 }
 
+/**
+ * Trata JSON aninhado codificado como STRING (comum em tool results: o conteudo
+ * vem como '"{...}"' escapado). Parseia recursivamente strings que sao JSON
+ * valido, pra renderizar como objeto/array de verdade.
+ */
+export function deepParse(value: unknown, depth = 0): unknown {
+  if (depth > 8) return value;
+  if (typeof value === "string") {
+    const t = value.trim();
+    if (
+      (t.startsWith("{") && t.endsWith("}")) ||
+      (t.startsWith("[") && t.endsWith("]"))
+    ) {
+      try {
+        return deepParse(JSON.parse(t), depth + 1);
+      } catch {
+        return value;
+      }
+    }
+    return value;
+  }
+  if (Array.isArray(value)) return value.map((v) => deepParse(v, depth + 1));
+  if (value && typeof value === "object") {
+    const out: Record<string, unknown> = {};
+    for (const [k, v] of Object.entries(value as Record<string, unknown>)) {
+      out[k] = deepParse(v, depth + 1);
+    }
+    return out;
+  }
+  return value;
+}
+
+// Realce de sintaxe de UMA linha do JSON pretty-printed.
+function highlightLine(line: string): React.ReactNode {
+  const re =
+    /("(?:\\.|[^"\\])*")(\s*:)?|(\btrue\b|\bfalse\b|\bnull\b)|(-?\d+\.?\d*(?:[eE][+-]?\d+)?)|([{}[\],])/g;
+  const out: React.ReactNode[] = [];
+  let last = 0;
+  let key = 0;
+  let m: RegExpExecArray | null;
+  while ((m = re.exec(line)) !== null) {
+    if (m.index > last) out.push(line.slice(last, m.index));
+    if (m[1] !== undefined) {
+      const isKey = m[2] !== undefined;
+      out.push(
+        <span key={key++} className={isKey ? "text-violet-300" : "text-emerald-400"}>
+          {m[1]}
+        </span>,
+      );
+      if (m[2]) out.push(<span key={key++} className="text-muted-foreground/60">{m[2]}</span>);
+    } else if (m[3] !== undefined) {
+      out.push(<span key={key++} className="text-sky-400">{m[3]}</span>);
+    } else if (m[4] !== undefined) {
+      out.push(<span key={key++} className="text-amber-300">{m[4]}</span>);
+    } else if (m[5] !== undefined) {
+      out.push(<span key={key++} className="text-muted-foreground/60">{m[5]}</span>);
+    }
+    last = re.lastIndex;
+  }
+  if (last < line.length) out.push(line.slice(last));
+  return out;
+}
+
+/** Editor de código: JSON pretty-printed com numeração de linha + cores. */
+export function JsonCode({ data }: { data: unknown }) {
+  const lines = React.useMemo(
+    () => JSON.stringify(data, null, 2).split("\n"),
+    [data],
+  );
+  return (
+    <div className="font-mono text-[11px] leading-relaxed">
+      <table className="w-full border-collapse">
+        <tbody>
+          {lines.map((ln, i) => (
+            <tr key={i} className="hover:bg-muted/40">
+              <td className="w-[1%] select-none whitespace-nowrap border-r border-border/60 pr-2.5 pl-1 text-right align-top tabular-nums text-muted-foreground/40">
+                {i + 1}
+              </td>
+              <td className="whitespace-pre-wrap pl-3 [overflow-wrap:anywhere]">
+                {highlightLine(ln)}
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
 function CopyBtn({ data }: { data: unknown }) {
   const [copied, setCopied] = React.useState(false);
   const onCopy = () => {
@@ -191,6 +280,9 @@ export function JsonBlock({
 }) {
   const [expanded, setExpanded] = React.useState(false);
   const [rect, setRect] = React.useState<{ left: number; width: number } | null>(null);
+  // Trata JSON aninhado em string e usa a versao limpa em tudo (arvore, copia,
+  // editor expandido).
+  const parsed = React.useMemo(() => deepParse(data), [data]);
 
   const openExpand = () => {
     const el = boundsRef.current;
@@ -216,7 +308,7 @@ export function JsonBlock({
         {label}
       </span>
       <div className="flex items-center gap-1">
-        <CopyBtn data={data} />
+        <CopyBtn data={parsed} />
         {!expanded && (
           <button
             type="button"
@@ -235,8 +327,9 @@ export function JsonBlock({
   return (
     <div className="overflow-hidden rounded-lg border border-border bg-background">
       {header}
-      <div className="max-h-72 overflow-auto border-t border-border px-2.5 py-2">
-        <JsonViewer data={data} />
+      {/* Altura FIXA (igual p/ tool calls e tool results); excedente rola dentro. */}
+      <div className="h-72 overflow-auto border-t border-border px-2.5 py-2">
+        <JsonViewer data={parsed} />
       </div>
 
       {expanded && rect ? (
@@ -268,7 +361,7 @@ export function JsonBlock({
                 {label}
               </span>
               <div className="flex items-center gap-1">
-                <CopyBtn data={data} />
+                <CopyBtn data={parsed} />
                 <button
                   type="button"
                   onClick={() => setExpanded(false)}
@@ -283,8 +376,9 @@ export function JsonBlock({
                 </button>
               </div>
             </div>
+            {/* Editor de código: numeração de linha + cores de sintaxe. */}
             <div className="min-h-0 flex-1 overflow-auto px-3 py-2.5">
-              <JsonViewer data={data} defaultOpenDepth={3} />
+              <JsonCode data={parsed} />
             </div>
           </div>
         </div>

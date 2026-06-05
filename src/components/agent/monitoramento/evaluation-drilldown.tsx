@@ -504,17 +504,38 @@ export function EvaluationDrilldown({ evaluationId, onAdjusted }: Props) {
                     {showHistory && (
                       <ul className="divide-y divide-border border-t border-border">
                         {adjustments.map((a, i) => (
-                          <li key={i} className="flex gap-2 px-3 py-2 text-xs">
-                            <span className="shrink-0 whitespace-nowrap font-mono text-[11px] tabular-nums text-muted-foreground">
-                              {Number.isNaN(a.at.getTime()) ? "" : fmtBRT(a.at)}
-                            </span>
-                            <span className="[overflow-wrap:anywhere] text-foreground">
+                          <li key={i} className="space-y-1 px-3 py-2.5 text-xs">
+                            <div className="flex flex-wrap items-center gap-2">
+                              <span className="font-mono text-[11px] tabular-nums text-muted-foreground">
+                                {Number.isNaN(a.at.getTime()) ? "" : fmtBRT(a.at)}
+                              </span>
+                              {/* Transicao de status: so o ajuste MAIS RECENTE tem
+                                  origem/destino confiavel (juiz -> efetivo); os
+                                  anteriores nao guardam o status da epoca. */}
+                              {i === 0 && ajusteMudou && (
+                                <span className="inline-flex items-center gap-1.5">
+                                  <span className="inline-flex items-center rounded-full border border-border bg-muted/40 px-2 py-0.5 font-medium text-muted-foreground line-through">
+                                    {STATUS_LABEL[e.status]}
+                                  </span>
+                                  <span aria-hidden className="text-muted-foreground">
+                                    →
+                                  </span>
+                                  <Badge
+                                    variant="outline"
+                                    className={cn("border", STATUS_TONE[effStatus])}
+                                  >
+                                    {STATUS_LABEL[effStatus]}
+                                  </Badge>
+                                </span>
+                              )}
+                            </div>
+                            <p className="[overflow-wrap:anywhere] text-foreground">
                               {a.reason || (
                                 <span className="italic text-muted-foreground">
                                   (sem justificativa)
                                 </span>
                               )}
-                            </span>
+                            </p>
                           </li>
                         ))}
                       </ul>
