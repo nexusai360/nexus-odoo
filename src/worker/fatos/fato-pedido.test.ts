@@ -65,10 +65,10 @@ describe("mapPedidoRow", () => {
 
   it("parseia datas com T00:00:00", () => {
     const result = mapPedidoRow(rawBase, ETAPA_FINALIZA_MAP);
-    expect(result.dataOrcamento).toEqual(new Date("2024-01-15T00:00:00"));
-    expect(result.dataAprovacao).toEqual(new Date("2024-01-16T00:00:00"));
-    expect(result.dataValidade).toEqual(new Date("2024-02-15T00:00:00"));
-    expect(result.dataPrevista).toEqual(new Date("2024-02-20T00:00:00"));
+    expect(result.dataOrcamento).toEqual(new Date("2024-01-15T00:00:00Z"));
+    expect(result.dataAprovacao).toEqual(new Date("2024-01-16T00:00:00Z"));
+    expect(result.dataValidade).toEqual(new Date("2024-02-15T00:00:00Z"));
+    expect(result.dataPrevista).toEqual(new Date("2024-02-20T00:00:00Z"));
   });
 
   it("datas null quando campo não é string", () => {

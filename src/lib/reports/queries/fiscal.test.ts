@@ -49,8 +49,8 @@ describe("queryFaturamentoPeriodo", () => {
     expect(result.valorFaturado).toBeCloseTo(200);
 
     const call = (mockPrisma.fatoNotaFiscal.findMany as jest.Mock).mock.calls[0][0];
-    expect(call.where?.dataEmissao?.gte).toEqual(new Date("2024-01-01T00:00:00"));
-    expect(call.where?.dataEmissao?.lte).toEqual(new Date("2024-01-31T00:00:00"));
+    expect(call.where?.dataEmissao?.gte).toEqual(new Date("2024-01-01T00:00:00Z"));
+    expect(call.where?.dataEmissao?.lte).toEqual(new Date("2024-01-31T00:00:00Z"));
   });
 
   it("retorna zeros quando sem notas", async () => {
@@ -120,8 +120,8 @@ describe("queryNotasEmitidas", () => {
 
     await queryNotasEmitidas(mockPrisma, { periodoDe: "2024-01-01", periodoAte: "2024-01-31" });
     const call = (mockPrisma.fatoNotaFiscal.findMany as jest.Mock).mock.calls[0][0];
-    expect(call.where?.dataEmissao?.gte).toEqual(new Date("2024-01-01T00:00:00"));
-    expect(call.where?.dataEmissao?.lte).toEqual(new Date("2024-01-31T00:00:00"));
+    expect(call.where?.dataEmissao?.gte).toEqual(new Date("2024-01-01T00:00:00Z"));
+    expect(call.where?.dataEmissao?.lte).toEqual(new Date("2024-01-31T00:00:00Z"));
   });
 });
 
@@ -163,7 +163,7 @@ describe("queryNotasRecebidas", () => {
 
     await queryNotasRecebidas(mockPrisma, { periodoDe: "2024-01-01", periodoAte: "2024-01-31" });
     const call = (mockPrisma.fatoNotaFiscal.findMany as jest.Mock).mock.calls[0][0];
-    expect(call.where?.dataEmissao?.gte).toEqual(new Date("2024-01-01T00:00:00"));
+    expect(call.where?.dataEmissao?.gte).toEqual(new Date("2024-01-01T00:00:00Z"));
   });
 });
 
@@ -193,7 +193,7 @@ describe("queryImpostosPeriodo", () => {
 
     await queryImpostosPeriodo(mockPrisma, { periodoDe: "2024-01-01", periodoAte: "2024-01-31" });
     const call = (mockPrisma.fatoNotaFiscal.findMany as jest.Mock).mock.calls[0][0];
-    expect(call.where?.dataEmissao?.gte).toEqual(new Date("2024-01-01T00:00:00"));
+    expect(call.where?.dataEmissao?.gte).toEqual(new Date("2024-01-01T00:00:00Z"));
   });
 });
 
@@ -233,7 +233,7 @@ describe("queryFaturamentoPorCliente", () => {
 
     await queryFaturamentoPorCliente(mockPrisma, { periodoDe: "2024-01-01", periodoAte: "2024-01-31" });
     const call = (mockPrisma.fatoNotaFiscal.findMany as jest.Mock).mock.calls[0][0];
-    expect(call.where?.dataEmissao?.gte).toEqual(new Date("2024-01-01T00:00:00"));
+    expect(call.where?.dataEmissao?.gte).toEqual(new Date("2024-01-01T00:00:00Z"));
   });
 });
 
@@ -290,8 +290,8 @@ describe("queryProdutosFaturados", () => {
 
     await queryProdutosFaturados(mockPrisma, { periodoDe: "2024-01-01", periodoAte: "2024-01-31" });
     const call = (mockPrisma.fatoNotaFiscalItem.findMany as jest.Mock).mock.calls[0][0];
-    expect(call.where?.dataEmissao?.gte).toEqual(new Date("2024-01-01T00:00:00"));
-    expect(call.where?.dataEmissao?.lte).toEqual(new Date("2024-01-31T00:00:00"));
+    expect(call.where?.dataEmissao?.gte).toEqual(new Date("2024-01-01T00:00:00Z"));
+    expect(call.where?.dataEmissao?.lte).toEqual(new Date("2024-01-31T00:00:00Z"));
   });
 
   it("retorna lista vazia quando sem itens", async () => {

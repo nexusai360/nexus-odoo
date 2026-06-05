@@ -25,7 +25,7 @@ describe("mapSaldoFinanceiroRow", () => {
     expect(result.bancoNome).toBe("Itaú / Corrente / 1584 / 55755-5 / Jht DF Comércio - Matriz DF 10.557.556/0001-37");
     expect(result.tipo).toBe("corrente");
     // C2: dataReferencia vem de raw.data; I2: hora local não desloca data.
-    expect(result.dataReferencia).toEqual(new Date("2026-05-14T00:00:00"));
+    expect(result.dataReferencia).toEqual(new Date("2026-05-14T00:00:00Z"));
     // C2: saldoAnterior vem de raw.anterior.
     expect(result.saldoAnterior).toBe(-978197.61);
     expect(result.entrada).toBe(12000.0);
@@ -53,9 +53,9 @@ describe("mapSaldoFinanceiroRow", () => {
     expect(result).not.toHaveProperty("atualizadoEm");
   });
 
-  it("I2: data '2026-05-14' parseada como hora local , não desloca para 2026-05-13", () => {
+  it("I2: data '2026-05-14' parseada como UTC , dia não desloca (getUTCDate=14)", () => {
     const result = mapSaldoFinanceiroRow({ ...RAW_REAL_SALDO, data: "2026-05-14" });
-    expect(result.dataReferencia?.getDate()).toBe(14);
+    expect(result.dataReferencia?.getUTCDate()).toBe(14);
   });
 });
 

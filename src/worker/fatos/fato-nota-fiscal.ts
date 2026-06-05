@@ -3,7 +3,9 @@
 //
 // tipoMovimento é derivado de entrada_saida: "1"→"saida", "0"→"entrada", else→"outro".
 // Nunca é null , alinhado com @default("outro") no schema (achado P-I6).
-// dataEmissao/dataEntradaSaida/dataAutorizacao usam sufixo T00:00:00 (parsing como hora local).
+// dataEmissao/dataEntradaSaida/dataAutorizacao usam sufixo T00:00:00Z (parsing
+// em UTC , canônico e TZ-independente; alinha com os boundaries UTC das queries
+// de período. Datas Odoo são date-only).
 // Valores monetários via Number(... ?? 0). mapper não produz atualizadoEm (@default(now())).
 
 import type { PrismaClient } from "../../generated/prisma/client";
@@ -68,9 +70,9 @@ export function mapNotaFiscalRow(raw: Record<string, unknown>): FatoNotaFiscalRo
     naturezaOperacaoNome: relNome(raw.natureza_operacao_id as OdooM2O),
     empresaId: relId(raw.empresa_id as OdooM2O),
     empresaNome: relNome(raw.empresa_id as OdooM2O),
-    dataEmissao: typeof raw.data_emissao === "string" ? new Date(`${raw.data_emissao}T00:00:00`) : null,
-    dataEntradaSaida: typeof raw.data_entrada_saida === "string" ? new Date(`${raw.data_entrada_saida}T00:00:00`) : null,
-    dataAutorizacao: typeof raw.data_autorizacao === "string" ? new Date(`${raw.data_autorizacao}T00:00:00`) : null,
+    dataEmissao: typeof raw.data_emissao === "string" ? new Date(`${raw.data_emissao}T00:00:00Z`) : null,
+    dataEntradaSaida: typeof raw.data_entrada_saida === "string" ? new Date(`${raw.data_entrada_saida}T00:00:00Z`) : null,
+    dataAutorizacao: typeof raw.data_autorizacao === "string" ? new Date(`${raw.data_autorizacao}T00:00:00Z`) : null,
     vrNf: Number(raw.vr_nf ?? 0),
     vrProdutos: Number(raw.vr_produtos ?? 0),
     vrFatura: Number(raw.vr_fatura ?? 0),

@@ -15,8 +15,8 @@ export async function queryFaturamentoPeriodo(
     filtros.periodoDe && filtros.periodoAte
       ? {
           dataEmissao: {
-            gte: new Date(`${filtros.periodoDe}T00:00:00`),
-            lte: new Date(`${filtros.periodoAte}T00:00:00`),
+            gte: new Date(`${filtros.periodoDe}T00:00:00Z`),
+            lte: new Date(`${filtros.periodoAte}T00:00:00Z`),
           },
         }
       : {};
@@ -49,8 +49,8 @@ export async function queryNotasEmitidas(
     filtros.periodoDe && filtros.periodoAte
       ? {
           dataEmissao: {
-            gte: new Date(`${filtros.periodoDe}T00:00:00`),
-            lte: new Date(`${filtros.periodoAte}T00:00:00`),
+            gte: new Date(`${filtros.periodoDe}T00:00:00Z`),
+            lte: new Date(`${filtros.periodoAte}T00:00:00Z`),
           },
         }
       : {};
@@ -102,8 +102,8 @@ export async function queryNotasRecebidas(
     filtros.periodoDe && filtros.periodoAte
       ? {
           dataEmissao: {
-            gte: new Date(`${filtros.periodoDe}T00:00:00`),
-            lte: new Date(`${filtros.periodoAte}T00:00:00`),
+            gte: new Date(`${filtros.periodoDe}T00:00:00Z`),
+            lte: new Date(`${filtros.periodoAte}T00:00:00Z`),
           },
         }
       : {};
@@ -142,8 +142,8 @@ export async function queryImpostosPeriodo(
     filtros.periodoDe && filtros.periodoAte
       ? {
           dataEmissao: {
-            gte: new Date(`${filtros.periodoDe}T00:00:00`),
-            lte: new Date(`${filtros.periodoAte}T00:00:00`),
+            gte: new Date(`${filtros.periodoDe}T00:00:00Z`),
+            lte: new Date(`${filtros.periodoAte}T00:00:00Z`),
           },
         }
       : {};
@@ -176,8 +176,8 @@ export async function queryFaturamentoPorCliente(
     filtros.periodoDe && filtros.periodoAte
       ? {
           dataEmissao: {
-            gte: new Date(`${filtros.periodoDe}T00:00:00`),
-            lte: new Date(`${filtros.periodoAte}T00:00:00`),
+            gte: new Date(`${filtros.periodoDe}T00:00:00Z`),
+            lte: new Date(`${filtros.periodoAte}T00:00:00Z`),
           },
         }
       : {};
@@ -230,8 +230,8 @@ export async function queryProdutosFaturados(
     filtros.periodoDe && filtros.periodoAte
       ? {
           dataEmissao: {
-            gte: new Date(`${filtros.periodoDe}T00:00:00`),
-            lte: new Date(`${filtros.periodoAte}T00:00:00`),
+            gte: new Date(`${filtros.periodoDe}T00:00:00Z`),
+            lte: new Date(`${filtros.periodoAte}T00:00:00Z`),
           },
         }
       : {};
@@ -320,8 +320,8 @@ export async function queryNotasRecebidasPorFornecedor(
     filtros.periodoDe && filtros.periodoAte
       ? {
           dataEmissao: {
-            gte: new Date(`${filtros.periodoDe}T00:00:00`),
-            lte: new Date(`${filtros.periodoAte}T00:00:00`),
+            gte: new Date(`${filtros.periodoDe}T00:00:00Z`),
+            lte: new Date(`${filtros.periodoAte}T00:00:00Z`),
           },
         }
       : {};

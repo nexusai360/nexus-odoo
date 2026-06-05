@@ -27,7 +27,7 @@ export function mapSaldoFinanceiroRow(
     bancoNome: relNome(raw.banco_id as OdooM2O),
     tipo: typeof raw.tipo === "string" ? raw.tipo : null,
     // C2: campo real é "data" (não "data_referencia") e "anterior" (não "saldo_anterior").
-    dataReferencia: dataRaw ? new Date(`${dataRaw}T00:00:00`) : null,
+    dataReferencia: dataRaw ? new Date(`${dataRaw}T00:00:00Z`) : null,
     saldoAnterior: Number(raw.anterior ?? 0),
     entrada: Number(raw.entrada ?? 0),
     saida: Number(raw.saida ?? 0),
