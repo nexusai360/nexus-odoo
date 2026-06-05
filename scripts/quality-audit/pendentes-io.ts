@@ -68,19 +68,37 @@ async function dump(): Promise<void> {
         .join("\n");
     }
 
-    // Tool calls/results PERSISTIDOS do turno (contexto). A perícia NÃO confia
-    // neles , deve REFAZER a consulta (ver playbook) , mas eles dizem qual tool
-    // e quais args o agente usou, base pra re-execução.
-    let toolCalls: unknown = null;
-    let toolResults: unknown = null;
+    // Tool calls/results do TURNO (contexto). Os toolCalls vivem nas mensagens
+    // assistant INTERMEDIÁRIas (iterações de tool), não na final que o eval
+    // aponta; então agregamos do último 'user' até a assistant final. A perícia
+    // NÃO confia neles , deve REFAZER a consulta (ver playbook) , mas eles dizem
+    // qual tool e quais args o agente usou, base do rerun-toolcall.
+    const toolCalls: unknown[] = [];
+    const toolResults: unknown[] = [];
     let userFeedback: { rating: string; comment: string | null } | null = null;
-    if (r.assistantMessageId) {
-      const msg = await prisma.message.findUnique({
-        where: { id: r.assistantMessageId },
-        select: { toolCalls: true, toolResults: true },
+    if (r.assistantMessageId && r.conversationId) {
+      const turnMsgs = await prisma.message.findMany({
+        where: { conversationId: r.conversationId },
+        orderBy: { createdAt: "asc" },
+        select: { id: true, role: true, toolCalls: true, toolResults: true },
       });
-      toolCalls = msg?.toolCalls ?? null;
-      toolResults = msg?.toolResults ?? null;
+      const endIdx = turnMsgs.findIndex((m) => m.id === r.assistantMessageId);
+      if (endIdx >= 0) {
+        let startIdx = 0;
+        for (let i = endIdx - 1; i >= 0; i--) {
+          if (turnMsgs[i].role === "user") {
+            startIdx = i + 1;
+            break;
+          }
+        }
+        for (const m of turnMsgs.slice(startIdx, endIdx + 1)) {
+          if (m.role !== "assistant") continue;
+          if (Array.isArray(m.toolCalls)) toolCalls.push(...m.toolCalls);
+          else if (m.toolCalls != null) toolCalls.push(m.toolCalls);
+          if (Array.isArray(m.toolResults)) toolResults.push(...m.toolResults);
+          else if (m.toolResults != null) toolResults.push(m.toolResults);
+        }
+      }
 
       // VOTO + COMENTÁRIO do usuário (perícia ≠ avaliação do usuário, mas na
       // REAVALIAÇÃO a perícia DEVE considerar o que o usuário escreveu).
