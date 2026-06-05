@@ -1,8 +1,47 @@
 # STATUS — nexus-odoo
 
-> **Ponto de retomada entre sessões.** Atualizado em **2026-06-03** (Monitoramento/Qualidade).
+> **Ponto de retomada entre sessões.** Atualizado em **2026-06-03** (Otimização de custo + reconciliação de banco).
 > Ao abrir: ler **este arquivo**, o **`CLAUDE.md`** e **`.agente-handoff.md`**.
 > Modo autônomo é o padrão (`CLAUDE.md §6`).
+
+## 2026-06-05 , PONTO DE RETOMADA (branch `feat/agente-nex-bubble-ux`)
+
+Continuação direta do B1-B9 (abaixo). Esta leva fechou **B2/B3 + redesign completo
+do drill-down do Backtest + polimento da aba Bubble**. Tudo commitado, **tsc 0 /
+suíte verde / no ar via `agente up`**. Sincronizado com `origin/main` (merge).
+
+### Entregue nesta leva (além do B1-B9)
+- **Drill-down do Backtest redesenhado** (`evaluation-drilldown.tsx`): meta bar
+  (perícia + lápis de ajuste com transição status antigo riscado→novo + modelo +
+  tempo) e 2 colunas (esquerda=conversa, direita=análise). Avaliação do usuário
+  como seção própria na cor oficial; perícia só com razões do juiz; **histórico de
+  ajustes** colapsável (data + transição + justificativa, sem TZ).
+- **Editor JSON novo** (`json-viewer.tsx`): tool calls/results como árvore
+  colapsável (chevron + colchetes/chaves clicáveis), `deepParse` de JSON aninhado
+  em string, altura `max-h-44`. Modal "expandir" travado na largura do drill-down
+  com **numeração de linha + fold + guias cinza-claro tracejadas**.
+- **Tempo de resposta** no Raciocínio do monitor e no drill-down
+  (`getEvaluationDetail.durationMs`, proxy createdAt; bate com a bubble viva).
+- **Avaliação do usuário** trazida pro drill-down (ícones oficiais, cor por status).
+- **EvalStatusBadge**: escudo verde → lápis (consistente com o drill-down).
+- **Aba Bubble polida**: avaliação+perícia por card (ícones Gauge/Scale), 2 métricas;
+  conversa abre no topo (mais antiga) + FAB descer; comentário do voto em
+  hover+click, largura cheia da bolha; sessões encerradas com fim derivado
+  (início da posterior −15s), data com ano(2 díg)+segundos, "até" com acento;
+  **colunas Colaboradores/Sessões recolhíveis** (faixa vertical), 330px, conversa cresce.
+- **Tabela do Backtest**: colunas Modelo/Padrão/Ações reduzidas (cabe 100%, sem scroll lateral).
+
+### Estado de merge (IMPORTANTE)
+- **PR #51 já foi mergeado** na main (commit `6794b07`). Esta leva tem **51 commits
+  novos** ainda fora da main → precisa de **PR NOVO** (o #51 está fechado).
+- Branch sincronizada com `origin/main` (merge feito nesta sessão).
+- **Outra branch `feat/router-ativacao-r2`** (outro agente): 32 commits próprios não
+  mergeados, 28 atrás da main. NÃO mergear por aqui (isolamento por branch); ordem é
+  decisão do usuário.
+- **Próximo passo:** abrir PR novo desta branch → revisar → `gh pr merge` (confirmação
+  do usuário) → CI/CD.
+
+---
 
 ## 2026-06-04 , PONTO DE RETOMADA (branch `feat/agente-nex-bubble-ux`)
 
@@ -72,6 +111,39 @@ Tudo abaixo entregue, commitado, tsc 0 / suíte 2386 verde / no ar via `agente u
 - NÃO mergear/PR sem o usuário pedir. Tudo na branch `feat/agente-nex-bubble-ux` (PR #51).
 
 ---
+
+## 2026-06-03 , Otimização de custo do Agente Nex + reconciliação do banco (PR #51, MERGEADO)
+
+Branch `feat/agente-nex-bubble-ux`. Frente de redução de custo por pergunta do
+agente + correção de um drift de banco pré-existente. Verificado (tsc raiz+mcp,
+suíte 2331 verde, smoke E2E real, code review por 2 revisores Opus) e **mergeado
+na `main` com CI verde**.
+
+- **Alavanca 1 , prompt caching da OpenAI:** corrigido bug que zerava o cache (a
+  data ficava no topo do system prompt, mudava a cada segundo). Agora a data vai
+  como item de input antes da pergunta (`montarConversa`), deixando o prefixo
+  system estável e cacheável. Provider lê `cached_tokens` (Responses+chat); billing
+  precifica input cacheado a 0.1x (menu de consumo deixa de superestimar); coluna
+  `tokens_cached_input`; `prompt_cache_key` estável por hash do system.
+- **Alavanca 2a , janela de histórico:** 12 mensagens, confirmada em produção (sem
+  mudança de código).
+- **Alavanca 2b , paginação:** engrenagem `mcp/lib/paginacao.ts` + `_PAGINACAO` no
+  envelope; ~37 tools de lista grande com `limit`/`offset` no SQL (10 por vez),
+  `orderBy` estável + desempate por id, `count` no mesmo `where`. Fuzzy/agregadas
+  como exceção documentada (slice estável). Prompt (12c-bis) ensina a listar 10 e
+  pedir "os próximos" via `proximoOffset` (stateless: offset no histórico).
+- **Reconciliação de drift schema<->migrations (IMPORTANTE):** várias frentes
+  (qualidade, validators, monitoramento, sugestões) editaram o `schema.prisma` via
+  `prisma db push` no dev sem gerar migration. Como produção roda `migrate deploy`
+  (ver `docker/entrypoint.sh`), essas colunas/índices **não existiam em produção**.
+  Criada `20260603150000_reconcilia_schema_drift` (gerada por `migrate diff
+  --from-migrations --to-schema`), validada em shadow limpo: após ela,
+  `migrate diff` = **"No difference detected"**. O próximo deploy alinha produção.
+  Dropa 3 colunas renomeadas em `conversation_quality_evaluations` (auditoria
+  interna). **Lição: usar `migrate dev`, não `db push`, para mudanças de schema.**
+- **Pós-merge na main:** o redeploy do Portainer roda `migrate deploy` (aplica a
+  reconciliação em prod) e o entrypoint sobe a app. Containers locais (`mcp`/worker)
+  rebuildam quando o usuário validar na bubble.
 
 ## 2026-06-03 , Monitoramento + Qualidade do Agente Nex (branch `feat/router-ativacao-r2`)
 

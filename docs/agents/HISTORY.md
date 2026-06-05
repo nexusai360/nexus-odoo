@@ -260,3 +260,21 @@
   deep-link pro Backtest). Helpers+action testados. Spec b3-aprendizado-design.md.
 - **Schema**: migration aditiva (AgentChannel += backtest) + backfill; `agente schema-changed`
   disparado. Suíte 2386 verde, tsc 0. Deferido: B3.2 autocorreção e KPI tempo médio (RADAR).
+
+## 2026-06-05 , drill-down Backtest redesenhado + editor JSON + polish Bubble + sync main
+- branch=feat/agente-nex-bubble-ux scope=feature.
+- Drill-down (`evaluation-drilldown.tsx`) redesenhado: meta bar (pericia + lapis de ajuste
+  com transicao + modelo + tempo) e 2 colunas conversa|analise; avaliacao do usuario em
+  secao propria (cor oficial); pericia so razoes do juiz; historico de ajustes colapsavel.
+- Editor JSON novo (`json-viewer.tsx`): arvore colapsavel + colchetes clicaveis + deepParse
+  de JSON-em-string; modal expandir travado na largura do drill-down com numeracao de linha,
+  fold e guias cinza-claro.
+- `getEvaluationDetail.durationMs` + `userFeedback` (tempo + avaliacao no drill-down).
+- EvalStatusBadge: escudo verde -> lapis.
+- Aba Bubble: 2 metricas por card (avaliacao+pericia, Gauge/Scale); conversa abre no topo +
+  FAB; comentario do voto hover+click largura cheia; sessoes encerradas com fim derivado;
+  data ano2dig+segundos; colunas Colaboradores/Sessoes recolhiveis (330px).
+- Tabela Backtest: colunas reduzidas p/ caber 100%.
+- Merge: PR #51 ja mergeado antes; esta leva (51 commits) sincronizada com origin/main
+  (merge, conflito so no STATUS.md resolvido) -> abrir PR NOVO. Outra branch router-ativacao-r2
+  e do outro agente (nao mergear por aqui).
