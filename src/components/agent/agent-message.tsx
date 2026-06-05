@@ -133,6 +133,19 @@ export function AgentMessage({
   monitorPericia,
   monitorVote,
 }: AgentMessageProps) {
+  // "Reveal concluído": só vira true quando o typewriter da resposta AO VIVO
+  // termina de escrever. É o gatilho pra liberar o botão de copiar (junto com
+  // as sugestões), em vez de ele aparecer já no "Pensando".
+  const [revealComplete, setRevealComplete] = React.useState(false);
+  React.useEffect(() => {
+    // Nova mensagem ao vivo começando a digitar: zera até o typewriter acabar.
+    if (reveal) setRevealComplete(false);
+  }, [reveal]);
+  const handleRevealComplete = React.useCallback(() => {
+    setRevealComplete(true);
+    onRevealComplete?.();
+  }, [onRevealComplete]);
+
   if (role === "loading") return <LoadingBubble />;
   if (role === "tool") return <ToolBubble name={toolName ?? "tool"} />;
 
@@ -207,7 +220,7 @@ export function AgentMessage({
               <TypewriterBody
                 content={content}
                 streaming={streaming}
-                onComplete={onRevealComplete}
+                onComplete={handleRevealComplete}
               />
             ) : (
               <MarkdownLite content={content} />
@@ -237,7 +250,17 @@ export function AgentMessage({
             </div>
           ) : null}
         </BubbleSurface>
-        <CopyButton text={content} />
+        {/* Copiar: usuário (mensagem já completa) mostra direto; assistant só
+            depois da resposta escrita por inteiro (sem streaming + typewriter
+            concluído), no mesmo momento em que as sugestões aparecem. Nada de
+            botão durante o "Pensando". */}
+        {(
+          isUser
+            ? content.length > 0
+            : content.length > 0 && !streaming && (!reveal || revealComplete)
+        ) ? (
+          <CopyButton text={content} />
+        ) : null}
         {!isUser &&
         kind === "text" &&
         !streaming &&

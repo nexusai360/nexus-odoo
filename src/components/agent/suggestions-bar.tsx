@@ -12,6 +12,7 @@
 import { motion, useReducedMotion } from "framer-motion";
 
 import { cn } from "@/lib/utils";
+import { padSuggestions } from "@/lib/agent/suggestion-fallback";
 
 export interface SuggestionsBarProps {
   suggestions: string[];
@@ -22,42 +23,15 @@ export interface SuggestionsBarProps {
   targetCount?: number;
 }
 
-// Ultima camada de defesa contra "bolha sem chips" (bug 2026-05-24).
-// Mesmo que o backend, o welcomeSuggestionsForUi e o personalized falhem,
-// o usuario sempre ve 3 perguntas de gestor abaixo da resposta.
-// Fallback hardcoded para sugestoes pos-resposta. Distinto das welcome para
-// evitar repeticao das chips de entrada (feedback usuario 2026-05-24).
-const HARD_FALLBACK = [
-  "Detalhe o faturamento dos últimos 7 dias.",
-  "Qual cliente mais comprou neste mês?",
-  "Compare o estoque atual com o do mês passado.",
-  "Quais notas fiscais foram emitidas hoje?",
-  "Quais títulos vencem nos próximos 5 dias?",
-];
-
 export function SuggestionsBar({
   suggestions,
   onPick,
   targetCount = 3,
 }: SuggestionsBarProps) {
   const reduce = useReducedMotion();
-  const cap = Math.min(Math.max(1, targetCount), 5);
-  const seen = new Set<string>();
-  const final: string[] = [];
-  for (const s of suggestions) {
-    const t = (s ?? "").trim();
-    if (t && !seen.has(t) && final.length < cap) {
-      seen.add(t);
-      final.push(t);
-    }
-  }
-  for (const s of HARD_FALLBACK) {
-    if (final.length >= cap) break;
-    if (!seen.has(s)) {
-      seen.add(s);
-      final.push(s);
-    }
-  }
+  // Dedup + corte + complemento com HARD_FALLBACK: lógica compartilhada com o
+  // painel de monitoramento (suggestion-fallback.ts) pra ambos baterem.
+  const final = padSuggestions(suggestions, targetCount);
   if (final.length === 0) return null;
   return (
     <div
