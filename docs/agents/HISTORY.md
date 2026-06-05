@@ -280,3 +280,7 @@
   e do outro agente (nao mergear por aqui).
 
 2026-06-05 scope=pericia summary=juiz Claude agentico (Opus) substitui heuristica arrancada; status REAVALIAR + gatilho de reavaliacao no voto + ajuste-pela-pericia; dump com toolCalls/voto; reset 5 vereditos heuristicos; fix vazamento [[suggestions]]; tsc0 jest2386
+2026-06-05 scope=ux summary=monitor 3 colunas ao vivo (polling ~2.5s, change-detection, pausa aba oculta); alinhamento header conversa; espacamento topo+1a msg; copiar so apos resposta pronta; contagem fiel
+2026-06-05 scope=bubble summary=snapshot fiel das sugestoes exibidas (POST suggestions-shown keyado por messageId) + modulo suggestion-fallback compartilhado
+2026-06-05 scope=agent summary=re-strip [[suggestions]] pos-retry do autoValidator (vazamento no conteudo persistido)
+2026-06-05 scope=fix summary=timezone nas queries de periodo e datas dos fatos UTC-explicito (Z); dia inicial sumia sob TZ negativa; prod-UTC sempre correto; 2386 testes verdes
