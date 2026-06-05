@@ -53,11 +53,9 @@ function JsonNode({
       </>
     ) : null;
 
-  const pad = { paddingLeft: depth * 14 };
-
   if (!collapsible) {
     return (
-      <div style={pad} className="flex items-start">
+      <div className="flex items-start">
         <span className="inline-block w-4 shrink-0" aria-hidden />
         <span className="[overflow-wrap:anywhere] whitespace-pre-wrap">
           {keyPart}
@@ -74,13 +72,17 @@ function JsonNode({
   const openBr = isArray ? "[" : "{";
   const closeBr = isArray ? "]" : "}";
   const Chevron = open ? ChevronDown : ChevronRight;
+  const toggle = () => setOpen((o) => !o);
+  // Colchete/chave clicavel: hover muda a cor e mostra a mãozinha.
+  const brCls =
+    "cursor-pointer rounded px-0.5 text-muted-foreground/70 transition-colors hover:bg-violet-500/15 hover:text-violet-200";
 
   return (
     <div>
-      <div style={pad} className="flex items-start">
+      <div className="flex items-start">
         <button
           type="button"
-          onClick={() => setOpen((o) => !o)}
+          onClick={toggle}
           aria-expanded={open}
           aria-label={open ? "Recolher" : "Expandir"}
           className="mt-px inline-flex h-4 w-4 shrink-0 cursor-pointer items-center justify-center rounded text-muted-foreground/60 hover:text-foreground"
@@ -89,40 +91,37 @@ function JsonNode({
         </button>
         <span className="[overflow-wrap:anywhere] whitespace-pre-wrap">
           {keyPart}
-          <Punct>{openBr}</Punct>
-          {!open && (
-            <button
-              type="button"
-              onClick={() => setOpen(true)}
-              className="mx-0.5 cursor-pointer rounded px-1 text-[11px] text-muted-foreground/60 hover:bg-muted hover:text-foreground"
-            >
-              … {entries.length} …
-            </button>
-          )}
-          {!open && (
-            <>
-              <Punct>{closeBr}</Punct>
-              {!last && <Punct>,</Punct>}
-            </>
-          )}
+          <button type="button" onClick={toggle} title={open ? "Recolher" : "Expandir"} className={brCls}>
+            {openBr}
+            {!open && (
+              <span className="text-muted-foreground/50"> … {entries.length} … </span>
+            )}
+            {!open && closeBr}
+          </button>
+          {!open && !last && <Punct>,</Punct>}
         </span>
       </div>
       {open && (
         <>
-          {entries.map(([k, v], i) => (
-            <JsonNode
-              key={k}
-              name={isArray ? undefined : k}
-              value={v}
-              depth={depth + 1}
-              last={i === entries.length - 1}
-              defaultOpenDepth={defaultOpenDepth}
-            />
-          ))}
-          <div style={pad} className="flex items-start">
+          {/* Linha-guia de indentação (tracejada, sutil). */}
+          <div className="ml-[7px] border-l border-dashed border-border/50 pl-3">
+            {entries.map(([k, v], i) => (
+              <JsonNode
+                key={k}
+                name={isArray ? undefined : k}
+                value={v}
+                depth={depth + 1}
+                last={i === entries.length - 1}
+                defaultOpenDepth={defaultOpenDepth}
+              />
+            ))}
+          </div>
+          <div className="flex items-start">
             <span className="inline-block w-4 shrink-0" aria-hidden />
             <span>
-              <Punct>{closeBr}</Punct>
+              <button type="button" onClick={toggle} title="Recolher" className={brCls}>
+                {closeBr}
+              </button>
               {!last && <Punct>,</Punct>}
             </span>
           </div>
@@ -377,9 +376,10 @@ export function JsonBlock({
                 </button>
               </div>
             </div>
-            {/* Editor de código: numeração de linha + cores de sintaxe. */}
+            {/* Editor colapsável (mesma árvore do inline): linhas-guia + cores +
+                clique no colchete/chave pra abrir/fechar. Abre mais níveis. */}
             <div className="min-h-0 flex-1 overflow-auto px-3 py-2.5">
-              <JsonCode data={parsed} />
+              <JsonViewer data={parsed} defaultOpenDepth={4} />
             </div>
           </div>
         </div>

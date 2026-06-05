@@ -103,13 +103,10 @@ function UserAvaliacaoSection({
         <Icon className="mt-px h-3.5 w-3.5 shrink-0" style={{ color: meta.color }} />
         <p className="min-w-0 flex-1 text-[13px] [overflow-wrap:anywhere]">
           <span className="font-semibold" style={{ color: meta.color }}>
-            {meta.label}:
-          </span>{" "}
-          {hasComment ? (
-            comment
-          ) : (
-            <span className="italic text-muted-foreground">sem comentário</span>
-          )}
+            {meta.label}
+            {hasComment ? ":" : ""}
+          </span>
+          {hasComment ? <> {comment}</> : null}
         </p>
       </div>
     </Section>
