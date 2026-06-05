@@ -687,7 +687,7 @@ function AssistantSuggestionsBlock({
             }
             style={{ overflow: "hidden" }}
           >
-            <ul id={listId} className="mt-1.5 flex flex-col gap-1.5 pl-5">
+            <ul id={listId} className="mt-2 flex flex-col gap-2 pl-5">
               {suggestions.map((s, i) => {
                 const clicked = s === clickedSuggestion;
                 return (
