@@ -33,16 +33,17 @@ fi
 # Bootstrap dos roles do MCP ANTES das migrations: algumas migrations fazem
 # `GRANT ... TO nexus_mcp` e falhariam numa base nova, onde o role ainda nao
 # existe (o provisionamento completo so roda depois do migrate). Aqui criamos
-# apenas os roles (idempotente) para que esses GRANTs inline funcionem.
+# apenas os roles SEM senha (idempotente) para que esses GRANTs inline
+# funcionem. A senha e definida depois pelo provision-mcp.sql (passo abaixo).
+# IMPORTANTE: psql NAO interpola variaveis :'var' em comandos -c (so em -f);
+# por isso o bootstrap nao usa senha aqui (evita o erro de sintaxe em ":").
 if [ "$MCP_HAS_PW" = "1" ]; then
   echo "[entrypoint] Bootstrap dos roles do MCP (pre-migrate)…"
-  psql "$PSQL_URL" -v ON_ERROR_STOP=1 -v mcp_pw="$MCP_DB_PASSWORD" -v bi_pw="$MCP_BI_DB_PASSWORD" -c "
+  psql "$PSQL_URL" -v ON_ERROR_STOP=1 -c "
     DO \$\$ BEGIN
       IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname='nexus_mcp') THEN CREATE ROLE nexus_mcp LOGIN; END IF;
       IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname='nexus_mcp_bi') THEN CREATE ROLE nexus_mcp_bi LOGIN; END IF;
     END \$\$;
-    ALTER ROLE nexus_mcp    LOGIN PASSWORD :'mcp_pw';
-    ALTER ROLE nexus_mcp_bi LOGIN PASSWORD :'bi_pw';
   " || { echo "[entrypoint] FALHA no bootstrap dos roles do MCP"; exit 1; }
 fi
 
