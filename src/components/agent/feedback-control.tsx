@@ -11,7 +11,7 @@
  */
 
 import * as React from "react";
-import { Gauge, Check, X, Ghost, Send } from "lucide-react";
+import { Gauge, Check, X, Ghost, Send, MessageSquarePlus } from "lucide-react";
 import { PartialIcon } from "./partial-icon";
 import { motion, AnimatePresence, useReducedMotion } from "framer-motion";
 import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip";
@@ -265,7 +265,11 @@ export function FeedbackControl({
       {/* card de hover: mostra o comentário escrito (igual ao monitor). Some
           enquanto a paleta ou o campo de edição estão abertos. */}
       <AnimatePresence>
-        {chosenOpt && current?.comment && hover && !open && !fieldFor ? (
+        {chosenOpt &&
+        hover &&
+        !open &&
+        !fieldFor &&
+        (current?.comment || chosenOpt.field) ? (
           <motion.div
             initial={reduce ? false : { opacity: 0, y: 6, scale: 0.98 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
@@ -281,18 +285,34 @@ export function FeedbackControl({
             >
               <chosenOpt.Icon className="h-3 w-3" />
               {chosenOpt.label}
-              <span className="text-muted-foreground/70">· comentário</span>
+              <span className="text-muted-foreground/70">
+                {current?.comment ? "· comentário" : "· sem comentário"}
+              </span>
+              {current?.comment ? (
+                <button
+                  type="button"
+                  onClick={startEdit}
+                  className="ml-auto rounded px-1.5 py-0.5 text-[10px] font-medium normal-case text-violet-600 hover:bg-violet-500/10 dark:text-violet-300"
+                >
+                  Editar
+                </button>
+              ) : null}
+            </div>
+            {current?.comment ? (
+              <p className="text-xs leading-snug text-foreground [overflow-wrap:anywhere]">
+                {current.comment}
+              </p>
+            ) : (
+              // Sem comentário: botão "Adicionar" centralizado pra abrir o campo.
               <button
                 type="button"
                 onClick={startEdit}
-                className="ml-auto rounded px-1.5 py-0.5 text-[10px] font-medium normal-case text-violet-600 hover:bg-violet-500/10 dark:text-violet-300"
+                className="mx-auto mt-0.5 flex cursor-pointer items-center gap-1.5 rounded-md border border-violet-400/45 bg-violet-500/10 px-3 py-1.5 text-xs font-medium text-violet-600 transition-colors hover:bg-violet-500/20 hover:text-violet-700 dark:text-violet-300"
               >
-                Editar
+                <MessageSquarePlus className="h-3.5 w-3.5" />
+                Adicionar comentário
               </button>
-            </div>
-            <p className="text-xs leading-snug text-foreground [overflow-wrap:anywhere]">
-              {current.comment}
-            </p>
+            )}
           </motion.div>
         ) : null}
       </AnimatePresence>
