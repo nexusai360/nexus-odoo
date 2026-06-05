@@ -292,22 +292,29 @@ export function EvaluationDrilldown({ evaluationId, onAdjusted }: Props) {
     >
       {/* ───────────── META BAR: veredito + metadados, num relance ───────────── */}
       <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2 border-b border-border/60 pb-3">
-        <div className="flex flex-wrap items-center gap-x-2 gap-y-1.5 text-foreground">
-          <Badge variant="outline" className={cn("border", STATUS_TONE[effStatus])}>
-            {STATUS_LABEL[effStatus]}
-          </Badge>
-          {ajusteMudou && (
+        <div className="flex flex-wrap items-center gap-x-2 gap-y-1.5 text-xs text-foreground">
+          {ajusteMudou ? (
+            // Mesmo padrao do historico: o lapis abre, depois o status antigo
+            // (cinza, riscado) -> o novo (tag colorida).
             <span
-              className="inline-flex items-center gap-1 text-xs text-foreground"
+              className="inline-flex items-center gap-1.5"
               title="O veredito recebeu um ajuste humano"
             >
-              <Pencil className="h-3 w-3 text-violet-400" />
-              <span className="text-muted-foreground line-through">
+              <Pencil className="h-3.5 w-3.5 text-violet-400" />
+              <span className="inline-flex items-center rounded-full border border-border bg-muted/40 px-2 py-0.5 font-medium text-muted-foreground line-through">
                 {STATUS_LABEL[e.status]}
               </span>
-              <span aria-hidden>→</span>
-              <span className="font-medium">{STATUS_LABEL[effStatus]}</span>
+              <span aria-hidden className="text-muted-foreground">
+                →
+              </span>
+              <Badge variant="outline" className={cn("border", STATUS_TONE[effStatus])}>
+                {STATUS_LABEL[effStatus]}
+              </Badge>
             </span>
+          ) : (
+            <Badge variant="outline" className={cn("border", STATUS_TONE[effStatus])}>
+              {STATUS_LABEL[effStatus]}
+            </Badge>
           )}
           <span aria-hidden className="h-3.5 w-px bg-border/70" />
           {e.model && (
