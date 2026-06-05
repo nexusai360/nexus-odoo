@@ -314,12 +314,12 @@ export function FeedbackControl({
               <button
                 type="button"
                 onClick={startEdit}
-                className="mx-auto flex cursor-pointer items-center gap-1.5 text-xs font-medium text-violet-600 transition-colors hover:text-violet-700 dark:text-violet-300"
+                className="mx-auto mt-0.5 flex cursor-pointer items-center gap-1.5 text-xs font-medium text-violet-600 transition-colors hover:text-violet-700 dark:text-violet-300"
               >
                 <span className="flex h-[18px] w-[18px] items-center justify-center rounded-full bg-violet-500/15">
                   <Plus className="h-3 w-3" />
                 </span>
-                adicionar comentário
+                adicionar
               </button>
             )}
           </motion.div>
