@@ -32,12 +32,19 @@ export function resolveClaudeBin(): string {
 }
 
 export const JUDGE_PROMPT =
-  "Avalie as avaliacoes PENDENTE do Backtest seguindo docs/quality-judge-playbook.md. " +
-  "O JUIZO E SEU (Claude Code), NAO use GPT nem nenhum LLM externo. Passos: " +
-  "1) rode `npx tsx scripts/quality-audit/pendentes-io.ts --dump`; " +
-  "2) leia /tmp/nex-pendentes.json e julgue CADA item voce mesmo (status + patterns do vocabulario canonico + razoes); " +
-  "3) escreva /tmp/nex-pendentes-judged.json e rode `npx tsx scripts/quality-audit/pendentes-io.ts --apply`. " +
-  "Nao pare ate aplicar. Seja conciso.";
+  "Faca a PERICIA AGENTICA das avaliacoes PENDENTE e REAVALIAR do Backtest, " +
+  "seguindo docs/quality-judge-playbook.md a risca. O JUIZO E SEU (Claude Code, " +
+  "Opus), NAO use GPT nem heuristica de regras. Passos: " +
+  "1) `npx tsx scripts/quality-audit/pendentes-io.ts --dump` e leia /tmp/nex-pendentes.json; " +
+  "2) para CADA item: leia a pergunta do usuario e a resposta do agente (GPT-5.4-mini); " +
+  "olhe os toolCalls persistidos; RE-EXECUTE voce mesmo a consulta contra o dado REAL " +
+  "(use scripts/quality-audit/rerun-toolcall.ts ou a camada de queries em src/lib/reports/queries), " +
+  "responda a pergunta por conta propria e COMPARE com a resposta do agente; " +
+  "crave o status pela VERDADE do dado (status + patterns canonicos + razoes); " +
+  "em itens REAVALIAR, considere o userFeedback (voto+comentario) com HONESTIDADE " +
+  "(pode concordar e mudar, ou discordar e manter , explique nas razoes); " +
+  "3) escreva /tmp/nex-pendentes-judged.json [{id,status,patterns,razoes}] e rode " +
+  "`npx tsx scripts/quality-audit/pendentes-io.ts --apply`. Nao pare ate aplicar.";
 
 // Lock in-process: o botao (server action) e o cron (instrumentation) rodam no
 // MESMO processo do Next, entao um boolean de modulo serializa os dois , nunca
@@ -78,7 +85,7 @@ export async function triggerClaudeJudge(opts?: {
     };
   }
   const pendentes = await prisma.conversationQualityEvaluation.count({
-    where: { status: "PENDENTE" },
+    where: { status: { in: ["PENDENTE", "REAVALIAR"] } },
   });
   if (pendentes === 0) {
     return { started: false, pendentes: 0, reason: "Sem pendentes." };
@@ -92,7 +99,9 @@ export async function triggerClaudeJudge(opts?: {
 
   const child = spawn(
     resolveClaudeBin(),
-    ["--dangerously-skip-permissions", "-p", JUDGE_PROMPT],
+    // --model opus: força o modelo mais capaz (alias resolve pro Opus mais
+    // recente). A perícia precisa do melhor juízo disponível.
+    ["--model", "opus", "--dangerously-skip-permissions", "-p", JUDGE_PROMPT],
     { cwd: process.cwd(), detached: true, stdio: "ignore", env: process.env },
   );
   child.on("error", (err) => {

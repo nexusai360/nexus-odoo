@@ -152,23 +152,31 @@ const dateTimeFmt = new Intl.DateTimeFormat("pt-BR", {
 function fmtBRT(d: Date): string {
   return dateTimeFmt.format(d).replace(",", "");
 }
-// Separa as razoes do JUIZ dos AJUSTES HUMANOS embutidos. O adjustEvaluation
-// faz append "\n[AJUSTE HUMANO <iso-utc>] <reason>" a cada ajuste (cronologico).
-// Aqui o diagnostico mostra so a parte do juiz; os ajustes viram historico
-// (mais recente primeiro).
+// Separa as razoes do JUIZ dos AJUSTES embutidos. Dois tipos de ajuste, ambos
+// append "\n[AJUSTE <TIPO> <ts>] <reason>" cronologico:
+//   - "[AJUSTE HUMANO <iso-utc>]" , super_admin via adjustEvaluation.
+//   - "[AJUSTE-PERICIA <ts>]"     , re-perícia do Claude (pendentes-io --apply).
+// O diagnostico mostra so a parte do juiz; os ajustes viram historico (mais
+// recente primeiro), cada um com sua origem.
+type AdjustOrigin = "humano" | "pericia";
 function parseRazoes(razoes: string): {
   judge: string;
-  adjustments: { at: Date; reason: string }[];
+  adjustments: { at: Date; reason: string; origin: AdjustOrigin }[];
 } {
-  const firstIdx = razoes.search(/\[AJUSTE HUMANO /);
+  const firstIdx = razoes.search(/\[AJUSTE (?:HUMANO|-PERICIA) /);
   const judge = (firstIdx === -1 ? razoes : razoes.slice(0, firstIdx)).trim();
-  const adjustments: { at: Date; reason: string }[] = [];
+  const adjustments: { at: Date; reason: string; origin: AdjustOrigin }[] = [];
   if (firstIdx !== -1) {
     const rest = razoes.slice(firstIdx);
-    const re = /\[AJUSTE HUMANO ([^\]]+)\]\s*([\s\S]*?)(?=\n*\[AJUSTE HUMANO |\s*$)/g;
+    const re =
+      /\[AJUSTE (HUMANO|-PERICIA) ([^\]]+)\]\s*([\s\S]*?)(?=\n*\[AJUSTE (?:HUMANO|-PERICIA) |\s*$)/g;
     let m: RegExpExecArray | null;
     while ((m = re.exec(rest)) !== null) {
-      adjustments.push({ at: new Date(m[1].trim()), reason: m[2].trim() });
+      adjustments.push({
+        origin: m[1] === "HUMANO" ? "humano" : "pericia",
+        at: new Date(m[2].trim()),
+        reason: m[3].trim(),
+      });
     }
   }
   adjustments.reverse(); // mais recente primeiro
@@ -515,6 +523,20 @@ export function EvaluationDrilldown({ evaluationId, onAdjusted }: Props) {
                             <div className="flex flex-wrap items-center gap-2">
                               <span className="font-mono text-[11px] tabular-nums text-muted-foreground">
                                 {Number.isNaN(a.at.getTime()) ? "" : fmtBRT(a.at)}
+                              </span>
+                              {/* Origem do ajuste: super_admin (humano) ou a
+                                  re-perícia do Claude (IA). */}
+                              <span
+                                className={cn(
+                                  "inline-flex items-center rounded-full border px-2 py-0.5 text-[10px] font-medium",
+                                  a.origin === "pericia"
+                                    ? "border-orange-500/40 bg-orange-500/10 text-orange-700 dark:text-orange-300"
+                                    : "border-violet-500/40 bg-violet-500/10 text-violet-700 dark:text-violet-300",
+                                )}
+                              >
+                                {a.origin === "pericia"
+                                  ? "ajuste pela perícia"
+                                  : "ajuste humano"}
                               </span>
                               {/* Transicao de status: so o ajuste MAIS RECENTE tem
                                   origem/destino confiavel (juiz -> efetivo); os
