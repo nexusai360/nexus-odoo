@@ -1056,6 +1056,20 @@ export async function runAgent(args: RunAgentInput): Promise<RunAgentResult> {
           console.warn("[autoValidator] failed (top-level):", err);
         }
 
+        // RE-STRIP pós-retry (fix do vazamento de [[suggestions]] persistido):
+        // o retry "active" do autoValidator acima substitui `message` por uma
+        // NOVA saída do LLM, que pode re-emitir o canal [[suggestions]] DEPOIS
+        // dos strippers (que rodaram lá em cima). Sem este re-strip, o residual
+        // ia direto pro banco/bubble. Trava final, idempotente.
+        try {
+          const { stripCanalSuggestionsResidual } = await import(
+            "./suggestions-extractor"
+          );
+          message = stripCanalSuggestionsResidual(message);
+        } catch (err) {
+          console.warn("[runAgent] re-strip pós-retry falhou:", err);
+        }
+
         const assistantMessageId = await persistMessageAndReturnId(
           args.conversationId,
           "assistant",
