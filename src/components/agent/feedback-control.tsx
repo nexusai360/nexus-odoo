@@ -181,21 +181,16 @@ export function FeedbackControl({
           aria-label="Avaliar resposta (clique para votar)"
           title="Avalie esta resposta"
           onClick={() => setOpen((v) => !v)}
-          // GATILHO (sem voto): ícone 27px (meio-termo entre o badge 24 e os 30
-          // da paleta) + texto "Avalie" SOLTO à direita (sem caixa), na margem
-          // direita da resposta. Ícone e texto piscam na MESMA cadência/fase.
-          className="group/vote absolute -bottom-1.5 left-full ml-1 flex cursor-pointer items-center gap-1.5 focus-visible:outline-none"
+          // GATILHO (sem voto): ícone 27px + texto "Avalie" solto à direita. A
+          // animação (pulso) fica NO PAI, então ícone e texto pulsam JUNTOS,
+          // sempre na mesma cadência/fase (um mecanismo só, nunca descompassa).
+          style={{ animationDelay: pulseDelay }}
+          className="nex-vote-pulse group/vote absolute -bottom-1.5 left-full ml-1 flex cursor-pointer items-center gap-1.5 hover:[animation-play-state:paused] focus-visible:outline-none"
         >
-          <span
-            style={{ animationDelay: pulseDelay }}
-            className="nex-vote-pulse flex h-[27px] w-[27px] items-center justify-center rounded-md border border-violet-400/60 bg-violet-500/15 text-violet-600 shadow-sm transition-colors group-hover/vote:bg-violet-500/35 group-hover/vote:text-violet-700 group-hover/vote:[animation-play-state:paused] dark:text-violet-300"
-          >
+          <span className="flex h-[27px] w-[27px] items-center justify-center rounded-md border border-violet-400/60 bg-violet-500/15 text-violet-600 shadow-sm transition-colors group-hover/vote:bg-violet-500/35 group-hover/vote:text-violet-700 dark:text-violet-300">
             <Gauge className="h-3.5 w-3.5" strokeWidth={2.25} />
           </span>
-          <span
-            style={{ animationDelay: pulseDelay }}
-            className="nex-vote-text select-none text-[11px] font-semibold tracking-wide text-violet-600 group-hover/vote:[animation-play-state:paused] dark:text-violet-300"
-          >
+          <span className="select-none text-[11px] font-semibold tracking-wide text-violet-600 dark:text-violet-300">
             Avalie
           </span>
         </button>

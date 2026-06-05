@@ -297,26 +297,22 @@ input[type="search"]::-webkit-search-decoration {
    votadas. A SINCRONIA entre várias instâncias vem do animation-delay negativo
    (= -(tempo % duração)) aplicado inline em cada ícone: assim a fase de todos
    fica ancorada ao mesmo relógio e elas pulsam juntas (mesma cadência). */
+/* UM ÚNICO mecanismo de pulso aplicado no BOTÃO PAI: ícone e texto pulsam
+   juntos (mesma timeline), impossível descompassar. drop-shadow faz o glow
+   seguir a FORMA do ícone E das letras (não uma caixa). */
 @keyframes nexVotePulse {
   0%, 100% {
     transform: scale(1);
-    box-shadow: 0 0 0 0 rgba(139, 92, 246, 0);
+    filter: drop-shadow(0 0 0 rgba(139, 92, 246, 0));
   }
   50% {
-    transform: scale(1.07);
-    box-shadow: 0 0 0 3px rgba(139, 92, 246, 0.22);
+    transform: scale(1.06);
+    filter: drop-shadow(0 0 4px rgba(139, 92, 246, 0.55));
   }
 }
 .nex-vote-pulse { animation: nexVotePulse 1.25s ease-in-out infinite; }
-/* Texto "Avalie" ao lado do ícone: pisca na MESMA cadência (1.25s) e fase
-   (mesmo animation-delay), com leve sobe-desce pra dar vida. Sem caixa/contorno. */
-@keyframes nexVoteText {
-  0%, 100% { opacity: 1; transform: translateY(0); }
-  50% { opacity: 0.55; transform: translateY(-1px); }
-}
-.nex-vote-text { animation: nexVoteText 1.25s ease-in-out infinite; }
 @media (prefers-reduced-motion: reduce) {
-  .nex-vote-pulse, .nex-vote-text { animation: none; }
+  .nex-vote-pulse { animation: none; }
 }
 
 /* Animacao de WIDTH da bolha via CSS + interpolate-size. HEIGHT eh
