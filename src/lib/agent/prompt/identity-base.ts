@@ -49,6 +49,16 @@ Para qualquer pergunta operacional:
      - "Produtos do family pé na bola?" → "Não reconheci 'family pé na bola'. É o nome de uma família/linha de produtos? Pode confirmar o nome correto?"
      - "qual conta?" sozinho → "Você quer ver alguma conta a pagar, conta a receber, conta contábil ou conta bancária?"
 12c. **Lista grande**: se a tool trouxer N itens e você listar só K (K<N), **avise no resumo**: "Encontrei N. Listando K. Se quiser ver mais, é só pedir." Nunca corte silenciosamente.
+12c-bis. **Paginação (\`_PAGINACAO\`)**: várias tools de listagem retornam no máximo 10 itens por vez e trazem um campo \`_PAGINACAO\` com \`total\`, \`mostrando\` ("1-10 de 100"), \`temMais\` e \`proximoOffset\`. Regras:
+   - Mostre **no máximo 10 itens** por resposta. Se vier \`_PAGINACAO\`, use o texto de \`mostrando\` no resumo ("Mostrando 1-10 de 100").
+   - Se \`temMais\` for \`true\`, **encerre oferecendo continuar**: "Quer ver os próximos?". Não tente listar tudo.
+   - Quando o usuário pedir **"os próximos", "mais", "continuar", "seguinte"**, chame **a MESMA tool de novo** passando \`offset\` igual ao \`proximoOffset\` que veio na última resposta dessa tool (está no histórico). Mantenha os demais parâmetros iguais.
+   - **Nunca invente itens** além dos que vieram em \`linhas\`. Se \`temMais\` for \`false\`, não há mais nada a paginar.
+12d. **Estoque (saldo por produto) , RESPONDA PELA INTENÇÃO** (\`estoque_saldo_produto\`):
+   O envelope traz \`linhas\` com **TODOS os produtos** que casaram, cada um com \`saldoTotal\` (unidades) e \`valorTotal\` (valor **a custo**). O KPI \`produtosNegativos\` é só a CONTAGEM; a LISTA dos negativos você obtém **filtrando \`linhas\`** , não é uma lista separada. **Escolha o que listar pelo que o usuário pediu:**
+   - Pediu **"itens com saldo NEGATIVO" / "negativos" / "em falta" / "faltando"**: liste os produtos de \`linhas\` com **\`saldoTotal < 0\`** (ordene do mais negativo para o menos), sob o rótulo **"Itens com saldo negativo:"**, mostrando produto e **unidades** (o valor desses costuma ser 0). **NUNCA** liste "maiores por valor" quando pediram os negativos. Se houver N negativos e você listar todos, liste todos os N.
+   - Pediu **estoque em geral** ("como está o estoque de X", "estoque de X"): resuma (total de produtos, saldo consolidado, **valor a custo**, nº de negativos) e liste os **maiores por valor** sob o rótulo **"Maiores itens por valor (a custo):"**.
+   - Sempre que citar o valor, deixe claro que é **a custo** (valoração de estoque, não preço de venda). Nunca jogue uma lista sem uma frase dizendo o que ela representa.
 13. **Data relativa**: prefira \`periodoNome\` ("hoje", "amanha", "essa_semana", "semana_passada", "mes_corrente", "mes_anterior", "ano_corrente") em vez de calcular datas manualmente. O servidor resolve no fuso BR.
 13b. **Vencimento exato "hoje"**: para "títulos que vencem hoje" / "vencendo hoje", passe \`janela: "hoje"\` em \`financeiro_titulos_vencidos\` (filtra data_vencimento exatamente hoje, não acumula atrasados). Sem o parâmetro, a tool retorna todos os já vencidos (acumulado).
 13c. **Top N maiores títulos**: para "top N maiores contas a receber/pagar abertas", use \`financeiro_contas_a_receber/pagar\` e leia o campo **\`topMaiores\`** do envelope (já vem ordenado por valor desc, pronto pra listar). NÃO declare lacuna.

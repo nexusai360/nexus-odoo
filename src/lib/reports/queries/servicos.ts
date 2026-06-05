@@ -37,12 +37,18 @@ function toLinha(r: RawRow): ServicoLinha {
 // ---------------------------------------------------------------------------
 
 /** Busca serviços por `termo` (ILIKE em codigo, codigoFormatado e descricao).
- * Devolve até `limite` (padrão 50) linhas, com `total` e `truncado`. */
+ * Pagina via limit/offset (alavanca 2b): a busca usa um unico `where` ILIKE
+ * (nao une ids de varios caminhos), entao o limit/offset roda direto no SQL
+ * via take/skip, com o `total` vindo de um `count` do mesmo `where`. */
 export async function queryServicoBuscar(
   prisma: PrismaClient,
-  filtros: { termo: string; limite?: number },
-): Promise<{ linhas: ServicoLinha[]; total: number; truncado: boolean }> {
-  const limite = filtros.limite ?? 50;
+  filtros: { termo: string; limit: number; offset: number },
+): Promise<{
+  linhas: ServicoLinha[];
+  total: number;
+  truncado: boolean;
+}> {
+  const { limit, offset } = filtros;
   const termo = filtros.termo;
   const where = {
     OR: [
@@ -55,34 +61,53 @@ export async function queryServicoBuscar(
     prisma.fatoServico.findMany({
       where,
       select: SELECT,
-      orderBy: { codigo: "asc" },
-      take: limite,
+      // Ordenacao estavel + desempate por odooId: garante que "os proximos"
+      // nao repitam nem pulem item entre paginas (alavanca 2b).
+      orderBy: [{ codigo: "asc" }, { odooId: "asc" }],
+      take: limit,
+      skip: offset,
     }),
     prisma.fatoServico.count({ where }),
   ]);
-  return { linhas: rows.map(toLinha), total, truncado: total > rows.length };
+  return {
+    linhas: rows.map(toLinha),
+    total,
+    truncado: offset + rows.length < total,
+  };
 }
 
 // ---------------------------------------------------------------------------
 // queryServicoListar
 // ---------------------------------------------------------------------------
 
-/** Lista o catálogo de serviços ordenado por código. Devolve até `limite`
- * (padrão 250) linhas, com `total` e `truncado`. */
+/** Lista o catálogo de serviços ordenado por código. Pagina via limit/offset
+ * (alavanca 2b): devolve `limit` linhas a partir de `offset`, com `total` e
+ * `truncado`. */
 export async function queryServicoListar(
   prisma: PrismaClient,
-  filtros: { limite?: number },
-): Promise<{ linhas: ServicoLinha[]; total: number; truncado: boolean }> {
-  const limite = filtros.limite ?? 250;
+  filtros: { limit: number; offset: number },
+): Promise<{
+  linhas: ServicoLinha[];
+  total: number;
+  truncado: boolean;
+}> {
+  const { limit, offset } = filtros;
   const [rows, total] = await Promise.all([
     prisma.fatoServico.findMany({
       select: SELECT,
-      orderBy: { codigo: "asc" },
-      take: limite,
+      // Ordenacao estavel + desempate por odooId: garante que "os proximos"
+      // nao repitam nem pulem item entre paginas (alavanca 2b).
+      orderBy: [{ codigo: "asc" }, { odooId: "asc" }],
+      take: limit,
+      skip: offset,
     }),
     prisma.fatoServico.count(),
   ]);
-  return { linhas: rows.map(toLinha), total, truncado: total > rows.length };
+  return {
+    linhas: rows.map(toLinha),
+    total,
+    truncado: offset + rows.length < total,
+  };
 }
 
 // ---------------------------------------------------------------------------

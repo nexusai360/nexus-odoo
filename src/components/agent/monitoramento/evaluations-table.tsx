@@ -5,7 +5,7 @@
  * drill-down inline. Padrao baseado em usage-table de /agente/consumo.
  */
 
-import { Fragment, useCallback, useEffect, useState } from "react";
+import { Fragment, useCallback, useEffect, useRef, useState } from "react";
 import {
   ChevronDown,
   ChevronLeft,
@@ -13,7 +13,6 @@ import {
   ChevronUp,
   History,
   Loader2,
-  ShieldCheck,
 } from "lucide-react";
 
 import { Badge } from "@/components/ui/badge";
@@ -31,6 +30,7 @@ import {
 } from "@/components/ui/table";
 import {
   fetchQualityEvaluations,
+  fetchQualityEvaluationDetail,
   type FilterInputs,
 } from "@/lib/actions/quality-fetch";
 import type {
@@ -47,31 +47,10 @@ import {
   type EvaluationsTableFiltersValue,
 } from "./evaluations-table-filters";
 import { EvaluationDrilldown } from "./evaluation-drilldown";
+import { EvalStatusBadge } from "@/components/agent/quality/eval-status-badge";
 
 const PAGE_SIZE_OPTIONS = [50, 100, 500] as const;
 type PageSize = (typeof PAGE_SIZE_OPTIONS)[number];
-
-const STATUS_LABEL: Record<EvalStatus, string> = {
-  CORRETO: "Correto",
-  PARCIAL: "Parcial",
-  ERRADO: "Errado",
-  FORA_DO_ESCOPO: "Fora de escopo",
-  PENDENTE: "Pendente",
-  FALHA_TECNICA: "Falha técnica",
-};
-
-const STATUS_TONE: Record<EvalStatus, string> = {
-  CORRETO:
-    "bg-emerald-500/10 text-emerald-700 border-emerald-500/30 dark:text-emerald-300",
-  PARCIAL:
-    "bg-amber-500/10 text-amber-700 border-amber-500/30 dark:text-amber-300",
-  ERRADO: "bg-red-500/10 text-red-700 border-red-500/30 dark:text-red-300",
-  FORA_DO_ESCOPO:
-    "bg-slate-500/10 text-slate-700 border-slate-500/30 dark:text-slate-300",
-  PENDENTE: "bg-sky-500/10 text-sky-700 border-sky-500/30 dark:text-sky-300",
-  FALHA_TECNICA:
-    "bg-violet-500/10 text-violet-700 border-violet-500/30 dark:text-violet-300",
-};
 
 const dateTimeFmt = new Intl.DateTimeFormat("pt-BR", {
   timeZone: "America/Sao_Paulo",
@@ -105,6 +84,10 @@ interface EvaluationsTableProps {
   /** Acao opcional renderizada a direita do titulo "Avaliacoes" (ex.: botao
    *  "Avaliar pendentes" em ambiente local). */
   headerAction?: React.ReactNode;
+  /** Deep-link (?eval=): abre a linha desta avaliacao ao montar. Se a linha
+   *  nao estiver na pagina atual, busca o detalhe e injeta uma linha sintetica
+   *  no topo. Vem da aba Bubble (chip de pericia). */
+  initialExpandedId?: string;
 }
 
 export function EvaluationsTable({
@@ -114,12 +97,20 @@ export function EvaluationsTable({
   availablePatterns,
   labelForRodada,
   headerAction,
+  initialExpandedId,
 }: EvaluationsTableProps) {
   const [data, setData] = useState<InitialData>(initialData);
   const [loading, setLoading] = useState(false);
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState<PageSize>(50);
-  const [expandedId, setExpandedId] = useState<string | null>(null);
+  const [expandedId, setExpandedId] = useState<string | null>(
+    initialExpandedId ?? null,
+  );
+  // Linha sintetica do deep-link (?eval=): a avaliacao linkada pode nao estar
+  // na pagina/filtro atual, entao buscamos o detalhe e a injetamos no topo.
+  const [syntheticRow, setSyntheticRow] = useState<EvaluationRow | null>(null);
+  const deepLinkDoneRef = useRef(false);
+  const expandedRowRef = useRef<HTMLTableRowElement>(null);
 
   const [filters, setFilters] = useState<EvaluationsTableFiltersValue>({
     search: "",
@@ -133,6 +124,56 @@ export function EvaluationsTable({
     setData(initialData);
     setPage(1);
   }, [initialData]);
+
+  // Deep-link (?eval=): ao montar, se a avaliacao linkada nao estiver entre as
+  // linhas carregadas, busca o detalhe e injeta uma linha sintetica no topo.
+  // Roda uma unica vez (deepLinkDoneRef).
+  useEffect(() => {
+    if (!initialExpandedId || deepLinkDoneRef.current) return;
+    deepLinkDoneRef.current = true;
+    const present = initialData.rows.some((r) => r.id === initialExpandedId);
+    if (present) return;
+    let cancelled = false;
+    void fetchQualityEvaluationDetail(initialExpandedId)
+      .then((detail) => {
+        if (cancelled || !detail?.evaluation) return;
+        const ev = detail.evaluation;
+        // Constroi uma EvaluationRow minima a partir do detalhe.
+        setSyntheticRow({
+          id: ev.id,
+          createdAt: new Date(ev.createdAt),
+          conversationId: ev.conversationId,
+          status: ev.status,
+          patterns: ev.patterns,
+          model: ev.model,
+          questionSnapshot: ev.questionSnapshot,
+          answerSnapshot: ev.answerSnapshot,
+          dominantPattern: ev.dominantPattern,
+          humanStatus: ev.humanStatus,
+          rodada: ev.rodada,
+          channel: ev.channel,
+        });
+      })
+      .catch(() => {
+        // Avaliacao inexistente/sem permissao: ignora silenciosamente.
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [initialExpandedId, initialData.rows]);
+
+  // Rola a linha expandida do deep-link para a vista quando ela aparece.
+  useEffect(() => {
+    if (initialExpandedId && expandedId === initialExpandedId && expandedRowRef.current) {
+      expandedRowRef.current.scrollIntoView({ behavior: "smooth", block: "center" });
+    }
+  }, [initialExpandedId, expandedId, syntheticRow]);
+
+  // Linhas exibidas: linha sintetica do deep-link no topo (deduplicada), depois
+  // as linhas da pagina atual.
+  const displayRows: EvaluationRow[] = syntheticRow
+    ? [syntheticRow, ...data.rows.filter((r) => r.id !== syntheticRow.id)]
+    : data.rows;
 
   const buildInputs = useCallback((): FilterInputs => {
     const inputs: FilterInputs = {
@@ -238,13 +279,13 @@ export function EvaluationsTable({
                 <TableHead>Pergunta</TableHead>
                 <TableHead>Resposta</TableHead>
                 <TableHead className="w-[130px]">Status</TableHead>
-                <TableHead className="w-[140px]">Modelo</TableHead>
-                <TableHead className="w-[180px]">Padrão dominante</TableHead>
-                <TableHead className="w-[60px] text-right">Ações</TableHead>
+                <TableHead className="w-[120px]">Modelo</TableHead>
+                <TableHead className="w-[140px]">Padrão dominante</TableHead>
+                <TableHead className="w-[56px] text-right">Ações</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
-              {data.rows.length === 0 && !loading && (
+              {displayRows.length === 0 && !loading && (
                 <TableRow>
                   <TableCell
                     colSpan={8}
@@ -254,11 +295,12 @@ export function EvaluationsTable({
                   </TableCell>
                 </TableRow>
               )}
-              {data.rows.map((row) => {
+              {displayRows.map((row) => {
                 const isOpen = expandedId === row.id;
                 return (
                   <Fragment key={row.id}>
                     <TableRow
+                      ref={isOpen && row.id === initialExpandedId ? expandedRowRef : undefined}
                       className={cn(
                         "cursor-pointer transition-colors hover:bg-muted/40",
                         isOpen && "bg-muted/40",
@@ -308,39 +350,10 @@ export function EvaluationsTable({
                         {truncate(row.answerSnapshot)}
                       </TableCell>
                       <TableCell>
-                        {(() => {
-                          // Status efetivo = ajuste humano sobrescreve o
-                          // veredito automatico. A tag mostra o efetivo; o
-                          // shield + tooltip preservam o original (auditavel).
-                          const human = row.humanStatus as EvalStatus | null;
-                          const eff = human ?? row.status;
-                          return (
-                            <div
-                              className="flex items-center gap-1"
-                              title={
-                                human
-                                  ? `Veredito automático: ${STATUS_LABEL[row.status]} → ajuste humano: ${STATUS_LABEL[eff]}`
-                                  : undefined
-                              }
-                            >
-                              <Badge
-                                variant="outline"
-                                className={cn(
-                                  "border text-[11px]",
-                                  STATUS_TONE[eff],
-                                )}
-                              >
-                                {STATUS_LABEL[eff]}
-                              </Badge>
-                              {human && (
-                                <ShieldCheck
-                                  className="h-3 w-3 text-emerald-500"
-                                  aria-label={`Ajustado manualmente (era ${STATUS_LABEL[row.status]})`}
-                                />
-                              )}
-                            </div>
-                          );
-                        })()}
+                        <EvalStatusBadge
+                          status={row.status}
+                          humanStatus={row.humanStatus as EvalStatus | null}
+                        />
                       </TableCell>
                       <TableCell className="font-mono text-xs text-muted-foreground">
                         {row.model ?? ","}

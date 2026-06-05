@@ -120,6 +120,7 @@ export default async function Page() {
     suggestionsCheckpoint: settings?.suggestionsCheckpoint ?? "PRODUCTION",
     audioCheckpoint: settings?.audioCheckpoint ?? "OFF",
     imageCheckpoint: settings?.imageCheckpoint ?? "OFF",
+    feedbackCheckpoint: settings?.feedbackCheckpoint ?? "OFF",
     kbCheckpoint: settings?.kbCheckpoint ?? "PRODUCTION",
     audioProvider: settings?.audioProvider ?? null,
     audioModel: settings?.audioModel ?? null,

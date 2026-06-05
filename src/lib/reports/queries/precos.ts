@@ -83,9 +83,8 @@ function toLinha(r: RawRow): PrecoLinha {
  * Devolve até `limite` (padrão 100) linhas, com `total` e `truncado`. */
 export async function queryPrecoProduto(
   prisma: PrismaClient,
-  filtros: { produtoId?: number; termo?: string; limite?: number },
+  filtros: { produtoId?: number; termo?: string; limit?: number; offset?: number },
 ): Promise<{ linhas: PrecoLinha[]; total: number; truncado: boolean }> {
-  const limite = filtros.limite ?? 100;
   const where =
     filtros.produtoId != null
       ? { produtoId: filtros.produtoId }
@@ -93,16 +92,20 @@ export async function queryPrecoProduto(
         ? { produtoNome: { contains: filtros.termo, mode: "insensitive" as const } }
         : { dimensao: "produto" };
 
+  // Alavanca 2b: paginacao via take/skip + orderBy estavel com desempate por
+  // odooId (senao "os proximos" repetem regras com mesmo produtoNome/tabelaNome).
+  const offset = filtros.offset ?? 0;
   const [rows, total] = await Promise.all([
     prisma.fatoPreco.findMany({
       where,
       select: SELECT,
-      orderBy: [{ produtoNome: "asc" }, { tabelaNome: "asc" }],
-      take: limite,
+      orderBy: [{ produtoNome: "asc" }, { tabelaNome: "asc" }, { odooId: "asc" }],
+      take: filtros.limit,
+      skip: offset,
     }),
     prisma.fatoPreco.count({ where }),
   ]);
-  return { linhas: rows.map(toLinha), total, truncado: total > rows.length };
+  return { linhas: rows.map(toLinha), total, truncado: offset + rows.length < total };
 }
 
 // ---------------------------------------------------------------------------
@@ -113,29 +116,34 @@ export async function queryPrecoProduto(
  * até `limite` (padrão 250) regras, com `total` e `truncado`. */
 export async function queryPrecoTabela(
   prisma: PrismaClient,
-  filtros: { tabelaId: number; limite?: number },
+  filtros: { tabelaId: number; limit?: number; offset?: number },
 ): Promise<{
   tabelaNome: string | null;
   linhas: PrecoLinha[];
   total: number;
   truncado: boolean;
 }> {
-  const limite = filtros.limite ?? 250;
   const where = { tabelaId: filtros.tabelaId };
-  const [rows, total] = await Promise.all([
+  // Alavanca 2b: paginacao via take/skip + orderBy estavel com desempate por
+  // odooId (produtoNome/familiaNome se repetem dentro de uma tabela).
+  const offset = filtros.offset ?? 0;
+  const [rows, total, primeira] = await Promise.all([
     prisma.fatoPreco.findMany({
       where,
       select: SELECT,
-      orderBy: [{ produtoNome: "asc" }, { familiaNome: "asc" }],
-      take: limite,
+      orderBy: [{ produtoNome: "asc" }, { familiaNome: "asc" }, { odooId: "asc" }],
+      take: filtros.limit,
+      skip: offset,
     }),
     prisma.fatoPreco.count({ where }),
+    // Nome da tabela independe da pagina: busca a 1a linha do recorte.
+    prisma.fatoPreco.findFirst({ where, select: { tabelaNome: true } }),
   ]);
   return {
-    tabelaNome: rows[0]?.tabelaNome ?? null,
+    tabelaNome: rows[0]?.tabelaNome ?? primeira?.tabelaNome ?? null,
     linhas: rows.map(toLinha),
     total,
-    truncado: total > rows.length,
+    truncado: offset + rows.length < total,
   };
 }
 

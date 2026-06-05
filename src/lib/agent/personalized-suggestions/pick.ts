@@ -6,20 +6,26 @@
  * Modulo puro: nao acessa DB nem Redis. Recebe os resultados ja agregados.
  */
 
+import type { ReportDomain } from "@/generated/prisma/client";
 import type { ToolUsageEntry } from "./aggregate";
-import { questionForTool } from "./templates";
+import { questionForTool, TOOL_DOMAIN } from "./templates";
 
 /**
  * Monta a lista final.
  *
- * @param allTime  Ordenado desc, top tools de toda a historia do usuario.
- * @param recent   Ordenado desc, top tools dos ultimos 28 dias.
- * @param max      Quantidade desejada (clampado entre 1 e 5 pelo caller).
+ * @param allTime         Ordenado desc, top tools de toda a historia do usuario.
+ * @param recent          Ordenado desc, top tools dos ultimos 28 dias.
+ * @param max             Quantidade desejada (clampado entre 1 e 5 pelo caller).
+ * @param allowedDomains  Quando fornecido, descarta tools cujo dominio (via
+ *                        TOOL_DOMAIN) nao esteja na lista. Garante que uma
+ *                        sugestao personalizada nunca vaze dominio sem acesso
+ *                        (filtro por dominio da tool, nao por texto).
  */
 export function pickPersonalizedQuestions(
   allTime: ToolUsageEntry[],
   recent: ToolUsageEntry[],
   max: number,
+  allowedDomains?: ReportDomain[],
 ): string[] {
   const safeMax = Math.min(Math.max(1, max), 5);
 
@@ -30,6 +36,10 @@ export function pickPersonalizedQuestions(
   function tryAdd(toolName: string | undefined): boolean {
     if (!toolName) return false;
     if (seenTools.has(toolName)) return false;
+    if (allowedDomains) {
+      const dom = TOOL_DOMAIN[toolName];
+      if (!dom || !allowedDomains.includes(dom)) return false;
+    }
     const q = questionForTool(toolName);
     if (!q) return false;
     if (seenQuestions.has(q)) return false;

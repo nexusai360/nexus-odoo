@@ -4,9 +4,14 @@ import { z } from "zod";
 import type { ToolEntry } from "../../catalog/types.js";
 import { queryServicoListar } from "@/lib/reports/queries/servicos.js";
 import { withFreshness } from "../../lib/freshness.js";
+import {
+  paginacaoInputShape,
+  resolverPaginacao,
+  montarPaginacaoMeta,
+} from "../../lib/paginacao.js";
 
 const inputSchema = z.object({
-  limite: z.number().int().min(1).max(1000).optional(),
+  ...paginacaoInputShape,
 });
 
 const linha = z.object({
@@ -22,6 +27,8 @@ const dados = z.object({
   linhas: z.array(linha),
   total: z.number().int(),
   truncado: z.boolean(),
+  _listaTruncada: z.boolean().optional(),
+  _PAGINACAO: z.any().optional(),
 });
 
 const fonteStatus = z.object({
@@ -51,8 +58,21 @@ export const cadastrosServicoListar: ToolEntry<Input, Output> = {
   inputSchemaShape: inputSchema.shape,
   inputSchema,
   outputSchema,
-  handler: (input, ctx) =>
-    withFreshness(ctx.prisma, ["fato_servico"], () =>
-      queryServicoListar(ctx.prisma, input),
-    ),
+  handler: async (input, ctx) => {
+    const { limit, offset } = resolverPaginacao(input);
+    const envelope = await withFreshness(ctx.prisma, ["fato_servico"], () =>
+      queryServicoListar(ctx.prisma, { limit, offset }),
+    );
+    if (envelope.estado === "preparando") return envelope;
+    const d = envelope.dados;
+    const paginacao = montarPaginacaoMeta(d.total, offset, limit, d.linhas.length);
+    return {
+      ...envelope,
+      dados: {
+        ...d,
+        _listaTruncada: paginacao.temMais,
+        _PAGINACAO: paginacao,
+      },
+    };
+  },
 };

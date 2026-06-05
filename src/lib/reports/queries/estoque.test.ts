@@ -243,14 +243,31 @@ describe("queryProdutosParados", () => {
     );
   });
 
-  it("ordena por dias desc", async () => {
+  it("ordena por dias desc com desempate estavel por saldoHojeId", async () => {
     mockPrisma.fatoProdutoParado.findMany.mockResolvedValue([
       { produtoNome: "A", localNome: "L", saldo: "1", dias: 30, vrSaldo: "100" },
     ]);
     await queryProdutosParados(mockPrisma as never, {});
     expect(mockPrisma.fatoProdutoParado.findMany).toHaveBeenCalledWith(
-      expect.objectContaining({ orderBy: { dias: "desc" } }),
+      expect.objectContaining({
+        orderBy: [{ dias: "desc" }, { saldoHojeId: "asc" }],
+      }),
     );
+  });
+
+  it("pagina via take/skip e calcula kpis com count/aggregate quando limit dado", async () => {
+    mockPrisma.fatoProdutoParado.findMany.mockResolvedValue([
+      { produtoNome: "A", localNome: "L", saldo: "1", dias: 30, vrSaldo: "100" },
+    ]);
+    mockPrisma.fatoProdutoParado.count.mockResolvedValue(42);
+    mockPrisma.fatoProdutoParado.aggregate.mockResolvedValue({ _sum: { vrSaldo: "9999" } });
+    const result = await queryProdutosParados(mockPrisma as never, { limit: 10, offset: 20 });
+    expect(mockPrisma.fatoProdutoParado.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({ take: 10, skip: 20 }),
+    );
+    expect(result.total).toBe(42);
+    expect(result.kpis.totalParados).toBe(42);
+    expect(result.kpis.valorImobilizado).toBe(9999);
   });
 });
 

@@ -5,10 +5,12 @@ import type { ToolEntry } from "../../catalog/types.js";
 import { queryFaturamentoPorCliente } from "@/lib/reports/queries/fiscal.js";
 import { withFreshness } from "../../lib/freshness.js";
 import { enriquecerEnvelope } from "../../lib/with-responder.js";
+import { paginacaoInputShape, resolverPaginacao, montarPaginacaoMeta } from "../../lib/paginacao.js";
 
 const inputSchema = z.object({
   periodoDe: z.string().optional(),
   periodoAte: z.string().optional(),
+  ...paginacaoInputShape,
 });
 
 const linhaSchema = z.object({
@@ -19,9 +21,12 @@ const linhaSchema = z.object({
 
 const dados = z.object({
   linhas: z.array(linhaSchema),
+  total: z.number().int(),
+  valorGeral: z.number(),
   aviso: z.string(),
   _RESPOSTA: z.string().optional(),
   _listaTruncada: z.boolean().optional(),
+  _PAGINACAO: z.any().optional(),
   _DESTAQUE: z.record(z.string(), z.union([z.string(), z.number()])).optional(),
   _agregado: z.record(z.string(), z.number().optional()).optional(),
 
@@ -49,6 +54,8 @@ type Output = z.infer<typeof outputSchema>;
 function shape(d: Awaited<ReturnType<typeof queryFaturamentoPorCliente>>) {
   return {
     linhas: d.linhas,
+    total: d.total,
+    valorGeral: d.valorGeral,
     aviso: "Agrupa notas de saída autorizadas por cliente, ordenado por valor total descendente.",
   };
 }
@@ -61,29 +68,28 @@ export const fiscalFaturamentoPorCliente: ToolEntry<Input, Output> = {
   inputSchema,
   outputSchema,
   handler: async (input, ctx) => {
+    const { limit, offset } = resolverPaginacao(input);
     const envelope = await withFreshness(ctx.prisma, ["fato_nota_fiscal"], async () =>
-      shape(await queryFaturamentoPorCliente(ctx.prisma, input)),
+      shape(await queryFaturamentoPorCliente(ctx.prisma, { ...input, limit, offset })),
     );
     if (envelope.estado === "preparando") return envelope;
     const d = envelope.dados;
-    // T-38 (Ronda 3): cap + envelope canonico com topCliente.
-    const todasLinhas = d.linhas;
-    const linhasCap = todasLinhas.slice(0, 30);
-    const totalGeral = todasLinhas.reduce((s, l) => s + l.valorTotal, 0);
-    const top = todasLinhas[0];
+    // Alavanca 2b: paginacao em memoria por cliente (total = clientes distintos).
+    const paginacao = montarPaginacaoMeta(d.total, offset, limit, d.linhas.length);
+    const top = d.linhas[0];
     return enriquecerEnvelope(
-      { ...envelope, dados: { ...d, linhas: linhasCap } },
+      envelope,
       "fiscal_faturamento_por_cliente",
       {
         destaque: {
-          totalClientes: todasLinhas.length,
-          totalGeral,
+          totalClientes: d.total,
+          totalGeral: d.valorGeral,
           topCliente: top?.participanteNome ?? "",
           valorTopCliente: top?.valorTotal ?? 0,
-          linhasExibidas: linhasCap.length,
+          linhasExibidas: d.linhas.length,
         },
-        agregado: { contagem: todasLinhas.length, soma: totalGeral },
-        listaTruncada: todasLinhas.length > linhasCap.length,
+        agregado: { contagem: d.total, soma: d.valorGeral },
+        paginacao,
       },
     );
   },

@@ -17,7 +17,9 @@
  * Módulo puro. Não importa server-only nem acessa DB.
  */
 
-import type { PlatformRole } from "@/generated/prisma/client";
+import type { PlatformRole, ReportDomain } from "@/generated/prisma/client";
+
+import { TOOL_TO_QUESTION, TOOL_DOMAIN } from "./personalized-suggestions/templates";
 
 /** Catalogo fixo, usado como ultima opcao. */
 export const WELCOME_SUGGESTIONS: readonly string[] = [
@@ -75,4 +77,59 @@ export function pickWelcomeByRole(
   if (!role) return WELCOME_SUGGESTIONS;
   const set = (WELCOME_BY_ROLE as Record<string, readonly string[]>)[role];
   return set ?? WELCOME_SUGGESTIONS;
+}
+
+/**
+ * Prioridade de negocio para intercalar dominios no welcome. Fiscal traz
+ * faturamento (gatilho de maior valor), depois financeiro/comercial, depois
+ * operacional. crm fica por ultimo (e hoje nao tem tool, cai fora na pratica).
+ */
+const DOMAIN_PRIORITY: readonly ReportDomain[] = [
+  "fiscal",
+  "financeiro",
+  "comercial",
+  "estoque",
+  "cadastros",
+  "contabil",
+  "crm",
+];
+
+/** Perguntas de um dominio, derivadas da fonte unica TOOL_TO_QUESTION. */
+function questionsForDomain(domain: ReportDomain): string[] {
+  return Object.entries(TOOL_TO_QUESTION)
+    .filter(([toolId]) => TOOL_DOMAIN[toolId] === domain)
+    .map(([, q]) => q);
+}
+
+/**
+ * Sugestoes iniciais curadas pelos dominios permitidos do usuario (RBAC v2).
+ * Intercala (round-robin) entre os dominios na ordem de prioridade de negocio,
+ * deduplica, capa em `max` (1..5) e cai no fallback por role quando nao ha
+ * pergunta elegivel (ex.: usuario so com crm, que nao tem tool).
+ */
+export function pickWelcomeByDomains(
+  allowedDomains: ReportDomain[],
+  role: PlatformRole | string | null | undefined,
+  max: number,
+): readonly string[] {
+  const cap = Math.min(Math.max(1, max || 3), 5);
+  const ordered = DOMAIN_PRIORITY.filter((d) => allowedDomains.includes(d));
+  const buckets = ordered
+    .map((d) => questionsForDomain(d))
+    .filter((b) => b.length > 0);
+  if (buckets.length === 0) return pickWelcomeByRole(role).slice(0, cap);
+
+  const out: string[] = [];
+  const seen = new Set<string>();
+  let idx = 0;
+  while (out.length < cap && buckets.some((b) => b.length > 0)) {
+    const b = buckets[idx % buckets.length];
+    const q = b.shift();
+    if (q && !seen.has(q)) {
+      seen.add(q);
+      out.push(q);
+    }
+    idx++;
+  }
+  return out.length > 0 ? out : pickWelcomeByRole(role).slice(0, cap);
 }

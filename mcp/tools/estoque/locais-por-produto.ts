@@ -8,9 +8,15 @@ import { z } from "zod";
 import type { ToolEntry } from "../../catalog/types.js";
 import { withFreshness } from "../../lib/freshness.js";
 import { enriquecerEnvelope } from "../../lib/with-responder.js";
+import {
+  paginacaoInputShape,
+  resolverPaginacao,
+  montarPaginacaoMeta,
+} from "../../lib/paginacao.js";
 
 const inputSchema = z.object({
   termo: z.string().min(1).max(120),
+  ...paginacaoInputShape,
 });
 
 const linhaSchema = z.object({
@@ -29,6 +35,7 @@ const dados = z.object({
   _listaTruncada: z.boolean().optional(),
   _DESTAQUE: z.record(z.string(), z.union([z.string(), z.number()])).optional(),
   _agregado: z.record(z.string(), z.number().optional()).optional(),
+  _PAGINACAO: z.any().optional(),
 });
 
 const fonteStatus = z.object({
@@ -61,6 +68,7 @@ export const estoqueLocaisPorProduto: ToolEntry<Input, Output> = {
   inputSchema,
   outputSchema,
   handler: async (input, ctx) => {
+    const { limit, offset } = resolverPaginacao(input);
     const envelope = await withFreshness(
       ctx.prisma,
       ["fato_estoque_saldo", "fato_produto"],
@@ -81,30 +89,52 @@ export const estoqueLocaisPorProduto: ToolEntry<Input, Output> = {
             totalLocais: 0,
           };
         }
-        const rows = await ctx.prisma.fatoEstoqueSaldo.findMany({
-          where: { produtoId: produto.odooId },
-          select: { localId: true, localNome: true, quantidade: true },
-        });
+        // KPIs (saldoTotal, totalLocais) sobre o conjunto completo de locais;
+        // a pagina de linhas vem limitada por take/skip no SQL. O where
+        // exige localId nao-nulo para que count, pagina e agregado fiquem
+        // sobre o mesmo conjunto (linhas sem local nao sao exibiveis).
+        const where = { produtoId: produto.odooId, localId: { not: null } };
+        const [rows, totalLocais, agg] = await Promise.all([
+          ctx.prisma.fatoEstoqueSaldo.findMany({
+            where,
+            select: { localId: true, localNome: true, quantidade: true },
+            // Ordenacao estavel + desempate por localId: "os proximos" nao
+            // repetem nem pulam local entre paginas (alavanca 2b).
+            orderBy: [{ quantidade: "desc" }, { localId: "asc" }],
+            take: limit,
+            skip: offset,
+          }),
+          ctx.prisma.fatoEstoqueSaldo.count({ where }),
+          ctx.prisma.fatoEstoqueSaldo.aggregate({
+            where,
+            _sum: { quantidade: true },
+          }),
+        ]);
         const linhas = rows
           .filter((r): r is typeof r & { localId: number } => r.localId != null)
           .map((r) => ({
             localId: r.localId,
             localNome: r.localNome,
             saldo: Number(r.quantidade ?? 0),
-          }))
-          .sort((a, b) => b.saldo - a.saldo);
-        const saldoTotal = linhas.reduce((s, l) => s + l.saldo, 0);
+          }));
+        const saldoTotal = Number(agg._sum.quantidade ?? 0);
         return {
           produtoNome: produto.nome,
           produtoId: produto.odooId,
           linhas,
           saldoTotal,
-          totalLocais: linhas.length,
+          totalLocais,
         };
       },
       (d) => d.linhas.length === 0,
     );
     if (envelope.estado === "preparando") return envelope;
+    const paginacao = montarPaginacaoMeta(
+      envelope.dados.totalLocais,
+      offset,
+      limit,
+      envelope.dados.linhas.length,
+    );
     return enriquecerEnvelope(envelope, "estoque_locais_por_produto", {
       destaque: {
         produtoNome: envelope.dados.produtoNome ?? "",
@@ -115,6 +145,7 @@ export const estoqueLocaisPorProduto: ToolEntry<Input, Output> = {
         soma: envelope.dados.saldoTotal,
         contagem: envelope.dados.totalLocais,
       },
+      paginacao,
     });
   },
 };

@@ -9,6 +9,8 @@
  * Design: docs/superpowers/research/2026-05-18-f5-ui-design.md §5
  */
 
+import { motion, useReducedMotion } from "framer-motion";
+
 import { cn } from "@/lib/utils";
 
 export interface SuggestionsBarProps {
@@ -38,6 +40,7 @@ export function SuggestionsBar({
   onPick,
   targetCount = 3,
 }: SuggestionsBarProps) {
+  const reduce = useReducedMotion();
   const cap = Math.min(Math.max(1, targetCount), 5);
   const seen = new Set<string>();
   const final: string[] = [];
@@ -64,11 +67,20 @@ export function SuggestionsBar({
       // chips em coluna, um por linha, todos colados na borda esquerda.
       className="flex flex-col items-start gap-2 px-1 pt-1"
     >
-      {final.map((s) => (
-        <button
+      {final.map((s, i) => (
+        <motion.button
           key={s}
           type="button"
           onClick={() => onPick(s)}
+          // Entrada escalonada: um chip por vez (1, 2, 3) apos a resposta ja
+          // estar escrita por inteiro. ~110ms entre cada, entrada de 180ms.
+          initial={reduce ? false : { opacity: 0, y: 6 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={
+            reduce
+              ? { duration: 0 }
+              : { duration: 0.18, delay: i * 0.11, ease: [0.16, 1, 0.3, 1] }
+          }
           className={cn(
             // rounded-2xl em vez de rounded-full: pills mais altas com texto
             // multi-linha mantem cantos suaves sem virar capsula deformada.
@@ -83,7 +95,7 @@ export function SuggestionsBar({
           )}
         >
           {s}
-        </button>
+        </motion.button>
       ))}
     </div>
   );

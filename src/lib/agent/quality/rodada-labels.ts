@@ -37,16 +37,22 @@ export const ORIGEM_PLAYGROUND = "__origem:playground";
 /** Origem virtual do Router: decisoes da calibragem por anchor-set (sem
  *  conversa associada). So aparece na aba Router. */
 export const ORIGEM_CALIBRAGEM = "__origem:calibragem";
+/** Origem virtual das conversas de replay/backtest de qualidade (canal
+ *  `backtest`). Sao runs sinteticos dos scripts quality-audit, fora do uso
+ *  real do agente. Mantem o monitoramento Bubble limpo (so conversa real). */
+export const ORIGEM_BACKTEST = "__origem:backtest";
 
 export const ORIGEM_LABELS: Record<string, string> = {
   [ORIGEM_AGENTE_NEX]: "Agente Nex",
   [ORIGEM_PLAYGROUND]: "Playground",
   [ORIGEM_CALIBRAGEM]: "Calibragem",
+  [ORIGEM_BACKTEST]: "Backtest",
 };
 
 /** Channels do Prisma `AgentChannel` enum que viram cada origem. */
 const AGENTE_NEX_CHANNELS = new Set(["whatsapp", "in_app"]);
 const PLAYGROUND_CHANNELS = new Set(["playground"]);
+const BACKTEST_CHANNELS = new Set(["backtest"]);
 
 /** Dado um channel, devolve a origem virtual canonica. null se desconhecido. */
 export function channelToOrigem(
@@ -55,6 +61,7 @@ export function channelToOrigem(
   if (!channel) return null;
   if (AGENTE_NEX_CHANNELS.has(channel)) return ORIGEM_AGENTE_NEX;
   if (PLAYGROUND_CHANNELS.has(channel)) return ORIGEM_PLAYGROUND;
+  if (BACKTEST_CHANNELS.has(channel)) return ORIGEM_BACKTEST;
   return null;
 }
 

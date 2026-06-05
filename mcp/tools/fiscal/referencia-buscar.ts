@@ -4,6 +4,11 @@ import { z } from "zod";
 import type { ToolEntry } from "../../catalog/types.js";
 import { queryReferenciaBuscar } from "@/lib/reports/queries/referencia.js";
 import { withFreshness } from "../../lib/freshness.js";
+import {
+  paginacaoInputShape,
+  resolverPaginacao,
+  montarPaginacaoMeta,
+} from "../../lib/paginacao.js";
 
 const TABELAS = [
   "ncm", "cfop", "cest", "cnae", "nbs", "natureza_operacao", "unidade",
@@ -19,7 +24,7 @@ const inputSchema = z.object({
     .max(120)
     .optional()
     .describe("Código ou parte da descrição. Sem termo, lista a tabela."),
-  limite: z.number().int().min(1).max(200).optional(),
+  ...paginacaoInputShape,
 });
 
 const linha = z.object({
@@ -32,6 +37,8 @@ const dados = z.object({
   linhas: z.array(linha),
   total: z.number().int(),
   truncado: z.boolean(),
+  _listaTruncada: z.boolean().optional(),
+  _PAGINACAO: z.any().optional(),
 });
 
 const fonteStatus = z.object({
@@ -63,8 +70,17 @@ export const fiscalReferenciaBuscar: ToolEntry<Input, Output> = {
   inputSchemaShape: inputSchema.shape,
   inputSchema,
   outputSchema,
-  handler: (input, ctx) =>
-    withFreshness(ctx.prisma, ["fato_referencia"], () =>
-      queryReferenciaBuscar(ctx.prisma, input),
-    ),
+  handler: async (input, ctx) => {
+    const { limit, offset } = resolverPaginacao(input);
+    const envelope = await withFreshness(ctx.prisma, ["fato_referencia"], () =>
+      queryReferenciaBuscar(ctx.prisma, { ...input, limit, offset }),
+    );
+    if (envelope.estado === "preparando") return envelope;
+    const d = envelope.dados;
+    const paginacao = montarPaginacaoMeta(d.total, offset, limit, d.linhas.length);
+    return {
+      ...envelope,
+      dados: { ...d, _listaTruncada: paginacao.temMais, _PAGINACAO: paginacao },
+    };
+  },
 };

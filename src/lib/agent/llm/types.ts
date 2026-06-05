@@ -53,6 +53,9 @@ export interface ChatMessage {
 export interface ChatUsage {
   tokensInput: number;
   tokensOutput: number;
+  /** Tokens de input servidos do cache de prompt do provider (default 0).
+   *  Custam fracao do input normal; usado pelo billing para nao superestimar. */
+  tokensCachedInput?: number;
   /** Custo em USD (pode ser 0 quando costKnown=false , ver LlmUsage). */
   costUsd: number;
 }
@@ -136,6 +139,12 @@ export interface ChatRequest {
    * formato exigido pelo provider.
    */
   reasoningHistory?: ReasoningContext[];
+  /**
+   * Dica de roteamento de cache de prompt (alavanca 1). Provider usa para
+   * aumentar a taxa de acerto do cache (OpenAI: `prompt_cache_key`). Deve ser
+   * estavel entre chamadas com o mesmo prefixo (ex.: hash da versao do system).
+   */
+  promptCacheKey?: string;
 }
 
 export interface ProviderClient {

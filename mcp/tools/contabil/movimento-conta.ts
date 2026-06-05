@@ -14,13 +14,18 @@ import {
 } from "@/lib/reports/queries/contabil.js";
 import { withFreshness } from "../../lib/freshness.js";
 import { enriquecerEnvelope } from "../../lib/with-responder.js";
+import {
+  paginacaoInputShape,
+  resolverPaginacao,
+  montarPaginacaoMeta,
+} from "../../lib/paginacao.js";
 
 const inputObject = z.object({
   contaId: z.number().int().positive().optional(),
   contaCodigo: z.string().optional(),
   dataInicio: z.string().optional(),
   dataFim: z.string().optional(),
-  limite: z.number().int().positive().optional(),
+  ...paginacaoInputShape,
 });
 const inputSchema = inputObject.refine(
   (v) => v.contaId != null || (v.contaCodigo != null && v.contaCodigo !== ""),
@@ -45,6 +50,7 @@ const dados = z.object({
   truncado: z.boolean(),
   _RESPOSTA: z.string().optional(),
   _listaTruncada: z.boolean().optional(),
+  _PAGINACAO: z.any().optional(),
   _DESTAQUE: z.record(z.string(), z.union([z.string(), z.number()])).optional(),
   _agregado: z.record(z.string(), z.number().optional()).optional(),
 });
@@ -76,11 +82,12 @@ export const contabilMovimentoConta: ToolEntry<Input, Output> = {
   inputSchema,
   outputSchema,
   handler: async (input, ctx) => {
+    const { limit, offset } = resolverPaginacao(input);
     const envelope = await withFreshness(
       ctx.prisma,
       ["fato_contabil_lancamento_item"],
       async () => {
-        const result = await queryMovimentoConta(ctx.prisma, input);
+        const result = await queryMovimentoConta(ctx.prisma, { ...input, limit, offset });
         return {
           linhas: result.linhas.map((l) => ({
             ...l,
@@ -92,9 +99,15 @@ export const contabilMovimentoConta: ToolEntry<Input, Output> = {
       },
     );
     if (envelope.estado === "preparando") return envelope;
+    const paginacao = montarPaginacaoMeta(
+      envelope.dados.total,
+      offset,
+      limit,
+      envelope.dados.linhas.length,
+    );
     const out = enriquecerEnvelope(envelope, "contabil_movimento_conta", {
       destaque: { contagem: envelope.dados.total },
-      listaTruncada: envelope.dados.truncado,
+      paginacao,
     });
     if (out.estado === "vazio") {
       const n = await fatoContabilItemCount(ctx.prisma);

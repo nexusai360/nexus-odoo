@@ -6,6 +6,11 @@
 import { z } from "zod";
 import type { ToolEntry } from "../../catalog/types.js";
 import { withFreshness } from "../../lib/freshness.js";
+import {
+  paginacaoInputShape,
+  resolverPaginacao,
+  montarPaginacaoMeta,
+} from "../../lib/paginacao.js";
 import type { PrismaClient } from "@/generated/prisma/client.js";
 
 const inputSchema = z.object({
@@ -24,7 +29,7 @@ const inputSchema = z.object({
   periodoAte: z.string().optional().describe("Data final ISO (AAAA-MM-DD). Sobrepoe periodoNome."),
   tipo: z.enum(["clientes", "fornecedores", "todos"]).optional()
     .describe("Default: todos"),
-  limite: z.number().int().min(1).max(100).optional(),
+  ...paginacaoInputShape,
 });
 
 const linhaSchema = z.object({
@@ -50,6 +55,8 @@ const dados = z.object({
   _RESPOSTA: z.string().optional(),
   _DESTAQUE: z.record(z.string(), z.union([z.string(), z.number()])).optional(),
   _agregado: z.record(z.string(), z.number().optional()).optional(),
+  _listaTruncada: z.boolean().optional(),
+  _PAGINACAO: z.any().optional(),
 });
 
 const fonteStatus = z.object({
@@ -130,7 +137,7 @@ function resolverPeriodo(input: Input): { de: Date; ate: Date; nome: string | nu
 }
 
 async function queryParceirosNovos(prisma: PrismaClient, input: Input) {
-  const limite = input.limite ?? 30;
+  const { limit, offset } = resolverPaginacao(input);
   const { de, ate, nome } = resolverPeriodo(input);
   const tipo = input.tipo ?? "todos";
 
@@ -154,8 +161,11 @@ async function queryParceirosNovos(prisma: PrismaClient, input: Input) {
         ehFornecedor: true,
         dataCriacao: true,
       },
-      orderBy: { dataCriacao: "desc" },
-      take: limite,
+      // Ordenacao estavel + desempate por odooId: garante que "os proximos"
+      // nao repitam nem pulem item entre paginas (alavanca 2b).
+      orderBy: [{ dataCriacao: "desc" }, { odooId: "asc" }],
+      take: limit,
+      skip: offset,
     }),
     prisma.fatoParceiro.count({ where }),
   ]);
@@ -193,6 +203,13 @@ export const cadastroParceirosNovos: ToolEntry<Input, Output> = {
     );
     if (envelope.estado === "preparando") return envelope;
     const d = envelope.dados;
+    const { limit, offset } = resolverPaginacao(input);
+    const paginacao = montarPaginacaoMeta(
+      d.totalEncontrados,
+      offset,
+      limit,
+      d.linhasExibidas,
+    );
     const periodoLabel = d.periodoUsado.nome
       ? d.periodoUsado.nome.replace(/_/g, " ")
       : `${d.periodoUsado.de.slice(0, 10)} a ${d.periodoUsado.ate.slice(0, 10)}`;
@@ -216,6 +233,8 @@ export const cadastroParceirosNovos: ToolEntry<Input, Output> = {
           tipo: tipoLabel,
         },
         _agregado: { contagem: d.totalEncontrados },
+        _listaTruncada: paginacao.temMais,
+        _PAGINACAO: paginacao,
       },
     };
   },

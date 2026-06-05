@@ -8,11 +8,15 @@ import { z } from "zod";
 import type { ToolEntry } from "../../catalog/types.js";
 import { withFreshness } from "../../lib/freshness.js";
 import { enriquecerEnvelope } from "../../lib/with-responder.js";
+import {
+  paginacaoInputShape,
+  resolverPaginacao,
+  montarPaginacaoMeta,
+} from "../../lib/paginacao.js";
 import type { PrismaClient } from "@/generated/prisma/client.js";
 
 const inputSchema = z.object({
   status: z.enum(["aberto", "fechado", "todos"]).optional().describe("Default: aberto (etapas nao finalizadoras)"),
-  limite: z.number().int().min(1).max(50).optional(),
   periodoDe: z.string().optional(),
   periodoAte: z.string().optional(),
   ordenacao: z.enum(["valor_desc", "valor_asc", "data_asc", "data_desc"]).optional()
@@ -21,6 +25,7 @@ const inputSchema = z.object({
     .describe("Filtra pedidos do cliente que casa com o termo (busca em participanteNome)."),
   vendedorTermo: z.string().min(1).max(120).optional()
     .describe("Filtra pedidos do vendedor que casa com o termo (busca em vendedorNome)."),
+  ...paginacaoInputShape,
 });
 
 const linhaSchema = z.object({
@@ -36,11 +41,13 @@ const linhaSchema = z.object({
 const dados = z.object({
   linhas: z.array(linhaSchema),
   totalListados: z.number().int(),
+  totalEncontrados: z.number().int().optional(),
   valorTotalListados: z.number(),
   _RESPOSTA: z.string().optional(),
   _listaTruncada: z.boolean().optional(),
   _DESTAQUE: z.record(z.string(), z.union([z.string(), z.number()])).optional(),
   _agregado: z.record(z.string(), z.number().optional()).optional(),
+  _PAGINACAO: z.any().optional(),
 
 });
 
@@ -64,8 +71,8 @@ type Input = z.infer<typeof inputSchema>;
 type Output = z.infer<typeof outputSchema>;
 
 async function queryPedidosListarTopValor(prisma: PrismaClient, input: Input) {
+  const { limit, offset } = resolverPaginacao(input);
   const status = input.status ?? "aberto";
-  const limite = input.limite ?? 10;
   const ordenacao = input.ordenacao ?? "valor_desc";
   const where: Record<string, unknown> = {};
   if (status === "aberto") where.etapaFinaliza = false;
@@ -83,29 +90,35 @@ async function queryPedidosListarTopValor(prisma: PrismaClient, input: Input) {
     where.vendedorNome = { contains: input.vendedorTermo, mode: "insensitive" };
   }
 
-  const orderBy: Record<string, "asc" | "desc"> =
+  // orderBy ESTAVEL: o criterio semantico + desempate por odooId, senao "os
+  // proximos" repetem ou pulam pedidos com mesmo valor/data (alavanca 2b).
+  const orderBy: Array<Record<string, "asc" | "desc">> =
     ordenacao === "valor_asc"
-      ? { vrProdutos: "asc" }
+      ? [{ vrProdutos: "asc" }, { odooId: "asc" }]
       : ordenacao === "data_asc"
-        ? { dataOrcamento: "asc" }
+        ? [{ dataOrcamento: "asc" }, { odooId: "asc" }]
         : ordenacao === "data_desc"
-          ? { dataOrcamento: "desc" }
-          : { vrProdutos: "desc" };
+          ? [{ dataOrcamento: "desc" }, { odooId: "asc" }]
+          : [{ vrProdutos: "desc" }, { odooId: "asc" }];
 
-  const rows = await prisma.fatoPedido.findMany({
-    where,
-    orderBy,
-    take: limite,
-    select: {
-      odooId: true,
-      numero: true,
-      participanteNome: true,
-      etapaNome: true,
-      vendedorNome: true,
-      dataOrcamento: true,
-      vrProdutos: true,
-    },
-  });
+  const [rows, totalEncontrados] = await Promise.all([
+    prisma.fatoPedido.findMany({
+      where,
+      orderBy,
+      take: limit,
+      skip: offset,
+      select: {
+        odooId: true,
+        numero: true,
+        participanteNome: true,
+        etapaNome: true,
+        vendedorNome: true,
+        dataOrcamento: true,
+        vrProdutos: true,
+      },
+    }),
+    prisma.fatoPedido.count({ where }),
+  ]);
 
   const linhas = rows.map((r) => ({
     pedidoId: r.odooId,
@@ -120,6 +133,7 @@ async function queryPedidosListarTopValor(prisma: PrismaClient, input: Input) {
   return {
     linhas,
     totalListados: linhas.length,
+    totalEncontrados,
     valorTotalListados: linhas.reduce((a, b) => a + b.valorTotal, 0),
   };
 }
@@ -132,7 +146,8 @@ export const comercialPedidosListarTopValor: ToolEntry<Input, Output> = {
     "'pedido com maior valor em aberto' (default), 'pedido mais antigo em aberto' " +
     "(ordenacao=data_asc), 'pedido mais recente' (ordenacao=data_desc), " +
     "'pedido do cliente Smartfit' (clienteTermo=Smartfit). Aceita status " +
-    "(aberto/fechado/todos), periodo (DE/ATE) e limite (default 10).",
+    "(aberto/fechado/todos) e periodo (DE/ATE). Paginado: retorna 10 por vez " +
+    "(use limit/offset para ver os proximos).",
   inputSchemaShape: inputSchema.shape,
   inputSchema,
   outputSchema,
@@ -142,7 +157,10 @@ export const comercialPedidosListarTopValor: ToolEntry<Input, Output> = {
     );
     if (envelope.estado === "preparando") return envelope;
     const d = envelope.dados;
+    const { limit, offset } = resolverPaginacao(input);
     const linhas = d.linhas ?? [];
+    const totalEncontrados = d.totalEncontrados ?? linhas.length;
+    const paginacao = montarPaginacaoMeta(totalEncontrados, offset, limit, linhas.length);
     const top = linhas[0];
     const ordenacao = input.ordenacao ?? "valor_desc";
     const status = input.status ?? "aberto";
@@ -169,10 +187,11 @@ export const comercialPedidosListarTopValor: ToolEntry<Input, Output> = {
       dados: {
         ...d,
         totalListados: linhas.length,
+        totalEncontrados,
         valorTotalListados: d.valorTotalListados ?? linhas.reduce((s, l) => s + l.valorTotal, 0),
         _RESPOSTA: resposta,
         _DESTAQUE: {
-          totalPedidos: linhas.length,
+          totalPedidos: totalEncontrados,
           topPedido: top?.numero ?? "",
           valorTopPedido: top?.valorTotal ?? 0,
           topParticipante: top?.participanteNome ?? "",
@@ -181,7 +200,9 @@ export const comercialPedidosListarTopValor: ToolEntry<Input, Output> = {
           ...(input.clienteTermo ? { clienteTermo: input.clienteTermo } : {}),
           valorTotalListados: d.valorTotalListados ?? linhas.reduce((s, l) => s + l.valorTotal, 0),
         },
-        _agregado: { contagem: linhas.length, soma: d.valorTotalListados ?? 0 },
+        _agregado: { contagem: totalEncontrados, soma: d.valorTotalListados ?? 0 },
+        _listaTruncada: paginacao.temMais,
+        _PAGINACAO: paginacao,
       },
     };
   },

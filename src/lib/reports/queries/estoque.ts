@@ -403,6 +403,16 @@ export interface ProdutoParadoData {
   linhas: ProdutoParadoRow[];
 }
 
+/** Filtros de R4, com paginacao opcional (limit/offset) para a tool MCP. */
+export interface ProdutoParadoFiltros {
+  faixaDias?: number;
+  armazemId?: number;
+  /** Tamanho da pagina; quando ausente, retorna todas as linhas (uso F3). */
+  limit?: number;
+  /** Deslocamento da pagina (alavanca 2b). */
+  offset?: number;
+}
+
 // ---------------------------------------------------------------------------
 // R4 , queryProdutosParados
 // ---------------------------------------------------------------------------
@@ -413,22 +423,35 @@ export interface ProdutoParadoData {
  */
 export async function queryProdutosParados(
   prisma: PrismaClient,
-  filtros: { faixaDias?: number; armazemId?: number },
+  filtros: ProdutoParadoFiltros,
 ): Promise<ProdutoParadoData> {
+  const where = {
+    saldo: { gt: 0 },
+    ...(filtros.faixaDias ? { dias: { gte: filtros.faixaDias } } : {}),
+    ...(filtros.armazemId ? { localId: filtros.armazemId } : {}),
+  };
+
+  // Paginacao opcional (alavanca 2b): quando limit/offset chegam (tool MCP),
+  // a pagina de linhas vem limitada por take/skip e os KPIs (totalParados,
+  // valorImobilizado) sao calculados sobre o conjunto completo via count +
+  // aggregate. Sem limit (uso do dashboard F3), retorna todas as linhas e os
+  // KPIs derivam direto da lista.
+  const paginando = filtros.limit != null;
+
   const rows = await prisma.fatoProdutoParado.findMany({
-    where: {
-      saldo: { gt: 0 },
-      ...(filtros.faixaDias ? { dias: { gte: filtros.faixaDias } } : {}),
-      ...(filtros.armazemId ? { localId: filtros.armazemId } : {}),
-    },
+    where,
     select: {
       produtoNome: true,
       localNome: true,
       saldo: true,
       dias: true,
       vrSaldo: true,
+      saldoHojeId: true,
     },
-    orderBy: { dias: "desc" },
+    // Ordenacao estavel + desempate por saldoHojeId (PK): "os proximos" nao
+    // repetem nem pulam linha entre paginas.
+    orderBy: [{ dias: "desc" }, { saldoHojeId: "asc" }],
+    ...(paginando ? { take: filtros.limit, skip: filtros.offset ?? 0 } : {}),
   });
   const linhas: ProdutoParadoRow[] = rows.map((r) => ({
     produtoNome: r.produtoNome,
@@ -437,10 +460,27 @@ export async function queryProdutosParados(
     dias: r.dias,
     vrSaldo: Number(r.vrSaldo),
   }));
-  const valorImobilizado = linhas.reduce((acc, l) => acc + l.vrSaldo, 0);
+
+  if (!paginando) {
+    const valorImobilizado = linhas.reduce((acc, l) => acc + l.vrSaldo, 0);
+    return {
+      kpis: { totalParados: linhas.length, valorImobilizado },
+      total: linhas.length,
+      linhas,
+    };
+  }
+
+  // KPIs sobre o conjunto completo (independente da pagina).
+  const [totalParados, agg] = await Promise.all([
+    prisma.fatoProdutoParado.count({ where }),
+    prisma.fatoProdutoParado.aggregate({ where, _sum: { vrSaldo: true } }),
+  ]);
   return {
-    kpis: { totalParados: linhas.length, valorImobilizado },
-    total: linhas.length,
+    kpis: {
+      totalParados,
+      valorImobilizado: Number(agg._sum.vrSaldo ?? 0),
+    },
+    total: totalParados,
     linhas,
   };
 }

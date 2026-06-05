@@ -12,12 +12,14 @@
  * - Sessão MCP fechada em finally (B1).
  */
 
+import { createHash } from "node:crypto";
 import { prisma } from "@/lib/prisma";
 import {
-  formatDateTimeInTz,
+  formatDateInTz,
   DEFAULT_TZ,
   DEFAULT_LOCALE,
 } from "@/lib/datetime-core";
+import { montarConversa } from "./prompt/montar-conversa";
 import { buildLlmClient } from "./llm/get-client";
 import { getActiveLlmConfig } from "./llm/get-active-config";
 import { logUsage } from "./llm/usage-logger";
@@ -190,6 +192,8 @@ export interface RunAgentInput {
   userMessage: string;
   channel: AgentChannel;
   isPlayground: boolean;
+  /** Entrada veio de voz (transcricao); persiste kind="audio" na msg do usuario. */
+  isAudio?: boolean;
   /** Callback para eventos de progresso (streaming in-app). */
   onEvent?: (evt: AgentEvent) => void;
   /** Override de prompt bruto (substitui todo o system prompt). */
@@ -221,7 +225,14 @@ export interface RunAgentInput {
 }
 
 export type RunAgentResult =
-  | { ok: true; message: string; suggestions: string[]; usage: ChatUsage }
+  | {
+      ok: true;
+      message: string;
+      suggestions: string[];
+      usage: ChatUsage;
+      /** B1. Id real (de banco) da Message do assistant (resposta final). */
+      messageId: string;
+    }
   | { ok: false; error: string };
 
 /** Valida o reasoningEffort vindo do banco; valor inválido ou ausente vira null. */
@@ -419,11 +430,21 @@ export async function runAgent(args: RunAgentInput): Promise<RunAgentResult> {
       biSchema,
       args.source ?? (args.isPlayground ? "playground" : "bubble"),
     );
-    // Injeta a data/hora atual em America/Sao_Paulo (UTC-3) no topo do prompt.
-    // Sem isso, o modelo nao tem ancora de "hoje" e pode assumir a data UTC
-    // (a virada de dia UTC acontece as 21h BRT), bugando "hoje"/"mes corrente".
-    const agoraBrt = formatDateTimeInTz(new Date(), DEFAULT_TZ, DEFAULT_LOCALE);
-    const systemPrompt = `Data e hora atuais (America/Sao_Paulo, UTC-3): ${agoraBrt}. Use SEMPRE esta data para resolver "hoje", "ontem", "amanha", "mes corrente", "essa semana" e "este ano".\n\n${systemPromptBase}`;
+    // Otimizacao de custo (alavanca 1): a data NAO vai mais no topo do prompt.
+    // O cache da OpenAI desconta a porcao PREFIXO identica entre chamadas; com a
+    // data (que muda) no topo, nada do system ficava cacheavel. Agora o
+    // systemPrompt e' so o base (prefixo estavel) e a data entra como item de
+    // input logo antes da pergunta, via montarConversa(). Granularidade de dia
+    // (dia da semana + data), sem hora/segundos.
+    const agoraBrt = formatDateInTz(new Date(), DEFAULT_TZ, DEFAULT_LOCALE, {
+      weekday: "long",
+    });
+    const systemPrompt = systemPromptBase;
+    // Alavanca 1: chave estavel de cache de prompt, derivada da versao do
+    // system (mesmo prefixo => mesma chave => melhor roteamento de cache).
+    const promptCacheKey =
+      "nex-sys-" +
+      createHash("sha1").update(systemPromptBase).digest("hex").slice(0, 12);
 
     // Carregar tools do MCP interno + dos MCPs externos plugados.
     // Nomes com caracteres fora de [a-zA-Z0-9_-] (ex.: `crm.res_partner.get`)
@@ -582,14 +603,16 @@ export async function runAgent(args: RunAgentInput): Promise<RunAgentResult> {
     }));
 
     // Persistir mensagem do usuário
-    await persistMessage(args.conversationId, "user", args.userMessage);
+    await persistMessage(args.conversationId, "user", args.userMessage, undefined, args.isAudio ? "audio" : undefined);
 
-    // Montar conversa inicial
-    const conversation: ChatMessage[] = [
-      { role: "system", content: systemPrompt },
-      ...historyMessages,
-      { role: "user", content: args.userMessage },
-    ];
+    // Montar conversa inicial. A data atual entra como item de input antes da
+    // pergunta (fora do prefixo cacheavel), via montarConversa().
+    const { conversation } = montarConversa({
+      systemPromptBase: systemPrompt,
+      historyMessages,
+      userMessage: args.userMessage,
+      agoraBrt,
+    });
 
     const totalUsage: ChatUsage = { tokensInput: 0, tokensOutput: 0, costUsd: 0 };
     const start = Date.now();
@@ -613,6 +636,10 @@ export async function runAgent(args: RunAgentInput): Promise<RunAgentResult> {
     // `dado_inventado` , agente citava numeros que nao apareciam em nenhum
     // toolResult do turno.
     const allTurnToolResults: string[] = [];
+    // Nomes de todas as tools chamadas neste turno (qualquer iteracao). Usado
+    // pela rede de seguranca de gap: saber se `registrar_lacuna` ja foi
+    // chamada antes de auto-registrar uma recusa.
+    const turnToolNames = new Set<string>();
 
     // Onda 1.E (Onda Nex >=90%): coleta estruturada dos tool results para o
     // AutoValidator. Cada item tem toolName + dados parseados (envelope canonico
@@ -660,6 +687,7 @@ export async function runAgent(args: RunAgentInput): Promise<RunAgentResult> {
         onToken,
         reasoningEffort: effortForRequest,
         reasoningHistory,
+        promptCacheKey,
       });
 
       // Acumular o contexto opaco para o proximo turno e para persistencia.
@@ -669,6 +697,8 @@ export async function runAgent(args: RunAgentInput): Promise<RunAgentResult> {
 
       totalUsage.tokensInput += result.usage.tokensInput;
       totalUsage.tokensOutput += result.usage.tokensOutput;
+      totalUsage.tokensCachedInput =
+        (totalUsage.tokensCachedInput ?? 0) + (result.usage.tokensCachedInput ?? 0);
       totalUsage.costUsd += result.usage.costUsd ?? 0;
 
       // Registrar uso desta iteração (aguardado antes do return , ver usageWrites)
@@ -679,6 +709,7 @@ export async function runAgent(args: RunAgentInput): Promise<RunAgentResult> {
         credentialId: resolvedLlm.credentialId ?? undefined,
         tokensInput: result.usage.tokensInput,
         tokensOutput: result.usage.tokensOutput,
+        tokensCachedInput: result.usage.tokensCachedInput ?? 0,
         reasoningTokens: result.reasoningTokens ?? null,
         toolCallsCount: result.toolCalls?.length ?? 0,
         toolNames: result.toolCalls?.map((t) => t.name) ?? [],
@@ -727,6 +758,66 @@ export async function runAgent(args: RunAgentInput): Promise<RunAgentResult> {
           const fb = extractSuggestions(result.message, agentSettings.maxSuggestions);
           message = fb.message;
           suggestions = fb.suggestions;
+        }
+
+        // TRAVAS das sugestoes (suggestion-filter): (1) nunca sugerir uma
+        // pergunta que JA foi feita nesta conversa (clicada ou digitada);
+        // (2) nunca sugerir um GAP conhecido (feature_requests). Independe do
+        // usuario: os gaps sao globais. Falha aqui nao derruba a resposta.
+        try {
+          const [askedRows, gapRows] = await Promise.all([
+            prisma.message.findMany({
+              where: { conversationId: args.conversationId, role: "user" },
+              select: { content: true },
+              orderBy: { createdAt: "desc" },
+              take: 50,
+            }),
+            prisma.featureRequest.findMany({
+              select: { perguntaResumo: true },
+              orderBy: { criadoEm: "desc" },
+              take: 400,
+            }),
+          ]);
+          const { filterSuggestions } = await import("./suggestion-filter");
+          suggestions = filterSuggestions(suggestions, {
+            asked: askedRows.map((r) => r.content),
+            gaps: gapRows.map((r) => r.perguntaResumo),
+          });
+        } catch (err) {
+          console.warn("[runAgent] suggestion-filter falhou:", err);
+        }
+
+        // REDE DE SEGURANCA de gap (independe do usuario): se a IA recusou com
+        // o template de "sem dados / fora do escopo" e NAO chamou
+        // `registrar_lacuna` neste turno, registra o gap em feature_requests.
+        // Assim toda pergunta sem-resposta entra no quadro e deixa de aparecer
+        // como sugestao (trava 2). Conservador: so o template + dedup por texto.
+        try {
+          const refusalRe =
+            /n[ãa]o tenho dados suficientes|fora do (meu )?escopo|n[ãa]o (consigo|tenho como|tenho dados para) (te )?responder|n[ãa]o (tenho|possuo) (essa informa|essa métrica|essa metrica)/i;
+          if (
+            refusalRe.test(message) &&
+            !turnToolNames.has("registrar_lacuna")
+          ) {
+            const resumo = args.userMessage.trim().slice(0, 300);
+            if (resumo.length > 0) {
+              const exists = await prisma.featureRequest.findFirst({
+                where: { perguntaResumo: resumo },
+                select: { id: true },
+              });
+              if (!exists) {
+                await prisma.featureRequest.create({
+                  data: {
+                    userId: args.userId,
+                    perguntaResumo: resumo,
+                    dominio: null,
+                  },
+                });
+              }
+            }
+          }
+        } catch (err) {
+          console.warn("[runAgent] safety-net gap log falhou:", err);
         }
 
         // STRIPPER DEFENSIVO de placeholder freshness "Xs" (Onda A1, audit
@@ -1029,7 +1120,14 @@ export async function runAgent(args: RunAgentInput): Promise<RunAgentResult> {
           // RBAC v2: turno concluído com sucesso (LLM respondeu).
           outcome: "ok",
         });
-        return { ok: true, message, suggestions, usage: totalUsage };
+        return {
+          ok: true,
+          message,
+          suggestions,
+          usage: totalUsage,
+          // B1. Id real da Message do assistant (resposta final), para o feedback.
+          messageId: assistantMessageId,
+        };
       }
 
       // Adiciona assistant com tool_calls
@@ -1210,6 +1308,7 @@ export async function runAgent(args: RunAgentInput): Promise<RunAgentResult> {
       // Onda 1.E: tambem coleta estruturado para AutoValidator. Cada tool result
       // pode (ou nao) ter envelope canonico (campo `dados` com _RESPOSTA, etc).
       for (const tc of result.toolCalls ?? []) {
+        turnToolNames.add(tc.name);
         const raw = toolResultsMap[tc.id];
         if (!raw) continue;
         try {

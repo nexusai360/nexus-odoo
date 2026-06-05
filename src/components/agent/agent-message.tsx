@@ -19,14 +19,19 @@ import {
   ChevronRight,
   Copy,
   Database,
+  Lightbulb,
+  Scale,
   Search,
   Loader2,
   Sparkles,
 } from "lucide-react";
 import * as React from "react";
+import Link from "next/link";
 import { cn } from "@/lib/utils";
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import { AudioPlayer } from "@/components/agent/audio-player";
+import { FeedbackControl, type FeedbackRating } from "./feedback-control";
+import { RATING_META } from "./rating-meta";
 import type { ProgressStep } from "./progress-trail";
 import { formatRelativeDateTime } from "@/lib/format-datetime-relative";
 
@@ -49,6 +54,12 @@ export interface AgentMessageProps {
    */
   streaming?: boolean;
   /**
+   * Habilita o efeito de digitacao (typewriter). True SO para a resposta
+   * gerada AO VIVO nesta interacao. Mensagens carregadas do historico vem com
+   * reveal=false e aparecem prontas (sem re-digitar ao reabrir a bubble).
+   */
+  reveal?: boolean;
+  /**
    * Trilha de pensamento absorvida na bolha do assistente (Onda C do
    * Renascimento). Quando presente, renderiza header colapsável acima do
    * conteúdo da mensagem com o resumo das tools consultadas.
@@ -63,6 +74,39 @@ export interface AgentMessageProps {
   /** Timestamp de envio para exibir no rodapé da bolha. Quando ausente,
    *  o rodapé fica oculto (histórico legado sem stamp). */
   createdAt?: string | Date | null;
+  /** Chamado quando a digitacao (typewriter) termina de revelar a resposta
+   *  inteira. So dispara para mensagens com reveal=true. */
+  onRevealComplete?: () => void;
+  /** B1. Habilita o controle de feedback (checkpoint PRODUCTION). */
+  feedbackEnabled?: boolean;
+  /** B1. Id real (de banco) da Message; ausente => controle nao renderiza. */
+  dbMessageId?: string;
+  /** B1. Voto vigente do usuario sobre esta resposta. */
+  feedback?: { rating: FeedbackRating; comment: string | null } | null;
+  /** B1. Submete o voto (otimismo fica no chat-panel). */
+  onSubmitFeedback?: (rating: FeedbackRating, comment?: string) => Promise<void> | void;
+  /**
+   * B2 (monitoramento, read-only). Sugestões que o agente ofereceu nesta
+   * resposta, exibidas DENTRO da bolha num bloco colapsável com chevron igual
+   * ao "Raciocínio". Gated: só renderiza quando presente, então a bubble viva
+   * (que usa a barra de sugestões clicável separada) não é afetada.
+   */
+  suggestions?: string[];
+  /** B2. Qual sugestão o usuário clicou (distinção só por contraste de cor). */
+  clickedSuggestion?: string;
+  /**
+   * B2 (monitoramento). PERÍCIA: veredito interno da plataforma (juiz) sobre
+   * esta resposta. Renderiza um chip rotulado no rodapé da bolha (eixo
+   * plataforma), clicável pro Backtest via `href`. Cor/label vêm prontos do
+   * monitor para não acoplar o AgentMessage ao enum de status.
+   */
+  monitorPericia?: { label: string; color: string; href?: string } | null;
+  /**
+   * B2 (monitoramento). AVALIAÇÃO: voto do usuário, badge de canto inferior
+   * direito (igual ao FeedbackControl da bubble viva). Quando há `comment`,
+   * o badge vira clicável e revela o texto escrito pelo usuário.
+   */
+  monitorVote?: { rating: FeedbackRating; comment?: string | null } | null;
 }
 
 export function AgentMessage({
@@ -73,11 +117,21 @@ export function AgentMessage({
   audioBlobUrl,
   durationSeconds,
   streaming = false,
+  reveal = false,
   steps,
   stepsCollapsed = true,
   onToggleSteps,
   durationMs,
   createdAt,
+  onRevealComplete,
+  feedbackEnabled = false,
+  dbMessageId,
+  feedback,
+  onSubmitFeedback,
+  suggestions,
+  clickedSuggestion,
+  monitorPericia,
+  monitorVote,
 }: AgentMessageProps) {
   if (role === "loading") return <LoadingBubble />;
   if (role === "tool") return <ToolBubble name={toolName ?? "tool"} />;
@@ -88,19 +142,19 @@ export function AgentMessage({
   if (kind === "audio") {
     return (
       <div className="group/msg flex w-full justify-end">
-        <div className="relative flex max-w-[85%] flex-col gap-1.5">
+        <div className="relative flex max-w-[80%] flex-col gap-1.5">
           {audioBlobUrl ? (
             <AudioPlayer
               src={audioBlobUrl}
               durationSeconds={durationSeconds}
             />
           ) : (
-            <div className="rounded-2xl bg-muted px-3 py-2 text-xs text-muted-foreground">
+            <div className="rounded-xl bg-muted px-3 py-2 text-xs text-muted-foreground">
               (áudio expirado)
             </div>
           )}
           {content && (
-            <div className="rounded-2xl bg-violet-600/15 px-3 py-1.5 text-xs text-muted-foreground">
+            <div className="rounded-xl bg-violet-600/15 px-3 py-1.5 text-xs text-muted-foreground">
               {content}
             </div>
           )}
@@ -119,46 +173,90 @@ export function AgentMessage({
     !isUser && (streaming || (Array.isArray(steps) && steps.length > 0));
   return (
     <BubbleWrapper isUser={isUser}>
-      <BubbleSurface
-        isUser={isUser}
-        // fastGrow=true quando typewriter ativo (streaming AND content
-        // > 0): bolha cresce com transition 100ms para acompanhar char
-        // a char sem clipar. Fora desse caso (trail "Pensando" / steps
-        // entrando / mensagem do user): 1.1s para o efeito suave.
-        fastGrow={!isUser && streaming && content.length > 0}
-      >
-        {showTrail ? (
-          <AssistantTrailBlock
-            steps={steps ?? []}
-            streaming={streaming}
-            collapsed={stepsCollapsed}
-            onToggle={onToggleSteps}
-            durationMs={durationMs}
+      {/* Wrapper relativo SEM overflow: ancora o CopyButton no canto da
+          bolha sem ser clipado pelo overflow:hidden do BubbleSurface (que
+          existe para a animacao de altura). max-w mora aqui agora; o
+          BubbleSurface preenche este wrapper (max-w-full). */}
+      <div className="relative max-w-[80%]">
+        <BubbleSurface
+          isUser={isUser}
+          // fastGrow=true quando typewriter ativo (streaming AND content
+          // > 0): bolha cresce com transition 100ms para acompanhar char
+          // a char sem clipar. Fora desse caso (trail "Pensando" / steps
+          // entrando / mensagem do user): 1.1s para o efeito suave.
+          fastGrow={!isUser && streaming && content.length > 0}
+        >
+          {showTrail ? (
+            <AssistantTrailBlock
+              steps={steps ?? []}
+              streaming={streaming}
+              collapsed={stepsCollapsed}
+              onToggle={onToggleSteps}
+              durationMs={durationMs}
+            />
+          ) : null}
+          <AssistantBodyReveal hasContent={content.length > 0}>
+            {isUser ? (
+              // Mensagem do usuario: NUNCA tem typewriter, vai completa.
+              // Quando ele aperta Enter ou clica numa sugestao, a frase ja
+              // existe inteira; animar seria artificio sem sentido.
+              <span className="whitespace-pre-wrap">{content}</span>
+            ) : reveal ? (
+              // So a resposta gerada AO VIVO digita. Historico (reveal=false)
+              // renderiza markdown direto, sem re-digitar ao reabrir a bubble.
+              <TypewriterBody
+                content={content}
+                streaming={streaming}
+                onComplete={onRevealComplete}
+              />
+            ) : (
+              <MarkdownLite content={content} />
+            )}
+          </AssistantBodyReveal>
+          {!isUser && Array.isArray(suggestions) && suggestions.length > 0 ? (
+            <AssistantSuggestionsBlock
+              suggestions={suggestions}
+              clickedSuggestion={clickedSuggestion}
+            />
+          ) : null}
+          {monitorPericia || (createdAt && !streaming) ? (
+            <div className="mt-2 flex items-center gap-2">
+              {monitorPericia ? <PericiaChip {...monitorPericia} /> : null}
+              {createdAt && !streaming ? (
+                <div
+                  className={cn(
+                    // pr-3.5: reserva o minimo para o badge de canto (voto) nao
+                    // cobrir a data. Vale pra bolha do user e da IA.
+                    "ml-auto pr-3.5 text-[10px] tabular-nums text-muted-foreground/70",
+                  )}
+                  suppressHydrationWarning
+                >
+                  {formatRelativeDateTime(createdAt)}
+                </div>
+              ) : null}
+            </div>
+          ) : null}
+        </BubbleSurface>
+        <CopyButton text={content} />
+        {!isUser &&
+        kind === "text" &&
+        !streaming &&
+        content.length > 0 &&
+        feedbackEnabled &&
+        dbMessageId &&
+        onSubmitFeedback ? (
+          <FeedbackControl
+            current={feedback ?? null}
+            onSubmit={(rating, comment) => onSubmitFeedback(rating, comment)}
           />
         ) : null}
-        <AssistantBodyReveal hasContent={content.length > 0}>
-          {isUser ? (
-            // Mensagem do usuario: NUNCA tem typewriter, vai completa.
-            // Quando ele aperta Enter ou clica numa sugestao, a frase ja
-            // existe inteira; animar seria artificio sem sentido.
-            <span className="whitespace-pre-wrap">{content}</span>
-          ) : (
-            <TypewriterBody content={content} streaming={streaming} />
-          )}
-        </AssistantBodyReveal>
-        {createdAt && !streaming ? (
-          <div
-            className={cn(
-              "mt-1 text-[10px] tabular-nums text-muted-foreground/70",
-              isUser ? "text-right" : "text-left",
-            )}
-            suppressHydrationWarning
-          >
-            {formatRelativeDateTime(createdAt)}
-          </div>
+        {monitorVote ? (
+          <MonitorVoteBadge
+            rating={monitorVote.rating}
+            comment={monitorVote.comment ?? null}
+          />
         ) : null}
-        <CopyButton text={content} />
-      </BubbleSurface>
+      </div>
     </BubbleWrapper>
   );
 }
@@ -190,56 +288,26 @@ function BubbleSurface({
   enableLayout?: boolean;
   fastGrow?: boolean;
 }) {
-  // Estrategia: HEIGHT anima via motion.div + RO (funcionou ja
-  // confirmado pelo user). WIDTH anima via CSS transition + interpolate-size
-  // na classe .nex-bubble-grow (Chrome 129+, Safari 18+; degrada para
-  // instant em browsers mais velhos). Sem squish de texto (no constraint
-  // de width vindo do motion.div).
-  const reduce = useReducedMotion();
-  const innerRef = React.useRef<HTMLDivElement>(null);
-  const [height, setHeight] = React.useState<number | "auto">("auto");
-
-  React.useEffect(() => {
-    const el = innerRef.current;
-    if (!el) return;
-    const measure = (entries: ResizeObserverEntry[]) => {
-      const h = entries[0]?.contentRect.height ?? el.offsetHeight;
-      // +20 = padding total (py-2.5 = 20px) ja que contentRect e do
-      // content-box.
-      const total = h + 20;
-      setHeight((prev) => (prev === total ? prev : total));
-    };
-    const ro = new ResizeObserver(measure);
-    ro.observe(el);
-    return () => ro.disconnect();
-  }, []);
-
+  // Altura NATURAL (sem animacao de height + sem overflow:hidden). A versao
+  // antiga animava `height` por 1.1s com overflowY:hidden, o que clipava o
+  // texto recem-digitado e fazia a janela "nao acompanhar" o reveal (o scroll
+  // so seguia quando a altura animada alcancava o conteudo, 1.1s depois). Com
+  // altura auto a bolha cresce em tempo real junto com o texto: sem clip, sem
+  // lag, e o stick-to-bottom do ChatPanel segue o crescimento na hora. As
+  // animacoes de "expansao suave" continuam vindo dos filhos (reveal do corpo
+  // e abertura da trilha), nao do container.
   return (
-    <motion.div
-      animate={{ height }}
-      transition={
-        reduce
-          ? { duration: 0 }
-          : { duration: 1.1, ease: [0.22, 1, 0.36, 1] }
-      }
+    <div
       className={cn(
-        // nex-bubble-grow: transition CSS de width 1.1s + interpolate-size
-        // (em globals.css) faz width animar suave de auto pra auto.
-        "nex-bubble-grow relative max-w-[85%] rounded-2xl px-3.5 text-sm leading-relaxed",
+        // rounded-lg: quinas menos arredondadas (pedido do usuario).
+        "relative w-fit max-w-full rounded-xl px-3 text-sm leading-relaxed",
         isUser
           ? "bg-violet-600/15 text-foreground"
           : "bg-muted text-foreground",
       )}
-      // overflowY hidden clipa height durante animacao; X visivel evita
-      // qualquer clipping horizontal de texto (typewriter etc).
-      style={{ overflowY: "hidden", overflowX: "visible" }}
     >
-      {/* innerRef mede content height. Tem o padding vertical (py-2.5).
-          Width nao e constrained aqui - vem natural. */}
-      <div ref={innerRef} className="py-2.5">
-        {children}
-      </div>
-    </motion.div>
+      <div className="py-2">{children}</div>
+    </div>
   );
 }
 
@@ -268,7 +336,7 @@ function BubbleWrapper({
       transition={
         reduce
           ? { duration: 0 }
-          : { opacity: { duration: 0.45, ease: [0.16, 1, 0.3, 1] } }
+          : { opacity: { duration: 0.22, ease: [0.16, 1, 0.3, 1] } }
       }
       className={cn(
         "group/msg flex w-full",
@@ -307,7 +375,7 @@ function AssistantTrailBlock({
   const headerLabel =
     streaming || running
       ? "Pensando"
-      : `Raciocínio · ${total}${total === 1 ? " etapa" : " etapas"}${durationLabel}`;
+      : `Raciocínio · ${total}${total === 1 ? " tool" : " tools"}${durationLabel}`;
   const expanded = streaming || !collapsed;
   const Chevron = expanded ? ChevronDown : ChevronRight;
   const showThinking = streaming || running;
@@ -391,9 +459,9 @@ function AssistantTrailBlock({
                 reduce
                   ? { duration: 0 }
                   : {
-                      duration: 0.5,
+                      duration: 0.22,
                       ease: EASE,
-                      filter: { duration: 0.4 },
+                      filter: { duration: 0.18 },
                     }
               }
               className="absolute inset-0 block truncate"
@@ -420,15 +488,11 @@ function AssistantTrailBlock({
               reduce
                 ? { duration: 0 }
                 : {
-                    // Recolhimento orquestrado: 0.7s para a altura, 0.5s
-                    // para opacity (some 200ms antes de zerar height).
-                    // Esses tempos casam com o delay+duracao do
-                    // BodyReveal (250ms delay + 400ms fade) - quando o
-                    // trail termina de sumir, o body acabou de aparecer.
-                    // Alinhado ao mesmo timing da bolha (650ms expo-out)
-                    // para a transicao trail->trail+body ser homogenea.
-                    height: { duration: 1.1, ease: [0.22, 1, 0.36, 1] },
-                    opacity: { duration: 0.85, ease: [0.22, 1, 0.36, 1] },
+                    // Feedback imediato: abrir/fechar o "Raciocinio" responde
+                    // na hora (~160ms), sem o arrasto antigo de 1.1s que
+                    // deformava os componentes durante a reorganizacao.
+                    height: { duration: 0.16, ease: [0.22, 1, 0.36, 1] },
+                    opacity: { duration: 0.12, ease: "easeOut" },
                   }
             }
             style={{ overflow: "hidden" }}
@@ -448,20 +512,12 @@ function AssistantTrailBlock({
                     // BubbleSurface.motion.layout="size" (interpola entre
                     // tamanhos). Aqui so a opacity + slide subtil pra
                     // sensacao de "se materializando" sem susto.
-                    initial={reduce ? false : { opacity: 0, y: -6 }}
+                    initial={reduce ? false : { opacity: 0, y: -4 }}
                     animate={{ opacity: 1, y: 0 }}
-                    // Sincronia com a expansao da bolha (motion.layout 650ms):
-                    // delay 325ms (50% da expansao) + duracao 325ms = linha
-                    // termina exatamente quando a bolha termina de crescer.
-                    // Mais lenta apos feedback "tudo muito rapido".
+                    // Entrada rapida (~150ms, sem delay) para o passo aparecer
+                    // junto com a expansao instantanea da bolha.
                     transition={
-                      reduce
-                        ? { duration: 0 }
-                        : {
-                            duration: 0.55,
-                            delay: 0.55,
-                            ease: [0.22, 1, 0.36, 1],
-                          }
+                      reduce ? { duration: 0 } : { duration: 0.15, ease: "easeOut" }
                     }
                     className="flex items-center gap-1.5 text-[11px]"
                   >
@@ -529,6 +585,109 @@ function AssistantTrailBlock({
   );
 }
 
+/* -------------------------------------------------------------------------- */
+/* Sugestões absorvidas na bolha (B2 monitoramento, read-only)                 */
+/* -------------------------------------------------------------------------- */
+
+// Espelha o AssistantTrailBlock (mesma linguagem visual do "Raciocínio"):
+// header colapsável com chevron + "Sugestões · N". A lâmpada (ícone outline)
+// aparece SÓ quando alguma sugestão foi clicada nesta mensagem; ausência do
+// ícone = ninguém clicou. O chip clicado se distingue apenas pelo contraste
+// de cor (sem selo de texto). Colapso interno.
+function AssistantSuggestionsBlock({
+  suggestions,
+  clickedSuggestion,
+}: {
+  suggestions: string[];
+  clickedSuggestion?: string;
+}) {
+  const reduce = useReducedMotion();
+  const [expanded, setExpanded] = React.useState(false);
+  const total = suggestions.length;
+  const hasClicked = Boolean(clickedSuggestion);
+  const Chevron = expanded ? ChevronDown : ChevronRight;
+  const EASE = [0.16, 1, 0.3, 1] as const;
+  const listId = React.useId();
+
+  return (
+    <div className="mt-2">
+      <button
+        type="button"
+        onClick={() => setExpanded((v) => !v)}
+        aria-expanded={expanded}
+        aria-controls={listId}
+        className={cn(
+          // Mesma fonte do header "Raciocínio" (text-xs): consistência visual.
+          "flex min-h-[18px] w-full items-center gap-2 text-left text-xs font-medium leading-none",
+          "cursor-pointer text-foreground/85 transition-colors hover:text-foreground",
+        )}
+      >
+        <span className="inline-flex h-3.5 w-3.5 shrink-0 items-center justify-center">
+          <Chevron className="h-3.5 w-3.5 text-muted-foreground" />
+        </span>
+        {hasClicked ? (
+          // Presença da lâmpada = o usuário clicou numa das sugestões nesta
+          // mensagem. Mesmo ícone outline de sempre.
+          <span className="inline-flex h-3.5 w-3.5 shrink-0 items-center justify-center">
+            <Lightbulb
+              className="h-3.5 w-3.5 text-violet-400"
+              aria-label="Uma sugestão foi clicada"
+            />
+          </span>
+        ) : null}
+        <span className="flex-1 truncate">
+          {`Sugestões · ${total}${total === 1 ? " sugestão" : " sugestões"}`}
+        </span>
+      </button>
+      <AnimatePresence initial={false}>
+        {expanded && (
+          <motion.div
+            key="suggestions-body"
+            initial={reduce ? false : { height: 0, opacity: 0 }}
+            animate={{ height: "auto", opacity: 1 }}
+            exit={reduce ? { opacity: 0 } : { height: 0, opacity: 0 }}
+            transition={
+              reduce
+                ? { duration: 0 }
+                : {
+                    height: { duration: 0.16, ease: [0.22, 1, 0.36, 1] },
+                    opacity: { duration: 0.12, ease: "easeOut" },
+                  }
+            }
+            style={{ overflow: "hidden" }}
+          >
+            <ul id={listId} className="mt-1.5 flex flex-col gap-1.5 pl-5">
+              {suggestions.map((s, i) => {
+                const clicked = s === clickedSuggestion;
+                return (
+                  <motion.li
+                    key={i}
+                    initial={reduce ? false : { opacity: 0, y: -4 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={
+                      reduce ? { duration: 0 } : { duration: 0.15, ease: EASE }
+                    }
+                    title={clicked ? "Sugestão clicada pelo usuário" : undefined}
+                    className={cn(
+                      "self-start rounded-2xl border px-3 py-1.5 text-[13px] leading-snug [overflow-wrap:anywhere]",
+                      // A clicada se distingue só pelo contraste de cor (preenchida).
+                      clicked
+                        ? "border-violet-400/70 bg-violet-600/35 font-medium text-foreground"
+                        : "border-violet-500/30 bg-violet-500/10 text-foreground/90",
+                    )}
+                  >
+                    {s}
+                  </motion.li>
+                );
+              })}
+            </ul>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
+  );
+}
+
 // Reveal do corpo da resposta: so monta quando o primeiro token chega; quando
 // monta, fade-in com delay curto para entrar DEPOIS que a trilha terminou de
 // recolher. Sequencia a "historia" da bolha: pensando -> consultando ->
@@ -562,8 +721,8 @@ function AssistantBodyReveal({
         reduce
           ? { duration: 0 }
           : {
-              duration: 0.4,
-              delay: 0.25,
+              duration: 0.2,
+              delay: 0.04,
               ease: [0.16, 1, 0.3, 1] as const,
             }
       }
@@ -580,7 +739,7 @@ function AssistantBodyReveal({
 function LoadingBubble() {
   return (
     <div className="flex w-full justify-start">
-      <div className="flex items-center gap-2 rounded-2xl bg-muted px-3.5 py-2.5 text-sm text-muted-foreground">
+      <div className="flex items-center gap-2 rounded-xl bg-muted px-3.5 py-2.5 text-sm text-muted-foreground">
         <span className="flex gap-1" aria-hidden="true">
           <Dot delay={0} />
           <Dot delay={0.15} />
@@ -613,6 +772,136 @@ function ToolBubble({ name }: { name: string }) {
           Consultou MCP · <span className="font-mono">{name}</span>
         </span>
       </div>
+    </div>
+  );
+}
+
+// B2 (monitoramento). PERÍCIA: chip rotulado do veredito interno (juiz) no
+// rodapé da bolha. Cor/label prontos. Clicável pro Backtest quando há href.
+// Eixo "plataforma", distinto do voto do usuário (badge de canto).
+function PericiaChip({
+  label,
+  color,
+  href,
+}: {
+  label: string;
+  color: string;
+  href?: string;
+}) {
+  // Só o ícone (balança = perícia) + o status. A palavra "Perícia" sai; o
+  // ícone é o mesmo usado nas colunas, então já comunica o eixo.
+  const inner = (
+    <span
+      title={`Perícia: ${label}`}
+      className="inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[10px] font-semibold"
+      style={{ color, borderColor: `${color}66`, background: `${color}1f` }}
+    >
+      <Scale className="h-3 w-3" aria-hidden />
+      <span>{label}</span>
+    </span>
+  );
+  if (!href) return inner;
+  return (
+    <Link
+      href={href}
+      title="Ver esta perícia no Backtest"
+      className="inline-flex transition-opacity hover:opacity-80"
+    >
+      {inner}
+    </Link>
+  );
+}
+
+// B2 (monitoramento). AVALIAÇÃO: badge de canto do voto do usuário, igual ao
+// estado "escolhido" do FeedbackControl da bubble viva (mesmo ícone/cor/posição).
+// Quando o usuário escreveu um comentário, o badge ganha um ponto indicador e
+// vira clicável: o clique abre um cartão com o texto (senão não há o que abrir,
+// e o admin nem perde o clique).
+function MonitorVoteBadge({
+  rating,
+  comment,
+}: {
+  rating: FeedbackRating;
+  comment: string | null;
+}) {
+  const meta = RATING_META[rating];
+  const Icon = meta.Icon;
+  const hasComment = Boolean(comment && comment.trim().length > 0);
+  // `open` = fixado por clique (permanece). `hover` = temporário enquanto o
+  // mouse está sobre o badge. Visível = um ou outro.
+  const [open, setOpen] = React.useState(false);
+  const [hover, setHover] = React.useState(false);
+  const showComment = hasComment && (open || hover);
+  const rootRef = React.useRef<HTMLDivElement>(null);
+
+  React.useEffect(() => {
+    if (!open) return;
+    const onDown = (e: PointerEvent) => {
+      if (rootRef.current && !rootRef.current.contains(e.target as Node)) {
+        setOpen(false);
+      }
+    };
+    document.addEventListener("pointerdown", onDown);
+    return () => document.removeEventListener("pointerdown", onDown);
+  }, [open]);
+
+  const badgeStyle = { background: meta.color, borderColor: meta.color };
+  const baseCls =
+    "absolute -right-2 -bottom-2 flex h-6 w-6 items-center justify-center rounded-md border text-white shadow-sm";
+
+  return (
+    <div ref={rootRef}>
+      {hasComment ? (
+        <button
+          type="button"
+          aria-label={`Avaliação do usuário: ${meta.label}. Tem comentário, clique para ver.`}
+          title="Ver comentário do usuário"
+          onClick={() => setOpen((v) => !v)}
+          onMouseEnter={() => setHover(true)}
+          onMouseLeave={() => setHover(false)}
+          style={badgeStyle}
+          className={cn(baseCls, "cursor-pointer")}
+        >
+          <Icon className="h-3 w-3" />
+          {/* Ponto indicador: existe comentário escrito. */}
+          <span className="absolute -right-1 -top-1 h-2 w-2 rounded-full border border-background bg-foreground" />
+        </button>
+      ) : (
+        <div
+          aria-label={`Avaliação do usuário: ${meta.label}`}
+          title={`Avaliação do usuário: ${meta.label}`}
+          style={badgeStyle}
+          className={baseCls}
+        >
+          <Icon className="h-3 w-3" />
+        </div>
+      )}
+
+      <AnimatePresence>
+        {showComment ? (
+          <motion.div
+            initial={{ opacity: 0, y: 6, scale: 0.98 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: 6, scale: 0.98 }}
+            transition={{ duration: 0.16, ease: [0.16, 1, 0.3, 1] }}
+            // Largura cheia da bolha (left-0 right-0): puxa pra esquerda e fica
+            // mais baixo verticalmente, melhor de ler.
+            className="absolute inset-x-0 top-full z-20 mt-2 rounded-lg border border-border bg-popover p-2.5 shadow-xl"
+          >
+            <div
+              className="mb-1 flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-wide"
+              style={{ color: meta.color }}
+            >
+              <Icon className="h-3 w-3" />
+              {meta.label}
+              <span className="text-muted-foreground/70">· comentário</span>
+            </div>
+            <p className="text-xs leading-snug text-foreground [overflow-wrap:anywhere]">
+              {comment}
+            </p>
+          </motion.div>
+        ) : null}
+      </AnimatePresence>
     </div>
   );
 }
@@ -721,7 +1010,9 @@ function splitBlocks(input: string): Block[] {
 
 function renderInline(text: string): React.ReactNode {
   const nodes: React.ReactNode[] = [];
-  const regex = /(\*\*[^*]+\*\*|`[^`]+`)/g;
+  // Ordem importa: **negrito** antes de *italico*; _italico_ e `codigo`.
+  const regex =
+    /(\*\*[^*]+\*\*|\*[^*\s][^*]*\*|_[^_\s][^_]*_|`[^`]+`)/g;
   let lastIndex = 0;
   let match: RegExpExecArray | null;
   let key = 0;
@@ -737,7 +1028,7 @@ function renderInline(text: string): React.ReactNode {
           {token.slice(2, -2)}
         </strong>,
       );
-    } else {
+    } else if (token.startsWith("`")) {
       nodes.push(
         <code
           key={key++}
@@ -745,6 +1036,13 @@ function renderInline(text: string): React.ReactNode {
         >
           {token.slice(1, -1)}
         </code>,
+      );
+    } else {
+      // *italico* ou _italico_
+      nodes.push(
+        <em key={key++} className="italic text-foreground/90">
+          {token.slice(1, -1)}
+        </em>,
       );
     }
     lastIndex = match.index + token.length;
@@ -798,9 +1096,11 @@ function AnimatedDots() {
 function TypewriterBody({
   content,
   streaming,
+  onComplete,
 }: {
   content: string;
   streaming: boolean;
+  onComplete?: () => void;
 }) {
   const tokens = React.useMemo(() => content.split(/(\s+)/), [content]);
   const [visibleCount, setVisibleCount] = React.useState(0);
@@ -846,16 +1146,30 @@ function TypewriterBody({
   }, [reduce]);
 
   const caughtUp = visibleCount >= tokens.length;
-  // Done: swap para MarkdownLite (bolds, listas, code formatam).
-  // Antes exigia `caughtUp && !streaming`, mas, na primeira resposta de
-  // cada conversa, o RAF as vezes nao concluia o catch-up antes de done
-  // (visibleCount ficava aquem de tokens.length apos o conteudo final
-  // chegar de uma vez no evento done), deixando o usuario com texto
-  // plano sem formatacao. Trocamos para `!streaming`: assim que o
-  // backend sinaliza done, a UI renderiza ja formatado. As respostas
-  // seguintes ja vinham OK porque o RAF concluia a tempo - aqui
-  // garantimos consistencia entre o primeiro turno e os demais.
-  if (!streaming) {
+  // Avisa o pai quando a digitacao terminou (texto inteiro revelado + backend
+  // concluido). O ChatPanel usa isso para so entao mostrar os chips de sugestao
+  // e para parar o auto-scroll. Dispara uma unica vez.
+  const revealDone = caughtUp && !streaming;
+  const firedRef = React.useRef(false);
+  React.useEffect(() => {
+    if (revealDone && !firedRef.current) {
+      firedRef.current = true;
+      onComplete?.();
+    }
+  }, [revealDone, onComplete]);
+  // Swap para MarkdownLite (bolds, listas, code) so quando o texto FOI
+  // revelado por inteiro (caughtUp) E o backend terminou (!streaming).
+  //
+  // Por que nao `!streaming` puro: muitos providers (OpenAI, Gemini,
+  // OpenRouter) nao emitem tokens incrementais , a resposta chega inteira no
+  // evento `done` com streaming:false. Com `!streaming` o texto aparecia de
+  // uma vez (sem digitacao). Com `caughtUp && !streaming`, o RAF revela
+  // palavra por palavra mesmo nesse caso (efeito de digitacao client-side,
+  // identico ao Claude.ai), formatando markdown so ao terminar. Para o
+  // Anthropic (que ja streama), o comportamento e o mesmo de antes.
+  // reduce-motion: o RAF preenche tudo de imediato -> caughtUp na hora ->
+  // sem digitacao falsa.
+  if (caughtUp && !streaming) {
     return <MarkdownLite content={content} />;
   }
 

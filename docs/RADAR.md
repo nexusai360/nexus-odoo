@@ -5,6 +5,30 @@
 
 ---
 
+## R-tempo — KPI de tempo médio das respostas no Backtest (a discutir)
+
+**Aberto em:** 2026-06-04 (feedback do usuário no B2).
+
+**Contexto:** o tempo de geração de cada resposta JÁ é armazenado em
+`LlmUsage.durationMs` (por iteração do loop de tool calling, ligado a
+`conversation_id`). A bubble viva mostra o wall-clock do turno
+(`doneAt − startedAt`) no header "Raciocínio · N tools · X.Xs"; o monitoramento
+Bubble (coluna Conversa) passou a mostrar o mesmo, derivado de
+`createdAt(assistant final) − createdAt(user)` (proxy fiel do wall-clock).
+
+**Pedido do usuário:** no **Backtest** (aba Monitoramento), o drill-down de cada
+linha de avaliação não mostrava o tempo, e não há KPI/gráfico de tempo médio.
+1. ~~tempo por avaliação no drill-down da `evaluations-table`~~ **FEITO**
+   (commit `1b83b88`: `getEvaluationDetail.durationMs` + `Clock` no cabeçalho);
+2. **PENDENTE:** um KPI/gráfico de tempo médio (e talvez p50/p95) no topo do Backtest.
+
+**A decidir:** fonte exata (somar `LlmUsage.durationMs` por turno vs proxy por
+`createdAt`), atribuição LlmUsage→mensagem (hoje LlmUsage só tem
+`conversation_id`, não `message_id`), e forma de visualização (KPI vs série
+temporal). Discutir antes de implementar.
+
+---
+
 ## ~~R1 — Fonte de "contas a receber/pagar" pode ser a tabela errada~~ RESOLVIDO
 
 **Aberto desde:** 2026-05-18 (teste end-to-end da F4 onda 1).

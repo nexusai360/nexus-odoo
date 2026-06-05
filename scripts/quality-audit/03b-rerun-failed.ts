@@ -21,11 +21,11 @@ interface Res { conversationId: string; question: string; responseChars: number;
 async function runQuestion(userId: string, question: string): Promise<Res> {
   const t0 = Date.now();
   const conv = await prisma.conversation.create({
-    data: { userId, channel: "in_app", title: `${MARKER} ${question.slice(0, 80)}` },
+    data: { userId, channel: "backtest", title: `${MARKER} ${question.slice(0, 80)}` },
     select: { id: true },
   });
   try {
-    const r = await runAgent({ conversationId: conv.id, userId, userMessage: question, channel: "in_app", isPlayground: false });
+    const r = await runAgent({ conversationId: conv.id, userId, userMessage: question, channel: "backtest", isPlayground: false });
     return { conversationId: conv.id, question, responseChars: r.ok ? r.message.length : 0, ok: r.ok, error: r.ok ? undefined : "agent_failed", durationMs: Date.now() - t0 };
   } catch (err) {
     return { conversationId: conv.id, question, responseChars: 0, ok: false, error: err instanceof Error ? err.message : String(err), durationMs: Date.now() - t0 };

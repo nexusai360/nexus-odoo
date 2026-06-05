@@ -107,6 +107,36 @@ export function extractBulletQuestions(
 }
 
 /**
+ * Frases-gatilho de OFERTA de continuacao que nao devem aparecer no corpo da
+ * resposta (as sugestoes vivem so nos chips [[suggestions]]). Usado como rede
+ * de seguranca caso o modelo escreva a oferta no corpo mesmo proibido no prompt.
+ */
+const OFFER_TRIGGER_RE =
+  /^\s*(se quiser|se preferir|caso queira|caso prefira|posso (te )?(mostrar|listar|detalhar|trazer|exibir|gerar)|tamb[ée]m posso|posso tamb[ée]m|quer que eu|quer ver|deseja que eu|se for util|se quiser que eu)/i;
+
+/**
+ * Remove um bloco TRAILING de oferta de continuacao do corpo (a frase-gatilho
+ * e os bullets/linhas que a seguem ate o fim). Conservador: so corta quando a
+ * oferta esta de fato no final (abaixo dela so ha bullets/linhas vazias). Nao
+ * mexe em dados no meio do texto.
+ */
+export function stripTrailingOffer(message: string): string {
+  const lines = message.split("\n");
+  while (lines.length && lines[lines.length - 1].trim() === "") lines.pop();
+  const isBullet = (l: string) => /^\s*(?:[-*•]|\d+[.)])\s+/.test(l);
+  for (let i = lines.length - 1; i >= 0; i--) {
+    if (OFFER_TRIGGER_RE.test(lines[i])) {
+      const head = lines.slice(0, i);
+      while (head.length && head[head.length - 1].trim() === "") head.pop();
+      return head.join("\n").trimEnd();
+    }
+    // So continua subindo enquanto o que ha abaixo do gatilho for bullet/vazio.
+    if (!isBullet(lines[i]) && lines[i].trim() !== "") break;
+  }
+  return message.trimEnd();
+}
+
+/**
  * Extrai sugestões do sufixo `[[suggestions]]:item1|item2|...`.
  * Retorna message sem o sufixo + array de sugestões.
  *
@@ -138,7 +168,7 @@ export function extractSuggestions(
       };
     }
     return {
-      message: text,
+      message: stripTrailingOffer(text),
       suggestions: FALLBACK_SUGGESTIONS.slice(0, limit),
     };
   }
@@ -152,6 +182,7 @@ export function extractSuggestions(
     parsed.length > 0 ? parsed : FALLBACK_SUGGESTIONS.slice(0, limit);
   let message = text.replace(match[0], "").trimEnd();
   message = message.replace(SUGGESTIONS_GUARD_RE, "").trimEnd();
+  message = stripTrailingOffer(message);
   return { message, suggestions };
 }
 

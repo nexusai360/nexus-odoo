@@ -21,6 +21,9 @@ export interface LogUsageArgs {
   model: string;
   tokensInput: number;
   tokensOutput: number;
+  /** Tokens de input servidos do cache de prompt do provider (default 0).
+   *  Custam fracao do input; usado para nao superestimar o custo (alavanca 1). */
+  tokensCachedInput?: number;
   /**
    * Tokens consumidos no raciocinio interno (subset de tokensOutput).
    * OpenAI/Gemini/OpenRouter expoem; Anthropic nao (deixe null). Onda 1 da
@@ -69,7 +72,10 @@ export async function logUsage(args: LogUsageArgs): Promise<void> {
       args.model,
       args.tokensInput,
       args.tokensOutput,
-      args.durationMs !== undefined ? { durationMs: args.durationMs } : undefined,
+      {
+        ...(args.durationMs !== undefined ? { durationMs: args.durationMs } : {}),
+        ...(args.tokensCachedInput ? { cachedInputTokens: args.tokensCachedInput } : {}),
+      },
     );
 
     // Cotação cambial , nunca retorna null (usa cache stale em falha)
@@ -95,6 +101,7 @@ export async function logUsage(args: LogUsageArgs): Promise<void> {
         model: args.model,
         tokensInput: args.tokensInput,
         tokensOutput: args.tokensOutput,
+        tokensCachedInput: args.tokensCachedInput ?? 0,
         reasoningTokens: args.reasoningTokens ?? null,
         toolCallsCount: args.toolCallsCount ?? null,
         toolNames: args.toolNames ?? [],

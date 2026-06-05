@@ -64,29 +64,45 @@ const SELECT = {
   manifestacao: true,
 } as const;
 
-/** DF-e importados no período (lista + totais). */
+/** DF-e importados no período (lista + totais).
+ * Alavanca 2b: paginação via take/skip no SQL. `totalNotas` é o count real do
+ * recorte e `valorTotal` soma TODO o recorte (não só a página exibida), via
+ * aggregate, para que os totais não mudem entre páginas. */
 export async function queryDfeImportadosPeriodo(
   prisma: PrismaClient,
-  filtros: { periodoDe?: string; periodoAte?: string; limite?: number },
+  filtros: { periodoDe?: string; periodoAte?: string; limit?: number; offset?: number },
 ): Promise<{ linhas: LinhaDfe[]; totalNotas: number; valorTotal: number }> {
-  const rows = await prisma.fatoDfe.findMany({
-    where: { ...periodoWhere(filtros) },
-    select: SELECT,
-    orderBy: { dataEmissao: "desc" },
-  });
-  const linhas = rows.map(toLinha);
-  const valorTotal = linhas.reduce((s, l) => s + l.vrNf, 0);
+  const where = { ...periodoWhere(filtros) };
+  const [rows, totalNotas, agg] = await Promise.all([
+    prisma.fatoDfe.findMany({
+      where,
+      select: SELECT,
+      // Ordenação estável + desempate por odooId: garante que "os próximos"
+      // não repitam nem pulem item entre páginas (alavanca 2b).
+      orderBy: [{ dataEmissao: "desc" }, { odooId: "asc" }],
+      take: filtros.limit,
+      skip: filtros.offset,
+    }),
+    prisma.fatoDfe.count({ where }),
+    prisma.fatoDfe.aggregate({ where, _sum: { vrNf: true } }),
+  ]);
   return {
-    linhas: linhas.slice(0, filtros.limite ?? 200),
-    totalNotas: linhas.length,
-    valorTotal,
+    linhas: rows.map(toLinha),
+    totalNotas,
+    valorTotal: Number(agg._sum.vrNf ?? 0),
   };
 }
 
-/** DF-e agregados por fornecedor (cnpj_cpf). */
+/** DF-e agregados por fornecedor (cnpj_cpf).
+ * Alavanca 2b , EXCEÇÃO de paginação em memória: a agregação por fornecedor
+ * acontece em memória (participante_id costuma vir nulo, agrupa pelos dígitos
+ * do CNPJ), então não há take/skip no SQL. Ordenamos o conjunto de forma
+ * estável (quantidade desc, valor desc, depois a chave do documento como
+ * desempate) e fatiamos [offset, offset+limit). `totalFornecedoresDistintos`
+ * é o tamanho do conjunto (todos os grupos), independente da página. */
 export async function queryDfePorFornecedor(
   prisma: PrismaClient,
-  filtros: { periodoDe?: string; periodoAte?: string; documento?: string; limite?: number },
+  filtros: { periodoDe?: string; periodoAte?: string; documento?: string; limit?: number; offset?: number },
 ): Promise<{
   linhas: { cnpjFornecedor: string | null; fornecedorNome: string | null; quantidade: number; valorTotal: number }[];
   totalAgregado: { quantidade: number; valorTotal: number };
@@ -125,9 +141,19 @@ export async function queryDfePorFornecedor(
     totalValor += v;
   }
 
-  const linhas = [...map.values()]
-    .sort((a, b) => b.quantidade - a.quantidade || b.valorTotal - a.valorTotal)
-    .slice(0, filtros.limite ?? 30);
+  // Ordenação estável: quantidade desc, valor desc, e a chave (dígitos do CNPJ)
+  // como desempate final, para que "os próximos" não repitam nem pulem grupo.
+  const ordenados = [...map.entries()]
+    .sort(
+      (a, b) =>
+        b[1].quantidade - a[1].quantidade ||
+        b[1].valorTotal - a[1].valorTotal ||
+        a[0].localeCompare(b[0]),
+    )
+    .map(([, v]) => v);
+  const offset = filtros.offset ?? 0;
+  const limit = filtros.limit ?? 30;
+  const linhas = ordenados.slice(offset, offset + limit);
 
   return {
     linhas,
@@ -136,24 +162,33 @@ export async function queryDfePorFornecedor(
   };
 }
 
-/** DF-e pendentes de manifestação (manifestacao vazio/null). */
+/** DF-e pendentes de manifestação (manifestacao vazio/null).
+ * Alavanca 2b: paginação via take/skip no SQL; `totalPendentes` é o count real
+ * do recorte e `valorTotal` soma TODO o recorte (aggregate), estável entre
+ * páginas. */
 export async function queryDfePendentesManifestacao(
   prisma: PrismaClient,
-  filtros: { periodoDe?: string; periodoAte?: string; limite?: number },
+  filtros: { periodoDe?: string; periodoAte?: string; limit?: number; offset?: number },
 ): Promise<{ linhas: LinhaDfe[]; totalPendentes: number; valorTotal: number }> {
-  const rows = await prisma.fatoDfe.findMany({
-    where: {
-      ...periodoWhere(filtros),
-      OR: [{ manifestacao: null }, { manifestacao: "" }],
-    },
-    select: SELECT,
-    orderBy: { dataEmissao: "desc" },
-  });
-  const linhas = rows.map(toLinha);
-  const valorTotal = linhas.reduce((s, l) => s + l.vrNf, 0);
+  const where = {
+    ...periodoWhere(filtros),
+    OR: [{ manifestacao: null }, { manifestacao: "" }],
+  };
+  const [rows, totalPendentes, agg] = await Promise.all([
+    prisma.fatoDfe.findMany({
+      where,
+      select: SELECT,
+      // Ordenação estável + desempate por odooId (alavanca 2b).
+      orderBy: [{ dataEmissao: "desc" }, { odooId: "asc" }],
+      take: filtros.limit,
+      skip: filtros.offset,
+    }),
+    prisma.fatoDfe.count({ where }),
+    prisma.fatoDfe.aggregate({ where, _sum: { vrNf: true } }),
+  ]);
   return {
-    linhas: linhas.slice(0, filtros.limite ?? 200),
-    totalPendentes: linhas.length,
-    valorTotal,
+    linhas: rows.map(toLinha),
+    totalPendentes,
+    valorTotal: Number(agg._sum.vrNf ?? 0),
   };
 }

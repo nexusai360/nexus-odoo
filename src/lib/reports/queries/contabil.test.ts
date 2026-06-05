@@ -28,18 +28,18 @@ describe("queryPlanoDeContas", () => {
       },
     } as unknown as Parameters<typeof queryPlanoDeContas>[0];
 
-    const result = await queryPlanoDeContas(prisma, {});
+    const result = await queryPlanoDeContas(prisma, { limit: 10, offset: 0 });
     expect(result.linhas).toHaveLength(2);
     expect(result.linhas[0].odooId).toBe(4);
     expect(result.total).toBe(2);
     expect(result.truncado).toBe(false);
   });
 
-  it("marca truncado=true quando total > linhas retornadas", async () => {
+  it("marca truncado=true quando ha mais alem da pagina", async () => {
     const prisma = {
       fatoContaContabil: {
         findMany: jest.fn().mockResolvedValue(
-          Array.from({ length: 250 }, (_, i) => ({
+          Array.from({ length: 10 }, (_, i) => ({
             odooId: i, codigo: `c${i}`, nome: `Conta ${i}`, tipo: "A", contaPaiNome: null,
           })),
         ),
@@ -47,35 +47,25 @@ describe("queryPlanoDeContas", () => {
       },
     } as unknown as Parameters<typeof queryPlanoDeContas>[0];
 
-    const result = await queryPlanoDeContas(prisma, {});
-    expect(result.linhas).toHaveLength(250);
+    const result = await queryPlanoDeContas(prisma, { limit: 10, offset: 0 });
+    expect(result.linhas).toHaveLength(10);
     expect(result.total).toBe(934);
     expect(result.truncado).toBe(true);
   });
 
-  it("aplica filtro por termo (where.OR presente) e limite customizado", async () => {
+  it("aplica filtro por termo (where.OR), take/skip e orderBy estavel", async () => {
     const findMany = jest.fn().mockResolvedValue([]);
     const count = jest.fn().mockResolvedValue(0);
     const prisma = {
       fatoContaContabil: { findMany, count },
     } as unknown as Parameters<typeof queryPlanoDeContas>[0];
 
-    await queryPlanoDeContas(prisma, { termo: "1.1", limite: 50 });
+    await queryPlanoDeContas(prisma, { termo: "1.1", limit: 10, offset: 20 });
     const call = findMany.mock.calls[0][0];
     expect(call.where).toHaveProperty("OR");
-    expect(call.take).toBe(50);
-  });
-
-  it("usa limite padrão 250 quando não informado", async () => {
-    const findMany = jest.fn().mockResolvedValue([]);
-    const count = jest.fn().mockResolvedValue(0);
-    const prisma = {
-      fatoContaContabil: { findMany, count },
-    } as unknown as Parameters<typeof queryPlanoDeContas>[0];
-
-    await queryPlanoDeContas(prisma, {});
-    const call = findMany.mock.calls[0][0];
-    expect(call.take).toBe(250);
+    expect(call.take).toBe(10);
+    expect(call.skip).toBe(20);
+    expect(call.orderBy).toEqual([{ codigo: "asc" }, { odooId: "asc" }]);
   });
 });
 
@@ -201,8 +191,11 @@ describe("queryMovimentoConta", () => {
     ]);
     const count = jest.fn().mockResolvedValue(5);
     const prisma = { fatoContabilLancamentoItem: { findMany, count } } as unknown as Parameters<typeof queryMovimentoConta>[0];
-    const result = await queryMovimentoConta(prisma, { contaId: 10, limite: 1 });
+    const result = await queryMovimentoConta(prisma, { contaId: 10, limit: 1, offset: 0 });
     expect(findMany.mock.calls[0][0].where.contaId).toBe(10);
+    expect(findMany.mock.calls[0][0].take).toBe(1);
+    expect(findMany.mock.calls[0][0].skip).toBe(0);
+    expect(findMany.mock.calls[0][0].orderBy).toEqual([{ dataLancamento: "asc" }, { odooId: "asc" }]);
     expect(result.linhas[0].debito).toBe(100);
     expect(result.total).toBe(5);
     expect(result.truncado).toBe(true);
@@ -212,7 +205,7 @@ describe("queryMovimentoConta", () => {
     const findMany = jest.fn().mockResolvedValue([]);
     const count = jest.fn().mockResolvedValue(0);
     const prisma = { fatoContabilLancamentoItem: { findMany, count } } as unknown as Parameters<typeof queryMovimentoConta>[0];
-    await queryMovimentoConta(prisma, { contaCodigo: "1.1.1" });
+    await queryMovimentoConta(prisma, { contaCodigo: "1.1.1", limit: 10, offset: 0 });
     expect(findMany.mock.calls[0][0].where.contaCodigo).toBe("1.1.1");
     expect(findMany.mock.calls[0][0].where.contaId).toBeUndefined();
   });

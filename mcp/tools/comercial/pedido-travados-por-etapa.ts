@@ -4,10 +4,15 @@ import { z } from "zod";
 import type { ToolEntry } from "../../catalog/types.js";
 import { queryPedidoTravadosPorEtapa } from "@/lib/reports/queries/pedido-historico.js";
 import { withFreshness } from "../../lib/freshness.js";
+import {
+  paginacaoInputShape,
+  resolverPaginacao,
+  montarPaginacaoMeta,
+} from "../../lib/paginacao.js";
 
 const inputSchema = z.object({
   diasMin: z.number().int().min(1).max(3650).optional().describe("Mínimo de dias parado (default 30)."),
-  limite: z.number().int().min(1).max(200).optional(),
+  ...paginacaoInputShape,
 });
 
 const linhaSchema = z.object({
@@ -26,6 +31,7 @@ const dados = z.object({
   _listaTruncada: z.boolean().optional(),
   _DESTAQUE: z.record(z.string(), z.union([z.string(), z.number()])).optional(),
   _agregado: z.record(z.string(), z.number().optional()).optional(),
+  _PAGINACAO: z.any().optional(),
 });
 const fonteStatus = z.object({ status: z.string(), ultimaSyncEm: z.string().nullable() });
 const outputSchema = z.union([
@@ -58,26 +64,27 @@ export const comercialPedidoTravadosPorEtapa: ToolEntry<Input, Output> = {
   inputSchema,
   outputSchema,
   handler: async (input, ctx) => {
+    const { limit, offset } = resolverPaginacao(input);
     const envelope = await withFreshness(ctx.prisma, ["fato_pedido_historico"], async () =>
-      shape(await queryPedidoTravadosPorEtapa(ctx.prisma, input)),
+      shape(await queryPedidoTravadosPorEtapa(ctx.prisma, { ...input, limit, offset })),
     );
     if (envelope.estado === "preparando") return envelope;
     const d = envelope.dados;
-    const todasLinhas = d.linhas;
-    const linhasCap = todasLinhas.slice(0, 30);
-    const top = todasLinhas[0];
+    const paginacao = montarPaginacaoMeta(d.totalTravados, offset, limit, d.linhas.length);
+    // top = primeiro item da pagina; na pagina 0 (offset=0) e o mais antigo global.
+    const top = d.linhas[0];
     return {
       ...envelope,
       dados: {
         ...d,
-        linhas: linhasCap,
         _RESPOSTA:
           d.totalTravados > 0
             ? `${d.totalTravados} pedidos parados há mais de ${d.diasMin} dias no fluxo de etapas. Mais antigo: pedido ${top?.pedidoId} (${top?.diasParado} dias em ${top?.etapaNome ?? "(sem etapa)"}).`
             : `Nenhum pedido parado há mais de ${d.diasMin} dias no fluxo.`,
         _DESTAQUE: { totalTravados: d.totalTravados, diasMin: d.diasMin, maisAntigoDias: top?.diasParado ?? 0 },
         _agregado: { contagem: d.totalTravados },
-        _listaTruncada: todasLinhas.length > linhasCap.length,
+        _listaTruncada: paginacao.temMais,
+        _PAGINACAO: paginacao,
       },
     };
   },

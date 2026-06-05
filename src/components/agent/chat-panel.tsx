@@ -17,10 +17,11 @@
  */
 
 import { motion, useReducedMotion } from "framer-motion";
-import { ChevronDown, Download, Loader2, LogOut, Mic, MoreVertical, Send, Sparkles, Trash2, X } from "lucide-react";
+import { ChevronDown, Download, Loader2, Mic, MoreVertical, Send, Sparkles, Trash2, X } from "lucide-react";
 import * as React from "react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
+import { formatDayLabel } from "@/lib/format-datetime-relative";
 import { AgentMessage, type AgentMessageRole } from "./agent-message";
 import { SuggestionsBar } from "./suggestions-bar";
 import { ProgressTrail, type ProgressStep } from "./progress-trail";
@@ -30,6 +31,8 @@ import { MessageInput } from "./message-input";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { getConversationMessages } from "@/lib/actions/conversation-messages";
 import { exportConversationReport } from "@/lib/actions/agent-conversation-export";
+import { archiveActiveConversation } from "@/lib/actions/active-conversation";
+import { submitMessageFeedback } from "@/lib/actions/message-feedback";
 import { WELCOME_SUGGESTIONS } from "@/lib/agent/welcome-suggestions";
 
 interface ChatPanelProps {
@@ -39,6 +42,8 @@ interface ChatPanelProps {
   audioInputEnabled?: boolean;
   /** Quando true exibe o anexo (clip). Gated pelo checkpoint de imagem. */
   imageInputEnabled?: boolean;
+  /** B1. Quando true, exibe o controle de feedback nas respostas da IA. */
+  feedbackEnabled?: boolean;
   /** conversationId atual (null = novo). Após primeira msg, recebe o id criado. */
   conversationId?: string | null;
   onConversationCreated?: (id: string) => void;
@@ -77,8 +82,23 @@ interface UiMessage {
   suggestions?: string[];
   /** True enquanto este turn está sendo streamado. */
   streaming?: boolean;
+  /** True SO para a resposta do assistant gerada AO VIVO nesta interacao:
+   *  habilita o efeito de digitacao (typewriter). Mensagens carregadas do
+   *  historico (getConversationMessages) ficam false/undefined e aparecem
+   *  prontas, sem re-digitar ao reabrir a bubble. */
+  reveal?: boolean;
+  /** True quando a digitacao terminou de revelar a resposta inteira. Gate dos
+   *  chips de sugestao (so aparecem com a mensagem completa). */
+  revealDone?: boolean;
   /** Timestamp da mensagem para rodapé "dd/mm hh:mm" na bolha. */
   createdAt?: string;
+  /** B1. Id real (de banco) da Message do assistant; gate do controle de feedback. */
+  dbMessageId?: string;
+  /** B1. Voto vigente do usuário sobre esta resposta. */
+  feedback?: {
+    rating: "CORRETO" | "PARCIAL" | "ERRADO" | "ALUCINOU";
+    comment: string | null;
+  } | null;
 }
 
 type SseEvent =
@@ -86,7 +106,7 @@ type SseEvent =
   | { type: "token"; delta: string }
   | { type: "tool_call"; label: string; toolName?: string; toolCallId?: string }
   | { type: "tool_result"; label: string; truncated: boolean; toolName?: string; toolCallId?: string }
-  | { type: "done"; conversationId: string; message: string; suggestions: string[] }
+  | { type: "done"; conversationId: string; message: string; suggestions: string[]; messageId: string }
   | { type: "error"; error: string };
 
 export function ChatPanel({
@@ -94,6 +114,7 @@ export function ChatPanel({
   onClose,
   audioInputEnabled = false,
   imageInputEnabled = false,
+  feedbackEnabled = false,
   conversationId: externalConvId,
   onConversationCreated,
   onEndSession,
@@ -155,6 +176,62 @@ export function ChatPanel({
   // messageRefsMap mantido (usado por outros lugares para tracking).
   const messageRefsMap = React.useRef<Map<string, HTMLDivElement>>(new Map());
 
+  // Tag FLUTUANTE de data (estilo WhatsApp): fixa no topo da area de mensagens,
+  // mostra o dia da mensagem que esta no topo do viewport e se ATUALIZA com
+  // animacao conforme o usuario rola (Ontem -> Hoje -> data, etc.). Nao e um
+  // separador preso na timeline; flutua e troca o rotulo.
+  const [dateLabel, setDateLabel] = React.useState("");
+  // Botao "voltar pro fim": estado proprio, dirigido SO pela distancia do fim
+  // (independe do sticky). Aparece quando o usuario esta longe do final.
+  const [showScrollFab, setShowScrollFab] = React.useState(false);
+  // Aviso de "limpar sessao" (conversa longa). Gatilho em 24 mensagens
+  // (usuario + IA). Ao dispensar (X), adia por +6 mensagens; ao limpar, reseta.
+  const SESSION_HINT_TRIGGER = 24;
+  const SESSION_HINT_SNOOZE = 6;
+  const [sessionHintSnoozeUntil, setSessionHintSnoozeUntil] = React.useState(0);
+  // Espelho das mensagens para o handler de scroll (closure com deps []) ler
+  // sempre a lista atual sem re-inscrever listeners.
+  const messagesRef = React.useRef<UiMessage[]>([]);
+  React.useEffect(() => {
+    messagesRef.current = messages;
+  });
+
+  // Calcula o rotulo do dia da mensagem no topo do viewport. Usado no scroll e
+  // quando a lista muda (para a tag aparecer mesmo sem rolagem).
+  const recomputeDateLabel = React.useCallback(() => {
+    const scrollEl = scrollRef.current;
+    if (!scrollEl) return;
+    const list = messagesRef.current;
+    if (list.length === 0) {
+      setDateLabel("");
+      return;
+    }
+    const topEdge = scrollEl.getBoundingClientRect().top;
+    let label = "";
+    for (const m of list) {
+      if (!m.createdAt) continue;
+      const el = messageRefsMap.current.get(m.id);
+      if (!el) continue;
+      const r = el.getBoundingClientRect();
+      if (r.top - topEdge <= 16) label = formatDayLabel(m.createdAt);
+      else break;
+    }
+    if (!label) {
+      const first = list.find((m) => m.createdAt);
+      if (first) label = formatDayLabel(first.createdAt);
+    }
+    setDateLabel((prev) => (prev === label ? prev : label));
+  }, []);
+
+  // Recalcula quando a lista muda (nova msg, historico carregado) , garante a
+  // tag visivel mesmo sem rolagem. rAF dupla para esperar o layout assentar.
+  React.useEffect(() => {
+    const id1 = requestAnimationFrame(() =>
+      requestAnimationFrame(recomputeDateLabel),
+    );
+    return () => cancelAnimationFrame(id1);
+  }, [messages, recomputeDateLabel]);
+
   // Sync external conversationId + carrega histórico do servidor
   React.useEffect(() => {
     conversationIdRef.current = externalConvId ?? null;
@@ -181,21 +258,68 @@ export function ChatPanel({
         toast.error("Não foi possível carregar o histórico da conversa.");
         return;
       }
-      const uiMessages: UiMessage[] = result.messages
-        .filter((m) => m.role !== "tool")
-        // Esconde messages assistant SEM content (iteracao intermediaria do
-        // loop que so registra tool_calls; a resposta textual real vem na
-        // proxima iteracao). Sem isso, a UI mostra uma bolha cinza com so
-        // o timestamp acima da resposta de verdade (bug 2026-05-24 22:59).
-        .filter(
-          (m) => !(m.role === "assistant" && m.content.trim().length === 0),
-        )
-        .map((m) => ({
+      // Reconstroi a trilha "Raciocinio" no historico: as mensagens assistant
+      // intermediarias (so tool_calls, content vazio) carregam o toolResults e
+      // sao escondidas; seus passos sao acumulados e anexados a proxima
+      // resposta visivel. Assim o abre/fecha de raciocinio persiste ao reabrir.
+      const uiMessages: UiMessage[] = [];
+      let pendingSteps: { label: string }[] = [];
+      // Inicio do turno = createdAt da ultima pergunta do usuario. A duracao do
+      // "Raciocinio" (ex.: "19.2s") nao e persistida; aproximamos por
+      // (resposta - pergunta), que casa com o startedAt->doneAt medido ao vivo.
+      let lastUserAt: number | null = null;
+      for (const m of result.messages) {
+        if (m.role === "tool") continue;
+        if (m.role === "user") {
+          const t = Date.parse(m.createdAt);
+          lastUserAt = Number.isNaN(t) ? null : t;
+        }
+        const isEmptyAssistant =
+          m.role === "assistant" && m.content.trim().length === 0;
+        if (isEmptyAssistant) {
+          if (m.steps && m.steps.length > 0) pendingSteps.push(...m.steps);
+          continue;
+        }
+        const allSteps =
+          m.role === "assistant"
+            ? [...pendingSteps, ...(m.steps ?? [])]
+            : [];
+        // Duracao reconstruida (so para respostas com trilha): resposta menos
+        // pergunta, descartando valores absurdos (> 10 min) ou negativos.
+        let startedAt: number | undefined;
+        let doneAt: number | undefined;
+        if (allSteps.length > 0 && lastUserAt != null) {
+          const ans = Date.parse(m.createdAt);
+          const dur = Number.isNaN(ans) ? -1 : ans - lastUserAt;
+          if (dur > 0 && dur < 10 * 60 * 1000) {
+            startedAt = lastUserAt;
+            doneAt = ans;
+          }
+        }
+        uiMessages.push({
           id: m.id,
           role: m.role as AgentMessageRole,
           content: m.content,
           createdAt: m.createdAt,
-        }));
+          // B1. id real do DB (para o feedback) + voto vigente reexibido.
+          dbMessageId: m.id,
+          ...(m.feedback ? { feedback: m.feedback } : {}),
+          ...(allSteps.length > 0
+            ? {
+                steps: allSteps.map((s, i) => ({
+                  id: `h_${m.id}_${i}`,
+                  label: s.label,
+                  state: "done" as const,
+                })),
+                stepsCollapsed: true,
+                ...(startedAt != null && doneAt != null
+                  ? { startedAt, doneAt }
+                  : {}),
+              }
+            : {}),
+        });
+        pendingSteps = [];
+      }
       setMessages(uiMessages);
     })();
 
@@ -224,19 +348,26 @@ export function ChatPanel({
   }, []);
 
   // === Stick-to-bottom: ResizeObserver + wheel/scroll listeners ===
+  // Re-roda quando a area de mensagens monta (hasMessages): no 1o mount a
+  // bubble esta em "welcome" (sem contentRef), entao os listeners precisam ser
+  // (re)anexados quando o historico carrega , senao a tag de data nao atualiza
+  // e o sticky/FAB nao reagem ao scroll.
+  const hasMessages = messages.length > 0;
   React.useEffect(() => {
     const scrollEl = scrollRef.current;
+    if (!scrollEl) return;
     const contentEl = contentRef.current;
-    if (!scrollEl || !contentEl) return;
 
     // ResizeObserver no inner content: cresce conforme typewriter escreve
     // ou novas msgs chegam. Se sticky, ajusta scrollTop para o fim.
-    const ro = new ResizeObserver(() => {
-      if (!isStickyRef.current) return;
-      lastProgrammaticAtRef.current = performance.now();
-      scrollEl.scrollTop = scrollEl.scrollHeight;
-    });
-    ro.observe(contentEl);
+    const ro = contentEl
+      ? new ResizeObserver(() => {
+          if (!isStickyRef.current) return;
+          lastProgrammaticAtRef.current = performance.now();
+          scrollEl.scrollTop = scrollEl.scrollHeight;
+        })
+      : null;
+    if (ro && contentEl) ro.observe(contentEl);
 
     // Wheel up = user quer rolar pra cima = desativa sticky. Ignora se
     // veio logo apos scroll programatico (kinetic scroll macOS).
@@ -265,24 +396,79 @@ export function ChatPanel({
     scrollEl.addEventListener("touchstart", onTouchStart, { passive: true });
     scrollEl.addEventListener("touchmove", onTouchMove, { passive: true });
 
-    // Scroll handler: reativa sticky quando user chega no fim manualmente.
+    // Tag de data flutuante: rAF-throttled para nao chamar getBoundingClientRect
+    // a cada evento de scroll.
+    let pillRafPending = false;
+    const updateDatePill = () => {
+      if (pillRafPending) return;
+      pillRafPending = true;
+      requestAnimationFrame(() => {
+        pillRafPending = false;
+        recomputeDateLabel();
+      });
+    };
+
+    // Scroll handler: fonte de verdade do sticky por POSICAO (funciona pra
+    // qualquer meio de rolagem: wheel, touch, barra, teclado). No fim ->
+    // reativa auto-snap; longe do fim -> desativa e mostra o FAB de "voltar
+    // pro fim". Ignora a correcao programatica recente (stick-to-bottom) pra
+    // nao se auto-desligar durante a geracao.
     const onScroll = () => {
-      const atBottom =
-        scrollEl.scrollHeight - scrollEl.scrollTop - scrollEl.clientHeight < 24;
-      if (atBottom && !isStickyRef.current) setIsSticky(true);
+      const distanceFromBottom =
+        scrollEl.scrollHeight - scrollEl.scrollTop - scrollEl.clientHeight;
+      if (distanceFromBottom < 24) {
+        if (!isStickyRef.current) setIsSticky(true);
+      } else {
+        const dt = performance.now() - lastProgrammaticAtRef.current;
+        if (dt > 120 && isStickyRef.current) setIsSticky(false);
+      }
+      // Botao de descer: visivel sempre que o usuario esta a mais de ~120px do
+      // fim, independentemente do sticky (atalho confiavel pra ir ao final).
+      setShowScrollFab(distanceFromBottom > 120);
+      updateDatePill();
     };
     scrollEl.addEventListener("scroll", onScroll, { passive: true });
 
     return () => {
-      ro.disconnect();
+      ro?.disconnect();
       scrollEl.removeEventListener("wheel", onWheel);
       scrollEl.removeEventListener("touchstart", onTouchStart);
       scrollEl.removeEventListener("touchmove", onTouchMove);
       scrollEl.removeEventListener("scroll", onScroll);
     };
-  }, []);
+  }, [recomputeDateLabel, hasMessages]);
 
-  // FAB click: rola pro fim + reativa sticky.
+  // Auto-scroll robusto durante a geracao: enquanto a IA esta gerando
+  // (pending) OU a ultima resposta ainda esta digitando (reveal sem
+  // revealDone), um rAF loop mantem o scroll colado no fim a cada frame , SE o
+  // usuario nao tiver rolado pra cima (sticky). Cobre todo o ciclo: "pensando",
+  // "consultou ferramenta" e a digitacao palavra a palavra. Para sozinho
+  // quando a resposta termina ou quando o usuario rola pra cima (sticky=false).
+  const lastMsg = messages[messages.length - 1];
+  const generating =
+    pending ||
+    (!!lastMsg &&
+      lastMsg.role === "assistant" &&
+      !!lastMsg.reveal &&
+      !lastMsg.revealDone);
+  React.useEffect(() => {
+    if (!generating) return;
+    let rafId = 0;
+    const tick = () => {
+      if (isStickyRef.current) {
+        const el = scrollRef.current;
+        if (el) {
+          lastProgrammaticAtRef.current = performance.now();
+          el.scrollTop = el.scrollHeight;
+        }
+      }
+      rafId = requestAnimationFrame(tick);
+    };
+    rafId = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(rafId);
+  }, [generating]);
+
+  // FAB click: rola pro fim + reativa sticky + esconde o proprio FAB.
   const scrollToBottomNow = React.useCallback(() => {
     const el = scrollRef.current;
     if (!el) return;
@@ -292,10 +478,11 @@ export function ChatPanel({
       behavior: reduceMotion ? "auto" : "smooth",
     });
     setIsSticky(true);
+    setShowScrollFab(false);
   }, [reduceMotion]);
 
   const handleSend = React.useCallback(
-    async (text: string, opts?: { source?: "bubble" | "suggestion" }) => {
+    async (text: string, opts?: { source?: "bubble" | "suggestion"; isAudio?: boolean }) => {
       const trimmed = text.trim();
       if (!trimmed || pending) return;
 
@@ -346,6 +533,7 @@ export function ChatPanel({
           stepsCollapsed: false,
           startedAt: Date.now(),
           streaming: true,
+          reveal: true,
         },
       ]);
 
@@ -356,7 +544,7 @@ export function ChatPanel({
           body: JSON.stringify({
             message: trimmed,
             conversationId: conversationIdRef.current ?? undefined,
-            meta: { source: opts?.source ?? "bubble" },
+            meta: { source: opts?.source ?? "bubble", isAudio: opts?.isAudio },
           }),
           signal: controller.signal,
         });
@@ -420,6 +608,7 @@ export function ChatPanel({
                     role: "assistant",
                     content: evt.delta,
                     streaming: true,
+                    reveal: true,
                   },
                 ];
               });
@@ -451,6 +640,7 @@ export function ChatPanel({
                     stepsCollapsed: false,
                     startedAt: Date.now(),
                     streaming: true,
+                    reveal: true,
                   },
                 ];
               });
@@ -511,6 +701,7 @@ export function ChatPanel({
                       startedAt: m.startedAt ?? doneAt,
                       doneAt,
                       createdAt: m.createdAt ?? new Date(doneAt).toISOString(),
+                      dbMessageId: evt.messageId,
                     };
                   }
                   return m;
@@ -525,10 +716,12 @@ export function ChatPanel({
                     content: evt.message,
                     suggestions: safeSuggestions,
                     streaming: false,
+                    reveal: true,
                     stepsCollapsed: true,
                     startedAt: doneAt,
                     doneAt,
                     createdAt: new Date(doneAt).toISOString(),
+                    dbMessageId: evt.messageId,
                   },
                 ];
               });
@@ -631,12 +824,65 @@ export function ChatPanel({
     [handleSend],
   );
 
-  const handleClear = React.useCallback(() => {
+  // "Limpar sessao": arquiva a conversa atual no banco (endedAt, nao deleta),
+  // zera a UI e devolve ao welcome. O FAB (onEndSession) esquece o id para a
+  // proxima mensagem criar conversa nova.
+  const handleClearSession = React.useCallback(async () => {
+    setMenuOpen(false);
+    const cid = conversationIdRef.current;
+    if (cid) {
+      await archiveActiveConversation(cid);
+    }
     abortRef.current?.abort();
     setMessages([]);
-    setMenuOpen(false);
     conversationIdRef.current = null;
-  }, []);
+    setSessionHintSnoozeUntil(0); // reseta o gatilho do aviso de sessao
+    onEndSession?.();
+  }, [onEndSession]);
+
+  // B1. Submete o voto do usuario (otimista): aplica local na hora, reconcilia
+  // com o retorno canonico da action em sucesso, reverte + toast em erro.
+  const handleSubmitFeedback = React.useCallback(
+    async (
+      uiId: string,
+      dbId: string,
+      rating: "CORRETO" | "PARCIAL" | "ERRADO" | "ALUCINOU",
+      comment?: string,
+    ) => {
+      let prev: UiMessage["feedback"] = null;
+      setMessages((cur) =>
+        cur.map((m) => {
+          if (m.id !== uiId) return m;
+          prev = m.feedback ?? null;
+          const optimistic =
+            rating === m.feedback?.rating
+              ? { rating, comment: comment ?? m.feedback?.comment ?? null }
+              : { rating, comment: comment ?? null };
+          return { ...m, feedback: optimistic };
+        }),
+      );
+      const res = await submitMessageFeedback({
+        assistantMessageId: dbId,
+        rating,
+        comment,
+      });
+      if (!res.success) {
+        setMessages((cur) =>
+          cur.map((m) => (m.id === uiId ? { ...m, feedback: prev } : m)),
+        );
+        toast.error("Não foi possível salvar a avaliação.");
+        return;
+      }
+      setMessages((cur) =>
+        cur.map((m) =>
+          m.id === uiId
+            ? { ...m, feedback: { rating: res.data.rating, comment: res.data.comment } }
+            : m,
+        ),
+      );
+    },
+    [],
+  );
 
   // Transcreve o áudio gravado e envia o texto resultante como pergunta.
   const handleSendAudio = React.useCallback(
@@ -661,7 +907,7 @@ export function ChatPanel({
           toast.error("Não conseguimos entender o áudio.");
           return;
         }
-        void handleSend(text);
+        void handleSend(text, { isAudio: true });
       } catch (err) {
         toast.error(
           `Falha ao transcrever: ${err instanceof Error ? err.message : String(err)}`,
@@ -681,10 +927,22 @@ export function ChatPanel({
 
   const showWelcome = messages.length === 0;
 
+  // Aviso de "limpar sessao": conta mensagens trocadas (usuario + IA). Dispara
+  // a partir de 24; apos dispensar, so volta +6 mensagens depois.
+  const conversationMsgCount = messages.filter(
+    (m) => m.role === "user" || m.role === "assistant",
+  ).length;
+  const showSessionHint =
+    !showWelcome &&
+    conversationMsgCount >= SESSION_HINT_TRIGGER &&
+    conversationMsgCount >= sessionHintSnoozeUntil;
+  const dismissSessionHint = () =>
+    setSessionHintSnoozeUntil(conversationMsgCount + SESSION_HINT_SNOOZE);
+
   const innerContent = (
     <>
       {/* Header */}
-      <header className="flex items-center justify-between gap-2 border-b border-border bg-background/60 px-4 py-3">
+      <header className="relative z-40 flex items-center justify-between gap-2 border-b border-border bg-background/60 px-4 py-3">
           <div className="flex items-center gap-2.5">
             <div className="relative flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-violet-600 to-violet-500 text-white shadow-md shadow-violet-600/40">
               <Sparkles className="h-4.5 w-4.5" strokeWidth={2.25} />
@@ -730,15 +988,6 @@ export function ChatPanel({
                 className="absolute top-full right-0 z-10 mt-1.5 w-48 overflow-hidden rounded-lg border border-border bg-card shadow-lg"
                 onMouseLeave={() => setMenuOpen(false)}
               >
-                <button
-                  type="button"
-                  role="menuitem"
-                  onClick={handleClear}
-                  className="flex w-full cursor-pointer items-center gap-2 px-3 py-2 text-left text-sm text-foreground transition-colors hover:bg-muted"
-                >
-                  <Trash2 className="h-3.5 w-3.5 text-muted-foreground" />
-                  Limpar histórico
-                </button>
                 {isSuperAdmin ? (
                   <button
                     type="button"
@@ -768,27 +1017,25 @@ export function ChatPanel({
                       a.click();
                       a.remove();
                       URL.revokeObjectURL(url);
-                      toast.success("Relatório baixado.");
+                      toast.success("Conversa baixada.");
                     }}
-                    className="flex w-full cursor-pointer items-center gap-2 border-t border-border/50 px-3 py-2 text-left text-sm text-foreground transition-colors hover:bg-muted"
+                    className="flex w-full cursor-pointer items-center gap-2 px-3 py-2 text-left text-sm text-foreground transition-colors hover:bg-muted focus-visible:bg-muted focus-visible:outline-none"
                   >
                     <Download className="h-3.5 w-3.5 text-muted-foreground" />
-                    Baixar relatório (.txt)
+                    Baixar conversa (.txt)
                   </button>
                 ) : null}
                 {onEndSession ? (
                   <button
                     type="button"
                     role="menuitem"
-                    onClick={() => {
-                      setMenuOpen(false);
-                      handleClear();
-                      onEndSession();
-                    }}
-                    className="flex w-full cursor-pointer items-center gap-2 border-t border-border/50 px-3 py-2 text-left text-sm text-foreground transition-colors hover:bg-muted"
+                    onClick={handleClearSession}
+                    className={`flex w-full cursor-pointer items-center gap-2 px-3 py-2 text-left text-sm text-foreground transition-colors hover:bg-destructive/10 hover:text-destructive focus-visible:bg-destructive/10 focus-visible:text-destructive focus-visible:outline-none${
+                      isSuperAdmin ? " border-t border-border/50" : ""
+                    }`}
                   >
-                    <LogOut className="h-3.5 w-3.5 text-muted-foreground" />
-                    Encerrar sessão
+                    <Trash2 className="h-3.5 w-3.5" />
+                    Limpar sessão
                   </button>
                 ) : null}
               </div>
@@ -802,7 +1049,13 @@ export function ChatPanel({
             que estava quebrando a cadeia flex de altura. */}
         <div
           ref={scrollRef}
-          className="flex-1 overflow-y-auto overscroll-contain px-4 py-3"
+          className={cn(
+            "flex-1 overflow-y-auto overscroll-contain px-4 py-3",
+            // Quando o banner flutuante aparece, reserva espaco no fim do scroll
+            // para o ultimo conteudo (ex.: 3a sugestao) poder subir ACIMA do
+            // banner e ser clicavel, em vez de ficar escondido atras dele.
+            showSessionHint && "pb-[60px]",
+          )}
         >
           {showWelcome ? (
             <WelcomeBlock
@@ -810,7 +1063,7 @@ export function ChatPanel({
               suggestions={welcomeSuggestionsForUi}
             />
           ) : (
-            <div ref={contentRef} className="space-y-3">
+            <div ref={contentRef} className="space-y-4">
               {messages.map((m, idx) => {
                 // Onda C v2: nao deve mais existir UiMessage com role "progress"
                 // (steps vivem dentro da bolha do assistant desde o primeiro
@@ -821,11 +1074,10 @@ export function ChatPanel({
                   m.role === "assistant" && idx === messages.length - 1 && !pending;
                 const durationMs =
                   m.startedAt && m.doneAt ? m.doneAt - m.startedAt : undefined;
+                // A data NAO vira separador inline: ela aparece na tag
+                // flutuante fixa no topo (recomputeDateLabel). O ref por msgId
+                // alimenta esse calculo.
                 return (
-                  // Wrapper div com ref por msgId permite snapAssistantToTop
-                  // chamar scrollIntoView na bolha exata (feature auto-scroll).
-                  // Fragment foi substituido por div; layout preservado via
-                  // contents do parent (space-y-3 ja existe).
                   <div
                     key={m.id}
                     ref={(el) => {
@@ -840,24 +1092,64 @@ export function ChatPanel({
                       audioBlobUrl={m.audioBlobUrl}
                       durationSeconds={m.durationSeconds}
                       streaming={m.streaming}
+                      reveal={m.reveal}
                       steps={m.steps}
                       stepsCollapsed={m.stepsCollapsed ?? true}
                       createdAt={m.createdAt}
                       durationMs={durationMs}
-                      onToggleSteps={() =>
+                      onRevealComplete={() =>
                         setMessages((prev) =>
                           prev.map((x) =>
-                            x.id === m.id
-                              ? { ...x, stepsCollapsed: !(x.stepsCollapsed ?? true) }
-                              : x,
+                            x.id === m.id ? { ...x, revealDone: true } : x,
                           ),
                         )
                       }
+                      feedbackEnabled={feedbackEnabled}
+                      dbMessageId={m.dbMessageId}
+                      feedback={m.feedback}
+                      onSubmitFeedback={
+                        m.dbMessageId
+                          ? (rating, comment) =>
+                              handleSubmitFeedback(
+                                m.id,
+                                m.dbMessageId!,
+                                rating,
+                                comment,
+                              )
+                          : undefined
+                      }
+                      onToggleSteps={() => {
+                        // Desliga o auto-snap durante o toggle: assim a
+                        // expansao preserva o TOPO (abre pra baixo) em vez de
+                        // pinar no fim (que fazia a ultima mensagem "subir").
+                        setIsSticky(false);
+                        setMessages((prev) =>
+                          prev.map((x) =>
+                            x.id === m.id
+                              ? {
+                                  ...x,
+                                  stepsCollapsed: !(x.stepsCollapsed ?? true),
+                                }
+                              : x,
+                          ),
+                        );
+                        // Recalcula o FAB apos o reflow da expansao.
+                        requestAnimationFrame(() => {
+                          const el = scrollRef.current;
+                          if (el)
+                            setShowScrollFab(
+                              el.scrollHeight - el.scrollTop - el.clientHeight >
+                                120,
+                            );
+                        });
+                      }}
                     />
-                    {isLastAssistant && !m.streaming ? (
-                      // SuggestionsBar agora SEMPRE renderiza apos done:
-                      // se m.suggestions vazio, o componente completa com
-                      // HARD_FALLBACK ate targetCount. Garante chips sempre.
+                    {isLastAssistant &&
+                    !m.streaming &&
+                    (!m.reveal || m.revealDone) ? (
+                      // Chips so aparecem com a mensagem JA escrita por inteiro:
+                      // mensagem ao vivo (reveal) espera o typewriter terminar
+                      // (revealDone); historico (reveal=false) mostra na hora.
                       <SuggestionsBar
                         suggestions={m.suggestions ?? []}
                         onPick={(s) => handlePickSuggestion(m.id, s)}
@@ -872,15 +1164,71 @@ export function ChatPanel({
         </div>
 
         {/* FAB voltar-pro-fim como filho do outer motion.div (fixed
-            providencia o positioning context). z-50 garante que fica
-            acima do scroll. Visivel quando !isSticky (user rolou pra cima). */}
+            providencia o positioning context). Visivel quando o usuario esta
+            longe do final (showScrollFab, dirigido pela distancia no onScroll). */}
         <ScrollToBottomFab
-          visible={!isSticky && !showWelcome}
+          visible={showScrollFab && !showWelcome}
           onClick={scrollToBottomNow}
         />
 
+        {/* Tag FLUTUANTE de data (estilo WhatsApp). Filha do painel fixed
+            (mesmo contexto de posicionamento do FAB), centralizada logo abaixo
+            do header. Fixa enquanto ha mensagens; o rotulo TROCA com animacao
+            (fade+slide) conforme o usuario rola (recomputeDateLabel). Cor roxa
+            sutil (base da tag "Agente Nex"). pointer-events-none para nunca
+            bloquear o scroll. */}
+        {!showWelcome && dateLabel ? (
+          <div className="pointer-events-none absolute top-[68px] left-1/2 z-30 -translate-x-1/2">
+            <span className="block rounded-full bg-violet-500/15 px-3 py-1 text-[11px] font-bold text-violet-200 shadow-sm ring-1 ring-violet-400/25 backdrop-blur-md">
+              {/* key=dateLabel: ao trocar o dia, o React remonta o span e a
+                  nova label entra com fade+slide (atualizacao visivel). */}
+              <motion.span
+                key={dateLabel}
+                initial={reduceMotion ? false : { opacity: 0, y: 6 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={
+                  reduceMotion
+                    ? { duration: 0 }
+                    : { duration: 0.2, ease: [0.16, 1, 0.3, 1] }
+                }
+                className="block whitespace-nowrap"
+              >
+                {dateLabel}
+              </motion.span>
+            </span>
+          </div>
+        ) : null}
+
+        {/* Aviso de "limpar sessao" (conversa longa). Banner compacto FLUTUANTE,
+            alinhado na mesma linha do botao de descer (bottom-[100px]),
+            ancorado a esquerda e terminando antes do botao (right-14, deixa o
+            gap). "Limpar sessao" limpa na hora; o X adia por +6 mensagens. */}
+        {showSessionHint ? (
+          <div className="pointer-events-auto absolute bottom-[90px] left-3 right-14 z-30 flex items-center gap-1.5 rounded-lg border border-violet-500/30 bg-violet-500/15 px-2.5 py-1.5 backdrop-blur-sm">
+            <span className="min-w-0 flex-1 truncate text-[11px] text-violet-100">
+              Esta conversa já está longa.
+            </span>
+            <button
+              type="button"
+              onClick={handleClearSession}
+              className="flex shrink-0 cursor-pointer items-center gap-1 rounded-md bg-violet-500/25 px-2 py-1 text-[11px] font-medium text-violet-50 transition-colors hover:bg-violet-500/45 focus-visible:ring-2 focus-visible:ring-violet-400/50 focus-visible:outline-none"
+            >
+              <Trash2 className="h-3.5 w-3.5" />
+              Limpar sessão
+            </button>
+            <button
+              type="button"
+              aria-label="Dispensar aviso"
+              onClick={dismissSessionHint}
+              className="flex h-6 w-6 shrink-0 cursor-pointer items-center justify-center rounded-md text-violet-200/80 transition-colors hover:bg-violet-500/20 hover:text-violet-50 focus-visible:ring-2 focus-visible:ring-violet-400/50 focus-visible:outline-none"
+            >
+              <X className="h-3.5 w-3.5" />
+            </button>
+          </div>
+        ) : null}
+
         {/* Input bar (G4 + D8) , anexo à esquerda, mic à direita, enviar fora */}
-        <footer className="border-t border-border bg-background/60 px-3 pt-3 pb-3">
+        <footer className="border-t border-border bg-background/60 px-3 pt-2 pb-3">
           <form
             onSubmit={(e) => {
               e.preventDefault();
@@ -1107,9 +1455,13 @@ function WelcomeBlock({
 function ScrollToBottomFab({
   visible,
   onClick,
+  raised = false,
 }: {
   visible: boolean;
   onClick: () => void;
+  /** Quando o banner de "limpar sessao" esta visivel, sobe o FAB para ficar
+   *  ACIMA do banner (sem sobrepor). */
+  raised?: boolean;
 }) {
   return (
     <button
@@ -1119,14 +1471,16 @@ function ScrollToBottomFab({
       aria-hidden={!visible}
       tabIndex={visible ? 0 : -1}
       className={cn(
-        // bottom-[100px]: respiro de ~24px acima do footer (input ~64px
-        // + padding + respiro). Mais distante do botao enviar conforme
-        // pedido do usuario. z-30: acima da area de scroll.
-        "pointer-events-auto absolute bottom-[100px] right-3 z-30 flex h-9 w-9 cursor-pointer items-center justify-center rounded-full",
-        "border border-violet-500/40 bg-background/90 text-violet-600 shadow-lg backdrop-blur",
-        "transition-all duration-200 hover:bg-violet-600 hover:text-white hover:border-violet-500",
-        "dark:text-violet-300 dark:hover:text-white",
-        "focus-visible:ring-2 focus-visible:ring-violet-500 focus-visible:outline-none",
+        // bottom base: ~24px acima do footer (input ~64px). Quando o banner de
+        // sessao aparece, sobe para bottom-[150px] para nao ser sobreposto.
+        "pointer-events-auto absolute right-3 z-30 flex h-9 w-9 cursor-pointer items-center justify-center rounded-full transition-[bottom] duration-200",
+        raised ? "bottom-[140px]" : "bottom-[90px]",
+        // Mesma cor/material da tag de data (violet-500/15 + ring sutil); hover
+        // sobe so um tom (discreto, sem clarao).
+        "bg-violet-500/20 text-violet-200 shadow-sm ring-1 ring-violet-400/25 backdrop-blur-md",
+        // Hover com bom contraste (sem virar o clarao solido de antes).
+        "transition-colors duration-200 hover:bg-violet-500/45 hover:text-white hover:ring-violet-400/50",
+        "focus-visible:ring-2 focus-visible:ring-violet-400/50 focus-visible:outline-none",
         visible
           ? "translate-y-0 opacity-100"
           : "pointer-events-none translate-y-2 opacity-0",

@@ -73,6 +73,8 @@ export type UpdateAgentSettingsInput = z.infer<typeof UpdateSettingsSchema>;
 const UpdateResourcesSchema = z.object({
   audioCheckpoint: CheckpointSchema,
   imageCheckpoint: CheckpointSchema,
+  /** B1 , checkpoint do feedback do usuário na bubble. */
+  feedbackCheckpoint: CheckpointSchema.optional(),
   kbCheckpoint: CheckpointSchema,
   /** G7 , checkpoint das sugestões (substitui o boolean suggestionsEnabled). */
   suggestionsCheckpoint: CheckpointSchema.optional(),
@@ -139,6 +141,7 @@ type AgentSettingsRow = {
   whatsappEnabled: boolean;
   audioCheckpoint: FeatureCheckpoint;
   imageCheckpoint: FeatureCheckpoint;
+  feedbackCheckpoint: FeatureCheckpoint;
   kbCheckpoint: FeatureCheckpoint;
   audioProvider: string | null;
   audioModel: string | null;
@@ -180,6 +183,7 @@ function mapSettings(row: AgentSettingsRow): AgentSettingsData {
     whatsappEnabled: row.whatsappEnabled,
     audioCheckpoint: row.audioCheckpoint,
     imageCheckpoint: row.imageCheckpoint,
+    feedbackCheckpoint: row.feedbackCheckpoint,
     kbCheckpoint: row.kbCheckpoint,
     audioProvider: row.audioProvider,
     audioModel: row.audioModel,
@@ -257,6 +261,7 @@ const DEFAULT_FLAGS: PublicAgentFlags = {
   audioInPlayground: false,
   imageInputEnabled: false,
   imageInPlayground: false,
+  feedbackInputEnabled: false,
   kbEnabled: true,
   kbInPlayground: true,
   suggestionsEnabled: true,
@@ -277,6 +282,7 @@ export async function getPublicAgentFlags(): Promise<PublicAgentFlags> {
       select: {
         audioCheckpoint: true,
         imageCheckpoint: true,
+        feedbackCheckpoint: true,
         kbCheckpoint: true,
         suggestionsCheckpoint: true,
         bubbleEnabled: true,
@@ -291,6 +297,7 @@ export async function getPublicAgentFlags(): Promise<PublicAgentFlags> {
       audioInPlayground: settings.audioCheckpoint !== "OFF",
       imageInputEnabled: settings.imageCheckpoint === "PRODUCTION",
       imageInPlayground: settings.imageCheckpoint !== "OFF",
+      feedbackInputEnabled: settings.feedbackCheckpoint === "PRODUCTION",
       kbEnabled: settings.kbCheckpoint === "PRODUCTION",
       kbInPlayground: settings.kbCheckpoint !== "OFF",
       suggestionsEnabled: settings.suggestionsCheckpoint === "PRODUCTION",
@@ -409,6 +416,9 @@ export async function updateAgentResources(
     }
     if (d.reasoningCheckpoint) {
       payload.reasoningCheckpoint = d.reasoningCheckpoint;
+    }
+    if (d.feedbackCheckpoint) {
+      payload.feedbackCheckpoint = d.feedbackCheckpoint;
     }
     if (d.contextWindowCheckpoint) {
       payload.contextWindowCheckpoint = d.contextWindowCheckpoint;

@@ -46,6 +46,24 @@ describe("calcularExtras", () => {
     expect(extras._RESPOSTA).toContain("Resultado obtido");
     expect(extras.topPorParticipante).toBeUndefined();
   });
+
+  it("paginacao injeta _PAGINACAO e deriva _listaTruncada=temMais", () => {
+    const extras = calcularExtras("cadastro_parceiros_novos", {
+      paginacao: { total: 100, mostrando: "1-10 de 100", temMais: true, proximoOffset: 10 },
+    });
+    expect(extras._PAGINACAO?.temMais).toBe(true);
+    expect(extras._PAGINACAO?.proximoOffset).toBe(10);
+    expect(extras._listaTruncada).toBe(true);
+    expect(extras._AVISO_TRUNCAMENTO).toContain("os proximos");
+  });
+
+  it("paginacao na ultima pagina nao trunca", () => {
+    const extras = calcularExtras("cadastro_parceiros_novos", {
+      paginacao: { total: 8, mostrando: "1-8 de 8", temMais: false, proximoOffset: null },
+    });
+    expect(extras._listaTruncada).toBe(false);
+    expect(extras._AVISO_TRUNCAMENTO).toBeUndefined();
+  });
 });
 
 describe("enriquecerEnvelope", () => {

@@ -4,6 +4,11 @@ import { z } from "zod";
 import type { ToolEntry } from "../../catalog/types.js";
 import { withFreshness } from "../../lib/freshness.js";
 import { enriquecerEnvelope } from "../../lib/with-responder.js";
+import {
+  paginacaoInputShape,
+  resolverPaginacao,
+  montarPaginacaoMeta,
+} from "../../lib/paginacao.js";
 import type { PrismaClient } from "@/generated/prisma/client.js";
 
 const inputSchema = z.object({
@@ -13,7 +18,7 @@ const inputSchema = z.object({
     .describe("Quando true (default), inclui produtos com saldo negativo no count."),
   familiaId: z.number().int().positive().optional(),
   armazemId: z.number().int().positive().optional(),
-  limite: z.number().int().min(1).max(100).optional(),
+  ...paginacaoInputShape,
 });
 
 const linhaSchema = z.object({
@@ -30,11 +35,13 @@ const dados = z.object({
   totalProdutos: z.number().int(),
   totalZerados: z.number().int(),
   totalNegativos: z.number().int(),
+  totalCandidatos: z.number().int(),
   linhas: z.array(linhaSchema),
   _RESPOSTA: z.string().optional(),
   _listaTruncada: z.boolean().optional(),
   _DESTAQUE: z.record(z.string(), z.union([z.string(), z.number()])).optional(),
   _agregado: z.record(z.string(), z.number().optional()).optional(),
+  _PAGINACAO: z.any().optional(),
 });
 
 const fonteStatus = z.object({
@@ -63,10 +70,15 @@ async function queryProdutosSaldoZero(
   totalProdutos: number;
   totalZerados: number;
   totalNegativos: number;
+  totalCandidatos: number;
   linhas: Array<z.infer<typeof linhaSchema>>;
 }> {
   const incluirNegativos = input.incluirNegativos ?? true;
-  const limite = input.limite ?? 10;
+  // Excecao documentada: a agregacao "saldo total por produto" e feita em JS
+  // (a partir das linhas por local), entao limit/offset nao podem ir ao SQL.
+  // Ordenamos os candidatos de forma estavel e fatiamos [offset, offset+limit);
+  // total = numero de candidatos encontrados (alavanca 2b).
+  const { limit, offset } = resolverPaginacao(input);
 
   const rows = await prisma.fatoEstoqueSaldo.findMany({
     where: {
@@ -139,7 +151,12 @@ async function queryProdutosSaldoZero(
     }
   }
 
-  candidatos.sort((a, b) => b.numLocais - a.numLocais);
+  // Ordenacao estavel + desempate por produtoId: garante paginas consistentes.
+  candidatos.sort((a, b) =>
+    b.numLocais !== a.numLocais
+      ? b.numLocais - a.numLocais
+      : a.produtoId - b.produtoId,
+  );
   const totalProdutos = incluirNegativos
     ? totalZerados + totalNegativos
     : totalZerados;
@@ -148,7 +165,8 @@ async function queryProdutosSaldoZero(
     totalProdutos,
     totalZerados,
     totalNegativos,
-    linhas: candidatos.slice(0, limite),
+    totalCandidatos: candidatos.length,
+    linhas: candidatos.slice(offset, offset + limit),
   };
 }
 
@@ -165,18 +183,26 @@ export const estoqueProdutosSaldoZero: ToolEntry<Input, Output> = {
   inputSchema,
   outputSchema,
   handler: async (input, ctx) => {
+    const { limit, offset } = resolverPaginacao(input);
     const envelope = await withFreshness(
       ctx.prisma,
       ["fato_estoque_saldo"],
       () => queryProdutosSaldoZero(ctx.prisma, input),
     );
     if (envelope.estado === "preparando") return envelope;
+    const paginacao = montarPaginacaoMeta(
+      envelope.dados.totalCandidatos,
+      offset,
+      limit,
+      envelope.dados.linhas.length,
+    );
     return enriquecerEnvelope(envelope, "estoque_produtos_saldo_zero", {
       destaque: {
         totalProdutos: envelope.dados.totalProdutos,
         totalZerados: envelope.dados.totalZerados,
         totalNegativos: envelope.dados.totalNegativos,
       },
+      paginacao,
     });
   },
 };

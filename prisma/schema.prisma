@@ -58,6 +58,10 @@ enum AgentChannel {
   whatsapp
   in_app
   playground
+  // B2/raiz do dado: conversas geradas por replay/backtest/calibração de
+  // qualidade (scripts quality-audit). Canal estrutural próprio para não
+  // poluir o monitoramento Bubble (que mostra só conversa real in_app).
+  backtest
 }
 
 enum MessageRole {
@@ -85,6 +89,23 @@ enum FeatureCheckpoint {
   OFF
   PLAYGROUND
   PRODUCTION
+}
+
+/// B1. Classificacao do usuario sobre uma resposta do agente (eixo do usuario,
+/// distinto do EvalStatus do juiz).
+enum UserFeedbackRating {
+  CORRETO
+  PARCIAL
+  ERRADO
+  ALUCINOU
+}
+
+/// B1. Tipo de evento no historico append-only de feedback.
+enum MessageFeedbackAction {
+  created
+  rating_changed
+  comment_set
+  comment_edited
 }
 
 enum WhatsappResponseMode {
@@ -139,6 +160,7 @@ model User {
   // F4.5 — Agente Nex Inteligencia
   agentProfile           UserAgentProfile?
   suggestionInteractions SuggestionInteraction[]
+  messageFeedback        MessageFeedback[]
 
   @@index([platformRole, isActive])
   @@index([email])
@@ -2283,17 +2305,17 @@ model FatoMdfe {
 // B2 (onda fiscal complementar): fato do evento REINF (obrigação acessória).
 // Estrutural (0 reg hoje).
 model FatoReinfEvento {
-  odooId                Int       @id @map("odoo_id")
-  chave                 String?
-  tipo                  String?
-  situacao              String?
-  protocoloTransmissao  String?   @map("protocolo_transmissao")
-  empresaId             Int?      @map("empresa_id")
-  empresaCnpjRaiz       String?   @map("empresa_cnpj_raiz")
-  dataEvento            DateTime? @map("data_evento")
-  dataInicial           DateTime? @map("data_inicial")
-  dataFinal             DateTime? @map("data_final")
-  atualizadoEm          DateTime  @default(now()) @map("atualizado_em")
+  odooId               Int       @id @map("odoo_id")
+  chave                String?
+  tipo                 String?
+  situacao             String?
+  protocoloTransmissao String?   @map("protocolo_transmissao")
+  empresaId            Int?      @map("empresa_id")
+  empresaCnpjRaiz      String?   @map("empresa_cnpj_raiz")
+  dataEvento           DateTime? @map("data_evento")
+  dataInicial          DateTime? @map("data_inicial")
+  dataFinal            DateTime? @map("data_final")
+  atualizadoEm         DateTime  @default(now()) @map("atualizado_em")
 
   @@index([dataEvento])
   @@index([empresaId])
@@ -2523,12 +2545,17 @@ model Conversation {
   topicTagsAt        DateTime?                       @map("topic_tags_at")
   createdAt          DateTime                        @default(now()) @map("created_at")
   updatedAt          DateTime                        @updatedAt @map("updated_at")
+  /// Quando a conversa foi encerrada/arquivada pelo usuario ("Limpar sessao").
+  /// null = ativa. Arquivadas nao reabrem, mas permanecem para auditoria/export.
+  endedAt            DateTime?                       @map("ended_at")
   messages           Message[]
   qualityEvaluations ConversationQualityEvaluation[]
   /// R1 router de catalogo: decisoes do router por turno desta conversa.
   routerDecisions    AgentRouterDecision[]
+  messageFeedback    MessageFeedback[]
 
   @@index([userId, updatedAt])
+  @@index([userId, channel, endedAt, updatedAt])
   @@map("conversations")
 }
 
@@ -2544,12 +2571,52 @@ model Message {
   /// (Array<{ name, args, result }>). NULL em mensagens pre-Onda 1 Inteligencia.
   /// Spec: docs/superpowers/specs/2026-05-25-agente-nex-inteligencia-design.md §3.2.
   toolResults     Json?                 @map("tool_results")
+  kind            String                @default("text") @map("kind")
   createdAt       DateTime              @default(now()) @map("created_at")
   /// R1 router de catalogo: decisao do router associada a este turno.
   routerDecisions AgentRouterDecision[]
+  messageFeedback MessageFeedback[]
 
   @@index([conversationId, createdAt])
   @@map("messages")
+}
+
+/// B1. Voto vigente do usuario sobre uma resposta do agente (1 por mensagem+usuario,
+/// ultimo vale). Historico completo em MessageFeedbackEvent.
+model MessageFeedback {
+  id                 String             @id @default(uuid()) @db.Uuid
+  conversationId     String             @map("conversation_id") @db.Uuid
+  assistantMessageId String             @map("assistant_message_id") @db.Uuid
+  userId             String             @map("user_id") @db.Uuid
+  rating             UserFeedbackRating
+  comment            String?            @db.VarChar(100)
+  createdAt          DateTime           @default(now()) @map("created_at")
+  updatedAt          DateTime           @updatedAt @map("updated_at")
+
+  conversation Conversation           @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  message      Message                @relation(fields: [assistantMessageId], references: [id], onDelete: Cascade)
+  user         User                   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  events       MessageFeedbackEvent[]
+
+  @@unique([assistantMessageId, userId])
+  @@index([conversationId])
+  @@index([userId])
+  @@map("message_feedback")
+}
+
+/// B1. Historico append-only de cada voto/troca/comentario (fonte do aprendizado B3).
+model MessageFeedbackEvent {
+  id         String                @id @default(uuid()) @db.Uuid
+  feedbackId String                @map("feedback_id") @db.Uuid
+  rating     UserFeedbackRating
+  comment    String?               @db.VarChar(100)
+  action     MessageFeedbackAction
+  createdAt  DateTime              @default(now()) @map("created_at")
+
+  feedback MessageFeedback @relation(fields: [feedbackId], references: [id], onDelete: Cascade)
+
+  @@index([feedbackId, createdAt])
+  @@map("message_feedback_event")
 }
 
 /// Credencial de API de LLM — chave cifrada com AES-256.
@@ -2596,45 +2663,48 @@ model LlmConfig {
 /// costUsd = null quando costKnown = false (modelo sem preço no catálogo).
 /// costBrl calculado com cotação versionada; rateStale=true se cotação falhou.
 model LlmUsage {
-  id              String   @id @default(uuid()) @db.Uuid
-  conversationId  String?  @map("conversation_id") @db.Uuid
-  provider        String
-  model           String
-  tokensInput     Int      @map("tokens_input")
-  tokensOutput    Int      @map("tokens_output")
-  costUsd         Decimal? @map("cost_usd") @db.Decimal(18, 10)
-  costKnown       Boolean  @default(true) @map("cost_known")
-  costBrl         Decimal? @map("cost_brl") @db.Decimal(20, 10)
-  usdToBrlRate    Decimal? @map("usd_to_brl_rate") @db.Decimal(10, 4)
-  rateSpread      Decimal? @map("rate_spread") @db.Decimal(6, 4)
-  rateStale       Boolean  @default(false) @map("rate_stale")
-  promptChars     Int?     @map("prompt_chars")
-  responseChars   Int?     @map("response_chars")
-  durationMs      Int?     @map("duration_ms")
-  errorMessage    String?  @map("error_message")
-  isPlayground    Boolean  @default(false) @map("is_playground")
+  id                String   @id @default(uuid()) @db.Uuid
+  conversationId    String?  @map("conversation_id") @db.Uuid
+  provider          String
+  model             String
+  tokensInput       Int      @map("tokens_input")
+  tokensOutput      Int      @map("tokens_output")
+  /// Tokens de input servidos do cache de prompt do provider (alavanca 1).
+  /// Custam fracao do input normal; subset conceitual de tokens_input.
+  tokensCachedInput Int      @default(0) @map("tokens_cached_input")
+  costUsd           Decimal? @map("cost_usd") @db.Decimal(18, 10)
+  costKnown         Boolean  @default(true) @map("cost_known")
+  costBrl           Decimal? @map("cost_brl") @db.Decimal(20, 10)
+  usdToBrlRate      Decimal? @map("usd_to_brl_rate") @db.Decimal(10, 4)
+  rateSpread        Decimal? @map("rate_spread") @db.Decimal(6, 4)
+  rateStale         Boolean  @default(false) @map("rate_stale")
+  promptChars       Int?     @map("prompt_chars")
+  responseChars     Int?     @map("response_chars")
+  durationMs        Int?     @map("duration_ms")
+  errorMessage      String?  @map("error_message")
+  isPlayground      Boolean  @default(false) @map("is_playground")
   /// Tokens de raciocinio internos (subset conceitual de tokens_output).
   /// OpenAI/Gemini/OpenRouter expoem; Anthropic nao (fica NULL).
-  reasoningTokens Int?     @map("reasoning_tokens")
+  reasoningTokens   Int?     @map("reasoning_tokens")
   /// Contagem de tool calls disparadas nesta iteracao. NULL em linhas
   /// antigas pre-instrumentacao; 0 quando o modelo respondeu direto
   /// sem chamar tool. Usado no drill-down de /agente/consumo.
-  toolCallsCount  Int?     @map("tool_calls_count")
+  toolCallsCount    Int?     @map("tool_calls_count")
   /// Nomes das tools chamadas nesta iteracao, na ordem em que foram
   /// requisitadas pelo modelo. Array vazio quando nenhuma tool foi
   /// chamada; NULL em linhas antigas pre-instrumentacao.
-  toolNames       String[] @map("tool_names")
-  userId          String?  @map("user_id") @db.Uuid
+  toolNames         String[] @map("tool_names")
+  userId            String?  @map("user_id") @db.Uuid
   // Credencial (chave de API) usada — permite somar o consumo por chave (A4).
-  credentialId    String?  @map("credential_id") @db.Uuid
+  credentialId      String?  @map("credential_id") @db.Uuid
   // Tipo da requisição para a tag de Consumo (G11): texto/imagem/audio/arquivo/embedding.
-  requestKind     String   @default("texto") @map("request_kind")
+  requestKind       String   @default("texto") @map("request_kind")
   /// Origem da chamada para a tag "Origem" do menu de consumo. NULL em linhas
   /// antigas (derivam de isPlayground: Agente Nex / Playground). Valores novos:
   /// "router" (router de catalogo em producao) e "router_calibracao" (rodadas
   /// de calibragem offline). Permite distinguir gasto do router no historico.
-  origin          String?  @map("origin")
-  createdAt       DateTime @default(now()) @map("created_at")
+  origin            String?  @map("origin")
+  createdAt         DateTime @default(now()) @map("created_at")
 
   @@index([createdAt])
   @@index([provider, model, createdAt])
@@ -2674,6 +2744,7 @@ model AgentSettings {
   /// Checkpoints de 3 estados (OFF/PLAYGROUND/PRODUCTION).
   audioCheckpoint       FeatureCheckpoint @default(OFF) @map("audio_checkpoint")
   imageCheckpoint       FeatureCheckpoint @default(OFF) @map("image_checkpoint")
+  feedbackCheckpoint    FeatureCheckpoint @default(OFF) @map("feedback_checkpoint")
   kbCheckpoint          FeatureCheckpoint @default(PRODUCTION) @map("kb_checkpoint")
   /// Checkpoint das sugestões clicáveis (substitui suggestionsEnabled — B3).
   suggestionsCheckpoint FeatureCheckpoint @default(PRODUCTION) @map("suggestions_checkpoint")
@@ -3272,32 +3343,32 @@ model FatoRetornoBancario {
 }
 
 model FatoRetornoItem {
-  odooId                Int       @id @map("odoo_id")
-  retornoId             Int?      @map("retorno_id")
-  situacao              String?
-  nossoNumero           String?   @map("nosso_numero")
-  numero                String?
-  tipo                  String?
-  dataRegistro          DateTime? @map("data_registro")
-  dataPagamento         DateTime? @map("data_pagamento")
-  dataCreditoDebito     DateTime? @map("data_credito_debito")
-  dataBaixa             DateTime? @map("data_baixa")
-  vrDocumento           Decimal   @default(0) @map("vr_documento") @db.Decimal(18, 2)
-  vrJuros               Decimal   @default(0) @map("vr_juros") @db.Decimal(18, 2)
-  vrMulta               Decimal   @default(0) @map("vr_multa") @db.Decimal(18, 2)
-  vrDesconto            Decimal   @default(0) @map("vr_desconto") @db.Decimal(18, 2)
-  vrTarifas             Decimal   @default(0) @map("vr_tarifas") @db.Decimal(18, 2)
-  vrBaixado             Decimal   @default(0) @map("vr_baixado") @db.Decimal(18, 2)
-  vrTotal               Decimal   @default(0) @map("vr_total") @db.Decimal(18, 2)
-  dividaNumero          String?   @map("divida_numero")
-  dividaParticipanteId  Int?      @map("divida_participante_id")
-  dividaParticipanteNome String?  @map("divida_participante_nome")
-  dividaDataVencimento  DateTime? @map("divida_data_vencimento")
-  dividaSituacao        String?   @map("divida_situacao")
-  motivoRejeicao        String?   @map("motivo_rejeicao")
-  bancoId               Int?      @map("banco_id")
-  bancoNome             String?   @map("banco_nome")
-  atualizadoEm          DateTime  @default(now()) @map("atualizado_em")
+  odooId                 Int       @id @map("odoo_id")
+  retornoId              Int?      @map("retorno_id")
+  situacao               String?
+  nossoNumero            String?   @map("nosso_numero")
+  numero                 String?
+  tipo                   String?
+  dataRegistro           DateTime? @map("data_registro")
+  dataPagamento          DateTime? @map("data_pagamento")
+  dataCreditoDebito      DateTime? @map("data_credito_debito")
+  dataBaixa              DateTime? @map("data_baixa")
+  vrDocumento            Decimal   @default(0) @map("vr_documento") @db.Decimal(18, 2)
+  vrJuros                Decimal   @default(0) @map("vr_juros") @db.Decimal(18, 2)
+  vrMulta                Decimal   @default(0) @map("vr_multa") @db.Decimal(18, 2)
+  vrDesconto             Decimal   @default(0) @map("vr_desconto") @db.Decimal(18, 2)
+  vrTarifas              Decimal   @default(0) @map("vr_tarifas") @db.Decimal(18, 2)
+  vrBaixado              Decimal   @default(0) @map("vr_baixado") @db.Decimal(18, 2)
+  vrTotal                Decimal   @default(0) @map("vr_total") @db.Decimal(18, 2)
+  dividaNumero           String?   @map("divida_numero")
+  dividaParticipanteId   Int?      @map("divida_participante_id")
+  dividaParticipanteNome String?   @map("divida_participante_nome")
+  dividaDataVencimento   DateTime? @map("divida_data_vencimento")
+  dividaSituacao         String?   @map("divida_situacao")
+  motivoRejeicao         String?   @map("motivo_rejeicao")
+  bancoId                Int?      @map("banco_id")
+  bancoNome              String?   @map("banco_nome")
+  atualizadoEm           DateTime  @default(now()) @map("atualizado_em")
 
   @@index([retornoId])
   @@index([dataPagamento])
@@ -3308,25 +3379,25 @@ model FatoRetornoItem {
 
 // SEM credenciais de banco (tokens/certificados/segredos excluídos por allow-list).
 model FatoCarteiraCobranca {
-  odooId            Int      @id @map("odoo_id")
-  nome              String?
-  bancoId           Int?     @map("banco_id")
-  bancoNome         String?  @map("banco_nome")
-  banco             String?
-  carteira          String?
-  tipoCarteira      String?  @map("tipo_carteira")
-  beneficiario      String?
-  convenio          String?
-  modalidade        String?
-  alJuros           Decimal  @default(0) @map("al_juros") @db.Decimal(18, 4)
-  alMulta           Decimal  @default(0) @map("al_multa") @db.Decimal(18, 4)
-  alDesconto        Decimal  @default(0) @map("al_desconto") @db.Decimal(18, 4)
-  taxaEmissao       Decimal  @default(0) @map("taxa_emissao") @db.Decimal(18, 2)
-  diasProtesto      Int?     @map("dias_protesto")
-  diasNegativacao   Int?     @map("dias_negativacao")
-  proximoNossoNumero String? @map("proximo_nosso_numero")
-  proximaRemessa    Int?     @map("proxima_remessa")
-  atualizadoEm      DateTime @default(now()) @map("atualizado_em")
+  odooId             Int      @id @map("odoo_id")
+  nome               String?
+  bancoId            Int?     @map("banco_id")
+  bancoNome          String?  @map("banco_nome")
+  banco              String?
+  carteira           String?
+  tipoCarteira       String?  @map("tipo_carteira")
+  beneficiario       String?
+  convenio           String?
+  modalidade         String?
+  alJuros            Decimal  @default(0) @map("al_juros") @db.Decimal(18, 4)
+  alMulta            Decimal  @default(0) @map("al_multa") @db.Decimal(18, 4)
+  alDesconto         Decimal  @default(0) @map("al_desconto") @db.Decimal(18, 4)
+  taxaEmissao        Decimal  @default(0) @map("taxa_emissao") @db.Decimal(18, 2)
+  diasProtesto       Int?     @map("dias_protesto")
+  diasNegativacao    Int?     @map("dias_negativacao")
+  proximoNossoNumero String?  @map("proximo_nosso_numero")
+  proximaRemessa     Int?     @map("proxima_remessa")
+  atualizadoEm       DateTime @default(now()) @map("atualizado_em")
 
   @@index([bancoId])
   @@map("fato_carteira_cobranca")
@@ -3334,24 +3405,24 @@ model FatoCarteiraCobranca {
 
 // Estrutural (0 reg hoje); auto-ativa quando a Matrix operar cheques.
 model FatoCheque {
-  odooId         Int       @id @map("odoo_id")
-  codigo         String?
-  codigoBarras   String?   @map("codigo_barras")
-  banco          String?
-  agencia        String?
-  conta          String?
-  numero         String?
-  titularNome    String?   @map("titular_nome")
-  titularCnpjCpf String?   @map("titular_cnpj_cpf")
-  data           DateTime?
-  dataEntrada    DateTime? @map("data_entrada")
-  dataPreDatado  DateTime? @map("data_pre_datado")
-  valor          Decimal   @default(0) @db.Decimal(18, 2)
-  empresaId      Int?      @map("empresa_id")
-  cnpjCpf        String?   @map("cnpj_cpf")
-  participanteId Int?      @map("participante_id")
-  participanteNome String? @map("participante_nome")
-  atualizadoEm   DateTime  @default(now()) @map("atualizado_em")
+  odooId           Int       @id @map("odoo_id")
+  codigo           String?
+  codigoBarras     String?   @map("codigo_barras")
+  banco            String?
+  agencia          String?
+  conta            String?
+  numero           String?
+  titularNome      String?   @map("titular_nome")
+  titularCnpjCpf   String?   @map("titular_cnpj_cpf")
+  data             DateTime?
+  dataEntrada      DateTime? @map("data_entrada")
+  dataPreDatado    DateTime? @map("data_pre_datado")
+  valor            Decimal   @default(0) @db.Decimal(18, 2)
+  empresaId        Int?      @map("empresa_id")
+  cnpjCpf          String?   @map("cnpj_cpf")
+  participanteId   Int?      @map("participante_id")
+  participanteNome String?   @map("participante_nome")
+  atualizadoEm     DateTime  @default(now()) @map("atualizado_em")
 
   @@index([data])
   @@index([participanteId])
@@ -3402,16 +3473,16 @@ model RawPedidoComissao {
 
 // Cotações/propostas (funil de cotação). Auto-ativa quando operado.
 model FatoCotacao {
-  odooId            Int      @id @map("odoo_id")
-  numero            String?
-  status            String?
-  ehCompra          Boolean  @default(false) @map("eh_compra")
-  empresaId         Int?     @map("empresa_id")
-  operacaoId        Int?     @map("operacao_id")
-  operacaoNome      String?  @map("operacao_nome")
-  usuarioAprovadorId Int?    @map("usuario_aprovador_id")
-  centroResultadoId Int?     @map("centro_resultado_id")
-  atualizadoEm      DateTime @default(now()) @map("atualizado_em")
+  odooId             Int      @id @map("odoo_id")
+  numero             String?
+  status             String?
+  ehCompra           Boolean  @default(false) @map("eh_compra")
+  empresaId          Int?     @map("empresa_id")
+  operacaoId         Int?     @map("operacao_id")
+  operacaoNome       String?  @map("operacao_nome")
+  usuarioAprovadorId Int?     @map("usuario_aprovador_id")
+  centroResultadoId  Int?     @map("centro_resultado_id")
+  atualizadoEm       DateTime @default(now()) @map("atualizado_em")
 
   @@index([status])
   @@index([empresaId])
@@ -3420,14 +3491,14 @@ model FatoCotacao {
 
 // Comissão por pedido/vendedor. Auto-ativa quando operado.
 model FatoComissao {
-  odooId            Int      @id @map("odoo_id")
-  pedidoId          Int?     @map("pedido_id")
-  participanteId    Int?     @map("participante_id")
-  participanteNome  String?  @map("participante_nome")
-  bcComissao        Decimal  @default(0) @map("bc_comissao") @db.Decimal(18, 2)
-  alComissao        Decimal  @default(0) @map("al_comissao") @db.Decimal(18, 4)
-  vrComissao        Decimal  @default(0) @map("vr_comissao") @db.Decimal(18, 2)
-  atualizadoEm      DateTime @default(now()) @map("atualizado_em")
+  odooId           Int      @id @map("odoo_id")
+  pedidoId         Int?     @map("pedido_id")
+  participanteId   Int?     @map("participante_id")
+  participanteNome String?  @map("participante_nome")
+  bcComissao       Decimal  @default(0) @map("bc_comissao") @db.Decimal(18, 2)
+  alComissao       Decimal  @default(0) @map("al_comissao") @db.Decimal(18, 4)
+  vrComissao       Decimal  @default(0) @map("vr_comissao") @db.Decimal(18, 2)
+  atualizadoEm     DateTime @default(now()) @map("atualizado_em")
 
   @@index([pedidoId])
   @@index([participanteId])
@@ -3461,15 +3532,15 @@ model RawEstoqueMinimoMaximo {
 }
 
 model FatoEstoqueMinMax {
-  odooId          Int      @id @map("odoo_id")
-  produtoId       Int?     @map("produto_id")
-  produtoNome     String?  @map("produto_nome")
-  localId         Int?     @map("local_id")
-  localNome       String?  @map("local_nome")
-  unidadeNome     String?  @map("unidade_nome")
-  quantidadeMinima Decimal @default(0) @map("quantidade_minima") @db.Decimal(18, 3)
-  quantidadeMaxima Decimal @default(0) @map("quantidade_maxima") @db.Decimal(18, 3)
-  atualizadoEm    DateTime @default(now()) @map("atualizado_em")
+  odooId           Int      @id @map("odoo_id")
+  produtoId        Int?     @map("produto_id")
+  produtoNome      String?  @map("produto_nome")
+  localId          Int?     @map("local_id")
+  localNome        String?  @map("local_nome")
+  unidadeNome      String?  @map("unidade_nome")
+  quantidadeMinima Decimal  @default(0) @map("quantidade_minima") @db.Decimal(18, 3)
+  quantidadeMaxima Decimal  @default(0) @map("quantidade_maxima") @db.Decimal(18, 3)
+  atualizadoEm     DateTime @default(now()) @map("atualizado_em")
 
   @@index([produtoId])
   @@index([localId])

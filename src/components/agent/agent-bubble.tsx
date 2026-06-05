@@ -36,6 +36,9 @@ interface AgentBubbleProps {
    * no checkpoint de imagem: só PRODUÇÃO libera na bubble.
    */
   imageInputEnabled?: boolean;
+  /** B1. Quando true, libera o controle de feedback nas respostas da IA.
+   *  Resolvido no layout pelo checkpoint de feedback (só PRODUÇÃO). */
+  feedbackEnabled?: boolean;
   /**
    * Limite de sugestões clicáveis (welcome + follow-up) configurado pelo
    * super_admin em /agente/comportamento. Default 3, hard cap 5.
@@ -47,25 +50,34 @@ interface AgentBubbleProps {
    * erro; o ChatPanel cai no catálogo curado neste caso.
    */
   personalizedWelcome?: string[];
-  /** Quando true, renderiza no menu da bubble a opção "Baixar relatório
-   *  desta conversa" (exportConversationReport). Resolvido no layout
+  /** Quando true, renderiza no menu da bubble a opção "Baixar conversa
+   *  (.txt)" desta conversa (exportConversationReport). Resolvido no layout
    *  protegido com base em platformRole === "super_admin". */
   isSuperAdmin?: boolean;
+  /**
+   * Conversa in_app ativa do usuário, resolvida no layout (server) a cada
+   * boot. Permite a bubble restaurar o histórico após F5/logout. null =
+   * usuário sem conversa ativa (começa no welcome).
+   */
+  initialConversationId?: string | null;
 }
 
 export function AgentBubble({
   audioInputEnabled = false,
   imageInputEnabled = false,
+  feedbackEnabled = false,
   maxSuggestions = 3,
   personalizedWelcome = [],
   isSuperAdmin = false,
+  initialConversationId = null,
 }: AgentBubbleProps = {}) {
   const [open, setOpen] = React.useState(false);
   // O conversationId vive AQUI (no FAB), e não no ChatPanel: assim ele
   // sobrevive ao unmount do painel quando o usuário fecha a bubble pelo "X" e
-  // o histórico é restaurado na próxima abertura. Só zera ao "Encerrar sessão".
+  // o histórico é restaurado na próxima abertura. Inicia com a conversa ativa
+  // resolvida no server (persistência cross-login). Só zera ao "Limpar sessão".
   const [conversationId, setConversationId] = React.useState<string | null>(
-    null,
+    initialConversationId,
   );
   const reduceMotion = useReducedMotion();
 
@@ -163,17 +175,17 @@ export function AgentBubble({
           onClose={() => setOpen(false)}
           audioInputEnabled={audioInputEnabled}
           imageInputEnabled={imageInputEnabled}
+          feedbackEnabled={feedbackEnabled}
           maxSuggestions={maxSuggestions}
           personalizedWelcome={personalizedWelcome}
           isSuperAdmin={isSuperAdmin}
           conversationId={conversationId}
           onConversationCreated={setConversationId}
           onEndSession={() => {
-            // Encerrar sessao NAO fecha a bubble: so reseta o
-            // conversationId. Combinado com handleClear() dentro do
-            // ChatPanel (que zera messages + abortRef + conversationIdRef
-            // interno), o painel volta sozinho ao welcome (showWelcome
-            // = messages.length === 0).
+            // "Limpar sessao" NAO fecha a bubble: so reseta o conversationId.
+            // O ChatPanel ja arquivou a conversa no banco e zerou as mensagens;
+            // aqui o FAB esquece o id para a proxima mensagem criar conversa
+            // nova. O painel volta ao welcome (showWelcome = messages.length 0).
             setConversationId(null);
           }}
         />
