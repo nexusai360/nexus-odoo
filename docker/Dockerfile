@@ -24,7 +24,9 @@ RUN npm run build
 
 FROM node:22-alpine AS runner
 WORKDIR /app
-RUN apk add --no-cache openssl
+# postgresql-client: o entrypoint roda `npm run db:provision` (psql) para criar
+# os roles de menor privilegio do MCP. openssl: exigido pelo Prisma.
+RUN apk add --no-cache openssl postgresql-client
 ENV NODE_ENV=production
 ENV PORT=3000
 ENV HOSTNAME="0.0.0.0"
