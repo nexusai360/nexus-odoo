@@ -327,8 +327,9 @@ export function JsonBlock({
   return (
     <div className="overflow-hidden rounded-lg border border-border bg-background">
       {header}
-      {/* Altura FIXA (igual p/ tool calls e tool results); excedente rola dentro. */}
-      <div className="h-72 overflow-auto border-t border-border px-2.5 py-2">
+      {/* Altura encolhe pro conteúdo (sem sobra); só passa a rolar quando excede
+          o teto (~176px). Cada bloco fica do tamanho do seu conteúdo. */}
+      <div className="max-h-44 overflow-auto border-t border-border px-2.5 py-2">
         <JsonViewer data={parsed} />
       </div>
 
