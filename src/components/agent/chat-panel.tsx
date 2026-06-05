@@ -1021,7 +1021,7 @@ export function ChatPanel({
                 Agente Nex
               </h2>
               <p className="text-xs leading-tight text-muted-foreground">
-                Online · respostas em tempo real
+                Online
               </p>
             </div>
           </div>
