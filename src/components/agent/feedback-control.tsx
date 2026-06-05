@@ -76,22 +76,32 @@ export interface FeedbackControlProps {
   /** Remove o voto (volta a "sem voto"). Disparado ao clicar no voto já
    *  selecionado na paleta (toggle-off). */
   onRemove?: () => Promise<void> | void;
+  /** Avisa o pai quando o campo de comentário abre/fecha (pra esconder as
+   *  sugestões enquanto o usuário digita). */
+  onFieldOpenChange?: (open: boolean) => void;
 }
 
 export function FeedbackControl({
   current,
   onSubmit,
   onRemove,
+  onFieldOpenChange,
 }: FeedbackControlProps) {
   const reduce = useReducedMotion();
   const [open, setOpen] = React.useState(false);
   const [chosen, setChosen] = React.useState<FeedbackRating | null>(current?.rating ?? null);
   const [fieldFor, setFieldFor] = React.useState<FeedbackRating | null>(null);
   const [text, setText] = React.useState("");
+  // Hover no badge: mostra o card com o comentário (igual ao monitor).
+  const [hover, setHover] = React.useState(false);
   const rootRef = React.useRef<HTMLDivElement>(null);
   const taRef = React.useRef<HTMLTextAreaElement>(null);
 
   React.useEffect(() => setChosen(current?.rating ?? null), [current?.rating]);
+  // Notifica o pai sobre o campo de edição aberto (some/volta as sugestões).
+  React.useEffect(() => {
+    onFieldOpenChange?.(fieldFor !== null);
+  }, [fieldFor, onFieldOpenChange]);
 
   // Click-away: fecha paleta e campo.
   React.useEffect(() => {
@@ -133,6 +143,17 @@ export function FeedbackControl({
     setFieldFor(null);
   }
 
+  // Abre o campo de comentário JÁ PREENCHIDO com o comentário atual, pra editar
+  // (a partir do card de hover). Só faz sentido para votos que aceitam comentário.
+  function startEdit() {
+    if (!chosen || !byRating(chosen).field) return;
+    setOpen(false);
+    setHover(false);
+    setText(current?.comment ?? "");
+    setFieldFor(chosen);
+    setTimeout(() => taRef.current?.focus(), 180);
+  }
+
   function autosize(el: HTMLTextAreaElement) {
     el.style.height = "30px";
     el.style.height = Math.min(el.scrollHeight, 128) + "px";
@@ -158,6 +179,8 @@ export function FeedbackControl({
           type="button"
           aria-label={`Avaliação: ${chosenOpt.label}. Clique para alterar.`}
           onClick={() => setOpen((v) => !v)}
+          onMouseEnter={() => setHover(true)}
+          onMouseLeave={() => setHover(false)}
           style={{ background: chosenOpt.color, borderColor: chosenOpt.color }}
           className="absolute -right-2 -bottom-2 flex h-6 w-6 cursor-pointer items-center justify-center rounded-md border text-white shadow-sm"
         >
@@ -224,15 +247,51 @@ export function FeedbackControl({
         )}
       </AnimatePresence>
 
-      {/* campo de comentário (sanfona) */}
+      {/* card de hover: mostra o comentário escrito (igual ao monitor). Some
+          enquanto a paleta ou o campo de edição estão abertos. */}
+      <AnimatePresence>
+        {chosenOpt && current?.comment && hover && !open && !fieldFor ? (
+          <motion.div
+            initial={reduce ? false : { opacity: 0, y: 6, scale: 0.98 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: 6, scale: 0.98 }}
+            transition={{ duration: 0.16, ease: [0.16, 1, 0.3, 1] }}
+            onMouseEnter={() => setHover(true)}
+            onMouseLeave={() => setHover(false)}
+            className="absolute inset-x-0 top-full z-20 mt-2 rounded-lg border border-border bg-popover p-2.5 shadow-xl"
+          >
+            <div
+              className="mb-1 flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-wide"
+              style={{ color: chosenOpt.color }}
+            >
+              <chosenOpt.Icon className="h-3 w-3" />
+              {chosenOpt.label}
+              <span className="text-muted-foreground/70">· comentário</span>
+              <button
+                type="button"
+                onClick={startEdit}
+                className="ml-auto rounded px-1.5 py-0.5 text-[10px] font-medium normal-case text-violet-600 hover:bg-violet-500/10 dark:text-violet-300"
+              >
+                Editar
+              </button>
+            </div>
+            <p className="text-xs leading-snug text-foreground [overflow-wrap:anywhere]">
+              {current.comment}
+            </p>
+          </motion.div>
+        ) : null}
+      </AnimatePresence>
+
+      {/* campo de comentário: popover absoluto abaixo da bolha (não empurra o
+          layout , antes ele jogava o badge pra baixo do botão enviar). */}
       <AnimatePresence>
         {fieldOpt && (
           <motion.div
-            initial={reduce ? false : { opacity: 0, height: 0 }}
-            animate={{ opacity: 1, height: "auto" }}
-            exit={{ opacity: 0, height: 0 }}
-            transition={{ duration: 0.24, ease: [0.16, 1, 0.3, 1] }}
-            className="mt-2 overflow-hidden border-t border-border pt-2"
+            initial={reduce ? false : { opacity: 0, y: 6, scale: 0.98 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: 6, scale: 0.98 }}
+            transition={{ duration: 0.2, ease: [0.16, 1, 0.3, 1] }}
+            className="absolute inset-x-0 top-full z-20 mt-2 rounded-lg border border-border bg-popover p-2.5 shadow-xl"
           >
             <div className="mb-1.5 flex items-start gap-1.5 text-[11px] leading-snug text-muted-foreground">
               <span

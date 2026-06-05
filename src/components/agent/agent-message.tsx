@@ -87,6 +87,8 @@ export interface AgentMessageProps {
   onSubmitFeedback?: (rating: FeedbackRating, comment?: string) => Promise<void> | void;
   /** Remove o voto vigente (volta a "sem voto"). */
   onRemoveFeedback?: () => Promise<void> | void;
+  /** Avisa quando o campo de comentário do voto abre/fecha (esconder sugestões). */
+  onFeedbackFieldOpenChange?: (open: boolean) => void;
   /**
    * B2 (monitoramento, read-only). Sugestões que o agente ofereceu nesta
    * resposta, exibidas DENTRO da bolha num bloco colapsável com chevron igual
@@ -131,6 +133,7 @@ export function AgentMessage({
   feedback,
   onSubmitFeedback,
   onRemoveFeedback,
+  onFeedbackFieldOpenChange,
   suggestions,
   clickedSuggestion,
   monitorPericia,
@@ -275,6 +278,7 @@ export function AgentMessage({
             current={feedback ?? null}
             onSubmit={(rating, comment) => onSubmitFeedback(rating, comment)}
             onRemove={onRemoveFeedback}
+            onFieldOpenChange={onFeedbackFieldOpenChange}
           />
         ) : null}
         {monitorVote ? (

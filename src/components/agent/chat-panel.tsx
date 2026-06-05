@@ -188,6 +188,9 @@ export function ChatPanel({
   // animacao conforme o usuario rola (Ontem -> Hoje -> data, etc.). Nao e um
   // separador preso na timeline; flutua e troca o rotulo.
   const [dateLabel, setDateLabel] = React.useState("");
+  // True enquanto o usuário edita o comentário do voto: esconde as sugestões
+  // (que ficam coladas) e devolve quando o campo fecha.
+  const [feedbackEditing, setFeedbackEditing] = React.useState(false);
   // Botao "voltar pro fim": estado proprio, dirigido SO pela distancia do fim
   // (independe do sticky). Aparece quando o usuario esta longe do final.
   const [showScrollFab, setShowScrollFab] = React.useState(false);
@@ -1200,6 +1203,7 @@ export function ChatPanel({
                           ? () => handleRemoveFeedback(m.id, m.dbMessageId!)
                           : undefined
                       }
+                      onFeedbackFieldOpenChange={setFeedbackEditing}
                       onToggleSteps={() => {
                         // Desliga o auto-snap durante o toggle: assim a
                         // expansao preserva o TOPO (abre pra baixo) em vez de
@@ -1228,6 +1232,7 @@ export function ChatPanel({
                     />
                     {isLastAssistant &&
                     !m.streaming &&
+                    !feedbackEditing &&
                     (!m.reveal || m.revealDone) ? (
                       // Chips so aparecem com a mensagem JA escrita por inteiro:
                       // mensagem ao vivo (reveal) espera o typewriter terminar
