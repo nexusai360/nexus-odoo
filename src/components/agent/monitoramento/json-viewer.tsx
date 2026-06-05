@@ -103,8 +103,8 @@ function JsonNode({
       </div>
       {open && (
         <>
-          {/* Linha-guia de indentação (tracejada, sutil). */}
-          <div className="ml-[7px] border-l border-dashed border-border/50 pl-3">
+          {/* Linha-guia de indentação (violeta tracejado, visível). */}
+          <div className="ml-[7px] border-l border-dashed border-violet-400/40 pl-3">
             {entries.map(([k, v], i) => (
               <JsonNode
                 key={k}
@@ -177,59 +177,144 @@ export function deepParse(value: unknown, depth = 0): unknown {
   return value;
 }
 
-// Realce de sintaxe de UMA linha do JSON pretty-printed.
-function highlightLine(line: string): React.ReactNode {
-  const re =
-    /("(?:\\.|[^"\\])*")(\s*:)?|(\btrue\b|\bfalse\b|\bnull\b)|(-?\d+\.?\d*(?:[eE][+-]?\d+)?)|([{}[\],])/g;
-  const out: React.ReactNode[] = [];
-  let last = 0;
-  let key = 0;
-  let m: RegExpExecArray | null;
-  while ((m = re.exec(line)) !== null) {
-    if (m.index > last) out.push(line.slice(last, m.index));
-    if (m[1] !== undefined) {
-      const isKey = m[2] !== undefined;
-      out.push(
-        <span key={key++} className={isKey ? "text-violet-300" : "text-emerald-400"}>
-          {m[1]}
-        </span>,
-      );
-      if (m[2]) out.push(<span key={key++} className="text-muted-foreground/60">{m[2]}</span>);
-    } else if (m[3] !== undefined) {
-      out.push(<span key={key++} className="text-sky-400">{m[3]}</span>);
-    } else if (m[4] !== undefined) {
-      out.push(<span key={key++} className="text-amber-300">{m[4]}</span>);
-    } else if (m[5] !== undefined) {
-      out.push(<span key={key++} className="text-muted-foreground/60">{m[5]}</span>);
-    }
-    last = re.lastIndex;
-  }
-  if (last < line.length) out.push(line.slice(last));
-  return out;
+function keySpan(name?: string) {
+  if (name === undefined) return null;
+  return (
+    <>
+      <span className="text-violet-300">&quot;{name}&quot;</span>
+      <Punct>: </Punct>
+    </>
+  );
 }
 
-/** Editor de código: JSON pretty-printed com numeração de linha + cores. */
-export function JsonCode({ data }: { data: unknown }) {
-  const lines = React.useMemo(
-    () => JSON.stringify(data, null, 2).split("\n"),
-    [data],
-  );
+type FoldRow = {
+  n: number;
+  depth: number;
+  path: string;
+  foldable: boolean;
+  collapsed: boolean;
+  content: React.ReactNode;
+};
+
+// Achata o JSON em linhas visiveis (respeitando os nos recolhidos), numerando
+// sequencialmente , como um editor com fold de codigo.
+function buildFoldRows(value: unknown, collapsed: Set<string>): FoldRow[] {
+  const rows: FoldRow[] = [];
+  let n = 0;
+  const walk = (
+    val: unknown,
+    name: string | undefined,
+    depth: number,
+    path: string,
+    comma: boolean,
+  ) => {
+    const isArr = Array.isArray(val);
+    const isObj = val !== null && typeof val === "object" && !isArr;
+    if (!isArr && !isObj) {
+      rows.push({
+        n: ++n, depth, path, foldable: false, collapsed: false,
+        content: (
+          <>
+            {keySpan(name)}
+            <Leaf value={val} />
+            {comma && <Punct>,</Punct>}
+          </>
+        ),
+      });
+      return;
+    }
+    const entries = isArr
+      ? (val as unknown[]).map((v, i) => [String(i), v] as const)
+      : Object.entries(val as Record<string, unknown>);
+    const openBr = isArr ? "[" : "{";
+    const closeBr = isArr ? "]" : "}";
+    const isCollapsed = collapsed.has(path);
+    rows.push({
+      n: ++n, depth, path, foldable: true, collapsed: isCollapsed,
+      content: isCollapsed ? (
+        <>
+          {keySpan(name)}
+          <Punct>{openBr}</Punct>
+          <span className="text-muted-foreground/50"> … {entries.length} … </span>
+          <Punct>{closeBr}</Punct>
+          {comma && <Punct>,</Punct>}
+        </>
+      ) : (
+        <>
+          {keySpan(name)}
+          <Punct>{openBr}</Punct>
+        </>
+      ),
+    });
+    if (!isCollapsed) {
+      entries.forEach(([k, v], i) =>
+        walk(v, isArr ? undefined : k, depth + 1, `${path}/${k}`, i < entries.length - 1),
+      );
+      rows.push({
+        n: ++n, depth, path: `${path}#close`, foldable: false, collapsed: false,
+        content: (
+          <>
+            <Punct>{closeBr}</Punct>
+            {comma && <Punct>,</Punct>}
+          </>
+        ),
+      });
+    }
+  };
+  walk(value, undefined, 0, "$", false);
+  return rows;
+}
+
+/** Editor de código: linhas numeradas + dobramento (fold) + guias de
+ *  indentação visíveis + cores. */
+export function JsonCodeFold({ data }: { data: unknown }) {
+  const [collapsed, setCollapsed] = React.useState<Set<string>>(new Set());
+  const rows = React.useMemo(() => buildFoldRows(data, collapsed), [data, collapsed]);
+  const toggle = (path: string) =>
+    setCollapsed((prev) => {
+      const next = new Set(prev);
+      if (next.has(path)) next.delete(path);
+      else next.add(path);
+      return next;
+    });
   return (
     <div className="font-mono text-[11px] leading-relaxed">
-      <table className="w-full border-collapse">
-        <tbody>
-          {lines.map((ln, i) => (
-            <tr key={i} className="hover:bg-muted/40">
-              <td className="w-[1%] select-none whitespace-nowrap border-r border-border/60 pr-2.5 pl-1 text-right align-top tabular-nums text-muted-foreground/40">
-                {i + 1}
-              </td>
-              <td className="whitespace-pre-wrap pl-3 [overflow-wrap:anywhere]">
-                {highlightLine(ln)}
-              </td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
+      {rows.map((r) => (
+        <div key={`${r.path}_${r.n}`} className="flex items-stretch hover:bg-muted/30">
+          <span className="w-9 shrink-0 select-none border-r border-border/60 pr-2 text-right tabular-nums text-muted-foreground/40">
+            {r.n}
+          </span>
+          <div className="flex min-w-0 flex-1 items-start pl-2">
+            {/* Guias de indentação (violeta tracejado, visíveis mas sutis). */}
+            {Array.from({ length: r.depth }).map((_, i) => (
+              <span
+                key={i}
+                aria-hidden
+                className="mr-[9px] w-3.5 shrink-0 self-stretch border-l border-dashed border-violet-400/40"
+              />
+            ))}
+            {r.foldable ? (
+              <button
+                type="button"
+                onClick={() => toggle(r.path)}
+                aria-label={r.collapsed ? "Expandir" : "Recolher"}
+                className="mt-px -ml-1 mr-0.5 inline-flex h-4 w-4 shrink-0 cursor-pointer items-center justify-center rounded text-muted-foreground/60 hover:text-foreground"
+              >
+                {r.collapsed ? (
+                  <ChevronRight className="h-3 w-3" />
+                ) : (
+                  <ChevronDown className="h-3 w-3" />
+                )}
+              </button>
+            ) : (
+              <span className="w-4 shrink-0" aria-hidden />
+            )}
+            <span className="[overflow-wrap:anywhere] whitespace-pre-wrap">
+              {r.content}
+            </span>
+          </div>
+        </div>
+      ))}
     </div>
   );
 }
@@ -376,10 +461,9 @@ export function JsonBlock({
                 </button>
               </div>
             </div>
-            {/* Editor colapsável (mesma árvore do inline): linhas-guia + cores +
-                clique no colchete/chave pra abrir/fechar. Abre mais níveis. */}
-            <div className="min-h-0 flex-1 overflow-auto px-3 py-2.5">
-              <JsonViewer data={parsed} defaultOpenDepth={4} />
+            {/* Editor de código: linhas numeradas + fold + guias visíveis. */}
+            <div className="min-h-0 flex-1 overflow-auto py-1">
+              <JsonCodeFold data={parsed} />
             </div>
           </div>
         </div>
