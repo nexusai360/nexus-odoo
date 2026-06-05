@@ -7,17 +7,26 @@
  * manual com adjustEvaluation (super_admin).
  */
 
-import { useCallback, useEffect, useState, type ElementType, type ReactNode } from "react";
+import {
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+  type ElementType,
+  type ReactNode,
+} from "react";
 import {
   AlertTriangle,
   Bot,
   CheckCircle2,
-  Clipboard,
+  ChevronDown,
+  ChevronRight,
   Clock,
   Gauge,
+  History,
   Loader2,
+  Pencil,
   Save,
-  ShieldCheck,
   Sparkles,
   User as UserIcon,
   Wrench,
@@ -34,6 +43,7 @@ import { cn } from "@/lib/utils";
 import type { EvalStatus } from "@/lib/agent/quality/queries";
 import { RATING_META, type UserFeedbackRating } from "@/components/agent/rating-meta";
 import { MarkdownSnapshot } from "./markdown-snapshot";
+import { JsonBlock } from "./json-viewer";
 
 /** Bloco padrão do drill-down: header (ícone + título uppercase + ação opcional)
  *  + conteúdo. Unifica TODAS as seções para um ritmo/hierarquia consistente. */
@@ -91,7 +101,7 @@ function UserAvaliacaoSection({
         style={{ borderColor: `${meta.color}40`, background: `${meta.color}14` }}
       >
         <Icon className="mt-px h-3.5 w-3.5 shrink-0" style={{ color: meta.color }} />
-        <p className="text-[13px] [overflow-wrap:anywhere]">
+        <p className="min-w-0 flex-1 text-[13px] [overflow-wrap:anywhere]">
           <span className="font-semibold" style={{ color: meta.color }}>
             {meta.label}:
           </span>{" "}
@@ -137,21 +147,32 @@ const dateTimeFmt = new Intl.DateTimeFormat("pt-BR", {
   minute: "2-digit",
   second: "2-digit",
 });
-// Sufixo padrao de fuso: a plataforma opera no horario de Brasilia (UTC-3).
-const TZ_LABEL = "(Brasil, UTC-3)";
 // Horario da plataforma = Brasilia (UTC-3). O formatter ja resolve o fuso via
 // timeZone; aqui so removemos a virgula entre data e hora.
 function fmtBRT(d: Date): string {
   return dateTimeFmt.format(d).replace(",", "");
 }
-// Reescreve o marcador "[AJUSTE HUMANO <iso-utc>]" das razoes para o horario
-// de Brasilia com segundos e rotulo de fuso (o ISO e' gravado em UTC no banco).
-function humanizeRazoes(razoes: string): string {
-  return razoes.replace(/\[AJUSTE HUMANO ([^\]]+)\]/g, (full, iso: string) => {
-    const d = new Date(iso);
-    if (Number.isNaN(d.getTime())) return full;
-    return `[AJUSTE HUMANO ${fmtBRT(d)} ${TZ_LABEL}]`;
-  });
+// Separa as razoes do JUIZ dos AJUSTES HUMANOS embutidos. O adjustEvaluation
+// faz append "\n[AJUSTE HUMANO <iso-utc>] <reason>" a cada ajuste (cronologico).
+// Aqui o diagnostico mostra so a parte do juiz; os ajustes viram historico
+// (mais recente primeiro).
+function parseRazoes(razoes: string): {
+  judge: string;
+  adjustments: { at: Date; reason: string }[];
+} {
+  const firstIdx = razoes.search(/\[AJUSTE HUMANO /);
+  const judge = (firstIdx === -1 ? razoes : razoes.slice(0, firstIdx)).trim();
+  const adjustments: { at: Date; reason: string }[] = [];
+  if (firstIdx !== -1) {
+    const rest = razoes.slice(firstIdx);
+    const re = /\[AJUSTE HUMANO ([^\]]+)\]\s*([\s\S]*?)(?=\n*\[AJUSTE HUMANO |\s*$)/g;
+    let m: RegExpExecArray | null;
+    while ((m = re.exec(rest)) !== null) {
+      adjustments.push({ at: new Date(m[1].trim()), reason: m[2].trim() });
+    }
+  }
+  adjustments.reverse(); // mais recente primeiro
+  return { judge, adjustments };
 }
 
 type Detail = NonNullable<
@@ -167,6 +188,10 @@ export function EvaluationDrilldown({ evaluationId, onAdjusted }: Props) {
   const [detail, setDetail] = useState<Detail | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  // Limites (largura/posição) do drill-down para o modal de expandir JSON.
+  const rootRef = useRef<HTMLDivElement>(null);
+  // Histórico de ajustes (colapsável).
+  const [showHistory, setShowHistory] = useState(false);
 
   // Ajuste manual
   const [adjustStatus, setAdjustStatus] = useState<EvalStatus>("CORRETO");
@@ -204,13 +229,6 @@ export function EvaluationDrilldown({ evaluationId, onAdjusted }: Props) {
   useEffect(() => {
     void load();
   }, [load]);
-
-  const handleCopyJson = (label: string, payload: unknown) => {
-    void navigator.clipboard
-      .writeText(JSON.stringify(payload, null, 2))
-      .then(() => toast.success(`${label} copiado para a área de transferência.`))
-      .catch(() => toast.error("Não foi possível copiar."));
-  };
 
   const handleSave = async () => {
     if (!detail) return;
@@ -260,32 +278,35 @@ export function EvaluationDrilldown({ evaluationId, onAdjusted }: Props) {
   const human = e.humanStatus as EvalStatus | null;
   const effStatus = human ?? e.status;
   const ajusteMudou = human != null && human !== e.status;
-  const temDiagnostico = Boolean(e.razoes) || e.patterns.length > 0;
+  const { judge: judgeRazoes, adjustments } = parseRazoes(e.razoes ?? "");
+  const temDiagnostico = Boolean(judgeRazoes) || e.patterns.length > 0;
   const temAjuste = !isFalha && e.status !== "PENDENTE";
   // Coluna de análise só existe quando há o que mostrar nela.
   const temAnalise =
     Boolean(detail.userFeedback) || temDiagnostico || temAjuste;
 
   return (
-    <div className="border-l-2 border-violet-500/40 bg-muted/20 px-5 py-4">
+    <div
+      ref={rootRef}
+      className="border-l-2 border-violet-500/40 bg-muted/20 px-5 py-4"
+    >
       {/* ───────────── META BAR: veredito + metadados, num relance ───────────── */}
       <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2 border-b border-border/60 pb-3">
-        <div className="flex flex-wrap items-center gap-x-2 gap-y-1.5">
-          <span className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground/70">
-            Perícia
-          </span>
+        <div className="flex flex-wrap items-center gap-x-2 gap-y-1.5 text-foreground">
           <Badge variant="outline" className={cn("border", STATUS_TONE[effStatus])}>
             {STATUS_LABEL[effStatus]}
           </Badge>
           {ajusteMudou && (
             <span
-              className="inline-flex items-center gap-1 text-xs text-muted-foreground"
-              title="Ajuste humano sobrescreveu o veredito automático"
+              className="inline-flex items-center gap-1 text-xs text-foreground"
+              title="O veredito recebeu um ajuste humano"
             >
-              <ShieldCheck className="h-3.5 w-3.5 text-emerald-500" />
-              <span className="line-through">{STATUS_LABEL[e.status]}</span>
+              <Pencil className="h-3 w-3 text-violet-400" />
+              <span className="text-muted-foreground line-through">
+                {STATUS_LABEL[e.status]}
+              </span>
               <span aria-hidden>→</span>
-              <span className="font-medium text-foreground">{STATUS_LABEL[effStatus]}</span>
+              <span className="font-medium">{STATUS_LABEL[effStatus]}</span>
             </span>
           )}
           <span aria-hidden className="h-3.5 w-px bg-border/70" />
@@ -294,12 +315,9 @@ export function EvaluationDrilldown({ evaluationId, onAdjusted }: Props) {
               {e.model}
             </Badge>
           )}
-          <span className="text-xs text-muted-foreground">
-            {fmtBRT(e.createdAt)} {TZ_LABEL}
-          </span>
           {detail.durationMs != null ? (
             <span
-              className="inline-flex items-center gap-1 text-xs tabular-nums text-muted-foreground"
+              className="inline-flex items-center gap-1 text-xs tabular-nums text-foreground"
               title="Tempo de geração da resposta"
             >
               <Clock className="h-3.5 w-3.5" />
@@ -357,69 +375,30 @@ export function EvaluationDrilldown({ evaluationId, onAdjusted }: Props) {
 
           {!isFalha && e.suggestions.length > 0 && (
             <Section icon={Sparkles} title="Sugestões oferecidas">
-              <div className="flex flex-wrap gap-1.5">
+              {/* Uma embaixo da outra, na MESMA ordem oferecida ao usuário. */}
+              <ol className="flex flex-col items-start gap-1.5">
                 {e.suggestions.map((s, i) => (
-                  <span
+                  <li
                     key={`${i}-${s}`}
-                    className="inline-flex items-center rounded-full border border-violet-500/30 bg-violet-500/10 px-3 py-1 text-xs text-violet-700 dark:text-violet-300"
+                    className="inline-flex max-w-full items-center rounded-full border border-violet-500/30 bg-violet-500/10 px-3 py-1 text-xs text-violet-700 [overflow-wrap:anywhere] dark:text-violet-300"
                   >
                     {s}
-                  </span>
+                  </li>
                 ))}
-              </div>
+              </ol>
             </Section>
           )}
 
           {!isFalha && (detail.toolCalls != null || detail.toolResults != null) && (
-            <Section
-              icon={Wrench}
-              title="Tool calls & results"
-              action={
-                <div className="flex gap-1.5">
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="sm"
-                    className="h-7 gap-1.5 text-xs"
-                    onClick={() => handleCopyJson("Tool calls", detail.toolCalls ?? {})}
-                  >
-                    <Clipboard className="h-3.5 w-3.5" /> Calls
-                  </Button>
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="sm"
-                    className="h-7 gap-1.5 text-xs"
-                    onClick={() => handleCopyJson("Tool results", detail.toolResults ?? {})}
-                  >
-                    <Clipboard className="h-3.5 w-3.5" /> Results
-                  </Button>
-                </div>
-              }
-            >
-              <details className="group rounded-lg border border-border bg-background">
-                <summary className="cursor-pointer select-none px-3 py-2 text-xs text-muted-foreground hover:bg-muted/50 focus:outline-none focus-visible:ring-2 focus-visible:ring-violet-500">
-                  Expandir JSON
-                </summary>
-                <div className="grid grid-cols-1 gap-3 border-t border-border px-3 py-3 lg:grid-cols-2">
-                  <div>
-                    <div className="mb-1 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
-                      Tool calls
-                    </div>
-                    <pre className="max-h-72 overflow-auto rounded bg-muted px-2 py-1.5 font-mono text-[11px]">
-                      {JSON.stringify(detail.toolCalls ?? null, null, 2)}
-                    </pre>
-                  </div>
-                  <div>
-                    <div className="mb-1 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
-                      Tool results
-                    </div>
-                    <pre className="max-h-72 overflow-auto rounded bg-muted px-2 py-1.5 font-mono text-[11px]">
-                      {JSON.stringify(detail.toolResults ?? null, null, 2)}
-                    </pre>
-                  </div>
-                </div>
-              </details>
+            <Section icon={Wrench} title="Tool calls & results">
+              <div className="space-y-3">
+                {detail.toolCalls != null && (
+                  <JsonBlock label="Tool calls" data={detail.toolCalls} boundsRef={rootRef} />
+                )}
+                {detail.toolResults != null && (
+                  <JsonBlock label="Tool results" data={detail.toolResults} boundsRef={rootRef} />
+                )}
+              </div>
             </Section>
           )}
         </div>
@@ -445,9 +424,9 @@ export function EvaluationDrilldown({ evaluationId, onAdjusted }: Props) {
                     ))}
                   </div>
                 )}
-                {e.razoes && (
-                  <div className="mt-1.5 whitespace-pre-wrap rounded-lg border border-border bg-background px-3 py-2 text-[13px] leading-relaxed">
-                    {humanizeRazoes(e.razoes)}
+                {judgeRazoes && (
+                  <div className="mt-1.5 whitespace-pre-wrap rounded-lg border border-border bg-background px-3 py-2 text-[13px] leading-relaxed [overflow-wrap:anywhere]">
+                    {judgeRazoes}
                   </div>
                 )}
               </Section>
@@ -500,10 +479,48 @@ export function EvaluationDrilldown({ evaluationId, onAdjusted }: Props) {
                   </Button>
                   {e.humanReviewedAt && (
                     <p className="text-[11px] text-muted-foreground">
-                      Último ajuste em {fmtBRT(e.humanReviewedAt)} {TZ_LABEL}.
+                      Último ajuste em {fmtBRT(e.humanReviewedAt)}.
                     </p>
                   )}
                 </div>
+
+                {/* Histórico de ajustes (colapsável), mais recente no topo. */}
+                {adjustments.length > 0 && (
+                  <div className="mt-2 overflow-hidden rounded-lg border border-border bg-background">
+                    <button
+                      type="button"
+                      onClick={() => setShowHistory((v) => !v)}
+                      aria-expanded={showHistory}
+                      className="flex w-full items-center gap-1.5 px-3 py-2 text-left text-xs font-medium text-muted-foreground transition-colors hover:text-foreground"
+                    >
+                      {showHistory ? (
+                        <ChevronDown className="h-3.5 w-3.5" />
+                      ) : (
+                        <ChevronRight className="h-3.5 w-3.5" />
+                      )}
+                      <History className="h-3.5 w-3.5" />
+                      Histórico de ajustes · {adjustments.length}
+                    </button>
+                    {showHistory && (
+                      <ul className="divide-y divide-border border-t border-border">
+                        {adjustments.map((a, i) => (
+                          <li key={i} className="flex gap-2 px-3 py-2 text-xs">
+                            <span className="shrink-0 whitespace-nowrap font-mono text-[11px] tabular-nums text-muted-foreground">
+                              {Number.isNaN(a.at.getTime()) ? "" : fmtBRT(a.at)}
+                            </span>
+                            <span className="[overflow-wrap:anywhere] text-foreground">
+                              {a.reason || (
+                                <span className="italic text-muted-foreground">
+                                  (sem justificativa)
+                                </span>
+                              )}
+                            </span>
+                          </li>
+                        ))}
+                      </ul>
+                    )}
+                  </div>
+                )}
               </Section>
             )}
           </div>
