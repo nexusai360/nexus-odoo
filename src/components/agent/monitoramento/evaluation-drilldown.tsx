@@ -59,7 +59,7 @@ function UserAvaliacaoSection({
         style={{ borderColor: `${meta.color}40`, background: `${meta.color}14` }}
       >
         <Icon className="mt-px h-3.5 w-3.5 shrink-0" style={{ color: meta.color }} />
-        <p className="text-xs [overflow-wrap:anywhere]">
+        <p className="text-[13px] [overflow-wrap:anywhere]">
           <span className="font-semibold" style={{ color: meta.color }}>
             {meta.label}:
           </span>{" "}
