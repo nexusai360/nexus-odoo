@@ -37,7 +37,7 @@ describe("chunk", () => {
 
 describe("mapNotaFiscalItemRow", () => {
   const notaInfoMap = new Map([
-    [42, { dataEmissao: new Date("2024-01-15T00:00:00"), entradaSaida: "1" }],
+    [42, { dataEmissao: new Date("2024-01-15T00:00:00Z"), entradaSaida: "1" }],
   ]);
 
   const baseRaw: Record<string, unknown> = {
@@ -77,7 +77,7 @@ describe("mapNotaFiscalItemRow", () => {
 
   it("desnormaliza dataEmissao e entradaSaida da nota-mãe via notaInfoMap", () => {
     const row = mapNotaFiscalItemRow(baseRaw, notaInfoMap);
-    expect(row.dataEmissao).toEqual(new Date("2024-01-15T00:00:00"));
+    expect(row.dataEmissao).toEqual(new Date("2024-01-15T00:00:00Z"));
     expect(row.entradaSaida).toBe("1");
   });
 

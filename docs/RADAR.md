@@ -5,6 +5,27 @@
 
 ---
 
+## R-ajustes — Histórico de ajustes só mostra transição no mais recente (opcional)
+
+**Aberto em:** 2026-06-05 (B2/Backtest, redesign do drill-down).
+
+**Contexto:** o drill-down do Backtest tem um **Histórico de ajustes** (seção
+"Ajuste manual"). Hoje o banco guarda, por ajuste, apenas **data + justificativa**
+(append `[AJUSTE HUMANO <iso>] <reason>` em `razoes`) e o **status humano atual**
+(`humanStatus`). Não há registro do **status ANTES** de cada ajuste. Por isso a
+linha mostra a transição "antigo → novo" (tag cinza riscada → tag colorida) só no
+ajuste **mais recente** (derivada de `status` do juiz → `humanStatus` efetivo); os
+ajustes anteriores mostram só data + justificativa.
+
+**Pedido:** para ter a transição em **todos** os ajustes do histórico, passar a
+gravar o status-antes em cada ajuste. Mudança **pequena**: em `adjustEvaluation`
+(`src/lib/actions/agent-quality.ts`) gravar o `previousStatus` por ajuste (coluna
+nova ou um JSON `adjustment_history[]` em `conversation_quality_evaluations`), e o
+drill-down (`evaluation-drilldown.tsx`, `parseRazoes`/Histórico) renderiza a
+transição por linha. **Opcional / cosmético.**
+
+---
+
 ## R-tempo — KPI de tempo médio das respostas no Backtest (a discutir)
 
 **Aberto em:** 2026-06-04 (feedback do usuário no B2).

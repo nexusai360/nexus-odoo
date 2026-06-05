@@ -40,8 +40,8 @@ describe("queryPedidosPeriodo", () => {
     expect(result.valorTotal).toBeCloseTo(200);
 
     const call = (mockPrisma.fatoPedido.findMany as jest.Mock).mock.calls[0][0];
-    expect(call.where?.dataOrcamento?.gte).toEqual(new Date("2024-01-01T00:00:00"));
-    expect(call.where?.dataOrcamento?.lte).toEqual(new Date("2024-01-31T00:00:00"));
+    expect(call.where?.dataOrcamento?.gte).toEqual(new Date("2024-01-01T00:00:00Z"));
+    expect(call.where?.dataOrcamento?.lte).toEqual(new Date("2024-01-31T00:00:00Z"));
   });
 
   it("retorna zerado quando sem pedidos", async () => {
@@ -125,7 +125,7 @@ describe("queryPedidosPorVendedor", () => {
     });
 
     const call = (mockPrisma.fatoPedido.findMany as jest.Mock).mock.calls[0][0];
-    expect(call.where?.dataOrcamento?.gte).toEqual(new Date("2024-01-01T00:00:00"));
+    expect(call.where?.dataOrcamento?.gte).toEqual(new Date("2024-01-01T00:00:00Z"));
   });
 });
 

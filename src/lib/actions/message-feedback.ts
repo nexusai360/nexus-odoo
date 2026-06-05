@@ -122,8 +122,68 @@ export async function submitMessageFeedback(input: unknown): Promise<Result> {
     return fb;
   });
 
+  // REAVALIAÇÃO (D4/D5): se a perícia do Claude já cravou um veredito terminal
+  // e o usuário votou/comentou DEPOIS, marca o eval como REAVALIAR pra ser
+  // re-periciado no próximo ciclo , mas SÓ quando o voto diverge OU traz
+  // comentário, e nunca quando há ajuste humano (humanStatus vence). Best-effort:
+  // qualquer erro aqui não pode derrubar o voto.
+  try {
+    await maybeMarkForReavaliacao(assistantMessageId, rating, comment);
+  } catch (err) {
+    console.warn("[message-feedback] falha ao marcar reavaliação:", err);
+  }
+
   return {
     success: true,
     data: { rating: data.rating, comment: data.comment, updatedAt: data.updatedAt },
   };
+}
+
+// Mapeia voto do usuário e status do juiz em 3 baldes pra detectar divergência.
+function bucketOf(s: string): "BOM" | "PARCIAL" | "RUIM" | "OUTRO" {
+  switch (s) {
+    case "CORRETO":
+      return "BOM";
+    case "PARCIAL":
+      return "PARCIAL";
+    case "ERRADO":
+    case "ALUCINOU":
+    case "FALHA_TECNICA":
+      return "RUIM";
+    default:
+      return "OUTRO"; // FORA_DO_ESCOPO etc.
+  }
+}
+
+const TERMINAL_STATUSES = new Set([
+  "CORRETO",
+  "PARCIAL",
+  "ERRADO",
+  "FORA_DO_ESCOPO",
+  "FALHA_TECNICA",
+]);
+
+async function maybeMarkForReavaliacao(
+  assistantMessageId: string,
+  rating: string,
+  comment: string | null,
+): Promise<void> {
+  const ev = await prisma.conversationQualityEvaluation.findFirst({
+    where: { assistantMessageId },
+    select: { id: true, status: true, humanStatus: true },
+  });
+  if (!ev) return;
+  // Só re-pericia veredito JÁ terminal (PENDENTE/REAVALIAR já estão na fila).
+  if (!TERMINAL_STATUSES.has(ev.status)) return;
+  // Ajuste humano vence: super_admin já decidiu, perícia não mexe.
+  if (ev.humanStatus) return;
+
+  const diverge = bucketOf(rating) !== bucketOf(ev.status);
+  const hasComment = !!comment && comment.length > 0;
+  if (!diverge && !hasComment) return; // voto concordante sem comentário: ignora
+
+  await prisma.conversationQualityEvaluation.update({
+    where: { id: ev.id },
+    data: { status: "REAVALIAR" },
+  });
 }

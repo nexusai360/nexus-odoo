@@ -17,7 +17,9 @@
 
 import { prisma } from "@/lib/prisma";
 
-const JUDGE_VERSION = "v2-claude-code";
+// Pipeline da perícia agêntica do Claude (Opus). A row nasce PENDENTE com esta
+// versão; o juízo (pendentes-io --apply) mantém a mesma versão ao cravar.
+const JUDGE_VERSION = "claude-pericia-v1";
 const SNAPSHOT_CAP = 4000;
 const ERROR_CAP = 1000;
 

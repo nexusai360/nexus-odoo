@@ -94,6 +94,7 @@ describe("filtro de canal exclui replay/backtest (raiz do dado poluído)", () =>
 
   test("listBubbleSessions só lista channel in_app do usuário", async () => {
     (prisma.conversation.findMany as jest.Mock).mockResolvedValue([]);
+    (prisma.message.findMany as jest.Mock).mockResolvedValue([]);
     (prisma.messageFeedback.groupBy as jest.Mock).mockResolvedValue([]);
     (prisma.conversationQualityEvaluation.findMany as jest.Mock).mockResolvedValue([]);
 
@@ -161,9 +162,18 @@ describe("listBubbleCollaborators", () => {
 describe("listBubbleSessions", () => {
   test("index cronológico, isActive, ratingCounts e acurácia", async () => {
     (prisma.conversation.findMany as jest.Mock).mockResolvedValue([
-      { id: "c3", createdAt: new Date("2026-06-03"), endedAt: null, _count: { messages: 5 } },
-      { id: "c2", createdAt: new Date("2026-06-02"), endedAt: new Date("2026-06-02"), _count: { messages: 8 } },
-      { id: "c1", createdAt: new Date("2026-06-01"), endedAt: new Date("2026-06-01"), _count: { messages: 2 } },
+      { id: "c3", createdAt: new Date("2026-06-03"), endedAt: null },
+      { id: "c2", createdAt: new Date("2026-06-02"), endedAt: new Date("2026-06-02") },
+      { id: "c1", createdAt: new Date("2026-06-01"), endedAt: new Date("2026-06-01") },
+    ]);
+    // messageCount agora = mensagens VISÍVEIS (exclui role tool e content vazio).
+    // c3: 2 visíveis; c2: 1 visível (1 tool e 1 vazia excluídas); c1: 0.
+    (prisma.message.findMany as jest.Mock).mockResolvedValue([
+      { conversationId: "c3", role: "user", content: "oi", kind: "text" },
+      { conversationId: "c3", role: "assistant", content: "resposta", kind: "text" },
+      { conversationId: "c2", role: "assistant", content: "x", kind: "text" },
+      { conversationId: "c2", role: "tool", content: "ignorada", kind: "text" },
+      { conversationId: "c2", role: "assistant", content: "   ", kind: "text" },
     ]);
     (prisma.messageFeedback.groupBy as jest.Mock).mockResolvedValue([
       { conversationId: "c2", rating: "CORRETO", _count: { _all: 1 } },
@@ -184,13 +194,14 @@ describe("listBubbleSessions", () => {
     expect(c3.isActive).toBe(true);
     expect(c3.endedAt).toBeNull();
     expect(c3.startedAt).toBe(new Date("2026-06-03").toISOString());
-    expect(c3.messageCount).toBe(5);
+    expect(c3.messageCount).toBe(2);
     expect(c3.avaliacaoPct).toBeNull();
     expect(c3.periciaPct).toBeNull();
 
     const c2 = res[1];
     expect(c2.isActive).toBe(false);
     expect(c2.endedAt).toBe(new Date("2026-06-02").toISOString());
+    expect(c2.messageCount).toBe(1); // 1 visível (tool e vazia excluídas)
     // AVALIAÇÃO: 1 certo + 1 parcial => 1/2 = 50%
     expect(c2.avaliacaoCounts).toEqual({ CORRETO: 1, PARCIAL: 1, ERRADO: 0, ALUCINOU: 0 });
     expect(c2.avaliacaoPct).toBe(50);

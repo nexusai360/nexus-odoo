@@ -38,7 +38,7 @@ describe("mapPedidoParcelaRow", () => {
 
   it("parseia dataVencimento com T00:00:00", () => {
     const result = mapPedidoParcelaRow(rawBase);
-    expect(result.dataVencimento).toEqual(new Date("2024-03-01T00:00:00"));
+    expect(result.dataVencimento).toEqual(new Date("2024-03-01T00:00:00Z"));
   });
 
   it("dataVencimento null quando não é string", () => {

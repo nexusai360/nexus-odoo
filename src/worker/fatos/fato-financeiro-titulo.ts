@@ -54,10 +54,10 @@ export function mapTituloRow(raw: Record<string, unknown>): FatoFinanceiroTitulo
     // campo real é "numero"
     numeroDocumento: typeof raw.numero === "string" ? raw.numero : null,
     // I2: sufixo T00:00:00 força parsing como hora local, evitando desvio UTC→GMT-3.
-    dataDocumento: typeof raw.data_documento === "string" ? new Date(`${raw.data_documento}T00:00:00`) : null,
-    dataVencimento: typeof raw.data_vencimento === "string" ? new Date(`${raw.data_vencimento}T00:00:00`) : null,
+    dataDocumento: typeof raw.data_documento === "string" ? new Date(`${raw.data_documento}T00:00:00Z`) : null,
+    dataVencimento: typeof raw.data_vencimento === "string" ? new Date(`${raw.data_vencimento}T00:00:00Z`) : null,
     // data_pagamento vem false (não string) quando não pago , mapeado para null
-    dataPagamento: typeof raw.data_pagamento === "string" ? new Date(`${raw.data_pagamento}T00:00:00`) : null,
+    dataPagamento: typeof raw.data_pagamento === "string" ? new Date(`${raw.data_pagamento}T00:00:00Z`) : null,
     situacao: typeof raw.situacao === "string" ? raw.situacao : null,
     situacaoSimples: typeof raw.situacao_divida_simples === "string" ? raw.situacao_divida_simples : null,
     vrDocumento: Number(raw.vr_documento ?? 0),

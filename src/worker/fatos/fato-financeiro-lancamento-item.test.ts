@@ -15,7 +15,7 @@ const itemRaw: Record<string, unknown> = {
 
 describe("mapLancamentoItemRow", () => {
   it("mapeia campos e herda tipo/data do lancamento pai", () => {
-    const r = mapLancamentoItemRow(itemRaw, { tipo: "a_pagar", dataDocumento: new Date("2026-05-10T00:00:00") });
+    const r = mapLancamentoItemRow(itemRaw, { tipo: "a_pagar", dataDocumento: new Date("2026-05-10T00:00:00Z") });
     expect(r.odooId).toBe(500);
     expect(r.lancamentoId).toBe(10);
     expect(r.tipo).toBe("a_pagar");
@@ -24,7 +24,7 @@ describe("mapLancamentoItemRow", () => {
     expect(r.centroResultadoId).toBe(2);
     expect(r.descricao).toBe("Aluguel maio");
     expect(r.vrTotal).toBe(1000);
-    expect(r.dataDocumento).toEqual(new Date("2026-05-10T00:00:00"));
+    expect(r.dataDocumento).toEqual(new Date("2026-05-10T00:00:00Z"));
   });
   it("sem pai conhecido: tipo vazio e data null", () => {
     const r = mapLancamentoItemRow(itemRaw, undefined);

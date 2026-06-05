@@ -18,6 +18,9 @@ export type EvalStatus =
   | "ERRADO"
   | "FORA_DO_ESCOPO"
   | "PENDENTE"
+  // Não-terminal, igual PENDENTE: o usuário votou/comentou após o veredito e o
+  // item precisa ser RE-periciado pelo Claude no próximo ciclo (D4/D5 da spec).
+  | "REAVALIAR"
   | "FALHA_TECNICA";
 
 export interface RawEvalCounts {
@@ -26,6 +29,7 @@ export interface RawEvalCounts {
   ERRADO: number;
   FORA_DO_ESCOPO: number;
   PENDENTE: number;
+  REAVALIAR: number;
   FALHA_TECNICA: number;
 }
 
@@ -118,6 +122,7 @@ export async function getRawCounts(
     ERRADO: 0,
     FORA_DO_ESCOPO: 0,
     PENDENTE: 0,
+    REAVALIAR: 0,
     FALHA_TECNICA: 0,
   };
   for (const row of rows) {

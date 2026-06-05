@@ -1,10 +1,47 @@
 # STATUS — nexus-odoo
 
-> **Ponto de retomada entre sessões.** Atualizado em **2026-06-03** (Otimização de custo + reconciliação de banco).
+> **Ponto de retomada entre sessões.** Atualizado em **2026-06-05** (UX bubble + monitor ao vivo + perícia Claude + fix de timezone).
 > Ao abrir: ler **este arquivo**, o **`CLAUDE.md`** e **`.agente-handoff.md`**.
 > Modo autônomo é o padrão (`CLAUDE.md §6`).
 
-## 2026-06-05 , PONTO DE RETOMADA (branch `feat/agente-nex-bubble-ux`)
+## 2026-06-05 (leva 2) , PONTO DE RETOMADA (branch `feat/agente-nex-bubble-ux`)
+
+Sessão longa de UX da bubble + monitoramento ao vivo + **reforma do sistema de
+perícia** + **fix de timezone nas queries**. Tudo commitado, **tsc 0 / 2386
+testes verdes / eslint 0**. Branch **10 commits à frente, 0 atrás** de
+`origin/main`.
+
+### Entregue nesta leva
+- **UX da bubble/monitor:** alinhamento do header da coluna Conversa; espaçamento
+  do topo (+5px geral, +5px extra só na 1ª mensagem) na bubble e no monitor;
+  botão **copiar** só aparece após a resposta escrita + sugestões (não no
+  "Pensando"); contagem de mensagens fiel (exclui tool/vazias).
+- **Sugestões fiéis:** a bubble persiste o **conjunto EXATO exibido** (contextual
+  + welcome + fallback) via `POST /api/agent/suggestions-shown`, keyado pelo
+  `messageId`; o monitor lê verbatim (módulo `suggestion-fallback.ts`).
+- **Monitor ao vivo (polling ~2.5s):** as 3 colunas (Colaboradores/Sessões/
+  Conversa) atualizam sozinhas com detecção de mudança (sem flicker, sem perder
+  seleção, pausa em aba oculta). Não há infra de SSE/pub-sub , polling reusa as
+  actions testadas.
+- **Fix `[[suggestions]]` vazado:** re-strip após o retry do autoValidator
+  (`run-agent.ts`) , o residual ia pro banco/bubble.
+- **PERÍCIA AGÊNTICA (reforma grande):** heurística **arrancada** (engine, CLI,
+  job do worker, UI reproposta p/ "Perícia (Claude)"). Juiz único = **Claude Code
+  Opus** local headless, agêntico (refaz a consulta via MCP/`rerun-toolcall.ts`,
+  confere no banco, compara). Status novo **REAVALIAR** ("Reavaliação"); voto/
+  comentário do usuário após veredito terminal → REAVALIAR (respeita
+  `humanStatus`); re-perícia registra **"ajuste pela perícia"** no drill-down.
+  Agendador dispara **~3min após boot** (antes só 240min, nunca chegava).
+  `judgeVersion=claude-pericia-v1`. Specs/plan/reviews em
+  `docs/superpowers/{specs,plans}/2026-06-05-pericia-*`.
+- **Fix de TIMEZONE (causa raiz real do "número errado"):** boundaries de período
+  e datas dos fatos passaram a **UTC-explícito (`...T00:00:00Z`)**. Antes, sem
+  `Z`, o filtro era parseado no fuso do runtime e, fora de UTC, **excluía o dia
+  inicial** (ex.: junho voltava 95 em vez de 281 notas). Prod (container UTC)
+  sempre esteve correto; o bug aparecia ao rodar query fora de UTC. Não houve
+  perda de dado , agente e dado estavam certos.
+
+## 2026-06-05 (leva 1) , PONTO DE RETOMADA (branch `feat/agente-nex-bubble-ux`)
 
 Continuação direta do B1-B9 (abaixo). Esta leva fechou **B2/B3 + redesign completo
 do drill-down do Backtest + polimento da aba Bubble**. Tudo commitado, **tsc 0 /

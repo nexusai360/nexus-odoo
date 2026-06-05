@@ -34,6 +34,7 @@ import { exportConversationReport } from "@/lib/actions/agent-conversation-expor
 import { archiveActiveConversation } from "@/lib/actions/active-conversation";
 import { submitMessageFeedback } from "@/lib/actions/message-feedback";
 import { WELCOME_SUGGESTIONS } from "@/lib/agent/welcome-suggestions";
+import { padSuggestions } from "@/lib/agent/suggestion-fallback";
 
 interface ChatPanelProps {
   open: boolean;
@@ -671,6 +672,13 @@ export function ChatPanel({
                 justCreatedConvIdsRef.current.add(evt.conversationId);
                 onConversationCreated?.(evt.conversationId);
               }
+              // Conjunto base de chips (inline do done OU welcome). Elevado pra
+              // fora do updater porque também alimenta a persistência do que foi
+              // REALMENTE exibido (POST /api/agent/suggestions-shown), abaixo.
+              const safeSuggestions =
+                Array.isArray(evt.suggestions) && evt.suggestions.length > 0
+                  ? evt.suggestions
+                  : welcomeSuggestionsForUi;
               setMessages((prev) => {
                 // Onda C v2: a bolha do assistant ja tem steps (criada no
                 // primeiro tool_call). Aqui so finaliza: content/suggestions
@@ -681,10 +689,6 @@ export function ChatPanel({
                 // de role + personalizado). Garante que toda resposta tem chips.
                 const dropped = dropLoading(prev);
                 const doneAt = Date.now();
-                const safeSuggestions =
-                  Array.isArray(evt.suggestions) && evt.suggestions.length > 0
-                    ? evt.suggestions
-                    : welcomeSuggestionsForUi;
                 const finalized = dropped.map((m) => {
                   if (m.id === assistantMsgId) {
                     const steps = (m.steps ?? []).map((s) => ({
@@ -731,33 +735,60 @@ export function ChatPanel({
               // chips por sugestoes contextualizadas. Fire-and-forget; se
               // demorar > 2.5s ou falhar, mantemos as chips originais.
               void (async () => {
-                try {
-                  const conversationId = evt.conversationId;
-                  if (!conversationId) return;
-                  const ctrl = new AbortController();
-                  const to = setTimeout(() => ctrl.abort(), 3000);
-                  const res = await fetch("/api/agent/suggest-continuation", {
-                    method: "POST",
-                    headers: { "content-type": "application/json" },
-                    body: JSON.stringify({ conversationId, maxChips: 3 }),
-                    signal: ctrl.signal,
-                  });
-                  clearTimeout(to);
-                  if (!res.ok) return;
-                  const data = (await res.json()) as {
-                    chips?: string[];
-                    source?: string;
-                  };
-                  if (!Array.isArray(data.chips) || data.chips.length === 0) return;
-                  setMessages((prev) =>
-                    prev.map((m) =>
-                      m.id === assistantMsgId
-                        ? { ...m, suggestions: data.chips }
-                        : m,
-                    ),
-                  );
-                } catch {
-                  // best-effort; mantem chips originais
+                // Input final das chips: começa com o do done (inline/welcome) e
+                // vira o contextual se ele chegar. No fim, persiste EXATAMENTE o
+                // que foi exibido (input + mesmo padding da SuggestionsBar) pra
+                // coluna Conversa do monitoramento espelhar o que o usuário viu.
+                let finalInput: string[] = safeSuggestions;
+                const conversationId = evt.conversationId;
+                if (conversationId) {
+                  try {
+                    const ctrl = new AbortController();
+                    const to = setTimeout(() => ctrl.abort(), 3000);
+                    const res = await fetch("/api/agent/suggest-continuation", {
+                      method: "POST",
+                      headers: { "content-type": "application/json" },
+                      body: JSON.stringify({ conversationId, maxChips: 3 }),
+                      signal: ctrl.signal,
+                    });
+                    clearTimeout(to);
+                    if (res.ok) {
+                      const data = (await res.json()) as {
+                        chips?: string[];
+                        source?: string;
+                      };
+                      if (Array.isArray(data.chips) && data.chips.length > 0) {
+                        finalInput = data.chips;
+                        setMessages((prev) =>
+                          prev.map((m) =>
+                            m.id === assistantMsgId
+                              ? { ...m, suggestions: data.chips }
+                              : m,
+                          ),
+                        );
+                      }
+                    }
+                  } catch {
+                    // best-effort; mantem chips do done
+                  }
+                }
+                // Snapshot fiel do que foi exibido, keyado pelo messageId REAL do
+                // assistant. Fire-and-forget; sem isso o monitor não tem como
+                // saber o conjunto que o cliente montou (contextual/welcome/pad).
+                if (evt.messageId) {
+                  const shown = padSuggestions(finalInput, maxSuggestions);
+                  if (shown.length > 0) {
+                    void fetch("/api/agent/suggestions-shown", {
+                      method: "POST",
+                      headers: { "content-type": "application/json" },
+                      body: JSON.stringify({
+                        messageId: evt.messageId,
+                        suggestions: shown,
+                      }),
+                    }).catch(() => {
+                      // best-effort; monitor fica sem o snapshot exato
+                    });
+                  }
                 }
               })();
             } else if (evt.type === "error") {
@@ -1050,7 +1081,7 @@ export function ChatPanel({
         <div
           ref={scrollRef}
           className={cn(
-            "flex-1 overflow-y-auto overscroll-contain px-4 py-3",
+            "flex-1 overflow-y-auto overscroll-contain px-4 pb-3 pt-[17px]",
             // Quando o banner flutuante aparece, reserva espaco no fim do scroll
             // para o ultimo conteudo (ex.: 3a sugestao) poder subir ACIMA do
             // banner e ser clicavel, em vez de ficar escondido atras dele.
@@ -1084,6 +1115,9 @@ export function ChatPanel({
                       if (el) messageRefsMap.current.set(m.id, el);
                       else messageRefsMap.current.delete(m.id);
                     }}
+                    // Só a PRIMEIRA mensagem ganha respiro extra no topo, pra não
+                    // ficar encoberta pela tag de data flutuante ("Hoje").
+                    className={idx === 0 ? "mt-[5px]" : undefined}
                   >
                     <AgentMessage
                       role={m.role}

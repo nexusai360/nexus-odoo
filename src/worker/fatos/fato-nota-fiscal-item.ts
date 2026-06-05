@@ -124,7 +124,7 @@ export async function rebuildFatoNotaFiscalItem(prisma: PrismaClient): Promise<n
     const odooId = Number(data.id);
     notaInfoMap.set(odooId, {
       dataEmissao: typeof data.data_emissao === "string"
-        ? new Date(`${data.data_emissao}T00:00:00`)
+        ? new Date(`${data.data_emissao}T00:00:00Z`)
         : null,
       entradaSaida: typeof data.entrada_saida === "string" ? data.entrada_saida : null,
     });

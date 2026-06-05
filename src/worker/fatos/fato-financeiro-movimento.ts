@@ -27,7 +27,7 @@ export function mapMovimentoRow(
   const dataRaw = typeof raw.data === "string" ? raw.data : null;
   return {
     odooId: Number(raw.id),
-    data: dataRaw ? new Date(`${dataRaw}T00:00:00`) : null,
+    data: dataRaw ? new Date(`${dataRaw}T00:00:00Z`) : null,
     contaId: relId(raw.conta_id as OdooM2O),
     contaNome: relNome(raw.conta_id as OdooM2O),
     centroResultadoId: relId(raw.centro_resultado_id as OdooM2O),
