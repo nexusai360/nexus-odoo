@@ -58,8 +58,8 @@ function UserAvaliacaoSection({
         className="flex items-start gap-2 rounded-lg border px-3 py-2"
         style={{ borderColor: `${meta.color}40`, background: `${meta.color}14` }}
       >
-        <Icon className="mt-0.5 h-4 w-4 shrink-0" style={{ color: meta.color }} />
-        <p className="text-sm [overflow-wrap:anywhere]">
+        <Icon className="mt-px h-3.5 w-3.5 shrink-0" style={{ color: meta.color }} />
+        <p className="text-xs [overflow-wrap:anywhere]">
           <span className="font-semibold" style={{ color: meta.color }}>
             {meta.label}:
           </span>{" "}
