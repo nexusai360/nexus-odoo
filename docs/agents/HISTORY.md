@@ -278,3 +278,5 @@
 - Merge: PR #51 ja mergeado antes; esta leva (51 commits) sincronizada com origin/main
   (merge, conflito so no STATUS.md resolvido) -> abrir PR NOVO. Outra branch router-ativacao-r2
   e do outro agente (nao mergear por aqui).
+
+2026-06-05 scope=pericia summary=juiz Claude agentico (Opus) substitui heuristica arrancada; status REAVALIAR + gatilho de reavaliacao no voto + ajuste-pela-pericia; dump com toolCalls/voto; reset 5 vereditos heuristicos; fix vazamento [[suggestions]]; tsc0 jest2386
