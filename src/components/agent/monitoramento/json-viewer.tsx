@@ -17,6 +17,10 @@ function Punct({ children }: { children: React.ReactNode }) {
   return <span className="text-muted-foreground/60">{children}</span>;
 }
 
+// Colchete/chave clicavel: hover muda a cor e mostra a mãozinha.
+const BR_CLS =
+  "cursor-pointer rounded px-0.5 text-muted-foreground/70 transition-colors hover:bg-violet-500/15 hover:text-violet-200";
+
 function Leaf({ value }: { value: unknown }) {
   if (value === null) return <span className="text-rose-400">null</span>;
   const t = typeof value;
@@ -198,7 +202,11 @@ type FoldRow = {
 
 // Achata o JSON em linhas visiveis (respeitando os nos recolhidos), numerando
 // sequencialmente , como um editor com fold de codigo.
-function buildFoldRows(value: unknown, collapsed: Set<string>): FoldRow[] {
+function buildFoldRows(
+  value: unknown,
+  collapsed: Set<string>,
+  onToggle: (path: string) => void,
+): FoldRow[] {
   const rows: FoldRow[] = [];
   let n = 0;
   const walk = (
@@ -234,15 +242,19 @@ function buildFoldRows(value: unknown, collapsed: Set<string>): FoldRow[] {
       content: isCollapsed ? (
         <>
           {keySpan(name)}
-          <Punct>{openBr}</Punct>
-          <span className="text-muted-foreground/50"> … {entries.length} … </span>
-          <Punct>{closeBr}</Punct>
+          <button type="button" onClick={() => onToggle(path)} title="Expandir" className={BR_CLS}>
+            {openBr}
+            <span className="text-muted-foreground/50"> … {entries.length} … </span>
+            {closeBr}
+          </button>
           {comma && <Punct>,</Punct>}
         </>
       ) : (
         <>
           {keySpan(name)}
-          <Punct>{openBr}</Punct>
+          <button type="button" onClick={() => onToggle(path)} title="Recolher" className={BR_CLS}>
+            {openBr}
+          </button>
         </>
       ),
     });
@@ -254,7 +266,9 @@ function buildFoldRows(value: unknown, collapsed: Set<string>): FoldRow[] {
         n: ++n, depth, path: `${path}#close`, foldable: false, collapsed: false,
         content: (
           <>
-            <Punct>{closeBr}</Punct>
+            <button type="button" onClick={() => onToggle(path)} title="Recolher" className={BR_CLS}>
+              {closeBr}
+            </button>
             {comma && <Punct>,</Punct>}
           </>
         ),
@@ -269,14 +283,18 @@ function buildFoldRows(value: unknown, collapsed: Set<string>): FoldRow[] {
  *  indentação visíveis + cores. */
 export function JsonCodeFold({ data }: { data: unknown }) {
   const [collapsed, setCollapsed] = React.useState<Set<string>>(new Set());
-  const rows = React.useMemo(() => buildFoldRows(data, collapsed), [data, collapsed]);
-  const toggle = (path: string) =>
+  const toggle = React.useCallback((path: string) => {
     setCollapsed((prev) => {
       const next = new Set(prev);
       if (next.has(path)) next.delete(path);
       else next.add(path);
       return next;
     });
+  }, []);
+  const rows = React.useMemo(
+    () => buildFoldRows(data, collapsed, toggle),
+    [data, collapsed, toggle],
+  );
   return (
     <div className="font-mono text-[11px] leading-relaxed">
       {rows.map((r) => (
