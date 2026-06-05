@@ -139,6 +139,36 @@ export async function submitMessageFeedback(input: unknown): Promise<Result> {
   };
 }
 
+/**
+ * Remove o voto do usuário sobre uma resposta (volta a "sem voto"). Apaga a
+ * linha de `message_feedback` e registra um evento "removed" no histórico.
+ */
+export async function removeMessageFeedback(input: unknown): Promise<
+  { success: true } | { success: false; error: string }
+> {
+  const me = await getCurrentUser();
+  const userId = me?.id;
+  if (!userId) return { success: false, error: "Não autenticado." };
+
+  const parsed = z
+    .object({ assistantMessageId: z.string().uuid() })
+    .safeParse(input);
+  if (!parsed.success) return { success: false, error: "Dados inválidos." };
+  const { assistantMessageId } = parsed.data;
+
+  const current = await prisma.messageFeedback.findUnique({
+    where: { assistantMessageId_userId: { assistantMessageId, userId } },
+    select: { id: true },
+  });
+  if (!current) return { success: true }; // já não há voto: idempotente
+
+  // Apaga o voto (o histórico de eventos tem onDelete: Cascade no schema, então
+  // some junto , "remover o voto" = não deixar rastro do voto do usuário).
+  await prisma.messageFeedback.delete({ where: { id: current.id } });
+
+  return { success: true };
+}
+
 // Mapeia voto do usuário e status do juiz em 3 baldes pra detectar divergência.
 function bucketOf(s: string): "BOM" | "PARCIAL" | "RUIM" | "OUTRO" {
   switch (s) {

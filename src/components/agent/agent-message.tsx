@@ -85,6 +85,8 @@ export interface AgentMessageProps {
   feedback?: { rating: FeedbackRating; comment: string | null } | null;
   /** B1. Submete o voto (otimismo fica no chat-panel). */
   onSubmitFeedback?: (rating: FeedbackRating, comment?: string) => Promise<void> | void;
+  /** Remove o voto vigente (volta a "sem voto"). */
+  onRemoveFeedback?: () => Promise<void> | void;
   /**
    * B2 (monitoramento, read-only). Sugestões que o agente ofereceu nesta
    * resposta, exibidas DENTRO da bolha num bloco colapsável com chevron igual
@@ -128,6 +130,7 @@ export function AgentMessage({
   dbMessageId,
   feedback,
   onSubmitFeedback,
+  onRemoveFeedback,
   suggestions,
   clickedSuggestion,
   monitorPericia,
@@ -271,6 +274,7 @@ export function AgentMessage({
           <FeedbackControl
             current={feedback ?? null}
             onSubmit={(rating, comment) => onSubmitFeedback(rating, comment)}
+            onRemove={onRemoveFeedback}
           />
         ) : null}
         {monitorVote ? (

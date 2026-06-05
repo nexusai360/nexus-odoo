@@ -17,7 +17,7 @@
  */
 
 import { motion, useReducedMotion } from "framer-motion";
-import { ChevronDown, Download, Loader2, Mic, MoreVertical, Send, Sparkles, Trash2, X } from "lucide-react";
+import { ChevronDown, Download, Loader2, Maximize2, Mic, Minimize2, MoreVertical, Send, Sparkles, Trash2, X } from "lucide-react";
 import * as React from "react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
@@ -32,13 +32,17 @@ import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip
 import { getConversationMessages } from "@/lib/actions/conversation-messages";
 import { exportConversationReport } from "@/lib/actions/agent-conversation-export";
 import { archiveActiveConversation } from "@/lib/actions/active-conversation";
-import { submitMessageFeedback } from "@/lib/actions/message-feedback";
+import { submitMessageFeedback, removeMessageFeedback } from "@/lib/actions/message-feedback";
 import { WELCOME_SUGGESTIONS } from "@/lib/agent/welcome-suggestions";
 import { padSuggestions } from "@/lib/agent/suggestion-fallback";
 
 interface ChatPanelProps {
   open: boolean;
   onClose: () => void;
+  /** Quando true, o painel vira um modal central grande (em vez de bubble lateral). */
+  expanded?: boolean;
+  /** Alterna entre bubble lateral e modal central. */
+  onToggleExpand?: () => void;
   /** Quando true exibe botão de gravação de áudio (Task 3.3c). */
   audioInputEnabled?: boolean;
   /** Quando true exibe o anexo (clip). Gated pelo checkpoint de imagem. */
@@ -113,6 +117,8 @@ type SseEvent =
 export function ChatPanel({
   open,
   onClose,
+  expanded = false,
+  onToggleExpand,
   audioInputEnabled = false,
   imageInputEnabled = false,
   feedbackEnabled = false,
@@ -915,6 +921,28 @@ export function ChatPanel({
     [],
   );
 
+  // Remove o voto (toggle-off na paleta) , otimista, com rollback no erro.
+  const handleRemoveFeedback = React.useCallback(
+    async (uiId: string, dbId: string) => {
+      let prev: UiMessage["feedback"] = null;
+      setMessages((cur) =>
+        cur.map((m) => {
+          if (m.id !== uiId) return m;
+          prev = m.feedback ?? null;
+          return { ...m, feedback: null };
+        }),
+      );
+      const res = await removeMessageFeedback({ assistantMessageId: dbId });
+      if (!res.success) {
+        setMessages((cur) =>
+          cur.map((m) => (m.id === uiId ? { ...m, feedback: prev } : m)),
+        );
+        toast.error("Não foi possível remover a avaliação.");
+      }
+    },
+    [],
+  );
+
   // Transcreve o áudio gravado e envia o texto resultante como pergunta.
   const handleSendAudio = React.useCallback(
     async (blob: Blob) => {
@@ -996,6 +1024,21 @@ export function ChatPanel({
           </div>
 
           <div className="relative flex items-center gap-1">
+            {onToggleExpand ? (
+              <button
+                type="button"
+                aria-label={expanded ? "Recolher para bubble" : "Expandir em tela cheia"}
+                title={expanded ? "Recolher" : "Expandir"}
+                onClick={onToggleExpand}
+                className="hidden h-8 w-8 cursor-pointer items-center justify-center rounded-lg text-muted-foreground transition-colors duration-200 hover:bg-muted hover:text-foreground focus-visible:ring-2 focus-visible:ring-violet-400/60 focus-visible:outline-none sm:flex"
+              >
+                {expanded ? (
+                  <Minimize2 className="h-4 w-4" />
+                ) : (
+                  <Maximize2 className="h-4 w-4" />
+                )}
+              </button>
+            ) : null}
             <button
               type="button"
               aria-label="Mais opções"
@@ -1150,6 +1193,11 @@ export function ChatPanel({
                                 rating,
                                 comment,
                               )
+                          : undefined
+                      }
+                      onRemoveFeedback={
+                        m.dbMessageId
+                          ? () => handleRemoveFeedback(m.id, m.dbMessageId!)
                           : undefined
                       }
                       onToggleSteps={() => {
@@ -1389,15 +1437,19 @@ export function ChatPanel({
   // ── Modo flutuante (bubble): dialog animado ───────────────────────────────
   return (
     <>
-      {/* Backdrop mobile */}
+      {/* Backdrop: no mobile sempre (bubble é fullscreen); no desktop só quando
+          EXPANDIDO (modal central). Clicar recolhe o modal (ou fecha no mobile). */}
       <motion.div
         aria-hidden
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         exit={{ opacity: 0, transition: { duration: 0.12 } }}
         transition={{ duration: 0.18 }}
-        className="fixed inset-0 z-40 bg-black/40 backdrop-blur-[1px] sm:hidden"
-        onClick={onClose}
+        className={cn(
+          "fixed inset-0 z-40 backdrop-blur-[1px]",
+          expanded ? "bg-black/50" : "bg-black/40 sm:hidden",
+        )}
+        onClick={expanded ? onToggleExpand : onClose}
       />
 
       <motion.div
@@ -1415,18 +1467,25 @@ export function ChatPanel({
             ? { opacity: 0, transition: { duration: 0.12 } }
             : { opacity: 0, scale: 0.94, y: 16, x: 16, transition: { duration: 0.16, ease: "easeIn" } }
         }
+        layout={!reduceMotion}
         transition={transition}
-        style={{ transformOrigin: "bottom right" }}
+        style={{ transformOrigin: expanded ? "center" : "bottom right" }}
         className={cn(
           "fixed z-50 flex flex-col overflow-hidden bg-card text-foreground shadow-2xl shadow-black/30",
-          // Mobile: ocupa a tela inteira ao abrir.
+          // Mobile: ocupa a tela inteira ao abrir (em qualquer modo).
           "inset-0 rounded-none border-0",
-          // Tablet e desktop: janela flutuante adaptativa, cresce com o viewport.
-          "sm:inset-auto sm:right-5 sm:bottom-5 sm:rounded-2xl sm:border sm:border-border",
-          "sm:h-[66vh] sm:max-h-[500px] sm:w-[340px]",
-          "md:w-[360px]",
-          "lg:h-[68vh] lg:max-h-[560px] lg:w-[380px]",
-          "2xl:max-h-[620px] 2xl:w-[420px]",
+          expanded
+            ? // EXPANDIDO (desktop): modal central grande, centralizado por
+              // inset-0 + m-auto (truque clássico de centralização de fixed).
+              "sm:inset-0 sm:m-auto sm:h-[88vh] sm:max-h-[900px] sm:w-[min(920px,94vw)] sm:rounded-2xl sm:border sm:border-border"
+            : // Bubble lateral (desktop): janela flutuante no canto inferior direito.
+              cn(
+                "sm:inset-auto sm:right-5 sm:bottom-5 sm:rounded-2xl sm:border sm:border-border",
+                "sm:h-[66vh] sm:max-h-[500px] sm:w-[340px]",
+                "md:w-[360px]",
+                "lg:h-[68vh] lg:max-h-[560px] lg:w-[380px]",
+                "2xl:max-h-[620px] 2xl:w-[420px]",
+              ),
         )}
       >
         {innerContent}

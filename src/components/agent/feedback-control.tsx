@@ -73,9 +73,16 @@ const TINT: Record<FeedbackRating, string> = {
 export interface FeedbackControlProps {
   current: { rating: FeedbackRating; comment: string | null } | null;
   onSubmit: (rating: FeedbackRating, comment?: string) => Promise<void> | void;
+  /** Remove o voto (volta a "sem voto"). Disparado ao clicar no voto já
+   *  selecionado na paleta (toggle-off). */
+  onRemove?: () => Promise<void> | void;
 }
 
-export function FeedbackControl({ current, onSubmit }: FeedbackControlProps) {
+export function FeedbackControl({
+  current,
+  onSubmit,
+  onRemove,
+}: FeedbackControlProps) {
   const reduce = useReducedMotion();
   const [open, setOpen] = React.useState(false);
   const [chosen, setChosen] = React.useState<FeedbackRating | null>(current?.rating ?? null);
@@ -100,6 +107,14 @@ export function FeedbackControl({ current, onSubmit }: FeedbackControlProps) {
   }, [open, fieldFor]);
 
   function pick(r: FeedbackRating) {
+    // Toggle-off: clicar no voto JÁ selecionado remove o voto (volta a "sem voto").
+    if (r === chosen) {
+      setChosen(null);
+      setFieldFor(null);
+      setOpen(false);
+      void onRemove?.();
+      return;
+    }
     setChosen(r);
     setOpen(false);
     void onSubmit(r); // voto otimista, sem comentário
@@ -160,27 +175,44 @@ export function FeedbackControl({ current, onSubmit }: FeedbackControlProps) {
             transition={{ duration: 0.2, ease: [0.16, 1, 0.3, 1] }}
             className="absolute -bottom-2.5 right-5 z-10 flex items-center gap-0.5 rounded-[10px] border border-border bg-popover p-1 shadow-xl"
           >
-            {OPTS.map((o, i) => (
-              <Tooltip key={o.rating}>
-                <TooltipTrigger
-                  render={
-                    <motion.button
-                      type="button"
-                      aria-label={o.label}
-                      onClick={() => pick(o.rating)}
-                      initial={reduce ? false : { opacity: 0, scale: 0.6 }}
-                      animate={{ opacity: 1, scale: 1 }}
-                      transition={{ delay: (OPTS.length - 1 - i) * 0.04 }}
-                      style={{ color: o.color }}
-                      className={`flex h-[30px] w-[30px] items-center justify-center rounded-lg border border-transparent transition-all hover:scale-110 ${TINT[o.rating]}`}
-                    />
-                  }
-                >
-                  <o.Icon className="h-4 w-4" />
-                </TooltipTrigger>
-                <TooltipContent>{o.label}</TooltipContent>
-              </Tooltip>
-            ))}
+            {OPTS.map((o, i) => {
+              const selected = o.rating === chosen;
+              return (
+                <Tooltip key={o.rating}>
+                  <TooltipTrigger
+                    render={
+                      <motion.button
+                        type="button"
+                        aria-label={o.label}
+                        aria-pressed={selected}
+                        onClick={() => pick(o.rating)}
+                        initial={reduce ? false : { opacity: 0, scale: 0.6 }}
+                        animate={{ opacity: 1, scale: 1 }}
+                        transition={{ delay: (OPTS.length - 1 - i) * 0.04 }}
+                        // Selecionado: fundo sólido na cor + ícone branco (mostra
+                        // o voto vigente). Não selecionado: ícone colorido + tint
+                        // no hover.
+                        style={
+                          selected
+                            ? { background: o.color, color: "#fff" }
+                            : { color: o.color }
+                        }
+                        className={`flex h-[30px] w-[30px] items-center justify-center rounded-lg border transition-all hover:scale-110 ${
+                          selected
+                            ? "border-transparent ring-2 ring-white/25"
+                            : `border-transparent ${TINT[o.rating]}`
+                        }`}
+                      />
+                    }
+                  >
+                    <o.Icon className="h-4 w-4" />
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    {selected ? `${o.label} · clique para remover` : o.label}
+                  </TooltipContent>
+                </Tooltip>
+              );
+            })}
           </motion.div>
         )}
       </AnimatePresence>
