@@ -181,17 +181,17 @@ export function FeedbackControl({
           aria-label="Avaliar resposta (clique para votar)"
           title="Avalie esta resposta"
           onClick={() => setOpen((v) => !v)}
-          // GATILHO (sem voto): ícone 27px + texto "Avalie" solto à direita. A
-          // animação (pulso) fica NO PAI, então ícone e texto pulsam JUNTOS,
-          // sempre na mesma cadência/fase (um mecanismo só, nunca descompassa).
+          // GATILHO (sem voto): ÍCONE no canto (onde já estava alinhado,
+          // -right-2) e o texto "Avalie" à ESQUERDA dele. A animação (pulso)
+          // fica NO PAI, então ícone e texto pulsam JUNTOS, mesma cadência/fase.
           style={{ animationDelay: pulseDelay }}
-          className="nex-vote-pulse group/vote absolute -bottom-1.5 left-full ml-1 flex cursor-pointer items-center gap-1.5 hover:[animation-play-state:paused] focus-visible:outline-none"
+          className="nex-vote-pulse group/vote absolute -right-2 -bottom-1.5 flex cursor-pointer items-center gap-1.5 hover:[animation-play-state:paused] focus-visible:outline-none"
         >
-          <span className="flex h-[27px] w-[27px] items-center justify-center rounded-md border border-violet-400/60 bg-violet-500/15 text-violet-600 shadow-sm transition-colors group-hover/vote:bg-violet-500/35 group-hover/vote:text-violet-700 dark:text-violet-300">
-            <Gauge className="h-3.5 w-3.5" strokeWidth={2.25} />
-          </span>
           <span className="select-none text-[11px] font-semibold tracking-wide text-violet-600 dark:text-violet-300">
             Avalie
+          </span>
+          <span className="flex h-[27px] w-[27px] items-center justify-center rounded-md border border-violet-400/60 bg-violet-500/15 text-violet-600 shadow-sm transition-colors group-hover/vote:bg-violet-500/35 group-hover/vote:text-violet-700 dark:text-violet-300">
+            <Gauge className="h-3.5 w-3.5" strokeWidth={2.25} />
           </span>
         </button>
       ) : (
