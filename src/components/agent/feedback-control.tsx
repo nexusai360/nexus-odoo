@@ -97,6 +97,16 @@ export function FeedbackControl({
   const rootRef = React.useRef<HTMLDivElement>(null);
   const taRef = React.useRef<HTMLTextAreaElement>(null);
 
+  // SINCRONIZAÇÃO do pulso entre TODAS as respostas não votadas: cada gatilho
+  // calcula um animation-delay negativo = -(agora % período). Como o período é
+  // o mesmo (2s) e a fase fica ancorada ao mesmo relógio, todas pulsam juntas,
+  // na mesma cadência, independentemente de quando cada mensagem apareceu.
+  const [pulseDelay, setPulseDelay] = React.useState("0ms");
+  React.useEffect(() => {
+    const PULSE_MS = 2000;
+    setPulseDelay(`${-(performance.now() % PULSE_MS)}ms`);
+  }, []);
+
   React.useEffect(() => setChosen(current?.rating ?? null), [current?.rating]);
   // Notifica o pai sobre o campo de edição aberto (some/volta as sugestões).
   React.useEffect(() => {
@@ -168,11 +178,25 @@ export function FeedbackControl({
       {!chosenOpt ? (
         <button
           type="button"
-          aria-label="Avaliar resposta"
+          aria-label="Avaliar resposta (clique para votar)"
+          title="Avalie esta resposta"
           onClick={() => setOpen((v) => !v)}
-          className="absolute -right-2 -bottom-2 flex h-6 w-6 cursor-pointer items-center justify-center rounded-md border border-border bg-background text-muted-foreground opacity-0 shadow-sm transition-opacity hover:text-foreground group-hover/msg:opacity-100 focus-visible:opacity-100 focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
+          className="group/vote absolute -right-2 -bottom-2 flex h-6 w-6 cursor-pointer items-center justify-center rounded-full border border-violet-400/60 bg-violet-500/15 text-violet-600 shadow-sm transition-colors hover:bg-violet-500/35 hover:text-violet-700 focus-visible:ring-2 focus-visible:ring-violet-400/70 focus-visible:outline-none dark:text-violet-300"
         >
-          <Gauge className="h-3 w-3" />
+          {/* Onda "sonar" sincronizada (atrás do ícone). */}
+          <span
+            aria-hidden
+            style={{ animationDelay: pulseDelay }}
+            className="nex-vote-ring pointer-events-none absolute inset-0 rounded-full bg-violet-500/40 group-hover/vote:[animation-play-state:paused]"
+          />
+          {/* Ícone que "salta" suavemente, em fase com o sonar e com as demais. */}
+          <span
+            aria-hidden
+            style={{ animationDelay: pulseDelay }}
+            className="nex-vote-pulse relative flex items-center justify-center group-hover/vote:[animation-play-state:paused]"
+          >
+            <Gauge className="h-3.5 w-3.5" strokeWidth={2.5} />
+          </span>
         </button>
       ) : (
         <button
