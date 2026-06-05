@@ -11,7 +11,7 @@
  */
 
 import * as React from "react";
-import { Gauge, Check, X, Ghost, Send, MessageSquarePlus } from "lucide-react";
+import { Gauge, Check, X, Ghost, Send, Plus } from "lucide-react";
 import { PartialIcon } from "./partial-icon";
 import { motion, AnimatePresence, useReducedMotion } from "framer-motion";
 import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip";
@@ -181,13 +181,23 @@ export function FeedbackControl({
           aria-label="Avaliar resposta (clique para votar)"
           title="Avalie esta resposta"
           onClick={() => setOpen((v) => !v)}
-          style={{ animationDelay: pulseDelay }}
-          // Só o GATILHO (sem voto): mesmo tamanho dos ícones da paleta das 4
-          // opções (h-[30px]) e centro vertical alinhado com ela (-bottom-1.5).
-          // O badge votado (abaixo) NÃO muda.
-          className="nex-vote-pulse absolute -right-2 -bottom-1.5 flex h-[30px] w-[30px] cursor-pointer items-center justify-center rounded-md border border-violet-400/60 bg-violet-500/15 text-violet-600 shadow-sm transition-colors hover:bg-violet-500/35 hover:text-violet-700 hover:[animation-play-state:paused] focus-visible:ring-2 focus-visible:ring-violet-400/70 focus-visible:outline-none dark:text-violet-300"
+          // GATILHO (sem voto): ícone 27px (meio-termo entre o badge 24 e os 30
+          // da paleta) + texto "Avalie" SOLTO à direita (sem caixa), na margem
+          // direita da resposta. Ícone e texto piscam na MESMA cadência/fase.
+          className="group/vote absolute -bottom-1.5 left-full ml-1 flex cursor-pointer items-center gap-1.5 focus-visible:outline-none"
         >
-          <Gauge className="h-4 w-4" strokeWidth={2.25} />
+          <span
+            style={{ animationDelay: pulseDelay }}
+            className="nex-vote-pulse flex h-[27px] w-[27px] items-center justify-center rounded-md border border-violet-400/60 bg-violet-500/15 text-violet-600 shadow-sm transition-colors group-hover/vote:bg-violet-500/35 group-hover/vote:text-violet-700 group-hover/vote:[animation-play-state:paused] dark:text-violet-300"
+          >
+            <Gauge className="h-3.5 w-3.5" strokeWidth={2.25} />
+          </span>
+          <span
+            style={{ animationDelay: pulseDelay }}
+            className="nex-vote-text select-none text-[11px] font-semibold tracking-wide text-violet-600 group-hover/vote:[animation-play-state:paused] dark:text-violet-300"
+          >
+            Avalie
+          </span>
         </button>
       ) : (
         <button
@@ -307,10 +317,12 @@ export function FeedbackControl({
               <button
                 type="button"
                 onClick={startEdit}
-                className="mx-auto mt-0.5 flex cursor-pointer items-center gap-1.5 rounded-md border border-violet-400/45 bg-violet-500/10 px-3 py-1.5 text-xs font-medium text-violet-600 transition-colors hover:bg-violet-500/20 hover:text-violet-700 dark:text-violet-300"
+                className="mx-auto flex cursor-pointer items-center gap-1.5 text-xs font-medium text-violet-600 transition-colors hover:text-violet-700 dark:text-violet-300"
               >
-                <MessageSquarePlus className="h-3.5 w-3.5" />
-                Adicionar comentário
+                <span className="flex h-[18px] w-[18px] items-center justify-center rounded-full bg-violet-500/15">
+                  <Plus className="h-3 w-3" />
+                </span>
+                adicionar comentário
               </button>
             )}
           </motion.div>

@@ -308,8 +308,15 @@ input[type="search"]::-webkit-search-decoration {
   }
 }
 .nex-vote-pulse { animation: nexVotePulse 1.25s ease-in-out infinite; }
+/* Texto "Avalie" ao lado do ícone: pisca na MESMA cadência (1.25s) e fase
+   (mesmo animation-delay), com leve sobe-desce pra dar vida. Sem caixa/contorno. */
+@keyframes nexVoteText {
+  0%, 100% { opacity: 1; transform: translateY(0); }
+  50% { opacity: 0.55; transform: translateY(-1px); }
+}
+.nex-vote-text { animation: nexVoteText 1.25s ease-in-out infinite; }
 @media (prefers-reduced-motion: reduce) {
-  .nex-vote-pulse { animation: none; }
+  .nex-vote-pulse, .nex-vote-text { animation: none; }
 }
 
 /* Animacao de WIDTH da bolha via CSS + interpolate-size. HEIGHT eh
