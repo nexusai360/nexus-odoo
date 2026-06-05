@@ -7,7 +7,7 @@
  * manual com adjustEvaluation (super_admin).
  */
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useState, type ElementType, type ReactNode } from "react";
 import {
   AlertTriangle,
   Bot,
@@ -35,6 +35,41 @@ import type { EvalStatus } from "@/lib/agent/quality/queries";
 import { RATING_META, type UserFeedbackRating } from "@/components/agent/rating-meta";
 import { MarkdownSnapshot } from "./markdown-snapshot";
 
+/** Bloco padrão do drill-down: header (ícone + título uppercase + ação opcional)
+ *  + conteúdo. Unifica TODAS as seções para um ritmo/hierarquia consistente. */
+function Section({
+  icon: Icon,
+  title,
+  action,
+  tone,
+  children,
+}: {
+  icon: ElementType;
+  title: string;
+  action?: ReactNode;
+  tone?: "danger";
+  children: ReactNode;
+}) {
+  return (
+    <section className="space-y-1.5">
+      <div className="flex items-center justify-between gap-2">
+        <h4
+          className={cn(
+            "flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide",
+            tone === "danger"
+              ? "text-red-600 dark:text-red-400"
+              : "text-muted-foreground",
+          )}
+        >
+          <Icon className="h-3.5 w-3.5" /> {title}
+        </h4>
+        {action}
+      </div>
+      {children}
+    </section>
+  );
+}
+
 /** Seção da AVALIAÇÃO do usuário (voto na bubble): header com ícone (como
  *  Pergunta/Resposta) + card na COR OFICIAL da categoria, no formato
  *  "[ícone] Categoria: comentário" (ou "sem comentário"). */
@@ -50,10 +85,7 @@ function UserAvaliacaoSection({
   const Icon = meta.Icon;
   const hasComment = Boolean(comment && comment.trim().length > 0);
   return (
-    <section className="space-y-1.5">
-      <h4 className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-        <Gauge className="h-3.5 w-3.5" /> Avaliação do usuário
-      </h4>
+    <Section icon={Gauge} title="Avaliação do usuário">
       <div
         className="flex items-start gap-2 rounded-lg border px-3 py-2"
         style={{ borderColor: `${meta.color}40`, background: `${meta.color}14` }}
@@ -70,7 +102,7 @@ function UserAvaliacaoSection({
           )}
         </p>
       </div>
-    </section>
+    </Section>
   );
 }
 
@@ -225,46 +257,38 @@ export function EvaluationDrilldown({ evaluationId, onAdjusted }: Props) {
 
   const e = detail.evaluation;
   const isFalha = e.status === "FALHA_TECNICA";
+  const human = e.humanStatus as EvalStatus | null;
+  const effStatus = human ?? e.status;
+  const ajusteMudou = human != null && human !== e.status;
+  const temDiagnostico = Boolean(e.razoes) || e.patterns.length > 0;
+  const temAjuste = !isFalha && e.status !== "PENDENTE";
+  // Coluna de análise só existe quando há o que mostrar nela.
+  const temAnalise =
+    Boolean(detail.userFeedback) || temDiagnostico || temAjuste;
 
   return (
-    <div className="space-y-4 border-l-2 border-violet-500/40 bg-muted/20 px-5 py-4">
-      {/* Cabecalho do drill-down */}
-      <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border/60 pb-3">
-        <div className="flex flex-wrap items-center gap-2">
-          {(() => {
-            // Status efetivo: o ajuste humano sobrescreve o veredito
-            // automatico. A tag principal mostra o efetivo; quando houve
-            // ajuste, deixamos explicito "antes (riscado) -> agora".
-            const human = e.humanStatus as EvalStatus | null;
-            const eff = human ?? e.status;
-            const mudou = human != null && human !== e.status;
-            return (
-              <>
-                <Badge
-                  variant="outline"
-                  className={cn("border", STATUS_TONE[eff])}
-                >
-                  {STATUS_LABEL[eff]}
-                </Badge>
-                {mudou && (
-                  <span
-                    className="inline-flex items-center gap-1 text-xs text-muted-foreground"
-                    title="Ajuste humano sobrescreveu o veredito automático"
-                  >
-                    <ShieldCheck className="h-3.5 w-3.5 text-emerald-500" />
-                    Ajuste humano:
-                    <span className="line-through">
-                      {STATUS_LABEL[e.status]}
-                    </span>
-                    <span aria-hidden>→</span>
-                    <span className="font-medium text-foreground">
-                      {STATUS_LABEL[eff]}
-                    </span>
-                  </span>
-                )}
-              </>
-            );
-          })()}
+    <div className="border-l-2 border-violet-500/40 bg-muted/20 px-5 py-4">
+      {/* ───────────── META BAR: veredito + metadados, num relance ───────────── */}
+      <div className="flex flex-wrap items-center justify-between gap-x-4 gap-y-2 border-b border-border/60 pb-3">
+        <div className="flex flex-wrap items-center gap-x-2 gap-y-1.5">
+          <span className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground/70">
+            Perícia
+          </span>
+          <Badge variant="outline" className={cn("border", STATUS_TONE[effStatus])}>
+            {STATUS_LABEL[effStatus]}
+          </Badge>
+          {ajusteMudou && (
+            <span
+              className="inline-flex items-center gap-1 text-xs text-muted-foreground"
+              title="Ajuste humano sobrescreveu o veredito automático"
+            >
+              <ShieldCheck className="h-3.5 w-3.5 text-emerald-500" />
+              <span className="line-through">{STATUS_LABEL[e.status]}</span>
+              <span aria-hidden>→</span>
+              <span className="font-medium text-foreground">{STATUS_LABEL[effStatus]}</span>
+            </span>
+          )}
+          <span aria-hidden className="h-3.5 w-px bg-border/70" />
           {e.model && (
             <Badge variant="ghost" className="font-mono text-[11px]">
               {e.model}
@@ -273,10 +297,9 @@ export function EvaluationDrilldown({ evaluationId, onAdjusted }: Props) {
           <span className="text-xs text-muted-foreground">
             {fmtBRT(e.createdAt)} {TZ_LABEL}
           </span>
-          {/* Tempo de geração do turno (wall-clock). */}
           {detail.durationMs != null ? (
             <span
-              className="inline-flex items-center gap-1 text-xs text-muted-foreground"
+              className="inline-flex items-center gap-1 text-xs tabular-nums text-muted-foreground"
               title="Tempo de geração da resposta"
             >
               <Clock className="h-3.5 w-3.5" />
@@ -285,228 +308,207 @@ export function EvaluationDrilldown({ evaluationId, onAdjusted }: Props) {
           ) : null}
         </div>
         <div className="text-xs text-muted-foreground">
-          {/* judgeModel so existe quando um LLM julgou; o judge heuristico
-              (regras, sem LLM) deixa esse campo nulo. Antes caia num ","
-              solto. Mostra o modelo so quando ha. */}
+          {/* judgeModel so existe quando um LLM julgou; o heuristico deixa nulo. */}
           Judge: {e.judgeModel ? `${e.judgeModel} · ` : ""}
           {e.judgeVersion}
         </div>
       </div>
 
-      {/* AVALIAÇÃO do usuário (voto na bubble) , seção própria, como Pergunta/
-          Resposta. Card na COR OFICIAL da categoria (igual ao ícone que o
-          usuário clica na bubble). Formato: [ícone] Categoria: comentário (ou
-          "sem comentário"). */}
-      {detail.userFeedback ? (
-        <UserAvaliacaoSection
-          rating={detail.userFeedback.rating}
-          comment={detail.userFeedback.comment}
-        />
-      ) : null}
-
-      {/* Pergunta e resposta */}
-      <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-        <section className="min-w-0 space-y-1.5">
-          <h4 className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-            <UserIcon className="h-3.5 w-3.5" /> Pergunta
-          </h4>
-          <div className="rounded-lg border border-border bg-background px-3 py-2">
-            {e.questionSnapshot ? (
-              <MarkdownSnapshot content={e.questionSnapshot} />
-            ) : (
-              <span className="text-sm text-muted-foreground">(vazio)</span>
-            )}
-          </div>
-        </section>
-        <section className="min-w-0 space-y-1.5">
-          <h4 className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-            <Bot className="h-3.5 w-3.5" /> Resposta
-          </h4>
-          <div className="rounded-lg border border-border bg-background px-3 py-2">
-            {isFalha ? (
-              <span className="text-sm italic text-muted-foreground">
-                (sem resposta , falha técnica)
-              </span>
-            ) : e.answerSnapshot ? (
-              <MarkdownSnapshot content={e.answerSnapshot} />
-            ) : (
-              <span className="text-sm text-muted-foreground">(vazio)</span>
-            )}
-          </div>
-        </section>
-      </div>
-
-      {/* Sugestoes (bolhas roxas) oferecidas com a resposta */}
-      {!isFalha && e.suggestions.length > 0 && (
-        <section className="space-y-1.5">
-          <h4 className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-            <Sparkles className="h-3.5 w-3.5" /> Sugestões oferecidas
-          </h4>
-          <div className="flex flex-wrap gap-1.5">
-            {e.suggestions.map((s, i) => (
-              <span
-                key={`${i}-${s}`}
-                className="inline-flex items-center rounded-full border border-violet-500/30 bg-violet-500/10 px-3 py-1 text-xs text-violet-700 dark:text-violet-300"
-              >
-                {s}
-              </span>
-            ))}
-          </div>
-        </section>
-      )}
-
-      {/* Erro técnico se FALHA_TECNICA */}
-      {isFalha && e.technicalError && (
-        <section className="space-y-1.5">
-          <h4 className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-red-600 dark:text-red-400">
-            <AlertTriangle className="h-3.5 w-3.5" /> Erro técnico
-          </h4>
-          <pre className="overflow-x-auto rounded-lg border border-red-500/30 bg-red-500/5 px-3 py-2 font-mono text-xs text-red-700 dark:text-red-300">
-            {e.technicalError}
-          </pre>
-        </section>
-      )}
-
-      {/* Tool calls + results , so quando ha assistantMessageId */}
-      {!isFalha && (detail.toolCalls != null || detail.toolResults != null) && (
-        <section className="space-y-1.5">
-          <div className="flex items-center justify-between">
-            <h4 className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-              <Wrench className="h-3.5 w-3.5" /> Tool calls & results
-            </h4>
-            <div className="flex gap-1.5">
-              <Button
-                type="button"
-                variant="ghost"
-                size="sm"
-                className="h-7 gap-1.5 text-xs"
-                onClick={() =>
-                  handleCopyJson("Tool calls", detail.toolCalls ?? {})
-                }
-              >
-                <Clipboard className="h-3.5 w-3.5" /> Calls
-              </Button>
-              <Button
-                type="button"
-                variant="ghost"
-                size="sm"
-                className="h-7 gap-1.5 text-xs"
-                onClick={() =>
-                  handleCopyJson("Tool results", detail.toolResults ?? {})
-                }
-              >
-                <Clipboard className="h-3.5 w-3.5" /> Results
-              </Button>
-            </div>
-          </div>
-          <details className="group rounded-lg border border-border bg-background">
-            <summary className="cursor-pointer select-none px-3 py-2 text-xs text-muted-foreground hover:bg-muted/50 focus:outline-none focus-visible:ring-2 focus-visible:ring-violet-500">
-              Expandir JSON
-            </summary>
-            <div className="grid grid-cols-1 gap-3 border-t border-border px-3 py-3 lg:grid-cols-2">
-              <div>
-                <div className="mb-1 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
-                  Tool calls
-                </div>
-                <pre className="max-h-72 overflow-auto rounded bg-muted px-2 py-1.5 font-mono text-[11px]">
-                  {JSON.stringify(detail.toolCalls ?? null, null, 2)}
-                </pre>
-              </div>
-              <div>
-                <div className="mb-1 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
-                  Tool results
-                </div>
-                <pre className="max-h-72 overflow-auto rounded bg-muted px-2 py-1.5 font-mono text-[11px]">
-                  {JSON.stringify(detail.toolResults ?? null, null, 2)}
-                </pre>
-              </div>
-            </div>
-          </details>
-        </section>
-      )}
-
-      {/* Razoes do judge + patterns */}
-      {(e.razoes || e.patterns.length > 0) && (
-        <section className="space-y-1.5">
-          <h4 className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-            <CheckCircle2 className="h-3.5 w-3.5" /> Diagnóstico
-          </h4>
-          {e.patterns.length > 0 && (
-            <div className="flex flex-wrap gap-1.5">
-              {e.patterns.map((p) => (
-                <Badge key={p} variant="outline" className="text-xs">
-                  {p}
-                </Badge>
-              ))}
-            </div>
-          )}
-          {e.razoes && (
-            <div className="whitespace-pre-wrap rounded-lg border border-border bg-background px-3 py-2 text-sm">
-              {humanizeRazoes(e.razoes)}
-            </div>
-          )}
-        </section>
-      )}
-
-      {/* Ajuste manual (super_admin) , so para evals com status fechado */}
-      {!isFalha && e.status !== "PENDENTE" && (
-        <section className="space-y-2 rounded-lg border border-dashed border-border bg-background px-3 py-3">
-          <h4 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-            Ajuste manual
-          </h4>
-          <div className="flex flex-wrap items-center gap-2">
-            {/* Dropdown (lista suspensa), porem cada opcao e' a TAG colorida do
-                status , nao texto puro. */}
-            <CustomSelect
-              value={adjustStatus}
-              onChange={(v) => setAdjustStatus(v as EvalStatus)}
-              triggerClassName="min-w-[170px]"
-              aria-label="Novo status"
-              options={(
-                ["CORRETO", "PARCIAL", "ERRADO", "FORA_DO_ESCOPO"] as const
-              ).map((s) => ({
-                value: s,
-                label: (
-                  <span
-                    className={cn(
-                      "inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-medium",
-                      STATUS_TONE[s],
-                    )}
-                  >
-                    {STATUS_LABEL[s]}
-                  </span>
-                ),
-              }))}
-            />
-            <Textarea
-              value={adjustReason}
-              onChange={(ev) => setAdjustReason(ev.target.value)}
-              placeholder="Por que está sendo ajustado?"
-              rows={2}
-              className="flex-1 min-w-[240px]"
-              aria-label="Justificativa do ajuste"
-            />
-            <Button
-              type="button"
-              onClick={handleSave}
-              disabled={saving || !adjustReason.trim()}
-              className="gap-1.5"
-            >
-              {saving ? (
-                <Loader2 className="h-3.5 w-3.5 animate-spin" />
+      {/* ── 2 COLUNAS: esquerda = a CONVERSA, direita = a ANÁLISE ── */}
+      <div
+        className={cn(
+          "mt-4 grid grid-cols-1 gap-5",
+          temAnalise && "lg:grid-cols-[1.5fr_1fr]",
+        )}
+      >
+        {/* ESQUERDA , a conversa (o que aconteceu) */}
+        <div className="min-w-0 space-y-4">
+          <Section icon={UserIcon} title="Pergunta">
+            <div className="rounded-lg border border-border bg-background px-3 py-2">
+              {e.questionSnapshot ? (
+                <MarkdownSnapshot content={e.questionSnapshot} />
               ) : (
-                <Save className="h-3.5 w-3.5" />
+                <span className="text-sm text-muted-foreground">(vazio)</span>
               )}
-              Salvar ajuste
-            </Button>
-          </div>
-          {e.humanReviewedAt && (
-            <p className="text-[11px] text-muted-foreground">
-              Último ajuste em {fmtBRT(e.humanReviewedAt)} {TZ_LABEL}.
-            </p>
+            </div>
+          </Section>
+
+          {isFalha && e.technicalError ? (
+            <Section icon={AlertTriangle} title="Erro técnico" tone="danger">
+              <pre className="overflow-x-auto rounded-lg border border-red-500/30 bg-red-500/5 px-3 py-2 font-mono text-xs text-red-700 dark:text-red-300">
+                {e.technicalError}
+              </pre>
+            </Section>
+          ) : (
+            <Section icon={Bot} title="Resposta">
+              <div className="rounded-lg border border-border bg-background px-3 py-2">
+                {isFalha ? (
+                  <span className="text-sm italic text-muted-foreground">
+                    (sem resposta , falha técnica)
+                  </span>
+                ) : e.answerSnapshot ? (
+                  <MarkdownSnapshot content={e.answerSnapshot} />
+                ) : (
+                  <span className="text-sm text-muted-foreground">(vazio)</span>
+                )}
+              </div>
+            </Section>
           )}
-        </section>
-      )}
+
+          {!isFalha && e.suggestions.length > 0 && (
+            <Section icon={Sparkles} title="Sugestões oferecidas">
+              <div className="flex flex-wrap gap-1.5">
+                {e.suggestions.map((s, i) => (
+                  <span
+                    key={`${i}-${s}`}
+                    className="inline-flex items-center rounded-full border border-violet-500/30 bg-violet-500/10 px-3 py-1 text-xs text-violet-700 dark:text-violet-300"
+                  >
+                    {s}
+                  </span>
+                ))}
+              </div>
+            </Section>
+          )}
+
+          {!isFalha && (detail.toolCalls != null || detail.toolResults != null) && (
+            <Section
+              icon={Wrench}
+              title="Tool calls & results"
+              action={
+                <div className="flex gap-1.5">
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    className="h-7 gap-1.5 text-xs"
+                    onClick={() => handleCopyJson("Tool calls", detail.toolCalls ?? {})}
+                  >
+                    <Clipboard className="h-3.5 w-3.5" /> Calls
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    className="h-7 gap-1.5 text-xs"
+                    onClick={() => handleCopyJson("Tool results", detail.toolResults ?? {})}
+                  >
+                    <Clipboard className="h-3.5 w-3.5" /> Results
+                  </Button>
+                </div>
+              }
+            >
+              <details className="group rounded-lg border border-border bg-background">
+                <summary className="cursor-pointer select-none px-3 py-2 text-xs text-muted-foreground hover:bg-muted/50 focus:outline-none focus-visible:ring-2 focus-visible:ring-violet-500">
+                  Expandir JSON
+                </summary>
+                <div className="grid grid-cols-1 gap-3 border-t border-border px-3 py-3 lg:grid-cols-2">
+                  <div>
+                    <div className="mb-1 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+                      Tool calls
+                    </div>
+                    <pre className="max-h-72 overflow-auto rounded bg-muted px-2 py-1.5 font-mono text-[11px]">
+                      {JSON.stringify(detail.toolCalls ?? null, null, 2)}
+                    </pre>
+                  </div>
+                  <div>
+                    <div className="mb-1 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+                      Tool results
+                    </div>
+                    <pre className="max-h-72 overflow-auto rounded bg-muted px-2 py-1.5 font-mono text-[11px]">
+                      {JSON.stringify(detail.toolResults ?? null, null, 2)}
+                    </pre>
+                  </div>
+                </div>
+              </details>
+            </Section>
+          )}
+        </div>
+
+        {/* DIREITA , a análise (avaliações + ação), separada por borda */}
+        {temAnalise && (
+          <div className="min-w-0 space-y-4 lg:border-l lg:border-border/60 lg:pl-5">
+            {detail.userFeedback ? (
+              <UserAvaliacaoSection
+                rating={detail.userFeedback.rating}
+                comment={detail.userFeedback.comment}
+              />
+            ) : null}
+
+            {temDiagnostico && (
+              <Section icon={CheckCircle2} title="Diagnóstico da perícia">
+                {e.patterns.length > 0 && (
+                  <div className="flex flex-wrap gap-1.5">
+                    {e.patterns.map((p) => (
+                      <Badge key={p} variant="outline" className="text-xs">
+                        {p}
+                      </Badge>
+                    ))}
+                  </div>
+                )}
+                {e.razoes && (
+                  <div className="mt-1.5 whitespace-pre-wrap rounded-lg border border-border bg-background px-3 py-2 text-[13px] leading-relaxed">
+                    {humanizeRazoes(e.razoes)}
+                  </div>
+                )}
+              </Section>
+            )}
+
+            {temAjuste && (
+              <Section icon={Save} title="Ajuste manual">
+                <div className="space-y-2 rounded-lg border border-dashed border-border bg-background px-3 py-3">
+                  <CustomSelect
+                    value={adjustStatus}
+                    onChange={(v) => setAdjustStatus(v as EvalStatus)}
+                    triggerClassName="w-full"
+                    aria-label="Novo status"
+                    options={(
+                      ["CORRETO", "PARCIAL", "ERRADO", "FORA_DO_ESCOPO"] as const
+                    ).map((s) => ({
+                      value: s,
+                      label: (
+                        <span
+                          className={cn(
+                            "inline-flex items-center rounded-full border px-2.5 py-0.5 text-xs font-medium",
+                            STATUS_TONE[s],
+                          )}
+                        >
+                          {STATUS_LABEL[s]}
+                        </span>
+                      ),
+                    }))}
+                  />
+                  <Textarea
+                    value={adjustReason}
+                    onChange={(ev) => setAdjustReason(ev.target.value)}
+                    placeholder="Por que está sendo ajustado?"
+                    rows={2}
+                    className="w-full"
+                    aria-label="Justificativa do ajuste"
+                  />
+                  <Button
+                    type="button"
+                    onClick={handleSave}
+                    disabled={saving || !adjustReason.trim()}
+                    className="w-full gap-1.5"
+                  >
+                    {saving ? (
+                      <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                    ) : (
+                      <Save className="h-3.5 w-3.5" />
+                    )}
+                    Salvar ajuste
+                  </Button>
+                  {e.humanReviewedAt && (
+                    <p className="text-[11px] text-muted-foreground">
+                      Último ajuste em {fmtBRT(e.humanReviewedAt)} {TZ_LABEL}.
+                    </p>
+                  )}
+                </div>
+              </Section>
+            )}
+          </div>
+        )}
+      </div>
     </div>
   );
 }
