@@ -146,10 +146,10 @@ function MetricsPair({
 }
 
 function fmtRange(startedAt: string, endedAt: string | null): string {
-  const s = new Date(startedAt);
+  const p = (n: number) => String(n).padStart(2, "0");
   const d = (x: Date) =>
-    `${String(x.getDate()).padStart(2, "0")}/${String(x.getMonth() + 1).padStart(2, "0")} ${String(x.getHours()).padStart(2, "0")}:${String(x.getMinutes()).padStart(2, "0")}`;
-  return `${d(s)} ${endedAt ? "ate " + d(new Date(endedAt)) : "ate agora"}`;
+    `${p(x.getDate())}/${p(x.getMonth() + 1)}/${x.getFullYear()} ${p(x.getHours())}:${p(x.getMinutes())}:${p(x.getSeconds())}`;
+  return `${d(new Date(startedAt))} ${endedAt ? "ate " + d(new Date(endedAt)) : "ate agora"}`;
 }
 
 // Painel único: as 3 colunas dividem o mesmo card, separadas só por borda

@@ -185,19 +185,30 @@ export async function listBubbleSessions(userId: string): Promise<SessionRow[]> 
   return conversations.map((c, pos) => {
     const avaliacaoCounts = avalByConv.get(c.id) ?? zeroCounts();
     const periciaCounts = periciaByConv.get(c.id) ?? zeroCounts();
+    // Só a conversa MAIS RECENTE sem encerramento conta como "ativa" (a sessão
+    // viva). As demais sem endedAt são sessões passadas nunca arquivadas.
+    const isActive = pos === 0 && c.endedAt === null;
+    // Fim exibido: usa o endedAt real; se faltar (sessão antiga nunca arquivada
+    // e não-ativa), deriva pelo INÍCIO da sessão POSTERIOR (mais recente, em
+    // pos-1) menos 15s. A ativa fica sem fim ("até agora").
+    let endedAt = c.endedAt ? c.endedAt.toISOString() : null;
+    if (!isActive && endedAt === null) {
+      const posterior = conversations[pos - 1];
+      if (posterior) {
+        endedAt = new Date(+posterior.createdAt - 15_000).toISOString();
+      }
+    }
     return {
       conversationId: c.id,
       index: total - pos,
       startedAt: c.createdAt.toISOString(),
-      endedAt: c.endedAt ? c.endedAt.toISOString() : null,
+      endedAt,
       messageCount: c._count.messages,
       avaliacaoCounts,
       avaliacaoPct: computeAccuracy(avaliacaoCounts),
       periciaCounts,
       periciaPct: computeAccuracy(periciaCounts),
-      // Só a conversa MAIS RECENTE sem encerramento conta como "ativa" (a sessão
-      // viva). As demais sem endedAt são sessões passadas nunca arquivadas.
-      isActive: pos === 0 && c.endedAt === null,
+      isActive,
     };
   });
 }
