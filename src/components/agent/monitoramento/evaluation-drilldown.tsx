@@ -14,6 +14,7 @@ import {
   CheckCircle2,
   Clipboard,
   Clock,
+  Gauge,
   Loader2,
   Save,
   ShieldCheck,
@@ -34,22 +35,42 @@ import type { EvalStatus } from "@/lib/agent/quality/queries";
 import { RATING_META, type UserFeedbackRating } from "@/components/agent/rating-meta";
 import { MarkdownSnapshot } from "./markdown-snapshot";
 
-/** Chip da AVALIAÇÃO do usuário (voto na bubble) com o ícone oficial da
- *  categoria. Pareia com a tag de status (perícia) no topo do drill-down. */
-function UserAvaliacaoChip({ rating }: { rating: string }) {
+/** Seção da AVALIAÇÃO do usuário (voto na bubble): header com ícone (como
+ *  Pergunta/Resposta) + card na COR OFICIAL da categoria, no formato
+ *  "[ícone] Categoria: comentário" (ou "sem comentário"). */
+function UserAvaliacaoSection({
+  rating,
+  comment,
+}: {
+  rating: string;
+  comment: string | null;
+}) {
   const meta = RATING_META[rating as UserFeedbackRating];
   if (!meta) return null;
   const Icon = meta.Icon;
+  const hasComment = Boolean(comment && comment.trim().length > 0);
   return (
-    <span
-      title={`Avaliação do usuário: ${meta.label}`}
-      className="inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[11px] font-semibold"
-      style={{ color: meta.color, borderColor: `${meta.color}66`, background: `${meta.color}1f` }}
-    >
-      <Icon className="h-3 w-3" />
-      <span className="uppercase tracking-wide opacity-70">Avaliação</span>
-      {meta.label}
-    </span>
+    <section className="space-y-1.5">
+      <h4 className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+        <Gauge className="h-3.5 w-3.5" /> Avaliação do usuário
+      </h4>
+      <div
+        className="flex items-start gap-2 rounded-lg border px-3 py-2"
+        style={{ borderColor: `${meta.color}40`, background: `${meta.color}14` }}
+      >
+        <Icon className="mt-0.5 h-4 w-4 shrink-0" style={{ color: meta.color }} />
+        <p className="text-sm [overflow-wrap:anywhere]">
+          <span className="font-semibold" style={{ color: meta.color }}>
+            {meta.label}:
+          </span>{" "}
+          {hasComment ? (
+            comment
+          ) : (
+            <span className="italic text-muted-foreground">sem comentário</span>
+          )}
+        </p>
+      </div>
+    </section>
   );
 }
 
@@ -244,10 +265,6 @@ export function EvaluationDrilldown({ evaluationId, onAdjusted }: Props) {
               </>
             );
           })()}
-          {/* AVALIAÇÃO do usuário, pareada com a perícia (status) acima. */}
-          {detail.userFeedback ? (
-            <UserAvaliacaoChip rating={detail.userFeedback.rating} />
-          ) : null}
           {e.model && (
             <Badge variant="ghost" className="font-mono text-[11px]">
               {e.model}
@@ -276,22 +293,15 @@ export function EvaluationDrilldown({ evaluationId, onAdjusted }: Props) {
         </div>
       </div>
 
-      {/* Comentário do usuário no voto (matéria-prima de correção). Linha sutil,
-          só quando há texto, sem inchar o drill-down. */}
-      {detail.userFeedback?.comment ? (
-        <div className="-mt-2 flex items-start gap-1.5 rounded-md border border-amber-500/20 bg-amber-500/5 px-2.5 py-1.5 text-xs text-amber-700 dark:text-amber-200/90">
-          {(() => {
-            const meta = RATING_META[detail.userFeedback.rating as UserFeedbackRating];
-            const Icon = meta?.Icon;
-            return Icon ? (
-              <Icon className="mt-px h-3.5 w-3.5 shrink-0" style={{ color: meta.color }} />
-            ) : null;
-          })()}
-          <span className="[overflow-wrap:anywhere]">
-            <span className="font-semibold">Comentário do usuário:</span>{" "}
-            {detail.userFeedback.comment}
-          </span>
-        </div>
+      {/* AVALIAÇÃO do usuário (voto na bubble) , seção própria, como Pergunta/
+          Resposta. Card na COR OFICIAL da categoria (igual ao ícone que o
+          usuário clica na bubble). Formato: [ícone] Categoria: comentário (ou
+          "sem comentário"). */}
+      {detail.userFeedback ? (
+        <UserAvaliacaoSection
+          rating={detail.userFeedback.rating}
+          comment={detail.userFeedback.comment}
+        />
       ) : null}
 
       {/* Pergunta e resposta */}
