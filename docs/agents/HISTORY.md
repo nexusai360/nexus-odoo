@@ -284,3 +284,6 @@
 2026-06-05 scope=bubble summary=snapshot fiel das sugestoes exibidas (POST suggestions-shown keyado por messageId) + modulo suggestion-fallback compartilhado
 2026-06-05 scope=agent summary=re-strip [[suggestions]] pos-retry do autoValidator (vazamento no conteudo persistido)
 2026-06-05 scope=fix summary=timezone nas queries de periodo e datas dos fatos UTC-explicito (Z); dia inicial sumia sob TZ negativa; prod-UTC sempre correto; 2386 testes verdes
+2026-06-05 scope=bubble summary=expandir em modal central (Maximize2/backdrop); voto: selecionado na paleta + remover (toggle-off), comentario popover (corrige badge), card no hover c/ editar/adicionar, sugestoes somem ao editar, comentario ate 150 (VarChar 150 via ALTER local), Enter envia/Shift+Enter quebra linha, gatilho 27px violeta c/ pulso unificado sincronizado + texto 'Avalie'
+2026-06-05 scope=rbac summary=regra TEMPORARIA (temp-rules.ts USUARIOS_SUPER_ADMIN_ONLY) oculta menu Usuarios e bloqueia rota /usuarios p/ nao-super_admin; reverter = flag false
+2026-06-05 scope=ux summary=header bubble so 'Online'; espaco mensagem->1a sugestao padronizado (8px) na bubble e no monitor
