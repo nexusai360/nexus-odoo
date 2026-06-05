@@ -148,8 +148,8 @@ function MetricsPair({
 function fmtRange(startedAt: string, endedAt: string | null): string {
   const p = (n: number) => String(n).padStart(2, "0");
   const d = (x: Date) =>
-    `${p(x.getDate())}/${p(x.getMonth() + 1)}/${x.getFullYear()} ${p(x.getHours())}:${p(x.getMinutes())}:${p(x.getSeconds())}`;
-  return `${d(new Date(startedAt))} ${endedAt ? "ate " + d(new Date(endedAt)) : "ate agora"}`;
+    `${p(x.getDate())}/${p(x.getMonth() + 1)}/${p(x.getFullYear() % 100)} ${p(x.getHours())}:${p(x.getMinutes())}:${p(x.getSeconds())}`;
+  return `${d(new Date(startedAt))} ${endedAt ? "até " + d(new Date(endedAt)) : "até agora"}`;
 }
 
 // Painel único: as 3 colunas dividem o mesmo card, separadas só por borda
@@ -158,7 +158,7 @@ const PANEL =
   "flex h-[72vh] flex-col overflow-hidden rounded-xl border border-border bg-card shadow-sm lg:flex-row";
 const SECTION = "flex min-h-0 min-w-0 flex-1 flex-col";
 const DIVIDER = "border-b border-border lg:border-b-0 lg:border-r";
-const SIDE_COL = "lg:w-[300px] lg:flex-none";
+const SIDE_COL = "lg:w-[350px] lg:flex-none";
 const HEAD =
   "shrink-0 border-b border-border px-3 py-2 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground";
 
@@ -345,8 +345,9 @@ export function BubbleMonitor() {
                     </span>
                   ) : null}
                 </div>
-                <div className="text-[11px] text-muted-foreground">
-                  {fmtRange(s.startedAt, s.endedAt)} · {s.messageCount} msgs
+                <div className="whitespace-nowrap text-[11px] text-muted-foreground">
+                  {fmtRange(s.startedAt, s.endedAt)} ·{" "}
+                  <span className="tabular-nums">{s.messageCount}</span> msgs
                 </div>
                 <div className="mt-1">
                   <MetricsPair
