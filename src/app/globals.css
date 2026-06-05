@@ -298,18 +298,18 @@ input[type="search"]::-webkit-search-decoration {
    (= -(tempo % duração)) aplicado inline em cada ícone: assim a fase de todos
    fica ancorada ao mesmo relógio e elas pulsam juntas (mesma cadência). */
 @keyframes nexVotePulse {
-  0%, 100% { transform: scale(1); }
-  50% { transform: scale(1.18); }
+  0%, 100% {
+    transform: scale(1);
+    box-shadow: 0 0 0 0 rgba(139, 92, 246, 0);
+  }
+  50% {
+    transform: scale(1.07);
+    box-shadow: 0 0 0 3px rgba(139, 92, 246, 0.22);
+  }
 }
-@keyframes nexVoteRing {
-  0% { transform: scale(0.9); opacity: 0.55; }
-  70% { opacity: 0; }
-  100% { transform: scale(2.1); opacity: 0; }
-}
-.nex-vote-pulse { animation: nexVotePulse 2s ease-in-out infinite; }
-.nex-vote-ring { animation: nexVoteRing 2s ease-out infinite; }
+.nex-vote-pulse { animation: nexVotePulse 1.25s ease-in-out infinite; }
 @media (prefers-reduced-motion: reduce) {
-  .nex-vote-pulse, .nex-vote-ring { animation: none; }
+  .nex-vote-pulse { animation: none; }
 }
 
 /* Animacao de WIDTH da bolha via CSS + interpolate-size. HEIGHT eh
