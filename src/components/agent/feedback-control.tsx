@@ -182,10 +182,10 @@ export function FeedbackControl({
           title="Avalie esta resposta"
           onClick={() => setOpen((v) => !v)}
           style={{ animationDelay: pulseDelay }}
-          // Só o GATILHO (sem voto): +5px (h-[29px], ~altura da paleta) e subido
-          // (bottom-1) pra alinhar com o carimbo de data/hora. O badge votado
-          // (abaixo) NÃO muda.
-          className="nex-vote-pulse absolute -right-2 bottom-1 flex h-[29px] w-[29px] cursor-pointer items-center justify-center rounded-md border border-violet-400/60 bg-violet-500/15 text-violet-600 shadow-sm transition-colors hover:bg-violet-500/35 hover:text-violet-700 hover:[animation-play-state:paused] focus-visible:ring-2 focus-visible:ring-violet-400/70 focus-visible:outline-none dark:text-violet-300"
+          // Só o GATILHO (sem voto): mesmo tamanho dos ícones da paleta das 4
+          // opções (h-[30px]) e centro vertical alinhado com ela (-bottom-1.5).
+          // O badge votado (abaixo) NÃO muda.
+          className="nex-vote-pulse absolute -right-2 -bottom-1.5 flex h-[30px] w-[30px] cursor-pointer items-center justify-center rounded-md border border-violet-400/60 bg-violet-500/15 text-violet-600 shadow-sm transition-colors hover:bg-violet-500/35 hover:text-violet-700 hover:[animation-play-state:paused] focus-visible:ring-2 focus-visible:ring-violet-400/70 focus-visible:outline-none dark:text-violet-300"
         >
           <Gauge className="h-4 w-4" strokeWidth={2.25} />
         </button>
