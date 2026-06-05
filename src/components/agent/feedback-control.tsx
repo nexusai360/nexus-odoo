@@ -11,7 +11,7 @@
  */
 
 import * as React from "react";
-import { Star, Check, X, Ghost, Send } from "lucide-react";
+import { Gauge, Check, X, Ghost, Send } from "lucide-react";
 import { PartialIcon } from "./partial-icon";
 import { motion, AnimatePresence, useReducedMotion } from "framer-motion";
 import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip";
@@ -184,7 +184,7 @@ export function FeedbackControl({
           style={{ animationDelay: pulseDelay }}
           className="nex-vote-pulse absolute -right-2 -bottom-2 flex h-6 w-6 cursor-pointer items-center justify-center rounded-md border border-violet-400/60 bg-violet-500/15 text-violet-600 shadow-sm transition-colors hover:bg-violet-500/35 hover:text-violet-700 hover:[animation-play-state:paused] focus-visible:ring-2 focus-visible:ring-violet-400/70 focus-visible:outline-none dark:text-violet-300"
         >
-          <Star className="h-3.5 w-3.5" strokeWidth={2.25} />
+          <Gauge className="h-3.5 w-3.5" strokeWidth={2.25} />
         </button>
       ) : (
         <button
