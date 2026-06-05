@@ -1,0 +1,139 @@
+name: Build and Push
+
+# Push em main -> builda as duas imagens (app e mcp), pusha pro GHCR e
+# dispara redeploy dos services no Swarm via Portainer API.
+#
+# nexus-odoo tem DOIS artefatos de imagem:
+#   - ghcr.io/nexusai360/nexus-odoo       (docker/Dockerfile) -> services app e worker
+#   - ghcr.io/nexusai360/nexus-odoo-mcp   (mcp/Dockerfile)    -> service mcp
+#
+# O service db (pgvector) e redis usam imagens publicas, nao sao buildados aqui.
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_APP: ghcr.io/nexusai360/nexus-odoo
+  IMAGE_MCP: ghcr.io/nexusai360/nexus-odoo-mcp
+
+jobs:
+  build-app:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/checkout@v4
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Metadata (app)
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.IMAGE_APP }}
+          tags: |
+            type=sha
+            type=raw,value=latest
+      - name: Build and push (app)
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: docker/Dockerfile
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          build-args: |
+            APP_VERSION=${{ github.sha }}
+
+  build-mcp:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/checkout@v4
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Metadata (mcp)
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.IMAGE_MCP }}
+          tags: |
+            type=sha
+            type=raw,value=latest
+      - name: Build and push (mcp)
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: mcp/Dockerfile
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+
+  deploy:
+    needs: [build-app, build-mcp]
+    runs-on: ubuntu-latest
+    if: ${{ github.event_name == 'push' }}
+    permissions:
+      contents: read
+      packages: read
+    env:
+      PORTAINER_URL: ${{ secrets.PORTAINER_URL }}
+      PORTAINER_TOKEN: ${{ secrets.PORTAINER_TOKEN }}
+      PORTAINER_ENDPOINT_ID: ${{ secrets.PORTAINER_ENDPOINT_ID }}
+      PORTAINER_STACK_ID: ${{ secrets.PORTAINER_STACK_ID }}
+      # GITHUB_TOKEN (packages: read) basta para autenticar o pull no GHCR.
+      GHCR_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+    steps:
+      - name: Trigger Portainer redeploy (Swarm-aware)
+        run: |
+          set -e
+          if [ -z "$PORTAINER_STACK_ID" ]; then
+            echo "PORTAINER_STACK_ID nao configurado (primeiro deploy ainda nao criou a stack) — pulando."
+            exit 0
+          fi
+
+          AUTH=$(printf '{"username":"%s","password":"%s"}' "${GITHUB_ACTOR:-jvzanini}" "$GHCR_TOKEN" | base64 | tr -d '\n')
+          API="$PORTAINER_URL/api/endpoints/$PORTAINER_ENDPOINT_ID/docker"
+
+          STACK_NAME=$(curl --silent --insecure -H "X-API-Key: $PORTAINER_TOKEN" "$PORTAINER_URL/api/stacks/$PORTAINER_STACK_ID" | jq -r '.Name')
+          echo "Stack: $STACK_NAME"
+
+          # Puxa as imagens novas no no Swarm (app/worker usam IMAGE_APP, mcp usa IMAGE_MCP).
+          for IMG in "$IMAGE_APP" "$IMAGE_MCP"; do
+            curl --silent --insecure -X POST -H "X-API-Key: $PORTAINER_TOKEN" -H "X-Registry-Auth: $AUTH" \
+              "$API/images/create?fromImage=$IMG&tag=latest" -o /tmp/pull.log -w "Pull $IMG: HTTP %{http_code}\n" || true
+          done
+
+          curl --silent --insecure -H "X-API-Key: $PORTAINER_TOKEN" "$API/services" > /tmp/svc.json
+
+          # Forca redeploy dos 3 services que rodam imagem buildada.
+          for SVC in app mcp worker; do
+            SERVICE_NAME="${STACK_NAME}_${SVC}"
+            SVC_ID=$(jq -r --arg n "$SERVICE_NAME" '[.[] | select(.Spec.Name==$n)][0].ID // empty' /tmp/svc.json)
+            if [ -z "$SVC_ID" ]; then
+              echo "Service $SERVICE_NAME nao encontrado — pulando:"
+              jq -r '[.[].Spec.Name]' /tmp/svc.json
+              continue
+            fi
+            SVC_VER=$(jq -r --arg n "$SERVICE_NAME" '[.[] | select(.Spec.Name==$n)][0].Version.Index' /tmp/svc.json)
+            jq --arg n "$SERVICE_NAME" '[.[] | select(.Spec.Name==$n)][0].Spec | .TaskTemplate.ForceUpdate = ((.TaskTemplate.ForceUpdate // 0) + 1)' /tmp/svc.json > /tmp/spec.json
+            HTTP=$(curl --silent --insecure -o /tmp/upd.log -w "%{http_code}" -X POST -H "X-API-Key: $PORTAINER_TOKEN" -H "Content-Type: application/json" -H "X-Registry-Auth: $AUTH" "$API/services/$SVC_ID/update?version=$SVC_VER" --data-binary @/tmp/spec.json)
+            echo "Redeploy $SERVICE_NAME (id=$SVC_ID ver=$SVC_VER): HTTP $HTTP"
+            if [ "$HTTP" != "200" ]; then
+              cat /tmp/upd.log; echo ""; exit 1
+            fi
+          done
+          echo "Redeploy disparado com sucesso."
