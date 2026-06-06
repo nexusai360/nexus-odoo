@@ -1,8 +1,12 @@
-import type { Prisma, PrismaClient } from "../../../generated/prisma/client";
+import type { PrismaClient } from "../../../generated/prisma/client";
 import type { EmpresaResolucao, EmpresaCandidata } from "./types";
 
-/** Filtro Prisma de empresa: {} quando ausente, { empresaId } quando presente. */
-export function buildEmpresaWhere(empresaId?: number): Prisma.FatoNotaFiscalWhereInput {
+/**
+ * Filtro de empresa em shape plano: {} quando ausente, { empresaId } quando presente.
+ * Reusavel no where de fato_nota_fiscal e de fato_nota_fiscal_item (empresaId
+ * desnormalizado no item pelo Bloco A).
+ */
+export function buildEmpresaWhere(empresaId?: number): { empresaId?: number } {
   return empresaId === undefined ? {} : { empresaId };
 }
 
