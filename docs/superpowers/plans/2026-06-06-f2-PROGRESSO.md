@@ -8,7 +8,17 @@
 
 ## Blocos (ordem do plano v3)
 - [x] **Bloco A** , COMPLETO. Helpers em src/lib/entities/: types, _fuzzy, _documento, _classificar-ref (id/documento/codigo_numerico_longo[\d{10,18}]/chave_nfe[\d{44}]/texto), sinonimias (A8 confirmado: pedido 9 tipos, situacao 7, natureza {01,02,04}), _lacuna, index.ts (barrel + adaptador resolverEmpresaGenerica). 5 suites, 49 testes verdes, tsc limpo. Commitado.
-  - PROXIMO: Bloco B. Rodar B0 primeiro (fixtures-chave-forte.md via SELECTs do plano linhas ~203-211) para ancorar mocks/E2E. Depois os 8 resolvedores (armazem, produto, nota-fiscal, conta-contabil, conta-referencial, pedido, natureza-operacao, centro-resultado), cada um teste+impl por ramo, reusando classificarRef/scoreFuzzy/sinonimias; SEMPRE filtra no banco (where), nunca findMany cego; adiciona export ao barrel ao fim de cada. Ler o plano BLOCO B (linha ~194+) para a chave de cada entidade.
+  - **B0 FEITO** , fixtures-chave-forte.md commitado (1 registro real por entidade).
+  - PROXIMO: Bloco B (8 resolvedores). ANTES de implementar, LER o plano BLOCO B (linha ~194-400) para a logica EXATA de cada ramo (id/chave forte/codigo longo/nome fuzzy com folga); a regra de promover a `unica` vs `ambigua` (limiar + margem de folga sobre o 2o, e o caso de contains retornar 1) precisa vir do plano, nao inventar. Sugestao: criar helper `_ranking.ts` (rankearPorNome) reusavel pelos 9. SEMPRE where no banco; export ao barrel ao fim de cada.
+  - CAMPOS DOS MODELS (ja levantados):
+    - FatoContaContabil: odooId, codigo (hierarquico com pontos, ex "1.1.01.01"), nome, tipo, nivel, natureza, contaPaiId. Chave: id > codigo(sem pontos, igualdade de digits, anti-falso-positivo "110101"!="1101011") > nome fuzzy.
+    - FatoProduto: odooId, nome, codigo, codigoUnico, codigoBarras, ativo, marcaId/Nome, familiaId/Nome, ncmCodigo. Chave: id > codigoUnico/codigoBarras > codigo > nome fuzzy.
+    - FatoPedido: odooId, numero (ex "DV-0001/26","TRANSF-0014/26" regex ^[A-Z]+-\d+/\d{2}$), tipo, etapaFinaliza, participanteId/Nome, empresaId. Chave: id > numero(+tipo) > data+tipo/participante (lista).
+    - FatoReferencia (natureza): id(autoinc, NAO usar como odooId), tabela, codigo (string "001"), descricao. where tabela='natureza_operacao'. Chave: codigo string (namespace proprio) > descricao fuzzy.
+    - Armazem: raw_estoque_local.data JSON (nome_unico lowercase, nome_completo com acento). Sem fato; findMany raw + parse (cardinalidade baixa, excecao documentada).
+    - Centro: desnorm em fato_financeiro_lancamento_item (centro_resultado_id, centro_resultado_nome); DISTINCT.
+    - Conta Referencial: fato_contabil_conta_referencial (odooId, codigo, nome, nome_completo).
+    - NotaFiscal: odooId > chave ^\d{44}$ > intervalo data+entradaSaida (lista). `numero` 100% null, NAO usar.
 - [ ] **Bloco B** , 8 resolvedores (armazem, produto, nota-fiscal, conta-contabil, conta-referencial, pedido, natureza-operacao, centro-resultado). Parceiro NAO aqui.
 - [ ] **Bloco C** , migration FatoParceiro.documentoDigits + @@index([chave]) (MANUAL + migrate deploy, NAO migrate dev; drift) + prisma generate + builder worker + backfill.
 - [ ] **Bloco C-bis** , resolverParceiro (depende de documentoDigits no client) + export ./parceiro no barrel.
