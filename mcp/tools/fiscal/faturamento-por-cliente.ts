@@ -6,10 +6,12 @@ import { queryFaturamentoPorCliente } from "@/lib/reports/queries/fiscal.js";
 import { withFreshness } from "../../lib/freshness.js";
 import { enriquecerEnvelope } from "../../lib/with-responder.js";
 import { paginacaoInputShape, resolverPaginacao, montarPaginacaoMeta } from "../../lib/paginacao.js";
+import { montarEscopoEmpresa, type EscopoEmpresa } from "./_escopo-empresa.js";
 
 const inputSchema = z.object({
   periodoDe: z.string().optional(),
   periodoAte: z.string().optional(),
+  empresaRef: z.string().trim().min(1).optional().describe("Empresa (id, CNPJ ou nome). Sem isso, considera o grupo todo."),
   ...paginacaoInputShape,
 });
 
@@ -23,6 +25,7 @@ const dados = z.object({
   linhas: z.array(linhaSchema),
   total: z.number().int(),
   valorGeral: z.number(),
+  escopoEmpresa: z.record(z.string(), z.unknown()),
   aviso: z.string(),
   _RESPOSTA: z.string().optional(),
   _listaTruncada: z.boolean().optional(),
@@ -51,12 +54,13 @@ const outputSchema = z.union([
 type Input = z.infer<typeof inputSchema>;
 type Output = z.infer<typeof outputSchema>;
 
-function shape(d: Awaited<ReturnType<typeof queryFaturamentoPorCliente>>) {
+function shape(d: Awaited<ReturnType<typeof queryFaturamentoPorCliente>>, escopo: EscopoEmpresa) {
   return {
     linhas: d.linhas,
     total: d.total,
     valorGeral: d.valorGeral,
-    aviso: "Agrupa notas de saída autorizadas por cliente, ordenado por valor total descendente.",
+    escopoEmpresa: escopo as unknown as Record<string, unknown>,
+    aviso: "Agrupa notas de saída autorizadas (venda) por cliente, ordenado por valor total descendente. " + escopo.aviso,
   };
 }
 
@@ -68,9 +72,19 @@ export const fiscalFaturamentoPorCliente: ToolEntry<Input, Output> = {
   inputSchema,
   outputSchema,
   handler: async (input, ctx) => {
+    const escopo = await montarEscopoEmpresa(ctx.prisma, input.empresaRef);
     const { limit, offset } = resolverPaginacao(input);
     const envelope = await withFreshness(ctx.prisma, ["fato_nota_fiscal"], async () =>
-      shape(await queryFaturamentoPorCliente(ctx.prisma, { ...input, limit, offset })),
+      shape(
+        await queryFaturamentoPorCliente(ctx.prisma, {
+          periodoDe: input.periodoDe,
+          periodoAte: input.periodoAte,
+          empresaId: escopo.empresaId,
+          limit,
+          offset,
+        }),
+        escopo.escopo,
+      ),
     );
     if (envelope.estado === "preparando") return envelope;
     const d = envelope.dados;

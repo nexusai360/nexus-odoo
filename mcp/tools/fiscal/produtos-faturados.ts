@@ -9,10 +9,12 @@ import {
   resolverPaginacao,
   montarPaginacaoMeta,
 } from "../../lib/paginacao.js";
+import { montarEscopoEmpresa, type EscopoEmpresa } from "./_escopo-empresa.js";
 
 const inputSchema = z.object({
   periodoDe: z.string().optional(),
   periodoAte: z.string().optional(),
+  empresaRef: z.string().trim().min(1).optional().describe("Empresa (id, CNPJ ou nome). Sem isso, considera o grupo todo."),
   ...paginacaoInputShape,
 });
 
@@ -27,6 +29,7 @@ const dados = z.object({
   total: z.number().int(),
   valorGeral: z.number(),
   quantidadeGeral: z.number(),
+  escopoEmpresa: z.record(z.string(), z.unknown()),
   aviso: z.string(),
   _RESPOSTA: z.string().optional(),
   _listaTruncada: z.boolean().optional(),
@@ -53,15 +56,17 @@ const outputSchema = z.union([
 type Input = z.infer<typeof inputSchema>;
 type Output = z.infer<typeof outputSchema>;
 
-function shape(d: Awaited<ReturnType<typeof queryProdutosFaturados>>) {
+function shape(d: Awaited<ReturnType<typeof queryProdutosFaturados>>, escopo: EscopoEmpresa) {
   return {
     linhas: d.linhas,
     total: d.total,
     valorGeral: d.valorGeral,
     quantidadeGeral: d.quantidadeGeral,
+    escopoEmpresa: escopo as unknown as Record<string, unknown>,
     aviso:
-      "Agrupa itens de notas de saída (entradaSaida='1') por produto, " +
-      "ordenado por valor total descendente. Notas de entrada não são consideradas.",
+      "Agrupa itens de notas de saída (entradaSaida='1') por produto, ordenado por valor total descendente. " +
+      "O valor usa vrProdutos (sem impostos), então é menor que o faturamento autorizado; não cruzar diretamente. " +
+      escopo.aviso,
   };
 }
 
@@ -74,9 +79,19 @@ export const fiscalProdutosFaturados: ToolEntry<Input, Output> = {
   inputSchema,
   outputSchema,
   handler: async (input, ctx) => {
+    const escopo = await montarEscopoEmpresa(ctx.prisma, input.empresaRef);
     const { limit, offset } = resolverPaginacao(input);
     const envelope = await withFreshness(ctx.prisma, ["fato_nota_fiscal_item"], async () =>
-      shape(await queryProdutosFaturados(ctx.prisma, { ...input, limit, offset })),
+      shape(
+        await queryProdutosFaturados(ctx.prisma, {
+          periodoDe: input.periodoDe,
+          periodoAte: input.periodoAte,
+          empresaId: escopo.empresaId,
+          limit,
+          offset,
+        }),
+        escopo.escopo,
+      ),
     );
     if (envelope.estado === "preparando") return envelope;
     const d = envelope.dados;
