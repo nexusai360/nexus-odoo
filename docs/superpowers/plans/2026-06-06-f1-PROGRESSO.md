@@ -19,8 +19,8 @@
   - Tools: D1 fiscal_faturamento_por_empresa (gated), D2 _por_operacao, D3 _por_cfop (freshness inclui fato_nota_fiscal_item), D4 _nao_autorizado, D5 _recebido (eixo pedido|nota; nota=gap, NAO grava featureRequest). Helper montarEscopoEmpresa(prisma, empresaRef?, recorte) resolve empresaRef via resolverEmpresa, ramo grupo deriva M/X de faturamentoPorEmpresa.
 - [ ] **Bloco E** , refactor 9 queries/tools fiscais (E1 fiscal.ts queryFaturamentoPeriodo MANTEM chave valorFaturado, so troca where; E2-E13). Ordem E1-E4 (fiscal.ts) antes de E5-E13 (tools).
 - [ ] **Bloco E** , refactor de 9 tools/queries fiscais (empresaRef + escopo).
-- [ ] **Bloco F** , rebuild containers (app p/ worker + mcp) + reprocesso do builder (popula as colunas).
-- [ ] **Bloco G** , E2E contra cache real.
+- [x] **Bloco F** , rebuild app+mcp (imagem 18:30) + recriar worker/mcp + reprocesso. ARMADILHA resolvida: `docker compose up` precisa de `--env-file .env.local` (interpolacao `${ODOO_URL}`), senao worker entra em crash loop por env vazio; o reprocesso roda SEM `--env-file` (DATABASE_URL ja no container). Colunas populadas: 219.460 itens, 219.459 com empresa_id/situacao_nfe (1 orfao).
+- [x] **Bloco G** , E2E contra cache real PASSOU. Numeros (saida autorizada): TOTAL_GRUPO = 34.325 notas, R$1.852.798.390,94; SOMA_EMPRESAS = identico (fechamento perfeito), SEM_EMPRESA=0; 14 empresas faturam; situacoes excluidas corretamente (cancelada 171/R$13M, em_digitacao, denegada, rejeitada, inutilizada); CFOP item R$1.851.604.388,21 vs cabecalho R$1.852.798.390,94 = 0,064% (tolerancia ok).
 - [ ] **Bloco H** , code review + STATUS/HISTORY + PR.
 
 ## Lembretes de raiz
