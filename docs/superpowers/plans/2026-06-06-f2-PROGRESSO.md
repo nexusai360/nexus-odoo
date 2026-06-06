@@ -7,7 +7,8 @@
 **Reusar:** padrao `resolverEmpresa` de `src/lib/metrics/_shared/empresa.ts`.
 
 ## Blocos (ordem do plano v3)
-- [~] **Bloco A** , helpers `src/lib/entities/_shared`: types, _fuzzy (levenshtein/normalizar/scoreFuzzy), _documento, _classificar-ref, sinonimias, _lacuna, barrel. TDD.
+- [x] **Bloco A** , COMPLETO. Helpers em src/lib/entities/: types, _fuzzy, _documento, _classificar-ref (id/documento/codigo_numerico_longo[\d{10,18}]/chave_nfe[\d{44}]/texto), sinonimias (A8 confirmado: pedido 9 tipos, situacao 7, natureza {01,02,04}), _lacuna, index.ts (barrel + adaptador resolverEmpresaGenerica). 5 suites, 49 testes verdes, tsc limpo. Commitado.
+  - PROXIMO: Bloco B. Rodar B0 primeiro (fixtures-chave-forte.md via SELECTs do plano linhas ~203-211) para ancorar mocks/E2E. Depois os 8 resolvedores (armazem, produto, nota-fiscal, conta-contabil, conta-referencial, pedido, natureza-operacao, centro-resultado), cada um teste+impl por ramo, reusando classificarRef/scoreFuzzy/sinonimias; SEMPRE filtra no banco (where), nunca findMany cego; adiciona export ao barrel ao fim de cada. Ler o plano BLOCO B (linha ~194+) para a chave de cada entidade.
 - [ ] **Bloco B** , 8 resolvedores (armazem, produto, nota-fiscal, conta-contabil, conta-referencial, pedido, natureza-operacao, centro-resultado). Parceiro NAO aqui.
 - [ ] **Bloco C** , migration FatoParceiro.documentoDigits + @@index([chave]) (MANUAL + migrate deploy, NAO migrate dev; drift) + prisma generate + builder worker + backfill.
 - [ ] **Bloco C-bis** , resolverParceiro (depende de documentoDigits no client) + export ./parceiro no barrel.
