@@ -37,7 +37,7 @@ describe("chunk", () => {
 
 describe("mapNotaFiscalItemRow", () => {
   const notaInfoMap = new Map([
-    [42, { dataEmissao: new Date("2024-01-15T00:00:00Z"), entradaSaida: "1" }],
+    [42, { dataEmissao: new Date("2024-01-15T00:00:00Z"), entradaSaida: "1", empresaId: 7, situacaoNfe: "autorizada" }],
   ]);
 
   const baseRaw: Record<string, unknown> = {
@@ -81,10 +81,27 @@ describe("mapNotaFiscalItemRow", () => {
     expect(row.entradaSaida).toBe("1");
   });
 
+  it("desnormaliza empresaId e situacaoNfe da nota-mãe via notaInfoMap", () => {
+    const row = mapNotaFiscalItemRow(baseRaw, notaInfoMap);
+    expect(row.empresaId).toBe(7);
+    expect(row.situacaoNfe).toBe("autorizada");
+  });
+
   it("dataEmissao e entradaSaida null quando documentoId não está no map", () => {
     const row = mapNotaFiscalItemRow({ ...baseRaw, documento_id: [999, "NF-X"] }, notaInfoMap);
     expect(row.dataEmissao).toBeNull();
     expect(row.entradaSaida).toBeNull();
+    expect(row.empresaId).toBeNull();
+    expect(row.situacaoNfe).toBeNull();
+  });
+
+  it("empresaId null mas situacaoNfe propagado quando a nota não tem empresa", () => {
+    const semEmpresa = new Map([
+      [42, { dataEmissao: new Date("2024-01-15T00:00:00Z"), entradaSaida: "1", empresaId: null, situacaoNfe: "autorizada" }],
+    ]);
+    const row = mapNotaFiscalItemRow(baseRaw, semEmpresa);
+    expect(row.empresaId).toBeNull();
+    expect(row.situacaoNfe).toBe("autorizada");
   });
 
   it("valores monetários default 0 quando ausentes", () => {

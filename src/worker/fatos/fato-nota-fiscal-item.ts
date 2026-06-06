@@ -42,12 +42,17 @@ export interface FatoNotaFiscalItemRow {
   // Desnormalizados da nota-mãe (achado N8)
   dataEmissao: Date | null;
   entradaSaida: string | null;
+  // Desnormalizados da nota-mãe (F1: corte por empresa e operação no nível do item)
+  empresaId: number | null;
+  situacaoNfe: string | null;
   // NÃO inclui atualizadoEm , @default(now()) no schema
 }
 
 export interface NotaInfo {
   dataEmissao: Date | null;
   entradaSaida: string | null;
+  empresaId: number | null;
+  situacaoNfe: string | null;
 }
 
 /**
@@ -91,6 +96,8 @@ export function mapNotaFiscalItemRow(
     // Desnormalizados da nota-mãe
     dataEmissao: notaInfo?.dataEmissao ?? null,
     entradaSaida: notaInfo?.entradaSaida ?? null,
+    empresaId: notaInfo?.empresaId ?? null,
+    situacaoNfe: notaInfo?.situacaoNfe ?? null,
   };
 }
 
@@ -127,6 +134,8 @@ export async function rebuildFatoNotaFiscalItem(prisma: PrismaClient): Promise<n
         ? new Date(`${data.data_emissao}T00:00:00Z`)
         : null,
       entradaSaida: typeof data.entrada_saida === "string" ? data.entrada_saida : null,
+      empresaId: relId(data.empresa_id as OdooM2O),
+      situacaoNfe: typeof data.situacao_nfe === "string" ? data.situacao_nfe : null,
     });
   }
 

@@ -2070,11 +2070,15 @@ model FatoNotaFiscalItem {
   // Desnormalizados da nota-mãe (achado N8) — filtragem por período sem join.
   dataEmissao     DateTime? @map("data_emissao")
   entradaSaida    String?   @map("entrada_saida")
+  // Desnormalizados da nota-mãe (F1: corte por empresa e operação no nível do item).
+  empresaId       Int?      @map("empresa_id")
+  situacaoNfe     String?   @map("situacao_nfe")
   atualizadoEm    DateTime  @default(now()) @map("atualizado_em")
 
   @@index([documentoId])
   @@index([produtoId])
   @@index([dataEmissao])
+  @@index([empresaId])
   @@map("fato_nota_fiscal_item")
 }
 
