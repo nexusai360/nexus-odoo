@@ -288,3 +288,4 @@
 2026-06-05 scope=rbac summary=regra TEMPORARIA (temp-rules.ts USUARIOS_SUPER_ADMIN_ONLY) oculta menu Usuarios e bloqueia rota /usuarios p/ nao-super_admin; reverter = flag false
 2026-06-05 scope=ux summary=header bubble so 'Online'; espaco mensagem->1a sugestao padronizado (8px) na bubble e no monitor
 2026-06-06 scope=infra summary=rebuild app+mcp + reprocesso fato_nota_fiscal_item (F1 bloco F); colunas empresa_id/situacao_nfe populadas (219.459); E2E G fechou (soma por empresa = total grupo R$1,85bi; CFOP tolerancia 0,064%)
+2026-06-06 scope=f1 summary=Fase 1 (faturamento + corte por empresa) COMPLETA: 11 metricas canonicas, 5 tools MCP novas, corte por empresa em 9 tools fiscais, schema desnormalizado. E2E real: soma por empresa = total grupo; faturamento de venda exclui R$450M de nao-venda (53 naturezas).
