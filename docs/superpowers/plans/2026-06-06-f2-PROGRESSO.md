@@ -19,9 +19,8 @@
     - Centro: desnorm em fato_financeiro_lancamento_item (centro_resultado_id, centro_resultado_nome); DISTINCT.
     - Conta Referencial: fato_contabil_conta_referencial (odooId, codigo, nome, nome_completo).
     - NotaFiscal: odooId > chave ^\d{44}$ > intervalo data+entradaSaida (lista). `numero` 100% null, NAO usar.
-- [~] **Bloco B** , EM ANDAMENTO. _ranking.ts (rankearPorNome) COMMITADO. Os 8 resolvedores estao sendo implementados por WORKFLOW background (id wvp9pu9id, run wf_86d9837e-e52), Opus+TDD, cada agente le a secao do seu resolvedor no plano. Os agentes NAO editam o barrel index.ts.
-  - QUANDO O WORKFLOW TERMINAR: (1) ler o retorno (testesVerdes por entidade); (2) adicionar `export * from "./<slug>"` no src/lib/entities/index.ts para os 8 (armazem, produto, nota-fiscal, conta-contabil, conta-referencial, pedido, natureza-operacao, centro-resultado); (3) `npx jest src/lib/entities` + `npx tsc --noEmit`; corrigir o que falhar (inline); (4) commitar o Bloco B. Se algum agente falhou (testesVerdes=false), implementar/corrigir esse resolvedor inline.
-  - DEPOIS: Bloco C (migration documentoDigits) -> C-bis parceiro -> D tools -> E catalogo/integration.test -> F rebuild -> G E2E -> H PR.
+- [x] **Bloco B** , COMPLETO, commit e4aaaf7. 8 resolvedores + _ranking + barrel. 157 testes verdes, tsc limpo. (Workflow wvp9pu9id implementou os 8 em Opus+TDD; integrei o barrel e validei inline.)
+  - DECISOES dos agentes (relevantes p/ C/D): nota-fiscal usa findFirst no ramo chave (chave NAO e @unique; o Bloco C cria @@index([chave]), nao unique). produto CS4: codigo longo sem match = nenhuma. armazem fuzzy por ultimo segmento do parent_path.
 - [ ] **Bloco C** , migration FatoParceiro.documentoDigits + @@index([chave]) (MANUAL + migrate deploy, NAO migrate dev; drift) + prisma generate + builder worker + backfill.
 - [ ] **Bloco C-bis** , resolverParceiro (depende de documentoDigits no client) + export ./parceiro no barrel.
 - [ ] **Bloco D** , 4 tools detalhar-por-id (produto, pedido, conta[gated], nota; sem `numero` na nota=null).
