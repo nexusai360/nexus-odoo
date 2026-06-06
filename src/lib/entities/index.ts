@@ -15,6 +15,16 @@ export * from "./_documento";
 export * from "./_classificar-ref";
 export * from "./sinonimias";
 export * from "./_lacuna";
+export * from "./_ranking";
+// Resolvedores de entidade (Bloco B). Parceiro entra no Bloco C-bis (depende de documentoDigits).
+export * from "./armazem";
+export * from "./produto";
+export * from "./nota-fiscal";
+export * from "./conta-contabil";
+export * from "./conta-referencial";
+export * from "./pedido";
+export * from "./natureza-operacao";
+export * from "./centro-resultado";
 
 /**
  * Adaptador que envelopa o resolverEmpresa da F1 (cujo retorno EmpresaResolucao nao tem
