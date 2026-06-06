@@ -6,23 +6,26 @@
 // Fonte primária: fato_nota_fiscal (cabeçalho), fato_nota_fiscal_item (itens).
 
 import type { PrismaClient } from "@/generated/prisma/client";
+import { buildPeriodoWhere } from "@/lib/metrics/_shared/periodo";
+import { buildEmpresaWhere } from "@/lib/metrics/_shared/empresa";
+import { idsNaoVenda, buildNaturezaVendaWhere } from "@/lib/metrics/_shared/naturezas";
 
 export async function queryFaturamentoPeriodo(
   prisma: PrismaClient,
-  filtros: { periodoDe?: string; periodoAte?: string },
+  filtros: { periodoDe?: string; periodoAte?: string; empresaId?: number },
 ): Promise<{ totalNotas: number; valorFaturado: number }> {
-  const periodoWhere =
-    filtros.periodoDe && filtros.periodoAte
-      ? {
-          dataEmissao: {
-            gte: new Date(`${filtros.periodoDe}T00:00:00Z`),
-            lte: new Date(`${filtros.periodoAte}T00:00:00Z`),
-          },
-        }
-      : {};
-
+  // F1: passa a usar a definicao canonica de faturamento de venda (borda de periodo
+  // exclusiva, exclui operacoes nao-venda como devolucao/transferencia, corte por empresa).
+  // A chave publica valorFaturado e mantida. O numero muda onde houver nao-venda (correto).
+  const naoVenda = await idsNaoVenda(prisma);
   const rows = await prisma.fatoNotaFiscal.findMany({
-    where: { entradaSaida: "1", situacaoNfe: "autorizada", ...periodoWhere },
+    where: {
+      entradaSaida: "1",
+      situacaoNfe: "autorizada",
+      ...buildPeriodoWhere(filtros.periodoDe, filtros.periodoAte),
+      ...buildEmpresaWhere(filtros.empresaId),
+      ...buildNaturezaVendaWhere(naoVenda),
+    },
     select: { vrNf: true },
   });
 
