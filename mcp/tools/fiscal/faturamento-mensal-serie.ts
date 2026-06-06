@@ -10,9 +10,11 @@ import { queryFaturamentoPeriodo } from "@/lib/reports/queries/fiscal.js";
 import { withFreshness } from "../../lib/freshness.js";
 import { enriquecerEnvelope } from "../../lib/with-responder.js";
 import { formatadorPorTool } from "../../lib/responder.js";
+import { montarEscopoEmpresa } from "./_escopo-empresa.js";
 
 const inputSchema = z.object({
   ano: z.number().int().min(2000).max(2100).optional(),
+  empresaRef: z.string().trim().min(1).optional().describe("Empresa (id, CNPJ ou nome). Sem isso, considera o grupo todo."),
 });
 
 const mesSchema = z.object({
@@ -27,6 +29,7 @@ const dados = z.object({
   serie: z.array(mesSchema),
   totalAno: z.number(),
   totalNotasAno: z.number().int(),
+  escopoEmpresa: z.record(z.string(), z.unknown()),
   _RESPOSTA: z.string().optional(),
   _listaTruncada: z.boolean().optional(),
   _DESTAQUE: z.record(z.string(), z.union([z.string(), z.number()])).optional(),
@@ -66,6 +69,7 @@ export const fiscalFaturamentoMensalSerie: ToolEntry<Input, Output> = {
     const ano = input.ano ?? new Date().getFullYear();
     const hoje = new Date();
     const mesLimit = ano === hoje.getFullYear() ? hoje.getMonth() + 1 : 12;
+    const escopo = await montarEscopoEmpresa(ctx.prisma, input.empresaRef);
 
     const envelope = await withFreshness(
       ctx.prisma,
@@ -78,12 +82,12 @@ export const fiscalFaturamentoMensalSerie: ToolEntry<Input, Output> = {
           const ultimoDia = new Date(ano, m, 0).getDate();
           const periodoDe = `${ano}-${String(m).padStart(2, "0")}-01`;
           const periodoAte = `${ano}-${String(m).padStart(2, "0")}-${String(ultimoDia).padStart(2, "0")}`;
-          const r = await queryFaturamentoPeriodo(ctx.prisma, { periodoDe, periodoAte });
+          const r = await queryFaturamentoPeriodo(ctx.prisma, { periodoDe, periodoAte, empresaId: escopo.empresaId });
           serie.push({ mes: m, totalNotas: r.totalNotas, valorFaturado: r.valorFaturado });
           totalAno += r.valorFaturado;
           totalNotasAno += r.totalNotas;
         }
-        return { ano, serie, totalAno, totalNotasAno };
+        return { ano, serie, totalAno, totalNotasAno, escopoEmpresa: escopo.escopo as unknown as Record<string, unknown> };
       },
     );
     if (envelope.estado === "preparando") return envelope;

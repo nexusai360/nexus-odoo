@@ -5,16 +5,19 @@ import type { ToolEntry } from "../../catalog/types.js";
 import { queryFaturamentoPeriodo } from "@/lib/reports/queries/fiscal.js";
 import { withFreshness } from "../../lib/freshness.js";
 import { enriquecerEnvelope } from "../../lib/with-responder.js";
+import { montarEscopoEmpresa, type EscopoEmpresa } from "./_escopo-empresa.js";
 
 const inputSchema = z.object({
   periodoDe: z.string().optional(),
   periodoAte: z.string().optional(),
+  empresaRef: z.string().trim().min(1).optional().describe("Empresa (id, CNPJ ou nome). Sem isso, considera o grupo todo."),
 });
 
 // Onda 1.C: envelope canonico (_RESPOSTA + _DESTAQUE) aplicado.
 const dados = z.object({
   totalNotas: z.number().int(),
   valorFaturado: z.number(),
+  escopoEmpresa: z.record(z.string(), z.unknown()),
   aviso: z.string(),
   _RESPOSTA: z.string().optional(),
   _listaTruncada: z.boolean().optional(),
@@ -41,13 +44,14 @@ const outputSchema = z.union([
 type Input = z.infer<typeof inputSchema>;
 type Output = z.infer<typeof outputSchema>;
 
-function shape(d: Awaited<ReturnType<typeof queryFaturamentoPeriodo>>) {
+function shape(d: Awaited<ReturnType<typeof queryFaturamentoPeriodo>>, escopo: EscopoEmpresa) {
   return {
     totalNotas: d.totalNotas,
     valorFaturado: d.valorFaturado,
+    escopoEmpresa: escopo as unknown as Record<string, unknown>,
     aviso:
-      "Filtra apenas notas de saída autorizadas (entradaSaida='1', situacaoNfe='autorizada'). " +
-      "Notas canceladas ou de entrada não são consideradas.",
+      "Faturamento de venda autorizada (saída autorizada; exclui canceladas, não autorizadas " +
+      "e operações que não são venda, como devolução e transferência). " + escopo.aviso,
   };
 }
 
@@ -59,10 +63,19 @@ export const fiscalFaturamentoPeriodo: ToolEntry<Input, Output> = {
   inputSchema,
   outputSchema,
   handler: async (input, ctx) => {
+    const escopo = await montarEscopoEmpresa(ctx.prisma, input.empresaRef);
     const envelope = await withFreshness(
       ctx.prisma,
       ["fato_nota_fiscal"],
-      async () => shape(await queryFaturamentoPeriodo(ctx.prisma, input)),
+      async () =>
+        shape(
+          await queryFaturamentoPeriodo(ctx.prisma, {
+            periodoDe: input.periodoDe,
+            periodoAte: input.periodoAte,
+            empresaId: escopo.empresaId,
+          }),
+          escopo.escopo,
+        ),
     );
     if (envelope.estado === "preparando") return envelope;
     return enriquecerEnvelope(envelope, "fiscal_faturamento_periodo", {

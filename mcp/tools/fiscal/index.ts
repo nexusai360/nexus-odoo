@@ -23,6 +23,12 @@ import { fiscalDfePorFornecedor } from "./dfe-por-fornecedor.js";
 import { fiscalDfePendentesManifestacao } from "./dfe-pendentes-manifestacao.js";
 import { fiscalMdfeManifestos } from "./mdfe-manifestos.js";
 import { fiscalReinfEventos } from "./reinf-eventos.js";
+// F1 (faturamento + corte por empresa)
+import { fiscalFaturamentoPorEmpresa } from "./faturamento-por-empresa.js";
+import { fiscalFaturamentoPorOperacao } from "./faturamento-por-operacao.js";
+import { fiscalFaturamentoPorCfop } from "./faturamento-por-cfop.js";
+import { fiscalFaturamentoNaoAutorizado } from "./faturamento-nao-autorizado.js";
+import { fiscalFaturamentoRecebido } from "./faturamento-recebido.js";
 
 export const fiscalTools: ToolEntry[] = [
   fiscalFaturamentoPeriodo as ToolEntry,
@@ -49,4 +55,10 @@ export const fiscalTools: ToolEntry[] = [
   // B2 (onda fiscal complementar)
   fiscalMdfeManifestos as ToolEntry,
   fiscalReinfEventos as ToolEntry,
+  // F1 (faturamento + corte por empresa)
+  fiscalFaturamentoPorEmpresa as ToolEntry,
+  fiscalFaturamentoPorOperacao as ToolEntry,
+  fiscalFaturamentoPorCfop as ToolEntry,
+  fiscalFaturamentoNaoAutorizado as ToolEntry,
+  fiscalFaturamentoRecebido as ToolEntry,
 ];

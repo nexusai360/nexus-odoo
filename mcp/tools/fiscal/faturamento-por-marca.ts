@@ -7,11 +7,14 @@ import { z } from "zod";
 import type { ToolEntry } from "../../catalog/types.js";
 import { withFreshness } from "../../lib/freshness.js";
 import type { PrismaClient } from "@/generated/prisma/client.js";
+import { montarEscopoEmpresa } from "./_escopo-empresa.js";
+import { buildEmpresaSqlFragment } from "@/lib/metrics/_shared/empresa.js";
 
 const inputSchema = z.object({
   periodoDe: z.string().optional(),
   periodoAte: z.string().optional(),
   limite: z.number().int().min(1).max(50).optional(),
+  empresaRef: z.string().trim().min(1).optional().describe("Empresa (id, CNPJ ou nome). Sem isso, considera o grupo todo."),
 });
 
 const linhaSchema = z.object({
@@ -25,6 +28,7 @@ const dados = z.object({
   totalGeral: z.number(),
   totalItens: z.number().int(),
   totalMarcas: z.number().int(),
+  escopoEmpresa: z.record(z.string(), z.unknown()),
   _RESPOSTA: z.string().optional(),
   _DESTAQUE: z.record(z.string(), z.union([z.string(), z.number()])).optional(),
   _agregado: z.record(z.string(), z.number().optional()).optional(),
@@ -51,10 +55,13 @@ type Output = z.infer<typeof outputSchema>;
 
 interface Row { marca: string | null; quantidade: bigint; valor: string | number; }
 
-async function queryFaturamentoPorMarca(prisma: PrismaClient, input: Input) {
+async function queryFaturamentoPorMarca(prisma: PrismaClient, input: Input, empresaId?: number) {
   const periodoDe = input.periodoDe ?? new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString().slice(0, 10);
   const periodoAte = input.periodoAte ?? new Date().toISOString().slice(0, 10);
   const limite = input.limite ?? 20;
+  // Empresa entra como $4 (apos periodoDe $1, periodoAte $2, limite $3); alias do item = fnfi
+  // (empresa_id desnormalizado no item pelo Bloco A).
+  const emp = buildEmpresaSqlFragment(empresaId, "fnfi", 4);
 
   const rows = await prisma.$queryRawUnsafe<Row[]>(
     `SELECT fp.marca_nome AS marca,
@@ -65,12 +72,14 @@ async function queryFaturamentoPorMarca(prisma: PrismaClient, input: Input) {
      WHERE fnfi.entrada_saida = '1'
        AND fnfi.data_emissao >= $1::timestamp
        AND fnfi.data_emissao <= $2::timestamp
+       ${emp.sql}
      GROUP BY fp.marca_nome
      ORDER BY SUM(fnfi.vr_produtos) DESC NULLS LAST
      LIMIT $3`,
     new Date(`${periodoDe}T00:00:00`),
     new Date(`${periodoAte}T23:59:59`),
     limite,
+    ...emp.params,
   );
 
   const linhas = rows.map((r) => ({
@@ -100,8 +109,9 @@ export const fiscalFaturamentoPorMarca: ToolEntry<Input, Output> = {
   inputSchema,
   outputSchema,
   handler: async (input, ctx) => {
+    const escopo = await montarEscopoEmpresa(ctx.prisma, input.empresaRef);
     const envelope = await withFreshness(ctx.prisma, ["fato_nota_fiscal_item", "fato_produto"], () =>
-      queryFaturamentoPorMarca(ctx.prisma, input),
+      queryFaturamentoPorMarca(ctx.prisma, input, escopo.empresaId),
     );
     if (envelope.estado === "preparando") return envelope;
     const d = envelope.dados;
@@ -111,6 +121,7 @@ export const fiscalFaturamentoPorMarca: ToolEntry<Input, Output> = {
       ...envelope,
       dados: {
         ...d,
+        escopoEmpresa: escopo.escopo as unknown as Record<string, unknown>,
         _RESPOSTA: top
           ? `Faturamento por marca: total ${fmt(d.totalGeral)} em ${d.totalMarcas} marcas. Top: ${top.marca ?? "(sem marca)"} ${fmt(top.valorTotal)}.`
           : "Nao ha faturamento por marca no periodo.",

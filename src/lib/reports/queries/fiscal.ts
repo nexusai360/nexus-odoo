@@ -6,23 +6,26 @@
 // Fonte primária: fato_nota_fiscal (cabeçalho), fato_nota_fiscal_item (itens).
 
 import type { PrismaClient } from "@/generated/prisma/client";
+import { buildPeriodoWhere } from "@/lib/metrics/_shared/periodo";
+import { buildEmpresaWhere } from "@/lib/metrics/_shared/empresa";
+import { idsNaoVenda, buildNaturezaVendaWhere } from "@/lib/metrics/_shared/naturezas";
 
 export async function queryFaturamentoPeriodo(
   prisma: PrismaClient,
-  filtros: { periodoDe?: string; periodoAte?: string },
+  filtros: { periodoDe?: string; periodoAte?: string; empresaId?: number },
 ): Promise<{ totalNotas: number; valorFaturado: number }> {
-  const periodoWhere =
-    filtros.periodoDe && filtros.periodoAte
-      ? {
-          dataEmissao: {
-            gte: new Date(`${filtros.periodoDe}T00:00:00Z`),
-            lte: new Date(`${filtros.periodoAte}T00:00:00Z`),
-          },
-        }
-      : {};
-
+  // F1: passa a usar a definicao canonica de faturamento de venda (borda de periodo
+  // exclusiva, exclui operacoes nao-venda como devolucao/transferencia, corte por empresa).
+  // A chave publica valorFaturado e mantida. O numero muda onde houver nao-venda (correto).
+  const naoVenda = await idsNaoVenda(prisma);
   const rows = await prisma.fatoNotaFiscal.findMany({
-    where: { entradaSaida: "1", situacaoNfe: "autorizada", ...periodoWhere },
+    where: {
+      entradaSaida: "1",
+      situacaoNfe: "autorizada",
+      ...buildPeriodoWhere(filtros.periodoDe, filtros.periodoAte),
+      ...buildEmpresaWhere(filtros.empresaId),
+      ...buildNaturezaVendaWhere(naoVenda),
+    },
     select: { vrNf: true },
   });
 
@@ -32,7 +35,7 @@ export async function queryFaturamentoPeriodo(
 
 export async function queryNotasEmitidas(
   prisma: PrismaClient,
-  filtros: { periodoDe?: string; periodoAte?: string; situacaoNfe?: string; limit?: number; offset?: number },
+  filtros: { periodoDe?: string; periodoAte?: string; situacaoNfe?: string; empresaId?: number; limit?: number; offset?: number },
 ): Promise<{
   linhas: {
     numero: string | null;
@@ -45,18 +48,16 @@ export async function queryNotasEmitidas(
   totalNotas: number;
   valorTotal: number;
 }> {
-  const periodoWhere =
-    filtros.periodoDe && filtros.periodoAte
-      ? {
-          dataEmissao: {
-            gte: new Date(`${filtros.periodoDe}T00:00:00Z`),
-            lte: new Date(`${filtros.periodoAte}T00:00:00Z`),
-          },
-        }
-      : {};
-
+  // F1: borda de periodo exclusiva + corte por empresa. NAO aplica filtro de
+  // natureza de venda: esta funcao LISTA notas emitidas (qualquer operacao), nao
+  // e a metrica de faturamento de venda.
   const situacaoWhere = filtros.situacaoNfe ? { situacaoNfe: filtros.situacaoNfe } : {};
-  const where = { entradaSaida: "1", ...situacaoWhere, ...periodoWhere };
+  const where = {
+    entradaSaida: "1",
+    ...situacaoWhere,
+    ...buildPeriodoWhere(filtros.periodoDe, filtros.periodoAte),
+    ...buildEmpresaWhere(filtros.empresaId),
+  };
 
   // Alavanca 2b: paginação via take/skip; `totalNotas` é o count real e
   // `valorTotal` soma TODO o recorte (aggregate), estável entre páginas.
@@ -87,7 +88,7 @@ export async function queryNotasEmitidas(
 
 export async function queryNotasRecebidas(
   prisma: PrismaClient,
-  filtros: { periodoDe?: string; periodoAte?: string; limit?: number; offset?: number },
+  filtros: { periodoDe?: string; periodoAte?: string; empresaId?: number; limit?: number; offset?: number },
 ): Promise<{
   linhas: {
     numero: string | null;
@@ -98,16 +99,12 @@ export async function queryNotasRecebidas(
   totalNotas: number;
   valorTotal: number;
 }> {
-  const periodoWhere =
-    filtros.periodoDe && filtros.periodoAte
-      ? {
-          dataEmissao: {
-            gte: new Date(`${filtros.periodoDe}T00:00:00Z`),
-            lte: new Date(`${filtros.periodoAte}T00:00:00Z`),
-          },
-        }
-      : {};
-  const where = { entradaSaida: "0", ...periodoWhere };
+  // F1: borda de periodo exclusiva + corte por empresa (lista de notas de entrada).
+  const where = {
+    entradaSaida: "0",
+    ...buildPeriodoWhere(filtros.periodoDe, filtros.periodoAte),
+    ...buildEmpresaWhere(filtros.empresaId),
+  };
 
   // Alavanca 2b: paginação via take/skip; `totalNotas` é o count real e
   // `valorTotal` soma TODO o recorte (aggregate), estável entre páginas.
@@ -136,20 +133,14 @@ export async function queryNotasRecebidas(
 
 export async function queryImpostosPeriodo(
   prisma: PrismaClient,
-  filtros: { periodoDe?: string; periodoAte?: string },
+  filtros: { periodoDe?: string; periodoAte?: string; empresaId?: number },
 ): Promise<{ totalNotas: number; somaIbpt: number; somaIcmsProprio: number }> {
-  const periodoWhere =
-    filtros.periodoDe && filtros.periodoAte
-      ? {
-          dataEmissao: {
-            gte: new Date(`${filtros.periodoDe}T00:00:00Z`),
-            lte: new Date(`${filtros.periodoAte}T00:00:00Z`),
-          },
-        }
-      : {};
-
+  // F1: borda de periodo exclusiva + corte por empresa.
   const rows = await prisma.fatoNotaFiscal.findMany({
-    where: { ...periodoWhere },
+    where: {
+      ...buildPeriodoWhere(filtros.periodoDe, filtros.periodoAte),
+      ...buildEmpresaWhere(filtros.empresaId),
+    },
     select: { vrIbpt: true, vrIcmsProprio: true },
   });
 
@@ -166,24 +157,23 @@ export async function queryImpostosPeriodo(
  * grupos), independente da página. */
 export async function queryFaturamentoPorCliente(
   prisma: PrismaClient,
-  filtros: { periodoDe?: string; periodoAte?: string; limit?: number; offset?: number },
+  filtros: { periodoDe?: string; periodoAte?: string; empresaId?: number; limit?: number; offset?: number },
 ): Promise<{
   linhas: { participanteNome: string | null; quantidade: number; valorTotal: number }[];
   total: number;
   valorGeral: number;
 }> {
-  const periodoWhere =
-    filtros.periodoDe && filtros.periodoAte
-      ? {
-          dataEmissao: {
-            gte: new Date(`${filtros.periodoDe}T00:00:00Z`),
-            lte: new Date(`${filtros.periodoAte}T00:00:00Z`),
-          },
-        }
-      : {};
-
+  // F1: faturamento por cliente = venda autorizada (borda exclusiva, exclui
+  // operacoes nao-venda, corte por empresa).
+  const naoVenda = await idsNaoVenda(prisma);
   const rows = await prisma.fatoNotaFiscal.findMany({
-    where: { entradaSaida: "1", situacaoNfe: "autorizada", ...periodoWhere },
+    where: {
+      entradaSaida: "1",
+      situacaoNfe: "autorizada",
+      ...buildPeriodoWhere(filtros.periodoDe, filtros.periodoAte),
+      ...buildEmpresaWhere(filtros.empresaId),
+      ...buildNaturezaVendaWhere(naoVenda),
+    },
     select: { participanteNome: true, vrNf: true },
   });
 
@@ -219,29 +209,22 @@ export async function queryFaturamentoPorCliente(
  * de todo o recorte. */
 export async function queryProdutosFaturados(
   prisma: PrismaClient,
-  filtros: { periodoDe?: string; periodoAte?: string; limit?: number; offset?: number },
+  filtros: { periodoDe?: string; periodoAte?: string; empresaId?: number; limit?: number; offset?: number },
 ): Promise<{
   linhas: { produtoNome: string | null; quantidadeTotal: number; valorTotal: number }[];
   total: number;
   valorGeral: number;
   quantidadeGeral: number;
 }> {
-  const periodoWhere =
-    filtros.periodoDe && filtros.periodoAte
-      ? {
-          dataEmissao: {
-            gte: new Date(`${filtros.periodoDe}T00:00:00Z`),
-            lte: new Date(`${filtros.periodoAte}T00:00:00Z`),
-          },
-        }
-      : {};
-
   // FatoNotaFiscalItem não tem relação Prisma com FatoNotaFiscal , campos
-  // entradaSaida e dataEmissao são desnormalizados diretamente no item (N8).
+  // entradaSaida, dataEmissao e empresaId são desnormalizados direto no item (N8 + F1).
+  // F1: corte por empresa agora e DIRETO no item (coluna empresa_id), nao via documentoId IN.
+  // Mantem vrProdutos (ranking de produto, sem impostos): excecao consciente (SPEC 9.7).
   const rows = await prisma.fatoNotaFiscalItem.findMany({
     where: {
       entradaSaida: "1",
-      ...periodoWhere,
+      ...buildPeriodoWhere(filtros.periodoDe, filtros.periodoAte),
+      ...buildEmpresaWhere(filtros.empresaId),
     },
     select: {
       produtoNome: true,

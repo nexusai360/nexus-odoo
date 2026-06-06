@@ -172,6 +172,12 @@ const FISCAL_IDS = [
   // B2 (onda fiscal complementar)
   "fiscal_mdfe_manifestos",
   "fiscal_reinf_eventos",
+  // F1 (faturamento + corte por empresa)
+  "fiscal_faturamento_por_empresa",
+  "fiscal_faturamento_por_operacao",
+  "fiscal_faturamento_por_cfop",
+  "fiscal_faturamento_nao_autorizado",
+  "fiscal_faturamento_recebido",
 ];
 
 const CADASTROS_IDS = [
@@ -233,7 +239,7 @@ describe("Catálogo completo , rede de proteção N6", () => {
   it("super_admin recebe EXATAMENTE 93 tools", () => {
     const user = { userId: "u", role: "super_admin" as const, domains: ["estoque", "financeiro"] } as unknown as Parameters<typeof visibleTools>[1];
     const tools = visibleTools(catalogo, user);
-    expect(tools).toHaveLength(93);
+    expect(tools).toHaveLength(98);
   });
 
   it("super_admin recebe o conjunto exato de IDs", () => {
@@ -256,7 +262,7 @@ describe("Catálogo completo , rede de proteção N6", () => {
     //   9) cadastros.res_partner.update
     // Write tools nao aparecem em visibleTools (modo interno); sao liberadas
     // so no modo externo por capability da chave de API.
-    expect(catalogo).toHaveLength(102);
+    expect(catalogo).toHaveLength(107);
   });
 });
 
@@ -270,7 +276,7 @@ describe("Catálogo filtrado por perfil", () => {
 
   it("super_admin vê todas as 93 tools", () => {
     const ids = tools("super_admin", ["estoque", "financeiro"]);
-    expect(ids).toHaveLength(93);
+    expect(ids).toHaveLength(98);
     for (const id of TODOS_IDS) {
       expect(ids).toContain(id);
     }
@@ -278,7 +284,7 @@ describe("Catálogo filtrado por perfil", () => {
 
   it("admin vê todas as 93 tools", () => {
     const ids = tools("admin", ["estoque", "financeiro"]);
-    expect(ids).toHaveLength(93);
+    expect(ids).toHaveLength(98);
   });
 
   it("manager com estoque+financeiro vê estoque+financeiro+sempreVisivel (sem bi_consulta_avancada)", () => {
@@ -575,7 +581,7 @@ describe("Servidor HTTP real , protocolo Streamable HTTP end-to-end", () => {
     const result = extractRpcResult(body);
     const tools = result?.tools as Array<{ name: string }> | undefined;
     expect(tools).toBeDefined();
-    expect(tools!).toHaveLength(93);
+    expect(tools!).toHaveLength(98);
 
     const names = tools!.map((t) => t.name).sort();
     expect(names).toEqual([...TODOS_IDS].sort());
