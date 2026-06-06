@@ -7,11 +7,14 @@ import { z } from "zod";
 import type { ToolEntry } from "../../catalog/types.js";
 import { withFreshness } from "../../lib/freshness.js";
 import type { PrismaClient } from "@/generated/prisma/client.js";
+import { montarEscopoEmpresa } from "./_escopo-empresa.js";
+import { buildEmpresaSqlFragment } from "@/lib/metrics/_shared/empresa.js";
 
 const inputSchema = z.object({
   periodoDe: z.string().optional(),
   periodoAte: z.string().optional(),
   limite: z.number().int().min(1).max(50).optional(),
+  empresaRef: z.string().trim().min(1).optional().describe("Empresa (id, CNPJ ou nome). Sem isso, considera o grupo todo."),
 });
 
 const linhaSchema = z.object({
@@ -26,6 +29,7 @@ const dados = z.object({
   totalNotas: z.number().int(),
   totalUfs: z.number().int(),
   notasSemUf: z.number().int(),
+  escopoEmpresa: z.record(z.string(), z.unknown()),
   _RESPOSTA: z.string().optional(),
   _DESTAQUE: z.record(z.string(), z.union([z.string(), z.number()])).optional(),
   _agregado: z.record(z.string(), z.number().optional()).optional(),
@@ -56,11 +60,14 @@ interface Row {
   valor: string | number;
 }
 
-async function queryFaturamentoPorUf(prisma: PrismaClient, input: Input) {
+async function queryFaturamentoPorUf(prisma: PrismaClient, input: Input, empresaId?: number) {
   const limite = input.limite ?? 20;
   const periodoDe = input.periodoDe ??
     new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString().slice(0, 10);
   const periodoAte = input.periodoAte ?? new Date().toISOString().slice(0, 10);
+  // Empresa entra como $3 (periodoDe $1, periodoAte $2; LIMIT e interpolado, nao consome $N);
+  // alias da nota = nf.
+  const emp = buildEmpresaSqlFragment(empresaId, "nf", 3);
 
   const rows = await prisma.$queryRawUnsafe<Row[]>(
     `SELECT COALESCE(p.uf, '(sem UF)') AS uf,
@@ -72,11 +79,13 @@ async function queryFaturamentoPorUf(prisma: PrismaClient, input: Input) {
        AND nf.situacao_nfe = 'autorizada'
        AND nf.data_emissao >= $1::timestamp
        AND nf.data_emissao <= $2::timestamp
+       ${emp.sql}
      GROUP BY p.uf
      ORDER BY SUM(nf.vr_nf) DESC NULLS LAST
      LIMIT ${limite}`,
     `${periodoDe}T00:00:00`,
     `${periodoAte}T23:59:59`,
+    ...emp.params,
   );
 
   const linhas = rows.map((r) => ({
@@ -102,10 +111,11 @@ export const fiscalFaturamentoPorUf: ToolEntry<Input, Output> = {
   inputSchema,
   outputSchema,
   handler: async (input, ctx) => {
+    const escopo = await montarEscopoEmpresa(ctx.prisma, input.empresaRef);
     const envelope = await withFreshness(
       ctx.prisma,
       ["fato_nota_fiscal", "fato_parceiro"],
-      () => queryFaturamentoPorUf(ctx.prisma, input),
+      () => queryFaturamentoPorUf(ctx.prisma, input, escopo.empresaId),
     );
     if (envelope.estado === "preparando") return envelope;
     const d = envelope.dados;
@@ -117,6 +127,7 @@ export const fiscalFaturamentoPorUf: ToolEntry<Input, Output> = {
       ...envelope,
       dados: {
         ...d,
+        escopoEmpresa: escopo.escopo as unknown as Record<string, unknown>,
         _RESPOSTA: topReal
           ? `Faturamento por UF: ${fmt(d.totalGeral)} em ${d.totalNotas} notas, ${d.totalUfs} UFs com UF identificada${d.notasSemUf > 0 ? ` + ${d.notasSemUf} notas sem UF` : ""}. Top: ${topReal.uf ?? "(sem UF)"} ${fmt(topReal.valorTotal)}.`
           : "Nao ha faturamento no periodo.",
