@@ -28,7 +28,7 @@ export const EXCLUDE_FROM_FILTERING: ReadonlySet<string> = new Set(
 export function filterCatalog<T extends CatalogTool>(
   input: FilterCatalogInput<T>,
 ): FilterCatalogOutput<T> {
-  const { allTools, decision, routerEnabled, userAllowedDomains } = input;
+  const { allTools, decision, routerEnabled, userAllowedDomains, toolRetrieval } = input;
 
   // CAMADA A — Router R1 (existente).
   let afterRouterA: T[];
@@ -82,14 +82,28 @@ export function filterCatalog<T extends CatalogTool>(
     });
   }
 
+  // CAMADA C — Retrieval de tool (F3). Aplicada APOS o RBAC (camada B): so reduz
+  // o que ja passou pela permissao, nunca reintroduz tool cortada. Ausente =>
+  // sem corte (shadow/fallback mantem o resultado da camada B).
+  let afterRetrievalC: T[];
+  let retrievalApplied: boolean;
+  if (toolRetrieval) {
+    afterRetrievalC = afterPermissionB.filter((t) => toolRetrieval.picked.has(t.name));
+    retrievalApplied = true;
+  } else {
+    afterRetrievalC = afterPermissionB;
+    retrievalApplied = false;
+  }
+
   return {
-    tools: afterPermissionB,
+    tools: afterRetrievalC,
     diagnostic: {
       totalIn: allTools.length,
-      totalOut: afterPermissionB.length,
-      domainsRepresented: collectDomains(afterPermissionB),
+      totalOut: afterRetrievalC.length,
+      domainsRepresented: collectDomains(afterRetrievalC),
       filtered: routerCut,
       permissionFilteredOut,
+      retrievalApplied,
     },
   };
 }

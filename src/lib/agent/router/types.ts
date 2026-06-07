@@ -60,6 +60,11 @@ export type FilterCatalogInput<T extends CatalogTool = CatalogTool> = {
    *  (exceto `EXCLUDE_FROM_FILTERING` e `UNKNOWN_DOMAIN`, que passam sempre).
    *  Camada B é aplicada SEMPRE, independente do shadow do Router. */
   userAllowedDomains?: Set<string> | "all";
+  /** F3 (camada C): quando presente, apos RBAC (camada B) o catalogo e reduzido
+   *  aos nomes em `picked` (retrieval de tool, modo active). Ausente => sem corte
+   *  de retrieval (shadow/fallback). RBAC sempre antes; nunca reintroduz tool
+   *  cortada por permissao. */
+  toolRetrieval?: { picked: ReadonlySet<string> };
 };
 
 /** Output de `filterCatalog`. Quando `routerEnabled=false` ou fallback
@@ -76,6 +81,8 @@ export type FilterCatalogOutput<T extends CatalogTool = CatalogTool> = {
     filtered: boolean;
     /** RBAC v2: quantas tools foram cortadas pela camada B (gate de permissão). */
     permissionFilteredOut: number;
+    /** F3: true quando a camada C (retrieval) reduziu o catalogo (modo active). */
+    retrievalApplied?: boolean;
   };
 };
 

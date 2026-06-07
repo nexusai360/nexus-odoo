@@ -270,3 +270,40 @@ describe("filterCatalog: camada B (RBAC v2, userAllowedDomains)", () => {
     expect(out.diagnostic.permissionFilteredOut).toBe(0);
   });
 });
+
+// F3 camada C: retrieval de tool (aplicada apos RBAC).
+describe("filterCatalog: camada C (F3 retrieval)", () => {
+  it("toolRetrieval presente reduz aos nomes em picked", () => {
+    const out = filterCatalog({
+      allTools: TOOLS,
+      decision: buildDecision({ pickedDomains: [] }),
+      routerEnabled: false,
+      toolRetrieval: { picked: new Set(["financeiro_saldo"]) },
+    });
+    expect(out.tools.map((t) => t.name)).toEqual(["financeiro_saldo"]);
+    expect(out.diagnostic.retrievalApplied).toBe(true);
+  });
+
+  it("toolRetrieval ausente nao corta por retrieval", () => {
+    const out = filterCatalog({
+      allTools: TOOLS,
+      decision: buildDecision({ pickedDomains: [] }),
+      routerEnabled: false,
+    });
+    expect(out.diagnostic.retrievalApplied).toBe(false);
+    expect(out.tools.length).toBe(TOOLS.length);
+  });
+
+  it("RBAC antes do retrieval: tool sem permissao nao volta pelo picked", () => {
+    const out = filterCatalog({
+      allTools: TOOLS,
+      decision: buildDecision({ pickedDomains: [] }),
+      routerEnabled: false,
+      userAllowedDomains: new Set(["cadastros"]),
+      toolRetrieval: { picked: new Set(["financeiro_saldo", "cadastros_clientes"]) },
+    });
+    const names = out.tools.map((t) => t.name);
+    expect(names).toContain("cadastros_clientes");
+    expect(names).not.toContain("financeiro_saldo");
+  });
+});
