@@ -38,6 +38,10 @@ export type CreateDecisionInput = {
   usedReformulation?: boolean;
   /** R2-ctx: pergunta reformulada usada no re-embedding (Camada 3). */
   reformulatedQuestion?: string | null;
+  /** F3: tools que o retrieval ofereceria (top-K + nucleo, ordenado por score). */
+  retrievalOfferedTools?: string[];
+  /** F3: {toolName: cosseno} do retrieval (telemetria shadow). */
+  retrievalScores?: Record<string, number> | null;
 };
 
 export type CreateDecisionResult = {
@@ -75,6 +79,8 @@ export async function createDecision(
         originalFallback: input.originalFallback ?? false,
         usedReformulation: input.usedReformulation ?? false,
         reformulatedQuestion: input.reformulatedQuestion ?? null,
+        retrievalOfferedTools: input.retrievalOfferedTools ?? [],
+        retrievalScores: input.retrievalScores ?? undefined,
       },
       select: { id: true },
     });
@@ -102,6 +108,9 @@ export type UpdateDecisionInput = {
   catalogSizeOffered?: number;
   /** RBAC v2: desfecho do turno. "ok" | "permission_denied" | "failed". */
   outcome?: "ok" | "permission_denied" | "failed";
+  /** F3: posicao (0-based) da tool usada pelo LLM no ranking do retrieval, ou
+   *  null se fora do top-K. Gate de go-live do retrieval (shadow-compare). */
+  chosenToolRank?: number | null;
 };
 
 /** Atualiza row apos LLM responder, registrando quais tools foram chamadas.
@@ -131,6 +140,9 @@ export async function updateDecision(
           : {}),
         ...(input.outcome !== undefined
           ? { outcome: input.outcome }
+          : {}),
+        ...(input.chosenToolRank !== undefined
+          ? { chosenToolRank: input.chosenToolRank }
           : {}),
       },
     });

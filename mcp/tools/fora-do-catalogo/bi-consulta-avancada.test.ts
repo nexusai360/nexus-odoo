@@ -1,4 +1,4 @@
-// mcp/tools/caminho3/bi-consulta-avancada.test.ts
+// mcp/tools/fora-do-catalogo/bi-consulta-avancada.test.ts
 // Testes da tool bi_consulta_avancada , executor SQL read-only do Caminho 3c.
 //
 // Nota de auditoria (achado R2-I4):

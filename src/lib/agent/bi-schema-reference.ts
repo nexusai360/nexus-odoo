@@ -1,7 +1,7 @@
 /**
  * DDL resumido das fact tables do cache nexus-odoo.
  *
- * Usado pelo agente no Caminho 3c (bi_consulta_avancada) para que o LLM
+ * Usado pelo agente no Fora do Catalogo, ramo Consulta BI Avancada (bi_consulta_avancada) para que o LLM
  * possa construir queries SQL válidas contra as tabelas de fatos.
  *
  * Derivado de prisma/schema.prisma , modelos Fato*.

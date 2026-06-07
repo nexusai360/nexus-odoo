@@ -4,7 +4,7 @@
  * Portado de nexus-insights/src/lib/nex/prompt-compose.ts.
  * Adaptações:
  * - Removido `accountUrls` (irrelevante no domínio Odoo).
- * - Adicionado parâmetro `biSchema` opcional (Caminho 3c, admin/super_admin).
+ * - Adicionado parâmetro `biSchema` opcional (Fora do Catalogo: Consulta BI Avancada, admin/super_admin).
  * - `NexPromptConfig` renomeado para `AgentPromptConfig`.
  * - `IDENTITY_BASE` vem de `identity-base.ts` (domínio Odoo).
  *
@@ -70,7 +70,7 @@ export interface KbDocSnippet {
  * @param cfg       Configuração persistida em `AgentSettings`.
  * @param kbDocs    Snippets da base de conhecimento (texto extraído + nome).
  * @param _unused   Reservado para compatibilidade futura.
- * @param biSchema  DDL resumido das fact tables (Caminho 3c). Apenas admin/super_admin.
+ * @param biSchema  DDL resumido das fact tables (Fora do Catalogo: Consulta BI Avancada). Apenas admin/super_admin.
  */
 export function composeSystemPrompt(
   cfg: AgentPromptConfig,

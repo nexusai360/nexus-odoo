@@ -1,4 +1,4 @@
-// mcp/tools/caminho3/bi-pool.ts
+// mcp/tools/fora-do-catalogo/bi-pool.ts
 // Pool Postgres dedicado ao Caminho 3c (modo BI avançado).
 //
 // NOTA: este pool NUNCA é exposto no ToolHandlerCtx geral , acessado somente

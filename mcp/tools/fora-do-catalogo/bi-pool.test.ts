@@ -1,4 +1,4 @@
-// mcp/tools/caminho3/bi-pool.test.ts
+// mcp/tools/fora-do-catalogo/bi-pool.test.ts
 // Testa o módulo bi-pool usando jest.isolateModules para controlar a env por caso.
 // O pool é eager (criado na carga do módulo), portanto re-importar via isolateModules
 // é obrigatório para testar os dois caminhos (URL presente vs. ausente).

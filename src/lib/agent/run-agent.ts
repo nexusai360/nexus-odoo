@@ -56,6 +56,13 @@ import { reformulateQuestion } from "./router/contextualize";
 import { resolveReformLlm } from "./router/get-reform-config";
 import { filterCatalog, EXCLUDE_FROM_FILTERING } from "./router/filter-catalog";
 import { createDecision, updateDecision } from "./router/log-decision";
+import { embedQuestion } from "./router/embed-question";
+import { getToolVectors } from "./router/embed-tools";
+import { pickTools } from "./router/pick-tools";
+import { rankOf } from "./router/retrieval-rank";
+import { classifyIntent } from "./router/classify-intent";
+import { applyIntentArgs } from "./router/apply-intent-args";
+import { decideForaDoCatalogo, DOMINIOS_NAO_NEGOCIO } from "./router/fora-do-catalogo";
 import { getToolDomain, UNKNOWN_DOMAIN } from "./router/tool-to-domain";
 import { respondPermissionDenied } from "./permission-denial";
 import { seesAll } from "@/lib/reports/domains";
@@ -301,6 +308,9 @@ async function loadAgentSettings() {
     routerReformCredentialId: row?.routerReformCredentialId ?? null,
     routerReformNPairs: (row?.routerReformNPairs as number | undefined) ?? 5,
     routerEmbeddingModel: row?.routerEmbeddingModel ?? null,
+    // F3 (cerebro): retrieval de tool individual. "shadow" (default) loga o top-K
+    // mas nao enxuga o catalogo; "active" entrega so o catalogo enxuto ao LLM.
+    routerToolRetrieval: (row?.routerToolRetrieval as string | undefined) ?? "shadow",
     // R2-ctx: janela de contexto da resposta.
     contextWindowCheckpoint: (row?.contextWindowCheckpoint as string | undefined) ?? "PRODUCTION",
     contextWindowSize: (row?.contextWindowSize as number | undefined) ?? 20,
@@ -515,6 +525,72 @@ export async function runAgent(args: RunAgentInput): Promise<RunAgentResult> {
     const routerMode: "shadow" | "active" = agentSettings.routerEnabled
       ? "active"
       : "shadow";
+
+    // F3 (cerebro, 3a.8b): retrieval de tool individual. Roda em SHADOW por
+    // padrao (loga top-K/scores mas nao enxuga); em "active" o catalogo enxuto
+    // (nucleo minimo + top-K) e entregue ao LLM via camada C do filterCatalog.
+    // Embeda so o catalogo proprio (mcpTools); tools externas entram pelo piso.
+    // Qualquer falha (embedding/vetores) cai em retrieval nulo => sem corte.
+    const retrievalActive = agentSettings.routerToolRetrieval === "active";
+    // F3 (3b): intencao da pergunta (classificada 1x por turno). Injetada nos args
+    // da tool so em modo active (mesmo gate do retrieval; nada nasce active).
+    const turnoIntent = classifyIntent(reformulated ?? args.userMessage);
+    let retrievalOfferedOrdered: string[] = [];
+    let retrievalPicked: ReadonlySet<string> | null = null;
+    let retrievalScores: Record<string, number> = {};
+    try {
+      const proprias = mcpTools.map((t) => ({
+        name: t.name,
+        description: (t as { description?: string }).description ?? t.name,
+      }));
+      const { vector } = await embedQuestion(reformulated ?? args.userMessage);
+      const toolVectors = await getToolVectors(proprias);
+      const r = pickTools({
+        tools: proprias,
+        toolVectors,
+        questionVector: vector,
+        pickedDomains: decisaoFinal.pickedDomains,
+        k: agentSettings.routerTopK,
+      });
+      retrievalScores = r.scores;
+      retrievalPicked = new Set(r.picked);
+      retrievalOfferedOrdered = [...r.picked].sort(
+        (a, b) => (r.scores[b] ?? 0) - (r.scores[a] ?? 0),
+      );
+    } catch (err) {
+      // eslint-disable-next-line no-console
+      console.warn("[f3:retrieval] falhou, seguindo sem retrieval", {
+        error: err instanceof Error ? err.message : String(err),
+      });
+      retrievalPicked = null;
+    }
+
+    // F3 (3c.3): decisao deterministica de "Fora do Catalogo" em SHADOW (telemetria).
+    // Loga fora_de_escopo/falta_honesta para calibrar antes de ativar; o desfecho real
+    // continua nas redes existentes (fast-path recusa RBAC + safety-net de gap). Sinais
+    // pre-execucao: dadoExisteNoEscopo nao e conhecido aqui (so pos-tool), entao passa
+    // true (falta_honesta fica a cargo do safety-net pos-execucao).
+    try {
+      const negocioPicked = decisaoFinal.pickedDomains.filter(
+        (d) => !DOMINIOS_NAO_NEGOCIO.has(d),
+      );
+      const decisaoFC = decideForaDoCatalogo({
+        retrievalVazio: retrievalOfferedOrdered.length === 0 || decisaoFinal.fallback.triggered,
+        topScore: decisaoFinal.topScore ?? 0,
+        limiar: agentSettings.routerThreshold,
+        assuntoForaDosDominios: negocioPicked.length === 0,
+        dadoExisteNoEscopo: true,
+      });
+      if (decisaoFC !== "prosseguir") {
+        console.info(
+          "[f3:fora-do-catalogo:shadow]",
+          JSON.stringify({ decisao: decisaoFC, topScore: decisaoFinal.topScore, conversationId: args.conversationId }),
+        );
+      }
+    } catch {
+      // telemetria best-effort; nunca quebra o turno.
+    }
+
     // RBAC v2: createDecision precede filterCatalog para que routerDecisionId
     // já esteja disponível para o fast-path de recusa (Onda E). A decisão
     // gravada é a FINAL (Camada 3 quando houve reformulação); os campos de
@@ -530,6 +606,8 @@ export async function runAgent(args: RunAgentInput): Promise<RunAgentResult> {
       originalFallback: decisaoL1.fallback.triggered,
       usedReformulation: reformulated !== null,
       reformulatedQuestion: reformulated,
+      retrievalOfferedTools: retrievalOfferedOrdered,
+      retrievalScores: Object.keys(retrievalScores).length > 0 ? retrievalScores : null,
     });
     const routerDecisionId = routerLog.decisionId;
 
@@ -571,12 +649,28 @@ export async function runAgent(args: RunAgentInput): Promise<RunAgentResult> {
       decision: decisaoFinal,
       routerEnabled: agentSettings.routerEnabled,
       userAllowedDomains,
+      // F3: so enxuga em modo active E quando o retrieval rodou; shadow nao corta.
+      ...(retrievalActive && retrievalPicked
+        ? { toolRetrieval: { picked: retrievalPicked } }
+        : {}),
     });
     // Atualiza catalogSizeOffered após o filtro real (camadas A + B do RBAC v2).
     await updateDecision({
       decisionId: routerDecisionId,
       catalogSizeOffered: filteredCatalog.tools.length,
     });
+    // F3 (3b.2): mapa de suporte a limit/orderBy por tool (do inputSchema), para a
+    // injecao de args por intencao saber se a tool aceita cada campo.
+    const toolSupportsByName = new Map<string, { limit: boolean; orderBy: boolean }>();
+    for (const t of filteredCatalog.tools) {
+      const props =
+        ((t as { inputSchema?: { properties?: Record<string, unknown> } }).inputSchema
+          ?.properties) ?? {};
+      toolSupportsByName.set(t.name, {
+        limit: "limit" in props,
+        orderBy: "orderBy" in props,
+      });
+    }
     const allTurnToolNames: string[] = [];
 
     const tools = mcpToolsToProviderTools(filteredCatalog.tools);
@@ -970,7 +1064,7 @@ export async function runAgent(args: RunAgentInput): Promise<RunAgentResult> {
         let autoValidatorRetryReason: string | null = null;
         let autoValidatorRetryDetail: string | null = null;
         try {
-          const { validateResponse } = await import("./validation/auto-validator");
+          const { validateResponse, runShadowChecks } = await import("./validation/auto-validator");
           const settingsRow = await prisma.agentSettings.findUnique({
             where: { id: "global" },
             select: {
@@ -983,6 +1077,24 @@ export async function runAgent(args: RunAgentInput): Promise<RunAgentResult> {
           });
           const mode = settingsRow?.autoValidatorMode ?? "shadow";
           if (mode !== "off") {
+            // F3 (3b.5/3b.6): checks novos V6/V7 rodam SEMPRE em shadow (telemetria),
+            // sem short-circuitar o fluxo de producao (V1-V5). decideRetryOuGap define
+            // que V6/V7 (incoerencia estrutural) iriam a Falta Honesta direta, nao a
+            // retry de texto, quando promovidos a active (hoje so logam).
+            try {
+              const shadow = runShadowChecks({
+                question: args.userMessage,
+                llmResponse: message,
+                toolResults: allTurnEnvelopes,
+              });
+              for (const s of shadow) {
+                console.warn(
+                  `[verifier:shadow] ${s.reason} fired conversationId=${args.conversationId} detalhe=${s.detalhe}`,
+                );
+              }
+            } catch (errShadow) {
+              console.warn("[verifier:shadow] skipped:", errShadow);
+            }
             const outcome = validateResponse(
               {
                 question: args.userMessage,
@@ -1133,6 +1245,12 @@ export async function runAgent(args: RunAgentInput): Promise<RunAgentResult> {
           catalogSizeOffered: filteredCatalog.tools.length,
           // RBAC v2: turno concluído com sucesso (LLM respondeu).
           outcome: "ok",
+          // F3 (3a.8c): rank da 1a tool usada no ranking que o retrieval ofereceu
+          // (gate de go-live do shadow-compare). null se nao usou tool ou ficou fora.
+          chosenToolRank:
+            allTurnToolNames.length > 0
+              ? rankOf(allTurnToolNames[0]!, retrievalOfferedOrdered)
+              : null,
         });
         return {
           ok: true,
@@ -1211,7 +1329,17 @@ export async function runAgent(args: RunAgentInput): Promise<RunAgentResult> {
           toolCallId: tc.id,
         });
 
-        const toolArgs = (tc.arguments ?? {}) as Record<string, unknown>;
+        let toolArgs = (tc.arguments ?? {}) as Record<string, unknown>;
+        // F3 (3b.2): injeta/limita args conforme a intencao (so em modo active,
+        // mesmo gate do retrieval). Em shadow nao altera o comportamento atual.
+        if (retrievalActive && turnoIntent !== "pontual") {
+          const supports = toolSupportsByName.get(tc.name) ?? { limit: false, orderBy: false };
+          const aplicado = applyIntentArgs(turnoIntent, toolArgs, supports);
+          toolArgs = aplicado.args;
+          if (aplicado.aviso) {
+            console.info("[f3:intent]", JSON.stringify({ tool: tc.name, intent: turnoIntent, aviso: aplicado.aviso }));
+          }
+        }
         let toolResultStr: string;
         let cacheHit = false;
         const tStart = Date.now();

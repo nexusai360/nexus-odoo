@@ -23,6 +23,7 @@ import { prisma } from "./lib/prisma.js";
 import { mcpRedis } from "./lib/redis.js";
 import { catalogo } from "./catalog/index.js";
 import { visibleTools, assertToolAllowed } from "./catalog/registry.js";
+import { descriptionForRetrieval } from "./catalog/embedding-text.js";
 import { recordAudit, extractRowCount, type AuditOutcome } from "./lib/audit.js";
 import { toOutcome, safeErrorMessage, describeAuditError } from "./lib/failure.js";
 import { checkMcpRateLimit, RATE_LIMIT_EXCEEDED_MESSAGE, type RateLimitRedis } from "./lib/rate-limit.js";
@@ -179,7 +180,9 @@ function createMcpServerForUser(userCtx: UserContext): McpServer {
     // O pipeline handleToolCall faz a validação Zod completa via tool.inputSchema.
     mcpServer.tool(
       tool.id,
-      tool.descricao,
+      // F3 (3a.2): publica descricao + frases-gatilho capadas. Alimenta o retrieval
+      // de tool (embed da description no lado do agente) e ajuda a escolha do LLM.
+      descriptionForRetrieval(tool),
       tool.inputSchemaShape,
       async (args) => {
         return handleToolCall(tool, args, userCtx.userId);

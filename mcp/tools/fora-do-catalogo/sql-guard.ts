@@ -1,4 +1,4 @@
-// mcp/tools/caminho3/sql-guard.ts
+// mcp/tools/fora-do-catalogo/sql-guard.ts
 // Verificação estrutural de SQL por AST , defesa-em-profundidade para o Caminho 3c.
 //
 // Abordagem: parse via pgsql-parser (libpg-query WASM, parser do PostgreSQL real).
