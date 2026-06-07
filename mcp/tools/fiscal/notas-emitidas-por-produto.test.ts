@@ -1,4 +1,5 @@
 import { fiscalNotasEmitidasPorProduto } from "./notas-emitidas-por-produto.js";
+import { PAGINACAO_LIMIT_DEFAULT } from "../../lib/paginacao";
 import type { ToolHandlerCtx } from "../../catalog/types.js";
 import type { UserContext } from "../../auth/user-context.js";
 
@@ -81,7 +82,7 @@ describe("fiscal_notas_emitidas_por_produto , paginacao (alavanca 2b)", () => {
     }
   });
 
-  it("default limit = 10 quando ausente", async () => {
+  it("default limit = 50 quando ausente", async () => {
     const ctx = makeCtx();
     primeFreshness(ctx);
     primeSql(ctx, fakeRows(3), 3);
@@ -91,6 +92,6 @@ describe("fiscal_notas_emitidas_por_produto , paginacao (alavanca 2b)", () => {
       String(c[0]).includes("LIMIT"),
     );
     const params = pagCall.slice(1);
-    expect(params[params.length - 2]).toBe(10);
+    expect(params[params.length - 2]).toBe(PAGINACAO_LIMIT_DEFAULT);
   });
 });

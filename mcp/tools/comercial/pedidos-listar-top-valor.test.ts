@@ -1,4 +1,5 @@
 import { comercialPedidosListarTopValor } from "./pedidos-listar-top-valor.js";
+import { PAGINACAO_LIMIT_DEFAULT } from "../../lib/paginacao";
 import type { ToolHandlerCtx } from "../../catalog/types.js";
 import type { UserContext } from "../../auth/user-context.js";
 
@@ -71,7 +72,7 @@ describe("comercial_pedidos_listar_top_valor , paginacao (alavanca 2b)", () => {
     expect(callArgs.orderBy).toEqual([{ dataOrcamento: "asc" }, { odooId: "asc" }]);
   });
 
-  it("default limit = 10 quando ausente", async () => {
+  it("default limit = 50 quando ausente", async () => {
     const ctx = makeCtx();
     primeFreshness(ctx);
     (ctx.prisma.fatoPedido.findMany as jest.Mock).mockResolvedValue(fakeLinhas(3));
@@ -79,6 +80,6 @@ describe("comercial_pedidos_listar_top_valor , paginacao (alavanca 2b)", () => {
 
     await comercialPedidosListarTopValor.handler({} as never, ctx);
     const callArgs = (ctx.prisma.fatoPedido.findMany as jest.Mock).mock.calls[0][0];
-    expect(callArgs.take).toBe(10);
+    expect(callArgs.take).toBe(PAGINACAO_LIMIT_DEFAULT);
   });
 });

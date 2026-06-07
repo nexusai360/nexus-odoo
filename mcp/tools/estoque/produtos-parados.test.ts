@@ -1,5 +1,6 @@
 // mcp/tools/estoque/produtos-parados.test.ts
 import { estoqueProdutosParados } from "./produtos-parados.js";
+import { PAGINACAO_LIMIT_DEFAULT } from "../../lib/paginacao";
 import { assertToolAllowed } from "../../catalog/registry.js";
 import type { ToolHandlerCtx } from "../../catalog/types.js";
 import type { UserContext } from "../../auth/user-context.js";
@@ -110,7 +111,7 @@ describe("estoque_produtos_parados", () => {
     }
   });
 
-  it("default limit = 10 quando ausente", async () => {
+  it("default limit = 50 quando ausente", async () => {
     const ctx = makeCtx();
     primeFreshness(ctx);
     (ctx.prisma.fatoProdutoParado.findMany as jest.Mock).mockResolvedValue(fakeLinhas(3));
@@ -121,7 +122,7 @@ describe("estoque_produtos_parados", () => {
 
     await estoqueProdutosParados.handler({} as never, ctx);
     const callArgs = (ctx.prisma.fatoProdutoParado.findMany as jest.Mock).mock.calls[0][0];
-    expect(callArgs.take).toBe(10);
+    expect(callArgs.take).toBe(PAGINACAO_LIMIT_DEFAULT);
   });
 
   it("assertToolAllowed nega viewer sem domínio estoque", () => {

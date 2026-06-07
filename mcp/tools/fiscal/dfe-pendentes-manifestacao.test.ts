@@ -1,4 +1,5 @@
 import { fiscalDfePendentesManifestacao } from "./dfe-pendentes-manifestacao.js";
+import { PAGINACAO_LIMIT_DEFAULT } from "../../lib/paginacao";
 import type { ToolHandlerCtx } from "../../catalog/types.js";
 import type { UserContext } from "../../auth/user-context.js";
 
@@ -78,7 +79,7 @@ describe("fiscal_dfe_pendentes_manifestacao , paginacao (alavanca 2b)", () => {
     }
   });
 
-  it("default limit = 10 quando ausente", async () => {
+  it("default limit = 50 quando ausente", async () => {
     const ctx = makeCtx();
     primeFreshness(ctx);
     (ctx.prisma.fatoDfe.count as jest.Mock).mockResolvedValue(3);
@@ -87,6 +88,6 @@ describe("fiscal_dfe_pendentes_manifestacao , paginacao (alavanca 2b)", () => {
 
     await fiscalDfePendentesManifestacao.handler({} as never, ctx);
     const callArgs = (ctx.prisma.fatoDfe.findMany as jest.Mock).mock.calls[0][0];
-    expect(callArgs.take).toBe(10);
+    expect(callArgs.take).toBe(PAGINACAO_LIMIT_DEFAULT);
   });
 });

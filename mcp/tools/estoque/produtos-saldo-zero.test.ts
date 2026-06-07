@@ -4,6 +4,7 @@
 // entao a paginacao e a EXCECAO documentada do briefing: ordena estavel e
 // fatia [offset, offset+limit); total = candidatos encontrados.
 import { estoqueProdutosSaldoZero } from "./produtos-saldo-zero.js";
+import { PAGINACAO_LIMIT_DEFAULT } from "../../lib/paginacao";
 import type { ToolHandlerCtx } from "../../catalog/types.js";
 import type { UserContext } from "../../auth/user-context.js";
 
@@ -86,14 +87,14 @@ describe("estoque_produtos_saldo_zero , paginacao (alavanca 2b)", () => {
     }
   });
 
-  it("default limit = 10 quando ausente", async () => {
+  it("default limit = 50 quando ausente", async () => {
     const ctx = makeCtx();
     primeFreshness(ctx);
-    (ctx.prisma.fatoEstoqueSaldo.findMany as jest.Mock).mockResolvedValue(fakeZerados(30));
+    (ctx.prisma.fatoEstoqueSaldo.findMany as jest.Mock).mockResolvedValue(fakeZerados(60));
 
     const r = await estoqueProdutosSaldoZero.handler({} as never, ctx);
     if (r.estado !== "preparando") {
-      expect(r.dados.linhas).toHaveLength(10);
+      expect(r.dados.linhas).toHaveLength(PAGINACAO_LIMIT_DEFAULT);
     }
   });
 });
