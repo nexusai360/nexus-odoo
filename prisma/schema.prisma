@@ -2932,6 +2932,16 @@ model AgentRouterDecision {
   usedReformulation    Boolean @default(false) @map("used_reformulation")
   reformulatedQuestion String? @map("reformulated_question") @db.Text
 
+  /// F3 (cerebro): shadow-compare do retrieval de TOOL (separado do router de
+  /// dominio). `retrievalOfferedTools` = top-K + nucleo que o retrieval ofereceria
+  /// (ordenado por score desc). `retrievalScores` = {toolName: cosseno}.
+  /// `chosenToolRank` = posicao (0-based) da tool que o LLM usou dentro do ranking
+  /// oferecido, ou null se fora do top-K. Gate de go-live: % de turnos com
+  /// chosenToolRank != null >= 98% (spec F3 secao 4.5). Defaults preservam historico.
+  retrievalOfferedTools String[] @default([]) @map("retrieval_offered_tools")
+  retrievalScores       Json?    @map("retrieval_scores")
+  chosenToolRank        Int?     @map("chosen_tool_rank")
+
   @@index([createdAt, mode])
   @@index([conversationId])
   @@index([routerVersion])
