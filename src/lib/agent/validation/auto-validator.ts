@@ -17,7 +17,15 @@
  * Feature flag: AgentSettings.autoValidatorMode (off|shadow|active).
  */
 
-export type ValidationFailReason = "V1" | "V2" | "V3" | "V4" | "V5" | null;
+export type ValidationFailReason =
+  | "V1"
+  | "V2"
+  | "V3"
+  | "V4"
+  | "V5"
+  | "V6"
+  | "V7"
+  | null;
 
 /**
  * Estrutura minima do resultado de uma tool tal qual chega ao validator.
@@ -507,6 +515,131 @@ function validateV5(ctx: ValidationContext): ValidationOutcome | null {
 }
 
 // ---------------------------------------------------------------------------
+// ---------------------------------------------------------------------------
+// F3 (cerebro, onda 3b): checks NOVOS V6/V7. Sao SHADOW (telemetria), rodam
+// fora do early-return de validateResponse (via runShadowChecks). Operam so
+// sobre o que o envelope atual expoe; ausencia de metadado => "nao verificavel"
+// (null), nunca falso positivo. Datas-no-periodo ficou para a F4 (periodoDe/Ate
+// sao input, nao saem no envelope). Spec F3 secao 5.2.
+// ---------------------------------------------------------------------------
+
+const CAMPOS_VALOR_LINHA = [
+  "valor",
+  "valorTotal",
+  "vrNf",
+  "vr_nf",
+  "soma",
+  "total",
+  "vrProdutos",
+  "vr_produtos",
+];
+const CAMPOS_TOTAL_AGREGADO = ["total", "soma", "valorTotal", "valor", "valorFaturado"];
+
+/** Extrai um numero do primeiro campo de valor conhecido de uma linha. */
+function valorDaLinha(linha: unknown): number | null {
+  if (!linha || typeof linha !== "object") return null;
+  const obj = linha as Record<string, unknown>;
+  for (const c of CAMPOS_VALOR_LINHA) {
+    const v = obj[c];
+    if (typeof v === "number" && Number.isFinite(v)) return v;
+  }
+  return null;
+}
+
+/** Total declarado pelo proprio _agregado (primeiro campo conhecido numerico). */
+function totalDeclarado(agregado: Record<string, number | undefined> | undefined): number | null {
+  if (!agregado) return null;
+  for (const c of CAMPOS_TOTAL_AGREGADO) {
+    const v = agregado[c];
+    if (typeof v === "number" && Number.isFinite(v)) return v;
+  }
+  return null;
+}
+
+/**
+ * V6: confere o total que o PROPRIO envelope declara (_agregado) contra a soma das
+ * LINHAS que o proprio envelope retornou. Independe do texto do LLM (cobertura nova
+ * vs V2, que olha numeros citados pelo LLM). Pega tool que se autocontradiz.
+ * "Nao verificavel" (null) quando falta total declarado ou linhas com valor.
+ */
+export function validateV6(ctx: ValidationContext): ValidationOutcome | null {
+  for (const tr of ctx.toolResults) {
+    const dados = tr.dados;
+    if (!dados) continue;
+    const total = totalDeclarado(dados._agregado);
+    const linhas = Array.isArray(dados.linhas) ? dados.linhas : null;
+    if (total === null || !linhas || linhas.length === 0) continue;
+    const valores = linhas.map(valorDaLinha);
+    if (valores.some((v) => v === null)) continue; // linha sem campo de valor => nao verificavel
+    const soma = valores.reduce<number>((acc, v) => acc + (v ?? 0), 0);
+    const tol = Math.max(0.01, Math.abs(total) * 0.005); // 0.5% ou 1 centavo
+    if (Math.abs(soma - total) > tol) {
+      return {
+        ok: false,
+        reason: "V6",
+        hint:
+          "O total declarado pela tool nao bate com a soma das linhas retornadas. " +
+          "Confira a coerencia antes de afirmar o numero.",
+        detalhe: `V6:${tr.toolName}:total=${total}:soma=${soma}`,
+      };
+    }
+  }
+  return null;
+}
+
+/**
+ * V7: heuristica conservadora de duplicacao por JOIN. Conta linhas IDENTICAS
+ * (mesma serializacao) em dados.linhas; se a fracao de duplicatas exatas passa o
+ * limiar (e ha linhas suficientes), sinaliza possivel fan-out de JOIN. Dados
+ * distintos normais nao disparam. "Nao verificavel" com poucas linhas.
+ */
+export function validateV7(ctx: ValidationContext): ValidationOutcome | null {
+  const MIN_LINHAS = 4;
+  const LIMIAR_DUP = 0.4; // >=40% de linhas sao copias exatas de outra
+  for (const tr of ctx.toolResults) {
+    const linhas = tr.dados && Array.isArray(tr.dados.linhas) ? tr.dados.linhas : null;
+    if (!linhas || linhas.length < MIN_LINHAS) continue;
+    const vistos = new Map<string, number>();
+    for (const l of linhas) {
+      let chave: string;
+      try {
+        chave = JSON.stringify(l);
+      } catch {
+        chave = String(l);
+      }
+      vistos.set(chave, (vistos.get(chave) ?? 0) + 1);
+    }
+    let duplicadas = 0;
+    for (const n of vistos.values()) if (n > 1) duplicadas += n - 1;
+    if (duplicadas / linhas.length >= LIMIAR_DUP) {
+      return {
+        ok: false,
+        reason: "V7",
+        hint:
+          "A tool retornou muitas linhas identicas (possivel duplicacao por JOIN). " +
+          "Verifique se o total nao esta inflado.",
+        detalhe: `V7:${tr.toolName}:linhas=${linhas.length}:duplicadas=${duplicadas}`,
+      };
+    }
+  }
+  return null;
+}
+
+/**
+ * Roda os checks SHADOW novos (V6/V7) e retorna os que dispararam, SEM
+ * short-circuit (ambos sempre avaliados). O run-agent loga para telemetria;
+ * nao viram retry em shadow. Promocao a active (e a politica de falha) e
+ * decidida no run-agent (decideRetryOuGap).
+ */
+export function runShadowChecks(ctx: ValidationContext): ValidationOutcome[] {
+  const out: ValidationOutcome[] = [];
+  const v6 = validateV6(ctx);
+  if (v6) out.push(v6);
+  const v7 = validateV7(ctx);
+  if (v7) out.push(v7);
+  return out;
+}
+
 // Entry point
 // ---------------------------------------------------------------------------
 
