@@ -24,6 +24,42 @@
       "topUF": "Distrito Federal (BR)"
     }
   },
+  "comercial_comissoes": {
+    "estado": "vazio",
+    "_agregado": {
+      "contagem": 0
+    },
+    "total": 0
+  },
+  "comercial_contar_pedidos": {
+    "estado": "ok",
+    "_DESTAQUE": {
+      "totalPedidos": 1732
+    },
+    "_agregado": {
+      "contagem": 1732
+    },
+    "total": 1732
+  },
+  "comercial_cotacoes": {
+    "estado": "vazio",
+    "_agregado": {
+      "contagem": 0
+    },
+    "total": 0
+  },
+  "comercial_detalhar_pedido": {
+    "estado": "ok",
+    "_DESTAQUE": {
+      "numero": "INV-0163/26",
+      "tipo": "inventario",
+      "etapa": "Confirmado",
+      "participante": "Jds Comércio - Matriz DF 18.282.961/0001-00 - Jds Comércio de Produtos e Equipamentos Esportivos Ltda [18‍.282‍.961‍/0001‑00] ",
+      "vendedor": "Thiago Nóbrega [048‍.906‍.661‑50] ",
+      "vrProdutos": 27810422.78,
+      "vrNf": 27810422.78
+    }
+  },
   "comercial_parcelas_a_vencer": {
     "estado": "ok",
     "_DESTAQUE": {
@@ -34,6 +70,30 @@
     "_agregado": {
       "contagem": 314,
       "soma": 4559904.48
+    }
+  },
+  "comercial_pedido_historico_etapas": {
+    "estado": "ok",
+    "_DESTAQUE": {
+      "totalEventos": 23,
+      "tempoTotalDias": 65,
+      "etapaMaisLonga": "Reserva de Estoque - DEFINE ARMAZEM",
+      "diasEtapaMaisLonga": 57
+    },
+    "_agregado": {
+      "contagem": 23,
+      "soma": 65
+    }
+  },
+  "comercial_pedido_travados_por_etapa": {
+    "estado": "ok",
+    "_DESTAQUE": {
+      "totalTravados": 1114,
+      "diasMin": 30,
+      "maisAntigoDias": 139
+    },
+    "_agregado": {
+      "contagem": 1114
     }
   },
   "comercial_pedidos_atrasados": {
@@ -98,6 +158,21 @@
       "soma": 391497170.09
     }
   },
+  "comercial_pedidos_por_uf": {
+    "estado": "ok",
+    "_DESTAQUE": {
+      "totalPedidos": 1732,
+      "totalGeral": 391497170.09,
+      "totalUfs": 22,
+      "topUf": "Distrito Federal (BR)",
+      "quantidadeTopUf": 292,
+      "valorTopUf": 27841456.4
+    },
+    "_agregado": {
+      "contagem": 1732,
+      "soma": 391497170.09
+    }
+  },
   "comercial_pedidos_por_vendedor": {
     "estado": "ok",
     "_DESTAQUE": {
@@ -112,6 +187,67 @@
       "contagem": 1732,
       "soma": 391497170.09,
       "media": 226037.63
+    }
+  },
+  "comercial_pedidos_sem_vendedor": {
+    "estado": "ok",
+    "_DESTAQUE": {
+      "totalPedidos": 2,
+      "valorTotal": 216071.03
+    },
+    "_agregado": {
+      "soma": 216071.03,
+      "contagem": 2
+    }
+  },
+  "comercial_produtos_por_familia": {
+    "estado": "ok",
+    "_DESTAQUE": {
+      "modo": "agrupado",
+      "totalEncontrados": 3774,
+      "totalFamilias": 8,
+      "totalProdutosNoCadastro": 3774
+    },
+    "_agregado": {
+      "contagem": 3774
+    }
+  },
+  "comercial_produtos_por_margem": {
+    "estado": "ok",
+    "_DESTAQUE": {
+      "totalProdutosComMargem": 2961,
+      "produtosSemPreco": 813,
+      "topProduto": "CONSERTO DO MOTOR DE INCLINAÇÃO",
+      "topMargemPercentual": 3042.57,
+      "topMargemAbsoluta": 1839.54
+    },
+    "_agregado": {
+      "contagem": 2961
+    }
+  },
+  "comercial_tempo_medio_fechamento": {
+    "estado": "ok",
+    "_DESTAQUE": {
+      "totalPedidos": 1161,
+      "diasMedio": 6.41,
+      "diasMediano": 0,
+      "diasMinimo": 0,
+      "diasMaximo": 707
+    },
+    "_agregado": {
+      "contagem": 1161,
+      "media": 6.41
+    }
+  },
+  "comercial_vendedores_cadastrados": {
+    "estado": "ok",
+    "_DESTAQUE": {
+      "totalVendedores": 19,
+      "topVendedor": "Jonatas Soares",
+      "pedidosTop": 438
+    },
+    "_agregado": {
+      "contagem": 19
     }
   },
   "contabil_estrutura_conta": {

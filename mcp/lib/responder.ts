@@ -479,6 +479,234 @@ function fmtContagemSimples(
   };
 }
 
+// === F4 Onda 4 (comercial) ===
+// LIVE (handler chama enriquecerEnvelope): vendedores_cadastrados,
+// pedidos_sem_vendedor, detalhar_pedido. Os demais sao espelho (handler ja
+// monta _RESPOSTA inline / factory), registrados p/ satisfazer o contrato.
+const fmtComercialContarPedidos: FormatadorCanonico = (env) => {
+  const destaque = env._DESTAQUE ?? {};
+  const agregado = env._agregado ?? {};
+  const totalRaw =
+    destaque.totalPedidos ?? agregado.contagem ?? 0;
+  const total =
+    typeof totalRaw === "number" ? totalRaw : Number(totalRaw) || 0;
+
+  if (total <= 0) {
+    return "Nenhum pedido cadastrado no total.";
+  }
+  if (total === 1) {
+    return "1 pedido cadastrado no total.";
+  }
+  return `${total} pedidos cadastrados no total.`;
+};
+
+const fmtVendedoresCadastrados: FormatadorCanonico = (env) => {
+  const total = Number(env._DESTAQUE?.totalVendedores ?? env._agregado?.contagem ?? env.linhas.length ?? 0);
+  if (total === 0) {
+    return "Nenhum vendedor encontrado nos pedidos cadastrados.";
+  }
+  const topRaw = String(env._DESTAQUE?.topVendedor ?? "");
+  const pedidosTop = Number(env._DESTAQUE?.pedidosTop ?? 0);
+  const cabeca = `${total} vendedor(es) com pedidos cadastrados.`;
+  const topStr = topRaw
+    ? ` Mais ativo: ${humanizeName(topRaw)} com ${pedidosTop} pedido(s).`
+    : "";
+  return cabeca + topStr;
+};
+
+const fmtPedidosSemVendedor: FormatadorCanonico = (env) => {
+  const n = Number(env._DESTAQUE?.totalPedidos ?? env._agregado?.contagem ?? 0);
+  const valor = Number(env._DESTAQUE?.valorTotal ?? env._agregado?.soma ?? 0);
+  if (n === 0) {
+    return "Nenhum pedido sem vendedor atribuido no criterio informado. Todos os pedidos tem responsavel.";
+  }
+  const plural = n === 1 ? "pedido" : "pedidos";
+  return `${n} ${plural} sem vendedor atribuido, totalizando ${formatBRL(valor)}.`;
+};
+
+const fmtComercialProdutosPorMargem: FormatadorCanonico = (env) => {
+  const d = env._DESTAQUE ?? {};
+  const totalComMargem = Number(d.totalProdutosComMargem ?? env._agregado?.contagem ?? 0);
+  const semPreco = Number(d.produtosSemPreco ?? 0);
+  const topProduto = String(d.topProduto ?? "");
+  const topPct = Number(d.topMargemPercentual ?? 0);
+
+  if (totalComMargem === 0 || !topProduto) {
+    return "Nenhum produto com preco de custo e venda cadastrados.";
+  }
+
+  const cabeca = `Top produto por margem: ${humanizeName(topProduto)} (margem ${topPct.toFixed(1)}%).`;
+  const corpo = ` ${totalComMargem} produtos com preco cadastrado, ${semPreco} sem preco completo.`;
+  return cabeca + corpo;
+};
+
+const fmtComercialPedidosPorUf: FormatadorCanonico = (env) => {
+  const totalPedidos = Number(env._DESTAQUE?.totalPedidos ?? env._agregado?.contagem ?? 0);
+  const totalGeral = Number(env._DESTAQUE?.totalGeral ?? env._agregado?.soma ?? 0);
+  const totalUfs = Number(env._DESTAQUE?.totalUfs ?? 0);
+  const topUf = String(env._DESTAQUE?.topUf ?? "");
+  const quantidadeTopUf = Number(env._DESTAQUE?.quantidadeTopUf ?? 0);
+  const valorTopUf = Number(env._DESTAQUE?.valorTopUf ?? 0);
+
+  if (totalPedidos === 0 || !topUf) {
+    return "Nao ha pedidos no periodo.";
+  }
+
+  const ufLabel = humanizeName(topUf);
+  return (
+    `Pedidos por UF: ${totalPedidos} pedidos (${formatBRL(totalGeral)}) ` +
+    `em ${totalUfs} UFs. ` +
+    `Estado que mais compra: ${ufLabel} com ${quantidadeTopUf} pedidos (${formatBRL(valorTopUf)}).`
+  );
+};
+
+const fmtComercialProdutosPorFamilia: FormatadorCanonico = (env) => {
+  const d = env._DESTAQUE ?? {};
+  const modo = String(d.modo ?? "agrupado");
+  const totalEncontrados = Number(d.totalEncontrados ?? 0);
+  const totalFamilias = Number(d.totalFamilias ?? 0);
+  const totalProdutosNoCadastro = Number(d.totalProdutosNoCadastro ?? 0);
+
+  if (modo === "filtrado") {
+    const termo = d.familiaTermo != null ? String(d.familiaTermo) : "";
+    const rotuloFamilia = termo ? humanizeName(termo) : "informada";
+    if (totalEncontrados === 0) {
+      return `Nao ha produtos da familia '${rotuloFamilia}'.`;
+    }
+    const exibidos = env.linhas?.length ?? 0;
+    const produtoPlural = totalEncontrados === 1 ? "produto" : "produtos";
+    if (exibidos > 0 && exibidos < totalEncontrados) {
+      return `${totalEncontrados} ${produtoPlural} da familia '${rotuloFamilia}'. Listando ${exibidos}.`;
+    }
+    return `${totalEncontrados} ${produtoPlural} da familia '${rotuloFamilia}'.`;
+  }
+
+  if (totalFamilias === 0 && totalProdutosNoCadastro === 0) {
+    return "Nenhuma familia de produtos cadastrada ainda.";
+  }
+  const familiaPlural = totalFamilias === 1 ? "familia" : "familias";
+  const produtoPlural = totalProdutosNoCadastro === 1 ? "produto" : "produtos";
+  return `${totalFamilias} ${familiaPlural} no cadastro (${totalProdutosNoCadastro} ${produtoPlural} no total).`;
+};
+
+const fmtComercialTempoMedioFechamento: FormatadorCanonico = (env) => {
+  const d = env._DESTAQUE ?? {};
+  const totalPedidos = Number(d.totalPedidos ?? 0);
+  if (totalPedidos === 0) {
+    return "Nao ha pedidos concluidos com data de aprovacao no periodo.";
+  }
+  const diasMedio = Number(d.diasMedio ?? 0);
+  const diasMediano = Number(d.diasMediano ?? 0);
+  const diasMinimo = Number(d.diasMinimo ?? 0);
+  const diasMaximo = Number(d.diasMaximo ?? 0);
+  return `Tempo medio de fechamento: ${diasMedio.toFixed(1)} dias (mediana ${diasMediano.toFixed(1)}, min ${diasMinimo.toFixed(1)}, max ${diasMaximo.toFixed(1)}). Amostra: ${totalPedidos} pedidos concluidos.`;
+};
+
+const fmtComercialPedidoHistoricoEtapas: FormatadorCanonico = (env) => {
+  const d = env._DESTAQUE ?? {};
+  const totalEventos = Number(d.totalEventos ?? env._agregado?.contagem ?? 0);
+  const tempoTotalDias = Number(d.tempoTotalDias ?? env._agregado?.soma ?? 0);
+  const etapaMaisLonga = String(d.etapaMaisLonga ?? "");
+  const diasEtapaMaisLonga = Number(d.diasEtapaMaisLonga ?? 0);
+
+  if (totalEventos === 0) {
+    return "Sem histórico de etapas para este pedido.";
+  }
+
+  const nomeEtapa = etapaMaisLonga ? humanizeName(etapaMaisLonga) : "(sem nome)";
+  return (
+    `Pedido: ${totalEventos} transições, ${tempoTotalDias} dias no total. ` +
+    `Etapa com mais tempo: ${nomeEtapa} (${diasEtapaMaisLonga} dias).`
+  );
+};
+
+const fmtComercialPedidoTravadosPorEtapa: FormatadorCanonico = (env) => {
+  const d = env._DESTAQUE ?? {};
+  const total = Number(d.totalTravados ?? env._agregado?.contagem ?? 0);
+  const diasMin = Number(d.diasMin ?? 30);
+
+  if (total <= 0) {
+    return `Nenhum pedido parado há mais de ${diasMin} dias no fluxo de etapas.`;
+  }
+
+  const maisAntigoDias = Number(d.maisAntigoDias ?? 0);
+  // A primeira linha da página 0 é o pedido mais antigo (maior diasParado) do conjunto inteiro.
+  const top = env.linhas?.[0] as
+    | { pedidoId?: number | null; etapaNome?: string | null; diasParado?: number }
+    | undefined;
+  const pedidoId = top?.pedidoId ?? null;
+  const etapa = top?.etapaNome ? humanizeName(String(top.etapaNome)) : "(sem etapa)";
+  const dias = Number(top?.diasParado ?? maisAntigoDias);
+
+  const plural = total === 1 ? "pedido parado" : "pedidos parados";
+  let texto = `${total} ${plural} há mais de ${diasMin} dias no fluxo de etapas.`;
+  if (pedidoId != null) {
+    texto += ` Mais antigo: pedido ${pedidoId} (${dias} dias em ${etapa}).`;
+  } else if (maisAntigoDias > 0) {
+    texto += ` Mais antigo parado há ${maisAntigoDias} dias.`;
+  }
+  texto +=
+    " Travamento de processo (etapa sem avançar), não inadimplência financeira.";
+  return texto;
+};
+
+const fmtComercialCotacoes: FormatadorCanonico = (env) => {
+  // Espelho da factory honest-tool (comercial_cotacoes). Le _agregado.contagem.
+  const contagem = Number(env._agregado?.contagem ?? env.linhas.length);
+  if (!Number.isFinite(contagem) || contagem <= 0) {
+    return "As cotacoes/propostas ainda nao sao operadas no Odoo da Matrix (sem cotacoes).";
+  }
+  return `${contagem} cotações no recorte.`;
+};
+
+const fmtComercialComissoes: FormatadorCanonico = (env) => {
+  // Espelho da factory honest-tool (comercial_comissoes). Le _agregado.contagem.
+  const contagem = Number(env._agregado?.contagem ?? 0);
+  if (contagem === 0) {
+    return "As comissoes ainda nao sao operadas no Odoo da Matrix (sem comissoes).";
+  }
+  return `${contagem} comissoes no recorte.`;
+};
+
+const fmtComercialDetalharPedido: FormatadorCanonico = (env) => {
+  const d = env._DESTAQUE ?? {};
+  // Estado nao encontrado: o handler poe { encontrado: "nao" } e nenhuma das
+  // chaves de detalhe. Mensagem honesta.
+  if (d.encontrado === "nao" || (d.numero === undefined && d.participante === undefined)) {
+    return "Nao encontrei nenhum pedido com esse identificador no cache.";
+  }
+
+  const numeroRaw = String(d.numero ?? "").trim();
+  const numero = numeroRaw.length > 0 ? numeroRaw : "(sem numero)";
+  const tipoRaw = String(d.tipo ?? "").trim();
+  const etapaRaw = String(d.etapa ?? "").trim();
+  const participanteRaw = String(d.participante ?? "").trim();
+  const vendedorRaw = String(d.vendedor ?? "").trim();
+  const vrProdutos = Number(d.vrProdutos ?? 0);
+  const vrNf = Number(d.vrNf ?? 0);
+
+  const partes: string[] = [];
+  let cabeca = `Pedido ${numero}`;
+  if (tipoRaw.length > 0) cabeca += ` (${tipoRaw})`;
+  cabeca += ".";
+  partes.push(cabeca);
+
+  if (participanteRaw.length > 0) {
+    partes.push(`Participante: ${humanizeName(participanteRaw)}.`);
+  }
+  if (vendedorRaw.length > 0) {
+    partes.push(`Vendedor: ${humanizeName(vendedorRaw)}.`);
+  }
+  if (etapaRaw.length > 0) {
+    partes.push(`Etapa: ${etapaRaw}.`);
+  }
+  partes.push(
+    `Valor dos produtos ${formatBRL(vrProdutos)}, valor da nota ${formatBRL(vrNf)}.`,
+  );
+
+  return partes.join(" ");
+};
+
 const FORMATADORES: Record<string, FormatadorCanonico> = {
   // financeiro
   financeiro_contas_a_receber: fmtContasAReceber,
@@ -537,6 +765,18 @@ const FORMATADORES: Record<string, FormatadorCanonico> = {
   comercial_parcelas_a_vencer: fmtParcelasAVencer,
   comercial_pedidos_por_vendedor: fmtPedidosPorVendedor,
   comercial_pedidos_listar_top_valor: fmtPedidosListarTopValor,
+  comercial_contar_pedidos: fmtComercialContarPedidos,
+  comercial_vendedores_cadastrados: fmtVendedoresCadastrados,
+  comercial_pedidos_sem_vendedor: fmtPedidosSemVendedor,
+  comercial_produtos_por_margem: fmtComercialProdutosPorMargem,
+  comercial_pedidos_por_uf: fmtComercialPedidosPorUf,
+  comercial_produtos_por_familia: fmtComercialProdutosPorFamilia,
+  comercial_tempo_medio_fechamento: fmtComercialTempoMedioFechamento,
+  comercial_pedido_historico_etapas: fmtComercialPedidoHistoricoEtapas,
+  comercial_pedido_travados_por_etapa: fmtComercialPedidoTravadosPorEtapa,
+  comercial_cotacoes: fmtComercialCotacoes,
+  comercial_comissoes: fmtComercialComissoes,
+  comercial_detalhar_pedido: fmtComercialDetalharPedido,
   // cadastros
   cadastro_buscar_parceiro: fmtBuscarParceiro,
   cadastro_parceiros_por_uf: fmtParceirosPorUF,
@@ -596,6 +836,18 @@ export const TOOLS_QUE_PRECISAM_FORMATADOR: string[] = [
   "comercial_parcelas_a_vencer",
   "comercial_pedidos_por_vendedor",
   "comercial_pedidos_listar_top_valor",
+  "comercial_contar_pedidos",
+  "comercial_vendedores_cadastrados",
+  "comercial_pedidos_sem_vendedor",
+  "comercial_produtos_por_margem",
+  "comercial_pedidos_por_uf",
+  "comercial_produtos_por_familia",
+  "comercial_tempo_medio_fechamento",
+  "comercial_pedido_historico_etapas",
+  "comercial_pedido_travados_por_etapa",
+  "comercial_cotacoes",
+  "comercial_comissoes",
+  "comercial_detalhar_pedido",
   // cadastros
   "cadastro_buscar_parceiro",
   "cadastro_parceiros_por_uf",
@@ -626,19 +878,6 @@ export const TOOLS_SEM_FORMATADOR_REAL: string[] = [
   "servico_buscar",
   "servico_contar",
   "servico_listar",
-  // comercial
-  "comercial_contar_pedidos",
-  "comercial_vendedores_cadastrados",
-  "comercial_pedidos_sem_vendedor",
-  "comercial_produtos_por_margem",
-  "comercial_pedidos_por_uf",
-  "comercial_produtos_por_familia",
-  "comercial_tempo_medio_fechamento",
-  "comercial_pedido_historico_etapas",
-  "comercial_pedido_travados_por_etapa",
-  "comercial_cotacoes",
-  "comercial_comissoes",
-  "comercial_detalhar_pedido",
   // fiscal
   "fiscal_impostos_periodo",
   "fiscal_produtos_faturados",
