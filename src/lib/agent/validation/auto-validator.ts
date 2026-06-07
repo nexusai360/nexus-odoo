@@ -42,6 +42,9 @@ export interface ToolResultLike {
     titulos?: unknown[];
     linhas?: unknown[];
     serie?: unknown[];
+    /** Marcadores de lista incompleta (V6 nao verifica nestes casos). */
+    _amostraReduzida?: unknown;
+    _listaTruncada?: boolean;
     [k: string]: unknown;
   };
   /** Calculos canonicos disponiveis para essa tool (vide responder.ts). */
@@ -566,6 +569,11 @@ export function validateV6(ctx: ValidationContext): ValidationOutcome | null {
   for (const tr of ctx.toolResults) {
     const dados = tr.dados;
     if (!dados) continue;
+    // Nao verificavel quando a lista do envelope esta truncada/paginada: a soma
+    // das linhas exibidas NAO cobre o total declarado (que e do conjunto inteiro).
+    // Comparar geraria falso positivo. _amostraReduzida = corte do guard (24KB);
+    // _listaTruncada = paginacao da propria tool.
+    if (dados._amostraReduzida || dados._listaTruncada === true) continue;
     const total = totalDeclarado(dados._agregado);
     const linhas = Array.isArray(dados.linhas) ? dados.linhas : null;
     if (total === null || !linhas || linhas.length === 0) continue;

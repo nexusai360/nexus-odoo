@@ -337,3 +337,32 @@ de 95%) é o que de fato determina se o LLM recebe a ferramenta certa; o Top-1
 
 **Implicação:** nenhuma de produção, **o router segue em shadow** e o gate
 bloqueia a ativação enquanto não bater a meta.
+
+---
+
+## F3 R1 , chosenToolRank inflado pelo piso (pre-condicao para ativar retrieval)
+
+**Quando:** 2026-06-07 (code review F3).
+**Onde:** `src/lib/agent/run-agent.ts` (chosenToolRank via rankOf sobre retrievalOfferedTools) + `pick-tools.ts`.
+
+`retrievalOfferedTools` inclui o nucleo minimo inteiro (dominios picked +
+transversais + _desconhecido), que costuma ser a maior parte do catalogo. Logo
+`chosenToolRank != null` quase sempre, e o gate de go-live "% no top-K >= 98%"
+(spec 4.5) pode passar trivialmente sem provar que o top-K (a parte que enxuga)
+acerta. Os dados crus para uma metrica melhor JA estao persistidos em
+`AgentRouterDecision.retrievalScores` (cosseno por tool) + `retrievalOfferedTools`.
+
+**Acao antes de ligar `routerToolRetrieval=active`:** computar o gate sobre o
+rank restrito as candidatas top-K (excluindo floorAdded) ou rankear por
+retrievalScores; nao confiar no chosenToolRank cru. Implicacao de producao:
+nenhuma (retrieval segue em shadow; default nao corta catalogo).
+
+## F3 R2 , V6 (total x linhas) e shadow-only ate o envelope canonico (F4)
+
+**Quando:** 2026-06-07. **Onde:** `src/lib/agent/validation/auto-validator.ts` validateV6.
+
+V6 ja pula listas truncadas (`_amostraReduzida`/`_listaTruncada`) para nao dar
+falso positivo. Mas a verificacao plena de coerencia (totais, datas no periodo)
+depende do envelope canonico unico, que e da F4. Manter V6/V7 em shadow ate la;
+so promover a active (Falta Honesta direta) quando o envelope padronizar
+total/linhas/periodo. Implicacao de producao: nenhuma (V6/V7 so logam).

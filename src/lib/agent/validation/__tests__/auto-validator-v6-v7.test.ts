@@ -34,6 +34,34 @@ describe("validateV6 , total-declarado x linhas-do-envelope", () => {
     expect(r).toBeNull();
   });
 
+  it("nao verifica quando a lista esta truncada (_amostraReduzida)", () => {
+    const r = validateV6(
+      ctx([
+        {
+          toolName: "x",
+          dados: {
+            _agregado: { total: 1000 },
+            linhas: [{ valor: 100 }], // so 1 das N linhas (truncada)
+            _amostraReduzida: { de: 50, para: 1, motivo: "tamanho" },
+          },
+        },
+      ]),
+    );
+    expect(r).toBeNull();
+  });
+
+  it("nao verifica quando a lista esta paginada (_listaTruncada)", () => {
+    const r = validateV6(
+      ctx([
+        {
+          toolName: "x",
+          dados: { _agregado: { total: 1000 }, linhas: [{ valor: 100 }], _listaTruncada: true },
+        },
+      ]),
+    );
+    expect(r).toBeNull();
+  });
+
   it("nao verificavel (null) quando nao ha total declarado", () => {
     const r = validateV6(ctx([{ toolName: "x", dados: { linhas: [{ valor: 1 }] } }]));
     expect(r).toBeNull();
