@@ -74,6 +74,25 @@ const KNOWN_ACRONYMS = new Set([
   "PMB",
 ]);
 
+// Sufixos societarios e UFs: preservados em CAIXA ALTA mesmo tendo vogal
+// (LTDA/ME/EPP/EIRELI/CIA/SA/MEI, e os 27 codigos de UF). Aplicado a CAMPOS DE
+// NOME (parceiro/produto/conta) , o risco de colisao com palavra comum (ex.:
+// "se") e baixo nesse escopo. F4 Apresentacao, Onda 3.1.
+const PRESERVA_MAIUSCULA = new Set([
+  // sufixos societarios
+  "LTDA",
+  "ME",
+  "EPP",
+  "EIRELI",
+  "MEI",
+  "CIA",
+  "SA",
+  // UFs (codigo de 2 letras)
+  "AC", "AL", "AP", "AM", "BA", "CE", "DF", "ES", "GO", "MA",
+  "MT", "MS", "MG", "PA", "PB", "PR", "PE", "PI", "RJ", "RN",
+  "RS", "RO", "RR", "SC", "SP", "SE", "TO",
+]);
+
 function isCodeLike(word: string): boolean {
   if (word.length === 0) return false;
   // Codigo entre colchetes: [1467]
@@ -89,6 +108,9 @@ function isCodeLike(word: string): boolean {
 
 function capitalizeWord(word: string, isFirst: boolean): string {
   if (word.length === 0) return word;
+  // Sufixo societario / UF: forca CAIXA ALTA mesmo que tenha vogal ou venha
+  // em minuscula no input (vem antes do stopword/codigo).
+  if (PRESERVA_MAIUSCULA.has(word.toUpperCase())) return word.toUpperCase();
   if (isCodeLike(word)) return word; // preserva codigos
   const lower = word.toLowerCase();
   if (!isFirst && STOPWORDS.has(lower)) return lower;
@@ -116,7 +138,7 @@ export function humanizeName(raw: string): string {
   // resultante alterna entre palavras alfanumericas e separadores.
   const parts = raw.split(/([^\p{L}\p{N}]+)/u);
   let wordIdx = 0;
-  return parts
+  const humanizado = parts
     .map((part) => {
       if (part.length === 0) return part;
       if (/^[^\p{L}\p{N}]+$/u.test(part)) return part; // separador
@@ -125,4 +147,9 @@ export function humanizeName(raw: string): string {
       return out;
     })
     .join("");
+  // Sufixo societario "S.A." / "S/A": tokens de 1 letra nao passam pelo set;
+  // corrige no final preservando o separador (ponto ou barra).
+  return humanizado.replace(/\bS\s*([./])\s*a\b\.?/gi, (_m, sep: string) =>
+    sep === "." ? "S.A." : "S/A",
+  );
 }
