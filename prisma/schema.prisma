@@ -2823,6 +2823,12 @@ model AgentSettings {
   /// Habilita o retry expandido descrito acima. Default false para rollout
   /// seguro: liga so depois de validar shadow.
   routerRetryEnabled     Boolean @default(false) @map("router_retry_enabled")
+  /// F3 (cerebro): retrieval de tool individual por embedding (separado do
+  /// routerEnabled de dominio, que e Boolean). "shadow" (default): calcula o
+  /// top-K e loga em AgentRouterDecision, mas NAO enxuga o catalogo. "active":
+  /// entrega so o catalogo enxuto (top-K + nucleo minimo) ao LLM. Vira active
+  /// so apos shadow-compare provar recall@K >= 98% (spec F3 secao 4.5).
+  routerToolRetrieval    String  @default("shadow") @map("router_tool_retrieval")
 
   /// R2-ctx: roteamento contextual (Camada 2). Quando o embedding cai em
   /// fallback, uma LLM barata reformula a pergunta com os ultimos N pares e o
