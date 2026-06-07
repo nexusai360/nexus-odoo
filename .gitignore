@@ -63,3 +63,5 @@ docs/agent-quality-review/results/
 .agente-branch
 .agente-handoff.md
 .superpowers/
+# Lock do harness (churn por sessao, nao versionar)
+.claude/scheduled_tasks.lock

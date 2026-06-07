@@ -146,6 +146,8 @@ const COMERCIAL_IDS = [
   "comercial_pedido_travados_por_etapa",
   "comercial_cotacoes",
   "comercial_comissoes",
+  // F2 (Bloco D)
+  "comercial_detalhar_pedido",
 ];
 
 const FISCAL_IDS = [
@@ -178,6 +180,8 @@ const FISCAL_IDS = [
   "fiscal_faturamento_por_cfop",
   "fiscal_faturamento_nao_autorizado",
   "fiscal_faturamento_recebido",
+  // F2 (Bloco D)
+  "fiscal_detalhar_nota",
 ];
 
 const CADASTROS_IDS = [
@@ -190,6 +194,7 @@ const CADASTROS_IDS = [
   "cadastro_filiais_listar",
   "cadastro_contar_parceiros",
   "cadastro_detalhar_parceiro",
+  "cadastro_detalhar_produto",
   "servico_buscar",
   "servico_listar",
   "servico_contar",
@@ -204,6 +209,8 @@ const CONTABIL_IDS = [
   "contabil_resultado_por_natureza",
   "contabil_centro_custo",
   "contabil_conta_referencial",
+  // F2 (Bloco D , gated admin/super_admin)
+  "contabil_detalhar_conta",
 ];
 
 const DOMINIOS_VAZIOS_IDS = [
@@ -236,10 +243,10 @@ const TODOS_IDS = [
 // ─── 1. Assertiva de catálogo completo (achado N6) ────────────────────────────
 
 describe("Catálogo completo , rede de proteção N6", () => {
-  it("super_admin recebe EXATAMENTE 93 tools", () => {
+  it("super_admin recebe EXATAMENTE 102 tools", () => {
     const user = { userId: "u", role: "super_admin" as const, domains: ["estoque", "financeiro"] } as unknown as Parameters<typeof visibleTools>[1];
     const tools = visibleTools(catalogo, user);
-    expect(tools).toHaveLength(98);
+    expect(tools).toHaveLength(102);
   });
 
   it("super_admin recebe o conjunto exato de IDs", () => {
@@ -249,8 +256,8 @@ describe("Catálogo completo , rede de proteção N6", () => {
     expect(ids).toEqual([...TODOS_IDS].sort());
   });
 
-  it("catálogo bruto (antes do filtro) tem exatamente 88 entradas", () => {
-    // 81 tools de leitura + 9 write tools:
+  it("catálogo bruto (antes do filtro) tem exatamente 111 entradas", () => {
+    // 102 tools de leitura + 9 write tools:
     //   1) crm.res_partner.create
     //   2) cadastros.mail_activity.complete
     //   3) cadastros.mail_activity.create
@@ -262,7 +269,7 @@ describe("Catálogo completo , rede de proteção N6", () => {
     //   9) cadastros.res_partner.update
     // Write tools nao aparecem em visibleTools (modo interno); sao liberadas
     // so no modo externo por capability da chave de API.
-    expect(catalogo).toHaveLength(107);
+    expect(catalogo).toHaveLength(111);
   });
 });
 
@@ -274,17 +281,17 @@ describe("Catálogo filtrado por perfil", () => {
     return visibleTools(catalogo, user).map((t) => t.id);
   }
 
-  it("super_admin vê todas as 93 tools", () => {
+  it("super_admin vê todas as 102 tools", () => {
     const ids = tools("super_admin", ["estoque", "financeiro"]);
-    expect(ids).toHaveLength(98);
+    expect(ids).toHaveLength(102);
     for (const id of TODOS_IDS) {
       expect(ids).toContain(id);
     }
   });
 
-  it("admin vê todas as 93 tools", () => {
+  it("admin vê todas as 102 tools", () => {
     const ids = tools("admin", ["estoque", "financeiro"]);
-    expect(ids).toHaveLength(98);
+    expect(ids).toHaveLength(102);
   });
 
   it("manager com estoque+financeiro vê estoque+financeiro+sempreVisivel (sem bi_consulta_avancada)", () => {
@@ -331,7 +338,7 @@ describe("Catálogo filtrado por perfil", () => {
   // ─── Onda B: comercial , assertivas de perfil (R2-I1) ────────────────────────
   // Usa apenas perfis existentes no fixture (não estende o mapa de mocks).
 
-  it("admin vê as 14 tools de comercial (RBAC camada 1 , vê tudo)", () => {
+  it("admin vê as 21 tools de comercial (RBAC camada 1 , vê tudo)", () => {
     const ids = tools("admin", ["estoque", "financeiro"]);
     for (const id of COMERCIAL_IDS) {
       expect(ids).toContain(id);
@@ -348,7 +355,7 @@ describe("Catálogo filtrado por perfil", () => {
   // ─── Onda D: cadastros , assertivas de perfil (R2-I1) ────────────────────────
   // Usa apenas perfis existentes no fixture (não estende o mapa de mocks).
 
-  it("admin vê as 8 tools de cadastros (RBAC camada 1 , vê tudo)", () => {
+  it("admin vê as 13 tools de cadastros (RBAC camada 1 , vê tudo)", () => {
     const ids = tools("admin", ["estoque", "financeiro"]);
     for (const id of CADASTROS_IDS) {
       expect(ids).toContain(id);
@@ -365,7 +372,7 @@ describe("Catálogo filtrado por perfil", () => {
   // ─── Onda E: contábil , assertivas de perfil (R2-I1) ─────────────────────────
   // Usa apenas perfis existentes no fixture (não estende o mapa de mocks).
 
-  it("admin vê as 7 tools de contábil (RBAC camada 1 , vê tudo)", () => {
+  it("admin vê as 8 tools de contábil incluindo a detalhar_conta gated (RBAC camada 1 , vê tudo)", () => {
     const ids = tools("admin", ["estoque", "financeiro"]);
     for (const id of CONTABIL_IDS) {
       expect(ids).toContain(id);
@@ -456,6 +463,32 @@ describe("bi_consulta_avancada , gate de role", () => {
     const user = { userId: "u", role, domains: ["estoque", "financeiro"] } as Parameters<typeof visibleTools>[1];
     const ids = visibleTools(catalogo, user).map((t) => t.id);
     expect(ids).not.toContain("bi_consulta_avancada");
+  });
+});
+
+// ─── 3b. contabil_detalhar_conta , gate de role (F2 Bloco D) ──────────────────
+
+describe("contabil_detalhar_conta , gate de role", () => {
+  const contaTool = catalogo.find((t) => t.id === "contabil_detalhar_conta");
+
+  it("existe no catálogo com gatedRoles [admin, super_admin]", () => {
+    expect(contaTool).toBeDefined();
+    expect(contaTool?.gatedRoles).toEqual(expect.arrayContaining(["admin", "super_admin"]));
+    expect(contaTool?.gatedRoles).toHaveLength(2);
+  });
+
+  it.each(["super_admin", "admin"])("%s COM domínio contabil vê contabil_detalhar_conta", (role) => {
+    const user = { userId: "u", role, domains: ["contabil"] } as Parameters<typeof visibleTools>[1];
+    const ids = visibleTools(catalogo, user).map((t) => t.id);
+    expect(ids).toContain("contabil_detalhar_conta");
+  });
+
+  it.each(["manager", "viewer"])("%s COM domínio contabil NÃO vê contabil_detalhar_conta (gate por role, não por domínio)", (role) => {
+    const user = { userId: "u", role, domains: ["contabil"] } as Parameters<typeof visibleTools>[1];
+    const ids = visibleTools(catalogo, user).map((t) => t.id);
+    // o manager/viewer vê as demais tools de contabil, mas NÃO a gated.
+    expect(ids).toContain("contabil_plano_de_contas");
+    expect(ids).not.toContain("contabil_detalhar_conta");
   });
 });
 
@@ -567,7 +600,7 @@ describe("Servidor HTTP real , protocolo Streamable HTTP end-to-end", () => {
 
   // ── 5b. tools/list via HTTP , catálogo filtrado por perfil ────────────────
 
-  it("super_admin: tools/list via HTTP retorna 93 tools com os IDs corretos", async () => {
+  it("super_admin: tools/list via HTTP retorna 102 tools com os IDs corretos", async () => {
     const sid = await initializeSession(testServer.baseUrl, "user-super-admin");
 
     const { status, body } = await mcpRequest(
@@ -581,7 +614,7 @@ describe("Servidor HTTP real , protocolo Streamable HTTP end-to-end", () => {
     const result = extractRpcResult(body);
     const tools = result?.tools as Array<{ name: string }> | undefined;
     expect(tools).toBeDefined();
-    expect(tools!).toHaveLength(98);
+    expect(tools!).toHaveLength(102);
 
     const names = tools!.map((t) => t.name).sort();
     expect(names).toEqual([...TODOS_IDS].sort());

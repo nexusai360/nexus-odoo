@@ -2050,6 +2050,7 @@ model FatoNotaFiscal {
   @@index([dataEmissao])
   @@index([entradaSaida])
   @@index([situacaoNfe])
+  @@index([chave])
   @@map("fato_nota_fiscal")
 }
 
@@ -2130,6 +2131,10 @@ model FatoParceiro {
   nome         String?
   nomeCompleto String?   @map("nome_completo")
   documento    String?
+  /// F2 (entidades): documento so com digitos (CNPJ/CPF sem mascara nem prefixo BR-).
+  /// Preenchido pelo builder (mapParceiroRow) e backfill; string vazia normalizada para null.
+  /// Indexado: ramo documento de resolverParceiro filtra por igualdade aqui (spec 3.4).
+  documentoDigits String? @map("documento_digits")
   ehCliente    Boolean   @default(false) @map("eh_cliente")
   ehFornecedor Boolean   @default(false) @map("eh_fornecedor")
   ehEmpresa    Boolean   @default(false) @map("eh_empresa")
@@ -2150,6 +2155,7 @@ model FatoParceiro {
   @@index([ehCliente])
   @@index([ehFornecedor])
   @@index([dataCriacao])
+  @@index([documentoDigits])
   @@map("fato_parceiro")
 }
 
@@ -2210,6 +2216,7 @@ model FatoContaContabil {
   @@index([tipo])
   @@index([natureza])
   @@index([contaPaiId])
+  // codigo nao indexado: cardinalidade 934, ramo codigo carrega por startsWith (B20)
   @@map("fato_conta_contabil")
 }
 
