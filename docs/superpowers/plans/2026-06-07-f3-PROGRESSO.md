@@ -27,8 +27,8 @@
   - [x] 3a.7 camada C no filter-catalog apos RBAC (621c0d4).
   - [x] 3a.8b/8c retrieval fiado no run-agent (shadow loga offered/scores; active passa toolRetrieval; chosenToolRank no updateDecision) (c710538). 555 testes do agente verdes.
 - [x] **ONDA 3a COMPLETA.** Retrieval de tool em shadow, gate de go-live instrumentado.
-- [~] **ONDA 3b** , INICIANDO: classify-intent+precedencia (3b.1), apply-intent-args ~1241 (3b.2), V6/V7 no auto-validator shadow (3b.3/3b.4), validateResponse coleta shadowOutcomes sem short-circuit (3b.5), retry so-texto V1-V5 / V6-V7 Falta Honesta direta (3b.6).
-- [ ] **ONDA 3c**: git mv caminho3->fora-do-catalogo (3c.1), rotulos user-facing mantendo chave de dominio caminho3 (3c.2a/b/c), ramo Fora de Escopo+gap (3c.3).
+- [x] **ONDA 3b COMPLETA.** 3b.1 classify-intent (3a9e004), 3b.2 apply-intent-args + injecao gate active (c05e8a1), 3b.3/3b.4/3b.5 V6/V7 + runShadowChecks shadow (1ef6ea6), 3b.6 decideRetryOuGap + shadow log no run-agent (63b564d). 583 testes do agente verdes. NOTA: injecao de intencao consolidada na flag routerToolRetrieval (active); V6/V7 so shadow.
+- [~] **ONDA 3c** , INICIANDO: git mv caminho3->fora-do-catalogo (3c.1), rotulos user-facing mantendo chave de dominio caminho3 estavel (3c.2a recusa.ts, 3c.2b UI router, 3c.2c prompt/docs), ramo Fora de Escopo+gap (3c.3 fora-do-catalogo.ts + run-agent).
 - [ ] **Verificacao**: mini-oraculo 40-50 perguntas (V.1), E2E recall@K>=98% via tsx (V.2), rebuild worktree+shadow-compare (V.3), code review + PR (V.4).
   - LEMBRETES p/ o plano (das reviews): migration manual AgentRouterDecision (migrate deploy, nao dev); curar embeddingText de ~35-40 read-tools + check de startup/CI; NAO renomear chave de dominio caminho3; V5-V7 dentro de auto-validator com retry compartilhado cap=1; injecao de args de intencao entre tc.arguments e callTool (run-agent ~1214); mini-oraculo 30-50 perguntas anotadas.
 - [ ] Execucao Onda 3a (tool retrieval + router ativo) , TDD inline + workflow p/ unidades independentes.
