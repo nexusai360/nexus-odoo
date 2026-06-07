@@ -370,23 +370,28 @@
     "kpiOuro": [
       {
         "chave": "totalNotas",
-        "valor": 49426,
-        "match": "exato",
-        "fonteOuro": "SELECT count(*) fato_nota_fiscal"
+        "valor": 49427,
+        "match": "faixa",
+        "delta": 1000,
+        "fonteOuro": "SELECT count(*) fato_nota_fiscal (volatil, cresce com sync)"
       },
       {
         "chave": "totalSaida",
-        "valor": 38309,
-        "match": "exato",
-        "fonteOuro": "count filter entrada_saida=1"
+        "valor": 38310,
+        "match": "faixa",
+        "delta": 1000,
+        "fonteOuro": "count filter entrada_saida=1 (volatil)"
       },
       {
         "chave": "totalEntrada",
         "valor": 11117,
-        "match": "exato",
-        "fonteOuro": "count filter entrada_saida=0"
+        "match": "faixa",
+        "delta": 500,
+        "fonteOuro": "count filter entrada_saida=0 (volatil)"
       }
-    ]
+    ],
+    "volatil": true,
+    "observacao": "contar_notas cresce com a sincronizacao do worker (volatil); ouro em faixa absorve crescimento de sync, ainda pega bug grosseiro de logica."
   },
   {
     "id": "ouro-comercial-01",
