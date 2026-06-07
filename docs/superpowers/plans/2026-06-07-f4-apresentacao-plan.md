@@ -1,4 +1,26 @@
-# F4 , Apresentacao , Implementation Plan (v1)
+# F4 , Apresentacao , Implementation Plan (v3)
+
+> **v3 = v1 + 2 reviews adversariais do plano aplicadas (workflow wm08wckr3).** As correcoes `[P]` abaixo TEM PRECEDENCIA sobre o corpo v1 onde houver conflito. Inventario real (Task 1.0 ja rodada): ver `docs/superpowers/plans/2026-06-07-f4-tools-a-migrar.md` , **100 read tools, 47 com envelope, 53 a migrar** (por arquivo; recontar por TOOL na execucao). Chaves de array distintas encontradas: `contas, eventos, familia, familias, linhas, marca, porEtapa, produtos`.
+
+## CORRECOES v3 (aplicar na execucao) `[P]`
+
+1. **6 consumidores de chaves de array, nao 5** , falta `mcp/lib/audit.ts::extractRowCount` (alem de run-agent guardToolResult [2 loops: ~147 e ~163], auto-validator V2 ~212 e V6 ~578, sanitize-tool-result ~89, freshness ARRAY_KEYS_PRIORITY ~153). Antes de tocar: `grep -rn "ARRAY_KEYS\|listaKey\|arrKey\|titulos.*linhas.*serie" src/lib/agent mcp/lib` para enumerar os reais.
+2. **NAO unificar em lista plana** , as 6 listas divergem em CONTEUDO de proposito. A constante compartilhada e o VOCABULARIO (uniao de nomes); cada consumidor mantem seu SUBCONJUNTO/semantica: `ARRAY_KEYS_PRIORITY` (ordenada , freshness/audit/extractFirstArray decidem "primeiro array presente"); `ARRAY_KEYS_GUARD` (so listas grandes que estouram 24KB); `ARRAY_KEYS_VALOR` (V2). **V6 continua usando SO `dados.linhas`** (somar serie/titulos daria falso positivo de coerencia). Documentar o porque de cada subconjunto.
+3. **Teste de caracterizacao ANTES da troca (1.2):** snapshot do output atual de guard/V2/V6/sanitize/freshness/audit sobre fixtures; apos trocar a fonte da lista, provar saida byte-a-byte identica. "Preserva comportamento" e verificavel, nao afirmacao.
+4. **Task 1.0 conta por TOOL (id no catalogo), nao por arquivo** , ha arquivos com varias tools (financeiro/cobranca-bancaria.ts = 6 tools; comercial/cotacao-comissao.ts = 2). Iterar `visibleTools(catalogo, super_admin)` (102 ids) e detectar `_RESPOSTA` por id. Criterio: "N tools sem _RESPOSTA, listadas nominalmente"; sem aritmetica 102-47.
+5. **Onda 4 = 1 task POR TOOL** (epico quebrado). A Task 1.0 emite a lista de sub-tasks, cada uma: arquivo-fonte, chave(s) de array, formatador esperado + `_RESPOSTA` de exemplo, o `SELECT` exato do KPI, e "remover <toolId> da allowlist". Integracao do `FORMATADORES` (responder.ts) e inline pelo orquestrador, com criterio por formatador (qual KPI o _RESPOSTA cita, comprovado por SELECT). Gargalo real: dezenas de formatadores novos.
+6. **EnvelopeBaseShape = FreshnessEnvelope<ToolEnvelope>** (1.3): `dadosBaseShape` (Zod) corresponde a interface `ToolEnvelope` existente (manter o TIPO, auto-validator/responder importam); `EnvelopeBaseShape = { estado, dados: dadosBaseShape (passthrough), atualizadoEm, atualizadoHa, fonteStatus }`. Hoje so 4 tools tem outputSchema Zod , decidir na 1.3/1.4: o base Zod e (a) so a rede do teste de contrato (valida output em runtime no TESTE, sem cada tool declarar schema) OU (b) cada tool declara. Recomendado (a) , menos invasivo, evita mexer em 100 outputSchemas.
+7. **Teto-por-byte deterministico (Onda 2):** budget liquido = `24576 - overhead_fixo_medido`; `tetoTool = floor(budget / bytesPiorCasoLinha)`. Fixture sintetica de PIOR CASO (linha com strings no maximo plausivel); teste unit FALHA se `teto*piorLinha > budget`. E2E contra cache = guarda extra. Adicionar task: guard ciente do `tetoPorTool` (uma fonte de verdade do slice).
+8. **Baseline (1.5):** versionar a lista nominal tool+args. Serializar SOMENTE KPIs invariantes a paginacao (`total`, `_agregado`, `_DESTAQUE` sobre o conjunto) , NUNCA `linhasExibidas`/conteudo de linha. Dois conjuntos: (A) 47 com KPI -> baseline "identico"; (B) 53 que ganham KPI -> sem baseline, validacao = E2E positivo x SELECT. Confirmar ANTES que toda tool de lista calcula KPI sobre o conjunto (nao a pagina).
+9. **Allowlist (1.4):** array nominal exportado `TOOLS_SEM_FORMATADOR_REAL` (comentario "deve chegar a [] na Onda 6"); cada sub-task da Onda 4 remove seu id; Onda 6 exige vazia.
+10. **Onda 3.2 (escopo-empresa):** gate , `grep`/`SELECT` para confirmar quais tools REALMENTE filtram por empresa hoje (nao assumir F1). Dependencia 3.1 (humanizeName) -> Onda 4 (formatadores humanizam) explicita: migrar so apos humanizeName estendido, senao `_RESPOSTA` sai com nome cru.
+11. **Onda 5 (ranking):** listar nominalmente as tools (grep `orderBy|top|ranking`); "ambiguidade" = >=2 linhas com mesmo valor do criterio primario; fixture com empate provando ordem deterministica (odooId) + N exato.
+12. **4 tools com .parse/.safeParse** (detalhar-nota/pedido/conta, bi-consulta-avancada): confirmar que o base e superset (passthrough nao rejeita) e que bi-consulta-avancada valida em runtime apos a troca; E2E especifico.
+13. **freshness>6h (1.6):** destino do log = escolher McpAuditLog OU console estruturado (nao "ou"); teste assere que o retorno de `withFreshness` NAO contem campo de staleness/defasado (so loga server-side).
+
+---
+
+# F4 , Apresentacao , Implementation Plan (corpo v1, ler com as correcoes v3 acima)
 
 > **For agentic workers:** REQUIRED SUB-SKILL: superpowers:subagent-driven-development ou executing-plans. Steps usam checkbox `- [ ]`.
 > Antes de editar `run-agent.ts` (volatil), re-confirmar ancoras por grep. Migrations: manual + `migrate deploy` (NUNCA `migrate dev`). NAO ha migration nesta fase (so codigo).
