@@ -1554,6 +1554,73 @@ const fmtContabilMovimentoConta: FormatadorCanonico = (env) => {
   return cabeca + mostrando;
 };
 
+// === F4 Onda 4 (preco/servico/referencia , LIVE apos refatorar handler p/ enriquecerEnvelope) ===
+// O formatador LIVE so enxerga _DESTAQUE/_agregado (calcularExtras monta um stub
+// sem as linhas reais), por isso lemos tudo de _DESTAQUE. `total` e full-set.
+const fmtPrecoProduto: FormatadorCanonico = (env) => {
+  const d = env._DESTAQUE ?? {};
+  const total = Number(d.total ?? env._agregado?.contagem ?? 0);
+  const produtoRaw = String(d.produto ?? "");
+  const termo = d.termo ? String(d.termo) : "";
+  if (total === 0) {
+    return termo
+      ? `Nenhuma regra de preco encontrada para '${termo}'.`
+      : "Nenhuma regra de preco encontrada.";
+  }
+  const produto = produtoRaw ? humanizeName(produtoRaw) : "produto consultado";
+  return total === 1
+    ? `1 regra de preco para ${produto}.`
+    : `${total} regras de preco para ${produto} (em diferentes tabelas).`;
+};
+
+const fmtPrecoTabela: FormatadorCanonico = (env) => {
+  const d = env._DESTAQUE ?? {};
+  const total = Number(d.total ?? env._agregado?.contagem ?? 0);
+  const nomeBruto = d.tabelaNome ? String(d.tabelaNome) : "";
+  if (total === 0) {
+    return "Nenhuma regra de preco encontrada para essa tabela.";
+  }
+  const nome = nomeBruto ? humanizeName(nomeBruto) : "tabela informada";
+  const plural = total === 1 ? "regra de preco" : "regras de preco";
+  return `Tabela ${nome}: ${total} ${plural} cadastrada(s).`;
+};
+
+const fmtReferenciaBuscar: FormatadorCanonico = (env) => {
+  const d = env._DESTAQUE ?? {};
+  const total = Number(d.total ?? env._agregado?.contagem ?? 0);
+  const tabela = String(d.tabela ?? "referencia").toUpperCase();
+  const termo = d.termo ? String(d.termo) : "";
+  if (total === 0) {
+    return termo
+      ? `Nenhum registro em ${tabela} para '${termo}'.`
+      : `Nenhum registro encontrado em ${tabela}.`;
+  }
+  const plural = total === 1 ? "registro" : "registros";
+  return termo
+    ? `${total} ${plural} em ${tabela} para '${termo}'.`
+    : `${total} ${plural} na tabela ${tabela}.`;
+};
+
+const fmtServicoBuscar: FormatadorCanonico = (env) => {
+  const d = env._DESTAQUE ?? {};
+  const total = Number(d.total ?? env._agregado?.contagem ?? 0);
+  const termo = d.termo ? String(d.termo) : "";
+  if (total === 0) {
+    return `Nenhum servico encontrado para '${termo}'.`;
+  }
+  const plural = total === 1 ? "servico" : "servicos";
+  return `${total} ${plural} encontrados para '${termo}'.`;
+};
+
+const fmtServicoListar: FormatadorCanonico = (env) => {
+  const total = Number(env._DESTAQUE?.total ?? env._agregado?.contagem ?? 0);
+  if (total === 0) {
+    return "Nenhum servico cadastrado no catalogo.";
+  }
+  const plural = total === 1 ? "servico cadastrado" : "servicos cadastrados";
+  return `${total} ${plural} no catalogo fiscal.`;
+};
+
 const FORMATADORES: Record<string, FormatadorCanonico> = {
   // financeiro
   financeiro_contas_a_receber: fmtContasAReceber,
@@ -1614,6 +1681,11 @@ const FORMATADORES: Record<string, FormatadorCanonico> = {
   "fiscal_faturamento_por_marca": fmtFiscalFaturamentoPorMarca,
   "fiscal_faturamento_por_uf": fmtFiscalFaturamentoPorUf,
   // preco / servico / cadastros / contabil / status (Onda 4 resto)
+  "preco_produto": fmtPrecoProduto,
+  "preco_tabela": fmtPrecoTabela,
+  "referencia_buscar": fmtReferenciaBuscar,
+  "servico_buscar": fmtServicoBuscar,
+  "servico_listar": fmtServicoListar,
   "preco_contar_regras": fmtPrecoContarRegras,
   "servico_contar": fmtServicoContar,
   "cadastro_parceiros_por_cidade": fmtCadastroParceirosPorCidade,
@@ -1772,14 +1844,8 @@ export const TOOLS_QUE_PRECISAM_FORMATADOR: string[] = [
  */
 export const TOOLS_SEM_FORMATADOR_REAL: string[] = [
   // RESTAM 13 read-tools , precisam de fix de handler antes de migrar:
-  // (a) sem envelope canonico (handler nao monta _RESPOSTA/_DESTAQUE):
-  "preco_produto",
-  "preco_tabela",
-  "referencia_buscar",
-  "servico_buscar",
-  "servico_listar",
   "crm.res_partner.get",
-  // (b) page-scoped (KPI somava a pagina, classe d987060):
+  // page-scoped / sem-enrich (precisam fix de handler antes de migrar):
   "fiscal_carta_correcao",
   "fiscal_certificados",
   "fiscal_mdfe_manifestos",

@@ -4,6 +4,7 @@ import { z } from "zod";
 import type { ToolEntry } from "../../catalog/types.js";
 import { queryServicoBuscar } from "@/lib/reports/queries/servicos.js";
 import { withFreshness } from "../../lib/freshness.js";
+import { enriquecerEnvelope } from "../../lib/with-responder.js";
 import {
   paginacaoInputShape,
   resolverPaginacao,
@@ -28,8 +29,11 @@ const dados = z.object({
   linhas: z.array(linha),
   total: z.number().int(),
   truncado: z.boolean(),
+  _RESPOSTA: z.string().optional(),
   _listaTruncada: z.boolean().optional(),
   _PAGINACAO: z.any().optional(),
+  _DESTAQUE: z.record(z.string(), z.union([z.string(), z.number()])).optional(),
+  _agregado: z.record(z.string(), z.number().optional()).optional(),
 });
 
 const fonteStatus = z.object({
@@ -67,13 +71,12 @@ export const cadastrosServicoBuscar: ToolEntry<Input, Output> = {
     if (envelope.estado === "preparando") return envelope;
     const d = envelope.dados;
     const paginacao = montarPaginacaoMeta(d.total, offset, limit, d.linhas.length);
-    return {
-      ...envelope,
-      dados: {
-        ...d,
-        _listaTruncada: paginacao.temMais,
-        _PAGINACAO: paginacao,
-      },
-    };
+    // _RESPOSTA delegado ao formatador canonico (fmtServicoBuscar). `total` e
+    // full-set (count(where) na query, independente da paginacao).
+    return enriquecerEnvelope(envelope, "servico_buscar", {
+      destaque: { total: d.total, termo: input.termo },
+      agregado: { contagem: d.total },
+      paginacao,
+    });
   },
 };

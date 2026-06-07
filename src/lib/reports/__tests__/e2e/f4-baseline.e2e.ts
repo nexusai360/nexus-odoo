@@ -52,6 +52,10 @@ const ARGS: Record<string, Record<string, unknown>> = {
   cadastro_detalhar_produto: { odooId: 42 },
   contabil_detalhar_conta: { odooId: 2110 },
   contabil_movimento_conta: { contaCodigo: "1.1.01.01" },
+  preco_produto: { termo: "G7S13 V2 SUPINO" },
+  preco_tabela: { tabelaId: 7 },
+  referencia_buscar: { tabela: "cfop", termo: "venda" },
+  servico_buscar: { termo: "transporte" },
 };
 
 // Chaves de KPI agregado, invariantes a paginacao. Tudo o resto (linhas,

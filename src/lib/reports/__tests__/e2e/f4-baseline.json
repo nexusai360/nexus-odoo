@@ -1130,6 +1130,29 @@
     },
     "total": 11867
   },
+  "preco_produto": {
+    "estado": "ok",
+    "_DESTAQUE": {
+      "total": 6,
+      "produto": "[103] G7S13 V2 SUPINO VERTICAL CONVERGENTE ULTRA MATRIX",
+      "termo": "G7S13 V2 SUPINO"
+    },
+    "_agregado": {
+      "contagem": 6
+    },
+    "total": 6
+  },
+  "preco_tabela": {
+    "estado": "ok",
+    "_DESTAQUE": {
+      "total": 2954,
+      "tabelaNome": "Custo /0,3"
+    },
+    "_agregado": {
+      "contagem": 2954
+    },
+    "total": 2954
+  },
   "producao_processos": {
     "estado": "ok",
     "_agregado": {
@@ -1138,11 +1161,44 @@
     "total": 1
   },
   "producao_status_dominio": {},
+  "referencia_buscar": {
+    "estado": "ok",
+    "_DESTAQUE": {
+      "total": 151,
+      "tabela": "cfop",
+      "termo": "venda"
+    },
+    "_agregado": {
+      "contagem": 151
+    },
+    "total": 151
+  },
   "rh_status_dominio": {},
+  "servico_buscar": {
+    "estado": "ok",
+    "_DESTAQUE": {
+      "total": 6,
+      "termo": "transporte"
+    },
+    "_agregado": {
+      "contagem": 6
+    },
+    "total": 6
+  },
   "servico_contar": {
     "estado": "ok",
     "_DESTAQUE": {
       "totalServicos": 336
+    },
+    "_agregado": {
+      "contagem": 336
+    },
+    "total": 336
+  },
+  "servico_listar": {
+    "estado": "ok",
+    "_DESTAQUE": {
+      "total": 336
     },
     "_agregado": {
       "contagem": 336
