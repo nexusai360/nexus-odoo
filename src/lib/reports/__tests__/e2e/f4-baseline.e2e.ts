@@ -42,6 +42,7 @@ const EXCLUIR = new Set(["registrar_lacuna", "bi_consulta_avancada"]);
 const ARGS: Record<string, Record<string, unknown>> = {
   cadastro_buscar_parceiro: { termo: "JHT" },
   contabil_estrutura_conta: { odooId: 4 },
+  estoque_locais_por_produto: { termo: "1464" },
 };
 
 // Chaves de KPI agregado, invariantes a paginacao. Tudo o resto (linhas,

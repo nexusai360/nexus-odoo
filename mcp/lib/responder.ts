@@ -388,6 +388,32 @@ const fmtConcentracao: FormatadorCanonico = (env) => {
   return partes.join(" ");
 };
 
+const fmtLocaisPorProduto: FormatadorCanonico = (env) => {
+  const d = env._DESTAQUE ?? {};
+  const nome = d.produtoNome ? humanizeName(String(d.produtoNome)) : "";
+  const totalLocais = Number(d.totalLocais ?? 0);
+  const saldoTotal = Number(d.saldoTotal ?? 0);
+  if (totalLocais === 0) {
+    return nome
+      ? `${nome} nao tem saldo em nenhum local.`
+      : "Produto nao encontrado ou sem saldo em estoque.";
+  }
+  const cab = nome ? `${nome}: ` : "";
+  const localTxt = totalLocais === 1 ? "local" : "locais";
+  return `${cab}saldo em ${totalLocais} ${localTxt}, total ${saldoTotal} unidades.`;
+};
+
+const fmtMinimoMaximo: FormatadorCanonico = (env) => {
+  // Tool honesta (makeHonestTool): enquanto a Matrix nao cadastrar min/max no
+  // Odoo, o handler ja devolve a mensagem de "nao operado". Este formatador
+  // espelha a contagem para satisfazer o contrato de formatador real.
+  const n = Number(env._agregado?.contagem ?? env._DESTAQUE?.contagem ?? 0);
+  if (n === 0) {
+    return "Nao ha parametros de minimo/maximo cadastrados no Odoo ainda.";
+  }
+  return `${n} parametros de minimo/maximo cadastrados.`;
+};
+
 const FORMATADORES: Record<string, FormatadorCanonico> = {
   // financeiro
   financeiro_contas_a_receber: fmtContasAReceber,
@@ -409,6 +435,8 @@ const FORMATADORES: Record<string, FormatadorCanonico> = {
   estoque_produtos_saldo_zero: fmtProdutosSaldoZero,
   estoque_valor_armazem: fmtValorArmazem,
   estoque_entradas_saidas: fmtEntradasSaidas,
+  estoque_locais_por_produto: fmtLocaisPorProduto,
+  estoque_minimo_maximo: fmtMinimoMaximo,
   // comercial
   comercial_pedidos_periodo: fmtPedidosPeriodo,
   comercial_pedidos_por_etapa: fmtPedidosPorEtapa,
@@ -456,9 +484,10 @@ export const TOOLS_QUE_PRECISAM_FORMATADOR: string[] = [
   "estoque_top_movimentados",
   "estoque_produtos_parados",
   "estoque_produtos_saldo_zero",
-  "estoque_concentracao",
   "estoque_valor_armazem",
   "estoque_entradas_saidas",
+  "estoque_locais_por_produto",
+  "estoque_minimo_maximo",
   // comercial
   "comercial_pedidos_periodo",
   "comercial_pedidos_por_etapa",
@@ -488,9 +517,6 @@ export const TOOLS_QUE_PRECISAM_FORMATADOR: string[] = [
  * (102 read tools, 29 com formatador real, 73 genericas) em 2026-06-07.
  */
 export const TOOLS_SEM_FORMATADOR_REAL: string[] = [
-  // estoque
-  "estoque_locais_por_produto",
-  "estoque_minimo_maximo",
   // financeiro
   "financeiro_saldo_contas",
   "financeiro_caixa_periodo",

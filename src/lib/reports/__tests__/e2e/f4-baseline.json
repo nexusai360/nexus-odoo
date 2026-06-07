@@ -160,6 +160,25 @@
       "periodos": 9
     }
   },
+  "estoque_locais_por_produto": {
+    "estado": "ok",
+    "_DESTAQUE": {
+      "produtoNome": "PAINEL LED MX (LED-C)",
+      "saldoTotal": 789,
+      "totalLocais": 25
+    },
+    "_agregado": {
+      "soma": 789,
+      "contagem": 25
+    }
+  },
+  "estoque_minimo_maximo": {
+    "estado": "vazio",
+    "_agregado": {
+      "contagem": 0
+    },
+    "total": 0
+  },
   "estoque_produtos_parados": {
     "estado": "ok",
     "_DESTAQUE": {
