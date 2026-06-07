@@ -16,6 +16,8 @@
 // do wrapper F3 pode adotá-la também.
 
 import type { PrismaClient } from "@/generated/prisma/client.js";
+// Fonte unica das chaves de array (F4 Apresentacao, Onda 1.2).
+import { ARRAY_KEYS_PRIORITY } from "./array-keys.js";
 
 // ---------------------------------------------------------------------------
 // FATO_FONTE , mapa fato → fonte do SyncState com modo
@@ -150,7 +152,7 @@ export async function estadoPreparando(
 // ---------------------------------------------------------------------------
 // `withFreshness` inspeciona `dados` para decidir "vazio": pega o primeiro
 // array entre as chaves abaixo, por ordem. Se nenhum existir → "ok".
-const ARRAY_KEYS_PRIORITY = ["linhas", "titulos", "serie", "contas", "top", "familia", "marca"] as const;
+// `ARRAY_KEYS_PRIORITY` agora vem de array-keys.ts (import no topo do modulo).
 
 function extractFirstArray(dados: unknown): unknown[] | null {
   if (typeof dados !== "object" || dados === null) return null;
