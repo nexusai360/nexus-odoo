@@ -453,6 +453,99 @@ export const TOOLS_QUE_PRECISAM_FORMATADOR: string[] = [
   "bi_consulta_avancada",
 ];
 
+/**
+ * Allowlist de progresso (F4 Apresentacao, [P]#9). Read-tools que AINDA usam o
+ * fmtGenerico e estao temporariamente liberadas do teste de contrato
+ * (mcp/__tests__/envelope-contract.test.ts). Cada sub-task da Onda 4 remove o
+ * id da sua tool aqui ao escrever o formatador real. **Deve chegar a `[]` na
+ * Onda 6** , o teste de contrato exige que este conjunto seja IGUAL ao conjunto
+ * de read-tools genericas (sem stale, sem id faltando). Gerada da catalogo real
+ * (102 read tools, 29 com formatador real, 73 genericas) em 2026-06-07.
+ */
+export const TOOLS_SEM_FORMATADOR_REAL: string[] = [
+  // estoque
+  "estoque_concentracao",
+  "estoque_locais_por_produto",
+  "estoque_minimo_maximo",
+  // financeiro
+  "financeiro_saldo_contas",
+  "financeiro_caixa_periodo",
+  "financeiro_liquidez",
+  "financeiro_resultado_por_conta",
+  "financeiro_baixas_cobranca",
+  "financeiro_retornos_processados",
+  "financeiro_remessas_geradas",
+  "financeiro_carteiras_cobranca",
+  "financeiro_cheques",
+  "financeiro_pix_recebidos",
+  // preco / referencia / servico
+  "preco_produto",
+  "preco_tabela",
+  "preco_contar_regras",
+  "referencia_buscar",
+  "servico_buscar",
+  "servico_contar",
+  "servico_listar",
+  // comercial
+  "comercial_contar_pedidos",
+  "comercial_vendedores_cadastrados",
+  "comercial_pedidos_sem_vendedor",
+  "comercial_produtos_por_margem",
+  "comercial_pedidos_por_uf",
+  "comercial_produtos_por_familia",
+  "comercial_tempo_medio_fechamento",
+  "comercial_pedido_historico_etapas",
+  "comercial_pedido_travados_por_etapa",
+  "comercial_cotacoes",
+  "comercial_comissoes",
+  "comercial_detalhar_pedido",
+  // fiscal
+  "fiscal_impostos_periodo",
+  "fiscal_produtos_faturados",
+  "fiscal_carta_correcao",
+  "fiscal_contar_notas",
+  "fiscal_certificados",
+  "fiscal_faturamento_por_marca",
+  "fiscal_faturamento_mensal_serie",
+  "fiscal_faturamento_por_uf",
+  "fiscal_notas_emitidas_por_cliente",
+  "fiscal_notas_emitidas_por_produto",
+  "fiscal_dfe_importados_periodo",
+  "fiscal_dfe_por_fornecedor",
+  "fiscal_dfe_pendentes_manifestacao",
+  "fiscal_mdfe_manifestos",
+  "fiscal_reinf_eventos",
+  "fiscal_faturamento_por_empresa",
+  "fiscal_faturamento_por_operacao",
+  "fiscal_faturamento_por_cfop",
+  "fiscal_faturamento_nao_autorizado",
+  "fiscal_faturamento_recebido",
+  "fiscal_detalhar_nota",
+  // cadastros
+  "cadastro_parceiros_por_cidade",
+  "cadastro_cidades_listar",
+  "cadastro_parceiros_novos",
+  "cadastro_parceiros_sem_documento",
+  "cadastro_filiais_listar",
+  "cadastro_detalhar_parceiro",
+  "cadastro_detalhar_produto",
+  // contabil
+  "contabil_saldo_conta",
+  "contabil_movimento_conta",
+  "contabil_resultado_por_natureza",
+  "contabil_centro_custo",
+  "contabil_conta_referencial",
+  "contabil_detalhar_conta",
+  // dominios-vazios / status / raw-get
+  "rh_status_dominio",
+  "crm_status_dominio",
+  "producao_status_dominio",
+  "crm.res_partner.get",
+  "crm_pipeline_funis",
+  "producao_processos",
+  "auditoria_regras",
+];
+
 export function formatadorPorTool(toolName: string): FormatadorCanonico {
   return FORMATADORES[toolName] ?? fmtGenerico;
 }
