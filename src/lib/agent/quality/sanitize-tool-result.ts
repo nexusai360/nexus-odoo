@@ -26,6 +26,10 @@
  *   Default: off (não-bloqueante até validação)
  */
 
+// Fonte unica das chaves de array (F4 Apresentacao, Onda 1.2). Subconjunto
+// SANITIZE espelha exatamente a lista local anterior deste sanitizer.
+import { ARRAY_KEYS_SANITIZE } from "../../../../mcp/lib/array-keys";
+
 const NUMERIC_FIELD_NAMES = [
   "valor",
   "valorTotal",
@@ -86,7 +90,7 @@ export function sanitizeToolResult(
   // tools financeiras (titulos), fluxo_caixa (serie), saldo_contas (contas),
   // top_movimentados (top). Antes o sanitizer saia early se nao houvesse
   // `linhas`, deixando _DESTAQUE sem aplicar em metade dos casos.
-  const ARRAY_KEYS = ["linhas", "titulos", "serie", "contas", "top"] as const;
+  const ARRAY_KEYS = ARRAY_KEYS_SANITIZE;
   let arr: unknown[] | null = null;
   for (const k of ARRAY_KEYS) {
     if (Array.isArray(dadosObj[k]) && (dadosObj[k] as unknown[]).length > 0) {

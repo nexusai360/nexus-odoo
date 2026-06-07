@@ -1,5 +1,6 @@
 // mcp/tools/financeiro/cobranca-bancaria.test.ts
 // Paginacao (alavanca 2b) das tools de cobranca bancaria.
+import { PAGINACAO_LIMIT_DEFAULT } from "../../lib/paginacao";
 import {
   financeiroBaixasCobranca,
   financeiroRetornosProcessados,
@@ -70,14 +71,14 @@ describe("cobranca bancaria , paginacao (alavanca 2b)", () => {
     }
   });
 
-  it("baixas: default limit = 10 quando ausente", async () => {
+  it("baixas: default limit = 50 quando ausente", async () => {
     const ctx = makeCtx();
     primeFreshness(ctx, "fato_retorno_item", "finan.retorno.item");
     (ctx.prisma.fatoRetornoItem.count as jest.Mock).mockResolvedValue(3);
     (ctx.prisma.fatoRetornoItem.findMany as jest.Mock).mockResolvedValue([]);
     await financeiroBaixasCobranca.handler({} as never, ctx);
     const args = (ctx.prisma.fatoRetornoItem.findMany as jest.Mock).mock.calls[0][0];
-    expect(args.take).toBe(10);
+    expect(args.take).toBe(PAGINACAO_LIMIT_DEFAULT);
     expect(args.skip).toBe(0);
   });
 

@@ -2,7 +2,12 @@
 // Testes de estadoPreparando e withFreshness.
 // Jest roda com transform CJS (ts-jest, sem --experimental-vm-modules).
 
-import { estadoPreparando, withFreshness } from "./freshness.js";
+import {
+  estadoPreparando,
+  withFreshness,
+  logSeStale,
+  STALE_LIMIAR_MS,
+} from "./freshness.js";
 
 function makePrisma(overrides: Record<string, unknown> = {}) {
   return {
@@ -226,5 +231,59 @@ describe("withFreshness", () => {
       );
       expect(result).toMatchObject({ estado: "ok" });
     });
+  });
+
+  // [P]#13: freshness>6h e logado server-side, NUNCA vaza para o envelope.
+  it("nao inclui nenhum campo de staleness/defasado no envelope retornado", async () => {
+    const velho = new Date(Date.now() - 10 * 60 * 60 * 1000); // 10h atras
+    const prisma = makePrisma();
+    (prisma.fatoBuildState.findMany as jest.Mock).mockResolvedValue([
+      { fato: "fato_estoque_saldo", ultimoBuildAt: velho },
+    ]);
+    (prisma.syncState.findMany as jest.Mock).mockResolvedValue([
+      { model: "estoque.saldo.hoje", lastStatus: "ok", lastSnapshotAt: velho, lastIncrementalAt: null },
+    ]);
+    const warn = jest.spyOn(console, "warn").mockImplementation(() => {});
+    const fn = jest.fn().mockResolvedValue({ linhas: [{ id: 1 }] });
+    const result = await withFreshness(prisma as never, ["fato_estoque_saldo"], fn);
+    warn.mockRestore();
+    // O envelope so tem as chaves canonicas , nenhuma de staleness.
+    const chaves = Object.keys(result);
+    expect(chaves.sort()).toEqual(
+      ["atualizadoEm", "atualizadoHa", "dados", "estado", "fonteStatus"].sort(),
+    );
+    for (const proibida of ["_staleness", "staleness", "defasado", "_defasado", "stale"]) {
+      expect(chaves).not.toContain(proibida);
+    }
+  });
+});
+
+describe("logSeStale (F4 [P]#13)", () => {
+  const base = new Date("2026-05-01T12:00:00Z");
+
+  it("loga quando o dado tem mais de 6h", () => {
+    const warn = jest.spyOn(console, "warn").mockImplementation(() => {});
+    const atualizadoEm = new Date(base.getTime() - 7 * 60 * 60 * 1000).toISOString();
+    const logou = logSeStale(atualizadoEm, ["fato_estoque_saldo"], base);
+    expect(logou).toBe(true);
+    expect(warn).toHaveBeenCalledTimes(1);
+    expect(String((warn.mock.calls[0] ?? [])[0])).toContain("[freshness-stale]");
+    warn.mockRestore();
+  });
+
+  it("nao loga quando o dado tem menos de 6h", () => {
+    const warn = jest.spyOn(console, "warn").mockImplementation(() => {});
+    const atualizadoEm = new Date(base.getTime() - 2 * 60 * 60 * 1000).toISOString();
+    const logou = logSeStale(atualizadoEm, ["fato_estoque_saldo"], base);
+    expect(logou).toBe(false);
+    expect(warn).not.toHaveBeenCalled();
+    warn.mockRestore();
+  });
+
+  it("nao loga exatamente no limiar (6h)", () => {
+    const warn = jest.spyOn(console, "warn").mockImplementation(() => {});
+    const atualizadoEm = new Date(base.getTime() - STALE_LIMIAR_MS).toISOString();
+    expect(logSeStale(atualizadoEm, ["fato_x"], base)).toBe(false);
+    warn.mockRestore();
   });
 });

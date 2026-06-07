@@ -1,4 +1,5 @@
 import { comercialProdutosPorMargem } from "./produtos-por-margem.js";
+import { PAGINACAO_LIMIT_DEFAULT } from "../../lib/paginacao";
 import type { ToolHandlerCtx } from "../../catalog/types.js";
 import type { UserContext } from "../../auth/user-context.js";
 
@@ -81,13 +82,13 @@ describe("comercial_produtos_por_margem , paginacao (alavanca 2b)", () => {
     }
   });
 
-  it("default limit = 10 quando ausente", async () => {
+  it("default limit = 50 quando ausente", async () => {
     const ctx = makeCtx();
     primeFreshness(ctx);
     primeQueries(ctx, 3, 3);
 
     await comercialProdutosPorMargem.handler({} as never, ctx);
     const sql = (ctx.prisma.$queryRawUnsafe as jest.Mock).mock.calls[0][0] as string;
-    expect(sql).toMatch(/LIMIT 10 OFFSET 0/);
+    expect(sql).toMatch(new RegExp(`LIMIT ${PAGINACAO_LIMIT_DEFAULT} OFFSET 0`));
   });
 });

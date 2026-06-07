@@ -6,12 +6,18 @@ import { z } from "zod";
 import type { ToolEntry } from "../../catalog/types.js";
 import { queryConcentracao } from "@/lib/reports/queries/estoque.js";
 import { withFreshness } from "../../lib/freshness.js";
+import { enriquecerEnvelope } from "../../lib/with-responder.js";
 
 const inputSchema = z.object({});
 
 const dados = z.object({
   familia: z.array(z.object({ familia: z.string(), valor: z.number(), percentual: z.number() })),
   marca: z.array(z.object({ marca: z.string(), valor: z.number(), percentual: z.number() })),
+  // F4 Onda 4: campos de apresentacao injetados por enriquecerEnvelope.
+  _RESPOSTA: z.string().optional(),
+  _listaTruncada: z.boolean().optional(),
+  _DESTAQUE: z.record(z.string(), z.union([z.string(), z.number()])).optional(),
+  _agregado: z.record(z.string(), z.number().optional()).optional(),
 });
 
 const fonteStatus = z.object({
@@ -58,8 +64,8 @@ export const estoqueConcentracao: ToolEntry<Input, Output> = {
   inputSchemaShape: inputSchema.shape,
   inputSchema,
   outputSchema,
-  handler: (_input, ctx) =>
-    withFreshness(
+  handler: async (_input, ctx) => {
+    const envelope = await withFreshness(
       ctx.prisma,
       ["fato_estoque_saldo"],
       async () => shape(await queryConcentracao(ctx.prisma)),
@@ -67,5 +73,31 @@ export const estoqueConcentracao: ToolEntry<Input, Output> = {
       // quando AMBOS os arrays estão vazios (regra conjuntiva). Se só famílias
       // estiverem vazias mas marcas preenchidas (ou vice-versa), o estado é "ok".
       (dados) => dados.familia.length === 0 && dados.marca.length === 0,
-    ),
+    );
+    if (envelope.estado === "preparando") return envelope;
+    const d = envelope.dados;
+    // Agregados FULL-SET (os arrays ja cobrem o conjunto inteiro, sem paginacao).
+    const valorTotalFamilia = d.familia.reduce((a, b) => a + b.valor, 0);
+    const topFamilia = d.familia[0]; // queryConcentracao ja ordena por valor desc
+    const topMarca = d.marca[0];
+    const destaque: Record<string, string | number> = {
+      totalFamilias: d.familia.length,
+      totalMarcas: d.marca.length,
+      valorTotal: valorTotalFamilia,
+    };
+    if (topFamilia) {
+      destaque.topFamilia = topFamilia.familia;
+      destaque.valorTopFamilia = topFamilia.valor;
+      destaque.pctTopFamilia = Math.round(topFamilia.percentual * 10) / 10;
+    }
+    if (topMarca) {
+      destaque.topMarca = topMarca.marca;
+      destaque.valorTopMarca = topMarca.valor;
+      destaque.pctTopMarca = Math.round(topMarca.percentual * 10) / 10;
+    }
+    return enriquecerEnvelope(envelope, "estoque_concentracao", {
+      destaque,
+      agregado: { contagem: d.familia.length, soma: valorTotalFamilia },
+    });
+  },
 };

@@ -17,6 +17,10 @@
  * Feature flag: AgentSettings.autoValidatorMode (off|shadow|active).
  */
 
+// Fonte unica das chaves de array (F4 Apresentacao, Onda 1.2). Subconjunto
+// VALOR = chaves que o V2 (anti-invencao) varre buscando valor citado.
+import { ARRAY_KEYS_VALOR } from "../../../../mcp/lib/array-keys";
+
 export type ValidationFailReason =
   | "V1"
   | "V2"
@@ -209,7 +213,7 @@ function apareceLiteralEmEnvelope(
       }
     }
     // Varre linhas-array conhecidos buscando campos comuns
-    for (const arrKey of ["titulos", "linhas", "serie", "top", "topMaiores"] as const) {
+    for (const arrKey of ARRAY_KEYS_VALOR) {
       const arr = (d as Record<string, unknown>)[arrKey];
       if (!Array.isArray(arr)) continue;
       // T-23 (2026-05-27): aceita array.length como valor derivado valido.

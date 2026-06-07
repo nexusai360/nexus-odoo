@@ -14,6 +14,9 @@
 
 import { createHash } from "node:crypto";
 import { prisma } from "@/lib/prisma";
+// Fonte unica das chaves de array (F4 Apresentacao, Onda 1.2). GUARD = listas
+// grandes que o guardToolResult encurta para caber em MAX_TOOL_RESULT_BYTES.
+import { ARRAY_KEYS_GUARD } from "../../../mcp/lib/array-keys";
 import {
   formatDateInTz,
   DEFAULT_TZ,
@@ -144,7 +147,7 @@ function guardToolResult(result: string): string {
     if (parsed && typeof parsed === "object" && "estado" in parsed && "dados" in parsed) {
       const dados = (parsed as { dados: Record<string, unknown> }).dados;
       if (dados && typeof dados === "object") {
-        for (const listaKey of ["titulos", "linhas", "serie", "top"] as const) {
+        for (const listaKey of ARRAY_KEYS_GUARD) {
           const v = dados[listaKey];
           if (Array.isArray(v) && v.length > 30) {
             (dados as Record<string, unknown>)[listaKey] = v.slice(0, 30);
@@ -160,7 +163,7 @@ function guardToolResult(result: string): string {
           return rebuilt;
         }
         // Ainda nao coube: encurta listas mais ate 10 itens.
-        for (const listaKey of ["titulos", "linhas", "serie", "top"] as const) {
+        for (const listaKey of ARRAY_KEYS_GUARD) {
           const v = dados[listaKey];
           if (Array.isArray(v) && v.length > 10) {
             (dados as Record<string, unknown>)[listaKey] = v.slice(0, 10);

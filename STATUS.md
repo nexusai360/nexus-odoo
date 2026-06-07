@@ -14,10 +14,14 @@ bugs sozinho e mergeando para `main`.
 - **F1 Métricas Canônicas** , MERGED (PR #58): faturamento canônico + corte por empresa.
 - **F2 Entidades / Desambiguação** , MERGED (PR #59): 9 resolvedores + 4 tools de detalhe + `documentoDigits`. E2E 31/31 contra cache real.
 - **F3 Cérebro de Orquestração** , MERGED (PR #60): tool retrieval por embedding, classificação de intenção, verificador V6/V7, "Fora do Catálogo" (ex-"Caminho 3"). Tudo em **shadow** (não altera produção até ativar `routerToolRetrieval=active`). recall@K 100%. Itens para ativar em `docs/RADAR.md` (F3 R1/R2).
-- **F4 Apresentação** , PLANEJADA + Onda 1.1 feita: spec v3 + plan v3 (pós 2+2 reviews adversariais), inventário das 53 tools a migrar, `mcp/lib/array-keys.ts` (aditivo). Execução Onda 1.2+ (rewire dos 6 consumidores de chaves de array, envelope base, migração das tools) na próxima sessão. Ver `docs/superpowers/plans/2026-06-07-f4-PROGRESSO.md` (seção "PRÓXIMA SESSÃO"). Script `agente handoff` agora dá Enter automático na mensagem de continuidade.
+- **F4 Apresentação** , EM ANDAMENTO (Ondas 1, 2, 3 COMPLETAS + Onda 4 iniciada). Ainda **não mergeada** (PR em aberto nesta branch). Resumo:
+  - **Onda 1 (fundação):** `array-keys.ts` é fonte única dos 6 consumidores de chaves de array (rewire byte-a-byte); `EnvelopeBaseShape`/`dadosBaseShape` (Zod, passthrough) = contrato base; teste de contrato com allowlist `TOOLS_SEM_FORMATADOR_REAL` (gate de progresso, esvazia na Onda 6); harness de baseline de KPIs (E2E=1) contra cache real; `freshness>6h` logado server-side sem vazar no envelope.
+  - **Onda 2 (paginação):** default 10→**50/50**; `limiteEfetivo` + `tetoLinhasPorBytes` (teto-por-byte determinístico, medição real: nenhuma tool estoura 24KB a 50 linhas); ~30 testes via constante. **Bug de dado corrigido:** `pedidos_listar_top_valor._agregado.soma` era soma da página → agora full-set (`valorTotalGeral`, R$151M).
+  - **Onda 3 (humanização):** `humanizeName` preserva societários (LTDA/ME/EPP/EIRELI/CIA/SA) + 27 UFs + S.A./S/A; `montarEscopoEmpresa` movido para `mcp/lib/escopo.ts` (domínio-neutro); helper `cobertura()` (`_AVISO_INCOMPLETO`).
+  - **Onda 4 (migração de formatadores) , INICIADA:** padrão provado e E2E-verificado com `estoque_concentracao` (E2E x SELECT idêntico). Restam **72 tools** da allowlist + Onda 5 (ranking) + Onda 6 (verificação final + rebuild + merge). Padrão e ordem das 72 em `docs/superpowers/plans/2026-06-07-f4-PROGRESSO.md` (seção "PRÓXIMA SESSÃO , Onda 4").
 - **F5 Evals/Golden** e **F6 Custo/Latência** , pendentes.
 
-Estado técnico: tsc raiz+mcp limpos, ~2676 testes jest verdes. Migrations sempre
+Estado técnico: tsc raiz+mcp limpos, **2687 testes jest verdes**, baseline E2E idempotente. Migrations sempre
 manuais + `migrate deploy` (nunca `migrate dev`: o banco tem drift pré-existente).
 
 ## 2026-06-05 (leva 3) , PONTO DE RETOMADA (branch `feat/agente-nex-bubble-ux`)

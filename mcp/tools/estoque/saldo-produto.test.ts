@@ -1,5 +1,6 @@
 // mcp/tools/estoque/saldo-produto.test.ts
 import { estoqueSaldoProduto } from "./saldo-produto.js";
+import { PAGINACAO_LIMIT_DEFAULT } from "../../lib/paginacao";
 import { assertToolAllowed } from "../../catalog/registry.js";
 import type { ToolHandlerCtx } from "../../catalog/types.js";
 import type { UserContext } from "../../auth/user-context.js";
@@ -141,13 +142,13 @@ describe("estoque_saldo_produto", () => {
       }
     });
 
-    it("default limit = 10 quando ausente", async () => {
+    it("default limit = 50 quando ausente", async () => {
       const ctx = makeCtx();
       primeFreshness(ctx);
-      (ctx.prisma.fatoEstoqueSaldo.findMany as jest.Mock).mockResolvedValue(fakeSaldos(30));
+      (ctx.prisma.fatoEstoqueSaldo.findMany as jest.Mock).mockResolvedValue(fakeSaldos(60));
       const r = await estoqueSaldoProduto.handler({} as never, ctx);
       if (r.estado !== "preparando") {
-        expect(r.dados.linhas).toHaveLength(10);
+        expect(r.dados.linhas).toHaveLength(PAGINACAO_LIMIT_DEFAULT);
       }
     });
   });
