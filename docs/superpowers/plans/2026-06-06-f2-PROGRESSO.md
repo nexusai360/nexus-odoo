@@ -21,7 +21,7 @@
     - NotaFiscal: odooId > chave ^\d{44}$ > intervalo data+entradaSaida (lista). `numero` 100% null, NAO usar.
 - [x] **Bloco B** , COMPLETO, commit e4aaaf7. 8 resolvedores + _ranking + barrel. 157 testes verdes, tsc limpo. (Workflow wvp9pu9id implementou os 8 em Opus+TDD; integrei o barrel e validei inline.)
   - DECISOES dos agentes (relevantes p/ C/D): nota-fiscal usa findFirst no ramo chave (chave NAO e @unique; o Bloco C cria @@index([chave]), nao unique). produto CS4: codigo longo sem match = nenhuma. armazem fuzzy por ultimo segmento do parent_path.
-- [ ] **Bloco C** , migration FatoParceiro.documentoDigits + @@index([chave]) (MANUAL + migrate deploy, NAO migrate dev; drift) + prisma generate + builder worker + backfill.
+- [x] **Bloco C** , COMPLETO. schema.prisma: FatoParceiro.documentoDigits + @@index, FatoNotaFiscal @@index([chave]), comentario codigo nao-indexado em FatoContaContabil. prisma generate OK. Builder fato-parceiro.ts preenche documentoDigits via soDigitos (reuso @/lib/entities/_documento), string vazia => null. Migration MANUAL 20260606211740_f2_entidades_documento_digits aplicada via `migrate deploy`. Backfill bate (6616=6616), BR- limpo, ambos indices presentes. `agente schema-changed` disparado. 12 testes builder verdes, tsc raiz limpo.
 - [ ] **Bloco C-bis** , resolverParceiro (depende de documentoDigits no client) + export ./parceiro no barrel.
 - [ ] **Bloco D** , 4 tools detalhar-por-id (produto, pedido, conta[gated], nota; sem `numero` na nota=null).
 - [ ] **Bloco E** , registro catalogo + fix integration.test (catalogo total +4; admin +4; manager/viewer +3, pois contabil_detalhar_conta e gated).

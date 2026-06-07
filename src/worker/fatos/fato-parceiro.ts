@@ -11,12 +11,17 @@
 import type { PrismaClient } from "../../generated/prisma/client";
 import { relNome, type OdooM2O } from "./odoo-relational";
 import { markFatoBuilt } from "./fato-build-state";
+// Fonte canonica de soDigitos: src/lib/entities/_documento (mesma usada pelo
+// resolverParceiro). Reuso garante alinhamento builder x ramo documento x backfill.
+import { soDigitos } from "@/lib/entities/_documento";
 
 export interface FatoParceiroRow {
   odooId: number;
   nome: string | null;
   nomeCompleto: string | null;
   documento: string | null;
+  // C3 (F2): documento so com digitos (CNPJ/CPF sem mascara nem prefixo BR-).
+  documentoDigits: string | null;
   ehCliente: boolean;
   ehFornecedor: boolean;
   ehEmpresa: boolean;
@@ -36,12 +41,16 @@ export interface FatoParceiroRow {
 export function mapParceiroRow(raw: Record<string, unknown>): FatoParceiroRow {
   const phone = typeof raw.phone === "string" ? raw.phone : null;
   const mobile = typeof raw.mobile === "string" ? raw.mobile : null;
+  const documento = typeof raw.vat === "string" ? raw.vat : null;
 
   return {
     odooId: Number(raw.id),
     nome: typeof raw.name === "string" ? raw.name : null,
     nomeCompleto: typeof raw.complete_name === "string" ? raw.complete_name : null,
-    documento: typeof raw.vat === "string" ? raw.vat : null,
+    documento,
+    // C3 (F2): so digitos; string vazia (ex.: vat "BR-") vira null, igual ao
+    // backfill da migration (NULLIF). Alinha builder x ramo documento x backfill.
+    documentoDigits: documento ? soDigitos(documento) || null : null,
     ehCliente: Boolean(raw.customer),
     ehFornecedor: Boolean(raw.supplier),
     ehEmpresa: Boolean(raw.is_company),
