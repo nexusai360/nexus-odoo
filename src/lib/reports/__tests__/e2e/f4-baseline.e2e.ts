@@ -71,6 +71,12 @@ function stripVariantes(v: unknown): unknown {
     }
     return out;
   }
+  // Arredonda a 2 casas (centavos): somas grandes de moeda variam no ultimo
+  // digito por ORDEM de soma (float), nao por regressao. Comparar a 2 casas
+  // mantem a rede sensivel a mudanca real (>= 1 centavo) e estavel ao ruido.
+  if (typeof v === "number" && Number.isFinite(v) && !Number.isInteger(v)) {
+    return Math.round(v * 100) / 100;
+  }
   return v;
 }
 

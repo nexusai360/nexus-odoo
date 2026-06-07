@@ -70,32 +70,32 @@
     "estado": "ok",
     "_DESTAQUE": {
       "totalPedidos": 1732,
-      "valorTotal": 391497170.09000015,
+      "valorTotal": 391497170.09,
       "contagem": 1732
     },
     "_agregado": {
       "contagem": 1732,
-      "soma": 391497170.09000015
+      "soma": 391497170.09
     }
   },
   "comercial_pedidos_por_etapa": {
     "estado": "ok",
     "_DESTAQUE": {
       "totalPedidos": 1732,
-      "valorTotal": 391497170.09000003,
+      "valorTotal": 391497170.09,
       "totalEtapas": 57,
       "pedidosConcluidos": 1161,
-      "valorConcluidos": 240005016.85999998,
+      "valorConcluidos": 240005016.86,
       "pedidosCancelados": 15,
       "valorCancelados": 2965631.52,
       "pedidosRascunho": 45,
       "valorRascunho": 13801871.08,
       "pedidosEmAberto": 511,
-      "valorEmAberto": 134724650.63000003
+      "valorEmAberto": 134724650.63
     },
     "_agregado": {
       "contagem": 1732,
-      "soma": 391497170.09000003
+      "soma": 391497170.09
     }
   },
   "comercial_pedidos_por_vendedor": {
@@ -103,15 +103,15 @@
     "_DESTAQUE": {
       "totalVendedores": 20,
       "totalPedidos": 1732,
-      "valorTotal": 391497170.08999985,
-      "ticketMedio": 226037.62707274818,
+      "valorTotal": 391497170.09,
+      "ticketMedio": 226037.63,
       "topVendedor": "Mariane Trindade - Mariane",
-      "valorTopVendedor": 92494927.73999998
+      "valorTopVendedor": 92494927.74
     },
     "_agregado": {
       "contagem": 1732,
-      "soma": 391497170.08999985,
-      "media": 226037.62707274818
+      "soma": 391497170.09,
+      "media": 226037.63
     }
   },
   "contabil_estrutura_conta": {
@@ -133,6 +133,24 @@
       "contagem": 934
     },
     "total": 934
+  },
+  "estoque_concentracao": {
+    "estado": "ok",
+    "_DESTAQUE": {
+      "totalFamilias": 8,
+      "totalMarcas": 25,
+      "valorTotal": 54932385.1,
+      "topFamilia": "JOHNSON",
+      "valorTopFamilia": 51747831.15,
+      "pctTopFamilia": 94.2,
+      "topMarca": "MATRIX",
+      "valorTopMarca": 48562899.28,
+      "pctTopMarca": 88.4
+    },
+    "_agregado": {
+      "contagem": 8,
+      "soma": 54932385.1
+    }
   },
   "estoque_entradas_saidas": {
     "estado": "ok",
@@ -170,17 +188,17 @@
     "estado": "ok",
     "_DESTAQUE": {
       "totalProdutos": 1822,
-      "valorTotal": 54932385.099999994,
+      "valorTotal": 54932385.1,
       "produtosNegativos": 142
     },
     "_agregado": {
       "contagem": 1822,
-      "soma": 54932385.099999994
+      "soma": 54932385.1
     },
     "kpis": {
       "totalProdutos": 1822,
       "produtosNegativos": 142,
-      "valorTotal": 54932385.099999994
+      "valorTotal": 54932385.1
     }
   },
   "estoque_top_movimentados": {
@@ -199,28 +217,28 @@
   "estoque_valor_armazem": {
     "estado": "ok",
     "_DESTAQUE": {
-      "valorTotal": 54932385.099999994,
+      "valorTotal": 54932385.1,
       "contagemArmazens": 9
     },
     "_agregado": {
-      "soma": 54932385.099999994,
+      "soma": 54932385.1,
       "contagem": 9
     },
     "kpis": {
-      "valorTotal": 54932385.099999994,
+      "valorTotal": 54932385.1,
       "numArmazens": 9
     }
   },
   "financeiro_contas_a_pagar": {
     "estado": "ok",
     "_DESTAQUE": {
-      "totalAPagar": 20945081.27000002,
+      "totalAPagar": 20945081.27,
       "contagem": 355,
       "topMaiorValor": 1150926.23,
       "topMaiorParticipante": "Jds Comércio - Matriz DF 18.282.961/0001-00 - Jds Comércio de Produtos e Equipamentos Esportivos Ltda [18‍.282‍.961‍/0001‑00] "
     },
     "_agregado": {
-      "soma": 20945081.27000002,
+      "soma": 20945081.27,
       "contagem": 355
     },
     "topPorParticipante": [
@@ -246,12 +264,12 @@
       },
       {
         "nome": "Body Art Fitness - Body Art Indústria e Comércio de Artigos Esportivos Ltda [07‍.561‍.280‍/0001‑56]",
-        "soma": 109003.80999999998,
+        "soma": 109003.81,
         "n": 8
       },
       {
         "nome": "Brw Comércio de Artigos Esportivos Ltda [22‍.815‍.099‍/0001‑12]",
-        "soma": 99799.39000000001,
+        "soma": 99799.39,
         "n": 9
       },
       {
@@ -271,7 +289,7 @@
       },
       {
         "nome": "Distr. Ahead de Mercadorias e Serviços em Geral Ltda [22‍.960‍.400‍/0002‑62]",
-        "soma": 22995.379999999997,
+        "soma": 22995.38,
         "n": 6
       }
     ]
@@ -279,19 +297,19 @@
   "financeiro_contas_a_receber": {
     "estado": "ok",
     "_DESTAQUE": {
-      "totalAReceber": 60166911.62999994,
+      "totalAReceber": 60166911.63,
       "contagem": 2492,
       "topMaiorValor": 1121061,
       "topMaiorParticipante": "Smartfit Escola de Ginastica e DANCa S. a [07‍.594‍.978‍/0437‑30] "
     },
     "_agregado": {
-      "soma": 60166911.62999994,
+      "soma": 60166911.63,
       "contagem": 2492
     },
     "topPorParticipante": [
       {
         "nome": "Jht SP Comércio - Matriz DF 34.161.829/0001-98 - Jht SP Comércio de Produtos e Equipamentos Esportivos Ltda [34‍.161‍.829‍/0001‑98]",
-        "soma": 15988445.80999999,
+        "soma": 15988445.81,
         "n": 155
       },
       {
@@ -301,7 +319,7 @@
       },
       {
         "nome": "SAFRA - Banco Safra S a [58‍.160‍.789‍/0001‑28]",
-        "soma": 2582837.159999996,
+        "soma": 2582837.16,
         "n": 337
       },
       {
@@ -331,7 +349,7 @@
       },
       {
         "nome": "Construtora Lins Irmaos Ltda [12‍.481‍.800‍/0001‑50]",
-        "soma": 718084.6400000001,
+        "soma": 718084.64,
         "n": 19
       },
       {
@@ -344,30 +362,30 @@
   "financeiro_fluxo_caixa": {
     "estado": "ok",
     "_DESTAQUE": {
-      "realizadoTotal": -76211746.03000052,
-      "previstoTotal": 16410371.03000005,
+      "realizadoTotal": -76211746.03,
+      "previstoTotal": 16410371.03,
       "contagemPeriodos": 36
     },
     "_agregado": {
-      "soma": -59801375.00000048,
+      "soma": -59801375,
       "contagem": 36
     }
   },
   "financeiro_titulos_vencidos": {
     "estado": "ok",
     "_DESTAQUE": {
-      "totalVencido": 14309702.200000016,
+      "totalVencido": 14309702.2,
       "contagem": 332,
       "aviso": "tipoSugerido: passe tipo='a_receber' ou 'a_pagar' para resultado mais preciso."
     },
     "_agregado": {
-      "soma": 14309702.200000016,
+      "soma": 14309702.2,
       "contagem": 332
     },
     "topPorParticipante": [
       {
         "nome": "Jds Comércio - Matriz DF 18.282.961/0001-00 - Jds Comércio de Produtos e Equipamentos Esportivos Ltda [18‍.282‍.961‍/0001‑00]",
-        "soma": 2043262.3999999992,
+        "soma": 2043262.4,
         "n": 32
       },
       {
@@ -438,10 +456,10 @@
     "estado": "ok",
     "_DESTAQUE": {
       "totalNotas": 29868,
-      "valorFaturado": 1377492721.5299861
+      "valorFaturado": 1377492721.53
     },
     "_agregado": {
-      "soma": 1377492721.5299861,
+      "soma": 1377492721.53,
       "contagem": 29868
     }
   },
@@ -449,13 +467,13 @@
     "estado": "ok",
     "_DESTAQUE": {
       "totalClientes": 5252,
-      "totalGeral": 1377492721.5299861,
+      "totalGeral": 1377492721.53,
       "topCliente": "Jht SP Comércio - Matriz DF 34.161.829/0001-98 - Jht SP Comércio de Produtos e Equipamentos Esportivos Ltda [34‍.161‍.829‍/0001‑98] ",
-      "valorTopCliente": 320559367.5999991
+      "valorTopCliente": 320559367.6
     },
     "_agregado": {
       "contagem": 5252,
-      "soma": 1377492721.5299861
+      "soma": 1377492721.53
     },
     "total": 5252
   },
@@ -487,14 +505,14 @@
     "estado": "ok",
     "_DESTAQUE": {
       "totalNotas": 11117,
-      "valorTotal": 1273181991.170005,
+      "valorTotal": 1273181991.17,
       "totalFornecedores": 914,
       "topFornecedor": "Jds Comércio - Matriz DF 18.282.961/0001-00 - Jds Comércio de Produtos e Equipamentos Esportivos Ltda [18‍.282‍.961‍/0001‑00] ",
-      "valorTopFornecedor": 501654505.9400015
+      "valorTopFornecedor": 501654505.94
     },
     "_agregado": {
       "contagem": 11117,
-      "soma": 1273181991.170005
+      "soma": 1273181991.17
     }
   }
 }
