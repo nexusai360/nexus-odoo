@@ -975,6 +975,457 @@ const fmtFiscalDetalharNota: FormatadorCanonico = (env) => {
   return texto;
 };
 
+// === F4 Onda 4 (preco/servico/cadastros/contabil/status , 19 seguros) ===
+const fmtPrecoContarRegras: FormatadorCanonico = (env) => {
+  const destaque = (env._DESTAQUE ?? {}) as Record<string, string | number>;
+  const totalRaw = destaque.totalRegras;
+  const total = typeof totalRaw === "number" ? totalRaw : Number(totalRaw ?? 0);
+  if (!Number.isFinite(total) || total <= 0) {
+    return "Nenhuma regra de preco cadastrada no momento.";
+  }
+  const plural = total === 1 ? "regra de preco cadastrada" : "regras de preco cadastradas";
+  return `${total.toLocaleString("pt-BR")} ${plural} (todas as tabelas).`;
+};
+
+const fmtServicoContar: FormatadorCanonico = (env) => {
+  const destaque = (env._DESTAQUE ?? {}) as Record<string, string | number>;
+  const agregado = (env._agregado ?? {}) as { soma?: number; contagem?: number; media?: number };
+  const bruto = destaque.totalServicos ?? agregado.contagem;
+  const total = typeof bruto === "number" ? bruto : Number(bruto ?? 0);
+  if (!Number.isFinite(total) || total <= 0) {
+    return "Nenhum servico cadastrado no catalogo.";
+  }
+  const palavra = total === 1 ? "servico cadastrado" : "servicos cadastrados";
+  return `${total} ${palavra} no catalogo.`;
+};
+
+const fmtCadastroParceirosPorCidade: FormatadorCanonico = (env) => {
+  const d = env._DESTAQUE ?? {};
+  const total = Number(d.totalEncontrados ?? env._agregado?.contagem ?? 0);
+  const exibidas = Number(d.linhasExibidas ?? (env.linhas?.length ?? 0));
+  const uf = String(d.uf ?? "").trim();
+  const cidade = String(d.cidade ?? "").trim();
+  const zona = String(d.zona ?? "todas").trim();
+
+  const ufLabel = uf ? uf.toUpperCase() : "todas as UFs";
+  const zonaLabel = zona === "capital" ? "na capital" : zona === "interior" ? "no interior" : "";
+  const cidadeLabel = cidade ? `em ${humanizeName(cidade)}` : "";
+  const ondeLabel = [zonaLabel, cidadeLabel, `de ${ufLabel}`].filter(Boolean).join(" ");
+
+  if (total === 0) {
+    return `Nao ha parceiros ${ondeLabel}.`;
+  }
+
+  let texto = `${total} parceiros ${ondeLabel}. Listando ${exibidas}.`;
+
+  const linhas = Array.isArray(env.linhas) ? env.linhas : [];
+  if (linhas.length > 0) {
+    const amostra = linhas.slice(0, 5).map((l) => {
+      const reg = l as Record<string, unknown>;
+      const nome = reg.nome ? humanizeName(String(reg.nome)) : "(sem nome)";
+      const cid = reg.cidade ? String(reg.cidade) : null;
+      const u = reg.uf ? String(reg.uf) : null;
+      const local = [cid, u].filter(Boolean).join(", ");
+      const papeis: string[] = [];
+      if (reg.ehCliente) papeis.push("cliente");
+      if (reg.ehFornecedor) papeis.push("fornecedor");
+      const papelTxt = papeis.length ? ` (${papeis.join(" e ")})` : "";
+      return `- ${nome}${local ? `, ${local}` : ""}${papelTxt}`;
+    });
+    texto += `\n${amostra.join("\n")}`;
+    if (total > linhas.length) {
+      texto += `\n... e mais ${total - exibidas} parceiros.`;
+    }
+  }
+
+  return texto;
+};
+
+const fmtCadastroCidadesListar: FormatadorCanonico = (env) => {
+  const d = env._DESTAQUE ?? {};
+  const totalCidades = Number(d.totalCidadesDistintas ?? 0);
+  const totalUfs = Number(d.totalUfs ?? 0);
+  const totalParceiros = Number(d.totalParceiros ?? 0);
+  const topCidade = String(d.topCidade ?? "");
+  const topUf = String(d.topUf ?? "");
+  const quantidadeTopCidade = Number(d.quantidadeTopCidade ?? 0);
+
+  const linhas = Array.isArray(env.linhas) ? env.linhas : [];
+
+  if (totalCidades === 0 || !topCidade) {
+    return "Nao ha cidades cadastradas no cadastro de parceiros.";
+  }
+
+  const cidadeLabel = totalCidades === 1 ? "cidade distinta" : "cidades distintas";
+  const ufLabel = totalUfs === 1 ? "UF" : "UFs";
+  const cabeca =
+    `${totalCidades} ${cidadeLabel} em ${totalUfs} ${ufLabel}, ` +
+    `somando ${totalParceiros} parceiros cadastrados.`;
+
+  const topUfTexto = topUf ? ` (${humanizeName(topUf)})` : " (sem UF)";
+  const top =
+    ` Cidade com mais parceiros: ${humanizeName(topCidade)}${topUfTexto}, ` +
+    `com ${quantidadeTopCidade} parceiros.`;
+
+  const listando = linhas.length > 0 ? ` Listando ${linhas.length}.` : "";
+
+  return cabeca + top + listando;
+};
+
+const fmtCadastroParceirosNovos: FormatadorCanonico = (env) => {
+  const d = env._DESTAQUE ?? {};
+  const total = Number(d.totalEncontrados ?? env._agregado?.contagem ?? 0);
+  const exibidas = Number(d.linhasExibidas ?? env.linhas?.length ?? 0);
+  const tipoLabel = String(d.tipo ?? "parceiros");
+  const nome = String(d.periodoNome ?? "");
+  const de = String(d.periodoDe ?? "");
+  const ate = String(d.periodoAte ?? "");
+  const periodoLabel = nome
+    ? nome.replace(/_/g, " ")
+    : (de && ate ? `${de} a ${ate}` : "o periodo");
+
+  if (total === 0) {
+    return `Nao ha ${tipoLabel} novos cadastrados em ${periodoLabel}.`;
+  }
+
+  const top = env.linhas?.[0] as
+    | { nome?: string | null; dataCriacao?: string | null }
+    | undefined;
+  const topNome = top?.nome ? humanizeName(String(top.nome)) : "(sem nome)";
+  const topData =
+    top?.dataCriacao ? ` (${String(top.dataCriacao).slice(0, 10)})` : "";
+
+  return `${total} ${tipoLabel} novos cadastrados em ${periodoLabel}. Mais recente: ${topNome}${topData}. Listando ${exibidas}.`;
+};
+
+const fmtCadastroParceirosSemDocumento: FormatadorCanonico = (env) => {
+  const total = Number(env._DESTAQUE?.totalEncontrados ?? env._agregado?.contagem ?? 0);
+  const exibidas = Number(env._DESTAQUE?.linhasExibidas ?? env.linhas.length);
+  const tipo = String(env._DESTAQUE?.tipo ?? "parceiros");
+  if (total === 0) {
+    return `Nao ha ${tipo} ativos sem documento cadastrado.`;
+  }
+  const cabeca = `${total} ${tipo} ativos sem documento (CNPJ/CPF). Listando ${exibidas}.`;
+  const amostra = env.linhas.slice(0, 5).map((l) => {
+    const nome = humanizeName(String((l as { nome?: unknown }).nome ?? "(sem nome)"));
+    const cidade = (l as { cidade?: unknown }).cidade;
+    const uf = (l as { uf?: unknown }).uf;
+    const local = cidade || uf ? ` (${[cidade, uf].filter(Boolean).join("/")})` : "";
+    return `${nome}${local}`;
+  });
+  const corpo = amostra.length > 0 ? ` Exemplos: ${amostra.join("; ")}.` : "";
+  return cabeca + corpo;
+};
+
+const fmtCadastroFiliaisListar: FormatadorCanonico = (env) => {
+  const total = Number(env._DESTAQUE?.totalEncontrados ?? env._agregado?.contagem ?? 0);
+  const matrizes = Number(env._DESTAQUE?.totalMatrizes ?? 0);
+  const filiais = Number(env._DESTAQUE?.totalFiliais ?? 0);
+  const exibidas = Number(env._DESTAQUE?.linhasExibidas ?? env.linhas?.length ?? 0);
+
+  if (total === 0) {
+    return "Nao ha empresas do grupo para esse criterio.";
+  }
+
+  const cabeca =
+    `${matrizes} matriz(es) + ${filiais} filial(is) = ${total} empresas do grupo. ` +
+    `Listando ${exibidas}.`;
+
+  const linhas = (env.linhas ?? []) as Array<{
+    nome?: string | null;
+    uf?: string | null;
+    tipo?: string | null;
+  }>;
+  const primeira = linhas[0];
+  const exemplo = primeira?.nome
+    ? ` Ex.: ${humanizeName(String(primeira.nome))}` +
+      (primeira.uf ? ` (${String(primeira.uf).toUpperCase()})` : "") +
+      "."
+    : "";
+
+  return cabeca + exemplo;
+};
+
+const fmtDetalharParceiro: FormatadorCanonico = (env) => {
+  const d = env._DESTAQUE ?? {};
+  if (d.encontrado === "nao" || (d.nome === undefined && d.documento === undefined)) {
+    return "Nenhum parceiro encontrado com esse identificador.";
+  }
+  const nome = String(d.nome ?? "").trim();
+  const documento = String(d.documento ?? "").trim();
+  const papel = String(d.papel ?? "").trim();
+  const uf = String(d.uf ?? "").trim();
+  const ativo = String(d.ativo ?? "").trim();
+
+  const titulo = nome ? humanizeName(nome) : "Parceiro";
+  const partes: string[] = [`Cadastro de ${titulo}.`];
+
+  const detalhes: string[] = [];
+  if (documento) detalhes.push(`documento ${documento}`);
+  if (papel && papel !== "outro") {
+    detalhes.push(`papel ${papel}`);
+  } else if (papel === "outro") {
+    detalhes.push("sem papel comercial definido");
+  }
+  if (uf) detalhes.push(`UF ${uf}`);
+  if (ativo) detalhes.push(ativo === "sim" ? "cadastro ativo" : "cadastro inativo");
+
+  if (detalhes.length > 0) {
+    partes.push(`${detalhes.join(", ")}.`);
+  }
+  return partes.join(" ");
+};
+
+const fmtCadastroDetalharProduto: FormatadorCanonico = (env) => {
+  const d = env._DESTAQUE ?? {};
+  if (d.encontrado === "nao" || d.nome === undefined) {
+    return "Nenhum produto encontrado para esse identificador.";
+  }
+  const nome = humanizeName(String(d.nome));
+  const codigo = d.codigo !== undefined && String(d.codigo) !== "" ? String(d.codigo) : null;
+  const marca = d.marca !== undefined && String(d.marca) !== "" ? humanizeName(String(d.marca)) : null;
+  const precoVenda = Number(d.precoVenda ?? 0);
+  const ativo = String(d.ativo ?? "nao") === "sim";
+
+  const partes: string[] = [];
+  let cabeca = `Produto: ${nome}`;
+  if (codigo) cabeca += ` (codigo ${codigo})`;
+  partes.push(cabeca + ".");
+  if (marca) partes.push(`Marca: ${marca}.`);
+  if (precoVenda > 0) partes.push(`Preco de venda: ${formatBRL(precoVenda)}.`);
+  partes.push(ativo ? "Cadastro ativo." : "Cadastro inativo.");
+  return partes.join(" ");
+};
+
+const fmtContabilResultadoPorNatureza: FormatadorCanonico = (env) => {
+  const temLinhas = Array.isArray(env.linhas) && env.linhas.length > 0;
+  if (!temLinhas) {
+    return (
+      "Nao encontrei lancamentos contabeis de resultado nesse recorte. " +
+      "A contabilidade ainda nao e operada no Odoo da Matrix (sem lancamentos lancados); " +
+      "esta consulta passa a responder sozinha assim que os lancamentos existirem."
+    );
+  }
+  const receita = Number(env._DESTAQUE?.receita ?? 0);
+  const despesa = Number(env._DESTAQUE?.despesa ?? 0);
+  const resultado = Number(env._DESTAQUE?.resultado ?? receita - despesa);
+  const palavra = resultado >= 0 ? "lucro" : "prejuizo";
+  return (
+    `Resultado pelas contas de natureza Resultado: receita ${formatBRL(receita)}, ` +
+    `despesa ${formatBRL(despesa)}, resultado ${formatBRL(resultado)} (${palavra}). ` +
+    "Recorte por natureza 04, exclui lancamentos de encerramento; nao e uma DRE estruturada."
+  );
+};
+
+const fmtCentroCusto: FormatadorCanonico = (env) => {
+  const d = env._DESTAQUE ?? {};
+  const n = Number(d.contagem ?? env.linhas.length ?? 0);
+  if (n === 0) {
+    return "Nao ha saldo por centro de custo para esse recorte (a contabilidade ainda nao tem lancamentos ou o periodo nao possui itens com centro de custo).";
+  }
+  return `Saldo por centro de custo: ${n} centro(s) de custo com movimento no periodo.`;
+};
+
+const fmtContabilContaReferencial: FormatadorCanonico = (env) => {
+  const total = Number(env._DESTAQUE?.contagem ?? 0);
+  const exibidas = Number(env._DESTAQUE?.linhasExibidas ?? env.linhas.length);
+  const natureza = String(env._DESTAQUE?.natureza ?? "").trim();
+  const termo = String(env._DESTAQUE?.termo ?? "").trim();
+
+  const filtros: string[] = [];
+  if (natureza) filtros.push(`natureza ${natureza}`);
+  if (termo) filtros.push(`termo "${termo}"`);
+  const sufixoFiltro = filtros.length > 0 ? ` (filtro: ${filtros.join(", ")})` : "";
+
+  if (total === 0) {
+    return `Nenhuma conta referencial do SPED encontrada${sufixoFiltro}.`;
+  }
+
+  const cabeca =
+    total === 1
+      ? `Encontrei 1 conta referencial do SPED${sufixoFiltro}.`
+      : `Encontrei ${total} contas referenciais do SPED${sufixoFiltro}.`;
+
+  const truncado = exibidas < total;
+  const listagem = truncado
+    ? ` Listando as ${exibidas} primeiras (ordenadas por codigo); refine por natureza/termo ou aumente o limite.`
+    : "";
+
+  const primeira = env.linhas?.[0] as
+    | { codigo?: string; nome?: string | null }
+    | undefined;
+  const exemplo =
+    primeira && primeira.codigo
+      ? ` Primeira: ${primeira.codigo} ${humanizeName(String(primeira.nome ?? ""))}.`.replace(/\s+\./, ".")
+      : "";
+
+  return (cabeca + listagem + exemplo).trim();
+};
+
+const fmtContabilDetalharConta: FormatadorCanonico = (env) => {
+  const d = env._DESTAQUE ?? {};
+  if (d.encontrado === "nao" || (d.codigo === undefined && d.nome === undefined)) {
+    return "Nenhuma conta contabil encontrada para o odooId informado.";
+  }
+  const codigo = String(d.codigo ?? "").trim();
+  const nome = String(d.nome ?? "").trim();
+  const tipoRaw = String(d.tipo ?? "").trim().toUpperCase();
+  const tipoLabel =
+    tipoRaw === "S" ? "sintetica" : tipoRaw === "A" ? "analitica" : tipoRaw;
+
+  const partes: string[] = [];
+  const cabeca = [codigo, nome].filter(Boolean).join(" ").trim();
+  partes.push(cabeca ? `Conta ${cabeca}.` : "Conta contabil.");
+
+  if (tipoLabel) {
+    partes.push(`Tipo: ${tipoLabel}.`);
+  }
+
+  const natureza = String(d.natureza ?? "").trim();
+  if (natureza) {
+    partes.push(`Natureza: ${natureza}.`);
+  }
+
+  const nivelRaw = d.nivel;
+  if (nivelRaw !== undefined && nivelRaw !== null && String(nivelRaw).trim() !== "") {
+    partes.push(`Nivel ${Number(nivelRaw)}.`);
+  }
+
+  return partes.join(" ");
+};
+
+const fmtRhStatusDominio: FormatadorCanonico = (env) => {
+  const registros = Number(
+    env._DESTAQUE?.registros ?? env._agregado?.contagem ?? 0,
+  );
+  if (registros > 0) {
+    return `O dominio RH no Odoo da Matrix tem ${registros} registro(s).`;
+  }
+  return (
+    "O dominio RH existe no Odoo da Matrix mas nao e operado, 0 registros. " +
+    "Quando a Matrix passar a usar o modulo, este dominio ganha tools de consulta."
+  );
+};
+
+const fmtCrmStatusDominio: FormatadorCanonico = (env) => {
+  const d = env._DESTAQUE ?? {};
+  const registros = Number(d.registros ?? 0);
+  if (registros > 0) {
+    return `O dominio CRM passou a ser operado no Odoo da Matrix: ${registros} registro(s).`;
+  }
+  return (
+    "O dominio CRM existe no Odoo da Matrix mas nao e operado, 0 registros. " +
+    "Quando a Matrix passar a usar o modulo, este dominio ganha tools de consulta."
+  );
+};
+
+const fmtProducaoStatusDominio: FormatadorCanonico = (env) => {
+  const registros = Number(env._DESTAQUE?.registros ?? 0);
+  const mensagem = env._DESTAQUE?.mensagem
+    ? String(env._DESTAQUE.mensagem)
+    : "";
+  if (mensagem) {
+    return mensagem;
+  }
+  return (
+    `O dominio Producao existe no Odoo da Matrix mas nao e operado: ${registros} registros. ` +
+    "Quando a Matrix passar a usar o modulo, este dominio ganha tools de consulta."
+  );
+};
+
+const fmtCrmPipelineFunis: FormatadorCanonico = (env) => {
+  const contagem = Number(env._agregado?.contagem ?? env.linhas.length);
+  if (!Number.isFinite(contagem) || contagem <= 0) {
+    return "O funil de CRM nao e operado no Odoo da Matrix (sem pipelines).";
+  }
+  const top = env.linhas?.[0] as
+    | { numero?: number | null; nome?: string | null; tipo?: string | null; ativo?: boolean }
+    | undefined;
+  const plural = contagem === 1 ? "funil de CRM cadastrado" : "funis de CRM cadastrados";
+  let texto = `${contagem} ${plural}.`;
+  if (top && (top.nome || top.numero != null)) {
+    const nome = top.nome ? humanizeName(String(top.nome)) : `funil ${top.numero ?? "?"}`;
+    const estado = top.ativo === false ? " (inativo)" : "";
+    texto += ` Primeiro: ${nome}${estado}.`;
+  }
+  return texto;
+};
+
+const fmtProducaoProcessos: FormatadorCanonico = (env) => {
+  const e = env as unknown as {
+    estado?: string;
+    dados?: {
+      linhas?: Array<{ ordem?: number | null; nome?: string | null; descricao?: string | null; tempo?: number | null }>;
+      total?: number;
+      _RESPOSTA?: string;
+      _agregado?: { contagem?: number };
+      _listaTruncada?: boolean;
+    };
+  };
+
+  if (e.estado === "preparando") {
+    return "Os dados de producao ainda estao sendo preparados. Tente novamente em instantes.";
+  }
+
+  const dados = e.dados ?? {};
+  const base = String(dados._RESPOSTA ?? "").trim();
+  const linhas = Array.isArray(dados.linhas) ? dados.linhas : [];
+  const contagem = dados._agregado?.contagem ?? dados.total ?? linhas.length;
+
+  if (contagem === 0 || linhas.length === 0) {
+    return base || "A producao ainda nao e operada no Odoo da Matrix (sem processos cadastrados).";
+  }
+
+  const partes: string[] = [];
+  partes.push(base || `${contagem} processos de producao cadastrados.`);
+
+  const itens = linhas.slice(0, 15).map((l) => {
+    const nome = l.nome ? humanizeName(String(l.nome)) : "Processo sem nome";
+    const ordem = l.ordem != null ? `#${l.ordem} ` : "";
+    const tempo = typeof l.tempo === "number" && l.tempo > 0 ? ` (tempo padrao ${l.tempo}h)` : "";
+    const desc = l.descricao ? `: ${String(l.descricao).trim()}` : "";
+    return `${ordem}${nome}${tempo}${desc}`;
+  });
+
+  partes.push(itens.join("\n"));
+
+  if (dados._listaTruncada && linhas.length > 15) {
+    partes.push(`Mostrando os primeiros ${itens.length} de ${contagem} processos.`);
+  }
+
+  return partes.join("\n");
+};
+
+const fmtAuditoriaRegras: FormatadorCanonico = (env) => {
+  const contagem = Number(env._agregado?.contagem ?? env.linhas.length);
+  if (!Number.isFinite(contagem) || contagem <= 0) {
+    return "Nao ha regras de auditoria cadastradas no Odoo.";
+  }
+  const plural = contagem === 1 ? "regra de auditoria cadastrada" : "regras de auditoria cadastradas";
+  let texto = `${contagem} ${plural}.`;
+
+  const linhas = (env.linhas ?? []) as Array<{ nome?: string | null; ativa?: boolean }>;
+  if (!env._listaTruncada && linhas.length === contagem && linhas.length > 0) {
+    const ativas = linhas.filter((l) => l.ativa === true).length;
+    if (ativas === contagem) {
+      texto += " Todas estao ativas.";
+    } else if (ativas === 0) {
+      texto += " Nenhuma esta ativa.";
+    } else {
+      texto += ` ${ativas} ativas, ${contagem - ativas} inativas.`;
+    }
+    const exemplos = linhas
+      .map((l) => String(l.nome ?? "").trim())
+      .filter((n) => n.length > 0)
+      .slice(0, 3)
+      .map((n) => humanizeName(n));
+    if (exemplos.length > 0) {
+      texto += ` Exemplos: ${exemplos.join(", ")}.`;
+    }
+  }
+  return texto;
+};
+
 const FORMATADORES: Record<string, FormatadorCanonico> = {
   // financeiro
   financeiro_contas_a_receber: fmtContasAReceber,
@@ -1032,6 +1483,26 @@ const FORMATADORES: Record<string, FormatadorCanonico> = {
   "fiscal_faturamento_nao_autorizado": fmtFaturamentoNaoAutorizado,
   "fiscal_faturamento_recebido": fmtFaturamentoRecebido,
   "fiscal_detalhar_nota": fmtFiscalDetalharNota,
+  // preco / servico / cadastros / contabil / status (Onda 4 resto)
+  "preco_contar_regras": fmtPrecoContarRegras,
+  "servico_contar": fmtServicoContar,
+  "cadastro_parceiros_por_cidade": fmtCadastroParceirosPorCidade,
+  "cadastro_cidades_listar": fmtCadastroCidadesListar,
+  "cadastro_parceiros_novos": fmtCadastroParceirosNovos,
+  "cadastro_parceiros_sem_documento": fmtCadastroParceirosSemDocumento,
+  "cadastro_filiais_listar": fmtCadastroFiliaisListar,
+  "cadastro_detalhar_parceiro": fmtDetalharParceiro,
+  "cadastro_detalhar_produto": fmtCadastroDetalharProduto,
+  "contabil_resultado_por_natureza": fmtContabilResultadoPorNatureza,
+  "contabil_centro_custo": fmtCentroCusto,
+  "contabil_conta_referencial": fmtContabilContaReferencial,
+  "contabil_detalhar_conta": fmtContabilDetalharConta,
+  "rh_status_dominio": fmtRhStatusDominio,
+  "crm_status_dominio": fmtCrmStatusDominio,
+  "producao_status_dominio": fmtProducaoStatusDominio,
+  "crm_pipeline_funis": fmtCrmPipelineFunis,
+  "producao_processos": fmtProducaoProcessos,
+  "auditoria_regras": fmtAuditoriaRegras,
   // estoque
   estoque_saldo_produto: fmtSaldoProduto,
   estoque_concentracao: fmtConcentracao,
@@ -1168,43 +1639,22 @@ export const TOOLS_QUE_PRECISAM_FORMATADOR: string[] = [
  * (102 read tools, 29 com formatador real, 73 genericas) em 2026-06-07.
  */
 export const TOOLS_SEM_FORMATADOR_REAL: string[] = [
-  // preco / referencia / servico
+  // RESTAM 13 read-tools , precisam de fix de handler antes de migrar:
+  // (a) sem envelope canonico (handler nao monta _RESPOSTA/_DESTAQUE):
   "preco_produto",
   "preco_tabela",
-  "preco_contar_regras",
   "referencia_buscar",
   "servico_buscar",
-  "servico_contar",
   "servico_listar",
-  // fiscal , 5 page-scoped (precisam fix de handler full-set antes de migrar)
+  "crm.res_partner.get",
+  // (b) page-scoped (KPI somava a pagina, classe d987060):
   "fiscal_carta_correcao",
   "fiscal_certificados",
   "fiscal_faturamento_por_marca",
   "fiscal_faturamento_por_uf",
   "fiscal_mdfe_manifestos",
-  // cadastros
-  "cadastro_parceiros_por_cidade",
-  "cadastro_cidades_listar",
-  "cadastro_parceiros_novos",
-  "cadastro_parceiros_sem_documento",
-  "cadastro_filiais_listar",
-  "cadastro_detalhar_parceiro",
-  "cadastro_detalhar_produto",
-  // contabil
   "contabil_saldo_conta",
   "contabil_movimento_conta",
-  "contabil_resultado_por_natureza",
-  "contabil_centro_custo",
-  "contabil_conta_referencial",
-  "contabil_detalhar_conta",
-  // dominios-vazios / status / raw-get
-  "rh_status_dominio",
-  "crm_status_dominio",
-  "producao_status_dominio",
-  "crm.res_partner.get",
-  "crm_pipeline_funis",
-  "producao_processos",
-  "auditoria_regras",
 ];
 
 export function formatadorPorTool(toolName: string): FormatadorCanonico {

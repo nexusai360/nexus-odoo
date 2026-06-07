@@ -1,4 +1,11 @@
 {
+  "auditoria_regras": {
+    "estado": "ok",
+    "_agregado": {
+      "contagem": 15
+    },
+    "total": 15
+  },
   "cadastro_buscar_parceiro": {
     "estado": "ok",
     "_DESTAQUE": {
@@ -6,6 +13,20 @@
       "termo": "JHT"
     },
     "total": 15
+  },
+  "cadastro_cidades_listar": {
+    "estado": "ok",
+    "_DESTAQUE": {
+      "totalCidadesDistintas": 514,
+      "totalUfs": 27,
+      "totalParceiros": 6926,
+      "topCidade": "Brasília",
+      "topUf": "Distrito Federal (BR)",
+      "quantidadeTopCidade": 2440
+    },
+    "_agregado": {
+      "contagem": 514
+    }
   },
   "cadastro_contar_parceiros": {
     "estado": "ok",
@@ -16,12 +37,78 @@
       "totalAtivos": 7075
     }
   },
+  "cadastro_detalhar_parceiro": {
+    "estado": "ok",
+    "_DESTAQUE": {
+      "nome": "JHT Brasília - Matriz DF 07.390.039/0001-01",
+      "documento": "BR-07.390.039/0001-01",
+      "papel": "cliente/fornecedor",
+      "uf": "Distrito Federal (BR)",
+      "ativo": "sim"
+    }
+  },
+  "cadastro_detalhar_produto": {
+    "estado": "ok",
+    "_DESTAQUE": {
+      "nome": "G1FW155 BANCO BICEPS MATRIX",
+      "codigo": "272",
+      "marca": "MATRIX",
+      "precoVenda": 5626.24,
+      "ativo": "sim"
+    }
+  },
+  "cadastro_filiais_listar": {
+    "estado": "ok",
+    "_DESTAQUE": {
+      "totalEncontrados": 18,
+      "totalMatrizes": 9,
+      "totalFiliais": 9
+    },
+    "_agregado": {
+      "contagem": 18
+    }
+  },
+  "cadastro_parceiros_novos": {
+    "estado": "ok",
+    "_DESTAQUE": {
+      "totalEncontrados": 474,
+      "periodoDe": "2026-06-01",
+      "periodoAte": "2026-06-08",
+      "periodoNome": "essa_semana",
+      "tipo": "parceiros"
+    },
+    "_agregado": {
+      "contagem": 474
+    }
+  },
+  "cadastro_parceiros_por_cidade": {
+    "estado": "ok",
+    "_DESTAQUE": {
+      "totalEncontrados": 5000,
+      "uf": "",
+      "cidade": "",
+      "zona": "todas"
+    },
+    "_agregado": {
+      "contagem": 5000
+    }
+  },
   "cadastro_parceiros_por_uf": {
     "estado": "ok",
     "_DESTAQUE": {
       "totalComUF": 6624,
       "totalSemUF": 451,
       "topUF": "Distrito Federal (BR)"
+    }
+  },
+  "cadastro_parceiros_sem_documento": {
+    "estado": "ok",
+    "_DESTAQUE": {
+      "totalEncontrados": 453,
+      "tipo": "parceiros"
+    },
+    "_agregado": {
+      "contagem": 453
     }
   },
   "comercial_comissoes": {
@@ -88,12 +175,12 @@
   "comercial_pedido_travados_por_etapa": {
     "estado": "ok",
     "_DESTAQUE": {
-      "totalTravados": 1114,
+      "totalTravados": 1115,
       "diasMin": 30,
       "maisAntigoDias": 139
     },
     "_agregado": {
-      "contagem": 1114
+      "contagem": 1115
     }
   },
   "comercial_pedidos_atrasados": {
@@ -250,6 +337,32 @@
       "contagem": 19
     }
   },
+  "contabil_centro_custo": {
+    "estado": "vazio",
+    "_DESTAQUE": {
+      "contagem": 0
+    },
+    "total": 0
+  },
+  "contabil_conta_referencial": {
+    "estado": "ok",
+    "_DESTAQUE": {
+      "contagem": 2216,
+      "natureza": "",
+      "termo": ""
+    },
+    "total": 2216
+  },
+  "contabil_detalhar_conta": {
+    "estado": "ok",
+    "_DESTAQUE": {
+      "codigo": "1.1.1.1.01.000001",
+      "nome": "CAIXA",
+      "tipo": "A",
+      "natureza": "01",
+      "nivel": 6
+    }
+  },
   "contabil_estrutura_conta": {
     "estado": "ok",
     "_DESTAQUE": {
@@ -270,6 +383,22 @@
     },
     "total": 934
   },
+  "contabil_resultado_por_natureza": {
+    "estado": "vazio",
+    "_DESTAQUE": {
+      "receita": 0,
+      "despesa": 0,
+      "resultado": 0
+    }
+  },
+  "crm_pipeline_funis": {
+    "estado": "vazio",
+    "_agregado": {
+      "contagem": 0
+    },
+    "total": 0
+  },
+  "crm_status_dominio": {},
   "estoque_concentracao": {
     "estado": "ok",
     "_DESTAQUE": {
@@ -947,5 +1076,34 @@
       "contagem": 0
     },
     "total": 0
+  },
+  "preco_contar_regras": {
+    "estado": "ok",
+    "_DESTAQUE": {
+      "totalRegras": 11867
+    },
+    "_agregado": {
+      "contagem": 11867
+    },
+    "total": 11867
+  },
+  "producao_processos": {
+    "estado": "ok",
+    "_agregado": {
+      "contagem": 1
+    },
+    "total": 1
+  },
+  "producao_status_dominio": {},
+  "rh_status_dominio": {},
+  "servico_contar": {
+    "estado": "ok",
+    "_DESTAQUE": {
+      "totalServicos": 336
+    },
+    "_agregado": {
+      "contagem": 336
+    },
+    "total": 336
   }
 }

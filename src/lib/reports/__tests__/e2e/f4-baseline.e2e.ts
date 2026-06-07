@@ -48,6 +48,9 @@ const ARGS: Record<string, Record<string, unknown>> = {
   fiscal_notas_emitidas_por_cliente: { clienteTermo: "smartfit" },
   fiscal_notas_emitidas_por_produto: { produtoTermo: "COLCHONETE" },
   fiscal_detalhar_nota: { odooId: 1 },
+  cadastro_detalhar_parceiro: { odooId: 1 },
+  cadastro_detalhar_produto: { odooId: 42 },
+  contabil_detalhar_conta: { odooId: 2110 },
 };
 
 // Chaves de KPI agregado, invariantes a paginacao. Tudo o resto (linhas,
