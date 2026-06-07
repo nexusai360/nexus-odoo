@@ -55,6 +55,44 @@ export function limiteEfetivo(pedido?: number, tetoTool?: number): number {
   return Math.min(PAGINACAO_LIMIT_MAX, Math.max(1, alvo));
 }
 
+// ---------------------------------------------------------------------------
+// Teto-por-byte (F4 Apresentacao, Onda 2.3 / [P]#7)
+// ---------------------------------------------------------------------------
+//
+// Orcamento do envelope serializado de uma tool. O guard do agente
+// (run-agent guardToolResult) corta em MAX_TOOL_RESULT_BYTES=24576; aqui a
+// tool PROATIVAMENTE limita a pagina para caber, em vez de depender do corte
+// pos-hoc (que perde a limpeza do _amostraReduzida).
+export const MAX_ENVELOPE_BYTES = 24576;
+
+// Overhead fixo do envelope SEM as linhas (estado + _RESPOSTA + _DESTAQUE +
+// _agregado + freshness + _PAGINACAO). Folga segura medida contra o cache real
+// (envelopes vazios ficam ~1-2KB); 4096 cobre o pior caso de _DESTAQUE rico.
+export const OVERHEAD_ENVELOPE_BYTES = 4096;
+
+/**
+ * Teto de linhas que cabem no orcamento: `floor((MAX - overhead) / bytesPiorLinha)`,
+ * clampado a [1, max]. `bytesPiorLinha` = tamanho serializado de UMA linha no
+ * PIOR caso plausivel (strings no maximo). Uma fonte de verdade do slice: a tool
+ * passa o resultado como `tetoTool` em `resolverPaginacao`.
+ *
+ * NOTA (medicao 2026-06-07): contra o cache real, nenhuma tool de lista atual
+ * estoura 24KB a 50 linhas (pior caso medido: fiscal_dfe_importados ~338
+ * bytes/linha => ~16.9KB). Por isso NENHUMA tool fixa um teto < 50 hoje; este
+ * helper fica pronto para tools futuras de linha mais rica e e o backstop
+ * deterministico junto do guardToolResult. Sem cap silencioso.
+ */
+export function tetoLinhasPorBytes(
+  bytesPiorLinha: number,
+  overhead: number = OVERHEAD_ENVELOPE_BYTES,
+  max: number = PAGINACAO_LIMIT_MAX,
+): number {
+  if (!Number.isFinite(bytesPiorLinha) || bytesPiorLinha <= 0) return max;
+  const budget = Math.max(0, MAX_ENVELOPE_BYTES - overhead);
+  const teto = Math.floor(budget / bytesPiorLinha);
+  return Math.min(max, Math.max(1, teto));
+}
+
 export interface PaginacaoMeta {
   /** Total de itens no recorte (independente da pagina). */
   total: number;

@@ -3,6 +3,9 @@ import {
   resolverPaginacao,
   montarPaginacaoMeta,
   limiteEfetivo,
+  tetoLinhasPorBytes,
+  MAX_ENVELOPE_BYTES,
+  OVERHEAD_ENVELOPE_BYTES,
   PAGINACAO_LIMIT_DEFAULT,
   PAGINACAO_LIMIT_MAX,
 } from "./paginacao";
@@ -29,6 +32,38 @@ describe("limiteEfetivo", () => {
   it("clampa acima do max e abaixo de 1", () => {
     expect(limiteEfetivo(999)).toBe(PAGINACAO_LIMIT_MAX);
     expect(limiteEfetivo(0)).toBe(1);
+  });
+});
+
+describe("tetoLinhasPorBytes (teto-por-byte, F4 Onda 2.3)", () => {
+  const budget = MAX_ENVELOPE_BYTES - OVERHEAD_ENVELOPE_BYTES;
+
+  it("linha leve nao reduz abaixo do max 50", () => {
+    expect(tetoLinhasPorBytes(50)).toBe(PAGINACAO_LIMIT_MAX);
+  });
+
+  it("PIOR CASO: teto * bytesPiorLinha nunca estoura o orcamento", () => {
+    for (const bytesPiorLinha of [200, 350, 600, 1000, 2000]) {
+      const teto = tetoLinhasPorBytes(bytesPiorLinha);
+      expect(teto * bytesPiorLinha).toBeLessThanOrEqual(budget);
+      expect(teto).toBeGreaterThanOrEqual(1);
+      expect(teto).toBeLessThanOrEqual(PAGINACAO_LIMIT_MAX);
+    }
+  });
+
+  it("linha enorme cai para o minimo 1 (nunca 0)", () => {
+    expect(tetoLinhasPorBytes(999999)).toBe(1);
+  });
+
+  it("bytesPiorLinha invalido devolve o max (sem travar a tool)", () => {
+    expect(tetoLinhasPorBytes(0)).toBe(PAGINACAO_LIMIT_MAX);
+    expect(tetoLinhasPorBytes(-5)).toBe(PAGINACAO_LIMIT_MAX);
+    expect(tetoLinhasPorBytes(Number.NaN)).toBe(PAGINACAO_LIMIT_MAX);
+  });
+
+  it("integra com resolverPaginacao como tetoTool", () => {
+    const teto = tetoLinhasPorBytes(600); // ~34
+    expect(resolverPaginacao({}, teto)).toEqual({ limit: teto, offset: 0 });
   });
 });
 
