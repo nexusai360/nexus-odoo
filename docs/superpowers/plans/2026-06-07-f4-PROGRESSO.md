@@ -39,6 +39,16 @@
 - [x] **Onda 4 INICIADA (estoque_concentracao)** (2e40707 + 73451d0): padrao da Onda 4 estabelecido e E2E-verificado. handler chama enriquecerEnvelope com _DESTAQUE full-set + fmtConcentracao em responder.ts (humanizeName aplicado); id removido da allowlist (73->72); contrato verde; E2E x SELECT identico (total R$54.932.385,10, familia JOHNSON, marca MATRIX). Baseline passou a arredondar a 2 casas (ruido float de somas bilionarias) e inclui concentracao (28 tools, idempotente).
 - [~] **PARADA DE WRAP-UP nesta sessao.** Ondas 1, 2, 3 COMPLETAS + Onda 4 padrao provado (1/73 tools). Restam 72 tools da allowlist + Onda 5 (ranking) + Onda 6 (verificacao final). tsc raiz+mcp + 2687 testes verdes + baseline idempotente.
 
+### Onda 4 , ANDAMENTO (sessao 2026-06-07 continuacao)
+Migrados ate agora (allowlist 73->48, set A baseline 27->52):
+- **estoque** (commit 33e5cee): locais_por_produto (LIVE handler ja enriquecia), minimo_maximo (espelho honest-tool). ARGS baseline termo=1464.
+- **financeiro** (commit e94b67e): 4 custom (saldo_contas/caixa_periodo/liquidez/resultado_por_conta) refatorados p/ enriquecerEnvelope (texto movido p/ responder.ts); 6 cobranca (baixas/retornos/remessas/carteiras/cheques/pix) espelho via helper fmtContagemSimples. KPIs x SELECT OK.
+- **comercial** (commit d6e187a): 3 LIVE (vendedores_cadastrados/pedidos_sem_vendedor/detalhar_pedido) + 9 espelho. FIX DE DADO d987060: pedidos_por_uf agora agrega full-set (era soma da pagina). ARGS baseline detalhar(odooId 1295)+historico_etapas(pedidoId 694).
+DOIS ARQUETIPOS consolidados: (A) handler chama enriquecerEnvelope => formatador real e LIVE (so registrar em FORMATADORES + remover da allowlist); (B) handler monta _RESPOSTA inline/factory => formatador ESPELHO (dead-code, satisfaz contrato, le _DESTAQUE/_agregado). Helper fmtContagemSimples(resumoOk,naoOperado) p/ honest-tools.
+METODO: workflow Opus 1-agente-por-tool investiga+verifica KPI x SELECT e devolve spec (NAO edita responder.ts); orquestrador integra inline + gate (tsc raiz+mcp+jest+E2E baseline write, conferir 0 remocoes/so novos) + commit por dominio. CUIDADO: agentes as vezes erram o tipo (FormadorCanonico sem 't') , revisar antes de colar.
+EM VOO: workflow fiscal (21 tools, wym0abwgs) + workflow resto (27: preco/servico/referencia 7 + cadastros 7 + contabil 6 + dominios-status/raw 7, wthtop51t). Integrar conforme completam. crm.res_partner.get pode nao usar envelope canonico , tratar especial.
+RESTAM apos isso: Onda 5 (ranking desempate odooId+N) + Onda 6 (allowlist []=contrato verde + baseline E2=1 identico + rebuild 'docker compose build app' + 'docker compose up -d --force-recreate mcp worker' + PR + merge).
+
 ## PROXIMA SESSAO , Onda 4 (continuar a migracao das 72 tools restantes)
 PADRAO PROVADO (replicar por tool, ver estoque_concentracao como modelo):
 1. handler: apos withFreshness, se estado!=preparando, computar `destaque` (KPIs FULL-SET, NUNCA da pagina , ver fix d987060) e chamar `enriquecerEnvelope(envelope, "<id>", { destaque, agregado, paginacao? })`.
