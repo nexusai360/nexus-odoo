@@ -74,7 +74,7 @@ async function queryFaturamentoPorMarca(prisma: PrismaClient, input: Input, empr
        AND fnfi.data_emissao <= $2::timestamp
        ${emp.sql}
      GROUP BY fp.marca_nome
-     ORDER BY SUM(fnfi.vr_produtos) DESC NULLS LAST
+     ORDER BY SUM(fnfi.vr_produtos) DESC NULLS LAST, fp.marca_nome ASC
      LIMIT $3`,
     new Date(`${periodoDe}T00:00:00`),
     new Date(`${periodoAte}T23:59:59`),
@@ -87,14 +87,36 @@ async function queryFaturamentoPorMarca(prisma: PrismaClient, input: Input, empr
     quantidadeItens: Number(r.quantidade),
     valorTotal: Number(r.valor),
   }));
-  const totalGeral = linhas.reduce((a, b) => a + b.valorTotal, 0);
-  const totalItens = linhas.reduce((a, b) => a + b.quantidadeItens, 0);
+
+  // KPIs FULL-SET: agregados sobre TODO o recorte (sem LIMIT). A soma de
+  // `linhas` cobriria so a pagina e subnotificaria quando ha mais marcas que o
+  // limite (classe d987060). COUNT(DISTINCT marca_nome) conta marcas reais.
+  const empTot = buildEmpresaSqlFragment(empresaId, "fnfi", 3);
+  const totalRows = await prisma.$queryRawUnsafe<
+    Array<{ geral: string | number; itens: bigint; marcas: bigint }>
+  >(
+    `SELECT COALESCE(SUM(fnfi.vr_produtos), 0)::text AS geral,
+            COUNT(*)::bigint AS itens,
+            COUNT(DISTINCT fp.marca_nome)::bigint AS marcas
+     FROM fato_nota_fiscal_item fnfi
+     JOIN fato_produto fp ON fp.odoo_id = fnfi.produto_id
+     WHERE fnfi.entrada_saida = '1'
+       AND fnfi.data_emissao >= $1::timestamp
+       AND fnfi.data_emissao <= $2::timestamp
+       ${empTot.sql}`,
+    new Date(`${periodoDe}T00:00:00`),
+    new Date(`${periodoAte}T23:59:59`),
+    ...empTot.params,
+  );
+  const totalGeral = Number(totalRows[0]?.geral ?? 0);
+  const totalItens = Number(totalRows[0]?.itens ?? 0);
+  const totalMarcas = Number(totalRows[0]?.marcas ?? 0);
 
   return {
     linhas,
     totalGeral,
     totalItens,
-    totalMarcas: linhas.length,
+    totalMarcas,
   };
 }
 

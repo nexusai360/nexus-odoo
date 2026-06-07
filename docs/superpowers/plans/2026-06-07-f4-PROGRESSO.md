@@ -5,11 +5,20 @@
 **Branch:** feat/nex-reconstrucao. F1/F2/F3 ja em producao (merged). **Modo:** autonomo TOTAL ate o fim das 6 fases (autorizacao duravel do usuario 2026-06-07, inclui MERGE para main). So parar ao atingir ~80% de contexto (ai: doc redonda + commits + PR + merge + rodar `agente handoff` com ENTER automatico).
 **DB:** `docker exec nexus-odoo-db-1 psql -U nexus -d nexus_odoo_l1 -c "..."`. Env: `set -a; . ./.env.local; set +a`. Migrations: manual + migrate deploy (NUNCA migrate dev). Cautela com quebra de plataforma.
 
+## STATUS FINAL F4 (2026-06-07) , TODAS AS ONDAS COMPLETAS
+F4 Apresentacao FECHADA. Ondas 1-3 (fundacao) + Onda 4 (72/72 read-tools com
+formatador real, allowlist TOOLS_SEM_FORMATADOR_REAL == []) + Onda 5 (desempate
+estavel nos rankings) + Onda 6 (verificacao final). 2727 jest verdes, tsc
+raiz+mcp limpos, contrato verde (allowlist []), baseline E2E set A = 100 tools
+idempotente x dado real. 3 fixes de dado classe d987060 (pedidos_por_uf,
+faturamento_por_marca, faturamento_por_uf). PR #63. Commits da Onda 4/5:
+33e5cee, e94b67e, d6e187a, 4971347, b3725e6, a7e33b6, 3c958ac, 9798a5b, 14e24c7.
+
 ## Roadmap (dossie-MASTER secao 6)
 - F1 Metricas Canonicas , FEITA (merged #58)
 - F2 Entidades/Desambiguacao , FEITA (merged #59)
 - F3 Cerebro de Orquestracao , FEITA (merged #60, shadow)
-- **F4 Apresentacao , EM ANDAMENTO** (esta)
+- **F4 Apresentacao , COMPLETA** (PR #63, ondas 1-6)
 - F5 Evals/Golden Dataset , pendente
 - F6 Custo/Latencia , pendente
 
@@ -38,6 +47,37 @@
 - [x] **Onda 3 COMPLETA**: 3.1 (e2d57f4) humanizeName preserva societarios (LTDA/ME/EPP/EIRELI/CIA/SA) + 27 UFs + S.A./S/A, idempotente; 3.2 (b54afda) montarEscopoEmpresa movido p/ mcp/lib/escopo.ts (dominio-neutro, fiscal re-exporta); 3.3 (408442c) cobertura()+coberturaPct() p/ _AVISO_INCOMPLETO.
 - [x] **Onda 4 INICIADA (estoque_concentracao)** (2e40707 + 73451d0): padrao da Onda 4 estabelecido e E2E-verificado. handler chama enriquecerEnvelope com _DESTAQUE full-set + fmtConcentracao em responder.ts (humanizeName aplicado); id removido da allowlist (73->72); contrato verde; E2E x SELECT identico (total R$54.932.385,10, familia JOHNSON, marca MATRIX). Baseline passou a arredondar a 2 casas (ruido float de somas bilionarias) e inclui concentracao (28 tools, idempotente).
 - [~] **PARADA DE WRAP-UP nesta sessao.** Ondas 1, 2, 3 COMPLETAS + Onda 4 padrao provado (1/73 tools). Restam 72 tools da allowlist + Onda 5 (ranking) + Onda 6 (verificacao final). tsc raiz+mcp + 2687 testes verdes + baseline idempotente.
+
+### Onda 4 , ANDAMENTO (sessao 2026-06-07 continuacao)
+Migrados ate agora (allowlist 73->48, set A baseline 27->52):
+- **estoque** (commit 33e5cee): locais_por_produto (LIVE handler ja enriquecia), minimo_maximo (espelho honest-tool). ARGS baseline termo=1464.
+- **financeiro** (commit e94b67e): 4 custom (saldo_contas/caixa_periodo/liquidez/resultado_por_conta) refatorados p/ enriquecerEnvelope (texto movido p/ responder.ts); 6 cobranca (baixas/retornos/remessas/carteiras/cheques/pix) espelho via helper fmtContagemSimples. KPIs x SELECT OK.
+- **comercial** (commit d6e187a): 3 LIVE (vendedores_cadastrados/pedidos_sem_vendedor/detalhar_pedido) + 9 espelho. FIX DE DADO d987060: pedidos_por_uf agora agrega full-set (era soma da pagina). ARGS baseline detalhar(odooId 1295)+historico_etapas(pedidoId 694).
+DOIS ARQUETIPOS consolidados: (A) handler chama enriquecerEnvelope => formatador real e LIVE (so registrar em FORMATADORES + remover da allowlist); (B) handler monta _RESPOSTA inline/factory => formatador ESPELHO (dead-code, satisfaz contrato, le _DESTAQUE/_agregado). Helper fmtContagemSimples(resumoOk,naoOperado) p/ honest-tools.
+METODO: workflow Opus 1-agente-por-tool investiga+verifica KPI x SELECT e devolve spec (NAO edita responder.ts); orquestrador integra inline + gate (tsc raiz+mcp+jest+E2E baseline write, conferir 0 remocoes/so novos) + commit por dominio. CUIDADO: agentes as vezes erram o tipo (FormadorCanonico sem 't') , revisar antes de colar.
+EM VOO: workflow fiscal (21 tools, wym0abwgs) + workflow resto (27: preco/servico/referencia 7 + cadastros 7 + contabil 6 + dominios-status/raw 7, wthtop51t). Integrar conforme completam. crm.res_partner.get pode nao usar envelope canonico , tratar especial.
+
+### ATUALIZACAO FINAL DA SESSAO , 61/72 migradas (allowlist 73->11). Commits: estoque 33e5cee, financeiro e94b67e, comercial d6e187a, fiscal-16 4971347, resto-19 b3725e6, marca/uf-fix 3b384c4.
+**RESTAM 11 na allowlist** (todos com formatador+evidencia+fix no doc `2026-06-07-f4-onda4-restantes-13.md`; marca/uf ja saíram):
+- fiscal page-scoped/sem-enrich: carta_correcao, certificados (precisam enriquecerEnvelope+_DESTAQUE full-set), mdfe_manifestos (somar vrNf full-set via aggregate, hoje 0/tabela vazia).
+- sem envelope canonico (refatorar handler p/ enriquecerEnvelope+_DESTAQUE): preco_produto{termo:"G7S13 V2 SUPINO"}, preco_tabela{tabelaId:7}, referencia_buscar{tabela:"cfop",termo:"venda"}, servico_buscar{termo:"transporte"}, servico_listar.
+- contabil page-scoped: contabil_saldo_conta, contabil_movimento_conta{contaCodigo:"1.1.01.01"}.
+- raw-get: crm.res_partner.get{id:1} (investigar envelope, tratar especial).
+PADRAO VERIFICADO p/ page-scoped: query agregada SEPARADA sem LIMIT (COUNT/SUM/COUNT DISTINCT) , ver fix de fiscal marca/uf (3b384c4) e comercial pedidos_por_uf. ATENCAO janela de data: alguns handlers passam `new Date(...)` (param UTC) e outros STRING `'...T00:00:00'::timestamp` (naive) , ao conferir KPI x SELECT, replicar EXATAMENTE o tipo de param do handler (vide marca usa Date, uf usa string).
+baseline set A = 89 tools, idempotente (BASELINE_OK).
+
+### (historico) 59/72 migradas (allowlist 73->13). Commits: estoque 33e5cee, financeiro e94b67e, comercial d6e187a, fiscal-16 4971347, resto-19 b3725e6.
+- fiscal: 16 full-set migrados (commit 4971347). 5 fiscais PAGE-SCOPED ficaram (carta_correcao, certificados, faturamento_por_marca, faturamento_por_uf, mdfe_manifestos).
+- resto: 19 seguros migrados (commit b3725e6). RESTARAM 13 que EXIGEM FIX DE HANDLER (nao so formatador):
+  - **5 fiscais page-scoped** (KPI somava a pagina, classe d987060): carta_correcao+certificados (nem montam _DESTAQUE/_RESPOSTA hoje , precisam enriquecerEnvelope+full-set), faturamento_por_marca, faturamento_por_uf, mdfe_manifestos (trocar reduce-sobre-d.linhas por aggregate full-set).
+  - **5 sem envelope canonico** (handler nao monta _RESPOSTA/_DESTAQUE, nao chama enriquecerEnvelope): preco_produto, preco_tabela, referencia_buscar, servico_buscar, servico_listar.
+  - **2 contabeis page-scoped**: contabil_saldo_conta, contabil_movimento_conta.
+  - **1 raw-get especial**: crm.res_partner.get (investigar se usa envelope; tratar especial).
+- **TODOS os 13 com formatador proposto + evidencia + nota de fix em `docs/superpowers/plans/2026-06-07-f4-onda4-restantes-13.md`** (ler primeiro; aplica direto sem re-rodar workflow). baselineArgs ja descobertos: preco_produto{termo:"G7S13 V2 SUPINO"}, preco_tabela{tabelaId:7}, referencia_buscar{tabela:"cfop",termo:"venda"}, servico_buscar{termo:"transporte"}, contabil_movimento_conta{contaCodigo:"1.1.01.01"}, crm.res_partner.get{id:1}.
+- PADRAO DO FIX (igual ao pedidos_por_uf comercial ja feito): para page-scoped, adicionar query agregada full-set (count/sum sobre o where, sem LIMIT) e usar no _DESTAQUE/_agregado, mantendo LIMIT so em linhas. Para sem-envelope, refatorar handler p/ chamar enriquecerEnvelope com destaque full-set + adicionar campos canonicos opcionais no schema dados.
+- baseline set A = 87 tools, idempotente (BASELINE_OK). Drift de tempo conhecido: pedido_travados_por_etapa varia +-1 (limiar 30 dias vs now()).
+RESTAM apos os 13: Onda 5 (ranking desempate odooId+N , so onde ha ambiguidade) + Onda 6 (allowlist []=contrato verde + baseline E2E=1 + rebuild 'docker compose build app' + 'docker compose up -d --force-recreate mcp worker' + PR + merge para main).
+METODO p/ os 13: inline (ja tenho formatadores no doc); ler handler+query, aplicar fix full-set/enriquecer, tsc raiz+mcp+jest+E2E baseline write (so a tool entra, KPI x SELECT), commit por sub-grupo.
 
 ## PROXIMA SESSAO , Onda 4 (continuar a migracao das 72 tools restantes)
 PADRAO PROVADO (replicar por tool, ver estoque_concentracao como modelo):

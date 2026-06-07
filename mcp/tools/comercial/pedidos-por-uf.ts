@@ -80,7 +80,7 @@ async function queryPedidosPorUf(prisma: PrismaClient, input: Input) {
      LEFT JOIN fato_parceiro p ON p.odoo_id = pe.participante_id
      WHERE 1=1 ${filtroStatus} ${filtroPer}
      GROUP BY p.uf
-     ORDER BY SUM(pe.vr_produtos) DESC NULLS LAST
+     ORDER BY SUM(pe.vr_produtos) DESC NULLS LAST, p.uf ASC
      LIMIT ${limite}`,
     ...params,
   );
@@ -90,9 +90,24 @@ async function queryPedidosPorUf(prisma: PrismaClient, input: Input) {
     quantidade: Number(r.quantidade),
     valorTotal: Number(r.valor),
   }));
-  const totalGeral = linhas.reduce((s, l) => s + l.valorTotal, 0);
-  const totalPedidos = linhas.reduce((s, l) => s + l.quantidade, 0);
-  const totalUfs = linhas.filter((l) => l.uf !== null).length;
+  // KPIs FULL-SET: agregados sobre TODO o recorte filtrado, independentes do
+  // LIMIT da pagina (a soma de `linhas` so cobriria a pagina e subcontaria
+  // quando limite < numero de UFs , classe do bug d987060). COUNT(DISTINCT
+  // p.uf) ignora NULL, batendo com a contagem de UFs reais.
+  const totalRows = await prisma.$queryRawUnsafe<
+    Array<{ pedidos: bigint; geral: string | number; ufs: bigint }>
+  >(
+    `SELECT COUNT(*)::bigint AS pedidos,
+            COALESCE(SUM(pe.vr_produtos), 0)::text AS geral,
+            COUNT(DISTINCT p.uf)::bigint AS ufs
+     FROM fato_pedido pe
+     LEFT JOIN fato_parceiro p ON p.odoo_id = pe.participante_id
+     WHERE 1=1 ${filtroStatus} ${filtroPer}`,
+    ...params,
+  );
+  const totalGeral = Number(totalRows[0]?.geral ?? 0);
+  const totalPedidos = Number(totalRows[0]?.pedidos ?? 0);
+  const totalUfs = Number(totalRows[0]?.ufs ?? 0);
   return { linhas, totalGeral, totalPedidos, totalUfs };
 }
 

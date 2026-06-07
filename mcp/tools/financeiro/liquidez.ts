@@ -7,6 +7,7 @@
 import { z } from "zod";
 import type { ToolEntry } from "../../catalog/types.js";
 import { withFreshness } from "../../lib/freshness.js";
+import { enriquecerEnvelope } from "../../lib/with-responder.js";
 import type { PrismaClient } from "@/generated/prisma/client.js";
 
 const inputSchema = z.object({});
@@ -19,6 +20,7 @@ const dados = z.object({
   liquidezCorrente: z.number(),
   status: z.enum(["saudavel", "atencao", "critico"]),
   _RESPOSTA: z.string().optional(),
+  _listaTruncada: z.boolean().optional(),
   _DESTAQUE: z.record(z.string(), z.union([z.string(), z.number()])).optional(),
   _agregado: z.record(z.string(), z.number().optional()).optional(),
 });
@@ -108,31 +110,17 @@ export const financeiroLiquidez: ToolEntry<Input, Output> = {
     );
     if (envelope.estado === "preparando") return envelope;
     const d = envelope.dados;
-    const fmt = (n: number) =>
-      n.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
-    const fmtRatio = (n: number) => n.toFixed(2);
-    const statusLabel =
-      d.status === "saudavel" ? "saudavel" :
-      d.status === "atencao" ? "em atencao" : "em situacao critica";
-    return {
-      ...envelope,
-      dados: {
-        ...d,
-        _RESPOSTA:
-          `Liquidez ${statusLabel}: imediata ${fmtRatio(d.liquidezImediata)} ` +
-          `(saldo ${fmt(d.saldoEmCaixa)} / a pagar ${fmt(d.contasAPagar)}), ` +
-          `corrente ${fmtRatio(d.liquidezCorrente)} ` +
-          `(saldo + a receber ${fmt(d.saldoEmCaixa + d.contasAReceber)} / a pagar ${fmt(d.contasAPagar)}).`,
-        _DESTAQUE: {
-          saldoEmCaixa: d.saldoEmCaixa,
-          contasAReceber: d.contasAReceber,
-          contasAPagar: d.contasAPagar,
-          liquidezImediata: d.liquidezImediata,
-          liquidezCorrente: d.liquidezCorrente,
-          status: d.status,
-        },
-        _agregado: { soma: d.saldoEmCaixa + d.contasAReceber - d.contasAPagar },
+    // _RESPOSTA delegado ao formatador canonico (fmtLiquidez em responder.ts).
+    return enriquecerEnvelope(envelope, "financeiro_liquidez", {
+      destaque: {
+        saldoEmCaixa: d.saldoEmCaixa,
+        contasAReceber: d.contasAReceber,
+        contasAPagar: d.contasAPagar,
+        liquidezImediata: d.liquidezImediata,
+        liquidezCorrente: d.liquidezCorrente,
+        status: d.status,
       },
-    };
+      agregado: { soma: d.saldoEmCaixa + d.contasAReceber - d.contasAPagar },
+    });
   },
 };

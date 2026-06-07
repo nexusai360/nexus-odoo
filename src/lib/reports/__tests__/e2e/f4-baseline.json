@@ -1,4 +1,11 @@
 {
+  "auditoria_regras": {
+    "estado": "ok",
+    "_agregado": {
+      "contagem": 15
+    },
+    "total": 15
+  },
   "cadastro_buscar_parceiro": {
     "estado": "ok",
     "_DESTAQUE": {
@@ -6,6 +13,20 @@
       "termo": "JHT"
     },
     "total": 15
+  },
+  "cadastro_cidades_listar": {
+    "estado": "ok",
+    "_DESTAQUE": {
+      "totalCidadesDistintas": 514,
+      "totalUfs": 27,
+      "totalParceiros": 6926,
+      "topCidade": "Brasília",
+      "topUf": "Distrito Federal (BR)",
+      "quantidadeTopCidade": 2440
+    },
+    "_agregado": {
+      "contagem": 514
+    }
   },
   "cadastro_contar_parceiros": {
     "estado": "ok",
@@ -16,12 +37,114 @@
       "totalAtivos": 7075
     }
   },
+  "cadastro_detalhar_parceiro": {
+    "estado": "ok",
+    "_DESTAQUE": {
+      "nome": "JHT Brasília - Matriz DF 07.390.039/0001-01",
+      "documento": "BR-07.390.039/0001-01",
+      "papel": "cliente/fornecedor",
+      "uf": "Distrito Federal (BR)",
+      "ativo": "sim"
+    }
+  },
+  "cadastro_detalhar_produto": {
+    "estado": "ok",
+    "_DESTAQUE": {
+      "nome": "G1FW155 BANCO BICEPS MATRIX",
+      "codigo": "272",
+      "marca": "MATRIX",
+      "precoVenda": 5626.24,
+      "ativo": "sim"
+    }
+  },
+  "cadastro_filiais_listar": {
+    "estado": "ok",
+    "_DESTAQUE": {
+      "totalEncontrados": 18,
+      "totalMatrizes": 9,
+      "totalFiliais": 9
+    },
+    "_agregado": {
+      "contagem": 18
+    }
+  },
+  "cadastro_parceiros_novos": {
+    "estado": "ok",
+    "_DESTAQUE": {
+      "totalEncontrados": 474,
+      "periodoDe": "2026-06-01",
+      "periodoAte": "2026-06-08",
+      "periodoNome": "essa_semana",
+      "tipo": "parceiros"
+    },
+    "_agregado": {
+      "contagem": 474
+    }
+  },
+  "cadastro_parceiros_por_cidade": {
+    "estado": "ok",
+    "_DESTAQUE": {
+      "totalEncontrados": 5000,
+      "uf": "",
+      "cidade": "",
+      "zona": "todas"
+    },
+    "_agregado": {
+      "contagem": 5000
+    }
+  },
   "cadastro_parceiros_por_uf": {
     "estado": "ok",
     "_DESTAQUE": {
       "totalComUF": 6624,
       "totalSemUF": 451,
       "topUF": "Distrito Federal (BR)"
+    }
+  },
+  "cadastro_parceiros_sem_documento": {
+    "estado": "ok",
+    "_DESTAQUE": {
+      "totalEncontrados": 453,
+      "tipo": "parceiros"
+    },
+    "_agregado": {
+      "contagem": 453
+    }
+  },
+  "comercial_comissoes": {
+    "estado": "vazio",
+    "_agregado": {
+      "contagem": 0
+    },
+    "total": 0
+  },
+  "comercial_contar_pedidos": {
+    "estado": "ok",
+    "_DESTAQUE": {
+      "totalPedidos": 1732
+    },
+    "_agregado": {
+      "contagem": 1732
+    },
+    "total": 1732
+  },
+  "comercial_cotacoes": {
+    "estado": "vazio",
+    "_agregado": {
+      "contagem": 0
+    },
+    "total": 0
+  },
+  "comercial_detalhar_pedido": {
+    "estado": "ok",
+    "_DESTAQUE": {
+      "numero": "INV-0163/26",
+      "tipo": "inventario",
+      "etapa": "Confirmado",
+      "participante": "Jds Comércio - Matriz DF 18.282.961/0001-00 - Jds Comércio de Produtos e Equipamentos Esportivos Ltda [18‍.282‍.961‍/0001‑00] ",
+      "vendedor": "Thiago Nóbrega [048‍.906‍.661‑50] ",
+      "vrProdutos": 27810422.78,
+      "vrNf": 27810422.78
     }
   },
   "comercial_parcelas_a_vencer": {
@@ -34,6 +157,30 @@
     "_agregado": {
       "contagem": 314,
       "soma": 4559904.48
+    }
+  },
+  "comercial_pedido_historico_etapas": {
+    "estado": "ok",
+    "_DESTAQUE": {
+      "totalEventos": 23,
+      "tempoTotalDias": 65,
+      "etapaMaisLonga": "Reserva de Estoque - DEFINE ARMAZEM",
+      "diasEtapaMaisLonga": 57
+    },
+    "_agregado": {
+      "contagem": 23,
+      "soma": 65
+    }
+  },
+  "comercial_pedido_travados_por_etapa": {
+    "estado": "ok",
+    "_DESTAQUE": {
+      "totalTravados": 1117,
+      "diasMin": 30,
+      "maisAntigoDias": 139
+    },
+    "_agregado": {
+      "contagem": 1117
     }
   },
   "comercial_pedidos_atrasados": {
@@ -98,6 +245,21 @@
       "soma": 391497170.09
     }
   },
+  "comercial_pedidos_por_uf": {
+    "estado": "ok",
+    "_DESTAQUE": {
+      "totalPedidos": 1732,
+      "totalGeral": 391497170.09,
+      "totalUfs": 22,
+      "topUf": "Distrito Federal (BR)",
+      "quantidadeTopUf": 292,
+      "valorTopUf": 27841456.4
+    },
+    "_agregado": {
+      "contagem": 1732,
+      "soma": 391497170.09
+    }
+  },
   "comercial_pedidos_por_vendedor": {
     "estado": "ok",
     "_DESTAQUE": {
@@ -114,6 +276,93 @@
       "media": 226037.63
     }
   },
+  "comercial_pedidos_sem_vendedor": {
+    "estado": "ok",
+    "_DESTAQUE": {
+      "totalPedidos": 2,
+      "valorTotal": 216071.03
+    },
+    "_agregado": {
+      "soma": 216071.03,
+      "contagem": 2
+    }
+  },
+  "comercial_produtos_por_familia": {
+    "estado": "ok",
+    "_DESTAQUE": {
+      "modo": "agrupado",
+      "totalEncontrados": 3774,
+      "totalFamilias": 8,
+      "totalProdutosNoCadastro": 3774
+    },
+    "_agregado": {
+      "contagem": 3774
+    }
+  },
+  "comercial_produtos_por_margem": {
+    "estado": "ok",
+    "_DESTAQUE": {
+      "totalProdutosComMargem": 2961,
+      "produtosSemPreco": 813,
+      "topProduto": "CONSERTO DO MOTOR DE INCLINAÇÃO",
+      "topMargemPercentual": 3042.57,
+      "topMargemAbsoluta": 1839.54
+    },
+    "_agregado": {
+      "contagem": 2961
+    }
+  },
+  "comercial_tempo_medio_fechamento": {
+    "estado": "ok",
+    "_DESTAQUE": {
+      "totalPedidos": 1161,
+      "diasMedio": 6.41,
+      "diasMediano": 0,
+      "diasMinimo": 0,
+      "diasMaximo": 707
+    },
+    "_agregado": {
+      "contagem": 1161,
+      "media": 6.41
+    }
+  },
+  "comercial_vendedores_cadastrados": {
+    "estado": "ok",
+    "_DESTAQUE": {
+      "totalVendedores": 19,
+      "topVendedor": "Jonatas Soares",
+      "pedidosTop": 438
+    },
+    "_agregado": {
+      "contagem": 19
+    }
+  },
+  "contabil_centro_custo": {
+    "estado": "vazio",
+    "_DESTAQUE": {
+      "contagem": 0
+    },
+    "total": 0
+  },
+  "contabil_conta_referencial": {
+    "estado": "ok",
+    "_DESTAQUE": {
+      "contagem": 2216,
+      "natureza": "",
+      "termo": ""
+    },
+    "total": 2216
+  },
+  "contabil_detalhar_conta": {
+    "estado": "ok",
+    "_DESTAQUE": {
+      "codigo": "1.1.1.1.01.000001",
+      "nome": "CAIXA",
+      "tipo": "A",
+      "natureza": "01",
+      "nivel": 6
+    }
+  },
   "contabil_estrutura_conta": {
     "estado": "ok",
     "_DESTAQUE": {
@@ -121,6 +370,13 @@
       "nome": "ATIVO",
       "totalFilhos": 5
     }
+  },
+  "contabil_movimento_conta": {
+    "estado": "vazio",
+    "_DESTAQUE": {
+      "contagem": 0
+    },
+    "total": 0
   },
   "contabil_plano_de_contas": {
     "estado": "ok",
@@ -134,6 +390,30 @@
     },
     "total": 934
   },
+  "contabil_resultado_por_natureza": {
+    "estado": "vazio",
+    "_DESTAQUE": {
+      "receita": 0,
+      "despesa": 0,
+      "resultado": 0
+    }
+  },
+  "contabil_saldo_conta": {
+    "estado": "vazio",
+    "_DESTAQUE": {
+      "contagem": 0
+    },
+    "total": 0
+  },
+  "crm_pipeline_funis": {
+    "estado": "vazio",
+    "_agregado": {
+      "contagem": 0
+    },
+    "total": 0
+  },
+  "crm_status_dominio": {},
+  "crm.res_partner.get": {},
   "estoque_concentracao": {
     "estado": "ok",
     "_DESTAQUE": {
@@ -159,6 +439,25 @@
       "totalSaida": 21561,
       "periodos": 9
     }
+  },
+  "estoque_locais_por_produto": {
+    "estado": "ok",
+    "_DESTAQUE": {
+      "produtoNome": "PAINEL LED MX (LED-C)",
+      "saldoTotal": 789,
+      "totalLocais": 25
+    },
+    "_agregado": {
+      "soma": 789,
+      "contagem": 25
+    }
+  },
+  "estoque_minimo_maximo": {
+    "estado": "vazio",
+    "_agregado": {
+      "contagem": 0
+    },
+    "total": 0
   },
   "estoque_produtos_parados": {
     "estado": "ok",
@@ -228,6 +527,38 @@
       "valorTotal": 54932385.1,
       "numArmazens": 9
     }
+  },
+  "financeiro_baixas_cobranca": {
+    "estado": "ok",
+    "_agregado": {
+      "contagem": 42
+    },
+    "total": 42
+  },
+  "financeiro_caixa_periodo": {
+    "estado": "ok",
+    "_DESTAQUE": {
+      "entradaTotal": 31883549.31,
+      "saidaTotal": 108095295.34,
+      "saldo": -76211746.03
+    },
+    "_agregado": {
+      "soma": -76211746.03
+    }
+  },
+  "financeiro_carteiras_cobranca": {
+    "estado": "ok",
+    "_agregado": {
+      "contagem": 11
+    },
+    "total": 11
+  },
+  "financeiro_cheques": {
+    "estado": "vazio",
+    "_agregado": {
+      "contagem": 0
+    },
+    "total": 0
   },
   "financeiro_contas_a_pagar": {
     "estado": "ok",
@@ -371,6 +702,66 @@
       "contagem": 36
     }
   },
+  "financeiro_liquidez": {
+    "estado": "ok",
+    "_DESTAQUE": {
+      "saldoEmCaixa": -36233316.36,
+      "contasAReceber": 60465592.55,
+      "contasAPagar": 393910454.88,
+      "liquidezImediata": -0.09,
+      "liquidezCorrente": 0.06,
+      "status": "critico"
+    },
+    "_agregado": {
+      "soma": -369678178.69
+    }
+  },
+  "financeiro_pix_recebidos": {
+    "estado": "vazio",
+    "_agregado": {
+      "contagem": 0
+    },
+    "total": 0
+  },
+  "financeiro_remessas_geradas": {
+    "estado": "ok",
+    "_agregado": {
+      "contagem": 7
+    },
+    "total": 7
+  },
+  "financeiro_resultado_por_conta": {
+    "estado": "ok",
+    "_DESTAQUE": {
+      "totalReceita": 86070687.96,
+      "totalDespesa": 365938820.03,
+      "resultado": -279868132.07,
+      "contaTop": "2.1.1 - Compra de mercadoria para revenda",
+      "contaTopNatureza": "despesa",
+      "valorContaTop": 350284774.48
+    },
+    "_agregado": {
+      "soma": -279868132.07
+    }
+  },
+  "financeiro_retornos_processados": {
+    "estado": "ok",
+    "_agregado": {
+      "contagem": 8
+    },
+    "total": 8
+  },
+  "financeiro_saldo_contas": {
+    "estado": "ok",
+    "_DESTAQUE": {
+      "saldoTotal": -36233316.36,
+      "totalContas": 9
+    },
+    "_agregado": {
+      "soma": -36233316.36,
+      "contagem": 9
+    }
+  },
   "financeiro_titulos_vencidos": {
     "estado": "ok",
     "_DESTAQUE": {
@@ -452,6 +843,109 @@
     },
     "total": 8
   },
+  "fiscal_carta_correcao": {
+    "estado": "ok",
+    "_DESTAQUE": {
+      "totalCartas": 12,
+      "totalDocumentos": 11
+    },
+    "_agregado": {
+      "contagem": 12
+    },
+    "total": 12
+  },
+  "fiscal_certificados": {
+    "estado": "ok",
+    "_DESTAQUE": {
+      "totalCertificados": 11,
+      "vencidos": 0,
+      "vence30Dias": 4,
+      "proximoProprietario": "JDS COMERCIO DE PRODUTOS E EQUIPAMENTOS ESPORTIVO",
+      "proximoVencimento": "2026-06-12"
+    },
+    "_agregado": {
+      "contagem": 11
+    },
+    "total": 11
+  },
+  "fiscal_contar_notas": {
+    "estado": "ok",
+    "_DESTAQUE": {
+      "totalNotas": 49426,
+      "totalSaida": 38309,
+      "totalEntrada": 11117
+    },
+    "_agregado": {
+      "contagem": 49426
+    },
+    "total": 49426
+  },
+  "fiscal_detalhar_nota": {
+    "estado": "ok",
+    "_DESTAQUE": {
+      "chave": "28250134161829000430550010000009871000574756",
+      "participante": "Vida Educacao Ensino e Cursos Livres Ltda [51‍.128‍.220‍/0001‑36] ",
+      "situacao": "autorizada",
+      "vrNf": 36636.33
+    }
+  },
+  "fiscal_dfe_importados_periodo": {
+    "estado": "ok",
+    "_DESTAQUE": {
+      "totalDfe": 13927,
+      "valorTotal": 129964666.9
+    },
+    "_agregado": {
+      "contagem": 13927,
+      "soma": 129964666.9
+    }
+  },
+  "fiscal_dfe_pendentes_manifestacao": {
+    "estado": "ok",
+    "_DESTAQUE": {
+      "pendentes": 13135
+    },
+    "_agregado": {
+      "contagem": 13135
+    }
+  },
+  "fiscal_dfe_por_fornecedor": {
+    "estado": "ok",
+    "_DESTAQUE": {
+      "totalDfe": 13927,
+      "totalFornecedores": 952,
+      "topFornecedor": "Jht DF Comércio - Matriz DF 10.557.556/0001-37 - Jht DF Comércio de Produtos e Equipamentos Esportivos Ltda [10‍.557‍.556‍/0001‑37] ",
+      "notasTopFornecedor": 3572
+    },
+    "_agregado": {
+      "contagem": 13927,
+      "soma": 129964666.9
+    }
+  },
+  "fiscal_faturamento_mensal_serie": {
+    "estado": "ok",
+    "_DESTAQUE": {
+      "ano": 2026,
+      "totalAno": 139914901.02,
+      "totalNotasAno": 2202,
+      "mesesConsultados": 6
+    },
+    "_agregado": {
+      "soma": 139914901.02,
+      "contagem": 2202
+    }
+  },
+  "fiscal_faturamento_nao_autorizado": {
+    "estado": "ok",
+    "_DESTAQUE": {
+      "totalNotas": 3784,
+      "valor": 59796965.45
+    },
+    "_agregado": {
+      "soma": 59796965.45,
+      "contagem": 3784
+    }
+  },
   "fiscal_faturamento_periodo": {
     "estado": "ok",
     "_DESTAQUE": {
@@ -462,6 +956,18 @@
       "soma": 1377492721.53,
       "contagem": 29868
     }
+  },
+  "fiscal_faturamento_por_cfop": {
+    "estado": "ok",
+    "_DESTAQUE": {
+      "valorGeral": 1852107980.14,
+      "cfops": 59
+    },
+    "_agregado": {
+      "soma": 1852107980.14,
+      "contagem": 59
+    },
+    "total": 59
   },
   "fiscal_faturamento_por_cliente": {
     "estado": "ok",
@@ -477,6 +983,93 @@
     },
     "total": 5252
   },
+  "fiscal_faturamento_por_empresa": {
+    "estado": "ok",
+    "_DESTAQUE": {
+      "totalGrupo": 1377492721.53,
+      "empresasComFaturamento": 12
+    },
+    "_agregado": {
+      "soma": 1377492721.53,
+      "contagem": 12
+    }
+  },
+  "fiscal_faturamento_por_marca": {
+    "estado": "ok",
+    "_DESTAQUE": {
+      "totalGeral": 11394882.54,
+      "totalMarcas": 19,
+      "totalItens": 778,
+      "topMarca": "MATRIX",
+      "valorTopMarca": 8940763.23
+    },
+    "_agregado": {
+      "contagem": 19,
+      "soma": 11394882.54
+    }
+  },
+  "fiscal_faturamento_por_operacao": {
+    "estado": "ok",
+    "_DESTAQUE": {
+      "valorGeral": 1853301982.87,
+      "valorVenda": 1403209291.75
+    },
+    "_agregado": {
+      "soma": 1853301982.87,
+      "contagem": 79
+    },
+    "total": 79
+  },
+  "fiscal_faturamento_por_uf": {
+    "estado": "ok",
+    "_DESTAQUE": {
+      "totalGeral": 7158866.43,
+      "totalNotas": 430,
+      "totalUfs": 18,
+      "notasSemUf": 80,
+      "topUf": "São Paulo (BR)",
+      "valorTopUf": 859596.5
+    },
+    "_agregado": {
+      "contagem": 430,
+      "soma": 7158866.43
+    }
+  },
+  "fiscal_faturamento_recebido": {
+    "estado": "ok",
+    "_DESTAQUE": {
+      "recebido": 6452439.44,
+      "aReceber": 26923169.53
+    },
+    "_agregado": {
+      "soma": 6452439.44,
+      "contagem": 448
+    }
+  },
+  "fiscal_impostos_periodo": {
+    "estado": "ok",
+    "_DESTAQUE": {
+      "totalNotas": 49426,
+      "somaIbpt": 56249934.81,
+      "somaIcmsProprio": 328265431.88
+    },
+    "_agregado": {
+      "contagem": 49426,
+      "soma": 384515366.69
+    }
+  },
+  "fiscal_mdfe_manifestos": {
+    "estado": "vazio",
+    "_DESTAQUE": {
+      "totalMdfe": 0,
+      "valorNotas": 0
+    },
+    "_agregado": {
+      "contagem": 0,
+      "soma": 0
+    },
+    "total": 0
+  },
   "fiscal_notas_emitidas": {
     "estado": "ok",
     "_DESTAQUE": {
@@ -487,6 +1080,31 @@
     "_agregado": {
       "contagem": 38309,
       "soma": 1926202785.29
+    }
+  },
+  "fiscal_notas_emitidas_por_cliente": {
+    "estado": "ok",
+    "_DESTAQUE": {
+      "clienteTermo": "smartfit",
+      "totalNotas": 1628,
+      "valorTotal": 380721891.45
+    },
+    "_agregado": {
+      "contagem": 1628,
+      "soma": 380721891.45
+    }
+  },
+  "fiscal_notas_emitidas_por_produto": {
+    "estado": "ok",
+    "_DESTAQUE": {
+      "produtoTermo": "COLCHONETE",
+      "totalNotas": 5926,
+      "quantidadeTotal": 11307.5,
+      "valorTotal": 2679623.2
+    },
+    "_agregado": {
+      "contagem": 5926,
+      "soma": 2679623.2
     }
   },
   "fiscal_notas_recebidas": {
@@ -514,5 +1132,115 @@
       "contagem": 11117,
       "soma": 1273181991.17
     }
+  },
+  "fiscal_produtos_faturados": {
+    "estado": "ok",
+    "_DESTAQUE": {
+      "totalProdutos": 6086,
+      "totalGeral": 2092515751.88,
+      "totalQuantidade": 370133.67,
+      "topProduto": "[99] T600X ESTEIRA C/ INCL. ELETRICA E PROG. MATRIX",
+      "valorTopProduto": 262766871.33
+    },
+    "_agregado": {
+      "contagem": 6086,
+      "soma": 2092515751.88
+    },
+    "total": 6086
+  },
+  "fiscal_reinf_eventos": {
+    "estado": "vazio",
+    "_DESTAQUE": {
+      "totalEventos": 0
+    },
+    "_agregado": {
+      "contagem": 0
+    },
+    "total": 0
+  },
+  "preco_contar_regras": {
+    "estado": "ok",
+    "_DESTAQUE": {
+      "totalRegras": 11867
+    },
+    "_agregado": {
+      "contagem": 11867
+    },
+    "total": 11867
+  },
+  "preco_produto": {
+    "estado": "ok",
+    "_DESTAQUE": {
+      "total": 6,
+      "produto": "[103] G7S13 V2 SUPINO VERTICAL CONVERGENTE ULTRA MATRIX",
+      "termo": "G7S13 V2 SUPINO"
+    },
+    "_agregado": {
+      "contagem": 6
+    },
+    "total": 6
+  },
+  "preco_tabela": {
+    "estado": "ok",
+    "_DESTAQUE": {
+      "total": 2954,
+      "tabelaNome": "Custo /0,3"
+    },
+    "_agregado": {
+      "contagem": 2954
+    },
+    "total": 2954
+  },
+  "producao_processos": {
+    "estado": "ok",
+    "_agregado": {
+      "contagem": 1
+    },
+    "total": 1
+  },
+  "producao_status_dominio": {},
+  "referencia_buscar": {
+    "estado": "ok",
+    "_DESTAQUE": {
+      "total": 151,
+      "tabela": "cfop",
+      "termo": "venda"
+    },
+    "_agregado": {
+      "contagem": 151
+    },
+    "total": 151
+  },
+  "rh_status_dominio": {},
+  "servico_buscar": {
+    "estado": "ok",
+    "_DESTAQUE": {
+      "total": 6,
+      "termo": "transporte"
+    },
+    "_agregado": {
+      "contagem": 6
+    },
+    "total": 6
+  },
+  "servico_contar": {
+    "estado": "ok",
+    "_DESTAQUE": {
+      "totalServicos": 336
+    },
+    "_agregado": {
+      "contagem": 336
+    },
+    "total": 336
+  },
+  "servico_listar": {
+    "estado": "ok",
+    "_DESTAQUE": {
+      "total": 336
+    },
+    "_agregado": {
+      "contagem": 336
+    },
+    "total": 336
   }
 }

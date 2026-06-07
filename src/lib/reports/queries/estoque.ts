@@ -535,7 +535,8 @@ export async function queryTopMovimentados(
       rotulo: g.produtoNome ?? "Sem produto",
       valor: g._sum.quantidade ? Math.abs(Number(g._sum.quantidade)) : 0,
     }))
-    .sort((a, b) => b.valor - a.valor);
+    // Onda 5: desempate estavel por rotulo (produtos com mesma movimentacao).
+    .sort((a, b) => b.valor - a.valor || a.rotulo.localeCompare(b.rotulo));
 
   const totalUnidades = linhas.reduce((acc, l) => acc + l.valor, 0);
 

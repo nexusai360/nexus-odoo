@@ -4,6 +4,7 @@ import { z } from "zod";
 import type { ToolEntry } from "../../catalog/types.js";
 import { querySaldoContas } from "@/lib/reports/queries/financeiro.js";
 import { withFreshness } from "../../lib/freshness.js";
+import { enriquecerEnvelope } from "../../lib/with-responder.js";
 
 const inputSchema = z.object({});
 
@@ -17,6 +18,7 @@ const dados = z.object({
   ),
   saldoTotal: z.number(),
   _RESPOSTA: z.string().optional(),
+  _listaTruncada: z.boolean().optional(),
   _DESTAQUE: z.record(z.string(), z.union([z.string(), z.number()])).optional(),
   _agregado: z.record(z.string(), z.number().optional()).optional(),
 });
@@ -52,15 +54,10 @@ export const financeiroSaldoContas: ToolEntry<Input, Output> = {
     );
     if (envelope.estado === "preparando") return envelope;
     const d = envelope.dados;
-    const fmt = (n: number) => n.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
-    return {
-      ...envelope,
-      dados: {
-        ...d,
-        _RESPOSTA: `Saldo geral: ${fmt(d.saldoTotal)} em ${d.contas.length} contas/bancos.`,
-        _DESTAQUE: { saldoTotal: d.saldoTotal, totalContas: d.contas.length },
-        _agregado: { soma: d.saldoTotal, contagem: d.contas.length },
-      },
-    };
+    // _RESPOSTA delegado ao formatador canonico (fmtSaldoContas em responder.ts).
+    return enriquecerEnvelope(envelope, "financeiro_saldo_contas", {
+      destaque: { saldoTotal: d.saldoTotal, totalContas: d.contas.length },
+      agregado: { soma: d.saldoTotal, contagem: d.contas.length },
+    });
   },
 };

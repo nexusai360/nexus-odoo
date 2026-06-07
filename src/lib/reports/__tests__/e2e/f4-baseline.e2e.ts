@@ -42,6 +42,21 @@ const EXCLUIR = new Set(["registrar_lacuna", "bi_consulta_avancada"]);
 const ARGS: Record<string, Record<string, unknown>> = {
   cadastro_buscar_parceiro: { termo: "JHT" },
   contabil_estrutura_conta: { odooId: 4 },
+  estoque_locais_por_produto: { termo: "1464" },
+  comercial_pedido_historico_etapas: { pedidoId: 694 },
+  comercial_detalhar_pedido: { odooId: 1295 },
+  fiscal_notas_emitidas_por_cliente: { clienteTermo: "smartfit" },
+  fiscal_notas_emitidas_por_produto: { produtoTermo: "COLCHONETE" },
+  fiscal_detalhar_nota: { odooId: 1 },
+  cadastro_detalhar_parceiro: { odooId: 1 },
+  cadastro_detalhar_produto: { odooId: 42 },
+  contabil_detalhar_conta: { odooId: 2110 },
+  contabil_movimento_conta: { contaCodigo: "1.1.01.01" },
+  preco_produto: { termo: "G7S13 V2 SUPINO" },
+  preco_tabela: { tabelaId: 7 },
+  referencia_buscar: { tabela: "cfop", termo: "venda" },
+  servico_buscar: { termo: "transporte" },
+  "crm.res_partner.get": { id: 1 },
 };
 
 // Chaves de KPI agregado, invariantes a paginacao. Tudo o resto (linhas,
