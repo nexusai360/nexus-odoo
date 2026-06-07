@@ -12,7 +12,7 @@ import type { ToolEntry } from "./types.js";
 
 import { estoqueTools } from "../tools/estoque/index.js";   // 4c.3  , 6 tools
 import { financeiroTools } from "../tools/financeiro/index.js"; // 4d.0  , 6 tools
-import { caminho3Tools } from "../tools/caminho3/index.js"; // 4c.11 , 2 tools (registrar_lacuna + bi_consulta_avancada)
+import { foraDoCatalogoTools } from "../tools/fora-do-catalogo/index.js"; // Fora do Catalogo , 2 tools (registrar_lacuna + bi_consulta_avancada)
 import { comercialTools } from "../tools/comercial/index.js"; // onda B , 5 tools
 import { fiscalTools } from "../tools/fiscal/index.js";     // onda C , 6 tools
 import { cadastrosTools } from "../tools/cadastros/index.js"; // onda D , 3 tools
@@ -25,7 +25,7 @@ import { auditoriaTools } from "../tools/auditoria/index.js"; // B7 , regras de 
 export const catalogo: ToolEntry[] = [
   ...estoqueTools,
   ...financeiroTools,
-  ...caminho3Tools,
+  ...foraDoCatalogoTools,
   ...comercialTools,
   ...fiscalTools,
   ...cadastrosTools,

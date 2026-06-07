@@ -1,4 +1,4 @@
-// mcp/tools/caminho3/registrar-lacuna.ts
+// mcp/tools/fora-do-catalogo/registrar-lacuna.ts
 // Tool MCP: registrar_lacuna (Caminho 3a)
 // Registra uma pergunta não coberta pelo catálogo de tools.
 // sempreVisivel: true , aparece para qualquer usuário independente de domínio.

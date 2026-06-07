@@ -1,4 +1,4 @@
-// mcp/tools/caminho3/sql-guard.test.ts
+// mcp/tools/fora-do-catalogo/sql-guard.test.ts
 // Testa a verificação estrutural de SQL por AST via pgsql-parser.
 // Requer loadModule() antes dos testes (inicializa WASM do libpg-query).
 import { loadModule } from "pgsql-parser";

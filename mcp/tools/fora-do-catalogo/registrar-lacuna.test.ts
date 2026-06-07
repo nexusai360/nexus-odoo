@@ -1,4 +1,4 @@
-// mcp/tools/caminho3/registrar-lacuna.test.ts
+// mcp/tools/fora-do-catalogo/registrar-lacuna.test.ts
 import { registrarLacuna } from "./registrar-lacuna.js";
 import { assertToolAllowed, visibleTools } from "../../catalog/registry.js";
 import type { ToolHandlerCtx } from "../../catalog/types.js";

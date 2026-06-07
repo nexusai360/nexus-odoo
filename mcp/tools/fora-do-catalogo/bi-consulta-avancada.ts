@@ -1,4 +1,4 @@
-// mcp/tools/caminho3/bi-consulta-avancada.ts
+// mcp/tools/fora-do-catalogo/bi-consulta-avancada.ts
 // Tool MCP: bi_consulta_avancada (Caminho 3c , executor SQL read-only)
 //
 // Recebe um SQL pronto do agente e o executa sob o role nexus_mcp_bi (read-only).
@@ -22,7 +22,7 @@ import type { ToolEntry } from "../../catalog/types.js";
 import { getBiPool } from "./bi-pool.js";
 import { validarSqlSelect, normalizarSql } from "./sql-guard.js";
 import { SqlGuardError } from "../../lib/failure.js";
-// Caminho definitivo (achado R2-M2): de mcp/tools/caminho3/ para mcp/lib/ é ../../lib/failure.js
+// Caminho definitivo (achado R2-M2): de mcp/tools/fora-do-catalogo/ para mcp/lib/ é ../../lib/failure.js
 
 const CAP_LINHAS = 1000;
 
