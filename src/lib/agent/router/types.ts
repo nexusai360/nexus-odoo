@@ -33,6 +33,19 @@ export type RouterDecision = {
  *  (`McpTool` no run-agent, etc). */
 export type CatalogTool = { name: string };
 
+/** F3 (retrieval): tool com nome + descricao (= embeddingText publicado em
+ *  tools/list). O retrieval vetoriza a `description`. */
+export type RetrievalTool = { name: string; description: string };
+
+/** F3 (retrieval): resultado de `pickTools`. `picked` = nomes do catalogo enxuto
+ *  (nucleo minimo + top-K). `scores` = cosseno por nome (telemetria/shadow).
+ *  `floorAdded` = nomes que entraram so pelo piso (fora do top-K por score). */
+export type ToolRetrievalResult = {
+  picked: string[];
+  scores: Record<string, number>;
+  floorAdded: string[];
+};
+
 /** Input de `filterCatalog`, generico no tipo da tool.
  *
  *  RBAC v2 (SPEC §6.1): camada B com `userAllowedDomains`. Quando ausente
