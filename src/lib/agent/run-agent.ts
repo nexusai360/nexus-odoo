@@ -60,6 +60,8 @@ import { embedQuestion } from "./router/embed-question";
 import { getToolVectors } from "./router/embed-tools";
 import { pickTools } from "./router/pick-tools";
 import { rankOf } from "./router/retrieval-rank";
+import { classifyIntent } from "./router/classify-intent";
+import { applyIntentArgs } from "./router/apply-intent-args";
 import { getToolDomain, UNKNOWN_DOMAIN } from "./router/tool-to-domain";
 import { respondPermissionDenied } from "./permission-denial";
 import { seesAll } from "@/lib/reports/domains";
@@ -529,6 +531,9 @@ export async function runAgent(args: RunAgentInput): Promise<RunAgentResult> {
     // Embeda so o catalogo proprio (mcpTools); tools externas entram pelo piso.
     // Qualquer falha (embedding/vetores) cai em retrieval nulo => sem corte.
     const retrievalActive = agentSettings.routerToolRetrieval === "active";
+    // F3 (3b): intencao da pergunta (classificada 1x por turno). Injetada nos args
+    // da tool so em modo active (mesmo gate do retrieval; nada nasce active).
+    const turnoIntent = classifyIntent(reformulated ?? args.userMessage);
     let retrievalOfferedOrdered: string[] = [];
     let retrievalPicked: ReadonlySet<string> | null = null;
     let retrievalScores: Record<string, number> = {};
@@ -627,6 +632,18 @@ export async function runAgent(args: RunAgentInput): Promise<RunAgentResult> {
       decisionId: routerDecisionId,
       catalogSizeOffered: filteredCatalog.tools.length,
     });
+    // F3 (3b.2): mapa de suporte a limit/orderBy por tool (do inputSchema), para a
+    // injecao de args por intencao saber se a tool aceita cada campo.
+    const toolSupportsByName = new Map<string, { limit: boolean; orderBy: boolean }>();
+    for (const t of filteredCatalog.tools) {
+      const props =
+        ((t as { inputSchema?: { properties?: Record<string, unknown> } }).inputSchema
+          ?.properties) ?? {};
+      toolSupportsByName.set(t.name, {
+        limit: "limit" in props,
+        orderBy: "orderBy" in props,
+      });
+    }
     const allTurnToolNames: string[] = [];
 
     const tools = mcpToolsToProviderTools(filteredCatalog.tools);
@@ -1267,7 +1284,17 @@ export async function runAgent(args: RunAgentInput): Promise<RunAgentResult> {
           toolCallId: tc.id,
         });
 
-        const toolArgs = (tc.arguments ?? {}) as Record<string, unknown>;
+        let toolArgs = (tc.arguments ?? {}) as Record<string, unknown>;
+        // F3 (3b.2): injeta/limita args conforme a intencao (so em modo active,
+        // mesmo gate do retrieval). Em shadow nao altera o comportamento atual.
+        if (retrievalActive && turnoIntent !== "pontual") {
+          const supports = toolSupportsByName.get(tc.name) ?? { limit: false, orderBy: false };
+          const aplicado = applyIntentArgs(turnoIntent, toolArgs, supports);
+          toolArgs = aplicado.args;
+          if (aplicado.aviso) {
+            console.info("[f3:intent]", JSON.stringify({ tool: tc.name, intent: turnoIntent, aviso: aplicado.aviso }));
+          }
+        }
         let toolResultStr: string;
         let cacheHit = false;
         const tStart = Date.now();
