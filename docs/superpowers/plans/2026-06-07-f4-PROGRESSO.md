@@ -47,7 +47,19 @@ Migrados ate agora (allowlist 73->48, set A baseline 27->52):
 DOIS ARQUETIPOS consolidados: (A) handler chama enriquecerEnvelope => formatador real e LIVE (so registrar em FORMATADORES + remover da allowlist); (B) handler monta _RESPOSTA inline/factory => formatador ESPELHO (dead-code, satisfaz contrato, le _DESTAQUE/_agregado). Helper fmtContagemSimples(resumoOk,naoOperado) p/ honest-tools.
 METODO: workflow Opus 1-agente-por-tool investiga+verifica KPI x SELECT e devolve spec (NAO edita responder.ts); orquestrador integra inline + gate (tsc raiz+mcp+jest+E2E baseline write, conferir 0 remocoes/so novos) + commit por dominio. CUIDADO: agentes as vezes erram o tipo (FormadorCanonico sem 't') , revisar antes de colar.
 EM VOO: workflow fiscal (21 tools, wym0abwgs) + workflow resto (27: preco/servico/referencia 7 + cadastros 7 + contabil 6 + dominios-status/raw 7, wthtop51t). Integrar conforme completam. crm.res_partner.get pode nao usar envelope canonico , tratar especial.
-RESTAM apos isso: Onda 5 (ranking desempate odooId+N) + Onda 6 (allowlist []=contrato verde + baseline E2=1 identico + rebuild 'docker compose build app' + 'docker compose up -d --force-recreate mcp worker' + PR + merge).
+
+### ATUALIZACAO , 59/72 migradas (allowlist 73->13). Commits: estoque 33e5cee, financeiro e94b67e, comercial d6e187a, fiscal-16 4971347, resto-19 b3725e6.
+- fiscal: 16 full-set migrados (commit 4971347). 5 fiscais PAGE-SCOPED ficaram (carta_correcao, certificados, faturamento_por_marca, faturamento_por_uf, mdfe_manifestos).
+- resto: 19 seguros migrados (commit b3725e6). RESTARAM 13 que EXIGEM FIX DE HANDLER (nao so formatador):
+  - **5 fiscais page-scoped** (KPI somava a pagina, classe d987060): carta_correcao+certificados (nem montam _DESTAQUE/_RESPOSTA hoje , precisam enriquecerEnvelope+full-set), faturamento_por_marca, faturamento_por_uf, mdfe_manifestos (trocar reduce-sobre-d.linhas por aggregate full-set).
+  - **5 sem envelope canonico** (handler nao monta _RESPOSTA/_DESTAQUE, nao chama enriquecerEnvelope): preco_produto, preco_tabela, referencia_buscar, servico_buscar, servico_listar.
+  - **2 contabeis page-scoped**: contabil_saldo_conta, contabil_movimento_conta.
+  - **1 raw-get especial**: crm.res_partner.get (investigar se usa envelope; tratar especial).
+- **TODOS os 13 com formatador proposto + evidencia + nota de fix em `docs/superpowers/plans/2026-06-07-f4-onda4-restantes-13.md`** (ler primeiro; aplica direto sem re-rodar workflow). baselineArgs ja descobertos: preco_produto{termo:"G7S13 V2 SUPINO"}, preco_tabela{tabelaId:7}, referencia_buscar{tabela:"cfop",termo:"venda"}, servico_buscar{termo:"transporte"}, contabil_movimento_conta{contaCodigo:"1.1.01.01"}, crm.res_partner.get{id:1}.
+- PADRAO DO FIX (igual ao pedidos_por_uf comercial ja feito): para page-scoped, adicionar query agregada full-set (count/sum sobre o where, sem LIMIT) e usar no _DESTAQUE/_agregado, mantendo LIMIT so em linhas. Para sem-envelope, refatorar handler p/ chamar enriquecerEnvelope com destaque full-set + adicionar campos canonicos opcionais no schema dados.
+- baseline set A = 87 tools, idempotente (BASELINE_OK). Drift de tempo conhecido: pedido_travados_por_etapa varia +-1 (limiar 30 dias vs now()).
+RESTAM apos os 13: Onda 5 (ranking desempate odooId+N , so onde ha ambiguidade) + Onda 6 (allowlist []=contrato verde + baseline E2E=1 + rebuild 'docker compose build app' + 'docker compose up -d --force-recreate mcp worker' + PR + merge para main).
+METODO p/ os 13: inline (ja tenho formatadores no doc); ler handler+query, aplicar fix full-set/enriquecer, tsc raiz+mcp+jest+E2E baseline write (so a tool entra, KPI x SELECT), commit por sub-grupo.
 
 ## PROXIMA SESSAO , Onda 4 (continuar a migracao das 72 tools restantes)
 PADRAO PROVADO (replicar por tool, ver estoque_concentracao como modelo):
