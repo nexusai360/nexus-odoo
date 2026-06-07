@@ -1,8 +1,24 @@
 # STATUS — nexus-odoo
 
-> **Ponto de retomada entre sessões.** Atualizado em **2026-06-05** (UX bubble + monitor ao vivo + perícia Claude + fix de timezone).
+> **Ponto de retomada entre sessões.** Atualizado em **2026-06-07** (reconstrução do Nex , F1/F2/F3 em produção, F4 em andamento).
 > Ao abrir: ler **este arquivo**, o **`CLAUDE.md`** e **`.agente-handoff.md`**.
 > Modo autônomo é o padrão (`CLAUDE.md §6`).
+
+## 2026-06-07 , RECONSTRUÇÃO DO NEX (branch `feat/nex-reconstrucao`)
+
+Jornada autônoma das 6 fases do roadmap (dossie-MASTER §6). Autorização durável do
+usuário para ir até o fim das 6 fases nesta cadência (spec→2 reviews→v3→plano→2
+reviews→v3→execução TDD→E2E contra dado real→code review→PR→merge), resolvendo
+bugs sozinho e mergeando para `main`.
+
+- **F1 Métricas Canônicas** , MERGED (PR #58): faturamento canônico + corte por empresa.
+- **F2 Entidades / Desambiguação** , MERGED (PR #59): 9 resolvedores + 4 tools de detalhe + `documentoDigits`. E2E 31/31 contra cache real.
+- **F3 Cérebro de Orquestração** , MERGED (PR #60): tool retrieval por embedding, classificação de intenção, verificador V6/V7, "Fora do Catálogo" (ex-"Caminho 3"). Tudo em **shadow** (não altera produção até ativar `routerToolRetrieval=active`). recall@K 100%. Itens para ativar em `docs/RADAR.md` (F3 R1/R2).
+- **F4 Apresentação** , EM ANDAMENTO: envelope canônico único, paginação 50/50, ranking com critério, humanização, freshness>6h interno. Ver `docs/superpowers/plans/2026-06-07-f4-PROGRESSO.md`.
+- **F5 Evals/Golden** e **F6 Custo/Latência** , pendentes.
+
+Estado técnico: tsc raiz+mcp limpos, ~2676 testes jest verdes. Migrations sempre
+manuais + `migrate deploy` (nunca `migrate dev`: o banco tem drift pré-existente).
 
 ## 2026-06-05 (leva 3) , PONTO DE RETOMADA (branch `feat/agente-nex-bubble-ux`)
 
