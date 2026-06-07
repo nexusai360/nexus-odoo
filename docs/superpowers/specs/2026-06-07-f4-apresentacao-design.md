@@ -1,124 +1,100 @@
-# F4 , Apresentacao (resultados que nao mentem) , spec v1
+# F4 , Apresentacao (resultados que nao mentem) , spec v3
 
-> Reconstrucao do Nex, Fase 4. Fonte: `docs/superpowers/research/2026-06-06-dossie-MASTER.md` (secoes 5 e 6). Fases 1 (metricas), 2 (entidades), 3 (cerebro) ja em producao.
+> Reconstrucao do Nex, Fase 4. Fonte: `docs/superpowers/research/2026-06-06-dossie-MASTER.md` (secoes 5 e 6).
 >
-> Modo autonomo: esta spec passa por 2 reviews adversariais antes do plano.
+> **v3 = v1 + 2 reviews adversariais aplicadas.** As reviews acharam riscos criticos de regressao (z.object unico inviavel, chaves de array hardcoded no agente, guard de 24KB x paginacao 50, 35 testes quebram, humanizeName ja existe, _staleness na raiz nasce morto). Correcoes marcadas `[R]`.
 
 ---
 
 ## 1. Objetivo
 
-Aplicar a politica de resultados (dossie secao 5) de forma **uniforme e humanizada** em todas as tools MCP. Hoje a camada de apresentacao esta fragmentada: 3 fontes de envelope divergentes (`envelope.ts` nao usado, `FreshnessEnvelope`, `EnvelopeExtras`), so ~44% das tools tem `_RESPOSTA`/`_DESTAQUE`, paginacao 10/50 (nao 50/50), sem Title Case, sem aviso de freshness>6h, e dezenas de tools caem no formatador generico fraco. A F4 elimina essa divergencia: **um envelope canonico, paginacao 50/50 real, ranking com criterio explicito, e humanizacao consistente**. Regra de ouro: **numero sempre vem de codigo; o LLM so redige o texto ao redor do numero.**
+Aplicar a politica de resultados (dossie secao 5) de forma **uniforme e humanizada** nas **tools de leitura** do MCP. Hoje: 3 fontes de envelope divergentes, so 47 tools chamam `enriquecerEnvelope`, paginacao 10/50, sem Title Case unificado, sem aviso de freshness>6h, dezenas de tools no formatador generico fraco. A F4 estabelece **um envelope BASE canonico que cada tool estende**, paginacao 50/50 **limitada pelo guard de 24KB**, ranking com desempate estavel, humanizacao consistente (reusando o que existe), e freshness>6h como **telemetria server-side**. Regra de ouro: **numero sempre de codigo; o LLM so redige.**
 
-## 2. Decisoes canonicas (fixadas com o dono)
+## 2. Numeros reais (verificados contra o codigo) `[R]`
 
-1. **Paginacao 50/50:** `PAGINACAO_LIMIT_DEFAULT` passa de 10 para **50**; teto mantem 50. Primeira pagina ja traz ate 50 + `total` real do conjunto + `temMais`/`proximoOffset`. (Otimizacao fina de token e a F6.)
-2. **Envelope canonico unico + migrar todas:** definir UM `z.object` de envelope canonico (consolidando as 3 fontes), derivar o tipo TS dele, e migrar as ~107 tools para retorna-lo. As ~60 sem `_RESPOSTA`/`_DESTAQUE` passam a te-los. Habilita o verificador da F3 (V2/V6) a operar em todas.
-3. **Humanizacao , os 4 itens entram:** (a) Title Case de nomes; (b) escopo-empresa cross-dominio (generalizar o "considerei o grupo todo" hoje so fiscal); (c) avisos de dado incompleto ("ROI parcial: 40% dos produtos sem custo"); (d) formatador `_RESPOSTA` real para as tools que hoje caem no `fmtGenerico` fraco.
-4. **Freshness>6h:** `withFreshness` marca staleness>6h como **sinal interno** no envelope (campo/log), para o agente decidir; **NAO imprime no corpo** (regra vigente do `freshness-stripper`).
+- Catalogo: **102 tools de leitura** + **9 write tools** (`integration.test` fixa 102 visiveis; 111 brutas). 
+- **As 9 WriteToolEntry estao FORA do escopo** , retornam `WriteToolResult { id, data, snapshotBefore, snapshotAfter }`, nunca passam por `withFreshness`/`enriquecerEnvelope`. Nao recebem o envelope de leitura.
+- Hoje **47 tools de leitura** chamam `enriquecerEnvelope` (tem `_RESPOSTA`/`_DESTAQUE`); **~55 tools de leitura** so usam `withFreshness` (shape proprio sem KPI). A lista nominal exata das que faltam e levantada na Task de inventario (3.0 do plano), nao estimada.
 
-## 3. Arquitetura e fluxo
+## 3. Decisoes canonicas (dono + reviews)
 
-Tudo no servidor MCP (`mcp/lib/` + `mcp/tools/`), sem tocar o motor do agente. O fluxo de uma tool permanece `withFreshness([fatos], query) -> enriquecerEnvelope(...)`, mas:
-- o **shape de saida** passa a ser o envelope canonico unico (Zod), retornado por TODAS as tools;
-- `enriquecerEnvelope`/`calcularExtras` viram o unico ponto de montagem dos KPIs;
-- helpers novos (`titleCase`, `escopo` generico, `cobertura`/aviso-incompleto) sao chamados dentro do formatador/builder.
+1. **Paginacao 50/50 com teto de byte `[R]`:** `PAGINACAO_LIMIT_DEFAULT` 10 -> 50, MAS o limite efetivo por chamada e `min(50, cabe-em-24KB)`. Tools de **lista simples** usam 50; tools de **linha rica/detalhe** (notas, pedidos com sub-listas) usam teto menor calibrado para nao estourar o guard. `total`/`temMais`/`proximoOffset` sempre presentes; KPIs sobre o conjunto inteiro.
+2. **Envelope BASE canonico + extensao por tool `[R]`:** um `z.object` BASE (estado + `dados` com `_RESPOSTA`/`_DESTAQUE`/`_agregado`/`_PAGINACAO`/avisos opcionais + `[k]:unknown` passthrough; `atualizadoEm`/`atualizadoHa`/`fonteStatus`) que cada tool **estende** (`.extend()`/`.merge()`) declarando suas chaves de array tipadas. NAO um schema chapado unico. Migrar as ~55 read-tools sem KPI para esse padrao.
+3. **Humanizacao reusando o que existe `[R]`:**
+   - **Title Case:** ESTENDER `humanizeName` em `src/lib/agent/text-normalize.ts` (ja maduro, regressoes de sigla/codigo resolvidas, ja importado por tools) , adicionar sufixos societarios (LTDA/ME/EPP/S.A./S/A/CIA/EIRELI) e UFs ao dicionario, com testes. **NAO** criar `mcp/lib/humanize.ts` paralelo. Aplicado so a campos de nome (whitelist de chaves), idempotente, nunca em codigo/CNPJ/token com digito/sigla.
+   - **Escopo-empresa cross-dominio:** generalizar `montarEscopoEmpresa` (`_AVISO_ESCOPO`) **so para tools que JA filtram por empresa** (fiscal hoje + entregas da F1). Tool sem filtro real por empresa NAO recebe o aviso (seria mentira).
+   - **Aviso de dado incompleto (`_AVISO_INCOMPLETO`):** helper `cobertura({consideradosComDado, totalConsiderado, campo, rotulo})`; conjunto inicial de metricas explicito (onda definida no plano, ex.: margem/ROI sobre `precoCusto` null), cada uma com denominador declarado e E2E que prova o %.
+   - **Formatadores reais:** escrever `_RESPOSTA` para as tools hoje no `fmtGenerico` (completar `TOOLS_QUE_PRECISAM_FORMATADOR` ausentes no `FORMATADORES`).
+4. **Freshness>6h = telemetria server-side `[R]`:** `withFreshness` calcula staleness (>6h) e **loga no servidor** (`McpAuditLog`/console estruturado), **NAO** poe no envelope que vai ao LLM (evita o LLM comentar "dado defasado" no corpo; o stripper nao conhece esse padrao). `ultimaSyncEm=null` (fonte nunca sincronizou) => `defasado=true` (pior caso). Sem corte de comportamento.
 
-**Princípio de raiz:** mudanca de contrato (envelope) e ampla; cada onda valida com `tsc` + `jest` (o `integration.test` e a rede) e, onde a tool calcula numero, E2E contra o cache real (regra do projeto). Nenhuma tool pode regredir o numero que ja entrega.
+## 4. Envelope BASE canonico `[R]`
 
-## 4. Envelope canonico unico
+### 4.1 Estrutura
+Em `mcp/lib/envelope.ts`: manter o **tipo `ToolEnvelope`** (importado pelo `auto-validator.ts` e `responder.ts` , NAO quebrar) e adicionar:
+- `EnvelopeBaseShape` (ZodRawShape) com o nucleo discriminado por `estado` (igual ao `FreshnessEnvelope` real: `estado` externo + `dados` interno + `atualizadoEm`/`atualizadoHa`/`fonteStatus`).
+- `dados` = `z.object({ _RESPOSTA, _DESTAQUE?, _agregado?, topPorParticipante?, _PAGINACAO?, _listaTruncada?, _AVISO_TRUNCAMENTO?, _AVISO_ESCOPO?, _AVISO_INCOMPLETO?, ambiguidade?, redirecionar? }).passthrough()` , `passthrough()` preserva as chaves de array proprias de cada tool (linhas/serie/familia/marca/contas/top/produtos/locais).
+- Cada tool define `outputSchema = z.union([preparando, base.extend({ dados: dadosBase.extend({ <suas chaves de array> }) })])`. Helper `envelopePronto(dadosExtra)` para reduzir boilerplate.
+- **Compat:** as 4 tools que fazem `outputSchema.safeParse`/`.parse` (detalhar-nota/pedido/conta, bi-consulta-avancada) continuam validas porque o base e superset e `dados` e passthrough; revisar o `parse` runtime do bi-consulta-avancada.
 
-### 4.1 Shape (Zod + tipo derivado)
-Definir em `mcp/lib/envelope.ts` (substituindo o `ToolEnvelope` morto) um `z.object` canonico , a uniao discriminada por `estado` (preserva o contrato de `withFreshness` que o agente ja consome):
+### 4.2 Chaves de array unificadas `[R]` (toca o motor , reconhecido)
+Hoje 5 pontos do agente listam chaves de array fixas e **divergentes**: `guardToolResult` (run-agent), V2/V6 (auto-validator), `sanitize-tool-result`, `ARRAY_KEYS_PRIORITY` (freshness). Criar **uma constante compartilhada** `ARRAY_KEYS` (ex.: em `mcp/lib/array-keys.ts`, reexportada onde precisa) com o uniao de todas (`linhas, titulos, serie, top, topMaiores, contas, familia, marca, produtos, locais, ...`) e fazer os 5 pontos consumirem-na. Sem isso, tool migrada com chave nao-listada escapa do guard (estoura contexto) e do V6 (coerencia nunca checada) , regressao silenciosa.
 
-```
-EnvelopePreparando = { estado: "preparando" }
-EnvelopePronto = {
-  estado: "ok" | "vazio",
-  dados: {
-    _RESPOSTA: string,                  // texto humano, gerado por codigo (cap 500)
-    _DESTAQUE?: Record<string, string|number>,
-    _agregado?: Record<string, number|undefined>,
-    topPorParticipante?: {...}[],
-    linhas?: unknown[],
-    _PAGINACAO?: { total, mostrando, temMais, proximoOffset },
-    _listaTruncada?: boolean,
-    _AVISO_TRUNCAMENTO?: string,
-    _AVISO_ESCOPO?: string,             // "considerei o grupo todo" (NOVO, cross-dominio)
-    _AVISO_INCOMPLETO?: string,         // "ROI parcial: 40% sem custo" (NOVO)
-    ambiguidade?: {...},
-    redirecionar?: {...},
-    [k:string]: unknown,
-  },
-  atualizadoEm: string,
-  atualizadoHa: string,
-  fonteStatus: { status, ultimaSyncEm },
-  _staleness?: { horas: number, defasado: boolean },  // NOVO, interno (>6h)
-}
-```
+### 4.3 Teste de contrato de envelope (rede nova) `[R]`
+`integration.test` so conta tools/IDs/RBAC , NAO valida envelope. Criar um **teste de contrato** que itera o catalogo de leitura e, para cada tool, valida (com fixture mockada) que o output casa com o `EnvelopeBaseShape` e que `_RESPOSTA` nao e o `fmtGenerico` (via `ehFormatadorGenerico`). Essa e a rede que torna a migracao por dominio verificavel isoladamente.
 
-- **Fonte unica:** `buildEnvelope`/`enriquecerEnvelope` passam a produzir exatamente esse shape; `envelope.ts` exporta o `z.ZodType` para as tools reusarem no `outputSchema` (em vez de cada uma redefinir).
-- **Compat:** o shape e superset do atual (`FreshnessEnvelope` + `EnvelopeExtras`), entao tools ja conformes nao quebram; as novas chaves sao opcionais.
+## 5. Paginacao 50/50 real `[R]`
 
-### 4.2 Migracao das ~60 tools sem envelope canonico
-- Cada uma passa a chamar `enriquecerEnvelope` com `_RESPOSTA` (formatador real) + `_DESTAQUE`/`_agregado` quando aplicavel. Lista da auditoria: `cadastros/*` (varias), `financeiro/{saldo-contas,caixa-periodo,resultado-por-conta,liquidez,cobranca-bancaria}`, `estoque/{minimo-maximo,concentracao}`, `comercial/{produtos-por-margem,produtos-por-familia,pedidos-por-uf,tempo-medio-fechamento}`, varios `fiscal/*-por-*` + `dfe-*`/`mdfe`/`certificados`.
-- Paralelizavel por dominio (workflow Opus, 1 agente por dominio; o orquestrador integra barrels/índice).
+- `paginacao.ts`: `PAGINACAO_LIMIT_DEFAULT` 10 -> 50; `PAGINACAO_LIMIT_MAX` 50; **limite efetivo = `min(limitPedido ?? 50, tetoPorTool)`** onde `tetoPorTool` e calibrado para caber em ~24KB (lista simples: 50; linha rica: medir bytes/linha e fixar). Atualizar a `.describe()` do `paginacaoInputShape` (o LLM le isso no tools/list).
+- **35 testes de paginacao** `[R]`: reescrever para importar `PAGINACAO_LIMIT_DEFAULT` (nao o literal 10) e usar fixtures > 50 itens para exercer a pagina real. Listados como escopo (1 task por dominio no plano).
+- Fim do truncamento silencioso: toda tool que lista usa `resolverPaginacao` + `montarPaginacaoMeta` + expoe `_PAGINACAO`. KPIs sobre o conjunto inteiro.
+- **Reconciliacao com o guard:** se mesmo com o teto a lista exceder 24KB, o guard amostra (e seta `_amostraReduzida`); nesse caso os KPIs continuam presentes e corretos (calculados sobre o conjunto), e o V6 pula (ja e o comportamento). Criterio E2E: para cada tool de lista, 50 linhas reais NAO devem ativar `_amostraReduzida` (se ativarem, baixar o teto da tool).
 
-## 5. Paginacao 50/50 real
+## 6. Ranking `[R]`
 
-- `mcp/lib/paginacao.ts`: `PAGINACAO_LIMIT_DEFAULT` 10 -> 50 (teto 50). `montarPaginacaoMeta` ja calcula `total`/`mostrando`/`temMais`/`proximoOffset` , reusar.
-- **Fim do truncamento silencioso:** toda tool que lista passa a (a) usar `resolverPaginacao` + `montarPaginacaoMeta`, e (b) expor `_PAGINACAO` via `enriquecerEnvelope`. Tool que corta lista sem reportar `total` e bug a corrigir.
-- KPIs (`_RESPOSTA`/`_DESTAQUE`/`_agregado`/topMaiores) calculados sobre o **conjunto inteiro**, nao sobre a pagina (ja e assim nas tools que paginam; garantir nas migradas).
+- **Universal (baixo risco):** desempate estavel por `odooId` + N exato. Aplicar a toda tool de ranking/top.
+- **orderBy explicito SO onde ha ambiguidade real** (multiplos criterios). Tool de criterio unico mantem o criterio implicito documentado na descricao , NAO tornar `orderBy` obrigatorio (seria breaking change no inputSchema/tools-list e na selecao de tool do agente).
 
-## 6. Ranking com criterio explicito
+## 7. Freshness>6h , server-side (ver decisao 3.4). Sem campo no envelope ao LLM.
 
-- Tool de ranking exige `orderBy` no input (criterio semantico) e ordena com **desempate estavel** por `odooId` (molde: `comercial/pedidos-listar-top-valor.ts`).
-- "Top N" retorna exatamente N; ranking sem criterio definido e erro (a tool exige o criterio). Alinha com a classificacao de intencao da F3 (ranking).
-- Auditar as tools de ranking/top e padroniza-las ao molde.
+## 8. Baseline e verificacao do "numero identico" `[R]`
 
-## 7. Humanizacao
+- **Baseline ANTES de migrar:** harness tsx contra `nexus_odoo_l1` que serializa, por tool + args representativos, os KPIs agregados (`_DESTAQUE`/`_agregado`/`total`) num snapshot versionado.
+- **Invariante:** **KPI agregado identico** ao baseline; `linhasExibidas`/`_PAGINACAO` PODEM mudar (10->50, esperado).
+- **Para tool que GANHA KPI novo** (nao tinha _RESPOSTA): E2E **positivo** , o numero do `_DESTAQUE`/`_agregado` bate com um `SELECT` independente no cache (regra de raiz). O V6 (soma das linhas x total) e gate obrigatorio por tool migrada , e o detector de KPI-novo-incoerente.
 
-- **Title Case** (`mcp/lib/humanize.ts`, novo): `titleCase(nome)` para nomes crus do banco, com excecoes (siglas UF, "LTDA"/"S.A." preservados, preposicoes minusculas "de/da/do"). Aplicado nas candidatas/linhas/`_DESTAQUE` , nunca em codigo/CNPJ.
-- **Escopo-empresa cross-dominio** (`mcp/lib/escopo.ts`, generaliza `fiscal/_escopo-empresa.ts`): `montarEscopoEmpresa(empresaRef, resolvido)` retorna `_AVISO_ESCOPO` ("Considerei o grupo todo (todas as empresas)." / "Considerei apenas a empresa X." / "Nao encontrei a empresa X; considerei o grupo todo."). Reusado por comercial/financeiro/estoque/fiscal.
-- **Aviso de dado incompleto** (`_AVISO_INCOMPLETO`): metrica reporta cobertura (`{ considedados, total, campo }`); helper formata "ROI parcial: 40% dos produtos sem custo". So quando a cobertura < 100%.
-- **Formatadores reais:** escrever `_RESPOSTA` para as tools hoje no `fmtGenerico` (e completar `TOOLS_QUE_PRECISAM_FORMATADOR` ausentes no registry `FORMATADORES`: ex. `financeiro_saldo_contas`, `fiscal_produtos_faturados`, `estoque_concentracao`).
+## 9. Reuso vs construcao `[R]`
 
-## 8. Freshness > 6h
-
-- `withFreshness` calcula `_staleness = { horas, defasado: horas > 6 }` a partir do `fonteStatus` (pior fonte). Campo **interno** no envelope; o `freshness-stripper` do agente continua removendo freshness do TEXTO. Util para o agente sinalizar internamente / telemetria. Sem corte de comportamento.
-
-## 9. Reuso vs construcao
-
-| Reusar | Construir/estender |
+| Reusar (nao reescrever) | Construir/estender |
 |---|---|
-| `with-responder.ts::enriquecerEnvelope`/`calcularExtras` | `envelope.ts`: z.object canonico unico (substitui o morto) |
-| `paginacao.ts` (engine completa) | default 10->50; migrar ~70 tools a paginar |
-| `responder.ts` (registry de formatadores + calcs) | formatadores reais p/ tools no fmtGenerico |
-| `agrupador.ts::topPorParticipante` | `humanize.ts` (Title Case) |
-| `fiscal/_escopo-empresa.ts` | `escopo.ts` (escopo-empresa cross-dominio) |
-| `freshness.ts::withFreshness` | `_staleness` (>6h interno) |
-| `auto-validator.ts` V2/V6 (enforcement numero) | aviso de dado incompleto (`_AVISO_INCOMPLETO`) |
+| `with-responder.ts::enriquecerEnvelope`/`calcularExtras` | `envelope.ts`: `EnvelopeBaseShape` + `envelopePronto` (mantendo o tipo `ToolEnvelope`) |
+| `paginacao.ts` (engine) | default 50 + teto-por-tool por byte; atualizar `.describe()` |
+| `responder.ts` (FORMATADORES + calcs + `ehFormatadorGenerico`) | formatadores reais p/ tools no `fmtGenerico` |
+| `src/lib/agent/text-normalize.ts::humanizeName` | estender com sufixos societarios + UF (com testes) |
+| `fiscal/_escopo-empresa.ts::montarEscopoEmpresa` | generalizar so p/ tools que ja filtram empresa |
+| `agrupador.ts::topPorParticipante`; `withFreshness` | `array-keys.ts` (constante unica) + atualizar os 5 consumidores; `cobertura()` |
 
-## 10. Testes e verificacao
+## 10. Decomposicao em ondas (plano)
 
-- **TDD por helper:** `titleCase`, `escopo`, `_staleness`, builder do envelope canonico (unit com fixtures).
-- **Migracao por tool:** cada tool migrada mantem `outputSchema` valido contra o z.object canonico; `integration.test` verde (catalogo intacto).
-- **E2E contra cache real** (regra de raiz): para tools que calculam numero, conferir que o numero NAO mudou com a migracao (so ganhou envelope/humanizacao). Subconjunto via tsx contra `nexus_odoo_l1`.
-- **tsc raiz + `mcp/tsconfig.json` + jest** verdes por onda; rebuild do `mcp` da worktree `--env-file .env.local`; provar envelope no `tools/list` do container.
+1. **Fundacao (toca o motor, com cuidado):** `ARRAY_KEYS` unica + 5 consumidores; `EnvelopeBaseShape`/`envelopePronto`; teste de contrato; baseline snapshot harness.
+2. **Paginacao:** default 50 + teto-por-tool; reescrever os 35 testes; `.describe()`.
+3. **Humanizacao:** estender `humanizeName`; `escopo` cross-dominio (so onde ha filtro); `cobertura()`/`_AVISO_INCOMPLETO` (conjunto inicial).
+4. **Migracao das ~55 tools por dominio** (workflow Opus, 1 agente/dominio): cada tool -> `enriquecerEnvelope` + envelope base + formatador real + `_PAGINACAO`; E2E por tool (KPI x SELECT). Orquestrador integra barrels.
+5. **Ranking:** desempate estavel + N exato (universal); orderBy so onde ambiguo.
+6. **Verificacao final:** teste de contrato verde p/ 102 tools; E2E baseline (KPI identico); rebuild mcp; integration.test; tsc+jest.
 
 ## 11. Fora de escopo (YAGNI)
 
-- Golden dataset / evals formais -> F5.
-- Custo/latencia (token do 50/50) -> F6.
-- Telas/dashboard (Frente A) -> fora da reconstrucao do agente.
-- Reescrever o motor do agente; trocar provider de LLM.
-- Exibir freshness no corpo da resposta (regra vigente: stripper remove).
+- 9 write tools (contrato `WriteToolResult` intacto).
+- Golden/evals -> F5. Custo/latencia do 50/50 -> F6 (mas o teto-por-byte da F4 ja mitiga o pior caso).
+- `_AVISO_ESCOPO` em tools sem filtro por empresa (dependem da F1; nao mentir).
+- Telas/dashboard (Frente A). Reescrever o motor do agente alem da unificacao de `ARRAY_KEYS`.
+- Exibir freshness/staleness no corpo (regra vigente).
 
 ## 12. Criterios de sucesso
 
-- Um unico envelope canonico (Zod) retornado por TODAS as tools; 0 tools no shape divergente; `envelope.ts` deixa de ser "de papel".
-- Paginacao 50/50 real em toda tool que lista; `total`/`temMais` sempre presentes; fim do truncamento silencioso.
-- Ranking exige criterio explicito + desempate estavel.
-- Humanizacao: nomes em Title Case; "considerei o grupo todo" em todos os dominios; avisos de dado incompleto onde a cobertura < 100%; nenhum `_RESPOSTA` cair no generico fraco.
-- Freshness>6h sinalizado internamente, sem vazar no texto.
-- Numero identico ao atual (so apresentacao muda): E2E contra dado real prova que nenhuma metrica regrediu.
+- Envelope BASE canonico (Zod) que TODA tool de leitura estende; teste de contrato verde p/ 102 tools; `ToolEnvelope` (tipo) preservado.
+- `ARRAY_KEYS` unica consumida pelos 5 pontos do agente; nenhuma chave de array de tool migrada escapa de guard/V2/V6/sanitize/freshness.
+- Paginacao 50/50 com teto-por-byte; 50 linhas reais nao ativam `_amostraReduzida`; `total`/`temMais` sempre; 35 testes reescritos (constante importada).
+- Humanizacao reusando `humanizeName` estendido; `_AVISO_ESCOPO` so onde ha filtro; `_AVISO_INCOMPLETO` com denominador comprovado por E2E; nenhum `_RESPOSTA` no generico fraco.
+- Freshness>6h logado server-side; NAO vaza no texto.
+- **KPI agregado identico ao baseline** (snapshot); KPI novo comprovado por `SELECT` (V6 gate). `linhasExibidas` pode mudar 10->50.
