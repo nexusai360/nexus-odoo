@@ -414,12 +414,105 @@ const fmtMinimoMaximo: FormatadorCanonico = (env) => {
   return `${n} parametros de minimo/maximo cadastrados.`;
 };
 
+// F4 Onda 4 (financeiro)
+// Os 4 handlers custom abaixo passam a delegar o _RESPOSTA a estes formatadores
+// (fonte unica): o handler computa _DESTAQUE full-set e chama enriquecerEnvelope.
+const fmtSaldoContas: FormatadorCanonico = (env) => {
+  const d = env._DESTAQUE ?? {};
+  const saldoTotal = Number(d.saldoTotal ?? 0);
+  const totalContas = Number(d.totalContas ?? 0);
+  return `Saldo geral: ${formatBRL(saldoTotal)} em ${totalContas} contas/bancos.`;
+};
+
+const fmtCaixaPeriodo: FormatadorCanonico = (env) => {
+  const d = env._DESTAQUE ?? {};
+  const entrada = Number(d.entradaTotal ?? 0);
+  const saida = Number(d.saidaTotal ?? 0);
+  const saldo = Number(d.saldo ?? 0);
+  if (entrada === 0 && saida === 0) return "Nao ha movimentacao de caixa no periodo.";
+  return `Caixa do periodo: entradas ${formatBRL(entrada)}, saidas ${formatBRL(saida)}, saldo ${formatBRL(saldo)}.`;
+};
+
+const fmtLiquidez: FormatadorCanonico = (env) => {
+  const d = env._DESTAQUE ?? {};
+  const saldo = Number(d.saldoEmCaixa ?? 0);
+  const aReceber = Number(d.contasAReceber ?? 0);
+  const aPagar = Number(d.contasAPagar ?? 0);
+  const imediata = Number(d.liquidezImediata ?? 0);
+  const corrente = Number(d.liquidezCorrente ?? 0);
+  const status = String(d.status ?? "critico");
+  const statusLabel =
+    status === "saudavel" ? "saudavel" : status === "atencao" ? "em atencao" : "em situacao critica";
+  const fmtRatio = (n: number) => n.toFixed(2);
+  return (
+    `Liquidez ${statusLabel}: imediata ${fmtRatio(imediata)} ` +
+    `(saldo ${formatBRL(saldo)} / a pagar ${formatBRL(aPagar)}), ` +
+    `corrente ${fmtRatio(corrente)} ` +
+    `(saldo + a receber ${formatBRL(saldo + aReceber)} / a pagar ${formatBRL(aPagar)}).`
+  );
+};
+
+const fmtResultadoPorConta: FormatadorCanonico = (env) => {
+  const d = env._DESTAQUE ?? {};
+  const rec = Number(d.totalReceita ?? 0);
+  const desp = Number(d.totalDespesa ?? 0);
+  const res = Number(d.resultado ?? 0);
+  let tail = "";
+  if (d.contaTopNatureza !== undefined) {
+    const nome = d.contaTop ? String(d.contaTop) : "(sem conta)";
+    tail = ` Maior: ${nome} (${String(d.contaTopNatureza)}, ${formatBRL(Number(d.valorContaTop ?? 0))}).`;
+  }
+  return `Resultado gerencial: receita ${formatBRL(rec)}, despesa ${formatBRL(desp)}, resultado ${formatBRL(res)}.${tail}`;
+};
+
+// F4 Onda 4 (financeiro , cobranca bancaria / honest data-driven)
+// O handler (factory makeTool em cobranca-bancaria.ts) ja constroi o _RESPOSTA
+// real data-driven (resumoOk/naoOperado). Estes formadores espelham a contagem
+// para satisfazer o contrato de formador real (allowlist == genericas).
+function fmtContagemSimples(
+  resumoOk: (n: number) => string,
+  naoOperado: string,
+): FormatadorCanonico {
+  return (env) => {
+    const n = Number(env._agregado?.contagem ?? env._DESTAQUE?.contagem ?? 0);
+    return n > 0 ? resumoOk(n) : naoOperado;
+  };
+}
+
 const FORMATADORES: Record<string, FormatadorCanonico> = {
   // financeiro
   financeiro_contas_a_receber: fmtContasAReceber,
   financeiro_contas_a_pagar: fmtContasAPagar,
   financeiro_titulos_vencidos: fmtTitulosVencidos,
   financeiro_fluxo_caixa: fmtFluxoCaixa,
+  financeiro_saldo_contas: fmtSaldoContas,
+  financeiro_caixa_periodo: fmtCaixaPeriodo,
+  financeiro_liquidez: fmtLiquidez,
+  financeiro_resultado_por_conta: fmtResultadoPorConta,
+  financeiro_baixas_cobranca: fmtContagemSimples(
+    (n) => `${n} baixas de cobranca no periodo.`,
+    "A cobranca bancaria (baixas/retornos) ainda nao tem itens processados no Odoo.",
+  ),
+  financeiro_retornos_processados: fmtContagemSimples(
+    (n) => `${n} retornos bancarios no periodo.`,
+    "Nao ha retornos bancarios processados no Odoo ainda.",
+  ),
+  financeiro_remessas_geradas: fmtContagemSimples(
+    (n) => `${n} remessas bancarias no periodo.`,
+    "Nao ha remessas bancarias geradas no Odoo ainda.",
+  ),
+  financeiro_carteiras_cobranca: fmtContagemSimples(
+    (n) => `${n} carteiras de cobranca cadastradas.`,
+    "Nao ha carteiras de cobranca cadastradas no Odoo ainda.",
+  ),
+  financeiro_cheques: fmtContagemSimples(
+    (n) => `${n} cheques no periodo.`,
+    "O controle de cheques ainda nao e operado no Odoo da Matrix (sem cheques).",
+  ),
+  financeiro_pix_recebidos: fmtContagemSimples(
+    (n) => `${n} registros de PIX no periodo.`,
+    "O PIX ainda nao e operado no Odoo da Matrix (sem registros de PIX).",
+  ),
   // fiscal
   fiscal_faturamento_periodo: fmtFaturamentoPeriodo,
   fiscal_faturamento_por_cliente: fmtFaturamentoPorCliente,
@@ -469,6 +562,14 @@ export const TOOLS_QUE_PRECISAM_FORMATADOR: string[] = [
   "financeiro_fluxo_caixa",
   "financeiro_saldo_contas",
   "financeiro_caixa_periodo",
+  "financeiro_liquidez",
+  "financeiro_resultado_por_conta",
+  "financeiro_baixas_cobranca",
+  "financeiro_retornos_processados",
+  "financeiro_remessas_geradas",
+  "financeiro_carteiras_cobranca",
+  "financeiro_cheques",
+  "financeiro_pix_recebidos",
   // fiscal
   "fiscal_faturamento_periodo",
   "fiscal_faturamento_por_cliente",
@@ -517,17 +618,6 @@ export const TOOLS_QUE_PRECISAM_FORMATADOR: string[] = [
  * (102 read tools, 29 com formatador real, 73 genericas) em 2026-06-07.
  */
 export const TOOLS_SEM_FORMATADOR_REAL: string[] = [
-  // financeiro
-  "financeiro_saldo_contas",
-  "financeiro_caixa_periodo",
-  "financeiro_liquidez",
-  "financeiro_resultado_por_conta",
-  "financeiro_baixas_cobranca",
-  "financeiro_retornos_processados",
-  "financeiro_remessas_geradas",
-  "financeiro_carteiras_cobranca",
-  "financeiro_cheques",
-  "financeiro_pix_recebidos",
   // preco / referencia / servico
   "preco_produto",
   "preco_tabela",

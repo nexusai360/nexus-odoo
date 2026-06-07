@@ -248,6 +248,38 @@
       "numArmazens": 9
     }
   },
+  "financeiro_baixas_cobranca": {
+    "estado": "ok",
+    "_agregado": {
+      "contagem": 42
+    },
+    "total": 42
+  },
+  "financeiro_caixa_periodo": {
+    "estado": "ok",
+    "_DESTAQUE": {
+      "entradaTotal": 31883549.31,
+      "saidaTotal": 108095295.34,
+      "saldo": -76211746.03
+    },
+    "_agregado": {
+      "soma": -76211746.03
+    }
+  },
+  "financeiro_carteiras_cobranca": {
+    "estado": "ok",
+    "_agregado": {
+      "contagem": 11
+    },
+    "total": 11
+  },
+  "financeiro_cheques": {
+    "estado": "vazio",
+    "_agregado": {
+      "contagem": 0
+    },
+    "total": 0
+  },
   "financeiro_contas_a_pagar": {
     "estado": "ok",
     "_DESTAQUE": {
@@ -388,6 +420,66 @@
     "_agregado": {
       "soma": -59801375,
       "contagem": 36
+    }
+  },
+  "financeiro_liquidez": {
+    "estado": "ok",
+    "_DESTAQUE": {
+      "saldoEmCaixa": -36233316.36,
+      "contasAReceber": 60465592.55,
+      "contasAPagar": 393910454.88,
+      "liquidezImediata": -0.09,
+      "liquidezCorrente": 0.06,
+      "status": "critico"
+    },
+    "_agregado": {
+      "soma": -369678178.69
+    }
+  },
+  "financeiro_pix_recebidos": {
+    "estado": "vazio",
+    "_agregado": {
+      "contagem": 0
+    },
+    "total": 0
+  },
+  "financeiro_remessas_geradas": {
+    "estado": "ok",
+    "_agregado": {
+      "contagem": 7
+    },
+    "total": 7
+  },
+  "financeiro_resultado_por_conta": {
+    "estado": "ok",
+    "_DESTAQUE": {
+      "totalReceita": 86070687.96,
+      "totalDespesa": 365938820.03,
+      "resultado": -279868132.07,
+      "contaTop": "2.1.1 - Compra de mercadoria para revenda",
+      "contaTopNatureza": "despesa",
+      "valorContaTop": 350284774.48
+    },
+    "_agregado": {
+      "soma": -279868132.07
+    }
+  },
+  "financeiro_retornos_processados": {
+    "estado": "ok",
+    "_agregado": {
+      "contagem": 8
+    },
+    "total": 8
+  },
+  "financeiro_saldo_contas": {
+    "estado": "ok",
+    "_DESTAQUE": {
+      "saldoTotal": -36233316.36,
+      "totalContas": 9
+    },
+    "_agregado": {
+      "soma": -36233316.36,
+      "contagem": 9
     }
   },
   "financeiro_titulos_vencidos": {

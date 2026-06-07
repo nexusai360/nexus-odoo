@@ -4,6 +4,7 @@ import { z } from "zod";
 import type { ToolEntry } from "../../catalog/types.js";
 import { queryCaixaPeriodo } from "@/lib/reports/queries/financeiro.js";
 import { withFreshness } from "../../lib/freshness.js";
+import { enriquecerEnvelope } from "../../lib/with-responder.js";
 
 const inputSchema = z.object({
   periodoDe: z.string().optional(),
@@ -15,6 +16,7 @@ const dados = z.object({
   saida: z.number(),
   saldo: z.number(),
   _RESPOSTA: z.string().optional(),
+  _listaTruncada: z.boolean().optional(),
   _DESTAQUE: z.record(z.string(), z.union([z.string(), z.number()])).optional(),
   _agregado: z.record(z.string(), z.number().optional()).optional(),
 });
@@ -57,19 +59,10 @@ export const financeiroCaixaPeriodo: ToolEntry<Input, Output> = {
     );
     if (envelope.estado === "preparando") return envelope;
     const d = envelope.dados;
-    const fmt = (n: number) => n.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
-    const resposta =
-      d.entrada === 0 && d.saida === 0
-        ? "Nao ha movimentacao de caixa no periodo."
-        : `Caixa do periodo: entradas ${fmt(d.entrada)}, saidas ${fmt(d.saida)}, saldo ${fmt(d.saldo)}.`;
-    return {
-      ...envelope,
-      dados: {
-        ...d,
-        _RESPOSTA: resposta,
-        _DESTAQUE: { entradaTotal: d.entrada, saidaTotal: d.saida, saldo: d.saldo },
-        _agregado: { soma: d.saldo },
-      },
-    };
+    // _RESPOSTA delegado ao formatador canonico (fmtCaixaPeriodo em responder.ts).
+    return enriquecerEnvelope(envelope, "financeiro_caixa_periodo", {
+      destaque: { entradaTotal: d.entrada, saidaTotal: d.saida, saldo: d.saldo },
+      agregado: { soma: d.saldo },
+    });
   },
 };
