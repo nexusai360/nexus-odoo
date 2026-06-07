@@ -93,10 +93,34 @@ async function queryFaturamentoPorUf(prisma: PrismaClient, input: Input, empresa
     quantidadeNotas: Number(r.quantidade),
     valorTotal: Number(r.valor),
   }));
-  const totalGeral = linhas.reduce((s, l) => s + l.valorTotal, 0);
-  const totalNotas = linhas.reduce((s, l) => s + l.quantidadeNotas, 0);
-  const notasSemUf = linhas.filter((l) => l.uf === null).reduce((s, l) => s + l.quantidadeNotas, 0);
-  const totalUfs = linhas.filter((l) => l.uf !== null).length;
+
+  // KPIs FULL-SET: agregados sobre TODO o recorte (sem LIMIT). A soma de
+  // `linhas` cobriria so a pagina e subnotificaria quando ha mais UFs que o
+  // limite (classe d987060). COUNT(DISTINCT p.uf) ignora NULL = UFs reais;
+  // notasSemUf via FILTER.
+  const empTot = buildEmpresaSqlFragment(empresaId, "nf", 3);
+  const totalRows = await prisma.$queryRawUnsafe<
+    Array<{ geral: string | number; notas: bigint; ufs: bigint; semuf: bigint }>
+  >(
+    `SELECT COALESCE(SUM(nf.vr_nf), 0)::text AS geral,
+            COUNT(*)::bigint AS notas,
+            COUNT(DISTINCT p.uf)::bigint AS ufs,
+            COUNT(*) FILTER (WHERE p.uf IS NULL)::bigint AS semuf
+     FROM fato_nota_fiscal nf
+     LEFT JOIN fato_parceiro p ON p.odoo_id = nf.participante_id
+     WHERE nf.entrada_saida = '1'
+       AND nf.situacao_nfe = 'autorizada'
+       AND nf.data_emissao >= $1::timestamp
+       AND nf.data_emissao <= $2::timestamp
+       ${empTot.sql}`,
+    `${periodoDe}T00:00:00`,
+    `${periodoAte}T23:59:59`,
+    ...empTot.params,
+  );
+  const totalGeral = Number(totalRows[0]?.geral ?? 0);
+  const totalNotas = Number(totalRows[0]?.notas ?? 0);
+  const totalUfs = Number(totalRows[0]?.ufs ?? 0);
+  const notasSemUf = Number(totalRows[0]?.semuf ?? 0);
   return { linhas, totalGeral, totalNotas, totalUfs, notasSemUf };
 }
 

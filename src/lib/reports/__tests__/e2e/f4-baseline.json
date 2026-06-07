@@ -954,6 +954,20 @@
       "contagem": 12
     }
   },
+  "fiscal_faturamento_por_marca": {
+    "estado": "ok",
+    "_DESTAQUE": {
+      "totalGeral": 11394882.54,
+      "totalMarcas": 19,
+      "totalItens": 778,
+      "topMarca": "MATRIX",
+      "valorTopMarca": 8940763.23
+    },
+    "_agregado": {
+      "contagem": 19,
+      "soma": 11394882.54
+    }
+  },
   "fiscal_faturamento_por_operacao": {
     "estado": "ok",
     "_DESTAQUE": {
@@ -965,6 +979,21 @@
       "contagem": 79
     },
     "total": 79
+  },
+  "fiscal_faturamento_por_uf": {
+    "estado": "ok",
+    "_DESTAQUE": {
+      "totalGeral": 7158866.43,
+      "totalNotas": 430,
+      "totalUfs": 18,
+      "notasSemUf": 80,
+      "topUf": "São Paulo (BR)",
+      "valorTopUf": 859596.5
+    },
+    "_agregado": {
+      "contagem": 430,
+      "soma": 7158866.43
+    }
   },
   "fiscal_faturamento_recebido": {
     "estado": "ok",

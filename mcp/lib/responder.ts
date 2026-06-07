@@ -1426,6 +1426,42 @@ const fmtAuditoriaRegras: FormatadorCanonico = (env) => {
   return texto;
 };
 
+// === F4 Onda 4 (fiscal page-scoped corrigidos , handler agora agrega full-set) ===
+const fmtFiscalFaturamentoPorMarca: FormatadorCanonico = (env) => {
+  const d = env._DESTAQUE ?? {};
+  const totalGeral = Number(d.totalGeral ?? env._agregado?.soma ?? 0);
+  const totalMarcas = Number(d.totalMarcas ?? env._agregado?.contagem ?? 0);
+  const topMarca = String(d.topMarca ?? "");
+  const valorTopMarca = Number(d.valorTopMarca ?? 0);
+
+  if (totalMarcas === 0 || (totalGeral === 0 && !topMarca)) {
+    return "Nao ha faturamento por marca no periodo.";
+  }
+
+  const marcaLabel = topMarca ? humanizeName(topMarca) : "(sem marca)";
+  return `Faturamento por marca: total ${formatBRL(totalGeral)} em ${totalMarcas} marcas. Top: ${marcaLabel} ${formatBRL(valorTopMarca)}.`;
+};
+
+const fmtFiscalFaturamentoPorUf: FormatadorCanonico = (env) => {
+  const totalGeral = Number(env._DESTAQUE?.totalGeral ?? env._agregado?.soma ?? 0);
+  const totalNotas = Number(env._DESTAQUE?.totalNotas ?? env._agregado?.contagem ?? 0);
+  const totalUfs = Number(env._DESTAQUE?.totalUfs ?? 0);
+  const notasSemUf = Number(env._DESTAQUE?.notasSemUf ?? 0);
+  const topUfRaw = env._DESTAQUE?.topUf ? String(env._DESTAQUE.topUf) : "";
+  const valorTopUf = Number(env._DESTAQUE?.valorTopUf ?? 0);
+
+  if (totalNotas === 0 && totalGeral === 0) {
+    return "Nao ha faturamento no periodo.";
+  }
+
+  const semUfStr = notasSemUf > 0 ? `, mais ${notasSemUf} notas sem UF` : "";
+  const topStr = topUfRaw
+    ? ` Top: ${humanizeName(topUfRaw)} com ${formatBRL(valorTopUf)}.`
+    : "";
+
+  return `Faturamento por UF: ${formatBRL(totalGeral)} em ${totalNotas} notas, ${totalUfs} UFs identificadas${semUfStr}.${topStr}`;
+};
+
 const FORMATADORES: Record<string, FormatadorCanonico> = {
   // financeiro
   financeiro_contas_a_receber: fmtContasAReceber,
@@ -1483,6 +1519,8 @@ const FORMATADORES: Record<string, FormatadorCanonico> = {
   "fiscal_faturamento_nao_autorizado": fmtFaturamentoNaoAutorizado,
   "fiscal_faturamento_recebido": fmtFaturamentoRecebido,
   "fiscal_detalhar_nota": fmtFiscalDetalharNota,
+  "fiscal_faturamento_por_marca": fmtFiscalFaturamentoPorMarca,
+  "fiscal_faturamento_por_uf": fmtFiscalFaturamentoPorUf,
   // preco / servico / cadastros / contabil / status (Onda 4 resto)
   "preco_contar_regras": fmtPrecoContarRegras,
   "servico_contar": fmtServicoContar,
@@ -1650,8 +1688,6 @@ export const TOOLS_SEM_FORMATADOR_REAL: string[] = [
   // (b) page-scoped (KPI somava a pagina, classe d987060):
   "fiscal_carta_correcao",
   "fiscal_certificados",
-  "fiscal_faturamento_por_marca",
-  "fiscal_faturamento_por_uf",
   "fiscal_mdfe_manifestos",
   "contabil_saldo_conta",
   "contabil_movimento_conta",
