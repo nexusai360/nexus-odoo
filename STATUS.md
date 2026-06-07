@@ -14,7 +14,7 @@ bugs sozinho e mergeando para `main`.
 - **F1 Métricas Canônicas** , MERGED (PR #58): faturamento canônico + corte por empresa.
 - **F2 Entidades / Desambiguação** , MERGED (PR #59): 9 resolvedores + 4 tools de detalhe + `documentoDigits`. E2E 31/31 contra cache real.
 - **F3 Cérebro de Orquestração** , MERGED (PR #60): tool retrieval por embedding, classificação de intenção, verificador V6/V7, "Fora do Catálogo" (ex-"Caminho 3"). Tudo em **shadow** (não altera produção até ativar `routerToolRetrieval=active`). recall@K 100%. Itens para ativar em `docs/RADAR.md` (F3 R1/R2).
-- **F4 Apresentação** , EM ANDAMENTO: envelope canônico único, paginação 50/50, ranking com critério, humanização, freshness>6h interno. Ver `docs/superpowers/plans/2026-06-07-f4-PROGRESSO.md`.
+- **F4 Apresentação** , PLANEJADA + Onda 1.1 feita: spec v3 + plan v3 (pós 2+2 reviews adversariais), inventário das 53 tools a migrar, `mcp/lib/array-keys.ts` (aditivo). Execução Onda 1.2+ (rewire dos 6 consumidores de chaves de array, envelope base, migração das tools) na próxima sessão. Ver `docs/superpowers/plans/2026-06-07-f4-PROGRESSO.md` (seção "PRÓXIMA SESSÃO"). Script `agente handoff` agora dá Enter automático na mensagem de continuidade.
 - **F5 Evals/Golden** e **F6 Custo/Latência** , pendentes.
 
 Estado técnico: tsc raiz+mcp limpos, ~2676 testes jest verdes. Migrations sempre

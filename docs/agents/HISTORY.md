@@ -292,3 +292,4 @@
 2026-06-06 scope=handoff summary=Troca de sessao. F1 (faturamento+empresa) em producao (PR#58). F2 (entidades): Blocos A+B completos (helpers + 8 resolvedores, 206 testes), proximo Bloco C (migration documentoDigits). Heartbeat 15min virou LEI GLOBAL (~/.claude/CLAUDE.md via ai-instructions/master.md + sync). Workflows Opus + skills documentados.
 2026-06-07T03:02:00Z scope=f2 summary=resolucao de entidades fechada (9 resolvedores + parceiro + 4 tools detalhe + migration documentoDigits); E2E 31/31 dado real; PR #59 aberto p/ main
 2026-06-07T07:39:01Z scope=f3 summary=Cerebro de Orquestracao fechado (retrieval+intencao+verificador V6/V7+Fora do Catalogo); shadow; recall@K 100%; 2674 jest; PR #60 aberto p/ main
+2026-06-07T08:23:20Z scope=f4 summary=F4 Apresentacao planejada (spec v3 + plan v3 pos 2+2 reviews adversariais) + Onda 1.1 (array-keys.ts) + handoff script com Enter automatico; execucao Onda 1.2+ na proxima sessao
