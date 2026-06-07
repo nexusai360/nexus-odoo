@@ -413,6 +413,7 @@
     "total": 0
   },
   "crm_status_dominio": {},
+  "crm.res_partner.get": {},
   "estoque_concentracao": {
     "estado": "ok",
     "_DESTAQUE": {
@@ -842,6 +843,31 @@
     },
     "total": 8
   },
+  "fiscal_carta_correcao": {
+    "estado": "ok",
+    "_DESTAQUE": {
+      "totalCartas": 12,
+      "totalDocumentos": 11
+    },
+    "_agregado": {
+      "contagem": 12
+    },
+    "total": 12
+  },
+  "fiscal_certificados": {
+    "estado": "ok",
+    "_DESTAQUE": {
+      "totalCertificados": 11,
+      "vencidos": 0,
+      "vence30Dias": 4,
+      "proximoProprietario": "JDS COMERCIO DE PRODUTOS E EQUIPAMENTOS ESPORTIVO",
+      "proximoVencimento": "2026-06-12"
+    },
+    "_agregado": {
+      "contagem": 11
+    },
+    "total": 11
+  },
   "fiscal_contar_notas": {
     "estado": "ok",
     "_DESTAQUE": {
@@ -1031,6 +1057,18 @@
       "contagem": 49426,
       "soma": 384515366.69
     }
+  },
+  "fiscal_mdfe_manifestos": {
+    "estado": "vazio",
+    "_DESTAQUE": {
+      "totalMdfe": 0,
+      "valorNotas": 0
+    },
+    "_agregado": {
+      "contagem": 0,
+      "soma": 0
+    },
+    "total": 0
   },
   "fiscal_notas_emitidas": {
     "estado": "ok",

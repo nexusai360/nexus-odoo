@@ -56,6 +56,7 @@ const ARGS: Record<string, Record<string, unknown>> = {
   preco_tabela: { tabelaId: 7 },
   referencia_buscar: { tabela: "cfop", termo: "venda" },
   servico_buscar: { termo: "transporte" },
+  "crm.res_partner.get": { id: 1 },
 };
 
 // Chaves de KPI agregado, invariantes a paginacao. Tudo o resto (linhas,

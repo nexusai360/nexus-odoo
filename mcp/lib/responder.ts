@@ -1621,6 +1621,102 @@ const fmtServicoListar: FormatadorCanonico = (env) => {
   return `${total} ${plural} no catalogo fiscal.`;
 };
 
+// === F4 Onda 4 (ultimos 4: certificados/carta_correcao enriquecidos no handler;
+//     mdfe espelho; crm.res_partner.get formatador minimo p/ contrato) ===
+const fmtFiscalCertificados: FormatadorCanonico = (env) => {
+  const d = env._DESTAQUE ?? {};
+  const total = Number(d.totalCertificados ?? env._agregado?.contagem ?? 0);
+  if (total === 0) {
+    return "Nenhum certificado digital cadastrado no Odoo da Matrix.";
+  }
+  const vencidos = Number(d.vencidos ?? 0);
+  const vence30 = Number(d.vence30Dias ?? 0);
+  const certPlural = total === 1 ? "certificado digital cadastrado" : "certificados digitais cadastrados";
+  const partes: string[] = [`${total} ${certPlural}.`];
+  if (vencidos > 0) {
+    partes.push(vencidos === 1 ? "1 ja vencido." : `${vencidos} ja vencidos.`);
+  }
+  if (vence30 > 0) {
+    partes.push(vence30 === 1 ? "1 vence nos proximos 30 dias." : `${vence30} vencem nos proximos 30 dias.`);
+  }
+  if (vencidos === 0 && vence30 === 0) {
+    partes.push("Nenhum vencido nem proximo de vencer.");
+  }
+  const prox = d.proximoProprietario !== undefined ? humanizeName(String(d.proximoProprietario)) : "";
+  const proxVenc = d.proximoVencimento !== undefined ? String(d.proximoVencimento) : "";
+  if (prox && proxVenc) {
+    partes.push(`Proximo a vencer: ${prox} em ${proxVenc}.`);
+  } else if (proxVenc) {
+    partes.push(`Proximo vencimento em ${proxVenc}.`);
+  }
+  return partes.join(" ");
+};
+
+const fmtFiscalCartaCorrecao: FormatadorCanonico = (env) => {
+  const d = env._DESTAQUE ?? {};
+  const total = Number(d.totalCartas ?? env._agregado?.contagem ?? 0);
+  if (total === 0) {
+    return d.documentoId !== undefined
+      ? `Nenhuma carta de correcao para o documento ${Number(d.documentoId)}.`
+      : "Nenhuma carta de correcao registrada.";
+  }
+  const totalDocs = Number(d.totalDocumentos ?? 0);
+  const cartaPlural = total === 1 ? "carta de correcao" : "cartas de correcao";
+  if (d.documentoId !== undefined) {
+    return `${total} ${cartaPlural} para o documento ${Number(d.documentoId)}.`;
+  }
+  const docTxt = totalDocs > 0 ? ` em ${totalDocs} ${totalDocs === 1 ? "documento" : "documentos"}` : "";
+  return `${total} ${cartaPlural} registradas${docTxt}.`;
+};
+
+const fmtMdfeManifestos: FormatadorCanonico = (env) => {
+  // Espelho: o handler (mcp/tools/fiscal/mdfe-manifestos.ts) ja monta _RESPOSTA
+  // inline. fato_mdfe vazio hoje (nao operado); totalMdfe e full-set.
+  const dest = (env._DESTAQUE ?? {}) as Record<string, string | number>;
+  const totalMdfe = Number(dest.totalMdfe ?? env._agregado?.contagem ?? 0);
+  const valorNotas = Number(dest.valorNotas ?? env._agregado?.soma ?? 0);
+  if (totalMdfe === 0) {
+    return (
+      "O MDF-e (manifesto de transporte) ainda nao e operado no Odoo da Matrix (sem manifestos). " +
+      "Esta consulta passa a responder quando os MDF-e forem emitidos no ERP."
+    );
+  }
+  return `${totalMdfe} MDF-e no periodo, valor das notas ${formatBRL(valorNotas)}.`;
+};
+
+const fmtCrmResPartnerGet: FormatadorCanonico = (env) => {
+  // crm.res_partner.get NAO usa o envelope canonico: retorna { found, record }
+  // cru. Tratamos env como esse output via cast. Campos textuais vazios do Odoo
+  // chegam como o booleano false.
+  const out = env as unknown as {
+    found?: boolean;
+    record?: { odooId?: number; data?: Record<string, unknown> } | null;
+  };
+  if (!out || out.found !== true || !out.record) {
+    return "Nenhum parceiro encontrado no cache com esse ID.";
+  }
+  const data = (out.record.data ?? {}) as Record<string, unknown>;
+  const txt = (v: unknown): string => (v === false || v === null || v === undefined ? "" : String(v).trim());
+  const id = out.record.odooId;
+  const nomeBruto = txt(data["name"]);
+  const nome = nomeBruto ? humanizeName(nomeBruto) : "(sem nome)";
+  const rotulo = data["is_company"] === true ? "Empresa" : "Pessoa/contato";
+  const partes: string[] = [`${rotulo}: ${nome} (ID ${id}).`];
+  const detalhes: string[] = [];
+  const vat = txt(data["vat"]);
+  if (vat) detalhes.push(`CNPJ/CPF ${vat}`);
+  const email = txt(data["email"]);
+  if (email) detalhes.push(`e-mail ${email}`);
+  const phone = txt(data["phone"]);
+  if (phone) detalhes.push(`telefone ${phone}`);
+  const city = txt(data["city"]);
+  if (city) detalhes.push(`cidade ${city}`);
+  if (detalhes.length > 0) {
+    partes.push(`Dados: ${detalhes.join(", ")}.`);
+  }
+  return partes.join(" ");
+};
+
 const FORMATADORES: Record<string, FormatadorCanonico> = {
   // financeiro
   financeiro_contas_a_receber: fmtContasAReceber,
@@ -1680,6 +1776,10 @@ const FORMATADORES: Record<string, FormatadorCanonico> = {
   "fiscal_detalhar_nota": fmtFiscalDetalharNota,
   "fiscal_faturamento_por_marca": fmtFiscalFaturamentoPorMarca,
   "fiscal_faturamento_por_uf": fmtFiscalFaturamentoPorUf,
+  "fiscal_certificados": fmtFiscalCertificados,
+  "fiscal_carta_correcao": fmtFiscalCartaCorrecao,
+  "fiscal_mdfe_manifestos": fmtMdfeManifestos,
+  "crm.res_partner.get": fmtCrmResPartnerGet,
   // preco / servico / cadastros / contabil / status (Onda 4 resto)
   "preco_produto": fmtPrecoProduto,
   "preco_tabela": fmtPrecoTabela,
@@ -1843,12 +1943,9 @@ export const TOOLS_QUE_PRECISAM_FORMATADOR: string[] = [
  * (102 read tools, 29 com formatador real, 73 genericas) em 2026-06-07.
  */
 export const TOOLS_SEM_FORMATADOR_REAL: string[] = [
-  // RESTAM 13 read-tools , precisam de fix de handler antes de migrar:
-  "crm.res_partner.get",
-  // page-scoped / sem-enrich (precisam fix de handler antes de migrar):
-  "fiscal_carta_correcao",
-  "fiscal_certificados",
-  "fiscal_mdfe_manifestos",
+  // F4 Onda 4 COMPLETA: todas as read-tools tem formatador real (allowlist == []).
+  // O teste de contrato exige allowlist == read-tools genericas; nao ha mais
+  // nenhuma generica (so write-tools ficam fora do registry de formatadores).
 ];
 
 export function formatadorPorTool(toolName: string): FormatadorCanonico {

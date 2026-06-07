@@ -7,7 +7,7 @@ function makePrisma() {
   return {
     fatoBuildState: { findMany: jest.fn() },
     syncState: { findMany: jest.fn() },
-    fatoCertificado: { findMany: jest.fn(), count: jest.fn() },
+    fatoCertificado: { findMany: jest.fn(), count: jest.fn(), findFirst: jest.fn() },
   };
 }
 
