@@ -22,12 +22,14 @@
   - [x] 3a.1a embedding-text estrutura + check cobertura piso 25 (d8b2da5). Descoberta: 102 read-tools, menor descricao 32 chars.
   - [x] 3a.1b triggers curados (workflow wa46iq9bv, 92 read-tools) integrados em mcp/catalog/tool-triggers.data.ts (84a873a). embedding-text re-exporta. fix fiscal_apuracao.
   - [x] 3a.3/3a.4/3a.5/3a.8a modulos puros (e56e830): types (RetrievalTool/ToolRetrievalResult), embed-tools (cache processo, import ../rag/embed + ./constants), pick-tools (top-K+nucleo, floor por getToolDomain), retrieval-rank (rankOf). 12 testes verdes.
-  - [ ] 3a.2 publicar embeddingText capado (descricao + ate 3 triggers, 400 chars) na description em mcp/server.ts (~181: mcpServer.tool(tool.id, ...)) + teste integration. capDescription helper.
-  - [ ] 3a.6 migration AgentRouterDecision (retrievalOfferedTools String[], retrievalScores Json?, chosenToolRank Int?) MANUAL migrate deploy + estender CreateDecisionInput/UpdateDecisionInput em log-decision.ts.
-  - [ ] 3a.7 camada C no filter-catalog (input toolRetrieval?: {picked: Set}; filtra apos RBAC B).
-  - [ ] 3a.8b fiar retrieval shadow no run-agent (~465-577): embedQuestion().vector + getToolVectors(mcpToolsProprias) + pickTools; shadow loga offered/scores no createDecision; active passa toolRetrieval ao filterCatalog. 3a.8c: chosenToolRank=rankOf(toolUsada, offered) no updateDecision ~1131.
-  - NOTA run-agent: re-confirmar ancoras por grep. routerToolRetrieval lido de settingsRow. So mcpTools proprias entram em getToolVectors (externas via floor).
-- proxima onda: 3b (classify-intent, apply-intent-args, V6/V7 no auto-validator), 3c (rename fora-do-catalogo + Fora de Escopo/gap), Verificacao (mini-oraculo, recall@K, rebuild).
+  - [x] 3a.2 descriptionForRetrieval capado 400 chars publicado no tools/list (c42bf4b).
+  - [x] 3a.6 migration AgentRouterDecision (offered/scores/rank) + log-decision estendido (9f4e4ea).
+  - [x] 3a.7 camada C no filter-catalog apos RBAC (621c0d4).
+  - [x] 3a.8b/8c retrieval fiado no run-agent (shadow loga offered/scores; active passa toolRetrieval; chosenToolRank no updateDecision) (c710538). 555 testes do agente verdes.
+- [x] **ONDA 3a COMPLETA.** Retrieval de tool em shadow, gate de go-live instrumentado.
+- [~] **ONDA 3b** , INICIANDO: classify-intent+precedencia (3b.1), apply-intent-args ~1241 (3b.2), V6/V7 no auto-validator shadow (3b.3/3b.4), validateResponse coleta shadowOutcomes sem short-circuit (3b.5), retry so-texto V1-V5 / V6-V7 Falta Honesta direta (3b.6).
+- [ ] **ONDA 3c**: git mv caminho3->fora-do-catalogo (3c.1), rotulos user-facing mantendo chave de dominio caminho3 (3c.2a/b/c), ramo Fora de Escopo+gap (3c.3).
+- [ ] **Verificacao**: mini-oraculo 40-50 perguntas (V.1), E2E recall@K>=98% via tsx (V.2), rebuild worktree+shadow-compare (V.3), code review + PR (V.4).
   - LEMBRETES p/ o plano (das reviews): migration manual AgentRouterDecision (migrate deploy, nao dev); curar embeddingText de ~35-40 read-tools + check de startup/CI; NAO renomear chave de dominio caminho3; V5-V7 dentro de auto-validator com retry compartilhado cap=1; injecao de args de intencao entre tc.arguments e callTool (run-agent ~1214); mini-oraculo 30-50 perguntas anotadas.
 - [ ] Execucao Onda 3a (tool retrieval + router ativo) , TDD inline + workflow p/ unidades independentes.
 - [ ] Execucao Onda 3b (classify-intent + verifier/).
