@@ -707,6 +707,274 @@ const fmtComercialDetalharPedido: FormatadorCanonico = (env) => {
   return partes.join(" ");
 };
 
+// === F4 Onda 4 (fiscal , 16 full-set; os 5 page-scoped entram apos fix de handler) ===
+const fmtFiscalImpostosPeriodo: FormatadorCanonico = (env) => {
+  const totalNotas = Number(env._DESTAQUE?.totalNotas ?? 0);
+  const somaIbpt = Number(env._DESTAQUE?.somaIbpt ?? 0);
+  const somaIcmsProprio = Number(env._DESTAQUE?.somaIcmsProprio ?? 0);
+  if (totalNotas === 0) {
+    return "Nenhuma nota fiscal encontrada para esse periodo.";
+  }
+  return `Impostos no periodo (${totalNotas} notas): IBPT (estimativa) ${formatBRL(somaIbpt)}, ICMS proprio ${formatBRL(somaIcmsProprio)}.`;
+};
+
+const fmtFiscalProdutosFaturados: FormatadorCanonico = (env) => {
+  const d = env._DESTAQUE ?? {};
+  const totalProdutos = Number(d.totalProdutos ?? env._agregado?.contagem ?? 0);
+  const totalGeral = Number(d.totalGeral ?? env._agregado?.soma ?? 0);
+  const totalQuantidade = Number(d.totalQuantidade ?? 0);
+  const topProduto = String(d.topProduto ?? "");
+  const valorTopProduto = Number(d.valorTopProduto ?? 0);
+
+  if (totalProdutos <= 0 && !topProduto) {
+    return "Nao ha produtos faturados no periodo.";
+  }
+
+  const nomeTop = topProduto ? humanizeName(topProduto) : "(sem nome)";
+  const qtd = totalQuantidade.toLocaleString("pt-BR");
+  return (
+    "Top produto faturado: " +
+    nomeTop +
+    " (" +
+    formatBRL(valorTopProduto) +
+    "). Total: " +
+    totalProdutos +
+    " produtos, " +
+    formatBRL(totalGeral) +
+    ", " +
+    qtd +
+    " unidades."
+  );
+};
+
+const fmtFiscalContarNotas: FormatadorCanonico = (env) => {
+  const d = env._DESTAQUE ?? {};
+  const total = Number(d.totalNotas ?? env._agregado?.contagem ?? 0);
+  const saida = Number(d.totalSaida ?? 0);
+  const entrada = Number(d.totalEntrada ?? 0);
+  if (total === 0) {
+    return "Nenhuma nota fiscal encontrada no cache.";
+  }
+  return `${total} notas fiscais no total: ${saida} emitidas (saída) e ${entrada} recebidas (entrada).`;
+};
+
+const fmtFaturamentoMensalSerie: FormatadorCanonico = (env) => {
+  const ano = Number(env._DESTAQUE?.ano ?? 0);
+  const totalAno = Number(env._DESTAQUE?.totalAno ?? env._agregado?.soma ?? 0);
+  const totalNotasAno = Number(env._DESTAQUE?.totalNotasAno ?? env._agregado?.contagem ?? 0);
+  const meses = Number(env._DESTAQUE?.mesesConsultados ?? 0);
+  if (totalNotasAno === 0 || totalAno === 0) {
+    return ano > 0
+      ? `Nenhum faturamento de venda registrado em ${ano} (${meses} meses consultados).`
+      : "Nenhum faturamento de venda no periodo consultado.";
+  }
+  const mediaMensal = meses > 0 ? totalAno / meses : 0;
+  const cabeca = `Faturamento de ${ano}: ${formatBRL(totalAno)} em ${totalNotasAno} notas, ao longo de ${meses} ${meses === 1 ? "mes" : "meses"}.`;
+  const tail = meses > 0 ? ` Media mensal: ${formatBRL(mediaMensal)}.` : "";
+  return cabeca + tail;
+};
+
+const fmtFiscalNotasEmitidasPorCliente: FormatadorCanonico = (env) => {
+  const d = env._DESTAQUE ?? {};
+  const clienteTermo = String(d.clienteTermo ?? "");
+  const totalNotas = Number(d.totalNotas ?? env._agregado?.contagem ?? 0);
+  const valorTotal = Number(d.valorTotal ?? env._agregado?.soma ?? 0);
+  const linhasExibidas = Number(d.linhasExibidas ?? (env.linhas?.length ?? 0));
+  if (totalNotas === 0) {
+    return `Nao ha notas emitidas para '${clienteTermo}' no periodo.`;
+  }
+  return `${totalNotas} notas emitidas para '${clienteTermo}', total ${formatBRL(valorTotal)}. Listando ${linhasExibidas}.`;
+};
+
+const fmtFiscalNotasEmitidasPorProduto: FormatadorCanonico = (env) => {
+  const d = env._DESTAQUE ?? {};
+  const ag = env._agregado ?? {};
+  const produtoTermo = String(d.produtoTermo ?? "");
+  const totalNotas = Number(d.totalNotas ?? ag.contagem ?? 0);
+  const quantidadeTotal = Number(d.quantidadeTotal ?? 0);
+  const valorTotal = Number(d.valorTotal ?? ag.soma ?? 0);
+  const linhasExibidas = Number(d.linhasExibidas ?? (env.linhas ? env.linhas.length : 0));
+
+  if (totalNotas === 0) {
+    return `Nao ha notas emitidas com o produto '${produtoTermo}' no periodo.`;
+  }
+
+  const palavraNotas = totalNotas === 1 ? "nota" : "notas";
+  const palavraUnid = quantidadeTotal === 1 ? "unidade" : "unidades";
+  return `${totalNotas} ${palavraNotas} com '${produtoTermo}', ${quantidadeTotal} ${palavraUnid}, ${formatBRL(valorTotal)}. Listando ${linhasExibidas}.`;
+};
+
+const fmtFiscalDfeImportadosPeriodo: FormatadorCanonico = (env) => {
+  const n = Number(env._DESTAQUE?.totalDfe ?? env._agregado?.contagem ?? 0);
+  const valor = Number(env._DESTAQUE?.valorTotal ?? env._agregado?.soma ?? 0);
+  if (n === 0) {
+    return "Nenhum DF-e importado no periodo.";
+  }
+  return `DF-e importados no periodo: ${n} notas (valor declarado ${formatBRL(valor)}, pode estar 0 nesta base).`;
+};
+
+const fmtFiscalDfePorFornecedor: FormatadorCanonico = (env) => {
+  const d = env._DESTAQUE ?? {};
+  const totalDfe = Number(d.totalDfe ?? 0);
+  const totalFornecedores = Number(d.totalFornecedores ?? 0);
+  const topRaw = String(d.topFornecedor ?? "").trim();
+  const notasTop = Number(d.notasTopFornecedor ?? 0);
+
+  if (totalDfe <= 0 || totalFornecedores <= 0) {
+    return "Nenhum DF-e no período.";
+  }
+
+  const notaPalavra = totalDfe === 1 ? "nota" : "notas";
+  const fornPalavra = totalFornecedores === 1 ? "fornecedor" : "fornecedores";
+  let texto = `DF-e por fornecedor: ${totalDfe} ${notaPalavra} em ${totalFornecedores} ${fornPalavra}.`;
+
+  if (topRaw) {
+    const nomeTop = humanizeName(topRaw);
+    const notaTopPalavra = notasTop === 1 ? "nota" : "notas";
+    texto += ` Top: ${nomeTop} com ${notasTop} ${notaTopPalavra}.`;
+  }
+
+  return texto;
+};
+
+const fmtFiscalDfePendentesManifestacao: FormatadorCanonico = (env) => {
+  const dest = (env._DESTAQUE ?? {}) as Record<string, string | number>;
+  const pendentes = Number(dest.pendentes ?? env._agregado?.contagem ?? 0);
+  if (!Number.isFinite(pendentes) || pendentes <= 0) {
+    return "Nenhum DF-e pendente de manifestacao no periodo.";
+  }
+  return `${pendentes} DF-e pendentes de manifestacao no periodo.`;
+};
+
+const fmtFiscalReinfEventos: FormatadorCanonico = (env) => {
+  const totalEventos = Number(env._DESTAQUE?.totalEventos ?? env._agregado?.contagem ?? 0);
+  if (!totalEventos || totalEventos <= 0) {
+    return (
+      "O REINF (eventos de obrigação acessória) ainda não é operado no Odoo da Matrix (sem eventos). " +
+      "Esta consulta passa a responder quando os eventos REINF forem gerados no ERP."
+    );
+  }
+  return `${totalEventos} eventos REINF no período.`;
+};
+
+const fmtFiscalFaturamentoPorEmpresa: FormatadorCanonico = (env) => {
+  const d = env._DESTAQUE ?? {};
+  const total = Number(d.totalGrupo ?? env._agregado?.soma ?? 0);
+  const empresas = Number(d.empresasComFaturamento ?? env._agregado?.contagem ?? 0);
+  if (empresas === 0 || total === 0) {
+    return "Nenhuma empresa do grupo teve faturamento de venda autorizado no periodo.";
+  }
+  const plural = empresas === 1 ? "empresa" : "empresas";
+  return `Faturamento de venda autorizado do grupo: ${formatBRL(total)} em ${empresas} ${plural} com faturamento.`;
+};
+
+const fmtFiscalFaturamentoPorOperacao: FormatadorCanonico = (env) => {
+  const valorGeral = Number(env._DESTAQUE?.valorGeral ?? env._agregado?.soma ?? 0);
+  const valorVenda = Number(env._DESTAQUE?.valorVenda ?? 0);
+  const valorNaoVenda = valorGeral - valorVenda;
+  const totalNaturezas = Number(env._agregado?.contagem ?? env.linhas.length);
+
+  if (totalNaturezas === 0 || valorGeral === 0) {
+    return "Nenhuma nota fiscal de saida autorizada encontrada para o periodo e a empresa informados.";
+  }
+
+  const partes: string[] = [];
+  partes.push(
+    `Faturamento de saida autorizado por natureza de operacao: ${formatBRL(valorGeral)} em ${totalNaturezas} natureza(s).`,
+  );
+  partes.push(
+    `Sendo ${formatBRL(valorVenda)} em operacoes de venda e ${formatBRL(valorNaoVenda)} em operacoes que nao sao venda (transferencias, devolucoes e afins).`,
+  );
+
+  const linhas = Array.isArray(env.linhas) ? env.linhas : [];
+  if (linhas.length > 0) {
+    const top = linhas[0] as {
+      naturezaOperacaoNome?: string | null;
+      ehVenda?: boolean;
+      valor?: number;
+      totalNotas?: number;
+    };
+    const nome = top.naturezaOperacaoNome
+      ? humanizeName(String(top.naturezaOperacaoNome))
+      : "Natureza nao informada";
+    const flag = top.ehVenda ? "venda" : "nao venda";
+    partes.push(
+      `Maior natureza: ${nome} (${flag}), ${formatBRL(Number(top.valor ?? 0))} em ${Number(top.totalNotas ?? 0)} nota(s).`,
+    );
+  }
+
+  return partes.join(" ");
+};
+
+const fmtFaturamentoPorCfop: FormatadorCanonico = (env) => {
+  const valorGeral = Number(env._DESTAQUE?.valorGeral ?? env._agregado?.soma ?? 0);
+  const cfops = Number(env._DESTAQUE?.cfops ?? env._agregado?.contagem ?? 0);
+  if (cfops === 0 || valorGeral === 0) {
+    return "Nenhum faturamento de saida autorizado por CFOP no periodo.";
+  }
+  const sufixo = cfops === 1 ? "CFOP" : "CFOPs";
+  return `Faturamento de saida autorizado por CFOP: ${formatBRL(valorGeral)} distribuido em ${cfops} ${sufixo}. Valor rateado pelo item da nota; o fechamento com o total bate por tolerancia, nao exato.`;
+};
+
+const fmtFaturamentoNaoAutorizado: FormatadorCanonico = (env) => {
+  const totalNotas = Number(env._DESTAQUE?.totalNotas ?? env._agregado?.contagem ?? 0);
+  const valor = Number(env._DESTAQUE?.valor ?? env._agregado?.soma ?? 0);
+  if (totalNotas === 0) {
+    return "Nenhuma nota de saida pendente de autorizacao no periodo. Todas estao autorizadas ou canceladas.";
+  }
+  const plural = totalNotas === 1 ? "nota" : "notas";
+  return `Faturamento nao autorizado: ${totalNotas} ${plural} de saida (denegada, rejeitada, em processamento ou sem situacao definida) somando ${formatBRL(valor)}, fora do total autorizado ou cancelado.`;
+};
+
+const fmtFaturamentoRecebido: FormatadorCanonico = (env) => {
+  const recebido = Number(env._DESTAQUE?.recebido ?? 0);
+  const aReceber = Number(env._DESTAQUE?.aReceber ?? 0);
+  const pedidos = Number(env._agregado?.contagem ?? 0);
+
+  if (recebido === 0 && aReceber === 0 && pedidos === 0) {
+    return "Nenhum lancamento financeiro vinculado a pedido foi encontrado para o periodo e a empresa informados.";
+  }
+
+  const total = recebido + aReceber;
+  const pctRecebido = total > 0 ? Math.round((recebido / total) * 100) : 0;
+  const pedidoLabel = pedidos === 1 ? "pedido" : "pedidos";
+
+  return (
+    `Faturamento recebido (pago): ${formatBRL(recebido)}. ` +
+    `Ainda a receber: ${formatBRL(aReceber)}. ` +
+    `Base: ${pedidos} ${pedidoLabel} com lancamento financeiro, ` +
+    `${pctRecebido}% do total ja recebido.`
+  );
+};
+
+const fmtFiscalDetalharNota: FormatadorCanonico = (env) => {
+  const d = env._DESTAQUE ?? {};
+  // Estado nao-encontrado: o handler injeta { encontrado: "nao" } quando a nota nao existe.
+  if (String(d.encontrado ?? "") === "nao") {
+    return "Nenhuma nota fiscal encontrada para o odooId informado.";
+  }
+  const chave = String(d.chave ?? "").trim();
+  const participanteRaw = String(d.participante ?? "").trim();
+  const situacaoRaw = String(d.situacao ?? "").trim();
+  const vrNf = Number(d.vrNf ?? 0);
+
+  const partes: string[] = [];
+  if (participanteRaw) {
+    partes.push(`Nota fiscal de ${humanizeName(participanteRaw)}`);
+  } else {
+    partes.push("Nota fiscal");
+  }
+  partes.push(`no valor de ${formatBRL(vrNf)}`);
+  if (situacaoRaw) {
+    partes.push(`situacao ${situacaoRaw}`);
+  }
+  let texto = partes.join(", ") + ".";
+  if (chave) {
+    texto += ` Chave de acesso: ${chave}.`;
+  }
+  return texto;
+};
+
 const FORMATADORES: Record<string, FormatadorCanonico> = {
   // financeiro
   financeiro_contas_a_receber: fmtContasAReceber,
@@ -748,6 +1016,22 @@ const FORMATADORES: Record<string, FormatadorCanonico> = {
   fiscal_notas_recebidas: fmtNotasRecebidas,
   fiscal_notas_recebidas_por_fornecedor: fmtNotasRecebidasPorFornecedor,
   fiscal_apuracao: fmtApuracaoFiscal,
+  "fiscal_impostos_periodo": fmtFiscalImpostosPeriodo,
+  "fiscal_produtos_faturados": fmtFiscalProdutosFaturados,
+  "fiscal_contar_notas": fmtFiscalContarNotas,
+  "fiscal_faturamento_mensal_serie": fmtFaturamentoMensalSerie,
+  "fiscal_notas_emitidas_por_cliente": fmtFiscalNotasEmitidasPorCliente,
+  "fiscal_notas_emitidas_por_produto": fmtFiscalNotasEmitidasPorProduto,
+  "fiscal_dfe_importados_periodo": fmtFiscalDfeImportadosPeriodo,
+  "fiscal_dfe_por_fornecedor": fmtFiscalDfePorFornecedor,
+  "fiscal_dfe_pendentes_manifestacao": fmtFiscalDfePendentesManifestacao,
+  "fiscal_reinf_eventos": fmtFiscalReinfEventos,
+  "fiscal_faturamento_por_empresa": fmtFiscalFaturamentoPorEmpresa,
+  "fiscal_faturamento_por_operacao": fmtFiscalFaturamentoPorOperacao,
+  "fiscal_faturamento_por_cfop": fmtFaturamentoPorCfop,
+  "fiscal_faturamento_nao_autorizado": fmtFaturamentoNaoAutorizado,
+  "fiscal_faturamento_recebido": fmtFaturamentoRecebido,
+  "fiscal_detalhar_nota": fmtFiscalDetalharNota,
   // estoque
   estoque_saldo_produto: fmtSaldoProduto,
   estoque_concentracao: fmtConcentracao,
@@ -819,6 +1103,20 @@ export const TOOLS_QUE_PRECISAM_FORMATADOR: string[] = [
   "fiscal_apuracao",
   "fiscal_produtos_faturados",
   "fiscal_impostos_periodo",
+  "fiscal_contar_notas",
+  "fiscal_faturamento_mensal_serie",
+  "fiscal_notas_emitidas_por_cliente",
+  "fiscal_notas_emitidas_por_produto",
+  "fiscal_dfe_importados_periodo",
+  "fiscal_dfe_por_fornecedor",
+  "fiscal_dfe_pendentes_manifestacao",
+  "fiscal_reinf_eventos",
+  "fiscal_faturamento_por_empresa",
+  "fiscal_faturamento_por_operacao",
+  "fiscal_faturamento_por_cfop",
+  "fiscal_faturamento_nao_autorizado",
+  "fiscal_faturamento_recebido",
+  "fiscal_detalhar_nota",
   // estoque
   "estoque_saldo_produto",
   "estoque_concentracao",
@@ -878,28 +1176,12 @@ export const TOOLS_SEM_FORMATADOR_REAL: string[] = [
   "servico_buscar",
   "servico_contar",
   "servico_listar",
-  // fiscal
-  "fiscal_impostos_periodo",
-  "fiscal_produtos_faturados",
+  // fiscal , 5 page-scoped (precisam fix de handler full-set antes de migrar)
   "fiscal_carta_correcao",
-  "fiscal_contar_notas",
   "fiscal_certificados",
   "fiscal_faturamento_por_marca",
-  "fiscal_faturamento_mensal_serie",
   "fiscal_faturamento_por_uf",
-  "fiscal_notas_emitidas_por_cliente",
-  "fiscal_notas_emitidas_por_produto",
-  "fiscal_dfe_importados_periodo",
-  "fiscal_dfe_por_fornecedor",
-  "fiscal_dfe_pendentes_manifestacao",
   "fiscal_mdfe_manifestos",
-  "fiscal_reinf_eventos",
-  "fiscal_faturamento_por_empresa",
-  "fiscal_faturamento_por_operacao",
-  "fiscal_faturamento_por_cfop",
-  "fiscal_faturamento_nao_autorizado",
-  "fiscal_faturamento_recebido",
-  "fiscal_detalhar_nota",
   // cadastros
   "cadastro_parceiros_por_cidade",
   "cadastro_cidades_listar",

@@ -45,6 +45,9 @@ const ARGS: Record<string, Record<string, unknown>> = {
   estoque_locais_por_produto: { termo: "1464" },
   comercial_pedido_historico_etapas: { pedidoId: 694 },
   comercial_detalhar_pedido: { odooId: 1295 },
+  fiscal_notas_emitidas_por_cliente: { clienteTermo: "smartfit" },
+  fiscal_notas_emitidas_por_produto: { produtoTermo: "COLCHONETE" },
+  fiscal_detalhar_nota: { odooId: 1 },
 };
 
 // Chaves de KPI agregado, invariantes a paginacao. Tudo o resto (linhas,
