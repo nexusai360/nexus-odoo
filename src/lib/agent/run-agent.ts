@@ -62,6 +62,7 @@ import { pickTools } from "./router/pick-tools";
 import { rankOf } from "./router/retrieval-rank";
 import { classifyIntent } from "./router/classify-intent";
 import { applyIntentArgs } from "./router/apply-intent-args";
+import { decideForaDoCatalogo, DOMINIOS_NAO_NEGOCIO } from "./router/fora-do-catalogo";
 import { getToolDomain, UNKNOWN_DOMAIN } from "./router/tool-to-domain";
 import { respondPermissionDenied } from "./permission-denial";
 import { seesAll } from "@/lib/reports/domains";
@@ -562,6 +563,32 @@ export async function runAgent(args: RunAgentInput): Promise<RunAgentResult> {
         error: err instanceof Error ? err.message : String(err),
       });
       retrievalPicked = null;
+    }
+
+    // F3 (3c.3): decisao deterministica de "Fora do Catalogo" em SHADOW (telemetria).
+    // Loga fora_de_escopo/falta_honesta para calibrar antes de ativar; o desfecho real
+    // continua nas redes existentes (fast-path recusa RBAC + safety-net de gap). Sinais
+    // pre-execucao: dadoExisteNoEscopo nao e conhecido aqui (so pos-tool), entao passa
+    // true (falta_honesta fica a cargo do safety-net pos-execucao).
+    try {
+      const negocioPicked = decisaoFinal.pickedDomains.filter(
+        (d) => !DOMINIOS_NAO_NEGOCIO.has(d),
+      );
+      const decisaoFC = decideForaDoCatalogo({
+        retrievalVazio: retrievalOfferedOrdered.length === 0 || decisaoFinal.fallback.triggered,
+        topScore: decisaoFinal.topScore ?? 0,
+        limiar: agentSettings.routerThreshold,
+        assuntoForaDosDominios: negocioPicked.length === 0,
+        dadoExisteNoEscopo: true,
+      });
+      if (decisaoFC !== "prosseguir") {
+        console.info(
+          "[f3:fora-do-catalogo:shadow]",
+          JSON.stringify({ decisao: decisaoFC, topScore: decisaoFinal.topScore, conversationId: args.conversationId }),
+        );
+      }
+    } catch {
+      // telemetria best-effort; nunca quebra o turno.
     }
 
     // RBAC v2: createDecision precede filterCatalog para que routerDecisionId
