@@ -25,6 +25,8 @@ export * from "./conta-referencial";
 export * from "./pedido";
 export * from "./natureza-operacao";
 export * from "./centro-resultado";
+// Parceiro (Bloco C-bis): depende de documentoDigits, exportado so aqui.
+export * from "./parceiro";
 
 /**
  * Adaptador que envelopa o resolverEmpresa da F1 (cujo retorno EmpresaResolucao nao tem
