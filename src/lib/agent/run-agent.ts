@@ -1037,7 +1037,7 @@ export async function runAgent(args: RunAgentInput): Promise<RunAgentResult> {
         let autoValidatorRetryReason: string | null = null;
         let autoValidatorRetryDetail: string | null = null;
         try {
-          const { validateResponse } = await import("./validation/auto-validator");
+          const { validateResponse, runShadowChecks } = await import("./validation/auto-validator");
           const settingsRow = await prisma.agentSettings.findUnique({
             where: { id: "global" },
             select: {
@@ -1050,6 +1050,24 @@ export async function runAgent(args: RunAgentInput): Promise<RunAgentResult> {
           });
           const mode = settingsRow?.autoValidatorMode ?? "shadow";
           if (mode !== "off") {
+            // F3 (3b.5/3b.6): checks novos V6/V7 rodam SEMPRE em shadow (telemetria),
+            // sem short-circuitar o fluxo de producao (V1-V5). decideRetryOuGap define
+            // que V6/V7 (incoerencia estrutural) iriam a Falta Honesta direta, nao a
+            // retry de texto, quando promovidos a active (hoje so logam).
+            try {
+              const shadow = runShadowChecks({
+                question: args.userMessage,
+                llmResponse: message,
+                toolResults: allTurnEnvelopes,
+              });
+              for (const s of shadow) {
+                console.warn(
+                  `[verifier:shadow] ${s.reason} fired conversationId=${args.conversationId} detalhe=${s.detalhe}`,
+                );
+              }
+            } catch (errShadow) {
+              console.warn("[verifier:shadow] skipped:", errShadow);
+            }
             const outcome = validateResponse(
               {
                 question: args.userMessage,
