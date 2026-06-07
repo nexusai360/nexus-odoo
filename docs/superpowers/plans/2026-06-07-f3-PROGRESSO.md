@@ -15,8 +15,9 @@
 ## Estado
 - [x] Brainstorm + requisitos (4 decisoes + naming) , feito com o dono via AskUserQuestion.
 - [x] SPEC v1 commitada (704c825).
-- [~] 2 reviews adversariais da spec (workflow w032ppkov, Opus) , EM ANDAMENTO. Proximo: aplicar achados => SPEC v3.
-- [ ] PLAN v1 (writing-plans sobre a v3) -> 2 reviews -> PLAN v3.
+- [x] 2 reviews adversariais da spec (workflow w032ppkov, Opus) , acharam 4 criticos reais. SPEC v3 commitada (2caf2f9) com correcoes [R]: embeddingText (nao examples), cache de processo (nao pgvector), rename so user-facing (chave caminho3 estavel), shadow-compare instrumentado (migration AgentRouterDecision + recall@K>=98%), verificador estende auto-validator (V5-V7, limitado ao envelope atual), precedencia de intencao, K/limiar com metodo, mini-oraculo, grafo de dependencia.
+- [~] PLAN v1 (writing-plans sobre a v3) -> 2 reviews -> PLAN v3. EM ANDAMENTO.
+  - LEMBRETES p/ o plano (das reviews): migration manual AgentRouterDecision (migrate deploy, nao dev); curar embeddingText de ~35-40 read-tools + check de startup/CI; NAO renomear chave de dominio caminho3; V5-V7 dentro de auto-validator com retry compartilhado cap=1; injecao de args de intencao entre tc.arguments e callTool (run-agent ~1214); mini-oraculo 30-50 perguntas anotadas.
 - [ ] Execucao Onda 3a (tool retrieval + router ativo) , TDD inline + workflow p/ unidades independentes.
 - [ ] Execucao Onda 3b (classify-intent + verifier/).
 - [ ] Execucao Onda 3c (rename caminho3->fora-do-catalogo + endurecimento).
