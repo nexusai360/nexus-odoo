@@ -12,12 +12,12 @@
 
 import type { ToolEntry } from "./types.js";
 import { isWriteToolEntry } from "./types.js";
+import { TOOL_TRIGGERS } from "./tool-triggers.data.js";
 
-/** Frases-gatilho pt-br por tool.id. Preenchido por dominio na task 3a.1b
- *  (fan-out Opus a partir das perguntas-ouro [OK] do dossie). Vazio aqui:
- *  a descricao sozinha ja garante a cobertura minima (>= 40 chars), entao
- *  uma tool sem trigger NAO fica invisivel; os triggers elevam o recall@K. */
-export const TOOL_TRIGGERS: Record<string, string[]> = {};
+/** Frases-gatilho pt-br por tool.id (curadas por dominio na task 3a.1b a partir
+ *  das perguntas-ouro [OK] do dossie). A descricao sozinha ja garante a cobertura
+ *  minima, entao tool sem trigger NAO fica invisivel; os triggers elevam o recall@K. */
+export { TOOL_TRIGGERS };
 
 /** Texto que alimenta o vetor da tool: descricao + frases-gatilho do id. */
 export function embeddingTextFor(tool: Pick<ToolEntry, "id" | "descricao">): string {
