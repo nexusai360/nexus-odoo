@@ -48,7 +48,16 @@ DOIS ARQUETIPOS consolidados: (A) handler chama enriquecerEnvelope => formatador
 METODO: workflow Opus 1-agente-por-tool investiga+verifica KPI x SELECT e devolve spec (NAO edita responder.ts); orquestrador integra inline + gate (tsc raiz+mcp+jest+E2E baseline write, conferir 0 remocoes/so novos) + commit por dominio. CUIDADO: agentes as vezes erram o tipo (FormadorCanonico sem 't') , revisar antes de colar.
 EM VOO: workflow fiscal (21 tools, wym0abwgs) + workflow resto (27: preco/servico/referencia 7 + cadastros 7 + contabil 6 + dominios-status/raw 7, wthtop51t). Integrar conforme completam. crm.res_partner.get pode nao usar envelope canonico , tratar especial.
 
-### ATUALIZACAO , 59/72 migradas (allowlist 73->13). Commits: estoque 33e5cee, financeiro e94b67e, comercial d6e187a, fiscal-16 4971347, resto-19 b3725e6.
+### ATUALIZACAO FINAL DA SESSAO , 61/72 migradas (allowlist 73->11). Commits: estoque 33e5cee, financeiro e94b67e, comercial d6e187a, fiscal-16 4971347, resto-19 b3725e6, marca/uf-fix 3b384c4.
+**RESTAM 11 na allowlist** (todos com formatador+evidencia+fix no doc `2026-06-07-f4-onda4-restantes-13.md`; marca/uf ja saíram):
+- fiscal page-scoped/sem-enrich: carta_correcao, certificados (precisam enriquecerEnvelope+_DESTAQUE full-set), mdfe_manifestos (somar vrNf full-set via aggregate, hoje 0/tabela vazia).
+- sem envelope canonico (refatorar handler p/ enriquecerEnvelope+_DESTAQUE): preco_produto{termo:"G7S13 V2 SUPINO"}, preco_tabela{tabelaId:7}, referencia_buscar{tabela:"cfop",termo:"venda"}, servico_buscar{termo:"transporte"}, servico_listar.
+- contabil page-scoped: contabil_saldo_conta, contabil_movimento_conta{contaCodigo:"1.1.01.01"}.
+- raw-get: crm.res_partner.get{id:1} (investigar envelope, tratar especial).
+PADRAO VERIFICADO p/ page-scoped: query agregada SEPARADA sem LIMIT (COUNT/SUM/COUNT DISTINCT) , ver fix de fiscal marca/uf (3b384c4) e comercial pedidos_por_uf. ATENCAO janela de data: alguns handlers passam `new Date(...)` (param UTC) e outros STRING `'...T00:00:00'::timestamp` (naive) , ao conferir KPI x SELECT, replicar EXATAMENTE o tipo de param do handler (vide marca usa Date, uf usa string).
+baseline set A = 89 tools, idempotente (BASELINE_OK).
+
+### (historico) 59/72 migradas (allowlist 73->13). Commits: estoque 33e5cee, financeiro e94b67e, comercial d6e187a, fiscal-16 4971347, resto-19 b3725e6.
 - fiscal: 16 full-set migrados (commit 4971347). 5 fiscais PAGE-SCOPED ficaram (carta_correcao, certificados, faturamento_por_marca, faturamento_por_uf, mdfe_manifestos).
 - resto: 19 seguros migrados (commit b3725e6). RESTARAM 13 que EXIGEM FIX DE HANDLER (nao so formatador):
   - **5 fiscais page-scoped** (KPI somava a pagina, classe d987060): carta_correcao+certificados (nem montam _DESTAQUE/_RESPOSTA hoje , precisam enriquecerEnvelope+full-set), faturamento_por_marca, faturamento_por_uf, mdfe_manifestos (trocar reduce-sobre-d.linhas por aggregate full-set).
