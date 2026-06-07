@@ -1,5 +1,5 @@
 // mcp/lib/recusa.ts
-// Contrato de recusa educada para perguntas fora do escopo de negócio (Caminho 3b).
+// Contrato de recusa educada para perguntas Fora do Catalogo, ramo Fora de Escopo.
 // Centraliza o texto para garantir consistência em todas as tools e no servidor.
 
 /**

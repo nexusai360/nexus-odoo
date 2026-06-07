@@ -200,6 +200,12 @@ export const DOMAINS: ReadonlyArray<DomainEntry> = [
     ],
   },
   {
+    // IDENTIFICADOR ESTAVEL: a chave "caminho3" NAO e renomeada (apesar de o
+    // conceito user-facing ser "Fora do Catalogo"). Ela e gravada em
+    // AgentRouterDecision.pickedDomains (historico) e entra no computeVocabularyHash
+    // /VOCABULARY_VERSION , renomear invalidaria o cache de embeddings de dominio e
+    // resetaria a baseline de calibracao do router. A UI exibe o rotulo amigavel
+    // "Fora do Catalogo" via DOMAIN_DISPLAY. Decisao F3 (spec secao 2.5/6.1).
     domain: "caminho3",
     description:
       "Consulta BI livre e SQL avancado. Resposta a qualquer pergunta que nao se encaixa nos dominios padrao acima. Sempre disponivel como escape hatch para o agente. Usado quando o usuario faz pergunta exotica, cruzamento incomum entre dominios, ou consulta ad hoc de exploracao de dado.",
