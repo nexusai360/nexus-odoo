@@ -25,6 +25,23 @@ export function embeddingTextFor(tool: Pick<ToolEntry, "id" | "descricao">): str
   return [tool.descricao, ...triggers].filter(Boolean).join(". ");
 }
 
+/** Limite da description publicada em tools/list (vai ao prompt do LLM em cada
+ *  turno no modo fallback/shadow). Bound para nao inflar tokens (otimizacao fina
+ *  e' F6); o retrieval usa o texto completo via embeddingTextFor no embed-tools. */
+export const MAX_DESCRIPTION = 400;
+
+/** Description publicada em tools/list: descricao + ate 3 triggers, capada em
+ *  MAX_DESCRIPTION chars cortando no limite de palavra (preserva o 1o trigger
+ *  quando couber). Determinista para o teste. */
+export function descriptionForRetrieval(tool: Pick<ToolEntry, "id" | "descricao">): string {
+  const triggers = (TOOL_TRIGGERS[tool.id] ?? []).slice(0, 3);
+  const full = [tool.descricao, ...triggers].filter(Boolean).join(". ");
+  if (full.length <= MAX_DESCRIPTION) return full;
+  const corte = full.slice(0, MAX_DESCRIPTION);
+  const ultimoEspaco = corte.lastIndexOf(" ");
+  return (ultimoEspaco > 0 ? corte.slice(0, ultimoEspaco) : corte).trimEnd();
+}
+
 /** Comprimento minimo aceitavel do embeddingText de uma read-tool (piso
  *  anti-trivial). A read-tool mais curta do catalogo hoje tem 32 chars
  *  (financeiro_saldo_contas); as demais >= 45. O gate so pega tool nova com

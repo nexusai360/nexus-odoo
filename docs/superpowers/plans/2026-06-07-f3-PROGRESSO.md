@@ -20,9 +20,13 @@
 - [~] EXECUCAO , Onda 3a em andamento:
   - [x] 3a.0 flag routerToolRetrieval + migration (55cadf3).
   - [x] 3a.1a embedding-text estrutura + check cobertura piso 25 (d8b2da5). Descoberta: 102 read-tools, menor descricao 32 chars.
-  - [~] 3a.1b curadoria TOOL_TRIGGERS por dominio , workflow wa46iq9bv (6 agentes Opus). Ao terminar: integrar sub-mapas em mcp/catalog/embedding-text.ts (TOOL_TRIGGERS), jest verde, commit.
-  - [ ] 3a.4 types, 3a.8a rank helper, 3a.3 embed-tools, 3a.5 pick-tools (modulos puros, independem dos triggers , fazendo em paralelo a curadoria).
-  - [ ] 3a.2 publicar embeddingText capado na description; 3a.6 migration AgentRouterDecision + log-decision; 3a.7 camada C filter-catalog; 3a.8b/8c fiar retrieval shadow no run-agent.
+  - [x] 3a.1b triggers curados (workflow wa46iq9bv, 92 read-tools) integrados em mcp/catalog/tool-triggers.data.ts (84a873a). embedding-text re-exporta. fix fiscal_apuracao.
+  - [x] 3a.3/3a.4/3a.5/3a.8a modulos puros (e56e830): types (RetrievalTool/ToolRetrievalResult), embed-tools (cache processo, import ../rag/embed + ./constants), pick-tools (top-K+nucleo, floor por getToolDomain), retrieval-rank (rankOf). 12 testes verdes.
+  - [ ] 3a.2 publicar embeddingText capado (descricao + ate 3 triggers, 400 chars) na description em mcp/server.ts (~181: mcpServer.tool(tool.id, ...)) + teste integration. capDescription helper.
+  - [ ] 3a.6 migration AgentRouterDecision (retrievalOfferedTools String[], retrievalScores Json?, chosenToolRank Int?) MANUAL migrate deploy + estender CreateDecisionInput/UpdateDecisionInput em log-decision.ts.
+  - [ ] 3a.7 camada C no filter-catalog (input toolRetrieval?: {picked: Set}; filtra apos RBAC B).
+  - [ ] 3a.8b fiar retrieval shadow no run-agent (~465-577): embedQuestion().vector + getToolVectors(mcpToolsProprias) + pickTools; shadow loga offered/scores no createDecision; active passa toolRetrieval ao filterCatalog. 3a.8c: chosenToolRank=rankOf(toolUsada, offered) no updateDecision ~1131.
+  - NOTA run-agent: re-confirmar ancoras por grep. routerToolRetrieval lido de settingsRow. So mcpTools proprias entram em getToolVectors (externas via floor).
 - proxima onda: 3b (classify-intent, apply-intent-args, V6/V7 no auto-validator), 3c (rename fora-do-catalogo + Fora de Escopo/gap), Verificacao (mini-oraculo, recall@K, rebuild).
   - LEMBRETES p/ o plano (das reviews): migration manual AgentRouterDecision (migrate deploy, nao dev); curar embeddingText de ~35-40 read-tools + check de startup/CI; NAO renomear chave de dominio caminho3; V5-V7 dentro de auto-validator com retry compartilhado cap=1; injecao de args de intencao entre tc.arguments e callTool (run-agent ~1214); mini-oraculo 30-50 perguntas anotadas.
 - [ ] Execucao Onda 3a (tool retrieval + router ativo) , TDD inline + workflow p/ unidades independentes.

@@ -3,9 +3,11 @@ import { catalogo } from "../index.js";
 import { isWriteToolEntry } from "../types.js";
 import {
   embeddingTextFor,
+  descriptionForRetrieval,
   assertEmbeddingTextCoverage,
   TOOL_TRIGGERS,
   MIN_EMBEDDING_TEXT,
+  MAX_DESCRIPTION,
 } from "../embedding-text.js";
 
 const readTools = catalogo.filter((t) => !isWriteToolEntry(t));
@@ -23,6 +25,28 @@ describe("embeddingTextFor", () => {
     const fake = { id, descricao: "Base." } as never;
     const txt = embeddingTextFor(fake);
     for (const trg of TOOL_TRIGGERS[id]!) expect(txt).toContain(trg);
+  });
+});
+
+describe("descriptionForRetrieval", () => {
+  it("inclui o 1o trigger quando o id tem triggers", () => {
+    const id = Object.keys(TOOL_TRIGGERS)[0];
+    if (!id) return;
+    const fake = { id, descricao: "Base." } as never;
+    expect(descriptionForRetrieval(fake)).toContain(TOOL_TRIGGERS[id]![0]!);
+  });
+
+  it("capa em MAX_DESCRIPTION chars no limite de palavra", () => {
+    const fake = { id: "z_long", descricao: "palavra ".repeat(100) } as never;
+    const out = descriptionForRetrieval(fake);
+    expect(out.length).toBeLessThanOrEqual(MAX_DESCRIPTION);
+    expect(out.endsWith(" ")).toBe(false);
+  });
+
+  it("toda read-tool publicada respeita o cap", () => {
+    for (const t of readTools) {
+      expect(descriptionForRetrieval(t).length).toBeLessThanOrEqual(MAX_DESCRIPTION);
+    }
   });
 });
 
