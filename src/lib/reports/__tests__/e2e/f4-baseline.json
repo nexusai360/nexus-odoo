@@ -371,6 +371,13 @@
       "totalFilhos": 5
     }
   },
+  "contabil_movimento_conta": {
+    "estado": "vazio",
+    "_DESTAQUE": {
+      "contagem": 0
+    },
+    "total": 0
+  },
   "contabil_plano_de_contas": {
     "estado": "ok",
     "_DESTAQUE": {
@@ -390,6 +397,13 @@
       "despesa": 0,
       "resultado": 0
     }
+  },
+  "contabil_saldo_conta": {
+    "estado": "vazio",
+    "_DESTAQUE": {
+      "contagem": 0
+    },
+    "total": 0
   },
   "crm_pipeline_funis": {
     "estado": "vazio",

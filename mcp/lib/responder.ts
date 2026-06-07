@@ -1462,6 +1462,98 @@ const fmtFiscalFaturamentoPorUf: FormatadorCanonico = (env) => {
   return `Faturamento por UF: ${formatBRL(totalGeral)} em ${totalNotas} notas, ${totalUfs} UFs identificadas${semUfStr}.${topStr}`;
 };
 
+// === F4 Onda 4 (contabil , LIVE; contabilidade vazia hoje, handler trata vazio) ===
+const fmtContabilSaldoConta: FormatadorCanonico = (env) => {
+  const linhas = (env.linhas ?? []) as Array<{
+    contaCodigo?: string | null;
+    contaNome?: string | null;
+    debito?: number;
+    credito?: number;
+    saldo?: number;
+  }>;
+  const totalContas = Number(env._DESTAQUE?.contagem ?? linhas.length ?? 0);
+
+  if (totalContas === 0 || linhas.length === 0) {
+    return "Nao ha saldos contabeis para esse recorte. A contabilidade ainda nao tem lancamentos lançados no Odoo da Matrix; esta consulta passa a responder assim que os lançamentos existirem.";
+  }
+
+  // ATENCAO: somatorios derivados da fatia exibida (handler nao expoe soma
+  // global do conjunto). Quando o balancete passar de 250 contas, ajustar o
+  // handler para mandar somas absolutas em _DESTAQUE/_agregado.
+  let totalDebito = 0;
+  let totalCredito = 0;
+  for (const l of linhas) {
+    totalDebito += Number(l.debito ?? 0);
+    totalCredito += Number(l.credito ?? 0);
+  }
+  const saldoLiquido = totalDebito - totalCredito;
+
+  let maior: (typeof linhas)[number] | undefined;
+  let maiorAbs = -1;
+  for (const l of linhas) {
+    const abs = Math.abs(Number(l.saldo ?? 0));
+    if (abs > maiorAbs) {
+      maiorAbs = abs;
+      maior = l;
+    }
+  }
+
+  const plural = totalContas === 1 ? "conta" : "contas";
+  const cabeca =
+    `Balancete: ${totalContas} ${plural} com movimento. ` +
+    `Debitos ${formatBRL(totalDebito)}, creditos ${formatBRL(totalCredito)}, ` +
+    `saldo liquido ${formatBRL(saldoLiquido)}.`;
+
+  let tail = "";
+  if (maior) {
+    const codigo = maior.contaCodigo ? String(maior.contaCodigo) : "";
+    const nome = maior.contaNome ? humanizeName(String(maior.contaNome)) : "(sem conta)";
+    const rotulo = [codigo, nome].filter(Boolean).join(" ").trim() || "(sem conta)";
+    tail = ` Maior saldo: ${rotulo} (${formatBRL(Number(maior.saldo ?? 0))}).`;
+  }
+
+  return cabeca + tail;
+};
+
+const fmtContabilMovimentoConta: FormatadorCanonico = (env) => {
+  const d = env._DESTAQUE ?? {};
+  const linhas = (env.linhas ?? []) as Array<{
+    contaCodigo?: string | null;
+    contaNome?: string | null;
+    dataLancamento?: string | null;
+    historico?: string | null;
+    debito?: number | null;
+    credito?: number | null;
+  }>;
+
+  // _DESTAQUE.contagem = total do CONJUNTO INTEIRO (count({where}) na query).
+  const totalPartidas = Number(d.contagem ?? env._agregado?.contagem ?? 0);
+
+  if (totalPartidas === 0 || linhas.length === 0) {
+    return "Nao encontrei lancamentos contabeis nesse recorte (conta ou periodo). Ajuste o filtro e consulte de novo.";
+  }
+
+  const primeira = linhas[0];
+  const codigo = primeira?.contaCodigo ? String(primeira.contaCodigo) : "";
+  const nome = primeira?.contaNome ? humanizeName(String(primeira.contaNome)) : "";
+  const rotuloConta = codigo && nome ? `${codigo} ${nome}` : codigo || nome || "conta informada";
+
+  // O handler NAO expoe soma full-set de debito/credito (so a contagem). Logo
+  // as somas abaixo sao das PARTIDAS LISTADAS (pagina), e o texto deixa explicito.
+  const somaDebitoPagina = linhas.reduce((s, l) => s + Number(l.debito ?? 0), 0);
+  const somaCreditoPagina = linhas.reduce((s, l) => s + Number(l.credito ?? 0), 0);
+
+  const plural = totalPartidas === 1 ? "partida" : "partidas";
+  const cabeca = `Razao da conta ${rotuloConta}: ${totalPartidas} ${plural} no periodo.`;
+
+  const mostrando =
+    totalPartidas > linhas.length
+      ? ` Listando ${linhas.length}: debito ${formatBRL(somaDebitoPagina)}, credito ${formatBRL(somaCreditoPagina)} nas partidas exibidas.`
+      : ` Debito ${formatBRL(somaDebitoPagina)}, credito ${formatBRL(somaCreditoPagina)}.`;
+
+  return cabeca + mostrando;
+};
+
 const FORMATADORES: Record<string, FormatadorCanonico> = {
   // financeiro
   financeiro_contas_a_receber: fmtContasAReceber,
@@ -1531,6 +1623,8 @@ const FORMATADORES: Record<string, FormatadorCanonico> = {
   "cadastro_filiais_listar": fmtCadastroFiliaisListar,
   "cadastro_detalhar_parceiro": fmtDetalharParceiro,
   "cadastro_detalhar_produto": fmtCadastroDetalharProduto,
+  "contabil_saldo_conta": fmtContabilSaldoConta,
+  "contabil_movimento_conta": fmtContabilMovimentoConta,
   "contabil_resultado_por_natureza": fmtContabilResultadoPorNatureza,
   "contabil_centro_custo": fmtCentroCusto,
   "contabil_conta_referencial": fmtContabilContaReferencial,
@@ -1689,8 +1783,6 @@ export const TOOLS_SEM_FORMATADOR_REAL: string[] = [
   "fiscal_carta_correcao",
   "fiscal_certificados",
   "fiscal_mdfe_manifestos",
-  "contabil_saldo_conta",
-  "contabil_movimento_conta",
 ];
 
 export function formatadorPorTool(toolName: string): FormatadorCanonico {
