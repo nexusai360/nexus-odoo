@@ -20,9 +20,14 @@
 4. Freshness>6h: _staleness interno no envelope (NAO imprime no corpo; stripper vigente).
 
 ## Estado
-- [x] Brainstorm + decisoes (AskUserQuestion). Mapa do estado atual feito (Explore): envelope fragmentado 3 fontes, 44% tools com envelope, paginacao 10/50, sem Title Case, sem freshness>6h.
-- [~] SPEC v1 escrita. Proximo: commit + 2 reviews adversariais => v3.
-- [ ] PLAN v1 -> 2 reviews -> v3.
+- [x] Brainstorm + decisoes (AskUserQuestion). Mapa do estado atual (Explore).
+- [x] SPEC v1 -> 2 reviews adversariais (workflow wrntvpb6o, acharam 6+ CRITICOS de regressao) -> SPEC v3 commitada (4ed6fd4). Correcoes [R]: envelope BASE+extend (nao chapado), ARRAY_KEYS unica (toca o motor), paginacao 50 com teto-por-byte (guard 24KB), reusar humanizeName, freshness>6h server-side, numeros reais (102 read/9 write fora), ranking desempate+N, baseline snapshot.
+- [x] PLAN v1 commitado (7b027f5): 6 ondas, tasks bite-sized.
+- [~] 2 reviews adversariais do PLANO , workflow wm08wckr3 EM ANDAMENTO. PROXIMO: aplicar achados => PLAN v3, depois executar Onda 1.
+
+## RETOMADA (proxima sessao) , F4 execucao
+ORDEM (NAO pular a fundacao): Onda 1 (1.0 inventario das ~55 tools sem KPI -> docs/.../2026-06-07-f4-tools-a-migrar.md; 1.1 mcp/lib/array-keys.ts; 1.2 unificar os 5 consumidores [run-agent guardToolResult, auto-validator V2/V6, sanitize-tool-result, freshness ARRAY_KEYS_PRIORITY] , RE-CONFIRMAR ancoras por grep, preservar comportamento; 1.3 EnvelopeBaseShape+envelopePronto mantendo o TIPO ToolEnvelope; 1.4 teste de contrato mcp/__tests__/envelope-contract.test.ts; 1.5 baseline snapshot tsx; 1.6 freshness>6h server-side log) -> Onda 2 (paginacao default 50 + teto-por-byte + reescrever 35 testes importando a constante) -> Onda 3 (estender humanizeName + escopo.ts so onde ha filtro + cobertura.ts) -> Onda 4 (migrar ~55 tools por dominio via workflow Opus, E2E KPI x SELECT por tool) -> Onda 5 (ranking desempate+N) -> Onda 6 (contrato verde 102 + baseline KPI identico + rebuild mcp + PR + merge).
+RISCO PRINCIPAL: Onda 1.2 toca o motor do agente; validar com tsc+jest e NAO mudar comportamento (so a fonte da lista de chaves). Migration: NENHUMA nesta fase.
 - [ ] Execucao: envelope canonico (z.object) -> paginacao 50/50 -> humanize/escopo/staleness -> migrar ~60 tools por dominio (workflow Opus) -> formatadores reais -> ranking criterio.
 - [ ] Verificacao E2E (numero identico ao atual) + rebuild mcp + integration.test.
 - [ ] Code review + PR + merge.
