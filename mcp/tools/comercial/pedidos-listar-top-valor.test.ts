@@ -7,7 +7,11 @@ function makePrisma() {
   return {
     fatoBuildState: { findMany: jest.fn() },
     syncState: { findMany: jest.fn() },
-    fatoPedido: { findMany: jest.fn(), count: jest.fn() },
+    fatoPedido: {
+      findMany: jest.fn(),
+      count: jest.fn(),
+      aggregate: jest.fn().mockResolvedValue({ _sum: { vrProdutos: 0 } }),
+    },
   };
 }
 

@@ -51,7 +51,15 @@ const KPI_KEYS = ["_DESTAQUE", "_agregado", "total", "kpis", "contagem", "topPor
 // Campos VARIANTES de paginacao que vivem dentro de _DESTAQUE/_agregado e
 // precisam ser removidos: mudam quando o default de paginacao muda (Onda 2:
 // 10 -> 50) sem que nenhum KPI real tenha regredido. [P]#8.
-const PAGINACAO_VARIANTES = new Set(["linhasExibidas", "amostraExibida", "exibidas"]);
+const PAGINACAO_VARIANTES = new Set([
+  "linhasExibidas",
+  "amostraExibida",
+  "exibidas",
+  // agregados SO da pagina (nome "...Listados"): variam com a paginacao por
+  // design; o agregado invariante e o "...Geral"/"total" sobre o conjunto.
+  "valorTotalListados",
+  "totalListados",
+]);
 
 function stripVariantes(v: unknown): unknown {
   if (Array.isArray(v)) return v.map(stripVariantes);

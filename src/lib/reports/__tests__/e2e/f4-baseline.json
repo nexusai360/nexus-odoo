@@ -59,11 +59,11 @@
       "topParticipante": "Jds Comércio - Matriz DF 18.282.961/0001-00 - Jds Comércio de Produtos e Equipamentos Esportivos Ltda [18‍.282‍.961‍/0001‑00] ",
       "ordenacao": "valor_desc",
       "status": "aberto",
-      "valorTotalListados": 47069719.730000004
+      "valorTotalGeral": 151492153.23
     },
     "_agregado": {
       "contagem": 571,
-      "soma": 47069719.730000004
+      "soma": 151492153.23
     }
   },
   "comercial_pedidos_periodo": {
@@ -438,10 +438,10 @@
     "estado": "ok",
     "_DESTAQUE": {
       "totalNotas": 29868,
-      "valorFaturado": 1377492721.5300066
+      "valorFaturado": 1377492721.5299861
     },
     "_agregado": {
-      "soma": 1377492721.5300066,
+      "soma": 1377492721.5299861,
       "contagem": 29868
     }
   },
@@ -449,13 +449,13 @@
     "estado": "ok",
     "_DESTAQUE": {
       "totalClientes": 5252,
-      "totalGeral": 1377492721.5300066,
+      "totalGeral": 1377492721.5299861,
       "topCliente": "Jht SP Comércio - Matriz DF 34.161.829/0001-98 - Jht SP Comércio de Produtos e Equipamentos Esportivos Ltda [34‍.161‍.829‍/0001‑98] ",
-      "valorTopCliente": 320559367.6000004
+      "valorTopCliente": 320559367.5999991
     },
     "_agregado": {
       "contagem": 5252,
-      "soma": 1377492721.5300066
+      "soma": 1377492721.5299861
     },
     "total": 5252
   },
