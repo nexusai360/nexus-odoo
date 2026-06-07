@@ -5,11 +5,20 @@
 **Branch:** feat/nex-reconstrucao. F1/F2/F3 ja em producao (merged). **Modo:** autonomo TOTAL ate o fim das 6 fases (autorizacao duravel do usuario 2026-06-07, inclui MERGE para main). So parar ao atingir ~80% de contexto (ai: doc redonda + commits + PR + merge + rodar `agente handoff` com ENTER automatico).
 **DB:** `docker exec nexus-odoo-db-1 psql -U nexus -d nexus_odoo_l1 -c "..."`. Env: `set -a; . ./.env.local; set +a`. Migrations: manual + migrate deploy (NUNCA migrate dev). Cautela com quebra de plataforma.
 
+## STATUS FINAL F4 (2026-06-07) , TODAS AS ONDAS COMPLETAS
+F4 Apresentacao FECHADA. Ondas 1-3 (fundacao) + Onda 4 (72/72 read-tools com
+formatador real, allowlist TOOLS_SEM_FORMATADOR_REAL == []) + Onda 5 (desempate
+estavel nos rankings) + Onda 6 (verificacao final). 2727 jest verdes, tsc
+raiz+mcp limpos, contrato verde (allowlist []), baseline E2E set A = 100 tools
+idempotente x dado real. 3 fixes de dado classe d987060 (pedidos_por_uf,
+faturamento_por_marca, faturamento_por_uf). PR #63. Commits da Onda 4/5:
+33e5cee, e94b67e, d6e187a, 4971347, b3725e6, a7e33b6, 3c958ac, 9798a5b, 14e24c7.
+
 ## Roadmap (dossie-MASTER secao 6)
 - F1 Metricas Canonicas , FEITA (merged #58)
 - F2 Entidades/Desambiguacao , FEITA (merged #59)
 - F3 Cerebro de Orquestracao , FEITA (merged #60, shadow)
-- **F4 Apresentacao , EM ANDAMENTO** (esta)
+- **F4 Apresentacao , COMPLETA** (PR #63, ondas 1-6)
 - F5 Evals/Golden Dataset , pendente
 - F6 Custo/Latencia , pendente
 
