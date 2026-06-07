@@ -14,17 +14,18 @@ import { embedQuestion } from "../../embed-question";
 import { getToolVectors } from "../../embed-tools";
 import { pickTools } from "../../pick-tools";
 import { pickDomains } from "../../pick-domains";
+// F5: fonte unica de cenarios e o golden; o adaptador o reduz ao shape do oraculo.
+import { GoldenSchema, type GoldenEntry } from "../../../evals/golden-schema";
+import { goldenToOraculo, frozenProsseguir, type OraculoItem } from "../../../evals/golden-to-oraculo";
 
-type Item = {
-  pergunta: string;
-  toolEsperada: string | null;
-  dominioEsperado: string | null;
-  classeEsperada: "prosseguir" | "fora_de_escopo" | "falta_honesta";
-};
+type Item = OraculoItem;
 
-const ORACULO: Item[] = JSON.parse(
-  readFileSync(new URL("./mini-oraculo.json", import.meta.url), "utf8"),
+const GOLDEN: GoldenEntry[] = GoldenSchema.parse(
+  JSON.parse(readFileSync(new URL("../../../evals/golden/golden-nex.json", import.meta.url), "utf8")),
 );
+// recall@K gate so sobre as 30 prosseguir migradas (congeladas); novas perguntas
+// prosseguir (cobertura/ouro) ficam como "monitoradas, nao-gate".
+const FROZEN: Item[] = goldenToOraculo(frozenProsseguir(GOLDEN));
 
 const K_VALUES = [5, 6, 7, 8];
 const SETTINGS = { threshold: 0.3, topK: 3 };
@@ -36,7 +37,7 @@ async function main() {
     .map((t) => ({ name: t.id, description: descriptionForRetrieval(t) }));
   const toolVectors = await getToolVectors(tools);
 
-  const prosseguir = ORACULO.filter((i) => i.classeEsperada === "prosseguir");
+  const prosseguir = FROZEN.filter((i) => i.classeEsperada === "prosseguir");
 
   // Pre-computa, por pergunta, o vetor + dominios + scores das tools (1x).
   type Pre = { item: Item; vector: number[]; pickedDomains: string[] };
