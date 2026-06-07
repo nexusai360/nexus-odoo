@@ -84,14 +84,14 @@ pergunta
 - **Testes-semente** (critério de pronto): variantes coloquiais ("me lista tudo", "quero ver todos", "top dez", "top 10", "dá um exemplo", número por extenso).
 
 ### 5.2 Verificador `[R]` (estende o `auto-validator`, não cria paralelo)
-- **Fato:** `src/lib/agent/validation/auto-validator.ts` já roda **V1-V4** com modo shadow/active e retry cap=1 (anti-invenção, anti-truncamento, anti-recusa, coerência frouxa). A v1 ignorava isso.
-- **Decisão:** as checagens novas entram como **V5+ dentro do `auto-validator`** (mesmo modo shadow/active, mesmo retry cap=1 compartilhado), e o diretório `validation/` é o lar canônico (sem criar `verifier/` concorrente). Opcional: renomear `validation/ → verifier/` só se for limpo (decisão do plano; não obrigatório).
-- **Checks novos, limitados ao que o envelope atual suporta** `[R]` (o envelope canônico único é da **F4**, não desta fase):
-  - **V5 totais×itens:** só nas tools cujo shape **já** expõe total/`_agregado` + linhas com campo de valor conhecido (listar quais no plano). Ausência do campo → "não verificável" (aviso), nunca falso positivo.
-  - **V6 datas no período:** só quando o envelope expõe `periodoDe/periodoAte` e datas por linha em formato conhecido; senão "não verificável". (Padronização ampla fica para a F4.)
-  - **V7 anti-JOIN-duplicado:** sinal quando a contagem sugere duplicação (heurística conservadora, modo aviso).
+- **Fato `[P]`:** `src/lib/agent/validation/auto-validator.ts` já roda **V1-V5** (V5 = anti-ignorou-`_RESPOSTA`) com modo shadow/active e retry cap=1; V2 já soma linhas vs `_agregado` (anti-invenção). Logo os checks novos são **V6/V7** (V5 está ocupado), e não podem duplicar o V2.
+- **Decisão:** as checagens novas entram como **V6/V7 dentro do `auto-validator`** (mesmo arquivo/diretório `validation/`, sem `verifier/` paralelo). Como `validateResponse` faz early-return, V6/V7 rodam sempre e vão para uma lista `shadowOutcomes` (telemetria) sem short-circuitar o fluxo de produção (V1-V5).
+- **Checks novos, limitados ao que o envelope atual suporta** `[R]` (o envelope canônico único é da **F4**):
+  - **V6 total-declarado × linhas-do-envelope:** confere o total que o **próprio envelope** declara (`_agregado/total`) contra a soma das **linhas que o próprio envelope retornou** (independente do texto do LLM; pega tool que se autocontradiz, cobertura nova vs V2). Sem campo de total → "não verificável".
+  - **V7 anti-JOIN-duplicado:** sinal quando a contagem de itens sugere duplicação (heurística conservadora, shadow).
+  - **CORTADO p/ F4 `[P]`:** "datas no período" , `periodoDe/periodoAte` são campos de **input**, não saem no envelope que o `auto-validator` vê; exigiria passar args de input + envelope canônico (F4).
 - **Freshness** `[R]`: o verificador sinaliza `atualizadoHa`/sync > 6h **internamente/log**; a apresentação no texto continua governada pela F4 e pelo `freshness-stripper.ts` atual (regra vigente: não exibir tempo de atualização no corpo). Sem regressão.
-- **Retry** `[R]`: **um único** ponto de retry corretivo por turno, **cap total = 1**, reusando o retry já existente do `auto-validator` (não somar um novo). Esclarecer no plano se reexecuta a tool (conta contra `MAX_ITERATIONS`) ou só reformula o texto (como hoje). Falha após o retry → **Falta Honesta**, nunca inventa.
+- **Retry `[P]`:** o retry existente é **só-texto** (re-chat do LLM, não reexecuta a tool, não conta `MAX_ITERATIONS`). V1-V5 (problemas de redação/recusa) usam esse retry (cap=1). V6/V7 são incoerência **estrutural** de dado , retry-texto não conserta; nesses casos a política vai **direto a Falta Honesta** (não gasta retry). Nunca inventa.
 
 ## 6. Onda 3c , "Fora do Catálogo" (renomeação user-facing + endurecimento)
 
@@ -122,12 +122,12 @@ caminho de gap (Falta Honesta)  ── fundação compartilhada ──┬─> 3b
 - Classificador incerto, ou intenção incompatível com a tool → `pontual` + aviso.
 - Verificador falha → retry compartilhado cap=1 → Falta Honesta; **nunca** resposta inventada.
 - RBAC sempre **antes** do retrieval. Tool gated (BI, `contabil_detalhar_conta`) nunca aparece por similaridade.
-- Toda flag nova (router active, V5-V7, injeção de intenção) nasce em **shadow**, vira active só com gate numérico (§4.5).
+- Toda flag nova (router active, V6/V7, injeção de intenção) nasce em **shadow**, vira active só com gate numérico (§4.5).
 - Tool nova sem `embeddingText` → check de startup/CI falha (não fica invisível); e o piso já garante o domínio inteiro.
 
 ## 9. Testes e verificação
 
-- **TDD por módulo:** `pick-tools`, `classify-intent` (com a tabela de precedência), cada check novo do `auto-validator` (V5-V7) , unitário com fixtures.
+- **TDD por módulo:** `pick-tools`, `classify-intent` (com a tabela de precedência), cada check novo do `auto-validator` (V6/V7) , unitário com fixtures.
 - **Mini-oráculo da F3** `[R]` (não é o golden da F5): **30-50 perguntas** com **tool-esperada anotada à mão** (derivadas das `[OK]` do dossie), vivendo como fixture da F3. Mede **recall@K** e **acurácia de seleção de tool**. Deixa explícito que é subconjunto-semente, não o golden formal (que é F5).
 - **E2E contra cache real** (`nexus_odoo_l1`): exercer retrieval + intenção + verificador, conferindo seleção de tool e ausência de alucinação no mini-oráculo. Runner via tsx quando precisar do client Prisma (mesmo padrão da F2).
 - **Shadow-compare:** rodar active em paralelo ao shadow e medir `chosenToolRank` no `AgentRouterDecision` estendido; só virar a chave com recall@K ≥ 98% (§4.5).
@@ -145,6 +145,6 @@ caminho de gap (Falta Honesta)  ── fundação compartilhada ──┬─> 3b
 
 - LLM recebe catálogo enxuto (top-K + núcleo do domínio) coerente; tool gated nunca vaza por similaridade; nenhuma tool registrada fica sem `embeddingText`.
 - Intenção exaustiva/ranking/amostragem classificada em código, com precedência definida, injetada nos args (não só no prompt), degradando com segurança.
-- Verificador (V1-V7 no `auto-validator`) bloqueia número incoerente/alucinado e datas fora do período **onde o envelope suporta**, com retry compartilhado cap=1 e Falta Honesta.
+- Verificador (V1-V5 + V6/V7 no `auto-validator`) bloqueia número incoerente/alucinado e datas fora do período **onde o envelope suporta**, com retry compartilhado cap=1 e Falta Honesta.
 - "Fora do Catálogo" com nome compreensível no user-facing; chave técnica `caminho3` preservada (sem quebrar calibração/histórico).
 - **Gate numérico:** shadow-compare prova recall@K ≥ 98% no mini-oráculo antes de ligar o active. Sem regressão.
