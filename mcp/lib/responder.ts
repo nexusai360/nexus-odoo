@@ -10,6 +10,7 @@
  */
 
 import type { ToolEnvelope } from "./envelope";
+import { humanizeName } from "@/lib/agent/text-normalize.js";
 
 export type FormatadorCanonico = (
   env: Omit<ToolEnvelope, "_RESPOSTA">,
@@ -365,6 +366,28 @@ const fmtEntradasSaidas: FormatadorCanonico = (env) => {
   return `Entradas: ${entrada} unidades. Saidas: ${saida} unidades. Periodo de ${periodos} meses.`;
 };
 
+// F4 Onda 4 (estoque)
+const fmtConcentracao: FormatadorCanonico = (env) => {
+  const d = env._DESTAQUE ?? {};
+  const totalFamilias = Number(d.totalFamilias ?? 0);
+  const valorTotal = Number(d.valorTotal ?? 0);
+  if (totalFamilias === 0 && Number(d.totalMarcas ?? 0) === 0) {
+    return "Nao ha saldo em estoque para calcular concentracao.";
+  }
+  const partes: string[] = [`Concentracao do estoque (valor total ${formatBRL(valorTotal)}).`];
+  if (d.topFamilia !== undefined) {
+    partes.push(
+      `Familia lider: ${humanizeName(String(d.topFamilia))} (${Number(d.pctTopFamilia ?? 0)}%, ${formatBRL(Number(d.valorTopFamilia ?? 0))}).`,
+    );
+  }
+  if (d.topMarca !== undefined) {
+    partes.push(
+      `Marca lider: ${humanizeName(String(d.topMarca))} (${Number(d.pctTopMarca ?? 0)}%, ${formatBRL(Number(d.valorTopMarca ?? 0))}).`,
+    );
+  }
+  return partes.join(" ");
+};
+
 const FORMATADORES: Record<string, FormatadorCanonico> = {
   // financeiro
   financeiro_contas_a_receber: fmtContasAReceber,
@@ -380,6 +403,7 @@ const FORMATADORES: Record<string, FormatadorCanonico> = {
   fiscal_apuracao: fmtApuracaoFiscal,
   // estoque
   estoque_saldo_produto: fmtSaldoProduto,
+  estoque_concentracao: fmtConcentracao,
   estoque_top_movimentados: fmtTopMovimentados,
   estoque_produtos_parados: fmtProdutosParados,
   estoque_produtos_saldo_zero: fmtProdutosSaldoZero,
@@ -428,6 +452,7 @@ export const TOOLS_QUE_PRECISAM_FORMATADOR: string[] = [
   "fiscal_impostos_periodo",
   // estoque
   "estoque_saldo_produto",
+  "estoque_concentracao",
   "estoque_top_movimentados",
   "estoque_produtos_parados",
   "estoque_produtos_saldo_zero",
@@ -464,7 +489,6 @@ export const TOOLS_QUE_PRECISAM_FORMATADOR: string[] = [
  */
 export const TOOLS_SEM_FORMATADOR_REAL: string[] = [
   // estoque
-  "estoque_concentracao",
   "estoque_locais_por_produto",
   "estoque_minimo_maximo",
   // financeiro
