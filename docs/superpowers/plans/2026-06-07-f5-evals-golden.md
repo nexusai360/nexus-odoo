@@ -10,6 +10,11 @@
 
 **Regra de raiz:** numero sempre de codigo; E2E contra cache real; sem migration; nao quebrar a plataforma. DB: `docker exec nexus-odoo-db-1 psql -U nexus -d nexus_odoo_l1 -c "..."`.
 
+> **[R] Correcoes pre-execucao (self-review + verificacao no codigo real; o workflow de review do plano travou, gate conceitual ja veio das 2 reviews da spec):**
+> 1. `registrar_lacuna` recebe `{ perguntaResumo: string (min 1), dominio? }` , NAO `{}`. Na Task 9 (dimensaoAlucinacao sub-classe A), chamar `registrarLacuna.handler({ perguntaResumo: e.pergunta }, ctx)` (nao `e.args ?? {}`), senao o `inputSchema.parse` quebra.
+> 2. `MARCADORES_NAO_OPERADO` (Task 2) deve casar os textos REAIS: "nao e operad", "nao sao operad", "nao tem itens processados", "nao ha retornos", "nao ha remessas", "nao ha carteiras", "sem cheques", "sem registros de pix", "sem cotacoes", "sem comissoes", "nao tenho dados suficientes", + a `mensagemContabilGestaoVazia`. Confirmados via grep.
+> 3. `resolveJsonModule: true` confirmado no tsconfig , import direto do `golden-nex.json` funciona.
+
 ---
 
 ## File Structure

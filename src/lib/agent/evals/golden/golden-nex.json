@@ -1,0 +1,921 @@
+[
+  {
+    "id": "estoque-01",
+    "pergunta": "Qual o saldo do produto esteira T3 em estoque hoje?",
+    "dominio": "estoque",
+    "classe": "prosseguir",
+    "toolEsperada": "estoque_saldo_produto"
+  },
+  {
+    "id": "estoque-02",
+    "pergunta": "Qual o valor total de estoque por armazem?",
+    "dominio": "estoque",
+    "classe": "prosseguir",
+    "toolEsperada": "estoque_valor_armazem"
+  },
+  {
+    "id": "estoque-03",
+    "pergunta": "Qual familia concentra a maior parte do valor de estoque?",
+    "dominio": "estoque",
+    "classe": "prosseguir",
+    "toolEsperada": "estoque_concentracao"
+  },
+  {
+    "id": "estoque-04",
+    "pergunta": "Quais produtos estao parados ha mais de 60 dias com saldo positivo?",
+    "dominio": "estoque",
+    "classe": "prosseguir",
+    "toolEsperada": "estoque_produtos_parados"
+  },
+  {
+    "id": "estoque-05",
+    "pergunta": "Quais sao os 20 produtos mais movimentados no periodo?",
+    "dominio": "estoque",
+    "classe": "prosseguir",
+    "toolEsperada": "estoque_top_movimentados"
+  },
+  {
+    "id": "financeiro-01",
+    "pergunta": "Qual o saldo em caixa e bancos hoje?",
+    "dominio": "financeiro",
+    "classe": "prosseguir",
+    "toolEsperada": "financeiro_saldo_contas"
+  },
+  {
+    "id": "financeiro-02",
+    "pergunta": "Quanto entrou e quanto saiu de caixa no mes passado?",
+    "dominio": "financeiro",
+    "classe": "prosseguir",
+    "toolEsperada": "financeiro_caixa_periodo"
+  },
+  {
+    "id": "financeiro-03",
+    "pergunta": "Como esta o fluxo de caixa mensal ao longo do ano?",
+    "dominio": "financeiro",
+    "classe": "prosseguir",
+    "toolEsperada": "financeiro_fluxo_caixa"
+  },
+  {
+    "id": "financeiro-04",
+    "pergunta": "Quanto os clientes ainda devem para a gente no total?",
+    "dominio": "financeiro",
+    "classe": "prosseguir",
+    "toolEsperada": "financeiro_contas_a_receber"
+  },
+  {
+    "id": "financeiro-05",
+    "pergunta": "Quanto devemos aos fornecedores no total a pagar?",
+    "dominio": "financeiro",
+    "classe": "prosseguir",
+    "toolEsperada": "financeiro_contas_a_pagar"
+  },
+  {
+    "id": "financeiro-06",
+    "pergunta": "Quanto esta vencido e ainda nao foi pago?",
+    "dominio": "financeiro",
+    "classe": "prosseguir",
+    "toolEsperada": "financeiro_titulos_vencidos"
+  },
+  {
+    "id": "fiscal-01",
+    "pergunta": "Qual foi o faturamento no periodo de janeiro a marco?",
+    "dominio": "fiscal",
+    "classe": "prosseguir",
+    "toolEsperada": "fiscal_faturamento_periodo"
+  },
+  {
+    "id": "fiscal-02",
+    "pergunta": "Quais notas fiscais emitimos em janeiro de 2026?",
+    "dominio": "fiscal",
+    "classe": "prosseguir",
+    "toolEsperada": "fiscal_notas_emitidas"
+  },
+  {
+    "id": "fiscal-03",
+    "pergunta": "Para qual cliente mais faturamos no ano?",
+    "dominio": "fiscal",
+    "classe": "prosseguir",
+    "toolEsperada": "fiscal_faturamento_por_cliente"
+  },
+  {
+    "id": "fiscal-04",
+    "pergunta": "Quais DFe de fornecedores estao pendentes de manifestacao?",
+    "dominio": "fiscal",
+    "classe": "prosseguir",
+    "toolEsperada": "fiscal_dfe_pendentes_manifestacao"
+  },
+  {
+    "id": "fiscal-05",
+    "pergunta": "Quanto pagamos de ICMS, PIS e COFINS no periodo?",
+    "dominio": "fiscal",
+    "classe": "prosseguir",
+    "toolEsperada": "fiscal_impostos_periodo"
+  },
+  {
+    "id": "comercial-01",
+    "pergunta": "Quantos pedidos temos cadastrados no total?",
+    "dominio": "comercial",
+    "classe": "prosseguir",
+    "toolEsperada": "comercial_contar_pedidos"
+  },
+  {
+    "id": "comercial-02",
+    "pergunta": "Como estao distribuidos os pedidos por etapa?",
+    "dominio": "comercial",
+    "classe": "prosseguir",
+    "toolEsperada": "comercial_pedidos_por_etapa"
+  },
+  {
+    "id": "comercial-03",
+    "pergunta": "Qual o ranking de vendedores por quantidade de pedidos?",
+    "dominio": "comercial",
+    "classe": "prosseguir",
+    "toolEsperada": "comercial_pedidos_por_vendedor"
+  },
+  {
+    "id": "comercial-04",
+    "pergunta": "Liste os 10 pedidos de maior valor.",
+    "dominio": "comercial",
+    "classe": "prosseguir",
+    "toolEsperada": "comercial_pedidos_listar_top_valor"
+  },
+  {
+    "id": "comercial-05",
+    "pergunta": "Quantos vendedores temos cadastrados?",
+    "dominio": "comercial",
+    "classe": "prosseguir",
+    "toolEsperada": "comercial_vendedores_cadastrados"
+  },
+  {
+    "id": "contabil-01",
+    "pergunta": "Qual e o plano de contas completo da empresa?",
+    "dominio": "contabil",
+    "classe": "prosseguir",
+    "toolEsperada": "contabil_plano_de_contas"
+  },
+  {
+    "id": "contabil-02",
+    "pergunta": "Me mostre a hierarquia da conta 1.01.01 e suas filhas.",
+    "dominio": "contabil",
+    "classe": "prosseguir",
+    "toolEsperada": "contabil_estrutura_conta"
+  },
+  {
+    "id": "contabil-03",
+    "pergunta": "Qual e o plano referencial SPED completo?",
+    "dominio": "contabil",
+    "classe": "prosseguir",
+    "toolEsperada": "contabil_conta_referencial"
+  },
+  {
+    "id": "contabil-04",
+    "pergunta": "Qual o saldo por centro de custo no periodo?",
+    "dominio": "contabil",
+    "classe": "prosseguir",
+    "toolEsperada": "contabil_centro_custo"
+  },
+  {
+    "id": "cadastros-01",
+    "pergunta": "Quantos clientes temos cadastrados?",
+    "dominio": "cadastros",
+    "classe": "prosseguir",
+    "toolEsperada": "cadastro_contar_parceiros"
+  },
+  {
+    "id": "cadastros-02",
+    "pergunta": "Qual o CNPJ da empresa chamada Smartfit?",
+    "dominio": "cadastros",
+    "classe": "prosseguir",
+    "toolEsperada": "cadastro_buscar_parceiro"
+  },
+  {
+    "id": "cadastros-03",
+    "pergunta": "Quantos clientes temos por estado?",
+    "dominio": "cadastros",
+    "classe": "prosseguir",
+    "toolEsperada": "cadastro_parceiros_por_uf"
+  },
+  {
+    "id": "cadastros-04",
+    "pergunta": "Quantas filiais a gente tem e quais sao?",
+    "dominio": "cadastros",
+    "classe": "prosseguir",
+    "toolEsperada": "cadastro_filiais_listar"
+  },
+  {
+    "id": "cadastros-05",
+    "pergunta": "Qual o NCM e o codigo de barras do produto esteira T5?",
+    "dominio": "cadastros",
+    "classe": "prosseguir",
+    "toolEsperada": "cadastro_detalhar_produto"
+  },
+  {
+    "id": "geral-01",
+    "pergunta": "Qual a capital da Franca?",
+    "dominio": null,
+    "classe": "fora_de_escopo",
+    "toolEsperada": null
+  },
+  {
+    "id": "geral-02",
+    "pergunta": "Me conta uma piada.",
+    "dominio": null,
+    "classe": "fora_de_escopo",
+    "toolEsperada": null
+  },
+  {
+    "id": "geral-03",
+    "pergunta": "Como faco um bolo de cenoura?",
+    "dominio": null,
+    "classe": "fora_de_escopo",
+    "toolEsperada": null
+  },
+  {
+    "id": "geral-04",
+    "pergunta": "Qual a previsao do tempo para amanha em Sao Paulo?",
+    "dominio": null,
+    "classe": "fora_de_escopo",
+    "toolEsperada": null
+  },
+  {
+    "id": "geral-05",
+    "pergunta": "Quem ganhou a Copa do Mundo de 2022?",
+    "dominio": null,
+    "classe": "fora_de_escopo",
+    "toolEsperada": null
+  },
+  {
+    "id": "geral-06",
+    "pergunta": "Traduza 'bom dia' para o japones.",
+    "dominio": null,
+    "classe": "fora_de_escopo",
+    "toolEsperada": null
+  },
+  {
+    "id": "rh-01",
+    "pergunta": "Quantos funcionarios a empresa tem hoje?",
+    "dominio": "rh",
+    "classe": "falta_honesta",
+    "toolEsperada": "registrar_lacuna"
+  },
+  {
+    "id": "rh-02",
+    "pergunta": "Qual a folha de pagamento do mes passado?",
+    "dominio": "rh",
+    "classe": "falta_honesta",
+    "toolEsperada": "registrar_lacuna"
+  },
+  {
+    "id": "rh-03",
+    "pergunta": "Quantos colaboradores estao de ferias agora?",
+    "dominio": "rh",
+    "classe": "falta_honesta",
+    "toolEsperada": "registrar_lacuna"
+  },
+  {
+    "id": "crm-01",
+    "pergunta": "Como esta o pipeline de vendas do CRM?",
+    "dominio": "crm",
+    "classe": "falta_honesta",
+    "toolEsperada": "registrar_lacuna"
+  },
+  {
+    "id": "crm-02",
+    "pergunta": "Quantos leads novos entraram esse mes no CRM?",
+    "dominio": "crm",
+    "classe": "falta_honesta",
+    "toolEsperada": "registrar_lacuna"
+  },
+  {
+    "id": "crm-03",
+    "pergunta": "Qual a taxa de conversao das oportunidades do funil?",
+    "dominio": "crm",
+    "classe": "falta_honesta",
+    "toolEsperada": "registrar_lacuna"
+  },
+  {
+    "id": "producao-01",
+    "pergunta": "Quais ordens de producao estao abertas?",
+    "dominio": "producao",
+    "classe": "falta_honesta",
+    "toolEsperada": "registrar_lacuna"
+  },
+  {
+    "id": "producao-02",
+    "pergunta": "Qual a lista de materiais (BOM) do produto esteira T5?",
+    "dominio": "producao",
+    "classe": "falta_honesta",
+    "toolEsperada": "registrar_lacuna"
+  },
+  {
+    "id": "producao-03",
+    "pergunta": "Quantas ordens de producao foram concluidas no mes?",
+    "dominio": "producao",
+    "classe": "falta_honesta",
+    "toolEsperada": "registrar_lacuna"
+  },
+  {
+    "id": "ouro-estoque-01",
+    "pergunta": "Qual o saldo total do produto 1464 e em quantos locais?",
+    "dominio": "estoque",
+    "classe": "prosseguir",
+    "toolEsperada": "estoque_locais_por_produto",
+    "args": {
+      "termo": "1464"
+    },
+    "kpiOuro": [
+      {
+        "chave": "saldoTotal",
+        "valor": 789,
+        "match": "exato",
+        "fonteOuro": "SELECT sum(quantidade) fato_estoque_saldo produto codigo=1464 local_id not null"
+      },
+      {
+        "chave": "totalLocais",
+        "valor": 25,
+        "match": "exato",
+        "fonteOuro": "SELECT count(distinct local_id) idem"
+      }
+    ]
+  },
+  {
+    "id": "ouro-financeiro-01",
+    "pergunta": "Qual o saldo em caixa e bancos hoje?",
+    "dominio": "financeiro",
+    "classe": "prosseguir",
+    "toolEsperada": "financeiro_saldo_contas",
+    "args": {},
+    "kpiOuro": [
+      {
+        "chave": "saldoTotal",
+        "valor": -36233316.36,
+        "match": "exato",
+        "fonteOuro": "SELECT round(sum(saldo),2) fato_financeiro_saldo"
+      },
+      {
+        "chave": "totalContas",
+        "valor": 9,
+        "match": "exato",
+        "fonteOuro": "SELECT count(*) fato_financeiro_saldo"
+      }
+    ]
+  },
+  {
+    "id": "ouro-fiscal-01",
+    "pergunta": "Quantas notas fiscais existem no total (saida e entrada)?",
+    "dominio": "fiscal",
+    "classe": "prosseguir",
+    "toolEsperada": "fiscal_contar_notas",
+    "args": {},
+    "kpiOuro": [
+      {
+        "chave": "totalNotas",
+        "valor": 49426,
+        "match": "exato",
+        "fonteOuro": "SELECT count(*) fato_nota_fiscal"
+      },
+      {
+        "chave": "totalSaida",
+        "valor": 38309,
+        "match": "exato",
+        "fonteOuro": "count filter entrada_saida=1"
+      },
+      {
+        "chave": "totalEntrada",
+        "valor": 11117,
+        "match": "exato",
+        "fonteOuro": "count filter entrada_saida=0"
+      }
+    ]
+  },
+  {
+    "id": "ouro-comercial-01",
+    "pergunta": "Quantos pedidos existem no total?",
+    "dominio": "comercial",
+    "classe": "prosseguir",
+    "toolEsperada": "comercial_contar_pedidos",
+    "args": {},
+    "kpiOuro": [
+      {
+        "chave": "totalPedidos",
+        "valor": 1732,
+        "match": "exato",
+        "fonteOuro": "SELECT count(*) fato_pedido"
+      }
+    ]
+  },
+  {
+    "id": "desamb-01",
+    "pergunta": "Qual o saldo da esteira?",
+    "dominio": "estoque",
+    "classe": "desambiguacao",
+    "toolEsperada": "estoque_saldo_produto",
+    "args": {
+      "termo": "esteira"
+    },
+    "esperaAmbiguidade": {
+      "minCandidatos": 2,
+      "toleranteResultadoUnico": true
+    },
+    "observacao": "esteira casa varios produtos; estabilidade depende do cache; falha so se a tool chutar 1 match errado"
+  },
+  {
+    "id": "desamb-02",
+    "pergunta": "Quero o cadastro do parceiro Jds",
+    "dominio": "cadastros",
+    "classe": "desambiguacao",
+    "toolEsperada": "cadastro_buscar_parceiro",
+    "args": {
+      "termo": "Jds"
+    },
+    "esperaAmbiguidade": {
+      "minCandidatos": 2,
+      "toleranteResultadoUnico": true
+    },
+    "observacao": "Jds casa multiplas filiais; tolerante a resultado unico"
+  },
+  {
+    "id": "desamb-03",
+    "pergunta": "Qual o preco do produto banco?",
+    "dominio": "comercial",
+    "classe": "desambiguacao",
+    "toolEsperada": "preco_produto",
+    "args": {
+      "termo": "banco"
+    },
+    "esperaAmbiguidade": {
+      "minCandidatos": 2,
+      "toleranteResultadoUnico": true
+    },
+    "observacao": "banco casa varios produtos"
+  },
+  {
+    "id": "cov-01",
+    "pergunta": "Consulta: auditoria regras",
+    "dominio": "auditoria",
+    "classe": "prosseguir",
+    "toolEsperada": "auditoria_regras"
+  },
+  {
+    "id": "cov-02",
+    "pergunta": "Consulta: cadastro cidades listar",
+    "dominio": "cadastro",
+    "classe": "prosseguir",
+    "toolEsperada": "cadastro_cidades_listar"
+  },
+  {
+    "id": "cov-03",
+    "pergunta": "Consulta: cadastro detalhar parceiro",
+    "dominio": "cadastro",
+    "classe": "prosseguir",
+    "toolEsperada": "cadastro_detalhar_parceiro"
+  },
+  {
+    "id": "cov-04",
+    "pergunta": "Consulta: cadastro parceiros novos",
+    "dominio": "cadastro",
+    "classe": "prosseguir",
+    "toolEsperada": "cadastro_parceiros_novos"
+  },
+  {
+    "id": "cov-05",
+    "pergunta": "Consulta: cadastro parceiros por cidade",
+    "dominio": "cadastro",
+    "classe": "prosseguir",
+    "toolEsperada": "cadastro_parceiros_por_cidade"
+  },
+  {
+    "id": "cov-06",
+    "pergunta": "Consulta: cadastro parceiros sem documento",
+    "dominio": "cadastro",
+    "classe": "prosseguir",
+    "toolEsperada": "cadastro_parceiros_sem_documento"
+  },
+  {
+    "id": "cov-07",
+    "pergunta": "Consulta: comercial comissoes",
+    "dominio": "comercial",
+    "classe": "prosseguir",
+    "toolEsperada": "comercial_comissoes"
+  },
+  {
+    "id": "cov-08",
+    "pergunta": "Consulta: comercial cotacoes",
+    "dominio": "comercial",
+    "classe": "prosseguir",
+    "toolEsperada": "comercial_cotacoes"
+  },
+  {
+    "id": "cov-09",
+    "pergunta": "Consulta: comercial detalhar pedido",
+    "dominio": "comercial",
+    "classe": "prosseguir",
+    "toolEsperada": "comercial_detalhar_pedido"
+  },
+  {
+    "id": "cov-10",
+    "pergunta": "Consulta: comercial parcelas a vencer",
+    "dominio": "comercial",
+    "classe": "prosseguir",
+    "toolEsperada": "comercial_parcelas_a_vencer"
+  },
+  {
+    "id": "cov-11",
+    "pergunta": "Consulta: comercial pedido historico etapas",
+    "dominio": "comercial",
+    "classe": "prosseguir",
+    "toolEsperada": "comercial_pedido_historico_etapas"
+  },
+  {
+    "id": "cov-12",
+    "pergunta": "Consulta: comercial pedido travados por etapa",
+    "dominio": "comercial",
+    "classe": "prosseguir",
+    "toolEsperada": "comercial_pedido_travados_por_etapa"
+  },
+  {
+    "id": "cov-13",
+    "pergunta": "Consulta: comercial pedidos atrasados",
+    "dominio": "comercial",
+    "classe": "prosseguir",
+    "toolEsperada": "comercial_pedidos_atrasados"
+  },
+  {
+    "id": "cov-14",
+    "pergunta": "Consulta: comercial pedidos periodo",
+    "dominio": "comercial",
+    "classe": "prosseguir",
+    "toolEsperada": "comercial_pedidos_periodo"
+  },
+  {
+    "id": "cov-15",
+    "pergunta": "Consulta: comercial pedidos por uf",
+    "dominio": "comercial",
+    "classe": "prosseguir",
+    "toolEsperada": "comercial_pedidos_por_uf"
+  },
+  {
+    "id": "cov-16",
+    "pergunta": "Consulta: comercial pedidos sem vendedor",
+    "dominio": "comercial",
+    "classe": "prosseguir",
+    "toolEsperada": "comercial_pedidos_sem_vendedor"
+  },
+  {
+    "id": "cov-17",
+    "pergunta": "Consulta: comercial produtos por familia",
+    "dominio": "comercial",
+    "classe": "prosseguir",
+    "toolEsperada": "comercial_produtos_por_familia"
+  },
+  {
+    "id": "cov-18",
+    "pergunta": "Consulta: comercial produtos por margem",
+    "dominio": "comercial",
+    "classe": "prosseguir",
+    "toolEsperada": "comercial_produtos_por_margem"
+  },
+  {
+    "id": "cov-19",
+    "pergunta": "Consulta: comercial tempo medio fechamento",
+    "dominio": "comercial",
+    "classe": "prosseguir",
+    "toolEsperada": "comercial_tempo_medio_fechamento"
+  },
+  {
+    "id": "cov-20",
+    "pergunta": "Consulta: contabil detalhar conta",
+    "dominio": "contabil",
+    "classe": "prosseguir",
+    "toolEsperada": "contabil_detalhar_conta"
+  },
+  {
+    "id": "cov-21",
+    "pergunta": "Consulta: contabil movimento conta",
+    "dominio": "contabil",
+    "classe": "prosseguir",
+    "toolEsperada": "contabil_movimento_conta"
+  },
+  {
+    "id": "cov-22",
+    "pergunta": "Consulta: contabil resultado por natureza",
+    "dominio": "contabil",
+    "classe": "prosseguir",
+    "toolEsperada": "contabil_resultado_por_natureza"
+  },
+  {
+    "id": "cov-23",
+    "pergunta": "Consulta: contabil saldo conta",
+    "dominio": "contabil",
+    "classe": "prosseguir",
+    "toolEsperada": "contabil_saldo_conta"
+  },
+  {
+    "id": "cov-24",
+    "pergunta": "Consulta: crm pipeline funis",
+    "dominio": "crm",
+    "classe": "prosseguir",
+    "toolEsperada": "crm_pipeline_funis"
+  },
+  {
+    "id": "cov-25",
+    "pergunta": "Consulta: crm status dominio",
+    "dominio": "crm",
+    "classe": "prosseguir",
+    "toolEsperada": "crm_status_dominio"
+  },
+  {
+    "id": "cov-26",
+    "pergunta": "Consulta: crm res partner get",
+    "dominio": "crm.res",
+    "classe": "prosseguir",
+    "toolEsperada": "crm.res_partner.get"
+  },
+  {
+    "id": "cov-27",
+    "pergunta": "Consulta: estoque entradas saidas",
+    "dominio": "estoque",
+    "classe": "prosseguir",
+    "toolEsperada": "estoque_entradas_saidas"
+  },
+  {
+    "id": "cov-28",
+    "pergunta": "Consulta: estoque minimo maximo",
+    "dominio": "estoque",
+    "classe": "prosseguir",
+    "toolEsperada": "estoque_minimo_maximo"
+  },
+  {
+    "id": "cov-29",
+    "pergunta": "Consulta: estoque produtos saldo zero",
+    "dominio": "estoque",
+    "classe": "prosseguir",
+    "toolEsperada": "estoque_produtos_saldo_zero"
+  },
+  {
+    "id": "cov-30",
+    "pergunta": "Consulta: financeiro baixas cobranca",
+    "dominio": "financeiro",
+    "classe": "prosseguir",
+    "toolEsperada": "financeiro_baixas_cobranca"
+  },
+  {
+    "id": "cov-31",
+    "pergunta": "Consulta: financeiro carteiras cobranca",
+    "dominio": "financeiro",
+    "classe": "prosseguir",
+    "toolEsperada": "financeiro_carteiras_cobranca"
+  },
+  {
+    "id": "cov-32",
+    "pergunta": "Consulta: financeiro cheques",
+    "dominio": "financeiro",
+    "classe": "prosseguir",
+    "toolEsperada": "financeiro_cheques"
+  },
+  {
+    "id": "cov-33",
+    "pergunta": "Consulta: financeiro liquidez",
+    "dominio": "financeiro",
+    "classe": "prosseguir",
+    "toolEsperada": "financeiro_liquidez"
+  },
+  {
+    "id": "cov-34",
+    "pergunta": "Consulta: financeiro pix recebidos",
+    "dominio": "financeiro",
+    "classe": "prosseguir",
+    "toolEsperada": "financeiro_pix_recebidos"
+  },
+  {
+    "id": "cov-35",
+    "pergunta": "Consulta: financeiro remessas geradas",
+    "dominio": "financeiro",
+    "classe": "prosseguir",
+    "toolEsperada": "financeiro_remessas_geradas"
+  },
+  {
+    "id": "cov-36",
+    "pergunta": "Consulta: financeiro resultado por conta",
+    "dominio": "financeiro",
+    "classe": "prosseguir",
+    "toolEsperada": "financeiro_resultado_por_conta"
+  },
+  {
+    "id": "cov-37",
+    "pergunta": "Consulta: financeiro retornos processados",
+    "dominio": "financeiro",
+    "classe": "prosseguir",
+    "toolEsperada": "financeiro_retornos_processados"
+  },
+  {
+    "id": "cov-38",
+    "pergunta": "Consulta: fiscal apuracao",
+    "dominio": "fiscal",
+    "classe": "prosseguir",
+    "toolEsperada": "fiscal_apuracao"
+  },
+  {
+    "id": "cov-39",
+    "pergunta": "Consulta: fiscal carta correcao",
+    "dominio": "fiscal",
+    "classe": "prosseguir",
+    "toolEsperada": "fiscal_carta_correcao"
+  },
+  {
+    "id": "cov-40",
+    "pergunta": "Consulta: fiscal certificados",
+    "dominio": "fiscal",
+    "classe": "prosseguir",
+    "toolEsperada": "fiscal_certificados"
+  },
+  {
+    "id": "cov-41",
+    "pergunta": "Consulta: fiscal detalhar nota",
+    "dominio": "fiscal",
+    "classe": "prosseguir",
+    "toolEsperada": "fiscal_detalhar_nota"
+  },
+  {
+    "id": "cov-42",
+    "pergunta": "Consulta: fiscal dfe importados periodo",
+    "dominio": "fiscal",
+    "classe": "prosseguir",
+    "toolEsperada": "fiscal_dfe_importados_periodo"
+  },
+  {
+    "id": "cov-43",
+    "pergunta": "Consulta: fiscal dfe por fornecedor",
+    "dominio": "fiscal",
+    "classe": "prosseguir",
+    "toolEsperada": "fiscal_dfe_por_fornecedor"
+  },
+  {
+    "id": "cov-44",
+    "pergunta": "Consulta: fiscal faturamento mensal serie",
+    "dominio": "fiscal",
+    "classe": "prosseguir",
+    "toolEsperada": "fiscal_faturamento_mensal_serie"
+  },
+  {
+    "id": "cov-45",
+    "pergunta": "Consulta: fiscal faturamento nao autorizado",
+    "dominio": "fiscal",
+    "classe": "prosseguir",
+    "toolEsperada": "fiscal_faturamento_nao_autorizado"
+  },
+  {
+    "id": "cov-46",
+    "pergunta": "Consulta: fiscal faturamento por cfop",
+    "dominio": "fiscal",
+    "classe": "prosseguir",
+    "toolEsperada": "fiscal_faturamento_por_cfop"
+  },
+  {
+    "id": "cov-47",
+    "pergunta": "Consulta: fiscal faturamento por empresa",
+    "dominio": "fiscal",
+    "classe": "prosseguir",
+    "toolEsperada": "fiscal_faturamento_por_empresa"
+  },
+  {
+    "id": "cov-48",
+    "pergunta": "Consulta: fiscal faturamento por marca",
+    "dominio": "fiscal",
+    "classe": "prosseguir",
+    "toolEsperada": "fiscal_faturamento_por_marca"
+  },
+  {
+    "id": "cov-49",
+    "pergunta": "Consulta: fiscal faturamento por operacao",
+    "dominio": "fiscal",
+    "classe": "prosseguir",
+    "toolEsperada": "fiscal_faturamento_por_operacao"
+  },
+  {
+    "id": "cov-50",
+    "pergunta": "Consulta: fiscal faturamento por uf",
+    "dominio": "fiscal",
+    "classe": "prosseguir",
+    "toolEsperada": "fiscal_faturamento_por_uf"
+  },
+  {
+    "id": "cov-51",
+    "pergunta": "Consulta: fiscal faturamento recebido",
+    "dominio": "fiscal",
+    "classe": "prosseguir",
+    "toolEsperada": "fiscal_faturamento_recebido"
+  },
+  {
+    "id": "cov-52",
+    "pergunta": "Consulta: fiscal mdfe manifestos",
+    "dominio": "fiscal",
+    "classe": "prosseguir",
+    "toolEsperada": "fiscal_mdfe_manifestos"
+  },
+  {
+    "id": "cov-53",
+    "pergunta": "Consulta: fiscal notas emitidas por cliente",
+    "dominio": "fiscal",
+    "classe": "prosseguir",
+    "toolEsperada": "fiscal_notas_emitidas_por_cliente"
+  },
+  {
+    "id": "cov-54",
+    "pergunta": "Consulta: fiscal notas emitidas por produto",
+    "dominio": "fiscal",
+    "classe": "prosseguir",
+    "toolEsperada": "fiscal_notas_emitidas_por_produto"
+  },
+  {
+    "id": "cov-55",
+    "pergunta": "Consulta: fiscal notas recebidas",
+    "dominio": "fiscal",
+    "classe": "prosseguir",
+    "toolEsperada": "fiscal_notas_recebidas"
+  },
+  {
+    "id": "cov-56",
+    "pergunta": "Consulta: fiscal notas recebidas por fornecedor",
+    "dominio": "fiscal",
+    "classe": "prosseguir",
+    "toolEsperada": "fiscal_notas_recebidas_por_fornecedor"
+  },
+  {
+    "id": "cov-57",
+    "pergunta": "Consulta: fiscal produtos faturados",
+    "dominio": "fiscal",
+    "classe": "prosseguir",
+    "toolEsperada": "fiscal_produtos_faturados"
+  },
+  {
+    "id": "cov-58",
+    "pergunta": "Consulta: fiscal reinf eventos",
+    "dominio": "fiscal",
+    "classe": "prosseguir",
+    "toolEsperada": "fiscal_reinf_eventos"
+  },
+  {
+    "id": "cov-59",
+    "pergunta": "Consulta: preco contar regras",
+    "dominio": "preco",
+    "classe": "prosseguir",
+    "toolEsperada": "preco_contar_regras"
+  },
+  {
+    "id": "cov-60",
+    "pergunta": "Consulta: preco tabela",
+    "dominio": "preco",
+    "classe": "prosseguir",
+    "toolEsperada": "preco_tabela"
+  },
+  {
+    "id": "cov-61",
+    "pergunta": "Consulta: producao processos",
+    "dominio": "producao",
+    "classe": "prosseguir",
+    "toolEsperada": "producao_processos"
+  },
+  {
+    "id": "cov-62",
+    "pergunta": "Consulta: producao status dominio",
+    "dominio": "producao",
+    "classe": "prosseguir",
+    "toolEsperada": "producao_status_dominio"
+  },
+  {
+    "id": "cov-63",
+    "pergunta": "Consulta: referencia buscar",
+    "dominio": "referencia",
+    "classe": "prosseguir",
+    "toolEsperada": "referencia_buscar"
+  },
+  {
+    "id": "cov-64",
+    "pergunta": "Consulta: rh status dominio",
+    "dominio": "rh",
+    "classe": "prosseguir",
+    "toolEsperada": "rh_status_dominio"
+  },
+  {
+    "id": "cov-65",
+    "pergunta": "Consulta: servico buscar",
+    "dominio": "servico",
+    "classe": "prosseguir",
+    "toolEsperada": "servico_buscar"
+  },
+  {
+    "id": "cov-66",
+    "pergunta": "Consulta: servico contar",
+    "dominio": "servico",
+    "classe": "prosseguir",
+    "toolEsperada": "servico_contar"
+  },
+  {
+    "id": "cov-67",
+    "pergunta": "Consulta: servico listar",
+    "dominio": "servico",
+    "classe": "prosseguir",
+    "toolEsperada": "servico_listar"
+  }
+]
