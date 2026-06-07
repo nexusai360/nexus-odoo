@@ -30,7 +30,8 @@
 - [x] **ONDA 3b COMPLETA.** 3b.1 classify-intent (3a9e004), 3b.2 apply-intent-args + injecao gate active (c05e8a1), 3b.3/3b.4/3b.5 V6/V7 + runShadowChecks shadow (1ef6ea6), 3b.6 decideRetryOuGap + shadow log no run-agent (63b564d). 583 testes do agente verdes. NOTA: injecao de intencao consolidada na flag routerToolRetrieval (active); V6/V7 so shadow.
 - [x] **ONDA 3c COMPLETA.** 3c.1 git mv caminho3->fora-do-catalogo (17abcfc), 3c.2 rotulos user-facing + chave estavel (e8111eb), 3c.3 decideForaDoCatalogo + shadow (f5eb9e1). 588 testes do agente verdes.
 - [x] **VERIFICACAO**: V.1 mini-oraculo 45 perguntas ids validados (a997e4a). V.2 E2E recall@K=100% (30/30) ja com K=5 contra embeddings reais (f2fec42). V.3 rebuild da worktree: mcp rebuildou com COPY src/+mcp/ (app veio CACHED, mas mcp e o runtime do retrieval); mcp up publica descricao+triggers no tools/list (provado no container); tsc raiz+mcp limpos, 2674 jest verdes, eslint 0 erros.
-- [~] **V.4** code review + PR para main , EM ANDAMENTO.
+- [x] **V.4** code review adversarial (Opus): SIM com ressalvas, 0 critico/alto. Fix aplicado: V6 pula listas truncadas. 2 medios shadow-only no RADAR (F3 R1 chosenToolRank, R2 V6/V7 ate envelope F4). **PR #60 aberto para main.**
+- [x] **FASE 3 FECHADA.** Aguardando merge (decisao humana). Ativacao (routerToolRetrieval=active) e decisao futura pos-merge, apos shadow-compare.
   - LEMBRETES p/ o plano (das reviews): migration manual AgentRouterDecision (migrate deploy, nao dev); curar embeddingText de ~35-40 read-tools + check de startup/CI; NAO renomear chave de dominio caminho3; V5-V7 dentro de auto-validator com retry compartilhado cap=1; injecao de args de intencao entre tc.arguments e callTool (run-agent ~1214); mini-oraculo 30-50 perguntas anotadas.
 - [ ] Execucao Onda 3a (tool retrieval + router ativo) , TDD inline + workflow p/ unidades independentes.
 - [ ] Execucao Onda 3b (classify-intent + verifier/).
