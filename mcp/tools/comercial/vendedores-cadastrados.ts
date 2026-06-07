@@ -64,7 +64,9 @@ export const comercialVendedoresCadastrados: ToolEntry<Input, Output> = {
           by: ["vendedorId", "vendedorNome"],
           _count: { odooId: true },
           where: { vendedorId: { not: null } },
-          orderBy: { _count: { odooId: "desc" } },
+          // Onda 5: desempate estavel por vendedorId , top deterministico quando
+          // dois vendedores tem a mesma contagem de pedidos.
+          orderBy: [{ _count: { odooId: "desc" } }, { vendedorId: "asc" }],
         });
         const linhas = rows
           .filter((r): r is typeof r & { vendedorId: number } => r.vendedorId != null)

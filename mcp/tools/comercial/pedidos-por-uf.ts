@@ -80,7 +80,7 @@ async function queryPedidosPorUf(prisma: PrismaClient, input: Input) {
      LEFT JOIN fato_parceiro p ON p.odoo_id = pe.participante_id
      WHERE 1=1 ${filtroStatus} ${filtroPer}
      GROUP BY p.uf
-     ORDER BY SUM(pe.vr_produtos) DESC NULLS LAST
+     ORDER BY SUM(pe.vr_produtos) DESC NULLS LAST, p.uf ASC
      LIMIT ${limite}`,
     ...params,
   );

@@ -175,12 +175,12 @@
   "comercial_pedido_travados_por_etapa": {
     "estado": "ok",
     "_DESTAQUE": {
-      "totalTravados": 1115,
+      "totalTravados": 1117,
       "diasMin": 30,
       "maisAntigoDias": 139
     },
     "_agregado": {
-      "contagem": 1115
+      "contagem": 1117
     }
   },
   "comercial_pedidos_atrasados": {

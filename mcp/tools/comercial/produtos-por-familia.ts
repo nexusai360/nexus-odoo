@@ -90,7 +90,7 @@ async function query(prisma: PrismaClient, input: Input) {
     SELECT COALESCE(familia_nome, '(sem familia)') AS familia, COUNT(*)::bigint AS n
       FROM fato_produto
       GROUP BY familia_nome
-      ORDER BY n DESC
+      ORDER BY n DESC, familia_nome ASC
   `;
   const familias = rows.map((r) => ({
     familia: r.familia,

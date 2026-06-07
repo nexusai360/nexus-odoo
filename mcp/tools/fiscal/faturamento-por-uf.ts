@@ -81,7 +81,7 @@ async function queryFaturamentoPorUf(prisma: PrismaClient, input: Input, empresa
        AND nf.data_emissao <= $2::timestamp
        ${emp.sql}
      GROUP BY p.uf
-     ORDER BY SUM(nf.vr_nf) DESC NULLS LAST
+     ORDER BY SUM(nf.vr_nf) DESC NULLS LAST, p.uf ASC
      LIMIT ${limite}`,
     `${periodoDe}T00:00:00`,
     `${periodoAte}T23:59:59`,

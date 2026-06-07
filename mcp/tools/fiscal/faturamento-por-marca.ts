@@ -74,7 +74,7 @@ async function queryFaturamentoPorMarca(prisma: PrismaClient, input: Input, empr
        AND fnfi.data_emissao <= $2::timestamp
        ${emp.sql}
      GROUP BY fp.marca_nome
-     ORDER BY SUM(fnfi.vr_produtos) DESC NULLS LAST
+     ORDER BY SUM(fnfi.vr_produtos) DESC NULLS LAST, fp.marca_nome ASC
      LIMIT $3`,
     new Date(`${periodoDe}T00:00:00`),
     new Date(`${periodoAte}T23:59:59`),
