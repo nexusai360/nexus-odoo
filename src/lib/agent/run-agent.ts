@@ -26,6 +26,7 @@ import { montarConversa } from "./prompt/montar-conversa";
 import { buildLlmClient } from "./llm/get-client";
 import { getActiveLlmConfig } from "./llm/get-active-config";
 import { logUsage } from "./llm/usage-logger";
+import { buildUsageArgs, ORIGENS } from "./llm/build-usage-args";
 import { createMcpSession, mcpToolsToProviderTools } from "./mcp-client";
 import {
   openExternalMcpSessions,
@@ -232,6 +233,15 @@ export interface RunAgentInput {
    * Quando "suggestion", o composer instrui o modelo a responder direto.
    */
   source?: import("./prompt/compose").AgentPromptSource;
+  /**
+   * Override de cenario de router APENAS para harnesses/testes (F6 Onda 2):
+   * sobrescreve routerEnabled/routerToolRetrieval lidos do banco, sem mutar
+   * AgentSettings global (DB compartilhado entre worktrees). Ausente em producao.
+   */
+  routerOverride?: {
+    enabled?: boolean;
+    toolRetrieval?: "shadow" | "active";
+  };
 }
 
 export type RunAgentResult =
@@ -407,6 +417,17 @@ export async function runAgent(args: RunAgentInput): Promise<RunAgentResult> {
 
     // Carregar AgentSettings do banco
     const agentSettings = await loadAgentSettings();
+
+    // F6 Onda 2: override de cenario de router (harnesses/testes), sem mutar o
+    // AgentSettings global do banco (compartilhado). Ausente em producao.
+    if (args.routerOverride) {
+      if (args.routerOverride.enabled !== undefined) {
+        agentSettings.routerEnabled = args.routerOverride.enabled;
+      }
+      if (args.routerOverride.toolRetrieval !== undefined) {
+        agentSettings.routerToolRetrieval = args.routerOverride.toolRetrieval;
+      }
+    }
 
     // Buscar snippets da KB por similaridade (RAG , onda 7)
     // Se KB estiver habilitada, tenta searchKb; sem embedding → fallback interno do search.
@@ -820,6 +841,7 @@ export async function runAgent(args: RunAgentInput): Promise<RunAgentResult> {
             i === MAX_ITERATIONS - 1 && (result.toolCalls?.length ?? 0) > 0
               ? "max_iterations_exceeded"
               : undefined,
+          origin: ORIGENS.LOOP,
         }),
       );
 
@@ -839,6 +861,12 @@ export async function runAgent(args: RunAgentInput): Promise<RunAgentResult> {
               agentResponse: result.message,
               recentHistory: conversation.slice(-5),
               maxContextual: agentSettings.maxSuggestions,
+              logCtx: {
+                conversationId: args.conversationId,
+                userId: args.userId,
+                credentialId: resolvedLlm.credentialId ?? undefined,
+                isPlayground: args.isPlayground,
+              },
             });
             message = enhanced.cleanMessage;
             suggestions = enhanced.chips;
@@ -1049,6 +1077,22 @@ export async function runAgent(args: RunAgentInput): Promise<RunAgentResult> {
               if (correction.message && correction.message.trim().length > 0) {
                 message = correction.message;
               }
+              usageWrites.push(
+                logUsage(
+                  buildUsageArgs(
+                    correction,
+                    {
+                      provider: client.provider,
+                      model: client.model,
+                      credentialId: resolvedLlm.credentialId ?? undefined,
+                      conversationId: args.conversationId,
+                      userId: args.userId,
+                      isPlayground: args.isPlayground,
+                    },
+                    ORIGENS.GUARDRAIL,
+                  ),
+                ),
+              );
             } catch (errCorr) {
               console.warn("[runAgent] guardrail correction failed:", errCorr);
             }
@@ -1152,6 +1196,23 @@ export async function runAgent(args: RunAgentInput): Promise<RunAgentResult> {
                     ),
                   );
                   const retry = await Promise.race([retryPromise, timeoutPromise]);
+                  usageWrites.push(
+                    logUsage(
+                      buildUsageArgs(
+                        retry,
+                        {
+                          provider: client.provider,
+                          model: client.model,
+                          credentialId: resolvedLlm.credentialId ?? undefined,
+                          conversationId: args.conversationId,
+                          userId: args.userId,
+                          isPlayground: args.isPlayground,
+                          durationMs: Date.now() - retryStart,
+                        },
+                        ORIGENS.AUTO_VALIDATOR,
+                      ),
+                    ),
+                  );
                   if (retry.message && retry.message.trim().length > 0) {
                     message = retry.message;
                     autoValidatorRetryCount = 1;

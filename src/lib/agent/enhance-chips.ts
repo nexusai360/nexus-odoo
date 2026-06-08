@@ -11,6 +11,7 @@
  */
 
 import type { ChatMessage, ProviderClient } from "./llm/types";
+import { buildUsageArgs, ORIGENS } from "./llm/build-usage-args";
 
 export const MAX_EXTRACTED_CHIPS = 7;
 export const PASS2_TIMEOUT_MS = 3500;
@@ -130,6 +131,12 @@ export async function enhanceWithChips(args: {
   agentResponse: string;
   recentHistory: ChatMessage[];
   maxContextual: number;
+  logCtx?: {
+    conversationId?: string;
+    userId?: string;
+    credentialId?: string;
+    isPlayground?: boolean;
+  };
 }): Promise<EnhanceChipsResult> {
   // Condensa as ultimas 3-5 mensagens em texto plain.
   const historyText = args.recentHistory
@@ -161,6 +168,26 @@ export async function enhanceWithChips(args: {
   });
 
   const result = await Promise.race([chatPromise, timeoutPromise]);
+  if (args.logCtx) {
+    // Loga o uso ANTES do parse: o provider ja cobrou mesmo se o parse falhar.
+    // await elimina race com a agregacao por consulta do harness de custo (F6).
+    // Import dinamico: mantem o modulo carregavel sem puxar prisma no load (testes puros).
+    const { logUsage } = await import("./llm/usage-logger");
+    await logUsage(
+      buildUsageArgs(
+        result,
+        {
+          provider: args.client.provider,
+          model: args.client.model,
+          credentialId: args.logCtx.credentialId,
+          conversationId: args.logCtx.conversationId,
+          userId: args.logCtx.userId,
+          isPlayground: args.logCtx.isPlayground,
+        },
+        ORIGENS.ENHANCE,
+      ),
+    );
+  }
   if (!result.message) throw new EnhanceChipsError("resposta vazia");
 
   return parseEnhanceResponse(result.message, { maxContextual: args.maxContextual });
