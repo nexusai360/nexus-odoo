@@ -516,6 +516,7 @@ export interface CustoPorConsulta {
   tokensOutput: number;
   tokensCachedInput: number;
   latenciaMsTotal: number;
+  toolCallsTotal: number;
   todosCustoConhecido: boolean;
   breakdownPorOrigin: Record<
     string,
@@ -539,6 +540,7 @@ export async function agregarCustoPorConversa(conversationId: string): Promise<C
       tokensOutput: true,
       tokensCachedInput: true,
       durationMs: true,
+      toolCallsCount: true,
       origin: true,
     },
   });
@@ -550,6 +552,7 @@ export async function agregarCustoPorConversa(conversationId: string): Promise<C
     tokensOutput: 0,
     tokensCachedInput: 0,
     latenciaMsTotal: 0,
+    toolCallsTotal: 0,
     todosCustoConhecido: true,
     breakdownPorOrigin: {},
   };
@@ -560,6 +563,7 @@ export async function agregarCustoPorConversa(conversationId: string): Promise<C
     acc.tokensOutput += r.tokensOutput ?? 0;
     acc.tokensCachedInput += r.tokensCachedInput ?? 0;
     acc.latenciaMsTotal += r.durationMs ?? 0;
+    acc.toolCallsTotal += r.toolCallsCount ?? 0;
     if (!r.costKnown) acc.todosCustoConhecido = false;
     const key = r.origin ?? "desconhecido";
     const b = (acc.breakdownPorOrigin[key] ??= {

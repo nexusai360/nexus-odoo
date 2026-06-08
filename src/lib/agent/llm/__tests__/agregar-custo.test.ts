@@ -13,6 +13,7 @@ it("soma custo/tokens/latencia (Decimal real) e quebra por origin", async () => 
       tokensOutput: 800,
       tokensCachedInput: 0,
       durationMs: 1200,
+      toolCallsCount: 2,
       costKnown: true,
       origin: "loop_principal",
     },
@@ -22,6 +23,7 @@ it("soma custo/tokens/latencia (Decimal real) e quebra por origin", async () => 
       tokensOutput: 100,
       tokensCachedInput: 0,
       durationMs: 300,
+      toolCallsCount: 0,
       costKnown: true,
       origin: "enhance",
     },
@@ -31,6 +33,7 @@ it("soma custo/tokens/latencia (Decimal real) e quebra por origin", async () => 
   expect(r.custoUsdTotal).toBeCloseTo(0.0105, 6);
   expect(r.tokensInput).toBe(20500);
   expect(r.latenciaMsTotal).toBe(1500);
+  expect(r.toolCallsTotal).toBe(2);
   expect(r.todosCustoConhecido).toBe(true);
   expect(r.breakdownPorOrigin.loop_principal.custoUsd).toBeCloseTo(0.01, 6);
   expect(r.breakdownPorOrigin.enhance.custoUsd).toBeCloseTo(0.0005, 6);

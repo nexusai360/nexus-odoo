@@ -39,28 +39,36 @@ async function main(): Promise<void> {
   const userId = await resolverUserId();
   const convIdsCriadas: string[] = [];
   const falhas: string[] = [];
+  let toolCallsTotal = 0;
   for (let idx = 0; idx < amostra.length; idx++) {
     const e = amostra[idx];
     const conv = await createConversation(userId, "in_app");
     const convId = conv.id;
     convIdsCriadas.push(convId);
-    const res = await runAgent({
-      userMessage: e.pergunta,
-      conversationId: convId,
-      userId,
-      channel: "in_app",
-      isPlayground: false,
-      source: "bubble",
-      routerOverride: { enabled: true, toolRetrieval: "active" },
-    });
+    let res;
+    try {
+      res = await runAgent({
+        userMessage: e.pergunta,
+        conversationId: convId,
+        userId,
+        channel: "in_app",
+        isPlayground: false,
+        source: "bubble",
+        routerOverride: { enabled: true, toolRetrieval: "active" },
+      });
+    } catch (err) {
+      falhas.push(`${e.id}: runAgent THROW (transitorio?) ${err instanceof Error ? err.message : err}`);
+      continue;
+    }
     if (!res || res.ok !== true) {
       falhas.push(`${e.id}: runAgent {ok:false}`);
       continue;
     }
     const rows = await prisma.llmUsage.findMany({
       where: { conversationId: convId },
-      select: { toolNames: true },
+      select: { toolNames: true, toolCallsCount: true },
     });
+    toolCallsTotal += rows.reduce((s, r) => s + (r.toolCallsCount ?? 0), 0);
     const chamadas = new Set(rows.flatMap((r) => r.toolNames ?? []));
     if (!chamadas.has(e.toolEsperada!)) {
       falhas.push(
@@ -81,6 +89,15 @@ async function main(): Promise<void> {
   }
   if (convIdsCriadas.length) {
     await prisma.conversation.deleteMany({ where: { id: { in: convIdsCriadas } } });
+  }
+
+  // Fidelidade: sem nenhuma tool chamada, o MCP nao carregou (sessao streamable-HTTP
+  // indisponivel) e o gate e INCONCLUSIVO, nao reprovado. Rode onde o MCP funciona.
+  if (toolCallsTotal === 0) {
+    console.error(
+      "INCONCLUSIVO: 0 tool calls , MCP indisponivel nesta execucao. Rode onde a sessao MCP funciona (app/docker). Gate A (recall@K) + golden-nex cobrem a promocao.",
+    );
+    process.exit(2);
   }
 
   if (falhas.length) {

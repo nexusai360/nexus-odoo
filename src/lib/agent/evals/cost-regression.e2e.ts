@@ -71,6 +71,8 @@ async function main(): Promise<void> {
   let comCustoConhecido = 0;
   let tokensCachedTotal = 0;
   let tokensInputTotal = 0;
+  let toolCallsTotal = 0;
+  let falhasConsulta = 0;
 
   for (let idx = 0; idx < amostra.length; idx++) {
     const e = amostra[idx];
@@ -89,24 +91,29 @@ async function main(): Promise<void> {
         source: "bubble",
       });
     } catch (err) {
-      console.error(`[cost] runAgent THROW em ${e.id}:`, err);
-      process.exit(1);
+      // Falha transitoria (ex.: provider 503): nao aborta a corrida toda; conta e segue.
+      console.warn(`[cost] runAgent THROW em ${e.id} (transitorio?):`, err instanceof Error ? err.message : err);
+      falhasConsulta += 1;
+      continue;
     }
     if (!res || res.ok !== true) {
-      console.error(`[cost] runAgent {ok:false} em ${e.id} (credencial LLM ausente?):`, res);
-      process.exit(1);
+      console.warn(`[cost] runAgent {ok:false} em ${e.id}:`, res && "error" in res ? res.error : res);
+      falhasConsulta += 1;
+      continue;
     }
     const agg = await agregarCustoPorConversa(convId);
     if (agg.nReqs === 0) {
       console.warn(`[cost] ${e.id}: 0 linhas LlmUsage`);
+      falhasConsulta += 1;
       continue;
     }
     if (agg.todosCustoConhecido) comCustoConhecido += 1;
     porConsulta.push(agg.custoUsdTotal);
     tokensCachedTotal += agg.tokensCachedInput;
     tokensInputTotal += agg.tokensInput;
+    toolCallsTotal += agg.toolCallsTotal;
     console.log(
-      `[cost] ${e.id}: $${agg.custoUsdTotal.toFixed(5)} reqs=${agg.nReqs} origins=${Object.keys(agg.breakdownPorOrigin).join(",")}`,
+      `[cost] ${e.id}: $${agg.custoUsdTotal.toFixed(5)} reqs=${agg.nReqs} tools=${agg.toolCallsTotal} origins=${Object.keys(agg.breakdownPorOrigin).join(",")}`,
     );
   }
 
@@ -116,10 +123,21 @@ async function main(): Promise<void> {
     await prisma.conversation.deleteMany({ where: { id: { in: convIdsCriadas } } });
   }
 
+  const totalTentado = porConsulta.length + falhasConsulta;
+  const taxaSucesso = totalTentado > 0 ? porConsulta.length / totalTentado : 0;
   if (porConsulta.length === 0) {
-    console.error("FALHA: nenhuma consulta medida");
+    console.error("FALHA: nenhuma consulta medida (credencial LLM ausente ou provider fora?)");
     process.exit(1);
   }
+  if (taxaSucesso < 0.7) {
+    console.error(
+      `FALHA: taxa de sucesso ${(taxaSucesso * 100).toFixed(0)}% < 70% (${falhasConsulta} falhas em ${totalTentado}) , falha sistemica, nao transitoria`,
+    );
+    process.exit(1);
+  }
+  // Fidelidade: se o agente nao chamou NENHUMA tool, o MCP nao carregou (sessao
+  // streamable-HTTP indisponivel) e o custo esta SUBESTIMADO , nao e um baseline valido.
+  const faithful = toolCallsTotal > 0;
   const fracaoConhecida = comCustoConhecido / porConsulta.length;
   const media = porConsulta.reduce((a, b) => a + b, 0) / porConsulta.length;
   const med = mediana(porConsulta);
@@ -128,14 +146,23 @@ async function main(): Promise<void> {
     cenario,
     chave,
     n: porConsulta.length,
+    falhasConsulta,
     mediaUsd: media,
     medianaUsd: med,
     maxUsd: Math.max(...porConsulta),
     fracaoCustoConhecido: fracaoConhecida,
     cacheHitRate,
+    toolCallsTotal,
+    faithful,
   };
   console.log("SCORECARD", JSON.stringify(scorecard, null, 2));
 
+  if (!faithful) {
+    console.error(
+      "FALHA: 0 tool calls no total , MCP indisponivel (custo subestimado). Rode onde a sessao MCP funciona (app/docker).",
+    );
+    process.exit(1);
+  }
   if (fracaoConhecida < COST_KNOWN_MIN) {
     console.error(
       `FALHA: costKnown insuficiente (${(fracaoConhecida * 100).toFixed(0)}% < ${COST_KNOWN_MIN * 100}%)`,
