@@ -233,6 +233,15 @@ export interface RunAgentInput {
    * Quando "suggestion", o composer instrui o modelo a responder direto.
    */
   source?: import("./prompt/compose").AgentPromptSource;
+  /**
+   * Override de cenario de router APENAS para harnesses/testes (F6 Onda 2):
+   * sobrescreve routerEnabled/routerToolRetrieval lidos do banco, sem mutar
+   * AgentSettings global (DB compartilhado entre worktrees). Ausente em producao.
+   */
+  routerOverride?: {
+    enabled?: boolean;
+    toolRetrieval?: "shadow" | "active";
+  };
 }
 
 export type RunAgentResult =
@@ -408,6 +417,17 @@ export async function runAgent(args: RunAgentInput): Promise<RunAgentResult> {
 
     // Carregar AgentSettings do banco
     const agentSettings = await loadAgentSettings();
+
+    // F6 Onda 2: override de cenario de router (harnesses/testes), sem mutar o
+    // AgentSettings global do banco (compartilhado). Ausente em producao.
+    if (args.routerOverride) {
+      if (args.routerOverride.enabled !== undefined) {
+        agentSettings.routerEnabled = args.routerOverride.enabled;
+      }
+      if (args.routerOverride.toolRetrieval !== undefined) {
+        agentSettings.routerToolRetrieval = args.routerOverride.toolRetrieval;
+      }
+    }
 
     // Buscar snippets da KB por similaridade (RAG , onda 7)
     // Se KB estiver habilitada, tenta searchKb; sem embedding → fallback interno do search.
