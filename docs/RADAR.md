@@ -386,9 +386,12 @@ full-stack (app/docker, onde a sessão MCP funciona) e capturar o baseline
 `src/lib/agent/evals/golden/cost-scorecard.json`. Gates A (recall@K=100%) + B
 (golden-nex VERDE) já cobrem o critério de promoção; Gate C é confirmação E2E.
 
-### F6-B , Promover `routerToolRetrieval=active` (o maior ganho de custo)
-Após o gate triplo verde (recall@K≥98% + golden-nex VERDE + golden-under-active
-verde no full-stack) e `medianaUsd(active) < medianaUsd(shadow)`: promover via
-config de banco (`UPDATE agent_settings ...`), **sem migration**. Runbook completo:
-`docs/RUNBOOK-retrieval-ativacao.md`. Reversível em segundos. **Coordenar a ordem
-com a worktree `feat/router-ativacao-r2`** antes de ativar em produção.
+### ~~F6-B , Promover `routerToolRetrieval=active`~~ ATIVADO 2026-06-08
+`routerEnabled=true` + `routerToolRetrieval=active` aplicados em `agent_settings`,
+sob gate triplo verde: recall@K=100% + golden-nex VERDE + golden-under-active com
+critério **no-regressão** (active nunca perde tool que o catálogo cheio usaria), 10/10
+pares. Reversível: `UPDATE agent_settings SET router_tool_retrieval='shadow'`.
+Gotcha de acesso MCP em dev resolvido (sessão do host falhava por `MCP_DB_PASSWORD`
+vazio no container , recriar o `mcp` da raiz principal com `.env`): ver
+`docs/RUNBOOK-retrieval-ativacao.md`. Opcional: medir o ganho real de custo
+(cost-scorecard faithful shadow×active) no full-stack; coordenar com `feat/router-ativacao-r2`.
