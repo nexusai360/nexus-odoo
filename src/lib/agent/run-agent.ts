@@ -26,7 +26,7 @@ import { montarConversa } from "./prompt/montar-conversa";
 import { buildLlmClient } from "./llm/get-client";
 import { getActiveLlmConfig } from "./llm/get-active-config";
 import { logUsage } from "./llm/usage-logger";
-import { ORIGENS } from "./llm/build-usage-args";
+import { buildUsageArgs, ORIGENS } from "./llm/build-usage-args";
 import { createMcpSession, mcpToolsToProviderTools } from "./mcp-client";
 import {
   openExternalMcpSessions,
@@ -1051,6 +1051,22 @@ export async function runAgent(args: RunAgentInput): Promise<RunAgentResult> {
               if (correction.message && correction.message.trim().length > 0) {
                 message = correction.message;
               }
+              usageWrites.push(
+                logUsage(
+                  buildUsageArgs(
+                    correction,
+                    {
+                      provider: client.provider,
+                      model: client.model,
+                      credentialId: resolvedLlm.credentialId ?? undefined,
+                      conversationId: args.conversationId,
+                      userId: args.userId,
+                      isPlayground: args.isPlayground,
+                    },
+                    ORIGENS.GUARDRAIL,
+                  ),
+                ),
+              );
             } catch (errCorr) {
               console.warn("[runAgent] guardrail correction failed:", errCorr);
             }
