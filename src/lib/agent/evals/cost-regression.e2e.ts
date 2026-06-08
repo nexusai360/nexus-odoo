@@ -9,6 +9,7 @@ import { readFileSync, writeFileSync, existsSync } from "node:fs";
 import { join } from "node:path";
 import { prisma } from "@/lib/prisma";
 import { runAgent } from "../run-agent";
+import { createConversation } from "../conversation";
 import { agregarCustoPorConversa } from "../llm/usage-stats";
 import { GoldenSchema, type GoldenEntry } from "./golden-schema";
 
@@ -22,7 +23,7 @@ const SNAP_PATH = join(process.cwd(), "src/lib/agent/evals/golden/cost-scorecard
 const ALVO_USD = 0.03; // teto de sanidade (cold-cache infla; alvo real ~1c com cache+retrieval, medido separado)
 const COST_KNOWN_MIN = 0.9; // >=90% das consultas com custo conhecido
 const REGRESSAO_TOL = 0.25; // 25% acima do snapshot do mesmo cenario => falha (variancia de LLM)
-const N = 24;
+const N = Number(process.env.COST_N ?? 24); // COST_N permite smoke com poucas consultas
 
 const golden: GoldenEntry[] = GoldenSchema.parse(JSON.parse(readFileSync(GOLDEN_PATH, "utf8")));
 const amostra = golden
@@ -51,23 +52,38 @@ async function cenarioAtual() {
 const chaveCenario = (c: Record<string, unknown>): string =>
   `${c.modelo}|router=${c.routerEnabled}|retrieval=${c.routerToolRetrieval}|validator=${c.autoValidatorMode}`;
 
+async function resolverUserId(): Promise<string> {
+  if (process.env.F6_USER_ID) return process.env.F6_USER_ID;
+  const u = await prisma.user.findFirst({
+    where: { platformRole: "super_admin" },
+    select: { id: true },
+  });
+  if (!u) throw new Error("Nenhum super_admin no banco; defina F6_USER_ID");
+  return u.id;
+}
+
 async function main(): Promise<void> {
   const cenario = await cenarioAtual();
   const chave = chaveCenario(cenario);
+  const userId = await resolverUserId();
   const porConsulta: number[] = [];
+  const convIdsCriadas: string[] = [];
   let comCustoConhecido = 0;
   let tokensCachedTotal = 0;
   let tokensInputTotal = 0;
 
   for (let idx = 0; idx < amostra.length; idx++) {
     const e = amostra[idx];
-    const convId = `cost-f6-${idx}-${e.id}`;
+    // conversationId precisa ser UUID e a conversa precisa existir/ter dono (assertConversationOwned).
+    const conv = await createConversation(userId, "in_app");
+    const convId = conv.id;
+    convIdsCriadas.push(convId);
     let res;
     try {
       res = await runAgent({
         userMessage: e.pergunta,
         conversationId: convId,
-        userId: "f6-cost",
+        userId,
         channel: "in_app",
         isPlayground: false,
         source: "bubble",
@@ -92,6 +108,12 @@ async function main(): Promise<void> {
     console.log(
       `[cost] ${e.id}: $${agg.custoUsdTotal.toFixed(5)} reqs=${agg.nReqs} origins=${Object.keys(agg.breakdownPorOrigin).join(",")}`,
     );
+  }
+
+  // Limpa as conversas de teste criadas (nao poluir o historico do super_admin).
+  // As linhas LlmUsage permanecem (origin-tagged) para auditoria do custo.
+  if (convIdsCriadas.length) {
+    await prisma.conversation.deleteMany({ where: { id: { in: convIdsCriadas } } });
   }
 
   if (porConsulta.length === 0) {

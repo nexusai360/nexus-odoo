@@ -9,6 +9,7 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { prisma } from "@/lib/prisma";
 import { runAgent } from "../run-agent";
+import { createConversation } from "../conversation";
 import { GoldenSchema, type GoldenEntry } from "./golden-schema";
 
 if (process.env.E2E !== "1") {
@@ -24,15 +25,29 @@ const amostra = golden
   .sort((a, b) => a.id.localeCompare(b.id))
   .slice(0, 24);
 
+async function resolverUserId(): Promise<string> {
+  if (process.env.F6_USER_ID) return process.env.F6_USER_ID;
+  const u = await prisma.user.findFirst({
+    where: { platformRole: "super_admin" },
+    select: { id: true },
+  });
+  if (!u) throw new Error("Nenhum super_admin no banco; defina F6_USER_ID");
+  return u.id;
+}
+
 async function main(): Promise<void> {
+  const userId = await resolverUserId();
+  const convIdsCriadas: string[] = [];
   const falhas: string[] = [];
   for (let idx = 0; idx < amostra.length; idx++) {
     const e = amostra[idx];
-    const convId = `active-gate-${idx}-${e.id}`;
+    const conv = await createConversation(userId, "in_app");
+    const convId = conv.id;
+    convIdsCriadas.push(convId);
     const res = await runAgent({
       userMessage: e.pergunta,
       conversationId: convId,
-      userId: "f6-active",
+      userId,
       channel: "in_app",
       isPlayground: false,
       source: "bubble",
@@ -64,6 +79,10 @@ async function main(): Promise<void> {
       }
     }
   }
+  if (convIdsCriadas.length) {
+    await prisma.conversation.deleteMany({ where: { id: { in: convIdsCriadas } } });
+  }
+
   if (falhas.length) {
     console.error(`FALHA gate active (${falhas.length}):\n` + falhas.join("\n"));
     process.exit(1);
