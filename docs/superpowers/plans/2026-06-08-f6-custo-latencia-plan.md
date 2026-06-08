@@ -1,36 +1,38 @@
-# F6 Custo / Latencia , Implementation Plan
+# F6 Custo / Latencia , Implementation Plan (v3)
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** Completar a telemetria de custo por CONSULTA (hoje 3 chamadas LLM nao logam), criar um gate de regressao de custo reusando o golden F5, e ativar o retrieval de tools (shadow->active) sob gate de qualidade, sem nenhuma migration.
 
-**Architecture:** Reuso total da infra existente (`LlmUsage`, `calculateCost`, `logUsage`, harness golden F5). Onda 1 adiciona `logUsage` nas 3 chamadas silenciosas via um helper puro testavel, agrega custo por `conversationId` em `usage-stats.ts`, e cria um runner E2E (`cost-regression.e2e.ts`, guard `E2E=1`) que roda `runAgent` num subconjunto representativo e soma o custo real por consulta vs snapshot por cenario. Onda 2 valida o gate duplo (recall@K>=98% + golden verde com a flag em active) e documenta o procedimento de promocao da flag (config de banco, nao default de schema).
+**Architecture:** Reuso total da infra existente (`LlmUsage`, `calculateCost`, `logUsage`, harness golden F5). Onda 1 adiciona `logUsage` nas 3 chamadas silenciosas via um helper puro testavel, agrega custo por `conversationId` em `usage-stats.ts`, e cria um runner E2E (`cost-regression.e2e.ts`, guard `E2E=1`) que roda `runAgent` num subconjunto representativo e soma o custo real por consulta vs snapshot por cenario. Onda 2 adiciona um `routerOverride` ao `runAgent` (para nao mutar `AgentSettings` global no banco compartilhado), valida o gate triplo (recall@K>=98% + golden F5 verde + golden-under-active verde) e documenta o procedimento de promocao da flag.
 
 **Tech Stack:** TypeScript, Prisma v7 (`LlmUsage`/`AgentSettings`), Jest (unit), `tsx` runner com `--env-file=.env.local` (E2E contra cache real), Zod.
 
-**Conta de custo de referencia (da spec v3 secao 3):** ~2c/consulta hoje (gpt-5.4-mini, 3 reqs @20k in/800 out). Caching (ja entregue na spec 06-03) + retrieval active -> ~0,96c. O alvo 1-2c ja e o patamar atual; model-tiering fica FORA (desnecessario e sem gate textual inline).
+**Historico de revisao:** v1 (12 tasks). v2/v3 aplicam 2 reviews adversariais (Opus). Achados materiais corrigidos: (a) `channel` e campo OBRIGATORIO de `RunAgentInput` , faltava nos runners; (b) o filtro `kpiOuro` colapsava a amostra para 4 entradas (uma `volatil`) , trocado por `classe==="prosseguir" && toolEsperada` (~101 candidatos); (c) enhance so dispara com `source` bubble/suggestion , o harness de custo roda com `source:"bubble"`; (d) NAO mutar `AgentSettings` global (banco compartilhado entre worktrees) , novo `routerOverride` no `runAgent`; (e) Task 5: mock com `chips:[]` fazia o parser lancar antes da assercao , mock corrigido; call-site usa `conversation.slice(-5)`/`agentSettings.maxSuggestions`; (f) `estimarCustoUsd` tautologico , redesenhado como projecao por cenario; (g) mock de `costUsd` usa `Prisma.Decimal` real; (h) cold-cache: o harness mede pior caso , registra `tokensCachedInput` e usa mediana p/ alvo, media p/ regressao do mesmo cenario; (i) gate de qualidade da Onda 2 checa numero, nao so nome de tool; (j) import nao-usado na Task 2 , importar so `ORIGENS`.
+
+**Conta de custo de referencia (spec v3 secao 3):** ~2c/consulta hoje (gpt-5.4-mini, 3 reqs @20k in/800 out). Caching (06-03) + retrieval active -> ~0,96c. O alvo 1-2c ja e o patamar atual; model-tiering FORA.
 
 **Fora de escopo (spec v3 secao 4.3):** model-tiering, short-circuit 1-tool, cache de roteamento/entidade. Nenhuma migration.
+
+**Custo do proprio gate (declarado):** cada execucao do `cost-regression.e2e` roda ~24 consultas reais (~$0,30-0,45 em tokens da credencial de producao). O gate duplo da Onda 2 (Task 14) roda o harness 2x + golden , estimar ~$1 por execucao completa. Rodar na verificacao de onda, nunca em loop.
 
 ---
 
 ## File Structure
 
 **Onda 1:**
-- Create: `src/lib/agent/llm/build-usage-args.ts` , helper puro que monta `LogUsageArgs` a partir de um `ChatResult` + contexto + `origin`. Constantes `ORIGENS`.
-- Create: `src/lib/agent/llm/__tests__/build-usage-args.test.ts` , unit.
-- Modify: `src/lib/agent/run-agent.ts` , (a) `origin: ORIGENS.LOOP` no logUsage do loop principal (~:803); (b) `logUsage` da correcao guardrail (~:1048); (c) `logUsage` do retry autoValidator (~:1154).
-- Modify: `src/lib/agent/enhance-chips.ts` , `enhanceWithChips` recebe contexto de log e chama `logUsage` com `origin: ORIGENS.ENHANCE`.
-- Modify: `src/lib/agent/run-agent.ts` (call site de `enhanceWithChips`, ~:837) , passar o contexto de log.
-- Modify: `src/lib/agent/llm/usage-stats.ts` , `agregarCustoPorConversa(conversationId)` + tipo `CustoPorConsulta`.
-- Modify: `src/lib/agent/llm/catalog.ts` , `estimarCustoUsd` (wrapper fino sobre `calculateCost`).
-- Create: `src/lib/agent/llm/__tests__/agregar-custo.test.ts` , unit (mock prisma).
-- Create: `src/lib/agent/evals/cost-regression.e2e.ts` , runner E2E (gate de regressao).
-- Create: `src/lib/agent/evals/golden/cost-scorecard.json` , snapshot por cenario (gerado pelo runner).
+- Create: `src/lib/agent/llm/build-usage-args.ts` (+ test) , helper puro `buildUsageArgs` + `ORIGENS`.
+- Modify: `src/lib/agent/run-agent.ts` , `origin` no log do loop; `logUsage` da correcao guardrail e do retry autoValidator; passar `logCtx` ao `enhanceWithChips`.
+- Modify: `src/lib/agent/enhance-chips.ts` , `enhanceWithChips` recebe `logCtx` e faz `await logUsage` com `origin: ENHANCE`.
+- Modify: `src/lib/agent/llm/usage-stats.ts` , `agregarCustoPorConversa` + tipo `CustoPorConsulta`.
+- Modify: `src/lib/agent/llm/catalog.ts` , `estimarCustoUsd` (projecao por cenario).
+- Create: `src/lib/agent/llm/__tests__/agregar-custo.test.ts`, `.../estimar-custo.test.ts`.
+- Create: `src/lib/agent/evals/cost-regression.e2e.ts` (+ `golden/cost-scorecard.json` gerado).
 
 **Onda 2:**
-- Create: `src/lib/agent/evals/golden-under-active.e2e.ts` , roda o golden F5 com `routerToolRetrieval=active` forcado (gate de qualidade).
-- Modify: `docs/RUNBOOK-retrieval-ativacao.md` (criar) , procedimento de promocao da flag + evidencias do gate duplo.
+- Modify: `src/lib/agent/run-agent.ts` , `routerOverride?` em `RunAgentInput`, aplicado apos `loadAgentSettings()`.
+- Create: `src/lib/agent/evals/golden-under-active.e2e.ts` , golden via `runAgent` com retrieval active (override), checando tool + numero.
+- Create: `docs/RUNBOOK-retrieval-ativacao.md`.
 
 ---
 
@@ -41,8 +43,6 @@
 **Files:**
 - Create: `src/lib/agent/llm/build-usage-args.ts`
 - Test: `src/lib/agent/llm/__tests__/build-usage-args.test.ts`
-
-Contexto: as 3 chamadas LLM novas (enhance/guardrail/autoValidator) compartilham a mesma forma de montar `LogUsageArgs` a partir de um `ChatResult`. DRY num helper puro e testavel.
 
 - [ ] **Step 1: Write the failing test**
 
@@ -60,31 +60,15 @@ const baseResult: ChatResult = {
 describe("buildUsageArgs", () => {
   it("monta LogUsageArgs a partir do ChatResult + contexto + origin", () => {
     const args = buildUsageArgs(baseResult, {
-      provider: "openai",
-      model: "gpt-5.4-mini",
-      credentialId: "cred-1",
-      conversationId: "conv-1",
-      userId: "user-1",
-      isPlayground: false,
-      durationMs: 1234,
+      provider: "openai", model: "gpt-5.4-mini", credentialId: "cred-1",
+      conversationId: "conv-1", userId: "user-1", isPlayground: false, durationMs: 1234,
     }, ORIGENS.ENHANCE);
-
     expect(args).toMatchObject({
-      provider: "openai",
-      model: "gpt-5.4-mini",
-      credentialId: "cred-1",
-      conversationId: "conv-1",
-      userId: "user-1",
-      tokensInput: 1000,
-      tokensOutput: 200,
-      tokensCachedInput: 800,
-      reasoningTokens: 30,
-      durationMs: 1234,
-      origin: "enhance",
-      isPlayground: false,
+      provider: "openai", model: "gpt-5.4-mini", credentialId: "cred-1",
+      conversationId: "conv-1", userId: "user-1", tokensInput: 1000, tokensOutput: 200,
+      tokensCachedInput: 800, reasoningTokens: 30, durationMs: 1234, origin: "enhance", isPlayground: false,
     });
   });
-
   it("usa defaults seguros quando campos opcionais faltam", () => {
     const r: ChatResult = { message: "x", usage: { tokensInput: 5, tokensOutput: 1, costUsd: 0 } };
     const args = buildUsageArgs(r, { provider: "openai", model: "m" }, ORIGENS.GUARDRAIL);
@@ -93,13 +77,9 @@ describe("buildUsageArgs", () => {
     expect(args.origin).toBe("guardrail");
     expect(args.toolCallsCount).toBe(0);
   });
-
-  it("ORIGENS expoe os 4 papeis de pos-processamento + loop", () => {
+  it("ORIGENS expoe os 4 papeis", () => {
     expect(ORIGENS).toEqual({
-      LOOP: "loop_principal",
-      ENHANCE: "enhance",
-      GUARDRAIL: "guardrail",
-      AUTO_VALIDATOR: "auto_validator",
+      LOOP: "loop_principal", ENHANCE: "enhance", GUARDRAIL: "guardrail", AUTO_VALIDATOR: "auto_validator",
     });
   });
 });
@@ -143,11 +123,7 @@ export interface UsageBase {
  * Monta LogUsageArgs a partir de um ChatResult de uma chamada LLM de
  * pos-processamento (enhance/guardrail/autoValidator). Puro e testavel.
  */
-export function buildUsageArgs(
-  result: ChatResult,
-  base: UsageBase,
-  origin: Origem,
-): LogUsageArgs {
+export function buildUsageArgs(result: ChatResult, base: UsageBase, origin: Origem): LogUsageArgs {
   return {
     provider: base.provider,
     model: base.model,
@@ -186,21 +162,21 @@ git commit -m "feat(f6): helper puro buildUsageArgs + ORIGENS (base da telemetri
 ### Task 2: `origin` no logUsage do loop principal
 
 **Files:**
-- Modify: `src/lib/agent/run-agent.ts` (~:803, dentro do `logUsage({...})` do loop)
+- Modify: `src/lib/agent/run-agent.ts` (~:803)
 
-Contexto: o log do loop principal ja existe e esta correto; so falta a tag `origin` (hoje NULL), para a agregacao distinguir o loop dos pos-processadores.
+> NOTA: NAO refatorar o log do loop para usar `buildUsageArgs`. O log do loop tem campos proprios (`promptChars` condicional por iteracao, `errorMessage` de `max_iterations`) que o helper nao cobre; refatorar e risco em codigo de producao testado sem ganho. O helper cobre SO as 3 chamadas de pos-processamento (Tasks 3-5). Aqui so adicionamos a tag `origin`.
 
-- [ ] **Step 1: Add import of ORIGENS**
+- [ ] **Step 1: Add import of ORIGENS (apenas ORIGENS, para nao deixar import nao-usado)**
 
-No topo de `run-agent.ts`, junto aos imports de `./llm/*`, adicionar:
+No topo de `run-agent.ts`, junto aos imports `./llm/*`:
 
 ```typescript
-import { buildUsageArgs, ORIGENS } from "./llm/build-usage-args";
+import { ORIGENS } from "./llm/build-usage-args";
 ```
 
 - [ ] **Step 2: Add `origin` to the main-loop logUsage**
 
-Localizar o objeto passado a `logUsage` no loop (logo apos `errorMessage: ... "max_iterations_exceeded" : undefined,`). Adicionar a propriedade:
+No objeto passado a `logUsage` no loop, apos a propriedade `errorMessage: ...`:
 
 ```typescript
           errorMessage:
@@ -210,10 +186,10 @@ Localizar o objeto passado a `logUsage` no loop (logo apos `errorMessage: ... "m
           origin: ORIGENS.LOOP,
 ```
 
-- [ ] **Step 3: Verify it compiles**
+- [ ] **Step 3: Verify it compiles + lint**
 
-Run: `npx tsc --noEmit -p tsconfig.json`
-Expected: no new errors.
+Run: `npx tsc --noEmit -p tsconfig.json && npx eslint src/lib/agent/run-agent.ts`
+Expected: limpo (sem import nao-usado).
 
 - [ ] **Step 4: Commit**
 
@@ -227,13 +203,19 @@ git commit -m "feat(f6): origin=loop_principal no log do loop do agente"
 ### Task 3: logUsage da correcao guardrail
 
 **Files:**
-- Modify: `src/lib/agent/run-agent.ts` (~:1042-1054, bloco `const correction = await client.chat(...)`)
+- Modify: `src/lib/agent/run-agent.ts` (~:1042-1054 e o import do topo)
 
-Contexto: a correcao factual chama `client.chat` mas nao loga. `client`, `resolvedLlm`, `args`, `usageWrites` estao em escopo (mesma funcao). Logar via `usageWrites.push` para ser aguardado antes do return.
+- [ ] **Step 1: Estender o import do topo para incluir buildUsageArgs**
 
-- [ ] **Step 1: Add logUsage right after obtaining `correction`**
+Trocar `import { ORIGENS } from "./llm/build-usage-args";` por:
 
-Dentro do `try` da correcao, logo apos a atribuicao de `message` no `if (correction.message ...)`, antes do `}` do `try`:
+```typescript
+import { buildUsageArgs, ORIGENS } from "./llm/build-usage-args";
+```
+
+- [ ] **Step 2: Add logUsage right after obtaining `correction`**
+
+Dentro do `try` da correcao, apos `message = correction.message;`:
 
 ```typescript
               if (correction.message && correction.message.trim().length > 0) {
@@ -257,12 +239,12 @@ Dentro do `try` da correcao, logo apos a atribuicao de `message` no `if (correct
               );
 ```
 
-- [ ] **Step 2: Verify it compiles**
+- [ ] **Step 3: Verify it compiles**
 
 Run: `npx tsc --noEmit -p tsconfig.json`
-Expected: no new errors. (Confirme que `client.provider`/`client.model` existem , sao usados no log do loop principal.)
+Expected: no new errors (`client.provider`/`client.model` existem; `usageWrites`/`resolvedLlm` em escopo).
 
-- [ ] **Step 3: Commit**
+- [ ] **Step 4: Commit**
 
 ```bash
 git add src/lib/agent/run-agent.ts
@@ -274,13 +256,11 @@ git commit -m "feat(f6): logUsage origin=guardrail na correcao factual"
 ### Task 4: logUsage do retry autoValidator
 
 **Files:**
-- Modify: `src/lib/agent/run-agent.ts` (~:1154, apos `const retry = await Promise.race(...)`)
-
-Contexto: o retry corretivo (modo active) chama `client.chat` mas nao loga. Logar apos o `Promise.race` resolver com sucesso.
+- Modify: `src/lib/agent/run-agent.ts` (~:1154)
 
 - [ ] **Step 1: Add logUsage right after `retry` resolves**
 
-Logo apos `const retry = await Promise.race([retryPromise, timeoutPromise]);` e antes/depois do `if (retry.message ...)`:
+Apos `const retry = await Promise.race([retryPromise, timeoutPromise]);`:
 
 ```typescript
                   const retry = await Promise.race([retryPromise, timeoutPromise]);
@@ -304,7 +284,7 @@ Logo apos `const retry = await Promise.race([retryPromise, timeoutPromise]);` e 
                   if (retry.message && retry.message.trim().length > 0) {
 ```
 
-Nota: em timeout o `Promise.race` rejeita e cai no `catch` , nesse caso nao ha `usage` (a chamada pode ainda custar no provider, mas nao temos o resultado; aceitavel, raro, fica como custo nao medido conhecido). Documentar no comentario.
+> NOTA: em timeout, o `Promise.race` rejeita e cai no `catch` , nesse caso nao ha `usage` (a chamada pode custar no provider mas nao temos o resultado; custo nao medido conhecido, raro). OK.
 
 - [ ] **Step 2: Verify it compiles**
 
@@ -325,28 +305,29 @@ git commit -m "feat(f6): logUsage origin=auto_validator no retry corretivo"
 **Files:**
 - Modify: `src/lib/agent/enhance-chips.ts` (`enhanceWithChips`, ~:128-167)
 - Modify: `src/lib/agent/run-agent.ts` (call site ~:837)
+- Test: `src/lib/agent/__tests__/enhance-chips-usage.test.ts` (create)
 
-Contexto: `enhanceWithChips` descarta `result.usage`. Seguir o padrao de `embed.ts`/`contextualize.ts` (logam internamente com `void logUsage`). Estender a assinatura com um campo opcional `logCtx`.
+> NOTA: `enhanceWithChips` so e chamado quando `args.source === "bubble" || "suggestion"` (run-agent.ts:833). Logo `origin=enhance` so aparece nesses cenarios , o harness de custo (Task 8) roda com `source:"bubble"` para exercer este caminho.
 
-- [ ] **Step 1: Write the failing test (enhance loga uso)**
+- [ ] **Step 1: Write the failing test** (mock com `chips` NAO-vazio , senao o parser lanca antes da assercao)
 
 ```typescript
 // src/lib/agent/__tests__/enhance-chips-usage.test.ts
-import { enhanceWithChips } from "../enhance-chips";
-
 jest.mock("../llm/usage-logger", () => ({ logUsage: jest.fn().mockResolvedValue(undefined) }));
 import { logUsage } from "../llm/usage-logger";
+import { enhanceWithChips } from "../enhance-chips";
 
 const fakeClient = {
   provider: "openai",
   model: "gpt-5.4-mini",
   chat: jest.fn().mockResolvedValue({
-    message: JSON.stringify({ cleanMessage: "oi", chips: [] }),
+    // chips NAO-vazio: parseEnhanceResponse lanca EnhanceChipsError se chips=[]
+    message: JSON.stringify({ cleanMessage: "oi", chips: ["Quer ver os proximos?"] }),
     usage: { tokensInput: 500, tokensOutput: 100, tokensCachedInput: 0, costUsd: 0.0005 },
   }),
 } as any;
 
-it("enhanceWithChips loga uso com origin=enhance quando logCtx e fornecido", async () => {
+it("enhanceWithChips faz await logUsage com origin=enhance quando logCtx e fornecido", async () => {
   await enhanceWithChips({
     client: fakeClient,
     agentResponse: "oi",
@@ -356,10 +337,7 @@ it("enhanceWithChips loga uso com origin=enhance quando logCtx e fornecido", asy
   });
   expect(logUsage).toHaveBeenCalledTimes(1);
   expect((logUsage as jest.Mock).mock.calls[0][0]).toMatchObject({
-    origin: "enhance",
-    conversationId: "c1",
-    tokensInput: 500,
-    tokensOutput: 100,
+    origin: "enhance", conversationId: "c1", tokensInput: 500, tokensOutput: 100,
   });
 });
 ```
@@ -371,14 +349,14 @@ Expected: FAIL (`logCtx` nao existe / logUsage nao chamado).
 
 - [ ] **Step 3: Implement , estender `enhanceWithChips`**
 
-No topo de `enhance-chips.ts` adicionar imports:
+Imports no topo de `enhance-chips.ts`:
 
 ```typescript
 import { logUsage } from "./llm/usage-logger";
 import { buildUsageArgs, ORIGENS } from "./llm/build-usage-args";
 ```
 
-Estender a assinatura do objeto `args` (adicionar campo opcional):
+Estender a assinatura (adicionar `logCtx?`):
 
 ```typescript
 export async function enhanceWithChips(args: {
@@ -395,12 +373,12 @@ export async function enhanceWithChips(args: {
 }): Promise<EnhanceChipsResult> {
 ```
 
-Logo apos `const result = await Promise.race([chatPromise, timeoutPromise]);` (linha 163) e antes do `if (!result.message)`:
+Apos `const result = await Promise.race([chatPromise, timeoutPromise]);` e ANTES de `if (!result.message)` (logar antes do parse , o provider ja cobrou mesmo que o parse falhe; `await` elimina race com a agregacao do harness):
 
 ```typescript
   const result = await Promise.race([chatPromise, timeoutPromise]);
   if (args.logCtx) {
-    void logUsage(
+    await logUsage(
       buildUsageArgs(
         result,
         {
@@ -420,14 +398,14 @@ Logo apos `const result = await Promise.race([chatPromise, timeoutPromise]);` (l
 
 - [ ] **Step 4: Pass logCtx from the run-agent call site**
 
-Em `run-agent.ts` (~:837), no objeto passado a `enhanceWithChips`, adicionar:
+Em `run-agent.ts` (~:837), no objeto de `enhanceWithChips`, manter os args reais (`recentHistory: conversation.slice(-5)`, `maxContextual: agentSettings.maxSuggestions`) e ADICIONAR `logCtx`:
 
 ```typescript
             const enhanced = await enhanceWithChips({
               client,
               agentResponse: result.message,
-              recentHistory: history,
-              maxContextual: MAX_CONTEXTUAL_CHIPS,
+              recentHistory: conversation.slice(-5),
+              maxContextual: agentSettings.maxSuggestions,
               logCtx: {
                 conversationId: args.conversationId,
                 userId: args.userId,
@@ -437,45 +415,54 @@ Em `run-agent.ts` (~:837), no objeto passado a `enhanceWithChips`, adicionar:
             });
 ```
 
-Nota: confira os nomes reais dos argumentos atuais de `enhanceWithChips` no call site (ex.: `recentHistory`/`maxContextual`) e mantenha-os; so ADICIONE `logCtx`.
+> NOTA: confirme os nomes reais no call-site atual antes de editar; SO adicione `logCtx`, preservando `recentHistory`/`maxContextual` exatamente como ja estao.
 
-- [ ] **Step 5: Run tests to verify pass**
+- [ ] **Step 5: Run tests (novo + os existentes de enhance-chips) + tsc**
 
-Run: `npx jest src/lib/agent/__tests__/enhance-chips-usage.test.ts && npx tsc --noEmit -p tsconfig.json`
-Expected: PASS + tsc limpo.
+Run: `npx jest src/lib/agent/__tests__/enhance-chips-usage.test.ts src/lib/agent/enhance-chips.test.ts && npx tsc --noEmit -p tsconfig.json`
+Expected: PASS (o import de `usage-logger` nao quebra o carregamento do modulo; `enhance-chips.test.ts` so testa funcoes puras e segue verde) + tsc limpo.
 
 - [ ] **Step 6: Commit**
 
 ```bash
 git add src/lib/agent/enhance-chips.ts src/lib/agent/run-agent.ts src/lib/agent/__tests__/enhance-chips-usage.test.ts
-git commit -m "feat(f6): logUsage origin=enhance no two-pass de chips"
+git commit -m "feat(f6): logUsage origin=enhance no two-pass de chips (await, sem race)"
 ```
 
 ---
 
-### Task 6: `estimarCustoUsd` (wrapper fino sobre calculateCost)
+### Task 6: `estimarCustoUsd` , projecao de custo por CENARIO (nao tautologico)
 
 **Files:**
-- Modify: `src/lib/agent/llm/catalog.ts` (adicionar export apos `calculateCost`)
+- Modify: `src/lib/agent/llm/catalog.ts`
 - Test: `src/lib/agent/llm/__tests__/estimar-custo.test.ts` (create)
 
-Contexto: criterio de aceite pede `estimarCustoUsd`; e so um nome de dominio sobre `calculateCost`, sem reimplementar tabela.
+> Redesenho (review #2 C2): um alias de `calculateCost` seria tautologico. `estimarCustoUsd` projeta o custo de UMA consulta a partir de um cenario (n reqs, tokens medios, taxa de cache), codificando a "conta de custo de referencia" da spec secao 3. Reusa `calculateCost` para o pricing.
 
 - [ ] **Step 1: Write the failing test**
 
 ```typescript
 // src/lib/agent/llm/__tests__/estimar-custo.test.ts
-import { estimarCustoUsd, calculateCost } from "../catalog";
+import { estimarCustoUsd } from "../catalog";
 
-it("estimarCustoUsd == calculateCost (mesmo modelo/tokens)", () => {
-  const a = estimarCustoUsd("gpt-5.4-mini", 20000, 800);
-  const b = calculateCost("gpt-5.4-mini", 20000, 800);
-  expect(a.costUsd).toBe(b.costUsd);
-  expect(a.costKnown).toBe(b.costKnown);
+it("projeta custo por consulta a partir do cenario (cache reduz o custo)", () => {
+  const semCache = estimarCustoUsd({
+    modelId: "gpt-5.4-mini", nReqs: 3, avgInputTokens: 20000, avgOutputTokens: 800, cacheHitRate: 0,
+  });
+  const comCache = estimarCustoUsd({
+    modelId: "gpt-5.4-mini", nReqs: 3, avgInputTokens: 20000, avgOutputTokens: 800, cacheHitRate: 0.85,
+  });
+  expect(semCache.costKnown).toBe(true);
+  // gpt-5.4-mini: $0.25/1M in, $2.0/1M out. 3 reqs @20k in/800 out, sem cache:
+  // 3*(20000*0.25 + 800*2.0)/1e6 = 3*(0.005+0.0016) = 0.0198
+  expect(semCache.custoUsd).toBeCloseTo(0.0198, 4);
+  expect(comCache.custoUsd).toBeLessThan(semCache.custoUsd); // cache barateia o input
 });
 
 it("modelo desconhecido -> costKnown=false", () => {
-  expect(estimarCustoUsd("modelo-inexistente-xyz", 100, 100).costKnown).toBe(false);
+  expect(estimarCustoUsd({
+    modelId: "modelo-inexistente-xyz", nReqs: 1, avgInputTokens: 100, avgOutputTokens: 100, cacheHitRate: 0,
+  }).costKnown).toBe(false);
 });
 ```
 
@@ -484,21 +471,29 @@ it("modelo desconhecido -> costKnown=false", () => {
 Run: `npx jest src/lib/agent/llm/__tests__/estimar-custo.test.ts`
 Expected: FAIL ("estimarCustoUsd is not a function").
 
-- [ ] **Step 3: Implement (em catalog.ts, logo apos calculateCost)**
+- [ ] **Step 3: Implement (em catalog.ts, apos calculateCost)**
 
 ```typescript
+export interface CenarioCusto {
+  modelId: string;
+  nReqs: number;
+  avgInputTokens: number;
+  avgOutputTokens: number;
+  /** Fracao do input servida do cache de prompt (0..1). Default 0. */
+  cacheHitRate?: number;
+}
+
 /**
- * Estima o custo USD de uma chamada LLM. Wrapper de dominio sobre
- * `calculateCost` (mesma tabela de precos versionada); existe para o
- * harness de custo da F6 expressar intencao sem reimplementar pricing.
+ * Projeta o custo USD de UMA consulta a partir de um cenario (conta de custo de
+ * referencia da F6, spec secao 3). Reusa calculateCost para o pricing por req,
+ * dividindo o input em cacheado (fracao do preco) e nao-cacheado.
  */
-export function estimarCustoUsd(
-  modelId: string,
-  tokensInput: number,
-  tokensOutput: number,
-  extras?: { durationMs?: number; cachedInputTokens?: number },
-): { costUsd: number | null; costKnown: boolean } {
-  return calculateCost(modelId, tokensInput, tokensOutput, extras);
+export function estimarCustoUsd(c: CenarioCusto): { custoUsd: number | null; costKnown: boolean } {
+  const cacheRate = Math.min(Math.max(c.cacheHitRate ?? 0, 0), 1);
+  const cachedIn = Math.round(c.avgInputTokens * cacheRate);
+  const porReq = calculateCost(c.modelId, c.avgInputTokens, c.avgOutputTokens, { cachedInputTokens: cachedIn });
+  if (!porReq.costKnown || porReq.costUsd === null) return { custoUsd: null, costKnown: false };
+  return { custoUsd: Number((porReq.costUsd * c.nReqs).toFixed(10)), costKnown: true };
 }
 ```
 
@@ -511,7 +506,7 @@ Expected: PASS.
 
 ```bash
 git add src/lib/agent/llm/catalog.ts src/lib/agent/llm/__tests__/estimar-custo.test.ts
-git commit -m "feat(f6): estimarCustoUsd (wrapper de dominio sobre calculateCost)"
+git commit -m "feat(f6): estimarCustoUsd projeta custo por consulta a partir do cenario"
 ```
 
 ---
@@ -519,27 +514,22 @@ git commit -m "feat(f6): estimarCustoUsd (wrapper de dominio sobre calculateCost
 ### Task 7: Agregacao "custo por consulta" em usage-stats.ts
 
 **Files:**
-- Modify: `src/lib/agent/llm/usage-stats.ts` (adicionar funcao + tipo)
-- Test: `src/lib/agent/llm/__tests__/agregar-custo.test.ts` (create, mock prisma)
-
-Contexto: hoje a agregacao e por conversa inteira/dia/modelo. Falta somar o custo REAL de UMA consulta (todas as linhas `LlmUsage` daquele `conversationId`), com breakdown por `origin` e guarda de `costKnown`.
+- Modify: `src/lib/agent/llm/usage-stats.ts`
+- Test: `src/lib/agent/llm/__tests__/agregar-custo.test.ts` (create, mock prisma com `Prisma.Decimal` real)
 
 - [ ] **Step 1: Write the failing test**
 
 ```typescript
 // src/lib/agent/llm/__tests__/agregar-custo.test.ts
-jest.mock("@/lib/prisma", () => ({
-  prisma: { llmUsage: { findMany: jest.fn() } },
-}));
+jest.mock("@/lib/prisma", () => ({ prisma: { llmUsage: { findMany: jest.fn() } } }));
 import { prisma } from "@/lib/prisma";
+import { Prisma } from "@/generated/prisma/client";
 import { agregarCustoPorConversa } from "../usage-stats";
 
-const rows = (over: Partial<Record<string, unknown>>[] = []) => over;
-
-it("soma custo/tokens/latencia e quebra por origin", async () => {
+it("soma custo/tokens/latencia (Decimal real) e quebra por origin", async () => {
   (prisma.llmUsage.findMany as jest.Mock).mockResolvedValue([
-    { costUsd: "0.0100", tokensInput: 20000, tokensOutput: 800, durationMs: 1200, costKnown: true, origin: "loop_principal" },
-    { costUsd: "0.0005", tokensInput: 500, tokensOutput: 100, durationMs: 300, costKnown: true, origin: "enhance" },
+    { costUsd: new Prisma.Decimal("0.0100"), tokensInput: 20000, tokensOutput: 800, tokensCachedInput: 0, durationMs: 1200, costKnown: true, origin: "loop_principal" },
+    { costUsd: new Prisma.Decimal("0.0005"), tokensInput: 500, tokensOutput: 100, tokensCachedInput: 0, durationMs: 300, costKnown: true, origin: "enhance" },
   ]);
   const r = await agregarCustoPorConversa("conv-1");
   expect(r.nReqs).toBe(2);
@@ -551,14 +541,16 @@ it("soma custo/tokens/latencia e quebra por origin", async () => {
   expect(r.breakdownPorOrigin.enhance.custoUsd).toBeCloseTo(0.0005, 6);
 });
 
-it("marca todosCustoConhecido=false quando alguma linha tem costKnown=false", async () => {
+it("todosCustoConhecido=false quando alguma linha tem costKnown=false", async () => {
   (prisma.llmUsage.findMany as jest.Mock).mockResolvedValue([
-    { costUsd: null, tokensInput: 0, tokensOutput: 0, durationMs: 100, costKnown: false, origin: null },
+    { costUsd: null, tokensInput: 0, tokensOutput: 0, tokensCachedInput: 0, durationMs: 100, costKnown: false, origin: null },
   ]);
   const r = await agregarCustoPorConversa("conv-2");
   expect(r.todosCustoConhecido).toBe(false);
 });
 ```
+
+> NOTA: confirmar o caminho real do client Prisma gerado (`@/generated/prisma/client`); ver um import existente de `Prisma`/`PrismaClient` no repo e usar o mesmo.
 
 - [ ] **Step 2: Run test to verify it fails**
 
@@ -581,10 +573,10 @@ export interface CustoPorConsulta {
 }
 
 /**
- * Soma TODAS as linhas LlmUsage de uma consulta (mesmo conversationId) , o
- * custo real do turno, cobrindo loop + enhance + guardrail + autoValidator.
- * `todosCustoConhecido=false` se qualquer linha veio costKnown=false (o
- * harness de custo deve falhar/marcar indisponivel, nunca somar 0 em silencio).
+ * Soma TODAS as linhas LlmUsage de uma consulta (mesmo conversationId) , o custo
+ * real do turno, cobrindo loop + enhance + guardrail + autoValidator.
+ * todosCustoConhecido=false se qualquer linha veio costKnown=false (o harness de
+ * custo deve falhar/marcar indisponivel, nunca somar 0 em silencio).
  */
 export async function agregarCustoPorConversa(conversationId: string): Promise<CustoPorConsulta> {
   const rows = await prisma.llmUsage.findMany({
@@ -635,16 +627,16 @@ git commit -m "feat(f6): agregarCustoPorConversa (custo real por consulta + brea
 - Create: `src/lib/agent/evals/cost-regression.e2e.ts`
 - Create (gerado): `src/lib/agent/evals/golden/cost-scorecard.json`
 
-Contexto: este runner CUSTA tokens (roda `runAgent` de verdade). Guard `E2E=1`. Roda um subconjunto representativo do golden (perguntas com `kpiOuro`, "prosseguir"), uma por `conversationId` unico, le `agregarCustoPorConversa`, soma por consulta, grava snapshot por cenario e FALHA em regressao / alvo estourado / costKnown insuficiente. Padrao espelha `golden-nex.e2e.ts` (cabecalho, guard, tsx).
+> Conjunto: `classe==="prosseguir" && toolEsperada` (~101 candidatos; `kpiOuro` e irrelevante para MEDIR custo). Ordenacao estavel por `id`, take 24. Roda com `channel:"bubble"` e `source:"bubble"` (enhance dispara , custo fiel). Trata `runAgent` retornando `{ok:false}` (falta credencial) como ERRO, nao "0 reqs". Registra `tokensCachedInput` agregado (cold-cache e auditavel). Mediana p/ alvo absoluto; media p/ regressao do MESMO cenario.
 
 - [ ] **Step 1: Implement o runner**
 
 ```typescript
 // src/lib/agent/evals/cost-regression.e2e.ts
-// F6 , gate de regressao de CUSTO (runner tsx, guard E2E=1). CUSTA TOKENS:
-// roda runAgent de verdade num subconjunto do golden e soma o custo real por
-// consulta (todas as linhas LlmUsage do conversationId). Compara com o snapshot
-// do MESMO cenario (modelo+flags). Spec: 2026-06-07-f6-custo-latencia-design.md.
+// F6 , gate de regressao de CUSTO (runner tsx, guard E2E=1). CUSTA TOKENS (~$0,4/run):
+// roda runAgent de verdade num subconjunto do golden (classe=prosseguir) e soma o
+// custo real por consulta (todas as linhas LlmUsage do conversationId). Compara com
+// o snapshot do MESMO cenario (modelo+flags). Spec: 2026-06-07-f6-custo-latencia-design.md.
 //
 // Gerar baseline:  E2E=1 COST_WRITE=1 npx tsx --env-file=.env.local src/lib/agent/evals/cost-regression.e2e.ts
 // Conferir:        E2E=1 npx tsx --env-file=.env.local src/lib/agent/evals/cost-regression.e2e.ts
@@ -655,20 +647,26 @@ import { runAgent } from "../run-agent";
 import { agregarCustoPorConversa } from "../llm/usage-stats";
 import { GoldenSchema, type GoldenEntry } from "./golden-schema";
 
-if (process.env.E2E !== "1") {
-  console.log("SKIP cost-regression (defina E2E=1 para rodar contra o cache real)");
-  process.exit(0);
-}
+if (process.env.E2E !== "1") { console.log("SKIP cost-regression (E2E=1 para rodar)"); process.exit(0); }
 
 const GOLDEN_PATH = join(process.cwd(), "src/lib/agent/evals/golden/golden-nex.json");
 const SNAP_PATH = join(process.cwd(), "src/lib/agent/evals/golden/cost-scorecard.json");
-const ALVO_USD = 0.02;           // 2 centavos , teto da spec
-const COST_KNOWN_MIN = 0.9;      // >=90% das consultas com custo conhecido
-const REGRESSAO_TOL = 0.15;      // 15% acima do snapshot do mesmo cenario => falha
+const ALVO_USD = 0.03;        // teto de sanidade (cold-cache infla; alvo real ~1c com cache+retrieval, medido separado)
+const COST_KNOWN_MIN = 0.9;   // >=90% das consultas com custo conhecido
+const REGRESSAO_TOL = 0.25;   // 25% acima do snapshot do mesmo cenario => falha (variancia de LLM)
+const N = 24;
 
 const golden: GoldenEntry[] = GoldenSchema.parse(JSON.parse(readFileSync(GOLDEN_PATH, "utf8")));
-// Subconjunto representativo: perguntas de dado (tem toolEsperada e kpiOuro).
-const amostra = golden.filter((e) => e.toolEsperada && e.kpiOuro && e.kpiOuro.length > 0).slice(0, 12);
+const amostra = golden
+  .filter((e) => e.classe === "prosseguir" && e.toolEsperada)
+  .sort((a, b) => a.id.localeCompare(b.id))
+  .slice(0, N);
+
+const mediana = (xs: number[]) => {
+  const s = [...xs].sort((a, b) => a - b);
+  const m = Math.floor(s.length / 2);
+  return s.length % 2 ? s[m] : (s[m - 1] + s[m]) / 2;
+};
 
 async function cenarioAtual() {
   const s = await prisma.agentSettings.findUnique({
@@ -690,82 +688,86 @@ async function main() {
   const chave = chaveCenario(cenario);
   const porConsulta: number[] = [];
   let comCustoConhecido = 0;
+  let tokensCachedTotal = 0;
+  let tokensInputTotal = 0;
 
   for (let idx = 0; idx < amostra.length; idx++) {
     const e = amostra[idx];
     const convId = `cost-f6-${idx}-${e.id}`;
+    let res;
     try {
-      await runAgent({
+      res = await runAgent({
         userMessage: e.pergunta,
         conversationId: convId,
         userId: "f6-cost",
-        isPlayground: true,
-        source: "playground",
-      } as Parameters<typeof runAgent>[0]);
+        channel: "bubble",
+        isPlayground: false,
+        source: "bubble",
+      });
     } catch (err) {
-      console.warn(`[cost] runAgent falhou em ${e.id}:`, err);
-      continue;
+      console.error(`[cost] runAgent THROW em ${e.id}:`, err); process.exit(1);
+    }
+    if (!res || res.ok !== true) {
+      console.error(`[cost] runAgent {ok:false} em ${e.id} (credencial LLM ausente?):`, res); process.exit(1);
     }
     const agg = await agregarCustoPorConversa(convId);
     if (agg.nReqs === 0) { console.warn(`[cost] ${e.id}: 0 linhas LlmUsage`); continue; }
     if (agg.todosCustoConhecido) comCustoConhecido += 1;
     porConsulta.push(agg.custoUsdTotal);
+    tokensCachedTotal += agg.tokensCachedInput;
+    tokensInputTotal += agg.tokensInput;
     console.log(`[cost] ${e.id}: $${agg.custoUsdTotal.toFixed(5)} reqs=${agg.nReqs} origins=${Object.keys(agg.breakdownPorOrigin).join(",")}`);
   }
 
   if (porConsulta.length === 0) { console.error("FALHA: nenhuma consulta medida"); process.exit(1); }
   const fracaoConhecida = comCustoConhecido / porConsulta.length;
   const media = porConsulta.reduce((a, b) => a + b, 0) / porConsulta.length;
+  const med = mediana(porConsulta);
+  const cacheHitRate = tokensInputTotal > 0 ? tokensCachedTotal / tokensInputTotal : 0;
   const scorecard = {
-    cenario, chave, n: porConsulta.length, mediaUsd: media,
-    maxUsd: Math.max(...porConsulta), fracaoCustoConhecido: fracaoConhecida,
+    cenario, chave, n: porConsulta.length, mediaUsd: media, medianaUsd: med,
+    maxUsd: Math.max(...porConsulta), fracaoCustoConhecido: fracaoConhecida, cacheHitRate,
   };
   console.log("SCORECARD", JSON.stringify(scorecard, null, 2));
 
-  // costKnown insuficiente => indisponivel (nunca aprovar somando 0 em silencio)
   if (fracaoConhecida < COST_KNOWN_MIN) {
-    console.error(`FALHA: costKnown insuficiente (${(fracaoConhecida * 100).toFixed(0)}% < ${COST_KNOWN_MIN * 100}%)`);
-    process.exit(1);
+    console.error(`FALHA: costKnown insuficiente (${(fracaoConhecida * 100).toFixed(0)}% < ${COST_KNOWN_MIN * 100}%)`); process.exit(1);
   }
-  // alvo absoluto
-  if (media > ALVO_USD) {
-    console.error(`FALHA: media $${media.toFixed(5)} > alvo $${ALVO_USD}`);
-    process.exit(1);
+  if (med > ALVO_USD) {
+    console.error(`FALHA: mediana $${med.toFixed(5)} > teto $${ALVO_USD}`); process.exit(1);
   }
-  // regressao vs snapshot do MESMO cenario
   if (existsSync(SNAP_PATH)) {
     const prev = JSON.parse(readFileSync(SNAP_PATH, "utf8"));
     if (prev.chave === chave && media > prev.mediaUsd * (1 + REGRESSAO_TOL)) {
-      console.error(`FALHA: regressao , media $${media.toFixed(5)} > baseline $${prev.mediaUsd.toFixed(5)} +${REGRESSAO_TOL * 100}%`);
-      process.exit(1);
+      console.error(`FALHA: regressao , media $${media.toFixed(5)} > baseline $${prev.mediaUsd.toFixed(5)} +${REGRESSAO_TOL * 100}%`); process.exit(1);
     }
   }
   if (process.env.COST_WRITE === "1") {
     writeFileSync(SNAP_PATH, JSON.stringify(scorecard, null, 2));
     console.log("baseline gravado:", SNAP_PATH);
   }
-  console.log("OK , custo dentro do alvo e sem regressao");
+  console.log("OK , custo dentro do teto e sem regressao");
   process.exit(0);
 }
 main();
 ```
 
-Nota de assinatura: ajustar os campos de `runAgent({...})` aos nomes reais da assinatura atual (verificar em `run-agent.ts` os campos obrigatorios: `userMessage`, `conversationId`, `userId`, `source`, etc.). O cast existe so para o plano; na execucao, usar os nomes reais.
+> NOTA: confirmar o nome do campo de classe em `GoldenEntry` (`classe`) no `golden-schema.ts`; se for outro, ajustar o filtro. `runAgent` agora recebe `channel` (obrigatorio).
 
 - [ ] **Step 2: tsc**
 
 Run: `npx tsc --noEmit -p tsconfig.json`
-Expected: limpo (apos ajustar a assinatura de runAgent aos nomes reais).
+Expected: limpo (sem cast `as`; o objeto bate com `RunAgentInput`).
 
 - [ ] **Step 3: Gerar baseline contra o cache real**
 
 Run: `E2E=1 COST_WRITE=1 npx tsx --env-file=.env.local src/lib/agent/evals/cost-regression.e2e.ts`
-Expected: imprime custo por consulta, SCORECARD com `mediaUsd` na ordem de ~0,01-0,02; grava `cost-scorecard.json`. Conferir que `fracaoCustoConhecido >= 0.9` e que os `origins` incluem `loop_principal` e (quando aplicavel) `enhance`/`guardrail`/`auto_validator`.
+Expected: custo por consulta + SCORECARD (`medianaUsd` ~0,01-0,02; `cacheHitRate` registrado; `fracaoCustoConhecido>=0.9`). Em pelo menos parte das consultas, `origins` deve incluir `enhance` (alem de `loop_principal`); guardrail/auto_validator so aparecem se dispararem (telemetria de excecao, coberta por unit tests). Grava `cost-scorecard.json`.
 
 - [ ] **Step 4: Conferir o gate (sem write)**
 
 Run: `E2E=1 npx tsx --env-file=.env.local src/lib/agent/evals/cost-regression.e2e.ts`
-Expected: "OK , custo dentro do alvo e sem regressao", exit 0.
+Expected: "OK , custo dentro do teto e sem regressao", exit 0.
 
 - [ ] **Step 5: Commit**
 
@@ -778,23 +780,11 @@ git commit -m "feat(f6): gate de regressao de custo (runAgent real + LlmUsage po
 
 ### Task 9: Suite completa + verificacao Onda 1
 
-**Files:** nenhum (verificacao)
+**Files:** nenhum (verificacao) + STATUS/HISTORY
 
-- [ ] **Step 1: Jest completo**
-
-Run: `npx jest --silent 2>&1 | tail -5`
-Expected: todas as suites verdes (sem regressao vs baseline F5).
-
-- [ ] **Step 2: tsc raiz + mcp**
-
-Run: `npx tsc --noEmit -p tsconfig.json && npx tsc --noEmit -p mcp/tsconfig.json`
-Expected: ambos limpos.
-
-- [ ] **Step 3: Golden F5 continua verde (qualidade preservada)**
-
-Run: `E2E=1 npx tsx --env-file=.env.local src/lib/agent/evals/golden-nex.e2e.ts`
-Expected: GOLDEN_VERDE (numero/alucinacao/desambiguacao).
-
+- [ ] **Step 1: Jest completo** , Run: `npx jest --silent 2>&1 | tail -5` , Expected: todas verdes.
+- [ ] **Step 2: tsc raiz + mcp** , Run: `npx tsc --noEmit -p tsconfig.json && npx tsc --noEmit -p mcp/tsconfig.json` , Expected: limpos.
+- [ ] **Step 3: Golden F5 verde** , Run: `E2E=1 npx tsx --env-file=.env.local src/lib/agent/evals/golden-nex.e2e.ts` , Expected: GOLDEN_VERDE.
 - [ ] **Step 4: Atualizar STATUS.md/HISTORY.md (Onda 1 completa) e commit**
 
 ```bash
@@ -804,192 +794,242 @@ git commit -m "docs(f6): Onda 1 completa , telemetria por consulta + gate de reg
 
 ---
 
-## ONDA 2 , Ativar retrieval sob gate duplo (SEM migration)
+## ONDA 2 , Ativar retrieval sob gate (SEM migration)
 
 > DEPENDENCIA: coordenar ordem de merge com a worktree `feat/router-ativacao-r2` (UI do drill-down do Router). NAO tocar aquela branch. Alinhar com o usuario antes de promover a flag em producao.
 
-### Task 10: Harness , golden F5 sob `routerToolRetrieval=active`
+### Task 10: `routerOverride` em `runAgent` (evita mutar AgentSettings global)
+
+**Files:**
+- Modify: `src/lib/agent/run-agent.ts` (`RunAgentInput` ~:200; apos `loadAgentSettings()` ~:409)
+- Test: `src/lib/agent/__tests__/router-override.test.ts` (create) , opcional/leve
+
+> Motivo (review #1 A3 / #2 C5): o banco e COMPARTILHADO entre worktrees e com o `npm run dev` da main. Mutar `AgentSettings(id="global")` durante um teste E2E afeta producao/outras sessoes e, se o teste crashar, deixa o estado corrompido. Um override por parametro isola o cenario no escopo da chamada.
+
+- [ ] **Step 1: Add `routerOverride?` ao `RunAgentInput`**
+
+Apos `source?: ...;` em `RunAgentInput`:
+
+```typescript
+  /**
+   * Override de cenario de router APENAS para harnesses/testes (F6 Onda 2):
+   * sobrescreve routerEnabled/routerToolRetrieval lidos do banco, sem mutar
+   * AgentSettings global (DB compartilhado). Ausente em producao.
+   */
+  routerOverride?: {
+    enabled?: boolean;
+    toolRetrieval?: "shadow" | "active";
+  };
+```
+
+- [ ] **Step 2: Aplicar o override apos `loadAgentSettings()`**
+
+Logo apos `const agentSettings = await loadAgentSettings();` (~:409):
+
+```typescript
+    const agentSettings = await loadAgentSettings();
+    if (args.routerOverride) {
+      if (args.routerOverride.enabled !== undefined) {
+        (agentSettings as { routerEnabled: boolean }).routerEnabled = args.routerOverride.enabled;
+      }
+      if (args.routerOverride.toolRetrieval !== undefined) {
+        (agentSettings as { routerToolRetrieval: string }).routerToolRetrieval = args.routerOverride.toolRetrieval;
+      }
+    }
+```
+
+> NOTA: confirmar a forma exata do objeto retornado por `loadAgentSettings()` (os campos `routerEnabled`/`routerToolRetrieval` existem , linhas 302/316). Ajustar os casts ao tipo real (idealmente sem `as`, se os campos forem mutaveis).
+
+- [ ] **Step 3: tsc**
+
+Run: `npx tsc --noEmit -p tsconfig.json`
+Expected: limpo.
+
+- [ ] **Step 4: Commit**
+
+```bash
+git add src/lib/agent/run-agent.ts
+git commit -m "feat(f6): routerOverride no runAgent (isola cenario de retrieval sem mutar AgentSettings global)"
+```
+
+---
+
+### Task 11: Harness , golden F5 sob retrieval active (tool + numero)
 
 **Files:**
 - Create: `src/lib/agent/evals/golden-under-active.e2e.ts`
 
-Contexto: o golden F5 hoje roda chamando `tool.handler` direto (nao passa pelo retrieval). O gate da Onda 2 precisa provar que, com o catalogo CORTADO (retrieval active), o agente ainda seleciona a tool certa e acerta. Este harness roda `runAgent` (que aplica o filtro) com a flag forcada para active e verifica que a tool esperada foi chamada e o numero bate.
+> Gate de QUALIDADE da ativacao: roda `runAgent` com `routerOverride:{enabled:true, toolRetrieval:"active"}` (catalogo cortado) e verifica, por consulta: (a) a `toolEsperada` foi chamada (via `LlmUsage.toolNames`), EXCLUINDO tools do nucleo `EXCLUDE_FROM_FILTERING` (que nunca sao cortadas , gate trivial); (b) onde houver `kpiOuro` nao-volatil, o NUMERO da resposta bate (review #2 C4: nome de tool nao prova acerto). O numero-verdade tambem e coberto pelo `golden-nex.e2e` (handler direto, retrieval-independente) , aqui provamos a ponta a ponta com catalogo cortado.
 
 - [ ] **Step 1: Implement o harness**
 
 ```typescript
 // src/lib/agent/evals/golden-under-active.e2e.ts
 // F6 Onda 2 , gate de QUALIDADE da ativacao do retrieval (guard E2E=1, CUSTA tokens).
-// Roda runAgent com routerEnabled=true + routerToolRetrieval=active forcados e
-// verifica que a tool esperada do golden foi efetivamente chamada (catalogo
-// cortado nao escondeu a tool certa). Complementa retrieval.e2e.ts (recall@K).
+// Roda runAgent com routerOverride active (catalogo cortado) e verifica que a tool
+// esperada foi chamada (excluindo nucleo) e, quando houver kpiOuro nao-volatil, que
+// o numero bate. Complementa retrieval.e2e.ts (recall@K offline).
 //   E2E=1 npx tsx --env-file=.env.local src/lib/agent/evals/golden-under-active.e2e.ts
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { prisma } from "@/lib/prisma";
 import { runAgent } from "../run-agent";
 import { GoldenSchema, type GoldenEntry } from "./golden-schema";
+import { EXCLUDE_FROM_FILTERING } from "../router/filter-catalog";
 
 if (process.env.E2E !== "1") { console.log("SKIP (E2E=1)"); process.exit(0); }
 
 const golden: GoldenEntry[] = GoldenSchema.parse(
   JSON.parse(readFileSync(join(process.cwd(), "src/lib/agent/evals/golden/golden-nex.json"), "utf8")),
 );
-const amostra = golden.filter((e) => e.toolEsperada && e.kpiOuro?.length).slice(0, 12);
+// So entradas cuja tool esperada PODE ser cortada (fora do nucleo) , senao o gate e trivial.
+const amostra = golden
+  .filter((e) => e.classe === "prosseguir" && e.toolEsperada && !EXCLUDE_FROM_FILTERING.has(e.toolEsperada))
+  .sort((a, b) => a.id.localeCompare(b.id))
+  .slice(0, 24);
 
 async function main() {
-  // Forca o cenario active SOMENTE para a duracao do teste; restaura no fim.
-  const prev = await prisma.agentSettings.findUnique({
-    where: { id: "global" }, select: { routerEnabled: true, routerToolRetrieval: true },
-  });
-  await prisma.agentSettings.update({
-    where: { id: "global" }, data: { routerEnabled: true, routerToolRetrieval: "active" },
-  });
   const falhas: string[] = [];
-  try {
-    for (let idx = 0; idx < amostra.length; idx++) {
-      const e = amostra[idx];
-      const convId = `active-gate-${idx}-${e.id}`;
-      const res = await runAgent({
-        userMessage: e.pergunta, conversationId: convId, userId: "f6-active",
-        isPlayground: true, source: "playground",
-      } as Parameters<typeof runAgent>[0]);
-      // Verifica via LlmUsage.toolNames que a tool esperada foi chamada no turno.
-      const rows = await prisma.llmUsage.findMany({ where: { conversationId: convId }, select: { toolNames: true } });
-      const chamadas = new Set(rows.flatMap((r) => r.toolNames ?? []));
-      if (!chamadas.has(e.toolEsperada!)) {
-        falhas.push(`${e.id}: tool ${e.toolEsperada} NAO chamada (catalogo cortado escondeu?) chamou=${[...chamadas].join(",")}`);
+  for (let idx = 0; idx < amostra.length; idx++) {
+    const e = amostra[idx];
+    const convId = `active-gate-${idx}-${e.id}`;
+    const res = await runAgent({
+      userMessage: e.pergunta, conversationId: convId, userId: "f6-active",
+      channel: "bubble", isPlayground: false, source: "bubble",
+      routerOverride: { enabled: true, toolRetrieval: "active" },
+    });
+    if (!res || res.ok !== true) { falhas.push(`${e.id}: runAgent {ok:false}`); continue; }
+    const rows = await prisma.llmUsage.findMany({ where: { conversationId: convId }, select: { toolNames: true } });
+    const chamadas = new Set(rows.flatMap((r) => r.toolNames ?? []));
+    if (!chamadas.has(e.toolEsperada!)) {
+      falhas.push(`${e.id}: tool ${e.toolEsperada} NAO chamada sob active (catalogo cortado escondeu?) chamou=${[...chamadas].join(",")}`);
+      continue;
+    }
+    // Checagem de numero quando ha kpiOuro nao-volatil: a resposta textual deve conter o valor ouro.
+    if (e.kpiOuro?.length && !e.volatil) {
+      for (const k of e.kpiOuro) {
+        if (k.match && k.match !== "exato") continue; // so valores exatos sao verificaveis no texto
+        const alvo = String(k.valor);
+        if (!res.message.includes(alvo)) {
+          falhas.push(`${e.id}.${k.chave}: valor ouro ${alvo} ausente na resposta sob active`);
+        }
       }
     }
-  } finally {
-    await prisma.agentSettings.update({
-      where: { id: "global" },
-      data: {
-        routerEnabled: prev?.routerEnabled ?? false,
-        routerToolRetrieval: prev?.routerToolRetrieval ?? "shadow",
-      },
-    });
   }
-  if (falhas.length) { console.error("FALHA gate active:\n" + falhas.join("\n")); process.exit(1); }
-  console.log(`OK , ${amostra.length} consultas: tool esperada chamada sob retrieval=active`);
+  if (falhas.length) { console.error(`FALHA gate active (${falhas.length}):\n` + falhas.join("\n")); process.exit(1); }
+  console.log(`OK , ${amostra.length} consultas sob retrieval=active: tool esperada chamada e numero ouro presente`);
   process.exit(0);
 }
 main();
 ```
 
-Nota: confirmar que `LlmUsage.toolNames` e populado no turno (Task 2 mantem `toolNames` no log do loop). Se a verificacao por `toolNames` for fraca para alguma tool, complementar checando o numero `kpiOuro` na resposta (reusar `getKpi` de golden-nex.e2e.ts).
+> NOTAS: (1) confirmar que `EXCLUDE_FROM_FILTERING` e exportado de `filter-catalog.ts` e e um `Set<string>` (a review #1 viu o import em run-agent.ts:60); se for outra estrutura/nome, ajustar. (2) A checagem de numero por `includes` no texto e conservadora (pode haver formatacao); se gerar falso-negativo, restringir aos kpiOuro com valor inteiro/identificador e documentar. O numero-verdade canonico segue no `golden-nex.e2e`.
 
 - [ ] **Step 2: tsc**
 
 Run: `npx tsc --noEmit -p tsconfig.json`
-Expected: limpo (ajustar assinatura de runAgent aos nomes reais).
+Expected: limpo.
 
 - [ ] **Step 3: Commit**
 
 ```bash
 git add src/lib/agent/evals/golden-under-active.e2e.ts
-git commit -m "feat(f6): harness gate de qualidade do retrieval active (tool esperada chamada com catalogo cortado)"
+git commit -m "feat(f6): harness gate de qualidade do retrieval active (tool chamada + numero ouro, via routerOverride)"
 ```
 
 ---
 
-### Task 11: Rodar o gate duplo e medir o ganho
+### Task 12: Rodar o gate triplo e medir o ganho
 
 **Files:**
 - Create: `docs/RUNBOOK-retrieval-ativacao.md`
 
-Contexto: executar as duas metades do gate e medir shadow vs active. Nenhuma alteracao de schema; a promocao e config de banco.
+> Serializar (rodar um por vez , o cost-regression em active e medido com `routerOverride` no harness, sem UPDATE global concorrente). Nenhuma alteracao de schema.
 
 - [ ] **Step 1: Gate A , recall@K >= 98%**
 
 Run: `E2E=1 npx tsx --env-file=.env.local src/lib/agent/router/__tests__/e2e/retrieval.e2e.ts`
 Expected: recall@K >= 98% nas 30 congeladas (exit 0).
 
-- [ ] **Step 2: Gate B , golden de qualidade sob active**
-
-Run: `E2E=1 npx tsx --env-file=.env.local src/lib/agent/evals/golden-under-active.e2e.ts`
-Expected: OK (tool esperada chamada em todas as consultas da amostra).
-
-- [ ] **Step 3: Golden F5 padrao continua verde**
+- [ ] **Step 2: Gate B , golden F5 padrao verde (numero-verdade)**
 
 Run: `E2E=1 npx tsx --env-file=.env.local src/lib/agent/evals/golden-nex.e2e.ts`
 Expected: GOLDEN_VERDE.
 
+- [ ] **Step 3: Gate C , golden sob retrieval active**
+
+Run: `E2E=1 npx tsx --env-file=.env.local src/lib/agent/evals/golden-under-active.e2e.ts`
+Expected: OK (tool chamada + numero presente em todas as consultas da amostra).
+
 - [ ] **Step 4: Medir ganho de custo shadow vs active**
 
 ```bash
-# baseline shadow (estado atual)
+# baseline shadow (estado atual de prod)
 E2E=1 COST_WRITE=1 npx tsx --env-file=.env.local src/lib/agent/evals/cost-regression.e2e.ts
-# liga active so para medir, mede, e o proprio golden-under-active restaura;
-# para medir custo em active, setar manualmente via UI/script, rodar cost-regression de novo,
-# comparar mediaUsd dos dois cenarios (chaves de cenario diferentes => duas baselines).
 ```
-Expected: `mediaUsd` em active menor que em shadow (esperado ~-26% pela conta da spec). Registrar os dois scorecards.
+Para medir em active sem mutar prod: rodar o `cost-regression` com o cenario active e necessario; como o harness le o cenario do banco, criar uma variante de medicao usando o `golden-under-active` (que ja usa override) instrumentado para somar `agregarCustoPorConversa`, OU promover a flag temporariamente numa janela exclusiva combinada com o usuario. Registrar os dois scorecards (chaves de cenario diferentes => duas baselines) e comparar `medianaUsd`.
+Expected: `medianaUsd` em active menor que em shadow (esperado ~-26% pela conta da spec).
+
+> NOTA: se a medicao em active exigir promover a flag em prod, isso e o passo de PROMOCAO (abaixo) e deve ter aval do usuario , nao rodar autonomamente.
 
 - [ ] **Step 5: Escrever o RUNBOOK de promocao**
 
 ```markdown
 # Runbook , Ativacao do retrieval de tools (routerToolRetrieval shadow->active)
 
-## Pre-condicoes (gate duplo, OBRIGATORIO)
+## Pre-condicoes (gate triplo, OBRIGATORIO antes de promover em prod)
 - [ ] recall@K >= 98% (retrieval.e2e.ts) , evidencia: <colar saida>
-- [ ] golden-under-active verde , evidencia: <colar saida>
-- [ ] golden F5 padrao verde , evidencia: <colar saida>
-- [ ] cost-regression: mediaUsd(active) < mediaUsd(shadow) , evidencia: dois scorecards
+- [ ] golden F5 padrao verde (golden-nex.e2e.ts) , evidencia: <colar saida>
+- [ ] golden-under-active verde (golden-under-active.e2e.ts) , evidencia: <colar saida>
+- [ ] cost-regression: medianaUsd(active) < medianaUsd(shadow) , evidencia: dois scorecards
 
 ## Promocao (config de banco, SEM migration)
-A flag vive em AgentSettings (id="global"). Promover via UI de Integracoes/Router
-(super_admin) OU script pontual:
+A flag vive em AgentSettings(id="global"). Promover via UI de Integracoes/Router
+(super_admin) OU script pontual em JANELA EXCLUSIVA (sem outras sessoes/app ativo no DB):
   UPDATE agent_settings SET router_enabled=true, router_tool_retrieval='active' WHERE id='global';
-NAO alterar o default do schema (evita migration). Producao: aplicar so apos o gate verde.
+NAO alterar o default do schema (evita migration). Aplicar so apos o gate triplo verde.
 
 ## Rollback
   UPDATE agent_settings SET router_tool_retrieval='shadow' WHERE id='global';
 (reversivel em segundos; o catalogo volta a ir inteiro ao LLM)
 
 ## Coordenacao multi-branch
-Alinhar ordem de merge com feat/router-ativacao-r2 antes de promover em prod.
+Banco compartilhado entre worktrees. Alinhar ordem de merge com feat/router-ativacao-r2
+antes de promover em prod. A promocao da flag e decisao do usuario (afeta prod).
 ```
 
 - [ ] **Step 6: Commit**
 
 ```bash
 git add docs/RUNBOOK-retrieval-ativacao.md src/lib/agent/evals/golden/cost-scorecard.json
-git commit -m "docs(f6): runbook de ativacao do retrieval + evidencias do gate duplo e ganho de custo"
+git commit -m "docs(f6): runbook de ativacao do retrieval + evidencias do gate triplo e ganho de custo"
 ```
 
 ---
 
-### Task 12: Verificacao final F6 + STATUS/HISTORY + PR
+### Task 13: Verificacao final F6 + STATUS/HISTORY + PR
 
 **Files:** STATUS.md, docs/agents/HISTORY.md
 
-- [ ] **Step 1: Suite + tsc final**
-
-Run: `npx jest --silent 2>&1 | tail -5 && npx tsc --noEmit -p tsconfig.json && npx tsc --noEmit -p mcp/tsconfig.json`
-Expected: tudo verde.
-
-- [ ] **Step 2: Atualizar STATUS.md (F6 COMPLETA) e HISTORY.md**
-
-Marcar F6 completa: telemetria por consulta + gate de regressao de custo verdes; retrieval com gate duplo verde e runbook de promocao pronto; alvo 1-2c documentado e medido; sem migration.
-
+- [ ] **Step 1: Suite + tsc final** , Run: `npx jest --silent 2>&1 | tail -5 && npx tsc --noEmit -p tsconfig.json && npx tsc --noEmit -p mcp/tsconfig.json` , Expected: tudo verde.
+- [ ] **Step 2: Atualizar STATUS.md (F6 COMPLETA) e HISTORY.md** , telemetria por consulta + gate de regressao verdes; retrieval com gate triplo verde + runbook; alvo 1-2c documentado e medido; sem migration.
 - [ ] **Step 3: Commit + push + PR**
 
 ```bash
 git add STATUS.md docs/agents/HISTORY.md
 git commit -m "docs(f6): F6 completa , custo/latencia (telemetria por consulta + gate + retrieval sob gate)"
 git push -u origin feat/nex-reconstrucao
-gh pr create --title "F6 , Custo/Latencia: telemetria por consulta + gate de regressao + retrieval sob gate" --body "<corpo com escopo, evidencias de teste, conta de custo, dependencia de merge com feat/router-ativacao-r2>"
+gh pr create --title "F6 , Custo/Latencia: telemetria por consulta + gate de regressao + retrieval sob gate" --body "<corpo: escopo, evidencias de teste, conta de custo (~2c hoje -> ~0,96c com retrieval), dependencia de merge com feat/router-ativacao-r2, nenhuma migration>"
 ```
 
-- [ ] **Step 4: Avaliar o PR no corpo e aguardar decisao de merge do usuario** (merge para main e o unico ponto que exige confirmacao).
+- [ ] **Step 4: Avaliar o PR no corpo. Antes do merge para main, CONFIRMAR com o usuario a ordem de merge vs `feat/router-ativacao-r2`** (a promocao da flag e o merge para main exigem aval do usuario).
 
 ---
 
-## Self-Review (preenchido pelo autor)
+## Self-Review (apos 2 reviews adversariais aplicadas)
 
-**Spec coverage:** Onda 1 (criterios: logUsage completo nas 4 origens [T2-T5], agregacao por consulta [T7], estimarCustoUsd [T6], harness com costKnown+snapshot por cenario [T8]) e Onda 2 (gate duplo recall@K + golden active [T10-T11], ganho medido, runbook [T11]) cobrem a spec v3 secoes 4.1/4.2/6. Fora de escopo (model-tiering/short-circuit/cache) corretamente ausentes. Sem migration em nenhuma task.
+**Spec coverage:** Onda 1 (logUsage nas 4 origens [T2-T5], agregacao por consulta [T7], estimarCustoUsd por cenario [T6], harness com costKnown+snapshot por cenario+mediana [T8]) e Onda 2 (routerOverride [T10], gate triplo recall@K + golden + golden-under-active com numero [T11-T12], ganho medido, runbook [T12]) cobrem a spec v3 secoes 4.1/4.2/6. Fora de escopo ausente. Sem migration.
 
-**Placeholder scan:** as duas notas de "ajustar assinatura real de runAgent/enhanceWithChips" sao verificacoes deliberadas (o executor confirma os nomes no codigo), nao placeholders de logica , o codigo concreto esta todo presente.
+**Achados das reviews aplicados:** channel obrigatorio (T8/T11); amostra `prosseguir` n=24 nao `kpiOuro` n=4 (T8/T11); source=bubble p/ enhance disparar (T8); routerOverride em vez de mutar DB global (T10/T11); mock chips nao-vazio + call-site real (T5); estimarCustoUsd por cenario nao tautologico (T6); Prisma.Decimal real no mock (T7); cold-cache auditavel + mediana/teto (T8); gate de qualidade checa numero (T11); import so ORIGENS na T2 (T2); nota anti-refactor do loop (T2); checklist de ordem de merge (T13).
 
-**Type consistency:** `LogUsageArgs` (usage-logger), `ChatResult`/`ChatUsage` (types.ts), `ORIGENS`/`buildUsageArgs` (T1) e `CustoPorConsulta`/`agregarCustoPorConversa` (T7) usados de forma consistente entre tasks.
+**Type consistency:** `LogUsageArgs`/`ChatResult`/`ChatUsage`/`CenarioCusto`/`CustoPorConsulta`/`ORIGENS`/`buildUsageArgs`/`agregarCustoPorConversa`/`estimarCustoUsd`/`routerOverride` consistentes entre tasks e batendo com o codigo real verificado.
