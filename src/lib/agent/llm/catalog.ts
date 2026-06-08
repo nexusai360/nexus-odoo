@@ -722,3 +722,27 @@ export function calculateCost(
     costKnown: true,
   };
 }
+
+export interface CenarioCusto {
+  modelId: string;
+  nReqs: number;
+  avgInputTokens: number;
+  avgOutputTokens: number;
+  /** Fracao do input servida do cache de prompt (0..1). Default 0. */
+  cacheHitRate?: number;
+}
+
+/**
+ * Projeta o custo USD de UMA consulta a partir de um cenario (conta de custo de
+ * referencia da F6, spec secao 3). Reusa calculateCost para o pricing por req,
+ * dividindo o input em cacheado (fracao do preco) e nao-cacheado.
+ */
+export function estimarCustoUsd(c: CenarioCusto): { custoUsd: number | null; costKnown: boolean } {
+  const cacheRate = Math.min(Math.max(c.cacheHitRate ?? 0, 0), 1);
+  const cachedIn = Math.round(c.avgInputTokens * cacheRate);
+  const porReq = calculateCost(c.modelId, c.avgInputTokens, c.avgOutputTokens, {
+    cachedInputTokens: cachedIn,
+  });
+  if (!porReq.costKnown || porReq.costUsd === null) return { custoUsd: null, costKnown: false };
+  return { custoUsd: Number((porReq.costUsd * c.nReqs).toFixed(10)), costKnown: true };
+}
