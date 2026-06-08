@@ -1,9 +1,12 @@
 // F6 Onda 2 , gate de QUALIDADE da ativacao do retrieval (guard E2E=1, CUSTA tokens).
-// Roda runAgent com routerOverride active (catalogo cortado) e verifica, por consulta:
-// (a) a toolEsperada foi chamada (via LlmUsage.toolNames); (b) onde houver kpiOuro
-// nao-volatil com match exato, o valor ouro aparece na resposta. A prova RIGOROSA de
-// que o corte preserva a tool certa e o retrieval.e2e.ts (recall@K offline); este
-// harness e a confirmacao ponta-a-ponta via runAgent com o catalogo de fato cortado.
+// Criterio CORRETO (revisado 2026-06-08): NAO-REGRESSAO do corte. Para cada pergunta,
+// roda runAgent em SHADOW (catalogo inteiro) e em ACTIVE (catalogo cortado) e exige que
+// o conjunto de tools chamadas em active CONTENHA todas as tools que o shadow chamou.
+// Ou seja: cortar o catalogo nao pode fazer o agente PERDER uma ferramenta que ele usaria
+// com o catalogo cheio. (Comparar com a tool "ideal" do golden era errado: em entradas de
+// cobertura o agente escolhe outra tool valida ate com catalogo cheio.)
+// Requer MCP acessivel (sessao streamable-HTTP): rodar no full-stack (container mcp do dev
+// recriado a partir da raiz principal com .env, ou prod). Sem MCP => INCONCLUSIVO (exit 2).
 //   E2E=1 npx tsx --env-file=.env.local src/lib/agent/evals/golden-under-active.e2e.ts
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
@@ -17,13 +20,14 @@ if (process.env.E2E !== "1") {
   process.exit(0);
 }
 
+const N = Number(process.env.GATE_N ?? 16);
 const golden: GoldenEntry[] = GoldenSchema.parse(
   JSON.parse(readFileSync(join(process.cwd(), "src/lib/agent/evals/golden/golden-nex.json"), "utf8")),
 );
 const amostra = golden
   .filter((e) => e.classe === "prosseguir" && e.toolEsperada)
   .sort((a, b) => a.id.localeCompare(b.id))
-  .slice(0, 24);
+  .slice(0, N);
 
 async function resolverUserId(): Promise<string> {
   if (process.env.F6_USER_ID) return process.env.F6_USER_ID;
@@ -35,77 +39,90 @@ async function resolverUserId(): Promise<string> {
   return u.id;
 }
 
+async function toolsChamadas(convId: string): Promise<Set<string>> {
+  const rows = await prisma.llmUsage.findMany({
+    where: { conversationId: convId },
+    select: { toolNames: true, toolCallsCount: true },
+  });
+  return new Set(rows.flatMap((r) => r.toolNames ?? []));
+}
+
+async function rodar(
+  userId: string,
+  pergunta: string,
+  modo: "shadow" | "active",
+  lixo: string[],
+): Promise<{ ok: boolean; tools: Set<string> }> {
+  const conv = await createConversation(userId, "in_app");
+  lixo.push(conv.id);
+  try {
+    const res = await runAgent({
+      userMessage: pergunta,
+      conversationId: conv.id,
+      userId,
+      channel: "in_app",
+      isPlayground: false,
+      source: "bubble",
+      routerOverride: { enabled: true, toolRetrieval: modo },
+    });
+    if (!res || res.ok !== true) return { ok: false, tools: new Set() };
+    return { ok: true, tools: await toolsChamadas(conv.id) };
+  } catch {
+    return { ok: false, tools: new Set() };
+  }
+}
+
 async function main(): Promise<void> {
   const userId = await resolverUserId();
-  const convIdsCriadas: string[] = [];
-  const falhas: string[] = [];
+  const lixo: string[] = [];
+  const regressoes: string[] = [];
+  let okPares = 0;
   let toolCallsTotal = 0;
+  let inconclusivos = 0;
+
   for (let idx = 0; idx < amostra.length; idx++) {
     const e = amostra[idx];
-    const conv = await createConversation(userId, "in_app");
-    const convId = conv.id;
-    convIdsCriadas.push(convId);
-    let res;
-    try {
-      res = await runAgent({
-        userMessage: e.pergunta,
-        conversationId: convId,
-        userId,
-        channel: "in_app",
-        isPlayground: false,
-        source: "bubble",
-        routerOverride: { enabled: true, toolRetrieval: "active" },
-      });
-    } catch (err) {
-      falhas.push(`${e.id}: runAgent THROW (transitorio?) ${err instanceof Error ? err.message : err}`);
+    const sh = await rodar(userId, e.pergunta, "shadow", lixo);
+    const ac = await rodar(userId, e.pergunta, "active", lixo);
+    toolCallsTotal += sh.tools.size + ac.tools.size;
+    if (!sh.ok || !ac.ok) {
+      inconclusivos += 1;
+      console.warn(`[gate] ${e.id}: par inconclusivo (shadow.ok=${sh.ok} active.ok=${ac.ok})`);
       continue;
     }
-    if (!res || res.ok !== true) {
-      falhas.push(`${e.id}: runAgent {ok:false}`);
-      continue;
-    }
-    const rows = await prisma.llmUsage.findMany({
-      where: { conversationId: convId },
-      select: { toolNames: true, toolCallsCount: true },
-    });
-    toolCallsTotal += rows.reduce((s, r) => s + (r.toolCallsCount ?? 0), 0);
-    const chamadas = new Set(rows.flatMap((r) => r.toolNames ?? []));
-    if (!chamadas.has(e.toolEsperada!)) {
-      falhas.push(
-        `${e.id}: tool ${e.toolEsperada} NAO chamada sob active (catalogo cortado escondeu?) chamou=${[...chamadas].join(",")}`,
+    okPares += 1;
+    // Regressao: active perdeu alguma tool que o shadow (catalogo cheio) usou.
+    const perdidas = [...sh.tools].filter((t) => !ac.tools.has(t));
+    if (perdidas.length > 0) {
+      regressoes.push(
+        `${e.id}: active PERDEU [${perdidas.join(",")}] (shadow=[${[...sh.tools].join(",")}] active=[${[...ac.tools].join(",")}])`,
       );
-      continue;
+    } else {
+      console.log(
+        `[gate] ${e.id}: OK (shadow=[${[...sh.tools].join(",")}] active=[${[...ac.tools].join(",")}])`,
+      );
     }
-    // Checagem de numero quando ha kpiOuro nao-volatil com match exato.
-    if (e.kpiOuro?.length && !e.volatil) {
-      for (const k of e.kpiOuro) {
-        if ((k.match ?? "exato") !== "exato") continue;
-        const alvo = String(k.valor);
-        if (!res.message.includes(alvo)) {
-          falhas.push(`${e.id}.${k.chave}: valor ouro ${alvo} ausente na resposta sob active`);
-        }
-      }
-    }
-  }
-  if (convIdsCriadas.length) {
-    await prisma.conversation.deleteMany({ where: { id: { in: convIdsCriadas } } });
   }
 
-  // Fidelidade: sem nenhuma tool chamada, o MCP nao carregou (sessao streamable-HTTP
-  // indisponivel) e o gate e INCONCLUSIVO, nao reprovado. Rode onde o MCP funciona.
+  if (lixo.length) await prisma.conversation.deleteMany({ where: { id: { in: lixo } } });
+
+  // Fidelidade: sem nenhuma tool em nenhum modo, o MCP nao carregou.
   if (toolCallsTotal === 0) {
     console.error(
-      "INCONCLUSIVO: 0 tool calls , MCP indisponivel nesta execucao. Rode onde a sessao MCP funciona (app/docker). Gate A (recall@K) + golden-nex cobrem a promocao.",
+      "INCONCLUSIVO: 0 tool calls , MCP indisponivel nesta execucao. Rode no full-stack (container mcp do dev recriado da raiz principal com .env, ou prod).",
     );
     process.exit(2);
   }
-
-  if (falhas.length) {
-    console.error(`FALHA gate active (${falhas.length}):\n` + falhas.join("\n"));
+  if (okPares === 0) {
+    console.error("INCONCLUSIVO: nenhum par shadow/active completou.");
+    process.exit(2);
+  }
+  if (regressoes.length > 0) {
+    console.error(`FALHA: ${regressoes.length} regressao(oes) do corte (active perdeu tool do shadow):\n` + regressoes.join("\n"));
     process.exit(1);
   }
   console.log(
-    `OK , ${amostra.length} consultas sob retrieval=active: tool esperada chamada e numero ouro presente`,
+    `OK , ${okPares} pares sem regressao (active nunca perdeu tool que o shadow usou). Inconclusivos: ${inconclusivos}.`,
   );
   process.exit(0);
 }

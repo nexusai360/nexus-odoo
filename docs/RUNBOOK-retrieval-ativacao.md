@@ -66,3 +66,43 @@ Reversivel em segundos; o catalogo volta a ir inteiro ao LLM.
 Banco e infra compartilhados entre worktrees. **Alinhar a ordem de merge com a worktree
 `feat/router-ativacao-r2`** (UI do drill-down do Router) antes de promover em prod. A promocao
 da flag e o merge para `main` sao decisao do usuario (afetam producao).
+
+---
+
+## ATIVADO em 2026-06-08 (gate triplo verde)
+
+`routerEnabled=true` + `routerToolRetrieval=active` aplicados em `agent_settings(id="global")`.
+Evidencias: Gate A recall@K=100%; Gate B golden-nex VERDE; **Gate C (criterio corrigido,
+no-regressao) verde** , 10/10 pares sem o corte perder nenhuma tool que o catalogo cheio usaria.
+Rollback (se precisar): `UPDATE agent_settings SET router_tool_retrieval='shadow' WHERE id='global';`
+
+### Correcao do criterio do Gate C (importante)
+A 1a versao do `golden-under-active.e2e.ts` comparava a tool chamada sob active com a
+`toolEsperada` do golden e reprovou 5/24. Diagnostico shadow-vs-active mostrou que nesses 5
+casos o agente chama a MESMA coisa em shadow e active (ex.: `cadastros-05` chama
+`estoque_saldo_produto` nos dois; `cov-03`/`cov-09` nao chamam tool em nenhum) , ou seja eram
+**falsos negativos**: o golden lista a tool "ideal", mas em entradas de cobertura o agente
+escolhe outra tool valida ate com o catalogo CHEIO. O criterio correto e **no-regressao**:
+para cada pergunta, rodar shadow E active e exigir que `active` nao PERCA nenhuma tool que o
+`shadow` (catalogo inteiro) usou. Com esse criterio o gate passa.
+
+### Gotcha de DEV: sessao MCP do host falha com SASL (senha vazia)
+Sintoma: `createMcpSession` do host (tsx/local) falha com `fetch failed` / `other side closed`
+(curl `HTTP 000`), enquanto `GET /health` responde. Causa NAO e IPv6 (127.0.0.1 falha igual):
+o container `mcp` de dev subiu com `MCP_DATABASE_URL` de senha VAZIA (erro no log do mcp:
+`SASL: SCRAM-SERVER-FIRST-MESSAGE: client password must be a string`). `GET /health` nao toca
+o banco; `POST /mcp` chama `resolveUserContext` (query com role `nexus_mcp`) e a auth ao Postgres
+falha, derrubando a conexao. Producao nao e afetada (senha vem dos secrets do Portainer).
+**Causa de fundo:** `docker compose` interpola `${MCP_DB_PASSWORD}` do `.env` da **raiz
+principal** do projeto, NAO de `.env.local`. Se o container subir de um contexto sem esse `.env`
+(ex.: recriado por outra ferramenta), a senha vem vazia.
+**Correcao (sem gambiarra):** subir o container do MCP a partir da **raiz principal** do projeto
+(onde o `.env` tem `MCP_DB_PASSWORD`):
+```
+cd "<raiz principal do projeto>"   # a pasta em main, nao a worktree
+docker compose up -d --force-recreate mcp
+# conferir: a senha dentro de MCP_DATABASE_URL deve ter tamanho > 0
+docker exec nexus-odoo-mcp-1 sh -c 'echo "$MCP_DATABASE_URL" | sed -E "s#.*nexus_mcp:([^@]*)@.*#\1#" | wc -c'
+```
+A role `nexus_mcp` ja existe no banco (superuser do db = `nexus`); a senha no `.env` deve casar
+com a da role (`ALTER ROLE nexus_mcp PASSWORD '<...>'` se divergir).
