@@ -26,6 +26,7 @@ import { montarConversa } from "./prompt/montar-conversa";
 import { buildLlmClient } from "./llm/get-client";
 import { getActiveLlmConfig } from "./llm/get-active-config";
 import { logUsage } from "./llm/usage-logger";
+import { ORIGENS } from "./llm/build-usage-args";
 import { createMcpSession, mcpToolsToProviderTools } from "./mcp-client";
 import {
   openExternalMcpSessions,
@@ -820,6 +821,7 @@ export async function runAgent(args: RunAgentInput): Promise<RunAgentResult> {
             i === MAX_ITERATIONS - 1 && (result.toolCalls?.length ?? 0) > 0
               ? "max_iterations_exceeded"
               : undefined,
+          origin: ORIGENS.LOOP,
         }),
       );
 
