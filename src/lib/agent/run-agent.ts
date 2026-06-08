@@ -1170,6 +1170,23 @@ export async function runAgent(args: RunAgentInput): Promise<RunAgentResult> {
                     ),
                   );
                   const retry = await Promise.race([retryPromise, timeoutPromise]);
+                  usageWrites.push(
+                    logUsage(
+                      buildUsageArgs(
+                        retry,
+                        {
+                          provider: client.provider,
+                          model: client.model,
+                          credentialId: resolvedLlm.credentialId ?? undefined,
+                          conversationId: args.conversationId,
+                          userId: args.userId,
+                          isPlayground: args.isPlayground,
+                          durationMs: Date.now() - retryStart,
+                        },
+                        ORIGENS.AUTO_VALIDATOR,
+                      ),
+                    ),
+                  );
                   if (retry.message && retry.message.trim().length > 0) {
                     message = retry.message;
                     autoValidatorRetryCount = 1;
