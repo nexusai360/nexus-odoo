@@ -366,3 +366,29 @@ falso positivo. Mas a verificacao plena de coerencia (totais, datas no periodo)
 depende do envelope canonico unico, que e da F4. Manter V6/V7 em shadow ate la;
 so promover a active (Falta Honesta direta) quando o envelope padronizar
 total/linhas/periodo. Implicacao de producao: nenhuma (V6/V7 so logam).
+
+---
+
+## F6 , Pendências pós-merge (telemetria entregue; ativação/medição-fiel no full-stack)
+
+**Quando:** 2026-06-08. **Status:** F6 MERGED (PR #65). Produção **inalterada**
+(`routerEnabled=false`, `routerToolRetrieval=shadow`; as novas chamadas `logUsage`
+só completam a telemetria de custo). Nada bloqueia; são passos de medição/ativação
+que dependem do ambiente full-stack e de decisão do usuário.
+
+### F6-A , Custo-fiel + Gate C precisam do ambiente full-stack
+`runAgent` E2E via `tsx` no host **não carrega tools**: o container MCP (`:3100`)
+fecha a sessão streamable-HTTP autenticada vinda do host (`other side closed`;
+reproduzível com `curl`+token = problema de infra, fora do escopo F6). Logo
+`cost-regression.e2e` sai `faithful=false` e `golden-under-active.e2e` sai
+`INCONCLUSIVO` (exit 2) , **nunca mascaram**. **Ação:** rodar ambos no ambiente
+full-stack (app/docker, onde a sessão MCP funciona) e capturar o baseline
+`src/lib/agent/evals/golden/cost-scorecard.json`. Gates A (recall@K=100%) + B
+(golden-nex VERDE) já cobrem o critério de promoção; Gate C é confirmação E2E.
+
+### F6-B , Promover `routerToolRetrieval=active` (o maior ganho de custo)
+Após o gate triplo verde (recall@K≥98% + golden-nex VERDE + golden-under-active
+verde no full-stack) e `medianaUsd(active) < medianaUsd(shadow)`: promover via
+config de banco (`UPDATE agent_settings ...`), **sem migration**. Runbook completo:
+`docs/RUNBOOK-retrieval-ativacao.md`. Reversível em segundos. **Coordenar a ordem
+com a worktree `feat/router-ativacao-r2`** antes de ativar em produção.
