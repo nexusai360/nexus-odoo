@@ -841,6 +841,12 @@ export async function runAgent(args: RunAgentInput): Promise<RunAgentResult> {
               agentResponse: result.message,
               recentHistory: conversation.slice(-5),
               maxContextual: agentSettings.maxSuggestions,
+              logCtx: {
+                conversationId: args.conversationId,
+                userId: args.userId,
+                credentialId: resolvedLlm.credentialId ?? undefined,
+                isPlayground: args.isPlayground,
+              },
             });
             message = enhanced.cleanMessage;
             suggestions = enhanced.chips;
