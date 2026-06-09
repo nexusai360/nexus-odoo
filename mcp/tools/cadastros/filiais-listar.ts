@@ -4,6 +4,7 @@
 import { z } from "zod";
 import type { ToolEntry } from "../../catalog/types.js";
 import type { PrismaClient } from "@/generated/prisma/client.js";
+import { listarEmpresasDoFato } from "@/lib/metrics/_shared/empresa.js";
 
 const inputSchema = z.object({
   tipo: z.enum(["matriz", "filial", "todas"]).optional().describe("Default: todas"),
@@ -47,29 +48,41 @@ type Input = z.infer<typeof inputSchema>;
 type Output = z.infer<typeof outputSchema>;
 
 async function query(prisma: PrismaClient, input: Input) {
+  // Fonte: o FATO (fato_nota_fiscal), nao a dim_empresa_grupo, cujo odooId esta
+  // deslocado do empresaId das notas (RADAR R10). Aqui odooId = empresaId do fato.
   const limite = input.limite ?? 30;
-  const where: Record<string, unknown> = { ativo: true };
   const tipo = input.tipo ?? "todas";
-  if (tipo === "matriz") where.tipo = "matriz";
-  if (tipo === "filial") where.tipo = "filial";
-  if (input.uf) where.uf = input.uf.toUpperCase();
+  const ufFiltro = input.uf ? input.uf.toUpperCase() : undefined;
 
-  const [linhas, total, matrizes, filiais] = await Promise.all([
-    prisma.dimEmpresaGrupo.findMany({
-      where,
-      orderBy: [{ tipo: "asc" }, { uf: "asc" }, { nome: "asc" }],
-      take: limite,
-    }),
-    prisma.dimEmpresaGrupo.count({ where }),
-    prisma.dimEmpresaGrupo.count({ where: { ...where, tipo: "matriz" } }),
-    prisma.dimEmpresaGrupo.count({ where: { ...where, tipo: "filial" } }),
-  ]);
+  const todas = await listarEmpresasDoFato(prisma);
+  const filtradas = todas.filter((e) => {
+    if (tipo === "matriz" && e.tipo !== "matriz") return false;
+    if (tipo === "filial" && e.tipo !== "filial") return false;
+    if (ufFiltro && e.uf !== ufFiltro) return false;
+    return true;
+  });
+
+  const ordenadas = [...filtradas].sort(
+    (a, b) =>
+      a.tipo.localeCompare(b.tipo) ||
+      (a.uf ?? "").localeCompare(b.uf ?? "") ||
+      a.nome.localeCompare(b.nome),
+  );
+
+  const linhas = ordenadas.slice(0, limite).map((e) => ({
+    odooId: e.empresaId,
+    nome: e.nome,
+    cnpj: e.cnpj,
+    tipo: e.tipo,
+    uf: e.uf,
+    ativo: true,
+  }));
 
   return {
     linhas,
-    totalEncontrados: total,
-    totalMatrizes: matrizes,
-    totalFiliais: filiais,
+    totalEncontrados: filtradas.length,
+    totalMatrizes: filtradas.filter((e) => e.tipo === "matriz").length,
+    totalFiliais: filtradas.filter((e) => e.tipo === "filial").length,
     linhasExibidas: linhas.length,
   };
 }
@@ -86,7 +99,8 @@ export const cadastroFiliaisListar: ToolEntry<Input, Output> = {
   inputSchema,
   outputSchema,
   handler: async (input, ctx) => {
-    // dim_empresa_grupo nao e tabela de fato sincronizada — bypass freshness.
+    // Empresas derivadas do FATO (notas), sem freshness gate proprio: a lista
+    // reflete os empresaId que aparecem em fato_nota_fiscal.
     const d = await query(ctx.prisma, input);
     const now = new Date();
     const envelope = {

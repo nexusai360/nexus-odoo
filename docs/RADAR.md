@@ -437,19 +437,19 @@ com `odoo_id` = ids do **res.company** (1,4,5,6,...). Mas o `empresaId` gravado 
 `fato_nota_fiscal` é de OUTRO id-space (denso: 1,2,3,4,...; ex.: Jht DF Matriz =
 empresaId **2** na nota, mas res.company **4**). Os dois nunca casam de id 4 em diante.
 
-**Impacto (3 consumidores):**
-1. `faturamento_por_empresa` (nome) , **JÁ CORRIGIDO** (usa `fato.empresaNome`).
-2. `resolverEmpresa` (`src/lib/metrics/_shared/empresa.ts`) , resolve ref textual via
-   `dimEmpresaGrupo` e devolve `odooId` (id-space da dim) que depois filtra
-   `fato.empresaId`. **BUG: "faturamento da empresa X" pode filtrar a empresa errada**
-   (número errado) ou não achar. Ainda NÃO corrigido.
-3. `filiais-listar` (`mcp/tools/cadastros/filiais-listar.ts`) , lista direto da dim
-   (nomes reais, mas ids desalinhados do fato). Baixo impacto, mas inconsistente.
+**Impacto (3 consumidores) , TODOS CORRIGIDOS (2026-06-09):**
+1. `faturamento_por_empresa` (nome) , **CORRIGIDO** (usa `fato.empresaNome`).
+2. `resolverEmpresa` (`src/lib/metrics/_shared/empresa.ts`) , **CORRIGIDO**: derivado do
+   FATO. Devolve `odooId = fato.empresaId` (mesmo id-space das notas); nome casa
+   insensível a acento. Filtro por empresa agora acerta a empresa.
+3. `filiais-listar` (`mcp/tools/cadastros/filiais-listar.ts`) , **CORRIGIDO**: lista
+   `distinct` do fato com `odooId = empresaId`, tipo/UF/CNPJ parseados do nome da nota.
 
-**Fix recomendado (fazer numa sessão fresca, com verificação):** parar de usar
-`dim_empresa_grupo` como fonte e derivar empresa do **fato** (single source of truth):
-`SELECT DISTINCT empresaId, empresaNome FROM fato_nota_fiscal`, parseando CNPJ/tipo/UF
-do nome ("... - {Matriz|Filial} {UF} {CNPJ}"). Aplicar em `resolverEmpresa` e
-`filiais-listar` (como já foi feito em `faturamento_por_empresa`). Depois, a dim pode
-ser descontinuada (ou reconstruída no id-space do fato via worker). Requer rebuild do
-mcp + E2E (resolver "empresa X" → empresaId certo; filtrar faturamento por empresa → número certo).
+**Fix aplicado (2026-06-09):** `dim_empresa_grupo` deixou de ser fonte. Helpers novos
+em `_shared/empresa.ts`: `parseEmpresaNome` (parseia "{Nome} - {Matriz|Filial} {UF} {CNPJ}")
+e `listarEmpresasDoFato` (`SELECT DISTINCT empresaId, empresaNome FROM fato_nota_fiscal`).
+`resolverEmpresa` e `filiais-listar` reusam esses helpers. Verificado: tsc raiz+mcp + jest
+(2761) verdes + E2E contra cache real (`scripts/e2e-empresa-r10.ts`): 'Jds Comercio - Matriz'
+→ empresaId=4 → nota "Jds Comércio - Matriz DF" (empresa CERTA), CNPJ exato resolve certo,
+'Jht DF' → ids {2,3} reais. **Pendência remanescente (worker, opcional):** reconstruir ou
+descontinuar a `dim_empresa_grupo`; nenhum consumidor depende mais dela.

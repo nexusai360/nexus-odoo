@@ -1,6 +1,6 @@
 # STATUS — nexus-odoo
 
-> **Ponto de retomada entre sessões.** Atualizado em **2026-06-09** , F1→F6 em produção; retrieval ATIVO; rodada de qualidade de respostas (faturamento) feita. **PRÓXIMO: Item 2 , corrigir `resolverEmpresa`/`filiais-listar` (ver `RADAR R10`).**
+> **Ponto de retomada entre sessões.** Atualizado em **2026-06-09** , F1→F6 em produção; retrieval ATIVO; rodada de qualidade de respostas (faturamento) feita; **Item 2 (RADAR R10) CONCLUÍDO** , `resolverEmpresa` e `filiais-listar` agora derivam do fato. **PRÓXIMO: sem pendência aberta de mapeamento de empresa; ver `RADAR.md` para o que restar.**
 > Ao abrir: ler **este arquivo**, o **`CLAUDE.md`** e **`.agente-handoff.md`**.
 > Modo autônomo é o padrão (`CLAUDE.md §6`).
 
@@ -14,7 +14,7 @@ Sessão de polimento das respostas do agente contra dado real (tudo MERGED para 
 - **Timeout LLM 90s→120s + 1 retry (PR #74):** reduz o "ERRO" raro de demora na redação (OpenAI Responses, não-streaming → retry seguro). Gemini também 120s.
 - **Perícia confirmada:** faturamento conta **só nota autorizada de venda** (canceladas/em_digitação/rejeitada/inutilizada/denegada excluídas) , verificado contra SQL independente.
 
-**PENDÊNCIA , Item 2 (RADAR R10), autorizada pelo usuário, fazer com contexto fresco:** a `dim_empresa_grupo` vem de um **seed estático** (migration `20260528020000`) keyed em ids do `res.company`, que **não casam** com `fato.empresaId`. Já corrigido em `faturamento_por_empresa` (usa nome da nota). **Falta corrigir:** (1) `resolverEmpresa` (`src/lib/metrics/_shared/empresa.ts`) , filtra "faturamento DA empresa X" pelo id errado → pode trazer número de outra empresa; (2) `filiais-listar` (`mcp/tools/cadastros/filiais-listar.ts`). **Fix:** derivar empresa do **fato** (`SELECT DISTINCT empresaId, empresaNome`, parseando CNPJ/tipo/UF do nome), aplicar nos dois, rebuild do mcp (regra §2.1) + E2E (resolver "empresa X" → empresaId certo → número certo). Detalhes completos em `docs/RADAR.md` R10.
+**Item 2 (RADAR R10) , CONCLUÍDO (2026-06-09, PR #77):** a `dim_empresa_grupo` (seed estático da migration `20260528020000`, keyed em `res.company`) **não casa** com `fato.empresaId`. Os 3 consumidores foram corrigidos para derivar do **fato**: `faturamento_por_empresa` (nome da nota), `resolverEmpresa` e `filiais-listar`. Novos helpers em `src/lib/metrics/_shared/empresa.ts`: `parseEmpresaNome` (parseia "{Nome} - {Matriz|Filial} {UF} {CNPJ}") + `listarEmpresasDoFato` (`SELECT DISTINCT empresaId, empresaNome`). `resolverEmpresa` devolve `empresaId` real e casa nome insensível a acento. Verificado: tsc raiz+mcp + jest (2761) + E2E contra cache real (`scripts/e2e-empresa-r10.ts`): 'Jds Comercio - Matriz' → empresaId=4 → nota "Jds Comércio - Matriz DF" (empresa CERTA). A `dim_empresa_grupo` não tem mais consumidor (pode ser descontinuada). Detalhes em `docs/RADAR.md` R10.
 
 ## 2026-06-07 , RECONSTRUÇÃO DO NEX (branch `feat/nex-reconstrucao`)
 
