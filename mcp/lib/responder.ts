@@ -865,7 +865,28 @@ const fmtFiscalFaturamentoPorEmpresa: FormatadorCanonico = (env) => {
     return "Nenhuma empresa do grupo teve faturamento de venda autorizado no periodo.";
   }
   const plural = empresas === 1 ? "empresa" : "empresas";
-  return `Faturamento de venda autorizado do grupo: ${formatBRL(total)} em ${empresas} ${plural} com faturamento.`;
+  const cabeca = `Faturamento de venda autorizado do grupo: ${formatBRL(total)} em ${empresas} ${plural} com faturamento.`;
+  // Detalhamento por empresa (sem isto, "detalhado por empresa" nao tinha o que
+  // listar no _RESPOSTA e o LLM ecoava o _DESTAQUE cru). Lista da maior para a
+  // menor (linhas ja vem ordenadas por valor desc, com a "sem empresa" por ultimo).
+  const linhas = (Array.isArray(env.linhas) ? env.linhas : []) as Array<{
+    empresaId?: number | null;
+    empresaNome?: string | null;
+    totalNotas?: number | null;
+    valor?: number | null;
+  }>;
+  const itens = linhas
+    .filter((l) => Number(l?.valor ?? 0) > 0)
+    .map((l) => {
+      const nome =
+        l.empresaId === null || l.empresaId === undefined
+          ? "Sem empresa identificada"
+          : String(l.empresaNome ?? `Empresa ${l.empresaId}`);
+      const n = Number(l.totalNotas ?? 0);
+      return `- ${nome}: ${formatBRL(Number(l.valor ?? 0))} (${n} ${n === 1 ? "nota" : "notas"})`;
+    });
+  if (itens.length === 0) return cabeca;
+  return [cabeca, "Por empresa:", ...itens].join("\n");
 };
 
 const fmtFiscalFaturamentoPorOperacao: FormatadorCanonico = (env) => {

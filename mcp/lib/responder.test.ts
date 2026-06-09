@@ -52,6 +52,30 @@ describe("formatadorPorTool", () => {
     expect(r.toLowerCase()).toContain("fornecedor");
   });
 
+  it("fiscal_faturamento_por_empresa LISTA cada empresa (detalhamento, nao so o total)", () => {
+    const fmt = formatadorPorTool("fiscal_faturamento_por_empresa");
+    const env = {
+      _listaTruncada: false,
+      linhas: [
+        { empresaId: 1, empresaNome: "Jds Comercio - Filial SE", totalNotas: 3536, valor: 542794073.8 },
+        { empresaId: 2, empresaNome: "Jht DF Comercio - Matriz", totalNotas: 778, valor: 108526602.73 },
+        { empresaId: null, empresaNome: null, totalNotas: 1, valor: 140000 },
+      ],
+      atualizadoEm: "x",
+      atualizadoHa: "2min",
+      _DESTAQUE: { totalGrupo: 651460676.53, empresasComFaturamento: 2 },
+      _agregado: { soma: 651460676.53, contagem: 2 },
+    };
+    const r = normSpaces(fmt(env));
+    // cabeca com o total do grupo
+    expect(r).toContain("R$ 651.460.676,53");
+    // DETALHAMENTO por empresa (era o que faltava , o LLM ecoava o _DESTAQUE cru sem isto)
+    expect(r).toContain("Jds Comercio - Filial SE");
+    expect(r).toContain("R$ 542.794.073,80");
+    expect(r).toContain("Jht DF Comercio - Matriz");
+    expect(r).toContain("R$ 108.526.602,73");
+  });
+
   it("registrar_lacuna devolve apenas respostaSugerida (T-19: canal removido)", () => {
     const fmt = formatadorPorTool("registrar_lacuna");
     const env = {
