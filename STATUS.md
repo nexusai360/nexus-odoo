@@ -1,8 +1,20 @@
 # STATUS — nexus-odoo
 
-> **Ponto de retomada entre sessões.** Atualizado em **2026-06-08** , **RECONSTRUÇÃO DO NEX COMPLETA: F1→F6 todas MERGED para `main`** (PRs #58/#59/#60/#63/#64/#65).
+> **Ponto de retomada entre sessões.** Atualizado em **2026-06-09** , F1→F6 em produção; retrieval ATIVO; rodada de qualidade de respostas (faturamento) feita. **PRÓXIMO: Item 2 , corrigir `resolverEmpresa`/`filiais-listar` (ver `RADAR R10`).**
 > Ao abrir: ler **este arquivo**, o **`CLAUDE.md`** e **`.agente-handoff.md`**.
 > Modo autônomo é o padrão (`CLAUDE.md §6`).
+
+## 2026-06-09 , Qualidade de respostas do Nex + perícias (branch `feat/nex-reconstrucao`)
+
+Sessão de polimento das respostas do agente contra dado real (tudo MERGED para `main` e deployado):
+
+- **Respostas completas (PR #71):** regra de ouro no prompt (`identity-base.ts` §7) , pediu detalhamento/"por X"/comparativo/"liste" → lista TODAS as `linhas` (nome+valor); teto de 10 itens só para listas grandes paginadas, não para quebras agrupadas.
+- **Faturamento_por_empresa lista as empresas (PR #70)** + **usa o nome da NOTA, não a dim deslocada (PR #72)**.
+- **Faturamento_por_operacao = venda autorizada (PR #73):** "por operação" = operação fiscal de venda; totais por empresa × por operação **FECHAM** (R$ 6.273.584,07 == R$ 6.273.584,07); sumiram transferências/remessas/devoluções.
+- **Timeout LLM 90s→120s + 1 retry (PR #74):** reduz o "ERRO" raro de demora na redação (OpenAI Responses, não-streaming → retry seguro). Gemini também 120s.
+- **Perícia confirmada:** faturamento conta **só nota autorizada de venda** (canceladas/em_digitação/rejeitada/inutilizada/denegada excluídas) , verificado contra SQL independente.
+
+**PENDÊNCIA , Item 2 (RADAR R10), autorizada pelo usuário, fazer com contexto fresco:** a `dim_empresa_grupo` vem de um **seed estático** (migration `20260528020000`) keyed em ids do `res.company`, que **não casam** com `fato.empresaId`. Já corrigido em `faturamento_por_empresa` (usa nome da nota). **Falta corrigir:** (1) `resolverEmpresa` (`src/lib/metrics/_shared/empresa.ts`) , filtra "faturamento DA empresa X" pelo id errado → pode trazer número de outra empresa; (2) `filiais-listar` (`mcp/tools/cadastros/filiais-listar.ts`). **Fix:** derivar empresa do **fato** (`SELECT DISTINCT empresaId, empresaNome`, parseando CNPJ/tipo/UF do nome), aplicar nos dois, rebuild do mcp (regra §2.1) + E2E (resolver "empresa X" → empresaId certo → número certo). Detalhes completos em `docs/RADAR.md` R10.
 
 ## 2026-06-07 , RECONSTRUÇÃO DO NEX (branch `feat/nex-reconstrucao`)
 
