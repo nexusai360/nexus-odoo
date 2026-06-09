@@ -871,7 +871,14 @@ export function ChatPanel({
     setMenuOpen(false);
     const cid = conversationIdRef.current;
     if (cid) {
-      await archiveActiveConversation(cid);
+      // O arquivamento e o que faz a sessao "sumir de vez". Se ele falhar, NAO
+      // podemos limpar a UI: a conversa seguiria ativa no banco e voltaria no
+      // proximo reload (o "ghost"). Aborta a limpeza e avisa o usuario.
+      const r = await archiveActiveConversation(cid);
+      if (!r.ok) {
+        toast.error(r.error ?? "Não foi possível limpar a sessão. Tente de novo.");
+        return;
+      }
     }
     abortRef.current?.abort();
     setMessages([]);

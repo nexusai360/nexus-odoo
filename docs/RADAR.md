@@ -453,3 +453,35 @@ e `listarEmpresasDoFato` (`SELECT DISTINCT empresaId, empresaNome FROM fato_nota
 → empresaId=4 → nota "Jds Comércio - Matriz DF" (empresa CERTA), CNPJ exato resolve certo,
 'Jht DF' → ids {2,3} reais. **Pendência remanescente (worker, opcional):** reconstruir ou
 descontinuar a `dim_empresa_grupo`; nenhum consumidor depende mais dela.
+
+---
+
+## R11 , bubble do Nex ressuscitava conversa antiga (ghost) ao recarregar , CORRIGIDO (2026-06-09)
+
+**Quando:** 2026-06-09 (relatado pelo usuário). **Onde:** `getActiveConversationId`
+(`src/lib/actions/active-conversation.ts`), consumido pelo boot da bubble em
+`(protected)/layout.tsx`.
+
+**Sintoma:** ao recarregar a página, a bubble restaurava uma conversa de **dias
+atrás** (ex.: 28/05) que o usuário não esperava ver.
+
+**Raiz:** a query buscava a conversa in_app mais recente **filtrando `ended_at IS
+NULL`**. O usuário tinha ~100 conversas in_app antigas com `ended_at = NULL`
+(órfãs , criadas antes do restore-on-boot existir, nunca limpas). Ao arquivar
+("Limpar sessão") as sessões recentes, a query "descia" e ressuscitava a órfã
+ativa mais nova. Não é janela de tempo: o modelo correto é "a sessão dura até o
+usuário limpar", mas **uma conversa mais nova (mesmo já arquivada) deve superar as
+órfãs antigas**.
+
+**Correção (PR #78):**
+1. `getActiveConversationId` pega a **última** conversa in_app do canal (sem filtrar
+   `ended_at`) e só restaura se ela ainda estiver **aberta**.
+2. `handleClearSession` passa a checar o retorno de `archiveActiveConversation`: se
+   o arquivamento falhar, não limpa a UI (senão a conversa voltaria no reload) e
+   avisa por toast.
+3. Migration `20260609220000_archive_orphan_inapp_conversations`: arquiva (não
+   deleta) as órfãs in_app, deixando no máximo **uma ativa por usuário**.
+
+**Verificado (dado real):** usuário do bug 102 órfãs ativas → 0; mais recente vira
+a sessão de hoje (arquivada) → boot resolve para welcome. Outro usuário com sessão
+genuína manteve 1 ativa. tsc verde + jest (46 dos arquivos afetados).
