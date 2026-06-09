@@ -890,41 +890,28 @@ const fmtFiscalFaturamentoPorEmpresa: FormatadorCanonico = (env) => {
 };
 
 const fmtFiscalFaturamentoPorOperacao: FormatadorCanonico = (env) => {
-  const valorGeral = Number(env._DESTAQUE?.valorGeral ?? env._agregado?.soma ?? 0);
-  const valorVenda = Number(env._DESTAQUE?.valorVenda ?? 0);
-  const valorNaoVenda = valorGeral - valorVenda;
-  const totalNaturezas = Number(env._agregado?.contagem ?? env.linhas.length);
-
-  if (totalNaturezas === 0 || valorGeral === 0) {
-    return "Nenhuma nota fiscal de saida autorizada encontrada para o periodo e a empresa informados.";
+  // Base = venda autorizada (mesma do faturamento; a metrica ja filtra venda),
+  // entao os totais FECHAM com o por_empresa e com o faturamento do periodo.
+  const total = Number(env._DESTAQUE?.valorVenda ?? env._DESTAQUE?.valorGeral ?? env._agregado?.soma ?? 0);
+  const linhas = (Array.isArray(env.linhas) ? env.linhas : []) as Array<{
+    naturezaOperacaoNome?: string | null;
+    valor?: number | null;
+    totalNotas?: number | null;
+  }>;
+  const itens = linhas.filter((l) => Number(l?.valor ?? 0) > 0);
+  if (itens.length === 0 || total === 0) {
+    return "Nenhuma venda autorizada encontrada para o periodo e a empresa informados.";
   }
-
-  const partes: string[] = [];
-  partes.push(
-    `Faturamento de saida autorizado por natureza de operacao: ${formatBRL(valorGeral)} em ${totalNaturezas} natureza(s).`,
-  );
-  partes.push(
-    `Sendo ${formatBRL(valorVenda)} em operacoes de venda e ${formatBRL(valorNaoVenda)} em operacoes que nao sao venda (transferencias, devolucoes e afins).`,
-  );
-
-  const linhas = Array.isArray(env.linhas) ? env.linhas : [];
-  if (linhas.length > 0) {
-    const top = linhas[0] as {
-      naturezaOperacaoNome?: string | null;
-      ehVenda?: boolean;
-      valor?: number;
-      totalNotas?: number;
-    };
-    const nome = top.naturezaOperacaoNome
-      ? humanizeName(String(top.naturezaOperacaoNome))
+  const plural = itens.length === 1 ? "operacao de venda" : "operacoes de venda";
+  const cabeca = `Faturamento (venda autorizada) por operacao fiscal: ${formatBRL(total)} em ${itens.length} ${plural}.`;
+  const lista = itens.map((l) => {
+    const nome = l.naturezaOperacaoNome
+      ? humanizeName(String(l.naturezaOperacaoNome))
       : "Natureza nao informada";
-    const flag = top.ehVenda ? "venda" : "nao venda";
-    partes.push(
-      `Maior natureza: ${nome} (${flag}), ${formatBRL(Number(top.valor ?? 0))} em ${Number(top.totalNotas ?? 0)} nota(s).`,
-    );
-  }
-
-  return partes.join(" ");
+    const n = Number(l.totalNotas ?? 0);
+    return `- ${nome}: ${formatBRL(Number(l.valor ?? 0))} (${n} ${n === 1 ? "nota" : "notas"})`;
+  });
+  return [cabeca, "Por operacao:", ...lista].join("\n");
 };
 
 const fmtFaturamentoPorCfop: FormatadorCanonico = (env) => {
