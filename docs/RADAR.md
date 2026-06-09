@@ -428,3 +428,28 @@ não fizer, NENHUM resolvedor deve confiar em `dim.odooId == fato.empresaId`.
 Além disso há cadastro malformado/duplicado na própria dim: `odooId=21`
 ("Jht SP Comércio - Filial MG 34.161.829/0005-11 34.161.829/00", CNPJ repetido)
 duplica o `odooId=12`.
+
+### R10 , atualização 2026-06-09 (perícia completa: origem + impacto + fix recomendado)
+
+**Origem exata:** `dim_empresa_grupo` é populada por **seed ESTÁTICO** na migration
+`prisma/migrations/20260528020000_dim_empresa_grupo/migration.sql` (`INSERT ... VALUES`),
+com `odoo_id` = ids do **res.company** (1,4,5,6,...). Mas o `empresaId` gravado em
+`fato_nota_fiscal` é de OUTRO id-space (denso: 1,2,3,4,...; ex.: Jht DF Matriz =
+empresaId **2** na nota, mas res.company **4**). Os dois nunca casam de id 4 em diante.
+
+**Impacto (3 consumidores):**
+1. `faturamento_por_empresa` (nome) , **JÁ CORRIGIDO** (usa `fato.empresaNome`).
+2. `resolverEmpresa` (`src/lib/metrics/_shared/empresa.ts`) , resolve ref textual via
+   `dimEmpresaGrupo` e devolve `odooId` (id-space da dim) que depois filtra
+   `fato.empresaId`. **BUG: "faturamento da empresa X" pode filtrar a empresa errada**
+   (número errado) ou não achar. Ainda NÃO corrigido.
+3. `filiais-listar` (`mcp/tools/cadastros/filiais-listar.ts`) , lista direto da dim
+   (nomes reais, mas ids desalinhados do fato). Baixo impacto, mas inconsistente.
+
+**Fix recomendado (fazer numa sessão fresca, com verificação):** parar de usar
+`dim_empresa_grupo` como fonte e derivar empresa do **fato** (single source of truth):
+`SELECT DISTINCT empresaId, empresaNome FROM fato_nota_fiscal`, parseando CNPJ/tipo/UF
+do nome ("... - {Matriz|Filial} {UF} {CNPJ}"). Aplicar em `resolverEmpresa` e
+`filiais-listar` (como já foi feito em `faturamento_por_empresa`). Depois, a dim pode
+ser descontinuada (ou reconstruída no id-space do fato via worker). Requer rebuild do
+mcp + E2E (resolver "empresa X" → empresaId certo; filtrar faturamento por empresa → número certo).
