@@ -2,7 +2,7 @@ import type { PrismaClient } from "../../../generated/prisma/client";
 import type { FaturamentoInput } from "../_shared/types";
 import { buildPeriodoWhere } from "../_shared/periodo";
 import { buildEmpresaWhere } from "../_shared/empresa";
-import { idsNaoVenda } from "../_shared/naturezas";
+import { idsNaoVenda, buildNaturezaVendaWhere } from "../_shared/naturezas";
 
 export interface OperacaoLinha {
   naturezaOperacaoId: number | null;
@@ -30,10 +30,17 @@ export async function faturamentoPorOperacao(
   prisma: PrismaClient,
   input: FaturamentoInput,
 ): Promise<FaturamentoPorOperacaoResultado> {
-  const naoVenda = new Set(await idsNaoVenda(prisma));
+  const naoVendaIds = await idsNaoVenda(prisma);
+  const naoVenda = new Set(naoVendaIds);
+  // FATURAMENTO por operacao = mesma base do faturamento (venda autorizada).
+  // Aplica o MESMO filtro de venda do por_empresa/periodo (exclui nao-venda E
+  // notas sem natureza), para os totais FECHAREM entre as quebras. Sem isto, a
+  // quebra por operacao despejava transferencias/remessas/devolucoes e o total
+  // nao batia com o faturamento (era "saida por operacao", nao "faturamento").
   const where = {
     entradaSaida: "1",
     situacaoNfe: "autorizada",
+    ...buildNaturezaVendaWhere(naoVendaIds),
     ...buildEmpresaWhere(input.empresaId),
     ...buildPeriodoWhere(input.periodoDe, input.periodoAte),
   };
