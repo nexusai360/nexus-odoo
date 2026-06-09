@@ -18,7 +18,7 @@ import type {
 } from "../types";
 
 const GEMINI_BASE_URL = "https://generativelanguage.googleapis.com/v1beta/models";
-const DEFAULT_TIMEOUT_MS = 90_000;
+const DEFAULT_TIMEOUT_MS = 120_000; // 2 min (era 90s), consistente com os demais providers.
 
 function mapEffortToLevel(effort: ReasoningEffort): "minimal" | "low" | "medium" | "high" {
   if (effort === "auto") return "high";

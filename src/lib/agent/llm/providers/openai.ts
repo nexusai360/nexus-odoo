@@ -51,7 +51,8 @@ const OPENAI_API_URL = "https://api.openai.com/v1/chat/completions";
 const OPENAI_RESPONSES_URL = "https://api.openai.com/v1/responses";
 
 /** Default 90s; override por modelo via cap.requestTimeoutMs. */
-const DEFAULT_TIMEOUT_MS = 90_000;
+const DEFAULT_TIMEOUT_MS = 120_000; // 2 min (era 90s). Cobre redacoes mais lentas.
+const MAX_TENTATIVAS_TIMEOUT = 2; // 1 retry: se estourar o timeout, tenta mais 1 vez antes de falhar.
 
 /**
  * Onda 3 da modernizacao: a fonte da verdade do roteamento eh REASONING_CAPS.
@@ -306,22 +307,40 @@ export class OpenAIClient implements ProviderClient {
     }
 
     const timeoutMs = cap?.requestTimeoutMs ?? DEFAULT_TIMEOUT_MS;
-    let rRes: Response;
-    try {
-      rRes = await fetch(OPENAI_RESPONSES_URL, {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${this.apiKey}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(respBody),
-        signal: AbortSignal.timeout(timeoutMs),
-      });
-    } catch (err) {
-      if (err instanceof Error && err.name === "TimeoutError") {
-        throw new Error(`OpenAI Responses timeout apos ${timeoutMs}ms`);
+    // Retry em timeout: o caminho Responses e nao-streaming (streamed:false), entao
+    // retentar e seguro (nao ha tokens parciais ja entregues). Falha so depois de
+    // estourar o timeout em TODAS as tentativas.
+    let rRes: Response | undefined;
+    for (let tentativa = 1; tentativa <= MAX_TENTATIVAS_TIMEOUT; tentativa++) {
+      try {
+        rRes = await fetch(OPENAI_RESPONSES_URL, {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${this.apiKey}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify(respBody),
+          signal: AbortSignal.timeout(timeoutMs),
+        });
+        break;
+      } catch (err) {
+        const isTimeout = err instanceof Error && err.name === "TimeoutError";
+        if (isTimeout && tentativa < MAX_TENTATIVAS_TIMEOUT) {
+          console.warn(
+            `[openai] Responses timeout apos ${timeoutMs}ms (tentativa ${tentativa}/${MAX_TENTATIVAS_TIMEOUT}); retentando...`,
+          );
+          continue;
+        }
+        if (isTimeout) {
+          throw new Error(
+            `OpenAI Responses timeout apos ${timeoutMs}ms (${MAX_TENTATIVAS_TIMEOUT} tentativas)`,
+          );
+        }
+        throw err;
       }
-      throw err;
+    }
+    if (!rRes) {
+      throw new Error("OpenAI Responses: sem resposta apos as tentativas");
     }
 
     if (!rRes.ok) {
