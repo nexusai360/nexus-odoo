@@ -395,3 +395,36 @@ Gotcha de acesso MCP em dev resolvido (sessão do host falhava por `MCP_DB_PASSW
 vazio no container , recriar o `mcp` da raiz principal com `.env`): ver
 `docs/RUNBOOK-retrieval-ativacao.md`. Opcional: medir o ganho real de custo
 (cost-scorecard faithful shadow×active) no full-stack; coordenar com `feat/router-ativacao-r2`.
+
+---
+
+## R10 , dim_empresa_grupo com odooId DESLOCADO vs empresaId das notas (MÉDIO-ALTO)
+
+**Quando:** 2026-06-09 (perícia a pedido do usuário). **Onde:** `dim_empresa_grupo`
+(builder no worker) vs `fato_nota_fiscal.empresaId`.
+
+**Achado:** o `odooId` do `dim_empresa_grupo` NÃO casa com o `empresaId` gravado nas
+notas. Confronto fato.empresaNome (nome na própria nota) × dim.nome: só `id=1` bate;
+de `id>=4` quase todas DIVERGEM (a dim aponta para a empresa errada, deslocada).
+Ex.: nota `empresaId=4` = "Jds Comércio - Matriz 18.282.961/0001-00", mas dim
+`odooId=4` = "Jht DF Comércio 10.557.556/0001-37". E `empresaId=2` e `3` (Jht DF
+Matriz e Filial SE, ativos, com notas até hoje) NEM EXISTEM no `res.company`
+sincronizado (RawResCompany tem 1,4,5,...,21,27 , sem 2,3). dim_empresa_grupo
+tem 18 cadastros; o fato tem 15 empresaIds distintos , id-spaces diferentes.
+
+**Impacto:** qualquer resolução de nome/UF/tipo via `fato.empresaId → dim.odooId`
+rotula a empresa ERRADA (os VALORES por id estão certos; o NOME vinha trocado).
+Era a causa da "empresa duplicada" que o usuário viu (uma linha era a empresa real
+sem dim, outra era outra empresa mal-rotulada com o mesmo nome).
+
+**Mitigação aplicada (2026-06-09):** `faturamentoPorEmpresa` passou a usar o
+`empresaNome` DENORMALIZADO da nota (autoritativo), sem a dim. Corrige o rótulo
+imediatamente.
+
+**Pendência (worker, fazer direito):** reconstruir `dim_empresa_grupo` no id-space
+correto (o `empresaId` das notas parece ser company_id de SPED/contábil, não
+`res.company.id`; investigar RawSpedEmpresa) e cobrir os ids 2/3 ausentes. Enquanto
+não fizer, NENHUM resolvedor deve confiar em `dim.odooId == fato.empresaId`.
+Além disso há cadastro malformado/duplicado na própria dim: `odooId=21`
+("Jht SP Comércio - Filial MG 34.161.829/0005-11 34.161.829/00", CNPJ repetido)
+duplica o `odooId=12`.

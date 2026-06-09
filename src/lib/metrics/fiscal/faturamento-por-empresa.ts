@@ -45,14 +45,14 @@ export async function faturamentoPorEmpresa(
   }
 
   const idsNaoNulos = [...map.keys()].filter((k): k is number => k !== null);
-  const dims = idsNaoNulos.length
-    ? await prisma.dimEmpresaGrupo.findMany({ where: { odooId: { in: idsNaoNulos } }, select: { odooId: true, nome: true } })
-    : [];
-  const nomePorId = new Map(dims.map((d) => [d.odooId, d.nome]));
-
+  // Nome: usar o empresaNome DENORMALIZADO da propria nota (fonte autoritativa).
+  // NAO resolver pela dim_empresa_grupo: o odooId da dim esta DESLOCADO em relacao
+  // ao empresaId das notas (ex.: empresaId=4 e "Jds Comercio - Matriz" na nota, mas
+  // a dim odooId=4 diz "Jht DF Comercio"), o que rotulava quase toda empresa errada.
+  // Ate a dim ser reconstruida no id-space correto (worker), a nota e a verdade.
   const linhas: FaturamentoEmpresaLinha[] = [...map.entries()].map(([empresaId, v]) => ({
     empresaId,
-    empresaNome: empresaId === null ? null : (nomePorId.get(empresaId) ?? v.empresaNomeFato),
+    empresaNome: empresaId === null ? null : (v.empresaNomeFato ?? `Empresa ${empresaId}`),
     totalNotas: v.totalNotas,
     valor: v.valor,
   }));
