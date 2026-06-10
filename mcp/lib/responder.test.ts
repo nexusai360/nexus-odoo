@@ -315,6 +315,47 @@ describe("fmtFaturamentoPeriodo (Fase 2.5: headline externa/individual)", () => 
   });
 });
 
+describe("fmtFaturamentoPorCliente (Fase 2.5: clientes externos + intragrupo separado)", () => {
+  const fmt = formatadorPorTool("fiscal_faturamento_por_cliente");
+  const base = { _listaTruncada: false, linhas: [], atualizadoEm: "", atualizadoHa: "" };
+  it("mostra top cliente externo, total externo e nota de intragrupo", () => {
+    const txt = fmt({
+      ...base,
+      _DESTAQUE: {
+        topCliente: "Cliente Externo Ltda",
+        valorTopCliente: 320000,
+        totalExterno: 500000,
+        totalIntragrupo: 217000000,
+        periodoLabel: "2025",
+      },
+    } as never);
+    expect(txt).toContain("Cliente Externo Ltda");
+    expect(txt).toContain("2025");
+    expect(txt).toContain("intragrupo");
+  });
+  it("vazio quando nao ha cliente externo", () => {
+    const txt = fmt({ ...base, _DESTAQUE: { topCliente: "", totalExterno: 0, periodoLabel: "2025" } } as never);
+    expect(txt).toContain("Nenhum cliente externo");
+  });
+});
+
+describe("fmtFaturamentoMensalSerie (Fase 2.5: serie externa)", () => {
+  const fmt = formatadorPorTool("fiscal_faturamento_mensal_serie");
+  const base = { _listaTruncada: false, linhas: [], atualizadoEm: "", atualizadoHa: "" };
+  it("cabecalho com receita externa do ano e media mensal", () => {
+    const txt = fmt({
+      ...base,
+      _DESTAQUE: { ano: 2025, totalExternaAno: 300000000, totalIndividualAno: 500000000, totalNotasExternasAno: 1200, mesesConsultados: 6 },
+    } as never);
+    expect(txt).toContain("2025");
+    expect(txt).toContain("externa");
+  });
+  it("vazio quando nao ha faturamento no ano", () => {
+    const txt = fmt({ ...base, _DESTAQUE: { ano: 2025, totalExternaAno: 0, totalIndividualAno: 0, mesesConsultados: 6 } } as never);
+    expect(txt).toContain("Nenhum");
+  });
+});
+
 describe("allowlist resolve formatador real (nao generico) para as tools F2", () => {
   it("fiscal_receita_consolidada e fiscal_intercompany tem formatador real", () => {
     expect(ehFormatadorGenerico(formatadorPorTool("fiscal_receita_consolidada"))).toBe(false);
