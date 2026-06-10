@@ -29,18 +29,18 @@
 - **Fix CI (#85):** build resiliente ao "unknown blob" do GHCR (`setup-buildx` + `provenance=false` + retry 3×)
   , era a causa dos emails de "Build and Push falhou".
 
-### Em aberto , investigação da RAIZ do deploy (NÃO mergear #88)
-- **Sintoma:** emails recorrentes "Build and Push: Some jobs were not successful". Builds passam (✓✓); o job
-  **`deploy`** falha com `curl: (28) Failed to connect to painel.nexusai360.com port 443 ... Timeout` (5 retries,
-  ~13min) , mesmo com as imagens já publicadas no GHCR.
-- **Fato:** o painel **responde 200 em 0,3s da máquina local** (e o app responde 200) → o servidor/Portainer
-  **está no ar**; a falha é **intermitente, específica do runner do GitHub → servidor** (Traefik/firewall/
-  IP de runner / SSL?). Rerun manual do deploy do #87 = **success** (Fase 4 entrou em produção).
-- **PR #88 (ABERTO, NÃO MERGEAR):** amplia a janela de retry do deploy de 13→30min (mitigação). O usuário
-  **questionou e pediu para NÃO mergear** , primeiro achar a **causa raiz**, depois decidir. **Manter #88 aberto.**
-- **PRÓXIMA AÇÃO:** investigar por que `painel.nexusai360.com:443` fica inacessível pelos runners do GitHub por
-  13min+ (checar Traefik/labels, rate-limit/fail2ban/firewall por IP de runner, logs do servidor no horário das
-  falhas, SSL/handshake). NÃO é só aumentar timeout.
+### RAIZ do deploy ENCONTRADA + corrigida (2026-06-10) , #88 DESCARTAR
+- **Raiz (por comparação com a referência que funciona):** o **nexus-insights deploya no MESMO Portainer/VPS
+  sem falhar**, então o servidor NÃO é o problema. O nosso `deploy` usava `curl --retry 4 --retry-connrefused`
+  por chamada DENTRO de um laço de até 12 tentativas, sobre 2 pulls + 3 services , num blip de rede isso virava
+  uma **rajada de dezenas/centenas de conexões martelando o Portainer por 13-30 min** (= o email vermelho). O
+  insights faz **1 passada de `curl --silent --insecure` calmo** e nunca falha. A complexidade que adicionamos
+  (#85/#88) é que transformava um pisco em desastre.
+- **Correção (commitada nesta branch):** `deploy` reescrito espelhando o padrão mínimo comprovado do insights
+  (curl simples, 1 passada, sem `--retry`/`--connect-timeout`/laço; mantém 2 imagens + 3 services app/mcp/worker).
+  Se falhar pontualmente, rerun manual resolve. Doc: `docs/superpowers/research/2026-06-10-deploy-blackhole-investigation.md`.
+- **PR #88: FECHAR sem merge** , ampliava o retry (mais martelo, direção oposta à correção).
+- **Diagnóstico de servidor** (`scripts/diag/deploy-server-diag.sh`, read-only) fica disponível só se reincidir.
 
 ### Fase 5 sugerida (feature nova) , faturamento por regime tributário
 Dado **não disponível hoje**: `fato_apuracao.regime_tributario` existe mas está **NULL**; `raw_res_company`/
