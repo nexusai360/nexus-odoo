@@ -187,6 +187,8 @@ const FISCAL_IDS = [
   "fiscal_intercompany",
   // F3 (ponte de reconciliacao)
   "fiscal_ponte_faturamento",
+  // F4 (margem bruta aproximada)
+  "fiscal_margem_aproximada",
 ];
 
 const CADASTROS_IDS = [
@@ -248,10 +250,10 @@ const TODOS_IDS = [
 // ─── 1. Assertiva de catálogo completo (achado N6) ────────────────────────────
 
 describe("Catálogo completo , rede de proteção N6", () => {
-  it("super_admin recebe EXATAMENTE 105 tools", () => {
+  it("super_admin recebe EXATAMENTE 106 tools", () => {
     const user = { userId: "u", role: "super_admin" as const, domains: ["estoque", "financeiro"] } as unknown as Parameters<typeof visibleTools>[1];
     const tools = visibleTools(catalogo, user);
-    expect(tools).toHaveLength(105);
+    expect(tools).toHaveLength(106);
   });
 
   it("super_admin recebe o conjunto exato de IDs", () => {
@@ -261,8 +263,8 @@ describe("Catálogo completo , rede de proteção N6", () => {
     expect(ids).toEqual([...TODOS_IDS].sort());
   });
 
-  it("catálogo bruto (antes do filtro) tem exatamente 114 entradas", () => {
-    // 105 tools de leitura + 9 write tools:
+  it("catálogo bruto (antes do filtro) tem exatamente 115 entradas", () => {
+    // 106 tools de leitura + 9 write tools:
     //   1) crm.res_partner.create
     //   2) cadastros.mail_activity.complete
     //   3) cadastros.mail_activity.create
@@ -274,7 +276,7 @@ describe("Catálogo completo , rede de proteção N6", () => {
     //   9) cadastros.res_partner.update
     // Write tools nao aparecem em visibleTools (modo interno); sao liberadas
     // so no modo externo por capability da chave de API.
-    expect(catalogo).toHaveLength(114);
+    expect(catalogo).toHaveLength(115);
   });
 });
 
@@ -286,17 +288,17 @@ describe("Catálogo filtrado por perfil", () => {
     return visibleTools(catalogo, user).map((t) => t.id);
   }
 
-  it("super_admin vê todas as 105 tools", () => {
+  it("super_admin vê todas as 106 tools", () => {
     const ids = tools("super_admin", ["estoque", "financeiro"]);
-    expect(ids).toHaveLength(105);
+    expect(ids).toHaveLength(106);
     for (const id of TODOS_IDS) {
       expect(ids).toContain(id);
     }
   });
 
-  it("admin vê todas as 105 tools", () => {
+  it("admin vê todas as 106 tools", () => {
     const ids = tools("admin", ["estoque", "financeiro"]);
-    expect(ids).toHaveLength(105);
+    expect(ids).toHaveLength(106);
   });
 
   it("manager com estoque+financeiro vê estoque+financeiro+sempreVisivel (sem bi_consulta_avancada)", () => {
@@ -619,7 +621,7 @@ describe("Servidor HTTP real , protocolo Streamable HTTP end-to-end", () => {
     const result = extractRpcResult(body);
     const tools = result?.tools as Array<{ name: string }> | undefined;
     expect(tools).toBeDefined();
-    expect(tools!).toHaveLength(105);
+    expect(tools!).toHaveLength(106);
 
     const names = tools!.map((t) => t.name).sort();
     expect(names).toEqual([...TODOS_IDS].sort());

@@ -943,5 +943,12 @@
     "dominio": "fiscal",
     "classe": "prosseguir",
     "toolEsperada": "fiscal_ponte_faturamento"
+  },
+  {
+    "id": "cov-margem-aproximada",
+    "pergunta": "Qual a margem bruta aproximada das vendas este ano?",
+    "dominio": "fiscal",
+    "classe": "prosseguir",
+    "toolEsperada": "fiscal_margem_aproximada"
   }
 ]

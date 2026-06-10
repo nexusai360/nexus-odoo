@@ -2525,6 +2525,38 @@
       "examples": []
     },
     {
+      "id": "fiscal_margem_aproximada",
+      "operation": "read",
+      "module": "fiscal",
+      "descricao": "Margem bruta APROXIMADA do periodo: receita de venda menos o custo estimado do produto (preco_custo). NAO e lucro (sem despesas/impostos/rateios) e o custo e o atual do produto (margem de periodos antigos e nao-confiavel). Mostra a cobertura (% da venda com custo disponivel). Aceita empresa e periodo.",
+      "capability": null,
+      "sensitive": false,
+      "addedInVersion": null,
+      "inputSchemaKeys": [
+        "periodoDe",
+        "periodoAte",
+        "empresaRef"
+      ],
+      "inputSchemaFields": [
+        {
+          "name": "periodoDe",
+          "type": "string",
+          "optional": true
+        },
+        {
+          "name": "periodoAte",
+          "type": "string",
+          "optional": true
+        },
+        {
+          "name": "empresaRef",
+          "type": "string",
+          "optional": true
+        }
+      ],
+      "examples": []
+    },
+    {
       "id": "cadastro_buscar_parceiro",
       "operation": "read",
       "module": "cadastros",
@@ -3976,6 +4008,6 @@
       "examples": []
     }
   ],
-  "count": 114,
-  "generatedAt": "2026-06-10T13:16:11.759Z"
+  "count": 115,
+  "generatedAt": "2026-06-10T13:45:54.538Z"
 }

@@ -77,6 +77,7 @@ export const TOOL_TRIGGERS: Record<string, string[]> = {
   "fiscal_receita_consolidada": ["faturamento real", "receita consolidada", "quanto vendemos para fora do grupo", "receita sem intercompany", "faturamento do grupo eliminando intercompany", "sem contar vendas entre empresas do grupo", "receita externa do grupo"],
   "fiscal_intercompany": ["vendas entre empresas do grupo", "intercompany", "quanto uma empresa vende para outra do grupo", "matriz de transferencias intragrupo", "vendas intragrupo"],
   "fiscal_ponte_faturamento": ["reconcilie o faturamento", "como chegou na receita externa", "ponte do faturamento", "do bruto ao liquido", "do faturamento bruto a receita real", "waterfall do faturamento", "explique a diferenca entre faturamento e receita"],
+  "fiscal_margem_aproximada": ["margem bruta", "margem das vendas", "qual a margem", "receita menos custo", "margem aproximada", "lucro bruto aproximado", "quanto sobra depois do custo do produto"],
   "fiscal_faturamento_por_cliente": ["qual cliente foi o maior faturamento no periodo", "top 10 clientes por faturamento", "ranking de clientes que mais compraram", "faturamento agrupado por cliente"],
   "fiscal_faturamento_por_empresa": ["qual filial faturou mais", "faturamento por empresa do grupo", "comparativo de vendas entre filiais", "faturamento de cada empresa do grupo"],
   "fiscal_faturamento_por_marca": ["qual marca de produto teve maior faturamento", "faturamento por marca", "qual marca vende mais", "top marcas em valor faturado"],
