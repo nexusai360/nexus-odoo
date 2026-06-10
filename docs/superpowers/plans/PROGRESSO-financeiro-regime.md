@@ -60,7 +60,22 @@
   `rebuildDimEmpresaRegime(prisma,odoo)` leitura direcionada) + CLI `scripts/build-dim-empresa-regime.ts`.
   **dim populado no dev: 9 raízes** (07390039→1, 10557556→3, 18282961→3.1, 33718546→1, 34161829→3.1,
   34461908→1, 35156509→3, 45424185→1, 62673999→3). commit 5db25ce.
-- **PRÓXIMO , T4** métrica `src/lib/metrics/fiscal/faturamento-por-regime.ts`: compor sobre
+- FEITO: **T4** métrica `faturamento-por-regime.ts` (`agregarPorRegime` puro 5 testes). E2E real reconcilia
+  EXATO (diff R$0,00): 2025 Real ext R$253mi/ind R$470mi, Presumido ext R$54,8mi, Simples ext R$17,6mi;
+  Σ externa R$325,5mi == receita externa F2.5; cobertura 100%. commit de967e1.
+- FEITO: **T5+T6** tool `fiscal_faturamento_por_regime` + `fmtFaturamentoPorRegime` + barrel + export +
+  trigger estrito + gates (integration.test 106→107/115→116, golden cov-, snapshot 116). tsc limpo. commit 224206f.
+- FEITO: **T7** E2E `f5-regime.e2e.ts` (invariantes verdes) + **jest COMPLETO 385 suites / 2862 testes**
+  (2845+17, zero regressão) + rebuild mcp local (18:00). commits f7b60a4 (e2e).
+- **WIRING PROD (decisão):** `dim_empresa_regime` populado via CLI `scripts/build-dim-empresa-regime.ts`
+  (regime é estático; precedente de backfill manual do projeto). Em prod: rodar a CLI 1x pós-deploy
+  (dentro do container worker/app, que têm credencial Odoo). A tool degrada honestamente se vazio
+  (tudo → não_mapeado com cobertura% visível). Refinamento futuro: wirar no ciclo snapshot do worker.
+- **PRÓXIMO , T8:** PR + merge (autorizado). Depois: sync da pasta principal (main) + rebuild local +
+  rodar CLI no dev; verificação do FINANCEIRO (14 tools já existem); chamar o usuário.
+
+## (histórico) detalhe T4 original
+- T4 métrica `src/lib/metrics/fiscal/faturamento-por-regime.ts`: compor sobre
   `_itens-venda-grupo.ts` (canônico; tem empresaId/empresaNome + marcação intragrupo por item),
   por empresa → `parseEmpresaNome(empresaNome).cnpj` → `cnpjRaiz` → join `dimEmpresaRegime` →
   agrega por regime `{regimeCodigo,regimeLabel,receitaIndividual,receitaExterna,qtdEmpresas,qtdNotas,
