@@ -7,6 +7,7 @@ import { withFreshness } from "../../lib/freshness.js";
 import { enriquecerEnvelope } from "../../lib/with-responder.js";
 import { paginacaoInputShape } from "../../lib/paginacao.js";
 import { montarEscopoEmpresa } from "./_escopo-empresa.js";
+import { resolverPeriodoFiscal } from "./_periodo-padrao.js";
 
 const inputSchema = z.object({
   periodoDe: z.string().optional(),
@@ -72,13 +73,14 @@ export const fiscalFaturamentoPorCfop: ToolEntry<Input, Output> = {
   outputSchema,
   handler: async (input, ctx) => {
     const escopo = await montarEscopoEmpresa(ctx.prisma, input.empresaRef);
+    const per = resolverPeriodoFiscal(input.periodoDe, input.periodoAte);
     const envelope = await withFreshness(
       ctx.prisma,
       ["fato_nota_fiscal", "fato_nota_fiscal_item"],
       async () => {
         const r = await faturamentoPorCfop(ctx.prisma, {
-          periodoDe: input.periodoDe,
-          periodoAte: input.periodoAte,
+          periodoDe: per.periodoDe,
+          periodoAte: per.periodoAte,
           empresaId: escopo.empresaId,
           agruparPor: input.agruparPor,
           limit: input.limit,
@@ -98,7 +100,11 @@ export const fiscalFaturamentoPorCfop: ToolEntry<Input, Output> = {
           semCfop: r.semCfop,
           reconciliacao: r.reconciliacao,
           escopoEmpresa: escopo.escopo as unknown as Record<string, unknown>,
-          aviso: escopo.escopo.aviso + " " + r.reconciliacao.observacao + gap,
+          aviso:
+            escopo.escopo.aviso +
+            ` Periodo: ${per.label}.` +
+            (per.assumido ? " (Nenhum periodo foi informado, entao considerei o ano corrente.)" : "") +
+            " " + r.reconciliacao.observacao + gap,
         };
       },
     );
