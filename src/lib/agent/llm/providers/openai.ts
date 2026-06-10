@@ -50,9 +50,183 @@ export function parseOpenAiUsage(u: OpenAiUsageRaw | undefined | null): {
 const OPENAI_API_URL = "https://api.openai.com/v1/chat/completions";
 const OPENAI_RESPONSES_URL = "https://api.openai.com/v1/responses";
 
-/** Default 90s; override por modelo via cap.requestTimeoutMs. */
-const DEFAULT_TIMEOUT_MS = 120_000; // 2 min (era 90s). Cobre redacoes mais lentas.
-const MAX_TENTATIVAS_TIMEOUT = 2; // 1 retry: se estourar o timeout, tenta mais 1 vez antes de falhar.
+/** Guarda do FALLBACK nao-streaming (unica via sem liveness): teto total da
+ *  chamada. So vale para o caminho de fallback; override por modelo via
+ *  cap.requestTimeoutMs. O streaming NAO usa teto total (ver STREAM_IDLE). */
+const DEFAULT_TIMEOUT_MS = 120_000;
+const MAX_TENTATIVAS_TIMEOUT = 2; // 1 retry de streaming antes de cair pro fallback.
+// Streaming: maximo de SILENCIO tolerado (sem nenhum byte/evento), tanto no
+// handshake (ate o 1o byte) quanto entre eventos. NAO e um teto total: um stream
+// vivo (mandando tokens) roda o quanto precisar. So abandona se ficar mudo por
+// este tempo , sinal forte de conexao travada , e ai retenta. Substitui o antigo
+// teto total de 90-120s, que era cego (nao distinguia "trabalhando" de "morto").
+const STREAM_IDLE_TIMEOUT_MS = 15_000;
+
+/**
+ * Forma do corpo final da Responses API (o objeto `response`). Identico no
+ * caminho nao-streaming (corpo JSON) e no streaming (evento `response.completed`).
+ * E a fonte de `usage` (custo/tokens do menu de Consumo) e do texto/toolCalls.
+ */
+export interface ResponsesPayload {
+  output?: Array<{
+    type?: string;
+    id?: string;
+    content?: Array<{ text?: string; type?: string }>;
+    call_id?: string;
+    name?: string;
+    arguments?: string;
+    summary?: unknown;
+  }>;
+  output_text?: string;
+  usage?: {
+    input_tokens?: number;
+    output_tokens?: number;
+    input_tokens_details?: { cached_tokens?: number };
+    output_tokens_details?: { reasoning_tokens?: number };
+  };
+}
+
+/**
+ * Monta o ChatResult a partir do `response` final (mesma logica para streaming e
+ * nao-streaming). Centraliza a extracao de texto, toolCalls, reasoning e , o
+ * ponto critico , `usage` (tokens + custo). NAO muda o contrato consumido pelo
+ * run-agent/logUsage/menu de Consumo.
+ */
+export function buildResponsesResult(
+  model: string,
+  rData: ResponsesPayload,
+  streamed: boolean,
+): ChatResult {
+  let text = rData.output_text ?? "";
+  const toolCalls: ToolCall[] = [];
+  // Items a preservar como contexto opaco para o proximo turno: APENAS items
+  // tipo "reasoning" (function_call NAO entra, duplicaria no proximo turno).
+  const reasoningItems: unknown[] = [];
+  for (const item of rData.output ?? []) {
+    if (item.type === "message" && Array.isArray(item.content)) {
+      for (const c of item.content) {
+        if (c.type === "output_text" && typeof c.text === "string") {
+          text += c.text;
+        }
+      }
+    } else if (item.type === "function_call" && item.call_id && item.name) {
+      let args: object = {};
+      try {
+        args = item.arguments ? (JSON.parse(item.arguments) as object) : {};
+      } catch {
+        args = { _raw: item.arguments };
+      }
+      toolCalls.push({ id: item.call_id, name: item.name, arguments: args });
+    } else if (item.type === "reasoning") {
+      // Remove `id` (referencia a state nao-persistido) e preserva summary/content.
+      const { id: _rsId, ...rsWithoutId } = item;
+      void _rsId;
+      reasoningItems.push(rsWithoutId);
+    }
+  }
+
+  const { tokensInput: tIn, tokensOutput: tOut, tokensCachedInput: tCached } =
+    parseOpenAiUsage(rData.usage);
+  const rTokens = rData.usage?.output_tokens_details?.reasoning_tokens;
+  const { costUsd } = calculateCost(model, tIn, tOut, { cachedInputTokens: tCached });
+
+  const reasoningContext: ReasoningContext | undefined =
+    reasoningItems.length > 0
+      ? { provider: "openai", data: { items: reasoningItems } }
+      : undefined;
+
+  return {
+    message: text,
+    toolCalls: toolCalls.length > 0 ? toolCalls : undefined,
+    usage: { tokensInput: tIn, tokensOutput: tOut, tokensCachedInput: tCached, costUsd: costUsd ?? 0 },
+    reasoningTokens: typeof rTokens === "number" ? rTokens : undefined,
+    reasoningContext,
+    streamed,
+  };
+}
+
+/**
+ * Parseia UM bloco de evento SSE (linhas `event:`/`data:`) e devolve o JSON do
+ * `data`, ou null quando nao ha data util (`[DONE]`, comentario, vazio).
+ */
+export function parseResponsesSseEvent(
+  rawEvent: string,
+): { type?: string; response?: ResponsesPayload } | null {
+  const dataLines: string[] = [];
+  for (const line of rawEvent.split("\n")) {
+    const l = line.replace(/^﻿/, "").trimStart();
+    if (l.startsWith("data:")) dataLines.push(l.slice(5).trimStart());
+  }
+  if (dataLines.length === 0) return null;
+  const payload = dataLines.join("\n");
+  if (payload === "" || payload === "[DONE]") return null;
+  try {
+    return JSON.parse(payload) as { type?: string; response?: ResponsesPayload };
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Consome o stream SSE da Responses API e devolve o `response` final (mesma
+ * forma do corpo nao-streaming). Implementa idle-timeout: se ficar `idleMs` sem
+ * NENHUM chunk, aborta e lanca TimeoutError (retentavel). Lanca em erro de
+ * stream e quando termina sem `response.completed`.
+ */
+export async function consumeResponsesStream(
+  body: ReadableStream<Uint8Array>,
+  opts: { idleMs: number },
+): Promise<ResponsesPayload> {
+  const reader = body.getReader();
+  const decoder = new TextDecoder();
+  let buffer = "";
+  let finalResponse: ResponsesPayload | undefined;
+  let timedOut = false;
+  let idleTimer: ReturnType<typeof setTimeout> | undefined;
+  const armIdle = () => {
+    if (idleTimer) clearTimeout(idleTimer);
+    idleTimer = setTimeout(() => {
+      timedOut = true;
+      void reader.cancel();
+    }, opts.idleMs);
+  };
+
+  armIdle();
+  try {
+    for (;;) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      armIdle();
+      buffer += decoder.decode(value, { stream: true });
+      let sep: number;
+      while ((sep = buffer.indexOf("\n\n")) !== -1) {
+        const raw = buffer.slice(0, sep);
+        buffer = buffer.slice(sep + 2);
+        const evt = parseResponsesSseEvent(raw);
+        if (!evt) continue;
+        if (evt.type === "response.completed" || evt.type === "response.incomplete") {
+          if (evt.response) finalResponse = evt.response;
+        } else if (evt.type === "response.failed" || evt.type === "error") {
+          throw new Error(
+            `OpenAI Responses stream error: ${JSON.stringify(evt).slice(0, 300)}`,
+          );
+        }
+      }
+    }
+  } finally {
+    if (idleTimer) clearTimeout(idleTimer);
+  }
+
+  if (timedOut) {
+    const e = new Error(`OpenAI Responses stream idle > ${opts.idleMs}ms`);
+    e.name = "TimeoutError";
+    throw e;
+  }
+  if (!finalResponse) {
+    throw new Error("OpenAI Responses stream: terminou sem response.completed");
+  }
+  return finalResponse;
+}
 
 /**
  * Onda 3 da modernizacao: a fonte da verdade do roteamento eh REASONING_CAPS.
@@ -307,123 +481,94 @@ export class OpenAIClient implements ProviderClient {
     }
 
     const timeoutMs = cap?.requestTimeoutMs ?? DEFAULT_TIMEOUT_MS;
-    // Retry em timeout: o caminho Responses e nao-streaming (streamed:false), entao
-    // retentar e seguro (nao ha tokens parciais ja entregues). Falha so depois de
-    // estourar o timeout em TODAS as tentativas.
-    let rRes: Response | undefined;
+
+    // STREAMING primeiro, SEM teto total: o unico guarda e o SILENCIO (idle).
+    // - handshake: aborta se o 1o byte nao chegar em STREAM_IDLE_TIMEOUT_MS.
+    // - corpo: consumeResponsesStream aborta se ficar mudo por esse mesmo tempo.
+    // Enquanto chegam eventos, a chamada roda o quanto precisar (resposta lenta
+    // porem viva nao e morta). Em silencio (trava), abandona e retenta; se o
+    // streaming falhar de vez, cai pro fallback nao-streaming (com teto total,
+    // pois la nao ha liveness). O `usage`/custo vem do evento final, identico ao
+    // nao-streaming => menu de Consumo intacto.
+    let rData: ResponsesPayload | undefined;
+    let streamed = false;
     for (let tentativa = 1; tentativa <= MAX_TENTATIVAS_TIMEOUT; tentativa++) {
       try {
-        rRes = await fetch(OPENAI_RESPONSES_URL, {
-          method: "POST",
-          headers: {
-            Authorization: `Bearer ${this.apiKey}`,
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify(respBody),
-          signal: AbortSignal.timeout(timeoutMs),
-        });
+        const ctrl = new AbortController();
+        const handshakeTimer = setTimeout(() => ctrl.abort(), STREAM_IDLE_TIMEOUT_MS);
+        let sRes: Response;
+        try {
+          sRes = await fetch(OPENAI_RESPONSES_URL, {
+            method: "POST",
+            headers: {
+              Authorization: `Bearer ${this.apiKey}`,
+              "Content-Type": "application/json",
+              Accept: "text/event-stream",
+            },
+            body: JSON.stringify({ ...respBody, stream: true }),
+            signal: ctrl.signal,
+          });
+        } finally {
+          // Cabecalho chegou (ou abortou): a partir daqui quem governa o corpo
+          // e o idle do consumeResponsesStream, nao um teto total.
+          clearTimeout(handshakeTimer);
+        }
+        if (!sRes.ok) {
+          const text = await sRes.text().catch(() => "");
+          throw new Error(`OpenAI Responses ${sRes.status}: ${text || sRes.statusText}`);
+        }
+        if (!sRes.body) throw new Error("OpenAI Responses stream: corpo vazio");
+        rData = await consumeResponsesStream(sRes.body, { idleMs: STREAM_IDLE_TIMEOUT_MS });
+        streamed = true;
         break;
       } catch (err) {
-        const isTimeout = err instanceof Error && err.name === "TimeoutError";
-        if (isTimeout && tentativa < MAX_TENTATIVAS_TIMEOUT) {
+        const mudo =
+          err instanceof Error && (err.name === "TimeoutError" || err.name === "AbortError");
+        if (mudo && tentativa < MAX_TENTATIVAS_TIMEOUT) {
           console.warn(
-            `[openai] Responses timeout apos ${timeoutMs}ms (tentativa ${tentativa}/${MAX_TENTATIVAS_TIMEOUT}); retentando...`,
+            `[openai] Responses stream em silencio > ${STREAM_IDLE_TIMEOUT_MS}ms (tentativa ${tentativa}/${MAX_TENTATIVAS_TIMEOUT}); retentando...`,
           );
           continue;
         }
-        if (isTimeout) {
-          throw new Error(
-            `OpenAI Responses timeout apos ${timeoutMs}ms (${MAX_TENTATIVAS_TIMEOUT} tentativas)`,
-          );
-        }
-        throw err;
+        // Esgotou o streaming OU erro nao-silencio: fallback nao-streaming.
+        console.warn(
+          `[openai] Responses streaming falhou (${(err as Error).message}); fallback nao-streaming.`,
+        );
+        rData = await this.fetchResponsesNonStreaming(respBody, timeoutMs);
+        streamed = false;
+        break;
       }
     }
-    if (!rRes) {
+    if (!rData) {
       throw new Error("OpenAI Responses: sem resposta apos as tentativas");
     }
 
+    return buildResponsesResult(this.model, rData, streamed);
+  }
+
+  /**
+   * Fallback nao-streaming da Responses API: uma chamada unica com o budget
+   * cheio. Usado quando o streaming nao completa, para nunca regredir a
+   * confiabilidade. Devolve o mesmo `response` que o streaming entrega.
+   */
+  private async fetchResponsesNonStreaming(
+    respBody: Record<string, unknown>,
+    timeoutMs: number,
+  ): Promise<ResponsesPayload> {
+    const rRes = await fetch(OPENAI_RESPONSES_URL, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${this.apiKey}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(respBody),
+      signal: AbortSignal.timeout(timeoutMs),
+    });
     if (!rRes.ok) {
       const text = await rRes.text().catch(() => "");
       throw new Error(`OpenAI Responses ${rRes.status}: ${text || rRes.statusText}`);
     }
-    const rData = (await rRes.json()) as {
-      output?: Array<{
-        type?: string;
-        id?: string;
-        content?: Array<{ text?: string; type?: string }>;
-        call_id?: string;
-        name?: string;
-        arguments?: string;
-        summary?: unknown;
-      }>;
-      output_text?: string;
-      usage?: {
-        input_tokens?: number;
-        output_tokens?: number;
-        input_tokens_details?: { cached_tokens?: number };
-        output_tokens_details?: { reasoning_tokens?: number };
-      };
-    };
-
-    let text = rData.output_text ?? "";
-    const toolCalls: ToolCall[] = [];
-    // Items a preservar como contexto opaco para o proximo turno: APENAS
-    // items tipo "reasoning". O `function_call` NAO eh reinjetado aqui porque
-    // o run-agent ja preserva a sequencia via `conversation` (assistant com
-    // toolCalls + role:"tool" com tool result), que `mapMessagesToResponsesInput`
-    // converte em function_call + function_call_output no input do proximo
-    // turno. Reinjetar via reasoningHistory duplicaria o function_call,
-    // gerando OpenAI Responses 400 "No tool output found for function call X"
-    // (porque havia 2 function_calls com mesmo call_id e so 1 output).
-    //
-    // store:false + id reference: alem da duplicidade, items tem campo `id`
-    // que eh referencia ao state nao-persistido. Strippa antes de salvar.
-    const reasoningItems: unknown[] = [];
-    for (const item of rData.output ?? []) {
-      if (item.type === "message" && Array.isArray(item.content)) {
-        for (const c of item.content) {
-          if (c.type === "output_text" && typeof c.text === "string") {
-            text += c.text;
-          }
-        }
-      } else if (item.type === "function_call" && item.call_id && item.name) {
-        let args: object = {};
-        try {
-          args = item.arguments ? (JSON.parse(item.arguments) as object) : {};
-        } catch {
-          args = { _raw: item.arguments };
-        }
-        toolCalls.push({ id: item.call_id, name: item.name, arguments: args });
-        // function_call NAO entra em reasoningItems (duplicaria no proximo turno).
-      } else if (item.type === "reasoning") {
-        // Remove `id` (referencia a state nao-persistido) e preserva summary/content.
-        const { id: _rsId, ...rsWithoutId } = item;
-        void _rsId;
-        reasoningItems.push(rsWithoutId);
-      }
-    }
-
-    const { tokensInput: tIn, tokensOutput: tOut, tokensCachedInput: tCached } =
-      parseOpenAiUsage(rData.usage);
-    const rTokens = rData.usage?.output_tokens_details?.reasoning_tokens;
-    const { costUsd } = calculateCost(this.model, tIn, tOut, {
-      cachedInputTokens: tCached,
-    });
-
-    const reasoningContext: ReasoningContext | undefined =
-      reasoningItems.length > 0
-        ? { provider: "openai", data: { items: reasoningItems } }
-        : undefined;
-
-    return {
-      message: text,
-      toolCalls: toolCalls.length > 0 ? toolCalls : undefined,
-      usage: { tokensInput: tIn, tokensOutput: tOut, tokensCachedInput: tCached, costUsd: costUsd ?? 0 },
-      reasoningTokens: typeof rTokens === "number" ? rTokens : undefined,
-      reasoningContext,
-      streamed: false,
-    };
+    return (await rRes.json()) as ResponsesPayload;
   }
 }
 
