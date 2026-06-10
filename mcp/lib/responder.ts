@@ -1833,6 +1833,35 @@ const fmtIntercompany: FormatadorCanonico = (env) => {
   return [cabeca, lista.length ? "Principais:" : "", ...lista].filter(Boolean).join("\n");
 };
 
+// Fase 3: ponte/waterfall de reconciliacao do faturamento. Le so _DESTAQUE.
+const fmtPonteFaturamento: FormatadorCanonico = (env) => {
+  const d = env._DESTAQUE ?? {};
+  const bruto = Number(d.brutoProdutos ?? 0);
+  const naoReceita = Number(d.totalNaoReceita ?? 0);
+  const individual = Number(d.receitaIndividual ?? 0);
+  const intra = Number(d.intragrupoEliminavel ?? 0);
+  const externa = Number(d.receitaExterna ?? 0);
+  const periodo = String(d.periodoLabel ?? "");
+  if (bruto === 0) return `Nenhum faturamento de saida autorizado no periodo${periodo ? ` (${periodo})` : ""}.`;
+  type Ded = { rotulo: string; valor: number };
+  let ded: Ded[] = [];
+  try {
+    const parsed = JSON.parse(String(d.deducoesJson ?? "[]"));
+    if (Array.isArray(parsed)) ded = parsed as Ded[];
+  } catch {
+    ded = [];
+  }
+  const dedStr = ded.length ? ` (${ded.map((x) => `${x.rotulo} ${formatBRL(x.valor)}`).join("; ")})` : "";
+  const conc = Number(d.concentrador ?? 0) === 1
+    ? " ATENCAO: visao consolidada (CPC 36) , a maior parte do faturamento desta empresa e intragrupo eliminado; para o individual, use a receita individual."
+    : "";
+  return (
+    `Ponte do faturamento${periodo ? ` (${periodo})` : ""}: bruto ${formatBRL(bruto)} ` +
+    `(-) nao-receita ${formatBRL(naoReceita)}${dedStr} = receita individual ${formatBRL(individual)} ` +
+    `(-) intragrupo eliminado ${formatBRL(intra)} = receita externa real ${formatBRL(externa)}.${conc}`
+  );
+};
+
 const FORMATADORES: Record<string, FormatadorCanonico> = {
   // financeiro
   financeiro_contas_a_receber: fmtContasAReceber,
@@ -1889,6 +1918,7 @@ const FORMATADORES: Record<string, FormatadorCanonico> = {
   "fiscal_faturamento_por_cfop": fmtFaturamentoPorCfop,
   "fiscal_receita_consolidada": fmtReceitaConsolidada,
   "fiscal_intercompany": fmtIntercompany,
+  "fiscal_ponte_faturamento": fmtPonteFaturamento,
   "fiscal_faturamento_nao_autorizado": fmtFaturamentoNaoAutorizado,
   "fiscal_faturamento_recebido": fmtFaturamentoRecebido,
   "fiscal_detalhar_nota": fmtFiscalDetalharNota,
@@ -2009,6 +2039,7 @@ export const TOOLS_QUE_PRECISAM_FORMATADOR: string[] = [
   "fiscal_faturamento_por_cfop",
   "fiscal_receita_consolidada",
   "fiscal_intercompany",
+  "fiscal_ponte_faturamento",
   "fiscal_faturamento_nao_autorizado",
   "fiscal_faturamento_recebido",
   "fiscal_detalhar_nota",

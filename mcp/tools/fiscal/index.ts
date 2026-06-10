@@ -33,6 +33,8 @@ import { fiscalDetalharNota } from "./detalhar-nota.js";
 // F2 (intercompany + receita consolidada)
 import { fiscalReceitaConsolidada } from "./receita-consolidada.js";
 import { fiscalIntercompany } from "./intercompany.js";
+// F3 (ponte de reconciliacao)
+import { fiscalPonteFaturamento } from "./ponte-faturamento.js";
 
 export const fiscalTools: ToolEntry[] = [
   fiscalFaturamentoPeriodo as ToolEntry,
@@ -70,4 +72,6 @@ export const fiscalTools: ToolEntry[] = [
   // F2 (intercompany + receita consolidada externa)
   fiscalReceitaConsolidada as ToolEntry,
   fiscalIntercompany as ToolEntry,
+  // F3 (ponte de reconciliacao)
+  fiscalPonteFaturamento as ToolEntry,
 ];
