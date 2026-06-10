@@ -34,6 +34,13 @@ const dados = z.object({
   totalReceita: z.number(),
   totalNaoReceita: z.number(),
   semCfop: z.object({ totalItens: z.number().int(), valorProdutos: z.number() }),
+  // Fase 2.6: transparencia (aditivo).
+  semCfopPorFinalidade: z
+    .array(z.object({ finalidade: z.string(), totalItens: z.number().int(), valorProdutos: z.number() }))
+    .optional(),
+  outrasNaoEspecificadas: z
+    .object({ totalItens: z.number().int(), valorProdutos: z.number(), valorFinalidadeVenda: z.number() })
+    .optional(),
   reconciliacao: z.object({
     somaProdutosItens: z.number(),
     somaProdutosNotas: z.number(),
@@ -98,6 +105,8 @@ export const fiscalFaturamentoPorCfop: ToolEntry<Input, Output> = {
           totalReceita: r.totalReceita,
           totalNaoReceita: r.totalNaoReceita,
           semCfop: r.semCfop,
+          semCfopPorFinalidade: r.semCfopPorFinalidade,
+          outrasNaoEspecificadas: r.outrasNaoEspecificadas,
           reconciliacao: r.reconciliacao,
           escopoEmpresa: escopo.escopo as unknown as Record<string, unknown>,
           aviso:
@@ -112,6 +121,9 @@ export const fiscalFaturamentoPorCfop: ToolEntry<Input, Output> = {
 
     const d = envelope.dados;
     const topLinhas = d.linhas.slice(0, 8).map((l) => ({ rotulo: l.rotulo, valor: l.valorProdutos, ehReceita: l.ehReceita }));
+    const porFin = d.semCfopPorFinalidade ?? [];
+    const semCfopVendaValor = porFin.filter((f) => f.finalidade === "1").reduce((s, f) => s + f.valorProdutos, 0);
+    const semCfopDevolucaoValor = porFin.filter((f) => f.finalidade === "4").reduce((s, f) => s + f.valorProdutos, 0);
     return enriquecerEnvelope(envelope, "fiscal_faturamento_por_cfop", {
       destaque: {
         agruparPor: d.agruparPor,
@@ -120,6 +132,10 @@ export const fiscalFaturamentoPorCfop: ToolEntry<Input, Output> = {
         totalNaoReceita: d.totalNaoReceita,
         linhasCount: d.total,
         semCfopValor: d.semCfop.valorProdutos,
+        semCfopVendaValor,
+        semCfopDevolucaoValor,
+        outrasValor: d.outrasNaoEspecificadas?.valorProdutos ?? 0,
+        outrasFinalidadeVendaValor: d.outrasNaoEspecificadas?.valorFinalidadeVenda ?? 0,
         diferencaReconc: d.reconciliacao.diferenca,
         topLinhasJson: JSON.stringify(topLinhas),
       },
