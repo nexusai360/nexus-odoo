@@ -1,8 +1,51 @@
 # STATUS — nexus-odoo
 
-> **Ponto de retomada entre sessões.** Atualizado em **2026-06-09** , F1→F6 em produção; retrieval ATIVO; rodada de qualidade de respostas (faturamento) feita; **Item 2 (RADAR R10) CONCLUÍDO** , `resolverEmpresa` e `filiais-listar` agora derivam do fato. **PRÓXIMO: sem pendência aberta de mapeamento de empresa; ver `RADAR.md` para o que restar.**
-> Ao abrir: ler **este arquivo**, o **`CLAUDE.md`** e **`.agente-handoff.md`**.
+> **Ponto de retomada entre sessões.** Atualizado em **2026-06-10** , Milestone **Faturamento Real
+> Consolidado COMPLETO e em produção** (Fases 1, 2, 2.5, 2.6, 3, 4 + fix de CI). Catálogo: **106 tools**.
+> **PRÓXIMO (2 frentes abertas):** **(1)** investigar a **RAIZ** da falha de deploy (GitHub→Portainer
+> inacessível, `curl 28` timeout) , **NÃO mergear o PR #88** (o usuário pediu explicitamente para esperar
+> a causa raiz antes do merge). **(2)** Fase 5 , faturamento por regime tributário (precisa de discovery).
+> Ao abrir: ler **este arquivo**, o **`CLAUDE.md`**, o **`.agente-handoff.md`** e o **PROGRESSO**
+> (`docs/superpowers/plans/PROGRESSO-faturamento-consolidado.md`).
 > Modo autônomo é o padrão (`CLAUDE.md §6`).
+
+## 2026-06-10 , Milestone Faturamento Real Consolidado FECHADO + saga do deploy (branch `feat/nex-reconstrucao`)
+
+**Tudo MERGED para `main` e deployado.** Cada fase: spec → 2 reviews adversariais Opus (validadas no cache)
+→ v3 → execução TDD → E2E real. Conferência fiscal (`scripts/conferencia-fiscal.ts`): I1-I5 + S0-S4 + C1-C6,
+**todos os gates fecham ao centavo**; suite jest completa = **2845 testes** verdes; catálogo **106 tools**.
+
+- **Fase 1 (#80):** faturamento por operação fiscal (CFOP + Tabela de Regras `src/lib/fiscal/regras/`).
+- **Fase 2 (#81):** receita consolidada externa + intercompany (CPC 36).
+- **Fase 2.5 (#82/#83):** unificação , **consertou o +69% inflado**: `fiscal_faturamento_periodo` (2025) ia de
+  R$ 551 mi para **R$ 325,5 mi reais** (sem intercompany). Whitelist de 15 `participante_id` do grupo
+  (`src/lib/fiscal/grupo/whitelist-grupo.ts`, reciclados 8722/8723/9552/7719 excluídos); `ehNotaIntragrupo`
+  cascata whitelist→cadastro→nome; fix de período (ano corrente) nas 7 tools do Grupo B.
+- **Fase 2.6 (#84):** transparência sem-CFOP por finalidade + balde "outras" (5949/6949) com **rótulo honesto**
+  ("substância a confirmar", não "venda escondida"); conferência C1-C6.
+- **Fase 3 (#86):** `fiscal_ponte_faturamento` , waterfall bruto → não-receita → individual → intragrupo → externa.
+- **Fase 4 (#87):** `fiscal_margem_aproximada` , receita − custo (preço_custo), com ressalva (NÃO é lucro;
+  cobertura ~85%; custo é snapshot → flag `custoDesatualizadoProvavel`; 2025 margem 23,1%).
+- **Fix CI (#85):** build resiliente ao "unknown blob" do GHCR (`setup-buildx` + `provenance=false` + retry 3×)
+  , era a causa dos emails de "Build and Push falhou".
+
+### Em aberto , investigação da RAIZ do deploy (NÃO mergear #88)
+- **Sintoma:** emails recorrentes "Build and Push: Some jobs were not successful". Builds passam (✓✓); o job
+  **`deploy`** falha com `curl: (28) Failed to connect to painel.nexusai360.com port 443 ... Timeout` (5 retries,
+  ~13min) , mesmo com as imagens já publicadas no GHCR.
+- **Fato:** o painel **responde 200 em 0,3s da máquina local** (e o app responde 200) → o servidor/Portainer
+  **está no ar**; a falha é **intermitente, específica do runner do GitHub → servidor** (Traefik/firewall/
+  IP de runner / SSL?). Rerun manual do deploy do #87 = **success** (Fase 4 entrou em produção).
+- **PR #88 (ABERTO, NÃO MERGEAR):** amplia a janela de retry do deploy de 13→30min (mitigação). O usuário
+  **questionou e pediu para NÃO mergear** , primeiro achar a **causa raiz**, depois decidir. **Manter #88 aberto.**
+- **PRÓXIMA AÇÃO:** investigar por que `painel.nexusai360.com:443` fica inacessível pelos runners do GitHub por
+  13min+ (checar Traefik/labels, rate-limit/fail2ban/firewall por IP de runner, logs do servidor no horário das
+  falhas, SSL/handshake). NÃO é só aumentar timeout.
+
+### Fase 5 sugerida (feature nova) , faturamento por regime tributário
+Dado **não disponível hoje**: `fato_apuracao.regime_tributario` existe mas está **NULL**; `raw_res_company`/
+`raw_sped_empresa` guardam só JSON bruto não extraído. Exige discovery do regime (lucro real/presumido/Simples)
+de cada uma das 15 empresas no Odoo + de-para + `fiscal_faturamento_por_regime`. Fundamentar no dado real antes.
 
 ## 2026-06-09 , Qualidade de respostas do Nex + perícias (branch `feat/nex-reconstrucao`)
 
