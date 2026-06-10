@@ -34,7 +34,23 @@
       - E2E real verde: total R$ 1,858 bi, receita R$ 1,316 bi (70,8%), semCfop R$ 23,3 mi,
         reconciliação 0,0061%. 7 regressões fiscais travadas. RADAR R-base-cfop.
       - Próximo passo desta fase: PR + merge (autorizado); depois Issue 2 (UI) em PR próprio.
-- [ ] Fase 2 , Intercompany + receita consolidada externa (marcação + matriz + métrica/tool).
+- [~] **Fase 2 (EM ANDAMENTO) , Intercompany + receita consolidada externa.**
+      - SPEC v1 → 2 reviews adversariais (fiscal + arquitetura, Opus, validadas no cache real)
+        → **SPEC v3 PRONTA**: `docs/superpowers/specs/2026-06-09-f2-intercompany-receita-consolidada-design.md`.
+      - Achados materiais aplicados (resumo na §0 da spec):
+        - Marcação intercompany em CASCATA (documentoDigits do parceiro → fallback CNPJ do
+          participante_nome → RAIZES_GRUPO). A def. só por doc PERDIA ~R$ 239 mi: via doc =
+          3.801 notas/R$ 440,4 mi; via doc OU nome = 6.230 notas/R$ 679,5 mi (medido no dado).
+        - Separar `intercompanyBrutoVrProdutos` (auditoria) de `receitaIntragrupoEliminavel`
+          (~R$ 418 mi, só ehReceita) de `receitaExterna` (~R$ 898 mi). CPC 36 elimina só o leg de venda.
+        - NADA de `$queryRaw`: DUAS QUERIES NATIVAS + join em memória (groupBy item por
+          documentoId+cfopId + findMany notas), classificar por id-representante (igual F1),
+          Number(Decimal), COUNT distinct nota. Sem migration.
+        - Devolução (deduz) = entrada CFOP deduzReceita, NÃO finalidade=4 saída → vai pra Fase 3.
+      - **PRÓXIMO: PLAN v1** (skill writing-plans) sobre a SPEC v3 → 2 reviews adversariais do
+        plano → PLAN v3 → execução TDD (src/lib/fiscal/grupo/ → métrica receita-consolidada →
+        métrica matriz-intercompany → 2 tools + 2 formatadores → triggers → E2E real + rebuild mcp)
+        → PR + merge.
 - [ ] Fase 3 , Ponte de reconciliação (tool `ponte_faturamento`).
 - [ ] Fase 4 , Margem aproximada (preco_custo + ressalva).
 - [ ] Futuro (bloqueado): DRE/lucro/EBITDA/caixa quando contábil/financeiro sincronizarem.
