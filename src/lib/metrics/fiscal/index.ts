@@ -13,3 +13,6 @@ export { faturamentoRecebido } from "./faturamento-recebido";
 // F2 (intercompany + receita consolidada externa)
 export { receitaConsolidada } from "./receita-consolidada";
 export { matrizIntercompany } from "./matriz-intercompany";
+// F2.5 (unificacao: serie mensal + por cliente, sobre o core compartilhado)
+export { faturamentoSerieMensal } from "./faturamento-serie-mensal";
+export { faturamentoPorClienteCanon } from "./faturamento-por-cliente-canon";
