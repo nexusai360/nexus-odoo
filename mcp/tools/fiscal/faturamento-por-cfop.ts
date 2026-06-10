@@ -1,5 +1,5 @@
 // mcp/tools/fiscal/faturamento-por-cfop.ts
-// Tool MCP: fiscal_faturamento_por_cfop (CFOP no item desnormalizado)
+// Tool MCP: fiscal_faturamento_por_cfop , faturamento por operacao fiscal (CFOP/categoria)
 import { z } from "zod";
 import type { ToolEntry } from "../../catalog/types.js";
 import { faturamentoPorCfop } from "@/lib/metrics/fiscal/index.js";
@@ -12,20 +12,33 @@ const inputSchema = z.object({
   periodoDe: z.string().optional(),
   periodoAte: z.string().optional(),
   empresaRef: z.string().optional(),
+  agruparPor: z.enum(["cfop", "categoria"]).optional(),
   ...paginacaoInputShape,
 });
 
 const linha = z.object({
-  cfopId: z.number().int().nullable(),
-  cfopNome: z.string().nullable(),
-  totalLinhas: z.number().int(),
-  valor: z.number(),
+  chave: z.string(),
+  rotulo: z.string(),
+  categoria: z.string(),
+  ehReceita: z.boolean(),
+  totalItens: z.number().int(),
+  valorProdutos: z.number(),
 });
 
 const dados = z.object({
+  agruparPor: z.enum(["cfop", "categoria"]),
   linhas: z.array(linha),
   total: z.number().int(),
-  valorGeral: z.number(),
+  totalProdutos: z.number(),
+  totalReceita: z.number(),
+  totalNaoReceita: z.number(),
+  semCfop: z.object({ totalItens: z.number().int(), valorProdutos: z.number() }),
+  reconciliacao: z.object({
+    somaProdutosItens: z.number(),
+    somaProdutosNotas: z.number(),
+    diferenca: z.number(),
+    observacao: z.string(),
+  }),
   escopoEmpresa: z.record(z.string(), z.unknown()),
   aviso: z.string(),
   _RESPOSTA: z.string().optional(),
@@ -52,34 +65,59 @@ type Output = z.infer<typeof outputSchema>;
 export const fiscalFaturamentoPorCfop: ToolEntry<Input, Output> = {
   id: "fiscal_faturamento_por_cfop",
   dominio: "fiscal",
-  descricao: "Faturamento de saida autorizado por CFOP (no item da nota). Valor rateado pelo item; fechamento por tolerancia. Aceita empresa.",
+  descricao:
+    "Faturamento de saida autorizado por operacao fiscal: agrupa por categoria gerencial (venda, servico, transferencia, devolucao...) ou por CFOP cru. Separa receita (venda/servico/exportacao) de movimentacao que nao e receita. Base: valor dos produtos no item. Aceita empresa e periodo.",
   inputSchemaShape: inputSchema.shape,
   inputSchema,
   outputSchema,
   handler: async (input, ctx) => {
     const escopo = await montarEscopoEmpresa(ctx.prisma, input.empresaRef);
-    const envelope = await withFreshness(ctx.prisma, ["fato_nota_fiscal", "fato_nota_fiscal_item"], async () => {
-      const r = await faturamentoPorCfop(ctx.prisma, {
-        periodoDe: input.periodoDe,
-        periodoAte: input.periodoAte,
-        empresaId: escopo.empresaId,
-        limit: input.limit,
-        offset: input.offset,
-      });
-      return {
-        linhas: r.linhas,
-        total: r.total,
-        valorGeral: r.valorGeral,
-        escopoEmpresa: escopo.escopo as unknown as Record<string, unknown>,
-        aviso:
-          escopo.escopo.aviso +
-          " Valor por CFOP e rateado pelo item da nota; o fechamento com o total bate por tolerancia, nao exato.",
-      };
-    });
+    const envelope = await withFreshness(
+      ctx.prisma,
+      ["fato_nota_fiscal", "fato_nota_fiscal_item"],
+      async () => {
+        const r = await faturamentoPorCfop(ctx.prisma, {
+          periodoDe: input.periodoDe,
+          periodoAte: input.periodoAte,
+          empresaId: escopo.empresaId,
+          agruparPor: input.agruparPor,
+          limit: input.limit,
+          offset: input.offset,
+        });
+        const gap =
+          r.semCfop.valorProdutos > 0
+            ? ` Atencao: R$ ${r.semCfop.valorProdutos.toLocaleString("pt-BR", { minimumFractionDigits: 2 })} em ${r.semCfop.totalItens} itens sem CFOP (sem classificacao fiscal).`
+            : "";
+        return {
+          agruparPor: r.agruparPor,
+          linhas: r.linhas,
+          total: r.total,
+          totalProdutos: r.totalProdutos,
+          totalReceita: r.totalReceita,
+          totalNaoReceita: r.totalNaoReceita,
+          semCfop: r.semCfop,
+          reconciliacao: r.reconciliacao,
+          escopoEmpresa: escopo.escopo as unknown as Record<string, unknown>,
+          aviso: escopo.escopo.aviso + " " + r.reconciliacao.observacao + gap,
+        };
+      },
+    );
     if (envelope.estado === "preparando") return envelope;
+
+    const d = envelope.dados;
+    const topLinhas = d.linhas.slice(0, 8).map((l) => ({ rotulo: l.rotulo, valor: l.valorProdutos, ehReceita: l.ehReceita }));
     return enriquecerEnvelope(envelope, "fiscal_faturamento_por_cfop", {
-      destaque: { valorGeral: envelope.dados.valorGeral, cfops: envelope.dados.total },
-      agregado: { soma: envelope.dados.valorGeral, contagem: envelope.dados.total },
+      destaque: {
+        agruparPor: d.agruparPor,
+        totalProdutos: d.totalProdutos,
+        totalReceita: d.totalReceita,
+        totalNaoReceita: d.totalNaoReceita,
+        linhasCount: d.total,
+        semCfopValor: d.semCfop.valorProdutos,
+        diferencaReconc: d.reconciliacao.diferenca,
+        topLinhasJson: JSON.stringify(topLinhas),
+      },
+      agregado: { soma: d.totalProdutos, contagem: d.total },
     });
   },
 };

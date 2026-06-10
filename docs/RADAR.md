@@ -5,6 +5,29 @@
 
 ---
 
+## R-base-cfop — Base da tool `fiscal_faturamento_por_cfop` migrou de `vr_nf` para `vr_produtos` (F1 faturamento)
+
+**Aberto em:** 2026-06-09 (Fase 1 do Faturamento Real Consolidado).
+
+**Mudança:** a tool `fiscal_faturamento_por_cfop` deixou de somar `item.vr_nf` (rateado)
+e passou a somar `item.vr_produtos`, ganhando classificação por operação fiscal
+(categoria gerencial + flag `ehReceita`) via a Tabela de Regras (`src/lib/fiscal/regras/`).
+
+**Impacto numérico (medido no cache real):** o número total da tool muda em
+**R$ 28.432,83 / 0,0015%** (delta `Σ item.vrProdutos − Σ item.vrNf` no recorte de saída
+autorizada). Ínfimo, mas a tool já roda em produção, então qualquer painel/resposta que
+citasse o valor antigo terá essa diferença. A reconciliação produto×nota (item vs
+cabeçalho `fato_nota_fiscal.vr_produtos`) fecha em **R$ 113.198,89 / 0,006%**, exposta na
+própria resposta da tool.
+
+**Mitigação:** 7 testes de regressão fiscal travam as classificações de risco (6152
+transferência, 6202 devolução de compra, 5933/6933 e 5932/6932 serviço, 5922/5117 entrega
+futura sem dobrar, 5551 venda de ativo, 5949/6949 outras, 6918 devolução de consignação);
+auditoria sobre os 58 CFOPs reais confirmou receita = R$ 1,316 bi (70,8%) e sem-CFOP de
+R$ 23,3 mi destacado com alerta. **Não bloqueia**; registrado para rastreabilidade.
+
+---
+
 ## R-ajustes — Histórico de ajustes só mostra transição no mais recente (opcional)
 
 **Aberto em:** 2026-06-05 (B2/Backtest, redesign do drill-down).

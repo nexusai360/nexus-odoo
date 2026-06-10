@@ -73,7 +73,7 @@ export const TOOL_TRIGGERS: Record<string, string[]> = {
   "fiscal_faturamento_mensal_serie": ["qual a serie de faturamento dos ultimos 12 meses", "faturamento mes a mes esse ano", "comparativo mensal de faturamento", "evolucao do faturamento por mes"],
   "fiscal_faturamento_nao_autorizado": ["quais notas estao sem autorizacao", "notas denegadas rejeitadas ou em processamento", "faturamento de notas nao autorizadas", "notas de saida que nao foram autorizadas nem canceladas"],
   "fiscal_faturamento_periodo": ["quanto faturamos no periodo", "qual foi o faturamento desse mes", "total de notas de saida autorizadas e valor faturado", "receita de vendas entre tais datas"],
-  "fiscal_faturamento_por_cfop": ["qual CFOP e mais usado nas saidas", "faturamento por CFOP", "vendas agrupadas por codigo fiscal de operacao", "valor faturado por CFOP"],
+  "fiscal_faturamento_por_cfop": ["qual CFOP e mais usado nas saidas", "faturamento por CFOP", "vendas agrupadas por codigo fiscal de operacao", "valor faturado por CFOP", "faturamento por operacao fiscal", "composicao do faturamento", "quanto e venda servico transferencia devolucao", "faturamento por categoria", "separar receita de transferencia e remessa"],
   "fiscal_faturamento_por_cliente": ["qual cliente foi o maior faturamento no periodo", "top 10 clientes por faturamento", "ranking de clientes que mais compraram", "faturamento agrupado por cliente"],
   "fiscal_faturamento_por_empresa": ["qual filial faturou mais", "faturamento por empresa do grupo", "comparativo de vendas entre filiais", "faturamento de cada empresa do grupo"],
   "fiscal_faturamento_por_marca": ["qual marca de produto teve maior faturamento", "faturamento por marca", "qual marca vende mais", "top marcas em valor faturado"],
