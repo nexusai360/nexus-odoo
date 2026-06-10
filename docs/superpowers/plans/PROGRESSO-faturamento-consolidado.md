@@ -45,9 +45,25 @@
   `fiscal_*` vira o mesmo rótulo "faturamento" → 2 tools viram 2 chips idênticos.
 
 ## Estado atual / próxima ação concreta
-- FEITO: perícia (Fase 0) escrita; #79 (streaming) mergeado; branch em main.
-- PRÓXIMO: escrever **SPEC v1 da Fase 1** em `docs/superpowers/specs/`, rodar as 2 reviews
-  adversariais (subagentes Opus), gerar SPEC v3; depois PLAN v1 → 2 reviews → v3; execução.
+- FEITO: perícia (Fase 0); #79 (streaming) mergeado; branch em main.
+- FEITO: **SPEC v1 → 2 reviews adversariais (fiscal + arquitetura, Opus) → SPEC v3**.
+  Arquivo: `docs/superpowers/specs/2026-06-09-f1-faturamento-operacao-fiscal-design.md` (v3).
+  As reviews acharam coisa material (resumo na §0 da spec). Achados-chave já incorporados:
+  - **A tool/métrica de CFOP JÁ EXISTE** (`src/lib/metrics/fiscal/faturamento-por-cfop.ts`,
+    `mcp/tools/fiscal/faturamento-por-cfop.ts`, `fmtFaturamentoPorCfop` em `mcp/lib/responder.ts`,
+    trigger em `mcp/catalog/tool-triggers.data.ts`). DECISÃO: **EVOLUIR a existente**, não criar nova.
+  - Base → `vr_produtos` (escolha do usuário; difere de vrNf do item em só R$28k). RADAR ao migrar.
+  - `groupBy` nativo por `cfopId` (138.088 itens, 58 CFOPs, 364 nulos), não findMany.
+  - Tabela de Regras curada em `src/lib/fiscal/regras/` (tipos/cfop-mapa/cfop-prefixo/extrair-cfop/
+    classificar/index). Precedência: transferência/serviço/ativo/entrada/devolução ANTES de venda.
+  - Regressões fiscais a travar com teste: 6152≠venda; 6202=devolução de COMPRA (não deduz);
+    5933/6933=serviço (não remessa); entrega futura x922(false)+x117(true) não dobra; sem-CFOP
+    R$23,3mi linha própria+alerta; venda_ativo 5551/6551 fora de faturamento de mercadoria.
+  - Issue 1 (natureza) e Issue 2 (UI rótulos+stagger) SAÍRAM do escopo da F1 → PRs próprios.
+- **PRÓXIMO (próxima sessão):** **PLAN v1** (skill `superpowers:writing-plans`) sobre a SPEC v3
+  → 2 reviews adversariais do plano → PLAN v3 → execução TDD (regras → métrica → tool → formatador
+  → testes) → verificação E2E contra cache real + rebuild mcp (§2.1) → commit/PR/merge.
+  Depois: Issue 2 (UI) em PR próprio; e Fases 2-4 do roadmap.
 
 ## Verificação obrigatória (regra de raiz)
 - Toda métrica/tool: TDD + E2E contra o cache REAL (subir/exercer, conferir números).
