@@ -239,6 +239,37 @@ describe("fmtFaturamentoPorCfop", () => {
     const txt = fmt({ ...baseEnv, _DESTAQUE: { totalProdutos: 0, linhasCount: 0 } } as never);
     expect(txt).toContain("Nenhum faturamento");
   });
+
+  it("Fase 2.6: decompoe sem CFOP por finalidade e expoe balde outras (substancia a confirmar)", () => {
+    const env = {
+      ...baseEnv,
+      _DESTAQUE: {
+        agruparPor: "categoria",
+        totalProdutos: 1000000,
+        totalReceita: 500000,
+        linhasCount: 3,
+        semCfopValor: 23300150,
+        semCfopVendaValor: 11841325,
+        semCfopDevolucaoValor: 11458824,
+        outrasValor: 11784759,
+        outrasFinalidadeVendaValor: 11775042,
+        topLinhasJson: JSON.stringify([{ rotulo: "Venda", valor: 500000, ehReceita: true }]),
+      },
+    };
+    const txt = fmt(env as never);
+    expect(txt).toContain("sem CFOP");
+    expect(txt).toContain("venda candidata");
+    expect(txt).toContain("substancia a confirmar");
+  });
+
+  it("Fase 2.6: nao imprime linha de outras quando outrasValor=0", () => {
+    const env = {
+      ...baseEnv,
+      _DESTAQUE: { agruparPor: "categoria", totalProdutos: 1000, totalReceita: 1000, linhasCount: 1, outrasValor: 0, topLinhasJson: "[]" },
+    };
+    const txt = fmt(env as never);
+    expect(txt).not.toContain("substancia a confirmar");
+  });
 });
 
 describe("fmtReceitaConsolidada", () => {

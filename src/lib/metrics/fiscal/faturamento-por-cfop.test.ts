@@ -1,15 +1,28 @@
 import { faturamentoPorCfop } from "./faturamento-por-cfop";
 import type { PrismaClient } from "../../../generated/prisma/client";
 
-function mockPrisma(grupos: unknown[], nomes: unknown[], somaNotaProdutos: number) {
+function mockPrisma(
+  grupos: unknown[],
+  nomes: unknown[],
+  somaNotaProdutos: number,
+  semCfopFinRows: unknown[] = [],
+  outrasRows: unknown[] = [],
+) {
   const groupBy = jest.fn().mockResolvedValue(grupos);
   const findMany = jest.fn().mockResolvedValue(nomes);
   const aggregate = jest.fn().mockResolvedValue({ _sum: { vrProdutos: somaNotaProdutos } });
+  // $queryRawUnsafe(sql, ...params); distingue as 2 queries pelo conteudo do SQL (1o arg).
+  const queryRawUnsafe = jest.fn().mockImplementation((sql: string) => {
+    if (sql.includes("cfop_id IS NULL")) return Promise.resolve(semCfopFinRows);
+    if (sql.includes("5949%")) return Promise.resolve(outrasRows);
+    return Promise.resolve([]);
+  });
   const prisma = {
     fatoNotaFiscalItem: { groupBy, findMany },
     fatoNotaFiscal: { aggregate },
+    $queryRawUnsafe: queryRawUnsafe,
   } as unknown as PrismaClient;
-  return { prisma, groupBy, findMany, aggregate };
+  return { prisma, groupBy, findMany, aggregate, queryRawUnsafe };
 }
 
 describe("faturamentoPorCfop , agruparPor categoria (default)", () => {
@@ -42,6 +55,40 @@ describe("faturamentoPorCfop , agruparPor categoria (default)", () => {
     expect(r.reconciliacao.somaProdutosNotas).toBe(2049);
     expect(r.reconciliacao.diferenca).toBeCloseTo(1, 5);
     expect(r.linhas[0].valorProdutos).toBeGreaterThanOrEqual(r.linhas[1].valorProdutos);
+  });
+});
+
+describe("faturamentoPorCfop , transparencia (Fase 2.6)", () => {
+  it("decompoe semCfop por finalidade e expoe outrasNaoEspecificadas (substancia a confirmar)", async () => {
+    const { prisma } = mockPrisma(
+      [
+        { cfopId: 1, _sum: { vrProdutos: 1000 }, _count: 4 }, // 5102 venda
+        { cfopId: null, _sum: { vrProdutos: 80 }, _count: 3 }, // sem_cfop
+      ],
+      [{ cfopId: 1, cfopNome: "5102 - Venda" }],
+      1080,
+      // semCfopPorFinalidade (query 1: cfop_id IS NULL)
+      [
+        { finalidade: "1", n: 2, v: 50 }, // venda candidata
+        { finalidade: "4", n: 1, v: 30 }, // devolucao
+      ],
+      // outras 5949/6949 (query 2: 5949%)
+      [
+        { finalidade: "1", n: 5, v: 200 }, // substancia a confirmar
+        { finalidade: "2", n: 1, v: 10 },
+      ],
+    );
+
+    const r = await faturamentoPorCfop(prisma, { agruparPor: "categoria" });
+
+    expect(r.semCfop).toEqual({ totalItens: 3, valorProdutos: 80 }); // preservado
+    expect(r.semCfopPorFinalidade).toEqual([
+      { finalidade: "1", totalItens: 2, valorProdutos: 50 },
+      { finalidade: "4", totalItens: 1, valorProdutos: 30 },
+    ]);
+    expect(r.outrasNaoEspecificadas.totalItens).toBe(6);
+    expect(r.outrasNaoEspecificadas.valorProdutos).toBe(210);
+    expect(r.outrasNaoEspecificadas.valorFinalidadeVenda).toBe(200); // so finalidade=1
   });
 });
 

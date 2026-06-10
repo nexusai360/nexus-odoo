@@ -976,8 +976,21 @@ const fmtFaturamentoPorCfop: FormatadorCanonico = (env) => {
     return `- ${String(l.rotulo ?? "").trim()}: ${formatBRL(Number(l.valor ?? 0))} (${marca})`;
   });
   const partes = [cabeca, lista.length ? "Principais operacoes:" : "", ...lista].filter(Boolean);
+  // Fase 2.6: transparencia dos baldes residuais (decomposicao honesta, sem mudar o headline).
   if (semCfopValor > 0) {
-    partes.push(`Atencao: ${formatBRL(semCfopValor)} sem CFOP (sem classificacao fiscal).`);
+    const semVenda = Number(d.semCfopVendaValor ?? 0);
+    const semDev = Number(d.semCfopDevolucaoValor ?? 0);
+    const detalhe =
+      semVenda > 0 || semDev > 0
+        ? ` (venda candidata na origem ${formatBRL(semVenda)} / devolucao ${formatBRL(semDev)})`
+        : "";
+    partes.push(`Atencao: ${formatBRL(semCfopValor)} sem CFOP (sem classificacao fiscal)${detalhe}.`);
+  }
+  const outrasValor = Number(d.outrasValor ?? 0);
+  if (outrasValor > 0) {
+    partes.push(
+      `Saidas nao especificadas (CFOP 5949/6949): ${formatBRL(outrasValor)}, substancia a confirmar com o cliente (parte pode ser venda).`,
+    );
   }
   return partes.join("\n");
 };
