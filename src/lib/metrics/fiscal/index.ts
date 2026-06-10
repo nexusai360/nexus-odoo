@@ -20,3 +20,5 @@ export { faturamentoPorClienteCanon } from "./faturamento-por-cliente-canon";
 export { ponteFaturamento } from "./ponte-faturamento";
 // F4 (margem bruta aproximada)
 export { margemAproximada } from "./margem-aproximada";
+// F5 (faturamento por regime tributario)
+export { faturamentoPorRegime } from "./faturamento-por-regime";

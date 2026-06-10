@@ -1882,6 +1882,43 @@ const fmtMargemAproximada: FormatadorCanonico = (env) => {
   );
 };
 
+const fmtFaturamentoPorRegime: FormatadorCanonico = (env) => {
+  const d = env._DESTAQUE ?? {};
+  const externa = Number(d.totalReceitaExterna ?? 0);
+  const individual = Number(d.totalReceitaIndividual ?? 0);
+  const periodo = String(d.periodoLabel ?? "");
+  const cobertura = Number(d.cobertura ?? 1);
+  type L = { rotulo: string; externa: number; individual: number; empresas: number; notas: number };
+  let top: L[] = [];
+  try {
+    const p = JSON.parse(String(d.topLinhasJson ?? "[]"));
+    if (Array.isArray(p)) top = p as L[];
+  } catch {
+    top = [];
+  }
+  if (externa === 0 && individual === 0) {
+    return `Nenhum faturamento de venda autorizado por regime no periodo${periodo ? ` (${periodo})` : ""}.`;
+  }
+  const cabeca =
+    `Faturamento por regime tributario${periodo ? ` (${periodo})` : ""}: receita externa ` +
+    `${formatBRL(externa)} (individual ${formatBRL(individual)}, inclui intragrupo).`;
+  const lista = top.map(
+    (l) =>
+      `- ${String(l.rotulo ?? "").trim()}: externa ${formatBRL(Number(l.externa ?? 0))} / ` +
+      `individual ${formatBRL(Number(l.individual ?? 0))} ` +
+      `(${Number(l.empresas ?? 0)} empresa(s), ${Number(l.notas ?? 0)} notas)`,
+  );
+  const partes = [cabeca, lista.length ? "Por regime:" : "", ...lista];
+  if (cobertura < 1) {
+    partes.push(`Cobertura: ${(cobertura * 100).toFixed(1)}% da receita tem regime mapeado.`);
+  }
+  partes.push(
+    "Regime = enquadramento ATUAL da empresa (snapshot); periodos passados nao refletem mudanca de regime. " +
+      "Externa elimina venda intragrupo; nao e apuracao de imposto nem lucro.",
+  );
+  return partes.filter(Boolean).join("\n");
+};
+
 const FORMATADORES: Record<string, FormatadorCanonico> = {
   // financeiro
   financeiro_contas_a_receber: fmtContasAReceber,
@@ -1940,6 +1977,7 @@ const FORMATADORES: Record<string, FormatadorCanonico> = {
   "fiscal_intercompany": fmtIntercompany,
   "fiscal_ponte_faturamento": fmtPonteFaturamento,
   "fiscal_margem_aproximada": fmtMargemAproximada,
+  "fiscal_faturamento_por_regime": fmtFaturamentoPorRegime,
   "fiscal_faturamento_nao_autorizado": fmtFaturamentoNaoAutorizado,
   "fiscal_faturamento_recebido": fmtFaturamentoRecebido,
   "fiscal_detalhar_nota": fmtFiscalDetalharNota,
@@ -2063,6 +2101,7 @@ export const TOOLS_QUE_PRECISAM_FORMATADOR: string[] = [
   "fiscal_ponte_faturamento",
   "fiscal_faturamento_nao_autorizado",
   "fiscal_faturamento_recebido",
+  "fiscal_faturamento_por_regime",
   "fiscal_detalhar_nota",
   // estoque
   "estoque_saldo_produto",

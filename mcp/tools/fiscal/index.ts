@@ -37,6 +37,8 @@ import { fiscalIntercompany } from "./intercompany.js";
 import { fiscalPonteFaturamento } from "./ponte-faturamento.js";
 // F4 (margem bruta aproximada)
 import { fiscalMargemAproximada } from "./margem-aproximada.js";
+// F5 (faturamento por regime tributario)
+import { fiscalFaturamentoPorRegime } from "./faturamento-por-regime.js";
 
 export const fiscalTools: ToolEntry[] = [
   fiscalFaturamentoPeriodo as ToolEntry,
@@ -78,4 +80,6 @@ export const fiscalTools: ToolEntry[] = [
   fiscalPonteFaturamento as ToolEntry,
   // F4 (margem bruta aproximada)
   fiscalMargemAproximada as ToolEntry,
+  // F5 (faturamento por regime tributario)
+  fiscalFaturamentoPorRegime as ToolEntry,
 ];
