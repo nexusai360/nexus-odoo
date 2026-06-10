@@ -5,6 +5,79 @@
 
 ---
 
+## R-faturamento-duas-definicoes — Plataforma tem DUAS definicoes de faturamento divergentes (PRIORIDADE ALTA)
+
+**Aberto em:** 2026-06-10 (achado ao auditar a consistencia da plataforma).
+
+**Problema:** existem hoje duas camadas de calculo de faturamento que NAO conversam:
+- **Canonica** (`src/lib/metrics/fiscal/`, Fases 1-2): por CFOP, `item.vrProdutos`, Tabela de Regras,
+  elimina intercompany. Tools: `fiscal_faturamento_por_cfop`, `fiscal_receita_consolidada`,
+  `fiscal_intercompany`, `_por_empresa`, `_por_operacao`, `_nao_autorizado`, `_recebido` (7).
+- **Antiga** (`src/lib/reports/queries/fiscal.ts`, ~18 tools + dashboard): por NATUREZA de operacao,
+  `nota.vrNf`, NAO elimina intercompany. Tools: `fiscal_faturamento_periodo` (a mais usada),
+  `_por_cliente`, `_por_marca`, `_por_uf`, `_mensal_serie`, `impostos_periodo`, `produtos_faturados`,
+  `notas_emitidas*`, etc.
+
+**Impacto medido (2025):** a tool antiga `fiscal_faturamento_periodo` da **R$ 551,2 mi**; a receita
+externa REAL (canonica, sem intercompany) e **R$ 325,5 mi**. **Divergencia de R$ 225,8 mi (+69%)**, quase
+toda por NAO eliminar intercompany (as duas BASES de calculo batem: 551 vs 543 mi). E o dono quer o
+numero real (sem intercompany). Pergunta "qual o faturamento?" hoje responde inflado.
+
+**Plano (proxima fase , Unificacao):** migrar as tools de faturamento/receita para a camada canonica;
+distinguir explicitamente "faturamento individual/bruto" (com intercompany) de "receita externa real"
+(sem); aplicar a base de conferencia (`scripts/conferencia-fiscal.ts`) garantindo que nada quebra. O
+dashboard de relatorios (`reports/queries`) consome a mesma camada , migrar junto. Consistencia exigida
+em TODOS os consumidores (Nex in-app, WhatsApp/n8n, Playground) , como todos passam pelo MCP server, a
+correcao na tool propaga, MAS o dashboard tem queries proprias que precisam alinhar.
+
+---
+
+## R-intercompany-fallback-fragil — 38,8% da eliminacao intercompany depende de regex sobre nome (PRIORIDADE ALTA)
+
+**Aberto em:** 2026-06-10 (auditoria adversarial da Fase 2).
+
+**Problema:** a marcacao intragrupo por `fato_parceiro.documentoDigits` so pega R$ 440,4 mi do intercompany.
+Os outros **R$ 278,8 mi (2.538 notas, 38,8%)** so sao eliminados pelo fallback `extrairRaizCnpjDeTexto`
+(le o CNPJ embutido no `participante_nome`), porque o `fato_parceiro` esta CORROMPIDO para os
+estabelecimentos do proprio grupo: `documento_digits` VAZIO (pid 9/11/12...), ou pior, `odoo_id` reciclado
+no Odoo apontando para CNPJ de OUTRA pessoa (pid 8723 = "Vilmar Luiz Borges" 21446394). O numero de hoje
+esta CORRETO (auditoria confirmou a particao fechando ao centavo por ano), mas se um nome vier sem CNPJ
+legivel, esses R$ 278,8 mi vazam para a receita externa e inflam o "faturamento real".
+
+**Correcao recomendada:** (a) whitelist de `participante_id` conhecidos do grupo (odoo_id 2,9,10,11,12,13,
+15,16,8722,8723,9552,7719...) alem das raizes; (b) sentinela na base de conferencia: contar notas marcadas
+intragrupo SO por nome (hoje 2.538 / R$ 278,8 mi) e alertar se saltar; (c) sentinela de divergencia
+nome×cadastro (participante cujo nome tem raiz do grupo mas `fato_parceiro` aponta doc de fora , hoje 10
+pares); (d) NUNCA usar `fato_parceiro.eh_empresa` para identificar grupo (e lixo: inclui Banco do Brasil).
+Cuidado: "Matrix Fit" franquias (32493616, 50075046) sao CLIENTES externos, nao grupo , nao adicionar por nome.
+
+---
+
+## R-sem-cfop-transparencia — Linha "sem CFOP" (R$ 23,3 mi) mistura venda perdida e devolucao
+
+**Aberto em:** 2026-06-10 (auditoria da Fase 1). **Prioridade media.**
+
+**Problema:** os 364 itens sem `cfop_id`/`cfop_nome` na origem (R$ 23,3 mi) sao um balde unico. Decomposicao
+pelo cabecalho: ~R$ 11,68 mi finalidade=1 (normal, candidato a VENDA REAL perdida na origem do Odoo, ICMS
+quase zero) + ~R$ 11,46 mi finalidade=4 (DEVOLUCAO) + R$ 0,16 mi servico. Manter fora da receita esta correto
+(conservador), mas o bloco esconde que metade e devolucao. **Correcao:** quebrar `sem_cfop` por `finalidade_nfe`
+na exibicao; investigar com o cliente por que ~R$ 11,7 mi de equipamentos sairam sem CFOP (pode ser receita real).
+
+---
+
+## R-conferencia-fiscal-expandir — Base de conferencia deve virar gate permanente (do CI)
+
+**Aberto em:** 2026-06-10. **Prioridade media.**
+
+`scripts/conferencia-fiscal.ts` ja confronta 5 invariantes (TS vs SQL bruto, por ano). As 2 auditorias
+recomendaram 12 checagens adicionais para tornar a confianca permanente: orfaos item→nota == 0; reconciliacao
+item vs cabecalho < 0,05%; sentinela de CFOP novo caindo em "outras" > R$ 100k/ano; cross-check natureza×ehReceita
+(inversoes); guarda do filtro `situacao='autorizada'` (em_digitacao R$ 236 mi jamais entra); sentinela do
+fallback de nome (R$ 278,8 mi); divergencia nome×cadastro; decompor sem_cfop por finalidade; notas sem item (101).
+Tornar isso um TESTE que roda (o CI nao tem DB, entao avaliar healthcheck agendado ou gate local pre-merge).
+
+---
+
 ## R-periodo-acumulado — Tools fiscais sem periodo somam 13 ANOS de cache (enganoso)
 
 **Aberto em:** 2026-06-09 (achado pelo usuario ao ver "R$ 897 mi de receita").

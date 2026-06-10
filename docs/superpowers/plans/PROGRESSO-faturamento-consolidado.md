@@ -59,6 +59,22 @@
         (== F1.totalReceita, reconciliação EXATA); intercompany bruto = R$ 719,2 mi; 6.339
         notas intra (a correção Unicode capturou +109 notas que escapavam). Matriz: 70 pares.
       - **PRÓXIMO: PR + merge.** Depois Fase 3.
+- [ ] **Fase 2.5 (NOVA, PRIORIDADE ALTA) , Unificação + Confiabilidade.** Descoberta ao auditar
+      a consistência (modo autônomo 2026-06-10, a pedido do usuário: "não posso ter alucinação nos dados").
+      Entregue já nesta frente: **base de conferência** (`scripts/conferencia-fiscal.ts`, 5 invariantes
+      TS vs SQL bruto por ano, todos fecham ao centavo) + fix de período (ano corrente) nas 3 tools
+      canônicas + 2 auditorias adversariais (RADAR R-faturamento-duas-definicoes, R-intercompany-fallback-fragil,
+      R-sem-cfop-transparencia, R-conferencia-fiscal-expandir). Trabalho da fase:
+      1. **Unificar as 2 definições de faturamento** (R-faturamento-duas-definicoes): migrar as ~18 tools
+         antigas (`reports/queries`) + dashboard para a camada canônica; distinguir faturamento individual
+         (com intercompany) de receita externa real (sem). É o que conserta o "+69% inflado".
+      2. **Blindar a marcação intercompany** (R-intercompany-fallback-fragil): whitelist de participante_id
+         do grupo + sentinelas, para não depender do regex de nome (R$ 278,8 mi em risco).
+      3. **Fix de período** nas demais ~22 tools fiscais (R-periodo-acumulado).
+      4. **Expandir a base de conferência** com as 12 checagens das auditorias (R-conferencia-fiscal-expandir).
+      5. Transparência sem-CFOP (R-sem-cfop-transparencia).
+      Conduzir com spec→2 reviews→plan→2 reviews→execução TDD, sempre rodando a base de conferência + suite
+      COMPLETA (jest inteiro, não só o domínio , o CI pega integration.test e golden-schema) antes de push/merge.
 - [ ] Fase 3 , Ponte de reconciliação (tool `ponte_faturamento`).
 - [ ] Fase 4 , Margem aproximada (preco_custo + ressalva).
 - [ ] Futuro (bloqueado): DRE/lucro/EBITDA/caixa quando contábil/financeiro sincronizarem.
