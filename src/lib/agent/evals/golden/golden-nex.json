@@ -950,5 +950,12 @@
     "dominio": "fiscal",
     "classe": "prosseguir",
     "toolEsperada": "fiscal_margem_aproximada"
+  },
+  {
+    "id": "cov-faturamento-por-regime",
+    "pergunta": "Qual o faturamento por regime tributario (lucro real, presumido, simples) este ano?",
+    "dominio": "fiscal",
+    "classe": "prosseguir",
+    "toolEsperada": "fiscal_faturamento_por_regime"
   }
 ]

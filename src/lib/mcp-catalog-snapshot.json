@@ -2557,6 +2557,32 @@
       "examples": []
     },
     {
+      "id": "fiscal_faturamento_por_regime",
+      "operation": "read",
+      "module": "fiscal",
+      "descricao": "Faturamento do periodo agrupado pelo REGIME TRIBUTARIO da empresa (Lucro Real, Lucro Presumido, Simples Nacional, MEI). Dois numeros por regime: receita externa (venda que sai do grupo, intragrupo eliminado) e individual (inclui venda intragrupo). O regime e o enquadramento ATUAL da empresa (snapshot); periodos antigos nao refletem mudanca de regime. Nao e apuracao de imposto nem lucro. Aceita periodo.",
+      "capability": null,
+      "sensitive": false,
+      "addedInVersion": null,
+      "inputSchemaKeys": [
+        "periodoDe",
+        "periodoAte"
+      ],
+      "inputSchemaFields": [
+        {
+          "name": "periodoDe",
+          "type": "string",
+          "optional": true
+        },
+        {
+          "name": "periodoAte",
+          "type": "string",
+          "optional": true
+        }
+      ],
+      "examples": []
+    },
+    {
       "id": "cadastro_buscar_parceiro",
       "operation": "read",
       "module": "cadastros",
@@ -4008,6 +4034,6 @@
       "examples": []
     }
   ],
-  "count": 115,
-  "generatedAt": "2026-06-10T13:45:54.538Z"
+  "count": 116,
+  "generatedAt": "2026-06-10T17:56:13.872Z"
 }
