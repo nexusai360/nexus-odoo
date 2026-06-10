@@ -5,6 +5,7 @@ import type { ToolEntry } from "../../catalog/types.js";
 import { queryImpostosPeriodo } from "@/lib/reports/queries/fiscal.js";
 import { withFreshness } from "../../lib/freshness.js";
 import { montarEscopoEmpresa, type EscopoEmpresa } from "./_escopo-empresa.js";
+import { resolverPeriodoFiscal } from "./_periodo-padrao.js";
 
 const inputSchema = z.object({
   periodoDe: z.string().optional(),
@@ -65,11 +66,12 @@ export const fiscalImpostosPeriodo: ToolEntry<Input, Output> = {
   outputSchema,
   handler: async (input, ctx) => {
     const escopo = await montarEscopoEmpresa(ctx.prisma, input.empresaRef);
+    const per = resolverPeriodoFiscal(input.periodoDe, input.periodoAte);
     const envelope = await withFreshness(ctx.prisma, ["fato_nota_fiscal"], async () =>
       shape(
         await queryImpostosPeriodo(ctx.prisma, {
-          periodoDe: input.periodoDe,
-          periodoAte: input.periodoAte,
+          periodoDe: per.periodoDe,
+          periodoAte: per.periodoAte,
           empresaId: escopo.empresaId,
         }),
         escopo.escopo,
@@ -82,7 +84,7 @@ export const fiscalImpostosPeriodo: ToolEntry<Input, Output> = {
       ...envelope,
       dados: {
         ...d,
-        _RESPOSTA: `Impostos no periodo (${d.totalNotas} notas): IBPT (estimativa) ${fmt(d.somaIbpt)}, ICMS proprio ${fmt(d.somaIcmsProprio)}.`,
+        _RESPOSTA: `Impostos no periodo ${per.label} (${d.totalNotas} notas): IBPT (estimativa) ${fmt(d.somaIbpt)}, ICMS proprio ${fmt(d.somaIcmsProprio)}.`,
         _DESTAQUE: { totalNotas: d.totalNotas, somaIbpt: d.somaIbpt, somaIcmsProprio: d.somaIcmsProprio },
         _agregado: { contagem: d.totalNotas, soma: d.somaIbpt + d.somaIcmsProprio },
       },

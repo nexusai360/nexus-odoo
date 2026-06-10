@@ -5,6 +5,7 @@ import type { ToolEntry } from "../../catalog/types.js";
 import { faturamentoPorEmpresa } from "@/lib/metrics/fiscal/index.js";
 import { withFreshness } from "../../lib/freshness.js";
 import { enriquecerEnvelope } from "../../lib/with-responder.js";
+import { resolverPeriodoFiscal } from "./_periodo-padrao.js";
 
 const inputSchema = z.object({
   periodoDe: z.string().optional(),
@@ -55,8 +56,9 @@ export const fiscalFaturamentoPorEmpresa: ToolEntry<Input, Output> = {
   inputSchema,
   outputSchema,
   handler: async (input, ctx) => {
+    const per = resolverPeriodoFiscal(input.periodoDe, input.periodoAte);
     const envelope = await withFreshness(ctx.prisma, ["fato_nota_fiscal"], async () => {
-      const r = await faturamentoPorEmpresa(ctx.prisma, input);
+      const r = await faturamentoPorEmpresa(ctx.prisma, { periodoDe: per.periodoDe, periodoAte: per.periodoAte });
       return {
         linhas: r.linhas,
         totalGrupo: r.totalGrupo,
@@ -65,7 +67,7 @@ export const fiscalFaturamentoPorEmpresa: ToolEntry<Input, Output> = {
         totalNotasSemEmpresa: r.totalNotasSemEmpresa,
         aviso:
           "Faturamento de venda autorizado (exclui canceladas, nao-autorizadas e operacoes nao-venda), " +
-          "agrupado por empresa. A linha sem empresa, quando houver, aparece por ultimo.",
+          `agrupado por empresa. A linha sem empresa, quando houver, aparece por ultimo. Período: ${per.label}.`,
       };
     });
     if (envelope.estado === "preparando") return envelope;
