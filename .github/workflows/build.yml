@@ -124,65 +124,49 @@ jobs:
       # GITHUB_TOKEN (packages: read) basta para autenticar o pull no GHCR.
       GHCR_TOKEN: ${{ secrets.GITHUB_TOKEN }}
     steps:
+      # Abordagem MINIMA e comprovada, copiada do nexus-insights (deploya no MESMO
+      # Portainer/VPS sem falhar): curl simples, UMA passada, SEM retry-storm.
+      #
+      # O que estava errado antes: um laco de ate 12 tentativas com `curl --retry 4
+      # --retry-connrefused` por chamada, sobre 2 pulls + 3 services. Num blip de rede,
+      # isso virava uma RAJADA de dezenas/centenas de conexoes martelando o Portainer
+      # por 13-30min (e o email de "Build and Push falhou"). O insights nunca faz isso
+      # e nunca falha. Aqui a regra e: 1 passada calma; se falhar pontualmente, o rerun
+      # manual (1 clique) resolve — igual ao insights. Nada de martelar o painel.
       - name: Trigger Portainer redeploy (Swarm-aware)
         run: |
-          set -uo pipefail
+          set -e
           if [ -z "$PORTAINER_STACK_ID" ]; then
             echo "PORTAINER_STACK_ID nao configurado (primeiro deploy ainda nao criou a stack) — pulando."
             exit 0
           fi
-
           AUTH=$(printf '{"username":"%s","password":"%s"}' "${GITHUB_ACTOR:-jvzanini}" "$GHCR_TOKEN" | base64 | tr -d '\n')
           API="$PORTAINER_URL/api/endpoints/$PORTAINER_ENDPOINT_ID/docker"
-          # Curl resiliente: timeouts explicitos + retry de erros de rede/connrefused.
-          # Sem isso, uma lentidao transitoria do Portainer dava HTTP 000 / exit 28 e
-          # derrubava o deploy (e disparava email de falha) mesmo com as imagens publicadas.
-          CURL=(curl --silent --show-error --insecure --connect-timeout 15 --max-time 120 --retry 4 --retry-delay 6 --retry-connrefused)
 
-          deploy_attempt() {
-            local STACK_NAME SVC_ID SVC_VER HTTP IMG SVC SERVICE_NAME
-            STACK_NAME=$("${CURL[@]}" -H "X-API-Key: $PORTAINER_TOKEN" "$PORTAINER_URL/api/stacks/$PORTAINER_STACK_ID" | jq -r '.Name // empty')
-            if [ -z "$STACK_NAME" ]; then echo "  stack name vazio (Portainer inacessivel?)"; return 1; fi
-            echo "Stack: $STACK_NAME"
-
-            # Puxa as imagens novas no no Swarm (app/worker usam IMAGE_APP, mcp usa IMAGE_MCP).
-            # Pull e best-effort: se falhar, o proprio redeploy puxa a imagem.
-            for IMG in "$IMAGE_APP" "$IMAGE_MCP"; do
-              "${CURL[@]}" -X POST -H "X-API-Key: $PORTAINER_TOKEN" -H "X-Registry-Auth: $AUTH" \
-                "$API/images/create?fromImage=$IMG&tag=latest" -o /tmp/pull.log -w "Pull $IMG: HTTP %{http_code}\n" \
-                || echo "  pull $IMG falhou (segue; o redeploy puxa a imagem)"
-            done
-
-            if ! "${CURL[@]}" -H "X-API-Key: $PORTAINER_TOKEN" "$API/services" -o /tmp/svc.json; then
-              echo "  falha ao listar services"; return 1; fi
-            if ! jq -e . /tmp/svc.json >/dev/null 2>&1; then echo "  svc.json invalido/incompleto"; return 1; fi
-
-            # Forca redeploy dos 3 services que rodam imagem buildada.
-            for SVC in app mcp worker; do
-              SERVICE_NAME="${STACK_NAME}_${SVC}"
-              SVC_ID=$(jq -r --arg n "$SERVICE_NAME" '[.[] | select(.Spec.Name==$n)][0].ID // empty' /tmp/svc.json)
-              if [ -z "$SVC_ID" ]; then
-                echo "Service $SERVICE_NAME nao encontrado — pulando:"
-                jq -r '[.[].Spec.Name]' /tmp/svc.json
-                continue
-              fi
-              SVC_VER=$(jq -r --arg n "$SERVICE_NAME" '[.[] | select(.Spec.Name==$n)][0].Version.Index' /tmp/svc.json)
-              jq --arg n "$SERVICE_NAME" '[.[] | select(.Spec.Name==$n)][0].Spec | .TaskTemplate.ForceUpdate = ((.TaskTemplate.ForceUpdate // 0) + 1)' /tmp/svc.json > /tmp/spec.json
-              HTTP=$("${CURL[@]}" -o /tmp/upd.log -w "%{http_code}" -X POST -H "X-API-Key: $PORTAINER_TOKEN" -H "Content-Type: application/json" -H "X-Registry-Auth: $AUTH" "$API/services/$SVC_ID/update?version=$SVC_VER" --data-binary @/tmp/spec.json)
-              echo "Redeploy $SERVICE_NAME (id=$SVC_ID ver=$SVC_VER): HTTP $HTTP"
-              if [ "$HTTP" != "200" ]; then echo "  update $SERVICE_NAME falhou HTTP $HTTP"; cat /tmp/upd.log; echo ""; return 1; fi
-            done
-            echo "Redeploy disparado com sucesso."
-            return 0
-          }
-
-          # Retry do ciclo inteiro: absorve blip transitorio do Portainer (auto-cura);
-          # so falha o job apos 5 tentativas (~5min) = outage real, nao flapping.
-          for i in 1 2 3 4 5; do
-            echo "== Tentativa de deploy $i/5 =="
-            if deploy_attempt; then exit 0; fi
-            echo "Tentativa $i falhou; aguardando $((i*20))s antes de retentar..."
-            sleep $((i*20))
+          # Pull best-effort das duas imagens (app/worker usam IMAGE_APP; mcp usa IMAGE_MCP).
+          # Se falhar, segue: o proprio redeploy do service puxa a imagem.
+          for IMG in "$IMAGE_APP" "$IMAGE_MCP"; do
+            curl --silent --insecure -X POST -H "X-API-Key: $PORTAINER_TOKEN" -H "X-Registry-Auth: $AUTH" \
+              "$API/images/create?fromImage=$IMG&tag=latest" -o /tmp/pull.log -w "Pull $IMG: HTTP %{http_code}\n" || true
           done
-          echo "Deploy falhou apos 5 tentativas (Portainer inacessivel durante toda a janela)."
-          exit 1
+
+          STACK_NAME=$(curl --silent --insecure -H "X-API-Key: $PORTAINER_TOKEN" "$PORTAINER_URL/api/stacks/$PORTAINER_STACK_ID" | jq -r '.Name')
+          echo "Stack: $STACK_NAME | services alvo: ${STACK_NAME}_app, ${STACK_NAME}_mcp, ${STACK_NAME}_worker"
+          curl --silent --insecure -H "X-API-Key: $PORTAINER_TOKEN" "$API/services" > /tmp/svc.json
+
+          # Forca redeploy dos 3 services que rodam imagem buildada (ForceUpdate++).
+          for SVC in app mcp worker; do
+            SERVICE_NAME="${STACK_NAME}_${SVC}"
+            SVC_ID=$(jq -r --arg n "$SERVICE_NAME" '[.[] | select(.Spec.Name==$n)][0].ID // empty' /tmp/svc.json)
+            if [ -z "$SVC_ID" ]; then
+              echo "Service $SERVICE_NAME nao encontrado — pulando:"
+              jq -r '[.[].Spec.Name]' /tmp/svc.json
+              continue
+            fi
+            SVC_VER=$(jq -r --arg n "$SERVICE_NAME" '[.[] | select(.Spec.Name==$n)][0].Version.Index' /tmp/svc.json)
+            jq --arg n "$SERVICE_NAME" '[.[] | select(.Spec.Name==$n)][0].Spec | .TaskTemplate.ForceUpdate = ((.TaskTemplate.ForceUpdate // 0) + 1)' /tmp/svc.json > /tmp/spec.json
+            HTTP=$(curl --silent --insecure -o /tmp/upd.log -w "%{http_code}" -X POST -H "X-API-Key: $PORTAINER_TOKEN" -H "Content-Type: application/json" -H "X-Registry-Auth: $AUTH" "$API/services/$SVC_ID/update?version=$SVC_VER" --data-binary @/tmp/spec.json)
+            echo "Redeploy $SERVICE_NAME (id=$SVC_ID ver=$SVC_VER): HTTP $HTTP"
+            if [ "$HTTP" != "200" ]; then echo "  update $SERVICE_NAME falhou HTTP $HTTP"; cat /tmp/upd.log; echo ""; exit 1; fi
+          done
+          echo "Redeploy disparado com sucesso."
