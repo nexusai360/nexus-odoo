@@ -2,8 +2,37 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-> Versão: **v1** (vai para 2 reviews adversariais antes da execução).
+> Versão: **v3** (pós 2 reviews adversariais , fiscal + arquitetura, validadas no cache real). Pronto para execução.
 > Base: SPEC v3 `docs/superpowers/specs/2026-06-09-f2-intercompany-receita-consolidada-design.md`.
+
+## 0. Mudanças aplicadas das 2 reviews do plano (rastreabilidade)
+
+**Números-meta CONFIRMADOS no cache real (algoritmo do plano):** receitaExterna R$ 897.233.379,31;
+receitaIntragrupoEliminavel R$ 418.573.611,29; receitaIndividualTotal R$ 1.315.806.990,60
+(== F1.totalReceita, reconciliação fecha exata); intercompanyBrutoVrProdutos R$ 679.479.247,31;
+notas intra/ext 6.230/28.186. (Pós-B1 esses valores mudam levemente, ver abaixo.)
+
+**Review fiscal (BLOQUEIOS):**
+- **B1: a cascata ainda perde R$ 39,7 mi de intragrupo** porque parte dos nomes traz o CNPJ com
+  caracteres Unicode (ZWJ U+200D entre blocos, non-breaking hyphen U+2011). A regex estrita não
+  casa. **Correção (Task 1):** `extrairRaizCnpjDeTexto` normaliza invisíveis e tolera separadores
+  Unicode + teste com `"26‍.308‍.789/0001‑36"`. Pós-correção: receitaExterna cai ~R$ 257 mil,
+  bruto sobe ~R$ 39,7 mi (valores exatos saem do E2E; bandas largas).
+- **B2: o E2E não travava valores absolutos.** **Correção (Task 9):** checks de banda nos 3 números
+  + alinhar o SQL de referência à MESMA base/gate do código.
+
+**Review arquitetura (BLOQUEIOS):**
+- **B1: `extrairRaizCnpj` deve exigir 14 dígitos** (senão CPF de 11 dígitos vira "raiz" e um PF
+  do grupo entra no Set). **Correção (Task 1):** gate `=== 14` + teste com CPF → null.
+- **B5: faltavam testes unitários dos 2 formatadores novos.** **Correção (Task 7):** describe por
+  formatador em `responder.test.ts`.
+- **B6: a allowlist tem um teste `.skip`, então não valida o registry.** **Correção (Task 7):**
+  teste não-skipado `ehFormatadorGenerico(formatadorPorTool("fiscal_receita_consolidada")) === false`
+  para as 2 tools.
+- **M1 (decisão): reconciliação cruzada F1==F2 é E2E-only**, NÃO campo de saída de produção
+  (evita acoplar a métrica à F1 e mock duplo). Corrige a SPEC §4.2/§7 (reconciliação verificada
+  no E2E, não exposta na tool). A interface `ReceitaConsolidadaResultado` não tem `reconciliacao`.
+- **M3: E2E checa cobertura do join** (itens cujo `documentoId` não está no mapa de notas == 0).
 
 **Goal:** Entregar a receita consolidada externa (visão C, eliminando intercompany via CPC 36) e a matriz intercompany, com marcação intragrupo robusta (cascata documentoDigits→CNPJ do nome) e reconciliação cruzada com a Fase 1.
 
@@ -67,7 +96,8 @@ describe("extrairRaizCnpj", () => {
   it("limpa mascara antes de extrair", () => {
     expect(extrairRaizCnpj("34.161.829/0004-30")).toBe("34161829");
   });
-  it("retorna null com menos de 8 digitos ou nulo", () => {
+  it("exige 14 digitos: CPF (11) nao e raiz de CNPJ (B1 review)", () => {
+    expect(extrairRaizCnpj("34161829000")).toBeNull(); // 11 dig = CPF
     expect(extrairRaizCnpj("123")).toBeNull();
     expect(extrairRaizCnpj(null)).toBeNull();
     expect(extrairRaizCnpj("")).toBeNull();
@@ -78,6 +108,10 @@ describe("extrairRaizCnpjDeTexto", () => {
   it("extrai a raiz do 1o CNPJ mascarado embutido em texto livre", () => {
     const nome = "Jht SP Comercio - Filial SE 34.161.829/0004-30 - Razao [34.161.829/0004-30]";
     expect(extrairRaizCnpjDeTexto(nome)).toBe("34161829");
+  });
+  it("tolera Unicode no CNPJ: ZWJ (U+200D) + non-breaking hyphen (U+2011) (B1 review)", () => {
+    const nome = "Matrix - Jht SP 26‍.308‍.789/0001‑36 Ltda";
+    expect(extrairRaizCnpjDeTexto(nome)).toBe("26308789");
   });
   it("retorna null quando nao ha CNPJ no texto", () => {
     expect(extrairRaizCnpjDeTexto("Cliente Externo Ltda")).toBeNull();
@@ -108,18 +142,29 @@ export const RAIZES_GRUPO: ReadonlySet<string> = new Set([
 
 ```ts
 // src/lib/fiscal/grupo/cnpj.ts
-/** Raiz (8 digitos) de um documento ja-digitos ou mascarado. Null se < 8 digitos. */
+/**
+ * Raiz (8 digitos) de um CNPJ (14 digitos) ja-digitos ou mascarado. Null se nao tiver
+ * exatamente 14 digitos , um CPF (11) NAO tem raiz de CNPJ (review arquitetura B1).
+ */
 export function extrairRaizCnpj(doc: string | null | undefined): string | null {
   if (!doc) return null;
   const digits = doc.replace(/\D/g, "");
-  return digits.length >= 8 ? digits.slice(0, 8) : null;
+  return digits.length === 14 ? digits.slice(0, 8) : null;
 }
 
-/** Raiz do 1o CNPJ mascarado (NN.NNN.NNN/NNNN-NN) embutido em texto livre. */
+/**
+ * Raiz do 1o CNPJ embutido em texto livre. Tolera Unicode (zero-width joiner U+200D,
+ * non-breaking hyphen U+2011) que aparece no participante_nome do cache (review fiscal B1):
+ * primeiro remove caracteres invisiveis, depois casa 14 digitos no padrao 2-3-3-4-2 com
+ * separadores nao-digito flexiveis.
+ */
 export function extrairRaizCnpjDeTexto(texto: string | null | undefined): string | null {
   if (!texto) return null;
-  const m = texto.match(/(\d{2}\.\d{3}\.\d{3}\/\d{4}-\d{2})/);
-  return m ? extrairRaizCnpj(m[1]) : null;
+  const limpo = texto.replace(/[\u200B-\u200D\uFEFF]/g, "");
+  const m = limpo.match(/(\d{2})\D?(\d{3})\D?(\d{3})\D{0,2}(\d{4})\D?(\d{2})/);
+  if (!m) return null;
+  const digits = m.slice(1, 6).join("");
+  return digits.length === 14 ? digits.slice(0, 8) : null;
 }
 ```
 
@@ -834,16 +879,60 @@ Em `TOOLS_QUE_PRECISAM_FORMATADOR`, acrescentar:
   "fiscal_intercompany",
 ```
 
-- [ ] **Step 3: Verificar tsc + teste do contract (allowlist)**
+- [ ] **Step 3: Testes unitários dos 2 formatadores + allowlist real (B5/B6)**
+
+Anexar a `mcp/lib/responder.test.ts` (imports `formatadorPorTool`, `ehFormatadorGenerico` já estão no topo):
+
+```ts
+describe("fmtReceitaConsolidada", () => {
+  const fmt = formatadorPorTool("fiscal_receita_consolidada");
+  const base = { _listaTruncada: false, linhas: [], atualizadoEm: "", atualizadoHa: "" };
+  it("frase com receita externa e percentual eliminado", () => {
+    const txt = fmt({ ...base, _DESTAQUE: { receitaExterna: 897, receitaIntragrupoEliminavel: 418, receitaIndividualTotal: 1315, percentualEliminado: 0.318 } } as never);
+    expect(txt).toContain("Receita consolidada externa");
+    expect(txt).toContain("intragrupo");
+  });
+  it("vazio quando individual e zero", () => {
+    expect(fmt({ ...base, _DESTAQUE: { receitaIndividualTotal: 0 } } as never)).toContain("Nenhuma receita");
+  });
+});
+
+describe("fmtIntercompany", () => {
+  const fmt = formatadorPorTool("fiscal_intercompany");
+  const base = { _listaTruncada: false, linhas: [], atualizadoEm: "", atualizadoHa: "" };
+  it("lista top pares vendedor-comprador", () => {
+    const txt = fmt({ ...base, _DESTAQUE: { total: 1500, totalPares: 1, topLinhasJson: JSON.stringify([{ vendedor: "Emp A", comprador: "Grupo B", valor: 1500 }]) } } as never);
+    expect(txt).toContain("intercompany");
+    expect(txt).toContain("Emp A");
+    expect(txt).toContain("Grupo B");
+  });
+  it("topLinhasJson invalido cai no fallback sem estourar", () => {
+    const txt = fmt({ ...base, _DESTAQUE: { total: 1500, totalPares: 1, topLinhasJson: "{quebrado" } } as never);
+    expect(txt).toContain("intercompany");
+  });
+  it("vazio quando nao ha pares", () => {
+    expect(fmt({ ...base, _DESTAQUE: { total: 0, totalPares: 0 } } as never)).toContain("Nenhuma venda entre empresas");
+  });
+});
+
+describe("allowlist resolve formatador real (nao generico) para as tools F2", () => {
+  it("fiscal_receita_consolidada e fiscal_intercompany tem formatador real", () => {
+    expect(ehFormatadorGenerico(formatadorPorTool("fiscal_receita_consolidada"))).toBe(false);
+    expect(ehFormatadorGenerico(formatadorPorTool("fiscal_intercompany"))).toBe(false);
+  });
+});
+```
+
+- [ ] **Step 4: Verificar tsc + jest**
 
 Run: `cd '<repo>' && npx tsc --noEmit 2>&1 | grep -c 'error TS' && npx jest mcp/lib/responder.test.ts 2>&1 | tail -4`
-Expected: `0` erros; responder.test verde (a allowlist exige formatador real, que existe).
+Expected: `0` erros; responder.test verde (inclui os 3 describes novos).
 
-- [ ] **Step 4: Commit**
+- [ ] **Step 5: Commit**
 
 ```bash
-git add mcp/lib/responder.ts
-git commit -m "feat(mcp): formatadores fmtReceitaConsolidada e fmtIntercompany + allowlist"
+git add mcp/lib/responder.ts mcp/lib/responder.test.ts
+git commit -m "feat(mcp): formatadores fmtReceitaConsolidada e fmtIntercompany + allowlist + testes"
 ```
 
 ---
@@ -921,8 +1010,13 @@ async function main() {
   check(Math.abs(r.receitaExterna + r.receitaIntragrupoEliminavel - r.receitaIndividualTotal) < 1, "externa + eliminavel == individual", erros);
   check(Math.abs(r.receitaIndividualTotal - f1.totalReceita) < 1, "receitaIndividualTotal == F1.totalReceita (reconciliacao)", erros);
   check(r.receitaIntragrupoEliminavel <= r.intercompanyBrutoVrProdutos, "eliminavel <= bruto intragrupo", erros);
-  check(r.notasIntragrupo > 3000, "notas intragrupo material (> 3000, esperado ~6230)", erros);
   check(r.receitaExterna < r.receitaIndividualTotal, "receita externa menor que individual (houve eliminacao)", erros);
+  // B2: travar valores absolutos em banda larga (absorve o ajuste do B1 ~R$40mi no bruto).
+  const banda = (v: number, alvo: number, tol: number, nome: string) => check(Math.abs(v - alvo) < tol, `${nome} ~ ${alvo.toLocaleString("pt-BR")} (real ${v.toLocaleString("pt-BR")})`, erros);
+  banda(r.receitaExterna, 897_000_000, 5_000_000, "receitaExterna");
+  banda(r.receitaIntragrupoEliminavel, 418_600_000, 5_000_000, "receitaIntragrupoEliminavel");
+  banda(r.intercompanyBrutoVrProdutos, 700_000_000, 50_000_000, "intercompanyBruto");
+  check(r.notasIntragrupo >= 6000 && r.notasIntragrupo <= 6600, `notas intragrupo na banda 6000-6600 (real ${r.notasIntragrupo})`, erros);
 
   const m = await matrizIntercompany(prisma, {});
   console.log(`matriz: ${m.totalPares} pares, total ${brl(m.total)}`);
