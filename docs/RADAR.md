@@ -5,6 +5,28 @@
 
 ---
 
+## R-periodo-acumulado — Tools fiscais sem periodo somam 13 ANOS de cache (enganoso)
+
+**Aberto em:** 2026-06-09 (achado pelo usuario ao ver "R$ 897 mi de receita").
+
+**Problema:** o cache cobre **2013-08 a 2026-06 (~13 anos)**. Toda metrica/tool fiscal que roda
+**sem periodo** soma o acumulado historico inteiro, produzindo numeros gigantes e enganosos
+(ex.: receita externa acumulada R$ 897 mi vs R$ 325 mi so de 2025). O dado esta integro (zero
+duplicacao); o problema e de comportamento/apresentacao.
+
+**Corrigido nesta entrega (PR #81):** as 3 tools desta jornada , `fiscal_faturamento_por_cfop`
+(F1), `fiscal_receita_consolidada` e `fiscal_intercompany` (F2) , passaram a usar
+`resolverPeriodoFiscal` (`mcp/tools/fiscal/_periodo-padrao.ts`): sem periodo informado, assumem
+o **ano corrente** e a resposta SEMPRE explicita o periodo. Decisao do usuario 2026-06-09.
+
+**PENDENTE (as demais ~20 tools fiscais):** `fiscal_faturamento_periodo`, `_por_empresa`,
+`_por_cliente`, `_por_uf`, `_por_marca`, `_por_operacao`, `impostos_periodo`, etc. ainda usam
+`input.periodoDe/Ate` cru , sem periodo, somam os 13 anos. Aplicar o mesmo `resolverPeriodoFiscal`
+em todas (fix mecanico, mas precisa testar cada uma). Ate la, o agente Nex DEVE sempre passar
+um periodo nessas tools. Prioridade ALTA (afeta credibilidade de qualquer numero fiscal).
+
+---
+
 ## R-base-cfop — Base da tool `fiscal_faturamento_por_cfop` migrou de `vr_nf` para `vr_produtos` (F1 faturamento)
 
 **Aberto em:** 2026-06-09 (Fase 1 do Faturamento Real Consolidado).

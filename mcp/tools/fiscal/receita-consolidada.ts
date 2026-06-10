@@ -6,6 +6,7 @@ import { receitaConsolidada } from "@/lib/metrics/fiscal/index.js";
 import { withFreshness } from "../../lib/freshness.js";
 import { enriquecerEnvelope } from "../../lib/with-responder.js";
 import { montarEscopoEmpresa } from "./_escopo-empresa.js";
+import { resolverPeriodoFiscal } from "./_periodo-padrao.js";
 
 const inputSchema = z.object({
   periodoDe: z.string().optional(),
@@ -48,10 +49,11 @@ export const fiscalReceitaConsolidada: ToolEntry<Input, Output> = {
   outputSchema,
   handler: async (input, ctx) => {
     const escopo = await montarEscopoEmpresa(ctx.prisma, input.empresaRef);
+    const per = resolverPeriodoFiscal(input.periodoDe, input.periodoAte);
     const envelope = await withFreshness(ctx.prisma, ["fato_nota_fiscal", "fato_nota_fiscal_item"], async () => {
       const r = await receitaConsolidada(ctx.prisma, {
-        periodoDe: input.periodoDe,
-        periodoAte: input.periodoAte,
+        periodoDe: per.periodoDe,
+        periodoAte: per.periodoAte,
         empresaId: escopo.empresaId,
       });
       return {
@@ -59,6 +61,8 @@ export const fiscalReceitaConsolidada: ToolEntry<Input, Output> = {
         escopoEmpresa: escopo.escopo as unknown as Record<string, unknown>,
         aviso:
           escopo.escopo.aviso +
+          ` Periodo: ${per.label}.` +
+          (per.assumido ? " (Nenhum periodo foi informado, entao considerei o ano corrente.)" : "") +
           ` Receita consolidada externa elimina o intercompany (CPC 36); ${(r.percentualEliminado * 100).toFixed(1)}% da receita individual e venda intragrupo.`,
       };
     });
