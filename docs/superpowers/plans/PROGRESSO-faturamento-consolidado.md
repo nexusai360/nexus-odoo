@@ -26,11 +26,14 @@
 
 ## Roadmap (cada fase = ciclo completo da metodologia)
 - [x] Fase 0 , Perícia + viabilidade + tabela de regras (conceito). DOC escrito.
-- [ ] **Fase 1 (PRÓXIMA) , Tabela de Regras + Faturamento por operação fiscal (CFOP/categoria).**
-      - Tabela de regras parametrizável (CFOP → categoria/eh_receita/...), versionada + TDD.
-      - Métrica `faturamentoPorOperacaoFiscal` (item.vr_produtos por CFOP e por categoria).
-      - Tool MCP `fiscal_faturamento_por_operacao_fiscal`. Mantém `por_operacao` (natureza) limpa.
-      - Reconciliação produtos×vr_nf.
+- [x] **Fase 1 , Tabela de Regras + Faturamento por operação fiscal (CFOP/categoria). CONCLUÍDA 2026-06-09.**
+      - Tabela de Regras `src/lib/fiscal/regras/` (tipos/extrair/mapa/prefixo/classificar), 18 testes.
+      - Métrica `faturamentoPorCfop` evoluída (item.vr_produtos, groupBy, agruparPor cfop|categoria,
+        totalReceita/totalNaoReceita, semCfop, reconciliação). Tool `fiscal_faturamento_por_cfop`
+        EVOLUÍDA (não nova) + formatador `fmtFaturamentoPorCfop` (2 ramificações + gap).
+      - E2E real verde: total R$ 1,858 bi, receita R$ 1,316 bi (70,8%), semCfop R$ 23,3 mi,
+        reconciliação 0,0061%. 7 regressões fiscais travadas. RADAR R-base-cfop.
+      - Próximo passo desta fase: PR + merge (autorizado); depois Issue 2 (UI) em PR próprio.
 - [ ] Fase 2 , Intercompany + receita consolidada externa (marcação + matriz + métrica/tool).
 - [ ] Fase 3 , Ponte de reconciliação (tool `ponte_faturamento`).
 - [ ] Fase 4 , Margem aproximada (preco_custo + ressalva).
