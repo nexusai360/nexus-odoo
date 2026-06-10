@@ -2,14 +2,18 @@ import { fiscalFaturamentoPorCliente } from "./faturamento-por-cliente.js";
 import type { ToolHandlerCtx } from "../../catalog/types.js";
 import type { UserContext } from "../../auth/user-context.js";
 
-// EXCECAO de paginacao em memoria: agrega por cliente em memoria e fatia
-// [offset, offset+limit); total = clientes distintos.
+// Fase 2.5: a tool consome a camada canonica (faturamentoPorClienteCanon -> core
+// carregarItensVendaComGrupo). Paginacao em memoria por cliente EXTERNO; total =
+// clientes externos distintos. O mock reproduz o caminho do core (groupBy item +
+// findMany notas + fatoParceiro).
 
 function makePrisma() {
   return {
     fatoBuildState: { findMany: jest.fn() },
     syncState: { findMany: jest.fn() },
     fatoNotaFiscal: { findMany: jest.fn() },
+    fatoNotaFiscalItem: { groupBy: jest.fn(), findMany: jest.fn() },
+    fatoParceiro: { findMany: jest.fn().mockResolvedValue([]) },
   };
 }
 
@@ -30,18 +34,33 @@ function primeFreshness(ctx: ToolHandlerCtx) {
   ]);
 }
 
-function fakeRows(n: number) {
-  return Array.from({ length: n }, (_, i) => ({
-    participanteNome: `C${String(i + 1).padStart(2, "0")}`,
-    vrNf: n - i,
+// n clientes externos distintos, cada um uma nota de venda (cfop 1) com valor decrescente.
+function primeCanonico(ctx: ToolHandlerCtx, n: number) {
+  const dataEmissao = new Date("2026-03-10T00:00:00Z");
+  const grupos = Array.from({ length: n }, (_, i) => ({
+    documentoId: i + 1,
+    cfopId: 1,
+    _sum: { vrProdutos: n - i },
+    _count: 1,
   }));
+  const notas = Array.from({ length: n }, (_, i) => ({
+    odooId: i + 1,
+    participanteId: 1000 + i, // externo (fora da whitelist/cadastro)
+    participanteNome: `C${String(i + 1).padStart(2, "0")}`,
+    empresaId: 4,
+    empresaNome: "Jds",
+    dataEmissao,
+  }));
+  (ctx.prisma.fatoNotaFiscalItem.groupBy as jest.Mock).mockResolvedValue(grupos);
+  (ctx.prisma.fatoNotaFiscalItem.findMany as jest.Mock).mockResolvedValue([{ cfopId: 1, cfopNome: "5102 - Venda" }]);
+  (ctx.prisma.fatoNotaFiscal.findMany as jest.Mock).mockResolvedValue(notas);
 }
 
 describe("fiscal_faturamento_por_cliente , paginacao em memoria (alavanca 2b)", () => {
   it("fatia [offset, offset+limit) e total = clientes distintos", async () => {
     const ctx = makeCtx();
     primeFreshness(ctx);
-    (ctx.prisma.fatoNotaFiscal.findMany as jest.Mock).mockResolvedValue(fakeRows(25));
+    primeCanonico(ctx, 25);
 
     const r = await fiscalFaturamentoPorCliente.handler({ limit: 10, offset: 0 } as never, ctx);
     if (r.estado !== "preparando") {
@@ -55,7 +74,7 @@ describe("fiscal_faturamento_por_cliente , paginacao em memoria (alavanca 2b)", 
   it("segunda pagina nao se sobrepoe a primeira", async () => {
     const ctx = makeCtx();
     primeFreshness(ctx);
-    (ctx.prisma.fatoNotaFiscal.findMany as jest.Mock).mockResolvedValue(fakeRows(25));
+    primeCanonico(ctx, 25);
 
     const p1 = await fiscalFaturamentoPorCliente.handler({ limit: 10, offset: 0 } as never, ctx);
     const p2 = await fiscalFaturamentoPorCliente.handler({ limit: 10, offset: 10 } as never, ctx);
@@ -69,7 +88,7 @@ describe("fiscal_faturamento_por_cliente , paginacao em memoria (alavanca 2b)", 
   it("ultima pagina: temMais=false", async () => {
     const ctx = makeCtx();
     primeFreshness(ctx);
-    (ctx.prisma.fatoNotaFiscal.findMany as jest.Mock).mockResolvedValue(fakeRows(25));
+    primeCanonico(ctx, 25);
 
     const r = await fiscalFaturamentoPorCliente.handler({ limit: 10, offset: 20 } as never, ctx);
     if (r.estado !== "preparando") {
