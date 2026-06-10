@@ -2126,6 +2126,19 @@ model DimEmpresaGrupo {
   @@map("dim_empresa_grupo")
 }
 
+/// De-para CNPJ-raiz -> regime tributario da empresa (Fase 5). Fonte:
+/// sped.empresa.regime_tributario (store=false, lido por leitura direcionada no
+/// builder dim-empresa-regime). Chave = raiz do CNPJ (8 digitos): o regime e
+/// opcao da pessoa juridica, filiais herdam. 1 raiz -> 1 regime (assert no builder).
+model DimEmpresaRegime {
+  cnpjRaiz     String   @id @map("cnpj_raiz")
+  regimeCodigo String   @map("regime_codigo")
+  regimeLabel  String   @map("regime_label")
+  atualizadoEm DateTime @default(now()) @map("atualizado_em")
+
+  @@map("dim_empresa_regime")
+}
+
 model FatoParceiro {
   odooId       Int       @id @map("odoo_id")
   nome         String?
