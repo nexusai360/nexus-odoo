@@ -936,5 +936,12 @@
     "dominio": "fiscal",
     "classe": "prosseguir",
     "toolEsperada": "fiscal_intercompany"
+  },
+  {
+    "id": "cov-ponte-faturamento",
+    "pergunta": "Reconcilie o faturamento: como o bruto vira a receita externa real?",
+    "dominio": "fiscal",
+    "classe": "prosseguir",
+    "toolEsperada": "fiscal_ponte_faturamento"
   }
 ]
