@@ -41,8 +41,22 @@
 
 ## Estado atual / próxima ação
 - FEITO: discovery (DOC + script `scripts/discovery/regime-tributario.ts`), PROGRESSO.
-- PRÓXIMO: inventário fino do financeiro (ler as 14 tools, mapear cobertura/lacuna) e,
-  em paralelo conceitual, SPEC v1 da Fase 5 (regime). Seguir metodologia §6.
+- FEITO: **SPEC v1 → 2 reviews adversariais Opus (fiscal + arquitetura) → SPEC v3**
+  (`docs/superpowers/specs/2026-06-10-f5-faturamento-por-regime-design.md`). As reviews
+  acharam 2+2 BLOCKERs materiais, todos endereçados na v3 (resumo na §0 da spec).
+- PROVAS no dado real fechadas (decisivas p/ execução):
+  - `regime_tributario` é `store=false` → vem por **leitura direcionada** (`search_read`
+    fields explícitos `["id","regime_tributario","company_id"]`); NÃO tocar `field-selection` global.
+  - **Ponte CNPJ:** `sped.empresa.company_id`/`participante_id` trazem o CNPJ no label, mesmo
+    formato do `empresaNome` do fato → `parseEmpresaNome` casa por dígitos. **1 raiz→1 regime** confirmado.
+  - **Mapa CNPJ-raiz → regime (cravado):** Simples=07390039/33718546/34461908/45424185;
+    Presumido=10557556/35156509/62673999; Real=18282961/34161829.
+  - **Base única:** compor sobre `_itens-venda-grupo` (canônico, pós-F2.5); reconciliar contra
+    `receitaConsolidada` (individual E externa por regime). NÃO usar faturamento-por-empresa (vrNf+natureza).
+- PRÓXIMO: **PLAN v1 → 2 reviews → PLAN v3** (tasks TDD: migration manual `dim_empresa_regime` →
+  builder direcionado `FATO_BUILDERS` ciclo snapshot → métrica `faturamentoPorRegime` → tool+fmt+triggers
+  estritos → gates de catálogo enumerados → E2E real + rebuild app+mcp+worker §2.1 + jest COMPLETO →
+  PR+merge). Depois: verificação do FINANCEIRO (E2E das 14 tools existentes + lacunas). Chamar usuário no fim.
 
 ## Verificação obrigatória (regra de raiz)
 - TDD + E2E contra cache real; rebuild mcp (CLAUDE.md §2.1) antes de validar; jest COMPLETO + conferência antes do push.
