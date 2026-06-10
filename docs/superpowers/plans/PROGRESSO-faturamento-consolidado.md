@@ -47,10 +47,18 @@
           documentoId+cfopId + findMany notas), classificar por id-representante (igual F1),
           Number(Decimal), COUNT distinct nota. Sem migration.
         - Devolução (deduz) = entrada CFOP deduzReceita, NÃO finalidade=4 saída → vai pra Fase 3.
-      - **PRÓXIMO: PLAN v1** (skill writing-plans) sobre a SPEC v3 → 2 reviews adversariais do
-        plano → PLAN v3 → execução TDD (src/lib/fiscal/grupo/ → métrica receita-consolidada →
-        métrica matriz-intercompany → 2 tools + 2 formatadores → triggers → E2E real + rebuild mcp)
-        → PR + merge.
+      - PLAN v1 → 2 reviews adversariais (Opus, validadas no cache) → PLAN v3
+        (`docs/superpowers/plans/2026-06-09-f2-intercompany-receita-consolidada-plan.md`).
+        Achados aplicados: cascata Unicode-tolerante (ZWJ/NB-hyphen) + gate 14 díg no CNPJ;
+        E2E trava valores absolutos; testes dos 2 formatadores + allowlist real.
+      - EXECUÇÃO TDD COMPLETA (Tasks 1-9): src/lib/fiscal/grupo/ (raízes+cnpj+participantes, 11
+        testes), métricas receitaConsolidada e matrizIntercompany (sem queryRaw), 2 tools + 2
+        formatadores + triggers. tsc 0, 327 testes verdes, mcp rebuildado.
+      - **E2E real verde (números cravados):** receita externa = R$ 896.975.881,31; intragrupo
+        eliminável = R$ 418.831.109,29 (31,8%); receita individual = R$ 1.315.806.990,60
+        (== F1.totalReceita, reconciliação EXATA); intercompany bruto = R$ 719,2 mi; 6.339
+        notas intra (a correção Unicode capturou +109 notas que escapavam). Matriz: 70 pares.
+      - **PRÓXIMO: PR + merge.** Depois Fase 3.
 - [ ] Fase 3 , Ponte de reconciliação (tool `ponte_faturamento`).
 - [ ] Fase 4 , Margem aproximada (preco_custo + ressalva).
 - [ ] Futuro (bloqueado): DRE/lucro/EBITDA/caixa quando contábil/financeiro sincronizarem.
