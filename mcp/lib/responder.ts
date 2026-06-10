@@ -915,13 +915,48 @@ const fmtFiscalFaturamentoPorOperacao: FormatadorCanonico = (env) => {
 };
 
 const fmtFaturamentoPorCfop: FormatadorCanonico = (env) => {
-  const valorGeral = Number(env._DESTAQUE?.valorGeral ?? env._agregado?.soma ?? 0);
-  const cfops = Number(env._DESTAQUE?.cfops ?? env._agregado?.contagem ?? 0);
-  if (cfops === 0 || valorGeral === 0) {
-    return "Nenhum faturamento de saida autorizado por CFOP no periodo.";
+  const d = env._DESTAQUE ?? {};
+  const agruparPor = String(d.agruparPor ?? "categoria");
+  const totalProdutos = Number(d.totalProdutos ?? env._agregado?.soma ?? 0);
+  const totalReceita = Number(d.totalReceita ?? 0);
+  const linhasCount = Number(d.linhasCount ?? env._agregado?.contagem ?? 0);
+  const semCfopValor = Number(d.semCfopValor ?? 0);
+
+  if (linhasCount === 0 || totalProdutos === 0) {
+    return "Nenhum faturamento de saida autorizado por operacao fiscal no periodo.";
   }
-  const sufixo = cfops === 1 ? "CFOP" : "CFOPs";
-  return `Faturamento de saida autorizado por CFOP: ${formatBRL(valorGeral)} distribuido em ${cfops} ${sufixo}. Valor rateado pelo item da nota; o fechamento com o total bate por tolerancia, nao exato.`;
+
+  type TopLinha = { rotulo: string; valor: number; ehReceita: boolean };
+  let top: TopLinha[] = [];
+  try {
+    const parsed = JSON.parse(String(d.topLinhasJson ?? "[]"));
+    if (Array.isArray(parsed)) top = parsed as TopLinha[];
+  } catch {
+    top = [];
+  }
+
+  const unidade =
+    agruparPor === "cfop"
+      ? linhasCount === 1
+        ? "CFOP"
+        : "CFOPs"
+      : linhasCount === 1
+        ? "categoria"
+        : "categorias";
+  const cabeca =
+    `Faturamento de saida autorizado por operacao fiscal (${agruparPor}): ${formatBRL(totalProdutos)} em ${linhasCount} ${unidade}. ` +
+    `Receita (venda, servico, exportacao): ${formatBRL(totalReceita)}; o restante e movimentacao que nao e receita.`;
+  const lista = top.map((l) => {
+    const marca = l.ehReceita ? "receita" : "nao-receita";
+    // rotulo ja vem limpo (ROTULO_CATEGORIA ou cfopNome "5102 - Venda..."); NAO passar
+    // por humanizeName (mutilaria o codigo do CFOP e o hifen).
+    return `- ${String(l.rotulo ?? "").trim()}: ${formatBRL(Number(l.valor ?? 0))} (${marca})`;
+  });
+  const partes = [cabeca, lista.length ? "Principais operacoes:" : "", ...lista].filter(Boolean);
+  if (semCfopValor > 0) {
+    partes.push(`Atencao: ${formatBRL(semCfopValor)} sem CFOP (sem classificacao fiscal).`);
+  }
+  return partes.join("\n");
 };
 
 const fmtFaturamentoNaoAutorizado: FormatadorCanonico = (env) => {

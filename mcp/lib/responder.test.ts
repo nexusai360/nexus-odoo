@@ -194,3 +194,49 @@ describe.skip("contrato pre-PR2 (TOOLS_QUE_PRECISAM_FORMATADOR)", () => {
     expect(faltam).toEqual([]);
   });
 });
+
+describe("fmtFaturamentoPorCfop", () => {
+  const fmt = formatadorPorTool("fiscal_faturamento_por_cfop");
+  const baseEnv = { _listaTruncada: false, linhas: [], atualizadoEm: "", atualizadoHa: "" };
+  it("modo categoria: lista com marca de receita e aviso de gap", () => {
+    const env = {
+      ...baseEnv,
+      _DESTAQUE: {
+        agruparPor: "categoria",
+        totalProdutos: 2050,
+        totalReceita: 1300,
+        linhasCount: 4,
+        semCfopValor: 50,
+        topLinhasJson: JSON.stringify([
+          { rotulo: "Venda", valor: 1000, ehReceita: true },
+          { rotulo: "Transferencia", valor: 700, ehReceita: false },
+        ]),
+      },
+    };
+    const txt = fmt(env as never);
+    expect(txt).toContain("por operacao fiscal (categoria)");
+    expect(txt).toContain("Receita");
+    expect(txt).toContain("nao-receita");
+    expect(txt).toContain("sem CFOP");
+  });
+  it("modo cfop: preserva o codigo+nome do CFOP sem mutilar", () => {
+    const env = {
+      ...baseEnv,
+      _DESTAQUE: {
+        agruparPor: "cfop",
+        totalProdutos: 1000,
+        totalReceita: 1000,
+        linhasCount: 1,
+        semCfopValor: 0,
+        topLinhasJson: JSON.stringify([{ rotulo: "5102 - Venda de mercadoria", valor: 1000, ehReceita: true }]),
+      },
+    };
+    const txt = fmt(env as never);
+    expect(txt).toContain("por operacao fiscal (cfop)");
+    expect(txt).toContain("5102 - Venda de mercadoria");
+  });
+  it("vazio quando nao ha linhas", () => {
+    const txt = fmt({ ...baseEnv, _DESTAQUE: { totalProdutos: 0, linhasCount: 0 } } as never);
+    expect(txt).toContain("Nenhum faturamento");
+  });
+});
