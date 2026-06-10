@@ -102,7 +102,15 @@
       - **Verificação:** conferência (I1-I5+S0-S4+C1-C6) todos gates verdes; jest COMPLETO verde (380 suites /
         2841 testes; 104 tools/golden/frozen-30); smoke test da tool com as 2 linhas; mcp rebuildado. f4-baseline
         não regravado (drift de dado, não é gate CI).
-- [ ] Fase 3 , Ponte de reconciliação (tool `ponte_faturamento`).
+- [x] **Fase 3 (CONCLUÍDA 2026-06-10) , Ponte de reconciliação (`fiscal_ponte_faturamento`).**
+      Spec v3 + 2 reviews adversariais (validadas no cache). Tool NOVA (104→105) que compõe as métricas
+      canônicas num waterfall: bruto → (−) não-receita por categoria → receita individual → (−) intragrupo
+      eliminado → receita externa real. Métrica `ponteFaturamento` (compõe `faturamentoPorCfop` +
+      `receitaConsolidada`, invariante `reconciliado`); tool + `fmtPonteFaturamento` (registrado em
+      FORMATADORES) + flag concentrador por empresa; integration.test 105/114; entrada golden `cov-`; trigger;
+      snapshot regenerado. E2E real: 2025 bruto R$ 659,6mi → externa R$ 325,5mi (reconciliado=true). jest
+      COMPLETO verde (381 suites/2843); conferência gates verdes; mcp rebuildado + smoke test.
+- [ ] ~~Fase 3~~ (movida acima, concluída).
 - [ ] Fase 4 , Margem aproximada (preco_custo + ressalva).
 - [ ] Futuro (bloqueado): DRE/lucro/EBITDA/caixa quando contábil/financeiro sincronizarem.
 
