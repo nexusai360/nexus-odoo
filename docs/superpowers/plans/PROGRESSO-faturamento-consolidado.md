@@ -88,6 +88,20 @@
       gravação; não é gate de CI; correção provada pela conferência exata + f2 E2E + jest).
       **DEFERIDO p/ Fase 2.6:** transparência sem-CFOP + 5949/6949 por finalidade (R-sem-cfop-transparencia) e as
       9 checagens restantes da conferência (R-conferencia-fiscal-expandir).
+- [x] **Fase 2.6 (CONCLUÍDA 2026-06-10) , Transparência sem-CFOP + Confiabilidade da conferência.**
+      Metodologia completa (spec v3 + plan v3, 2 reviews adversariais cada, validadas no cache). Specs/plans:
+      `docs/superpowers/{specs,plans}/2026-06-10-f2.6-transparencia-conferencia-*`.
+      - **Transparência (R-sem-cfop-transparencia FECHADO):** `faturamentoPorCfop` ganhou (aditivo)
+        `semCfopPorFinalidade` (fin1 venda candidata R$ 11,84mi / fin4 devolução R$ 11,46mi) e
+        `outrasNaoEspecificadas` (5949/6949). Formatador exibe 2 linhas com **rótulo honesto** ("substância a
+        confirmar", não "venda escondida" , a auditoria provou que "outras" é majoritariamente não-venda).
+        `semCfop` preservado; observação de reconciliação corrigida (notas sem item, não "tolerância").
+      - **Conferência (R-conferencia-fiscal-expandir FECHADO):** +C1-C6 + primitivas `checkPct`/`checkBandaValor`.
+        C1 órfãos base receita (gate ==0); C2 item vs cabeçalho-notas-sem-item (gate <0,01%, fecha ao centavo);
+        C3 sentinela CFOP novo em "outras"; C4a inversão receita×natureza (R$ 906k); C5 log; C6 notas sem item (101).
+      - **Verificação:** conferência (I1-I5+S0-S4+C1-C6) todos gates verdes; jest COMPLETO verde (380 suites /
+        2841 testes; 104 tools/golden/frozen-30); smoke test da tool com as 2 linhas; mcp rebuildado. f4-baseline
+        não regravado (drift de dado, não é gate CI).
 - [ ] Fase 3 , Ponte de reconciliação (tool `ponte_faturamento`).
 - [ ] Fase 4 , Margem aproximada (preco_custo + ressalva).
 - [ ] Futuro (bloqueado): DRE/lucro/EBITDA/caixa quando contábil/financeiro sincronizarem.

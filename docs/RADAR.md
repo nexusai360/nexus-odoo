@@ -70,7 +70,19 @@ Cuidado: "Matrix Fit" franquias (32493616, 50075046) sao CLIENTES externos, nao 
 
 ---
 
-## R-sem-cfop-transparencia — Linha "sem CFOP" (R$ 23,3 mi) mistura venda perdida e devolucao
+## R-sem-cfop-transparencia — Linha "sem CFOP" (R$ 23,3 mi) mistura venda perdida e devolucao (RESOLVIDO)
+
+**FECHADO em:** 2026-06-10 (Fase 2.6). `faturamentoPorCfop` ganhou `semCfopPorFinalidade` (fin=1 venda
+candidata R$ 11,84mi/275it; fin=4 devolucao R$ 11,46mi/89it) e `outrasNaoEspecificadas` (CFOP 5949/6949,
+R$ 11,78mi finalidade=venda). O formatador exibe 2 linhas com **rotulo honesto**: a auditoria provou que o
+balde "outras" e majoritariamente NAO-venda por natureza (OUTRA SAIDA/SIMPLES REMESSA), entao o rotulo diz
+"substancia a confirmar com o cliente", NAO "venda escondida". Mantido FORA da receita (conservador); a
+reclassificacao (se houver) e decisao do cliente. C5 da conferencia loga a decomposicao por ano.
+
+---
+
+### (historico do achado original)
+## R-sem-cfop-historico — Linha "sem CFOP" (R$ 23,3 mi) mistura venda perdida e devolucao
 
 **Aberto em:** 2026-06-10 (auditoria da Fase 1). **Prioridade media.**
 
@@ -82,9 +94,16 @@ na exibicao; investigar com o cliente por que ~R$ 11,7 mi de equipamentos sairam
 
 ---
 
-## R-conferencia-fiscal-expandir — Base de conferencia deve virar gate permanente (do CI)
+## R-conferencia-fiscal-expandir — Base de conferencia deve virar gate permanente (do CI) (RESOLVIDO)
 
 **Aberto em:** 2026-06-10. **Prioridade media.**
+**FECHADO em:** 2026-06-10 (Fase 2.6). `scripts/conferencia-fiscal.ts` agora tem 5 invariantes + S0/S3/S4
+(gates) + S1/S2 (alertas) + **C1-C6**: C1 orfaos na base de receita (gate ==0); C2 reconciliacao item vs
+(cabecalho - notas-sem-item) (gate < 0,01%, fecha ao centavo , a dif de R$ 113k era 100% notas de
+transferencia sem item); C3 sentinela de CFOP novo em "outras" (so 5949/6949 hoje); C4a inversao
+receita(cfop) x natureza nao-venda (alerta, R$ 906.853 hoje); C5 log sem_cfop por finalidade; C6 notas sem
+item (alerta, 101 hoje). Primitivas `checkPct`/`checkBandaValor` adicionadas. CI nao tem DB, entao a
+conferencia roda como gate LOCAL pre-merge (decisao mantida).
 
 `scripts/conferencia-fiscal.ts` ja confronta 5 invariantes (TS vs SQL bruto, por ano). As 2 auditorias
 recomendaram 12 checagens adicionais para tornar a confianca permanente: orfaos item→nota == 0; reconciliacao
