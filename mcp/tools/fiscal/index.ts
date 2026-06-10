@@ -35,6 +35,8 @@ import { fiscalReceitaConsolidada } from "./receita-consolidada.js";
 import { fiscalIntercompany } from "./intercompany.js";
 // F3 (ponte de reconciliacao)
 import { fiscalPonteFaturamento } from "./ponte-faturamento.js";
+// F4 (margem bruta aproximada)
+import { fiscalMargemAproximada } from "./margem-aproximada.js";
 
 export const fiscalTools: ToolEntry[] = [
   fiscalFaturamentoPeriodo as ToolEntry,
@@ -74,4 +76,6 @@ export const fiscalTools: ToolEntry[] = [
   fiscalIntercompany as ToolEntry,
   // F3 (ponte de reconciliacao)
   fiscalPonteFaturamento as ToolEntry,
+  // F4 (margem bruta aproximada)
+  fiscalMargemAproximada as ToolEntry,
 ];

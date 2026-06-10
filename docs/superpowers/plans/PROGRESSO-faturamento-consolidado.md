@@ -111,7 +111,24 @@
       snapshot regenerado. E2E real: 2025 bruto R$ 659,6mi → externa R$ 325,5mi (reconciliado=true). jest
       COMPLETO verde (381 suites/2843); conferência gates verdes; mcp rebuildado + smoke test.
 - [ ] ~~Fase 3~~ (movida acima, concluída).
-- [ ] Fase 4 , Margem aproximada (preco_custo + ressalva).
+- [x] **Fase 4 (CONCLUÍDA 2026-06-10, MILESTONE FECHADO) , Margem bruta aproximada (`fiscal_margem_aproximada`).**
+      Métrica `margemAproximada` (1 query agregada por cfop_nome, classificação `ehReceita` em TS, fonte única;
+      receita venda − custo Σqtd×preco_custo; flag `custoDesatualizadoProvavel`). E2E real: 2025 margem 23,1% /
+      cobertura 99,9%; acum 11,0% / 84,8% (não-confiável , custo snapshot). Tool nova 105→**106**: fmt em
+      FORMATADORES com ressalva honesta (não-lucro), integration.test 106/115, golden `cov-`, trigger, snapshot.
+      jest COMPLETO verde (382 suites/2845); conferência gates verdes; tsc limpo. PR + merge pendente.
+- [x] ~~Fase 4 (em execução)~~ , concluída acima. SPEC v3:
+      2 reviews aplicadas: `docs/superpowers/specs/2026-06-10-f4-margem-aproximada-design.md`. Design travado:
+      métrica `margemAproximada` (1 query `$queryRawUnsafe` parametrizada, JOIN item→`fato_produto` por
+      `produto_id=odoo_id`, agrega por `cfop_nome` + flag custo presente; classifica `ehReceita` em TS via
+      `classificarCfop` , fonte ÚNICA, NÃO estender o core). Retorna receitaVendaTotal, receitaComCusto,
+      custoEstimado(Σ qtd×preco_custo), margemBrutaAproximada, percentualMargem, coberturaCusto,
+      `custoDesatualizadoProvavel`. **Default ano corrente** (custo é snapshot atual → margem de anos antigos
+      é lixo; só recente confiável: 2025 margem 23,14%, cobertura 99,94%; acum 10,96% NÃO-confiável).
+      Tool nova (105→**106**): registrar fmt em `FORMATADORES` (só lá); integration.test 5 asserts 105→106 +
+      114→115 + 2 comentários; FISCAL_IDS; golden `cov-71`; trigger; snapshot regen. Ressalva honesta: "margem
+      BRUTA aproximada, NÃO lucro; cobertura X%; inclui venda intragrupo". TDD; conferência + jest COMPLETO antes
+      de push; rebuild mcp + smoke. PR + merge (autorizado) , FECHA o milestone.
 - [ ] Futuro (bloqueado): DRE/lucro/EBITDA/caixa quando contábil/financeiro sincronizarem.
 
 ## Pendências paralelas (de antes, não perder)

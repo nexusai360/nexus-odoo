@@ -1862,6 +1862,26 @@ const fmtPonteFaturamento: FormatadorCanonico = (env) => {
   );
 };
 
+// Fase 4: margem bruta aproximada. Ressalva honesta (nao-lucro, cobertura, custo snapshot).
+const fmtMargemAproximada: FormatadorCanonico = (env) => {
+  const d = env._DESTAQUE ?? {};
+  const receita = Number(d.receitaComCusto ?? 0);
+  const custo = Number(d.custoEstimado ?? 0);
+  const margem = Number(d.margemBrutaAproximada ?? 0);
+  const pct = Number(d.percentualMargem ?? 0);
+  const cob = Number(d.coberturaCusto ?? 0);
+  const periodo = String(d.periodoLabel ?? "");
+  if (receita === 0) return `Sem venda com custo disponivel no periodo${periodo ? ` (${periodo})` : ""}.`;
+  const desatual = Number(d.custoDesatualizado ?? 0) === 1
+    ? " Atencao: ha itens com custo > receita (preco_custo e o atual do produto); confie mais em periodos recentes."
+    : "";
+  return (
+    `Margem bruta APROXIMADA${periodo ? ` (${periodo})` : ""}: ${formatBRL(margem)} ` +
+    `(${(pct * 100).toFixed(1)}%) sobre receita de venda ${formatBRL(receita)} menos custo ${formatBRL(custo)}. ` +
+    `Cobertura ${(cob * 100).toFixed(1)}% da venda. NAO e lucro (sem despesas/impostos/rateios).${desatual}`
+  );
+};
+
 const FORMATADORES: Record<string, FormatadorCanonico> = {
   // financeiro
   financeiro_contas_a_receber: fmtContasAReceber,
@@ -1919,6 +1939,7 @@ const FORMATADORES: Record<string, FormatadorCanonico> = {
   "fiscal_receita_consolidada": fmtReceitaConsolidada,
   "fiscal_intercompany": fmtIntercompany,
   "fiscal_ponte_faturamento": fmtPonteFaturamento,
+  "fiscal_margem_aproximada": fmtMargemAproximada,
   "fiscal_faturamento_nao_autorizado": fmtFaturamentoNaoAutorizado,
   "fiscal_faturamento_recebido": fmtFaturamentoRecebido,
   "fiscal_detalhar_nota": fmtFiscalDetalharNota,
