@@ -59,22 +59,35 @@
         (== F1.totalReceita, reconciliação EXATA); intercompany bruto = R$ 719,2 mi; 6.339
         notas intra (a correção Unicode capturou +109 notas que escapavam). Matriz: 70 pares.
       - **PRÓXIMO: PR + merge.** Depois Fase 3.
-- [ ] **Fase 2.5 (NOVA, PRIORIDADE ALTA) , Unificação + Confiabilidade.** Descoberta ao auditar
-      a consistência (modo autônomo 2026-06-10, a pedido do usuário: "não posso ter alucinação nos dados").
-      Entregue já nesta frente: **base de conferência** (`scripts/conferencia-fiscal.ts`, 5 invariantes
-      TS vs SQL bruto por ano, todos fecham ao centavo) + fix de período (ano corrente) nas 3 tools
-      canônicas + 2 auditorias adversariais (RADAR R-faturamento-duas-definicoes, R-intercompany-fallback-fragil,
-      R-sem-cfop-transparencia, R-conferencia-fiscal-expandir). Trabalho da fase:
-      1. **Unificar as 2 definições de faturamento** (R-faturamento-duas-definicoes): migrar as ~18 tools
-         antigas (`reports/queries`) + dashboard para a camada canônica; distinguir faturamento individual
-         (com intercompany) de receita externa real (sem). É o que conserta o "+69% inflado".
-      2. **Blindar a marcação intercompany** (R-intercompany-fallback-fragil): whitelist de participante_id
-         do grupo + sentinelas, para não depender do regex de nome (R$ 278,8 mi em risco).
-      3. **Fix de período** nas demais ~22 tools fiscais (R-periodo-acumulado).
-      4. **Expandir a base de conferência** com as 12 checagens das auditorias (R-conferencia-fiscal-expandir).
-      5. Transparência sem-CFOP (R-sem-cfop-transparencia).
-      Conduzir com spec→2 reviews→plan→2 reviews→execução TDD, sempre rodando a base de conferência + suite
-      COMPLETA (jest inteiro, não só o domínio , o CI pega integration.test e golden-schema) antes de push/merge.
+- [x] **Fase 2.5 (CONCLUÍDA 2026-06-10) , Unificação + Confiabilidade.** Metodologia completa:
+      SPEC v1 → 2 reviews adversariais Opus (validadas no cache) → SPEC v3 → PLAN v1 → 2 reviews → PLAN v3
+      → execução TDD inline. Specs/plans: `docs/superpowers/{specs,plans}/2026-06-10-f2.5-unificacao-faturamento-*`.
+      **Entregue:**
+      1. **Unificação das 2 definições (R-faturamento-duas-definicoes FECHADO):** `fiscal_faturamento_periodo`,
+         `_por_cliente`, `_mensal_serie` repontadas para a camada canônica (base `item.vrProdutos` + Tabela de
+         Regras + eliminação intercompany). **`faturamento_periodo` grupo 2025 = R$ 325,5 mi** (era R$ 551,2 mi,
+         **+69% inflado CONSERTADO**). Headline: grupo → receita externa real (CPC 36); empresa → individual da
+         CNPJ com **paridade externa/intragrupo + flag "concentrador"** quando %elim>50% (ex.: Jds Matriz 94,8%).
+         Core compartilhado `src/lib/metrics/fiscal/_itens-venda-grupo.ts` (groupBy + marcação por nota, sem
+         $queryRaw); `receitaConsolidada` refatorada sobre o core com **saída idêntica** (conferência I3/I4 ao
+         centavo nos 5 períodos). 2 métricas novas: `faturamentoSerieMensal`, `faturamentoPorClienteCanon`.
+      2. **Blindagem intercompany (R-intercompany-fallback-fragil FECHADO):** `PARTICIPANTES_GRUPO_WHITELIST`
+         (15 ids validados no cache: 2,9,10,11,12,13,14,15,16,19,20,21,22,23,24; excluídos os reciclados
+         8722/8723/9552/7719). `ehNotaIntragrupo` agora whitelist→cadastro→nome. Delta = R$ 0 (blindagem, não
+         correção; o fallback de nome já pegava tudo). Sentinela S0 (gate) prova que a eliminação nunca reduz
+         abaixo do baseline pré-whitelist; S1 residual só-por-nome caiu para 2025=0 / acum=109 (whitelist cobriu).
+      3. **Fix de período (R-periodo-acumulado FECHADO p/ Grupo B):** `resolverPeriodoFiscal` (default ano
+         corrente) aplicado nas 7 tools do Grupo B (notas_emitidas, impostos_periodo, produtos_faturados,
+         nao_autorizado, por_operacao, por_empresa, recebido). `contar_notas` EXCLUÍDO (sem período; ouro-fiscal-01
+         crava 49.427). Grupo C (dfe/notas_recebidas) deixado sem default ano corrente (decisão: não esconder
+         pendência antiga).
+      **Conferência expandida:** S0/S3/S4 (gates) + S1/S2 (alertas) + `checkBanda`/`checkGte`. Todos verdes.
+      **Verificação:** jest COMPLETO verde (380 suites / 2838 testes, inclui integration.test 104 tools,
+      golden-schema, frozen-30); `f2-receita-consolidada.e2e.ts` bandas absolutas verdes; smoke test dos handlers
+      contra cache real OK; mcp rebuildado. `f4-baseline` NÃO regravado (drift de dado do cache desde a última
+      gravação; não é gate de CI; correção provada pela conferência exata + f2 E2E + jest).
+      **DEFERIDO p/ Fase 2.6:** transparência sem-CFOP + 5949/6949 por finalidade (R-sem-cfop-transparencia) e as
+      9 checagens restantes da conferência (R-conferencia-fiscal-expandir).
 - [ ] Fase 3 , Ponte de reconciliação (tool `ponte_faturamento`).
 - [ ] Fase 4 , Margem aproximada (preco_custo + ressalva).
 - [ ] Futuro (bloqueado): DRE/lucro/EBITDA/caixa quando contábil/financeiro sincronizarem.

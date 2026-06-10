@@ -38,4 +38,19 @@ describe("ehNotaIntragrupo", () => {
   it("false para participante externo sem CNPJ do grupo no nome", () => {
     expect(ehNotaIntragrupo({ participanteId: 77, participanteNome: "Cliente Externo" }, grupo)).toBe(false);
   });
+
+  // Fase 2.5: whitelist como 1a camada (whitelist -> cadastro -> nome).
+  it("true pela whitelist mesmo sem CNPJ no nome e fora do Set de cadastro (pid 9)", () => {
+    // pid 9 esta na whitelist; nome sem CNPJ legivel; Set de cadastro vazio.
+    expect(ehNotaIntragrupo({ participanteId: 9, participanteNome: "Jht DF Matriz" }, new Set())).toBe(true);
+  });
+  it("true pela whitelist para o pid 24 (Ijht Premium Car) sem CNPJ no nome", () => {
+    expect(ehNotaIntragrupo({ participanteId: 24, participanteNome: "Ijht Premium Car" }, new Set())).toBe(true);
+  });
+  it("false para reciclado mesmo que id parecido, quando nada casa (pid 8723 sem CNPJ no nome)", () => {
+    expect(ehNotaIntragrupo({ participanteId: 8723, participanteNome: "Vilmar Luiz Borges" }, new Set())).toBe(false);
+  });
+  it("ainda marca pelo nome quando o id nao esta em lugar nenhum (fallback ultima defesa)", () => {
+    expect(ehNotaIntragrupo({ participanteId: 77777, participanteNome: "Fulano 10.557.556/0001-00" }, new Set())).toBe(true);
+  });
 });

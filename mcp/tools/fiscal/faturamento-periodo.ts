@@ -1,11 +1,15 @@
 // mcp/tools/fiscal/faturamento-periodo.ts
 // Tool MCP: fiscal_faturamento_periodo
+// Fase 2.5: passa a responder o numero REAL (receita externa sem intercompany como
+// headline do grupo; faturamento individual da CNPJ quando filtra empresa), via a
+// camada canonica receitaConsolidada. Conserta o +69% inflado da versao antiga.
 import { z } from "zod";
 import type { ToolEntry } from "../../catalog/types.js";
-import { queryFaturamentoPeriodo } from "@/lib/reports/queries/fiscal.js";
+import { receitaConsolidada } from "@/lib/metrics/fiscal/index.js";
 import { withFreshness } from "../../lib/freshness.js";
 import { enriquecerEnvelope } from "../../lib/with-responder.js";
-import { montarEscopoEmpresa, type EscopoEmpresa } from "./_escopo-empresa.js";
+import { montarEscopoEmpresa } from "./_escopo-empresa.js";
+import { resolverPeriodoFiscal } from "./_periodo-padrao.js";
 
 const inputSchema = z.object({
   periodoDe: z.string().optional(),
@@ -13,10 +17,18 @@ const inputSchema = z.object({
   empresaRef: z.string().trim().min(1).optional().describe("Empresa (id, CNPJ ou nome). Sem isso, considera o grupo todo."),
 });
 
-// Onda 1.C: envelope canonico (_RESPOSTA + _DESTAQUE) aplicado.
+// Headline decidido no HANDLER: grupo -> receita externa (CPC 36); empresa -> individual.
 const dados = z.object({
-  totalNotas: z.number().int(),
-  valorFaturado: z.number(),
+  receitaExterna: z.number(),
+  receitaIndividual: z.number(),
+  intragrupoEliminavel: z.number(),
+  percentualEliminado: z.number(),
+  notasExternas: z.number().int(),
+  notasIntragrupo: z.number().int(),
+  headlineValor: z.number(),
+  headlineRotulo: z.string(),
+  concentrador: z.boolean(),
+  periodoLabel: z.string(),
   escopoEmpresa: z.record(z.string(), z.unknown()),
   aviso: z.string(),
   _RESPOSTA: z.string().optional(),
@@ -44,17 +56,6 @@ const outputSchema = z.union([
 type Input = z.infer<typeof inputSchema>;
 type Output = z.infer<typeof outputSchema>;
 
-function shape(d: Awaited<ReturnType<typeof queryFaturamentoPeriodo>>, escopo: EscopoEmpresa) {
-  return {
-    totalNotas: d.totalNotas,
-    valorFaturado: d.valorFaturado,
-    escopoEmpresa: escopo as unknown as Record<string, unknown>,
-    aviso:
-      "Faturamento de venda autorizada (saída autorizada; exclui canceladas, não autorizadas " +
-      "e operações que não são venda, como devolução e transferência). " + escopo.aviso,
-  };
-}
-
 export const fiscalFaturamentoPeriodo: ToolEntry<Input, Output> = {
   id: "fiscal_faturamento_periodo",
   dominio: "fiscal",
@@ -64,28 +65,54 @@ export const fiscalFaturamentoPeriodo: ToolEntry<Input, Output> = {
   outputSchema,
   handler: async (input, ctx) => {
     const escopo = await montarEscopoEmpresa(ctx.prisma, input.empresaRef);
-    const envelope = await withFreshness(
-      ctx.prisma,
-      ["fato_nota_fiscal"],
-      async () =>
-        shape(
-          await queryFaturamentoPeriodo(ctx.prisma, {
-            periodoDe: input.periodoDe,
-            periodoAte: input.periodoAte,
-            empresaId: escopo.empresaId,
-          }),
-          escopo.escopo,
-        ),
-    );
+    const per = resolverPeriodoFiscal(input.periodoDe, input.periodoAte);
+    const envelope = await withFreshness(ctx.prisma, ["fato_nota_fiscal"], async () => {
+      const r = await receitaConsolidada(ctx.prisma, {
+        periodoDe: per.periodoDe,
+        periodoAte: per.periodoAte,
+        empresaId: escopo.empresaId,
+      });
+      const ehEmpresa = escopo.empresaId !== undefined;
+      const headlineValor = ehEmpresa ? r.receitaIndividualTotal : r.receitaExterna;
+      const headlineRotulo = ehEmpresa
+        ? "Faturamento da empresa (inclui vendas intragrupo)"
+        : "Receita externa real (sem intercompany)";
+      const concentrador = r.percentualEliminado > 0.5;
+      const avisoBase = ehEmpresa
+        ? "Faturamento individual da empresa (inclui vendas para outras empresas do grupo)."
+        : "Receita externa real do grupo: vendas entre empresas do grupo (intercompany) sao eliminadas (CPC 36).";
+      return {
+        receitaExterna: r.receitaExterna,
+        receitaIndividual: r.receitaIndividualTotal,
+        intragrupoEliminavel: r.receitaIntragrupoEliminavel,
+        percentualEliminado: r.percentualEliminado,
+        notasExternas: r.notasExternas,
+        notasIntragrupo: r.notasIntragrupo,
+        headlineValor,
+        headlineRotulo,
+        concentrador,
+        periodoLabel: per.label,
+        escopoEmpresa: escopo.escopo as unknown as Record<string, unknown>,
+        aviso: `${avisoBase} Período: ${per.label}. ${escopo.escopo.aviso}`,
+      };
+    });
     if (envelope.estado === "preparando") return envelope;
+    const d = envelope.dados;
     return enriquecerEnvelope(envelope, "fiscal_faturamento_periodo", {
       destaque: {
-        totalNotas: envelope.dados.totalNotas,
-        valorFaturado: envelope.dados.valorFaturado,
+        headlineValor: d.headlineValor,
+        headlineRotulo: d.headlineRotulo,
+        receitaExterna: d.receitaExterna,
+        receitaIndividual: d.receitaIndividual,
+        intragrupoEliminavel: d.intragrupoEliminavel,
+        percentualEliminado: d.percentualEliminado,
+        notasExternas: d.notasExternas,
+        concentrador: d.concentrador ? 1 : 0,
+        periodoLabel: d.periodoLabel,
       },
       agregado: {
-        soma: envelope.dados.valorFaturado,
-        contagem: envelope.dados.totalNotas,
+        soma: d.headlineValor,
+        contagem: d.notasExternas,
       },
     });
   },

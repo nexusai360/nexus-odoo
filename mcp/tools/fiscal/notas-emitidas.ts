@@ -7,6 +7,7 @@ import { withFreshness } from "../../lib/freshness.js";
 import { enriquecerEnvelope } from "../../lib/with-responder.js";
 import { paginacaoInputShape, resolverPaginacao, montarPaginacaoMeta } from "../../lib/paginacao.js";
 import { montarEscopoEmpresa, type EscopoEmpresa } from "./_escopo-empresa.js";
+import { resolverPeriodoFiscal } from "./_periodo-padrao.js";
 
 const inputSchema = z.object({
   periodoDe: z.string().optional(),
@@ -58,7 +59,7 @@ const outputSchema = z.union([
 type Input = z.infer<typeof inputSchema>;
 type Output = z.infer<typeof outputSchema>;
 
-function shape(d: Awaited<ReturnType<typeof queryNotasEmitidas>>, escopo: EscopoEmpresa) {
+function shape(d: Awaited<ReturnType<typeof queryNotasEmitidas>>, escopo: EscopoEmpresa, periodoLabel: string) {
   return {
     linhas: d.linhas.map((l) => ({
       numero: l.numero,
@@ -71,7 +72,7 @@ function shape(d: Awaited<ReturnType<typeof queryNotasEmitidas>>, escopo: Escopo
     totalNotas: d.totalNotas,
     valorTotal: d.valorTotal,
     escopoEmpresa: escopo as unknown as Record<string, unknown>,
-    aviso: "Lista notas fiscais de saída (entradaSaida='1'). Filtre situacaoNfe para restringir por status (ex.: 'autorizada', 'cancelada'). " + escopo.aviso,
+    aviso: `Lista notas fiscais de saída (entradaSaida='1'). Filtre situacaoNfe para restringir por status (ex.: 'autorizada', 'cancelada'). Período: ${periodoLabel}. ${escopo.aviso}`,
   };
 }
 
@@ -84,18 +85,20 @@ export const fiscalNotasEmitidas: ToolEntry<Input, Output> = {
   outputSchema,
   handler: async (input, ctx) => {
     const escopo = await montarEscopoEmpresa(ctx.prisma, input.empresaRef);
+    const per = resolverPeriodoFiscal(input.periodoDe, input.periodoAte);
     const { limit, offset } = resolverPaginacao(input);
     const envelope = await withFreshness(ctx.prisma, ["fato_nota_fiscal"], async () =>
       shape(
         await queryNotasEmitidas(ctx.prisma, {
-          periodoDe: input.periodoDe,
-          periodoAte: input.periodoAte,
+          periodoDe: per.periodoDe,
+          periodoAte: per.periodoAte,
           situacaoNfe: input.situacaoNfe,
           empresaId: escopo.empresaId,
           limit,
           offset,
         }),
         escopo.escopo,
+        per.label,
       ),
     );
     if (envelope.estado === "preparando") return envelope;

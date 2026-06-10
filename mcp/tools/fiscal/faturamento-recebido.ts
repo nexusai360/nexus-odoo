@@ -6,6 +6,7 @@ import { faturamentoRecebido } from "@/lib/metrics/fiscal/index.js";
 import { withFreshness } from "../../lib/freshness.js";
 import { enriquecerEnvelope } from "../../lib/with-responder.js";
 import { montarEscopoEmpresa } from "./_escopo-empresa.js";
+import { resolverPeriodoFiscal } from "./_periodo-padrao.js";
 
 const inputSchema = z.object({
   periodoDe: z.string().optional(),
@@ -55,13 +56,14 @@ export const fiscalFaturamentoRecebido: ToolEntry<Input, Output> = {
   handler: async (input, ctx) => {
     const eixo = input.eixo ?? "pedido";
     const escopo = await montarEscopoEmpresa(ctx.prisma, input.empresaRef);
+    const per = resolverPeriodoFiscal(input.periodoDe, input.periodoAte);
     const envelope = await withFreshness(
       ctx.prisma,
       ["fato_financeiro_lancamento_item", "fato_pedido"],
       async () => {
         const r = await faturamentoRecebido(ctx.prisma, {
-          periodoDe: input.periodoDe,
-          periodoAte: input.periodoAte,
+          periodoDe: per.periodoDe,
+          periodoAte: per.periodoAte,
           empresaId: escopo.empresaId,
         });
         const base = {
@@ -80,10 +82,11 @@ export const fiscalFaturamentoRecebido: ToolEntry<Input, Output> = {
             aviso:
               "O recebido por nota individual ainda nao e suportado: " +
               "falta o elo nota->financeiro. Use o eixo por pedido. " +
+              `Período: ${per.label}. ` +
               escopo.escopo.aviso,
           };
         }
-        return { ...base, aviso: "Recebido (pago) vs a receber, por pedido. " + escopo.escopo.aviso };
+        return { ...base, aviso: `Recebido (pago) vs a receber, por pedido. Período: ${per.label}. ` + escopo.escopo.aviso };
       },
     );
     if (envelope.estado === "preparando") return envelope;

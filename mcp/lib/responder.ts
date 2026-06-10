@@ -130,21 +130,42 @@ const fmtFluxoCaixa: FormatadorCanonico = (env) => {
 // Formatadores expandidos (Onda 1.C)
 // ---------------------------------------------------------------------------
 
+// Fase 2.5: headline condicional decidido no HANDLER (grupo->receita externa real;
+// empresa->faturamento individual). O formatador apenas le as chaves estaveis do _DESTAQUE.
 const fmtFaturamentoPeriodo: FormatadorCanonico = (env) => {
-  const total = Number(env._DESTAQUE?.valorFaturado ?? env._DESTAQUE?.valorTotal ?? 0);
-  const n = Number(env._DESTAQUE?.totalNotas ?? 0);
-  if (n === 0) return "Nenhuma nota emitida no periodo.";
-  return `Faturamento no periodo: ${formatBRL(total)} em ${n} notas.`;
+  const d = env._DESTAQUE ?? {};
+  const headline = Number(d.headlineValor ?? 0);
+  const rotulo = String(d.headlineRotulo ?? "Faturamento");
+  const individual = Number(d.receitaIndividual ?? headline);
+  const intra = Number(d.intragrupoEliminavel ?? 0);
+  const pct = Number(d.percentualEliminado ?? 0);
+  const periodo = String(d.periodoLabel ?? "");
+  if (headline === 0 && individual === 0) {
+    return `Nenhum faturamento de venda no periodo${periodo ? ` (${periodo})` : ""}.`;
+  }
+  const cab = `${rotulo}: ${formatBRL(headline)}${periodo ? ` (${periodo})` : ""}.`;
+  const aud =
+    intra > 0
+      ? ` Faturamento individual ${formatBRL(individual)}; intragrupo eliminavel ${formatBRL(intra)} (${(pct * 100).toFixed(1)}%).`
+      : "";
+  const conc =
+    Number(d.concentrador ?? 0) === 1
+      ? " Atencao: estabelecimento concentrador (a maioria das vendas e intragrupo)."
+      : "";
+  return cab + aud + conc;
 };
 
+// Fase 2.5: ranking de clientes EXTERNOS (vendas intragrupo ficam fora, somadas a parte).
 const fmtFaturamentoPorCliente: FormatadorCanonico = (env) => {
-  const top = env._DESTAQUE?.topCliente
-    ? String(env._DESTAQUE.topCliente)
-    : env.topPorParticipante?.[0]?.nome;
-  const valorTop = Number(env._DESTAQUE?.valorTopCliente ?? env.topPorParticipante?.[0]?.soma ?? 0);
-  const total = Number(env._DESTAQUE?.totalGeral ?? 0);
-  if (!top) return "Nenhum cliente com faturamento no periodo.";
-  return `Top cliente por faturamento: ${top} com ${formatBRL(valorTop)}. Total no periodo: ${formatBRL(total)}.`;
+  const d = env._DESTAQUE ?? {};
+  const top = d.topCliente ? String(d.topCliente) : "";
+  const valorTop = Number(d.valorTopCliente ?? 0);
+  const ext = Number(d.totalExterno ?? 0);
+  const intra = Number(d.totalIntragrupo ?? 0);
+  const periodo = String(d.periodoLabel ?? "");
+  if (!top) return `Nenhum cliente externo com faturamento no periodo${periodo ? ` (${periodo})` : ""}.`;
+  const intraStr = intra > 0 ? ` Vendas intragrupo (${formatBRL(intra)}) ficam fora deste ranking.` : "";
+  return `Top cliente externo: ${top} com ${formatBRL(valorTop)}. Total externo no periodo${periodo ? ` (${periodo})` : ""}: ${formatBRL(ext)}.${intraStr}`;
 };
 
 const fmtNotasEmitidas: FormatadorCanonico = (env) => {
@@ -758,19 +779,21 @@ const fmtFiscalContarNotas: FormatadorCanonico = (env) => {
   return `${total} notas fiscais no total: ${saida} emitidas (saída) e ${entrada} recebidas (entrada).`;
 };
 
+// Fase 2.5: serie de RECEITA EXTERNA por mes (individual disponivel como contexto).
 const fmtFaturamentoMensalSerie: FormatadorCanonico = (env) => {
-  const ano = Number(env._DESTAQUE?.ano ?? 0);
-  const totalAno = Number(env._DESTAQUE?.totalAno ?? env._agregado?.soma ?? 0);
-  const totalNotasAno = Number(env._DESTAQUE?.totalNotasAno ?? env._agregado?.contagem ?? 0);
-  const meses = Number(env._DESTAQUE?.mesesConsultados ?? 0);
-  if (totalNotasAno === 0 || totalAno === 0) {
+  const d = env._DESTAQUE ?? {};
+  const ano = Number(d.ano ?? 0);
+  const externaAno = Number(d.totalExternaAno ?? env._agregado?.soma ?? 0);
+  const individualAno = Number(d.totalIndividualAno ?? 0);
+  const meses = Number(d.mesesConsultados ?? 0);
+  if (externaAno === 0 && individualAno === 0) {
     return ano > 0
       ? `Nenhum faturamento de venda registrado em ${ano} (${meses} meses consultados).`
       : "Nenhum faturamento de venda no periodo consultado.";
   }
-  const mediaMensal = meses > 0 ? totalAno / meses : 0;
-  const cabeca = `Faturamento de ${ano}: ${formatBRL(totalAno)} em ${totalNotasAno} notas, ao longo de ${meses} ${meses === 1 ? "mes" : "meses"}.`;
-  const tail = meses > 0 ? ` Media mensal: ${formatBRL(mediaMensal)}.` : "";
+  const mediaMensal = meses > 0 ? externaAno / meses : 0;
+  const cabeca = `Receita externa de ${ano}: ${formatBRL(externaAno)} ao longo de ${meses} ${meses === 1 ? "mes" : "meses"} (faturamento individual ${formatBRL(individualAno)}).`;
+  const tail = meses > 0 ? ` Media mensal externa: ${formatBRL(mediaMensal)}.` : "";
   return cabeca + tail;
 };
 

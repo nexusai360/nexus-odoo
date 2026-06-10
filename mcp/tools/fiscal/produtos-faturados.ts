@@ -10,6 +10,7 @@ import {
   montarPaginacaoMeta,
 } from "../../lib/paginacao.js";
 import { montarEscopoEmpresa, type EscopoEmpresa } from "./_escopo-empresa.js";
+import { resolverPeriodoFiscal } from "./_periodo-padrao.js";
 
 const inputSchema = z.object({
   periodoDe: z.string().optional(),
@@ -56,7 +57,7 @@ const outputSchema = z.union([
 type Input = z.infer<typeof inputSchema>;
 type Output = z.infer<typeof outputSchema>;
 
-function shape(d: Awaited<ReturnType<typeof queryProdutosFaturados>>, escopo: EscopoEmpresa) {
+function shape(d: Awaited<ReturnType<typeof queryProdutosFaturados>>, escopo: EscopoEmpresa, periodoLabel: string) {
   return {
     linhas: d.linhas,
     total: d.total,
@@ -66,6 +67,7 @@ function shape(d: Awaited<ReturnType<typeof queryProdutosFaturados>>, escopo: Es
     aviso:
       "Agrupa itens de notas de saída (entradaSaida='1') por produto, ordenado por valor total descendente. " +
       "O valor usa vrProdutos (sem impostos), então é menor que o faturamento autorizado; não cruzar diretamente. " +
+      `Período: ${periodoLabel}. ` +
       escopo.aviso,
   };
 }
@@ -80,17 +82,19 @@ export const fiscalProdutosFaturados: ToolEntry<Input, Output> = {
   outputSchema,
   handler: async (input, ctx) => {
     const escopo = await montarEscopoEmpresa(ctx.prisma, input.empresaRef);
+    const per = resolverPeriodoFiscal(input.periodoDe, input.periodoAte);
     const { limit, offset } = resolverPaginacao(input);
     const envelope = await withFreshness(ctx.prisma, ["fato_nota_fiscal_item"], async () =>
       shape(
         await queryProdutosFaturados(ctx.prisma, {
-          periodoDe: input.periodoDe,
-          periodoAte: input.periodoAte,
+          periodoDe: per.periodoDe,
+          periodoAte: per.periodoAte,
           empresaId: escopo.empresaId,
           limit,
           offset,
         }),
         escopo.escopo,
+        per.label,
       ),
     );
     if (envelope.estado === "preparando") return envelope;

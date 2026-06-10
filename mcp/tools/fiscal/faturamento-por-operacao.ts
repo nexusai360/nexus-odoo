@@ -7,6 +7,7 @@ import { withFreshness } from "../../lib/freshness.js";
 import { enriquecerEnvelope } from "../../lib/with-responder.js";
 import { paginacaoInputShape } from "../../lib/paginacao.js";
 import { montarEscopoEmpresa } from "./_escopo-empresa.js";
+import { resolverPeriodoFiscal } from "./_periodo-padrao.js";
 
 const inputSchema = z.object({
   periodoDe: z.string().optional(),
@@ -61,10 +62,11 @@ export const fiscalFaturamentoPorOperacao: ToolEntry<Input, Output> = {
   outputSchema,
   handler: async (input, ctx) => {
     const escopo = await montarEscopoEmpresa(ctx.prisma, input.empresaRef);
+    const per = resolverPeriodoFiscal(input.periodoDe, input.periodoAte);
     const envelope = await withFreshness(ctx.prisma, ["fato_nota_fiscal"], async () => {
       const r = await faturamentoPorOperacao(ctx.prisma, {
-        periodoDe: input.periodoDe,
-        periodoAte: input.periodoAte,
+        periodoDe: per.periodoDe,
+        periodoAte: per.periodoAte,
         empresaId: escopo.empresaId,
         limit: input.limit,
         offset: input.offset,
@@ -76,7 +78,7 @@ export const fiscalFaturamentoPorOperacao: ToolEntry<Input, Output> = {
         valorVenda: r.valorVenda,
         valorNaoVenda: r.valorNaoVenda,
         escopoEmpresa: escopo.escopo as unknown as Record<string, unknown>,
-        aviso: escopo.escopo.aviso,
+        aviso: `Período: ${per.label}. ${escopo.escopo.aviso}`,
       };
     });
     if (envelope.estado === "preparando") return envelope;
