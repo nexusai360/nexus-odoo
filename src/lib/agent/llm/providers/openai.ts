@@ -50,14 +50,17 @@ export function parseOpenAiUsage(u: OpenAiUsageRaw | undefined | null): {
 const OPENAI_API_URL = "https://api.openai.com/v1/chat/completions";
 const OPENAI_RESPONSES_URL = "https://api.openai.com/v1/responses";
 
-/** Default 90s; override por modelo via cap.requestTimeoutMs. */
-const DEFAULT_TIMEOUT_MS = 120_000; // 2 min (era 90s). Cobre redacoes mais lentas.
-const MAX_TENTATIVAS_TIMEOUT = 2; // 1 retry: se estourar o timeout, tenta mais 1 vez antes de falhar.
-// Streaming: tempo MAXIMO sem NENHUM evento (idle) antes de considerar que a
-// chamada travou e abandonar para retentar. Diferente do timeout total: detecta
-// a trava em segundos (tempo ate o 1o evento / entre eventos), em vez de esperar
-// o budget cheio. O timeout total continua valendo como teto absoluto.
-const STREAM_IDLE_TIMEOUT_MS = 25_000;
+/** Guarda do FALLBACK nao-streaming (unica via sem liveness): teto total da
+ *  chamada. So vale para o caminho de fallback; override por modelo via
+ *  cap.requestTimeoutMs. O streaming NAO usa teto total (ver STREAM_IDLE). */
+const DEFAULT_TIMEOUT_MS = 120_000;
+const MAX_TENTATIVAS_TIMEOUT = 2; // 1 retry de streaming antes de cair pro fallback.
+// Streaming: maximo de SILENCIO tolerado (sem nenhum byte/evento), tanto no
+// handshake (ate o 1o byte) quanto entre eventos. NAO e um teto total: um stream
+// vivo (mandando tokens) roda o quanto precisar. So abandona se ficar mudo por
+// este tempo , sinal forte de conexao travada , e ai retenta. Substitui o antigo
+// teto total de 90-120s, que era cego (nao distinguia "trabalhando" de "morto").
+const STREAM_IDLE_TIMEOUT_MS = 15_000;
 
 /**
  * Forma do corpo final da Responses API (o objeto `response`). Identico no
@@ -479,26 +482,37 @@ export class OpenAIClient implements ProviderClient {
 
     const timeoutMs = cap?.requestTimeoutMs ?? DEFAULT_TIMEOUT_MS;
 
-    // STREAMING primeiro: detecta "travou" pelo tempo SEM nenhum evento (idle),
-    // abandonando em ~25s em vez de esperar o budget cheio; em idle/abort,
-    // retenta. Se o streaming falhar de vez, cai para NAO-streaming (rede de
-    // seguranca: nunca menos confiavel que antes). O `usage`/custo e extraido do
-    // evento final `response.completed` (mesmo objeto do nao-streaming), entao o
-    // menu de Consumo recebe exatamente os mesmos numeros.
+    // STREAMING primeiro, SEM teto total: o unico guarda e o SILENCIO (idle).
+    // - handshake: aborta se o 1o byte nao chegar em STREAM_IDLE_TIMEOUT_MS.
+    // - corpo: consumeResponsesStream aborta se ficar mudo por esse mesmo tempo.
+    // Enquanto chegam eventos, a chamada roda o quanto precisar (resposta lenta
+    // porem viva nao e morta). Em silencio (trava), abandona e retenta; se o
+    // streaming falhar de vez, cai pro fallback nao-streaming (com teto total,
+    // pois la nao ha liveness). O `usage`/custo vem do evento final, identico ao
+    // nao-streaming => menu de Consumo intacto.
     let rData: ResponsesPayload | undefined;
     let streamed = false;
     for (let tentativa = 1; tentativa <= MAX_TENTATIVAS_TIMEOUT; tentativa++) {
       try {
-        const sRes = await fetch(OPENAI_RESPONSES_URL, {
-          method: "POST",
-          headers: {
-            Authorization: `Bearer ${this.apiKey}`,
-            "Content-Type": "application/json",
-            Accept: "text/event-stream",
-          },
-          body: JSON.stringify({ ...respBody, stream: true }),
-          signal: AbortSignal.timeout(timeoutMs),
-        });
+        const ctrl = new AbortController();
+        const handshakeTimer = setTimeout(() => ctrl.abort(), STREAM_IDLE_TIMEOUT_MS);
+        let sRes: Response;
+        try {
+          sRes = await fetch(OPENAI_RESPONSES_URL, {
+            method: "POST",
+            headers: {
+              Authorization: `Bearer ${this.apiKey}`,
+              "Content-Type": "application/json",
+              Accept: "text/event-stream",
+            },
+            body: JSON.stringify({ ...respBody, stream: true }),
+            signal: ctrl.signal,
+          });
+        } finally {
+          // Cabecalho chegou (ou abortou): a partir daqui quem governa o corpo
+          // e o idle do consumeResponsesStream, nao um teto total.
+          clearTimeout(handshakeTimer);
+        }
         if (!sRes.ok) {
           const text = await sRes.text().catch(() => "");
           throw new Error(`OpenAI Responses ${sRes.status}: ${text || sRes.statusText}`);
@@ -508,16 +522,15 @@ export class OpenAIClient implements ProviderClient {
         streamed = true;
         break;
       } catch (err) {
-        const isTimeout =
+        const mudo =
           err instanceof Error && (err.name === "TimeoutError" || err.name === "AbortError");
-        if (isTimeout && tentativa < MAX_TENTATIVAS_TIMEOUT) {
+        if (mudo && tentativa < MAX_TENTATIVAS_TIMEOUT) {
           console.warn(
-            `[openai] Responses stream travou (idle/timeout) (tentativa ${tentativa}/${MAX_TENTATIVAS_TIMEOUT}); retentando...`,
+            `[openai] Responses stream em silencio > ${STREAM_IDLE_TIMEOUT_MS}ms (tentativa ${tentativa}/${MAX_TENTATIVAS_TIMEOUT}); retentando...`,
           );
           continue;
         }
-        // Esgotou as tentativas de streaming OU erro nao-timeout: fallback
-        // nao-streaming com o budget cheio (preserva a confiabilidade anterior).
+        // Esgotou o streaming OU erro nao-silencio: fallback nao-streaming.
         console.warn(
           `[openai] Responses streaming falhou (${(err as Error).message}); fallback nao-streaming.`,
         );
