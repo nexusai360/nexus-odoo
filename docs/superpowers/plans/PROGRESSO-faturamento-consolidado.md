@@ -60,10 +60,22 @@
     5933/6933=serviço (não remessa); entrega futura x922(false)+x117(true) não dobra; sem-CFOP
     R$23,3mi linha própria+alerta; venda_ativo 5551/6551 fora de faturamento de mercadoria.
   - Issue 1 (natureza) e Issue 2 (UI rótulos+stagger) SAÍRAM do escopo da F1 → PRs próprios.
-- **PRÓXIMO (próxima sessão):** **PLAN v1** (skill `superpowers:writing-plans`) sobre a SPEC v3
-  → 2 reviews adversariais do plano → PLAN v3 → execução TDD (regras → métrica → tool → formatador
-  → testes) → verificação E2E contra cache real + rebuild mcp (§2.1) → commit/PR/merge.
-  Depois: Issue 2 (UI) em PR próprio; e Fases 2-4 do roadmap.
+- FEITO: **PLAN v1 → 2 reviews adversariais (fiscal + arquitetura, Opus, validadas no cache real)
+  → PLAN v3**. Arquivo: `docs/superpowers/plans/2026-06-09-f1-faturamento-operacao-fiscal-plan.md`.
+  Achados materiais aplicados (resumo na §0 do plano):
+  - Credenciais DB reais: `nexus`/`nexus_odoo_l1` (a spec usava `postgres`/`nexus_odoo`, errado).
+  - 3 buracos de classificação corrigidos no mapa+regex+teste: 6932 (serviço transporte, R$160k)
+    caía em remessa; 5949/6949 (R$11,78mi "outra saída") caía em remessa → `outras`; 6918
+    (devolução consignação) caía em remessa → `devolucao_compra`.
+  - Números cravados com SQL real: reconciliação produto×nota = R$113.198,89/0,006% (spec dizia
+    0,06%, corrigido); delta de base vrNf→vrProdutos = R$28.432,83/0,0015% (confirmado).
+  - Teste do formatador cravado em `mcp/lib/responder.test.ts`; humanizeName removido; sem_cfop
+    confirmado no union; contrato do formatador (_DESTAQUE+topLinhasJson) validado.
+  - 7+ testes de regressão fiscal travados.
+- **PRÓXIMO (em execução):** execução TDD INLINE (CLAUDE.md §6[8]) das Tasks 1-11 do PLAN v3:
+  regras (tipos→extrair→mapa→prefixo→classificar) → métrica → tool → formatador → testes →
+  curadoria+triggers+RADAR → E2E real + rebuild mcp (§2.1) → PR + merge (autorizado).
+  Depois: Issue 2 (UI) em PR próprio; Fases 2-4 do roadmap.
 
 ## Verificação obrigatória (regra de raiz)
 - Toda métrica/tool: TDD + E2E contra o cache REAL (subir/exercer, conferir números).

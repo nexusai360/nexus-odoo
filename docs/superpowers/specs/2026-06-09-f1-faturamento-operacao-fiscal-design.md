@@ -27,7 +27,8 @@
 - **Entrega futura**: `x922` (simples faturamento) `ehReceita=false`; `x117` (venda) `ehReceita=true`
   → regra anti-dupla-contagem (R$ 58 mi em jogo) + teste.
 - **Sem-CFOP** confirmado R$ 23,3 mi (364 itens) → linha própria + **alerta de qualidade**, não "outras".
-- Reconciliação produto×nota é pequena no agregado (0,06%) → calibrar o texto (não vender como grande).
+- Reconciliação produto×nota é pequena no agregado (medida no PLAN v3 = **R$ 113.198,89 / 0,006%**;
+  a spec v3 dizia "0,06%", corrigido) → calibrar o texto (não vender como grande).
 
 **Cortado do escopo da Fase 1 (vira task isolada, risco de regressão):**
 - Issue 1 (limpeza da natureza) e Issue 2 (rótulos/animação UI) saem desta spec. Issue 2 é UI
