@@ -4,7 +4,7 @@
 > Consolidado COMPLETO e em produção** (Fases 1, 2, 2.5, 2.6, 3, 4 + fix de CI). Catálogo: **106 tools**.
 > **DEPLOY ESTABILIZADO** , raiz dos emails de falha encontrada e corrigida (#88 mergeado, deploy calmo
 > espelhando o nexus-insights); build+deploy na main **VERDE**, prod `/api/health` `{"ok":true}` e `/login` 200.
-> **PRÓXIMO (1 frente aberta):** **Fase 5** , faturamento por regime tributário (precisa de discovery).
+> **Fase 5 (faturamento por regime) ENTREGUE** , PR #89.
 > Ao abrir: ler **este arquivo**, o **`CLAUDE.md`**, o **`.agente-handoff.md`** e o **PROGRESSO**
 > (`docs/superpowers/plans/PROGRESSO-faturamento-consolidado.md`).
 > Modo autônomo é o padrão (`CLAUDE.md §6`).
