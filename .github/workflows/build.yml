@@ -176,13 +176,18 @@ jobs:
             return 0
           }
 
-          # Retry do ciclo inteiro: absorve blip transitorio do Portainer (auto-cura);
-          # so falha o job apos 5 tentativas (~5min) = outage real, nao flapping.
-          for i in 1 2 3 4 5; do
-            echo "== Tentativa de deploy $i/5 =="
+          # Retry do ciclo inteiro: absorve indisponibilidade do Portainer (auto-cura).
+          # As imagens JA estao publicadas no GHCR neste ponto; aqui so disparamos o redeploy.
+          # Janela ampla (~30min, backoff limitado a 90s) para sobreviver a quedas longas do
+          # painel/Traefik sem disparar email de falha. So falha apos a janela inteira = outage
+          # prolongado real (ai sim alguem precisa olhar o servidor).
+          MAX=12
+          for i in $(seq 1 $MAX); do
+            echo "== Tentativa de deploy $i/$MAX =="
             if deploy_attempt; then exit 0; fi
-            echo "Tentativa $i falhou; aguardando $((i*20))s antes de retentar..."
-            sleep $((i*20))
+            WAIT=$((i*30)); [ "$WAIT" -gt 90 ] && WAIT=90
+            echo "Tentativa $i falhou; aguardando ${WAIT}s antes de retentar..."
+            sleep "$WAIT"
           done
-          echo "Deploy falhou apos 5 tentativas (Portainer inacessivel durante toda a janela)."
+          echo "Deploy falhou apos $MAX tentativas (~30min): Portainer inacessivel durante toda a janela. Verificar o servidor/painel."
           exit 1
