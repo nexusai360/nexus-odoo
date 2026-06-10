@@ -1,0 +1,77 @@
+// mcp/tools/fiscal/receita-consolidada.ts
+// Tool MCP: fiscal_receita_consolidada , receita externa real (elimina intercompany, CPC 36)
+import { z } from "zod";
+import type { ToolEntry } from "../../catalog/types.js";
+import { receitaConsolidada } from "@/lib/metrics/fiscal/index.js";
+import { withFreshness } from "../../lib/freshness.js";
+import { enriquecerEnvelope } from "../../lib/with-responder.js";
+import { montarEscopoEmpresa } from "./_escopo-empresa.js";
+
+const inputSchema = z.object({
+  periodoDe: z.string().optional(),
+  periodoAte: z.string().optional(),
+  empresaRef: z.string().optional(),
+});
+
+const dados = z.object({
+  receitaExterna: z.number(),
+  receitaIntragrupoEliminavel: z.number(),
+  receitaIndividualTotal: z.number(),
+  intercompanyBrutoVrProdutos: z.number(),
+  notasIntragrupo: z.number().int(),
+  notasExternas: z.number().int(),
+  percentualEliminado: z.number(),
+  escopoEmpresa: z.record(z.string(), z.unknown()),
+  aviso: z.string(),
+  _RESPOSTA: z.string().optional(),
+  _DESTAQUE: z.record(z.string(), z.union([z.string(), z.number()])).optional(),
+  _agregado: z.record(z.string(), z.number().optional()).optional(),
+});
+
+const fonteStatus = z.object({ status: z.string(), ultimaSyncEm: z.string().nullable() });
+
+const outputSchema = z.union([
+  z.object({ estado: z.literal("preparando") }),
+  z.object({ estado: z.enum(["ok", "vazio"]), dados, atualizadoEm: z.string(), atualizadoHa: z.string(), fonteStatus }),
+]);
+
+type Input = z.infer<typeof inputSchema>;
+type Output = z.infer<typeof outputSchema>;
+
+export const fiscalReceitaConsolidada: ToolEntry<Input, Output> = {
+  id: "fiscal_receita_consolidada",
+  dominio: "fiscal",
+  descricao:
+    "Receita consolidada externa do grupo (o faturamento real): vendas a clientes FORA do grupo, eliminando o intercompany (venda intragrupo, CPC 36). Mostra quanto do faturamento individual e venda entre empresas do grupo e foi eliminado. Aceita empresa e periodo.",
+  inputSchemaShape: inputSchema.shape,
+  inputSchema,
+  outputSchema,
+  handler: async (input, ctx) => {
+    const escopo = await montarEscopoEmpresa(ctx.prisma, input.empresaRef);
+    const envelope = await withFreshness(ctx.prisma, ["fato_nota_fiscal", "fato_nota_fiscal_item"], async () => {
+      const r = await receitaConsolidada(ctx.prisma, {
+        periodoDe: input.periodoDe,
+        periodoAte: input.periodoAte,
+        empresaId: escopo.empresaId,
+      });
+      return {
+        ...r,
+        escopoEmpresa: escopo.escopo as unknown as Record<string, unknown>,
+        aviso:
+          escopo.escopo.aviso +
+          ` Receita consolidada externa elimina o intercompany (CPC 36); ${(r.percentualEliminado * 100).toFixed(1)}% da receita individual e venda intragrupo.`,
+      };
+    });
+    if (envelope.estado === "preparando") return envelope;
+    const d = envelope.dados;
+    return enriquecerEnvelope(envelope, "fiscal_receita_consolidada", {
+      destaque: {
+        receitaExterna: d.receitaExterna,
+        receitaIntragrupoEliminavel: d.receitaIntragrupoEliminavel,
+        receitaIndividualTotal: d.receitaIndividualTotal,
+        percentualEliminado: d.percentualEliminado,
+      },
+      agregado: { soma: d.receitaExterna, contagem: d.notasExternas },
+    });
+  },
+};

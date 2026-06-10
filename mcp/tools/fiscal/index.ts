@@ -30,6 +30,9 @@ import { fiscalFaturamentoPorCfop } from "./faturamento-por-cfop.js";
 import { fiscalFaturamentoNaoAutorizado } from "./faturamento-nao-autorizado.js";
 import { fiscalFaturamentoRecebido } from "./faturamento-recebido.js";
 import { fiscalDetalharNota } from "./detalhar-nota.js";
+// F2 (intercompany + receita consolidada)
+import { fiscalReceitaConsolidada } from "./receita-consolidada.js";
+import { fiscalIntercompany } from "./intercompany.js";
 
 export const fiscalTools: ToolEntry[] = [
   fiscalFaturamentoPeriodo as ToolEntry,
@@ -64,4 +67,7 @@ export const fiscalTools: ToolEntry[] = [
   fiscalFaturamentoRecebido as ToolEntry,
   // F2 (Bloco D , detalhe por odooId)
   fiscalDetalharNota as ToolEntry,
+  // F2 (intercompany + receita consolidada externa)
+  fiscalReceitaConsolidada as ToolEntry,
+  fiscalIntercompany as ToolEntry,
 ];
