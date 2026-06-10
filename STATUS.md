@@ -2,9 +2,9 @@
 
 > **Ponto de retomada entre sessões.** Atualizado em **2026-06-10** , Milestone **Faturamento Real
 > Consolidado COMPLETO e em produção** (Fases 1, 2, 2.5, 2.6, 3, 4 + fix de CI). Catálogo: **106 tools**.
-> **PRÓXIMO (2 frentes abertas):** **(1)** investigar a **RAIZ** da falha de deploy (GitHub→Portainer
-> inacessível, `curl 28` timeout) , **NÃO mergear o PR #88** (o usuário pediu explicitamente para esperar
-> a causa raiz antes do merge). **(2)** Fase 5 , faturamento por regime tributário (precisa de discovery).
+> **DEPLOY ESTABILIZADO** , raiz dos emails de falha encontrada e corrigida (#88 mergeado, deploy calmo
+> espelhando o nexus-insights); build+deploy na main **VERDE**, prod `/api/health` `{"ok":true}` e `/login` 200.
+> **PRÓXIMO (1 frente aberta):** **Fase 5** , faturamento por regime tributário (precisa de discovery).
 > Ao abrir: ler **este arquivo**, o **`CLAUDE.md`**, o **`.agente-handoff.md`** e o **PROGRESSO**
 > (`docs/superpowers/plans/PROGRESSO-faturamento-consolidado.md`).
 > Modo autônomo é o padrão (`CLAUDE.md §6`).
@@ -29,18 +29,22 @@
 - **Fix CI (#85):** build resiliente ao "unknown blob" do GHCR (`setup-buildx` + `provenance=false` + retry 3×)
   , era a causa dos emails de "Build and Push falhou".
 
-### RAIZ do deploy ENCONTRADA + corrigida (2026-06-10) , #88 DESCARTAR
+### RAIZ do deploy ENCONTRADA + CORRIGIDA + EM PRODUÇÃO (2026-06-10, #88 mergeado)
 - **Raiz (por comparação com a referência que funciona):** o **nexus-insights deploya no MESMO Portainer/VPS
-  sem falhar**, então o servidor NÃO é o problema. O nosso `deploy` usava `curl --retry 4 --retry-connrefused`
+  sem falhar**, então o servidor NÃO era o problema. O nosso `deploy` usava `curl --retry 4 --retry-connrefused`
   por chamada DENTRO de um laço de até 12 tentativas, sobre 2 pulls + 3 services , num blip de rede isso virava
-  uma **rajada de dezenas/centenas de conexões martelando o Portainer por 13-30 min** (= o email vermelho). O
-  insights faz **1 passada de `curl --silent --insecure` calmo** e nunca falha. A complexidade que adicionamos
-  (#85/#88) é que transformava um pisco em desastre.
-- **Correção (commitada nesta branch):** `deploy` reescrito espelhando o padrão mínimo comprovado do insights
-  (curl simples, 1 passada, sem `--retry`/`--connect-timeout`/laço; mantém 2 imagens + 3 services app/mcp/worker).
-  Se falhar pontualmente, rerun manual resolve. Doc: `docs/superpowers/research/2026-06-10-deploy-blackhole-investigation.md`.
-- **PR #88: FECHAR sem merge** , ampliava o retry (mais martelo, direção oposta à correção).
-- **Diagnóstico de servidor** (`scripts/diag/deploy-server-diag.sh`, read-only) fica disponível só se reincidir.
+  uma **rajada de dezenas/centenas de conexões martelando o Portainer por 13-30 min** (= o `curl 28`, o email
+  vermelho). O insights faz **1 passada de `curl --silent --insecure` calmo** e nunca falha. A complexidade que
+  adicionamos (#85/#88) transformava um pisco em desastre.
+- **Correção (mergeada via #88, squash `1479dc0`):** `deploy` reescrito espelhando o padrão mínimo comprovado do
+  insights (curl simples, 1 passada, sem `--retry`/`--connect-timeout`/laço; mantém 2 imagens + 3 services
+  app/mcp/worker). Só CI+docs, zero código de app. Se falhar pontual, rerun manual resolve.
+  Doc: `docs/superpowers/research/2026-06-10-deploy-blackhole-investigation.md`.
+- **VALIDADO AO VIVO:** o merge disparou o Build and Push (run 27289232199) , build-app ✓, build-mcp ✓ e
+  **deploy ✓** (todos os curls HTTP 200 de primeira, sem timeout, ~2,5 min). Prod: `/api/health` `{"ok":true}`,
+  `/login` 200. Local: `next dev` servido da **pasta principal (main)** na :3000, DB conectado.
+- O retry-storm anterior (#85 build + a janela 30min do #88 original) foi **descartado dentro da própria branch**
+  (o commit do fix sobrescreveu). `scripts/diag/deploy-server-diag.sh` (read-only) fica só de rede de segurança.
 
 ### Fase 5 sugerida (feature nova) , faturamento por regime tributário
 Dado **não disponível hoje**: `fato_apuracao.regime_tributario` existe mas está **NULL**; `raw_res_company`/
