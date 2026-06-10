@@ -130,11 +130,29 @@ const fmtFluxoCaixa: FormatadorCanonico = (env) => {
 // Formatadores expandidos (Onda 1.C)
 // ---------------------------------------------------------------------------
 
+// Fase 2.5: headline condicional decidido no HANDLER (grupo->receita externa real;
+// empresa->faturamento individual). O formatador apenas le as chaves estaveis do _DESTAQUE.
 const fmtFaturamentoPeriodo: FormatadorCanonico = (env) => {
-  const total = Number(env._DESTAQUE?.valorFaturado ?? env._DESTAQUE?.valorTotal ?? 0);
-  const n = Number(env._DESTAQUE?.totalNotas ?? 0);
-  if (n === 0) return "Nenhuma nota emitida no periodo.";
-  return `Faturamento no periodo: ${formatBRL(total)} em ${n} notas.`;
+  const d = env._DESTAQUE ?? {};
+  const headline = Number(d.headlineValor ?? 0);
+  const rotulo = String(d.headlineRotulo ?? "Faturamento");
+  const individual = Number(d.receitaIndividual ?? headline);
+  const intra = Number(d.intragrupoEliminavel ?? 0);
+  const pct = Number(d.percentualEliminado ?? 0);
+  const periodo = String(d.periodoLabel ?? "");
+  if (headline === 0 && individual === 0) {
+    return `Nenhum faturamento de venda no periodo${periodo ? ` (${periodo})` : ""}.`;
+  }
+  const cab = `${rotulo}: ${formatBRL(headline)}${periodo ? ` (${periodo})` : ""}.`;
+  const aud =
+    intra > 0
+      ? ` Faturamento individual ${formatBRL(individual)}; intragrupo eliminavel ${formatBRL(intra)} (${(pct * 100).toFixed(1)}%).`
+      : "";
+  const conc =
+    Number(d.concentrador ?? 0) === 1
+      ? " Atencao: estabelecimento concentrador (a maioria das vendas e intragrupo)."
+      : "";
+  return cab + aud + conc;
 };
 
 const fmtFaturamentoPorCliente: FormatadorCanonico = (env) => {

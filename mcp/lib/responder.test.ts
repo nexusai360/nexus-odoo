@@ -272,6 +272,49 @@ describe("fmtIntercompany", () => {
   });
 });
 
+describe("fmtFaturamentoPeriodo (Fase 2.5: headline externa/individual)", () => {
+  const fmt = formatadorPorTool("fiscal_faturamento_periodo");
+  const base = { _listaTruncada: false, linhas: [], atualizadoEm: "", atualizadoHa: "" };
+  it("grupo: headline = receita externa real, com auditoria do intragrupo", () => {
+    const txt = fmt({
+      ...base,
+      _DESTAQUE: {
+        headlineValor: 325000000,
+        headlineRotulo: "Receita externa real (sem intercompany)",
+        receitaExterna: 325000000,
+        receitaIndividual: 543000000,
+        intragrupoEliminavel: 218000000,
+        percentualEliminado: 0.4,
+        concentrador: 0,
+        periodoLabel: "2025",
+      },
+    } as never);
+    expect(txt).toContain("Receita externa real");
+    expect(txt).toContain("2025");
+    expect(txt).toContain("intragrupo");
+  });
+  it("empresa concentradora: marca o aviso de concentrador", () => {
+    const txt = fmt({
+      ...base,
+      _DESTAQUE: {
+        headlineValor: 229000000,
+        headlineRotulo: "Faturamento da empresa (inclui vendas intragrupo)",
+        receitaExterna: 12000000,
+        receitaIndividual: 229000000,
+        intragrupoEliminavel: 217000000,
+        percentualEliminado: 0.948,
+        concentrador: 1,
+        periodoLabel: "2025",
+      },
+    } as never);
+    expect(txt).toContain("concentrador");
+  });
+  it("vazio quando nao ha faturamento", () => {
+    const txt = fmt({ ...base, _DESTAQUE: { headlineValor: 0, receitaIndividual: 0, periodoLabel: "2025" } } as never);
+    expect(txt).toContain("Nenhum faturamento");
+  });
+});
+
 describe("allowlist resolve formatador real (nao generico) para as tools F2", () => {
   it("fiscal_receita_consolidada e fiscal_intercompany tem formatador real", () => {
     expect(ehFormatadorGenerico(formatadorPorTool("fiscal_receita_consolidada"))).toBe(false);
