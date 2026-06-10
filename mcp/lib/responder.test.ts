@@ -240,3 +240,41 @@ describe("fmtFaturamentoPorCfop", () => {
     expect(txt).toContain("Nenhum faturamento");
   });
 });
+
+describe("fmtReceitaConsolidada", () => {
+  const fmt = formatadorPorTool("fiscal_receita_consolidada");
+  const base = { _listaTruncada: false, linhas: [], atualizadoEm: "", atualizadoHa: "" };
+  it("frase com receita externa e percentual eliminado", () => {
+    const txt = fmt({ ...base, _DESTAQUE: { receitaExterna: 897, receitaIntragrupoEliminavel: 418, receitaIndividualTotal: 1315, percentualEliminado: 0.318 } } as never);
+    expect(txt).toContain("Receita consolidada externa");
+    expect(txt).toContain("intragrupo");
+  });
+  it("vazio quando individual e zero", () => {
+    expect(fmt({ ...base, _DESTAQUE: { receitaIndividualTotal: 0 } } as never)).toContain("Nenhuma receita");
+  });
+});
+
+describe("fmtIntercompany", () => {
+  const fmt = formatadorPorTool("fiscal_intercompany");
+  const base = { _listaTruncada: false, linhas: [], atualizadoEm: "", atualizadoHa: "" };
+  it("lista top pares vendedor-comprador", () => {
+    const txt = fmt({ ...base, _DESTAQUE: { total: 1500, totalPares: 1, topLinhasJson: JSON.stringify([{ vendedor: "Emp A", comprador: "Grupo B", valor: 1500 }]) } } as never);
+    expect(txt).toContain("intercompany");
+    expect(txt).toContain("Emp A");
+    expect(txt).toContain("Grupo B");
+  });
+  it("topLinhasJson invalido cai no fallback sem estourar", () => {
+    const txt = fmt({ ...base, _DESTAQUE: { total: 1500, totalPares: 1, topLinhasJson: "{quebrado" } } as never);
+    expect(txt).toContain("intercompany");
+  });
+  it("vazio quando nao ha pares", () => {
+    expect(fmt({ ...base, _DESTAQUE: { total: 0, totalPares: 0 } } as never)).toContain("Nenhuma venda entre empresas");
+  });
+});
+
+describe("allowlist resolve formatador real (nao generico) para as tools F2", () => {
+  it("fiscal_receita_consolidada e fiscal_intercompany tem formatador real", () => {
+    expect(ehFormatadorGenerico(formatadorPorTool("fiscal_receita_consolidada"))).toBe(false);
+    expect(ehFormatadorGenerico(formatadorPorTool("fiscal_intercompany"))).toBe(false);
+  });
+});

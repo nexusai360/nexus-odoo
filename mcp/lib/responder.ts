@@ -1760,6 +1760,43 @@ const fmtCrmResPartnerGet: FormatadorCanonico = (env) => {
   return partes.join(" ");
 };
 
+// === F2 (intercompany + receita consolidada externa) ===
+const fmtReceitaConsolidada: FormatadorCanonico = (env) => {
+  const d = env._DESTAQUE ?? {};
+  const externa = Number(d.receitaExterna ?? 0);
+  const individual = Number(d.receitaIndividualTotal ?? 0);
+  const intra = Number(d.receitaIntragrupoEliminavel ?? 0);
+  const pct = Number(d.percentualEliminado ?? 0);
+  if (individual === 0) {
+    return "Nenhuma receita de saida autorizada no periodo para consolidar.";
+  }
+  return (
+    `Receita consolidada externa (sem intercompany): ${formatBRL(externa)}. ` +
+    `Do faturamento individual de ${formatBRL(individual)}, ${formatBRL(intra)} (${(pct * 100).toFixed(1)}%) ` +
+    `e venda intragrupo e foi eliminada (CPC 36).`
+  );
+};
+
+const fmtIntercompany: FormatadorCanonico = (env) => {
+  const d = env._DESTAQUE ?? {};
+  const total = Number(d.total ?? env._agregado?.soma ?? 0);
+  const totalPares = Number(d.totalPares ?? env._agregado?.contagem ?? 0);
+  if (totalPares === 0 || total === 0) {
+    return "Nenhuma venda entre empresas do grupo (intercompany) no periodo.";
+  }
+  type Par = { vendedor: string; comprador: string; valor: number };
+  let top: Par[] = [];
+  try {
+    const parsed = JSON.parse(String(d.topLinhasJson ?? "[]"));
+    if (Array.isArray(parsed)) top = parsed as Par[];
+  } catch {
+    top = [];
+  }
+  const lista = top.map((p) => `- ${String(p.vendedor ?? "").trim()} -> ${String(p.comprador ?? "").trim()}: ${formatBRL(Number(p.valor ?? 0))}`);
+  const cabeca = `Vendas intercompany (entre empresas do grupo): ${formatBRL(total)} em ${totalPares} ${totalPares === 1 ? "par" : "pares"} vendedor-comprador.`;
+  return [cabeca, lista.length ? "Principais:" : "", ...lista].filter(Boolean).join("\n");
+};
+
 const FORMATADORES: Record<string, FormatadorCanonico> = {
   // financeiro
   financeiro_contas_a_receber: fmtContasAReceber,
@@ -1814,6 +1851,8 @@ const FORMATADORES: Record<string, FormatadorCanonico> = {
   "fiscal_faturamento_por_empresa": fmtFiscalFaturamentoPorEmpresa,
   "fiscal_faturamento_por_operacao": fmtFiscalFaturamentoPorOperacao,
   "fiscal_faturamento_por_cfop": fmtFaturamentoPorCfop,
+  "fiscal_receita_consolidada": fmtReceitaConsolidada,
+  "fiscal_intercompany": fmtIntercompany,
   "fiscal_faturamento_nao_autorizado": fmtFaturamentoNaoAutorizado,
   "fiscal_faturamento_recebido": fmtFaturamentoRecebido,
   "fiscal_detalhar_nota": fmtFiscalDetalharNota,
@@ -1932,6 +1971,8 @@ export const TOOLS_QUE_PRECISAM_FORMATADOR: string[] = [
   "fiscal_faturamento_por_empresa",
   "fiscal_faturamento_por_operacao",
   "fiscal_faturamento_por_cfop",
+  "fiscal_receita_consolidada",
+  "fiscal_intercompany",
   "fiscal_faturamento_nao_autorizado",
   "fiscal_faturamento_recebido",
   "fiscal_detalhar_nota",
