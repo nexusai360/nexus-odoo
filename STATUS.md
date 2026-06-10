@@ -1,10 +1,13 @@
 # STATUS — nexus-odoo
 
 > **Ponto de retomada entre sessões.** Atualizado em **2026-06-10** , Milestone **Faturamento Real
-> Consolidado COMPLETO e em produção** (Fases 1, 2, 2.5, 2.6, 3, 4 + fix de CI). Catálogo: **106 tools**.
-> **DEPLOY ESTABILIZADO** , raiz dos emails de falha encontrada e corrigida (#88 mergeado, deploy calmo
-> espelhando o nexus-insights); build+deploy na main **VERDE**, prod `/api/health` `{"ok":true}` e `/login` 200.
-> **Fase 5 (faturamento por regime) ENTREGUE** , PR #89.
+> Consolidado COMPLETO e em produção** (Fases 1, 2, 2.5, 2.6, 3, 4 + fix de CI). Catálogo: **107 tools**.
+> **DEPLOY ESTABILIZADO** , raiz dos emails de falha corrigida (#88, deploy calmo espelhando o nexus-insights);
+> 3 deploys calmos seguidos verdes; prod `/api/health` `{"ok":true}`.
+> **Fase 5 (faturamento por regime tributário) ENTREGUE E EM PRODUÇÃO** , `fiscal_faturamento_por_regime`
+> (#89) + seed do `dim_empresa_regime` (#90, auto-popula prod no boot). jest 2862 verde; E2E reconcilia exato
+> (Σ externa 2025 = R$ 325,5 mi). Regime por empresa: Real=Jds/JhtSP, Presumido=Cs/Ijht/JhtDF, Simples=JHTBrasília/Jib/Jmf/Ks.
+> **Financeiro:** já estava construído (~14 tools ativas). **Contábil:** vazio na fonte (sem DRE/lucro).
 > Ao abrir: ler **este arquivo**, o **`CLAUDE.md`**, o **`.agente-handoff.md`** e o **PROGRESSO**
 > (`docs/superpowers/plans/PROGRESSO-faturamento-consolidado.md`).
 > Modo autônomo é o padrão (`CLAUDE.md §6`).
