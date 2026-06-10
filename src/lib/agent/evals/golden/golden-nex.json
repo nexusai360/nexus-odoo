@@ -922,5 +922,19 @@
     "dominio": "servico",
     "classe": "prosseguir",
     "toolEsperada": "servico_listar"
+  },
+  {
+    "id": "fiscal-receita-consolidada-01",
+    "pergunta": "Qual a receita real do grupo este ano, sem contar as vendas entre as proprias empresas?",
+    "dominio": "fiscal",
+    "classe": "prosseguir",
+    "toolEsperada": "fiscal_receita_consolidada"
+  },
+  {
+    "id": "fiscal-intercompany-01",
+    "pergunta": "Quanto as empresas do grupo venderam umas para as outras este ano?",
+    "dominio": "fiscal",
+    "classe": "prosseguir",
+    "toolEsperada": "fiscal_intercompany"
   }
 ]
