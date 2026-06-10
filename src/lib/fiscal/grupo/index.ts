@@ -3,3 +3,4 @@
 export { RAIZES_GRUPO } from "./raizes-cnpj";
 export { extrairRaizCnpj, extrairRaizCnpjDeTexto } from "./cnpj";
 export { carregarParticipantesGrupo, ehNotaIntragrupo } from "./participantes-grupo";
+export { PARTICIPANTES_GRUPO_WHITELIST, PARTICIPANTES_RECICLADOS_EXCLUIDOS } from "./whitelist-grupo";
