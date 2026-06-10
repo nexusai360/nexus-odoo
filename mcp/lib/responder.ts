@@ -144,9 +144,14 @@ const fmtFaturamentoPeriodo: FormatadorCanonico = (env) => {
     return `Nenhum faturamento de venda no periodo${periodo ? ` (${periodo})` : ""}.`;
   }
   const cab = `${rotulo}: ${formatBRL(headline)}${periodo ? ` (${periodo})` : ""}.`;
+  // Antes despejava "Faturamento individual X; intragrupo eliminavel Y (Z%)" , confuso
+  // pra uma pergunta simples ("quanto faturamos"). Agora: 1 frase curta de transparencia
+  // (so o que importa: que ja foi descontada a venda intragrupo). Os numeros completos
+  // (individual/intra/pct) seguem no _DESTAQUE para quando o usuario pedir o detalhe.
+  void individual;
   const aud =
     intra > 0
-      ? ` Faturamento individual ${formatBRL(individual)}; intragrupo eliminavel ${formatBRL(intra)} (${(pct * 100).toFixed(1)}%).`
+      ? ` Ja descontadas ${formatBRL(intra)} em vendas entre empresas do grupo (${(pct * 100).toFixed(1)}%).`
       : "";
   const conc =
     Number(d.concentrador ?? 0) === 1
