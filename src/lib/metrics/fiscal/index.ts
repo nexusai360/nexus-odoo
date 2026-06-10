@@ -18,3 +18,5 @@ export { faturamentoSerieMensal } from "./faturamento-serie-mensal";
 export { faturamentoPorClienteCanon } from "./faturamento-por-cliente-canon";
 // F3 (ponte de reconciliacao)
 export { ponteFaturamento } from "./ponte-faturamento";
+// F4 (margem bruta aproximada)
+export { margemAproximada } from "./margem-aproximada";
