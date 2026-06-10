@@ -5,9 +5,17 @@
 
 ---
 
-## R-faturamento-duas-definicoes — Plataforma tem DUAS definicoes de faturamento divergentes (PRIORIDADE ALTA)
+## R-faturamento-duas-definicoes — Plataforma tem DUAS definicoes de faturamento divergentes (RESOLVIDO)
 
 **Aberto em:** 2026-06-10 (achado ao auditar a consistencia da plataforma).
+**FECHADO em:** 2026-06-10 (Fase 2.5). As tools `fiscal_faturamento_periodo`, `_por_cliente` e `_mensal_serie`
+foram repontadas para a camada canonica (`item.vrProdutos` + Tabela de Regras + eliminacao intercompany).
+`faturamento_periodo` grupo 2025 passou de R$ 551,2 mi (inflado) para **R$ 325,5 mi (receita externa real)**,
+com faturamento individual (R$ 543,4 mi) e intragrupo eliminavel (R$ 217,9 mi) como auditoria. Por empresa,
+mostra o individual da CNPJ com paridade externa/intragrupo + flag "concentrador" (Jds Matriz 94,8%). Core
+compartilhado `_itens-venda-grupo.ts`; `receitaConsolidada` refatorada com saida identica (conferencia I3/I4 ao
+centavo). Provado por conferencia + f2-receita-consolidada.e2e + smoke test. O dashboard nao importa
+`reports/queries/fiscal.ts` (tudo via MCP), entao a correcao propaga para Nex/WhatsApp/Playground.
 
 **Problema:** existem hoje duas camadas de calculo de faturamento que NAO conversam:
 - **Canonica** (`src/lib/metrics/fiscal/`, Fases 1-2): por CFOP, `item.vrProdutos`, Tabela de Regras,
@@ -32,9 +40,18 @@ correcao na tool propaga, MAS o dashboard tem queries proprias que precisam alin
 
 ---
 
-## R-intercompany-fallback-fragil — 38,8% da eliminacao intercompany depende de regex sobre nome (PRIORIDADE ALTA)
+## R-intercompany-fallback-fragil — 38,8% da eliminacao intercompany depende de regex sobre nome (RESOLVIDO)
 
 **Aberto em:** 2026-06-10 (auditoria adversarial da Fase 2).
+**FECHADO em:** 2026-06-10 (Fase 2.5). Criada `PARTICIPANTES_GRUPO_WHITELIST` (15 ids do grupo validados no
+cache: 2,9,10,11,12,13,14,15,16,19,20,21,22,23,24), com os odoo_id reciclados (8722 Jaguaribe, 8723 Vilmar,
+9552 Smartfit, 7719 Residencial) EXCLUIDOS explicitamente (`PARTICIPANTES_RECICLADOS_EXCLUIDOS`). `ehNotaIntragrupo`
+agora cascateia whitelist→cadastro→nome. Delta na eliminacao = R$ 0 (a whitelist e blindagem, nao correcao , o
+fallback de nome ja capturava tudo), mas a marcacao deixa de depender do regex de nome para os estabelecimentos
+conhecidos. Travado por **S0** (gate: eliminacao pos-whitelist >= baseline pre-whitelist, ao centavo nos 5
+periodos) e monitorado por **S1** (residual so-por-nome, caiu para 2025=0 / acumulado=109 apos a whitelist) e
+**S2** (divergencia nome x cadastro = 0). Cuidado mantido: franquias "Matrix Fit" (32493616/50075046/57692916)
+sao clientes externos, NAO grupo.
 
 **Problema:** a marcacao intragrupo por `fato_parceiro.documentoDigits` so pega R$ 440,4 mi do intercompany.
 Os outros **R$ 278,8 mi (2.538 notas, 38,8%)** so sao eliminados pelo fallback `extrairRaizCnpjDeTexto`
@@ -92,11 +109,13 @@ duplicacao); o problema e de comportamento/apresentacao.
 `resolverPeriodoFiscal` (`mcp/tools/fiscal/_periodo-padrao.ts`): sem periodo informado, assumem
 o **ano corrente** e a resposta SEMPRE explicita o periodo. Decisao do usuario 2026-06-09.
 
-**PENDENTE (as demais ~20 tools fiscais):** `fiscal_faturamento_periodo`, `_por_empresa`,
-`_por_cliente`, `_por_uf`, `_por_marca`, `_por_operacao`, `impostos_periodo`, etc. ainda usam
-`input.periodoDe/Ate` cru , sem periodo, somam os 13 anos. Aplicar o mesmo `resolverPeriodoFiscal`
-em todas (fix mecanico, mas precisa testar cada uma). Ate la, o agente Nex DEVE sempre passar
-um periodo nessas tools. Prioridade ALTA (afeta credibilidade de qualquer numero fiscal).
+**RESOLVIDO (Grupo B) em 2026-06-10 (Fase 2.5):** `resolverPeriodoFiscal` (default ano corrente, periodo
+sempre explicito) aplicado em `fiscal_faturamento_periodo`, `_por_cliente`, `_mensal_serie` (repontadas) +
+`notas_emitidas`, `impostos_periodo`, `produtos_faturados`, `_nao_autorizado`, `_por_operacao`, `_por_empresa`,
+`_recebido`. `fiscal_contar_notas` EXCLUIDO de proposito (e contagem de inventario do cache, sem periodo;
+`ouro-fiscal-01` crava 49.427). **Grupo C (`dfe_*`, `notas_recebidas`) NAO usa default ano corrente** , decisao:
+ano corrente esconderia DF-e/nota pendente de periodo anterior; mantem ordenacao desc sem corte de ano. O agente
+nao precisa mais passar periodo nas tools do Grupo B.
 
 ---
 
