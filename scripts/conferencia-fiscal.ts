@@ -13,14 +13,20 @@ import { PARTICIPANTES_GRUPO_WHITELIST } from "@/lib/fiscal/grupo/whitelist-grup
 import { extrairRaizCnpj, extrairRaizCnpjDeTexto } from "@/lib/fiscal/grupo/cnpj";
 import { RAIZES_GRUPO } from "@/lib/fiscal/grupo/raizes-cnpj";
 import { Prisma } from "@/generated/prisma/client";
-import baselineElim from "../docs/superpowers/research/baseline-eliminacao-pre-whitelist.json";
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
 
 const brl = (v: number) => v.toLocaleString("pt-BR", { minimumFractionDigits: 2 });
 const TOL = 0.5; // meio real de tolerancia (arredondamento)
 
 interface Periodo { rotulo: string; de?: string; ate?: string; }
 
-const BASELINE_ELIM = baselineElim as Record<string, number>;
+// Le o baseline em RUNTIME (fs), nao por import estatico: docs/ esta no .dockerignore,
+// entao um import quebraria o `npm run build` (Next typecheca scripts/). Este script so
+// roda local com E2E=1, onde docs/ existe.
+const BASELINE_ELIM = JSON.parse(
+  readFileSync(join(process.cwd(), "docs/superpowers/research/baseline-eliminacao-pre-whitelist.json"), "utf8"),
+) as Record<string, number>;
 
 function condPeriodo(de?: string, ate?: string): Prisma.Sql[] {
   const cond: Prisma.Sql[] = [];
