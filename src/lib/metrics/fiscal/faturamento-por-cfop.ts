@@ -26,6 +26,19 @@ export interface Reconciliacao {
   observacao: string;
 }
 
+export interface SemCfopFinalidade {
+  finalidade: string;
+  totalItens: number;
+  valorProdutos: number;
+}
+
+export interface OutrasNaoEspecificadas {
+  totalItens: number;
+  valorProdutos: number;
+  /** parcela com finalidade_nfe='1' (saida normal); substancia A CONFIRMAR, NAO "venda". */
+  valorFinalidadeVenda: number;
+}
+
 export interface FaturamentoPorCfopResultado {
   agruparPor: "cfop" | "categoria";
   linhas: OperacaoLinha[];
@@ -34,6 +47,10 @@ export interface FaturamentoPorCfopResultado {
   totalReceita: number;
   totalNaoReceita: number;
   semCfop: { totalItens: number; valorProdutos: number };
+  /** Fase 2.6: decomposicao do balde sem_cfop por finalidade (1=venda candidata, 4=devolucao). */
+  semCfopPorFinalidade: SemCfopFinalidade[];
+  /** Fase 2.6: balde "outras" (CFOP 5949/6949), substancia indefinida (a confirmar com o cliente). */
+  outrasNaoEspecificadas: OutrasNaoEspecificadas;
   reconciliacao: Reconciliacao;
 }
 
@@ -109,6 +126,46 @@ export async function faturamentoPorCfop(
     valorProdutos: semCfopGrupo.reduce((s, c) => s + c.valorProdutos, 0),
   };
 
+  // Fase 2.6: decomposicao por finalidade (vive so no cabecalho -> JOIN item->nota). Mesmo
+  // recorte do where acima (entrada_saida='1', autorizada, periodo, empresa) reproduzido em SQL
+  // parametrizado ($queryRawUnsafe + params, para nao importar o VALUE Prisma neste arquivo
+  // jest-testado , o client gerado usa import.meta e quebra o jest).
+  const params: unknown[] = [];
+  let condSql = "i.entrada_saida = '1' AND i.situacao_nfe = 'autorizada'";
+  if (input.periodoDe && input.periodoAte) {
+    params.push(`${input.periodoDe}T00:00:00Z`, `${input.periodoAte}T00:00:00Z`);
+    condSql += ` AND i.data_emissao >= $${params.length - 1}::timestamptz AND i.data_emissao < ($${params.length}::timestamptz + interval '1 day')`;
+  }
+  if (input.empresaId !== undefined) {
+    params.push(input.empresaId);
+    condSql += ` AND i.empresa_id = $${params.length}`;
+  }
+
+  type FinRow = { finalidade: string | null; n: bigint; v: Prisma.Decimal | null };
+  const semCfopFinRows = await prisma.$queryRawUnsafe<FinRow[]>(
+    `SELECT nf.finalidade_nfe AS finalidade, COUNT(*) n, COALESCE(SUM(i.vr_produtos),0) v
+     FROM fato_nota_fiscal_item i JOIN fato_nota_fiscal nf ON nf.odoo_id = i.documento_id
+     WHERE ${condSql} AND i.cfop_id IS NULL GROUP BY nf.finalidade_nfe ORDER BY v DESC`,
+    ...params,
+  );
+  const semCfopPorFinalidade: SemCfopFinalidade[] = semCfopFinRows.map((r) => ({
+    finalidade: r.finalidade ?? "(sem)",
+    totalItens: Number(r.n),
+    valorProdutos: Number(r.v ?? 0),
+  }));
+
+  const outrasRows = await prisma.$queryRawUnsafe<FinRow[]>(
+    `SELECT nf.finalidade_nfe AS finalidade, COUNT(*) n, COALESCE(SUM(i.vr_produtos),0) v
+     FROM fato_nota_fiscal_item i JOIN fato_nota_fiscal nf ON nf.odoo_id = i.documento_id
+     WHERE ${condSql} AND (i.cfop_nome LIKE '5949%' OR i.cfop_nome LIKE '6949%') GROUP BY nf.finalidade_nfe`,
+    ...params,
+  );
+  const outrasNaoEspecificadas: OutrasNaoEspecificadas = {
+    totalItens: outrasRows.reduce((s, r) => s + Number(r.n), 0),
+    valorProdutos: outrasRows.reduce((s, r) => s + Number(r.v ?? 0), 0),
+    valorFinalidadeVenda: outrasRows.filter((r) => r.finalidade === "1").reduce((s, r) => s + Number(r.v ?? 0), 0),
+  };
+
   // Monta as linhas conforme o modo.
   let linhas: OperacaoLinha[];
   if (agruparPor === "cfop") {
@@ -158,7 +215,7 @@ export async function faturamentoPorCfop(
     somaProdutosItens: totalProdutos,
     somaProdutosNotas,
     diferenca,
-    observacao: `Soma dos itens e do cabecalho fecham por tolerancia (diferenca de ${pct.toFixed(2)}%).`,
+    observacao: `Itens e cabecalho diferem em ${pct.toFixed(4)}% (R$ ${diferenca.toFixed(2)}), atribuivel a notas de saida sem item.`,
   };
 
   // Paginacao do full-set (apos ordenar).
@@ -167,5 +224,16 @@ export async function faturamentoPorCfop(
     linhas = linhas.slice(off, off + input.limit);
   }
 
-  return { agruparPor, linhas, total, totalProdutos, totalReceita, totalNaoReceita, semCfop, reconciliacao };
+  return {
+    agruparPor,
+    linhas,
+    total,
+    totalProdutos,
+    totalReceita,
+    totalNaoReceita,
+    semCfop,
+    semCfopPorFinalidade,
+    outrasNaoEspecificadas,
+    reconciliacao,
+  };
 }
