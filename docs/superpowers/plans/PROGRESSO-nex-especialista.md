@@ -276,13 +276,8 @@ Cada fase: plano próprio (bite-sized) + 2 reviews quando material → execuçã
           prompt , 'clienteCnpj' o mini nao preenchia); E2E verificado
           contra SQL exato. + triggers de CNPJ.
       [x] RETRY de catalogo vazio no run-agent (redeploy do mcp).
-      [~] MARGEM POR FAMILIA implementada (metrica porFamilia + tool
-          agruparPor familia + triggers; jest verde; rebuild feito). E2E
-          PENDENTE DE AFINAR: a tool certa e chamada mas o mini nao passa
-          agruparPor:'familia' (responde agregado) , afinar na continuacao
-          (descricao ja instrui; conferir se passou o param no proximo run e
-          considerar exemplo no prompt ou formatador exibindo familias
-          quando presentes).
+      [x] MARGEM POR FAMILIA RESOLVIDA (metrica porFamilia + tool
+          agruparPor familia + triggers + familiasResumo no destaque + formatador anexa). VALIDADO no handler: _RESPOSTA inclui "Por familia: MATRIX..., LIFE FITNESS..." top 8; o param e passado pelo mini (audit comprova); reescrita do mini pode resumir (tema A2).
       [ ] REVIEW AMPLO (usuario: cliente tem 100+ perguntas da complexidade
           das 8; avaliar prontidao do catalogo; spec curta + reviews
           adversariais; TETO OPENAI AGORA US$8, gasto ~4,70). E pedir ao
