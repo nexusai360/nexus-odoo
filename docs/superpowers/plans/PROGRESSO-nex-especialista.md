@@ -72,10 +72,12 @@ Cada fase: plano próprio (bite-sized) + 2 reviews quando material → execuçã
   - [x] C.1b CASO NCM resolvido (8c1b7cc): cadastro_detalhar_produto aceita
         termo (codigo OU palavras AND), ambiguidade ate 5 candidatos, descricao
         para retrieval. E2E: lista candidatos reais.
-  - [ ] C.1c restantes: ICMS/PIS/COFINS (apuracao zerada sem ressalva), top-10
-        pedidos (restringiu periodo sem pedirem), Smartfit (ambiguidade 50),
-        "quantas E quais" (completude), composicao multi-eixo, follow-up ,
-        varios sao prompt/default (entram na Fase D) ou golden novo (Fase E).
+  - [x] C.1c Smartfit: _RESPOSTA da busca embute top-5 com documento (tool ok;
+        o mini ainda corta a lista ao reescrever , reforco para Fase A2/D).
+        "Quantas E quais" ja respondia certo (15 filiais listadas).
+  - [ ] C.1d restantes (Fase D/E): ICMS/PIS/COFINS ressalva de fonte zerada,
+        top-10 pedidos default de periodo, composicao multi-eixo, follow-up
+        contextual no golden, casos errados como golden novo.
 - [ ] Fase C , filtros + composição multi-eixo + follow-up (mineração das razoes).
 - [ ] Fase A2 , A/B confirmatório.
 - [ ] Fase D , prompt 2.0 + AutoValidator atualizado.
