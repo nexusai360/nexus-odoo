@@ -15,6 +15,20 @@
 > sequencial dos 107 tools no cold start do router** (`getToolVectors`, 107×~0,6s≈64s; cache por processo, só o
 > 1º turno após deploy pagava). Fix: `embedMany` batcha numa chamada (107→1). Medido: cold start 73s+ → **15,3s**
 > (thinking +5,4s). jest 2873 verde. Doc: `docs/superpowers/research/2026-06-10-latencia-sessao-mcp.md`.
+> **PERÍCIA FINANCEIRO + CONSERTO DO SYNC (2026-06-11, #95 em prod):** verificação E2E achou que
+> `financeiro_contas_a_pagar`/`titulos_vencidos` contavam "em aberto" só como `situacaoSimples='aberto'`
+> (efetivo), escondendo o bucket `provisorio`. Confrontado com o Odoo AO VIVO + painel do cliente: o a pagar
+> real é **R$ 222,4mi** (efetivo R$ 21,7mi + provisório R$ 200,6mi), não os R$ 21,7mi da tool. **Fix da tool**
+> (commit 2a6959b): "em aberto" = `vrSaldo>0` (efetivo + provisório), com quebra honesta confirmado/provisório
+> no `_RESPOSTA`. **MAS** o número do cache estava inflado (R$ 394,8mi) por **707 títulos da Johnson (R$ 172,7mi)
+> JÁ DELETADOS no Odoo e não purgados**. **Causa raiz (commit 13e33da):** a reconciliação (única rotina que
+> detecta deleção , incremental só pega `write_date` novo) rodava **1x/dia (1440min)** e colidia todo dia com a
+> manutenção da Tauga (HTTP 502), sendo adiada/perdida. **Conserto (régua que já existe no painel):** reconcile
+> **1440→180min (3h)** (`sync.reconcile_interval_min`; default no código + migration `20260611060000` idempotente
+> p/ prod). Resolve os dois: deleção reflete em horas + 8 janelas/dia driblam a manutenção. **PROVADO AO VIVO:**
+> Tauga voltou → recovery (`drainPending`) re-rodou o reconcile → 707 purgados → rebuild do fato → a pagar
+> **R$ 222,1mi** (= painel). jest 2875 verde. **PENDENTE leve:** prod se autocorrige no 1º reconcile pós-deploy
+> (≤3h, Tauga no ar); pode mostrar nº inflado nessa janela curta. Scripts de diagnóstico: `scripts/pericia-*.ts`.
 > **DEPLOY , ROTA ÚNICA:** usar **`python3 scripts/ship.py "titulo"`** (`docs/runbooks/deploy-procedure.md`):
 > PR→CI→merge→deploy→verifica prod, com fallback de IP da API do GitHub (o `gh` trava quando api.github.com
 > cai no IP Azure 4.228.31.149 inalcançável; `ship.py` contorna). NÃO refazer o fluxo na mão.
