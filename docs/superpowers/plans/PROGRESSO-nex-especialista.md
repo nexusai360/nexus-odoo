@@ -88,6 +88,20 @@ Cada fase: plano próprio (bite-sized) + 2 reviews quando material → execuçã
       (contabil_estrutura x plano; cidades_listar x parceiros_por_cidade ,
       toolsAceitas). TODOS os casos reais de usuario passam. kpi 5/6 (1 flake de
       formatacao do mini no 10-maiores , reforca A2). custo p50 caiu 0,55->0,48c.
+- [x] **Onda 3 EM PRODUCAO**: fix do "papagaio engessado" (regra 5b de
+      contestacao + skip V3/V5 via CONTESTACAO_RE + ressalva de cobertura em
+      filiais_listar). E2E final PENDENTE de quota OpenAI.
+- [!] **BLOQUEIO OPERACIONAL: conta OpenAI insufficient_quota (saldo estourou
+      2026-06-11 ~12h). O Nex esta SEM LLM em prod e dev ate o usuario
+      recarregar.** Ao recarregar: rodar E2E do fix de contestacao (caso
+      filiais do log) + smoke bubble.
+- [x] **LIMPA 2026+ (prioridade maxima do usuario): SPEC v3 PRONTA**
+      (docs/superpowers/specs/2026-06-11-limpa-2026-design.md), 2 reviews
+      adversariais aplicadas (4 BLOCKERs: titulo vivo R$118mi por SITUACAO
+      nunca data; filtro AND no incremental; snapshot dominio vazio + CR-02;
+      DELETE fisico + VACUUM FULL). Inventario tabela a tabela MEDIDO no doc.
+      **PROXIMO: PLAN v1 → 2 reviews → v3 → execucao (ordem §4 da spec; purge
+      --apply SO com aprovacao humana do relatorio dry-run).**
 - [ ] **PROXIMA SESSAO:** (adicionar: reescrever os ~8 cov-* placeholder do
       golden como perguntas naturais com identificadores; toolsAceitas nas
       tools irmas) Fase D (prompt 2.0 enxuto + remover regras-curativo),
