@@ -13,6 +13,7 @@ import { MODEL_CATALOG, rawTableFor } from "@/worker/catalog/model-catalog";
 import {
   wherePre2026Raw,
   wherePre2026Filho,
+  wherePre2026Neto,
   whereTituloQuitadoPre2026Raw,
   contagemDryRun,
 } from "@/worker/limpa/predicados";
@@ -53,8 +54,8 @@ async function main() {
         const w = pai?.corte
           ? wherePre2026Filho(e.cortePai.tabelaRawPai, e.cortePai.fkRaw, chavePai)
           : // pai intermediario (item): encadeia ao avo documento
-            `(data->'${e.cortePai.fkRaw}'->>0) IS NOT NULL AND (data->'${e.cortePai.fkRaw}'->>0)::int IN ` +
-            `(SELECT odoo_id FROM ${e.cortePai.tabelaRawPai} WHERE ${wherePre2026Filho("raw_sped_documento", "documento_id", "data_emissao")})`;
+            wherePre2026Neto(e.cortePai.tabelaRawPai, e.cortePai.fkRaw,
+              "raw_sped_documento", "documento_id", "data_emissao");
         const c = await conta(tabela, w);
         linhas.push({ tabela, criterio: `filho de ${e.cortePai.tabelaRawPai}`, ...c, mb: await bytes(tabela) });
       } else if (e.corteEspecial === "titulo_por_situacao") {

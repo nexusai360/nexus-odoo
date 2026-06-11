@@ -25,6 +25,9 @@ const COM_CORTE_PAI = [
   "sped.documento.item.rastreabilidade",
   "sped.documento.pagamento",
   "sped.documento.referenciado",
+  // FK documento_id verificada no banco real 2026-06-11: 18.742 array + 549
+  // false (preservados pelo guard jsonb_typeof do predicado de filho).
+  "sped.documento.volume",
 ].sort();
 
 const CORTE_ESPECIAL = ["finan.lancamento"].sort();

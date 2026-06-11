@@ -101,7 +101,7 @@ export const MODEL_CATALOG: readonly CatalogEntry[] = [
   { odooModel: "sped.documento.pagamento", mode: "incremental", cortePai: { tabelaRawPai: "raw_sped_documento", fkRaw: "documento_id", fkM2O: true } },
   { odooModel: "sped.documento.rateio", mode: "incremental" },
   { odooModel: "sped.documento.referenciado", mode: "incremental", cortePai: { tabelaRawPai: "raw_sped_documento", fkRaw: "documento_id", fkM2O: true } },
-  { odooModel: "sped.documento.volume", mode: "incremental" },
+  { odooModel: "sped.documento.volume", mode: "incremental", cortePai: { tabelaRawPai: "raw_sped_documento", fkRaw: "documento_id", fkM2O: true } },
   { odooModel: "sped.empresa", mode: "incremental" },
   { odooModel: "sped.endereco", mode: "incremental" },
   { odooModel: "sped.faturamento.simples", mode: "incremental" },

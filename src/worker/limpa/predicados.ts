@@ -18,7 +18,12 @@ export function wherePre2026Raw(chaveData: string, corte: string = CORTE_DADOS_I
   return `(data->>'${chaveData}') IS NOT NULL AND substring(data->>'${chaveData}' from 1 for 10) < '${corte}'`;
 }
 
-/** WHERE de filho por JOIN ao pai pre-2026 (FK many2one = [id,"label"]). */
+/**
+ * WHERE de filho por JOIN ao pai pre-2026 (FK many2one = [id,"label"]).
+ * O guard e jsonb_typeof = 'array', nunca IS NOT NULL: FK vazia no Odoo vem
+ * como `false`, e em jsonb o escalar age como array de 1 elemento no `-> 0`
+ * (false->>0 = 'false' passa no IS NOT NULL e quebra o cast ::int).
+ */
 export function wherePre2026Filho(
   tabelaRawPai: string,
   fkRaw: string,
@@ -26,8 +31,23 @@ export function wherePre2026Filho(
   corte: string = CORTE_DADOS_ISO,
 ): string {
   return (
-    `(data->'${fkRaw}'->>0) IS NOT NULL AND (data->'${fkRaw}'->>0)::int IN ` +
+    `jsonb_typeof(data->'${fkRaw}') = 'array' AND (data->'${fkRaw}'->>0)::int IN ` +
     `(SELECT odoo_id FROM ${tabelaRawPai} WHERE ${wherePre2026Raw(chaveDataPai, corte)})`
+  );
+}
+
+/** WHERE de neto: encadeia ao avo via pai intermediario (ambos FK m2o array). */
+export function wherePre2026Neto(
+  tabelaRawPai: string,
+  fkRawNoNeto: string,
+  tabelaRawAvo: string,
+  fkRawNoPai: string,
+  chaveDataAvo: string,
+  corte: string = CORTE_DADOS_ISO,
+): string {
+  return (
+    `jsonb_typeof(data->'${fkRawNoNeto}') = 'array' AND (data->'${fkRawNoNeto}'->>0)::int IN ` +
+    `(SELECT odoo_id FROM ${tabelaRawPai} WHERE ${wherePre2026Filho(tabelaRawAvo, fkRawNoPai, chaveDataAvo, corte)})`
   );
 }
 
