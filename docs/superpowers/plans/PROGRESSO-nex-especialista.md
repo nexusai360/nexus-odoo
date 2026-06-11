@@ -185,12 +185,22 @@ Cada fase: plano próprio (bite-sized) + 2 reviews quando material → execuçã
       **MERGE/SHIP DO CODIGO DA LIMPA: pg_dump do pre-flight FEITO , gate
       destravado; merge segue exigindo confirmacao humana padrao.** (T7b/T8-
       golden gated por recarga OpenAI; --apply gated por aprovacao humana).**
-- [ ] **PROXIMA SESSAO:** (adicionar: reescrever os ~8 cov-* placeholder do
-      golden como perguntas naturais com identificadores; toolsAceitas nas
-      tools irmas) Fase D (prompt 2.0 enxuto + remover regras-curativo),
-      follow-up contextual no golden, golden gate pre-push, A2 (A/B Claude ,
-      exige usuario creditar OpenRouter; slugs: anthropic/claude-sonnet-4.6,
-      opus-4.7, opus-4.8).
+- [x] **GOLDEN 100%: benchmark 60 casos = 60/60 tool certa (100%), kpi 6/6,
+      custo p50 $0,0057, lat p50 15,2s** (era 83,3% no baseline; os 10 erros
+      estruturais zerados). Fixes (5cccf83): 8 cov-* placeholder reescritos
+      com identificadores REAIS conferidos no cache; toolsAceitas em
+      contabil-02/cov-26; vocabulario do router (comercial: tabelas/regras de
+      preco com forceIncludeOn; crm: res.partner/registro raw); preco_tabela
+      aceita tabelaNome (resolucao por nome + ambiguidade ate 5); GRANT
+      raw_res_partner (migration 20260611191500 , unica raw lida por tool,
+      mesma classe C.0). NOTA: cov-26 aceita o nome saneado
+      crm_res_partner_get (OpenAI proibe ponto em function name). PENDENTE
+      LEVE: juiz heuristico marcou 9/60 suspeitas de alucinacao (era 5/60;
+      tem falso positivo , auditar amostra na proxima rodada de pericia).
+- [ ] **PROXIMA SESSAO:** Fase D (prompt 2.0 enxuto + remover
+      regras-curativo), follow-up contextual no golden, golden gate pre-push,
+      A2 (A/B Claude , exige usuario creditar OpenRouter; slugs:
+      anthropic/claude-sonnet-4.6, opus-4.7, opus-4.8).
 - [ ] Fase C , filtros + composição multi-eixo + follow-up (mineração das razoes).
 - [ ] Fase A2 , A/B confirmatório.
 - [ ] Fase D , prompt 2.0 + AutoValidator atualizado.
