@@ -303,7 +303,17 @@ const fmtBuscarParceiro: FormatadorCanonico = (env) => {
     const doc = env._DESTAQUE?.documento ?? "";
     return `Parceiro: ${nome}${doc ? ` (${doc})` : ""}.`;
   }
-  return `${n} parceiros encontrados com termo '${termo}'.`;
+  // Caso Smartfit (pericia 2026-06-11): com varios homonimos, so a contagem
+  // nao responde "qual o CNPJ de X". Embute os 5 primeiros com documento para
+  // o agente apresentar candidatos uteis em vez de mandar paginar.
+  const top = (env.linhas as Array<{ nome?: string | null; documento?: string | null }>)
+    .slice(0, 5)
+    .map((l) => `${l.nome ?? "?"}${l.documento ? ` [${l.documento}]` : ""}`)
+    .join("; ");
+  return (
+    `${n} parceiros encontrados com termo '${termo}'.` +
+    (top ? ` Os 5 primeiros (com documento): ${top}. Liste-os ao usuario e peca para especificar.` : "")
+  );
 };
 
 const fmtParceirosPorUF: FormatadorCanonico = (env) => {
