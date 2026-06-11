@@ -45,12 +45,15 @@ Cada fase: plano próprio (bite-sized) + 2 reviews quando material → execuçã
   - [x] B.1 caso forense #1: financeiro_titulos_vencidos (orderBy valor desc +
         ordenadoPor + topMaiores + formatador declara). E2E real ✓ (d1f45b4).
   - [x] FINANCEIRO 12/12 migrado (af566ea). Allowlist 77→66.
-  - [~] FISCAL (26 tools) + ESTOQUE/COMERCIAL/CADASTROS: 2 subagentes em
-        paralelo (briefing com padrao canonico; allowlist integrada pelo
-        orquestrador ao final).
-  - [ ] B.6 AutoValidator enquadramento de lista (inline, em curso).
-  - [ ] B.7 embeddingText audit das monetarias.
-  - [ ] Demais dominios (contabil, sped, preco, servico, producao...) + esvaziar allowlist.
+  - [x] FISCAL 26 (subagente; +topMaiores em notas_emitidas/recebidas com 4a
+        query top-10 por vrNf sobre o recorte) + ESTOQUE/COMERCIAL/CADASTROS 29
+        (subagente; fix real: pedidos_por_etapa era ordem de Map) (4532779).
+  - [x] CONTABIL 7 + bi_consulta_avancada + write tools excluidas do gate.
+        **ALLOWLIST VAZIA , 78/78 (1b9e785). Criterio de saida do nucleo da
+        Fase B atingido.**
+  - [x] B.6 AutoValidator V8 "enquadramento de lista" (2368688): alegou
+        'maiores/top' sem topMaiores/ordenadoPor de valor desc => retry.
+  - [ ] B.7 embeddingText audit das monetarias (PROXIMO).
 - [ ] Fase C , filtros + composição multi-eixo + follow-up (mineração das razoes).
 - [ ] Fase A2 , A/B confirmatório.
 - [ ] Fase D , prompt 2.0 + AutoValidator atualizado.
