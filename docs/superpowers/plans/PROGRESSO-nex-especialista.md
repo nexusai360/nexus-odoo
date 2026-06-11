@@ -208,10 +208,24 @@ Cada fase: plano próprio (bite-sized) + 2 reviews quando material → execuçã
       kpi 6/6, custo p50 $0,0043, lat p50 14,0s.** Unico erro: cov-20 era
       irma legitima (estrutura/plano tambem respondem hierarquia da conta) ,
       toolsAceitas aplicado. Gasto OpenAI da sessao ~US$1,80 de 5.
-- [ ] **PROXIMA SESSAO:** Fase D (prompt 2.0 enxuto + remover
-      regras-curativo), follow-up contextual no golden, golden gate pre-push,
-      A2 (A/B Claude , exige usuario creditar OpenRouter; slugs:
-      anthropic/claude-sonnet-4.6, opus-4.7, opus-4.8).
+- [x] **FASE D ONDA 1 (prompt 2.0-D1, a458a9a):** lista estatica de ~35 tools
+      REMOVIDA do identity-base (driftava e mentia: preco_tabela "so
+      tabelaId", por_marca/por_uf marcadas como lacuna); secao TOOLS virou
+      atalhos de desambiguacao + "catalogo injetado e a fonte"; freshness
+      coerente com a regra 6; exemplo contraditorio corrigido. Benchmark
+      full pos-D1: 99,1% kpi 6/6 custo estavel = zero regressao. ONDA 2
+      (compressao agressiva de regras-curativo) fica para sessao futura,
+      idealmente junto do A2.
+- [x] **FOLLOW-UP CONTEXTUAL (5e48ccd):** turnosAntes no golden-schema +
+      ab-cerebro multi-turno (turnos anteriores na mesma conversa, so o
+      final avaliado) + 3 casos followup-01/02/03 validados no agente real
+      (resolucao de referencia "dela", troca de eixo receber->pagar, reuso
+      de tool com periodo ajustado). frozenProsseguir exclui followup-*.
+      Higiene: obs->observacao em 71 casos (campo certo do schema).
+- [ ] **PROXIMA SESSAO:** Fase D onda 2 (compressao agressiva de
+      regras-curativo, com A/B); A2 (A/B Claude , exige usuario creditar
+      OpenRouter; slugs anthropic/claude-sonnet-4.6, opus-4.7, opus-4.8);
+      auditar 15/112 suspeitas do juiz de alucinacao (tem falso positivo).
 - [ ] Fase C , filtros + composição multi-eixo + follow-up (mineração das razoes).
 - [ ] Fase A2 , A/B confirmatório.
 - [ ] Fase D , prompt 2.0 + AutoValidator atualizado.
