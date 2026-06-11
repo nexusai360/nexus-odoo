@@ -196,3 +196,19 @@ export function stripCanalSuggestionsResidual(text: string): string {
     .replace(/\n{3,}/g, "\n\n")
     .trimEnd();
 }
+
+/**
+ * Strip de tool-call CRU vazado no texto. Modelos mini (gpt-5.x-mini) as vezes
+ * ESCREVEM a chamada como texto, ex.: `{"tool":"fiscal_faturamento_periodo",
+ * "arguments":{...}}`, em vez de fazer a tool call de verdade. Isso nunca pode
+ * aparecer pro usuario. Strip conservador: so remove linhas que SAO um JSON
+ * comecando com `{"tool":"..."}` (nao toca em texto normal).
+ */
+const LEAKED_TOOL_CALL_RE = /^[ \t]*\{\s*"tool"\s*:\s*"[a-zA-Z0-9_.:-]+"[^\n]*\}[ \t]*$/gm;
+export function stripLeakedToolCall(text: string): string {
+  if (!text) return text;
+  return text
+    .replace(LEAKED_TOOL_CALL_RE, "")
+    .replace(/\n{3,}/g, "\n\n")
+    .trim();
+}

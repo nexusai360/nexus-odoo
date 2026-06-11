@@ -961,10 +961,13 @@ export async function runAgent(args: RunAgentInput): Promise<RunAgentResult> {
         // Trava defensiva (2026-05-27): mesmo apos extractSuggestions, garante
         // que nenhum residual de "[[suggestions]]:..." vaza pro usuario na bubble.
         try {
-          const { stripCanalSuggestionsResidual } = await import(
+          const { stripCanalSuggestionsResidual, stripLeakedToolCall } = await import(
             "./suggestions-extractor"
           );
           message = stripCanalSuggestionsResidual(message);
+          // Guarda: o mini as vezes ESCREVE a tool call como texto em vez de
+          // chama-la ({"tool":...}); nunca pode vazar pro usuario.
+          message = stripLeakedToolCall(message);
         } catch (err) {
           console.warn("[runAgent] strip canal suggestions falhou:", err);
         }

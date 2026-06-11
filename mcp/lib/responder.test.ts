@@ -322,7 +322,9 @@ describe("fmtFaturamentoPeriodo (Fase 2.5: headline externa/individual)", () => 
     } as never);
     expect(txt).toContain("Receita externa real");
     expect(txt).toContain("2025");
-    expect(txt).toContain("intragrupo");
+    // Transparencia enxuta (sem o "individual X; intragrupo Y" verboso): so a nota curta.
+    expect(txt).toContain("vendas entre empresas do grupo");
+    expect(txt).not.toContain("Faturamento individual");
   });
   it("empresa concentradora: marca o aviso de concentrador", () => {
     const txt = fmt({
