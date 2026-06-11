@@ -239,12 +239,31 @@ Cada fase: plano próprio (bite-sized) + 2 reviews quando material → execuçã
       EXATAS); golden 141 (6 casos novos, kpi SQL-vivo); E2E agente real
       6/6 e as perguntas 2/7/8 LITERAIS do cliente respondendo certo.
       Catalogo 117 (contagens 108/117 nos gates; snapshot regenerado).
-      **FALTA: ONDA B** (B1 spike custo -> B2 cnpj.ts puro -> B3 CNPJ no
-      por_cliente -> B4 vendas_produto_por_empresa+CMV gated -> B5 filtro
-      venda pedidos_por_uf) e **ONDA C** (C1 harness esperaNaResposta
-      inclusao obrigatoria -> C2 V9 pos-V3 com 4 testes -> C3 vocabulario
-      prospeccao + prompt gap de dimensao -> C4 32 casos -> C5 benchmark
-      FULL + relatorio das 8 respostas). Plan v3 e a fonte.
+      **ONDA B COMPLETA:** spike S1 83,8% (CMV aproximado entrou); cnpj.ts
+      puro (vat BR-, raiz, formatacao); por_cliente com documento +
+      agruparPor cnpj_raiz; fiscal_vendas_produto_por_empresa (produto x
+      empresa, venda via Tabela de Regras, CMV com cobertura , caso real
+      esteira: 2.233 un, R$38,4mi, CMV R$31,8mi 98,2%); pedidos_por_uf com
+      operacao venda (sufixo '(venda)', 1.003 pedidos; prefixo e pegadinha).
+      Validacao 5/5. Catalogo 118 (contagens 109/118).
+      **ONDA C COMPLETA:** harness avalia honestidade (esperaNaResposta/
+      proibidoNaResposta, inclusao OBRIGATORIA na amostra, respostaOk no
+      resumo); V9 gap de fonte (pos-V4, skip contestacao/fora-escopo/lacuna,
+      4 testes); vocabulario prospeccao/leads->crm e margem/cmv->fiscal
+      (deriv-08 roteava p/ crm); regra de prompt "gap de dado da fonte";
+      golden 167 com 21 casos novos validados 21/21.
+      **BENCHMARK FULL FINAL: 147 casos, tool certa 134/135 (99,3%),
+      kpi-vivo 10/10, respostaOk 12/12 pos-ajuste de esperas (o mini varia
+      fraseado; a constante e citar o cadastro como fonte). Flake conhecido:
+      followup-03 (multi-turno, passou em 1 de 2 runs , monitorar).**
+      **E2E FINAL: AS 8 PERGUNTAS LITERAIS DO CLIENTE = 8/8 tool certa**
+      (a 6 cai corretamente na lacuna honesta: "recorte de seguimento nao
+      esta preenchido no cadastro hoje"). Relatorio com as 8 respostas:
+      docs/superpowers/research/cobertura-cliente-validacao.md.
+      GAPS REGISTRADOS p/ onda futura: filtro de cliente por CNPJ exato
+      (deriv-05); margem por familia (lacuna honesta hoje); race de oferta
+      vazia no instante do redeploy do mcp (catalog_size_offered=0 ,
+      retry de listTools no run-agent).
 - [ ] **DEPOIS:** Fase D onda 2 (compressao agressiva, com A/B); A2 (A/B
       Claude , exige credito OpenRouter); auditar suspeitas do juiz de
       alucinacao (falso positivo).
