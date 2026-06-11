@@ -20,14 +20,24 @@ Cada fase: plano próprio (bite-sized) + 2 reviews quando material → execuçã
   Achados-chave aplicados: golden atual NÃO roda LLM (chama tool.handler direto);
   só 4/124 kpiOuro; gate de contrato deve ser incremental; AutoValidator integrado;
   composição multi-eixo + follow-up contextual no escopo; A/B roda 2x (A1/A2).
-- [ ] **Fase A0 , Instrumentação** (PRÓXIMA):
-  - [ ] A0.3 pre-flight credenciais (SELECT llm_credentials: frontier com saldo?).
-  - [ ] A0.1 harness agêntico A/B: roda golden via runAgent + llmOverride
-        (campo JÁ existe, run-agent.ts ~360), captura tool usada + resposta +
-        custo end-to-end (todas as origens LlmUsage do turno) + latência + juiz
-        de alucinação. Local: src/lib/agent/evals/ (novo arquivo .e2e.ts ou script).
-  - [ ] A0.2 popular kpiOuro: ≥60 casos SELECT-verificados (hoje 4/124).
-- [ ] Fase A1 , A/B preliminar (mini × gpt-5.4 × frontier OpenRouter) + promoção.
+- [x] **Fase A0 , Instrumentação** (commit 708f4cb):
+  - [x] A0.3 pre-flight: OpenAI ok; OpenRouter SALDO ZERO (testar Claude exige
+        o usuário creditar; slug certo é anthropic/claude-sonnet-4.6 / opus-4.7 /
+        opus-4.8 , o catalog.ts interno tem sonnet-4.7 que NÃO existe lá).
+  - [x] A0.1 harness scripts/ab-cerebro.ts (runAgent+llmOverride, canal backtest,
+        kpiOuro AO VIVO via fonteOuroSql, juiz alucinação via resultPreview novo
+        no evento tool_result, custo end-to-end, toolsAceitas). Juiz calibrado.
+  - [~] A0.2 kpiOuro: 4 casos com SQL-vivo; expandir para ≥60 segue pendente.
+- [x] **Fase A1 , VEREDITO: MANTER gpt-5.4-mini.** A/B 60 casos:
+  mini 83,3% tool / 4-4 kpi / 5 haluc / $0,0055 / 13,3s;
+  gpt-5.4 81,7% / 4-4 / 6 haluc / $0,0384 (7x) / 20,0s.
+  **Os 10 erros de seleção são IDÊNTICOS nos 2 modelos (interseção 100%) =
+  estruturais, modelo não resolve.** Decomposição: ~6 são golden ruim
+  (perguntas-placeholder "Consulta: servico buscar" sem termo , o router ATÉ
+  ofereceu a tool; consertar o GOLDEN); ~4 são seleção entre tools irmãs
+  (contabil_plano_de_contas × contabil_estrutura_conta → toolsAceitas/triggers).
+  Anthropic não testado (OpenRouter 402, saldo 0; max_tokens 65536 do adapter
+  agrava). Detalhes: docs/superpowers/research/ab-cerebro/*.json.
 - [ ] Fase B , contrato de lista (84 tools; task-zero auditoria; ordenadoPor;
       topMaiores; gate allowlist; validador enquadramento; embeddingText audit).
 - [ ] Fase C , filtros + composição multi-eixo + follow-up (mineração das razoes).
