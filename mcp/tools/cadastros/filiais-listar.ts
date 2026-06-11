@@ -121,7 +121,8 @@ export const cadastroFiliaisListar: ToolEntry<Input, Output> = {
         ...d,
         _RESPOSTA: d.totalEncontrados === 0
           ? `Nao ha empresas do grupo${ufLabel}.`
-          : `${d.totalMatrizes} matriz(es) + ${d.totalFiliais} filial(is) = ${d.totalEncontrados} empresas do grupo${ufLabel}. Listando ${d.linhasExibidas}.`,
+          : `${d.totalMatrizes} matriz(es) + ${d.totalFiliais} filial(is) = ${d.totalEncontrados} empresas do grupo${ufLabel}. Listando ${d.linhasExibidas}. ` +
+            `COBERTURA: lista derivada das notas fiscais emitidas no cache; matriz/filial que nunca emitiu nota NAO aparece aqui (pode existir no Odoo).`,
         _DESTAQUE: {
           totalEncontrados: d.totalEncontrados,
           totalMatrizes: d.totalMatrizes,

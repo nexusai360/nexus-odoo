@@ -4,12 +4,12 @@
     "casos": 60,
     "erros": 0,
     "toolCerta": "50/60 (83.3%)",
-    "kpiOuro": "4/4",
-    "casosComSuspeitaAlucinacao": "5/60",
-    "custoP50Usd": "0.0055",
-    "custoTotalUsd": "0.36",
-    "latP50s": "13.3",
-    "duracaoTotalMin": "5.4"
+    "kpiOuro": "5/6",
+    "casosComSuspeitaAlucinacao": "8/60",
+    "custoP50Usd": "0.0048",
+    "custoTotalUsd": "0.33",
+    "latP50s": "14.6",
+    "duracaoTotalMin": "5.3"
   },
   "results": [
     {
@@ -23,8 +23,8 @@
       "kpiOk": true,
       "kpiMiss": [],
       "halucNums": [],
-      "custoUsd": 0.00271398,
-      "durMs": 13209.320833
+      "custoUsd": 0.00277203,
+      "durMs": 14699.266208
     },
     {
       "id": "ouro-financeiro-01",
@@ -37,8 +37,8 @@
       "kpiOk": true,
       "kpiMiss": [],
       "halucNums": [],
-      "custoUsd": 0.00283828,
-      "durMs": 13336.0795
+      "custoUsd": 0.00304153,
+      "durMs": 15536.206542000002
     },
     {
       "id": "ouro-fiscal-01",
@@ -51,8 +51,8 @@
       "kpiOk": true,
       "kpiMiss": [],
       "halucNums": [],
-      "custoUsd": 0.0019627,
-      "durMs": 9234.103375
+      "custoUsd": 0.0022709,
+      "durMs": 11441.234666
     },
     {
       "id": "ouro-comercial-01",
@@ -65,8 +65,44 @@
       "kpiOk": true,
       "kpiMiss": [],
       "halucNums": [],
-      "custoUsd": 0.00175547,
-      "durMs": 6726.5236669999995
+      "custoUsd": 0.00224897,
+      "durMs": 15719.832041
+    },
+    {
+      "id": "pericia-10maiores-01",
+      "dominio": "financeiro",
+      "ok": true,
+      "toolsCalled": [
+        "financeiro_titulos_vencidos"
+      ],
+      "toolOk": true,
+      "kpiOk": false,
+      "kpiMiss": [
+        "maiorVencidoAPagar=1150926.23"
+      ],
+      "halucNums": [
+        174397600.94,
+        2583,
+        3526640.2,
+        170870960.74,
+        159057126.21
+      ],
+      "custoUsd": 0.01033636,
+      "durMs": 25410.338541999998
+    },
+    {
+      "id": "pericia-sped-01",
+      "dominio": "contabil",
+      "ok": true,
+      "toolsCalled": [
+        "contabil_conta_referencial"
+      ],
+      "toolOk": true,
+      "kpiOk": true,
+      "kpiMiss": [],
+      "halucNums": [],
+      "custoUsd": 0.00705077,
+      "durMs": 24853.114333999998
     },
     {
       "id": "estoque-01",
@@ -79,8 +115,8 @@
       "kpiOk": null,
       "kpiMiss": [],
       "halucNums": [],
-      "custoUsd": 0.01078092,
-      "durMs": 15214.689124999999
+      "custoUsd": 0.01225742,
+      "durMs": 24014.363708000004
     },
     {
       "id": "financeiro-01",
@@ -93,8 +129,8 @@
       "kpiOk": null,
       "kpiMiss": [],
       "halucNums": [],
-      "custoUsd": 0.00305835,
-      "durMs": 9836.920042000002
+      "custoUsd": 0.00324035,
+      "durMs": 14807.287333
     },
     {
       "id": "fiscal-01",
@@ -107,8 +143,8 @@
       "kpiOk": null,
       "kpiMiss": [],
       "halucNums": [],
-      "custoUsd": 0.0088751,
-      "durMs": 11325.624833000002
+      "custoUsd": 0.0089546,
+      "durMs": 10198.699166999999
     },
     {
       "id": "comercial-01",
@@ -121,14 +157,15 @@
       "kpiOk": null,
       "kpiMiss": [],
       "halucNums": [],
-      "custoUsd": 0.00213223,
-      "durMs": 7188.038334000001
+      "custoUsd": 0.00169698,
+      "durMs": 6579.229291999996
     },
     {
       "id": "contabil-01",
       "dominio": "contabil",
       "ok": true,
       "toolsCalled": [
+        "contabil_plano_de_contas",
         "contabil_plano_de_contas"
       ],
       "toolOk": true,
@@ -137,8 +174,8 @@
       "halucNums": [
         934
       ],
-      "custoUsd": 0.01204668,
-      "durMs": 22687.462749999995
+      "custoUsd": 0.01125023,
+      "durMs": 18771.633125000008
     },
     {
       "id": "cadastros-01",
@@ -151,23 +188,22 @@
       "kpiOk": null,
       "kpiMiss": [],
       "halucNums": [],
-      "custoUsd": 0.00664909,
-      "durMs": 8177.171250000003
+      "custoUsd": 0.00658909,
+      "durMs": 8524.690374999998
     },
     {
       "id": "cov-01",
       "dominio": "auditoria",
       "ok": true,
       "toolsCalled": [
-        "auditoria_regras",
         "auditoria_regras"
       ],
       "toolOk": true,
       "kpiOk": null,
       "kpiMiss": [],
       "halucNums": [],
-      "custoUsd": 0.00366206,
-      "durMs": 15868.661666999997
+      "custoUsd": 0.00318201,
+      "durMs": 21875.642709000007
     },
     {
       "id": "cov-02",
@@ -180,8 +216,8 @@
       "kpiOk": null,
       "kpiMiss": [],
       "halucNums": [],
-      "custoUsd": 0.00813996,
-      "durMs": 13096.740000000005
+      "custoUsd": 0.00874676,
+      "durMs": 25003.172999999995
     },
     {
       "id": "cov-24",
@@ -194,8 +230,8 @@
       "kpiOk": null,
       "kpiMiss": [],
       "halucNums": [],
-      "custoUsd": 0.00723846,
-      "durMs": 8410.503416
+      "custoUsd": 0.00811381,
+      "durMs": 14392.591625000001
     },
     {
       "id": "cov-26",
@@ -206,37 +242,34 @@
       "kpiOk": null,
       "kpiMiss": [],
       "halucNums": [],
-      "custoUsd": 0.00180571,
-      "durMs": 7899.485249999998
+      "custoUsd": 0.00200621,
+      "durMs": 6676.830541999996
     },
     {
       "id": "cov-59",
       "dominio": "preco",
       "ok": true,
-      "toolsCalled": [
-        "registrar_lacuna"
-      ],
+      "toolsCalled": [],
       "toolOk": false,
       "kpiOk": null,
       "kpiMiss": [],
       "halucNums": [],
-      "custoUsd": 0.00552106,
-      "durMs": 20689.036959000005
+      "custoUsd": 0.00206561,
+      "durMs": 7403.724583999996
     },
     {
       "id": "cov-61",
       "dominio": "producao",
       "ok": true,
       "toolsCalled": [
-        "producao_processos",
-        "registrar_lacuna"
+        "producao_processos"
       ],
       "toolOk": true,
       "kpiOk": null,
       "kpiMiss": [],
       "halucNums": [],
-      "custoUsd": 0.00782403,
-      "durMs": 14465.214542000009
+      "custoUsd": 0.00717528,
+      "durMs": 9688.236625000005
     },
     {
       "id": "cov-63",
@@ -247,8 +280,8 @@
       "kpiOk": null,
       "kpiMiss": [],
       "halucNums": [],
-      "custoUsd": 0.00560077,
-      "durMs": 6778.927124999995
+      "custoUsd": 0.00548977,
+      "durMs": 8478.271792
     },
     {
       "id": "cov-64",
@@ -261,8 +294,8 @@
       "kpiOk": null,
       "kpiMiss": [],
       "halucNums": [],
-      "custoUsd": 0.00579708,
-      "durMs": 10645.885291000006
+      "custoUsd": 0.00610733,
+      "durMs": 12685.383457999997
     },
     {
       "id": "cov-65",
@@ -273,8 +306,8 @@
       "kpiOk": null,
       "kpiMiss": [],
       "halucNums": [],
-      "custoUsd": 0.00174345,
-      "durMs": 8120.233833999999
+      "custoUsd": 0.001576,
+      "durMs": 6518.002958000012
     },
     {
       "id": "estoque-02",
@@ -287,8 +320,8 @@
       "kpiOk": null,
       "kpiMiss": [],
       "halucNums": [],
-      "custoUsd": 0.00405151,
-      "durMs": 12214.826208999992
+      "custoUsd": 0.00361351,
+      "durMs": 13980.502166999999
     },
     {
       "id": "financeiro-02",
@@ -301,8 +334,8 @@
       "kpiOk": null,
       "kpiMiss": [],
       "halucNums": [],
-      "custoUsd": 0.00300523,
-      "durMs": 11745.24779200001
+      "custoUsd": 0.00331428,
+      "durMs": 9832.760250000007
     },
     {
       "id": "fiscal-02",
@@ -316,10 +349,18 @@
       "kpiMiss": [],
       "halucNums": [
         934,
-        50941440.7
+        50941440.7,
+        934,
+        53420564,
+        53420564,
+        20777734,
+        20777734,
+        63631358,
+        55822987,
+        993533
       ],
-      "custoUsd": 0.01653793,
-      "durMs": 38644.406709
+      "custoUsd": 0.01330093,
+      "durMs": 24414.897375
     },
     {
       "id": "comercial-02",
@@ -332,8 +373,8 @@
       "kpiOk": null,
       "kpiMiss": [],
       "halucNums": [],
-      "custoUsd": 0.02465639,
-      "durMs": 115464.81612499998
+      "custoUsd": 0.00959794,
+      "durMs": 29331.335457999987
     },
     {
       "id": "contabil-02",
@@ -346,8 +387,8 @@
       "kpiOk": null,
       "kpiMiss": [],
       "halucNums": [],
-      "custoUsd": 0.0034239,
-      "durMs": 13507.204209000003
+      "custoUsd": 0.0037594,
+      "durMs": 12201.548458000005
     },
     {
       "id": "cadastros-02",
@@ -360,8 +401,8 @@
       "kpiOk": null,
       "kpiMiss": [],
       "halucNums": [],
-      "custoUsd": 0.00953318,
-      "durMs": 14648.514082999987
+      "custoUsd": 0.00824698,
+      "durMs": 19668.59487499998
     },
     {
       "id": "cov-03",
@@ -372,8 +413,8 @@
       "kpiOk": null,
       "kpiMiss": [],
       "halucNums": [],
-      "custoUsd": 0.00550979,
-      "durMs": 7590.298875000008
+      "custoUsd": 0.00205389,
+      "durMs": 9015.484249999994
     },
     {
       "id": "cov-25",
@@ -386,22 +427,20 @@
       "kpiOk": null,
       "kpiMiss": [],
       "halucNums": [],
-      "custoUsd": 0.00587321,
-      "durMs": 11957.697207999998
+      "custoUsd": 0.00579946,
+      "durMs": 13314.587666999985
     },
     {
       "id": "cov-60",
       "dominio": "preco",
       "ok": true,
-      "toolsCalled": [
-        "registrar_lacuna"
-      ],
+      "toolsCalled": [],
       "toolOk": false,
       "kpiOk": null,
       "kpiMiss": [],
       "halucNums": [],
-      "custoUsd": 0.00379562,
-      "durMs": 14509.328959000006
+      "custoUsd": 0.00201137,
+      "durMs": 12664.86058400001
     },
     {
       "id": "cov-62",
@@ -414,8 +453,8 @@
       "kpiOk": null,
       "kpiMiss": [],
       "halucNums": [],
-      "custoUsd": 0.00608781,
-      "durMs": 9638.718165999991
+      "custoUsd": 0.00604206,
+      "durMs": 8369.579582999984
     },
     {
       "id": "cov-66",
@@ -428,8 +467,8 @@
       "kpiOk": null,
       "kpiMiss": [],
       "halucNums": [],
-      "custoUsd": 0.00592345,
-      "durMs": 8162.565791000001
+      "custoUsd": 0.0060697,
+      "durMs": 10991.10620900002
     },
     {
       "id": "estoque-03",
@@ -442,8 +481,8 @@
       "kpiOk": null,
       "kpiMiss": [],
       "halucNums": [],
-      "custoUsd": 0.00328639,
-      "durMs": 10643.167042000015
+      "custoUsd": 0.00272264,
+      "durMs": 8366.539790999988
     },
     {
       "id": "financeiro-03",
@@ -456,8 +495,8 @@
       "kpiOk": null,
       "kpiMiss": [],
       "halucNums": [],
-      "custoUsd": 0.00445273,
-      "durMs": 21368.888582999993
+      "custoUsd": 0.00479653,
+      "durMs": 14566.110249999998
     },
     {
       "id": "fiscal-03",
@@ -472,8 +511,8 @@
       "halucNums": [
         63285682
       ],
-      "custoUsd": 0.00850845,
-      "durMs": 16546.750582999986
+      "custoUsd": 0.0073927,
+      "durMs": 18045.315583000018
     },
     {
       "id": "comercial-03",
@@ -486,23 +525,22 @@
       "kpiOk": null,
       "kpiMiss": [],
       "halucNums": [],
-      "custoUsd": 0.00689329,
-      "durMs": 21499.31349999999
+      "custoUsd": 0.00587079,
+      "durMs": 18053.152708999987
     },
     {
       "id": "contabil-03",
       "dominio": "contabil",
       "ok": true,
       "toolsCalled": [
-        "contabil_conta_referencial",
-        "registrar_lacuna"
+        "contabil_conta_referencial"
       ],
       "toolOk": true,
       "kpiOk": null,
       "kpiMiss": [],
       "halucNums": [],
-      "custoUsd": 0.00515547,
-      "durMs": 15485.219458000007
+      "custoUsd": 0.0106802,
+      "durMs": 36034.35624999998
     },
     {
       "id": "cadastros-03",
@@ -515,8 +553,8 @@
       "kpiOk": null,
       "kpiMiss": [],
       "halucNums": [],
-      "custoUsd": 0.00433624,
-      "durMs": 13522.770458999992
+      "custoUsd": 0.00464549,
+      "durMs": 15839.734541999991
     },
     {
       "id": "cov-04",
@@ -529,8 +567,8 @@
       "kpiOk": null,
       "kpiMiss": [],
       "halucNums": [],
-      "custoUsd": 0.00767419,
-      "durMs": 21371.006957999984
+      "custoUsd": 0.00346604,
+      "durMs": 12933.821750000003
     },
     {
       "id": "cov-67",
@@ -542,12 +580,9 @@
       "toolOk": true,
       "kpiOk": null,
       "kpiMiss": [],
-      "halucNums": [
-        336,
-        336
-      ],
-      "custoUsd": 0.00796575,
-      "durMs": 13938.152917
+      "halucNums": [],
+      "custoUsd": 0.0083516,
+      "durMs": 14895.585374999995
     },
     {
       "id": "estoque-04",
@@ -560,8 +595,8 @@
       "kpiOk": null,
       "kpiMiss": [],
       "halucNums": [],
-      "custoUsd": 0.00701454,
-      "durMs": 27980.942542000004
+      "custoUsd": 0.00485154,
+      "durMs": 16516.495124999987
     },
     {
       "id": "financeiro-04",
@@ -573,24 +608,32 @@
       "toolOk": true,
       "kpiOk": null,
       "kpiMiss": [],
-      "halucNums": [],
-      "custoUsd": 0.00915999,
-      "durMs": 10066.445667000022
+      "halucNums": [
+        64473361.19,
+        2681,
+        64190640.27,
+        282720.92
+      ],
+      "custoUsd": 0.00824274,
+      "durMs": 9899.456584
     },
     {
       "id": "fiscal-04",
       "dominio": "fiscal",
       "ok": true,
       "toolsCalled": [
-        "fiscal_dfe_pendentes_manifestacao",
-        "registrar_lacuna"
+        "fiscal_dfe_pendentes_manifestacao"
       ],
       "toolOk": true,
       "kpiOk": null,
       "kpiMiss": [],
-      "halucNums": [],
-      "custoUsd": 0.00483873,
-      "durMs": 19119.351458999998
+      "halucNums": [
+        995,
+        5193958.85,
+        995
+      ],
+      "custoUsd": 0.01093693,
+      "durMs": 32382.025458999997
     },
     {
       "id": "comercial-04",
@@ -602,9 +645,14 @@
       "toolOk": true,
       "kpiOk": null,
       "kpiMiss": [],
-      "halucNums": [],
-      "custoUsd": 0.010662,
-      "durMs": 16374.043792000011
+      "halucNums": [
+        14819573,
+        62781039,
+        63077937,
+        6788470
+      ],
+      "custoUsd": 0.00628655,
+      "durMs": 20219.383709000016
     },
     {
       "id": "contabil-04",
@@ -617,8 +665,8 @@
       "kpiOk": null,
       "kpiMiss": [],
       "halucNums": [],
-      "custoUsd": 0.00309808,
-      "durMs": 11965.936917000014
+      "custoUsd": 0.00395408,
+      "durMs": 11292.54020800002
     },
     {
       "id": "cadastros-04",
@@ -631,22 +679,22 @@
       "kpiOk": null,
       "kpiMiss": [],
       "halucNums": [],
-      "custoUsd": 0.00873249,
-      "durMs": 13887.932499999995
+      "custoUsd": 0.00872374,
+      "durMs": 13175.390667
     },
     {
       "id": "cov-05",
       "dominio": "cadastro",
       "ok": true,
       "toolsCalled": [
-        "cadastro_parceiros_por_cidade"
+        "cadastro_cidades_listar"
       ],
-      "toolOk": true,
+      "toolOk": false,
       "kpiOk": null,
       "kpiMiss": [],
       "halucNums": [],
-      "custoUsd": 0.00437449,
-      "durMs": 14489.211875000008
+      "custoUsd": 0.00531599,
+      "durMs": 22895.627000000008
     },
     {
       "id": "estoque-05",
@@ -659,8 +707,8 @@
       "kpiOk": null,
       "kpiMiss": [],
       "halucNums": [],
-      "custoUsd": 0.00823805,
-      "durMs": 11451.422290999995
+      "custoUsd": 0.0036192,
+      "durMs": 14720.231208000012
     },
     {
       "id": "financeiro-05",
@@ -673,8 +721,8 @@
       "kpiOk": null,
       "kpiMiss": [],
       "halucNums": [],
-      "custoUsd": 0.00406314,
-      "durMs": 10270.028374999994
+      "custoUsd": 0.00947529,
+      "durMs": 11988.892332999996
     },
     {
       "id": "fiscal-05",
@@ -687,8 +735,8 @@
       "kpiOk": null,
       "kpiMiss": [],
       "halucNums": [],
-      "custoUsd": 0.0039664,
-      "durMs": 12563.539500000014
+      "custoUsd": 0.00314365,
+      "durMs": 13876.49558399999
     },
     {
       "id": "comercial-05",
@@ -701,8 +749,8 @@
       "kpiOk": null,
       "kpiMiss": [],
       "halucNums": [],
-      "custoUsd": 0.0027629,
-      "durMs": 15747.647125000018
+      "custoUsd": 0.0035847,
+      "durMs": 14396.175791000016
     },
     {
       "id": "cov-20",
@@ -713,22 +761,22 @@
       "kpiOk": null,
       "kpiMiss": [],
       "halucNums": [],
-      "custoUsd": 0.00600356,
-      "durMs": 11261.138041999977
+      "custoUsd": 0.00220301,
+      "durMs": 7115.967000000004
     },
     {
       "id": "cadastros-05",
       "dominio": "cadastros",
       "ok": true,
       "toolsCalled": [
-        "estoque_saldo_produto"
+        "cadastro_detalhar_produto"
       ],
-      "toolOk": false,
+      "toolOk": true,
       "kpiOk": null,
       "kpiMiss": [],
       "halucNums": [],
-      "custoUsd": 0.00608006,
-      "durMs": 16749.154291999992
+      "custoUsd": 0.00417671,
+      "durMs": 16084.465834000031
     },
     {
       "id": "cov-06",
@@ -741,8 +789,8 @@
       "kpiOk": null,
       "kpiMiss": [],
       "halucNums": [],
-      "custoUsd": 0.00359399,
-      "durMs": 16662.363292000024
+      "custoUsd": 0.00405899,
+      "durMs": 17009.516583999968
     },
     {
       "id": "cov-27",
@@ -755,8 +803,8 @@
       "kpiOk": null,
       "kpiMiss": [],
       "halucNums": [],
-      "custoUsd": 0.00345649,
-      "durMs": 12405.181083999982
+      "custoUsd": 0.00283874,
+      "durMs": 14817.948083999974
     },
     {
       "id": "financeiro-06",
@@ -769,12 +817,13 @@
       "kpiOk": null,
       "kpiMiss": [],
       "halucNums": [
-        2989,
-        14231155.83,
-        183805976.69
+        185052327.42,
+        2889,
+        14177070.98,
+        170875256.44
       ],
-      "custoUsd": 0.00832716,
-      "durMs": 17806.667083000008
+      "custoUsd": 0.00806066,
+      "durMs": 22626.58254199999
     },
     {
       "id": "cov-38",
@@ -787,8 +836,8 @@
       "kpiOk": null,
       "kpiMiss": [],
       "halucNums": [],
-      "custoUsd": 0.00395598,
-      "durMs": 15560.832582999952
+      "custoUsd": 0.00389498,
+      "durMs": 11283.982125000039
     },
     {
       "id": "cov-07",
@@ -801,8 +850,8 @@
       "kpiOk": null,
       "kpiMiss": [],
       "halucNums": [],
-      "custoUsd": 0.00273876,
-      "durMs": 10227.304208999965
+      "custoUsd": 0.00383786,
+      "durMs": 15754.261791000026
     },
     {
       "id": "cov-21",
@@ -813,51 +862,22 @@
       "kpiOk": null,
       "kpiMiss": [],
       "halucNums": [],
-      "custoUsd": 0.00602741,
-      "durMs": 9213.117917000025
+      "custoUsd": 0.00310386,
+      "durMs": 10734.039792000025
     },
     {
-      "id": "cov-28",
-      "dominio": "estoque",
+      "id": "pericia-ncm-01",
+      "dominio": "cadastros",
       "ok": true,
       "toolsCalled": [
-        "estoque_minimo_maximo"
+        "cadastro_detalhar_produto"
       ],
       "toolOk": true,
       "kpiOk": null,
       "kpiMiss": [],
       "halucNums": [],
-      "custoUsd": 0.00262409,
-      "durMs": 10233.379208000028
-    },
-    {
-      "id": "cov-30",
-      "dominio": "financeiro",
-      "ok": true,
-      "toolsCalled": [
-        "financeiro_baixas_cobranca",
-        "registrar_lacuna"
-      ],
-      "toolOk": true,
-      "kpiOk": null,
-      "kpiMiss": [],
-      "halucNums": [],
-      "custoUsd": 0.00495585,
-      "durMs": 19954.763042000006
-    },
-    {
-      "id": "cov-39",
-      "dominio": "fiscal",
-      "ok": true,
-      "toolsCalled": [
-        "fiscal_carta_correcao"
-      ],
-      "toolOk": true,
-      "kpiOk": null,
-      "kpiMiss": [],
-      "halucNums": [],
-      "custoUsd": 0.00492298,
-      "durMs": 21964.423333000042
+      "custoUsd": 0.00366475,
+      "durMs": 16220.969541000028
     }
   ]
 }

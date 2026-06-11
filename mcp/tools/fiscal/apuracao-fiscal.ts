@@ -102,6 +102,13 @@ export const fiscalApuracao: ToolEntry<Input, Output> = {
         pisCofinsARecolher: totPis + totCofins,
         totalGeralARecolher: totIcms + totIpi + totPis + totCofins,
         totalApuracoes: linhas.length,
+        // Honestidade de fonte (pericia 2026-06-11): apuracoes cadastradas mas
+        // TODAS zeradas = modulo de apuracao nao preenchido no Odoo. R$ 0 sem
+        // ressalva induzia o usuario a achar que nao ha imposto.
+        ...(linhas.length > 0 &&
+        totIcms + totIpi + totPis + totCofins + totSaldoCredor === 0
+          ? { fonteZerada: 1 }
+          : {}),
       },
       listaTruncada: envelope.dados.truncado,
     });
