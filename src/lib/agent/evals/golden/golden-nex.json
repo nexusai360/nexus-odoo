@@ -1036,5 +1036,21 @@
         "fonteOuro": "SELECT count(*)::float v FROM fato_contabil_conta_referencial"
       }
     ]
+  },
+  {
+    "id": "corte-01",
+    "pergunta": "Qual foi o faturamento de 2025?",
+    "dominio": "fiscal",
+    "classe": "falta_honesta",
+    "toolEsperada": null,
+    "obs": "Limpa 2026+ T7b: periodo inteiramente pre-corte; resposta honesta (cache so 2026+, dado vive no Odoo), nunca '0 resultados'."
+  },
+  {
+    "id": "corte-02",
+    "pergunta": "Quanto a gente tinha a receber em dezembro de 2024?",
+    "dominio": "financeiro",
+    "classe": "falta_honesta",
+    "toolEsperada": null,
+    "obs": "Limpa 2026+ T7b: recusa honesta pre-corte; mencionar que 2026+ e consultavel."
   }
 ]
