@@ -170,9 +170,18 @@ Cada fase: plano próprio (bite-sized) + 2 reviews quando material → execuçã
       gasto ~2 centavos): E2E contestacao , fix do papagaio FUNCIONA (T2 nao
       repete, reconsulta a tool e explica "15 empresas = 9 matrizes + 6
       filiais"); script scripts/e2e-contestacao-filiais.ts.
-      FALTA: T10 (PROD , deploy assistido, EXIGE humano; janela curta:
-      purge 21s + vacuum ~40s medidos em DEV), T7b (regra prompt + golden
-      recusa honesta), T8-golden validacao.
+      T7b FEITO (de84148): regra de corte no identity-base + golden 132
+      (corte-01/02) + smokes reais perfeitos (recusa honesta nas 2 perguntas
+      pre-2026, zero numero inventado). MCP dev rebuildado COM o codigo da
+      worktree (armadilha: build da pasta principal pega a MAIN; build da
+      worktree + up --no-build da principal). E2E contestacao validado (fix
+      papagaio OK). **PR #99 ABERTO com avaliacao completa , MERGE = INICIO
+      DO T10 (deploy assistido): ANTES do merge, pg_dump no servidor; ritual
+      no runbook limpa-2026.md; janela purge 21s + vacuum ~40s (DEV).**
+      NOTA OPERACIONAL: runAgent via background task do harness PENDURA
+      (pipe bufferizado); rodar smokes LLM em foreground com killer interno.
+      FALTA: T10 (EXIGE humano), T8-golden validacao LLM em lote (rodar
+      golden completo custa ~US$0,70 no mini; teto US$5).
       **MERGE/SHIP DO CODIGO DA LIMPA: pg_dump do pre-flight FEITO , gate
       destravado; merge segue exigindo confirmacao humana padrao.** (T7b/T8-
       golden gated por recarga OpenAI; --apply gated por aprovacao humana).**
