@@ -16,12 +16,24 @@
 
 ## Roadmap (cada frente = ciclo da metodologia)
 - [x] **Discovery** (financeiro + regime) , dado real confrontado. DOC escrito.
-- [ ] **Frente A , Financeiro (verificação + lacunas):**
-  - [ ] Inventário fino das 14 tools (o que cada uma cobre) + checar se há lacuna real
-        (por cliente/fornecedor, por centro de resultado, recebido x previsto).
-  - [ ] E2E contra cache real: cada tool bate com SQL independente (a receber aberto
-        R$64,2mi / a pagar aberto R$394,8mi / vencidos / fluxo de caixa).
-  - [ ] Construir só as lacunas reais (se houver), no padrão honesto.
+- [x] **Frente A , Financeiro (verificação + lacunas) , CONCLUÍDA (2026-06-11, commit 2a6959b):**
+  - [x] Inventário das 14 tools + E2E contra cache real (SQL independente).
+  - [x] **BUG MATERIAL achado e corrigido:** `financeiro_contas_a_pagar` e
+        `financeiro_titulos_vencidos` definiam "em aberto" como `situacaoSimples='aberto'`
+        (só efetivo), escondendo o bucket `provisorio`. a_pagar dava **R$21,7mi** quando o
+        real é **R$394,8mi** (R$373mi provisório , compras reais da Johnson/matriz, vencidas).
+        Subreporte de 94%. titulos_vencidos omitia R$356,5mi vencido. Raiz: o critério
+        `aberto` foi cravado em 18/05 (RADAR R1) com a_pagar de 18 tit/R$95k; envelheceu
+        com o sync completo (lição RADAR R2). `financeiro_liquidez` já usava `vr_saldo>0`.
+  - [x] **Fix (decisão do usuário 2026-06-11):** "em aberto" = `vrSaldo>0` (efetivo +
+        provisório; quitado/baixado têm saldo 0, saem sozinhos), com **quebra honesta**
+        confirmado/provisório no `_RESPOSTA`. Aplicado às 3 tools de título.
+  - [x] E2E reconcilia ao centavo (6 âncoras); jest 2875 verde; tsc limpo; mcp rebuildado.
+  - Demais tools (saldo/caixa/fluxo/resultado/liquidez/cobrança) usam fatos distintos,
+    sem o problema do provisório. `contas_a_receber` estava ok (provisório R$0,28mi).
+  - **Lacuna observada (não bloqueia):** `contas_a_receber` inclui recebíveis intragrupo
+    (maior "cliente" é a Jht SP, empresa do grupo). Avaliar se cabe filtro intragrupo
+    futuro, como no faturamento. Registrado para decisão.
 - [ ] **Frente B , Fase 5 (regime):**
   - [ ] SPEC v1 → 2 reviews adversariais Opus (validadas no cache) → v3.
   - [ ] PLAN v1 → 2 reviews → v3.
