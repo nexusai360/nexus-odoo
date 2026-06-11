@@ -109,7 +109,11 @@
     "pergunta": "Quanto pagamos de ICMS, PIS e COFINS no periodo?",
     "dominio": "fiscal",
     "classe": "prosseguir",
-    "toolEsperada": "fiscal_impostos_periodo"
+    "toolEsperada": "fiscal_impostos_periodo",
+    "toolsAceitas": [
+      "fiscal_apuracao"
+    ],
+    "obs": "Irma aceita: fiscal_apuracao tambem cobre ICMS/PIS/COFINS do periodo (responde honesto quando a fonte esta zerada)."
   },
   {
     "id": "comercial-01",
