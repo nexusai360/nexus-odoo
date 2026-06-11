@@ -75,9 +75,16 @@ Cada fase: plano próprio (bite-sized) + 2 reviews quando material → execuçã
   - [x] C.1c Smartfit: _RESPOSTA da busca embute top-5 com documento (tool ok;
         o mini ainda corta a lista ao reescrever , reforco para Fase A2/D).
         "Quantas E quais" ja respondia certo (15 filiais listadas).
-  - [ ] C.1d restantes (Fase D/E): ICMS/PIS/COFINS ressalva de fonte zerada,
-        top-10 pedidos default de periodo, composicao multi-eixo, follow-up
-        contextual no golden, casos errados como golden novo.
+  - [x] C.1d apuracao zerada: flag fonteZerada + ressalva honesta (ed52629).
+  - [x] C.1e top-10 pedidos: ja responde top geral (consertado pela onda B).
+  - [x] C.1f composicao multi-eixo: agente COMPOE 2 tools (por_empresa +
+        por_operacao) numa resposta , funciona sem build novo.
+  - [x] Fase E parcial: 6 casos reais no golden (130 total) + fonteOuroSql/
+        toolsAceitas no schema (2f3d2d0). Validacao: 6/6 tool + 6/6 kpi-vivo.
+- [ ] **PROXIMA SESSAO:** Fase D (prompt 2.0 enxuto + remover regras-curativo),
+      follow-up contextual no golden, golden gate pre-push, A2 (A/B Claude ,
+      exige usuario creditar OpenRouter; slugs: anthropic/claude-sonnet-4.6,
+      opus-4.7, opus-4.8).
 - [ ] Fase C , filtros + composição multi-eixo + follow-up (mineração das razoes).
 - [ ] Fase A2 , A/B confirmatório.
 - [ ] Fase D , prompt 2.0 + AutoValidator atualizado.
