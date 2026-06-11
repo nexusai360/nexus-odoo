@@ -46,7 +46,8 @@ async function run(label: string, input: object) {
 }
 
 async function main() {
-  await run("2025", { periodoDe: "2025-01-01", periodoAte: "2025-12-31" });
+  // Limpa 2026+ T8: cache so guarda 2026+; periodo recalibrado de 2025 para 2026.
+  await run("2026", { periodoDe: "2026-01-01", periodoAte: "2026-12-31" });
   await run("TODO O PERIODO", {});
   await prisma.$disconnect();
   if (falhas > 0) {
