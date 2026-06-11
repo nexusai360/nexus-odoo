@@ -13,12 +13,22 @@ avaliar honestidade, V9 no AutoValidator, vocabulário/prompt.
 
 **Tech stack:** TS, Prisma $queryRaw, zod, jest, MCP SDK; benchmark ab-cerebro.
 
-**Âncoras reproduzíveis (do discovery v3 , viram kpiOuro):**
-- Remessa demo autorizada (CFOP item 5912/6912): 173 notas / R$ 14.892.391.
-- Retorno demo (1913/2913): 93 notas.
-- Estoque físico (subárvore `Próprio`): R$ 37.399.967,01.
-- Estoque demonstração (`Terceiros / Demonstração%`): R$ 1.855.763,50 / 167 saldos.
+**Âncoras reproduzíveis (CORRIGIDAS na review #1 do plano , viram kpiOuro):**
+- Remessa demo (CFOP item 5912/6912) **COM situacao_nfe='autorizada'**:
+  **89 notas / R$ 6.347.354** (vr_produtos). Decisão de produto: rascunho/
+  cancelada/denegada NUNCA contam (sem filtro seria 172/R$14,89mi , números
+  da spec v3 estavam SEM o filtro que a própria spec exige; corrigidos aqui).
+- Retorno demo (1913/2913) autorizada: **40 notas**.
+- Estoque físico (subárvore `Próprio` , com acento, confirmado): R$ 37.399.967,01 (34 locais).
+- Estoque demonstração (`Terceiros / Demonstração%`): R$ 1.855.763,50 / 167 saldos (112 locais).
 (Valores DERIVAM da query; o kpi usa fonteOuroSql, nunca número estático.)
+
+**Fatos de schema cravados pelas reviews (o executor NÃO re-descobre):**
+- A coluna de UF É `fato_parceiro.uf`; JOIN `LEFT JOIN fato_parceiro p ON p.odoo_id = nf.participante_id` (padrão inline em `mcp/tools/fiscal/faturamento-por-uf.ts:76-86`).
+- `fato_nota_fiscal_item` é DESNORMALIZADO (tem situacao_nfe, data_emissao, entrada_saida, empresa_id) , JOIN ao cabeçalho SÓ para UF/empresa_nome, chave `i.documento_id = nf.odoo_id` (nunca nf.id).
+- NÃO existem funções queryFaturamentoPorUf/PorCfop em queries/fiscal.ts , a lógica vive INLINE nas tools `mcp/tools/fiscal/faturamento-por-{uf,cfop}.ts`. Padrão a seguir: query inline na tool.
+- A árvore de locais vive em `raw_estoque_local.data->>'nome_completo'` (JSONB); `fato_estoque_saldo.localNome` é nome LIMPO sem hierarquia , filtros de árvore exigem JOIN `fato_estoque_saldo → raw_estoque_local` (identificar a coluna de id do local no fato no Step próprio).
+- O snapshot `src/lib/mcp-catalog-snapshot.json` SÓ atualiza via `npm run gen:mcp-catalog` , obrigatório após CADA tool nova, ANTES de caso golden que a referencie (gate de tool órfã).
 
 ---
 
@@ -44,37 +54,38 @@ END $$;
 - [ ] Step 3: verificar: `SELECT grantee FROM information_schema.role_table_grants WHERE table_name='raw_estoque_local' AND grantee LIKE 'nexus_mcp%'` → 2 linhas.
 - [ ] Step 4: commit `feat(cobertura): GRANT raw_estoque_local (perguntas 7/8 leem a arvore de locais)`.
 
-### Task A2: query de demonstrações
+### Task A2: query de demonstrações (INLINE na tool , padrão do projeto)
 
-**Files:** Modify `src/lib/reports/queries/fiscal.ts` (append). Test: E2E na Task A7 (queries do projeto validam por E2E real; SQL puro sem unidade mockável).
+**Files:** a query nasce DENTRO de `mcp/tools/fiscal/demonstracoes.ts` (Task A3), seguindo o padrão inline de `mcp/tools/fiscal/faturamento-por-uf.ts`. Esta task define e valida o SQL isoladamente.
 
-- [ ] Step 1: implementar `queryDemonstracoes(prisma, { agruparPor, periodoDe, periodoAte, empresaId })`:
-  - Fonte: `fato_nota_fiscal_item` JOIN `fato_nota_fiscal` (padrão de
-    `queryFaturamentoPorUf` , copiar o JOIN/where de situação dali).
-  - WHERE fixo: `nf.situacao_nfe = 'autorizada'` e CFOP do item em
-    (5912, 6912) p/ remessa; (1913, 2913) p/ retorno (campo de CFOP do item:
-    o MESMO usado por queryFaturamentoPorCfop , conferir nome exato lá).
-  - `agruparPor: "uf" | "empresa" | "mes"` (uf via parceiro , MESMA coluna
-    que queryFaturamentoPorUf usa; empresa via empresa da nota; mes via
-    date_trunc da data de emissão).
-  - Retorno: `{ linhas: [{ chave, vrRemessa, nNotasRemessa, vrRetorno, nNotasRetorno }], totais: { vrRemessa, nNotasRemessa, vrRetorno, nNotasRetorno }, ordenadoPor: "vrRemessa desc" }`
-    (linhas ordenadas por vrRemessa desc; contagem de NOTAS = COUNT(DISTINCT nota)).
-- [ ] Step 2: `npx tsc --noEmit` limpo.
-- [ ] Step 3: smoke read-only: `npx tsx --env-file=.env.local -e` chamando a query com agruparPor:"uf" → totais.nNotasRemessa = 173 e vrRemessa ≈ 14.892.391 (validação da âncora).
-- [ ] Step 4: commit `feat(cobertura): queryDemonstracoes (CFOP item, so autorizadas, 1 dimensao por chamada)`.
+- [ ] Step 1: escrever o SQL (validar via psql antes de codar):
+  - Fonte: `fato_nota_fiscal_item i` (desnormalizado: usa `i.situacao_nfe`,
+    `i.data_emissao` direto). JOIN ao cabeçalho SÓ quando agruparPor exige:
+    `JOIN fato_nota_fiscal nf ON i.documento_id = nf.odoo_id` + p/ UF:
+    `LEFT JOIN fato_parceiro p ON p.odoo_id = nf.participante_id` (coluna `p.uf`).
+  - WHERE fixo: `i.situacao_nfe = 'autorizada'` E CFOP do item (conferir o
+    nome exato da coluna de CFOP em faturamento-por-cfop.ts , step 1a:
+    transcrever o nome aqui antes de codar) em ('5912','6912') p/ remessa,
+    ('1913','2913') p/ retorno (CASE p/ separar as somas na mesma passada).
+  - agruparPor uf|empresa|mes (mes = date_trunc('month', i.data_emissao)).
+  - Contagem de NOTAS = COUNT(DISTINCT i.documento_id) por classe.
+- [ ] Step 2: validar âncora no psql: total remessa = **89 notas / R$ 6.347.354** e retorno = **40 notas** (sem período). Se divergir, PARAR e reconciliar com a review #1 antes de seguir.
+- [ ] Step 3: registrar o SQL validado no PROGRESSO (vira fonteOuroSql dos kpis).
 
 ### Task A3: tool fiscal_demonstracoes
 
 **Files:** Create `mcp/tools/fiscal/demonstracoes.ts`; Modify `mcp/catalog/index.ts` (registrar , seguir como faturamento-por-uf é registrado); Test: gate `mcp/__tests__/contrato-lista.test.ts` (não pode entrar na allowlist) + `mcp/__tests__/integration.test.ts` (contagem do catálogo +1) + snapshot.
 
-- [ ] Step 1: criar a tool COPIANDO o esqueleto de `mcp/tools/fiscal/faturamento-por-uf.ts`, adaptações:
+- [ ] Step 1: criar a tool COPIANDO o esqueleto de `mcp/tools/fiscal/faturamento-por-uf.ts` (query INLINE da A2), adaptações:
   - id `fiscal_demonstracoes`, dominio fiscal.
   - input: `{ agruparPor: z.enum(["uf","empresa","mes"]).default("uf"), periodoDe?, periodoAte?, empresaRef? }` + resolverPeriodoFiscal (com `periodo: per` no enriquecerEnvelope , honestidade pré-corte).
   - dados: linhas + totais (shape da A2) + `ordenadoPor: "vrRemessa desc"`.
-  - descricao: "Demonstrações (remessa CFOP 5912/6912 e retorno 1913/2913, só notas autorizadas): valor e nº de notas, agrupados por UF, empresa ou mês. O valor é de REMESSA (mercadoria pode retornar), não é receita de venda. Tool canônica para qualquer recorte de demonstração."
-- [ ] Step 2: rodar `npx jest mcp/__tests__/contrato-lista.test.ts mcp/__tests__/integration.test.ts` → verde (ajustar contagens nominais do catálogo se o teste travar números).
-- [ ] Step 3: `cd mcp && npx tsc --noEmit` limpo.
-- [ ] Step 4: commit `feat(cobertura): tool fiscal_demonstracoes (canonica do recorte demonstracao)`.
+  - descricao (é o texto EMBEDDADO pelo router , precisa carregar o vocabulário de recuperação, review #2 M1): "Demonstrações de equipamentos (remessa para demonstração, CFOP 5912/6912, e retorno de demonstração, 1913/2913; só notas autorizadas): valor e número de notas fiscais emitidas, agrupados por UF, empresa ou mês. Use para 'faturamento de demonstração', 'remessas para demonstração', 'notas de demonstração por estado', 'quanto retornou de demonstração'. O valor é de REMESSA (mercadoria pode retornar), não é receita de venda. Tool canônica para qualquer recorte de demonstração."
+- [ ] Step 2 (contagens nominais , review #2 B2, edições EXPLÍCITAS em `mcp/__tests__/integration.test.ts`): adicionar `"fiscal_demonstracoes"` ao array `FISCAL_IDS` (~linha 153); incrementar `toHaveLength`/igualdades: 107→108 (linhas ~255/258/295/303/626) e 116→117 (linha ~281). Rodar o teste para achar qualquer asserção extra que trave.
+- [ ] Step 3: `npm run gen:mcp-catalog` + conferir que o snapshot ganhou a tool (grep fiscal_demonstracoes src/lib/mcp-catalog-snapshot.json) , OBRIGATÓRIO antes de qualquer caso golden (review #2 B1).
+- [ ] Step 4: `npx jest mcp/__tests__/contrato-lista.test.ts mcp/__tests__/integration.test.ts` verde; `cd mcp && npx tsc --noEmit` limpo.
+- [ ] Step 5: probe de roteamento (review #2 M1): tsx one-shot com embedQuestion("faturamento de operações de demonstração por UF") + getToolVectors + pickTools → fiscal_demonstracoes presente na oferta. Se ausente, enriquecer a descricao e re-testar.
+- [ ] Step 6: commit `feat(cobertura): tool fiscal_demonstracoes (canonica do recorte demonstracao) + snapshot + contagens`.
 
 ### Task A4: formatador + ressalva fixa
 
@@ -97,12 +108,29 @@ END $$;
 
 **Files:** Modify `mcp/tools/estoque/valor-armazem.ts`; Modify a query que ela usa (localizar via import no arquivo , mesma mudança); Test: jest existente da tool (se houver) + E2E A7.
 
-- [ ] Step 1: input ganha `locais: z.array(z.string()).optional()` (match `nome_completo ILIKE '%'||termo||'%'` por termo, OR entre termos) e `apenasFisicos: z.boolean().optional()` (filtro `nome_completo LIKE 'Próprio%'` OU local raiz = Próprio , validar acento no dado real: conferir com SELECT antes de cravar o literal).
-  - Caso especial documentado na descricao: "estoque em demonstração" = `locais: ["Terceiros / Demonstração"]` (o prefixo completo, para não casar nó errado).
+**DEPENDE DE A1 (GRANT) , o filtro de árvore lê raw_estoque_local.**
+
+- [ ] Step 0 (schema do JOIN, resultado transcrito aqui antes de codar):
+  identificar a coluna de id do local em `fato_estoque_saldo`
+  (`docker exec ... psql -c "\\d fato_estoque_saldo"`) e validar o JOIN:
+  `fato_estoque_saldo s JOIN raw_estoque_local l ON l.odoo_id = s.<coluna>`
+  com a âncora: subárvore físico
+  `l.data->>'nome_completo' LIKE 'Próprio%'` (acento CONFIRMADO) →
+  R$ 37.399.967,01; demo `LIKE 'Terceiros / Demonstração%'` →
+  R$ 1.855.763,50 / 167 saldos. Se a coluna de id não existir no fato,
+  PARAR: o caminho vira match por localNome limpo (registrar a limitação e
+  reconciliar âncora antes de codar).
+- [ ] Step 1: input ganha `locais: z.array(z.string()).optional()` (match
+  `l.data->>'nome_completo' ILIKE termo||'%'` , PREFIXO, não substring, para
+  não casar nó errado; OR entre termos) e `apenasFisicos: z.boolean().optional()`
+  (prefixo `Próprio`). A query da tool ganha o JOIN do Step 0 (lazy: só
+  quando locais/apenasFisicos vierem , sem custo no caminho atual).
+  - Caso documentado na descricao: "estoque em demonstração" =
+    `locais: ["Terceiros / Demonstração"]`.
   - A resposta SEMPRE nomeia os locais cobertos (lista no _RESPOSTA/aviso).
-- [ ] Step 2: descricao atualizada: "...Filtre por `locais` (nomes, ex.: 'Terceiros / Demonstração') ou `apenasFisicos` (subárvore Próprio). Use para 'valor de estoque físico', 'estoque em demonstração', 'estoque em terceiros'."
-- [ ] Step 3: triggers + tsc + jest mcp verdes.
-- [ ] Step 4: commit `feat(cobertura): estoque_valor_armazem por locais/apenasFisicos (fisico=Próprio; demo=Terceiros/Demonstração)`.
+- [ ] Step 2: descricao atualizada (texto embeddado, com vocabulário): "...Filtre por `locais` (prefixo da árvore, ex.: 'Terceiros / Demonstração') ou `apenasFisicos` (subárvore Próprio). Use para 'valor de estoque físico', 'estoque em demonstração', 'estoque em poder de terceiros', 'estoque no local X'."
+- [ ] Step 3: triggers + tsc + jest mcp verdes; smoke psql das 2 âncoras via tool (tsx chamando o handler com ctx.prisma).
+- [ ] Step 4: commit `feat(cobertura): estoque_valor_armazem por locais/apenasFisicos (arvore via raw_estoque_local; fisico=Próprio; demo=Terceiros/Demonstração)`.
 
 ### Task A7: E2E real + golden da onda A + rebuild
 
@@ -126,7 +154,8 @@ END $$;
 
 **Files:** Create `scripts/cobertura/spike-custo.ts`.
 
-- [ ] Step 1: script: % dos produtos com venda 2026+ (fato_nota_fiscal_item de saída autorizada) que têm regra vigente em tabela de custo (`fato_preco` com `tabela_nome ILIKE '%custo%'` e vigência cobrindo hoje). Imprime: total produtos vendidos, com custo, %, e top 10 SEM custo (por valor vendido).
+- [ ] Step 0: `SELECT DISTINCT tabela_nome FROM fato_preco` , transcrever quais são as tabelas de CUSTO reais (não presumir que o rótulo contém "custo"; o discovery viu "Custo Smart /0,95", validar o conjunto completo e cravar a lista/critério).
+- [ ] Step 1: script: % dos produtos com venda 2026+ (fato_nota_fiscal_item de saída autorizada) que têm regra vigente nas tabelas de custo do Step 0 (vigência cobrindo hoje). Imprime: total produtos vendidos, com custo, %, e top 10 SEM custo (por valor vendido).
 - [ ] Step 2: rodar e REGISTRAR o % no PROGRESSO. Decisão automática: ≥70% → B4 inclui CMV aproximado (com % de cobertura na resposta); <70% → CMV vira resposta de honestidade ("o custo cadastrado cobre só X% das vendas") e B4 entrega só o cruzamento.
 - [ ] Step 3: commit `chore(cobertura): spike S1 , cobertura de custo de tabela (resultado no PROGRESSO)`.
 
@@ -164,9 +193,10 @@ it("raiz = 8 primeiros digitos", () => {
 **Files:** Create `mcp/tools/fiscal/vendas-produto-por-empresa.ts`; query nova em `src/lib/reports/queries/fiscal.ts`; formatador; trigger.
 
 - [ ] Step 1: query: por `produtoTermo` (ILIKE nome/código , padrão de notas_emitidas_por_produto), saída autorizada de VENDA (ehReceita pela tabela de regras , reusar o helper da F2.5), agrupado por empresa: `{ empresa, qtde, valor, nNotas }` ordenado valor desc + totais. Se S1 ≥70%: + `cmvAproximado` por empresa (qtde × custo de tabela vigente) + `coberturaCustoPct`.
-- [ ] Step 2: tool + formatador (ressalva do CMV aproximado: "custo de tabela, não contábil; cobre X% das unidades") + trigger ("venda do produto X por empresa", "quanto vendemos de esteira por empresa e qual o CMV").
-- [ ] Step 3: contrato de lista verde; tsc; jest.
-- [ ] Step 4: E2E real pergunta 4 literal; commit + 2 casos golden.
+- [ ] Step 2: tool + formatador (ressalva do CMV aproximado: "custo de tabela, não contábil; cobre X% das unidades") + trigger ("venda do produto X por empresa", "quanto vendemos de esteira por empresa e qual o CMV"); descricao carrega o vocabulário (embeddada).
+- [ ] Step 3: contagens nominais (mesmas edições da A3 Step 2: FISCAL_IDS + 108→109, 117→118) + `npm run gen:mcp-catalog` + contrato de lista verde; tsc; jest.
+- [ ] Step 4: rebuild mcp (build na worktree + up na principal + data da imagem) , a query vive em src/lib/reports/queries/** que o container mcp consome.
+- [ ] Step 5: E2E real pergunta 4 literal; commit + 2 casos golden.
 
 ### Task B5: filtro de operação venda em pedidos_por_uf
 
@@ -184,16 +214,16 @@ it("raiz = 8 primeiros digitos", () => {
 **Files:** Modify `src/lib/agent/evals/golden-schema.ts` (+`esperaNaResposta?: string[]`, `proibidoNaResposta?: string[]`); Modify `scripts/ab-cerebro.ts`.
 
 - [ ] Step 1: schema + superRefine (esperaNaResposta exige classe != prosseguir OU permitir em todas? PERMITIR EM TODAS , prosseguir também pode validar frase).
-- [ ] Step 2: ab-cerebro: amostra `semOuro` passa a incluir classes != prosseguir QUE TENHAM esperaNaResposta; avaliação nova `respostaOk`: todas as esperaNaResposta presentes (substring case/acento-insensitive) E nenhuma proibida (default global: ["não consigo te responder", "nao foi possivel obter"]). Resumo ganha `respostaOk: x/y`.
-- [ ] Step 3: jest do gate + tsc; commit `feat(cobertura): harness avalia honestidade (esperaNaResposta/proibidoNaResposta)`.
+- [ ] Step 2: ab-cerebro: casos com `esperaNaResposta` viram **inclusão OBRIGATÓRIA na amostra** (mesma regra do comOuro , NUNCA no round-robin do resto; review #2 M3, senão o aceite é não-determinístico); avaliação nova `respostaOk`: todas as esperaNaResposta presentes (substring case/acento-insensitive) E nenhuma proibida (default global: ["não consigo te responder", "nao foi possivel obter"]). Resumo ganha `respostaOk: x/y`.
+- [ ] Step 3: rodar `npx jest src/lib/agent/evals/golden/golden-gate.test.ts` (o gate do RAIZ parseia o golden com o schema novo , precisa ficar verde) + tsc; commit `feat(cobertura): harness avalia honestidade (esperaNaResposta/proibidoNaResposta, inclusao obrigatoria)`.
 
 ### Task C2: V9 gap de fonte (AutoValidator)
 
 **Files:** Modify `src/lib/agent/validation/auto-validator.ts` (+ teste na suite dele).
 
-- [ ] Step 1: teste falhando: resposta "Não consigo te responder isso." com pergunta de dado → V9 dispara; resposta "O módulo de prospecção existe no sistema, mas não há dados cadastrados" → NÃO dispara; resposta com dados → NÃO dispara.
-- [ ] Step 2: implementar V9: dispara SOMENTE se a resposta casa recusa seca (`/n[aã]o (consigo|foi poss[ií]vel|consegui)\b/i` + ausência de qualquer um de `/sistema|m[oó]dulo|cadastr|registr|fonte|per[ií]odo/i`). Retry com instrução: "explique a CAUSA citando o sistema/módulo/cadastro , nunca recusa seca". Skip se CONTESTACAO_RE (não brigar com a regra 5b).
-- [ ] Step 3: verde; commit.
+- [ ] Step 1: teste falhando com 4 casos (o 4º protege a regressão histórica do papagaio , review #2 M2): (a) resposta "Não consigo te responder isso." com pergunta de dado → dispara; (b) "O módulo de prospecção existe no sistema, mas não há dados cadastrados" → NÃO dispara; (c) resposta com dados → NÃO dispara; (d) pergunta de CONTESTAÇÃO ("por que não aparecem essas empresas?") com resposta explicativa contendo "não consigo" → NÃO dispara (skip por CONTESTACAO_RE).
+- [ ] Step 2: implementar V9 POSICIONADO APÓS V3 no pipeline ordenado; documentar a fronteira no comentário: V3 = recusa quando HÁ _RESPOSTA disponível (anti-recusa com dado em mãos); V9 = recusa seca quando o certo é explicar a FONTE (sem dado mesmo). Dispara SOMENTE se a resposta casa recusa seca (`/n[aã]o (consigo|foi poss[ií]vel|consegui)\b/i`) E ausência de `/sistema|m[oó]dulo|cadastr|registr|fonte|per[ií]odo/i`. Retry com instrução: "explique a CAUSA citando o sistema/módulo/cadastro , nunca recusa seca". Skip se CONTESTACAO_RE.
+- [ ] Step 3: verde (4/4); commit.
 
 ### Task C3: vocabulário prospecção + prompt gap de dimensão
 
@@ -226,5 +256,21 @@ Quando a PERGUNTA pede uma dimensão/campo que não existe no sistema (ex.: segm
 - [ ] Step 4: PROGRESSO + STATUS + HISTORY; commit; push; atualizar PR #99 (ou novo PR se #99 já mergeado).
 
 ## Dependências
-A1→A2→A3→A4→A5→A7 (A6 paralelo após A1); B1 antes de B4; C1 antes de C4/C5;
-ondas em ordem A→B→C. Rebuild mcp ao fim de CADA onda antes de E2E.
+A1→A2→A3→A4→A5→A7; **A6 BLOQUEADA por A1** (o filtro de árvore lê
+raw_estoque_local , GRANT é dependência dura); B1 antes de B4; C1 antes de
+C4/C5; ondas em ordem A→B→C. `npm run gen:mcp-catalog` após CADA tool nova e
+ANTES de caso golden que a referencie. Rebuild mcp ao fim de CADA onda (e na
+B4) antes de E2E, sempre build na worktree + up na pasta principal +
+verificação da data da imagem.
+
+## Changelog do plano
+- v1 (d1857cc): original.
+- v3: 2 reviews adversariais aplicadas. Âncoras CORRIGIDAS (89/R$6,35mi
+  remessa, 40 retorno , com filtro autorizada; os números da spec estavam sem
+  o filtro); query inline na tool (funções-modelo citadas não existiam);
+  fatos de schema cravados (p.uf existe; item desnormalizado; chave
+  documento_id=odoo_id; árvore só no JSONB de raw_estoque_local , JOIN novo);
+  snapshot do catálogo como step obrigatório; contagens nominais explícitas;
+  V9 com 4º teste + posição pós-V3; inclusão obrigatória de esperaNaResposta
+  na amostra; SELECTs de literais como steps com resultado transcrito;
+  spike S1 com Step 0 (DISTINCT tabela_nome); rebuild também na B4.
