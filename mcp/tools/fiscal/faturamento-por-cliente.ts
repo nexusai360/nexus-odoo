@@ -75,9 +75,9 @@ export const fiscalFaturamentoPorCliente: ToolEntry<Input, Output> = {
   descricao:
     "Faturamento agrupado por cliente (notas de saída autorizadas), ordenado por valor " +
     "total decrescente, com o CNPJ de cada cliente. Use `agruparPor: 'cnpj_raiz'` para " +
-    "agregar matriz+filiais pela raiz do CNPJ, e `clienteCnpj` para o faturamento de UM " +
-    "CNPJ especifico. Use para 'faturamento de venda por CNPJ', 'faturamento do CNPJ X', " +
-    "'faturamento por cliente', 'quem mais comprou'.",
+    "agregar matriz+filiais pela raiz do CNPJ. Para o faturamento de UM CNPJ especifico, " +
+    "passe o CNPJ da pergunta em `documento` (com ou sem mascara). Use para 'faturamento " +
+    "de venda por CNPJ', 'faturamento do CNPJ X', 'faturamento por cliente', 'quem mais comprou'.",
   inputSchemaShape: inputSchema.shape,
   inputSchema,
   outputSchema,
