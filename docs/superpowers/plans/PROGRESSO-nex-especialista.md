@@ -222,10 +222,32 @@ Cada fase: plano próprio (bite-sized) + 2 reviews quando material → execuçã
       (resolucao de referencia "dela", troca de eixo receber->pagar, reuso
       de tool com periodo ajustado). frozenProsseguir exclui followup-*.
       Higiene: obs->observacao em 71 casos (campo certo do schema).
-- [ ] **PROXIMA SESSAO:** Fase D onda 2 (compressao agressiva de
-      regras-curativo, com A/B); A2 (A/B Claude , exige usuario creditar
-      OpenRouter; slugs anthropic/claude-sonnet-4.6, opus-4.7, opus-4.8);
-      auditar 15/112 suspeitas do juiz de alucinacao (tem falso positivo).
+- [~] **FRENTE "COBERTURA CLIENTE" (8 perguntas do cliente + raio expandido
+      + honestidade de fonte , pedido do usuario 2026-06-11 ~17h30):**
+      SPEC v3 (14718d5) e PLAN v3 (a9b3ac4), cada um com 2 reviews
+      adversariais Opus aplicadas (achados de ouro: ancoras com filtro
+      autorizada = 89 notas/R$6,35mi remessa e 40 retorno; arvore de locais
+      so no JSONB de raw_estoque_local via local_id; GRANT faltando de novo;
+      snapshot gen:mcp-catalog obrigatorio; harness nao avaliava honestidade;
+      pergunta 6 = gap de DIMENSAO sobre metrica existente).
+      **ONDA A COMPLETA (b5fb5c6..f48307b):** GRANT raw_estoque_local;
+      tool fiscal_demonstracoes (CFOP item 5912/6912 vs 1913/2913, so
+      autorizadas, agruparPor uf|empresa|mes, ressalva fixa remessa!=receita,
+      fronteira com por_operacao/por_uf, probe semantico 1o lugar);
+      estoque_valor_armazem com locais/apenasFisicos (fisico=Próprio
+      R$37.399.967,01; demo=Terceiros/Demonstração R$1.855.763,50 , ancoras
+      EXATAS); golden 141 (6 casos novos, kpi SQL-vivo); E2E agente real
+      6/6 e as perguntas 2/7/8 LITERAIS do cliente respondendo certo.
+      Catalogo 117 (contagens 108/117 nos gates; snapshot regenerado).
+      **FALTA: ONDA B** (B1 spike custo -> B2 cnpj.ts puro -> B3 CNPJ no
+      por_cliente -> B4 vendas_produto_por_empresa+CMV gated -> B5 filtro
+      venda pedidos_por_uf) e **ONDA C** (C1 harness esperaNaResposta
+      inclusao obrigatoria -> C2 V9 pos-V3 com 4 testes -> C3 vocabulario
+      prospeccao + prompt gap de dimensao -> C4 32 casos -> C5 benchmark
+      FULL + relatorio das 8 respostas). Plan v3 e a fonte.
+- [ ] **DEPOIS:** Fase D onda 2 (compressao agressiva, com A/B); A2 (A/B
+      Claude , exige credito OpenRouter); auditar suspeitas do juiz de
+      alucinacao (falso positivo).
 - [ ] Fase C , filtros + composição multi-eixo + follow-up (mineração das razoes).
 - [ ] Fase A2 , A/B confirmatório.
 - [ ] Fase D , prompt 2.0 + AutoValidator atualizado.
