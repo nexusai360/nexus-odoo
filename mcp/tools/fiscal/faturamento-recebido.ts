@@ -91,6 +91,7 @@ export const fiscalFaturamentoRecebido: ToolEntry<Input, Output> = {
     );
     if (envelope.estado === "preparando") return envelope;
     return enriquecerEnvelope(envelope, "fiscal_faturamento_recebido", {
+      periodo: per,
       destaque: { recebido: envelope.dados.recebido, aReceber: envelope.dados.aReceber },
       agregado: { soma: envelope.dados.recebido, contagem: envelope.dados.pedidosComLancamento },
     });

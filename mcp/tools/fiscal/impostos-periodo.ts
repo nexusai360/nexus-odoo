@@ -5,7 +5,7 @@ import type { ToolEntry } from "../../catalog/types.js";
 import { queryImpostosPeriodo } from "@/lib/reports/queries/fiscal.js";
 import { withFreshness } from "../../lib/freshness.js";
 import { montarEscopoEmpresa, type EscopoEmpresa } from "./_escopo-empresa.js";
-import { resolverPeriodoFiscal } from "./_periodo-padrao.js";
+import { resolverPeriodoFiscal, TEXTO_HONESTO_PRE_CORTE } from "./_periodo-padrao.js";
 
 const inputSchema = z.object({
   periodoDe: z.string().optional(),
@@ -84,8 +84,10 @@ export const fiscalImpostosPeriodo: ToolEntry<Input, Output> = {
       ...envelope,
       dados: {
         ...d,
-        _RESPOSTA: `Impostos no periodo ${per.label} (${d.totalNotas} notas): IBPT (estimativa) ${fmt(d.somaIbpt)}, ICMS proprio ${fmt(d.somaIcmsProprio)}.`,
-        _DESTAQUE: { totalNotas: d.totalNotas, somaIbpt: d.somaIbpt, somaIcmsProprio: d.somaIcmsProprio },
+        _RESPOSTA: per.preCorte
+          ? `${TEXTO_HONESTO_PRE_CORTE} (Periodo pedido: ${per.label}.)`
+          : `Impostos no periodo ${per.label} (${d.totalNotas} notas): IBPT (estimativa) ${fmt(d.somaIbpt)}, ICMS proprio ${fmt(d.somaIcmsProprio)}.`,
+        _DESTAQUE: { totalNotas: d.totalNotas, somaIbpt: d.somaIbpt, somaIcmsProprio: d.somaIcmsProprio, ...(per.preCorte ? { periodoPreCorte: 1 } : {}) },
         _agregado: { contagem: d.totalNotas, soma: d.somaIbpt + d.somaIcmsProprio },
       },
     };

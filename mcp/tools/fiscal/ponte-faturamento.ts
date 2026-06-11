@@ -84,6 +84,7 @@ export const fiscalPonteFaturamento: ToolEntry<Input, Output> = {
     const d = envelope.dados;
     const deducoesJson = JSON.stringify(d.deducoesNaoReceita.slice(0, 8).map((x) => ({ rotulo: x.rotulo, valor: x.valor })));
     return enriquecerEnvelope(envelope, "fiscal_ponte_faturamento", {
+      periodo: per,
       destaque: {
         brutoProdutos: d.brutoProdutos,
         totalNaoReceita: d.totalNaoReceita,

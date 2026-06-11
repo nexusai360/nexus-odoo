@@ -76,6 +76,7 @@ export const fiscalFaturamentoPorEmpresa: ToolEntry<Input, Output> = {
     });
     if (envelope.estado === "preparando") return envelope;
     return enriquecerEnvelope(envelope, "fiscal_faturamento_por_empresa", {
+      periodo: per,
       destaque: {
         totalGrupo: envelope.dados.totalGrupo,
         empresasComFaturamento: envelope.dados.empresasComFaturamento,

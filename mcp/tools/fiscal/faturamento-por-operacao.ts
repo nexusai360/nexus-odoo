@@ -86,6 +86,7 @@ export const fiscalFaturamentoPorOperacao: ToolEntry<Input, Output> = {
     });
     if (envelope.estado === "preparando") return envelope;
     return enriquecerEnvelope(envelope, "fiscal_faturamento_por_operacao", {
+      periodo: per,
       destaque: { valorGeral: envelope.dados.valorGeral, valorVenda: envelope.dados.valorVenda },
       agregado: { soma: envelope.dados.valorGeral, contagem: envelope.dados.total },
     });

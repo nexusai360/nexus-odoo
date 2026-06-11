@@ -10,7 +10,7 @@ import {
   montarPaginacaoMeta,
 } from "../../lib/paginacao.js";
 import { montarEscopoEmpresa, type EscopoEmpresa } from "./_escopo-empresa.js";
-import { resolverPeriodoFiscal } from "./_periodo-padrao.js";
+import { resolverPeriodoFiscal, TEXTO_HONESTO_PRE_CORTE } from "./_periodo-padrao.js";
 
 const inputSchema = z.object({
   periodoDe: z.string().optional(),
@@ -110,9 +110,11 @@ export const fiscalProdutosFaturados: ToolEntry<Input, Output> = {
       ...envelope,
       dados: {
         ...d,
-        _RESPOSTA: top
-          ? `Top produto faturado: ${top.produtoNome ?? "(sem nome)"} (${fmt(top.valorTotal)}). Total: ${d.total} produtos, ${fmt(d.valorGeral)}, ${d.quantidadeGeral} unidades.`
-          : "Nao ha produtos faturados no periodo.",
+        _RESPOSTA: per.preCorte
+          ? `${TEXTO_HONESTO_PRE_CORTE} (Periodo pedido: ${per.label}.)`
+          : top
+            ? `Top produto faturado: ${top.produtoNome ?? "(sem nome)"} (${fmt(top.valorTotal)}). Total: ${d.total} produtos, ${fmt(d.valorGeral)}, ${d.quantidadeGeral} unidades.`
+            : "Nao ha produtos faturados no periodo.",
         _DESTAQUE: {
           totalProdutos: d.total,
           totalGeral: d.valorGeral,

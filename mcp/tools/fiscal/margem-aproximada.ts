@@ -76,6 +76,7 @@ export const fiscalMargemAproximada: ToolEntry<Input, Output> = {
     if (envelope.estado === "preparando") return envelope;
     const d = envelope.dados;
     return enriquecerEnvelope(envelope, "fiscal_margem_aproximada", {
+      periodo: per,
       destaque: {
         receitaComCusto: d.receitaComCusto,
         custoEstimado: d.custoEstimado,

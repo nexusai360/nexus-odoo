@@ -99,6 +99,7 @@ export const fiscalFaturamentoPeriodo: ToolEntry<Input, Output> = {
     if (envelope.estado === "preparando") return envelope;
     const d = envelope.dados;
     return enriquecerEnvelope(envelope, "fiscal_faturamento_periodo", {
+      periodo: per,
       destaque: {
         headlineValor: d.headlineValor,
         headlineRotulo: d.headlineRotulo,

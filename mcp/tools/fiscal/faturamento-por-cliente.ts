@@ -101,6 +101,7 @@ export const fiscalFaturamentoPorCliente: ToolEntry<Input, Output> = {
     const paginacao = montarPaginacaoMeta(d.total, offset, limit, d.linhas.length);
     const top = d.linhas[0];
     return enriquecerEnvelope(envelope, "fiscal_faturamento_por_cliente", {
+      periodo: per,
       destaque: {
         totalClientes: d.total,
         totalExterno: d.totalExterno,

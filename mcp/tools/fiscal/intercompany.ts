@@ -79,6 +79,7 @@ export const fiscalIntercompany: ToolEntry<Input, Output> = {
     const d = envelope.dados;
     const top = d.linhas.slice(0, 10).map((l) => ({ vendedor: l.vendedorNome, comprador: l.compradorNome, valor: l.valor }));
     return enriquecerEnvelope(envelope, "fiscal_intercompany", {
+      periodo: per,
       destaque: { total: d.total, totalPares: d.totalPares, topLinhasJson: JSON.stringify(top) },
       agregado: { soma: d.total, contagem: d.totalPares },
     });
