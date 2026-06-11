@@ -1965,10 +1965,12 @@ const fmtMargemAproximada: FormatadorCanonico = (env) => {
   const desatual = Number(d.custoDesatualizado ?? 0) === 1
     ? " Atencao: ha itens com custo > receita (preco_custo e o atual do produto); confie mais em periodos recentes."
     : "";
+  // Margem por familia (quando o handler mandou o resumo no destaque).
+  const familias = d.familiasResumo ? ` Por familia: ${String(d.familiasResumo)}.` : "";
   return (
     `Margem bruta APROXIMADA${periodo ? ` (${periodo})` : ""}: ${formatBRL(margem)} ` +
     `(${(pct * 100).toFixed(1)}%) sobre receita de venda ${formatBRL(receita)} menos custo ${formatBRL(custo)}. ` +
-    `Cobertura ${(cob * 100).toFixed(1)}% da venda. NAO e lucro (sem despesas/impostos/rateios).${desatual}`
+    `Cobertura ${(cob * 100).toFixed(1)}% da venda. NAO e lucro (sem despesas/impostos/rateios).${desatual}${familias}`
   );
 };
 

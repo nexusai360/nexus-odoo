@@ -92,6 +92,16 @@ export const fiscalMargemAproximada: ToolEntry<Input, Output> = {
         coberturaCusto: d.coberturaCusto,
         custoDesatualizado: d.custoDesatualizadoProvavel ? 1 : 0,
         periodoLabel: per.label,
+        // O formatador so ve o _DESTAQUE (stub): o detalhamento por familia
+        // viaja resumido aqui (a lista completa segue em dados.familias).
+        ...(d.familias?.length
+          ? {
+              familiasResumo: d.familias
+                .slice(0, 8)
+                .map((f) => `${f.familia ?? "(sem família)"}: margem R$ ${f.margem.toLocaleString("pt-BR", { minimumFractionDigits: 2 })} (${(f.percentualMargem * 100).toFixed(1)}%)`)
+                .join("; "),
+            }
+          : {}),
       },
       agregado: { soma: d.margemBrutaAproximada, contagem: 0 },
     });
