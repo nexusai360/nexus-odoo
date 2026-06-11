@@ -42,6 +42,13 @@
 > KS (empresa do grupo != cliente), NCM (detalhar produto por termo), Smartfit (CNPJs no _RESPOSTA),
 > apuração zerada com ressalva honesta. (E) Golden 124→130 com casos reais + kpi SQL-VIVO (fonteOuroSql).
 > Validação: 6/6 tool certa + 6/6 kpi-vivo nos ouro; jest 2890; localhost atualizado.
+> **FECHAMENTO 2026-06-11 noite: #99 e #100 MERGED e em producao.** Filtro de corte 2026+ ATIVO em prod
+> (purge fisico pendente de acesso SSH a VPS , pedir ao usuario). Caso 18x15 resolvido (17 empresas reais,
+> 1 CNPJ duplicado + 2 filiais sem nota); CNPJ exato verificado ao centavo; aging_recebiveis e
+> estoque_cobertura_dias novas (E2E real); lacunas de modulo inexistente honestas (pos-venda/NPS citam o
+> sistema); margem por familia; retry de catalogo no redeploy. Catalogo 120 tools; golden 169.
+> RESTA: fiscal_faturamento_por_vendedor; purge prod (SSH); lista das 100+ perguntas do cliente (vira golden).
+> Retomada: PROGRESSO-nex-especialista.md (secao Bloco final).
 > **NEX ESPECIALISTA (2026-06-11 tarde): GOLDEN 99,1% FULL (111/112, kpi-vivo 6/6; era 83,3%).**
 > Golden 135 casos SEM placeholder (67 cov-* reescritos com ids reais) + toolsAceitas nas irmãs + 3 casos
 > follow-up multi-turno (`turnosAntes` no schema + harness ab-cerebro). Fixes de raiz: vocabulário do router
