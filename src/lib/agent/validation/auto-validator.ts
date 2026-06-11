@@ -641,6 +641,12 @@ export function validateV7(ctx: ValidationContext): ValidationOutcome | null {
   return null;
 }
 
+/** Pergunta que CONTESTA a resposta anterior (meta-pergunta): "por que nao
+ *  apareceu X?", "faltou Y", "esta errado", "esses nao sao os maiores".
+ *  Nesses turnos a resposta certa e' explicativa, nao a _RESPOSTA da tool. */
+export const CONTESTACAO_RE =
+  /\b(por\s*que|pq|porque)\s+n[aã]o\b|\bfalt(ou|aram|am|a)\b|\best[aá]\s+errad|\berrado[,.!\s]|\bn[aã]o\s+s[aã]o\s+(os|as)\b|\bcad[eê]\b|\bn[aã]o\s+(apareceu|aparecem|veio|vieram)\b/i;
+
 /** Palavras que alegam enquadramento de "maiores/top" na resposta. */
 const ALEGA_MAIORES_RE =
   /\b(?:\d+\s+)?maiores\b|\btop\s*\d+\b|\bmais\s+(?:altos?|caras?|caros?|valiosos?)\b/i;
@@ -744,11 +750,17 @@ export function validateResponse(
     const r = validateV1(ctx);
     if (r) return r;
   }
-  if (v3On) {
+  // CONTESTAÇÃO/meta-pergunta (caso "Pq nao aparecem essas empresas?",
+  // pericia 2026-06-11): a resposta CERTA e' explicativa/investigativa, nao a
+  // _RESPOSTA da tool. V3 (anti-recusa) e V5 (anti-divergencia da _RESPOSTA)
+  // PUNIAM a explicacao e forcavam o agente a recolar a mesma resposta ,
+  // era um dos motores do "papagaio engessado". Nesses turnos, pulamos V3/V5.
+  const ehContestacao = CONTESTACAO_RE.test(ctx.question);
+  if (v3On && !ehContestacao) {
     const r = validateV3(ctx);
     if (r) return r;
   }
-  if (v5On) {
+  if (v5On && !ehContestacao) {
     const r = validateV5(ctx);
     if (r) return r;
   }
