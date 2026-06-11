@@ -2649,14 +2649,15 @@
       "id": "fiscal_margem_aproximada",
       "operation": "read",
       "module": "fiscal",
-      "descricao": "Margem bruta APROXIMADA do periodo: receita de venda menos o custo estimado do produto (preco_custo). NAO e lucro (sem despesas/impostos/rateios) e o custo e o atual do produto (margem de periodos antigos e nao-confiavel). Mostra a cobertura (% da venda com custo disponivel). Aceita empresa e periodo.",
+      "descricao": "Margem bruta APROXIMADA do periodo: receita de venda menos o custo estimado do produto (preco_custo). NAO e lucro (sem despesas/impostos/rateios) e o custo e o atual do produto (margem de periodos antigos e nao-confiavel). Mostra a cobertura (% da venda com custo disponivel). Aceita empresa e periodo. Use `agruparPor: 'familia'` para a margem POR FAMILIA de produto ('margem por familia', 'qual familia tem mais margem').",
       "capability": null,
       "sensitive": false,
       "addedInVersion": null,
       "inputSchemaKeys": [
         "periodoDe",
         "periodoAte",
-        "empresaRef"
+        "empresaRef",
+        "agruparPor"
       ],
       "inputSchemaFields": [
         {
@@ -2673,6 +2674,15 @@
           "name": "empresaRef",
           "type": "string",
           "optional": true
+        },
+        {
+          "name": "agruparPor",
+          "type": "enum",
+          "optional": true,
+          "enumValues": [
+            "total",
+            "familia"
+          ]
         }
       ],
       "examples": []
@@ -4162,5 +4172,5 @@
     }
   ],
   "count": 118,
-  "generatedAt": "2026-06-11T22:39:01.117Z"
+  "generatedAt": "2026-06-11T22:43:45.378Z"
 }

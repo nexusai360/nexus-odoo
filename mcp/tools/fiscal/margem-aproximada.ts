@@ -13,6 +13,8 @@ const inputSchema = z.object({
   periodoDe: z.string().optional(),
   periodoAte: z.string().optional(),
   empresaRef: z.string().optional(),
+  agruparPor: z.enum(["total", "familia"]).optional()
+    .describe("familia = margem aproximada POR FAMILIA de produto (top 15 por receita)."),
 });
 
 const dados = z.object({
@@ -24,6 +26,8 @@ const dados = z.object({
   coberturaCusto: z.number(),
   receitaSemCusto: z.number(),
   custoDesatualizadoProvavel: z.boolean(),
+  familias: z.array(z.object({ familia: z.string().nullable(), receita: z.number(), custoEstimado: z.number(), margem: z.number(), percentualMargem: z.number() })).optional(),
+  ordenadoPor: z.string().optional(),
   escopoEmpresa: z.record(z.string(), z.unknown()),
   aviso: z.string(),
   _RESPOSTA: z.string().optional(),
@@ -45,7 +49,7 @@ export const fiscalMargemAproximada: ToolEntry<Input, Output> = {
   id: "fiscal_margem_aproximada",
   dominio: "fiscal",
   descricao:
-    "Margem bruta APROXIMADA do periodo: receita de venda menos o custo estimado do produto (preco_custo). NAO e lucro (sem despesas/impostos/rateios) e o custo e o atual do produto (margem de periodos antigos e nao-confiavel). Mostra a cobertura (% da venda com custo disponivel). Aceita empresa e periodo.",
+    "Margem bruta APROXIMADA do periodo: receita de venda menos o custo estimado do produto (preco_custo). NAO e lucro (sem despesas/impostos/rateios) e o custo e o atual do produto (margem de periodos antigos e nao-confiavel). Mostra a cobertura (% da venda com custo disponivel). Aceita empresa e periodo. Use `agruparPor: 'familia'` para a margem POR FAMILIA de produto ('margem por familia', 'qual familia tem mais margem').",
   inputSchemaShape: inputSchema.shape,
   inputSchema,
   outputSchema,
@@ -57,12 +61,15 @@ export const fiscalMargemAproximada: ToolEntry<Input, Output> = {
         periodoDe: per.periodoDe,
         periodoAte: per.periodoAte,
         empresaId: escopo.empresaId,
+        porFamilia: input.agruparPor === "familia",
       });
       const ressalvaCusto = r.custoDesatualizadoProvavel
         ? " ATENCAO: parte dos itens tem custo maior que a receita (o preco_custo e o ATUAL do produto, aplicado retroativamente); a margem pode estar distorcida , confie mais em periodos recentes."
         : "";
       return {
         ...r,
+        // Contrato de lista: familias vem ordenadas por receita desc na metrica.
+        ...(r.familias ? { ordenadoPor: "receita desc" } : {}),
         escopoEmpresa: escopo.escopo as unknown as Record<string, unknown>,
         aviso:
           escopo.escopo.aviso +
