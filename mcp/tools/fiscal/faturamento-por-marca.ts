@@ -29,6 +29,9 @@ const dados = z.object({
   totalItens: z.number().int(),
   totalMarcas: z.number().int(),
   escopoEmpresa: z.record(z.string(), z.unknown()),
+  // Contrato de lista (Fase B): a query ordena por valor de produtos desc
+  // (NULLS LAST) com desempate por nome da marca.
+  ordenadoPor: z.string().optional(),
   _RESPOSTA: z.string().optional(),
   _DESTAQUE: z.record(z.string(), z.union([z.string(), z.number()])).optional(),
   _agregado: z.record(z.string(), z.number().optional()).optional(),
@@ -144,6 +147,7 @@ export const fiscalFaturamentoPorMarca: ToolEntry<Input, Output> = {
       dados: {
         ...d,
         escopoEmpresa: escopo.escopo as unknown as Record<string, unknown>,
+        ordenadoPor: "valor desc",
         _RESPOSTA: top
           ? `Faturamento por marca: total ${fmt(d.totalGeral)} em ${d.totalMarcas} marcas. Top: ${top.marca ?? "(sem marca)"} ${fmt(top.valorTotal)}.`
           : "Nao ha faturamento por marca no periodo.",

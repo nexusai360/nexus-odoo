@@ -47,6 +47,9 @@ const dados = z.object({
   /** Soma do valor de TODOS os pedidos do filtro (conjunto inteiro, invariante a
    *  paginacao). E o agregado correto para o agente reportar "total". */
   valorTotalGeral: z.number().optional(),
+  // Contrato de lista (Fase B): ordenacao real reflete o parametro `ordenacao`
+  // (valor_desc default). orderBy estavel na query, desempate por odooId.
+  ordenadoPor: z.string().optional(),
   _RESPOSTA: z.string().optional(),
   _listaTruncada: z.boolean().optional(),
   _DESTAQUE: z.record(z.string(), z.union([z.string(), z.number()])).optional(),
@@ -171,6 +174,12 @@ export const comercialPedidosListarTopValor: ToolEntry<Input, Output> = {
     const top = linhas[0];
     const ordenacao = input.ordenacao ?? "valor_desc";
     const status = input.status ?? "aberto";
+    // Contrato de lista (Fase B): descricao humana da ordenacao real aplicada.
+    const ordenadoPor =
+      ordenacao === "valor_asc" ? "valor asc"
+        : ordenacao === "data_asc" ? "data asc"
+          : ordenacao === "data_desc" ? "data desc"
+            : "valor desc";
     const fmt = (n: number) => n.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
     const fmtData = (s: string | null | undefined) => (s ? s.slice(0, 10) : "(sem data)");
     // T-41: _RESPOSTA gerado no handler com contexto da ordenacao + clienteTermo
@@ -197,6 +206,7 @@ export const comercialPedidosListarTopValor: ToolEntry<Input, Output> = {
         totalEncontrados,
         valorTotalListados: d.valorTotalListados ?? linhas.reduce((s, l) => s + l.valorTotal, 0),
         valorTotalGeral: d.valorTotalGeral ?? 0,
+        ordenadoPor,
         _RESPOSTA: resposta,
         _DESTAQUE: {
           totalPedidos: totalEncontrados,

@@ -30,6 +30,9 @@ const dados = z.object({
   totalUfs: z.number().int(),
   notasSemUf: z.number().int(),
   escopoEmpresa: z.record(z.string(), z.unknown()),
+  // Contrato de lista (Fase B): a query ordena por valor desc (NULLS LAST)
+  // com desempate por UF.
+  ordenadoPor: z.string().optional(),
   _RESPOSTA: z.string().optional(),
   _DESTAQUE: z.record(z.string(), z.union([z.string(), z.number()])).optional(),
   _agregado: z.record(z.string(), z.number().optional()).optional(),
@@ -152,6 +155,7 @@ export const fiscalFaturamentoPorUf: ToolEntry<Input, Output> = {
       dados: {
         ...d,
         escopoEmpresa: escopo.escopo as unknown as Record<string, unknown>,
+        ordenadoPor: "valor desc",
         _RESPOSTA: topReal
           ? `Faturamento por UF: ${fmt(d.totalGeral)} em ${d.totalNotas} notas, ${d.totalUfs} UFs com UF identificada${d.notasSemUf > 0 ? ` + ${d.notasSemUf} notas sem UF` : ""}. Top: ${topReal.uf ?? "(sem UF)"} ${fmt(topReal.valorTotal)}.`
           : "Nao ha faturamento no periodo.",

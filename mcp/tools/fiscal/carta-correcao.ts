@@ -30,6 +30,9 @@ const dados = z.object({
   linhas: z.array(linha),
   total: z.number().int(),
   truncado: z.boolean(),
+  // Contrato de lista (Fase B): a query ordena por dataAutorizacao desc com
+  // desempate por odooId; aqui apenas declaramos ao LLM.
+  ordenadoPor: z.string().optional(),
   _RESPOSTA: z.string().optional(),
   _listaTruncada: z.boolean().optional(),
   _PAGINACAO: z.any().optional(),
@@ -67,9 +70,11 @@ export const fiscalCartaCorrecao: ToolEntry<Input, Output> = {
   outputSchema,
   handler: async (input, ctx) => {
     const { limit, offset } = resolverPaginacao(input);
-    const envelope = await withFreshness(ctx.prisma, ["fato_carta_correcao"], () =>
-      queryCartaCorrecao(ctx.prisma, { ...input, limit, offset }),
-    );
+    const envelope = await withFreshness(ctx.prisma, ["fato_carta_correcao"], async () => {
+      const r = await queryCartaCorrecao(ctx.prisma, { ...input, limit, offset });
+      // Contrato de lista (Fase B): declara a ordenacao real da query.
+      return { ...r, ordenadoPor: "data desc" };
+    });
     if (envelope.estado === "preparando") return envelope;
     const d = envelope.dados;
     const paginacao = montarPaginacaoMeta(d.total, offset, limit, d.linhas.length);

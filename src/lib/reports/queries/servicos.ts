@@ -47,6 +47,7 @@ export async function queryServicoBuscar(
   linhas: ServicoLinha[];
   total: number;
   truncado: boolean;
+  ordenadoPor: string;
 }> {
   const { limit, offset } = filtros;
   const termo = filtros.termo;
@@ -69,10 +70,12 @@ export async function queryServicoBuscar(
     }),
     prisma.fatoServico.count({ where }),
   ]);
+  // Contrato de lista (Fase B): orderBy codigo asc (desempate odooId).
   return {
     linhas: rows.map(toLinha),
     total,
     truncado: offset + rows.length < total,
+    ordenadoPor: "código asc",
   };
 }
 
@@ -90,6 +93,7 @@ export async function queryServicoListar(
   linhas: ServicoLinha[];
   total: number;
   truncado: boolean;
+  ordenadoPor: string;
 }> {
   const { limit, offset } = filtros;
   const [rows, total] = await Promise.all([
@@ -103,10 +107,12 @@ export async function queryServicoListar(
     }),
     prisma.fatoServico.count(),
   ]);
+  // Contrato de lista (Fase B): orderBy codigo asc (desempate odooId).
   return {
     linhas: rows.map(toLinha),
     total,
     truncado: offset + rows.length < total,
+    ordenadoPor: "código asc",
   };
 }
 

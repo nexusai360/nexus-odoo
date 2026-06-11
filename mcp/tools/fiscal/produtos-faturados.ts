@@ -32,6 +32,8 @@ const dados = z.object({
   quantidadeGeral: z.number(),
   escopoEmpresa: z.record(z.string(), z.unknown()),
   aviso: z.string(),
+  // Contrato de lista (Fase B): produtos por valor total desc.
+  ordenadoPor: z.string().optional(),
   _RESPOSTA: z.string().optional(),
   _listaTruncada: z.boolean().optional(),
   _PAGINACAO: z.any().optional(),
@@ -64,6 +66,7 @@ function shape(d: Awaited<ReturnType<typeof queryProdutosFaturados>>, escopo: Es
     valorGeral: d.valorGeral,
     quantidadeGeral: d.quantidadeGeral,
     escopoEmpresa: escopo as unknown as Record<string, unknown>,
+    ordenadoPor: "valor desc",
     aviso:
       "Agrupa itens de notas de saída (entradaSaida='1') por produto, ordenado por valor total descendente. " +
       "O valor usa vrProdutos (sem impostos), então é menor que o faturamento autorizado; não cruzar diretamente. " +

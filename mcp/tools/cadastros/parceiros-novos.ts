@@ -52,6 +52,8 @@ const dados = z.object({
     ate: z.string(),
     nome: z.string().nullable(),
   }),
+  // Contrato de lista (Fase B): parceiros novos ordenados por data de criacao desc.
+  ordenadoPor: z.string().optional(),
   _RESPOSTA: z.string().optional(),
   _DESTAQUE: z.record(z.string(), z.union([z.string(), z.number()])).optional(),
   _agregado: z.record(z.string(), z.number().optional()).optional(),
@@ -182,6 +184,8 @@ async function queryParceirosNovos(prisma: PrismaClient, input: Input) {
       ate: ate.toISOString(),
       nome,
     },
+    // Contrato de lista (Fase B): orderBy dataCriacao desc (desempate odooId).
+    ordenadoPor: "data de criação desc",
   };
 }
 

@@ -38,6 +38,9 @@ const dados = z.object({
   coberturaPercentual: z.number(),
   regimeSnapshotAtual: z.boolean(),
   aviso: z.string(),
+  // Contrato de lista (Fase B): regimes por receita externa desc, o regime
+  // nao mapeado (quando houver) sempre por ultimo.
+  ordenadoPor: z.string().optional(),
   _RESPOSTA: z.string().optional(),
   _DESTAQUE: z.record(z.string(), z.union([z.string(), z.number()])).optional(),
   _agregado: z.record(z.string(), z.number().optional()).optional(),
@@ -85,7 +88,7 @@ export const fiscalFaturamentoPorRegime: ToolEntry<Input, Output> = {
           (r.coberturaPercentual < 1
             ? ` Cobertura: ${(r.coberturaPercentual * 100).toFixed(1)}% da receita tem regime mapeado.`
             : "");
-        return { ...r, aviso };
+        return { ...r, aviso, ordenadoPor: "receita externa desc" };
       },
     );
     if (envelope.estado === "preparando") return envelope;

@@ -30,6 +30,9 @@ const linhaSchema = z.object({
 const dados = z.object({
   linhas: z.array(linhaSchema),
   total: z.number().int().optional(),
+  // Contrato de lista (Fase B): conjunto unido ordenado por id asc (busca une ids
+  // de varios caminhos, sem score de relevancia).
+  ordenadoPor: z.string().optional(),
   _RESPOSTA: z.string().optional(),
   _listaTruncada: z.boolean().optional(),
   _DESTAQUE: z.record(z.string(), z.union([z.string(), z.number()])).optional(),
@@ -101,7 +104,7 @@ export const cadastroBuscarParceiro: ToolEntry<Input, Output> = {
           limit,
           offset,
         });
-        return { linhas: result.linhas, total: result.total };
+        return { linhas: result.linhas, total: result.total, ordenadoPor: result.ordenadoPor };
       },
     );
     if (envelope.estado === "preparando") return envelope;

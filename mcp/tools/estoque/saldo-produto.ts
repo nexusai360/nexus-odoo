@@ -71,6 +71,9 @@ const dados = z.object({
   }),
   linhas: z.array(linha),
   ambiguidade,
+  // Contrato de lista (Fase B): linhas ordenadas por valor desc na query
+  // (querySaldoProduto). topMaiores ja existe como visao por saldo desc.
+  ordenadoPor: z.string().optional(),
   _RESPOSTA: z.string().optional(),
   _listaTruncada: z.boolean().optional(),
   _DESTAQUE: z.record(z.string(), z.union([z.string(), z.number()])).optional(),
@@ -150,7 +153,8 @@ function shape(d: Awaited<ReturnType<typeof querySaldoProduto>>) {
     };
   }
 
-  return { kpis: d.kpis, linhas, ambiguidade };
+  // Contrato de lista (Fase B): linhas ja vem por valorTotal desc da query.
+  return { kpis: d.kpis, linhas, ambiguidade, ordenadoPor: "valor desc" };
 }
 
 export const estoqueSaldoProduto: ToolEntry<Input, Output> = {

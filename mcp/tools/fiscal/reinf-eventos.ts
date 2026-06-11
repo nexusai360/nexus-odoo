@@ -34,6 +34,9 @@ const dados = z.object({
   total: z.number().int(),
   truncado: z.boolean(),
   aviso: z.string(),
+  // Contrato de lista (Fase B): a query ordena por dataEvento desc com
+  // desempate por odooId; aqui apenas declaramos ao LLM.
+  ordenadoPor: z.string().optional(),
   _RESPOSTA: z.string().optional(),
   _listaTruncada: z.boolean().optional(),
   _PAGINACAO: z.any().optional(),
@@ -74,7 +77,7 @@ export const fiscalReinfEventos: ToolEntry<Input, Output> = {
     const total = await fatoReinfCount(ctx.prisma);
     const envelope = await withFreshness(ctx.prisma, ["fato_reinf_evento"], async () => {
       const r = await queryReinfEventos(ctx.prisma, { ...input, limit, offset });
-      return { linhas: r.linhas, total: r.total, truncado: r.truncado, aviso: "" };
+      return { linhas: r.linhas, total: r.total, truncado: r.truncado, aviso: "", ordenadoPor: "data desc" };
     });
     if (envelope.estado === "preparando") return envelope;
     const d = envelope.dados;

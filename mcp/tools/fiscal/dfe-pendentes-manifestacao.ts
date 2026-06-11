@@ -32,6 +32,9 @@ const dados = z.object({
   totalPendentes: z.number().int(),
   valorTotal: z.number(),
   aviso: z.string(),
+  // Contrato de lista (Fase B): a query ordena por dataEmissao desc com
+  // desempate por odooId; aqui apenas declaramos ao LLM.
+  ordenadoPor: z.string().optional(),
   _RESPOSTA: z.string().optional(),
   _listaTruncada: z.boolean().optional(),
   _PAGINACAO: z.any().optional(),
@@ -60,6 +63,7 @@ function shape(d: Awaited<ReturnType<typeof queryDfePendentesManifestacao>>) {
     linhas: d.linhas,
     totalPendentes: d.totalPendentes,
     valorTotal: d.valorTotal,
+    ordenadoPor: "data desc",
     aviso:
       "DF-e sem manifestação do destinatário (campo manifestação vazio). São " +
       "notas de fornecedores que ainda aguardam ciência/confirmação. vrNf pode " +

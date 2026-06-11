@@ -13,6 +13,9 @@ const inputSchema = z.object({});
 const dados = z.object({
   familia: z.array(z.object({ familia: z.string(), valor: z.number(), percentual: z.number() })),
   marca: z.array(z.object({ marca: z.string(), valor: z.number(), percentual: z.number() })),
+  // Contrato de lista (Fase B): familia e marca ja vem ordenadas por valor desc
+  // na query (queryConcentracao). A ordenacao e declarada para o agente.
+  ordenadoPor: z.string().optional(),
   // F4 Onda 4: campos de apresentacao injetados por enriquecerEnvelope.
   _RESPOSTA: z.string().optional(),
   _listaTruncada: z.boolean().optional(),
@@ -54,6 +57,8 @@ function shape(d: Awaited<ReturnType<typeof queryConcentracao>>) {
       percentual: totalMarca > 0 ? (r.valor / totalMarca) * 100 : 0,
     })),
     // sem agruparTopN , agente recebe lista completa
+    // Contrato de lista (Fase B): ambas as listas vem por valor desc da query.
+    ordenadoPor: "valor desc",
   };
 }
 

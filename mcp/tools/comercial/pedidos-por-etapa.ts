@@ -19,6 +19,9 @@ const linhaSchema = z.object({
 const dados = z.object({
   linhas: z.array(linhaSchema),
   aviso: z.string(),
+  // Contrato de lista (Fase B): etapas ordenadas por valor total desc (ordenacao
+  // aplicada no shape, ja que a query devolvia ordem de insercao do Map).
+  ordenadoPor: z.string().optional(),
   _RESPOSTA: z.string().optional(),
   _listaTruncada: z.boolean().optional(),
   _DESTAQUE: z.record(z.string(), z.union([z.string(), z.number()])).optional(),
@@ -46,9 +49,19 @@ type Input = z.infer<typeof inputSchema>;
 type Output = z.infer<typeof outputSchema>;
 
 function shape(d: Awaited<ReturnType<typeof queryPedidosPorEtapa>>) {
+  // Contrato de lista (Fase B): a query devolvia a ordem de insercao do Map
+  // (arbitraria). Ordenamos aqui por valor total desc, com desempate estavel
+  // por etapaNome, para que "as maiores etapas" venham primeiro de forma
+  // deterministica.
+  const linhas = [...d.linhas].sort(
+    (a, b) =>
+      b.valorTotal - a.valorTotal ||
+      (a.etapaNome ?? "").localeCompare(b.etapaNome ?? ""),
+  );
   return {
-    linhas: d.linhas,
+    linhas,
     aviso: "Distribuição de pedidos por etapa do fluxo comercial. valorTotal usa vrProdutos (valor do pedido, independente de faturamento). etapaFinaliza=true indica etapa conclusiva.",
+    ordenadoPor: "valor desc",
   };
 }
 

@@ -27,6 +27,8 @@ const dados = z.object({
   totalMatrizes: z.number().int(),
   totalFiliais: z.number().int(),
   linhasExibidas: z.number().int(),
+  // Contrato de lista (Fase B): empresas ordenadas por tipo, depois UF, depois nome.
+  ordenadoPor: z.string().optional(),
   _RESPOSTA: z.string().optional(),
   _DESTAQUE: z.record(z.string(), z.union([z.string(), z.number()])).optional(),
   _agregado: z.record(z.string(), z.number().optional()).optional(),
@@ -84,6 +86,8 @@ async function query(prisma: PrismaClient, input: Input) {
     totalMatrizes: filtradas.filter((e) => e.tipo === "matriz").length,
     totalFiliais: filtradas.filter((e) => e.tipo === "filial").length,
     linhasExibidas: linhas.length,
+    // Contrato de lista (Fase B): sort por tipo, UF, nome (asc, estavel).
+    ordenadoPor: "tipo, UF, nome (asc)",
   };
 }
 

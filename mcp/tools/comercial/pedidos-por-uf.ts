@@ -26,6 +26,8 @@ const dados = z.object({
   totalGeral: z.number(),
   totalPedidos: z.number().int(),
   totalUfs: z.number().int(),
+  // Contrato de lista (Fase B): UFs ordenadas por valor total desc na query SQL.
+  ordenadoPor: z.string().optional(),
   _RESPOSTA: z.string().optional(),
   _DESTAQUE: z.record(z.string(), z.union([z.string(), z.number()])).optional(),
   _agregado: z.record(z.string(), z.number().optional()).optional(),
@@ -108,7 +110,8 @@ async function queryPedidosPorUf(prisma: PrismaClient, input: Input) {
   const totalGeral = Number(totalRows[0]?.geral ?? 0);
   const totalPedidos = Number(totalRows[0]?.pedidos ?? 0);
   const totalUfs = Number(totalRows[0]?.ufs ?? 0);
-  return { linhas, totalGeral, totalPedidos, totalUfs };
+  // Contrato de lista (Fase B): SQL ordena por SUM(vr_produtos) DESC, uf ASC.
+  return { linhas, totalGeral, totalPedidos, totalUfs, ordenadoPor: "valor desc" };
 }
 
 export const comercialPedidosPorUf: ToolEntry<Input, Output> = {

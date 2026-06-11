@@ -30,6 +30,8 @@ const dados = z.object({
   totalIndividualAno: z.number(),
   totalNotasExternasAno: z.number().int(),
   escopoEmpresa: z.record(z.string(), z.unknown()),
+  // Contrato de lista (Fase B): a serie e cronologica (mes 1..12).
+  ordenadoPor: z.string().optional(),
   _RESPOSTA: z.string().optional(),
   _listaTruncada: z.boolean().optional(),
   _DESTAQUE: z.record(z.string(), z.union([z.string(), z.number()])).optional(),
@@ -84,6 +86,7 @@ export const fiscalFaturamentoMensalSerie: ToolEntry<Input, Output> = {
         totalIndividualAno: r.totalIndividualAno,
         totalNotasExternasAno: r.totalNotasExternasAno,
         escopoEmpresa: escopo.escopo as unknown as Record<string, unknown>,
+        ordenadoPor: "mês asc",
       };
     });
     if (envelope.estado === "preparando") return envelope;

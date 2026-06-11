@@ -28,6 +28,9 @@ const dados = z.object({
   reconciliado: z.boolean(),
   escopoEmpresa: z.record(z.string(), z.unknown()),
   aviso: z.string(),
+  // Contrato de lista (Fase B): deducoesNaoReceita segue a ordem do waterfall
+  // (apresentacional), nao um ranking; declaramos isso ao LLM.
+  ordenadoPor: z.string().optional(),
   _RESPOSTA: z.string().optional(),
   _DESTAQUE: z.record(z.string(), z.union([z.string(), z.number()])).optional(),
   _agregado: z.record(z.string(), z.number().optional()).optional(),
@@ -68,6 +71,7 @@ export const fiscalPonteFaturamento: ToolEntry<Input, Output> = {
       return {
         ...r,
         escopoEmpresa: escopo.escopo as unknown as Record<string, unknown>,
+        ordenadoPor: "ordem do waterfall (apresentacional)",
         aviso:
           escopo.escopo.aviso +
           ` Periodo: ${per.label}.` +

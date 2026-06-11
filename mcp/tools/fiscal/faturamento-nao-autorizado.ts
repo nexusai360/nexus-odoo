@@ -26,6 +26,8 @@ const dados = z.object({
   porSituacao: z.array(situacao),
   escopoEmpresa: z.record(z.string(), z.unknown()),
   aviso: z.string(),
+  // Contrato de lista (Fase B): porSituacao ja vem por valor desc.
+  ordenadoPor: z.string().optional(),
   _RESPOSTA: z.string().optional(),
   _DESTAQUE: z.record(z.string(), z.union([z.string(), z.number()])).optional(),
   _agregado: z.record(z.string(), z.number().optional()).optional(),
@@ -69,6 +71,7 @@ export const fiscalFaturamentoNaoAutorizado: ToolEntry<Input, Output> = {
         porSituacao: r.porSituacao,
         escopoEmpresa: escopo.escopo as unknown as Record<string, unknown>,
         aviso: `Período: ${per.label}. ${escopo.escopo.aviso}`,
+        ordenadoPor: "valor desc",
       };
     });
     if (envelope.estado === "preparando") return envelope;

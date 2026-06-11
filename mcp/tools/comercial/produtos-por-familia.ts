@@ -33,6 +33,9 @@ const dados = z.object({
   totalFamilias: z.number().int(),
   totalProdutosNoCadastro: z.number().int(),
   totalEncontrados: z.number().int(),
+  // Contrato de lista (Fase B): modo agrupado ordena familias por quantidade desc;
+  // modo filtrado lista produtos por nome asc. Declarado conforme o modo real.
+  ordenadoPor: z.string().optional(),
   _RESPOSTA: z.string().optional(),
   _DESTAQUE: z.record(z.string(), z.union([z.string(), z.number()])).optional(),
   _agregado: z.record(z.string(), z.number().optional()).optional(),
@@ -82,6 +85,8 @@ async function query(prisma: PrismaClient, input: Input) {
       totalFamilias: 0,
       totalProdutosNoCadastro,
       totalEncontrados: total,
+      // Contrato de lista (Fase B): produtos da familia ordenados por nome asc.
+      ordenadoPor: "nome asc",
     };
   }
 
@@ -102,6 +107,8 @@ async function query(prisma: PrismaClient, input: Input) {
     totalFamilias: familias.filter((f) => f.familia !== "(sem familia)").length,
     totalProdutosNoCadastro,
     totalEncontrados: familias.reduce((s, f) => s + f.quantidadeProdutos, 0),
+    // Contrato de lista (Fase B): familias ordenadas por quantidade de produtos desc.
+    ordenadoPor: "quantidade de produtos desc",
   };
 }
 

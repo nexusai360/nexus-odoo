@@ -49,6 +49,8 @@ const dados = z.object({
   }),
   escopoEmpresa: z.record(z.string(), z.unknown()),
   aviso: z.string(),
+  // Contrato de lista (Fase B): as linhas ja vem por valor de produtos desc.
+  ordenadoPor: z.string().optional(),
   _RESPOSTA: z.string().optional(),
   _DESTAQUE: z.record(z.string(), z.union([z.string(), z.number()])).optional(),
   _agregado: z.record(z.string(), z.number().optional()).optional(),
@@ -109,6 +111,7 @@ export const fiscalFaturamentoPorCfop: ToolEntry<Input, Output> = {
           outrasNaoEspecificadas: r.outrasNaoEspecificadas,
           reconciliacao: r.reconciliacao,
           escopoEmpresa: escopo.escopo as unknown as Record<string, unknown>,
+          ordenadoPor: "valor desc",
           aviso:
             escopo.escopo.aviso +
             ` Periodo: ${per.label}.` +

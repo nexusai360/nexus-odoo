@@ -28,6 +28,8 @@ const dados = z.object({
     dias: z.number().int(),
     vrSaldo: z.number(),
   })),
+  // Contrato de lista (Fase B): pagina ordenada por dias parado desc na query.
+  ordenadoPor: z.string().optional(),
   _RESPOSTA: z.string().optional(),
   _listaTruncada: z.boolean().optional(),
   _DESTAQUE: z.record(z.string(), z.union([z.string(), z.number()])).optional(),
@@ -55,7 +57,8 @@ type Input = z.infer<typeof inputSchema>;
 type Output = z.infer<typeof outputSchema>;
 
 function shape(d: Awaited<ReturnType<typeof queryProdutosParados>>) {
-  return { kpis: d.kpis, linhas: d.linhas, total: d.total };
+  // Contrato de lista (Fase B): a query ordena por dias desc (desempate saldoHojeId).
+  return { kpis: d.kpis, linhas: d.linhas, total: d.total, ordenadoPor: "dias parado desc" };
 }
 
 export const estoqueProdutosParados: ToolEntry<Input, Output> = {

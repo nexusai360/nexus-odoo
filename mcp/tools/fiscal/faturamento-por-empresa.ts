@@ -26,6 +26,9 @@ const dados = z.object({
   valorSemEmpresa: z.number(),
   totalNotasSemEmpresa: z.number().int(),
   aviso: z.string(),
+  // Contrato de lista (Fase B): empresas por valor desc, a linha sem empresa
+  // (quando houver) sempre por ultimo.
+  ordenadoPor: z.string().optional(),
   _RESPOSTA: z.string().optional(),
   _DESTAQUE: z.record(z.string(), z.union([z.string(), z.number()])).optional(),
   _agregado: z.record(z.string(), z.number().optional()).optional(),
@@ -65,6 +68,7 @@ export const fiscalFaturamentoPorEmpresa: ToolEntry<Input, Output> = {
         empresasComFaturamento: r.empresasComFaturamento,
         valorSemEmpresa: r.valorSemEmpresa,
         totalNotasSemEmpresa: r.totalNotasSemEmpresa,
+        ordenadoPor: "valor desc",
         aviso:
           "Faturamento de venda autorizado (exclui canceladas, nao-autorizadas e operacoes nao-venda), " +
           `agrupado por empresa. A linha sem empresa, quando houver, aparece por ultimo. Período: ${per.label}.`,

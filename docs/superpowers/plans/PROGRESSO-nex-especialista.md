@@ -38,8 +38,19 @@ Cada fase: plano próprio (bite-sized) + 2 reviews quando material → execuçã
   (contabil_plano_de_contas × contabil_estrutura_conta → toolsAceitas/triggers).
   Anthropic não testado (OpenRouter 402, saldo 0; max_tokens 65536 do adapter
   agrava). Detalhes: docs/superpowers/research/ab-cerebro/*.json.
-- [ ] Fase B , contrato de lista (84 tools; task-zero auditoria; ordenadoPor;
-      topMaiores; gate allowlist; validador enquadramento; embeddingText audit).
+- [~] **Fase B , contrato de lista (EM CURSO):**
+  - [x] Task-zero auditoria deterministica (78 tools com lista; doc
+        2026-06-11-auditoria-contrato-lista.md). Gate incremental criado
+        (mcp/__tests__/contrato-lista.test.ts + allowlist contrato-lista.data.ts).
+  - [x] B.1 caso forense #1: financeiro_titulos_vencidos (orderBy valor desc +
+        ordenadoPor + topMaiores + formatador declara). E2E real ✓ (d1f45b4).
+  - [x] FINANCEIRO 12/12 migrado (af566ea). Allowlist 77→66.
+  - [~] FISCAL (26 tools) + ESTOQUE/COMERCIAL/CADASTROS: 2 subagentes em
+        paralelo (briefing com padrao canonico; allowlist integrada pelo
+        orquestrador ao final).
+  - [ ] B.6 AutoValidator enquadramento de lista (inline, em curso).
+  - [ ] B.7 embeddingText audit das monetarias.
+  - [ ] Demais dominios (contabil, sped, preco, servico, producao...) + esvaziar allowlist.
 - [ ] Fase C , filtros + composição multi-eixo + follow-up (mineração das razoes).
 - [ ] Fase A2 , A/B confirmatório.
 - [ ] Fase D , prompt 2.0 + AutoValidator atualizado.

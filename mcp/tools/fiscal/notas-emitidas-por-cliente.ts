@@ -32,6 +32,9 @@ const dados = z.object({
   totalNotas: z.number().int(),
   valorTotal: z.number(),
   linhasExibidas: z.number().int(),
+  // Contrato de lista (Fase B): a query ordena por dataEmissao desc com
+  // desempate por odooId; aqui apenas declaramos ao LLM.
+  ordenadoPor: z.string().optional(),
   _RESPOSTA: z.string().optional(),
   _listaTruncada: z.boolean().optional(),
   _PAGINACAO: z.any().optional(),
@@ -91,6 +94,7 @@ async function query(prisma: PrismaClient, input: Input) {
     totalNotas: total,
     valorTotal: Number(agg._sum.vrNf ?? 0),
     linhasExibidas: linhas.length,
+    ordenadoPor: "data desc",
   };
 }
 
