@@ -1255,5 +1255,45 @@
     "pergunta": "Quantas notas de remessa para demonstracao emitimos por empresa este ano?",
     "toolEsperada": "fiscal_demonstracoes",
     "observacao": "Derivada: dimensao empresa do recorte demonstracao."
+  },
+  {
+    "id": "cnpj-01",
+    "dominio": "fiscal",
+    "classe": "prosseguir",
+    "pergunta": "Qual o faturamento de venda por CNPJ este ano?",
+    "toolEsperada": "fiscal_faturamento_por_cliente",
+    "observacao": "Cobertura Cliente pergunta 1 literal. Resposta deve exibir CNPJs (raiz ou completo)."
+  },
+  {
+    "id": "cnpj-02",
+    "dominio": "fiscal",
+    "classe": "prosseguir",
+    "pergunta": "Faturamento por raiz de CNPJ, agregando matriz e filiais, este ano",
+    "toolEsperada": "fiscal_faturamento_por_cliente",
+    "observacao": "Derivada: agruparPor cnpj_raiz."
+  },
+  {
+    "id": "prodemp-01",
+    "dominio": "fiscal",
+    "classe": "prosseguir",
+    "pergunta": "Venda do produto esteira por empresa e o CMV",
+    "toolEsperada": "fiscal_vendas_produto_por_empresa",
+    "observacao": "Cobertura Cliente pergunta 4 literal. CMV aproximado com cobertura na resposta."
+  },
+  {
+    "id": "prodemp-02",
+    "dominio": "fiscal",
+    "classe": "prosseguir",
+    "pergunta": "Quantas unidades do produto anilha vendemos por empresa este ano?",
+    "toolEsperada": "fiscal_vendas_produto_por_empresa",
+    "observacao": "Derivada: quantidade por empresa."
+  },
+  {
+    "id": "peduf-01",
+    "dominio": "comercial",
+    "classe": "prosseguir",
+    "pergunta": "Quantidade de pedidos emitidos de operacao de venda por UF",
+    "toolEsperada": "comercial_pedidos_por_uf",
+    "observacao": "Cobertura Cliente pergunta 5 literal. Filtro operacao venda (sufixo do nome)."
   }
 ]
