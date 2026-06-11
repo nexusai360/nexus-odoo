@@ -19,6 +19,8 @@ const linhaSchema = z.object({
   tipo: z.string(),
   uf: z.string().nullable(),
   ativo: z.boolean(),
+  /** Caso 18x15 (2026-06-11): empresa do CADASTRO sem nota no cache 2026+. */
+  semNotasNoPeriodo: z.boolean().optional(),
 });
 
 const dados = z.object({
@@ -56,7 +58,43 @@ async function query(prisma: PrismaClient, input: Input) {
   const tipo = input.tipo ?? "todas";
   const ufFiltro = input.uf ? input.uf.toUpperCase() : undefined;
 
-  const todas = await listarEmpresasDoFato(prisma);
+  const doFato = await listarEmpresasDoFato(prisma);
+  // Caso 18x15 (usuario, 2026-06-11): o cadastro (raw_sped_empresa) tem 18
+  // empresas; 3 nunca emitiram nota no cache 2026+ (filiais Jht SP MG/CE +
+  // 1 cadastro duplicado da MG com o MESMO CNPJ) e sumiam da lista, que era
+  // derivada so do fato. Completa com o cadastro, dedupe por CNPJ, e marca
+  // semNotasNoPeriodo , a resposta explica em vez de divergir do sistema.
+  // Defensivo: se o raw nao estiver acessivel (mock de teste, GRANT ausente),
+  // degrada para o comportamento antigo (so o fato), sem quebrar a tool.
+  let cadastro: { odoo_id: number; rotulo: string | null }[] = [];
+  try {
+    cadastro = await prisma.$queryRawUnsafe<{ odoo_id: number; rotulo: string | null }[]>(
+      `SELECT odoo_id, data->'company_id'->>1 AS rotulo FROM raw_sped_empresa`,
+    );
+  } catch {
+    cadastro = [];
+  }
+  const cnpjsDoFato = new Set(doFato.map((e) => e.cnpj).filter(Boolean));
+  const idsDoFato = new Set(doFato.map((e) => e.empresaId));
+  const extras: typeof doFato = [];
+  const cnpjsExtras = new Set<string>();
+  for (const c of cadastro) {
+    if (idsDoFato.has(c.odoo_id)) continue;
+    const m = (c.rotulo ?? "").match(/^(.*?)\s*-\s*(Matriz|Filial)\s+([A-Z]{2})\s+([\d./-]+)/i);
+    const cnpj = m?.[4]?.trim() ?? null;
+    if (cnpj && (cnpjsDoFato.has(cnpj) || cnpjsExtras.has(cnpj))) continue; // duplicata de cadastro
+    if (cnpj) cnpjsExtras.add(cnpj);
+    extras.push({
+      empresaId: c.odoo_id,
+      nome: m?.[1]?.trim() ?? (c.rotulo ?? `empresa ${c.odoo_id}`),
+      nomeCompleto: c.rotulo ?? "",
+      tipo: (m?.[2]?.toLowerCase() === "matriz" ? "matriz" : "filial") as "matriz" | "filial",
+      uf: m?.[3]?.toUpperCase() ?? null,
+      cnpj,
+    });
+  }
+  const semNotas = new Set(extras.map((e) => e.empresaId));
+  const todas = [...doFato, ...extras];
   const filtradas = todas.filter((e) => {
     if (tipo === "matriz" && e.tipo !== "matriz") return false;
     if (tipo === "filial" && e.tipo !== "filial") return false;
@@ -78,6 +116,7 @@ async function query(prisma: PrismaClient, input: Input) {
     tipo: e.tipo,
     uf: e.uf,
     ativo: true,
+    ...(semNotas.has(e.empresaId) ? { semNotasNoPeriodo: true } : {}),
   }));
 
   return {
