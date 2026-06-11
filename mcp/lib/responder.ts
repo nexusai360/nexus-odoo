@@ -223,6 +223,15 @@ const fmtApuracaoFiscal: FormatadorCanonico = (env) => {
   const pisCofins = Number(env._DESTAQUE?.pisCofinsARecolher ?? pis + cofins);
   const saldoCredor = Number(env._DESTAQUE?.saldoCredor ?? 0);
   if (totalApur === 0) return "Nao ha apuracao fiscal registrada para o periodo/criterio.";
+  // Honestidade de fonte (pericia 2026-06-11): apuracoes existem mas TODAS
+  // zeradas = modulo nao preenchido no Odoo. R$ 0 sem ressalva engana.
+  if (Number(env._DESTAQUE?.fonteZerada ?? 0) === 1) {
+    return (
+      `Ha ${totalApur} apuracoes cadastradas, porem TODAS com valores zerados no Odoo , ` +
+      "o modulo de apuracao fiscal aparentemente nao e' preenchido. Isso NAO significa " +
+      "imposto zero; os valores reais devem estar com a contabilidade."
+    );
+  }
   // Caso PIS-COFINS: foco no tributo pedido.
   if (/pis|cofins/i.test(tipo)) {
     return `Apuracao PIS/COFINS (${periodo}): PIS a recolher ${formatBRL(pis)}, COFINS a recolher ${formatBRL(cofins)}. Total PIS+COFINS: ${formatBRL(pisCofins)}.`;
