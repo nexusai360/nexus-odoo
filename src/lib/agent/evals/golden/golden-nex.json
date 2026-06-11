@@ -1544,5 +1544,21 @@
     "classe": "prosseguir",
     "toolEsperada": "comercial_pedidos_por_etapa",
     "observacao": "Derivada: a METRICA de orcamentos existe (parte boa da pergunta 6)."
+  },
+  {
+    "id": "deriv-10",
+    "dominio": "financeiro",
+    "classe": "prosseguir",
+    "pergunta": "Como esta o aging da inadimplencia? Quanto esta vencido ha mais de 90 dias?",
+    "toolEsperada": "financeiro_aging_recebiveis",
+    "observacao": "Backlog pos-review item c. Validado E2E 2026-06-11."
+  },
+  {
+    "id": "deriv-11",
+    "dominio": "estoque",
+    "classe": "prosseguir",
+    "pergunta": "Ha quanto tempo o estoque esta parado? Tem item ha mais de 180 dias?",
+    "toolEsperada": "estoque_cobertura_dias",
+    "observacao": "Backlog pos-review item d. Validado E2E 2026-06-11."
   }
 ]
