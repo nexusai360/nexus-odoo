@@ -67,16 +67,21 @@ export const DOMAINS: ReadonlyArray<DomainEntry> = [
   {
     domain: "comercial",
     description:
-      "Pedidos de venda, propostas, cotacoes, vendas fechadas, faturamento por pedido, devolucoes, produtos vendidos por familia, top pedidos por valor, parcelas do pedido, tempo medio de fechamento, ticket medio, vendedor responsavel pelo pedido, historico de etapas do pedido, tempo gasto em cada etapa, pedidos parados/travados no fluxo de etapas (processo, nao financeiro). Perguntas tipicas: quais os pedidos abertos, top 10 pedidos do mes, qual o ticket medio, parcelas que vencem, tempo medio para fechar pedido, quanto tempo o pedido X ficou em cada etapa, quais pedidos estao travados ha mais de N dias numa etapa.",
+      "Pedidos de venda, propostas, cotacoes, vendas fechadas, faturamento por pedido, devolucoes, produtos vendidos por familia, top pedidos por valor, parcelas do pedido, tempo medio de fechamento, ticket medio, vendedor responsavel pelo pedido, historico de etapas do pedido, tempo gasto em cada etapa, pedidos parados/travados no fluxo de etapas (processo, nao financeiro), tabelas de preco e regras de preco (precos cadastrados por produto, familia ou participante, vigencia). Perguntas tipicas: quais os pedidos abertos, top 10 pedidos do mes, qual o ticket medio, parcelas que vencem, tempo medio para fechar pedido, quanto tempo o pedido X ficou em cada etapa, quais pedidos estao travados ha mais de N dias numa etapa, quantas regras de preco existem, quais as regras da tabela de preco X.",
     examples: [
       "quais os pedidos abertos?",
       "top 10 pedidos do mes",
       "quanto tempo o pedido 821 ficou em cada etapa?",
       "quais pedidos estao travados numa etapa?",
+      "quantas regras de preco existem cadastradas?",
     ],
     forceIncludeOn: [
       /\bpedido(s)? de venda/i,
       /\bparcela(s)?\b/i,
+      // Calibragem 2026-06-11 (golden cov-59/60): regras/tabelas de preco sao
+      // do dominio comercial; sem isso o router nao oferece preco_* e o LLM
+      // registra lacuna falsa.
+      /\b(tabela|regra)s?\s+de\s+pre[cç]os?\b/i,
       /tempo.{0,40}\betapa/i,
       /hist[oó]rico.{0,20}\betapas?/i,
       /pedido(s)?.{0,20}(parado|travado)/i,
@@ -111,12 +116,18 @@ export const DOMAINS: ReadonlyArray<DomainEntry> = [
   {
     domain: "crm",
     description:
-      "Funil de vendas, pipeline, oportunidades em aberto, leads, etapas do funil, atividades de vendedor, conversao de oportunidade em pedido, taxa de fechamento, perdas. Perguntas tipicas: quantas oportunidades estao paradas, qual vendedor converte mais, leads novos esse mes, funil de vendas.",
+      "Funil de vendas, pipeline, oportunidades em aberto, leads, etapas do funil, atividades de vendedor, conversao de oportunidade em pedido, taxa de fechamento, perdas, registro bruto (raw) de um res.partner do cache. Perguntas tipicas: quantas oportunidades estao paradas, qual vendedor converte mais, leads novos esse mes, funil de vendas, registro raw do res.partner X.",
     examples: [
       "quantas oportunidades estao paradas?",
       "qual vendedor converte mais?",
       "leads novos esse mes",
       "funil de vendas",
+    ],
+    forceIncludeOn: [
+      // Calibragem 2026-06-11 (golden cov-26): a tool crm.res_partner.get
+      // (registro raw do parceiro) vive no dominio crm.
+      /res\.?[_ ]?partner/i,
+      /registro\s+(bruto|raw)/i,
     ],
   },
   {

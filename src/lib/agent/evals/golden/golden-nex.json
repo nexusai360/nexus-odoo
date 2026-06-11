@@ -155,10 +155,15 @@
   },
   {
     "id": "contabil-02",
-    "pergunta": "Me mostre a hierarquia da conta 1.01.01 e suas filhas.",
+    "pergunta": "Me mostre a estrutura da conta contabil 1.1.1: a conta pai e as contas filhas dela.",
     "dominio": "contabil",
     "classe": "prosseguir",
-    "toolEsperada": "contabil_estrutura_conta"
+    "toolEsperada": "contabil_estrutura_conta",
+    "toolsAceitas": [
+      "contabil_plano_de_contas",
+      "contabil_detalhar_conta"
+    ],
+    "obs": "Conta corrigida para codigo real (1.01.01 nao existe). Plano de contas/detalhar tambem cobrem hierarquia."
   },
   {
     "id": "contabil-03",
@@ -481,10 +486,11 @@
   },
   {
     "id": "cov-03",
-    "pergunta": "Consulta: cadastro detalhar parceiro",
+    "pergunta": "Me traga o cadastro completo do parceiro de id 8728 (Johnson Fitness): documento, contato e endereco.",
     "dominio": "cadastro",
     "classe": "prosseguir",
-    "toolEsperada": "cadastro_detalhar_parceiro"
+    "toolEsperada": "cadastro_detalhar_parceiro",
+    "obs": "Reescrita 2026-06-11 (era placeholder 'Consulta: ...'); identificadores reais conferidos no cache."
   },
   {
     "id": "cov-04",
@@ -495,10 +501,11 @@
   },
   {
     "id": "cov-05",
-    "pergunta": "Consulta: cadastro parceiros por cidade",
+    "pergunta": "Quais parceiros estao cadastrados na cidade de Sao Paulo?",
     "dominio": "cadastro",
     "classe": "prosseguir",
-    "toolEsperada": "cadastro_parceiros_por_cidade"
+    "toolEsperada": "cadastro_parceiros_por_cidade",
+    "obs": "Reescrita 2026-06-11 (era placeholder)."
   },
   {
     "id": "cov-06",
@@ -600,17 +607,19 @@
   },
   {
     "id": "cov-20",
-    "pergunta": "Consulta: contabil detalhar conta",
+    "pergunta": "Detalha a conta contabil 1.1.1.1: tipo, natureza, nivel e qual e a conta pai.",
     "dominio": "contabil",
     "classe": "prosseguir",
-    "toolEsperada": "contabil_detalhar_conta"
+    "toolEsperada": "contabil_detalhar_conta",
+    "obs": "Reescrita 2026-06-11 (era placeholder 'Consulta: ...'); identificadores reais conferidos no cache."
   },
   {
     "id": "cov-21",
-    "pergunta": "Consulta: contabil movimento conta",
+    "pergunta": "Me mostra o razao da conta contabil 1.1.1.1 em maio de 2026, com debitos e creditos.",
     "dominio": "contabil",
     "classe": "prosseguir",
-    "toolEsperada": "contabil_movimento_conta"
+    "toolEsperada": "contabil_movimento_conta",
+    "obs": "Reescrita 2026-06-11 (era placeholder 'Consulta: ...'); identificadores reais conferidos no cache."
   },
   {
     "id": "cov-22",
@@ -642,10 +651,14 @@
   },
   {
     "id": "cov-26",
-    "pergunta": "Consulta: crm res partner get",
+    "pergunta": "Pega o registro bruto (raw) do res.partner de ID 8728 direto do cache.",
     "dominio": "crm.res",
     "classe": "prosseguir",
-    "toolEsperada": "crm.res_partner.get"
+    "toolEsperada": "crm.res_partner.get",
+    "obs": "Reescrita 2026-06-11 (era placeholder 'Consulta: ...'); identificadores reais conferidos no cache. Aceita tambem o nome saneado (a OpenAI proibe ponto em function name; run-agent saneia para crm_res_partner_get).",
+    "toolsAceitas": [
+      "crm_res_partner_get"
+    ]
   },
   {
     "id": "cov-27",
@@ -873,17 +886,19 @@
   },
   {
     "id": "cov-59",
-    "pergunta": "Consulta: preco contar regras",
+    "pergunta": "Quantas regras de preco existem cadastradas no total, somando todas as tabelas?",
     "dominio": "preco",
     "classe": "prosseguir",
-    "toolEsperada": "preco_contar_regras"
+    "toolEsperada": "preco_contar_regras",
+    "obs": "Reescrita 2026-06-11 (era placeholder 'Consulta: ...'); identificadores reais conferidos no cache."
   },
   {
     "id": "cov-60",
-    "pergunta": "Consulta: preco tabela",
+    "pergunta": "Quais sao as regras da tabela de preco Venda Smart, com valor e vigencia?",
     "dominio": "preco",
     "classe": "prosseguir",
-    "toolEsperada": "preco_tabela"
+    "toolEsperada": "preco_tabela",
+    "obs": "Reescrita 2026-06-11 (era placeholder 'Consulta: ...'); identificadores reais conferidos no cache."
   },
   {
     "id": "cov-61",
@@ -901,10 +916,11 @@
   },
   {
     "id": "cov-63",
-    "pergunta": "Consulta: referencia buscar",
+    "pergunta": "Consulta a tabela de referencia NCM pelo codigo 9506 e me diz o que ela traz.",
     "dominio": "referencia",
     "classe": "prosseguir",
-    "toolEsperada": "referencia_buscar"
+    "toolEsperada": "referencia_buscar",
+    "obs": "Reescrita 2026-06-11 (era placeholder 'Consulta: ...'); identificadores reais conferidos no cache."
   },
   {
     "id": "cov-64",
@@ -915,10 +931,11 @@
   },
   {
     "id": "cov-65",
-    "pergunta": "Consulta: servico buscar",
+    "pergunta": "Busca no catalogo fiscal de servicos o termo 'hospedagem de dados', com codigo e tributacao.",
     "dominio": "servico",
     "classe": "prosseguir",
-    "toolEsperada": "servico_buscar"
+    "toolEsperada": "servico_buscar",
+    "obs": "Reescrita 2026-06-11 (era placeholder 'Consulta: ...'); identificadores reais conferidos no cache."
   },
   {
     "id": "cov-66",
