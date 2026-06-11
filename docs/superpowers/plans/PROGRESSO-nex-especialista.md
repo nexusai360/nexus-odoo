@@ -138,10 +138,23 @@ Cada fase: plano próprio (bite-sized) + 2 reviews quando material → execuçã
       real OK. T7a FEITO (bb599cf): preCorte no resolverPeriodoFiscal +
       TEXTO_HONESTO_PRE_CORTE (spec §5) no gancho central calcularExtras +
       16 tools fiscais; suite inteira 2.924 verdes.
-      PROXIMO: T8 (recalibracao 2025->2026, 1 commit por artefato, lista
-      nominal; golden gated por OpenAI), T11 runbook, depois T9 (EXECUCAO DEV:
-      pg_dump -> deploy -> dry-run -> APROVACAO HUMANA -> apply -> invariantes
-      -> vacuum -> rebuilds -> 2 ciclos).
+      T8 FEITO (d7847e9/37a068c/ce45495): da lista nominal da spec, so 3
+      artefatos tinham 2025 operante (conferencia-fiscal, gen-baseline,
+      f5-regime , os demais ja estavam limpos, goldens 0 hits); recalibrados
+      para 2026+ e validados E2E no dado real (conferencia TODOS os gates
+      verdes). ATENCAO: baseline acumulado pos-corte = piso 59.576.817,08
+      (valor 2026 ate jun); re-rodar gen-baseline POS-purge. T11 FEITO
+      (b9d7735): runbook docs/runbooks/limpa-2026.md (ordem, rollback, gate de
+      modelo novo); painel de ingestao verificado , nao alarma por volume.
+      **T9 EM CURSO: pre-flight disco OK (395G livres no volume PG, banco
+      5,5GB) + PG_DUMP FEITO E VERIFICADO (16 tabelas, 70MB,
+      ~/Backups/nexus-odoo/limpa-2026-pre-purge-20260611T1405.dump) , destrava
+      deploy do filtro em dev E o merge/ship do codigo da limpa.** Rebuild do
+      worker dev em andamento. FALTA NO T9: 1 ciclo verificado -> stop worker
+      -> dry-run final -> APROVACAO HUMANA do dry-run (290.010 linhas) ->
+      capturar invariante -> --apply --aprovado -> rebuild titulo -> comparar
+      invariante -> --vacuum -> T6 rebuilds/ancoras -> re-rodar gen-baseline ->
+      worker on + 2 ciclos. (T7b/T8-golden-validacao seguem gated por OpenAI.)
       **MERGE/SHIP DO CODIGO DA LIMPA E GATED pelo pg_dump do T9 pre-flight
       (alerta acima) , NAO mergear no wrap-up automatico.** (T7b/T8-
       golden gated por recarga OpenAI; --apply gated por aprovacao humana).**
