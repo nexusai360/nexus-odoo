@@ -29,6 +29,22 @@
 > Tauga voltou → recovery (`drainPending`) re-rodou o reconcile → 707 purgados → rebuild do fato → a pagar
 > **R$ 222,1mi** (= painel). jest 2875 verde. **PENDENTE leve:** prod se autocorrige no 1º reconcile pós-deploy
 > (≤3h, Tauga no ar); pode mostrar nº inflado nessa janela curta. Scripts de diagnóstico: `scripts/pericia-*.ts`.
+> **OPERAÇÃO NEX ESPECIALISTA (2026-06-11, EM CURSO , ondas 1 e 2 EM PRODUÇÃO #96/#97):**
+> milestone autorizado pelo usuário ("agente mega inteligente que acerta tudo"; autonomia total).
+> LAUDO forense + SPEC v3 (2 reviews adversariais) em docs/superpowers/{research,specs}/2026-06-11-*.
+> **Entregue em prod:** (A) A/B de cérebro , harness agêntico ab-cerebro.ts; veredito: manter
+> gpt-5.4-mini (gpt-5.4 full empata em qualidade a 7x o custo; erros de seleção são 100% estruturais;
+> Claude pende de crédito OpenRouter , saldo 0). (B) **Contrato de lista 78/78 tools** (ordenadoPor +
+> topMaiores + gate allowlist VAZIA) + **AutoValidator V8** (enquadramento de lista). (C) **GRANT em
+> massa: 20 tabelas fato_* sem permissão pro nexus_mcp , domínios INTEIROS (contábil/DFe/REINF/MDFe/
+> cobrança/produção/auditoria/CRM/comissões...) quebravam com "Erro interno"; migration 20260611150000
+> (+default privileges) ressuscitou ~20 tools.** (D) Casos da perícia: 10-maiores (print do usuário),
+> KS (empresa do grupo != cliente), NCM (detalhar produto por termo), Smartfit (CNPJs no _RESPOSTA),
+> apuração zerada com ressalva honesta. (E) Golden 124→130 com casos reais + kpi SQL-VIVO (fonteOuroSql).
+> Validação: 6/6 tool certa + 6/6 kpi-vivo nos ouro; jest 2890; localhost atualizado.
+> **PENDENTE (próx. sessão):** Fase D (prompt 2.0 enxuto), composição multi-eixo, follow-up no golden,
+> golden gate pre-push, A2 (A/B com Claude , exige usuário creditar OpenRouter). Retomada:
+> docs/superpowers/plans/PROGRESSO-nex-especialista.md.
 > **DEPLOY , ROTA ÚNICA:** usar **`python3 scripts/ship.py "titulo"`** (`docs/runbooks/deploy-procedure.md`):
 > PR→CI→merge→deploy→verifica prod, com fallback de IP da API do GitHub (o `gh` trava quando api.github.com
 > cai no IP Azure 4.228.31.149 inalcançável; `ship.py` contorna). NÃO refazer o fluxo na mão.
