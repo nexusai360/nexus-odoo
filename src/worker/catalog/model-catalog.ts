@@ -60,7 +60,7 @@ export const MODEL_CATALOG: readonly CatalogEntry[] = [
   { odooModel: "finan.documento", mode: "incremental" },
   { odooModel: "finan.fluxo.caixa", mode: "incremental", corte: { odoo: "data", raw: "data" } },
   { odooModel: "finan.forma.pagamento", mode: "incremental" },
-  { odooModel: "finan.lancamento", mode: "incremental" },
+  { odooModel: "finan.lancamento", mode: "incremental", corteEspecial: "titulo_por_situacao" },
   { odooModel: "finan.lancamento.item", mode: "incremental" },
   { odooModel: "finan.pagamento.divida", mode: "incremental" },
   { odooModel: "finan.remessa", mode: "incremental" },
