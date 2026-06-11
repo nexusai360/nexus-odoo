@@ -26,6 +26,6 @@ export function goldenToOraculo(golden: GoldenEntry[]): OraculoItem[] {
  *  como "monitoradas, nao-gate". */
 export function frozenProsseguir(golden: GoldenEntry[]): GoldenEntry[] {
   return golden.filter(
-    (e) => e.classe === "prosseguir" && !/^(cov|ouro|desamb)-/.test(e.id),
+    (e) => e.classe === "prosseguir" && !/^(cov|ouro|desamb|pericia)-/.test(e.id),
   );
 }

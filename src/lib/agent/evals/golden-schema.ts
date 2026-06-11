@@ -18,6 +18,9 @@ export const KpiOuroSchema = z.object({
   match: z.enum(["exato", "centavos", "faixa"]).default("exato"),
   delta: z.number().optional(),
   fonteOuro: z.string().min(1),
+  /** SQL executavel contra o cache: o harness A/B (ab-cerebro) executa AO VIVO
+   *  e compara com o valor ATUAL (mata o drift de snapshot do valor estatico). */
+  fonteOuroSql: z.string().optional(),
   ancora: z.string().optional(),
 });
 export type KpiOuro = z.infer<typeof KpiOuroSchema>;
@@ -29,6 +32,8 @@ export const GoldenEntrySchema = z
     dominio: z.string().nullable(),
     classe: z.enum(CLASSES),
     toolEsperada: z.string().nullable(),
+    /** Tools alternativas que tambem respondem por completo (harness A/B). */
+    toolsAceitas: z.array(z.string()).optional(),
     args: z.record(z.string(), z.unknown()).optional(),
     kpiOuro: z.array(KpiOuroSchema).optional(),
     volatil: z.boolean().optional(),

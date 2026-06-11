@@ -968,5 +968,73 @@
     "dominio": "fiscal",
     "classe": "prosseguir",
     "toolEsperada": "fiscal_faturamento_por_regime"
+  },
+  {
+    "id": "pericia-10maiores-01",
+    "pergunta": "Quais são os 10 maiores títulos vencidos a pagar?",
+    "dominio": "financeiro",
+    "classe": "prosseguir",
+    "toolEsperada": "financeiro_titulos_vencidos",
+    "observacao": "Caso forense #1 (print do usuario 2026-06-11): lista era ordem de PK rotulada de maiores. Contrato: topMaiores por valor desc.",
+    "kpiOuro": [
+      {
+        "chave": "maiorVencidoAPagar",
+        "valor": 0,
+        "match": "exato",
+        "fonteOuroSql": "SELECT max(vr_saldo)::float v FROM fato_financeiro_titulo WHERE tipo='a_pagar' AND vr_saldo>0 AND data_vencimento < date_trunc('day', now())",
+        "fonteOuro": "SELECT max(vr_saldo)::float v FROM fato_financeiro_titulo WHERE tipo='a_pagar' AND vr_saldo>0 AND data_vencimento < date_trunc('day', now())"
+      }
+    ]
+  },
+  {
+    "id": "pericia-ks-01",
+    "pergunta": "Quero o faturamento da KS Comércio",
+    "dominio": "fiscal",
+    "classe": "prosseguir",
+    "toolEsperada": "fiscal_faturamento_periodo",
+    "observacao": "Caso KS: empresa do grupo NAO e cliente; faturamento DELA = faturamento_periodo({empresaRef})."
+  },
+  {
+    "id": "pericia-ncm-01",
+    "pergunta": "Qual o NCM e o codigo de barras do produto esteira T5?",
+    "dominio": "cadastros",
+    "classe": "prosseguir",
+    "toolEsperada": "cadastro_detalhar_produto",
+    "toolsAceitas": [
+      "cadastro_buscar_produto"
+    ],
+    "observacao": "Caso NCM: pergunta de CADASTRO (nao saldo). termo ambiguo -> listar candidatos."
+  },
+  {
+    "id": "pericia-smartfit-01",
+    "pergunta": "Qual o CNPJ da empresa chamada Smartfit?",
+    "dominio": "cadastros",
+    "classe": "prosseguir",
+    "toolEsperada": "cadastro_buscar_parceiro",
+    "observacao": "Homonimos: _RESPOSTA embute top-5 com documento; resposta deve trazer CNPJs, nao so contagem."
+  },
+  {
+    "id": "pericia-dfe-01",
+    "pergunta": "Quais DFe de fornecedores estao pendentes de manifestacao?",
+    "dominio": "fiscal",
+    "classe": "prosseguir",
+    "toolEsperada": "fiscal_dfe_pendentes_manifestacao",
+    "observacao": "Classe GRANT: dominio inteiro falhava com permission denied (fix 20260611150000)."
+  },
+  {
+    "id": "pericia-sped-01",
+    "pergunta": "Qual e o plano referencial SPED completo?",
+    "dominio": "contabil",
+    "classe": "prosseguir",
+    "toolEsperada": "contabil_conta_referencial",
+    "kpiOuro": [
+      {
+        "chave": "totalContasReferenciais",
+        "valor": 2216,
+        "match": "exato",
+        "fonteOuroSql": "SELECT count(*)::float v FROM fato_contabil_conta_referencial",
+        "fonteOuro": "SELECT count(*)::float v FROM fato_contabil_conta_referencial"
+      }
+    ]
   }
 ]
