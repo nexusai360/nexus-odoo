@@ -297,6 +297,30 @@
       "examples": []
     },
     {
+      "id": "financeiro_aging_recebiveis",
+      "operation": "read",
+      "module": "financeiro",
+      "descricao": "Aging da inadimplencia: titulos em aberto (a receber por default; aceita a_pagar) bucketizados por dias de atraso (a vencer, 0-30, 31-60, 61-90, 90+), com valor e numero de titulos por faixa e o maior devedor da faixa 90+. Use para 'aging da inadimplencia', 'quanto esta vencido ha mais de 60 dias', 'faixas de atraso'.",
+      "capability": null,
+      "sensitive": false,
+      "addedInVersion": null,
+      "inputSchemaKeys": [
+        "tipo"
+      ],
+      "inputSchemaFields": [
+        {
+          "name": "tipo",
+          "type": "enum",
+          "optional": true,
+          "enumValues": [
+            "a_receber",
+            "a_pagar"
+          ]
+        }
+      ],
+      "examples": []
+    },
+    {
       "id": "financeiro_caixa_periodo",
       "operation": "read",
       "module": "financeiro",
@@ -4171,6 +4195,6 @@
       "examples": []
     }
   ],
-  "count": 118,
-  "generatedAt": "2026-06-11T22:43:45.378Z"
+  "count": 119,
+  "generatedAt": "2026-06-11T23:21:28.328Z"
 }

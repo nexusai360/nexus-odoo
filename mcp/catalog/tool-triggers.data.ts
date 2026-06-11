@@ -61,6 +61,7 @@ export const TOOL_TRIGGERS: Record<string, string[]> = {
   "financeiro_resultado_por_conta": ["receita versus despesa no periodo", "qual conta teve a maior despesa", "qual conta teve a maior receita", "dre gerencial por conta"],
   "financeiro_retornos_processados": ["que retornos bancarios recebemos no periodo", "arquivos de retorno processados do banco", "totais de entrada e saida dos retornos bancarios", "retornos do banco com saldo no periodo"],
   "financeiro_saldo_contas": ["qual o saldo em caixa e nos bancos hoje", "quanto temos disponivel em conta", "saldo por banco e conta", "estamos com caixa positivo ou negativo"],
+  "financeiro_aging_recebiveis": ["aging da inadimplencia", "quanto esta vencido ha mais de 60 dias", "faixas de atraso dos recebiveis", "aging de contas a receber"],
   "financeiro_titulos_vencidos": ["quanto esta vencido e nao pago", "titulos em atraso de clientes e fornecedores", "quanto esta vencido para pagar", "boletos vencidos com dias de atraso"],
   "fiscal_apuracao": ["qual a apuracao fiscal de janeiro", "valores a recolher de ICMS PIS e COFINS", "apuracao de ICMS IPI PIS COFINS do periodo", "saldo credor de ICMS e apuracao entregue"],
   "fiscal_carta_correcao": ["ha cartas de correcao em aberto", "quais CCe foram emitidas", "cartas de correcao de uma nota", "correcoes fiscais registradas no periodo"],
