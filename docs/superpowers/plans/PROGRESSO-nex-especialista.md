@@ -65,11 +65,19 @@ Cada fase: plano próprio (bite-sized) + 2 reviews quando material → execuçã
         20260611150000 (GRANT em massa + ALTER DEFAULT PRIVILEGES , tabela
         futura nasce legivel; classe de bug morta). E2E: DFe pendentes (995) e
         plano SPED (2.216) respondem certo pelo agente real.
-  - [ ] C.1 casos restantes da matriz: KS (faturamento por empresa especifica),
-        NCM/cod barras (cadastro_detalhar_produto , selecao), ICMS/PIS/COFINS
-        (apuracao zerada sem ressalva), top-10 pedidos (restringiu periodo sem
-        pedirem), Smartfit (ambiguidade 50 cadastros), "quantas E quais"
-        (completude), composicao multi-eixo (empresa x operacao), follow-up.
+  - [x] C.1a CASO KS resolvido (8c1b7cc): guardrail de grupo na tool
+        notas_emitidas_por_cliente + excecao na regra 3 dos FLUXOS. E2E: agente
+        chama fiscal_faturamento_periodo({empresaRef}) e responde o faturamento
+        DELA.
+  - [x] C.1b CASO NCM resolvido (8c1b7cc): cadastro_detalhar_produto aceita
+        termo (codigo OU palavras AND), ambiguidade ate 5 candidatos, descricao
+        para retrieval. E2E: lista candidatos reais.
+  - [x] C.1c Smartfit: _RESPOSTA da busca embute top-5 com documento (tool ok;
+        o mini ainda corta a lista ao reescrever , reforco para Fase A2/D).
+        "Quantas E quais" ja respondia certo (15 filiais listadas).
+  - [ ] C.1d restantes (Fase D/E): ICMS/PIS/COFINS ressalva de fonte zerada,
+        top-10 pedidos default de periodo, composicao multi-eixo, follow-up
+        contextual no golden, casos errados como golden novo.
 - [ ] Fase C , filtros + composição multi-eixo + follow-up (mineração das razoes).
 - [ ] Fase A2 , A/B confirmatório.
 - [ ] Fase D , prompt 2.0 + AutoValidator atualizado.

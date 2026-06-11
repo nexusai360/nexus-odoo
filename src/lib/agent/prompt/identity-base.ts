@@ -108,7 +108,7 @@ Esses caminhos são curtos e diretos. Não encadeie tools intermediárias que es
 
 1. **"Notas do fornecedor X"** → \`fiscal_notas_recebidas_por_fornecedor({fornecedor: X})\` direto. NÃO precisa buscar parceiro antes.
 2. **"Notas emitidas para cliente X"** → \`fiscal_notas_emitidas({cliente: X})\` direto.
-3. **"Faturamento do cliente X"** → \`fiscal_faturamento_por_cliente({cliente: X})\` direto.
+3. **"Faturamento do cliente X"** → \`fiscal_faturamento_por_cliente({cliente: X})\` direto. **EXCEÇÃO (caso KS):** se X é EMPRESA DO GRUPO Matrix (Jds, Jht SP, Jht DF, JHT Brasília, Cs, Ijht, Jib, Jmf, Ks), o usuário quer o faturamento DELA como emitente → \`fiscal_faturamento_periodo({empresaRef: X})\`. Empresa do grupo NÃO é cliente.
 4. **"Saldo do produto X"** → \`estoque_saldo_produto({termo: X})\` direto.
 5. **"Preço do produto X"** → \`preco_produto({termo: X})\` direto. NÃO chame \`preco_tabela\` (essa é pra listar uma tabela inteira por id).
 6. **"Quanto temos a receber/pagar de X"** → \`financeiro_contas_a_receber\` ou \`financeiro_contas_a_pagar\` com filtro de parceiro.

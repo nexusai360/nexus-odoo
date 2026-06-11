@@ -9,6 +9,7 @@ import {
   montarPaginacaoMeta,
 } from "../../lib/paginacao.js";
 import type { PrismaClient } from "@/generated/prisma/client.js";
+import { ehNotaIntragrupo } from "@/lib/fiscal/grupo/participantes-grupo.js";
 
 const inputSchema = z.object({
   clienteTermo: z.string().min(2).max(120).describe("Filtra notas onde participanteNome contem o termo (insensitive)."),
@@ -38,6 +39,8 @@ const dados = z.object({
   _RESPOSTA: z.string().optional(),
   _listaTruncada: z.boolean().optional(),
   _PAGINACAO: z.any().optional(),
+  // Guardrail caso KS: maioria das notas e' para empresa do grupo.
+  clienteEhDoGrupo: z.boolean().optional(),
   _DESTAQUE: z.record(z.string(), z.union([z.string(), z.number()])).optional(),
   _agregado: z.record(z.string(), z.number().optional()).optional(),
 });
@@ -73,7 +76,7 @@ async function query(prisma: PrismaClient, input: Input) {
   const [linhas, total, agg] = await Promise.all([
     prisma.fatoNotaFiscal.findMany({
       where,
-      select: { numero: true, serie: true, dataEmissao: true, participanteNome: true, situacaoNfe: true, vrNf: true },
+      select: { numero: true, serie: true, dataEmissao: true, participanteId: true, participanteNome: true, situacaoNfe: true, vrNf: true },
       // Ordenacao estavel + desempate por odooId (alavanca 2b).
       orderBy: [{ dataEmissao: "desc" }, { odooId: "asc" }],
       take: limit,
@@ -82,6 +85,17 @@ async function query(prisma: PrismaClient, input: Input) {
     prisma.fatoNotaFiscal.count({ where }),
     prisma.fatoNotaFiscal.aggregate({ where, _sum: { vrNf: true } }),
   ]);
+  // Guardrail de semantica (caso KS, pericia 2026-06-11): se a maioria das
+  // notas encontradas e' para uma EMPRESA DO GRUPO, o usuario provavelmente
+  // pediu o faturamento DELA (como emitente), nao as vendas PARA ela
+  // (intragrupo). O aviso no envelope deixa o LLM se corrigir no mesmo turno.
+  const linhasGrupo = linhas.filter((l) =>
+    ehNotaIntragrupo(
+      { participanteId: l.participanteId, participanteNome: l.participanteNome },
+      SET_VAZIO,
+    ),
+  );
+  const clienteEhDoGrupo = linhas.length > 0 && linhasGrupo.length / linhas.length > 0.5;
   return {
     linhas: linhas.map((l) => ({
       numero: l.numero,
@@ -95,8 +109,13 @@ async function query(prisma: PrismaClient, input: Input) {
     valorTotal: Number(agg._sum.vrNf ?? 0),
     linhasExibidas: linhas.length,
     ordenadoPor: "data desc",
+    clienteEhDoGrupo,
   };
 }
+
+/** Set vazio reutilizado: a cascata do ehNotaIntragrupo ja cobre o grupo via
+ *  whitelist de participante_id e raiz de CNPJ no nome (camadas 1 e 3). */
+const SET_VAZIO = new Set<number>();
 
 export const fiscalNotasEmitidasPorCliente: ToolEntry<Input, Output> = {
   id: "fiscal_notas_emitidas_por_cliente",
@@ -115,18 +134,24 @@ export const fiscalNotasEmitidasPorCliente: ToolEntry<Input, Output> = {
     const d = envelope.dados;
     const paginacao = montarPaginacaoMeta(d.totalNotas, offset, limit, d.linhasExibidas);
     const fmt = (n: number) => n.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
+    // Aviso de semantica quando o "cliente" e' empresa do grupo (caso KS).
+    const avisoGrupo = d.clienteEhDoGrupo
+      ? ` ATENCAO: '${input.clienteTermo}' e' uma EMPRESA DO GRUPO Matrix , estas sao vendas intragrupo PARA ela. ` +
+        `Se o usuario pediu o faturamento DELA (o que ela vendeu), chame fiscal_faturamento_periodo com empresaRef='${input.clienteTermo}'.`
+      : "";
     return {
       ...envelope,
       dados: {
         ...d,
-        _RESPOSTA: d.totalNotas === 0
+        _RESPOSTA: (d.totalNotas === 0
           ? `Nao ha notas emitidas para '${input.clienteTermo}' no periodo.`
-          : `${d.totalNotas} notas emitidas para '${input.clienteTermo}', total ${fmt(d.valorTotal)}. Listando ${d.linhasExibidas}.`,
+          : `${d.totalNotas} notas emitidas para '${input.clienteTermo}', total ${fmt(d.valorTotal)}. Listando ${d.linhasExibidas}.`) + avisoGrupo,
         _DESTAQUE: {
           clienteTermo: input.clienteTermo,
           totalNotas: d.totalNotas,
           valorTotal: d.valorTotal,
           linhasExibidas: d.linhasExibidas,
+          ...(d.clienteEhDoGrupo ? { avisoEmpresaDoGrupo: 1 } : {}),
         },
         _agregado: { contagem: d.totalNotas, soma: d.valorTotal },
         _listaTruncada: paginacao.temMais,

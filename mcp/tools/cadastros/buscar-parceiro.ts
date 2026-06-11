@@ -113,6 +113,10 @@ export const cadastroBuscarParceiro: ToolEntry<Input, Output> = {
     const paginacao = montarPaginacaoMeta(total, offset, limit, linhas.length);
     return enriquecerEnvelope(envelope, "cadastro_buscar_parceiro", {
       paginacao,
+      // Caso Smartfit (pericia 2026-06-11): passar as linhas permite ao
+      // formatador embutir os 5 primeiros candidatos COM documento no
+      // _RESPOSTA (so a contagem nao responde "qual o CNPJ de X").
+      titulos: linhas as unknown as Array<Record<string, unknown>>,
       destaque: {
         totalEncontrados: total,
         termo: input.termo,
