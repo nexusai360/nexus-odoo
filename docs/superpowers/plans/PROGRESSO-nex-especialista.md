@@ -276,10 +276,18 @@ Cada fase: plano próprio (bite-sized) + 2 reviews quando material → execuçã
           prompt , 'clienteCnpj' o mini nao preenchia); E2E verificado
           contra SQL exato. + triggers de CNPJ.
       [x] RETRY de catalogo vazio no run-agent (redeploy do mcp).
-      [ ] Margem por familia (lacuna honesta hoje) , proxima.
+      [~] MARGEM POR FAMILIA implementada (metrica porFamilia + tool
+          agruparPor familia + triggers; jest verde; rebuild feito). E2E
+          PENDENTE DE AFINAR: a tool certa e chamada mas o mini nao passa
+          agruparPor:'familia' (responde agregado) , afinar na continuacao
+          (descricao ja instrui; conferir se passou o param no proximo run e
+          considerar exemplo no prompt ou formatador exibindo familias
+          quando presentes).
       [ ] REVIEW AMPLO (usuario: cliente tem 100+ perguntas da complexidade
           das 8; avaliar prontidao do catalogo; spec curta + reviews
-          adversariais; TETO OPENAI AGORA US$8, gasto ~4,60).
+          adversariais; TETO OPENAI AGORA US$8, gasto ~4,70). E pedir ao
+          usuario a LISTA das 100+ perguntas , com ela o review vira golden
+          direto (muito mais certeiro que derivar as perguntas no escuro).
 - [ ] **DEPOIS:** Fase D onda 2 (compressao agressiva, com A/B); A2 (A/B
       Claude , exige credito OpenRouter); auditar suspeitas do juiz de
       alucinacao (falso positivo).
