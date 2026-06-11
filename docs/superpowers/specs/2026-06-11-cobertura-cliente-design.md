@@ -1,13 +1,15 @@
 # SPEC , Cobertura Cliente: 8 perguntas + raio expandido + honestidade de fonte
 
-> v1 (2026-06-11). Requisitos dados pelo usuário em conversa (verbatim no §1).
-> Princípio do usuário: "não quero que ajuste só para responder essas
-> perguntas; quero que vá mais a fundo para responder todo o restante" e
-> "nunca parecer erro da plataforma quando o dado não existe no sistema".
+> **v3** (2026-06-11). v1 + 2 reviews adversariais Opus aplicadas (review #1:
+> premissas de dado , 4 BLOCKERs; review #2: arquitetura , 2 BLOCKERs).
+> Requisitos verbatim do usuário no §1.
+> Princípios: "não ajustar só para responder essas perguntas; ir a fundo para
+> responder todo o restante" e "nunca parecer erro da plataforma quando o
+> dado não existe no sistema".
 
 ## 1. Requisitos (do usuário, 2026-06-11)
 
-As 8 perguntas do cliente (nível de detalhe exigido):
+As 8 perguntas do cliente:
 1. Faturamento de venda por CNPJ.
 2. Faturamento de operações de demonstração e quantidade de NF emitidas por UF.
 3. Volume de estoque de produto X.
@@ -17,126 +19,156 @@ As 8 perguntas do cliente (nível de detalhe exigido):
 7. Valor total de estoque (filtrado por estoques X/Y/Z), apenas físicos.
 8. Valor total de estoque em demonstração.
 
-Mais dois requisitos transversais:
-- **Raio expandido**: cobrir as perguntas DERIVADAS (mais detalhe, drill-down,
-  assuntos vizinhos), não só as 8 literais.
-- **Honestidade de fonte**: quando o dado não existe NO SISTEMA (ex.: CRM/
-  prospecção sem nada montado, segmento não cadastrado), a resposta deve
-  dizer isso ("não há esse dado cadastrado no sistema") , nunca um "não
-  consigo te responder" que pareça defeito da plataforma. Sempre jogar a
-  limitação para o sistema/dado, com naturalidade.
+Transversais:
+- **Raio expandido**: cobrir perguntas DERIVADAS (drill-down, vizinhas).
+- **Honestidade de fonte**: gap de dado = "não há esse dado cadastrado no
+  sistema", nunca recusa seca que pareça defeito da plataforma.
 
-## 2. Fatos cravados no discovery (banco real, 2026-06-11)
+## 2. Fatos do discovery (CORRIGIDOS pela review #1 contra o banco real)
 
-- **Demonstração é dado RICO**: 358 notas com natureza "demonstração"
-  (5912/6912, variantes Presumido/Real/Simples + "Entrada , Demonstração"),
-  R$ 11.361.895,22 no cache. Locais de estoque "Demonstração" (sintético) e
-  "JDS Demo <UF/cidade>" (analíticos) existem.
-- **CRM/prospecção: ZERO** , raw_crm_pipeline 0 linhas, fato 0. Módulo
-  existe e não é operado (tool crm_status_dominio já reporta isso).
-- **Segmento (Residencial/Condomínio/Hotel/Academia): NÃO EXISTE** campo em
-  res.partner nem em pedido.documento. É gap de FONTE; viria do CRM
-  (prospecção), que está vazio.
-- **Locais de estoque**: árvore com raízes "Próprio", "Terceiros", "Virtual";
-  campos `tipo` (S=sintético/A=analítico), `nome_completo`, `parent_path`,
-  `estoque_em_maos`. "Apenas físicos" = subárvore de Próprio (validar
-  vs `estoque_em_maos` na execução).
-- **CNPJ**: raw_res_partner NÃO tem `cnpj_cpf`; nome real do campo de
-  documento a validar (fato_* de financeiro já expõe documento , a F4 usa).
-- **CMV**: produto não tem campo custo no raw (amostra); o custo vive nas
-  TABELAS DE PREÇO de custo ("Custo Smart /0,95" etc., fato_preco) , é o que
-  a fiscal_margem_aproximada já usa, com ressalva. CMV contábil inexiste
-  (contabilidade não operada: raw_contabil_lancamento = 0).
-- **UF**: não está na nota; resolve via participante (padrão já usado por
-  fiscal_faturamento_por_uf).
-- **Pedido**: sem campo operação/natureza na amostra , "pedidos de operação
-  de venda" precisa validar se o módulo de pedidos é só venda (provável) ou
-  se há proxy (ehCompra em cotações).
+- **Demonstração (números reproduzíveis):** a fonte da verdade é o **CFOP do
+  item** (a natureza da nota é NULL em 5.458/10.037 notas , filtrar por nome
+  de natureza perde metade da base). Com `situacao_nfe='autorizada'`
+  (obrigatório: há 3.651 notas em digitação na fato):
+  remessa **5912/6912 = 173 notas / R$ 14.892.391** (valor de produtos);
+  retorno **1913/2913 = 93 notas** (NUNCA 1912/2912). O R$ 11,36mi da v1 era
+  SELECT solto no raw com rascunho , descartado.
+- **Remessa de demonstração NÃO é receita** , a resposta da tool deve dizer
+  isso explicitamente (mercadoria pode retornar; há notas de retorno).
+- **Estoque demonstração**: vive na árvore **`Terceiros / Demonstração / ...`**
+  (folhas = clientes). Valor atual **R$ 1.855.763,50 (167 saldos)**. Matching
+  ancora em `nome_completo ILIKE 'Terceiros / Demonstração%'`, nunca termo
+  solto. "Apenas físicos" = subárvore **`Próprio`** = **R$ 37.399.967,01**
+  (e corretamente EXCLUI demonstração, que é Terceiros).
+- **GRANT: `raw_estoque_local` NÃO tem GRANT para nexus_mcp/nexus_mcp_bi**
+  (mesma classe do bug C.0/raw_res_partner). Task obrigatória da onda A.
+- **CRM/prospecção: ZERO** (raw e fato 0 linhas; módulo existe, não operado).
+- **Segmento**: não há campo estruturado (industry_id 0/7.108; sem campo
+  custom). Proxy textual fraco existe nos nomes dos locais de demonstração
+  ("Condominio...", "Edificio...") , registrado como derivada com ressalva,
+  não como fonte canônica.
+- **CNPJ**: campo real é **`vat`**, formato `BR-18.282.961/0001-00`
+  (4.813/4.928 empresas preenchido). Agrupar por raiz exige normalização
+  (strip `BR-` + máscara; raiz = 8 primeiros dígitos) , função pura com teste.
+- **Pedido TEM operação**: `operacao_id` com sufixo parseável ("(venda)");
+  mistura venda, produção (montagem kit), inventário, romaneio (inclui
+  remessa demonstração), transferência, compra. A pergunta 5 exige **filtro
+  de operação venda** em `comercial_pedidos_por_uf` (mudança de filtro, não
+  de trigger).
+- **CMV**: custo vive nas tabelas de preço de custo (`fato_preco`: `valor`,
+  `operacao`, `tabela_nome`, vigência `data_inicial/final`); produto não tem
+  custo no raw; contabilidade não operada (CMV contábil inexiste). O CMV
+  aproximado exige critério de seleção de tabela + vigência (ver spike S1).
+- **UF**: resolve via parceiro (caminho do `fiscal_faturamento_por_uf`;
+  ATENÇÃO: o nome real da coluna de UF em fato_parceiro NÃO é literalmente
+  "uf" , validar o nome na task, reusar o caminho da tool existente).
+- **Orçamentos EXISTEM** (pedido em etapa de orçamento / `fato_cotacao` /
+  `raw_pedido_etapa`) , a pergunta 6 é **gap de DIMENSÃO (segmento) sobre
+  métrica EXISTENTE (orçamentos)**, não gap de domínio.
 
 ## 3. Mapa pergunta → entrega
 
 | # | Estado | Entrega |
 |---|---|---|
-| 1 | quase | `fiscal_faturamento_por_cliente` ganha o documento (CNPJ) por linha + agrupamento opcional por RAIZ de CNPJ (`agruparPor: "cnpj_raiz"`); resposta exibe CNPJ formatado |
-| 2 | tool nova | `fiscal_demonstracoes` , recorte por natureza demonstração: total, nº de notas, POR UF (cruzamento), por empresa, série mensal; remessa vs retorno |
-| 3 | pronto | nada (estoque_saldo_produto) |
-| 4 | tool nova + ressalva | `fiscal_vendas_produto_por_empresa` (cruzamento produto×empresa: qtde, valor, nº notas) + CMV APROXIMADO opt-in (custo de tabela; ressalva honesta padrão margem); CMV contábil = resposta de fonte (não operado) |
-| 5 | quase | validar `comercial_pedidos_por_uf` cobre "operação de venda"; ajustar descrição/trigger |
-| 6 | fonte | NADA a construir de tool; resposta de fonte via camada §5 ("segmento não é cadastrado no sistema hoje; viria do módulo de prospecção/CRM, que não tem dados") |
-| 7 | extensão | `estoque_valor_armazem` ganha `locais` (lista de nomes/termos) + `apenasFisicos` (subárvore Próprio); resposta nomeia os locais cobertos |
-| 8 | extensão | mesma tool da 7: `local: "demonstração"` cobre (locais Demo existem); atalho semântico no trigger ("estoque em demonstração") |
+| 1 | extensão | `fiscal_faturamento_por_cliente`: expõe CNPJ (`vat` normalizado) por linha + `agruparPor: "cnpj_raiz"`; normalização com teste unit |
+| 2 | tool nova | `fiscal_demonstracoes` (§4.1): fonte = CFOP item (5912/6912 remessa; 1913/2913 retorno), só autorizadas; `agruparPor: uf\|empresa\|mes` (uma dimensão por chamada , respeita contrato de lista); KPIs full-set (vrRemessa, vrRetorno, nNotasRemessa, nNotasRetorno); ressalva fixa "valor de remessa, não é receita de venda" |
+| 3 | pronto | nada |
+| 4 | tool nova + spike | `fiscal_vendas_produto_por_empresa` (produto via termo; linhas = empresas, ordenadoPor valor desc, sem paginação , poucas empresas); CMV aproximado GATED pelo spike S1; CMV contábil = honestidade de fonte |
+| 5 | extensão | `comercial_pedidos_por_uf` ganha filtro `operacao: "venda"` (parse do sufixo de operacao_id), default mantém comportamento atual; descrição/trigger atualizados |
+| 6 | fluxo cravado | Tool de orçamentos responde o N + a resposta EXPLICA o gap de dimensão: "temos N orçamentos no período, mas o cadastro de clientes não tem segmento (Residencial/Hotel...) preenchido; essa classificação viria do cadastro/prospecção, hoje sem dados". Implementação: §5 (gap de dimensão) + caso golden com `esperaNaResposta`. NUNCA rotear a pergunta inteira para crm_status_dominio (esconderia o dado que existe) |
+| 7 | extensão | `estoque_valor_armazem` ganha `locais: string[]` (match por nome_completo) + `apenasFisicos: boolean` (subárvore Próprio); exige GRANT raw_estoque_local (B3) |
+| 8 | extensão | mesma tool: `local: "demonstração"` ancora em `Terceiros / Demonstração%`; trigger "estoque em demonstração" |
 
-## 4. Raio expandido (inteligência antecipatória)
+### 4.1 Fronteira e desambiguação (review #2 M1)
 
-Para cada tema, derivar perguntas-irmãs e garantir resposta (tool existente,
-nova, ou honestidade de fonte). Materializa em: (a) capacidades nas tools
-novas (parâmetros que cubram o drill-down), (b) ~30-40 casos novos no golden
-com validação real, (c) triggers/embedding.
+- `fiscal_demonstracoes` é a tool **canônica** para QUALQUER recorte de
+  demonstração (faturamento/remessa, por UF, retorno, aging). As descrições
+  de `fiscal_faturamento_por_operacao` e `fiscal_faturamento_por_uf` ganham
+  a frase "para demonstração use fiscal_demonstracoes"; triggers de
+  demonstração saem delas.
+- `estoque_valor_armazem` segue dona de valor agregado por local;
+  `estoque_saldo_produto` segue dona de produto específico (inalterado).
 
-- **CNPJ/cliente**: por raiz vs filial; "top clientes por CNPJ"; faturamento
-  de um CNPJ específico; cliente novo vs recorrente (data 1a compra , avaliar
-  custo); inadimplência por CNPJ (já existe via títulos+topPorParticipante).
-- **Demonstração**: equipamentos EM demonstração hoje (estoque, local Demo);
-  demonstrações por cliente; remessas sem retorno (aging) , validar dado de
-  retorno (CFOP de retorno 1912/2912?); conversão demo→venda (se rastreável
-  por cliente+produto, senão honestidade).
-- **Estoque**: valor por local específico; físico vs virtual vs terceiros;
-  em poder de terceiros; por empresa dona; produto X em qual local; estoque
-  parado em demonstração.
-- **Vendas por produto**: por empresa, por UF, por mês, por marca (existe),
-  por família (existe), ticket médio do produto; quantidade vs valor.
-- **CMV/margem**: margem por produto/família/empresa (aproximada, ressalva);
-  evolução de custo de tabela; honestidade sobre CMV contábil.
-- **Pedidos**: por UF (existe), por etapa (existe), por vendedor (existe),
-  por segmento (fonte), conversão orçamento→pedido (etapas do funil de
-  PEDIDO existem , validar).
-- **Prospecção/CRM**: TODA pergunta cai na resposta de fonte enquanto o
-  módulo estiver vazio (status_dominio), com a frase honesta padrão.
+## 4. Raio expandido (derivadas , 32 casos novos no golden)
 
-## 5. Honestidade de fonte (camada transversal)
+Mix obrigatório (review #2 m2 + #1 m5): **20 casos tool-certa + 12 casos de
+honestidade de fonte** (falta_honesta/gap de dimensão). Temas:
+- CNPJ: raiz vs filial; top por CNPJ; faturamento de um CNPJ específico.
+- Demonstração: remessas por UF/empresa/mês; retorno; **aging remessa sem
+  retorno (pareia 5912/6912 ↔ 1913/2913)**; estoque em demo por cliente
+  (folhas da árvore); proxy de segmento textual COM ressalva.
+- Estoque: físico vs terceiros vs virtual; por local específico; produto em
+  qual local.
+- Vendas: produto×empresa; produto por UF/mês; ticket médio de produto.
+- CMV/margem: por produto/família/empresa (aproximado com ressalva, se S1
+  aprovar); evolução de custo; honestidade sobre CMV contábil.
+- Pedidos/orçamentos: por operação de venda por UF; orçamentos no período;
+  orçamentos por segmento (gap de dimensão , resposta honesta).
+- Prospecção/CRM: leads/funil/oportunidades → status de fonte.
 
-Taxonomia de resposta quando não dá para responder:
-1. **Tool não existe** (gap nosso): registrar_lacuna + respostaSugerida (já é assim).
-2. **Módulo existe e está VAZIO/não operado** (CRM, produção, RH, contábil,
-   cheques, PIX...): resposta nomeia O SISTEMA: "o módulo de X existe no
-   sistema, mas não há dados cadastrados nele até agora". Tools
-   *_status_dominio já existem para crm/producao/rh; faltam: prospecção como
-   TERMO (rotear "prospecção/oportunidade/funil/lead/segmento" para
-   crm_status_dominio via vocabulário/trigger) e contábil (lançamentos).
-3. **Campo não cadastrado** (segmento do cliente): resposta diz que o CAMPO
-   não é preenchido no sistema hoje e ONDE entraria (CRM/cadastro), ex.:
-   "o cadastro de clientes não tem campo de segmento preenchido; essa
-   classificação viria do módulo de prospecção, que ainda não é usado".
-4. **Período pré-corte**: já entregue (Limpa 2026+ T7).
-Regra de prompt: NUNCA "não consigo te responder" seco em gaps de fonte ,
-sempre apontar o dado/módulo, sem jargão técnico, sem culpar a plataforma.
-AutoValidator: V9 "gap de fonte" (alegou indisponibilidade sem citar a
-fonte/módulo => retry) , avaliar custo/benefício na review.
+## 5. Honestidade de fonte (camada transversal , mecanismo verificável)
 
-## 6. Critérios de aceite
+Taxonomia:
+1. **Tool não existe** (gap nosso): registrar_lacuna (como hoje).
+2. **Módulo vazio/não operado** (CRM, produção, RH, contábil, cheques, PIX):
+   resposta nomeia o sistema ("o módulo existe, não há dados cadastrados").
+   Vocabulário: "prospecção", "lead", "oportunidade", "funil de prospecção"
+   → domínio crm (status_dominio responde).
+3. **Gap de DIMENSÃO sobre métrica existente** (segmento de orçamentos):
+   responde a métrica que existe + explica a dimensão faltante e onde ela
+   seria cadastrada. Regra de prompt nova (curta) + casos golden.
+4. **Período pré-corte**: entregue (Limpa 2026+).
 
-1. As 8 perguntas LITERAIS do cliente respondidas pelo agente real (E2E) com
-   números validados contra SQL ao vivo (kpiOuro nos casos com valor estável).
-2. ≥30 perguntas derivadas no golden, todas verdes no benchmark (tool certa)
-   ou com resposta de honestidade de fonte correta (classe falta_honesta).
-3. Pergunta de segmento/prospecção responde com a frase de fonte (nunca
-   parece bug); grep do transcript não contém "não consigo te responder" seco.
-4. Benchmark full não regride (≥99% nos prosseguir; kpi-vivo 6/6).
-5. tsc + jest verdes; E2E real por tool nova; rebuild mcp + validação bubble.
+**Mecanismos (review #2 B1/M4 , decisão cravada):**
+- **Harness**: ab-cerebro passa a avaliar classes != prosseguir via campos
+  novos do golden: `esperaNaResposta: string[]` (regex/substring, todas
+  devem aparecer) e `proibidoNaResposta: string[]` (nenhuma pode , default
+  global: "não consigo te responder", "não foi possível obter"). Amostra
+  estratificada passa a incluir falta_honesta quando tiver esses campos.
+- **V9 (AutoValidator) FIRME, com disparo restrito**: dispara apenas quando
+  a resposta contém padrão de recusa seca (regex local, sem custo LLM) E
+  não menciona fonte (sistema|módulo|cadastr|registr|Odoo→"sistema").
+  Retry com instrução de citar a fonte. Latência só no caso ruim.
+- **Prompt**: regra curta de gap de fonte/dimensão (substitui qualquer
+  tentação de "não consigo"); proibido culpar a plataforma.
 
-## 7. Fora de escopo
+## 6. Critérios de aceite (v3)
 
-- Criar campo de segmento no Odoo (decisão do cliente com a Tauga; quando
-  existir, a tool entra em horas).
-- CMV contábil (fonte não operada).
-- Operar o CRM/prospecção (dado do cliente).
+1. As 8 perguntas LITERAIS respondidas pelo agente real (E2E), com kpiOuro
+   SQL-vivo onde houver valor estável; números-âncora REPRODUZÍVEIS (a query
+   do kpi é a definição).
+2. 32 derivadas no golden (20 tool-certa + 12 honestidade), TODAS verdes no
+   **benchmark FULL** com o harness estendido (que agora avalia honestidade).
+3. Pergunta 6 responde o N de orçamentos E explica o gap de segmento (caso
+   golden com esperaNaResposta: ["orçamento", "segmento", "cadastr"]).
+4. Benchmark full não regride (≥99% prosseguir; kpi-vivo 6/6).
+5. GRANT verificado para TODA tabela nova lida (raw_estoque_local incluso) ,
+   teste/registro explícito.
+6. tsc + jest verdes; contrato de lista cumprido (allowlist continua vazia);
+   E2E real por tool; **rebuild mcp com verificação da DATA da imagem**
+   (build da worktree + up da pasta principal); validação na bubble.
+7. Ressalva semântica da demonstração presente na resposta da tool (M1).
 
-## 8. Ondas de entrega
+## 7. Spikes (ANTES da onda B)
 
-- **Onda A (dado rico, valor imediato)**: #2 demonstrações (tool nova) +
-  #7/#8 estoque por local/físico (extensão) + E2E.
-- **Onda B (cruzamentos)**: #4 vendas produto×empresa (+CMV aprox.) +
-  #1 CNPJ no por_cliente + #5 validação pedidos por UF.
-- **Onda C (honestidade de fonte + raio)**: camada §5 (vocabulário
-  prospecção→status_dominio, frases de fonte, prompt, V9 se aprovado na
-  review) + golden +30-40 derivadas + benchmark full final.
+- **S1 , cobertura de custo**: % dos produtos VENDIDOS (2026+) com custo de
+  tabela vigente. Corte: ≥70% → CMV aproximado entra (com % de cobertura na
+  resposta); <70% → CMV vira honestidade de fonte ("custo cadastrado cobre
+  só X% das vendas").
+- ~~S2 pedido tem operação?~~ RESOLVIDO no discovery: tem (`operacao_id`).
+
+## 8. Fora de escopo
+
+Criar campo segmento no Odoo (cliente+Tauga); CMV contábil; operar CRM.
+
+## 9. Ondas
+
+- **A (dado rico)**: GRANT raw_estoque_local → `fiscal_demonstracoes` →
+  extensão `estoque_valor_armazem` (locais/apenasFisicos/demonstração) →
+  E2E real + casos golden das 3.
+- **B (cruzamentos)**: S1 → `fiscal_vendas_produto_por_empresa` (+CMV se S1
+  ok) → CNPJ no por_cliente (normalização testada) → filtro venda no
+  pedidos_por_uf → E2E + golden.
+- **C (honestidade + raio)**: harness estendido (esperaNaResposta/proibido) →
+  V9 → vocabulário prospecção → regra de prompt gap de dimensão → 32 casos →
+  benchmark FULL final + relatório.
