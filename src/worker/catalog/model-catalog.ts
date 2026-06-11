@@ -8,6 +8,17 @@ export interface CatalogEntry {
   /** Campos que NÃO devem ser copiados para o cache (segredos, blobs).
    * `getModelFields` os subtrai. Vazio/ausente = comportamento padrão. */
   excludeFields?: readonly string[];
+  /** Limpa 2026+ (spec/plan 2026-06-11): corte temporal do modelo TRANSACIONAL.
+   * `odoo` = nome do campo no Odoo (domínio do sync); `raw` = chave no JSON do
+   * raw (em geral igual ao odoo); `fato` = coluna do fato (quando há).
+   * Mestres, foto-atual e preço-vigência NÃO têm corte (lista negativa no teste). */
+  corte?: { odoo: string; raw: string; fato?: string };
+  /** Filho sem data própria: corta por JOIN ao pai (FK many2one = array
+   * [id,"label"] no JSON , extrair com data->'fk'->>0). */
+  cortePai?: { tabelaRawPai: string; fkRaw: string; fkM2O: true };
+  /** Título financeiro: corte por SITUAÇÃO, nunca por data pura (dívida viva
+   * , aberto/provisorio/efetivo , JAMAIS deleta; spec §2.2). */
+  corteEspecial?: "titulo_por_situacao";
 }
 
 export const MODEL_CATALOG: readonly CatalogEntry[] = [
