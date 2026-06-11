@@ -41,6 +41,15 @@ export function formatBRL(n: number): string {
 // Formatadores reais (3 no PR1; demais no PR2)
 // ---------------------------------------------------------------------------
 
+// Quebra honesta confirmado/provisório , só aparece quando há provisório
+// (lançamentos em aberto não efetivados). No a_pagar é a maior parte da dívida.
+function quebraStr(env: { _DESTAQUE?: Record<string, unknown> }): string {
+  const conf = Number(env._DESTAQUE?.totalConfirmado ?? 0);
+  const prov = Number(env._DESTAQUE?.totalProvisorio ?? 0);
+  if (prov <= 0) return "";
+  return ` Desse total, ${formatBRL(conf)} são confirmados (efetivados) e ${formatBRL(prov)} estão como provisão (lançados, ainda não efetivados na contabilidade).`;
+}
+
 const fmtContasAReceber: FormatadorCanonico = (env) => {
   const total = Number(env._DESTAQUE?.totalAReceber ?? 0);
   const n = Number(env._DESTAQUE?.contagem ?? env.linhas.length);
@@ -49,7 +58,7 @@ const fmtContasAReceber: FormatadorCanonico = (env) => {
   const topStr = top
     ? ` Maior cliente: ${top.nome} (${formatBRL(top.soma)}).`
     : "";
-  return cabeca + topStr;
+  return cabeca + quebraStr(env) + topStr;
 };
 
 const fmtContasAPagar: FormatadorCanonico = (env) => {
@@ -60,7 +69,7 @@ const fmtContasAPagar: FormatadorCanonico = (env) => {
   const topStr = top
     ? ` Maior fornecedor: ${top.nome} (${formatBRL(top.soma)}).`
     : "";
-  return cabeca + topStr;
+  return cabeca + quebraStr(env) + topStr;
 };
 
 const fmtSaldoProduto: FormatadorCanonico = (env) => {
@@ -116,7 +125,7 @@ const fmtTitulosVencidos: FormatadorCanonico = (env) => {
   const topStr = top
     ? ` Maior atraso por participante: ${top.nome} (${formatBRL(top.soma)}).`
     : "";
-  return cabeca + topStr;
+  return cabeca + quebraStr(env) + topStr;
 };
 
 const fmtFluxoCaixa: FormatadorCanonico = (env) => {
