@@ -316,3 +316,18 @@ Cada fase: plano próprio (bite-sized) + 2 reviews quando material → execuçã
   provisorio + reconcile 3h (fantasmas R$172,7mi se autopurgam).
 - Dev local: rodar `npm run dev:fresh` na pasta principal para o next dev pegar
   o código novo (o turno de 64,5s do print era processo velho).
+
+## Bloco final 2026-06-11 noite (pos-review de prontidao)
+- Backlog auditado por E2E: item (a) era FALSO GAP (4 tools ja usam
+  makeHonestTool/naoOperado; cheques respondeu honesto perfeito).
+- (c) FEITO: financeiro_aging_recebiveis (buckets a vencer/0-30/31-60/61-90/
+  90+, top devedor 90+; E2E real: R$64,9mi vivos, 90+=R$0 coerente pos-purge).
+- (d) FEITO: estoque_cobertura_dias (+GRANT raw_estoque_saldo_hoje_duracao_
+  dias; E2E real: media 51,2 dias, 1 item 196 dias). Catalogo 120 tools.
+- RESTAM: (e) fiscal_faturamento_por_vendedor (NF x pedido x vendedor);
+  (b) refinar respostaSugerida do registrar_lacuna p/ modulo inexistente
+  (pos-venda respondeu recusa generica "nao tenho dados suficientes" ,
+  deve citar que o modulo nao existe no sistema).
+- PEDIR AO USUARIO: lista das 100+ perguntas (vira golden direto) e acesso
+  SSH a VPS p/ o purge fisico em prod. PR #100 ABERTO aguardando merge.
+- Gasto OpenAI ~US$5,10 de 8.
