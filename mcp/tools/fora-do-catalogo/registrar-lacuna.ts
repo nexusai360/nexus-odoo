@@ -80,6 +80,19 @@ const LACUNAS_REAIS: Array<{
     resposta: "Não temos o agregado de impostos pagos. Posso te ajudar com:",
     sugestoes: ["Impostos do período", "Plano de contas de impostos", "Notas emitidas esse mês"],
   },
+  // Backlog pos-review item (b), 2026-06-11: gap de MODULO inexistente no
+  // sistema , a resposta cita a FONTE (nunca "nao tenho dados suficientes"
+  // seco, que parece defeito da plataforma).
+  {
+    pattern: /assist[eê]ncia( t[eé]cnica)?|garantia|chamado(s)? (de|em|aberto)|p[oó]s[- ]venda|ordem de servi[cç]o/i,
+    resposta: "O sistema não tem módulo de pós-venda/assistência técnica implantado, então não há chamados, garantias ou ordens de serviço registrados nele. Quando esse módulo for usado no Odoo, a consulta entra aqui. Posso te ajudar com:",
+    sugestoes: ["Retornos de demonstração", "Notas de devolução recebidas", "Pedidos em aberto"],
+  },
+  {
+    pattern: /\bnps\b|satisfa[cç][aã]o (dos? )?client|pesquisa de satisfa/i,
+    resposta: "O sistema não tem pesquisa de satisfação/NPS cadastrada, então não há esse dado para consultar. Posso te ajudar com indicadores de relacionamento que existem:",
+    sugestoes: ["Top clientes por faturamento", "Clientes que mais compraram no mês", "Faturamento por cliente"],
+  },
 ];
 
 function detectarLacunaReal(perguntaResumo: string) {
