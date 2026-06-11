@@ -34,9 +34,33 @@ export async function faturamentoPorClienteCanon(
     offset: number;
     /** B3: cnpj_raiz agrega matriz+filiais pela raiz de 8 digitos do CNPJ. */
     agruparPor?: "cliente" | "cnpj_raiz";
+    /** Pendencia deriv-05: filtra UM cliente especifico por CNPJ (14 digitos,
+     *  com ou sem mascara/prefixo BR-) ou raiz (8 digitos). */
+    clienteCnpj?: string;
   },
 ): Promise<FaturamentoPorClienteResultado> {
-  const { itens } = await carregarItensVendaComGrupo(prisma, input);
+  const { itens: itensTodos } = await carregarItensVendaComGrupo(prisma, input);
+
+  // Filtro por CNPJ exato (ou raiz): resolve os participanteIds pelo
+  // documento_digits do fato_parceiro e restringe os itens a eles.
+  let itens = itensTodos;
+  if (input.clienteCnpj) {
+    const digits = input.clienteCnpj.replace(/\D/g, "");
+    const alvo = digits.length >= 14 ? digits.slice(0, 14) : digits.slice(0, 8);
+    if (alvo.length === 14 || alvo.length === 8) {
+      const parceiros = await prisma.fatoParceiro.findMany({
+        where:
+          alvo.length === 14
+            ? { documentoDigits: alvo }
+            : { documentoDigits: { startsWith: alvo } },
+        select: { odooId: true },
+      });
+      const ids = new Set(parceiros.map((p) => p.odooId));
+      itens = itensTodos.filter((it) => it.participanteId != null && ids.has(it.participanteId));
+    } else {
+      itens = []; // CNPJ invalido: vazio honesto (a tool explica)
+    }
+  }
 
   const externos = new Map<number, ClienteLinha>();
   let totalIntragrupo = 0;
