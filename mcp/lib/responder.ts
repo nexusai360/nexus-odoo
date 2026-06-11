@@ -1768,6 +1768,40 @@ const fmtDemonstracoes: FormatadorCanonico = (env) => {
   );
 };
 
+// Backlog pos-review (item d): idade do estoque em dias.
+const fmtCoberturaDias: FormatadorCanonico = (env) => {
+  const d = env._DESTAQUE ?? {};
+  const n = Number(d.totalItens ?? 0);
+  const media = Number(d.mediaDias ?? 0);
+  const antigos = Number(d.itens180mais ?? 0);
+  const top = String(d.topProduto ?? "");
+  const topDias = Number(d.topDias ?? 0);
+  if (n === 0) return "Nao ha itens em estoque no recorte.";
+  return (
+    `Idade do estoque: ${n} itens com saldo, media de ${media.toLocaleString("pt-BR")} dias` +
+    (antigos > 0 ? `, ${antigos} itens ha mais de 180 dias` : "") +
+    (top ? `. Mais antigo: ${top} (${topDias} dias).` : ".") +
+    " Detalhe por item nas linhas (mais antigos primeiro)."
+  );
+};
+
+// Backlog pos-review (item c): aging da inadimplencia por faixas de atraso.
+const fmtAgingRecebiveis: FormatadorCanonico = (env) => {
+  const d = env._DESTAQUE ?? {};
+  const total = Number(d.valorTotal ?? 0);
+  const titulos = Number(d.titulosTotal ?? 0);
+  const v90 = Number(d.valor90mais ?? 0);
+  const lado = String(d.tipo ?? "a_receber") === "a_pagar" ? "a pagar" : "a receber";
+  if (titulos === 0) return `Nao ha titulos ${lado} em aberto.`;
+  const resumo = String(d.agingResumo ?? "");
+  const devedor = d.topDevedorMaisVelho ? ` Maior da faixa 90+: ${String(d.topDevedorMaisVelho)}.` : "";
+  return (
+    `Aging ${lado} (titulos vivos, saldo): total ${formatBRL(total)} em ${titulos} titulos. ` +
+    `Por faixa: ${resumo}.` +
+    (v90 > 0 ? ` Atencao: ${formatBRL(v90)} com mais de 90 dias de atraso.${devedor}` : "")
+  );
+};
+
 // Cobertura Cliente B4: vendas de produto por empresa com CMV aproximado.
 const fmtVendasProdutoPorEmpresa: FormatadorCanonico = (env) => {
   const produto = String(env._DESTAQUE?.produtoLabel ?? "produto");
@@ -1965,10 +1999,12 @@ const fmtMargemAproximada: FormatadorCanonico = (env) => {
   const desatual = Number(d.custoDesatualizado ?? 0) === 1
     ? " Atencao: ha itens com custo > receita (preco_custo e o atual do produto); confie mais em periodos recentes."
     : "";
+  // Margem por familia (quando o handler mandou o resumo no destaque).
+  const familias = d.familiasResumo ? ` Por familia: ${String(d.familiasResumo)}.` : "";
   return (
     `Margem bruta APROXIMADA${periodo ? ` (${periodo})` : ""}: ${formatBRL(margem)} ` +
     `(${(pct * 100).toFixed(1)}%) sobre receita de venda ${formatBRL(receita)} menos custo ${formatBRL(custo)}. ` +
-    `Cobertura ${(cob * 100).toFixed(1)}% da venda. NAO e lucro (sem despesas/impostos/rateios).${desatual}`
+    `Cobertura ${(cob * 100).toFixed(1)}% da venda. NAO e lucro (sem despesas/impostos/rateios).${desatual}${familias}`
   );
 };
 
@@ -2075,6 +2111,8 @@ const FORMATADORES: Record<string, FormatadorCanonico> = {
   "fiscal_faturamento_por_uf": fmtFiscalFaturamentoPorUf,
   "fiscal_demonstracoes": fmtDemonstracoes,
   "fiscal_vendas_produto_por_empresa": fmtVendasProdutoPorEmpresa,
+  "financeiro_aging_recebiveis": fmtAgingRecebiveis,
+  "estoque_cobertura_dias": fmtCoberturaDias,
   "fiscal_certificados": fmtFiscalCertificados,
   "fiscal_carta_correcao": fmtFiscalCartaCorrecao,
   "fiscal_mdfe_manifestos": fmtMdfeManifestos,

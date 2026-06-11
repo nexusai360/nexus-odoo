@@ -487,7 +487,15 @@ export async function runAgent(args: RunAgentInput): Promise<RunAgentResult> {
     // Nomes com caracteres fora de [a-zA-Z0-9_-] (ex.: `crm.res_partner.get`)
     // são saneados , a OpenAI recusa nome de function com ponto. `nomeRealDaTool`
     // mapeia o nome saneado de volta ao real na hora de chamar a tool.
-    const mcpToolsRaw = session ? await session.listTools() : [];
+    // Retry de catalogo vazio (caso real 2026-06-11): no instante de um
+    // redeploy do container mcp, o listTools pode voltar [] e o turno inteiro
+    // degenerava em "Nao consegui obter" com catalog_size_offered=0. Uma nova
+    // tentativa apos 1,5s cobre a janela de boot.
+    let mcpToolsRaw = session ? await session.listTools() : [];
+    if (session && mcpToolsRaw.length === 0) {
+      await new Promise((r) => setTimeout(r, 1500));
+      mcpToolsRaw = await session.listTools();
+    }
     const nomeRealDaTool = new Map<string, string>();
     const sanearTool = <T extends { name: string }>(t: T): T => {
       const seguro = t.name.replace(/[^a-zA-Z0-9_-]/g, "_");

@@ -260,10 +260,42 @@ Cada fase: plano próprio (bite-sized) + 2 reviews quando material → execuçã
       (a 6 cai corretamente na lacuna honesta: "recorte de seguimento nao
       esta preenchido no cadastro hoje"). Relatorio com as 8 respostas:
       docs/superpowers/research/cobertura-cliente-validacao.md.
-      GAPS REGISTRADOS p/ onda futura: filtro de cliente por CNPJ exato
-      (deriv-05); margem por familia (lacuna honesta hoje); race de oferta
-      vazia no instante do redeploy do mcp (catalog_size_offered=0 ,
-      retry de listTools no run-agent).
+      GAPS (atualizado pos-autorizacao do usuario ~19h20):
+      [x] PR #99 MERGED (autorizado) + CI verde + prod {ok:true} , o FILTRO
+          de corte esta em producao. PURGE FISICO EM PROD PENDENTE: requer
+          SSH na VPS root@82.29.61.175 (Permission denied , pedir chave ao
+          usuario OU passar os comandos do runbook p/ ele rodar). Risco
+          baixo: filtro impede reimport; Odoo intacto; dump dev guarda as
+          16 tabelas.
+      [x] CASO 18x15 RESOLVIDO (PR #100): cadastro tem 18 = 1 duplicata de
+          CNPJ + 2 filiais Jht SP (MG/CE) sem nota; filiais_listar agora
+          completa com o cadastro (flag semNotasNoPeriodo); resposta real
+          17 empresas. + GRANT raw_sped_empresa.
+      [x] CNPJ EXATO RESOLVIDO (PR #100): por_cliente ganha `documento`
+          (14 digitos ou raiz 8; nome conforme convencao de extracao do
+          prompt , 'clienteCnpj' o mini nao preenchia); E2E verificado
+          contra SQL exato. + triggers de CNPJ.
+      [x] RETRY de catalogo vazio no run-agent (redeploy do mcp).
+      [x] MARGEM POR FAMILIA RESOLVIDA (metrica porFamilia + tool
+          agruparPor familia + triggers + familiasResumo no destaque + formatador anexa). VALIDADO no handler: _RESPOSTA inclui "Por familia: MATRIX..., LIFE FITNESS..." top 8; o param e passado pelo mini (audit comprova); reescrita do mini pode resumir (tema A2).
+      [x] REVIEW AMPLO FEITO (relatorio
+          docs/superpowers/research/2026-06-11-prontidao-catalogo.md, 14
+          premissas verificadas no banco). Gaps 1/2/6 do top-10 PROVADOS JA
+          COBERTOS no agente real (notas_recebidas_por_fornecedor R$12,6mi
+          50 forn.; contas_a_pagar R$209mi; por_cliente top-10).
+          **BACKLOG (auditado por E2E real , itens (a) era FALSO GAP: as 4
+          tools JA usam makeHonestTool/naoOperado, cheques respondeu
+          honesto e perfeito):** (b) pos-venda/assistencia cai em
+          registrar_lacuna com recusa GENERICA ("nao tenho dados
+          suficientes") , refinar a respostaSugerida da lacuna p/ citar que
+          o modulo nao existe no sistema E avaliar ampliar RECUSA_SECA_RE
+          do V9 com "nao tenho dados" (cuidado: V9 pula quando ha lacuna ,
+          o fix certo e na respostaSugerida); (c) financeiro_aging_
+          recebiveis (buckets 0-30/30-60/60-90/90+ , dado pronto); (d)
+          estoque_cobertura_dias (raw_estoque_saldo_hoje_duracao_dias ja
+          calculado, 3.666 linhas); (e) fiscal_faturamento_por_vendedor
+          (NF x pedido x vendedor). PEDIR AO USUARIO a lista das 100+
+          perguntas (vira golden direto).
 - [ ] **DEPOIS:** Fase D onda 2 (compressao agressiva, com A/B); A2 (A/B
       Claude , exige credito OpenRouter); auditar suspeitas do juiz de
       alucinacao (falso positivo).
@@ -284,3 +316,23 @@ Cada fase: plano próprio (bite-sized) + 2 reviews quando material → execuçã
   provisorio + reconcile 3h (fantasmas R$172,7mi se autopurgam).
 - Dev local: rodar `npm run dev:fresh` na pasta principal para o next dev pegar
   o código novo (o turno de 64,5s do print era processo velho).
+
+## Bloco final 2026-06-11 noite (pos-review de prontidao)
+- Backlog auditado por E2E: item (a) era FALSO GAP (4 tools ja usam
+  makeHonestTool/naoOperado; cheques respondeu honesto perfeito).
+- (c) FEITO: financeiro_aging_recebiveis (buckets a vencer/0-30/31-60/61-90/
+  90+, top devedor 90+; E2E real: R$64,9mi vivos, 90+=R$0 coerente pos-purge).
+- (d) FEITO: estoque_cobertura_dias (+GRANT raw_estoque_saldo_hoje_duracao_
+  dias; E2E real: media 51,2 dias, 1 item 196 dias). Catalogo 120 tools.
+- RESTAM: (e) fiscal_faturamento_por_vendedor (NF x pedido x vendedor);
+  (b) refinar respostaSugerida do registrar_lacuna p/ modulo inexistente
+  (pos-venda respondeu recusa generica "nao tenho dados suficientes" ,
+  deve citar que o modulo nao existe no sistema).
+- PEDIR AO USUARIO: lista das 100+ perguntas (vira golden direto) e acesso
+  SSH a VPS p/ o purge fisico em prod. PR #100 ABERTO aguardando merge.
+- Gasto OpenAI ~US$5,10 de 8.
+- (b) FEITO e validado E2E: lacunas de modulo inexistente (pos-venda/
+  assistencia/garantia, NPS) no registrar_lacuna citam a fonte ("o sistema
+  nao tem modulo de pos-venda implantado..."), nunca recusa generica.
+- RESTA apenas: (e) fiscal_faturamento_por_vendedor (NF x pedido x vendedor).
+- Wrap-up por pedido do usuario (~20h55): troca de sessao via agente handoff.

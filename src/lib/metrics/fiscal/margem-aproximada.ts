@@ -24,6 +24,14 @@ export interface MargemAproximadaResultado {
   receitaSemCusto: number;
   /** true quando >10% dos itens de venda com custo tem custo > receita (proxy de custo defasado). */
   custoDesatualizadoProvavel: boolean;
+  /** Margem por familia (quando pedido): top familias por receita, com a mesma semantica. */
+  familias?: {
+    familia: string | null;
+    receita: number;
+    custoEstimado: number;
+    margem: number;
+    percentualMargem: number;
+  }[];
 }
 
 interface CfopRow {
@@ -37,7 +45,7 @@ interface CfopRow {
 
 export async function margemAproximada(
   prisma: PrismaClient,
-  input: FaturamentoInput,
+  input: FaturamentoInput & { porFamilia?: boolean },
 ): Promise<MargemAproximadaResultado> {
   const params: unknown[] = [];
   let cond = "i.entrada_saida = '1' AND i.situacao_nfe = 'autorizada'";
@@ -78,6 +86,45 @@ export async function margemAproximada(
     itensCustoMaior += Number(r.itens_custo_maior);
   }
 
+  // Margem por familia (pendencia deriv-08): mesma fonte, agrupada por
+  // p.familia_nome alem do cfop (a classificacao de receita continua em TS).
+  let familias: MargemAproximadaResultado["familias"];
+  if (input.porFamilia) {
+    const famRows = await prisma.$queryRawUnsafe<
+      (CfopRow & { familia_nome: string | null })[]
+    >(
+      `SELECT p.familia_nome, i.cfop_nome,
+              COALESCE(SUM(i.vr_produtos) FILTER (WHERE p.preco_custo IS NOT NULL),0)::float8 vr_com_custo,
+              COALESCE(SUM(i.vr_produtos),0)::float8 vr,
+              COALESCE(SUM(i.quantidade * p.preco_custo) FILTER (WHERE p.preco_custo IS NOT NULL),0)::float8 custo,
+              0::int itens_com_custo, 0::int itens_custo_maior
+       FROM fato_nota_fiscal_item i
+       LEFT JOIN fato_produto p ON p.odoo_id = i.produto_id
+       WHERE ${cond}
+       GROUP BY p.familia_nome, i.cfop_nome`,
+      ...params,
+    );
+    const porFam = new Map<string, { receita: number; custo: number }>();
+    for (const r of famRows) {
+      if (!classificarCfop(extrairCfop(r.cfop_nome)).ehReceita) continue;
+      const key = r.familia_nome ?? "(sem família)";
+      const cur = porFam.get(key) ?? { receita: 0, custo: 0 };
+      cur.receita += Number(r.vr_com_custo);
+      cur.custo += Number(r.custo);
+      porFam.set(key, cur);
+    }
+    familias = [...porFam.entries()]
+      .map(([familia, v]) => ({
+        familia: familia === "(sem família)" ? null : familia,
+        receita: v.receita,
+        custoEstimado: v.custo,
+        margem: v.receita - v.custo,
+        percentualMargem: v.receita > 0 ? (v.receita - v.custo) / v.receita : 0,
+      }))
+      .sort((a, b) => b.receita - a.receita)
+      .slice(0, 15);
+  }
+
   const margemBrutaAproximada = receitaComCusto - custoEstimado;
   const percentualMargem = receitaComCusto > 0 ? margemBrutaAproximada / receitaComCusto : 0;
   const coberturaCusto = receitaVendaTotal > 0 ? receitaComCusto / receitaVendaTotal : 0;
@@ -92,5 +139,6 @@ export async function margemAproximada(
     coberturaCusto,
     receitaSemCusto: receitaVendaTotal - receitaComCusto,
     custoDesatualizadoProvavel,
+    ...(familias ? { familias } : {}),
   };
 }
