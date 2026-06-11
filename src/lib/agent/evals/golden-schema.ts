@@ -29,6 +29,10 @@ export const GoldenEntrySchema = z
   .object({
     id: z.string().min(1),
     pergunta: z.string().min(1),
+    /** Follow-up contextual: turnos ANTERIORES enviados na mesma conversa
+     *  antes da `pergunta` (que e o turno avaliado). Ex.: ["qual o faturamento
+     *  do mes?"] + pergunta "e do mes passado?". */
+    turnosAntes: z.array(z.string().min(1)).optional(),
     dominio: z.string().nullable(),
     classe: z.enum(CLASSES),
     toolEsperada: z.string().nullable(),

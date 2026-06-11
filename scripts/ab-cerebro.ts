@@ -30,6 +30,8 @@ interface GoldenEntry {
   dominio: string;
   classe: string;
   toolEsperada: string;
+  /** Follow-up contextual: turnos anteriores na mesma conversa (nao avaliados). */
+  turnosAntes?: string[];
   /** Tools alternativas que também respondem a pergunta por completo. */
   toolsAceitas?: string[];
   kpiOuro?: {
@@ -107,6 +109,22 @@ async function rodarCaso(
   const toolPreviews: string[] = [];
   try {
     const conv = await createConversation(userId, "backtest");
+    // Follow-up contextual: turnos anteriores rodam na MESMA conversa sem
+    // serem avaliados; so o turno final (e.pergunta) conta tools/kpi.
+    for (const turno of e.turnosAntes ?? []) {
+      const prev = await runAgent({
+        conversationId: conv.id,
+        userId,
+        userMessage: turno,
+        channel: "backtest",
+        isPlayground: false,
+        source: "bubble",
+        llmOverride: llm,
+      });
+      if (!prev.ok) {
+        return { id: e.id, dominio: e.dominio, ok: false, toolsCalled, toolOk: null, kpiOk: null, kpiMiss: [], halucNums: [], custoUsd: 0, durMs: performance.now() - t0, erro: `turnoAntes falhou: ${prev.error}` };
+      }
+    }
     const r = await runAgent({
       conversationId: conv.id,
       userId,

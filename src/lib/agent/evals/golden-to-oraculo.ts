@@ -25,7 +25,9 @@ export function goldenToOraculo(golden: GoldenEntry[]): OraculoItem[] {
  *  nao tem prefixo cov-/ouro-/desamb-. As novas (cobertura/ouro/desamb) entram
  *  como "monitoradas, nao-gate". */
 export function frozenProsseguir(golden: GoldenEntry[]): GoldenEntry[] {
+  // followup-*: multi-turno; a pergunta final ("E do mes passado?") nao tem
+  // retrieval single-turn razoavel , fora do oraculo de recall.
   return golden.filter(
-    (e) => e.classe === "prosseguir" && !/^(cov|ouro|desamb|pericia)-/.test(e.id),
+    (e) => e.classe === "prosseguir" && !/^(cov|ouro|desamb|pericia|followup)-/.test(e.id),
   );
 }

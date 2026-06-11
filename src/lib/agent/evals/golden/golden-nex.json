@@ -113,7 +113,7 @@
     "toolsAceitas": [
       "fiscal_apuracao"
     ],
-    "obs": "Irma aceita: fiscal_apuracao tambem cobre ICMS/PIS/COFINS do periodo (responde honesto quando a fonte esta zerada)."
+    "observacao": "Irma aceita: fiscal_apuracao tambem cobre ICMS/PIS/COFINS do periodo (responde honesto quando a fonte esta zerada)."
   },
   {
     "id": "comercial-01",
@@ -167,7 +167,7 @@
       "contabil_plano_de_contas",
       "contabil_detalhar_conta"
     ],
-    "obs": "Conta corrigida para codigo real (1.01.01 nao existe). Plano de contas/detalhar tambem cobrem hierarquia."
+    "observacao": "Conta corrigida para codigo real (1.01.01 nao existe). Plano de contas/detalhar tambem cobrem hierarquia."
   },
   {
     "id": "contabil-03",
@@ -480,7 +480,7 @@
     "dominio": "auditoria",
     "classe": "prosseguir",
     "toolEsperada": "auditoria_regras",
-    "obs": "Reescrita 2026-06-11 (era placeholder 'Consulta: ...'); pergunta natural derivada da descricao da tool."
+    "observacao": "Reescrita 2026-06-11 (era placeholder 'Consulta: ...'); pergunta natural derivada da descricao da tool."
   },
   {
     "id": "cov-02",
@@ -488,7 +488,7 @@
     "dominio": "cadastro",
     "classe": "prosseguir",
     "toolEsperada": "cadastro_cidades_listar",
-    "obs": "Reescrita 2026-06-11 (era placeholder 'Consulta: ...'); pergunta natural derivada da descricao da tool."
+    "observacao": "Reescrita 2026-06-11 (era placeholder 'Consulta: ...'); pergunta natural derivada da descricao da tool."
   },
   {
     "id": "cov-03",
@@ -496,7 +496,7 @@
     "dominio": "cadastro",
     "classe": "prosseguir",
     "toolEsperada": "cadastro_detalhar_parceiro",
-    "obs": "Reescrita 2026-06-11 (era placeholder 'Consulta: ...'); identificadores reais conferidos no cache."
+    "observacao": "Reescrita 2026-06-11 (era placeholder 'Consulta: ...'); identificadores reais conferidos no cache."
   },
   {
     "id": "cov-04",
@@ -504,7 +504,7 @@
     "dominio": "cadastro",
     "classe": "prosseguir",
     "toolEsperada": "cadastro_parceiros_novos",
-    "obs": "Reescrita 2026-06-11 (era placeholder 'Consulta: ...'); pergunta natural derivada da descricao da tool."
+    "observacao": "Reescrita 2026-06-11 (era placeholder 'Consulta: ...'); pergunta natural derivada da descricao da tool."
   },
   {
     "id": "cov-05",
@@ -512,7 +512,7 @@
     "dominio": "cadastro",
     "classe": "prosseguir",
     "toolEsperada": "cadastro_parceiros_por_cidade",
-    "obs": "Reescrita 2026-06-11 (era placeholder)."
+    "observacao": "Reescrita 2026-06-11 (era placeholder)."
   },
   {
     "id": "cov-06",
@@ -520,7 +520,7 @@
     "dominio": "cadastro",
     "classe": "prosseguir",
     "toolEsperada": "cadastro_parceiros_sem_documento",
-    "obs": "Reescrita 2026-06-11 (era placeholder 'Consulta: ...'); pergunta natural derivada da descricao da tool."
+    "observacao": "Reescrita 2026-06-11 (era placeholder 'Consulta: ...'); pergunta natural derivada da descricao da tool."
   },
   {
     "id": "cov-07",
@@ -528,7 +528,7 @@
     "dominio": "comercial",
     "classe": "prosseguir",
     "toolEsperada": "comercial_comissoes",
-    "obs": "Reescrita 2026-06-11 (era placeholder 'Consulta: ...'); pergunta natural derivada da descricao da tool."
+    "observacao": "Reescrita 2026-06-11 (era placeholder 'Consulta: ...'); pergunta natural derivada da descricao da tool."
   },
   {
     "id": "cov-08",
@@ -536,7 +536,7 @@
     "dominio": "comercial",
     "classe": "prosseguir",
     "toolEsperada": "comercial_cotacoes",
-    "obs": "Reescrita 2026-06-11 (era placeholder 'Consulta: ...'); pergunta natural derivada da descricao da tool."
+    "observacao": "Reescrita 2026-06-11 (era placeholder 'Consulta: ...'); pergunta natural derivada da descricao da tool."
   },
   {
     "id": "cov-09",
@@ -544,7 +544,7 @@
     "dominio": "comercial",
     "classe": "prosseguir",
     "toolEsperada": "comercial_detalhar_pedido",
-    "obs": "Reescrita 2026-06-11 (era placeholder 'Consulta: ...'); pergunta natural derivada da descricao da tool."
+    "observacao": "Reescrita 2026-06-11 (era placeholder 'Consulta: ...'); pergunta natural derivada da descricao da tool."
   },
   {
     "id": "cov-10",
@@ -552,7 +552,7 @@
     "dominio": "comercial",
     "classe": "prosseguir",
     "toolEsperada": "comercial_parcelas_a_vencer",
-    "obs": "Reescrita 2026-06-11 (era placeholder 'Consulta: ...'); pergunta natural derivada da descricao da tool."
+    "observacao": "Reescrita 2026-06-11 (era placeholder 'Consulta: ...'); pergunta natural derivada da descricao da tool."
   },
   {
     "id": "cov-11",
@@ -560,7 +560,7 @@
     "dominio": "comercial",
     "classe": "prosseguir",
     "toolEsperada": "comercial_pedido_historico_etapas",
-    "obs": "Reescrita 2026-06-11 (era placeholder 'Consulta: ...'); pergunta natural derivada da descricao da tool."
+    "observacao": "Reescrita 2026-06-11 (era placeholder 'Consulta: ...'); pergunta natural derivada da descricao da tool."
   },
   {
     "id": "cov-12",
@@ -568,7 +568,7 @@
     "dominio": "comercial",
     "classe": "prosseguir",
     "toolEsperada": "comercial_pedido_travados_por_etapa",
-    "obs": "Reescrita 2026-06-11 (era placeholder 'Consulta: ...'); pergunta natural derivada da descricao da tool."
+    "observacao": "Reescrita 2026-06-11 (era placeholder 'Consulta: ...'); pergunta natural derivada da descricao da tool."
   },
   {
     "id": "cov-13",
@@ -576,7 +576,7 @@
     "dominio": "comercial",
     "classe": "prosseguir",
     "toolEsperada": "comercial_pedidos_atrasados",
-    "obs": "Reescrita 2026-06-11 (era placeholder 'Consulta: ...'); pergunta natural derivada da descricao da tool."
+    "observacao": "Reescrita 2026-06-11 (era placeholder 'Consulta: ...'); pergunta natural derivada da descricao da tool."
   },
   {
     "id": "cov-14",
@@ -584,7 +584,7 @@
     "dominio": "comercial",
     "classe": "prosseguir",
     "toolEsperada": "comercial_pedidos_periodo",
-    "obs": "Reescrita 2026-06-11 (era placeholder 'Consulta: ...'); pergunta natural derivada da descricao da tool."
+    "observacao": "Reescrita 2026-06-11 (era placeholder 'Consulta: ...'); pergunta natural derivada da descricao da tool."
   },
   {
     "id": "cov-15",
@@ -592,7 +592,7 @@
     "dominio": "comercial",
     "classe": "prosseguir",
     "toolEsperada": "comercial_pedidos_por_uf",
-    "obs": "Reescrita 2026-06-11 (era placeholder 'Consulta: ...'); pergunta natural derivada da descricao da tool."
+    "observacao": "Reescrita 2026-06-11 (era placeholder 'Consulta: ...'); pergunta natural derivada da descricao da tool."
   },
   {
     "id": "cov-16",
@@ -600,7 +600,7 @@
     "dominio": "comercial",
     "classe": "prosseguir",
     "toolEsperada": "comercial_pedidos_sem_vendedor",
-    "obs": "Reescrita 2026-06-11 (era placeholder 'Consulta: ...'); pergunta natural derivada da descricao da tool."
+    "observacao": "Reescrita 2026-06-11 (era placeholder 'Consulta: ...'); pergunta natural derivada da descricao da tool."
   },
   {
     "id": "cov-17",
@@ -608,7 +608,7 @@
     "dominio": "comercial",
     "classe": "prosseguir",
     "toolEsperada": "comercial_produtos_por_familia",
-    "obs": "Reescrita 2026-06-11 (era placeholder 'Consulta: ...'); pergunta natural derivada da descricao da tool."
+    "observacao": "Reescrita 2026-06-11 (era placeholder 'Consulta: ...'); pergunta natural derivada da descricao da tool."
   },
   {
     "id": "cov-18",
@@ -616,7 +616,7 @@
     "dominio": "comercial",
     "classe": "prosseguir",
     "toolEsperada": "comercial_produtos_por_margem",
-    "obs": "Reescrita 2026-06-11 (era placeholder 'Consulta: ...'); pergunta natural derivada da descricao da tool."
+    "observacao": "Reescrita 2026-06-11 (era placeholder 'Consulta: ...'); pergunta natural derivada da descricao da tool."
   },
   {
     "id": "cov-19",
@@ -624,7 +624,7 @@
     "dominio": "comercial",
     "classe": "prosseguir",
     "toolEsperada": "comercial_tempo_medio_fechamento",
-    "obs": "Reescrita 2026-06-11 (era placeholder 'Consulta: ...'); pergunta natural derivada da descricao da tool."
+    "observacao": "Reescrita 2026-06-11 (era placeholder 'Consulta: ...'); pergunta natural derivada da descricao da tool."
   },
   {
     "id": "cov-20",
@@ -632,11 +632,11 @@
     "dominio": "contabil",
     "classe": "prosseguir",
     "toolEsperada": "contabil_detalhar_conta",
-    "obs": "Reescrita 2026-06-11 (era placeholder 'Consulta: ...'); identificadores reais conferidos no cache. Irmas aceitas: estrutura/plano tambem respondem tipo, nivel e conta pai por completo.",
     "toolsAceitas": [
       "contabil_estrutura_conta",
       "contabil_plano_de_contas"
-    ]
+    ],
+    "observacao": "Reescrita 2026-06-11 (era placeholder 'Consulta: ...'); identificadores reais conferidos no cache. Irmas aceitas: estrutura/plano tambem respondem tipo, nivel e conta pai por completo."
   },
   {
     "id": "cov-21",
@@ -644,7 +644,7 @@
     "dominio": "contabil",
     "classe": "prosseguir",
     "toolEsperada": "contabil_movimento_conta",
-    "obs": "Reescrita 2026-06-11 (era placeholder 'Consulta: ...'); identificadores reais conferidos no cache."
+    "observacao": "Reescrita 2026-06-11 (era placeholder 'Consulta: ...'); identificadores reais conferidos no cache."
   },
   {
     "id": "cov-22",
@@ -652,7 +652,7 @@
     "dominio": "contabil",
     "classe": "prosseguir",
     "toolEsperada": "contabil_resultado_por_natureza",
-    "obs": "Reescrita 2026-06-11 (era placeholder 'Consulta: ...'); pergunta natural derivada da descricao da tool."
+    "observacao": "Reescrita 2026-06-11 (era placeholder 'Consulta: ...'); pergunta natural derivada da descricao da tool."
   },
   {
     "id": "cov-23",
@@ -660,7 +660,7 @@
     "dominio": "contabil",
     "classe": "prosseguir",
     "toolEsperada": "contabil_saldo_conta",
-    "obs": "Reescrita 2026-06-11 (era placeholder 'Consulta: ...'); pergunta natural derivada da descricao da tool."
+    "observacao": "Reescrita 2026-06-11 (era placeholder 'Consulta: ...'); pergunta natural derivada da descricao da tool."
   },
   {
     "id": "cov-24",
@@ -668,7 +668,7 @@
     "dominio": "crm",
     "classe": "prosseguir",
     "toolEsperada": "crm_pipeline_funis",
-    "obs": "Reescrita 2026-06-11 (era placeholder 'Consulta: ...'); pergunta natural derivada da descricao da tool."
+    "observacao": "Reescrita 2026-06-11 (era placeholder 'Consulta: ...'); pergunta natural derivada da descricao da tool."
   },
   {
     "id": "cov-25",
@@ -676,7 +676,7 @@
     "dominio": "crm",
     "classe": "prosseguir",
     "toolEsperada": "crm_status_dominio",
-    "obs": "Reescrita 2026-06-11 (era placeholder 'Consulta: ...'); pergunta natural derivada da descricao da tool."
+    "observacao": "Reescrita 2026-06-11 (era placeholder 'Consulta: ...'); pergunta natural derivada da descricao da tool."
   },
   {
     "id": "cov-26",
@@ -684,10 +684,10 @@
     "dominio": "crm.res",
     "classe": "prosseguir",
     "toolEsperada": "crm.res_partner.get",
-    "obs": "Reescrita 2026-06-11 (era placeholder 'Consulta: ...'); identificadores reais conferidos no cache. Aceita tambem o nome saneado (a OpenAI proibe ponto em function name; run-agent saneia para crm_res_partner_get).",
     "toolsAceitas": [
       "crm_res_partner_get"
-    ]
+    ],
+    "observacao": "Reescrita 2026-06-11 (era placeholder 'Consulta: ...'); identificadores reais conferidos no cache. Aceita tambem o nome saneado (a OpenAI proibe ponto em function name; run-agent saneia para crm_res_partner_get)."
   },
   {
     "id": "cov-27",
@@ -695,7 +695,7 @@
     "dominio": "estoque",
     "classe": "prosseguir",
     "toolEsperada": "estoque_entradas_saidas",
-    "obs": "Reescrita 2026-06-11 (era placeholder 'Consulta: ...'); pergunta natural derivada da descricao da tool."
+    "observacao": "Reescrita 2026-06-11 (era placeholder 'Consulta: ...'); pergunta natural derivada da descricao da tool."
   },
   {
     "id": "cov-28",
@@ -703,7 +703,7 @@
     "dominio": "estoque",
     "classe": "prosseguir",
     "toolEsperada": "estoque_minimo_maximo",
-    "obs": "Reescrita 2026-06-11 (era placeholder 'Consulta: ...'); pergunta natural derivada da descricao da tool."
+    "observacao": "Reescrita 2026-06-11 (era placeholder 'Consulta: ...'); pergunta natural derivada da descricao da tool."
   },
   {
     "id": "cov-29",
@@ -711,7 +711,7 @@
     "dominio": "estoque",
     "classe": "prosseguir",
     "toolEsperada": "estoque_produtos_saldo_zero",
-    "obs": "Reescrita 2026-06-11 (era placeholder 'Consulta: ...'); pergunta natural derivada da descricao da tool."
+    "observacao": "Reescrita 2026-06-11 (era placeholder 'Consulta: ...'); pergunta natural derivada da descricao da tool."
   },
   {
     "id": "cov-30",
@@ -719,7 +719,7 @@
     "dominio": "financeiro",
     "classe": "prosseguir",
     "toolEsperada": "financeiro_baixas_cobranca",
-    "obs": "Reescrita 2026-06-11 (era placeholder 'Consulta: ...'); pergunta natural derivada da descricao da tool."
+    "observacao": "Reescrita 2026-06-11 (era placeholder 'Consulta: ...'); pergunta natural derivada da descricao da tool."
   },
   {
     "id": "cov-31",
@@ -727,7 +727,7 @@
     "dominio": "financeiro",
     "classe": "prosseguir",
     "toolEsperada": "financeiro_carteiras_cobranca",
-    "obs": "Reescrita 2026-06-11 (era placeholder 'Consulta: ...'); pergunta natural derivada da descricao da tool."
+    "observacao": "Reescrita 2026-06-11 (era placeholder 'Consulta: ...'); pergunta natural derivada da descricao da tool."
   },
   {
     "id": "cov-32",
@@ -735,7 +735,7 @@
     "dominio": "financeiro",
     "classe": "prosseguir",
     "toolEsperada": "financeiro_cheques",
-    "obs": "Reescrita 2026-06-11 (era placeholder 'Consulta: ...'); pergunta natural derivada da descricao da tool."
+    "observacao": "Reescrita 2026-06-11 (era placeholder 'Consulta: ...'); pergunta natural derivada da descricao da tool."
   },
   {
     "id": "cov-33",
@@ -743,7 +743,7 @@
     "dominio": "financeiro",
     "classe": "prosseguir",
     "toolEsperada": "financeiro_liquidez",
-    "obs": "Reescrita 2026-06-11 (era placeholder 'Consulta: ...'); pergunta natural derivada da descricao da tool."
+    "observacao": "Reescrita 2026-06-11 (era placeholder 'Consulta: ...'); pergunta natural derivada da descricao da tool."
   },
   {
     "id": "cov-34",
@@ -751,7 +751,7 @@
     "dominio": "financeiro",
     "classe": "prosseguir",
     "toolEsperada": "financeiro_pix_recebidos",
-    "obs": "Reescrita 2026-06-11 (era placeholder 'Consulta: ...'); pergunta natural derivada da descricao da tool."
+    "observacao": "Reescrita 2026-06-11 (era placeholder 'Consulta: ...'); pergunta natural derivada da descricao da tool."
   },
   {
     "id": "cov-35",
@@ -759,7 +759,7 @@
     "dominio": "financeiro",
     "classe": "prosseguir",
     "toolEsperada": "financeiro_remessas_geradas",
-    "obs": "Reescrita 2026-06-11 (era placeholder 'Consulta: ...'); pergunta natural derivada da descricao da tool."
+    "observacao": "Reescrita 2026-06-11 (era placeholder 'Consulta: ...'); pergunta natural derivada da descricao da tool."
   },
   {
     "id": "cov-36",
@@ -767,7 +767,7 @@
     "dominio": "financeiro",
     "classe": "prosseguir",
     "toolEsperada": "financeiro_resultado_por_conta",
-    "obs": "Reescrita 2026-06-11 (era placeholder 'Consulta: ...'); pergunta natural derivada da descricao da tool."
+    "observacao": "Reescrita 2026-06-11 (era placeholder 'Consulta: ...'); pergunta natural derivada da descricao da tool."
   },
   {
     "id": "cov-37",
@@ -775,7 +775,7 @@
     "dominio": "financeiro",
     "classe": "prosseguir",
     "toolEsperada": "financeiro_retornos_processados",
-    "obs": "Reescrita 2026-06-11 (era placeholder 'Consulta: ...'); pergunta natural derivada da descricao da tool."
+    "observacao": "Reescrita 2026-06-11 (era placeholder 'Consulta: ...'); pergunta natural derivada da descricao da tool."
   },
   {
     "id": "cov-38",
@@ -783,7 +783,7 @@
     "dominio": "fiscal",
     "classe": "prosseguir",
     "toolEsperada": "fiscal_apuracao",
-    "obs": "Reescrita 2026-06-11 (era placeholder 'Consulta: ...'); pergunta natural derivada da descricao da tool."
+    "observacao": "Reescrita 2026-06-11 (era placeholder 'Consulta: ...'); pergunta natural derivada da descricao da tool."
   },
   {
     "id": "cov-39",
@@ -791,7 +791,7 @@
     "dominio": "fiscal",
     "classe": "prosseguir",
     "toolEsperada": "fiscal_carta_correcao",
-    "obs": "Reescrita 2026-06-11 (era placeholder 'Consulta: ...'); pergunta natural derivada da descricao da tool."
+    "observacao": "Reescrita 2026-06-11 (era placeholder 'Consulta: ...'); pergunta natural derivada da descricao da tool."
   },
   {
     "id": "cov-40",
@@ -799,7 +799,7 @@
     "dominio": "fiscal",
     "classe": "prosseguir",
     "toolEsperada": "fiscal_certificados",
-    "obs": "Reescrita 2026-06-11 (era placeholder 'Consulta: ...'); pergunta natural derivada da descricao da tool."
+    "observacao": "Reescrita 2026-06-11 (era placeholder 'Consulta: ...'); pergunta natural derivada da descricao da tool."
   },
   {
     "id": "cov-41",
@@ -807,7 +807,7 @@
     "dominio": "fiscal",
     "classe": "prosseguir",
     "toolEsperada": "fiscal_detalhar_nota",
-    "obs": "Reescrita 2026-06-11 (era placeholder 'Consulta: ...'); pergunta natural derivada da descricao da tool."
+    "observacao": "Reescrita 2026-06-11 (era placeholder 'Consulta: ...'); pergunta natural derivada da descricao da tool."
   },
   {
     "id": "cov-42",
@@ -815,7 +815,7 @@
     "dominio": "fiscal",
     "classe": "prosseguir",
     "toolEsperada": "fiscal_dfe_importados_periodo",
-    "obs": "Reescrita 2026-06-11 (era placeholder 'Consulta: ...'); pergunta natural derivada da descricao da tool."
+    "observacao": "Reescrita 2026-06-11 (era placeholder 'Consulta: ...'); pergunta natural derivada da descricao da tool."
   },
   {
     "id": "cov-43",
@@ -823,7 +823,7 @@
     "dominio": "fiscal",
     "classe": "prosseguir",
     "toolEsperada": "fiscal_dfe_por_fornecedor",
-    "obs": "Reescrita 2026-06-11 (era placeholder 'Consulta: ...'); pergunta natural derivada da descricao da tool."
+    "observacao": "Reescrita 2026-06-11 (era placeholder 'Consulta: ...'); pergunta natural derivada da descricao da tool."
   },
   {
     "id": "cov-44",
@@ -831,7 +831,7 @@
     "dominio": "fiscal",
     "classe": "prosseguir",
     "toolEsperada": "fiscal_faturamento_mensal_serie",
-    "obs": "Reescrita 2026-06-11 (era placeholder 'Consulta: ...'); pergunta natural derivada da descricao da tool."
+    "observacao": "Reescrita 2026-06-11 (era placeholder 'Consulta: ...'); pergunta natural derivada da descricao da tool."
   },
   {
     "id": "cov-45",
@@ -839,7 +839,7 @@
     "dominio": "fiscal",
     "classe": "prosseguir",
     "toolEsperada": "fiscal_faturamento_nao_autorizado",
-    "obs": "Reescrita 2026-06-11 (era placeholder 'Consulta: ...'); pergunta natural derivada da descricao da tool."
+    "observacao": "Reescrita 2026-06-11 (era placeholder 'Consulta: ...'); pergunta natural derivada da descricao da tool."
   },
   {
     "id": "cov-46",
@@ -847,7 +847,7 @@
     "dominio": "fiscal",
     "classe": "prosseguir",
     "toolEsperada": "fiscal_faturamento_por_cfop",
-    "obs": "Reescrita 2026-06-11 (era placeholder 'Consulta: ...'); pergunta natural derivada da descricao da tool."
+    "observacao": "Reescrita 2026-06-11 (era placeholder 'Consulta: ...'); pergunta natural derivada da descricao da tool."
   },
   {
     "id": "cov-47",
@@ -855,7 +855,7 @@
     "dominio": "fiscal",
     "classe": "prosseguir",
     "toolEsperada": "fiscal_faturamento_por_empresa",
-    "obs": "Reescrita 2026-06-11 (era placeholder 'Consulta: ...'); pergunta natural derivada da descricao da tool."
+    "observacao": "Reescrita 2026-06-11 (era placeholder 'Consulta: ...'); pergunta natural derivada da descricao da tool."
   },
   {
     "id": "cov-48",
@@ -863,7 +863,7 @@
     "dominio": "fiscal",
     "classe": "prosseguir",
     "toolEsperada": "fiscal_faturamento_por_marca",
-    "obs": "Reescrita 2026-06-11 (era placeholder 'Consulta: ...'); pergunta natural derivada da descricao da tool."
+    "observacao": "Reescrita 2026-06-11 (era placeholder 'Consulta: ...'); pergunta natural derivada da descricao da tool."
   },
   {
     "id": "cov-49",
@@ -871,7 +871,7 @@
     "dominio": "fiscal",
     "classe": "prosseguir",
     "toolEsperada": "fiscal_faturamento_por_operacao",
-    "obs": "Reescrita 2026-06-11 (era placeholder 'Consulta: ...'); pergunta natural derivada da descricao da tool."
+    "observacao": "Reescrita 2026-06-11 (era placeholder 'Consulta: ...'); pergunta natural derivada da descricao da tool."
   },
   {
     "id": "cov-50",
@@ -879,7 +879,7 @@
     "dominio": "fiscal",
     "classe": "prosseguir",
     "toolEsperada": "fiscal_faturamento_por_uf",
-    "obs": "Reescrita 2026-06-11 (era placeholder 'Consulta: ...'); pergunta natural derivada da descricao da tool."
+    "observacao": "Reescrita 2026-06-11 (era placeholder 'Consulta: ...'); pergunta natural derivada da descricao da tool."
   },
   {
     "id": "cov-51",
@@ -887,7 +887,7 @@
     "dominio": "fiscal",
     "classe": "prosseguir",
     "toolEsperada": "fiscal_faturamento_recebido",
-    "obs": "Reescrita 2026-06-11 (era placeholder 'Consulta: ...'); pergunta natural derivada da descricao da tool."
+    "observacao": "Reescrita 2026-06-11 (era placeholder 'Consulta: ...'); pergunta natural derivada da descricao da tool."
   },
   {
     "id": "cov-52",
@@ -895,7 +895,7 @@
     "dominio": "fiscal",
     "classe": "prosseguir",
     "toolEsperada": "fiscal_mdfe_manifestos",
-    "obs": "Reescrita 2026-06-11 (era placeholder 'Consulta: ...'); pergunta natural derivada da descricao da tool."
+    "observacao": "Reescrita 2026-06-11 (era placeholder 'Consulta: ...'); pergunta natural derivada da descricao da tool."
   },
   {
     "id": "cov-53",
@@ -903,7 +903,7 @@
     "dominio": "fiscal",
     "classe": "prosseguir",
     "toolEsperada": "fiscal_notas_emitidas_por_cliente",
-    "obs": "Reescrita 2026-06-11 (era placeholder 'Consulta: ...'); pergunta natural derivada da descricao da tool."
+    "observacao": "Reescrita 2026-06-11 (era placeholder 'Consulta: ...'); pergunta natural derivada da descricao da tool."
   },
   {
     "id": "cov-54",
@@ -911,7 +911,7 @@
     "dominio": "fiscal",
     "classe": "prosseguir",
     "toolEsperada": "fiscal_notas_emitidas_por_produto",
-    "obs": "Reescrita 2026-06-11 (era placeholder 'Consulta: ...'); pergunta natural derivada da descricao da tool."
+    "observacao": "Reescrita 2026-06-11 (era placeholder 'Consulta: ...'); pergunta natural derivada da descricao da tool."
   },
   {
     "id": "cov-55",
@@ -919,7 +919,7 @@
     "dominio": "fiscal",
     "classe": "prosseguir",
     "toolEsperada": "fiscal_notas_recebidas",
-    "obs": "Reescrita 2026-06-11 (era placeholder 'Consulta: ...'); pergunta natural derivada da descricao da tool."
+    "observacao": "Reescrita 2026-06-11 (era placeholder 'Consulta: ...'); pergunta natural derivada da descricao da tool."
   },
   {
     "id": "cov-56",
@@ -927,7 +927,7 @@
     "dominio": "fiscal",
     "classe": "prosseguir",
     "toolEsperada": "fiscal_notas_recebidas_por_fornecedor",
-    "obs": "Reescrita 2026-06-11 (era placeholder 'Consulta: ...'); pergunta natural derivada da descricao da tool."
+    "observacao": "Reescrita 2026-06-11 (era placeholder 'Consulta: ...'); pergunta natural derivada da descricao da tool."
   },
   {
     "id": "cov-57",
@@ -935,7 +935,7 @@
     "dominio": "fiscal",
     "classe": "prosseguir",
     "toolEsperada": "fiscal_produtos_faturados",
-    "obs": "Reescrita 2026-06-11 (era placeholder 'Consulta: ...'); pergunta natural derivada da descricao da tool."
+    "observacao": "Reescrita 2026-06-11 (era placeholder 'Consulta: ...'); pergunta natural derivada da descricao da tool."
   },
   {
     "id": "cov-58",
@@ -943,7 +943,7 @@
     "dominio": "fiscal",
     "classe": "prosseguir",
     "toolEsperada": "fiscal_reinf_eventos",
-    "obs": "Reescrita 2026-06-11 (era placeholder 'Consulta: ...'); pergunta natural derivada da descricao da tool."
+    "observacao": "Reescrita 2026-06-11 (era placeholder 'Consulta: ...'); pergunta natural derivada da descricao da tool."
   },
   {
     "id": "cov-59",
@@ -951,7 +951,7 @@
     "dominio": "preco",
     "classe": "prosseguir",
     "toolEsperada": "preco_contar_regras",
-    "obs": "Reescrita 2026-06-11 (era placeholder 'Consulta: ...'); identificadores reais conferidos no cache."
+    "observacao": "Reescrita 2026-06-11 (era placeholder 'Consulta: ...'); identificadores reais conferidos no cache."
   },
   {
     "id": "cov-60",
@@ -959,7 +959,7 @@
     "dominio": "preco",
     "classe": "prosseguir",
     "toolEsperada": "preco_tabela",
-    "obs": "Reescrita 2026-06-11 (era placeholder 'Consulta: ...'); identificadores reais conferidos no cache."
+    "observacao": "Reescrita 2026-06-11 (era placeholder 'Consulta: ...'); identificadores reais conferidos no cache."
   },
   {
     "id": "cov-61",
@@ -967,7 +967,7 @@
     "dominio": "producao",
     "classe": "prosseguir",
     "toolEsperada": "producao_processos",
-    "obs": "Reescrita 2026-06-11 (era placeholder 'Consulta: ...'); pergunta natural derivada da descricao da tool."
+    "observacao": "Reescrita 2026-06-11 (era placeholder 'Consulta: ...'); pergunta natural derivada da descricao da tool."
   },
   {
     "id": "cov-62",
@@ -975,7 +975,7 @@
     "dominio": "producao",
     "classe": "prosseguir",
     "toolEsperada": "producao_status_dominio",
-    "obs": "Reescrita 2026-06-11 (era placeholder 'Consulta: ...'); pergunta natural derivada da descricao da tool."
+    "observacao": "Reescrita 2026-06-11 (era placeholder 'Consulta: ...'); pergunta natural derivada da descricao da tool."
   },
   {
     "id": "cov-63",
@@ -983,7 +983,7 @@
     "dominio": "referencia",
     "classe": "prosseguir",
     "toolEsperada": "referencia_buscar",
-    "obs": "Reescrita 2026-06-11 (era placeholder 'Consulta: ...'); identificadores reais conferidos no cache."
+    "observacao": "Reescrita 2026-06-11 (era placeholder 'Consulta: ...'); identificadores reais conferidos no cache."
   },
   {
     "id": "cov-64",
@@ -991,7 +991,7 @@
     "dominio": "rh",
     "classe": "prosseguir",
     "toolEsperada": "rh_status_dominio",
-    "obs": "Reescrita 2026-06-11 (era placeholder 'Consulta: ...'); pergunta natural derivada da descricao da tool."
+    "observacao": "Reescrita 2026-06-11 (era placeholder 'Consulta: ...'); pergunta natural derivada da descricao da tool."
   },
   {
     "id": "cov-65",
@@ -999,7 +999,7 @@
     "dominio": "servico",
     "classe": "prosseguir",
     "toolEsperada": "servico_buscar",
-    "obs": "Reescrita 2026-06-11 (era placeholder 'Consulta: ...'); identificadores reais conferidos no cache."
+    "observacao": "Reescrita 2026-06-11 (era placeholder 'Consulta: ...'); identificadores reais conferidos no cache."
   },
   {
     "id": "cov-66",
@@ -1007,7 +1007,7 @@
     "dominio": "servico",
     "classe": "prosseguir",
     "toolEsperada": "servico_contar",
-    "obs": "Reescrita 2026-06-11 (era placeholder 'Consulta: ...'); pergunta natural derivada da descricao da tool."
+    "observacao": "Reescrita 2026-06-11 (era placeholder 'Consulta: ...'); pergunta natural derivada da descricao da tool."
   },
   {
     "id": "cov-67",
@@ -1015,7 +1015,7 @@
     "dominio": "servico",
     "classe": "prosseguir",
     "toolEsperada": "servico_listar",
-    "obs": "Reescrita 2026-06-11 (era placeholder 'Consulta: ...'); pergunta natural derivada da descricao da tool."
+    "observacao": "Reescrita 2026-06-11 (era placeholder 'Consulta: ...'); pergunta natural derivada da descricao da tool."
   },
   {
     "id": "cov-68",
@@ -1124,7 +1124,7 @@
     "dominio": "fiscal",
     "classe": "falta_honesta",
     "toolEsperada": null,
-    "obs": "Limpa 2026+ T7b: periodo inteiramente pre-corte; resposta honesta (cache so 2026+, dado vive no Odoo), nunca '0 resultados'."
+    "observacao": "Limpa 2026+ T7b: periodo inteiramente pre-corte; resposta honesta (cache so 2026+, dado vive no Odoo), nunca '0 resultados'."
   },
   {
     "id": "corte-02",
@@ -1132,6 +1132,42 @@
     "dominio": "financeiro",
     "classe": "falta_honesta",
     "toolEsperada": null,
-    "obs": "Limpa 2026+ T7b: recusa honesta pre-corte; mencionar que 2026+ e consultavel."
+    "observacao": "Limpa 2026+ T7b: recusa honesta pre-corte; mencionar que 2026+ e consultavel."
+  },
+  {
+    "id": "followup-01",
+    "dominio": "fiscal",
+    "classe": "prosseguir",
+    "turnosAntes": [
+      "Qual o faturamento deste mes?"
+    ],
+    "pergunta": "E do mes passado?",
+    "toolEsperada": "fiscal_faturamento_periodo",
+    "observacao": "Follow-up contextual (regra 12): reusa a tool do turno anterior ajustando so o periodo. Irma aceita: se o turno 1 respondeu com receita_consolidada, reusar a MESMA tool no follow-up e o comportamento correto da regra 12.",
+    "toolsAceitas": [
+      "fiscal_receita_consolidada"
+    ]
+  },
+  {
+    "id": "followup-02",
+    "dominio": "financeiro",
+    "classe": "prosseguir",
+    "turnosAntes": [
+      "Quanto temos a receber em aberto?"
+    ],
+    "pergunta": "E a pagar?",
+    "toolEsperada": "financeiro_contas_a_pagar",
+    "observacao": "Follow-up contextual: troca o eixo (receber -> pagar) mantendo o recorte."
+  },
+  {
+    "id": "followup-03",
+    "dominio": "estoque",
+    "classe": "prosseguir",
+    "turnosAntes": [
+      "Qual o saldo do produto esteira em estoque?"
+    ],
+    "pergunta": "E o preco dela?",
+    "toolEsperada": "preco_produto",
+    "observacao": "Follow-up contextual: 'dela' resolve para o produto do turno anterior (esteira)."
   }
 ]
