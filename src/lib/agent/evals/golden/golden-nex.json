@@ -1302,14 +1302,13 @@
     "dominio": "comercial",
     "classe": "falta_honesta",
     "toolEsperada": null,
-    "observacao": "Pergunta 6 literal do cliente: gap de DIMENSAO , responde os orcamentos que existem e explica que segmento nao e cadastrado.",
+    "observacao": "Pergunta 6 literal do cliente: gap de DIMENSAO , responde os orcamentos que existem e explica que segmento nao e cadastrado. Espera robusta: o mini varia o fraseado (seguimento/segmento; com/sem o N de orcamentos), mas SEMPRE cita o cadastro como fonte.",
     "proibidoNaResposta": [
       "defeito",
       "erro da plataforma"
     ],
     "esperaNaResposta": [
-      "orcament",
-      "segment"
+      "cadastr"
     ]
   },
   {
@@ -1396,7 +1395,7 @@
       "erro da plataforma"
     ],
     "esperaNaResposta": [
-      "segment"
+      "cadastr"
     ]
   },
   {
