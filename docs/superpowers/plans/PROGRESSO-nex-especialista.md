@@ -331,3 +331,8 @@ Cada fase: plano próprio (bite-sized) + 2 reviews quando material → execuçã
 - PEDIR AO USUARIO: lista das 100+ perguntas (vira golden direto) e acesso
   SSH a VPS p/ o purge fisico em prod. PR #100 ABERTO aguardando merge.
 - Gasto OpenAI ~US$5,10 de 8.
+- (b) FEITO e validado E2E: lacunas de modulo inexistente (pos-venda/
+  assistencia/garantia, NPS) no registrar_lacuna citam a fonte ("o sistema
+  nao tem modulo de pos-venda implantado..."), nunca recusa generica.
+- RESTA apenas: (e) fiscal_faturamento_por_vendedor (NF x pedido x vendedor).
+- Wrap-up por pedido do usuario (~20h55): troca de sessao via agente handoff.
