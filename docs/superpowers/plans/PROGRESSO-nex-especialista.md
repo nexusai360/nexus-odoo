@@ -105,7 +105,13 @@ Cada fase: plano próprio (bite-sized) + 2 reviews quando material → execuçã
       'efetivo'=VIVO nunca deleta; FK filho e many2one array ->0; lote_serie
       2,9GB e BLOAT (vacuum sem delete = maior ganho); backfill since=null;
       assinaturas syncSnapshot/reconcileModel; stop worker vence
-      unless-stopped; DELETE em lotes). **PROXIMO: EXECUTAR T1..T11 (T7b/T8-
+      unless-stopped; DELETE em lotes). **EXECUCAO INICIADA: T1-scaffolding (bc4036b) + T1a parcial 8 modelos
+      verificados (3219d7c) + T1c titulo (5b3d394) + T1b 5 filhos SPED com FK
+      verificada (7a4af24; rastreabilidade->ITEM via item_id; modelo "volume"
+      nao esta no catalogo , conferir; pedido.documento data_orcamento validar
+      no T3). FALTA: resto T1a (inventario/carta/pagamento_divida/estoque_
+      rastreabilidade), T1d lista negativa + teste de conjunto, T2..T11.
+      PROXIMO: EXECUTAR T1d, T2 (T7b/T8-
       golden gated por recarga OpenAI; --apply gated por aprovacao humana).**
 - [ ] **PROXIMA SESSAO:** (adicionar: reescrever os ~8 cov-* placeholder do
       golden como perguntas naturais com identificadores; toolsAceitas nas
