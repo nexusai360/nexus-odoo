@@ -2,6 +2,7 @@
 import type { OdooClient } from "../odoo/client";
 import { odooDatetime, parseWriteDate } from "../odoo/datetime";
 import { getModelFields } from "../odoo/field-selection";
+import { corteDomain } from "./corte";
 
 /** Tamanho padrão de cada página buscada do Odoo. */
 const PAGE_SIZE = 500;
@@ -59,7 +60,13 @@ export async function syncIncremental(
   // Capturada ANTES do search_read: o próximo ciclo filtra por write_date >
   // cycleStart, então registros escritos durante o pull entram no próximo ciclo.
   const cycleStart = new Date();
-  const domain = since ? [["write_date", ">", odooDatetime(since)]] : [];
+  // Limpa 2026+ (T2a): clausula de corte por data de negocio e PERMANENTE e
+  // entra em AMBOS os ramos (write_date nao segura registro antigo editado;
+  // o backfill since=null e o ramo critico , reimportaria o historico).
+  const domain = [
+    ...corteDomain(odooModel),
+    ...(since ? [["write_date", ">", odooDatetime(since)]] : []),
+  ];
   const fields = await getModelFields(client, odooModel);
   const isBackfill = since === null;
 

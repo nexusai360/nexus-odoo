@@ -176,12 +176,11 @@ async function main() {
   const erros: string[] = [];
   const alertas: string[] = [];
   const cadastro = await carregarParticipantesGrupo(prisma);
+  // Limpa 2026+ T8: o cache so guarda 2026+; periodos pre-2026 sairam da
+  // conferencia (devolveriam zero por regra, nao por erro). Historico no git.
   const periodos: Periodo[] = [
-    { rotulo: "2023", de: "2023-01-01", ate: "2023-12-31" },
-    { rotulo: "2024", de: "2024-01-01", ate: "2024-12-31" },
-    { rotulo: "2025", de: "2025-01-01", ate: "2025-12-31" },
     { rotulo: "2026 (ate jun)", de: "2026-01-01", ate: "2026-06-30" },
-    { rotulo: "ACUMULADO (13 anos)", de: undefined, ate: undefined },
+    { rotulo: "ACUMULADO (pos-corte 2026+)", de: undefined, ate: undefined },
   ];
 
   for (const p of periodos) {
@@ -243,11 +242,11 @@ async function main() {
 
   // S1/S2 (alertas, nao-gate): fragilidade RESIDUAL do cadastro APOS a whitelist.
   // S1 conta notas intragrupo cobertas SO pelo nome (nem whitelist nem cadastro). Com a
-  // whitelist no caminho o residual e baixo (2025=0, acumulado~109): se SALTAR, surgiu uma
-  // entidade do grupo nao-whitelistada , acionavel (adicionar a whitelist). Bandas medidas
-  // no cache real 2026-06-10 pos-whitelist.
+  // whitelist no caminho o residual e baixo: se SALTAR, surgiu uma entidade do grupo
+  // nao-whitelistada , acionavel (adicionar a whitelist). Bandas medidas no cache real
+  // 2026-06-10 pos-whitelist; recalibradas para 2026+ na Limpa 2026+ (T8).
   console.log(`\n== SENTINELAS de cadastro (alertas) ==`);
-  checkBanda("S1 residual so-por-nome 2025", await soPorNome("2025-01-01", "2025-12-31", cadastro), 0, 100, alertas);
+  checkBanda("S1 residual so-por-nome 2026", await soPorNome("2026-01-01", "2026-12-31", cadastro), 0, 100, alertas);
   checkBanda("S1 residual so-por-nome ACUMULADO", await soPorNome(undefined, undefined, cadastro), 0, 300, alertas);
   checkBanda("S2 divergencia nome x cadastro", await divergenciaNomeCadastro(), 0, 20, alertas);
 
@@ -279,7 +278,9 @@ async function main() {
     const ehReceita = cfop4 ? classificarCfop(cfop4).ehReceita : false;
     if (ehReceita && naoVenda.has(r.nat)) c4a += r.v;
   }
-  checkBandaValor("C4a receita(cfop) com natureza nao-venda", c4a, 500_000, 1_500_000, alertas);
+  // Banda recalibrada pos-Limpa 2026+ (T8): o residuo de ~906k era todo pre-2026;
+  // no cache 2026+ o valor real e 0. Piso 0, teto mantido (pega crescimento anomalo).
+  checkBandaValor("C4a receita(cfop) com natureza nao-venda", c4a, 0, 1_500_000, alertas);
   // C6: notas de saida autorizada sem item.
   checkBanda("C6 notas sem item", await contarNotasSemItem(), 80, 130, alertas);
 

@@ -109,7 +109,11 @@
     "pergunta": "Quanto pagamos de ICMS, PIS e COFINS no periodo?",
     "dominio": "fiscal",
     "classe": "prosseguir",
-    "toolEsperada": "fiscal_impostos_periodo"
+    "toolEsperada": "fiscal_impostos_periodo",
+    "toolsAceitas": [
+      "fiscal_apuracao"
+    ],
+    "observacao": "Irma aceita: fiscal_apuracao tambem cobre ICMS/PIS/COFINS do periodo (responde honesto quando a fonte esta zerada)."
   },
   {
     "id": "comercial-01",
@@ -155,10 +159,15 @@
   },
   {
     "id": "contabil-02",
-    "pergunta": "Me mostre a hierarquia da conta 1.01.01 e suas filhas.",
+    "pergunta": "Me mostre a estrutura da conta contabil 1.1.1: a conta pai e as contas filhas dela.",
     "dominio": "contabil",
     "classe": "prosseguir",
-    "toolEsperada": "contabil_estrutura_conta"
+    "toolEsperada": "contabil_estrutura_conta",
+    "toolsAceitas": [
+      "contabil_plano_de_contas",
+      "contabil_detalhar_conta"
+    ],
+    "observacao": "Conta corrigida para codigo real (1.01.01 nao existe). Plano de contas/detalhar tambem cobrem hierarquia."
   },
   {
     "id": "contabil-03",
@@ -467,472 +476,546 @@
   },
   {
     "id": "cov-01",
-    "pergunta": "Consulta: auditoria regras",
+    "pergunta": "Quais regras de auditoria estao ativas e qual a janela de dias de cada uma?",
     "dominio": "auditoria",
     "classe": "prosseguir",
-    "toolEsperada": "auditoria_regras"
+    "toolEsperada": "auditoria_regras",
+    "observacao": "Reescrita 2026-06-11 (era placeholder 'Consulta: ...'); pergunta natural derivada da descricao da tool."
   },
   {
     "id": "cov-02",
-    "pergunta": "Consulta: cadastro cidades listar",
+    "pergunta": "Em quais cidades temos parceiros cadastrados, e quantos em cada uma?",
     "dominio": "cadastro",
     "classe": "prosseguir",
-    "toolEsperada": "cadastro_cidades_listar"
+    "toolEsperada": "cadastro_cidades_listar",
+    "observacao": "Reescrita 2026-06-11 (era placeholder 'Consulta: ...'); pergunta natural derivada da descricao da tool."
   },
   {
     "id": "cov-03",
-    "pergunta": "Consulta: cadastro detalhar parceiro",
+    "pergunta": "Me traga o cadastro completo do parceiro de id 8728 (Johnson Fitness): documento, contato e endereco.",
     "dominio": "cadastro",
     "classe": "prosseguir",
-    "toolEsperada": "cadastro_detalhar_parceiro"
+    "toolEsperada": "cadastro_detalhar_parceiro",
+    "observacao": "Reescrita 2026-06-11 (era placeholder 'Consulta: ...'); identificadores reais conferidos no cache."
   },
   {
     "id": "cov-04",
-    "pergunta": "Consulta: cadastro parceiros novos",
+    "pergunta": "Quais parceiros novos foram cadastrados nos ultimos 30 dias?",
     "dominio": "cadastro",
     "classe": "prosseguir",
-    "toolEsperada": "cadastro_parceiros_novos"
+    "toolEsperada": "cadastro_parceiros_novos",
+    "observacao": "Reescrita 2026-06-11 (era placeholder 'Consulta: ...'); pergunta natural derivada da descricao da tool."
   },
   {
     "id": "cov-05",
-    "pergunta": "Consulta: cadastro parceiros por cidade",
+    "pergunta": "Quais parceiros estao cadastrados na cidade de Sao Paulo?",
     "dominio": "cadastro",
     "classe": "prosseguir",
-    "toolEsperada": "cadastro_parceiros_por_cidade"
+    "toolEsperada": "cadastro_parceiros_por_cidade",
+    "observacao": "Reescrita 2026-06-11 (era placeholder)."
   },
   {
     "id": "cov-06",
-    "pergunta": "Consulta: cadastro parceiros sem documento",
+    "pergunta": "Quais parceiros ativos estao sem CNPJ ou CPF no cadastro?",
     "dominio": "cadastro",
     "classe": "prosseguir",
-    "toolEsperada": "cadastro_parceiros_sem_documento"
+    "toolEsperada": "cadastro_parceiros_sem_documento",
+    "observacao": "Reescrita 2026-06-11 (era placeholder 'Consulta: ...'); pergunta natural derivada da descricao da tool."
   },
   {
     "id": "cov-07",
-    "pergunta": "Consulta: comercial comissoes",
+    "pergunta": "Como estao as comissoes por vendedor nos pedidos recentes?",
     "dominio": "comercial",
     "classe": "prosseguir",
-    "toolEsperada": "comercial_comissoes"
+    "toolEsperada": "comercial_comissoes",
+    "observacao": "Reescrita 2026-06-11 (era placeholder 'Consulta: ...'); pergunta natural derivada da descricao da tool."
   },
   {
     "id": "cov-08",
-    "pergunta": "Consulta: comercial cotacoes",
+    "pergunta": "Quais cotacoes de venda estao em aberto?",
     "dominio": "comercial",
     "classe": "prosseguir",
-    "toolEsperada": "comercial_cotacoes"
+    "toolEsperada": "comercial_cotacoes",
+    "observacao": "Reescrita 2026-06-11 (era placeholder 'Consulta: ...'); pergunta natural derivada da descricao da tool."
   },
   {
     "id": "cov-09",
-    "pergunta": "Consulta: comercial detalhar pedido",
+    "pergunta": "Me detalha o pedido de id 2442: cliente, itens e situacao.",
     "dominio": "comercial",
     "classe": "prosseguir",
-    "toolEsperada": "comercial_detalhar_pedido"
+    "toolEsperada": "comercial_detalhar_pedido",
+    "observacao": "Reescrita 2026-06-11 (era placeholder 'Consulta: ...'); pergunta natural derivada da descricao da tool."
   },
   {
     "id": "cov-10",
-    "pergunta": "Consulta: comercial parcelas a vencer",
+    "pergunta": "Quanto temos de parcelas a vencer nos proximos 30 dias?",
     "dominio": "comercial",
     "classe": "prosseguir",
-    "toolEsperada": "comercial_parcelas_a_vencer"
+    "toolEsperada": "comercial_parcelas_a_vencer",
+    "observacao": "Reescrita 2026-06-11 (era placeholder 'Consulta: ...'); pergunta natural derivada da descricao da tool."
   },
   {
     "id": "cov-11",
-    "pergunta": "Consulta: comercial pedido historico etapas",
+    "pergunta": "Quanto tempo o pedido 2442 ficou em cada etapa do fluxo?",
     "dominio": "comercial",
     "classe": "prosseguir",
-    "toolEsperada": "comercial_pedido_historico_etapas"
+    "toolEsperada": "comercial_pedido_historico_etapas",
+    "observacao": "Reescrita 2026-06-11 (era placeholder 'Consulta: ...'); pergunta natural derivada da descricao da tool."
   },
   {
     "id": "cov-12",
-    "pergunta": "Consulta: comercial pedido travados por etapa",
+    "pergunta": "Quais pedidos estao travados ha mais de 15 dias numa etapa?",
     "dominio": "comercial",
     "classe": "prosseguir",
-    "toolEsperada": "comercial_pedido_travados_por_etapa"
+    "toolEsperada": "comercial_pedido_travados_por_etapa",
+    "observacao": "Reescrita 2026-06-11 (era placeholder 'Consulta: ...'); pergunta natural derivada da descricao da tool."
   },
   {
     "id": "cov-13",
-    "pergunta": "Consulta: comercial pedidos atrasados",
+    "pergunta": "Quais parcelas de pedidos estao vencidas e nao faturadas, e qual o total atrasado?",
     "dominio": "comercial",
     "classe": "prosseguir",
-    "toolEsperada": "comercial_pedidos_atrasados"
+    "toolEsperada": "comercial_pedidos_atrasados",
+    "observacao": "Reescrita 2026-06-11 (era placeholder 'Consulta: ...'); pergunta natural derivada da descricao da tool."
   },
   {
     "id": "cov-14",
-    "pergunta": "Consulta: comercial pedidos periodo",
+    "pergunta": "Quantos pedidos tivemos neste mes e qual o valor total?",
     "dominio": "comercial",
     "classe": "prosseguir",
-    "toolEsperada": "comercial_pedidos_periodo"
+    "toolEsperada": "comercial_pedidos_periodo",
+    "observacao": "Reescrita 2026-06-11 (era placeholder 'Consulta: ...'); pergunta natural derivada da descricao da tool."
   },
   {
     "id": "cov-15",
-    "pergunta": "Consulta: comercial pedidos por uf",
+    "pergunta": "Como se distribuem os pedidos por estado (UF) dos clientes?",
     "dominio": "comercial",
     "classe": "prosseguir",
-    "toolEsperada": "comercial_pedidos_por_uf"
+    "toolEsperada": "comercial_pedidos_por_uf",
+    "observacao": "Reescrita 2026-06-11 (era placeholder 'Consulta: ...'); pergunta natural derivada da descricao da tool."
   },
   {
     "id": "cov-16",
-    "pergunta": "Consulta: comercial pedidos sem vendedor",
+    "pergunta": "Existem pedidos sem vendedor atribuido? Quais?",
     "dominio": "comercial",
     "classe": "prosseguir",
-    "toolEsperada": "comercial_pedidos_sem_vendedor"
+    "toolEsperada": "comercial_pedidos_sem_vendedor",
+    "observacao": "Reescrita 2026-06-11 (era placeholder 'Consulta: ...'); pergunta natural derivada da descricao da tool."
   },
   {
     "id": "cov-17",
-    "pergunta": "Consulta: comercial produtos por familia",
+    "pergunta": "Quais produtos pertencem a familia de acessorios?",
     "dominio": "comercial",
     "classe": "prosseguir",
-    "toolEsperada": "comercial_produtos_por_familia"
+    "toolEsperada": "comercial_produtos_por_familia",
+    "observacao": "Reescrita 2026-06-11 (era placeholder 'Consulta: ...'); pergunta natural derivada da descricao da tool."
   },
   {
     "id": "cov-18",
-    "pergunta": "Consulta: comercial produtos por margem",
+    "pergunta": "Quais os 10 produtos com maior margem entre preco de venda e custo?",
     "dominio": "comercial",
     "classe": "prosseguir",
-    "toolEsperada": "comercial_produtos_por_margem"
+    "toolEsperada": "comercial_produtos_por_margem",
+    "observacao": "Reescrita 2026-06-11 (era placeholder 'Consulta: ...'); pergunta natural derivada da descricao da tool."
   },
   {
     "id": "cov-19",
-    "pergunta": "Consulta: comercial tempo medio fechamento",
+    "pergunta": "Qual o tempo medio entre o orcamento e a aprovacao dos pedidos concluidos?",
     "dominio": "comercial",
     "classe": "prosseguir",
-    "toolEsperada": "comercial_tempo_medio_fechamento"
+    "toolEsperada": "comercial_tempo_medio_fechamento",
+    "observacao": "Reescrita 2026-06-11 (era placeholder 'Consulta: ...'); pergunta natural derivada da descricao da tool."
   },
   {
     "id": "cov-20",
-    "pergunta": "Consulta: contabil detalhar conta",
+    "pergunta": "Detalha a conta contabil 1.1.1.1: tipo, natureza, nivel e qual e a conta pai.",
     "dominio": "contabil",
     "classe": "prosseguir",
-    "toolEsperada": "contabil_detalhar_conta"
+    "toolEsperada": "contabil_detalhar_conta",
+    "toolsAceitas": [
+      "contabil_estrutura_conta",
+      "contabil_plano_de_contas"
+    ],
+    "observacao": "Reescrita 2026-06-11 (era placeholder 'Consulta: ...'); identificadores reais conferidos no cache. Irmas aceitas: estrutura/plano tambem respondem tipo, nivel e conta pai por completo."
   },
   {
     "id": "cov-21",
-    "pergunta": "Consulta: contabil movimento conta",
+    "pergunta": "Me mostra o razao da conta contabil 1.1.1.1 em maio de 2026, com debitos e creditos.",
     "dominio": "contabil",
     "classe": "prosseguir",
-    "toolEsperada": "contabil_movimento_conta"
+    "toolEsperada": "contabil_movimento_conta",
+    "observacao": "Reescrita 2026-06-11 (era placeholder 'Consulta: ...'); identificadores reais conferidos no cache."
   },
   {
     "id": "cov-22",
-    "pergunta": "Consulta: contabil resultado por natureza",
+    "pergunta": "Qual o resultado contabil do periodo pelas contas de natureza resultado: receita, despesa e saldo?",
     "dominio": "contabil",
     "classe": "prosseguir",
-    "toolEsperada": "contabil_resultado_por_natureza"
+    "toolEsperada": "contabil_resultado_por_natureza",
+    "observacao": "Reescrita 2026-06-11 (era placeholder 'Consulta: ...'); pergunta natural derivada da descricao da tool."
   },
   {
     "id": "cov-23",
-    "pergunta": "Consulta: contabil saldo conta",
+    "pergunta": "Me da o balancete: saldo de debitos e creditos por conta contabil no periodo.",
     "dominio": "contabil",
     "classe": "prosseguir",
-    "toolEsperada": "contabil_saldo_conta"
+    "toolEsperada": "contabil_saldo_conta",
+    "observacao": "Reescrita 2026-06-11 (era placeholder 'Consulta: ...'); pergunta natural derivada da descricao da tool."
   },
   {
     "id": "cov-24",
-    "pergunta": "Consulta: crm pipeline funis",
+    "pergunta": "Quais funis de CRM estao cadastrados e quais estao ativos?",
     "dominio": "crm",
     "classe": "prosseguir",
-    "toolEsperada": "crm_pipeline_funis"
+    "toolEsperada": "crm_pipeline_funis",
+    "observacao": "Reescrita 2026-06-11 (era placeholder 'Consulta: ...'); pergunta natural derivada da descricao da tool."
   },
   {
     "id": "cov-25",
-    "pergunta": "Consulta: crm status dominio",
+    "pergunta": "O modulo de CRM esta operando no nosso Odoo? Qual o status?",
     "dominio": "crm",
     "classe": "prosseguir",
-    "toolEsperada": "crm_status_dominio"
+    "toolEsperada": "crm_status_dominio",
+    "observacao": "Reescrita 2026-06-11 (era placeholder 'Consulta: ...'); pergunta natural derivada da descricao da tool."
   },
   {
     "id": "cov-26",
-    "pergunta": "Consulta: crm res partner get",
+    "pergunta": "Pega o registro bruto (raw) do res.partner de ID 8728 direto do cache.",
     "dominio": "crm.res",
     "classe": "prosseguir",
-    "toolEsperada": "crm.res_partner.get"
+    "toolEsperada": "crm.res_partner.get",
+    "toolsAceitas": [
+      "crm_res_partner_get"
+    ],
+    "observacao": "Reescrita 2026-06-11 (era placeholder 'Consulta: ...'); identificadores reais conferidos no cache. Aceita tambem o nome saneado (a OpenAI proibe ponto em function name; run-agent saneia para crm_res_partner_get)."
   },
   {
     "id": "cov-27",
-    "pergunta": "Consulta: estoque entradas saidas",
+    "pergunta": "Como foi a serie mensal de entradas e saidas de estoque?",
     "dominio": "estoque",
     "classe": "prosseguir",
-    "toolEsperada": "estoque_entradas_saidas"
+    "toolEsperada": "estoque_entradas_saidas",
+    "observacao": "Reescrita 2026-06-11 (era placeholder 'Consulta: ...'); pergunta natural derivada da descricao da tool."
   },
   {
     "id": "cov-28",
-    "pergunta": "Consulta: estoque minimo maximo",
+    "pergunta": "Quais produtos tem estoque minimo e maximo cadastrados, e com quais valores?",
     "dominio": "estoque",
     "classe": "prosseguir",
-    "toolEsperada": "estoque_minimo_maximo"
+    "toolEsperada": "estoque_minimo_maximo",
+    "observacao": "Reescrita 2026-06-11 (era placeholder 'Consulta: ...'); pergunta natural derivada da descricao da tool."
   },
   {
     "id": "cov-29",
-    "pergunta": "Consulta: estoque produtos saldo zero",
+    "pergunta": "Quantos produtos estao com saldo zerado no estoque, somando todos os armazens?",
     "dominio": "estoque",
     "classe": "prosseguir",
-    "toolEsperada": "estoque_produtos_saldo_zero"
+    "toolEsperada": "estoque_produtos_saldo_zero",
+    "observacao": "Reescrita 2026-06-11 (era placeholder 'Consulta: ...'); pergunta natural derivada da descricao da tool."
   },
   {
     "id": "cov-30",
-    "pergunta": "Consulta: financeiro baixas cobranca",
+    "pergunta": "Quais baixas de cobranca bancaria entraram neste mes, com juros e tarifas?",
     "dominio": "financeiro",
     "classe": "prosseguir",
-    "toolEsperada": "financeiro_baixas_cobranca"
+    "toolEsperada": "financeiro_baixas_cobranca",
+    "observacao": "Reescrita 2026-06-11 (era placeholder 'Consulta: ...'); pergunta natural derivada da descricao da tool."
   },
   {
     "id": "cov-31",
-    "pergunta": "Consulta: financeiro carteiras cobranca",
+    "pergunta": "Quais carteiras de cobranca temos cadastradas e de quais bancos?",
     "dominio": "financeiro",
     "classe": "prosseguir",
-    "toolEsperada": "financeiro_carteiras_cobranca"
+    "toolEsperada": "financeiro_carteiras_cobranca",
+    "observacao": "Reescrita 2026-06-11 (era placeholder 'Consulta: ...'); pergunta natural derivada da descricao da tool."
   },
   {
     "id": "cov-32",
-    "pergunta": "Consulta: financeiro cheques",
+    "pergunta": "Tivemos cheques registrados neste ano? De quais bancos e valores?",
     "dominio": "financeiro",
     "classe": "prosseguir",
-    "toolEsperada": "financeiro_cheques"
+    "toolEsperada": "financeiro_cheques",
+    "observacao": "Reescrita 2026-06-11 (era placeholder 'Consulta: ...'); pergunta natural derivada da descricao da tool."
   },
   {
     "id": "cov-33",
-    "pergunta": "Consulta: financeiro liquidez",
+    "pergunta": "Como esta a liquidez da empresa: caixa, a receber, a pagar e os indices?",
     "dominio": "financeiro",
     "classe": "prosseguir",
-    "toolEsperada": "financeiro_liquidez"
+    "toolEsperada": "financeiro_liquidez",
+    "observacao": "Reescrita 2026-06-11 (era placeholder 'Consulta: ...'); pergunta natural derivada da descricao da tool."
   },
   {
     "id": "cov-34",
-    "pergunta": "Consulta: financeiro pix recebidos",
+    "pergunta": "Quais PIX recebemos neste mes e com quais tarifas?",
     "dominio": "financeiro",
     "classe": "prosseguir",
-    "toolEsperada": "financeiro_pix_recebidos"
+    "toolEsperada": "financeiro_pix_recebidos",
+    "observacao": "Reescrita 2026-06-11 (era placeholder 'Consulta: ...'); pergunta natural derivada da descricao da tool."
   },
   {
     "id": "cov-35",
-    "pergunta": "Consulta: financeiro remessas geradas",
+    "pergunta": "Quais remessas bancarias foram geradas neste mes e quais ja foram confirmadas?",
     "dominio": "financeiro",
     "classe": "prosseguir",
-    "toolEsperada": "financeiro_remessas_geradas"
+    "toolEsperada": "financeiro_remessas_geradas",
+    "observacao": "Reescrita 2026-06-11 (era placeholder 'Consulta: ...'); pergunta natural derivada da descricao da tool."
   },
   {
     "id": "cov-36",
-    "pergunta": "Consulta: financeiro resultado por conta",
+    "pergunta": "Como ficou o resultado gerencial por conta: receitas, despesas e saldo?",
     "dominio": "financeiro",
     "classe": "prosseguir",
-    "toolEsperada": "financeiro_resultado_por_conta"
+    "toolEsperada": "financeiro_resultado_por_conta",
+    "observacao": "Reescrita 2026-06-11 (era placeholder 'Consulta: ...'); pergunta natural derivada da descricao da tool."
   },
   {
     "id": "cov-37",
-    "pergunta": "Consulta: financeiro retornos processados",
+    "pergunta": "Quais retornos bancarios foram processados neste mes e com quais totais?",
     "dominio": "financeiro",
     "classe": "prosseguir",
-    "toolEsperada": "financeiro_retornos_processados"
+    "toolEsperada": "financeiro_retornos_processados",
+    "observacao": "Reescrita 2026-06-11 (era placeholder 'Consulta: ...'); pergunta natural derivada da descricao da tool."
   },
   {
     "id": "cov-38",
-    "pergunta": "Consulta: fiscal apuracao",
+    "pergunta": "Quanto temos a recolher de ICMS, IPI, PIS e COFINS nas apuracoes fiscais?",
     "dominio": "fiscal",
     "classe": "prosseguir",
-    "toolEsperada": "fiscal_apuracao"
+    "toolEsperada": "fiscal_apuracao",
+    "observacao": "Reescrita 2026-06-11 (era placeholder 'Consulta: ...'); pergunta natural derivada da descricao da tool."
   },
   {
     "id": "cov-39",
-    "pergunta": "Consulta: fiscal carta correcao",
+    "pergunta": "Houve cartas de correcao emitidas? O que foi corrigido e em qual documento?",
     "dominio": "fiscal",
     "classe": "prosseguir",
-    "toolEsperada": "fiscal_carta_correcao"
+    "toolEsperada": "fiscal_carta_correcao",
+    "observacao": "Reescrita 2026-06-11 (era placeholder 'Consulta: ...'); pergunta natural derivada da descricao da tool."
   },
   {
     "id": "cov-40",
-    "pergunta": "Consulta: fiscal certificados",
+    "pergunta": "Quais certificados digitais das empresas vencem primeiro e quando?",
     "dominio": "fiscal",
     "classe": "prosseguir",
-    "toolEsperada": "fiscal_certificados"
+    "toolEsperada": "fiscal_certificados",
+    "observacao": "Reescrita 2026-06-11 (era placeholder 'Consulta: ...'); pergunta natural derivada da descricao da tool."
   },
   {
     "id": "cov-41",
-    "pergunta": "Consulta: fiscal detalhar nota",
+    "pergunta": "Me detalha a nota fiscal de id 57068: serie, situacao e participante.",
     "dominio": "fiscal",
     "classe": "prosseguir",
-    "toolEsperada": "fiscal_detalhar_nota"
+    "toolEsperada": "fiscal_detalhar_nota",
+    "observacao": "Reescrita 2026-06-11 (era placeholder 'Consulta: ...'); pergunta natural derivada da descricao da tool."
   },
   {
     "id": "cov-42",
-    "pergunta": "Consulta: fiscal dfe importados periodo",
+    "pergunta": "Quais DF-e de fornecedores foram importados neste mes?",
     "dominio": "fiscal",
     "classe": "prosseguir",
-    "toolEsperada": "fiscal_dfe_importados_periodo"
+    "toolEsperada": "fiscal_dfe_importados_periodo",
+    "observacao": "Reescrita 2026-06-11 (era placeholder 'Consulta: ...'); pergunta natural derivada da descricao da tool."
   },
   {
     "id": "cov-43",
-    "pergunta": "Consulta: fiscal dfe por fornecedor",
+    "pergunta": "De quais fornecedores mais chegaram DF-e, ordenado por quantidade?",
     "dominio": "fiscal",
     "classe": "prosseguir",
-    "toolEsperada": "fiscal_dfe_por_fornecedor"
+    "toolEsperada": "fiscal_dfe_por_fornecedor",
+    "observacao": "Reescrita 2026-06-11 (era placeholder 'Consulta: ...'); pergunta natural derivada da descricao da tool."
   },
   {
     "id": "cov-44",
-    "pergunta": "Consulta: fiscal faturamento mensal serie",
+    "pergunta": "Como foi o faturamento mes a mes neste ano?",
     "dominio": "fiscal",
     "classe": "prosseguir",
-    "toolEsperada": "fiscal_faturamento_mensal_serie"
+    "toolEsperada": "fiscal_faturamento_mensal_serie",
+    "observacao": "Reescrita 2026-06-11 (era placeholder 'Consulta: ...'); pergunta natural derivada da descricao da tool."
   },
   {
     "id": "cov-45",
-    "pergunta": "Consulta: fiscal faturamento nao autorizado",
+    "pergunta": "Quanto temos de notas de saida nao autorizadas, e em quais situacoes elas estao?",
     "dominio": "fiscal",
     "classe": "prosseguir",
-    "toolEsperada": "fiscal_faturamento_nao_autorizado"
+    "toolEsperada": "fiscal_faturamento_nao_autorizado",
+    "observacao": "Reescrita 2026-06-11 (era placeholder 'Consulta: ...'); pergunta natural derivada da descricao da tool."
   },
   {
     "id": "cov-46",
-    "pergunta": "Consulta: fiscal faturamento por cfop",
+    "pergunta": "Como se decompoe o faturamento por categoria de operacao fiscal (venda, servico, transferencia)?",
     "dominio": "fiscal",
     "classe": "prosseguir",
-    "toolEsperada": "fiscal_faturamento_por_cfop"
+    "toolEsperada": "fiscal_faturamento_por_cfop",
+    "observacao": "Reescrita 2026-06-11 (era placeholder 'Consulta: ...'); pergunta natural derivada da descricao da tool."
   },
   {
     "id": "cov-47",
-    "pergunta": "Consulta: fiscal faturamento por empresa",
+    "pergunta": "Compara o faturamento autorizado entre as empresas do grupo.",
     "dominio": "fiscal",
     "classe": "prosseguir",
-    "toolEsperada": "fiscal_faturamento_por_empresa"
+    "toolEsperada": "fiscal_faturamento_por_empresa",
+    "observacao": "Reescrita 2026-06-11 (era placeholder 'Consulta: ...'); pergunta natural derivada da descricao da tool."
   },
   {
     "id": "cov-48",
-    "pergunta": "Consulta: fiscal faturamento por marca",
+    "pergunta": "Quais marcas de produto mais faturaram nas notas de saida?",
     "dominio": "fiscal",
     "classe": "prosseguir",
-    "toolEsperada": "fiscal_faturamento_por_marca"
+    "toolEsperada": "fiscal_faturamento_por_marca",
+    "observacao": "Reescrita 2026-06-11 (era placeholder 'Consulta: ...'); pergunta natural derivada da descricao da tool."
   },
   {
     "id": "cov-49",
-    "pergunta": "Consulta: fiscal faturamento por operacao",
+    "pergunta": "Qual o faturamento por natureza de operacao fiscal, separando venda de nao-venda?",
     "dominio": "fiscal",
     "classe": "prosseguir",
-    "toolEsperada": "fiscal_faturamento_por_operacao"
+    "toolEsperada": "fiscal_faturamento_por_operacao",
+    "observacao": "Reescrita 2026-06-11 (era placeholder 'Consulta: ...'); pergunta natural derivada da descricao da tool."
   },
   {
     "id": "cov-50",
-    "pergunta": "Consulta: fiscal faturamento por uf",
+    "pergunta": "Qual o faturamento por estado (UF) dos clientes, do maior para o menor?",
     "dominio": "fiscal",
     "classe": "prosseguir",
-    "toolEsperada": "fiscal_faturamento_por_uf"
+    "toolEsperada": "fiscal_faturamento_por_uf",
+    "observacao": "Reescrita 2026-06-11 (era placeholder 'Consulta: ...'); pergunta natural derivada da descricao da tool."
   },
   {
     "id": "cov-51",
-    "pergunta": "Consulta: fiscal faturamento recebido",
+    "pergunta": "Do que foi faturado, quanto ja recebemos de fato e quanto falta receber, por pedido?",
     "dominio": "fiscal",
     "classe": "prosseguir",
-    "toolEsperada": "fiscal_faturamento_recebido"
+    "toolEsperada": "fiscal_faturamento_recebido",
+    "observacao": "Reescrita 2026-06-11 (era placeholder 'Consulta: ...'); pergunta natural derivada da descricao da tool."
   },
   {
     "id": "cov-52",
-    "pergunta": "Consulta: fiscal mdfe manifestos",
+    "pergunta": "Quais manifestos de transporte (MDF-e) tivemos neste mes e com quais valores?",
     "dominio": "fiscal",
     "classe": "prosseguir",
-    "toolEsperada": "fiscal_mdfe_manifestos"
+    "toolEsperada": "fiscal_mdfe_manifestos",
+    "observacao": "Reescrita 2026-06-11 (era placeholder 'Consulta: ...'); pergunta natural derivada da descricao da tool."
   },
   {
     "id": "cov-53",
-    "pergunta": "Consulta: fiscal notas emitidas por cliente",
+    "pergunta": "Quais notas fiscais emitimos para a Smartfit?",
     "dominio": "fiscal",
     "classe": "prosseguir",
-    "toolEsperada": "fiscal_notas_emitidas_por_cliente"
+    "toolEsperada": "fiscal_notas_emitidas_por_cliente",
+    "observacao": "Reescrita 2026-06-11 (era placeholder 'Consulta: ...'); pergunta natural derivada da descricao da tool."
   },
   {
     "id": "cov-54",
-    "pergunta": "Consulta: fiscal notas emitidas por produto",
+    "pergunta": "Quantas notas de saida contem o produto esteira, e com qual valor agregado?",
     "dominio": "fiscal",
     "classe": "prosseguir",
-    "toolEsperada": "fiscal_notas_emitidas_por_produto"
+    "toolEsperada": "fiscal_notas_emitidas_por_produto",
+    "observacao": "Reescrita 2026-06-11 (era placeholder 'Consulta: ...'); pergunta natural derivada da descricao da tool."
   },
   {
     "id": "cov-55",
-    "pergunta": "Consulta: fiscal notas recebidas",
+    "pergunta": "Quais notas fiscais de entrada recebemos neste mes?",
     "dominio": "fiscal",
     "classe": "prosseguir",
-    "toolEsperada": "fiscal_notas_recebidas"
+    "toolEsperada": "fiscal_notas_recebidas",
+    "observacao": "Reescrita 2026-06-11 (era placeholder 'Consulta: ...'); pergunta natural derivada da descricao da tool."
   },
   {
     "id": "cov-56",
-    "pergunta": "Consulta: fiscal notas recebidas por fornecedor",
+    "pergunta": "Quais fornecedores mais nos venderam, pelo total das notas de entrada?",
     "dominio": "fiscal",
     "classe": "prosseguir",
-    "toolEsperada": "fiscal_notas_recebidas_por_fornecedor"
+    "toolEsperada": "fiscal_notas_recebidas_por_fornecedor",
+    "observacao": "Reescrita 2026-06-11 (era placeholder 'Consulta: ...'); pergunta natural derivada da descricao da tool."
   },
   {
     "id": "cov-57",
-    "pergunta": "Consulta: fiscal produtos faturados",
+    "pergunta": "Quais produtos mais faturaram nas notas de saida, em valor e quantidade?",
     "dominio": "fiscal",
     "classe": "prosseguir",
-    "toolEsperada": "fiscal_produtos_faturados"
+    "toolEsperada": "fiscal_produtos_faturados",
+    "observacao": "Reescrita 2026-06-11 (era placeholder 'Consulta: ...'); pergunta natural derivada da descricao da tool."
   },
   {
     "id": "cov-58",
-    "pergunta": "Consulta: fiscal reinf eventos",
+    "pergunta": "Quais eventos REINF transmitimos neste periodo e em qual situacao estao?",
     "dominio": "fiscal",
     "classe": "prosseguir",
-    "toolEsperada": "fiscal_reinf_eventos"
+    "toolEsperada": "fiscal_reinf_eventos",
+    "observacao": "Reescrita 2026-06-11 (era placeholder 'Consulta: ...'); pergunta natural derivada da descricao da tool."
   },
   {
     "id": "cov-59",
-    "pergunta": "Consulta: preco contar regras",
+    "pergunta": "Quantas regras de preco existem cadastradas no total, somando todas as tabelas?",
     "dominio": "preco",
     "classe": "prosseguir",
-    "toolEsperada": "preco_contar_regras"
+    "toolEsperada": "preco_contar_regras",
+    "observacao": "Reescrita 2026-06-11 (era placeholder 'Consulta: ...'); identificadores reais conferidos no cache."
   },
   {
     "id": "cov-60",
-    "pergunta": "Consulta: preco tabela",
+    "pergunta": "Quais sao as regras da tabela de preco Venda Smart, com valor e vigencia?",
     "dominio": "preco",
     "classe": "prosseguir",
-    "toolEsperada": "preco_tabela"
+    "toolEsperada": "preco_tabela",
+    "observacao": "Reescrita 2026-06-11 (era placeholder 'Consulta: ...'); identificadores reais conferidos no cache."
   },
   {
     "id": "cov-61",
-    "pergunta": "Consulta: producao processos",
+    "pergunta": "Quais processos de producao estao cadastrados e com qual tempo padrao?",
     "dominio": "producao",
     "classe": "prosseguir",
-    "toolEsperada": "producao_processos"
+    "toolEsperada": "producao_processos",
+    "observacao": "Reescrita 2026-06-11 (era placeholder 'Consulta: ...'); pergunta natural derivada da descricao da tool."
   },
   {
     "id": "cov-62",
-    "pergunta": "Consulta: producao status dominio",
+    "pergunta": "O modulo de Producao esta operando no nosso Odoo? Qual o status?",
     "dominio": "producao",
     "classe": "prosseguir",
-    "toolEsperada": "producao_status_dominio"
+    "toolEsperada": "producao_status_dominio",
+    "observacao": "Reescrita 2026-06-11 (era placeholder 'Consulta: ...'); pergunta natural derivada da descricao da tool."
   },
   {
     "id": "cov-63",
-    "pergunta": "Consulta: referencia buscar",
+    "pergunta": "Consulta a tabela de referencia NCM pelo codigo 9506 e me diz o que ela traz.",
     "dominio": "referencia",
     "classe": "prosseguir",
-    "toolEsperada": "referencia_buscar"
+    "toolEsperada": "referencia_buscar",
+    "observacao": "Reescrita 2026-06-11 (era placeholder 'Consulta: ...'); identificadores reais conferidos no cache."
   },
   {
     "id": "cov-64",
-    "pergunta": "Consulta: rh status dominio",
+    "pergunta": "O modulo de RH esta operando no nosso Odoo? Qual o status?",
     "dominio": "rh",
     "classe": "prosseguir",
-    "toolEsperada": "rh_status_dominio"
+    "toolEsperada": "rh_status_dominio",
+    "observacao": "Reescrita 2026-06-11 (era placeholder 'Consulta: ...'); pergunta natural derivada da descricao da tool."
   },
   {
     "id": "cov-65",
-    "pergunta": "Consulta: servico buscar",
+    "pergunta": "Busca no catalogo fiscal de servicos o termo 'hospedagem de dados', com codigo e tributacao.",
     "dominio": "servico",
     "classe": "prosseguir",
-    "toolEsperada": "servico_buscar"
+    "toolEsperada": "servico_buscar",
+    "observacao": "Reescrita 2026-06-11 (era placeholder 'Consulta: ...'); identificadores reais conferidos no cache."
   },
   {
     "id": "cov-66",
-    "pergunta": "Consulta: servico contar",
+    "pergunta": "Quantos servicos existem no catalogo fiscal no total?",
     "dominio": "servico",
     "classe": "prosseguir",
-    "toolEsperada": "servico_contar"
+    "toolEsperada": "servico_contar",
+    "observacao": "Reescrita 2026-06-11 (era placeholder 'Consulta: ...'); pergunta natural derivada da descricao da tool."
   },
   {
     "id": "cov-67",
-    "pergunta": "Consulta: servico listar",
+    "pergunta": "Lista o catalogo de servicos fiscais em ordem de codigo.",
     "dominio": "servico",
     "classe": "prosseguir",
-    "toolEsperada": "servico_listar"
+    "toolEsperada": "servico_listar",
+    "observacao": "Reescrita 2026-06-11 (era placeholder 'Consulta: ...'); pergunta natural derivada da descricao da tool."
   },
   {
     "id": "cov-68",
@@ -1000,9 +1083,7 @@
     "dominio": "cadastros",
     "classe": "prosseguir",
     "toolEsperada": "cadastro_detalhar_produto",
-    "toolsAceitas": [
-      "cadastro_buscar_produto"
-    ],
+    "toolsAceitas": [],
     "observacao": "Caso NCM: pergunta de CADASTRO (nao saldo). termo ambiguo -> listar candidatos."
   },
   {
@@ -1036,5 +1117,432 @@
         "fonteOuro": "SELECT count(*)::float v FROM fato_contabil_conta_referencial"
       }
     ]
+  },
+  {
+    "id": "corte-01",
+    "pergunta": "Qual foi o faturamento de 2025?",
+    "dominio": "fiscal",
+    "classe": "falta_honesta",
+    "toolEsperada": null,
+    "observacao": "Limpa 2026+ T7b: periodo inteiramente pre-corte; resposta honesta (cache so 2026+, dado vive no Odoo), nunca '0 resultados'."
+  },
+  {
+    "id": "corte-02",
+    "pergunta": "Quanto a gente tinha a receber em dezembro de 2024?",
+    "dominio": "financeiro",
+    "classe": "falta_honesta",
+    "toolEsperada": null,
+    "observacao": "Limpa 2026+ T7b: recusa honesta pre-corte; mencionar que 2026+ e consultavel."
+  },
+  {
+    "id": "followup-01",
+    "dominio": "fiscal",
+    "classe": "prosseguir",
+    "turnosAntes": [
+      "Qual o faturamento deste mes?"
+    ],
+    "pergunta": "E do mes passado?",
+    "toolEsperada": "fiscal_faturamento_periodo",
+    "observacao": "Follow-up contextual (regra 12): reusa a tool do turno anterior ajustando so o periodo. Irma aceita: se o turno 1 respondeu com receita_consolidada, reusar a MESMA tool no follow-up e o comportamento correto da regra 12.",
+    "toolsAceitas": [
+      "fiscal_receita_consolidada"
+    ]
+  },
+  {
+    "id": "followup-02",
+    "dominio": "financeiro",
+    "classe": "prosseguir",
+    "turnosAntes": [
+      "Quanto temos a receber em aberto?"
+    ],
+    "pergunta": "E a pagar?",
+    "toolEsperada": "financeiro_contas_a_pagar",
+    "observacao": "Follow-up contextual: troca o eixo (receber -> pagar) mantendo o recorte."
+  },
+  {
+    "id": "followup-03",
+    "dominio": "estoque",
+    "classe": "prosseguir",
+    "turnosAntes": [
+      "Qual o saldo do produto esteira em estoque?"
+    ],
+    "pergunta": "E o preco dela?",
+    "toolEsperada": "preco_produto",
+    "observacao": "Follow-up contextual: 'dela' resolve para o produto do turno anterior (esteira)."
+  },
+  {
+    "id": "demo-01",
+    "dominio": "fiscal",
+    "classe": "prosseguir",
+    "pergunta": "Qual o faturamento de operacoes de demonstracao e quantas notas fiscais emitimos por UF este ano?",
+    "toolEsperada": "fiscal_demonstracoes",
+    "kpiOuro": [
+      {
+        "chave": "nNotasRemessa",
+        "valor": 89,
+        "match": "exato",
+        "fonteOuro": "COUNT DISTINCT documento_id CFOP 5912/6912 autorizada 2026",
+        "fonteOuroSql": "SELECT COUNT(DISTINCT documento_id)::float v FROM fato_nota_fiscal_item WHERE situacao_nfe='autorizada' AND substring(cfop_nome from '^[0-9]{4}') IN ('5912','6912') AND data_emissao >= '2026-01-01'"
+      }
+    ],
+    "observacao": "Cobertura Cliente pergunta 2 literal. Ressalva remessa != receita obrigatoria na resposta."
+  },
+  {
+    "id": "demo-02",
+    "dominio": "fiscal",
+    "classe": "prosseguir",
+    "pergunta": "Quanto ja retornou de demonstracao este ano?",
+    "toolEsperada": "fiscal_demonstracoes",
+    "kpiOuro": [
+      {
+        "chave": "nNotasRetorno",
+        "valor": 40,
+        "match": "exato",
+        "fonteOuro": "COUNT DISTINCT documento_id CFOP 1913/2913 autorizada 2026",
+        "fonteOuroSql": "SELECT COUNT(DISTINCT documento_id)::float v FROM fato_nota_fiscal_item WHERE situacao_nfe='autorizada' AND substring(cfop_nome from '^[0-9]{4}') IN ('1913','2913') AND data_emissao >= '2026-01-01'"
+      }
+    ],
+    "observacao": "Retorno de demonstracao pareia com a remessa (5912/6912 <-> 1913/2913)."
+  },
+  {
+    "id": "demo-03",
+    "dominio": "estoque",
+    "classe": "prosseguir",
+    "pergunta": "Qual o valor total de estoque em demonstracao?",
+    "toolEsperada": "estoque_valor_armazem",
+    "volatil": true,
+    "kpiOuro": [
+      {
+        "chave": "valorTotal",
+        "valor": 1855763.5,
+        "match": "centavos",
+        "fonteOuro": "sum vr_saldo subarvore Terceiros / Demonstração",
+        "fonteOuroSql": "SELECT COALESCE(sum(s.vr_saldo),0)::float v FROM fato_estoque_saldo s JOIN raw_estoque_local l ON l.odoo_id = s.local_id WHERE l.data->>'nome_completo' LIKE 'Terceiros / Demonstração%' AND s.vr_saldo > 0"
+      }
+    ],
+    "observacao": "Cobertura Cliente pergunta 8 literal. Locais Demo vivem sob Terceiros (nunca filtrar por termo solto)."
+  },
+  {
+    "id": "estoq-fis-01",
+    "dominio": "estoque",
+    "classe": "prosseguir",
+    "pergunta": "Qual o valor total de estoque considerando apenas os estoques fisicos?",
+    "toolEsperada": "estoque_valor_armazem",
+    "volatil": true,
+    "kpiOuro": [
+      {
+        "chave": "valorTotal",
+        "valor": 37399967.01,
+        "match": "centavos",
+        "fonteOuro": "sum vr_saldo subarvore Próprio",
+        "fonteOuroSql": "SELECT COALESCE(sum(s.vr_saldo),0)::float v FROM fato_estoque_saldo s JOIN raw_estoque_local l ON l.odoo_id = s.local_id WHERE l.data->>'nome_completo' LIKE 'Próprio%' AND s.vr_saldo > 0"
+      }
+    ],
+    "observacao": "Cobertura Cliente pergunta 7 literal. Fisico = subarvore Próprio (exclui Virtual e Terceiros)."
+  },
+  {
+    "id": "estoq-loc-01",
+    "dominio": "estoque",
+    "classe": "prosseguir",
+    "pergunta": "Quanto temos de estoque, em valor, no local Vendas?",
+    "toolEsperada": "estoque_valor_armazem",
+    "observacao": "Derivada: filtro por local especifico via prefixo da arvore."
+  },
+  {
+    "id": "demo-04",
+    "dominio": "fiscal",
+    "classe": "prosseguir",
+    "pergunta": "Quantas notas de remessa para demonstracao emitimos por empresa este ano?",
+    "toolEsperada": "fiscal_demonstracoes",
+    "observacao": "Derivada: dimensao empresa do recorte demonstracao."
+  },
+  {
+    "id": "cnpj-01",
+    "dominio": "fiscal",
+    "classe": "prosseguir",
+    "pergunta": "Qual o faturamento de venda por CNPJ este ano?",
+    "toolEsperada": "fiscal_faturamento_por_cliente",
+    "observacao": "Cobertura Cliente pergunta 1 literal. Resposta deve exibir CNPJs (raiz ou completo)."
+  },
+  {
+    "id": "cnpj-02",
+    "dominio": "fiscal",
+    "classe": "prosseguir",
+    "pergunta": "Faturamento por raiz de CNPJ, agregando matriz e filiais, este ano",
+    "toolEsperada": "fiscal_faturamento_por_cliente",
+    "observacao": "Derivada: agruparPor cnpj_raiz."
+  },
+  {
+    "id": "prodemp-01",
+    "dominio": "fiscal",
+    "classe": "prosseguir",
+    "pergunta": "Venda do produto esteira por empresa e o CMV",
+    "toolEsperada": "fiscal_vendas_produto_por_empresa",
+    "observacao": "Cobertura Cliente pergunta 4 literal. CMV aproximado com cobertura na resposta."
+  },
+  {
+    "id": "prodemp-02",
+    "dominio": "fiscal",
+    "classe": "prosseguir",
+    "pergunta": "Quantas unidades do produto anilha vendemos por empresa este ano?",
+    "toolEsperada": "fiscal_vendas_produto_por_empresa",
+    "observacao": "Derivada: quantidade por empresa."
+  },
+  {
+    "id": "peduf-01",
+    "dominio": "comercial",
+    "classe": "prosseguir",
+    "pergunta": "Quantidade de pedidos emitidos de operacao de venda por UF",
+    "toolEsperada": "comercial_pedidos_por_uf",
+    "observacao": "Cobertura Cliente pergunta 5 literal. Filtro operacao venda (sufixo do nome)."
+  },
+  {
+    "id": "fonte-01",
+    "pergunta": "Qual o seguimento que mais temos orcamentos? (Residencial, Condominio, Hotel, Academia)",
+    "dominio": "comercial",
+    "classe": "falta_honesta",
+    "toolEsperada": null,
+    "observacao": "Pergunta 6 literal do cliente: gap de DIMENSAO , responde os orcamentos que existem e explica que segmento nao e cadastrado. Espera robusta: o mini varia o fraseado (seguimento/segmento; com/sem o N de orcamentos), mas SEMPRE cita o cadastro como fonte.",
+    "proibidoNaResposta": [
+      "defeito",
+      "erro da plataforma"
+    ],
+    "esperaNaResposta": [
+      "cadastr"
+    ]
+  },
+  {
+    "id": "fonte-02",
+    "pergunta": "Como esta a prospeccao este mes?",
+    "dominio": "crm",
+    "classe": "falta_honesta",
+    "toolEsperada": null,
+    "observacao": "Modulo CRM/prospeccao vazio: resposta de fonte via status_dominio.",
+    "proibidoNaResposta": [
+      "defeito",
+      "erro da plataforma"
+    ],
+    "esperaNaResposta": [
+      "prospec"
+    ]
+  },
+  {
+    "id": "fonte-03",
+    "pergunta": "Quantos leads novos tivemos este mes?",
+    "dominio": "crm",
+    "classe": "falta_honesta",
+    "toolEsperada": null,
+    "observacao": "Leads = CRM vazio. Espera ajustada pela resposta real (cita CRM nao operado, 0 registros).",
+    "proibidoNaResposta": [
+      "defeito",
+      "erro da plataforma"
+    ],
+    "esperaNaResposta": [
+      "crm"
+    ]
+  },
+  {
+    "id": "fonte-04",
+    "pergunta": "Qual foi o CMV contabil real do ultimo trimestre?",
+    "dominio": "contabil",
+    "classe": "falta_honesta",
+    "toolEsperada": null,
+    "observacao": "CMV contabil inexiste (contabilidade nao operada); o aproximado existe em outra tool.",
+    "proibidoNaResposta": [
+      "defeito",
+      "erro da plataforma"
+    ],
+    "esperaNaResposta": [
+      "contab"
+    ]
+  },
+  {
+    "id": "fonte-05",
+    "pergunta": "Qual o NPS dos nossos clientes?",
+    "dominio": "cadastros",
+    "classe": "falta_honesta",
+    "toolEsperada": null,
+    "observacao": "Metrica inexistente no sistema: lacuna honesta, sem recusa seca.",
+    "proibidoNaResposta": [
+      "defeito",
+      "erro da plataforma"
+    ]
+  },
+  {
+    "id": "fonte-06",
+    "pergunta": "Quantos funcionarios temos cadastrados no RH?",
+    "dominio": "rh",
+    "classe": "falta_honesta",
+    "toolEsperada": null,
+    "observacao": "Modulo RH vazio.",
+    "proibidoNaResposta": [
+      "defeito",
+      "erro da plataforma"
+    ],
+    "esperaNaResposta": [
+      "RH"
+    ]
+  },
+  {
+    "id": "fonte-07",
+    "pergunta": "Quais clientes sao do segmento Academia?",
+    "dominio": "cadastros",
+    "classe": "falta_honesta",
+    "toolEsperada": null,
+    "observacao": "Campo segmento nao cadastrado no parceiro.",
+    "proibidoNaResposta": [
+      "defeito",
+      "erro da plataforma"
+    ],
+    "esperaNaResposta": [
+      "cadastr"
+    ]
+  },
+  {
+    "id": "fonte-08",
+    "pergunta": "Quantas ordens de producao estao em andamento?",
+    "dominio": "producao",
+    "classe": "falta_honesta",
+    "toolEsperada": null,
+    "observacao": "Modulo producao vazio.",
+    "proibidoNaResposta": [
+      "defeito",
+      "erro da plataforma"
+    ],
+    "esperaNaResposta": [
+      "produc"
+    ]
+  },
+  {
+    "id": "fonte-09",
+    "pergunta": "Quanto recebemos em cheques este ano?",
+    "dominio": "financeiro",
+    "classe": "falta_honesta",
+    "toolEsperada": null,
+    "observacao": "Cheques nao operados no sistema; tool responde honesto.",
+    "proibidoNaResposta": [
+      "defeito",
+      "erro da plataforma"
+    ],
+    "esperaNaResposta": [
+      "cheque"
+    ]
+  },
+  {
+    "id": "fonte-10",
+    "pergunta": "Qual o lucro liquido do grupo este ano?",
+    "dominio": "contabil",
+    "classe": "falta_honesta",
+    "toolEsperada": null,
+    "observacao": "DRE/lucro exige contabilidade, nao operada; margem aproximada e outra coisa.",
+    "proibidoNaResposta": [
+      "defeito",
+      "erro da plataforma"
+    ],
+    "esperaNaResposta": [
+      "contab"
+    ]
+  },
+  {
+    "id": "fonte-11",
+    "pergunta": "Qual a comissao paga por arquiteto parceiro?",
+    "dominio": "comercial",
+    "classe": "falta_honesta",
+    "toolEsperada": null,
+    "observacao": "Dimensao 'arquiteto parceiro' inexistente: lacuna honesta sem recusa seca.",
+    "proibidoNaResposta": [
+      "defeito",
+      "erro da plataforma"
+    ]
+  },
+  {
+    "id": "fonte-12",
+    "pergunta": "Quantos PIX recebemos em maio?",
+    "dominio": "financeiro",
+    "classe": "falta_honesta",
+    "toolEsperada": null,
+    "observacao": "PIX nao operado no sistema; tool responde honesto.",
+    "proibidoNaResposta": [
+      "defeito",
+      "erro da plataforma"
+    ],
+    "esperaNaResposta": [
+      "PIX"
+    ]
+  },
+  {
+    "id": "deriv-01",
+    "pergunta": "Quanto temos de estoque em poder de terceiros?",
+    "dominio": "estoque",
+    "classe": "prosseguir",
+    "toolEsperada": "estoque_valor_armazem",
+    "observacao": "Derivada: subarvore Terceiros."
+  },
+  {
+    "id": "deriv-02",
+    "pergunta": "Qual o valor de estoque no local Virtual?",
+    "dominio": "estoque",
+    "classe": "prosseguir",
+    "toolEsperada": "estoque_valor_armazem",
+    "observacao": "Derivada: local Virtual."
+  },
+  {
+    "id": "deriv-03",
+    "pergunta": "Remessas de demonstracao mes a mes este ano",
+    "dominio": "fiscal",
+    "classe": "prosseguir",
+    "toolEsperada": "fiscal_demonstracoes",
+    "observacao": "Derivada: dimensao mes."
+  },
+  {
+    "id": "deriv-04",
+    "pergunta": "Qual UF mais recebeu remessas de demonstracao?",
+    "dominio": "fiscal",
+    "classe": "prosseguir",
+    "toolEsperada": "fiscal_demonstracoes",
+    "observacao": "Derivada: top UF do recorte."
+  },
+  {
+    "id": "deriv-05",
+    "pergunta": "Qual o faturamento do cliente Corpo e Saude este ano?",
+    "dominio": "fiscal",
+    "classe": "prosseguir",
+    "toolEsperada": "fiscal_faturamento_por_cliente",
+    "observacao": "Derivada: cliente especifico por nome. GAP registrado: filtrar cliente por CNPJ exato ainda nao tem caminho direto (onda futura).",
+    "toolsAceitas": [
+      "fiscal_notas_emitidas_por_cliente"
+    ]
+  },
+  {
+    "id": "deriv-06",
+    "pergunta": "Quantas unidades do produto esteira vendemos por mes este ano?",
+    "dominio": "fiscal",
+    "classe": "prosseguir",
+    "toolEsperada": "fiscal_notas_emitidas_por_produto",
+    "observacao": "Derivada: produto por periodo (tool existente)."
+  },
+  {
+    "id": "deriv-07",
+    "pergunta": "Pedidos de operacao de venda abertos por UF",
+    "dominio": "comercial",
+    "classe": "prosseguir",
+    "toolEsperada": "comercial_pedidos_por_uf",
+    "observacao": "Derivada: venda + status aberto."
+  },
+  {
+    "id": "deriv-08",
+    "pergunta": "Qual a margem aproximada do grupo este ano?",
+    "dominio": "fiscal",
+    "classe": "prosseguir",
+    "toolEsperada": "fiscal_margem_aproximada",
+    "observacao": "Derivada: margem aproximada (com ressalva propria da tool). Por familia ainda nao e suportado (lacuna honesta)."
+  },
+  {
+    "id": "deriv-09",
+    "pergunta": "Quantos orcamentos abertos temos no momento?",
+    "dominio": "comercial",
+    "classe": "prosseguir",
+    "toolEsperada": "comercial_pedidos_por_etapa",
+    "observacao": "Derivada: a METRICA de orcamentos existe (parte boa da pergunta 6)."
   }
 ]

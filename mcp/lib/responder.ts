@@ -409,6 +409,15 @@ const fmtProdutosSaldoZero: FormatadorCanonico = (env) => {
 const fmtValorArmazem: FormatadorCanonico = (env) => {
   const valor = Number(env._DESTAQUE?.valorTotal ?? 0);
   const n = Number(env._DESTAQUE?.contagemArmazens ?? 0);
+  // Cobertura Cliente A6: a resposta SEMPRE nomeia os locais cobertos quando
+  // ha filtro de arvore (fisico/demonstracao/terceiros/local especifico).
+  const escopo = env._DESTAQUE?.escopoLocais ? String(env._DESTAQUE.escopoLocais) : "";
+  if (escopo && escopo !== "todos os locais") {
+    if (valor === 0 && n === 0) {
+      return `Nao ha estoque com valor nos locais filtrados (${escopo}).`;
+    }
+    return `Valor em estoque nos locais "${escopo}": ${formatBRL(valor)} em ${n} local(is)/armazem(ns).`;
+  }
   return `Valor total em estoque: ${formatBRL(valor)} em ${n} armazens.`;
 };
 
@@ -1739,6 +1748,48 @@ const fmtServicoListar: FormatadorCanonico = (env) => {
   return `${total} ${plural} no catalogo fiscal.`;
 };
 
+// Cobertura Cliente A4 (2026-06-11): recorte demonstração , a ressalva
+// "remessa != receita" é FIXA na resposta (criterio de aceite #7 da spec).
+const fmtDemonstracoes: FormatadorCanonico = (env) => {
+  const vrRemessa = Number(env._DESTAQUE?.vrRemessa ?? 0);
+  const nRemessa = Number(env._DESTAQUE?.nNotasRemessa ?? 0);
+  const vrRetorno = Number(env._DESTAQUE?.vrRetorno ?? 0);
+  const nRetorno = Number(env._DESTAQUE?.nNotasRetorno ?? 0);
+  const dim = String(env._DESTAQUE?.agruparPor ?? "uf");
+  if (nRemessa === 0 && nRetorno === 0) {
+    return "Nao ha notas de demonstracao no periodo.";
+  }
+  const dimLabel = dim === "uf" ? "UF" : dim === "empresa" ? "empresa" : "mes";
+  return (
+    `Remessas para demonstracao no periodo: ${formatBRL(vrRemessa)} em ${nRemessa} ` +
+    `nota(s), detalhadas por ${dimLabel} nas linhas. Retornos de demonstracao: ` +
+    `${formatBRL(vrRetorno)} em ${nRetorno} nota(s). Importante: e valor de REMESSA ` +
+    `(a mercadoria pode retornar), nao e receita de venda.`
+  );
+};
+
+// Cobertura Cliente B4: vendas de produto por empresa com CMV aproximado.
+const fmtVendasProdutoPorEmpresa: FormatadorCanonico = (env) => {
+  const produto = String(env._DESTAQUE?.produtoLabel ?? "produto");
+  const qtd = Number(env._DESTAQUE?.quantidadeTotal ?? 0);
+  const valor = Number(env._DESTAQUE?.valorVendaTotal ?? 0);
+  const notas = Number(env._DESTAQUE?.nNotasTotal ?? 0);
+  const cmv = Number(env._DESTAQUE?.cmvAproximadoTotal ?? 0);
+  const cobertura = Number(env._DESTAQUE?.coberturaCustoPct ?? 0);
+  const empresas = Number(env._DESTAQUE?.empresas ?? 0);
+  if (notas === 0) {
+    return `Nao ha vendas de '${produto}' no periodo.`;
+  }
+  const cmvStr =
+    cmv > 0
+      ? ` CMV aproximado: ${formatBRL(cmv)} (custo de tabela, nao contabil; cobre ${cobertura.toFixed(0)}% das unidades).`
+      : " Nao ha custo de tabela cadastrado para estimar o CMV.";
+  return (
+    `Vendas de ${produto}: ${qtd.toLocaleString("pt-BR")} unidade(s), ${formatBRL(valor)} ` +
+    `em ${notas} nota(s), distribuidas por ${empresas} empresa(s) (detalhe nas linhas).${cmvStr}`
+  );
+};
+
 // === F4 Onda 4 (ultimos 4: certificados/carta_correcao enriquecidos no handler;
 //     mdfe espelho; crm.res_partner.get formatador minimo p/ contrato) ===
 const fmtFiscalCertificados: FormatadorCanonico = (env) => {
@@ -2022,6 +2073,8 @@ const FORMATADORES: Record<string, FormatadorCanonico> = {
   "fiscal_detalhar_nota": fmtFiscalDetalharNota,
   "fiscal_faturamento_por_marca": fmtFiscalFaturamentoPorMarca,
   "fiscal_faturamento_por_uf": fmtFiscalFaturamentoPorUf,
+  "fiscal_demonstracoes": fmtDemonstracoes,
+  "fiscal_vendas_produto_por_empresa": fmtVendasProdutoPorEmpresa,
   "fiscal_certificados": fmtFiscalCertificados,
   "fiscal_carta_correcao": fmtFiscalCartaCorrecao,
   "fiscal_mdfe_manifestos": fmtMdfeManifestos,

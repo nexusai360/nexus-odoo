@@ -30,6 +30,8 @@ interface GoldenEntry {
   dominio: string;
   classe: string;
   toolEsperada: string;
+  /** Follow-up contextual: turnos anteriores na mesma conversa (nao avaliados). */
+  turnosAntes?: string[];
   /** Tools alternativas que também respondem a pergunta por completo. */
   toolsAceitas?: string[];
   kpiOuro?: {
@@ -42,7 +44,17 @@ interface GoldenEntry {
     fonteOuroSql?: string;
   }[];
   esperaAmbiguidade?: boolean;
+  /** Onda C: avaliacao da resposta. Casos com esperaNaResposta entram
+   *  OBRIGATORIAMENTE na amostra (como os comOuro). */
+  esperaNaResposta?: string[];
+  proibidoNaResposta?: string[];
 }
+
+/** Comparacao de substring tolerante a caixa e acento. */
+function normalizaTexto(s: string): string {
+  return s.normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase();
+}
+const PROIBIDO_GLOBAL = ["não consigo te responder", "nao foi possivel obter"];
 
 interface CaseResult {
   id: string;
@@ -53,6 +65,9 @@ interface CaseResult {
   kpiOk: boolean | null;
   kpiMiss: string[];
   halucNums: number[];
+  /** Onda C: avaliacao da resposta (esperaNaResposta/proibidoNaResposta). */
+  respostaOk: boolean | null;
+  respostaMiss: string[];
   custoUsd: number;
   durMs: number;
   erro?: string;
@@ -107,6 +122,22 @@ async function rodarCaso(
   const toolPreviews: string[] = [];
   try {
     const conv = await createConversation(userId, "backtest");
+    // Follow-up contextual: turnos anteriores rodam na MESMA conversa sem
+    // serem avaliados; so o turno final (e.pergunta) conta tools/kpi.
+    for (const turno of e.turnosAntes ?? []) {
+      const prev = await runAgent({
+        conversationId: conv.id,
+        userId,
+        userMessage: turno,
+        channel: "backtest",
+        isPlayground: false,
+        source: "bubble",
+        llmOverride: llm,
+      });
+      if (!prev.ok) {
+        return { id: e.id, dominio: e.dominio, ok: false, toolsCalled, toolOk: null, kpiOk: null, kpiMiss: [], halucNums: [], respostaOk: null, respostaMiss: [], custoUsd: 0, durMs: performance.now() - t0, erro: `turnoAntes falhou: ${prev.error}` };
+      }
+    }
     const r = await runAgent({
       conversationId: conv.id,
       userId,
@@ -125,7 +156,7 @@ async function rodarCaso(
     });
     const durMs = performance.now() - t0;
     if (!r.ok) {
-      return { id: e.id, dominio: e.dominio, ok: false, toolsCalled, toolOk: null, kpiOk: null, kpiMiss: [], halucNums: [], custoUsd: 0, durMs, erro: r.error };
+      return { id: e.id, dominio: e.dominio, ok: false, toolsCalled, toolOk: null, kpiOk: null, kpiMiss: [], halucNums: [], respostaOk: null, respostaMiss: [], custoUsd: 0, durMs, erro: r.error };
     }
     // custo end-to-end: TODAS as linhas de LlmUsage da conversa (loop + enhance +
     // guardrail + auto_validator + router) , conversa é nova, então é só somar.
@@ -182,9 +213,29 @@ async function rodarCaso(
         }
       }
     }
-    return { id: e.id, dominio: e.dominio, ok: true, toolsCalled, toolOk, kpiOk, kpiMiss, halucNums, custoUsd, durMs };
+    // Onda C: avaliacao da resposta (qualquer classe). Todas as esperadas
+    // presentes; nenhuma proibida (locais + default global de recusa seca).
+    let respostaOk: boolean | null = null;
+    const respostaMiss: string[] = [];
+    if (e.esperaNaResposta?.length || e.proibidoNaResposta?.length) {
+      const resp = normalizaTexto(r.message ?? "");
+      respostaOk = true;
+      for (const esp of e.esperaNaResposta ?? []) {
+        if (!resp.includes(normalizaTexto(esp))) {
+          respostaOk = false;
+          respostaMiss.push(`faltou:${esp}`);
+        }
+      }
+      for (const pro of [...(e.proibidoNaResposta ?? []), ...PROIBIDO_GLOBAL]) {
+        if (resp.includes(normalizaTexto(pro))) {
+          respostaOk = false;
+          respostaMiss.push(`proibido:${pro}`);
+        }
+      }
+    }
+    return { id: e.id, dominio: e.dominio, ok: true, toolsCalled, toolOk, kpiOk, kpiMiss, halucNums, respostaOk, respostaMiss, custoUsd, durMs };
   } catch (err) {
-    return { id: e.id, dominio: e.dominio, ok: false, toolsCalled, toolOk: null, kpiOk: null, kpiMiss: [], halucNums: [], custoUsd: 0, durMs: performance.now() - t0, erro: String(err).slice(0, 200) };
+    return { id: e.id, dominio: e.dominio, ok: false, toolsCalled, toolOk: null, kpiOk: null, kpiMiss: [], halucNums: [], respostaOk: null, respostaMiss: [], custoUsd: 0, durMs: performance.now() - t0, erro: String(err).slice(0, 200) };
   }
 }
 
@@ -220,26 +271,38 @@ async function main() {
   );
   // amostra estratificada: TODOS os kpiOuro + distribui o resto por domínio.
   const comOuro = golden.filter((e) => e.kpiOuro?.length);
-  const semOuro = golden.filter((e) => !e.kpiOuro?.length && e.classe === "prosseguir");
+  // Onda C: casos com avaliacao de resposta sao inclusao OBRIGATORIA (como os
+  // comOuro) , nunca disputam o round-robin, senao o aceite de honestidade
+  // fica nao-deterministico.
+  const comEspera = golden.filter(
+    (e) => !e.kpiOuro?.length && (e.esperaNaResposta?.length || e.proibidoNaResposta?.length),
+  );
+  const semOuro = golden.filter(
+    (e) =>
+      !e.kpiOuro?.length &&
+      !e.esperaNaResposta?.length &&
+      !e.proibidoNaResposta?.length &&
+      e.classe === "prosseguir",
+  );
   const porDominio = new Map<string, GoldenEntry[]>();
   for (const e of semOuro) {
     porDominio.set(e.dominio, [...(porDominio.get(e.dominio) ?? []), e]);
   }
   const resto: GoldenEntry[] = [];
   let rodada = 0;
-  while (resto.length < limit - comOuro.length) {
+  while (resto.length < limit - comOuro.length - comEspera.length) {
     let pegou = false;
     for (const lista of porDominio.values()) {
       if (lista[rodada]) {
         resto.push(lista[rodada]);
         pegou = true;
-        if (resto.length >= limit - comOuro.length) break;
+        if (resto.length >= limit - comOuro.length - comEspera.length) break;
       }
     }
     if (!pegou) break;
     rodada++;
   }
-  const casos = [...comOuro, ...resto];
+  const casos = [...comOuro, ...comEspera, ...resto];
   console.log(`[ab] ${casos.length} casos (${comOuro.length} com kpiOuro), concurrency=${concurrency}`);
 
   const user = await prisma.user.findFirst({
@@ -274,6 +337,12 @@ async function main() {
       kpiOuro: kpiScored.length
         ? `${kpiScored.filter((r) => r.kpiOk).length}/${kpiScored.length}`
         : "n/a",
+      respostaOk: (() => {
+        const scored = okRuns.filter((r) => r.respostaOk !== null);
+        return scored.length
+          ? `${scored.filter((r) => r.respostaOk).length}/${scored.length}`
+          : "n/a";
+      })(),
       casosComSuspeitaAlucinacao: `${haluc.length}/${okRuns.length}`,
       custoP50Usd: p50(okRuns.map((r) => r.custoUsd)).toFixed(4),
       custoTotalUsd: okRuns.reduce((s, r) => s + r.custoUsd, 0).toFixed(2),

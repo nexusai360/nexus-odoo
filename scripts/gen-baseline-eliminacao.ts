@@ -8,12 +8,13 @@ import { receitaConsolidada } from "@/lib/metrics/fiscal/receita-consolidada";
 import { writeFileSync } from "node:fs";
 
 interface Periodo { rotulo: string; de?: string; ate?: string; }
+// Limpa 2026+ T8: o cache so guarda 2026+; periodos pre-2026 sairam (historico no git).
+// ATENCAO: rodado ANTES do purge, o ACUMULADO ainda inclui pre-2026 e fixaria um gate
+// impossivel. Ordem certa: re-rodar este script DEPOIS do apply do purge (T9), ou usar
+// como piso o valor de "2026 (ate jun)" (acumulado pos-corte >= 2026 sempre).
 const periodos: Periodo[] = [
-  { rotulo: "2023", de: "2023-01-01", ate: "2023-12-31" },
-  { rotulo: "2024", de: "2024-01-01", ate: "2024-12-31" },
-  { rotulo: "2025", de: "2025-01-01", ate: "2025-12-31" },
   { rotulo: "2026 (ate jun)", de: "2026-01-01", ate: "2026-06-30" },
-  { rotulo: "ACUMULADO (13 anos)", de: undefined, ate: undefined },
+  { rotulo: "ACUMULADO (pos-corte 2026+)", de: undefined, ate: undefined },
 ];
 
 async function main() {

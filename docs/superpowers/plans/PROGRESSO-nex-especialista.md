@@ -88,12 +88,185 @@ Cada fase: plano próprio (bite-sized) + 2 reviews quando material → execuçã
       (contabil_estrutura x plano; cidades_listar x parceiros_por_cidade ,
       toolsAceitas). TODOS os casos reais de usuario passam. kpi 5/6 (1 flake de
       formatacao do mini no 10-maiores , reforca A2). custo p50 caiu 0,55->0,48c.
-- [ ] **PROXIMA SESSAO:** (adicionar: reescrever os ~8 cov-* placeholder do
-      golden como perguntas naturais com identificadores; toolsAceitas nas
-      tools irmas) Fase D (prompt 2.0 enxuto + remover regras-curativo),
-      follow-up contextual no golden, golden gate pre-push, A2 (A/B Claude ,
-      exige usuario creditar OpenRouter; slugs: anthropic/claude-sonnet-4.6,
-      opus-4.7, opus-4.8).
+- [x] **Onda 3 EM PRODUCAO**: fix do "papagaio engessado" (regra 5b de
+      contestacao + skip V3/V5 via CONTESTACAO_RE + ressalva de cobertura em
+      filiais_listar). E2E final PENDENTE de quota OpenAI.
+- [!] **BLOQUEIO OPERACIONAL: conta OpenAI insufficient_quota (saldo estourou
+      2026-06-11 ~12h). O Nex esta SEM LLM em prod e dev ate o usuario
+      recarregar.** Ao recarregar: rodar E2E do fix de contestacao (caso
+      filiais do log) + smoke bubble.
+- [x] **LIMPA 2026+ (prioridade maxima do usuario): SPEC v3 PRONTA**
+      (docs/superpowers/specs/2026-06-11-limpa-2026-design.md), 2 reviews
+      adversariais aplicadas (4 BLOCKERs: titulo vivo R$118mi por SITUACAO
+      nunca data; filtro AND no incremental; snapshot dominio vazio + CR-02;
+      DELETE fisico + VACUUM FULL). Inventario tabela a tabela MEDIDO no doc.
+      **PLAN v3 PRONTO** (plans/2026-06-11-limpa-2026-plan.md): 2 reviews
+      adversariais aplicadas (8 BLOCKERs: chave raw e situacao_divida_simples;
+      'efetivo'=VIVO nunca deleta; FK filho e many2one array ->0; lote_serie
+      2,9GB e BLOAT (vacuum sem delete = maior ganho); backfill since=null;
+      assinaturas syncSnapshot/reconcileModel; stop worker vence
+      unless-stopped; DELETE em lotes). **EXECUCAO INICIADA: T1-scaffolding (bc4036b) + T1a parcial 8 modelos
+      verificados (3219d7c) + T1c titulo (5b3d394) + T1b 5 filhos SPED com FK
+      verificada (7a4af24; rastreabilidade->ITEM via item_id; modelo "volume"
+      nao esta no catalogo , conferir; pedido.documento data_orcamento validar
+      no T3). FALTA: resto T1a (inventario/carta/pagamento_divida/estoque_
+      rastreabilidade), T1d lista negativa + teste de conjunto, T2..T11.
+      T1d FEITO (gate 6 testes, 9d45240). T2a/b/c FEITOS (eead7e1: corte.ts +
+      clausula nos 3 ciclos; titulo sem clausula de proposito).
+      **ALERTA DE ORDEM (review #2.8, agora real no codigo): NAO rebuildar o
+      worker (dev) nem ship antes do pg_dump do T9 pre-flight , estoque.extrato
+      e snapshot COM corte: o 1o full-refresh pos-deploy purga as linhas
+      pre-2026 SEM rede de seguranca. Ordem: pg_dump -> deploy -> ciclos.**
+      T3 FEITO: 8/8 campos validados AO VIVO no Odoo (valida-campos-odoo.ts;
+      pedido.documento.data_orcamento confirmado; sped.documento 39.884
+      pre-2026 de 49.847). T4a FEITO (d7d5977: predicados puros + 6 testes).
+      T4b COMPLETO (ed16e1a): causa raiz das 3 falhas era FK m2o vazia =
+      `false` , em jsonb escalar age como array de 1 elemento no ->0, 'false'
+      passava no IS NOT NULL e quebrava o cast ::int; fix = guard
+      jsonb_typeof='array' (filho e neto). volume ESTAVA no catalogo (anotacao
+      anterior errada), ganhou cortePai. Dry-run 15/15 tabelas: 290.010 linhas
+      (docs/superpowers/research/limpa-2026-dryrun.md , AGUARDA APROVACAO).
+      T4c/T4d FEITOS (9002933): --apply em lotes ctid (ordem neto->filho->raiz
+      via alvos.ts puro testado; gate duplo --apply --aprovado) + --vacuum
+      FULL/ANALYZE com medicao (inclui lote_serie 2,9GB); VACUUM via prisma
+      provado em smoke. T2d REVISTO (fba55e4): estoque.extrato PERMANECE
+      snapshot+corte , Odoo vivo provou 207/17.508 com write_date (create_date
+      100% false), incremental perderia 99% das linhas; decisao travada no
+      gate corte-2026.test.ts. T5 TOOLING FEITO (f54843c):
+      invariante-financeiro.ts --capturar/--comparar, celula a celula
+      (tipo x situacao; vivas R$0,00; quitado/baixado informativo), smoke E2E
+      real OK. T7a FEITO (bb599cf): preCorte no resolverPeriodoFiscal +
+      TEXTO_HONESTO_PRE_CORTE (spec §5) no gancho central calcularExtras +
+      16 tools fiscais; suite inteira 2.924 verdes.
+      T8 FEITO (d7847e9/37a068c/ce45495): da lista nominal da spec, so 3
+      artefatos tinham 2025 operante (conferencia-fiscal, gen-baseline,
+      f5-regime , os demais ja estavam limpos, goldens 0 hits); recalibrados
+      para 2026+ e validados E2E no dado real (conferencia TODOS os gates
+      verdes). ATENCAO: baseline acumulado pos-corte = piso 59.576.817,08
+      (valor 2026 ate jun); re-rodar gen-baseline POS-purge. T11 FEITO
+      (b9d7735): runbook docs/runbooks/limpa-2026.md (ordem, rollback, gate de
+      modelo novo); painel de ingestao verificado , nao alarma por volume.
+      **T9 EM CURSO: pre-flight disco OK (395G livres no volume PG, banco
+      5,5GB) + PG_DUMP FEITO E VERIFICADO (16 tabelas, 70MB,
+      ~/Backups/nexus-odoo/limpa-2026-pre-purge-20260611T1405.dump) , destrava
+      deploy do filtro em dev E o merge/ship do codigo da limpa.** DEPLOY DEV
+      VERIFICADO: imagem nexus-odoo:local 17:07Z, worker recriado DA PASTA
+      PRINCIPAL (recriar da worktree perde o env , OdooError variaveis
+      ausentes; armadilha anotada), ciclos incremental E snapshot concluidos
+      sem erro; dry-run pos-ciclo 289.890 (= 290.010 - 120 do estoque.extrato
+      que o snapshot com corte ja purgou; NADA reimportou , filtro comprovado
+      no ciclo real). **T9 DEV 100% COMPLETO (USUARIO APROVOU O DRY-RUN ~14:35):**
+      purge --apply 289.890 linhas em 21s (bateu EXATO com o dry-run); rebuild
+      fato_financeiro_titulo 1,8s; INVARIANTE R$0,00 VERDE (vivas identicas;
+      0 quitado pre-2026 no fato E no raw); vacuum 1.083MB (item 925->194MB,
+      documento 213->43MB; lote_serie era dado vivo, so 94MB de bloat);
+      f4l-build-fatos 36s; E2E ancoras verdes (conferencia TODOS os gates +
+      f5-regime; banda C4a recalibrada piso 0 pos-corte); gen-baseline
+      re-rodado (acumulado pos-corte real = 59.579.180,28 = 2026); worker
+      religado DA PASTA PRINCIPAL; 2+ ciclos (incremental+snapshot) e DRY-RUN
+      FINAL = 0 LINHAS , criterio "sync nao reimporta pre-2026" comprovado.
+      Relatorios: limpa-2026-apply.md (purge+vacuum) e limpa-2026-dryrun.md
+      (verificacao zerada). Commit d39cb4e. OPENAI RECARREGADA (TETO US$5,
+      gasto ~2 centavos): E2E contestacao , fix do papagaio FUNCIONA (T2 nao
+      repete, reconsulta a tool e explica "15 empresas = 9 matrizes + 6
+      filiais"); script scripts/e2e-contestacao-filiais.ts.
+      T7b FEITO (de84148): regra de corte no identity-base + golden 132
+      (corte-01/02) + smokes reais perfeitos (recusa honesta nas 2 perguntas
+      pre-2026, zero numero inventado). MCP dev rebuildado COM o codigo da
+      worktree (armadilha: build da pasta principal pega a MAIN; build da
+      worktree + up --no-build da principal). E2E contestacao validado (fix
+      papagaio OK). **PR #99 ABERTO com avaliacao completa , MERGE = INICIO
+      DO T10 (deploy assistido): ANTES do merge, pg_dump no servidor; ritual
+      no runbook limpa-2026.md; janela purge 21s + vacuum ~40s (DEV).**
+      NOTA OPERACIONAL: runAgent via background task do harness PENDURA
+      (pipe bufferizado); rodar smokes LLM em foreground com killer interno.
+      FALTA: T10 (EXIGE humano), T8-golden validacao LLM em lote (rodar
+      golden completo custa ~US$0,70 no mini; teto US$5).
+      **MERGE/SHIP DO CODIGO DA LIMPA: pg_dump do pre-flight FEITO , gate
+      destravado; merge segue exigindo confirmacao humana padrao.** (T7b/T8-
+      golden gated por recarga OpenAI; --apply gated por aprovacao humana).**
+- [x] **GOLDEN 100%: benchmark 60 casos = 60/60 tool certa (100%), kpi 6/6,
+      custo p50 $0,0057, lat p50 15,2s** (era 83,3% no baseline; os 10 erros
+      estruturais zerados). Fixes (5cccf83): 8 cov-* placeholder reescritos
+      com identificadores REAIS conferidos no cache; toolsAceitas em
+      contabil-02/cov-26; vocabulario do router (comercial: tabelas/regras de
+      preco com forceIncludeOn; crm: res.partner/registro raw); preco_tabela
+      aceita tabelaNome (resolucao por nome + ambiguidade ate 5); GRANT
+      raw_res_partner (migration 20260611191500 , unica raw lida por tool,
+      mesma classe C.0). NOTA: cov-26 aceita o nome saneado
+      crm_res_partner_get (OpenAI proibe ponto em function name). PENDENTE
+      LEVE: juiz heuristico marcou 9/60 suspeitas de alucinacao (era 5/60;
+      tem falso positivo , auditar amostra na proxima rodada de pericia).
+- [x] **GOLDEN SEM PLACEHOLDER + GATE PRE-PUSH (Fase E nucleo fechado):**
+      os 59 cov-* restantes reescritos como perguntas naturais (descricao da
+      tool + ids reais: pedido 2442, nota 57068, Smartfit, esteira);
+      pericia-ncm-01 orfa corrigida (cadastro_buscar_produto nao existe).
+      Gate deterministico golden-gate.test.ts (zero placeholder, tool orfa
+      vs snapshot do catalogo, pre-2026 nunca prosseguir) + .husky/pre-push
+      rodando gate + corte-2026 (~5s; --no-verify para pular consciente).
+      **BENCHMARK FULL 132 casos: 111/112 prosseguir com tool certa (99,1%),
+      kpi 6/6, custo p50 $0,0043, lat p50 14,0s.** Unico erro: cov-20 era
+      irma legitima (estrutura/plano tambem respondem hierarquia da conta) ,
+      toolsAceitas aplicado. Gasto OpenAI da sessao ~US$1,80 de 5.
+- [x] **FASE D ONDA 1 (prompt 2.0-D1, a458a9a):** lista estatica de ~35 tools
+      REMOVIDA do identity-base (driftava e mentia: preco_tabela "so
+      tabelaId", por_marca/por_uf marcadas como lacuna); secao TOOLS virou
+      atalhos de desambiguacao + "catalogo injetado e a fonte"; freshness
+      coerente com a regra 6; exemplo contraditorio corrigido. Benchmark
+      full pos-D1: 99,1% kpi 6/6 custo estavel = zero regressao. ONDA 2
+      (compressao agressiva de regras-curativo) fica para sessao futura,
+      idealmente junto do A2.
+- [x] **FOLLOW-UP CONTEXTUAL (5e48ccd):** turnosAntes no golden-schema +
+      ab-cerebro multi-turno (turnos anteriores na mesma conversa, so o
+      final avaliado) + 3 casos followup-01/02/03 validados no agente real
+      (resolucao de referencia "dela", troca de eixo receber->pagar, reuso
+      de tool com periodo ajustado). frozenProsseguir exclui followup-*.
+      Higiene: obs->observacao em 71 casos (campo certo do schema).
+- [~] **FRENTE "COBERTURA CLIENTE" (8 perguntas do cliente + raio expandido
+      + honestidade de fonte , pedido do usuario 2026-06-11 ~17h30):**
+      SPEC v3 (14718d5) e PLAN v3 (a9b3ac4), cada um com 2 reviews
+      adversariais Opus aplicadas (achados de ouro: ancoras com filtro
+      autorizada = 89 notas/R$6,35mi remessa e 40 retorno; arvore de locais
+      so no JSONB de raw_estoque_local via local_id; GRANT faltando de novo;
+      snapshot gen:mcp-catalog obrigatorio; harness nao avaliava honestidade;
+      pergunta 6 = gap de DIMENSAO sobre metrica existente).
+      **ONDA A COMPLETA (b5fb5c6..f48307b):** GRANT raw_estoque_local;
+      tool fiscal_demonstracoes (CFOP item 5912/6912 vs 1913/2913, so
+      autorizadas, agruparPor uf|empresa|mes, ressalva fixa remessa!=receita,
+      fronteira com por_operacao/por_uf, probe semantico 1o lugar);
+      estoque_valor_armazem com locais/apenasFisicos (fisico=Próprio
+      R$37.399.967,01; demo=Terceiros/Demonstração R$1.855.763,50 , ancoras
+      EXATAS); golden 141 (6 casos novos, kpi SQL-vivo); E2E agente real
+      6/6 e as perguntas 2/7/8 LITERAIS do cliente respondendo certo.
+      Catalogo 117 (contagens 108/117 nos gates; snapshot regenerado).
+      **ONDA B COMPLETA:** spike S1 83,8% (CMV aproximado entrou); cnpj.ts
+      puro (vat BR-, raiz, formatacao); por_cliente com documento +
+      agruparPor cnpj_raiz; fiscal_vendas_produto_por_empresa (produto x
+      empresa, venda via Tabela de Regras, CMV com cobertura , caso real
+      esteira: 2.233 un, R$38,4mi, CMV R$31,8mi 98,2%); pedidos_por_uf com
+      operacao venda (sufixo '(venda)', 1.003 pedidos; prefixo e pegadinha).
+      Validacao 5/5. Catalogo 118 (contagens 109/118).
+      **ONDA C COMPLETA:** harness avalia honestidade (esperaNaResposta/
+      proibidoNaResposta, inclusao OBRIGATORIA na amostra, respostaOk no
+      resumo); V9 gap de fonte (pos-V4, skip contestacao/fora-escopo/lacuna,
+      4 testes); vocabulario prospeccao/leads->crm e margem/cmv->fiscal
+      (deriv-08 roteava p/ crm); regra de prompt "gap de dado da fonte";
+      golden 167 com 21 casos novos validados 21/21.
+      **BENCHMARK FULL FINAL: 147 casos, tool certa 134/135 (99,3%),
+      kpi-vivo 10/10, respostaOk 12/12 pos-ajuste de esperas (o mini varia
+      fraseado; a constante e citar o cadastro como fonte). Flake conhecido:
+      followup-03 (multi-turno, passou em 1 de 2 runs , monitorar).**
+      **E2E FINAL: AS 8 PERGUNTAS LITERAIS DO CLIENTE = 8/8 tool certa**
+      (a 6 cai corretamente na lacuna honesta: "recorte de seguimento nao
+      esta preenchido no cadastro hoje"). Relatorio com as 8 respostas:
+      docs/superpowers/research/cobertura-cliente-validacao.md.
+      GAPS REGISTRADOS p/ onda futura: filtro de cliente por CNPJ exato
+      (deriv-05); margem por familia (lacuna honesta hoje); race de oferta
+      vazia no instante do redeploy do mcp (catalog_size_offered=0 ,
+      retry de listTools no run-agent).
+- [ ] **DEPOIS:** Fase D onda 2 (compressao agressiva, com A/B); A2 (A/B
+      Claude , exige credito OpenRouter); auditar suspeitas do juiz de
+      alucinacao (falso positivo).
 - [ ] Fase C , filtros + composição multi-eixo + follow-up (mineração das razoes).
 - [ ] Fase A2 , A/B confirmatório.
 - [ ] Fase D , prompt 2.0 + AutoValidator atualizado.

@@ -76,6 +76,7 @@ export const fiscalFaturamentoNaoAutorizado: ToolEntry<Input, Output> = {
     });
     if (envelope.estado === "preparando") return envelope;
     return enriquecerEnvelope(envelope, "fiscal_faturamento_nao_autorizado", {
+      periodo: per,
       destaque: { totalNotas: envelope.dados.totalNotas, valor: envelope.dados.valor },
       agregado: { soma: envelope.dados.valor, contagem: envelope.dados.totalNotas },
     });

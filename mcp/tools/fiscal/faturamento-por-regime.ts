@@ -101,6 +101,7 @@ export const fiscalFaturamentoPorRegime: ToolEntry<Input, Output> = {
       notas: rg.qtdNotas,
     }));
     return enriquecerEnvelope(envelope, "fiscal_faturamento_por_regime", {
+      periodo: per,
       destaque: {
         totalReceitaExterna: d.totalReceitaExterna,
         totalReceitaIndividual: d.totalReceitaIndividual,

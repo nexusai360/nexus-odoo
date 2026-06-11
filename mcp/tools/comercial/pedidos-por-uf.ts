@@ -12,6 +12,12 @@ const inputSchema = z.object({
   periodoDe: z.string().optional(),
   periodoAte: z.string().optional(),
   status: z.enum(["aberto", "fechado", "todos"]).optional().describe("Default: todos"),
+  // B5 Cobertura Cliente: o modulo de pedidos mistura venda, producao,
+  // inventario, romaneio, transferencia e compra. O filtro usa o SUFIXO
+  // "(venda)" do nome da operacao (nunca o prefixo , "Venda JDS Matriz" e
+  // transferencia).
+  operacao: z.enum(["venda", "todas"]).optional()
+    .describe("venda = apenas pedidos de operacao de venda. Default: todas."),
   limite: z.number().int().min(1).max(50).optional(),
 });
 
@@ -65,6 +71,9 @@ async function queryPedidosPorUf(prisma: PrismaClient, input: Input) {
   const filtroStatus =
     status === "aberto" ? `AND pe.etapa_finaliza = false` :
     status === "fechado" ? `AND pe.etapa_finaliza = true` : ``;
+  // B5: sufixo "(venda)" no fim do nome da operacao.
+  const filtroOperacao =
+    input.operacao === "venda" ? `AND pe.operacao_nome ~* '\\(venda\\)\\s*$'` : ``;
   const filtroPer =
     input.periodoDe && input.periodoAte
       ? `AND pe.data_orcamento >= $1::timestamp AND pe.data_orcamento <= $2::timestamp`
@@ -80,7 +89,7 @@ async function queryPedidosPorUf(prisma: PrismaClient, input: Input) {
             COALESCE(SUM(pe.vr_produtos), 0)::text AS valor
      FROM fato_pedido pe
      LEFT JOIN fato_parceiro p ON p.odoo_id = pe.participante_id
-     WHERE 1=1 ${filtroStatus} ${filtroPer}
+     WHERE 1=1 ${filtroStatus} ${filtroOperacao} ${filtroPer}
      GROUP BY p.uf
      ORDER BY SUM(pe.vr_produtos) DESC NULLS LAST, p.uf ASC
      LIMIT ${limite}`,
@@ -104,7 +113,7 @@ async function queryPedidosPorUf(prisma: PrismaClient, input: Input) {
             COUNT(DISTINCT p.uf)::bigint AS ufs
      FROM fato_pedido pe
      LEFT JOIN fato_parceiro p ON p.odoo_id = pe.participante_id
-     WHERE 1=1 ${filtroStatus} ${filtroPer}`,
+     WHERE 1=1 ${filtroStatus} ${filtroOperacao} ${filtroPer}`,
     ...params,
   );
   const totalGeral = Number(totalRows[0]?.geral ?? 0);
@@ -119,7 +128,9 @@ export const comercialPedidosPorUf: ToolEntry<Input, Output> = {
   dominio: "comercial",
   descricao:
     "Pedidos agrupados por UF do cliente. Use para 'pedidos por estado', " +
-    "'pedidos por UF', 'qual estado mais compra'. Aceita status (aberto/fechado/todos) " +
+    "'pedidos por UF', 'qual estado mais compra', 'quantidade de pedidos de operacao " +
+    "de venda por UF' (passe operacao: 'venda' , o modulo mistura venda, producao, " +
+    "inventario, romaneio e transferencia). Aceita status (aberto/fechado/todos) " +
     "e periodo. Default: todos os pedidos cadastrados.",
   inputSchemaShape: inputSchema.shape,
   inputSchema,

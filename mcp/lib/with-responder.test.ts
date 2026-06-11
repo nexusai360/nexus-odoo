@@ -94,3 +94,25 @@ describe("enriquecerEnvelope", () => {
     }
   });
 });
+
+// Limpa 2026+ T7a: honestidade pre-corte no gancho central.
+describe("calcularExtras , periodo pre-corte (Limpa 2026+)", () => {
+  it("preCorte=true curto-circuita a resposta com o texto honesto", () => {
+    const r = calcularExtras("fiscal_faturamento_periodo", {
+      destaque: { headlineValor: 0 },
+      periodo: { preCorte: true, label: "2025-01-01 a 2025-12-31" },
+    });
+    expect(r._RESPOSTA).toContain("2026 em diante");
+    expect(r._RESPOSTA).toContain("2025-01-01 a 2025-12-31");
+    expect(r._DESTAQUE?.periodoPreCorte).toBe(1);
+  });
+
+  it("preCorte=false segue o fluxo normal do formatador", () => {
+    const r = calcularExtras("fiscal_faturamento_periodo", {
+      destaque: { headlineValor: 10 },
+      periodo: { preCorte: false, label: "2026" },
+    });
+    expect(r._RESPOSTA).not.toContain("2026 em diante");
+    expect(r._DESTAQUE?.periodoPreCorte).toBeUndefined();
+  });
+});

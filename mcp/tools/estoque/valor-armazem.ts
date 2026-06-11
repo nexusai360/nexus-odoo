@@ -6,7 +6,15 @@ import { queryValorArmazem } from "@/lib/reports/queries/estoque.js";
 import { withFreshness } from "../../lib/freshness.js";
 import { enriquecerEnvelope } from "../../lib/with-responder.js";
 
-const inputSchema = z.object({});
+const inputSchema = z.object({
+  // Cobertura Cliente A6: filtro pela arvore de locais (prefixo do
+  // nome_completo). Fisico = subarvore "Próprio"; demonstracao =
+  // "Terceiros / Demonstração".
+  locais: z.array(z.string().trim().min(2)).optional()
+    .describe("Prefixos da arvore de locais, ex.: ['Terceiros / Demonstração'] ou ['Vendas']."),
+  apenasFisicos: z.boolean().optional()
+    .describe("true = apenas estoque fisico (subarvore 'Próprio')."),
+});
 
 // Onda 1.C: envelope canonico
 const dados = z.object({
@@ -61,21 +69,38 @@ function shape(d: Awaited<ReturnType<typeof queryValorArmazem>>) {
 export const estoqueValorArmazem: ToolEntry<Input, Output> = {
   id: "estoque_valor_armazem",
   dominio: "estoque",
-  descricao: "Valor de estoque a preço de custo por armazém.",
+  descricao:
+    "Valor de estoque a preço de custo por armazém. Filtre por `locais` (prefixos da " +
+    "árvore de locais, ex.: 'Terceiros / Demonstração') ou `apenasFisicos` (subárvore " +
+    "Próprio). Use para 'valor total de estoque', 'valor de estoque físico', 'estoque " +
+    "em demonstração', 'estoque em poder de terceiros', 'estoque no local X'.",
   inputSchemaShape: inputSchema.shape,
   inputSchema,
   outputSchema,
-  handler: async (_input, ctx) => {
+  handler: async (input, ctx) => {
+    const prefixos = [
+      ...(input.apenasFisicos ? ["Próprio"] : []),
+      ...(input.locais ?? []),
+    ];
+    const escopoLocais =
+      prefixos.length > 0 ? prefixos.join("; ") : "todos os locais";
     const envelope = await withFreshness(
       ctx.prisma,
       ["fato_estoque_saldo"],
-      async () => shape(await queryValorArmazem(ctx.prisma)),
+      async () =>
+        shape(
+          await queryValorArmazem(
+            ctx.prisma,
+            prefixos.length > 0 ? { prefixosArvore: prefixos } : undefined,
+          ),
+        ),
     );
     if (envelope.estado === "preparando") return envelope;
     return enriquecerEnvelope(envelope, "estoque_valor_armazem", {
       destaque: {
         valorTotal: envelope.dados.kpis.valorTotal,
         contagemArmazens: envelope.dados.kpis.numArmazens,
+        escopoLocais,
       },
       agregado: {
         soma: envelope.dados.kpis.valorTotal,

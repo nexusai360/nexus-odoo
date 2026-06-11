@@ -125,6 +125,7 @@ export const fiscalNotasEmitidas: ToolEntry<Input, Output> = {
       envelope,
       "fiscal_notas_emitidas",
       {
+        periodo: per,
         destaque: {
           totalNotas: d.totalNotas,
           valorTotal: d.valorTotal,

@@ -69,6 +69,7 @@ export const fiscalReceitaConsolidada: ToolEntry<Input, Output> = {
     if (envelope.estado === "preparando") return envelope;
     const d = envelope.dados;
     return enriquecerEnvelope(envelope, "fiscal_receita_consolidada", {
+      periodo: per,
       destaque: {
         receitaExterna: d.receitaExterna,
         receitaIntragrupoEliminavel: d.receitaIntragrupoEliminavel,

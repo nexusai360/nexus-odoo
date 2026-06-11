@@ -128,6 +128,7 @@ export const fiscalFaturamentoPorCfop: ToolEntry<Input, Output> = {
     const semCfopVendaValor = porFin.filter((f) => f.finalidade === "1").reduce((s, f) => s + f.valorProdutos, 0);
     const semCfopDevolucaoValor = porFin.filter((f) => f.finalidade === "4").reduce((s, f) => s + f.valorProdutos, 0);
     return enriquecerEnvelope(envelope, "fiscal_faturamento_por_cfop", {
+      periodo: per,
       destaque: {
         agruparPor: d.agruparPor,
         totalProdutos: d.totalProdutos,

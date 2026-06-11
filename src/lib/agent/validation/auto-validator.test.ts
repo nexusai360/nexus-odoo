@@ -328,3 +328,45 @@ describe("casos reais do laudo R11-R16", () => {
     expect(out.ok).toBe(true);
   });
 });
+
+// Onda C Cobertura Cliente: V9 , gap de fonte (recusa seca sem citar o sistema).
+describe("validateV9 (gap de fonte)", () => {
+  it("dispara em recusa seca sem mencao a fonte/sistema", () => {
+    const out = validateResponse({
+      question: "Qual o segmento que mais temos orcamentos?",
+      llmResponse: "Não consigo te responder isso.",
+      toolResults: [],
+    });
+    expect(out.ok).toBe(false);
+    expect(out.reason).toBe("V9");
+  });
+
+  it("NAO dispara quando a resposta explica a fonte (modulo/cadastro)", () => {
+    const out = validateResponse({
+      question: "Qual o segmento que mais temos orcamentos?",
+      llmResponse:
+        "O módulo de prospecção existe no sistema, mas não há dados cadastrados nele até agora.",
+      toolResults: [],
+    });
+    expect(out.ok).toBe(true);
+  });
+
+  it("NAO dispara quando a resposta traz dados (sem recusa seca)", () => {
+    const out = validateResponse({
+      question: "Tem despesa registrada hoje?",
+      llmResponse: "Não há despesa registrada hoje.",
+      toolResults: [],
+    });
+    expect(out.ok).toBe(true);
+  });
+
+  it("NAO dispara em CONTESTACAO com 'nao consigo' no texto explicativo (protege o fix do papagaio)", () => {
+    const out = validateResponse({
+      question: "Por que nao aparecem essas empresas na lista?",
+      llmResponse:
+        "A lista vem das notas emitidas; quem nunca emitiu nao aparece, entao nao consigo lista-las por faturamento.",
+      toolResults: [],
+    });
+    expect(out.ok).toBe(true);
+  });
+});

@@ -1,6 +1,7 @@
 // src/worker/sync/snapshot.ts
 import type { OdooClient } from "../odoo/client";
 import { parseWriteDate } from "../odoo/datetime";
+import { corteDomain } from "./corte";
 import { getModelFields } from "../odoo/field-selection";
 
 /** Tamanho do lote para o createMany , evita estourar limites do Postgres. */
@@ -30,7 +31,9 @@ export async function syncSnapshot(
   odooModel: string,
 ): Promise<number> {
   const fields = await getModelFields(client, odooModel);
-  const records = (await client.searchReadPaged(odooModel, [], { fields })) as Record<string, unknown>[];
+  // Limpa 2026+ (T2b): clausula de corte permanente tambem no full-refresh
+  // (sem ela o snapshot reimporta o historico inteiro a cada ciclo).
+  const records = (await client.searchReadPaged(odooModel, corteDomain(odooModel), { fields })) as Record<string, unknown>[];
   const now = new Date();
   const rows = records.map((rec) => ({
     odooId: Number(rec.id),

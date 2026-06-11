@@ -48,12 +48,26 @@
       "id": "estoque_valor_armazem",
       "operation": "read",
       "module": "estoque",
-      "descricao": "Valor de estoque a preço de custo por armazém.",
+      "descricao": "Valor de estoque a preço de custo por armazém. Filtre por `locais` (prefixos da árvore de locais, ex.: 'Terceiros / Demonstração') ou `apenasFisicos` (subárvore Próprio). Use para 'valor total de estoque', 'valor de estoque físico', 'estoque em demonstração', 'estoque em poder de terceiros', 'estoque no local X'.",
       "capability": null,
       "sensitive": false,
       "addedInVersion": null,
-      "inputSchemaKeys": [],
-      "inputSchemaFields": [],
+      "inputSchemaKeys": [
+        "locais",
+        "apenasFisicos"
+      ],
+      "inputSchemaFields": [
+        {
+          "name": "locais",
+          "type": "array",
+          "optional": true
+        },
+        {
+          "name": "apenasFisicos",
+          "type": "boolean",
+          "optional": true
+        }
+      ],
       "examples": []
     },
     {
@@ -901,12 +915,13 @@
       "id": "preco_tabela",
       "operation": "read",
       "module": "comercial",
-      "descricao": "Regras de UMA TABELA DE PREÇO específica (identificada por `tabelaId`). Lista todas as regras da tabela (por produto, família ou participante) com valor, operação e vigência. NÃO use para: preço de um produto específico (use `preco_produto`).",
+      "descricao": "Regras de UMA TABELA DE PREÇO específica, identificada por `tabelaId` OU por `tabelaNome` (nome ou parte dele, ex.: 'Venda Smart'). Lista todas as regras da tabela (por produto, família ou participante) com valor, operação e vigência. NÃO use para: preço de um produto específico (use `preco_produto`).",
       "capability": null,
       "sensitive": false,
       "addedInVersion": null,
       "inputSchemaKeys": [
         "tabelaId",
+        "tabelaNome",
         "limit",
         "offset"
       ],
@@ -914,7 +929,12 @@
         {
           "name": "tabelaId",
           "type": "integer",
-          "optional": false
+          "optional": true
+        },
+        {
+          "name": "tabelaNome",
+          "type": "string",
+          "optional": true
         },
         {
           "name": "limit",
@@ -1122,7 +1142,7 @@
       "id": "comercial_pedidos_por_uf",
       "operation": "read",
       "module": "comercial",
-      "descricao": "Pedidos agrupados por UF do cliente. Use para 'pedidos por estado', 'pedidos por UF', 'qual estado mais compra'. Aceita status (aberto/fechado/todos) e periodo. Default: todos os pedidos cadastrados.",
+      "descricao": "Pedidos agrupados por UF do cliente. Use para 'pedidos por estado', 'pedidos por UF', 'qual estado mais compra', 'quantidade de pedidos de operacao de venda por UF' (passe operacao: 'venda' , o modulo mistura venda, producao, inventario, romaneio e transferencia). Aceita status (aberto/fechado/todos) e periodo. Default: todos os pedidos cadastrados.",
       "capability": null,
       "sensitive": false,
       "addedInVersion": null,
@@ -1130,6 +1150,7 @@
         "periodoDe",
         "periodoAte",
         "status",
+        "operacao",
         "limite"
       ],
       "inputSchemaFields": [
@@ -1151,6 +1172,15 @@
             "aberto",
             "fechado",
             "todos"
+          ]
+        },
+        {
+          "name": "operacao",
+          "type": "enum",
+          "optional": true,
+          "enumValues": [
+            "venda",
+            "todas"
           ]
         },
         {
@@ -1511,7 +1541,7 @@
       "id": "fiscal_faturamento_por_cliente",
       "operation": "read",
       "module": "fiscal",
-      "descricao": "Faturamento agrupado por cliente (notas de saída autorizadas), ordenado por valor total decrescente.",
+      "descricao": "Faturamento agrupado por cliente (notas de saída autorizadas), ordenado por valor total decrescente, com o CNPJ de cada cliente. Use `agruparPor: 'cnpj_raiz'` para agregar matriz+filiais pela raiz do CNPJ. Use para 'faturamento de venda por CNPJ', 'faturamento por cliente', 'quem mais comprou'.",
       "capability": null,
       "sensitive": false,
       "addedInVersion": null,
@@ -1519,6 +1549,7 @@
         "periodoDe",
         "periodoAte",
         "empresaRef",
+        "agruparPor",
         "limit",
         "offset"
       ],
@@ -1537,6 +1568,15 @@
           "name": "empresaRef",
           "type": "string",
           "optional": true
+        },
+        {
+          "name": "agruparPor",
+          "type": "enum",
+          "optional": true,
+          "enumValues": [
+            "cliente",
+            "cnpj_raiz"
+          ]
         },
         {
           "name": "limit",
@@ -1868,7 +1908,7 @@
       "id": "fiscal_faturamento_por_uf",
       "operation": "read",
       "module": "fiscal",
-      "descricao": "Faturamento agrupado por estado (UF do cliente da nota), ordenado por valor descendente. Use para 'faturamento por estado / por UF / por regiao' (regiao = conjunto de UFs). Agrega notas de saida autorizadas no periodo (default mes corrente).",
+      "descricao": "Faturamento agrupado por estado (UF do cliente da nota), ordenado por valor descendente. Use para 'faturamento por estado / por UF / por regiao' (regiao = conjunto de UFs). Agrega notas de saida autorizadas no periodo (default mes corrente). Para o recorte de DEMONSTRACAO use fiscal_demonstracoes.",
       "capability": null,
       "sensitive": false,
       "addedInVersion": null,
@@ -1896,6 +1936,81 @@
         },
         {
           "name": "empresaRef",
+          "type": "string",
+          "optional": true
+        }
+      ],
+      "examples": []
+    },
+    {
+      "id": "fiscal_demonstracoes",
+      "operation": "read",
+      "module": "fiscal",
+      "descricao": "Demonstrações de equipamentos (remessa para demonstração, CFOP 5912/6912, e retorno de demonstração, CFOP 1913/2913; só notas autorizadas): valor e número de notas fiscais emitidas, agrupados por UF, empresa ou mês. Use para 'faturamento de operações de demonstração', 'remessas para demonstração por estado', 'quantas notas de demonstração emitimos', 'quanto retornou de demonstração'. O valor é de REMESSA (a mercadoria pode retornar), não é receita de venda. Tool canônica para qualquer recorte de demonstração.",
+      "capability": null,
+      "sensitive": false,
+      "addedInVersion": null,
+      "inputSchemaKeys": [
+        "agruparPor",
+        "periodoDe",
+        "periodoAte",
+        "empresaRef"
+      ],
+      "inputSchemaFields": [
+        {
+          "name": "agruparPor",
+          "type": "enum",
+          "optional": true,
+          "enumValues": [
+            "uf",
+            "empresa",
+            "mes"
+          ]
+        },
+        {
+          "name": "periodoDe",
+          "type": "string",
+          "optional": true
+        },
+        {
+          "name": "periodoAte",
+          "type": "string",
+          "optional": true
+        },
+        {
+          "name": "empresaRef",
+          "type": "string",
+          "optional": true
+        }
+      ],
+      "examples": []
+    },
+    {
+      "id": "fiscal_vendas_produto_por_empresa",
+      "operation": "read",
+      "module": "fiscal",
+      "descricao": "Vendas de UM produto agrupadas por empresa do grupo (quantidade, valor e nº de notas; só saída autorizada com CFOP de venda), com CMV APROXIMADO por empresa (custo de tabela 'Custo', não contábil). Use para 'venda do produto X por empresa', 'quanto vendemos de esteira por empresa e qual o CMV', 'CMV do produto X'. Informe `produtoTermo` (nome ou código).",
+      "capability": null,
+      "sensitive": false,
+      "addedInVersion": null,
+      "inputSchemaKeys": [
+        "produtoTermo",
+        "periodoDe",
+        "periodoAte"
+      ],
+      "inputSchemaFields": [
+        {
+          "name": "produtoTermo",
+          "type": "string",
+          "optional": false
+        },
+        {
+          "name": "periodoDe",
+          "type": "string",
+          "optional": true
+        },
+        {
+          "name": "periodoAte",
           "type": "string",
           "optional": true
         }
@@ -2240,7 +2355,7 @@
       "id": "fiscal_faturamento_por_operacao",
       "operation": "read",
       "module": "fiscal",
-      "descricao": "Faturamento de saida autorizado por natureza de operacao fiscal, com flag de venda vs nao-venda. Aceita empresa.",
+      "descricao": "Faturamento de saida autorizado por natureza de operacao fiscal, com flag de venda vs nao-venda. Aceita empresa. Para o recorte de DEMONSTRACAO use fiscal_demonstracoes.",
       "capability": null,
       "sensitive": false,
       "addedInVersion": null,
@@ -2891,18 +3006,24 @@
       "id": "cadastro_detalhar_produto",
       "operation": "read",
       "module": "cadastros",
-      "descricao": "Retorna o detalhe completo de um produto a partir do odooId: nome, codigo, codigo unico, codigo de barras, marca, familia, unidade, NCM, preco de venda, preco de custo e se esta ativo. Use depois de uma busca de produto quando o usuario pediu o detalhe de um item especifico.",
+      "descricao": "Detalhe COMPLETO do CADASTRO de um produto: NCM, codigo de barras (EAN), codigo, codigo unico, marca, familia, unidade, preco de venda, preco de custo e se esta ativo. Aceita odooId OU termo (codigo exato ou parte do nome, ex: 'esteira T5'). Use para 'qual o NCM do produto X', 'codigo de barras do item Y', 'ficha cadastral do produto'. NAO e' saldo de estoque.",
       "capability": null,
       "sensitive": false,
       "addedInVersion": null,
       "inputSchemaKeys": [
-        "odooId"
+        "odooId",
+        "termo"
       ],
       "inputSchemaFields": [
         {
           "name": "odooId",
           "type": "integer",
-          "optional": false
+          "optional": true
+        },
+        {
+          "name": "termo",
+          "type": "string",
+          "optional": true
         }
       ],
       "examples": []
@@ -4034,6 +4155,6 @@
       "examples": []
     }
   ],
-  "count": 116,
-  "generatedAt": "2026-06-10T17:56:13.872Z"
+  "count": 118,
+  "generatedAt": "2026-06-11T21:31:06.807Z"
 }

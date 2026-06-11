@@ -58,7 +58,7 @@ type Output = z.infer<typeof outputSchema>;
 export const fiscalFaturamentoPorOperacao: ToolEntry<Input, Output> = {
   id: "fiscal_faturamento_por_operacao",
   dominio: "fiscal",
-  descricao: "Faturamento de saida autorizado por natureza de operacao fiscal, com flag de venda vs nao-venda. Aceita empresa.",
+  descricao: "Faturamento de saida autorizado por natureza de operacao fiscal, com flag de venda vs nao-venda. Aceita empresa. Para o recorte de DEMONSTRACAO use fiscal_demonstracoes.",
   inputSchemaShape: inputSchema.shape,
   inputSchema,
   outputSchema,
@@ -86,6 +86,7 @@ export const fiscalFaturamentoPorOperacao: ToolEntry<Input, Output> = {
     });
     if (envelope.estado === "preparando") return envelope;
     return enriquecerEnvelope(envelope, "fiscal_faturamento_por_operacao", {
+      periodo: per,
       destaque: { valorGeral: envelope.dados.valorGeral, valorVenda: envelope.dados.valorVenda },
       agregado: { soma: envelope.dados.valorGeral, contagem: envelope.dados.total },
     });
