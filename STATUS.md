@@ -45,6 +45,12 @@
 > **PENDENTE (próx. sessão):** Fase D (prompt 2.0 enxuto), composição multi-eixo, follow-up no golden,
 > golden gate pre-push, A2 (A/B com Claude , exige usuário creditar OpenRouter). Retomada:
 > docs/superpowers/plans/PROGRESSO-nex-especialista.md.
+> **LIMPA 2026+ (prioridade do usuário, EM EXECUÇÃO na branch):** SPEC v3 + PLAN v3 (reviews adversariais;
+> dívida viva R$118mi protegida , título corta por SITUAÇÃO). Executado: T1 (catálogo corte+gate), T2a/b/c
+> (filtro permanente no sync), T3 (8/8 campos validados no Odoo), T4a (predicados), T4b parcial (dry-run real:
+> 81.420 linhas; 3 filhos SPED com erro de cast a resolver , gate). **MERGE GATED pelo pg_dump (T9 pre-flight).**
+> **BLOQUEIO EXTERNO: OpenAI insufficient_quota , Nex SEM LLM em prod/dev até recarga; E2E do fix de
+> contestação pendente disso. OpenRouter saldo 0 (A2 Claude).** Retomada: PROGRESSO-nex-especialista.md.
 > **DEPLOY , ROTA ÚNICA:** usar **`python3 scripts/ship.py "titulo"`** (`docs/runbooks/deploy-procedure.md`):
 > PR→CI→merge→deploy→verifica prod, com fallback de IP da API do GitHub (o `gh` trava quando api.github.com
 > cai no IP Azure 4.228.31.149 inalcançável; `ship.py` contorna). NÃO refazer o fluxo na mão.
