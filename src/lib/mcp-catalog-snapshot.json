@@ -45,6 +45,32 @@
       "examples": []
     },
     {
+      "id": "estoque_cobertura_dias",
+      "operation": "read",
+      "module": "estoque",
+      "descricao": "Idade do estoque em DIAS por item (calculo pronto do sistema sobre o saldo de hoje): itens mais antigos primeiro, media de dias e quantos passam de 180 dias. Use para 'ha quanto tempo o estoque esta parado', 'idade do estoque', 'itens parados ha mais de N dias', 'cobertura de estoque em dias'. Aceita minDias.",
+      "capability": null,
+      "sensitive": false,
+      "addedInVersion": null,
+      "inputSchemaKeys": [
+        "minDias",
+        "limite"
+      ],
+      "inputSchemaFields": [
+        {
+          "name": "minDias",
+          "type": "integer",
+          "optional": true
+        },
+        {
+          "name": "limite",
+          "type": "integer",
+          "optional": true
+        }
+      ],
+      "examples": []
+    },
+    {
       "id": "estoque_valor_armazem",
       "operation": "read",
       "module": "estoque",
@@ -4195,6 +4221,6 @@
       "examples": []
     }
   ],
-  "count": 119,
-  "generatedAt": "2026-06-11T23:21:28.328Z"
+  "count": 120,
+  "generatedAt": "2026-06-11T23:25:27.327Z"
 }

@@ -1768,6 +1768,23 @@ const fmtDemonstracoes: FormatadorCanonico = (env) => {
   );
 };
 
+// Backlog pos-review (item d): idade do estoque em dias.
+const fmtCoberturaDias: FormatadorCanonico = (env) => {
+  const d = env._DESTAQUE ?? {};
+  const n = Number(d.totalItens ?? 0);
+  const media = Number(d.mediaDias ?? 0);
+  const antigos = Number(d.itens180mais ?? 0);
+  const top = String(d.topProduto ?? "");
+  const topDias = Number(d.topDias ?? 0);
+  if (n === 0) return "Nao ha itens em estoque no recorte.";
+  return (
+    `Idade do estoque: ${n} itens com saldo, media de ${media.toLocaleString("pt-BR")} dias` +
+    (antigos > 0 ? `, ${antigos} itens ha mais de 180 dias` : "") +
+    (top ? `. Mais antigo: ${top} (${topDias} dias).` : ".") +
+    " Detalhe por item nas linhas (mais antigos primeiro)."
+  );
+};
+
 // Backlog pos-review (item c): aging da inadimplencia por faixas de atraso.
 const fmtAgingRecebiveis: FormatadorCanonico = (env) => {
   const d = env._DESTAQUE ?? {};
@@ -2095,6 +2112,7 @@ const FORMATADORES: Record<string, FormatadorCanonico> = {
   "fiscal_demonstracoes": fmtDemonstracoes,
   "fiscal_vendas_produto_por_empresa": fmtVendasProdutoPorEmpresa,
   "financeiro_aging_recebiveis": fmtAgingRecebiveis,
+  "estoque_cobertura_dias": fmtCoberturaDias,
   "fiscal_certificados": fmtFiscalCertificados,
   "fiscal_carta_correcao": fmtFiscalCartaCorrecao,
   "fiscal_mdfe_manifestos": fmtMdfeManifestos,

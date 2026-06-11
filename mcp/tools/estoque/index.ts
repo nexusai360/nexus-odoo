@@ -3,6 +3,7 @@
 // Preenchido nas tasks 4c.4,4c.9 (uma tool por arquivo).
 import type { ToolEntry } from "../../catalog/types.js";
 import { estoqueSaldoProduto } from "./saldo-produto.js";
+import { estoqueCoberturaDias } from "./cobertura-dias.js";
 import { estoqueValorArmazem } from "./valor-armazem.js";
 import { estoqueEntradasSaidas } from "./entradas-saidas.js";
 import { estoqueTopMovimentados } from "./top-movimentados.js";
@@ -14,6 +15,7 @@ import { estoqueMinimoMaximo } from "./minimo-maximo.js";
 
 export const estoqueTools: ToolEntry[] = [
   estoqueSaldoProduto as ToolEntry,
+  estoqueCoberturaDias as ToolEntry,
   estoqueValorArmazem as ToolEntry,
   estoqueEntradasSaidas as ToolEntry,
   estoqueTopMovimentados as ToolEntry,
