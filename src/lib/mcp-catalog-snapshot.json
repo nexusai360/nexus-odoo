@@ -1976,6 +1976,38 @@
       "examples": []
     },
     {
+      "id": "fiscal_vendas_produto_por_empresa",
+      "operation": "read",
+      "module": "fiscal",
+      "descricao": "Vendas de UM produto agrupadas por empresa do grupo (quantidade, valor e nº de notas; só saída autorizada com CFOP de venda), com CMV APROXIMADO por empresa (custo de tabela 'Custo', não contábil). Use para 'venda do produto X por empresa', 'quanto vendemos de esteira por empresa e qual o CMV', 'CMV do produto X'. Informe `produtoTermo` (nome ou código).",
+      "capability": null,
+      "sensitive": false,
+      "addedInVersion": null,
+      "inputSchemaKeys": [
+        "produtoTermo",
+        "periodoDe",
+        "periodoAte"
+      ],
+      "inputSchemaFields": [
+        {
+          "name": "produtoTermo",
+          "type": "string",
+          "optional": false
+        },
+        {
+          "name": "periodoDe",
+          "type": "string",
+          "optional": true
+        },
+        {
+          "name": "periodoAte",
+          "type": "string",
+          "optional": true
+        }
+      ],
+      "examples": []
+    },
+    {
       "id": "fiscal_notas_emitidas_por_cliente",
       "operation": "read",
       "module": "fiscal",
@@ -4113,6 +4145,6 @@
       "examples": []
     }
   ],
-  "count": 117,
-  "generatedAt": "2026-06-11T21:24:20.951Z"
+  "count": 118,
+  "generatedAt": "2026-06-11T21:27:42.940Z"
 }

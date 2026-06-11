@@ -17,6 +17,7 @@ import { fiscalFaturamentoPorMarca } from "./faturamento-por-marca.js";
 import { fiscalFaturamentoMensalSerie } from "./faturamento-mensal-serie.js";
 import { fiscalFaturamentoPorUf } from "./faturamento-por-uf.js";
 import { fiscalDemonstracoes } from "./demonstracoes.js";
+import { fiscalVendasProdutoPorEmpresa } from "./vendas-produto-por-empresa.js";
 import { fiscalNotasEmitidasPorCliente } from "./notas-emitidas-por-cliente.js";
 import { fiscalNotasEmitidasPorProduto } from "./notas-emitidas-por-produto.js";
 import { fiscalDfeImportadosPeriodo } from "./dfe-importados-periodo.js";
@@ -58,6 +59,7 @@ export const fiscalTools: ToolEntry[] = [
   fiscalFaturamentoMensalSerie as ToolEntry,
   fiscalFaturamentoPorUf as ToolEntry,
   fiscalDemonstracoes as ToolEntry,
+  fiscalVendasProdutoPorEmpresa as ToolEntry,
   fiscalNotasEmitidasPorCliente as ToolEntry,
   fiscalNotasEmitidasPorProduto as ToolEntry,
   // O1 (onda DF-e de entrada)

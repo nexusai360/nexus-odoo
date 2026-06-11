@@ -1768,6 +1768,28 @@ const fmtDemonstracoes: FormatadorCanonico = (env) => {
   );
 };
 
+// Cobertura Cliente B4: vendas de produto por empresa com CMV aproximado.
+const fmtVendasProdutoPorEmpresa: FormatadorCanonico = (env) => {
+  const produto = String(env._DESTAQUE?.produtoLabel ?? "produto");
+  const qtd = Number(env._DESTAQUE?.quantidadeTotal ?? 0);
+  const valor = Number(env._DESTAQUE?.valorVendaTotal ?? 0);
+  const notas = Number(env._DESTAQUE?.nNotasTotal ?? 0);
+  const cmv = Number(env._DESTAQUE?.cmvAproximadoTotal ?? 0);
+  const cobertura = Number(env._DESTAQUE?.coberturaCustoPct ?? 0);
+  const empresas = Number(env._DESTAQUE?.empresas ?? 0);
+  if (notas === 0) {
+    return `Nao ha vendas de '${produto}' no periodo.`;
+  }
+  const cmvStr =
+    cmv > 0
+      ? ` CMV aproximado: ${formatBRL(cmv)} (custo de tabela, nao contabil; cobre ${cobertura.toFixed(0)}% das unidades).`
+      : " Nao ha custo de tabela cadastrado para estimar o CMV.";
+  return (
+    `Vendas de ${produto}: ${qtd.toLocaleString("pt-BR")} unidade(s), ${formatBRL(valor)} ` +
+    `em ${notas} nota(s), distribuidas por ${empresas} empresa(s) (detalhe nas linhas).${cmvStr}`
+  );
+};
+
 // === F4 Onda 4 (ultimos 4: certificados/carta_correcao enriquecidos no handler;
 //     mdfe espelho; crm.res_partner.get formatador minimo p/ contrato) ===
 const fmtFiscalCertificados: FormatadorCanonico = (env) => {
@@ -2052,6 +2074,7 @@ const FORMATADORES: Record<string, FormatadorCanonico> = {
   "fiscal_faturamento_por_marca": fmtFiscalFaturamentoPorMarca,
   "fiscal_faturamento_por_uf": fmtFiscalFaturamentoPorUf,
   "fiscal_demonstracoes": fmtDemonstracoes,
+  "fiscal_vendas_produto_por_empresa": fmtVendasProdutoPorEmpresa,
   "fiscal_certificados": fmtFiscalCertificados,
   "fiscal_carta_correcao": fmtFiscalCartaCorrecao,
   "fiscal_mdfe_manifestos": fmtMdfeManifestos,
