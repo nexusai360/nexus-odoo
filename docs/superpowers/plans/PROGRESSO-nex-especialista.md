@@ -120,7 +120,28 @@ Cada fase: plano próprio (bite-sized) + 2 reviews quando material → execuçã
       T3 FEITO: 8/8 campos validados AO VIVO no Odoo (valida-campos-odoo.ts;
       pedido.documento.data_orcamento confirmado; sped.documento 39.884
       pre-2026 de 49.847). T4a FEITO (d7d5977: predicados puros + 6 testes).
-      PROXIMO: T4b (orquestrador dry-run), T4c/d, T2d, T5+ , plan v3.
+      T4b COMPLETO (ed16e1a): causa raiz das 3 falhas era FK m2o vazia =
+      `false` , em jsonb escalar age como array de 1 elemento no ->0, 'false'
+      passava no IS NOT NULL e quebrava o cast ::int; fix = guard
+      jsonb_typeof='array' (filho e neto). volume ESTAVA no catalogo (anotacao
+      anterior errada), ganhou cortePai. Dry-run 15/15 tabelas: 290.010 linhas
+      (docs/superpowers/research/limpa-2026-dryrun.md , AGUARDA APROVACAO).
+      T4c/T4d FEITOS (9002933): --apply em lotes ctid (ordem neto->filho->raiz
+      via alvos.ts puro testado; gate duplo --apply --aprovado) + --vacuum
+      FULL/ANALYZE com medicao (inclui lote_serie 2,9GB); VACUUM via prisma
+      provado em smoke. T2d REVISTO (fba55e4): estoque.extrato PERMANECE
+      snapshot+corte , Odoo vivo provou 207/17.508 com write_date (create_date
+      100% false), incremental perderia 99% das linhas; decisao travada no
+      gate corte-2026.test.ts. T5 TOOLING FEITO (f54843c):
+      invariante-financeiro.ts --capturar/--comparar, celula a celula
+      (tipo x situacao; vivas R$0,00; quitado/baixado informativo), smoke E2E
+      real OK. T7a FEITO (bb599cf): preCorte no resolverPeriodoFiscal +
+      TEXTO_HONESTO_PRE_CORTE (spec §5) no gancho central calcularExtras +
+      16 tools fiscais; suite inteira 2.924 verdes.
+      PROXIMO: T8 (recalibracao 2025->2026, 1 commit por artefato, lista
+      nominal; golden gated por OpenAI), T11 runbook, depois T9 (EXECUCAO DEV:
+      pg_dump -> deploy -> dry-run -> APROVACAO HUMANA -> apply -> invariantes
+      -> vacuum -> rebuilds -> 2 ciclos).
       **MERGE/SHIP DO CODIGO DA LIMPA E GATED pelo pg_dump do T9 pre-flight
       (alerta acima) , NAO mergear no wrap-up automatico.** (T7b/T8-
       golden gated por recarga OpenAI; --apply gated por aprovacao humana).**
