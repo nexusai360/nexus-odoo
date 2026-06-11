@@ -81,7 +81,16 @@ Cada fase: plano próprio (bite-sized) + 2 reviews quando material → execuçã
         por_operacao) numa resposta , funciona sem build novo.
   - [x] Fase E parcial: 6 casos reais no golden (130 total) + fonteOuroSql/
         toolsAceitas no schema (2f3d2d0). Validacao: 6/6 tool + 6/6 kpi-vivo.
-- [ ] **PROXIMA SESSAO:** Fase D (prompt 2.0 enxuto + remover regras-curativo),
+- [x] Benchmark pos-fixes (60 casos, mini): headline 83,3% IGUAL ao baseline,
+      MAS a composicao mudou por completo: os 10 erros restantes sao 8 casos
+      cov-* de golden-placeholder ("Consulta: preco tabela" sem termo , pergunta
+      impossivel de atender; consertar o GOLDEN) + 2 escolhas entre tools irmas
+      (contabil_estrutura x plano; cidades_listar x parceiros_por_cidade ,
+      toolsAceitas). TODOS os casos reais de usuario passam. kpi 5/6 (1 flake de
+      formatacao do mini no 10-maiores , reforca A2). custo p50 caiu 0,55->0,48c.
+- [ ] **PROXIMA SESSAO:** (adicionar: reescrever os ~8 cov-* placeholder do
+      golden como perguntas naturais com identificadores; toolsAceitas nas
+      tools irmas) Fase D (prompt 2.0 enxuto + remover regras-curativo),
       follow-up contextual no golden, golden gate pre-push, A2 (A/B Claude ,
       exige usuario creditar OpenRouter; slugs: anthropic/claude-sonnet-4.6,
       opus-4.7, opus-4.8).
