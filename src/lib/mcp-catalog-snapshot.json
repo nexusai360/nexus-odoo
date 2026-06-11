@@ -1550,7 +1550,7 @@
         "periodoAte",
         "empresaRef",
         "agruparPor",
-        "clienteCnpj",
+        "documento",
         "limit",
         "offset"
       ],
@@ -1580,7 +1580,7 @@
           ]
         },
         {
-          "name": "clienteCnpj",
+          "name": "documento",
           "type": "string",
           "optional": true
         },
@@ -4162,5 +4162,5 @@
     }
   ],
   "count": 118,
-  "generatedAt": "2026-06-11T22:33:32.145Z"
+  "generatedAt": "2026-06-11T22:37:19.763Z"
 }

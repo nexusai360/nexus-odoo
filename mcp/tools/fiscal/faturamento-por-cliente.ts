@@ -18,7 +18,7 @@ const inputSchema = z.object({
   // B3 Cobertura Cliente: cnpj_raiz agrega matriz+filiais pela raiz do CNPJ.
   agruparPor: z.enum(["cliente", "cnpj_raiz"]).optional()
     .describe("cliente (default) ou cnpj_raiz (agrega matriz+filiais pela raiz do CNPJ)."),
-  clienteCnpj: z.string().trim().min(8).optional()
+  documento: z.string().trim().min(8).optional()
     .describe("Filtra UM cliente especifico pelo CNPJ (14 digitos, com ou sem mascara) ou raiz (8 digitos)."),
   ...paginacaoInputShape,
 });
@@ -93,7 +93,7 @@ export const fiscalFaturamentoPorCliente: ToolEntry<Input, Output> = {
         limit,
         offset,
         agruparPor: input.agruparPor,
-        clienteCnpj: input.clienteCnpj,
+        clienteCnpj: input.documento,
       });
       return {
         linhas: r.linhas,
