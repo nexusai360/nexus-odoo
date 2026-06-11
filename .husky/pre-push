@@ -1,0 +1,4 @@
+# Golden gate (Fase E, Nex Especialista): higiene do golden e gates do corte
+# 2026, deterministico e rapido (~5s). O benchmark LLM completo e o
+# ab-cerebro (manual). Pular conscientemente: git push --no-verify.
+npx jest src/lib/agent/evals/golden/golden-gate.test.ts src/worker/catalog/corte-2026.test.ts --silent
