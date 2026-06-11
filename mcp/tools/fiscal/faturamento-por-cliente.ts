@@ -15,6 +15,9 @@ const inputSchema = z.object({
   periodoDe: z.string().optional(),
   periodoAte: z.string().optional(),
   empresaRef: z.string().trim().min(1).optional().describe("Empresa (id, CNPJ ou nome). Sem isso, considera o grupo todo."),
+  // B3 Cobertura Cliente: cnpj_raiz agrega matriz+filiais pela raiz do CNPJ.
+  agruparPor: z.enum(["cliente", "cnpj_raiz"]).optional()
+    .describe("cliente (default) ou cnpj_raiz (agrega matriz+filiais pela raiz do CNPJ)."),
   ...paginacaoInputShape,
 });
 
@@ -23,6 +26,8 @@ const linhaSchema = z.object({
   participanteNome: z.string().nullable(),
   quantidade: z.number().int(),
   valorTotal: z.number(),
+  // B3: CNPJ de exibicao (cliente: completo; cnpj_raiz: a raiz XX.XXX.XXX).
+  documento: z.string().nullable().optional(),
 });
 
 const dados = z.object({
@@ -65,7 +70,11 @@ type Output = z.infer<typeof outputSchema>;
 export const fiscalFaturamentoPorCliente: ToolEntry<Input, Output> = {
   id: "fiscal_faturamento_por_cliente",
   dominio: "fiscal",
-  descricao: "Faturamento agrupado por cliente (notas de saída autorizadas), ordenado por valor total decrescente.",
+  descricao:
+    "Faturamento agrupado por cliente (notas de saída autorizadas), ordenado por valor " +
+    "total decrescente, com o CNPJ de cada cliente. Use `agruparPor: 'cnpj_raiz'` para " +
+    "agregar matriz+filiais pela raiz do CNPJ. Use para 'faturamento de venda por CNPJ', " +
+    "'faturamento por cliente', 'quem mais comprou'.",
   inputSchemaShape: inputSchema.shape,
   inputSchema,
   outputSchema,
@@ -80,6 +89,7 @@ export const fiscalFaturamentoPorCliente: ToolEntry<Input, Output> = {
         empresaId: escopo.empresaId,
         limit,
         offset,
+        agruparPor: input.agruparPor,
       });
       return {
         linhas: r.linhas,

@@ -1531,7 +1531,7 @@
       "id": "fiscal_faturamento_por_cliente",
       "operation": "read",
       "module": "fiscal",
-      "descricao": "Faturamento agrupado por cliente (notas de saída autorizadas), ordenado por valor total decrescente.",
+      "descricao": "Faturamento agrupado por cliente (notas de saída autorizadas), ordenado por valor total decrescente, com o CNPJ de cada cliente. Use `agruparPor: 'cnpj_raiz'` para agregar matriz+filiais pela raiz do CNPJ. Use para 'faturamento de venda por CNPJ', 'faturamento por cliente', 'quem mais comprou'.",
       "capability": null,
       "sensitive": false,
       "addedInVersion": null,
@@ -1539,6 +1539,7 @@
         "periodoDe",
         "periodoAte",
         "empresaRef",
+        "agruparPor",
         "limit",
         "offset"
       ],
@@ -1557,6 +1558,15 @@
           "name": "empresaRef",
           "type": "string",
           "optional": true
+        },
+        {
+          "name": "agruparPor",
+          "type": "enum",
+          "optional": true,
+          "enumValues": [
+            "cliente",
+            "cnpj_raiz"
+          ]
         },
         {
           "name": "limit",
@@ -4104,5 +4114,5 @@
     }
   ],
   "count": 117,
-  "generatedAt": "2026-06-11T21:13:43.265Z"
+  "generatedAt": "2026-06-11T21:24:20.951Z"
 }
