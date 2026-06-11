@@ -111,7 +111,14 @@ Cada fase: plano próprio (bite-sized) + 2 reviews quando material → execuçã
       nao esta no catalogo , conferir; pedido.documento data_orcamento validar
       no T3). FALTA: resto T1a (inventario/carta/pagamento_divida/estoque_
       rastreabilidade), T1d lista negativa + teste de conjunto, T2..T11.
-      PROXIMO: EXECUTAR T1d, T2 (T7b/T8-
+      T1d FEITO (gate 6 testes, 9d45240). T2a/b/c FEITOS (eead7e1: corte.ts +
+      clausula nos 3 ciclos; titulo sem clausula de proposito).
+      **ALERTA DE ORDEM (review #2.8, agora real no codigo): NAO rebuildar o
+      worker (dev) nem ship antes do pg_dump do T9 pre-flight , estoque.extrato
+      e snapshot COM corte: o 1o full-refresh pos-deploy purga as linhas
+      pre-2026 SEM rede de seguranca. Ordem: pg_dump -> deploy -> ciclos.**
+      PROXIMO: T2d (reclassificar estoque.extrato), T3 (valida campos Odoo),
+      T4a-d (purge script) (T7b/T8-
       golden gated por recarga OpenAI; --apply gated por aprovacao humana).**
 - [ ] **PROXIMA SESSAO:** (adicionar: reescrever os ~8 cov-* placeholder do
       golden como perguntas naturais com identificadores; toolsAceitas nas
