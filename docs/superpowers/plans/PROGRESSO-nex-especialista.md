@@ -260,10 +260,26 @@ Cada fase: plano próprio (bite-sized) + 2 reviews quando material → execuçã
       (a 6 cai corretamente na lacuna honesta: "recorte de seguimento nao
       esta preenchido no cadastro hoje"). Relatorio com as 8 respostas:
       docs/superpowers/research/cobertura-cliente-validacao.md.
-      GAPS REGISTRADOS p/ onda futura: filtro de cliente por CNPJ exato
-      (deriv-05); margem por familia (lacuna honesta hoje); race de oferta
-      vazia no instante do redeploy do mcp (catalog_size_offered=0 ,
-      retry de listTools no run-agent).
+      GAPS (atualizado pos-autorizacao do usuario ~19h20):
+      [x] PR #99 MERGED (autorizado) + CI verde + prod {ok:true} , o FILTRO
+          de corte esta em producao. PURGE FISICO EM PROD PENDENTE: requer
+          SSH na VPS root@82.29.61.175 (Permission denied , pedir chave ao
+          usuario OU passar os comandos do runbook p/ ele rodar). Risco
+          baixo: filtro impede reimport; Odoo intacto; dump dev guarda as
+          16 tabelas.
+      [x] CASO 18x15 RESOLVIDO (PR #100): cadastro tem 18 = 1 duplicata de
+          CNPJ + 2 filiais Jht SP (MG/CE) sem nota; filiais_listar agora
+          completa com o cadastro (flag semNotasNoPeriodo); resposta real
+          17 empresas. + GRANT raw_sped_empresa.
+      [x] CNPJ EXATO RESOLVIDO (PR #100): por_cliente ganha `documento`
+          (14 digitos ou raiz 8; nome conforme convencao de extracao do
+          prompt , 'clienteCnpj' o mini nao preenchia); E2E verificado
+          contra SQL exato. + triggers de CNPJ.
+      [x] RETRY de catalogo vazio no run-agent (redeploy do mcp).
+      [ ] Margem por familia (lacuna honesta hoje) , proxima.
+      [ ] REVIEW AMPLO (usuario: cliente tem 100+ perguntas da complexidade
+          das 8; avaliar prontidao do catalogo; spec curta + reviews
+          adversariais; TETO OPENAI AGORA US$8, gasto ~4,60).
 - [ ] **DEPOIS:** Fase D onda 2 (compressao agressiva, com A/B); A2 (A/B
       Claude , exige credito OpenRouter); auditar suspeitas do juiz de
       alucinacao (falso positivo).
