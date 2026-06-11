@@ -48,12 +48,26 @@
       "id": "estoque_valor_armazem",
       "operation": "read",
       "module": "estoque",
-      "descricao": "Valor de estoque a preço de custo por armazém.",
+      "descricao": "Valor de estoque a preço de custo por armazém. Filtre por `locais` (prefixos da árvore de locais, ex.: 'Terceiros / Demonstração') ou `apenasFisicos` (subárvore Próprio). Use para 'valor total de estoque', 'valor de estoque físico', 'estoque em demonstração', 'estoque em poder de terceiros', 'estoque no local X'.",
       "capability": null,
       "sensitive": false,
       "addedInVersion": null,
-      "inputSchemaKeys": [],
-      "inputSchemaFields": [],
+      "inputSchemaKeys": [
+        "locais",
+        "apenasFisicos"
+      ],
+      "inputSchemaFields": [
+        {
+          "name": "locais",
+          "type": "array",
+          "optional": true
+        },
+        {
+          "name": "apenasFisicos",
+          "type": "boolean",
+          "optional": true
+        }
+      ],
       "examples": []
     },
     {
@@ -4090,5 +4104,5 @@
     }
   ],
   "count": 117,
-  "generatedAt": "2026-06-11T21:09:51.957Z"
+  "generatedAt": "2026-06-11T21:13:43.265Z"
 }

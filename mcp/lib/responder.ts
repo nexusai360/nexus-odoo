@@ -409,6 +409,15 @@ const fmtProdutosSaldoZero: FormatadorCanonico = (env) => {
 const fmtValorArmazem: FormatadorCanonico = (env) => {
   const valor = Number(env._DESTAQUE?.valorTotal ?? 0);
   const n = Number(env._DESTAQUE?.contagemArmazens ?? 0);
+  // Cobertura Cliente A6: a resposta SEMPRE nomeia os locais cobertos quando
+  // ha filtro de arvore (fisico/demonstracao/terceiros/local especifico).
+  const escopo = env._DESTAQUE?.escopoLocais ? String(env._DESTAQUE.escopoLocais) : "";
+  if (escopo && escopo !== "todos os locais") {
+    if (valor === 0 && n === 0) {
+      return `Nao ha estoque com valor nos locais filtrados (${escopo}).`;
+    }
+    return `Valor em estoque nos locais "${escopo}": ${formatBRL(valor)} em ${n} local(is)/armazem(ns).`;
+  }
   return `Valor total em estoque: ${formatBRL(valor)} em ${n} armazens.`;
 };
 
