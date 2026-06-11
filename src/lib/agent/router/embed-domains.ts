@@ -7,7 +7,7 @@
 //
 // Storage em memoria do processo: 9 dominios x 1536 floats x 4 bytes ~= 55 KB.
 
-import { embed } from "../rag/embed";
+import { embedMany } from "../rag/embed";
 import { getRouterEmbeddingConfig } from "./constants";
 import {
   DOMAINS,
@@ -21,16 +21,19 @@ let cachedHash: string | null = null;
 let cachedVectors: DomainVectors | null = null;
 let pendingPromise: Promise<DomainVectors> | null = null;
 
-/** Sequencial em vez de batch porque `embed()` aceita 1 texto por chamada.
- *  Tempo total de cold start: ~9 x 100ms = ~1s. So acontece 1x por processo. */
+/** Batch: 1 chamada para todos os domínios (mesmo modelo/dimensao da pergunta
+ *  em embed-question, senao o cosseno fica sem sentido). So acontece 1x por
+ *  processo. Sem usageCtx: o warm de dominios e' 1x por processo. */
 async function embedAllDomains(): Promise<DomainVectors> {
   const { model, dimensions } = getRouterEmbeddingConfig();
+  const vectors = await embedMany(
+    DOMAINS.map((d) => d.description),
+    { model, dimensions },
+  );
   const out: DomainVectors = {};
-  for (const d of DOMAINS) {
-    // Mesmo modelo/dimensao da pergunta (embed-question), senao o cosseno
-    // fica sem sentido. Sem usageCtx: o warm de dominios e' 1x por processo.
-    out[d.domain] = await embed(d.description, { model, dimensions });
-  }
+  DOMAINS.forEach((d, i) => {
+    out[d.domain] = vectors[i];
+  });
   return out;
 }
 

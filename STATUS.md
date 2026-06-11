@@ -10,9 +10,11 @@
 > **Financeiro:** já estava construído (~14 tools ativas). **Contábil:** vazio na fonte (sem DRE/lucro).
 > **Bugs do Nex corrigidos (print, #92, em prod+local):** (1) vazamento de tool-call cru como texto
 > (`stripLeakedToolCall` + regra no prompt `identity-base 10-tool`); (2) `faturamento_periodo` enxuto
-> (sem o "individual X; intragrupo Y" verboso). **PENDENTE #3 , latência ~60s da sessão MCP**: diagnóstico
-> em `docs/superpowers/research/2026-06-10-latencia-sessao-mcp.md` (é o timeout default 60s do SDK MCP +
-> sessão por turno; falta confirmar a fase e implementar o fix).
+> (sem o "individual X; intragrupo Y" verboso). **#3 , latência ~60s do PRIMEIRO turno: RESOLVIDO (2026-06-11,
+> commit 9182868).** Causa raiz NÃO era a sessão MCP (probe ~1,4s) nem timeout do SDK , era o **embedding
+> sequencial dos 107 tools no cold start do router** (`getToolVectors`, 107×~0,6s≈64s; cache por processo, só o
+> 1º turno após deploy pagava). Fix: `embedMany` batcha numa chamada (107→1). Medido: cold start 73s+ → **15,3s**
+> (thinking +5,4s). jest 2873 verde. Doc: `docs/superpowers/research/2026-06-10-latencia-sessao-mcp.md`.
 > **DEPLOY , ROTA ÚNICA:** usar **`python3 scripts/ship.py "titulo"`** (`docs/runbooks/deploy-procedure.md`):
 > PR→CI→merge→deploy→verifica prod, com fallback de IP da API do GitHub (o `gh` trava quando api.github.com
 > cai no IP Azure 4.228.31.149 inalcançável; `ship.py` contorna). NÃO refazer o fluxo na mão.

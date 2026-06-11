@@ -3,6 +3,9 @@ import { describe, expect, it, beforeEach, jest } from "@jest/globals";
 const mockEmbed = jest.fn<(text: string) => Promise<number[]>>();
 jest.mock("../../rag/embed", () => ({
   embed: (t: string) => mockEmbed(t),
+  // embed-domains agora embeda em lote (embedMany); delega ao mesmo mock por
+  // texto para preservar os stubs por descricao.
+  embedMany: (texts: string[]) => Promise.all(texts.map((t) => mockEmbed(t))),
   EmbeddingUnavailable: class extends Error {},
 }));
 
