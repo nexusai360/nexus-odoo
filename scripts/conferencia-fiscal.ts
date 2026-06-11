@@ -278,7 +278,9 @@ async function main() {
     const ehReceita = cfop4 ? classificarCfop(cfop4).ehReceita : false;
     if (ehReceita && naoVenda.has(r.nat)) c4a += r.v;
   }
-  checkBandaValor("C4a receita(cfop) com natureza nao-venda", c4a, 500_000, 1_500_000, alertas);
+  // Banda recalibrada pos-Limpa 2026+ (T8): o residuo de ~906k era todo pre-2026;
+  // no cache 2026+ o valor real e 0. Piso 0, teto mantido (pega crescimento anomalo).
+  checkBandaValor("C4a receita(cfop) com natureza nao-venda", c4a, 0, 1_500_000, alertas);
   // C6: notas de saida autorizada sem item.
   checkBanda("C6 notas sem item", await contarNotasSemItem(), 80, 130, alertas);
 
