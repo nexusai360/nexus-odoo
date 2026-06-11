@@ -149,14 +149,19 @@ Cada fase: plano próprio (bite-sized) + 2 reviews quando material → execuçã
       **T9 EM CURSO: pre-flight disco OK (395G livres no volume PG, banco
       5,5GB) + PG_DUMP FEITO E VERIFICADO (16 tabelas, 70MB,
       ~/Backups/nexus-odoo/limpa-2026-pre-purge-20260611T1405.dump) , destrava
-      deploy do filtro em dev E o merge/ship do codigo da limpa.** Rebuild do
-      worker dev em andamento. FALTA NO T9: 1 ciclo verificado -> stop worker
-      -> dry-run final -> APROVACAO HUMANA do dry-run (290.010 linhas) ->
-      capturar invariante -> --apply --aprovado -> rebuild titulo -> comparar
-      invariante -> --vacuum -> T6 rebuilds/ancoras -> re-rodar gen-baseline ->
-      worker on + 2 ciclos. (T7b/T8-golden-validacao seguem gated por OpenAI.)
-      **MERGE/SHIP DO CODIGO DA LIMPA E GATED pelo pg_dump do T9 pre-flight
-      (alerta acima) , NAO mergear no wrap-up automatico.** (T7b/T8-
+      deploy do filtro em dev E o merge/ship do codigo da limpa.** DEPLOY DEV
+      VERIFICADO: imagem nexus-odoo:local 17:07Z, worker recriado DA PASTA
+      PRINCIPAL (recriar da worktree perde o env , OdooError variaveis
+      ausentes; armadilha anotada), ciclos incremental E snapshot concluidos
+      sem erro; dry-run pos-ciclo 289.890 (= 290.010 - 120 do estoque.extrato
+      que o snapshot com corte ja purgou; NADA reimportou , filtro comprovado
+      no ciclo real). **T9 PARADO NO GATE HUMANO: aguarda APROVACAO do dry-run
+      (limpa-2026-dryrun.md, 289.890 linhas) para: stop worker -> capturar
+      invariante -> --apply --aprovado -> rebuild titulo -> comparar
+      invariante (R$0,00) -> --vacuum -> T6 rebuilds/ancoras -> re-rodar
+      gen-baseline -> worker on + 2 ciclos.**
+      **MERGE/SHIP DO CODIGO DA LIMPA: pg_dump do pre-flight FEITO , gate
+      destravado; merge segue exigindo confirmacao humana padrao.** (T7b/T8-
       golden gated por recarga OpenAI; --apply gated por aprovacao humana).**
 - [ ] **PROXIMA SESSAO:** (adicionar: reescrever os ~8 cov-* placeholder do
       golden como perguntas naturais com identificadores; toolsAceitas nas
