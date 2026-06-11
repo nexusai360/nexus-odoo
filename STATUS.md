@@ -42,15 +42,22 @@
 > KS (empresa do grupo != cliente), NCM (detalhar produto por termo), Smartfit (CNPJs no _RESPOSTA),
 > apuração zerada com ressalva honesta. (E) Golden 124→130 com casos reais + kpi SQL-VIVO (fonteOuroSql).
 > Validação: 6/6 tool certa + 6/6 kpi-vivo nos ouro; jest 2890; localhost atualizado.
-> **PENDENTE (próx. sessão):** Fase D (prompt 2.0 enxuto), composição multi-eixo, follow-up no golden,
-> golden gate pre-push, A2 (A/B com Claude , exige usuário creditar OpenRouter). Retomada:
-> docs/superpowers/plans/PROGRESSO-nex-especialista.md.
-> **LIMPA 2026+ (prioridade do usuário, EM EXECUÇÃO na branch):** SPEC v3 + PLAN v3 (reviews adversariais;
-> dívida viva R$118mi protegida , título corta por SITUAÇÃO). Executado: T1 (catálogo corte+gate), T2a/b/c
-> (filtro permanente no sync), T3 (8/8 campos validados no Odoo), T4a (predicados), T4b parcial (dry-run real:
-> 81.420 linhas; 3 filhos SPED com erro de cast a resolver , gate). **MERGE GATED pelo pg_dump (T9 pre-flight).**
-> **BLOQUEIO EXTERNO: OpenAI insufficient_quota , Nex SEM LLM em prod/dev até recarga; E2E do fix de
-> contestação pendente disso. OpenRouter saldo 0 (A2 Claude).** Retomada: PROGRESSO-nex-especialista.md.
+> **NEX ESPECIALISTA (2026-06-11 tarde): GOLDEN 99,1% FULL (111/112, kpi-vivo 6/6; era 83,3%).**
+> Golden 135 casos SEM placeholder (67 cov-* reescritos com ids reais) + toolsAceitas nas irmãs + 3 casos
+> follow-up multi-turno (`turnosAntes` no schema + harness ab-cerebro). Fixes de raiz: vocabulário do router
+> (comercial: tabelas/regras de preço; crm: res.partner raw), `preco_tabela` aceita `tabelaNome`,
+> **GRANT `raw_res_partner`** (migration 20260611191500, mesma classe C.0). **Prompt 2.0-D1** (Fase D onda 1):
+> lista estática de tools REMOVIDA do identity-base (driftava), freshness coerente; benchmark pós-D1 igual =
+> zero regressão. **Gate pre-push** determinístico (`.husky/pre-push`: golden-gate + corte-2026, ~5s).
+> E2E contestação OK (fix do papagaio comprovado). OpenAI recarregada (teto US$5; gasto ~US$2,60).
+> **PENDENTE (próx. sessão):** Fase D onda 2 (compressão agressiva, com A/B), A2 (Claude , exige crédito
+> OpenRouter), auditar 15/112 suspeitas do juiz de alucinação. Retomada: PROGRESSO-nex-especialista.md.
+> **LIMPA 2026+ , EXECUTADA EM DEV (aprovação do usuário ~14h35):** purge **289.890 linhas em 21s**
+> (= dry-run aprovado) → **invariante financeiro R$ 0,00 verde** (dívida viva intacta) → **vacuum 1.083MB**
+> (item 925→194MB) → rebuilds + E2E âncoras verdes → 2+ ciclos → **dry-run final = 0** (sync não reimporta).
+> Honestidade pré-corte em tools+prompt+golden. Runbook `docs/runbooks/limpa-2026.md`; pg_dump em
+> `~/Backups/nexus-odoo/`. **PR #99 ABERTO , MERGE = INÍCIO DO T10 (deploy assistido em prod; pg_dump no
+> servidor ANTES do merge; janela: purge 21s + vacuum ~40s). Decisão do usuário pendente.**
 > **DEPLOY , ROTA ÚNICA:** usar **`python3 scripts/ship.py "titulo"`** (`docs/runbooks/deploy-procedure.md`):
 > PR→CI→merge→deploy→verifica prod, com fallback de IP da API do GitHub (o `gh` trava quando api.github.com
 > cai no IP Azure 4.228.31.149 inalcançável; `ship.py` contorna). NÃO refazer o fluxo na mão.
