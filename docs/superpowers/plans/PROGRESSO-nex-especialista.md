@@ -53,7 +53,23 @@ Cada fase: plano próprio (bite-sized) + 2 reviews quando material → execuçã
         Fase B atingido.**
   - [x] B.6 AutoValidator V8 "enquadramento de lista" (2368688): alegou
         'maiores/top' sem topMaiores/ordenadoPor de valor desc => retry.
-  - [ ] B.7 embeddingText audit das monetarias (PROXIMO).
+  - [x] B.7 embeddingText audit: retrieval 8/8 com frases reais ("maiores
+        vencidos", "quem mais me deve"...), sem mudanca necessaria (provado).
+- [~] **Fase C (EM CURSO) , mineracao das pericias revelou a MAIOR classe:**
+  - [x] **C.0 ACHADO GIGANTE: 20 tabelas fato_*/dim_* SEM GRANT para nexus_mcp**
+        (e 22 p/ nexus_mcp_bi). Dominios INTEIROS quebrados desde que nasceram
+        (contabil, DFe, REINF, MDFe, cobranca, producao, auditoria, CRM,
+        comissoes, pedido_historico, lancamento_item, min/max, cotacao, PIX,
+        cheque): tool dava "permission denied" -> "Erro interno" -> agente dizia
+        "nao consegui obter" (a falsa "burrice"). Fix de raiz: migration
+        20260611150000 (GRANT em massa + ALTER DEFAULT PRIVILEGES , tabela
+        futura nasce legivel; classe de bug morta). E2E: DFe pendentes (995) e
+        plano SPED (2.216) respondem certo pelo agente real.
+  - [ ] C.1 casos restantes da matriz: KS (faturamento por empresa especifica),
+        NCM/cod barras (cadastro_detalhar_produto , selecao), ICMS/PIS/COFINS
+        (apuracao zerada sem ressalva), top-10 pedidos (restringiu periodo sem
+        pedirem), Smartfit (ambiguidade 50 cadastros), "quantas E quais"
+        (completude), composicao multi-eixo (empresa x operacao), follow-up.
 - [ ] Fase C , filtros + composição multi-eixo + follow-up (mineração das razoes).
 - [ ] Fase A2 , A/B confirmatório.
 - [ ] Fase D , prompt 2.0 + AutoValidator atualizado.
