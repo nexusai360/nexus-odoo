@@ -280,6 +280,10 @@ export async function queryTitulosVencidos(
       vrTotal: true,
       situacaoSimples: true,
     },
+    // Contrato de lista (Fase B): ordenação determinística por valor desc com
+    // desempate por id. Sem isso a ordem era a do PK e o agente rotulava as
+    // primeiras N linhas de "maiores" (caso forense #1 do laudo 2026-06-11).
+    orderBy: [{ vrSaldo: "desc" }, { odooId: "asc" }],
   });
 
   const titulos: TituloVencidoRow[] = rows.map((r) => ({

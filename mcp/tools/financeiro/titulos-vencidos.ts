@@ -38,6 +38,19 @@ const dados = z.object({
   totalVencido: z.number(),
   // Quebra honesta do vencido em aberto: confirmado vs provisorio.
   quebra: z.object({ confirmado: z.number(), provisorio: z.number() }),
+  // Contrato de lista (Fase B): a lista vem ordenada e a ordenacao e declarada.
+  ordenadoPor: z.string().optional(),
+  topMaiores: z
+    .array(
+      z.object({
+        nome: z.string(),
+        valor: z.number(),
+        documento: z.string(),
+        diasAtraso: z.number().int(),
+        tipo: z.string(),
+      }),
+    )
+    .optional(),
   _RESPOSTA: z.string().optional(),
   _listaTruncada: z.boolean().optional(),
   _DESTAQUE: z.record(z.string(), z.union([z.string(), z.number()])).optional(),
@@ -130,11 +143,25 @@ export const financeiroTitulosVencidos: ToolEntry<Input, Output> = {
     }
     const totalVencidoFiltrado = titulos.reduce((s, t) => s + t.vrSaldo, 0);
     const quebraFiltrada = quebraDe(titulos);
+    // Contrato de lista (Fase B): a query ja ordena por vrSaldo desc; o sort
+    // local re-garante apos os filtros e o topMaiores e a visao pronta para
+    // "N maiores vencidos" (caso forense #1: agente rotulava lista arbitraria
+    // de "10 maiores").
+    const titulosOrdenados = [...titulos].sort((a, b) => b.vrSaldo - a.vrSaldo);
+    const topMaiores = titulosOrdenados.slice(0, 10).map((t) => ({
+      nome: t.participanteNome ?? "",
+      valor: t.vrSaldo,
+      documento: t.numeroDocumento ?? "",
+      diasAtraso: t.diasAtraso,
+      tipo: t.tipo,
+    }));
     const dadosFiltrados = {
       ...envelope.dados,
-      titulos,
+      titulos: titulosOrdenados,
       totalVencido: totalVencidoFiltrado,
       quebra: quebraFiltrada,
+      ordenadoPor: "valor desc",
+      topMaiores,
     };
 
     // A10 fase 1: aviso quando tipo nao informado.

@@ -321,6 +321,14 @@ describe("queryTitulosVencidos", () => {
     expect(ltValue.getTime()).toBe(inicioDoDia.getTime());
   });
 
+  it("ordena por vrSaldo desc com desempate por odooId (contrato de lista, Fase B)", async () => {
+    const prisma = makePrisma();
+    (prisma.fatoFinanceiroTitulo.findMany as jest.Mock).mockResolvedValue([]);
+    await queryTitulosVencidos(prisma as never, hoje);
+    const call = (prisma.fatoFinanceiroTitulo.findMany as jest.Mock).mock.calls[0][0];
+    expect(call.orderBy).toEqual([{ vrSaldo: "desc" }, { odooId: "asc" }]);
+  });
+
   it("caso de borda: título que venceu ontem SIM aparece como vencido (diasAtraso: 1)", async () => {
     const prisma = makePrisma();
     const ontem = new Date(hoje.getFullYear(), hoje.getMonth(), hoje.getDate() - 1); // 2026-05-17T00:00:00
