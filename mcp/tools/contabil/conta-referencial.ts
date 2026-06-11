@@ -26,6 +26,8 @@ const linhaSchema = z.object({
 });
 
 const dados = z.object({
+  // Contrato de lista (Fase B): ordenacao declarada.
+  ordenadoPor: z.string().optional(),
   linhas: z.array(linhaSchema),
   total: z.number().int(),
   truncado: z.boolean(),
@@ -66,7 +68,7 @@ export const contabilContaReferencial: ToolEntry<Input, Output> = {
       ["fato_contabil_conta_referencial"],
       async () => {
         const result = await queryContaReferencial(ctx.prisma, input);
-        return { linhas: result.linhas, total: result.total, truncado: result.truncado };
+        return { linhas: result.linhas, total: result.total, truncado: result.truncado, ordenadoPor: "codigo asc" };
       },
     );
     if (envelope.estado === "preparando") return envelope;

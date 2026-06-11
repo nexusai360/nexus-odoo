@@ -31,6 +31,8 @@ const inputSchema = z.object({
 });
 
 const outputSchema = z.object({
+  // Contrato de lista (Fase B): a ordenacao e definida pelo ORDER BY do SQL recebido.
+  ordenadoPor: z.string().optional(),
   colunas: z.array(z.string()),
   linhas: z.array(z.record(z.string(), z.unknown())),
   // linhasRetornadas: quantidade efetivamente retornada (≤ 1000).
@@ -101,6 +103,8 @@ export const biConsultaAvancada: ToolEntry<Input, Output> = {
     return outputSchema.parse({
       colunas,
       linhas,
+      // Contrato de lista (Fase B): a ordem e a do SQL recebido do agente.
+      ordenadoPor: "definida pelo ORDER BY do SQL da consulta",
       linhasRetornadas: linhas.length,
       truncado,
       aviso:

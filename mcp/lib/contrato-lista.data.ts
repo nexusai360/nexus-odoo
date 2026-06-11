@@ -9,14 +9,4 @@
 // Criterio de saida da Fase B: allowlist == [] (padrao TOOLS_SEM_FORMATADOR_REAL).
 // Origem: docs/superpowers/research/2026-06-11-auditoria-contrato-lista.md
 
-export const TOOLS_SEM_CONTRATO_DE_LISTA: readonly string[] = [
-  "bi_consulta_avancada",
-  "cadastros.res_partner_category.set_tags",
-  "contabil_centro_custo",
-  "contabil_conta_referencial",
-  "contabil_estrutura_conta",
-  "contabil_movimento_conta",
-  "contabil_plano_de_contas",
-  "contabil_resultado_por_natureza",
-  "contabil_saldo_conta",
-];
+export const TOOLS_SEM_CONTRATO_DE_LISTA: readonly string[] = [];

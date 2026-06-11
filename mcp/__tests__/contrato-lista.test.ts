@@ -42,6 +42,9 @@ function varrerTools(): ToolFonte[] {
     for (const f of readdirSync(dir)) {
       if (!f.endsWith(".ts") || f.endsWith(".test.ts") || f === "index.ts") continue;
       const src = readFileSync(join(dir, f), "utf8");
+      // Write tools ficam fora do contrato de lista: o array delas e input/
+      // confirmacao de escrita, nao lista consultavel que o agente enquadra.
+      if (src.includes("WriteToolEntry")) continue;
       const ids = [...src.matchAll(/id:\s*"([a-z0-9_.]+)"/g)].map((m) => m[1]);
       const listas = [...src.matchAll(/(\w+):\s*z\s*\.array\(/g)]
         .map((m) => m[1])
