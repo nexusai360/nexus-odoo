@@ -1,5 +1,6 @@
 // src/worker/sync/reconcile.ts
 import type { OdooClient } from "../odoo/client";
+import { corteDomain } from "./corte";
 
 export interface ReconcileDelegate {
   findMany(args: { select: { odooId: true } }): Promise<{ odooId: number }[]>;
@@ -14,7 +15,10 @@ export async function reconcileModel(
   raw: ReconcileDelegate,
   odooModel: string,
 ): Promise<number> {
-  const vivos = new Set(await client.searchIds(odooModel, []));
+  // Limpa 2026+ (T2c): o conjunto "vivo" usa o MESMO corte do cache , sem
+  // isso, IDs pre-2026 vivos no Odoo nunca poderiam ser comparados de forma
+  // coerente com um cache que so guarda 2026+.
+  const vivos = new Set(await client.searchIds(odooModel, corteDomain(odooModel)));
   const noCache = await raw.findMany({ select: { odooId: true } });
   const sumidos = noCache.map((r) => r.odooId).filter((id) => !vivos.has(id));
   if (!sumidos.length) return 0;
