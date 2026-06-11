@@ -278,11 +278,22 @@ Cada fase: plano próprio (bite-sized) + 2 reviews quando material → execuçã
       [x] RETRY de catalogo vazio no run-agent (redeploy do mcp).
       [x] MARGEM POR FAMILIA RESOLVIDA (metrica porFamilia + tool
           agruparPor familia + triggers + familiasResumo no destaque + formatador anexa). VALIDADO no handler: _RESPOSTA inclui "Por familia: MATRIX..., LIFE FITNESS..." top 8; o param e passado pelo mini (audit comprova); reescrita do mini pode resumir (tema A2).
-      [ ] REVIEW AMPLO (usuario: cliente tem 100+ perguntas da complexidade
-          das 8; avaliar prontidao do catalogo; spec curta + reviews
-          adversariais; TETO OPENAI AGORA US$8, gasto ~4,70). E pedir ao
-          usuario a LISTA das 100+ perguntas , com ela o review vira golden
-          direto (muito mais certeiro que derivar as perguntas no escuro).
+      [x] REVIEW AMPLO FEITO (relatorio
+          docs/superpowers/research/2026-06-11-prontidao-catalogo.md, 14
+          premissas verificadas no banco). Gaps 1/2/6 do top-10 PROVADOS JA
+          COBERTOS no agente real (notas_recebidas_por_fornecedor R$12,6mi
+          50 forn.; contas_a_pagar R$209mi; por_cliente top-10).
+          **BACKLOG REAL DA PROXIMA ONDA:** (a) avisos de FONTE-VAZIA em
+          comercial_comissoes, comercial_cotacoes, financeiro_cheques,
+          financeiro_pix_recebidos (fato=0 respondido como lista vazia =
+          resposta enganosa , padrao fonteZerada/status ja existe); (b)
+          pos_venda/assistencia: 0 tabelas e SEM tool de status (unico
+          dominio descoberto sem honestidade); (c) financeiro_aging_
+          recebiveis (buckets 0-30/30-60/60-90/90+ , dado pronto); (d)
+          estoque_cobertura_dias (raw_estoque_saldo_hoje_duracao_dias ja
+          calculado, 3.666 linhas); (e) fiscal_faturamento_por_vendedor
+          (NF x pedido x vendedor). PEDIR AO USUARIO a lista das 100+
+          perguntas (vira golden direto).
 - [ ] **DEPOIS:** Fase D onda 2 (compressao agressiva, com A/B); A2 (A/B
       Claude , exige credito OpenRouter); auditar suspeitas do juiz de
       alucinacao (falso positivo).
