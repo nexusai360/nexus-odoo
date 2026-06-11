@@ -155,11 +155,24 @@ Cada fase: plano próprio (bite-sized) + 2 reviews quando material → execuçã
       ausentes; armadilha anotada), ciclos incremental E snapshot concluidos
       sem erro; dry-run pos-ciclo 289.890 (= 290.010 - 120 do estoque.extrato
       que o snapshot com corte ja purgou; NADA reimportou , filtro comprovado
-      no ciclo real). **T9 PARADO NO GATE HUMANO: aguarda APROVACAO do dry-run
-      (limpa-2026-dryrun.md, 289.890 linhas) para: stop worker -> capturar
-      invariante -> --apply --aprovado -> rebuild titulo -> comparar
-      invariante (R$0,00) -> --vacuum -> T6 rebuilds/ancoras -> re-rodar
-      gen-baseline -> worker on + 2 ciclos.**
+      no ciclo real). **T9 DEV 100% COMPLETO (USUARIO APROVOU O DRY-RUN ~14:35):**
+      purge --apply 289.890 linhas em 21s (bateu EXATO com o dry-run); rebuild
+      fato_financeiro_titulo 1,8s; INVARIANTE R$0,00 VERDE (vivas identicas;
+      0 quitado pre-2026 no fato E no raw); vacuum 1.083MB (item 925->194MB,
+      documento 213->43MB; lote_serie era dado vivo, so 94MB de bloat);
+      f4l-build-fatos 36s; E2E ancoras verdes (conferencia TODOS os gates +
+      f5-regime; banda C4a recalibrada piso 0 pos-corte); gen-baseline
+      re-rodado (acumulado pos-corte real = 59.579.180,28 = 2026); worker
+      religado DA PASTA PRINCIPAL; 2+ ciclos (incremental+snapshot) e DRY-RUN
+      FINAL = 0 LINHAS , criterio "sync nao reimporta pre-2026" comprovado.
+      Relatorios: limpa-2026-apply.md (purge+vacuum) e limpa-2026-dryrun.md
+      (verificacao zerada). Commit d39cb4e. OPENAI RECARREGADA (TETO US$5,
+      gasto ~2 centavos): E2E contestacao , fix do papagaio FUNCIONA (T2 nao
+      repete, reconsulta a tool e explica "15 empresas = 9 matrizes + 6
+      filiais"); script scripts/e2e-contestacao-filiais.ts.
+      FALTA: T10 (PROD , deploy assistido, EXIGE humano; janela curta:
+      purge 21s + vacuum ~40s medidos em DEV), T7b (regra prompt + golden
+      recusa honesta), T8-golden validacao.
       **MERGE/SHIP DO CODIGO DA LIMPA: pg_dump do pre-flight FEITO , gate
       destravado; merge segue exigindo confirmacao humana padrao.** (T7b/T8-
       golden gated por recarga OpenAI; --apply gated por aprovacao humana).**
