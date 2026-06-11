@@ -84,6 +84,7 @@ export const TOOL_TRIGGERS: Record<string, string[]> = {
   "fiscal_faturamento_por_marca": ["qual marca de produto teve maior faturamento", "faturamento por marca", "qual marca vende mais", "top marcas em valor faturado"],
   "fiscal_faturamento_por_operacao": ["qual a natureza de operacao mais usada nas vendas", "faturamento por natureza de operacao", "quantas operacoes de devolucao tivemos", "faturamento separando venda de nao-venda"],
   "fiscal_faturamento_por_uf": ["como varia o faturamento por estado", "faturamento por UF", "vendas por regiao do pais", "faturamento por estado do cliente"],
+  "fiscal_demonstracoes": ["faturamento de operacoes de demonstracao", "remessas para demonstracao por uf", "quantas notas de demonstracao emitimos", "equipamentos enviados para demonstracao", "quanto retornou de demonstracao", "demonstracoes por empresa"],
   "fiscal_faturamento_recebido": ["quanto do faturamento ja foi pago", "faturamento recebido versus a receber", "valor faturado que entrou no caixa", "receita paga e em aberto por pedido"],
   "fiscal_impostos_periodo": ["qual foi o ICMS total do periodo", "total de impostos estimados IBPT", "carga de ICMS proprio no periodo", "estimativa de impostos das notas"],
   "fiscal_mdfe_manifestos": ["quais manifestos de transporte estao abertos", "MDFe do periodo", "manifestos de carga e descarga", "status dos manifestos eletronicos de documentos fiscais"],

@@ -1874,7 +1874,7 @@
       "id": "fiscal_faturamento_por_uf",
       "operation": "read",
       "module": "fiscal",
-      "descricao": "Faturamento agrupado por estado (UF do cliente da nota), ordenado por valor descendente. Use para 'faturamento por estado / por UF / por regiao' (regiao = conjunto de UFs). Agrega notas de saida autorizadas no periodo (default mes corrente).",
+      "descricao": "Faturamento agrupado por estado (UF do cliente da nota), ordenado por valor descendente. Use para 'faturamento por estado / por UF / por regiao' (regiao = conjunto de UFs). Agrega notas de saida autorizadas no periodo (default mes corrente). Para o recorte de DEMONSTRACAO use fiscal_demonstracoes.",
       "capability": null,
       "sensitive": false,
       "addedInVersion": null,
@@ -2289,7 +2289,7 @@
       "id": "fiscal_faturamento_por_operacao",
       "operation": "read",
       "module": "fiscal",
-      "descricao": "Faturamento de saida autorizado por natureza de operacao fiscal, com flag de venda vs nao-venda. Aceita empresa.",
+      "descricao": "Faturamento de saida autorizado por natureza de operacao fiscal, com flag de venda vs nao-venda. Aceita empresa. Para o recorte de DEMONSTRACAO use fiscal_demonstracoes.",
       "capability": null,
       "sensitive": false,
       "addedInVersion": null,
@@ -4090,5 +4090,5 @@
     }
   ],
   "count": 117,
-  "generatedAt": "2026-06-11T21:06:37.440Z"
+  "generatedAt": "2026-06-11T21:09:51.957Z"
 }

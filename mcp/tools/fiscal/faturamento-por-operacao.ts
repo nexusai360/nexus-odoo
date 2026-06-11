@@ -58,7 +58,7 @@ type Output = z.infer<typeof outputSchema>;
 export const fiscalFaturamentoPorOperacao: ToolEntry<Input, Output> = {
   id: "fiscal_faturamento_por_operacao",
   dominio: "fiscal",
-  descricao: "Faturamento de saida autorizado por natureza de operacao fiscal, com flag de venda vs nao-venda. Aceita empresa.",
+  descricao: "Faturamento de saida autorizado por natureza de operacao fiscal, com flag de venda vs nao-venda. Aceita empresa. Para o recorte de DEMONSTRACAO use fiscal_demonstracoes.",
   inputSchemaShape: inputSchema.shape,
   inputSchema,
   outputSchema,

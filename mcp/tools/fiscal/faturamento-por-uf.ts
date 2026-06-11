@@ -133,7 +133,8 @@ export const fiscalFaturamentoPorUf: ToolEntry<Input, Output> = {
   descricao:
     "Faturamento agrupado por estado (UF do cliente da nota), ordenado por valor " +
     "descendente. Use para 'faturamento por estado / por UF / por regiao' (regiao " +
-    "= conjunto de UFs). Agrega notas de saida autorizadas no periodo (default mes corrente).",
+    "= conjunto de UFs). Agrega notas de saida autorizadas no periodo (default mes corrente). " +
+    "Para o recorte de DEMONSTRACAO use fiscal_demonstracoes.",
   inputSchemaShape: inputSchema.shape,
   inputSchema,
   outputSchema,
