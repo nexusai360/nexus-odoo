@@ -116,7 +116,7 @@ export const DOMAINS: ReadonlyArray<DomainEntry> = [
   {
     domain: "crm",
     description:
-      "Funil de vendas, pipeline, oportunidades em aberto, leads, etapas do funil, atividades de vendedor, conversao de oportunidade em pedido, taxa de fechamento, perdas, registro bruto (raw) de um res.partner do cache. Perguntas tipicas: quantas oportunidades estao paradas, qual vendedor converte mais, leads novos esse mes, funil de vendas, registro raw do res.partner X.",
+      "Funil de vendas, pipeline, prospeccao, prospeccoes, oportunidades em aberto, leads, etapas do funil, atividades de vendedor, conversao de oportunidade em pedido, taxa de fechamento, perdas, registro bruto (raw) de um res.partner do cache. Perguntas tipicas: quantas oportunidades estao paradas, qual vendedor converte mais, leads novos esse mes, funil de vendas, como esta a prospeccao, registro raw do res.partner X.",
     examples: [
       "quantas oportunidades estao paradas?",
       "qual vendedor converte mais?",
@@ -128,6 +128,10 @@ export const DOMAINS: ReadonlyArray<DomainEntry> = [
       // (registro raw do parceiro) vive no dominio crm.
       /res\.?[_ ]?partner/i,
       /registro\s+(bruto|raw)/i,
+      // Onda C Cobertura Cliente: "prospeccao" e o termo do usuario para o
+      // modulo de CRM (vazio , crm_status_dominio responde a fonte).
+      /prospec[cç]/i,
+      /\blead(s)?\b/i,
     ],
   },
   {
