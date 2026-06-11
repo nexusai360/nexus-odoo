@@ -1,0 +1,72 @@
+{
+  "resumo": {
+    "candidato": "openai:gpt-5.4-mini",
+    "casos": 4,
+    "erros": 0,
+    "toolCerta": "4/4 (100.0%)",
+    "kpiOuro": "4/4",
+    "casosComSuspeitaAlucinacao": "0/4",
+    "custoP50Usd": "0.0027",
+    "custoTotalUsd": "0.01",
+    "latP50s": "13.5",
+    "duracaoTotalMin": "0.5"
+  },
+  "results": [
+    {
+      "id": "ouro-estoque-01",
+      "dominio": "estoque",
+      "ok": true,
+      "toolsCalled": [
+        "estoque_saldo_produto"
+      ],
+      "toolOk": true,
+      "kpiOk": true,
+      "kpiMiss": [],
+      "halucNums": [],
+      "custoUsd": 0.00268123,
+      "durMs": 13300.087
+    },
+    {
+      "id": "ouro-financeiro-01",
+      "dominio": "financeiro",
+      "ok": true,
+      "toolsCalled": [
+        "financeiro_saldo_contas"
+      ],
+      "toolOk": true,
+      "kpiOk": true,
+      "kpiMiss": [],
+      "halucNums": [],
+      "custoUsd": 0.00306528,
+      "durMs": 14735.183416
+    },
+    {
+      "id": "ouro-fiscal-01",
+      "dominio": "fiscal",
+      "ok": true,
+      "toolsCalled": [
+        "fiscal_contar_notas"
+      ],
+      "toolOk": true,
+      "kpiOk": true,
+      "kpiMiss": [],
+      "halucNums": [],
+      "custoUsd": 0.00195095,
+      "durMs": 6636.131416999999
+    },
+    {
+      "id": "ouro-comercial-01",
+      "dominio": "comercial",
+      "ok": true,
+      "toolsCalled": [
+        "comercial_contar_pedidos"
+      ],
+      "toolOk": true,
+      "kpiOk": true,
+      "kpiMiss": [],
+      "halucNums": [],
+      "custoUsd": 0.00252622,
+      "durMs": 13508.300333000001
+    }
+  ]
+}

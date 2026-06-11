@@ -328,14 +328,19 @@
         "chave": "saldoTotal",
         "valor": 789,
         "match": "exato",
-        "fonteOuro": "SELECT sum(quantidade) fato_estoque_saldo produto codigo=1464 local_id not null"
+        "fonteOuro": "SELECT sum(quantidade) fato_estoque_saldo produto codigo=1464 local_id not null",
+        "fonteOuroSql": "SELECT sum(s.quantidade)::float v FROM fato_estoque_saldo s JOIN fato_produto p ON p.odoo_id = s.produto_id WHERE p.codigo='1464' AND s.local_id IS NOT NULL"
       },
       {
         "chave": "totalLocais",
         "valor": 25,
         "match": "exato",
-        "fonteOuro": "SELECT count(distinct local_id) idem"
+        "fonteOuro": "SELECT count(distinct local_id) idem",
+        "fonteOuroSql": "SELECT count(DISTINCT s.local_id)::float v FROM fato_estoque_saldo s JOIN fato_produto p ON p.odoo_id = s.produto_id WHERE p.codigo='1464' AND s.local_id IS NOT NULL"
       }
+    ],
+    "toolsAceitas": [
+      "estoque_saldo_produto"
     ]
   },
   {
@@ -350,13 +355,15 @@
         "chave": "saldoTotal",
         "valor": -36233316.36,
         "match": "exato",
-        "fonteOuro": "SELECT round(sum(saldo),2) fato_financeiro_saldo"
+        "fonteOuro": "SELECT round(sum(saldo),2) fato_financeiro_saldo",
+        "fonteOuroSql": "SELECT round(sum(saldo),2)::float v FROM fato_financeiro_saldo"
       },
       {
         "chave": "totalContas",
         "valor": 9,
         "match": "exato",
-        "fonteOuro": "SELECT count(*) fato_financeiro_saldo"
+        "fonteOuro": "SELECT count(*) fato_financeiro_saldo",
+        "fonteOuroSql": "SELECT count(*)::float v FROM fato_financeiro_saldo"
       }
     ]
   },
@@ -373,21 +380,24 @@
         "valor": 49427,
         "match": "faixa",
         "delta": 1000,
-        "fonteOuro": "SELECT count(*) fato_nota_fiscal (volatil, cresce com sync)"
+        "fonteOuro": "SELECT count(*) fato_nota_fiscal (volatil, cresce com sync)",
+        "fonteOuroSql": "SELECT count(*)::float v FROM fato_nota_fiscal"
       },
       {
         "chave": "totalSaida",
         "valor": 38310,
         "match": "faixa",
         "delta": 1000,
-        "fonteOuro": "count filter entrada_saida=1 (volatil)"
+        "fonteOuro": "count filter entrada_saida=1 (volatil)",
+        "fonteOuroSql": "SELECT count(*)::float v FROM fato_nota_fiscal WHERE entrada_saida='1'"
       },
       {
         "chave": "totalEntrada",
         "valor": 11117,
         "match": "faixa",
         "delta": 500,
-        "fonteOuro": "count filter entrada_saida=0 (volatil)"
+        "fonteOuro": "count filter entrada_saida=0 (volatil)",
+        "fonteOuroSql": "SELECT count(*)::float v FROM fato_nota_fiscal WHERE entrada_saida='0'"
       }
     ],
     "volatil": true,
@@ -405,7 +415,8 @@
         "chave": "totalPedidos",
         "valor": 1732,
         "match": "exato",
-        "fonteOuro": "SELECT count(*) fato_pedido"
+        "fonteOuro": "SELECT count(*) fato_pedido",
+        "fonteOuroSql": "SELECT count(*)::float v FROM fato_pedido"
       }
     ]
   },

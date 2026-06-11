@@ -194,7 +194,10 @@ export type AgentEvent =
   | { type: "token"; delta: string }
   /** `label` é o rótulo genérico exibido na UI; `toolName` é o id cru interno. */
   | { type: "tool_call"; toolName: string; label: string; toolCallId?: string }
-  | { type: "tool_result"; toolName: string; truncated: boolean; label: string; toolCallId?: string }
+  /** `resultPreview` (opcional) carrega o conteúdo do tool result para
+   *  harnesses/juízes (A/B de modelo, juiz de alucinação). A rota SSE NÃO
+   *  repassa este campo (ela monta os campos explicitamente). */
+  | { type: "tool_result"; toolName: string; truncated: boolean; label: string; toolCallId?: string; resultPreview?: string }
   | { type: "done" };
 
 export interface RunAgentInput {
@@ -1490,6 +1493,7 @@ export async function runAgent(args: RunAgentInput): Promise<RunAgentResult> {
           truncated: wasTruncated,
           label: progressLabel(tc.name),
           toolCallId: tc.id,
+          resultPreview: sanitized.slice(0, 8000),
         });
 
         conversation.push({
