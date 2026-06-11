@@ -100,8 +100,13 @@ Cada fase: plano próprio (bite-sized) + 2 reviews quando material → execuçã
       adversariais aplicadas (4 BLOCKERs: titulo vivo R$118mi por SITUACAO
       nunca data; filtro AND no incremental; snapshot dominio vazio + CR-02;
       DELETE fisico + VACUUM FULL). Inventario tabela a tabela MEDIDO no doc.
-      **PROXIMO: PLAN v1 → 2 reviews → v3 → execucao (ordem §4 da spec; purge
-      --apply SO com aprovacao humana do relatorio dry-run).**
+      **PLAN v3 PRONTO** (plans/2026-06-11-limpa-2026-plan.md): 2 reviews
+      adversariais aplicadas (8 BLOCKERs: chave raw e situacao_divida_simples;
+      'efetivo'=VIVO nunca deleta; FK filho e many2one array ->0; lote_serie
+      2,9GB e BLOAT (vacuum sem delete = maior ganho); backfill since=null;
+      assinaturas syncSnapshot/reconcileModel; stop worker vence
+      unless-stopped; DELETE em lotes). **PROXIMO: EXECUTAR T1..T11 (T7b/T8-
+      golden gated por recarga OpenAI; --apply gated por aprovacao humana).**
 - [ ] **PROXIMA SESSAO:** (adicionar: reescrever os ~8 cov-* placeholder do
       golden como perguntas naturais com identificadores; toolsAceitas nas
       tools irmas) Fase D (prompt 2.0 enxuto + remover regras-curativo),
