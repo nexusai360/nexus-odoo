@@ -31,6 +31,9 @@ const dados = z.object({
   linhas: z.array(linha),
   total: z.number().int(),
   truncado: z.boolean(),
+  // Contrato de lista (Fase B): a query ja ordena por dataInicial desc com
+  // desempate por odooId; aqui apenas declaramos ao LLM.
+  ordenadoPor: z.string().optional(),
   _RESPOSTA: z.string().optional(),
   _listaTruncada: z.boolean().optional(),
   _DESTAQUE: z.record(z.string(), z.union([z.string(), z.number()])).optional(),
@@ -67,9 +70,11 @@ export const fiscalApuracao: ToolEntry<Input, Output> = {
   inputSchema,
   outputSchema,
   handler: async (input, ctx) => {
-    const envelope = await withFreshness(ctx.prisma, ["fato_apuracao"], () =>
-      queryApuracaoFiscal(ctx.prisma, input),
-    );
+    const envelope = await withFreshness(ctx.prisma, ["fato_apuracao"], async () => {
+      const r = await queryApuracaoFiscal(ctx.prisma, input);
+      // Contrato de lista (Fase B): declara a ordenacao real da query.
+      return { ...r, ordenadoPor: "data desc" };
+    });
     if (envelope.estado === "preparando") return envelope;
     const linhas = envelope.dados.linhas;
     // T-34 (Ronda 2): destaque com TODOS os tributos somados. Antes so ICMS

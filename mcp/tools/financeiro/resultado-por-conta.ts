@@ -21,6 +21,8 @@ const linhaSchema = z.object({
 });
 
 const dados = z.object({
+  // Contrato de lista (Fase B): ordenacao declarada.
+  ordenadoPor: z.string().optional(),
   linhas: z.array(linhaSchema),
   totalReceita: z.number(),
   totalDespesa: z.number(),
@@ -42,6 +44,8 @@ type Output = z.infer<typeof outputSchema>;
 function shape(d: Awaited<ReturnType<typeof queryResultadoPorConta>>) {
   return {
     ...d,
+    // A query ja ordena por total desc (contrato de lista).
+    ordenadoPor: "total desc",
     aviso:
       "DRE gerencial: receitas e despesas agrupadas por conta gerencial (itens do " +
       "lançamento financeiro). resultado = receita - despesa. Não confundir com " +

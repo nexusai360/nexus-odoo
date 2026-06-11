@@ -20,6 +20,8 @@ const linhaSchema = z.object({
 const dados = z.object({
   linhas: z.array(linhaSchema),
   totalVendedores: z.number().int(),
+  // Contrato de lista (Fase B): vendedores ordenados por quantidade de pedidos desc.
+  ordenadoPor: z.string().optional(),
   _RESPOSTA: z.string().optional(),
   _listaTruncada: z.boolean().optional(),
   _DESTAQUE: z.record(z.string(), z.union([z.string(), z.number()])).optional(),
@@ -75,7 +77,8 @@ export const comercialVendedoresCadastrados: ToolEntry<Input, Output> = {
             vendedorNome: r.vendedorNome,
             totalPedidos: r._count.odooId,
           }));
-        return { linhas, totalVendedores: linhas.length };
+        // Contrato de lista (Fase B): groupBy ordena por _count desc (desempate vendedorId).
+        return { linhas, totalVendedores: linhas.length, ordenadoPor: "pedidos desc" };
       },
     );
     if (envelope.estado === "preparando") return envelope;

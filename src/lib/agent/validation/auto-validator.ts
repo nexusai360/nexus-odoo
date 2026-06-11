@@ -29,6 +29,7 @@ export type ValidationFailReason =
   | "V5"
   | "V6"
   | "V7"
+  | "V8"
   | null;
 
 /**
@@ -46,6 +47,9 @@ export interface ToolResultLike {
     titulos?: unknown[];
     linhas?: unknown[];
     serie?: unknown[];
+    /** Contrato de lista (Fase B): ordenacao declarada + visao top pronta. */
+    ordenadoPor?: string;
+    topMaiores?: Array<{ nome: string; valor: number }>;
     /** Marcadores de lista incompleta (V6 nao verifica nestes casos). */
     _amostraReduzida?: unknown;
     _listaTruncada?: boolean;
@@ -637,6 +641,51 @@ export function validateV7(ctx: ValidationContext): ValidationOutcome | null {
   return null;
 }
 
+/** Palavras que alegam enquadramento de "maiores/top" na resposta. */
+const ALEGA_MAIORES_RE =
+  /\b(?:\d+\s+)?maiores\b|\btop\s*\d+\b|\bmais\s+(?:altos?|caras?|caros?|valiosos?)\b/i;
+
+/**
+ * V8 , enquadramento de lista (Fase B.6 do Nex Especialista, 2026-06-11).
+ *
+ * Caso forense #1 do laudo: o agente rotulou de "10 maiores" uma lista em
+ * ordem arbitraria (titulos de R$ 5 mil apresentados como maiores quando havia
+ * titulo de R$ 1,15 mi). O V8 exige SUSTENTACAO no tool result para a alegacao
+ * "maiores/top": ou o envelope traz `topMaiores` (visao pronta), ou declara
+ * `ordenadoPor` por valor/total desc. Sem sustentacao, retry com instrucao.
+ */
+export function validateV8(ctx: ValidationContext): ValidationOutcome | null {
+  if (!ALEGA_MAIORES_RE.test(ctx.llmResponse)) return null;
+
+  const comLista = ctx.toolResults.filter((tr) => {
+    const d = tr.dados;
+    if (!d) return false;
+    return (
+      Array.isArray(d.titulos) || Array.isArray(d.linhas) || Array.isArray(d.serie)
+    );
+  });
+  if (comLista.length === 0) return null;
+
+  const sustentado = comLista.some((tr) => {
+    const d = tr.dados!;
+    if (Array.isArray(d.topMaiores) && d.topMaiores.length > 0) return true;
+    const ord = String(d.ordenadoPor ?? "").toLowerCase();
+    return /(valor|total|saldo|quantidade)\s+desc/.test(ord);
+  });
+  if (sustentado) return null;
+
+  return {
+    ok: false,
+    reason: "V8",
+    hint:
+      "Voce apresentou itens como 'os maiores', mas a lista da tool NAO esta " +
+      "ordenada por valor (sem topMaiores e sem ordenadoPor de valor desc). " +
+      "Use o campo topMaiores quando existir; senao, NAO rotule de 'maiores' , " +
+      "descreva a lista pela ordenacao real declarada em ordenadoPor.",
+    detalhe: `V8:enquadramento_maiores_sem_sustentacao:${comLista[0].toolName}`,
+  };
+}
+
 /**
  * Roda os checks SHADOW novos (V6/V7) e retorna os que dispararam, SEM
  * short-circuit (ambos sempre avaliados). O run-agent loga para telemetria;
@@ -661,6 +710,7 @@ export interface ValidatorFlags {
   v3Enabled?: boolean;
   v4Enabled?: boolean;
   v5Enabled?: boolean;
+  v8Enabled?: boolean;
 }
 
 const OK: ValidationOutcome = {
@@ -683,6 +733,7 @@ export function validateResponse(
   const v3On = flags.v3Enabled ?? true;
   const v4On = flags.v4Enabled ?? true;
   const v5On = flags.v5Enabled ?? true;
+  const v8On = flags.v8Enabled ?? true;
 
   // Ordem deliberada: V1 (truncamento) -> V3 (recusa explicita) -> V5
   // (ignorou _RESPOSTA, mais sutil) -> V4 (placeholder em bullet) -> V2
@@ -707,6 +758,11 @@ export function validateResponse(
   }
   if (v2On) {
     const r = validateV2(ctx);
+    if (r) return r;
+  }
+  // V8 por ultimo: enquadramento de lista (alegou "maiores" sem sustentacao).
+  if (v8On) {
+    const r = validateV8(ctx);
     if (r) return r;
   }
   return OK;

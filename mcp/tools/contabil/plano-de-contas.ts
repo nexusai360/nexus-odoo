@@ -29,6 +29,8 @@ const linhaSchema = z.object({
 
 // Onda 1.C: envelope canonico
 const dados = z.object({
+  // Contrato de lista (Fase B): ordenacao declarada.
+  ordenadoPor: z.string().optional(),
   linhas: z.array(linhaSchema),
   total: z.number().int(),
   truncado: z.boolean(),
@@ -85,6 +87,7 @@ export const contabilPlanoDeContas: ToolEntry<Input, Output> = {
           : AVISO;
         return {
           linhas: result.linhas,
+          ordenadoPor: "codigo asc",
           total: result.total,
           truncado: result.truncado,
           aviso,

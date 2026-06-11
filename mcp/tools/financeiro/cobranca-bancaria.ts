@@ -25,6 +25,9 @@ const dadosSchema = z.object({
   linhas: z.array(z.unknown()),
   total: z.number().int(),
   truncado: z.boolean(),
+  // Contrato de lista (Fase B): ordenacao declarada (as queries de cobranca ja
+  // tem orderBy estavel da onda de paginacao; aqui apenas declaramos ao LLM).
+  ordenadoPor: z.string().optional(),
   _RESPOSTA: z.string().optional(),
   _listaTruncada: z.boolean().optional(),
   _PAGINACAO: z.any().optional(),
@@ -59,6 +62,8 @@ function makeTool<I extends Record<string, unknown>>(opts: {
   count: (p: PrismaClient) => Promise<number>;
   query: (p: PrismaClient, input: I & { limit: number; offset: number }) => Promise<QResult>;
   resumoOk: (total: number) => string;
+  /** Contrato de lista: descricao humana da ordenacao da query (obrigatoria). */
+  ordenadoPor: string;
 }): ToolEntry<I, Output> {
   const zObject = z.object(opts.inputShape);
   const inputSchema = zObject as unknown as z.ZodType<I>;
@@ -84,6 +89,7 @@ function makeTool<I extends Record<string, unknown>>(opts: {
         ...envelope,
         dados: {
           ...d,
+          ordenadoPor: opts.ordenadoPor,
           _RESPOSTA:
             total === 0
               ? opts.naoOperado
@@ -101,6 +107,7 @@ function makeTool<I extends Record<string, unknown>>(opts: {
 
 export const financeiroBaixasCobranca = makeTool({
   id: "financeiro_baixas_cobranca",
+  ordenadoPor: "data de pagamento desc",
   descricao:
     "Baixas/pagamentos de cobrança bancária (itens de retorno) no período: situação, nosso " +
     "número, participante e valores (documento, juros, multa, desconto, tarifas, baixado, total). " +
@@ -115,6 +122,7 @@ export const financeiroBaixasCobranca = makeTool({
 
 export const financeiroRetornosProcessados = makeTool({
   id: "financeiro_retornos_processados",
+  ordenadoPor: "data desc",
   descricao:
     "Retornos bancários processados no período (cabeçalho do arquivo de retorno): banco, número, " +
     "totais de entradas/saídas e saldo. Filtre por período (periodoDe/periodoAte, AAAA-MM-DD).",
@@ -128,6 +136,7 @@ export const financeiroRetornosProcessados = makeTool({
 
 export const financeiroRemessasGeradas = makeTool({
   id: "financeiro_remessas_geradas",
+  ordenadoPor: "data desc",
   descricao:
     "Remessas bancárias geradas no período (arquivos enviados ao banco): tipo, banco, número, " +
     "data e se foi confirmada. Filtre por período (periodoDe/periodoAte, AAAA-MM-DD).",
@@ -141,6 +150,7 @@ export const financeiroRemessasGeradas = makeTool({
 
 export const financeiroCarteirasCobranca = makeTool({
   id: "financeiro_carteiras_cobranca",
+  ordenadoPor: "nome asc",
   descricao:
     "Carteiras de cobrança cadastradas (configuração de boleto por banco): nome, banco, carteira, " +
     "tipo, beneficiário e convênio. Não expõe credenciais de banco. Sem filtro de período.",
@@ -154,6 +164,7 @@ export const financeiroCarteirasCobranca = makeTool({
 
 export const financeiroCheques = makeTool({
   id: "financeiro_cheques",
+  ordenadoPor: "data desc",
   descricao:
     "Cheques no período: número, banco, titular, data e valor. Filtre por período (periodoDe/" +
     "periodoAte, AAAA-MM-DD). Enquanto cheques não forem operados no Odoo, responde que não há.",
@@ -167,6 +178,7 @@ export const financeiroCheques = makeTool({
 
 export const financeiroPixRecebidos = makeTool({
   id: "financeiro_pix_recebidos",
+  ordenadoPor: "data desc",
   descricao:
     "PIX no período: txid, método, status, data e tarifas. Filtre por período (periodoDe/" +
     "periodoAte, AAAA-MM-DD). Enquanto o PIX não for operado no Odoo, responde que não há.",

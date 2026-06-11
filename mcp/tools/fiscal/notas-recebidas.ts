@@ -28,6 +28,20 @@ const dados = z.object({
   valorTotal: z.number(),
   escopoEmpresa: z.record(z.string(), z.unknown()),
   aviso: z.string(),
+  // Contrato de lista (Fase B): a lista vem por dataEmissao desc (desempate por
+  // odooId). topMaiores e a visao por valor (top 10 do recorte inteiro) para
+  // "as N maiores notas recebidas", que a paginacao por data nao responderia.
+  ordenadoPor: z.string().optional(),
+  topMaiores: z
+    .array(
+      z.object({
+        nome: z.string(),
+        valor: z.number(),
+        numero: z.string(),
+        dataEmissao: z.string().nullable(),
+      }),
+    )
+    .optional(),
   _RESPOSTA: z.string().optional(),
   _listaTruncada: z.boolean().optional(),
   _PAGINACAO: z.any().optional(),
@@ -66,6 +80,8 @@ function shape(d: Awaited<ReturnType<typeof queryNotasRecebidas>>, escopo: Escop
     totalNotas: d.totalNotas,
     valorTotal: d.valorTotal,
     escopoEmpresa: escopo as unknown as Record<string, unknown>,
+    ordenadoPor: "data desc",
+    topMaiores: d.topMaiores,
     aviso: "Notas de entrada (entradaSaida='0') representam compras e devoluções recebidas pela empresa. " + escopo.aviso,
   };
 }

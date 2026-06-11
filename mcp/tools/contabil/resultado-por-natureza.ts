@@ -29,6 +29,8 @@ const linhaSchema = z.object({
 });
 
 const dados = z.object({
+  // Contrato de lista (Fase B): ordenacao declarada.
+  ordenadoPor: z.string().optional(),
   linhas: z.array(linhaSchema),
   receitaTotal: z.number(),
   despesaTotal: z.number(),
@@ -73,6 +75,7 @@ export const contabilResultadoPorNatureza: ToolEntry<Input, Output> = {
         const r = await queryResultadoPorNatureza(ctx.prisma, input);
         return {
           linhas: r.linhas,
+          ordenadoPor: "agregado unico (sem ordenacao)",
           receitaTotal: r.receitaTotal,
           despesaTotal: r.despesaTotal,
           resultado: r.resultado,

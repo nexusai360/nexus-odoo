@@ -45,6 +45,8 @@ const dados = z.object({
   }),
   totalFornecedoresDistintos: z.number().int(),
   aviso: z.string(),
+  // Contrato de lista (Fase B): fornecedores por valor total recebido desc.
+  ordenadoPor: z.string().optional(),
   _RESPOSTA: z.string().optional(),
   _listaTruncada: z.boolean().optional(),
   _PAGINACAO: z.any().optional(),
@@ -77,6 +79,7 @@ function shape(d: Awaited<ReturnType<typeof queryNotasRecebidasPorFornecedor>>) 
     linhas: d.linhas,
     totalAgregado: d.totalAgregado,
     totalFornecedoresDistintos: d.totalFornecedoresDistintos,
+    ordenadoPor: "valor desc",
     aviso:
       "Agrupa notas fiscais de entrada (DF-e de fornecedores) por fornecedor, " +
       "ordenado por valor recebido decrescente. `totalAgregado` soma todas as " +

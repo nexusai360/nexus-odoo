@@ -30,6 +30,9 @@ const dados = z.object({
   totalEventos: z.number().int(),
   tempoTotalDias: z.number().int(),
   aviso: z.string(),
+  // Contrato de lista (Fase B): eventos em ordem cronologica (data asc); porEtapa
+  // ordenada por tempo total na etapa desc. Ambas vem ordenadas da query.
+  ordenadoPor: z.string().optional(),
   _RESPOSTA: z.string().optional(),
   _DESTAQUE: z.record(z.string(), z.union([z.string(), z.number()])).optional(),
   _agregado: z.record(z.string(), z.number().optional()).optional(),
@@ -45,6 +48,8 @@ type Output = z.infer<typeof outputSchema>;
 function shape(d: Awaited<ReturnType<typeof queryPedidoHistoricoEtapas>>) {
   return {
     ...d,
+    // Contrato de lista (Fase B): eventos em data asc, porEtapa em tempo total desc.
+    ordenadoPor: "eventos: data asc; porEtapa: tempo total desc",
     aviso:
       "Histórico de transições de etapa de um pedido (1 evento por mudança). " +
       "`porEtapa` soma o tempo total em cada etapa (loops de retrabalho contam " +

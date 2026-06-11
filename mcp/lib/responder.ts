@@ -125,7 +125,13 @@ const fmtTitulosVencidos: FormatadorCanonico = (env) => {
   const topStr = top
     ? ` Maior atraso por participante: ${top.nome} (${formatBRL(top.soma)}).`
     : "";
-  return cabeca + quebraStr(env) + topStr;
+  // Contrato de lista (Fase B): declarar a ordenacao evita o agente rotular
+  // lista arbitraria de "maiores" (caso forense #1 do laudo 2026-06-11).
+  const ordem =
+    n > 0
+      ? " Lista ordenada por valor (maiores primeiro); para os N maiores use o campo topMaiores."
+      : "";
+  return cabeca + quebraStr(env) + topStr + ordem;
 };
 
 const fmtFluxoCaixa: FormatadorCanonico = (env) => {

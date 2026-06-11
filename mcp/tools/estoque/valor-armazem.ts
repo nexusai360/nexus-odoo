@@ -17,6 +17,8 @@ const dados = z.object({
     numProdutos: z.number().int(),
     percentual: z.number(),
   })),
+  // Contrato de lista (Fase B): armazens ordenados por valor desc na query.
+  ordenadoPor: z.string().optional(),
   _RESPOSTA: z.string().optional(),
   _listaTruncada: z.boolean().optional(),
   _DESTAQUE: z.record(z.string(), z.union([z.string(), z.number()])).optional(),
@@ -51,6 +53,8 @@ function shape(d: Awaited<ReturnType<typeof queryValorArmazem>>) {
       numProdutos: l.numProdutos,
       percentual: d.kpis.valorTotal > 0 ? (l.valor / d.kpis.valorTotal) * 100 : 0,
     })),
+    // Contrato de lista (Fase B): linhasBruto ja vem por valor desc da query.
+    ordenadoPor: "valor desc",
   };
 }
 

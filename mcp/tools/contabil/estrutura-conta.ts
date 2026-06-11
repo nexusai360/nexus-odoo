@@ -31,6 +31,8 @@ const filhaSchema = z.object({
 // Onda 1.C: envelope canonico
 const dados = z.object({
   conta: contaSchema.nullable(),
+  // Contrato de lista (Fase B): ordenacao declarada.
+  ordenadoPor: z.string().optional(),
   filhas: z.array(filhaSchema),
   aviso: z.string(),
   _RESPOSTA: z.string().optional(),
@@ -78,7 +80,7 @@ export const contabilEstruturaConta: ToolEntry<Input, Output> = {
       ["fato_conta_contabil"],
       async () => {
         const result = await queryEstruturaConta(ctx.prisma, input);
-        return { conta: result.conta, filhas: result.filhas, aviso: AVISO };
+        return { conta: result.conta, filhas: result.filhas, aviso: AVISO, ordenadoPor: "codigo asc" };
       },
       (d) => d.conta === null,
     );

@@ -15,6 +15,8 @@ const inputSchema = z.object({
 
 const dados = z.object({
   serie: z.array(z.object({ mes: z.string(), entrada: z.number(), saida: z.number() })),
+  // Contrato de lista (Fase B): serie temporal ordenada por mes asc na query.
+  ordenadoPor: z.string().optional(),
   _RESPOSTA: z.string().optional(),
   _listaTruncada: z.boolean().optional(),
   _DESTAQUE: z.record(z.string(), z.union([z.string(), z.number()])).optional(),
@@ -41,7 +43,8 @@ type Output = z.infer<typeof outputSchema>;
 
 function shape(d: Awaited<ReturnType<typeof queryEntradasSaidas>>) {
   // detalhe por produto é volumoso , omitido; agente recebe só a série mensal
-  return { serie: d.serie };
+  // Contrato de lista (Fase B): a serie ja vem ordenada por mes asc.
+  return { serie: d.serie, ordenadoPor: "mês asc" };
 }
 
 export const estoqueEntradasSaidas: ToolEntry<Input, Output> = {

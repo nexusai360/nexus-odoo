@@ -14,6 +14,8 @@ const inputSchema = z.object({
 // Onda 1.B: envelope canonico aplicado (sem topPorParticipante -- fluxo
 // nao tem dimensao participante natural).
 const dados = z.object({
+  // Contrato de lista (Fase B): ordenacao declarada.
+  ordenadoPor: z.string().optional(),
   serie: z.array(
     z.object({
       periodo: z.string(),

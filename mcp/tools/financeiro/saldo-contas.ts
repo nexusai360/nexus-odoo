@@ -9,6 +9,8 @@ import { enriquecerEnvelope } from "../../lib/with-responder.js";
 const inputSchema = z.object({});
 
 const dados = z.object({
+  // Contrato de lista (Fase B): ordenacao declarada.
+  ordenadoPor: z.string().optional(),
   contas: z.array(
     z.object({
       bancoNome: z.string().nullable(),

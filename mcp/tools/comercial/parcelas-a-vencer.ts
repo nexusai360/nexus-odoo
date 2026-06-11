@@ -30,6 +30,8 @@ const dados = z.object({
   totalAVencer: z.number(),
   totalEncontrados: z.number().int().optional(),
   aviso: z.string(),
+  // Contrato de lista (Fase B): parcelas ordenadas por vencimento asc na query.
+  ordenadoPor: z.string().optional(),
   _RESPOSTA: z.string().optional(),
   _listaTruncada: z.boolean().optional(),
   _DESTAQUE: z.record(z.string(), z.union([z.string(), z.number()])).optional(),
@@ -66,6 +68,8 @@ function shape(d: Awaited<ReturnType<typeof queryParcelasAVencer>>) {
     totalAVencer: d.totalAVencer,
     totalEncontrados: d.totalEncontrados,
     aviso: "Parcelas de pedidos com vencimento a partir de hoje até N dias (padrão 30), não faturadas, ordenadas por data.",
+    // Contrato de lista (Fase B): query ordena por dataVencimento asc (desempate odooId).
+    ordenadoPor: "vencimento asc",
   };
 }
 

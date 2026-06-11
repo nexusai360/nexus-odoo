@@ -28,6 +28,8 @@ const dados = z.object({
   linhas: z.array(linhaSchema),
   totalEncontrados: z.number().int(),
   linhasExibidas: z.number().int(),
+  // Contrato de lista (Fase B): parceiros ordenados por nome asc na query.
+  ordenadoPor: z.string().optional(),
   _RESPOSTA: z.string().optional(),
   _DESTAQUE: z.record(z.string(), z.union([z.string(), z.number()])).optional(),
   _agregado: z.record(z.string(), z.number().optional()).optional(),
@@ -71,7 +73,8 @@ async function query(prisma: PrismaClient, input: Input) {
     }),
     prisma.fatoParceiro.count({ where }),
   ]);
-  return { linhas, totalEncontrados: total, linhasExibidas: linhas.length };
+  // Contrato de lista (Fase B): orderBy nome asc (desempate odooId).
+  return { linhas, totalEncontrados: total, linhasExibidas: linhas.length, ordenadoPor: "nome asc" };
 }
 
 export const cadastroParceirosSemDocumento: ToolEntry<Input, Output> = {

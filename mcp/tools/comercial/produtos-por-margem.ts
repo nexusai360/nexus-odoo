@@ -34,6 +34,9 @@ const dados = z.object({
   totalFiltrado: z.number().int().optional(),
   produtosSemPreco: z.number().int(),
   aviso: z.string(),
+  // Contrato de lista (Fase B): ordenacao real reflete o parametro `ordenacao`
+  // (maior=margem desc default, menor=margem asc). Desempate por odoo_id no SQL.
+  ordenadoPor: z.string().optional(),
   _RESPOSTA: z.string().optional(),
   _listaTruncada: z.boolean().optional(),
   _DESTAQUE: z.record(z.string(), z.union([z.string(), z.number()])).optional(),
@@ -125,6 +128,8 @@ async function queryProdutosPorMargem(prisma: PrismaClient, input: Input) {
     totalProdutosComMargem: Number(cntCom[0]?.n ?? 0),
     totalFiltrado: Number(cntFiltrado[0]?.n ?? 0),
     produtosSemPreco: Number(cntSem[0]?.n ?? 0),
+    // Contrato de lista (Fase B): SQL ordena por margem_pct conforme `ordenacao`.
+    ordenadoPor: ordenacao === "menor" ? "margem asc" : "margem desc",
     aviso:
       "Margem calculada como (preco_venda - preco_custo) / preco_custo * 100. " +
       "Inclui apenas produtos com ambos os precos > 0.",

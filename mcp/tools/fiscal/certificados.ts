@@ -29,6 +29,9 @@ const dados = z.object({
   linhas: z.array(linha),
   total: z.number().int(),
   truncado: z.boolean().optional(),
+  // Contrato de lista (Fase B): a query ordena do que vence primeiro para o
+  // ultimo (dataFimValidade asc) com desempate por odooId.
+  ordenadoPor: z.string().optional(),
   _RESPOSTA: z.string().optional(),
   _listaTruncada: z.boolean().optional(),
   _PAGINACAO: z.any().optional(),
@@ -67,9 +70,11 @@ export const fiscalCertificados: ToolEntry<Input, Output> = {
   outputSchema,
   handler: async (input, ctx) => {
     const { limit, offset } = resolverPaginacao(input);
-    const envelope = await withFreshness(ctx.prisma, ["fato_certificado"], () =>
-      queryCertificados(ctx.prisma, { limit, offset }),
-    );
+    const envelope = await withFreshness(ctx.prisma, ["fato_certificado"], async () => {
+      const r = await queryCertificados(ctx.prisma, { limit, offset });
+      // Contrato de lista (Fase B): declara a ordenacao real da query.
+      return { ...r, ordenadoPor: "vencimento asc" };
+    });
     if (envelope.estado === "preparando") return envelope;
     const d = envelope.dados;
     const paginacao = montarPaginacaoMeta(d.total, offset, limit, d.linhas.length);

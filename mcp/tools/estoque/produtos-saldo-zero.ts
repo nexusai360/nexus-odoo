@@ -37,6 +37,8 @@ const dados = z.object({
   totalNegativos: z.number().int(),
   totalCandidatos: z.number().int(),
   linhas: z.array(linhaSchema),
+  // Contrato de lista (Fase B): candidatos ordenados por numero de locais desc.
+  ordenadoPor: z.string().optional(),
   _RESPOSTA: z.string().optional(),
   _listaTruncada: z.boolean().optional(),
   _DESTAQUE: z.record(z.string(), z.union([z.string(), z.number()])).optional(),
@@ -72,6 +74,7 @@ async function queryProdutosSaldoZero(
   totalNegativos: number;
   totalCandidatos: number;
   linhas: Array<z.infer<typeof linhaSchema>>;
+  ordenadoPor: string;
 }> {
   const incluirNegativos = input.incluirNegativos ?? true;
   // Excecao documentada: a agregacao "saldo total por produto" e feita em JS
@@ -167,6 +170,8 @@ async function queryProdutosSaldoZero(
     totalNegativos,
     totalCandidatos: candidatos.length,
     linhas: candidatos.slice(offset, offset + limit),
+    // Contrato de lista (Fase B): sort por numLocais desc (desempate produtoId).
+    ordenadoPor: "número de locais desc",
   };
 }
 

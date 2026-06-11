@@ -18,6 +18,8 @@ const linhaSchema = z.object({
 // Onda 1.C: envelope canonico
 const dados = z.object({
   linhas: z.array(linhaSchema),
+  // Contrato de lista (Fase B): UFs ordenadas por quantidade de parceiros desc.
+  ordenadoPor: z.string().optional(),
   _RESPOSTA: z.string().optional(),
   _listaTruncada: z.boolean().optional(),
   _DESTAQUE: z.record(z.string(), z.union([z.string(), z.number()])).optional(),
@@ -56,7 +58,8 @@ export const cadastroParceirosPorUf: ToolEntry<Input, Output> = {
       ["fato_parceiro"],
       async () => {
         const result = await queryParceirosPorUf(ctx.prisma, input);
-        return { linhas: result.linhas };
+        // Contrato de lista (Fase B): query ordena por quantidade desc.
+        return { linhas: result.linhas, ordenadoPor: "quantidade desc" };
       },
     );
     if (envelope.estado === "preparando") return envelope;

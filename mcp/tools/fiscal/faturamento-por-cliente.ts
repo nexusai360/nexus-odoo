@@ -34,6 +34,8 @@ const dados = z.object({
   periodoLabel: z.string(),
   escopoEmpresa: z.record(z.string(), z.unknown()),
   aviso: z.string(),
+  // Contrato de lista (Fase B): ranking de clientes por valor total desc.
+  ordenadoPor: z.string().optional(),
   _RESPOSTA: z.string().optional(),
   _listaTruncada: z.boolean().optional(),
   _PAGINACAO: z.any().optional(),
@@ -87,6 +89,7 @@ export const fiscalFaturamentoPorCliente: ToolEntry<Input, Output> = {
         topClienteExterno: r.topClienteExterno,
         periodoLabel: per.label,
         escopoEmpresa: escopo.escopo as unknown as Record<string, unknown>,
+        ordenadoPor: "valor desc",
         aviso:
           "Ranking de clientes externos por valor de venda (base produtos por CFOP). " +
           "Vendas entre empresas do grupo nao sao cliente e ficam fora do ranking. " +

@@ -34,6 +34,9 @@ const dados = z.object({
   totalAgregado: z.object({ quantidade: z.number().int(), valorTotal: z.number() }),
   totalFornecedoresDistintos: z.number().int(),
   aviso: z.string(),
+  // Contrato de lista (Fase B): a query ordena por quantidade de notas desc
+  // (vrNf costuma vir 0 nesta base), com desempate por valor e CNPJ.
+  ordenadoPor: z.string().optional(),
   _RESPOSTA: z.string().optional(),
   _listaTruncada: z.boolean().optional(),
   _PAGINACAO: z.any().optional(),
@@ -62,6 +65,7 @@ function shape(d: Awaited<ReturnType<typeof queryDfePorFornecedor>>) {
     linhas: d.linhas,
     totalAgregado: d.totalAgregado,
     totalFornecedoresDistintos: d.totalFornecedoresDistintos,
+    ordenadoPor: "quantidade desc",
     aviso:
       "DF-e de fornecedores agrupados por CNPJ/CPF (participante_id costuma vir " +
       "vazio, por isso a chave é o documento). Ordenado por quantidade de notas. " +

@@ -29,6 +29,8 @@ const dados = z.object({
   totalPares: z.number().int(),
   escopoEmpresa: z.record(z.string(), z.unknown()),
   aviso: z.string(),
+  // Contrato de lista (Fase B): pares vendedor/comprador por valor desc.
+  ordenadoPor: z.string().optional(),
   _RESPOSTA: z.string().optional(),
   _DESTAQUE: z.record(z.string(), z.union([z.string(), z.number()])).optional(),
   _agregado: z.record(z.string(), z.number().optional()).optional(),
@@ -66,6 +68,7 @@ export const fiscalIntercompany: ToolEntry<Input, Output> = {
         total: r.total,
         totalPares: r.totalPares,
         escopoEmpresa: escopo.escopo as unknown as Record<string, unknown>,
+        ordenadoPor: "valor desc",
         aviso:
           escopo.escopo.aviso +
           ` Periodo: ${per.label}.` +

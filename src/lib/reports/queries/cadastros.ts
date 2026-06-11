@@ -41,11 +41,15 @@ export async function queryBuscarParceiro(
     cidade: string | null;
   }[];
   total: number;
+  ordenadoPor: string;
 }> {
   const { limit, offset } = filtros;
   const termo = filtros.termo.trim();
 
-  if (!termo) return { linhas: [], total: 0 };
+  // Contrato de lista (Fase B): conjunto unido ordenado de forma estavel por
+  // odooId asc (a busca une ids de varios caminhos, nao ha score de relevancia).
+  const ordenadoPor = "id asc";
+  if (!termo) return { linhas: [], total: 0, ordenadoPor };
 
   // Une ids dos dois caminhos (nome curto + nome completo). Cada caminho ja
   // vem capado em ~50 pelo fuzzy interno.
@@ -68,7 +72,7 @@ export async function queryBuscarParceiro(
   });
   for (const r of porDocumento) idSet.add(r.odooId);
 
-  if (idSet.size === 0) return { linhas: [], total: 0 };
+  if (idSet.size === 0) return { linhas: [], total: 0, ordenadoPor };
 
   // Ordena os ids de forma estavel (asc) e fatia a pagina em memoria. Fetch
   // so dos ids da pagina mantem o payload enxuto.
@@ -76,7 +80,7 @@ export async function queryBuscarParceiro(
   const total = idsOrdenados.length;
   const idsDaPagina = idsOrdenados.slice(offset, offset + limit);
 
-  if (idsDaPagina.length === 0) return { linhas: [], total };
+  if (idsDaPagina.length === 0) return { linhas: [], total, ordenadoPor };
 
   const rows = await prisma.fatoParceiro.findMany({
     where: { odooId: { in: idsDaPagina } },
@@ -92,7 +96,7 @@ export async function queryBuscarParceiro(
   });
   // findMany IN nao garante ordem; reordena pela mesma chave estavel.
   const linhas = rows.sort((a, b) => a.odooId - b.odooId);
-  return { linhas, total };
+  return { linhas, total, ordenadoPor };
 }
 
 // ---------------------------------------------------------------------------

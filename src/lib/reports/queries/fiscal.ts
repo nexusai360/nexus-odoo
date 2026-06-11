@@ -47,6 +47,10 @@ export async function queryNotasEmitidas(
   }[];
   totalNotas: number;
   valorTotal: number;
+  // Contrato de lista (Fase B): top 10 notas por valor (vrNf desc) sobre TODO o
+  // recorte. A lista paginada vem por data, entao "N maiores notas" exige esta
+  // visao calculada no SQL inteiro (independente da pagina).
+  topMaiores: { nome: string; valor: number; numero: string; dataEmissao: string | null }[];
 }> {
   // F1: borda de periodo exclusiva + corte por empresa. NAO aplica filtro de
   // natureza de venda: esta funcao LISTA notas emitidas (qualquer operacao), nao
@@ -61,7 +65,8 @@ export async function queryNotasEmitidas(
 
   // Alavanca 2b: paginação via take/skip; `totalNotas` é o count real e
   // `valorTotal` soma TODO o recorte (aggregate), estável entre páginas.
-  const [rows, totalNotas, agg] = await Promise.all([
+  // topRows: top 10 por valor sobre o recorte inteiro (independente da pagina).
+  const [rows, totalNotas, agg, topRows] = await Promise.all([
     prisma.fatoNotaFiscal.findMany({
       where,
       select: { numero: true, serie: true, dataEmissao: true, situacaoNfe: true, participanteNome: true, vrNf: true },
@@ -72,6 +77,12 @@ export async function queryNotasEmitidas(
     }),
     prisma.fatoNotaFiscal.count({ where }),
     prisma.fatoNotaFiscal.aggregate({ where, _sum: { vrNf: true } }),
+    prisma.fatoNotaFiscal.findMany({
+      where,
+      select: { numero: true, dataEmissao: true, participanteNome: true, vrNf: true },
+      orderBy: [{ vrNf: "desc" }, { odooId: "asc" }],
+      take: 10,
+    }),
   ]);
 
   const linhas = rows.map((r) => ({
@@ -83,7 +94,14 @@ export async function queryNotasEmitidas(
     vrNf: Number(r.vrNf),
   }));
 
-  return { linhas, totalNotas, valorTotal: Number(agg._sum.vrNf ?? 0) };
+  const topMaiores = topRows.map((r) => ({
+    nome: r.participanteNome ?? "",
+    valor: Number(r.vrNf),
+    numero: r.numero ?? "",
+    dataEmissao: r.dataEmissao ? r.dataEmissao.toISOString() : null,
+  }));
+
+  return { linhas, totalNotas, valorTotal: Number(agg._sum.vrNf ?? 0), topMaiores };
 }
 
 export async function queryNotasRecebidas(
@@ -98,6 +116,10 @@ export async function queryNotasRecebidas(
   }[];
   totalNotas: number;
   valorTotal: number;
+  // Contrato de lista (Fase B): top 10 notas por valor (vrNf desc) sobre TODO o
+  // recorte. A lista paginada vem por data, entao "N maiores notas recebidas"
+  // exige esta visao calculada no SQL inteiro (independente da pagina).
+  topMaiores: { nome: string; valor: number; numero: string; dataEmissao: string | null }[];
 }> {
   // F1: borda de periodo exclusiva + corte por empresa (lista de notas de entrada).
   const where = {
@@ -108,7 +130,8 @@ export async function queryNotasRecebidas(
 
   // Alavanca 2b: paginação via take/skip; `totalNotas` é o count real e
   // `valorTotal` soma TODO o recorte (aggregate), estável entre páginas.
-  const [rows, totalNotas, agg] = await Promise.all([
+  // topRows: top 10 por valor sobre o recorte inteiro (independente da pagina).
+  const [rows, totalNotas, agg, topRows] = await Promise.all([
     prisma.fatoNotaFiscal.findMany({
       where,
       select: { numero: true, dataEmissao: true, participanteNome: true, vrNf: true },
@@ -119,6 +142,12 @@ export async function queryNotasRecebidas(
     }),
     prisma.fatoNotaFiscal.count({ where }),
     prisma.fatoNotaFiscal.aggregate({ where, _sum: { vrNf: true } }),
+    prisma.fatoNotaFiscal.findMany({
+      where,
+      select: { numero: true, dataEmissao: true, participanteNome: true, vrNf: true },
+      orderBy: [{ vrNf: "desc" }, { odooId: "asc" }],
+      take: 10,
+    }),
   ]);
 
   const linhas = rows.map((r) => ({
@@ -128,7 +157,14 @@ export async function queryNotasRecebidas(
     vrNf: Number(r.vrNf),
   }));
 
-  return { linhas, totalNotas, valorTotal: Number(agg._sum.vrNf ?? 0) };
+  const topMaiores = topRows.map((r) => ({
+    nome: r.participanteNome ?? "",
+    valor: Number(r.vrNf),
+    numero: r.numero ?? "",
+    dataEmissao: r.dataEmissao ? r.dataEmissao.toISOString() : null,
+  }));
+
+  return { linhas, totalNotas, valorTotal: Number(agg._sum.vrNf ?? 0), topMaiores };
 }
 
 export async function queryImpostosPeriodo(

@@ -38,6 +38,9 @@ const dados = z.object({
   linhas: z.array(linha),
   total: z.number().int(),
   truncado: z.boolean(),
+  // Contrato de lista (Fase B): a query ordena por codigo asc com desempate
+  // por id; aqui apenas declaramos ao LLM.
+  ordenadoPor: z.string().optional(),
   _RESPOSTA: z.string().optional(),
   _listaTruncada: z.boolean().optional(),
   _PAGINACAO: z.any().optional(),
@@ -76,9 +79,11 @@ export const fiscalReferenciaBuscar: ToolEntry<Input, Output> = {
   outputSchema,
   handler: async (input, ctx) => {
     const { limit, offset } = resolverPaginacao(input);
-    const envelope = await withFreshness(ctx.prisma, ["fato_referencia"], () =>
-      queryReferenciaBuscar(ctx.prisma, { ...input, limit, offset }),
-    );
+    const envelope = await withFreshness(ctx.prisma, ["fato_referencia"], async () => {
+      const r = await queryReferenciaBuscar(ctx.prisma, { ...input, limit, offset });
+      // Contrato de lista (Fase B): declara a ordenacao real da query.
+      return { ...r, ordenadoPor: "código asc" };
+    });
     if (envelope.estado === "preparando") return envelope;
     const d = envelope.dados;
     const paginacao = montarPaginacaoMeta(d.total, offset, limit, d.linhas.length);

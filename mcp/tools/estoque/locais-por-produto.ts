@@ -31,6 +31,8 @@ const dados = z.object({
   linhas: z.array(linhaSchema),
   saldoTotal: z.number(),
   totalLocais: z.number().int(),
+  // Contrato de lista (Fase B): pagina ordenada por saldo desc (quantidade) na query.
+  ordenadoPor: z.string().optional(),
   _RESPOSTA: z.string().optional(),
   _listaTruncada: z.boolean().optional(),
   _DESTAQUE: z.record(z.string(), z.union([z.string(), z.number()])).optional(),
@@ -124,6 +126,8 @@ export const estoqueLocaisPorProduto: ToolEntry<Input, Output> = {
           linhas,
           saldoTotal,
           totalLocais,
+          // Contrato de lista (Fase B): orderBy quantidade desc + desempate localId.
+          ordenadoPor: "saldo desc",
         };
       },
       (d) => d.linhas.length === 0,

@@ -28,6 +28,8 @@ const dados = z.object({
   titulos: z.array(tituloSchema),
   totalAReceber: z.number(),
   quebra: z.object({ confirmado: z.number(), provisorio: z.number() }),
+  // Contrato de lista (Fase B): ordenacao declarada da lista `titulos`.
+  ordenadoPor: z.string().optional(),
   _RESPOSTA: z.string().optional(),
   _listaTruncada: z.boolean().optional(),
   _DESTAQUE: z.record(z.string(), z.union([z.string(), z.number()])).optional(),
@@ -71,6 +73,8 @@ function shape(d: Awaited<ReturnType<typeof queryContasAReceber>>) {
     })),
     totalAReceber: d.totalAReceber,
     quebra: d.quebra,
+    // A query ja devolve ordenado por vrSaldo desc (contrato de lista).
+    ordenadoPor: "valor desc",
   };
 }
 

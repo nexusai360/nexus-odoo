@@ -30,6 +30,8 @@ const dados = z.object({
   // Quebra honesta do total em aberto: confirmado (efetivo) vs provisorio
   // (lançado, não efetivado). No a_pagar o provisorio é a maior parte.
   quebra: z.object({ confirmado: z.number(), provisorio: z.number() }),
+  // Contrato de lista (Fase B): ordenacao declarada da lista `titulos`.
+  ordenadoPor: z.string().optional(),
   // Campos canonicos opcionais (sempre preenchidos por enriquecerEnvelope):
   _RESPOSTA: z.string().optional(),
   _listaTruncada: z.boolean().optional(),
@@ -74,6 +76,8 @@ function shape(d: Awaited<ReturnType<typeof queryContasAPagar>>) {
     })),
     totalAPagar: d.totalAPagar,
     quebra: d.quebra,
+    // A query ja devolve ordenado por vrSaldo desc (contrato de lista).
+    ordenadoPor: "valor desc",
   };
 }
 
