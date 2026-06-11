@@ -22,6 +22,8 @@ export async function querySaldoContas(
 ): Promise<{ contas: { bancoNome: string | null; tipo: string | null; saldo: number }[]; saldoTotal: number }> {
   const rows = await prisma.fatoFinanceiroSaldo.findMany({
     select: { bancoNome: true, tipo: true, saldo: true },
+    // Contrato de lista (Fase B): maiores saldos primeiro, desempate por nome.
+    orderBy: [{ saldo: "desc" }, { bancoNome: "asc" }],
   });
   const contas = rows.map((r) => ({
     bancoNome: r.bancoNome,
@@ -168,6 +170,8 @@ export async function queryContasAReceber(
       vrTotal: true,
       situacaoSimples: true,
     },
+    // Contrato de lista (Fase B): ordenacao deterministica, maiores primeiro.
+    orderBy: [{ vrSaldo: "desc" }, { odooId: "asc" }],
   });
 
   const titulos: TituloRow[] = rows.map((r) => ({
@@ -213,6 +217,8 @@ export async function queryContasAPagar(
       vrTotal: true,
       situacaoSimples: true,
     },
+    // Contrato de lista (Fase B): ordenacao deterministica, maiores primeiro.
+    orderBy: [{ vrSaldo: "desc" }, { odooId: "asc" }],
   });
 
   const titulos: TituloRow[] = rows.map((r) => ({
