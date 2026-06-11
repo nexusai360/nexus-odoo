@@ -8,8 +8,16 @@
 > (#89) + seed do `dim_empresa_regime` (#90, auto-popula prod no boot). jest 2862 verde; E2E reconcilia exato
 > (Σ externa 2025 = R$ 325,5 mi). Regime por empresa: Real=Jds/JhtSP, Presumido=Cs/Ijht/JhtDF, Simples=JHTBrasília/Jib/Jmf/Ks.
 > **Financeiro:** já estava construído (~14 tools ativas). **Contábil:** vazio na fonte (sem DRE/lucro).
-> Ao abrir: ler **este arquivo**, o **`CLAUDE.md`**, o **`.agente-handoff.md`** e o **PROGRESSO**
-> (`docs/superpowers/plans/PROGRESSO-faturamento-consolidado.md`).
+> **Bugs do Nex corrigidos (print, #92, em prod+local):** (1) vazamento de tool-call cru como texto
+> (`stripLeakedToolCall` + regra no prompt `identity-base 10-tool`); (2) `faturamento_periodo` enxuto
+> (sem o "individual X; intragrupo Y" verboso). **PENDENTE #3 , latência ~60s da sessão MCP**: diagnóstico
+> em `docs/superpowers/research/2026-06-10-latencia-sessao-mcp.md` (é o timeout default 60s do SDK MCP +
+> sessão por turno; falta confirmar a fase e implementar o fix).
+> **DEPLOY , ROTA ÚNICA:** usar **`python3 scripts/ship.py "titulo"`** (`docs/runbooks/deploy-procedure.md`):
+> PR→CI→merge→deploy→verifica prod, com fallback de IP da API do GitHub (o `gh` trava quando api.github.com
+> cai no IP Azure 4.228.31.149 inalcançável; `ship.py` contorna). NÃO refazer o fluxo na mão.
+> Ao abrir: ler **este arquivo**, o **`CLAUDE.md`**, o **`.agente-handoff.md`** e os **PROGRESSO**
+> (`docs/superpowers/plans/PROGRESSO-financeiro-regime.md`).
 > Modo autônomo é o padrão (`CLAUDE.md §6`).
 
 ## 2026-06-10 , Milestone Faturamento Real Consolidado FECHADO + saga do deploy (branch `feat/nex-reconstrucao`)
