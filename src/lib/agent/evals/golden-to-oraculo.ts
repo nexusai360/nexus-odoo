@@ -32,6 +32,6 @@ export function frozenProsseguir(golden: GoldenEntry[]): GoldenEntry[] {
   return golden.filter(
     (e) =>
       e.classe === "prosseguir" &&
-      !/^(cov|ouro|desamb|pericia|followup|demo|estoq|cnpj|prodemp|peduf)-/.test(e.id),
+      !/^(cov|ouro|desamb|pericia|followup|demo|estoq|cnpj|prodemp|peduf|deriv|fonte)-/.test(e.id),
   );
 }

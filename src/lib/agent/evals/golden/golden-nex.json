@@ -1295,5 +1295,255 @@
     "pergunta": "Quantidade de pedidos emitidos de operacao de venda por UF",
     "toolEsperada": "comercial_pedidos_por_uf",
     "observacao": "Cobertura Cliente pergunta 5 literal. Filtro operacao venda (sufixo do nome)."
+  },
+  {
+    "id": "fonte-01",
+    "pergunta": "Qual o seguimento que mais temos orcamentos? (Residencial, Condominio, Hotel, Academia)",
+    "dominio": "comercial",
+    "classe": "falta_honesta",
+    "toolEsperada": null,
+    "observacao": "Pergunta 6 literal do cliente: gap de DIMENSAO , responde os orcamentos que existem e explica que segmento nao e cadastrado.",
+    "proibidoNaResposta": [
+      "defeito",
+      "erro da plataforma"
+    ],
+    "esperaNaResposta": [
+      "orcament",
+      "segment"
+    ]
+  },
+  {
+    "id": "fonte-02",
+    "pergunta": "Como esta a prospeccao este mes?",
+    "dominio": "crm",
+    "classe": "falta_honesta",
+    "toolEsperada": null,
+    "observacao": "Modulo CRM/prospeccao vazio: resposta de fonte via status_dominio.",
+    "proibidoNaResposta": [
+      "defeito",
+      "erro da plataforma"
+    ],
+    "esperaNaResposta": [
+      "prospec"
+    ]
+  },
+  {
+    "id": "fonte-03",
+    "pergunta": "Quantos leads novos tivemos este mes?",
+    "dominio": "crm",
+    "classe": "falta_honesta",
+    "toolEsperada": null,
+    "observacao": "Leads = CRM vazio. Espera ajustada pela resposta real (cita CRM nao operado, 0 registros).",
+    "proibidoNaResposta": [
+      "defeito",
+      "erro da plataforma"
+    ],
+    "esperaNaResposta": [
+      "crm"
+    ]
+  },
+  {
+    "id": "fonte-04",
+    "pergunta": "Qual foi o CMV contabil real do ultimo trimestre?",
+    "dominio": "contabil",
+    "classe": "falta_honesta",
+    "toolEsperada": null,
+    "observacao": "CMV contabil inexiste (contabilidade nao operada); o aproximado existe em outra tool.",
+    "proibidoNaResposta": [
+      "defeito",
+      "erro da plataforma"
+    ],
+    "esperaNaResposta": [
+      "contab"
+    ]
+  },
+  {
+    "id": "fonte-05",
+    "pergunta": "Qual o NPS dos nossos clientes?",
+    "dominio": "cadastros",
+    "classe": "falta_honesta",
+    "toolEsperada": null,
+    "observacao": "Metrica inexistente no sistema: lacuna honesta, sem recusa seca.",
+    "proibidoNaResposta": [
+      "defeito",
+      "erro da plataforma"
+    ]
+  },
+  {
+    "id": "fonte-06",
+    "pergunta": "Quantos funcionarios temos cadastrados no RH?",
+    "dominio": "rh",
+    "classe": "falta_honesta",
+    "toolEsperada": null,
+    "observacao": "Modulo RH vazio.",
+    "proibidoNaResposta": [
+      "defeito",
+      "erro da plataforma"
+    ],
+    "esperaNaResposta": [
+      "RH"
+    ]
+  },
+  {
+    "id": "fonte-07",
+    "pergunta": "Quais clientes sao do segmento Academia?",
+    "dominio": "cadastros",
+    "classe": "falta_honesta",
+    "toolEsperada": null,
+    "observacao": "Campo segmento nao cadastrado no parceiro.",
+    "proibidoNaResposta": [
+      "defeito",
+      "erro da plataforma"
+    ],
+    "esperaNaResposta": [
+      "segment"
+    ]
+  },
+  {
+    "id": "fonte-08",
+    "pergunta": "Quantas ordens de producao estao em andamento?",
+    "dominio": "producao",
+    "classe": "falta_honesta",
+    "toolEsperada": null,
+    "observacao": "Modulo producao vazio.",
+    "proibidoNaResposta": [
+      "defeito",
+      "erro da plataforma"
+    ],
+    "esperaNaResposta": [
+      "produc"
+    ]
+  },
+  {
+    "id": "fonte-09",
+    "pergunta": "Quanto recebemos em cheques este ano?",
+    "dominio": "financeiro",
+    "classe": "falta_honesta",
+    "toolEsperada": null,
+    "observacao": "Cheques nao operados no sistema; tool responde honesto.",
+    "proibidoNaResposta": [
+      "defeito",
+      "erro da plataforma"
+    ],
+    "esperaNaResposta": [
+      "cheque"
+    ]
+  },
+  {
+    "id": "fonte-10",
+    "pergunta": "Qual o lucro liquido do grupo este ano?",
+    "dominio": "contabil",
+    "classe": "falta_honesta",
+    "toolEsperada": null,
+    "observacao": "DRE/lucro exige contabilidade, nao operada; margem aproximada e outra coisa.",
+    "proibidoNaResposta": [
+      "defeito",
+      "erro da plataforma"
+    ],
+    "esperaNaResposta": [
+      "contab"
+    ]
+  },
+  {
+    "id": "fonte-11",
+    "pergunta": "Qual a comissao paga por arquiteto parceiro?",
+    "dominio": "comercial",
+    "classe": "falta_honesta",
+    "toolEsperada": null,
+    "observacao": "Dimensao 'arquiteto parceiro' inexistente: lacuna honesta sem recusa seca.",
+    "proibidoNaResposta": [
+      "defeito",
+      "erro da plataforma"
+    ]
+  },
+  {
+    "id": "fonte-12",
+    "pergunta": "Quantos PIX recebemos em maio?",
+    "dominio": "financeiro",
+    "classe": "falta_honesta",
+    "toolEsperada": null,
+    "observacao": "PIX nao operado no sistema; tool responde honesto.",
+    "proibidoNaResposta": [
+      "defeito",
+      "erro da plataforma"
+    ],
+    "esperaNaResposta": [
+      "PIX"
+    ]
+  },
+  {
+    "id": "deriv-01",
+    "pergunta": "Quanto temos de estoque em poder de terceiros?",
+    "dominio": "estoque",
+    "classe": "prosseguir",
+    "toolEsperada": "estoque_valor_armazem",
+    "observacao": "Derivada: subarvore Terceiros."
+  },
+  {
+    "id": "deriv-02",
+    "pergunta": "Qual o valor de estoque no local Virtual?",
+    "dominio": "estoque",
+    "classe": "prosseguir",
+    "toolEsperada": "estoque_valor_armazem",
+    "observacao": "Derivada: local Virtual."
+  },
+  {
+    "id": "deriv-03",
+    "pergunta": "Remessas de demonstracao mes a mes este ano",
+    "dominio": "fiscal",
+    "classe": "prosseguir",
+    "toolEsperada": "fiscal_demonstracoes",
+    "observacao": "Derivada: dimensao mes."
+  },
+  {
+    "id": "deriv-04",
+    "pergunta": "Qual UF mais recebeu remessas de demonstracao?",
+    "dominio": "fiscal",
+    "classe": "prosseguir",
+    "toolEsperada": "fiscal_demonstracoes",
+    "observacao": "Derivada: top UF do recorte."
+  },
+  {
+    "id": "deriv-05",
+    "pergunta": "Qual o faturamento do cliente Corpo e Saude este ano?",
+    "dominio": "fiscal",
+    "classe": "prosseguir",
+    "toolEsperada": "fiscal_faturamento_por_cliente",
+    "observacao": "Derivada: cliente especifico por nome. GAP registrado: filtrar cliente por CNPJ exato ainda nao tem caminho direto (onda futura).",
+    "toolsAceitas": [
+      "fiscal_notas_emitidas_por_cliente"
+    ]
+  },
+  {
+    "id": "deriv-06",
+    "pergunta": "Quantas unidades do produto esteira vendemos por mes este ano?",
+    "dominio": "fiscal",
+    "classe": "prosseguir",
+    "toolEsperada": "fiscal_notas_emitidas_por_produto",
+    "observacao": "Derivada: produto por periodo (tool existente)."
+  },
+  {
+    "id": "deriv-07",
+    "pergunta": "Pedidos de operacao de venda abertos por UF",
+    "dominio": "comercial",
+    "classe": "prosseguir",
+    "toolEsperada": "comercial_pedidos_por_uf",
+    "observacao": "Derivada: venda + status aberto."
+  },
+  {
+    "id": "deriv-08",
+    "pergunta": "Qual a margem aproximada do grupo este ano?",
+    "dominio": "fiscal",
+    "classe": "prosseguir",
+    "toolEsperada": "fiscal_margem_aproximada",
+    "observacao": "Derivada: margem aproximada (com ressalva propria da tool). Por familia ainda nao e suportado (lacuna honesta)."
+  },
+  {
+    "id": "deriv-09",
+    "pergunta": "Quantos orcamentos abertos temos no momento?",
+    "dominio": "comercial",
+    "classe": "prosseguir",
+    "toolEsperada": "comercial_pedidos_por_etapa",
+    "observacao": "Derivada: a METRICA de orcamentos existe (parte boa da pergunta 6)."
   }
 ]

@@ -212,6 +212,11 @@ export const DOMAINS: ReadonlyArray<DomainEntry> = [
       // "vendi quanto hoje?" e "vai bater a meta esse mes?" -> faturamento.
       /\bvend(i|emos)\b/i,
       /(bater|fechar|atingir).{0,12}\bmeta\b/i,
+      // Onda C Cobertura Cliente (deriv-08): "margem aproximada do grupo"
+      // roteava para crm/estoque e fiscal_margem_aproximada ficava fora.
+      /\bmargem\b/i,
+      /\bcmv\b/i,
+      /custo da mercadoria/i,
     ],
   },
   {
