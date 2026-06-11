@@ -20,12 +20,14 @@ const tituloSchema = z.object({
   vrSaldo: z.number(),
   vrTotal: z.number(),
   diasAtraso: z.number().int(),
+  situacaoSimples: z.string().nullable(),
 });
 
 // Onda 1.B: envelope canonico do agente Nex aplicado.
 const dados = z.object({
   titulos: z.array(tituloSchema),
   totalAReceber: z.number(),
+  quebra: z.object({ confirmado: z.number(), provisorio: z.number() }),
   _RESPOSTA: z.string().optional(),
   _listaTruncada: z.boolean().optional(),
   _DESTAQUE: z.record(z.string(), z.union([z.string(), z.number()])).optional(),
@@ -65,8 +67,10 @@ function shape(d: Awaited<ReturnType<typeof queryContasAReceber>>) {
       vrSaldo: t.vrSaldo,
       vrTotal: t.vrTotal,
       diasAtraso: t.diasAtraso,
+      situacaoSimples: t.situacaoSimples,
     })),
     totalAReceber: d.totalAReceber,
+    quebra: d.quebra,
   };
 }
 
@@ -99,6 +103,8 @@ export const financeiroContasAReceber: ToolEntry<Input, Output> = {
     const enriched = enriquecerEnvelope(envelope, "financeiro_contas_a_receber", {
       destaque: {
         totalAReceber: envelope.dados.totalAReceber,
+        totalConfirmado: envelope.dados.quebra.confirmado,
+        totalProvisorio: envelope.dados.quebra.provisorio,
         contagem: envelope.dados.titulos.length,
         topMaiorValor: top10List[0]?.valor ?? 0,
         topMaiorParticipante: top10List[0]?.nome ?? "",

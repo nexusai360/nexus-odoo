@@ -29,12 +29,15 @@ const tituloSchema = z.object({
   vrSaldo: z.number(),
   vrTotal: z.number(),
   diasAtraso: z.number().int(),
+  situacaoSimples: z.string().nullable(),
 });
 
 // Onda 1.B: envelope canonico aplicado.
 const dados = z.object({
   titulos: z.array(tituloSchema),
   totalVencido: z.number(),
+  // Quebra honesta do vencido em aberto: confirmado vs provisorio.
+  quebra: z.object({ confirmado: z.number(), provisorio: z.number() }),
   _RESPOSTA: z.string().optional(),
   _listaTruncada: z.boolean().optional(),
   _DESTAQUE: z.record(z.string(), z.union([z.string(), z.number()])).optional(),
@@ -75,9 +78,25 @@ function shape(d: Awaited<ReturnType<typeof queryTitulosVencidos>>) {
       vrSaldo: t.vrSaldo,
       vrTotal: t.vrTotal,
       diasAtraso: t.diasAtraso,
+      situacaoSimples: t.situacaoSimples,
     })),
     totalVencido: d.totalVencido,
+    quebra: d.quebra,
   };
+}
+
+/** Quebra confirmado/provisório a partir das linhas (recomputada após o filtro
+ *  por tipo/janela do handler). */
+function quebraDe(
+  titulos: { situacaoSimples: string | null; vrSaldo: number }[],
+): { confirmado: number; provisorio: number } {
+  let confirmado = 0;
+  let provisorio = 0;
+  for (const t of titulos) {
+    if (t.situacaoSimples === "provisorio") provisorio += t.vrSaldo;
+    else confirmado += t.vrSaldo;
+  }
+  return { confirmado, provisorio };
 }
 
 export const financeiroTitulosVencidos: ToolEntry<Input, Output> = {
@@ -110,10 +129,12 @@ export const financeiroTitulosVencidos: ToolEntry<Input, Output> = {
       );
     }
     const totalVencidoFiltrado = titulos.reduce((s, t) => s + t.vrSaldo, 0);
+    const quebraFiltrada = quebraDe(titulos);
     const dadosFiltrados = {
       ...envelope.dados,
       titulos,
       totalVencido: totalVencidoFiltrado,
+      quebra: quebraFiltrada,
     };
 
     // A10 fase 1: aviso quando tipo nao informado.
@@ -128,6 +149,8 @@ export const financeiroTitulosVencidos: ToolEntry<Input, Output> = {
       {
         destaque: {
           totalVencido: totalVencidoFiltrado,
+          totalConfirmado: quebraFiltrada.confirmado,
+          totalProvisorio: quebraFiltrada.provisorio,
           contagem: titulos.length,
           ...(aviso ? { aviso } : {}),
         },

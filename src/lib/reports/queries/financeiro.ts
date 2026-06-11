@@ -112,12 +112,40 @@ export interface TituloRow {
   vrSaldo: number;
   vrTotal: number;
   diasAtraso: number;
+  /** Situação simplificada da fonte: "aberto" (efetivo/confirmado) ou
+   *  "provisorio" (lançado mas não efetivado). Usado para a quebra honesta
+   *  do total em aberto (confirmado vs provisório). */
+  situacaoSimples: string | null;
+}
+
+/** Quebra do total em aberto por situação da fonte. "em aberto" = vrSaldo > 0
+ *  (exclui quitado/baixado, que têm saldo 0). `confirmado` = situação 'aberto'
+ *  (efetivo); `provisorio` = situação 'provisorio' (lançado, não efetivado). */
+export interface QuebraSituacao {
+  confirmado: number;
+  provisorio: number;
+}
+
+/** Soma a quebra confirmado/provisório a partir das linhas em aberto. */
+function quebraPorSituacao(
+  rows: { situacaoSimples: string | null; vrSaldo: number }[],
+): QuebraSituacao {
+  let confirmado = 0;
+  let provisorio = 0;
+  for (const r of rows) {
+    if (r.situacaoSimples === "provisorio") provisorio += r.vrSaldo;
+    else confirmado += r.vrSaldo;
+  }
+  return { confirmado, provisorio };
 }
 
 // ---------------------------------------------------------------------------
 // queryContasAReceber , fato_financeiro_titulo (task 4d.5-q)
-// CRITERIO_ABERTO: { situacaoSimples: 'aberto' } , campo situacao_divida_simples.
-// tipo "a_receber" , campo direto da fonte finan.lancamento (bug R1 corrigido 2026-05-18).
+// CRITERIO_ABERTO: { vrSaldo > 0 } , inclui efetivo (confirmado) E provisorio
+//   (lançado, não efetivado). Exclui quitado/baixado (saldo 0). Decisão
+//   2026-06-11: o critério antigo (situacaoSimples='aberto') escondia o
+//   provisório; alinhado a financeiro_liquidez e à dívida real. A quebra
+//   (confirmado/provisório) é devolvida para transparência.
 // totalAReceber usa vrSaldo (= valor correto a receber em aberto na nova fonte).
 // ---------------------------------------------------------------------------
 
@@ -125,11 +153,11 @@ export async function queryContasAReceber(
   prisma: PrismaClient,
   filtros: { participanteId?: number },
   hoje: Date,
-): Promise<{ titulos: TituloRow[]; totalAReceber: number }> {
+): Promise<{ titulos: TituloRow[]; totalAReceber: number; quebra: QuebraSituacao }> {
   const rows = await prisma.fatoFinanceiroTitulo.findMany({
     where: {
       tipo: "a_receber",
-      situacaoSimples: "aberto",
+      vrSaldo: { gt: 0 },
       ...(filtros.participanteId ? { participanteId: filtros.participanteId } : {}),
     },
     select: {
@@ -138,6 +166,7 @@ export async function queryContasAReceber(
       dataVencimento: true,
       vrSaldo: true,
       vrTotal: true,
+      situacaoSimples: true,
     },
   });
 
@@ -148,15 +177,19 @@ export async function queryContasAReceber(
     vrSaldo: Number(r.vrSaldo),
     vrTotal: Number(r.vrTotal),
     diasAtraso: calcDiasAtraso(r.dataVencimento, hoje),
+    situacaoSimples: r.situacaoSimples,
   }));
 
   const totalAReceber = titulos.reduce((acc, t) => acc + t.vrSaldo, 0);
-  return { titulos, totalAReceber };
+  return { titulos, totalAReceber, quebra: quebraPorSituacao(titulos) };
 }
 
 // ---------------------------------------------------------------------------
 // queryContasAPagar , fato_financeiro_titulo (task 4d.6-q)
-// CRITERIO_ABERTO: { situacaoSimples: 'aberto' } , campo situacao_divida_simples.
+// CRITERIO_ABERTO: { vrSaldo > 0 } , inclui efetivo (confirmado) E provisorio.
+//   No a_pagar o provisório é a MAIORIA da dívida (compras da Johnson etc.,
+//   vencidas), então o critério antigo (situacaoSimples='aberto') subreportava
+//   ~94%. Decisão 2026-06-11: contar tudo em aberto, com quebra honesta.
 // tipo "a_pagar" , campo direto da fonte finan.lancamento (bug R1 corrigido 2026-05-18).
 // totalAPagar usa vrSaldo (= valor correto a pagar em aberto na nova fonte).
 // ---------------------------------------------------------------------------
@@ -165,11 +198,11 @@ export async function queryContasAPagar(
   prisma: PrismaClient,
   filtros: { participanteId?: number },
   hoje: Date,
-): Promise<{ titulos: TituloRow[]; totalAPagar: number }> {
+): Promise<{ titulos: TituloRow[]; totalAPagar: number; quebra: QuebraSituacao }> {
   const rows = await prisma.fatoFinanceiroTitulo.findMany({
     where: {
       tipo: "a_pagar",
-      situacaoSimples: "aberto",
+      vrSaldo: { gt: 0 },
       ...(filtros.participanteId ? { participanteId: filtros.participanteId } : {}),
     },
     select: {
@@ -178,6 +211,7 @@ export async function queryContasAPagar(
       dataVencimento: true,
       vrSaldo: true,
       vrTotal: true,
+      situacaoSimples: true,
     },
   });
 
@@ -188,10 +222,11 @@ export async function queryContasAPagar(
     vrSaldo: Number(r.vrSaldo),
     vrTotal: Number(r.vrTotal),
     diasAtraso: calcDiasAtraso(r.dataVencimento, hoje),
+    situacaoSimples: r.situacaoSimples,
   }));
 
   const totalAPagar = titulos.reduce((acc, t) => acc + t.vrSaldo, 0);
-  return { titulos, totalAPagar };
+  return { titulos, totalAPagar, quebra: quebraPorSituacao(titulos) };
 }
 
 // ---------------------------------------------------------------------------
@@ -209,20 +244,22 @@ export interface TituloVencidoRow {
   vrSaldo: number;
   vrTotal: number;
   diasAtraso: number;
+  situacaoSimples: string | null;
 }
 
 // ---------------------------------------------------------------------------
 // queryTitulosVencidos , fato_financeiro_titulo (task 4d.7-q)
-// CRITERIO_ABERTO: { situacaoSimples: 'aberto' } , campo situacao_divida_simples.
+// CRITERIO_ABERTO: { vrSaldo > 0 } , inclui efetivo E provisorio (a maior parte
+//   dos vencidos a_pagar é provisória). Decisão 2026-06-11, alinhado às contas.
 // Fonte corrigida para finan.lancamento (bug R1 , 2026-05-18).
-// Só títulos abertos E com dataVencimento < início do dia de hoje estão vencidos.
+// Só títulos em aberto E com dataVencimento < início do dia de hoje estão vencidos.
 // totalVencido usa vrSaldo (= valor correto a receber/pagar na nova fonte).
 // ---------------------------------------------------------------------------
 
 export async function queryTitulosVencidos(
   prisma: PrismaClient,
   hoje: Date,
-): Promise<{ titulos: TituloVencidoRow[]; totalVencido: number }> {
+): Promise<{ titulos: TituloVencidoRow[]; totalVencido: number; quebra: QuebraSituacao }> {
   // Normaliza para início do dia local , reutiliza o mesmo padrão de
   // dias-atraso.ts , para que um título que vence HOJE (gravado como
   // T00:00:00) não seja incluído como vencido. Só está vencido quem venceu
@@ -231,7 +268,7 @@ export async function queryTitulosVencidos(
 
   const rows = await prisma.fatoFinanceiroTitulo.findMany({
     where: {
-      situacaoSimples: "aberto",
+      vrSaldo: { gt: 0 },
       dataVencimento: { lt: inicioDoDia },
     },
     select: {
@@ -241,6 +278,7 @@ export async function queryTitulosVencidos(
       dataVencimento: true,
       vrSaldo: true,
       vrTotal: true,
+      situacaoSimples: true,
     },
   });
 
@@ -252,8 +290,9 @@ export async function queryTitulosVencidos(
     vrSaldo: Number(r.vrSaldo),
     vrTotal: Number(r.vrTotal),
     diasAtraso: calcDiasAtraso(r.dataVencimento, hoje),
+    situacaoSimples: r.situacaoSimples,
   }));
 
   const totalVencido = titulos.reduce((acc, t) => acc + t.vrSaldo, 0);
-  return { titulos, totalVencido };
+  return { titulos, totalVencido, quebra: quebraPorSituacao(titulos) };
 }
