@@ -1169,5 +1169,91 @@
     "pergunta": "E o preco dela?",
     "toolEsperada": "preco_produto",
     "observacao": "Follow-up contextual: 'dela' resolve para o produto do turno anterior (esteira)."
+  },
+  {
+    "id": "demo-01",
+    "dominio": "fiscal",
+    "classe": "prosseguir",
+    "pergunta": "Qual o faturamento de operacoes de demonstracao e quantas notas fiscais emitimos por UF este ano?",
+    "toolEsperada": "fiscal_demonstracoes",
+    "kpiOuro": [
+      {
+        "chave": "nNotasRemessa",
+        "valor": 89,
+        "match": "exato",
+        "fonteOuro": "COUNT DISTINCT documento_id CFOP 5912/6912 autorizada 2026",
+        "fonteOuroSql": "SELECT COUNT(DISTINCT documento_id)::float v FROM fato_nota_fiscal_item WHERE situacao_nfe='autorizada' AND substring(cfop_nome from '^[0-9]{4}') IN ('5912','6912') AND data_emissao >= '2026-01-01'"
+      }
+    ],
+    "observacao": "Cobertura Cliente pergunta 2 literal. Ressalva remessa != receita obrigatoria na resposta."
+  },
+  {
+    "id": "demo-02",
+    "dominio": "fiscal",
+    "classe": "prosseguir",
+    "pergunta": "Quanto ja retornou de demonstracao este ano?",
+    "toolEsperada": "fiscal_demonstracoes",
+    "kpiOuro": [
+      {
+        "chave": "nNotasRetorno",
+        "valor": 40,
+        "match": "exato",
+        "fonteOuro": "COUNT DISTINCT documento_id CFOP 1913/2913 autorizada 2026",
+        "fonteOuroSql": "SELECT COUNT(DISTINCT documento_id)::float v FROM fato_nota_fiscal_item WHERE situacao_nfe='autorizada' AND substring(cfop_nome from '^[0-9]{4}') IN ('1913','2913') AND data_emissao >= '2026-01-01'"
+      }
+    ],
+    "observacao": "Retorno de demonstracao pareia com a remessa (5912/6912 <-> 1913/2913)."
+  },
+  {
+    "id": "demo-03",
+    "dominio": "estoque",
+    "classe": "prosseguir",
+    "pergunta": "Qual o valor total de estoque em demonstracao?",
+    "toolEsperada": "estoque_valor_armazem",
+    "volatil": true,
+    "kpiOuro": [
+      {
+        "chave": "valorTotal",
+        "valor": 1855763.5,
+        "match": "centavos",
+        "fonteOuro": "sum vr_saldo subarvore Terceiros / Demonstração",
+        "fonteOuroSql": "SELECT COALESCE(sum(s.vr_saldo),0)::float v FROM fato_estoque_saldo s JOIN raw_estoque_local l ON l.odoo_id = s.local_id WHERE l.data->>'nome_completo' LIKE 'Terceiros / Demonstração%' AND s.vr_saldo > 0"
+      }
+    ],
+    "observacao": "Cobertura Cliente pergunta 8 literal. Locais Demo vivem sob Terceiros (nunca filtrar por termo solto)."
+  },
+  {
+    "id": "estoq-fis-01",
+    "dominio": "estoque",
+    "classe": "prosseguir",
+    "pergunta": "Qual o valor total de estoque considerando apenas os estoques fisicos?",
+    "toolEsperada": "estoque_valor_armazem",
+    "volatil": true,
+    "kpiOuro": [
+      {
+        "chave": "valorTotal",
+        "valor": 37399967.01,
+        "match": "centavos",
+        "fonteOuro": "sum vr_saldo subarvore Próprio",
+        "fonteOuroSql": "SELECT COALESCE(sum(s.vr_saldo),0)::float v FROM fato_estoque_saldo s JOIN raw_estoque_local l ON l.odoo_id = s.local_id WHERE l.data->>'nome_completo' LIKE 'Próprio%' AND s.vr_saldo > 0"
+      }
+    ],
+    "observacao": "Cobertura Cliente pergunta 7 literal. Fisico = subarvore Próprio (exclui Virtual e Terceiros)."
+  },
+  {
+    "id": "estoq-loc-01",
+    "dominio": "estoque",
+    "classe": "prosseguir",
+    "pergunta": "Quanto temos de estoque, em valor, no local Vendas?",
+    "toolEsperada": "estoque_valor_armazem",
+    "observacao": "Derivada: filtro por local especifico via prefixo da arvore."
+  },
+  {
+    "id": "demo-04",
+    "dominio": "fiscal",
+    "classe": "prosseguir",
+    "pergunta": "Quantas notas de remessa para demonstracao emitimos por empresa este ano?",
+    "toolEsperada": "fiscal_demonstracoes",
+    "observacao": "Derivada: dimensao empresa do recorte demonstracao."
   }
 ]
