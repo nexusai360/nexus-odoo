@@ -901,12 +901,13 @@
       "id": "preco_tabela",
       "operation": "read",
       "module": "comercial",
-      "descricao": "Regras de UMA TABELA DE PREÇO específica (identificada por `tabelaId`). Lista todas as regras da tabela (por produto, família ou participante) com valor, operação e vigência. NÃO use para: preço de um produto específico (use `preco_produto`).",
+      "descricao": "Regras de UMA TABELA DE PREÇO específica, identificada por `tabelaId` OU por `tabelaNome` (nome ou parte dele, ex.: 'Venda Smart'). Lista todas as regras da tabela (por produto, família ou participante) com valor, operação e vigência. NÃO use para: preço de um produto específico (use `preco_produto`).",
       "capability": null,
       "sensitive": false,
       "addedInVersion": null,
       "inputSchemaKeys": [
         "tabelaId",
+        "tabelaNome",
         "limit",
         "offset"
       ],
@@ -914,7 +915,12 @@
         {
           "name": "tabelaId",
           "type": "integer",
-          "optional": false
+          "optional": true
+        },
+        {
+          "name": "tabelaNome",
+          "type": "string",
+          "optional": true
         },
         {
           "name": "limit",
@@ -1892,6 +1898,49 @@
         {
           "name": "limite",
           "type": "integer",
+          "optional": true
+        },
+        {
+          "name": "empresaRef",
+          "type": "string",
+          "optional": true
+        }
+      ],
+      "examples": []
+    },
+    {
+      "id": "fiscal_demonstracoes",
+      "operation": "read",
+      "module": "fiscal",
+      "descricao": "Demonstrações de equipamentos (remessa para demonstração, CFOP 5912/6912, e retorno de demonstração, CFOP 1913/2913; só notas autorizadas): valor e número de notas fiscais emitidas, agrupados por UF, empresa ou mês. Use para 'faturamento de operações de demonstração', 'remessas para demonstração por estado', 'quantas notas de demonstração emitimos', 'quanto retornou de demonstração'. O valor é de REMESSA (a mercadoria pode retornar), não é receita de venda. Tool canônica para qualquer recorte de demonstração.",
+      "capability": null,
+      "sensitive": false,
+      "addedInVersion": null,
+      "inputSchemaKeys": [
+        "agruparPor",
+        "periodoDe",
+        "periodoAte",
+        "empresaRef"
+      ],
+      "inputSchemaFields": [
+        {
+          "name": "agruparPor",
+          "type": "enum",
+          "optional": true,
+          "enumValues": [
+            "uf",
+            "empresa",
+            "mes"
+          ]
+        },
+        {
+          "name": "periodoDe",
+          "type": "string",
+          "optional": true
+        },
+        {
+          "name": "periodoAte",
+          "type": "string",
           "optional": true
         },
         {
@@ -2891,18 +2940,24 @@
       "id": "cadastro_detalhar_produto",
       "operation": "read",
       "module": "cadastros",
-      "descricao": "Retorna o detalhe completo de um produto a partir do odooId: nome, codigo, codigo unico, codigo de barras, marca, familia, unidade, NCM, preco de venda, preco de custo e se esta ativo. Use depois de uma busca de produto quando o usuario pediu o detalhe de um item especifico.",
+      "descricao": "Detalhe COMPLETO do CADASTRO de um produto: NCM, codigo de barras (EAN), codigo, codigo unico, marca, familia, unidade, preco de venda, preco de custo e se esta ativo. Aceita odooId OU termo (codigo exato ou parte do nome, ex: 'esteira T5'). Use para 'qual o NCM do produto X', 'codigo de barras do item Y', 'ficha cadastral do produto'. NAO e' saldo de estoque.",
       "capability": null,
       "sensitive": false,
       "addedInVersion": null,
       "inputSchemaKeys": [
-        "odooId"
+        "odooId",
+        "termo"
       ],
       "inputSchemaFields": [
         {
           "name": "odooId",
           "type": "integer",
-          "optional": false
+          "optional": true
+        },
+        {
+          "name": "termo",
+          "type": "string",
+          "optional": true
         }
       ],
       "examples": []
@@ -4034,6 +4089,6 @@
       "examples": []
     }
   ],
-  "count": 116,
-  "generatedAt": "2026-06-10T17:56:13.872Z"
+  "count": 117,
+  "generatedAt": "2026-06-11T21:06:37.440Z"
 }

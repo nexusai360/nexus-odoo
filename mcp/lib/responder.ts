@@ -1739,6 +1739,26 @@ const fmtServicoListar: FormatadorCanonico = (env) => {
   return `${total} ${plural} no catalogo fiscal.`;
 };
 
+// Cobertura Cliente A4 (2026-06-11): recorte demonstração , a ressalva
+// "remessa != receita" é FIXA na resposta (criterio de aceite #7 da spec).
+const fmtDemonstracoes: FormatadorCanonico = (env) => {
+  const vrRemessa = Number(env._DESTAQUE?.vrRemessa ?? 0);
+  const nRemessa = Number(env._DESTAQUE?.nNotasRemessa ?? 0);
+  const vrRetorno = Number(env._DESTAQUE?.vrRetorno ?? 0);
+  const nRetorno = Number(env._DESTAQUE?.nNotasRetorno ?? 0);
+  const dim = String(env._DESTAQUE?.agruparPor ?? "uf");
+  if (nRemessa === 0 && nRetorno === 0) {
+    return "Nao ha notas de demonstracao no periodo.";
+  }
+  const dimLabel = dim === "uf" ? "UF" : dim === "empresa" ? "empresa" : "mes";
+  return (
+    `Remessas para demonstracao no periodo: ${formatBRL(vrRemessa)} em ${nRemessa} ` +
+    `nota(s), detalhadas por ${dimLabel} nas linhas. Retornos de demonstracao: ` +
+    `${formatBRL(vrRetorno)} em ${nRetorno} nota(s). Importante: e valor de REMESSA ` +
+    `(a mercadoria pode retornar), nao e receita de venda.`
+  );
+};
+
 // === F4 Onda 4 (ultimos 4: certificados/carta_correcao enriquecidos no handler;
 //     mdfe espelho; crm.res_partner.get formatador minimo p/ contrato) ===
 const fmtFiscalCertificados: FormatadorCanonico = (env) => {
@@ -2022,6 +2042,7 @@ const FORMATADORES: Record<string, FormatadorCanonico> = {
   "fiscal_detalhar_nota": fmtFiscalDetalharNota,
   "fiscal_faturamento_por_marca": fmtFiscalFaturamentoPorMarca,
   "fiscal_faturamento_por_uf": fmtFiscalFaturamentoPorUf,
+  "fiscal_demonstracoes": fmtDemonstracoes,
   "fiscal_certificados": fmtFiscalCertificados,
   "fiscal_carta_correcao": fmtFiscalCartaCorrecao,
   "fiscal_mdfe_manifestos": fmtMdfeManifestos,
