@@ -283,12 +283,14 @@ Cada fase: plano próprio (bite-sized) + 2 reviews quando material → execuçã
           premissas verificadas no banco). Gaps 1/2/6 do top-10 PROVADOS JA
           COBERTOS no agente real (notas_recebidas_por_fornecedor R$12,6mi
           50 forn.; contas_a_pagar R$209mi; por_cliente top-10).
-          **BACKLOG REAL DA PROXIMA ONDA:** (a) avisos de FONTE-VAZIA em
-          comercial_comissoes, comercial_cotacoes, financeiro_cheques,
-          financeiro_pix_recebidos (fato=0 respondido como lista vazia =
-          resposta enganosa , padrao fonteZerada/status ja existe); (b)
-          pos_venda/assistencia: 0 tabelas e SEM tool de status (unico
-          dominio descoberto sem honestidade); (c) financeiro_aging_
+          **BACKLOG (auditado por E2E real , itens (a) era FALSO GAP: as 4
+          tools JA usam makeHonestTool/naoOperado, cheques respondeu
+          honesto e perfeito):** (b) pos-venda/assistencia cai em
+          registrar_lacuna com recusa GENERICA ("nao tenho dados
+          suficientes") , refinar a respostaSugerida da lacuna p/ citar que
+          o modulo nao existe no sistema E avaliar ampliar RECUSA_SECA_RE
+          do V9 com "nao tenho dados" (cuidado: V9 pula quando ha lacuna ,
+          o fix certo e na respostaSugerida); (c) financeiro_aging_
           recebiveis (buckets 0-30/30-60/60-90/90+ , dado pronto); (d)
           estoque_cobertura_dias (raw_estoque_saldo_hoje_duracao_dias ja
           calculado, 3.666 linhas); (e) fiscal_faturamento_por_vendedor
