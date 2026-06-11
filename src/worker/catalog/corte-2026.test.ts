@@ -85,6 +85,19 @@ describe("corte 2026 , conjunto exato no catalogo", () => {
     }
   });
 
+  it("estoque.extrato e snapshot+corte (T2d REVISTO , incremental e inviavel)", () => {
+    // Decisao 2026-06-11, confirmada no Odoo VIVO: 17.508 linhas, so 207 com
+    // write_date (99% false) e create_date false em 100% , modelo computado
+    // sem timestamps ORM. Incremental por write_date>since perderia quase toda
+    // linha nova; snapshot diario (17k linhas 2026+) e o unico modo que pega
+    // recalculo retroativo. Risco do 1o full-refresh purgar pre-2026 e coberto
+    // pela ordem do T9 (pg_dump ANTES do deploy). NAO reclassificar sem rever
+    // essa evidencia.
+    const e = MODEL_CATALOG.find((m) => m.odooModel === "estoque.extrato")!;
+    expect(e.mode).toBe("snapshot");
+    expect(e.corte).toEqual({ odoo: "data", raw: "data" });
+  });
+
   it("mestres/foto-atual NUNCA tem corte (lista negativa)", () => {
     const violando = MODEL_CATALOG.filter(
       (e) =>
