@@ -117,8 +117,12 @@ Cada fase: plano próprio (bite-sized) + 2 reviews quando material → execuçã
       worker (dev) nem ship antes do pg_dump do T9 pre-flight , estoque.extrato
       e snapshot COM corte: o 1o full-refresh pos-deploy purga as linhas
       pre-2026 SEM rede de seguranca. Ordem: pg_dump -> deploy -> ciclos.**
-      PROXIMO: T2d (reclassificar estoque.extrato), T3 (valida campos Odoo),
-      T4a-d (purge script) (T7b/T8-
+      T3 FEITO: 8/8 campos validados AO VIVO no Odoo (valida-campos-odoo.ts;
+      pedido.documento.data_orcamento confirmado; sped.documento 39.884
+      pre-2026 de 49.847). PROXIMO: T2d (reclassificar estoque.extrato),
+      T4a-d (purge script), T5+ , plan v3.
+      **MERGE/SHIP DO CODIGO DA LIMPA E GATED pelo pg_dump do T9 pre-flight
+      (alerta acima) , NAO mergear no wrap-up automatico.** (T7b/T8-
       golden gated por recarga OpenAI; --apply gated por aprovacao humana).**
 - [ ] **PROXIMA SESSAO:** (adicionar: reescrever os ~8 cov-* placeholder do
       golden como perguntas naturais com identificadores; toolsAceitas nas
