@@ -197,6 +197,17 @@ Cada fase: plano próprio (bite-sized) + 2 reviews quando material → execuçã
       crm_res_partner_get (OpenAI proibe ponto em function name). PENDENTE
       LEVE: juiz heuristico marcou 9/60 suspeitas de alucinacao (era 5/60;
       tem falso positivo , auditar amostra na proxima rodada de pericia).
+- [x] **GOLDEN SEM PLACEHOLDER + GATE PRE-PUSH (Fase E nucleo fechado):**
+      os 59 cov-* restantes reescritos como perguntas naturais (descricao da
+      tool + ids reais: pedido 2442, nota 57068, Smartfit, esteira);
+      pericia-ncm-01 orfa corrigida (cadastro_buscar_produto nao existe).
+      Gate deterministico golden-gate.test.ts (zero placeholder, tool orfa
+      vs snapshot do catalogo, pre-2026 nunca prosseguir) + .husky/pre-push
+      rodando gate + corte-2026 (~5s; --no-verify para pular consciente).
+      **BENCHMARK FULL 132 casos: 111/112 prosseguir com tool certa (99,1%),
+      kpi 6/6, custo p50 $0,0043, lat p50 14,0s.** Unico erro: cov-20 era
+      irma legitima (estrutura/plano tambem respondem hierarquia da conta) ,
+      toolsAceitas aplicado. Gasto OpenAI da sessao ~US$1,80 de 5.
 - [ ] **PROXIMA SESSAO:** Fase D (prompt 2.0 enxuto + remover
       regras-curativo), follow-up contextual no golden, golden gate pre-push,
       A2 (A/B Claude , exige usuario creditar OpenRouter; slugs:

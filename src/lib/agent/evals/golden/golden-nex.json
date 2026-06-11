@@ -628,7 +628,11 @@
     "dominio": "contabil",
     "classe": "prosseguir",
     "toolEsperada": "contabil_detalhar_conta",
-    "obs": "Reescrita 2026-06-11 (era placeholder 'Consulta: ...'); identificadores reais conferidos no cache."
+    "obs": "Reescrita 2026-06-11 (era placeholder 'Consulta: ...'); identificadores reais conferidos no cache. Irmas aceitas: estrutura/plano tambem respondem tipo, nivel e conta pai por completo.",
+    "toolsAceitas": [
+      "contabil_estrutura_conta",
+      "contabil_plano_de_contas"
+    ]
   },
   {
     "id": "cov-21",
