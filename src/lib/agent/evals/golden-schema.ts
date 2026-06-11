@@ -33,6 +33,12 @@ export const GoldenEntrySchema = z
      *  antes da `pergunta` (que e o turno avaliado). Ex.: ["qual o faturamento
      *  do mes?"] + pergunta "e do mes passado?". */
     turnosAntes: z.array(z.string().min(1)).optional(),
+    /** Onda C Cobertura Cliente: avaliacao da RESPOSTA pelo harness (qualquer
+     *  classe). Todas as strings devem aparecer (substring case/acento-
+     *  insensitive). Casos com este campo entram OBRIGATORIAMENTE na amostra. */
+    esperaNaResposta: z.array(z.string().min(2)).optional(),
+    /** Nenhuma destas pode aparecer (alem do default global de recusa seca). */
+    proibidoNaResposta: z.array(z.string().min(2)).optional(),
     dominio: z.string().nullable(),
     classe: z.enum(CLASSES),
     toolEsperada: z.string().nullable(),
