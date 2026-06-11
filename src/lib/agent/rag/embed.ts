@@ -87,16 +87,25 @@ function resolveDimensions(
 }
 
 /**
- * Gera o embedding de `text`.
- *
- * @throws {EmbeddingUnavailable} quando não há credencial configurada.
- * @throws {Error} quando a API retorna erro ou dimensão incorreta.
+ * Máximo de inputs por requisição à API de embeddings. O limite oficial da
+ * OpenAI é 2048; usamos uma fatia conservadora para caber também no teto de
+ * tokens por requisição quando os textos são longos. O catálogo de tools
+ * (~107) cabe num único chunk.
  */
-export async function embed(
-  text: string,
-  options: EmbedOptions = {},
-): Promise<number[]> {
-  // 1. Resolver credencial + config de modelo numa única ida ao banco.
+const MAX_INPUTS_POR_REQUISICAO = 256;
+
+/** Config resolvida de embedding (credencial + modelo + dimensão). */
+interface ResolvedEmbedConfig {
+  apiKey: string;
+  model: string;
+  expectedDim: number;
+  credentialId: string;
+}
+
+/** Resolve credencial + modelo + dimensão numa única ida ao banco. */
+async function resolveEmbedConfig(
+  options: EmbedOptions,
+): Promise<ResolvedEmbedConfig> {
   const settingRows = await prisma.appSetting.findMany({
     where: {
       key: {
@@ -127,60 +136,103 @@ export async function embed(
 
   const model = resolveModel(options.model, settings);
   const expectedDim = resolveDimensions(options.dimensions, settings, model);
-
-  // 2. Decifrar API key
   const apiKey = decrypt(credential.encryptedApiKey);
+  return { apiKey, model, expectedDim, credentialId };
+}
 
-  // 3. Chamar OpenAI Embeddings API via fetch puro (padrão dos adapters)
-  const startedAt = Date.now();
-  const response = await fetch("https://api.openai.com/v1/embeddings", {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${apiKey}`,
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({
-      input: text,
-      model,
-      // A família text-embedding-3 aceita encurtar dimensões nativamente.
-      dimensions: expectedDim,
-    }),
-  });
+/**
+ * Gera o embedding de VÁRIOS textos numa só chamada à API (input em lote).
+ *
+ * A API text-embedding-3 aceita um array de inputs por requisição e devolve
+ * `data: [{index, embedding}, ...]`. Batchar troca N chamadas sequenciais (o
+ * gargalo de ~60s no cold start do router, que embeda ~107 tools) por 1 (ou
+ * poucos chunks), preservando a ordem de entrada via `index`.
+ *
+ * @throws {EmbeddingUnavailable} quando não há credencial configurada.
+ * @throws {Error} quando a API retorna erro ou dimensão incorreta.
+ */
+export async function embedMany(
+  texts: string[],
+  options: EmbedOptions = {},
+): Promise<number[][]> {
+  if (texts.length === 0) return [];
 
-  if (!response.ok) {
-    const body = await response.text();
-    throw new Error(`OpenAI Embeddings API error ${response.status}: ${body}`);
+  const { apiKey, model, expectedDim, credentialId } =
+    await resolveEmbedConfig(options);
+
+  const out: number[][] = [];
+  let totalTokens = 0;
+  let totalChars = 0;
+  let totalDurationMs = 0;
+
+  for (let i = 0; i < texts.length; i += MAX_INPUTS_POR_REQUISICAO) {
+    const chunk = texts.slice(i, i + MAX_INPUTS_POR_REQUISICAO);
+    const startedAt = Date.now();
+    const response = await fetch("https://api.openai.com/v1/embeddings", {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${apiKey}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        input: chunk,
+        model,
+        // A família text-embedding-3 aceita encurtar dimensões nativamente.
+        dimensions: expectedDim,
+      }),
+    });
+
+    if (!response.ok) {
+      const body = await response.text();
+      throw new Error(`OpenAI Embeddings API error ${response.status}: ${body}`);
+    }
+
+    const json = (await response.json()) as {
+      data: Array<{ index?: number; embedding: number[] }>;
+      usage?: { prompt_tokens?: number; total_tokens?: number };
+    };
+    totalDurationMs += Date.now() - startedAt;
+
+    const data = json.data ?? [];
+    if (data.length !== chunk.length) {
+      throw new Error(
+        `OpenAI Embeddings API: esperado ${chunk.length} vetores, recebido ${data.length}.`,
+      );
+    }
+
+    // Reordena pelo `index` retornado (a ordem da resposta deve casar com a
+    // entrada, mas respeitamos o índice por segurança).
+    const chunkOut: number[][] = new Array(chunk.length);
+    for (let j = 0; j < data.length; j++) {
+      const item = data[j];
+      const idx = typeof item.index === "number" ? item.index : j;
+      const vector = item.embedding;
+      if (!Array.isArray(vector)) {
+        throw new Error(
+          "OpenAI Embeddings API: resposta inválida , nenhum vetor retornado.",
+        );
+      }
+      if (vector.length !== expectedDim) {
+        throw new Error(
+          `Embedding com dimensão incorreta: esperado ${expectedDim}, recebido ${vector.length}. ` +
+            `Verifique o modelo configurado (modelo atual: ${model}).`,
+        );
+      }
+      chunkOut[idx] = vector;
+    }
+    for (const v of chunkOut) out.push(v);
+
+    totalTokens += json.usage?.total_tokens ?? json.usage?.prompt_tokens ?? 0;
+    for (const t of chunk) totalChars += t.length;
   }
 
-  const json = (await response.json()) as {
-    data: Array<{ embedding: number[] }>;
-    usage?: { prompt_tokens?: number; total_tokens?: number };
-  };
-  const durationMs = Date.now() - startedAt;
-  const vector = json.data?.[0]?.embedding;
-
-  if (!Array.isArray(vector)) {
-    throw new Error(
-      "OpenAI Embeddings API: resposta inválida , nenhum vetor retornado.",
-    );
-  }
-
-  // 4. Validar dimensão (deve bater com a configurada)
-  if (vector.length !== expectedDim) {
-    throw new Error(
-      `Embedding com dimensão incorreta: esperado ${expectedDim}, recebido ${vector.length}. ` +
-        `Verifique o modelo configurado (modelo atual: ${model}).`,
-    );
-  }
-
-  // 5. Telemetria de consumo (best-effort, nunca bloqueia o embedding).
+  // Telemetria de consumo (best-effort, nunca bloqueia o embedding). Uma linha
+  // por lote inteiro (soma de tokens), não uma por texto.
   if (options.usage) {
-    const tokens =
-      json.usage?.total_tokens ?? json.usage?.prompt_tokens ?? 0;
     void logUsage({
       provider: "openai",
       model,
-      tokensInput: tokens,
+      tokensInput: totalTokens,
       tokensOutput: 0,
       requestKind: "embedding",
       origin: options.usage.origin,
@@ -188,10 +240,29 @@ export async function embed(
       userId: options.usage.userId,
       isPlayground: options.usage.isPlayground ?? false,
       credentialId,
-      durationMs,
-      promptChars: text.length,
+      durationMs: totalDurationMs,
+      promptChars: totalChars,
     }).catch(() => undefined);
   }
 
+  return out;
+}
+
+/**
+ * Gera o embedding de `text`. Atalho de 1 texto sobre `embedMany`.
+ *
+ * @throws {EmbeddingUnavailable} quando não há credencial configurada.
+ * @throws {Error} quando a API retorna erro ou dimensão incorreta.
+ */
+export async function embed(
+  text: string,
+  options: EmbedOptions = {},
+): Promise<number[]> {
+  const [vector] = await embedMany([text], options);
+  if (!Array.isArray(vector)) {
+    throw new Error(
+      "OpenAI Embeddings API: resposta inválida , nenhum vetor retornado.",
+    );
+  }
   return vector;
 }

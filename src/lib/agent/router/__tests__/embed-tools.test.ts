@@ -1,13 +1,16 @@
 // F3 onda 3a: cache em memoria dos vetores de tool.
+// Batch: embedAllTools usa embedMany (1 chamada para todo o catalogo).
 jest.mock("../../rag/embed", () => ({
-  embed: jest.fn(async (text: string) => [text.length, 0.2, 0.3]),
+  embedMany: jest.fn(async (texts: string[]) =>
+    texts.map((t) => [t.length, 0.2, 0.3]),
+  ),
 }));
 jest.mock("../constants", () => ({
   getRouterEmbeddingConfig: () => ({ model: "text-embedding-3-small", dimensions: 1536 }),
 }));
 
 // eslint-disable-next-line @typescript-eslint/no-require-imports
-const { embed } = require("../../rag/embed");
+const { embedMany } = require("../../rag/embed");
 import { getToolVectors, __resetToolCache } from "../embed-tools";
 import type { RetrievalTool } from "../types";
 
@@ -18,7 +21,7 @@ const tools: RetrievalTool[] = [
 
 beforeEach(() => {
   __resetToolCache();
-  (embed as jest.Mock).mockClear();
+  (embedMany as jest.Mock).mockClear();
 });
 
 describe("getToolVectors", () => {
@@ -28,25 +31,34 @@ describe("getToolVectors", () => {
     expect(Array.isArray(v.estoque_saldo)).toBe(true);
   });
 
+  it("embeda em lote: 1 chamada a embedMany com todas as descricoes", async () => {
+    await getToolVectors(tools);
+    expect((embedMany as jest.Mock).mock.calls.length).toBe(1);
+    expect((embedMany as jest.Mock).mock.calls[0][0]).toEqual([
+      "Faturamento no periodo.",
+      "Saldo de estoque.",
+    ]);
+  });
+
   it("cacheia: segunda chamada com as mesmas tools nao re-embedda", async () => {
     await getToolVectors(tools);
-    const callsAfter1 = (embed as jest.Mock).mock.calls.length;
+    const callsAfter1 = (embedMany as jest.Mock).mock.calls.length;
     await getToolVectors(tools);
-    expect((embed as jest.Mock).mock.calls.length).toBe(callsAfter1);
+    expect((embedMany as jest.Mock).mock.calls.length).toBe(callsAfter1);
   });
 
   it("invalida o cache quando a descricao de uma tool muda", async () => {
     await getToolVectors(tools);
-    const calls1 = (embed as jest.Mock).mock.calls.length;
+    const calls1 = (embedMany as jest.Mock).mock.calls.length;
     const mudadas = [{ ...tools[0]!, description: "Outra descricao." }, tools[1]!];
     await getToolVectors(mudadas);
-    expect((embed as jest.Mock).mock.calls.length).toBeGreaterThan(calls1);
+    expect((embedMany as jest.Mock).mock.calls.length).toBeGreaterThan(calls1);
   });
 
   it("race-safe: chamadas concorrentes compartilham a mesma promise", async () => {
     const [a, b] = await Promise.all([getToolVectors(tools), getToolVectors(tools)]);
     expect(a).toBe(b);
-    // so 1 embedding por tool (2 tools) apesar das 2 chamadas concorrentes
-    expect((embed as jest.Mock).mock.calls.length).toBe(2);
+    // 1 unica chamada em lote apesar das 2 chamadas concorrentes
+    expect((embedMany as jest.Mock).mock.calls.length).toBe(1);
   });
 });
