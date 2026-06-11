@@ -1142,7 +1142,7 @@
       "id": "comercial_pedidos_por_uf",
       "operation": "read",
       "module": "comercial",
-      "descricao": "Pedidos agrupados por UF do cliente. Use para 'pedidos por estado', 'pedidos por UF', 'qual estado mais compra'. Aceita status (aberto/fechado/todos) e periodo. Default: todos os pedidos cadastrados.",
+      "descricao": "Pedidos agrupados por UF do cliente. Use para 'pedidos por estado', 'pedidos por UF', 'qual estado mais compra', 'quantidade de pedidos de operacao de venda por UF' (passe operacao: 'venda' , o modulo mistura venda, producao, inventario, romaneio e transferencia). Aceita status (aberto/fechado/todos) e periodo. Default: todos os pedidos cadastrados.",
       "capability": null,
       "sensitive": false,
       "addedInVersion": null,
@@ -1150,6 +1150,7 @@
         "periodoDe",
         "periodoAte",
         "status",
+        "operacao",
         "limite"
       ],
       "inputSchemaFields": [
@@ -1171,6 +1172,15 @@
             "aberto",
             "fechado",
             "todos"
+          ]
+        },
+        {
+          "name": "operacao",
+          "type": "enum",
+          "optional": true,
+          "enumValues": [
+            "venda",
+            "todas"
           ]
         },
         {
@@ -4146,5 +4156,5 @@
     }
   ],
   "count": 118,
-  "generatedAt": "2026-06-11T21:27:42.940Z"
+  "generatedAt": "2026-06-11T21:31:06.807Z"
 }
