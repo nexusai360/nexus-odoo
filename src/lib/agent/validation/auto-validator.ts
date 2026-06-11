@@ -30,6 +30,7 @@ export type ValidationFailReason =
   | "V6"
   | "V7"
   | "V8"
+  | "V9"
   | null;
 
 /**
@@ -647,6 +648,40 @@ export function validateV7(ctx: ValidationContext): ValidationOutcome | null {
 export const CONTESTACAO_RE =
   /\b(por\s*que|pq|porque)\s+n[aã]o\b|\bfalt(ou|aram|am|a)\b|\best[aá]\s+errad|\berrado[,.!\s]|\bn[aã]o\s+s[aã]o\s+(os|as)\b|\bcad[eê]\b|\bn[aã]o\s+(apareceu|aparecem|veio|vieram)\b/i;
 
+/**
+ * V9 , gap de fonte (Onda C Cobertura Cliente, 2026-06-11).
+ *
+ * Fronteira com o V3: o V3 pega recusa quando HA _RESPOSTA/agregado disponivel
+ * (recusa com dado em maos). O V9 pega a recusa SECA quando NAO ha dado , o
+ * certo nesses turnos e explicar a CAUSA citando o sistema/modulo/cadastro
+ * ("o modulo de prospeccao existe, mas nao ha dados cadastrados"), nunca um
+ * "nao consigo te responder" que parece defeito da plataforma. Regex local,
+ * sem custo LLM; o retry instrui a citar a fonte. Pulado em CONTESTACAO
+ * (regra 5b , a explicacao investigativa pode conter "nao consigo").
+ */
+const RECUSA_SECA_RE = /\bn[aã]o\s+(consigo|foi\s+poss[ií]vel|consegui)\b/i;
+const MENCIONA_FONTE_RE = /\bsistema\b|m[oó]dulo|cadastr|registr|\bfonte\b|per[ií]odo|\bodoo\b/i;
+
+export function validateV9(ctx: ValidationContext): ValidationOutcome | null {
+  if (!RECUSA_SECA_RE.test(ctx.llmResponse)) return null;
+  if (MENCIONA_FONTE_RE.test(ctx.llmResponse)) return null;
+  // Recusas legitimas ficam fora: pergunta fora de escopo, ou lacuna ja
+  // registrada (registrar_lacuna devolve respostaSugerida que explica a causa
+  // , o retry da lacuna e tratado pelo prompt, nao pelo V9).
+  if (REGEX_FORA_ESCOPO.test(ctx.question)) return null;
+  if (ctx.toolResults.some((t) => t.toolName === "registrar_lacuna")) return null;
+  return {
+    ok: false,
+    reason: "V9",
+    hint:
+      "Voce deu uma recusa seca ('nao consigo...'). Explique a CAUSA citando o " +
+      "sistema/modulo/cadastro: se o dado nao existe na fonte, diga onde ele " +
+      "entraria e que nao ha dados cadastrados; se parte da pergunta tem dado, " +
+      "responda essa parte. Nunca deixe parecer defeito da plataforma.",
+    detalhe: "V9:recusa_seca_sem_fonte",
+  };
+}
+
 /** Palavras que alegam enquadramento de "maiores/top" na resposta. */
 const ALEGA_MAIORES_RE =
   /\b(?:\d+\s+)?maiores\b|\btop\s*\d+\b|\bmais\s+(?:altos?|caras?|caros?|valiosos?)\b/i;
@@ -717,6 +752,7 @@ export interface ValidatorFlags {
   v4Enabled?: boolean;
   v5Enabled?: boolean;
   v8Enabled?: boolean;
+  v9Enabled?: boolean;
 }
 
 const OK: ValidationOutcome = {
@@ -766,6 +802,13 @@ export function validateResponse(
   }
   if (v4On) {
     const r = validateV4(ctx);
+    if (r) return r;
+  }
+  // V9 depois dos validadores de recusa MAIS especificos (V3 recusa com dado
+  // em maos; V4 placeholder em bullet): recusa seca generica sem citar a
+  // fonte. Tambem pulado em contestacao (regra 5b).
+  if ((flags.v9Enabled ?? true) && !ehContestacao) {
+    const r = validateV9(ctx);
     if (r) return r;
   }
   if (v2On) {
