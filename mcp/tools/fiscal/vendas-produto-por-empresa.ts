@@ -3,9 +3,9 @@
 //
 // Cruzamento produto x empresa: vendas (itens de saida autorizada com CFOP de
 // RECEITA pela Tabela de Regras) de um produto, agrupadas por empresa do
-// grupo, com CMV APROXIMADO opcional (custo de tabela 'Custo%' vigente ,
+// grupo, com CMV APROXIMADO opcional (custo de cadastro (preco_custo) ,
 // spike S1 2026-06-11: cobertura 83,8% dos produtos vendidos; a resposta
-// informa a cobertura e a ressalva "custo de tabela, nao contabil").
+// informa a cobertura e a ressalva "custo de cadastro do produto, nao contabil").
 import { z } from "zod";
 import type { ToolEntry } from "../../catalog/types.js";
 import { withFreshness } from "../../lib/freshness.js";
@@ -119,16 +119,18 @@ async function queryVendasProdutoPorEmpresa(
     porEmpresa.set(key, cur);
   }
 
-  // CMV aproximado: custo de tabela 'Custo%' vigente do(s) produto(s) casados.
-  // Com varios produtos no termo, usa o custo por produto e soma por unidade.
+  // CMV aproximado: preco_custo do CADASTRO (fato_produto) , a MESMA fonte de
+  // custo da margem_aproximada e do produtos_por_margem (fonte unica no sistema).
+  //
+  // PERICIA 2026-06-12 (conversa real, T600X): a fonte anterior (fato_preco
+  // ILIKE 'Custo%' com desempate arbitrario) pegava a tabela de PRECIFICACAO
+  // "Custo /0,3" (custo/0,3 = preco-alvo, R$ 40.816) em vez do custo real
+  // (R$ 12.245), e o CMV saia 3,3x o faturamento , impossivel em revenda.
   const custos = produtoIds.size
     ? await prisma.$queryRawUnsafe<{ produto_id: number; valor: string | number }[]>(
-        `SELECT DISTINCT ON (produto_id) produto_id, valor::text
-         FROM fato_preco
-         WHERE produto_id = ANY($1::int[]) AND tabela_nome ILIKE 'Custo%'
-           AND (data_inicial IS NULL OR data_inicial <= now())
-           AND (data_final IS NULL OR data_final >= now())
-         ORDER BY produto_id, data_inicial DESC NULLS LAST`,
+        `SELECT odoo_id AS produto_id, preco_custo::text AS valor
+         FROM fato_produto
+         WHERE odoo_id = ANY($1::int[]) AND preco_custo IS NOT NULL AND preco_custo > 0`,
         [...produtoIds],
       )
     : [];

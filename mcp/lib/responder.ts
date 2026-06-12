@@ -1875,7 +1875,7 @@ const fmtVendasProdutoPorEmpresa: FormatadorCanonico = (env) => {
   }
   const cmvStr =
     cmv > 0
-      ? ` CMV aproximado: ${formatBRL(cmv)} (custo de tabela, nao contabil; cobre ${cobertura.toFixed(0)}% das unidades).`
+      ? ` CMV aproximado: ${formatBRL(cmv)} (custo de cadastro do produto, nao contabil; cobre ${cobertura.toFixed(0)}% das unidades).`
       : " Nao ha custo de tabela cadastrado para estimar o CMV.";
   return (
     `Vendas de ${produto}: ${qtd.toLocaleString("pt-BR")} unidade(s), ${formatBRL(valor)} ` +
