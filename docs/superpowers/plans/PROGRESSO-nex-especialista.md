@@ -476,3 +476,45 @@ Cada fase: plano próprio (bite-sized) + 2 reviews quando material → execuçã
   no wait_ci , rodar quando a quota voltar.
 - SEGUINDO: Onda O (tiers + cascata), Onda P (V-claims), proveniencia
   declarada, flywheel manual , nesta ordem, na mesma branch.
+
+## ONDAS O e P FECHADAS 2026-06-12 ~19h30 , os 5 pontos do nivel profissional ENTREGUES
+- [x] ONDA O (8ea4c8c): classificador lexical de tiers (tiers/classificar-tier.ts,
+  20 casos de teste; T3 contestacao > T2 composta > T1). T2-lite: INSTRUCAO_T2
+  de decomposicao no item de data + 2 iteracoes extras de tools. T3: modelo
+  forte (default gpt-5.4, coluna tier_t3_model) atras de flag tier_t3_checkpoint
+  (OFF default; PLAYGROUND/PRODUCTION; rollback = flag; llmOverride SEMPRE
+  vence , baterias A/B nao sao afetadas). CASCATA: reprova do validador
+  re-tenta no forte (timeout 15s vs 3s) so com a flag ativa. Migration manual
+  20260612210000. E2E REAL: flag ativada em dev, turno de contestacao trocou
+  gpt-5.4-mini -> gpt-5.4 no loop principal (telemetria llm_usage confirma) e
+  explicou a proveniencia do numero; flag revertida p/ OFF em dev. Para ligar
+  em prod: UPDATE agent_settings SET tier_t3_checkpoint='PRODUCTION'.
+- [x] ONDA P (26cef57): validation/v-claims.ts , V10 percentuais/variacoes
+  recomputados de pares das fontes, tolerancia 0,6pp (SHADOW); V11 item do
+  superlativo confere com topMaiores[0], so reprova com item claramente
+  trocado (ACTIVE, flag v11Enabled); V12 consistencia entre turnos freshness-
+  aware: mesma tool+chave divergente da memoria sem mencionar atualizacao
+  (SHADOW, P.4 , promocao a blocking so com dados de producao); V13
+  proveniencia declarada em resposta numerica (SHADOW). 15 testes novos.
+- [x] PROVENIENCIA (26cef57): regra 12-prov no identity-base (base+criterio
+  declarados em meia frase; numero vindo da memoria avisado com oferta de
+  reconsulta; percentuais calculados so da divisao dos numeros reais). Lado
+  validador = V13/V11/V10. Em prod: rodar sync-agent-prompt se usesCodeDefaults
+  for false (em dev o codigo vale direto).
+- [x] FLYWHEEL MANUAL (26cef57): quality/flywheel.ts (montarCandidatosGolden ,
+  dedup por pergunta normalizada, exclui cobertas pelo golden, esqueleto de
+  caso pronto) + scripts/flywheel-golden.ts (minera ConversationQualityEvaluation
+  ERRADO/PARCIAL/FALHA_TECNICA + MessageFeedback ERRADO/ALUCINOU/PARCIAL +
+  retries do validador). RODADO REAL em dev: 383 falhas (3 dias) -> 55
+  candidatos ranqueados por sinais em research/flywheel/candidatos-2026-06-12.json.
+  Processo: revisar candidato, preencher dominio/toolEsperada/kpiOuro, mover
+  p/ golden-nex.json. Automacao total so apos taxa de candidatos uteis provada.
+- Suite final: 3.033 verdes, tsc limpo. Golden 171 intocado.
+- Gasto OpenAI da sessao: ~US$0,40 (bateria 0,25 + smoke T3 ~0,08 + resumo/
+  flywheel ~0,05). Total estimado ~7,60 de 8.
+- PENDENTE (bloqueio externo): quota GitHub Actions , push nao cria run; ship.py
+  abortaria no wait_ci. PR #107 acumula TODA a leva (M.4, M.5, bateria, Onda O,
+  Onda P). Quando a quota voltar: python3 scripts/ship.py "feat(nex): arq 3.0
+  ondas M/O/P" + backfill-tool-digest em prod + sync-agent-prompt se aplicavel.
+- MIGRATIONS NOVAS (aditivas, ja aplicadas em dev): add_resumo_progressivo,
+  add_tier_t3. Em prod aplicam via migrate deploy no boot.
