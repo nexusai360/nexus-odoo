@@ -24,6 +24,8 @@ export interface MontarConversaArgs {
    * logo apos o system (depois do prefixo cacheavel; muda pouco entre turnos).
    */
   memoriaConsultas?: string[];
+  /** Onda M (M.3): bloco curto da working memory (formatarFocoAtual). */
+  focoAtualTexto?: string;
 }
 
 /** Monta a conversa inicial: system estavel + historico + item de data + pergunta. */
@@ -32,7 +34,8 @@ export function montarConversa(args: MontarConversaArgs): { conversation: ChatMe
     role: "user",
     content:
       `[Contexto] Data atual (America/Sao_Paulo, UTC-3): ${args.agoraBrt}. ` +
-      `Use SEMPRE esta data para resolver "hoje", "ontem", "amanha", "mes corrente", "essa semana" e "este ano".`,
+      `Use SEMPRE esta data para resolver "hoje", "ontem", "amanha", "mes corrente", "essa semana" e "este ano".` +
+      (args.focoAtualTexto ? `\n[Foco da conversa] ${args.focoAtualTexto}` : ""),
   };
   // Onda M: memoria de consultas antigas (digests fora da janela verbatim).
   // Numeros aqui SAO fonte legitima (os validadores recebem as mesmas fontes).
