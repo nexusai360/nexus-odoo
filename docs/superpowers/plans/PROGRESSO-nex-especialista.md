@@ -336,3 +336,23 @@ Cada fase: plano próprio (bite-sized) + 2 reviews quando material → execuçã
   nao tem modulo de pos-venda implantado..."), nunca recusa generica.
 - RESTA apenas: (e) fiscal_faturamento_por_vendedor (NF x pedido x vendedor).
 - Wrap-up por pedido do usuario (~20h55): troca de sessao via agente handoff.
+
+## Bloco 2026-06-11/12 madrugada (item e + deploy #100)
+- (e) FEITO e validado E2E: fiscal_faturamento_por_vendedor. Caminho do dado
+  comprovado no cache: fato_nota_fiscal.odoo_id -> raw_sped_documento.data->
+  pedido_id (m2o array; guard jsonb_typeof contra o false escalar) ->
+  raw_pedido_documento.data->vendedor_id (m2o [id, nome]; populado em
+  1812/1814 pedidos; funcionario_executor_id e false em todos, nao usar).
+  Base de receita = canon carregarItensVendaComGrupo (vrProdutos + ehReceita
+  por CFOP, intragrupo separado), identica ao faturamento_por_cliente; notas
+  sem pedido vinculado ficam fora do ranking, somadas em totalSemPedido.
+  +GRANT raw_sped_documento/raw_pedido_documento (nexus_mcp/nexus_mcp_bi).
+  Catalogo 121 tools; golden 170 (deriv-12); jest 2938 verdes; tsc limpo.
+  E2E real (runAgent+LLM): pergunta "faturamento por vendedor este ano"
+  disparou a tool certa; 2026 ate 11/06: R$40,9mi entre 16 vendedores (top
+  Marcelo Milanezi R$16,8mi/92 notas) + R$41,0mi sem pedido. RECONCILIA AO
+  CENTAVO com a receita externa canonica (R$81.911.138,05 nas 3 vias).
+- Deploy pos-#100: Build and Push falhou no job deploy (blackhole runner->
+  Portainer conhecido, HTTP 000/curl 28; builds OK). Rerun manual disparado.
+- SEGUE PENDENTE DO USUARIO: merge do PR novo (item e), SSH da VPS p/ purge
+  fisico em prod (runbook limpa-2026.md), lista das 100+ perguntas.
