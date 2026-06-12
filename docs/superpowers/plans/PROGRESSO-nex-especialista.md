@@ -405,3 +405,11 @@ Cada fase: plano próprio (bite-sized) + 2 reviews quando material → execuçã
   [ ] M.5 resumoProgressivo; [ ] TF fechamento (golden 171 + bateria 30 turnos
   + replay a395702f + ship.py + backfill prod).
 - Deploy: SEMPRE ship.py. CI consertado (#104: deploy espera janela 12x5min).
+- [x] M.2 janela por TURNOS com sintese (agruparEmTurnosComSintese + loadJanelaTurnos
+  + bloco [Memoria da conversa] no montar-conversa) , 0478859.
+- [x] M.6 V2 memory-aware (fontesMemoria, BR+US por valor c/ tolerancia).
+- [x] PROVA E2E REAL (12 turnos): turno 12 "aquele valor do comeco" respondeu
+  EXATO o numero do turno 1 (R$ 6.512.428,73); turno 11 resumiu a conversa
+  inteira com numeros corretos. Suite 2.956 verdes. SHIP em curso.
+- Restam (proxima leva): M.3 focoAtual, M.4 entidades+anafora, M.5 resumo
+  async, T0.2 expectativasPorTurno, bateria 30 turnos formal, backfill prod.
