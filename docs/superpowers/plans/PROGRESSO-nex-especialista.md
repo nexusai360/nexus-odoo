@@ -413,3 +413,13 @@ Cada fase: plano próprio (bite-sized) + 2 reviews quando material → execuçã
   inteira com numeros corretos. Suite 2.956 verdes. SHIP em curso.
 - Restam (proxima leva): M.3 focoAtual, M.4 entidades+anafora, M.5 resumo
   async, T0.2 expectativasPorTurno, bateria 30 turnos formal, backfill prod.
+- [x] M.3 focoAtual (working memory): modulo puro 5 testes, migration foco_atual,
+  derivacao no fim do turno (usageWrites), injecao [Foco da conversa] + fontes
+  do validador. E2E real 3 turnos: "E o do vendedor Weverton nesse periodo?"
+  herdou junho do foco e fez drill-down na MESMA base (1o lugar, R$1.673.749,66);
+  focoAtual persistido correto no banco. Suite 2.961 verdes (6686ab9).
+- [x] DEPLOY FANTASMA corrigido (f64b506): job verifica revision==GITHUB_SHA
+  pos-pull; ship.py espera run por head_sha. Pendente: confirmar imagem nova
+  em prod pos-run do #105 (in_progress) e rodar backfill prod.
+- RESTAM: M.4 entidades+anafora unificada R2-ctx; M.5 resumo async; T0.2
+  expectativasPorTurno; bateria 30 turnos formal; Onda O (tiers); Onda P.
