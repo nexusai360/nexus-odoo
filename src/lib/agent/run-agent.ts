@@ -1519,8 +1519,9 @@ export async function runAgent(args: RunAgentInput): Promise<RunAgentResult> {
 
       // Onda 1 Inteligencia (T1.7): persiste toolResults na Message do
       // assistant que disparou as tools. UPDATE best-effort; nao bloqueia
-      // o turno se falhar.
-      await updateMessageToolResults(assistantMessageId, toolResultsMap);
+      // o turno se falhar. Onda M (Arquitetura 3.0): passa as toolCalls para
+      // derivar o toolDigest (a memoria de longo prazo do turno).
+      await updateMessageToolResults(assistantMessageId, toolResultsMap, result.toolCalls);
 
       // Guardrail factual: acumula todos os results deste turno para
       // checagem antes do persist da mensagem final.

@@ -349,11 +349,24 @@ export async function persistAssistantMessageWithTools(
 export async function updateMessageToolResults(
   messageId: string,
   results: Record<string, string>,
+  toolCalls?: ToolCall[],
 ): Promise<void> {
   try {
+    // Onda M (Arquitetura 3.0) T1.3: deriva e grava o digest junto com os
+    // resultados , e o que sobrevive no replay quando o payload bruto sai do
+    // contexto. Deterministico e barato; falha de digest nunca bloqueia o turno.
+    let toolDigest: string | null = null;
+    if (toolCalls?.length) {
+      try {
+        const { derivarToolDigest } = await import("./memoria/tool-digest");
+        toolDigest = derivarToolDigest(toolCalls, results);
+      } catch {
+        toolDigest = null;
+      }
+    }
     await prisma.message.update({
       where: { id: messageId },
-      data: { toolResults: results },
+      data: { toolResults: results, ...(toolDigest ? { toolDigest } : {}) },
     });
   } catch (err) {
     // Best-effort: a mensagem pode ter sido deletada (cascade da conversation).
