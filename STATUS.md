@@ -65,6 +65,12 @@
 > faturamento 2026 R$323.052.625,18/3.985 notas, banco 1309MB, sem reimport. Runbook: secao "T10 PROD
 > EXECUTADO". Conversacao garantida na pratica (regra 5c explicar numero + 12-base + drill-down vendedor;
 > bateria multi-turno antes/depois). #101 MERGEADO e deployado (item e + fixes conversacionais).
+> **2026-06-12 madrugada: ONDA HUMANIZACAO EM PROD (#103).** Pericia da conversa real a395702f:
+> numeros 100% corretos; corrigida a conversacao na raiz (prompt 2.2: fatos exatos/texto natural,
+> anafora 12-ana, periodo herdado 12-per, zerados omitidos 12-zero; V5 por numeros; formatadores
+> naturais) + consistencia: faturamento_por_empresa na base canonica (fecha ao centavo com o
+> faturamento_periodo). Golden 171. Replay E2E da conversa inteira validado; prompt 2.2 em prod.
+> Tambem em prod: #102 (fix provision raw allowlist). RESTA DO USUARIO: testar + lista 100+ perguntas.
 > **NEX ESPECIALISTA (2026-06-11 tarde): GOLDEN 99,1% FULL (111/112, kpi-vivo 6/6; era 83,3%).**
 > Golden 135 casos SEM placeholder (67 cov-* reescritos com ids reais) + toolsAceitas nas irmãs + 3 casos
 > follow-up multi-turno (`turnosAntes` no schema + harness ab-cerebro). Fixes de raiz: vocabulário do router

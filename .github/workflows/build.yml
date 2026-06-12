@@ -124,16 +124,20 @@ jobs:
       # GITHUB_TOKEN (packages: read) basta para autenticar o pull no GHCR.
       GHCR_TOKEN: ${{ secrets.GITHUB_TOKEN }}
     steps:
-      # Abordagem MINIMA e comprovada, copiada do nexus-insights (deploya no MESMO
-      # Portainer/VPS sem falhar): curl simples, UMA passada, SEM retry-storm.
-      #
-      # O que estava errado antes: um laco de ate 12 tentativas com `curl --retry 4
-      # --retry-connrefused` por chamada, sobre 2 pulls + 3 services. Num blip de rede,
-      # isso virava uma RAJADA de dezenas/centenas de conexoes martelando o Portainer
-      # por 13-30min (e o email de "Build and Push falhou"). O insights nunca faz isso
-      # e nunca falha. Aqui a regra e: 1 passada calma; se falhar pontualmente, o rerun
-      # manual (1 clique) resolve — igual ao insights. Nada de martelar o painel.
-      - name: Trigger Portainer redeploy (Swarm-aware)
+      # DIAGNOSTICO DEFINITIVO (2026-06-12, apos 6 falhas-e-reruns em 24h):
+      # o HTTP 000 NAO e blip aleatorio. A protecao de borda do provedor da VPS
+      # bloqueia IPs de datacenter (runners do GitHub/Azure) em JANELAS de
+      # 15-40min: nessas janelas o TCP nem conecta (connect-timeout estoura
+      # 3x20s = os 66s exatos vistos em cada curl do log), e minutos depois tudo
+      # volta a responder em ms. Da rede do usuario nunca falha. Conclusao:
+      # retry em SEGUNDOS nunca atravessa a janela; rerun manual "funciona"
+      # porque o humano demora minutos. O fix e o job ESPERAR a janela abrir:
+      # rodadas calmas (1 tentativa por chamada) com pausa de 5min entre elas,
+      # por ate 60min. Sem storm (max ~12 rodadas/h), sem email vermelho, e o
+      # deploy SEMPRE conclui , so que as vezes demora.
+      # (Saida definitiva futura: deploy pull-based na VPS , shepherd/watchtower
+      # com PAT read:packages do ghcr; registrado no runbook deploy-procedure.md.)
+      - name: Trigger Portainer redeploy (Swarm-aware, espera janela de rede)
         run: |
           set -e
           if [ -z "$PORTAINER_STACK_ID" ]; then
@@ -143,37 +147,53 @@ jobs:
           AUTH=$(printf '{"username":"%s","password":"%s"}' "${GITHUB_ACTOR:-jvzanini}" "$GHCR_TOKEN" | base64 | tr -d '\n')
           API="$PORTAINER_URL/api/endpoints/$PORTAINER_ENDPOINT_ID/docker"
 
-          # Retry MODESTO (uma passada, ate 3 tentativas por chamada): absorve um blip de
-          # rede transitorio (HTTP 000) sem o "storm" antigo, que era --retry 4 DENTRO de um
-          # laco de 12x = centenas de conexoes martelando o painel por 30min. Aqui o teto e
-          # ~3 tentativas/chamada, alguns segundos , calmo, mas resiliente ao pisco que
-          # antes derrubava o deploy no set -e (e disparava email de falha).
-          CURL=(curl --silent --insecure --connect-timeout 20 --max-time 120 --retry 2 --retry-delay 3 --retry-connrefused)
+          # 1 tentativa por chamada (sem --retry: retry em segundos nao atravessa
+          # a janela de bloqueio e so faz barulho). max-time 600 nos pulls porque
+          # /images/create mantem a conexao aberta ate o download da imagem acabar.
+          CURL=(curl --silent --insecure --connect-timeout 15 --max-time 600)
 
-          # Pull best-effort das duas imagens (app/worker usam IMAGE_APP; mcp usa IMAGE_MCP).
-          # Se falhar, segue: o proprio redeploy do service puxa a imagem.
-          for IMG in "$IMAGE_APP" "$IMAGE_MCP"; do
-            "${CURL[@]}" -X POST -H "X-API-Key: $PORTAINER_TOKEN" -H "X-Registry-Auth: $AUTH" \
-              "$API/images/create?fromImage=$IMG&tag=latest" -o /tmp/pull.log -w "Pull $IMG: HTTP %{http_code}\n" || true
-          done
+          tentar_deploy() {
+            # Pull best-effort das duas imagens (app/worker usam IMAGE_APP; mcp usa IMAGE_MCP).
+            for IMG in "$IMAGE_APP" "$IMAGE_MCP"; do
+              "${CURL[@]}" -X POST -H "X-API-Key: $PORTAINER_TOKEN" -H "X-Registry-Auth: $AUTH" \
+                "$API/images/create?fromImage=$IMG&tag=latest" -o /tmp/pull.log -w "Pull $IMG: HTTP %{http_code}\n" || true
+            done
 
-          STACK_NAME=$("${CURL[@]}" -H "X-API-Key: $PORTAINER_TOKEN" "$PORTAINER_URL/api/stacks/$PORTAINER_STACK_ID" | jq -r '.Name')
-          echo "Stack: $STACK_NAME | services alvo: ${STACK_NAME}_app, ${STACK_NAME}_mcp, ${STACK_NAME}_worker"
-          "${CURL[@]}" -H "X-API-Key: $PORTAINER_TOKEN" "$API/services" > /tmp/svc.json
+            STACK_NAME=$("${CURL[@]}" -H "X-API-Key: $PORTAINER_TOKEN" "$PORTAINER_URL/api/stacks/$PORTAINER_STACK_ID" | jq -r '.Name') || return 1
+            [ -n "$STACK_NAME" ] && [ "$STACK_NAME" != "null" ] || return 1
+            echo "Stack: $STACK_NAME | services alvo: ${STACK_NAME}_app, ${STACK_NAME}_mcp, ${STACK_NAME}_worker"
+            "${CURL[@]}" -H "X-API-Key: $PORTAINER_TOKEN" "$API/services" > /tmp/svc.json || return 1
 
-          # Forca redeploy dos 3 services que rodam imagem buildada (ForceUpdate++).
-          for SVC in app mcp worker; do
-            SERVICE_NAME="${STACK_NAME}_${SVC}"
-            SVC_ID=$(jq -r --arg n "$SERVICE_NAME" '[.[] | select(.Spec.Name==$n)][0].ID // empty' /tmp/svc.json)
-            if [ -z "$SVC_ID" ]; then
-              echo "Service $SERVICE_NAME nao encontrado — pulando:"
-              jq -r '[.[].Spec.Name]' /tmp/svc.json
-              continue
+            # Forca redeploy dos 3 services que rodam imagem buildada (ForceUpdate++).
+            for SVC in app mcp worker; do
+              SERVICE_NAME="${STACK_NAME}_${SVC}"
+              SVC_ID=$(jq -r --arg n "$SERVICE_NAME" '[.[] | select(.Spec.Name==$n)][0].ID // empty' /tmp/svc.json)
+              if [ -z "$SVC_ID" ]; then
+                echo "Service $SERVICE_NAME nao encontrado — pulando:"
+                jq -r '[.[].Spec.Name]' /tmp/svc.json
+                continue
+              fi
+              SVC_VER=$(jq -r --arg n "$SERVICE_NAME" '[.[] | select(.Spec.Name==$n)][0].Version.Index' /tmp/svc.json)
+              jq --arg n "$SERVICE_NAME" '[.[] | select(.Spec.Name==$n)][0].Spec | .TaskTemplate.ForceUpdate = ((.TaskTemplate.ForceUpdate // 0) + 1)' /tmp/svc.json > /tmp/spec.json
+              HTTP=$("${CURL[@]}" -o /tmp/upd.log -w "%{http_code}" -X POST -H "X-API-Key: $PORTAINER_TOKEN" -H "Content-Type: application/json" -H "X-Registry-Auth: $AUTH" "$API/services/$SVC_ID/update?version=$SVC_VER" --data-binary @/tmp/spec.json) || return 1
+              echo "Redeploy $SERVICE_NAME (id=$SVC_ID ver=$SVC_VER): HTTP $HTTP"
+              if [ "$HTTP" = "000" ]; then return 1; fi
+              if [ "$HTTP" != "200" ]; then echo "  update $SERVICE_NAME falhou HTTP $HTTP (erro REAL, nao janela)"; cat /tmp/upd.log; echo ""; return 2; fi
+            done
+            return 0
+          }
+
+          # Ate 12 rodadas com 5min de pausa = espera de ate ~60min pela janela.
+          # ForceUpdate++ e idempotente: rodada repetida apos sucesso parcial e inofensiva.
+          for RODADA in $(seq 1 12); do
+            echo "=== rodada $RODADA/12 ($(date -u +%H:%M:%SZ)) ==="
+            set +e; tentar_deploy; RC=$?; set -e
+            if [ "$RC" = "0" ]; then echo "Redeploy disparado com sucesso."; exit 0; fi
+            if [ "$RC" = "2" ]; then echo "Erro real da API do Portainer — abortando."; exit 1; fi
+            if [ "$RODADA" -lt 12 ]; then
+              echo "Janela de rede fechada (TCP nao conecta). Aguardando 5min pela proxima janela..."
+              sleep 300
             fi
-            SVC_VER=$(jq -r --arg n "$SERVICE_NAME" '[.[] | select(.Spec.Name==$n)][0].Version.Index' /tmp/svc.json)
-            jq --arg n "$SERVICE_NAME" '[.[] | select(.Spec.Name==$n)][0].Spec | .TaskTemplate.ForceUpdate = ((.TaskTemplate.ForceUpdate // 0) + 1)' /tmp/svc.json > /tmp/spec.json
-            HTTP=$("${CURL[@]}" -o /tmp/upd.log -w "%{http_code}" -X POST -H "X-API-Key: $PORTAINER_TOKEN" -H "Content-Type: application/json" -H "X-Registry-Auth: $AUTH" "$API/services/$SVC_ID/update?version=$SVC_VER" --data-binary @/tmp/spec.json)
-            echo "Redeploy $SERVICE_NAME (id=$SVC_ID ver=$SVC_VER): HTTP $HTTP"
-            if [ "$HTTP" != "200" ]; then echo "  update $SERVICE_NAME falhou HTTP $HTTP"; cat /tmp/upd.log; echo ""; exit 1; fi
           done
-          echo "Redeploy disparado com sucesso."
+          echo "Janela de rede nao abriu em ~60min — falha de deploy real."
+          exit 1
