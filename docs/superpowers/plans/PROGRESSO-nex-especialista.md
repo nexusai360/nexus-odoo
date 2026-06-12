@@ -356,3 +356,18 @@ Cada fase: plano próprio (bite-sized) + 2 reviews quando material → execuçã
   Portainer conhecido, HTTP 000/curl 28; builds OK). Rerun manual disparado.
 - SEGUE PENDENTE DO USUARIO: merge do PR novo (item e), SSH da VPS p/ purge
   fisico em prod (runbook limpa-2026.md), lista das 100+ perguntas.
+
+## T10 PROD EXECUTADO 2026-06-12 (sem SSH)
+- Rota: API docker do Portainer (token do .env.production de projeto irmao),
+  endpoints/1/docker. DB prod sem porta publica usavel (firewall) -> operacao
+  feita DENTRO do swarm.
+- pg_dump 16 tabelas + fato dentro do nexus-odoo_db -> ~/Backups/nexus-odoo/
+  odoo-prod-pre-T10.dump (186MB, sha256 conferido origem/destino).
+- scripts/limpa injetados no nexus-odoo_app (nao estavam na imagem), saida
+  repatchada p/ /tmp; tsx do container; DATABASE_URL ja aponta prod.
+- worker escalado 0 (apply/vacuum) e religado 1. Invariante ANTES: a_pagar vivo
+  R$153.232.144,14 / a_receber R$64.983.807,78. Dry-run 289.886 (== DEV).
+  APPLY 289.886 em 84s. Rebuild fato. Invariante DEPOIS R$ 0,00. Vacuum 988MB.
+- Ancoras pos: pre-2026=0, faturamento 2026 R$323.052.625,18/3.985 notas,
+  sped 49.959->10.075, banco 1309MB. Sem reimport (filtro ativo desde #99).
+- Doc completo: docs/runbooks/limpa-2026.md (secao "T10 PROD EXECUTADO").
