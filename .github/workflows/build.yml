@@ -153,11 +153,24 @@ jobs:
           CURL=(curl --silent --insecure --connect-timeout 15 --max-time 600)
 
           tentar_deploy() {
-            # Pull best-effort das duas imagens (app/worker usam IMAGE_APP; mcp usa IMAGE_MCP).
+            # Pull das duas imagens (app/worker usam IMAGE_APP; mcp usa IMAGE_MCP).
             for IMG in "$IMAGE_APP" "$IMAGE_MCP"; do
               "${CURL[@]}" -X POST -H "X-API-Key: $PORTAINER_TOKEN" -H "X-Registry-Auth: $AUTH" \
                 "$API/images/create?fromImage=$IMG&tag=latest" -o /tmp/pull.log -w "Pull $IMG: HTTP %{http_code}\n" || true
             done
+
+            # VERIFICACAO OBRIGATORIA (2026-06-12): o pull acima ja foi best-effort
+            # com janela ruim e o ForceUpdate subiu IMAGEM VELHA com "success" de
+            # mentira (deploy fantasma do #105). A imagem :latest local PRECISA ser
+            # a deste commit , o metadata-action grava o sha no label revision.
+            for IMG in "$IMAGE_APP" "$IMAGE_MCP"; do
+              REV=$("${CURL[@]}" -H "X-API-Key: $PORTAINER_TOKEN" "$API/images/$IMG:latest/json" | jq -r '.Config.Labels["org.opencontainers.image.revision"] // empty') || return 1
+              if [ "$REV" != "$GITHUB_SHA" ]; then
+                echo "Imagem $IMG:latest no host tem revision=$REV != $GITHUB_SHA (pull nao trouxe a imagem nova)"
+                return 1
+              fi
+            done
+            echo "Imagens verificadas: revision == $GITHUB_SHA nas duas."
 
             STACK_NAME=$("${CURL[@]}" -H "X-API-Key: $PORTAINER_TOKEN" "$PORTAINER_URL/api/stacks/$PORTAINER_STACK_ID" | jq -r '.Name') || return 1
             [ -n "$STACK_NAME" ] && [ "$STACK_NAME" != "null" ] || return 1
