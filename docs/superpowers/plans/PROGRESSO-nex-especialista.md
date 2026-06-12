@@ -518,3 +518,28 @@ Cada fase: plano próprio (bite-sized) + 2 reviews quando material → execuçã
   ondas M/O/P" + backfill-tool-digest em prod + sync-agent-prompt se aplicavel.
 - MIGRATIONS NOVAS (aditivas, ja aplicadas em dev): add_resumo_progressivo,
   add_tier_t3. Em prod aplicam via migrate deploy no boot.
+
+## DEPLOY M/O/P EM PRODUCAO 2026-06-12 ~20h45 , CONCLUIDO
+- CAUSA RAIZ do "deploy travado" DESCOBERTA e documentada: NAO era quota Actions
+  nem falta de PAT. O job `deploy` do Actions falha por HTTP 000 (borda da VPS
+  bloqueia o IP do runner do GitHub); build da imagem sempre funciona. A
+  credencial do ghcr JA esta salva no Portainer (registry id=1). Rota canonica
+  nova: ship.py (merge+build) + scripts/deploy-portainer.py (redeploy via
+  Portainer da maquina local). Doc: docs/runbooks/deploy-procedure.md reescrito;
+  CLAUDE.md [12] aponta p/ ler o runbook antes de todo deploy.
+- PR #107 (conflito com main resolvido: HEAD superconjunto) mergeado via ship.py
+  (squash 6c4cefc). build-app+build-mcp success. Deploy manual via Portainer OK.
+- INCIDENTE OOM (resolvido): recriar app+mcp+worker juntos estourou os 1GB do
+  container db (no compartilhado, 79 containers) -> OOM -> crash recovery ~30min
+  -> recuperou sozinho. NADA perdido. deploy-portainer.py corrigido p/ rolling
+  1-a-1 (worker->mcp->app). NUNCA reiniciar db em recovery. Db saudavel pos:
+  pg_is_in_recovery=f, RSS real 93MB (resto page cache), 0 locks, 1 conexao.
+- MIGRATIONS M/O/P APLICADAS EM PROD (migrate deploy no boot): resumo_progressivo,
+  tier_t3_checkpoint (default OFF), conversation_entities. Confirmado via psql.
+- Main local atualizada (6c4cefc) + dev:fresh: localhost:3000 no ar com M/O/P
+  p/ teste no browser.
+- PENDENCIAS: (1) backfill-tool-digest em prod (messages.tool_digest=0; conversas
+  NOVAS ja gravam; backfill retroativo adiado por cautela pos-OOM, rodar em lotes
+  pequenos depois); (2) INFRA: subir limite de mem do serviço db de 1GB->2GB
+  (decisao do usuario; elimina margem de OOM); (3) ligar tier_t3_checkpoint
+  quando quiser medir T3 em prod.

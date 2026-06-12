@@ -35,9 +35,12 @@ import urllib.error
 from pathlib import Path
 
 HEALTH_URL = "https://agentenex.nexusai360.com/api/health"
-SERVICES_DEFAULT = ["app", "mcp", "worker"]
+# Ordem deliberada: worker e mcp primeiro (menos sensiveis), app por ultimo.
+SERVICES_DEFAULT = ["worker", "mcp", "app"]
 STACK_PREFIX = "nexus-odoo_"
 GHCR_REGISTRY_URL = "ghcr.io"
+# Pausa entre serviços no rolling (deixa o nó liberar memória/IO entre recriações).
+PAUSA_ENTRE_SERVICOS_S = 25
 
 
 def _read_env_file(path: Path) -> dict:
@@ -62,14 +65,15 @@ def resolve_portainer():
         return url.rstrip("/"), tok
 
     here = Path(__file__).resolve().parent.parent  # raiz do projeto/worktree
-    candidates = [
-        here / ".env.local",
-        here / ".env.production",
-        # projetos irmaos (mesma infra Portainer/VPS):
-        here / "../../../Projetos Internos/nexus-blueprint/.env.production",
-        here / "../../../Projetos Internos/nexus-nfe/.env.production",
-        here / "../../../Projetos Internos/nexus-crm-krayin/.env.production",
-    ]
+    candidates = [here / ".env.local", here / ".env.production"]
+    # Fallback: sobe a arvore ate achar uma pasta "Projetos Internos" (mesma
+    # infra Portainer/VPS) e busca o .env.production dos projetos irmaos.
+    for anc in [here, *here.parents]:
+        pi = anc / "Projetos Internos"
+        if pi.is_dir():
+            for irmao in ("nexus-blueprint", "nexus-nfe", "nexus-crm-krayin"):
+                candidates.append(pi / irmao / ".env.production")
+            break
     for c in candidates:
         env = _read_env_file(c)
         url = url or env.get("PORTAINER_URL")
@@ -209,14 +213,23 @@ def main():
     if missing:
         sys.exit(f"[deploy] ERRO: servicos nao encontrados: {missing}")
 
+    # ROLLING, UM SERVICO POR VEZ (licao 2026-06-12): recriar app+mcp+worker
+    # simultaneamente estourou a memoria do no e o OOM killer atingiu o
+    # Postgres (crash recovery em prod). Atualizar em serie, esperando cada um
+    # convergir e o no respirar antes do proximo, mantem o pico de memoria baixo.
     all_ok = True
-    for t in targets:
+    for i, t in enumerate(targets):
         if not force_update(base, token, ep, svcs[t], reg_id):
             all_ok = False
+            break
+        print(f"[deploy] {t}: aguardando convergir antes do proximo...")
+        wait_converge(base, token, ep, [t], timeout_s=180)
+        if i < len(targets) - 1:
+            time.sleep(PAUSA_ENTRE_SERVICOS_S)  # no respira (memoria/IO)
     if not all_ok:
         sys.exit("[deploy] ERRO: algum update falhou , ver acima.")
 
-    print("[deploy] aguardando convergencia das tasks...")
+    print("[deploy] aguardando convergencia final das tasks...")
     converged = wait_converge(base, token, ep, targets)
     print(f"[deploy] convergencia: {'OK' if converged else 'TIMEOUT (pode ainda estar puxando imagem)'}")
 
