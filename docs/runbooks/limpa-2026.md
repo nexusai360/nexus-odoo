@@ -33,6 +33,35 @@ Tres mecanismos garantem isso:
   lista negativa no gate.
 - **--apply SO com aprovacao humana** do dry-run E pg_dump feito.
 
+## T10 PROD , EXECUTADO 2026-06-12 (sem SSH, via Portainer docker API)
+
+O purge fisico de prod rodou em 2026-06-12T02:36Z. **Rota descoberta: nao
+precisa de SSH a VPS.** O Postgres de prod nao tem porta publica utilizavel
+(firewall so libera a 5432, ocupada por outra stack), entao a operacao foi
+feita **de dentro do swarm** via API docker do Portainer (`painel.nexusai360.com`,
+token reaproveitado do `.env.production` de um projeto irmao , `endpoints/1/docker`):
+
+1. **Dump**: `pg_dump -Fc` das 16 tabelas + `fato_financeiro_titulo` rodado
+   DENTRO do container `nexus-odoo_db` (pg_dump 16.14); arquivo puxado para
+   `~/Backups/nexus-odoo/odoo-prod-pre-T10.dump` (186 MB) via archive API,
+   **sha256 conferido** na origem e no destino.
+2. **Scripts**: `scripts/limpa/*.ts` nao estavam na imagem (adicionados depois
+   do build); injetados no container `nexus-odoo_app` via archive PUT, com os
+   caminhos de saida repatchados para `/tmp/limpa-out` (FS read-only em `docs/`).
+   Rodados com `node_modules/.bin/tsx` (DATABASE_URL do container ja aponta prod).
+3. **Worker parado** escalando o service `nexus-odoo_worker` para 0 replicas
+   (e religado para 1 no fim) , nao precisa do usuario no Portainer UI.
+4. Invariante ANTES (a_pagar vivo R$153.232.144,14 / a_receber R$64.983.807,78)
+   -> dry-run 289.886 linhas (identico ao DEV) -> APPLY 289.886 em 84s ->
+   rebuild fato_financeiro_titulo -> invariante DEPOIS **R$ 0,00 de diferenca**
+   -> vacuum **988 MB** recuperados -> worker religado.
+5. Ancoras pos-purge (prod): pre-2026 = 0, faturamento produtos 2026
+   R$323.052.625,18 em 3.985 notas, raw_sped_documento 49.959->10.075,
+   banco 1309 MB. Reimport nao ocorre (filtro de corte ativo desde #99).
+
+> Reexecucao futura (outro corte): mesmo caminho. O helper de exec do Portainer
+> ficou em `~/.nexus-tmp/portex.py` (token+host); apagar quando nao precisar.
+
 ## Ordem de execucao (T9 DEV / T10 PROD)
 
 ```

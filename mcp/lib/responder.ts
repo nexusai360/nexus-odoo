@@ -1802,6 +1802,47 @@ const fmtAgingRecebiveis: FormatadorCanonico = (env) => {
   );
 };
 
+// Backlog pos-review (item e): faturamento por vendedor via pedido de origem.
+const fmtFaturamentoPorVendedor: FormatadorCanonico = (env) => {
+  const d = env._DESTAQUE ?? {};
+  const vendedores = Number(d.totalVendedores ?? 0);
+  const comVendedor = Number(d.totalComVendedor ?? 0);
+  const semPedido = Number(d.totalSemPedido ?? 0);
+  const periodo = String(d.periodoLabel ?? "periodo");
+  if (vendedores === 0 && semPedido === 0) {
+    return `Nao ha faturamento de venda no periodo (${periodo}).`;
+  }
+  const semStr =
+    semPedido > 0
+      ? ` Outros ${formatBRL(semPedido)} sao de notas sem pedido vinculado (transferencias, remessas, faturamento direto), sem vendedor identificavel.`
+      : "";
+  // Drill-down de UM vendedor (param `vendedor`): responde pelo filtrado.
+  const filtrado = String(d.vendedorFiltrado ?? "");
+  if (filtrado && !filtrado.startsWith("(nao encontrado")) {
+    const pos = Number(d.posicaoRanking ?? 0);
+    return (
+      `${filtrado} faturou ${formatBRL(Number(d.valorVendedorFiltrado ?? 0))} em ` +
+      `${Number(d.notasVendedorFiltrado ?? 0)} nota(s) no periodo (${periodo}), ` +
+      `${pos > 0 ? `${pos}º` : "fora"} do ranking de ${vendedores} vendedores ` +
+      `(base: notas de saida autorizadas, receita externa).${semStr}`
+    );
+  }
+  if (filtrado.startsWith("(nao encontrado")) {
+    return (
+      `Nao encontrei esse vendedor no faturamento do periodo (${periodo}). ` +
+      `O ranking tem ${vendedores} vendedores; o lider e ${String(d.topVendedor ?? "")}.`
+    );
+  }
+  const top = String(d.topVendedor ?? "");
+  const topStr = top
+    ? ` Lider: ${top} com ${formatBRL(Number(d.valorTopVendedor ?? 0))} em ${Number(d.notasTopVendedor ?? 0)} nota(s).`
+    : "";
+  return (
+    `Faturamento por vendedor (${periodo}): ${formatBRL(comVendedor)} distribuidos ` +
+    `entre ${vendedores} vendedor(es) (ranking nas linhas).${topStr}${semStr}`
+  );
+};
+
 // Cobertura Cliente B4: vendas de produto por empresa com CMV aproximado.
 const fmtVendasProdutoPorEmpresa: FormatadorCanonico = (env) => {
   const produto = String(env._DESTAQUE?.produtoLabel ?? "produto");
@@ -2113,6 +2154,7 @@ const FORMATADORES: Record<string, FormatadorCanonico> = {
   "fiscal_vendas_produto_por_empresa": fmtVendasProdutoPorEmpresa,
   "financeiro_aging_recebiveis": fmtAgingRecebiveis,
   "estoque_cobertura_dias": fmtCoberturaDias,
+  "fiscal_faturamento_por_vendedor": fmtFaturamentoPorVendedor,
   "fiscal_certificados": fmtFiscalCertificados,
   "fiscal_carta_correcao": fmtFiscalCartaCorrecao,
   "fiscal_mdfe_manifestos": fmtMdfeManifestos,
