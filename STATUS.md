@@ -57,6 +57,14 @@
 > (HTTP 000; raiz conhecida, research/2026-06-10-deploy-blackhole-investigation.md); builds OK no ghcr;
 > reruns em andamento , prod segue saudavel na versao anterior ate o deploy passar.
 > PENDENTE DO USUARIO: merge #101; SSH VPS (purge fisico, runbook limpa-2026.md); lista 100+ perguntas.
+> **2026-06-12: T10 PROD (purge fisico) EXECUTADO , SEM precisar de SSH.** Via API docker do
+> Portainer (token do .env.production de projeto irmao), tudo DENTRO do swarm: pg_dump 16 tabelas ->
+> ~/Backups/nexus-odoo/ (186MB sha256 ok); scripts/limpa injetados no container app; worker escalado
+> 0->apply->1. Invariante ANTES a_pagar R$153,2mi/a_receber R$64,98mi -> dry-run 289.886 (==DEV) ->
+> APPLY 289.886/84s -> rebuild fato -> invariante DEPOIS R$ 0,00 -> vacuum 988MB. Ancoras: pre-2026=0,
+> faturamento 2026 R$323.052.625,18/3.985 notas, banco 1309MB, sem reimport. Runbook: secao "T10 PROD
+> EXECUTADO". Conversacao garantida na pratica (regra 5c explicar numero + 12-base + drill-down vendedor;
+> bateria multi-turno antes/depois). #101 em merge (item e + fixes conversacionais).
 > **NEX ESPECIALISTA (2026-06-11 tarde): GOLDEN 99,1% FULL (111/112, kpi-vivo 6/6; era 83,3%).**
 > Golden 135 casos SEM placeholder (67 cov-* reescritos com ids reais) + toolsAceitas nas irmãs + 3 casos
 > follow-up multi-turno (`turnosAntes` no schema + harness ab-cerebro). Fixes de raiz: vocabulário do router
