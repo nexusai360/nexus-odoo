@@ -764,20 +764,48 @@ export async function runAgent(args: RunAgentInput): Promise<RunAgentResult> {
     // de numeros para os validadores.
     const { formatarFocoAtual, derivarFocoAtual, extrairEntidadesDoTurno } =
       await import("./memoria/foco-atual");
-    const focoPrev = await Promise.resolve()
+    const memoriaConv = await Promise.resolve()
       .then(() =>
         prisma.conversation.findUnique({
           where: { id: args.conversationId },
-          select: { focoAtual: true },
+          select: { focoAtual: true, resumoProgressivo: true, resumoDominios: true },
         }),
       )
-      .then((c) => (c?.focoAtual as import("./memoria/foco-atual").FocoAtual | null) ?? null)
       .catch(() => null);
+    const focoPrev =
+      (memoriaConv?.focoAtual as import("./memoria/foco-atual").FocoAtual | null) ?? null;
     const focoAtualTexto = focoPrev ? formatarFocoAtual(focoPrev) : undefined;
+    // Onda M (M.5): resumo progressivo (L2) com RBAC lazy , se o usuario perdeu
+    // acesso a um dominio contido no resumo, NAO injeta e re-enfileira a
+    // re-geracao (que exclui o dominio revogado).
+    let resumoConversa: string | undefined;
+    if (memoriaConv?.resumoProgressivo) {
+      const { podeInjetarResumo } = await import("./memoria/resumo-progressivo");
+      if (podeInjetarResumo(memoriaConv.resumoDominios ?? [], userAllowedDomains)) {
+        resumoConversa = memoriaConv.resumoProgressivo;
+      } else {
+        void (async () => {
+          try {
+            await prisma.conversation.update({
+              where: { id: args.conversationId },
+              data: { resumoAtualizadoEm: null },
+            });
+            const { enqueueResumoConversa } = await import("./intelligence/enqueue");
+            const msgCount = await prisma.message.count({
+              where: { conversationId: args.conversationId },
+            });
+            await enqueueResumoConversa(args.conversationId, msgCount);
+          } catch (err) {
+            console.warn("[runAgent] re-resumo RBAC falhou:", err);
+          }
+        })();
+      }
+    }
     const fontesMemoria: string[] = [
       ...janela.digestsAnteriores,
       ...janela.mensagens.filter((m) => m.role === "assistant").map((m) => m.content),
       ...(focoAtualTexto ? [focoAtualTexto] : []),
+      ...(resumoConversa ? [resumoConversa] : []),
     ];
 
     // Persistir mensagem do usuário
@@ -792,6 +820,7 @@ export async function runAgent(args: RunAgentInput): Promise<RunAgentResult> {
       agoraBrt,
       memoriaConsultas: janela.digestsAnteriores,
       focoAtualTexto,
+      resumoConversa,
     });
 
     const totalUsage: ChatUsage = { tokensInput: 0, tokensOutput: 0, costUsd: 0 };
@@ -1390,7 +1419,7 @@ export async function runAgent(args: RunAgentInput): Promise<RunAgentResult> {
         // turno fechar. Fire-and-forget; nao bloqueia o `done` do usuario.
         void (async () => {
           try {
-            const { enqueueTopicTagging } = await import(
+            const { enqueueTopicTagging, enqueueResumoConversa } = await import(
               "@/lib/agent/intelligence/enqueue"
             );
             // Conta mensagens (cheap) para BullMQ deduplicar via jobId.
@@ -1398,6 +1427,9 @@ export async function runAgent(args: RunAgentInput): Promise<RunAgentResult> {
               m.prisma.message.count({ where: { conversationId: args.conversationId } }),
             );
             await enqueueTopicTagging(args.conversationId, msgCount);
+            // Onda M (M.5): resumo progressivo async (processor aplica o
+            // threshold de >= 8 mensagens novas e skipa cedo).
+            await enqueueResumoConversa(args.conversationId, msgCount);
           } catch (err) {
             console.warn("[runAgent] falha ao enfileirar tagging:", err);
           }

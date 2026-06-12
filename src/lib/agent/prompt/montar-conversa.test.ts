@@ -46,4 +46,29 @@ describe("montarConversa", () => {
       "user", // pergunta
     ]);
   });
+
+  test("M.5: resumo da conversa entra como L2, entre o system e a memoria de consultas", () => {
+    const { conversation } = montarConversa({
+      systemPromptBase: "S",
+      historyMessages: [{ role: "user", content: "ola" }],
+      userMessage: "tchau",
+      agoraBrt: "2026-06-12",
+      resumoConversa: "Faturamento de junho: R$ 9.737.728,54 (fiscal_faturamento_periodo).",
+      memoriaConsultas: ["[estoque_saldo_produto] dominio=estoque qtd=611"],
+    });
+    expect(conversation[0].role).toBe("system");
+    expect(conversation[1].content).toContain("[Resumo da conversa]");
+    expect(conversation[1].content).toContain("9.737.728,54");
+    expect(conversation[2].content).toContain("[Memória da conversa]");
+  });
+
+  test("M.5: sem resumo, nenhum bloco de resumo e injetado", () => {
+    const { conversation } = montarConversa({
+      systemPromptBase: "S",
+      historyMessages: [],
+      userMessage: "oi",
+      agoraBrt: "2026-06-12",
+    });
+    expect(conversation.some((m) => m.content.includes("[Resumo da conversa]"))).toBe(false);
+  });
 });

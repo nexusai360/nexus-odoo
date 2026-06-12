@@ -2563,6 +2563,15 @@ model Conversation {
   /// (src/lib/agent/memoria/foco-atual.ts) e injetada como L4 no prompt.
   focoAtual          Json?                           @map("foco_atual")
   entidades          ConversationEntity[]
+  /// Onda M (M.5): resumo progressivo da conversa (L2 da memoria). Texto
+  /// factual com numeros+proveniencia, re-gerado async (job
+  /// `agent-resumo-conversa`) sempre a partir das mensagens originais.
+  resumoProgressivo  String?                         @map("resumo_progressivo") @db.Text
+  /// Cursor: id da ultima mensagem incluida no resumo.
+  resumoAteMensagemId String?                        @map("resumo_ate_mensagem_id")
+  resumoAtualizadoEm DateTime?                       @map("resumo_atualizado_em")
+  /// Dominios dos dados contidos no resumo (RBAC lazy da injecao).
+  resumoDominios     String[]                        @default([]) @map("resumo_dominios")
   /// Tags de topico/dominio derivadas das mensagens do usuario na conversa.
   /// Populado pelo job assincrono `agent-topic-tagging` (Onda 1 Inteligencia).
   /// Cap 5 tags. Ex.: ["estoque", "keyword:saldo", "produto:mola_espiral"].
