@@ -423,3 +423,15 @@ Cada fase: plano próprio (bite-sized) + 2 reviews quando material → execuçã
   em prod pos-run do #105 (in_progress) e rodar backfill prod.
 - RESTAM: M.4 entidades+anafora unificada R2-ctx; M.5 resumo async; T0.2
   expectativasPorTurno; bateria 30 turnos formal; Onda O (tiers); Onda P.
+
+## Fechamento de sessao 2026-06-12 ~13h20 (troca pedida pelo usuario)
+- [x] M.3 + guarda de plausibilidade CMV + regra 12-plaus (d598f77).
+- [x] CMV fix: fonte unica preco_custo (pericia T600X: 83,2mi -> 26,7mi, margem ~23%).
+- BLOQUEIO EXTERNO: quota GitHub Actions esgotada (pushes nao criam runs desde
+  ~15h UTC). Codigo M.1-M.3+humanizacao+CMV MERGEADO na main aguardando deploy.
+  Saidas: PAT read:packages em ../../.env.production (GHCR_PULL_TOKEN) p/ deploy
+  manual via Portainer + shepherd pull-based; OU billing do Actions.
+- PROXIMA SESSAO (5 pontos do nivel profissional): (1) M.4/M.5 + bateria 30
+  turnos; (2) Onda O tiers; (3) V-claims; (4) proveniencia; (5) flywheel.
+- T4.1/T4.2 prontos (migration conversation_entities + entidades.ts); T4.3
+  (heuristica no contextualize) e M.5 pendentes.
