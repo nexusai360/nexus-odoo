@@ -19,6 +19,12 @@
 
 // Fonte unica das chaves de array (F4 Apresentacao, Onda 1.2). Subconjunto
 // VALOR = chaves que o V2 (anti-invencao) varre buscando valor citado.
+import {
+  validateV10Percentuais,
+  validateV11RankingItem,
+  validateV12Consistencia,
+  validateV13Proveniencia,
+} from "./v-claims";
 import { ARRAY_KEYS_VALOR } from "../../../../mcp/lib/array-keys";
 
 export type ValidationFailReason =
@@ -31,6 +37,10 @@ export type ValidationFailReason =
   | "V7"
   | "V8"
   | "V9"
+  | "V10"
+  | "V11"
+  | "V12"
+  | "V13"
   | null;
 
 /**
@@ -767,6 +777,16 @@ export function runShadowChecks(ctx: ValidationContext): ValidationOutcome[] {
   if (v6) out.push(v6);
   const v7 = validateV7(ctx);
   if (v7) out.push(v7);
+  // Onda P (V-claims): V10 percentuais recomputados, V12 consistencia entre
+  // turnos (freshness-aware), V13 proveniencia declarada , todos SHADOW.
+  for (const check of [validateV10Percentuais, validateV12Consistencia, validateV13Proveniencia]) {
+    try {
+      const r = check(ctx);
+      if (r) out.push(r);
+    } catch {
+      // v-claims nunca derruba o validador principal
+    }
+  }
   return out;
 }
 
@@ -781,6 +801,7 @@ export interface ValidatorFlags {
   v5Enabled?: boolean;
   v8Enabled?: boolean;
   v9Enabled?: boolean;
+  v11Enabled?: boolean;
 }
 
 const OK: ValidationOutcome = {
@@ -847,6 +868,17 @@ export function validateResponse(
   if (v8On) {
     const r = validateV8(ctx);
     if (r) return r;
+  }
+  // Onda P (V-claims): V11 , o item apontado como "o maior" confere com o
+  // topMaiores[0] real. ACTIVE de nascenca (so reprova com evidencia clara de
+  // item trocado; inconclusivo nao dispara).
+  if (flags.v11Enabled ?? true) {
+    try {
+      const r = validateV11RankingItem(ctx);
+      if (r) return r;
+    } catch {
+      // nunca derruba o validador principal
+    }
   }
   return OK;
 }
