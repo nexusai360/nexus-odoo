@@ -37,6 +37,7 @@ const dados = z.object({
   nNotasTotal: z.number().int(),
   cmvAproximadoTotal: z.number().nullable(),
   coberturaCustoPct: z.number().nullable(),
+  cmvImplausivel: z.boolean().optional(),
   custoUnitarioTabela: z.number().nullable(),
   aviso: z.string(),
   ordenadoPor: z.string().optional(),
@@ -178,7 +179,12 @@ async function queryVendasProdutoPorEmpresa(
   const coberturaCustoPct =
     quantidadeTotal > 0 ? (qtdComCustoTotal / quantidadeTotal) * 100 : null;
   const unicoProduto = produtoIds.size === 1 ? [...produtoIds][0] : null;
+  // Guarda de plausibilidade (licao da pericia T600X): em revenda, CMV maior
+  // que a venda e quase sempre dado de custo ERRADO na fonte. O agente avisa
+  // em vez de apresentar o numero como fato liso.
+  const cmvImplausivel = qtdComCustoTotal > 0 && cmvTotal > valorVendaTotal;
   return {
+    cmvImplausivel,
     produtoLabel,
     linhas,
     quantidadeTotal,
@@ -212,7 +218,7 @@ export const fiscalVendasProdutoPorEmpresa: ToolEntry<Input, Output> = {
         ordenadoPor: "valorVenda desc",
         aviso:
           "Vendas = itens de saida autorizada com CFOP de venda (Tabela de Regras). " +
-          "CMV e APROXIMADO: usa o custo de tabela 'Custo' vigente do cadastro, nao a " +
+          "CMV e APROXIMADO: usa o preco_custo do cadastro do produto, nao a " +
           `contabilidade (que nao e operada no sistema). Período: ${per.label}.`,
       }),
     );
@@ -225,6 +231,7 @@ export const fiscalVendasProdutoPorEmpresa: ToolEntry<Input, Output> = {
         quantidadeTotal: d.quantidadeTotal,
         valorVendaTotal: d.valorVendaTotal,
         nNotasTotal: d.nNotasTotal,
+        cmvImplausivel: d.cmvImplausivel ? 1 : 0,
         cmvAproximadoTotal: d.cmvAproximadoTotal ?? 0,
         coberturaCustoPct: d.coberturaCustoPct ?? 0,
         empresas: d.linhas.length,
