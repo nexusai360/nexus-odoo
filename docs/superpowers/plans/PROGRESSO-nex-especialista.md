@@ -413,3 +413,108 @@ Cada fase: plano próprio (bite-sized) + 2 reviews quando material → execuçã
   inteira com numeros corretos. Suite 2.956 verdes. SHIP em curso.
 - Restam (proxima leva): M.3 focoAtual, M.4 entidades+anafora, M.5 resumo
   async, T0.2 expectativasPorTurno, bateria 30 turnos formal, backfill prod.
+- [x] M.3 focoAtual (working memory): modulo puro 5 testes, migration foco_atual,
+  derivacao no fim do turno (usageWrites), injecao [Foco da conversa] + fontes
+  do validador. E2E real 3 turnos: "E o do vendedor Weverton nesse periodo?"
+  herdou junho do foco e fez drill-down na MESMA base (1o lugar, R$1.673.749,66);
+  focoAtual persistido correto no banco. Suite 2.961 verdes (6686ab9).
+- [x] DEPLOY FANTASMA corrigido (f64b506): job verifica revision==GITHUB_SHA
+  pos-pull; ship.py espera run por head_sha. Pendente: confirmar imagem nova
+  em prod pos-run do #105 (in_progress) e rodar backfill prod.
+- RESTAM: M.4 entidades+anafora unificada R2-ctx; M.5 resumo async; T0.2
+  expectativasPorTurno; bateria 30 turnos formal; Onda O (tiers); Onda P.
+
+## Fechamento de sessao 2026-06-12 ~13h20 (troca pedida pelo usuario)
+- [x] M.3 + guarda de plausibilidade CMV + regra 12-plaus (d598f77).
+- [x] CMV fix: fonte unica preco_custo (pericia T600X: 83,2mi -> 26,7mi, margem ~23%).
+- BLOQUEIO EXTERNO: quota GitHub Actions esgotada (pushes nao criam runs desde
+  ~15h UTC). Codigo M.1-M.3+humanizacao+CMV MERGEADO na main aguardando deploy.
+  Saidas: PAT read:packages em ../../.env.production (GHCR_PULL_TOKEN) p/ deploy
+  manual via Portainer + shepherd pull-based; OU billing do Actions.
+- PROXIMA SESSAO (5 pontos do nivel profissional): (1) M.4/M.5 + bateria 30
+  turnos; (2) Onda O tiers; (3) V-claims; (4) proveniencia; (5) flywheel.
+- T4.1/T4.2 prontos (migration conversation_entities + entidades.ts); T4.3
+  (heuristica no contextualize) e M.5 pendentes.
+
+## ONDA M FECHADA 2026-06-12 ~17h45 (sessao de retomada)
+- [x] M.4 completo (8dc4668): T4.2 wire (entidades do TURNO viram
+  ConversationEntity via extrairEntidadesDoTurno , herdadas NAO renovam
+  recencia) + T4.3 heuristica deterministica de anafora no contextualize
+  (router/anafora-heuristica.ts): pronome tipado ("desse produto" -> entidade
+  mais recente do tipo, com concordancia da preposicao), pronome generico
+  (ele/ela -> unica entidade em foco), elipse curta ("e ...?" -> herda metrica/
+  entidades; periodo so se a pergunta nao trouxe outro). resolvida = ZERO LLM;
+  ambigua = nao reformula (regra 12b clarifica); nao-anaforica = CQR LLM.
+  run-agent passa focoAtual + 10 entidades recentes ao reformulateQuestion.
+- [x] M.5 completo (3580fb0): migration manual 20260612193000 (resumo_
+  progressivo/resumo_ate_mensagem_id/resumo_atualizado_em/resumo_dominios em
+  conversations; migrate deploy + schema-changed sinalizado). Funcoes puras em
+  memoria/resumo-progressivo.ts (threshold 8, prompt factual numeros+
+  proveniencia, podeInjetarResumo RBAC). Job BullMQ agent-resumo-conversa
+  (enqueue no fim do turno junto ao tagging; processor em worker/agent-
+  intelligence/resumo-conversa.ts re-resume das mensagens ORIGINAIS, RBAC na
+  fonte: digest de dominio revogado exclui a mensagem; grava os 4 campos).
+  Injecao L2 no montar-conversa (entre system e memoria) + fontesMemoria
+  (validador memory-aware). Dominio revogado -> nao injeta + re-enfileira lazy.
+- [x] T0.2 (ffa782b): expectativasPorTurno no ab-cerebro (assercao na resposta
+  de turnos intermediarios) + --file para baterias dedicadas + memoriaPorTurno
+  no resumo do harness.
+- [x] BATERIA E2E memoria-30-turnos VERDE (ffa782b): 30 turnos reais na mesma
+  conversa (evals/golden/memoria-30-turnos.json). M1: turno 30 respondeu o
+  saldo EXATO do produto 1464 consultado no turno 3 (kpi AO VIVO, 776). M2:
+  anafora t2 (maio), t21 (receber), t28/t29 (1464) , memoriaPorTurno 1/1.
+  Zero alucinacao. Custo US$0,25, 8,2min. Detalhe: research/ab-cerebro/.
+- [x] E2E real do resumo M.5: processor real na conversa da bateria gerou
+  resumo factual com numeros exatos + proveniencia por tool, 6 dominios,
+  cursor e timestamp gravados.
+- TF.3 (replay a395702f): considerado coberto pela bateria 30 turnos (mais
+  exigente) + suite 2994 verdes , economia do teto OpenAI (~7,47/8 gasto).
+- Suite 2.994 verdes; tsc limpo. Commits: 8dc4668, 3580fb0, ffa782b.
+- SHIP REPRESADO: push feito, mas quota Actions segue esgotada (nenhum run
+  novo desde 14:44 UTC; push nao cria run; sem GHCR_PULL_TOKEN em
+  ../../.env.production). PR #107 aberto acumulando a onda. ship.py abortaria
+  no wait_ci , rodar quando a quota voltar.
+- SEGUINDO: Onda O (tiers + cascata), Onda P (V-claims), proveniencia
+  declarada, flywheel manual , nesta ordem, na mesma branch.
+
+## ONDAS O e P FECHADAS 2026-06-12 ~19h30 , os 5 pontos do nivel profissional ENTREGUES
+- [x] ONDA O (8ea4c8c): classificador lexical de tiers (tiers/classificar-tier.ts,
+  20 casos de teste; T3 contestacao > T2 composta > T1). T2-lite: INSTRUCAO_T2
+  de decomposicao no item de data + 2 iteracoes extras de tools. T3: modelo
+  forte (default gpt-5.4, coluna tier_t3_model) atras de flag tier_t3_checkpoint
+  (OFF default; PLAYGROUND/PRODUCTION; rollback = flag; llmOverride SEMPRE
+  vence , baterias A/B nao sao afetadas). CASCATA: reprova do validador
+  re-tenta no forte (timeout 15s vs 3s) so com a flag ativa. Migration manual
+  20260612210000. E2E REAL: flag ativada em dev, turno de contestacao trocou
+  gpt-5.4-mini -> gpt-5.4 no loop principal (telemetria llm_usage confirma) e
+  explicou a proveniencia do numero; flag revertida p/ OFF em dev. Para ligar
+  em prod: UPDATE agent_settings SET tier_t3_checkpoint='PRODUCTION'.
+- [x] ONDA P (26cef57): validation/v-claims.ts , V10 percentuais/variacoes
+  recomputados de pares das fontes, tolerancia 0,6pp (SHADOW); V11 item do
+  superlativo confere com topMaiores[0], so reprova com item claramente
+  trocado (ACTIVE, flag v11Enabled); V12 consistencia entre turnos freshness-
+  aware: mesma tool+chave divergente da memoria sem mencionar atualizacao
+  (SHADOW, P.4 , promocao a blocking so com dados de producao); V13
+  proveniencia declarada em resposta numerica (SHADOW). 15 testes novos.
+- [x] PROVENIENCIA (26cef57): regra 12-prov no identity-base (base+criterio
+  declarados em meia frase; numero vindo da memoria avisado com oferta de
+  reconsulta; percentuais calculados so da divisao dos numeros reais). Lado
+  validador = V13/V11/V10. Em prod: rodar sync-agent-prompt se usesCodeDefaults
+  for false (em dev o codigo vale direto).
+- [x] FLYWHEEL MANUAL (26cef57): quality/flywheel.ts (montarCandidatosGolden ,
+  dedup por pergunta normalizada, exclui cobertas pelo golden, esqueleto de
+  caso pronto) + scripts/flywheel-golden.ts (minera ConversationQualityEvaluation
+  ERRADO/PARCIAL/FALHA_TECNICA + MessageFeedback ERRADO/ALUCINOU/PARCIAL +
+  retries do validador). RODADO REAL em dev: 383 falhas (3 dias) -> 55
+  candidatos ranqueados por sinais em research/flywheel/candidatos-2026-06-12.json.
+  Processo: revisar candidato, preencher dominio/toolEsperada/kpiOuro, mover
+  p/ golden-nex.json. Automacao total so apos taxa de candidatos uteis provada.
+- Suite final: 3.033 verdes, tsc limpo. Golden 171 intocado.
+- Gasto OpenAI da sessao: ~US$0,40 (bateria 0,25 + smoke T3 ~0,08 + resumo/
+  flywheel ~0,05). Total estimado ~7,60 de 8.
+- PENDENTE (bloqueio externo): quota GitHub Actions , push nao cria run; ship.py
+  abortaria no wait_ci. PR #107 acumula TODA a leva (M.4, M.5, bateria, Onda O,
+  Onda P). Quando a quota voltar: python3 scripts/ship.py "feat(nex): arq 3.0
+  ondas M/O/P" + backfill-tool-digest em prod + sync-agent-prompt se aplicavel.
+- MIGRATIONS NOVAS (aditivas, ja aplicadas em dev): add_resumo_progressivo,
+  add_tier_t3. Em prod aplicam via migrate deploy no boot.

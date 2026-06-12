@@ -32,6 +32,9 @@ interface GoldenEntry {
   toolEsperada: string;
   /** Follow-up contextual: turnos anteriores na mesma conversa (nao avaliados). */
   turnosAntes?: string[];
+  /** Onda M (T0.2): assercoes na RESPOSTA de turnos intermediarios (1-based,
+   *  indexa turnosAntes). Mede memoria/anafora ao longo da conversa. */
+  expectativasPorTurno?: { turno: number; deveConter: string[] }[];
   /** Tools alternativas que também respondem a pergunta por completo. */
   toolsAceitas?: string[];
   kpiOuro?: {
@@ -58,6 +61,9 @@ const PROIBIDO_GLOBAL = ["não consigo te responder", "nao foi possivel obter"];
 
 interface CaseResult {
   id: string;
+  /** T0.2: null = caso sem expectativas por turno. */
+  expectativasOk?: boolean | null;
+  expectativasMiss?: string[];
   dominio: string;
   ok: boolean;
   toolsCalled: string[];
@@ -124,7 +130,10 @@ async function rodarCaso(
     const conv = await createConversation(userId, "backtest");
     // Follow-up contextual: turnos anteriores rodam na MESMA conversa sem
     // serem avaliados; so o turno final (e.pergunta) conta tools/kpi.
+    const expectativasMiss: string[] = [];
+    let idxTurno = 0;
     for (const turno of e.turnosAntes ?? []) {
+      idxTurno += 1;
       const prev = await runAgent({
         conversationId: conv.id,
         userId,
@@ -134,6 +143,18 @@ async function rodarCaso(
         source: "bubble",
         llmOverride: llm,
       });
+      // T0.2: assercoes na resposta deste turno intermediario.
+      const exps = (e.expectativasPorTurno ?? []).filter((x) => x.turno === idxTurno);
+      if (prev.ok && exps.length) {
+        const respTurno = normalizaTexto(prev.message ?? "");
+        for (const exp of exps) {
+          for (const esp of exp.deveConter) {
+            if (!respTurno.includes(normalizaTexto(esp))) {
+              expectativasMiss.push(`t${idxTurno}:faltou:${esp}`);
+            }
+          }
+        }
+      }
       if (!prev.ok) {
         return { id: e.id, dominio: e.dominio, ok: false, toolsCalled, toolOk: null, kpiOk: null, kpiMiss: [], halucNums: [], respostaOk: null, respostaMiss: [], custoUsd: 0, durMs: performance.now() - t0, erro: `turnoAntes falhou: ${prev.error}` };
       }
@@ -233,7 +254,10 @@ async function rodarCaso(
         }
       }
     }
-    return { id: e.id, dominio: e.dominio, ok: true, toolsCalled, toolOk, kpiOk, kpiMiss, halucNums, respostaOk, respostaMiss, custoUsd, durMs };
+    const expectativasOk = e.expectativasPorTurno?.length
+      ? expectativasMiss.length === 0
+      : null;
+    return { id: e.id, dominio: e.dominio, ok: true, toolsCalled, toolOk, kpiOk, kpiMiss, halucNums, respostaOk, respostaMiss, expectativasOk, expectativasMiss, custoUsd, durMs };
   } catch (err) {
     return { id: e.id, dominio: e.dominio, ok: false, toolsCalled, toolOk: null, kpiOk: null, kpiMiss: [], halucNums: [], respostaOk: null, respostaMiss: [], custoUsd: 0, durMs: performance.now() - t0, erro: String(err).slice(0, 200) };
   }
@@ -266,8 +290,10 @@ async function main() {
   const limit = Number(arg("limit", "60"));
   const concurrency = Number(arg("concurrency", "3"));
 
+  // T0.2: --file roda uma bateria dedicada (ex.: memoria-30-turnos.json)
+  const goldenFile = arg("file", "src/lib/agent/evals/golden/golden-nex.json")!;
   const golden: GoldenEntry[] = JSON.parse(
-    readFileSync(join(process.cwd(), "src/lib/agent/evals/golden/golden-nex.json"), "utf8"),
+    readFileSync(join(process.cwd(), goldenFile), "utf8"),
   );
   // amostra estratificada: TODOS os kpiOuro + distribui o resto por domínio.
   const comOuro = golden.filter((e) => e.kpiOuro?.length);
@@ -343,6 +369,12 @@ async function main() {
           ? `${scored.filter((r) => r.respostaOk).length}/${scored.length}`
           : "n/a";
       })(),
+      memoriaPorTurno: (() => {
+        const scored = okRuns.filter((r) => r.expectativasOk !== null && r.expectativasOk !== undefined);
+        return scored.length
+          ? `${scored.filter((r) => r.expectativasOk).length}/${scored.length}`
+          : "n/a";
+      })(),
       casosComSuspeitaAlucinacao: `${haluc.length}/${okRuns.length}`,
       custoP50Usd: p50(okRuns.map((r) => r.custoUsd)).toFixed(4),
       custoTotalUsd: okRuns.reduce((s, r) => s + r.custoUsd, 0).toFixed(2),
@@ -354,6 +386,9 @@ async function main() {
     writeFileSync(join(outDir, `${slug}.json`), JSON.stringify({ resumo, results }, null, 2));
     console.log(`[ab] detalhe: docs/superpowers/research/ab-cerebro/${slug}.json`);
     // falhas de tool pra inspecao rapida
+    for (const r of okRuns.filter((x) => (x.expectativasMiss?.length ?? 0) > 0).slice(0, 10)) {
+      console.log(`  [memoria-turno] ${r.id}: ${r.expectativasMiss!.join(" | ")}`);
+    }
     for (const r of okRuns.filter((x) => x.toolOk === false).slice(0, 8)) {
       console.log(`  [tool-errada] ${r.id}: esperava ${casos.find((c) => c.id === r.id)?.toolEsperada}, chamou [${r.toolsCalled.join(",")}]`);
     }

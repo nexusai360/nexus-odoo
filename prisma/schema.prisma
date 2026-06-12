@@ -2562,6 +2562,16 @@ model Conversation {
   /// entidades/ultimo resultado em foco. Derivada por regra no fim do turno
   /// (src/lib/agent/memoria/foco-atual.ts) e injetada como L4 no prompt.
   focoAtual          Json?                           @map("foco_atual")
+  entidades          ConversationEntity[]
+  /// Onda M (M.5): resumo progressivo da conversa (L2 da memoria). Texto
+  /// factual com numeros+proveniencia, re-gerado async (job
+  /// `agent-resumo-conversa`) sempre a partir das mensagens originais.
+  resumoProgressivo  String?                         @map("resumo_progressivo") @db.Text
+  /// Cursor: id da ultima mensagem incluida no resumo.
+  resumoAteMensagemId String?                        @map("resumo_ate_mensagem_id")
+  resumoAtualizadoEm DateTime?                       @map("resumo_atualizado_em")
+  /// Dominios dos dados contidos no resumo (RBAC lazy da injecao).
+  resumoDominios     String[]                        @default([]) @map("resumo_dominios")
   /// Tags de topico/dominio derivadas das mensagens do usuario na conversa.
   /// Populado pelo job assincrono `agent-topic-tagging` (Onda 1 Inteligencia).
   /// Cap 5 tags. Ex.: ["estoque", "keyword:saldo", "produto:mola_espiral"].
@@ -2588,6 +2598,23 @@ model Conversation {
 }
 
 /// Mensagem de conversa (user, assistant ou tool).
+/// Onda M (Arquitetura 3.0) T4.1: entidades citadas na conversa (anafora por
+/// recencia). Upsert no fim do turno (src/lib/agent/memoria/entidades.ts).
+model ConversationEntity {
+  id             String       @id @default(cuid())
+  conversationId String       @map("conversation_id") @db.Uuid
+  conversation   Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  tipo           String
+  chaveCanonica  String       @map("chave_canonica")
+  rotulo         String
+  ultimoTurno    Int          @map("ultimo_turno")
+  mencoes        Int          @default(1)
+
+  @@unique([conversationId, tipo, chaveCanonica])
+  @@index([conversationId, ultimoTurno])
+  @@map("conversation_entities")
+}
+
 model Message {
   id              String                @id @default(uuid()) @db.Uuid
   conversationId  String                @map("conversation_id") @db.Uuid
@@ -2798,6 +2825,13 @@ model AgentSettings {
   ///   shadow = roda V1-V4, loga retryReason, NÃO retenta
   ///   active = roda V1-V4, dispara 1 retry com hint corretivo se falhar
   /// Default: shadow (seguro). Promover para active após validar FP rate em log.
+  /// Onda O (Arquitetura 3.0): tier T3 , perguntas explicativas/contestacao
+  /// rodam no modelo forte. OFF = sempre mini (rollback). Cascata: reprova do
+  /// validador tambem re-tenta no forte quando a flag esta ativa.
+  tierT3Checkpoint FeatureCheckpoint @default(OFF) @map("tier_t3_checkpoint")
+  /// Modelo forte do T3 (null = default do codigo: gpt-5.4).
+  tierT3Model      String?           @map("tier_t3_model")
+
   autoValidatorMode  String  @default("shadow") @map("auto_validator_mode")
   validatorV1Enabled Boolean @default(true) @map("validator_v1_enabled")
   validatorV2Enabled Boolean @default(true) @map("validator_v2_enabled")

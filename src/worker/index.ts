@@ -15,9 +15,12 @@ import { processAgentJob, type AgentJobData } from "./agent/processor";
 import { cleanupIdempotencyTable } from "./agent/cleanup";
 import {
   AGENT_TOPIC_TAGGING_QUEUE,
+  AGENT_RESUMO_CONVERSA_QUEUE,
   type TopicTaggingJobData,
+  type ResumoConversaJobData,
 } from "./agent-intelligence/queue";
 import { processTopicTaggingJob } from "./agent-intelligence/topic-tagging";
+import { processResumoConversaJob } from "./agent-intelligence/resumo-conversa";
 import { refreshUsdBrlRateFromBCB } from "@/lib/agent/llm/exchange-rate";
 import {
   clearPending,
@@ -88,6 +91,27 @@ agentTopicTaggingWorker.on("failed", (job, err) =>
 );
 agentTopicTaggingWorker.on("error", (err) =>
   console.error("[agent-topic-tagging-worker] erro:", err),
+);
+
+// ─── Fila da inteligencia: resumo progressivo da conversa (Onda M , M.5) ─────
+export const agentResumoConversaQueue = new Queue(AGENT_RESUMO_CONVERSA_QUEUE, { connection });
+
+const agentResumoConversaWorker = new Worker(
+  AGENT_RESUMO_CONVERSA_QUEUE,
+  async (job: Job<ResumoConversaJobData>) => {
+    return processResumoConversaJob(job.data);
+  },
+  { connection, concurrency: 2 },
+);
+
+agentResumoConversaWorker.on("ready", () =>
+  console.log(`[agent-resumo-conversa-worker] pronto , fila "${AGENT_RESUMO_CONVERSA_QUEUE}"`),
+);
+agentResumoConversaWorker.on("failed", (job, err) =>
+  console.error(`[agent-resumo-conversa-worker] job ${job?.id} falhou:`, err),
+);
+agentResumoConversaWorker.on("error", (err) =>
+  console.error("[agent-resumo-conversa-worker] erro:", err),
 );
 
 // ─── Fila de manutenção (cron diário) ─────────────────────────────────────────

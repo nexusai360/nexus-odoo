@@ -95,3 +95,60 @@ describe("reformulateQuestion", () => {
     expect(r).toEqual({ reformulated: null, used: false });
   });
 });
+
+describe("reformulateQuestion , heuristica de anafora (T4.3)", () => {
+  const focoAtual = {
+    metrica: { nome: "fiscal faturamento periodo", toolUsada: "fiscal_faturamento_periodo" },
+    periodo: { inicio: "2026-06-01", fim: "2026-06-30" },
+    entidades: [{ tipo: "empresa", rotulo: "Matrix" }],
+    turnoAtualizado: 4,
+  };
+
+  test("heuristica resolve -> retorna sem chamar LLM nem historico", async () => {
+    const r = await reformulateQuestion({
+      conversationId: "c1",
+      currentQuestion: "e o faturamento dessa empresa?",
+      nPairs: 5,
+      llm,
+      focoAtual,
+      entidadesRecentes: [],
+    });
+    expect(r.used).toBe(true);
+    expect(r.reformulated).toContain('da empresa "Matrix"');
+    expect(getLastNPairs).not.toHaveBeenCalled();
+    expect(buildLlmClient).not.toHaveBeenCalled();
+  });
+
+  test("ambiguidade real -> null sem LLM (regra 12b clarifica)", async () => {
+    const r = await reformulateQuestion({
+      conversationId: "c1",
+      currentQuestion: "qual o estoque desse produto?",
+      nPairs: 5,
+      llm,
+      focoAtual,
+      entidadesRecentes: [
+        { tipo: "produto", rotulo: "Esteira T600X", ultimoTurno: 5 },
+        { tipo: "produto", rotulo: "Bike S400", ultimoTurno: 5 },
+      ],
+    });
+    expect(r).toEqual({ reformulated: null, used: false });
+    expect(buildLlmClient).not.toHaveBeenCalled();
+  });
+
+  test("nao-anaforica com foco presente -> segue o caminho LLM (CQR)", async () => {
+    getLastNPairs.mockResolvedValue([
+      { user: { id: "u1", content: "x", createdAt: new Date() }, assistant: { id: "a1", content: "y", createdAt: new Date() } },
+    ]);
+    mockChat("Faturamento total de junho de 2026");
+    const r = await reformulateQuestion({
+      conversationId: "c1",
+      currentQuestion: "me da um panorama geral ai",
+      nPairs: 5,
+      llm,
+      focoAtual,
+      entidadesRecentes: [],
+    });
+    expect(buildLlmClient).toHaveBeenCalled();
+    expect(r.used).toBe(true);
+  });
+});

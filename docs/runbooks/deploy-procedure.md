@@ -1,59 +1,137 @@
-# Caminho das pedras , deploy do nexus-odoo (rota ÚNICA e validada)
+# Deploy do nexus-odoo , PROCEDIMENTO CANÔNICO (ler ANTES de qualquer deploy)
 
-> Regra: **sempre o MESMO caminho.** Nada de improviso. Toda subida pra produção
-> passa por aqui. Se algo falhar, conserta-se O CAMINHO, não se inventa um novo.
+> **REGRA DE RAIZ.** Toda vez que for pensar em deploy/subida pra produção, a
+> PRIMEIRA coisa a fazer é ler este arquivo inteiro. Ele tem as coordenadas
+> corretas: como mergear o PR, como a imagem sobe e como o deploy de fato chega
+> na VPS. Não improvisar, não investigar servidor antes de seguir o passo a
+> passo daqui. Atualizado 2026-06-12 com a causa raiz definitiva e a rota que
+> funciona.
 
-## O comando único
+---
 
-Da pasta do projeto, com a branch já commitada e **pushada**:
+## TL;DR , os 2 comandos, nesta ordem
 
 ```bash
-python3 scripts/ship.py "titulo do PR"
+# 1) Mergear o PR na main (espera CI verde, squash-merge). Dispara o BUILD da imagem.
+python3 scripts/ship.py "titulo do PR"        #  (ou: --merge-only <PR#>)
+
+# 2) Quando build-app e build-mcp derem SUCCESS (a imagem nova está no ghcr),
+#    fazer o redeploy a partir de uma máquina que ALCANÇA a VPS (a sua, não o runner):
+python3 scripts/deploy-portainer.py           #  app + mcp + worker
 ```
 
-Ele faz, em ordem, sempre igual:
-1. acha/cria o PR (`feat/nex-reconstrucao` -> `main`);
-2. **espera o CI `validate` (ci.yml) ficar verde** (lint+typecheck+jest+build) , se não ficar, **aborta o merge**;
-3. **squash-merge**;
-4. **espera o `Build and Push`** (build-app + build-mcp + deploy) na `main`; se o `deploy` falhar por blip de rede, **faz 1 rerun automático** (o deploy já tem retry calibrado);
-5. **verifica prod** `https://agentenex.nexusai360.com/api/health` == `{"ok":true}`.
+O passo 2 é o que realmente atualiza produção. O job `deploy` do GitHub Actions
+**não funciona** (motivo abaixo) e deve ser ignorado , ele falha sozinho sem
+afetar nada. Verificação final: `https://agentenex.nexusai360.com/api/health`
+deve responder `{"ok":true}` (o `deploy-portainer.py` já confere no fim).
 
-Sai com 0 só se deploy E prod estão OK. Variante: `python3 scripts/ship.py --merge-only <PR#>`.
+---
 
-## Por que esse script existe (as 2 dores que já deram problema)
+## A causa raiz definitiva (provada no log, 2026-06-12)
 
-1. **Deploy instável (emails de falha):** a causa foi um retry-storm que foi introduzido
-   no `build.yml` (curl --retry 4 dentro de laço 12x = centenas de conexões martelando o
-   Portainer). Corrigido: deploy hoje é **1 passada com retry modesto** (até 3 tentativas),
-   igual em confiabilidade ao nexus-insights. Não mexer nisso à toa.
-2. **API do GitHub inalcançável desta máquina:** `api.github.com` às vezes resolve pra um IP
-   Azure (`4.228.31.149`) que a rota desta rede não alcança; os IPs clássicos (`140.82.x`)
-   funcionam. O `gh` cai no IP ruim e trava. **`ship.py` fala com a API direto nos IPs que
-   funcionam** (SNI=api.github.com), então independe do `gh`/`/etc/hosts`. Sintoma do
-   problema: `dial tcp 4.228.31.149:443: i/o timeout`. (Fix opcional permanente, 1x com sudo:
-   `echo "140.82.112.6 api.github.com" | sudo tee -a /etc/hosts` , remover quando a rota normalizar.)
+O pipeline tem 3 jobs: `build-app`, `build-mcp`, `deploy`.
 
-## Regra pro Claude (e pra qualquer sessão)
+- **`build-app` e `build-mcp` SEMPRE funcionam** (3-4 min cada). A imagem é
+  construída e **publicada no ghcr** (`ghcr.io/nexusai360/nexus-odoo:latest` e
+  `...-mcp:latest`) normalmente. Isso nunca foi o problema.
+- **`deploy` SEMPRE falha** e leva 30-60 min penando. No log
+  (`gh run view <id> --log-failed`): `Pull ghcr.io/...: HTTP 000`,
+  `Janela de rede fechada (TCP nao conecta)`, repetido por ~12 rodadas até
+  `falha de deploy real`.
 
-- Para subir pra produção, **use `scripts/ship.py`**. Não recriar o fluxo na mão com `gh pr
-  create`/`gh pr merge` (quebra no bug de IP acima) nem improvisar.
-- `git push` (github.com) funciona sempre; o problema é só `api.github.com` , por isso o
-  push é normal e o resto vai pelo `ship.py`.
-- Deploy é resiliente: 1 rerun cobre blip. Só investigar o servidor se falhar DEPOIS do rerun.
+**Por quê:** a proteção de borda da VPS (Traefik/firewall do provedor) **bloqueia
+o IP do runner do GitHub** (faixas de datacenter Azure/GitHub). O runner não
+estabelece TCP com o Portainer da VPS. Da **sua máquina** (rede residencial) o
+Portainer responde em ms. Logo: o build no GitHub é ótimo; só o passo
+runner→VPS é que não passa. Não é quota de Actions, não é falta de token, não é
+o Portainer, não é o GitHub. É rede runner→VPS.
 
-## Diagnostico definitivo do HTTP 000 (2026-06-12)
+> Diagnósticos antigos que estavam ERRADOS (corrigidos aqui): "quota do Actions
+> esgotada" (falso , o CI e os builds rodam), "precisa de um PAT read:packages
+> que não existe" (falso , a credencial do ghcr **já está salva no Portainer**,
+> ver abaixo). Não repetir esses becos.
 
-Nao e blip, nem Portainer, nem GitHub: a protecao de borda do provedor da VPS
-bloqueia IPs de datacenter (runners Azure/GitHub) em JANELAS de 15-40min , o
-TCP nem conecta (66s = connect-timeout 20 x 3 do curl antigo), e minutos depois
-tudo volta ao normal. Da rede local nunca falha. Por isso retry em segundos
-nunca resolvia e "rerun manual" parecia resolver (o humano demora minutos).
+---
 
-Fix aplicado no build.yml: o job deploy espera a janela abrir , ate 12 rodadas
-calmas (1 tentativa por chamada, sem --retry) com 5min entre elas (~60min).
-Sem email vermelho; o deploy conclui sozinho, as vezes com atraso.
+## Por que o redeploy manual via Portainer FUNCIONA (e não precisa de PAT)
 
-Saida definitiva (quando o usuario criar um PAT ghcr read:packages): deploy
-pull-based na VPS (shepherd p/ swarm) , a VPS se atualiza sozinha e o job
-deploy vira aceleracao opcional. Sem o PAT nao da: as imagens ghcr sao
-privadas e nenhuma credencial de pull existe fora dos secrets do GitHub.
+A peça que faltava: **o Portainer já tem o registry do ghcr configurado com
+autenticação salva** , registry id=1, "GitHub Container Registry", `URL=ghcr.io`,
+usuário `jvzanini`, `Authentication=true`. Ou seja, a credencial de pull da
+imagem privada **existe dentro do Portainer**. Quando mandamos o serviço
+atualizar passando `registryId=1`, o Portainer anexa o `X-Registry-Auth` dessa
+credencial e o **próprio host do swarm puxa a imagem nova do ghcr** (host→ghcr,
+sem runner e sem o Traefik no meio). Por isso nenhum `GHCR_TOKEN` solto é
+necessário , e por isso varrer os projetos atrás de um PAT é perda de tempo
+(não existe nenhum preenchido; todos os `.env.production` têm o campo vazio).
+
+`scripts/deploy-portainer.py` faz exatamente isso para `app`, `mcp` e `worker`:
+GET da spec → força a imagem `:latest` (sem digest pinado) → `ForceUpdate++` com
+`registryId` do ghcr → poll até as tasks convergirem → checa o `/api/health`.
+
+### Credencial do Portainer (de onde o script lê)
+
+`PORTAINER_URL` e `PORTAINER_TOKEN`. O script resolve nesta ordem:
+1. variáveis de ambiente `PORTAINER_URL` / `PORTAINER_TOKEN`;
+2. `.env.local` do projeto (recomendado deixar ali, não é commitado);
+3. fallback: `.env.production` dos projetos irmãos da mesma infra
+   (`nexus-blueprint`, `nexus-nfe`, `nexus-crm-krayin`) , todos compartilham o
+   mesmo Portainer/VPS, então o `PORTAINER_TOKEN` (`ptr_...`) é o mesmo.
+
+Para fixar no projeto (uma vez), adicionar ao `.env.local` (NÃO commitar):
+```
+PORTAINER_URL=https://<host-do-portainer>
+PORTAINER_TOKEN=ptr_xxxxxxxxxxxxxxxxxxxxxxxxxxxx
+```
+
+---
+
+## Passo a passo completo (o que fazer, sempre nesta ordem)
+
+1. **Branch commitada e pushada.** `git push origin <branch>`.
+2. **PR sem conflito com a main.** Se `gh pr view <N> --json mergeable` der
+   `CONFLICTING`: `git fetch origin main && git merge origin/main`, resolver
+   (esta branch costuma ser superconjunto → `git checkout --ours` nos arquivos
+   de onda; conferir `build.yml`/`ship.py` pela data do último commit de cada
+   lado), `npx tsc --noEmit && npx jest`, commitar o merge, push.
+3. **Mergear:** `python3 scripts/ship.py "titulo"`. Ele espera o CI `validate`
+   ficar verde e faz o **squash-merge**. (Se o `ship.py` ficar preso na fase de
+   deploy, tudo bem , ver passo 5; o merge e o build já aconteceram.)
+   - `ship.py` fala com a API do GitHub direto nos IPs clássicos (`140.82.x`)
+     porque `api.github.com` às vezes resolve pro IP Azure inalcançável desta
+     rede. Por isso **não** recriar o merge com `gh pr merge` na mão.
+4. **Esperar o build:** os jobs `build-app` e `build-mcp` do "Build and Push"
+   na `main` devem dar `success` (~5 min). Confere com
+   `gh run list --workflow="Build and Push" --branch main --limit 1` e
+   `gh api /repos/nexusai360/nexus-odoo/actions/runs/<id>/jobs --jq '.jobs[]|.name+" "+(.conclusion//.status)'`.
+   Só os dois `build-*` importam; o `deploy` vai dar `failure/cancelled` , **ignore**.
+5. **Deploy de verdade:** `python3 scripts/deploy-portainer.py`. Sai com 0 quando
+   os serviços convergiram e o `/api/health` respondeu `{"ok":true}`.
+6. **Pós-deploy (quando aplicável):**
+   - schema mudou → as migrations aditivas aplicam no boot via `migrate deploy`;
+   - `toolDigest`/backfills → rodar o backfill em prod (Portainer exec no
+     container `app`), ex.: `scripts/backfill-tool-digest.ts`;
+   - prompt mudou e `usesCodeDefaults=false` → `sync-agent-prompt`.
+
+---
+
+## Saída definitiva (eliminar o passo manual no futuro)
+
+Tornar o deploy **pull-based na VPS**: um shepherd/watchtower no swarm que
+observa o ghcr e se atualiza sozinho usando a credencial que **já está no
+Portainer** (registry id=1). Aí o `git push`/merge basta e o passo 5 some.
+Enquanto isso não existe, a rota canônica é `ship.py` (merge+build) +
+`deploy-portainer.py` (redeploy). O job `deploy` do Actions pode ser
+desativado/encurtado para não gastar 30-60 min penando a cada merge.
+
+---
+
+## Verificação e rollback
+
+- **Health:** `curl -s https://agentenex.nexusai360.com/api/health` → `{"ok":true}`.
+- **Imagem/revisão rodando:** listar serviços via Portainer
+  (`GET /api/endpoints/1/docker/services`) e olhar `UpdatedAt` + imagem.
+- **Rollback:** `POST /api/endpoints/1/docker/services/<id>/update` com
+  `Spec.TaskTemplate.ForceUpdate` apontando o digest anterior, ou via UI do
+  Portainer (serviço → "Update" → imagem da revisão anterior). O swarm mantém a
+  task antiga até a nova passar no healthcheck.

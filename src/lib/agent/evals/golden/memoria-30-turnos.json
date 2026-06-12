@@ -1,0 +1,60 @@
+[
+  {
+    "id": "memoria-30t-01",
+    "dominio": "estoque",
+    "classe": "memoria",
+    "observacao": "Bateria E2E da Onda M (Arquitetura 3.0, TF.2): 30 turnos reais na MESMA conversa. M1 = o turno 30 pergunta o valor consultado no turno 3 (kpiOuro AO VIVO, mesma fonte canonica da tool). M2 = anafora/periodo herdado em turnos intermediarios (expectativasPorTurno). Os demais turnos sao carga real para empurrar o turno 3 para fora da janela de 10 turnos.",
+    "turnosAntes": [
+      "Qual o faturamento de junho de 2026?",
+      "E de maio?",
+      "Qual o saldo total do produto 1464 e em quantos locais?",
+      "Quais sao os 10 maiores titulos vencidos a pagar?",
+      "Qual o saldo em caixa e bancos hoje?",
+      "Quantos pedidos existem no total?",
+      "Quantas notas fiscais existem no total?",
+      "Qual o aging dos recebiveis?",
+      "Qual a cobertura de estoque em dias?",
+      "Qual o faturamento por empresa em junho?",
+      "E por vendedor, este ano?",
+      "Qual cliente mais comprou este ano?",
+      "Quantos DFe estao pendentes?",
+      "Quantas contas tem o plano referencial SPED?",
+      "Qual o valor total de estoque considerando apenas os estoques fisicos?",
+      "Qual o valor total de estoque em demonstracao?",
+      "Quantas notas de demonstracao emitimos este ano?",
+      "Como estao os pedidos por etapa?",
+      "Quantos pedidos por UF temos este ano?",
+      "Qual o total de contas a pagar?",
+      "E a receber?",
+      "Qual produto mais vendeu este ano?",
+      "Qual o saldo da esteira?",
+      "Quantos clientes ativos temos no cadastro?",
+      "Qual o faturamento deste mes ate hoje?",
+      "Teve nota cancelada este ano?",
+      "Qual a margem aproximada dos produtos mais vendidos?",
+      "La no comeco eu perguntei sobre o produto 1464. Em quantos locais ele tinha saldo?",
+      "Resume o que ja falamos sobre estoque ate agora"
+    ],
+    "expectativasPorTurno": [
+      { "turno": 2, "deveConter": ["maio"] },
+      { "turno": 21, "deveConter": ["receber"] },
+      { "turno": 28, "deveConter": ["1464"] },
+      { "turno": 29, "deveConter": ["1464"] }
+    ],
+    "pergunta": "Qual era aquele valor do saldo total do produto 1464 que voce me disse la no comeco da conversa?",
+    "toolEsperada": "estoque_locais_por_produto",
+    "toolsAceitas": ["estoque_saldo_produto"],
+    "classeNota": "classe=memoria desliga o toolOk: responder DA MEMORIA (zero tool call) e o comportamento ideal aqui; re-consultar a tool tambem e aceito (kpi vivo cobre os dois).",
+    "kpiOuro": [
+      {
+        "chave": "saldoTotal1464",
+        "valor": 776,
+        "match": "exato",
+        "fonteOuro": "mesma fonte canonica do ouro-estoque-01 (AO VIVO)",
+        "fonteOuroSql": "SELECT sum(s.quantidade)::float v FROM fato_estoque_saldo s JOIN fato_produto p ON p.odoo_id = s.produto_id WHERE p.codigo='1464' AND s.local_id IS NOT NULL"
+      }
+    ],
+    "esperaNaResposta": ["1464"],
+    "proibidoNaResposta": ["nao tenho como saber", "nao ficou registrado"]
+  }
+]

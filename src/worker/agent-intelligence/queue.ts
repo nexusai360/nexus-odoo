@@ -10,8 +10,14 @@
 export const AGENT_TOPIC_TAGGING_QUEUE = "agent-topic-tagging";
 export const AGENT_PROFILE_BUILD_QUEUE = "agent-profile-build";
 export const AGENT_INTELLIGENCE_CLEANUP_QUEUE = "agent-intelligence-cleanup";
+/** Onda M (M.5): resumo progressivo da conversa, fora do caminho critico. */
+export const AGENT_RESUMO_CONVERSA_QUEUE = "agent-resumo-conversa";
 
 export type TopicTaggingJobData = {
+  conversationId: string;
+};
+
+export type ResumoConversaJobData = {
   conversationId: string;
 };
 

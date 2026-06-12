@@ -26,6 +26,16 @@ export interface MontarConversaArgs {
   memoriaConsultas?: string[];
   /** Onda M (M.3): bloco curto da working memory (formatarFocoAtual). */
   focoAtualTexto?: string;
+  /**
+   * Onda M (M.5): resumo progressivo da conversa (L2). Entra entre o system
+   * e a memoria de consultas. O caller ja aplicou o RBAC (podeInjetarResumo).
+   */
+  resumoConversa?: string;
+  /**
+   * Onda O (T2-lite): instrucao de decomposicao para pergunta composta.
+   * Entra no item de data (volatil, fim do prompt , nao quebra o cache).
+   */
+  instrucaoTier?: string;
 }
 
 /** Monta a conversa inicial: system estavel + historico + item de data + pergunta. */
@@ -35,8 +45,21 @@ export function montarConversa(args: MontarConversaArgs): { conversation: ChatMe
     content:
       `[Contexto] Data atual (America/Sao_Paulo, UTC-3): ${args.agoraBrt}. ` +
       `Use SEMPRE esta data para resolver "hoje", "ontem", "amanha", "mes corrente", "essa semana" e "este ano".` +
-      (args.focoAtualTexto ? `\n[Foco da conversa] ${args.focoAtualTexto}` : ""),
+      (args.focoAtualTexto ? `\n[Foco da conversa] ${args.focoAtualTexto}` : "") +
+      (args.instrucaoTier ? `\n${args.instrucaoTier}` : ""),
   };
+  // Onda M (M.5): resumo progressivo (L2) , logo apos o system, antes da
+  // memoria de consultas. Numeros aqui SAO fonte legitima (fontesMemoria).
+  const resumoItens: ChatMessage[] = args.resumoConversa
+    ? [
+        {
+          role: "user" as const,
+          content:
+            "[Resumo da conversa] O que ja foi falado ate aqui (numeros confirmados, com a fonte entre parenteses):\n" +
+            args.resumoConversa,
+        },
+      ]
+    : [];
   // Onda M: memoria de consultas antigas (digests fora da janela verbatim).
   // Numeros aqui SAO fonte legitima (os validadores recebem as mesmas fontes).
   const memoriaItens: ChatMessage[] =
@@ -52,6 +75,7 @@ export function montarConversa(args: MontarConversaArgs): { conversation: ChatMe
       : [];
   const conversation: ChatMessage[] = [
     { role: "system", content: args.systemPromptBase },
+    ...resumoItens,
     ...memoriaItens,
     ...args.historyMessages,
     dataItem,

@@ -1,0 +1,1333 @@
+{
+  "geradoEm": "2026-06-12T21:01:15.457Z",
+  "dias": 3,
+  "totalFalhas": 383,
+  "candidatos": [
+    {
+      "pergunta": "Consulta: comercial comissoes",
+      "resposta": "As comissões ainda não são operadas no Odoo da Matrix (sem comissões).",
+      "conversationIds": [
+        "cc6ed3f9-8bd5-432d-a311-023c519cbe7d",
+        "9ae1aa1b-8047-4ec3-99d1-5e89aeff875c",
+        "a9401f6e-cd0d-4d2b-8f78-36087bd633fb",
+        "baeae5a9-e34d-4008-8af9-89f692ac2001",
+        "a3951a33-9341-4c78-8b3d-681bb3e80ec4"
+      ],
+      "origens": [
+        "validador_retry",
+        "quality_eval"
+      ],
+      "motivos": [
+        "validador_retry: retry V5",
+        "quality_eval: FALHA_TECNICA: ",
+        "quality_eval: FALHA_TECNICA: ",
+        "quality_eval: PARCIAL: Re-executei a tool: estado vazio legítimo (domínio não operado / sem registros no período). O agente respondeu 'não consegui obter agora', comunicando uma ausência conhecida como se fosse falha técnic",
+        "quality_eval: PARCIAL: Re-executei a tool: estado vazio legítimo (domínio não operado / sem registros no período). O agente respondeu 'não consegui obter agora', comunicando uma ausência conhecida como se fosse falha técnic"
+      ],
+      "casoGolden": {
+        "id": "flywheel-consulta-comercial-comissoes",
+        "pergunta": "Consulta: comercial comissoes",
+        "dominio": "?",
+        "classe": "prosseguir",
+        "toolEsperada": "?",
+        "esperaNaResposta": [],
+        "observacao": "Candidato do flywheel (2026-06-11): falha real de producao. REVISAR: preencher dominio/toolEsperada e, se possivel, kpiOuro com fonteOuroSql."
+      }
+    },
+    {
+      "pergunta": "Consulta: crm pipeline funis",
+      "resposta": "O funil de CRM não é operado no Odoo da Matrix (sem pipelines).",
+      "conversationIds": [
+        "de228c28-7922-46ff-8501-87108eaafcfc",
+        "155f21ce-07c3-4125-a6cc-c1196dbf5f98",
+        "48be8ed1-7a1e-4e9a-870d-a7b62c5830e1",
+        "e454c888-68c6-4de7-be06-002f9a8500fa",
+        "485a725d-f8f8-4660-a80d-345711916c97"
+      ],
+      "origens": [
+        "validador_retry",
+        "quality_eval"
+      ],
+      "motivos": [
+        "validador_retry: retry V5",
+        "quality_eval: FALHA_TECNICA: ",
+        "quality_eval: FALHA_TECNICA: ",
+        "quality_eval: PARCIAL: Re-executei a tool: estado vazio legítimo (domínio não operado / sem registros no período). O agente respondeu 'não consegui obter agora', comunicando uma ausência conhecida como se fosse falha técnic",
+        "quality_eval: PARCIAL: Re-executei a tool: estado vazio legítimo (domínio não operado / sem registros no período). O agente respondeu 'não consegui obter agora', comunicando uma ausência conhecida como se fosse falha técnic"
+      ],
+      "casoGolden": {
+        "id": "flywheel-consulta-crm-pipeline-funis",
+        "pergunta": "Consulta: crm pipeline funis",
+        "dominio": "?",
+        "classe": "prosseguir",
+        "toolEsperada": "?",
+        "esperaNaResposta": [],
+        "observacao": "Candidato do flywheel (2026-06-11): falha real de producao. REVISAR: preencher dominio/toolEsperada e, se possivel, kpiOuro com fonteOuroSql."
+      }
+    },
+    {
+      "pergunta": "Me mostre a hierarquia da conta 1.01.01 e suas filhas.",
+      "resposta": "Nenhuma conta encontrada com termo **'1.01.01'**.",
+      "conversationIds": [
+        "93083404-8702-40c9-a1ac-31f03d431c83",
+        "14896129-35bc-4855-b40d-fa1554c054b8",
+        "4fe9faff-fe6a-485f-8dd9-f176c9b6f931",
+        "a840646e-7612-4947-8403-7b12afb4e43c"
+      ],
+      "origens": [
+        "validador_retry",
+        "quality_eval"
+      ],
+      "motivos": [
+        "validador_retry: retry V5",
+        "quality_eval: FALHA_TECNICA: ",
+        "quality_eval: FALHA_TECNICA: ",
+        "validador_retry: retry V5"
+      ],
+      "casoGolden": {
+        "id": "flywheel-me-mostre-a-hierarquia-da-conta-1-01-01-",
+        "pergunta": "Me mostre a hierarquia da conta 1.01.01 e suas filhas.",
+        "dominio": "?",
+        "classe": "prosseguir",
+        "toolEsperada": "?",
+        "esperaNaResposta": [],
+        "observacao": "Candidato do flywheel (2026-06-11): falha real de producao. REVISAR: preencher dominio/toolEsperada e, se possivel, kpiOuro com fonteOuroSql."
+      }
+    },
+    {
+      "pergunta": "Consulta: financeiro baixas cobranca",
+      "resposta": "",
+      "conversationIds": [
+        "85737cee-3dba-4dcc-b843-3aeb417a0757",
+        "2eda02f0-37a7-4726-9e46-33bebf52625f",
+        "df74bcf7-6872-4add-81e0-38062e5996ac",
+        "b4568715-e304-43bd-a836-f45677265e07"
+      ],
+      "origens": [
+        "quality_eval"
+      ],
+      "motivos": [
+        "quality_eval: FALHA_TECNICA: ",
+        "quality_eval: FALHA_TECNICA: ",
+        "quality_eval: PARCIAL: Re-executei a tool: estado vazio legítimo (domínio não operado / sem registros no período). O agente respondeu 'não consegui obter agora', comunicando uma ausência conhecida como se fosse falha técnic",
+        "quality_eval: PARCIAL: Re-executei a tool: estado vazio legítimo (domínio não operado / sem registros no período). O agente respondeu 'não consegui obter agora', comunicando uma ausência conhecida como se fosse falha técnic"
+      ],
+      "casoGolden": {
+        "id": "flywheel-consulta-financeiro-baixas-cobranca",
+        "pergunta": "Consulta: financeiro baixas cobranca",
+        "dominio": "?",
+        "classe": "prosseguir",
+        "toolEsperada": "?",
+        "esperaNaResposta": [],
+        "observacao": "Candidato do flywheel (2026-06-11): falha real de producao. REVISAR: preencher dominio/toolEsperada e, se possivel, kpiOuro com fonteOuroSql."
+      }
+    },
+    {
+      "pergunta": "Consulta: producao processos",
+      "resposta": "",
+      "conversationIds": [
+        "d7b6cbd3-9527-47fd-89c4-1cd461e11e76",
+        "f325d83d-1830-4a8f-b477-882e48b9018c",
+        "0bbc926b-764b-4caf-baba-06ac2e987605",
+        "b70eeaaa-f71d-4d5a-bf55-dfacce05a0ad"
+      ],
+      "origens": [
+        "quality_eval"
+      ],
+      "motivos": [
+        "quality_eval: FALHA_TECNICA: ",
+        "quality_eval: FALHA_TECNICA: ",
+        "quality_eval: ERRADO: Re-executei producao_processos: retorna 1 processo. O agente respondeu 'não consegui obter', negando o dado real da tool.",
+        "quality_eval: ERRADO: Re-executei producao_processos: retorna 1 processo cadastrado. O agente declarou lacuna e disse não ter dados, sonegando o resultado real da tool."
+      ],
+      "casoGolden": {
+        "id": "flywheel-consulta-producao-processos",
+        "pergunta": "Consulta: producao processos",
+        "dominio": "?",
+        "classe": "prosseguir",
+        "toolEsperada": "?",
+        "esperaNaResposta": [],
+        "observacao": "Candidato do flywheel (2026-06-11): falha real de producao. REVISAR: preencher dominio/toolEsperada e, se possivel, kpiOuro com fonteOuroSql."
+      }
+    },
+    {
+      "pergunta": "Consulta: auditoria regras",
+      "resposta": "",
+      "conversationIds": [
+        "7ef85ef4-bd9a-442c-a07e-33388d3c0385",
+        "a6d5eafc-f319-42f1-a7c5-24f3b657a638",
+        "403f7938-ad9e-4023-95c8-3c9a935ae31a",
+        "0d5b867c-a338-4594-8a5f-35293ab75bab"
+      ],
+      "origens": [
+        "quality_eval"
+      ],
+      "motivos": [
+        "quality_eval: FALHA_TECNICA: ",
+        "quality_eval: FALHA_TECNICA: ",
+        "quality_eval: ERRADO: Re-executei auditoria_regras: retorna 15 regras. O agente respondeu 'não consegui obter' apesar de o dado existir.",
+        "quality_eval: ERRADO: Re-executei auditoria_regras: retorna 15 regras cadastradas. O agente respondeu 'não consegui obter' apesar de a tool ter funcionado e trazido o dado: negou informação existente."
+      ],
+      "casoGolden": {
+        "id": "flywheel-consulta-auditoria-regras",
+        "pergunta": "Consulta: auditoria regras",
+        "dominio": "?",
+        "classe": "prosseguir",
+        "toolEsperada": "?",
+        "esperaNaResposta": [],
+        "observacao": "Candidato do flywheel (2026-06-11): falha real de producao. REVISAR: preencher dominio/toolEsperada e, se possivel, kpiOuro com fonteOuroSql."
+      }
+    },
+    {
+      "pergunta": "Qual o faturamento do CNPJ 63.285.682/0001-46 este ano?",
+      "resposta": "Top cliente externo: **Iron Fitness Academia Iraucuba - Academia Iron Fitness Treinamento Fisioterapia e Reabilitaca [63‍.272‍.960‍/0001‑20]** com **R$ 151.572,45**. Total externo no período **2026-01-01 a 2026-06-11**: **R$ 151.572,45**.",
+      "conversationIds": [
+        "b2994b35-d33d-4715-af69-5a00e84ded5e",
+        "a024599d-6315-4580-a3de-eddd5df1bc46",
+        "84a9d880-4667-401d-92a1-7c0d573c6c3b"
+      ],
+      "origens": [
+        "quality_eval"
+      ],
+      "motivos": [
+        "quality_eval: ERRADO: Identica a anterior: respondeu Iron Fitness R$ 151.572,45 para o CNPJ 63.285.682/0001-46, cujo faturamento real e R$ 2.076.696,55 (Corpo e Saude). Empresa e valor errados; falha reproduzivel de resolu",
+        "quality_eval: ERRADO: Respondeu Iron Fitness [63.272.960/0001-20] R$ 151.572,45, mas o CNPJ perguntado (63.285.682/0001-46) e a Corpo e Saude Aguas Claras = R$ 2.076.696,55 (verificado em fato_parceiro+notas). Bug de resol",
+        "quality_eval: PARCIAL: Recusou ('nao tenho dados suficientes') o faturamento do CNPJ 63.285.682/0001-46, que e respondivel: esse CNPJ e a Corpo e Saude Aguas Claras = R$ 2.076.696,55 (top cliente do grupo), confirmado via f"
+      ],
+      "casoGolden": {
+        "id": "flywheel-qual-o-faturamento-do-cnpj-63-285-682-00",
+        "pergunta": "Qual o faturamento do CNPJ 63.285.682/0001-46 este ano?",
+        "dominio": "?",
+        "classe": "prosseguir",
+        "toolEsperada": "?",
+        "esperaNaResposta": [],
+        "observacao": "Candidato do flywheel (2026-06-11): falha real de producao. REVISAR: preencher dominio/toolEsperada e, se possivel, kpiOuro com fonteOuroSql."
+      }
+    },
+    {
+      "pergunta": "Consulta: cadastro cidades listar",
+      "resposta": "Encontrei **516 cidades distintas** em **6.955 parceiros**. A lista está ordenada por **quantidade de parceiros desc**.\n\n1. **Brasília** — 2.445 parceiros\n2. **Goiânia** — 335\n3. **Salvador** — 333\n4. **Sem cidade definida** — 301\n5. **Fortaleza** — 274\n6. **Aracaju** — 253\n7. **Belo Horizonte** — 251\n8. **São Paulo** — 239\n9. **Maceió** — 151\n10. **João Pessoa** — 123",
+      "conversationIds": [
+        "c4da8934-62a5-4bcc-a931-05168a53a2cb",
+        "0c224079-d477-4547-9115-8f4823ac2136",
+        "f6c0ab20-3726-4c14-b95b-993938346552"
+      ],
+      "origens": [
+        "validador_retry",
+        "quality_eval"
+      ],
+      "motivos": [
+        "validador_retry: retry V8",
+        "quality_eval: FALHA_TECNICA: ",
+        "quality_eval: FALHA_TECNICA: "
+      ],
+      "casoGolden": {
+        "id": "flywheel-consulta-cadastro-cidades-listar",
+        "pergunta": "Consulta: cadastro cidades listar",
+        "dominio": "?",
+        "classe": "prosseguir",
+        "toolEsperada": "?",
+        "esperaNaResposta": [],
+        "observacao": "Candidato do flywheel (2026-06-11): falha real de producao. REVISAR: preencher dominio/toolEsperada e, se possivel, kpiOuro com fonteOuroSql."
+      }
+    },
+    {
+      "pergunta": "quantas filiais o grupo tem?",
+      "resposta": "0 matriz(es) + 6 filial(is) = **6 empresas do grupo**. Listando 6. *COBERTURA: lista derivada das notas fiscais emitidas no cache; matriz/filial que nunca emitiu nota NAO aparece aqui (pode existir no Odoo).*",
+      "conversationIds": [
+        "4ec7f6ca-3028-4fa4-983c-24129ad3eca3",
+        "23ea5e81-9b23-44a1-bc95-848df1e5ffd9",
+        "c9dde88c-14e9-48ff-8689-c094c0fa0418"
+      ],
+      "origens": [
+        "quality_eval",
+        "validador_retry"
+      ],
+      "motivos": [
+        "quality_eval: PARCIAL: rerun real confirma 6 filiais (numero correto), mas o agente vazou o campo interno '_RESPOSTA' cru e ainda anexou uma nota de COBERTURA sobre notas fiscais que nao se aplica a este cadastro de empresa",
+        "validador_retry: retry V5",
+        "validador_retry: retry V5"
+      ],
+      "casoGolden": {
+        "id": "flywheel-quantas-filiais-o-grupo-tem",
+        "pergunta": "quantas filiais o grupo tem?",
+        "dominio": "?",
+        "classe": "prosseguir",
+        "toolEsperada": "?",
+        "esperaNaResposta": [],
+        "observacao": "Candidato do flywheel (2026-06-11): falha real de producao. REVISAR: preencher dominio/toolEsperada e, se possivel, kpiOuro com fonteOuroSql."
+      }
+    },
+    {
+      "pergunta": "Consulta: preco contar regras",
+      "resposta": "Não entendi sua pergunta. Você quer",
+      "conversationIds": [
+        "602e9cd4-3491-405b-9d73-07e1fae3833d",
+        "9fea9dcf-0855-4bd0-935a-a949728489ed",
+        "3a18084f-6bdd-4358-82b1-fc787c5e20ad"
+      ],
+      "origens": [
+        "quality_eval"
+      ],
+      "motivos": [
+        "quality_eval: PARCIAL: Sem toolCall e sem rerun para conferir. O agente tentou pedir clarificacao mas a frase 'Voce quer' foi cortada no meio, ficando truncada e sem oferecer as opcoes, o que prejudica a utilidade da clarif",
+        "quality_eval: FALHA_TECNICA: ",
+        "quality_eval: FALHA_TECNICA: "
+      ],
+      "casoGolden": {
+        "id": "flywheel-consulta-preco-contar-regras",
+        "pergunta": "Consulta: preco contar regras",
+        "dominio": "?",
+        "classe": "prosseguir",
+        "toolEsperada": "?",
+        "esperaNaResposta": [],
+        "observacao": "Candidato do flywheel (2026-06-11): falha real de producao. REVISAR: preencher dominio/toolEsperada e, se possivel, kpiOuro com fonteOuroSql."
+      }
+    },
+    {
+      "pergunta": "Consulta: cadastro parceiros por cidade",
+      "resposta": "",
+      "conversationIds": [
+        "e9d8d21c-4307-4630-b5e9-9649148d3382",
+        "8006be5b-14ea-4abf-bc1e-a9c26d5462bf",
+        "59d7c16a-8e01-4bee-98ea-4df95ad0d361"
+      ],
+      "origens": [
+        "quality_eval",
+        "validador_retry"
+      ],
+      "motivos": [
+        "quality_eval: FALHA_TECNICA: ",
+        "quality_eval: FALHA_TECNICA: ",
+        "validador_retry: retry V5"
+      ],
+      "casoGolden": {
+        "id": "flywheel-consulta-cadastro-parceiros-por-cidade",
+        "pergunta": "Consulta: cadastro parceiros por cidade",
+        "dominio": "?",
+        "classe": "prosseguir",
+        "toolEsperada": "?",
+        "esperaNaResposta": [],
+        "observacao": "Candidato do flywheel (2026-06-11): falha real de producao. REVISAR: preencher dominio/toolEsperada e, se possivel, kpiOuro com fonteOuroSql."
+      }
+    },
+    {
+      "pergunta": "Consulta: estoque minimo maximo",
+      "resposta": "",
+      "conversationIds": [
+        "af43ad6b-71bc-4525-a59b-fa060bc5d67b",
+        "be473f51-a40a-4e26-a4dd-731c6905cbb1",
+        "64c81062-cb9f-474c-b764-983e804e38ae"
+      ],
+      "origens": [
+        "quality_eval"
+      ],
+      "motivos": [
+        "quality_eval: FALHA_TECNICA: ",
+        "quality_eval: PARCIAL: Re-executei a tool: estado vazio legítimo (domínio não operado / sem registros no período). O agente respondeu 'não consegui obter agora', comunicando uma ausência conhecida como se fosse falha técnic",
+        "quality_eval: PARCIAL: Re-executei a tool: estado vazio legítimo (domínio não operado / sem registros no período). O agente respondeu 'não consegui obter agora', comunicando uma ausência conhecida como se fosse falha técnic"
+      ],
+      "casoGolden": {
+        "id": "flywheel-consulta-estoque-minimo-maximo",
+        "pergunta": "Consulta: estoque minimo maximo",
+        "dominio": "?",
+        "classe": "prosseguir",
+        "toolEsperada": "?",
+        "esperaNaResposta": [],
+        "observacao": "Candidato do flywheel (2026-06-11): falha real de producao. REVISAR: preencher dominio/toolEsperada e, se possivel, kpiOuro com fonteOuroSql."
+      }
+    },
+    {
+      "pergunta": "Listar os itens com saldo negativo da T600X?",
+      "resposta": "No grupo **T600X**, há **7 produtos** no catálogo. O principal é **[99] T600X Esteira C/ Incl. Eletrica e Prog. Matrix**, com **611 unidades** e **R$ 6.778.839,44** a custo; somando tudo, o valor chega a **R$ 7.303.651,43**. Desses, **2** estão com saldo negativo:\n\n- **[1585] Placa Eletronica do Painel Esteira T600X** — **-1 unidade**\n- **[81853] Placa Eletronica do Painel para Esteira Ergometrica T600X - 1000447806** — **-1 unidade**",
+      "conversationIds": [
+        "e4d7612c-e526-4294-80ef-a82a80e88f36",
+        "a395702f-fb80-41c3-9f26-50dd08a3a8ff"
+      ],
+      "origens": [
+        "validador_retry"
+      ],
+      "motivos": [
+        "validador_retry: retry V5",
+        "validador_retry: retry V5"
+      ],
+      "casoGolden": {
+        "id": "flywheel-listar-os-itens-com-saldo-negativo-da-t6",
+        "pergunta": "Listar os itens com saldo negativo da T600X?",
+        "dominio": "?",
+        "classe": "prosseguir",
+        "toolEsperada": "?",
+        "esperaNaResposta": [],
+        "observacao": "Candidato do flywheel (2026-06-12): falha real de producao. REVISAR: preencher dominio/toolEsperada e, se possivel, kpiOuro com fonteOuroSql."
+      }
+    },
+    {
+      "pergunta": "Quanto da principal esteira mais vendida que temos, está disponível em etoque ou já está em separação ou outros?",
+      "resposta": "A principal esteira mais vendida no período foi a **[99] T600X ESTEIRA C/ INCL. ELETRICA E PROG. MATRIX**, com **R$ 9.953.930,60** em faturamento. No total do recorte, foram **362 produtos**, **R$ 47.129.338,51** e **5.608 unidades**.\n\nNo estoque, essa mesma esteira tem **611 unidades** distribuídas em **26 locais**. Nos locais próprios, o saldo está concentrado em **419** na **Jds - Matriz DF » Próprio**, **104** na **Jds - Filial SE » Próprio**, **32** na **Jds - Filial SP » Próprio** e **15** na **Jht SP - Matriz DF » Próprio**; além disso, há **30** em **Terceiros** e **8** unidades em dem",
+      "conversationIds": [
+        "e4d7612c-e526-4294-80ef-a82a80e88f36",
+        "a395702f-fb80-41c3-9f26-50dd08a3a8ff"
+      ],
+      "origens": [
+        "validador_retry"
+      ],
+      "motivos": [
+        "validador_retry: retry V5",
+        "validador_retry: retry V5"
+      ],
+      "casoGolden": {
+        "id": "flywheel-quanto-da-principal-esteira-mais-vendida",
+        "pergunta": "Quanto da principal esteira mais vendida que temos, está disponível em etoque ou já está em separação ou outros?",
+        "dominio": "?",
+        "classe": "prosseguir",
+        "toolEsperada": "?",
+        "esperaNaResposta": [],
+        "observacao": "Candidato do flywheel (2026-06-12): falha real de producao. REVISAR: preencher dominio/toolEsperada e, se possivel, kpiOuro com fonteOuroSql."
+      }
+    },
+    {
+      "pergunta": "Qual a margem aproximada por familia de produto este ano?",
+      "resposta": "Considerei o grupo todo no período de 01/01/2026 a 11/06/2026.\n\nMargem bruta aproximada do ano: **R$ 32.901.557,78** (**23,3%**) sobre receita de venda de **R$ 141.299.914,75** e custo estimado de **R$ 108.398.356,97**.\nNão é lucro; é receita menos custo do produto. A cobertura de custo foi de **99,6%**. O custo usado é o atual do produto, então pode distorcer itens antigos.\n\nPor família de produto:\n- **JOHNSON**: margem **R$ 25.483.009,67** (**20,4%**)\n- **LONGLIFE**: margem **R$ 3.421.739,79** (**51,5%**)\n- **ACESSÓRIOS**: margem **R$ 1.761.852,85** (**31,9%**)\n- **LIFE FITNESS**: margem **R",
+      "conversationIds": [
+        "710556bc-64d0-485e-97db-3f7338fd5456",
+        "c3a55479-dea4-43bf-86ea-8e866b0c0c66"
+      ],
+      "origens": [
+        "validador_retry",
+        "quality_eval"
+      ],
+      "motivos": [
+        "validador_retry: retry V2",
+        "quality_eval: PARCIAL: Consolidado confere (margem R$ 32.901.557,78 / 23,3% sobre receita R$ 141.299.914,75), mas a pergunta pede POR FAMILIA e a resposta entregou so o agregado, com texto de raciocinio vazado ('a resposta "
+      ],
+      "casoGolden": {
+        "id": "flywheel-qual-a-margem-aproximada-por-familia-de-",
+        "pergunta": "Qual a margem aproximada por familia de produto este ano?",
+        "dominio": "?",
+        "classe": "prosseguir",
+        "toolEsperada": "?",
+        "esperaNaResposta": [],
+        "observacao": "Candidato do flywheel (2026-06-11): falha real de producao. REVISAR: preencher dominio/toolEsperada e, se possivel, kpiOuro com fonteOuroSql."
+      }
+    },
+    {
+      "pergunta": "Pq não aparecem essas empresas?\nJht SP Comércio - Filial MG 34.161.829/0005-11\nJht SP Comércio - Filial CE 34.161.829/0006-00",
+      "resposta": "",
+      "conversationIds": [
+        "2354d5b8-5709-4f95-929f-abeb83165cfb",
+        "de136f04-680c-4839-b2d7-e8b5eef6fb26"
+      ],
+      "origens": [
+        "quality_eval"
+      ],
+      "motivos": [
+        "quality_eval: FALHA_TECNICA: ",
+        "quality_eval: FALHA_TECNICA: "
+      ],
+      "casoGolden": {
+        "id": "flywheel-pq-nao-aparecem-essas-empresas-jht-sp-co",
+        "pergunta": "Pq não aparecem essas empresas?\nJht SP Comércio - Filial MG 34.161.829/0005-11\nJht SP Comércio - Filial CE 34.161.829/0006-00",
+        "dominio": "?",
+        "classe": "prosseguir",
+        "toolEsperada": "?",
+        "esperaNaResposta": [],
+        "observacao": "Candidato do flywheel (2026-06-11): falha real de producao. REVISAR: preencher dominio/toolEsperada e, se possivel, kpiOuro com fonteOuroSql."
+      }
+    },
+    {
+      "pergunta": "Quais as filiais do grupo?",
+      "resposta": "",
+      "conversationIds": [
+        "2354d5b8-5709-4f95-929f-abeb83165cfb",
+        "de136f04-680c-4839-b2d7-e8b5eef6fb26"
+      ],
+      "origens": [
+        "quality_eval"
+      ],
+      "motivos": [
+        "quality_eval: FALHA_TECNICA: ",
+        "quality_eval: FALHA_TECNICA: "
+      ],
+      "casoGolden": {
+        "id": "flywheel-quais-as-filiais-do-grupo",
+        "pergunta": "Quais as filiais do grupo?",
+        "dominio": "?",
+        "classe": "prosseguir",
+        "toolEsperada": "?",
+        "esperaNaResposta": [],
+        "observacao": "Candidato do flywheel (2026-06-11): falha real de producao. REVISAR: preencher dominio/toolEsperada e, se possivel, kpiOuro com fonteOuroSql."
+      }
+    },
+    {
+      "pergunta": "Consulta: fiscal carta correcao",
+      "resposta": "",
+      "conversationIds": [
+        "6476ff59-855d-4d4e-afbf-33a239913235",
+        "d6739e0e-c7e8-49ae-b745-7fb93eabe19f"
+      ],
+      "origens": [
+        "quality_eval"
+      ],
+      "motivos": [
+        "quality_eval: FALHA_TECNICA: ",
+        "quality_eval: FALHA_TECNICA: "
+      ],
+      "casoGolden": {
+        "id": "flywheel-consulta-fiscal-carta-correcao",
+        "pergunta": "Consulta: fiscal carta correcao",
+        "dominio": "?",
+        "classe": "prosseguir",
+        "toolEsperada": "?",
+        "esperaNaResposta": [],
+        "observacao": "Candidato do flywheel (2026-06-11): falha real de producao. REVISAR: preencher dominio/toolEsperada e, se possivel, kpiOuro com fonteOuroSql."
+      }
+    },
+    {
+      "pergunta": "Consulta: contabil movimento conta",
+      "resposta": "",
+      "conversationIds": [
+        "41b22253-9c6b-47c9-a702-bee605008c6e",
+        "373ac39e-d66c-495d-8138-80b6e11d666e"
+      ],
+      "origens": [
+        "quality_eval"
+      ],
+      "motivos": [
+        "quality_eval: FALHA_TECNICA: ",
+        "quality_eval: FALHA_TECNICA: "
+      ],
+      "casoGolden": {
+        "id": "flywheel-consulta-contabil-movimento-conta",
+        "pergunta": "Consulta: contabil movimento conta",
+        "dominio": "?",
+        "classe": "prosseguir",
+        "toolEsperada": "?",
+        "esperaNaResposta": [],
+        "observacao": "Candidato do flywheel (2026-06-11): falha real de producao. REVISAR: preencher dominio/toolEsperada e, se possivel, kpiOuro com fonteOuroSql."
+      }
+    },
+    {
+      "pergunta": "Consulta: fiscal apuracao",
+      "resposta": "",
+      "conversationIds": [
+        "a4c7d276-0de7-4ea5-ae30-1b55f6232a57",
+        "055a418a-1a19-46bf-b193-a4a0e959d6ae"
+      ],
+      "origens": [
+        "quality_eval"
+      ],
+      "motivos": [
+        "quality_eval: FALHA_TECNICA: ",
+        "quality_eval: FALHA_TECNICA: "
+      ],
+      "casoGolden": {
+        "id": "flywheel-consulta-fiscal-apuracao",
+        "pergunta": "Consulta: fiscal apuracao",
+        "dominio": "?",
+        "classe": "prosseguir",
+        "toolEsperada": "?",
+        "esperaNaResposta": [],
+        "observacao": "Candidato do flywheel (2026-06-11): falha real de producao. REVISAR: preencher dominio/toolEsperada e, se possivel, kpiOuro com fonteOuroSql."
+      }
+    },
+    {
+      "pergunta": "Consulta: estoque entradas saidas",
+      "resposta": "",
+      "conversationIds": [
+        "ddb20a50-100d-4968-9b3f-b91c6d5a7527",
+        "02278285-a442-4ed7-8594-bba795865244"
+      ],
+      "origens": [
+        "quality_eval"
+      ],
+      "motivos": [
+        "quality_eval: FALHA_TECNICA: ",
+        "quality_eval: FALHA_TECNICA: "
+      ],
+      "casoGolden": {
+        "id": "flywheel-consulta-estoque-entradas-saidas",
+        "pergunta": "Consulta: estoque entradas saidas",
+        "dominio": "?",
+        "classe": "prosseguir",
+        "toolEsperada": "?",
+        "esperaNaResposta": [],
+        "observacao": "Candidato do flywheel (2026-06-11): falha real de producao. REVISAR: preencher dominio/toolEsperada e, se possivel, kpiOuro com fonteOuroSql."
+      }
+    },
+    {
+      "pergunta": "Consulta: cadastro parceiros sem documento",
+      "resposta": "",
+      "conversationIds": [
+        "a0052f12-3e03-45c8-946c-ea6532e97e8c",
+        "8378972d-5827-4a03-b205-3f7520fbe7f3"
+      ],
+      "origens": [
+        "quality_eval"
+      ],
+      "motivos": [
+        "quality_eval: FALHA_TECNICA: ",
+        "quality_eval: FALHA_TECNICA: "
+      ],
+      "casoGolden": {
+        "id": "flywheel-consulta-cadastro-parceiros-sem-document",
+        "pergunta": "Consulta: cadastro parceiros sem documento",
+        "dominio": "?",
+        "classe": "prosseguir",
+        "toolEsperada": "?",
+        "esperaNaResposta": [],
+        "observacao": "Candidato do flywheel (2026-06-11): falha real de producao. REVISAR: preencher dominio/toolEsperada e, se possivel, kpiOuro com fonteOuroSql."
+      }
+    },
+    {
+      "pergunta": "Consulta: contabil detalhar conta",
+      "resposta": "",
+      "conversationIds": [
+        "c7352fbc-8574-40be-8729-f9f1f7bfedf8",
+        "62bcadb7-8333-44c4-936c-892486682f25"
+      ],
+      "origens": [
+        "quality_eval"
+      ],
+      "motivos": [
+        "quality_eval: FALHA_TECNICA: ",
+        "quality_eval: FALHA_TECNICA: "
+      ],
+      "casoGolden": {
+        "id": "flywheel-consulta-contabil-detalhar-conta",
+        "pergunta": "Consulta: contabil detalhar conta",
+        "dominio": "?",
+        "classe": "prosseguir",
+        "toolEsperada": "?",
+        "esperaNaResposta": [],
+        "observacao": "Candidato do flywheel (2026-06-11): falha real de producao. REVISAR: preencher dominio/toolEsperada e, se possivel, kpiOuro com fonteOuroSql."
+      }
+    },
+    {
+      "pergunta": "Consulta: servico listar",
+      "resposta": "",
+      "conversationIds": [
+        "b45b5631-86d2-405e-bead-e2889888ec47",
+        "1b16e438-2ce5-48ba-be75-e098dff3dcea"
+      ],
+      "origens": [
+        "quality_eval"
+      ],
+      "motivos": [
+        "quality_eval: FALHA_TECNICA: ",
+        "quality_eval: FALHA_TECNICA: "
+      ],
+      "casoGolden": {
+        "id": "flywheel-consulta-servico-listar",
+        "pergunta": "Consulta: servico listar",
+        "dominio": "?",
+        "classe": "prosseguir",
+        "toolEsperada": "?",
+        "esperaNaResposta": [],
+        "observacao": "Candidato do flywheel (2026-06-11): falha real de producao. REVISAR: preencher dominio/toolEsperada e, se possivel, kpiOuro com fonteOuroSql."
+      }
+    },
+    {
+      "pergunta": "Consulta: cadastro parceiros novos",
+      "resposta": "",
+      "conversationIds": [
+        "82d8f747-bdc3-4fec-af57-1b506df8a645",
+        "6d3c60c0-dc88-4e01-8952-7e3eac5413c8"
+      ],
+      "origens": [
+        "quality_eval"
+      ],
+      "motivos": [
+        "quality_eval: FALHA_TECNICA: ",
+        "quality_eval: FALHA_TECNICA: "
+      ],
+      "casoGolden": {
+        "id": "flywheel-consulta-cadastro-parceiros-novos",
+        "pergunta": "Consulta: cadastro parceiros novos",
+        "dominio": "?",
+        "classe": "prosseguir",
+        "toolEsperada": "?",
+        "esperaNaResposta": [],
+        "observacao": "Candidato do flywheel (2026-06-11): falha real de producao. REVISAR: preencher dominio/toolEsperada e, se possivel, kpiOuro com fonteOuroSql."
+      }
+    },
+    {
+      "pergunta": "Consulta: producao status dominio",
+      "resposta": "",
+      "conversationIds": [
+        "9d358d16-2bc9-470a-9a0e-f3817e49bd45",
+        "e4e5f799-1a6d-4ba8-bc43-b23fa3979070"
+      ],
+      "origens": [
+        "quality_eval"
+      ],
+      "motivos": [
+        "quality_eval: FALHA_TECNICA: ",
+        "quality_eval: FALHA_TECNICA: "
+      ],
+      "casoGolden": {
+        "id": "flywheel-consulta-producao-status-dominio",
+        "pergunta": "Consulta: producao status dominio",
+        "dominio": "?",
+        "classe": "prosseguir",
+        "toolEsperada": "?",
+        "esperaNaResposta": [],
+        "observacao": "Candidato do flywheel (2026-06-11): falha real de producao. REVISAR: preencher dominio/toolEsperada e, se possivel, kpiOuro com fonteOuroSql."
+      }
+    },
+    {
+      "pergunta": "Consulta: preco tabela",
+      "resposta": "",
+      "conversationIds": [
+        "33ecee48-faa3-42d7-a587-6dfe63e5ac59",
+        "893349d4-79e1-4469-aefe-f99ddefae712"
+      ],
+      "origens": [
+        "quality_eval"
+      ],
+      "motivos": [
+        "quality_eval: FALHA_TECNICA: ",
+        "quality_eval: FALHA_TECNICA: "
+      ],
+      "casoGolden": {
+        "id": "flywheel-consulta-preco-tabela",
+        "pergunta": "Consulta: preco tabela",
+        "dominio": "?",
+        "classe": "prosseguir",
+        "toolEsperada": "?",
+        "esperaNaResposta": [],
+        "observacao": "Candidato do flywheel (2026-06-11): falha real de producao. REVISAR: preencher dominio/toolEsperada e, se possivel, kpiOuro com fonteOuroSql."
+      }
+    },
+    {
+      "pergunta": "Consulta: servico contar",
+      "resposta": "",
+      "conversationIds": [
+        "d7779754-4a98-41bc-8937-d6da10b06cea",
+        "6802500b-e50b-4ed3-a3cf-810d89ff1311"
+      ],
+      "origens": [
+        "quality_eval"
+      ],
+      "motivos": [
+        "quality_eval: FALHA_TECNICA: ",
+        "quality_eval: FALHA_TECNICA: "
+      ],
+      "casoGolden": {
+        "id": "flywheel-consulta-servico-contar",
+        "pergunta": "Consulta: servico contar",
+        "dominio": "?",
+        "classe": "prosseguir",
+        "toolEsperada": "?",
+        "esperaNaResposta": [],
+        "observacao": "Candidato do flywheel (2026-06-11): falha real de producao. REVISAR: preencher dominio/toolEsperada e, se possivel, kpiOuro com fonteOuroSql."
+      }
+    },
+    {
+      "pergunta": "Consulta: cadastro detalhar parceiro",
+      "resposta": "",
+      "conversationIds": [
+        "92e62c6a-b527-4a46-a3c8-3df2021783ee",
+        "fece9d9e-3133-4c23-bea9-8aadc150a5ea"
+      ],
+      "origens": [
+        "quality_eval"
+      ],
+      "motivos": [
+        "quality_eval: FALHA_TECNICA: ",
+        "quality_eval: FALHA_TECNICA: "
+      ],
+      "casoGolden": {
+        "id": "flywheel-consulta-cadastro-detalhar-parceiro",
+        "pergunta": "Consulta: cadastro detalhar parceiro",
+        "dominio": "?",
+        "classe": "prosseguir",
+        "toolEsperada": "?",
+        "esperaNaResposta": [],
+        "observacao": "Candidato do flywheel (2026-06-11): falha real de producao. REVISAR: preencher dominio/toolEsperada e, se possivel, kpiOuro com fonteOuroSql."
+      }
+    },
+    {
+      "pergunta": "Consulta: crm status dominio",
+      "resposta": "",
+      "conversationIds": [
+        "021b5f5d-9fb0-406a-beee-f429061d1d86",
+        "d0dea339-59c9-4085-86d3-e28cec56adda"
+      ],
+      "origens": [
+        "quality_eval"
+      ],
+      "motivos": [
+        "quality_eval: FALHA_TECNICA: ",
+        "quality_eval: FALHA_TECNICA: "
+      ],
+      "casoGolden": {
+        "id": "flywheel-consulta-crm-status-dominio",
+        "pergunta": "Consulta: crm status dominio",
+        "dominio": "?",
+        "classe": "prosseguir",
+        "toolEsperada": "?",
+        "esperaNaResposta": [],
+        "observacao": "Candidato do flywheel (2026-06-11): falha real de producao. REVISAR: preencher dominio/toolEsperada e, se possivel, kpiOuro com fonteOuroSql."
+      }
+    },
+    {
+      "pergunta": "Consulta: servico buscar",
+      "resposta": "",
+      "conversationIds": [
+        "4b9f0374-78b2-4bb5-b9e3-9a22ef9f4dac",
+        "7c7b5e20-9fea-41ca-9134-72a22bc1bd57"
+      ],
+      "origens": [
+        "quality_eval"
+      ],
+      "motivos": [
+        "quality_eval: FALHA_TECNICA: ",
+        "quality_eval: FALHA_TECNICA: "
+      ],
+      "casoGolden": {
+        "id": "flywheel-consulta-servico-buscar",
+        "pergunta": "Consulta: servico buscar",
+        "dominio": "?",
+        "classe": "prosseguir",
+        "toolEsperada": "?",
+        "esperaNaResposta": [],
+        "observacao": "Candidato do flywheel (2026-06-11): falha real de producao. REVISAR: preencher dominio/toolEsperada e, se possivel, kpiOuro com fonteOuroSql."
+      }
+    },
+    {
+      "pergunta": "Consulta: referencia buscar",
+      "resposta": "",
+      "conversationIds": [
+        "ff32f04f-f765-4a5f-8bc3-db7824028bb0",
+        "41b07bc1-7b15-497d-a7d1-ab26520275eb"
+      ],
+      "origens": [
+        "quality_eval"
+      ],
+      "motivos": [
+        "quality_eval: FALHA_TECNICA: ",
+        "quality_eval: FALHA_TECNICA: "
+      ],
+      "casoGolden": {
+        "id": "flywheel-consulta-referencia-buscar",
+        "pergunta": "Consulta: referencia buscar",
+        "dominio": "?",
+        "classe": "prosseguir",
+        "toolEsperada": "?",
+        "esperaNaResposta": [],
+        "observacao": "Candidato do flywheel (2026-06-11): falha real de producao. REVISAR: preencher dominio/toolEsperada e, se possivel, kpiOuro com fonteOuroSql."
+      }
+    },
+    {
+      "pergunta": "Consulta: rh status dominio",
+      "resposta": "",
+      "conversationIds": [
+        "1e2cf280-bab3-4f3d-927f-2751d3a7d331",
+        "387b7006-ae9e-4911-a21f-a8c6114e87bc"
+      ],
+      "origens": [
+        "quality_eval"
+      ],
+      "motivos": [
+        "quality_eval: FALHA_TECNICA: ",
+        "quality_eval: FALHA_TECNICA: "
+      ],
+      "casoGolden": {
+        "id": "flywheel-consulta-rh-status-dominio",
+        "pergunta": "Consulta: rh status dominio",
+        "dominio": "?",
+        "classe": "prosseguir",
+        "toolEsperada": "?",
+        "esperaNaResposta": [],
+        "observacao": "Candidato do flywheel (2026-06-11): falha real de producao. REVISAR: preencher dominio/toolEsperada e, se possivel, kpiOuro com fonteOuroSql."
+      }
+    },
+    {
+      "pergunta": "Consulta: crm res partner get",
+      "resposta": "",
+      "conversationIds": [
+        "ee72776d-f84f-42cb-8570-2d8c0525ba94",
+        "d68f40bf-d7d7-4c36-b8e9-255320715a6d"
+      ],
+      "origens": [
+        "quality_eval"
+      ],
+      "motivos": [
+        "quality_eval: FALHA_TECNICA: ",
+        "quality_eval: FALHA_TECNICA: "
+      ],
+      "casoGolden": {
+        "id": "flywheel-consulta-crm-res-partner-get",
+        "pergunta": "Consulta: crm res partner get",
+        "dominio": "?",
+        "classe": "prosseguir",
+        "toolEsperada": "?",
+        "esperaNaResposta": [],
+        "observacao": "Candidato do flywheel (2026-06-11): falha real de producao. REVISAR: preencher dominio/toolEsperada e, se possivel, kpiOuro com fonteOuroSql."
+      }
+    },
+    {
+      "pergunta": "quanto temos a pagar em aberto?",
+      "resposta": "Não consegui obter essa informação agora.",
+      "conversationIds": [
+        "f07e9e04-6e5c-452a-ba1d-f23a0a7b987c"
+      ],
+      "origens": [
+        "quality_eval"
+      ],
+      "motivos": [
+        "quality_eval: FALHA_TECNICA: Mesma pergunta e mesma falha do item anterior: o dado de contas a pagar estava disponivel no cache (R$ 222,1mi), mas o agente devolveu 'Nao consegui obter' sem toolCall, caracterizando falha tecnica e",
+        "quality_eval: FALHA_TECNICA: Re-executei financeiro_contas_a_pagar e o dado existia (R$ 222.115.066,37 em 3.150 titulos). O agente respondeu 'Nao consegui obter' sem nenhum toolCall registrado, falha de recuperacao (provavel cold"
+      ],
+      "casoGolden": {
+        "id": "flywheel-quanto-temos-a-pagar-em-aberto",
+        "pergunta": "quanto temos a pagar em aberto?",
+        "dominio": "?",
+        "classe": "prosseguir",
+        "toolEsperada": "?",
+        "esperaNaResposta": [],
+        "observacao": "Candidato do flywheel (2026-06-11): falha real de producao. REVISAR: preencher dominio/toolEsperada e, se possivel, kpiOuro com fonteOuroSql."
+      }
+    },
+    {
+      "pergunta": "Tem certeza? Esse valor nao bate com o relatorio que eu vi. De onde saiu esse numero?",
+      "resposta": "Esse número saiu de uma visão de **receita externa real** para **junho de 2026**.\n\nA base que formou o valor foi esta:\n- Receita individual/bruta: **R$ 12.983.133,05**\n- Intercompany eliminável: **R$ 4.682.948,64**\n- Receita externa real: **R$ 8.300.184,41**\n\nEntão a diferença para o seu relatório provavelmente está no critério. Se o relatório que você viu mostra o bruto do mês, ele vai bater em **R$ 12.983.133,05**. O valor que eu te passei antes já vem sem as vendas entre empresas do grupo.",
+      "conversationIds": [
+        "a34e9cad-b4ad-4d7c-bc3e-01f47a5c824e"
+      ],
+      "origens": [
+        "validador_retry"
+      ],
+      "motivos": [
+        "validador_retry: retry V2"
+      ],
+      "casoGolden": {
+        "id": "flywheel-tem-certeza-esse-valor-nao-bate-com-o-re",
+        "pergunta": "Tem certeza? Esse valor nao bate com o relatorio que eu vi. De onde saiu esse numero?",
+        "dominio": "?",
+        "classe": "prosseguir",
+        "toolEsperada": "?",
+        "esperaNaResposta": [],
+        "observacao": "Candidato do flywheel (2026-06-12): falha real de producao. REVISAR: preencher dominio/toolEsperada e, se possivel, kpiOuro com fonteOuroSql."
+      }
+    },
+    {
+      "pergunta": "Resume o que ja falamos sobre estoque ate agora",
+      "resposta": "Até agora, falamos de estoque em três pontos principais:\n\n- **Saldo do produto [1464] PAINEL LED MX (LED-C):** tinha **776 unidades** distribuídas em **25 locais**.\n- **Saldo da esteira T600X:** a busca casou com **7 produtos**. Os principais saldos positivos foram:\n  - **[99] T600X Esteira C/ Incl. Eletrica e Prog. Matrix** — **577 unidades**, valor a custo de **R$ 6.340.273,64**\n  - **[1000362335] T600XE Esteira C/ Incl. Eletrica e Prog - Painel Touch 220v** — **17 unidades**, **R$ 519.817,99**\n  - **[1907] Lona para Esteira Ergometrica T600X 1000471193** — **13 unidades**, **R$ 4.994,00**\n ",
+      "conversationIds": [
+        "89e857bd-1643-48d9-83ff-476f40866c5a"
+      ],
+      "origens": [
+        "validador_retry"
+      ],
+      "motivos": [
+        "validador_retry: retry V2"
+      ],
+      "casoGolden": {
+        "id": "flywheel-resume-o-que-ja-falamos-sobre-estoque-at",
+        "pergunta": "Resume o que ja falamos sobre estoque ate agora",
+        "dominio": "?",
+        "classe": "prosseguir",
+        "toolEsperada": "?",
+        "esperaNaResposta": [],
+        "observacao": "Candidato do flywheel (2026-06-12): falha real de producao. REVISAR: preencher dominio/toolEsperada e, se possivel, kpiOuro com fonteOuroSql."
+      }
+    },
+    {
+      "pergunta": "Quantos DFe estao pendentes?",
+      "resposta": "No período de 01/06/2026 a 12/06/2026, há **1.071 DF-e** pendentes de manifestação. O recorte retornado indica **1.071** como total de pendentes.",
+      "conversationIds": [
+        "89e857bd-1643-48d9-83ff-476f40866c5a"
+      ],
+      "origens": [
+        "validador_retry"
+      ],
+      "motivos": [
+        "validador_retry: retry V2"
+      ],
+      "casoGolden": {
+        "id": "flywheel-quantos-dfe-estao-pendentes",
+        "pergunta": "Quantos DFe estao pendentes?",
+        "dominio": "?",
+        "classe": "prosseguir",
+        "toolEsperada": "?",
+        "esperaNaResposta": [],
+        "observacao": "Candidato do flywheel (2026-06-12): falha real de producao. REVISAR: preencher dominio/toolEsperada e, se possivel, kpiOuro com fonteOuroSql."
+      }
+    },
+    {
+      "pergunta": "Qual produto tem mais saldo em estoque?",
+      "resposta": "Hoje, o estoque está concentrado em **1.859 produtos** no recorte. O maior saldo é do **[99] T600X Esteira C/ Incl. Eletrica e Prog. Matrix**, com **595 unidades** e **R$ 6.522.386,85 a custo**. No total, o estoque soma **R$ 46.668.645,10** e **149** itens estão com saldo negativo.",
+      "conversationIds": [
+        "8ecce728-498f-4bf6-b508-f2f005c8a6da"
+      ],
+      "origens": [
+        "quality_eval"
+      ],
+      "motivos": [
+        "quality_eval: ERRADO: Pergunta: produto com MAIS saldo (unidades). Refiz contra fato_estoque_saldo: o maior e [1467] CABO DE ACO com 945 un; a T600X tem 594 (2o). O agente reportou a T600X como maior saldo por confundir o "
+      ],
+      "casoGolden": {
+        "id": "flywheel-qual-produto-tem-mais-saldo-em-estoque",
+        "pergunta": "Qual produto tem mais saldo em estoque?",
+        "dominio": "?",
+        "classe": "prosseguir",
+        "toolEsperada": "?",
+        "esperaNaResposta": [],
+        "observacao": "Candidato do flywheel (2026-06-12): falha real de producao. REVISAR: preencher dominio/toolEsperada e, se possivel, kpiOuro com fonteOuroSql."
+      }
+    },
+    {
+      "pergunta": "E tudo isso representa quanto em valor de patrimônio da empresa?",
+      "resposta": "A consulta retornou resultados. Para a T600X, o valor total é **R$ 7.303.651,43** e há **2** itens com saldo negativo.",
+      "conversationIds": [
+        "a395702f-fb80-41c3-9f26-50dd08a3a8ff"
+      ],
+      "origens": [
+        "quality_eval"
+      ],
+      "motivos": [
+        "quality_eval: PARCIAL: A pergunta era o patrimonio das 611 esteiras (R$ 6.778.839,44); o agente respondeu com o total da FAMILIA T600X (R$ 7,30mi, 7 produtos) e abriu com filler 'A consulta retornou resultados' mais ruido d"
+      ],
+      "casoGolden": {
+        "id": "flywheel-e-tudo-isso-representa-quanto-em-valor-d",
+        "pergunta": "E tudo isso representa quanto em valor de patrimônio da empresa?",
+        "dominio": "?",
+        "classe": "prosseguir",
+        "toolEsperada": "?",
+        "esperaNaResposta": [],
+        "observacao": "Candidato do flywheel (2026-06-12): falha real de producao. REVISAR: preencher dominio/toolEsperada e, se possivel, kpiOuro com fonteOuroSql."
+      }
+    },
+    {
+      "pergunta": "Quer ver o estoque da T600X por local?",
+      "resposta": "A **T600X ESTEIRA C/ INCL. ELETRICA E PROG. MATRIX** está assim por local:\n\n- **Jds - Matriz DF » Próprio** — **419**\n- **Jds - Filial SE » Próprio** — **104**\n- **Jds - Filial SP » Próprio** — **32**\n- **Terceiros** — **30**\n- **Jht SP - Matriz DF » Próprio** — **15**\n- **Jds Comércio - Filial SE 18.282.961/0004-44 - Kenoa Residence [23‍.570‍.803‍/0001‑87] » Demonstração » Terceiros** — **2**\n- **Jds Comércio - Matriz DF 18.282.961/0001-00 - Condominio do Edificio Residencial Ouro Branco [06‍.173‍.117‍/0001‑53] » Demonstração » Terceiros** — **1**\n- **Jds Comércio - Matriz DF 18.282.961/0001-",
+      "conversationIds": [
+        "a395702f-fb80-41c3-9f26-50dd08a3a8ff"
+      ],
+      "origens": [
+        "quality_eval"
+      ],
+      "motivos": [
+        "quality_eval: PARCIAL: Total 611 un em 26 locais esta correto, mas o agente despejou as 26 linhas incluindo ~11 locais de demonstracao com saldo 0 e nomes poluidos, sem filtrar para os com saldo (como o item 17 fez na mesma"
+      ],
+      "casoGolden": {
+        "id": "flywheel-quer-ver-o-estoque-da-t600x-por-local",
+        "pergunta": "Quer ver o estoque da T600X por local?",
+        "dominio": "?",
+        "classe": "prosseguir",
+        "toolEsperada": "?",
+        "esperaNaResposta": [],
+        "observacao": "Candidato do flywheel (2026-06-12): falha real de producao. REVISAR: preencher dominio/toolEsperada e, se possivel, kpiOuro com fonteOuroSql."
+      }
+    },
+    {
+      "pergunta": "Qual vendedor mais vendeu este ano?",
+      "resposta": "No acumulado de **01/01/2026 a 11/06/2026**, o faturamento por vendedor foi de **R$ 40.910.555,74**, distribuído entre **16 vendedores**. O líder foi **Marcelo Milanezi**, com **R$ 16.825.639,00** em **92 notas**. Outros **R$ 41.000.582,31** são de notas sem pedido vinculado, sem vendedor identificável.",
+      "conversationIds": [
+        "7ff1d8b7-c4a1-4d5c-a0f4-8c806ede2135"
+      ],
+      "origens": [
+        "validador_retry"
+      ],
+      "motivos": [
+        "validador_retry: retry V5"
+      ],
+      "casoGolden": {
+        "id": "flywheel-qual-vendedor-mais-vendeu-este-ano",
+        "pergunta": "Qual vendedor mais vendeu este ano?",
+        "dominio": "?",
+        "classe": "prosseguir",
+        "toolEsperada": "?",
+        "esperaNaResposta": [],
+        "observacao": "Candidato do flywheel (2026-06-12): falha real de producao. REVISAR: preencher dominio/toolEsperada e, se possivel, kpiOuro com fonteOuroSql."
+      }
+    },
+    {
+      "pergunta": "E o Weverton Moura, vendeu quanto? E me explica: por que tem um valor grande sem vendedor identificado?",
+      "resposta": "O **Weverton Moura** vendeu **R$ 12.138.746,26** em **244 pedidos** neste ano.\n\nTop vendedor no ranking: **Mariane Trindade - Mariane** com **R$ 95.295.117,47** em pedidos. Mostrando **1-10 de 22**.\n\nSobre o valor sem vendedor identificado: são **2 pedidos**, somando **R$ 216.071,03**. Esses pedidos ficam fora do ranking de vendedores porque o campo de vendedor veio em branco, então o sistema não consegue atribuir a venda a ninguém.",
+      "conversationIds": [
+        "7582c494-d473-4e83-8a1a-4905d229428d"
+      ],
+      "origens": [
+        "quality_eval"
+      ],
+      "motivos": [
+        "quality_eval: PARCIAL: Numeros de PEDIDOS conferem (Weverton R$ 12.138.746,26 / 244 pedidos; Mariane top R$ 95.295.117,47; sem vendedor 2 pedidos R$ 216.071,03). Mas trocou a lente para pedidos e respondeu 'valor grande sem"
+      ],
+      "casoGolden": {
+        "id": "flywheel-e-o-weverton-moura-vendeu-quanto-e-me-ex",
+        "pergunta": "E o Weverton Moura, vendeu quanto? E me explica: por que tem um valor grande sem vendedor identificado?",
+        "dominio": "?",
+        "classe": "prosseguir",
+        "toolEsperada": "?",
+        "esperaNaResposta": [],
+        "observacao": "Candidato do flywheel (2026-06-12): falha real de producao. REVISAR: preencher dominio/toolEsperada e, se possivel, kpiOuro com fonteOuroSql."
+      }
+    },
+    {
+      "pergunta": "Tá, mas por que esse valor? O que está descontado aí? Me explica como você chegou nesse número.",
+      "resposta": "Não consigo reescrever essa conta com segurança porque, neste turno, eu não tenho o resultado bruto da consulta disponível para reutilizar. Para responder corretamente, eu precisaria do retorno original com os campos resumidos ou das linhas da apuração.",
+      "conversationIds": [
+        "9703183b-dfc5-42fa-8d4b-3e1eb6fbe8d7"
+      ],
+      "origens": [
+        "quality_eval"
+      ],
+      "motivos": [
+        "quality_eval: PARCIAL: Recusou explicar o numero alegando nao ter o 'resultado bruto' do turno. A metodologia (externo = individual - intragrupo, sem desconto de imposto) e explicavel sem re-executar, e de fato foi explicad"
+      ],
+      "casoGolden": {
+        "id": "flywheel-ta-mas-por-que-esse-valor-o-que-esta-des",
+        "pergunta": "Tá, mas por que esse valor? O que está descontado aí? Me explica como você chegou nesse número.",
+        "dominio": "?",
+        "classe": "prosseguir",
+        "toolEsperada": "?",
+        "esperaNaResposta": [],
+        "observacao": "Candidato do flywheel (2026-06-12): falha real de producao. REVISAR: preencher dominio/toolEsperada e, se possivel, kpiOuro com fonteOuroSql."
+      }
+    },
+    {
+      "pergunta": "Quem nos devemos, por fornecedor?",
+      "resposta": "Em aberto, devemos R$ 209.760.224,41 em 3.068 títulos.\n\nDo total, R$ 22.269.805,64 estão confirmados e R$ 187.490.418,77 estão como provisão.",
+      "conversationIds": [
+        "cbbb3e37-adec-44ae-a5b7-def02ae7e4bc"
+      ],
+      "origens": [
+        "quality_eval"
+      ],
+      "motivos": [
+        "quality_eval: PARCIAL: Total a pagar R$ 209.760.224,41 / 3068 titulos e split confirmado (22,27M) / provisao (187,49M) conferem com o rerun, mas a pergunta pede POR FORNECEDOR e nao houve quebra alguma (maior fornecedor rea"
+      ],
+      "casoGolden": {
+        "id": "flywheel-quem-nos-devemos-por-fornecedor",
+        "pergunta": "Quem nos devemos, por fornecedor?",
+        "dominio": "?",
+        "classe": "prosseguir",
+        "toolEsperada": "?",
+        "esperaNaResposta": [],
+        "observacao": "Candidato do flywheel (2026-06-11): falha real de producao. REVISAR: preencher dominio/toolEsperada e, se possivel, kpiOuro com fonteOuroSql."
+      }
+    },
+    {
+      "pergunta": "Quanto compramos de cada fornecedor neste mes?",
+      "resposta": "**Notas recebidas por fornecedor:** 214 notas, **R$ 12.611.708,35** em **50 fornecedores**. O maior fornecedor foi **Jds Comércio - Matriz DF 18.282.961/0001-00 - Jds Comércio de Produtos e Equipamentos Esportivos Ltda [18‍.282‍.961‍/0001‑00]**, com **R$ 8.743.084,65**.",
+      "conversationIds": [
+        "785a67f2-ddc2-402e-8227-fb2dad034fa0"
+      ],
+      "origens": [
+        "validador_retry"
+      ],
+      "motivos": [
+        "validador_retry: retry V5"
+      ],
+      "casoGolden": {
+        "id": "flywheel-quanto-compramos-de-cada-fornecedor-nest",
+        "pergunta": "Quanto compramos de cada fornecedor neste mes?",
+        "dominio": "?",
+        "classe": "prosseguir",
+        "toolEsperada": "?",
+        "esperaNaResposta": [],
+        "observacao": "Candidato do flywheel (2026-06-11): falha real de producao. REVISAR: preencher dominio/toolEsperada e, se possivel, kpiOuro com fonteOuroSql."
+      }
+    },
+    {
+      "pergunta": "Volume de estoque do produto esteira T600X",
+      "resposta": "**7 produto(s) encontrado(s), valor total R$ 7.303.651,43. 2 com saldo negativo.**\n\n- **[99] T600X Esteira C/ Incl. Eletrica e Prog. Matrix** — **611 unidades**; **R$ 6.778.839,44** a custo\n- **[1000362335] T600XE Esteira C/ Incl. Eletrica e Prog - Painel Touch 220v** — **17 unidades**; **R$ 519.817,99** a custo\n- **[1907] Lona para Esteira Ergometrica T600X 1000471193** — **13 unidades**; **R$ 4.994,00** a custo\n- **[1000425703] Adesivo para Membrana de Esteira T600X Matrix** — **0 unidades**; **R$ 0,00** a custo\n- **Placa Controladora Esteira T600X - 1000468168** — **0 unidades**; **R$ 0,00*",
+      "conversationIds": [
+        "ec062f70-2466-44fa-8e96-827e6058f263"
+      ],
+      "origens": [
+        "validador_retry"
+      ],
+      "motivos": [
+        "validador_retry: retry V5"
+      ],
+      "casoGolden": {
+        "id": "flywheel-volume-de-estoque-do-produto-esteira-t60",
+        "pergunta": "Volume de estoque do produto esteira T600X",
+        "dominio": "?",
+        "classe": "prosseguir",
+        "toolEsperada": "?",
+        "esperaNaResposta": [],
+        "observacao": "Candidato do flywheel (2026-06-11): falha real de producao. REVISAR: preencher dominio/toolEsperada e, se possivel, kpiOuro com fonteOuroSql."
+      }
+    },
+    {
+      "pergunta": "Faturamento do CNPJ 63.285.682/0001-46 este ano",
+      "resposta": "Não encontrei o CNPJ 63.285.682/0001-46 cadastrado; por isso, considerei o grupo todo.\n\nNo ano corrente, de 01/01/2026 a 11/06/2026, a receita externa real do grupo foi **R$ 81.911.138,05**. Já descontadas **R$ 59.923.240,79** em vendas entre empresas do grupo (**42,2%**), sobre uma receita individual de **R$ 141.834.378,84**. Foram **2.255 notas externas**.",
+      "conversationIds": [
+        "22f5a085-a716-4da0-8a23-98e7aaa77d59"
+      ],
+      "origens": [
+        "validador_retry"
+      ],
+      "motivos": [
+        "validador_retry: retry V2"
+      ],
+      "casoGolden": {
+        "id": "flywheel-faturamento-do-cnpj-63-285-682-0001-46-e",
+        "pergunta": "Faturamento do CNPJ 63.285.682/0001-46 este ano",
+        "dominio": "?",
+        "classe": "prosseguir",
+        "toolEsperada": "?",
+        "esperaNaResposta": [],
+        "observacao": "Candidato do flywheel (2026-06-11): falha real de producao. REVISAR: preencher dominio/toolEsperada e, se possivel, kpiOuro com fonteOuroSql."
+      }
+    },
+    {
+      "pergunta": "Faturamento de venda por CNPJ este ano",
+      "resposta": "No período de **01/01/2026 a 11/06/2026**, considerei o **CNPJ raiz** e vendas **fora do grupo**. \n**Total externo:** **R$ 81.911.138,05** \n**Intragrupo:** **R$ 59.923.240,79** \nEncontrei **825 CNPJs**. Abaixo estão os **10 maiores**:\n\n1. **Corpo e Saude Aguas Claras Ltda [63.285.682/0001-46]** — **R$ 7.617.349,38** — **91** pedidos\n2. **Smartfit Escola de Ginastica e DANCa S. a [07.594.978/0437-30]** — **R$ 2.006.402,00** — **3** pedidos\n3. **SMF SÃO LOURENÇO DA MATA - ACADEMIA SAUDE SAO LOURENCO LTDA [63.618.627/0001-20]** — **R$ 1.523.593,00** — **2** pedidos\n4. **CK ACADEMIA FITNESS.COM LT",
+      "conversationIds": [
+        "01bcda72-503c-46ac-92f9-54e1783fb27e"
+      ],
+      "origens": [
+        "quality_eval"
+      ],
+      "motivos": [
+        "quality_eval: PARCIAL: totais batem (externo R$ 81.911.138,05 e intragrupo R$ 59.923.240,79) e do 2o ao 10o cliente os valores sao identicos ao rerun (Smartfit 0437 R$ 2.006.402, SMF Sao Lourenco R$ 1.523.593...), mas o TOP"
+      ],
+      "casoGolden": {
+        "id": "flywheel-faturamento-de-venda-por-cnpj-este-ano",
+        "pergunta": "Faturamento de venda por CNPJ este ano",
+        "dominio": "?",
+        "classe": "prosseguir",
+        "toolEsperada": "?",
+        "esperaNaResposta": [],
+        "observacao": "Candidato do flywheel (2026-06-11): falha real de producao. REVISAR: preencher dominio/toolEsperada e, se possivel, kpiOuro com fonteOuroSql."
+      }
+    },
+    {
+      "pergunta": "esse numero esta errado, sao 15 filiais",
+      "resposta": "Neste cadastro de empresas do grupo, o total é **6 filiais** e **0 matrizes**.\n\nAs filiais listadas são:\n- **Cs Comércio** — **35.156.509/0002-93** — **BA**\n- **Jht SP Comércio** — **34.161.829/0007-83** — **BA**\n- **Jds Comércio** — **18.282.961/0004-44** — **SE**\n- **Jht DF Comércio** — **10.557.556/0003-07** — **SE**\n- **Jht SP Comércio** — **34.161.829/0004-30** — **SE**\n- **Jds Comércio** — **18.282.961/0003-63** — **SP**\n\nSe você está contando **15**, isso deve ser outro critério de unidade que não entra neste cadastro.",
+      "conversationIds": [
+        "4ec7f6ca-3028-4fa4-983c-24129ad3eca3"
+      ],
+      "origens": [
+        "quality_eval"
+      ],
+      "motivos": [
+        "quality_eval: PARCIAL: rerun real com tipo:filial da 6 filiais (numero correto e listado); porem diante da contestacao 'sao 15' o agente nao reconsultou com tipo:todas (que traria as 9 matrizes), apenas insinuou 'outro crit"
+      ],
+      "casoGolden": {
+        "id": "flywheel-esse-numero-esta-errado-sao-15-filiais",
+        "pergunta": "esse numero esta errado, sao 15 filiais",
+        "dominio": "?",
+        "classe": "prosseguir",
+        "toolEsperada": "?",
+        "esperaNaResposta": [],
+        "observacao": "Candidato do flywheel (2026-06-11): falha real de producao. REVISAR: preencher dominio/toolEsperada e, se possivel, kpiOuro com fonteOuroSql."
+      }
+    },
+    {
+      "pergunta": "Pq não aparecem essas empresas ?\nJht SP Comércio - Filial MG 34.161.829/0005-11\nJht SP Comércio - Filial MG 34.161.829/0005-11 34.161.829/00\nJht SP Comércio - Filial CE 34.161.829/0006-00",
+      "resposta": "0 matriz(es) + 6 filial(is) = 6 empresas do grupo. Listando 6.\n\n- Cs Comércio — 35.156.509/0002-93 — BA\n- Jht SP Comércio — 34.161.829/0007-83 — BA\n- Jds Comércio — 18.282.961/0004-44 — SE\n- Jht DF Comércio — 10.557.556/0003-07 — SE\n- Jht SP Comércio — 34.161.829/0004-30 — SE\n- Jds Comércio — 18.282.961/0003-63 — SP",
+      "conversationIds": [
+        "f07e9e04-6e5c-452a-ba1d-f23a0a7b987c"
+      ],
+      "origens": [
+        "quality_eval"
+      ],
+      "motivos": [
+        "quality_eval: PARCIAL: Mesma situacao do 493aafda: re-executei e o cache tem so 6 filiais ativas. O usuario perguntou por que as filiais MG (34.161.829/0005-11) e CE (0006-00) nao aparecem, e o agente apenas re-listou as 6 "
+      ],
+      "casoGolden": {
+        "id": "flywheel-pq-nao-aparecem-essas-empresas-jht-sp-co",
+        "pergunta": "Pq não aparecem essas empresas ?\nJht SP Comércio - Filial MG 34.161.829/0005-11\nJht SP Comércio - Filial MG 34.161.829/0005-11 34.161.829/00\nJht SP Comércio - Filial CE 34.161.829/0006-00",
+        "dominio": "?",
+        "classe": "prosseguir",
+        "toolEsperada": "?",
+        "esperaNaResposta": [],
+        "observacao": "Candidato do flywheel (2026-06-11): falha real de producao. REVISAR: preencher dominio/toolEsperada e, se possivel, kpiOuro com fonteOuroSql."
+      }
+    },
+    {
+      "pergunta": "Essas são as filiais, faltaram 3. Pq?\nJht DF Comércio - Filial SE 10.557.556/0003-07\nJds Comércio - Filial SP 18.282.961/0003-63\nJds Comércio - Filial SE 18.282.961/0004-44\nJht SP Comércio - Filial SE 34.161.829/0004-30\nJht SP Comércio - Filial MG 34.161.829/0005-11\nJht SP Comércio - Filial MG 34.161.829/0005-11 34.161.829/00\nJht SP Comércio - Filial CE 34.161.829/0006-00\nJht SP Comércio - Filial BA 34.161.829/0007-83\nCs Comércio - Filial BA 35.156.509/0002-93",
+      "resposta": "0 matriz(es) + 6 filial(is) = 6 empresas do grupo. Listando 6.\n\n- Cs Comércio — 35.156.509/0002-93 — BA\n- Jht SP Comércio — 34.161.829/0007-83 — BA\n- Jds Comércio — 18.282.961/0004-44 — SE\n- Jht DF Comércio — 10.557.556/0003-07 — SE\n- Jht SP Comércio — 34.161.829/0004-30 — SE\n- Jds Comércio — 18.282.961/0003-63 — SP",
+      "conversationIds": [
+        "f07e9e04-6e5c-452a-ba1d-f23a0a7b987c"
+      ],
+      "origens": [
+        "quality_eval"
+      ],
+      "motivos": [
+        "quality_eval: PARCIAL: Re-executei cadastro_filiais_listar (filial): existem mesmo so 6 filiais ativas no cache. O usuario perguntou 'por que faltaram 3' (MG 0005-11, CE 0006-00 etc.), e o agente apenas re-listou as 6 sem e"
+      ],
+      "casoGolden": {
+        "id": "flywheel-essas-sao-as-filiais-faltaram-3-pq-jht-d",
+        "pergunta": "Essas são as filiais, faltaram 3. Pq?\nJht DF Comércio - Filial SE 10.557.556/0003-07\nJds Comércio - Filial SP 18.282.961/0003-63\nJds Comércio - Filial SE 18.282.961/0004-44\nJht SP Comércio - Filial SE 34.161.829/0004-30\nJht SP Comércio - Filial MG 34.161.829/0005-11\nJht SP Comércio - Filial MG 34.161.829/0005-11 34.161.829/00\nJht SP Comércio - Filial CE 34.161.829/0006-00\nJht SP Comércio - Filial BA 34.161.829/0007-83\nCs Comércio - Filial BA 35.156.509/0002-93",
+        "dominio": "?",
+        "classe": "prosseguir",
+        "toolEsperada": "?",
+        "esperaNaResposta": [],
+        "observacao": "Candidato do flywheel (2026-06-11): falha real de producao. REVISAR: preencher dominio/toolEsperada e, se possivel, kpiOuro com fonteOuroSql."
+      }
+    },
+    {
+      "pergunta": "está errado, esses não são os 10 maiores não!",
+      "resposta": "Total vencido a pagar: **R$ 187.328.321,19** em **2.678 títulos**. Desse total, **R$ 3.526.640,20** são confirmados e **R$ 183.801.680,99** estão como provisão.\n\nMaior atraso por participante: **Johnson Indústrial do Brasil Ltda [09‍.197‍.394‍/0001‑94]** com **R$ 170.795.678,17**.",
+      "conversationIds": [
+        "f07e9e04-6e5c-452a-ba1d-f23a0a7b987c"
+      ],
+      "origens": [
+        "quality_eval"
+      ],
+      "motivos": [
+        "quality_eval: PARCIAL: Apos a correcao do usuario, o agente deu o maior por participante (Johnson R$ 170.795.678,17), que confere com o rerun (topPorParticipante). Mas nao entregou os 10 maiores titulos pedidos nem explicou"
+      ],
+      "casoGolden": {
+        "id": "flywheel-esta-errado-esses-nao-sao-os-10-maiores-",
+        "pergunta": "está errado, esses não são os 10 maiores não!",
+        "dominio": "?",
+        "classe": "prosseguir",
+        "toolEsperada": "?",
+        "esperaNaResposta": [],
+        "observacao": "Candidato do flywheel (2026-06-11): falha real de producao. REVISAR: preencher dominio/toolEsperada e, se possivel, kpiOuro com fonteOuroSql."
+      }
+    },
+    {
+      "pergunta": "Quais são os títulos vencidos a pagar?",
+      "resposta": "Total vencido a pagar: **R$ 187.328.321,19** em **2.678 títulos**. Desse total, **R$ 3.526.640,20** são confirmados e **R$ 183.801.680,99** estão como provisão.\n\nMostrando os **10 maiores** da lista retornada:\n- **Fabrifit Ltda** — doc **1-6447-001/2** — venc. **11/12/2025** — **R$ 5.701,50**\n- **Fabrifit Ltda** — doc **1-6447-002/2** — venc. **10/01/2026** — **R$ 5.701,50**\n- **Fabrifit Ltda** — doc **1-6451-001/2** — venc. **11/12/2025** — **R$ 5.538,60**\n- **Fabrifit Ltda** — doc **1-6451-002/2** — venc. **10/01/2026** — **R$ 5.538,60**\n- **Body Art Fitness** — doc **1-5687-001/2** — venc. ",
+      "conversationIds": [
+        "f07e9e04-6e5c-452a-ba1d-f23a0a7b987c"
+      ],
+      "origens": [
+        "quality_eval"
+      ],
+      "motivos": [
+        "quality_eval: PARCIAL: O total vencido bate (rerun: R$ 187.372.502,07 em 2.686 titulos, ~igual aos R$ 187,3mi/2.678 do agente, leve drift de sync). Porem o agente apresentou as primeiras linhas da amostra truncada (titulos "
+      ],
+      "casoGolden": {
+        "id": "flywheel-quais-sao-os-titulos-vencidos-a-pagar",
+        "pergunta": "Quais são os títulos vencidos a pagar?",
+        "dominio": "?",
+        "classe": "prosseguir",
+        "toolEsperada": "?",
+        "esperaNaResposta": [],
+        "observacao": "Candidato do flywheel (2026-06-11): falha real de producao. REVISAR: preencher dominio/toolEsperada e, se possivel, kpiOuro com fonteOuroSql."
+      }
+    },
+    {
+      "pergunta": "Quanto faturamos no mês corrente?",
+      "resposta": "{\"tool\":\"fiscal_faturamento_periodo\",\"arguments\":{\"periodoNome\":\"mes_corrente\"}}\nNão consegui obter essa informação agora.",
+      "conversationIds": [
+        "757ba0e6-a475-465d-8603-565f8020ff6c"
+      ],
+      "origens": [
+        "quality_eval"
+      ],
+      "motivos": [
+        "quality_eval: FALHA_TECNICA: O agente vazou o JSON cru do tool call ({\"tool\":\"fiscal_faturamento_periodo\",\"arguments\":{\"periodoNome\":\"mes_corrente\"}}) no texto e respondeu 'Não consegui obter essa informação agora' (toolCalls per"
+      ],
+      "casoGolden": {
+        "id": "flywheel-quanto-faturamos-no-mes-corrente",
+        "pergunta": "Quanto faturamos no mês corrente?",
+        "dominio": "?",
+        "classe": "prosseguir",
+        "toolEsperada": "?",
+        "esperaNaResposta": [],
+        "observacao": "Candidato do flywheel (2026-06-10): falha real de producao. REVISAR: preencher dominio/toolEsperada e, se possivel, kpiOuro com fonteOuroSql."
+      }
+    }
+  ]
+}

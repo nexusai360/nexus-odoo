@@ -1873,10 +1873,12 @@ const fmtVendasProdutoPorEmpresa: FormatadorCanonico = (env) => {
   if (notas === 0) {
     return `Nao ha vendas de '${produto}' no periodo.`;
   }
-  const cmvStr =
-    cmv > 0
-      ? ` CMV aproximado: ${formatBRL(cmv)} (custo de tabela, nao contabil; cobre ${cobertura.toFixed(0)}% das unidades).`
-      : " Nao ha custo de tabela cadastrado para estimar o CMV.";
+  const implausivel = Number(env._DESTAQUE?.cmvImplausivel ?? 0) === 1;
+  const cmvStr = !(cmv > 0)
+    ? " Nao ha custo cadastrado para estimar o CMV."
+    : implausivel
+      ? ` ATENCAO: o CMV aproximado (${formatBRL(cmv)}) ficou MAIOR que a venda , isso e implausivel em revenda e indica custo de cadastro incorreto na fonte. Nao use este CMV para decisao; vale conferir o cadastro de custo do produto no Odoo.`
+      : ` CMV aproximado: ${formatBRL(cmv)} (custo de cadastro do produto, nao contabil; cobre ${cobertura.toFixed(0)}% das unidades).`;
   return (
     `Vendas de ${produto}: ${qtd.toLocaleString("pt-BR")} unidade(s), ${formatBRL(valor)} ` +
     `em ${notas} nota(s), distribuidas por ${empresas} empresa(s) (detalhe nas linhas).${cmvStr}`
