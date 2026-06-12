@@ -46,6 +46,7 @@ jest.mock("./llm/usage-logger", () => ({
 
 jest.mock("./conversation", () => ({
   loadHistory: jest.fn().mockResolvedValue([]),
+  loadJanelaTurnos: jest.fn().mockResolvedValue({ mensagens: [], digestsAnteriores: [] }),
   persistMessage: jest.fn().mockResolvedValue(undefined),
   persistMessageAndReturnId: jest.fn().mockResolvedValue("msg-mock-id"),
   assertConversationOwned: jest.fn().mockResolvedValue(undefined),

@@ -36,6 +36,7 @@ jest.mock("./llm/get-client", () => ({ buildLlmClient: jest.fn() }));
 jest.mock("./llm/usage-logger", () => ({ logUsage: jest.fn().mockResolvedValue(undefined) }));
 jest.mock("./conversation", () => ({
   loadHistory: jest.fn().mockResolvedValue([]),
+  loadJanelaTurnos: jest.fn().mockResolvedValue({ mensagens: [], digestsAnteriores: [] }),
   persistMessage: jest.fn().mockResolvedValue(undefined),
   persistMessageAndReturnId: jest.fn().mockResolvedValue("msg-mock-id"),
   assertConversationOwned: jest.fn().mockResolvedValue(undefined),

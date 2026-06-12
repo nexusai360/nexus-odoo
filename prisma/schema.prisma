@@ -2595,6 +2595,10 @@ model Message {
   /// (Array<{ name, args, result }>). NULL em mensagens pre-Onda 1 Inteligencia.
   /// Spec: docs/superpowers/specs/2026-05-25-agente-nex-inteligencia-design.md §3.2.
   toolResults     Json?                 @map("tool_results")
+  /// Onda M (Arquitetura 3.0): digest 1-linha-por-call dos toolResults (tool,
+  /// dominio, args-chave, numeros). E o que sobrevive no replay do historico
+  /// quando o payload bruto sai do contexto. Derivado em updateMessageToolResults.
+  toolDigest      String?               @map("tool_digest") @db.Text
   kind            String                @default("text") @map("kind")
   createdAt       DateTime              @default(now()) @map("created_at")
   /// R1 router de catalogo: decisao do router associada a este turno.

@@ -341,6 +341,40 @@ export async function persistAssistantMessageWithTools(
 }
 
 /**
+ * Onda M (Arquitetura 3.0) T2.1: janela de historico por TURNOS com sintese.
+ *
+ * Substitui o caminho loadHistory+sanitizeHistoryPairs no run-agent: carrega
+ * as ultimas mensagens (take generoso), agrupa em turnos e devolve os ultimos
+ * `maxTurnos` sintetizados (digest inline no content; nunca toolCalls orfaos)
+ * + os digests dos turnos anteriores (memoria de numeros antigos da conversa).
+ */
+export async function loadJanelaTurnos(
+  conversationId: string,
+  maxTurnos: number,
+): Promise<import("./memoria/janela-turnos").JanelaTurnos> {
+  const { agruparEmTurnosComSintese } = await import("./memoria/janela-turnos");
+  if (maxTurnos <= 0) return { mensagens: [], digestsAnteriores: [] };
+  const take = Math.min(Math.max(maxTurnos * 6, 30), 120);
+  const messages = await prisma.message.findMany({
+    where: { conversationId },
+    orderBy: { createdAt: "desc" },
+    take,
+    select: { id: true, role: true, content: true, toolCalls: true, toolDigest: true },
+  });
+  messages.reverse();
+  return agruparEmTurnosComSintese(
+    messages.map((m) => ({
+      id: m.id,
+      role: m.role as "user" | "assistant" | "tool" | "system",
+      content: m.content,
+      toolCalls: (m.toolCalls as unknown as ToolCall[] | null) ?? null,
+      toolDigest: m.toolDigest,
+    })),
+    maxTurnos,
+  );
+}
+
+/**
  * Atualiza `Message.toolResults` (`Json?`) com o mapa `{ [callId]: result }`.
  * Idempotente: nao falha se a mensagem nao existir mais (cascade delete).
  *
@@ -349,11 +383,24 @@ export async function persistAssistantMessageWithTools(
 export async function updateMessageToolResults(
   messageId: string,
   results: Record<string, string>,
+  toolCalls?: ToolCall[],
 ): Promise<void> {
   try {
+    // Onda M (Arquitetura 3.0) T1.3: deriva e grava o digest junto com os
+    // resultados , e o que sobrevive no replay quando o payload bruto sai do
+    // contexto. Deterministico e barato; falha de digest nunca bloqueia o turno.
+    let toolDigest: string | null = null;
+    if (toolCalls?.length) {
+      try {
+        const { derivarToolDigest } = await import("./memoria/tool-digest");
+        toolDigest = derivarToolDigest(toolCalls, results);
+      } catch {
+        toolDigest = null;
+      }
+    }
     await prisma.message.update({
       where: { id: messageId },
-      data: { toolResults: results },
+      data: { toolResults: results, ...(toolDigest ? { toolDigest } : {}) },
     });
   } catch (err) {
     // Best-effort: a mensagem pode ter sido deletada (cascade da conversation).

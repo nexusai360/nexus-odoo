@@ -34,7 +34,7 @@ import {
   isExternalToolName,
 } from "./external-mcp";
 import {
-  loadHistory,
+  loadJanelaTurnos,
   persistMessage,
   persistMessageAndReturnId,
   persistAssistantMessageWithTools,
@@ -721,15 +721,19 @@ export async function runAgent(args: RunAgentInput): Promise<RunAgentResult> {
       },
       { isPlayground: Boolean(args.isPlayground) },
     );
-    const rawHistory = await loadHistory(args.conversationId, cw.budget, {
-      includeSystem: cw.includeSystem,
-    });
-    const sanitizedHistory = sanitizeHistoryPairs(rawHistory);
-    const historyMessages: ChatMessage[] = sanitizedHistory.map((m) => ({
-      role: m.role as "user" | "assistant" | "tool",
+    // Onda M (Arquitetura 3.0) T2: janela por TURNOS com sintese textual.
+    // Substitui loadHistory+sanitizeHistoryPairs: o replay nunca carrega
+    // toolCalls orfaos e os digests de turnos antigos viram memoria de
+    // numeros (fontesMemoria , tambem alimenta os validadores, M.6).
+    const janela = await loadJanelaTurnos(args.conversationId, cw.budget);
+    const historyMessages: ChatMessage[] = janela.mensagens.map((m) => ({
+      role: m.role,
       content: m.content,
-      ...(m.toolCalls ? { toolCalls: m.toolCalls as ToolCall[] } : {}),
     }));
+    const fontesMemoria: string[] = [
+      ...janela.digestsAnteriores,
+      ...janela.mensagens.filter((m) => m.role === "assistant").map((m) => m.content),
+    ];
 
     // Persistir mensagem do usuário
     await persistMessage(args.conversationId, "user", args.userMessage, undefined, args.isAudio ? "audio" : undefined);
@@ -741,6 +745,7 @@ export async function runAgent(args: RunAgentInput): Promise<RunAgentResult> {
       historyMessages,
       userMessage: args.userMessage,
       agoraBrt,
+      memoriaConsultas: janela.digestsAnteriores,
     });
 
     const totalUsage: ChatUsage = { tokensInput: 0, tokensOutput: 0, costUsd: 0 };
@@ -1161,6 +1166,7 @@ export async function runAgent(args: RunAgentInput): Promise<RunAgentResult> {
                 question: args.userMessage,
                 llmResponse: message,
                 toolResults: allTurnEnvelopes,
+                fontesMemoria,
               },
               {
                 v1Enabled: settingsRow?.validatorV1Enabled ?? true,
@@ -1519,8 +1525,9 @@ export async function runAgent(args: RunAgentInput): Promise<RunAgentResult> {
 
       // Onda 1 Inteligencia (T1.7): persiste toolResults na Message do
       // assistant que disparou as tools. UPDATE best-effort; nao bloqueia
-      // o turno se falhar.
-      await updateMessageToolResults(assistantMessageId, toolResultsMap);
+      // o turno se falhar. Onda M (Arquitetura 3.0): passa as toolCalls para
+      // derivar o toolDigest (a memoria de longo prazo do turno).
+      await updateMessageToolResults(assistantMessageId, toolResultsMap, result.toolCalls);
 
       // Guardrail factual: acumula todos os results deste turno para
       // checagem antes do persist da mensagem final.
