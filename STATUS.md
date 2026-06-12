@@ -64,7 +64,7 @@
 > APPLY 289.886/84s -> rebuild fato -> invariante DEPOIS R$ 0,00 -> vacuum 988MB. Ancoras: pre-2026=0,
 > faturamento 2026 R$323.052.625,18/3.985 notas, banco 1309MB, sem reimport. Runbook: secao "T10 PROD
 > EXECUTADO". Conversacao garantida na pratica (regra 5c explicar numero + 12-base + drill-down vendedor;
-> bateria multi-turno antes/depois). #101 em merge (item e + fixes conversacionais).
+> bateria multi-turno antes/depois). #101 MERGEADO e deployado (item e + fixes conversacionais).
 > **NEX ESPECIALISTA (2026-06-11 tarde): GOLDEN 99,1% FULL (111/112, kpi-vivo 6/6; era 83,3%).**
 > Golden 135 casos SEM placeholder (67 cov-* reescritos com ids reais) + toolsAceitas nas irmãs + 3 casos
 > follow-up multi-turno (`turnosAntes` no schema + harness ab-cerebro). Fixes de raiz: vocabulário do router
