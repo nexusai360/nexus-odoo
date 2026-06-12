@@ -391,3 +391,17 @@ Cada fase: plano próprio (bite-sized) + 2 reviews quando material → execuçã
   (611 un = R$6.778.839,44; com pecas R$7.303.651,43), zerados omitidos,
   rotulos curtos, periodo herdado, consistencia por empresa. Mini-replay
   confirma UF (100 com UF/21 sem) e esteira (570+11+30=611).
+
+## ARQUITETURA 3.0 , Onda M (memoria) , execucao
+- Pesquisa SOTA (4 docs research/2026-06-12-*) + SPEC v3 (2 reviews adversariais
+  aplicadas, 5 BLOCKERs) + PLAN v3 (reviews inline; workflow stallou).
+- [x] M.1 toolDigest: modulo puro (6 testes), migration add_tool_digest
+  (via migrate deploy manual , migrate dev pede reset, NUNCA aceitar),
+  derivacao em updateMessageToolResults (3o param toolCalls no run-agent:1523),
+  backfill DEV rodado: 4.237 mensagens com digest retroativo (a2eac58).
+- [ ] T0.1 fixture 30 turnos; [ ] M.2 loadHistoryTurnos + sintese textual +
+  montar-conversa + RBAC + context-window por TURNOS; [ ] M.6 fontesMemoria
+  no auto-validator (JUNTO com M.2); [ ] M.3 focoAtual; [ ] M.4 entidades;
+  [ ] M.5 resumoProgressivo; [ ] TF fechamento (golden 171 + bateria 30 turnos
+  + replay a395702f + ship.py + backfill prod).
+- Deploy: SEMPRE ship.py. CI consertado (#104: deploy espera janela 12x5min).
