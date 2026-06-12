@@ -1802,6 +1802,30 @@ const fmtAgingRecebiveis: FormatadorCanonico = (env) => {
   );
 };
 
+// Backlog pos-review (item e): faturamento por vendedor via pedido de origem.
+const fmtFaturamentoPorVendedor: FormatadorCanonico = (env) => {
+  const d = env._DESTAQUE ?? {};
+  const vendedores = Number(d.totalVendedores ?? 0);
+  const comVendedor = Number(d.totalComVendedor ?? 0);
+  const semPedido = Number(d.totalSemPedido ?? 0);
+  const periodo = String(d.periodoLabel ?? "periodo");
+  if (vendedores === 0 && semPedido === 0) {
+    return `Nao ha faturamento de venda no periodo (${periodo}).`;
+  }
+  const top = String(d.topVendedor ?? "");
+  const topStr = top
+    ? ` Lider: ${top} com ${formatBRL(Number(d.valorTopVendedor ?? 0))} em ${Number(d.notasTopVendedor ?? 0)} nota(s).`
+    : "";
+  const semStr =
+    semPedido > 0
+      ? ` Outros ${formatBRL(semPedido)} sao de notas sem pedido vinculado (sem vendedor identificavel).`
+      : "";
+  return (
+    `Faturamento por vendedor (${periodo}): ${formatBRL(comVendedor)} distribuidos ` +
+    `entre ${vendedores} vendedor(es) (ranking nas linhas).${topStr}${semStr}`
+  );
+};
+
 // Cobertura Cliente B4: vendas de produto por empresa com CMV aproximado.
 const fmtVendasProdutoPorEmpresa: FormatadorCanonico = (env) => {
   const produto = String(env._DESTAQUE?.produtoLabel ?? "produto");
@@ -2113,6 +2137,7 @@ const FORMATADORES: Record<string, FormatadorCanonico> = {
   "fiscal_vendas_produto_por_empresa": fmtVendasProdutoPorEmpresa,
   "financeiro_aging_recebiveis": fmtAgingRecebiveis,
   "estoque_cobertura_dias": fmtCoberturaDias,
+  "fiscal_faturamento_por_vendedor": fmtFaturamentoPorVendedor,
   "fiscal_certificados": fmtFiscalCertificados,
   "fiscal_carta_correcao": fmtFiscalCartaCorrecao,
   "fiscal_mdfe_manifestos": fmtMdfeManifestos,

@@ -1560,5 +1560,13 @@
     "pergunta": "Ha quanto tempo o estoque esta parado? Tem item ha mais de 180 dias?",
     "toolEsperada": "estoque_cobertura_dias",
     "observacao": "Backlog pos-review item d. Validado E2E 2026-06-11."
+  },
+  {
+    "id": "deriv-12",
+    "dominio": "fiscal",
+    "classe": "prosseguir",
+    "pergunta": "Qual o faturamento por vendedor este ano? Quem mais vendeu?",
+    "toolEsperada": "fiscal_faturamento_por_vendedor",
+    "observacao": "Backlog pos-review item e. Validado E2E 2026-06-11."
   }
 ]

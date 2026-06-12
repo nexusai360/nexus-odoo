@@ -41,6 +41,8 @@ import { fiscalPonteFaturamento } from "./ponte-faturamento.js";
 import { fiscalMargemAproximada } from "./margem-aproximada.js";
 // F5 (faturamento por regime tributario)
 import { fiscalFaturamentoPorRegime } from "./faturamento-por-regime.js";
+// Backlog pos-review item e (faturamento por vendedor via pedido de origem)
+import { fiscalFaturamentoPorVendedor } from "./faturamento-por-vendedor.js";
 
 export const fiscalTools: ToolEntry[] = [
   fiscalFaturamentoPeriodo as ToolEntry,
@@ -86,4 +88,6 @@ export const fiscalTools: ToolEntry[] = [
   fiscalMargemAproximada as ToolEntry,
   // F5 (faturamento por regime tributario)
   fiscalFaturamentoPorRegime as ToolEntry,
+  // Backlog pos-review item e (faturamento por vendedor via pedido de origem)
+  fiscalFaturamentoPorVendedor as ToolEntry,
 ];

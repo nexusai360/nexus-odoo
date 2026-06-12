@@ -86,6 +86,7 @@ export const TOOL_TRIGGERS: Record<string, string[]> = {
   "fiscal_faturamento_por_marca": ["qual marca de produto teve maior faturamento", "faturamento por marca", "qual marca vende mais", "top marcas em valor faturado"],
   "fiscal_faturamento_por_operacao": ["qual a natureza de operacao mais usada nas vendas", "faturamento por natureza de operacao", "quantas operacoes de devolucao tivemos", "faturamento separando venda de nao-venda"],
   "fiscal_faturamento_por_uf": ["como varia o faturamento por estado", "faturamento por UF", "vendas por regiao do pais", "faturamento por estado do cliente"],
+  "fiscal_faturamento_por_vendedor": ["faturamento por vendedor", "quanto cada vendedor vendeu", "ranking de vendedores por faturamento", "vendas por vendedor no periodo", "qual vendedor mais faturou", "desempenho de vendas por vendedor"],
   "fiscal_demonstracoes": ["faturamento de operacoes de demonstracao", "remessas para demonstracao por uf", "quantas notas de demonstracao emitimos", "equipamentos enviados para demonstracao", "quanto retornou de demonstracao", "demonstracoes por empresa"],
   "fiscal_vendas_produto_por_empresa": ["venda do produto por empresa", "quanto vendemos de esteira por empresa e qual o cmv", "cmv do produto", "vendas e custo da mercadoria vendida por empresa"],
   "fiscal_faturamento_recebido": ["quanto do faturamento ja foi pago", "faturamento recebido versus a receber", "valor faturado que entrou no caixa", "receita paga e em aberto por pedido"],

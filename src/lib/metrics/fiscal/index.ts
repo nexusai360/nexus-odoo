@@ -16,6 +16,7 @@ export { matrizIntercompany } from "./matriz-intercompany";
 // F2.5 (unificacao: serie mensal + por cliente, sobre o core compartilhado)
 export { faturamentoSerieMensal } from "./faturamento-serie-mensal";
 export { faturamentoPorClienteCanon } from "./faturamento-por-cliente-canon";
+export { carregarItensVendaComGrupo } from "./_itens-venda-grupo";
 // F3 (ponte de reconciliacao)
 export { ponteFaturamento } from "./ponte-faturamento";
 // F4 (margem bruta aproximada)
