@@ -2767,14 +2767,15 @@
       "id": "fiscal_faturamento_por_vendedor",
       "operation": "read",
       "module": "fiscal",
-      "descricao": "Faturamento de venda agrupado por vendedor (NF de saida autorizada ligada ao pedido de origem e ao vendedor do pedido), ordenado por valor decrescente. Notas sem pedido vinculado (transferencias, remessas) ficam fora do ranking, somadas a parte. Use para 'faturamento por vendedor', 'quanto cada vendedor vendeu', 'ranking de vendedores', 'vendas do vendedor X'.",
+      "descricao": "Faturamento de venda agrupado por vendedor (NF de saida autorizada ligada ao pedido de origem e ao vendedor do pedido), ordenado por valor decrescente. Notas sem pedido vinculado (transferencias, remessas) ficam fora do ranking, somadas a parte. Passe `vendedor` para o total FATURADO de UM vendedor especifico (com posicao no ranking). Use para 'faturamento por vendedor', 'quanto cada vendedor vendeu', 'ranking de vendedores', 'quanto o vendedor X vendeu/faturou'.",
       "capability": null,
       "sensitive": false,
       "addedInVersion": null,
       "inputSchemaKeys": [
         "periodoDe",
         "periodoAte",
-        "empresaRef"
+        "empresaRef",
+        "vendedor"
       ],
       "inputSchemaFields": [
         {
@@ -2789,6 +2790,11 @@
         },
         {
           "name": "empresaRef",
+          "type": "string",
+          "optional": true
+        },
+        {
+          "name": "vendedor",
           "type": "string",
           "optional": true
         }
@@ -4254,5 +4260,5 @@
     }
   ],
   "count": 121,
-  "generatedAt": "2026-06-12T00:11:49.962Z"
+  "generatedAt": "2026-06-12T01:15:26.834Z"
 }

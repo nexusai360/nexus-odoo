@@ -21,6 +21,8 @@ const inputSchema = z.object({
   periodoAte: z.string().optional(),
   empresaRef: z.string().trim().min(1).optional()
     .describe("Empresa (id, CNPJ ou nome). Sem isso, considera o grupo todo."),
+  vendedor: z.string().trim().min(2).optional()
+    .describe("Filtra UM vendedor pelo nome (busca parcial, sem acento). Retorna o total dele e a posicao no ranking."),
 });
 
 const linhaSchema = z.object({
@@ -37,6 +39,8 @@ const dados = z.object({
   notasSemPedido: z.number().int(),
   totalIntragrupo: z.number(),
   topVendedor: z.string().nullable(),
+  // Drill-down (param vendedor): posicao do vendedor filtrado no ranking geral.
+  posicaoRanking: z.number().int().nullable().optional(),
   periodoLabel: z.string(),
   escopoEmpresa: z.record(z.string(), z.unknown()),
   aviso: z.string(),
@@ -84,9 +88,10 @@ export const fiscalFaturamentoPorVendedor: ToolEntry<Input, Output> = {
   descricao:
     "Faturamento de venda agrupado por vendedor (NF de saida autorizada ligada ao pedido " +
     "de origem e ao vendedor do pedido), ordenado por valor decrescente. Notas sem pedido " +
-    "vinculado (transferencias, remessas) ficam fora do ranking, somadas a parte. Use para " +
-    "'faturamento por vendedor', 'quanto cada vendedor vendeu', 'ranking de vendedores', " +
-    "'vendas do vendedor X'.",
+    "vinculado (transferencias, remessas) ficam fora do ranking, somadas a parte. Passe " +
+    "`vendedor` para o total FATURADO de UM vendedor especifico (com posicao no ranking). " +
+    "Use para 'faturamento por vendedor', 'quanto cada vendedor vendeu', 'ranking de " +
+    "vendedores', 'quanto o vendedor X vendeu/faturou'.",
   inputSchemaShape: inputSchema.shape,
   inputSchema,
   outputSchema,
@@ -123,21 +128,34 @@ export const fiscalFaturamentoPorVendedor: ToolEntry<Input, Output> = {
         if (it.documentoId !== null) acc.notas.add(it.documentoId);
         porVendedor.set(vendedor, acc);
       }
-      const linhas = [...porVendedor.entries()]
+      const ranking = [...porVendedor.entries()]
         .map(([vendedor, acc]) => ({
           vendedor,
           notas: acc.notas.size,
           valorTotal: Math.round(acc.valor * 100) / 100,
         }))
         .sort((a, b) => b.valorTotal - a.valorTotal);
+      // Drill-down: filtro por nome (parcial, sem acento/caixa) preserva o
+      // ranking geral para reportar a posicao do vendedor pedido.
+      const norm = (s: string) =>
+        s.normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase();
+      let linhas = ranking;
+      let posicaoRanking: number | null = null;
+      if (input.vendedor) {
+        const alvo = norm(input.vendedor);
+        const idx = ranking.findIndex((l) => norm(l.vendedor).includes(alvo));
+        linhas = idx >= 0 ? [ranking[idx]] : [];
+        posicaoRanking = idx >= 0 ? idx + 1 : null;
+      }
       return {
         linhas,
-        totalVendedores: linhas.length,
-        totalComVendedor: Math.round(linhas.reduce((a, l) => a + l.valorTotal, 0) * 100) / 100,
+        totalVendedores: ranking.length,
+        totalComVendedor: Math.round(ranking.reduce((a, l) => a + l.valorTotal, 0) * 100) / 100,
         totalSemPedido: Math.round(totalSemPedido * 100) / 100,
         notasSemPedido: notasSemPedido.size,
         totalIntragrupo: Math.round(totalIntragrupo * 100) / 100,
-        topVendedor: linhas[0]?.vendedor ?? null,
+        topVendedor: ranking[0]?.vendedor ?? null,
+        posicaoRanking,
         periodoLabel: per.label,
         escopoEmpresa: escopo.escopo as unknown as Record<string, unknown>,
         ordenadoPor: "valor desc",
@@ -150,7 +168,7 @@ export const fiscalFaturamentoPorVendedor: ToolEntry<Input, Output> = {
     });
     if (envelope.estado === "preparando") return envelope;
     const d = envelope.dados;
-    const top = d.linhas[0];
+    const filtrado = input.vendedor ? d.linhas[0] : undefined;
     return enriquecerEnvelope(envelope, "fiscal_faturamento_por_vendedor", {
       periodo: per,
       destaque: {
@@ -159,9 +177,13 @@ export const fiscalFaturamentoPorVendedor: ToolEntry<Input, Output> = {
         totalSemPedido: d.totalSemPedido,
         notasSemPedido: d.notasSemPedido,
         totalIntragrupo: d.totalIntragrupo,
-        topVendedor: top?.vendedor ?? "",
-        valorTopVendedor: top?.valorTotal ?? 0,
-        notasTopVendedor: top?.notas ?? 0,
+        topVendedor: d.topVendedor ?? "",
+        valorTopVendedor: input.vendedor ? 0 : d.linhas[0]?.valorTotal ?? 0,
+        notasTopVendedor: input.vendedor ? 0 : d.linhas[0]?.notas ?? 0,
+        vendedorFiltrado: filtrado?.vendedor ?? (input.vendedor ? `(nao encontrado: ${input.vendedor})` : ""),
+        valorVendedorFiltrado: filtrado?.valorTotal ?? 0,
+        notasVendedorFiltrado: filtrado?.notas ?? 0,
+        posicaoRanking: d.posicaoRanking ?? 0,
         periodoLabel: d.periodoLabel,
       },
       agregado: { contagem: d.totalVendedores, soma: d.totalComVendedor },

@@ -1812,14 +1812,31 @@ const fmtFaturamentoPorVendedor: FormatadorCanonico = (env) => {
   if (vendedores === 0 && semPedido === 0) {
     return `Nao ha faturamento de venda no periodo (${periodo}).`;
   }
+  const semStr =
+    semPedido > 0
+      ? ` Outros ${formatBRL(semPedido)} sao de notas sem pedido vinculado (transferencias, remessas, faturamento direto), sem vendedor identificavel.`
+      : "";
+  // Drill-down de UM vendedor (param `vendedor`): responde pelo filtrado.
+  const filtrado = String(d.vendedorFiltrado ?? "");
+  if (filtrado && !filtrado.startsWith("(nao encontrado")) {
+    const pos = Number(d.posicaoRanking ?? 0);
+    return (
+      `${filtrado} faturou ${formatBRL(Number(d.valorVendedorFiltrado ?? 0))} em ` +
+      `${Number(d.notasVendedorFiltrado ?? 0)} nota(s) no periodo (${periodo}), ` +
+      `${pos > 0 ? `${pos}º` : "fora"} do ranking de ${vendedores} vendedores ` +
+      `(base: notas de saida autorizadas, receita externa).${semStr}`
+    );
+  }
+  if (filtrado.startsWith("(nao encontrado")) {
+    return (
+      `Nao encontrei esse vendedor no faturamento do periodo (${periodo}). ` +
+      `O ranking tem ${vendedores} vendedores; o lider e ${String(d.topVendedor ?? "")}.`
+    );
+  }
   const top = String(d.topVendedor ?? "");
   const topStr = top
     ? ` Lider: ${top} com ${formatBRL(Number(d.valorTopVendedor ?? 0))} em ${Number(d.notasTopVendedor ?? 0)} nota(s).`
     : "";
-  const semStr =
-    semPedido > 0
-      ? ` Outros ${formatBRL(semPedido)} sao de notas sem pedido vinculado (sem vendedor identificavel).`
-      : "";
   return (
     `Faturamento por vendedor (${periodo}): ${formatBRL(comVendedor)} distribuidos ` +
     `entre ${vendedores} vendedor(es) (ranking nas linhas).${topStr}${semStr}`
