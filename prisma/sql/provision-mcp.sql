@@ -14,12 +14,19 @@
 --     -f prisma/sql/provision-mcp.sql
 -- Ou simplesmente: `npm run db:provision` (ver package.json).
 --
--- Princípio do menor privilégio (RBAC camada 4 — spec §3.6):
---   • nexus_mcp / nexus_mcp_bi: SELECT só em `fato_*` + suporte; INSERT em
---     mcp_audit_log e feature_requests; NUNCA SELECT em mcp_audit_log; NUNCA
---     acesso a `raw_*`; NUNCA UPDATE/DELETE/DDL.
---   • O GRANT SELECT nos fatos é DINÂMICO (loop sobre `fato_*`) — um fato novo
---     é coberto automaticamente no próximo deploy, sem editar este script.
+-- Princípio do menor privilégio (RBAC camada 4 — spec §3.6, revisado 2026-06-12):
+--   • nexus_mcp / nexus_mcp_bi: SELECT em `fato_*`/`dim_*` + suporte + a
+--     ALLOWLIST de `raw_*` (abaixo); INSERT em mcp_audit_log e feature_requests;
+--     NUNCA SELECT em mcp_audit_log; NUNCA UPDATE/DELETE/DDL.
+--   • O GRANT SELECT em fatos/dims é DINÂMICO (loop) — tabela nova é coberta
+--     automaticamente no próximo deploy, sem editar este script.
+--   • RAW ALLOWLIST (lição 2026-06-12, classe de bug C.0 reincidente): este
+--     script roda em TODO boot de prod (db:deploy) DEPOIS do migrate deploy e
+--     fazia REVOKE cego de toda raw_* — apagava os GRANTs das migrations e
+--     quebrava em produção as tools que leem raw legitimamente (cobertura de
+--     estoque, vendedor do pedido, regime, busca de parceiro). Toda migration
+--     nova `grant_raw_*` DEVE adicionar a tabela em `raw_permitidas` abaixo —
+--     o teste mcp/__tests__/provision-raw-allowlist.test.ts trava isso no CI.
 -- =============================================================================
 
 \set ON_ERROR_STOP on
@@ -51,24 +58,41 @@ BEGIN
   END LOOP;
 END $$;
 
--- 3. GRANT SELECT em todos os fatos (DINÂMICO — cobre fatos futuros sozinho)
---    e nas tabelas de suporte. Vale para os dois roles.
+-- 3. GRANT SELECT em todos os fatos e dims (DINÂMICO — cobre futuros sozinho),
+--    nas tabelas de suporte e na ALLOWLIST de raw_*. Vale para os dois roles.
 DO $$
 DECLARE
   rl  TEXT;
   tbl TEXT;
   suporte_mcp    TEXT[] := ARRAY['users', 'user_domain_access', 'sync_state', 'fato_build_state'];
   suporte_bi     TEXT[] := ARRAY['sync_state', 'fato_build_state'];
+  -- raws que tools do MCP leem de propósito (cada uma nasceu numa migration
+  -- grant_raw_*; manter os dois lugares em sincronia — teste trava no CI):
+  raw_permitidas TEXT[] := ARRAY[
+    'raw_res_partner',                      -- 20260611191500 (busca de parceiro/CRM)
+    'raw_estoque_local',                    -- 20260612090000 (árvore de locais/armazém)
+    'raw_sped_empresa',                     -- 20260612093000 (regime tributário)
+    'raw_estoque_saldo_hoje_duracao_dias',  -- 20260612100000 (cobertura/idade do estoque)
+    'raw_sped_documento',                   -- 20260612140000 (NF -> pedido de origem)
+    'raw_pedido_documento'                  -- 20260612140000 (pedido -> vendedor)
+  ];
 BEGIN
   FOREACH rl IN ARRAY ARRAY['nexus_mcp', 'nexus_mcp_bi'] LOOP
-    -- SELECT em todas as tabelas fato_* (exceto fato_build_state, tratada como suporte)
+    -- SELECT em todas as fato_* (exceto fato_build_state, tratada como suporte)
+    -- e em todas as dim_* (derivadas/curadas, mesma classe de leitura dos fatos)
     FOR tbl IN
       SELECT tablename FROM pg_tables
       WHERE schemaname = 'public'
-        AND tablename LIKE 'fato\_%'
+        AND (tablename LIKE 'fato\_%' OR tablename LIKE 'dim\_%')
         AND tablename <> 'fato_build_state'
     LOOP
       EXECUTE format('GRANT SELECT ON TABLE %I TO %I', tbl, rl);
+    END LOOP;
+    -- SELECT nas raws da allowlist (se existirem neste banco)
+    FOREACH tbl IN ARRAY raw_permitidas LOOP
+      IF EXISTS (SELECT 1 FROM pg_tables WHERE schemaname = 'public' AND tablename = tbl) THEN
+        EXECUTE format('GRANT SELECT ON TABLE %I TO %I', tbl, rl);
+      END IF;
     END LOOP;
   END LOOP;
 
@@ -88,14 +112,25 @@ GRANT INSERT ON mcp_audit_log    TO nexus_mcp;
 GRANT INSERT ON feature_requests TO nexus_mcp;
 GRANT INSERT ON mcp_audit_log    TO nexus_mcp_bi;
 
--- 5. Garantia final: nenhum acesso a `raw_*` (dado bruto) para nenhum dos roles.
+-- 5. Garantia final: nenhum acesso a `raw_*` FORA da allowlist (a mesma lista
+--    do passo 3 — manter em sincronia; teste de CI compara as duas seções).
 DO $$
-DECLARE rl TEXT; tbl TEXT;
+DECLARE
+  rl TEXT; tbl TEXT;
+  raw_permitidas TEXT[] := ARRAY[
+    'raw_res_partner',
+    'raw_estoque_local',
+    'raw_sped_empresa',
+    'raw_estoque_saldo_hoje_duracao_dias',
+    'raw_sped_documento',
+    'raw_pedido_documento'
+  ];
 BEGIN
   FOREACH rl IN ARRAY ARRAY['nexus_mcp', 'nexus_mcp_bi'] LOOP
     FOR tbl IN
       SELECT tablename FROM pg_tables
       WHERE schemaname = 'public' AND tablename LIKE 'raw\_%'
+        AND NOT (tablename = ANY (raw_permitidas))
     LOOP
       EXECUTE format('REVOKE ALL ON TABLE %I FROM %I', tbl, rl);
     END LOOP;
