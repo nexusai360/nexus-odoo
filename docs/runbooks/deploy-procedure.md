@@ -40,3 +40,20 @@ Sai com 0 só se deploy E prod estão OK. Variante: `python3 scripts/ship.py --m
 - `git push` (github.com) funciona sempre; o problema é só `api.github.com` , por isso o
   push é normal e o resto vai pelo `ship.py`.
 - Deploy é resiliente: 1 rerun cobre blip. Só investigar o servidor se falhar DEPOIS do rerun.
+
+## Diagnostico definitivo do HTTP 000 (2026-06-12)
+
+Nao e blip, nem Portainer, nem GitHub: a protecao de borda do provedor da VPS
+bloqueia IPs de datacenter (runners Azure/GitHub) em JANELAS de 15-40min , o
+TCP nem conecta (66s = connect-timeout 20 x 3 do curl antigo), e minutos depois
+tudo volta ao normal. Da rede local nunca falha. Por isso retry em segundos
+nunca resolvia e "rerun manual" parecia resolver (o humano demora minutos).
+
+Fix aplicado no build.yml: o job deploy espera a janela abrir , ate 12 rodadas
+calmas (1 tentativa por chamada, sem --retry) com 5min entre elas (~60min).
+Sem email vermelho; o deploy conclui sozinho, as vezes com atraso.
+
+Saida definitiva (quando o usuario criar um PAT ghcr read:packages): deploy
+pull-based na VPS (shepherd p/ swarm) , a VPS se atualiza sozinha e o job
+deploy vira aceleracao opcional. Sem o PAT nao da: as imagens ghcr sao
+privadas e nenhuma credencial de pull existe fora dos secrets do GitHub.
