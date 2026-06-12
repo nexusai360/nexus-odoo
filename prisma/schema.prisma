@@ -2562,6 +2562,7 @@ model Conversation {
   /// entidades/ultimo resultado em foco. Derivada por regra no fim do turno
   /// (src/lib/agent/memoria/foco-atual.ts) e injetada como L4 no prompt.
   focoAtual          Json?                           @map("foco_atual")
+  entidades          ConversationEntity[]
   /// Tags de topico/dominio derivadas das mensagens do usuario na conversa.
   /// Populado pelo job assincrono `agent-topic-tagging` (Onda 1 Inteligencia).
   /// Cap 5 tags. Ex.: ["estoque", "keyword:saldo", "produto:mola_espiral"].
@@ -2588,6 +2589,23 @@ model Conversation {
 }
 
 /// Mensagem de conversa (user, assistant ou tool).
+/// Onda M (Arquitetura 3.0) T4.1: entidades citadas na conversa (anafora por
+/// recencia). Upsert no fim do turno (src/lib/agent/memoria/entidades.ts).
+model ConversationEntity {
+  id             String       @id @default(cuid())
+  conversationId String       @map("conversation_id") @db.Uuid
+  conversation   Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  tipo           String
+  chaveCanonica  String       @map("chave_canonica")
+  rotulo         String
+  ultimoTurno    Int          @map("ultimo_turno")
+  mencoes        Int          @default(1)
+
+  @@unique([conversationId, tipo, chaveCanonica])
+  @@index([conversationId, ultimoTurno])
+  @@map("conversation_entities")
+}
+
 model Message {
   id              String                @id @default(uuid()) @db.Uuid
   conversationId  String                @map("conversation_id") @db.Uuid
