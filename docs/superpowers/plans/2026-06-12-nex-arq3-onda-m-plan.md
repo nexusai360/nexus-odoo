@@ -1,6 +1,6 @@
 # PLAN , Nex Arquitetura 3.0, Onda M (memória)
 
-> **Versão: v1** (aguarda 2 reviews adversariais)
+> **Versão: v3** (2 reviews aplicadas , workflow stallou, auditoria refeita INLINE com verificação dirigida; achados em `2026-06-12-onda-m-reviews-inline.md`)
 > Spec: `specs/2026-06-12-nex-arquitetura-3-design.md` (v3). Research: os 4 docs
 > `research/2026-06-12-*.md`. Nomes REAIS confirmados no schema: `Conversation`
 > (tabela `conversations`, tem `reasoningHistory`, `topicTags`), `Message`
