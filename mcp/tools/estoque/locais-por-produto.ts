@@ -139,11 +139,27 @@ export const estoqueLocaisPorProduto: ToolEntry<Input, Output> = {
       limit,
       envelope.dados.linhas.length,
     );
+    // Onda humanizacao 2026-06-12: agrupamento por categoria de local PRONTO
+    // no destaque. Sem isso o modelo somava "proprio vs demonstracao" de
+    // cabeca e errava (disse 8 em demo quando eram 11 , conversa a395702f).
+    const porCategoria = { proprio: 0, demonstracao: 0, terceiros: 0, outros: 0 };
+    for (const l of envelope.dados.linhas) {
+      const nome = (l.localNome ?? "").toLowerCase();
+      const saldo = Number(l.saldo ?? 0);
+      if (nome.includes("demonstra")) porCategoria.demonstracao += saldo;
+      else if (nome.includes("próprio") || nome.includes("proprio")) porCategoria.proprio += saldo;
+      else if (nome.includes("terceiro")) porCategoria.terceiros += saldo;
+      else porCategoria.outros += saldo;
+    }
     return enriquecerEnvelope(envelope, "estoque_locais_por_produto", {
       destaque: {
         produtoNome: envelope.dados.produtoNome ?? "",
         saldoTotal: envelope.dados.saldoTotal,
         totalLocais: envelope.dados.totalLocais,
+        saldoProprio: porCategoria.proprio,
+        saldoDemonstracao: porCategoria.demonstracao,
+        saldoTerceiros: porCategoria.terceiros,
+        saldoOutros: porCategoria.outros,
       },
       agregado: {
         soma: envelope.dados.saldoTotal,

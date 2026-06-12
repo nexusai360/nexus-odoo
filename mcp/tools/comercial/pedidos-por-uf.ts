@@ -146,9 +146,13 @@ export const comercialPedidosPorUf: ToolEntry<Input, Output> = {
     // T-40: top REAL = primeira linha com uf preenchida
     const topReal = d.linhas.find((l) => l.uf !== null) ?? d.linhas[0];
     const semUfLinha = d.linhas.find((l) => l.uf === null);
-    const semUfNota = semUfLinha
-      ? ` + ${semUfLinha.quantidade} sem UF`
-      : "";
+    const pedidosSemUf = semUfLinha?.quantidade ?? 0;
+    const pedidosComUf = d.totalPedidos - pedidosSemUf;
+    // Frase sem ambiguidade: o total GERAL inclui os sem-UF; dizer a quebra
+    // explicita evita o "121 em 15 UFs + 21 sem UF" que soa como 142.
+    const semUfNota = pedidosSemUf > 0
+      ? `: ${pedidosComUf} com UF informada (${d.totalUfs} estados) e ${pedidosSemUf} sem UF`
+      : ` em ${d.totalUfs} estados`;
     const fmt = (n: number) =>
       n.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
     return {
@@ -156,10 +160,12 @@ export const comercialPedidosPorUf: ToolEntry<Input, Output> = {
       dados: {
         ...d,
         _RESPOSTA: topReal
-          ? `Pedidos por UF: ${d.totalPedidos} pedidos (${fmt(d.totalGeral)}) em ${d.totalUfs} UFs${semUfNota}. Top: ${topReal.uf ?? "(sem UF)"} com ${topReal.quantidade} pedidos (${fmt(topReal.valorTotal)}).`
+          ? `${d.totalPedidos} pedidos no total (${fmt(d.totalGeral)})${semUfNota}. Estado que mais compra: ${topReal.uf ?? "(sem UF)"}, ${topReal.quantidade} pedidos (${fmt(topReal.valorTotal)}).`
           : "Nao ha pedidos no periodo.",
         _DESTAQUE: {
           totalPedidos: d.totalPedidos,
+          pedidosComUf,
+          pedidosSemUf,
           totalGeral: d.totalGeral,
           totalUfs: d.totalUfs,
           topUf: topReal?.uf ?? "",

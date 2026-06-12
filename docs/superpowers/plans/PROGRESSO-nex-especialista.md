@@ -371,3 +371,23 @@ Cada fase: plano próprio (bite-sized) + 2 reviews quando material → execuçã
 - Ancoras pos: pre-2026=0, faturamento 2026 R$323.052.625,18/3.985 notas,
   sped 49.959->10.075, banco 1309MB. Sem reimport (filtro ativo desde #99).
 - Doc completo: docs/runbooks/limpa-2026.md (secao "T10 PROD EXECUTADO").
+
+## Onda HUMANIZACAO 2026-06-12 (pericia da conversa real a395702f)
+- Pericia: numeros das tools 100% corretos (zero alucinacao); problemas eram
+  de CONVERSACAO e 1 de consistencia de base.
+- FIX 1 consistencia: faturamento_por_empresa migrado para a base canonica
+  (carregarItensVendaComGrupo); total fecha AO CENTAVO com faturamento_periodo
+  (R$9.737.728,54 jun) , antes davam 2 numeros diferentes (10.010.579,32).
+- FIX 2 prompt 2.2: regra 5 reescrita (fatos exatos, texto do modelo; proibido
+  tom de sistema), 12-ana (anafora), 12-per (periodo declarado E herdado como
+  parametro), 12-zero (omite zerados + encurta rotulos).
+- FIX 3 V5 do auto-validator: removido overlap textual (forcava colar texto
+  robotico); protecao mantida por NUMEROS (V5b).
+- FIX 4 formatadores: saldo_produto (produto principal no destaque p/ anafora
+  + frase natural), pedidos_por_uf (quebra com/sem UF sem ambiguidade),
+  locais_por_produto (saldo por categoria pronto: proprio/demo/terceiros).
+- Golden 171 (followup-04 anafora multi-turno). Jest 2940 verdes.
+- REPLAY da conversa original (10 perguntas, multi-turno): anafora correta
+  (611 un = R$6.778.839,44; com pecas R$7.303.651,43), zerados omitidos,
+  rotulos curtos, periodo herdado, consistencia por empresa. Mini-replay
+  confirma UF (100 com UF/21 sem) e esteira (570+11+30=611).

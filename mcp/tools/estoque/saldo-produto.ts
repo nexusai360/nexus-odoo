@@ -216,11 +216,21 @@ export const estoqueSaldoProduto: ToolEntry<Input, Output> = {
     );
     envelope.dados.linhas = envelope.dados.linhas.slice(offset, offset + limit);
 
+    // Onda humanizacao 2026-06-12: o produto principal (maior valor) entra no
+    // destaque para o agente responder anafora ("tudo isso vale quanto?")
+    // sobre O produto da conversa, nao sobre o agregado termo+pecas.
+    const principal = topMaiores.length
+      ? [...topMaiores].sort((a, b) => b.valor - a.valor)[0]
+      : undefined;
     const enriched = enriquecerEnvelope(envelope, "estoque_saldo_produto", {
       destaque: {
         totalProdutos: k.totalProdutos,
         valorTotal: k.valorTotal,
         produtosNegativos: k.produtosNegativos,
+        termo: input.termo ?? "",
+        produtoPrincipal: principal?.nome ?? "",
+        saldoPrincipal: principal?.saldo ?? 0,
+        valorPrincipal: principal?.valor ?? 0,
       },
       agregado: {
         contagem: k.totalProdutos,

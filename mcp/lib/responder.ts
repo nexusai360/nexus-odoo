@@ -76,12 +76,26 @@ const fmtSaldoProduto: FormatadorCanonico = (env) => {
   const total = Number(env._DESTAQUE?.totalProdutos ?? 0);
   const valor = Number(env._DESTAQUE?.valorTotal ?? 0);
   const neg = Number(env._DESTAQUE?.produtosNegativos ?? 0);
+  const termo = String(env._DESTAQUE?.termo ?? "").trim();
+  const principal = String(env._DESTAQUE?.produtoPrincipal ?? "").trim();
+  const saldoPrincipal = Number(env._DESTAQUE?.saldoPrincipal ?? 0);
+  const valorPrincipal = Number(env._DESTAQUE?.valorPrincipal ?? 0);
   if (total === 0) {
-    return "Nenhum produto encontrado para esse criterio.";
+    return termo
+      ? `Nao encontrei nenhum produto com "${termo}" no nome ou codigo.`
+      : "Nao encontrei produtos para esse criterio.";
   }
+  // Tom de conversa: o item principal primeiro, o agregado como contexto.
+  // Quando o termo casa varios produtos (ex.: esteira + pecas), dizer isso
+  // explicitamente evita o "como assim 7 produtos?" do usuario.
   const partes: string[] = [];
-  partes.push(`${total} produto(s) encontrado(s), valor total ${formatBRL(valor)}.`);
-  if (neg > 0) partes.push(`${neg} com saldo negativo.`);
+  if (total === 1) {
+    partes.push(`${principal || "O produto"}: ${saldoPrincipal.toLocaleString("pt-BR")} unidades em estoque, ${formatBRL(valor)} a custo.`);
+  } else {
+    const escopo = termo ? `"${termo}" casa ${total} produtos no catalogo (o principal e acessorios/pecas)` : `${total} produtos no recorte`;
+    partes.push(`${escopo}. O principal e ${principal}, com ${saldoPrincipal.toLocaleString("pt-BR")} unidades (${formatBRL(valorPrincipal)} a custo); somando tudo, ${formatBRL(valor)}.`);
+  }
+  if (neg > 0) partes.push(`${neg === 1 ? "Um deles esta" : `${neg} deles estao`} com saldo negativo (ajuste ou movimentacao pendente).`);
   return partes.join(" ");
 };
 
@@ -622,10 +636,14 @@ const fmtComercialPedidosPorUf: FormatadorCanonico = (env) => {
   }
 
   const ufLabel = humanizeName(topUf);
+  const semUf = Number(env._DESTAQUE?.pedidosSemUf ?? 0);
+  const comUf = Number(env._DESTAQUE?.pedidosComUf ?? totalPedidos);
+  const quebra = semUf > 0
+    ? `: ${comUf} com UF informada (${totalUfs} estados) e ${semUf} sem UF`
+    : ` em ${totalUfs} estados`;
   return (
-    `Pedidos por UF: ${totalPedidos} pedidos (${formatBRL(totalGeral)}) ` +
-    `em ${totalUfs} UFs. ` +
-    `Estado que mais compra: ${ufLabel} com ${quantidadeTopUf} pedidos (${formatBRL(valorTopUf)}).`
+    `${totalPedidos} pedidos no total (${formatBRL(totalGeral)})${quebra}. ` +
+    `Estado que mais compra: ${ufLabel}, ${quantidadeTopUf} pedidos (${formatBRL(valorTopUf)}).`
   );
 };
 
