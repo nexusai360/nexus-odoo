@@ -330,7 +330,20 @@ e só então reportar. Achados e correções vão para `docs/RADAR.md` quando
 ficarem para depois, mas a regra é resolver na hora sempre que possível.
 **[10] Auditoria final** — `/gsd-code-review` (bugs, segurança, qualidade) + `/gsd-ui-review` (6 pilares visuais, sempre que tocar UI).
 **[11] `/ultrareview`** — só quando o humano disparar. Nunca autonomamente.
-**[12] Deploy assistido** — descrever cada passo; validar com humano no fim, sempre.
+**[12] Deploy assistido — LER `docs/runbooks/deploy-procedure.md` ANTES, SEMPRE.**
+> **REGRA DE RAIZ (2026-06-12).** A PRIMEIRA coisa ao pensar em qualquer deploy
+> é abrir `docs/runbooks/deploy-procedure.md` e seguir o passo a passo de lá.
+> Resumo da rota canônica (detalhes e porquês no runbook):
+> 1. **Mergear:** `python3 scripts/ship.py "titulo"` (espera CI verde +
+>    squash-merge; dispara o build da imagem). Nunca refazer o merge na mão com `gh`.
+> 2. **Deploy de verdade:** `python3 scripts/deploy-portainer.py` (app+mcp+worker),
+>    rodado da máquina local que ALCANÇA a VPS.
+> **Causa raiz já provada:** o job `deploy` do GitHub Actions falha sempre
+> (HTTP 000 — a borda da VPS bloqueia o IP do runner; build da imagem funciona
+> normal). Não é quota nem falta de token. A credencial do ghcr **já está salva
+> no Portainer** (registry id=1), então o redeploy via Portainer puxa a imagem
+> privada sem nenhum PAT. NÃO repetir os becos "quota esgotada" / "precisa de PAT".
+> Validar com humano no fim (`/api/health` == `{"ok":true}`), sempre.
 
 ### Quando fazer spec
 Fazer spec antes do plano quando o requisito é ambíguo, tem múltiplas interpretações, ou toca vários sistemas. Pular quando já é objetivo, bug fix diagnosticado, ou ajuste pontual. Em dúvida: fazer spec.
