@@ -2825,6 +2825,13 @@ model AgentSettings {
   ///   shadow = roda V1-V4, loga retryReason, NÃO retenta
   ///   active = roda V1-V4, dispara 1 retry com hint corretivo se falhar
   /// Default: shadow (seguro). Promover para active após validar FP rate em log.
+  /// Onda O (Arquitetura 3.0): tier T3 , perguntas explicativas/contestacao
+  /// rodam no modelo forte. OFF = sempre mini (rollback). Cascata: reprova do
+  /// validador tambem re-tenta no forte quando a flag esta ativa.
+  tierT3Checkpoint FeatureCheckpoint @default(OFF) @map("tier_t3_checkpoint")
+  /// Modelo forte do T3 (null = default do codigo: gpt-5.4).
+  tierT3Model      String?           @map("tier_t3_model")
+
   autoValidatorMode  String  @default("shadow") @map("auto_validator_mode")
   validatorV1Enabled Boolean @default(true) @map("validator_v1_enabled")
   validatorV2Enabled Boolean @default(true) @map("validator_v2_enabled")

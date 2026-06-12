@@ -435,3 +435,44 @@ Cada fase: plano próprio (bite-sized) + 2 reviews quando material → execuçã
   turnos; (2) Onda O tiers; (3) V-claims; (4) proveniencia; (5) flywheel.
 - T4.1/T4.2 prontos (migration conversation_entities + entidades.ts); T4.3
   (heuristica no contextualize) e M.5 pendentes.
+
+## ONDA M FECHADA 2026-06-12 ~17h45 (sessao de retomada)
+- [x] M.4 completo (8dc4668): T4.2 wire (entidades do TURNO viram
+  ConversationEntity via extrairEntidadesDoTurno , herdadas NAO renovam
+  recencia) + T4.3 heuristica deterministica de anafora no contextualize
+  (router/anafora-heuristica.ts): pronome tipado ("desse produto" -> entidade
+  mais recente do tipo, com concordancia da preposicao), pronome generico
+  (ele/ela -> unica entidade em foco), elipse curta ("e ...?" -> herda metrica/
+  entidades; periodo so se a pergunta nao trouxe outro). resolvida = ZERO LLM;
+  ambigua = nao reformula (regra 12b clarifica); nao-anaforica = CQR LLM.
+  run-agent passa focoAtual + 10 entidades recentes ao reformulateQuestion.
+- [x] M.5 completo (3580fb0): migration manual 20260612193000 (resumo_
+  progressivo/resumo_ate_mensagem_id/resumo_atualizado_em/resumo_dominios em
+  conversations; migrate deploy + schema-changed sinalizado). Funcoes puras em
+  memoria/resumo-progressivo.ts (threshold 8, prompt factual numeros+
+  proveniencia, podeInjetarResumo RBAC). Job BullMQ agent-resumo-conversa
+  (enqueue no fim do turno junto ao tagging; processor em worker/agent-
+  intelligence/resumo-conversa.ts re-resume das mensagens ORIGINAIS, RBAC na
+  fonte: digest de dominio revogado exclui a mensagem; grava os 4 campos).
+  Injecao L2 no montar-conversa (entre system e memoria) + fontesMemoria
+  (validador memory-aware). Dominio revogado -> nao injeta + re-enfileira lazy.
+- [x] T0.2 (ffa782b): expectativasPorTurno no ab-cerebro (assercao na resposta
+  de turnos intermediarios) + --file para baterias dedicadas + memoriaPorTurno
+  no resumo do harness.
+- [x] BATERIA E2E memoria-30-turnos VERDE (ffa782b): 30 turnos reais na mesma
+  conversa (evals/golden/memoria-30-turnos.json). M1: turno 30 respondeu o
+  saldo EXATO do produto 1464 consultado no turno 3 (kpi AO VIVO, 776). M2:
+  anafora t2 (maio), t21 (receber), t28/t29 (1464) , memoriaPorTurno 1/1.
+  Zero alucinacao. Custo US$0,25, 8,2min. Detalhe: research/ab-cerebro/.
+- [x] E2E real do resumo M.5: processor real na conversa da bateria gerou
+  resumo factual com numeros exatos + proveniencia por tool, 6 dominios,
+  cursor e timestamp gravados.
+- TF.3 (replay a395702f): considerado coberto pela bateria 30 turnos (mais
+  exigente) + suite 2994 verdes , economia do teto OpenAI (~7,47/8 gasto).
+- Suite 2.994 verdes; tsc limpo. Commits: 8dc4668, 3580fb0, ffa782b.
+- SHIP REPRESADO: push feito, mas quota Actions segue esgotada (nenhum run
+  novo desde 14:44 UTC; push nao cria run; sem GHCR_PULL_TOKEN em
+  ../../.env.production). PR #107 aberto acumulando a onda. ship.py abortaria
+  no wait_ci , rodar quando a quota voltar.
+- SEGUINDO: Onda O (tiers + cascata), Onda P (V-claims), proveniencia
+  declarada, flywheel manual , nesta ordem, na mesma branch.

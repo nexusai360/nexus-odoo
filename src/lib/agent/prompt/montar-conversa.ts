@@ -31,6 +31,11 @@ export interface MontarConversaArgs {
    * e a memoria de consultas. O caller ja aplicou o RBAC (podeInjetarResumo).
    */
   resumoConversa?: string;
+  /**
+   * Onda O (T2-lite): instrucao de decomposicao para pergunta composta.
+   * Entra no item de data (volatil, fim do prompt , nao quebra o cache).
+   */
+  instrucaoTier?: string;
 }
 
 /** Monta a conversa inicial: system estavel + historico + item de data + pergunta. */
@@ -40,7 +45,8 @@ export function montarConversa(args: MontarConversaArgs): { conversation: ChatMe
     content:
       `[Contexto] Data atual (America/Sao_Paulo, UTC-3): ${args.agoraBrt}. ` +
       `Use SEMPRE esta data para resolver "hoje", "ontem", "amanha", "mes corrente", "essa semana" e "este ano".` +
-      (args.focoAtualTexto ? `\n[Foco da conversa] ${args.focoAtualTexto}` : ""),
+      (args.focoAtualTexto ? `\n[Foco da conversa] ${args.focoAtualTexto}` : "") +
+      (args.instrucaoTier ? `\n${args.instrucaoTier}` : ""),
   };
   // Onda M (M.5): resumo progressivo (L2) , logo apos o system, antes da
   // memoria de consultas. Numeros aqui SAO fonte legitima (fontesMemoria).

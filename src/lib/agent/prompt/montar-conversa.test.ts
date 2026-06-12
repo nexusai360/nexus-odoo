@@ -62,6 +62,19 @@ describe("montarConversa", () => {
     expect(conversation[2].content).toContain("[Memória da conversa]");
   });
 
+  test("Onda O: instrucaoTier entra no item de data (volatil, fim do prompt)", () => {
+    const { conversation } = montarConversa({
+      systemPromptBase: "S",
+      historyMessages: [],
+      userMessage: "compare maio e junho por empresa",
+      agoraBrt: "2026-06-12",
+      instrucaoTier: "[Pergunta composta] Decomponha em subconsultas.",
+    });
+    const dataItem = conversation[conversation.length - 2];
+    expect(dataItem.content).toContain("[Pergunta composta]");
+    expect(dataItem.content).toContain("Data atual");
+  });
+
   test("M.5: sem resumo, nenhum bloco de resumo e injetado", () => {
     const { conversation } = montarConversa({
       systemPromptBase: "S",

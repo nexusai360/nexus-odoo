@@ -324,6 +324,9 @@ async function loadAgentSettings() {
     routerReformCredentialId: row?.routerReformCredentialId ?? null,
     routerReformNPairs: (row?.routerReformNPairs as number | undefined) ?? 5,
     routerEmbeddingModel: row?.routerEmbeddingModel ?? null,
+    // Onda O (Arquitetura 3.0): tier T3 , modelo forte atras de flag.
+    tierT3Checkpoint: (row?.tierT3Checkpoint as string | undefined) ?? "OFF",
+    tierT3Model: (row?.tierT3Model as string | null | undefined) ?? null,
     // F3 (cerebro): retrieval de tool individual. "shadow" (default) loga o top-K
     // mas nao enxuga o catalogo; "active" entrega so o catalogo enxuto ao LLM.
     routerToolRetrieval: (row?.routerToolRetrieval as string | undefined) ?? "shadow",
@@ -435,6 +438,21 @@ export async function runAgent(args: RunAgentInput): Promise<RunAgentResult> {
     // Buscar snippets da KB por similaridade (RAG , onda 7)
     // Se KB estiver habilitada, tenta searchKb; sem embedding → fallback interno do search.
     let kbSnippets: { name: string; extractedText: string }[] = [];
+    // Onda O (Arquitetura 3.0, O.2): classificacao lexical de tier.
+    // T2 = composta (decomposicao + teto maior de iteracoes, T2-lite);
+    // T3 = explicativa/contestacao (modelo forte atras de flag).
+    // llmOverride (backtest/A-B) SEMPRE vence , tier nunca troca o modelo la.
+    const { classificarTier, INSTRUCAO_T2 } = await import("./tiers/classificar-tier");
+    const tier = classificarTier(args.userMessage);
+    const tierT3Active =
+      agentSettings.tierT3Checkpoint === "PRODUCTION" ||
+      (agentSettings.tierT3Checkpoint === "PLAYGROUND" && Boolean(args.isPlayground));
+    const modeloForteT3 = agentSettings.tierT3Model ?? "gpt-5.4";
+    if (tier === "T3" && tierT3Active && !args.llmOverride) {
+      console.log(`[tiers] T3: ${resolvedLlm.model} -> ${modeloForteT3} (explicativa/contestacao)`);
+      resolvedLlm = { ...resolvedLlm, model: modeloForteT3 };
+    }
+
     if (agentSettings.kbEnabled) {
       try {
         kbSnippets = await searchKb(args.userMessage, 5);
@@ -821,6 +839,7 @@ export async function runAgent(args: RunAgentInput): Promise<RunAgentResult> {
       memoriaConsultas: janela.digestsAnteriores,
       focoAtualTexto,
       resumoConversa,
+      instrucaoTier: tier === "T2" ? INSTRUCAO_T2 : undefined,
     });
 
     const totalUsage: ChatUsage = { tokensInput: 0, tokensOutput: 0, costUsd: 0 };
@@ -861,7 +880,9 @@ export async function runAgent(args: RunAgentInput): Promise<RunAgentResult> {
     const allTurnToolCalls: ToolCall[] = [];
     const allTurnToolResultsMap: Record<string, string> = {};
 
-    for (let i = 0; i < MAX_ITERATIONS; i++) {
+    // Onda O (T2-lite): pergunta composta ganha 2 iteracoes extras de tools.
+    const maxIterations = tier === "T2" ? MAX_ITERATIONS + 2 : MAX_ITERATIONS;
+    for (let i = 0; i < maxIterations; i++) {
       const iterStart = Date.now();
 
       // Na iteração final (ou quando não há mais tools esperadas), tenta streamar
@@ -932,7 +953,7 @@ export async function runAgent(args: RunAgentInput): Promise<RunAgentResult> {
         responseChars: result.message.length,
         isPlayground: args.isPlayground,
           errorMessage:
-            i === MAX_ITERATIONS - 1 && (result.toolCalls?.length ?? 0) > 0
+            i === maxIterations - 1 && (result.toolCalls?.length ?? 0) > 0
               ? "max_iterations_exceeded"
               : undefined,
           origin: ORIGENS.LOOP,
@@ -1279,18 +1300,29 @@ export async function runAgent(args: RunAgentInput): Promise<RunAgentResult> {
                         "Mantenha tom, idioma e formato. NAO chame novas tools. NAO peca clarificacao.",
                     },
                   ];
-                  const retryPromise = client.chat({
+                  // Onda O (cascata): a reprova do validador re-tenta no
+                  // modelo FORTE quando a flag T3 esta ativa (paga o forte so
+                  // nos errados). Timeout maior: o forte e mais lento.
+                  const cascataForte =
+                    tierT3Active && !args.llmOverride && client.model !== modeloForteT3;
+                  const retryClient = cascataForte
+                    ? buildLlmClient(resolvedLlm.provider, resolvedLlm.apiKey, modeloForteT3)
+                    : client;
+                  if (cascataForte) {
+                    console.log(`[tiers] cascata: retry do validador em ${modeloForteT3}`);
+                  }
+                  const retryTimeoutMs = cascataForte ? 15000 : 3000;
+                  const retryPromise = retryClient.chat({
                     messages: retryMessages,
                     tools: undefined,
                     temperature: 0,
                     maxTokens: 1024,
                     reasoningEffort: undefined,
                   });
-                  // Timeout 3s para proteger SLA p95
                   const timeoutPromise = new Promise<never>((_, rej) =>
                     setTimeout(
-                      () => rej(new Error("auto-validator retry timeout 3s")),
-                      3000,
+                      () => rej(new Error(`auto-validator retry timeout ${retryTimeoutMs}ms`)),
+                      retryTimeoutMs,
                     ),
                   );
                   const retry = await Promise.race([retryPromise, timeoutPromise]);
@@ -1299,8 +1331,8 @@ export async function runAgent(args: RunAgentInput): Promise<RunAgentResult> {
                       buildUsageArgs(
                         retry,
                         {
-                          provider: client.provider,
-                          model: client.model,
+                          provider: retryClient.provider,
+                          model: retryClient.model,
                           credentialId: resolvedLlm.credentialId ?? undefined,
                           conversationId: args.conversationId,
                           userId: args.userId,
