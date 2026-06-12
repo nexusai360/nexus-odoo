@@ -1,20 +1,20 @@
 // src/lib/agent/memoria/entidades.ts
 // Onda M (Arquitetura 3.0) T4.2 , memoria de entidades da conversa.
 //
-// No fim de cada turno, as entidades citadas (produto, vendedor, empresa,
-// cliente, familia, uf , as mesmas extraidas para o focoAtual) viram upsert
-// em ConversationEntity com recencia (ultimoTurno) e contagem de mencoes.
-// E a base da resolucao de anafora por recencia ("ela", "esse produto").
+// No fim de cada turno, as entidades citadas NESTE turno (produto, vendedor,
+// empresa, cliente, familia, uf , extraidas por extrairEntidadesDoTurno) viram
+// upsert em ConversationEntity com recencia (ultimoTurno) e contagem de
+// mencoes. E a base da resolucao de anafora por recencia ("ela", "esse
+// produto"). Entidades herdadas do foco anterior NAO renovam recencia.
 import type { PrismaClient } from "@/generated/prisma/client";
-import type { FocoAtual } from "./foco-atual";
 
 /** Upsert idempotente das entidades do turno. Nunca lanca (best-effort). */
 export async function upsertEntidadesDoTurno(
   prisma: PrismaClient,
   conversationId: string,
-  foco: FocoAtual,
+  entidades: { tipo: string; rotulo: string }[],
+  turno: number,
 ): Promise<void> {
-  const entidades = foco.entidades ?? [];
   for (const e of entidades) {
     const chave = e.rotulo.trim().toLowerCase();
     if (!chave) continue;
@@ -32,11 +32,11 @@ export async function upsertEntidadesDoTurno(
           tipo: e.tipo,
           chaveCanonica: chave,
           rotulo: e.rotulo,
-          ultimoTurno: foco.turnoAtualizado,
+          ultimoTurno: turno,
         },
         update: {
           rotulo: e.rotulo,
-          ultimoTurno: foco.turnoAtualizado,
+          ultimoTurno: turno,
           mencoes: { increment: 1 },
         },
       });

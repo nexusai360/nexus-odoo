@@ -534,6 +534,33 @@ export async function runAgent(args: RunAgentInput): Promise<RunAgentResult> {
     if (decisaoL1.fallback.triggered && reformActive && agentSettings.routerEnabled) {
       const reformLlm = await resolveReformLlm(agentSettings);
       if (reformLlm) {
+        // T4.3: memoria da conversa p/ a heuristica de anafora (foco atual +
+        // entidades recentes por turno). Best-effort: falha vira null/[].
+        const [focoAnafora, entidadesRecentes] = await Promise.all([
+          Promise.resolve()
+            .then(() =>
+              prisma.conversation.findUnique({
+                where: { id: args.conversationId },
+                select: { focoAtual: true },
+              }),
+            )
+            .then(
+              (c) =>
+                (c?.focoAtual as import("./memoria/foco-atual").FocoAtual | null) ??
+                null,
+            )
+            .catch(() => null),
+          Promise.resolve()
+            .then(() =>
+              prisma.conversationEntity.findMany({
+                where: { conversationId: args.conversationId },
+                orderBy: { ultimoTurno: "desc" },
+                take: 10,
+                select: { tipo: true, rotulo: true, ultimoTurno: true },
+              }),
+            )
+            .catch(() => [] as { tipo: string; rotulo: string; ultimoTurno: number }[]),
+        ]);
         const r = await reformulateQuestion({
           conversationId: args.conversationId ?? null,
           currentQuestion: args.userMessage,
@@ -542,6 +569,8 @@ export async function runAgent(args: RunAgentInput): Promise<RunAgentResult> {
           credentialId: reformLlm.credentialId,
           userId: args.userId,
           isPlayground: args.isPlayground,
+          focoAtual: focoAnafora,
+          entidadesRecentes,
         });
         if (r.reformulated) {
           reformulated = r.reformulated;
@@ -733,7 +762,8 @@ export async function runAgent(args: RunAgentInput): Promise<RunAgentResult> {
     // Onda M (M.3): working memory da conversa (focoAtual) , carregada do banco,
     // injetada como L4 (junto ao item de data, volatil no fim) e fonte legitima
     // de numeros para os validadores.
-    const { formatarFocoAtual, derivarFocoAtual } = await import("./memoria/foco-atual");
+    const { formatarFocoAtual, derivarFocoAtual, extrairEntidadesDoTurno } =
+      await import("./memoria/foco-atual");
     const focoPrev = await Promise.resolve()
       .then(() =>
         prisma.conversation.findUnique({
@@ -1311,6 +1341,15 @@ export async function runAgent(args: RunAgentInput): Promise<RunAgentResult> {
               where: { id: args.conversationId },
               data: { focoAtual: JSON.parse(JSON.stringify(focoNovo)) },
             });
+            // T4.2: entidades citadas NESTE turno viram memoria de recencia
+            // (ConversationEntity) p/ a heuristica de anafora do T4.3.
+            const { upsertEntidadesDoTurno } = await import("./memoria/entidades");
+            await upsertEntidadesDoTurno(
+              prisma,
+              args.conversationId,
+              extrairEntidadesDoTurno(allTurnToolCalls),
+              turnoN,
+            );
           } catch (errFoco) {
             console.warn("[runAgent] focoAtual update falhou:", errFoco);
           }

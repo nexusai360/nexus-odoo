@@ -50,6 +50,21 @@ function headlineDoEnvelope(raw: string): string | undefined {
   return undefined;
 }
 
+/** Entidades citadas nos args das tool calls do turno (mesma extração do foco). */
+export function extrairEntidadesDoTurno(
+  toolCalls: ToolCall[],
+): { tipo: string; rotulo: string }[] {
+  const entidades: { tipo: string; rotulo: string }[] = [];
+  for (const call of toolCalls) {
+    const args = (call.arguments ?? {}) as Record<string, unknown>;
+    for (const [arg, tipo] of Object.entries(ARG_ENTIDADE)) {
+      const v = args[arg];
+      if (typeof v === "string" && v.trim()) entidades.push({ tipo, rotulo: v.trim() });
+    }
+  }
+  return entidades;
+}
+
 export function derivarFocoAtual(prev: FocoAtual | null, turno: TurnoParaFoco): FocoAtual {
   const foco: FocoAtual = {
     metrica: prev?.metrica,
@@ -59,17 +74,13 @@ export function derivarFocoAtual(prev: FocoAtual | null, turno: TurnoParaFoco): 
     turnoAtualizado: turno.turno,
   };
 
-  const entidadesNovas: { tipo: string; rotulo: string }[] = [];
+  const entidadesNovas = extrairEntidadesDoTurno(turno.toolCalls);
   for (const call of turno.toolCalls) {
     foco.metrica = { nome: call.name.replace(/_/g, " "), toolUsada: call.name };
     const args = (call.arguments ?? {}) as Record<string, unknown>;
     const de = args.periodoDe, ate = args.periodoAte;
     if (typeof de === "string" && typeof ate === "string") {
       foco.periodo = { inicio: de, fim: ate };
-    }
-    for (const [arg, tipo] of Object.entries(ARG_ENTIDADE)) {
-      const v = args[arg];
-      if (typeof v === "string" && v.trim()) entidadesNovas.push({ tipo, rotulo: v.trim() });
     }
     const raw = turno.toolResults[call.id];
     if (raw) {
