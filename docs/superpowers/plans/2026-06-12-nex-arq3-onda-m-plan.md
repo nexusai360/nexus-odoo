@@ -39,10 +39,10 @@
   catálogo snapshot `src/lib/mcp-catalog-snapshot.json` por id). Cap 400
   chars. TDD: `tool-digest.test.ts` com casos de faturamento/estoque/vazio/
   null.
-- **T1.3** Persistência: no ponto do `run-agent.ts` onde a mensagem assistant
-  final é gravada com `toolResults`, gravar também `toolDigest` (derivação
-  síncrona). Verificação: teste de integração leve (mock prisma) + E2E dev
-  1 pergunta e SELECT do digest.
+- **T1.3** Persistência: DENTRO de `persistAssistantMessageWithTools`
+  (`conversation.ts:307`, ponto único , o caller run-agent não muda), gravar
+  também `toolDigest` (derivação síncrona). Verificação: teste de integração
+  leve (mock prisma) + E2E dev 1 pergunta e SELECT do digest.
 - **T1.4** `scripts/backfill-tool-digest.ts`: lotes de 500, idempotente
   (`WHERE tool_results IS NOT NULL AND tool_digest IS NULL`), log de
   progresso. Rodar em dev; em prod roda após o ship da onda (via Portainer
@@ -108,8 +108,9 @@
 - **T5.1** `prisma/schema.prisma`: `Conversation.resumoProgressivo String?
   @db.Text`, `resumoAteMensagemId String?`, `resumoAtualizadoEm DateTime?`
   + migration.
-- **T5.2** Job BullMQ `agent-resumo-conversa` (padrão do job
-  `agent-topic-tagging` existente): dispara no fim do turno quando
+- **T5.2** Job assíncrono `agent-resumo-conversa` (padrão REAL do projeto:
+  `src/lib/agent/intelligence/enqueue.ts` + `topic-extractor.ts`, fila do
+  lado do app , NÃO o worker de sync): dispara no fim do turno quando
   (mensagens desde o último resumo) ≥ 8; re-resume SEMPRE das mensagens
   originais (não resumo-de-resumo) com mini, cap 600 tk, conteúdo factual
   com números+proveniência; grava os 3 campos. TDD da função pura de
