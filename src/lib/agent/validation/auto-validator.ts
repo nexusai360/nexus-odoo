@@ -67,6 +67,40 @@ export interface ValidationContext {
   question: string;
   llmResponse: string;
   toolResults: ToolResultLike[];
+  /**
+   * Onda M (Arquitetura 3.0) M.6: fontes de memoria que FORAM injetadas no
+   * prompt deste turno (toolDigests de turnos antigos + respostas assistant
+   * da janela). Numeros presentes aqui sao LEGITIMOS , sem isso o V2
+   * reprovaria qualquer resposta correta baseada em memoria da conversa.
+   */
+  fontesMemoria?: string[];
+}
+
+/**
+ * Valores numericos presentes nas fontes de memoria injetadas. Cobre os dois
+ * formatos que convivem ali: prosa pt-BR das respostas da janela
+ * ("R$ 6.334.712,46") e os toolDigests em formato US ("headlineValor=6334712.46").
+ */
+function valoresDaMemoria(ctx: ValidationContext): number[] {
+  const out: number[] = [];
+  for (const fonte of ctx.fontesMemoria ?? []) {
+    // pt-BR (mesmo parser usado na resposta do LLM)
+    for (const n of extrairNumeros(fonte)) out.push(n.valor);
+    // US decimal dos digests: 6334712.46
+    for (const m of fonte.matchAll(/(?<![\d.,])(\d+\.\d{1,2})(?![\d])/g)) {
+      const v = Number(m[1]);
+      if (!Number.isNaN(v)) out.push(v);
+    }
+  }
+  return out;
+}
+
+function bateComMemoria(valor: number, memoria: number[], tol: number): boolean {
+  for (const m of memoria) {
+    const ref = Math.max(Math.abs(m), 0.01);
+    if (Math.abs(valor - m) <= Math.max(ref * tol, 0.01)) return true;
+  }
+  return false;
 }
 
 export interface ValidationOutcome {
@@ -284,11 +318,14 @@ function validateV2(ctx: ValidationContext): ValidationOutcome | null {
   if (numeros.length === 0) return null;
   // Tolerancia: 0.1% relativa, minimo R$0,01 (separa arredondamento de invencao).
   const TOL = 0.001;
+  // Onda M (M.6): numeros vindos da memoria injetada sao fonte legitima.
+  const memoria = valoresDaMemoria(ctx);
   const suspeitos: NumeroExtraido[] = [];
   for (const num of numeros) {
     if (apareceLiteralEmEnvelope(num.valor, ctx.toolResults, TOL)) continue;
     if (apareceNaPergunta(num.valor, ctx.question)) continue;
     if (bateComCalculoCanonico(num.valor, ctx.toolResults, TOL)) continue;
+    if (bateComMemoria(num.valor, memoria, TOL)) continue;
     suspeitos.push(num);
   }
   if (suspeitos.length === 0) return null;

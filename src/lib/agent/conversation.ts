@@ -341,6 +341,40 @@ export async function persistAssistantMessageWithTools(
 }
 
 /**
+ * Onda M (Arquitetura 3.0) T2.1: janela de historico por TURNOS com sintese.
+ *
+ * Substitui o caminho loadHistory+sanitizeHistoryPairs no run-agent: carrega
+ * as ultimas mensagens (take generoso), agrupa em turnos e devolve os ultimos
+ * `maxTurnos` sintetizados (digest inline no content; nunca toolCalls orfaos)
+ * + os digests dos turnos anteriores (memoria de numeros antigos da conversa).
+ */
+export async function loadJanelaTurnos(
+  conversationId: string,
+  maxTurnos: number,
+): Promise<import("./memoria/janela-turnos").JanelaTurnos> {
+  const { agruparEmTurnosComSintese } = await import("./memoria/janela-turnos");
+  if (maxTurnos <= 0) return { mensagens: [], digestsAnteriores: [] };
+  const take = Math.min(Math.max(maxTurnos * 6, 30), 120);
+  const messages = await prisma.message.findMany({
+    where: { conversationId },
+    orderBy: { createdAt: "desc" },
+    take,
+    select: { id: true, role: true, content: true, toolCalls: true, toolDigest: true },
+  });
+  messages.reverse();
+  return agruparEmTurnosComSintese(
+    messages.map((m) => ({
+      id: m.id,
+      role: m.role as "user" | "assistant" | "tool" | "system",
+      content: m.content,
+      toolCalls: (m.toolCalls as unknown as ToolCall[] | null) ?? null,
+      toolDigest: m.toolDigest,
+    })),
+    maxTurnos,
+  );
+}
+
+/**
  * Atualiza `Message.toolResults` (`Json?`) com o mapa `{ [callId]: result }`.
  * Idempotente: nao falha se a mensagem nao existir mais (cascade delete).
  *

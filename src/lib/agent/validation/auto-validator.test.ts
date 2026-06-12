@@ -370,3 +370,53 @@ describe("validateV9 (gap de fonte)", () => {
     expect(out.ok).toBe(true);
   });
 });
+
+// ---------------------------------------------------------------------------
+// Onda M (Arquitetura 3.0) M.6: validadores memory-aware
+// ---------------------------------------------------------------------------
+describe("V2 memory-aware (fontesMemoria)", () => {
+  const { validateResponse } = jest.requireActual("./auto-validator");
+  it("numero vindo do digest de turno antigo (formato US) e LEGITIMO", () => {
+    const r = validateResponse(
+      {
+        question: "qual era aquele valor do faturamento de junho?",
+        llmResponse: "Como vimos antes, o faturamento de junho foi R$ 6.334.712,46.",
+        toolResults: [],
+        fontesMemoria: [
+          "[fiscal_faturamento_periodo dominio=fiscal] headlineValor=6334712.46 periodoLabel=2026-06",
+        ],
+      },
+      { v1Enabled: true, v2Enabled: true, v3Enabled: false, v4Enabled: false, v5Enabled: false, v8Enabled: false },
+    );
+    expect(r.ok).toBe(true);
+  });
+
+  it("numero vindo da prosa de resposta anterior (pt-BR) e LEGITIMO", () => {
+    const r = validateResponse(
+      {
+        question: "repete o total a pagar?",
+        llmResponse: "O total a pagar em aberto segue em R$ 153.232.144,14.",
+        toolResults: [],
+        fontesMemoria: ["Temos R$ 153.232.144,14 a pagar em aberto (confirmado + provisório)."],
+      },
+      { v1Enabled: true, v2Enabled: true, v3Enabled: false, v4Enabled: false, v5Enabled: false, v8Enabled: false },
+    );
+    expect(r.ok).toBe(true);
+  });
+
+  it("numero INVENTADO segue reprovado mesmo com memoria presente", () => {
+    const r = validateResponse(
+      {
+        question: "qual era o faturamento?",
+        llmResponse: "O faturamento foi R$ 9.999.999,99.",
+        toolResults: [],
+        fontesMemoria: [
+          "[fiscal_faturamento_periodo dominio=fiscal] headlineValor=6334712.46",
+        ],
+      },
+      { v1Enabled: true, v2Enabled: true, v3Enabled: false, v4Enabled: false, v5Enabled: false, v8Enabled: false },
+    );
+    expect(r.ok).toBe(false);
+    expect(r.reason).toBe("V2");
+  });
+});
