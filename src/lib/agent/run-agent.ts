@@ -730,9 +730,24 @@ export async function runAgent(args: RunAgentInput): Promise<RunAgentResult> {
       role: m.role,
       content: m.content,
     }));
+    // Onda M (M.3): working memory da conversa (focoAtual) , carregada do banco,
+    // injetada como L4 (junto ao item de data, volatil no fim) e fonte legitima
+    // de numeros para os validadores.
+    const { formatarFocoAtual, derivarFocoAtual } = await import("./memoria/foco-atual");
+    const focoPrev = await Promise.resolve()
+      .then(() =>
+        prisma.conversation.findUnique({
+          where: { id: args.conversationId },
+          select: { focoAtual: true },
+        }),
+      )
+      .then((c) => (c?.focoAtual as import("./memoria/foco-atual").FocoAtual | null) ?? null)
+      .catch(() => null);
+    const focoAtualTexto = focoPrev ? formatarFocoAtual(focoPrev) : undefined;
     const fontesMemoria: string[] = [
       ...janela.digestsAnteriores,
       ...janela.mensagens.filter((m) => m.role === "assistant").map((m) => m.content),
+      ...(focoAtualTexto ? [focoAtualTexto] : []),
     ];
 
     // Persistir mensagem do usuário
@@ -746,6 +761,7 @@ export async function runAgent(args: RunAgentInput): Promise<RunAgentResult> {
       userMessage: args.userMessage,
       agoraBrt,
       memoriaConsultas: janela.digestsAnteriores,
+      focoAtualTexto,
     });
 
     const totalUsage: ChatUsage = { tokensInput: 0, tokensOutput: 0, costUsd: 0 };
@@ -782,6 +798,9 @@ export async function runAgent(args: RunAgentInput): Promise<RunAgentResult> {
       toolName: string;
       dados?: Record<string, unknown>;
     }> = [];
+    // Onda M (Arquitetura 3.0) M.3: acumuladores p/ derivar o focoAtual no fim.
+    const allTurnToolCalls: ToolCall[] = [];
+    const allTurnToolResultsMap: Record<string, string> = {};
 
     for (let i = 0; i < MAX_ITERATIONS; i++) {
       const iterStart = Date.now();
@@ -1272,6 +1291,31 @@ export async function runAgent(args: RunAgentInput): Promise<RunAgentResult> {
           message,
         );
 
+        // Onda M (M.3): atualizar o focoAtual da conversa. Entra em usageWrites
+        // (aguardado via allSettled antes do return) , nao bloqueia o stream e
+        // nao vaza log pos-teste.
+        usageWrites.push((async () => {
+          try {
+            const turnoN = await prisma.message.count({
+              where: { conversationId: args.conversationId, role: "user" },
+            });
+            const focoNovo = derivarFocoAtual(focoPrev, {
+              pergunta: args.userMessage,
+              toolCalls: allTurnToolCalls,
+              toolResults: allTurnToolResultsMap,
+              respostaFinal: message,
+              messageId: assistantMessageId,
+              turno: turnoN,
+            });
+            await prisma.conversation.update({
+              where: { id: args.conversationId },
+              data: { focoAtual: JSON.parse(JSON.stringify(focoNovo)) },
+            });
+          } catch (errFoco) {
+            console.warn("[runAgent] focoAtual update falhou:", errFoco);
+          }
+        })());
+
         // Onda 3a: trigger fire-and-forget pro sistema /agente/qualidade.
         // Cria row PENDENTE em ConversationQualityEvaluation. Nao bloqueia
         // o retorno pro usuario. Spec: docs/superpowers/specs/2026-05-26-agente-qualidade-design.md §5.4
@@ -1521,6 +1565,8 @@ export async function runAgent(args: RunAgentInput): Promise<RunAgentResult> {
         // Message.toolResults apos o loop. Persiste o SANITIZADO (o que o
         // LLM viu), pra auditoria correta no /agente/qualidade.
         toolResultsMap[tc.id] = sanitized;
+        allTurnToolCalls.push(tc);
+        allTurnToolResultsMap[tc.id] = sanitized;
       }
 
       // Onda 1 Inteligencia (T1.7): persiste toolResults na Message do

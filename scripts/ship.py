@@ -79,13 +79,21 @@ def wait_ci(token: str, sha: str, timeout_s=900) -> bool:
     return False
 
 
-def wait_build_deploy(token: str, timeout_s=1200) -> bool:
-    """Espera o ultimo Build and Push na main concluir e reporta os 3 jobs."""
-    print("[ship] aguardando Build and Push (deploy) na main ...")
+def wait_build_deploy(token: str, timeout_s=1200, head_sha: str | None = None) -> bool:
+    """Espera o Build and Push DO COMMIT mergeado concluir e reporta os 3 jobs.
+
+    2026-06-12: sem o filtro head_sha o ship lia o run ERRADO (o anterior, ja
+    success) e declarava deploy=OK enquanto o run novo nem tinha comecado ,
+    foi assim que o deploy fantasma do #105 passou despercebido.
+    """
+    print(f"[ship] aguardando Build and Push (deploy) na main {('sha '+head_sha[:9]) if head_sha else ''}...")
     t0 = time.time()
     run_id = None
     while time.time() - t0 < timeout_s:
-        _, runs = api("GET", f"/repos/{REPO}/actions/workflows/build.yml/runs?branch=main&per_page=1", token)
+        q = f"/repos/{REPO}/actions/workflows/build.yml/runs?branch=main&per_page=5"
+        if head_sha:
+            q += f"&head_sha={head_sha}"
+        _, runs = api("GET", q, token)
         wr = runs.get("workflow_runs", [])
         if not wr:
             time.sleep(10); continue
@@ -100,14 +108,17 @@ def wait_build_deploy(token: str, timeout_s=1200) -> bool:
     return False
 
 
-def rerun_failed(token: str):
-    _, runs = api("GET", f"/repos/{REPO}/actions/workflows/build.yml/runs?branch=main&per_page=1", token)
+def rerun_failed(token: str, head_sha: str | None = None):
+    q = f"/repos/{REPO}/actions/workflows/build.yml/runs?branch=main&per_page=5"
+    if head_sha:
+        q += f"&head_sha={head_sha}"
+    _, runs = api("GET", q, token)
     wr = runs.get("workflow_runs", [])
     if wr:
         rid = wr[0]["id"]
         print(f"[ship] deploy falhou (provavel blip); rerun 1x do run {rid} ...")
         api("POST", f"/repos/{REPO}/actions/runs/{rid}/rerun-failed-jobs", token)
-        return wait_build_deploy(token)
+        return wait_build_deploy(token, head_sha=head_sha)
     return False
 
 
@@ -143,12 +154,13 @@ def main():
     # merge
     st, d = api("PUT", f"/repos/{REPO}/pulls/{num}/merge", token, {"merge_method": "squash"})
     print(f"[ship] merge #{num}: {st} merged={d.get('merged')} {d.get('message','')}")
+    merge_sha = d.get("sha")
     if not d.get("merged") and "already merged" not in str(d.get("message", "")).lower():
         sys.exit(1)
     # deploy
-    ok = wait_build_deploy(token)
+    ok = wait_build_deploy(token, head_sha=merge_sha)
     if not ok:
-        ok = rerun_failed(token)
+        ok = rerun_failed(token, head_sha=merge_sha)
     # verify
     time.sleep(25)
     prod = verify_prod()

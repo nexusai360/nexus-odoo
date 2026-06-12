@@ -2558,6 +2558,10 @@ model Conversation {
   /// OpenRouter reasoning_details, OpenAI reasoning items). Array crescente,
   /// capado em 20 iteracoes ou 50KB serialized. Cada item: { provider, data }.
   reasoningHistory   Json                            @default("[]") @map("reasoning_history")
+  /// Onda M (Arquitetura 3.0): working memory estruturada , metrica/periodo/
+  /// entidades/ultimo resultado em foco. Derivada por regra no fim do turno
+  /// (src/lib/agent/memoria/foco-atual.ts) e injetada como L4 no prompt.
+  focoAtual          Json?                           @map("foco_atual")
   /// Tags de topico/dominio derivadas das mensagens do usuario na conversa.
   /// Populado pelo job assincrono `agent-topic-tagging` (Onda 1 Inteligencia).
   /// Cap 5 tags. Ex.: ["estoque", "keyword:saldo", "produto:mola_espiral"].
