@@ -1568,5 +1568,19 @@
     "pergunta": "Qual o faturamento por vendedor este ano? Quem mais vendeu?",
     "toolEsperada": "fiscal_faturamento_por_vendedor",
     "observacao": "Backlog pos-review item e. Validado E2E 2026-06-11."
+  },
+  {
+    "id": "followup-04",
+    "dominio": "estoque",
+    "classe": "prosseguir",
+    "turnosAntes": [
+      "Quanto temos em estoque da esteira T600X?"
+    ],
+    "pergunta": "E tudo isso representa quanto em valor de patrimônio?",
+    "toolEsperada": "estoque_saldo_produto",
+    "observacao": "Anafora (regra 12-ana, onda humanizacao 2026-06-12): 'tudo isso' = o produto do turno anterior; a resposta deve usar o valor do produto PRINCIPAL (destaque valorPrincipal), nao o agregado termo+pecas sem aviso.",
+    "toolsAceitas": [
+      "estoque_locais_por_produto"
+    ]
   }
 ]

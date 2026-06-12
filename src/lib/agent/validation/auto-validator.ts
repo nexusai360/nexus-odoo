@@ -499,7 +499,7 @@ function validateV5(ctx: ValidationContext): ValidationOutcome | null {
     const numsLLM = new Set(extrairNumerosRelevantes(ctx.llmResponse).map(normNum));
     const algumAparece = numsCurados.some((n) => numsLLM.has(n));
     if (!algumAparece) {
-      const baseHint = `O campo _RESPOSTA da tool trouxe os numeros prontos ("${curada.resposta}"), mas voce nao citou nenhum deles. Use o texto curado como base e mantenha os numeros exatamente como vieram.`;
+      const baseHint = `Os dados da tool trazem os numeros prontos ("${curada.resposta}"), mas voce nao citou nenhum deles. Reescreva a resposta com as suas palavras, em tom natural de conversa, citando os numeros principais EXATAMENTE como vieram (valores, contagens, nomes).`;
       return {
         ok: false,
         reason: "V5",
@@ -509,21 +509,12 @@ function validateV5(ctx: ValidationContext): ValidationOutcome | null {
     }
   }
 
-  // V5 original: overlap textual baixo (LLM ignorou completamente o texto).
-  const tokensLLM = new Set(tokensSignificativos(ctx.llmResponse));
-  let overlap = 0;
-  for (const t of curada.tokens) {
-    if (tokensLLM.has(t)) overlap++;
-  }
-  const ratio = overlap / curada.tokens.length;
-  if (ratio >= 0.25) return null;
-  const baseHint = `Voce ignorou o campo _RESPOSTA da tool, que ja vinha pronto com a resposta correta. Use o texto curado como base: "${curada.resposta}". Pode adaptar para fluir, mas mantenha numeros, nomes e fatos exatamente como vieram.`;
-  return {
-    ok: false,
-    reason: "V5",
-    hint: ampliarHintComLacuna(baseHint, ctx),
-    detalhe: `V5:ignorou_RESPOSTA:overlap_${Math.round(ratio * 100)}pct`,
-  };
+  // Onda humanizacao 2026-06-12: o check de overlap TEXTUAL foi removido de
+  // proposito. Ele forcava o modelo a colar o texto tecnico do formatador
+  // ("7 produto(s) encontrado(s)...") e era a raiz do tom robotico. A protecao
+  // que importa (nao ignorar o DADO) continua acima, por NUMEROS: se a resposta
+  // cita os numeros da _RESPOSTA, o texto e livre.
+  return null;
 }
 
 // ---------------------------------------------------------------------------
