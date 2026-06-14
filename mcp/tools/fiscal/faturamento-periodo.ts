@@ -75,12 +75,13 @@ export const fiscalFaturamentoPeriodo: ToolEntry<Input, Output> = {
       const ehEmpresa = escopo.empresaId !== undefined;
       const headlineValor = ehEmpresa ? r.receitaIndividualTotal : r.receitaExterna;
       const headlineRotulo = ehEmpresa
-        ? "Faturamento da empresa (inclui vendas intragrupo)"
-        : "Receita externa real (sem intercompany)";
+        ? "Faturamento da empresa"
+        : "Faturamento do grupo";
       const concentrador = r.percentualEliminado > 0.5;
+      // Sem jargao (intercompany/intragrupo): linguagem natural na base de fatos.
       const avisoBase = ehEmpresa
-        ? "Faturamento individual da empresa (inclui vendas para outras empresas do grupo)."
-        : "Receita externa real do grupo: vendas entre empresas do grupo (intercompany) sao eliminadas (CPC 36).";
+        ? "Faturamento total da empresa, incluindo o que ela vendeu para outras empresas do grupo."
+        : "Faturamento real do grupo (vendas para fora); vendas entre empresas do mesmo grupo nao entram, para nao contar duas vezes.";
       return {
         receitaExterna: r.receitaExterna,
         receitaIndividual: r.receitaIndividualTotal,

@@ -126,6 +126,31 @@ desativado/encurtado para não gastar 30-60 min penando a cada merge.
 
 ---
 
+## INCIDENTE 2026-06-12 (deploy das ondas M/O/P) , lição obrigatória
+
+O primeiro deploy via Portainer recriou `app`+`mcp`+`worker` **ao mesmo tempo**.
+O pico de memória derrubou o Postgres: o container do `db` tem teto de **1GB**
+e vive num nó compartilhado com ~79 containers; a memória anônima estourou 1GB,
+o OOM killer atingiu o Postgres e o cluster entrou em **crash recovery**. O
+recovery durou ~30min (lento, mas completou sozinho) e tudo voltou , as
+migrations M/O/P aplicaram, `pg_is_in_recovery()=f`, RSS real do db = ~93MB
+(o resto é page cache reclaimável, normal). Nenhum dado perdido.
+
+Regras que saíram disso (já refletidas no `deploy-portainer.py`):
+1. **Rolling, UM serviço por vez** (worker→mcp→app) com pausa, nunca os três
+   juntos , mantém o pico de memória baixo. O script já faz isso.
+2. **NUNCA reiniciar o `db` durante recovery** , recomeça o replay do zero.
+   Esperar; o recovery do Postgres é automático e completa.
+3. **Diagnóstico sem conectar:** `pg_controldata` (estado do cluster , mas
+   "in production" ali é o último estado ANTES do crash, não prova fim do
+   recovery), processos via `/proc/*/cmdline` (se há `checkpointer`/`walwriter`/
+   `autovacuum launcher` rodando, o recovery TERMINOU), e `memory.stat` do
+   cgroup (anon=RSS real perigoso; file=cache reclaimável, ok). `df` rápido +
+   `psql` pendurado = banco ainda em recovery, NÃO disco/IO do nó.
+4. **Pendência de infra (recomendar ao usuário):** o limite de 1GB do serviço
+   `db` é apertado para um banco de ~1.5GB. Subir para 2GB (service update do
+   `db`, fora de horário, recria o container) elimina a margem de OOM em picos.
+
 ## Verificação e rollback
 
 - **Health:** `curl -s https://agentenex.nexusai360.com/api/health` → `{"ok":true}`.

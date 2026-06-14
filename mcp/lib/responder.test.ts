@@ -306,41 +306,71 @@ describe("fmtIntercompany", () => {
 describe("fmtFaturamentoPeriodo (Fase 2.5: headline externa/individual)", () => {
   const fmt = formatadorPorTool("fiscal_faturamento_periodo");
   const base = { _listaTruncada: false, linhas: [], atualizadoEm: "", atualizadoHa: "" };
-  it("grupo: headline = receita externa real, com auditoria do intragrupo", () => {
+  it("grupo: FECHA O ARCO (faturamento real + total + parte interna), sem jargao", () => {
     const txt = fmt({
       ...base,
       _DESTAQUE: {
-        headlineValor: 325000000,
-        headlineRotulo: "Receita externa real (sem intercompany)",
-        receitaExterna: 325000000,
-        receitaIndividual: 543000000,
-        intragrupoEliminavel: 218000000,
-        percentualEliminado: 0.4,
+        headlineValor: 8783795.41,
+        headlineRotulo: "Faturamento do grupo",
+        receitaExterna: 8783795.41,
+        receitaIndividual: 13872439.97,
+        intragrupoEliminavel: 5088644.56,
+        percentualEliminado: 0.367,
+        notasExternas: 462,
         concentrador: 0,
-        periodoLabel: "2025",
+        periodoLabel: "junho de 2026",
       },
     } as never);
-    expect(txt).toContain("Receita externa real");
-    expect(txt).toContain("2025");
-    // Transparencia enxuta (sem o "individual X; intragrupo Y" verboso): so a nota curta.
-    expect(txt).toContain("vendas entre empresas do grupo");
-    expect(txt).not.toContain("Faturamento individual");
+    // numero principal direto + periodo + notas
+    expect(txt).toContain("8.783.795,41");
+    expect(txt).toContain("junho de 2026");
+    expect(txt).toContain("462");
+    // FECHA O ARCO: total e parte interna explicitos, com a relacao clara
+    expect(txt).toContain("13.872.439,97");
+    expect(txt).toContain("5.088.644,56");
+    expect(txt).toContain("vendas entre empresas");
+    // SEM JARGAO
+    expect(txt.toLowerCase()).not.toContain("intercompany");
+    expect(txt.toLowerCase()).not.toContain("intragrupo");
+    expect(txt.toLowerCase()).not.toContain("individual");
   });
-  it("empresa concentradora: marca o aviso de concentrador", () => {
+  it("grupo sem vendas internas: so o numero direto, sem mencao a desconto", () => {
+    const txt = fmt({
+      ...base,
+      _DESTAQUE: {
+        headlineValor: 1000000,
+        headlineRotulo: "Faturamento do grupo",
+        receitaExterna: 1000000,
+        receitaIndividual: 1000000,
+        intragrupoEliminavel: 0,
+        percentualEliminado: 0,
+        notasExternas: 50,
+        concentrador: 0,
+        periodoLabel: "maio de 2026",
+      },
+    } as never);
+    expect(txt).toContain("1.000.000,00");
+    expect(txt).toContain("50");
+    expect(txt.toLowerCase()).not.toContain("entre empresas");
+  });
+  it("empresa concentradora: marca o aviso de concentrador, sem jargao", () => {
     const txt = fmt({
       ...base,
       _DESTAQUE: {
         headlineValor: 229000000,
-        headlineRotulo: "Faturamento da empresa (inclui vendas intragrupo)",
+        headlineRotulo: "Faturamento da empresa",
         receitaExterna: 12000000,
         receitaIndividual: 229000000,
         intragrupoEliminavel: 217000000,
         percentualEliminado: 0.948,
+        notasExternas: 30,
         concentrador: 1,
         periodoLabel: "2025",
       },
     } as never);
-    expect(txt).toContain("concentrador");
+    expect(txt.toLowerCase()).toContain("empresas do");
+    expect(txt.toLowerCase()).not.toContain("intercompany");
+    expect(txt.toLowerCase()).not.toContain("intragrupo");
   });
   it("vazio quando nao ha faturamento", () => {
     const txt = fmt({ ...base, _DESTAQUE: { headlineValor: 0, receitaIndividual: 0, periodoLabel: "2025" } } as never);
