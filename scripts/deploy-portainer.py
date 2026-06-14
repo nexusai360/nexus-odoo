@@ -130,33 +130,56 @@ def list_services(base, token, ep):
     return {s["Spec"]["Name"]: s for s in svcs}
 
 
-def force_update(base, token, ep, svc, reg_id):
-    name = svc["Spec"]["Name"]
-    version = svc["Version"]["Index"]
-    spec = svc["Spec"]
-    tmpl = spec["TaskTemplate"]
-    cspec = tmpl["ContainerSpec"]
-    image = cspec.get("Image", "")
-    # Garante tag :latest sem digest pinado, p/ o swarm resolver o digest novo.
-    base_img = image.split("@")[0]
-    if ":" not in base_img.split("/")[-1]:
-        base_img += ":latest"
-    cspec["Image"] = base_img
-    tmpl["ForceUpdate"] = int(tmpl.get("ForceUpdate", 0)) + 1
-    qs = f"?version={version}"
-    if reg_id is not None:
-        qs += f"&registryId={reg_id}"
-    st, resp = api(
-        "POST",
-        base,
-        f"/api/endpoints/{ep}/docker/services/{svc['ID']}/update{qs}",
-        token,
-        body=spec,
-        timeout=60,
-    )
-    ok = st in (200, 201)
-    print(f"[deploy] {name}: update HTTP {st} img={base_img} {'OK' if ok else resp}")
-    return ok
+def get_service_fresh(base, token, ep, name):
+    """Re-busca um servico pelo nome (versao FRESCA , evita 'out of sequence'
+    quando o swarm incrementou a versao entre o GET inicial e o POST)."""
+    st, svcs = api("GET", base, f"/api/endpoints/{ep}/docker/services", token)
+    if st != 200:
+        return None
+    for s in svcs:
+        if s["Spec"]["Name"] == name:
+            return s
+    return None
+
+
+def force_update(base, token, ep, name, reg_id, tentativas=3):
+    # Re-busca a versao FRESCA a cada tentativa (o swarm pode ter mexido na spec
+    # logo apos o servico anterior do rolling , causava 'update out of sequence').
+    for tent in range(1, tentativas + 1):
+        svc = get_service_fresh(base, token, ep, name)
+        if svc is None:
+            print(f"[deploy] {name}: servico sumiu da lista")
+            return False
+        version = svc["Version"]["Index"]
+        spec = svc["Spec"]
+        tmpl = spec["TaskTemplate"]
+        cspec = tmpl["ContainerSpec"]
+        image = cspec.get("Image", "")
+        base_img = image.split("@")[0]
+        if ":" not in base_img.split("/")[-1]:
+            base_img += ":latest"
+        cspec["Image"] = base_img
+        tmpl["ForceUpdate"] = int(tmpl.get("ForceUpdate", 0)) + 1
+        qs = f"?version={version}"
+        if reg_id is not None:
+            qs += f"&registryId={reg_id}"
+        st, resp = api(
+            "POST",
+            base,
+            f"/api/endpoints/{ep}/docker/services/{svc['ID']}/update{qs}",
+            token,
+            body=spec,
+            timeout=60,
+        )
+        if st in (200, 201):
+            print(f"[deploy] {name}: update HTTP {st} img={base_img} OK")
+            return True
+        out_of_seq = isinstance(resp, dict) and "out of sequence" in str(resp.get("message", ""))
+        print(f"[deploy] {name}: update HTTP {st} {resp} (tentativa {tent}/{tentativas})")
+        if not out_of_seq:
+            return False
+        time.sleep(4)  # versao mudou; re-busca e tenta de novo
+    return False
 
 
 def wait_converge(base, token, ep, names, timeout_s=240):
@@ -219,7 +242,7 @@ def main():
     # convergir e o no respirar antes do proximo, mantem o pico de memoria baixo.
     all_ok = True
     for i, t in enumerate(targets):
-        if not force_update(base, token, ep, svcs[t], reg_id):
+        if not force_update(base, token, ep, t, reg_id):
             all_ok = False
             break
         print(f"[deploy] {t}: aguardando convergir antes do proximo...")

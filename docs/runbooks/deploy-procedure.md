@@ -1,162 +1,187 @@
-# Deploy do nexus-odoo , PROCEDIMENTO CANÔNICO (ler ANTES de qualquer deploy)
+# Deploy , CAMINHO DAS PEDRAS (ler ANTES de qualquer deploy)
 
-> **REGRA DE RAIZ.** Toda vez que for pensar em deploy/subida pra produção, a
-> PRIMEIRA coisa a fazer é ler este arquivo inteiro. Ele tem as coordenadas
-> corretas: como mergear o PR, como a imagem sobe e como o deploy de fato chega
-> na VPS. Não improvisar, não investigar servidor antes de seguir o passo a
-> passo daqui. Atualizado 2026-06-12 com a causa raiz definitiva e a rota que
-> funciona.
+> **REGRA DE RAIZ.** Ao pensar em deploy, a PRIMEIRA coisa é ler este arquivo.
+> Ele tem o fluxo certo, por que cada peça existe, e como montar tudo do zero
+> num projeto novo. Não improvisar, não investigar servidor antes de seguir os
+> passos daqui. Atualizado 2026-06-14 (auto-deploy via Shepherd no ar).
 
 ---
 
-## TL;DR , os 2 comandos, nesta ordem
+## 1. TL;DR , como você faz deploy AGORA (nexus-odoo)
+
+**Você só dá merge na `main`. A produção se atualiza sozinha em até ~5 min.**
 
 ```bash
-# 1) Mergear o PR na main (espera CI verde, squash-merge). Dispara o BUILD da imagem.
-python3 scripts/ship.py "titulo do PR"        #  (ou: --merge-only <PR#>)
-
-# 2) Quando build-app e build-mcp derem SUCCESS (a imagem nova está no ghcr),
-#    fazer o redeploy a partir de uma máquina que ALCANÇA a VPS (a sua, não o runner):
-python3 scripts/deploy-portainer.py           #  app + mcp + worker
+# da worktree, com a branch commitada:
+python3 scripts/ship.py "titulo do PR"     # mergeia na main (espera CI, squash)
+# ... pronto. O GitHub builda a imagem e o Shepherd (na VPS) atualiza prod sozinho.
 ```
 
-O passo 2 é o que realmente atualiza produção. O job `deploy` do GitHub Actions
-**não funciona** (motivo abaixo) e deve ser ignorado , ele falha sozinho sem
-afetar nada. Verificação final: `https://agentenex.nexusai360.com/api/health`
-deve responder `{"ok":true}` (o `deploy-portainer.py` já confere no fim).
+Não precisa rodar mais nada. Para acompanhar: ver a seção 6 (verificação).
+
+> Se quiser **forçar o deploy na hora** (sem esperar os ~5 min do Shepherd) ou o
+> Shepherd estiver fora do ar, use o deploy manual da seção 4.
 
 ---
 
-## A causa raiz definitiva (provada no log, 2026-06-12)
+## 2. Como funciona (a arquitetura, em 1 minuto)
 
-O pipeline tem 3 jobs: `build-app`, `build-mcp`, `deploy`.
-
-- **`build-app` e `build-mcp` SEMPRE funcionam** (3-4 min cada). A imagem é
-  construída e **publicada no ghcr** (`ghcr.io/nexusai360/nexus-odoo:latest` e
-  `...-mcp:latest`) normalmente. Isso nunca foi o problema.
-- **`deploy` SEMPRE falha** e leva 30-60 min penando. No log
-  (`gh run view <id> --log-failed`): `Pull ghcr.io/...: HTTP 000`,
-  `Janela de rede fechada (TCP nao conecta)`, repetido por ~12 rodadas até
-  `falha de deploy real`.
-
-**Por quê:** a proteção de borda da VPS (Traefik/firewall do provedor) **bloqueia
-o IP do runner do GitHub** (faixas de datacenter Azure/GitHub). O runner não
-estabelece TCP com o Portainer da VPS. Da **sua máquina** (rede residencial) o
-Portainer responde em ms. Logo: o build no GitHub é ótimo; só o passo
-runner→VPS é que não passa. Não é quota de Actions, não é falta de token, não é
-o Portainer, não é o GitHub. É rede runner→VPS.
-
-> Diagnósticos antigos que estavam ERRADOS (corrigidos aqui): "quota do Actions
-> esgotada" (falso , o CI e os builds rodam), "precisa de um PAT read:packages
-> que não existe" (falso , a credencial do ghcr **já está salva no Portainer**,
-> ver abaixo). Não repetir esses becos.
-
----
-
-## Por que o redeploy manual via Portainer FUNCIONA (e não precisa de PAT)
-
-A peça que faltava: **o Portainer já tem o registry do ghcr configurado com
-autenticação salva** , registry id=1, "GitHub Container Registry", `URL=ghcr.io`,
-usuário `jvzanini`, `Authentication=true`. Ou seja, a credencial de pull da
-imagem privada **existe dentro do Portainer**. Quando mandamos o serviço
-atualizar passando `registryId=1`, o Portainer anexa o `X-Registry-Auth` dessa
-credencial e o **próprio host do swarm puxa a imagem nova do ghcr** (host→ghcr,
-sem runner e sem o Traefik no meio). Por isso nenhum `GHCR_TOKEN` solto é
-necessário , e por isso varrer os projetos atrás de um PAT é perda de tempo
-(não existe nenhum preenchido; todos os `.env.production` têm o campo vazio).
-
-`scripts/deploy-portainer.py` faz exatamente isso para `app`, `mcp` e `worker`:
-GET da spec → força a imagem `:latest` (sem digest pinado) → `ForceUpdate++` com
-`registryId` do ghcr → poll até as tasks convergirem → checa o `/api/health`.
-
-### Credencial do Portainer (de onde o script lê)
-
-`PORTAINER_URL` e `PORTAINER_TOKEN`. O script resolve nesta ordem:
-1. variáveis de ambiente `PORTAINER_URL` / `PORTAINER_TOKEN`;
-2. `.env.local` do projeto (recomendado deixar ali, não é commitado);
-3. fallback: `.env.production` dos projetos irmãos da mesma infra
-   (`nexus-blueprint`, `nexus-nfe`, `nexus-crm-krayin`) , todos compartilham o
-   mesmo Portainer/VPS, então o `PORTAINER_TOKEN` (`ptr_...`) é o mesmo.
-
-Para fixar no projeto (uma vez), adicionar ao `.env.local` (NÃO commitar):
 ```
-PORTAINER_URL=https://<host-do-portainer>
-PORTAINER_TOKEN=ptr_xxxxxxxxxxxxxxxxxxxxxxxxxxxx
+git push / merge na main
+        │
+        ▼
+GitHub Actions  ──build──►  ghcr.io/nexusai360/nexus-odoo:latest   (+ ...-mcp:latest)
+ (jobs build-app, build-mcp = os ÚNICOS que importam)
+        │
+        ▼  (a imagem nova fica no registry)
+Shepherd (roda DENTRO da VPS, a cada 5 min)
+        │  vê que a :latest mudou → docker service update (1 serviço por vez, rollback se falhar)
+        ▼
+Produção atualizada (app, mcp, worker)
 ```
 
----
-
-## Passo a passo completo (o que fazer, sempre nesta ordem)
-
-1. **Branch commitada e pushada.** `git push origin <branch>`.
-2. **PR sem conflito com a main.** Se `gh pr view <N> --json mergeable` der
-   `CONFLICTING`: `git fetch origin main && git merge origin/main`, resolver
-   (esta branch costuma ser superconjunto → `git checkout --ours` nos arquivos
-   de onda; conferir `build.yml`/`ship.py` pela data do último commit de cada
-   lado), `npx tsc --noEmit && npx jest`, commitar o merge, push.
-3. **Mergear:** `python3 scripts/ship.py "titulo"`. Ele espera o CI `validate`
-   ficar verde e faz o **squash-merge**. (Se o `ship.py` ficar preso na fase de
-   deploy, tudo bem , ver passo 5; o merge e o build já aconteceram.)
-   - `ship.py` fala com a API do GitHub direto nos IPs clássicos (`140.82.x`)
-     porque `api.github.com` às vezes resolve pro IP Azure inalcançável desta
-     rede. Por isso **não** recriar o merge com `gh pr merge` na mão.
-4. **Esperar o build:** os jobs `build-app` e `build-mcp` do "Build and Push"
-   na `main` devem dar `success` (~5 min). Confere com
-   `gh run list --workflow="Build and Push" --branch main --limit 1` e
-   `gh api /repos/nexusai360/nexus-odoo/actions/runs/<id>/jobs --jq '.jobs[]|.name+" "+(.conclusion//.status)'`.
-   Só os dois `build-*` importam; o `deploy` vai dar `failure/cancelled` , **ignore**.
-5. **Deploy de verdade:** `python3 scripts/deploy-portainer.py`. Sai com 0 quando
-   os serviços convergiram e o `/api/health` respondeu `{"ok":true}`.
-6. **Pós-deploy (quando aplicável):**
-   - schema mudou → as migrations aditivas aplicam no boot via `migrate deploy`;
-   - `toolDigest`/backfills → rodar o backfill em prod (Portainer exec no
-     container `app`), ex.: `scripts/backfill-tool-digest.ts`;
-   - prompt mudou e `usesCodeDefaults=false` → `sync-agent-prompt`.
+Três peças, cada uma com um porquê:
+- **GitHub Actions** só **constrói e publica** a imagem no ghcr. Isso sempre
+  funcionou (`build-app`/`build-mcp` = success em ~4 min).
+- **O job `deploy` do Actions está MORTO de propósito.** Ele tentava mandar a
+  VPS atualizar a partir do runner do GitHub, e **a borda da VPS bloqueia o IP
+  do runner** (HTTP 000, TCP não conecta). Ignore esse job , ele falha sozinho
+  sem afetar nada. (Não é quota, não é token. É rede runner→VPS.)
+- **Shepherd** (`containrrr/shepherd`) roda **dentro da VPS**, então o firewall
+  não atrapalha. Ele observa o ghcr e atualiza os serviços quando a imagem muda.
 
 ---
 
-## Saída definitiva (eliminar o passo manual no futuro)
+## 3. O auto-deploy (Shepherd) , como está montado
 
-Tornar o deploy **pull-based na VPS**: um shepherd/watchtower no swarm que
-observa o ghcr e se atualiza sozinho usando a credencial que **já está no
-Portainer** (registry id=1). Aí o `git push`/merge basta e o passo 5 some.
-Enquanto isso não existe, a rota canônica é `ship.py` (merge+build) +
-`deploy-portainer.py` (redeploy). O job `deploy` do Actions pode ser
-desativado/encurtado para não gastar 30-60 min penando a cada merge.
+Serviço `shepherd-nexus-odoo` no Swarm (criado 2026-06-14). Config:
+- **Imagem:** `containrrr/shepherd:latest`.
+- **`FILTER_SERVICES=label=com.nexus.autodeploy=true`** , ele SÓ toca os
+  serviços que têm esse label. Hoje: `nexus-odoo_app`, `nexus-odoo_mcp`,
+  `nexus-odoo_worker`. **NUNCA** toca o `db`, o `redis`, nem os ~76 containers
+  de outros projetos no mesmo Swarm. (Marcar um serviço = `Spec.Labels` com
+  `com.nexus.autodeploy=true`; é metadata, não recria o container.)
+- **`WITH_REGISTRY_AUTH=true`** + mount de `/root/.docker/config.json` (ro) , usa
+  a credencial do ghcr que **já existe no nó** (o nó tem `docker login ghcr.io`
+  feito; confirmado em `/root/.docker/config.json`). **Nenhum PAT é necessário.**
+- **`SLEEP_TIME=5m`** , checa a cada 5 min. Se a imagem não mudou: "No updates"
+  (no-op, zero churn , verificado). Se mudou: atualiza **um serviço por vez**
+  (synchronous), o que evita o pico de memória que derrubou o banco no passado.
+- **`ROLLBACK_ON_FAILURE=true`** , se o serviço novo não subir, volta ao anterior.
+- **`IMAGE_AUTOCLEAN_LIMIT=3`** , limpa imagens antigas.
 
 ---
 
-## INCIDENTE 2026-06-12 (deploy das ondas M/O/P) , lição obrigatória
+## 4. Deploy MANUAL (fallback , forçar na hora ou Shepherd fora)
 
-O primeiro deploy via Portainer recriou `app`+`mcp`+`worker` **ao mesmo tempo**.
-O pico de memória derrubou o Postgres: o container do `db` tem teto de **1GB**
-e vive num nó compartilhado com ~79 containers; a memória anônima estourou 1GB,
-o OOM killer atingiu o Postgres e o cluster entrou em **crash recovery**. O
-recovery durou ~30min (lento, mas completou sozinho) e tudo voltou , as
-migrations M/O/P aplicaram, `pg_is_in_recovery()=f`, RSS real do db = ~93MB
-(o resto é page cache reclaimável, normal). Nenhum dado perdido.
+`scripts/deploy-portainer.py` faz o mesmo que o Shepherd, sob demanda, da sua
+máquina (que alcança a VPS). Útil para não esperar os 5 min, ou se o Shepherd
+cair.
 
-Regras que saíram disso (já refletidas no `deploy-portainer.py`):
-1. **Rolling, UM serviço por vez** (worker→mcp→app) com pausa, nunca os três
-   juntos , mantém o pico de memória baixo. O script já faz isso.
-2. **NUNCA reiniciar o `db` durante recovery** , recomeça o replay do zero.
-   Esperar; o recovery do Postgres é automático e completa.
-3. **Diagnóstico sem conectar:** `pg_controldata` (estado do cluster , mas
-   "in production" ali é o último estado ANTES do crash, não prova fim do
-   recovery), processos via `/proc/*/cmdline` (se há `checkpointer`/`walwriter`/
-   `autovacuum launcher` rodando, o recovery TERMINOU), e `memory.stat` do
-   cgroup (anon=RSS real perigoso; file=cache reclaimável, ok). `df` rápido +
-   `psql` pendurado = banco ainda em recovery, NÃO disco/IO do nó.
-4. **Pendência de infra (recomendar ao usuário):** o limite de 1GB do serviço
-   `db` é apertado para um banco de ~1.5GB. Subir para 2GB (service update do
-   `db`, fora de horário, recria o container) elimina a margem de OOM em picos.
+```bash
+python3 scripts/deploy-portainer.py            # worker, mcp, app (ROLLING, 1 por vez)
+python3 scripts/deploy-portainer.py mcp app    # subconjunto
+```
 
-## Verificação e rollback
+- Faz **rolling** (um serviço por vez com pausa) , NUNCA os 3 juntos (isso
+  estourou o 1GB do container do banco e causou OOM/crash recovery , lição
+  2026-06-12). Re-busca a versão fresca por serviço (evita "update out of
+  sequence") e confere `/api/health` no fim.
+- Credencial do Portainer: o script lê `PORTAINER_URL`/`PORTAINER_TOKEN` de
+  `env` > `.env.local` do projeto > `.env.production` dos projetos irmãos
+  (`nexus-blueprint`/`nexus-nfe`/`nexus-crm-krayin`, mesmo Portainer/VPS).
 
-- **Health:** `curl -s https://agentenex.nexusai360.com/api/health` → `{"ok":true}`.
-- **Imagem/revisão rodando:** listar serviços via Portainer
-  (`GET /api/endpoints/1/docker/services`) e olhar `UpdatedAt` + imagem.
-- **Rollback:** `POST /api/endpoints/1/docker/services/<id>/update` com
-  `Spec.TaskTemplate.ForceUpdate` apontando o digest anterior, ou via UI do
-  Portainer (serviço → "Update" → imagem da revisão anterior). O swarm mantém a
-  task antiga até a nova passar no healthcheck.
+Pré-requisito comum aos dois: a imagem nova já no ghcr (jobs `build-app`/
+`build-mcp` = success). Confere com:
+```bash
+gh run list --workflow="Build and Push" --branch main --limit 1
+gh api /repos/<org>/<repo>/actions/runs/<id>/jobs --jq '.jobs[]|.name+" "+(.conclusion//.status)'
+```
+
+---
+
+## 5. GUIA , montar deploy automatizado num PROJETO NOVO (do zero)
+
+Receita reutilizável para qualquer projeto que rode em Docker Swarm na mesma
+VPS (Portainer), publicando imagens no ghcr. Siga na ordem e não terá os
+problemas de CI/firewall/token.
+
+**Pré-requisitos (uma vez por VPS):**
+1. O nó do Swarm precisa estar logado no ghcr: `docker login ghcr.io -u <user>`
+   com um PAT `read:packages`. Isso cria `/root/.docker/config.json` , é dele
+   que o Shepherd tira a credencial. (Na nossa VPS já está feito.)
+2. O Portainer já tem o registry ghcr salvo (para o deploy manual de fallback).
+
+**No projeto novo:**
+1. **CI/CD no GitHub Actions:** um workflow que, no push para `main`, builda a
+   imagem e publica em `ghcr.io/<org>/<projeto>:latest`. (Autentica no ghcr com
+   o `GITHUB_TOKEN`, que tem `packages: write` por padrão.) **NÃO** tente fazer
+   o job de deploy chamar a VPS , o runner do GitHub é bloqueado pela borda
+   dela; o deploy é responsabilidade do Shepherd. Pode até remover/encurtar o
+   job de deploy.
+2. **Suba a stack no Swarm** (via Portainer) com a imagem `:latest`.
+3. **Marque os serviços que devem se auto-atualizar** com o label
+   `com.nexus.autodeploy=true` (só os de aplicação , NUNCA banco/redis, que têm
+   tag fixa e não devem ser recriados à toa).
+4. **Crie UM Shepherd por projeto** (ou reuse um Shepherd global filtrando por
+   label) , o do projeto observa só os serviços marcados. Config idêntica à da
+   seção 3 (ajuste o `Name`). Use **sempre**: `FILTER_SERVICES=label=...`,
+   `WITH_REGISTRY_AUTH=true` + mount do `config.json`, `SLEEP_TIME=5m`,
+   `ROLLBACK_ON_FAILURE=true`, e mount do `docker.sock` (ro), no manager.
+5. **Teste com `RUN_ONCE_AND_EXIT=true` + `VERBOSE=true` ANTES de deixar
+   contínuo.** Veja nos logs: (a) "Send registry authentication details" =
+   autenticou; (b) ele toca SÓ os serviços marcados; (c) rode 2x , a 2ª deve
+   dar "No updates" (no-op). Só então crie o contínuo (sem `RUN_ONCE`).
+
+**Armadilhas que esse guia evita (não repita os becos):**
+- "Quota do Actions esgotada" / "precisa de PAT" , **falso**. O CI e o build
+  rodam; a credencial do ghcr já está no nó/Portainer.
+- Deploy pelo runner do GitHub , **não funciona** (firewall da VPS).
+- Recriar todos os serviços juntos , **estoura memória** (rolling sempre).
+- Shepherd sem `FILTER_SERVICES` , **atualizaria TODOS os serviços do Swarm**,
+  inclusive de outros projetos e bancos. Sempre filtrar por label.
+
+> Quer reusar este doc num projeto novo? Copie esta seção 5 para o runbook dele.
+
+---
+
+## 6. Verificação e rollback
+
+- **Health:** `curl https://<host>/api/health` → `{"ok":true}`.
+- **Shepherd vivo:** no Portainer, serviço `shepherd-nexus-odoo` com 1 réplica
+  running. Logs mostram "No updates" (parado) ou "was updated" (subiu versão).
+- **Versão rodando:** serviços `app`/`mcp`/`worker` com `UpdatedAt` recente após
+  um push.
+- **Rollback:** o Shepherd já volta sozinho se a versão nova não subir
+  (`ROLLBACK_ON_FAILURE`). Manual: pela UI do Portainer (serviço → Update →
+  imagem da revisão anterior). NUNCA reiniciar o `db` durante um crash recovery
+  (recomeça o replay; espere, é automático).
+
+---
+
+## 7. Histórico das causas-raiz (para não repetir investigação)
+
+- **HTTP 000 no job deploy do Actions (2026-06-12):** a borda da VPS bloqueia
+  IPs de datacenter (runner do GitHub). Build sempre funciona; só o passo
+  runner→VPS não. Resolvido movendo o deploy para DENTRO da VPS (Shepherd) e,
+  como fallback, `deploy-portainer.py` (roda da sua máquina, que alcança a VPS).
+- **OOM/crash recovery do banco (2026-06-12):** recriar app+mcp+worker juntos
+  estourou o teto de 1GB do container do `db` (VPS compartilhada, ~79
+  containers). Resolvido: rolling 1-a-1 (Shepherd e o script já fazem). O 1GB do
+  `db` é folgado em operação normal (~90MB reais; resto é cache); NÃO precisa
+  aumentar.
+- **"update out of sequence" no deploy manual (2026-06-14):** o script usava a
+  versão velha do serviço. Resolvido: re-GET da versão fresca por serviço +
+  retry.
+- **Credencial do ghcr:** não há PAT em arquivo nenhum, e não precisa , o nó tem
+  `/root/.docker/config.json` com o login do ghcr, e o Portainer tem o registry
+  id=1. O Shepherd usa o do nó; o deploy manual usa o do Portainer.
+
+### Recriar o Shepherd (se precisar)
+
+Spec do serviço Swarm (via `POST /endpoints/1/docker/services/create` na API do
+Portainer, com o `PORTAINER_TOKEN`): imagem `containrrr/shepherd:latest`; env
+`SLEEP_TIME=5m WITH_REGISTRY_AUTH=true FILTER_SERVICES=label=com.nexus.autodeploy=true
+ROLLBACK_ON_FAILURE=true IMAGE_AUTOCLEAN_LIMIT=3 VERBOSE=true TZ=America/Sao_Paulo`;
+mounts `/var/run/docker.sock:ro` e `/root/.docker/config.json:ro`; constraint
+`node.role==manager`; restart `any`; 1 réplica.
