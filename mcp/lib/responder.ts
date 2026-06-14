@@ -161,6 +161,12 @@ const fmtFluxoCaixa: FormatadorCanonico = (env) => {
 
 // Fase 2.5: headline condicional decidido no HANDLER (grupo->receita externa real;
 // empresa->faturamento individual). O formatador apenas le as chaves estaveis do _DESTAQUE.
+// Clareza acima de tudo (pedido do usuario 2026-06-14): a resposta tem que FECHAR
+// o raciocinio numa leitura. Numero principal direto; quando ha venda entre empresas
+// do grupo, mostrar a relacao COMPLETA (total emitido -> parte interna que nao conta
+// -> faturamento real), em portugues natural. PROIBIDO jargao (intercompany/intragrupo)
+// e PROIBIDO numero solto sem a relacao explicita. Esta frase e a ANCORA factual; a IA
+// redige por cima mantendo a estrutura do raciocinio (regra 5/5d do prompt).
 const fmtFaturamentoPeriodo: FormatadorCanonico = (env) => {
   const d = env._DESTAQUE ?? {};
   const headline = Number(d.headlineValor ?? 0);
@@ -168,25 +174,34 @@ const fmtFaturamentoPeriodo: FormatadorCanonico = (env) => {
   const individual = Number(d.receitaIndividual ?? headline);
   const intra = Number(d.intragrupoEliminavel ?? 0);
   const pct = Number(d.percentualEliminado ?? 0);
+  const notas = Number(d.notasExternas ?? 0);
   const periodo = String(d.periodoLabel ?? "");
   if (headline === 0 && individual === 0) {
     return `Nenhum faturamento de venda no periodo${periodo ? ` (${periodo})` : ""}.`;
   }
-  const cab = `${rotulo}: ${formatBRL(headline)}${periodo ? ` (${periodo})` : ""}.`;
-  // Antes despejava "Faturamento individual X; intragrupo eliminavel Y (Z%)" , confuso
-  // pra uma pergunta simples ("quanto faturamos"). Agora: 1 frase curta de transparencia
-  // (so o que importa: que ja foi descontada a venda intragrupo). Os numeros completos
-  // (individual/intra/pct) seguem no _DESTAQUE para quando o usuario pedir o detalhe.
-  void individual;
-  const aud =
-    intra > 0
-      ? ` Ja descontadas ${formatBRL(intra)} em vendas entre empresas do grupo (${(pct * 100).toFixed(1)}%).`
-      : "";
-  const conc =
-    Number(d.concentrador ?? 0) === 1
-      ? " Atencao: estabelecimento concentrador (a maioria das vendas e intragrupo)."
-      : "";
-  return cab + aud + conc;
+  const per = periodo ? ` em ${periodo}` : "";
+  const notasStr = notas > 0 ? `, em ${notas} ${notas === 1 ? "nota" : "notas"} de saida` : "";
+  // Empresa filtrada: o headline JA e o total da empresa (inclui o que ela vendeu
+  // para outras do grupo). Diz isso de forma direta, sem jargao.
+  const ehEmpresa = headline === individual && intra > 0;
+  if (ehEmpresa) {
+    const parte =
+      ` Desse total, ${formatBRL(intra)} (${(pct * 100).toFixed(1)}%) foram vendas para outras empresas do mesmo grupo.`;
+    const conc =
+      Number(d.concentrador ?? 0) === 1
+        ? " A maior parte do que essa empresa emitiu foi para outras empresas do grupo."
+        : "";
+    return `${rotulo}: ${formatBRL(headline)}${per}${notasStr}.${parte}${conc}`;
+  }
+  // Grupo: o headline e o faturamento real (vendas para fora). Sem venda interna,
+  // entrega so o numero. Com venda interna, FECHA O ARCO (total -> parte -> real).
+  if (intra <= 0) {
+    return `Faturamento de ${formatBRL(headline)}${per}${notasStr}.`;
+  }
+  return (
+    `Faturamento de ${formatBRL(headline)}${per}${notasStr}. Esse e o faturamento real do grupo, ou seja, as vendas para fora. ` +
+    `No total as empresas emitiram ${formatBRL(individual)}, mas ${formatBRL(intra)} (${(pct * 100).toFixed(1)}%) foram vendas entre empresas do mesmo grupo e nao entram no faturamento (senao seriam contadas duas vezes).`
+  );
 };
 
 // Fase 2.5: ranking de clientes EXTERNOS (vendas intragrupo ficam fora, somadas a parte).
