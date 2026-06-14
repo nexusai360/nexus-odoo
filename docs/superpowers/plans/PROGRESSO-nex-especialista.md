@@ -543,3 +543,19 @@ Cada fase: plano próprio (bite-sized) + 2 reviews quando material → execuçã
   pequenos depois); (2) INFRA: subir limite de mem do serviço db de 1GB->2GB
   (decisao do usuario; elimina margem de OOM); (3) ligar tier_t3_checkpoint
   quando quiser medir T3 em prod.
+
+## FIX CLAREZA DO FATURAMENTO EM PROD 2026-06-14 (PR #108 / 259de15)
+- Queixa: "faturamos 8,7mi em receita externa real; o intercompany eliminou 5mi
+  do total individual" , AMBIGUO + jargao. PERICIA: numero 100% CORRETO (externa
+  8.783.795,41 + vendas entre empresas 5.088.644,56 = 13.872.439,97; 462 notas;
+  36,7%). Problema era SO redacao.
+- CAUSA RAIZ: jargao vinha da FONTE (handler headlineRotulo/aviso + regra 12-prov
+  davam "intercompany"/"individual"); regra 5 deixava a IA reescrever e piorar.
+- FIX (parametriza a IA, nao monta resposta na mao; numeros travados, IA redige):
+  formatador fmtFaturamentoPeriodo FECHA O ARCO (total->parte interna->real);
+  handler sem jargao; prompt regra 5d NOVA (clareza: numero principal primeiro,
+  relacao entre numeros explicita, proibido jargao, entendivel numa leitura) +
+  12-prov limpa. E2E real (modelo de prod) provou resposta clara.
+- DEPLOY rolling (worker->mcp->app 1-a-1) SEM OOM (RSS db 86MB). Corrigido
+  "out of sequence" no deploy-portainer.py (re-GET versao fresca por servico +
+  retry). Prod saudavel; main local + localhost atualizados. Suite 3034 verde.
