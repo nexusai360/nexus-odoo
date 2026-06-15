@@ -109,93 +109,10 @@ jobs:
           done
           echo "build/push mcp falhou apos 3 tentativas"; exit 1
 
-  deploy:
-    needs: [build-app, build-mcp]
-    runs-on: ubuntu-latest
-    if: ${{ github.event_name == 'push' }}
-    permissions:
-      contents: read
-      packages: read
-    env:
-      PORTAINER_URL: ${{ secrets.PORTAINER_URL }}
-      PORTAINER_TOKEN: ${{ secrets.PORTAINER_TOKEN }}
-      PORTAINER_ENDPOINT_ID: ${{ secrets.PORTAINER_ENDPOINT_ID }}
-      PORTAINER_STACK_ID: ${{ secrets.PORTAINER_STACK_ID }}
-      # GITHUB_TOKEN (packages: read) basta para autenticar o pull no GHCR.
-      GHCR_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-    steps:
-      # DIAGNOSTICO DEFINITIVO v2 (2026-06-12, log do run 27419823552):
-      # TCP morto por 60min CONTINUOS no mesmo runner = IP do runner BANIDO
-      # pela protecao do provedor. O gatilho era o PULL das 2 imagens grandes
-      # via API do Portainer (conexao longa de minutos atraves do Traefik:443,
-      # que a protecao trata como ataque). O nexus-insights nunca e banido
-      # porque puxa 1 imagem pequena que termina rapido.
-      # FIX: NAO puxar imagem pela API. O service update com X-Registry-Auth
-      # faz o PROPRIO HOST puxar do ghcr (host->ghcr, sem Traefik no meio).
-      # A verificacao passa a ser poll LEVE: o container do service rodando
-      # com imagem cujo label revision == GITHUB_SHA.
-      - name: Trigger Portainer redeploy (Swarm-aware, sem pull via API)
-        run: |
-          set -e
-          if [ -z "$PORTAINER_STACK_ID" ]; then
-            echo "PORTAINER_STACK_ID nao configurado — pulando."
-            exit 0
-          fi
-          AUTH=$(printf '{"username":"%s","password":"%s"}' "${GITHUB_ACTOR:-jvzanini}" "$GHCR_TOKEN" | base64 | tr -d '\n')
-          API="$PORTAINER_URL/api/endpoints/$PORTAINER_ENDPOINT_ID/docker"
-          CURL=(curl --silent --insecure --connect-timeout 15 --max-time 60)
-
-          disparar_updates() {
-            STACK_NAME=$("${CURL[@]}" -H "X-API-Key: $PORTAINER_TOKEN" "$PORTAINER_URL/api/stacks/$PORTAINER_STACK_ID" | jq -r '.Name') || return 1
-            [ -n "$STACK_NAME" ] && [ "$STACK_NAME" != "null" ] || return 1
-            echo "Stack: $STACK_NAME"
-            "${CURL[@]}" -H "X-API-Key: $PORTAINER_TOKEN" "$API/services" > /tmp/svc.json || return 1
-            for SVC in app mcp worker; do
-              SERVICE_NAME="${STACK_NAME}_${SVC}"
-              SVC_ID=$(jq -r --arg n "$SERVICE_NAME" '[.[] | select(.Spec.Name==$n)][0].ID // empty' /tmp/svc.json)
-              [ -z "$SVC_ID" ] && { echo "Service $SERVICE_NAME nao encontrado — pulando."; continue; }
-              SVC_VER=$(jq -r --arg n "$SERVICE_NAME" '[.[] | select(.Spec.Name==$n)][0].Version.Index' /tmp/svc.json)
-              jq --arg n "$SERVICE_NAME" '[.[] | select(.Spec.Name==$n)][0].Spec | .TaskTemplate.ForceUpdate = ((.TaskTemplate.ForceUpdate // 0) + 1)' /tmp/svc.json > /tmp/spec.json
-              HTTP=$("${CURL[@]}" -o /tmp/upd.log -w "%{http_code}" -X POST -H "X-API-Key: $PORTAINER_TOKEN" -H "Content-Type: application/json" -H "X-Registry-Auth: $AUTH" "$API/services/$SVC_ID/update?version=$SVC_VER" --data-binary @/tmp/spec.json) || return 1
-              echo "Update $SERVICE_NAME: HTTP $HTTP"
-              if [ "$HTTP" = "000" ]; then return 1; fi
-              if [ "$HTTP" != "200" ]; then echo "  erro REAL:"; cat /tmp/upd.log; echo ""; return 2; fi
-            done
-            return 0
-          }
-
-          verificar_convergencia() {
-            # Poll leve por ate 14min: containers de app e mcp rodando com
-            # label revision == GITHUB_SHA (o swarm puxa a imagem host->ghcr).
-            for I in $(seq 1 28); do
-              sleep 30
-              OK=1
-              for SVC in app mcp; do
-                CID=$("${CURL[@]}" -H "X-API-Key: $PORTAINER_TOKEN" "$API/containers/json?filters=%7B%22label%22%3A%5B%22com.docker.swarm.service.name%3Dnexus-odoo_${SVC}%22%5D" | jq -r '.[0].ImageID // empty')
-                [ -z "$CID" ] && { OK=0; break; }
-                REV=$("${CURL[@]}" -H "X-API-Key: $PORTAINER_TOKEN" "$API/images/$CID/json" | jq -r '.Config.Labels["org.opencontainers.image.revision"] // empty')
-                if [ "$REV" != "$GITHUB_SHA" ]; then OK=0; break; fi
-              done
-              if [ "$OK" = "1" ]; then echo "Convergiu: containers app+mcp com revision $GITHUB_SHA (poll $I)."; return 0; fi
-              echo "poll $I/28: ainda nao convergiu (svc=$SVC rev=${REV:-vazio})"
-            done
-            echo "Nao convergiu em ~14min."
-            return 1
-          }
-
-          # Ate 4 tentativas de disparo (pausa 3min se TCP falhar , sem pull
-          # pesado o runner nao deve mais ser banido).
-          for RODADA in 1 2 3 4; do
-            echo "=== disparo $RODADA/4 ($(date -u +%H:%M:%SZ)) ==="
-            set +e; disparar_updates; RC=$?; set -e
-            if [ "$RC" = "0" ]; then
-              set +e; verificar_convergencia; VC=$?; set -e
-              [ "$VC" = "0" ] && { echo "Deploy concluido e VERIFICADO."; exit 0; }
-              echo "Updates aceitos mas sem convergencia , re-disparando."
-            elif [ "$RC" = "2" ]; then
-              echo "Erro real da API , abortando."; exit 1
-            fi
-            [ "$RODADA" -lt 4 ] && { echo "Aguardando 3min..."; sleep 180; }
-          done
-          echo "Deploy nao convergiu apos 4 disparos."
-          exit 1
+  # ────────────────────────────────────────────────────────────────────────
+  # NÃO HÁ job de deploy aqui (removido 2026-06-14). O runner do GitHub é
+  # bloqueado pela borda da VPS (HTTP 000), então o deploy a partir daqui
+  # SEMPRE falhava (1h penando + e-mail vermelho a cada merge). O deploy de
+  # produção é feito DENTRO da VPS pelo Shepherd (auto, ~5min) ou, sob demanda,
+  # por scripts/deploy-portainer.py. Detalhes: docs/runbooks/deploy-procedure.md
+  # Este workflow só CONSTRÓI e PUBLICA a imagem no ghcr (build-app/build-mcp).
