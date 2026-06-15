@@ -15,16 +15,18 @@ const DUMP_PATH = "/tmp/nex-pendentes.json";
 const OUT_PATH = "/tmp/nex-rerun.json";
 
 async function main(): Promise<void> {
-  let catalogo: Array<{
-    id: string;
-    inputSchema: { parse: (x: unknown) => unknown };
-    handler: (input: unknown, ctx: unknown) => Promise<unknown>;
-  }>;
-  let resolveUserContext: (p: typeof prisma, userId: string) => Promise<unknown>;
-  ({ catalogo } = (await import("../../mcp/catalog/index.js")) as never);
-  ({ resolveUserContext } = (await import(
+  const { catalogo } = (await import("../../mcp/catalog/index.js")) as unknown as {
+    catalogo: Array<{
+      id: string;
+      inputSchema: { parse: (x: unknown) => unknown };
+      handler: (input: unknown, ctx: unknown) => Promise<unknown>;
+    }>;
+  };
+  const { resolveUserContext } = (await import(
     "../../mcp/auth/user-context.js"
-  )) as never);
+  )) as unknown as {
+    resolveUserContext: (p: typeof prisma, userId: string) => Promise<unknown>;
+  };
 
   const su = await prisma.user.findFirst({
     where: { platformRole: "super_admin", isActive: true },
