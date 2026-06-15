@@ -93,9 +93,9 @@ describe("mapNotaFiscalRow", () => {
 
   it("mapeia datas com sufixo T00:00:00", () => {
     const row = mapNotaFiscalRow(baseRaw);
-    expect(row.dataEmissao).toEqual(new Date("2024-01-15T00:00:00"));
-    expect(row.dataEntradaSaida).toEqual(new Date("2024-01-15T00:00:00"));
-    expect(row.dataAutorizacao).toEqual(new Date("2024-01-15T00:00:00"));
+    expect(row.dataEmissao).toEqual(new Date("2024-01-15T00:00:00Z"));
+    expect(row.dataEntradaSaida).toEqual(new Date("2024-01-15T00:00:00Z"));
+    expect(row.dataAutorizacao).toEqual(new Date("2024-01-15T00:00:00Z"));
   });
 
   it("datas null quando campo ausente", () => {

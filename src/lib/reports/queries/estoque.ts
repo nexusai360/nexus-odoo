@@ -269,9 +269,27 @@ export interface ValorArmazemData {
  */
 export async function queryValorArmazem(
   prisma: PrismaClient,
+  // Cobertura Cliente A6: filtro pela ARVORE de locais (raw_estoque_local.
+  // data->>'nome_completo', match por PREFIXO , o localNome do fato e rotulo
+  // limpo, sem hierarquia). Ex.: ["Próprio"] = so estoque fisico;
+  // ["Terceiros / Demonstração"] = equipamentos em demonstracao.
+  filtro?: { prefixosArvore?: string[] },
 ): Promise<{ kpis: { valorTotal: number; numArmazens: number }; linhasBruto: { armazem: string; valor: number; numProdutos: number }[] }> {
+  let localIds: number[] | undefined;
+  const prefixos = (filtro?.prefixosArvore ?? []).filter((p) => p.trim().length > 1);
+  if (prefixos.length > 0) {
+    const conds = prefixos.map((_, i) => `data->>'nome_completo' ILIKE $${i + 1}`).join(" OR ");
+    const ids = await prisma.$queryRawUnsafe<{ odoo_id: number }[]>(
+      `SELECT odoo_id FROM raw_estoque_local WHERE ${conds}`,
+      ...prefixos.map((p) => `${p}%`),
+    );
+    localIds = ids.map((r) => r.odoo_id);
+    if (localIds.length === 0) {
+      return { kpis: { valorTotal: 0, numArmazens: 0 }, linhasBruto: [] };
+    }
+  }
   const rows = await prisma.fatoEstoqueSaldo.findMany({
-    where: { vrSaldo: { gt: 0 } },
+    where: { vrSaldo: { gt: 0 }, ...(localIds ? { localId: { in: localIds } } : {}) },
     select: { localNome: true, produtoId: true, vrSaldo: true },
   });
 
@@ -535,7 +553,8 @@ export async function queryTopMovimentados(
       rotulo: g.produtoNome ?? "Sem produto",
       valor: g._sum.quantidade ? Math.abs(Number(g._sum.quantidade)) : 0,
     }))
-    .sort((a, b) => b.valor - a.valor);
+    // Onda 5: desempate estavel por rotulo (produtos com mesma movimentacao).
+    .sort((a, b) => b.valor - a.valor || a.rotulo.localeCompare(b.rotulo));
 
   const totalUnidades = linhas.reduce((acc, l) => acc + l.valor, 0);
 

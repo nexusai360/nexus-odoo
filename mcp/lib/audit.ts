@@ -1,6 +1,9 @@
 // mcp/lib/audit.ts
 // Gravação de auditoria de chamadas ao MCP e extração de rowCount do output.
 import type { PrismaClient } from "@/generated/prisma/client";
+// Fonte unica das chaves de array (F4 Apresentacao, Onda 1.2). A ordem de
+// PRIORIDADE (extrair o "primeiro array presente") e a mesma de freshness.ts.
+import { ARRAY_KEYS_PRIORITY } from "./array-keys.js";
 
 export type AuditOutcome = "ok" | "denied" | "error" | "invalid_input";
 
@@ -46,15 +49,8 @@ export async function recordAudit(
 }
 
 // Chaves de array procuradas em ordem de prioridade no objeto `dados`.
-const ARRAY_KEYS = [
-  "linhas",
-  "titulos",
-  "serie",
-  "contas",
-  "top",
-  "familia",
-  "marca",
-] as const;
+// Importadas de array-keys.ts (ARRAY_KEYS_PRIORITY) , mesma ordem semantica.
+const ARRAY_KEYS = ARRAY_KEYS_PRIORITY;
 
 /**
  * Extrai o rowCount de um output de tool.

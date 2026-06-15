@@ -21,6 +21,7 @@ describe("calculateKpis", () => {
       ERRADO: 30,
       FORA_DO_ESCOPO: 20,
       PENDENTE: 100,
+      REAVALIAR: 0,
       FALHA_TECNICA: 5,
     };
     const kpis = calculateKpis(counts);
@@ -37,6 +38,7 @@ describe("calculateKpis", () => {
       ERRADO: 0,
       FORA_DO_ESCOPO: 0,
       PENDENTE: 50,
+      REAVALIAR: 0,
       FALHA_TECNICA: 0,
     };
     const kpis = calculateKpis(counts);
@@ -51,6 +53,7 @@ describe("calculateKpis", () => {
       ERRADO: 0,
       FORA_DO_ESCOPO: 0,
       PENDENTE: 0,
+      REAVALIAR: 0,
       FALHA_TECNICA: 0,
     };
     expect(calculateKpis(counts).percentCorreto).toBe(100);

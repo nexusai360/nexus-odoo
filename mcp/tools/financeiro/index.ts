@@ -3,6 +3,7 @@
 // Preenchido nas tasks 4d.1-t … 4d.7-t (uma tool por arquivo).
 import type { ToolEntry } from "../../catalog/types.js";
 import { financeiroSaldoContas } from "./saldo-contas.js";
+import { financeiroAgingRecebiveis } from "./aging-recebiveis.js";
 import { financeiroCaixaPeriodo } from "./caixa-periodo.js";
 import { financeiroFluxoCaixa } from "./fluxo-caixa.js";
 import { financeiroContasAReceber } from "./contas-a-receber.js";
@@ -21,6 +22,7 @@ import {
 
 export const financeiroTools: ToolEntry[] = [
   financeiroSaldoContas as ToolEntry,
+  financeiroAgingRecebiveis as ToolEntry,
   financeiroCaixaPeriodo as ToolEntry,
   financeiroFluxoCaixa as ToolEntry,
   financeiroContasAReceber as ToolEntry,

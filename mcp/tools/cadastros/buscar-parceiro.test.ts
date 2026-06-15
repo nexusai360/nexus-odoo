@@ -1,4 +1,5 @@
 import { cadastroBuscarParceiro } from "./buscar-parceiro.js";
+import { PAGINACAO_LIMIT_DEFAULT } from "../../lib/paginacao";
 import type { ToolHandlerCtx } from "../../catalog/types.js";
 import type { UserContext } from "../../auth/user-context.js";
 
@@ -111,14 +112,14 @@ describe("cadastro_buscar_parceiro , paginacao fuzzy em memoria (alavanca 2b)", 
     }
   });
 
-  it("default limit = 10 quando ausente", async () => {
-    const ids = Array.from({ length: 12 }, (_, i) => i + 1);
+  it("default limit = 50 quando ausente", async () => {
+    const ids = Array.from({ length: 60 }, (_, i) => i + 1);
     const ctx = makeCtx({ fuzzyIds: ids, linhas: linhasDe(ids) });
 
     const r = await cadastroBuscarParceiro.handler({ termo: "fitness" } as never, ctx);
     if (r.estado !== "preparando") {
-      expect(r.dados.linhas).toHaveLength(10);
-      expect(r.dados._PAGINACAO.proximoOffset).toBe(10);
+      expect(r.dados.linhas).toHaveLength(PAGINACAO_LIMIT_DEFAULT);
+      expect(r.dados._PAGINACAO.proximoOffset).toBe(PAGINACAO_LIMIT_DEFAULT);
     }
   });
 });

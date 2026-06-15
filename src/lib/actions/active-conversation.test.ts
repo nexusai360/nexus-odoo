@@ -43,14 +43,24 @@ describe("getActiveConversationId", () => {
     expect(r).toEqual({ ok: true, conversationId: null });
   });
 
-  it("resolve a conversa in_app ativa mais recente", async () => {
+  it("restaura a ULTIMA conversa in_app quando ela ainda esta aberta", async () => {
     getCurrentUser.mockResolvedValue({ id: "u1" });
-    prisma.conversation.findFirst.mockResolvedValue({ id: "c9" });
+    prisma.conversation.findFirst.mockResolvedValue({ id: "c9", endedAt: null });
     const r = await getActiveConversationId();
     expect(r).toEqual({ ok: true, conversationId: "c9" });
     const arg = prisma.conversation.findFirst.mock.calls[0][0];
-    expect(arg.where).toEqual({ userId: "u1", channel: "in_app", endedAt: null });
+    // Nao filtra por endedAt: pega a mais recente do canal e decide em memoria.
+    expect(arg.where).toEqual({ userId: "u1", channel: "in_app" });
     expect(arg.orderBy).toEqual({ updatedAt: "desc" });
+  });
+
+  it("NAO ressuscita orfa antiga: se a conversa mais recente foi arquivada, retorna null", async () => {
+    // Cenario do bug do ghost: usuario limpou a sessao de hoje (a mais recente,
+    // arquivada). Nao se deve descer e restaurar uma conversa antiga sem arquivar.
+    getCurrentUser.mockResolvedValue({ id: "u1" });
+    prisma.conversation.findFirst.mockResolvedValue({ id: "hoje", endedAt: new Date() });
+    const r = await getActiveConversationId();
+    expect(r).toEqual({ ok: true, conversationId: null });
   });
 });
 

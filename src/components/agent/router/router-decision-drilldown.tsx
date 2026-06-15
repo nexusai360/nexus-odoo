@@ -25,7 +25,8 @@ import type { RouterDecisionDetail } from "@/lib/agent/router/queries";
 import { MarkdownSnapshot } from "@/components/agent/monitoramento/markdown-snapshot";
 
 const DOMAIN_DISPLAY: Record<string, string> = {
-  caminho3: "BI avançado",
+  // chave tecnica `caminho3` (estavel no router) exibida como rotulo amigavel.
+  caminho3: "Fora do Catálogo",
   "dominios-vazios": "cobertura",
   chat: "chat",
 };

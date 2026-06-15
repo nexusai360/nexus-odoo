@@ -5,6 +5,183 @@
 
 ---
 
+## R-faturamento-duas-definicoes — Plataforma tem DUAS definicoes de faturamento divergentes (RESOLVIDO)
+
+**Aberto em:** 2026-06-10 (achado ao auditar a consistencia da plataforma).
+**FECHADO em:** 2026-06-10 (Fase 2.5). As tools `fiscal_faturamento_periodo`, `_por_cliente` e `_mensal_serie`
+foram repontadas para a camada canonica (`item.vrProdutos` + Tabela de Regras + eliminacao intercompany).
+`faturamento_periodo` grupo 2025 passou de R$ 551,2 mi (inflado) para **R$ 325,5 mi (receita externa real)**,
+com faturamento individual (R$ 543,4 mi) e intragrupo eliminavel (R$ 217,9 mi) como auditoria. Por empresa,
+mostra o individual da CNPJ com paridade externa/intragrupo + flag "concentrador" (Jds Matriz 94,8%). Core
+compartilhado `_itens-venda-grupo.ts`; `receitaConsolidada` refatorada com saida identica (conferencia I3/I4 ao
+centavo). Provado por conferencia + f2-receita-consolidada.e2e + smoke test. O dashboard nao importa
+`reports/queries/fiscal.ts` (tudo via MCP), entao a correcao propaga para Nex/WhatsApp/Playground.
+
+**Problema:** existem hoje duas camadas de calculo de faturamento que NAO conversam:
+- **Canonica** (`src/lib/metrics/fiscal/`, Fases 1-2): por CFOP, `item.vrProdutos`, Tabela de Regras,
+  elimina intercompany. Tools: `fiscal_faturamento_por_cfop`, `fiscal_receita_consolidada`,
+  `fiscal_intercompany`, `_por_empresa`, `_por_operacao`, `_nao_autorizado`, `_recebido` (7).
+- **Antiga** (`src/lib/reports/queries/fiscal.ts`, ~18 tools + dashboard): por NATUREZA de operacao,
+  `nota.vrNf`, NAO elimina intercompany. Tools: `fiscal_faturamento_periodo` (a mais usada),
+  `_por_cliente`, `_por_marca`, `_por_uf`, `_mensal_serie`, `impostos_periodo`, `produtos_faturados`,
+  `notas_emitidas*`, etc.
+
+**Impacto medido (2025):** a tool antiga `fiscal_faturamento_periodo` da **R$ 551,2 mi**; a receita
+externa REAL (canonica, sem intercompany) e **R$ 325,5 mi**. **Divergencia de R$ 225,8 mi (+69%)**, quase
+toda por NAO eliminar intercompany (as duas BASES de calculo batem: 551 vs 543 mi). E o dono quer o
+numero real (sem intercompany). Pergunta "qual o faturamento?" hoje responde inflado.
+
+**Plano (proxima fase , Unificacao):** migrar as tools de faturamento/receita para a camada canonica;
+distinguir explicitamente "faturamento individual/bruto" (com intercompany) de "receita externa real"
+(sem); aplicar a base de conferencia (`scripts/conferencia-fiscal.ts`) garantindo que nada quebra. O
+dashboard de relatorios (`reports/queries`) consome a mesma camada , migrar junto. Consistencia exigida
+em TODOS os consumidores (Nex in-app, WhatsApp/n8n, Playground) , como todos passam pelo MCP server, a
+correcao na tool propaga, MAS o dashboard tem queries proprias que precisam alinhar.
+
+---
+
+## R-intercompany-fallback-fragil — 38,8% da eliminacao intercompany depende de regex sobre nome (RESOLVIDO)
+
+**Aberto em:** 2026-06-10 (auditoria adversarial da Fase 2).
+**FECHADO em:** 2026-06-10 (Fase 2.5). Criada `PARTICIPANTES_GRUPO_WHITELIST` (15 ids do grupo validados no
+cache: 2,9,10,11,12,13,14,15,16,19,20,21,22,23,24), com os odoo_id reciclados (8722 Jaguaribe, 8723 Vilmar,
+9552 Smartfit, 7719 Residencial) EXCLUIDOS explicitamente (`PARTICIPANTES_RECICLADOS_EXCLUIDOS`). `ehNotaIntragrupo`
+agora cascateia whitelist→cadastro→nome. Delta na eliminacao = R$ 0 (a whitelist e blindagem, nao correcao , o
+fallback de nome ja capturava tudo), mas a marcacao deixa de depender do regex de nome para os estabelecimentos
+conhecidos. Travado por **S0** (gate: eliminacao pos-whitelist >= baseline pre-whitelist, ao centavo nos 5
+periodos) e monitorado por **S1** (residual so-por-nome, caiu para 2025=0 / acumulado=109 apos a whitelist) e
+**S2** (divergencia nome x cadastro = 0). Cuidado mantido: franquias "Matrix Fit" (32493616/50075046/57692916)
+sao clientes externos, NAO grupo.
+
+**Problema:** a marcacao intragrupo por `fato_parceiro.documentoDigits` so pega R$ 440,4 mi do intercompany.
+Os outros **R$ 278,8 mi (2.538 notas, 38,8%)** so sao eliminados pelo fallback `extrairRaizCnpjDeTexto`
+(le o CNPJ embutido no `participante_nome`), porque o `fato_parceiro` esta CORROMPIDO para os
+estabelecimentos do proprio grupo: `documento_digits` VAZIO (pid 9/11/12...), ou pior, `odoo_id` reciclado
+no Odoo apontando para CNPJ de OUTRA pessoa (pid 8723 = "Vilmar Luiz Borges" 21446394). O numero de hoje
+esta CORRETO (auditoria confirmou a particao fechando ao centavo por ano), mas se um nome vier sem CNPJ
+legivel, esses R$ 278,8 mi vazam para a receita externa e inflam o "faturamento real".
+
+**Correcao recomendada:** (a) whitelist de `participante_id` conhecidos do grupo (odoo_id 2,9,10,11,12,13,
+15,16,8722,8723,9552,7719...) alem das raizes; (b) sentinela na base de conferencia: contar notas marcadas
+intragrupo SO por nome (hoje 2.538 / R$ 278,8 mi) e alertar se saltar; (c) sentinela de divergencia
+nome×cadastro (participante cujo nome tem raiz do grupo mas `fato_parceiro` aponta doc de fora , hoje 10
+pares); (d) NUNCA usar `fato_parceiro.eh_empresa` para identificar grupo (e lixo: inclui Banco do Brasil).
+Cuidado: "Matrix Fit" franquias (32493616, 50075046) sao CLIENTES externos, nao grupo , nao adicionar por nome.
+
+---
+
+## R-sem-cfop-transparencia — Linha "sem CFOP" (R$ 23,3 mi) mistura venda perdida e devolucao (RESOLVIDO)
+
+**FECHADO em:** 2026-06-10 (Fase 2.6). `faturamentoPorCfop` ganhou `semCfopPorFinalidade` (fin=1 venda
+candidata R$ 11,84mi/275it; fin=4 devolucao R$ 11,46mi/89it) e `outrasNaoEspecificadas` (CFOP 5949/6949,
+R$ 11,78mi finalidade=venda). O formatador exibe 2 linhas com **rotulo honesto**: a auditoria provou que o
+balde "outras" e majoritariamente NAO-venda por natureza (OUTRA SAIDA/SIMPLES REMESSA), entao o rotulo diz
+"substancia a confirmar com o cliente", NAO "venda escondida". Mantido FORA da receita (conservador); a
+reclassificacao (se houver) e decisao do cliente. C5 da conferencia loga a decomposicao por ano.
+
+---
+
+### (historico do achado original)
+## R-sem-cfop-historico — Linha "sem CFOP" (R$ 23,3 mi) mistura venda perdida e devolucao
+
+**Aberto em:** 2026-06-10 (auditoria da Fase 1). **Prioridade media.**
+
+**Problema:** os 364 itens sem `cfop_id`/`cfop_nome` na origem (R$ 23,3 mi) sao um balde unico. Decomposicao
+pelo cabecalho: ~R$ 11,68 mi finalidade=1 (normal, candidato a VENDA REAL perdida na origem do Odoo, ICMS
+quase zero) + ~R$ 11,46 mi finalidade=4 (DEVOLUCAO) + R$ 0,16 mi servico. Manter fora da receita esta correto
+(conservador), mas o bloco esconde que metade e devolucao. **Correcao:** quebrar `sem_cfop` por `finalidade_nfe`
+na exibicao; investigar com o cliente por que ~R$ 11,7 mi de equipamentos sairam sem CFOP (pode ser receita real).
+
+---
+
+## R-conferencia-fiscal-expandir — Base de conferencia deve virar gate permanente (do CI) (RESOLVIDO)
+
+**Aberto em:** 2026-06-10. **Prioridade media.**
+**FECHADO em:** 2026-06-10 (Fase 2.6). `scripts/conferencia-fiscal.ts` agora tem 5 invariantes + S0/S3/S4
+(gates) + S1/S2 (alertas) + **C1-C6**: C1 orfaos na base de receita (gate ==0); C2 reconciliacao item vs
+(cabecalho - notas-sem-item) (gate < 0,01%, fecha ao centavo , a dif de R$ 113k era 100% notas de
+transferencia sem item); C3 sentinela de CFOP novo em "outras" (so 5949/6949 hoje); C4a inversao
+receita(cfop) x natureza nao-venda (alerta, R$ 906.853 hoje); C5 log sem_cfop por finalidade; C6 notas sem
+item (alerta, 101 hoje). Primitivas `checkPct`/`checkBandaValor` adicionadas. CI nao tem DB, entao a
+conferencia roda como gate LOCAL pre-merge (decisao mantida).
+
+`scripts/conferencia-fiscal.ts` ja confronta 5 invariantes (TS vs SQL bruto, por ano). As 2 auditorias
+recomendaram 12 checagens adicionais para tornar a confianca permanente: orfaos item→nota == 0; reconciliacao
+item vs cabecalho < 0,05%; sentinela de CFOP novo caindo em "outras" > R$ 100k/ano; cross-check natureza×ehReceita
+(inversoes); guarda do filtro `situacao='autorizada'` (em_digitacao R$ 236 mi jamais entra); sentinela do
+fallback de nome (R$ 278,8 mi); divergencia nome×cadastro; decompor sem_cfop por finalidade; notas sem item (101).
+Tornar isso um TESTE que roda (o CI nao tem DB, entao avaliar healthcheck agendado ou gate local pre-merge).
+
+---
+
+## R-periodo-acumulado — Tools fiscais sem periodo somam 13 ANOS de cache (enganoso)
+
+**Aberto em:** 2026-06-09 (achado pelo usuario ao ver "R$ 897 mi de receita").
+
+**Problema:** o cache cobre **2013-08 a 2026-06 (~13 anos)**. Toda metrica/tool fiscal que roda
+**sem periodo** soma o acumulado historico inteiro, produzindo numeros gigantes e enganosos
+(ex.: receita externa acumulada R$ 897 mi vs R$ 325 mi so de 2025). O dado esta integro (zero
+duplicacao); o problema e de comportamento/apresentacao.
+
+**Corrigido nesta entrega (PR #81):** as 3 tools desta jornada , `fiscal_faturamento_por_cfop`
+(F1), `fiscal_receita_consolidada` e `fiscal_intercompany` (F2) , passaram a usar
+`resolverPeriodoFiscal` (`mcp/tools/fiscal/_periodo-padrao.ts`): sem periodo informado, assumem
+o **ano corrente** e a resposta SEMPRE explicita o periodo. Decisao do usuario 2026-06-09.
+
+**RESOLVIDO (Grupo B) em 2026-06-10 (Fase 2.5):** `resolverPeriodoFiscal` (default ano corrente, periodo
+sempre explicito) aplicado em `fiscal_faturamento_periodo`, `_por_cliente`, `_mensal_serie` (repontadas) +
+`notas_emitidas`, `impostos_periodo`, `produtos_faturados`, `_nao_autorizado`, `_por_operacao`, `_por_empresa`,
+`_recebido`. `fiscal_contar_notas` EXCLUIDO de proposito (e contagem de inventario do cache, sem periodo;
+`ouro-fiscal-01` crava 49.427). **Grupo C (`dfe_*`, `notas_recebidas`) NAO usa default ano corrente** , decisao:
+ano corrente esconderia DF-e/nota pendente de periodo anterior; mantem ordenacao desc sem corte de ano. O agente
+nao precisa mais passar periodo nas tools do Grupo B.
+
+---
+
+## R-base-cfop — Base da tool `fiscal_faturamento_por_cfop` migrou de `vr_nf` para `vr_produtos` (F1 faturamento)
+
+**Aberto em:** 2026-06-09 (Fase 1 do Faturamento Real Consolidado).
+
+**Mudança:** a tool `fiscal_faturamento_por_cfop` deixou de somar `item.vr_nf` (rateado)
+e passou a somar `item.vr_produtos`, ganhando classificação por operação fiscal
+(categoria gerencial + flag `ehReceita`) via a Tabela de Regras (`src/lib/fiscal/regras/`).
+
+**Impacto numérico (medido no cache real):** o número total da tool muda em
+**R$ 28.432,83 / 0,0015%** (delta `Σ item.vrProdutos − Σ item.vrNf` no recorte de saída
+autorizada). Ínfimo, mas a tool já roda em produção, então qualquer painel/resposta que
+citasse o valor antigo terá essa diferença. A reconciliação produto×nota (item vs
+cabeçalho `fato_nota_fiscal.vr_produtos`) fecha em **R$ 113.198,89 / 0,006%**, exposta na
+própria resposta da tool.
+
+**Mitigação:** 7 testes de regressão fiscal travam as classificações de risco (6152
+transferência, 6202 devolução de compra, 5933/6933 e 5932/6932 serviço, 5922/5117 entrega
+futura sem dobrar, 5551 venda de ativo, 5949/6949 outras, 6918 devolução de consignação);
+auditoria sobre os 58 CFOPs reais confirmou receita = R$ 1,316 bi (70,8%) e sem-CFOP de
+R$ 23,3 mi destacado com alerta. **Não bloqueia**; registrado para rastreabilidade.
+
+---
+
+## R-ajustes — Histórico de ajustes só mostra transição no mais recente (opcional)
+
+**Aberto em:** 2026-06-05 (B2/Backtest, redesign do drill-down).
+
+**Contexto:** o drill-down do Backtest tem um **Histórico de ajustes** (seção
+"Ajuste manual"). Hoje o banco guarda, por ajuste, apenas **data + justificativa**
+(append `[AJUSTE HUMANO <iso>] <reason>` em `razoes`) e o **status humano atual**
+(`humanStatus`). Não há registro do **status ANTES** de cada ajuste. Por isso a
+linha mostra a transição "antigo → novo" (tag cinza riscada → tag colorida) só no
+ajuste **mais recente** (derivada de `status` do juiz → `humanStatus` efetivo); os
+ajustes anteriores mostram só data + justificativa.
+
+**Pedido:** para ter a transição em **todos** os ajustes do histórico, passar a
+gravar o status-antes em cada ajuste. Mudança **pequena**: em `adjustEvaluation`
+(`src/lib/actions/agent-quality.ts`) gravar o `previousStatus` por ajuste (coluna
+nova ou um JSON `adjustment_history[]` em `conversation_quality_evaluations`), e o
+drill-down (`evaluation-drilldown.tsx`, `parseRazoes`/Histórico) renderiza a
+transição por linha. **Opcional / cosmético.**
+
+---
+
 ## R-tempo — KPI de tempo médio das respostas no Backtest (a discutir)
 
 **Aberto em:** 2026-06-04 (feedback do usuário no B2).
@@ -316,3 +493,151 @@ de 95%) é o que de fato determina se o LLM recebe a ferramenta certa; o Top-1
 
 **Implicação:** nenhuma de produção, **o router segue em shadow** e o gate
 bloqueia a ativação enquanto não bater a meta.
+
+---
+
+## F3 R1 , chosenToolRank inflado pelo piso (pre-condicao para ativar retrieval)
+
+**Quando:** 2026-06-07 (code review F3).
+**Onde:** `src/lib/agent/run-agent.ts` (chosenToolRank via rankOf sobre retrievalOfferedTools) + `pick-tools.ts`.
+
+`retrievalOfferedTools` inclui o nucleo minimo inteiro (dominios picked +
+transversais + _desconhecido), que costuma ser a maior parte do catalogo. Logo
+`chosenToolRank != null` quase sempre, e o gate de go-live "% no top-K >= 98%"
+(spec 4.5) pode passar trivialmente sem provar que o top-K (a parte que enxuga)
+acerta. Os dados crus para uma metrica melhor JA estao persistidos em
+`AgentRouterDecision.retrievalScores` (cosseno por tool) + `retrievalOfferedTools`.
+
+**Acao antes de ligar `routerToolRetrieval=active`:** computar o gate sobre o
+rank restrito as candidatas top-K (excluindo floorAdded) ou rankear por
+retrievalScores; nao confiar no chosenToolRank cru. Implicacao de producao:
+nenhuma (retrieval segue em shadow; default nao corta catalogo).
+
+## F3 R2 , V6 (total x linhas) e shadow-only ate o envelope canonico (F4)
+
+**Quando:** 2026-06-07. **Onde:** `src/lib/agent/validation/auto-validator.ts` validateV6.
+
+V6 ja pula listas truncadas (`_amostraReduzida`/`_listaTruncada`) para nao dar
+falso positivo. Mas a verificacao plena de coerencia (totais, datas no periodo)
+depende do envelope canonico unico, que e da F4. Manter V6/V7 em shadow ate la;
+so promover a active (Falta Honesta direta) quando o envelope padronizar
+total/linhas/periodo. Implicacao de producao: nenhuma (V6/V7 so logam).
+
+---
+
+## F6 , Pendências pós-merge (telemetria entregue; ativação/medição-fiel no full-stack)
+
+**Quando:** 2026-06-08. **Status:** F6 MERGED (PR #65). Produção **inalterada**
+(`routerEnabled=false`, `routerToolRetrieval=shadow`; as novas chamadas `logUsage`
+só completam a telemetria de custo). Nada bloqueia; são passos de medição/ativação
+que dependem do ambiente full-stack e de decisão do usuário.
+
+### F6-A , Custo-fiel + Gate C precisam do ambiente full-stack
+`runAgent` E2E via `tsx` no host **não carrega tools**: o container MCP (`:3100`)
+fecha a sessão streamable-HTTP autenticada vinda do host (`other side closed`;
+reproduzível com `curl`+token = problema de infra, fora do escopo F6). Logo
+`cost-regression.e2e` sai `faithful=false` e `golden-under-active.e2e` sai
+`INCONCLUSIVO` (exit 2) , **nunca mascaram**. **Ação:** rodar ambos no ambiente
+full-stack (app/docker, onde a sessão MCP funciona) e capturar o baseline
+`src/lib/agent/evals/golden/cost-scorecard.json`. Gates A (recall@K=100%) + B
+(golden-nex VERDE) já cobrem o critério de promoção; Gate C é confirmação E2E.
+
+### ~~F6-B , Promover `routerToolRetrieval=active`~~ ATIVADO 2026-06-08
+`routerEnabled=true` + `routerToolRetrieval=active` aplicados em `agent_settings`,
+sob gate triplo verde: recall@K=100% + golden-nex VERDE + golden-under-active com
+critério **no-regressão** (active nunca perde tool que o catálogo cheio usaria), 10/10
+pares. Reversível: `UPDATE agent_settings SET router_tool_retrieval='shadow'`.
+Gotcha de acesso MCP em dev resolvido (sessão do host falhava por `MCP_DB_PASSWORD`
+vazio no container , recriar o `mcp` da raiz principal com `.env`): ver
+`docs/RUNBOOK-retrieval-ativacao.md`. Opcional: medir o ganho real de custo
+(cost-scorecard faithful shadow×active) no full-stack; coordenar com `feat/router-ativacao-r2`.
+
+---
+
+## R10 , dim_empresa_grupo com odooId DESLOCADO vs empresaId das notas (MÉDIO-ALTO)
+
+**Quando:** 2026-06-09 (perícia a pedido do usuário). **Onde:** `dim_empresa_grupo`
+(builder no worker) vs `fato_nota_fiscal.empresaId`.
+
+**Achado:** o `odooId` do `dim_empresa_grupo` NÃO casa com o `empresaId` gravado nas
+notas. Confronto fato.empresaNome (nome na própria nota) × dim.nome: só `id=1` bate;
+de `id>=4` quase todas DIVERGEM (a dim aponta para a empresa errada, deslocada).
+Ex.: nota `empresaId=4` = "Jds Comércio - Matriz 18.282.961/0001-00", mas dim
+`odooId=4` = "Jht DF Comércio 10.557.556/0001-37". E `empresaId=2` e `3` (Jht DF
+Matriz e Filial SE, ativos, com notas até hoje) NEM EXISTEM no `res.company`
+sincronizado (RawResCompany tem 1,4,5,...,21,27 , sem 2,3). dim_empresa_grupo
+tem 18 cadastros; o fato tem 15 empresaIds distintos , id-spaces diferentes.
+
+**Impacto:** qualquer resolução de nome/UF/tipo via `fato.empresaId → dim.odooId`
+rotula a empresa ERRADA (os VALORES por id estão certos; o NOME vinha trocado).
+Era a causa da "empresa duplicada" que o usuário viu (uma linha era a empresa real
+sem dim, outra era outra empresa mal-rotulada com o mesmo nome).
+
+**Mitigação aplicada (2026-06-09):** `faturamentoPorEmpresa` passou a usar o
+`empresaNome` DENORMALIZADO da nota (autoritativo), sem a dim. Corrige o rótulo
+imediatamente.
+
+**Pendência (worker, fazer direito):** reconstruir `dim_empresa_grupo` no id-space
+correto (o `empresaId` das notas parece ser company_id de SPED/contábil, não
+`res.company.id`; investigar RawSpedEmpresa) e cobrir os ids 2/3 ausentes. Enquanto
+não fizer, NENHUM resolvedor deve confiar em `dim.odooId == fato.empresaId`.
+Além disso há cadastro malformado/duplicado na própria dim: `odooId=21`
+("Jht SP Comércio - Filial MG 34.161.829/0005-11 34.161.829/00", CNPJ repetido)
+duplica o `odooId=12`.
+
+### R10 , atualização 2026-06-09 (perícia completa: origem + impacto + fix recomendado)
+
+**Origem exata:** `dim_empresa_grupo` é populada por **seed ESTÁTICO** na migration
+`prisma/migrations/20260528020000_dim_empresa_grupo/migration.sql` (`INSERT ... VALUES`),
+com `odoo_id` = ids do **res.company** (1,4,5,6,...). Mas o `empresaId` gravado em
+`fato_nota_fiscal` é de OUTRO id-space (denso: 1,2,3,4,...; ex.: Jht DF Matriz =
+empresaId **2** na nota, mas res.company **4**). Os dois nunca casam de id 4 em diante.
+
+**Impacto (3 consumidores) , TODOS CORRIGIDOS (2026-06-09):**
+1. `faturamento_por_empresa` (nome) , **CORRIGIDO** (usa `fato.empresaNome`).
+2. `resolverEmpresa` (`src/lib/metrics/_shared/empresa.ts`) , **CORRIGIDO**: derivado do
+   FATO. Devolve `odooId = fato.empresaId` (mesmo id-space das notas); nome casa
+   insensível a acento. Filtro por empresa agora acerta a empresa.
+3. `filiais-listar` (`mcp/tools/cadastros/filiais-listar.ts`) , **CORRIGIDO**: lista
+   `distinct` do fato com `odooId = empresaId`, tipo/UF/CNPJ parseados do nome da nota.
+
+**Fix aplicado (2026-06-09):** `dim_empresa_grupo` deixou de ser fonte. Helpers novos
+em `_shared/empresa.ts`: `parseEmpresaNome` (parseia "{Nome} - {Matriz|Filial} {UF} {CNPJ}")
+e `listarEmpresasDoFato` (`SELECT DISTINCT empresaId, empresaNome FROM fato_nota_fiscal`).
+`resolverEmpresa` e `filiais-listar` reusam esses helpers. Verificado: tsc raiz+mcp + jest
+(2761) verdes + E2E contra cache real (`scripts/e2e-empresa-r10.ts`): 'Jds Comercio - Matriz'
+→ empresaId=4 → nota "Jds Comércio - Matriz DF" (empresa CERTA), CNPJ exato resolve certo,
+'Jht DF' → ids {2,3} reais. **Pendência remanescente (worker, opcional):** reconstruir ou
+descontinuar a `dim_empresa_grupo`; nenhum consumidor depende mais dela.
+
+---
+
+## R11 , bubble do Nex ressuscitava conversa antiga (ghost) ao recarregar , CORRIGIDO (2026-06-09)
+
+**Quando:** 2026-06-09 (relatado pelo usuário). **Onde:** `getActiveConversationId`
+(`src/lib/actions/active-conversation.ts`), consumido pelo boot da bubble em
+`(protected)/layout.tsx`.
+
+**Sintoma:** ao recarregar a página, a bubble restaurava uma conversa de **dias
+atrás** (ex.: 28/05) que o usuário não esperava ver.
+
+**Raiz:** a query buscava a conversa in_app mais recente **filtrando `ended_at IS
+NULL`**. O usuário tinha ~100 conversas in_app antigas com `ended_at = NULL`
+(órfãs , criadas antes do restore-on-boot existir, nunca limpas). Ao arquivar
+("Limpar sessão") as sessões recentes, a query "descia" e ressuscitava a órfã
+ativa mais nova. Não é janela de tempo: o modelo correto é "a sessão dura até o
+usuário limpar", mas **uma conversa mais nova (mesmo já arquivada) deve superar as
+órfãs antigas**.
+
+**Correção (PR #78):**
+1. `getActiveConversationId` pega a **última** conversa in_app do canal (sem filtrar
+   `ended_at`) e só restaura se ela ainda estiver **aberta**.
+2. `handleClearSession` passa a checar o retorno de `archiveActiveConversation`: se
+   o arquivamento falhar, não limpa a UI (senão a conversa voltaria no reload) e
+   avisa por toast.
+3. Migration `20260609220000_archive_orphan_inapp_conversations`: arquiva (não
+   deleta) as órfãs in_app, deixando no máximo **uma ativa por usuário**.
+
+**Verificado (dado real):** usuário do bug 102 órfãs ativas → 0; mais recente vira
+a sessão de hoje (arquivada) → boot resolve para welcome. Outro usuário com sessão
+genuína manteve 1 ativa. tsc verde + jest (46 dos arquivos afetados).

@@ -20,12 +20,18 @@ const tituloSchema = z.object({
   vrSaldo: z.number(),
   vrTotal: z.number(),
   diasAtraso: z.number().int(),
+  situacaoSimples: z.string().nullable(),
 });
 
 // Onda 1.B: envelope canonico do agente Nex aplicado.
 const dados = z.object({
   titulos: z.array(tituloSchema),
   totalAPagar: z.number(),
+  // Quebra honesta do total em aberto: confirmado (efetivo) vs provisorio
+  // (lançado, não efetivado). No a_pagar o provisorio é a maior parte.
+  quebra: z.object({ confirmado: z.number(), provisorio: z.number() }),
+  // Contrato de lista (Fase B): ordenacao declarada da lista `titulos`.
+  ordenadoPor: z.string().optional(),
   // Campos canonicos opcionais (sempre preenchidos por enriquecerEnvelope):
   _RESPOSTA: z.string().optional(),
   _listaTruncada: z.boolean().optional(),
@@ -66,8 +72,12 @@ function shape(d: Awaited<ReturnType<typeof queryContasAPagar>>) {
       vrSaldo: t.vrSaldo,
       vrTotal: t.vrTotal,
       diasAtraso: t.diasAtraso,
+      situacaoSimples: t.situacaoSimples,
     })),
     totalAPagar: d.totalAPagar,
+    quebra: d.quebra,
+    // A query ja devolve ordenado por vrSaldo desc (contrato de lista).
+    ordenadoPor: "valor desc",
   };
 }
 
@@ -98,6 +108,8 @@ export const financeiroContasAPagar: ToolEntry<Input, Output> = {
     const enriched = enriquecerEnvelope(envelope, "financeiro_contas_a_pagar", {
       destaque: {
         totalAPagar: envelope.dados.totalAPagar,
+        totalConfirmado: envelope.dados.quebra.confirmado,
+        totalProvisorio: envelope.dados.quebra.provisorio,
         contagem: envelope.dados.titulos.length,
         topMaiorValor: top10List[0]?.valor ?? 0,
         topMaiorParticipante: top10List[0]?.nome ?? "",

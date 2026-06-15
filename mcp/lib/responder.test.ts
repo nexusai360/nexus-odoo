@@ -52,6 +52,30 @@ describe("formatadorPorTool", () => {
     expect(r.toLowerCase()).toContain("fornecedor");
   });
 
+  it("fiscal_faturamento_por_empresa LISTA cada empresa (detalhamento, nao so o total)", () => {
+    const fmt = formatadorPorTool("fiscal_faturamento_por_empresa");
+    const env = {
+      _listaTruncada: false,
+      linhas: [
+        { empresaId: 1, empresaNome: "Jds Comercio - Filial SE", totalNotas: 3536, valor: 542794073.8 },
+        { empresaId: 2, empresaNome: "Jht DF Comercio - Matriz", totalNotas: 778, valor: 108526602.73 },
+        { empresaId: null, empresaNome: null, totalNotas: 1, valor: 140000 },
+      ],
+      atualizadoEm: "x",
+      atualizadoHa: "2min",
+      _DESTAQUE: { totalGrupo: 651460676.53, empresasComFaturamento: 2 },
+      _agregado: { soma: 651460676.53, contagem: 2 },
+    };
+    const r = normSpaces(fmt(env));
+    // cabeca com o total do grupo
+    expect(r).toContain("R$ 651.460.676,53");
+    // DETALHAMENTO por empresa (era o que faltava , o LLM ecoava o _DESTAQUE cru sem isto)
+    expect(r).toContain("Jds Comercio - Filial SE");
+    expect(r).toContain("R$ 542.794.073,80");
+    expect(r).toContain("Jht DF Comercio - Matriz");
+    expect(r).toContain("R$ 108.526.602,73");
+  });
+
   it("registrar_lacuna devolve apenas respostaSugerida (T-19: canal removido)", () => {
     const fmt = formatadorPorTool("registrar_lacuna");
     const env = {
@@ -168,5 +192,236 @@ describe.skip("contrato pre-PR2 (TOOLS_QUE_PRECISAM_FORMATADOR)", () => {
       if (ehFormatadorGenerico(fmt)) faltam.push(tool);
     }
     expect(faltam).toEqual([]);
+  });
+});
+
+describe("fmtFaturamentoPorCfop", () => {
+  const fmt = formatadorPorTool("fiscal_faturamento_por_cfop");
+  const baseEnv = { _listaTruncada: false, linhas: [], atualizadoEm: "", atualizadoHa: "" };
+  it("modo categoria: lista com marca de receita e aviso de gap", () => {
+    const env = {
+      ...baseEnv,
+      _DESTAQUE: {
+        agruparPor: "categoria",
+        totalProdutos: 2050,
+        totalReceita: 1300,
+        linhasCount: 4,
+        semCfopValor: 50,
+        topLinhasJson: JSON.stringify([
+          { rotulo: "Venda", valor: 1000, ehReceita: true },
+          { rotulo: "Transferencia", valor: 700, ehReceita: false },
+        ]),
+      },
+    };
+    const txt = fmt(env as never);
+    expect(txt).toContain("por operacao fiscal (categoria)");
+    expect(txt).toContain("Receita");
+    expect(txt).toContain("nao-receita");
+    expect(txt).toContain("sem CFOP");
+  });
+  it("modo cfop: preserva o codigo+nome do CFOP sem mutilar", () => {
+    const env = {
+      ...baseEnv,
+      _DESTAQUE: {
+        agruparPor: "cfop",
+        totalProdutos: 1000,
+        totalReceita: 1000,
+        linhasCount: 1,
+        semCfopValor: 0,
+        topLinhasJson: JSON.stringify([{ rotulo: "5102 - Venda de mercadoria", valor: 1000, ehReceita: true }]),
+      },
+    };
+    const txt = fmt(env as never);
+    expect(txt).toContain("por operacao fiscal (cfop)");
+    expect(txt).toContain("5102 - Venda de mercadoria");
+  });
+  it("vazio quando nao ha linhas", () => {
+    const txt = fmt({ ...baseEnv, _DESTAQUE: { totalProdutos: 0, linhasCount: 0 } } as never);
+    expect(txt).toContain("Nenhum faturamento");
+  });
+
+  it("Fase 2.6: decompoe sem CFOP por finalidade e expoe balde outras (substancia a confirmar)", () => {
+    const env = {
+      ...baseEnv,
+      _DESTAQUE: {
+        agruparPor: "categoria",
+        totalProdutos: 1000000,
+        totalReceita: 500000,
+        linhasCount: 3,
+        semCfopValor: 23300150,
+        semCfopVendaValor: 11841325,
+        semCfopDevolucaoValor: 11458824,
+        outrasValor: 11784759,
+        outrasFinalidadeVendaValor: 11775042,
+        topLinhasJson: JSON.stringify([{ rotulo: "Venda", valor: 500000, ehReceita: true }]),
+      },
+    };
+    const txt = fmt(env as never);
+    expect(txt).toContain("sem CFOP");
+    expect(txt).toContain("venda candidata");
+    expect(txt).toContain("substancia a confirmar");
+  });
+
+  it("Fase 2.6: nao imprime linha de outras quando outrasValor=0", () => {
+    const env = {
+      ...baseEnv,
+      _DESTAQUE: { agruparPor: "categoria", totalProdutos: 1000, totalReceita: 1000, linhasCount: 1, outrasValor: 0, topLinhasJson: "[]" },
+    };
+    const txt = fmt(env as never);
+    expect(txt).not.toContain("substancia a confirmar");
+  });
+});
+
+describe("fmtReceitaConsolidada", () => {
+  const fmt = formatadorPorTool("fiscal_receita_consolidada");
+  const base = { _listaTruncada: false, linhas: [], atualizadoEm: "", atualizadoHa: "" };
+  it("frase com receita externa e percentual eliminado", () => {
+    const txt = fmt({ ...base, _DESTAQUE: { receitaExterna: 897, receitaIntragrupoEliminavel: 418, receitaIndividualTotal: 1315, percentualEliminado: 0.318 } } as never);
+    expect(txt).toContain("Receita consolidada externa");
+    expect(txt).toContain("intragrupo");
+  });
+  it("vazio quando individual e zero", () => {
+    expect(fmt({ ...base, _DESTAQUE: { receitaIndividualTotal: 0 } } as never)).toContain("Nenhuma receita");
+  });
+});
+
+describe("fmtIntercompany", () => {
+  const fmt = formatadorPorTool("fiscal_intercompany");
+  const base = { _listaTruncada: false, linhas: [], atualizadoEm: "", atualizadoHa: "" };
+  it("lista top pares vendedor-comprador", () => {
+    const txt = fmt({ ...base, _DESTAQUE: { total: 1500, totalPares: 1, topLinhasJson: JSON.stringify([{ vendedor: "Emp A", comprador: "Grupo B", valor: 1500 }]) } } as never);
+    expect(txt).toContain("intercompany");
+    expect(txt).toContain("Emp A");
+    expect(txt).toContain("Grupo B");
+  });
+  it("topLinhasJson invalido cai no fallback sem estourar", () => {
+    const txt = fmt({ ...base, _DESTAQUE: { total: 1500, totalPares: 1, topLinhasJson: "{quebrado" } } as never);
+    expect(txt).toContain("intercompany");
+  });
+  it("vazio quando nao ha pares", () => {
+    expect(fmt({ ...base, _DESTAQUE: { total: 0, totalPares: 0 } } as never)).toContain("Nenhuma venda entre empresas");
+  });
+});
+
+describe("fmtFaturamentoPeriodo (Fase 2.5: headline externa/individual)", () => {
+  const fmt = formatadorPorTool("fiscal_faturamento_periodo");
+  const base = { _listaTruncada: false, linhas: [], atualizadoEm: "", atualizadoHa: "" };
+  it("grupo: FECHA O ARCO (faturamento real + total + parte interna), sem jargao", () => {
+    const txt = fmt({
+      ...base,
+      _DESTAQUE: {
+        headlineValor: 8783795.41,
+        headlineRotulo: "Faturamento do grupo",
+        receitaExterna: 8783795.41,
+        receitaIndividual: 13872439.97,
+        intragrupoEliminavel: 5088644.56,
+        percentualEliminado: 0.367,
+        notasExternas: 462,
+        concentrador: 0,
+        periodoLabel: "junho de 2026",
+      },
+    } as never);
+    // numero principal direto + periodo + notas
+    expect(txt).toContain("8.783.795,41");
+    expect(txt).toContain("junho de 2026");
+    expect(txt).toContain("462");
+    // FECHA O ARCO: total e parte interna explicitos, com a relacao clara
+    expect(txt).toContain("13.872.439,97");
+    expect(txt).toContain("5.088.644,56");
+    expect(txt).toContain("vendas entre empresas");
+    // SEM JARGAO
+    expect(txt.toLowerCase()).not.toContain("intercompany");
+    expect(txt.toLowerCase()).not.toContain("intragrupo");
+    expect(txt.toLowerCase()).not.toContain("individual");
+  });
+  it("grupo sem vendas internas: so o numero direto, sem mencao a desconto", () => {
+    const txt = fmt({
+      ...base,
+      _DESTAQUE: {
+        headlineValor: 1000000,
+        headlineRotulo: "Faturamento do grupo",
+        receitaExterna: 1000000,
+        receitaIndividual: 1000000,
+        intragrupoEliminavel: 0,
+        percentualEliminado: 0,
+        notasExternas: 50,
+        concentrador: 0,
+        periodoLabel: "maio de 2026",
+      },
+    } as never);
+    expect(txt).toContain("1.000.000,00");
+    expect(txt).toContain("50");
+    expect(txt.toLowerCase()).not.toContain("entre empresas");
+  });
+  it("empresa concentradora: marca o aviso de concentrador, sem jargao", () => {
+    const txt = fmt({
+      ...base,
+      _DESTAQUE: {
+        headlineValor: 229000000,
+        headlineRotulo: "Faturamento da empresa",
+        receitaExterna: 12000000,
+        receitaIndividual: 229000000,
+        intragrupoEliminavel: 217000000,
+        percentualEliminado: 0.948,
+        notasExternas: 30,
+        concentrador: 1,
+        periodoLabel: "2025",
+      },
+    } as never);
+    expect(txt.toLowerCase()).toContain("empresas do");
+    expect(txt.toLowerCase()).not.toContain("intercompany");
+    expect(txt.toLowerCase()).not.toContain("intragrupo");
+  });
+  it("vazio quando nao ha faturamento", () => {
+    const txt = fmt({ ...base, _DESTAQUE: { headlineValor: 0, receitaIndividual: 0, periodoLabel: "2025" } } as never);
+    expect(txt).toContain("Nenhum faturamento");
+  });
+});
+
+describe("fmtFaturamentoPorCliente (Fase 2.5: clientes externos + intragrupo separado)", () => {
+  const fmt = formatadorPorTool("fiscal_faturamento_por_cliente");
+  const base = { _listaTruncada: false, linhas: [], atualizadoEm: "", atualizadoHa: "" };
+  it("mostra top cliente externo, total externo e nota de intragrupo", () => {
+    const txt = fmt({
+      ...base,
+      _DESTAQUE: {
+        topCliente: "Cliente Externo Ltda",
+        valorTopCliente: 320000,
+        totalExterno: 500000,
+        totalIntragrupo: 217000000,
+        periodoLabel: "2025",
+      },
+    } as never);
+    expect(txt).toContain("Cliente Externo Ltda");
+    expect(txt).toContain("2025");
+    expect(txt).toContain("intragrupo");
+  });
+  it("vazio quando nao ha cliente externo", () => {
+    const txt = fmt({ ...base, _DESTAQUE: { topCliente: "", totalExterno: 0, periodoLabel: "2025" } } as never);
+    expect(txt).toContain("Nenhum cliente externo");
+  });
+});
+
+describe("fmtFaturamentoMensalSerie (Fase 2.5: serie externa)", () => {
+  const fmt = formatadorPorTool("fiscal_faturamento_mensal_serie");
+  const base = { _listaTruncada: false, linhas: [], atualizadoEm: "", atualizadoHa: "" };
+  it("cabecalho com receita externa do ano e media mensal", () => {
+    const txt = fmt({
+      ...base,
+      _DESTAQUE: { ano: 2025, totalExternaAno: 300000000, totalIndividualAno: 500000000, totalNotasExternasAno: 1200, mesesConsultados: 6 },
+    } as never);
+    expect(txt).toContain("2025");
+    expect(txt).toContain("externa");
+  });
+  it("vazio quando nao ha faturamento no ano", () => {
+    const txt = fmt({ ...base, _DESTAQUE: { ano: 2025, totalExternaAno: 0, totalIndividualAno: 0, mesesConsultados: 6 } } as never);
+    expect(txt).toContain("Nenhum");
+  });
+});
+
+describe("allowlist resolve formatador real (nao generico) para as tools F2", () => {
+  it("fiscal_receita_consolidada e fiscal_intercompany tem formatador real", () => {
+    expect(ehFormatadorGenerico(formatadorPorTool("fiscal_receita_consolidada"))).toBe(false);
+    expect(ehFormatadorGenerico(formatadorPorTool("fiscal_intercompany"))).toBe(false);
   });
 });

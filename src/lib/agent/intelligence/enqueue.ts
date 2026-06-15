@@ -61,3 +61,44 @@ export async function enqueueTopicTagging(
     console.warn("[enqueueTopicTagging] falha:", err);
   }
 }
+
+const RESUMO_CONVERSA_QUEUE_NAME = "agent-resumo-conversa";
+
+let resumoConversaQueue: Queue<{ conversationId: string }> | null = null;
+
+function getResumoConversaQueue(): Queue<{ conversationId: string }> {
+  if (!resumoConversaQueue) {
+    const REDIS_URL = process.env.REDIS_URL ?? "redis://localhost:6379";
+    const connection = new IORedis(REDIS_URL, {
+      maxRetriesPerRequest: null,
+      lazyConnect: true,
+    });
+    resumoConversaQueue = new Queue<{ conversationId: string }>(
+      RESUMO_CONVERSA_QUEUE_NAME,
+      { connection },
+    );
+  }
+  return resumoConversaQueue;
+}
+
+/**
+ * Onda M (M.5): enfileira a re-geracao do resumo progressivo da conversa.
+ * O processor aplica o threshold (>= 8 mensagens novas) e skipa cedo; o jobId
+ * deduplica re-disparos do mesmo bloco de mensagens. Best-effort: nunca lanca.
+ */
+export async function enqueueResumoConversa(
+  conversationId: string,
+  messageCount: number,
+): Promise<void> {
+  try {
+    const queue = getResumoConversaQueue();
+    const jobId = `resumo-conversa:${conversationId}:${Math.floor(messageCount / 4)}`;
+    await queue.add(
+      "resumo-conversa",
+      { conversationId },
+      { jobId, removeOnComplete: 100, removeOnFail: 50 },
+    );
+  } catch (err) {
+    console.warn("[enqueueResumoConversa] falha:", err);
+  }
+}

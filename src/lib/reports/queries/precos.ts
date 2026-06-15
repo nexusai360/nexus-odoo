@@ -84,7 +84,7 @@ function toLinha(r: RawRow): PrecoLinha {
 export async function queryPrecoProduto(
   prisma: PrismaClient,
   filtros: { produtoId?: number; termo?: string; limit?: number; offset?: number },
-): Promise<{ linhas: PrecoLinha[]; total: number; truncado: boolean }> {
+): Promise<{ linhas: PrecoLinha[]; total: number; truncado: boolean; ordenadoPor: string }> {
   const where =
     filtros.produtoId != null
       ? { produtoId: filtros.produtoId }
@@ -105,7 +105,13 @@ export async function queryPrecoProduto(
     }),
     prisma.fatoPreco.count({ where }),
   ]);
-  return { linhas: rows.map(toLinha), total, truncado: offset + rows.length < total };
+  // Contrato de lista (Fase B): orderBy produtoNome asc (desempate tabelaNome, odooId).
+  return {
+    linhas: rows.map(toLinha),
+    total,
+    truncado: offset + rows.length < total,
+    ordenadoPor: "produto asc",
+  };
 }
 
 // ---------------------------------------------------------------------------
@@ -122,6 +128,7 @@ export async function queryPrecoTabela(
   linhas: PrecoLinha[];
   total: number;
   truncado: boolean;
+  ordenadoPor: string;
 }> {
   const where = { tabelaId: filtros.tabelaId };
   // Alavanca 2b: paginacao via take/skip + orderBy estavel com desempate por
@@ -139,11 +146,13 @@ export async function queryPrecoTabela(
     // Nome da tabela independe da pagina: busca a 1a linha do recorte.
     prisma.fatoPreco.findFirst({ where, select: { tabelaNome: true } }),
   ]);
+  // Contrato de lista (Fase B): orderBy produtoNome asc (desempate familiaNome, odooId).
   return {
     tabelaNome: rows[0]?.tabelaNome ?? primeira?.tabelaNome ?? null,
     linhas: rows.map(toLinha),
     total,
     truncado: offset + rows.length < total,
+    ordenadoPor: "produto asc",
   };
 }
 

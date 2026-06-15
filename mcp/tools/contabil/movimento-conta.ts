@@ -45,6 +45,8 @@ const linhaSchema = z.object({
 });
 
 const dados = z.object({
+  // Contrato de lista (Fase B): ordenacao declarada.
+  ordenadoPor: z.string().optional(),
   linhas: z.array(linhaSchema),
   total: z.number().int(),
   truncado: z.boolean(),
@@ -89,6 +91,7 @@ export const contabilMovimentoConta: ToolEntry<Input, Output> = {
       async () => {
         const result = await queryMovimentoConta(ctx.prisma, { ...input, limit, offset });
         return {
+          ordenadoPor: "data do lancamento asc",
           linhas: result.linhas.map((l) => ({
             ...l,
             dataLancamento: l.dataLancamento ? l.dataLancamento.toISOString() : null,

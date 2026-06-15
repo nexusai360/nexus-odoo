@@ -6,10 +6,12 @@ import { queryNotasRecebidas } from "@/lib/reports/queries/fiscal.js";
 import { withFreshness } from "../../lib/freshness.js";
 import { enriquecerEnvelope } from "../../lib/with-responder.js";
 import { paginacaoInputShape, resolverPaginacao, montarPaginacaoMeta } from "../../lib/paginacao.js";
+import { montarEscopoEmpresa, type EscopoEmpresa } from "./_escopo-empresa.js";
 
 const inputSchema = z.object({
   periodoDe: z.string().optional(),
   periodoAte: z.string().optional(),
+  empresaRef: z.string().trim().min(1).optional().describe("Empresa (id, CNPJ ou nome). Sem isso, considera o grupo todo."),
   ...paginacaoInputShape,
 });
 
@@ -24,7 +26,22 @@ const dados = z.object({
   linhas: z.array(linhaSchema),
   totalNotas: z.number().int(),
   valorTotal: z.number(),
+  escopoEmpresa: z.record(z.string(), z.unknown()),
   aviso: z.string(),
+  // Contrato de lista (Fase B): a lista vem por dataEmissao desc (desempate por
+  // odooId). topMaiores e a visao por valor (top 10 do recorte inteiro) para
+  // "as N maiores notas recebidas", que a paginacao por data nao responderia.
+  ordenadoPor: z.string().optional(),
+  topMaiores: z
+    .array(
+      z.object({
+        nome: z.string(),
+        valor: z.number(),
+        numero: z.string(),
+        dataEmissao: z.string().nullable(),
+      }),
+    )
+    .optional(),
   _RESPOSTA: z.string().optional(),
   _listaTruncada: z.boolean().optional(),
   _PAGINACAO: z.any().optional(),
@@ -52,7 +69,7 @@ const outputSchema = z.union([
 type Input = z.infer<typeof inputSchema>;
 type Output = z.infer<typeof outputSchema>;
 
-function shape(d: Awaited<ReturnType<typeof queryNotasRecebidas>>) {
+function shape(d: Awaited<ReturnType<typeof queryNotasRecebidas>>, escopo: EscopoEmpresa) {
   return {
     linhas: d.linhas.map((l) => ({
       numero: l.numero,
@@ -62,7 +79,10 @@ function shape(d: Awaited<ReturnType<typeof queryNotasRecebidas>>) {
     })),
     totalNotas: d.totalNotas,
     valorTotal: d.valorTotal,
-    aviso: "Notas de entrada (entradaSaida='0') representam compras e devoluções recebidas pela empresa.",
+    escopoEmpresa: escopo as unknown as Record<string, unknown>,
+    ordenadoPor: "data desc",
+    topMaiores: d.topMaiores,
+    aviso: "Notas de entrada (entradaSaida='0') representam compras e devoluções recebidas pela empresa. " + escopo.aviso,
   };
 }
 
@@ -74,9 +94,19 @@ export const fiscalNotasRecebidas: ToolEntry<Input, Output> = {
   inputSchema,
   outputSchema,
   handler: async (input, ctx) => {
+    const escopo = await montarEscopoEmpresa(ctx.prisma, input.empresaRef);
     const { limit, offset } = resolverPaginacao(input);
     const envelope = await withFreshness(ctx.prisma, ["fato_nota_fiscal"], async () =>
-      shape(await queryNotasRecebidas(ctx.prisma, { ...input, limit, offset })),
+      shape(
+        await queryNotasRecebidas(ctx.prisma, {
+          periodoDe: input.periodoDe,
+          periodoAte: input.periodoAte,
+          empresaId: escopo.empresaId,
+          limit,
+          offset,
+        }),
+        escopo.escopo,
+      ),
     );
     if (envelope.estado === "preparando") return envelope;
     const d = envelope.dados;

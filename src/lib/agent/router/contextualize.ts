@@ -19,6 +19,11 @@ import { getLastNPairs } from "@/lib/agent/conversation";
 import { buildLlmClient } from "@/lib/agent/llm/get-client";
 import { logUsage } from "@/lib/agent/llm/usage-logger";
 import type { LlmProvider } from "@/lib/agent/llm/types";
+import type { FocoAtual } from "@/lib/agent/memoria/foco-atual";
+import {
+  resolverAnaforaDeterministica,
+  type EntidadeRecente,
+} from "./anafora-heuristica";
 
 const TIMEOUT_MS = 2500;
 
@@ -41,6 +46,10 @@ export interface ReformulateInput {
   credentialId?: string | null;
   userId?: string;
   isPlayground?: boolean;
+  /** T4.3: working memory da conversa para a heurística de anáfora. */
+  focoAtual?: FocoAtual | null;
+  /** T4.3: entidades recentes (ConversationEntity, recência por turno). */
+  entidadesRecentes?: EntidadeRecente[];
 }
 
 export interface ReformulateResult {
@@ -54,6 +63,18 @@ export async function reformulateQuestion(
   input: ReformulateInput,
 ): Promise<ReformulateResult> {
   if (!input.conversationId) return { reformulated: null, used: false };
+
+  // T4.3: heurística determinística primeiro (zero LLM). "ambigua" NÃO cai no
+  // CQR: fica sem reformular e a regra 12b do prompt clarifica com o usuário.
+  const heur = resolverAnaforaDeterministica(
+    input.currentQuestion,
+    input.focoAtual ?? null,
+    input.entidadesRecentes ?? [],
+  );
+  if (heur.status === "resolvida") {
+    return { reformulated: heur.reformulada, used: true };
+  }
+  if (heur.status === "ambigua") return { reformulated: null, used: false };
 
   const pairs = await getLastNPairs(input.conversationId, input.nPairs);
   if (pairs.length === 0) return { reformulated: null, used: false };

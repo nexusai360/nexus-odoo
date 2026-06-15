@@ -64,6 +64,30 @@ const RAW_PARCEIRO_SEM_UF = {
   active: false,
 };
 
+// C3 (F2): parceiro real com vat no formato "BR-..." (prefixo do Odoo).
+const RAW_PARCEIRO_VAT_BR = {
+  id: 4004,
+  name: "Matrix Fitness Brasil",
+  complete_name: "Matrix Fitness Brasil",
+  vat: "BR-07.390.039/0001-01",
+  customer: true,
+  supplier: false,
+  is_company: true,
+  active: true,
+};
+
+// C3 (F2): vat so com prefixo, sem digitos => documentoDigits null (alinha backfill).
+const RAW_PARCEIRO_VAT_SEM_DIGITOS = {
+  id: 5005,
+  name: "Sem Documento",
+  complete_name: "Sem Documento",
+  vat: "BR-",
+  customer: true,
+  supplier: false,
+  is_company: false,
+  active: true,
+};
+
 // ---------------------------------------------------------------------------
 // mapParceiroRow
 // ---------------------------------------------------------------------------
@@ -117,6 +141,27 @@ describe("mapParceiroRow", () => {
   it("NÃO produz atualizadoEm (campo tem @default(now()) no schema)", () => {
     const raw = { id: 1, name: "X" };
     expect(mapParceiroRow(raw)).not.toHaveProperty("atualizadoEm");
+  });
+
+  // C3 (F2): documentoDigits , so digitos, imune a mascara e prefixo "BR-".
+  it("documentoDigits extrai so digitos de vat com prefixo BR- e mascara", () => {
+    const result = mapParceiroRow(RAW_PARCEIRO_VAT_BR);
+    expect(result.documentoDigits).toBe("07390039000101");
+  });
+
+  it("documentoDigits extrai so digitos de vat com mascara simples", () => {
+    const result = mapParceiroRow(RAW_PARCEIRO_EMPRESA_CLIENTE);
+    expect(result.documentoDigits).toBe("12345678000199");
+  });
+
+  it("documentoDigits = null quando vat nao tem digitos (BR-)", () => {
+    const result = mapParceiroRow(RAW_PARCEIRO_VAT_SEM_DIGITOS);
+    expect(result.documentoDigits).toBeNull();
+  });
+
+  it("documentoDigits = null quando vat ausente", () => {
+    const result = mapParceiroRow(RAW_PARCEIRO_SEM_UF);
+    expect(result.documentoDigits).toBeNull();
   });
 });
 

@@ -21,7 +21,7 @@ describe("mapMovimentoRow", () => {
     const result = mapMovimentoRow(raw);
     expect(result).toEqual({
       odooId: 518648,
-      data: new Date("2026-05-10T00:00:00"),
+      data: new Date("2026-05-10T00:00:00Z"),
       contaId: 5,
       contaNome: "Conta Corrente BB",
       centroResultadoId: 2,

@@ -218,6 +218,49 @@ function SideColumn({
   );
 }
 
+// Cadência única do polling ao vivo (todas as 3 colunas). ~2.5s é imperceptível
+// num monitor e mais leve que 1s nas agregações de Colaboradores/Sessões.
+const LIVE_POLL_MS = 2500;
+
+// Não trabalha com a aba em segundo plano (economiza query e bateria).
+function tabHidden(): boolean {
+  return (
+    typeof document !== "undefined" && document.visibilityState === "hidden"
+  );
+}
+
+// Filtro das mensagens exibidas na coluna Conversa (mesmo critério em toda
+// carga , inicial e polling): sem role "tool" e sem assistant intermediária
+// vazia (tool-call). Genérico pra preservar o tipo do DTO de origem.
+function keepVisible<T extends { role: string; content: string; kind?: string }>(
+  msgs: T[],
+): T[] {
+  return msgs.filter(
+    (m) =>
+      m.role !== "tool" &&
+      (m.content.trim().length > 0 || m.kind === "audio"),
+  );
+}
+
+// Assinatura barata pra detectar mudança entre dois polls: cobre mensagem nova,
+// conteúdo, sugestões que preencheram, sugestão clicada, status do juiz e voto.
+// Igual → não re-renderiza (evita jump de scroll e flicker da tag de data).
+function messagesSignature(list: MonitorMessage[]): string {
+  return list
+    .map((m) =>
+      [
+        m.id,
+        m.content.length,
+        m.suggestions?.length ?? 0,
+        m.clickedSuggestion ?? "",
+        m.evaluation?.status ?? "",
+        m.feedback?.rating ?? "",
+        m.feedback?.comment ?? "",
+      ].join(":"),
+    )
+    .join("|");
+}
+
 export function BubbleMonitor() {
   const [collabCollapsed, setCollabCollapsed] = React.useState(false);
   const [sessionsCollapsed, setSessionsCollapsed] = React.useState(false);
@@ -230,9 +273,42 @@ export function BubbleMonitor() {
   const [showScrollFab, setShowScrollFab] = React.useState(false);
   const rowRefs = React.useRef<Map<string, HTMLElement>>(new Map());
   const [dateLabel, setDateLabel] = React.useState("");
+  // Assinatura da última lista aplicada (detecção de novidade no polling) e modo
+  // de scroll pra próxima aplicação de `messages` ("top" = abre na 1a carga,
+  // "bottom" = gruda no fim num update ao vivo, "keep" = preserva a posição).
+  const messagesSigRef = React.useRef<string | null>(null);
+  const stickModeRef = React.useRef<"top" | "bottom" | "keep">("top");
+  // Assinaturas das listas pra aplicar update só quando muda (sem flicker nem
+  // perda de seleção). JSON da lista cobre campos e ordem (reordenar por
+  // atividade conta como mudança e deve refletir).
+  const collabsSigRef = React.useRef<string | null>(null);
+  const sessionsSigRef = React.useRef<string | null>(null);
 
+  // COLABORADORES ao vivo: carga inicial + repesca a cada LIVE_POLL_MS. Só
+  // aplica quando a lista muda (contagem de sessões, sessão ativa, métricas,
+  // ordem por atividade). A seleção (userId) é estado à parte , não se perde.
   React.useEffect(() => {
-    void listBubbleCollaborators().then(setCollabs).catch(() => setCollabs([]));
+    let cancelled = false;
+    const load = (initial: boolean) => {
+      if (!initial && tabHidden()) return;
+      void listBubbleCollaborators()
+        .then((list) => {
+          if (cancelled) return;
+          const sig = JSON.stringify(list);
+          if (!initial && sig === collabsSigRef.current) return;
+          collabsSigRef.current = sig;
+          setCollabs(list);
+        })
+        .catch(() => {
+          if (initial) setCollabs([]);
+        });
+    };
+    load(true);
+    const id = setInterval(() => load(false), LIVE_POLL_MS);
+    return () => {
+      cancelled = true;
+      clearInterval(id);
+    };
   }, []);
 
   const recomputeDateLabel = React.useCallback(() => {
@@ -259,13 +335,19 @@ export function BubbleMonitor() {
     setDateLabel((prev) => (prev === label ? prev : label));
   }, [messages]);
 
-  // Ao carregar a sessão, abre no INÍCIO (mensagem mais antiga no topo); o
-  // usuário rola pra baixo (ou usa o FAB de descer). Recalcula a tag de data.
+  // Posicionamento ao aplicar `messages`. 1a carga da sessão ("top"): abre na
+  // mensagem mais antiga. Update ao vivo do polling: "bottom" gruda no fim pra
+  // revelar a nova quando o usuário já estava lá; "keep" preserva a posição
+  // (não dá jump) quando ele está lendo histórico acima. Sempre recalcula data.
   React.useEffect(() => {
     const el = convScrollRef.current;
     if (messages && el) {
-      el.scrollTop = 0;
-      setShowScrollFab(el.scrollHeight - el.clientHeight > 120);
+      if (stickModeRef.current === "top") {
+        el.scrollTop = 0;
+      } else if (stickModeRef.current === "bottom") {
+        el.scrollTop = el.scrollHeight;
+      }
+      setShowScrollFab(el.scrollHeight - el.scrollTop - el.clientHeight > 120);
       recomputeDateLabel();
     }
   }, [messages, recomputeDateLabel]);
@@ -285,7 +367,11 @@ export function BubbleMonitor() {
     setShowScrollFab(false);
   }, []);
 
+  // SESSÕES ao vivo: ao trocar de colaborador reseta seleção + skeleton; depois
+  // repesca a cada LIVE_POLL_MS, aplicando só quando muda (nova sessão, msgs,
+  // badge "ativa", métricas). A sessão aberta (sessionId) não se perde.
   React.useEffect(() => {
+    sessionsSigRef.current = null;
     if (!userId) {
       setSessions(null);
       setSessionId(null);
@@ -295,29 +381,81 @@ export function BubbleMonitor() {
     setSessions(null);
     setSessionId(null);
     setMessages(null);
-    void listBubbleSessions(userId).then(setSessions).catch(() => setSessions([]));
+    let cancelled = false;
+    const load = (initial: boolean) => {
+      if (!initial && tabHidden()) return;
+      void listBubbleSessions(userId)
+        .then((list) => {
+          if (cancelled) return;
+          const sig = JSON.stringify(list);
+          if (!initial && sig === sessionsSigRef.current) return;
+          sessionsSigRef.current = sig;
+          setSessions(list);
+        })
+        .catch(() => {
+          if (initial) setSessions([]);
+        });
+    };
+    load(true);
+    const id = setInterval(() => load(false), LIVE_POLL_MS);
+    return () => {
+      cancelled = true;
+      clearInterval(id);
+    };
   }, [userId]);
 
+  // Carga INICIAL ao trocar de sessão: skeleton → fetch → abre no topo.
   React.useEffect(() => {
+    messagesSigRef.current = null;
     if (!sessionId) {
       setMessages(null);
       return;
     }
     setMessages(null);
     rowRefs.current.clear();
+    stickModeRef.current = "top";
     void getBubbleSessionMessages(sessionId)
-      .then((r) =>
-        setMessages(
-          r.ok
-            ? (r.messages.filter(
-                (m) =>
-                  m.role !== "tool" &&
-                  (m.content.trim().length > 0 || m.kind === "audio"),
-              ) as MonitorMessage[])
-            : [],
-        ),
-      )
-      .catch(() => setMessages([]));
+      .then((r) => {
+        const list = r.ok ? (keepVisible(r.messages) as MonitorMessage[]) : [];
+        messagesSigRef.current = messagesSignature(list);
+        setMessages(list);
+      })
+      .catch(() => {
+        messagesSigRef.current = null;
+        setMessages([]);
+      });
+  }, [sessionId]);
+
+  // ATUALIZAÇÃO AO VIVO (~2s): com uma sessão aberta, repesca as mensagens e só
+  // aplica quando há novidade (mensagem nova do usuário/IA, voto, sugestão que
+  // preencheu). Pausa em aba oculta. Reusa a action testada , sem infra de SSE.
+  React.useEffect(() => {
+    if (!sessionId) return;
+    let cancelled = false;
+    const tick = () => {
+      if (tabHidden()) return;
+      void getBubbleSessionMessages(sessionId)
+        .then((r) => {
+          if (cancelled || !r.ok) return;
+          const list = keepVisible(r.messages) as MonitorMessage[];
+          const sig = messagesSignature(list);
+          if (sig === messagesSigRef.current) return; // nada mudou
+          messagesSigRef.current = sig;
+          const el = convScrollRef.current;
+          const atBottom = el
+            ? el.scrollHeight - el.scrollTop - el.clientHeight < 120
+            : true;
+          // No fim → gruda pra revelar a nova; lendo acima → preserva posição.
+          stickModeRef.current = atBottom ? "bottom" : "keep";
+          setMessages(list);
+        })
+        .catch(() => {});
+    };
+    const id = setInterval(tick, LIVE_POLL_MS);
+    return () => {
+      cancelled = true;
+      clearInterval(id);
+    };
   }, [sessionId]);
 
   return (
@@ -431,11 +569,16 @@ export function BubbleMonitor() {
 
       {/* Coluna 3: conversa */}
       <div className={cn(SECTION, "relative")}>
-        <div className={HEAD}>Conversa</div>
+        <div className={cn(HEAD, "flex items-center")}>
+          <span>Conversa</span>
+          {/* Espaçador invisível com a mesma altura do chevron (h-5) das
+              colunas laterais, pra borda inferior alinhar exatamente. */}
+          <span aria-hidden className="h-5" />
+        </div>
         <div
           ref={convScrollRef}
           onScroll={onConvScroll}
-          className="flex-1 space-y-4 overflow-y-auto p-4"
+          className="flex-1 space-y-4 overflow-y-auto px-4 pb-4 pt-[21px]"
         >
           {!sessionId ? (
             <Empty>Escolha uma sessão.</Empty>
@@ -520,8 +663,14 @@ function Conversation({
 }) {
   return (
     <>
-      {messages.map((m) => (
-        <div key={m.id} ref={(el) => registerRef(m.id, el)}>
+      {messages.map((m, idx) => (
+        <div
+          key={m.id}
+          ref={(el) => registerRef(m.id, el)}
+          // Só a PRIMEIRA mensagem ganha um respiro extra no topo, pra não ficar
+          // encoberta pela tag de data flutuante ("Hoje").
+          className={idx === 0 ? "mt-[5px]" : undefined}
+        >
           <BubbleMonitorRow msg={m} />
         </div>
       ))}

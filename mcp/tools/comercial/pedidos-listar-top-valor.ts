@@ -42,7 +42,14 @@ const dados = z.object({
   linhas: z.array(linhaSchema),
   totalListados: z.number().int(),
   totalEncontrados: z.number().int().optional(),
+  /** Soma do valor SO dos itens listados nesta pagina (varia com a paginacao). */
   valorTotalListados: z.number(),
+  /** Soma do valor de TODOS os pedidos do filtro (conjunto inteiro, invariante a
+   *  paginacao). E o agregado correto para o agente reportar "total". */
+  valorTotalGeral: z.number().optional(),
+  // Contrato de lista (Fase B): ordenacao real reflete o parametro `ordenacao`
+  // (valor_desc default). orderBy estavel na query, desempate por odooId.
+  ordenadoPor: z.string().optional(),
   _RESPOSTA: z.string().optional(),
   _listaTruncada: z.boolean().optional(),
   _DESTAQUE: z.record(z.string(), z.union([z.string(), z.number()])).optional(),
@@ -101,7 +108,7 @@ async function queryPedidosListarTopValor(prisma: PrismaClient, input: Input) {
           ? [{ dataOrcamento: "desc" }, { odooId: "asc" }]
           : [{ vrProdutos: "desc" }, { odooId: "asc" }];
 
-  const [rows, totalEncontrados] = await Promise.all([
+  const [rows, totalEncontrados, agg] = await Promise.all([
     prisma.fatoPedido.findMany({
       where,
       orderBy,
@@ -118,6 +125,8 @@ async function queryPedidosListarTopValor(prisma: PrismaClient, input: Input) {
       },
     }),
     prisma.fatoPedido.count({ where }),
+    // Soma do conjunto inteiro (invariante a paginacao) , agregado honesto.
+    prisma.fatoPedido.aggregate({ where, _sum: { vrProdutos: true } }),
   ]);
 
   const linhas = rows.map((r) => ({
@@ -135,6 +144,7 @@ async function queryPedidosListarTopValor(prisma: PrismaClient, input: Input) {
     totalListados: linhas.length,
     totalEncontrados,
     valorTotalListados: linhas.reduce((a, b) => a + b.valorTotal, 0),
+    valorTotalGeral: Number(agg._sum.vrProdutos ?? 0),
   };
 }
 
@@ -164,6 +174,12 @@ export const comercialPedidosListarTopValor: ToolEntry<Input, Output> = {
     const top = linhas[0];
     const ordenacao = input.ordenacao ?? "valor_desc";
     const status = input.status ?? "aberto";
+    // Contrato de lista (Fase B): descricao humana da ordenacao real aplicada.
+    const ordenadoPor =
+      ordenacao === "valor_asc" ? "valor asc"
+        : ordenacao === "data_asc" ? "data asc"
+          : ordenacao === "data_desc" ? "data desc"
+            : "valor desc";
     const fmt = (n: number) => n.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
     const fmtData = (s: string | null | undefined) => (s ? s.slice(0, 10) : "(sem data)");
     // T-41: _RESPOSTA gerado no handler com contexto da ordenacao + clienteTermo
@@ -189,6 +205,8 @@ export const comercialPedidosListarTopValor: ToolEntry<Input, Output> = {
         totalListados: linhas.length,
         totalEncontrados,
         valorTotalListados: d.valorTotalListados ?? linhas.reduce((s, l) => s + l.valorTotal, 0),
+        valorTotalGeral: d.valorTotalGeral ?? 0,
+        ordenadoPor,
         _RESPOSTA: resposta,
         _DESTAQUE: {
           totalPedidos: totalEncontrados,
@@ -198,9 +216,14 @@ export const comercialPedidosListarTopValor: ToolEntry<Input, Output> = {
           ordenacao,
           status,
           ...(input.clienteTermo ? { clienteTermo: input.clienteTermo } : {}),
+          // valor do conjunto inteiro (invariante a paginacao)
+          valorTotalGeral: d.valorTotalGeral ?? 0,
+          // valor so dos itens nesta pagina (varia com a paginacao)
           valorTotalListados: d.valorTotalListados ?? linhas.reduce((s, l) => s + l.valorTotal, 0),
         },
-        _agregado: { contagem: totalEncontrados, soma: d.valorTotalListados ?? 0 },
+        // soma do conjunto inteiro (coerente com contagem=totalEncontrados),
+        // nao a soma da pagina (corrige inconsistencia achada pelo baseline F4).
+        _agregado: { contagem: totalEncontrados, soma: d.valorTotalGeral ?? 0 },
         _listaTruncada: paginacao.temMais,
         _PAGINACAO: paginacao,
       },

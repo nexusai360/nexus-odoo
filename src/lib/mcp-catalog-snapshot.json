@@ -11,7 +11,9 @@
       "inputSchemaKeys": [
         "armazemId",
         "familiaId",
-        "termo"
+        "termo",
+        "limit",
+        "offset"
       ],
       "inputSchemaFields": [
         {
@@ -28,6 +30,42 @@
           "name": "termo",
           "type": "string",
           "optional": true
+        },
+        {
+          "name": "limit",
+          "type": "integer",
+          "optional": true
+        },
+        {
+          "name": "offset",
+          "type": "integer",
+          "optional": true
+        }
+      ],
+      "examples": []
+    },
+    {
+      "id": "estoque_cobertura_dias",
+      "operation": "read",
+      "module": "estoque",
+      "descricao": "Idade do estoque em DIAS por item (calculo pronto do sistema sobre o saldo de hoje): itens mais antigos primeiro, media de dias e quantos passam de 180 dias. Use para 'ha quanto tempo o estoque esta parado', 'idade do estoque', 'itens parados ha mais de N dias', 'cobertura de estoque em dias'. Aceita minDias.",
+      "capability": null,
+      "sensitive": false,
+      "addedInVersion": null,
+      "inputSchemaKeys": [
+        "minDias",
+        "limite"
+      ],
+      "inputSchemaFields": [
+        {
+          "name": "minDias",
+          "type": "integer",
+          "optional": true
+        },
+        {
+          "name": "limite",
+          "type": "integer",
+          "optional": true
         }
       ],
       "examples": []
@@ -36,12 +74,26 @@
       "id": "estoque_valor_armazem",
       "operation": "read",
       "module": "estoque",
-      "descricao": "Valor de estoque a preço de custo por armazém.",
+      "descricao": "Valor de estoque a preço de custo por armazém. Filtre por `locais` (prefixos da árvore de locais, ex.: 'Terceiros / Demonstração') ou `apenasFisicos` (subárvore Próprio). Use para 'valor total de estoque', 'valor de estoque físico', 'estoque em demonstração', 'estoque em poder de terceiros', 'estoque no local X'.",
       "capability": null,
       "sensitive": false,
       "addedInVersion": null,
-      "inputSchemaKeys": [],
-      "inputSchemaFields": [],
+      "inputSchemaKeys": [
+        "locais",
+        "apenasFisicos"
+      ],
+      "inputSchemaFields": [
+        {
+          "name": "locais",
+          "type": "array",
+          "optional": true
+        },
+        {
+          "name": "apenasFisicos",
+          "type": "boolean",
+          "optional": true
+        }
+      ],
       "examples": []
     },
     {
@@ -122,7 +174,9 @@
       "addedInVersion": null,
       "inputSchemaKeys": [
         "faixaDias",
-        "armazemId"
+        "armazemId",
+        "limit",
+        "offset"
       ],
       "inputSchemaFields": [
         {
@@ -132,6 +186,16 @@
         },
         {
           "name": "armazemId",
+          "type": "integer",
+          "optional": true
+        },
+        {
+          "name": "limit",
+          "type": "integer",
+          "optional": true
+        },
+        {
+          "name": "offset",
           "type": "integer",
           "optional": true
         }
@@ -162,7 +226,8 @@
         "incluirNegativos",
         "familiaId",
         "armazemId",
-        "limite"
+        "limit",
+        "offset"
       ],
       "inputSchemaFields": [
         {
@@ -181,7 +246,12 @@
           "optional": true
         },
         {
-          "name": "limite",
+          "name": "limit",
+          "type": "integer",
+          "optional": true
+        },
+        {
+          "name": "offset",
           "type": "integer",
           "optional": true
         }
@@ -197,13 +267,45 @@
       "sensitive": false,
       "addedInVersion": null,
       "inputSchemaKeys": [
-        "termo"
+        "termo",
+        "limit",
+        "offset"
       ],
       "inputSchemaFields": [
         {
           "name": "termo",
           "type": "string",
           "optional": false
+        },
+        {
+          "name": "limit",
+          "type": "integer",
+          "optional": true
+        },
+        {
+          "name": "offset",
+          "type": "integer",
+          "optional": true
+        }
+      ],
+      "examples": []
+    },
+    {
+      "id": "estoque_minimo_maximo",
+      "operation": "read",
+      "module": "estoque",
+      "descricao": "Parâmetros de estoque mínimo e máximo cadastrados por produto/local (com unidade). Enquanto a Matrix não cadastrar mín/máx no Odoo, responde que não há. (O cruzamento com o saldo atual para 'produtos abaixo do mínimo' entra quando houver cadastro.)",
+      "capability": null,
+      "sensitive": false,
+      "addedInVersion": null,
+      "inputSchemaKeys": [
+        "limite"
+      ],
+      "inputSchemaFields": [
+        {
+          "name": "limite",
+          "type": "integer",
+          "optional": true
         }
       ],
       "examples": []
@@ -218,6 +320,30 @@
       "addedInVersion": null,
       "inputSchemaKeys": [],
       "inputSchemaFields": [],
+      "examples": []
+    },
+    {
+      "id": "financeiro_aging_recebiveis",
+      "operation": "read",
+      "module": "financeiro",
+      "descricao": "Aging da inadimplencia: titulos em aberto (a receber por default; aceita a_pagar) bucketizados por dias de atraso (a vencer, 0-30, 31-60, 61-90, 90+), com valor e numero de titulos por faixa e o maior devedor da faixa 90+. Use para 'aging da inadimplencia', 'quanto esta vencido ha mais de 60 dias', 'faixas de atraso'.",
+      "capability": null,
+      "sensitive": false,
+      "addedInVersion": null,
+      "inputSchemaKeys": [
+        "tipo"
+      ],
+      "inputSchemaFields": [
+        {
+          "name": "tipo",
+          "type": "enum",
+          "optional": true,
+          "enumValues": [
+            "a_receber",
+            "a_pagar"
+          ]
+        }
+      ],
       "examples": []
     },
     {
@@ -402,6 +528,228 @@
       "examples": []
     },
     {
+      "id": "financeiro_baixas_cobranca",
+      "operation": "read",
+      "module": "financeiro",
+      "descricao": "Baixas/pagamentos de cobrança bancária (itens de retorno) no período: situação, nosso número, participante e valores (documento, juros, multa, desconto, tarifas, baixado, total). Filtre por período (periodoDe/periodoAte, AAAA-MM-DD) e situação.",
+      "capability": null,
+      "sensitive": false,
+      "addedInVersion": null,
+      "inputSchemaKeys": [
+        "periodoDe",
+        "periodoAte",
+        "limit",
+        "offset",
+        "situacao"
+      ],
+      "inputSchemaFields": [
+        {
+          "name": "periodoDe",
+          "type": "string",
+          "optional": true
+        },
+        {
+          "name": "periodoAte",
+          "type": "string",
+          "optional": true
+        },
+        {
+          "name": "limit",
+          "type": "integer",
+          "optional": true
+        },
+        {
+          "name": "offset",
+          "type": "integer",
+          "optional": true
+        },
+        {
+          "name": "situacao",
+          "type": "string",
+          "optional": true
+        }
+      ],
+      "examples": []
+    },
+    {
+      "id": "financeiro_retornos_processados",
+      "operation": "read",
+      "module": "financeiro",
+      "descricao": "Retornos bancários processados no período (cabeçalho do arquivo de retorno): banco, número, totais de entradas/saídas e saldo. Filtre por período (periodoDe/periodoAte, AAAA-MM-DD).",
+      "capability": null,
+      "sensitive": false,
+      "addedInVersion": null,
+      "inputSchemaKeys": [
+        "periodoDe",
+        "periodoAte",
+        "limit",
+        "offset"
+      ],
+      "inputSchemaFields": [
+        {
+          "name": "periodoDe",
+          "type": "string",
+          "optional": true
+        },
+        {
+          "name": "periodoAte",
+          "type": "string",
+          "optional": true
+        },
+        {
+          "name": "limit",
+          "type": "integer",
+          "optional": true
+        },
+        {
+          "name": "offset",
+          "type": "integer",
+          "optional": true
+        }
+      ],
+      "examples": []
+    },
+    {
+      "id": "financeiro_remessas_geradas",
+      "operation": "read",
+      "module": "financeiro",
+      "descricao": "Remessas bancárias geradas no período (arquivos enviados ao banco): tipo, banco, número, data e se foi confirmada. Filtre por período (periodoDe/periodoAte, AAAA-MM-DD).",
+      "capability": null,
+      "sensitive": false,
+      "addedInVersion": null,
+      "inputSchemaKeys": [
+        "periodoDe",
+        "periodoAte",
+        "limit",
+        "offset"
+      ],
+      "inputSchemaFields": [
+        {
+          "name": "periodoDe",
+          "type": "string",
+          "optional": true
+        },
+        {
+          "name": "periodoAte",
+          "type": "string",
+          "optional": true
+        },
+        {
+          "name": "limit",
+          "type": "integer",
+          "optional": true
+        },
+        {
+          "name": "offset",
+          "type": "integer",
+          "optional": true
+        }
+      ],
+      "examples": []
+    },
+    {
+      "id": "financeiro_carteiras_cobranca",
+      "operation": "read",
+      "module": "financeiro",
+      "descricao": "Carteiras de cobrança cadastradas (configuração de boleto por banco): nome, banco, carteira, tipo, beneficiário e convênio. Não expõe credenciais de banco. Sem filtro de período.",
+      "capability": null,
+      "sensitive": false,
+      "addedInVersion": null,
+      "inputSchemaKeys": [
+        "limit",
+        "offset"
+      ],
+      "inputSchemaFields": [
+        {
+          "name": "limit",
+          "type": "integer",
+          "optional": true
+        },
+        {
+          "name": "offset",
+          "type": "integer",
+          "optional": true
+        }
+      ],
+      "examples": []
+    },
+    {
+      "id": "financeiro_cheques",
+      "operation": "read",
+      "module": "financeiro",
+      "descricao": "Cheques no período: número, banco, titular, data e valor. Filtre por período (periodoDe/periodoAte, AAAA-MM-DD). Enquanto cheques não forem operados no Odoo, responde que não há.",
+      "capability": null,
+      "sensitive": false,
+      "addedInVersion": null,
+      "inputSchemaKeys": [
+        "periodoDe",
+        "periodoAte",
+        "limit",
+        "offset"
+      ],
+      "inputSchemaFields": [
+        {
+          "name": "periodoDe",
+          "type": "string",
+          "optional": true
+        },
+        {
+          "name": "periodoAte",
+          "type": "string",
+          "optional": true
+        },
+        {
+          "name": "limit",
+          "type": "integer",
+          "optional": true
+        },
+        {
+          "name": "offset",
+          "type": "integer",
+          "optional": true
+        }
+      ],
+      "examples": []
+    },
+    {
+      "id": "financeiro_pix_recebidos",
+      "operation": "read",
+      "module": "financeiro",
+      "descricao": "PIX no período: txid, método, status, data e tarifas. Filtre por período (periodoDe/periodoAte, AAAA-MM-DD). Enquanto o PIX não for operado no Odoo, responde que não há.",
+      "capability": null,
+      "sensitive": false,
+      "addedInVersion": null,
+      "inputSchemaKeys": [
+        "periodoDe",
+        "periodoAte",
+        "limit",
+        "offset"
+      ],
+      "inputSchemaFields": [
+        {
+          "name": "periodoDe",
+          "type": "string",
+          "optional": true
+        },
+        {
+          "name": "periodoAte",
+          "type": "string",
+          "optional": true
+        },
+        {
+          "name": "limit",
+          "type": "integer",
+          "optional": true
+        },
+        {
+          "name": "offset",
+          "type": "integer",
+          "optional": true
+        }
+      ],
+      "examples": []
+    },
+    {
       "id": "registrar_lacuna",
       "operation": "read",
       "module": "outros",
@@ -495,7 +843,9 @@
       "addedInVersion": null,
       "inputSchemaKeys": [
         "periodoDe",
-        "periodoAte"
+        "periodoAte",
+        "limit",
+        "offset"
       ],
       "inputSchemaFields": [
         {
@@ -506,6 +856,16 @@
         {
           "name": "periodoAte",
           "type": "string",
+          "optional": true
+        },
+        {
+          "name": "limit",
+          "type": "integer",
+          "optional": true
+        },
+        {
+          "name": "offset",
+          "type": "integer",
           "optional": true
         }
       ],
@@ -519,8 +879,22 @@
       "capability": null,
       "sensitive": false,
       "addedInVersion": null,
-      "inputSchemaKeys": [],
-      "inputSchemaFields": [],
+      "inputSchemaKeys": [
+        "limit",
+        "offset"
+      ],
+      "inputSchemaFields": [
+        {
+          "name": "limit",
+          "type": "integer",
+          "optional": true
+        },
+        {
+          "name": "offset",
+          "type": "integer",
+          "optional": true
+        }
+      ],
       "examples": []
     },
     {
@@ -532,11 +906,23 @@
       "sensitive": false,
       "addedInVersion": null,
       "inputSchemaKeys": [
-        "ateDias"
+        "ateDias",
+        "limit",
+        "offset"
       ],
       "inputSchemaFields": [
         {
           "name": "ateDias",
+          "type": "integer",
+          "optional": true
+        },
+        {
+          "name": "limit",
+          "type": "integer",
+          "optional": true
+        },
+        {
+          "name": "offset",
           "type": "integer",
           "optional": true
         }
@@ -553,7 +939,8 @@
       "addedInVersion": null,
       "inputSchemaKeys": [
         "termo",
-        "limite"
+        "limit",
+        "offset"
       ],
       "inputSchemaFields": [
         {
@@ -562,7 +949,12 @@
           "optional": true
         },
         {
-          "name": "limite",
+          "name": "limit",
+          "type": "integer",
+          "optional": true
+        },
+        {
+          "name": "offset",
           "type": "integer",
           "optional": true
         }
@@ -573,22 +965,34 @@
       "id": "preco_tabela",
       "operation": "read",
       "module": "comercial",
-      "descricao": "Regras de UMA TABELA DE PREÇO específica (identificada por `tabelaId`). Lista todas as regras da tabela (por produto, família ou participante) com valor, operação e vigência. NÃO use para: preço de um produto específico (use `preco_produto`).",
+      "descricao": "Regras de UMA TABELA DE PREÇO específica, identificada por `tabelaId` OU por `tabelaNome` (nome ou parte dele, ex.: 'Venda Smart'). Lista todas as regras da tabela (por produto, família ou participante) com valor, operação e vigência. NÃO use para: preço de um produto específico (use `preco_produto`).",
       "capability": null,
       "sensitive": false,
       "addedInVersion": null,
       "inputSchemaKeys": [
         "tabelaId",
-        "limite"
+        "tabelaNome",
+        "limit",
+        "offset"
       ],
       "inputSchemaFields": [
         {
           "name": "tabelaId",
           "type": "integer",
-          "optional": false
+          "optional": true
         },
         {
-          "name": "limite",
+          "name": "tabelaNome",
+          "type": "string",
+          "optional": true
+        },
+        {
+          "name": "limit",
+          "type": "integer",
+          "optional": true
+        },
+        {
+          "name": "offset",
           "type": "integer",
           "optional": true
         }
@@ -623,18 +1027,19 @@
       "id": "comercial_pedidos_listar_top_valor",
       "operation": "read",
       "module": "comercial",
-      "descricao": "Lista top N pedidos com filtros e ordenacao flexiveis. Use para: 'pedido com maior valor em aberto' (default), 'pedido mais antigo em aberto' (ordenacao=data_asc), 'pedido mais recente' (ordenacao=data_desc), 'pedido do cliente Smartfit' (clienteTermo=Smartfit). Aceita status (aberto/fechado/todos), periodo (DE/ATE) e limite (default 10).",
+      "descricao": "Lista top N pedidos com filtros e ordenacao flexiveis. Use para: 'pedido com maior valor em aberto' (default), 'pedido mais antigo em aberto' (ordenacao=data_asc), 'pedido mais recente' (ordenacao=data_desc), 'pedido do cliente Smartfit' (clienteTermo=Smartfit). Aceita status (aberto/fechado/todos) e periodo (DE/ATE). Paginado: retorna 10 por vez (use limit/offset para ver os proximos).",
       "capability": null,
       "sensitive": false,
       "addedInVersion": null,
       "inputSchemaKeys": [
         "status",
-        "limite",
         "periodoDe",
         "periodoAte",
         "ordenacao",
         "clienteTermo",
-        "vendedorTermo"
+        "vendedorTermo",
+        "limit",
+        "offset"
       ],
       "inputSchemaFields": [
         {
@@ -646,11 +1051,6 @@
             "fechado",
             "todos"
           ]
-        },
-        {
-          "name": "limite",
-          "type": "integer",
-          "optional": true
         },
         {
           "name": "periodoDe",
@@ -682,6 +1082,16 @@
           "name": "vendedorTermo",
           "type": "string",
           "optional": true
+        },
+        {
+          "name": "limit",
+          "type": "integer",
+          "optional": true
+        },
+        {
+          "name": "offset",
+          "type": "integer",
+          "optional": true
         }
       ],
       "examples": []
@@ -709,7 +1119,8 @@
       "inputSchemaKeys": [
         "periodoDe",
         "periodoAte",
-        "limite"
+        "limit",
+        "offset"
       ],
       "inputSchemaFields": [
         {
@@ -723,7 +1134,12 @@
           "optional": true
         },
         {
-          "name": "limite",
+          "name": "limit",
+          "type": "integer",
+          "optional": true
+        },
+        {
+          "name": "offset",
           "type": "integer",
           "optional": true
         }
@@ -734,14 +1150,15 @@
       "id": "comercial_produtos_por_margem",
       "operation": "read",
       "module": "comercial",
-      "descricao": "Lista top N produtos por margem (preco_venda vs preco_custo do cadastro). Use para 'top produtos por margem', 'maior margem', 'menor margem', 'produto com mais lucro por unidade'. Aceita ordenacao=maior|menor (default maior), limite (default 10) e termo (opcional, filtra por nome).",
+      "descricao": "Lista top N produtos por margem (preco_venda vs preco_custo do cadastro). Use para 'top produtos por margem', 'maior margem', 'menor margem', 'produto com mais lucro por unidade'. Aceita ordenacao=maior|menor (default maior) e termo (opcional, filtra por nome). Paginado: 10 por vez (limit/offset).",
       "capability": null,
       "sensitive": false,
       "addedInVersion": null,
       "inputSchemaKeys": [
         "ordenacao",
-        "limite",
-        "termo"
+        "termo",
+        "limit",
+        "offset"
       ],
       "inputSchemaFields": [
         {
@@ -754,13 +1171,18 @@
           ]
         },
         {
-          "name": "limite",
+          "name": "termo",
+          "type": "string",
+          "optional": true
+        },
+        {
+          "name": "limit",
           "type": "integer",
           "optional": true
         },
         {
-          "name": "termo",
-          "type": "string",
+          "name": "offset",
+          "type": "integer",
           "optional": true
         }
       ],
@@ -770,7 +1192,7 @@
       "id": "comercial_pedidos_por_uf",
       "operation": "read",
       "module": "comercial",
-      "descricao": "Pedidos agrupados por UF do cliente. Use para 'pedidos por estado', 'pedidos por UF', 'qual estado mais compra'. Aceita status (aberto/fechado/todos) e periodo. Default: todos os pedidos cadastrados.",
+      "descricao": "Pedidos agrupados por UF do cliente. Use para 'pedidos por estado', 'pedidos por UF', 'qual estado mais compra', 'quantidade de pedidos de operacao de venda por UF' (passe operacao: 'venda' , o modulo mistura venda, producao, inventario, romaneio e transferencia). Aceita status (aberto/fechado/todos) e periodo. Default: todos os pedidos cadastrados.",
       "capability": null,
       "sensitive": false,
       "addedInVersion": null,
@@ -778,6 +1200,7 @@
         "periodoDe",
         "periodoAte",
         "status",
+        "operacao",
         "limite"
       ],
       "inputSchemaFields": [
@@ -799,6 +1222,15 @@
             "aberto",
             "fechado",
             "todos"
+          ]
+        },
+        {
+          "name": "operacao",
+          "type": "enum",
+          "optional": true,
+          "enumValues": [
+            "venda",
+            "todas"
           ]
         },
         {
@@ -891,7 +1323,8 @@
       "addedInVersion": null,
       "inputSchemaKeys": [
         "diasMin",
-        "limite"
+        "limit",
+        "offset"
       ],
       "inputSchemaFields": [
         {
@@ -900,9 +1333,98 @@
           "optional": true
         },
         {
+          "name": "limit",
+          "type": "integer",
+          "optional": true
+        },
+        {
+          "name": "offset",
+          "type": "integer",
+          "optional": true
+        }
+      ],
+      "examples": []
+    },
+    {
+      "id": "comercial_cotacoes",
+      "operation": "read",
+      "module": "comercial",
+      "descricao": "Cotações/propostas comerciais: número, status, se é compra ou venda e operação. Filtre por status, por ehCompra (true=compra, false=venda) e limite. Enquanto a Matrix não operar cotações no Odoo, responde que não há cotações.",
+      "capability": null,
+      "sensitive": false,
+      "addedInVersion": null,
+      "inputSchemaKeys": [
+        "status",
+        "ehCompra",
+        "limite"
+      ],
+      "inputSchemaFields": [
+        {
+          "name": "status",
+          "type": "string",
+          "optional": true
+        },
+        {
+          "name": "ehCompra",
+          "type": "boolean",
+          "optional": true
+        },
+        {
           "name": "limite",
           "type": "integer",
           "optional": true
+        }
+      ],
+      "examples": []
+    },
+    {
+      "id": "comercial_comissoes",
+      "operation": "read",
+      "module": "comercial",
+      "descricao": "Comissões por pedido/vendedor: pedido, participante (vendedor), base de cálculo, alíquota e valor da comissão. Filtre por participanteId, pedidoId e limite. Enquanto a Matrix não operar comissões no Odoo, responde que não há comissões.",
+      "capability": null,
+      "sensitive": false,
+      "addedInVersion": null,
+      "inputSchemaKeys": [
+        "participanteId",
+        "pedidoId",
+        "limite"
+      ],
+      "inputSchemaFields": [
+        {
+          "name": "participanteId",
+          "type": "integer",
+          "optional": true
+        },
+        {
+          "name": "pedidoId",
+          "type": "integer",
+          "optional": true
+        },
+        {
+          "name": "limite",
+          "type": "integer",
+          "optional": true
+        }
+      ],
+      "examples": []
+    },
+    {
+      "id": "comercial_detalhar_pedido",
+      "operation": "read",
+      "module": "comercial",
+      "descricao": "Detalhe completo de um pedido a partir do odooId.",
+      "capability": null,
+      "sensitive": false,
+      "addedInVersion": null,
+      "inputSchemaKeys": [
+        "odooId"
+      ],
+      "inputSchemaFields": [
+        {
+          "name": "odooId",
+          "type": "integer",
+          "optional": false
         }
       ],
       "examples": []
@@ -917,7 +1439,8 @@
       "addedInVersion": null,
       "inputSchemaKeys": [
         "periodoDe",
-        "periodoAte"
+        "periodoAte",
+        "empresaRef"
       ],
       "inputSchemaFields": [
         {
@@ -927,6 +1450,11 @@
         },
         {
           "name": "periodoAte",
+          "type": "string",
+          "optional": true
+        },
+        {
+          "name": "empresaRef",
           "type": "string",
           "optional": true
         }
@@ -944,7 +1472,10 @@
       "inputSchemaKeys": [
         "periodoDe",
         "periodoAte",
-        "situacaoNfe"
+        "situacaoNfe",
+        "empresaRef",
+        "limit",
+        "offset"
       ],
       "inputSchemaFields": [
         {
@@ -961,6 +1492,21 @@
           "name": "situacaoNfe",
           "type": "string",
           "optional": true
+        },
+        {
+          "name": "empresaRef",
+          "type": "string",
+          "optional": true
+        },
+        {
+          "name": "limit",
+          "type": "integer",
+          "optional": true
+        },
+        {
+          "name": "offset",
+          "type": "integer",
+          "optional": true
         }
       ],
       "examples": []
@@ -975,7 +1521,10 @@
       "addedInVersion": null,
       "inputSchemaKeys": [
         "periodoDe",
-        "periodoAte"
+        "periodoAte",
+        "empresaRef",
+        "limit",
+        "offset"
       ],
       "inputSchemaFields": [
         {
@@ -986,6 +1535,21 @@
         {
           "name": "periodoAte",
           "type": "string",
+          "optional": true
+        },
+        {
+          "name": "empresaRef",
+          "type": "string",
+          "optional": true
+        },
+        {
+          "name": "limit",
+          "type": "integer",
+          "optional": true
+        },
+        {
+          "name": "offset",
+          "type": "integer",
           "optional": true
         }
       ],
@@ -1001,7 +1565,8 @@
       "addedInVersion": null,
       "inputSchemaKeys": [
         "periodoDe",
-        "periodoAte"
+        "periodoAte",
+        "empresaRef"
       ],
       "inputSchemaFields": [
         {
@@ -1011,6 +1576,11 @@
         },
         {
           "name": "periodoAte",
+          "type": "string",
+          "optional": true
+        },
+        {
+          "name": "empresaRef",
           "type": "string",
           "optional": true
         }
@@ -1021,13 +1591,18 @@
       "id": "fiscal_faturamento_por_cliente",
       "operation": "read",
       "module": "fiscal",
-      "descricao": "Faturamento agrupado por cliente (notas de saída autorizadas), ordenado por valor total decrescente.",
+      "descricao": "Faturamento agrupado por cliente (notas de saída autorizadas), ordenado por valor total decrescente, com o CNPJ de cada cliente. Use `agruparPor: 'cnpj_raiz'` para agregar matriz+filiais pela raiz do CNPJ. Para o faturamento de UM CNPJ especifico, passe o CNPJ da pergunta em `documento` (com ou sem mascara). Use para 'faturamento de venda por CNPJ', 'faturamento do CNPJ X', 'faturamento por cliente', 'quem mais comprou'.",
       "capability": null,
       "sensitive": false,
       "addedInVersion": null,
       "inputSchemaKeys": [
         "periodoDe",
-        "periodoAte"
+        "periodoAte",
+        "empresaRef",
+        "agruparPor",
+        "documento",
+        "limit",
+        "offset"
       ],
       "inputSchemaFields": [
         {
@@ -1038,6 +1613,35 @@
         {
           "name": "periodoAte",
           "type": "string",
+          "optional": true
+        },
+        {
+          "name": "empresaRef",
+          "type": "string",
+          "optional": true
+        },
+        {
+          "name": "agruparPor",
+          "type": "enum",
+          "optional": true,
+          "enumValues": [
+            "cliente",
+            "cnpj_raiz"
+          ]
+        },
+        {
+          "name": "documento",
+          "type": "string",
+          "optional": true
+        },
+        {
+          "name": "limit",
+          "type": "integer",
+          "optional": true
+        },
+        {
+          "name": "offset",
+          "type": "integer",
           "optional": true
         }
       ],
@@ -1054,7 +1658,9 @@
       "inputSchemaKeys": [
         "periodoDe",
         "periodoAte",
-        "limite"
+        "empresaRef",
+        "limit",
+        "offset"
       ],
       "inputSchemaFields": [
         {
@@ -1068,7 +1674,17 @@
           "optional": true
         },
         {
-          "name": "limite",
+          "name": "empresaRef",
+          "type": "string",
+          "optional": true
+        },
+        {
+          "name": "limit",
+          "type": "integer",
+          "optional": true
+        },
+        {
+          "name": "offset",
           "type": "integer",
           "optional": true
         }
@@ -1088,7 +1704,8 @@
         "documento",
         "periodoDe",
         "periodoAte",
-        "limite"
+        "limit",
+        "offset"
       ],
       "inputSchemaFields": [
         {
@@ -1112,7 +1729,12 @@
           "optional": true
         },
         {
-          "name": "limite",
+          "name": "limit",
+          "type": "integer",
+          "optional": true
+        },
+        {
+          "name": "offset",
           "type": "integer",
           "optional": true
         }
@@ -1159,7 +1781,8 @@
       "addedInVersion": null,
       "inputSchemaKeys": [
         "documentoId",
-        "limite"
+        "limit",
+        "offset"
       ],
       "inputSchemaFields": [
         {
@@ -1168,7 +1791,12 @@
           "optional": true
         },
         {
-          "name": "limite",
+          "name": "limit",
+          "type": "integer",
+          "optional": true
+        },
+        {
+          "name": "offset",
           "type": "integer",
           "optional": true
         }
@@ -1195,8 +1823,22 @@
       "capability": null,
       "sensitive": false,
       "addedInVersion": null,
-      "inputSchemaKeys": [],
-      "inputSchemaFields": [],
+      "inputSchemaKeys": [
+        "limit",
+        "offset"
+      ],
+      "inputSchemaFields": [
+        {
+          "name": "limit",
+          "type": "integer",
+          "optional": true
+        },
+        {
+          "name": "offset",
+          "type": "integer",
+          "optional": true
+        }
+      ],
       "examples": []
     },
     {
@@ -1210,7 +1852,8 @@
       "inputSchemaKeys": [
         "tabela",
         "termo",
-        "limite"
+        "limit",
+        "offset"
       ],
       "inputSchemaFields": [
         {
@@ -1241,7 +1884,12 @@
           "optional": true
         },
         {
-          "name": "limite",
+          "name": "limit",
+          "type": "integer",
+          "optional": true
+        },
+        {
+          "name": "offset",
           "type": "integer",
           "optional": true
         }
@@ -1259,7 +1907,8 @@
       "inputSchemaKeys": [
         "periodoDe",
         "periodoAte",
-        "limite"
+        "limite",
+        "empresaRef"
       ],
       "inputSchemaFields": [
         {
@@ -1275,6 +1924,11 @@
         {
           "name": "limite",
           "type": "integer",
+          "optional": true
+        },
+        {
+          "name": "empresaRef",
+          "type": "string",
           "optional": true
         }
       ],
@@ -1284,17 +1938,23 @@
       "id": "fiscal_faturamento_mensal_serie",
       "operation": "read",
       "module": "fiscal",
-      "descricao": "Serie mes a mes de faturamento do ano informado (default: ano corrente). Itera fiscal_faturamento_periodo para cada mes 01..mes_corrente. Use para perguntas tipo 'comparativo mensal', 'faturamento por mes esse ano'.",
+      "descricao": "Serie mes a mes de faturamento do ano informado (default: ano corrente). Receita externa real por mes (sem intercompany), com o faturamento individual disponivel. Use para perguntas tipo 'comparativo mensal', 'faturamento por mes esse ano'.",
       "capability": null,
       "sensitive": false,
       "addedInVersion": null,
       "inputSchemaKeys": [
-        "ano"
+        "ano",
+        "empresaRef"
       ],
       "inputSchemaFields": [
         {
           "name": "ano",
           "type": "integer",
+          "optional": true
+        },
+        {
+          "name": "empresaRef",
+          "type": "string",
           "optional": true
         }
       ],
@@ -1304,14 +1964,15 @@
       "id": "fiscal_faturamento_por_uf",
       "operation": "read",
       "module": "fiscal",
-      "descricao": "Faturamento agrupado por estado (UF do cliente da nota), ordenado por valor descendente. Use para 'faturamento por estado / por UF / por regiao' (regiao = conjunto de UFs). Agrega notas de saida autorizadas no periodo (default mes corrente).",
+      "descricao": "Faturamento agrupado por estado (UF do cliente da nota), ordenado por valor descendente. Use para 'faturamento por estado / por UF / por regiao' (regiao = conjunto de UFs). Agrega notas de saida autorizadas no periodo (default mes corrente). Para o recorte de DEMONSTRACAO use fiscal_demonstracoes.",
       "capability": null,
       "sensitive": false,
       "addedInVersion": null,
       "inputSchemaKeys": [
         "periodoDe",
         "periodoAte",
-        "limite"
+        "limite",
+        "empresaRef"
       ],
       "inputSchemaFields": [
         {
@@ -1327,6 +1988,86 @@
         {
           "name": "limite",
           "type": "integer",
+          "optional": true
+        },
+        {
+          "name": "empresaRef",
+          "type": "string",
+          "optional": true
+        }
+      ],
+      "examples": []
+    },
+    {
+      "id": "fiscal_demonstracoes",
+      "operation": "read",
+      "module": "fiscal",
+      "descricao": "Demonstrações de equipamentos (remessa para demonstração, CFOP 5912/6912, e retorno de demonstração, CFOP 1913/2913; só notas autorizadas): valor e número de notas fiscais emitidas, agrupados por UF, empresa ou mês. Use para 'faturamento de operações de demonstração', 'remessas para demonstração por estado', 'quantas notas de demonstração emitimos', 'quanto retornou de demonstração'. O valor é de REMESSA (a mercadoria pode retornar), não é receita de venda. Tool canônica para qualquer recorte de demonstração.",
+      "capability": null,
+      "sensitive": false,
+      "addedInVersion": null,
+      "inputSchemaKeys": [
+        "agruparPor",
+        "periodoDe",
+        "periodoAte",
+        "empresaRef"
+      ],
+      "inputSchemaFields": [
+        {
+          "name": "agruparPor",
+          "type": "enum",
+          "optional": true,
+          "enumValues": [
+            "uf",
+            "empresa",
+            "mes"
+          ]
+        },
+        {
+          "name": "periodoDe",
+          "type": "string",
+          "optional": true
+        },
+        {
+          "name": "periodoAte",
+          "type": "string",
+          "optional": true
+        },
+        {
+          "name": "empresaRef",
+          "type": "string",
+          "optional": true
+        }
+      ],
+      "examples": []
+    },
+    {
+      "id": "fiscal_vendas_produto_por_empresa",
+      "operation": "read",
+      "module": "fiscal",
+      "descricao": "Vendas de UM produto agrupadas por empresa do grupo (quantidade, valor e nº de notas; só saída autorizada com CFOP de venda), com CMV APROXIMADO por empresa (custo de tabela 'Custo', não contábil). Use para 'venda do produto X por empresa', 'quanto vendemos de esteira por empresa e qual o CMV', 'CMV do produto X'. Informe `produtoTermo` (nome ou código).",
+      "capability": null,
+      "sensitive": false,
+      "addedInVersion": null,
+      "inputSchemaKeys": [
+        "produtoTermo",
+        "periodoDe",
+        "periodoAte"
+      ],
+      "inputSchemaFields": [
+        {
+          "name": "produtoTermo",
+          "type": "string",
+          "optional": false
+        },
+        {
+          "name": "periodoDe",
+          "type": "string",
+          "optional": true
+        },
+        {
+          "name": "periodoAte",
+          "type": "string",
           "optional": true
         }
       ],
@@ -1345,7 +2086,8 @@
         "periodoDe",
         "periodoAte",
         "situacaoNfe",
-        "limite"
+        "limit",
+        "offset"
       ],
       "inputSchemaFields": [
         {
@@ -1369,7 +2111,12 @@
           "optional": true
         },
         {
-          "name": "limite",
+          "name": "limit",
+          "type": "integer",
+          "optional": true
+        },
+        {
+          "name": "offset",
           "type": "integer",
           "optional": true
         }
@@ -1388,7 +2135,8 @@
         "produtoTermo",
         "periodoDe",
         "periodoAte",
-        "limite"
+        "limit",
+        "offset"
       ],
       "inputSchemaFields": [
         {
@@ -1407,7 +2155,12 @@
           "optional": true
         },
         {
-          "name": "limite",
+          "name": "limit",
+          "type": "integer",
+          "optional": true
+        },
+        {
+          "name": "offset",
           "type": "integer",
           "optional": true
         }
@@ -1425,7 +2178,8 @@
       "inputSchemaKeys": [
         "periodoDe",
         "periodoAte",
-        "limite"
+        "limit",
+        "offset"
       ],
       "inputSchemaFields": [
         {
@@ -1439,7 +2193,12 @@
           "optional": true
         },
         {
-          "name": "limite",
+          "name": "limit",
+          "type": "integer",
+          "optional": true
+        },
+        {
+          "name": "offset",
           "type": "integer",
           "optional": true
         }
@@ -1458,7 +2217,8 @@
         "documento",
         "periodoDe",
         "periodoAte",
-        "limite"
+        "limit",
+        "offset"
       ],
       "inputSchemaFields": [
         {
@@ -1477,7 +2237,12 @@
           "optional": true
         },
         {
-          "name": "limite",
+          "name": "limit",
+          "type": "integer",
+          "optional": true
+        },
+        {
+          "name": "offset",
           "type": "integer",
           "optional": true
         }
@@ -1495,7 +2260,8 @@
       "inputSchemaKeys": [
         "periodoDe",
         "periodoAte",
-        "limite"
+        "limit",
+        "offset"
       ],
       "inputSchemaFields": [
         {
@@ -1509,8 +2275,527 @@
           "optional": true
         },
         {
-          "name": "limite",
+          "name": "limit",
           "type": "integer",
+          "optional": true
+        },
+        {
+          "name": "offset",
+          "type": "integer",
+          "optional": true
+        }
+      ],
+      "examples": []
+    },
+    {
+      "id": "fiscal_mdfe_manifestos",
+      "operation": "read",
+      "module": "fiscal",
+      "descricao": "Manifestos de transporte (MDF-e) no período: chave, número, situação, municípios de carregamento/descarregamento e valor das notas. Filtre por período (periodoDe/periodoAte, AAAA-MM-DD) e situação. Enquanto o MDF-e não for operado no Odoo, responde que não há manifesto.",
+      "capability": null,
+      "sensitive": false,
+      "addedInVersion": null,
+      "inputSchemaKeys": [
+        "periodoDe",
+        "periodoAte",
+        "situacao",
+        "limit",
+        "offset"
+      ],
+      "inputSchemaFields": [
+        {
+          "name": "periodoDe",
+          "type": "string",
+          "optional": true
+        },
+        {
+          "name": "periodoAte",
+          "type": "string",
+          "optional": true
+        },
+        {
+          "name": "situacao",
+          "type": "string",
+          "optional": true
+        },
+        {
+          "name": "limit",
+          "type": "integer",
+          "optional": true
+        },
+        {
+          "name": "offset",
+          "type": "integer",
+          "optional": true
+        }
+      ],
+      "examples": []
+    },
+    {
+      "id": "fiscal_reinf_eventos",
+      "operation": "read",
+      "module": "fiscal",
+      "descricao": "Eventos REINF (obrigação acessória da Receita) no período: tipo (R-4020, R-2010...), situação, protocolo de transmissão e datas. Filtre por período (periodoDe/periodoAte, AAAA-MM-DD), tipo e situação. Enquanto o REINF não for operado no Odoo, responde que não há evento.",
+      "capability": null,
+      "sensitive": false,
+      "addedInVersion": null,
+      "inputSchemaKeys": [
+        "periodoDe",
+        "periodoAte",
+        "tipo",
+        "situacao",
+        "limit",
+        "offset"
+      ],
+      "inputSchemaFields": [
+        {
+          "name": "periodoDe",
+          "type": "string",
+          "optional": true
+        },
+        {
+          "name": "periodoAte",
+          "type": "string",
+          "optional": true
+        },
+        {
+          "name": "tipo",
+          "type": "string",
+          "optional": true
+        },
+        {
+          "name": "situacao",
+          "type": "string",
+          "optional": true
+        },
+        {
+          "name": "limit",
+          "type": "integer",
+          "optional": true
+        },
+        {
+          "name": "offset",
+          "type": "integer",
+          "optional": true
+        }
+      ],
+      "examples": []
+    },
+    {
+      "id": "fiscal_faturamento_por_empresa",
+      "operation": "read",
+      "module": "fiscal",
+      "descricao": "Faturamento de venda autorizado por empresa do grupo (comparativo de filiais). Lista todas as empresas.",
+      "capability": null,
+      "sensitive": false,
+      "addedInVersion": null,
+      "inputSchemaKeys": [
+        "periodoDe",
+        "periodoAte"
+      ],
+      "inputSchemaFields": [
+        {
+          "name": "periodoDe",
+          "type": "string",
+          "optional": true
+        },
+        {
+          "name": "periodoAte",
+          "type": "string",
+          "optional": true
+        }
+      ],
+      "examples": []
+    },
+    {
+      "id": "fiscal_faturamento_por_operacao",
+      "operation": "read",
+      "module": "fiscal",
+      "descricao": "Faturamento de saida autorizado por natureza de operacao fiscal, com flag de venda vs nao-venda. Aceita empresa. Para o recorte de DEMONSTRACAO use fiscal_demonstracoes.",
+      "capability": null,
+      "sensitive": false,
+      "addedInVersion": null,
+      "inputSchemaKeys": [
+        "periodoDe",
+        "periodoAte",
+        "empresaRef",
+        "limit",
+        "offset"
+      ],
+      "inputSchemaFields": [
+        {
+          "name": "periodoDe",
+          "type": "string",
+          "optional": true
+        },
+        {
+          "name": "periodoAte",
+          "type": "string",
+          "optional": true
+        },
+        {
+          "name": "empresaRef",
+          "type": "string",
+          "optional": true
+        },
+        {
+          "name": "limit",
+          "type": "integer",
+          "optional": true
+        },
+        {
+          "name": "offset",
+          "type": "integer",
+          "optional": true
+        }
+      ],
+      "examples": []
+    },
+    {
+      "id": "fiscal_faturamento_por_cfop",
+      "operation": "read",
+      "module": "fiscal",
+      "descricao": "Faturamento de saida autorizado por operacao fiscal: agrupa por categoria gerencial (venda, servico, transferencia, devolucao...) ou por CFOP cru. Separa receita (venda/servico/exportacao) de movimentacao que nao e receita. Base: valor dos produtos no item. Aceita empresa e periodo.",
+      "capability": null,
+      "sensitive": false,
+      "addedInVersion": null,
+      "inputSchemaKeys": [
+        "periodoDe",
+        "periodoAte",
+        "empresaRef",
+        "agruparPor",
+        "limit",
+        "offset"
+      ],
+      "inputSchemaFields": [
+        {
+          "name": "periodoDe",
+          "type": "string",
+          "optional": true
+        },
+        {
+          "name": "periodoAte",
+          "type": "string",
+          "optional": true
+        },
+        {
+          "name": "empresaRef",
+          "type": "string",
+          "optional": true
+        },
+        {
+          "name": "agruparPor",
+          "type": "enum",
+          "optional": true,
+          "enumValues": [
+            "cfop",
+            "categoria"
+          ]
+        },
+        {
+          "name": "limit",
+          "type": "integer",
+          "optional": true
+        },
+        {
+          "name": "offset",
+          "type": "integer",
+          "optional": true
+        }
+      ],
+      "examples": []
+    },
+    {
+      "id": "fiscal_faturamento_nao_autorizado",
+      "operation": "read",
+      "module": "fiscal",
+      "descricao": "Notas de saida nao autorizadas nem canceladas (denegada, rejeitada, em processamento, sem situacao), decompostas por situacao. Aceita empresa.",
+      "capability": null,
+      "sensitive": false,
+      "addedInVersion": null,
+      "inputSchemaKeys": [
+        "periodoDe",
+        "periodoAte",
+        "empresaRef"
+      ],
+      "inputSchemaFields": [
+        {
+          "name": "periodoDe",
+          "type": "string",
+          "optional": true
+        },
+        {
+          "name": "periodoAte",
+          "type": "string",
+          "optional": true
+        },
+        {
+          "name": "empresaRef",
+          "type": "string",
+          "optional": true
+        }
+      ],
+      "examples": []
+    },
+    {
+      "id": "fiscal_faturamento_recebido",
+      "operation": "read",
+      "module": "fiscal",
+      "descricao": "Faturamento recebido de fato (pago) vs a receber, por pedido. O eixo por nota individual ainda nao e suportado (gap honesto). Aceita empresa.",
+      "capability": null,
+      "sensitive": false,
+      "addedInVersion": null,
+      "inputSchemaKeys": [
+        "periodoDe",
+        "periodoAte",
+        "empresaRef",
+        "eixo"
+      ],
+      "inputSchemaFields": [
+        {
+          "name": "periodoDe",
+          "type": "string",
+          "optional": true
+        },
+        {
+          "name": "periodoAte",
+          "type": "string",
+          "optional": true
+        },
+        {
+          "name": "empresaRef",
+          "type": "string",
+          "optional": true
+        },
+        {
+          "name": "eixo",
+          "type": "enum",
+          "optional": true,
+          "enumValues": [
+            "pedido",
+            "nota"
+          ]
+        }
+      ],
+      "examples": []
+    },
+    {
+      "id": "fiscal_detalhar_nota",
+      "operation": "read",
+      "module": "fiscal",
+      "descricao": "Detalhe completo de uma nota fiscal a partir do odooId (sem numero, pois o campo nao e populado): serie, modelo, chave, entrada/saida, situacao NF-e, participante, natureza da operacao, data de emissao, valor da NF e valor dos produtos.",
+      "capability": null,
+      "sensitive": false,
+      "addedInVersion": null,
+      "inputSchemaKeys": [
+        "odooId"
+      ],
+      "inputSchemaFields": [
+        {
+          "name": "odooId",
+          "type": "integer",
+          "optional": false
+        }
+      ],
+      "examples": []
+    },
+    {
+      "id": "fiscal_receita_consolidada",
+      "operation": "read",
+      "module": "fiscal",
+      "descricao": "Receita consolidada externa do grupo (o faturamento real): vendas a clientes FORA do grupo, eliminando o intercompany (venda intragrupo, CPC 36). Mostra quanto do faturamento individual e venda entre empresas do grupo e foi eliminado. Aceita empresa e periodo.",
+      "capability": null,
+      "sensitive": false,
+      "addedInVersion": null,
+      "inputSchemaKeys": [
+        "periodoDe",
+        "periodoAte",
+        "empresaRef"
+      ],
+      "inputSchemaFields": [
+        {
+          "name": "periodoDe",
+          "type": "string",
+          "optional": true
+        },
+        {
+          "name": "periodoAte",
+          "type": "string",
+          "optional": true
+        },
+        {
+          "name": "empresaRef",
+          "type": "string",
+          "optional": true
+        }
+      ],
+      "examples": []
+    },
+    {
+      "id": "fiscal_intercompany",
+      "operation": "read",
+      "module": "fiscal",
+      "descricao": "Matriz de vendas entre empresas do mesmo grupo (intercompany): quem vendeu para quem dentro do grupo, com valor e contagem de notas. Aceita empresa e periodo.",
+      "capability": null,
+      "sensitive": false,
+      "addedInVersion": null,
+      "inputSchemaKeys": [
+        "periodoDe",
+        "periodoAte",
+        "empresaRef"
+      ],
+      "inputSchemaFields": [
+        {
+          "name": "periodoDe",
+          "type": "string",
+          "optional": true
+        },
+        {
+          "name": "periodoAte",
+          "type": "string",
+          "optional": true
+        },
+        {
+          "name": "empresaRef",
+          "type": "string",
+          "optional": true
+        }
+      ],
+      "examples": []
+    },
+    {
+      "id": "fiscal_ponte_faturamento",
+      "operation": "read",
+      "module": "fiscal",
+      "descricao": "Ponte de reconciliacao do faturamento (waterfall): mostra como o faturamento bruto vira a receita externa real, deduzindo passo a passo a nao-receita (transferencia, devolucao, remessa, sem CFOP...) e o intercompany eliminado (CPC 36). Use para 'reconcilie o faturamento', 'como chegou na receita externa', 'do bruto ao liquido'. Aceita empresa e periodo.",
+      "capability": null,
+      "sensitive": false,
+      "addedInVersion": null,
+      "inputSchemaKeys": [
+        "periodoDe",
+        "periodoAte",
+        "empresaRef"
+      ],
+      "inputSchemaFields": [
+        {
+          "name": "periodoDe",
+          "type": "string",
+          "optional": true
+        },
+        {
+          "name": "periodoAte",
+          "type": "string",
+          "optional": true
+        },
+        {
+          "name": "empresaRef",
+          "type": "string",
+          "optional": true
+        }
+      ],
+      "examples": []
+    },
+    {
+      "id": "fiscal_margem_aproximada",
+      "operation": "read",
+      "module": "fiscal",
+      "descricao": "Margem bruta APROXIMADA do periodo: receita de venda menos o custo estimado do produto (preco_custo). NAO e lucro (sem despesas/impostos/rateios) e o custo e o atual do produto (margem de periodos antigos e nao-confiavel). Mostra a cobertura (% da venda com custo disponivel). Aceita empresa e periodo. Use `agruparPor: 'familia'` para a margem POR FAMILIA de produto ('margem por familia', 'qual familia tem mais margem').",
+      "capability": null,
+      "sensitive": false,
+      "addedInVersion": null,
+      "inputSchemaKeys": [
+        "periodoDe",
+        "periodoAte",
+        "empresaRef",
+        "agruparPor"
+      ],
+      "inputSchemaFields": [
+        {
+          "name": "periodoDe",
+          "type": "string",
+          "optional": true
+        },
+        {
+          "name": "periodoAte",
+          "type": "string",
+          "optional": true
+        },
+        {
+          "name": "empresaRef",
+          "type": "string",
+          "optional": true
+        },
+        {
+          "name": "agruparPor",
+          "type": "enum",
+          "optional": true,
+          "enumValues": [
+            "total",
+            "familia"
+          ]
+        }
+      ],
+      "examples": []
+    },
+    {
+      "id": "fiscal_faturamento_por_regime",
+      "operation": "read",
+      "module": "fiscal",
+      "descricao": "Faturamento do periodo agrupado pelo REGIME TRIBUTARIO da empresa (Lucro Real, Lucro Presumido, Simples Nacional, MEI). Dois numeros por regime: receita externa (venda que sai do grupo, intragrupo eliminado) e individual (inclui venda intragrupo). O regime e o enquadramento ATUAL da empresa (snapshot); periodos antigos nao refletem mudanca de regime. Nao e apuracao de imposto nem lucro. Aceita periodo.",
+      "capability": null,
+      "sensitive": false,
+      "addedInVersion": null,
+      "inputSchemaKeys": [
+        "periodoDe",
+        "periodoAte"
+      ],
+      "inputSchemaFields": [
+        {
+          "name": "periodoDe",
+          "type": "string",
+          "optional": true
+        },
+        {
+          "name": "periodoAte",
+          "type": "string",
+          "optional": true
+        }
+      ],
+      "examples": []
+    },
+    {
+      "id": "fiscal_faturamento_por_vendedor",
+      "operation": "read",
+      "module": "fiscal",
+      "descricao": "Faturamento de venda agrupado por vendedor (NF de saida autorizada ligada ao pedido de origem e ao vendedor do pedido), ordenado por valor decrescente. Notas sem pedido vinculado (transferencias, remessas) ficam fora do ranking, somadas a parte. Passe `vendedor` para o total FATURADO de UM vendedor especifico (com posicao no ranking). Use para 'faturamento por vendedor', 'quanto cada vendedor vendeu', 'ranking de vendedores', 'quanto o vendedor X vendeu/faturou'.",
+      "capability": null,
+      "sensitive": false,
+      "addedInVersion": null,
+      "inputSchemaKeys": [
+        "periodoDe",
+        "periodoAte",
+        "empresaRef",
+        "vendedor"
+      ],
+      "inputSchemaFields": [
+        {
+          "name": "periodoDe",
+          "type": "string",
+          "optional": true
+        },
+        {
+          "name": "periodoAte",
+          "type": "string",
+          "optional": true
+        },
+        {
+          "name": "empresaRef",
+          "type": "string",
+          "optional": true
+        },
+        {
+          "name": "vendedor",
+          "type": "string",
           "optional": true
         }
       ],
@@ -1526,7 +2811,8 @@
       "addedInVersion": null,
       "inputSchemaKeys": [
         "termo",
-        "limite"
+        "limit",
+        "offset"
       ],
       "inputSchemaFields": [
         {
@@ -1535,7 +2821,12 @@
           "optional": false
         },
         {
-          "name": "limite",
+          "name": "limit",
+          "type": "integer",
+          "optional": true
+        },
+        {
+          "name": "offset",
           "type": "integer",
           "optional": true
         }
@@ -1587,7 +2878,8 @@
         "cidade",
         "zona",
         "apenasClientes",
-        "limite"
+        "limit",
+        "offset"
       ],
       "inputSchemaFields": [
         {
@@ -1616,7 +2908,12 @@
           "optional": true
         },
         {
-          "name": "limite",
+          "name": "limit",
+          "type": "integer",
+          "optional": true
+        },
+        {
+          "name": "offset",
           "type": "integer",
           "optional": true
         }
@@ -1662,7 +2959,8 @@
         "periodoDe",
         "periodoAte",
         "tipo",
-        "limite"
+        "limit",
+        "offset"
       ],
       "inputSchemaFields": [
         {
@@ -1702,7 +3000,12 @@
           ]
         },
         {
-          "name": "limite",
+          "name": "limit",
+          "type": "integer",
+          "optional": true
+        },
+        {
+          "name": "offset",
           "type": "integer",
           "optional": true
         }
@@ -1719,7 +3022,8 @@
       "addedInVersion": null,
       "inputSchemaKeys": [
         "tipo",
-        "limite"
+        "limit",
+        "offset"
       ],
       "inputSchemaFields": [
         {
@@ -1733,7 +3037,12 @@
           ]
         },
         {
-          "name": "limite",
+          "name": "limit",
+          "type": "integer",
+          "optional": true
+        },
+        {
+          "name": "offset",
           "type": "integer",
           "optional": true
         }
@@ -1798,6 +3107,32 @@
       "examples": []
     },
     {
+      "id": "cadastro_detalhar_produto",
+      "operation": "read",
+      "module": "cadastros",
+      "descricao": "Detalhe COMPLETO do CADASTRO de um produto: NCM, codigo de barras (EAN), codigo, codigo unico, marca, familia, unidade, preco de venda, preco de custo e se esta ativo. Aceita odooId OU termo (codigo exato ou parte do nome, ex: 'esteira T5'). Use para 'qual o NCM do produto X', 'codigo de barras do item Y', 'ficha cadastral do produto'. NAO e' saldo de estoque.",
+      "capability": null,
+      "sensitive": false,
+      "addedInVersion": null,
+      "inputSchemaKeys": [
+        "odooId",
+        "termo"
+      ],
+      "inputSchemaFields": [
+        {
+          "name": "odooId",
+          "type": "integer",
+          "optional": true
+        },
+        {
+          "name": "termo",
+          "type": "string",
+          "optional": true
+        }
+      ],
+      "examples": []
+    },
+    {
       "id": "servico_buscar",
       "operation": "read",
       "module": "cadastros",
@@ -1807,7 +3142,8 @@
       "addedInVersion": null,
       "inputSchemaKeys": [
         "termo",
-        "limite"
+        "limit",
+        "offset"
       ],
       "inputSchemaFields": [
         {
@@ -1816,7 +3152,12 @@
           "optional": false
         },
         {
-          "name": "limite",
+          "name": "limit",
+          "type": "integer",
+          "optional": true
+        },
+        {
+          "name": "offset",
           "type": "integer",
           "optional": true
         }
@@ -1844,11 +3185,17 @@
       "sensitive": false,
       "addedInVersion": null,
       "inputSchemaKeys": [
-        "limite"
+        "limit",
+        "offset"
       ],
       "inputSchemaFields": [
         {
-          "name": "limite",
+          "name": "limit",
+          "type": "integer",
+          "optional": true
+        },
+        {
+          "name": "offset",
           "type": "integer",
           "optional": true
         }
@@ -2460,7 +3807,8 @@
       "addedInVersion": null,
       "inputSchemaKeys": [
         "termo",
-        "limite"
+        "limit",
+        "offset"
       ],
       "inputSchemaFields": [
         {
@@ -2469,7 +3817,12 @@
           "optional": true
         },
         {
-          "name": "limite",
+          "name": "limit",
+          "type": "integer",
+          "optional": true
+        },
+        {
+          "name": "offset",
           "type": "integer",
           "optional": true
         }
@@ -2547,7 +3900,8 @@
         "contaCodigo",
         "dataInicio",
         "dataFim",
-        "limite"
+        "limit",
+        "offset"
       ],
       "inputSchemaFields": [
         {
@@ -2571,7 +3925,12 @@
           "optional": true
         },
         {
-          "name": "limite",
+          "name": "limit",
+          "type": "integer",
+          "optional": true
+        },
+        {
+          "name": "offset",
           "type": "integer",
           "optional": true
         }
@@ -2669,6 +4028,26 @@
       "examples": []
     },
     {
+      "id": "contabil_detalhar_conta",
+      "operation": "read",
+      "module": "contabil",
+      "descricao": "Detalhe completo de uma conta contabil a partir do odooId (restrita a admin/super_admin): codigo hierarquico, nome, tipo (S=sintetica/A=analitica), natureza, nivel, conta pai e caminho (parentPath). NOTA: nao ha lancamento/movimento contabil no Odoo da Matrix, apenas a estrutura do plano de contas.",
+      "capability": null,
+      "sensitive": false,
+      "addedInVersion": null,
+      "inputSchemaKeys": [
+        "odooId"
+      ],
+      "inputSchemaFields": [
+        {
+          "name": "odooId",
+          "type": "integer",
+          "optional": false
+        }
+      ],
+      "examples": []
+    },
+    {
       "id": "rh_status_dominio",
       "operation": "read",
       "module": "outros",
@@ -2720,6 +4099,26 @@
           "name": "id",
           "type": "integer",
           "optional": false
+        }
+      ],
+      "examples": []
+    },
+    {
+      "id": "crm_pipeline_funis",
+      "operation": "read",
+      "module": "crm",
+      "descricao": "Funis de CRM cadastrados (configuração de pipeline): número, nome, tipo e se ativo. O CRM transacional (leads/oportunidades) não existe neste Odoo; enquanto o funil não for operado, responde que não há.",
+      "capability": null,
+      "sensitive": false,
+      "addedInVersion": null,
+      "inputSchemaKeys": [
+        "limite"
+      ],
+      "inputSchemaFields": [
+        {
+          "name": "limite",
+          "type": "integer",
+          "optional": true
         }
       ],
       "examples": []
@@ -2812,8 +4211,54 @@
           "code": "const response = await fetch(\"https://mcp.exemplo.com.br/mcp\", {\n  method: \"POST\",\n  headers: {\n    \"Authorization\": \"Bearer <SERVICE_TOKEN>\",\n    \"X-Mcp-User-Id\": \"<USER_ID>\",\n    \"X-Api-Key\": \"<API_KEY>\",\n    \"Idempotency-Key\": crypto.randomUUID(),\n    \"Content-Type\": \"application/json\",\n  },\n  body: JSON.stringify({\n    jsonrpc: \"2.0\",\n    method: \"tools/call\",\n    params: {\n      name: \"crm.res_partner.create\",\n      arguments: {\n        name: \"Academia Exemplo\",\n        is_company: true,\n        email: \"contato@academia.com.br\",\n        external_id: \"js-001\",\n      },\n    },\n  }),\n});\nconst { result } = await response.json();\nconsole.log(\"Criado com ID:\", result.id);"
         }
       ]
+    },
+    {
+      "id": "producao_processos",
+      "operation": "read",
+      "module": "outros",
+      "descricao": "Processos de produção cadastrados: ordem, nome, descrição e tempo padrão. Enquanto a produção não for operada no Odoo, responde que não há processos.",
+      "capability": null,
+      "sensitive": false,
+      "addedInVersion": null,
+      "inputSchemaKeys": [
+        "limite"
+      ],
+      "inputSchemaFields": [
+        {
+          "name": "limite",
+          "type": "integer",
+          "optional": true
+        }
+      ],
+      "examples": []
+    },
+    {
+      "id": "auditoria_regras",
+      "operation": "read",
+      "module": "outros",
+      "descricao": "Regras de auditoria configuradas no Odoo: nome, se está ativa e a janela em dias. Use para saber o que está sendo auditado/monitorado. (A trilha de eventos de alto volume , auditoria.log , não é cacheada.)",
+      "capability": null,
+      "sensitive": false,
+      "addedInVersion": null,
+      "inputSchemaKeys": [
+        "apenasAtivas",
+        "limite"
+      ],
+      "inputSchemaFields": [
+        {
+          "name": "apenasAtivas",
+          "type": "boolean",
+          "optional": true
+        },
+        {
+          "name": "limite",
+          "type": "integer",
+          "optional": true
+        }
+      ],
+      "examples": []
     }
   ],
-  "count": 88,
-  "generatedAt": "2026-05-31T04:45:59.681Z"
+  "count": 121,
+  "generatedAt": "2026-06-12T01:15:26.834Z"
 }

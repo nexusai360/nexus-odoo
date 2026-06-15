@@ -46,4 +46,47 @@ describe("humanizeName", () => {
       "Piso Black Premium 1X1 16MM",
     );
   });
+
+  // F4 Apresentacao, Onda 3.1
+  describe("sufixos societarios e UF preservados em CAIXA ALTA", () => {
+    test("LTDA / ME / EPP / EIRELI / MEI / CIA preservados", () => {
+      expect(humanizeName("EMPRESA XYZ LTDA")).toBe("Empresa XYZ LTDA");
+      expect(humanizeName("JOAO DA SILVA ME")).toBe("Joao da Silva ME");
+      expect(humanizeName("COMERCIAL ABC EIRELI")).toBe("Comercial Abc EIRELI");
+      expect(humanizeName("PADARIA DO ZE MEI")).toBe("Padaria do Ze MEI");
+      expect(humanizeName("LOJA E CIA")).toBe("Loja e CIA");
+    });
+
+    test("S.A. e S/A preservam o separador e a caixa alta", () => {
+      expect(humanizeName("INDUSTRIA S.A.")).toBe("Industria S.A.");
+      expect(humanizeName("INDUSTRIA S/A")).toBe("Industria S/A");
+    });
+
+    test("UF com vogal vira maiuscula (GO, BA, SP, ...)", () => {
+      expect(humanizeName("GOIANIA GO")).toBe("Goiania GO");
+      expect(humanizeName("SALVADOR BA")).toBe("Salvador BA");
+      expect(humanizeName("SAO PAULO SP")).toBe("Sao Paulo SP");
+    });
+
+    test("nao corrompe nomes ja humanizados (idempotente)", () => {
+      for (const s of [
+        "Empresa XYZ LTDA",
+        "Joao da Silva ME",
+        "Industria S.A.",
+        "JHT do Brasil",
+        "3R Fitness",
+      ]) {
+        expect(humanizeName(s)).toBe(s);
+        expect(humanizeName(humanizeName(s))).toBe(humanizeName(s));
+      }
+    });
+
+    test("token com digito / sigla / maiuscula interna intactos", () => {
+      expect(humanizeName("JHT do Brasil")).toBe("JHT do Brasil");
+      expect(humanizeName("3R Fitness")).toBe("3R Fitness");
+      expect(humanizeName("[1467] CABO DE AÇO - CNYG186X19APR009")).toBe(
+        "[1467] Cabo de Aço - CNYG186X19APR009",
+      );
+    });
+  });
 });

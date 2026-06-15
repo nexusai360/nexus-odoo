@@ -328,3 +328,95 @@ describe("casos reais do laudo R11-R16", () => {
     expect(out.ok).toBe(true);
   });
 });
+
+// Onda C Cobertura Cliente: V9 , gap de fonte (recusa seca sem citar o sistema).
+describe("validateV9 (gap de fonte)", () => {
+  it("dispara em recusa seca sem mencao a fonte/sistema", () => {
+    const out = validateResponse({
+      question: "Qual o segmento que mais temos orcamentos?",
+      llmResponse: "Não consigo te responder isso.",
+      toolResults: [],
+    });
+    expect(out.ok).toBe(false);
+    expect(out.reason).toBe("V9");
+  });
+
+  it("NAO dispara quando a resposta explica a fonte (modulo/cadastro)", () => {
+    const out = validateResponse({
+      question: "Qual o segmento que mais temos orcamentos?",
+      llmResponse:
+        "O módulo de prospecção existe no sistema, mas não há dados cadastrados nele até agora.",
+      toolResults: [],
+    });
+    expect(out.ok).toBe(true);
+  });
+
+  it("NAO dispara quando a resposta traz dados (sem recusa seca)", () => {
+    const out = validateResponse({
+      question: "Tem despesa registrada hoje?",
+      llmResponse: "Não há despesa registrada hoje.",
+      toolResults: [],
+    });
+    expect(out.ok).toBe(true);
+  });
+
+  it("NAO dispara em CONTESTACAO com 'nao consigo' no texto explicativo (protege o fix do papagaio)", () => {
+    const out = validateResponse({
+      question: "Por que nao aparecem essas empresas na lista?",
+      llmResponse:
+        "A lista vem das notas emitidas; quem nunca emitiu nao aparece, entao nao consigo lista-las por faturamento.",
+      toolResults: [],
+    });
+    expect(out.ok).toBe(true);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Onda M (Arquitetura 3.0) M.6: validadores memory-aware
+// ---------------------------------------------------------------------------
+describe("V2 memory-aware (fontesMemoria)", () => {
+  const { validateResponse } = jest.requireActual("./auto-validator");
+  it("numero vindo do digest de turno antigo (formato US) e LEGITIMO", () => {
+    const r = validateResponse(
+      {
+        question: "qual era aquele valor do faturamento de junho?",
+        llmResponse: "Como vimos antes, o faturamento de junho foi R$ 6.334.712,46.",
+        toolResults: [],
+        fontesMemoria: [
+          "[fiscal_faturamento_periodo dominio=fiscal] headlineValor=6334712.46 periodoLabel=2026-06",
+        ],
+      },
+      { v1Enabled: true, v2Enabled: true, v3Enabled: false, v4Enabled: false, v5Enabled: false, v8Enabled: false },
+    );
+    expect(r.ok).toBe(true);
+  });
+
+  it("numero vindo da prosa de resposta anterior (pt-BR) e LEGITIMO", () => {
+    const r = validateResponse(
+      {
+        question: "repete o total a pagar?",
+        llmResponse: "O total a pagar em aberto segue em R$ 153.232.144,14.",
+        toolResults: [],
+        fontesMemoria: ["Temos R$ 153.232.144,14 a pagar em aberto (confirmado + provisório)."],
+      },
+      { v1Enabled: true, v2Enabled: true, v3Enabled: false, v4Enabled: false, v5Enabled: false, v8Enabled: false },
+    );
+    expect(r.ok).toBe(true);
+  });
+
+  it("numero INVENTADO segue reprovado mesmo com memoria presente", () => {
+    const r = validateResponse(
+      {
+        question: "qual era o faturamento?",
+        llmResponse: "O faturamento foi R$ 9.999.999,99.",
+        toolResults: [],
+        fontesMemoria: [
+          "[fiscal_faturamento_periodo dominio=fiscal] headlineValor=6334712.46",
+        ],
+      },
+      { v1Enabled: true, v2Enabled: true, v3Enabled: false, v4Enabled: false, v5Enabled: false, v8Enabled: false },
+    );
+    expect(r.ok).toBe(false);
+    expect(r.reason).toBe("V2");
+  });
+});

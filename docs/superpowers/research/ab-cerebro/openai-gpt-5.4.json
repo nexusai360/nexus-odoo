@@ -1,0 +1,875 @@
+{
+  "resumo": {
+    "candidato": "openai:gpt-5.4",
+    "casos": 60,
+    "erros": 0,
+    "toolCerta": "49/60 (81.7%)",
+    "kpiOuro": "4/4",
+    "casosComSuspeitaAlucinacao": "6/60",
+    "custoP50Usd": "0.0384",
+    "custoTotalUsd": "2.68",
+    "latP50s": "20.0",
+    "duracaoTotalMin": "79.4"
+  },
+  "results": [
+    {
+      "id": "ouro-estoque-01",
+      "dominio": "estoque",
+      "ok": true,
+      "toolsCalled": [
+        "estoque_saldo_produto"
+      ],
+      "toolOk": true,
+      "kpiOk": true,
+      "kpiMiss": [],
+      "halucNums": [],
+      "custoUsd": 0.064944,
+      "durMs": 14904.734958999965
+    },
+    {
+      "id": "ouro-financeiro-01",
+      "dominio": "financeiro",
+      "ok": true,
+      "toolsCalled": [
+        "financeiro_saldo_contas"
+      ],
+      "toolOk": true,
+      "kpiOk": true,
+      "kpiMiss": [],
+      "halucNums": [],
+      "custoUsd": 0.1072135,
+      "durMs": 19959.720208000042
+    },
+    {
+      "id": "ouro-fiscal-01",
+      "dominio": "fiscal",
+      "ok": true,
+      "toolsCalled": [
+        "fiscal_contar_notas"
+      ],
+      "toolOk": true,
+      "kpiOk": true,
+      "kpiMiss": [],
+      "halucNums": [],
+      "custoUsd": 0.0731875,
+      "durMs": 8853.479166999983
+    },
+    {
+      "id": "ouro-comercial-01",
+      "dominio": "comercial",
+      "ok": true,
+      "toolsCalled": [
+        "comercial_contar_pedidos"
+      ],
+      "toolOk": true,
+      "kpiOk": true,
+      "kpiMiss": [],
+      "halucNums": [],
+      "custoUsd": 0.0661915,
+      "durMs": 11168.959417000005
+    },
+    {
+      "id": "estoque-01",
+      "dominio": "estoque",
+      "ok": true,
+      "toolsCalled": [
+        "estoque_saldo_produto"
+      ],
+      "toolOk": true,
+      "kpiOk": null,
+      "kpiMiss": [],
+      "halucNums": [],
+      "custoUsd": 0.08322,
+      "durMs": 28842.006124999956
+    },
+    {
+      "id": "financeiro-01",
+      "dominio": "financeiro",
+      "ok": true,
+      "toolsCalled": [
+        "financeiro_saldo_contas"
+      ],
+      "toolOk": true,
+      "kpiOk": null,
+      "kpiMiss": [],
+      "halucNums": [],
+      "custoUsd": 0.018934,
+      "durMs": 20913.42854200001
+    },
+    {
+      "id": "fiscal-01",
+      "dominio": "fiscal",
+      "ok": true,
+      "toolsCalled": [
+        "fiscal_faturamento_periodo"
+      ],
+      "toolOk": true,
+      "kpiOk": null,
+      "kpiMiss": [],
+      "halucNums": [],
+      "custoUsd": 0.0791915,
+      "durMs": 11169.016042000032
+    },
+    {
+      "id": "comercial-01",
+      "dominio": "comercial",
+      "ok": true,
+      "toolsCalled": [
+        "comercial_contar_pedidos"
+      ],
+      "toolOk": true,
+      "kpiOk": null,
+      "kpiMiss": [],
+      "halucNums": [],
+      "custoUsd": 0.0170155,
+      "durMs": 21366.792875000043
+    },
+    {
+      "id": "contabil-01",
+      "dominio": "contabil",
+      "ok": true,
+      "toolsCalled": [
+        "contabil_plano_de_contas"
+      ],
+      "toolOk": true,
+      "kpiOk": null,
+      "kpiMiss": [],
+      "halucNums": [
+        934,
+        934
+      ],
+      "custoUsd": 0.0959415,
+      "durMs": 44808.737999999954
+    },
+    {
+      "id": "cadastros-01",
+      "dominio": "cadastros",
+      "ok": true,
+      "toolsCalled": [
+        "cadastro_contar_parceiros"
+      ],
+      "toolOk": true,
+      "kpiOk": null,
+      "kpiMiss": [],
+      "halucNums": [],
+      "custoUsd": 0.057927,
+      "durMs": 11271.62720799999
+    },
+    {
+      "id": "cov-01",
+      "dominio": "auditoria",
+      "ok": true,
+      "toolsCalled": [
+        "auditoria_regras"
+      ],
+      "toolOk": true,
+      "kpiOk": null,
+      "kpiMiss": [],
+      "halucNums": [],
+      "custoUsd": 0.0186175,
+      "durMs": 9710.734083999996
+    },
+    {
+      "id": "cov-02",
+      "dominio": "cadastro",
+      "ok": true,
+      "toolsCalled": [
+        "cadastro_cidades_listar"
+      ],
+      "toolOk": true,
+      "kpiOk": null,
+      "kpiMiss": [],
+      "halucNums": [],
+      "custoUsd": 0.0698815,
+      "durMs": 19114.819874999986
+    },
+    {
+      "id": "cov-24",
+      "dominio": "crm",
+      "ok": true,
+      "toolsCalled": [
+        "crm_pipeline_funis"
+      ],
+      "toolOk": true,
+      "kpiOk": null,
+      "kpiMiss": [],
+      "halucNums": [],
+      "custoUsd": 0.0581105,
+      "durMs": 8445.627666999993
+    },
+    {
+      "id": "cov-26",
+      "dominio": "crm.res",
+      "ok": true,
+      "toolsCalled": [],
+      "toolOk": false,
+      "kpiOk": null,
+      "kpiMiss": [],
+      "halucNums": [],
+      "custoUsd": 0.0142755,
+      "durMs": 10200.289958000008
+    },
+    {
+      "id": "cov-59",
+      "dominio": "preco",
+      "ok": true,
+      "toolsCalled": [
+        "registrar_lacuna"
+      ],
+      "toolOk": false,
+      "kpiOk": null,
+      "kpiMiss": [],
+      "halucNums": [],
+      "custoUsd": 0.0229245,
+      "durMs": 749968.031833
+    },
+    {
+      "id": "cov-61",
+      "dominio": "producao",
+      "ok": true,
+      "toolsCalled": [
+        "producao_processos"
+      ],
+      "toolOk": true,
+      "kpiOk": null,
+      "kpiMiss": [],
+      "halucNums": [],
+      "custoUsd": 0.0512945,
+      "durMs": 726692.803917
+    },
+    {
+      "id": "cov-63",
+      "dominio": "referencia",
+      "ok": true,
+      "toolsCalled": [],
+      "toolOk": false,
+      "kpiOk": null,
+      "kpiMiss": [],
+      "halucNums": [],
+      "custoUsd": 0.0144805,
+      "durMs": 728061.153541
+    },
+    {
+      "id": "cov-64",
+      "dominio": "rh",
+      "ok": true,
+      "toolsCalled": [
+        "rh_status_dominio"
+      ],
+      "toolOk": true,
+      "kpiOk": null,
+      "kpiMiss": [],
+      "halucNums": [],
+      "custoUsd": 0.0493755,
+      "durMs": 8896.385666999966
+    },
+    {
+      "id": "cov-65",
+      "dominio": "servico",
+      "ok": true,
+      "toolsCalled": [],
+      "toolOk": false,
+      "kpiOk": null,
+      "kpiMiss": [],
+      "halucNums": [],
+      "custoUsd": 0.010809,
+      "durMs": 7614.3942500001285
+    },
+    {
+      "id": "estoque-02",
+      "dominio": "estoque",
+      "ok": true,
+      "toolsCalled": [
+        "estoque_valor_armazem"
+      ],
+      "toolOk": true,
+      "kpiOk": null,
+      "kpiMiss": [],
+      "halucNums": [],
+      "custoUsd": 0.0201435,
+      "durMs": 13977.676250000019
+    },
+    {
+      "id": "financeiro-02",
+      "dominio": "financeiro",
+      "ok": true,
+      "toolsCalled": [
+        "financeiro_caixa_periodo"
+      ],
+      "toolOk": true,
+      "kpiOk": null,
+      "kpiMiss": [],
+      "halucNums": [],
+      "custoUsd": 0.0279125,
+      "durMs": 24162.065540999873
+    },
+    {
+      "id": "fiscal-02",
+      "dominio": "fiscal",
+      "ok": true,
+      "toolsCalled": [
+        "fiscal_notas_emitidas"
+      ],
+      "toolOk": true,
+      "kpiOk": null,
+      "kpiMiss": [],
+      "halucNums": [
+        934,
+        50941440.7,
+        934,
+        53420564,
+        53420564,
+        20777734,
+        20777734,
+        63631358,
+        55822987,
+        55822987,
+        993533
+      ],
+      "custoUsd": 0.1070095,
+      "durMs": 439332.25158399995
+    },
+    {
+      "id": "comercial-02",
+      "dominio": "comercial",
+      "ok": true,
+      "toolsCalled": [
+        "comercial_pedidos_por_etapa"
+      ],
+      "toolOk": true,
+      "kpiOk": null,
+      "kpiMiss": [],
+      "halucNums": [],
+      "custoUsd": 0.1106735,
+      "durMs": 473466.7880840001
+    },
+    {
+      "id": "contabil-02",
+      "dominio": "contabil",
+      "ok": true,
+      "toolsCalled": [
+        "contabil_plano_de_contas"
+      ],
+      "toolOk": false,
+      "kpiOk": null,
+      "kpiMiss": [],
+      "halucNums": [],
+      "custoUsd": 0.018683,
+      "durMs": 365804.7389580002
+    },
+    {
+      "id": "cadastros-02",
+      "dominio": "cadastros",
+      "ok": true,
+      "toolsCalled": [
+        "cadastro_buscar_parceiro"
+      ],
+      "toolOk": true,
+      "kpiOk": null,
+      "kpiMiss": [],
+      "halucNums": [],
+      "custoUsd": 0.0982405,
+      "durMs": 52371.14375000005
+    },
+    {
+      "id": "cov-03",
+      "dominio": "cadastro",
+      "ok": true,
+      "toolsCalled": [],
+      "toolOk": false,
+      "kpiOk": null,
+      "kpiMiss": [],
+      "halucNums": [],
+      "custoUsd": 0.0525275,
+      "durMs": 11097.00395799987
+    },
+    {
+      "id": "cov-25",
+      "dominio": "crm",
+      "ok": true,
+      "toolsCalled": [
+        "crm_status_dominio"
+      ],
+      "toolOk": true,
+      "kpiOk": null,
+      "kpiMiss": [],
+      "halucNums": [],
+      "custoUsd": 0.0498645,
+      "durMs": 9220.355999999912
+    },
+    {
+      "id": "cov-60",
+      "dominio": "preco",
+      "ok": true,
+      "toolsCalled": [],
+      "toolOk": false,
+      "kpiOk": null,
+      "kpiMiss": [],
+      "halucNums": [],
+      "custoUsd": 0.0167865,
+      "durMs": 15056.09345899988
+    },
+    {
+      "id": "cov-62",
+      "dominio": "producao",
+      "ok": true,
+      "toolsCalled": [
+        "producao_status_dominio"
+      ],
+      "toolOk": true,
+      "kpiOk": null,
+      "kpiMiss": [],
+      "halucNums": [],
+      "custoUsd": 0.052883,
+      "durMs": 9320.875042000087
+    },
+    {
+      "id": "cov-66",
+      "dominio": "servico",
+      "ok": true,
+      "toolsCalled": [
+        "servico_contar"
+      ],
+      "toolOk": true,
+      "kpiOk": null,
+      "kpiMiss": [],
+      "halucNums": [],
+      "custoUsd": 0.053057,
+      "durMs": 9063.441208000062
+    },
+    {
+      "id": "estoque-03",
+      "dominio": "estoque",
+      "ok": true,
+      "toolsCalled": [
+        "estoque_concentracao"
+      ],
+      "toolOk": true,
+      "kpiOk": null,
+      "kpiMiss": [],
+      "halucNums": [],
+      "custoUsd": 0.031809,
+      "durMs": 14444.713041000068
+    },
+    {
+      "id": "financeiro-03",
+      "dominio": "financeiro",
+      "ok": true,
+      "toolsCalled": [
+        "financeiro_fluxo_caixa"
+      ],
+      "toolOk": true,
+      "kpiOk": null,
+      "kpiMiss": [],
+      "halucNums": [],
+      "custoUsd": 0.0289445,
+      "durMs": 29101.991625000024
+    },
+    {
+      "id": "fiscal-03",
+      "dominio": "fiscal",
+      "ok": true,
+      "toolsCalled": [
+        "fiscal_faturamento_por_cliente"
+      ],
+      "toolOk": true,
+      "kpiOk": null,
+      "kpiMiss": [],
+      "halucNums": [
+        63285682,
+        63285682,
+        7594978,
+        63618627,
+        65108585,
+        7594978
+      ],
+      "custoUsd": 0.0653415,
+      "durMs": 17768.363374999957
+    },
+    {
+      "id": "comercial-03",
+      "dominio": "comercial",
+      "ok": true,
+      "toolsCalled": [
+        "comercial_pedidos_por_vendedor"
+      ],
+      "toolOk": true,
+      "kpiOk": null,
+      "kpiMiss": [],
+      "halucNums": [],
+      "custoUsd": 0.042488,
+      "durMs": 31374.77062499989
+    },
+    {
+      "id": "contabil-03",
+      "dominio": "contabil",
+      "ok": true,
+      "toolsCalled": [
+        "contabil_conta_referencial"
+      ],
+      "toolOk": true,
+      "kpiOk": null,
+      "kpiMiss": [],
+      "halucNums": [],
+      "custoUsd": 0.026216,
+      "durMs": 24164.52687499998
+    },
+    {
+      "id": "cadastros-03",
+      "dominio": "cadastros",
+      "ok": true,
+      "toolsCalled": [
+        "cadastro_parceiros_por_uf"
+      ],
+      "toolOk": true,
+      "kpiOk": null,
+      "kpiMiss": [],
+      "halucNums": [],
+      "custoUsd": 0.0217235,
+      "durMs": 24013.48887500004
+    },
+    {
+      "id": "cov-04",
+      "dominio": "cadastro",
+      "ok": true,
+      "toolsCalled": [
+        "cadastro_parceiros_novos"
+      ],
+      "toolOk": true,
+      "kpiOk": null,
+      "kpiMiss": [],
+      "halucNums": [],
+      "custoUsd": 0.0284585,
+      "durMs": 20932.32283399999
+    },
+    {
+      "id": "cov-67",
+      "dominio": "servico",
+      "ok": true,
+      "toolsCalled": [
+        "servico_listar"
+      ],
+      "toolOk": true,
+      "kpiOk": null,
+      "kpiMiss": [],
+      "halucNums": [
+        336,
+        336
+      ],
+      "custoUsd": 0.0829385,
+      "durMs": 28658.341000000015
+    },
+    {
+      "id": "estoque-04",
+      "dominio": "estoque",
+      "ok": true,
+      "toolsCalled": [
+        "estoque_produtos_parados"
+      ],
+      "toolOk": true,
+      "kpiOk": null,
+      "kpiMiss": [],
+      "halucNums": [],
+      "custoUsd": 0.035965,
+      "durMs": 32236.447332999902
+    },
+    {
+      "id": "financeiro-04",
+      "dominio": "financeiro",
+      "ok": true,
+      "toolsCalled": [
+        "financeiro_contas_a_receber"
+      ],
+      "toolOk": true,
+      "kpiOk": null,
+      "kpiMiss": [],
+      "halucNums": [],
+      "custoUsd": 0.074932,
+      "durMs": 10192.66779200011
+    },
+    {
+      "id": "fiscal-04",
+      "dominio": "fiscal",
+      "ok": true,
+      "toolsCalled": [
+        "fiscal_dfe_pendentes_manifestacao"
+      ],
+      "toolOk": true,
+      "kpiOk": null,
+      "kpiMiss": [],
+      "halucNums": [],
+      "custoUsd": 0.020566,
+      "durMs": 8209.554125000024
+    },
+    {
+      "id": "comercial-04",
+      "dominio": "comercial",
+      "ok": true,
+      "toolsCalled": [
+        "comercial_pedidos_listar_top_valor"
+      ],
+      "toolOk": true,
+      "kpiOk": null,
+      "kpiMiss": [],
+      "halucNums": [],
+      "custoUsd": 0.0383825,
+      "durMs": 537473.6872080001
+    },
+    {
+      "id": "contabil-04",
+      "dominio": "contabil",
+      "ok": true,
+      "toolsCalled": [
+        "contabil_centro_custo"
+      ],
+      "toolOk": true,
+      "kpiOk": null,
+      "kpiMiss": [],
+      "halucNums": [],
+      "custoUsd": 0.0233695,
+      "durMs": 527940.0240419998
+    },
+    {
+      "id": "cadastros-04",
+      "dominio": "cadastros",
+      "ok": true,
+      "toolsCalled": [
+        "cadastro_filiais_listar"
+      ],
+      "toolOk": true,
+      "kpiOk": null,
+      "kpiMiss": [],
+      "halucNums": [],
+      "custoUsd": 0.0207355,
+      "durMs": 522748.7104170001
+    },
+    {
+      "id": "cov-05",
+      "dominio": "cadastro",
+      "ok": true,
+      "toolsCalled": [
+        "cadastro_parceiros_por_cidade",
+        "cadastro_cidades_listar"
+      ],
+      "toolOk": true,
+      "kpiOk": null,
+      "kpiMiss": [],
+      "halucNums": [],
+      "custoUsd": 0.055697,
+      "durMs": 678848.2482909998
+    },
+    {
+      "id": "estoque-05",
+      "dominio": "estoque",
+      "ok": true,
+      "toolsCalled": [
+        "estoque_top_movimentados"
+      ],
+      "toolOk": true,
+      "kpiOk": null,
+      "kpiMiss": [],
+      "halucNums": [],
+      "custoUsd": 0.0736685,
+      "durMs": 13678.132792000193
+    },
+    {
+      "id": "financeiro-05",
+      "dominio": "financeiro",
+      "ok": true,
+      "toolsCalled": [
+        "financeiro_contas_a_pagar"
+      ],
+      "toolOk": true,
+      "kpiOk": null,
+      "kpiMiss": [],
+      "halucNums": [
+        9197394
+      ],
+      "custoUsd": 0.028545,
+      "durMs": 11180.150874999817
+    },
+    {
+      "id": "fiscal-05",
+      "dominio": "fiscal",
+      "ok": true,
+      "toolsCalled": [
+        "fiscal_apuracao"
+      ],
+      "toolOk": false,
+      "kpiOk": null,
+      "kpiMiss": [],
+      "halucNums": [],
+      "custoUsd": 0.0426,
+      "durMs": 659396.4577079997
+    },
+    {
+      "id": "comercial-05",
+      "dominio": "comercial",
+      "ok": true,
+      "toolsCalled": [
+        "comercial_vendedores_cadastrados"
+      ],
+      "toolOk": true,
+      "kpiOk": null,
+      "kpiMiss": [],
+      "halucNums": [],
+      "custoUsd": 0.0626355,
+      "durMs": 627434.683042
+    },
+    {
+      "id": "cov-20",
+      "dominio": "contabil",
+      "ok": true,
+      "toolsCalled": [],
+      "toolOk": false,
+      "kpiOk": null,
+      "kpiMiss": [],
+      "halucNums": [],
+      "custoUsd": 0.0179225,
+      "durMs": 17640.58620900009
+    },
+    {
+      "id": "cadastros-05",
+      "dominio": "cadastros",
+      "ok": true,
+      "toolsCalled": [
+        "estoque_saldo_produto"
+      ],
+      "toolOk": false,
+      "kpiOk": null,
+      "kpiMiss": [],
+      "halucNums": [],
+      "custoUsd": 0.0369535,
+      "durMs": 1067700.082666
+    },
+    {
+      "id": "cov-06",
+      "dominio": "cadastro",
+      "ok": true,
+      "toolsCalled": [
+        "cadastro_parceiros_sem_documento"
+      ],
+      "toolOk": true,
+      "kpiOk": null,
+      "kpiMiss": [],
+      "halucNums": [],
+      "custoUsd": 0.0195635,
+      "durMs": 13023.88329199981
+    },
+    {
+      "id": "cov-27",
+      "dominio": "estoque",
+      "ok": true,
+      "toolsCalled": [
+        "estoque_entradas_saidas"
+      ],
+      "toolOk": true,
+      "kpiOk": null,
+      "kpiMiss": [],
+      "halucNums": [],
+      "custoUsd": 0.0236475,
+      "durMs": 11986.49720800016
+    },
+    {
+      "id": "financeiro-06",
+      "dominio": "financeiro",
+      "ok": true,
+      "toolsCalled": [
+        "financeiro_titulos_vencidos"
+      ],
+      "toolOk": true,
+      "kpiOk": null,
+      "kpiMiss": [],
+      "halucNums": [
+        2989,
+        14231155.83,
+        183805976.69,
+        171072058.53
+      ],
+      "custoUsd": 0.0398335,
+      "durMs": 1068655.6449159998
+    },
+    {
+      "id": "cov-38",
+      "dominio": "fiscal",
+      "ok": true,
+      "toolsCalled": [
+        "fiscal_apuracao"
+      ],
+      "toolOk": true,
+      "kpiOk": null,
+      "kpiMiss": [],
+      "halucNums": [],
+      "custoUsd": 0.0476025,
+      "durMs": 1081042.8575
+    },
+    {
+      "id": "cov-07",
+      "dominio": "comercial",
+      "ok": true,
+      "toolsCalled": [
+        "comercial_comissoes"
+      ],
+      "toolOk": true,
+      "kpiOk": null,
+      "kpiMiss": [],
+      "halucNums": [],
+      "custoUsd": 0.016751,
+      "durMs": 10583.183874999639
+    },
+    {
+      "id": "cov-21",
+      "dominio": "contabil",
+      "ok": true,
+      "toolsCalled": [],
+      "toolOk": false,
+      "kpiOk": null,
+      "kpiMiss": [],
+      "halucNums": [],
+      "custoUsd": 0.014141,
+      "durMs": 12853.508332999889
+    },
+    {
+      "id": "cov-28",
+      "dominio": "estoque",
+      "ok": true,
+      "toolsCalled": [
+        "estoque_minimo_maximo"
+      ],
+      "toolOk": true,
+      "kpiOk": null,
+      "kpiMiss": [],
+      "halucNums": [],
+      "custoUsd": 0.0209905,
+      "durMs": 16488.437875000294
+    },
+    {
+      "id": "cov-30",
+      "dominio": "financeiro",
+      "ok": true,
+      "toolsCalled": [
+        "financeiro_baixas_cobranca"
+      ],
+      "toolOk": true,
+      "kpiOk": null,
+      "kpiMiss": [],
+      "halucNums": [],
+      "custoUsd": 0.026125,
+      "durMs": 17040.433958000038
+    },
+    {
+      "id": "cov-39",
+      "dominio": "fiscal",
+      "ok": true,
+      "toolsCalled": [
+        "fiscal_carta_correcao"
+      ],
+      "toolOk": true,
+      "kpiOk": null,
+      "kpiMiss": [],
+      "halucNums": [],
+      "custoUsd": 0.0337495,
+      "durMs": 1089454.083542
+    }
+  ]
+}

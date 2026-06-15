@@ -12,6 +12,7 @@ import { contabilMovimentoConta } from "./movimento-conta.js";
 import { contabilResultadoPorNatureza } from "./resultado-por-natureza.js";
 import { contabilCentroCusto } from "./centro-custo.js";
 import { contabilContaReferencial } from "./conta-referencial.js";
+import { contabilDetalharConta } from "./detalhar-conta.js";
 
 export const contabilTools: ToolEntry[] = [
   contabilPlanoDeContas as ToolEntry,
@@ -21,4 +22,6 @@ export const contabilTools: ToolEntry[] = [
   contabilResultadoPorNatureza as ToolEntry,
   contabilCentroCusto as ToolEntry,
   contabilContaReferencial as ToolEntry,
+  // F2 (Bloco D , detalhe por odooId; gated admin/super_admin)
+  contabilDetalharConta as ToolEntry,
 ];

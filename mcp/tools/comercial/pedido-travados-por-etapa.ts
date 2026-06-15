@@ -27,6 +27,8 @@ const dados = z.object({
   totalTravados: z.number().int(),
   diasMin: z.number().int(),
   aviso: z.string(),
+  // Contrato de lista (Fase B): pedidos ordenados por dias parado desc na query.
+  ordenadoPor: z.string().optional(),
   _RESPOSTA: z.string().optional(),
   _listaTruncada: z.boolean().optional(),
   _DESTAQUE: z.record(z.string(), z.union([z.string(), z.number()])).optional(),
@@ -44,6 +46,8 @@ type Output = z.infer<typeof outputSchema>;
 function shape(d: Awaited<ReturnType<typeof queryPedidoTravadosPorEtapa>>) {
   return {
     ...d,
+    // Contrato de lista (Fase B): query ordena por diasParado desc (desempate pedidoId).
+    ordenadoPor: "dias parado desc",
     aviso:
       "Pedidos parados no FLUXO de etapas (processo): o último evento de etapa " +
       "está há mais de `diasMin` dias sem avançar. É travamento de PROCESSO, NÃO " +

@@ -4,6 +4,7 @@ import { z } from "zod";
 import type { ToolEntry } from "../../catalog/types.js";
 import { queryCartaCorrecao } from "@/lib/reports/queries/fiscal-complementar.js";
 import { withFreshness } from "../../lib/freshness.js";
+import { enriquecerEnvelope } from "../../lib/with-responder.js";
 import {
   paginacaoInputShape,
   resolverPaginacao,
@@ -29,8 +30,14 @@ const dados = z.object({
   linhas: z.array(linha),
   total: z.number().int(),
   truncado: z.boolean(),
+  // Contrato de lista (Fase B): a query ordena por dataAutorizacao desc com
+  // desempate por odooId; aqui apenas declaramos ao LLM.
+  ordenadoPor: z.string().optional(),
+  _RESPOSTA: z.string().optional(),
   _listaTruncada: z.boolean().optional(),
   _PAGINACAO: z.any().optional(),
+  _DESTAQUE: z.record(z.string(), z.union([z.string(), z.number()])).optional(),
+  _agregado: z.record(z.string(), z.number().optional()).optional(),
 });
 
 const fonteStatus = z.object({
@@ -63,15 +70,31 @@ export const fiscalCartaCorrecao: ToolEntry<Input, Output> = {
   outputSchema,
   handler: async (input, ctx) => {
     const { limit, offset } = resolverPaginacao(input);
-    const envelope = await withFreshness(ctx.prisma, ["fato_carta_correcao"], () =>
-      queryCartaCorrecao(ctx.prisma, { ...input, limit, offset }),
-    );
+    const envelope = await withFreshness(ctx.prisma, ["fato_carta_correcao"], async () => {
+      const r = await queryCartaCorrecao(ctx.prisma, { ...input, limit, offset });
+      // Contrato de lista (Fase B): declara a ordenacao real da query.
+      return { ...r, ordenadoPor: "data desc" };
+    });
     if (envelope.estado === "preparando") return envelope;
     const d = envelope.dados;
     const paginacao = montarPaginacaoMeta(d.total, offset, limit, d.linhas.length);
-    return {
-      ...envelope,
-      dados: { ...d, _listaTruncada: paginacao.temMais, _PAGINACAO: paginacao },
+    // totalDocumentos FULL-SET: contagem de documentos distintos no mesmo
+    // recorte (sem LIMIT), nao a pagina.
+    const whereCarta = input.documentoId != null ? { documentoId: input.documentoId } : {};
+    const distintos = await ctx.prisma.fatoCartaCorrecao.findMany({
+      where: whereCarta,
+      select: { documentoId: true },
+      distinct: ["documentoId"],
+    });
+    const destaque: Record<string, string | number> = {
+      totalCartas: d.total,
+      totalDocumentos: distintos.length,
+      ...(input.documentoId != null ? { documentoId: input.documentoId } : {}),
     };
+    return enriquecerEnvelope(envelope, "fiscal_carta_correcao", {
+      destaque,
+      agregado: { contagem: d.total },
+      paginacao,
+    });
   },
 };

@@ -15,8 +15,8 @@ export async function queryPedidosPeriodo(
     filtros.periodoDe && filtros.periodoAte
       ? {
           dataOrcamento: {
-            gte: new Date(`${filtros.periodoDe}T00:00:00`),
-            lte: new Date(`${filtros.periodoAte}T00:00:00`),
+            gte: new Date(`${filtros.periodoDe}T00:00:00Z`),
+            lte: new Date(`${filtros.periodoAte}T00:00:00Z`),
           },
         }
       : {};
@@ -72,8 +72,8 @@ export async function queryPedidosPorVendedor(
     filtros.periodoDe && filtros.periodoAte
       ? {
           dataOrcamento: {
-            gte: new Date(`${filtros.periodoDe}T00:00:00`),
-            lte: new Date(`${filtros.periodoAte}T00:00:00`),
+            gte: new Date(`${filtros.periodoDe}T00:00:00Z`),
+            lte: new Date(`${filtros.periodoAte}T00:00:00Z`),
           },
         }
       : {};

@@ -54,7 +54,8 @@ import { RouterDecisionDrilldown } from "./router-decision-drilldown";
 const NO_TOOL_DOMAIN = "chat";
 
 const DOMAIN_DISPLAY: Record<string, string> = {
-  caminho3: "BI avançado",
+  // chave tecnica `caminho3` (estavel no router) exibida como rotulo amigavel.
+  caminho3: "Fora do Catálogo",
   "dominios-vazios": "cobertura",
   [NO_TOOL_DOMAIN]: "chat",
 };

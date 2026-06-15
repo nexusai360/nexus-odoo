@@ -14,7 +14,15 @@ export const SYNC_CONFIG_DEFAULTS: SyncConfig = {
   // sem martelar a API do Odoo Tauga a cada poucos minutos. Ajustável na tela
   // /configuracao (AppSetting `sync.snapshot_interval_min`).
   snapshotIntervalMin: 30,
-  reconcileIntervalMin: 1440,
+  // Reconciliação a cada 3h (não mais 24h). A reconciliação é a ÚNICA rotina
+  // que detecta DELEÇÕES no Odoo (o incremental só pega write_date novo, e
+  // deleção não muda write_date). Com 24h, uma deleção (ex.: 707 títulos a
+  // pagar baixados em bloco) inflava o "a pagar" por até um dia inteiro; e o
+  // ciclo diário sempre colidia com a janela de manutenção da Tauga (~meio-dia)
+  // e morria. 3h dá 8 janelas/dia: a deleção reflete em horas E o ciclo quase
+  // sempre encontra a Tauga no ar. O custo é baixo (só compara IDs). Ajustável
+  // em /configuracao (AppSetting `sync.reconcile_interval_min`).
+  reconcileIntervalMin: 180,
 };
 
 const KEY_MAP: Record<string, keyof SyncConfig> = {

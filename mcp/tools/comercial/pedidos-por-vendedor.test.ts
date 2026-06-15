@@ -1,4 +1,5 @@
 import { comercialPedidosPorVendedor } from "./pedidos-por-vendedor.js";
+import { PAGINACAO_LIMIT_DEFAULT } from "../../lib/paginacao";
 import type { ToolHandlerCtx } from "../../catalog/types.js";
 import type { UserContext } from "../../auth/user-context.js";
 
@@ -71,14 +72,14 @@ describe("comercial_pedidos_por_vendedor , paginacao em memoria (alavanca 2b)", 
     }
   });
 
-  it("default limit = 10 quando ausente", async () => {
+  it("default limit = 50 quando ausente", async () => {
     const ctx = makeCtx();
     primeFreshness(ctx);
-    (ctx.prisma.fatoPedido.findMany as jest.Mock).mockResolvedValue(fakePedidos(40));
+    (ctx.prisma.fatoPedido.findMany as jest.Mock).mockResolvedValue(fakePedidos(60));
 
     const r = await comercialPedidosPorVendedor.handler({} as never, ctx);
     if (r.estado !== "preparando") {
-      expect(r.dados.linhas.length).toBe(10);
+      expect(r.dados.linhas.length).toBe(PAGINACAO_LIMIT_DEFAULT);
     }
   });
 });

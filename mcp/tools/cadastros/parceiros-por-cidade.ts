@@ -38,6 +38,9 @@ const dados = z.object({
   linhas: z.array(linhaSchema),
   totalEncontrados: z.number().int(),
   linhasExibidas: z.number().int(),
+  // Contrato de lista (Fase B): conjunto filtrado ordenado de forma estavel por id asc
+  // (o filtro de zona/capital exige comparacao em memoria, sem score de relevancia).
+  ordenadoPor: z.string().optional(),
   _RESPOSTA: z.string().optional(),
   _listaTruncada: z.boolean().optional(),
   _DESTAQUE: z.record(z.string(), z.union([z.string(), z.number()])).optional(),
@@ -192,6 +195,8 @@ async function queryParceirosPorCidade(prisma: PrismaClient, input: Input) {
     linhas: linhasCap,
     totalEncontrados: ordenados.length,
     linhasExibidas: linhasCap.length,
+    // Contrato de lista (Fase B): conjunto ordenado de forma estavel por odooId asc.
+    ordenadoPor: "id asc",
   };
 }
 

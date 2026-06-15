@@ -15,9 +15,12 @@ import { processAgentJob, type AgentJobData } from "./agent/processor";
 import { cleanupIdempotencyTable } from "./agent/cleanup";
 import {
   AGENT_TOPIC_TAGGING_QUEUE,
+  AGENT_RESUMO_CONVERSA_QUEUE,
   type TopicTaggingJobData,
+  type ResumoConversaJobData,
 } from "./agent-intelligence/queue";
 import { processTopicTaggingJob } from "./agent-intelligence/topic-tagging";
+import { processResumoConversaJob } from "./agent-intelligence/resumo-conversa";
 import { refreshUsdBrlRateFromBCB } from "@/lib/agent/llm/exchange-rate";
 import {
   clearPending,
@@ -39,7 +42,9 @@ export const JOB_CLEANUP_IDEMPOTENCY = "cleanup-idempotency";
 export const JOB_CLEANUP_MCP_IDEMPOTENCY = "cleanup-mcp-idempotency";
 export const JOB_CLEANUP_AUDIT_LOG = "cleanup-audit-log";
 export const JOB_REFRESH_USD_BRL = "refresh-usd-brl-ptax";
-export const JOB_AUTO_HEURISTIC = "quality-auto-heuristic";
+// Nome do scheduler legado da heurística (ARRANCADA): mantido só como literal
+// pra purgar qualquer job repetível antigo que ainda esteja no Redis.
+const LEGACY_JOB_AUTO_HEURISTIC = "quality-auto-heuristic";
 
 const REDIS_URL = process.env.REDIS_URL ?? "redis://localhost:6379";
 const connection = new IORedis(REDIS_URL, { maxRetriesPerRequest: null });
@@ -88,6 +93,27 @@ agentTopicTaggingWorker.on("error", (err) =>
   console.error("[agent-topic-tagging-worker] erro:", err),
 );
 
+// ─── Fila da inteligencia: resumo progressivo da conversa (Onda M , M.5) ─────
+export const agentResumoConversaQueue = new Queue(AGENT_RESUMO_CONVERSA_QUEUE, { connection });
+
+const agentResumoConversaWorker = new Worker(
+  AGENT_RESUMO_CONVERSA_QUEUE,
+  async (job: Job<ResumoConversaJobData>) => {
+    return processResumoConversaJob(job.data);
+  },
+  { connection, concurrency: 2 },
+);
+
+agentResumoConversaWorker.on("ready", () =>
+  console.log(`[agent-resumo-conversa-worker] pronto , fila "${AGENT_RESUMO_CONVERSA_QUEUE}"`),
+);
+agentResumoConversaWorker.on("failed", (job, err) =>
+  console.error(`[agent-resumo-conversa-worker] job ${job?.id} falhou:`, err),
+);
+agentResumoConversaWorker.on("error", (err) =>
+  console.error("[agent-resumo-conversa-worker] erro:", err),
+);
+
 // ─── Fila de manutenção (cron diário) ─────────────────────────────────────────
 export const maintenanceQueue = new Queue(MAINTENANCE_QUEUE, { connection });
 
@@ -127,16 +153,13 @@ const maintenanceWorker = new Worker(
       );
       return result;
     }
-    if (job.name === JOB_AUTO_HEURISTIC) {
-      // APOSENTADO: a classificacao automatica por heuristica (sem LLM) foi
-      // desligada. A avaliacao automatica agora e' feita pelo Claude Code
-      // headless, host-side (src/lib/agent/quality/judge-scheduler.ts), porque
-      // o worker (container) nao enxerga o CLI `claude` do host. Mantido como
-      // no-op para o caso de um job repetivel legado ainda disparar do Redis.
-      console.log(
-        "[maintenance] auto-heuristic IGNORADO (aposentado , avaliacao agora via Claude Code host-side)",
-      );
-      return { ok: true, skipped: "auto-heuristic-aposentado" };
+    if (job.name === LEGACY_JOB_AUTO_HEURISTIC) {
+      // Heurística ARRANCADA: a perícia é exclusivamente do Claude Code headless
+      // host-side (src/lib/agent/quality/judge-scheduler.ts). Este no-op só pega
+      // um job repetível legado que ainda dispare do Redis até o scheduler ser
+      // purgado (aplicarPurgaHeuristicaLegado).
+      console.log("[maintenance] job heurístico legado IGNORADO (arrancado)");
+      return { ok: true, skipped: "heuristica-arrancada" };
     }
     return { ok: true };
   },
@@ -205,27 +228,21 @@ async function liberarLock(jobName: string): Promise<void> {
 
 // Cache da última config aplicada , evita churn de upsertJobScheduler (WR-04).
 let ultimaConfigAplicada: Awaited<ReturnType<typeof readSyncConfig>> | null = null;
-// Cache do intervalo de auto-heuristica (minutos). null = ainda nao lido.
-let ultimoIntervaloAutoHeuristic: number | null = null;
+// Flag de purga única do scheduler heurístico legado.
+let heuristicaLegadoPurgada = false;
 
-/** Le AgentSettings.quality_heuristic_interval_minutes e (re)agenda o
- *  JOB_AUTO_HEURISTIC se mudou. Idempotente. Aplicado no JOB_CONFIG_CHECK
- *  (a cada 60s), mesmo mecanismo que ja existia pra sync. */
-async function aplicarAgendamentoAutoHeuristic(): Promise<void> {
-  // O cron heuristico (sem LLM) foi APOSENTADO. A avaliacao automatica agora
-  // roda host-side via Claude Code (judge-scheduler.ts), que o worker/container
-  // nao consegue disparar. Aqui apenas garantimos a remocao do scheduler antigo
-  // (uma vez), pra nenhum job repetivel legado continuar reclassificando.
-  if (ultimoIntervaloAutoHeuristic === -1) return;
+/** Remove (uma vez) o scheduler repetível legado da heurística do Redis. A
+ *  perícia é exclusivamente do Claude Code host-side (judge-scheduler.ts); o
+ *  worker/container não dispara `claude`. Idempotente. */
+async function aplicarPurgaHeuristicaLegado(): Promise<void> {
+  if (heuristicaLegadoPurgada) return;
   try {
-    await maintenanceQueue.removeJobScheduler(JOB_AUTO_HEURISTIC);
+    await maintenanceQueue.removeJobScheduler(LEGACY_JOB_AUTO_HEURISTIC);
   } catch {
     // ok se nao existir
   }
-  ultimoIntervaloAutoHeuristic = -1;
-  console.log(
-    "[maintenance] auto-heuristic DESLIGADO (avaliacao agora via Claude Code host-side)",
-  );
+  heuristicaLegadoPurgada = true;
+  console.log("[maintenance] scheduler heurístico legado purgado (arrancado)");
 }
 
 /**
@@ -309,8 +326,8 @@ const worker = new Worker(
     // O job de config-check relê a config e reaplica os intervalos.
     if (job.name === JOB_CONFIG_CHECK) {
       await aplicarAgendamento();
-      // Tambem reaplica intervalo da auto-heuristica (mesmo gatilho de 60s).
-      await aplicarAgendamentoAutoHeuristic();
+      // Purga (uma vez) o scheduler heurístico legado, se ainda houver no Redis.
+      await aplicarPurgaHeuristicaLegado();
       return { ok: true };
     }
     // Lock cluster-safe: se outro worker/ciclo já o detém, pula (WR-01).
@@ -423,9 +440,9 @@ async function bootstrap(): Promise<void> {
   await maintenanceQueue.add(JOB_REFRESH_USD_BRL, {});
   console.log("[worker] cron de PTAX USD/BRL agendado (diário 18:30 BRT) + refresh inicial");
 
-  // Auto-heuristica de qualidade: agendamento inicial le AgentSettings.
-  // Mudancas pela UI sao detectadas em <= 60s via JOB_CONFIG_CHECK.
-  await aplicarAgendamentoAutoHeuristic();
+  // Heurística arrancada: purga (uma vez) qualquer scheduler legado no Redis.
+  // A perícia agora é só do Claude Code host-side (judge-scheduler.ts).
+  await aplicarPurgaHeuristicaLegado();
 }
 
 bootstrap().catch((err) => console.error("[worker] falha no bootstrap:", err));

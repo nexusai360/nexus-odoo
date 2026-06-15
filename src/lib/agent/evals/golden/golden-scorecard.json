@@ -1,0 +1,15 @@
+{
+  "numero": {
+    "ok": 4,
+    "falhas": []
+  },
+  "alucinacao": {
+    "casos": 9,
+    "alucinou": 0,
+    "falhas": []
+  },
+  "desambiguacao": {
+    "ok": 3,
+    "falhas": []
+  }
+}

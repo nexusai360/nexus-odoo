@@ -29,6 +29,8 @@ const linhaSchema = z.object({
 });
 
 const dados = z.object({
+  // Contrato de lista (Fase B): ordenacao declarada.
+  ordenadoPor: z.string().optional(),
   linhas: z.array(linhaSchema),
   total: z.number().int(),
   _RESPOSTA: z.string().optional(),
@@ -69,7 +71,7 @@ export const contabilCentroCusto: ToolEntry<Input, Output> = {
       ["fato_contabil_lancamento_item"],
       async () => {
         const result = await queryCentroCusto(ctx.prisma, input);
-        return { linhas: result.linhas, total: result.total };
+        return { linhas: result.linhas, total: result.total, ordenadoPor: "nome do centro de custo asc" };
       },
     );
     if (envelope.estado === "preparando") return envelope;

@@ -18,6 +18,8 @@ const inputSchema = z.object({
 const dados = z.object({
   kpis: z.object({ totalProdutos: z.number().int(), totalUnidades: z.number() }),
   top: z.array(z.object({ rotulo: z.string(), valor: z.number() })),
+  // Contrato de lista (Fase B): ranking ordenado por movimentacao desc na query.
+  ordenadoPor: z.string().optional(),
   _RESPOSTA: z.string().optional(),
   _listaTruncada: z.boolean().optional(),
   _DESTAQUE: z.record(z.string(), z.union([z.string(), z.number()])).optional(),
@@ -47,6 +49,8 @@ function shape(d: Awaited<ReturnType<typeof queryTopMovimentados>>) {
   return {
     kpis: d.kpis,
     top: d.linhas.slice(0, TOP_TOOL),
+    // Contrato de lista (Fase B): query ordena por movimentacao desc (desempate rotulo).
+    ordenadoPor: "movimentação desc",
   };
 }
 

@@ -29,6 +29,8 @@ const dados = z.object({
   totalCidadesDistintas: z.number().int(),
   totalUfs: z.number().int(),
   totalParceiros: z.number().int(),
+  // Contrato de lista (Fase B): cidades ordenadas por quantidade de parceiros desc.
+  ordenadoPor: z.string().optional(),
   _RESPOSTA: z.string().optional(),
   _DESTAQUE: z.record(z.string(), z.union([z.string(), z.number()])).optional(),
   _agregado: z.record(z.string(), z.number().optional()).optional(),
@@ -111,6 +113,8 @@ async function queryCidadesListar(prisma: PrismaClient, input: Input) {
     totalCidadesDistintas: Number(t?.cidades ?? 0),
     totalUfs: Number(t?.ufs ?? 0),
     totalParceiros: Number(t?.parceiros ?? 0),
+    // Contrato de lista (Fase B): SQL ordena por COUNT(*) DESC, cidade ASC.
+    ordenadoPor: "quantidade de parceiros desc",
   };
 }
 

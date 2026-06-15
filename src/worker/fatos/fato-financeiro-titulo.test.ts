@@ -130,8 +130,8 @@ describe("mapTituloRow", () => {
     expect(result.contaNome).toBe("Conta Clientes");
     expect(result.numeroDocumento).toBe("NF-001/1");
     // I2: hora local , data não desloca
-    expect(result.dataDocumento).toEqual(new Date("2026-04-01T00:00:00"));
-    expect(result.dataVencimento).toEqual(new Date("2026-05-31T00:00:00"));
+    expect(result.dataDocumento).toEqual(new Date("2026-04-01T00:00:00Z"));
+    expect(result.dataVencimento).toEqual(new Date("2026-05-31T00:00:00Z"));
     // data_pagamento=false → null
     expect(result.dataPagamento).toBeNull();
     expect(result.situacao).toBe("aberto");
@@ -159,7 +159,7 @@ describe("mapTituloRow", () => {
     expect(result.tipo).toBe("a_receber");
     expect(result.situacaoSimples).toBe("quitado");
     expect(result.vrSaldo).toBe(0);
-    expect(result.dataPagamento).toEqual(new Date("2026-04-05T00:00:00"));
+    expect(result.dataPagamento).toEqual(new Date("2026-04-05T00:00:00Z"));
   });
 
   it("tolera campos relacionais ausentes (many2one false = sem relacionamento)", () => {
@@ -185,9 +185,9 @@ describe("mapTituloRow", () => {
     expect(result.dataPagamento).toBeNull();
   });
 
-  it("I2: data '2026-05-31' parseada como hora local , não desloca para 2026-05-30", () => {
+  it("I2: data '2026-05-31' parseada como UTC , dia não desloca (getUTCDate=31)", () => {
     const result = mapTituloRow({ ...RAW_LANCAMENTO_A_RECEBER_ABERTO, data_vencimento: "2026-05-31" });
-    expect(result.dataVencimento?.getDate()).toBe(31);
+    expect(result.dataVencimento?.getUTCDate()).toBe(31);
   });
 
   it("valores monetários ausentes viram 0", () => {

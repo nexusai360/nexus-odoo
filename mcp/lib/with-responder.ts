@@ -22,6 +22,7 @@ import {
 import { topPorParticipante, type TopParticipante } from "./agrupador.js";
 import type { FreshnessEnvelope } from "./freshness.js";
 import type { PaginacaoMeta } from "./paginacao.js";
+import { TEXTO_HONESTO_PRE_CORTE } from "../tools/fiscal/_periodo-padrao.js";
 
 export interface EnvelopeExtras {
   _RESPOSTA: string;
@@ -47,6 +48,9 @@ export interface EnriquecerOptions {
   /** Alavanca 2b: paginacao. Quando presente, deriva _listaTruncada=temMais e
    *  gera _AVISO_TRUNCAMENTO orientando o usuario a pedir os proximos. */
   paginacao?: PaginacaoMeta;
+  /** Limpa 2026+ T7a: periodo resolvido da tool. Quando preCorte=true, a
+   *  _RESPOSTA inteira vira o texto honesto (cache nao guarda pre-2026). */
+  periodo?: { preCorte: boolean; label: string };
 }
 
 /**
@@ -57,6 +61,15 @@ export function calcularExtras(
   toolName: string,
   options: EnriquecerOptions = {},
 ): EnvelopeExtras {
+  // Limpa 2026+ T7a: periodo inteiramente pre-corte curto-circuita a resposta.
+  // Dizer "0 resultados" seria falso (o dado existe, so nao no cache).
+  if (options.periodo?.preCorte) {
+    return {
+      _RESPOSTA: `${TEXTO_HONESTO_PRE_CORTE} (Periodo pedido: ${options.periodo.label}.)`,
+      _listaTruncada: false,
+      _DESTAQUE: { periodoPreCorte: 1, ...(options.destaque ?? {}) },
+    };
+  }
   const destaque = options.destaque;
   const titulos = options.titulos ?? [];
   // Alavanca 2b: paginacao tem precedencia na decisao de truncamento.

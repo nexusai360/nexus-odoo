@@ -17,7 +17,7 @@ import "./load-env";
 import { prisma } from "@/lib/prisma";
 
 const HEURISTIC_VERSION = "heuristica-agente-nex-v1";
-const PENDING_JUDGE_VERSION = "v2-claude-code";
+const PENDING_JUDGE_VERSION = "claude-pericia-v1";
 
 async function main(): Promise<void> {
   const apply = process.argv.includes("--apply");

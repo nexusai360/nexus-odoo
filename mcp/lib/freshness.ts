@@ -16,6 +16,8 @@
 // do wrapper F3 pode adotá-la também.
 
 import type { PrismaClient } from "@/generated/prisma/client.js";
+// Fonte unica das chaves de array (F4 Apresentacao, Onda 1.2).
+import { ARRAY_KEYS_PRIORITY } from "./array-keys.js";
 
 // ---------------------------------------------------------------------------
 // FATO_FONTE , mapa fato → fonte do SyncState com modo
@@ -150,7 +152,7 @@ export async function estadoPreparando(
 // ---------------------------------------------------------------------------
 // `withFreshness` inspeciona `dados` para decidir "vazio": pega o primeiro
 // array entre as chaves abaixo, por ordem. Se nenhum existir → "ok".
-const ARRAY_KEYS_PRIORITY = ["linhas", "titulos", "serie", "contas", "top", "familia", "marca"] as const;
+// `ARRAY_KEYS_PRIORITY` agora vem de array-keys.ts (import no topo do modulo).
 
 function extractFirstArray(dados: unknown): unknown[] | null {
   if (typeof dados !== "object" || dados === null) return null;
@@ -181,6 +183,39 @@ function extractFirstArray(dados: unknown): unknown[] | null {
  * de "vazio" depende de múltiplos arrays (ex.: concentracao, que exige ambos
  * `familia` e `marca` vazios para ser "vazio" , paridade com o dashboard F3).
  */
+/** Limiar de defasagem do cache: dado com mais de 6h e logado server-side. */
+export const STALE_LIMIAR_MS = 6 * 60 * 60 * 1000;
+
+/**
+ * Loga server-side (console estruturado) quando o dado servido esta mais velho
+ * que o limiar. F4 Apresentacao [P]#13. **Decisao de destino: console
+ * estruturado** (nao McpAuditLog) , `withFreshness` roda em TODA chamada de
+ * tool (hot path) e o McpAuditLog ja registra cada tool call separadamente;
+ * uma escrita no banco por chamada aqui seria custo redundante. O log NUNCA
+ * vaza para o envelope (nenhum campo de staleness/defasado e retornado ao LLM);
+ * fica so nos logs do container, observavel pelo time.
+ *
+ * Retorna `true` se logou (defasado), `false` caso contrario , facilita o teste.
+ */
+export function logSeStale(
+  atualizadoEm: string,
+  fatos: string[],
+  agora: Date = new Date(),
+): boolean {
+  const idadeMs = agora.getTime() - new Date(atualizadoEm).getTime();
+  if (idadeMs <= STALE_LIMIAR_MS) return false;
+  const horas = Math.floor(idadeMs / (60 * 60 * 1000));
+  console.warn(
+    `[freshness-stale] dado defasado servido: ${JSON.stringify({
+      fatos,
+      atualizadoEm,
+      idadeHoras: horas,
+      limiarHoras: STALE_LIMIAR_MS / (60 * 60 * 1000),
+    })}`,
+  );
+  return true;
+}
+
 export async function withFreshness<O>(
   prisma: PrismaClient,
   fatos: string[],
@@ -259,6 +294,9 @@ export async function withFreshness<O>(
     status: piorStatus,
     ultimaSyncEm: piorSyncEmFinal ? piorSyncEmFinal.toISOString() : null,
   };
+
+  // 4b. Defasagem >6h: log server-side (nao vaza para o envelope). [P]#13
+  logSeStale(atualizadoEm, fatos);
 
   // 5. Decidir estado: vazio × ok
   let estado: "ok" | "vazio";

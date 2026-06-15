@@ -1,5 +1,6 @@
 // mcp/tools/estoque/locais-por-produto.test.ts
 import { estoqueLocaisPorProduto } from "./locais-por-produto.js";
+import { PAGINACAO_LIMIT_DEFAULT } from "../../lib/paginacao";
 import type { ToolHandlerCtx } from "../../catalog/types.js";
 import type { UserContext } from "../../auth/user-context.js";
 
@@ -96,7 +97,7 @@ describe("estoque_locais_por_produto , paginacao (alavanca 2b)", () => {
     }
   });
 
-  it("default limit = 10 quando ausente", async () => {
+  it("default limit = 50 quando ausente", async () => {
     const ctx = makeCtx();
     primeFreshness(ctx);
     (ctx.prisma.fatoProduto.findFirst as jest.Mock).mockResolvedValue({
@@ -111,6 +112,6 @@ describe("estoque_locais_por_produto , paginacao (alavanca 2b)", () => {
 
     await estoqueLocaisPorProduto.handler({ termo: "esteira" } as never, ctx);
     const callArgs = (ctx.prisma.fatoEstoqueSaldo.findMany as jest.Mock).mock.calls[0][0];
-    expect(callArgs.take).toBe(10);
+    expect(callArgs.take).toBe(PAGINACAO_LIMIT_DEFAULT);
   });
 });

@@ -64,6 +64,31 @@ export function startQualityJudgeScheduler(): void {
   };
 
   void scheduleNext();
+
+  // BOOT-FIRE guardado (D2): ~3min após o boot, dispara UMA vez se houver fila.
+  // `triggerClaudeJudge` é idempotente (lock in-process + só dispara com
+  // PENDENTE/REAVALIAR > 0), então não há risco de duplo juízo nem de rodar à
+  // toa. Resolve o problema do timer de 240min nunca chegar (restart de dev
+  // zerava a contagem e a perícia ficava parada).
+  const bootTimer = setTimeout(async () => {
+    try {
+      const res = await triggerClaudeJudge({ source: "boot" });
+      if (res.started) {
+        // eslint-disable-next-line no-console
+        console.log(
+          `[quality-judge-cron] boot-fire , ${res.pendentes} na fila`,
+        );
+      }
+    } catch (err) {
+      // eslint-disable-next-line no-console
+      console.error(
+        "[quality-judge-cron] erro no boot-fire:",
+        (err as Error).message,
+      );
+    }
+  }, 3 * 60_000);
+  bootTimer.unref();
+
   // eslint-disable-next-line no-console
   console.log(
     "[quality-judge-cron] agendador local iniciado (Claude Code headless)",

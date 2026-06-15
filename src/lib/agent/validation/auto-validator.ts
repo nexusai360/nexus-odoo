@@ -17,7 +17,31 @@
  * Feature flag: AgentSettings.autoValidatorMode (off|shadow|active).
  */
 
-export type ValidationFailReason = "V1" | "V2" | "V3" | "V4" | "V5" | null;
+// Fonte unica das chaves de array (F4 Apresentacao, Onda 1.2). Subconjunto
+// VALOR = chaves que o V2 (anti-invencao) varre buscando valor citado.
+import {
+  validateV10Percentuais,
+  validateV11RankingItem,
+  validateV12Consistencia,
+  validateV13Proveniencia,
+} from "./v-claims";
+import { ARRAY_KEYS_VALOR } from "../../../../mcp/lib/array-keys";
+
+export type ValidationFailReason =
+  | "V1"
+  | "V2"
+  | "V3"
+  | "V4"
+  | "V5"
+  | "V6"
+  | "V7"
+  | "V8"
+  | "V9"
+  | "V10"
+  | "V11"
+  | "V12"
+  | "V13"
+  | null;
 
 /**
  * Estrutura minima do resultado de uma tool tal qual chega ao validator.
@@ -34,6 +58,12 @@ export interface ToolResultLike {
     titulos?: unknown[];
     linhas?: unknown[];
     serie?: unknown[];
+    /** Contrato de lista (Fase B): ordenacao declarada + visao top pronta. */
+    ordenadoPor?: string;
+    topMaiores?: Array<{ nome: string; valor: number }>;
+    /** Marcadores de lista incompleta (V6 nao verifica nestes casos). */
+    _amostraReduzida?: unknown;
+    _listaTruncada?: boolean;
     [k: string]: unknown;
   };
   /** Calculos canonicos disponiveis para essa tool (vide responder.ts). */
@@ -47,6 +77,40 @@ export interface ValidationContext {
   question: string;
   llmResponse: string;
   toolResults: ToolResultLike[];
+  /**
+   * Onda M (Arquitetura 3.0) M.6: fontes de memoria que FORAM injetadas no
+   * prompt deste turno (toolDigests de turnos antigos + respostas assistant
+   * da janela). Numeros presentes aqui sao LEGITIMOS , sem isso o V2
+   * reprovaria qualquer resposta correta baseada em memoria da conversa.
+   */
+  fontesMemoria?: string[];
+}
+
+/**
+ * Valores numericos presentes nas fontes de memoria injetadas. Cobre os dois
+ * formatos que convivem ali: prosa pt-BR das respostas da janela
+ * ("R$ 6.334.712,46") e os toolDigests em formato US ("headlineValor=6334712.46").
+ */
+function valoresDaMemoria(ctx: ValidationContext): number[] {
+  const out: number[] = [];
+  for (const fonte of ctx.fontesMemoria ?? []) {
+    // pt-BR (mesmo parser usado na resposta do LLM)
+    for (const n of extrairNumeros(fonte)) out.push(n.valor);
+    // US decimal dos digests: 6334712.46
+    for (const m of fonte.matchAll(/(?<![\d.,])(\d+\.\d{1,2})(?![\d])/g)) {
+      const v = Number(m[1]);
+      if (!Number.isNaN(v)) out.push(v);
+    }
+  }
+  return out;
+}
+
+function bateComMemoria(valor: number, memoria: number[], tol: number): boolean {
+  for (const m of memoria) {
+    const ref = Math.max(Math.abs(m), 0.01);
+    if (Math.abs(valor - m) <= Math.max(ref * tol, 0.01)) return true;
+  }
+  return false;
 }
 
 export interface ValidationOutcome {
@@ -198,7 +262,7 @@ function apareceLiteralEmEnvelope(
       }
     }
     // Varre linhas-array conhecidos buscando campos comuns
-    for (const arrKey of ["titulos", "linhas", "serie", "top", "topMaiores"] as const) {
+    for (const arrKey of ARRAY_KEYS_VALOR) {
       const arr = (d as Record<string, unknown>)[arrKey];
       if (!Array.isArray(arr)) continue;
       // T-23 (2026-05-27): aceita array.length como valor derivado valido.
@@ -264,11 +328,14 @@ function validateV2(ctx: ValidationContext): ValidationOutcome | null {
   if (numeros.length === 0) return null;
   // Tolerancia: 0.1% relativa, minimo R$0,01 (separa arredondamento de invencao).
   const TOL = 0.001;
+  // Onda M (M.6): numeros vindos da memoria injetada sao fonte legitima.
+  const memoria = valoresDaMemoria(ctx);
   const suspeitos: NumeroExtraido[] = [];
   for (const num of numeros) {
     if (apareceLiteralEmEnvelope(num.valor, ctx.toolResults, TOL)) continue;
     if (apareceNaPergunta(num.valor, ctx.question)) continue;
     if (bateComCalculoCanonico(num.valor, ctx.toolResults, TOL)) continue;
+    if (bateComMemoria(num.valor, memoria, TOL)) continue;
     suspeitos.push(num);
   }
   if (suspeitos.length === 0) return null;
@@ -479,7 +546,7 @@ function validateV5(ctx: ValidationContext): ValidationOutcome | null {
     const numsLLM = new Set(extrairNumerosRelevantes(ctx.llmResponse).map(normNum));
     const algumAparece = numsCurados.some((n) => numsLLM.has(n));
     if (!algumAparece) {
-      const baseHint = `O campo _RESPOSTA da tool trouxe os numeros prontos ("${curada.resposta}"), mas voce nao citou nenhum deles. Use o texto curado como base e mantenha os numeros exatamente como vieram.`;
+      const baseHint = `Os dados da tool trazem os numeros prontos ("${curada.resposta}"), mas voce nao citou nenhum deles. Reescreva a resposta com as suas palavras, em tom natural de conversa, citando os numeros principais EXATAMENTE como vieram (valores, contagens, nomes).`;
       return {
         ok: false,
         reason: "V5",
@@ -489,24 +556,240 @@ function validateV5(ctx: ValidationContext): ValidationOutcome | null {
     }
   }
 
-  // V5 original: overlap textual baixo (LLM ignorou completamente o texto).
-  const tokensLLM = new Set(tokensSignificativos(ctx.llmResponse));
-  let overlap = 0;
-  for (const t of curada.tokens) {
-    if (tokensLLM.has(t)) overlap++;
-  }
-  const ratio = overlap / curada.tokens.length;
-  if (ratio >= 0.25) return null;
-  const baseHint = `Voce ignorou o campo _RESPOSTA da tool, que ja vinha pronto com a resposta correta. Use o texto curado como base: "${curada.resposta}". Pode adaptar para fluir, mas mantenha numeros, nomes e fatos exatamente como vieram.`;
-  return {
-    ok: false,
-    reason: "V5",
-    hint: ampliarHintComLacuna(baseHint, ctx),
-    detalhe: `V5:ignorou_RESPOSTA:overlap_${Math.round(ratio * 100)}pct`,
-  };
+  // Onda humanizacao 2026-06-12: o check de overlap TEXTUAL foi removido de
+  // proposito. Ele forcava o modelo a colar o texto tecnico do formatador
+  // ("7 produto(s) encontrado(s)...") e era a raiz do tom robotico. A protecao
+  // que importa (nao ignorar o DADO) continua acima, por NUMEROS: se a resposta
+  // cita os numeros da _RESPOSTA, o texto e livre.
+  return null;
 }
 
 // ---------------------------------------------------------------------------
+// ---------------------------------------------------------------------------
+// F3 (cerebro, onda 3b): checks NOVOS V6/V7. Sao SHADOW (telemetria), rodam
+// fora do early-return de validateResponse (via runShadowChecks). Operam so
+// sobre o que o envelope atual expoe; ausencia de metadado => "nao verificavel"
+// (null), nunca falso positivo. Datas-no-periodo ficou para a F4 (periodoDe/Ate
+// sao input, nao saem no envelope). Spec F3 secao 5.2.
+// ---------------------------------------------------------------------------
+
+const CAMPOS_VALOR_LINHA = [
+  "valor",
+  "valorTotal",
+  "vrNf",
+  "vr_nf",
+  "soma",
+  "total",
+  "vrProdutos",
+  "vr_produtos",
+];
+const CAMPOS_TOTAL_AGREGADO = ["total", "soma", "valorTotal", "valor", "valorFaturado"];
+
+/** Extrai um numero do primeiro campo de valor conhecido de uma linha. */
+function valorDaLinha(linha: unknown): number | null {
+  if (!linha || typeof linha !== "object") return null;
+  const obj = linha as Record<string, unknown>;
+  for (const c of CAMPOS_VALOR_LINHA) {
+    const v = obj[c];
+    if (typeof v === "number" && Number.isFinite(v)) return v;
+  }
+  return null;
+}
+
+/** Total declarado pelo proprio _agregado (primeiro campo conhecido numerico). */
+function totalDeclarado(agregado: Record<string, number | undefined> | undefined): number | null {
+  if (!agregado) return null;
+  for (const c of CAMPOS_TOTAL_AGREGADO) {
+    const v = agregado[c];
+    if (typeof v === "number" && Number.isFinite(v)) return v;
+  }
+  return null;
+}
+
+/**
+ * V6: confere o total que o PROPRIO envelope declara (_agregado) contra a soma das
+ * LINHAS que o proprio envelope retornou. Independe do texto do LLM (cobertura nova
+ * vs V2, que olha numeros citados pelo LLM). Pega tool que se autocontradiz.
+ * "Nao verificavel" (null) quando falta total declarado ou linhas com valor.
+ */
+export function validateV6(ctx: ValidationContext): ValidationOutcome | null {
+  for (const tr of ctx.toolResults) {
+    const dados = tr.dados;
+    if (!dados) continue;
+    // Nao verificavel quando a lista do envelope esta truncada/paginada: a soma
+    // das linhas exibidas NAO cobre o total declarado (que e do conjunto inteiro).
+    // Comparar geraria falso positivo. _amostraReduzida = corte do guard (24KB);
+    // _listaTruncada = paginacao da propria tool.
+    if (dados._amostraReduzida || dados._listaTruncada === true) continue;
+    const total = totalDeclarado(dados._agregado);
+    const linhas = Array.isArray(dados.linhas) ? dados.linhas : null;
+    if (total === null || !linhas || linhas.length === 0) continue;
+    const valores = linhas.map(valorDaLinha);
+    if (valores.some((v) => v === null)) continue; // linha sem campo de valor => nao verificavel
+    const soma = valores.reduce<number>((acc, v) => acc + (v ?? 0), 0);
+    const tol = Math.max(0.01, Math.abs(total) * 0.005); // 0.5% ou 1 centavo
+    if (Math.abs(soma - total) > tol) {
+      return {
+        ok: false,
+        reason: "V6",
+        hint:
+          "O total declarado pela tool nao bate com a soma das linhas retornadas. " +
+          "Confira a coerencia antes de afirmar o numero.",
+        detalhe: `V6:${tr.toolName}:total=${total}:soma=${soma}`,
+      };
+    }
+  }
+  return null;
+}
+
+/**
+ * V7: heuristica conservadora de duplicacao por JOIN. Conta linhas IDENTICAS
+ * (mesma serializacao) em dados.linhas; se a fracao de duplicatas exatas passa o
+ * limiar (e ha linhas suficientes), sinaliza possivel fan-out de JOIN. Dados
+ * distintos normais nao disparam. "Nao verificavel" com poucas linhas.
+ */
+export function validateV7(ctx: ValidationContext): ValidationOutcome | null {
+  const MIN_LINHAS = 4;
+  const LIMIAR_DUP = 0.4; // >=40% de linhas sao copias exatas de outra
+  for (const tr of ctx.toolResults) {
+    const linhas = tr.dados && Array.isArray(tr.dados.linhas) ? tr.dados.linhas : null;
+    if (!linhas || linhas.length < MIN_LINHAS) continue;
+    const vistos = new Map<string, number>();
+    for (const l of linhas) {
+      let chave: string;
+      try {
+        chave = JSON.stringify(l);
+      } catch {
+        chave = String(l);
+      }
+      vistos.set(chave, (vistos.get(chave) ?? 0) + 1);
+    }
+    let duplicadas = 0;
+    for (const n of vistos.values()) if (n > 1) duplicadas += n - 1;
+    if (duplicadas / linhas.length >= LIMIAR_DUP) {
+      return {
+        ok: false,
+        reason: "V7",
+        hint:
+          "A tool retornou muitas linhas identicas (possivel duplicacao por JOIN). " +
+          "Verifique se o total nao esta inflado.",
+        detalhe: `V7:${tr.toolName}:linhas=${linhas.length}:duplicadas=${duplicadas}`,
+      };
+    }
+  }
+  return null;
+}
+
+/** Pergunta que CONTESTA a resposta anterior (meta-pergunta): "por que nao
+ *  apareceu X?", "faltou Y", "esta errado", "esses nao sao os maiores".
+ *  Nesses turnos a resposta certa e' explicativa, nao a _RESPOSTA da tool. */
+export const CONTESTACAO_RE =
+  /\b(por\s*que|pq|porque)\s+n[aã]o\b|\bfalt(ou|aram|am|a)\b|\best[aá]\s+errad|\berrado[,.!\s]|\bn[aã]o\s+s[aã]o\s+(os|as)\b|\bcad[eê]\b|\bn[aã]o\s+(apareceu|aparecem|veio|vieram)\b/i;
+
+/**
+ * V9 , gap de fonte (Onda C Cobertura Cliente, 2026-06-11).
+ *
+ * Fronteira com o V3: o V3 pega recusa quando HA _RESPOSTA/agregado disponivel
+ * (recusa com dado em maos). O V9 pega a recusa SECA quando NAO ha dado , o
+ * certo nesses turnos e explicar a CAUSA citando o sistema/modulo/cadastro
+ * ("o modulo de prospeccao existe, mas nao ha dados cadastrados"), nunca um
+ * "nao consigo te responder" que parece defeito da plataforma. Regex local,
+ * sem custo LLM; o retry instrui a citar a fonte. Pulado em CONTESTACAO
+ * (regra 5b , a explicacao investigativa pode conter "nao consigo").
+ */
+const RECUSA_SECA_RE = /\bn[aã]o\s+(consigo|foi\s+poss[ií]vel|consegui)\b/i;
+const MENCIONA_FONTE_RE = /\bsistema\b|m[oó]dulo|cadastr|registr|\bfonte\b|per[ií]odo|\bodoo\b/i;
+
+export function validateV9(ctx: ValidationContext): ValidationOutcome | null {
+  if (!RECUSA_SECA_RE.test(ctx.llmResponse)) return null;
+  if (MENCIONA_FONTE_RE.test(ctx.llmResponse)) return null;
+  // Recusas legitimas ficam fora: pergunta fora de escopo, ou lacuna ja
+  // registrada (registrar_lacuna devolve respostaSugerida que explica a causa
+  // , o retry da lacuna e tratado pelo prompt, nao pelo V9).
+  if (REGEX_FORA_ESCOPO.test(ctx.question)) return null;
+  if (ctx.toolResults.some((t) => t.toolName === "registrar_lacuna")) return null;
+  return {
+    ok: false,
+    reason: "V9",
+    hint:
+      "Voce deu uma recusa seca ('nao consigo...'). Explique a CAUSA citando o " +
+      "sistema/modulo/cadastro: se o dado nao existe na fonte, diga onde ele " +
+      "entraria e que nao ha dados cadastrados; se parte da pergunta tem dado, " +
+      "responda essa parte. Nunca deixe parecer defeito da plataforma.",
+    detalhe: "V9:recusa_seca_sem_fonte",
+  };
+}
+
+/** Palavras que alegam enquadramento de "maiores/top" na resposta. */
+const ALEGA_MAIORES_RE =
+  /\b(?:\d+\s+)?maiores\b|\btop\s*\d+\b|\bmais\s+(?:altos?|caras?|caros?|valiosos?)\b/i;
+
+/**
+ * V8 , enquadramento de lista (Fase B.6 do Nex Especialista, 2026-06-11).
+ *
+ * Caso forense #1 do laudo: o agente rotulou de "10 maiores" uma lista em
+ * ordem arbitraria (titulos de R$ 5 mil apresentados como maiores quando havia
+ * titulo de R$ 1,15 mi). O V8 exige SUSTENTACAO no tool result para a alegacao
+ * "maiores/top": ou o envelope traz `topMaiores` (visao pronta), ou declara
+ * `ordenadoPor` por valor/total desc. Sem sustentacao, retry com instrucao.
+ */
+export function validateV8(ctx: ValidationContext): ValidationOutcome | null {
+  if (!ALEGA_MAIORES_RE.test(ctx.llmResponse)) return null;
+
+  const comLista = ctx.toolResults.filter((tr) => {
+    const d = tr.dados;
+    if (!d) return false;
+    return (
+      Array.isArray(d.titulos) || Array.isArray(d.linhas) || Array.isArray(d.serie)
+    );
+  });
+  if (comLista.length === 0) return null;
+
+  const sustentado = comLista.some((tr) => {
+    const d = tr.dados!;
+    if (Array.isArray(d.topMaiores) && d.topMaiores.length > 0) return true;
+    const ord = String(d.ordenadoPor ?? "").toLowerCase();
+    return /(valor|total|saldo|quantidade)\s+desc/.test(ord);
+  });
+  if (sustentado) return null;
+
+  return {
+    ok: false,
+    reason: "V8",
+    hint:
+      "Voce apresentou itens como 'os maiores', mas a lista da tool NAO esta " +
+      "ordenada por valor (sem topMaiores e sem ordenadoPor de valor desc). " +
+      "Use o campo topMaiores quando existir; senao, NAO rotule de 'maiores' , " +
+      "descreva a lista pela ordenacao real declarada em ordenadoPor.",
+    detalhe: `V8:enquadramento_maiores_sem_sustentacao:${comLista[0].toolName}`,
+  };
+}
+
+/**
+ * Roda os checks SHADOW novos (V6/V7) e retorna os que dispararam, SEM
+ * short-circuit (ambos sempre avaliados). O run-agent loga para telemetria;
+ * nao viram retry em shadow. Promocao a active (e a politica de falha) e
+ * decidida no run-agent (decideRetryOuGap).
+ */
+export function runShadowChecks(ctx: ValidationContext): ValidationOutcome[] {
+  const out: ValidationOutcome[] = [];
+  const v6 = validateV6(ctx);
+  if (v6) out.push(v6);
+  const v7 = validateV7(ctx);
+  if (v7) out.push(v7);
+  // Onda P (V-claims): V10 percentuais recomputados, V12 consistencia entre
+  // turnos (freshness-aware), V13 proveniencia declarada , todos SHADOW.
+  for (const check of [validateV10Percentuais, validateV12Consistencia, validateV13Proveniencia]) {
+    try {
+      const r = check(ctx);
+      if (r) out.push(r);
+    } catch {
+      // v-claims nunca derruba o validador principal
+    }
+  }
+  return out;
+}
+
 // Entry point
 // ---------------------------------------------------------------------------
 
@@ -516,6 +799,9 @@ export interface ValidatorFlags {
   v3Enabled?: boolean;
   v4Enabled?: boolean;
   v5Enabled?: boolean;
+  v8Enabled?: boolean;
+  v9Enabled?: boolean;
+  v11Enabled?: boolean;
 }
 
 const OK: ValidationOutcome = {
@@ -538,6 +824,7 @@ export function validateResponse(
   const v3On = flags.v3Enabled ?? true;
   const v4On = flags.v4Enabled ?? true;
   const v5On = flags.v5Enabled ?? true;
+  const v8On = flags.v8Enabled ?? true;
 
   // Ordem deliberada: V1 (truncamento) -> V3 (recusa explicita) -> V5
   // (ignorou _RESPOSTA, mais sutil) -> V4 (placeholder em bullet) -> V2
@@ -548,11 +835,17 @@ export function validateResponse(
     const r = validateV1(ctx);
     if (r) return r;
   }
-  if (v3On) {
+  // CONTESTAÇÃO/meta-pergunta (caso "Pq nao aparecem essas empresas?",
+  // pericia 2026-06-11): a resposta CERTA e' explicativa/investigativa, nao a
+  // _RESPOSTA da tool. V3 (anti-recusa) e V5 (anti-divergencia da _RESPOSTA)
+  // PUNIAM a explicacao e forcavam o agente a recolar a mesma resposta ,
+  // era um dos motores do "papagaio engessado". Nesses turnos, pulamos V3/V5.
+  const ehContestacao = CONTESTACAO_RE.test(ctx.question);
+  if (v3On && !ehContestacao) {
     const r = validateV3(ctx);
     if (r) return r;
   }
-  if (v5On) {
+  if (v5On && !ehContestacao) {
     const r = validateV5(ctx);
     if (r) return r;
   }
@@ -560,9 +853,32 @@ export function validateResponse(
     const r = validateV4(ctx);
     if (r) return r;
   }
+  // V9 depois dos validadores de recusa MAIS especificos (V3 recusa com dado
+  // em maos; V4 placeholder em bullet): recusa seca generica sem citar a
+  // fonte. Tambem pulado em contestacao (regra 5b).
+  if ((flags.v9Enabled ?? true) && !ehContestacao) {
+    const r = validateV9(ctx);
+    if (r) return r;
+  }
   if (v2On) {
     const r = validateV2(ctx);
     if (r) return r;
+  }
+  // V8 por ultimo: enquadramento de lista (alegou "maiores" sem sustentacao).
+  if (v8On) {
+    const r = validateV8(ctx);
+    if (r) return r;
+  }
+  // Onda P (V-claims): V11 , o item apontado como "o maior" confere com o
+  // topMaiores[0] real. ACTIVE de nascenca (so reprova com evidencia clara de
+  // item trocado; inconclusivo nao dispara).
+  if (flags.v11Enabled ?? true) {
+    try {
+      const r = validateV11RankingItem(ctx);
+      if (r) return r;
+    } catch {
+      // nunca derruba o validador principal
+    }
   }
   return OK;
 }

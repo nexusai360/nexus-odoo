@@ -85,6 +85,10 @@ export interface AgentMessageProps {
   feedback?: { rating: FeedbackRating; comment: string | null } | null;
   /** B1. Submete o voto (otimismo fica no chat-panel). */
   onSubmitFeedback?: (rating: FeedbackRating, comment?: string) => Promise<void> | void;
+  /** Remove o voto vigente (volta a "sem voto"). */
+  onRemoveFeedback?: () => Promise<void> | void;
+  /** Avisa quando o campo de comentário do voto abre/fecha (esconder sugestões). */
+  onFeedbackFieldOpenChange?: (open: boolean) => void;
   /**
    * B2 (monitoramento, read-only). Sugestões que o agente ofereceu nesta
    * resposta, exibidas DENTRO da bolha num bloco colapsável com chevron igual
@@ -128,11 +132,26 @@ export function AgentMessage({
   dbMessageId,
   feedback,
   onSubmitFeedback,
+  onRemoveFeedback,
+  onFeedbackFieldOpenChange,
   suggestions,
   clickedSuggestion,
   monitorPericia,
   monitorVote,
 }: AgentMessageProps) {
+  // "Reveal concluído": só vira true quando o typewriter da resposta AO VIVO
+  // termina de escrever. É o gatilho pra liberar o botão de copiar (junto com
+  // as sugestões), em vez de ele aparecer já no "Pensando".
+  const [revealComplete, setRevealComplete] = React.useState(false);
+  React.useEffect(() => {
+    // Nova mensagem ao vivo começando a digitar: zera até o typewriter acabar.
+    if (reveal) setRevealComplete(false);
+  }, [reveal]);
+  const handleRevealComplete = React.useCallback(() => {
+    setRevealComplete(true);
+    onRevealComplete?.();
+  }, [onRevealComplete]);
+
   if (role === "loading") return <LoadingBubble />;
   if (role === "tool") return <ToolBubble name={toolName ?? "tool"} />;
 
@@ -207,7 +226,7 @@ export function AgentMessage({
               <TypewriterBody
                 content={content}
                 streaming={streaming}
-                onComplete={onRevealComplete}
+                onComplete={handleRevealComplete}
               />
             ) : (
               <MarkdownLite content={content} />
@@ -237,7 +256,17 @@ export function AgentMessage({
             </div>
           ) : null}
         </BubbleSurface>
-        <CopyButton text={content} />
+        {/* Copiar: usuário (mensagem já completa) mostra direto; assistant só
+            depois da resposta escrita por inteiro (sem streaming + typewriter
+            concluído), no mesmo momento em que as sugestões aparecem. Nada de
+            botão durante o "Pensando". */}
+        {(
+          isUser
+            ? content.length > 0
+            : content.length > 0 && !streaming && (!reveal || revealComplete)
+        ) ? (
+          <CopyButton text={content} />
+        ) : null}
         {!isUser &&
         kind === "text" &&
         !streaming &&
@@ -248,6 +277,8 @@ export function AgentMessage({
           <FeedbackControl
             current={feedback ?? null}
             onSubmit={(rating, comment) => onSubmitFeedback(rating, comment)}
+            onRemove={onRemoveFeedback}
+            onFieldOpenChange={onFeedbackFieldOpenChange}
           />
         ) : null}
         {monitorVote ? (
@@ -656,7 +687,7 @@ function AssistantSuggestionsBlock({
             }
             style={{ overflow: "hidden" }}
           >
-            <ul id={listId} className="mt-1.5 flex flex-col gap-1.5 pl-5">
+            <ul id={listId} className="mt-2 flex flex-col gap-2 pl-5">
               {suggestions.map((s, i) => {
                 const clicked = s === clickedSuggestion;
                 return (

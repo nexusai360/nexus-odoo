@@ -167,3 +167,146 @@ describe("embed()", () => {
     });
   });
 });
+
+describe("embedMany() , batch", () => {
+  function dims(n: number, fill: number) {
+    return Array.from({ length: n }, () => fill);
+  }
+
+  test("array vazio → retorna [] sem chamar a API", async () => {
+    global.fetch = jest.fn() as jest.Mock;
+    const { embedMany } = await import("./embed");
+    const r = await embedMany([]);
+    expect(r).toEqual([]);
+    expect(global.fetch).not.toHaveBeenCalled();
+  });
+
+  test("N textos → 1 requisição com input em array, vetores na ordem de entrada", async () => {
+    mockSettings([{ key: "embedding_credential_id", value: "cred-uuid-1" }]);
+    prisma.llmCredential.findUnique.mockResolvedValue(CRED);
+    decrypt.mockReturnValue("sk-key");
+
+    const fetchMock = jest.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        // Retornado fora de ordem de propósito: o index manda.
+        data: [
+          { index: 2, embedding: dims(1536, 0.3) },
+          { index: 0, embedding: dims(1536, 0.1) },
+          { index: 1, embedding: dims(1536, 0.2) },
+        ],
+        usage: { total_tokens: 30 },
+      }),
+    });
+    global.fetch = fetchMock as jest.Mock;
+
+    const { embedMany } = await import("./embed");
+    const r = await embedMany(["a", "b", "c"]);
+
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    const body = JSON.parse(fetchMock.mock.calls[0][1].body);
+    expect(body.input).toEqual(["a", "b", "c"]);
+    expect(r).toHaveLength(3);
+    expect(r[0][0]).toBeCloseTo(0.1);
+    expect(r[1][0]).toBeCloseTo(0.2);
+    expect(r[2][0]).toBeCloseTo(0.3);
+  });
+
+  test("API devolve menos vetores que inputs → lança erro", async () => {
+    mockSettings([{ key: "embedding_credential_id", value: "cred-uuid-1" }]);
+    prisma.llmCredential.findUnique.mockResolvedValue(CRED);
+    decrypt.mockReturnValue("sk-key");
+
+    global.fetch = jest.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        data: [{ index: 0, embedding: dims(1536, 0.1) }],
+      }),
+    }) as jest.Mock;
+
+    const { embedMany } = await import("./embed");
+    await expect(embedMany(["a", "b"])).rejects.toThrow(/esperado 2 vetores/i);
+  });
+
+  test("dimensão divergente em algum vetor → lança erro", async () => {
+    mockSettings([{ key: "embedding_credential_id", value: "cred-uuid-1" }]);
+    prisma.llmCredential.findUnique.mockResolvedValue(CRED);
+    decrypt.mockReturnValue("sk-key");
+
+    global.fetch = jest.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        data: [
+          { index: 0, embedding: dims(1536, 0.1) },
+          { index: 1, embedding: dims(768, 0.2) },
+        ],
+      }),
+    }) as jest.Mock;
+
+    const { embedMany } = await import("./embed");
+    await expect(embedMany(["a", "b"])).rejects.toThrow(/dimensão/i);
+  });
+
+  test("mais de 256 inputs → fatiado em múltiplas requisições", async () => {
+    mockSettings([{ key: "embedding_credential_id", value: "cred-uuid-1" }]);
+    prisma.llmCredential.findUnique.mockResolvedValue(CRED);
+    decrypt.mockReturnValue("sk-key");
+
+    const fetchMock = jest.fn().mockImplementation((_url, init) => {
+      const body = JSON.parse(init.body);
+      const n = body.input.length;
+      return Promise.resolve({
+        ok: true,
+        json: async () => ({
+          data: body.input.map((_t: string, i: number) => ({
+            index: i,
+            embedding: dims(1536, 0.5),
+          })),
+          usage: { total_tokens: n },
+        }),
+      });
+    });
+    global.fetch = fetchMock as jest.Mock;
+
+    const { embedMany } = await import("./embed");
+    const textos = Array.from({ length: 300 }, (_v, i) => `t${i}`);
+    const r = await embedMany(textos);
+
+    expect(r).toHaveLength(300);
+    // 300 > 256 → 2 chunks (256 + 44).
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+  });
+
+  test("com usageCtx → 1 linha de consumo somando tokens de todos os chunks", async () => {
+    mockSettings([{ key: "embedding_credential_id", value: "cred-uuid-1" }]);
+    prisma.llmCredential.findUnique.mockResolvedValue(CRED);
+    decrypt.mockReturnValue("sk-key");
+
+    global.fetch = jest.fn().mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        data: [
+          { index: 0, embedding: dims(1536, 0.1) },
+          { index: 1, embedding: dims(1536, 0.2) },
+        ],
+        usage: { total_tokens: 42 },
+      }),
+    }) as jest.Mock;
+
+    const { embedMany } = await import("./embed");
+    await embedMany(["a", "b"], { usage: { origin: "router" } });
+
+    expect(logUsage).toHaveBeenCalledTimes(1);
+    expect(logUsage.mock.calls[0][0]).toMatchObject({
+      tokensInput: 42,
+      requestKind: "embedding",
+      origin: "router",
+    });
+  });
+
+  test("sem credencial → lança EmbeddingUnavailable", async () => {
+    mockSettings([]);
+    const { embedMany, EmbeddingUnavailable } = await import("./embed");
+    await expect(embedMany(["a"])).rejects.toBeInstanceOf(EmbeddingUnavailable);
+  });
+});

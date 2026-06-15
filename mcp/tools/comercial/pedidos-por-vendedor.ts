@@ -27,6 +27,8 @@ const linhaSchema = z.object({
 const dados = z.object({
   linhas: z.array(linhaSchema),
   aviso: z.string(),
+  // Contrato de lista (Fase B): ranking ordenado por valor total desc na query.
+  ordenadoPor: z.string().optional(),
   _RESPOSTA: z.string().optional(),
   _listaTruncada: z.boolean().optional(),
   _DESTAQUE: z.record(z.string(), z.union([z.string(), z.number()])).optional(),
@@ -58,6 +60,8 @@ function shape(d: Awaited<ReturnType<typeof queryPedidosPorVendedor>>) {
   return {
     linhas: d.linhas,
     aviso: "Ranking de pedidos por vendedor, ordenado por valor total decrescente. valorTotal usa vrProdutos (valor do pedido, independente de faturamento).",
+    // Contrato de lista (Fase B): query ordena por valorTotal desc (desempate nome).
+    ordenadoPor: "valor desc",
   };
 }
 

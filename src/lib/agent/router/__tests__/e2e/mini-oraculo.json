@@ -1,0 +1,272 @@
+[
+  {
+    "pergunta": "Qual o saldo do produto esteira T3 em estoque hoje?",
+    "toolEsperada": "estoque_saldo_produto",
+    "dominioEsperado": "estoque",
+    "classeEsperada": "prosseguir"
+  },
+  {
+    "pergunta": "Qual o valor total de estoque por armazem?",
+    "toolEsperada": "estoque_valor_armazem",
+    "dominioEsperado": "estoque",
+    "classeEsperada": "prosseguir"
+  },
+  {
+    "pergunta": "Qual familia concentra a maior parte do valor de estoque?",
+    "toolEsperada": "estoque_concentracao",
+    "dominioEsperado": "estoque",
+    "classeEsperada": "prosseguir"
+  },
+  {
+    "pergunta": "Quais produtos estao parados ha mais de 60 dias com saldo positivo?",
+    "toolEsperada": "estoque_produtos_parados",
+    "dominioEsperado": "estoque",
+    "classeEsperada": "prosseguir"
+  },
+  {
+    "pergunta": "Quais sao os 20 produtos mais movimentados no periodo?",
+    "toolEsperada": "estoque_top_movimentados",
+    "dominioEsperado": "estoque",
+    "classeEsperada": "prosseguir"
+  },
+  {
+    "pergunta": "Qual o saldo em caixa e bancos hoje?",
+    "toolEsperada": "financeiro_saldo_contas",
+    "dominioEsperado": "financeiro",
+    "classeEsperada": "prosseguir"
+  },
+  {
+    "pergunta": "Quanto entrou e quanto saiu de caixa no mes passado?",
+    "toolEsperada": "financeiro_caixa_periodo",
+    "dominioEsperado": "financeiro",
+    "classeEsperada": "prosseguir"
+  },
+  {
+    "pergunta": "Como esta o fluxo de caixa mensal ao longo do ano?",
+    "toolEsperada": "financeiro_fluxo_caixa",
+    "dominioEsperado": "financeiro",
+    "classeEsperada": "prosseguir"
+  },
+  {
+    "pergunta": "Quanto os clientes ainda devem para a gente no total?",
+    "toolEsperada": "financeiro_contas_a_receber",
+    "dominioEsperado": "financeiro",
+    "classeEsperada": "prosseguir"
+  },
+  {
+    "pergunta": "Quanto devemos aos fornecedores no total a pagar?",
+    "toolEsperada": "financeiro_contas_a_pagar",
+    "dominioEsperado": "financeiro",
+    "classeEsperada": "prosseguir"
+  },
+  {
+    "pergunta": "Quanto esta vencido e ainda nao foi pago?",
+    "toolEsperada": "financeiro_titulos_vencidos",
+    "dominioEsperado": "financeiro",
+    "classeEsperada": "prosseguir"
+  },
+  {
+    "pergunta": "Qual foi o faturamento no periodo de janeiro a marco?",
+    "toolEsperada": "fiscal_faturamento_periodo",
+    "dominioEsperado": "fiscal",
+    "classeEsperada": "prosseguir"
+  },
+  {
+    "pergunta": "Quais notas fiscais emitimos em janeiro de 2026?",
+    "toolEsperada": "fiscal_notas_emitidas",
+    "dominioEsperado": "fiscal",
+    "classeEsperada": "prosseguir"
+  },
+  {
+    "pergunta": "Para qual cliente mais faturamos no ano?",
+    "toolEsperada": "fiscal_faturamento_por_cliente",
+    "dominioEsperado": "fiscal",
+    "classeEsperada": "prosseguir"
+  },
+  {
+    "pergunta": "Quais DFe de fornecedores estao pendentes de manifestacao?",
+    "toolEsperada": "fiscal_dfe_pendentes_manifestacao",
+    "dominioEsperado": "fiscal",
+    "classeEsperada": "prosseguir"
+  },
+  {
+    "pergunta": "Quanto pagamos de ICMS, PIS e COFINS no periodo?",
+    "toolEsperada": "fiscal_impostos_periodo",
+    "dominioEsperado": "fiscal",
+    "classeEsperada": "prosseguir"
+  },
+  {
+    "pergunta": "Quantos pedidos temos cadastrados no total?",
+    "toolEsperada": "comercial_contar_pedidos",
+    "dominioEsperado": "comercial",
+    "classeEsperada": "prosseguir"
+  },
+  {
+    "pergunta": "Como estao distribuidos os pedidos por etapa?",
+    "toolEsperada": "comercial_pedidos_por_etapa",
+    "dominioEsperado": "comercial",
+    "classeEsperada": "prosseguir"
+  },
+  {
+    "pergunta": "Qual o ranking de vendedores por quantidade de pedidos?",
+    "toolEsperada": "comercial_pedidos_por_vendedor",
+    "dominioEsperado": "comercial",
+    "classeEsperada": "prosseguir"
+  },
+  {
+    "pergunta": "Liste os 10 pedidos de maior valor.",
+    "toolEsperada": "comercial_pedidos_listar_top_valor",
+    "dominioEsperado": "comercial",
+    "classeEsperada": "prosseguir"
+  },
+  {
+    "pergunta": "Quantos vendedores temos cadastrados?",
+    "toolEsperada": "comercial_vendedores_cadastrados",
+    "dominioEsperado": "comercial",
+    "classeEsperada": "prosseguir"
+  },
+  {
+    "pergunta": "Qual e o plano de contas completo da empresa?",
+    "toolEsperada": "contabil_plano_de_contas",
+    "dominioEsperado": "contabil",
+    "classeEsperada": "prosseguir"
+  },
+  {
+    "pergunta": "Me mostre a hierarquia da conta 1.01.01 e suas filhas.",
+    "toolEsperada": "contabil_estrutura_conta",
+    "dominioEsperado": "contabil",
+    "classeEsperada": "prosseguir"
+  },
+  {
+    "pergunta": "Qual e o plano referencial SPED completo?",
+    "toolEsperada": "contabil_conta_referencial",
+    "dominioEsperado": "contabil",
+    "classeEsperada": "prosseguir"
+  },
+  {
+    "pergunta": "Qual o saldo por centro de custo no periodo?",
+    "toolEsperada": "contabil_centro_custo",
+    "dominioEsperado": "contabil",
+    "classeEsperada": "prosseguir"
+  },
+  {
+    "pergunta": "Quantos clientes temos cadastrados?",
+    "toolEsperada": "cadastro_contar_parceiros",
+    "dominioEsperado": "cadastros",
+    "classeEsperada": "prosseguir"
+  },
+  {
+    "pergunta": "Qual o CNPJ da empresa chamada Smartfit?",
+    "toolEsperada": "cadastro_buscar_parceiro",
+    "dominioEsperado": "cadastros",
+    "classeEsperada": "prosseguir"
+  },
+  {
+    "pergunta": "Quantos clientes temos por estado?",
+    "toolEsperada": "cadastro_parceiros_por_uf",
+    "dominioEsperado": "cadastros",
+    "classeEsperada": "prosseguir"
+  },
+  {
+    "pergunta": "Quantas filiais a gente tem e quais sao?",
+    "toolEsperada": "cadastro_filiais_listar",
+    "dominioEsperado": "cadastros",
+    "classeEsperada": "prosseguir"
+  },
+  {
+    "pergunta": "Qual o NCM e o codigo de barras do produto esteira T5?",
+    "toolEsperada": "cadastro_detalhar_produto",
+    "dominioEsperado": "cadastros",
+    "classeEsperada": "prosseguir"
+  },
+  {
+    "pergunta": "Qual a capital da Franca?",
+    "toolEsperada": null,
+    "dominioEsperado": null,
+    "classeEsperada": "fora_de_escopo"
+  },
+  {
+    "pergunta": "Me conta uma piada.",
+    "toolEsperada": null,
+    "dominioEsperado": null,
+    "classeEsperada": "fora_de_escopo"
+  },
+  {
+    "pergunta": "Como faco um bolo de cenoura?",
+    "toolEsperada": null,
+    "dominioEsperado": null,
+    "classeEsperada": "fora_de_escopo"
+  },
+  {
+    "pergunta": "Qual a previsao do tempo para amanha em Sao Paulo?",
+    "toolEsperada": null,
+    "dominioEsperado": null,
+    "classeEsperada": "fora_de_escopo"
+  },
+  {
+    "pergunta": "Quem ganhou a Copa do Mundo de 2022?",
+    "toolEsperada": null,
+    "dominioEsperado": null,
+    "classeEsperada": "fora_de_escopo"
+  },
+  {
+    "pergunta": "Traduza 'bom dia' para o japones.",
+    "toolEsperada": null,
+    "dominioEsperado": null,
+    "classeEsperada": "fora_de_escopo"
+  },
+  {
+    "pergunta": "Quantos funcionarios a empresa tem hoje?",
+    "toolEsperada": "registrar_lacuna",
+    "dominioEsperado": "rh",
+    "classeEsperada": "falta_honesta"
+  },
+  {
+    "pergunta": "Qual a folha de pagamento do mes passado?",
+    "toolEsperada": "registrar_lacuna",
+    "dominioEsperado": "rh",
+    "classeEsperada": "falta_honesta"
+  },
+  {
+    "pergunta": "Quantos colaboradores estao de ferias agora?",
+    "toolEsperada": "registrar_lacuna",
+    "dominioEsperado": "rh",
+    "classeEsperada": "falta_honesta"
+  },
+  {
+    "pergunta": "Como esta o pipeline de vendas do CRM?",
+    "toolEsperada": "registrar_lacuna",
+    "dominioEsperado": "crm",
+    "classeEsperada": "falta_honesta"
+  },
+  {
+    "pergunta": "Quantos leads novos entraram esse mes no CRM?",
+    "toolEsperada": "registrar_lacuna",
+    "dominioEsperado": "crm",
+    "classeEsperada": "falta_honesta"
+  },
+  {
+    "pergunta": "Qual a taxa de conversao das oportunidades do funil?",
+    "toolEsperada": "registrar_lacuna",
+    "dominioEsperado": "crm",
+    "classeEsperada": "falta_honesta"
+  },
+  {
+    "pergunta": "Quais ordens de producao estao abertas?",
+    "toolEsperada": "registrar_lacuna",
+    "dominioEsperado": "producao",
+    "classeEsperada": "falta_honesta"
+  },
+  {
+    "pergunta": "Qual a lista de materiais (BOM) do produto esteira T5?",
+    "toolEsperada": "registrar_lacuna",
+    "dominioEsperado": "producao",
+    "classeEsperada": "falta_honesta"
+  },
+  {
+    "pergunta": "Quantas ordens de producao foram concluidas no mes?",
+    "toolEsperada": "registrar_lacuna",
+    "dominioEsperado": "producao",
+    "classeEsperada": "falta_honesta"
+  }
+]

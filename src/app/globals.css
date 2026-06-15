@@ -293,6 +293,28 @@ input[type="search"]::-webkit-search-decoration {
   .nex-word-soft { animation: none; opacity: 1; transform: none; }
 }
 
+/* Pulso "vote-me": chama atenção pro gatilho de voto nas respostas AINDA NÃO
+   votadas. A SINCRONIA entre várias instâncias vem do animation-delay negativo
+   (= -(tempo % duração)) aplicado inline em cada ícone: assim a fase de todos
+   fica ancorada ao mesmo relógio e elas pulsam juntas (mesma cadência). */
+/* UM ÚNICO mecanismo de pulso aplicado no BOTÃO PAI: ícone e texto pulsam
+   juntos (mesma timeline), impossível descompassar. drop-shadow faz o glow
+   seguir a FORMA do ícone E das letras (não uma caixa). */
+@keyframes nexVotePulse {
+  0%, 100% {
+    transform: scale(1);
+    filter: drop-shadow(0 0 0 rgba(139, 92, 246, 0));
+  }
+  50% {
+    transform: scale(1.06);
+    filter: drop-shadow(0 0 4px rgba(139, 92, 246, 0.55));
+  }
+}
+.nex-vote-pulse { animation: nexVotePulse 1.25s ease-in-out infinite; }
+@media (prefers-reduced-motion: reduce) {
+  .nex-vote-pulse { animation: none; }
+}
+
 /* Animacao de WIDTH da bolha via CSS + interpolate-size. HEIGHT eh
    animado via motion.div + RO em BubbleSurface (universal). Width usa
    interpolate-size (Chrome 129+, Safari 18+); browsers sem suporte

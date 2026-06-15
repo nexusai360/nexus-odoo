@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
 import { requireMinRole } from "@/lib/auth/require";
+import { USUARIOS_SUPER_ADMIN_ONLY } from "@/lib/constants/temp-rules";
 
 /**
  * Layout do menu Usuários.
@@ -12,6 +13,7 @@ import { requireMinRole } from "@/lib/auth/require";
  * cai nesse layout server-side.
  */
 export default async function UsuariosLayout({ children }: { children: ReactNode }) {
-  await requireMinRole("admin");
+  // Regra temporária (ver temp-rules.ts): quando ligada, só super_admin acessa.
+  await requireMinRole(USUARIOS_SUPER_ADMIN_ONLY ? "super_admin" : "admin");
   return <>{children}</>;
 }

@@ -1,0 +1,118 @@
+name: Build and Push
+
+# Push em main -> builda as duas imagens (app e mcp), pusha pro GHCR e
+# dispara redeploy dos services no Swarm via Portainer API.
+#
+# nexus-odoo tem DOIS artefatos de imagem:
+#   - ghcr.io/nexusai360/nexus-odoo       (docker/Dockerfile) -> services app e worker
+#   - ghcr.io/nexusai360/nexus-odoo-mcp   (mcp/Dockerfile)    -> service mcp
+#
+# O service db (pgvector) e redis usam imagens publicas, nao sao buildados aqui.
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_APP: ghcr.io/nexusai360/nexus-odoo
+  IMAGE_MCP: ghcr.io/nexusai360/nexus-odoo-mcp
+
+jobs:
+  build-app:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/checkout@v4
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Set up Buildx
+        uses: docker/setup-buildx-action@v3
+      - name: Metadata (app)
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.IMAGE_APP }}
+          tags: |
+            type=sha
+            type=raw,value=latest
+      # Build/push resiliente: GHCR retorna "unknown blob" de forma transitoria (corrida
+      # do manifesto de atestacao/provenance no push). provenance=false remove a causa-raiz
+      # e o retry 3x absorve qualquer blip residual. Sem isso, uma falha de push pulava o
+      # deploy (deploy depende de build-app+build-mcp) e disparava email de falha.
+      - name: Build and push (app, resiliente)
+        env:
+          TAGS: ${{ steps.meta.outputs.tags }}
+          LABELS: ${{ steps.meta.outputs.labels }}
+        run: |
+          set -uo pipefail
+          TAG_ARGS=""; while IFS= read -r t; do [ -n "$t" ] && TAG_ARGS="$TAG_ARGS --tag $t"; done <<< "$TAGS"
+          LABEL_ARGS=""; while IFS= read -r l; do [ -n "$l" ] && LABEL_ARGS="$LABEL_ARGS --label $l"; done <<< "$LABELS"
+          for i in 1 2 3; do
+            echo "== build/push app tentativa $i/3 =="
+            if docker buildx build --push --provenance=false \
+                 --file docker/Dockerfile $TAG_ARGS $LABEL_ARGS \
+                 --build-arg APP_VERSION=${{ github.sha }} .; then
+              echo "OK"; exit 0
+            fi
+            echo "Falhou (provavel 'unknown blob' transitorio do GHCR); aguardando $((i*20))s..."; sleep $((i*20))
+          done
+          echo "build/push app falhou apos 3 tentativas"; exit 1
+
+  build-mcp:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    steps:
+      - uses: actions/checkout@v4
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Set up Buildx
+        uses: docker/setup-buildx-action@v3
+      - name: Metadata (mcp)
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.IMAGE_MCP }}
+          tags: |
+            type=sha
+            type=raw,value=latest
+      # Mesmo build resiliente do app (provenance=false + retry 3x) , o "unknown blob"
+      # apareceu justamente no build-mcp (ver historico de falhas).
+      - name: Build and push (mcp, resiliente)
+        env:
+          TAGS: ${{ steps.meta.outputs.tags }}
+          LABELS: ${{ steps.meta.outputs.labels }}
+        run: |
+          set -uo pipefail
+          TAG_ARGS=""; while IFS= read -r t; do [ -n "$t" ] && TAG_ARGS="$TAG_ARGS --tag $t"; done <<< "$TAGS"
+          LABEL_ARGS=""; while IFS= read -r l; do [ -n "$l" ] && LABEL_ARGS="$LABEL_ARGS --label $l"; done <<< "$LABELS"
+          for i in 1 2 3; do
+            echo "== build/push mcp tentativa $i/3 =="
+            if docker buildx build --push --provenance=false \
+                 --file mcp/Dockerfile $TAG_ARGS $LABEL_ARGS .; then
+              echo "OK"; exit 0
+            fi
+            echo "Falhou (provavel 'unknown blob' transitorio do GHCR); aguardando $((i*20))s..."; sleep $((i*20))
+          done
+          echo "build/push mcp falhou apos 3 tentativas"; exit 1
+
+  # ────────────────────────────────────────────────────────────────────────
+  # NÃO HÁ job de deploy aqui (removido 2026-06-14). O runner do GitHub é
+  # bloqueado pela borda da VPS (HTTP 000), então o deploy a partir daqui
+  # SEMPRE falhava (1h penando + e-mail vermelho a cada merge). O deploy de
+  # produção é feito DENTRO da VPS pelo Shepherd (auto, ~5min) ou, sob demanda,
+  # por scripts/deploy-portainer.py. Detalhes: docs/runbooks/deploy-procedure.md
+  # Este workflow só CONSTRÓI e PUBLICA a imagem no ghcr (build-app/build-mcp).

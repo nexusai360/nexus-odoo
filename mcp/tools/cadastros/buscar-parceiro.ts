@@ -30,6 +30,9 @@ const linhaSchema = z.object({
 const dados = z.object({
   linhas: z.array(linhaSchema),
   total: z.number().int().optional(),
+  // Contrato de lista (Fase B): conjunto unido ordenado por id asc (busca une ids
+  // de varios caminhos, sem score de relevancia).
+  ordenadoPor: z.string().optional(),
   _RESPOSTA: z.string().optional(),
   _listaTruncada: z.boolean().optional(),
   _DESTAQUE: z.record(z.string(), z.union([z.string(), z.number()])).optional(),
@@ -101,7 +104,7 @@ export const cadastroBuscarParceiro: ToolEntry<Input, Output> = {
           limit,
           offset,
         });
-        return { linhas: result.linhas, total: result.total };
+        return { linhas: result.linhas, total: result.total, ordenadoPor: result.ordenadoPor };
       },
     );
     if (envelope.estado === "preparando") return envelope;
@@ -110,6 +113,10 @@ export const cadastroBuscarParceiro: ToolEntry<Input, Output> = {
     const paginacao = montarPaginacaoMeta(total, offset, limit, linhas.length);
     return enriquecerEnvelope(envelope, "cadastro_buscar_parceiro", {
       paginacao,
+      // Caso Smartfit (pericia 2026-06-11): passar as linhas permite ao
+      // formatador embutir os 5 primeiros candidatos COM documento no
+      // _RESPOSTA (so a contagem nao responde "qual o CNPJ de X").
+      titulos: linhas as unknown as Array<Record<string, unknown>>,
       destaque: {
         totalEncontrados: total,
         termo: input.termo,

@@ -1,4 +1,5 @@
 import { comercialPedidoTravadosPorEtapa } from "./pedido-travados-por-etapa.js";
+import { PAGINACAO_LIMIT_DEFAULT } from "../../lib/paginacao";
 import type { ToolHandlerCtx } from "../../catalog/types.js";
 import type { UserContext } from "../../auth/user-context.js";
 
@@ -73,14 +74,14 @@ describe("comercial_pedido_travados_por_etapa , paginacao em memoria (alavanca 2
     }
   });
 
-  it("default limit = 10 quando ausente", async () => {
+  it("default limit = 50 quando ausente", async () => {
     const ctx = makeCtx();
     primeFreshness(ctx);
-    (ctx.prisma.fatoPedidoHistorico.findMany as jest.Mock).mockResolvedValue(fakeEventos(40));
+    (ctx.prisma.fatoPedidoHistorico.findMany as jest.Mock).mockResolvedValue(fakeEventos(60));
 
     const r = await comercialPedidoTravadosPorEtapa.handler({} as never, ctx);
     if (r.estado !== "preparando") {
-      expect(r.dados.linhas.length).toBe(10);
+      expect(r.dados.linhas.length).toBe(PAGINACAO_LIMIT_DEFAULT);
     }
   });
 });

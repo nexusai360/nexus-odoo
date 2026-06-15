@@ -33,6 +33,19 @@ export type RouterDecision = {
  *  (`McpTool` no run-agent, etc). */
 export type CatalogTool = { name: string };
 
+/** F3 (retrieval): tool com nome + descricao (= embeddingText publicado em
+ *  tools/list). O retrieval vetoriza a `description`. */
+export type RetrievalTool = { name: string; description: string };
+
+/** F3 (retrieval): resultado de `pickTools`. `picked` = nomes do catalogo enxuto
+ *  (nucleo minimo + top-K). `scores` = cosseno por nome (telemetria/shadow).
+ *  `floorAdded` = nomes que entraram so pelo piso (fora do top-K por score). */
+export type ToolRetrievalResult = {
+  picked: string[];
+  scores: Record<string, number>;
+  floorAdded: string[];
+};
+
 /** Input de `filterCatalog`, generico no tipo da tool.
  *
  *  RBAC v2 (SPEC §6.1): camada B com `userAllowedDomains`. Quando ausente
@@ -47,6 +60,11 @@ export type FilterCatalogInput<T extends CatalogTool = CatalogTool> = {
    *  (exceto `EXCLUDE_FROM_FILTERING` e `UNKNOWN_DOMAIN`, que passam sempre).
    *  Camada B é aplicada SEMPRE, independente do shadow do Router. */
   userAllowedDomains?: Set<string> | "all";
+  /** F3 (camada C): quando presente, apos RBAC (camada B) o catalogo e reduzido
+   *  aos nomes em `picked` (retrieval de tool, modo active). Ausente => sem corte
+   *  de retrieval (shadow/fallback). RBAC sempre antes; nunca reintroduz tool
+   *  cortada por permissao. */
+  toolRetrieval?: { picked: ReadonlySet<string> };
 };
 
 /** Output de `filterCatalog`. Quando `routerEnabled=false` ou fallback
@@ -63,6 +81,8 @@ export type FilterCatalogOutput<T extends CatalogTool = CatalogTool> = {
     filtered: boolean;
     /** RBAC v2: quantas tools foram cortadas pela camada B (gate de permissão). */
     permissionFilteredOut: number;
+    /** F3: true quando a camada C (retrieval) reduziu o catalogo (modo active). */
+    retrievalApplied?: boolean;
   };
 };
 

@@ -31,6 +31,8 @@ const dados = z.object({
   totalEncontrados: z.number().int().optional(),
   maxDiasAtraso: z.number().int().optional(),
   aviso: z.string(),
+  // Contrato de lista (Fase B): parcelas por vencimento asc (maior atraso primeiro).
+  ordenadoPor: z.string().optional(),
   _RESPOSTA: z.string().optional(),
   _listaTruncada: z.boolean().optional(),
   _DESTAQUE: z.record(z.string(), z.union([z.string(), z.number()])).optional(),
@@ -70,6 +72,9 @@ function shape(d: Awaited<ReturnType<typeof queryPedidosAtrasados>>) {
     aviso:
       "Atraso calculado por parcela de pedido com data de vencimento anterior a hoje e não faturada. " +
       "Atraso por dataPrevista do pedido tem preenchimento parcial e não é usado nesta tool.",
+    // Contrato de lista (Fase B): query ordena por dataVencimento asc, ou seja, o
+    // mais atrasado primeiro (desempate odooId).
+    ordenadoPor: "vencimento asc (maior atraso primeiro)",
   };
 }
 

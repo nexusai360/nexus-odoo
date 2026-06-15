@@ -4,6 +4,7 @@ import { z } from "zod";
 import type { ToolEntry } from "../../catalog/types.js";
 import { queryCertificados } from "@/lib/reports/queries/fiscal-complementar.js";
 import { withFreshness } from "../../lib/freshness.js";
+import { enriquecerEnvelope } from "../../lib/with-responder.js";
 import {
   paginacaoInputShape,
   resolverPaginacao,
@@ -28,8 +29,14 @@ const dados = z.object({
   linhas: z.array(linha),
   total: z.number().int(),
   truncado: z.boolean().optional(),
+  // Contrato de lista (Fase B): a query ordena do que vence primeiro para o
+  // ultimo (dataFimValidade asc) com desempate por odooId.
+  ordenadoPor: z.string().optional(),
+  _RESPOSTA: z.string().optional(),
   _listaTruncada: z.boolean().optional(),
   _PAGINACAO: z.any().optional(),
+  _DESTAQUE: z.record(z.string(), z.union([z.string(), z.number()])).optional(),
+  _agregado: z.record(z.string(), z.number().optional()).optional(),
 });
 
 const fonteStatus = z.object({
@@ -63,15 +70,44 @@ export const fiscalCertificados: ToolEntry<Input, Output> = {
   outputSchema,
   handler: async (input, ctx) => {
     const { limit, offset } = resolverPaginacao(input);
-    const envelope = await withFreshness(ctx.prisma, ["fato_certificado"], () =>
-      queryCertificados(ctx.prisma, { limit, offset }),
-    );
+    const envelope = await withFreshness(ctx.prisma, ["fato_certificado"], async () => {
+      const r = await queryCertificados(ctx.prisma, { limit, offset });
+      // Contrato de lista (Fase B): declara a ordenacao real da query.
+      return { ...r, ordenadoPor: "vencimento asc" };
+    });
     if (envelope.estado === "preparando") return envelope;
     const d = envelope.dados;
     const paginacao = montarPaginacaoMeta(d.total, offset, limit, d.linhas.length);
-    return {
-      ...envelope,
-      dados: { ...d, _listaTruncada: paginacao.temMais, _PAGINACAO: paginacao },
+    // KPIs FULL-SET: contagens sobre fato_certificado inteiro (nao a pagina).
+    // vencidos/vence30 sao relativos a now() (podem variar com o tempo).
+    const agora = new Date();
+    const em30 = new Date(agora.getTime() + 30 * 24 * 60 * 60 * 1000);
+    const [vencidos, vence30, prox] = await Promise.all([
+      ctx.prisma.fatoCertificado.count({ where: { dataFimValidade: { lt: agora } } }),
+      ctx.prisma.fatoCertificado.count({
+        where: { dataFimValidade: { gte: agora, lte: em30 } },
+      }),
+      ctx.prisma.fatoCertificado.findFirst({
+        where: { dataFimValidade: { gte: agora } },
+        orderBy: { dataFimValidade: "asc" },
+        select: { proprietario: true, dataFimValidade: true },
+      }),
+    ]);
+    const destaque: Record<string, string | number> = {
+      totalCertificados: d.total,
+      vencidos,
+      vence30Dias: vence30,
     };
+    if (prox) {
+      destaque.proximoProprietario = prox.proprietario ?? "";
+      destaque.proximoVencimento = prox.dataFimValidade
+        ? prox.dataFimValidade.toISOString().slice(0, 10)
+        : "";
+    }
+    return enriquecerEnvelope(envelope, "fiscal_certificados", {
+      destaque,
+      agregado: { contagem: d.total },
+      paginacao,
+    });
   },
 };

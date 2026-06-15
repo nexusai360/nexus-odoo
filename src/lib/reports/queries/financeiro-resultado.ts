@@ -29,8 +29,8 @@ export async function queryResultadoPorConta(
     filtros.periodoDe && filtros.periodoAte
       ? {
           dataDocumento: {
-            gte: new Date(`${filtros.periodoDe}T00:00:00`),
-            lte: new Date(`${filtros.periodoAte}T23:59:59`),
+            gte: new Date(`${filtros.periodoDe}T00:00:00Z`),
+            lte: new Date(`${filtros.periodoAte}T23:59:59Z`),
           },
         }
       : {};

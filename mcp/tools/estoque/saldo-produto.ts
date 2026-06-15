@@ -71,6 +71,9 @@ const dados = z.object({
   }),
   linhas: z.array(linha),
   ambiguidade,
+  // Contrato de lista (Fase B): linhas ordenadas por valor desc na query
+  // (querySaldoProduto). topMaiores ja existe como visao por saldo desc.
+  ordenadoPor: z.string().optional(),
   _RESPOSTA: z.string().optional(),
   _listaTruncada: z.boolean().optional(),
   _DESTAQUE: z.record(z.string(), z.union([z.string(), z.number()])).optional(),
@@ -150,7 +153,8 @@ function shape(d: Awaited<ReturnType<typeof querySaldoProduto>>) {
     };
   }
 
-  return { kpis: d.kpis, linhas, ambiguidade };
+  // Contrato de lista (Fase B): linhas ja vem por valorTotal desc da query.
+  return { kpis: d.kpis, linhas, ambiguidade, ordenadoPor: "valor desc" };
 }
 
 export const estoqueSaldoProduto: ToolEntry<Input, Output> = {
@@ -212,11 +216,21 @@ export const estoqueSaldoProduto: ToolEntry<Input, Output> = {
     );
     envelope.dados.linhas = envelope.dados.linhas.slice(offset, offset + limit);
 
+    // Onda humanizacao 2026-06-12: o produto principal (maior valor) entra no
+    // destaque para o agente responder anafora ("tudo isso vale quanto?")
+    // sobre O produto da conversa, nao sobre o agregado termo+pecas.
+    const principal = topMaiores.length
+      ? [...topMaiores].sort((a, b) => b.valor - a.valor)[0]
+      : undefined;
     const enriched = enriquecerEnvelope(envelope, "estoque_saldo_produto", {
       destaque: {
         totalProdutos: k.totalProdutos,
         valorTotal: k.valorTotal,
         produtosNegativos: k.produtosNegativos,
+        termo: input.termo ?? "",
+        produtoPrincipal: principal?.nome ?? "",
+        saldoPrincipal: principal?.saldo ?? 0,
+        valorPrincipal: principal?.valor ?? 0,
       },
       agregado: {
         contagem: k.totalProdutos,

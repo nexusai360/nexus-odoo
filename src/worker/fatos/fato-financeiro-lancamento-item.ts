@@ -62,7 +62,7 @@ export async function rebuildFatoFinanceiroLancamentoItem(prisma: PrismaClient):
     const id = Number(d.id);
     parentMap.set(id, {
       tipo: typeof d.tipo === "string" ? d.tipo : "",
-      dataDocumento: typeof d.data_documento === "string" ? new Date(`${d.data_documento}T00:00:00`) : null,
+      dataDocumento: typeof d.data_documento === "string" ? new Date(`${d.data_documento}T00:00:00Z`) : null,
     });
   }
 

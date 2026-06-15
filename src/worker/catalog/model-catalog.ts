@@ -8,6 +8,17 @@ export interface CatalogEntry {
   /** Campos que NÃO devem ser copiados para o cache (segredos, blobs).
    * `getModelFields` os subtrai. Vazio/ausente = comportamento padrão. */
   excludeFields?: readonly string[];
+  /** Limpa 2026+ (spec/plan 2026-06-11): corte temporal do modelo TRANSACIONAL.
+   * `odoo` = nome do campo no Odoo (domínio do sync); `raw` = chave no JSON do
+   * raw (em geral igual ao odoo); `fato` = coluna do fato (quando há).
+   * Mestres, foto-atual e preço-vigência NÃO têm corte (lista negativa no teste). */
+  corte?: { odoo: string; raw: string; fato?: string };
+  /** Filho sem data própria: corta por JOIN ao pai (FK many2one = array
+   * [id,"label"] no JSON , extrair com data->'fk'->>0). */
+  cortePai?: { tabelaRawPai: string; fkRaw: string; fkM2O: true };
+  /** Título financeiro: corte por SITUAÇÃO, nunca por data pura (dívida viva
+   * , aberto/provisorio/efetivo , JAMAIS deleta; spec §2.2). */
+  corteEspecial?: "titulo_por_situacao";
 }
 
 export const MODEL_CATALOG: readonly CatalogEntry[] = [
@@ -31,7 +42,7 @@ export const MODEL_CATALOG: readonly CatalogEntry[] = [
   // auditoria.log/.item (313k/14MI) , volume fora de escopo do cache.
   { odooModel: "crm.pipeline", mode: "incremental" },
   { odooModel: "auditoria.regra", mode: "incremental" },
-  { odooModel: "estoque.extrato", mode: "snapshot" },
+  { odooModel: "estoque.extrato", mode: "snapshot", corte: { odoo: "data", raw: "data" } },
   { odooModel: "estoque.extrato.rastreabilidade", mode: "incremental" },
   { odooModel: "estoque.local", mode: "incremental" },
   { odooModel: "estoque.saldo", mode: "incremental" },
@@ -40,16 +51,16 @@ export const MODEL_CATALOG: readonly CatalogEntry[] = [
   { odooModel: "estoque.saldo.rastreabilidade", mode: "incremental" },
   { odooModel: "estoque.saldo.rastreabilidade.hoje", mode: "snapshot" },
   { odooModel: "finan.banco", mode: "incremental" },
-  { odooModel: "finan.banco.extrato", mode: "incremental" },
+  { odooModel: "finan.banco.extrato", mode: "incremental", corte: { odoo: "data", raw: "data" } },
   { odooModel: "finan.banco.saldo", mode: "incremental" },
   { odooModel: "finan.banco.saldo.hoje", mode: "snapshot" },
   { odooModel: "finan.carteira", mode: "incremental" },
   { odooModel: "finan.centro.resultado", mode: "incremental" },
   { odooModel: "finan.conta", mode: "incremental" },
   { odooModel: "finan.documento", mode: "incremental" },
-  { odooModel: "finan.fluxo.caixa", mode: "incremental" },
+  { odooModel: "finan.fluxo.caixa", mode: "incremental", corte: { odoo: "data", raw: "data" } },
   { odooModel: "finan.forma.pagamento", mode: "incremental" },
-  { odooModel: "finan.lancamento", mode: "incremental" },
+  { odooModel: "finan.lancamento", mode: "incremental", corteEspecial: "titulo_por_situacao" },
   { odooModel: "finan.lancamento.item", mode: "incremental" },
   { odooModel: "finan.pagamento.divida", mode: "incremental" },
   { odooModel: "finan.remessa", mode: "incremental" },
@@ -57,7 +68,7 @@ export const MODEL_CATALOG: readonly CatalogEntry[] = [
   { odooModel: "finan.retorno", mode: "incremental" },
   { odooModel: "finan.retorno.item", mode: "incremental" },
   { odooModel: "finan.tipo.faturamento", mode: "incremental" },
-  { odooModel: "pedido.documento", mode: "incremental" },
+  { odooModel: "pedido.documento", mode: "incremental", corte: { odoo: "data_orcamento", raw: "data_orcamento" } },
   { odooModel: "pedido.documento.historico", mode: "incremental" },
   // pedido.documento.historico.tempo: removido em 2026-05-25 , eh view
   // computada do Odoo sem coluna `id`, falha em todo discovery
@@ -67,7 +78,7 @@ export const MODEL_CATALOG: readonly CatalogEntry[] = [
   { odooModel: "pedido.etapa", mode: "incremental" },
   { odooModel: "pedido.operacao", mode: "incremental" },
   { odooModel: "pedido.operacao.derivada", mode: "incremental" },
-  { odooModel: "pedido.parcela", mode: "incremental" },
+  { odooModel: "pedido.parcela", mode: "incremental", corte: { odoo: "data_vencimento", raw: "data_vencimento" } },
   { odooModel: "producao.processo", mode: "incremental" },
   { odooModel: "res.company", mode: "incremental" },
   { odooModel: "res.partner", mode: "incremental" },
@@ -79,18 +90,18 @@ export const MODEL_CATALOG: readonly CatalogEntry[] = [
   { odooModel: "sped.atualizacao.preco.regra", mode: "incremental" },
   { odooModel: "sped.dfe.importacao", mode: "incremental" },
   // O1 (onda DF-e): 1 linha = 1 DF-e de fornecedor capturado eletronicamente.
-  { odooModel: "sped.consulta.dfe.item", mode: "incremental" },
-  { odooModel: "sped.documento", mode: "incremental" },
-  { odooModel: "sped.documento.duplicata", mode: "incremental" },
-  { odooModel: "sped.documento.item", mode: "incremental" },
+  { odooModel: "sped.consulta.dfe.item", mode: "incremental", corte: { odoo: "data_hora_emissao", raw: "data_hora_emissao" } },
+  { odooModel: "sped.documento", mode: "incremental", corte: { odoo: "data_emissao", raw: "data_emissao" } },
+  { odooModel: "sped.documento.duplicata", mode: "incremental", cortePai: { tabelaRawPai: "raw_sped_documento", fkRaw: "documento_id", fkM2O: true } },
+  { odooModel: "sped.documento.item", mode: "incremental", cortePai: { tabelaRawPai: "raw_sped_documento", fkRaw: "documento_id", fkM2O: true } },
   { odooModel: "sped.documento.item.declaracao.importacao", mode: "incremental" },
-  { odooModel: "sped.documento.item.rastreabilidade", mode: "incremental" },
+  { odooModel: "sped.documento.item.rastreabilidade", mode: "incremental", cortePai: { tabelaRawPai: "raw_sped_documento_item", fkRaw: "item_id", fkM2O: true } },
   { odooModel: "sped.documento.item.rateio", mode: "incremental" },
   { odooModel: "sped.documento.modelo.fiscal", mode: "incremental" },
-  { odooModel: "sped.documento.pagamento", mode: "incremental" },
+  { odooModel: "sped.documento.pagamento", mode: "incremental", cortePai: { tabelaRawPai: "raw_sped_documento", fkRaw: "documento_id", fkM2O: true } },
   { odooModel: "sped.documento.rateio", mode: "incremental" },
-  { odooModel: "sped.documento.referenciado", mode: "incremental" },
-  { odooModel: "sped.documento.volume", mode: "incremental" },
+  { odooModel: "sped.documento.referenciado", mode: "incremental", cortePai: { tabelaRawPai: "raw_sped_documento", fkRaw: "documento_id", fkM2O: true } },
+  { odooModel: "sped.documento.volume", mode: "incremental", cortePai: { tabelaRawPai: "raw_sped_documento", fkRaw: "documento_id", fkM2O: true } },
   { odooModel: "sped.empresa", mode: "incremental" },
   { odooModel: "sped.endereco", mode: "incremental" },
   { odooModel: "sped.faturamento.simples", mode: "incremental" },
@@ -118,7 +129,7 @@ export const MODEL_CATALOG: readonly CatalogEntry[] = [
   { odooModel: "sped.tabela.preco", mode: "incremental" },
   { odooModel: "sped.tabela.preco.regra", mode: "incremental" },
   { odooModel: "sped.servico", mode: "incremental" },
-  { odooModel: "sped.apuracao", mode: "incremental" },
+  { odooModel: "sped.apuracao", mode: "incremental", corte: { odoo: "data_final", raw: "data_final" } },
   { odooModel: "sped.carta.correcao", mode: "incremental" },
   // F4 L1c , resíduo operacional 4a
   { odooModel: "sped.certificado", mode: "incremental", excludeFields: ["senha", "arquivo"] },

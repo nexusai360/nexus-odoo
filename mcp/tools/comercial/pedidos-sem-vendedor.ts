@@ -33,6 +33,8 @@ const dados = z.object({
   linhas: z.array(linhaSchema),
   totalPedidos: z.number().int(),
   valorTotal: z.number(),
+  // Contrato de lista (Fase B): pedidos ordenados por data do orcamento desc.
+  ordenadoPor: z.string().optional(),
   _RESPOSTA: z.string().optional(),
   _listaTruncada: z.boolean().optional(),
   _DESTAQUE: z.record(z.string(), z.union([z.string(), z.number()])).optional(),
@@ -112,7 +114,8 @@ export const comercialPedidosSemVendedor: ToolEntry<Input, Output> = {
           valor: Number(r.vrNf ?? 0),
         }));
         const valorTotal = Number(somaAgg._sum.vrNf ?? 0);
-        return { linhas, totalPedidos: total, valorTotal };
+        // Contrato de lista (Fase B): orderBy dataOrcamento desc (desempate odooId).
+        return { linhas, totalPedidos: total, valorTotal, ordenadoPor: "data desc" };
       },
       (d) => d.totalPedidos === 0,
     );

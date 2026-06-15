@@ -20,6 +20,8 @@ const linhaSchema = z.object({
 const dados = z.object({
   linhas: z.array(linhaSchema),
   totalVendedores: z.number().int(),
+  // Contrato de lista (Fase B): vendedores ordenados por quantidade de pedidos desc.
+  ordenadoPor: z.string().optional(),
   _RESPOSTA: z.string().optional(),
   _listaTruncada: z.boolean().optional(),
   _DESTAQUE: z.record(z.string(), z.union([z.string(), z.number()])).optional(),
@@ -64,7 +66,9 @@ export const comercialVendedoresCadastrados: ToolEntry<Input, Output> = {
           by: ["vendedorId", "vendedorNome"],
           _count: { odooId: true },
           where: { vendedorId: { not: null } },
-          orderBy: { _count: { odooId: "desc" } },
+          // Onda 5: desempate estavel por vendedorId , top deterministico quando
+          // dois vendedores tem a mesma contagem de pedidos.
+          orderBy: [{ _count: { odooId: "desc" } }, { vendedorId: "asc" }],
         });
         const linhas = rows
           .filter((r): r is typeof r & { vendedorId: number } => r.vendedorId != null)
@@ -73,7 +77,8 @@ export const comercialVendedoresCadastrados: ToolEntry<Input, Output> = {
             vendedorNome: r.vendedorNome,
             totalPedidos: r._count.odooId,
           }));
-        return { linhas, totalVendedores: linhas.length };
+        // Contrato de lista (Fase B): groupBy ordena por _count desc (desempate vendedorId).
+        return { linhas, totalVendedores: linhas.length, ordenadoPor: "pedidos desc" };
       },
     );
     if (envelope.estado === "preparando") return envelope;

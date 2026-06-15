@@ -31,7 +31,7 @@ export function mapPedidoParcelaRow(raw: Record<string, unknown>): FatoPedidoPar
     participanteNome: relNome(raw.participante_id as OdooM2O),
     dataVencimento:
       typeof raw.data_vencimento === "string"
-        ? new Date(`${raw.data_vencimento}T00:00:00`)
+        ? new Date(`${raw.data_vencimento}T00:00:00Z`)
         : null,
     valor: Number(raw.valor ?? raw.valor_readonly ?? 0),
     vrJuros: Number(raw.vr_juros ?? 0),

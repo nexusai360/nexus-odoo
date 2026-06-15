@@ -4,6 +4,7 @@ import { z } from "zod";
 import type { ToolEntry } from "../../catalog/types.js";
 import { queryResultadoPorConta } from "@/lib/reports/queries/financeiro-resultado.js";
 import { withFreshness } from "../../lib/freshness.js";
+import { enriquecerEnvelope } from "../../lib/with-responder.js";
 
 const inputSchema = z.object({
   periodoDe: z.string().optional().describe("Início do período, AAAA-MM-DD."),
@@ -20,6 +21,8 @@ const linhaSchema = z.object({
 });
 
 const dados = z.object({
+  // Contrato de lista (Fase B): ordenacao declarada.
+  ordenadoPor: z.string().optional(),
   linhas: z.array(linhaSchema),
   totalReceita: z.number(),
   totalDespesa: z.number(),
@@ -41,6 +44,8 @@ type Output = z.infer<typeof outputSchema>;
 function shape(d: Awaited<ReturnType<typeof queryResultadoPorConta>>) {
   return {
     ...d,
+    // A query ja ordena por total desc (contrato de lista).
+    ordenadoPor: "total desc",
     aviso:
       "DRE gerencial: receitas e despesas agrupadas por conta gerencial (itens do " +
       "lançamento financeiro). resultado = receita - despesa. Não confundir com " +
@@ -69,22 +74,27 @@ export const financeiroResultadoPorConta: ToolEntry<Input, Output> = {
     const todasLinhas = d.linhas;
     const linhasCap = todasLinhas.slice(0, 30);
     const top = todasLinhas[0];
-    const fmt = (n: number) => n.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
-    return {
-      ...envelope,
-      dados: {
-        ...d,
-        linhas: linhasCap,
-        _RESPOSTA: `Resultado gerencial: receita ${fmt(d.totalReceita)}, despesa ${fmt(d.totalDespesa)}, resultado ${fmt(d.resultado)}.${top ? ` Maior: ${top.contaNome ?? "(sem conta)"} (${top.natureza}, ${fmt(top.total)}).` : ""}`,
-        _DESTAQUE: {
-          totalReceita: d.totalReceita,
-          totalDespesa: d.totalDespesa,
-          resultado: d.resultado,
-          contaTop: top?.contaNome ?? "",
-        },
-        _agregado: { soma: d.resultado },
-        _listaTruncada: todasLinhas.length > linhasCap.length,
-      },
+    const destaque: Record<string, string | number> = {
+      totalReceita: d.totalReceita,
+      totalDespesa: d.totalDespesa,
+      resultado: d.resultado,
+      contaTop: top?.contaNome ?? "",
     };
+    if (top) {
+      // Campos extras p/ o formatador reproduzir "Maior: X (natureza, valor)".
+      destaque.contaTop = top.contaNome ?? "(sem conta)";
+      destaque.contaTopNatureza = top.natureza;
+      destaque.valorContaTop = top.total;
+    }
+    // _RESPOSTA delegado ao formatador canonico (fmtResultadoPorConta).
+    return enriquecerEnvelope(
+      { ...envelope, dados: { ...d, linhas: linhasCap } },
+      "financeiro_resultado_por_conta",
+      {
+        destaque,
+        agregado: { soma: d.resultado },
+        listaTruncada: todasLinhas.length > linhasCap.length,
+      },
+    );
   },
 };

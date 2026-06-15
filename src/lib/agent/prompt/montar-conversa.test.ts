@@ -46,4 +46,42 @@ describe("montarConversa", () => {
       "user", // pergunta
     ]);
   });
+
+  test("M.5: resumo da conversa entra como L2, entre o system e a memoria de consultas", () => {
+    const { conversation } = montarConversa({
+      systemPromptBase: "S",
+      historyMessages: [{ role: "user", content: "ola" }],
+      userMessage: "tchau",
+      agoraBrt: "2026-06-12",
+      resumoConversa: "Faturamento de junho: R$ 9.737.728,54 (fiscal_faturamento_periodo).",
+      memoriaConsultas: ["[estoque_saldo_produto] dominio=estoque qtd=611"],
+    });
+    expect(conversation[0].role).toBe("system");
+    expect(conversation[1].content).toContain("[Resumo da conversa]");
+    expect(conversation[1].content).toContain("9.737.728,54");
+    expect(conversation[2].content).toContain("[Memória da conversa]");
+  });
+
+  test("Onda O: instrucaoTier entra no item de data (volatil, fim do prompt)", () => {
+    const { conversation } = montarConversa({
+      systemPromptBase: "S",
+      historyMessages: [],
+      userMessage: "compare maio e junho por empresa",
+      agoraBrt: "2026-06-12",
+      instrucaoTier: "[Pergunta composta] Decomponha em subconsultas.",
+    });
+    const dataItem = conversation[conversation.length - 2];
+    expect(dataItem.content).toContain("[Pergunta composta]");
+    expect(dataItem.content).toContain("Data atual");
+  });
+
+  test("M.5: sem resumo, nenhum bloco de resumo e injetado", () => {
+    const { conversation } = montarConversa({
+      systemPromptBase: "S",
+      historyMessages: [],
+      userMessage: "oi",
+      agoraBrt: "2026-06-12",
+    });
+    expect(conversation.some((m) => m.content.includes("[Resumo da conversa]"))).toBe(false);
+  });
 });

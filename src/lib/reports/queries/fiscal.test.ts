@@ -29,7 +29,10 @@ describe("queryFaturamentoPeriodo", () => {
     expect(result.totalNotas).toBe(2);
     expect(result.valorFaturado).toBeCloseTo(1500);
 
-    const call = (mockPrisma.fatoNotaFiscal.findMany as jest.Mock).mock.calls[0][0];
+    // F1: queryFaturamentoPeriodo chama idsNaoVenda (1o findMany) antes da query
+    // principal; a query de faturamento e a ULTIMA chamada.
+    const calls = (mockPrisma.fatoNotaFiscal.findMany as jest.Mock).mock.calls;
+    const call = calls[calls.length - 1][0];
     expect(call.where?.entradaSaida).toBe("1");
     expect(call.where?.situacaoNfe).toBe("autorizada");
   });
@@ -48,9 +51,12 @@ describe("queryFaturamentoPeriodo", () => {
     expect(result.totalNotas).toBe(1);
     expect(result.valorFaturado).toBeCloseTo(200);
 
-    const call = (mockPrisma.fatoNotaFiscal.findMany as jest.Mock).mock.calls[0][0];
-    expect(call.where?.dataEmissao?.gte).toEqual(new Date("2024-01-01T00:00:00"));
-    expect(call.where?.dataEmissao?.lte).toEqual(new Date("2024-01-31T00:00:00"));
+    // F1: idsNaoVenda roda primeiro; a query de faturamento e a ULTIMA chamada.
+    // Borda de periodo canonica: gte inclusivo, lt exclusivo (ate + 1 dia UTC).
+    const calls = (mockPrisma.fatoNotaFiscal.findMany as jest.Mock).mock.calls;
+    const call = calls[calls.length - 1][0];
+    expect(call.where?.dataEmissao?.gte).toEqual(new Date("2024-01-01T00:00:00Z"));
+    expect(call.where?.dataEmissao?.lt).toEqual(new Date("2024-02-01T00:00:00Z"));
   });
 
   it("retorna zeros quando sem notas", async () => {
@@ -120,8 +126,9 @@ describe("queryNotasEmitidas", () => {
 
     await queryNotasEmitidas(mockPrisma, { periodoDe: "2024-01-01", periodoAte: "2024-01-31" });
     const call = (mockPrisma.fatoNotaFiscal.findMany as jest.Mock).mock.calls[0][0];
-    expect(call.where?.dataEmissao?.gte).toEqual(new Date("2024-01-01T00:00:00"));
-    expect(call.where?.dataEmissao?.lte).toEqual(new Date("2024-01-31T00:00:00"));
+    expect(call.where?.dataEmissao?.gte).toEqual(new Date("2024-01-01T00:00:00Z"));
+    // Borda canonica exclusiva: lt = ate + 1 dia UTC.
+    expect(call.where?.dataEmissao?.lt).toEqual(new Date("2024-02-01T00:00:00Z"));
   });
 });
 
@@ -163,7 +170,7 @@ describe("queryNotasRecebidas", () => {
 
     await queryNotasRecebidas(mockPrisma, { periodoDe: "2024-01-01", periodoAte: "2024-01-31" });
     const call = (mockPrisma.fatoNotaFiscal.findMany as jest.Mock).mock.calls[0][0];
-    expect(call.where?.dataEmissao?.gte).toEqual(new Date("2024-01-01T00:00:00"));
+    expect(call.where?.dataEmissao?.gte).toEqual(new Date("2024-01-01T00:00:00Z"));
   });
 });
 
@@ -193,7 +200,7 @@ describe("queryImpostosPeriodo", () => {
 
     await queryImpostosPeriodo(mockPrisma, { periodoDe: "2024-01-01", periodoAte: "2024-01-31" });
     const call = (mockPrisma.fatoNotaFiscal.findMany as jest.Mock).mock.calls[0][0];
-    expect(call.where?.dataEmissao?.gte).toEqual(new Date("2024-01-01T00:00:00"));
+    expect(call.where?.dataEmissao?.gte).toEqual(new Date("2024-01-01T00:00:00Z"));
   });
 });
 
@@ -219,7 +226,9 @@ describe("queryFaturamentoPorCliente", () => {
     expect(result.linhas[1]?.quantidade).toBe(2);
     expect(result.linhas[1]?.valorTotal).toBeCloseTo(1500);
 
-    const call = (mockPrisma.fatoNotaFiscal.findMany as jest.Mock).mock.calls[0][0];
+    // F1: idsNaoVenda roda primeiro; a query de faturamento e a ULTIMA chamada.
+    const calls = (mockPrisma.fatoNotaFiscal.findMany as jest.Mock).mock.calls;
+    const call = calls[calls.length - 1][0];
     expect(call.where?.entradaSaida).toBe("1");
     expect(call.where?.situacaoNfe).toBe("autorizada");
   });
@@ -232,8 +241,9 @@ describe("queryFaturamentoPorCliente", () => {
     } as unknown as Parameters<typeof queryFaturamentoPorCliente>[0];
 
     await queryFaturamentoPorCliente(mockPrisma, { periodoDe: "2024-01-01", periodoAte: "2024-01-31" });
-    const call = (mockPrisma.fatoNotaFiscal.findMany as jest.Mock).mock.calls[0][0];
-    expect(call.where?.dataEmissao?.gte).toEqual(new Date("2024-01-01T00:00:00"));
+    const calls = (mockPrisma.fatoNotaFiscal.findMany as jest.Mock).mock.calls;
+    const call = calls[calls.length - 1][0];
+    expect(call.where?.dataEmissao?.gte).toEqual(new Date("2024-01-01T00:00:00Z"));
   });
 });
 
@@ -290,8 +300,9 @@ describe("queryProdutosFaturados", () => {
 
     await queryProdutosFaturados(mockPrisma, { periodoDe: "2024-01-01", periodoAte: "2024-01-31" });
     const call = (mockPrisma.fatoNotaFiscalItem.findMany as jest.Mock).mock.calls[0][0];
-    expect(call.where?.dataEmissao?.gte).toEqual(new Date("2024-01-01T00:00:00"));
-    expect(call.where?.dataEmissao?.lte).toEqual(new Date("2024-01-31T00:00:00"));
+    expect(call.where?.dataEmissao?.gte).toEqual(new Date("2024-01-01T00:00:00Z"));
+    // Borda canonica exclusiva: lt = ate + 1 dia UTC.
+    expect(call.where?.dataEmissao?.lt).toEqual(new Date("2024-02-01T00:00:00Z"));
   });
 
   it("retorna lista vazia quando sem itens", async () => {

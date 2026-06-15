@@ -19,6 +19,7 @@ export const EVAL_STATUS_LABEL: Record<EvalStatus, string> = {
   ERRADO: "Errado",
   FORA_DO_ESCOPO: "Fora de escopo",
   PENDENTE: "Pendente",
+  REAVALIAR: "Reavaliação",
   FALHA_TECNICA: "Falha técnica",
 };
 
@@ -31,6 +32,8 @@ export const EVAL_STATUS_TONE: Record<EvalStatus, string> = {
   FORA_DO_ESCOPO:
     "bg-slate-500/10 text-slate-700 border-slate-500/30 dark:text-slate-300",
   PENDENTE: "bg-sky-500/10 text-sky-700 border-sky-500/30 dark:text-sky-300",
+  REAVALIAR:
+    "bg-orange-500/10 text-orange-700 border-orange-500/30 dark:text-orange-300",
   FALHA_TECNICA:
     "bg-violet-500/10 text-violet-700 border-violet-500/30 dark:text-violet-300",
 };

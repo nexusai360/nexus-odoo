@@ -1,16 +1,16 @@
 "use client";
 
 /**
- * Card "Auditoria automática" no painel Backtest.
+ * Card "Perícia automática (Claude)" no painel Backtest.
  *
- * Configura o intervalo (em minutos) do cron BullMQ que processa as
- * avaliações PENDENTE via heurística (sem custo de LLM). Default 240 min
- * (4h). Conversor dinâmico mostra equivalência em "X horas e Y minutos"
- * em tempo real conforme o usuário digita.
+ * Configura o intervalo (em minutos) do agendador host-side que dispara a
+ * perícia agêntica via Claude Code (Opus) sobre as avaliações PENDENTE e em
+ * REAVALIAÇÃO. Default 240 min (4h). Conversor dinâmico mostra equivalência em
+ * "X horas e Y minutos" em tempo real conforme o usuário digita.
  *
- * Server action: src/lib/actions/quality-heuristic-config.ts.
- * Cron BullMQ no worker: aplicarAgendamentoAutoHeuristic re-agenda em
- * <= 60s via JOB_CONFIG_CHECK.
+ * Server action: src/lib/actions/quality-heuristic-config.ts (mantém o campo
+ * `qualityHeuristicIntervalMinutes`, agora intervalo da perícia , sem migration).
+ * Agendador: src/lib/agent/quality/judge-scheduler.ts (local-only).
  */
 
 import { useState, useTransition } from "react";
@@ -79,11 +79,12 @@ export function AutoHeuristicConfig({ initialMinutes }: Props) {
       <CardHeader>
         <CardTitle className="flex items-center gap-2 text-base">
           <RefreshCw className="h-4 w-4 text-violet-400" />
-          Auditoria automática
+          Perícia automática (Claude)
         </CardTitle>
         <p className="text-xs text-muted-foreground">
-          Frequência em que o worker processa as avaliações pendentes
-          (Agente Nex e Playground) por heurística. Sem custo de LLM.
+          Frequência em que o Claude Code (Opus) repericia as avaliações
+          pendentes e em reavaliação, refazendo a consulta e conferindo a
+          verdade do dado. Roda local, em background.
         </p>
       </CardHeader>
       <CardContent className="space-y-3">

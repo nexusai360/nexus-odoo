@@ -14,6 +14,9 @@
 
 import { createHash } from "node:crypto";
 import { prisma } from "@/lib/prisma";
+// Fonte unica das chaves de array (F4 Apresentacao, Onda 1.2). GUARD = listas
+// grandes que o guardToolResult encurta para caber em MAX_TOOL_RESULT_BYTES.
+import { ARRAY_KEYS_GUARD } from "../../../mcp/lib/array-keys";
 import {
   formatDateInTz,
   DEFAULT_TZ,
@@ -23,6 +26,7 @@ import { montarConversa } from "./prompt/montar-conversa";
 import { buildLlmClient } from "./llm/get-client";
 import { getActiveLlmConfig } from "./llm/get-active-config";
 import { logUsage } from "./llm/usage-logger";
+import { buildUsageArgs, ORIGENS } from "./llm/build-usage-args";
 import { createMcpSession, mcpToolsToProviderTools } from "./mcp-client";
 import {
   openExternalMcpSessions,
@@ -30,7 +34,7 @@ import {
   isExternalToolName,
 } from "./external-mcp";
 import {
-  loadHistory,
+  loadJanelaTurnos,
   persistMessage,
   persistMessageAndReturnId,
   persistAssistantMessageWithTools,
@@ -56,6 +60,13 @@ import { reformulateQuestion } from "./router/contextualize";
 import { resolveReformLlm } from "./router/get-reform-config";
 import { filterCatalog, EXCLUDE_FROM_FILTERING } from "./router/filter-catalog";
 import { createDecision, updateDecision } from "./router/log-decision";
+import { embedQuestion } from "./router/embed-question";
+import { getToolVectors } from "./router/embed-tools";
+import { pickTools } from "./router/pick-tools";
+import { rankOf } from "./router/retrieval-rank";
+import { classifyIntent } from "./router/classify-intent";
+import { applyIntentArgs } from "./router/apply-intent-args";
+import { decideForaDoCatalogo, DOMINIOS_NAO_NEGOCIO } from "./router/fora-do-catalogo";
 import { getToolDomain, UNKNOWN_DOMAIN } from "./router/tool-to-domain";
 import { respondPermissionDenied } from "./permission-denial";
 import { seesAll } from "@/lib/reports/domains";
@@ -137,7 +148,7 @@ function guardToolResult(result: string): string {
     if (parsed && typeof parsed === "object" && "estado" in parsed && "dados" in parsed) {
       const dados = (parsed as { dados: Record<string, unknown> }).dados;
       if (dados && typeof dados === "object") {
-        for (const listaKey of ["titulos", "linhas", "serie", "top"] as const) {
+        for (const listaKey of ARRAY_KEYS_GUARD) {
           const v = dados[listaKey];
           if (Array.isArray(v) && v.length > 30) {
             (dados as Record<string, unknown>)[listaKey] = v.slice(0, 30);
@@ -153,7 +164,7 @@ function guardToolResult(result: string): string {
           return rebuilt;
         }
         // Ainda nao coube: encurta listas mais ate 10 itens.
-        for (const listaKey of ["titulos", "linhas", "serie", "top"] as const) {
+        for (const listaKey of ARRAY_KEYS_GUARD) {
           const v = dados[listaKey];
           if (Array.isArray(v) && v.length > 10) {
             (dados as Record<string, unknown>)[listaKey] = v.slice(0, 10);
@@ -183,7 +194,10 @@ export type AgentEvent =
   | { type: "token"; delta: string }
   /** `label` é o rótulo genérico exibido na UI; `toolName` é o id cru interno. */
   | { type: "tool_call"; toolName: string; label: string; toolCallId?: string }
-  | { type: "tool_result"; toolName: string; truncated: boolean; label: string; toolCallId?: string }
+  /** `resultPreview` (opcional) carrega o conteúdo do tool result para
+   *  harnesses/juízes (A/B de modelo, juiz de alucinação). A rota SSE NÃO
+   *  repassa este campo (ela monta os campos explicitamente). */
+  | { type: "tool_result"; toolName: string; truncated: boolean; label: string; toolCallId?: string; resultPreview?: string }
   | { type: "done" };
 
 export interface RunAgentInput {
@@ -222,6 +236,15 @@ export interface RunAgentInput {
    * Quando "suggestion", o composer instrui o modelo a responder direto.
    */
   source?: import("./prompt/compose").AgentPromptSource;
+  /**
+   * Override de cenario de router APENAS para harnesses/testes (F6 Onda 2):
+   * sobrescreve routerEnabled/routerToolRetrieval lidos do banco, sem mutar
+   * AgentSettings global (DB compartilhado entre worktrees). Ausente em producao.
+   */
+  routerOverride?: {
+    enabled?: boolean;
+    toolRetrieval?: "shadow" | "active";
+  };
 }
 
 export type RunAgentResult =
@@ -301,6 +324,12 @@ async function loadAgentSettings() {
     routerReformCredentialId: row?.routerReformCredentialId ?? null,
     routerReformNPairs: (row?.routerReformNPairs as number | undefined) ?? 5,
     routerEmbeddingModel: row?.routerEmbeddingModel ?? null,
+    // Onda O (Arquitetura 3.0): tier T3 , modelo forte atras de flag.
+    tierT3Checkpoint: (row?.tierT3Checkpoint as string | undefined) ?? "OFF",
+    tierT3Model: (row?.tierT3Model as string | null | undefined) ?? null,
+    // F3 (cerebro): retrieval de tool individual. "shadow" (default) loga o top-K
+    // mas nao enxuga o catalogo; "active" entrega so o catalogo enxuto ao LLM.
+    routerToolRetrieval: (row?.routerToolRetrieval as string | undefined) ?? "shadow",
     // R2-ctx: janela de contexto da resposta.
     contextWindowCheckpoint: (row?.contextWindowCheckpoint as string | undefined) ?? "PRODUCTION",
     contextWindowSize: (row?.contextWindowSize as number | undefined) ?? 20,
@@ -395,9 +424,35 @@ export async function runAgent(args: RunAgentInput): Promise<RunAgentResult> {
     // Carregar AgentSettings do banco
     const agentSettings = await loadAgentSettings();
 
+    // F6 Onda 2: override de cenario de router (harnesses/testes), sem mutar o
+    // AgentSettings global do banco (compartilhado). Ausente em producao.
+    if (args.routerOverride) {
+      if (args.routerOverride.enabled !== undefined) {
+        agentSettings.routerEnabled = args.routerOverride.enabled;
+      }
+      if (args.routerOverride.toolRetrieval !== undefined) {
+        agentSettings.routerToolRetrieval = args.routerOverride.toolRetrieval;
+      }
+    }
+
     // Buscar snippets da KB por similaridade (RAG , onda 7)
     // Se KB estiver habilitada, tenta searchKb; sem embedding → fallback interno do search.
     let kbSnippets: { name: string; extractedText: string }[] = [];
+    // Onda O (Arquitetura 3.0, O.2): classificacao lexical de tier.
+    // T2 = composta (decomposicao + teto maior de iteracoes, T2-lite);
+    // T3 = explicativa/contestacao (modelo forte atras de flag).
+    // llmOverride (backtest/A-B) SEMPRE vence , tier nunca troca o modelo la.
+    const { classificarTier, INSTRUCAO_T2 } = await import("./tiers/classificar-tier");
+    const tier = classificarTier(args.userMessage);
+    const tierT3Active =
+      agentSettings.tierT3Checkpoint === "PRODUCTION" ||
+      (agentSettings.tierT3Checkpoint === "PLAYGROUND" && Boolean(args.isPlayground));
+    const modeloForteT3 = agentSettings.tierT3Model ?? "gpt-5.4";
+    if (tier === "T3" && tierT3Active && !args.llmOverride) {
+      console.log(`[tiers] T3: ${resolvedLlm.model} -> ${modeloForteT3} (explicativa/contestacao)`);
+      resolvedLlm = { ...resolvedLlm, model: modeloForteT3 };
+    }
+
     if (agentSettings.kbEnabled) {
       try {
         kbSnippets = await searchKb(args.userMessage, 5);
@@ -450,7 +505,15 @@ export async function runAgent(args: RunAgentInput): Promise<RunAgentResult> {
     // Nomes com caracteres fora de [a-zA-Z0-9_-] (ex.: `crm.res_partner.get`)
     // são saneados , a OpenAI recusa nome de function com ponto. `nomeRealDaTool`
     // mapeia o nome saneado de volta ao real na hora de chamar a tool.
-    const mcpToolsRaw = session ? await session.listTools() : [];
+    // Retry de catalogo vazio (caso real 2026-06-11): no instante de um
+    // redeploy do container mcp, o listTools pode voltar [] e o turno inteiro
+    // degenerava em "Nao consegui obter" com catalog_size_offered=0. Uma nova
+    // tentativa apos 1,5s cobre a janela de boot.
+    let mcpToolsRaw = session ? await session.listTools() : [];
+    if (session && mcpToolsRaw.length === 0) {
+      await new Promise((r) => setTimeout(r, 1500));
+      mcpToolsRaw = await session.listTools();
+    }
     const nomeRealDaTool = new Map<string, string>();
     const sanearTool = <T extends { name: string }>(t: T): T => {
       const seguro = t.name.replace(/[^a-zA-Z0-9_-]/g, "_");
@@ -489,6 +552,33 @@ export async function runAgent(args: RunAgentInput): Promise<RunAgentResult> {
     if (decisaoL1.fallback.triggered && reformActive && agentSettings.routerEnabled) {
       const reformLlm = await resolveReformLlm(agentSettings);
       if (reformLlm) {
+        // T4.3: memoria da conversa p/ a heuristica de anafora (foco atual +
+        // entidades recentes por turno). Best-effort: falha vira null/[].
+        const [focoAnafora, entidadesRecentes] = await Promise.all([
+          Promise.resolve()
+            .then(() =>
+              prisma.conversation.findUnique({
+                where: { id: args.conversationId },
+                select: { focoAtual: true },
+              }),
+            )
+            .then(
+              (c) =>
+                (c?.focoAtual as import("./memoria/foco-atual").FocoAtual | null) ??
+                null,
+            )
+            .catch(() => null),
+          Promise.resolve()
+            .then(() =>
+              prisma.conversationEntity.findMany({
+                where: { conversationId: args.conversationId },
+                orderBy: { ultimoTurno: "desc" },
+                take: 10,
+                select: { tipo: true, rotulo: true, ultimoTurno: true },
+              }),
+            )
+            .catch(() => [] as { tipo: string; rotulo: string; ultimoTurno: number }[]),
+        ]);
         const r = await reformulateQuestion({
           conversationId: args.conversationId ?? null,
           currentQuestion: args.userMessage,
@@ -497,6 +587,8 @@ export async function runAgent(args: RunAgentInput): Promise<RunAgentResult> {
           credentialId: reformLlm.credentialId,
           userId: args.userId,
           isPlayground: args.isPlayground,
+          focoAtual: focoAnafora,
+          entidadesRecentes,
         });
         if (r.reformulated) {
           reformulated = r.reformulated;
@@ -515,6 +607,72 @@ export async function runAgent(args: RunAgentInput): Promise<RunAgentResult> {
     const routerMode: "shadow" | "active" = agentSettings.routerEnabled
       ? "active"
       : "shadow";
+
+    // F3 (cerebro, 3a.8b): retrieval de tool individual. Roda em SHADOW por
+    // padrao (loga top-K/scores mas nao enxuga); em "active" o catalogo enxuto
+    // (nucleo minimo + top-K) e entregue ao LLM via camada C do filterCatalog.
+    // Embeda so o catalogo proprio (mcpTools); tools externas entram pelo piso.
+    // Qualquer falha (embedding/vetores) cai em retrieval nulo => sem corte.
+    const retrievalActive = agentSettings.routerToolRetrieval === "active";
+    // F3 (3b): intencao da pergunta (classificada 1x por turno). Injetada nos args
+    // da tool so em modo active (mesmo gate do retrieval; nada nasce active).
+    const turnoIntent = classifyIntent(reformulated ?? args.userMessage);
+    let retrievalOfferedOrdered: string[] = [];
+    let retrievalPicked: ReadonlySet<string> | null = null;
+    let retrievalScores: Record<string, number> = {};
+    try {
+      const proprias = mcpTools.map((t) => ({
+        name: t.name,
+        description: (t as { description?: string }).description ?? t.name,
+      }));
+      const { vector } = await embedQuestion(reformulated ?? args.userMessage);
+      const toolVectors = await getToolVectors(proprias);
+      const r = pickTools({
+        tools: proprias,
+        toolVectors,
+        questionVector: vector,
+        pickedDomains: decisaoFinal.pickedDomains,
+        k: agentSettings.routerTopK,
+      });
+      retrievalScores = r.scores;
+      retrievalPicked = new Set(r.picked);
+      retrievalOfferedOrdered = [...r.picked].sort(
+        (a, b) => (r.scores[b] ?? 0) - (r.scores[a] ?? 0),
+      );
+    } catch (err) {
+      // eslint-disable-next-line no-console
+      console.warn("[f3:retrieval] falhou, seguindo sem retrieval", {
+        error: err instanceof Error ? err.message : String(err),
+      });
+      retrievalPicked = null;
+    }
+
+    // F3 (3c.3): decisao deterministica de "Fora do Catalogo" em SHADOW (telemetria).
+    // Loga fora_de_escopo/falta_honesta para calibrar antes de ativar; o desfecho real
+    // continua nas redes existentes (fast-path recusa RBAC + safety-net de gap). Sinais
+    // pre-execucao: dadoExisteNoEscopo nao e conhecido aqui (so pos-tool), entao passa
+    // true (falta_honesta fica a cargo do safety-net pos-execucao).
+    try {
+      const negocioPicked = decisaoFinal.pickedDomains.filter(
+        (d) => !DOMINIOS_NAO_NEGOCIO.has(d),
+      );
+      const decisaoFC = decideForaDoCatalogo({
+        retrievalVazio: retrievalOfferedOrdered.length === 0 || decisaoFinal.fallback.triggered,
+        topScore: decisaoFinal.topScore ?? 0,
+        limiar: agentSettings.routerThreshold,
+        assuntoForaDosDominios: negocioPicked.length === 0,
+        dadoExisteNoEscopo: true,
+      });
+      if (decisaoFC !== "prosseguir") {
+        console.info(
+          "[f3:fora-do-catalogo:shadow]",
+          JSON.stringify({ decisao: decisaoFC, topScore: decisaoFinal.topScore, conversationId: args.conversationId }),
+        );
+      }
+    } catch {
+      // telemetria best-effort; nunca quebra o turno.
+    }
+
     // RBAC v2: createDecision precede filterCatalog para que routerDecisionId
     // já esteja disponível para o fast-path de recusa (Onda E). A decisão
     // gravada é a FINAL (Camada 3 quando houve reformulação); os campos de
@@ -530,6 +688,8 @@ export async function runAgent(args: RunAgentInput): Promise<RunAgentResult> {
       originalFallback: decisaoL1.fallback.triggered,
       usedReformulation: reformulated !== null,
       reformulatedQuestion: reformulated,
+      retrievalOfferedTools: retrievalOfferedOrdered,
+      retrievalScores: Object.keys(retrievalScores).length > 0 ? retrievalScores : null,
     });
     const routerDecisionId = routerLog.decisionId;
 
@@ -571,12 +731,28 @@ export async function runAgent(args: RunAgentInput): Promise<RunAgentResult> {
       decision: decisaoFinal,
       routerEnabled: agentSettings.routerEnabled,
       userAllowedDomains,
+      // F3: so enxuga em modo active E quando o retrieval rodou; shadow nao corta.
+      ...(retrievalActive && retrievalPicked
+        ? { toolRetrieval: { picked: retrievalPicked } }
+        : {}),
     });
     // Atualiza catalogSizeOffered após o filtro real (camadas A + B do RBAC v2).
     await updateDecision({
       decisionId: routerDecisionId,
       catalogSizeOffered: filteredCatalog.tools.length,
     });
+    // F3 (3b.2): mapa de suporte a limit/orderBy por tool (do inputSchema), para a
+    // injecao de args por intencao saber se a tool aceita cada campo.
+    const toolSupportsByName = new Map<string, { limit: boolean; orderBy: boolean }>();
+    for (const t of filteredCatalog.tools) {
+      const props =
+        ((t as { inputSchema?: { properties?: Record<string, unknown> } }).inputSchema
+          ?.properties) ?? {};
+      toolSupportsByName.set(t.name, {
+        limit: "limit" in props,
+        orderBy: "orderBy" in props,
+      });
+    }
     const allTurnToolNames: string[] = [];
 
     const tools = mcpToolsToProviderTools(filteredCatalog.tools);
@@ -592,15 +768,63 @@ export async function runAgent(args: RunAgentInput): Promise<RunAgentResult> {
       },
       { isPlayground: Boolean(args.isPlayground) },
     );
-    const rawHistory = await loadHistory(args.conversationId, cw.budget, {
-      includeSystem: cw.includeSystem,
-    });
-    const sanitizedHistory = sanitizeHistoryPairs(rawHistory);
-    const historyMessages: ChatMessage[] = sanitizedHistory.map((m) => ({
-      role: m.role as "user" | "assistant" | "tool",
+    // Onda M (Arquitetura 3.0) T2: janela por TURNOS com sintese textual.
+    // Substitui loadHistory+sanitizeHistoryPairs: o replay nunca carrega
+    // toolCalls orfaos e os digests de turnos antigos viram memoria de
+    // numeros (fontesMemoria , tambem alimenta os validadores, M.6).
+    const janela = await loadJanelaTurnos(args.conversationId, cw.budget);
+    const historyMessages: ChatMessage[] = janela.mensagens.map((m) => ({
+      role: m.role,
       content: m.content,
-      ...(m.toolCalls ? { toolCalls: m.toolCalls as ToolCall[] } : {}),
     }));
+    // Onda M (M.3): working memory da conversa (focoAtual) , carregada do banco,
+    // injetada como L4 (junto ao item de data, volatil no fim) e fonte legitima
+    // de numeros para os validadores.
+    const { formatarFocoAtual, derivarFocoAtual, extrairEntidadesDoTurno } =
+      await import("./memoria/foco-atual");
+    const memoriaConv = await Promise.resolve()
+      .then(() =>
+        prisma.conversation.findUnique({
+          where: { id: args.conversationId },
+          select: { focoAtual: true, resumoProgressivo: true, resumoDominios: true },
+        }),
+      )
+      .catch(() => null);
+    const focoPrev =
+      (memoriaConv?.focoAtual as import("./memoria/foco-atual").FocoAtual | null) ?? null;
+    const focoAtualTexto = focoPrev ? formatarFocoAtual(focoPrev) : undefined;
+    // Onda M (M.5): resumo progressivo (L2) com RBAC lazy , se o usuario perdeu
+    // acesso a um dominio contido no resumo, NAO injeta e re-enfileira a
+    // re-geracao (que exclui o dominio revogado).
+    let resumoConversa: string | undefined;
+    if (memoriaConv?.resumoProgressivo) {
+      const { podeInjetarResumo } = await import("./memoria/resumo-progressivo");
+      if (podeInjetarResumo(memoriaConv.resumoDominios ?? [], userAllowedDomains)) {
+        resumoConversa = memoriaConv.resumoProgressivo;
+      } else {
+        void (async () => {
+          try {
+            await prisma.conversation.update({
+              where: { id: args.conversationId },
+              data: { resumoAtualizadoEm: null },
+            });
+            const { enqueueResumoConversa } = await import("./intelligence/enqueue");
+            const msgCount = await prisma.message.count({
+              where: { conversationId: args.conversationId },
+            });
+            await enqueueResumoConversa(args.conversationId, msgCount);
+          } catch (err) {
+            console.warn("[runAgent] re-resumo RBAC falhou:", err);
+          }
+        })();
+      }
+    }
+    const fontesMemoria: string[] = [
+      ...janela.digestsAnteriores,
+      ...janela.mensagens.filter((m) => m.role === "assistant").map((m) => m.content),
+      ...(focoAtualTexto ? [focoAtualTexto] : []),
+      ...(resumoConversa ? [resumoConversa] : []),
+    ];
 
     // Persistir mensagem do usuário
     await persistMessage(args.conversationId, "user", args.userMessage, undefined, args.isAudio ? "audio" : undefined);
@@ -612,6 +836,10 @@ export async function runAgent(args: RunAgentInput): Promise<RunAgentResult> {
       historyMessages,
       userMessage: args.userMessage,
       agoraBrt,
+      memoriaConsultas: janela.digestsAnteriores,
+      focoAtualTexto,
+      resumoConversa,
+      instrucaoTier: tier === "T2" ? INSTRUCAO_T2 : undefined,
     });
 
     const totalUsage: ChatUsage = { tokensInput: 0, tokensOutput: 0, costUsd: 0 };
@@ -648,8 +876,13 @@ export async function runAgent(args: RunAgentInput): Promise<RunAgentResult> {
       toolName: string;
       dados?: Record<string, unknown>;
     }> = [];
+    // Onda M (Arquitetura 3.0) M.3: acumuladores p/ derivar o focoAtual no fim.
+    const allTurnToolCalls: ToolCall[] = [];
+    const allTurnToolResultsMap: Record<string, string> = {};
 
-    for (let i = 0; i < MAX_ITERATIONS; i++) {
+    // Onda O (T2-lite): pergunta composta ganha 2 iteracoes extras de tools.
+    const maxIterations = tier === "T2" ? MAX_ITERATIONS + 2 : MAX_ITERATIONS;
+    for (let i = 0; i < maxIterations; i++) {
       const iterStart = Date.now();
 
       // Na iteração final (ou quando não há mais tools esperadas), tenta streamar
@@ -720,9 +953,10 @@ export async function runAgent(args: RunAgentInput): Promise<RunAgentResult> {
         responseChars: result.message.length,
         isPlayground: args.isPlayground,
           errorMessage:
-            i === MAX_ITERATIONS - 1 && (result.toolCalls?.length ?? 0) > 0
+            i === maxIterations - 1 && (result.toolCalls?.length ?? 0) > 0
               ? "max_iterations_exceeded"
               : undefined,
+          origin: ORIGENS.LOOP,
         }),
       );
 
@@ -742,6 +976,12 @@ export async function runAgent(args: RunAgentInput): Promise<RunAgentResult> {
               agentResponse: result.message,
               recentHistory: conversation.slice(-5),
               maxContextual: agentSettings.maxSuggestions,
+              logCtx: {
+                conversationId: args.conversationId,
+                userId: args.userId,
+                credentialId: resolvedLlm.credentialId ?? undefined,
+                isPlayground: args.isPlayground,
+              },
             });
             message = enhanced.cleanMessage;
             suggestions = enhanced.chips;
@@ -836,10 +1076,13 @@ export async function runAgent(args: RunAgentInput): Promise<RunAgentResult> {
         // Trava defensiva (2026-05-27): mesmo apos extractSuggestions, garante
         // que nenhum residual de "[[suggestions]]:..." vaza pro usuario na bubble.
         try {
-          const { stripCanalSuggestionsResidual } = await import(
+          const { stripCanalSuggestionsResidual, stripLeakedToolCall } = await import(
             "./suggestions-extractor"
           );
           message = stripCanalSuggestionsResidual(message);
+          // Guarda: o mini as vezes ESCREVE a tool call como texto em vez de
+          // chama-la ({"tool":...}); nunca pode vazar pro usuario.
+          message = stripLeakedToolCall(message);
         } catch (err) {
           console.warn("[runAgent] strip canal suggestions falhou:", err);
         }
@@ -952,6 +1195,22 @@ export async function runAgent(args: RunAgentInput): Promise<RunAgentResult> {
               if (correction.message && correction.message.trim().length > 0) {
                 message = correction.message;
               }
+              usageWrites.push(
+                logUsage(
+                  buildUsageArgs(
+                    correction,
+                    {
+                      provider: client.provider,
+                      model: client.model,
+                      credentialId: resolvedLlm.credentialId ?? undefined,
+                      conversationId: args.conversationId,
+                      userId: args.userId,
+                      isPlayground: args.isPlayground,
+                    },
+                    ORIGENS.GUARDRAIL,
+                  ),
+                ),
+              );
             } catch (errCorr) {
               console.warn("[runAgent] guardrail correction failed:", errCorr);
             }
@@ -970,7 +1229,7 @@ export async function runAgent(args: RunAgentInput): Promise<RunAgentResult> {
         let autoValidatorRetryReason: string | null = null;
         let autoValidatorRetryDetail: string | null = null;
         try {
-          const { validateResponse } = await import("./validation/auto-validator");
+          const { validateResponse, runShadowChecks } = await import("./validation/auto-validator");
           const settingsRow = await prisma.agentSettings.findUnique({
             where: { id: "global" },
             select: {
@@ -983,11 +1242,30 @@ export async function runAgent(args: RunAgentInput): Promise<RunAgentResult> {
           });
           const mode = settingsRow?.autoValidatorMode ?? "shadow";
           if (mode !== "off") {
+            // F3 (3b.5/3b.6): checks novos V6/V7 rodam SEMPRE em shadow (telemetria),
+            // sem short-circuitar o fluxo de producao (V1-V5). decideRetryOuGap define
+            // que V6/V7 (incoerencia estrutural) iriam a Falta Honesta direta, nao a
+            // retry de texto, quando promovidos a active (hoje so logam).
+            try {
+              const shadow = runShadowChecks({
+                question: args.userMessage,
+                llmResponse: message,
+                toolResults: allTurnEnvelopes,
+              });
+              for (const s of shadow) {
+                console.warn(
+                  `[verifier:shadow] ${s.reason} fired conversationId=${args.conversationId} detalhe=${s.detalhe}`,
+                );
+              }
+            } catch (errShadow) {
+              console.warn("[verifier:shadow] skipped:", errShadow);
+            }
             const outcome = validateResponse(
               {
                 question: args.userMessage,
                 llmResponse: message,
                 toolResults: allTurnEnvelopes,
+                fontesMemoria,
               },
               {
                 v1Enabled: settingsRow?.validatorV1Enabled ?? true,
@@ -1022,21 +1300,49 @@ export async function runAgent(args: RunAgentInput): Promise<RunAgentResult> {
                         "Mantenha tom, idioma e formato. NAO chame novas tools. NAO peca clarificacao.",
                     },
                   ];
-                  const retryPromise = client.chat({
+                  // Onda O (cascata): a reprova do validador re-tenta no
+                  // modelo FORTE quando a flag T3 esta ativa (paga o forte so
+                  // nos errados). Timeout maior: o forte e mais lento.
+                  const cascataForte =
+                    tierT3Active && !args.llmOverride && client.model !== modeloForteT3;
+                  const retryClient = cascataForte
+                    ? buildLlmClient(resolvedLlm.provider, resolvedLlm.apiKey, modeloForteT3)
+                    : client;
+                  if (cascataForte) {
+                    console.log(`[tiers] cascata: retry do validador em ${modeloForteT3}`);
+                  }
+                  const retryTimeoutMs = cascataForte ? 15000 : 3000;
+                  const retryPromise = retryClient.chat({
                     messages: retryMessages,
                     tools: undefined,
                     temperature: 0,
                     maxTokens: 1024,
                     reasoningEffort: undefined,
                   });
-                  // Timeout 3s para proteger SLA p95
                   const timeoutPromise = new Promise<never>((_, rej) =>
                     setTimeout(
-                      () => rej(new Error("auto-validator retry timeout 3s")),
-                      3000,
+                      () => rej(new Error(`auto-validator retry timeout ${retryTimeoutMs}ms`)),
+                      retryTimeoutMs,
                     ),
                   );
                   const retry = await Promise.race([retryPromise, timeoutPromise]);
+                  usageWrites.push(
+                    logUsage(
+                      buildUsageArgs(
+                        retry,
+                        {
+                          provider: retryClient.provider,
+                          model: retryClient.model,
+                          credentialId: resolvedLlm.credentialId ?? undefined,
+                          conversationId: args.conversationId,
+                          userId: args.userId,
+                          isPlayground: args.isPlayground,
+                          durationMs: Date.now() - retryStart,
+                        },
+                        ORIGENS.AUTO_VALIDATOR,
+                      ),
+                    ),
+                  );
                   if (retry.message && retry.message.trim().length > 0) {
                     message = retry.message;
                     autoValidatorRetryCount = 1;
@@ -1056,11 +1362,59 @@ export async function runAgent(args: RunAgentInput): Promise<RunAgentResult> {
           console.warn("[autoValidator] failed (top-level):", err);
         }
 
+        // RE-STRIP pós-retry (fix do vazamento de [[suggestions]] persistido):
+        // o retry "active" do autoValidator acima substitui `message` por uma
+        // NOVA saída do LLM, que pode re-emitir o canal [[suggestions]] DEPOIS
+        // dos strippers (que rodaram lá em cima). Sem este re-strip, o residual
+        // ia direto pro banco/bubble. Trava final, idempotente.
+        try {
+          const { stripCanalSuggestionsResidual } = await import(
+            "./suggestions-extractor"
+          );
+          message = stripCanalSuggestionsResidual(message);
+        } catch (err) {
+          console.warn("[runAgent] re-strip pós-retry falhou:", err);
+        }
+
         const assistantMessageId = await persistMessageAndReturnId(
           args.conversationId,
           "assistant",
           message,
         );
+
+        // Onda M (M.3): atualizar o focoAtual da conversa. Entra em usageWrites
+        // (aguardado via allSettled antes do return) , nao bloqueia o stream e
+        // nao vaza log pos-teste.
+        usageWrites.push((async () => {
+          try {
+            const turnoN = await prisma.message.count({
+              where: { conversationId: args.conversationId, role: "user" },
+            });
+            const focoNovo = derivarFocoAtual(focoPrev, {
+              pergunta: args.userMessage,
+              toolCalls: allTurnToolCalls,
+              toolResults: allTurnToolResultsMap,
+              respostaFinal: message,
+              messageId: assistantMessageId,
+              turno: turnoN,
+            });
+            await prisma.conversation.update({
+              where: { id: args.conversationId },
+              data: { focoAtual: JSON.parse(JSON.stringify(focoNovo)) },
+            });
+            // T4.2: entidades citadas NESTE turno viram memoria de recencia
+            // (ConversationEntity) p/ a heuristica de anafora do T4.3.
+            const { upsertEntidadesDoTurno } = await import("./memoria/entidades");
+            await upsertEntidadesDoTurno(
+              prisma,
+              args.conversationId,
+              extrairEntidadesDoTurno(allTurnToolCalls),
+              turnoN,
+            );
+          } catch (errFoco) {
+            console.warn("[runAgent] focoAtual update falhou:", errFoco);
+          }
+        })());
 
         // Onda 3a: trigger fire-and-forget pro sistema /agente/qualidade.
         // Cria row PENDENTE em ConversationQualityEvaluation. Nao bloqueia
@@ -1097,7 +1451,7 @@ export async function runAgent(args: RunAgentInput): Promise<RunAgentResult> {
         // turno fechar. Fire-and-forget; nao bloqueia o `done` do usuario.
         void (async () => {
           try {
-            const { enqueueTopicTagging } = await import(
+            const { enqueueTopicTagging, enqueueResumoConversa } = await import(
               "@/lib/agent/intelligence/enqueue"
             );
             // Conta mensagens (cheap) para BullMQ deduplicar via jobId.
@@ -1105,6 +1459,9 @@ export async function runAgent(args: RunAgentInput): Promise<RunAgentResult> {
               m.prisma.message.count({ where: { conversationId: args.conversationId } }),
             );
             await enqueueTopicTagging(args.conversationId, msgCount);
+            // Onda M (M.5): resumo progressivo async (processor aplica o
+            // threshold de >= 8 mensagens novas e skipa cedo).
+            await enqueueResumoConversa(args.conversationId, msgCount);
           } catch (err) {
             console.warn("[runAgent] falha ao enfileirar tagging:", err);
           }
@@ -1119,6 +1476,12 @@ export async function runAgent(args: RunAgentInput): Promise<RunAgentResult> {
           catalogSizeOffered: filteredCatalog.tools.length,
           // RBAC v2: turno concluído com sucesso (LLM respondeu).
           outcome: "ok",
+          // F3 (3a.8c): rank da 1a tool usada no ranking que o retrieval ofereceu
+          // (gate de go-live do shadow-compare). null se nao usou tool ou ficou fora.
+          chosenToolRank:
+            allTurnToolNames.length > 0
+              ? rankOf(allTurnToolNames[0]!, retrievalOfferedOrdered)
+              : null,
         });
         return {
           ok: true,
@@ -1197,7 +1560,17 @@ export async function runAgent(args: RunAgentInput): Promise<RunAgentResult> {
           toolCallId: tc.id,
         });
 
-        const toolArgs = (tc.arguments ?? {}) as Record<string, unknown>;
+        let toolArgs = (tc.arguments ?? {}) as Record<string, unknown>;
+        // F3 (3b.2): injeta/limita args conforme a intencao (so em modo active,
+        // mesmo gate do retrieval). Em shadow nao altera o comportamento atual.
+        if (retrievalActive && turnoIntent !== "pontual") {
+          const supports = toolSupportsByName.get(tc.name) ?? { limit: false, orderBy: false };
+          const aplicado = applyIntentArgs(turnoIntent, toolArgs, supports);
+          toolArgs = aplicado.args;
+          if (aplicado.aviso) {
+            console.info("[f3:intent]", JSON.stringify({ tool: tc.name, intent: turnoIntent, aviso: aplicado.aviso }));
+          }
+        }
         let toolResultStr: string;
         let cacheHit = false;
         const tStart = Date.now();
@@ -1281,6 +1654,7 @@ export async function runAgent(args: RunAgentInput): Promise<RunAgentResult> {
           truncated: wasTruncated,
           label: progressLabel(tc.name),
           toolCallId: tc.id,
+          resultPreview: sanitized.slice(0, 8000),
         });
 
         conversation.push({
@@ -1294,12 +1668,15 @@ export async function runAgent(args: RunAgentInput): Promise<RunAgentResult> {
         // Message.toolResults apos o loop. Persiste o SANITIZADO (o que o
         // LLM viu), pra auditoria correta no /agente/qualidade.
         toolResultsMap[tc.id] = sanitized;
+        allTurnToolCalls.push(tc);
+        allTurnToolResultsMap[tc.id] = sanitized;
       }
 
       // Onda 1 Inteligencia (T1.7): persiste toolResults na Message do
       // assistant que disparou as tools. UPDATE best-effort; nao bloqueia
-      // o turno se falhar.
-      await updateMessageToolResults(assistantMessageId, toolResultsMap);
+      // o turno se falhar. Onda M (Arquitetura 3.0): passa as toolCalls para
+      // derivar o toolDigest (a memoria de longo prazo do turno).
+      await updateMessageToolResults(assistantMessageId, toolResultsMap, result.toolCalls);
 
       // Guardrail factual: acumula todos os results deste turno para
       // checagem antes do persist da mensagem final.

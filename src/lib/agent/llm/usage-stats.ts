@@ -507,3 +507,75 @@ export async function getFirstUsageDate(): Promise<Date> {
   }
   return row.createdAt;
 }
+
+export interface CustoPorConsulta {
+  conversationId: string;
+  nReqs: number;
+  custoUsdTotal: number;
+  tokensInput: number;
+  tokensOutput: number;
+  tokensCachedInput: number;
+  latenciaMsTotal: number;
+  toolCallsTotal: number;
+  todosCustoConhecido: boolean;
+  breakdownPorOrigin: Record<
+    string,
+    { nReqs: number; custoUsd: number; tokensInput: number; tokensOutput: number }
+  >;
+}
+
+/**
+ * Soma TODAS as linhas LlmUsage de uma consulta (mesmo conversationId) , o custo
+ * real do turno, cobrindo loop + enhance + guardrail + autoValidator.
+ * todosCustoConhecido=false se qualquer linha veio costKnown=false (o harness de
+ * custo deve falhar/marcar indisponivel, nunca somar 0 em silencio).
+ */
+export async function agregarCustoPorConversa(conversationId: string): Promise<CustoPorConsulta> {
+  const rows = await prisma.llmUsage.findMany({
+    where: { conversationId },
+    select: {
+      costUsd: true,
+      costKnown: true,
+      tokensInput: true,
+      tokensOutput: true,
+      tokensCachedInput: true,
+      durationMs: true,
+      toolCallsCount: true,
+      origin: true,
+    },
+  });
+  const acc: CustoPorConsulta = {
+    conversationId,
+    nReqs: rows.length,
+    custoUsdTotal: 0,
+    tokensInput: 0,
+    tokensOutput: 0,
+    tokensCachedInput: 0,
+    latenciaMsTotal: 0,
+    toolCallsTotal: 0,
+    todosCustoConhecido: true,
+    breakdownPorOrigin: {},
+  };
+  for (const r of rows) {
+    const custo = r.costUsd == null ? 0 : Number(r.costUsd);
+    acc.custoUsdTotal += custo;
+    acc.tokensInput += r.tokensInput ?? 0;
+    acc.tokensOutput += r.tokensOutput ?? 0;
+    acc.tokensCachedInput += r.tokensCachedInput ?? 0;
+    acc.latenciaMsTotal += r.durationMs ?? 0;
+    acc.toolCallsTotal += r.toolCallsCount ?? 0;
+    if (!r.costKnown) acc.todosCustoConhecido = false;
+    const key = r.origin ?? "desconhecido";
+    const b = (acc.breakdownPorOrigin[key] ??= {
+      nReqs: 0,
+      custoUsd: 0,
+      tokensInput: 0,
+      tokensOutput: 0,
+    });
+    b.nReqs += 1;
+    b.custoUsd += custo;
+    b.tokensInput += r.tokensInput ?? 0;
+    b.tokensOutput += r.tokensOutput ?? 0;
+  }
+  return acc;
+}

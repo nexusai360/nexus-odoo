@@ -1,17 +1,24 @@
 // mcp/tools/fiscal/faturamento-por-uf.ts
 // Tool MCP: fiscal_faturamento_por_uf
 //
-// Resolve "Faturamento por estado / por UF / por região" — agrupando notas
-// de saída autorizadas pela UF do cliente (fato_parceiro.uf).
+// Faturamento por UF (estado do cliente externo) na MESMA base canonica da
+// receita externa do grupo (Fase 2.5): vrProdutos dos itens, ehReceita por CFOP,
+// intragrupo eliminado. O total bate com fiscal_faturamento_periodo. A versao
+// anterior somava `vr_nf` cru de TODA nota de saida autorizada (sem classificar
+// receita por CFOP e sem eliminar intragrupo), inflando ~R$ 8,9M -> ~R$ 29M e
+// divergindo da tool de periodo. Pericia: conversa ea8aa0a3 (2026-06-15).
 import { z } from "zod";
 import type { ToolEntry } from "../../catalog/types.js";
+import { faturamentoPorUfCanon } from "@/lib/metrics/fiscal/index.js";
 import { withFreshness } from "../../lib/freshness.js";
-import type { PrismaClient } from "@/generated/prisma/client.js";
+import { montarEscopoEmpresa } from "./_escopo-empresa.js";
+import { resolverPeriodoFiscal } from "./_periodo-padrao.js";
 
 const inputSchema = z.object({
   periodoDe: z.string().optional(),
   periodoAte: z.string().optional(),
   limite: z.number().int().min(1).max(50).optional(),
+  empresaRef: z.string().trim().min(1).optional().describe("Empresa (id, CNPJ ou nome). Sem isso, considera o grupo todo."),
 });
 
 const linhaSchema = z.object({
@@ -26,6 +33,14 @@ const dados = z.object({
   totalNotas: z.number().int(),
   totalUfs: z.number().int(),
   notasSemUf: z.number().int(),
+  valorSemUf: z.number(),
+  totalIntragrupo: z.number(),
+  periodoLabel: z.string(),
+  escopoEmpresa: z.record(z.string(), z.unknown()),
+  aviso: z.string(),
+  // Contrato de lista (Fase B): a query ordena por valor desc (NULLS LAST)
+  // com desempate por UF.
+  ordenadoPor: z.string().optional(),
   _RESPOSTA: z.string().optional(),
   _DESTAQUE: z.record(z.string(), z.union([z.string(), z.number()])).optional(),
   _agregado: z.record(z.string(), z.number().optional()).optional(),
@@ -50,81 +65,70 @@ const outputSchema = z.union([
 type Input = z.infer<typeof inputSchema>;
 type Output = z.infer<typeof outputSchema>;
 
-interface Row {
-  uf: string | null;
-  quantidade: bigint;
-  valor: string | number;
-}
-
-async function queryFaturamentoPorUf(prisma: PrismaClient, input: Input) {
-  const limite = input.limite ?? 20;
-  const periodoDe = input.periodoDe ??
-    new Date(new Date().getFullYear(), new Date().getMonth(), 1).toISOString().slice(0, 10);
-  const periodoAte = input.periodoAte ?? new Date().toISOString().slice(0, 10);
-
-  const rows = await prisma.$queryRawUnsafe<Row[]>(
-    `SELECT COALESCE(p.uf, '(sem UF)') AS uf,
-            COUNT(*)::bigint AS quantidade,
-            COALESCE(SUM(nf.vr_nf), 0)::text AS valor
-     FROM fato_nota_fiscal nf
-     LEFT JOIN fato_parceiro p ON p.odoo_id = nf.participante_id
-     WHERE nf.entrada_saida = '1'
-       AND nf.situacao_nfe = 'autorizada'
-       AND nf.data_emissao >= $1::timestamp
-       AND nf.data_emissao <= $2::timestamp
-     GROUP BY p.uf
-     ORDER BY SUM(nf.vr_nf) DESC NULLS LAST
-     LIMIT ${limite}`,
-    `${periodoDe}T00:00:00`,
-    `${periodoAte}T23:59:59`,
-  );
-
-  const linhas = rows.map((r) => ({
-    uf: r.uf === "(sem UF)" ? null : r.uf,
-    quantidadeNotas: Number(r.quantidade),
-    valorTotal: Number(r.valor),
-  }));
-  const totalGeral = linhas.reduce((s, l) => s + l.valorTotal, 0);
-  const totalNotas = linhas.reduce((s, l) => s + l.quantidadeNotas, 0);
-  const notasSemUf = linhas.filter((l) => l.uf === null).reduce((s, l) => s + l.quantidadeNotas, 0);
-  const totalUfs = linhas.filter((l) => l.uf !== null).length;
-  return { linhas, totalGeral, totalNotas, totalUfs, notasSemUf };
-}
-
 export const fiscalFaturamentoPorUf: ToolEntry<Input, Output> = {
   id: "fiscal_faturamento_por_uf",
   dominio: "fiscal",
   descricao:
-    "Faturamento agrupado por estado (UF do cliente da nota), ordenado por valor " +
-    "descendente. Use para 'faturamento por estado / por UF / por regiao' (regiao " +
-    "= conjunto de UFs). Agrega notas de saida autorizadas no periodo (default mes corrente).",
+    "Faturamento de venda (receita externa) agrupado por estado (UF do cliente), ordenado por " +
+    "valor decrescente. Mesma base do faturamento do grupo: o total bate com fiscal_faturamento_periodo. " +
+    "Vendas entre empresas do grupo nao entram (somadas a parte). Use para 'faturamento por estado / " +
+    "por UF / por regiao' (regiao = conjunto de UFs). Periodo default = mes corrente. " +
+    "Para o recorte de DEMONSTRACAO use fiscal_demonstracoes.",
   inputSchemaShape: inputSchema.shape,
   inputSchema,
   outputSchema,
   handler: async (input, ctx) => {
+    const escopo = await montarEscopoEmpresa(ctx.prisma, input.empresaRef);
+    const per = resolverPeriodoFiscal(input.periodoDe, input.periodoAte);
     const envelope = await withFreshness(
       ctx.prisma,
       ["fato_nota_fiscal", "fato_parceiro"],
-      () => queryFaturamentoPorUf(ctx.prisma, input),
+      async () => {
+        const r = await faturamentoPorUfCanon(ctx.prisma, {
+          periodoDe: per.periodoDe,
+          periodoAte: per.periodoAte,
+          empresaId: escopo.empresaId,
+          limit: input.limite ?? 50,
+        });
+        return {
+          linhas: r.linhas,
+          totalGeral: r.totalGeral,
+          totalNotas: r.totalNotas,
+          totalUfs: r.totalUfs,
+          notasSemUf: r.notasSemUf,
+          valorSemUf: r.valorSemUf,
+          totalIntragrupo: r.totalIntragrupo,
+          periodoLabel: per.label,
+          escopoEmpresa: escopo.escopo as unknown as Record<string, unknown>,
+          ordenadoPor: "valor desc",
+          aviso:
+            "Faturamento de venda para fora do grupo, por estado do cliente (base produtos por CFOP). " +
+            "Vendas entre empresas do mesmo grupo nao entram (ficam em totalIntragrupo). " +
+            `Período: ${per.label}. ${escopo.escopo.aviso}`,
+        };
+      },
     );
     if (envelope.estado === "preparando") return envelope;
     const d = envelope.dados;
-    // T-40: top REAL = primeira linha com uf preenchida (pula "(sem UF)")
-    const topReal = d.linhas.find((l) => l.uf !== null) ?? d.linhas[0];
     const fmt = (n: number) =>
       n.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
+    // top REAL = primeira linha com uf preenchida (pula "(sem UF)")
+    const topReal = d.linhas.find((l) => l.uf !== null) ?? d.linhas[0];
     return {
       ...envelope,
       dados: {
         ...d,
-        _RESPOSTA: topReal
-          ? `Faturamento por UF: ${fmt(d.totalGeral)} em ${d.totalNotas} notas, ${d.totalUfs} UFs com UF identificada${d.notasSemUf > 0 ? ` + ${d.notasSemUf} notas sem UF` : ""}. Top: ${topReal.uf ?? "(sem UF)"} ${fmt(topReal.valorTotal)}.`
-          : "Nao ha faturamento no periodo.",
+        _RESPOSTA:
+          d.totalGeral > 0
+            ? `Faturamento por estado: ${fmt(d.totalGeral)} em ${d.totalNotas} notas de venda, ${d.totalUfs} estados${d.notasSemUf > 0 ? ` (${d.notasSemUf} notas sem estado do cliente cadastrado, ${fmt(d.valorSemUf)})` : ""}. Estado que mais faturou: ${topReal?.uf ?? "(sem estado)"} ${fmt(topReal?.valorTotal ?? 0)}. Esse e o faturamento real (vendas para fora do grupo); vendas entre empresas do grupo ficam fora.`
+            : "Nao ha faturamento de venda no periodo.",
         _DESTAQUE: {
           totalGeral: d.totalGeral,
           totalNotas: d.totalNotas,
           totalUfs: d.totalUfs,
           notasSemUf: d.notasSemUf,
+          valorSemUf: d.valorSemUf,
+          totalIntragrupo: d.totalIntragrupo,
           topUf: topReal?.uf ?? "",
           valorTopUf: topReal?.valorTotal ?? 0,
         },

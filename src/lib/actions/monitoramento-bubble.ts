@@ -149,9 +149,27 @@ export async function listBubbleSessions(userId: string): Promise<SessionRow[]> 
       id: true,
       createdAt: true,
       endedAt: true,
-      _count: { select: { messages: true } },
     },
   });
+
+  // Contagem de mensagens VISÍVEIS (igual ao filtro da coluna Conversa): exclui
+  // role "tool" e as mensagens assistant intermediárias de tool-call (conteúdo
+  // vazio). Sem isso o "_count" cru contava turnos com tool como 3 onde o
+  // usuário vê 2. Uma query só pro usuário inteiro, agregada em memória.
+  const msgRows = await prisma.message.findMany({
+    where: { conversation: { userId, channel: "in_app" } },
+    select: { conversationId: true, role: true, content: true, kind: true },
+  });
+  const visibleCountByConv = new Map<string, number>();
+  for (const m of msgRows) {
+    const visible =
+      m.role !== "tool" && (m.content.trim().length > 0 || m.kind === "audio");
+    if (!visible) continue;
+    visibleCountByConv.set(
+      m.conversationId,
+      (visibleCountByConv.get(m.conversationId) ?? 0) + 1,
+    );
+  }
 
   // AVALIAÇÃO (usuário): votos por conversa.
   const votes = await prisma.messageFeedback.groupBy({
@@ -203,7 +221,7 @@ export async function listBubbleSessions(userId: string): Promise<SessionRow[]> 
       index: total - pos,
       startedAt: c.createdAt.toISOString(),
       endedAt,
-      messageCount: c._count.messages,
+      messageCount: visibleCountByConv.get(c.id) ?? 0,
       avaliacaoCounts,
       avaliacaoPct: computeAccuracy(avaliacaoCounts),
       periciaCounts,
@@ -367,6 +385,10 @@ export async function getBubbleSessionMessages(
     const durationMs = durationByMsgId.get(m.id);
     const ev = evalByMsg.get(m.id) ?? null;
     const fb = fbByMsg.get(m.id) ?? null;
+    // Mostra o snapshot EXATO que a bubble persistiu (POST suggestions-shown):
+    // o conjunto que o usuário de fato viu. Nada é fabricado aqui , se a
+    // mensagem for antiga (anterior ao snapshot) e só tiver as chips cruas,
+    // mostramos essas e nada além. Honestidade > completar com invenção.
     return {
       id: m.id,
       role: m.role as ConversationMessageDto["role"],

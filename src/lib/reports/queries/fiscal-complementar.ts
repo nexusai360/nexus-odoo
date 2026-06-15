@@ -73,7 +73,8 @@ export async function queryApuracaoFiscal(
   const [rows, total] = await Promise.all([
     prisma.fatoApuracao.findMany({
       where,
-      orderBy: { dataInicial: "desc" },
+      // Onda 5: desempate estavel por odooId (apuracoes com mesma dataInicial).
+      orderBy: [{ dataInicial: "desc" }, { odooId: "asc" }],
       take: limite,
     }),
     prisma.fatoApuracao.count({ where }),

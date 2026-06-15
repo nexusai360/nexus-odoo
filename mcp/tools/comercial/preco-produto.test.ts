@@ -1,4 +1,5 @@
 import { comercialPrecoProduto } from "./preco-produto.js";
+import { PAGINACAO_LIMIT_DEFAULT } from "../../lib/paginacao";
 import type { ToolHandlerCtx } from "../../catalog/types.js";
 import type { UserContext } from "../../auth/user-context.js";
 
@@ -90,13 +91,13 @@ describe("preco_produto , paginacao (alavanca 2b)", () => {
     }
   });
 
-  it("default limit = 10 quando ausente", async () => {
+  it("default limit = 50 quando ausente", async () => {
     const ctx = makeCtx();
     primeFreshness(ctx);
     primeQuery(ctx, 3, 3);
 
     await comercialPrecoProduto.handler({ termo: "Esteira" } as never, ctx);
     const callArgs = (ctx.prisma.fatoPreco.findMany as jest.Mock).mock.calls[0][0];
-    expect(callArgs.take).toBe(10);
+    expect(callArgs.take).toBe(PAGINACAO_LIMIT_DEFAULT);
   });
 });
