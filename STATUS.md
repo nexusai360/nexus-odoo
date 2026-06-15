@@ -904,3 +904,5 @@ registrada em 2026-05-18); F4 ≠ F5 (WhatsApp/conversas/personalização são F
 - Modelagem de fatos: `docs/fatos-modelagem.md`. Git: `docs/git-workflow.md`.
 
 > **Retomada (2026-06-03):** pendência única = drill-down do Router (banner não quebra texto). Ver docs/agents/HANDOFF-2026-06-03-router-drilldown.md.
+
+## 2026-06-15 , auto-deploy (Shepherd) + start-first em prod; healthcheck do app pendente p/ zerar os ~18s de downtime. Fix clareza faturamento + ondas M/O/P em prod. Ver docs/runbooks/deploy-procedure.md e PROGRESSO.

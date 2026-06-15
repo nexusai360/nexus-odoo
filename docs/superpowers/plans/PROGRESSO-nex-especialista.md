@@ -559,3 +559,17 @@ Cada fase: plano próprio (bite-sized) + 2 reviews quando material → execuçã
 - DEPLOY rolling (worker->mcp->app 1-a-1) SEM OOM (RSS db 86MB). Corrigido
   "out of sequence" no deploy-portainer.py (re-GET versao fresca por servico +
   retry). Prod saudavel; main local + localhost atualizados. Suite 3034 verde.
+
+## AUTO-DEPLOY + START-FIRST 2026-06-15 (validado ao vivo)
+- Auto-deploy via Shepherd PROVADO end-to-end: merge -> build -> Shepherd recria
+  os 3 servicos sozinho (sem deploy manual). Job 'deploy' do build.yml REMOVIDO
+  (merge e69ae76; acaba email vermelho + 1h Actions/merge).
+- start-first nos 3 servicos: downtime de ~6min -> ~18s (so app; mcp/worker 0
+  queda). PENDENCIA UNICA: healthcheck no servico app p/ zerar os 18s (Swarm
+  espera o app responder antes de derrubar a versao velha). Ver como: definir
+  ContainerSpec.Healthcheck (Test curl /api/health, Interval/Timeout/Retries) +
+  UpdateConfig ja e start-first. Aplicar via Portainer API ou no compose.
+- Shepherd: SLEEP_TIME=10m, FILTER_SERVICES=label=com.nexus.autodeploy=true.
+  Pausar/religar = escala 0/1. Runbook: docs/runbooks/deploy-procedure.md.
+- FIX clareza do faturamento (PR #108) em prod: resposta fecha o arco, zero
+  jargao. Onda M/O/P em prod. Tudo saudavel (health 200).
