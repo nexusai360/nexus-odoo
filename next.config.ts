@@ -18,8 +18,13 @@ const nextConfig: NextConfig = {
           { key: "X-Content-Type-Options", value: "nosniff" },
           { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
           {
+            // microphone=(self): libera o microfone APENAS na nossa origem
+            // (gravacao de audio do agente Nex via getUserMedia). camera e
+            // geolocation seguem desligadas. `microphone=()` (lista vazia)
+            // bloqueava o mic em todo o site, em dev e prod, fazendo o
+            // getUserMedia falhar com NotAllowedError mesmo liberando no navegador.
             key: "Permissions-Policy",
-            value: "camera=(), microphone=(), geolocation=()",
+            value: "camera=(), microphone=(self), geolocation=()",
           },
           {
             key: "Strict-Transport-Security",
