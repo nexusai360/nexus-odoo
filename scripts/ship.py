@@ -21,7 +21,10 @@ import http.client, ssl, socket, json, os, sys, time, subprocess
 
 REPO = "nexusai360/nexus-odoo"
 BASE = "main"
-HEAD = "feat/nex-reconstrucao"
+# A branch de origem do PR é a branch ATUAL do git (cada worktree/sessão mergeia
+# a sua), nunca um valor fixo , um valor fixo já apontou para a branch errada e
+# quase mergeou trabalho de outra frente. Para mergear um PR já aberto sem
+# depender da branch local, use `--merge-only <PR#>`.
 HEALTH = "https://agentenex.nexusai360.com/api/health"
 API_HOST = "api.github.com"
 # IPs classicos do GitHub (ASN proprio), reachable mesmo quando o front Azure nao esta.
@@ -59,6 +62,15 @@ def api(method: str, path: str, token: str, body=None):
 
 def head_sha() -> str:
     return subprocess.check_output(["git", "rev-parse", "HEAD"]).decode().strip()
+
+
+def current_branch() -> str:
+    """Branch git atual da worktree , a origem do PR."""
+    return (
+        subprocess.check_output(["git", "rev-parse", "--abbrev-ref", "HEAD"])
+        .decode()
+        .strip()
+    )
 
 
 def wait_ci(token: str, sha: str, timeout_s=900) -> bool:
@@ -141,13 +153,19 @@ def main():
         num = int(args[1])
     else:
         title = args[0] if args else "deploy"
+        head = current_branch()
+        if head in ("main", "HEAD", ""):
+            print(f"[ship] branch atual inválida para abrir PR: '{head}'. "
+                  f"Rode da branch de feature, ou use --merge-only <PR#>.")
+            sys.exit(1)
+        print(f"[ship] branch de origem: {head}")
         sha = head_sha()
-        _, prs = api("GET", f"/repos/{REPO}/pulls?head=nexusai360:{HEAD}&state=open", token)
+        _, prs = api("GET", f"/repos/{REPO}/pulls?head=nexusai360:{head}&state=open", token)
         if isinstance(prs, list) and prs:
             num = prs[0]["number"]; print(f"[ship] PR existente #{num}")
         else:
             st, pr = api("POST", f"/repos/{REPO}/pulls", token,
-                         {"title": title, "head": HEAD, "base": BASE, "body": "Deploy via scripts/ship.py (caminho padronizado)."})
+                         {"title": title, "head": head, "base": BASE, "body": "Deploy via scripts/ship.py (caminho padronizado)."})
             num = pr.get("number"); print(f"[ship] PR criado #{num} (status {st})")
         if not wait_ci(token, sha):
             print("[ship] CI nao ficou verde , ABORTANDO o merge."); sys.exit(1)
