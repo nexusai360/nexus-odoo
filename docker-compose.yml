@@ -54,11 +54,12 @@ services:
       - ODOO_DB=${ODOO_DB}
       - ODOO_USERNAME=${ODOO_USERNAME}
       - ODOO_PASSWORD=${ODOO_PASSWORD}
-      # Heap V8 padrao (~2GB) estourava ao processar 5+ tabelas grandes
-      # em paralelo (sped.documento.item=214k, sped.documento=47k, etc).
-      # 4GB cobre com folga e evita "Ineffective mark-compacts near heap
-      # limit" que matava o worker em loop de restart.
-      - NODE_OPTIONS=--max-old-space-size=4096
+      # Heap V8: 1GB. Antes era 4GB porque as raws guardavam as imagens
+      # base64 dos produtos (image_*, 170-260 KB/linha) e 5 tabelas pesadas
+      # em paralelo estouravam o heap. Desde 2026-06-16 o field-selection
+      # exclui campos `binary` (sem imagem no cache), entao o worker ficou
+      # leve e 1GB cobre com folga. Em prod o swarm usa o mesmo valor.
+      - NODE_OPTIONS=--max-old-space-size=1024
     depends_on:
       - db
       - redis
