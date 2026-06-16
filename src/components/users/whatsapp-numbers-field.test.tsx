@@ -42,6 +42,33 @@ describe("WhatsappNumbersField (rascunho)", () => {
     expect(screen.getByText("+55 11 99123-4567")).toBeInTheDocument();
   });
 
+  test("edita um número já adicionado pelo lápis e atualiza a lista", async () => {
+    const user = userEvent.setup();
+    const onDraftChange = jest.fn();
+    render(<WhatsappNumbersField onDraftChange={onDraftChange} />);
+
+    await user.type(
+      screen.getByPlaceholderText("11 99123-4567"),
+      "11991234567",
+    );
+    await user.click(screen.getByRole("button", { name: "Adicionar número" }));
+    expect(screen.getByText("+55 11 99123-4567")).toBeInTheDocument();
+
+    await user.click(
+      screen.getByRole("button", { name: "Editar +55 11 99123-4567" }),
+    );
+    // Com a linha em edição há dois campos com o mesmo placeholder (adicionar
+    // no topo e a edição na linha); o de edição é o último renderizado.
+    const inputs = screen.getAllByPlaceholderText("11 99123-4567");
+    const editInput = inputs[inputs.length - 1];
+    await user.clear(editInput);
+    await user.type(editInput, "11988887777");
+    await user.click(screen.getByRole("button", { name: "Salvar número" }));
+
+    expect(screen.getByText("+55 11 98888-7777")).toBeInTheDocument();
+    expect(onDraftChange).toHaveBeenLastCalledWith(["+5511988887777"]);
+  });
+
   test("rejeita número brasileiro com quantidade de dígitos inválida", async () => {
     const user = userEvent.setup();
     render(<WhatsappNumbersField onDraftChange={() => {}} />);

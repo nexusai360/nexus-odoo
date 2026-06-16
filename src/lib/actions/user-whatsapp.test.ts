@@ -2,6 +2,7 @@ import {
   addWhatsappNumber,
   removeWhatsappNumber,
   listWhatsappNumbers,
+  updateWhatsappNumber,
 } from "./user-whatsapp";
 import { getCurrentUser } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
@@ -19,6 +20,7 @@ jest.mock("@/lib/prisma", () => ({
       findUnique: jest.fn(),
       findMany: jest.fn(),
       create: jest.fn(),
+      update: jest.fn(),
       delete: jest.fn(),
     },
   },
@@ -33,6 +35,7 @@ const mockPrisma = jest.mocked(prisma) as unknown as {
     findUnique: jest.Mock;
     findMany: jest.Mock;
     create: jest.Mock;
+    update: jest.Mock;
     delete: jest.Mock;
   };
 };
@@ -144,6 +147,83 @@ describe("removeWhatsappNumber", () => {
     } as never);
     const r = await removeWhatsappNumber(NUM_ID);
     expect(r).toEqual({ success: false, error: "Acesso negado" });
+  });
+});
+
+describe("updateWhatsappNumber", () => {
+  it("rejeita papel sem permissão", async () => {
+    mockGetCurrentUser.mockResolvedValue({
+      id: ME_ID,
+      platformRole: "viewer",
+    } as never);
+    const r = await updateWhatsappNumber({ id: NUM_ID, raw: "11988887777" });
+    expect(r).toEqual({ success: false, error: "Acesso negado" });
+  });
+
+  it("rejeita número inexistente", async () => {
+    mockPrisma.userWhatsappNumber.findUnique.mockResolvedValueOnce(null);
+    const r = await updateWhatsappNumber({ id: NUM_ID, raw: "11988887777" });
+    expect(r).toEqual({ success: false, error: "Número não encontrado" });
+  });
+
+  it("é no-op quando o número não muda", async () => {
+    mockPrisma.userWhatsappNumber.findUnique.mockResolvedValueOnce({
+      id: NUM_ID,
+      userId: USER_ID,
+      phoneE164: "+5511991234567",
+    });
+    const r = await updateWhatsappNumber({ id: NUM_ID, raw: "11991234567" });
+    expect(r).toEqual({
+      success: true,
+      data: { id: NUM_ID, phoneE164: "+5511991234567" },
+    });
+    expect(mockPrisma.userWhatsappNumber.update).not.toHaveBeenCalled();
+  });
+
+  it("rejeita novo número já em uso por outro usuário", async () => {
+    mockPrisma.userWhatsappNumber.findUnique
+      .mockResolvedValueOnce({
+        id: NUM_ID,
+        userId: USER_ID,
+        phoneE164: "+5511991234567",
+      })
+      .mockResolvedValueOnce({ id: "other", userId: OTHER_USER_ID });
+    const r = await updateWhatsappNumber({ id: NUM_ID, raw: "11988887777" });
+    expect(r).toEqual({
+      success: false,
+      error: "Este número já está em uso por outro usuário",
+    });
+  });
+
+  it("atualiza, normaliza e audita a troca", async () => {
+    mockPrisma.userWhatsappNumber.findUnique
+      .mockResolvedValueOnce({
+        id: NUM_ID,
+        userId: USER_ID,
+        phoneE164: "+5511991234567",
+      })
+      .mockResolvedValueOnce(null);
+    mockPrisma.userWhatsappNumber.update.mockResolvedValue({
+      id: NUM_ID,
+      phoneE164: "+5511988887777",
+    });
+    const r = await updateWhatsappNumber({ id: NUM_ID, raw: "11988887777" });
+    expect(r).toEqual({
+      success: true,
+      data: { id: NUM_ID, phoneE164: "+5511988887777" },
+    });
+    expect(mockPrisma.userWhatsappNumber.update).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { id: NUM_ID },
+        data: { phoneE164: "+5511988887777" },
+      }),
+    );
+    expect(mockLogAudit).toHaveBeenCalledWith(
+      expect.objectContaining({ action: "user_whatsapp_removed" }),
+    );
+    expect(mockLogAudit).toHaveBeenCalledWith(
+      expect.objectContaining({ action: "user_whatsapp_added" }),
+    );
   });
 });
 

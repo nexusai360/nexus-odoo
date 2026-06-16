@@ -132,6 +132,91 @@ export async function addWhatsappNumber(
   }
 }
 
+// --- updateWhatsappNumber --------------------------------------------------
+
+const UpdateInput = z.object({
+  id: z.string().uuid(),
+  raw: z.string().min(1).max(40),
+});
+
+export async function updateWhatsappNumber(
+  rawInput: unknown,
+): Promise<ActionResult<{ id: string; phoneE164: string }>> {
+  try {
+    const me = await getCurrentUser();
+    if (!me) return { success: false, error: "Não autenticado" };
+    if (!canManageWhatsapp(me.platformRole)) {
+      return { success: false, error: "Acesso negado" };
+    }
+
+    const parsed = UpdateInput.safeParse(rawInput);
+    if (!parsed.success) return { success: false, error: "Dados inválidos" };
+    const input = parsed.data;
+
+    let phoneE164: string;
+    try {
+      phoneE164 = normalizeE164(input.raw);
+    } catch {
+      return { success: false, error: "Número de WhatsApp inválido" };
+    }
+
+    const current = await prisma.userWhatsappNumber.findUnique({
+      where: { id: input.id },
+      select: { id: true, userId: true, phoneE164: true },
+    });
+    if (!current) return { success: false, error: "Número não encontrado" };
+
+    // Nada mudou: sai sem tocar o banco.
+    if (current.phoneE164 === phoneE164) {
+      return { success: true, data: { id: current.id, phoneE164 } };
+    }
+
+    // Unicidade global: o novo número não pode estar com outro registro.
+    const clash = await prisma.userWhatsappNumber.findUnique({
+      where: { phoneE164 },
+      select: { id: true, userId: true },
+    });
+    if (clash && clash.id !== current.id) {
+      return {
+        success: false,
+        error:
+          clash.userId === current.userId
+            ? "Este número já está vinculado a este usuário"
+            : "Este número já está em uso por outro usuário",
+      };
+    }
+
+    const updated = await prisma.userWhatsappNumber.update({
+      where: { id: current.id },
+      data: { phoneE164 },
+      select: { id: true, phoneE164: true },
+    });
+
+    // Não há ação de auditoria "updated" no enum; uma edição é registrada como
+    // a substituição do número antigo (removido) pelo novo (adicionado).
+    logAudit({
+      userId: me.id,
+      action: "user_whatsapp_removed",
+      targetType: "User",
+      targetId: current.userId,
+      details: { phoneE164: current.phoneE164, motivo: "edicao" },
+    });
+    logAudit({
+      userId: me.id,
+      action: "user_whatsapp_added",
+      targetType: "User",
+      targetId: current.userId,
+      details: { phoneE164, motivo: "edicao", anterior: current.phoneE164 },
+    });
+
+    revalidatePath("/usuarios");
+    return { success: true, data: updated };
+  } catch (err) {
+    console.error("[user-whatsapp.update]", err);
+    return { success: false, error: "Erro ao atualizar número" };
+  }
+}
+
 // --- removeWhatsappNumber --------------------------------------------------
 
 export async function removeWhatsappNumber(
