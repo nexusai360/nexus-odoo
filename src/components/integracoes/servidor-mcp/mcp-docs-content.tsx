@@ -881,7 +881,9 @@ export function McpDocsContent({ catalog, mcpUrl }: Props) {
     };
   }, []);
 
-  const totalTools = catalog.reduce((acc, m) => acc + m.readTools.length + m.writeTools.length, 0);
+  const totalRead = catalog.reduce((acc, m) => acc + m.readTools.length, 0);
+  const totalWrite = catalog.reduce((acc, m) => acc + m.writeTools.length, 0);
+  const totalTools = totalRead + totalWrite;
 
   const authExample = buildExamples(base, "estoque_saldo_produto", { armazemId: 1 });
 
@@ -911,8 +913,33 @@ export function McpDocsContent({ catalog, mcpUrl }: Props) {
               Documentação do Servidor MCP
             </h1>
             <p className="text-sm text-muted-foreground mt-1">
-              Endpoint semântico para agentes de IA, com {totalTools} tools de leitura e escrita sobre os dados do Odoo.
+              Endpoint semântico para agentes de IA, com {totalTools} tools sobre os dados do Odoo: {totalRead} de leitura e {totalWrite} de escrita.
             </p>
+          </div>
+
+          {/* Resumo por tipo: total, leitura e escrita logo no início. */}
+          <div className="flex flex-wrap gap-3">
+            <div className="flex items-center gap-2.5 rounded-xl border border-border bg-card px-4 py-2.5">
+              <Layers className="h-4 w-4 shrink-0 text-muted-foreground" />
+              <div className="leading-none">
+                <span className="text-lg font-semibold text-foreground">{totalTools}</span>
+                <span className="ml-1.5 text-xs text-muted-foreground">tools no total</span>
+              </div>
+            </div>
+            <div className="flex items-center gap-2.5 rounded-xl border border-emerald-500/30 bg-emerald-500/10 px-4 py-2.5">
+              <Layers className="h-4 w-4 shrink-0 text-emerald-600 dark:text-emerald-400" />
+              <div className="leading-none">
+                <span className="text-lg font-semibold text-emerald-600 dark:text-emerald-400">{totalRead}</span>
+                <span className="ml-1.5 text-xs text-emerald-700/80 dark:text-emerald-300/80">de leitura</span>
+              </div>
+            </div>
+            <div className="flex items-center gap-2.5 rounded-xl border border-violet-500/30 bg-violet-500/10 px-4 py-2.5">
+              <ShieldCheck className="h-4 w-4 shrink-0 text-violet-600 dark:text-violet-400" />
+              <div className="leading-none">
+                <span className="text-lg font-semibold text-violet-600 dark:text-violet-400">{totalWrite}</span>
+                <span className="ml-1.5 text-xs text-violet-700/80 dark:text-violet-300/80">de escrita</span>
+              </div>
+            </div>
           </div>
 
           <div className="flex flex-wrap items-center gap-3">
@@ -1253,9 +1280,14 @@ requests.post(
         {/* Tools de leitura , modo externo */}
         <motion.div variants={itemVariants} id="tools-leitura" className="space-y-5 scroll-mt-24">
           <div data-tour="mcp-docs-tools-head" className="space-y-2 scroll-mt-24">
-            <SectionTitle icon={Layers} color="text-emerald-500">
-              Tools de leitura
-            </SectionTitle>
+            <div className="flex flex-wrap items-center gap-2.5">
+              <SectionTitle icon={Layers} color="text-emerald-500">
+                Tools de leitura
+              </SectionTitle>
+              <span className="rounded-full border border-emerald-500/30 bg-emerald-500/10 px-2.5 py-0.5 text-xs font-semibold text-emerald-600 dark:text-emerald-400">
+                {totalRead} no total
+              </span>
+            </div>
             <p className="text-sm text-muted-foreground leading-relaxed">
               Consultas que não modificam dados. Não exigem Idempotency-Key. Agrupadas por módulo.
             </p>
@@ -1302,9 +1334,14 @@ requests.post(
 
         {/* Tools de escrita , modo externo */}
         <motion.div variants={itemVariants} id="tools-escrita" className="space-y-5 scroll-mt-24">
-          <SectionTitle icon={ShieldCheck} color="text-violet-500">
-            Tools de escrita
-          </SectionTitle>
+          <div className="flex flex-wrap items-center gap-2.5">
+            <SectionTitle icon={ShieldCheck} color="text-violet-500">
+              Tools de escrita
+            </SectionTitle>
+            <span className="rounded-full border border-violet-500/30 bg-violet-500/10 px-2.5 py-0.5 text-xs font-semibold text-violet-600 dark:text-violet-400">
+              {totalWrite} no total
+            </span>
+          </div>
           <p className="text-sm text-muted-foreground leading-relaxed">
             Mutações no Odoo. Exigem o header <code className="rounded bg-muted px-1 py-0.5 font-mono text-xs">Idempotency-Key</code> e capability marcada na chave. Só executáveis pelo modo externo. Ver <a href="#restricao-escrita" className="text-violet-600 dark:text-violet-400 hover:underline">Restrição de escrita</a> para o motivo.
           </p>

@@ -88,13 +88,16 @@ export async function rebuildFatoFinanceiroTitulo(
   const mapped = tituloRows.map((r) =>
     mapTituloRow(r.data as Record<string, unknown>),
   );
-  await prisma.$transaction(async (tx) => {
-    await tx.fatoFinanceiroTitulo.deleteMany({});
-    if (mapped.length) {
-      // data: mapped , sem injetar atualizadoEm (decisão N5)
-      await tx.fatoFinanceiroTitulo.createMany({ data: mapped });
-    }
-    await markFatoBuilt(tx, "fato_financeiro_titulo");
-  });
+  await prisma.$transaction(
+    async (tx) => {
+      await tx.fatoFinanceiroTitulo.deleteMany({});
+      if (mapped.length) {
+        // data: mapped , sem injetar atualizadoEm (decisão N5)
+        await tx.fatoFinanceiroTitulo.createMany({ data: mapped });
+      }
+      await markFatoBuilt(tx, "fato_financeiro_titulo");
+    },
+    { timeout: 180_000, maxWait: 15_000 },
+  );
   return mapped.length;
 }

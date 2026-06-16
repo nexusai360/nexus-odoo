@@ -88,15 +88,18 @@ export async function rebuildFatoEstoqueSaldo(
   const mapped = rawRows.map((r) =>
     mapSaldoRow(r.data as Record<string, unknown>, classMap),
   );
-  await prisma.$transaction(async (tx) => {
-    await tx.fatoEstoqueSaldo.deleteMany({});
-    if (mapped.length) {
-      await tx.fatoEstoqueSaldo.createMany({
-        data: mapped.map((m) => ({ ...m, atualizadoEm: new Date() })),
-      });
-    }
-    // Estado de build commitado atomicamente com os dados (CR-01).
-    await markFatoBuilt(tx, "fato_estoque_saldo");
-  });
+  await prisma.$transaction(
+    async (tx) => {
+      await tx.fatoEstoqueSaldo.deleteMany({});
+      if (mapped.length) {
+        await tx.fatoEstoqueSaldo.createMany({
+          data: mapped.map((m) => ({ ...m, atualizadoEm: new Date() })),
+        });
+      }
+      // Estado de build commitado atomicamente com os dados (CR-01).
+      await markFatoBuilt(tx, "fato_estoque_saldo");
+    },
+    { timeout: 180_000, maxWait: 15_000 },
+  );
   return mapped.length;
 }

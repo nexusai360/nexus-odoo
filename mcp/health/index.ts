@@ -61,8 +61,15 @@ const healthCheck = buildHealthHandler({
     };
   },
   getCacheFreshnessSeconds: async () => {
-    const result = await prisma.rawResPartner.aggregate({ _max: { syncedAt: true } });
-    const maxDate = result._max?.syncedAt;
+    // Liveness do WORKER: ha quanto tempo rodou o ultimo ciclo de sync (qualquer
+    // modelo), via syncState.updatedAt (tocado a cada ciclo, mesmo sem delta).
+    // Antes media MAX(rawResPartner.syncedAt), que so avanca quando ALGUM parceiro
+    // muda no Odoo , em horario de baixa atividade (madrugada) isso nao acontece,
+    // o freshness subia indefinidamente e o health marcava "degraded" com o worker
+    // 100% saudavel (falso positivo). Validado no cache real (2026-06-15):
+    // rawResPartner.syncedAt ~52min parado vs syncState.updatedAt ~2min.
+    const result = await prisma.syncState.aggregate({ _max: { updatedAt: true } });
+    const maxDate = result._max?.updatedAt;
     if (!maxDate) return 999999;
     return Math.floor((Date.now() - maxDate.getTime()) / 1000);
   },

@@ -45,13 +45,16 @@ export async function rebuildFatoFinanceiroSaldo(
   const mapped = rawRows.map((r) =>
     mapSaldoFinanceiroRow(r.data as Record<string, unknown>),
   );
-  await prisma.$transaction(async (tx) => {
-    await tx.fatoFinanceiroSaldo.deleteMany({});
-    if (mapped.length) {
-      // data: mapped , sem injetar atualizadoEm (divergência N5 vs fato-estoque-saldo)
-      await tx.fatoFinanceiroSaldo.createMany({ data: mapped });
-    }
-    await markFatoBuilt(tx, "fato_financeiro_saldo");
-  });
+  await prisma.$transaction(
+    async (tx) => {
+      await tx.fatoFinanceiroSaldo.deleteMany({});
+      if (mapped.length) {
+        // data: mapped , sem injetar atualizadoEm (divergência N5 vs fato-estoque-saldo)
+        await tx.fatoFinanceiroSaldo.createMany({ data: mapped });
+      }
+      await markFatoBuilt(tx, "fato_financeiro_saldo");
+    },
+    { timeout: 180_000, maxWait: 15_000 },
+  );
   return mapped.length;
 }

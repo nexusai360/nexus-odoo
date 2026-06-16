@@ -87,16 +87,19 @@ export async function rebuildFatoProdutoParado(
   const mapped = duracaoRows
     .map((r) => mapProdutoParadoRow(r, saldoMap))
     .filter((r): r is FatoProdutoParadoRow => r !== null && r.saldo > 0);
-  await prisma.$transaction(async (tx) => {
-    await tx.fatoProdutoParado.deleteMany({});
-    for (let i = 0; i < mapped.length; i += BATCH) {
-      await tx.fatoProdutoParado.createMany({
-        data: mapped.slice(i, i + BATCH),
-      });
-    }
-    // Estado de build commitado atomicamente com os dados (CR-01).
-    await markFatoBuilt(tx, "fato_produto_parado");
-  });
+  await prisma.$transaction(
+    async (tx) => {
+      await tx.fatoProdutoParado.deleteMany({});
+      for (let i = 0; i < mapped.length; i += BATCH) {
+        await tx.fatoProdutoParado.createMany({
+          data: mapped.slice(i, i + BATCH),
+        });
+      }
+      // Estado de build commitado atomicamente com os dados (CR-01).
+      await markFatoBuilt(tx, "fato_produto_parado");
+    },
+    { timeout: 180_000, maxWait: 15_000 },
+  );
   return mapped.length;
 }
 

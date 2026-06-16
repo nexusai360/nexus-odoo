@@ -1900,7 +1900,7 @@
       "id": "fiscal_faturamento_por_marca",
       "operation": "read",
       "module": "fiscal",
-      "descricao": "Faturamento agrupado por MARCA do produto (notas de saida autorizadas). Retorna top N marcas com quantidade de itens e valor total + totalGeral. Use para 'faturamento por marca', 'qual marca vende mais', 'top marcas'.",
+      "descricao": "Faturamento de venda (receita externa) agrupado por MARCA do produto (notas de saida autorizadas). Mesma base do faturamento do grupo: o total bate com fiscal_faturamento_periodo. Vendas entre empresas do grupo nao entram. Retorna top N marcas com itens e valor + totalGeral. Use para 'faturamento por marca', 'qual marca vende mais', 'top marcas'.",
       "capability": null,
       "sensitive": false,
       "addedInVersion": null,
@@ -1964,7 +1964,7 @@
       "id": "fiscal_faturamento_por_uf",
       "operation": "read",
       "module": "fiscal",
-      "descricao": "Faturamento agrupado por estado (UF do cliente da nota), ordenado por valor descendente. Use para 'faturamento por estado / por UF / por regiao' (regiao = conjunto de UFs). Agrega notas de saida autorizadas no periodo (default mes corrente). Para o recorte de DEMONSTRACAO use fiscal_demonstracoes.",
+      "descricao": "Faturamento de venda (receita externa) agrupado por estado (UF do cliente), ordenado por valor decrescente. Mesma base do faturamento do grupo: o total bate com fiscal_faturamento_periodo. Vendas entre empresas do grupo nao entram (somadas a parte). Use para 'faturamento por estado / por UF / por regiao' (regiao = conjunto de UFs). Periodo default = mes corrente. Para o recorte de DEMONSTRACAO use fiscal_demonstracoes.",
       "capability": null,
       "sensitive": false,
       "addedInVersion": null,
@@ -4260,5 +4260,5 @@
     }
   ],
   "count": 121,
-  "generatedAt": "2026-06-12T01:15:26.834Z"
+  "generatedAt": "2026-06-16T02:09:32.031Z"
 }

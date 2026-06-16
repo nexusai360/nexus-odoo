@@ -46,12 +46,15 @@ export async function rebuildFatoCartaCorrecao(prisma: PrismaClient): Promise<nu
   const mapped = rawRows.map((r) =>
     mapCartaCorrecaoRow(r.data as Record<string, unknown>),
   );
-  await prisma.$transaction(async (tx) => {
-    await tx.fatoCartaCorrecao.deleteMany({});
-    if (mapped.length) {
-      await tx.fatoCartaCorrecao.createMany({ data: mapped });
-    }
-    await markFatoBuilt(tx, "fato_carta_correcao");
-  });
+  await prisma.$transaction(
+    async (tx) => {
+      await tx.fatoCartaCorrecao.deleteMany({});
+      if (mapped.length) {
+        await tx.fatoCartaCorrecao.createMany({ data: mapped });
+      }
+      await markFatoBuilt(tx, "fato_carta_correcao");
+    },
+    { timeout: 180_000, maxWait: 15_000 },
+  );
   return mapped.length;
 }

@@ -52,12 +52,15 @@ export async function rebuildFatoContaContabil(
   const mapped = rawRows.map((r) =>
     mapContaContabilRow(r.data as Record<string, unknown>),
   );
-  await prisma.$transaction(async (tx) => {
-    await tx.fatoContaContabil.deleteMany({});
-    if (mapped.length) {
-      await tx.fatoContaContabil.createMany({ data: mapped });
-    }
-    await markFatoBuilt(tx, "fato_conta_contabil");
-  });
+  await prisma.$transaction(
+    async (tx) => {
+      await tx.fatoContaContabil.deleteMany({});
+      if (mapped.length) {
+        await tx.fatoContaContabil.createMany({ data: mapped });
+      }
+      await markFatoBuilt(tx, "fato_conta_contabil");
+    },
+    { timeout: 180_000, maxWait: 15_000 },
+  );
   return mapped.length;
 }
