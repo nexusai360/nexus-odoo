@@ -39,7 +39,7 @@ export interface HealthDeps {
   odooAuthenticate: (() => Promise<number>) | null;
   /** Retorna contagens de jobs da fila directed sync. */
   getQueueCounts: () => Promise<QueueCounts>;
-  /** Retorna freshness do cache em segundos (segundos desde o último updatedAt de rawResPartner). */
+  /** Liveness do worker: segundos desde o último ciclo de sync (MAX de syncState.updatedAt). */
   getCacheFreshnessSeconds: () => Promise<number>;
   /** Retorna o SHA do commit atual (curto, de env ou "unknown"). */
   getCommit: () => string;
