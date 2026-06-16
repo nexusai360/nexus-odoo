@@ -50,12 +50,15 @@ export async function rebuildFatoCertificado(prisma: PrismaClient): Promise<numb
   const mapped = rawRows.map((r) =>
     mapCertificadoRow(r.data as Record<string, unknown>),
   );
-  await prisma.$transaction(async (tx) => {
-    await tx.fatoCertificado.deleteMany({});
-    if (mapped.length) {
-      await tx.fatoCertificado.createMany({ data: mapped });
-    }
-    await markFatoBuilt(tx, "fato_certificado");
-  });
+  await prisma.$transaction(
+    async (tx) => {
+      await tx.fatoCertificado.deleteMany({});
+      if (mapped.length) {
+        await tx.fatoCertificado.createMany({ data: mapped });
+      }
+      await markFatoBuilt(tx, "fato_certificado");
+    },
+    { timeout: 180_000, maxWait: 15_000 },
+  );
   return mapped.length;
 }

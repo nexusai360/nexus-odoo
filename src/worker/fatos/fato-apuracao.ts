@@ -57,12 +57,15 @@ export async function rebuildFatoApuracao(prisma: PrismaClient): Promise<number>
     where: { rawDeleted: false },
   });
   const mapped = rawRows.map((r) => mapApuracaoRow(r.data as Record<string, unknown>));
-  await prisma.$transaction(async (tx) => {
-    await tx.fatoApuracao.deleteMany({});
-    if (mapped.length) {
-      await tx.fatoApuracao.createMany({ data: mapped });
-    }
-    await markFatoBuilt(tx, "fato_apuracao");
-  });
+  await prisma.$transaction(
+    async (tx) => {
+      await tx.fatoApuracao.deleteMany({});
+      if (mapped.length) {
+        await tx.fatoApuracao.createMany({ data: mapped });
+      }
+      await markFatoBuilt(tx, "fato_apuracao");
+    },
+    { timeout: 180_000, maxWait: 15_000 },
+  );
   return mapped.length;
 }

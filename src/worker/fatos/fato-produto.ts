@@ -120,12 +120,15 @@ export async function rebuildFatoProduto(prisma: PrismaClient): Promise<number> 
     .map((r) => mapProdutoRow(r.data as Record<string, unknown>))
     .filter((r) => Number.isFinite(r.odooId) && r.nome.length > 0);
 
-  await prisma.$transaction(async (tx) => {
-    await tx.fatoProduto.deleteMany({});
-    if (mapped.length) {
-      await tx.fatoProduto.createMany({ data: mapped, skipDuplicates: true });
-    }
-    await markFatoBuilt(tx, "fato_produto");
-  });
+  await prisma.$transaction(
+    async (tx) => {
+      await tx.fatoProduto.deleteMany({});
+      if (mapped.length) {
+        await tx.fatoProduto.createMany({ data: mapped, skipDuplicates: true });
+      }
+      await markFatoBuilt(tx, "fato_produto");
+    },
+    { timeout: 180_000, maxWait: 15_000 },
+  );
   return mapped.length;
 }
