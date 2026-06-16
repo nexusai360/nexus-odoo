@@ -84,6 +84,10 @@ interface UiMessage {
   kind?: "text" | "audio";
   audioBlobUrl?: string | null;
   durationSeconds?: number;
+  /** Mensagem do usuário transcrita de áudio: mostra a tag "Áudio transcrito". */
+  isAudio?: boolean;
+  /** Placeholder otimista enquanto o áudio do usuário está sendo transcrito. */
+  transcribing?: boolean;
   suggestions?: string[];
   /** True enquanto este turn está sendo streamado. */
   streaming?: boolean;
@@ -523,6 +527,7 @@ export function ChatPanel({
           id: userMsgId,
           role: "user",
           content: trimmed,
+          isAudio: opts?.isAudio,
           createdAt: new Date().toISOString(),
         },
       ]);
@@ -958,6 +963,25 @@ export function ChatPanel({
     async (blob: Blob) => {
       if (audioFlight) return;
       setAudioFlight(true);
+      // Placeholder otimista na conversa (lado do usuário): "Transcrevendo
+      // áudio" animado enquanto o POST roda, em vez de só o spinner do botão.
+      // Removido ao concluir (sucesso ou erro).
+      const transcribingId = "transcribing";
+      setIsSticky(true);
+      setMessages((prev) => [
+        ...prev.filter((m) => m.id !== transcribingId),
+        {
+          id: transcribingId,
+          role: "user",
+          content: "",
+          transcribing: true,
+          createdAt: new Date().toISOString(),
+        },
+      ]);
+      requestAnimationFrame(() => {
+        const el = scrollRef.current;
+        if (el) el.scrollTop = el.scrollHeight;
+      });
       try {
         const fd = new FormData();
         fd.append("audio", blob, "recording.webm");
@@ -972,12 +996,14 @@ export function ChatPanel({
         }
         const d = (await res.json()) as { text?: string };
         const text = (d?.text ?? "").trim();
+        setMessages((prev) => prev.filter((m) => m.id !== transcribingId));
         if (!text) {
           toast.error("Não conseguimos entender o áudio.");
           return;
         }
         void handleSend(text, { isAudio: true });
       } catch (err) {
+        setMessages((prev) => prev.filter((m) => m.id !== transcribingId));
         toast.error(
           `Falha ao transcrever: ${err instanceof Error ? err.message : String(err)}`,
         );
@@ -1176,6 +1202,8 @@ export function ChatPanel({
                       role={m.role}
                       content={m.content}
                       kind={m.kind}
+                      isAudio={m.isAudio}
+                      transcribing={m.transcribing}
                       audioBlobUrl={m.audioBlobUrl}
                       durationSeconds={m.durationSeconds}
                       streaming={m.streaming}

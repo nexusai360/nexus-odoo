@@ -23,6 +23,7 @@ import {
   Scale,
   Search,
   Loader2,
+  Mic,
   Sparkles,
 } from "lucide-react";
 import * as React from "react";
@@ -44,6 +45,12 @@ export interface AgentMessageProps {
   toolName?: string;
   /** "text" (default) ou "audio", mostra player + transcrição. */
   kind?: "text" | "audio";
+  /** Mensagem do usuário transcrita de áudio: mostra a tag "Áudio transcrito"
+   *  acima do texto (só vale para role="user", kind="text"). */
+  isAudio?: boolean;
+  /** Placeholder otimista enquanto o áudio do usuário está sendo transcrito:
+   *  renderiza a bolha animada "Transcrevendo áudio" no lado do usuário. */
+  transcribing?: boolean;
   /** URL do blob de áudio gravado (agente-audio-recorder, Task 3.3c). */
   audioBlobUrl?: string | null;
   /** Duração em segundos do áudio. */
@@ -118,6 +125,8 @@ export function AgentMessage({
   content,
   toolName,
   kind = "text",
+  isAudio = false,
+  transcribing = false,
   audioBlobUrl,
   durationSeconds,
   streaming = false,
@@ -154,8 +163,38 @@ export function AgentMessage({
 
   if (role === "loading") return <LoadingBubble />;
   if (role === "tool") return <ToolBubble name={toolName ?? "tool"} />;
+  // Placeholder otimista (lado do usuário) enquanto o áudio é transcrito.
+  if (transcribing) return <TranscribingBubble />;
 
   const isUser = role === "user";
+
+  // Mensagem do usuário transcrita de áudio: bolha violeta com a tag
+  // "Áudio transcrito" no topo (espelha o header do "Raciocínio", mas do lado
+  // do usuário) + o texto transcrito embaixo.
+  if (isUser && isAudio && kind !== "audio") {
+    return (
+      <div className="group/msg flex w-full justify-end">
+        <div className="relative max-w-[80%]">
+          <div className="w-fit max-w-full rounded-xl bg-violet-600/15 px-3 py-2 text-sm leading-relaxed text-foreground">
+            <div className="mb-1 flex items-center gap-1.5 text-[11px] font-medium text-violet-600 dark:text-violet-300">
+              <Mic className="h-3 w-3" aria-hidden="true" />
+              <span>Áudio transcrito</span>
+            </div>
+            <span className="whitespace-pre-wrap">{content}</span>
+          </div>
+          {createdAt ? (
+            <div
+              className="mt-1 pr-3.5 text-right text-[10px] tabular-nums text-muted-foreground/70"
+              suppressHydrationWarning
+            >
+              {formatRelativeDateTime(createdAt)}
+            </div>
+          ) : null}
+          {content.length > 0 ? <CopyButton text={content} /> : null}
+        </div>
+      </div>
+    );
+  }
 
   // Mensagens de áudio (usuário): player + transcrição
   if (kind === "audio") {
@@ -777,6 +816,28 @@ function LoadingBubble() {
           <Dot delay={0.3} />
         </span>
         <span>Agente pensando…</span>
+      </div>
+    </div>
+  );
+}
+
+// Placeholder otimista (lado do usuário) durante a transcrição do áudio.
+// Espelha o LoadingBubble da IA, mas alinhado à direita e em violeta , a mesma
+// linguagem visual da bolha do usuário , com os 3 dots animados (agentDotBounce).
+function TranscribingBubble() {
+  return (
+    <div className="flex w-full justify-end">
+      <div className="flex items-center gap-2 rounded-xl bg-violet-600/15 px-3.5 py-2.5 text-sm text-foreground">
+        <Mic
+          className="h-3.5 w-3.5 shrink-0 text-violet-600 dark:text-violet-300"
+          aria-hidden="true"
+        />
+        <span>Transcrevendo áudio</span>
+        <span className="flex gap-1" aria-hidden="true">
+          <Dot delay={0} />
+          <Dot delay={0.15} />
+          <Dot delay={0.3} />
+        </span>
       </div>
     </div>
   );
