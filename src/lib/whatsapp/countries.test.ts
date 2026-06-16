@@ -7,6 +7,8 @@ import {
   formatNational,
   formatE164ForDisplay,
   searchCountries,
+  areEquivalentNumbers,
+  phoneVariants,
 } from "./countries";
 
 describe("COUNTRIES", () => {
@@ -103,6 +105,72 @@ describe("searchCountries", () => {
 
   it("sem correspondência devolve lista vazia", () => {
     expect(searchCountries("xyzzy")).toHaveLength(0);
+  });
+});
+
+describe("areEquivalentNumbers (nono dígito BR)", () => {
+  it("celular com e sem o nono dígito são o mesmo número", () => {
+    expect(
+      areEquivalentNumbers("+5561984409067", "+556184409067"),
+    ).toBe(true);
+  });
+
+  it("é simétrico (sem 9 vs com 9)", () => {
+    expect(
+      areEquivalentNumbers("+556184409067", "+5561984409067"),
+    ).toBe(true);
+  });
+
+  it("números idênticos são equivalentes", () => {
+    expect(
+      areEquivalentNumbers("+5561984409067", "+5561984409067"),
+    ).toBe(true);
+  });
+
+  it("DDD diferente não é equivalente", () => {
+    expect(
+      areEquivalentNumbers("+5561984409067", "+5562984409067"),
+    ).toBe(false);
+  });
+
+  it("último dígito diferente não é equivalente", () => {
+    expect(
+      areEquivalentNumbers("+5561984409067", "+5561984409068"),
+    ).toBe(false);
+  });
+
+  it("fixo (10 dígitos) não vira celular pela regra do 9", () => {
+    // +556133224455 é fixo; +5561933224455 teria o 9 na frente de um número
+    // que começa com 3 (faixa de fixo), logo não é a mesma coisa.
+    expect(
+      areEquivalentNumbers("+556133224455", "+5561933224455"),
+    ).toBe(false);
+  });
+
+  it("regra do 9 não vale fora do Brasil", () => {
+    expect(areEquivalentNumbers("+12025550123", "+1202550123")).toBe(false);
+  });
+});
+
+describe("phoneVariants", () => {
+  it("celular com 9 inclui a forma sem 9", () => {
+    const v = phoneVariants("+5561984409067");
+    expect(v).toContain("+5561984409067");
+    expect(v).toContain("+556184409067");
+  });
+
+  it("celular sem 9 inclui a forma com 9", () => {
+    const v = phoneVariants("+556184409067");
+    expect(v).toContain("+556184409067");
+    expect(v).toContain("+5561984409067");
+  });
+
+  it("fixo não gera variante de nono dígito", () => {
+    expect(phoneVariants("+556133224455")).toEqual(["+556133224455"]);
+  });
+
+  it("número fora do Brasil não gera variantes", () => {
+    expect(phoneVariants("+12025550123")).toEqual(["+12025550123"]);
   });
 });
 

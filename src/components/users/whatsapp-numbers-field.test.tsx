@@ -84,6 +84,22 @@ describe("WhatsappNumbersField (rascunho)", () => {
     expect(onDraftChange).toHaveBeenLastCalledWith(["+5511988887777"]);
   });
 
+  test("bloqueia o mesmo celular sem o nono dígito quando já há o com nono", async () => {
+    const user = userEvent.setup();
+    render(<WhatsappNumbersField onDraftChange={() => {}} />);
+    const input = screen.getByPlaceholderText("11 99123-4567");
+
+    await user.type(input, "61984409067"); // com o 9
+    await user.click(screen.getByRole("button", { name: "Adicionar número" }));
+    expect(screen.getByText("+55 61 98440-9067")).toBeInTheDocument();
+
+    await user.type(input, "6184409067"); // o mesmo, sem o 9
+    await user.click(screen.getByRole("button", { name: "Adicionar número" }));
+    expect(screen.getByRole("alert")).toHaveTextContent(
+      "Este número já está cadastrado",
+    );
+  });
+
   test("rejeita número brasileiro com quantidade de dígitos inválida", async () => {
     const user = userEvent.setup();
     render(<WhatsappNumbersField onDraftChange={() => {}} />);

@@ -11,6 +11,7 @@ import { cn } from "@/lib/utils";
 import {
   type Country,
   DEFAULT_COUNTRY,
+  areEquivalentNumbers,
   composeE164,
   findCountryByE164,
   formatE164ForDisplay,
@@ -134,14 +135,20 @@ export function WhatsappNumbersField({
     const e164 = composeE164(country.dial, national);
 
     if (isDraft) {
-      if (draftNumbers.includes(e164)) {
-        setError("Número já adicionado.");
+      if (draftNumbers.some((n) => areEquivalentNumbers(n, e164))) {
+        setError("Este número já está cadastrado.");
         return;
       }
       const next = [...draftNumbers, e164];
       setDraftNumbers(next);
       setNational("");
       onDraftChange?.(next);
+      return;
+    }
+
+    // Feedback imediato (o backend também valida com a mesma equivalência).
+    if (numbers.some((n) => areEquivalentNumbers(n.phoneE164, e164))) {
+      setError("Este número já está cadastrado.");
       return;
     }
 
@@ -184,8 +191,12 @@ export function WhatsappNumbersField({
     const e164 = composeE164(editCountry.dial, editNational);
 
     if (editing.mode === "draft") {
-      if (draftNumbers.some((n, i) => n === e164 && i !== editing.index)) {
-        setEditError("Número já adicionado.");
+      if (
+        draftNumbers.some(
+          (n, i) => i !== editing.index && areEquivalentNumbers(n, e164),
+        )
+      ) {
+        setEditError("Este número já está cadastrado.");
         return;
       }
       const next = draftNumbers.map((n, i) =>
@@ -197,8 +208,18 @@ export function WhatsappNumbersField({
       return;
     }
 
-    setEditError(null);
     const targetId = editing.id;
+    // Feedback imediato (o backend também valida com a mesma equivalência).
+    if (
+      numbers.some(
+        (n) => n.id !== targetId && areEquivalentNumbers(n.phoneE164, e164),
+      )
+    ) {
+      setEditError("Este número já está cadastrado.");
+      return;
+    }
+
+    setEditError(null);
     setBusyKey(targetId);
     start(async () => {
       const res = await updateWhatsappNumber({ id: targetId, raw: e164 });

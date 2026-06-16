@@ -138,6 +138,60 @@ export function formatNational(
   return d;
 }
 
+/** Dígito inicial de assinante de celular no Brasil (faixa 6 a 9). */
+function isCelularStart(digit: string): boolean {
+  return digit >= "6" && digit <= "9";
+}
+
+/**
+ * Chave canônica de equivalência de um número. No Brasil, um celular com o nono
+ * dígito (`9`) e o mesmo celular sem o nono dígito representam a mesma linha, e
+ * por isso colapsam na mesma chave (sempre na forma sem o `9`). Fixos e números
+ * de outros países usam os próprios dígitos, sem regra do nono dígito.
+ */
+export function phoneEquivalenceKey(e164: string): string {
+  const { country, nationalDigits } = splitE164(e164);
+  if (country?.iso !== "BR") return onlyDigits(e164);
+
+  const ddd = nationalDigits.slice(0, 2);
+  let sub = nationalDigits.slice(2);
+  // Só colapsa quando é mesmo um celular: 9 dígitos, começando com 9 e o
+  // dígito seguinte na faixa de celular (6 a 9). Assim um fixo nunca é
+  // confundido com um celular.
+  if (sub.length === 9 && sub[0] === "9" && isCelularStart(sub[1])) {
+    sub = sub.slice(1);
+  }
+  return `55${ddd}${sub}`;
+}
+
+/**
+ * True quando dois números representam a mesma linha, considerando a regra do
+ * nono dígito de celular brasileiro (com e sem o `9`).
+ */
+export function areEquivalentNumbers(a: string, b: string): boolean {
+  return phoneEquivalenceKey(a) === phoneEquivalenceKey(b);
+}
+
+/**
+ * Formas E.164 equivalentes a um número, para busca de duplicidade no banco
+ * (`phoneE164 IN (...)`). Para celular brasileiro inclui a forma com e sem o
+ * nono dígito; para fixo e demais países, só o próprio número.
+ */
+export function phoneVariants(e164: string): string[] {
+  const { country, nationalDigits } = splitE164(e164);
+  if (country?.iso !== "BR") return [e164];
+
+  const ddd = nationalDigits.slice(0, 2);
+  const sub = nationalDigits.slice(2);
+  const variants = new Set<string>([e164]);
+  if (sub.length === 9 && sub[0] === "9" && isCelularStart(sub[1])) {
+    variants.add(composeE164(country.dial, `${ddd}${sub.slice(1)}`));
+  } else if (sub.length === 8 && isCelularStart(sub[0])) {
+    variants.add(composeE164(country.dial, `${ddd}9${sub}`));
+  }
+  return [...variants];
+}
+
 /**
  * Formata um E.164 completo para exibição, com DDI separado do número nacional
  * (ex.: "+55 61 98440-9067"). Números sem país reconhecido voltam como `+` mais

@@ -6,6 +6,7 @@ import { prisma } from "@/lib/prisma";
 import { getCurrentUser } from "@/lib/auth";
 import { logAudit } from "@/lib/audit";
 import { normalizeE164 } from "@/lib/whatsapp/resolve";
+import { phoneVariants } from "@/lib/whatsapp/countries";
 import type { ActionResult } from "@/lib/actions/users";
 
 export interface WhatsappNumberItem {
@@ -83,9 +84,11 @@ export async function addWhatsappNumber(
       return { success: false, error: "Número de WhatsApp inválido" };
     }
 
-    // Unicidade global: o número não pode estar vinculado a outro usuário.
-    const existing = await prisma.userWhatsappNumber.findUnique({
-      where: { phoneE164 },
+    // Unicidade global, tratando a equivalência do nono dígito (celular BR com
+    // e sem o 9 é a mesma linha): o número não pode já existir em nenhuma das
+    // suas formas equivalentes.
+    const existing = await prisma.userWhatsappNumber.findFirst({
+      where: { phoneE164: { in: phoneVariants(phoneE164) } },
       select: { id: true, userId: true },
     });
     if (existing) {
@@ -171,9 +174,13 @@ export async function updateWhatsappNumber(
       return { success: true, data: { id: current.id, phoneE164 } };
     }
 
-    // Unicidade global: o novo número não pode estar com outro registro.
-    const clash = await prisma.userWhatsappNumber.findUnique({
-      where: { phoneE164 },
+    // Unicidade global (com equivalência do nono dígito), ignorando o próprio
+    // registro: o novo número não pode colidir com outro já cadastrado.
+    const clash = await prisma.userWhatsappNumber.findFirst({
+      where: {
+        phoneE164: { in: phoneVariants(phoneE164) },
+        id: { not: current.id },
+      },
       select: { id: true, userId: true },
     });
     if (clash && clash.id !== current.id) {

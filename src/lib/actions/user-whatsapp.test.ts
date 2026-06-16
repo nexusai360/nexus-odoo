@@ -18,6 +18,7 @@ jest.mock("@/lib/prisma", () => ({
     user: { findUnique: jest.fn() },
     userWhatsappNumber: {
       findUnique: jest.fn(),
+      findFirst: jest.fn(),
       findMany: jest.fn(),
       create: jest.fn(),
       update: jest.fn(),
@@ -33,6 +34,7 @@ const mockPrisma = jest.mocked(prisma) as unknown as {
   user: { findUnique: jest.Mock };
   userWhatsappNumber: {
     findUnique: jest.Mock;
+    findFirst: jest.Mock;
     findMany: jest.Mock;
     create: jest.Mock;
     update: jest.Mock;
@@ -72,7 +74,7 @@ describe("addWhatsappNumber", () => {
   });
 
   it("rejeita número já em uso por outro usuário", async () => {
-    mockPrisma.userWhatsappNumber.findUnique.mockResolvedValue({
+    mockPrisma.userWhatsappNumber.findFirst.mockResolvedValue({
       id: NUM_ID,
       userId: OTHER_USER_ID,
     });
@@ -84,7 +86,7 @@ describe("addWhatsappNumber", () => {
   });
 
   it("grava o número, normaliza e audita", async () => {
-    mockPrisma.userWhatsappNumber.findUnique.mockResolvedValue(null);
+    mockPrisma.userWhatsappNumber.findFirst.mockResolvedValue(null);
     mockPrisma.user.findUnique.mockResolvedValue({ id: USER_ID });
     mockPrisma.userWhatsappNumber.create.mockResolvedValue({
       id: NUM_ID,
@@ -109,7 +111,7 @@ describe("addWhatsappNumber", () => {
   });
 
   it("rejeita usuário-alvo inexistente", async () => {
-    mockPrisma.userWhatsappNumber.findUnique.mockResolvedValue(null);
+    mockPrisma.userWhatsappNumber.findFirst.mockResolvedValue(null);
     mockPrisma.user.findUnique.mockResolvedValue(null);
     const r = await addWhatsappNumber({ userId: USER_ID, raw: "11991234567" });
     expect(r).toEqual({ success: false, error: "Usuário não encontrado" });
@@ -181,13 +183,15 @@ describe("updateWhatsappNumber", () => {
   });
 
   it("rejeita novo número já em uso por outro usuário", async () => {
-    mockPrisma.userWhatsappNumber.findUnique
-      .mockResolvedValueOnce({
-        id: NUM_ID,
-        userId: USER_ID,
-        phoneE164: "+5511991234567",
-      })
-      .mockResolvedValueOnce({ id: "other", userId: OTHER_USER_ID });
+    mockPrisma.userWhatsappNumber.findUnique.mockResolvedValueOnce({
+      id: NUM_ID,
+      userId: USER_ID,
+      phoneE164: "+5511991234567",
+    });
+    mockPrisma.userWhatsappNumber.findFirst.mockResolvedValueOnce({
+      id: "other",
+      userId: OTHER_USER_ID,
+    });
     const r = await updateWhatsappNumber({ id: NUM_ID, raw: "11988887777" });
     expect(r).toEqual({
       success: false,
@@ -196,13 +200,12 @@ describe("updateWhatsappNumber", () => {
   });
 
   it("atualiza, normaliza e audita a troca", async () => {
-    mockPrisma.userWhatsappNumber.findUnique
-      .mockResolvedValueOnce({
-        id: NUM_ID,
-        userId: USER_ID,
-        phoneE164: "+5511991234567",
-      })
-      .mockResolvedValueOnce(null);
+    mockPrisma.userWhatsappNumber.findUnique.mockResolvedValueOnce({
+      id: NUM_ID,
+      userId: USER_ID,
+      phoneE164: "+5511991234567",
+    });
+    mockPrisma.userWhatsappNumber.findFirst.mockResolvedValueOnce(null);
     mockPrisma.userWhatsappNumber.update.mockResolvedValue({
       id: NUM_ID,
       phoneE164: "+5511988887777",
