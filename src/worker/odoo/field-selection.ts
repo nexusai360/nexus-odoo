@@ -2,8 +2,16 @@
 import type { OdooClient } from "./client";
 import { MODEL_CATALOG } from "../catalog/model-catalog";
 
-/** Tipos de campo excluídos da sincronização (listas de filhos, redundantes). */
-const EXCLUDED_TYPES = new Set(["one2many", "many2many"]);
+/**
+ * Tipos de campo excluídos da sincronização:
+ *  - one2many / many2many: listas de filhos, redundantes (vêm pelos próprios modelos).
+ *  - binary: blobs base64 (imagens de produto image_*, arquivos, certificados...).
+ *    Inúteis para um cache de relatórios/MCP e o maior consumidor de disco/RAM
+ *    do banco , os campos image_* do Odoo (fields.Image estende fields.Binary)
+ *    chegavam a 170-260 KB por linha, inflando raw_sped_produto* para ~1,5 GB e
+ *    estourando o backend do Postgres no reconcile. Nenhum builder/query lê blob.
+ */
+const EXCLUDED_TYPES = new Set(["one2many", "many2many", "binary"]);
 
 /** Cache por modelo , fields_get é chamado no máximo uma vez por processo. */
 const cache = new Map<string, string[]>();
