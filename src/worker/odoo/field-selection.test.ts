@@ -28,6 +28,26 @@ describe("getModelFields", () => {
     expect(fields).not.toContain("computed_field");
   });
 
+  it("exclui campos binary (imagens image_* e blobs) mesmo com store=true", async () => {
+    const client = fakeClient({
+      id: { type: "integer", store: true },
+      nome: { type: "char", store: true },
+      image_1920: { type: "binary", store: true },
+      image_1024: { type: "binary", store: true },
+      image_512: { type: "binary", store: true },
+      image_128: { type: "binary", store: true },
+      arquivo_pdf: { type: "binary", store: true },
+    });
+    const fields = await getModelFields(client, "sped.produto");
+    expect(fields).toContain("id");
+    expect(fields).toContain("nome");
+    expect(fields).not.toContain("image_1920");
+    expect(fields).not.toContain("image_1024");
+    expect(fields).not.toContain("image_512");
+    expect(fields).not.toContain("image_128");
+    expect(fields).not.toContain("arquivo_pdf");
+  });
+
   it("garante que id está sempre presente mesmo quando store=false", async () => {
     const client = fakeClient({
       id: { type: "integer", store: false },
