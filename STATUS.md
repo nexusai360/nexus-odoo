@@ -96,6 +96,41 @@
 > (`docs/superpowers/plans/PROGRESSO-financeiro-regime.md`).
 > Modo autônomo é o padrão (`CLAUDE.md §6`).
 
+## 2026-06-16 , Gestão de memória do Postgres de prod: banco 2,49 GB → 933 MB (branch `feat/nex-reconstrucao`)
+
+Sessão de estabilização + otimização da infra do banco de prod. Tudo em produção.
+
+- **Sintoma:** `sped.produto` e `sped.produto.lote.serie` presos em `erro`/`rodando`;
+  worker logando `database system is not yet accepting connections` recorrente; ciclos
+  lentíssimos (incremental 73-163s, reconcile 82s).
+- **Causa raiz 1 (estancada):** o container `nexus-odoo_db` tinha teto **hard de 1 GB**
+  (cgroup). O backend do Postgres sofria **OOM interno** no reconcile pesado e fazia crash
+  recovery (container de pé desde 05/06, sem restart , era crash do backend, não do
+  container). **Fix emergencial:** rebalance de RAM via Portainer API , **db 1 GB → 2 GB**,
+  **worker 4,5 GB → 3 GB** (net no nó −0,5 GB; o nó tem 31 GB compartilhados entre todos os stacks).
+- **Causa raiz 2 (definitiva, a pedido do usuário "limpar o desnecessário, não ficar
+  aumentando RAM"):** as tabelas `raw_*` guardavam as **imagens base64 dos produtos/parceiros**
+  (campos `image_*` , `fields.Image` do Odoo estende `Binary`), **170-260 KB por linha**.
+  `raw_sped_produto_lote_serie` (1,6 GB) + `raw_sped_produto` (656 MB) = **63 % do banco**.
+  Carregar/detoastar isso estourava a RAM. **Nenhum builder/query lê `image_*`** (só `next/image` na UI).
+- **Fix de código (PR #118, em prod):** `field-selection.ts` adiciona `binary` a
+  `EXCLUDED_TYPES` , para de puxar **todos os blobs de todos os 125 modelos** no `fields_get`
+  (+ teste). Deploy via `ship.py` (CI verde, build-app/mcp success, Shepherd).
+- **Fix de dados (prod):** `scripts/_prod-db-cleanup-images.py --apply` (worker escalado a 0
+  para evitar contenção do `VACUUM FULL`) , stripou `image_*` de **11 tabelas** + `VACUUM FULL`:
+  `lote.serie` 1634 MB → **10 MB**, `produto` 656 MB → **7,8 MB**, `res_partner` 21 MB → 12 MB.
+  **Banco: 2488 MB → 933 MB.** Worker subiu de volta com o código novo (`:latest`).
+- **Imagens não se perdem:** continuam **na fonte (Odoo)**. Feature de foto futura (produtos/
+  funcionários/clientes) = pipeline dedicado (on-demand ou sync seletivo de 1 resolução para
+  object storage por URL), **nunca** base64 no cache de relatórios.
+- **Scripts de gestão (novos, em `scripts/`):** `_prod-db-query.py` (SELECT em prod via
+  Portainer exec), `_prod-db-diag.py` (config de memória, top tabelas, bloat, conexões),
+  `_prod-db-cleanup-images.py` (strip + vacuum, dry-run por padrão), `_rebalance-db-memory.py`
+  (ajusta `Limits.MemoryBytes` dos services).
+- **PENDENTE:** (1) validar `lote.serie` → `ok` ressincronizando slim sem rebloat de imagem;
+  (2) com o banco enxuto, **DEVOLVER RAM** (db 2 GB → 1/1,5 GB, worker 3 GB → 1/1,5 GB) ,
+  decisão do usuário foi **medir a estabilidade antes** de definir o alvo.
+
 ## 2026-06-10 , Milestone Faturamento Real Consolidado FECHADO + saga do deploy (branch `feat/nex-reconstrucao`)
 
 **Tudo MERGED para `main` e deployado.** Cada fase: spec → 2 reviews adversariais Opus (validadas no cache)
