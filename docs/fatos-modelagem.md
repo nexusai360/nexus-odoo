@@ -4,6 +4,13 @@
 
 ## Estado atual
 
+> **NOTA (2026-06-15): este bloco está SUPERADO, mantido como histórico.** Era o
+> registro da decisão de adiar a modelagem definitiva (F2, maio/2026). A F4 já
+> entregou a camada de fatos completa: hoje o schema tem **40 modelos `fato_*`** e
+> **126 tabelas `raw_*`**, cobrindo estoque, financeiro, fiscal, comercial,
+> contábil, CRM e produção, não mais um único fato provisório. O texto abaixo
+> reflete o estado de 2026-05-16.
+
 A F2 entregou a camada `raw` (79 tabelas JSONB, espelho do Odoo) e **um único
 fato provisório**: `fato_estoque_saldo`, derivado de `raw_estoque_saldo_hoje`.
 

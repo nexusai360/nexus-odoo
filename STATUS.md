@@ -1,7 +1,9 @@
 # STATUS — nexus-odoo
 
-> **Ponto de retomada entre sessões.** Atualizado em **2026-06-10** , Milestone **Faturamento Real
-> Consolidado COMPLETO e em produção** (Fases 1, 2, 2.5, 2.6, 3, 4 + fix de CI). Catálogo: **107 tools**.
+> **Ponto de retomada entre sessões.** Atualizado em **2026-06-15** , Milestone **Faturamento Real
+> Consolidado COMPLETO e em produção** (Fases 1, 2, 2.5, 2.6, 3, 4 + fix de CI). Catálogo: **121 tools**
+> (112 de leitura, 9 de escrita), sobre **40 fato_\*** e **126 raw_\***. (Números antigos citados nas seções
+> históricas abaixo , 107/106/120/93/33 tools , refletem snapshots anteriores; o vigente é 121.)
 > **DEPLOY ESTABILIZADO** , raiz dos emails de falha corrigida (#88, deploy calmo espelhando o nexus-insights);
 > 3 deploys calmos seguidos verdes; prod `/api/health` `{"ok":true}`.
 > **Fase 5 (faturamento por regime tributário) ENTREGUE E EM PRODUÇÃO** , `fiscal_faturamento_por_regime`
