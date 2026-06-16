@@ -19,6 +19,7 @@ import {
   Crown,
   IdCard,
   Loader2,
+  MessageCircle,
   ShieldCheck,
   UserCheck,
   UserX,
@@ -839,7 +840,16 @@ function StepIdentity({
       ) : null}
 
       {/* Números de WhatsApp , edição grava na hora; criação fica em rascunho */}
-      <div className="rounded-lg border border-border bg-muted/20 px-4 py-3">
+      <div className="space-y-2.5 rounded-lg border border-border bg-muted/20 px-4 py-3">
+        <div className="flex items-center gap-2">
+          <MessageCircle
+            className="h-4 w-4 text-muted-foreground"
+            aria-hidden="true"
+          />
+          <p className="text-sm font-medium text-foreground/80">
+            Números de WhatsApp
+          </p>
+        </div>
         {isEdit && editUserId ? (
           <WhatsappNumbersField userId={editUserId} />
         ) : (
