@@ -5,8 +5,16 @@ import { Loader2, MessageCircle, Plus, X } from "lucide-react";
 import { toast } from "sonner";
 
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+import { CountryFlag } from "@/components/ui/country-flag";
+import { PhoneInput } from "@/components/ui/phone-input";
 import { cn } from "@/lib/utils";
+import {
+  type Country,
+  DEFAULT_COUNTRY,
+  composeE164,
+  findCountryByE164,
+  formatE164ForDisplay,
+} from "@/lib/whatsapp/countries";
 import {
   addWhatsappNumber,
   listWhatsappNumbers,
@@ -25,14 +33,61 @@ interface WhatsappNumbersFieldProps {
   onDraftChange?: (numbers: string[]) => void;
 }
 
+/** Chip de um número cadastrado: bandeira do país + número formatado + remover. */
+function NumberChip({
+  e164,
+  onRemove,
+  removing,
+  disabled,
+}: {
+  e164: string;
+  onRemove: () => void;
+  removing?: boolean;
+  disabled?: boolean;
+}) {
+  const country = findCountryByE164(e164);
+  return (
+    <li className="inline-flex items-center gap-2 rounded-full border border-border bg-muted/40 py-1 pl-2.5 pr-1.5 text-xs">
+      <CountryFlag
+        iso={country?.iso ?? ""}
+        title={country?.name}
+        className="h-3 w-[18px]"
+      />
+      <span className="tabular-nums text-foreground">
+        {formatE164ForDisplay(e164)}
+      </span>
+      <button
+        type="button"
+        onClick={onRemove}
+        disabled={disabled}
+        aria-label={`Remover ${formatE164ForDisplay(e164)}`}
+        className={cn(
+          "inline-flex h-5 w-5 items-center justify-center rounded-full transition-colors",
+          "hover:bg-destructive/15 hover:text-destructive focus:outline-none focus-visible:ring-2 focus-visible:ring-ring/50",
+          "disabled:cursor-not-allowed disabled:opacity-50",
+        )}
+      >
+        {removing ? (
+          <Loader2 className="h-3 w-3 animate-spin" aria-hidden="true" />
+        ) : (
+          <X className="h-3 w-3" aria-hidden="true" />
+        )}
+      </button>
+    </li>
+  );
+}
+
 /**
- * Seção "Números de WhatsApp" do formulário de usuário.
+ * Seção "Números de WhatsApp" do formulário de usuário e do perfil.
  *
  * Modo edição (`userId` presente): lista de chips com adicionar/remover via
  * Server Actions imediatas.
  *
  * Modo rascunho (sem `userId`): os números são mantidos no estado local e
  * reportados via `onDraftChange`; a criação do usuário os grava em seguida.
+ *
+ * A entrada usa o `PhoneInput`: seletor de país (bandeira + DDI, Brasil padrão)
+ * e o número nacional. O E.164 canônico é montado no envio (`composeE164`).
  */
 export function WhatsappNumbersField({
   userId,
@@ -42,7 +97,8 @@ export function WhatsappNumbersField({
 
   const [numbers, setNumbers] = useState<WhatsappNumberItem[]>([]);
   const [draftNumbers, setDraftNumbers] = useState<string[]>([]);
-  const [draft, setDraft] = useState("");
+  const [country, setCountry] = useState<Country>(DEFAULT_COUNTRY);
+  const [national, setNational] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(!isDraft);
   const [pending, start] = useTransition();
@@ -67,30 +123,41 @@ export function WhatsappNumbersField({
     void reload();
   }, [reload, isDraft]);
 
+  function validate(): string | null {
+    const digits = national.replace(/\D/g, "");
+    if (!digits) return "Informe o número.";
+    if (country.iso === "BR" && digits.length !== 10 && digits.length !== 11) {
+      return "Para o Brasil, informe DDD + número (10 ou 11 dígitos).";
+    }
+    if (digits.length < 8) return "Número muito curto.";
+    return null;
+  }
+
   function handleAdd() {
-    const raw = draft.trim();
-    if (!raw) {
-      setError("Informe um número.");
+    const validationError = validate();
+    if (validationError) {
+      setError(validationError);
       return;
     }
     setError(null);
+    const e164 = composeE164(country.dial, national);
 
     if (isDraft) {
-      if (draftNumbers.includes(raw)) {
+      if (draftNumbers.includes(e164)) {
         setError("Número já adicionado.");
         return;
       }
-      const next = [...draftNumbers, raw];
+      const next = [...draftNumbers, e164];
       setDraftNumbers(next);
-      setDraft("");
+      setNational("");
       onDraftChange?.(next);
       return;
     }
 
     start(async () => {
-      const res = await addWhatsappNumber({ userId, raw });
+      const res = await addWhatsappNumber({ userId, raw: e164 });
       if (res.success) {
-        setDraft("");
+        setNational("");
         await reload();
         toast.success("Número adicionado.");
       } else {
@@ -146,52 +213,20 @@ export function WhatsappNumbersField({
         <ul className="flex flex-wrap gap-2" aria-label="Números cadastrados">
           {isDraft
             ? draftNumbers.map((n) => (
-                <li
+                <NumberChip
                   key={n}
-                  className="inline-flex items-center gap-1.5 rounded-full border border-border bg-muted/40 py-1 pl-3 pr-1.5 text-xs"
-                >
-                  <span className="font-mono text-foreground">{n}</span>
-                  <button
-                    type="button"
-                    onClick={() => handleRemoveDraft(n)}
-                    aria-label={`Remover ${n}`}
-                    className={cn(
-                      "inline-flex h-5 w-5 items-center justify-center rounded-full transition-colors",
-                      "hover:bg-destructive/15 hover:text-destructive focus:outline-none focus-visible:ring-2 focus-visible:ring-ring/50",
-                    )}
-                  >
-                    <X className="h-3 w-3" aria-hidden="true" />
-                  </button>
-                </li>
+                  e164={n}
+                  onRemove={() => handleRemoveDraft(n)}
+                />
               ))
             : numbers.map((n) => (
-                <li
+                <NumberChip
                   key={n.id}
-                  className="inline-flex items-center gap-1.5 rounded-full border border-border bg-muted/40 py-1 pl-3 pr-1.5 text-xs"
-                >
-                  <span className="font-mono text-foreground">
-                    {n.phoneE164}
-                  </span>
-                  <button
-                    type="button"
-                    onClick={() => handleRemove(n.id)}
-                    disabled={pending}
-                    aria-label={`Remover ${n.phoneE164}`}
-                    className={cn(
-                      "inline-flex h-5 w-5 items-center justify-center rounded-full transition-colors",
-                      "hover:bg-destructive/15 hover:text-destructive focus:outline-none focus-visible:ring-2 focus-visible:ring-ring/50",
-                    )}
-                  >
-                    {removingId === n.id ? (
-                      <Loader2
-                        className="h-3 w-3 animate-spin"
-                        aria-hidden="true"
-                      />
-                    ) : (
-                      <X className="h-3 w-3" aria-hidden="true" />
-                    )}
-                  </button>
-                </li>
+                  e164={n.phoneE164}
+                  onRemove={() => handleRemove(n.id)}
+                  removing={removingId === n.id}
+                  disabled={pending}
+                />
               ))}
         </ul>
       ) : (
@@ -202,24 +237,19 @@ export function WhatsappNumbersField({
 
       {/* Adicionar */}
       <div className="flex gap-2">
-        <Input
-          id={inputId}
-          value={draft}
-          onChange={(e) => {
-            setDraft(e.target.value);
+        <PhoneInput
+          className="flex-1"
+          country={country}
+          onCountryChange={setCountry}
+          national={national}
+          onNationalChange={(v) => {
+            setNational(v);
             if (error) setError(null);
           }}
-          onKeyDown={(e) => {
-            if (e.key === "Enter") {
-              e.preventDefault();
-              handleAdd();
-            }
-          }}
-          placeholder="+55 11 99123-4567"
-          aria-invalid={!!error || undefined}
-          aria-describedby={error ? errorId : undefined}
-          autoComplete="tel"
-          maxLength={40}
+          onSubmit={handleAdd}
+          invalid={!!error}
+          inputId={inputId}
+          ariaDescribedBy={error ? errorId : undefined}
         />
         <Button
           type="button"

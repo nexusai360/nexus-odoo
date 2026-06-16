@@ -7,7 +7,12 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import { CountryFlag } from "@/components/ui/country-flag";
 import { WhatsappNumbersField } from "@/components/users/whatsapp-numbers-field";
+import {
+  findCountryByE164,
+  formatE164ForDisplay,
+} from "@/lib/whatsapp/countries";
 
 interface WhatsappCardProps {
   /** Números de WhatsApp do usuário, em formato E.164. */
@@ -46,18 +51,24 @@ export function WhatsappCard({ numbers, canEdit, userId }: WhatsappCardProps) {
           <WhatsappNumbersField userId={userId} />
         ) : numbers.length > 0 ? (
           <ul className="flex flex-wrap gap-2" aria-label="Números de WhatsApp">
-            {numbers.map((n) => (
-              <li
-                key={n}
-                className="inline-flex items-center gap-1.5 rounded-full border border-border bg-background px-3 py-1.5 text-sm"
-              >
-                <MessageCircle
-                  className="h-3.5 w-3.5 text-muted-foreground"
-                  aria-hidden="true"
-                />
-                <span className="font-mono text-foreground">{n}</span>
-              </li>
-            ))}
+            {numbers.map((n) => {
+              const country = findCountryByE164(n);
+              return (
+                <li
+                  key={n}
+                  className="inline-flex items-center gap-2 rounded-full border border-border bg-background px-3 py-1.5 text-sm"
+                >
+                  <CountryFlag
+                    iso={country?.iso ?? ""}
+                    title={country?.name}
+                    className="h-3 w-[18px]"
+                  />
+                  <span className="tabular-nums text-foreground">
+                    {formatE164ForDisplay(n)}
+                  </span>
+                </li>
+              );
+            })}
           </ul>
         ) : (
           <p className="text-xs text-muted-foreground">
