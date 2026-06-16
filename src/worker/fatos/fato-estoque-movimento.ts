@@ -67,15 +67,18 @@ export async function rebuildFatoEstoqueMovimento(
     .map((r) => mapMovimentoRow(r.data as Record<string, unknown>))
     .filter((r): r is FatoMovimentoRow => r !== null)
     .filter(temEfeito);
-  await prisma.$transaction(async (tx) => {
-    await tx.fatoEstoqueMovimento.deleteMany({});
-    for (let i = 0; i < mapped.length; i += BATCH) {
-      await tx.fatoEstoqueMovimento.createMany({
-        data: mapped.slice(i, i + BATCH),
-      });
-    }
-    // Estado de build commitado atomicamente com os dados (CR-01).
-    await markFatoBuilt(tx, "fato_estoque_movimento");
-  });
+  await prisma.$transaction(
+    async (tx) => {
+      await tx.fatoEstoqueMovimento.deleteMany({});
+      for (let i = 0; i < mapped.length; i += BATCH) {
+        await tx.fatoEstoqueMovimento.createMany({
+          data: mapped.slice(i, i + BATCH),
+        });
+      }
+      // Estado de build commitado atomicamente com os dados (CR-01).
+      await markFatoBuilt(tx, "fato_estoque_movimento");
+    },
+    { timeout: 180_000, maxWait: 15_000 },
+  );
   return mapped.length;
 }

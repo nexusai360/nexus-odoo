@@ -53,13 +53,16 @@ export async function rebuildFatoPedidoParcela(prisma: PrismaClient): Promise<nu
     mapPedidoParcelaRow(r.data as Record<string, unknown>),
   );
 
-  await prisma.$transaction(async (tx) => {
-    await tx.fatoPedidoParcela.deleteMany({});
-    if (mapped.length) {
-      await tx.fatoPedidoParcela.createMany({ data: mapped });
-    }
-    await markFatoBuilt(tx, "fato_pedido_parcela");
-  });
+  await prisma.$transaction(
+    async (tx) => {
+      await tx.fatoPedidoParcela.deleteMany({});
+      if (mapped.length) {
+        await tx.fatoPedidoParcela.createMany({ data: mapped });
+      }
+      await markFatoBuilt(tx, "fato_pedido_parcela");
+    },
+    { timeout: 180_000, maxWait: 15_000 },
+  );
 
   return mapped.length;
 }

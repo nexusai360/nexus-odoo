@@ -84,12 +84,15 @@ export async function rebuildFatoParceiro(
   const mapped = rawRows.map((r) =>
     mapParceiroRow(r.data as Record<string, unknown>),
   );
-  await prisma.$transaction(async (tx) => {
-    await tx.fatoParceiro.deleteMany({});
-    if (mapped.length) {
-      await tx.fatoParceiro.createMany({ data: mapped });
-    }
-    await markFatoBuilt(tx, "fato_parceiro");
-  });
+  await prisma.$transaction(
+    async (tx) => {
+      await tx.fatoParceiro.deleteMany({});
+      if (mapped.length) {
+        await tx.fatoParceiro.createMany({ data: mapped });
+      }
+      await markFatoBuilt(tx, "fato_parceiro");
+    },
+    { timeout: 180_000, maxWait: 15_000 },
+  );
   return mapped.length;
 }
