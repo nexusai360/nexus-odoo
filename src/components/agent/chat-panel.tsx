@@ -1336,20 +1336,7 @@ export function ChatPanel({
           >
             {/* Área central: MessageInput quando idle; barra de gravação quando recording. */}
             <div className="min-w-0 flex-1">
-              {isRecording ? (
-                <div className="flex min-h-9 items-center rounded-xl border border-violet-500/40 bg-violet-500/5 px-3 py-1">
-                  {audioInputEnabled ? (
-                    <AudioRecorder
-                      ref={recorderRef}
-                      mode="embedded"
-                      onSend={(blob) => {
-                        void handleSendAudio(blob);
-                      }}
-                      onRecordingStateChange={setIsRecording}
-                    />
-                  ) : null}
-                </div>
-              ) : (
+              {!isRecording ? (
                 <MessageInput
                   value={input}
                   onChange={setInput}
@@ -1389,13 +1376,21 @@ export function ChatPanel({
                   }
                   id="agent-bubble-input"
                 />
-              )}
-              {/* Mount persistente do AudioRecorder p/ manter o handle estável.
-                  Em idle renderiza null (mode="embedded"). Esta cópia entra em
-                  ação quando isRecording=true (mas o componente é remountado;
-                  é seguro porque o estado do MediaRecorder está em ref). */}
-              {audioInputEnabled && !isRecording ? (
-                <div className="sr-only" aria-hidden>
+              ) : null}
+              {/* AudioRecorder ÚNICO E PERSISTENTE (corrige o mic "que não fazia
+                  nada"): invisível (sr-only) quando idle, vira a barra de gravação
+                  com waveform quando isRecording. É a MESMA instância nos dois
+                  estados , antes havia duas instâncias com o mesmo ref e o
+                  recording iniciado numa morria ao trocar para a outra. */}
+              {audioInputEnabled ? (
+                <div
+                  className={
+                    isRecording
+                      ? "flex min-h-9 items-center rounded-xl border border-violet-500/40 bg-violet-500/5 px-3 py-1"
+                      : "sr-only"
+                  }
+                  aria-hidden={!isRecording}
+                >
                   <AudioRecorder
                     ref={recorderRef}
                     mode="embedded"
