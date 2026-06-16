@@ -242,10 +242,14 @@ export function WhatsappNumbersField({
   }
 
   return (
-    <div className="space-y-3">
-      {/* Adicionar , fixo no topo */}
+    <div className="space-y-5">
+      {/* Adicionar , rótulo e campo na mesma linha */}
       <div className="space-y-1.5">
-        <div className="flex gap-2">
+        <div className="flex flex-col gap-x-3 gap-y-1.5 sm:flex-row sm:items-center">
+          <span className="shrink-0 text-sm font-medium text-foreground/80">
+            Adicionar número
+          </span>
+          <div className="flex flex-1 gap-2">
           <PhoneInput
             className="flex-1"
             country={country}
@@ -273,6 +277,7 @@ export function WhatsappNumbersField({
               <Plus className="h-4 w-4" aria-hidden="true" />
             )}
           </Button>
+          </div>
         </div>
         {error ? (
           <p id={errorId} className="text-xs text-destructive" role="alert">
@@ -281,8 +286,12 @@ export function WhatsappNumbersField({
         ) : null}
       </div>
 
-      {/* Lista de números , embaixo */}
-      {loading ? (
+      {/* Números cadastrados , embaixo */}
+      <div className="space-y-1.5">
+        <p className="text-sm font-medium text-foreground/80">
+          Números cadastrados
+        </p>
+        {loading ? (
         <div className="flex items-center gap-2 text-xs text-muted-foreground">
           <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden="true" />
           Carregando…
@@ -306,6 +315,7 @@ export function WhatsappNumbersField({
                   <div className="flex items-center gap-1.5">
                     <PhoneInput
                       className="flex-1"
+                      autoFocus
                       country={editCountry}
                       onCountryChange={setEditCountry}
                       national={editNational}
@@ -405,7 +415,8 @@ export function WhatsappNumbersField({
             );
           })}
         </ul>
-      )}
+        )}
+      </div>
     </div>
   );
 }

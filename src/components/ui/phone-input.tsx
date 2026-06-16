@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Check, ChevronDown, Search } from "lucide-react";
 
 import { cn } from "@/lib/utils";
@@ -14,6 +14,7 @@ import { CountryFlag } from "@/components/ui/country-flag";
 import {
   type Country,
   DEFAULT_COUNTRY,
+  formatNational,
   searchCountries,
 } from "@/lib/whatsapp/countries";
 
@@ -21,9 +22,12 @@ interface PhoneInputProps {
   /** País selecionado (default Brasil). */
   country: Country;
   onCountryChange: (country: Country) => void;
-  /** Número nacional (DDD + número), sem o DDI. String livre digitada. */
+  /**
+   * Número nacional (DDD + número) em **dígitos crus**, sem o DDI. O componente
+   * cuida da máscara de exibição e só reporta dígitos de volta.
+   */
   national: string;
-  onNationalChange: (value: string) => void;
+  onNationalChange: (digits: string) => void;
   /** Disparado ao pressionar Enter no campo de número. */
   onSubmit?: () => void;
   disabled?: boolean;
@@ -31,7 +35,14 @@ interface PhoneInputProps {
   placeholder?: string;
   inputId?: string;
   ariaDescribedBy?: string;
+  /** Foca o campo de número ao montar (usado na edição inline). */
+  autoFocus?: boolean;
   className?: string;
+}
+
+/** Limite de dígitos do número nacional por país (Brasil é fixo em 11). */
+function maxNationalDigits(country: Country): number {
+  return country.iso === "BR" ? 11 : 15;
 }
 
 /**
@@ -39,9 +50,10 @@ interface PhoneInputProps {
  * português) à esquerda e o número nacional à direita, numa única caixa que
  * recebe o anel de foco como um todo.
  *
+ * O campo de número aceita **apenas dígitos** (qualquer outro caractere é
+ * descartado na hora) e mostra a máscara local quando o número fica completo.
  * O seletor reusa o `Popover` (base-ui) portalizado, mesmo padrão visual do
- * `SearchableSelect`, para o dropdown não ser cortado por containers com
- * overflow/transform.
+ * `SearchableSelect`.
  */
 export function PhoneInput({
   country,
@@ -54,12 +66,24 @@ export function PhoneInput({
   placeholder = "11 99123-4567",
   inputId,
   ariaDescribedBy,
+  autoFocus,
   className,
 }: PhoneInputProps) {
   const [open, setOpen] = useState(false);
   const [query, setQuery] = useState("");
+  const nationalRef = useRef<HTMLInputElement>(null);
 
   const filtered = useMemo(() => searchCountries(query), [query]);
+
+  // Foco automático ao montar (edição inline): cursor no fim do número.
+  useEffect(() => {
+    if (!autoFocus) return;
+    const el = nationalRef.current;
+    if (!el) return;
+    el.focus();
+    const end = el.value.length;
+    el.setSelectionRange(end, end);
+  }, [autoFocus]);
 
   return (
     <div
@@ -175,12 +199,16 @@ export function PhoneInput({
       <div className="my-1.5 w-px shrink-0 bg-border" aria-hidden="true" />
 
       <input
+        ref={nationalRef}
         id={inputId}
         type="tel"
-        inputMode="tel"
+        inputMode="numeric"
         autoComplete="tel-national"
-        value={national}
-        onChange={(e) => onNationalChange(e.target.value)}
+        value={formatNational(country, national)}
+        onChange={(e) => {
+          const digits = e.target.value.replace(/\D/g, "");
+          onNationalChange(digits.slice(0, maxNationalDigits(country)));
+        }}
         onKeyDown={(e) => {
           if (e.key === "Enter") {
             e.preventDefault();

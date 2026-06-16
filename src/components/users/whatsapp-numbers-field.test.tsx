@@ -42,6 +42,21 @@ describe("WhatsappNumbersField (rascunho)", () => {
     expect(screen.getByText("+55 11 99123-4567")).toBeInTheDocument();
   });
 
+  test("ignora qualquer caractere que não seja dígito ao digitar", async () => {
+    const user = userEvent.setup();
+    const onDraftChange = jest.fn();
+    render(<WhatsappNumbersField onDraftChange={onDraftChange} />);
+
+    await user.type(
+      screen.getByPlaceholderText("11 99123-4567"),
+      "61abc98440()9067kkk",
+    );
+    await user.click(screen.getByRole("button", { name: "Adicionar número" }));
+
+    expect(onDraftChange).toHaveBeenLastCalledWith(["+5561984409067"]);
+    expect(screen.getByText("+55 61 98440-9067")).toBeInTheDocument();
+  });
+
   test("edita um número já adicionado pelo lápis e atualiza a lista", async () => {
     const user = userEvent.setup();
     const onDraftChange = jest.fn();
