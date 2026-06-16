@@ -127,9 +127,13 @@ Sessão de estabilização + otimização da infra do banco de prod. Tudo em pro
   Portainer exec), `_prod-db-diag.py` (config de memória, top tabelas, bloat, conexões),
   `_prod-db-cleanup-images.py` (strip + vacuum, dry-run por padrão), `_rebalance-db-memory.py`
   (ajusta `Limits.MemoryBytes` dos services).
-- **PENDENTE:** (1) validar `lote.serie` → `ok` ressincronizando slim sem rebloat de imagem;
-  (2) com o banco enxuto, **DEVOLVER RAM** (db 2 GB → 1/1,5 GB, worker 3 GB → 1/1,5 GB) ,
-  decisão do usuário foi **medir a estabilidade antes** de definir o alvo.
+- **Validado (12:11):** `sped.produto.lote.serie` → **`ok`, 8235 registros** (ressincronizou
+  completo e slim, `img_keys=0`); todos os modelos `ok`, zero em erro; banco 943 MB estável;
+  MCP `healthy` (postgres/redis ok, freshness ~3s).
+- **RAM DEVOLVIDA (concluído):** com o banco enxuto, **db 2 GB → 1,5 GB** e **worker 3 GB → 1,5 GB**
+  (+ `NODE_OPTIONS` heap 4096 → 1024, no swarm e no `docker-compose.yml`). Comprometido do stack
+  no nó: **7,75 GB (início) → 5,25 GB** , **~2,5 GB devolvidos** ao pool, com o db saudável.
+  Heap de 4 GB do worker só existia por causa das imagens; sem elas, 1 GB sobra.
 
 ## 2026-06-10 , Milestone Faturamento Real Consolidado FECHADO + saga do deploy (branch `feat/nex-reconstrucao`)
 
