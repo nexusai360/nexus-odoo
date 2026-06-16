@@ -19,6 +19,8 @@ import { toast } from "sonner";
 
 import { cn } from "@/lib/utils";
 
+import { LiveWaveform } from "./live-waveform";
+
 /* -------------------------------------------------------------------------- */
 
 export type AudioRecorderMode = "standalone" | "embedded";
@@ -62,6 +64,8 @@ function AudioRecorderImpl(
 ) {
   const [status, setStatus] = React.useState<Status>("idle");
   const [elapsed, setElapsed] = React.useState(0);
+  // Stream em estado (além do ref) para o LiveWaveform montar quando disponível.
+  const [stream, setStream] = React.useState<MediaStream | null>(null);
 
   const recorderRef = React.useRef<MediaRecorder | null>(null);
   const streamRef = React.useRef<MediaStream | null>(null);
@@ -90,6 +94,7 @@ function AudioRecorderImpl(
       }
       streamRef.current = null;
     }
+    setStream(null);
     recorderRef.current = null;
     chunksRef.current = [];
     recordedMsRef.current = 0;
@@ -161,6 +166,7 @@ function AudioRecorderImpl(
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       streamRef.current = stream;
+      setStream(stream);
 
       const mimeType = pickMimeType();
       const rec = mimeType
@@ -314,6 +320,10 @@ function AudioRecorderImpl(
         aria-label="Gravação de áudio"
         className={cn("flex w-full items-center gap-2", className)}
       >
+        <span className="sr-only" aria-live="polite" aria-atomic="true">
+          {isRecording ? "Gravando" : "Pausado"} {formatTime(elapsed)}
+        </span>
+
         <span
           aria-hidden="true"
           className={cn(
@@ -324,19 +334,20 @@ function AudioRecorderImpl(
           )}
         />
 
-        <span className="text-xs font-medium text-foreground">
-          {isRecording ? "Gravando" : "Pausado"}
-        </span>
+        <LiveWaveform
+          stream={stream}
+          active={isRecording}
+          className="min-w-0 flex-1"
+        />
 
         <span
-          aria-live="polite"
-          aria-atomic="true"
-          className="font-mono text-xs tabular-nums text-muted-foreground"
+          aria-hidden="true"
+          className="shrink-0 font-mono text-xs tabular-nums text-muted-foreground"
         >
           {formatTime(elapsed)}
         </span>
 
-        <div className="ml-auto flex items-center gap-1">
+        <div className="flex shrink-0 items-center gap-1">
           <button
             type="button"
             onClick={pauseOrResume}
@@ -404,6 +415,10 @@ function AudioRecorderImpl(
         className,
       )}
     >
+      <span className="sr-only" aria-live="polite" aria-atomic="true">
+        {isRecording ? "Gravando" : "Pausado"} {formatTime(elapsed)}
+      </span>
+
       <span
         aria-hidden="true"
         className={cn(
@@ -414,19 +429,20 @@ function AudioRecorderImpl(
         )}
       />
 
-      <span className="text-xs font-medium text-foreground">
-        {isRecording ? "Gravando" : "Pausado"}
-      </span>
+      <LiveWaveform
+        stream={stream}
+        active={isRecording}
+        className="min-w-0 flex-1"
+      />
 
       <span
-        aria-live="polite"
-        aria-atomic="true"
-        className="font-mono text-xs tabular-nums text-muted-foreground"
+        aria-hidden="true"
+        className="shrink-0 font-mono text-xs tabular-nums text-muted-foreground"
       >
         {formatTime(elapsed)}
       </span>
 
-      <div className="ml-auto flex items-center gap-1">
+      <div className="flex shrink-0 items-center gap-1">
         <button
           type="button"
           onClick={pauseOrResume}
