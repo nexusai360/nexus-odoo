@@ -25,7 +25,10 @@ interface SnapshotRawTable {
 export async function syncSnapshot(
   client: OdooClient,
   prisma: {
-    $transaction: <T>(fn: (tx: Record<string, never>) => Promise<T>) => Promise<T>;
+    $transaction: <T>(
+      fn: (tx: Record<string, never>) => Promise<T>,
+      options?: { timeout?: number; maxWait?: number },
+    ) => Promise<T>;
   } & Record<string, unknown>,
   rawTableKey: string,
   odooModel: string,
@@ -55,12 +58,18 @@ export async function syncSnapshot(
     return 0;
   }
 
-  await prisma.$transaction(async (tx) => {
-    const raw = (tx as Record<string, SnapshotRawTable>)[rawTableKey];
-    await raw.deleteMany({});
-    for (let i = 0; i < rows.length; i += CREATE_BATCH) {
-      await raw.createMany({ data: rows.slice(i, i + CREATE_BATCH) });
-    }
-  });
+  await prisma.$transaction(
+    async (tx) => {
+      const raw = (tx as Record<string, SnapshotRawTable>)[rawTableKey];
+      await raw.deleteMany({});
+      for (let i = 0; i < rows.length; i += CREATE_BATCH) {
+        await raw.createMany({ data: rows.slice(i, i + CREATE_BATCH) });
+      }
+    },
+    // estoque.extrato tem ~18k linhas: deleteMany + createMany em lote estoura o
+    // timeout default de 5s do Prisma (P2028) e derruba a sync (e, no pico, o DB
+    // recusa conexoes a outros modelos). 180s cobre o snapshot completo.
+    { timeout: 180_000, maxWait: 15_000 },
+  );
   return rows.length;
 }
