@@ -1,7 +1,14 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { ChevronLeft, ChevronRight, Search, X } from "lucide-react";
+import {
+  Check,
+  ChevronDown,
+  ChevronLeft,
+  ChevronRight,
+  Search,
+  X,
+} from "lucide-react";
 
 import {
   Card,
@@ -9,6 +16,11 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
 import {
   TableBody,
   TableCell,
@@ -128,6 +140,7 @@ export function AuditsTable() {
   const [search, setSearch] = useState("");
   const [page, setPage] = useState(0); // 0-indexed
   const [pageSize, setPageSize] = useState<number>(50);
+  const [selectedUserIds, setSelectedUserIds] = useState<string[]>([]);
 
   async function load() {
     setLoading(true);
@@ -145,17 +158,42 @@ export function AuditsTable() {
     void load();
   }, []);
 
-  // Busca client-side em TODAS as colunas/linhas (debounce leve via estado).
+  // Usuários que JÁ têm registro de auditoria (tiveram relação com a
+  // plataforma) , só esses aparecem no filtro. Distinto por userId.
+  const auditUsers = useMemo(() => {
+    const map = new Map<
+      string,
+      { id: string; name: string; email: string | null }
+    >();
+    for (const r of rows) {
+      if (!r.userId || map.has(r.userId)) continue;
+      map.set(r.userId, {
+        id: r.userId,
+        name: r.userName ?? r.userEmail ?? r.userId,
+        email: r.userEmail,
+      });
+    }
+    return Array.from(map.values()).sort((a, b) =>
+      a.name.localeCompare(b.name, "pt-BR"),
+    );
+  }, [rows]);
+
+  // Busca (todas as colunas) + filtro por usuário(s) selecionado(s).
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
-    if (!q) return rows;
-    return rows.filter((r) => rowSearchText(r).includes(q));
-  }, [rows, search]);
+    const userSet =
+      selectedUserIds.length > 0 ? new Set(selectedUserIds) : null;
+    return rows.filter((r) => {
+      if (userSet && (!r.userId || !userSet.has(r.userId))) return false;
+      if (q && !rowSearchText(r).includes(q)) return false;
+      return true;
+    });
+  }, [rows, search, selectedUserIds]);
 
-  // Volta para a 1ª página quando a busca muda (resultado novo).
+  // Volta para a 1ª página quando busca/filtro mudam (resultado novo).
   useEffect(() => {
     setPage(0);
-  }, [search]);
+  }, [search, selectedUserIds]);
 
   const total = filtered.length;
   const totalPages = Math.max(1, Math.ceil(total / pageSize));
@@ -182,8 +220,8 @@ export function AuditsTable() {
           Tudo o que cada usuário faz na plataforma: autenticação, gestão de
           usuários, configurações, credenciais e acessos do Agente Nex.
         </p>
-        <div className="mt-2 flex items-center gap-2">
-          <div className="relative flex-1 lg:max-w-md">
+        <div className="mt-2 flex flex-col gap-2 sm:flex-row sm:items-center">
+          <div className="relative flex-1 sm:max-w-md">
             <Search className="pointer-events-none absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
             <Input
               type="search"
@@ -194,17 +232,27 @@ export function AuditsTable() {
               aria-label="Buscar na auditoria"
             />
           </div>
-          {search ? (
-            <button
-              type="button"
-              onClick={() => setSearch("")}
-              className="inline-flex h-9 shrink-0 cursor-pointer items-center gap-1.5 rounded-lg border border-border bg-card px-3 text-xs font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-500"
-              aria-label="Limpar busca"
-            >
-              <X className="h-3.5 w-3.5" aria-hidden />
-              Limpar
-            </button>
-          ) : null}
+          <div className="flex items-center gap-2 sm:ml-auto">
+            <UserMultiSelect
+              users={auditUsers}
+              selected={selectedUserIds}
+              onChange={setSelectedUserIds}
+            />
+            {search || selectedUserIds.length > 0 ? (
+              <button
+                type="button"
+                onClick={() => {
+                  setSearch("");
+                  setSelectedUserIds([]);
+                }}
+                className="inline-flex h-9 shrink-0 cursor-pointer items-center gap-1.5 rounded-lg border border-border bg-card px-3 text-xs font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-500"
+                aria-label="Limpar busca e filtros"
+              >
+                <X className="h-3.5 w-3.5" aria-hidden />
+                Limpar
+              </button>
+            ) : null}
+          </div>
         </div>
       </CardHeader>
       <CardContent className="p-0">
@@ -360,6 +408,152 @@ export function AuditsTable() {
         )}
       </CardContent>
     </Card>
+  );
+}
+
+/**
+ * Multi-select de usuário para filtrar a auditoria (mesmo padrão visual dos
+ * filtros da tabela do Router: popover + checkboxes + "Limpar seleção"), com
+ * uma busca interna para achar o usuário pelo nome/e-mail. A lista recebe
+ * apenas usuários que já têm registro de auditoria.
+ */
+function UserMultiSelect({
+  users,
+  selected,
+  onChange,
+}: {
+  users: { id: string; name: string; email: string | null }[];
+  selected: string[];
+  onChange: (next: string[]) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const [query, setQuery] = useState("");
+
+  const trigger =
+    selected.length === 0
+      ? "Todos os usuários"
+      : selected.length === 1
+        ? (users.find((u) => u.id === selected[0])?.name ?? "1 selecionado")
+        : `${selected.length} selecionados`;
+
+  const visible = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    if (!q) return users;
+    return users.filter(
+      (u) =>
+        u.name.toLowerCase().includes(q) ||
+        (u.email ?? "").toLowerCase().includes(q),
+    );
+  }, [users, query]);
+
+  const toggle = (id: string) =>
+    onChange(
+      selected.includes(id)
+        ? selected.filter((x) => x !== id)
+        : [...selected, id],
+    );
+
+  return (
+    <Popover open={open} onOpenChange={setOpen}>
+      <PopoverTrigger
+        render={
+          <button
+            type="button"
+            aria-label="Filtrar por usuário"
+            aria-expanded={open}
+            disabled={users.length === 0}
+            className="flex h-9 min-w-[190px] cursor-pointer items-center justify-between gap-2 rounded-lg border border-border bg-card px-3 text-sm text-foreground transition-colors hover:border-muted-foreground/30 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-500 disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            <span className="truncate">{trigger}</span>
+            <ChevronDown
+              className={cn(
+                "h-4 w-4 shrink-0 text-muted-foreground transition-transform",
+                open && "rotate-180",
+              )}
+              aria-hidden
+            />
+          </button>
+        }
+      />
+      <PopoverContent
+        align="end"
+        sideOffset={4}
+        className="w-[260px] overflow-hidden p-0"
+      >
+        <div className="border-b border-border p-2">
+          <div className="relative">
+            <Search className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
+            <Input
+              type="search"
+              autoFocus
+              placeholder="Buscar usuário…"
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              className="h-8 pl-8 text-sm"
+              aria-label="Buscar usuário"
+            />
+          </div>
+        </div>
+        <ul
+          role="listbox"
+          aria-label="Usuários"
+          className="max-h-64 overflow-auto p-1"
+        >
+          {visible.length === 0 ? (
+            <li className="px-2 py-3 text-center text-xs text-muted-foreground">
+              Nenhum usuário encontrado.
+            </li>
+          ) : (
+            visible.map((u) => {
+              const isOn = selected.includes(u.id);
+              return (
+                <li key={u.id} role="presentation">
+                  <button
+                    type="button"
+                    role="option"
+                    aria-selected={isOn}
+                    onClick={() => toggle(u.id)}
+                    className="flex w-full cursor-pointer items-center gap-2 rounded-md px-2 py-1.5 text-left transition-colors hover:bg-accent"
+                  >
+                    <span
+                      className={cn(
+                        "flex h-4 w-4 shrink-0 items-center justify-center rounded border border-border bg-background transition-colors",
+                        isOn && "border-violet-500 bg-violet-500 text-white",
+                      )}
+                      aria-hidden
+                    >
+                      {isOn ? <Check className="h-3 w-3" /> : null}
+                    </span>
+                    <span className="flex min-w-0 flex-col">
+                      <span className="truncate text-sm text-foreground">
+                        {u.name}
+                      </span>
+                      {u.email ? (
+                        <span className="truncate text-xs text-muted-foreground">
+                          {u.email}
+                        </span>
+                      ) : null}
+                    </span>
+                  </button>
+                </li>
+              );
+            })
+          )}
+        </ul>
+        {selected.length > 0 ? (
+          <div className="border-t border-border p-1">
+            <button
+              type="button"
+              onClick={() => onChange([])}
+              className="flex w-full cursor-pointer items-center gap-2 rounded-md px-2 py-1.5 text-left text-xs text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+            >
+              <X className="h-3 w-3" aria-hidden />
+              Limpar seleção
+            </button>
+          </div>
+        ) : null}
+      </PopoverContent>
+    </Popover>
   );
 }
 
