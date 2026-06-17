@@ -4,8 +4,11 @@ import {
   channelToOrigem,
   R8_ANCHOR_MARKER,
   ORIGEM_AGENTE_NEX,
+  ORIGEM_AGENTE_NEX_BUBBLE,
+  ORIGEM_AGENTE_NEX_WHATSAPP,
   ORIGEM_PLAYGROUND,
   ORIGEM_BACKTEST,
+  ORIGEM_LABELS,
 } from "./rodada-labels";
 
 // Markers reais da pericia 2026-06-01 (ordem cronologica).
@@ -70,9 +73,13 @@ describe("buildRodadaNamesFromMarkers", () => {
 });
 
 describe("channelToOrigem", () => {
-  it("in_app e whatsapp viram Agente Nex", () => {
-    expect(channelToOrigem("in_app")).toBe(ORIGEM_AGENTE_NEX);
-    expect(channelToOrigem("whatsapp")).toBe(ORIGEM_AGENTE_NEX);
+  it("in_app vira Agente Nex Bubble e whatsapp vira Agente Nex WhatsApp (F5 E)", () => {
+    expect(channelToOrigem("in_app")).toBe(ORIGEM_AGENTE_NEX_BUBBLE);
+    expect(channelToOrigem("whatsapp")).toBe(ORIGEM_AGENTE_NEX_WHATSAPP);
+  });
+  it("labels das duas origens novas (F5 E)", () => {
+    expect(ORIGEM_LABELS[ORIGEM_AGENTE_NEX_BUBBLE]).toBe("Agente Nex · Bubble");
+    expect(ORIGEM_LABELS[ORIGEM_AGENTE_NEX_WHATSAPP]).toBe("Agente Nex · WhatsApp");
   });
   it("playground vira Playground", () => {
     expect(channelToOrigem("playground")).toBe(ORIGEM_PLAYGROUND);
