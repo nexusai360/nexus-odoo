@@ -14,6 +14,7 @@
 
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
+import type { ChannelAccessLevel } from "@/generated/prisma/client";
 import { prisma } from "@/lib/prisma";
 import { getCurrentUser } from "@/lib/auth";
 import { logAudit } from "@/lib/audit";
@@ -139,6 +140,8 @@ type AgentSettingsRow = {
   suggestionsCheckpoint: FeatureCheckpoint;
   bubbleEnabled: boolean;
   whatsappEnabled: boolean;
+  bubbleAccessLevel: ChannelAccessLevel;
+  whatsappAccessLevel: ChannelAccessLevel;
   audioCheckpoint: FeatureCheckpoint;
   imageCheckpoint: FeatureCheckpoint;
   feedbackCheckpoint: FeatureCheckpoint;
@@ -181,6 +184,8 @@ function mapSettings(row: AgentSettingsRow): AgentSettingsData {
     suggestionsCheckpoint: row.suggestionsCheckpoint,
     bubbleEnabled: row.bubbleEnabled,
     whatsappEnabled: row.whatsappEnabled,
+    bubbleAccessLevel: row.bubbleAccessLevel,
+    whatsappAccessLevel: row.whatsappAccessLevel,
     audioCheckpoint: row.audioCheckpoint,
     imageCheckpoint: row.imageCheckpoint,
     feedbackCheckpoint: row.feedbackCheckpoint,
@@ -268,6 +273,8 @@ const DEFAULT_FLAGS: PublicAgentFlags = {
   suggestionsInPlayground: true,
   bubbleEnabled: true,
   whatsappEnabled: true,
+  bubbleAccessLevel: "viewer",
+  whatsappAccessLevel: "viewer",
   maxSuggestions: 3,
 };
 
@@ -285,8 +292,8 @@ export async function getPublicAgentFlags(): Promise<PublicAgentFlags> {
         feedbackCheckpoint: true,
         kbCheckpoint: true,
         suggestionsCheckpoint: true,
-        bubbleEnabled: true,
-        whatsappEnabled: true,
+        bubbleAccessLevel: true,
+        whatsappAccessLevel: true,
         maxSuggestions: true,
       },
     });
@@ -302,8 +309,11 @@ export async function getPublicAgentFlags(): Promise<PublicAgentFlags> {
       kbInPlayground: settings.kbCheckpoint !== "OFF",
       suggestionsEnabled: settings.suggestionsCheckpoint === "PRODUCTION",
       suggestionsInPlayground: settings.suggestionsCheckpoint !== "OFF",
-      bubbleEnabled: settings.bubbleEnabled,
-      whatsappEnabled: settings.whatsappEnabled,
+      // bubbleEnabled/whatsappEnabled derivam do nível (compat ate C.6).
+      bubbleEnabled: settings.bubbleAccessLevel !== "off",
+      whatsappEnabled: settings.whatsappAccessLevel !== "off",
+      bubbleAccessLevel: settings.bubbleAccessLevel,
+      whatsappAccessLevel: settings.whatsappAccessLevel,
       maxSuggestions: Math.min(Math.max(1, settings.maxSuggestions ?? 3), 5),
     };
   } catch (err) {
@@ -528,12 +538,13 @@ export async function updateRouterConfig(
 
 /**
  * Atualiza a disponibilidade do Agente Nex em cada canal (bubble in-app e
- * WhatsApp). Persistido como dois booleans independentes; a UI lê e mostra
- * um sumario de 4 estados (off, so bubble, so whatsapp, ambos).
+ * WhatsApp). Persistido como dois níveis mínimos de acesso (com herança): "off"
+ * desativa o canal; os demais valores são roles de PlatformRole. A UI mostra um
+ * sumario de estados (off, so bubble, so whatsapp, ambos) + o nível escolhido.
  */
 export async function updateAgentAvailability(input: {
-  bubbleEnabled: boolean;
-  whatsappEnabled: boolean;
+  bubbleAccessLevel: ChannelAccessLevel;
+  whatsappAccessLevel: ChannelAccessLevel;
 }): Promise<ActionResult> {
   try {
     const auth = await requireAdminOrAbove();
@@ -547,12 +558,12 @@ export async function updateAgentAvailability(input: {
         tone: "",
         guardrails: [],
         terminology: {},
-        bubbleEnabled: input.bubbleEnabled,
-        whatsappEnabled: input.whatsappEnabled,
+        bubbleAccessLevel: input.bubbleAccessLevel,
+        whatsappAccessLevel: input.whatsappAccessLevel,
       },
       update: {
-        bubbleEnabled: input.bubbleEnabled,
-        whatsappEnabled: input.whatsappEnabled,
+        bubbleAccessLevel: input.bubbleAccessLevel,
+        whatsappAccessLevel: input.whatsappAccessLevel,
       },
     });
 
@@ -563,8 +574,8 @@ export async function updateAgentAvailability(input: {
       targetId: "global",
       details: {
         kind: "availability",
-        bubbleEnabled: input.bubbleEnabled,
-        whatsappEnabled: input.whatsappEnabled,
+        bubbleAccessLevel: input.bubbleAccessLevel,
+        whatsappAccessLevel: input.whatsappAccessLevel,
       },
     });
 
