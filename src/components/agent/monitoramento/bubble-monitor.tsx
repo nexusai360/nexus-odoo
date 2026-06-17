@@ -10,7 +10,15 @@
  */
 
 import * as React from "react";
-import { ChevronDown, ChevronLeft, ChevronRight, Gauge, Scale } from "lucide-react";
+import {
+  ChevronDown,
+  ChevronLeft,
+  ChevronRight,
+  Gauge,
+  MessageCircle,
+  Scale,
+  Smartphone,
+} from "lucide-react";
 import { motion, useReducedMotion } from "framer-motion";
 import {
   listBubbleCollaborators,
@@ -150,6 +158,27 @@ function fmtRange(startedAt: string, endedAt: string | null): string {
   const d = (x: Date) =>
     `${p(x.getDate())}/${p(x.getMonth() + 1)}/${p(x.getFullYear() % 100)} ${p(x.getHours())}:${p(x.getMinutes())}:${p(x.getSeconds())}`;
   return `${d(new Date(startedAt))} ${endedAt ? "até " + d(new Date(endedAt)) : "até agora"}`;
+}
+
+/** Marcador discreto do canal da sessão (Bubble in-app vs WhatsApp). F5 E. */
+function ChannelBadge({ channel }: { channel: string }) {
+  const isWhatsapp = channel === "whatsapp";
+  const Icon = isWhatsapp ? Smartphone : MessageCircle;
+  const label = isWhatsapp ? "WhatsApp" : "Bubble";
+  return (
+    <span
+      title={`Canal: ${label}`}
+      className={cn(
+        "inline-flex items-center gap-1 rounded-full px-1.5 py-0.5 text-[10px] font-medium",
+        isWhatsapp
+          ? "bg-green-500/15 text-green-600 dark:text-green-400"
+          : "bg-violet-500/15 text-violet-600 dark:text-violet-400",
+      )}
+    >
+      <Icon className="h-2.5 w-2.5" aria-hidden />
+      {label}
+    </span>
+  );
 }
 
 // Painel único: as 3 colunas dividem o mesmo card, separadas só por borda
@@ -543,6 +572,7 @@ export function BubbleMonitor() {
               >
                 <div className="flex items-center gap-2">
                   <span className="text-sm font-medium text-foreground">Sessão {s.index}</span>
+                  <ChannelBadge channel={s.channel} />
                   {s.isActive ? (
                     <span className="rounded-full bg-emerald-500/15 px-1.5 py-0.5 text-[10px] font-medium text-emerald-400">
                       ativa
