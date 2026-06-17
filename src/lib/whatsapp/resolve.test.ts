@@ -3,12 +3,12 @@ import { prisma } from "@/lib/prisma";
 
 jest.mock("@/lib/prisma", () => ({
   prisma: {
-    userWhatsappNumber: { findUnique: jest.fn() },
+    userWhatsappNumber: { findFirst: jest.fn() },
   },
 }));
 
 const mockPrisma = jest.mocked(prisma) as unknown as {
-  userWhatsappNumber: { findUnique: jest.Mock };
+  userWhatsappNumber: { findFirst: jest.Mock };
 };
 
 describe("normalizeE164", () => {
@@ -42,42 +42,36 @@ describe("normalizeE164", () => {
 });
 
 describe("resolveWhatsappUser", () => {
-  beforeEach(() => {
-    jest.clearAllMocks();
-  });
+  const findFirst = mockPrisma.userWhatsappNumber.findFirst;
+  beforeEach(() => jest.clearAllMocks());
 
   it("retorna unknown para número não cadastrado", async () => {
-    mockPrisma.userWhatsappNumber.findUnique.mockResolvedValue(null);
-    const result = await resolveWhatsappUser("+5511991234567");
-    expect(result).toEqual({ status: "unknown" });
+    findFirst.mockResolvedValue(null);
+    expect(await resolveWhatsappUser("+5511991234567")).toEqual({ status: "unknown" });
   });
 
   it("retorna inactive para número de usuário inativo", async () => {
-    mockPrisma.userWhatsappNumber.findUnique.mockResolvedValue({
-      user: { id: "u1", name: "Ana", isActive: false },
-    });
-    const result = await resolveWhatsappUser("+5511991234567");
-    expect(result).toEqual({ status: "inactive" });
+    findFirst.mockResolvedValue({ user: { id: "u1", name: "Ana", isActive: false, platformRole: "viewer" } });
+    expect(await resolveWhatsappUser("+5511991234567")).toEqual({ status: "inactive" });
   });
 
-  it("retorna ok com o usuário para número de usuário ativo", async () => {
-    const user = { id: "u1", name: "Ana", isActive: true };
-    mockPrisma.userWhatsappNumber.findUnique.mockResolvedValue({ user });
-    const result = await resolveWhatsappUser("+5511991234567");
-    expect(result).toEqual({ status: "ok", user });
+  it("retorna ok com o usuário (incluindo platformRole) para usuário ativo", async () => {
+    const user = { id: "u1", name: "Ana", isActive: true, platformRole: "manager" };
+    findFirst.mockResolvedValue({ user });
+    expect(await resolveWhatsappUser("+5511991234567")).toEqual({ status: "ok", user });
   });
 
-  it("normaliza o número antes de consultar", async () => {
-    mockPrisma.userWhatsappNumber.findUnique.mockResolvedValue(null);
-    await resolveWhatsappUser("11991234567");
-    expect(mockPrisma.userWhatsappNumber.findUnique).toHaveBeenCalledWith(
-      expect.objectContaining({ where: { phoneE164: "+5511991234567" } }),
-    );
+  it("consulta com IN das variantes (com/sem o 9) , normalizado", async () => {
+    findFirst.mockResolvedValue(null);
+    await resolveWhatsappUser("553498765432"); // sem o 9, vindo da Meta
+    const arg = findFirst.mock.calls[0][0];
+    expect(arg.where.phoneE164.in.length).toBeGreaterThanOrEqual(2);
+    expect(arg.where.phoneE164.in).toContain("+5534998765432");
+    expect(arg.select.user.select.platformRole).toBe(true);
   });
 
-  it("retorna unknown para número malformado", async () => {
-    const result = await resolveWhatsappUser("abc");
-    expect(result).toEqual({ status: "unknown" });
-    expect(mockPrisma.userWhatsappNumber.findUnique).not.toHaveBeenCalled();
+  it("retorna unknown para número malformado (sem consultar)", async () => {
+    expect(await resolveWhatsappUser("abc")).toEqual({ status: "unknown" });
+    expect(findFirst).not.toHaveBeenCalled();
   });
 });

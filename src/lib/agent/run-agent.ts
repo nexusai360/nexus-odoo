@@ -255,6 +255,13 @@ export type RunAgentResult =
       usage: ChatUsage;
       /** B1. Id real (de banco) da Message do assistant (resposta final). */
       messageId: string;
+      /** F5 B. Nomes das tools acionadas no turno (em ordem). */
+      toolsCalled: string[];
+      /** F5 B. Soma do tempo de raciocínio do turno em ms (por iteração). */
+      reasoningMs: number;
+      /** F5 B/L3. Só em recusa por permissão: módulo desejado e permitidos. */
+      deniedModule?: string;
+      allowedModules?: string[];
     }
   | { ok: false; error: string };
 
@@ -754,6 +761,8 @@ export async function runAgent(args: RunAgentInput): Promise<RunAgentResult> {
       });
     }
     const allTurnToolNames: string[] = [];
+    // F5 B. Acumula a duração de cada iteração do turno (reasoningMs do envelope).
+    let turnReasoningMs = 0;
 
     const tools = mcpToolsToProviderTools(filteredCatalog.tools);
 
@@ -933,6 +942,9 @@ export async function runAgent(args: RunAgentInput): Promise<RunAgentResult> {
       totalUsage.tokensCachedInput =
         (totalUsage.tokensCachedInput ?? 0) + (result.usage.tokensCachedInput ?? 0);
       totalUsage.costUsd += result.usage.costUsd ?? 0;
+
+      // F5 B. Acumula a duração desta iteração (reasoningMs do envelope agent.reply).
+      turnReasoningMs += Date.now() - iterStart;
 
       // Registrar uso desta iteração (aguardado antes do return , ver usageWrites)
       usageWrites.push(
@@ -1490,6 +1502,9 @@ export async function runAgent(args: RunAgentInput): Promise<RunAgentResult> {
           usage: totalUsage,
           // B1. Id real da Message do assistant (resposta final), para o feedback.
           messageId: assistantMessageId,
+          // F5 B. Tools e tempo de raciocínio do turno (envelope agent.reply).
+          toolsCalled: allTurnToolNames,
+          reasoningMs: turnReasoningMs,
         };
       }
 

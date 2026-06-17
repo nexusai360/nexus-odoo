@@ -118,6 +118,21 @@ enum WebhookDirection {
   outbound
 }
 
+/// Eventos emissíveis em webhooks de saída (F5). Serializa para "agent.reply".
+enum WebhookEvent {
+  agent_reply
+}
+
+/// Nível mínimo de acesso de um canal do Agente Nex (F5). "off" = desativado;
+/// os demais são roles de PlatformRole. Herança: role >= nível escolhido acessa.
+enum ChannelAccessLevel {
+  off
+  viewer
+  manager
+  admin
+  super_admin
+}
+
 enum ReportDomain {
   cadastros
   comercial
@@ -2800,6 +2815,11 @@ model AgentSettings {
   /// Habilita o Agente Nex no canal WhatsApp (F5). Independente de bubble.
   whatsappEnabled Boolean @default(true) @map("whatsapp_enabled")
 
+  /// F5: nível mínimo de acesso da bubble in-app. Default viewer = todos (preserva bubbleEnabled=true).
+  bubbleAccessLevel   ChannelAccessLevel @default(viewer) @map("bubble_access_level")
+  /// F5: nível mínimo de acesso do canal WhatsApp. Default viewer = todos (preserva whatsappEnabled=true).
+  whatsappAccessLevel ChannelAccessLevel @default(viewer) @map("whatsapp_access_level")
+
   /// Checkpoints de 3 estados (OFF/PLAYGROUND/PRODUCTION).
   audioCheckpoint       FeatureCheckpoint @default(OFF) @map("audio_checkpoint")
   imageCheckpoint       FeatureCheckpoint @default(OFF) @map("image_checkpoint")
@@ -3131,6 +3151,8 @@ model WhatsappWebhook {
   targetUrl String?          @map("target_url")
   /// Métodos HTTP aceitos (GET/POST/PUT/PATCH/DELETE) (R6).
   methods   String[]         @default([])
+  /// Eventos que este webhook de saída emite (F5). Vazio = nenhum.
+  events    WebhookEvent[]   @default([])
   secret    String
   enabled   Boolean          @default(true)
   createdAt DateTime         @default(now()) @map("created_at")

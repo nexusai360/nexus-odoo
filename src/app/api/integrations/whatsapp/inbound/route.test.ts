@@ -16,14 +16,18 @@ const mockProcessedCreate = jest.fn();
 const mockProcessedCount = jest.fn();
 const mockConversationCount = jest.fn();
 const mockWebhookFindFirst = jest.fn();
+const mockWebhookFindMany = jest.fn();
+const mockAgentSettingsFindFirst = jest.fn();
 const mockChannelFindUnique = jest.fn();
 const mockAppSettingFindUnique = jest.fn();
 const mockLogAudit = jest.fn();
 const mockQueueAdd = jest.fn();
+const mockEmitAgentReply = jest.fn();
 const mockDecrypt = jest.fn((s: string) => s.replace("enc:", ""));
 
 jest.mock("@/lib/whatsapp/hmac", () => ({ verifySignature: mockVerifySignature }));
 jest.mock("@/lib/whatsapp/resolve", () => ({ resolveWhatsappUser: mockResolveWhatsappUser }));
+jest.mock("@/lib/whatsapp/emit-reply", () => ({ emitAgentReply: mockEmitAgentReply }));
 jest.mock("@/lib/audit", () => ({ logAudit: mockLogAudit }));
 jest.mock("@/lib/encryption", () => ({
   encrypt: jest.fn((s: string) => `enc:${s}`),
@@ -37,7 +41,8 @@ jest.mock("@/lib/prisma", () => ({
       count: mockProcessedCount,
     },
     conversation: { count: mockConversationCount },
-    whatsappWebhook: { findFirst: mockWebhookFindFirst },
+    whatsappWebhook: { findFirst: mockWebhookFindFirst, findMany: mockWebhookFindMany },
+    agentSettings: { findFirst: mockAgentSettingsFindFirst },
     whatsappChannel: { findUnique: mockChannelFindUnique },
     appSetting: { findUnique: mockAppSettingFindUnique },
   },
@@ -122,11 +127,17 @@ beforeEach(() => {
   mockProcessedFindUnique.mockResolvedValue(null);
   // Por padrão: create bem-sucedido
   mockProcessedCreate.mockResolvedValue({ messageId: VALID_PAYLOAD.messageId });
-  // Por padrão: usuário resolvido com sucesso
+  // Por padrão: usuário resolvido com sucesso (com platformRole para L2)
   mockResolveWhatsappUser.mockResolvedValue({
     status: "ok",
-    user: { id: "user-001", name: "João", isActive: true },
+    user: { id: "user-001", name: "João", isActive: true, platformRole: "viewer" },
   });
+  // Por padrão: canal WhatsApp liberado para todos (viewer)
+  mockAgentSettingsFindFirst.mockResolvedValue({ whatsappAccessLevel: "viewer" });
+  // Por padrão: um outbound habilitado (targetUrl + secret cifrado)
+  mockWebhookFindMany.mockResolvedValue([
+    { targetUrl: "https://n8n/x", url: null, secret: "enc:s1", direction: "outbound", enabled: true },
+  ]);
   // Por padrão: sem teto configurado
   mockAppSettingFindUnique.mockResolvedValue(null);
   // Por padrão: 0 conversas hoje
@@ -136,6 +147,8 @@ beforeEach(() => {
   mockChannelFindUnique.mockResolvedValue({ id: "global", responseMode: "direct", enabled: true });
   // Por padrão: job enfileirado com sucesso
   mockQueueAdd.mockResolvedValue({ id: "job-1" });
+  // emitAgentReply retorna Promise (o código encadeia .catch)
+  mockEmitAgentReply.mockResolvedValue(undefined);
 });
 
 // ──────────────────────────────────────────────
@@ -189,7 +202,7 @@ describe("POST /api/integrations/whatsapp/inbound", () => {
     expect(mockQueueAdd).not.toHaveBeenCalled();
   });
 
-  it("retorna 200 para número desconhecido (não enfileira, audita)", async () => {
+  it("L1: número desconhecido não enfileira, audita e dispara webhook blocked/user_not_found", async () => {
     mockResolveWhatsappUser.mockResolvedValue({ status: "unknown" });
 
     const req = makeRequest(VALID_PAYLOAD);
@@ -201,9 +214,33 @@ describe("POST /api/integrations/whatsapp/inbound", () => {
     expect(mockLogAudit).toHaveBeenCalledWith(
       expect.objectContaining({ action: "whatsapp_inbound_rejected" }),
     );
+    expect(mockEmitAgentReply).toHaveBeenCalledWith(
+      expect.any(Array),
+      expect.objectContaining({
+        kind: "blocked",
+        data: expect.objectContaining({ ok: false, reason: "user_not_found" }),
+      }),
+    );
   });
 
-  it("retorna 200 para usuário inativo (não enfileira, audita)", async () => {
+  it("D: loadOutboundTargets filtra por events has agent_reply (F5 D)", async () => {
+    mockResolveWhatsappUser.mockResolvedValue({ status: "unknown" });
+
+    const req = makeRequest(VALID_PAYLOAD);
+    await POST(req as Parameters<typeof POST>[0]);
+
+    expect(mockWebhookFindMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({
+          direction: "outbound",
+          enabled: true,
+          events: { has: "agent_reply" },
+        }),
+      }),
+    );
+  });
+
+  it("L1: usuário inativo não enfileira, audita e dispara webhook blocked/user_inactive", async () => {
     mockResolveWhatsappUser.mockResolvedValue({ status: "inactive" });
 
     const req = makeRequest(VALID_PAYLOAD);
@@ -213,6 +250,68 @@ describe("POST /api/integrations/whatsapp/inbound", () => {
     expect(mockLogAudit).toHaveBeenCalledWith(
       expect.objectContaining({ action: "whatsapp_inbound_rejected" }),
     );
+    expect(mockEmitAgentReply).toHaveBeenCalledWith(
+      expect.any(Array),
+      expect.objectContaining({
+        kind: "blocked",
+        data: expect.objectContaining({ ok: false, reason: "user_inactive" }),
+      }),
+    );
+  });
+
+  it("L2: canal off não enfileira e dispara channel_disabled", async () => {
+    mockAgentSettingsFindFirst.mockResolvedValue({ whatsappAccessLevel: "off" });
+
+    const req = makeRequest(VALID_PAYLOAD);
+    const res = await POST(req as Parameters<typeof POST>[0]);
+    expect(res.status).toBe(200);
+    const body = await res.json() as { rejected?: boolean; reason?: string };
+    expect(body.rejected).toBe(true);
+    expect(body.reason).toBe("channel_disabled");
+    expect(mockQueueAdd).not.toHaveBeenCalled();
+    expect(mockEmitAgentReply).toHaveBeenCalledWith(
+      expect.any(Array),
+      expect.objectContaining({
+        kind: "blocked",
+        data: expect.objectContaining({ reason: "channel_disabled" }),
+      }),
+    );
+  });
+
+  it("L2: role abaixo do nível não enfileira e dispara role_not_allowed", async () => {
+    mockAgentSettingsFindFirst.mockResolvedValue({ whatsappAccessLevel: "admin" });
+    mockResolveWhatsappUser.mockResolvedValue({
+      status: "ok",
+      user: { id: "user-001", name: "João", isActive: true, platformRole: "viewer" },
+    });
+
+    const req = makeRequest(VALID_PAYLOAD);
+    const res = await POST(req as Parameters<typeof POST>[0]);
+    expect(res.status).toBe(200);
+    const body = await res.json() as { rejected?: boolean; reason?: string };
+    expect(body.reason).toBe("role_not_allowed");
+    expect(mockQueueAdd).not.toHaveBeenCalled();
+    expect(mockEmitAgentReply).toHaveBeenCalledWith(
+      expect.any(Array),
+      expect.objectContaining({
+        kind: "blocked",
+        data: expect.objectContaining({ reason: "role_not_allowed" }),
+      }),
+    );
+  });
+
+  it("L2: role satisfaz o nível enfileira normalmente, sem emitAgentReply", async () => {
+    mockAgentSettingsFindFirst.mockResolvedValue({ whatsappAccessLevel: "manager" });
+    mockResolveWhatsappUser.mockResolvedValue({
+      status: "ok",
+      user: { id: "user-001", name: "João", isActive: true, platformRole: "admin" },
+    });
+
+    const req = makeRequest(VALID_PAYLOAD);
+    const res = await POST(req as Parameters<typeof POST>[0]);
+    expect(res.status).toBe(202);
+    expect(mockQueueAdd).toHaveBeenCalled();
+    expect(mockEmitAgentReply).not.toHaveBeenCalled();
   });
 
   it("retorna 503 quando não há webhook inbound configurado (fail-closed)", async () => {
@@ -248,6 +347,7 @@ describe("POST /api/integrations/whatsapp/inbound", () => {
       expect.objectContaining({ data: expect.objectContaining({ messageId: VALID_PAYLOAD.messageId }) }),
     );
     expect(mockQueueAdd).toHaveBeenCalled();
+    expect(mockEmitAgentReply).not.toHaveBeenCalled();
   });
 
   it("payload do job enfileirado contém userId e dados da mensagem", async () => {

@@ -5,6 +5,29 @@
 
 ---
 
+## R-f5-drop-booleans-legados — Drop das colunas `bubbleEnabled`/`whatsappEnabled` deferido (banco compartilhado)
+
+**Aberto em:** 2026-06-17 (F5 Onda C, branch `feat/router-ativacao-r2`).
+
+**Contexto:** a Onda C trocou os dois booleans de disponibilidade do Agente Nex por
+níveis de acesso (`bubbleAccessLevel`/`whatsappAccessLevel`, enum `ChannelAccessLevel`).
+O **código** desta frente já não referencia mais `bubbleEnabled`/`whatsappEnabled`
+(função `updateBubbleEnabled` removida, DTOs/Row/map migrados).
+
+**Por que o DROP da coluna foi deferido:** o Postgres é **compartilhado** entre as
+worktrees. As frentes paralelas vivas `feat-nex-reconstrucao` e `feat-deploy-producao`
+ainda **leem** `bubbleEnabled`/`whatsappEnabled` (em `layout.tsx`, `agent-config.ts`,
+`page.tsx`, `agent-availability-card.tsx`). Rodar `migrate dev --name
+f5_drop_legacy_channel_booleans` agora dropa as colunas do banco compartilhado e
+**quebraria o runtime das duas frentes** (Prisma seleciona coluna inexistente).
+
+**Plano:** mergear esta frente cedo para `main`; as outras frentes rebaseiam e
+migram para os níveis; **só então** rodar a migration de DROP (segunda migration,
+seguindo o protocolo de schema: avisar + `agente schema-changed`). As colunas
+permanecem fisicamente no schema/DB até lá (inertes para esta frente).
+
+---
+
 ## R-faturamento-duas-definicoes — Plataforma tem DUAS definicoes de faturamento divergentes (RESOLVIDO)
 
 **Aberto em:** 2026-06-10 (achado ao auditar a consistencia da plataforma).

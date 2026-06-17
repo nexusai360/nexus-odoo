@@ -32,6 +32,10 @@ import { logAudit } from "@/lib/audit";
 import { checkRateLimit } from "@/lib/rate-limit";
 import { AGENT_QUEUE_NAME } from "@/worker/agent/queue";
 import type { AgentJobData } from "@/worker/agent/processor";
+import { emitAgentReply, type OutboundTarget } from "@/lib/whatsapp/emit-reply";
+import { blockedMessageFor, type BlockReason } from "@/lib/whatsapp/blocked-messages";
+import { roleMeetsChannelLevel } from "@/lib/agent/channel-access";
+import type { ChannelAccessLevel } from "@/generated/prisma/client";
 
 /** Rate limit: 30 requisições por minuto por IP; 10 por minuto por número de origem. */
 const RL_IP_MAX = 30;
@@ -51,6 +55,61 @@ function getAgentQueue(): Queue<AgentJobData> {
     agentQueueInstance = new Queue<AgentJobData>(AGENT_QUEUE_NAME, { connection });
   }
   return agentQueueInstance;
+}
+
+/**
+ * Carrega os targets de saída habilitados (URL + secret descifrado).
+ *
+ * Onda D: só os outbound habilitados que emitem `agent_reply` (filtro
+ * `events: { has: "agent_reply" }`). O `targetUrl ?? url` prioriza a coluna
+ * canônica (R6) e cai no `url` legado por robustez para linhas antigas.
+ */
+async function loadOutboundTargets(): Promise<OutboundTarget[]> {
+  const rows = await prisma.whatsappWebhook
+    .findMany({
+      where: { direction: "outbound", enabled: true, events: { has: "agent_reply" } },
+    })
+    .catch(() => [] as Array<{ targetUrl: string | null; url: string | null; secret: string }>);
+  return rows.flatMap((w) => {
+    const url = w.targetUrl ?? w.url;
+    if (!url) return [];
+    try {
+      return [{ url, secret: decrypt(w.secret) }];
+    } catch {
+      return [];
+    }
+  });
+}
+
+/**
+ * Dispara o webhook de saída `agent.reply` com `kind:"blocked"` para uma
+ * barreira do inbound (L1/L2). Falha de emissão é tolerada (log + segue).
+ */
+async function fireBlocked(
+  reason: BlockReason,
+  to: string,
+  phoneNumberId: string | undefined,
+  inboundMessageId: string,
+): Promise<void> {
+  const targets = await loadOutboundTargets();
+  await emitAgentReply(targets, {
+    kind: "blocked",
+    data: {
+      inboundMessageId,
+      to,
+      phoneNumberId: phoneNumberId ?? null,
+      sessionId: null,
+      assistantMessageId: null,
+      ok: false,
+      reason,
+      reply: blockedMessageFor(reason),
+      suggestions: [],
+      tools: [],
+      reasoningMs: 0,
+      usage: { tokensInput: 0, tokensOutput: 0, costUsd: 0 },
+      messageType: "text",
+    },
+  }).catch((e) => console.warn("[inbound] fireBlocked falhou:", e));
 }
 
 export async function POST(req: NextRequest): Promise<NextResponse> {
@@ -140,7 +199,10 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
   // ── Resolução de usuário ───────────────────────────────────────────────────
   const resolved = await resolveWhatsappUser(payload.from);
 
+  // ── L1: número existe e está ativo? (mensagem padrão via webhook) ──────────
   if (resolved.status !== "ok") {
+    const l1Reason: BlockReason =
+      resolved.status === "inactive" ? "user_inactive" : "user_not_found";
     await logAudit({
       action: "whatsapp_inbound_rejected",
       details: {
@@ -149,6 +211,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
         messageId: payload.messageId,
       },
     });
+    await fireBlocked(l1Reason, payload.from, payload.phoneNumberId, payload.messageId);
     return NextResponse.json(
       { rejected: true, reason: resolved.status },
       { status: 200 },
@@ -156,6 +219,26 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
   }
 
   const { user } = resolved;
+
+  // ── L2: canal WhatsApp habilitado para o nível do usuário? ─────────────────
+  // `whatsappAccessLevel` é o nível mínimo de role (com herança). `off` bloqueia
+  // todos; role abaixo do nível também. Bloqueio devolve mensagem padrão e não
+  // enfileira (sem custo de IA). Hoje `whatsappEnabled` era cosmético; aqui o
+  // gate passa a ser efetivo.
+  const agentSettings = await prisma.agentSettings
+    .findFirst({ select: { whatsappAccessLevel: true } })
+    .catch(() => null);
+  const whatsappLevel: ChannelAccessLevel = agentSettings?.whatsappAccessLevel ?? "off";
+
+  if (!roleMeetsChannelLevel(user.platformRole, whatsappLevel)) {
+    const l2Reason: BlockReason =
+      whatsappLevel === "off" ? "channel_disabled" : "role_not_allowed";
+    await fireBlocked(l2Reason, payload.from, payload.phoneNumberId, payload.messageId);
+    return NextResponse.json(
+      { rejected: true, reason: l2Reason },
+      { status: 200 },
+    );
+  }
 
   // ── Teto diário por usuário ────────────────────────────────────────────────
   const dailyLimitSetting = await prisma.appSetting.findUnique({
@@ -196,24 +279,15 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     where: { id: "global" },
   }).catch(() => null);
 
-  const outboundWebhook = await prisma.whatsappWebhook.findFirst({
-    where: { direction: "outbound", enabled: true },
-  }).catch(() => null);
-
   const responseMode = channel?.responseMode ?? "direct";
 
   let channelConfig: AgentJobData["channelConfig"];
-  if (responseMode === "n8n_webhook" && outboundWebhook) {
-    let outboundSecret: string | undefined;
-    try {
-      outboundSecret = decrypt(outboundWebhook.secret);
-    } catch {
-      outboundSecret = undefined;
-    }
+  if (responseMode === "n8n_webhook") {
+    // Todos os outbound habilitados (helper único; targetUrl ?? url + secret).
+    const outboundTargets = await loadOutboundTargets();
     channelConfig = {
       responseMode: "n8n_webhook",
-      outboundUrl: outboundWebhook.url ?? undefined,
-      outboundSecret,
+      outboundTargets,
     };
   } else {
     channelConfig = { responseMode: "direct" };
@@ -229,6 +303,8 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     audioMediaId: payload.audioMediaId,
     imageMediaId: payload.imageMediaId,
     replyTo: payload.from,
+    phoneNumberId: payload.phoneNumberId,
+    contactName: payload.contactName,
     channelConfig,
   };
 

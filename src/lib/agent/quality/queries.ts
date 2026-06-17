@@ -7,6 +7,10 @@
 import "server-only";
 import { prisma } from "@/lib/prisma";
 import { formatDateInTz, DEFAULT_TZ } from "@/lib/datetime-core";
+import {
+  ORIGEM_AGENTE_NEX_BUBBLE,
+  ORIGEM_AGENTE_NEX_WHATSAPP,
+} from "./rodada-labels";
 
 // ---------------------------------------------------------------------------
 // Tipos publicos
@@ -232,12 +236,16 @@ export async function getDistinctRodadas(
     GROUP BY c.channel
   `) as Array<{ channel: string; count: number }>;
 
-  let agenteNexCount = 0;
+  // F5 E: in_app e whatsapp viram origens DISTINTAS (Bubble vs WhatsApp).
+  let bubbleCount = 0;
+  let whatsappCount = 0;
   let playgroundCount = 0;
   let backtestCount = 0;
   for (const r of virtualRows) {
-    if (r.channel === "in_app" || r.channel === "whatsapp") {
-      agenteNexCount += r.count;
+    if (r.channel === "in_app") {
+      bubbleCount += r.count;
+    } else if (r.channel === "whatsapp") {
+      whatsappCount += r.count;
     } else if (r.channel === "playground") {
       playgroundCount += r.count;
     } else if (r.channel === "backtest") {
@@ -245,9 +253,15 @@ export async function getDistinctRodadas(
     }
   }
 
+  // Cada unshift insere no INÍCIO; a ordem de chamada inverte no resultado.
+  // Ordem desejada: [backtest, playground, bubble, whatsapp, ...RX], logo
+  // chamamos whatsapp antes de bubble (e playground/backtest após estes).
   const out: Array<{ marker: string; count: number }> = [...auditRows];
-  if (agenteNexCount > 0) {
-    out.unshift({ marker: "__origem:agente-nex", count: agenteNexCount });
+  if (whatsappCount > 0) {
+    out.unshift({ marker: ORIGEM_AGENTE_NEX_WHATSAPP, count: whatsappCount });
+  }
+  if (bubbleCount > 0) {
+    out.unshift({ marker: ORIGEM_AGENTE_NEX_BUBBLE, count: bubbleCount });
   }
   if (playgroundCount > 0) {
     out.unshift({ marker: "__origem:playground", count: playgroundCount });

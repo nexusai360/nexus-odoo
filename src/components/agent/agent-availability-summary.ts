@@ -1,39 +1,50 @@
-// Funcao pura de sumarizacao dos 4 estados de disponibilidade do Agente Nex.
-// Mantida em arquivo separado da UI para nao puxar dependencias server-side
-// nos testes.
+// Funcao pura de sumarizacao da disponibilidade do Agente Nex por canal.
+// Recebe os niveis minimos de acesso (com heranca) de cada canal e deriva
+// tom, titulo e helper. Mantida separada da UI para nao puxar dependencias
+// server-side nos testes.
+
+import type { ChannelAccessLevel } from "@/generated/prisma/client";
+import { PLATFORM_ROLE_LABELS } from "@/lib/constants/roles";
+
+/** Descreve o nivel de um canal: "todos" (viewer) ou "a partir de <role>". */
+function levelPhrase(level: ChannelAccessLevel): string {
+  if (level === "off") return "desativado";
+  if (level === "viewer") return "todos os perfis";
+  return `a partir de ${PLATFORM_ROLE_LABELS[level]}`;
+}
 
 export function summarizeAvailability(
-  bubble: boolean,
-  whatsapp: boolean,
+  bubbleLevel: ChannelAccessLevel,
+  whatsappLevel: ChannelAccessLevel,
 ): { title: string; helper: string; tone: "active" | "partial" | "off" } {
-  if (bubble && whatsapp) {
+  const bubbleOn = bubbleLevel !== "off";
+  const whatsappOn = whatsappLevel !== "off";
+
+  if (bubbleOn && whatsappOn) {
     return {
       title: "Ativo no chat in-app e no WhatsApp",
-      helper:
-        "A bubble aparece nas paginas autenticadas e o agente responde via WhatsApp.",
+      helper: `Bubble: ${levelPhrase(bubbleLevel)}. WhatsApp: ${levelPhrase(whatsappLevel)}.`,
       tone: "active",
     };
   }
-  if (bubble) {
+  if (bubbleOn) {
     return {
       title: "Ativo apenas no chat in-app",
-      helper:
-        "A bubble aparece nas paginas autenticadas. O agente nao responde no WhatsApp.",
+      helper: `Bubble: ${levelPhrase(bubbleLevel)}. O agente nao responde no WhatsApp.`,
       tone: "partial",
     };
   }
-  if (whatsapp) {
+  if (whatsappOn) {
     return {
       title: "Ativo apenas no WhatsApp",
-      helper:
-        "A bubble esta oculta na plataforma. O agente responde no WhatsApp quando o webhook estiver no ar.",
+      helper: `WhatsApp: ${levelPhrase(whatsappLevel)}. A bubble esta oculta na plataforma.`,
       tone: "partial",
     };
   }
   return {
     title: "Desativado em todos os canais",
     helper:
-      "Nenhum canal responde. Ligue um dos toggles para reativar o Agente Nex.",
+      "Nenhum canal responde. Escolha um nivel para reativar o Agente Nex em um dos canais.",
     tone: "off",
   };
 }

@@ -11,6 +11,10 @@
 import { prisma } from "@/lib/prisma";
 import { requireMinRole } from "@/lib/auth/require";
 import { progressLabel } from "@/lib/agent/progress-labels";
+import { isSessionActive } from "@/lib/agent/session-status";
+
+/** Canais de uso real do Agente Nex exibidos no monitoramento (F5 E). */
+const CHAT_CHANNELS = ["in_app", "whatsapp"] as const;
 import type { ConversationMessageDto } from "@/lib/actions/conversation-messages";
 import {
   computeAccuracy,
@@ -46,6 +50,8 @@ export type SessionRow = {
   endedAt: string | null;
   messageCount: number;
   isActive: boolean;
+  /** Canal da sessão (in_app = bubble, whatsapp). F5 E. */
+  channel: string;
 } & QualityPair;
 
 /**
@@ -58,17 +64,24 @@ export async function listBubbleCollaborators(): Promise<Collaborator[]> {
 
   const grouped = await prisma.conversation.groupBy({
     by: ["userId"],
-    where: { channel: "in_app" },
+    where: { channel: { in: [...CHAT_CHANNELS] } },
     _count: { _all: true },
     _max: { updatedAt: true },
   });
 
+  // Sessões não encerradas; whatsapp só conta como ativa dentro da janela de
+  // 24h (helper isSessionActive), por isso trazemos channel + updatedAt.
   const active = await prisma.conversation.findMany({
-    where: { channel: "in_app", endedAt: null },
-    select: { userId: true },
-    distinct: ["userId"],
+    where: { channel: { in: [...CHAT_CHANNELS] }, endedAt: null },
+    select: { userId: true, channel: true, updatedAt: true },
   });
-  const activeIds = new Set(active.map((a) => a.userId));
+  const activeIds = new Set(
+    active
+      .filter((a) =>
+        isSessionActive({ channel: a.channel, endedAt: null, updatedAt: a.updatedAt }),
+      )
+      .map((a) => a.userId),
+  );
 
   const userIds = grouped.map((g) => g.userId);
   const users = await prisma.user.findMany({
@@ -80,7 +93,7 @@ export async function listBubbleCollaborators(): Promise<Collaborator[]> {
   // AVALIAÇÃO (usuário): votos por usuário.
   const votes = await prisma.messageFeedback.groupBy({
     by: ["userId", "rating"],
-    where: { conversation: { channel: "in_app" } },
+    where: { conversation: { channel: { in: [...CHAT_CHANNELS] } } },
     _count: { _all: true },
   });
   const avalByUser = new Map<string, RatingCounts>();
@@ -93,7 +106,7 @@ export async function listBubbleCollaborators(): Promise<Collaborator[]> {
   // PERÍCIA (plataforma): vereditos do juiz por usuário (status efetivo =
   // ajuste humano sobrescreve o automático), colapsados nos 4 baldes.
   const evals = await prisma.conversationQualityEvaluation.findMany({
-    where: { conversation: { channel: "in_app" } },
+    where: { conversation: { channel: { in: [...CHAT_CHANNELS] } } },
     select: { status: true, humanStatus: true, conversation: { select: { userId: true } } },
   });
   const periciaByUser = new Map<string, RatingCounts>();
@@ -143,12 +156,14 @@ export async function listBubbleSessions(userId: string): Promise<SessionRow[]> 
   await requireMinRole("super_admin");
 
   const conversations = await prisma.conversation.findMany({
-    where: { userId, channel: "in_app" },
+    where: { userId, channel: { in: [...CHAT_CHANNELS] } },
     orderBy: { createdAt: "desc" },
     select: {
       id: true,
       createdAt: true,
       endedAt: true,
+      channel: true,
+      updatedAt: true,
     },
   });
 
@@ -157,7 +172,7 @@ export async function listBubbleSessions(userId: string): Promise<SessionRow[]> 
   // vazio). Sem isso o "_count" cru contava turnos com tool como 3 onde o
   // usuário vê 2. Uma query só pro usuário inteiro, agregada em memória.
   const msgRows = await prisma.message.findMany({
-    where: { conversation: { userId, channel: "in_app" } },
+    where: { conversation: { userId, channel: { in: [...CHAT_CHANNELS] } } },
     select: { conversationId: true, role: true, content: true, kind: true },
   });
   const visibleCountByConv = new Map<string, number>();
@@ -174,7 +189,7 @@ export async function listBubbleSessions(userId: string): Promise<SessionRow[]> 
   // AVALIAÇÃO (usuário): votos por conversa.
   const votes = await prisma.messageFeedback.groupBy({
     by: ["conversationId", "rating"],
-    where: { conversation: { userId, channel: "in_app" } },
+    where: { conversation: { userId, channel: { in: [...CHAT_CHANNELS] } } },
     _count: { _all: true },
   });
   const avalByConv = new Map<string, RatingCounts>();
@@ -186,7 +201,7 @@ export async function listBubbleSessions(userId: string): Promise<SessionRow[]> 
 
   // PERÍCIA (plataforma): vereditos do juiz por conversa (status efetivo).
   const evals = await prisma.conversationQualityEvaluation.findMany({
-    where: { conversation: { userId, channel: "in_app" } },
+    where: { conversation: { userId, channel: { in: [...CHAT_CHANNELS] } } },
     select: { status: true, humanStatus: true, conversationId: true },
   });
   const periciaByConv = new Map<string, RatingCounts>();
@@ -203,14 +218,22 @@ export async function listBubbleSessions(userId: string): Promise<SessionRow[]> 
   return conversations.map((c, pos) => {
     const avaliacaoCounts = avalByConv.get(c.id) ?? zeroCounts();
     const periciaCounts = periciaByConv.get(c.id) ?? zeroCounts();
-    // Só a conversa MAIS RECENTE sem encerramento conta como "ativa" (a sessão
-    // viva). As demais sem endedAt são sessões passadas nunca arquivadas.
-    const isActive = pos === 0 && c.endedAt === null;
-    // Fim exibido: usa o endedAt real; se faltar (sessão antiga nunca arquivada
-    // e não-ativa), deriva pelo INÍCIO da sessão POSTERIOR (mais recente, em
-    // pos-1) menos 15s. A ativa fica sem fim ("até agora").
+    // Status por canal (F5 E): in_app ativa enquanto não encerrada; whatsapp
+    // ativa só dentro da janela de 24h. Para in_app, mantém a regra de "só a
+    // mais recente conta como viva" (sessões antigas sem endedAt não são ativas).
+    const helperActive = isSessionActive({
+      channel: c.channel,
+      endedAt: c.endedAt,
+      updatedAt: c.updatedAt,
+    });
+    const isActive =
+      c.channel === "in_app" ? pos === 0 && helperActive : helperActive;
+    // Fim exibido: usa o endedAt real; se faltar (sessão in_app antiga nunca
+    // arquivada e não-ativa), deriva pelo INÍCIO da sessão POSTERIOR (mais
+    // recente, em pos-1) menos 15s. A ativa fica sem fim ("até agora"). Para
+    // whatsapp não derivamos (endedAt real ou null).
     let endedAt = c.endedAt ? c.endedAt.toISOString() : null;
-    if (!isActive && endedAt === null) {
+    if (c.channel === "in_app" && !isActive && endedAt === null) {
       const posterior = conversations[pos - 1];
       if (posterior) {
         endedAt = new Date(+posterior.createdAt - 15_000).toISOString();
@@ -227,6 +250,7 @@ export async function listBubbleSessions(userId: string): Promise<SessionRow[]> 
       periciaCounts,
       periciaPct: computeAccuracy(periciaCounts),
       isActive,
+      channel: c.channel,
     };
   });
 }

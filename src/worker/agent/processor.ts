@@ -14,25 +14,20 @@
  */
 
 import { runAgent } from "@/lib/agent/run-agent";
-import { formatForChannel } from "@/lib/agent/format/by-channel";
 import { redis } from "@/lib/redis";
 import { getOrCreateWhatsappConversation } from "@/lib/agent/conversation";
 import { transcribeAudio } from "@/lib/agent/transcribe";
 import { buildCloudClientFromDb } from "@/lib/whatsapp/cloud-client";
-import { signPayload } from "@/lib/whatsapp/hmac";
+import { emitAgentReply, type AgentReplyData, type OutboundTarget } from "@/lib/whatsapp/emit-reply";
+import { buildReplyData } from "./build-reply-data";
 import { prisma } from "@/lib/prisma";
+import { acquireUserLock, releaseUserLock } from "./user-lock";
 import type { AgentChannel } from "@/generated/prisma/client";
-
-/** Mensagem de erro amigável enviada ao usuário quando o agente falha. */
-const AGENT_ERROR_MSG =
-  "Desculpe, não consegui processar sua mensagem agora. Tente novamente em instantes.";
 
 export interface AgentJobChannelConfig {
   responseMode: "direct" | "n8n_webhook";
-  /** Presente quando responseMode = n8n_webhook */
-  outboundUrl?: string;
-  /** Secret HMAC para assinar o payload de saída (n8n_webhook) */
-  outboundSecret?: string;
+  /** Targets de saída (URL + secret descifrado), presente em n8n_webhook. */
+  outboundTargets?: OutboundTarget[];
 }
 
 export interface AgentJobData {
@@ -52,6 +47,10 @@ export interface AgentJobData {
   imageMediaId?: string;
   /** Número de destino para a resposta (E.164). */
   replyTo: string;
+  /** ID do número Meta para rotear a resposta (opcional). */
+  phoneNumberId?: string;
+  /** Nome de exibição do contato, para monitoramento (opcional). */
+  contactName?: string;
   /** Configuração de resposta do canal. */
   channelConfig: AgentJobChannelConfig;
 }
@@ -61,6 +60,21 @@ export interface AgentJobData {
  * Exportado como função para facilitar testes sem BullMQ.
  */
 export async function processAgentJob(data: AgentJobData): Promise<void> {
+  // 0. Idempotência de saída (§9): se já respondemos esta mensagem, reentrega o
+  //    payload salvo SEM rodar o agente nem adquirir lock. Cobre o retry do
+  //    BullMQ quando só o POST de saída falhou.
+  const replayKey = `whatsapp:replied:${data.messageId}`;
+  const cached = await redis.get(replayKey).catch(() => null);
+  if (cached) {
+    try {
+      const replyData = JSON.parse(cached) as AgentReplyData;
+      await dispatchReply(data, replyData);
+    } catch (e) {
+      console.warn("[agent-processor] replay falhou:", e);
+    }
+    return;
+  }
+
   // G2 , Regras de comportamento para WhatsApp baseadas nos checkpoints
   // configurados em AgentSettings. "PRODUCTION" libera o recurso para o
   // WhatsApp; outros valores indicam que o canal não deve processar mídia.
@@ -80,32 +94,29 @@ export async function processAgentJob(data: AgentJobData): Promise<void> {
     }
     const provisional =
       "Recebi sua imagem, mas a análise de imagens ainda está em ajustes finais. Em instantes consigo responder a essa modalidade.";
-    if (data.channelConfig.responseMode === "n8n_webhook") {
-      await sendViaWebhook(data, provisional);
-    } else {
-      const cloudClient = await buildCloudClientFromDb();
-      await cloudClient.sendText(data.replyTo, provisional);
-    }
+    await dispatchNotice(data, provisional);
     return;
   }
 
-  if (data.type === "audio" && !audioInProduction) {
-    // G2 , Áudio desativado para WhatsApp: responder explicando.
+  // n8n entrega o áudio JÁ transcrito em data.text => não depende do
+  // audioCheckpoint. Só barra quando NÃO há texto (mídia Meta crua + canal off).
+  if (data.type === "audio" && !audioInProduction && !data.text) {
+    // G2 , Áudio (mídia Meta) desativado para WhatsApp: responder explicando.
     const message =
       "No momento não consigo entender mensagens de áudio. Por favor, envie sua pergunta por escrito.";
-    if (data.channelConfig.responseMode === "n8n_webhook") {
-      await sendViaWebhook(data, message);
-    } else {
-      const cloudClient = await buildCloudClientFromDb();
-      await cloudClient.sendText(data.replyTo, message);
-    }
+    await dispatchNotice(data, message);
     return;
   }
 
-  // 1. Resolver texto da mensagem (text ou áudio transcrito)
+  // 1. Resolver texto da mensagem (text, áudio transcrito via n8n, ou áudio Meta)
   let userMessage: string;
+  const isAudio = data.type === "audio";
 
-  if (data.type === "audio") {
+  if (isAudio && data.text && data.text.trim().length > 0) {
+    // Caminho n8n: o áudio já vem transcrito em data.text. Não baixa nem transcreve.
+    userMessage = data.text;
+  } else if (isAudio) {
+    // Caminho Meta direto: baixa o áudio e transcreve.
     if (!data.audioMediaId) {
       throw new Error("[agent-processor] audioMediaId ausente para tipo=audio");
     }
@@ -126,7 +137,7 @@ export async function processAgentJob(data: AgentJobData): Promise<void> {
         "Por favor, envie sua pergunta por escrito.";
 
       if (data.channelConfig.responseMode === "n8n_webhook") {
-        await sendViaWebhook(data, fallbackText);
+        await dispatchNotice(data, fallbackText);
       } else {
         // direct , seria necessário cloud client também; loga e encerra sem matar o job
         console.warn("[agent-processor] Modo direct sem cloud client , resposta de áudio impossível.");
@@ -145,8 +156,17 @@ export async function processAgentJob(data: AgentJobData): Promise<void> {
     userMessage = data.text;
   }
 
-  // 2. Obter ou criar conversa WhatsApp
-  const conversation = await getOrCreateWhatsappConversation(data.userId);
+  // 1b. Lock por usuário (cluster-safe). Garante uma conversa por usuário sem
+  //     sobrescrita de reasoningHistory quando chegam mensagens concorrentes.
+  //     Se outra mensagem do mesmo usuário está em processamento, lança para o
+  //     BullMQ retentar com backoff (espera a anterior liberar).
+  const gotLock = await acquireUserLock(data.userId);
+  if (!gotLock) {
+    throw new Error(`[agent-processor] lock ocupado para userId=${data.userId}, retry`);
+  }
+  try {
+    // 2. Obter ou criar conversa WhatsApp
+    const conversation = await getOrCreateWhatsappConversation(data.userId);
 
   // 2b. Onda E do Renascimento: parser de atalho numerico (1/2/3) para
   //     sugestoes da resposta anterior. WhatsApp nao renderiza chips, o
@@ -168,31 +188,19 @@ export async function processAgentJob(data: AgentJobData): Promise<void> {
     }
   }
 
-  // 2c. Heartbeat textual: se o agente demorar mais de 3s, envia uma
-  //     mensagem curta para o usuario nao achar que travou. Hard limit 1
-  //     por turno; cancelado se o runAgent completar antes.
-  const heartbeatTimer = scheduleWhatsappHeartbeat(data);
-
   // 3. Executar o agente (source=whatsapp ativa bloco do compose com sintaxe
   //    propria e instrucao "Voce tambem pode perguntar" + opcoes numeradas).
-  let result: Awaited<ReturnType<typeof runAgent>>;
-  try {
-    result = await runAgent({
-      conversationId: conversation.id,
-      userId: data.userId,
-      userMessage,
-      channel: data.channel,
-      isPlayground: false,
-      source: "whatsapp",
-    });
-  } finally {
-    if (heartbeatTimer) clearTimeout(heartbeatTimer);
-  }
-
-  const replyTextRaw = result.ok ? result.message : AGENT_ERROR_MSG;
-  // Formatter por canal: converte markdown bubble (**bold**) para WhatsApp
-  // (*bold*), tabelas viram listas hifenizadas, links viram texto: url.
-  const replyText = formatForChannel(replyTextRaw, "whatsapp");
+  //    Heartbeat textual suprimido no WhatsApp (decisão #9): só a resposta
+  //    final (ou a mensagem padrão de barreira) é emitida.
+  const result = await runAgent({
+    conversationId: conversation.id,
+    userId: data.userId,
+    userMessage,
+    channel: data.channel,
+    isPlayground: false,
+    source: "whatsapp",
+    isAudio,
+  });
 
   // Persiste as sugestoes do turno (extraidas pelo runAgent.suggestions
   // OU do sufixo "Voce tambem pode perguntar:" gerado pelo source whatsapp).
@@ -211,15 +219,25 @@ export async function processAgentJob(data: AgentJobData): Promise<void> {
     }
   }
 
-  // 4. Despachar resposta no modo configurado
-  const { responseMode } = data.channelConfig;
-
-  if (responseMode === "n8n_webhook") {
-    await sendViaWebhook(data, replyText);
-  } else {
-    // Modo direct: envia via Graph API
-    const cloudClient = await buildCloudClientFromDb();
-    await cloudClient.sendText(data.replyTo, replyText);
+  // 4. Montar o envelope rico, gravar a idempotência de saída e despachar.
+  //    A chave `whatsapp:replied` é gravada APÓS runAgent+persistência e ANTES
+  //    do POST: o retry de POST falho só reentrega o payload salvo (§9).
+  const replyData = buildReplyData(
+    {
+      inboundMessageId: data.messageId,
+      to: data.replyTo,
+      phoneNumberId: data.phoneNumberId ?? null,
+      conversationId: conversation.id,
+      messageType: data.type,
+    },
+    result,
+  );
+  await redis
+    .set(replayKey, JSON.stringify(replyData), "EX", 24 * 60 * 60)
+    .catch(() => {});
+  await dispatchReply(data, replyData);
+  } finally {
+    await releaseUserLock(data.userId);
   }
 }
 
@@ -248,64 +266,45 @@ function harvestWhatsappSuggestions(result: {
     .slice(0, 5);
 }
 
-/** Agenda envio de heartbeat textual apos 3s. Retorna o handle do timer
- *  (ou null se o canal nao permite envio de feedback intermediario). */
-function scheduleWhatsappHeartbeat(data: AgentJobData): NodeJS.Timeout | null {
-  const HEARTBEAT_DELAY_MS = 3_000;
-  const candidates = ["🔎 Buscando...", "🧮 Calculando...", "📊 Organizando..."];
-  const pick = candidates[Math.floor(Math.random() * candidates.length)];
-
-  return setTimeout(async () => {
-    try {
-      if (data.channelConfig.responseMode === "n8n_webhook") {
-        await sendViaWebhook(data, pick);
-      } else {
-        const cloudClient = await buildCloudClientFromDb();
-        await cloudClient.sendText(data.replyTo, pick);
-      }
-    } catch (err) {
-      console.warn("[agent-processor] heartbeat falhou:", err);
-    }
-  }, HEARTBEAT_DELAY_MS);
+/**
+ * Despacha o `replyData` no modo configurado. O `kind` do envelope é DERIVADO
+ * de `replyData.ok` (final quando ok, blocked quando barreira/falha , inclui a
+ * recusa L3 permission_denied, que volta como ok:false).
+ *
+ * - n8n_webhook: emite o envelope agent.reply assinado para os targets.
+ * - direct:      envia o texto via Graph API (cloud client).
+ */
+async function dispatchReply(data: AgentJobData, replyData: AgentReplyData): Promise<void> {
+  if (data.channelConfig.responseMode === "n8n_webhook") {
+    await emitAgentReply(data.channelConfig.outboundTargets ?? [], {
+      kind: replyData.ok ? "final" : "blocked",
+      data: replyData,
+    });
+    return;
+  }
+  // Modo direct: envia via Graph API.
+  const cloudClient = await buildCloudClientFromDb();
+  await cloudClient.sendText(data.replyTo, replyData.reply);
 }
 
 /**
- * Modo n8n_webhook: POST assinado HMAC no outboundUrl configurado.
- * O n8n recebe o payload e repassa ao WhatsApp.
+ * Aviso brando (mídia não suportada / fallback de áudio): monta um envelope
+ * mínimo `ok:false`/`technical_error` com o texto fornecido e despacha.
  */
-async function sendViaWebhook(data: AgentJobData, replyText: string): Promise<void> {
-  const { outboundUrl, outboundSecret } = data.channelConfig;
-
-  if (!outboundUrl) {
-    // Lança para que o BullMQ reprocesse com backoff , não silenciar perda de resposta.
-    throw new Error("[agent-processor] outboundUrl ausente para modo n8n_webhook");
-  }
-
-  const timestamp = String(Date.now());
-  const body = JSON.stringify({
+async function dispatchNotice(data: AgentJobData, text: string): Promise<void> {
+  await dispatchReply(data, {
+    inboundMessageId: data.messageId,
     to: data.replyTo,
-    message: replyText,
-    messageId: data.messageId,
-    timestamp,
+    phoneNumberId: data.phoneNumberId ?? null,
+    sessionId: null,
+    assistantMessageId: null,
+    ok: false,
+    reason: "technical_error",
+    reply: text,
+    suggestions: [],
+    tools: [],
+    reasoningMs: 0,
+    usage: { tokensInput: 0, tokensOutput: 0, costUsd: 0 },
+    messageType: data.type,
   });
-
-  const signature = outboundSecret ? signPayload(body, outboundSecret, timestamp) : "";
-
-  const response = await fetch(outboundUrl, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      "X-Signature": signature,
-      "X-Timestamp": timestamp,
-    },
-    body,
-    signal: AbortSignal.timeout(15_000), // 15s timeout , evita job pendurando
-  });
-
-  if (!response.ok) {
-    // Lança para que o BullMQ reprocesse com backoff exponencial.
-    throw new Error(
-      `[agent-processor] Webhook de saída falhou (${response.status}): ${outboundUrl}`,
-    );
-  }
 }

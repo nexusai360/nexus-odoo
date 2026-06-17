@@ -19,11 +19,17 @@ import {
   type CreateWebhookInput,
   type CreatedWebhook,
   type WebhookDirection,
+  type WebhookEventName,
   type WebhookMethod,
 } from "@/lib/actions/webhooks"
 
 /** Métodos HTTP disponíveis para seleção. */
 const HTTP_METHODS: WebhookMethod[] = ["GET", "POST", "PUT", "PATCH", "DELETE", "HEAD"]
+
+/** Eventos emissíveis por um webhook de saída (hoje só a resposta do agente). */
+const OUTBOUND_EVENTS: Array<{ value: WebhookEventName; label: string }> = [
+  { value: "agent_reply", label: "Resposta do agente (agent.reply)" },
+]
 
 /** Slug seguro: mesma regra do schema da Server Action. */
 const PATH_RE = /^[a-z0-9][a-z0-9-/]*$/
@@ -64,6 +70,7 @@ export function WebhookWizard({
   const [path, setPath] = React.useState("")
   const [targetUrl, setTargetUrl] = React.useState("")
   const [methods, setMethods] = React.useState<WebhookMethod[]>(["POST"])
+  const [events, setEvents] = React.useState<WebhookEventName[]>(["agent_reply"])
   const [submitting, setSubmitting] = React.useState(false)
   const [error, setError] = React.useState<string | null>(null)
   const [created, setCreated] = React.useState<CreatedWebhook | null>(null)
@@ -71,6 +78,12 @@ export function WebhookWizard({
   function toggleMethod(m: WebhookMethod) {
     setMethods((prev) =>
       prev.includes(m) ? prev.filter((x) => x !== m) : [...prev, m],
+    )
+  }
+
+  function toggleEvent(ev: WebhookEventName) {
+    setEvents((prev) =>
+      prev.includes(ev) ? prev.filter((x) => x !== ev) : [...prev, ev],
     )
   }
 
@@ -98,6 +111,7 @@ export function WebhookWizard({
       path: direction === "inbound" ? path.trim() : null,
       targetUrl: direction === "outbound" ? targetUrl.trim() : null,
       methods,
+      events: direction === "outbound" ? events : undefined,
     }
     const res = await createWebhook(input)
     setSubmitting(false)
@@ -229,6 +243,34 @@ export function WebhookWizard({
               ))}
             </div>
           </div>
+
+          {direction === "outbound" && (
+            <div className="space-y-2">
+              <Label>Eventos</Label>
+              <p className="text-xs text-muted-foreground">
+                Quais eventos da plataforma disparam este webhook.
+              </p>
+              <div className="flex flex-col gap-2">
+                {OUTBOUND_EVENTS.map((ev) => (
+                  <label
+                    key={ev.value}
+                    className="flex cursor-pointer items-center gap-2 text-sm"
+                  >
+                    <Checkbox
+                      checked={events.includes(ev.value)}
+                      onCheckedChange={() => toggleEvent(ev.value)}
+                    />
+                    {ev.label}
+                  </label>
+                ))}
+              </div>
+              {events.length === 0 && (
+                <p className="text-xs text-amber-600 dark:text-amber-400">
+                  Sem nenhum evento marcado, este webhook não receberá nada.
+                </p>
+              )}
+            </div>
+          )}
 
           {error && <p className="text-xs text-destructive">{error}</p>}
 
