@@ -60,14 +60,15 @@ function getAgentQueue(): Queue<AgentJobData> {
 /**
  * Carrega os targets de saída habilitados (URL + secret descifrado).
  *
- * Onda A/B: todo outbound habilitado (sem filtro de evento, ver achado #10 do
- * plano). A Onda D acrescenta `events: { has: "agent_reply" }` a este where.
- * O `targetUrl ?? url` prioriza a coluna canônica (R6) e cai no `url` legado
- * por robustez para linhas antigas.
+ * Onda D: só os outbound habilitados que emitem `agent_reply` (filtro
+ * `events: { has: "agent_reply" }`). O `targetUrl ?? url` prioriza a coluna
+ * canônica (R6) e cai no `url` legado por robustez para linhas antigas.
  */
 async function loadOutboundTargets(): Promise<OutboundTarget[]> {
   const rows = await prisma.whatsappWebhook
-    .findMany({ where: { direction: "outbound", enabled: true } })
+    .findMany({
+      where: { direction: "outbound", enabled: true, events: { has: "agent_reply" } },
+    })
     .catch(() => [] as Array<{ targetUrl: string | null; url: string | null; secret: string }>);
   return rows.flatMap((w) => {
     const url = w.targetUrl ?? w.url;

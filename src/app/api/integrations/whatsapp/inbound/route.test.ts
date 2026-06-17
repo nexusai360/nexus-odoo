@@ -223,6 +223,23 @@ describe("POST /api/integrations/whatsapp/inbound", () => {
     );
   });
 
+  it("D: loadOutboundTargets filtra por events has agent_reply (F5 D)", async () => {
+    mockResolveWhatsappUser.mockResolvedValue({ status: "unknown" });
+
+    const req = makeRequest(VALID_PAYLOAD);
+    await POST(req as Parameters<typeof POST>[0]);
+
+    expect(mockWebhookFindMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({
+          direction: "outbound",
+          enabled: true,
+          events: { has: "agent_reply" },
+        }),
+      }),
+    );
+  });
+
   it("L1: usuário inativo não enfileira, audita e dispara webhook blocked/user_inactive", async () => {
     mockResolveWhatsappUser.mockResolvedValue({ status: "inactive" });
 
