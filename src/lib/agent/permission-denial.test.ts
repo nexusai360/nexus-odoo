@@ -120,6 +120,21 @@ describe("respondPermissionDenied", () => {
     }
   });
 
+  it("expõe toolsCalled/reasoningMs zerados e deniedModule/allowedModules (F5 B/L3)", async () => {
+    const res = await respondPermissionDenied({
+      ...baseArgs,
+      deniedDomains: ["financeiro"],
+      availableDomains: ["estoque", "fiscal"],
+    });
+    expect(res.ok).toBe(true);
+    if (res.ok) {
+      expect(res.toolsCalled).toEqual([]);
+      expect(res.reasoningMs).toBe(0);
+      expect(res.deniedModule).toBe("financeiro");
+      expect(res.allowedModules).toEqual(["estoque", "fiscal"]);
+    }
+  });
+
   it("template plural quando >1 dominio negado", async () => {
     const res = await respondPermissionDenied({
       ...baseArgs,
