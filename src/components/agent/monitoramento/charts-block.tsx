@@ -33,7 +33,7 @@ const STATUS_COLOR: Record<
 const numberFmt = new Intl.NumberFormat("pt-BR");
 const formatNumber = (v: number) => numberFmt.format(v);
 const formatPercent = (v: number) =>
-  Number.isFinite(v) ? `${v.toFixed(1)}%` : ",";
+  Number.isFinite(v) ? `${v.toFixed(1)}%` : "0%";
 
 interface ChartsBlockProps {
   dailyData: Array<{

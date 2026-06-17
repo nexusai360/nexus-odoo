@@ -19,7 +19,12 @@ export interface AuditLogRow {
 
 // --- listAuditLogs ---------------------------------------------------------
 // Acessível a super_admin/admin/gerente (mesma regra de listUsers). Lê os
-// ~100 eventos mais recentes.
+// eventos mais recentes (cap alto): a tabela de Auditoria faz busca/paginação
+// client-side sobre esse conjunto, então carregamos um volume generoso para
+// "saber tudo" sem estourar o payload. Acima disso, é caso para paginação
+// server-side dedicada (follow-up).
+
+const AUDIT_FETCH_CAP = 2000;
 
 export async function listAuditLogs(): Promise<ActionResult<AuditLogRow[]>> {
   try {
@@ -31,7 +36,7 @@ export async function listAuditLogs(): Promise<ActionResult<AuditLogRow[]>> {
 
     const rows = await prisma.auditLog.findMany({
       orderBy: { createdAt: "desc" },
-      take: 100,
+      take: AUDIT_FETCH_CAP,
       select: {
         id: true,
         action: true,

@@ -750,7 +750,7 @@ export function ConsumoContent({ minDate: minDateIso }: ConsumoContentProps) {
   // (activeChartStats = chartStats ?? stats). Quando nao ha navegacao,
   // activeChartStats === stats e KPI exibe o periodo da pill.
   const totalCostBrlFormatted = useMemo(
-    () => (activeChartStats ? formatBrl4(activeChartStats.totalCostBrl) : ","),
+    () => (activeChartStats ? formatBrl4(activeChartStats.totalCostBrl) : formatBrl4(0)),
     [activeChartStats],
   );
   const chartTotalCostBrlFormatted = totalCostBrlFormatted;
@@ -783,7 +783,7 @@ export function ConsumoContent({ minDate: minDateIso }: ConsumoContentProps) {
       label: "Conversas",
       value: activeChartStats
         ? formatCompactCount(activeChartStats.totalConversations)
-        : ",",
+        : "0",
       subtitle: "threads distintos",
       tone: "default" as const,
     },
@@ -792,7 +792,7 @@ export function ConsumoContent({ minDate: minDateIso }: ConsumoContentProps) {
       label: "Chamadas",
       value: activeChartStats
         ? formatCompactCount(activeChartStats.totalIterations)
-        : ",",
+        : "0",
       subtitle: "no período",
       tone: "default" as const,
     },
@@ -801,7 +801,7 @@ export function ConsumoContent({ minDate: minDateIso }: ConsumoContentProps) {
       label: "Tokens entrada",
       value: activeChartStats
         ? formatTokens(activeChartStats.totalTokensInput)
-        : ",",
+        : "0",
       subtitle: "no período",
       tone: "default" as const,
     },
@@ -810,7 +810,7 @@ export function ConsumoContent({ minDate: minDateIso }: ConsumoContentProps) {
       label: "Tokens saída",
       value: activeChartStats
         ? formatTokens(activeChartStats.totalTokensOutput)
-        : ",",
+        : "0",
       subtitle: "no período",
       tone: "default" as const,
     },
