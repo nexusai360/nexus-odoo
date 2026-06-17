@@ -34,7 +34,10 @@ function TabsTrigger({ className, ...props }: TabsPrimitive.Tab.Props) {
       className={cn(
         "inline-flex flex-1 items-center justify-center gap-1.5 rounded-md px-3 py-1 text-sm font-medium whitespace-nowrap transition-colors outline-none select-none",
         "focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1",
-        "data-[selected]:bg-background data-[selected]:text-foreground data-[selected]:shadow-sm",
+        // base-ui expõe a aba ativa via data-active (NÃO data-selected): sem
+        // isso a aba selecionada não ganhava destaque (pill bg-background +
+        // shadow). Mesmo visual do MonitoramentoNav / ServidorMcpNav.
+        "data-[active]:bg-background data-[active]:text-foreground data-[active]:shadow-sm",
         "disabled:pointer-events-none disabled:opacity-50 cursor-pointer",
         "[&_svg]:pointer-events-none [&_svg]:shrink-0",
         className,
