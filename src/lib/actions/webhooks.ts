@@ -30,6 +30,9 @@ export type WebhookDirection = "inbound" | "outbound";
 /** Métodos HTTP aceitos por um webhook. */
 export type WebhookMethod = "GET" | "POST" | "PUT" | "PATCH" | "DELETE" | "HEAD";
 
+/** Eventos emissíveis por um webhook de saída (enum Prisma `WebhookEvent`). */
+export type WebhookEventName = "agent_reply";
+
 export interface CreateWebhookInput {
   direction: WebhookDirection;
   name: string;
@@ -38,6 +41,8 @@ export interface CreateWebhookInput {
   /** URL de destino completa, somente outbound. */
   targetUrl?: string | null;
   methods: WebhookMethod[];
+  /** Eventos emitidos, somente outbound (default ["agent_reply"]). */
+  events?: WebhookEventName[];
 }
 
 export interface UpdateWebhookInput {
@@ -47,6 +52,8 @@ export interface UpdateWebhookInput {
   /** URL de destino completa, somente outbound. */
   targetUrl?: string | null;
   methods: WebhookMethod[];
+  /** Eventos emitidos, somente outbound. */
+  events?: WebhookEventName[];
 }
 
 export interface WebhookListItem {
@@ -92,6 +99,7 @@ function generateSecret(): string {
 // ──────────────────────────────────────────────────────────────────────────────
 
 const methodSchema = z.enum(["GET", "POST", "PUT", "PATCH", "DELETE", "HEAD"]);
+const eventSchema = z.enum(["agent_reply"]);
 
 /** Slug seguro para o path de um webhook de entrada. */
 const pathSchema = z
@@ -105,6 +113,7 @@ const createSchema = z
     path: z.string().nullable().optional(),
     targetUrl: z.string().nullable().optional(),
     methods: z.array(methodSchema).min(1, "Selecione ao menos um método"),
+    events: z.array(eventSchema).optional(),
   })
   .superRefine((val, ctx) => {
     if (val.direction === "inbound") {
@@ -178,6 +187,9 @@ export async function createWebhook(
         targetUrl: data.direction === "outbound" ? (data.targetUrl ?? null) : null,
         url: data.direction === "outbound" ? (data.targetUrl ?? null) : null,
         methods: data.methods,
+        // Outbound novo nasce emitindo agent.reply; inbound nunca emite (F5 D).
+        events:
+          data.direction === "outbound" ? (data.events ?? ["agent_reply"]) : [],
         secret: secretEncrypted,
         enabled: true,
       },
@@ -258,6 +270,14 @@ export async function updateWebhook(
     targetUrl = u.data;
   }
 
+  // Eventos só se aplicam a outbound; inbound fica sempre vazio (F5 D).
+  const events: WebhookEventName[] =
+    direction === "outbound"
+      ? (z.array(eventSchema).safeParse(input.events).success
+          ? (input.events ?? ["agent_reply"])
+          : ["agent_reply"])
+      : [];
+
   try {
     await prisma.whatsappWebhook.update({
       where: { id },
@@ -267,6 +287,7 @@ export async function updateWebhook(
         path,
         targetUrl,
         url: direction === "outbound" ? targetUrl : null,
+        events,
       },
     });
     revalidatePath("/integracoes/webhooks");
