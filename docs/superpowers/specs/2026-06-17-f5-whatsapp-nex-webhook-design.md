@@ -1,59 +1,75 @@
-# F5 , Integração WhatsApp ↔ Agente Nex via n8n/Webhook (SPEC v3 , final)
+# F5 , Integração WhatsApp ↔ Agente Nex via n8n/Webhook (SPEC v4)
 
-> **Status:** SPEC v3 (achados da 2ª review aplicados). Versão que vai para o
-> PLAN (`CLAUDE.md §6`).
+> **Status:** SPEC v4. Incorpora os esclarecimentos do usuário (2026-06-17, tarde)
+> sobre áudio, avaliação, validação em camadas e acesso por canal/nível, e o
+> mapeamento do código real. Próximo passo após aprovação: PLAN (`CLAUDE.md §6`).
 > **Branch:** `feat/router-ativacao-r2`.
-> **Mudou v2 → v3:** caminho de áudio travado (n8n transcreve; worker não baixa);
-> `runAgent` usa `isAudio` (não `kind`); semântica concreta do lock por usuário
-> (escopo, TTL, não-adquiriu, ordem best-effort); envelope de saída marcado como
-> **breaking**; `phoneNumberId` percorre inbound→job→envelope (3 pontos);
-> idempotência de saída com ordem de passos definida; **cortada** a renomeação de
-> origem na aba de avaliações (WhatsApp nunca aparece lá , sintoma inexistente);
-> gate de avaliação por NOME das funções (enqueue de inteligência fica fora);
-> cast do backfill da migration; Onda A decomposta.
+> **Mudou v3 → v4 (correções de entendimento):**
+> - **Áudio:** dois caminhos COEXISTEM , via n8n vem transcrito (texto + flag);
+>   via Meta direto vem o arquivo e a plataforma transcreve (código atual). Nada
+>   é removido; o microfone da bubble não se toca.
+> - **Avaliação:** o Judge automático **roda para WhatsApp também** (já roda hoje
+>   para todos os canais , `run-agent.ts:1422`). O que não existe é o **voto do
+>   usuário** pelo WhatsApp. Gate de "pular avaliação" da v3 **revertido**.
+> - **Origem** volta a separar Bubble vs WhatsApp (na tabela de avaliações **e**
+>   nas sessões), já que WhatsApp tem avaliação.
+> - **Validação em camadas antes da IA** (número → canal/nível → assunto), cada
+>   bloqueio devolvendo **mensagem padrão** no webhook, sem gastar crédito de IA.
+> - **Acesso por canal/nível:** trocar os toggles bubble/WhatsApp por um
+>   **segmented control** (Desativado + níveis de perfil, com herança).
 
 ---
 
 ## 1. Objetivo
 
-Conversa com o Agente Nex **pelo WhatsApp**, mesma inteligência do chat in-app,
-via **n8n** entre a Meta e a plataforma, refletida no monitoramento. Reusa a
-infra madura (endpoint inbound, HMAC, fila, sessão 24h). Não é a F5 inteira.
+Conversa com o Agente Nex pelo **WhatsApp**, mesma inteligência do chat in-app,
+via **n8n**, refletida no monitoramento e governada pelo RBAC. Reusa a infra
+madura (inbound, HMAC, fila, sessão 24h, router, RBAC de catálogo, recusa por
+permissão, Judge). Não é a F5 inteira.
 
 Fluxo (**assíncrono, 2 webhooks**):
 
 ```
 Usuário(WhatsApp) → Meta → n8n (extrai campos, transcreve áudio, assina HMAC)
-  → [ENTRADA] POST /api/integrations/whatsapp/inbound (HMAC)
-       → resolve usuário (equivalência do nono dígito) → fila `agent`
-  → worker: lock por usuário → sessão (24h) → runAgent (MCP F4)
-       → persiste resposta + grava idempotência de saída + computa payload rico
+  → [ENTRADA] POST /inbound (HMAC)
+       → L1 número existe? (com/sem nono dígito)
+       → L2 canal WhatsApp habilitado p/ o nível do usuário?
+       (bloqueio em L1/L2 ⇒ dispara webhook de saída com MENSAGEM PADRÃO, sem fila/IA)
+       → fila `agent`
+  → worker: lock por usuário → sessão (24h)
+       → L3 acesso ao assunto/módulo? (router + RBAC; recusa sem LLM se negado)
+       → runAgent (MCP F4) → Judge (avaliação automática) roda normalmente
+       → persiste + idempotência de saída + payload rico
        → emite `agent.reply` nos webhooks outbound habilitados (HMAC)
-  → n8n (nó Webhook receptor) deduplica por deliveryId → entrega ao usuário
+  → n8n (receptor) deduplica por deliveryId → entrega ao usuário
 ```
 
 ## 2. Decisões travadas
 
 1. Resposta **assíncrona, 2 webhooks**.
-2. **Camada de eventos no webhook implementada agora** (campo + UI + emissor).
-   Único evento real: `agent.reply`.
-3. Origem distinta **somente no monitoramento de sessões** (aba Chat): cada
-   sessão marcada Bubble vs WhatsApp. **A aba de avaliações (Backtest) não muda**
-   (WhatsApp não gera avaliação ⇒ nunca aparece lá).
-4. **Sem avaliação automática para WhatsApp**. A inteligência (memória/resumo/
-   tags) **continua** rodando.
-5. **Sessão WhatsApp = janela de 24h**; sem encerramento manual.
-6. **Áudio transcrito pelo n8n** (`type:"audio"` + `text`); o worker **não baixa
-   nem transcreve** neste fluxo.
-7. Monitoramento: aba "Bubble" → **"Chat"** (só o label; rota `/bubble` mantida).
-8. **Heartbeat suprimido no WhatsApp** (só a resposta final).
-9. **Monitoramento incluído nesta entrega**; conflitos com `feat/nex-reconstrucao`
-   resolvidos no merge (commits pequenos e atômicos por arquivo).
+2. **Camada de eventos no webhook** implementada agora (campo + UI + emissor).
+   Evento real: `agent.reply`.
+3. **Áudio , dois caminhos coexistem:** (a) via **n8n**: vem `type:"audio"` +
+   `text` (transcrito) , a plataforma **não baixa/transcreve**, só marca como
+   áudio; (b) via **Meta direto** (sem n8n): vem o `audioMediaId` e a plataforma
+   **baixa e transcreve** (fluxo atual em `processor.ts:108-140`, **preservado**);
+   (c) **microfone da bubble** (in-app) já funciona , **intocado**.
+4. **Avaliação automática (Judge) roda para WhatsApp** (igual aos outros canais ,
+   `run-agent.ts:1422`, sem filtro). **Não** existe voto do usuário pelo WhatsApp
+   (sem UI de feedback). **Nada a mudar** no disparo do Judge.
+5. **Origem distinta** (Bubble vs WhatsApp) na **tabela de avaliações** e nas
+   **sessões** , agora faz sentido, pois WhatsApp gera avaliação.
+6. **Validação em camadas antes da IA** (§5), cada bloqueio ⇒ **mensagem padrão**
+   no webhook de saída, **sem acionar a IA**.
+7. **Acesso por canal/nível** via segmented control (§6), com herança de nível.
+8. **Sessão WhatsApp = janela de 24h**; sem encerramento manual.
+9. **Heartbeat suprimido no WhatsApp** (só a resposta final / mensagens padrão).
+10. **Monitoramento incluído** nesta entrega (aba "Bubble" → "Chat"); conflitos
+    com `feat/nex-reconstrucao` resolvidos no merge (commits atômicos por arquivo).
 
 ## 3. Contrato , Webhook de ENTRADA (n8n → plataforma)
 
-Calibrado pelo payload real da Meta. O n8n extrai de
-`body.entry[0].changes[0].value` e envia (JSON, assinado por HMAC):
+Calibrado pelo payload real da Meta (`body.entry[0].changes[0].value`):
 
 | Campo | Origem (Meta) | Obrig. | Uso |
 |---|---|---|---|
@@ -62,231 +78,264 @@ Calibrado pelo payload real da Meta. O n8n extrai de
 | `type` | `messages[0].type` | sim | `text`/`audio` (nome mantido) |
 | `messageId` | `messages[0].id` (`wamid...`) | sim | idempotência + correlação |
 | `timestamp` | `messages[0].timestamp` (segundos) | sim | ordenação |
-| `contactName` | `contacts[0].profile.name` | opcional | exibição |
-| `phoneNumberId` | `metadata.phone_number_id` | opcional | rotear resposta pelo nº certo |
+| `contactName` | `contacts[0].profile.name` | opcional | exibição no monitoramento |
+| `phoneNumberId` | `metadata.phone_number_id` | opcional | rotear a resposta pelo nº certo |
 
-**Regras:**
-- **`type` mantido** (não renomear , `inboundSchema`/`AgentJobData`/`processor`/
-  testes usam `type`). `image` permanece no enum, mas é **rejeitado com mensagem
-  amigável** neste fluxo.
-- **Áudio (caminho único):** o n8n transcreve e envia `type:"audio"` + `text`. No
-  schema, **`text` torna-se obrigatório quando `type` ∈ {text,audio}** (validação
-  cruzada Zod); `audioMediaId`/`imageMediaId` permanecem opcionais (legado) mas
-  **não são usados neste fluxo**. O `processor.ts` **curto-circuita o branch de
-  download+transcrição** (`processor.ts:108-140`) quando `text` veio pronto, indo
-  direto a `userMessage = text`. Passa **`isAudio:true`** ao `runAgent` (o
-  parâmetro é `isAudio`, `run-agent.ts:209` , **não** `kind`); o `runAgent` grava
-  `Message.kind="audio"` internamente.
-- **`text` vazio ⇒ resposta amigável**, nunca `throw` (hoje `processor.ts:142`
-  lança e mata o job, gerando retry).
-- **`timestamp`**: a Meta manda segundos; a **normalização para ms é no n8n**
-  (na borda). **Nenhuma mudança no Zod** (segue `z.number().int().positive()`).
+Regras:
+- `type` mantido (não renomear). `image` permanece no enum, rejeitado com
+  mensagem amigável neste fluxo.
+- **Áudio via n8n:** `type:"audio"` + `text` ⇒ o worker **usa o `text` direto**,
+  passa `isAudio:true` ao `runAgent` (`run-agent.ts:209`; grava `Message.kind=
+  "audio"`), e **pula** download/transcrição. **Áudio via Meta direto:** vem
+  `audioMediaId` sem `text` ⇒ mantém o caminho atual (`downloadMedia` +
+  `transcribeAudio`). O worker decide pelo que veio (`text` presente vs
+  `audioMediaId`). **Nenhum dos dois caminhos é removido.**
+- Validação cruzada: para `type ∈ {text,audio}` no fluxo n8n, `text` não-vazio;
+  vazio ⇒ mensagem padrão (não `throw`).
+- `timestamp`: a Meta manda segundos; normalização para ms é **no n8n** (sem
+  mudança no Zod).
 - Headers: `X-Signature` (HMAC-SHA256 de `${timestamp}.${body}`), `X-Timestamp`.
-  A assinatura **da Meta** (`x-hub-signature-256`) é validada **no n8n**.
+  A assinatura da Meta (`x-hub-signature-256`) é validada **no n8n**.
 
-## 4. Resolução do usuário pelo número , nono dígito (já meio caminho andado)
+## 4. Resolução do usuário pelo número , nono dígito
 
-A Meta mandou `553491908624` , **sem o nono dígito**. A busca exata atual
-(`resolveWhatsappUser` → `findUnique({phoneE164})`, `resolve.ts:75`) falharia
-para quem cadastrou com o 9. Correção (trivial, função já existe):
-- `resolve.ts:75`: trocar `findUnique({ phoneE164 })` por
+A Meta manda sem o nono dígito (`553491908624`). **Regra (confirmada pelo
+usuário):** ao receber, buscar o número **nas duas formas (com e sem o 9)**,
+independentemente de como veio. No Brasil não existe o mesmo DDD+número como dois
+usuários distintos (um com 9, outro sem), então **qualquer match é o usuário**.
+- `resolve.ts:75`: trocar `findUnique({phoneE164})` por
   `findFirst({ where: { phoneE164: { in: phoneVariants(e164) } } })`
   (`phoneVariants` de `countries.ts:180`, mesma equivalência do cadastro).
+- Sem match em nenhuma forma ⇒ status `unknown` ⇒ §5 L1 (mensagem padrão).
 
-## 5. Concorrência , lock por usuário (semântica concreta)
+## 5. Validação em camadas ANTES da IA (sem gastar crédito)
 
-**Causa raiz:** `getOrCreateWhatsappConversation` (`conversation.ts:92-113`) faz
-`findFirst` + `createConversation` sem transação/unique ⇒ duas mensagens paralelas
-do mesmo número criam **duas conversas**; e a escrita de `reasoningHistory`
-(read-modify-write) pode sobrescrever.
+Toda barreira que falha devolve uma **mensagem padrão** (código + texto) pelo
+webhook de saída (§7, `ok:false` + `reason`), **sem acionar a IA**. O n8n trata
+essas mensagens e responde ao usuário como quiser. (Há uma 1ª triagem no n8n; a
+plataforma é a 2ª linha , RBAC estrutural da F4.)
 
-**Decisão (usando o padrão de lock que já existe):**
-- Reusar o padrão **cluster-safe** `connection.set(key,val,"PX",ttl,"NX")` já
-  presente em `src/worker/index.ts:220` (Redis/ioredis já conectados; BullMQ OSS
-  5.x **não** tem concurrency-por-chave, então o lock é o caminho).
-- Chave `agent:lock:wa:{userId}`. O lock envolve **todo o processamento do job**
-  (get-or-create + runAgent + persistência + idempotência de saída), garantindo
-  **uma conversa por usuário e sem sobrescrita**. TTL = `timeout do turno + margem`
-  (ex.: 120s), renovado se necessário.
-- **Não adquiriu o lock** (outra mensagem do mesmo usuário em curso): o job
-  **lança erro controlado** ⇒ BullMQ re-tenta com backoff (a mensagem espera a
-  anterior terminar). 
-- **Ordem é best-effort** (o retry re-enfileira; FIFO estrito por chave exigiria
-  BullMQ Pro, fora de escopo). O que fica **garantido** é a **consistência**: uma
-  conversa por usuário, sem escrita concorrente. Aceitável , mensagens do mesmo
-  usuário em < 1s são raras e a consistência importa mais que a ordem exata.
+- **L1 , Número existe (no inbound).** `resolveWhatsappUser` (§4). `unknown` ⇒
+  `reason:"user_not_found"`; `inactive` ⇒ `reason:"user_inactive"`. Não enfileira.
+- **L2 , Canal + nível (no inbound).** O WhatsApp está habilitado para o **nível**
+  do usuário? (§6). Se canal `OFF` ⇒ `reason:"channel_disabled"` ("Agente Nex
+  desativado para o WhatsApp"). Se o role do usuário < nível mínimo do canal ⇒
+  `reason:"role_not_allowed"`. Não enfileira, não aciona IA. **Hoje
+  `whatsappEnabled` é cosmético** (não bloqueia) , esta camada o torna efetivo.
+- **L3 , Acesso ao assunto/módulo (no worker, dentro do runAgent).** **Já existe:**
+  `respondPermissionDenied` (`permission-denial.ts:89-141`), disparado em
+  `run-agent.ts:702-724` **antes do LLM** (custo zero), quando o domínio detectado
+  pelo router não intersecta os domínios do usuário (`UserDomainAccess`). Reuso.
+  Ajustes: garantir que a resposta volte no webhook (`reason:"permission_denied"`)
+  e **enriquecer o template** com o **módulo desejado** e os **módulos permitidos**
+  do usuário (o usuário quer esses dados para tratar no n8n).
 
-## 6. Geração vs entrega , idempotência de saída (ordem dos passos)
+Catálogo de **mensagens padrão** (um helper único, pt-br, versionado): textos
+fixos por `reason` , o n8n pode usar o `reason` (código) e/ou o `text`.
 
-`processAgentJob` é linear; não precisa reestruturar a fila. Sequência exata:
-1. **No topo do processor:** se `whatsapp:replied:{messageId}` (Redis) já existe,
-   **recupera o payload salvo e vai direto ao POST** (pula `runAgent`).
-2. Senão: lock (§5) → sessão → `runAgent` → **persiste a Message do assistant** →
-   **grava `whatsapp:replied:{messageId}` com o payload serializado (§7)** →
-   **só então** dispara o webhook de saída.
-3. Falha de POST ⇒ BullMQ re-tenta; no retry, o passo 1 encontra `replied`,
-   **reentrega o payload salvo sem re-rodar o agente** (sem novo custo de LLM, sem
-   resposta divergente).
-- **Heartbeat suprimido** no WhatsApp (decisão #8): um disparo `agent.reply` por
-  mensagem (+ eventuais `notice` de fallback).
+## 6. Acesso por canal e por nível (segmented control)
+
+**Hoje:** `AgentSettings.bubbleEnabled` e `whatsappEnabled` são dois booleans
+(`schema.prisma:2798,2801`); a UI usa dois `Switch` (`agent-availability-card.tsx`).
+A bubble aparece se `canUseAgent && bubbleEnabled` (`layout.tsx:94`); o WhatsApp
+não checa nada (cosmético).
+
+**Novo (decisão do usuário):** cada canal tem um **nível mínimo de acesso** com
+herança, num **segmented control** (`SegmentedControl<T>` genérico , o
+`FeatureCheckpoint` não serve, é rígido):
+- Opções por canal: **Desativado** + os níveis de perfil **derivados do enum
+  `PlatformRole`** (`super_admin/admin/manager/viewer`) e da hierarquia
+  (`roles.ts:11-16`). Sem "Playground" (não se aplica). Os níveis vêm da fonte
+  única de roles, então acompanham mudanças no enum (não hardcode na UI).
+- **Herança:** o nível escolhido é o **mínimo**; quem tem role **≥** o escolhido
+  acessa. `viewer` ⇒ todos; `manager` ⇒ manager+admin+super_admin; `admin` ⇒
+  admin+super_admin; `super_admin` ⇒ só super_admin; `Desativado` ⇒ ninguém.
+- **Schema:** substituir os dois booleans por dois campos de nível , novo enum
+  `ChannelAccessLevel { off, viewer, manager, admin, super_admin }` (ou
+  `PlatformRole?` + flag `off`). Campos `bubbleAccessLevel` e `whatsappAccessLevel`
+  em `AgentSettings`. Migration (banco compartilhado , Onda 0). Default que
+  **preserva o comportamento atual** (bubble/WhatsApp habilitados ⇒ `viewer`,
+  i.e. todos; desabilitados ⇒ `off`).
+- **Bubble some** quando in-app `off` **ou** role do usuário < nível: ajustar
+  `layout.tsx:94` (`bubbleVisible`) , combinar com `canUseAgent` (que já checa
+  domínios). Nenhuma mudança em `agent-bubble.tsx`.
+- **WhatsApp** passa a respeitar o nível em L2 (inbound) , liga o gate hoje
+  inexistente.
+- UI: trocar os 2 `Switch` por 2 `SegmentedControl` em `agent-availability-card.tsx`;
+  atualizar `updateAgentAvailability` (`agent-config.ts:534`), o DTO
+  (`agent-config-types.ts`), `getPublicAgentFlags`/`getAgentSettings`, e a seção
+  "Disponibilidade" da página (`configuracao/page.tsx`). `ui-ux-pro-max` no visual.
+- **Nota:** os níveis são um **enum fixo de 4** (não tabela dinâmica). O seletor
+  os deriva da lista de roles; criar um novo nível continua sendo mudança de enum
+  (schema), mas a UI não precisa de edição manual (lê da fonte única).
 
 ## 7. Contrato , Webhook de SAÍDA (plataforma → n8n), evento `agent.reply`
 
-**Breaking change:** o payload de saída atual é `{to,message,messageId,timestamp}`
-(`processor.ts:285-290`); muda para o envelope abaixo. O runbook (§13) registra
-que o n8n receptor precisa ser reconfigurado.
+**Breaking change** (o payload atual é `{to,message,messageId,timestamp}`,
+`processor.ts:285-290`). Envelope assinado por HMAC (timestamp atual no disparo).
+Cobre resposta normal **e** as mensagens padrão das barreiras (§5):
 
 ```jsonc
 {
   "event": "agent.reply",
   "deliveryId": "<uuid por disparo, dedupe no n8n>",
-  "kind": "final",                       // "final" | "notice"
+  "kind": "final",                       // "final" | "blocked"
   "data": {
-    "inboundMessageId": "wamid...",       // correlação/thread (id da Meta)
+    "inboundMessageId": "wamid...",
     "to": "553491908624",
-    "phoneNumberId": "593237780533272",   // por qual nº responder (ecoa entrada)
-    "sessionId": "<conversationId>",
-    "assistantMessageId": "<Message do assistant>",
-    "ok": true,
-    "reply": "<texto>",                    // ok:false ⇒ erro amigável
-    "suggestions": ["...", "..."],          // [] quando ok:false
-    "tools": ["faturamento_periodo"],       // [] quando ok:false
-    "reasoningMs": 4200,                    // 0 quando ok:false
-    "usage": { "tokensInput":0, "tokensOutput":0, "costUsd":0 },
-    "messageType": "text"
+    "phoneNumberId": "593237780533272",
+    "sessionId": "<conversationId | null se barrado antes da sessão>",
+    "assistantMessageId": "<Message | null>",
+    "ok": true,                           // false nas barreiras §5 e em falha técnica
+    "reason": null,                       // user_not_found | user_inactive | channel_disabled | role_not_allowed | permission_denied | technical_error
+    "reply": "<texto da resposta OU a mensagem padrão da barreira>",
+    "suggestions": ["...", "..."],         // [] quando ok:false
+    "tools": ["faturamento_periodo"],      // [] quando ok:false
+    "reasoningMs": 4200,                   // 0 quando ok:false
+    "usage": { "tokensInput":0, "tokensOutput":0, "costUsd":0 }, // zerado nas barreiras
+    "messageType": "text",
+    "deniedModule": "financeiro",          // só em permission_denied
+    "allowedModules": ["estoque","fiscal"] // só em permission_denied
   },
   "timestamp": 1718630000000
 }
 ```
 
-**Plumbing (Onda B):**
-- Estender `RunAgentResult` (`run-agent.ts:250-259`) nos **dois ramos**: adicionar
-  `toolsCalled: string[]` (de `allTurnToolNames`, `run-agent.ts:756`) e
-  `reasoningMs` (acumular `durationMs` por iteração, `:951`, **em memória durante
-  o turno** , `LlmUsage` é por **conversa**, não serve). No ramo `ok:false`
-  (early-return `:371`, loop `:1710`, catch `:1735`): `toolsCalled:[]`,
-  `reasoningMs:0` (ou o parcial acumulado); garantir defaults onde a variável
-  ainda não existe.
+Plumbing (Onda B):
+- Estender `RunAgentResult` (dois ramos): `toolsCalled: string[]`
+  (`allTurnToolNames`, `run-agent.ts:756`) e `reasoningMs` (somar `durationMs`
+  por iteração `:951`, em memória no turno , `LlmUsage` é por conversa, não
+  serve). Ramo `ok:false`: `toolsCalled:[]`, `reasoningMs:0`.
 - `assistantMessageId` (Message) ≠ `inboundMessageId` (Meta).
-- **`phoneNumberId` percorre 3 pontos**: `inboundSchema` (§3), `AgentJobData`
-  (`processor.ts:38-57`) e o envelope. O singleton `WhatsappChannel` não tem esse
-  campo (está no `WhatsappInstance` dormente) ⇒ vem do payload de entrada.
-- **Sem `suggestionsCount`** (usa `suggestions.length`).
-- **Bug `url`/`targetUrl`:** `route.ts:215` lê `outboundWebhook.url`, mas R6
-  introduziu `targetUrl` (`schema.prisma:3131`). Se a UI grava `targetUrl`, `url`
-  fica null e o outbound **quebra hoje**. Corrigir para `targetUrl ?? url`.
-- **Fail-closed:** se o secret de saída não descriptografar, **não disparar**
-  (hoje assina com `""` e envia mesmo assim , `processor.ts:292`).
+- `phoneNumberId` percorre `inboundSchema` (§3) → `AgentJobData`
+  (`processor.ts:38-57`) → envelope.
+- Sem `suggestionsCount` (usa `suggestions.length`).
+- **Bug `url`/`targetUrl`:** `route.ts:215` lê `outboundWebhook.url`; R6
+  introduziu `targetUrl` (`schema.prisma:3131`) , o outbound pode estar **quebrado
+  hoje**. Corrigir para `targetUrl ?? url`.
+- **Fail-closed:** sem secret de saída válido, **não disparar** (hoje assina com
+  `""` e envia , `processor.ts:292`).
+- As barreiras §5 que ocorrem **no inbound** (L1/L2) disparam o webhook de saída
+  **direto do inbound** (sem enfileirar), com `kind:"blocked"` + `reason`. A
+  barreira **L3** (no worker) usa o retorno de `respondPermissionDenied`.
 
-## 8. Sem avaliação para WhatsApp (gate por nome)
+## 8. Concorrência , lock por usuário
 
-- No `run-agent.ts`, condicionar a **`if (args.channel !== "whatsapp")`** as
-  chamadas de **`createPendingEval`** (~:1422) e **`createTechnicalFailureEval`**
-  (~:1721). **Não** alterar `quality/trigger.ts` (compartilhado com replay).
-- **Fora do gate** (continuam para WhatsApp): **`enqueueTopicTagging`** e
-  **`enqueueResumoConversa`** (~:1452) , são inteligência (memória/contexto), não
-  avaliação. Citar pelo nome para o executor não gatear o bloco errado.
-- **KPIs:** os agregados de qualidade do monitoramento filtram `channel:"in_app"`
-  (excluir WhatsApp do denominador de "% avaliado").
+Causa raiz: `getOrCreateWhatsappConversation` (`conversation.ts:92-113`) faz
+`findFirst`+`create` sem atomicidade ⇒ 2 mensagens paralelas do mesmo número
+criam 2 conversas e podem sobrescrever `reasoningHistory`.
+- Reusar o padrão cluster-safe `set(key,val,"PX",ttl,"NX")` já existente
+  (`worker/index.ts:220`). Chave `agent:lock:wa:{userId}`. Envolve get-or-create +
+  runAgent + persistência. TTL ≥ timeout do turno (ex.: 120s).
+- Não adquiriu ⇒ erro controlado ⇒ BullMQ re-tenta com backoff (espera a anterior).
+- **Ordem best-effort**; **consistência garantida** (uma conversa/usuário, sem
+  sobrescrita). FIFO estrito exigiria BullMQ Pro (fora de escopo).
 
-## 9. Origem (escopo cortado , só sessões)
+## 9. Geração vs entrega , idempotência de saída
 
-- **Aba de avaliações (Backtest): NÃO muda.** Como WhatsApp não gera eval e a
-  tabela só lista origens com `count>0`, nenhuma linha WhatsApp aparece lá. **Não
-  mexer** em `channelToOrigem`/`ORIGEM_LABELS`/`getDistinctRodadas`/
-  `evaluations-table.tsx` nem nos testes `rodada-labels.test.ts` (reduz escopo e
-  conflito com a outra frente). "Agente Nex" na tabela já significa in-app na
-  prática.
-- **Monitoramento de sessões (aba Chat):** a distinção Bubble vs WhatsApp aparece
-  como **marcador de canal por sessão** (§12), não via origem de avaliação.
+`processAgentJob` é linear. Sequência:
+1. Topo do processor: se `whatsapp:replied:{messageId}` (Redis) existe ⇒ recupera
+   o payload salvo e vai direto ao POST (pula `runAgent`).
+2. Senão: lock → sessão → (L3) → `runAgent` (Judge roda) → persiste Message →
+   grava `whatsapp:replied:{messageId}` com o payload serializado → dispara saída.
+3. Falha de POST ⇒ retry só **reentrega** o payload salvo (não re-roda o agente).
 
-## 10. Sessão WhatsApp + status no monitoramento
+## 10. Origem (Bubble vs WhatsApp) , na avaliação e nas sessões
 
-- Reusa `getOrCreateWhatsappConversation` (janela 24h).
-- **Encerramento lazy** (sem cron). Criar um **helper único de status por canal**
-  que **substitui** o cálculo `isActive` inline em `monitoramento-bubble.ts:208`
-  e é aplicado também em `listBubbleCollaborators` (`:67`):
-  - in_app ⇒ "ativa" = `endedAt IS NULL` (e mais recente, como hoje);
-  - whatsapp ⇒ "ativa" = `endedAt IS NULL AND updatedAt >= now()-24h` (senão toda
-    sessão WhatsApp ficaria eternamente "ativa", pois `endedAt` nunca é setado).
+Como o Judge roda para WhatsApp, há avaliações de WhatsApp. Separar:
+- `channelToOrigem`/`ORIGEM_LABELS` (`rodada-labels.ts:45-66`): novas origens
+  `agente-nex-bubble` (in_app) e `agente-nex-whatsapp`, labels "Agente Nex ·
+  Bubble" / "Agente Nex · WhatsApp". Atualizar `getDistinctRodadas`
+  (`queries.ts`, hoje soma `in_app`+`whatsapp` em `agenteNexCount`) e os testes
+  (`rodada-labels.test.ts`). **Não** afeta a numeração de rodadas (decisão #11):
+  origens virtuais entram por fora da sequência RX.
+- Consumidores de `channelToOrigem`/`ORIGEM_LABELS` a tocar:
+  `evaluations-table.tsx:320`, filtros de origem do monitoramento, router-filters.
+- **Consumo (relatório do agente):** continua **sem** segmentar por canal (o
+  usuário confirmou que lá não precisa detalhar Bubble vs WhatsApp).
 
-## 11. Webhook por evento (implementar agora)
+## 11. Sessão WhatsApp + status no monitoramento
 
-- **Schema:** `enum WebhookEvent { agent_reply }` + `events WebhookEvent[]`
-  (`@default([])`) em `WhatsappWebhook`. Serializa para `"agent.reply"` no envelope.
-- **Backfill na migration (com cast Postgres correto):**
-  `UPDATE whatsapp_webhooks SET events = ARRAY['agent_reply']::"WebhookEvent"[] WHERE direction='outbound';`
-- **Default na criação:** webhooks de **saída** novos nascem com
-  `['agent_reply']` (lógica do `createWebhook`), evitando a janela em que um
-  outbound criado entre a migration e a Onda C não receberia nada.
-- **UI:** seletor de eventos (checkbox) no `webhook-wizard.tsx` (passo 2) e
-  `webhook-edit-dialog.tsx`, só para direção **saída**.
-- **Emissor:** dispara para todos os outbound **habilitados com `agent_reply`**
-  (substitui o `findFirst` hard-coded, `route.ts:199`).
-- **Protocolo de schema (banco compartilhado):** avisar o usuário, `agente
-  schema-changed`, mergear cedo, coordenar com `feat/nex-reconstrucao`.
+- Reusa `getOrCreateWhatsappConversation` (janela 24h). Encerramento **lazy**.
+- Helper único de status por canal (substitui o `isActive` inline em
+  `monitoramento-bubble.ts:208` e aplica em `listBubbleCollaborators:67`):
+  in_app ⇒ "ativa" = `endedAt IS NULL`; whatsapp ⇒ `endedAt IS NULL AND
+  updatedAt >= now()-24h`.
 
-## 12. Monitoramento (aba Chat)
+## 12. Webhook por evento (implementar agora)
+
+- Schema: `enum WebhookEvent { agent_reply }` + `events WebhookEvent[]`
+  (`@default([])`) em `WhatsappWebhook`. Serializa para `"agent.reply"`.
+- **Backfill (cast Postgres):** `UPDATE whatsapp_webhooks SET events =
+  ARRAY['agent_reply']::"WebhookEvent"[] WHERE direction='outbound';`
+- Default na criação: outbound novo nasce com `['agent_reply']`.
+- UI: seletor de eventos (checkbox) no `webhook-wizard.tsx` (passo 2) e
+  `webhook-edit-dialog.tsx`, só para saída.
+- Emissor: dispara para todos os outbound habilitados com `agent_reply`
+  (substitui o `findFirst`, `route.ts:199`).
+- Protocolo de schema (banco compartilhado): avisar, `agente schema-changed`,
+  mergear cedo, coordenar com `feat/nex-reconstrucao`.
+
+## 13. Monitoramento (aba Chat)
 
 - Label "Bubble" → "Chat" (`monitoramento-nav.tsx`; textos da page). Rota mantida.
-- **Enumerar e ampliar as 9 ocorrências** de `channel:"in_app"` em
-  `monitoramento-bubble.ts` (linhas ~61,67,83,96,146,160,177,189 + helpers) para
-  `channel:{ in:["in_app","whatsapp"] }`.
-- Marcador de canal por sessão (Bubble/WhatsApp) em `bubble-monitor-row.tsx`. O
-  marcador de **áudio já existe** (`Message.kind="audio"` + `isAudio`, #125) ,
-  reusar.
-- Sessões WhatsApp exibem "sem avaliação"; status "ativa" pelo helper §10.
-- **Conflito com `feat/nex-reconstrucao`** (arquivos `monitoramento-content.tsx`,
-  `kpis-block.tsx`, `bubble-monitor*.tsx`, `monitoramento-nav.tsx`): onda **por
-  último**, commits pequenos por arquivo, merge resolvido por mim.
+- Ampliar as ~9 ocorrências de `channel:"in_app"` em `monitoramento-bubble.ts`
+  para `channel:{ in:["in_app","whatsapp"] }` (enumerar no plano).
+- Marcador de canal por sessão (Bubble/WhatsApp) em `bubble-monitor-row.tsx`.
+  Marcador de áudio já existe (`Message.kind="audio"` + `isAudio`, #125) , reusar.
+- Status "ativa" pelo helper §11. Avaliação de WhatsApp aparece (Judge roda).
+- Conflito com `feat/nex-reconstrucao` (`monitoramento-content.tsx`,
+  `kpis-block.tsx`, `bubble-monitor*.tsx`, `monitoramento-nav.tsx`): onda por
+  último, commits atômicos por arquivo, merge resolvido por mim.
 
-## 13. Segurança + runbook do n8n (entregável de doc)
+## 14. Segurança + runbook do n8n
 
-- HMAC pronto. Runbook cobre: assinar com **timestamp atual a cada (re)envio**
-  (anti-replay ±5min); os **2 webhooks** (entrada + receptor da resposta);
-  **validar a HMAC** do `agent.reply` no n8n e **deduplicar por `deliveryId`**;
-  mapear os campos do payload da Meta (§3); e o aviso de que o **contrato de saída
-  mudou** (§7 breaking).
+- HMAC pronto. Runbook: assinar com timestamp atual a cada (re)envio; os 2
+  webhooks (entrada + receptor); validar a HMAC do `agent.reply` no n8n e
+  deduplicar por `deliveryId`; mapear os campos do payload da Meta (§3); como
+  tratar cada `reason` das barreiras (§5/§7); aviso de que o contrato de saída
+  mudou (breaking, §7).
 - `WhatsappChannel` (singleton `id:"global"`) é o caminho vivo; `WhatsappInstance`
-  (R6) dorme. Mantemos o singleton; **unificar fica fora de escopo** (dívida
-  documentada). `phoneNumberId` da resposta vem do payload, não do singleton.
+  (R6) dorme , unificar fica fora de escopo (dívida documentada).
 
-## 14. Sub-fases (ondas) e dependências , decomposição para o plano
+## 15. Sub-fases (ondas) e dependências
 
-- **Onda 0 , Schema de eventos:** migration `WebhookEvent`/`events` + backfill
-  (cast) + default na criação. PRIMEIRA (banco compartilhado).
-- **Onda A , decomposta em unidades testáveis:**
-  - A1: resolução por variantes (`resolve.ts`, ~3 linhas) , trivial.
-  - A2: contrato de entrada (`inbound-payload.ts` validação cruzada `text`;
-    `route.ts` repassa `text`/`phoneNumberId`; `AgentJobData`).
-  - A3: áudio , `processor.ts` curto-circuita download/transcrição quando `text`
-    veio; passa `isAudio:true`; `text` vazio ⇒ resposta amigável.
-  - A4: lock por usuário (`processor.ts`, padrão de `worker/index.ts:220`).
-  - A5: gate de avaliação por canal (`run-agent.ts` ~1422/1721).
-- **Onda B , Resposta rica + entrega idempotente:** estender `RunAgentResult`
-  (2 ramos), agregar `reasoningMs`/`tools`, idempotência §6, envelope §7,
-  `url`→`targetUrl`, fail-closed.
-- **Onda C , Webhook por evento (UI + emissor):** §11.
-- **Onda D , Monitoramento (aba Chat):** §9 (só sessões), §10, §12. `ui-ux-pro-max`.
-- **Onda E , Runbook n8n + verificação e2e final.**
+- **Onda 0 , Schema:** migration `WebhookEvent`/`events` (§12) + `ChannelAccessLevel`
+  e `bubble/whatsappAccessLevel` (§6) + backfill/defaults. PRIMEIRA (banco
+  compartilhado).
+- **Onda A , Entrada + identidade + áudio + concorrência + barreiras inbound:**
+  - A1 resolução por variantes (`resolve.ts`).
+  - A2 contrato de entrada (`inbound-payload.ts`, `route.ts`, `AgentJobData`:
+    `phoneNumberId`/`contactName`).
+  - A3 áudio dois caminhos (`processor.ts`: usa `text` se veio; senão transcreve).
+  - A4 lock por usuário (`processor.ts`).
+  - A5 barreiras L1/L2 no inbound + catálogo de mensagens padrão + disparo de
+    saída `kind:"blocked"`.
+- **Onda B , Resposta rica + entrega idempotente + L3:** `RunAgentResult`
+  estendido, envelope §7, idempotência §9, `url`→`targetUrl`, fail-closed,
+  enriquecer `respondPermissionDenied` (módulo desejado/permitidos) e levá-lo ao
+  webhook.
+- **Onda C , Acesso por canal/nível (config):** segmented control §6 (UI +
+  schema usado da Onda 0 + gates: bubble visibility no layout, WhatsApp em L2).
+- **Onda D , Webhook por evento (UI + emissor):** §12.
+- **Onda E , Monitoramento (aba Chat + origem):** §10, §11, §13. `ui-ux-pro-max`.
+- **Onda F , Runbook n8n + verificação e2e final.**
 
-Dependências: 0 → C; A1-A5 independentes entre si (podem paralelizar); A → B; D
-por último. Cada item de A e cada onda tem teste isolado (§15).
+Dependências: 0 → C,D; A → B; A1-A5 paralelizáveis; E por último (conflito).
 
-## 15. Verificação (regra de raiz)
+## 16. Verificação (regra de raiz)
 
-`tsc`+`eslint`+`jest` por unidade **e** e2e contra dado real: subir worker/app,
-disparar inbound assinado , inclusive um número **sem o 9** cadastrado **com** o
-9 (valida A1), um `type:"audio"` com `text` (valida A3), e duas mensagens
-seguidas do mesmo usuário (valida o lock A4: uma conversa, sem sobrescrita).
-Conferir: ausência de `ConversationQualityEvaluation` para whatsapp; webhook de
-saída com envelope rico; e idempotência (forçar falha de POST → retry **não**
-re-roda o agente nem duplica).
+`tsc`+`eslint`+`jest` por unidade **e** e2e contra dado real: inbound assinado
+com número **sem o 9** cadastrado **com** o 9 (A1); `type:"audio"`+`text` (A3) e
+um áudio via mídia (caminho Meta, não regrediu); duas mensagens seguidas do mesmo
+usuário (lock, A4); barreiras L1/L2/L3 retornando mensagem padrão **sem** custo
+de IA; **Judge gerando avaliação para a conversa WhatsApp** (confirma §4);
+webhook de saída com envelope rico + idempotência (retry não duplica nem re-roda);
+seletor de canal/nível bloqueando bubble e WhatsApp conforme o role.
 
-## 16. Pendências menores (não bloqueiam o plano)
+## 17. Pendências menores
 
-1. Confirmar no E2E se o outbound usa `url` ou `targetUrl` hoje (corrigir , §7).
-2. Granularidade da contagem por canal no monitoramento de colaboradores (marcar
-   cada sessão basta? ou separar contagem in-app vs WhatsApp por pessoa?).
-3. Fuso do teto diário (`route.ts:170` usa meia-noite do servidor; conferir BR).
-4. `messageType` futuros (imagem/documento) , fora de escopo; enum extensível.
+1. Confirmar no E2E se o outbound usa `url` ou `targetUrl` hoje (corrigir).
+2. Granularidade da contagem por canal no monitoramento de colaboradores.
+3. Fuso do teto diário (`route.ts:170` , meia-noite do servidor; conferir BR).
+4. Texto exato das mensagens padrão (§5) , revisar com o usuário no runbook.
