@@ -1,5 +1,6 @@
 /**
- * /agente/monitoramento/bubble , aba Bubble do Monitoramento do Agente Nex.
+ * /agente/monitoramento/bubble , aba Chat do Monitoramento do Agente Nex
+ * (in-app + WhatsApp). Rota mantida; rótulo da aba é "Chat" (F5 E).
  *
  * Gate: super_admin (layout do grupo /agente). Visão read-only de 3 colunas:
  * colaboradores -> sessões -> conversa fiel à bubble.
@@ -17,7 +18,7 @@ import { PageShell } from "@/components/layout/page-shell";
 import { getCurrentUser } from "@/lib/auth";
 
 export const metadata = {
-  title: "Monitoramento do Agente · Bubble | Matrix Fitness Group",
+  title: "Monitoramento do Agente · Chat | Matrix Fitness Group",
 };
 export const dynamic = "force-dynamic";
 
