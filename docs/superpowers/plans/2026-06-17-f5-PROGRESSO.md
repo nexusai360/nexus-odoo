@@ -13,13 +13,13 @@
 - [x] PLAN v1 escrito (subagente Opus).
 - [x] 2 reviews adversariais do PLAN aplicadas → **PLAN v2 (pronto para execução)**.
       Achado "phoneVariants não existe" era FALSO (existe em countries.ts:180).
-- [x] **Onda A backend (A1-A4) EXECUTADA** , 6 commits, tsc 0, 28 testes verdes:
-      A1 `01b8346` (resolve por variantes + platformRole), A2.1 `96e6ec8`
-      (contactName/phoneNumberId no Zod), A2.2 `e55274c` (AgentJobData + route),
-      A3 `ec75e55` (áudio dois caminhos), A4.1 `b2a51e6` (user-lock.ts),
-      A4.2 `49679bd` (processor envolto no lock).
-- [ ] **PRÓXIMO:** Onda 0 (migration, banco COMPARTILHADO , coordenar) então
-      A5 (barreiras L1/L2 + mensagens padrão), B, C, D, E, F.
+- [x] **Onda A backend (A1-A4)** , A1 `01b8346`, A2 `96e6ec8`/`e55274c`, A3 `ec75e55`, A4 `b2a51e6`/`49679bd`.
+- [x] **Onda 0 (migration, banco compartilhado)** `a76eba6` , enums WebhookEvent/ChannelAccessLevel + campos events/bubble&whatsappAccessLevel + backfill. `agente schema-changed` disparado (avisa a outra frente). DRIFT pré-existente de outra frente detectado (FKs/índices/router_threshold) , NÃO é da F5; o executor evitou `migrate reset` (que apagaria o banco) criando a migration via db execute + migrate resolve. Registrar no RADAR.
+- [x] **Onda A5 (barreiras)** , A5.1 `e78b9b7` (catálogo BlockReason), A5.2 `d589df0` (roleMeetsChannelLevel+herança), A5.3 `a8f289e` (emitAgentReply envelope §7 HMAC fail-closed), A5.4 `4451a4c` (L1/L2 no inbound, kind:"blocked").
+- [x] **Onda B (resposta rica + idempotência)** , B.1/B.2 `c2bef06` (RunAgentResult+toolsCalled/reasoningMs+deniedModule/allowedModules), B.3 `7d7e50d` (build-reply-data), B.4-6 `c822578` (idempotência ANTES do lock; 5 call-sites de sendViaWebhook migrados p/ dispatchReply/Notice; outboundTargets[]; heartbeat suprimido; targetUrl??url). Verif `11bc2e7`/`8240597`.
+- **Estado:** tsc 0, eslint 0, jest 124 passed / 7 skipped. BACKEND da F5 COMPLETO.
+- [ ] **PRÓXIMO (sessão fresca, UI inline + ui-ux-pro-max):** Onda C (acesso por canal/nível: DTO+updateAgentAvailability por níveis, segmented control no agent-availability-card, gate da bubble em layout.tsx, gate WhatsApp em L2; remover booleans legados + guard updateBubbleEnabled), Onda D (webhook por evento: filtro events:{has} + default na criação + seletor na UI do webhook), Onda E (monitoramento: origem Bubble/WhatsApp, aba "Chat", status por canal, sessões WhatsApp , POR ÚLTIMO, conflito com feat/nex-reconstrucao), Onda F (runbook n8n + e2e contra dado real).
+- [ ] **PENDENTE e2e** (regra de raiz): rebuild docker app+worker, inbound assinado real, payload Meta, conferir resolução com/sem 9, barreiras sem custo IA, Judge gerando avaliação WhatsApp, webhook de saída com envelope rico + idempotência (retry não duplica).
 - [ ] Code review + UI review finais.
 
 ## PENDÊNCIA a confirmar (Onda A)
