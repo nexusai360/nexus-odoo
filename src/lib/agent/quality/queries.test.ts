@@ -11,7 +11,44 @@ jest.mock("@/lib/prisma", () => ({
   },
 }));
 
-import { calculateKpis, type RawEvalCounts } from "@/lib/agent/quality/queries";
+import {
+  calculateKpis,
+  getDistinctRodadas,
+  type RawEvalCounts,
+} from "@/lib/agent/quality/queries";
+import { prisma } from "@/lib/prisma";
+
+describe("getDistinctRodadas , origens Bubble e WhatsApp separadas (F5 E)", () => {
+  const queryRaw = prisma.$queryRaw as jest.Mock;
+  const filters = {
+    periodStart: new Date("2026-06-01T00:00:00Z"),
+    periodEnd: new Date("2026-06-17T00:00:00Z"),
+  } as Parameters<typeof getDistinctRodadas>[0];
+
+  it("emite duas origens distintas (bubble antes de whatsapp), sem somar", async () => {
+    queryRaw
+      .mockResolvedValueOnce([]) // auditRows
+      .mockResolvedValueOnce([
+        { channel: "in_app", count: 3 },
+        { channel: "whatsapp", count: 2 },
+      ]); // virtualRows
+
+    const out = await getDistinctRodadas(filters);
+    expect(out).toEqual([
+      { marker: "__origem:agente-nex-bubble", count: 3 },
+      { marker: "__origem:agente-nex-whatsapp", count: 2 },
+    ]);
+  });
+
+  it("omite a origem de um canal sem avaliacao", async () => {
+    queryRaw
+      .mockResolvedValueOnce([])
+      .mockResolvedValueOnce([{ channel: "in_app", count: 4 }]);
+
+    const out = await getDistinctRodadas(filters);
+    expect(out).toEqual([{ marker: "__origem:agente-nex-bubble", count: 4 }]);
+  });
+});
 
 describe("calculateKpis", () => {
   it("computes % CORRETO excluding PENDENTE and FALHA_TECNICA", () => {
