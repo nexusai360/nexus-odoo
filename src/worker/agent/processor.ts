@@ -21,6 +21,7 @@ import { transcribeAudio } from "@/lib/agent/transcribe";
 import { buildCloudClientFromDb } from "@/lib/whatsapp/cloud-client";
 import { signPayload } from "@/lib/whatsapp/hmac";
 import { prisma } from "@/lib/prisma";
+import { acquireUserLock, releaseUserLock } from "./user-lock";
 import type { AgentChannel } from "@/generated/prisma/client";
 
 /** Mensagem de erro amigável enviada ao usuário quando o agente falha. */
@@ -156,8 +157,17 @@ export async function processAgentJob(data: AgentJobData): Promise<void> {
     userMessage = data.text;
   }
 
-  // 2. Obter ou criar conversa WhatsApp
-  const conversation = await getOrCreateWhatsappConversation(data.userId);
+  // 1b. Lock por usuário (cluster-safe). Garante uma conversa por usuário sem
+  //     sobrescrita de reasoningHistory quando chegam mensagens concorrentes.
+  //     Se outra mensagem do mesmo usuário está em processamento, lança para o
+  //     BullMQ retentar com backoff (espera a anterior liberar).
+  const gotLock = await acquireUserLock(data.userId);
+  if (!gotLock) {
+    throw new Error(`[agent-processor] lock ocupado para userId=${data.userId}, retry`);
+  }
+  try {
+    // 2. Obter ou criar conversa WhatsApp
+    const conversation = await getOrCreateWhatsappConversation(data.userId);
 
   // 2b. Onda E do Renascimento: parser de atalho numerico (1/2/3) para
   //     sugestoes da resposta anterior. WhatsApp nao renderiza chips, o
@@ -232,6 +242,9 @@ export async function processAgentJob(data: AgentJobData): Promise<void> {
     // Modo direct: envia via Graph API
     const cloudClient = await buildCloudClientFromDb();
     await cloudClient.sendText(data.replyTo, replyText);
+  }
+  } finally {
+    await releaseUserLock(data.userId);
   }
 }
 

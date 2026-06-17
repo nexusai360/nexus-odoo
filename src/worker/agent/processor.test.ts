@@ -16,7 +16,13 @@ const mockBuildCloudClientFromDb = jest.fn();
 const mockSendText = jest.fn();
 const mockFetch = jest.fn();
 const mockAgentSettingsFindFirst = jest.fn();
+const mockAcquireUserLock = jest.fn();
+const mockReleaseUserLock = jest.fn();
 
+jest.mock("./user-lock", () => ({
+  acquireUserLock: (...args: unknown[]) => mockAcquireUserLock(...args),
+  releaseUserLock: (...args: unknown[]) => mockReleaseUserLock(...args),
+}));
 jest.mock("@/lib/agent/run-agent", () => ({ runAgent: mockRunAgent }));
 jest.mock("@/lib/agent/conversation", () => ({
   getOrCreateWhatsappConversation: mockGetOrCreateWhatsappConversation,
@@ -75,6 +81,8 @@ beforeEach(() => {
   });
   mockBuildCloudClientFromDb.mockResolvedValue({ sendText: mockSendText });
   mockSendText.mockResolvedValue(undefined);
+  mockAcquireUserLock.mockResolvedValue(true);
+  mockReleaseUserLock.mockResolvedValue(undefined);
   // Default , todos os recursos ativos em produção (não bloqueia audio/image).
   mockAgentSettingsFindFirst.mockResolvedValue({
     audioCheckpoint: "PRODUCTION",
@@ -247,5 +255,39 @@ describe("processAgentJob , erro do runAgent", () => {
       BASE_JOB.replyTo,
       expect.stringContaining("não consegui"),
     );
+  });
+});
+
+// ──────────────────────────────────────────────
+// Testes , lock por usuário
+// ──────────────────────────────────────────────
+
+describe("processAgentJob , lock por usuário", () => {
+  it("lança erro controlado e NÃO processa quando o lock está ocupado", async () => {
+    mockAcquireUserLock.mockResolvedValue(false);
+
+    await expect(processAgentJob(BASE_JOB)).rejects.toThrow(/lock|ocupad/i);
+
+    expect(mockGetOrCreateWhatsappConversation).not.toHaveBeenCalled();
+    expect(mockRunAgent).not.toHaveBeenCalled();
+  });
+
+  it("adquire e libera o lock no caminho feliz", async () => {
+    mockAcquireUserLock.mockResolvedValue(true);
+
+    await processAgentJob(BASE_JOB);
+
+    expect(mockAcquireUserLock).toHaveBeenCalledWith(BASE_JOB.userId);
+    expect(mockRunAgent).toHaveBeenCalled();
+    expect(mockReleaseUserLock).toHaveBeenCalledWith(BASE_JOB.userId);
+  });
+
+  it("libera o lock mesmo quando runAgent lança", async () => {
+    mockAcquireUserLock.mockResolvedValue(true);
+    mockRunAgent.mockRejectedValue(new Error("boom"));
+
+    await expect(processAgentJob(BASE_JOB)).rejects.toThrow("boom");
+
+    expect(mockReleaseUserLock).toHaveBeenCalledWith(BASE_JOB.userId);
   });
 });
