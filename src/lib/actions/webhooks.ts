@@ -63,6 +63,8 @@ export interface WebhookListItem {
   path: string | null;
   targetUrl: string | null;
   methods: string[];
+  /** Eventos emitidos (outbound). Vazio em inbound. */
+  events: WebhookEventName[];
   enabled: boolean;
   createdAt: Date;
 }
@@ -323,6 +325,7 @@ export async function listWebhooks(): Promise<DataResult<WebhookListItem[]>> {
       path: r.path,
       targetUrl: r.targetUrl ?? r.url,
       methods: r.methods,
+      events: (r.events as WebhookEventName[] | undefined) ?? [],
       enabled: r.enabled,
       createdAt: r.createdAt,
     }));
