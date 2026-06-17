@@ -9,17 +9,26 @@
 - **PLAN:** `docs/superpowers/plans/2026-06-17-f5-whatsapp-nex-webhook.md`
 
 ## Estado atual (2026-06-17)
-- [x] Brainstorm + SPEC v1 → v2 → v3 → v4 (2 reviews adversariais aplicadas + esclarecimentos do usuário sobre áudio/avaliação/validação/acesso por nível).
+- [x] Brainstorm + SPEC v1 → v2 → v3 → v4 (2 reviews + esclarecimentos do usuário).
 - [x] PLAN v1 escrito (subagente Opus).
-- [ ] **EM ANDAMENTO:** 2 reviews do PLAN → PLAN v2 → v3.
-- [ ] Execução das ondas 0-F (inline, TDD, ui-ux-pro-max na UI, e2e por onda).
+- [x] 2 reviews adversariais do PLAN aplicadas → **PLAN v2 (pronto para execução)**.
+      Achado "phoneVariants não existe" era FALSO (existe em countries.ts:180).
+- [ ] **EM ANDAMENTO:** Execução das ondas (inline, TDD, ui-ux-pro-max na UI, e2e por onda).
 - [ ] Code review + UI review finais.
 
 ## Próxima ação concreta
-Rodar/integrar as 2 reviews do plano → PLAN v3; então executar a **Onda 0**
-(schema: `WebhookEvent`+`events`; `ChannelAccessLevel`+`bubble/whatsappAccessLevel`;
-migration+backfill). Onda 0 mexe no **schema do banco compartilhado** com
-`feat/nex-reconstrucao`: avisar o usuário, `agente schema-changed`, mergear cedo.
+Executar pelo PLAN v2 (docs/superpowers/plans/2026-06-17-f5-whatsapp-nex-webhook.md).
+Começar pela **Onda A1** (resolução por variantes do nono dígito em
+`src/lib/whatsapp/resolve.ts`: `findUnique`→`findFirst` com `phoneVariants` +
+`platformRole` no select), que NÃO depende da migration. A **Onda 0** (schema:
+eventos + níveis de acesso por canal) mexe no **banco compartilhado** com
+`feat/nex-reconstrucao`: ao chegar nela, avisar o usuário, rodar
+`agente schema-changed`, e recomendar mergear cedo.
+
+## Ordem de execução sugerida (independência)
+A1, A2, A3, A4 (backend, sem migration) → Onda 0 (migration, coordenar) →
+A5 (barreiras) → B (resposta rica/idempotência) → C (acesso canal/nível, UI) →
+D (webhook por evento, UI) → E (monitoramento, UI, por último, conflito) → F (runbook+e2e).
 
 ## Decisões canônicas desta feature (não rediscutir)
 - Resposta **assíncrona, 2 webhooks** (n8n manda; recebe a resposta num receptor).

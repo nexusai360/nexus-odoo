@@ -1,6 +1,23 @@
-# F5 , Integração WhatsApp ↔ Agente Nex via n8n/Webhook , Implementation Plan
+# F5 , Integração WhatsApp ↔ Agente Nex via n8n/Webhook , Implementation Plan , PLAN v2 (achados das 2 reviews aplicados)
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
+
+> **PLAN v2 , o que mudou em relação ao v1 (achados das 2 reviews adversariais, confirmados contra o código):**
+> - `platformRole` entra no `select.user` E no tipo `ResolvedWhatsappUser` JÁ na A1.1 (a primeira task a tocar `resolve.ts`); a L2 (A5.4) apenas consome `user.platformRole` (sem editar o select de novo).
+> - `resolve.test.ts` e `route.test.ts` e `processor.test.ts` JÁ EXISTEM: as tasks MIGRAM/ESTENDEM/REESCREVEM os casos existentes (não apenas acrescentam). `findUnique`→`findFirst` em resolve; mocks de emit-reply/`findMany`/`agentSettings` em route; casos de `n8n_webhook` reescritos em processor.
+> - Onda B migra TODOS os 5 call-sites de `sendViaWebhook` (84, 97, 129, 218, 261) para o novo dispatch ANTES de remover a função (senão o tsc quebra). O heartbeat (call-site 261) é SUPRIMIDO no WhatsApp (decisão #9).
+> - Áudio: A3.1 evita o early-return de "áudio desabilitado" quando `data.text` está presente (caminho n8n já transcrito não depende de `audioCheckpoint`).
+> - `AgentReplyData.reason` é tipado como `BlockReason | null` (catálogo único de A5.1).
+> - B.1: `allTurnToolNames.push(tc.name)` JÁ EXISTE (run-agent.ts:1704); não duplicar. `reasoningMs` soma `Date.now()-iterStart` por iteração. Um único return `ok:true` (run-agent.ts:1487) + o de `permission-denial.ts`.
+> - Filtro por evento (`events: { has: "agent_reply" }`) inteiro movido para a Onda D; nas Ondas A/B o emissor dispara para todo outbound habilitado (direction=outbound, enabled), sem janela de "webhooks invisíveis".
+> - Idempotência ANTES do lock (reentrega não toca conversa). Janela de gravação da chave documentada. TTL do lock alinhado ao timeout do turno (120s, §8 da spec).
+> - L3 (permission_denied) difere de L1/L2: cria sessão/Message e pode acionar o Judge; só L1/L2 são "sem custo de IA". O Judge segue rodando (decisão da spec).
+> - Backfill lê o `CREATE TYPE` real do migration.sql e usa o nome EXATO do enum no cast.
+> - `url`/`targetUrl`: `createWebhook` grava AMBOS (webhooks.ts:178-179); `targetUrl ?? url` é robustez (não conserto de algo quebrado hoje, exceto webhooks legados pré-R6).
+> - `updateBubbleEnabled` (agent-config.ts:584) tem um step de guard + migração de call-sites ANTES do drop da coluna.
+> - `agent-availability-summary.test.ts` reescrito (booleans → níveis). `rodada-labels.test.ts`/`queries.test.ts` migrados (origem única → 2 origens) com ordem final do filtro especificada.
+> - A5.4 NÃO é paralelizável: depende de A1.1, A2.1, A2.2, A5.1, A5.2, A5.3.
+> - E.5 fixa os arquivos exatos; `SegmentedControl` genérico já existe (C.4 só usa).
 
 **Goal:** Permitir conversa com o Agente Nex pelo WhatsApp (mesma inteligência do chat in-app) via n8n, com validação em camadas antes da IA, resposta rica por webhook, acesso por canal/nível, webhook por evento e monitoramento separando Bubble vs WhatsApp.
 
@@ -119,9 +136,11 @@ Avisar em uma frase. Depois:
 Run: `npx prisma migrate dev --name f5_whatsapp_webhook_events_e_channel_levels --create-only`
 Expected: cria o diretório de migration sem aplicar ainda (`--create-only` para podermos editar o SQL antes de aplicar).
 
-- [ ] **Step 2: Acrescentar o backfill ao final do `migration.sql`**
+- [ ] **Step 2: LER o `CREATE TYPE` gerado e acrescentar o backfill ao final do `migration.sql`**
 
-Editar o `migration.sql` gerado e ACRESCENTAR ao final (o cast Postgres do array de enum é obrigatório):
+PRIMEIRO, abrir o `migration.sql` recém-gerado e LER o(s) `CREATE TYPE` que o Prisma emitiu, copiando o nome EXATO de cada enum (case-sensitive, normalmente `"WebhookEvent"` e `"ChannelAccessLevel"`, mas confirmar , o cast Postgres falha se o nome divergir do `CREATE TYPE`). Confirmar também os nomes de tabela/coluna contra os `@map`/`@@map` reais: `whatsapp_webhooks` (model `WhatsappWebhook` mapeado), `AgentSettings` (sem `@@map`, então o nome do relation é o do model), colunas `bubble_access_level`/`whatsapp_access_level` (mapeadas), `bubble_enabled`/`whatsapp_enabled` (confirmar o `@map` real no schema , se não houver `@map`, o nome físico é o do campo).
+
+Então ACRESCENTAR ao final, substituindo `"WebhookEvent"`/`"ChannelAccessLevel"` pelos nomes EXATOS lidos do `CREATE TYPE`:
 
 ```sql
 -- Backfill (F5): outbound existentes passam a emitir agent.reply.
@@ -131,12 +150,15 @@ UPDATE "whatsapp_webhooks"
 
 -- Backfill (F5): preserva o comportamento atual de disponibilidade.
 -- bubble/whatsapp habilitado (true) => viewer (todos veem); desabilitado => off.
+-- AgentSettings é singleton: se NÃO houver linha, este UPDATE afeta 0 linhas
+-- (correto , o @default(viewer) das colunas novas preserva o comportamento
+-- quando a primeira linha for criada). Não há INSERT de seed aqui.
 UPDATE "AgentSettings"
   SET "bubble_access_level"   = CASE WHEN "bubble_enabled"   THEN 'viewer'::"ChannelAccessLevel" ELSE 'off'::"ChannelAccessLevel" END,
       "whatsapp_access_level" = CASE WHEN "whatsapp_enabled" THEN 'viewer'::"ChannelAccessLevel" ELSE 'off'::"ChannelAccessLevel" END;
 ```
 
-Nota: os nomes de coluna/tabela no SQL devem casar com os `@map`/`@@map` reais. `whatsapp_webhooks` (mapeado), `AgentSettings` (sem `@@map`, então o nome é o do model). Conferir no `migration.sql` recém-gerado.
+Nota: o `prisma migrate dev` (Step 3) reporta o número de linhas afetadas , conferir no Step 2 da verificação (0.4) que o `AgentSettings` foi atualizado (1 linha, já que é singleton e a linha existe) e que os `outbound` ganharam o array.
 
 - [ ] **Step 3: Aplicar a migration**
 
@@ -192,50 +214,66 @@ git commit --allow-empty -m "chore: verificacao Onda 0 (backfill conferido no ba
 
 ## Onda A , Entrada + identidade + áudio + concorrência + barreiras inbound
 
-> A1-A5 são paralelizáveis entre si (arquivos distintos), com a ressalva de que A5 depende do catálogo de mensagens (A5.1) e toca `route.ts` (mesmo arquivo de A2). Executar A2 antes de A5 para evitar conflito no `route.ts`.
+> **Ordem e dependências (CORRIGIDO no v2):** NÃO é tudo paralelizável. As unidades base são independentes e PODEM ir em paralelo: A1.1 (resolve), A2.1+A2.2 (contrato/job), A3.1 (áudio), A4.1+A4.2 (lock), A5.1 (catálogo), A5.2 (channel-access), A5.3 (emit-reply). A **A5.4 (barreiras L1/L2 no inbound) NÃO é paralelizável**: depende de A1.1 (precisa do `platformRole` no resolve), A2.1 e A2.2 (contrato/job já estendidos e `route.ts` já montando o jobData), A5.1 (catálogo de mensagens), A5.2 (helper `roleMeetsChannelLevel`) e A5.3 (emissor `emitAgentReply`). Executar A5.4 por ÚLTIMO na onda. A5.4 toca `route.ts` (mesmo arquivo de A2.x) , garantir A2.x mergeado/aplicado antes para evitar conflito.
 
-### Task A1.1: Resolver usuário por variantes do número (com/sem nono dígito)
+### Task A1.1: Resolver usuário por variantes do número (com/sem nono dígito) + `platformRole` no resolve
+
+> **Decisão do v2 (consolida #2 e #3):** Esta task é a PRIMEIRA a tocar `resolve.ts`, então adiciona `platformRole` ao `select.user` E ao tipo `ResolvedWhatsappUser` JÁ AQUI (importando `PlatformRole` do prisma client). A barreira L2 (A5.4) só CONSOME `user.platformRole` , não edita o select de novo. Confirmado contra o código: `resolve.ts` hoje usa `findUnique({ where: { phoneE164 } })` com `select.user = { id, name, isActive }`; `phoneVariants(e164)` existe em `src/lib/whatsapp/countries.ts:180` (achado "phoneVariants não existe" é FALSO , o helper existe e o import está correto).
 
 **Files:**
-- Modify: `src/lib/whatsapp/resolve.ts:75` (trocar `findUnique` por `findFirst` com `phoneVariants`)
-- Test: `src/lib/whatsapp/resolve.test.ts` (já existe; acrescentar casos)
+- Modify: `src/lib/whatsapp/resolve.ts` (trocar `findUnique` por `findFirst` com `phoneVariants`; acrescentar `platformRole` ao `select.user` e ao tipo `ResolvedWhatsappUser`; importar `phoneVariants` de `./countries` e `PlatformRole` de `@/generated/prisma/client`)
+- Test: `src/lib/whatsapp/resolve.test.ts` (JÁ EXISTE , MIGRAR os mocks/asserts de `findUnique`→`findFirst`, incluindo `platformRole`)
 
-- [ ] **Step 1: Escrever o teste que falha**
+- [ ] **Step 1: MIGRAR o teste existente para `findFirst` + `platformRole` (e ver falhar)**
 
-Em `src/lib/whatsapp/resolve.test.ts`, adicionar um `describe` que cobre: número cadastrado COM o 9 (`+5534998765432`) sendo resolvido quando chega SEM o 9 (`5534988765432` da Meta), e vice-versa. Mockar `prisma.userWhatsappNumber.findFirst` para retornar o usuário quando `where.phoneE164.in` contém a variante cadastrada.
+O `resolve.test.ts` já existe e mocka `prisma.userWhatsappNumber.findUnique`. **Migrar** (não duplicar) o `jest.mock` de `findUnique` para `findFirst` e ajustar TODOS os casos existentes do `describe("resolveWhatsappUser")` (unknown/inactive/ok/normaliza/malformado) para usar `findFirst`, incluindo `platformRole` nos objetos `user` mockados e nos `expect(...).toEqual(...)`. Acrescentar o `describe` novo das variantes do nono dígito. O mock de `findFirst` retorna o usuário quando `where.phoneE164.in` contém a variante cadastrada.
 
 ```ts
-import { resolveWhatsappUser } from "./resolve";
+import { normalizeE164, resolveWhatsappUser } from "./resolve";
 import { prisma } from "@/lib/prisma";
 
 jest.mock("@/lib/prisma", () => ({
   prisma: { userWhatsappNumber: { findFirst: jest.fn() } },
 }));
 
-describe("resolveWhatsappUser , variantes do nono dígito", () => {
-  const findFirst = prisma.userWhatsappNumber.findFirst as jest.Mock;
-  beforeEach(() => findFirst.mockReset());
+const mockPrisma = jest.mocked(prisma) as unknown as {
+  userWhatsappNumber: { findFirst: jest.Mock };
+};
 
-  it("resolve número que chega SEM o 9 quando o cadastro tem COM o 9", async () => {
-    findFirst.mockResolvedValue({ user: { id: "u1", name: "Ana", isActive: true } });
-    const r = await resolveWhatsappUser("553498765432"); // sem o 9, vindo da Meta
-    expect(r).toEqual({ status: "ok", user: { id: "u1", name: "Ana", isActive: true } });
-    // confere que a query usou IN com as duas formas
+// (manter o describe("normalizeE164", ...) existente sem mudança)
+
+describe("resolveWhatsappUser", () => {
+  const findFirst = mockPrisma.userWhatsappNumber.findFirst;
+  beforeEach(() => jest.clearAllMocks());
+
+  it("retorna unknown para número não cadastrado", async () => {
+    findFirst.mockResolvedValue(null);
+    expect(await resolveWhatsappUser("+5511991234567")).toEqual({ status: "unknown" });
+  });
+
+  it("retorna inactive para número de usuário inativo", async () => {
+    findFirst.mockResolvedValue({ user: { id: "u1", name: "Ana", isActive: false, platformRole: "viewer" } });
+    expect(await resolveWhatsappUser("+5511991234567")).toEqual({ status: "inactive" });
+  });
+
+  it("retorna ok com o usuário (incluindo platformRole) para usuário ativo", async () => {
+    const user = { id: "u1", name: "Ana", isActive: true, platformRole: "manager" };
+    findFirst.mockResolvedValue({ user });
+    expect(await resolveWhatsappUser("+5511991234567")).toEqual({ status: "ok", user });
+  });
+
+  it("consulta com IN das variantes (com/sem o 9) , normalizado", async () => {
+    findFirst.mockResolvedValue(null);
+    await resolveWhatsappUser("553498765432"); // sem o 9, vindo da Meta
     const arg = findFirst.mock.calls[0][0];
     expect(arg.where.phoneE164.in.length).toBeGreaterThanOrEqual(2);
     expect(arg.where.phoneE164.in).toContain("+5534998765432");
+    expect(arg.select.user.select.platformRole).toBe(true);
   });
 
-  it("usuário inativo retorna inactive", async () => {
-    findFirst.mockResolvedValue({ user: { id: "u2", name: "Bia", isActive: false } });
-    const r = await resolveWhatsappUser("+5511988887777");
-    expect(r).toEqual({ status: "inactive" });
-  });
-
-  it("sem match retorna unknown", async () => {
-    findFirst.mockResolvedValue(null);
-    const r = await resolveWhatsappUser("+5511988887777");
-    expect(r).toEqual({ status: "unknown" });
+  it("retorna unknown para número malformado (sem consultar)", async () => {
+    expect(await resolveWhatsappUser("abc")).toEqual({ status: "unknown" });
+    expect(findFirst).not.toHaveBeenCalled();
   });
 });
 ```
@@ -243,22 +281,35 @@ describe("resolveWhatsappUser , variantes do nono dígito", () => {
 - [ ] **Step 2: Rodar o teste e ver falhar**
 
 Run: `npx jest src/lib/whatsapp/resolve.test.ts --runInBand`
-Expected: FALHA , os novos casos quebram porque o código ainda usa `findUnique({ where: { phoneE164 } })` (o mock só tem `findFirst`).
+Expected: FALHA , o código ainda usa `findUnique({ where: { phoneE164 } })` sem `platformRole` (o mock só tem `findFirst`).
 
-- [ ] **Step 3: Implementação mínima**
+- [ ] **Step 3: Implementação mínima (findFirst + variantes + platformRole no select e no tipo)**
 
-Em `src/lib/whatsapp/resolve.ts`: importar `phoneVariants` de `./countries` no topo; trocar o bloco da linha 75:
+Em `src/lib/whatsapp/resolve.ts`:
+
+(3a) No topo, importar `import { phoneVariants } from "./countries";` e `import type { PlatformRole } from "@/generated/prisma/client";`.
+
+(3b) Estender o tipo `ResolvedWhatsappUser` para incluir `platformRole`:
 
 ```ts
-import { phoneVariants } from "./countries";
-// ...
+export type ResolvedWhatsappUser =
+  | { status: "unknown" }
+  | { status: "inactive" }
+  | { status: "ok"; user: { id: string; name: string; isActive: boolean; platformRole: PlatformRole } };
+```
+
+(3c) Trocar o `findUnique` pelo `findFirst` com as variantes e `platformRole` no select:
+
+```ts
   const row = await prisma.userWhatsappNumber.findFirst({
     where: { phoneE164: { in: phoneVariants(phoneE164) } },
     select: {
-      user: { select: { id: true, name: true, isActive: true } },
+      user: { select: { id: true, name: true, isActive: true, platformRole: true } },
     },
   });
 ```
+
+(O restante , checagem de `!row?.user`, `isActive`, retorno , permanece igual; o retorno `ok` já carrega o `platformRole` por estar no select.)
 
 - [ ] **Step 4: Rodar o teste e ver passar**
 
@@ -373,26 +424,37 @@ git commit -m "feat(whatsapp): propagar phoneNumberId e contactName ao AgentJobD
 
 ### Task A3.1: Áudio , dois caminhos coexistem (n8n transcrito vs Meta mídia)
 
+> **Achado do v2 (early-return de áudio desabilitado):** confirmado contra o código , há um early-return `if (data.type === "audio" && !audioInProduction) { ...responde "não entendo áudio"...; return; }` ANTES da lógica de texto (`audioInProduction = settings?.audioCheckpoint === "PRODUCTION"`). No caminho n8n o áudio JÁ chega transcrito em `data.text`, então NÃO depende do `audioCheckpoint`. A condição do early-return precisa passar a ser `data.type === "audio" && !audioInProduction && !data.text` , só barra quando NÃO há texto (caminho Meta com áudio cru e canal desligado).
+
 **Files:**
-- Modify: `src/worker/agent/processor.ts:92-146` (decisão do tipo audio) e `:180-187` (passar `isAudio` ao `runAgent`)
-- Test: `src/worker/agent/processor.test.ts`
+- Modify: `src/worker/agent/processor.ts` (early-return de áudio desabilitado: acrescentar `&& !data.text` à condição; bloco de resolução do texto: considerar `data.text` no caminho de áudio; chamada `runAgent`: passar `isAudio`)
+- Test: `src/worker/agent/processor.test.ts` (JÁ EXISTE , ESTENDER o `describe("processAgentJob , type=audio")`)
 
 - [ ] **Step 1: Escrever o teste que falha**
 
-Em `src/worker/agent/processor.test.ts`, testar a regra: para `type:"audio"` COM `text` presente (caminho n8n), o processor NÃO chama `downloadMedia`/`transcribeAudio` e usa `data.text` direto; para `type:"audio"` SEM `text` mas com `audioMediaId` (caminho Meta), mantém download+transcrição. Mockar `runAgent`, `buildCloudClientFromDb`, `transcribeAudio`, `getOrCreateWhatsappConversation`. Asserts:
-  - n8n: `transcribeAudio` não chamado; `runAgent` recebe `userMessage === data.text` e `isAudio: true`.
-  - Meta: `downloadMedia` chamado; `runAgent` recebe o texto transcrito e `isAudio: true`.
-
-(O teste precisa de `settings.audioCheckpoint === "PRODUCTION"` para não cair no early-return de áudio desabilitado: mockar `prisma.agentSettings.findFirst` retornando `{ audioCheckpoint: "PRODUCTION", imageCheckpoint: "OFF" }`.)
+Em `src/worker/agent/processor.test.ts`, ESTENDER o `describe("processAgentJob , type=audio")` (já existe com o caso "baixa a mídia e transcreve") com:
+  - **n8n transcrito (canal de áudio OFF):** `type:"audio"` + `text:"qual o estoque?"` com `prisma.agentSettings.findFirst` mockado retornando `{ audioCheckpoint: "OFF", imageCheckpoint: "OFF" }` ⇒ NÃO cai no early-return de "não entendo áudio"; NÃO chama `transcribeAudio`/`downloadMedia`; `runAgent` recebe `userMessage === data.text` e `isAudio: true`. (Prova que o caminho n8n independe do `audioCheckpoint`.)
+  - **Meta mídia (canal de áudio PRODUCTION):** `type:"audio"` SEM `text`, com `audioMediaId`, `audioCheckpoint:"PRODUCTION"` ⇒ `downloadMedia`/`transcribeAudio` chamados; `runAgent` recebe o texto transcrito e `isAudio: true`.
+  - **Meta mídia com canal OFF e SEM text:** mantém o early-return atual (responde "não entendo áudio"; não chama `runAgent`).
 
 - [ ] **Step 2: Rodar e ver falhar**
 
 Run: `npx jest src/worker/agent/processor.test.ts --runInBand`
-Expected: FALHA , hoje `type:"audio"` SEMPRE entra no ramo de download (linha 108), ignorando `text`; e `runAgent` é chamado sem `isAudio`.
+Expected: FALHA , hoje (a) `type:"audio"` com `audioCheckpoint:"OFF"` cai no early-return de "não entendo áudio" mesmo havendo `text`; (b) `type:"audio"` SEMPRE entra no ramo de download, ignorando `text`; (c) `runAgent` é chamado sem `isAudio`.
 
 - [ ] **Step 3: Implementação mínima**
 
-Em `processor.ts`, no bloco de resolução do texto (linhas 105-146), trocar a condição para considerar `data.text` no caminho de áudio:
+(3a) Ajustar a condição do early-return de áudio desabilitado para NÃO disparar quando há texto (caminho n8n):
+
+```ts
+  // n8n entrega o áudio JÁ transcrito em data.text => não depende do audioCheckpoint.
+  if (data.type === "audio" && !audioInProduction && !data.text) {
+    // G2 , Áudio (mídia Meta) desativado e sem texto: responder explicando.
+    // ... (mantém o corpo existente: mensagem "não entendo áudio" + dispatch + return)
+  }
+```
+
+(3b) No bloco de resolução do texto, considerar `data.text` no caminho de áudio:
 
 ```ts
   // 1. Resolver texto da mensagem (text, áudio transcrito via n8n, ou áudio Meta).
@@ -407,8 +469,8 @@ Em `processor.ts`, no bloco de resolução do texto (linhas 105-146), trocar a c
     if (!data.audioMediaId) {
       throw new Error("[agent-processor] audioMediaId ausente para tipo=audio");
     }
-    // ... (mantém o bloco existente de cloudClient/downloadMedia/transcribeAudio,
-    //      linhas 115-140; ao final: userMessage = transcription.text;)
+    // ... (mantém o bloco existente de cloudClient/downloadMedia/transcribeAudio;
+    //      ao final: userMessage = transcription.text;)
   } else {
     if (!data.text) {
       throw new Error("[agent-processor] text ausente para tipo=text");
@@ -417,7 +479,7 @@ Em `processor.ts`, no bloco de resolução do texto (linhas 105-146), trocar a c
   }
 ```
 
-E na chamada `runAgent` (linha ~180-187), acrescentar `isAudio`:
+E na chamada `runAgent`, acrescentar `isAudio`:
 
 ```ts
     result = await runAgent({
@@ -501,7 +563,19 @@ Criar `src/worker/agent/user-lock.ts`:
 ```ts
 import { redis } from "@/lib/redis";
 
-/** TTL do lock por usuário (>= timeout do turno do agente). */
+/**
+ * TTL do lock por usuário. Decisão do v2 (alinha à spec §8 "TTL >= timeout do
+ * turno, ex.: 120s"): 120_000 ms. Justificativa do número: o turno do agente é
+ * limitado por `maxIterations` (run-agent.ts), não por um timeout em ms fixo;
+ * 120s é o teto prático observado (a spec cita 120s) e cobre com folga um turno
+ * normal. Como NÃO há renovação aqui (lock simples SET NX PX), o TTL é o teto
+ * de proteção: se um turno exceder 120s (raro , só num loop de tools muito
+ * longo), o lock expira e uma 2a mensagem do mesmo usuário poderia entrar. Isso
+ * é aceitável (degradação graciosa, não corrupção, pois a sessão é a mesma) e
+ * é o pior caso documentado. Se a operação mostrar turnos > 120s recorrentes,
+ * subir o TTL ou adicionar renovação periódica do lock (watchdog) , NÃO usar
+ * TTL infinito (deadlock se o worker morrer).
+ */
 const USER_LOCK_TTL_MS = 120_000;
 
 function key(userId: string): string {
@@ -549,7 +623,7 @@ Expected: FALHA (sem lock hoje).
 
 - [ ] **Step 3: Implementação mínima**
 
-Em `processor.ts`: importar `acquireUserLock, releaseUserLock` de `./user-lock`. Logo no topo de `processAgentJob`, após a leitura de `settings` e o tratamento de `image`/`audio desabilitado` (mas ANTES de `getOrCreateWhatsappConversation`, linha ~148), envolver o restante:
+Em `processor.ts`: importar `acquireUserLock, releaseUserLock` de `./user-lock`. Logo no topo de `processAgentJob`, após a leitura de `settings` e o tratamento de `image`/`audio desabilitado` (mas ANTES de `getOrCreateWhatsappConversation`), envolver o restante:
 
 ```ts
   const gotLock = await acquireUserLock(data.userId);
@@ -566,7 +640,13 @@ Em `processor.ts`: importar `acquireUserLock, releaseUserLock` de `./user-lock`.
   }
 ```
 
-Nota: o `clearTimeout(heartbeatTimer)` existente deve continuar no seu próprio `finally` aninhado (não conflita).
+> **Ordem em relação à idempotência (decisão do v2, alinha à spec §9):** o short-circuit de idempotência `whatsapp:replied:{messageId}` (introduzido na B.4) fica ACIMA deste lock , uma reentrega não toca a conversa, logo NÃO precisa de lock. Estrutura final do topo de `processAgentJob` (depois de A4.2 + B.4):
+>
+> 1. leitura de `settings` + early-returns de `image`/`audio desligado-sem-texto`;
+> 2. **short-circuit de idempotência** (B.4): se `whatsapp:replied:{messageId}` existe ⇒ reentrega e `return` (SEM lock);
+> 3. `acquireUserLock` → `try { get-or-create → (L3) → runAgent → persiste → grava replied → dispatch } finally { releaseUserLock }`.
+>
+> Nota: o `heartbeatTimer`/`clearTimeout` é REMOVIDO na B.6 (heartbeat suprimido no WhatsApp, decisão #9), então não há `finally` aninhado de heartbeat após a Onda B. Nesta task A4.2, se o heartbeat ainda existir, mantenha o `clearTimeout(heartbeatTimer)` no seu `finally` aninhado (não conflita); a B.6 o remove.
 
 - [ ] **Step 4: Rodar e ver passar**
 
@@ -738,6 +818,8 @@ git commit -m "feat(agente): helper de nivel de acesso por canal com heranca (F5
 
 ### Task A5.3: Disparo de webhook de saída direto do inbound (`kind:"blocked"`)
 
+> **Depende de A5.1** (importa o tipo `BlockReason` do catálogo). Executar A5.1 antes.
+>
 > Esta task cria o emissor mínimo de saída usado pelas barreiras do inbound. O envelope COMPLETO `agent.reply` é definido na Onda B (task B.3); aqui usamos uma função de emissão que a Onda B vai estender. Para não criar dívida, já criamos o módulo de emissão (`src/lib/whatsapp/emit-reply.ts`) com a forma do envelope e o suporte a `kind:"blocked"`.
 
 **Files:**
@@ -793,6 +875,7 @@ Criar `src/lib/whatsapp/emit-reply.ts`:
 ```ts
 import { randomUUID } from "node:crypto";
 import { signPayload } from "@/lib/whatsapp/hmac";
+import type { BlockReason } from "@/lib/whatsapp/blocked-messages";
 
 export interface AgentReplyData {
   inboundMessageId: string;
@@ -801,7 +884,7 @@ export interface AgentReplyData {
   sessionId: string | null;
   assistantMessageId: string | null;
   ok: boolean;
-  reason: string | null;
+  reason: BlockReason | null; // catálogo único de A5.1; null quando ok:true
   reply: string;
   suggestions: string[];
   tools: string[];
@@ -871,42 +954,56 @@ git commit -m "feat(whatsapp): emissor agent.reply com envelope assinado e fail-
 ### Task A5.4: Barreiras L1/L2 no inbound (não enfileira; dispara `kind:"blocked"`)
 
 **Files:**
-- Modify: `src/app/api/integrations/whatsapp/inbound/route.ts:140-251`
-- Test: `src/app/api/integrations/whatsapp/inbound/route.test.ts` (criar/editar)
+- Modify: `src/app/api/integrations/whatsapp/inbound/route.ts`
+- Test: `src/app/api/integrations/whatsapp/inbound/route.test.ts` (JÁ EXISTE , ESTENDER os mocks e casos)
 
-- [ ] **Step 1: Escrever o teste que falha**
+- [ ] **Step 1: ESTENDER o teste existente (e ver falhar)**
 
-Em `route.test.ts`, testar (mockando `resolveWhatsappUser`, `prisma`, `emitAgentReply`, a fila `getAgentQueue`):
-  - L1 número `unknown`: NÃO enfileira; chama `emitAgentReply` com `kind:"blocked"` + `reason:"user_not_found"`; resposta 200 `{ rejected:true }`.
-  - L1 `inactive`: idem com `reason:"user_inactive"`.
-  - L2 canal `off` (whatsappAccessLevel="off"): NÃO enfileira; `emitAgentReply` `reason:"channel_disabled"`.
-  - L2 role abaixo do nível (whatsappAccessLevel="admin", user role="viewer"): NÃO enfileira; `reason:"role_not_allowed"`.
-  - caso OK (role satisfaz nível): enfileira normalmente.
+O `route.test.ts` já existe e cobre HMAC, validação, idempotência, resolução, teto diário e enfileiramento. Os casos existentes mudam e novos entram. **Estender** assim:
 
-(Mockar `prisma.agentSettings.findFirst` retornando `{ whatsappAccessLevel }` e o `user.platformRole` na resolução , a resolução hoje retorna só `{id,name,isActive}`, então acrescentar `platformRole` ao `select` da resolução , ver Step 3.)
+(a) **Mocks (acrescentar ao bloco de mocks no topo):**
+  - novo `const mockEmitAgentReply = jest.fn();` + `jest.mock("@/lib/whatsapp/emit-reply", () => ({ emitAgentReply: mockEmitAgentReply }));`
+  - no `jest.mock("@/lib/prisma", ...)`: acrescentar `whatsappWebhook.findMany: mockWebhookFindMany` (novo mock fn, usado por `loadOutboundTargets`) e `agentSettings: { findFirst: mockAgentSettingsFindFirst }` (novo mock fn, lê `whatsappAccessLevel`). Manter os mocks existentes (`processedWhatsappMessage`, `conversation.count`, `whatsappWebhook.findFirst`, `whatsappChannel`, `appSetting`).
+  - default no `beforeEach`: `mockAgentSettingsFindFirst.mockResolvedValue({ whatsappAccessLevel: "viewer" })`; `mockWebhookFindMany.mockResolvedValue([{ targetUrl: "https://n8n/x", url: null, secret: "enc:s1" }])`; o `mockResolveWhatsappUser` ok agora retorna `{ status:"ok", user: { id:"user-001", name:"Ana", isActive:true, platformRole:"viewer" } }` (acrescentar `platformRole`).
+
+(b) **Casos existentes que MUDAM** (barreiras L1/L2 agora disparam `kind:"blocked"`):
+  - "número desconhecido/rejeitado" (status `unknown`): além de NÃO enfileirar e logar `whatsapp_inbound_rejected`, agora chama `mockEmitAgentReply` com `kind:"blocked"` + `data.reason:"user_not_found"`.
+  - status `inactive`: idem com `reason:"user_inactive"`.
+  - "retorna 202 e enfileira job para mensagem válida": continua enfileirando QUANDO `whatsappAccessLevel:"viewer"` e role satisfaz (default). Confirmar que `mockEmitAgentReply` NÃO é chamado no caminho OK.
+
+(c) **Casos NOVOS (L2):**
+  - canal `off` (`whatsappAccessLevel:"off"`): NÃO enfileira; `mockEmitAgentReply` com `reason:"channel_disabled"`; 200 `{ rejected:true, reason:"channel_disabled" }`.
+  - role abaixo do nível (`whatsappAccessLevel:"admin"`, user `platformRole:"viewer"`): NÃO enfileira; `reason:"role_not_allowed"`.
+  - role satisfaz (`whatsappAccessLevel:"manager"`, user `platformRole:"admin"`): enfileira normalmente; sem `emitAgentReply`.
 
 - [ ] **Step 2: Rodar e ver falhar**
 
 Run: `npx jest src/app/api/integrations/whatsapp/inbound/route.test.ts --runInBand`
-Expected: FALHA (barreira L2 não existe; resolução não traz role).
+Expected: FALHA (barreira L2 não existe; resolução não traz role; mocks novos não consumidos pelo código atual).
 
 - [ ] **Step 3: Implementação mínima**
 
-(3a) Em `src/lib/whatsapp/resolve.ts`: acrescentar `platformRole` ao `select.user` e ao tipo `ResolvedWhatsappUser` (`user: { id; name; isActive; platformRole }`). Ajustar o `resolve.test.ts` da task A1.1 se necessário (o mock já retorna o objeto user, basta incluir `platformRole`).
+(3a) `platformRole` no resolve JÁ FOI feito na A1.1 (select + tipo `ResolvedWhatsappUser`). Esta task apenas CONSOME `user.platformRole`. NÃO reeditar o `select` do resolve aqui.
 
-(3b) Em `route.ts`, após `const { user } = resolved;` (linha ~158), ANTES do teto diário, inserir:
-  - L1 já está coberta pelo `if (resolved.status !== "ok")` existente (linhas 143-156): trocar a resposta para também disparar o webhook de saída. Reescrever esse bloco para mapear `unknown→user_not_found`, `inactive→user_inactive`, chamar um helper local `emitBlocked(reason, to, phoneNumberId)` que carrega os outbound targets habilitados (com `events` contendo `agent_reply`) e chama `emitAgentReply` com `kind:"blocked"`.
+(3b) Em `route.ts`, após `const { user } = resolved;`, ANTES do teto diário, inserir:
+  - L1 já está coberta pelo `if (resolved.status !== "ok")` existente: trocar a resposta para também disparar o webhook de saída. Reescrever esse bloco para mapear `unknown→user_not_found`, `inactive→user_inactive`, chamar um helper local `emitBlocked(reason, to, phoneNumberId)` que carrega os outbound targets habilitados e chama `emitAgentReply` com `kind:"blocked"`.
   - L2: ler `agentSettings.whatsappAccessLevel`; se `!roleMeetsChannelLevel(user.platformRole, level)`, disparar `channel_disabled` (quando `level === "off"`) ou `role_not_allowed` (quando role insuficiente), retornar 200 `{ rejected:true, reason }` SEM enfileirar.
+
+> **Decisão do v2 (achado #10 , sem janela de "webhooks invisíveis"):** nesta Onda A o `loadOutboundTargets` filtra APENAS por `direction:"outbound", enabled:true` , NÃO filtra por `events: { has: "agent_reply" }`. O filtro por evento + o default `['agent_reply']` na criação entram JUNTOS na Onda D (D.1/D.3), quando a UI de eventos já existe. Assim, entre as Ondas A/B (antes da D) todo outbound habilitado recebe o `agent.reply`, e não há um intervalo em que webhooks fiquem mudos por `events` vazio. A Onda D reaperta o `loadOutboundTargets` para incluir `events: { has: "agent_reply" }`.
+
+> **Decisão do v2 (achado #16 , url/targetUrl):** confirmado contra o código que `createWebhook` grava AMBOS `targetUrl` E `url` (webhooks.ts:178-179) e que `listWebhooks` já retorna `targetUrl ?? url` (webhooks.ts:303). Portanto o outbound NÃO está "quebrado hoje" para webhooks criados pela UI; o `targetUrl ?? url` aqui é robustez para eventuais linhas legadas pré-R6 que tenham só uma das colunas. O comentário no helper reflete isso (sem alarmar "bug").
 
 Helper `emitBlocked` no `route.ts` (carrega targets uma vez):
 
 ```ts
 async function loadOutboundTargets() {
+  // Onda A/B: todo outbound habilitado (sem filtro de evento , ver achado #10).
+  // A Onda D acrescenta `events: { has: "agent_reply" }` a este where.
   const rows = await prisma.whatsappWebhook.findMany({
-    where: { direction: "outbound", enabled: true, events: { has: "agent_reply" } },
+    where: { direction: "outbound", enabled: true },
   }).catch(() => []);
   return rows.flatMap((w) => {
-    const url = w.targetUrl ?? w.url; // bug url/targetUrl: prioriza targetUrl
+    const url = w.targetUrl ?? w.url; // robustez: prioriza targetUrl, cai no url legado
     if (!url) return [];
     try { return [{ url, secret: decrypt(w.secret) }]; } catch { return []; }
   });
@@ -963,7 +1060,7 @@ Rebuildar app+worker (worker não tem build próprio , usa imagem do `app`):
 docker compose build app && docker compose up -d --force-recreate worker
 docker image inspect nexus-odoo:local --format '{{.Created}}'   # deve ser agora
 ```
-Exercer: assinar um inbound com número SEM o 9, com um usuário cadastrado COM o 9 (confirma A1); enviar `type:"audio"`+`text` (A3 n8n) e um áudio só com `audioMediaId` (A3 Meta, não regrediu); duas mensagens seguidas do mesmo usuário (A4 lock , conferir que só uma conversa é criada). Barreiras L1/L2 retornando o webhook `kind:"blocked"` sem custo de IA (conferir que `runAgent` não roda , ausência de `LlmUsage` novo para a barreira).
+Exercer: assinar um inbound com número SEM o 9, com um usuário cadastrado COM o 9 (confirma A1); enviar `type:"audio"`+`text` com `audioCheckpoint:"OFF"` (A3 n8n , deve processar normalmente, NÃO cair no early-return) e um áudio só com `audioMediaId` com `audioCheckpoint:"PRODUCTION"` (A3 Meta, não regrediu); duas mensagens seguidas do mesmo usuário (A4 lock , conferir que só uma conversa é criada). Barreiras L1/L2 (apenas estas , rodam no inbound antes de enfileirar) retornando o webhook `kind:"blocked"` SEM custo de IA (conferir que `runAgent` não roda , ausência de `LlmUsage` novo). Observação: L3 não é exercida aqui (a L3 vive na Onda B, dentro do `runAgent`, e pode acionar o Judge , ver B.5).
 
 - [ ] **Step 3: Commit (registro de verificação)**
 
@@ -977,9 +1074,11 @@ git commit --allow-empty -m "chore: verificacao Onda A (e2e inbound, audio dois 
 
 ### Task B.1: Estender `RunAgentResult` com `toolsCalled` e `reasoningMs`
 
+> **Achados do v2 (confirmados contra run-agent.ts):** o push `allTurnToolNames.push(tc.name)` JÁ EXISTE (linha 1704) , NÃO duplicar; apenas usar `allTurnToolNames` no return. `allTurnToolNames` é declarado na linha 756. Há um ÚNICO return `ok:true` no run-agent (linha 1487, com `message`/`suggestions`/`usage`/`messageId`); o outro produtor de `RunAgentResult ok:true` é `respondPermissionDenied` (permission-denial.ts). `iterStart` é declarado POR ITERAÇÃO (linha 886) e usado em `durationMs: Date.now() - iterStart` (linha 951); somar em uma variável de turno.
+
 **Files:**
-- Modify: `src/lib/agent/run-agent.ts:250-259` (tipo `RunAgentResult`) e `:756`/`:951` (coleta) e o `return` final do ramo `ok:true`
-- Modify: `src/lib/agent/permission-denial.ts:133-141` (ramo `ok:true` da recusa: `toolsCalled:[]`, `reasoningMs:0`)
+- Modify: `src/lib/agent/run-agent.ts` (tipo `RunAgentResult` ramo `ok:true`, linhas 250-259; acumular `reasoningMs` no loop; usar `allTurnToolNames` e `reasoningMs` no ÚNICO return `ok:true`, linha 1487)
+- Modify: `src/lib/agent/permission-denial.ts` (return `ok:true` da recusa: `toolsCalled:[]`, `reasoningMs:0`)
 - Test: `src/lib/agent/run-agent.test.ts` (editar mock/asserts) e `src/lib/agent/permission-denial.test.ts`
 
 - [ ] **Step 1: Escrever/ajustar o teste que falha**
@@ -1000,13 +1099,13 @@ Expected: FALHA (campos inexistentes no tipo/retorno).
       reasoningMs: number;
 ```
 
-(3b) Acumular `reasoningMs`: declarar `let turnReasoningMs = 0;` junto de `allTurnToolNames` (linha ~756). Dentro do loop de iterações, somar a duração por iteração reusando o `Date.now() - iterStart` (a mesma base usada no `logUsage` da linha 951): após o cálculo da duração da iteração, `turnReasoningMs += Date.now() - iterStart;`. (Confirmar que `iterStart` existe no escopo da iteração; se for redefinido por iteração, somar dentro do loop.)
+(3b) Acumular `reasoningMs`: declarar `let turnReasoningMs = 0;` junto de `allTurnToolNames` (linha ~756). `iterStart` é declarado por iteração (linha 886). Dentro do loop, ao final de cada iteração (perto da linha 951, onde já existe `durationMs: Date.now() - iterStart`), somar: `turnReasoningMs += Date.now() - iterStart;`. Como `iterStart` é por-iteração, a soma acumula a duração de cada iteração do turno.
 
-(3c) Popular `allTurnToolNames` quando houver tool calls: no ponto onde as toolCalls da iteração são conhecidas (`result.toolCalls`), fazer `allTurnToolNames.push(...result.toolCalls.map((t) => t.name));`. (Verificar se já existe um push equivalente; se sim, reusar.)
+(3c) NÃO criar push novo de tool names: o `allTurnToolNames.push(tc.name)` JÁ EXISTE na linha 1704 (dentro do laço que processa os tool results). Apenas reusar `allTurnToolNames` no return.
 
-(3d) No `return` final do ramo de sucesso, adicionar `toolsCalled: allTurnToolNames, reasoningMs: turnReasoningMs`.
+(3d) No ÚNICO `return { ok: true, ... }` (linha 1487), adicionar `toolsCalled: allTurnToolNames, reasoningMs: turnReasoningMs` ao objeto retornado.
 
-(3e) Em `permission-denial.ts`, no `return` (linhas 133-141), adicionar `toolsCalled: [], reasoningMs: 0`.
+(3e) Em `permission-denial.ts`, no `return { ok: true, ... }` de `respondPermissionDenied`, adicionar `toolsCalled: [], reasoningMs: 0`.
 
 - [ ] **Step 4: Rodar e ver passar + tsc**
 
@@ -1118,7 +1217,9 @@ Expected: FALHA (módulo não existe).
 
 - [ ] **Step 3: Implementação mínima**
 
-Criar `src/worker/agent/build-reply-data.ts`. Importar `AgentReplyData` de `@/lib/whatsapp/emit-reply`, `formatForChannel` de `@/lib/agent/format/by-channel`, `RunAgentResult` de `@/lib/agent/run-agent`. Implementar:
+Criar `src/worker/agent/build-reply-data.ts`. Importar `AgentReplyData` de `@/lib/whatsapp/emit-reply`, `blockedMessageFor` (catálogo único de A5.1) de `@/lib/whatsapp/blocked-messages`, `formatForChannel` de `@/lib/agent/format/by-channel`, `RunAgentResult` de `@/lib/agent/run-agent`. Implementar:
+
+> **Decisão do v2 (achado #8 , reusar o catálogo):** o `reply` de `technical_error` e de `permission_denied` reusa o catálogo único de A5.1 (`blockedMessageFor("technical_error")` / `blockedMessageFor("permission_denied")`) em vez de uma string literal local. Exceção documentada: no caminho `permission_denied`, o `reply` final é o TEMPLATE enriquecido que `respondPermissionDenied` já montou (`result.message`, com módulos desejado/permitidos), pois é mais informativo que a frase genérica do catálogo; o `reason` é `"permission_denied"`. O catálogo serve de fallback de texto e mantém o tipo `BlockReason` consistente. Não há mais string de erro literal solta no arquivo.
 
 ```ts
 export interface ReplyContext {
@@ -1129,16 +1230,13 @@ export interface ReplyContext {
   messageType: "text" | "audio" | "image";
 }
 
-const AGENT_ERROR_MSG =
-  "Desculpe, não consegui processar sua mensagem agora. Tente novamente em instantes.";
-
 export function buildReplyData(ctx: ReplyContext, result: RunAgentResult): AgentReplyData {
   const baseUsage = { tokensInput: 0, tokensOutput: 0, costUsd: 0 };
   if (!result.ok) {
     return {
       inboundMessageId: ctx.inboundMessageId, to: ctx.to, phoneNumberId: ctx.phoneNumberId,
       sessionId: ctx.conversationId, assistantMessageId: null,
-      ok: false, reason: "technical_error", reply: AGENT_ERROR_MSG,
+      ok: false, reason: "technical_error", reply: blockedMessageFor("technical_error"),
       suggestions: [], tools: [], reasoningMs: 0, usage: baseUsage, messageType: ctx.messageType,
     };
   }
@@ -1173,66 +1271,83 @@ git add src/worker/agent/build-reply-data.ts src/worker/agent/build-reply-data.t
 git commit -m "feat(whatsapp): mapeia resultado do agente para o envelope agent.reply (F5 B)"
 ```
 
-### Task B.4: Idempotência de saída no processor (§9) + emissão do `agent.reply`
+### Task B.4: Idempotência de saída no processor (§9) + emissão do `agent.reply` + migração dos 5 call-sites de `sendViaWebhook`
+
+> **Achado central do v2 (#6 , confirmado contra o código):** `sendViaWebhook` tem **5 call-sites** no `processor.ts`: linha 84 (imagem provisória), 97 (áudio desabilitado), 129 (fallback de áudio sem cloud client), 218 (resposta final), 261 (heartbeat). Esta task MIGRA TODOS os 5 para o novo dispatch (`emitAgentReply` com envelope) ANTES de remover `sendViaWebhook` , senão o `tsc` quebra (a função deixaria de existir mas ainda seria chamada). As barreiras de mídia (84, 97, 129) viram envelopes `kind:"blocked"` (canal indisponível para aquela mídia) ou `kind:"notice"` (aviso sem ser bloqueio , decisão abaixo). O heartbeat (261) é SUPRIMIDO no WhatsApp (decisão #9), removido na B.6; nesta task ele já passa a NÃO usar `sendViaWebhook` (vira no-op preparando a remoção da B.6).
+>
+> **Decisão do v2 sobre o `kind` das barreiras de mídia:** o envelope só tem `kind:"final" | "blocked"` (spec §7). Imagem provisória / áudio desabilitado / fallback de áudio são respostas "não consigo essa mídia agora" , semanticamente um bloqueio brando. Para não inventar um terceiro `kind`, eles saem como `kind:"blocked"` com `reason:"technical_error"` (mídia não suportada no momento) e o `reply` = a frase provisória atual. (Se a operação preferir distinguir "mídia não suportada" de "falha técnica", criar uma `BlockReason` nova em A5.1 numa onda futura; fora do escopo aqui , registrado como pendência no runbook F.1.)
 
 **Files:**
-- Modify: `src/worker/agent/processor.ts:63-224` (topo: short-circuit por `whatsapp:replied:{messageId}`; fim: gravar payload + emitir via `emitAgentReply`)
-- Modify: `src/worker/agent/processor.ts:276-311` (substituir `sendViaWebhook` legado pelo novo envelope quando `responseMode==="n8n_webhook"`; o modo `direct` envia só `data.reply` via cloud-client)
-- Modify: `src/app/api/integrations/whatsapp/inbound/route.ts:205-220` (carregar TODOS os outbound targets habilitados com `agent_reply` no `channelConfig`, não um só; corrigir `url`→`targetUrl ?? url`)
-- Test: `src/worker/agent/processor.test.ts`
+- Modify: `src/worker/agent/processor.ts` (topo: short-circuit por `whatsapp:replied:{messageId}` ACIMA do lock; interface `AgentJobChannelConfig`: trocar `outboundUrl`/`outboundSecret` por `outboundTargets?: { url:string; secret:string }[]`; migrar os 5 call-sites de `sendViaWebhook`; gravar payload + emitir via `emitAgentReply`; remover `sendViaWebhook`)
+- Modify: `src/app/api/integrations/whatsapp/inbound/route.ts` (montar `channelConfig.outboundTargets` via `loadOutboundTargets` em vez de UM webhook; `targetUrl ?? url` , ver A5.4)
+- Test: `src/worker/agent/processor.test.ts` (JÁ EXISTE , REESCREVER os describes de `n8n_webhook` e estender os de mídia/erro)
 
-- [ ] **Step 1: Escrever o teste que falha**
+- [ ] **Step 1: REESCREVER/ESTENDER o teste existente (e ver falhar)**
 
-No `processor.test.ts`, testar:
-  - Idempotência: quando `redis.get("whatsapp:replied:wamid.1")` retorna um payload serializado, `processAgentJob` NÃO chama `runAgent` e re-emite o payload salvo (chama `emitAgentReply` com aquele envelope). 
-  - Caminho normal: após `runAgent` ok, grava `redis.set("whatsapp:replied:wamid.1", <payload>, ...)` e chama `emitAgentReply` com `kind:"final"`, `data.tools` = toolsCalled, etc.
-  - Falha de POST não re-roda o agente no retry (coberta pela idempotência: no retry o `redis.get` acha o payload).
+O `processor.test.ts` já existe com estes describes/casos (confirmado):
+  - `describe("processAgentJob , type=text, modo direct")` , casos "chama runAgent" (89-103) e "modo direct: chama cloud-client.sendText" (104-114): MANTER (modo direct não muda; segue via `cloudClient.sendText`).
+  - `describe("processAgentJob , type=text, modo n8n_webhook")` (119-155), casos "faz POST no outboundUrl com a resposta assinada" (129) e "inclui cabeçalhos de assinatura HMAC" (141): **REESCREVER**. O `webhookJob.channelConfig` deixa de ter `outboundUrl`/`outboundSecret` e passa a ter `outboundTargets: [{ url:"https://n8n/x", secret:"s1" }]`. Os asserts deixam de inspecionar `global.fetch` diretamente do processor e passam a verificar `mockEmitAgentReply` chamado com `(outboundTargets, { kind:"final", data })` onde `data.reply` é o texto e `data.tools`/`data.reasoningMs`/`data.usage` vêm do `runAgent`. (O fetch/HMAC agora é responsabilidade testada de `emit-reply.test.ts`, não do processor , `emitAgentReply` é mockado aqui.)
+  - `describe("processAgentJob , type=audio")` (157-194): ESTENDER conforme A3.1 já pediu (n8n transcrito vs Meta). Aqui acrescentar: no modo `n8n_webhook`, a resposta final do áudio sai por `emitAgentReply` (não `fetch`).
+  - `describe("processAgentJob , erro do runAgent")` (196+): manter o caso direct; acrescentar o caso `n8n_webhook` ⇒ `emitAgentReply` com `kind:"blocked"`, `data.reason:"technical_error"`.
+
+Acrescentar mocks no topo: `const mockEmitAgentReply = jest.fn();` + `jest.mock("@/lib/whatsapp/emit-reply", () => ({ emitAgentReply: mockEmitAgentReply, ...jest.requireActual? }))` (mockar só `emitAgentReply`; o tipo `AgentReplyData` pode vir do actual). Mockar `@/lib/redis` com `get`/`set` (`mockRedisGet`/`mockRedisSet`) , `get` default `null` (sem replay). Mockar `buildReplyData`? NÃO , usar o real (é função pura) para que `data` reflita o `runAgent`.
+
+Casos NOVOS:
+  - **Idempotência (replay):** `mockRedisGet` retorna um `JSON.stringify(replyData)` para `whatsapp:replied:wamid.123` ⇒ `processAgentJob` NÃO chama `runAgent` nem `acquireUserLock`; chama `emitAgentReply` com o envelope do payload salvo (`kind` derivado de `replyData.ok`).
+  - **Caminho normal grava replied:** após `runAgent` ok, `mockRedisSet` é chamado com `("whatsapp:replied:wamid.123", <json>, "EX", 86400)` e `emitAgentReply` com `kind:"final"`.
 
 - [ ] **Step 2: Rodar e ver falhar**
 
 Run: `npx jest src/worker/agent/processor.test.ts --runInBand`
-Expected: FALHA (sem idempotência/emissão nova).
+Expected: FALHA (sem idempotência; `sendViaWebhook`/`outboundUrl` ainda no lugar; `emitAgentReply` não chamado).
 
 - [ ] **Step 3: Implementação mínima**
 
-(3a) Em `route.ts` (~205-220): substituir o carregamento de UM outbound por TODOS os targets habilitados com `events has agent_reply`, reusando o helper `loadOutboundTargets` (criado em A5.4). Mudar `channelConfig` para carregar `outboundTargets: { url, secret }[]` (corrigindo `url`→`targetUrl ?? url`). Atualizar a interface `AgentJobChannelConfig` em `processor.ts` para `outboundTargets?: { url: string; secret: string }[]` (manter `outboundUrl`/`outboundSecret` legados só se algum teste/modo direct ainda usar; senão remover).
+(3a) Em `route.ts`: montar `channelConfig.outboundTargets` chamando `loadOutboundTargets()` (helper de A5.4) em vez de carregar UM webhook via `findFirst`. Remover o `findFirst({ direction:"outbound" })` de saída remanescente (se houver). Atualizar a interface `AgentJobChannelConfig` em `processor.ts`: remover `outboundUrl?`/`outboundSecret?` e adicionar `outboundTargets?: { url: string; secret: string }[]`. (O modo `direct` não usa `outboundTargets`; continua via cloud client.)
 
-(3b) Em `processor.ts`, no topo de `processAgentJob` (após adquirir o lock, antes do get-or-create), inserir o short-circuit de idempotência:
+(3b) No topo de `processAgentJob`, ACIMA do `acquireUserLock` (ver A4.2), inserir o short-circuit de idempotência (reentrega não precisa de lock):
 
 ```ts
 import { emitAgentReply, type AgentReplyData } from "@/lib/whatsapp/emit-reply";
 import { buildReplyData } from "./build-reply-data";
+import { redis } from "@/lib/redis";
 // ...
   const replayKey = `whatsapp:replied:${data.messageId}`;
   const cached = await redis.get(replayKey).catch(() => null);
   if (cached) {
     try {
       const replyData = JSON.parse(cached) as AgentReplyData;
-      await dispatchReply(data, replyData, replyData.ok ? "final" : "blocked");
+      await dispatchReply(data, replyData);
     } catch (e) { console.warn("[processor] replay falhou:", e); }
-    return;
+    return; // reentrega: não adquire lock, não roda agente
   }
 ```
 
-(3c) Após `runAgent` + persistência, montar o `AgentReplyData` via `buildReplyData`, gravar em Redis (`redis.set(replayKey, JSON.stringify(replyData), "EX", 24*60*60)`) e despachar:
+(3c) Migrar os 5 call-sites de `sendViaWebhook` para `dispatchReply` (ou `emitAgentReply` direto via um helper `dispatchNotice`):
+  - **84 (imagem provisória)** e **97 (áudio desabilitado)** e **129 (fallback de áudio)**: trocar `await sendViaWebhook(data, <frase>)` por um envelope `kind:"blocked"`, `reason:"technical_error"`, `reply:<frase>` quando `n8n_webhook`; quando `direct`, manter `cloudClient.sendText(data.replyTo, <frase>)`. Encapsular num helper `dispatchNotice(data, text)` que monta um `AgentReplyData` mínimo (`ok:false`, `reason:"technical_error"`, `reply:text`, demais zerados) e chama `dispatchReply`.
+  - **218 (resposta final):** substituir por: montar `replyData` via `buildReplyData(ctx, result)`, gravar `redis.set(replayKey, JSON.stringify(replyData), "EX", 24*60*60)`, e `dispatchReply(data, replyData)`.
+  - **261 (heartbeat):** dentro de `scheduleWhatsappHeartbeat`, REMOVER a chamada a `sendViaWebhook` (vira no-op no WhatsApp); a função inteira é removida na B.6.
 
 ```ts
+  // resposta final (substitui o call-site 218)
   const replyData = buildReplyData(
     { inboundMessageId: data.messageId, to: data.replyTo, phoneNumberId: data.phoneNumberId ?? null, conversationId: conversation.id, messageType: data.type },
     result,
   );
   await redis.set(replayKey, JSON.stringify(replyData), "EX", 24 * 60 * 60).catch(() => {});
-  await dispatchReply(data, replyData, "final");
+  await dispatchReply(data, replyData);
 ```
 
-(3d) Criar a função `dispatchReply(data, replyData, kind)` no processor: em `n8n_webhook`, chama `emitAgentReply(data.channelConfig.outboundTargets ?? [], { kind, data: replyData })`; em `direct`, chama `cloudClient.sendText(data.replyTo, replyData.reply)`.
+> **Janela de idempotência (achado #12, decisão explícita):** a chave `whatsapp:replied` é gravada APÓS `runAgent` + persistência da Message e ANTES do `dispatchReply` (POST). Existe uma janela ESTREITA: se o worker morrer entre `runAgent`/persist e o `redis.set`, o retry do BullMQ re-roda o agente (sem a chave). Mitigação aceita e documentada: (a) a janela é de milissegundos; (b) o reprocessamento é detectável , a Message do assistant já foi persistida na conversa, então o reprocesso gera uma 2a Message; o consumidor (n8n) deduplica por `deliveryId`/`inboundMessageId`. Decisão do v2: NÃO mover o `redis.set` para dentro da transação de persistência nesta onda (Redis e Postgres são stores distintos, não há transação atômica trivial); aceitar a janela e documentá-la no runbook (F.1) + dedup no n8n. Se a operação observar duplicatas reais, evoluir para gravar a chave dentro do mesmo `prisma.$transaction` da Message via outbox, fora do escopo.
 
-(3e) Remover/aposentar `sendViaWebhook` legado (substituído por `emitAgentReply`+`dispatchReply`). O heartbeat (`scheduleWhatsappHeartbeat`) que usava `sendViaWebhook`: a spec decisão #9 diz heartbeat suprimido no WhatsApp , na task B.6 removemos o heartbeat; aqui, se ainda presente, ajustar para usar `dispatchReply` com um envelope `final` mínimo OU deixar a remoção para B.6 (preferir B.6).
+(3d) Criar `dispatchReply(data, replyData)` no processor (o `kind` é DERIVADO de `replyData.ok`, ver B.5): em `n8n_webhook`, `emitAgentReply(data.channelConfig.outboundTargets ?? [], { kind: replyData.ok ? "final" : "blocked", data: replyData })`; em `direct`, `cloudClient.sendText(data.replyTo, replyData.reply)`.
+
+(3e) REMOVER a função `sendViaWebhook` (todos os 5 call-sites já migrados nesta task). Verificar com `grep -n 'sendViaWebhook' src/worker/agent/processor.ts` ⇒ vazio. (O `scheduleWhatsappHeartbeat` ainda existe após esta task, mas sem chamar `sendViaWebhook`; é removido na B.6.)
 
 - [ ] **Step 4: Rodar e ver passar + tsc**
 
 Run: `npx tsc --noEmit && npx jest src/worker/agent/processor.test.ts --runInBand`
-Expected: PASS.
+Expected: PASS; tsc sem erros (nenhum call-site órfão de `sendViaWebhook`).
 
 - [ ] **Step 5: Commit**
 
@@ -1244,10 +1359,12 @@ git commit -m "feat(whatsapp): idempotencia de saida e emissao do envelope agent
 ### Task B.5: Levar a recusa L3 ao webhook (a recusa já roda via `respondPermissionDenied`)
 
 **Files:**
-- Modify: `src/worker/agent/processor.ts` (o caminho de recusa já volta em `result.ok=true` com `deniedModule`; garantir que `buildReplyData` emita `kind:"blocked"` quando `isDenied`)
+- Modify: `src/worker/agent/processor.ts` (o caminho de recusa já volta em `result.ok=true` com `deniedModule`; garantir que `dispatchReply` emita `kind:"blocked"` quando `!replyData.ok`)
 - Test: `src/worker/agent/processor.test.ts`
 
-> Nota: `respondPermissionDenied` é chamado DENTRO de `runAgent` (run-agent.ts:715), portanto o processor recebe o resultado já como `ok:true` + `deniedModule`. A única mudança aqui é garantir que o `kind` do envelope seja `"blocked"` quando `replyData.ok === false`.
+> Nota: `respondPermissionDenied` é chamado DENTRO de `runAgent` (run-agent.ts:715), portanto o processor recebe o resultado já como `ok:true` + `deniedModule`. A única mudança aqui é garantir que o `kind` do envelope seja `"blocked"` quando `replyData.ok === false` (já coberto pelo `dispatchReply` de B.4 3d, que deriva o `kind` de `replyData.ok`).
+>
+> **L3 difere de L1/L2 (achado #14 , documentar):** as barreiras L1 (número desconhecido/inativo) e L2 (canal/nível) rodam NO INBOUND, antes de enfileirar, e NÃO tocam banco nem IA , para elas vale 100% a frase "sem custo de IA". A L3 (permission_denied) é diferente: roda DENTRO de `runAgent` via `respondPermissionDenied`, que CRIA a sessão/Message (par user/assistant) e marca a `AgentRouterDecision`; como há conversa persistida, o **Judge (avaliação automática) PODE ser acionado** para essa conversa, exatamente como nos demais canais (decisão da spec: o Judge segue rodando). Ou seja, L3 evita o LLM PRINCIPAL (não gera resposta via modelo), mas NÃO é "zero IA" como L1/L2 , o Judge é um custo de IA possível. Manter o Judge rodando (não suprimir). Esta distinção deve constar no runbook (F.1) e na verificação (a §16 separa "L1/L2/L3 sem custo do LLM principal" de "Judge roda para WhatsApp").
 
 - [ ] **Step 1: Escrever o teste que falha**
 
@@ -1256,11 +1373,11 @@ No `processor.test.ts`, mockar `runAgent` retornando `{ ok:true, message:"recusa
 - [ ] **Step 2: Rodar e ver falhar**
 
 Run: `npx jest src/worker/agent/processor.test.ts --runInBand`
-Expected: FALHA se `dispatchReply` for chamado com `kind:"final"` fixo.
+Expected: FALHA se o envelope da recusa sair como `kind:"final"` (em vez de `"blocked"`).
 
 - [ ] **Step 3: Implementação mínima**
 
-No ponto onde se chama `dispatchReply(data, replyData, "final")` (B.4 Step 3c), trocar o `kind` fixo por derivado: `const kind = replyData.ok ? "final" : "blocked";` e usar `kind`.
+O `dispatchReply(data, replyData)` definido em B.4 (3d) já DERIVA o `kind` de `replyData.ok` (`replyData.ok ? "final" : "blocked"`). Como o `buildReplyData` (B.3) já mapeia a recusa L3 para `ok:false`/`reason:"permission_denied"` (via `result.deniedModule`), a recusa sai automaticamente como `kind:"blocked"`. Logo, NÃO há código novo a escrever aqui se B.3 + B.4 (3d) já estão corretos. Esta task é a GARANTIA por teste: se o teste do Step 1 passar sem mudança de código, confirmar que B.4 (3d) realmente deriva o `kind` (não usa `"final"` fixo). Caso B.4 tenha ficado com `kind` fixo por engano, corrigir para o derivado aqui.
 
 - [ ] **Step 4: Rodar e ver passar**
 
@@ -1276,8 +1393,10 @@ git commit -m "feat(whatsapp): recusa L3 sai como kind:blocked/permission_denied
 
 ### Task B.6: Suprimir heartbeat no WhatsApp (decisão #9)
 
+> Em B.4 o call-site 261 (heartbeat) já deixou de chamar `sendViaWebhook` (que foi removido). Aqui removemos a função `scheduleWhatsappHeartbeat` inteira e seu uso (o timer e o `finally` de `clearTimeout`).
+
 **Files:**
-- Modify: `src/worker/agent/processor.ts:171-190,251-270` (remover `scheduleWhatsappHeartbeat` e seu uso)
+- Modify: `src/worker/agent/processor.ts` (remover `scheduleWhatsappHeartbeat`, a chamada `const heartbeatTimer = scheduleWhatsappHeartbeat(data);` e o `finally { clearTimeout(heartbeatTimer) }` aninhado)
 - Test: `src/worker/agent/processor.test.ts`
 
 - [ ] **Step 1: Ajustar o teste**
@@ -1456,7 +1575,9 @@ git commit -m "feat(agente): opcoes do seletor de nivel por canal derivadas dos 
 
 > NÃO escrever o código visual aqui. Construir INLINE com `ui-ux-pro-max`.
 >
-> **Componente:** dois grupos rotulados ("Bubble no app" e "WhatsApp"), cada um com um `SegmentedControl` (componente genérico de `src/components/ui/segmented-control.tsx`) cujas opções vêm de `channelLevelOptions()` (5 segmentos: Desativado, Visualizador, Gerente, Admin, Super Admin). Reaproveita a faixa de sumário do topo (bolinha de status + título + helper).
+> **Componente:** dois grupos rotulados ("Bubble no app" e "WhatsApp"), cada um com um `SegmentedControl` cujas opções vêm de `channelLevelOptions()` (5 segmentos: Desativado, Visualizador, Gerente, Admin, Super Admin). Reaproveita a faixa de sumário do topo (bolinha de status + título + helper).
+>
+> **NOTA (achado #21):** o `SegmentedControl` genérico JÁ EXISTE em `src/components/ui/segmented-control.tsx` (confirmado). Esta task só o USA (parametrizado com `ChannelAccessLevel`), NÃO cria componente novo de segmented.
 >
 > **Comportamento:** ao trocar o nível de um canal, chama `updateAgentAvailability({ bubbleAccessLevel, whatsappAccessLevel })` (server action de C.2) via `useTransition`; em erro, `toast.error` + `router.refresh()`. Mantém o gate `isConfigured` (sem provedor LLM => segmented desabilitado, exceto manter "Desativado").
 >
@@ -1464,9 +1585,11 @@ git commit -m "feat(agente): opcoes do seletor de nivel por canal derivadas dos 
 >
 > **Critério visual (ui-ux-pro-max):** estado ativo por fundo + peso (não só cor), foco visível, contraste AA, alinhamento com o grupo "Máximo por resposta" da mesma tela, sem travessão nos textos, linguagem natural pt-br. Responsivo (empilha em telas estreitas).
 
-- [ ] **Step 1: Atualizar `summarizeAvailability`**
+- [ ] **Step 1: REESCREVER `agent-availability-summary.test.ts` e `summarizeAvailability` (TDD)**
 
-Em `agent-availability-summary.ts`, mudar a assinatura para `(bubbleLevel: ChannelAccessLevel, whatsappLevel: ChannelAccessLevel)` e derivar `tone`/`title`/`helper` dos níveis (`off` em ambos => tone "off"; ambos !=off => "active"; um só => "partial"; helper menciona o nível mínimo). Ajustar/criar o teste `agent-availability-summary.test.ts` correspondente (TDD: escrever os casos primeiro, ver falhar, implementar).
+> O `agent-availability-summary.test.ts` JÁ EXISTE com 4 casos por BOOLEAN (`summarizeAvailability(true,true)` ⇒ active; `(true,false)`/`(false,true)` ⇒ partial; `(false,false)` ⇒ off). **REESCREVER** esses 4 casos para a nova assinatura por NÍVEIS , a chamada passa a ser `summarizeAvailability(bubbleLevel, whatsappLevel)` com valores `ChannelAccessLevel`. Mapeamento direto dos casos antigos: `(true,true)`→`("viewer","viewer")` ⇒ active; `(true,false)`→`("viewer","off")` ⇒ partial ("apenas no chat"); `(false,true)`→`("off","viewer")` ⇒ partial ("apenas no whatsapp"); `(false,false)`→`("off","off")` ⇒ off. Acrescentar 1 caso de nível restrito: `("manager","off")` ⇒ partial, com `helper` mencionando o nível mínimo ("a partir de Gerente"). TDD: reescrever os casos, ver falhar, implementar.
+
+Em `agent-availability-summary.ts`, mudar a assinatura de `(bubble: boolean, whatsapp: boolean)` para `(bubbleLevel: ChannelAccessLevel, whatsappLevel: ChannelAccessLevel)` (importar `ChannelAccessLevel` de `@/generated/prisma/client`) e derivar `tone`/`title`/`helper` dos níveis: `off` em ambos ⇒ tone "off"; ambos `!= off` ⇒ "active"; um só `!= off` ⇒ "partial". O `helper` menciona o nível mínimo quando o nível não é `viewer` (ex.: "Bubble: a partir de Gerente"), reusando `PLATFORM_ROLE_LABELS`.
 
 - [ ] **Step 2: Construir a UI com ui-ux-pro-max e ligar a page**
 
@@ -1521,18 +1644,25 @@ git commit -m "feat(agente): bubble respeita nivel minimo do canal in-app (F5 C)
 
 ### Task C.6: Remover os booleans legados `bubbleEnabled`/`whatsappEnabled`
 
+> **Achado do v2 (#17 , `updateBubbleEnabled` órfã):** confirmado que `updateBubbleEnabled(enabled: boolean)` existe em `src/lib/actions/agent-config.ts:584` e grava `bubbleEnabled`. Ela fica ÓRFÃ/quebrada após o drop da coluna (e logicamente já é substituída por `updateAgentAvailability` com níveis, C.2). Antes de dropar a coluna, esta task tem um step de guard que localiza e migra/remove TODOS os call-sites de `updateBubbleEnabled`.
+
 **Files:**
-- Modify: `prisma/schema.prisma:2798-2801` (remover os dois booleans)
-- Modify: `src/lib/actions/agent-config.ts` (remover `updateBubbleEnabled` se ficou órfão; remover refs aos booleans no Row/map/flags)
+- Modify: `prisma/schema.prisma` (remover os dois booleans `bubbleEnabled`/`whatsappEnabled` do model `AgentSettings`)
+- Modify: `src/lib/actions/agent-config.ts` (remover `updateBubbleEnabled` e o seu comentário de doc no topo; remover refs aos booleans no Row/map/flags)
+- Modify: eventuais call-sites de `updateBubbleEnabled` (UI/components) localizados no Step 1
 - Create: `prisma/migrations/<timestamp>_f5_drop_legacy_channel_booleans/migration.sql`
-- Grep guard: `grep -rn "bubbleEnabled\|whatsappEnabled" src/` deve não retornar usos vivos antes de migrar.
 
 > Esta task fecha a migração de dados. Só executar após C.1-C.5 (todas as leituras já usam os níveis). Segue protocolo de schema (segunda migration; avisar + `agente schema-changed`).
 
-- [ ] **Step 1: Garantir que não há mais uso dos booleans**
+- [ ] **Step 1: Guard , localizar e remover/migrar call-sites de `updateBubbleEnabled` e dos booleans**
 
-Run: `grep -rn "bubbleEnabled\|whatsappEnabled" src/ | grep -v "AccessLevel"`
-Expected: vazio (ou só comentários). Se houver código vivo, corrigir antes de remover do schema.
+(1a) `grep -rn "updateBubbleEnabled" src/`
+Expected: hoje só a definição e o comentário de doc em `agent-config.ts` (linhas 9 e 584) , confirmado na auditoria. Se houver QUALQUER outro call-site (UI, action, teste), migrá-lo para `updateAgentAvailability` (níveis) ANTES de prosseguir. Não deixar import/uso pendente.
+
+(1b) `grep -rn "bubbleEnabled\|whatsappEnabled" src/ | grep -v "AccessLevel"`
+Expected: vazio (ou só comentários). Se houver código vivo lendo/escrevendo os booleans, corrigir antes de remover do schema.
+
+(1c) Remover a função `updateBubbleEnabled` de `agent-config.ts` (e a linha 9 do comentário de doc que a cita).
 
 - [ ] **Step 2: Remover do schema + gerar migration**
 
@@ -1627,26 +1757,26 @@ git add src/components/integrations/webhook-wizard.tsx src/components/integracoe
 git commit -m "feat(webhooks): seletor de eventos no wizard e edicao de outbound (F5 D, ui-ux-pro-max)"
 ```
 
-### Task D.3: Emissor por evento (carregar todos os outbound com `agent_reply`)
+### Task D.3: Acrescentar o filtro por evento ao emissor (`events has agent_reply`)
 
 **Files:**
-- Modify: `src/app/api/integrations/whatsapp/inbound/route.ts` (o `loadOutboundTargets` da Onda A já filtra `events has agent_reply`; garantir que substitui o `findFirst` único, linha ~199)
+- Modify: `src/app/api/integrations/whatsapp/inbound/route.ts` (no `loadOutboundTargets`, ACRESCENTAR `events: { has: "agent_reply" }` ao `where`)
 - Test: `src/app/api/integrations/whatsapp/inbound/route.test.ts`
 
-> A Onda A (A5.4) já introduziu `loadOutboundTargets` com `where: { ..., events: { has: "agent_reply" } }`. Esta task confirma e testa que o emissor dispara para TODOS os outbound habilitados com o evento (não só o primeiro).
+> **Decisão do v2 (achado #10):** nas Ondas A/B o `loadOutboundTargets` carrega TODO outbound habilitado (sem filtro de evento) , para não haver janela de "webhooks invisíveis" antes da UI de eventos existir. ESTA task (Onda D), JUNTO com a UI (D.2) e o default na criação (D.1), aperta o `where` para incluir `events: { has: "agent_reply" }`. A partir daqui o emissor dispara só para os outbound habilitados QUE TÊM o evento.
 
 - [ ] **Step 1: Escrever o teste que falha**
 
-Testar: com 2 webhooks outbound habilitados com `events:["agent_reply"]` e 1 sem o evento, o `loadOutboundTargets` (ou o caminho do inbound) retorna 2 targets; o sem o evento é excluído. Mockar `prisma.whatsappWebhook.findMany`.
+Testar: com 2 webhooks outbound habilitados com `events:["agent_reply"]` e 1 habilitado SEM o evento, o caminho do inbound (`loadOutboundTargets`) retorna 2 targets (o sem o evento é excluído). Mockar `prisma.whatsappWebhook.findMany` , assertar que o `where` passado inclui `events: { has: "agent_reply" }`.
 
 - [ ] **Step 2: Rodar e ver falhar**
 
 Run: `npx jest src/app/api/integrations/whatsapp/inbound/route.test.ts --runInBand`
-Expected: FALHA se ainda houver `findFirst` único em algum caminho.
+Expected: FALHA (o `where` da Onda A não filtra por evento; o webhook sem o evento ainda viria).
 
 - [ ] **Step 3: Implementação mínima**
 
-Garantir que TODO carregamento de outbound (barreiras e channelConfig) usa `loadOutboundTargets` (findMany com `events has agent_reply`). Remover qualquer `findFirst({ direction:"outbound" })` remanescente.
+No `loadOutboundTargets` (route.ts), acrescentar `events: { has: "agent_reply" }` ao `where: { direction:"outbound", enabled:true }` (passa a `where: { direction:"outbound", enabled:true, events: { has: "agent_reply" } }`). Atualizar o comentário do helper (que na Onda A dizia "sem filtro de evento , a Onda D acrescenta"). Confirmar que não há `findFirst({ direction:"outbound" })` remanescente.
 
 - [ ] **Step 4: Rodar e ver passar + tsc**
 
@@ -1678,12 +1808,14 @@ Expected: verde.
 ### Task E.1: Origens distintas Bubble vs WhatsApp em rodada-labels
 
 **Files:**
-- Modify: `src/lib/agent/quality/rodada-labels.ts:35-66` (novas origens + labels + `channelToOrigem`)
-- Test: `src/lib/agent/quality/rodada-labels.test.ts`
+- Modify: `src/lib/agent/quality/rodada-labels.ts` (novas consts de origem + labels em `ORIGEM_LABELS`; `channelToOrigem` passa a distinguir in_app/whatsapp)
+- Test: `src/lib/agent/quality/rodada-labels.test.ts` (JÁ EXISTE , MIGRAR os asserts legados)
 
-- [ ] **Step 1: Escrever o teste que falha**
+- [ ] **Step 1: MIGRAR os asserts legados (e escrever os novos que falham)**
 
-Em `rodada-labels.test.ts`, assertar: `channelToOrigem("in_app") === ORIGEM_AGENTE_NEX_BUBBLE`; `channelToOrigem("whatsapp") === ORIGEM_AGENTE_NEX_WHATSAPP`; `ORIGEM_LABELS[ORIGEM_AGENTE_NEX_BUBBLE] === "Agente Nex · Bubble"`; `ORIGEM_LABELS[ORIGEM_AGENTE_NEX_WHATSAPP] === "Agente Nex · WhatsApp"`. Manter `playground`/`backtest` inalterados.
+> O `rodada-labels.test.ts` JÁ EXISTE e tem asserts que esperam o resultado legado de `channelToOrigem` (hoje `in_app`/`whatsapp` coalescem em `ORIGEM_AGENTE_NEX = "__origem:agente-nex"`, label "Agente Nex"). **MIGRAR** todo assert que espera `channelToOrigem("in_app") === ORIGEM_AGENTE_NEX` ou `channelToOrigem("whatsapp") === ORIGEM_AGENTE_NEX` para as duas origens novas.
+
+Em `rodada-labels.test.ts`, assertar: `channelToOrigem("in_app") === ORIGEM_AGENTE_NEX_BUBBLE`; `channelToOrigem("whatsapp") === ORIGEM_AGENTE_NEX_WHATSAPP`; `ORIGEM_LABELS[ORIGEM_AGENTE_NEX_BUBBLE] === "Agente Nex · Bubble"`; `ORIGEM_LABELS[ORIGEM_AGENTE_NEX_WHATSAPP] === "Agente Nex · WhatsApp"`. Manter `playground`/`backtest` inalterados. (A const `ORIGEM_AGENTE_NEX` continua exportada por compat , `labelFor`/`buildRodadaNamesFromMarkers` ainda a reconhecem , mas `channelToOrigem` não a retorna mais.)
 
 - [ ] **Step 2: Rodar e ver falhar**
 
@@ -1709,21 +1841,32 @@ git commit -m "feat(monitoramento): origens distintas Bubble vs WhatsApp (F5 E)"
 ### Task E.2: `getDistinctRodadas` separa in_app e whatsapp
 
 **Files:**
-- Modify: `src/lib/agent/quality/queries.ts:235-258`
-- Test: `src/lib/agent/quality/queries.test.ts`
+- Modify: `src/lib/agent/quality/queries.ts` (`getDistinctRodadas`: separar in_app/whatsapp)
+- Test: `src/lib/agent/quality/queries.test.ts` (JÁ EXISTE , MIGRAR os asserts da origem única)
 
-- [ ] **Step 1: Escrever o teste que falha**
+- [ ] **Step 1: MIGRAR os asserts legados (e escrever os novos que falham)**
 
-Em `queries.test.ts`, mockar `prisma.$queryRaw` para `virtualRows` retornar `[{channel:"in_app",count:3},{channel:"whatsapp",count:2}]` e assertar que `getDistinctRodadas` produz DUAS entradas: `__origem:agente-nex-bubble` (count 3) e `__origem:agente-nex-whatsapp` (count 2), em vez de uma única `__origem:agente-nex` somando 5.
+> O `queries.test.ts` JÁ EXISTE e (onde cobre `getDistinctRodadas`) espera UMA entrada `__origem:agente-nex` somando in_app+whatsapp. **MIGRAR** esses asserts para DUAS entradas separadas.
+
+Em `queries.test.ts`, mockar a fonte de `virtualRows` para retornar `[{channel:"in_app",count:3},{channel:"whatsapp",count:2}]` e assertar que `getDistinctRodadas` produz `__origem:agente-nex-bubble` (count 3) e `__origem:agente-nex-whatsapp` (count 2), em vez de uma única `__origem:agente-nex` somando 5.
+
+> **Ordem final do filtro (achado #19 , `unshift`):** `getDistinctRodadas` monta o array com `unshift` (cada `unshift` insere no INÍCIO, então a ORDEM de chamada é invertida no resultado). A ordem atual de unshift é: agente-nex → playground → backtest, produzindo `[backtest, playground, agente-nex, ...RX]`. Ao trocar a entrada única `agente-nex` por DUAS, manter a posição relativa: substituir o `unshift({agente-nex})` por dois `unshift` na ordem `whatsapp` depois `bubble` (assim no resultado final fica `bubble` ANTES de `whatsapp`, ambos no lugar onde estava o `agente-nex`). Ordem final esperada no array: `[backtest, playground, agente-nex-bubble, agente-nex-whatsapp, ...RX]`. **Assertar essa ordem exata no teste** (ex.: `expect(out.map(o=>o.marker)).toEqual(["__origem:backtest","__origem:playground","__origem:agente-nex-bubble","__origem:agente-nex-whatsapp", ...])` , ajustando ao que o mock alimentar para backtest/playground).
 
 - [ ] **Step 2: Rodar e ver falhar**
 
 Run: `npx jest src/lib/agent/quality/queries.test.ts --runInBand`
-Expected: FALHA (hoje soma em `agenteNexCount`).
+Expected: FALHA (hoje soma em `agenteNexCount` e emite um marker só).
 
 - [ ] **Step 3: Implementação mínima**
 
-Em `queries.ts` (linhas 235-257): trocar `agenteNexCount` único por `bubbleCount`/`whatsappCount`; no loop, `in_app → bubbleCount`, `whatsapp → whatsappCount`; emitir `__origem:agente-nex-bubble` e `__origem:agente-nex-whatsapp` (importando as consts de `rodada-labels.ts`).
+Em `queries.ts` (`getDistinctRodadas`): trocar `agenteNexCount` único por `bubbleCount`/`whatsappCount`; no loop que classifica `virtualRows`, `in_app → bubbleCount`, `whatsapp → whatsappCount`. Substituir o `out.unshift({ marker: "__origem:agente-nex", count: agenteNexCount })` por dois unshift NA ORDEM `whatsapp` e depois `bubble` (para o resultado final ter bubble antes de whatsapp , ver Step 1):
+
+```ts
+if (whatsappCount > 0) out.unshift({ marker: ORIGEM_AGENTE_NEX_WHATSAPP, count: whatsappCount });
+if (bubbleCount > 0)   out.unshift({ marker: ORIGEM_AGENTE_NEX_BUBBLE,   count: bubbleCount });
+```
+
+Importar `ORIGEM_AGENTE_NEX_BUBBLE`/`ORIGEM_AGENTE_NEX_WHATSAPP` de `rodada-labels.ts` (criadas em E.1). Os `unshift` de `playground`/`backtest` permanecem após estes (mantendo a ordem final do Step 1).
 
 - [ ] **Step 4: Rodar e ver passar**
 
@@ -1837,12 +1980,13 @@ git commit -m "feat(monitoramento): sessoes e colaboradores incluem WhatsApp + s
 
 ### Task E.5 (UI, ui-ux-pro-max): aba "Chat" + marcador de canal por sessão
 
+> **Arquivos exatos (achado #21 , confirmados):**
+
 **Files:**
-- Modify: `src/components/agent/monitoramento-nav.tsx:10` (label "Bubble" → "Chat"; rota `/agente/monitoramento/bubble` mantida)
-- Modify: `src/components/agent/monitoramento/bubble-monitor-row.tsx` (já tem marcador de áudio; sem mudança de canal aqui , o canal por sessão vai na lista de sessões, não na linha de mensagem)
-- Modify: o componente de lista de sessões (consumidor de `SessionRow`, provavelmente `src/components/agent/monitoramento/*` , localizar inline) para exibir um marcador Bubble/WhatsApp por sessão
-- Modify: textos da página que dizem "Bubble" para "Chat" (localizar inline)
-- Modify: `src/components/agent/monitoramento/evaluations-table.tsx:320` (consumidor de `channelToOrigem`/`ORIGEM_LABELS`: passa a exibir as duas origens distintas , verificar que o filtro de origem lista as duas novas e renderiza o label correto)
+- Modify: `src/components/agent/monitoramento-nav.tsx:10` (label "Bubble" → "Chat"; rota `/agente/monitoramento/bubble` mantida , confirmado: linha 10 tem `{ label: "Bubble", href: "/agente/monitoramento/bubble" }`)
+- Modify: `src/components/agent/monitoramento/bubble-monitor.tsx` (componente da lista de sessões, consumidor de `SessionRow`; renderiza o marcador de canal Bubble/WhatsApp por sessão usando `SessionRow.channel` de E.4; e os textos "Bubble" nos cabeçalhos viram "Chat")
+- Modify: `src/components/agent/monitoramento/bubble-monitor-row.tsx` (já tem marcador de áudio; o marcador de CANAL vai na lista de sessões em `bubble-monitor.tsx`, não na linha de mensagem , esta linha só muda se algum texto "Bubble" estiver aqui)
+- Modify: `src/components/agent/monitoramento/evaluations-table.tsx` (consumidor de `channelToOrigem`/`ORIGEM_LABELS`: o filtro de origem passa a listar as duas origens novas com os labels corretos; verificar o ponto que monta as opções de origem)
 
 > NÃO escrever o código visual aqui. Construir INLINE com `ui-ux-pro-max`.
 >
@@ -1862,7 +2006,7 @@ Construir o marcador na lista de sessões e garantir que o filtro de origem list
 
 - [ ] **Step 3: Verificar tsc + eslint + render manual (rebuild app)**
 
-Run: `npx tsc --noEmit && npx eslint src/components/agent/monitoramento-nav.tsx src/components/agent/monitoramento/evaluations-table.tsx src/components/agent/monitoramento/bubble-monitor-row.tsx`
+Run: `npx tsc --noEmit && npx eslint src/components/agent/monitoramento-nav.tsx src/components/agent/monitoramento/evaluations-table.tsx src/components/agent/monitoramento/bubble-monitor.tsx src/components/agent/monitoramento/bubble-monitor-row.tsx`
 Expected: verde. Render: abrir a aba "Chat", ver sessões in_app e whatsapp com marcador de canal, status correto, e o filtro de origem com as duas entradas.
 
 - [ ] **Step 4: Commit (atômicos por arquivo, por causa do conflito com feat/nex-reconstrucao)**
@@ -1872,8 +2016,8 @@ git add src/components/agent/monitoramento-nav.tsx
 git commit -m "feat(monitoramento): aba Bubble vira Chat (F5 E)"
 git add src/components/agent/monitoramento/evaluations-table.tsx
 git commit -m "feat(monitoramento): filtro de origem lista Bubble e WhatsApp (F5 E)"
-git add src/components/agent/monitoramento/bubble-monitor-row.tsx
-git commit -m "feat(monitoramento): marcador de canal por sessao (F5 E, ui-ux-pro-max)"
+git add src/components/agent/monitoramento/bubble-monitor.tsx
+git commit -m "feat(monitoramento): marcador de canal por sessao na lista (F5 E, ui-ux-pro-max)"
 ```
 
 ### Task E.VERIF (VERIFICAÇÃO da Onda E): tsc + eslint + jest + e2e
@@ -1896,7 +2040,7 @@ Expected: verde.
 
 - [ ] **Step 1: Escrever o runbook**
 
-Cobrir, em pt-br sem travessão: (1) os 2 webhooks (entrada `/api/integrations/whatsapp/inbound` e o receptor do `agent.reply`); (2) assinar a HMAC com timestamp ATUAL a cada (re)envio (`X-Signature` = HMAC-SHA256 de `${timestamp}.${body}`, `X-Timestamp`); validar a HMAC do `agent.reply` no n8n e deduplicar por `deliveryId`; (3) mapeamento dos campos do payload da Meta (§3): `from`, `text` (texto OU transcrição do áudio), `type` (`text`/`audio`), `messageId`, `timestamp` (normalizar segundos→ms no n8n), `contactName`, `phoneNumberId`; (4) como tratar cada `reason` das barreiras (`user_not_found`, `user_inactive`, `channel_disabled`, `role_not_allowed`, `permission_denied`, `technical_error`) usando `reason` e/ou `reply`; (5) AVISO de breaking change do contrato de saída (envelope `agent.reply` substitui `{to,message,messageId,timestamp}`); (6) nota da dívida `WhatsappChannel` (singleton vivo) vs `WhatsappInstance` (dorme , unificação fora de escopo); (7) os textos finais das mensagens padrão (revisar §17.4 com o usuário e fixar aqui).
+Cobrir, em pt-br sem travessão: (1) os 2 webhooks (entrada `/api/integrations/whatsapp/inbound` e o receptor do `agent.reply`); (2) assinar a HMAC com timestamp ATUAL a cada (re)envio (`X-Signature` = HMAC-SHA256 de `${timestamp}.${body}`, `X-Timestamp`); validar a HMAC do `agent.reply` no n8n e **deduplicar por `deliveryId`** , reforçar que essa dedup é a defesa contra a janela estreita de idempotência (achado #12: se o worker morrer entre a persistência da Message e a gravação de `whatsapp:replied`, um retry pode re-rodar o turno e emitir um 2o `agent.reply` com OUTRO `deliveryId` mas o mesmo `inboundMessageId`; o n8n deve, portanto, deduplicar também por `inboundMessageId` quando precisar idempotência de PONTA, não só por `deliveryId`); (3) mapeamento dos campos do payload da Meta (§3): `from`, `text` (texto OU transcrição do áudio , no caminho n8n o áudio JÁ chega transcrito em `text` e independe do `audioCheckpoint`), `type` (`text`/`audio`), `messageId`, `timestamp` (normalizar segundos→ms no n8n), `contactName`, `phoneNumberId`; (4) como tratar cada `reason` das barreiras (`user_not_found`, `user_inactive`, `channel_disabled`, `role_not_allowed`, `permission_denied`, `technical_error`) usando `reason` e/ou `reply`; nota: `permission_denied` (L3) traz `deniedModule`/`allowedModules` e, diferente de L1/L2, foi avaliada pelo Judge (há custo de IA do Judge, não do LLM principal , achado #14); (5) AVISO de breaking change do contrato de saída (envelope `agent.reply` substitui `{to,message,messageId,timestamp}`); (6) nota da dívida `WhatsappChannel` (singleton vivo) vs `WhatsappInstance` (dorme , unificação fora de escopo); (7) os textos finais das mensagens padrão (revisar §17.4 com o usuário e fixar aqui); (8) pendência registrada: as barreiras de mídia (imagem provisória, áudio desabilitado, fallback de áudio) saem como `reason:"technical_error"` por ora , se a operação quiser distinguir "mídia não suportada" de "falha técnica", criar uma `BlockReason` nova numa onda futura (fora de escopo desta entrega).
 
 - [ ] **Step 2: Commit**
 
@@ -1924,7 +2068,7 @@ Expected: tudo verde.
 - [ ] inbound assinado com número SEM o 9 cadastrado COM o 9 (A1) resolve o usuário.
 - [ ] `type:"audio"`+`text` (A3 n8n) usa o texto direto; áudio via mídia (A3 Meta) não regrediu (transcreve).
 - [ ] duas mensagens seguidas do mesmo usuário (A4 lock) não criam duas conversas nem sobrescrevem `reasoningHistory`.
-- [ ] barreiras L1/L2/L3 retornando mensagem padrão SEM custo de IA (sem `LlmUsage` novo nas barreiras).
+- [ ] barreiras L1/L2 (no inbound) retornando mensagem padrão SEM custo de IA (sem `LlmUsage` novo). L3 (permission_denied, na Onda B) NÃO chama o LLM principal mas CRIA sessão/Message e PODE acionar o Judge (achado #14) , conferir que não há `LlmUsage` do modelo principal para a recusa, mas que a avaliação do Judge da conversa existe.
 - [ ] Judge gerando avaliação para a conversa WhatsApp (confirma §4): `SELECT e.status FROM conversation_quality_evaluations e JOIN conversations c ON c.id=e.conversation_id WHERE c.channel='whatsapp'` retorna linhas.
 - [ ] webhook de saída com envelope rico (`tools`, `reasoningMs`, `usage`, `suggestions`, `deniedModule`/`allowedModules` na recusa) + idempotência (retry de POST falho NÃO duplica nem re-roda; `whatsapp:replied:{messageId}` reusado).
 - [ ] seletor de canal/nível bloqueando bubble e WhatsApp conforme o role (viewer vs nível manager/admin/off).
@@ -1937,10 +2081,14 @@ git commit --allow-empty -m "chore: verificacao e2e final F5 (todos os cenarios 
 
 ---
 
-## Self-Review (checklist do autor do plano)
+## Self-Review (checklist do autor do plano , atualizado no PLAN v2)
 
-**1. Spec coverage:** §3 (A2.1/A2.2), §4 (A1.1), §5 L1/L2 (A5.4)/L3 (B.2/B.5), §6 (Onda 0.2/C.*), §7 envelope/url-targetUrl/fail-closed (A5.3/B.1/B.3/B.4), §8 lock (A4.*), §9 idempotência (B.4), §10 origens (E.1/E.2), §11 status (E.3/E.4), §12 webhook por evento (0.1/D.*), §13 aba Chat (E.5), §14 runbook (F.1), §15 ondas/dependências (estrutura), §16 verificação (tasks *.VERIF + F.2), §17 pendências (1 url/targetUrl resolvido em A5.4/B.4; 2 granularidade em E.4; 3 fuso do teto diário , NÃO tocado nesta entrega, documentar no runbook; 4 textos das mensagens , A5.1 provisório + F.1 final). Cobertos.
+**1. Spec coverage:** §3 (A2.1/A2.2), §4 (A1.1, com `platformRole` consolidado), §5 L1/L2 (A5.4)/L3 (B.2/B.5, com a distinção de custo de IA do achado #14), §6 (Onda 0.2/C.*), §7 envelope/url-targetUrl/fail-closed (A5.3/B.1/B.3/B.4), §8 lock + TTL documentado (A4.*), §9 idempotência ANTES do lock + janela documentada (A4.2/B.4), §10 origens (E.1/E.2, ordem do filtro especificada), §11 status (E.3/E.4), §12 webhook por evento , filtro inteiro na Onda D (D.1/D.2/D.3), §13 aba Chat (E.5, arquivos exatos), §14 runbook (F.1), §15 ondas/dependências (A5.4 não-paralelizável; A5.3 depende de A5.1), §16 verificação (tasks *.VERIF + F.2), §17 pendências (1 url/targetUrl: robustez, não bug , A5.4/B.4; 2 granularidade em E.4; 3 fuso do teto diário NÃO tocado, documentar no runbook; 4 textos das mensagens , A5.1 provisório + F.1 final; 5 NOVA: distinguir "mídia não suportada" de "technical_error" , fora de escopo, registrada em B.4/F.1). Cobertos.
 
-**2. Placeholder scan:** sem "TODO/TBD"; cada step de código mostra o código; tasks de UI descrevem componente/comportamento/estados/critério (intencional, construção inline com ui-ux-pro-max).
+**2. Placeholder scan:** sem "TODO/TBD"; cada step de código mostra o código; tasks de UI descrevem componente/comportamento/estados/critério (intencional, construção inline com ui-ux-pro-max). Tasks que tocam testes/arquivos existentes dizem MIGRAR/ESTENDER/REESCREVER (não "criar/adicionar") com os casos enumerados.
 
-**3. Type consistency:** `AgentReplyData` (emit-reply.ts) é o tipo único do envelope, consumido por build-reply-data e processor. `RunAgentResult.ok:true` ganha `toolsCalled`/`reasoningMs` (obrigatórios) + `deniedModule`/`allowedModules` (opcionais); `permission-denial.ts` é o único outro produtor, ajustado. `ChannelAccessLevel` (enum Prisma) usado em roles/channel-access/channel-level-options/DTO/UI. `roleMeetsChannelLevel` consistente em L2 (A5.4) e bubble (C.5).
+**3. Type consistency:** `AgentReplyData` (emit-reply.ts) é o tipo único do envelope, consumido por build-reply-data e processor; `reason: BlockReason | null` (catálogo único de A5.1; emit-reply importa o tipo de blocked-messages , logo A5.3 depende de A5.1). `RunAgentResult.ok:true` ganha `toolsCalled`/`reasoningMs` (obrigatórios) + `deniedModule`/`allowedModules` (opcionais); os DOIS únicos produtores (run-agent.ts return único linha 1487 + permission-denial.ts) ajustados. `ChannelAccessLevel` (enum Prisma) usado em roles/channel-access/channel-level-options/DTO/UI/summary. `roleMeetsChannelLevel` consistente em L2 (A5.4) e bubble (C.5). `ResolvedWhatsappUser.user` ganha `platformRole: PlatformRole` na A1.1 e é consumido em A5.4 (sem reedição do select). `AgentJobChannelConfig` troca `outboundUrl`/`outboundSecret` por `outboundTargets: { url; secret }[]` na B.4 (route.ts monta via `loadOutboundTargets`).
+
+**4. Fatos confirmados contra o código (v2):** `phoneVariants` existe em `countries.ts:180` (achado #1 , import correto, descartado). `allTurnToolNames.push(tc.name)` existe em run-agent.ts:1704 (não duplicar). `iterStart` por iteração (886), `durationMs: Date.now()-iterStart` (951). Return `ok:true` único (1487). `respondPermissionDenied` retorna `ok:true` sem os campos novos (ajustar). `createWebhook` grava `url` E `targetUrl` (178-179); `listWebhooks` retorna `targetUrl ?? url` (303). `updateBubbleEnabled` só na própria def + doc (584/9). `agent-availability-summary.test.ts`, `resolve.test.ts`, `route.test.ts`, `processor.test.ts`, `rodada-labels.test.ts`, `queries.test.ts` JÁ EXISTEM (migrar). `segmented-control.tsx` existe. `getDistinctRodadas` usa `unshift` (ordem invertida , especificada em E.2). `monitoramento-nav.tsx:10` = "Bubble"; `bubble-monitor.tsx`/`bubble-monitor-row.tsx` existem. Spec §8 TTL >= 120s; §9 idempotência no topo, antes do lock.
+
+**5. Inconsistência remanescente conhecida:** a janela estreita de idempotência (worker morre entre persist e `redis.set`) é aceita e documentada (B.4 + F.1: dedup por `deliveryId` no n8n), não eliminada nesta entrega , trade-off explícito por não haver transação atômica Postgres↔Redis trivial.
