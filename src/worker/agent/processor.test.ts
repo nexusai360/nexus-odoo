@@ -178,13 +178,57 @@ describe("processAgentJob , type=audio", () => {
     });
   });
 
-  it("baixa a mídia e transcreve antes de chamar runAgent", async () => {
+  it("Meta mídia (PRODUCTION, sem text): baixa, transcreve e passa isAudio=true", async () => {
     await processAgentJob(audioJob);
 
     expect(mockDownloadMedia).toHaveBeenCalledWith("media-id-abc");
     expect(mockTranscribeAudio).toHaveBeenCalled();
     expect(mockRunAgent).toHaveBeenCalledWith(
-      expect.objectContaining({ userMessage: "Qual o estoque de bicicletas?" }),
+      expect.objectContaining({ userMessage: "Qual o estoque de bicicletas?", isAudio: true }),
+    );
+  });
+
+  it("n8n transcrito (canal de áudio OFF): usa data.text direto, sem baixar/transcrever", async () => {
+    mockAgentSettingsFindFirst.mockResolvedValue({
+      audioCheckpoint: "OFF",
+      imageCheckpoint: "OFF",
+    });
+    const n8nAudioJob: AgentJobData = {
+      ...BASE_JOB,
+      type: "audio",
+      text: "qual o estoque?",
+    };
+
+    await processAgentJob(n8nAudioJob);
+
+    // NÃO cai no early-return de "não entendo áudio" e NÃO baixa/transcreve.
+    expect(mockDownloadMedia).not.toHaveBeenCalled();
+    expect(mockTranscribeAudio).not.toHaveBeenCalled();
+    // runAgent recebe o texto do n8n com isAudio=true.
+    expect(mockRunAgent).toHaveBeenCalledWith(
+      expect.objectContaining({ userMessage: "qual o estoque?", isAudio: true }),
+    );
+  });
+
+  it("Meta mídia com canal OFF e sem text: mantém o early-return de áudio desabilitado", async () => {
+    mockAgentSettingsFindFirst.mockResolvedValue({
+      audioCheckpoint: "OFF",
+      imageCheckpoint: "OFF",
+    });
+    const metaAudioOffJob: AgentJobData = {
+      ...BASE_JOB,
+      type: "audio",
+      text: undefined,
+      audioMediaId: "media-id-abc",
+    };
+
+    await processAgentJob(metaAudioOffJob);
+
+    expect(mockTranscribeAudio).not.toHaveBeenCalled();
+    expect(mockRunAgent).not.toHaveBeenCalled();
+    expect(mockSendText).toHaveBeenCalledWith(
+      BASE_JOB.replyTo,
+      expect.stringContaining("áudio"),
     );
   });
 });

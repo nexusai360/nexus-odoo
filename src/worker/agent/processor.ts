@@ -93,8 +93,10 @@ export async function processAgentJob(data: AgentJobData): Promise<void> {
     return;
   }
 
-  if (data.type === "audio" && !audioInProduction) {
-    // G2 , Áudio desativado para WhatsApp: responder explicando.
+  // n8n entrega o áudio JÁ transcrito em data.text => não depende do
+  // audioCheckpoint. Só barra quando NÃO há texto (mídia Meta crua + canal off).
+  if (data.type === "audio" && !audioInProduction && !data.text) {
+    // G2 , Áudio (mídia Meta) desativado para WhatsApp: responder explicando.
     const message =
       "No momento não consigo entender mensagens de áudio. Por favor, envie sua pergunta por escrito.";
     if (data.channelConfig.responseMode === "n8n_webhook") {
@@ -106,10 +108,15 @@ export async function processAgentJob(data: AgentJobData): Promise<void> {
     return;
   }
 
-  // 1. Resolver texto da mensagem (text ou áudio transcrito)
+  // 1. Resolver texto da mensagem (text, áudio transcrito via n8n, ou áudio Meta)
   let userMessage: string;
+  const isAudio = data.type === "audio";
 
-  if (data.type === "audio") {
+  if (isAudio && data.text && data.text.trim().length > 0) {
+    // Caminho n8n: o áudio já vem transcrito em data.text. Não baixa nem transcreve.
+    userMessage = data.text;
+  } else if (isAudio) {
+    // Caminho Meta direto: baixa o áudio e transcreve.
     if (!data.audioMediaId) {
       throw new Error("[agent-processor] audioMediaId ausente para tipo=audio");
     }
@@ -188,6 +195,7 @@ export async function processAgentJob(data: AgentJobData): Promise<void> {
       channel: data.channel,
       isPlayground: false,
       source: "whatsapp",
+      isAudio,
     });
   } finally {
     if (heartbeatTimer) clearTimeout(heartbeatTimer);
