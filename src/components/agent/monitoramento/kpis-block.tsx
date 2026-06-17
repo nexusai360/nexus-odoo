@@ -34,7 +34,7 @@ export function KpisBlock({ kpis, loading = false }: KpisBlockProps) {
   const percentLabel =
     kpis.percentCorreto !== null
       ? `${kpis.percentCorreto.toFixed(1)}%`
-      : ",";
+      : "0%";
   // Hints curtos, em minusculas e sem formula tecnica , padrao alinhado
   // com o card "Fora de escopo" para ficar leve e legivel.
   const percentHint =

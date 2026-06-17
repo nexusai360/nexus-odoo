@@ -1190,20 +1190,7 @@ export function PlaygroundContent({
                   className="flex items-center gap-2"
                 >
                   <div className="min-w-0 flex-1">
-                    {isRecording ? (
-                      <div className="flex min-h-9 items-center rounded-xl border border-violet-500/40 bg-violet-500/5 px-3 py-1">
-                        {audioInputEnabled ? (
-                          <AudioRecorder
-                            ref={recorderRef}
-                            mode="embedded"
-                            onSend={(blob) => {
-                              void handleSendAudio(blob);
-                            }}
-                            onRecordingStateChange={setIsRecording}
-                          />
-                        ) : null}
-                      </div>
-                    ) : (
+                    {!isRecording ? (
                       <MessageInput
                         value={message}
                         onChange={setMessage}
@@ -1243,9 +1230,19 @@ export function PlaygroundContent({
                         }
                         id="playground-input"
                       />
-                    )}
-                    {audioInputEnabled && !isRecording ? (
-                      <div className="sr-only" aria-hidden>
+                    ) : null}
+                    {/* AudioRecorder ÚNICO E PERSISTENTE (corrige o mic "que não
+                        fazia nada"): mesma instância nos dois estados , sr-only
+                        quando idle, barra com waveform quando isRecording. */}
+                    {audioInputEnabled ? (
+                      <div
+                        className={
+                          isRecording
+                            ? "flex min-h-9 items-center rounded-xl border border-violet-500/40 bg-violet-500/5 px-3 py-1"
+                            : "sr-only"
+                        }
+                        aria-hidden={!isRecording}
+                      >
                         <AudioRecorder
                           ref={recorderRef}
                           mode="embedded"
