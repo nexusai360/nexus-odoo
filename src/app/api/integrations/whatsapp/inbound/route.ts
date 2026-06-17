@@ -229,6 +229,8 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     audioMediaId: payload.audioMediaId,
     imageMediaId: payload.imageMediaId,
     replyTo: payload.from,
+    phoneNumberId: payload.phoneNumberId,
+    contactName: payload.contactName,
     channelConfig,
   };
 

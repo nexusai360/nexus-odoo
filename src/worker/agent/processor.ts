@@ -52,6 +52,10 @@ export interface AgentJobData {
   imageMediaId?: string;
   /** Número de destino para a resposta (E.164). */
   replyTo: string;
+  /** ID do número Meta para rotear a resposta (opcional). */
+  phoneNumberId?: string;
+  /** Nome de exibição do contato, para monitoramento (opcional). */
+  contactName?: string;
   /** Configuração de resposta do canal. */
   channelConfig: AgentJobChannelConfig;
 }
