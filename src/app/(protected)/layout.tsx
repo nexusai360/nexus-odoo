@@ -10,6 +10,7 @@ import { pickWelcomeByDomains } from "@/lib/agent/welcome-suggestions";
 import { seesAll, REPORT_DOMAINS, type ReportDomainId } from "@/lib/reports/domains";
 import { getUserDomains } from "@/lib/actions/domain-access";
 import { getActiveConversationId } from "@/lib/actions/active-conversation";
+import { roleMeetsChannelLevel } from "@/lib/agent/channel-access";
 
 export default async function ProtectedLayout({
   children,
@@ -91,7 +92,10 @@ export default async function ProtectedLayout({
   // Persistencia cross-login: resolve a conversa in_app ativa do usuario para a
   // bubble restaurar o historico ao abrir (mesmo apos F5/logout). So consulta
   // quando a bubble vai aparecer.
-  const bubbleVisible = canUseAgent && flags.bubbleEnabled;
+  // canUseAgent cobre os dominios (RBAC v2); o nivel cobre o canal in-app.
+  // bubbleAccessLevel "off" => roleMeetsChannelLevel false => bubble some.
+  const bubbleVisible =
+    canUseAgent && roleMeetsChannelLevel(user.platformRole, flags.bubbleAccessLevel);
   const active = bubbleVisible ? await getActiveConversationId() : null;
   const initialConversationId =
     active && active.ok ? active.conversationId : null;
