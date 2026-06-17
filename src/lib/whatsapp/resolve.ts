@@ -1,4 +1,6 @@
 import { prisma } from "@/lib/prisma";
+import { phoneVariants } from "./countries";
+import type { PlatformRole } from "@/generated/prisma/client";
 
 /**
  * Resultado da resolução de um número de WhatsApp.
@@ -9,7 +11,10 @@ import { prisma } from "@/lib/prisma";
 export type ResolvedWhatsappUser =
   | { status: "unknown" }
   | { status: "inactive" }
-  | { status: "ok"; user: { id: string; name: string; isActive: boolean } };
+  | {
+      status: "ok";
+      user: { id: string; name: string; isActive: boolean; platformRole: PlatformRole };
+    };
 
 /**
  * Normaliza um número de telefone para o formato E.164 (`+<DDI><número>`).
@@ -72,10 +77,12 @@ export async function resolveWhatsappUser(
     return { status: "unknown" };
   }
 
-  const row = await prisma.userWhatsappNumber.findUnique({
-    where: { phoneE164 },
+  // Busca por todas as variantes E.164 do número (com/sem o nono dígito de
+  // celular brasileiro), pois a Meta pode entregar o número sem o 9.
+  const row = await prisma.userWhatsappNumber.findFirst({
+    where: { phoneE164: { in: phoneVariants(phoneE164) } },
     select: {
-      user: { select: { id: true, name: true, isActive: true } },
+      user: { select: { id: true, name: true, isActive: true, platformRole: true } },
     },
   });
 
