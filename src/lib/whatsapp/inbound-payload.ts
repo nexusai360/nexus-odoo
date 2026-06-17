@@ -32,6 +32,12 @@ export const inboundSchema = z.object({
 
   /** Media ID para download da imagem na Graph API (presente quando type=image). */
   imageMediaId: z.string().optional(),
+
+  /** Nome de exibição do contato (contacts[0].profile.name), opcional. */
+  contactName: z.string().optional(),
+
+  /** ID do número de telefone da conta Meta (metadata.phone_number_id), opcional. */
+  phoneNumberId: z.string().optional(),
 });
 
 export type InboundPayload = z.infer<typeof inboundSchema>;
