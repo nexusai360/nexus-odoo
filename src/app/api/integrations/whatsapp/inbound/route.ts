@@ -278,24 +278,15 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     where: { id: "global" },
   }).catch(() => null);
 
-  const outboundWebhook = await prisma.whatsappWebhook.findFirst({
-    where: { direction: "outbound", enabled: true },
-  }).catch(() => null);
-
   const responseMode = channel?.responseMode ?? "direct";
 
   let channelConfig: AgentJobData["channelConfig"];
-  if (responseMode === "n8n_webhook" && outboundWebhook) {
-    let outboundSecret: string | undefined;
-    try {
-      outboundSecret = decrypt(outboundWebhook.secret);
-    } catch {
-      outboundSecret = undefined;
-    }
+  if (responseMode === "n8n_webhook") {
+    // Todos os outbound habilitados (helper único; targetUrl ?? url + secret).
+    const outboundTargets = await loadOutboundTargets();
     channelConfig = {
       responseMode: "n8n_webhook",
-      outboundUrl: outboundWebhook.url ?? undefined,
-      outboundSecret,
+      outboundTargets,
     };
   } else {
     channelConfig = { responseMode: "direct" };
