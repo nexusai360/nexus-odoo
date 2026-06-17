@@ -233,11 +233,8 @@ export function AuditsTable() {
             />
           </div>
           <div className="flex items-center gap-2 sm:ml-auto">
-            <UserMultiSelect
-              users={auditUsers}
-              selected={selectedUserIds}
-              onChange={setSelectedUserIds}
-            />
+            {/* Limpar à ESQUERDA do filtro: assim aparecer/sumir não empurra o
+                multi-select de usuário, que fica fixo no canto direito. */}
             {search || selectedUserIds.length > 0 ? (
               <button
                 type="button"
@@ -252,6 +249,11 @@ export function AuditsTable() {
                 Limpar
               </button>
             ) : null}
+            <UserMultiSelect
+              users={auditUsers}
+              selected={selectedUserIds}
+              onChange={setSelectedUserIds}
+            />
           </div>
         </div>
       </CardHeader>
