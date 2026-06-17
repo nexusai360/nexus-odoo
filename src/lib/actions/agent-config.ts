@@ -6,7 +6,7 @@
  * - getAgentSettings(): lê o singleton AgentSettings id="global".
  * - updateAgentSettings(): persiste comportamento/tom/guardrails + audita.
  * - updateAgentResources(): checkpoints de áudio/imagem/KB + modelos dedicados.
- * - updateBubbleEnabled(): liga/desliga a bolha flutuante do Agente Nex.
+ * - updateAgentAvailability(): nível de acesso por canal (bubble/WhatsApp).
  * - activateLlmConfig(id): desativa todas as configs + ativa a escolhida.
  *
  * Gate: super_admin e admin (manager/viewer → acesso negado).
@@ -138,8 +138,6 @@ type AgentSettingsRow = {
   advancedOverride: string | null;
   suggestionsEnabled: boolean;
   suggestionsCheckpoint: FeatureCheckpoint;
-  bubbleEnabled: boolean;
-  whatsappEnabled: boolean;
   bubbleAccessLevel: ChannelAccessLevel;
   whatsappAccessLevel: ChannelAccessLevel;
   audioCheckpoint: FeatureCheckpoint;
@@ -182,8 +180,6 @@ function mapSettings(row: AgentSettingsRow): AgentSettingsData {
     advancedOverride: row.advancedOverride,
     suggestionsEnabled: row.suggestionsEnabled,
     suggestionsCheckpoint: row.suggestionsCheckpoint,
-    bubbleEnabled: row.bubbleEnabled,
-    whatsappEnabled: row.whatsappEnabled,
     bubbleAccessLevel: row.bubbleAccessLevel,
     whatsappAccessLevel: row.whatsappAccessLevel,
     audioCheckpoint: row.audioCheckpoint,
@@ -271,8 +267,6 @@ const DEFAULT_FLAGS: PublicAgentFlags = {
   kbInPlayground: true,
   suggestionsEnabled: true,
   suggestionsInPlayground: true,
-  bubbleEnabled: true,
-  whatsappEnabled: true,
   bubbleAccessLevel: "viewer",
   whatsappAccessLevel: "viewer",
   maxSuggestions: 3,
@@ -309,9 +303,6 @@ export async function getPublicAgentFlags(): Promise<PublicAgentFlags> {
       kbInPlayground: settings.kbCheckpoint !== "OFF",
       suggestionsEnabled: settings.suggestionsCheckpoint === "PRODUCTION",
       suggestionsInPlayground: settings.suggestionsCheckpoint !== "OFF",
-      // bubbleEnabled/whatsappEnabled derivam do nível (compat ate C.6).
-      bubbleEnabled: settings.bubbleAccessLevel !== "off",
-      whatsappEnabled: settings.whatsappAccessLevel !== "off",
       bubbleAccessLevel: settings.bubbleAccessLevel,
       whatsappAccessLevel: settings.whatsappAccessLevel,
       maxSuggestions: Math.min(Math.max(1, settings.maxSuggestions ?? 3), 5),
@@ -587,45 +578,6 @@ export async function updateAgentAvailability(input: {
     return {
       success: false,
       error: err instanceof Error ? err.message : "Erro ao atualizar disponibilidade",
-    };
-  }
-}
-
-/** Liga/desliga a exibição da bolha flutuante do Agente Nex. */
-export async function updateBubbleEnabled(enabled: boolean): Promise<ActionResult> {
-  try {
-    const auth = await requireAdminOrAbove();
-    if (!auth.ok) return { success: false, error: auth.error };
-
-    await prisma.agentSettings.upsert({
-      where: { id: "global" },
-      create: {
-        id: "global",
-        personality: "",
-        tone: "",
-        guardrails: [],
-        terminology: {},
-        bubbleEnabled: enabled,
-      },
-      update: { bubbleEnabled: enabled },
-    });
-
-    void logAudit({
-      userId: auth.userId,
-      action: "agent_settings_updated",
-      targetType: "AgentSettings",
-      targetId: "global",
-      details: { kind: "bubble", enabled },
-    });
-
-    revalidatePath("/agente");
-    revalidatePath("/agente/configuracao");
-    return { success: true };
-  } catch (err) {
-    console.error("[updateBubbleEnabled]", err);
-    return {
-      success: false,
-      error: err instanceof Error ? err.message : "Erro ao atualizar bolha",
     };
   }
 }

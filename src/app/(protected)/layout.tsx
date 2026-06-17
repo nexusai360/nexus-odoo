@@ -31,8 +31,8 @@ export default async function ProtectedLayout({
   // Nex. super_admin/admin veem tudo (short-circuit seesAll, sem query).
   // manager/viewer/operator so veem a bubble se tiverem ao menos um dominio
   // concedido (UserDomainAccess); sem dominio, perguntar ao Nex so geraria
-  // recusa, entao a bubble some. bubbleEnabled (AgentSettings) segue como
-  // kill-switch global mais abaixo.
+  // recusa, entao a bubble some. O nivel minimo do canal in-app
+  // (bubbleAccessLevel, AgentSettings) refina o gate mais abaixo (F5 C).
   // Resolve os dominios permitidos UMA vez: reusados para o gate da bubble, a
   // ancora de sugestoes por dominio e o filtro das personalizadas (RBAC v2).
   const allowedDomains: ReportDomainId[] = seesAll(user.platformRole)

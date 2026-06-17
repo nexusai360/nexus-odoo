@@ -22,9 +22,6 @@ export interface AgentSettingsData {
   suggestionsEnabled: boolean;
   /** Checkpoint de 3 estados das sugestões clicáveis (G7). */
   suggestionsCheckpoint: FeatureCheckpoint;
-  bubbleEnabled: boolean;
-  /** Disponibilidade do Agente Nex no canal WhatsApp (F5). */
-  whatsappEnabled: boolean;
   /** F5: nível mínimo de acesso da bubble in-app (com herança). */
   bubbleAccessLevel: ChannelAccessLevel;
   /** F5: nível mínimo de acesso do canal WhatsApp (com herança). */
@@ -78,8 +75,6 @@ export interface PublicAgentFlags {
   suggestionsEnabled: boolean;
   /** true se sugestões clicáveis aparecem ao menos no playground (G7). */
   suggestionsInPlayground: boolean;
-  bubbleEnabled: boolean;
-  whatsappEnabled: boolean;
   /** F5: nível mínimo de acesso da bubble in-app (com herança). */
   bubbleAccessLevel: ChannelAccessLevel;
   /** F5: nível mínimo de acesso do canal WhatsApp (com herança). */
