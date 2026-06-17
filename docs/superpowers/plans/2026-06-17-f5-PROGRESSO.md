@@ -13,17 +13,29 @@
 - [x] PLAN v1 escrito (subagente Opus).
 - [x] 2 reviews adversariais do PLAN aplicadas → **PLAN v2 (pronto para execução)**.
       Achado "phoneVariants não existe" era FALSO (existe em countries.ts:180).
-- [ ] **EM ANDAMENTO:** Execução das ondas (inline, TDD, ui-ux-pro-max na UI, e2e por onda).
+- [x] **Onda A backend (A1-A4) EXECUTADA** , 6 commits, tsc 0, 28 testes verdes:
+      A1 `01b8346` (resolve por variantes + platformRole), A2.1 `96e6ec8`
+      (contactName/phoneNumberId no Zod), A2.2 `e55274c` (AgentJobData + route),
+      A3 `ec75e55` (áudio dois caminhos), A4.1 `b2a51e6` (user-lock.ts),
+      A4.2 `49679bd` (processor envolto no lock).
+- [ ] **PRÓXIMO:** Onda 0 (migration, banco COMPARTILHADO , coordenar) então
+      A5 (barreiras L1/L2 + mensagens padrão), B, C, D, E, F.
 - [ ] Code review + UI review finais.
 
+## PENDÊNCIA a confirmar (Onda A)
+- Validação cruzada "text não-vazio": A2.1 NÃO a aplicou (quebraria o caminho
+  Meta-áudio, que chega sem `text` e com `audioMediaId`). Correto seguir o plano.
+  A regra certa: exigir `text` quando NÃO há `audioMediaId` (caminho n8n);
+  resolver na A5/verificação e2e como mensagem amigável (não throw).
+
 ## Próxima ação concreta
-Executar pelo PLAN v2 (docs/superpowers/plans/2026-06-17-f5-whatsapp-nex-webhook.md).
-Começar pela **Onda A1** (resolução por variantes do nono dígito em
-`src/lib/whatsapp/resolve.ts`: `findUnique`→`findFirst` com `phoneVariants` +
-`platformRole` no select), que NÃO depende da migration. A **Onda 0** (schema:
-eventos + níveis de acesso por canal) mexe no **banco compartilhado** com
-`feat/nex-reconstrucao`: ao chegar nela, avisar o usuário, rodar
-`agente schema-changed`, e recomendar mergear cedo.
+**Onda 0 , migration no banco COMPARTILHADO** com `feat/nex-reconstrucao`
+(enum `WebhookEvent`+`events`; enum `ChannelAccessLevel`+`bubble/whatsappAccessLevel`;
+backfill com cast). Exige: avisar o usuário, `npx prisma migrate dev`,
+`agente schema-changed`, e mergear cedo para a outra frente rebasear. É ponto de
+COORDENAÇÃO , não rodar a migration sem o OK do usuário. Depois: A5 (L1/L2 +
+emit-reply blocked), B (envelope rico + idempotência ANTES do lock), C/D (UI,
+inline + ui-ux-pro-max), E (monitoramento, por último), F (runbook + e2e).
 
 ## Ordem de execução sugerida (independência)
 A1, A2, A3, A4 (backend, sem migration) → Onda 0 (migration, coordenar) →
